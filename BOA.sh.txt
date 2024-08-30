@@ -49,7 +49,7 @@ export PATH=${PATH}
 export SHELL=${SHELL}
 export HOME=${HOME}
 
-tRee=lts
+tRee=dev
 export tRee="${tRee}"
 
 ###
@@ -61,9 +61,11 @@ if [ -z "${TERM+x}" ]; then
   export TERM=vt100
 fi
 
+_NOW=$(date +%y%m%d-%H%M%S 2>&1)
+export _NOW=${_NOW//[^0-9-]/}
 _TODAY=$(date +%y%m%d 2>&1)
-_TODAY=${_TODAY//[^0-9]/}
-_X_SE="540ltsT01"
+export _TODAY=${_TODAY//[^0-9]/}
+_X_SE="540devT01"
 #
 barCnf="/root/.barracuda.cnf"
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
@@ -2184,8 +2186,76 @@ force_rebuild() {
   fi
 }
 
+#
+# Detect, remove, and report broken symlinks
+check_and_remove_broken_symlinks() {
+  local dir=$1
+
+  # Find broken symlinks in the directory
+  broken_symlinks=$(find "${dir}" -maxdepth 1 -type l ! -exec test -e {} \; -print)
+
+  if [ -n "${broken_symlinks}" ]; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      echo "CLNP: Removing the following broken symlinks from ${dir}:"
+      echo "CLNP: ${broken_symlinks}"
+    fi
+
+    for symlink in $broken_symlinks; do
+      rm "${symlink}"
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        echo "CLNP: Removed broken symlink: ${symlink}"
+      fi
+    done
+
+    # Set the ifAnySymlinksCleaned variable to true since we removed broken symlinks
+    ifAnySymlinksCleaned=YES
+  else
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      echo "CLNP: No broken symlinks found in ${dir}"
+    fi
+  fi
+}
+
+#
+# Check and move disallowed versions
+check_and_move() {
+  local dir=$1
+
+  # Determine the name of the backup subdirectory based on the source directory
+  local backup_dir="${backLegBase}$(echo "${dir}" | tr '/' '_')"
+
+  # Find any libcurl.so files in the directory, excluding the allowed version and those without a complete version number
+  found_versions=$(find "${dir}" -maxdepth 1 -type f -name "libcurl.so.*" ! -name "${allowedFile}" | grep -E "libcurl\.so\.[0-9]+\.[0-9]+\.[0-9]+$")
+
+  if [ -n "${found_versions}" ]; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      echo "CLNP: Moving the following disallowed versions from ${dir} to ${backup_dir}:"
+      echo "CLNP: ${found_versions}"
+    fi
+
+    # Create the backup directory if it doesn't exist
+    mkdir -p "${backup_dir}"
+
+    # Move each found version to the backup directory
+    for file in ${found_versions}; do
+      mv -f "${file}" "${backup_dir}/"
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        echo "CLNP: Moved ${file} to ${backup_dir}/"
+      fi
+    done
+
+    # Set the ifAnyFilesCleaned variable to true since we moved files
+    ifAnyFilesCleaned=YES
+  else
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      echo "CLNP: Only the allowed version (${allowedFile}) is present in ${dir}"
+    fi
+  fi
+}
+
 if_reinstall_curl() {
   _CURL_VRN=8.9.1
+  _CURL_INSTALL_REQUIRED=NO
   if ! command -v lsb_release &> /dev/null; then
     apt-get update -qq &> /dev/null
     apt-get install lsb-release -y -qq &> /dev/null
@@ -2193,10 +2263,84 @@ if_reinstall_curl() {
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   [ "${_OS_CODE}" = "jessie" ] && _CURL_VRN=7.71.1
   [ "${_OS_CODE}" = "stretch" ] && _CURL_VRN=8.2.1
+
+  if [ -e "/var/aegir/drush" ] \
+    && [ "${_OS_CODE}" != "jessie" ] \
+    && [ "${_OS_CODE}" != "stretch" ]; then
+
+    # Target version
+    allowedFile="libcurl.so.4.8.0"
+
+    # Directories to check
+    dirsToClean=("/usr/lib" "/usr/local/lib" "/usr/lib/x86_64-linux-gnu")
+
+    # Backup base directory
+    backLegBase="/var/backups/legacy-libcurl-boa-${_NOW}"
+
+    # Variable to track if any files were moved
+    ifAnyFilesCleaned=NO
+
+    # Variable to track if any broken symlinks were found and removed
+    ifAnySymlinksCleaned=NO
+
+    # Iterate over the directories and apply the check_and_move function
+    for dir in "${dirsToClean[@]}"; do
+      check_and_move "${dir}"
+    done
+
+    # Iterate over the directories and apply the check_and_remove_broken_symlinks function
+    for dir in "${dirsToClean[@]}"; do
+      check_and_remove_broken_symlinks "${dir}"
+    done
+
+    # Export the ifAnyFilesCleaned variable for later use
+    export ifAnyFilesCleaned
+
+    # Export the ifAnySymlinksCleaned variable for later use
+    export ifAnySymlinksCleaned
+
+  fi
+
+  if [ "${ifAnySymlinksCleaned}" = "YES" ] \
+    || [ "${ifAnyFilesCleaned}" = "YES" ]; then
+    ldconfig 2> /dev/null
+    _CURL_INSTALL_REQUIRED=YES
+    bkLibcurlPre="/var/backups/legacy-libcurl-pre-${_CURL_VRN}-${_NOW}"
+    mkdir -p ${bkLibcurlPre}
+    mv -f /usr/lib/x86_64-linux-gnu/libcurl.so* ${bkLibcurlPre}/ &> /dev/null
+    mv -f /usr/lib/x86_64-linux-gnu/libcurl.la ${bkLibcurlPre}/ &> /dev/null
+    mv -f /usr/lib/x86_64-linux-gnu/libcurl.a ${bkLibcurlPre}/ &> /dev/null
+  fi
+
+  _CURL_ITD=$(curl --version 2>&1 \
+    | tr -d "\n" \
+    | cut -d" " -f2 \
+    | awk '{ print $1}' 2>&1)
+  _CURL_SSL_ITD=$(curl --version 2>&1 \
+    | tr -d "\n" \
+    | cut -d" " -f5 \
+    | awk '{ print $1}' \
+    | cut -d"/" -f2 \
+    | awk '{ print $1}' 2>&1)
+  _CURL_LIB_ITD=$(curl --version 2>&1 \
+    | tr -d "\n" \
+    | cut -d" " -f4 \
+    | awk '{ print $1}' \
+    | cut -d"/" -f2 \
+    | awk '{ print $1}' 2>&1)
+
+  if [ "${_CURL_ITD}" != "${_CURL_VRN}" ]; then
+    _CURL_INSTALL_REQUIRED=YES
+    echo "INFO: Installed cURL/lib ${_CURL_ITD}/${_CURL_LIB_ITD}, upgrade required"
+  fi
+
   isCurl=$(curl --version 2>&1)
   if [[ ! "${isCurl}" =~ "OpenSSL" ]] \
     || [[ "${isCurl}" =~ "libcurl.so.4" ]] \
-    || [ -z "${isCurl}" ]; then
+    || [ -z "${isCurl}" ] \
+    || [ "${ifAnySymlinksCleaned}" = "YES" ] \
+    || [ "${ifAnyFilesCleaned}" = "YES" ] \
+    || [ "${_CURL_INSTALL_REQUIRED}" = "YES" ]; then
     if [ -e "/var/aegir/drush" ]; then
       echo "OOPS: cURL is broken! Re-installing.."
     fi
@@ -2207,22 +2351,11 @@ if_reinstall_curl() {
       fi
       echo "curl install" | dpkg --set-selections 2> /dev/null
       apt_clean_update
-      apt-get install curl -y -qq 2> /dev/null
       apt-get build-dep curl -y 2> /dev/null
       apt-get remove libssl1.0-dev -y --purge --auto-remove -qq 2> /dev/null
       apt-get autoremove -y 2> /dev/null
       apt-get install libssl-dev -y -qq 2> /dev/null
       apt-get install libc-client2007e libc-client2007e-dev -y -qq 2> /dev/null
-    fi
-    isCurl=$(curl --version 2>&1)
-    if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
-      if [ -e "/var/aegir/drush" ]; then
-        echo "ERRR: curl is still broken, we will install from sources"
-      else
-        echo "ERRR: curl is still broken, please install it and debug manually"
-        echo "Bye"
-        exit 1
-      fi
     fi
     if [ -e "/var/aegir/drush" ]; then
       isCurl=$(curl --version 2>&1)
@@ -2233,22 +2366,78 @@ if_reinstall_curl() {
         cd /var/opt
         wget -q -U iCab http://files.aegir.cc/dev/src/curl-${_CURL_VRN}.tar.gz &> /dev/null
         tar -xzf curl-${_CURL_VRN}.tar.gz &> /dev/null
-        cd /var/opt/curl-${_CURL_VRN}
-        sh ./configure --with-ssl --prefix=/usr/local &> /dev/null
-        make -j $(nproc) --quiet &> /dev/null
-        make --quiet install &> /dev/null
+
+        if [ -e "/root/.install.modern.openssl.cnf" ] \
+          && [ -x "/usr/local/ssl3/bin/openssl" ]; then
+          _SSL_BINARY=/usr/local/ssl3/bin/openssl
+        else
+          _SSL_BINARY=/usr/local/ssl/bin/openssl
+        fi
+        if [ -e "/usr/local/ssl3/lib64/libssl.so.3" ]; then
+          _SSL_PATH="/usr/local/ssl3"
+          _SSL_LIB_PATH="${_SSL_PATH}/lib64"
+        else
+          _SSL_PATH="/usr/local/ssl"
+          _SSL_LIB_PATH="${_SSL_PATH}/lib"
+        fi
+        _PKG_CONFIG_PATH="${_SSL_LIB_PATH}/pkgconfig"
+
+        if [ -e "${_PKG_CONFIG_PATH}" ] \
+          && [ -e "/var/opt/curl-${_CURL_VRN}" ]; then
+          cd /var/opt/curl-${_CURL_VRN}
+          LIBS="-ldl -lpthread" PKG_CONFIG_PATH="${_PKG_CONFIG_PATH}" ./configure \
+            --with-openssl \
+            --with-zlib=/usr \
+            --prefix=/usr/local &> /dev/null
+          make -j $(nproc) --quiet &> /dev/null
+          make --quiet install &> /dev/null
+          ldconfig 2> /dev/null
+        fi
       fi
-      if [ -f "/usr/local/bin/curl" ]; then
+      if [ -x "/usr/local/bin/curl" ]; then
         isCurl=$(/usr/local/bin/curl --version 2>&1)
         if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
-          echo "ERRR: /usr/local/bin/curl is broken, moving to /usr/local/bin/curl--broken"
-          echo "ERRR: Please install it and debug manually"
+          echo "ERRR: /usr/local/bin/curl is broken"
+          echo "ERRR: Please install cURL and debug manually"
           echo "Bye"
-          rm -f /usr/local/bin/curl--broken
-          mv -f /usr/local/bin/curl /usr/local/bin/curl--broken
           exit 1
         else
           echo "GOOD: /usr/local/bin/curl works"
+          echo "curl hold" | dpkg --set-selections &> /dev/null
+          if [ -x "/usr/local/bin/curl" ]; then
+            if [ -x "/usr/bin/curl" ] && [ ! -L "/usr/bin/curl" ]; then
+              mv -f /usr/bin/curl /usr/bin/old-curl-$(date +%y%m%d-%H%M%S 2>&1)
+            fi
+            ln -sfn /usr/local/bin/curl /usr/bin/curl
+          fi
+          if [ ! -e "${_SSL_PATH}/certs/ca-certificates.crt" ]; then
+            cp -af /etc/ssl/certs/* ${_SSL_PATH}/certs/ &> /dev/null
+          fi
+          if [ -e "/usr/local/lib/libcurl.so.4.8.0" ]; then
+            ln -sfn /usr/local/lib/libcurl.so.4.8.0 /usr/lib/libcurl.so
+            ln -sfn /usr/local/lib/libcurl.so.4.8.0 /usr/lib/libcurl.so.4
+            ln -sfn /usr/local/lib/libcurl.so.4.8.0 /usr/lib/libcurl.so.4.8.0
+            ln -sfn /usr/local/lib/libcurl.so.4.8.0 /usr/lib/x86_64-linux-gnu/libcurl.so
+            ln -sfn /usr/local/lib/libcurl.so.4.8.0 /usr/lib/x86_64-linux-gnu/libcurl.so.4
+            ln -sfn /usr/local/lib/libcurl.so.4.8.0 /usr/lib/x86_64-linux-gnu/libcurl.so.4.8.0
+          fi
+          if [ -e "/usr/local/lib/libcurl.a" ]; then
+            ln -sfn /usr/local/lib/libcurl.a /usr/lib/x86_64-linux-gnu/libcurl.a
+            ln -sfn /usr/local/lib/libcurl.a /usr/lib/libcurl.a
+          fi
+          if [ -e "/usr/local/lib/libcurl.la" ]; then
+            ln -sfn /usr/local/lib/libcurl.la /usr/lib/x86_64-linux-gnu/libcurl.la
+            ln -sfn /usr/local/lib/libcurl.la /usr/lib/libcurl.la
+          fi
+          ldconfig 2> /dev/null
+          if [ -d "/usr/local/include/curl" ] \
+            && [ -d "/usr/include/x86_64-linux-gnu/curl" ] \
+            && [ ! -L "/usr/include/x86_64-linux-gnu/curl" ]; then
+            apt_clean_update
+            apt-get remove libcurl4-openssl-dev -y --purge --auto-remove -qq 2> /dev/null
+            ln -sfn /usr/local/include/curl /usr/include/x86_64-linux-gnu/curl
+            ldconfig 2> /dev/null
+          fi
         fi
       fi
     fi
@@ -2596,11 +2785,11 @@ setup() {
   apt_clean_update
 
   if [ ! -e "/var/aegir/drush" ] && [ ! -e "/var/xdrago/manage_solr_config.sh" ]; then
-    apt-get remove unscd -y --purge --auto-remove -qq &> /dev/null
-    apt-get remove dbus -y --purge --auto-remove -qq &> /dev/null
-    if [ -e "/usr/share/dbus-1" ]; then
-      rm -f /usr/share/dbus-1/*/*freedesktop*
-    fi
+#     apt-get remove unscd -y --purge --auto-remove -qq &> /dev/null
+#     apt-get remove dbus -y --purge --auto-remove -qq &> /dev/null
+#     if [ -e "/usr/share/dbus-1" ]; then
+#       rm -f /usr/share/dbus-1/*/*freedesktop*
+#     fi
     userdel -r debian &> /dev/null
     sed -i "s/^#startup_message off/startup_message off/g" /etc/screenrc &> /dev/null
   fi

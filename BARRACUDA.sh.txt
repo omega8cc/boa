@@ -37,7 +37,7 @@ _ADMINER_VRN=4.8.1
 _BZR_VRN=2.6.0
 _CGP_VRN=master-22-07-2020
 _CHIVE_VRN=1.3
-_COMPOSER_VRN=2.7.7
+_COMPOSER_VRN=2.7.8
 _CSF_VRN=14.20
 _CURL_VRN=8.9.1
 _DB_SRC=repo.percona.com
@@ -50,7 +50,6 @@ _DRUSH_EIGHT_VRN=8.4.12.9
 _DRUSH_EIGHT_TEST_VRN=8.4.12-force
 ###
 ###
-_GALERA_10_VRN=10.0.37
 _GEOS_VRN=3.7.1
 _GIT_VRN=2.45.2
 _GOACCESS_VRN=1.7.1
@@ -75,7 +74,8 @@ _NODE_VRN=v22.5.0
 _MONGO_VRN=1.6.14
 _MONGODB_VRN=1.2.5
 _MSS_VRN=master-29-06-2024
-_MYQUICK_VRN=0.11.5-2
+_MYQUICK_VRN_FIVE=0.11.5-2
+_MYQUICK_VRN_EIGHT=0.16.6-2
 _MYSQLTUNER_VRN=1.9.4
 _NGINX_VRN=1.27.1
 _OPENSSH_VRN=9.8p1
@@ -84,6 +84,8 @@ _OPENSSL_EOL_VRN=1.1.1w
 _OPENSSL_MODERN_VRN=3.0.14
 _PDNSD_VRN=1.2.9a
 _PERCONA_5_7_VRN=5.7
+_PERCONA_8_0_VRN=8.0
+_PERCONA_8_3_VRN=8.3
 _PHP56_API=20131226
 _PHP56_VRN=5.6.40
 _PHP70_API=20151012
@@ -125,7 +127,7 @@ _SOLR_3_VRN=3.6.2
 _SOLR_4_VRN=4.9.1
 _SOLR_7_VRN=7.7.3
 _TWIGC_VRN=1.24.0
-_UNBOUND_VRN=1.20.0
+_UNBOUND_VRN=1.21.0
 _UPROGRESS_LEGACY_VRN=1.0.3.1
 _UPROGRESS_SEVEN_VRN=2.0.1.6
 _UPROGRESS_EIGHT_VRN=2.0.2
@@ -145,8 +147,6 @@ _DRUSH_VERSION="${_DRUSH_EIGHT_VRN}"
 _DRUSH_VERSION_TEST="${_DRUSH_EIGHT_TEST_VRN}"
 _FORCE_REDIS_RESTART=NO
 _LOC_OS_CODE=""
-_NOW=$(date +%y%m%d-%H%M%S 2>&1)
-_NOW=${_NOW//[^0-9-]/}
 _PURGE_ALL_THISHTIP=NO
 _SMALLCORE7_V=7.101.1
 _SPINNER=NO
@@ -372,6 +372,7 @@ if [ "${_STATUS}" = "INIT" ] || [ ! -x "/usr/local/ssl/bin/openssl" ]; then
   touch ${_LC_SSL_CTRL}
   ssl_install_src
   ssl_crypto_lib_fix
+  curl_install_src
 fi
 if [ -x "/usr/local/ssl/bin/openssl" ]; then
   [ -e "${_LC_SSL_CTRL}" ] && rm -f ${_LC_SSL_CTRL}
@@ -415,18 +416,7 @@ fi
 ###
 ### Install OpenSSL and cURL from sources
 ###
-if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
-  ssl_install_src
-  ssl_crypto_lib_fix
-  curl_install_src
-fi
-
-
-###
-### Upgrade MyQuick Tools and sync OpenSSL and cURL if needed
-###
-if [ "${_STATUS}" = "UPGRADE" ] && [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
-  myquick_install_upgrade
+if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ] || [ ! -x "/usr/local/ssl3/bin/openssl" ]; then
   ssl_install_src
   ssl_crypto_lib_fix
   curl_install_src
@@ -463,11 +453,12 @@ db_server_install
 
 
 ###
-### Finalize initial Percona server setup
+### Finalize initial Percona server and tools setup
 ###
 init_sql_root_credentials
 sql_root_credentials_update
 mytop_install
+myquick_install_upgrade
 
 
 ###
@@ -479,9 +470,6 @@ if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
   nginx_mime_check_fix
   redis_install_upgrade
   lshell_install_upgrade
-  if [ "${_STATUS}" = "INIT" ]; then
-    myquick_install_upgrade
-  fi
   magick_install_upgrade
   php_install_deps
   php_libs_fix

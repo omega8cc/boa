@@ -506,11 +506,8 @@ disable_old_purge_cruft_machine() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: disable_old_purge_cruft_machine"
   fi
-  if [[ "${_THISHOST}" =~ ".host8." ]] \
-    || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
-    || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
-    || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]] \
-    || [ -e "/root/.host8.cnf" ]; then
+  if_hosted_sys
+  if [ "${hostedSys}" = "YES" ]; then
     sed -i "s/.*purge_cruft.*//g" /etc/crontab &> /dev/null
     wait
     sed -i "/^$/d" /etc/crontab &> /dev/null
@@ -700,11 +697,9 @@ tune_memory_limits() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "TUNE: _USE is ${_USE}"
   fi
+  if_hosted_sys
   if [ "${_VMFAMILY}" = "VS" ] \
-    || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
-    || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]] \
-    || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
-    || [[ "${_THISHOST}" =~ ".host8." ]]; then
+    || [ "${hostedSys}" = "YES" ]; then
     if [ "${_VMFAMILY}" = "VS" ]; then
       if [ -e "/root/.tg.cnf" ]; then
         _USE_SQL=$(( _RAM / 12 ))
@@ -1569,221 +1564,201 @@ php_if_versions_cleanup_cnf() {
   fi
   if [ -e "/var/aegir/host_master/000/placeholder_dont_remove.txt" ] \
     && [ "${_AUTO_PHP_CLEANUP}" = "YES" ]; then
-    if [ -e "/root/.mstr.clstr.cnf" ] \
-      || [ -e "/root/.wbhd.clstr.cnf" ] \
-      || [ -e "/root/.dbhd.clstr.cnf" ]; then
-      _PHP_OVERRIDE=$(grep _PHP_FPM_VERSION ${barCnf} \
-        | cut -d= -f2 \
-        | awk '{ print $1}' \
-        | sed "s/[\"]//g" 2>&1)
-      _CLSTR_PHP_MULTI_INSTALL="${_PHP_OVERRIDE}"
-      if [ ! -z "${_CLSTR_PHP_MULTI_INSTALL}" ]; then
-        _PHP_MULTI_INSTALL="${_CLSTR_PHP_MULTI_INSTALL}"
-      else
-        ### Use default mini-legacy list if empty
-        _PHP_MULTI_INSTALL="8.1 7.4 5.6"
+    ### Make sure that _PHP_SINGLE_INSTALL takes precedence
+    if [ ! -z "${_PHP_SINGLE_INSTALL}" ]; then
+      if [ "${_PHP_SINGLE_INSTALL}" = "8.3" ] \
+        || [ "${_PHP_SINGLE_INSTALL}" = "8.2" ] \
+        || [ "${_PHP_SINGLE_INSTALL}" = "8.1" ] \
+        || [ "${_PHP_SINGLE_INSTALL}" = "7.4" ]; then
+        _PHP_MULTI_INSTALL=${_PHP_SINGLE_INSTALL}
+        _PHP_CLI_VERSION=${_PHP_SINGLE_INSTALL}
+        _PHP_FPM_VERSION=${_PHP_SINGLE_INSTALL}
       fi
     else
-      ### Make sure that _PHP_SINGLE_INSTALL takes precedence
-      if [ ! -z "${_PHP_SINGLE_INSTALL}" ]; then
-        if [ "${_PHP_SINGLE_INSTALL}" = "8.3" ] \
-          || [ "${_PHP_SINGLE_INSTALL}" = "8.2" ] \
-          || [ "${_PHP_SINGLE_INSTALL}" = "8.1" ] \
-          || [ "${_PHP_SINGLE_INSTALL}" = "7.4" ]; then
-          _PHP_MULTI_INSTALL=${_PHP_SINGLE_INSTALL}
-          _PHP_CLI_VERSION=${_PHP_SINGLE_INSTALL}
-          _PHP_FPM_VERSION=${_PHP_SINGLE_INSTALL}
-        fi
-      else
-        ### Make sure that _PHP_MULTI_INSTALL includes _PHP_FPM_VERSION
-        if [ "${_OPENSSL_NEW_VRN}" = "${_OPENSSL_LEGACY_VRN}" ]; then
-          _PHP_CLI_VERSION=7.4
-          _PHP_FPM_VERSION=7.4
-        fi
-        _local_PHP_MULTI_INSTALL="${_PHP_FPM_VERSION}"
+      ### Make sure that _PHP_MULTI_INSTALL includes _PHP_FPM_VERSION
+      if [ "${_OPENSSL_NEW_VRN}" = "${_OPENSSL_LEGACY_VRN}" ]; then
+        _PHP_CLI_VERSION=7.4
+        _PHP_FPM_VERSION=7.4
+      fi
+      _local_PHP_MULTI_INSTALL="${_PHP_FPM_VERSION}"
 
-        ### Include only used PHP versions on major automated OS upgrades
-        _STRICT_LIMIT_PHP=NO
-        if [ -e "/root/.run-to-daedalus.cnf" ] \
-          || [ -e "/root/.run-to-chimaera.cnf" ] \
-          || [ -e "/root/.run-to-beowulf.cnf" ]; then
-          _STRICT_LIMIT_PHP=YES
-        fi
+      ### Include only used PHP versions on major automated OS upgrades
+      _STRICT_LIMIT_PHP=NO
+      if [ -e "/root/.run-to-daedalus.cnf" ] \
+        || [ -e "/root/.run-to-chimaera.cnf" ] \
+        || [ -e "/root/.run-to-beowulf.cnf" ]; then
+        _STRICT_LIMIT_PHP=YES
+      fi
 
-        ### Include latest PHP 8.2 and 8.3 if conditions are met
-        if [ "${_STRICT_LIMIT_PHP}" = "NO" ]; then
-          if [ -e "/root/.include-php-latest.cnf" ] \
-            || [ -e "/root/.auto.up.cnf" ] \
-            || [ -e "/root/.host8.cnf" ] \
-            || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-            || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]] \
-            || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-            || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]]; then
-            if [ "${_OPENSSL_NEW_VRN}" != "${_OPENSSL_LEGACY_VRN}" ] \
-              && [ "${_OPENSSL_NEW_VRN}" != "${_OPENSSL_EOL_VRN}" ]; then
-              _local_PHP_MULTI_INSTALL="8.2 8.3 ${_local_PHP_MULTI_INSTALL}"
-            fi
+      ### Include latest PHP 8.2 and 8.3 if conditions are met
+      if_hosted_sys
+      if [ "${_STRICT_LIMIT_PHP}" = "NO" ]; then
+        if [ -e "/root/.include-php-latest.cnf" ] \
+          || [ "${hostedSys}" = "YES" ]; then
+          if [ "${_OPENSSL_NEW_VRN}" != "${_OPENSSL_LEGACY_VRN}" ] \
+            && [ "${_OPENSSL_NEW_VRN}" != "${_OPENSSL_EOL_VRN}" ]; then
+            _local_PHP_MULTI_INSTALL="8.2 8.3 ${_local_PHP_MULTI_INSTALL}"
           fi
         fi
-
-        ### Add PHP 5.6 if used
-        _is_PHP_multi_five_six=$(grep "5\.6" /data/disk/*/static/control/multi-fpm.info 2>&1)
-        _is_PHP_FPM_five_six=$(grep "5\.6" /data/disk/*/static/control/fpm.info 2>&1)
-        _is_PHP_CLI_five_six=$(grep "5\.6" /data/disk/*/static/control/cli.info 2>&1)
-        _is_PHP_five_six=
-        if [[ "${_is_PHP_multi_five_six}" =~ "5.6" ]] \
-          || [[ "${_is_PHP_FPM_five_six}" =~ "5.6" ]] \
-          || [[ "${_is_PHP_CLI_five_six}" =~ "5.6" ]]; then
-          _is_PHP_five_six=5.6
-          _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_five_six}"
-        fi
-
-        ### Add PHP 7.0 if used
-        _is_PHP_multi_seven_zero=$(grep "7\.0" /data/disk/*/static/control/multi-fpm.info 2>&1)
-        _is_PHP_FPM_seven_zero=$(grep "7\.0" /data/disk/*/static/control/fpm.info 2>&1)
-        _is_PHP_CLI_seven_zero=$(grep "7\.0" /data/disk/*/static/control/cli.info 2>&1)
-        _is_PHP_seven_zero=
-        if [[ "${_is_PHP_multi_seven_zero}" =~ "7.0" ]] \
-          || [[ "${_is_PHP_FPM_seven_zero}" =~ "7.0" ]] \
-          || [[ "${_is_PHP_CLI_seven_zero}" =~ "7.0" ]]; then
-          _is_PHP_seven_zero=7.0
-          _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_seven_zero}"
-        fi
-
-        ### Add PHP 7.1 if used
-        _is_PHP_multi_seven_one=$(grep "7\.1" /data/disk/*/static/control/multi-fpm.info 2>&1)
-        _is_PHP_FPM_seven_one=$(grep "7\.1" /data/disk/*/static/control/fpm.info 2>&1)
-        _is_PHP_CLI_seven_one=$(grep "7\.1" /data/disk/*/static/control/cli.info 2>&1)
-        _is_PHP_seven_one=
-        if [[ "${_is_PHP_multi_seven_one}" =~ "7.1" ]] \
-          || [[ "${_is_PHP_FPM_seven_one}" =~ "7.1" ]] \
-          || [[ "${_is_PHP_CLI_seven_one}" =~ "7.1" ]]; then
-          _is_PHP_seven_one=7.1
-          _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_seven_one}"
-        fi
-
-        ### Add PHP 7.2 if used
-        _is_PHP_multi_seven_two=$(grep "7\.2" /data/disk/*/static/control/multi-fpm.info 2>&1)
-        _is_PHP_FPM_seven_two=$(grep "7\.2" /data/disk/*/static/control/fpm.info 2>&1)
-        _is_PHP_CLI_seven_two=$(grep "7\.2" /data/disk/*/static/control/cli.info 2>&1)
-        _is_PHP_seven_two=
-        if [[ "${_is_PHP_multi_seven_two}" =~ "7.2" ]] \
-          || [[ "${_is_PHP_FPM_seven_two}" =~ "7.2" ]] \
-          || [[ "${_is_PHP_CLI_seven_two}" =~ "7.2" ]]; then
-          _is_PHP_seven_two=7.2
-          _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_seven_two}"
-        fi
-
-        ### Add PHP 7.3 if used
-        _is_PHP_multi_seven_three=$(grep "7\.3" /data/disk/*/static/control/multi-fpm.info 2>&1)
-        _is_PHP_FPM_seven_three=$(grep "7\.3" /data/disk/*/static/control/fpm.info 2>&1)
-        _is_PHP_CLI_seven_three=$(grep "7\.3" /data/disk/*/static/control/cli.info 2>&1)
-        _is_PHP_seven_three=
-        if [[ "${_is_PHP_multi_seven_three}" =~ "7.3" ]] \
-          || [[ "${_is_PHP_FPM_seven_three}" =~ "7.3" ]] \
-          || [[ "${_is_PHP_CLI_seven_three}" =~ "7.3" ]]; then
-          _is_PHP_seven_three=7.3
-          _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_seven_three}"
-        fi
-
-        ### Add PHP 7.4 if used
-        _is_PHP_multi_seven_four=$(grep "7\.4" /data/disk/*/static/control/multi-fpm.info 2>&1)
-        _is_PHP_FPM_seven_four=$(grep "7\.4" /data/disk/*/static/control/fpm.info 2>&1)
-        _is_PHP_CLI_seven_four=$(grep "7\.4" /data/disk/*/static/control/cli.info 2>&1)
-        _is_PHP_seven_four=
-        if [[ "${_is_PHP_multi_seven_four}" =~ "7.4" ]] \
-          || [[ "${_is_PHP_FPM_seven_four}" =~ "7.4" ]] \
-          || [[ "${_is_PHP_CLI_seven_four}" =~ "7.4" ]]; then
-          _is_PHP_seven_four=7.4
-          _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_seven_four}"
-        fi
-
-        ### Add PHP 8.0 if used
-        _is_PHP_multi_eight_zero=$(grep "8\.0" /data/disk/*/static/control/multi-fpm.info 2>&1)
-        _is_PHP_FPM_eight_zero=$(grep "8\.0" /data/disk/*/static/control/fpm.info 2>&1)
-        _is_PHP_CLI_eight_zero=$(grep "8\.0" /data/disk/*/static/control/cli.info 2>&1)
-        _is_PHP_eight_zero=
-        if [[ "${_is_PHP_multi_eight_zero}" =~ "8.0" ]] \
-          || [[ "${_is_PHP_FPM_eight_zero}" =~ "8.0" ]] \
-          || [[ "${_is_PHP_CLI_eight_zero}" =~ "8.0" ]]; then
-          _is_PHP_eight_zero=8.0
-          _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_eight_zero}"
-        fi
-
-        ### Add PHP 8.1 if used
-        _is_PHP_multi_eight_one=$(grep "8\.1" /data/disk/*/static/control/multi-fpm.info 2>&1)
-        _is_PHP_FPM_eight_one=$(grep "8\.1" /data/disk/*/static/control/fpm.info 2>&1)
-        _is_PHP_CLI_eight_one=$(grep "8\.1" /data/disk/*/static/control/cli.info 2>&1)
-        _is_PHP_eight_one=
-        if [[ "${_is_PHP_multi_eight_one}" =~ "8.1" ]] \
-          || [[ "${_is_PHP_FPM_eight_one}" =~ "8.1" ]] \
-          || [[ "${_is_PHP_CLI_eight_one}" =~ "8.1" ]]; then
-          _is_PHP_eight_one=8.1
-          _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_eight_one}"
-        fi
-
-        ### Add PHP 8.2 if used
-        _is_PHP_multi_eight_two=$(grep "8\.2" /data/disk/*/static/control/multi-fpm.info 2>&1)
-        _is_PHP_FPM_eight_two=$(grep "8\.2" /data/disk/*/static/control/fpm.info 2>&1)
-        _is_PHP_CLI_eight_two=$(grep "8\.2" /data/disk/*/static/control/cli.info 2>&1)
-        _is_PHP_eight_two=
-        if [[ "${_is_PHP_multi_eight_two}" =~ "8.2" ]] \
-          || [[ "${_is_PHP_FPM_eight_two}" =~ "8.2" ]] \
-          || [[ "${_is_PHP_CLI_eight_two}" =~ "8.2" ]]; then
-          _is_PHP_eight_two=8.2
-          _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_eight_two}"
-        fi
-
-        ### Add PHP 8.3 if used
-        _is_PHP_multi_eight_three=$(grep "8\.3" /data/disk/*/static/control/multi-fpm.info 3>&1)
-        _is_PHP_FPM_eight_three=$(grep "8\.3" /data/disk/*/static/control/fpm.info 3>&1)
-        _is_PHP_CLI_eight_three=$(grep "8\.3" /data/disk/*/static/control/cli.info 3>&1)
-        _is_PHP_eight_three=
-        if [[ "${_is_PHP_multi_eight_three}" =~ "8.3" ]] \
-          || [[ "${_is_PHP_FPM_eight_three}" =~ "8.3" ]] \
-          || [[ "${_is_PHP_CLI_eight_three}" =~ "8.3" ]]; then
-          _is_PHP_eight_three=8.3
-          _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_eight_three}"
-        fi
-
-        ### Overwrite _PHP_MULTI_INSTALL with the list of used PHP versions
-        _PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL}"
-
-        if [ -z "${_PHP_MULTI_INSTALL}" ]; then
-          ### Use default mini-legacy list if empty
-          _PHP_MULTI_INSTALL="8.1 7.4 5.6"
-        else
-          ### Sort and remove duplicates from _PHP_MULTI_INSTALL
-          php_multi_uniq
-        fi
-        export _PHP_MULTI_INSTALL="${_PHP_MULTI_INSTALL}"
-
-        ### Remove previous _PHP_MULTI_INSTALL in /root/.barracuda.cnf
-        _PHP_MULTI_TEST=$(grep _PHP_MULTI_INSTALL ${barCnf} 2>&1)
-        if [[ "${_PHP_MULTI_TEST}" =~ "_PHP_MULTI_INSTALL" ]]; then
-          sed -i "s/^_PHP_MULTI_INSTALL.*//g" ${barCnf}
-          wait
-          sed -i "s/^_PHP_ORIG_MULTI.*//g" ${barCnf}
-          wait
-          sed -i "/^$/d" ${barCnf}
-          wait
-        fi
-
-        ### Add optimized _PHP_MULTI_INSTALL in /root/.barracuda.cnf
-        echo "_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\"" >> ${barCnf}
-
-        ### Export optimized list as a new var
-        _PHP_MULTI_OPTIM="${_PHP_MULTI_INSTALL}"
-        export _PHP_MULTI_OPTIM="${_PHP_MULTI_OPTIM}"
-
-        ### Disable not used PHP versions
-        php_not_used_disable
-
-        ### Ctrl files cleanup
-        touch /root/.sorted.multi.php.cnf
-        [ -e "/root/.updated.multi.php.cnf" ] && rm -f /root/.updated.multi.php.cnf
-        [ -e "/root/.fixed.multi.php.cnf" ] && rm -f /root/.fixed.multi.php.cnf
       fi
+
+      ### Add PHP 5.6 if used
+      _is_PHP_multi_five_six=$(grep "5\.6" /data/disk/*/static/control/multi-fpm.info 2>&1)
+      _is_PHP_FPM_five_six=$(grep "5\.6" /data/disk/*/static/control/fpm.info 2>&1)
+      _is_PHP_CLI_five_six=$(grep "5\.6" /data/disk/*/static/control/cli.info 2>&1)
+      _is_PHP_five_six=
+      if [[ "${_is_PHP_multi_five_six}" =~ "5.6" ]] \
+        || [[ "${_is_PHP_FPM_five_six}" =~ "5.6" ]] \
+        || [[ "${_is_PHP_CLI_five_six}" =~ "5.6" ]]; then
+        _is_PHP_five_six=5.6
+        _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_five_six}"
+      fi
+
+      ### Add PHP 7.0 if used
+      _is_PHP_multi_seven_zero=$(grep "7\.0" /data/disk/*/static/control/multi-fpm.info 2>&1)
+      _is_PHP_FPM_seven_zero=$(grep "7\.0" /data/disk/*/static/control/fpm.info 2>&1)
+      _is_PHP_CLI_seven_zero=$(grep "7\.0" /data/disk/*/static/control/cli.info 2>&1)
+      _is_PHP_seven_zero=
+      if [[ "${_is_PHP_multi_seven_zero}" =~ "7.0" ]] \
+        || [[ "${_is_PHP_FPM_seven_zero}" =~ "7.0" ]] \
+        || [[ "${_is_PHP_CLI_seven_zero}" =~ "7.0" ]]; then
+        _is_PHP_seven_zero=7.0
+        _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_seven_zero}"
+      fi
+
+      ### Add PHP 7.1 if used
+      _is_PHP_multi_seven_one=$(grep "7\.1" /data/disk/*/static/control/multi-fpm.info 2>&1)
+      _is_PHP_FPM_seven_one=$(grep "7\.1" /data/disk/*/static/control/fpm.info 2>&1)
+      _is_PHP_CLI_seven_one=$(grep "7\.1" /data/disk/*/static/control/cli.info 2>&1)
+      _is_PHP_seven_one=
+      if [[ "${_is_PHP_multi_seven_one}" =~ "7.1" ]] \
+        || [[ "${_is_PHP_FPM_seven_one}" =~ "7.1" ]] \
+        || [[ "${_is_PHP_CLI_seven_one}" =~ "7.1" ]]; then
+        _is_PHP_seven_one=7.1
+        _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_seven_one}"
+      fi
+
+      ### Add PHP 7.2 if used
+      _is_PHP_multi_seven_two=$(grep "7\.2" /data/disk/*/static/control/multi-fpm.info 2>&1)
+      _is_PHP_FPM_seven_two=$(grep "7\.2" /data/disk/*/static/control/fpm.info 2>&1)
+      _is_PHP_CLI_seven_two=$(grep "7\.2" /data/disk/*/static/control/cli.info 2>&1)
+      _is_PHP_seven_two=
+      if [[ "${_is_PHP_multi_seven_two}" =~ "7.2" ]] \
+        || [[ "${_is_PHP_FPM_seven_two}" =~ "7.2" ]] \
+        || [[ "${_is_PHP_CLI_seven_two}" =~ "7.2" ]]; then
+        _is_PHP_seven_two=7.2
+        _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_seven_two}"
+      fi
+
+      ### Add PHP 7.3 if used
+      _is_PHP_multi_seven_three=$(grep "7\.3" /data/disk/*/static/control/multi-fpm.info 2>&1)
+      _is_PHP_FPM_seven_three=$(grep "7\.3" /data/disk/*/static/control/fpm.info 2>&1)
+      _is_PHP_CLI_seven_three=$(grep "7\.3" /data/disk/*/static/control/cli.info 2>&1)
+      _is_PHP_seven_three=
+      if [[ "${_is_PHP_multi_seven_three}" =~ "7.3" ]] \
+        || [[ "${_is_PHP_FPM_seven_three}" =~ "7.3" ]] \
+        || [[ "${_is_PHP_CLI_seven_three}" =~ "7.3" ]]; then
+        _is_PHP_seven_three=7.3
+        _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_seven_three}"
+      fi
+
+      ### Add PHP 7.4 if used
+      _is_PHP_multi_seven_four=$(grep "7\.4" /data/disk/*/static/control/multi-fpm.info 2>&1)
+      _is_PHP_FPM_seven_four=$(grep "7\.4" /data/disk/*/static/control/fpm.info 2>&1)
+      _is_PHP_CLI_seven_four=$(grep "7\.4" /data/disk/*/static/control/cli.info 2>&1)
+      _is_PHP_seven_four=
+      if [[ "${_is_PHP_multi_seven_four}" =~ "7.4" ]] \
+        || [[ "${_is_PHP_FPM_seven_four}" =~ "7.4" ]] \
+        || [[ "${_is_PHP_CLI_seven_four}" =~ "7.4" ]]; then
+        _is_PHP_seven_four=7.4
+        _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_seven_four}"
+      fi
+
+      ### Add PHP 8.0 if used
+      _is_PHP_multi_eight_zero=$(grep "8\.0" /data/disk/*/static/control/multi-fpm.info 2>&1)
+      _is_PHP_FPM_eight_zero=$(grep "8\.0" /data/disk/*/static/control/fpm.info 2>&1)
+      _is_PHP_CLI_eight_zero=$(grep "8\.0" /data/disk/*/static/control/cli.info 2>&1)
+      _is_PHP_eight_zero=
+      if [[ "${_is_PHP_multi_eight_zero}" =~ "8.0" ]] \
+        || [[ "${_is_PHP_FPM_eight_zero}" =~ "8.0" ]] \
+        || [[ "${_is_PHP_CLI_eight_zero}" =~ "8.0" ]]; then
+        _is_PHP_eight_zero=8.0
+        _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_eight_zero}"
+      fi
+
+      ### Add PHP 8.1 if used
+      _is_PHP_multi_eight_one=$(grep "8\.1" /data/disk/*/static/control/multi-fpm.info 2>&1)
+      _is_PHP_FPM_eight_one=$(grep "8\.1" /data/disk/*/static/control/fpm.info 2>&1)
+      _is_PHP_CLI_eight_one=$(grep "8\.1" /data/disk/*/static/control/cli.info 2>&1)
+      _is_PHP_eight_one=
+      if [[ "${_is_PHP_multi_eight_one}" =~ "8.1" ]] \
+        || [[ "${_is_PHP_FPM_eight_one}" =~ "8.1" ]] \
+        || [[ "${_is_PHP_CLI_eight_one}" =~ "8.1" ]]; then
+        _is_PHP_eight_one=8.1
+        _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_eight_one}"
+      fi
+
+      ### Add PHP 8.2 if used
+      _is_PHP_multi_eight_two=$(grep "8\.2" /data/disk/*/static/control/multi-fpm.info 2>&1)
+      _is_PHP_FPM_eight_two=$(grep "8\.2" /data/disk/*/static/control/fpm.info 2>&1)
+      _is_PHP_CLI_eight_two=$(grep "8\.2" /data/disk/*/static/control/cli.info 2>&1)
+      _is_PHP_eight_two=
+      if [[ "${_is_PHP_multi_eight_two}" =~ "8.2" ]] \
+        || [[ "${_is_PHP_FPM_eight_two}" =~ "8.2" ]] \
+        || [[ "${_is_PHP_CLI_eight_two}" =~ "8.2" ]]; then
+        _is_PHP_eight_two=8.2
+        _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_eight_two}"
+      fi
+
+      ### Add PHP 8.3 if used
+      _is_PHP_multi_eight_three=$(grep "8\.3" /data/disk/*/static/control/multi-fpm.info 3>&1)
+      _is_PHP_FPM_eight_three=$(grep "8\.3" /data/disk/*/static/control/fpm.info 3>&1)
+      _is_PHP_CLI_eight_three=$(grep "8\.3" /data/disk/*/static/control/cli.info 3>&1)
+      _is_PHP_eight_three=
+      if [[ "${_is_PHP_multi_eight_three}" =~ "8.3" ]] \
+        || [[ "${_is_PHP_FPM_eight_three}" =~ "8.3" ]] \
+        || [[ "${_is_PHP_CLI_eight_three}" =~ "8.3" ]]; then
+        _is_PHP_eight_three=8.3
+        _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_eight_three}"
+      fi
+
+      ### Overwrite _PHP_MULTI_INSTALL with the list of used PHP versions
+      _PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL}"
+
+      if [ -z "${_PHP_MULTI_INSTALL}" ]; then
+        ### Use default mini-legacy list if empty
+        _PHP_MULTI_INSTALL="8.1 7.4 5.6"
+      else
+        ### Sort and remove duplicates from _PHP_MULTI_INSTALL
+        php_multi_uniq
+      fi
+      export _PHP_MULTI_INSTALL="${_PHP_MULTI_INSTALL}"
+
+      ### Remove previous _PHP_MULTI_INSTALL in /root/.barracuda.cnf
+      _PHP_MULTI_TEST=$(grep _PHP_MULTI_INSTALL ${barCnf} 2>&1)
+      if [[ "${_PHP_MULTI_TEST}" =~ "_PHP_MULTI_INSTALL" ]]; then
+        sed -i "s/^_PHP_MULTI_INSTALL.*//g" ${barCnf}
+        wait
+        sed -i "s/^_PHP_ORIG_MULTI.*//g" ${barCnf}
+        wait
+        sed -i "/^$/d" ${barCnf}
+        wait
+      fi
+
+      ### Add optimized _PHP_MULTI_INSTALL in /root/.barracuda.cnf
+      echo "_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\"" >> ${barCnf}
+
+      ### Export optimized list as a new var
+      _PHP_MULTI_OPTIM="${_PHP_MULTI_INSTALL}"
+      export _PHP_MULTI_OPTIM="${_PHP_MULTI_OPTIM}"
+
+      ### Disable not used PHP versions
+      php_not_used_disable
+
+      ### Ctrl files cleanup
+      touch /root/.sorted.multi.php.cnf
+      [ -e "/root/.updated.multi.php.cnf" ] && rm -f /root/.updated.multi.php.cnf
+      [ -e "/root/.fixed.multi.php.cnf" ] && rm -f /root/.fixed.multi.php.cnf
     fi
   fi
 }
@@ -1857,45 +1832,11 @@ barracuda_cnf() {
   fi
   if [ ! -e "${barCnf}" ]; then
     if [[ "${_MY_EMAIL}" =~ "omega8.cc" ]]; then
-      if [ -e "/root/.auto.up.cnf" ] \
-        || [ -e "/root/.host8.cnf" ] \
-        || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-        || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
-        || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-        || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
-        if [ -e "/root/.debug.cnf" ] && [ ! -e "/root/.default.cnf" ]; then
-          _DO_NOTHING=YES
-        else
-          _DO_NOTHING=YES
-        fi
-      else
+      if_hosted_sys
+      if [ "${hostedSys}" != "YES" ]; then
         msg "EXIT: Invalid email address defined in the _MY_EMAIL variable"
         msg "EXIT: Bye (1)"
         clean_pid_exit barracuda_cnf_a
-      fi
-    fi
-    if [ "${_DB_SERIES}" = "5.7" ]; then
-      if [ -e "/root/.mstr.clstr.cnf" ] \
-        || [ -e "/root/.wbhd.clstr.cnf" ] \
-        || [ -e "/root/.dbhd.clstr.cnf" ]; then
-        _DBS_VRN="${_GALERA_10_VRN}"
-      else
-        if [ "${_DB_SERIES}" = "5.7" ]; then
-          _DB_SERVER=Percona
-          _DBS_VRN="${_PERCONA_5_7_VRN}"
-        else
-          _DB_SERVER=Percona
-          _DB_SERIES=5.7
-          _DBS_VRN="${_PERCONA_5_7_VRN}"
-        fi
-      fi
-    else
-      _DB_SERVER=Percona
-      _DB_SERIES=5.7
-      _DBS_VRN="${_PERCONA_5_7_VRN}"
-      if [ -e "${barCnf}" ]; then
-        sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g" ${barCnf}
-        sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g" ${barCnf}
       fi
     fi
 
@@ -2001,94 +1942,61 @@ barracuda_cnf() {
     ### Force ImageMagick from packages
     sed -i "s/^_MAGICK_FROM_S.*/_MAGICK_FROM_SOURCES=NO/g"       ${barCnf}
     wait
-    if [ -e "/root/.auto.up.cnf" ] \
-      || [ -e "/root/.host8.cnf" ] \
-      || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-      || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
-      || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-      || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
-      ### Force latest OpenSSH from sources on supported systems
-      sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"   ${barCnf}
+    sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                   ${barCnf}
+    wait
+    sed -i "s/^_FORCE_GIT_.*/_FORCE_GIT_MIRROR=\"\"/g"           ${barCnf}
+    wait
+
+    devM="deb.devuan.org"
+    debM="deb.debian.org"
+
+    sed -i "s/^_LOCAL_DEVUAN_.*/_LOCAL_DEVUAN_MIRROR=${devM}/g"  ${barCnf}
+    wait
+    sed -i "s/^_LOCAL_DEBIAN_.*/_LOCAL_DEBIAN_MIRROR=${debM}/g"  ${barCnf}
+    wait
+    sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"     ${barCnf}
+    wait
+    sed -i "s/^_STRICT_BIN_.*/_STRICT_BIN_PERMISSIONS=YES/g"     ${barCnf}
+    wait
+    sed -i "s/^_STRONG_PASS.*/_STRONG_PASSWORDS=YES/g"           ${barCnf}
+    wait
+    sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g"       ${barCnf}
+    wait
+    sed -i "s/^_FORCE_GIT_.*/_FORCE_GIT_MIRROR=\"\"/g" /root/.*.octopus.cnf &> /dev/null
+    wait
+    sed -i "s/^_STRONG_PASS.*/_STRONG_PASSWORDS=YES/g" /root/.*.octopus.cnf &> /dev/null
+    wait
+    sed -i "s/^_REDIS_LISTEN.*/_REDIS_LISTEN_MODE=SOCKET/g"      ${barCnf}
+    wait
+    if [ -z "${_PHP_SINGLE_INSTALL}" ]; then
+      sed -i "s/^_PHP_CLI_VERSION=5.6/_PHP_CLI_VERSION=8.1/g"    ${barCnf}
       wait
-      if [ -e "/root/.debug.cnf" ] && [ ! -e "/root/.default.cnf" ]; then
-        _DO_NOTHING=YES
-      else
-        devM="deb.devuan.org"
-        debM="deb.debian.org"
-        sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                                 ${barCnf}
-        wait
-        sed -i "s/^_FORCE_GIT_MIRROR=.*/_FORCE_GIT_MIRROR=\"\"/g"                  ${barCnf}
-        wait
-        sed -i "s/^_LOCAL_DEVUAN_MIRROR=.*/_LOCAL_DEVUAN_MIRROR=${devM}/g"         ${barCnf}
-        wait
-        sed -i "s/^_LOCAL_DEBIAN_MIRROR=.*/_LOCAL_DEBIAN_MIRROR=${debM}/g"         ${barCnf}
-        wait
-        sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"notify\@omega8.cc\"/g"                 ${barCnf}
-        wait
-        sed -i "s/^_STRICT_BIN_PERMISSIONS=.*/_STRICT_BIN_PERMISSIONS=YES/g"       ${barCnf}
-        wait
-        sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"                   ${barCnf}
-        wait
-        sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g"                     ${barCnf}
-        wait
-        sed -i "s/^_FORCE_GIT_MIRROR=.*/_FORCE_GIT_MIRROR=\"\"/g"                  /root/.*.octopus.cnf &> /dev/null
-        wait
-        sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"                   /root/.*.octopus.cnf &> /dev/null
-        wait
-        if [ -e "/root/.mstr.clstr.cnf" ] \
-          || [ -e "/root/.wbhd.clstr.cnf" ] \
-          || [ -e "/root/.dbhd.clstr.cnf" ] \
-          || [ -e "/root/.test.clstr.cnf" ]; then
-          _DO_NOTHING=YES
-        else
-          sed -i "s/^_REDIS_LISTEN_MODE=.*/_REDIS_LISTEN_MODE=SOCKET/g"            ${barCnf}
-          wait
-        fi
-        if [ -z "${_PHP_SINGLE_INSTALL}" ]; then
-          sed -i "s/^_PHP_CLI_VERSION=5.6/_PHP_CLI_VERSION=8.1/g"                  ${barCnf}
-          wait
-          sed -i "s/^_PHP_FPM_VERSION=5.6/_PHP_FPM_VERSION=8.1/g"                  ${barCnf}
-          wait
-          sed -i "s/^_PHP_CLI_VERSION=7.0/_PHP_CLI_VERSION=8.1/g"                  ${barCnf}
-          wait
-          sed -i "s/^_PHP_FPM_VERSION=7.0/_PHP_FPM_VERSION=8.1/g"                  ${barCnf}
-          wait
-          sed -i "s/^_PHP_CLI_VERSION=7.1/_PHP_CLI_VERSION=8.1/g"                  ${barCnf}
-          wait
-          sed -i "s/^_PHP_FPM_VERSION=7.1/_PHP_FPM_VERSION=8.1/g"                  ${barCnf}
-          wait
-          sed -i "s/^_PHP_CLI_VERSION=7.2/_PHP_CLI_VERSION=8.1/g"                  ${barCnf}
-          wait
-          sed -i "s/^_PHP_FPM_VERSION=7.2/_PHP_FPM_VERSION=8.1/g"                  ${barCnf}
-          wait
-          sed -i "s/^_PHP_CLI_VERSION=7.3/_PHP_CLI_VERSION=8.1/g"                  ${barCnf}
-          wait
-          sed -i "s/^_PHP_FPM_VERSION=7.3/_PHP_FPM_VERSION=8.1/g"                  ${barCnf}
-          wait
-          sed -i "s/^_PHP_CLI_VERSION=8.0/_PHP_CLI_VERSION=8.1/g"                  ${barCnf}
-          wait
-          sed -i "s/^_PHP_FPM_VERSION=8.0/_PHP_FPM_VERSION=8.1/g"                  ${barCnf}
-          wait
-        fi
-        # if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-        #   || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
-        #   || [ "${_VMFAMILY}" = "VS" ]; then
-        #   if [ "${_VMFAMILY}" = "VS" ]; then
-        #     sed -i "s/^_CPU_CRIT_RATIO=.*/_CPU_CRIT_RATIO=3/g"                     ${barCnf}
-        #     wait
-        #     sed -i "s/^_CPU_MAX_RATIO=.*/_CPU_MAX_RATIO=2/g"                       ${barCnf}
-        #     wait
-        #     sed -i "s/^_CPU_SPIDER_RATIO=.*/_CPU_SPIDER_RATIO=1/g"                 ${barCnf}
-        #     wait
-        #   fi
-        # fi
-      fi
+      sed -i "s/^_PHP_FPM_VERSION=5.6/_PHP_FPM_VERSION=8.1/g"    ${barCnf}
+      wait
+      sed -i "s/^_PHP_CLI_VERSION=7.0/_PHP_CLI_VERSION=8.1/g"    ${barCnf}
+      wait
+      sed -i "s/^_PHP_FPM_VERSION=7.0/_PHP_FPM_VERSION=8.1/g"    ${barCnf}
+      wait
+      sed -i "s/^_PHP_CLI_VERSION=7.1/_PHP_CLI_VERSION=8.1/g"    ${barCnf}
+      wait
+      sed -i "s/^_PHP_FPM_VERSION=7.1/_PHP_FPM_VERSION=8.1/g"    ${barCnf}
+      wait
+      sed -i "s/^_PHP_CLI_VERSION=7.2/_PHP_CLI_VERSION=8.1/g"    ${barCnf}
+      wait
+      sed -i "s/^_PHP_FPM_VERSION=7.2/_PHP_FPM_VERSION=8.1/g"    ${barCnf}
+      wait
+      sed -i "s/^_PHP_CLI_VERSION=7.3/_PHP_CLI_VERSION=8.1/g"    ${barCnf}
+      wait
+      sed -i "s/^_PHP_FPM_VERSION=7.3/_PHP_FPM_VERSION=8.1/g"    ${barCnf}
+      wait
+      sed -i "s/^_PHP_CLI_VERSION=8.0/_PHP_CLI_VERSION=8.1/g"    ${barCnf}
+      wait
+      sed -i "s/^_PHP_FPM_VERSION=8.0/_PHP_FPM_VERSION=8.1/g"    ${barCnf}
+      wait
     fi
-    if [ "${_LOCAL_DEBIAN_MIRROR}" = "deb.debian.org" ] \
-      || [ "${_LOCAL_DEBIAN_MIRROR}" = "httpredir.debian.org" ] \
-      || [ "${_LOCAL_DEBIAN_MIRROR}" = "ftp.debian.org" ]; then
-      _LOCAL_DEBIAN_MIRROR="deb.debian.org"
-      sed -i "s/^_LOCAL_DEBIAN_.*/_LOCAL_DEBIAN_MIRROR=deb.debian.org/g"     ${barCnf}
+    if_hosted_sys
+    if [ "${hostedSys}" = "YES" ]; then
+      sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"notify\@omega8.cc\"/g" ${barCnf}
       wait
     fi
   else
@@ -2348,93 +2256,71 @@ barracuda_cnf() {
     ### Force ImageMagick from packages
     sed -i "s/^_MAGICK_FROM_S.*/_MAGICK_FROM_SOURCES=NO/g"       ${barCnf}
     wait
-    if [ -e "/root/.auto.up.cnf" ] \
-      || [ -e "/root/.host8.cnf" ] \
-      || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-      || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
-      || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-      || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
-      ### Force latest OpenSSH from sources on supported systems
-      sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"   ${barCnf}
+    ### Force latest OpenSSH from sources on supported systems
+    sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"     ${barCnf}
+    wait
+
+    devM="deb.devuan.org"
+    debM="deb.debian.org"
+
+    sed -i "s/^_LOCAL_DEVUAN_.*/_LOCAL_DEVUAN_MIRROR=${devM}/g"  ${barCnf}
+    wait
+    sed -i "s/^_LOCAL_DEBIAN_.*/_LOCAL_DEBIAN_MIRROR=${debM}/g"  ${barCnf}
+    wait
+
+    sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                   ${barCnf}
+    wait
+    sed -i "s/^_FORCE_GIT_.*/_FORCE_GIT_MIRROR=\"\"/g"           ${barCnf}
+    wait
+    sed -i "s/^_STRICT_BIN_.*/_STRICT_BIN_PERMISSIONS=YES/g"     ${barCnf}
+    wait
+    sed -i "s/^_STRONG_PASS.*/_STRONG_PASSWORDS=YES/g"           ${barCnf}
+    wait
+    sed -i "s/^_PERMISSIONS_.*/_PERMISSIONS_FIX=YES/g"           ${barCnf}
+    wait
+    sed -i "s/^_FORCE_GIT_.*/_FORCE_GIT_MIRROR=\"\"/g" /root/.*.octopus.cnf &> /dev/null
+    wait
+    sed -i "s/^_STRONG_PASS.*/_STRONG_PASSWORDS=YES/g" /root/.*.octopus.cnf &> /dev/null
+    wait
+    sed -i "s/^_REDIS_LISTEN_.*/_REDIS_LISTEN_MODE=SOCKET/g"     ${barCnf}
+    wait
+    if [ -z "${_PHP_SINGLE_INSTALL}" ]; then
+      sed -i "s/^_PHP_CLI_VERSION=5.6/_PHP_CLI_VERSION=8.1/g"    ${barCnf}
       wait
-      if [ -e "/root/.debug.cnf" ] && [ ! -e "/root/.default.cnf" ]; then
-        _DO_NOTHING=YES
-      else
-        devM="deb.devuan.org"
-        debM="deb.debian.org"
-        sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                                 ${barCnf}
-        wait
-        sed -i "s/^_FORCE_GIT_MIRROR=.*/_FORCE_GIT_MIRROR=\"\"/g"                  ${barCnf}
-        wait
-        sed -i "s/^_LOCAL_DEVUAN_MIRROR=.*/_LOCAL_DEVUAN_MIRROR=${devM}/g"         ${barCnf}
-        wait
-        sed -i "s/^_LOCAL_DEBIAN_MIRROR=.*/_LOCAL_DEBIAN_MIRROR=${debM}/g"         ${barCnf}
-        wait
-        sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"notify\@omega8.cc\"/g"                 ${barCnf}
-        wait
-        sed -i "s/^_STRICT_BIN_PERMISSIONS=.*/_STRICT_BIN_PERMISSIONS=YES/g"       ${barCnf}
-        wait
-        sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"                   ${barCnf}
-        wait
-        sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g"                     ${barCnf}
-        wait
-        sed -i "s/^_FORCE_GIT_MIRROR=.*/_FORCE_GIT_MIRROR=\"\"/g"                  /root/.*.octopus.cnf &> /dev/null
-        wait
-        sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"                   /root/.*.octopus.cnf &> /dev/null
-        wait
-        if [ -e "/root/.mstr.clstr.cnf" ] \
-          || [ -e "/root/.wbhd.clstr.cnf" ] \
-          || [ -e "/root/.dbhd.clstr.cnf" ] \
-          || [ -e "/root/.test.clstr.cnf" ]; then
-          _DO_NOTHING=YES
-        else
-          sed -i "s/^_REDIS_LISTEN_MODE=.*/_REDIS_LISTEN_MODE=SOCKET/g"            ${barCnf}
-          wait
-        fi
-        if [ -z "${_PHP_SINGLE_INSTALL}" ]; then
-          sed -i "s/^_PHP_CLI_VERSION=5.6/_PHP_CLI_VERSION=8.1/g"                  ${barCnf}
-          wait
-          sed -i "s/^_PHP_FPM_VERSION=5.6/_PHP_FPM_VERSION=8.1/g"                  ${barCnf}
-          wait
-          sed -i "s/^_PHP_CLI_VERSION=7.0/_PHP_CLI_VERSION=8.1/g"                  ${barCnf}
-          wait
-          sed -i "s/^_PHP_FPM_VERSION=7.0/_PHP_FPM_VERSION=8.1/g"                  ${barCnf}
-          wait
-          sed -i "s/^_PHP_CLI_VERSION=7.1/_PHP_CLI_VERSION=8.1/g"                  ${barCnf}
-          wait
-          sed -i "s/^_PHP_FPM_VERSION=7.1/_PHP_FPM_VERSION=8.1/g"                  ${barCnf}
-          wait
-          sed -i "s/^_PHP_CLI_VERSION=7.2/_PHP_CLI_VERSION=8.1/g"                  ${barCnf}
-          wait
-          sed -i "s/^_PHP_FPM_VERSION=7.2/_PHP_FPM_VERSION=8.1/g"                  ${barCnf}
-          wait
-          sed -i "s/^_PHP_CLI_VERSION=7.3/_PHP_CLI_VERSION=8.1/g"                  ${barCnf}
-          wait
-          sed -i "s/^_PHP_FPM_VERSION=7.3/_PHP_FPM_VERSION=8.1/g"                  ${barCnf}
-          wait
-          sed -i "s/^_PHP_CLI_VERSION=7.4/_PHP_CLI_VERSION=8.1/g"                  ${barCnf}
-          wait
-          sed -i "s/^_PHP_FPM_VERSION=7.4/_PHP_FPM_VERSION=8.1/g"                  ${barCnf}
-          wait
-          sed -i "s/^_PHP_CLI_VERSION=8.0/_PHP_CLI_VERSION=8.1/g"                  ${barCnf}
-          wait
-          sed -i "s/^_PHP_FPM_VERSION=8.0/_PHP_FPM_VERSION=8.1/g"                  ${barCnf}
-          wait
-        fi
-        # if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-        #   || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
-        #   || [ "${_VMFAMILY}" = "VS" ]; then
-        #   if [ "${_VMFAMILY}" = "VS" ]; then
-        #     sed -i "s/^_CPU_CRIT_RATIO=.*/_CPU_CRIT_RATIO=3/g"                     ${barCnf}
-        #     wait
-        #     sed -i "s/^_CPU_MAX_RATIO=.*/_CPU_MAX_RATIO=2/g"                       ${barCnf}
-        #     wait
-        #     sed -i "s/^_CPU_SPIDER_RATIO=.*/_CPU_SPIDER_RATIO=1/g"                 ${barCnf}
-        #     wait
-        #   fi
-        # fi
-      fi
+      sed -i "s/^_PHP_FPM_VERSION=5.6/_PHP_FPM_VERSION=8.1/g"    ${barCnf}
+      wait
+      sed -i "s/^_PHP_CLI_VERSION=7.0/_PHP_CLI_VERSION=8.1/g"    ${barCnf}
+      wait
+      sed -i "s/^_PHP_FPM_VERSION=7.0/_PHP_FPM_VERSION=8.1/g"    ${barCnf}
+      wait
+      sed -i "s/^_PHP_CLI_VERSION=7.1/_PHP_CLI_VERSION=8.1/g"    ${barCnf}
+      wait
+      sed -i "s/^_PHP_FPM_VERSION=7.1/_PHP_FPM_VERSION=8.1/g"    ${barCnf}
+      wait
+      sed -i "s/^_PHP_CLI_VERSION=7.2/_PHP_CLI_VERSION=8.1/g"    ${barCnf}
+      wait
+      sed -i "s/^_PHP_FPM_VERSION=7.2/_PHP_FPM_VERSION=8.1/g"    ${barCnf}
+      wait
+      sed -i "s/^_PHP_CLI_VERSION=7.3/_PHP_CLI_VERSION=8.1/g"    ${barCnf}
+      wait
+      sed -i "s/^_PHP_FPM_VERSION=7.3/_PHP_FPM_VERSION=8.1/g"    ${barCnf}
+      wait
+      sed -i "s/^_PHP_CLI_VERSION=7.4/_PHP_CLI_VERSION=8.1/g"    ${barCnf}
+      wait
+      sed -i "s/^_PHP_FPM_VERSION=7.4/_PHP_FPM_VERSION=8.1/g"    ${barCnf}
+      wait
+      sed -i "s/^_PHP_CLI_VERSION=8.0/_PHP_CLI_VERSION=8.1/g"    ${barCnf}
+      wait
+      sed -i "s/^_PHP_FPM_VERSION=8.0/_PHP_FPM_VERSION=8.1/g"    ${barCnf}
+      wait
     fi
+
+    if_hosted_sys
+    if [ "${hostedSys}" = "YES" ]; then
+      sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"notify\@omega8.cc\"/g" ${barCnf}
+      wait
+    fi
+
     sed -i "/^$/d" ${barCnf}
     wait
     if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -2447,27 +2333,17 @@ barracuda_cnf() {
     if [ -e "${barCnf}" ]; then
       source ${barCnf}
     fi
-    if [ "${_LOCAL_DEBIAN_MIRROR}" = "deb.debian.org" ] \
-      || [ "${_LOCAL_DEBIAN_MIRROR}" = "httpredir.debian.org" ] \
-      || [ "${_LOCAL_DEBIAN_MIRROR}" = "ftp.debian.org" ]; then
-      _LOCAL_DEBIAN_MIRROR="deb.debian.org"
-      sed -i "s/^_LOCAL_DEBIAN_.*/_LOCAL_DEBIAN_MIRROR=deb.debian.org/g"     ${barCnf}
-      wait
-    fi
-    if [ "${_DB_SERIES}" = "5.7" ]; then
-      if [ -e "/root/.mstr.clstr.cnf" ] \
-        || [ -e "/root/.wbhd.clstr.cnf" ] \
-        || [ -e "/root/.dbhd.clstr.cnf" ]; then
-        _DBS_VRN="${_GALERA_10_VRN}"
+
+    if [ "${_DB_SERVER}" = "Percona" ]; then
+      if [ "${_DB_SERIES}" = "5.7" ]; then
+        _DBS_VRN="${_PERCONA_5_7_VRN}"
+      elif [ "${_DB_SERIES}" = "8.0" ]; then
+        _DBS_VRN="${_PERCONA_8_0_VRN}"
+      elif [ "${_DB_SERIES}" = "8.3" ]; then
+        _DBS_VRN="${_PERCONA_8_3_VRN}"
       else
-        if [ "${_DB_SERIES}" = "5.7" ]; then
-          _DB_SERVER=Percona
-          _DBS_VRN="${_PERCONA_5_7_VRN}"
-        else
-          _DB_SERVER=Percona
-          _DB_SERIES=5.7
-          _DBS_VRN="${_PERCONA_5_7_VRN}"
-        fi
+        _DB_SERIES=5.7
+        _DBS_VRN="${_PERCONA_5_7_VRN}"
       fi
     else
       _DB_SERVER=Percona
@@ -2478,20 +2354,11 @@ barracuda_cnf() {
         sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g" ${barCnf}
       fi
     fi
+
     _CHECK_HOST=$(uname -n 2>&1)
     if [[ "${_MY_EMAIL}" =~ "omega8.cc" ]]; then
-      if [ -e "/root/.auto.up.cnf" ] \
-        || [ -e "/root/.host8.cnf" ] \
-        || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-        || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
-        || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-        || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
-        if [ -e "/root/.debug.cnf" ] && [ ! -e "/root/.default.cnf" ]; then
-          _DO_NOTHING=YES
-        else
-          _DO_NOTHING=YES
-        fi
-      else
+      if_hosted_sys
+      if [ "${hostedSys}" != "YES" ]; then
         msg "EXIT: Invalid email address defined in the _MY_EMAIL variable"
         msg "EXIT: Bye (2)"
         clean_pid_exit barracuda_cnf_b
@@ -2569,15 +2436,26 @@ mytop_install() {
   fi
   _MYTOP_REINSTALL=NO
   _MYTOP_TEST=$(mytop -b 2>&1)
-  if [[ "${_MYTOP_TEST}" =~ "you may need to install" ]]; then
+  if [[ "${_MYTOP_TEST}" =~ "cannot open shared object file" ]] \
+    || [[ "${_MYTOP_TEST}" =~ "you may need to install" ]] \
+    || [[ "${_MYTOP_TEST}" =~ "failed" ]]; then
     _MYTOP_REINSTALL=YES
   fi
   if [ -e "/usr/bin/mysql" ]; then
     if [ ! -e "/usr/local/bin/mytop" ] || [ "${_MYTOP_REINSTALL}" = "YES" ]; then
       msg "INFO: Building MyTop from sources..."
+      check_mysql_version
       apt_clean_update
+      mrun "${_INSTAPP} libperl-dev" 2> /dev/null
       mrun "${_INSTAPP} cpanminus" 2> /dev/null
-      mrun "cpanm DBD::mysql@4.050" 2> /dev/null
+      if [ "${_DB_V}" != "5.7" ] || [ "${_SQL_UPGRADE}" = "YES" ]; then
+        mrun "cpanm DBD::mysql" 2> /dev/null
+        mrun "cpanm DBI" 2> /dev/null
+        mrun "cpanm Term::ReadKey" 2> /dev/null
+      else
+        mrun "cpanm DBD::mysql@4.050" 2> /dev/null
+        mrun "cpanm Term::ReadKey" 2> /dev/null
+      fi
       cd /var/opt
       rm -rf git*
       get_dev_src "mytop-1.6.tar.gz"
@@ -2671,9 +2549,9 @@ do_install_latest_git() {
     msg "INFO: Building Git ${_GIT_VRN} from sources..."
     msg "WAIT: This may take a while, please wait..."
     apt_clean_update
-    mrun "apt-get install libcurl4 -y --allow-unauthenticated" 2> /dev/null
-    mrun "apt-get install libcurl4-openssl-dev -y --allow-unauthenticated" 2> /dev/null
-    mrun "apt-get install libcurl4-gnutls-dev -y --allow-unauthenticated" 2> /dev/null
+#     mrun "apt-get install libcurl4 -y --allow-unauthenticated" 2> /dev/null
+#     mrun "apt-get install libcurl4-openssl-dev -y --allow-unauthenticated" 2> /dev/null
+#     mrun "apt-get install libcurl4-gnutls-dev -y --allow-unauthenticated" 2> /dev/null
     mrun "apt-get remove git-core -y --purge --auto-remove" 2> /dev/null
     mrun "apt-get remove git -y --purge --auto-remove" 2> /dev/null
     mkdir -p /var/opt
@@ -2887,7 +2765,7 @@ php_install_deps() {
   apt_clean_update
   mrun "${_INSTAPP} cmake" 2> /dev/null
   mrun "${_INSTAPP} lbzip2" 2> /dev/null
-  mrun "${_INSTAPP} libcurl4-openssl-dev" 2> /dev/null
+#   mrun "${_INSTAPP} libcurl4-openssl-dev" 2> /dev/null
   mrun "${_INSTAPP} libgd-dev" 2> /dev/null
   mrun "${_INSTAPP} libgd3" 2> /dev/null
   mrun "${_INSTAPP} libjpeg-dev" 2> /dev/null
@@ -3519,6 +3397,7 @@ sshd_install_src() {
     | tr -d "\n" \
     | cut -d" " -f3 \
     | awk '{ print $1}' 2>&1)
+  _SSH_IF_SELINUX=$(ldd /usr/sbin/sshd | grep selinux 2>&1)
   if [ -e "/usr/etc/sshd_config" ]; then
     _SSH_FORCE_REINSTALL=YES
     _OLD_SYSCONFDIR="/usr/etc"
@@ -3545,6 +3424,12 @@ sshd_install_src() {
     fi
     _SSH_INSTALL_REQUIRED=YES
   fi
+  if [[ "${_SSH_IF_SELINUX}" =~ "libselinux" ]]; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "INFO: SSH was built --with-selinux, rebuild --without-selinux required"
+    fi
+    _SSH_INSTALL_REQUIRED=YES
+  fi
   if [ "${_SSH_FORCE_REINSTALL}" = "YES" ]; then
     _SSH_INSTALL_REQUIRED=YES
     if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -3559,7 +3444,7 @@ sshd_install_src() {
   if [ "${_SSH_INSTALL_REQUIRED}" = "YES" ]; then
     msg "INFO: Building OpenSSH ${_OPENSSH_VRN} from sources..."
     msg "WAIT: This may take a while, please wait..."
-    mrun "${_INITINS} libpam0g-dev libselinux1-dev" &> /dev/null
+    mrun "${_INITINS} libpam0g-dev" &> /dev/null
     if [ ! -e "/var/lib/sshd" ]; then
       mkdir -p /var/lib/sshd
       chmod -R 700 /var/lib/sshd/
@@ -3577,7 +3462,7 @@ sshd_install_src() {
       --sysconfdir=${_SYSCONFDIR} \
       --prefix=${_PREFIX_SSH} \
       --without-openssl-header-check \
-      --with-selinux \
+      --without-selinux \
       --with-md5-passwords \
       --with-pam &> /dev/null
     mrun "make -j $(nproc)" 2> /dev/null
@@ -3619,6 +3504,7 @@ sshd_install_src() {
     mrun "service ssh restart" 2> /dev/null
   fi
   _SSH_FORCE_REINSTALL=NO
+  #mrun "apt-get remove libselinux1-dev -y --purge --auto-remove -qq" 2> /dev/null
 }
 
 #
@@ -4144,11 +4030,79 @@ ssl_install_src() {
 }
 
 #
+# Detect, remove, and report broken symlinks
+check_and_remove_broken_symlinks() {
+  local dir=$1
+
+  # Find broken symlinks in the directory
+  broken_symlinks=$(find "${dir}" -maxdepth 1 -type l ! -exec test -e {} \; -print)
+
+  if [ -n "${broken_symlinks}" ]; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "CLNP: Removing the following broken symlinks from ${dir}:"
+      msg "CLNP: ${broken_symlinks}"
+    fi
+
+    for symlink in $broken_symlinks; do
+      rm "${symlink}"
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "CLNP: Removed broken symlink: ${symlink}"
+      fi
+    done
+
+    # Set the ifAnySymlinksCleaned variable to true since we removed broken symlinks
+    ifAnySymlinksCleaned=YES
+  else
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "CLNP: No broken symlinks found in ${dir}"
+    fi
+  fi
+}
+
+#
+# Check and move disallowed versions
+check_and_move() {
+  local dir=$1
+
+  # Determine the name of the backup subdirectory based on the source directory
+  local backup_dir="${backLegBase}$(echo "${dir}" | tr '/' '_')"
+
+  # Find any libcurl.so files in the directory, excluding the allowed version and those without a complete version number
+  found_versions=$(find "${dir}" -maxdepth 1 -type f -name "libcurl.so.*" ! -name "${allowedFile}" | grep -E "libcurl\.so\.[0-9]+\.[0-9]+\.[0-9]+$")
+
+  if [ -n "${found_versions}" ]; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "CLNP: Moving the following disallowed versions from ${dir} to ${backup_dir}:"
+      msg "CLNP: ${found_versions}"
+    fi
+
+    # Create the backup directory if it doesn't exist
+    mkdir -p "${backup_dir}"
+
+    # Move each found version to the backup directory
+    for file in ${found_versions}; do
+      mv -f "${file}" "${backup_dir}/"
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "CLNP: Moved ${file} to ${backup_dir}/"
+      fi
+    done
+
+    # Set the ifAnyFilesCleaned variable to true since we moved files
+    ifAnyFilesCleaned=YES
+  else
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "CLNP: Only the allowed version (${allowedFile}) is present in ${dir}"
+    fi
+  fi
+}
+
+#
 # Install cURL from sources.
 curl_install_src() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: curl_install_src"
   fi
+
   if ! command -v lsb_release &> /dev/null; then
     apt-get update -qq &> /dev/null
     apt-get install lsb-release -y -qq &> /dev/null
@@ -4156,32 +4110,33 @@ curl_install_src() {
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   [ "${_OS_CODE}" = "jessie" ] && _CURL_VRN=7.71.1
   [ "${_OS_CODE}" = "stretch" ] && _CURL_VRN=8.2.1
-  if [ ! -e "/root/.use.curl.from.packages.cnf" ]; then
-    if [ "${_OS_CODE}" = "daedalus" ] \
-      || [ "${_OS_CODE}" = "chimaera" ] \
-      || [ "${_OS_CODE}" = "beowulf" ] \
-      || [ "${_OS_CODE}" = "bookworm" ] \
-      || [ "${_OS_CODE}" = "bullseye" ] \
-      || [ "${_OS_CODE}" = "buster" ]; then
-      _OPENSSL_NEW_VRN="${_OPENSSL_EOL_VRN}"
-      if [ -e "/root/.install.modern.openssl.cnf" ]; then
-        _OPENSSL_NEW_VRN="${_OPENSSL_MODERN_VRN}"
-      fi
-    elif [ "${_OS_CODE}" = "stretch" ]; then
-      if [ -e "/root/.install.modern.openssl.cnf" ]; then
-        chattr -i /root/.install.modern.openssl.cnf
-        rm -f /root/.install.modern.openssl.cnf
-      fi
-      _OPENSSL_NEW_VRN="${_OPENSSL_EOL_VRN}"
-    else
-      if [ -e "/root/.install.modern.openssl.cnf" ]; then
-        chattr -i /root/.install.modern.openssl.cnf
-        rm -f /root/.install.modern.openssl.cnf
-      fi
-      _OPENSSL_NEW_VRN="${_OPENSSL_LEGACY_VRN}"
+
+  if [ "${_OS_CODE}" = "daedalus" ] \
+    || [ "${_OS_CODE}" = "chimaera" ] \
+    || [ "${_OS_CODE}" = "beowulf" ] \
+    || [ "${_OS_CODE}" = "bookworm" ] \
+    || [ "${_OS_CODE}" = "bullseye" ] \
+    || [ "${_OS_CODE}" = "buster" ]; then
+    _OPENSSL_NEW_VRN="${_OPENSSL_EOL_VRN}"
+    if [ -e "/root/.install.modern.openssl.cnf" ]; then
+      _OPENSSL_NEW_VRN="${_OPENSSL_MODERN_VRN}"
     fi
+  elif [ "${_OS_CODE}" = "stretch" ]; then
+    if [ -e "/root/.install.modern.openssl.cnf" ]; then
+      chattr -i /root/.install.modern.openssl.cnf
+      rm -f /root/.install.modern.openssl.cnf
+    fi
+    _OPENSSL_NEW_VRN="${_OPENSSL_EOL_VRN}"
+  else
+    if [ -e "/root/.install.modern.openssl.cnf" ]; then
+      chattr -i /root/.install.modern.openssl.cnf
+      rm -f /root/.install.modern.openssl.cnf
+    fi
+    _OPENSSL_NEW_VRN="${_OPENSSL_LEGACY_VRN}"
   fi
+
   _CURL_INSTALL_REQUIRED=NO
+
   _CURL_GET_DPKG=$(dpkg --get-selections | grep curl | grep 'hold$' 2>&1)
   _CURL_ITD=$(curl --version 2>&1 \
     | tr -d "\n" \
@@ -4199,55 +4154,90 @@ curl_install_src() {
     | awk '{ print $1}' \
     | cut -d"/" -f2 \
     | awk '{ print $1}' 2>&1)
+
   if [ "${_CURL_ITD}" != "${_CURL_VRN}" ]; then
     _CURL_INSTALL_REQUIRED=YES
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "INFO: Installed cURL/lib ${_CURL_ITD}/${_CURL_LIB_ITD}, upgrade required"
     fi
   fi
+
   if [ "${_CURL_LIB_ITD}" != "${_CURL_VRN}" ]; then
     _CURL_INSTALL_REQUIRED=YES
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "INFO: Installed cURL/lib ${_CURL_ITD}/${_CURL_LIB_ITD}, rebuild required"
     fi
   fi
+
   if [ "${_CURL_SSL_ITD}" != "${_OPENSSL_NEW_VRN}" ]; then
     _CURL_INSTALL_REQUIRED=YES
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "INFO: cURL ${_CURL_ITD} with OpenSSL ${_CURL_SSL_ITD}, rebuild forced"
     fi
   fi
+
   _BROKEN_CURL_TEST=$(curl --version 2>&1)
   if [[ "${_BROKEN_CURL_TEST}" =~ "libcurl.so.4" ]]; then
     _CURL_INSTALL_REQUIRED=YES
-    touch /root/.use.curl.from.packages.cnf
-    chattr +i /root/.use.curl.from.packages.cnf
-    sed -i "s/.*ssl.*//g" /etc/ld.so.conf.d/libc.conf
-    sed -i "/^$/d" /etc/ld.so.conf.d/libc.conf &> /dev/null
-    grep lib /etc/ld.so.conf.d/libc.conf
-    ldconfig 2> /dev/null
-    [ -e "/root/.sorted.multi.php.cnf" ] && rm -f /root/.sorted.multi.php.cnf
-    msg "INFO: libcurl is broken, cURL re-install from packages required"
   fi
+
   if [ "${_PHP_BIN_BROKEN}" = "YES" ] && [ -z "${_CURL_ALREADY_REBUILT}" ]; then
     _CURL_INSTALL_REQUIRED=YES
   fi
+
   if [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
     _CURL_INSTALL_REQUIRED=YES
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "INFO: Installed cURL version ${_CURL_ITD} but re-install forced"
     fi
   fi
-  if [ -e "/usr/lib/x86_64-linux-gnu/libcurl.so.4.4.0" ] \
-    || [ ! -L "/usr/lib/x86_64-linux-gnu/libcurl.so.4" ] \
-    || [ ! -L "/usr/lib/libcurl.so.4" ]; then
-    _CURL_INSTALL_REQUIRED=YES
+
+  if [ "${_OS_CODE}" != "jessie" ] && [ "${_OS_CODE}" != "stretch" ]; then
+
+    # Target version
+    allowedFile="libcurl.so.4.8.0"
+
+    # Directories to check
+    dirsToClean=("/usr/lib" "/usr/local/lib" "/usr/lib/x86_64-linux-gnu")
+
+    # Backup base directory
+    backLegBase="/var/backups/legacy-libcurl-${_X_VERSION}-${_NOW}"
+
+    # Variable to track if any files were moved
+    ifAnyFilesCleaned=NO
+
+    # Variable to track if any broken symlinks were found and removed
+    ifAnySymlinksCleaned=NO
+
+    # Iterate over the directories and apply the check_and_move function
+    for dir in "${dirsToClean[@]}"; do
+      check_and_move "${dir}"
+    done
+
+    # Iterate over the directories and apply the check_and_remove_broken_symlinks function
+    for dir in "${dirsToClean[@]}"; do
+      check_and_remove_broken_symlinks "${dir}"
+    done
+
+    # Export the ifAnyFilesCleaned variable for later use
+    export ifAnyFilesCleaned
+
+    # Export the ifAnySymlinksCleaned variable for later use
+    export ifAnySymlinksCleaned
+
   fi
-  if [ -e "/usr/lib/x86_64-linux-gnu/libcurl.so.4.3.0" ] \
-    || [ ! -L "/usr/lib/x86_64-linux-gnu/libcurl.so.4" ] \
-    || [ ! -L "/usr/lib/libcurl.so.4" ]; then
+
+  if [ "${ifAnySymlinksCleaned}" = "YES" ] \
+    || [ "${ifAnyFilesCleaned}" = "YES" ] \
+    || [ "${_CURL_INSTALL_REQUIRED}" = "YES" ]; then
     _CURL_INSTALL_REQUIRED=YES
+    bkLibcurlPre="/var/backups/legacy-libcurl-pre-${_CURL_VRN}-${_NOW}"
+    mkdir -p ${bkLibcurlPre}
+    mv -f /usr/lib/x86_64-linux-gnu/libcurl.so* ${bkLibcurlPre}/ &> /dev/null
+    mv -f /usr/lib/x86_64-linux-gnu/libcurl.la ${bkLibcurlPre}/ &> /dev/null
+    mv -f /usr/lib/x86_64-linux-gnu/libcurl.a ${bkLibcurlPre}/ &> /dev/null
   fi
+
   if [ "${_CURL_INSTALL_REQUIRED}" = "YES" ]; then
     ###--------------------###
     if [ -e "/root/.use.curl.from.packages.cnf" ]; then
@@ -4331,50 +4321,36 @@ curl_install_src() {
         msg "OOPS: cURL ${_CURL_VRN} could not be extracted..."
       fi
       if [ -x "/usr/local/bin/curl" ] \
-        && [ -e "/usr/local/lib/libcurl.so" ] \
-        && [ -e "/usr/local/include/curl/header.h" ] \
         && [ ! -e "/var/xdrago/log/.curl_libs_fix_${_CURL_VRN}-${_X_VERSION}-${_NOW}.pid" ]; then
-        _X86_64_TEST=$(uname -m 2>&1)
-        if [ "${_X86_64_TEST}" = "x86_64" ]; then
-          if [ "${_DEBUG_MODE}" = "YES" ]; then
-            msg "INFO: Updating cURL ${_CURL_VRN} libs symlinks..."
-          fi
-          mkdir -p /var/backups/legacy-curl-pre-${_CURL_VRN}-${_X_VERSION}-${_NOW}
-          mv -f /usr/lib/x86_64-linux-gnu/libcurl.so* /var/backups/legacy-curl-pre-${_CURL_VRN}-${_X_VERSION}-${_NOW}/ &> /dev/null
-          mv -f /usr/lib/x86_64-linux-gnu/libcurl.la /var/backups/legacy-curl-pre-${_CURL_VRN}-${_X_VERSION}-${_NOW}/ &> /dev/null
-          mv -f /usr/lib/x86_64-linux-gnu/libcurl.a /var/backups/legacy-curl-pre-${_CURL_VRN}-${_X_VERSION}-${_NOW}/ &> /dev/null
-          if [ -e "/usr/include/x86_64-linux-gnu/curl" ] \
-            && [ ! -L "/usr/include/x86_64-linux-gnu/curl" ]; then
-            mv -f /usr/include/x86_64-linux-gnu/curl /var/backups/legacy-curl-pre-${_CURL_VRN}-${_X_VERSION}-${_NOW}/
-          fi
-          if [ ! -L "/usr/include/x86_64-linux-gnu/curl" ]; then
-            ln -sfn /usr/local/include/curl /usr/include/x86_64-linux-gnu/curl
-          fi
-          if [ -e "/usr/local/lib/libcurl.so.4.8.0" ]; then
-            ln -sfn /usr/local/lib/libcurl.so.4.8.0 /usr/lib/x86_64-linux-gnu/libcurl.so.4.8.0
-            ln -sfn /usr/local/lib/libcurl.so.4.8.0 /usr/lib/libcurl.so.4.8.0
-          fi
-          if [ -e "/usr/local/lib/libcurl.so" ]; then
-            ln -sfn /usr/local/lib/libcurl.so /usr/lib/x86_64-linux-gnu/libcurl.so
-            ln -sfn /usr/local/lib/libcurl.so /usr/lib/libcurl.so
-          fi
-          if [ -e "/usr/local/lib/libcurl.so.4" ]; then
-            ln -sfn /usr/local/lib/libcurl.so.4 /usr/lib/x86_64-linux-gnu/libcurl.so.4
-            ln -sfn /usr/local/lib/libcurl.so.4 /usr/lib/libcurl.so.4
-          fi
-          if [ -e "/usr/local/lib/libcurl.la" ]; then
-            ln -sfn /usr/local/lib/libcurl.la /usr/lib/x86_64-linux-gnu/libcurl.la
-            ln -sfn /usr/local/lib/libcurl.la /usr/lib/libcurl.la
-          fi
-          if [ -e "/usr/local/lib/libcurl.a" ]; then
-            ln -sfn /usr/local/lib/libcurl.a /usr/lib/x86_64-linux-gnu/libcurl.a
-            ln -sfn /usr/local/lib/libcurl.a /usr/lib/libcurl.a
-          fi
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          msg "INFO: Updating cURL ${_CURL_VRN} libs symlinks..."
         fi
-        mrun "apt-get remove curl ${aptYesUnth}" 2> /dev/null
+        if [ -e "/usr/local/lib/libcurl.so.4.8.0" ]; then
+          ln -sfn /usr/local/lib/libcurl.so.4.8.0 /usr/lib/libcurl.so
+          ln -sfn /usr/local/lib/libcurl.so.4.8.0 /usr/lib/libcurl.so.4
+          ln -sfn /usr/local/lib/libcurl.so.4.8.0 /usr/lib/libcurl.so.4.8.0
+          ln -sfn /usr/local/lib/libcurl.so.4.8.0 /usr/lib/x86_64-linux-gnu/libcurl.so
+          ln -sfn /usr/local/lib/libcurl.so.4.8.0 /usr/lib/x86_64-linux-gnu/libcurl.so.4
+          ln -sfn /usr/local/lib/libcurl.so.4.8.0 /usr/lib/x86_64-linux-gnu/libcurl.so.4.8.0
+        fi
+        if [ -e "/usr/local/lib/libcurl.a" ]; then
+          ln -sfn /usr/local/lib/libcurl.a /usr/lib/x86_64-linux-gnu/libcurl.a
+          ln -sfn /usr/local/lib/libcurl.a /usr/lib/libcurl.a
+        fi
+        if [ -e "/usr/local/lib/libcurl.la" ]; then
+          ln -sfn /usr/local/lib/libcurl.la /usr/lib/x86_64-linux-gnu/libcurl.la
+          ln -sfn /usr/local/lib/libcurl.la /usr/lib/libcurl.la
+        fi
+      fi
+      ldconfig 2> /dev/null
+      touch /var/xdrago/log/.curl_libs_fix_${_CURL_VRN}-${_X_VERSION}-${_NOW}.pid &> /dev/null
+      _CURL_ALREADY_REBUILT=YES
+      if [ -d "/usr/local/include/curl" ] \
+        && [ -d "/usr/include/x86_64-linux-gnu/curl" ] \
+        && [ ! -L "/usr/include/x86_64-linux-gnu/curl" ]; then
+        mrun "apt-get remove libcurl4-openssl-dev -y --purge --auto-remove -qq" 2> /dev/null
+        ln -sfn /usr/local/include/curl /usr/include/x86_64-linux-gnu/curl
         ldconfig 2> /dev/null
-        touch /var/xdrago/log/.curl_libs_fix_${_CURL_VRN}-${_X_VERSION}-${_NOW}.pid &> /dev/null
-        _CURL_ALREADY_REBUILT=YES
       fi
     fi
   else
@@ -5108,10 +5084,7 @@ finale() {
       # fix_core_dgd
     fi
   fi
-  if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]] \
-    || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-    || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]]; then
+  if [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]]; then
     _MTD_VR="BOA-5.4.0-omm"
   elif [ -e "/root/.host8.cnf" ]; then
     _MTD_VR="BOA-5.4.0-aln"
@@ -5141,10 +5114,8 @@ finale() {
   rm -rf /var/opt/*
   rm -f /var/xdrago/monitor/acrashsql.sh
   rm -f /var/xdrago/acrashsql.sh
-  if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]] \
-    || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-    || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]]; then
+  if_hosted_sys
+  if [ "${hostedSys}" = "YES" ]; then
     _MY_USAGE=YES
   else
     _MY_USAGE=NO
@@ -5194,9 +5165,6 @@ finale() {
     wait
     sed -i "/^$/d" /etc/crontab &> /dev/null
     wait
-  fi
-  if [ -e "/root/.dbhd.clstr.cnf" ]; then
-    mrun "service clean-boa-env start" 2> /dev/null
   fi
   killall -9 memcached &> /dev/null
   php_deprecated_cleanup
@@ -5301,9 +5269,9 @@ run_aptitude_deps_install() {
   msg "WAIT: This may take a while, please wait..."
   apt_clean_update
   mrun "apt-get remove percona-xtrabackup-24 -y --purge --auto-remove -qq" 2> /dev/null
-  mrun "apt-get remove libcurl4-gnutls-dev -y --purge --auto-remove -qq" 2> /dev/null
-  mrun "apt-get remove polkitd -y --purge --auto-remove -qq" 2> /dev/null
-  mrun "apt-get remove libcurl4-openssl-dev -y --purge --auto-remove -qq" 2> /dev/null
+#   mrun "apt-get remove libcurl4-gnutls-dev -y --purge --auto-remove -qq" 2> /dev/null
+#   mrun "apt-get remove polkitd -y --purge --auto-remove -qq" 2> /dev/null
+#   mrun "apt-get remove libcurl4-openssl-dev -y --purge --auto-remove -qq" 2> /dev/null
   mrun "apt-get autoremove -y" 2> /dev/null
   mrun "${_INSTAPP} build-essential libsasl2-modules" 2> /dev/null
   mrun "${_INSTAPP} time vim cvs makepasswd" 2> /dev/null
@@ -5369,11 +5337,11 @@ basic_packages_install_on_init() {
   fi
   apt_clean_update
   if [ ! -e "/var/aegir/drush" ] && [ ! -e "/var/xdrago/manage_solr_config.sh" ]; then
-    mrun "apt-get remove unscd -y --purge --auto-remove -qq" 2> /dev/null
-    mrun "apt-get remove dbus -y --purge --auto-remove -qq" 2> /dev/null
-    if [ -e "/usr/share/dbus-1" ]; then
-      rm -f /usr/share/dbus-1/*/*freedesktop*
-    fi
+#     mrun "apt-get remove unscd -y --purge --auto-remove -qq" 2> /dev/null
+#     mrun "apt-get remove dbus -y --purge --auto-remove -qq" 2> /dev/null
+#     if [ -e "/usr/share/dbus-1" ]; then
+#       rm -f /usr/share/dbus-1/*/*freedesktop*
+#     fi
     userdel -r debian &> /dev/null
   fi
   usermod -aG users _apt &> /dev/null
@@ -5897,10 +5865,10 @@ if_major_os_upgrade() {
       kill -9 $(ps aux | grep '[t]omcat' | awk '{print $2}') &> /dev/null
     fi
     apt_clean_update_no_releaseinfo_change
-    mrun "apt-get remove dbus -y --purge --auto-remove -qq" 2> /dev/null
-    if [ -e "/usr/share/dbus-1" ]; then
-      rm -f /usr/share/dbus-1/*/*freedesktop*
-    fi
+#     mrun "apt-get remove dbus -y --purge --auto-remove -qq" 2> /dev/null
+#     if [ -e "/usr/share/dbus-1" ]; then
+#       rm -f /usr/share/dbus-1/*/*freedesktop*
+#     fi
     mrun "apt-get remove collectd -y --purge --auto-remove -qq" 2> /dev/null
     mrun "apt-get remove libc-client2007b-dev -y --purge --auto-remove -qq" 2> /dev/null
     ###
@@ -6069,54 +6037,7 @@ if_major_os_upgrade() {
     fi
     ###
     ### Now overwriting db gears apt sources.
-    if [ "${_DB_SERVER}" = "Percona" ] && [ "${_DB_SERIES}" = "5.7" ]; then
-      if [ ! -e "/etc/apt/keyrings/percona.gpg" ]; then
-        if [ ! -e "/etc/apt/keyrings" ]; then
-          mkdir -m 0755 -p /etc/apt/keyrings
-        fi
-        if [ -e "/etc/apt/trusted.gpg.d/percona.gpg" ]; then
-          rm -f /etc/apt/trusted.gpg.d/percona.gpg*
-        fi
-        _PERCONA_KEYS_SIG="8507EFA5"
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "INFO: Retrieving ${_PERCONA_KEYS_SIG} key..."
-        fi
-        apt-key del ${_PERCONA_KEYS_SIG} &> /dev/null
-        if [ -x "/usr/bin/gpg2" ]; then
-          _GPG=gpg2
-        else
-          _GPG=gpg
-        fi
-        if [ ! -e "/etc/apt/keyrings/percona.gpg" ]; then
-          curl -fsSL ${urlDev}/percona-key.gpg | ${_GPG} --dearmor -o /etc/apt/keyrings/percona.gpg
-        fi
-        chmod 644 /etc/apt/keyrings/percona.gpg
-        if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt "5" ]; then
-          kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
-          echo "$(date 2>&1) Too many dirmngr processes killed" >> \
-            /var/xdrago/log/dirmngr-count.kill.log
-        fi
-        if [ `ps aux | grep -v "grep" | grep --count "gpg-agent"` -gt "5" ]; then
-          kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
-          echo "$(date 2>&1) Too many gpg-agent processes killed" >> \
-            /var/xdrago/log/gpg-agent-count.kill.log
-        fi
-      fi
-      percRepo="${_DB_SRC}/percona/apt"
-      percList="/etc/apt/sources.list.d/percona-release.list"
-      rm -f /etc/apt/sources.list.d/percona*
-      rm -f /etc/apt/sources.list.d/xtrabackup*
-      echo "## Percona APT Repository" > ${percList}
-      if [ -e "/etc/apt/keyrings/percona.gpg" ]; then
-        echo "deb [signed-by=/etc/apt/keyrings/percona.gpg] http://${percRepo} ${_SQL_NEW_OS_CODE} main" >> ${percList}
-        echo "deb-src [signed-by=/etc/apt/keyrings/percona.gpg] http://${percRepo} ${_SQL_NEW_OS_CODE} main" >> ${percList}
-      else
-        echo "deb http://${percRepo} ${_SQL_NEW_OS_CODE} main" >> ${percList}
-        echo "deb-src http://${percRepo} ${_SQL_NEW_OS_CODE} main" >> ${percList}
-      fi
-      chmod 644 ${percList}
-      echo -e 'Package: *\nPin: release o=Percona Development Team\nPin-Priority: 1001' > /etc/apt/preferences.d/00percona.pref
-    fi
+    if_sql_keyring_apt_update
     ###
     ### Switching system gears on the fly.
     if [ "${_TGT_OSN}" = "Devuan" ]; then
@@ -6223,10 +6144,10 @@ if_major_os_upgrade() {
     mrun "apt-get install libc-client2007e-dev ${dstUpArg}" 2> /dev/null
     ###
     ### Make sure that org.freedesktop.systemd1 was not atempted by dbus.
-    mrun "apt-get remove dbus -y --purge --auto-remove -qq" 2> /dev/null
-    if [ -e "/usr/share/dbus-1" ]; then
-      rm -f /usr/share/dbus-1/*/*freedesktop*
-    fi
+#     mrun "apt-get remove dbus -y --purge --auto-remove -qq" 2> /dev/null
+#     if [ -e "/usr/share/dbus-1" ]; then
+#       rm -f /usr/share/dbus-1/*/*freedesktop*
+#     fi
     ###
     ### Fix any broken packages.
     apt_clean_update_no_releaseinfo_change
@@ -6333,7 +6254,17 @@ if_major_os_upgrade() {
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           msg "TRCK: Installing now libldap packages from Chimaera"
         fi
-        echo "deb http://deb.devuan.org/merged chimaera main" > /etc/apt/sources.list.d/chimaera.list
+        echo "## DEVUAN MAIN REPOSITORIES" > /etc/apt/sources.list.d/chimaera.list
+        echo "deb http://deb.devuan.org/merged chimaera main" >> /etc/apt/sources.list.d/chimaera.list
+        echo "deb-src http://deb.devuan.org/merged chimaera main" >> /etc/apt/sources.list.d/chimaera.list
+        echo "" >> /etc/apt/sources.list.d/chimaera.list
+        echo "## MAJOR BUG FIX UPDATES produced after the final release" >> /etc/apt/sources.list.d/chimaera.list
+        echo "deb http://deb.devuan.org/merged chimaera-updates main" >> /etc/apt/sources.list.d/chimaera.list
+        echo "deb-src http://deb.devuan.org/merged chimaera-updates main" >> /etc/apt/sources.list.d/chimaera.list
+        echo "" >> /etc/apt/sources.list.d/chimaera.list
+        echo "## DEVUAN SECURITY UPDATES" >> /etc/apt/sources.list.d/chimaera.list
+        echo "deb http://deb.devuan.org/merged chimaera-security main" >> /etc/apt/sources.list.d/chimaera.list
+        echo "deb-src http://deb.devuan.org/merged chimaera-security main" >> /etc/apt/sources.list.d/chimaera.list
         echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
         apt_clean_update
         mrun "apt-get install -t chimaera libldap-common -y" 2> /dev/null
@@ -6760,13 +6691,9 @@ sys_packages_install() {
     fi
   fi
   if [ "${_STATUS}" = "INIT" ]; then
+    if_hosted_sys
     if [[ "${_XTRAS_LIST}" =~ "SR" ]] \
-      || [[ "${_THISHOST}" =~ ".host8." ]] \
-      || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
-      || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
-      || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]] \
-      || [ -e "/root/.auto.up.cnf" ] \
-      || [ -e "/root/.host8.cnf" ]; then
+      || [ "${hostedSys}" = "YES" ]; then
       if [ "${_OS_CODE}" = "jessie" ]; then
         _APT_XTRA="openjdk-7-jre-headless ca-certificates-java nginx"
       elif [ "${_OS_CODE}" = "stretch" ]; then
@@ -6794,7 +6721,17 @@ sys_packages_install() {
       elif [ "${_OS_CODE}" = "daedalus" ]; then
         _APT_XTRA="openjdk-17-jre-headless ca-certificates-java nginx"
         if [ ! -x "/usr/lib/jvm/java-11-openjdk-amd64/bin/java" ]; then
-          echo "deb http://deb.devuan.org/merged chimaera main" > /etc/apt/sources.list.d/chimaera.list
+          echo "## DEVUAN MAIN REPOSITORIES" > /etc/apt/sources.list.d/chimaera.list
+          echo "deb http://deb.devuan.org/merged chimaera main" >> /etc/apt/sources.list.d/chimaera.list
+          echo "deb-src http://deb.devuan.org/merged chimaera main" >> /etc/apt/sources.list.d/chimaera.list
+          echo "" >> /etc/apt/sources.list.d/chimaera.list
+          echo "## MAJOR BUG FIX UPDATES produced after the final release" >> /etc/apt/sources.list.d/chimaera.list
+          echo "deb http://deb.devuan.org/merged chimaera-updates main" >> /etc/apt/sources.list.d/chimaera.list
+          echo "deb-src http://deb.devuan.org/merged chimaera-updates main" >> /etc/apt/sources.list.d/chimaera.list
+          echo "" >> /etc/apt/sources.list.d/chimaera.list
+          echo "## DEVUAN SECURITY UPDATES" >> /etc/apt/sources.list.d/chimaera.list
+          echo "deb http://deb.devuan.org/merged chimaera-security main" >> /etc/apt/sources.list.d/chimaera.list
+          echo "deb-src http://deb.devuan.org/merged chimaera-security main" >> /etc/apt/sources.list.d/chimaera.list
           echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
           apt_clean_update
           if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -6819,13 +6756,9 @@ sys_packages_install() {
     if [[ "${_APT_ITEM}" =~ "install" ]]; then
       mrun "apt-get remove openjdk-7-jdk -y --purge --auto-remove -qq" 2> /dev/null
     fi
+    if_hosted_sys
     if [[ "${_XTRAS_LIST}" =~ "SR" ]] \
-      || [[ "${_THISHOST}" =~ ".host8." ]] \
-      || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
-      || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
-      || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]] \
-      || [ -e "/root/.auto.up.cnf" ] \
-      || [ -e "/root/.host8.cnf" ]; then
+      || [ "${hostedSys}" = "YES" ]; then
       if [ "${_OS_CODE}" = "jessie" ]; then
         _APT_XTRA="openjdk-7-jre-headless ca-certificates-java"
       elif [ "${_OS_CODE}" = "stretch" ]; then
@@ -6856,7 +6789,17 @@ sys_packages_install() {
           _JAVA_TEST=$(/usr/lib/jvm/java-11-openjdk-amd64/bin/java --version 2>&1)
         fi
         if [ ! -x "/usr/lib/jvm/java-11-openjdk-amd64/bin/java" ] || [[ ! "${_JAVA_TEST}" =~ "openjdk 11.0.24" ]]; then
-          echo "deb http://deb.devuan.org/merged chimaera main" > /etc/apt/sources.list.d/chimaera.list
+          echo "## DEVUAN MAIN REPOSITORIES" > /etc/apt/sources.list.d/chimaera.list
+          echo "deb http://deb.devuan.org/merged chimaera main" >> /etc/apt/sources.list.d/chimaera.list
+          echo "deb-src http://deb.devuan.org/merged chimaera main" >> /etc/apt/sources.list.d/chimaera.list
+          echo "" >> /etc/apt/sources.list.d/chimaera.list
+          echo "## MAJOR BUG FIX UPDATES produced after the final release" >> /etc/apt/sources.list.d/chimaera.list
+          echo "deb http://deb.devuan.org/merged chimaera-updates main" >> /etc/apt/sources.list.d/chimaera.list
+          echo "deb-src http://deb.devuan.org/merged chimaera-updates main" >> /etc/apt/sources.list.d/chimaera.list
+          echo "" >> /etc/apt/sources.list.d/chimaera.list
+          echo "## DEVUAN SECURITY UPDATES" >> /etc/apt/sources.list.d/chimaera.list
+          echo "deb http://deb.devuan.org/merged chimaera-security main" >> /etc/apt/sources.list.d/chimaera.list
+          echo "deb-src http://deb.devuan.org/merged chimaera-security main" >> /etc/apt/sources.list.d/chimaera.list
           echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
           apt_clean_update
           if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -7096,14 +7039,10 @@ sys_packages_install() {
                    libwebp-dev \
                    ${_EXTRA_PACKAGES}"
 
+  if_hosted_sys
   if [[ "${_XTRAS_LIST}" =~ "IMG" ]] \
     || [[ "${_XTRAS_LIST}" =~ "ALL" ]] \
-    || [[ "${_THISHOST}" =~ ".host8." ]] \
-    || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
-    || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
-    || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]] \
-    || [ -e "/root/.auto.up.cnf" ] \
-    || [ -e "/root/.host8.cnf" ]; then
+    || [ "${hostedSys}" = "YES" ]; then
     _EXTRA_PACKAGES="advancecomp \
                      jpegoptim \
                      libjpeg-progs \
@@ -7137,7 +7076,6 @@ php_libs_fix() {
   if [ ! -L "/usr/lib/librtmp.so" ] \
     || [ ! -e "/usr/lib/libwebpmux.so" ] \
     || [ ! -e "/usr/lib/libonig.so" ] \
-    || [ ! -e "/usr/lib/libcurl.so" ] \
     || [ ! -e "/usr/lib/libicuio.so" ] \
     || [ ! -e "/usr/lib/liblber.so" ] \
     || [ ! -e "/var/xdrago/log/.php_libs_fix_${_OS_CODE}_${_LIB_NOW}.pid" ] \
@@ -7178,7 +7116,6 @@ php_libs_fix() {
       ln -sfn /usr/lib/x86_64-linux-gnu/libpng.so  /usr/lib/libpng.so
       ln -sfn /usr/lib/x86_64-linux-gnu/libXpm.so  /usr/lib/libXpm.so
       ln -sfn /usr/lib/x86_64-linux-gnu/librtmp.so /usr/lib/librtmp.so
-      ln -sfn /usr/lib/x86_64-linux-gnu/libcurl.so /usr/lib/libcurl.so
       ln -sfn /usr/lib/x86_64-linux-gnu/libwebpmux.so /usr/lib/libwebpmux.so
       ln -sfn /usr/lib/x86_64-linux-gnu/libwebpmux.so /usr/lib/libwebpmux.so.2
       ln -sfn /usr/lib/x86_64-linux-gnu/libonig.so /usr/lib/libonig.so
@@ -7360,21 +7297,27 @@ install_myquick_src() {
   fi
   if [ "${_MYQUICK_INSTALL_REQUIRED}" = "YES" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "INFO: Building MyQuick ${_MYQUICK_VRN} from sources..."
+      msg "INFO: Building MyQuick ${_MYQUICK_VRN_FIVE} from sources..."
     fi
     apt_clean_update
     mrun "${_INSTAPP} cmake" 2> /dev/null
     mrun "${_INSTAPP} libssl-dev" 2> /dev/null
-    mrun "${_INSTAPP} libcurl4" 2> /dev/null
-    mrun "${_INSTAPP} libcurl4-gnutls-dev" 2> /dev/null
-    if [ "${_DB_SERVER}" = "Percona" ] && [ "${_DB_SERIES}" = "5.7" ]; then
-      mrun "${_INSTAPP} libperconaserverclient20-dev" 2> /dev/null
+#     mrun "${_INSTAPP} libcurl4" 2> /dev/null
+#     mrun "${_INSTAPP} libcurl4-gnutls-dev" 2> /dev/null
+    if [ "${_DB_SERVER}" = "Percona" ]; then
+      if [ "${_DB_SERIES}" = "5.7" ]; then
+        mrun "${_INSTAPP} libperconaserverclient20 libperconaserverclient20-dev" 2> /dev/null
+      elif [ "${_DB_SERIES}" = "8.0" ]; then
+        mrun "${_INSTAPP} libperconaserverclient21 libperconaserverclient21-dev" 2> /dev/null
+      else
+        mrun "${_INSTAPP} libperconaserverclient22 libperconaserverclient22-dev" 2> /dev/null
+      fi
     fi
     ldconfig 2> /dev/null
     cd /var/opt
     rm -rf mydumper*
-    get_dev_src "mydumper-${_MYQUICK_VRN}.tar.gz"
-    cd /var/opt/mydumper-${_MYQUICK_VRN}
+    get_dev_src "mydumper-${_MYQUICK_VRN_FIVE}.tar.gz"
+    cd /var/opt/mydumper-${_MYQUICK_VRN_FIVE}
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
       export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
@@ -7397,8 +7340,32 @@ install_myquick_src() {
       mrun "make --quiet install" 2> /dev/null
     fi
     ldconfig 2> /dev/null
-    ssl_install_src
-    ssl_crypto_lib_fix
+  fi
+}
+
+install_myquick_deb() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: install_myquick_deb"
+  fi
+  if [ "${_MYQUICK_SRC_INSTALL_REQUIRED}" = "NO" ]; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "INFO: Installing MyQuick ${_MYQUICK_VRN_EIGHT} from ${_USE_CODE} packages"
+    fi
+    cd /var/opt
+    rm -rf mydumper_*
+    get_dev_arch "mydumper_${_MYQUICK_VRN_EIGHT}.${_USE_CODE}_amd64.deb.gz"
+    if [ -e "/var/opt/mydumper_${_MYQUICK_VRN_EIGHT}.${_USE_CODE}_amd64.deb" ]; then
+      mrun "dpkg -i mydumper_${_MYQUICK_VRN_EIGHT}.${_USE_CODE}_amd64.deb" 2> /dev/null
+    fi
+    if [ -x "/usr/bin/mydumper" ]; then
+      [ -e "/usr/local/bin/mydumper" ] && rm -f /usr/local/bin/mydumper
+      [ -e "/usr/local/bin/myloader" ] && rm -f /usr/local/bin/myloader
+      ln -sfn /usr/bin/mydumper /usr/local/bin/mydumper
+      ln -sfn /usr/bin/myloader /usr/local/bin/myloader
+    fi
+  else
+    _MYQUICK_INSTALL_REQUIRED=YES
+    install_myquick_src
   fi
 }
 
@@ -7406,13 +7373,28 @@ myquick_install_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: myquick_install_upgrade"
   fi
+  _MYQUICK_SRC_INSTALL_REQUIRED=NO
+  if [ "${_SQL_OS_CODE}" = "bookworm" ]; then
+    _USE_CODE=bookworm
+  elif [ "${_SQL_OS_CODE}" = "bullseye" ]; then
+    _USE_CODE=bullseye
+  elif [ "${_SQL_OS_CODE}" = "buster" ]; then
+    _USE_CODE=buster
+  else
+    _MYQUICK_SRC_INSTALL_REQUIRED=YES
+  fi
+  check_mysql_version
   isMyQuick=$(which mydumper 2>&1)
   if [ ! -x "${isMyQuick}" ] \
     || [ -z "${isMyQuick}" ]; then
-    install_myquick_src
+    if [ "${_MYQUICK_SRC_INSTALL_REQUIRED}" = "NO" ]; then
+      install_myquick_deb
+    else
+      install_myquick_src
+    fi
   fi
   if [ "${_STATUS}" = "UPGRADE" ]; then
-    _MYQUICK_UPGRADE_REQUIRED=NO
+    _MYQUICK_INSTALL_REQUIRED=NO
     _MYQUICK_ITD=$(mydumper -V 2>&1 \
       | tr -d "\n" \
       | tr -d "," \
@@ -7426,6 +7408,15 @@ myquick_install_upgrade() {
       | cut -d"-" -f1 \
       | awk '{ print $1}' \
       | sed "s/[\,']//g" 2>&1)
+    if [ "${_DB_V}" = "Linux" ]; then
+      _DB_V=$(mysql -V 2>&1 \
+        | tr -d "\n" \
+        | cut -d" " -f4 \
+        | awk '{ print $1}' \
+        | cut -d"-" -f1 \
+        | awk '{ print $1}' \
+        | sed "s/[\,']//g" 2>&1)
+    fi
     _MD_V=$(mydumper --version 2>&1 \
       | tr -d "\n" \
       | cut -d" " -f6 \
@@ -7434,26 +7425,31 @@ myquick_install_upgrade() {
       | awk '{ print $1}' \
       | sed "s/[\,']//g" 2>&1)
     if [ -x "${isMyQuick}" ]; then
-      if [ "${_DB_V}" != "${_MD_V}" ]; then
-        _MYQUICK_INSTALL_REQUIRED=YES
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "INFO: Installed MyQuick ${_MYQUICK_ITD} for ${_MD_V} (${_DB_V}), rebuild required"
+      if [ "${_MYQUICK_SRC_INSTALL_REQUIRED}" = "NO" ]; then
+        if [ "${_MYQUICK_ITD}" != "${_MYQUICK_VRN_EIGHT}" ]; then
+          _MYQUICK_INSTALL_REQUIRED=YES
+          if [ "${_DEBUG_MODE}" = "YES" ]; then
+            msg "INFO: Installed MyQuick version ${_MYQUICK_ITD}, upgrade required"
+          fi
+          install_myquick_deb
         fi
-        install_myquick_src
-      elif [ "${_MYQUICK_ITD}" != "${_MYQUICK_VRN}" ]; then
-        _MYQUICK_INSTALL_REQUIRED=YES
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "INFO: Installed MyQuick version ${_MYQUICK_ITD}, upgrade required"
+      else
+        if [ "${_MYQUICK_ITD}" != "${_MYQUICK_VRN_FIVE}" ] || [ "${_MD_V}" != "${_DB_V}" ]; then
+          _MYQUICK_INSTALL_REQUIRED=YES
+          if [ "${_DEBUG_MODE}" = "YES" ]; then
+            msg "INFO: Installed MyQuick version ${_MYQUICK_ITD}, upgrade required"
+          fi
+          install_myquick_src
         fi
-        install_myquick_src
       fi
     fi
+    isMyQuick=$(which mydumper 2>&1)
     if [ ! -e "${isMyQuick}" ]; then
       _MYQUICK_INSTALL_REQUIRED=YES
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: MyQuick ${_MYQUICK_VRN} not installed yet..."
+        msg "INFO: MyQuick not installed yet"
       fi
-      install_myquick_src
+      install_myquick_deb
     fi
   fi
 }
@@ -7495,12 +7491,8 @@ xdrago_install_upgrade() {
       find_correct_ip
       _THISHTIP="${_LOC_IP}"
     fi
-    if [[ "${_THISHOST}" =~ ".host8." ]] \
-      || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
-      || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
-      || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]] \
-      || [ -e "/root/.auto.up.cnf" ] \
-      || [ -e "/root/.host8.cnf" ]; then
+    if_hosted_sys
+    if [ "${hostedSys}" = "YES" ]; then
       if [ ! -e "/etc/init.d/redis-server" ]; then
         _NGINX_DOS_LIMIT=888
       else
@@ -7541,10 +7533,8 @@ xdrago_install_upgrade() {
     fi
     chown root:crontab /var/spool/cron/crontabs/root
     chmod 600 /var/spool/cron/crontabs/root
-    if [[ "${_THISHOST}" =~ ".host8." ]] \
-      || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
-      || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
-      || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]]; then
+    if_hosted_sys
+    if [ "${hostedSys}" = "YES" ]; then
       sed -i "s/rotate 52/rotate 7/g" /etc/logrotate.d/nginx &> /dev/null
       wait
       sed -i "s/rotate 1/rotate 7/g" /etc/logrotate.d/nginx &> /dev/null
@@ -7580,12 +7570,8 @@ xdrago_install_upgrade() {
       find_correct_ip
       _THISHTIP="${_LOC_IP}"
     fi
-    if [[ "${_THISHOST}" =~ ".host8." ]] \
-      || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
-      || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
-      || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]] \
-      || [ -e "/root/.auto.up.cnf" ] \
-      || [ -e "/root/.host8.cnf" ]; then
+    if_hosted_sys
+    if [ "${hostedSys}" = "YES" ]; then
       if [ ! -e "/etc/init.d/redis-server" ]; then
         _NGINX_DOS_LIMIT=888
       else
@@ -7620,10 +7606,8 @@ xdrago_install_upgrade() {
       fi
     fi
     mv -f /etc/cron.daily/mlocate ${vBs}/ &> /dev/null
-    if [[ "${_THISHOST}" =~ ".host8." ]] \
-      || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
-      || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
-      || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]]; then
+    if_hosted_sys
+    if [ "${hostedSys}" = "YES" ]; then
       if [ -e "/root/.debug.cnf" ] && [ ! -e "/root/.default.cnf" ]; then
         _DO_NOTHING=YES
       else
@@ -8295,10 +8279,8 @@ initd_update() {
       mrun "service nginx start" 2> /dev/null
     fi
   else
-    if [[ "${_THISHOST}" =~ ".host8." ]] \
-      || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
-      || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
-      || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]] \
+    if_hosted_sys
+    if [ "${hostedSys}" = "YES" ] \
       || [ -e "/root/.ssh.root.auth.keys.only.cnf" ]; then
       sed -i "s/^#PermitRootLogin.*/PermitRootLogin prohibit-password/g" \
         /etc/ssh/sshd_config &> /dev/null
@@ -8390,15 +8372,18 @@ initd_update() {
       mrun "service nginx quietupgrade" 2> /dev/null
       _DB_SERVER_TEST=$(mysql -V 2>&1)
       if [[ "${_DB_SERVER_TEST}" =~ "Distrib ${_DB_SERIES}." ]]; then
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "INFO: Running ${_DB_SERVER} system tables (2) upgrade..."
-        fi
-        rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
-        if [ -x "/usr/bin/mysql_upgrade" ]; then
-          _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
-          _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
-          mrun "mysql_upgrade -u root --force" &> /dev/null
-          mrun "mysql_upgrade -u root --force" &> /dev/null
+        check_mysql_version
+        if [ "${_DB_V}" = "5.7" ]; then
+          if [ "${_DEBUG_MODE}" = "YES" ]; then
+            msg "INFO: Running ${_DB_SERVER} system tables (2) upgrade..."
+          fi
+          rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
+          if [ -x "/usr/bin/mysql_upgrade" ]; then
+            _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
+            _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+            mrun "mysql_upgrade -u root --force" &> /dev/null
+            mrun "mysql_upgrade -u root --force" &> /dev/null
+          fi
         fi
       fi
       myCnf="/etc/mysql/my.cnf"
@@ -8469,7 +8454,8 @@ initd_update() {
           wait
           msg "INFO: ${_DB_SERVER} server restart completed"
         fi
-        if [[ "${_DB_SERIES}" =~ "5.7" ]]; then
+        check_mysql_version
+        if [ "${_DB_V}" = "5.7" ] || [ "${_DB_SERIES}" = "5.7" ]; then
           _CHECK_EXISTS=$(mysql -u root -e "SELECT EXISTS(SELECT 1 FROM mysql.user WHERE user = 'drandom_2test')" | grep "0" 2>&1)
           if [[ "${_CHECK_EXISTS}" =~ "0" ]]; then
             _CHECK_REPAIR=$(mysql -u root -e "CREATE USER IF NOT EXISTS 'drandom_2test'@'localhost';" 2>&1)
@@ -8491,7 +8477,6 @@ initd_update() {
           fi
           mysql -u root -e "SET GLOBAL innodb_flush_log_at_trx_commit=2;" &> /dev/null
           mysql -u root -e "SET GLOBAL innodb_flush_log_at_timeout=5;" &> /dev/null
-          mysql -u root -e "SET GLOBAL show_compatibility_56=ON;" &> /dev/null
           mysql -u root -e "SET GLOBAL innodb_stats_on_metadata=0;" &> /dev/null
           rm -f /etc/mysql/conf.d/mysqldump.cnf
         fi

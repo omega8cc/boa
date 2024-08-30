@@ -103,7 +103,18 @@ stop_sql() {
 
   _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
   if [ ! -z "${_IS_MYSQLD_RUNNING}" ]; then
-    if [ "${_DB_SERIES}" = "5.7" ]; then
+    _DBS_TEST=$(which mysql 2>&1)
+    if [ ! -z "${_DBS_TEST}" ]; then
+      _DB_SERVER_TEST=$(mysql -V 2>&1)
+    fi
+    if [[ "${_DB_SERVER_TEST}" =~ "Ver 8.3." ]]; then
+      _DB_V=8.3
+    elif [[ "${_DB_SERVER_TEST}" =~ "Ver 8.0." ]]; then
+      _DB_V=8.0
+    elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 5.7." ]]; then
+      _DB_V=5.7
+    fi
+    if [ ! -z "${_DB_V}" ]; then
       echo "Preparing MySQLD for quick shutdown..."
       _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
       _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
@@ -112,9 +123,12 @@ stop_sql() {
       mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null
       mysql -u root -e "SET GLOBAL innodb_io_capacity = 2000;" &> /dev/null
       mysql -u root -e "SET GLOBAL innodb_io_capacity_max = 4000;" &> /dev/null
-      mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_pct = 100;" &> /dev/null
-      mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_now = ON;" &> /dev/null
+      if [ "${_DB_V}" = "5.7" ]; then
+        mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_pct = 100;" &> /dev/null
+        mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_now = ON;" &> /dev/null
+      fi
     fi
+    mysql -u root -e "SET GLOBAL innodb_fast_shutdown = 1;" &> /dev/null
     echo "Stopping MySQLD now..."
     service mysql stop &> /dev/null
   else

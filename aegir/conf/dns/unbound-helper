@@ -49,33 +49,6 @@ do_resolvconf_stop() {
     /sbin/resolvconf -d lo.unbound
 }
 
-do_chroot_setup() {
-    [ -n "$CHROOT_DIR" -a -d "$CHROOT_DIR" ] || return 0
-    if [ "$CHROOT_DIR" != "$UNBOUND_BASE_DIR" ]; then
-        # we probably should not do the force-recreate but just a refresh
-        rm -rf   "$CHROOT_DIR/$UNBOUND_BASE_DIR"
-        mkdir -p "$CHROOT_DIR/$UNBOUND_BASE_DIR"
-        tar -C "$UNBOUND_BASE_DIR" -c . |
-            tar -C "$CHROOT_DIR/$UNBOUND_BASE_DIR" -x
-    fi
-    if [ -S "/run/systemd/notify" ]; then
-        if [ ! -e "$CHROOT_DIR/run/systemd/notify" ]; then
-            mkdir -p "$CHROOT_DIR/run/systemd"
-            touch "$CHROOT_DIR/run/systemd/notify"
-        fi
-        if ! mountpoint -q "$CHROOT_DIR/run/systemd/notify"; then
-            mount --bind "/run/systemd/notify" "$CHROOT_DIR/run/systemd/notify"
-        fi
-    fi
-}
-
-do_chroot_teardown() {
-    if [ -n "$CHROOT_DIR" -a -d "$CHROOT_DIR" ] &&
-       mountpoint -q "$CHROOT_DIR/run/systemd/notify"; then
-        umount "$CHROOT_DIR/run/systemd/notify"
-    fi
-}
-
 do_root_trust_anchor_update() {
     [ false != "$ROOT_TRUST_ANCHOR_UPDATE" -a \
       -n "$ROOT_TRUST_ANCHOR_FILE"  -a \

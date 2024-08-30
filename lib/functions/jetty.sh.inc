@@ -5,14 +5,10 @@ if_install_solr_jetty() {
     msg "PROC: if_install_solr_jetty"
   fi
   if_to_do_fix
+  if_hosted_sys
   if [[ "${_XTRAS_LIST}" =~ "SR7" ]] \
     || [[ "${_XTRAS_LIST}" =~ "ALL" ]] \
-    || [[ "${_THISHOST}" =~ ".host8." ]] \
-    || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
-    || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
-    || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]] \
-    || [ -e "/root/.auto.up.cnf" ] \
-    || [ -e "/root/.host8.cnf" ]; then
+    || [ "${hostedSys}" = "YES" ]; then
     _R_SOLR="7"
     _N_SOLR="solr${_R_SOLR}"
     _SOLR_VPATH="/var/${_N_SOLR}/data"
@@ -30,12 +26,7 @@ if_install_solr_jetty() {
   fi
   if [[ "${_XTRAS_LIST}" =~ "SR7" ]] \
     || [[ "${_XTRAS_LIST}" =~ "ALL" ]] \
-    || [[ "${_THISHOST}" =~ ".host8." ]] \
-    || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
-    || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
-    || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]] \
-    || [ -e "/root/.auto.up.cnf" ] \
-    || [ -e "/root/.host8.cnf" ]; then
+    || [ "${hostedSys}" = "YES" ]; then
     if [ ! -d "${_SOLR_VPATH}" ]; then
       echo " "
       tPrmt="Do you want to install MultiCore Apache Solr ${_R_SOLR}"
@@ -125,16 +116,8 @@ if_install_solr_jetty() {
     _PORT_CTRL="${_JETTY_CTRL}"
   fi
   if [[ "${_XTRAS_LIST}" =~ "SR4" ]] \
-    || [[ "${_THISHOST}" =~ ".host8." ]] \
-    || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
-    || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
-    || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]] \
-    || [ -e "/root/.auto.up.cnf" ] \
-    || [ -e "/root/.host8.cnf" ]; then
-    if [ ! -d "/opt/solr4" ] \
-      && [ ! -e "/root/.mstr.clstr.cnf" ] \
-      && [ ! -e "/root/.wbhd.clstr.cnf" ] \
-      && [ ! -e "/root/.dbhd.clstr.cnf" ]; then
+    || [ "${hostedSys}" = "YES" ]; then
+    if [ ! -d "/opt/solr4" ]; then
       _R_JETTY=9
       echo " "
       tPrmt="Do you want to install MultiCore Apache Solr"

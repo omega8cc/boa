@@ -83,24 +83,8 @@ fix_redis_mode() {
   fi
   mkdir -p /run/redis
   chown redis:redis /run/redis
-  if [ "${_CUSTOM_CONFIG_REDIS}" = "NO" ] \
-    || [[ "${_THISHOST}" =~ ".host8." ]] \
-    || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
-    || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
-    || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]]; then
-    if [[ "${_THISHOST}" =~ ".host8." ]] \
-      || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
-      || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
-      || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]]; then
-      if [ -e "/root/.mstr.clstr.cnf" ] \
-        || [ -e "/root/.wbhd.clstr.cnf" ] \
-        || [ -e "/root/.dbhd.clstr.cnf" ] \
-        || [ -e "/root/.test.clstr.cnf" ]; then
-        _DO_NOTHING=YES
-      else
-        _REDIS_LISTEN_MODE=SOCKET
-      fi
-    fi
+  if [ "${_CUSTOM_CONFIG_REDIS}" = "NO" ]; then
+    _REDIS_LISTEN_MODE=SOCKET
     if [ "${_REDIS_LISTEN_MODE}" = "SOCKET" ]; then
       if [ -e "/data/conf/global/global-redis.inc" ]; then
         sed -i "s/redis_client_host/redis_client_socket/g" /data/conf/global/global-redis.inc &> /dev/null
@@ -304,11 +288,9 @@ install_redis_src() {
   rm -f /var/lib/redis/*
   mkdir -p /etc/redis
   if [ -e "/etc/redis/redis.conf" ] && [ "${_STATUS}" = "UPGRADE" ]; then
+    if_hosted_sys
     if [ "${_CUSTOM_CONFIG_REDIS}" = "NO" ] \
-      || [[ "${_THISHOST}" =~ ".host8." ]] \
-      || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
-      || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
-      || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]]; then
+      || [ "${hostedSys}" = "YES" ]; then
       if [ "${_CUSTOM_CONFIG_REDIS}" = "YES" ]; then
         _DO_NOTHING=YES
       else

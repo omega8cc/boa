@@ -586,10 +586,8 @@ tune_web_server_config() {
   [ ! -z "${_L_PHP_FPM_WORKERS}" ] && _L_PHP_FPM_WORKERS=${_L_PHP_FPM_WORKERS//[^0-9]/}
   [ ! -z "${_L_PHP_FPM_WORKERS}" ] && _LIM_FPM="${_L_PHP_FPM_WORKERS}"
   if [ "${_LIM_FPM}" -lt "48" ]; then
-    if [[ "${_THISHOST}" =~ ".host8." ]] \
-      || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
-      || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
-      || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]]; then
+    if_hosted_sys
+    if [ "${hostedSys}" = "YES" ]; then
       _LIM_FPM=48
     fi
   fi
@@ -1790,32 +1788,6 @@ install_php_multi() {
         msg "WARN: _THIS_PHP_EXT_DIR for PHP $1 empty in install_php_multi"
       fi
     fi
-    if [ -e "/root/.mstr.clstr.cnf" ] \
-      || [ -e "/root/.wbhd.clstr.cnf" ] \
-      || [ -e "/root/.dbhd.clstr.cnf" ]; then
-      _T_DBS_VRN="${_GALERA_10_VRN}"
-    else
-      if [ "${_DB_SERIES}" = "5.7" ]; then
-        if [ "${_DB_SERIES}" = "5.7" ]; then
-          _DB_SERVER=Percona
-          _DBS_VRN="${_PERCONA_5_7_VRN}"
-        else
-          _DB_SERVER=Percona
-          _DB_SERIES=5.7
-          _DBS_VRN="${_PERCONA_5_7_VRN}"
-        fi
-        _T_DBS_VRN="${_DBS_VRN}"
-      else
-        _DB_SERVER=Percona
-        _DB_SERIES=5.7
-        _DBS_VRN="${_PERCONA_5_7_VRN}"
-        if [ -e "${barCnf}" ]; then
-          sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g" ${barCnf}
-          sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g" ${barCnf}
-        fi
-      fi
-    fi
-    touch ${pthLog}/installed-${_PHP_VERSION}-${_T_DBS_VRN}-${_DB_SERVER}.log
     rm -f /etc/init.d/php$1-fpm*
     cp -af ${locCnf}/php/php$1-fpm /etc/init.d/php$1-fpm
     chmod 755 /etc/init.d/php$1-fpm
@@ -2424,26 +2396,6 @@ check_php_rebuild() {
           _PHP_FORCE_REINSTALL=NO
         fi
       fi
-    fi
-  fi
-  if [ "${_DB_SERIES}" = "5.7" ]; then
-    if [ "${_DB_SERIES}" = "5.7" ]; then
-      _DB_SERVER=Percona
-      _DBS_VRN="${_PERCONA_5_7_VRN}"
-    else
-      _DB_SERVER=Percona
-      _DB_SERIES=5.7
-      _DBS_VRN="${_PERCONA_5_7_VRN}"
-    fi
-    _T_DBS_VRN="${_DBS_VRN}"
-  else
-    _DB_SERVER=Percona
-    _DB_SERIES=5.7
-    _DBS_VRN="${_PERCONA_5_7_VRN}"
-    _T_DBS_VRN="${_DBS_VRN}"
-    if [ -e "${barCnf}" ]; then
-      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g" ${barCnf}
-      sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g" ${barCnf}
     fi
   fi
 }

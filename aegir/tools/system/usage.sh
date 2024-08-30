@@ -39,6 +39,17 @@ if [ -e "/root/.pause_heavy_tasks_maint.cnf" ]; then
 fi
 
 ###-------------SYSTEM-----------------###
+
+_CHECK_HOST=$(uname -n 2>&1)
+if_hosted_sys() {
+  if [ -e "/root/.host8.cnf" ] \
+    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
+    hostedSys=YES
+  else
+    hostedSys=NO
+  fi
+}
+
 fix_clear_cache() {
   if [ -e "${Plr}/profiles/hostmaster" ]; then
     su -s /bin/bash - ${_THIS_U} -c "drush8 @hostmaster cache-clear all" &> /dev/null
@@ -228,10 +239,8 @@ detect_vanilla_core() {
           && [ ! -e "/boot/grub/menu.lst" ] \
           && [[ "${Plr}" =~ "static" ]] \
           && [ ! -e "${Plr}/modules/cookie_cache_bypass" ]; then
-          if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-            || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
-            || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-            || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
+          if_hosted_sys
+          if [ "${hostedSys}" = "YES" ]; then
             echo Vanilla Drupal 5.x Platform detected in ${Plr}
             read_account_data
             if [ "${_THIS_MODE}" = "verbose" ]; then
@@ -246,10 +255,8 @@ detect_vanilla_core() {
           echo Vanilla Drupal 6.x Platform detected in ${Plr}
           if [ ! -e "/boot/grub/grub.cfg" ] \
             && [ ! -e "/boot/grub/menu.lst" ]; then
-            if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-              || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
-              || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-              || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
+            if_hosted_sys
+            if [ "${hostedSys}" = "YES" ]; then
               read_account_data
               if [ "${_THIS_MODE}" = "verbose" ]; then
                 send_notice_core
@@ -781,10 +788,8 @@ action() {
         echo SumDir is ${SumDir} or ${SumDirH} MB
         echo SumDat is ${SumDat} or ${SumDatH} MB
         echo SkipDt is ${SkipDt} or ${SkipDtH} MB
-        if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-          || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
-          || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-          || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
+        if_hosted_sys
+        if [ "${hostedSys}" = "YES" ]; then
           check_limits
           if [ -e "${_THIS_HM_SITE}" ]; then
             su -s /bin/bash - ${_THIS_U} -c "drush8 @hostmaster \

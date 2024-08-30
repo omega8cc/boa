@@ -165,7 +165,8 @@ case "$1" in
       kill -9 $(ps aux | grep '[c]lamd' | awk '{print $2}') &> /dev/null
       kill -9 $(ps aux | grep '[f]reshclam' | awk '{print $2}') &> /dev/null
       kill -9 $(ps aux | grep '[j]ava' | awk '{print $2}') &> /dev/null
-      echo "Java/Solr has been stopped"
+      rm -f /run/clamav/*
+      echo "Java/Solr/Clamav have been stopped"
       sleep 5
       service nginx stop &> /dev/null
       killall nginx &> /dev/null
@@ -181,13 +182,27 @@ case "$1" in
         _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
         if [ ! -z "${_IS_MYSQLD_RUNNING}" ] && [ ! -z "${_SQL_PSWD}" ]; then
           echo "Preparing MySQLD for quick shutdown..."
+          _DBS_TEST=$(which mysql 2>&1)
+          if [ ! -z "${_DBS_TEST}" ]; then
+            _DB_SERVER_TEST=$(mysql -V 2>&1)
+          fi
+          if [[ "${_DB_SERVER_TEST}" =~ "Ver 8.3." ]]; then
+            _DB_V=8.3
+          elif [[ "${_DB_SERVER_TEST}" =~ "Ver 8.0." ]]; then
+            _DB_V=8.0
+          elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 5.7." ]]; then
+            _DB_V=5.7
+          fi
           mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
           mysql -u root -e "SET GLOBAL innodb_change_buffering = 'none';" &> /dev/null
           mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null
           mysql -u root -e "SET GLOBAL innodb_io_capacity = 2000;" &> /dev/null
           mysql -u root -e "SET GLOBAL innodb_io_capacity_max = 4000;" &> /dev/null
-          mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_pct = 100;" &> /dev/null
-          mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_now = ON;" &> /dev/null
+          if [ "${_DB_V}" = "5.7" ]; then
+            mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_pct = 100;" &> /dev/null
+            mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_now = ON;" &> /dev/null
+          fi
+          mysql -u root -e "SET GLOBAL innodb_fast_shutdown = 1;" &> /dev/null
           echo "Stopping MySQLD now..."
           service mysql stop &> /dev/null
           wait

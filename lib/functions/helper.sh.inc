@@ -2,6 +2,15 @@
 tRee=lts
 export tRee="${tRee}"
 
+if_hosted_sys() {
+  if [ -e "/root/.host8.cnf" ] \
+    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
+    hostedSys=YES
+  else
+    hostedSys=NO
+  fi
+}
+
 ###
 ### Noticeable messages
 ###
@@ -280,11 +289,6 @@ mode_detection() {
       || [ -e "/root/.host8.cnf" ]; then
       _XTRAS_LIST="ADM CSF FTP IMG"
     fi
-  elif [ ! -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ] \
-    && [ -e "/lib/systemd/systemd" ]; then
-    _STATUS=SYSTEMD
-    msg "MODE: SYSTEMD"
-    touch /run/boa_wait.pid
   else
     _STATUS=INIT
     [ -e "/root/.use.curl.from.packages.cnf" ] && chattr -i /root/.use.curl.from.packages.cnf
@@ -328,8 +332,8 @@ mode_detection() {
     elif [ "${_EASY_SETUP}" = "PUBLIC" ]; then
       msg "INFO: Public Setup Mode Active"
       _XTRAS_LIST="ADM CSF FTP IMG"
-      if [ -e "/root/.auto.up.cnf" ] \
-        || [ -e "/root/.host8.cnf" ]; then
+      if_hosted_sys
+      if [ "${hostedSys}" = "YES" ]; then
         _XTRAS_LIST="ADM CSF FTP IMG"
       fi
       _AUTOPILOT=YES
@@ -338,64 +342,12 @@ mode_detection() {
       _MY_FRONT="master.${_EASY_HOSTNAME}"
       validate_public_ip &> /dev/null
       _MY_OWNIP="${_THISHTIP}"
-    elif [ "${_EASY_SETUP}" = "MSTR" ]; then
-      msg "INFO: Cluster Master Mode Active"
-      _XTRAS_LIST=""
-      _AUTOPILOT=YES
-      _DB_SERVER=Percona
-      _DB_SERIES=5.7
-      _SSH_PORT=22
-      _DNS_SETUP_TEST=NO
-      _SMTP_RELAY_TEST=NO
-      _MY_HOSTN="${_EASY_HOSTNAME}"
-      _MY_FRONT="master.${_EASY_HOSTNAME}"
-      validate_public_ip &> /dev/null
-      _MY_OWNIP="${_THISHTIP}"
-      if [ ! -e "/root/.mstr.clstr.cnf" ]; then
-        touch /root/.mstr.clstr.cnf
-      fi
-    elif [ "${_EASY_SETUP}" = "WBHD" ]; then
-      msg "INFO: Cluster WEB Head Mode Active"
-      _XTRAS_LIST=""
-      _AUTOPILOT=YES
-      _DB_SERVER=Percona
-      _DB_SERIES=5.7
-      _SSH_PORT=22
-      _DNS_SETUP_TEST=NO
-      _SMTP_RELAY_TEST=NO
-      _MY_HOSTN="${_EASY_HOSTNAME}"
-      _MY_FRONT="master.${_EASY_HOSTNAME}"
-      validate_public_ip &> /dev/null
-      _MY_OWNIP="${_THISHTIP}"
-      if [ ! -e "/root/.wbhd.clstr.cnf" ]; then
-        touch /root/.wbhd.clstr.cnf
-      fi
-    elif [ "${_EASY_SETUP}" = "DBHD" ]; then
-      msg "INFO: Cluster DB Head Mode Active"
-      _XTRAS_LIST=""
-      _AUTOPILOT=YES
-      _DB_SERVER=Percona
-      _DB_SERIES=5.7
-      _SSH_PORT=22
-      _DNS_SETUP_TEST=NO
-      _SMTP_RELAY_TEST=NO
-      _MY_HOSTN="${_EASY_HOSTNAME}"
-      _MY_FRONT="master.${_EASY_HOSTNAME}"
-      validate_public_ip &> /dev/null
-      _MY_OWNIP="${_THISHTIP}"
-      if [ ! -e "/root/.dbhd.clstr.cnf" ]; then
-        touch /root/.dbhd.clstr.cnf
-      fi
     fi
-    if [ "${_STATUS}" != "SYSTEMD" ]; then
-      barracuda_cnf
-    fi
+    barracuda_cnf
   fi
-  if [ "${_STATUS}" != "SYSTEMD" ]; then
-    [ -e "/root/.use.curl.from.packages.cnf" ] && chattr -i /root/.use.curl.from.packages.cnf
-    [ -e "/root/.use.curl.from.packages.cnf" ] && rm -f /root/.use.curl.from.packages.cnf
-    kill -9 $(ps aux | grep '[s]ystemd-udevd' | awk '{print $2}') &> /dev/null
-  fi
+  [ -e "/root/.use.curl.from.packages.cnf" ] && chattr -i /root/.use.curl.from.packages.cnf
+  [ -e "/root/.use.curl.from.packages.cnf" ] && rm -f /root/.use.curl.from.packages.cnf
+  kill -9 $(ps aux | grep '[s]ystemd-udevd' | awk '{print $2}') &> /dev/null
   if [ "${_AEGIR_VERSION}" != "static" ]; then
     _USE_AEGIR_VER=SRC
   else
@@ -603,22 +555,14 @@ os_detection() {
   fi
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  _DB_SERVER=Percona
   if [ "${_OS_DIST}" = "Debian" ]; then
     if [ "${_OS_CODE}" = "bookworm" ]; then
       _OS_CODE="bookworm"
-      _DB_SERVER=Percona
-      _DB_SERIES=5.7
-      _DBS_VRN="${_PERCONA_5_7_VRN}"
     elif [ "${_OS_CODE}" = "bullseye" ]; then
       _OS_CODE="bullseye"
-      _DB_SERVER=Percona
-      _DB_SERIES=5.7
-      _DBS_VRN="${_PERCONA_5_7_VRN}"
     elif [ "${_OS_CODE}" = "buster" ]; then
       _OS_CODE="buster"
-      _DB_SERVER=Percona
-      _DB_SERIES=5.7
-      _DBS_VRN="${_PERCONA_5_7_VRN}"
     elif [ "${_OS_CODE}" = "stretch" ]; then
       _OS_CODE="stretch"
     elif [ "${_OS_CODE}" = "jessie" ]; then
@@ -628,11 +572,13 @@ os_detection() {
     fi
     _NGINX_FORWARD_SECRECY=YES
     _NGINX_SPDY=YES
-    if [ "${_DB_SERIES}" = "5.7" ]; then
-      _DB_SERVER=Percona
+    if [ "${_DB_SERIES}" = "8.3" ]; then
+      _DBS_VRN="${_PERCONA_8_3_VRN}"
+    elif [ "${_DB_SERIES}" = "8.0" ]; then
+      _DBS_VRN="${_PERCONA_8_0_VRN}"
+    elif [ "${_DB_SERIES}" = "5.7" ]; then
       _DBS_VRN="${_PERCONA_5_7_VRN}"
     else
-      _DB_SERVER=Percona
       _DB_SERIES=5.7
       _DBS_VRN="${_PERCONA_5_7_VRN}"
     fi
@@ -641,29 +587,22 @@ os_detection() {
   elif [ "${_OS_DIST}" = "Devuan" ]; then
     if [ "${_OS_CODE}" = "daedalus" ]; then
       _OS_CODE="daedalus"
-      _DB_SERVER=Percona
-      _DB_SERIES=5.7
-      _DBS_VRN="${_PERCONA_5_7_VRN}"
     elif [ "${_OS_CODE}" = "chimaera" ]; then
       _OS_CODE="chimaera"
-      _DB_SERVER=Percona
-      _DB_SERIES=5.7
-      _DBS_VRN="${_PERCONA_5_7_VRN}"
     elif [ "${_OS_CODE}" = "beowulf" ]; then
       _OS_CODE="beowulf"
-      _DB_SERVER=Percona
-      _DB_SERIES=5.7
-      _DBS_VRN="${_PERCONA_5_7_VRN}"
     else
       not_supported_os
     fi
     _NGINX_FORWARD_SECRECY=YES
     _NGINX_SPDY=YES
-    if [ "${_DB_SERIES}" = "5.7" ]; then
-      _DB_SERVER=Percona
+    if [ "${_DB_SERIES}" = "8.3" ]; then
+      _DBS_VRN="${_PERCONA_8_3_VRN}"
+    elif [ "${_DB_SERIES}" = "8.0" ]; then
+      _DBS_VRN="${_PERCONA_8_0_VRN}"
+    elif [ "${_DB_SERIES}" = "5.7" ]; then
       _DBS_VRN="${_PERCONA_5_7_VRN}"
     else
-      _DB_SERVER=Percona
       _DB_SERIES=5.7
       _DBS_VRN="${_PERCONA_5_7_VRN}"
     fi
@@ -850,6 +789,15 @@ barracuda_log_update() {
     | cut -d"-" -f1 \
     | awk '{ print $1}' \
     | sed "s/[\,']//g" 2>&1)
+  if [ "${_LOG_DB_V}" = "Linux" ]; then
+    _LOG_DB_V=$(mysql -V 2>&1 \
+      | tr -d "\n" \
+      | cut -d" " -f4 \
+      | awk '{ print $1}' \
+      | cut -d"-" -f1 \
+      | awk '{ print $1}' \
+      | sed "s/[\,']//g" 2>&1)
+  fi
   _BARRACUDA_VERSION_INFO="$(date 2>&1) / \
     $(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1).$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1) \
     $(uname -m 2>&1) ${_VIRT_IS} / \

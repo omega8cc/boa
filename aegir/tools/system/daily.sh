@@ -88,6 +88,16 @@ apt_clean_update() {
   ${_APT_UPDATE} -qq 2> /dev/null
 }
 
+_CHECK_HOST=$(uname -n 2>&1)
+if_hosted_sys() {
+  if [ -e "/root/.host8.cnf" ] \
+    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
+    hostedSys=YES
+  else
+    hostedSys=NO
+  fi
+}
+
 find_fast_mirror_early() {
   isNetc=$(which netcat 2>&1)
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
@@ -643,11 +653,8 @@ send_shutdown_notice() {
   else
     _ALRT_EMAIL="${_MY_EMAIL}"
   fi
-  if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-    || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
-    || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]] \
-    || [ -e "/root/.host8.cnf" ]; then
+  if_hosted_sys
+  if [ "${hostedSys}" = "YES" ]; then
     _BCC_EMAIL="omega8cc@gmail.com"
   else
     _BCC_EMAIL="${_MY_EMAIL}"
@@ -706,11 +713,8 @@ send_hacked_alert() {
   else
     _ALRT_EMAIL="${_MY_EMAIL}"
   fi
-  if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-    || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
-    || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]] \
-    || [ -e "/root/.host8.cnf" ]; then
+  if_hosted_sys
+  if [ "${hostedSys}" = "YES" ]; then
     _BCC_EMAIL="omega8cc@gmail.com"
   else
     _BCC_EMAIL="${_MY_EMAIL}"
@@ -781,11 +785,8 @@ send_core_alert() {
   else
     _ALRT_EMAIL="${_MY_EMAIL}"
   fi
-  if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-    || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
-    || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]] \
-    || [ -e "/root/.host8.cnf" ]; then
+  if_hosted_sys
+  if [ "${hostedSys}" = "YES" ]; then
     _BCC_EMAIL="omega8cc@gmail.com"
   else
     _BCC_EMAIL="${_MY_EMAIL}"
@@ -1529,10 +1530,8 @@ if_site_db_conversion() {
       _SQL_CONVERT=myisam
     fi
   fi
-  if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-    || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
-    || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
+  if_hosted_sys
+  if [ "${hostedSys}" = "YES" ]; then
     _DENY_SQL_CONVERT=YES
     _SQL_CONVERT=
   fi
@@ -2471,10 +2470,8 @@ check_old_empty_hostmaster_platforms() {
 	&& [ ! -z "${_DEL_OLD_EMPTY_PLATFORMS}" ]; then
 	_DO_NOTHING=YES
   else
-	if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-	  || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
-	  || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-	  || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
+    if_hosted_sys
+    if [ "${hostedSys}" = "YES" ]; then
 	  _DEL_OLD_EMPTY_PLATFORMS="3"
 	else
 	  _DEL_OLD_EMPTY_PLATFORMS="7"
@@ -2521,28 +2518,17 @@ delete_this_platform() {
 }
 
 check_old_empty_platforms() {
-  if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-    || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
-    || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]] \
-    || [ -e "/root/.host8.cnf" ]; then
+  if_hosted_sys
+  if [ "${hostedSys}" = "YES" ]; then
     if [[ "${_CHECK_HOST}" =~ "demo.aegir.cc" ]] \
-      || [ -e "${User}/static/control/platforms.info" ] \
-      || [ -e "/root/.debug.cnf" ]; then
+      || [ -e "${User}/static/control/platforms.info" ]; then
       _DO_NOTHING=YES
     else
       if [ "${_DEL_OLD_EMPTY_PLATFORMS}" -gt "0" ] \
         && [ ! -z "${_DEL_OLD_EMPTY_PLATFORMS}" ]; then
         _DO_NOTHING=YES
       else
-        if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-          || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
-          || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-          || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
-          _DEL_OLD_EMPTY_PLATFORMS="60"
-        else
-          _DEL_OLD_EMPTY_PLATFORMS="90"
-        fi
+        _DEL_OLD_EMPTY_PLATFORMS="60"
       fi
     fi
   fi
@@ -2595,11 +2581,8 @@ purge_cruft_machine() {
     _PURGE_BACKUPS="${_DEL_OLD_BACKUPS}"
   else
     _PURGE_BACKUPS="14"
-    if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-      || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
-      || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-      || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]] \
-      || [ -e "/root/.host8.cnf" ]; then
+    if_hosted_sys
+    if [ "${hostedSys}" = "YES" ]; then
       _PURGE_BACKUPS="7"
     fi
   fi
@@ -3007,10 +2990,8 @@ action() {
         run_drush8_hmr_cmd "sqlq \"UPDATE hosting_platform \
           SET status=1 WHERE publish_path LIKE '${_THIS_HM_PLR}'\""
         purge_cruft_machine
-        if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-          || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
-          || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-          || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
+        if_hosted_sys
+        if [ "${hostedSys}" = "YES" ]; then
           rm -rf ${User}/clients/admin &> /dev/null
           rm -rf ${User}/clients/omega8ccgmailcom &> /dev/null
           rm -rf ${User}/clients/nocomega8cc &> /dev/null
@@ -3199,8 +3180,6 @@ fi
 if [ -e "/run/daily-fix.pid" ]; then
   touch /var/xdrago/log/wait-for-daily
   exit 1
-elif [ -e "/root/.wbhd.clstr.cnf" ]; then
-  exit 1
 else
   touch /run/daily-fix.pid
   if [ "${_VMFAMILY}" = "VS" ]; then
@@ -3388,11 +3367,8 @@ find /var/backups/ltd/*/* -mtime +0 -type f -exec rm -rf {} \; &> /dev/null
 find /var/backups/solr/*/* -mtime +0 -type f -exec rm -rf {} \; &> /dev/null
 find /var/backups/jetty* -mtime +0 -exec rm -rf {} \; &> /dev/null
 find /var/backups/dragon/* -mtime +7 -exec rm -rf {} \; &> /dev/null
-if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-  || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
-  || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-  || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]] \
-  || [ -e "/root/.host8.cnf" ]; then
+if_hosted_sys
+if [ "${hostedSys}" = "YES" ]; then
   if [ -d "/var/backups/codebases-cleanup" ]; then
     find /var/backups/codebases-cleanup/* -mtime +7 -exec rm -rf {} \; &> /dev/null
   elif [ -d "/data/disk/codebases-cleanup" ]; then
