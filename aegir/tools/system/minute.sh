@@ -168,7 +168,10 @@ nginx_heatlh_check_fix() {
   # Check the state of the master process
   if [ "${_NGINX_RESTARTED}" = false ]; then
     _MASTER_STATE=$(echo "${_NGINX_PROCESSES}" | grep 'nginx: master process' | awk '{print $8}')
-    if [ "${_MASTER_STATE}" != "SNs" ] && [ "${_MASTER_STATE}" != "S" ] && [ "${_MASTER_STATE}" != "R" ]; then
+    if [ "${_MASTER_STATE}" != "SNs" ] \
+      && [ "${_MASTER_STATE}" != "S" ] \
+      && [ "${_MASTER_STATE}" != "R" ] \
+      && [ "${_MASTER_STATE}" != "Ss" ]; then
       echo "Nginx master process is in an abnormal state: ${_MASTER_STATE}."
       restart_nginx "_MASTER_STATE ${_MASTER_STATE}"
     fi
@@ -176,10 +179,10 @@ nginx_heatlh_check_fix() {
 
   # Check the state of the worker processes
   if [ "${_NGINX_RESTARTED}" = false ]; then
-    _ABNORMAL_WORKERS=$(echo "${_NGINX_PROCESSES}" | grep 'nginx: worker process' | awk '{if ($8 != "SN" && $8 != "S" && $8 != "R") print $2}')
+    _ABNORMAL_WORKERS=$(echo "${_NGINX_PROCESSES}" | grep 'nginx: worker process' | awk '{if ($8 != "SN" && $8 != "S" && $8 != "R" && $8 != "Ss") print $2}')
     if [ -n "${_ABNORMAL_WORKERS}" ]; then
       echo "Detected worker processes in abnormal state(s): ${_ABNORMAL_WORKERS}."
-      restart_nginx "_ABNORMAL_WORKERS ${_ABNORMAL_WORKERS}"
+      restart_nginx "_ABNORMAL_WORKERS $8 ${_ABNORMAL_WORKERS}"
     fi
   fi
 
