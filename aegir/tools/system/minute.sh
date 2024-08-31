@@ -161,6 +161,8 @@ nginx_heatlh_check_fix() {
     _MASTER_COUNT=$(echo "${_NGINX_PROCESSES}" | grep 'nginx: master process' | wc -l)
     if [ "${_MASTER_COUNT}" -gt 1 ]; then
       echo "Multiple Nginx master processes detected. Possible stuck processes."
+      echo "$(date 2>&1) NGX multiple master processes detected" >> ${pthOml}
+      echo "$(date 2>&1) NGX ${_NGINX_PROCESSES}" >> ${pthOml}
       restart_nginx "_MASTER_COUNT ${_MASTER_COUNT}"
     fi
   fi
@@ -173,6 +175,8 @@ nginx_heatlh_check_fix() {
       && [ "${_MASTER_STATE}" != "R" ] \
       && [ "${_MASTER_STATE}" != "Ss" ]; then
       echo "Nginx master process is in an abnormal state: ${_MASTER_STATE}."
+      echo "$(date 2>&1) NGX master process is in an abnormal state: ${_MASTER_STATE}" >> ${pthOml}
+      echo "$(date 2>&1) NGX ${_NGINX_PROCESSES}" >> ${pthOml}
       restart_nginx "_MASTER_STATE ${_MASTER_STATE}"
     fi
   fi
@@ -182,7 +186,9 @@ nginx_heatlh_check_fix() {
     _ABNORMAL_WORKERS=$(echo "${_NGINX_PROCESSES}" | grep 'nginx: worker process' | awk '{if ($8 != "SN" && $8 != "S" && $8 != "R" && $8 != "Ss") print $2}')
     if [ -n "${_ABNORMAL_WORKERS}" ]; then
       echo "Detected worker processes in abnormal state(s): ${_ABNORMAL_WORKERS}."
-      restart_nginx "_ABNORMAL_WORKERS $8 ${_ABNORMAL_WORKERS}"
+      echo "$(date 2>&1) NGX detected worker processes in abnormal state(s): ${_ABNORMAL_WORKERS}" >> ${pthOml}
+      echo "$(date 2>&1) NGX ${_NGINX_PROCESSES}" >> ${pthOml}
+      restart_nginx "_ABNORMAL_WORKERS ${_ABNORMAL_WORKERS}"
     fi
   fi
 
@@ -191,6 +197,7 @@ nginx_heatlh_check_fix() {
     echo "Nginx is running normally. No anomalies detected."
   else
     echo "Nginx was restarted due to detected anomalies."
+    echo "$(date 2>&1) NGX was restarted due to detected anomalies" >> ${pthOml}
   fi
 }
 nginx_heatlh_check_fix
