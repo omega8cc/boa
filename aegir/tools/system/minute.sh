@@ -211,6 +211,7 @@ check_unbound() {
     resolvconf -u &> /dev/null
     killall -9 unbound &> /dev/null
     service unbound restart &> /dev/null
+    wait
     unbound-control reload &> /dev/null
   fi
   if [ -e "/etc/resolv.conf" ]; then
@@ -241,8 +242,16 @@ check_unbound() {
       [ -e "/etc/resolvconf/update.d/unbound" ] && chmod -x /etc/resolvconf/update.d/unbound
       killall -9 unbound &> /dev/null
       service unbound restart &> /dev/null
+      wait
       unbound-control reload &> /dev/null
     fi
+  fi
+  if [ `ps aux | grep -v "grep" | grep --count "unbound"` -gt "2" ]; then
+    kill -9 $(ps aux | grep '[u]nbound' | awk '{print $2}') &> /dev/null
+    service unbound start &> /dev/null
+    wait
+    echo "$(date 2>&1) Too many Unbound processes killed" >> \
+      /var/xdrago/log/unbound-count.kill.log
   fi
 }
 check_unbound
@@ -549,6 +558,12 @@ if [ `ps aux | grep -v "grep" | grep --count "/usr/sbin/cron"` -gt "1" ]; then
   service cron start &> /dev/null
   echo "$(date 2>&1) Too many Cron instances running killed" >> \
     /var/xdrago/log/cron-count.kill.log
+fi
+
+if [ `ps aux | grep -v "grep" | grep --count "nginx: master process"` -gt "1" ]; then
+  kill -9 $(ps aux | grep '[n]ginx' | awk '{print $2}') &> /dev/null
+  echo "$(date 2>&1) Too many Nginx master processes killed" >> \
+    /var/xdrago/log/nginx-master-count.kill.log
 fi
 
 if [ `ps aux | grep -v "grep" | grep --count "php-fpm: master process"` -gt "10" ]; then
