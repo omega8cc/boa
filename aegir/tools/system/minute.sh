@@ -553,6 +553,12 @@ if [ `ps aux | grep -v "grep" | grep --count "/usr/sbin/cron"` -gt "1" ]; then
     /var/xdrago/log/cron-count.kill.log
 fi
 
+if [ `ps aux | grep -v "grep" | grep --count "nginx: master process"` -gt "1" ]; then
+  kill -9 $(ps aux | grep '[n]ginx' | awk '{print $2}') &> /dev/null
+  echo "$(date 2>&1) Too many Nginx master processes killed" >> \
+    /var/xdrago/log/nginx-master-count.kill.log
+fi
+
 if [ `ps aux | grep -v "grep" | grep --count "php-fpm: master process"` -gt "10" ]; then
   kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}') &> /dev/null
   echo "$(date 2>&1) Too many PHP-FPM master processes killed" >> \
