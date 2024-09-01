@@ -3426,7 +3426,7 @@ sshd_install_src() {
   fi
   if [[ "${_SSH_IF_SELINUX}" =~ "libselinux" ]]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "INFO: SSH was built --with-selinux, rebuild --without-selinux required"
+      msg "INFO: SSH was built --with-selinux, rebuild required"
     fi
     _SSH_INSTALL_REQUIRED=YES
   fi
@@ -3462,7 +3462,6 @@ sshd_install_src() {
       --sysconfdir=${_SYSCONFDIR} \
       --prefix=${_PREFIX_SSH} \
       --without-openssl-header-check \
-      --without-selinux \
       --with-md5-passwords \
       --with-pam &> /dev/null
     mrun "make -j $(nproc)" 2> /dev/null
@@ -3504,7 +3503,6 @@ sshd_install_src() {
     mrun "service ssh restart" 2> /dev/null
   fi
   _SSH_FORCE_REINSTALL=NO
-  #mrun "apt-get remove libselinux1-dev -y --purge --auto-remove -qq" 2> /dev/null
 }
 
 #
