@@ -173,6 +173,7 @@ nginx_heatlh_check_fix() {
     if [ "${_MASTER_STATE}" != "SNs" ] \
       && [ "${_MASTER_STATE}" != "S" ] \
       && [ "${_MASTER_STATE}" != "R" ] \
+      && [ "${_MASTER_STATE}" != "RN" ] \
       && [ "${_MASTER_STATE}" != "Ss" ]; then
       echo "Nginx master process is in an abnormal state: ${_MASTER_STATE}."
       echo "$(date 2>&1) NGX master process is in an abnormal state: ${_MASTER_STATE}" >> ${pthOml}
@@ -183,7 +184,7 @@ nginx_heatlh_check_fix() {
 
   # Check the state of the worker processes
   if [ "${_NGINX_RESTARTED}" = false ]; then
-    _ABNORMAL_WORKERS=$(echo "${_NGINX_PROCESSES}" | grep 'nginx: worker process' | awk '{if ($8 != "SN" && $8 != "S" && $8 != "R" && $8 != "Ss") print $2}')
+    _ABNORMAL_WORKERS=$(echo "${_NGINX_PROCESSES}" | grep 'nginx: worker process' | awk '{if ($8 != "SN" && $8 != "S" && $8 != "R" && $8 != "RN" && $8 != "Ss") print $2}')
     if [ -n "${_ABNORMAL_WORKERS}" ]; then
       echo "Detected worker processes in abnormal state(s): ${_ABNORMAL_WORKERS}."
       echo "$(date 2>&1) NGX detected worker processes in abnormal state(s): ${_ABNORMAL_WORKERS}" >> ${pthOml}
