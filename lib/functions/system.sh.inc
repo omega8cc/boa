@@ -3376,6 +3376,17 @@ sshd_install_src() {
   if [ "${_OS_CODE}" = "stretch" ]; then
     _OPENSSH_VRN=9.3p1
   fi
+  if [ -x "/usr/local/sbin/sshd" ] \
+    && [ -x "/usr/local/bin/ssh" ]; then
+    if [ ! -L "/usr/sbin/sshd" ] && [ -x "/usr/sbin/sshd" ]; then
+      mv -f /usr/sbin/sshd /usr/sbin/.sshd_bak
+      ln -sfn /usr/local/sbin/sshd /usr/sbin/sshd
+    fi
+    if [ ! -L "/usr/sbin/ssh" ] && [ -x "/usr/sbin/ssh" ]; then
+      mv -f /usr/sbin/ssh /usr/sbin/.ssh_bak
+      ln -sfn /usr/local/sbin/ssh /usr/sbin/ssh
+    fi
+  fi
   _SSH_GET_DPKG=$(dpkg --get-selections | grep openssh-sftp-server | grep 'hold$' 2>&1)
   _SSH_INSTALL_REQUIRED=NO
   _SSH_ITD=$(ssh -V 2>&1 \
@@ -3397,7 +3408,7 @@ sshd_install_src() {
     | tr -d "\n" \
     | cut -d" " -f3 \
     | awk '{ print $1}' 2>&1)
-  _SSH_IF_SELINUX=$(ldd /usr/sbin/sshd | grep selinux 2>&1)
+  _SSH_IF_SELINUX=$(ldd /usr/local/sbin/sshd | grep selinux 2>&1)
   if [ -e "/usr/etc/sshd_config" ]; then
     _SSH_FORCE_REINSTALL=YES
     _OLD_SYSCONFDIR="/usr/etc"
@@ -3489,12 +3500,15 @@ sshd_install_src() {
     fi
   fi
   if [ -x "/usr/local/sbin/sshd" ] \
-    && [ -x "/usr/local/bin/ssh" ] \
-    && [ ! -e "/usr/sbin/.sshd_bak" ]; then
-    mv -f /usr/sbin/sshd /usr/sbin/.sshd_bak
-    ln -sfn /usr/local/sbin/sshd /usr/sbin/sshd
-    mv -f /usr/bin/ssh /usr/bin/.ssh_bak
-    ln -sfn /usr/local/bin/ssh /usr/bin/ssh
+    && [ -x "/usr/local/bin/ssh" ]; then
+    if [ ! -L "/usr/sbin/sshd" ] && [ -x "/usr/sbin/sshd" ]; then
+      mv -f /usr/sbin/sshd /usr/sbin/.sshd_bak
+      ln -sfn /usr/local/sbin/sshd /usr/sbin/sshd
+    fi
+    if [ ! -L "/usr/sbin/ssh" ] && [ -x "/usr/sbin/ssh" ]; then
+      mv -f /usr/sbin/ssh /usr/sbin/.ssh_bak
+      ln -sfn /usr/local/sbin/ssh /usr/sbin/ssh
+    fi
     if [ -e "${_OLD_SYSCONFDIR}" ]; then
       cp -a ${_OLD_SYSCONFDIR} /var/backups/old_ssh_usr_etc
       rm -f ${_OLD_SYSCONFDIR}/ssh*
