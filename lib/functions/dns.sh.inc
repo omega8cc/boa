@@ -465,6 +465,7 @@ dns_unbound_install_upgrade() {
     [ -e "/etc/resolvconf/update.d/unbound" ] && chmod -x /etc/resolvconf/update.d/unbound
     killall -9 unbound &> /dev/null
     mrun "service unbound restart" 2> /dev/null
+    wait
   fi
   check_dns_settings
   if [ "${_USE_PROVIDER_DNS}" = "YES" ] \
@@ -497,6 +498,7 @@ dns_unbound_install_upgrade() {
       [ -e "/etc/resolvconf/update.d/unbound" ] && chmod -x /etc/resolvconf/update.d/unbound
       killall -9 unbound &> /dev/null
       mrun "service unbound restart" 2> /dev/null
+      wait
       unbound-control reload &> /dev/null
     fi
   fi
@@ -513,6 +515,7 @@ dns_unbound_install_upgrade() {
     [ -e "/etc/resolvconf/update.d/unbound" ] && chmod -x /etc/resolvconf/update.d/unbound
     killall -9 unbound &> /dev/null
     mrun "service unbound restart" 2> /dev/null
+    wait
     unbound-control reload &> /dev/null
   fi
   if [ -e "/etc/NetworkManager/NetworkManager.conf" ]; then
@@ -565,6 +568,7 @@ dns_unbound_install_upgrade() {
     [ -e "/etc/resolvconf/update.d/unbound" ] && chmod -x /etc/resolvconf/update.d/unbound
     killall -9 unbound &> /dev/null
     mrun "service unbound restart" 2> /dev/null
+    wait
   fi
   if [ -x "${isUnbnd}" ] \
     && [ "${isUnbndFix}" = "NO" ] \
@@ -573,6 +577,7 @@ dns_unbound_install_upgrade() {
     [ -e "/etc/resolvconf/update.d/unbound" ] && chmod -x /etc/resolvconf/update.d/unbound
     killall -9 unbound &> /dev/null
     mrun "service unbound restart" 2> /dev/null
+    wait
   fi
 }
 

@@ -211,6 +211,7 @@ check_unbound() {
     resolvconf -u &> /dev/null
     killall -9 unbound &> /dev/null
     service unbound restart &> /dev/null
+    wait
     unbound-control reload &> /dev/null
   fi
   if [ -e "/etc/resolv.conf" ]; then
@@ -241,6 +242,7 @@ check_unbound() {
       [ -e "/etc/resolvconf/update.d/unbound" ] && chmod -x /etc/resolvconf/update.d/unbound
       killall -9 unbound &> /dev/null
       service unbound restart &> /dev/null
+      wait
       unbound-control reload &> /dev/null
     fi
   fi
