@@ -1,0 +1,31 @@
+--- src/MailManagerReplacement.php.org	2024-01-25 12:04:50.463753755 +0100
++++ src/MailManagerReplacement.php	2024-01-25 12:02:53.223548904 +0100
+@@ -86,17 +86,19 @@
+ 
+     // Create an email from the array.
+     $builder = $this->emailBuilderManager->createInstanceFromMessage($message);
+-    $email = $builder->fromArray($this->emailFactory, $message);
++    if ($builder) {
++      $email = $builder->fromArray($this->emailFactory, $message);
+ 
+-    if ($send) {
+-      $message['result'] = $email->send();
+-    }
+-    else {
+-      // We set 'result' to NULL, because FALSE indicates an error in sending.
+-      $message['result'] = NULL;
+-    }
++      if ($send) {
++        $message['result'] = $email->send();
++      }
++      else {
++        // We set 'result' to NULL, because FALSE indicates an error in sending.
++        $message['result'] = NULL;
++      }
+ 
+-    $this->legacyHelper->emailToArray($email, $message);
++      $this->legacyHelper->emailToArray($email, $message);
++    }
+     return $message;
+   }
+ 
