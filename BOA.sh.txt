@@ -680,7 +680,7 @@ update_agents() {
 
   if [ -e "/var/xdrago/manage_solr_config.sh" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${pthLog}/minute_f6.ctrl${_X_SE}.pid" ]; then
+    && [ ! -e "${pthLog}/minute_f7.ctrl${_X_SE}.pid" ]; then
     mv -f /var/xdrago/minute.sh /var/xdrago/minute.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/minute.sh" -o /var/xdrago/minute.sh
     if [ -e "/var/xdrago/minute.sh" ]; then
@@ -699,7 +699,7 @@ update_agents() {
       fi
       chmod 700 /var/xdrago/minute.sh
       chown root:root /var/xdrago/minute.sh
-      touch ${pthLog}/minute_f6.ctrl${_X_SE}.pid
+      touch ${pthLog}/minute_f7.ctrl${_X_SE}.pid
     else
       mv -f /var/xdrago/minute.sh.old /var/xdrago/minute.sh
     fi
