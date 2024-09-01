@@ -929,10 +929,8 @@ nginx_config_update_fix() {
     ### in all Octopus instances which could break Nginx restart
     ###
     if [ -d "/data/u" ]; then
-      for File in `grep will_expire_in /data/disk/*/config/includes/* \
-        | cut -d: -f1 \
-        | awk '{ print $1}'`; do
-        rm -f $File
+      for File in $(find /data/disk/*/config/includes/ -type f -exec grep -l will_expire_in {} +); do
+        rm -f "$File"
       done
       for Vght in `ls /data/disk/*/log/CANCELLED 2> /dev/null \
         | cut -d"/" -f4 \
