@@ -1856,6 +1856,7 @@ if_fix_python() {
       _PYTHON_FIX=YES
     fi
   fi
+  [ "${_PYTHON_FIX}" = "YES" ] && rm -f /usr/local/bin/python3
   [ "${_PYTHON_FIX}" = "YES" ] && fix_python
 }
 
