@@ -170,10 +170,9 @@ nginx_heatlh_check_fix() {
   # Check the state of the master process
   if [ "${_NGINX_RESTARTED}" = false ]; then
     _MASTER_STATE=$(echo "${_NGINX_PROCESSES}" | grep 'nginx: master process' | awk '{print $8}')
-    if [ "${_MASTER_STATE}" = "D" ] \
-      || [ "${_MASTER_STATE}" = "Z" ] \
+    if [ "${_MASTER_STATE}" = "Z" ] \
       || [ "${_MASTER_STATE}" = "T" ] \
-      || [ "${_MASTER_STATE}" = "X" ]; then
+      || [ "${_MASTER_STATE}" = "D" ]; then
       echo "Nginx master process is in an abnormal state: ${_MASTER_STATE}."
       echo "$(date 2>&1) NGX master process is in an abnormal state: ${_MASTER_STATE}" >> ${pthOml}
       echo "$(date 2>&1) NGX ${_NGINX_PROCESSES}" >> ${pthOml}
