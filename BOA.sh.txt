@@ -1816,7 +1816,11 @@ fix_python() {
     get_dev_src "Python-${_PYTHON_VRN}.tgz"
     tar -xzf Python-${_PYTHON_VRN}.tgz
     cd Python-${_PYTHON_VRN}
-    bash ./configure --with-openssl=/usr/local/ssl3
+    if [ -d "/usr/local/ssl3" ]; then
+      bash ./configure --with-openssl=/usr/local/ssl3
+    else
+      bash ./configure --with-openssl=/usr/local/ssl
+    fi
     make -j $(nproc) --quiet
     make install --quiet
     cd
