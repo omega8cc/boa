@@ -1220,33 +1220,22 @@ if_reinstall_curl() {
       apt-get install libssl-dev -y -qq 2> /dev/null
       apt-get install libc-client2007e libc-client2007e-dev -y -qq 2> /dev/null
     fi
-    isCurl=$(curl --version 2>&1)
-    if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
-      if [ -e "/var/aegir/drush" ]; then
-        echo "ERRR: curl is still broken, we will install from sources"
-      else
-        echo "ERRR: curl is still broken, please install it and debug manually"
-        echo "Bye"
-        exit 1
-      fi
-    fi
     if [ -e "/var/aegir/drush" ]; then
-      isCurl=$(curl --version 2>&1)
-      if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
-        echo "INFO: Installing curl from sources..."
-        mkdir -p /var/opt
-        rm -rf /var/opt/curl*
-        cd /var/opt
-        wget -q -U iCab http://files.aegir.cc/dev/src/curl-${_CURL_VRN}.tar.gz &> /dev/null
-        tar -xzf curl-${_CURL_VRN}.tar.gz &> /dev/null
-        cd /var/opt/curl-${_CURL_VRN}
-        sh ./configure --with-ssl --prefix=/usr/local &> /dev/null
-        make -j $(nproc) --quiet &> /dev/null
-        make --quiet install &> /dev/null
-      fi
+      echo "INFO: Installing curl from sources..."
+      mkdir -p /var/opt
+      rm -rf /var/opt/curl*
+      cd /var/opt
+      wget -q -U iCab http://files.aegir.cc/dev/src/curl-${_CURL_VRN}.tar.gz &> /dev/null
+      tar -xzf curl-${_CURL_VRN}.tar.gz &> /dev/null
+      cd /var/opt/curl-${_CURL_VRN}
+      sh ./configure --with-ssl --prefix=/usr/local &> /dev/null
+      make -j $(nproc) --quiet &> /dev/null
+      make --quiet install &> /dev/null
       if [ -f "/usr/local/bin/curl" ]; then
         isCurl=$(/usr/local/bin/curl --version 2>&1)
-        if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
+        if [[ ! "${isCurl}" =~ "OpenSSL" ]] \
+          || [ -z "${isCurl}" ] \
+          || [[ "${isCurl}" =~ "libcurl.so.4" ]]; then
           echo "ERRR: /usr/local/bin/curl is broken, moving to /usr/local/bin/curl--broken"
           echo "ERRR: Please install it and debug manually"
           echo "Bye"
