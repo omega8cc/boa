@@ -7816,10 +7816,14 @@ lshell_install_upgrade() {
     rm -rf /usr/local/lib/python*/site-packages/lshell*
     rm -rf /usr/local/lib/python*/dist-packages/lshell*
     cd /var/opt/lshell-${_LSHELL_VRN}
-    if [ -x "/usr/bin/pip" ]; then
-      usePip=/usr/bin/pip
+    if [ -x "/usr/local/bin/pip3" ]; then
+      usePip=/usr/local/bin/pip3
+    elif [ -x "/usr/bin/pip3" ]; then
+      usePip=/usr/bin/pip3
     elif [ -x "/usr/local/bin/pip" ]; then
       usePip=/usr/local/bin/pip
+    elif [ -x "/usr/bin/pip" ]; then
+      usePip=/usr/bin/pip
     fi
     _PIP_TEST=$(${usePip} --version 2>&1)
     if [[ "${_PIP_TEST}" =~ "python 3.11" ]] \
