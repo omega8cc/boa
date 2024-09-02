@@ -1828,6 +1828,11 @@ fix_python() {
     apt-get install python3-pip -y
     pip3 install --upgrade pip --root-user-action ignore
   fi
+  if [ -x "/usr/local/bin/python3" ]; then
+    ln -sfn /usr/local/bin/python3 /usr/bin/python
+    ln -sfn /usr/local/bin/python3 /usr/bin/python3
+    ln -sfn /usr/local/bin/python3 /usr/local/bin/python
+  fi
 }
 
 if_fix_python() {
@@ -1857,8 +1862,13 @@ if_fix_python() {
       _PYTHON_FIX=YES
     fi
   fi
-  [ "${_PYTHON_FIX}" = "YES" ] && rm -f /usr/local/bin/python3
-  [ "${_PYTHON_FIX}" = "YES" ] && fix_python
+  if [ "${_PYTHON_FIX}" = "YES" ]; then
+    rm -f /usr/bin/pip*
+    rm -f /usr/bin/python*
+    rm -f /usr/local/bin/pip*
+    rm -f /usr/local/bin/python*
+    fix_python
+  fi
 }
 
 fix_lshell() {
