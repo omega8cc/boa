@@ -420,19 +420,21 @@ up_mode() {
 
 satellite_check_strict_php_cli() {
   _PHP_CLI=$(grep "/opt/php" ${User}/tools/drush/drush.php 2>&1)
-  if [[ ! "${_PHP_CLI}" =~ "php81" ]] && [ -x "/opt/php81/bin/php" ]; then
-    echo
-    echo "NOTE: This Aegir version requires PHP 8.1 during Hostmaster upgrade."
-    echo "NOTE: It will be reconfigured on the fly now, but you can change it"
-    echo "NOTE: later for hosted sites management in ~/static/control/cli.info"
-    echo
-    php_cli_drush_update
-    php_cli_local_ini_update
-    echo 8.1 > ${User}/log/cli.txt
-    echo 8.1 > ${User}/static/control/cli.info
-    chown -R ${octUsr}.ftp:users ${User}/static/control
-    sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=8.1/g" \
-      /root/.${octUsr}.octopus.cnf &> /dev/null
+  if [ "${_OS_CODE}" != "stretch" ] && [ "${_OS_CODE}" != "jessie" ]; then
+    if [[ ! "${_PHP_CLI}" =~ "php81" ]] && [ -x "/opt/php81/bin/php" ]; then
+      echo
+      echo "NOTE: This Aegir version requires PHP 8.1 during Hostmaster upgrade."
+      echo "NOTE: It will be reconfigured on the fly now, but you can change it"
+      echo "NOTE: later for hosted sites management in ~/static/control/cli.info"
+      echo
+      php_cli_drush_update
+      php_cli_local_ini_update
+      echo 8.1 > ${User}/log/cli.txt
+      echo 8.1 > ${User}/static/control/cli.info
+      chown -R ${octUsr}.ftp:users ${User}/static/control
+      sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=8.1/g" \
+        /root/.${octUsr}.octopus.cnf &> /dev/null
+    fi
   fi
 }
 

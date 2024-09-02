@@ -1968,30 +1968,43 @@ barracuda_cnf() {
     wait
     sed -i "s/^_REDIS_LISTEN.*/_REDIS_LISTEN_MODE=SOCKET/g"      ${barCnf}
     wait
+    if [ "${_OS_CODE}" = "stretch" ] || [ "${_OS_CODE}" = "jessie" ]; then
+      if [ -x "/opt/php70/bin/php" ]; then
+        fCli=7.0
+      elif [ -x "/opt/php71/bin/php" ]; then
+        fCli=7.1
+      elif [ -x "/opt/php72/bin/php" ]; then
+        fCli=7.2
+      elif [ -x "/opt/php56/bin/php" ]; then
+        fCli=5.6
+      fi
+    else
+      fCli=8.1
+    fi
     if [ -z "${_PHP_SINGLE_INSTALL}" ]; then
-      sed -i "s/^_PHP_CLI_VERSION=5.6/_PHP_CLI_VERSION=8.1/g"    ${barCnf}
+      sed -i "s/^_PHP_CLI_VERSION=5.6/_PHP_CLI_VERSION=${fCli}/g"    ${barCnf}
       wait
-      sed -i "s/^_PHP_FPM_VERSION=5.6/_PHP_FPM_VERSION=8.1/g"    ${barCnf}
+      sed -i "s/^_PHP_FPM_VERSION=5.6/_PHP_FPM_VERSION=${fCli}/g"    ${barCnf}
       wait
-      sed -i "s/^_PHP_CLI_VERSION=7.0/_PHP_CLI_VERSION=8.1/g"    ${barCnf}
+      sed -i "s/^_PHP_CLI_VERSION=7.0/_PHP_CLI_VERSION=${fCli}/g"    ${barCnf}
       wait
-      sed -i "s/^_PHP_FPM_VERSION=7.0/_PHP_FPM_VERSION=8.1/g"    ${barCnf}
+      sed -i "s/^_PHP_FPM_VERSION=7.0/_PHP_FPM_VERSION=${fCli}/g"    ${barCnf}
       wait
-      sed -i "s/^_PHP_CLI_VERSION=7.1/_PHP_CLI_VERSION=8.1/g"    ${barCnf}
+      sed -i "s/^_PHP_CLI_VERSION=7.1/_PHP_CLI_VERSION=${fCli}/g"    ${barCnf}
       wait
-      sed -i "s/^_PHP_FPM_VERSION=7.1/_PHP_FPM_VERSION=8.1/g"    ${barCnf}
+      sed -i "s/^_PHP_FPM_VERSION=7.1/_PHP_FPM_VERSION=${fCli}/g"    ${barCnf}
       wait
-      sed -i "s/^_PHP_CLI_VERSION=7.2/_PHP_CLI_VERSION=8.1/g"    ${barCnf}
+      sed -i "s/^_PHP_CLI_VERSION=7.2/_PHP_CLI_VERSION=${fCli}/g"    ${barCnf}
       wait
-      sed -i "s/^_PHP_FPM_VERSION=7.2/_PHP_FPM_VERSION=8.1/g"    ${barCnf}
+      sed -i "s/^_PHP_FPM_VERSION=7.2/_PHP_FPM_VERSION=${fCli}/g"    ${barCnf}
       wait
-      sed -i "s/^_PHP_CLI_VERSION=7.3/_PHP_CLI_VERSION=8.1/g"    ${barCnf}
+      sed -i "s/^_PHP_CLI_VERSION=7.3/_PHP_CLI_VERSION=${fCli}/g"    ${barCnf}
       wait
-      sed -i "s/^_PHP_FPM_VERSION=7.3/_PHP_FPM_VERSION=8.1/g"    ${barCnf}
+      sed -i "s/^_PHP_FPM_VERSION=7.3/_PHP_FPM_VERSION=${fCli}/g"    ${barCnf}
       wait
-      sed -i "s/^_PHP_CLI_VERSION=8.0/_PHP_CLI_VERSION=8.1/g"    ${barCnf}
+      sed -i "s/^_PHP_CLI_VERSION=8.0/_PHP_CLI_VERSION=${fCli}/g"    ${barCnf}
       wait
-      sed -i "s/^_PHP_FPM_VERSION=8.0/_PHP_FPM_VERSION=8.1/g"    ${barCnf}
+      sed -i "s/^_PHP_FPM_VERSION=8.0/_PHP_FPM_VERSION=${fCli}/g"    ${barCnf}
       wait
     fi
     if_hosted_sys
@@ -2284,34 +2297,47 @@ barracuda_cnf() {
     wait
     sed -i "s/^_REDIS_LISTEN_.*/_REDIS_LISTEN_MODE=SOCKET/g"     ${barCnf}
     wait
+    if [ "${_OS_CODE}" = "stretch" ] || [ "${_OS_CODE}" = "jessie" ]; then
+      if [ -x "/opt/php70/bin/php" ]; then
+        fCli=7.0
+      elif [ -x "/opt/php71/bin/php" ]; then
+        fCli=7.1
+      elif [ -x "/opt/php72/bin/php" ]; then
+        fCli=7.2
+      elif [ -x "/opt/php56/bin/php" ]; then
+        fCli=5.6
+      fi
+    else
+      fCli=8.1
+    fi
     if [ -z "${_PHP_SINGLE_INSTALL}" ]; then
-      sed -i "s/^_PHP_CLI_VERSION=5.6/_PHP_CLI_VERSION=8.1/g"    ${barCnf}
+      sed -i "s/^_PHP_CLI_VERSION=5.6/_PHP_CLI_VERSION=${fCli}/g"    ${barCnf}
       wait
-      sed -i "s/^_PHP_FPM_VERSION=5.6/_PHP_FPM_VERSION=8.1/g"    ${barCnf}
+      sed -i "s/^_PHP_FPM_VERSION=5.6/_PHP_FPM_VERSION=${fCli}/g"    ${barCnf}
       wait
-      sed -i "s/^_PHP_CLI_VERSION=7.0/_PHP_CLI_VERSION=8.1/g"    ${barCnf}
+      sed -i "s/^_PHP_CLI_VERSION=7.0/_PHP_CLI_VERSION=${fCli}/g"    ${barCnf}
       wait
-      sed -i "s/^_PHP_FPM_VERSION=7.0/_PHP_FPM_VERSION=8.1/g"    ${barCnf}
+      sed -i "s/^_PHP_FPM_VERSION=7.0/_PHP_FPM_VERSION=${fCli}/g"    ${barCnf}
       wait
-      sed -i "s/^_PHP_CLI_VERSION=7.1/_PHP_CLI_VERSION=8.1/g"    ${barCnf}
+      sed -i "s/^_PHP_CLI_VERSION=7.1/_PHP_CLI_VERSION=${fCli}/g"    ${barCnf}
       wait
-      sed -i "s/^_PHP_FPM_VERSION=7.1/_PHP_FPM_VERSION=8.1/g"    ${barCnf}
+      sed -i "s/^_PHP_FPM_VERSION=7.1/_PHP_FPM_VERSION=${fCli}/g"    ${barCnf}
       wait
-      sed -i "s/^_PHP_CLI_VERSION=7.2/_PHP_CLI_VERSION=8.1/g"    ${barCnf}
+      sed -i "s/^_PHP_CLI_VERSION=7.2/_PHP_CLI_VERSION=${fCli}/g"    ${barCnf}
       wait
-      sed -i "s/^_PHP_FPM_VERSION=7.2/_PHP_FPM_VERSION=8.1/g"    ${barCnf}
+      sed -i "s/^_PHP_FPM_VERSION=7.2/_PHP_FPM_VERSION=${fCli}/g"    ${barCnf}
       wait
-      sed -i "s/^_PHP_CLI_VERSION=7.3/_PHP_CLI_VERSION=8.1/g"    ${barCnf}
+      sed -i "s/^_PHP_CLI_VERSION=7.3/_PHP_CLI_VERSION=${fCli}/g"    ${barCnf}
       wait
-      sed -i "s/^_PHP_FPM_VERSION=7.3/_PHP_FPM_VERSION=8.1/g"    ${barCnf}
+      sed -i "s/^_PHP_FPM_VERSION=7.3/_PHP_FPM_VERSION=${fCli}/g"    ${barCnf}
       wait
-      sed -i "s/^_PHP_CLI_VERSION=7.4/_PHP_CLI_VERSION=8.1/g"    ${barCnf}
+      sed -i "s/^_PHP_CLI_VERSION=7.4/_PHP_CLI_VERSION=${fCli}/g"    ${barCnf}
       wait
-      sed -i "s/^_PHP_FPM_VERSION=7.4/_PHP_FPM_VERSION=8.1/g"    ${barCnf}
+      sed -i "s/^_PHP_FPM_VERSION=7.4/_PHP_FPM_VERSION=${fCli}/g"    ${barCnf}
       wait
-      sed -i "s/^_PHP_CLI_VERSION=8.0/_PHP_CLI_VERSION=8.1/g"    ${barCnf}
+      sed -i "s/^_PHP_CLI_VERSION=8.0/_PHP_CLI_VERSION=${fCli}/g"    ${barCnf}
       wait
-      sed -i "s/^_PHP_FPM_VERSION=8.0/_PHP_FPM_VERSION=8.1/g"    ${barCnf}
+      sed -i "s/^_PHP_FPM_VERSION=8.0/_PHP_FPM_VERSION=${fCli}/g"    ${barCnf}
       wait
     fi
 
