@@ -7787,6 +7787,7 @@ lshell_install_upgrade() {
     | awk '{ print $1}' 2>&1)
   if [ "${_LSHELL_ITD}" != "${_LSHELL_CHK_VRN}" ] \
     || [[ "${_LSHELL_ITD}" =~ "Traceback" ]] \
+    || [[ "${_LSHELL_ITD}" =~ "bad interpreter" ]] \
     || [[ "${_LSHELL_ITD}" =~ "ImportError" ]]; then
     _LSHELL_FORCE_REINSTALL=YES
   fi
