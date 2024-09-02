@@ -182,12 +182,13 @@ nginx_heatlh_check_fix() {
 
   # Check the state of the worker processes
   if [ "${_NGINX_RESTARTED}" = false ]; then
-    _ABNORMAL_WORKERS=$(echo "${_NGINX_PROCESSES}" | grep 'nginx: worker process' | awk '{if ($8 = "D" || $8 = "Z" || $8 = "T" || $8 = "X") print $2}')
-    if [ -n "${_ABNORMAL_WORKERS}" ]; then
-      echo "Detected worker processes in abnormal state(s): ${_ABNORMAL_WORKERS}."
-      echo "$(date 2>&1) NGX detected worker processes in abnormal state(s): ${_ABNORMAL_WORKERS}" >> ${pthOml}
+    _WORKER_STATE=$(echo "${_NGINX_PROCESSES}" | grep 'nginx: worker process' | awk '{print $8}')
+    if [[ "${_WORKER_STATE}" =~ "Z" ]] \
+      || [[ "${_WORKER_STATE}" =~ "T" ]]; then
+      echo "Nginx worker process is in an abnormal state: ${_WORKER_STATE}."
+      echo "$(date 2>&1) NGX worker process is in an abnormal state: ${_WORKER_STATE}" >> ${pthOml}
       echo "$(date 2>&1) NGX ${_NGINX_PROCESSES}" >> ${pthOml}
-      restart_nginx "_ABNORMAL_WORKERS ${_ABNORMAL_WORKERS}"
+      restart_nginx "_WORKER_STATE ${_WORKER_STATE}"
     fi
   fi
 
