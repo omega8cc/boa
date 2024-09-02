@@ -450,7 +450,7 @@ if [ -e "/var/aegir/drush" ]; then
       rm -f /etc/mysql/conf.d/mysqldump.cnf
       touch /var/xdrago/log/.custom_percona_forced.${_X_SE}.pid
     fi
-    _AUTO_UP_WEEKLY=2
+    _AUTO_UP_WEEKLY=7
     _AUTO_UP_MONTH=7
     _AUTO_UP_DAY=7
     _AUTO_PHP="php-min"
