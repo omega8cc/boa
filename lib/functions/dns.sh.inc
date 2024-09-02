@@ -451,6 +451,7 @@ dns_unbound_install_upgrade() {
       chmod 644 /etc/apparmor.d/usr.sbin.unbound
     fi
     ###
+    [ ! -d "/usr/libexec" ] && mkdir -p /usr/libexec
     [ ! -e "/usr/libexec/unbound-helper" ] && cp -a ${locCnf}/dns/unbound-helper /usr/libexec/
     [ -e "/usr/libexec/unbound-helper" ] && chmod 755 /usr/libexec/unbound-helper
     cat ${locCnf}/dns/unbound.conf > /etc/unbound/unbound.conf.d/unbound.conf
