@@ -61,7 +61,7 @@
 
    Specifying Octopus `username` is optional. It will use `o1` if empty.
 
-   The last `{newrelickey|php-8.2|php-min|php-max|nodns}` part is optional and can be used either to install New Relic Apps Monitor (you should replace the `newrelickey` keyword with a valid license key), or to define a single PHP version to install and use both for Ægir Master and Satellite instances.
+   The last `{percona-8.0|newrelickey|php-8.2|php-min|php-max|nodns}` part is optional and can be used either to install Percona version other than default 5.7 (can be percona-8.0 percona-8.3 percona-8.4) or New Relic Apps Monitor (you should replace the `newrelickey` keyword with a valid license key), or to define a single PHP version to install and use both for Ægir Master and Satellite instances.
 
    The `nodns` option allows skipping DNS and SMTP checks.
 

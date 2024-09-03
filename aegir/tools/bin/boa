@@ -763,6 +763,19 @@ barracuda_install() {
         wait
         sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=NO/g"    ${vBs}/${filIncO}
         wait
+      elif [[ "${extra}" =~ "percona" ]]; then
+        if [ "${extra}" = "percona-8.4" ]; then
+          sed -i "s/^_DB_SERIES=.*/_DB_SERIES=8.4/g"           ${vBs}/${filIncB}
+        elif [ "${extra}" = "percona-8.3" ]; then
+          sed -i "s/^_DB_SERIES=.*/_DB_SERIES=8.3/g"           ${vBs}/${filIncB}
+        elif [ "${extra}" = "percona-8.0" ]; then
+          sed -i "s/^_DB_SERIES=.*/_DB_SERIES=8.0/g"           ${vBs}/${filIncB}
+        elif [ "${extra}" = "percona-5.7" ]; then
+          sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g"           ${vBs}/${filIncB}
+        else
+          sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g"           ${vBs}/${filIncB}
+        fi
+        wait
       else
         sed -i "s/^_NEWRELIC.*/_NEWRELIC_KEY=\"${extra}\"/g"   ${vBs}/${filIncB}
         wait
@@ -2221,6 +2234,7 @@ case "$1" in
       php-min <------ install PHP 8.1, 8.2, 8.3, 7.4, use 8.1 by default (php-all)
       php-max <------ install PHP 8.1, 8.2, 8.3, 8.0, 7.4, 7.3, 7.2, 7.1, 7.0, 5.6
       nodns <-------- disable DNS/SMTP checks on the fly
+      percona-8.0 <-- specify Percona version to use (5.7, 8.0, 8.3, 8.4)
 
   {output}
       verbose <------ barracuda and octopus installed (output in the console) (default)
