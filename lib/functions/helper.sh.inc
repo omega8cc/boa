@@ -572,7 +572,9 @@ os_detection() {
     fi
     _NGINX_FORWARD_SECRECY=YES
     _NGINX_SPDY=YES
-    if [ "${_DB_SERIES}" = "8.3" ]; then
+    if [ "${_DB_SERIES}" = "8.4" ]; then
+      _DBS_VRN="${_PERCONA_8_4_VRN}"
+    elif [ "${_DB_SERIES}" = "8.3" ]; then
       _DBS_VRN="${_PERCONA_8_3_VRN}"
     elif [ "${_DB_SERIES}" = "8.0" ]; then
       _DBS_VRN="${_PERCONA_8_0_VRN}"
@@ -596,7 +598,9 @@ os_detection() {
     fi
     _NGINX_FORWARD_SECRECY=YES
     _NGINX_SPDY=YES
-    if [ "${_DB_SERIES}" = "8.3" ]; then
+    if [ "${_DB_SERIES}" = "8.4" ]; then
+      _DBS_VRN="${_PERCONA_8_4_VRN}"
+    elif [ "${_DB_SERIES}" = "8.3" ]; then
       _DBS_VRN="${_PERCONA_8_3_VRN}"
     elif [ "${_DB_SERIES}" = "8.0" ]; then
       _DBS_VRN="${_PERCONA_8_0_VRN}"

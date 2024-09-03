@@ -242,7 +242,9 @@ check_mysql_compatibility() {
   if [ ! -z "${_DBS_TEST}" ]; then
     _DB_SERVER_TEST=$(mysql -V 2>&1)
   fi
-  if [[ "${_DB_SERVER_TEST}" =~ "Ver 8.3." ]]; then
+  if [[ "${_DB_SERVER_TEST}" =~ "Ver 8.4." ]]; then
+    _DB_V=8.4
+  elif [[ "${_DB_SERVER_TEST}" =~ "Ver 8.3." ]]; then
     _DB_V=8.3
   elif [[ "${_DB_SERVER_TEST}" =~ "Ver 8.0." ]]; then
     _DB_V=8.0
