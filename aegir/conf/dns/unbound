@@ -1,99 +1,91 @@
 #!/bin/dash
+
 ### BEGIN INIT INFO
 # Provides:          unbound
-# Required-Start:    $network $local_fs $remote_fs
-# Required-Stop:     $network $local_fs $remote_fs
+# Required-Start:    $network $remote_fs $syslog
+# Required-Stop:     $network $remote_fs $syslog
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
-# Short-Description: DNS resolver and recursive DNS server
-# Description:       Unbound DNS resolver
+# Short-Description: Validating, recursive, and caching DNS resolver
 ### END INIT INFO
 
-# Configuration
+NAME="unbound"
+DESC="DNS server"
 DAEMON="/usr/sbin/unbound"
-CONFIG="/etc/unbound/unbound.conf.d/unbound.conf"
 PIDFILE="/run/unbound/unbound.pid"
-CTLFILE="/run/unbound/unbound.ctl"
-DAEMON_OPTS="-c $CONFIG"
 
-# Check if Unbound is running
-is_running() {
-    [ -f "$PIDFILE" ] && ps -p "$(cat $PIDFILE)" > /dev/null 2>&1
-}
+HELPER="/usr/libexec/unbound-helper"
 
-# Start Unbound
-do_start() {
-    if is_running; then
-        echo "Unbound is already running."
-        return 1
-    fi
+test -x $DAEMON || exit 0
 
-    echo "Starting Unbound..."
-    $DAEMON $DAEMON_OPTS &
-    sleep 2
+export PATH=/bin:/usr/bin:/sbin:/usr/sbin
 
-    if is_running; then
-        echo "Unbound started successfully."
-    else
-        echo "Failed to start Unbound."
-        return 1
-    fi
-}
+. /lib/lsb/init-functions
 
-# Stop Unbound
-do_stop() {
-    if ! is_running; then
-        echo "Unbound is not running."
-        return 1
-    fi
+# Override this variable by editing or creating /etc/default/unbound.
+DAEMON_OPTS=""
 
-    echo "Stopping Unbound..."
-    kill "$(cat $PIDFILE)"
-    sleep 2
+if [ -f /etc/default/unbound ]; then
+    . /etc/default/unbound
+fi
 
-    if is_running; then
-        echo "Failed to stop Unbound."
-        return 1
-    else
-        echo "Unbound stopped successfully."
-        rm -f $PIDFILE $CTLFILE
-    fi
-}
-
-# Restart Unbound
-do_restart() {
-    do_stop
-    do_start
-}
-
-# Status of Unbound
-do_status() {
-    if is_running; then
-        echo "Unbound is running (PID $(cat $PIDFILE))."
-    else
-        echo "Unbound is not running."
-        return 1
-    fi
-}
-
-# Main logic
 case "$1" in
     start)
-        do_start
+        log_daemon_msg "Starting $DESC" "$NAME"
+        $HELPER chroot_setup
+        $HELPER root_trust_anchor_update 2>&1 | tee /dev/fd/2 | logger -p daemon.info -t unbound
+        if start-stop-daemon --start --quiet --oknodo --pidfile $PIDFILE --name $NAME --startas $DAEMON -- $DAEMON_OPTS; then
+            $HELPER resolvconf_start
+            log_end_msg 0
+        else
+            log_end_msg 1
+        fi
         ;;
+
     stop)
-        do_stop
+        log_daemon_msg "Stopping $DESC" "$NAME"
+        if start-stop-daemon --stop --quiet --oknodo --remove-pidfile --pidfile $PIDFILE --name $NAME --retry 5; then
+            $HELPER resolvconf_stop
+            $HELPER chroot_teardown
+            log_end_msg 0
+        else
+            log_end_msg 1
+        fi
         ;;
-    restart)
-        do_restart
+
+    restart|force-reload)
+        log_daemon_msg "Restarting $DESC" "$NAME"
+        start-stop-daemon --stop --quiet --remove-pidfile --pidfile $PIDFILE --name $NAME --retry 5
+        $HELPER resolvconf_stop
+        if start-stop-daemon --start --quiet --oknodo --pidfile $PIDFILE --name $NAME --startas $DAEMON -- $DAEMON_OPTS; then
+            $HELPER chroot_setup
+            $HELPER resolvconf_start
+            log_end_msg 0
+        else
+            log_end_msg 1
+        fi
         ;;
+
+    reload)
+        log_daemon_msg "Reloading $DESC" "$NAME"
+        if start-stop-daemon --stop --pidfile $PIDFILE --name $NAME --signal 1; then
+            $HELPER chroot_setup
+            log_end_msg 0
+        else
+            log_end_msg 1
+        fi
+        ;;
+
     status)
-        do_status
+        status_of_proc -p $PIDFILE $DAEMON $NAME && exit 0 || exit $?
         ;;
+
     *)
-        echo "Usage: $0 {start|stop|restart|status}"
+        N=/etc/init.d/$NAME
+        echo "Usage: $N {start|stop|restart|status|reload|force-reload}" >&2
         exit 1
         ;;
 esac
 
 exit 0
+
