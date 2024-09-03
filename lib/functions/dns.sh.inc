@@ -375,8 +375,10 @@ dns_unbound_install_upgrade() {
   fi
   isUnbnd=$(which unbound 2>&1)
   isUnbndErr=$(${isUnbnd} -V 2>&1)
+  isUnbLibvt=$(ldd ${isUnbnd} | grep libevent 2>&1)
   if [[ "${isUnbndErr}" =~ "cannot open shared object file" ]] \
     || [[ "${isUnbndErr}" =~ "No such file or directory" ]] \
+    || [[ ! "${isUnbLibvt}" =~ "libevent" ]] \
     || [ -z "${isUnbndErr}" ]; then
     isUnbndFix=YES
   else
