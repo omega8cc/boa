@@ -763,7 +763,11 @@ prep_for_install_db_sql() {
     fi
   fi
 
-  SQLDEB="percona-server-server"
+  if [ "${_DB_SERIES}" = "5.7" ]; then
+    SQLDEB="percona-server-server-57"
+  else
+    SQLDEB="percona-server-server"
+  fi
   SQLXTR="libdbi-perl"
 
   if [ "${_DB_SERIES}" = "${_DB_V}" ]; then
