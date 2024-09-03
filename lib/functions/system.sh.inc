@@ -1969,12 +1969,16 @@ barracuda_cnf() {
     sed -i "s/^_REDIS_LISTEN.*/_REDIS_LISTEN_MODE=SOCKET/g"      ${barCnf}
     wait
     if [ "${_OS_CODE}" = "stretch" ] || [ "${_OS_CODE}" = "jessie" ]; then
-      if [ -x "/opt/php70/bin/php" ]; then
-        fCli=7.0
-      elif [ -x "/opt/php71/bin/php" ]; then
-        fCli=7.1
+      if [ -x "/opt/php74/bin/php" ]; then
+        fCli=7.4
+      elif [ -x "/opt/php73/bin/php" ]; then
+        fCli=7.3
       elif [ -x "/opt/php72/bin/php" ]; then
         fCli=7.2
+      elif [ -x "/opt/php71/bin/php" ]; then
+        fCli=7.1
+      elif [ -x "/opt/php70/bin/php" ]; then
+        fCli=7.0
       elif [ -x "/opt/php56/bin/php" ]; then
         fCli=5.6
       fi
@@ -2298,12 +2302,16 @@ barracuda_cnf() {
     sed -i "s/^_REDIS_LISTEN_.*/_REDIS_LISTEN_MODE=SOCKET/g"     ${barCnf}
     wait
     if [ "${_OS_CODE}" = "stretch" ] || [ "${_OS_CODE}" = "jessie" ]; then
-      if [ -x "/opt/php70/bin/php" ]; then
-        fCli=7.0
-      elif [ -x "/opt/php71/bin/php" ]; then
-        fCli=7.1
+      if [ -x "/opt/php74/bin/php" ]; then
+        fCli=7.4
+      elif [ -x "/opt/php73/bin/php" ]; then
+        fCli=7.3
       elif [ -x "/opt/php72/bin/php" ]; then
         fCli=7.2
+      elif [ -x "/opt/php71/bin/php" ]; then
+        fCli=7.1
+      elif [ -x "/opt/php70/bin/php" ]; then
+        fCli=7.0
       elif [ -x "/opt/php56/bin/php" ]; then
         fCli=5.6
       fi
@@ -2367,6 +2375,8 @@ barracuda_cnf() {
         _DBS_VRN="${_PERCONA_8_0_VRN}"
       elif [ "${_DB_SERIES}" = "8.3" ]; then
         _DBS_VRN="${_PERCONA_8_3_VRN}"
+      elif [ "${_DB_SERIES}" = "8.4" ]; then
+        _DBS_VRN="${_PERCONA_8_4_VRN}"
       else
         _DB_SERIES=5.7
         _DBS_VRN="${_PERCONA_5_7_VRN}"
