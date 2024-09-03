@@ -61,7 +61,7 @@
 
    Specifying Octopus `username` is optional. It will use `o1` if empty.
 
-   The last `{percona-8.0|newrelickey|php-8.2|php-min|php-max|nodns}` part is optional and can be used either to install Percona version other than default 5.7 (can be percona-8.0 percona-8.3 percona-8.4) or New Relic Apps Monitor (you should replace the `newrelickey` keyword with a valid license key), or to define a single PHP version to install and use both for Ægir Master and Satellite instances.
+   The last `{percona-8.0|newrelickey|php-8.2|php-min|php-max|nodns}` part is optional and can be used either to install Percona version other than default 5.7 (can be `percona-8.0`, `percona-8.3` or `percona-8.4`) or New Relic Apps Monitor (you should replace the `newrelickey` keyword with a valid license key), or to define a single PHP version to install and use both for Ægir Master and Satellite instances.
 
    The `nodns` option allows skipping DNS and SMTP checks.
 
@@ -80,6 +80,8 @@
    `barracuda up-lts php-max` -- installs all supported versions if not installed before
 
    `barracuda up-lts php-min` -- installs PHP 8.1, 8.2, 8.3, 7.4, and uses 8.1 by default
+
+   `barracuda up-lts percona-8.0` -- runs upgrade to Percona 8.0 (experimental, do not use in production yet)
 
    If you wish to later define your own set of installed PHP versions, you can do so by modifying variables in the `/root/.barracuda.cnf` file, where you can find `_PHP_MULTI_INSTALL`, `_PHP_CLI_VERSION`, and `_PHP_FPM_VERSION` -- note that the `_PHP_SINGLE_INSTALL` variable must be set empty to not override other related variables. However, you also need to add dummy entries for versions not installed and not used yet to any octopus instance `~/static/control/multi-fpm.info` file, because otherwise `barracuda` will ignore versions not used yet and will automatically remove them from `_PHP_MULTI_INSTALL` on upgrade. These dummy entries should look like this:
 
@@ -118,6 +120,11 @@
    - Barracuda and Octopus with 1 PHP version
      ```sh
      boa in-lts public server.mydomain.org my@email o1 php-8.3
+     ```
+
+   - Barracuda and Octopus with Percona 8.0 and 4 PHP versions (experimental, do not use in production yet)
+     ```sh
+     boa in-lts public server.mydomain.org my@email o1 percona-8.0
      ```
 
    - Barracuda and Octopus with New Relic and 4 PHP versions
