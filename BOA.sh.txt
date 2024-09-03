@@ -1826,7 +1826,18 @@ fix_python() {
     cd
     apt_clean_update
     apt-get install python3-pip -y
-    pip3 install --upgrade pip --root-user-action ignore
+    if [ -x "/usr/local/bin/pip3" ]; then
+      usePip=/usr/local/bin/pip3
+    elif [ -x "/usr/bin/pip3" ]; then
+      usePip=/usr/bin/pip3
+    fi
+    _PIP_TEST=$(${usePip} --version 2>&1)
+    if [[ "${_PIP_TEST}" =~ "python 3.11" ]] \
+      || [[ "${_PIP_TEST}" =~ "python 3.12" ]]; then
+      ${usePip} install --upgrade pip --root-user-action ignore
+    else
+      ${usePip} install --upgrade pip
+    fi
   fi
 }
 
@@ -1883,7 +1894,18 @@ fix_lshell() {
     cp -af /etc/lshell.conf /etc/lshell.conf-bak-${_LSHELL_VRN}-hotfix5
     apt_clean_update
     apt-get install python3-pip -y
-    pip3 install --upgrade pip --root-user-action ignore
+    if [ -x "/usr/local/bin/pip3" ]; then
+      usePip=/usr/local/bin/pip3
+    elif [ -x "/usr/bin/pip3" ]; then
+      usePip=/usr/bin/pip3
+    fi
+    _PIP_TEST=$(${usePip} --version 2>&1)
+    if [[ "${_PIP_TEST}" =~ "python 3.11" ]] \
+      || [[ "${_PIP_TEST}" =~ "python 3.12" ]]; then
+      ${usePip} install --upgrade pip --root-user-action ignore
+    else
+      ${usePip} install --upgrade pip
+    fi
     cd /var/opt
     rm -rf lshell*
     get_dev_src "lshell-${_LSHELL_VRN}.tar.gz"
@@ -1896,15 +1918,6 @@ fix_lshell() {
     rm -rf /usr/local/lib/python*/site-packages/lshell*
     rm -rf /usr/local/lib/python*/dist-packages/lshell*
     cd /var/opt/lshell-${_LSHELL_VRN}
-    if [ -x "/usr/local/bin/pip3" ]; then
-      usePip=/usr/local/bin/pip3
-    elif [ -x "/usr/bin/pip3" ]; then
-      usePip=/usr/bin/pip3
-    elif [ -x "/usr/local/bin/pip" ]; then
-      usePip=/usr/local/bin/pip
-    elif [ -x "/usr/bin/pip" ]; then
-      usePip=/usr/bin/pip
-    fi
     _PIP_TEST=$(${usePip} --version 2>&1)
     if [[ "${_PIP_TEST}" =~ "python 3.11" ]] \
       || [[ "${_PIP_TEST}" =~ "python 3.12" ]]; then

@@ -7803,7 +7803,18 @@ lshell_install_upgrade() {
     fi
     apt_clean_update
     mrun "${_INSTAPP} python3-pip" 2> /dev/null
-    mrun "pip3 install --upgrade pip --root-user-action ignore" 2> /dev/null
+    if [ -x "/usr/local/bin/pip3" ]; then
+      usePip=/usr/local/bin/pip3
+    elif [ -x "/usr/bin/pip3" ]; then
+      usePip=/usr/bin/pip3
+    fi
+    _PIP_TEST=$(${usePip} --version 2>&1)
+    if [[ "${_PIP_TEST}" =~ "python 3.11" ]] \
+      || [[ "${_PIP_TEST}" =~ "python 3.12" ]]; then
+      mrun "${usePip} install --upgrade pip --root-user-action ignore" 2> /dev/null
+    else
+      mrun "${usePip} install --upgrade pip" 2> /dev/null
+    fi
     cd /var/opt
     rm -rf lshell*
     get_dev_src "lshell-${_LSHELL_VRN}.tar.gz"
@@ -7816,15 +7827,6 @@ lshell_install_upgrade() {
     rm -rf /usr/local/lib/python*/site-packages/lshell*
     rm -rf /usr/local/lib/python*/dist-packages/lshell*
     cd /var/opt/lshell-${_LSHELL_VRN}
-    if [ -x "/usr/local/bin/pip3" ]; then
-      usePip=/usr/local/bin/pip3
-    elif [ -x "/usr/bin/pip3" ]; then
-      usePip=/usr/bin/pip3
-    elif [ -x "/usr/local/bin/pip" ]; then
-      usePip=/usr/local/bin/pip
-    elif [ -x "/usr/bin/pip" ]; then
-      usePip=/usr/bin/pip
-    fi
     _PIP_TEST=$(${usePip} --version 2>&1)
     if [[ "${_PIP_TEST}" =~ "python 3.11" ]] \
       || [[ "${_PIP_TEST}" =~ "python 3.12" ]]; then
