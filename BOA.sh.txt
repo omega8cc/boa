@@ -638,6 +638,20 @@ update_agents() {
 
   if [ -e "/var/xdrago/manage_solr_config.sh" ] \
     && [ -e "/var/aegir/drush" ] \
+    && [ ! -e "${pthLog}/unbound-helper.ctrl.hf01.${_X_SE}.pid" ]; then
+    mv -f /usr/libexec/unbound-helper /usr/libexec/unbound-helper.old
+    curl ${crlGet} "${urlHmr}/conf/dns/unbound-helper" -o /usr/libexec/unbound-helper
+    if [ -e "/usr/libexec/unbound-helper" ]; then
+      chmod 755 /usr/libexec/unbound-helper
+      chown root:root /usr/libexec/unbound-helper
+      touch ${pthLog}/unbound-helper.ctrl.hf01.${_X_SE}.pid
+    else
+      mv -f /usr/libexec/unbound-helper.old /usr/libexec/unbound-helper
+    fi
+  fi
+
+  if [ -e "/var/xdrago/manage_solr_config.sh" ] \
+    && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${pthLog}/mysql_cleanup.ctrl.hf01.${_X_SE}.pid" ]; then
     mv -f /var/xdrago/mysql_cleanup.sh /var/xdrago/mysql_cleanup.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/mysql_cleanup.sh" -o /var/xdrago/mysql_cleanup.sh
