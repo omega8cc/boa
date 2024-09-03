@@ -36,7 +36,7 @@ _CPU_MAX_RATIO=6 #-------------- Max load per CPU core before disabling Nginx
 _CPU_SPIDER_RATIO=3 #----------- Max load per CPU core before blocking spiders
 ###
 _DB_BINARY_LOG=NO #------------- Allows to enable binary logging when YES
-_DB_SERIES=5.7 #---------------- Supported values: 5.7
+_DB_SERIES=5.7 #---------------- Supported values: 5.7 8.0 8.3 8.4
 _DB_SERVER=Percona #------------ Install Percona SQL Server
 _USE_MYSQLTUNER=NO #------------ Use MySQLTuner to configure SQL limits when YES
 ###

@@ -359,8 +359,11 @@ _DB_SERVER=Percona
 ###----------------------------------------###
 ###
 ### Supported values:
-### 5.7 (Percona)
 ###
+### 5.7 (Percona)
+### 8.0 (Percona)
+### 8.3 (Percona)
+### 8.4 (Percona)
 ###
 _DB_SERIES=5.7
 

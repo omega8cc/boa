@@ -410,7 +410,9 @@ if [ -e "/var/aegir/drush" ]; then
         _DB_SERVER_TEST=$(mysql -V 2>&1)
       fi
       _DB_V=
-      if [[ "${_DB_SERVER_TEST}" =~ "Ver 8.3." ]]; then
+      if [[ "${_DB_SERVER_TEST}" =~ "Ver 8.4." ]]; then
+        _DB_V=8.4
+      elif [[ "${_DB_SERVER_TEST}" =~ "Ver 8.3." ]]; then
         _DB_V=8.3
       elif [[ "${_DB_SERVER_TEST}" =~ "Ver 8.0." ]]; then
         _DB_V=8.0

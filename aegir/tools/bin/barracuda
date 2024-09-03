@@ -761,7 +761,13 @@ up_action() {
     wait
     sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g"                     ${barCnf}
     wait
-    if [ "${sql}" = "percona-8.3" ] \
+    if [ "${sql}" = "percona-8.4" ] \
+      || [ "${rkey}" = "percona-8.4" ] \
+      || [ "${debug}" = "percona-8.4" ] \
+      || [ -e "/root/.percona.8.4.cnf" ]; then
+      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=8.4/g"               ${vBs}/${filIncB}
+      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=8.4/g"                       ${barCnf}
+    elif [ "${sql}" = "percona-8.3" ] \
       || [ "${rkey}" = "percona-8.3" ] \
       || [ "${debug}" = "percona-8.3" ] \
       || [ -e "/root/.percona.8.3.cnf" ]; then
@@ -777,6 +783,9 @@ up_action() {
       || [ "${rkey}" = "percona-5.7" ] \
       || [ "${debug}" = "percona-5.7" ] \
       || [ -e "/root/.percona.5.7.cnf" ]; then
+      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g"               ${vBs}/${filIncB}
+      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g"                       ${barCnf}
+    else
       sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g"               ${vBs}/${filIncB}
       sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g"                       ${barCnf}
     fi
