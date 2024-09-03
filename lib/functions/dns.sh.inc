@@ -390,6 +390,7 @@ dns_unbound_install_upgrade() {
     || [ -z "${isUnbnd}" ] \
     || [ "${isUnbndFix}" = "YES" ] \
     || [ -e "/usr/etc/unbound/unbound.pid" ] \
+    || [ -e "/etc/unbound/unbound.conf.d/remote-control.conf" ] \
     || [ ! -e "/run/unbound" ] \
     || [ ! -x "/usr/libexec/unbound-helper" ] \
     || [ ! -x "/etc/init.d/unbound" ] \
@@ -561,6 +562,7 @@ dns_unbound_install_upgrade() {
   else
     isUnbndFix=NO
   fi
+  [ -e "/etc/unbound/unbound.conf.d/remote-control.conf" ] && rm -f /etc/unbound/unbound.conf.d/remote-control.conf
   if [ "${isUnbndFix}" = "NO" ] || [ "${killPdnsd}" = "YES" ]; then
     isPdnsd=$(which pdnsd 2>&1)
     if [ -x "${isPdnsd}" ]; then
