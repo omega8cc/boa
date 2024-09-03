@@ -353,11 +353,13 @@ install_unbound_src() {
   if [ -e "/usr/local/ssl3/" ]; then
     mrun "bash ./configure \
       --prefix=/usr \
+      --with-libevent \
       --with-pidfile=/run/unbound/unbound.pid \
       --with-ssl=/usr/local/ssl3" 2> /dev/null
   elif [ -e "/usr/local/ssl/" ]; then
     mrun "bash ./configure \
       --prefix=/usr \
+      --with-libevent \
       --with-pidfile=/run/unbound/unbound.pid \
       --with-ssl=/usr/local/ssl" 2> /dev/null
   fi
@@ -427,6 +429,7 @@ dns_unbound_install_upgrade() {
       echo "nameserver 8.8.8.8" >> /etc/resolv.conf
       echo "nameserver 8.8.4.4" >> /etc/resolv.conf
     fi
+    mrun "${_INSTAPP} libevent-dev" 2> /dev/null
     mrun "${_INSTAPP} resolvconf" 2> /dev/null
     mrun "${_INSTAPP} unbound" 2> /dev/null
     mrun "${_INSTAPP} unbound-anchor" 2> /dev/null
