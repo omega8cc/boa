@@ -1877,10 +1877,12 @@ display_info() {
         | cut -d '/' -f4 \
         | sed "s/ Barracuda //g"`
       crlBoav=${crlBoav//[^a-zA-Z0-9-.]/}
+      echo "Aegir ${crlBoav} on ${thiSys}"
     else
-      crlBoav="BOA Cluster"
+      crlBoav="Vanilla System"
+      echo "Ready for BOA ${crlBoav} on ${thiSys}"
     fi
-    echo "Aegir ${crlBoav} on ${thiSys}"
+
     [ "${mode}" = "report" ] && echo "Host `hostname` check on `date`"
     [ "${mode}" = "report" ] && echo "Host uptime `uptime`"
     [ ! -z "${_HOST_INFO}" ] && echo "  HOST ${_HOST_INFO}"
