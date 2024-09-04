@@ -980,12 +980,12 @@ if_reinstall_curl() {
       fi
       echo "curl install" | dpkg --set-selections 2> /dev/null
       apt_clean_update
-      apt-get install curl -y -qq 2> /dev/null
-      apt-get build-dep curl -y 2> /dev/null
       apt-get remove libssl1.0-dev -y --purge --auto-remove -qq 2> /dev/null
       apt-get autoremove -y 2> /dev/null
       apt-get install libssl-dev -y -qq 2> /dev/null
       apt-get install libc-client2007e libc-client2007e-dev -y -qq 2> /dev/null
+      apt-get build-dep curl -y 2> /dev/null
+      apt-get install curl -y -qq 2> /dev/null
     fi
     isCurl=$(curl --version 2>&1)
     if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then

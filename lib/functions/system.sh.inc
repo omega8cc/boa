@@ -4303,21 +4303,21 @@ curl_install_src() {
         echo "curl install" | dpkg --set-selections &> /dev/null
         if [ -z "${_CURL_ALREADY_REBUILT}" ]; then
           apt_clean_update
-          mrun "${_INSTAPP} curl" 2> /dev/null
-          mrun "apt-get build-dep curl -y" 2> /dev/null
           mrun "apt-get remove libssl1.0-dev -y --purge --auto-remove -qq" 2> /dev/null
           mrun "apt-get autoremove -y" 2> /dev/null
           mrun "${_INSTAPP} libssl-dev" 2> /dev/null
           mrun "${_INSTAPP} libc-client2007e libc-client2007e-dev" 2> /dev/null
+          mrun "apt-get build-dep curl -y" 2> /dev/null
+          mrun "${_INSTAPP} curl" 2> /dev/null
         fi
       fi
     else
       apt_clean_update
-      mrun "apt-get build-dep curl -y" 2> /dev/null
       mrun "apt-get remove libssl1.0-dev -y --purge --auto-remove -qq" 2> /dev/null
       mrun "apt-get autoremove -y" 2> /dev/null
       mrun "${_INSTAPP} libssl-dev" 2> /dev/null
       mrun "${_INSTAPP} libc-client2007e libc-client2007e-dev" 2> /dev/null
+      mrun "apt-get build-dep curl -y" 2> /dev/null
       cd /var/opt
       rm -rf curl*
       wget -q -U iCab ${urlDev}/src/curl-${_CURL_VRN}.tar.gz
