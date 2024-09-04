@@ -5331,8 +5331,10 @@ run_aptitude_deps_install() {
   mrun "${_INSTAPP} time vim cvs makepasswd" 2> /dev/null
   mrun "${_INSTAPP} man-db dnsutils sudo symlinks iptables" 2> /dev/null
   mrun "${_INSTAPP} autoconf automake autotools-dev m4 bc" 2> /dev/null
-  mrun "${_INSTAPP} curl" 2> /dev/null
-  mrun "apt-get build-dep curl -y" 2> /dev/null
+  if [ ! -x "/usr/local/bin/curl" ]; then
+    mrun "apt-get build-dep curl -y" 2> /dev/null
+    mrun "${_INSTAPP} curl" 2> /dev/null
+  fi
   mrun "apt-get remove libssl1.0-dev -y --purge --auto-remove -qq" 2> /dev/null
   mrun "${_INSTAPP} libssl-dev" 2> /dev/null
   mrun "${_INSTAPP} libc-client2007e libc-client2007e-dev" 2> /dev/null
