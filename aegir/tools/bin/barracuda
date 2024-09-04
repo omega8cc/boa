@@ -1206,28 +1206,25 @@ if_reinstall_curl() {
     apt-get update -qq &> /dev/null
     apt-get install lsb-release -y -qq &> /dev/null
   fi
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   [ "${_OS_CODE}" = "jessie" ] && _CURL_VRN=7.71.1
   [ "${_OS_CODE}" = "stretch" ] && _CURL_VRN=8.2.1
   isCurl=$(curl --version 2>&1)
-  if [[ ! "${isCurl}" =~ "OpenSSL" ]] \
-    || [[ "${isCurl}" =~ "libcurl.so.4" ]] \
-    || [ -z "${isCurl}" ]; then
-    if [ -e "/var/aegir/drush" ]; then
-      echo "OOPS: cURL is broken! Re-installing.."
+  if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
+    echo "OOPS: cURL is broken! Re-installing.."
+    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
+      && [ -e "/etc/apt/apt.conf.d" ]; then
+      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
+    echo "curl install" | dpkg --set-selections 2> /dev/null
+    apt_clean_update
+    apt-get remove libssl1.0-dev -y --purge --auto-remove -qq 2> /dev/null
+    apt-get autoremove -y 2> /dev/null
+    apt-get install libssl-dev -y -qq 2> /dev/null
+    apt-get install libc-client2007e libc-client2007e-dev -y -qq 2> /dev/null
+    apt-get build-dep curl -y 2> /dev/null
     if [ ! -e "/var/aegir/drush" ]; then
-      if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
-        && [ -e "/etc/apt/apt.conf.d" ]; then
-        echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
-      fi
-      echo "curl install" | dpkg --set-selections 2> /dev/null
-      apt_clean_update
-      apt-get remove libssl1.0-dev -y --purge --auto-remove -qq 2> /dev/null
-      apt-get autoremove -y 2> /dev/null
-      apt-get install libssl-dev -y -qq 2> /dev/null
-      apt-get install libc-client2007e libc-client2007e-dev -y -qq 2> /dev/null
-      apt-get build-dep curl -y 2> /dev/null
-      apt-get install curl -y -qq 2> /dev/null
+      apt-get install curl --reinstall -y -qq 2> /dev/null
     fi
     if [ -e "/var/aegir/drush" ]; then
       echo "INFO: Installing curl from sources..."
@@ -1236,24 +1233,40 @@ if_reinstall_curl() {
       cd /var/opt
       wget -q -U iCab http://files.aegir.cc/dev/src/curl-${_CURL_VRN}.tar.gz &> /dev/null
       tar -xzf curl-${_CURL_VRN}.tar.gz &> /dev/null
-      cd /var/opt/curl-${_CURL_VRN}
-      sh ./configure --with-ssl --prefix=/usr/local &> /dev/null
-      make -j $(nproc) --quiet &> /dev/null
-      make --quiet install &> /dev/null
-      if [ -f "/usr/local/bin/curl" ]; then
-        isCurl=$(/usr/local/bin/curl --version 2>&1)
-        if [[ ! "${isCurl}" =~ "OpenSSL" ]] \
-          || [ -z "${isCurl}" ] \
-          || [[ "${isCurl}" =~ "libcurl.so.4" ]]; then
-          echo "ERRR: /usr/local/bin/curl is broken, moving to /usr/local/bin/curl--broken"
-          echo "ERRR: Please install it and debug manually"
-          echo "Bye"
-          rm -f /usr/local/bin/curl--broken
-          mv -f /usr/local/bin/curl /usr/local/bin/curl--broken
-          exit 1
-        else
-          echo "GOOD: /usr/local/bin/curl works"
-        fi
+      if [ -e "/root/.install.modern.openssl.cnf" ] \
+        && [ -x "/usr/local/ssl3/bin/openssl" ]; then
+        _SSL_BINARY=/usr/local/ssl3/bin/openssl
+      else
+        _SSL_BINARY=/usr/local/ssl/bin/openssl
+      fi
+      if [ -e "/usr/local/ssl3/lib64/libssl.so.3" ]; then
+        _SSL_PATH="/usr/local/ssl3"
+        _SSL_LIB_PATH="${_SSL_PATH}/lib64"
+      else
+        _SSL_PATH="/usr/local/ssl"
+        _SSL_LIB_PATH="${_SSL_PATH}/lib"
+      fi
+      _PKG_CONFIG_PATH="${_SSL_LIB_PATH}/pkgconfig"
+
+      if [ -e "${_PKG_CONFIG_PATH}" ] \
+        && [ -e "/var/opt/curl-${_CURL_VRN}" ]; then
+        cd /var/opt/curl-${_CURL_VRN}
+        LIBS="-ldl -lpthread" PKG_CONFIG_PATH="${_PKG_CONFIG_PATH}" ./configure \
+          --with-openssl \
+          --with-zlib=/usr \
+          --prefix=/usr/local &> /dev/null
+        make -j $(nproc) --quiet &> /dev/null
+        make --quiet install &> /dev/null
+        ldconfig 2> /dev/null
+      fi
+    fi
+    if [ -f "/usr/local/bin/curl" ]; then
+      isCurl=$(/usr/local/bin/curl --version 2>&1)
+      if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
+        echo "ERRR: curl is still broken, please install it and debug manually"
+        clean_pid_exit
+      else
+        echo "GOOD: /usr/local/bin/curl works"
       fi
     fi
   fi

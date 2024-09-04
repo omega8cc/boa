@@ -65,24 +65,54 @@ if_reinstall_curl_src() {
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
-    echo "curl install" | dpkg --set-selections &> /dev/null
+    echo "curl install" | dpkg --set-selections 2> /dev/null
     apt_clean_update
-    mrun "apt-get remove curl ${aptYesUnth}" 2> /dev/null
-    mkdir -p /var/opt
-    rm -rf /var/opt/curl*
-    cd /var/opt
-    wget -q -U iCab http://files.aegir.cc/dev/src/curl-${_CURL_VRN}.tar.gz &> /dev/null
-    tar -xzf curl-${_CURL_VRN}.tar.gz &> /dev/null
-    cd /var/opt/curl-${_CURL_VRN}
-    sh ./configure --with-ssl --prefix=/usr/local &> /dev/null
-    mrun "make -j $(nproc) --quiet" 2> /dev/null
-    mrun "make --quiet install" 2> /dev/null
+    apt-get remove libssl1.0-dev -y --purge --auto-remove -qq 2> /dev/null
+    apt-get autoremove -y 2> /dev/null
+    apt-get install libssl-dev -y -qq 2> /dev/null
+    apt-get install libc-client2007e libc-client2007e-dev -y -qq 2> /dev/null
+    apt-get build-dep curl -y 2> /dev/null
+    if [ ! -e "/var/aegir/drush" ]; then
+      apt-get install curl --reinstall -y -qq 2> /dev/null
+    fi
+    if [ -e "/var/aegir/drush" ]; then
+      msg "INFO: Installing curl from sources..."
+      mkdir -p /var/opt
+      rm -rf /var/opt/curl*
+      cd /var/opt
+      wget -q -U iCab http://files.aegir.cc/dev/src/curl-${_CURL_VRN}.tar.gz &> /dev/null
+      tar -xzf curl-${_CURL_VRN}.tar.gz &> /dev/null
+      if [ -e "/root/.install.modern.openssl.cnf" ] \
+        && [ -x "/usr/local/ssl3/bin/openssl" ]; then
+        _SSL_BINARY=/usr/local/ssl3/bin/openssl
+      else
+        _SSL_BINARY=/usr/local/ssl/bin/openssl
+      fi
+      if [ -e "/usr/local/ssl3/lib64/libssl.so.3" ]; then
+        _SSL_PATH="/usr/local/ssl3"
+        _SSL_LIB_PATH="${_SSL_PATH}/lib64"
+      else
+        _SSL_PATH="/usr/local/ssl"
+        _SSL_LIB_PATH="${_SSL_PATH}/lib"
+      fi
+      _PKG_CONFIG_PATH="${_SSL_LIB_PATH}/pkgconfig"
+
+      if [ -e "${_PKG_CONFIG_PATH}" ] \
+        && [ -e "/var/opt/curl-${_CURL_VRN}" ]; then
+        cd /var/opt/curl-${_CURL_VRN}
+        LIBS="-ldl -lpthread" PKG_CONFIG_PATH="${_PKG_CONFIG_PATH}" ./configure \
+          --with-openssl \
+          --with-zlib=/usr \
+          --prefix=/usr/local &> /dev/null
+        make -j $(nproc) --quiet &> /dev/null
+        make --quiet install &> /dev/null
+        ldconfig 2> /dev/null
+      fi
+    fi
     if [ -f "/usr/local/bin/curl" ]; then
       isCurl=$(/usr/local/bin/curl --version 2>&1)
       if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
-        msg "ERRR: /usr/local/bin/curl is broken, moving to /usr/local/bin/curl--broken"
-        rm -f /usr/local/bin/curl--broken
-        mv -f /usr/local/bin/curl /usr/local/bin/curl--broken
+        msg "ERRR: /usr/local/bin/curl is broken"
       else
         msg "GOOD: /usr/local/bin/curl works"
       fi
