@@ -8687,7 +8687,11 @@ rsyslog_config_update() {
     mv -f /etc/rsyslog.conf \
       /var/backups/.etc.rsyslog.conf-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
     cp -af ${locCnf}/var/rsyslog.conf /etc/rsyslog.conf
+    cp -af ${locCnf}/var/mysql-notices.conf /etc/rsyslog.d/mysql-notices.conf
     cp -af ${locCnf}/var/logrotate.d.rsyslog.conf /etc/logrotate.d/rsyslog
+    touch /var/log/mysql-notices.log
+    chmod 640 /var/log/mysql-notices.log
+    chown root:adm /var/log/mysql-notices.log
     mrun "service rsyslog restart" 2> /dev/null
   fi
 }
