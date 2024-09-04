@@ -21,8 +21,10 @@ TimeColumn=80 # Default is 49 for   "   "   "   "    61 "   "   "   "
   fi
 
 # Replace Edmonton with your city name, GPS, etc. See: curl wttr.in/:help
-curl wttr.in/${_LOC_CITY}?0 --silent --max-time 3 > /tmp/now-weather
+curl wttr.in/${_LOC_CITY}?0 --silent --max-time 2 > /tmp/now-weather
 # Timeout #. Increase for slow connection---^
+
+[ ! -e "/tmp/now-weather" ] && exit 0
 
 readarray aWeather < /tmp/now-weather
 rm -f /tmp/now-weather
