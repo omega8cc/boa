@@ -2804,7 +2804,7 @@ php_install_deps() {
   mrun "${_INSTAPP} cmake" 2> /dev/null
   mrun "${_INSTAPP} lbzip2" 2> /dev/null
   if [ ! -e "/usr/local/include/curl/curl.h" ] \
-    && [ ! -e "/usr/local/include/curl/easy.h" ] \
+    && [ ! -e "/usr/local/include/curl/easy.h" ]; then
     mrun "${_INSTAPP} libcurl4-openssl-dev" 2> /dev/null
   fi
   mrun "${_INSTAPP} libgd-dev" 2> /dev/null
