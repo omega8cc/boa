@@ -25,6 +25,9 @@ export PATH=/bin:/usr/bin:/sbin:/usr/sbin
 # Override this variable by editing or creating /etc/default/unbound.
 DAEMON_OPTS=""
 
+[ ! -e "/run/unbound" ] && mkdir -p /run/unbound
+[ -e "/run/unbound" ] && chown -R unbound:unbound /run/unbound
+
 if [ -f /etc/default/unbound ]; then
     . /etc/default/unbound
 fi

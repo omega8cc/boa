@@ -2804,6 +2804,10 @@ setup() {
   else
     check_dns_settings
   fi
+
+  [ ! -e "/run/unbound" ] && mkdir -p /run/unbound
+  [ -e "/run/unbound" ] && chown -R unbound:unbound /run/unbound
+
   if [ -x "/usr/sbin/unbound-control" ] \
     && [ -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
     unbound-control reload &> /dev/null
@@ -3062,6 +3066,8 @@ if [ `whoami` = "root" ]; then
     echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.unbound
     resolvconf -u &> /dev/null
     [ -e "/etc/resolvconf/update.d/unbound" ] && chmod -x /etc/resolvconf/update.d/unbound
+    [ ! -e "/run/unbound" ] && mkdir -p /run/unbound
+    [ -e "/run/unbound" ] && chown -R unbound:unbound /run/unbound
     killall -9 unbound &> /dev/null
     service unbound restart &> /dev/null
     wait
