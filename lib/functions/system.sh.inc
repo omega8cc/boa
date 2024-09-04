@@ -5351,7 +5351,7 @@ run_aptitude_deps_install() {
       mrun "${_INSTAPP} ncal" 2> /dev/null
     fi
   done
-  mrun "${_INSTAPP} netcat libzip-dev libwww-perl libsodium-dev" 2> /dev/null
+  mrun "${_INSTAPP} netcat libzip-dev libwww-perl" 2> /dev/null
   mrun "${_INSTAPP} libfontconfig1 libfreetype6 libfreetype6-dev" 2> /dev/null
   mrun "${_INSTAPP} libfribidi0 libgeoip-dev libgeoip1 libgmp3-dev" 2> /dev/null
   mrun "${_INSTAPP} libonig-dev libpq5 libxml2-dev libxpm4" 2> /dev/null
