@@ -434,12 +434,18 @@ dns_unbound_install_upgrade() {
       echo "nameserver 8.8.8.8" >> /etc/resolv.conf
       echo "nameserver 8.8.4.4" >> /etc/resolv.conf
     fi
+    if [ -x "/usr/sbin/aa-teardown" ]; then
+      mrun "aa-teardown" 2> /dev/null
+    fi
     mrun "${_INSTAPP} libevent-dev" 2> /dev/null
     mrun "${_INSTAPP} resolvconf" 2> /dev/null
     mrun "${_INSTAPP} unbound" 2> /dev/null
     mrun "${_INSTAPP} unbound-anchor" 2> /dev/null
     mrun "${_INSTAPP} unbound-host" 2> /dev/null
     mrun "${_INSTAPP} dns-root-data" 2> /dev/null
+    if [ -x "/usr/sbin/aa-teardown" ]; then
+      mrun "aa-teardown" 2> /dev/null
+    fi
     ###
     [ ! -e "/run/unbound" ] && mkdir -p /run/unbound
     chown -R unbound:unbound /run/unbound
