@@ -555,6 +555,9 @@ dns_unbound_install_upgrade() {
   if [ "${_UNBOUND_INSTALL_REQUIRED}" = "YES" ]; then
     install_unbound_src
   fi
+  [ -e "/usr/etc/unbound" ] && cp -af /etc/unbound/*.key /usr/etc/unbound/
+  [ -e "/usr/etc/unbound" ] && cp -af /etc/unbound/*.pem /usr/etc/unbound/
+  [ -e "/usr/etc/unbound" ] && cp -af /etc/unbound/unbound.conf.d/unbound.conf /usr/etc/unbound/
   isUnbnd=$(which unbound 2>&1)
   isUnbndErr=$(${isUnbnd} -V 2>&1)
   if [[ "${isUnbndErr}" =~ "cannot open shared object file" ]] \
