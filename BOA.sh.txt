@@ -2370,7 +2370,7 @@ if_reinstall_curl() {
     | cut -d"/" -f2 \
     | awk '{ print $1}' 2>&1)
 
-  if [ "${_CURL_ITD}" != "${_CURL_VRN}" ]; then
+  if [ "${_CURL_ITD}" != "${_CURL_VRN}" ] && [ -e "/var/aegir/drush" ]; then
     _CURL_INSTALL_REQUIRED=YES
     echo "INFO: Installed cURL/lib ${_CURL_ITD}/${_CURL_LIB_ITD}, upgrade required"
   fi
@@ -2385,17 +2385,19 @@ if_reinstall_curl() {
     if [ -e "/var/aegir/drush" ]; then
       echo "OOPS: cURL is broken! Re-installing.."
     fi
-    if [ -e "/var/aegir/drush" ]; then
-      if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
-        && [ -e "/etc/apt/apt.conf.d" ]; then
-        echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
-      fi
-      apt_clean_update
-      apt-get build-dep curl -y 2> /dev/null
-      apt-get remove libssl1.0-dev -y --purge --auto-remove -qq 2> /dev/null
-      apt-get autoremove -y 2> /dev/null
-      apt-get install libssl-dev -y -qq 2> /dev/null
-      apt-get install libc-client2007e libc-client2007e-dev -y -qq 2> /dev/null
+    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
+      && [ -e "/etc/apt/apt.conf.d" ]; then
+      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
+    fi
+    echo "curl install" | dpkg --set-selections 2> /dev/null
+    apt_clean_update
+    apt-get remove libssl1.0-dev -y --purge --auto-remove -qq 2> /dev/null
+    apt-get autoremove -y 2> /dev/null
+    apt-get install libssl-dev -y -qq 2> /dev/null
+    apt-get install libc-client2007e libc-client2007e-dev -y -qq 2> /dev/null
+    apt-get build-dep curl -y 2> /dev/null
+    if [ ! -e "/var/aegir/drush" ]; then
+      apt-get install curl -y -qq 2> /dev/null
     fi
     if [ -e "/var/aegir/drush" ]; then
       echo "INFO: Installing curl from sources..."
@@ -2468,7 +2470,8 @@ if_reinstall_curl() {
           ln -sfn /usr/local/lib/libcurl.la /usr/lib/libcurl.la
         fi
         ldconfig 2> /dev/null
-        if [ -d "/usr/local/include/curl" ] \
+        if [ -e "/usr/local/include/curl/curl.h" ] \
+          && [ -e "/usr/local/include/curl/easy.h" ] \
           && [ -d "/usr/include/x86_64-linux-gnu/curl" ] \
           && [ ! -L "/usr/include/x86_64-linux-gnu/curl" ]; then
           apt_clean_update
@@ -2805,12 +2808,13 @@ setup() {
     check_dns_settings
   fi
 
-  [ ! -e "/run/unbound" ] && mkdir -p /run/unbound
-  [ -e "/run/unbound" ] && chown -R unbound:unbound /run/unbound
-
-  if [ -x "/usr/sbin/unbound-control" ] \
-    && [ -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
-    unbound-control reload &> /dev/null
+  if [ -e "/var/aegir/drush" ]; then
+    [ ! -e "/run/unbound" ] && mkdir -p /run/unbound
+    [ -e "/run/unbound" ] && chown -R unbound:unbound /run/unbound
+    if [ -x "/usr/sbin/unbound-control" ] \
+      && [ -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
+      unbound-control reload &> /dev/null
+    fi
   fi
 
   if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
