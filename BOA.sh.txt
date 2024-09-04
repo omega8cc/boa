@@ -2470,7 +2470,8 @@ if_reinstall_curl() {
           ln -sfn /usr/local/lib/libcurl.la /usr/lib/libcurl.la
         fi
         ldconfig 2> /dev/null
-        if [ -d "/usr/local/include/curl" ] \
+        if [ -e "/usr/local/include/curl/curl.h" ] \
+          && [ -e "/usr/local/include/curl/easy.h" ] \
           && [ -d "/usr/include/x86_64-linux-gnu/curl" ] \
           && [ ! -L "/usr/include/x86_64-linux-gnu/curl" ]; then
           apt_clean_update

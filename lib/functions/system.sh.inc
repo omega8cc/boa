@@ -4393,7 +4393,8 @@ curl_install_src() {
       ldconfig 2> /dev/null
       touch /var/xdrago/log/.curl_libs_fix_${_CURL_VRN}-${_X_VERSION}-${_NOW}.pid &> /dev/null
       _CURL_ALREADY_REBUILT=YES
-      if [ -d "/usr/local/include/curl" ] \
+      if [ -e "/usr/local/include/curl/curl.h" ] \
+        && [ -e "/usr/local/include/curl/easy.h" ] \
         && [ -d "/usr/include/x86_64-linux-gnu/curl" ] \
         && [ ! -L "/usr/include/x86_64-linux-gnu/curl" ]; then
         mrun "apt-get remove libcurl4-openssl-dev -y --purge --auto-remove -qq" 2> /dev/null
