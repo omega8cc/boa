@@ -2385,17 +2385,19 @@ if_reinstall_curl() {
     if [ -e "/var/aegir/drush" ]; then
       echo "OOPS: cURL is broken! Re-installing.."
     fi
-    if [ -e "/var/aegir/drush" ]; then
-      if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
-        && [ -e "/etc/apt/apt.conf.d" ]; then
-        echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
-      fi
-      apt_clean_update
-      apt-get build-dep curl -y 2> /dev/null
-      apt-get remove libssl1.0-dev -y --purge --auto-remove -qq 2> /dev/null
-      apt-get autoremove -y 2> /dev/null
-      apt-get install libssl-dev -y -qq 2> /dev/null
-      apt-get install libc-client2007e libc-client2007e-dev -y -qq 2> /dev/null
+    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
+      && [ -e "/etc/apt/apt.conf.d" ]; then
+      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
+    fi
+    echo "curl install" | dpkg --set-selections 2> /dev/null
+    apt_clean_update
+    apt-get remove libssl1.0-dev -y --purge --auto-remove -qq 2> /dev/null
+    apt-get autoremove -y 2> /dev/null
+    apt-get install libssl-dev -y -qq 2> /dev/null
+    apt-get install libc-client2007e libc-client2007e-dev -y -qq 2> /dev/null
+    apt-get build-dep curl -y 2> /dev/null
+    if [ ! -e "/var/aegir/drush" ]; then
+      apt-get install curl -y -qq 2> /dev/null
     fi
     if [ -e "/var/aegir/drush" ]; then
       echo "INFO: Installing curl from sources..."
