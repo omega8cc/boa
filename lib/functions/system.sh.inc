@@ -2584,12 +2584,14 @@ do_install_latest_git() {
   if [ "${_GIT_INSTALL}" = "YES" ]; then
     msg "INFO: Building Git ${_GIT_VRN} from sources..."
     msg "WAIT: This may take a while, please wait..."
-    apt_clean_update
-#     mrun "apt-get install libcurl4 -y --allow-unauthenticated" 2> /dev/null
-#     mrun "apt-get install libcurl4-openssl-dev -y --allow-unauthenticated" 2> /dev/null
-#     mrun "apt-get install libcurl4-gnutls-dev -y --allow-unauthenticated" 2> /dev/null
-    mrun "apt-get remove git-core -y --purge --auto-remove" 2> /dev/null
-    mrun "apt-get remove git -y --purge --auto-remove" 2> /dev/null
+    if [ ! -x "/usr/local/bin/git" ]; then
+      apt_clean_update
+      mrun "apt-get install libcurl4 -y --allow-unauthenticated" 2> /dev/null
+      mrun "apt-get install libcurl4-openssl-dev -y --allow-unauthenticated" 2> /dev/null
+      mrun "apt-get install libcurl4-gnutls-dev -y --allow-unauthenticated" 2> /dev/null
+      mrun "apt-get remove git-core -y --purge --auto-remove" 2> /dev/null
+      mrun "apt-get remove git -y --purge --auto-remove" 2> /dev/null
+    fi
     mkdir -p /var/opt
     rm -rf /var/opt/git*
     cd /var/opt
@@ -2801,7 +2803,10 @@ php_install_deps() {
   apt_clean_update
   mrun "${_INSTAPP} cmake" 2> /dev/null
   mrun "${_INSTAPP} lbzip2" 2> /dev/null
-#   mrun "${_INSTAPP} libcurl4-openssl-dev" 2> /dev/null
+  if [ ! -e "/usr/local/include/curl/curl.h" ] \
+    && [ ! -e "/usr/local/include/curl/easy.h" ] \
+    mrun "${_INSTAPP} libcurl4-openssl-dev" 2> /dev/null
+  fi
   mrun "${_INSTAPP} libgd-dev" 2> /dev/null
   mrun "${_INSTAPP} libgd3" 2> /dev/null
   mrun "${_INSTAPP} libjpeg-dev" 2> /dev/null
@@ -4300,21 +4305,21 @@ curl_install_src() {
         echo "curl install" | dpkg --set-selections &> /dev/null
         if [ -z "${_CURL_ALREADY_REBUILT}" ]; then
           apt_clean_update
-          mrun "${_INSTAPP} curl" 2> /dev/null
-          mrun "apt-get build-dep curl -y" 2> /dev/null
           mrun "apt-get remove libssl1.0-dev -y --purge --auto-remove -qq" 2> /dev/null
           mrun "apt-get autoremove -y" 2> /dev/null
           mrun "${_INSTAPP} libssl-dev" 2> /dev/null
           mrun "${_INSTAPP} libc-client2007e libc-client2007e-dev" 2> /dev/null
+          mrun "apt-get build-dep curl -y" 2> /dev/null
+          mrun "${_INSTAPP} curl" 2> /dev/null
         fi
       fi
     else
       apt_clean_update
-      mrun "apt-get build-dep curl -y" 2> /dev/null
       mrun "apt-get remove libssl1.0-dev -y --purge --auto-remove -qq" 2> /dev/null
       mrun "apt-get autoremove -y" 2> /dev/null
       mrun "${_INSTAPP} libssl-dev" 2> /dev/null
       mrun "${_INSTAPP} libc-client2007e libc-client2007e-dev" 2> /dev/null
+      mrun "apt-get build-dep curl -y" 2> /dev/null
       cd /var/opt
       rm -rf curl*
       wget -q -U iCab ${urlDev}/src/curl-${_CURL_VRN}.tar.gz
@@ -4393,7 +4398,8 @@ curl_install_src() {
       ldconfig 2> /dev/null
       touch /var/xdrago/log/.curl_libs_fix_${_CURL_VRN}-${_X_VERSION}-${_NOW}.pid &> /dev/null
       _CURL_ALREADY_REBUILT=YES
-      if [ -d "/usr/local/include/curl" ] \
+      if [ -e "/usr/local/include/curl/curl.h" ] \
+        && [ -e "/usr/local/include/curl/easy.h" ] \
         && [ -d "/usr/include/x86_64-linux-gnu/curl" ] \
         && [ ! -L "/usr/include/x86_64-linux-gnu/curl" ]; then
         mrun "apt-get remove libcurl4-openssl-dev -y --purge --auto-remove -qq" 2> /dev/null
@@ -5317,16 +5323,15 @@ run_aptitude_deps_install() {
   msg "WAIT: This may take a while, please wait..."
   apt_clean_update
   mrun "apt-get remove percona-xtrabackup-24 -y --purge --auto-remove -qq" 2> /dev/null
-#   mrun "apt-get remove libcurl4-gnutls-dev -y --purge --auto-remove -qq" 2> /dev/null
-#   mrun "apt-get remove polkitd -y --purge --auto-remove -qq" 2> /dev/null
-#   mrun "apt-get remove libcurl4-openssl-dev -y --purge --auto-remove -qq" 2> /dev/null
   mrun "apt-get autoremove -y" 2> /dev/null
   mrun "${_INSTAPP} build-essential libsasl2-modules" 2> /dev/null
   mrun "${_INSTAPP} time vim cvs makepasswd" 2> /dev/null
   mrun "${_INSTAPP} man-db dnsutils sudo symlinks iptables" 2> /dev/null
   mrun "${_INSTAPP} autoconf automake autotools-dev m4 bc" 2> /dev/null
-  mrun "${_INSTAPP} curl" 2> /dev/null
-  mrun "apt-get build-dep curl -y" 2> /dev/null
+  if [ ! -x "/usr/local/bin/curl" ]; then
+    mrun "apt-get build-dep curl -y" 2> /dev/null
+    mrun "${_INSTAPP} curl" 2> /dev/null
+  fi
   mrun "apt-get remove libssl1.0-dev -y --purge --auto-remove -qq" 2> /dev/null
   mrun "${_INSTAPP} libssl-dev" 2> /dev/null
   mrun "${_INSTAPP} libc-client2007e libc-client2007e-dev" 2> /dev/null
@@ -5346,7 +5351,7 @@ run_aptitude_deps_install() {
       mrun "${_INSTAPP} ncal" 2> /dev/null
     fi
   done
-  mrun "${_INSTAPP} netcat libzip-dev libwww-perl libsodium-dev" 2> /dev/null
+  mrun "${_INSTAPP} netcat libzip-dev libwww-perl" 2> /dev/null
   mrun "${_INSTAPP} libfontconfig1 libfreetype6 libfreetype6-dev" 2> /dev/null
   mrun "${_INSTAPP} libfribidi0 libgeoip-dev libgeoip1 libgmp3-dev" 2> /dev/null
   mrun "${_INSTAPP} libonig-dev libpq5 libxml2-dev libxpm4" 2> /dev/null
