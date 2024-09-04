@@ -353,11 +353,13 @@ install_unbound_src() {
   if [ -e "/usr/local/ssl3/" ]; then
     mrun "bash ./configure \
       --prefix=/usr \
+      --with-libevent \
       --with-pidfile=/run/unbound/unbound.pid \
       --with-ssl=/usr/local/ssl3" 2> /dev/null
   elif [ -e "/usr/local/ssl/" ]; then
     mrun "bash ./configure \
       --prefix=/usr \
+      --with-libevent \
       --with-pidfile=/run/unbound/unbound.pid \
       --with-ssl=/usr/local/ssl" 2> /dev/null
   fi
@@ -373,8 +375,10 @@ dns_unbound_install_upgrade() {
   fi
   isUnbnd=$(which unbound 2>&1)
   isUnbndErr=$(${isUnbnd} -V 2>&1)
+  [ -x "${isUnbnd}" ] && isUnbLibvt=$(ldd ${isUnbnd} | grep libevent 2>&1)
   if [[ "${isUnbndErr}" =~ "cannot open shared object file" ]] \
     || [[ "${isUnbndErr}" =~ "No such file or directory" ]] \
+    || [[ ! "${isUnbLibvt}" =~ "libevent" ]] \
     || [ -z "${isUnbndErr}" ]; then
     isUnbndFix=YES
   else
@@ -388,6 +392,7 @@ dns_unbound_install_upgrade() {
     || [ -z "${isUnbnd}" ] \
     || [ "${isUnbndFix}" = "YES" ] \
     || [ -e "/usr/etc/unbound/unbound.pid" ] \
+    || [ -e "/etc/unbound/unbound.conf.d/remote-control.conf" ] \
     || [ ! -e "/run/unbound" ] \
     || [ ! -x "/usr/libexec/unbound-helper" ] \
     || [ ! -x "/etc/init.d/unbound" ] \
@@ -414,6 +419,8 @@ dns_unbound_install_upgrade() {
       mrun "apt-get remove unbound-anchor -y --purge --auto-remove -qq" 2> /dev/null
       mrun "apt-get remove unbound-host -y --purge --auto-remove -qq" 2> /dev/null
       mrun "apt-get remove dns-root-data -y --purge --auto-remove -qq" 2> /dev/null
+      rm -rf /etc/unbound
+      rm -rf /usr/etc/unbound
     fi
     mrun "apt-get remove resolvconf -y --purge --auto-remove -qq" 2> /dev/null
     rm -rf /lib/init/rw/resolvconf
@@ -427,6 +434,7 @@ dns_unbound_install_upgrade() {
       echo "nameserver 8.8.8.8" >> /etc/resolv.conf
       echo "nameserver 8.8.4.4" >> /etc/resolv.conf
     fi
+    mrun "${_INSTAPP} libevent-dev" 2> /dev/null
     mrun "${_INSTAPP} resolvconf" 2> /dev/null
     mrun "${_INSTAPP} unbound" 2> /dev/null
     mrun "${_INSTAPP} unbound-anchor" 2> /dev/null
@@ -549,6 +557,9 @@ dns_unbound_install_upgrade() {
   if [ "${_UNBOUND_INSTALL_REQUIRED}" = "YES" ]; then
     install_unbound_src
   fi
+  [ -e "/usr/etc/unbound" ] && cp -af /etc/unbound/*.key /usr/etc/unbound/
+  [ -e "/usr/etc/unbound" ] && cp -af /etc/unbound/*.pem /usr/etc/unbound/
+  [ -e "/usr/etc/unbound" ] && cp -af /etc/unbound/unbound.conf.d/unbound.conf /usr/etc/unbound/
   isUnbnd=$(which unbound 2>&1)
   isUnbndErr=$(${isUnbnd} -V 2>&1)
   if [[ "${isUnbndErr}" =~ "cannot open shared object file" ]] \
@@ -558,6 +569,7 @@ dns_unbound_install_upgrade() {
   else
     isUnbndFix=NO
   fi
+  [ -e "/etc/unbound/unbound.conf.d/remote-control.conf" ] && rm -f /etc/unbound/unbound.conf.d/remote-control.conf
   if [ "${isUnbndFix}" = "NO" ] || [ "${killPdnsd}" = "YES" ]; then
     isPdnsd=$(which pdnsd 2>&1)
     if [ -x "${isPdnsd}" ]; then
