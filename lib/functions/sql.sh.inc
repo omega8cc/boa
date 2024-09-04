@@ -13,6 +13,9 @@ check_mysql_version() {
   elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 5.7." ]]; then
     _DB_V=5.7
   fi
+  if [ -x "/usr/sbin/aa-teardown" ]; then
+    mrun "aa-teardown" 2> /dev/null
+  fi
 }
 
 #
@@ -475,6 +478,9 @@ check_mysqld_running() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: check_mysqld_running"
   fi
+  if [ -x "/usr/sbin/aa-teardown" ]; then
+    mrun "aa-teardown" 2> /dev/null
+  fi
   while [ -z "${_IS_MYSQLD_RUNNING}" ] \
     || [ ! -e "/run/mysqld/mysqld.sock" ]; do
     _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
@@ -718,6 +724,9 @@ prep_for_install_db_sql() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: prep_for_install_db_sql"
   fi
+  if [ -x "/usr/sbin/aa-teardown" ]; then
+    mrun "aa-teardown" 2> /dev/null
+  fi
   _SQL_SCR=APT
   if [ "${_OS_CODE}" = "daedalus" ]; then
     _SQL_OS_CODE=bookworm
@@ -841,6 +850,9 @@ install_with_aptitude_sql() {
   elif [ "${_SQL_SCR}" = "GIT" ]; then
     ### TBD -- only for testing
     st_runner "${_INSTAPP} ${SQLXTR}" 2> /dev/null
+  fi
+  if [ -x "/usr/sbin/aa-teardown" ]; then
+    mrun "aa-teardown" 2> /dev/null
   fi
   if [ -e "/usr/bin/mytop" ]; then
     mrun "apt-get remove mytop -y -qq" 2> /dev/null
