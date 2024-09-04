@@ -419,6 +419,8 @@ dns_unbound_install_upgrade() {
       mrun "apt-get remove unbound-anchor -y --purge --auto-remove -qq" 2> /dev/null
       mrun "apt-get remove unbound-host -y --purge --auto-remove -qq" 2> /dev/null
       mrun "apt-get remove dns-root-data -y --purge --auto-remove -qq" 2> /dev/null
+      rm -rf /etc/unbound
+      rm -rf /usr/etc/unbound
     fi
     mrun "apt-get remove resolvconf -y --purge --auto-remove -qq" 2> /dev/null
     rm -rf /lib/init/rw/resolvconf
