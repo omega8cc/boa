@@ -98,6 +98,10 @@ fi
 tRee=dev
 export tRee="${tRee}"
 
+_INITINS="/usr/bin/apt-get -y --allow-unauthenticated install"
+dstUpArg="-fuy --allow-unauthenticated -q --config-file /opt/apt/apt.conf.noi.dist"
+nrmUpArg="-fuy --allow-unauthenticated -q --config-file /opt/apt/apt.conf.noi.nrml"
+
 _TODAY=$(date +%y%m%d 2>&1)
 _TODAY=${_TODAY//[^0-9]/}
 _X_SE="540devT01"
@@ -124,6 +128,18 @@ check_root() {
 }
 check_root
 cd /root/
+
+# Check if dmidecode is available
+if ! command -v dmidecode &> /dev/null; then
+  /usr/bin/apt-get update &> /dev/null
+  ${_INITINS} dmidecode &> /dev/null
+fi
+
+# Check for Amazon EC2 in the system manufacturer field
+_VMFAMILY=
+if dmidecode -s system-manufacturer | grep -i 'Amazon EC2' &> /dev/null; then
+  _VMFAMILY="AWS"
+fi
 
 if [ "${tRee}" = "dev" ]; then
   touch /root/.debug-boa-installer.cnf
@@ -284,7 +300,9 @@ if_remove_cloud_utils() {
     fi
   fi
 }
-if_remove_cloud_utils
+if [ "${_VMFAMILY}" != "AWS" ]; then
+  if_remove_cloud_utils
+fi
 
 if_clean_boa_env() {
   if [ ! -x "/etc/init.d/clean-boa-env" ] \
