@@ -113,7 +113,7 @@ check_root() {
   if [ -z "$STY" ]; then
     # If not in screen, start a new screen session with the same script
     echo "You are not inside a screen session. Starting screen..."
-    screen -S session_auto_init bash -c "$0; exec bash"
+    screen -S session_auto_init bash -c "$0 $ARGS; exec bash"
     exit
   else
     # If already inside screen, continue the script
