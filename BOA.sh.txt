@@ -2397,7 +2397,7 @@ if_reinstall_curl() {
     apt-get install libc-client2007e libc-client2007e-dev -y -qq 2> /dev/null
     apt-get build-dep curl -y 2> /dev/null
     if [ ! -e "/var/aegir/drush" ]; then
-      apt-get install curl -y -qq 2> /dev/null
+      apt-get install curl --reinstall -y -qq 2> /dev/null
     fi
     if [ -e "/var/aegir/drush" ]; then
       echo "INFO: Installing curl from sources..."
