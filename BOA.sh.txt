@@ -3194,7 +3194,7 @@ if [ `whoami` = "root" ]; then
     echo "Enjoy!"
     echo
     sleep 15
-    screen
+    screen -S session_boa_prepare
   else
     exit 0
   fi

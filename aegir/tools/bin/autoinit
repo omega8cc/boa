@@ -109,6 +109,16 @@ check_root() {
     echo "ERROR: We can not proceed until it is below 90/100"
     exit 1
   fi
+  # Check if the user is inside a screen session
+  if [ -z "$STY" ]; then
+    # If not in screen, start a new screen session with the same script
+    echo "You are not inside a screen session. Starting screen..."
+    screen -S session_auto_init bash -c "$0; exec bash"
+    exit
+  else
+    # If already inside screen, continue the script
+    echo "You are already in a screen session."
+  fi
 }
 check_root
 cd /root/
