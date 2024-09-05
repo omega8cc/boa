@@ -1309,20 +1309,12 @@ find_fast_mirror_early() {
 }
 
 if_reinstall_curl() {
-  _CURL_VRN=8.9.1
-  if ! command -v lsb_release &> /dev/null; then
-    apt-get update -qq &> /dev/null
-    apt-get install lsb-release -y -qq &> /dev/null
-  fi
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
-  [ "${_OS_CODE}" = "jessie" ] && _CURL_VRN=7.71.1
-  [ "${_OS_CODE}" = "stretch" ] && _CURL_VRN=8.2.1
   isCurl=$(curl --version 2>&1)
   if [[ ! "${isCurl}" =~ "OpenSSL" ]] \
     || [[ "${isCurl}" =~ "libcurl.so.4" ]] \
     || [ -z "${isCurl}" ]; then
     if [ -e "/var/aegir/drush" ]; then
-      echo "OOPS: cURL is broken! Re-installing.."
+      echo "OOPS: cURL is broken!"
     fi
     if [ ! -e "/var/aegir/drush" ]; then
       if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
@@ -1336,45 +1328,12 @@ if_reinstall_curl() {
       apt-get install libssl-dev -y -qq 2> /dev/null
       apt-get install libc-client2007e libc-client2007e-dev -y -qq 2> /dev/null
       apt-get build-dep curl -y 2> /dev/null
-      apt-get install curl -y -qq 2> /dev/null
+      apt-get install curl --reinstall -y -qq 2> /dev/null
     fi
     isCurl=$(curl --version 2>&1)
     if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
-      if [ -e "/var/aegir/drush" ]; then
-        echo "ERRR: curl is still broken, we will install from sources"
-      else
-        echo "ERRR: curl is still broken, please install it and debug manually"
-        echo "Bye"
-        exit 1
-      fi
-    fi
-    if [ -e "/var/aegir/drush" ]; then
-      isCurl=$(curl --version 2>&1)
-      if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
-        echo "INFO: Installing curl from sources..."
-        mkdir -p /var/opt
-        rm -rf /var/opt/curl*
-        cd /var/opt
-        wget -q -U iCab http://files.aegir.cc/dev/src/curl-${_CURL_VRN}.tar.gz &> /dev/null
-        tar -xzf curl-${_CURL_VRN}.tar.gz &> /dev/null
-        cd /var/opt/curl-${_CURL_VRN}
-        sh ./configure --with-ssl --prefix=/usr/local &> /dev/null
-        make -j $(nproc) --quiet &> /dev/null
-        make --quiet install &> /dev/null
-      fi
-      if [ -f "/usr/local/bin/curl" ]; then
-        isCurl=$(/usr/local/bin/curl --version 2>&1)
-        if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
-          echo "ERRR: /usr/local/bin/curl is broken, moving to /usr/local/bin/curl--broken"
-          echo "ERRR: Please install it and debug manually"
-          echo "Bye"
-          rm -f /usr/local/bin/curl--broken
-          mv -f /usr/local/bin/curl /usr/local/bin/curl--broken
-          exit 1
-        else
-          echo "GOOD: /usr/local/bin/curl works"
-        fi
-      fi
+      echo "ERRR: curl is still broken, please install it and debug manually"
+      clean_pid_exit
     fi
   fi
 }

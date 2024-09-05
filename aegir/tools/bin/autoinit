@@ -220,6 +220,16 @@ locales_check_fix_early() {
 }
 locales_check_fix_early
 
+cron_check_install_early() {
+  isCrn=$(which cron 2>&1)
+  if [ ! -x "${isCrn}" ] || [ -z "${isCrn}" ]; then
+    _INITINS="/usr/bin/apt-get -y --allow-unauthenticated install"
+    apt-get update -qq &> /dev/null
+    ${_INITINS} cron &> /dev/null
+  fi
+}
+cron_check_install_early
+
 ###
 ### Noticeable messages
 ###
@@ -374,6 +384,7 @@ init_pre() {
           mv -f /etc/cloud /var/backups/
         fi
       fi
+      ${_INITINS} cron >> ${logSlt}
       ${_INITINS} locales-all aptitude >> ${logSlt}
       ${_INITINS} build-essential curl git >> ${logSlt}
       ${_INITINS} libgd-dev libmagickwand-dev >> ${logSlt}
