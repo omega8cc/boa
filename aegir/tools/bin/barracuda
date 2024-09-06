@@ -1702,6 +1702,7 @@ if [ "${cmmand}" = "help" ] || [ "${cmmand}" = "info" ]; then
 
 EOF
   clean_pid_exit proceed_a
+else
+  proceed
 fi
 
-proceed
