@@ -1176,59 +1176,64 @@ check_no_systemd() {
   fi
 }
 
-check_root_direct
-
-# Check if the user is inside a screen session
-ARGS="$@"
-if [[ ! "${ARGS}" =~ (^|[[:space:]])(info|help)([[:space:]]|$) ]]; then
-  if [ -z "$STY" ]; then
-    # If not in screen, start a new screen session with the same script
-    echo "You are not inside a screen session. Starting screen..."
-    screen -S session_octopus bash -c "$0 $ARGS; exec bash"
-    exit
-  else
-    # If already inside screen, continue the script
-    echo "You are already in a screen session."
+if_start_screen() {
+  # Check if the user is inside a screen session
+  if [[ ! "${ARGS}" =~ (^|[[:space:]])(info|help)([[:space:]]|$) ]]; then
+    if [ -z "$STY" ]; then
+      # If not in screen, start a new screen session with the same script
+      echo "You are not inside a screen session. Starting screen..."
+      screen -S session_octopus bash -c "$0 $ARGS; exec bash"
+      exit
+    else
+      # If already inside screen, continue the script
+      echo "You are already in a screen session."
+    fi
   fi
-fi
+}
 
-check_root_keys_pwd
-check_root
-check_no_systemd
-os_detection_minimal
-check_dns_curl
+if_display_help() {
+  if [ "${cmmand}" = "help" ] || [ "${cmmand}" = "info" ]; then
+    echo
+    echo "Usage: $(basename "$0") {version} {instance} {mode}"
+    cat <<EOF
+
+    Accepted keywords and values in every option:
+
+    {version}
+        up-lts <------- upgrade to Octopus LTS release (no license)
+        up-pro <------- upgrade to Octopus PRO release (requires license)
+        up-dev <------- upgrade to Octopus Cutting Edge (requires license)
+
+    {instance}
+        all <---------- upgrade all active Octopus instances in a batch
+        o1 <----------- upgrade only listed Octopus instance (system name)
+
+    {mode}
+        aegir <-------- upgrade only Aegir Hostmaster
+        platforms <---- upgrade only Aegir Platforms
+        both <--------- upgrade both Aegir Hostmaster and Platforms
+        force <-------- force upgrade of either specified instance or all
+
+    See docs/UPGRADE.md for more details.
+
+EOF
+    clean_pid_exit cmmand_a
+  fi
+}
+
+check_root_direct
 
 cmmand="$1"
 second="$2"
 cmmode="$3"
 silent="$4"
+ARGS="$@"
 
-if [ "${cmmand}" = "help" ] || [ "${cmmand}" = "info" ]; then
-  echo
-  echo "Usage: $(basename "$0") {version} {instance} {mode}"
-  cat <<EOF
-
-  Accepted keywords and values in every option:
-
-  {version}
-      up-lts <------- upgrade to Octopus LTS release (no license)
-      up-pro <------- upgrade to Octopus PRO release (requires license)
-      up-dev <------- upgrade to Octopus Cutting Edge (requires license)
-
-  {instance}
-      all <---------- upgrade all active Octopus instances in a batch
-      o1 <----------- upgrade only listed Octopus instance (system name)
-
-  {mode}
-      aegir <-------- upgrade only Aegir Hostmaster
-      platforms <---- upgrade only Aegir Platforms
-      both <--------- upgrade both Aegir Hostmaster and Platforms
-      force <-------- force upgrade of either specified instance or all
-
-  See docs/UPGRADE.md for more details.
-
-EOF
-  clean_pid_exit cmmand_a
-else
-  up_proceed
-fi
+if_display_help
+check_root_keys_pwd
+check_root
+check_no_systemd
+os_detection_minimal
+if_start_screen
+check_dns_curl
+up_proceed
