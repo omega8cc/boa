@@ -885,6 +885,23 @@ up_finish() {
 }
 
 up_proceed() {
+  if [ -e "/root/.run-to-daedalus.cnf" ] \
+    || [ -e "/root/.run-to-chimaera.cnf" ] \
+    || [ -e "/root/.run-to-beowulf.cnf" ] \
+    || [ "${cmmand}" = "info" ] \
+    || [ "${cmmand}" = "help" ]; then
+    _CHECK_SQL=NO
+  elif [ "${cmmand}" = "up-lts" ] \
+    || [ "${cmmand}" = "up-pro" ] \
+    || [ "${cmmand}" = "up-dev" ]; then
+    _CHECK_SQL=YES
+  else
+    _CHECK_SQL=NO
+  fi
+  if [ "${_CHECK_SQL}" = "YES" ]; then
+    check_sql_running
+    check_sql_access
+  fi
   if [ "${cmmand}" = "up-dev" ]; then
     tRee=dev
   elif [ "${cmmand}" = "up-pro" ]; then
@@ -1160,10 +1177,6 @@ check_no_systemd() {
 }
 
 check_root_direct
-check_root_keys_pwd
-check_root
-check_no_systemd
-os_detection_minimal
 
 # Check if the user is inside a screen session
 ARGS="$@"
@@ -1179,30 +1192,21 @@ if [[ ! "${ARGS}" =~ (^|[[:space:]])(info|help)([[:space:]]|$) ]]; then
   fi
 fi
 
+check_root_keys_pwd
+check_root
+check_no_systemd
+os_detection_minimal
 check_dns_curl
 
-if [ -e "/root/.run-to-daedalus.cnf" ] \
-  || [ -e "/root/.run-to-chimaera.cnf" ] \
-  || [ -e "/root/.run-to-beowulf.cnf" ] \
-  || [ "${cmmand}" = "info" ] \
-  || [ "${cmmand}" = "help" ]; then
-  _CHECK_SQL=NO
-elif [ "${cmmand}" = "up-lts" ] \
-  || [ "${cmmand}" = "up-pro" ] \
-  || [ "${cmmand}" = "up-dev" ]; then
-  _CHECK_SQL=YES
-else
-  _CHECK_SQL=NO
-fi
-if [ "${_CHECK_SQL}" = "YES" ]; then
-  check_sql_running
-  check_sql_access
-fi
+cmmand="$1"
+second="$2"
+cmmode="$3"
+silent="$4"
 
-case "$1" in
-  help)      echo
-             echo "Usage: $(basename "$0") {version} {instance} {mode}"
-             cat <<EOF
+if [ "${cmmand}" = "help" ] || [ "${cmmand}" = "info" ]; then
+  echo
+  echo "Usage: $(basename "$0") {version} {instance} {mode}"
+  cat <<EOF
 
   Accepted keywords and values in every option:
 
@@ -1224,12 +1228,7 @@ case "$1" in
   See docs/UPGRADE.md for more details.
 
 EOF
-             clean_pid_exit cmmand_a
-  ;;
-  *)         cmmand="$1"
-             second="$2"
-             cmmode="$3"
-             silent="$4"
-             up_proceed
-  ;;
-esac
+  clean_pid_exit cmmand_a
+else
+  up_proceed
+fi
