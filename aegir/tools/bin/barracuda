@@ -1611,6 +1611,7 @@ silent="$2"
 rkey="$3"
 debug="$4"
 sql="$5"
+
 if [ ! -z "${silent}" ]; then
   if [ "${silent}" = "log" ] \
     || [ "${silent}" = "disable" ] \
@@ -1705,4 +1706,3 @@ EOF
 else
   proceed
 fi
-
