@@ -3479,7 +3479,9 @@ sshd_install_src() {
     | tr -d "\n" \
     | cut -d" " -f3 \
     | awk '{ print $1}' 2>&1)
-  _SSH_IF_SELINUX=$(ldd /usr/local/sbin/sshd | grep selinux 2>&1)
+  if [ -e "/usr/local/sbin/sshd" ]; then
+    _SSH_IF_SELINUX=$(ldd /usr/local/sbin/sshd | grep selinux 2>&1)
+  fi
   if [ -e "/usr/etc/sshd_config" ]; then
     _SSH_FORCE_REINSTALL=YES
     _OLD_SYSCONFDIR="/usr/etc"
