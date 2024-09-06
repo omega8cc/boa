@@ -466,6 +466,7 @@ satellite_downgrade_protection() {
     && [ "${cmmand}" != "up-dev" ] \
     && [ "${cmmand}" != "up-pro" ] \
     && [ "${cmmand}" != "up-lts" ] \
+    && [ "${cmmand}" != "info" ] \
     && [ "${cmmand}" != "help" ]; then
     _SERIES_TEST=$(cat ${User}/log/octopus_log.txt 2>&1)
     _BOA_SERIES_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
@@ -890,7 +891,7 @@ up_proceed() {
     tRee=pro
   elif [ "${cmmand}" = "up-lts" ]; then
     tRee=lts
-  elif [ "${cmmand}" = "help" ]; then
+  elif [ "${cmmand}" = "help" ] || [ "${cmmand}" = "info" ]; then
     tRee=dev
   else
     echo
@@ -1180,15 +1181,19 @@ check_dns_curl
 if [ -e "/root/.run-to-daedalus.cnf" ] \
   || [ -e "/root/.run-to-chimaera.cnf" ] \
   || [ -e "/root/.run-to-beowulf.cnf" ] \
+  || [ "${cmmand}" = "info" ] \
   || [ "${cmmand}" = "help" ]; then
   _CHECK_SQL=NO
 elif [ "${cmmand}" = "up-lts" ] \
   || [ "${cmmand}" = "up-pro" ] \
   || [ "${cmmand}" = "up-dev" ]; then
-  check_sql_running
-  check_sql_access
+  _CHECK_SQL=YES
 else
   _CHECK_SQL=NO
+fi
+if [ "${_CHECK_SQL}" = "YES" ]; then
+  check_sql_running
+  check_sql_access
 fi
 
 case "$1" in
