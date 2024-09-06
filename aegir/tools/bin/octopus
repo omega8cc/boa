@@ -1221,8 +1221,6 @@ EOF
   fi
 }
 
-check_root_direct
-
 cmmand="$1"
 second="$2"
 cmmode="$3"
@@ -1230,6 +1228,7 @@ silent="$4"
 ARGS="$@"
 
 if_display_help
+check_root_direct
 check_root_keys_pwd
 check_root
 check_no_systemd
