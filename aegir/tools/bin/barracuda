@@ -157,19 +157,6 @@ check_root_keys_pwd() {
     echo
     clean_pid_exit check_root_keys_pwd_a
   fi
-  # Check if the user is inside a screen session
-  ARGS="$@"
-  if [[ ! "${ARGS}" =~ (^|[[:space:]])(info|help)([[:space:]]|$) ]]; then
-    if [ -z "$STY" ]; then
-      # If not in screen, start a new screen session with the same script
-      echo "You are not inside a screen session. Starting screen..."
-      screen -S session_barracuda bash -c "$0 $ARGS; exec bash"
-      exit
-    else
-      # If already inside screen, continue the script
-      echo "You are already in a screen session."
-    fi
-  fi
 }
 
 check_sql_running() {
@@ -1706,5 +1693,19 @@ brnch=${branch//\//\\\/}
 
 export tRee="${tRee}"
 export rlsn="${rlsn}"
+
+# Check if the user is inside a screen session
+ARGS="$@"
+if [[ ! "${ARGS}" =~ (^|[[:space:]])(info|help)([[:space:]]|$) ]]; then
+  if [ -z "$STY" ]; then
+    # If not in screen, start a new screen session with the same script
+    echo "You are not inside a screen session. Starting screen..."
+    screen -S session_barracuda bash -c "$0 $ARGS; exec bash"
+    exit
+  else
+    # If already inside screen, continue the script
+    echo "You are already in a screen session."
+  fi
+fi
 
 proceed
