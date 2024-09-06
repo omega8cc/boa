@@ -1599,47 +1599,8 @@ proceed() {
     check_sql_running
     check_sql_access
   fi
-  if [ "${cmmand}" = "up-dev" ] \
-    || [ "${cmmand}" = "up-pro" ] \
-    || [ "${cmmand}" = "up-lts" ] \
-    || [ "${cmmand}" = "up-distro" ] \
-    || [ "${cmmand}" = "php-idle" ]; then
-    _SCRIPT_URL="${rgUrl}/${brnch}/${barName}"
-    curl ${crlGet} "${rgUrl}/${brnch}/${pthIncB}" -o ${vBs}/${filIncB}
-  elif [ "${cmmand}" = "help" ] || [ "${cmmand}" = "info" ]; then
-    echo
-    echo "Usage: $(basename "$0") {version} {mode} {options}"
-    echo
-    echo "Usage: $(basename "$0") php-idle {enable|disable}"
-    echo
-    cat <<EOF
-
-  Accepted keywords and values in every option:
-
-  {version}
-      up-lts <------- upgrade to Barracuda LTS release (no license)
-      up-pro <------- upgrade to Barracuda PRO release (requires license)
-      up-dev <------- upgrade to Barracuda Cutting Edge (requires license)
-      php-idle <----- disable not used PHP versions or enable them again
-
-  {mode}
-      system <------- upgrade only system without Aegir Master (silent mode)
-      aegir <-------- upgrade only Aegir Master Hostmaster (silent mode)
-      log <---------- upgrade both system and Aegir Master (silent mode)
-
-  {options}
-      newrelickey <-- activate New Relic integration with valid license key
-      php-8.1 <------ enable single-PHP mode (8.1 or 8.2 or 8.3 or 7.4)
-      php-min <------ install PHP 8.1, 8.2, 8.3, 7.4, use 8.1 by default (php-all)
-      php-max <------ install PHP 8.1, 8.2, 8.3, 8.0, 7.4, 7.3, 7.2, 7.1, 7.0, 5.6
-      nodns <-------- disable DNS/SMTP checks on the fly
-      percona-8.0 <-- specify Percona version to use (5.7, 8.0, 8.3, 8.4)
-
-  See docs/UPGRADE.md for more details.
-
-EOF
-    clean_pid_exit proceed_a
-  fi
+  _SCRIPT_URL="${rgUrl}/${brnch}/${barName}"
+  curl ${crlGet} "${rgUrl}/${brnch}/${pthIncB}" -o ${vBs}/${filIncB}
   curl ${crlGet} ${_SCRIPT_URL} -o ${vBs}/${barName}
   up_action
   up_finish
@@ -1706,6 +1667,41 @@ if [[ ! "${ARGS}" =~ (^|[[:space:]])(info|help)([[:space:]]|$) ]]; then
     # If already inside screen, continue the script
     echo "You are already in a screen session."
   fi
+fi
+
+if [ "${cmmand}" = "help" ] || [ "${cmmand}" = "info" ]; then
+  echo
+  echo "Usage: $(basename "$0") {version} {mode} {options}"
+  echo
+  echo "Usage: $(basename "$0") php-idle {enable|disable}"
+  echo
+  cat <<EOF
+
+  Accepted keywords and values in every option:
+
+  {version}
+      up-lts <------- upgrade to Barracuda LTS release (no license)
+      up-pro <------- upgrade to Barracuda PRO release (requires license)
+      up-dev <------- upgrade to Barracuda Cutting Edge (requires license)
+      php-idle <----- disable not used PHP versions or enable them again
+
+  {mode}
+      system <------- upgrade only system without Aegir Master (silent mode)
+      aegir <-------- upgrade only Aegir Master Hostmaster (silent mode)
+      log <---------- upgrade both system and Aegir Master (silent mode)
+
+  {options}
+      newrelickey <-- activate New Relic integration with valid license key
+      php-8.1 <------ enable single-PHP mode (8.1 or 8.2 or 8.3 or 7.4)
+      php-min <------ install PHP 8.1, 8.2, 8.3, 7.4, use 8.1 by default (php-all)
+      php-max <------ install PHP 8.1, 8.2, 8.3, 8.0, 7.4, 7.3, 7.2, 7.1, 7.0, 5.6
+      nodns <-------- disable DNS/SMTP checks on the fly
+      percona-8.0 <-- specify Percona version to use (5.7, 8.0, 8.3, 8.4)
+
+  See docs/UPGRADE.md for more details.
+
+EOF
+  clean_pid_exit proceed_a
 fi
 
 proceed
