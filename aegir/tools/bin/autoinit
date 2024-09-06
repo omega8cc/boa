@@ -110,14 +110,17 @@ check_root() {
     exit 1
   fi
   # Check if the user is inside a screen session
-  if [ -z "$STY" ]; then
-    # If not in screen, start a new screen session with the same script
-    echo "You are not inside a screen session. Starting screen..."
-    screen -S session_auto_init bash -c "$0 $ARGS; exec bash"
-    exit
-  else
-    # If already inside screen, continue the script
-    echo "You are already in a screen session."
+  ARGS="$@"
+  if [[ ! "${ARGS}" =~ (^|[[:space:]])(info|help)([[:space:]]|$) ]]; then
+    if [ -z "$STY" ]; then
+      # If not in screen, start a new screen session with the same script
+      echo "You are not inside a screen session. Starting screen..."
+      screen -S session_auto_init bash -c "$0 $ARGS; exec bash"
+      exit
+    else
+      # If already inside screen, continue the script
+      echo "You are already in a screen session."
+    fi
   fi
 }
 check_root
