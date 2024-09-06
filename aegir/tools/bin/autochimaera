@@ -167,6 +167,29 @@ msg() {
   echo "AutoChimaera v.${tRee} [$(date +%T 2>&1)] ==> $*"
 }
 
+check_mysql_compatibility() {
+  _DBS_TEST=$(which mysql 2>&1)
+  if [ ! -z "${_DBS_TEST}" ]; then
+    _DB_SERVER_TEST=$(mysql -V 2>&1)
+  fi
+  if [[ "${_DB_SERVER_TEST}" =~ "Ver 8.4." ]]; then
+    _DB_V=8.4
+  elif [[ "${_DB_SERVER_TEST}" =~ "Ver 8.3." ]]; then
+    _DB_V=8.3
+  elif [[ "${_DB_SERVER_TEST}" =~ "Ver 8.0." ]]; then
+    _DB_V=8.0
+  elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 5.7." ]]; then
+    _DB_V=5.7
+  else
+    _DB_V=UNSUPPORTED
+  fi
+  if [ "${_DB_V}" = "UNSUPPORTED" ]; then
+    msg "Not supported DB server detected ${_DB_SERVER_TEST}" >> ${logAch}
+    exit 1
+  fi
+}
+check_mysql_compatibility
+
 ###
 ### Faster reboot
 ###
@@ -270,29 +293,6 @@ check_os_compatibility() {
   fi
 }
 check_os_compatibility
-
-check_mysql_compatibility() {
-  _DBS_TEST=$(which mysql 2>&1)
-  if [ ! -z "${_DBS_TEST}" ]; then
-    _DB_SERVER_TEST=$(mysql -V 2>&1)
-  fi
-  if [[ "${_DB_SERVER_TEST}" =~ "Ver 8.4." ]]; then
-    _DB_V=8.4
-  elif [[ "${_DB_SERVER_TEST}" =~ "Ver 8.3." ]]; then
-    _DB_V=8.3
-  elif [[ "${_DB_SERVER_TEST}" =~ "Ver 8.0." ]]; then
-    _DB_V=8.0
-  elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 5.7." ]]; then
-    _DB_V=5.7
-  else
-    _DB_V=UNSUPPORTED
-  fi
-  if [ "${_DB_V}" = "UNSUPPORTED" ]; then
-    msg "Not supported DB server detected ${_DB_SERVER_TEST}" >> ${logAch}
-    exit 1
-  fi
-}
-check_mysql_compatibility
 
 if [ -x "/opt/local/bin/killer" ]; then
   sed -i "s/.*killer.*//gi" /etc/crontab &> /dev/null
