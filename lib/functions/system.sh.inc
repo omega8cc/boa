@@ -7468,6 +7468,9 @@ myquick_install_upgrade() {
   else
     _MYQUICK_SRC_INSTALL_REQUIRED=YES
   fi
+  if [ -e "/root/.install.myquick.src.info" ]; then
+    _MYQUICK_SRC_INSTALL_REQUIRED=YES
+  fi
   check_mysql_version
   isMyQuick=$(which mydumper 2>&1)
   if [ ! -x "${isMyQuick}" ] \
