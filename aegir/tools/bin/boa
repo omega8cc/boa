@@ -35,6 +35,7 @@ _VM_TEST=$(uname -a 2>&1)
 if [[ "${_VM_TEST}" =~ "-beng" ]]; then
   _VMFAMILY="VS"
 fi
+_INITINS="/usr/bin/apt-get -y --allow-unauthenticated install"
 
 ###
 ### Avoid too many questions
@@ -2178,7 +2179,74 @@ if_start_screen() {
   fi
 }
 
+if_display_help() {
+  if [ "${cmmand}" = "help" ]; then
+    echo
+    echo "Installation commands:"
+    echo
+    echo "Usage: $(basename "$0") {version} {kind} {fqdn} {email} {user} {extra} {output}"
+    echo "Usage: $(basename "$0") {in-octopus} {email} {o2} {lts|dev|pro} {output}"
+    echo
+    echo "Other available commands:"
+    echo
+    echo "Usage: $(basename "$0") version"
+    echo "Usage: $(basename "$0") info {more}"
+    echo "Usage: $(basename "$0") info report {octopus|backups|both}"
+    echo "Usage: $(basename "$0") cleanup {detect|purge} {user|batch}"
+    echo "Usage: $(basename "$0") reboot"
+    echo
+    cat <<EOF
+
+    Accepted keywords and values for installation and other commands:
+
+    {version}
+      in-lts <------- install BOA LTS release (no license)
+      in-dev <------- install BOA Cutting Edge (requires license)
+      in-octopus <--- install extra Octopus instance (lts|dev|pro)
+
+    {kind}
+      public <------- recommended for general use
+      local <-------- experimental
+
+    {fqdn}
+      my.fqdn <------ valid subdomain to use as a hostname
+
+    {email}
+      my@email <----- your valid email address
+
+    {user}
+      o1 <----------- default Octopus system account
+
+    {extra}
+      license <------ valid new relic license key
+      php-8.1 <------ enable single-PHP mode (8.1 or 8.2 or 8.3 or 7.4)
+      php-min <------ install PHP 8.1, 8.2, 8.3, 7.4, use 8.1 by default (php-all)
+      php-max <------ install PHP 8.1, 8.2, 8.3, 8.0, 7.4, 7.3, 7.2, 7.1, 7.0, 5.6
+      nodns <-------- disable DNS/SMTP checks on the fly
+      percona-8.0 <-- specify Percona version to use (5.7, 8.0, 8.3, 8.4)
+
+    {output}
+      verbose <------ barracuda and octopus installed (output in the console) (default)
+      minimal <------ barracuda and octopus installed (output mostly logged)
+      silent <------- barracuda and octopus installed (output only logged)
+      system <------- only barracuda is installed (output mostly logged)
+
+    {other}
+      version <------ display BOA and OS version
+      info <--------- generate various system reports
+      cleanup <------ (detect|purge) cancelled Octopus instances files (no dbs)
+      reboot <------- run accelerated system reboot
+
+    See docs/INSTALL.md for more details.
+
+EOF
+    clean_pid_exit cmmand_a
+
+  fi
+}
+
 check_root_direct
+check_manufacturer_compatibility
 os_detection_minimal
 
 ARGS="$@"
@@ -2193,6 +2261,9 @@ case "$1" in
   version)   cmmand="$1"
              display_version
   ;;
+  help)      cmmand="$1"
+             if_display_help
+  ;;
   reboot)    service clean-boa-env stop
              wait
              reboot
@@ -2201,6 +2272,7 @@ case "$1" in
   cleanup)   cmmand="$1"
              action="$2"
              user="$3"
+             if_start_screen
              octopus_cleanup
   ;;
   in-lts)   cmmand="$1"
@@ -2215,6 +2287,7 @@ case "$1" in
              check_root_keys_pwd
              check_virt
              check_dns_curl
+             if_start_screen
              # Capture the complete command with arguments
              _BOA_COMMAND="$0 $@"
              init_setup
@@ -2231,6 +2304,7 @@ case "$1" in
              check_root_keys_pwd
              check_virt
              check_dns_curl
+             if_start_screen
              # Capture the complete command with arguments
              _BOA_COMMAND="$0 $@"
              init_setup
@@ -2246,6 +2320,7 @@ case "$1" in
              check_root_keys_pwd
              check_virt
              check_dns_curl
+             if_start_screen
              # Capture the complete command with arguments
              _BOA_COMMAND="$0 $@"
              init_setup
@@ -2263,67 +2338,15 @@ case "$1" in
              check_root_keys_pwd
              check_virt
              check_dns_curl
+             if_start_screen
              # Capture the complete command with arguments
              _BOA_COMMAND="$0 $@"
              init_setup
   ;;
   *)         echo
-             echo "Installation commands"
-             echo "Usage: $(basename "$0") {version} {kind} {fqdn} {email} {user} {extra} {output}"
-             echo "Usage: $(basename "$0") {in-octopus} {email} {o2} {lts|dev|pro} {output}"
+             echo "Sorry, you are trying not supported command.."
+             echo "Display supported commands with: $(basename "$0") help"
              echo
-             echo "Other available commands"
-             echo "Usage: $(basename "$0") version"
-             echo "Usage: $(basename "$0") info {more}"
-             echo "Usage: $(basename "$0") info report {octopus|backups|both}"
-             echo "Usage: $(basename "$0") cleanup {detect|purge} {user|batch}"
-             echo "Usage: $(basename "$0") reboot"
-             echo
-             cat <<EOF
-
-  Accepted keywords and values for installation and other commands:
-
-  {version}
-      in-lts <------- install BOA LTS release (no license)
-      in-dev <------- install BOA Cutting Edge (requires license)
-      in-octopus <--- install extra Octopus instance (lts|dev|pro)
-
-  {kind}
-      public <------- recommended for general use
-      local <-------- experimental
-
-  {fqdn}
-      my.fqdn <------ valid subdomain to use as a hostname
-
-  {email}
-      my@email <----- your valid email address
-
-  {user}
-      o1 <----------- default Octopus system account
-
-  {extra}
-      license <------ valid new relic license key
-      php-8.1 <------ enable single-PHP mode (8.1 or 8.2 or 8.3 or 7.4)
-      php-min <------ install PHP 8.1, 8.2, 8.3, 7.4, use 8.1 by default (php-all)
-      php-max <------ install PHP 8.1, 8.2, 8.3, 8.0, 7.4, 7.3, 7.2, 7.1, 7.0, 5.6
-      nodns <-------- disable DNS/SMTP checks on the fly
-      percona-8.0 <-- specify Percona version to use (5.7, 8.0, 8.3, 8.4)
-
-  {output}
-      verbose <------ barracuda and octopus installed (output in the console) (default)
-      minimal <------ barracuda and octopus installed (output mostly logged)
-      silent <------- barracuda and octopus installed (output only logged)
-      system <------- only barracuda is installed (output mostly logged)
-
-  {other}
-      version <------ display BOA and OS version
-      info <--------- generate various system reports
-      cleanup <------ (detect|purge) cancelled Octopus instances files (no dbs)
-      reboot <------- run accelerated system reboot
-
-  See docs/INSTALL.md for more details.
-
-EOF
              clean_pid_exit cmmand_a
   ;;
 esac

@@ -884,57 +884,6 @@ up_finish() {
   exit 0
 }
 
-up_proceed() {
-  if [ -e "/root/.run-to-daedalus.cnf" ] \
-    || [ -e "/root/.run-to-chimaera.cnf" ] \
-    || [ -e "/root/.run-to-beowulf.cnf" ] \
-    || [ "${cmmand}" = "info" ] \
-    || [ "${cmmand}" = "help" ]; then
-    _CHECK_SQL=NO
-  elif [ "${cmmand}" = "up-lts" ] \
-    || [ "${cmmand}" = "up-pro" ] \
-    || [ "${cmmand}" = "up-dev" ]; then
-    _CHECK_SQL=YES
-  else
-    _CHECK_SQL=NO
-  fi
-  if [ "${_CHECK_SQL}" = "YES" ]; then
-    check_sql_running
-    check_sql_access
-  fi
-  if [ "${cmmand}" = "up-dev" ]; then
-    tRee=dev
-  elif [ "${cmmand}" = "up-pro" ]; then
-    tRee=pro
-  elif [ "${cmmand}" = "up-lts" ]; then
-    tRee=lts
-  elif [ "${cmmand}" = "help" ] || [ "${cmmand}" = "info" ]; then
-    tRee=dev
-  else
-    echo
-    echo "Sorry, you are trying not supported command.."
-    echo "Display supported commands with: $(basename "$0") help"
-    echo
-    clean_pid_exit up_proceed_a
-  fi
-  rlsn="BOA-5.4.0"
-  rlse="${rlsn}-${tRee}"
-  branch="5.x-${tRee}"
-  brnch=${branch//\//\\\/}
-  export tRee="${tRee}"
-  export rlsn="${rlsn}"
-  satellite_downgrade_protection
-  up_start
-  curl ${crlGet} "${rgUrl}/${brnch}/${octName}"  -o ${vBs}/${octName}
-  curl ${crlGet} "${rgUrl}/${brnch}/${pthIncO}"  -o ${vBs}/${filIncO}
-  if [ "${second}" = "all" ]; then
-    up_action_all
-  else
-    up_action_one
-  fi
-  up_finish
-}
-
 find_fast_mirror_early() {
   isNetc=$(which netcat 2>&1)
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
@@ -1202,25 +1151,76 @@ if_display_help() {
     Accepted keywords and values in every option:
 
     {version}
-        up-lts <------- upgrade to Octopus LTS release (no license)
-        up-pro <------- upgrade to Octopus PRO release (requires license)
-        up-dev <------- upgrade to Octopus Cutting Edge (requires license)
+      up-lts <------- upgrade to Octopus LTS release (no license)
+      up-pro <------- upgrade to Octopus PRO release (requires license)
+      up-dev <------- upgrade to Octopus Cutting Edge (requires license)
 
     {instance}
-        all <---------- upgrade all active Octopus instances in a batch
-        o1 <----------- upgrade only listed Octopus instance (system name)
+      all <---------- upgrade all active Octopus instances in a batch
+      o1 <----------- upgrade only listed Octopus instance (system name)
 
     {mode}
-        aegir <-------- upgrade only Aegir Hostmaster
-        platforms <---- upgrade only Aegir Platforms
-        both <--------- upgrade both Aegir Hostmaster and Platforms
-        force <-------- force upgrade of either specified instance or all
+      aegir <-------- upgrade only Aegir Hostmaster
+      platforms <---- upgrade only Aegir Platforms
+      both <--------- upgrade both Aegir Hostmaster and Platforms
+      force <-------- force upgrade of either specified instance or all
 
     See docs/UPGRADE.md for more details.
 
 EOF
     clean_pid_exit cmmand_a
   fi
+}
+
+up_proceed() {
+  if [ -e "/root/.run-to-daedalus.cnf" ] \
+    || [ -e "/root/.run-to-chimaera.cnf" ] \
+    || [ -e "/root/.run-to-beowulf.cnf" ] \
+    || [ "${cmmand}" = "info" ] \
+    || [ "${cmmand}" = "help" ]; then
+    _CHECK_SQL=NO
+  elif [ "${cmmand}" = "up-lts" ] \
+    || [ "${cmmand}" = "up-pro" ] \
+    || [ "${cmmand}" = "up-dev" ]; then
+    _CHECK_SQL=YES
+  else
+    _CHECK_SQL=NO
+  fi
+  if [ "${_CHECK_SQL}" = "YES" ]; then
+    check_sql_running
+    check_sql_access
+  fi
+  if [ "${cmmand}" = "up-dev" ]; then
+    tRee=dev
+  elif [ "${cmmand}" = "up-pro" ]; then
+    tRee=pro
+  elif [ "${cmmand}" = "up-lts" ]; then
+    tRee=lts
+  elif [ "${cmmand}" = "help" ] || [ "${cmmand}" = "info" ]; then
+    tRee=dev
+  else
+    echo
+    echo "Sorry, you are trying not supported command.."
+    echo "Display supported commands with: $(basename "$0") help"
+    echo
+    clean_pid_exit up_proceed_a
+  fi
+  rlsn="BOA-5.4.0"
+  rlse="${rlsn}-${tRee}"
+  branch="5.x-${tRee}"
+  brnch=${branch//\//\\\/}
+  export tRee="${tRee}"
+  export rlsn="${rlsn}"
+  satellite_downgrade_protection
+  up_start
+  curl ${crlGet} "${rgUrl}/${brnch}/${octName}"  -o ${vBs}/${octName}
+  curl ${crlGet} "${rgUrl}/${brnch}/${pthIncO}"  -o ${vBs}/${filIncO}
+  if [ "${second}" = "all" ]; then
+    up_action_all
+  else
+    up_action_one
+  fi
+  up_finish
 }
 
 cmmand="$1"
@@ -1235,8 +1235,8 @@ check_root_keys_pwd
 check_root
 check_no_systemd
 os_detection_minimal
-if_start_screen
 check_dns_curl
+if_start_screen
 up_proceed
 
 exit 0

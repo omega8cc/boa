@@ -35,6 +35,7 @@ _VM_TEST=$(uname -a 2>&1)
 if [[ "${_VM_TEST}" =~ "-beng" ]]; then
   _VMFAMILY="VS"
 fi
+_INITINS="/usr/bin/apt-get -y --allow-unauthenticated install"
 
 ###
 ### Avoid too many questions
@@ -1568,7 +1569,6 @@ old_apt_keys_cleanup() {
 }
 
 proceed() {
-  check_root_direct
   check_root_keys_pwd
   check_root
   up_start
@@ -1606,55 +1606,33 @@ proceed() {
   up_finish
 }
 
-cmmand="$1"
-silent="$2"
-rkey="$3"
-debug="$4"
-sql="$5"
-
-if [ ! -z "${silent}" ]; then
-  if [ "${silent}" = "log" ] \
-    || [ "${silent}" = "disable" ] \
-    || [ "${silent}" = "enable" ] \
-    || [ "${silent}" = "system" ] \
-    || [ "${silent}" = "distro" ]; then
-    silent="$2"
-  else
-    silent=
-    rkey="$2"
-    debug="$3"
-    sql="$4"
+check_manufacturer_compatibility() {
+  # Install dmidecode of not present
+  if ! command -v dmidecode &> /dev/null; then
+    /usr/bin/apt-get update &> /dev/null
+    ${_INITINS} dmidecode &> /dev/null
   fi
-fi
-
-if [ "${cmmand}" = "up-dev" ]; then
-  tRee=dev
-elif [ "${cmmand}" = "up-pro" ]; then
-  tRee=pro
-elif [ "${cmmand}" = "up-lts" ]; then
-  tRee=lts
-else
-  if [ "${cmmand}" = "php-idle" ] \
-    || [ "${cmmand}" = "help" ] \
-    || [ "${cmmand}" = "info" ] \
-    || [ "${cmmand}" = "up-distro" ]; then
-    tRee=dev
+  # Check if dmidecode is available
+  _DMI_TEST=$(which dmidecode 2>&1)
+  if [ -x "${_DMI_TEST}" ]; then
+    _HOST_INFO=$(dmidecode -s system-manufacturer 2>&1)
   else
-    echo
-    echo "Sorry, you are trying not supported command.."
-    echo "Display supported commands with: $(basename "$0") help"
-    echo
-    clean_pid_exit cmmand_a
+    _HOST_INFO="Unknown, dmidecode not available"
   fi
-fi
-
-rlsn="BOA-5.4.0"
-rlse="${rlsn}-${tRee}"
-branch="5.x-${tRee}"
-brnch=${branch//\//\\\/}
-
-export tRee="${tRee}"
-export rlsn="${rlsn}"
+  # Check for Amazon EC2 in the system manufacturer field
+  if dmidecode -s system-manufacturer | grep -i 'Amazon EC2' &> /dev/null; then
+    _VMFAMILY="AWS"
+    echo "Not supported environment detected: ${_HOST_INFO}"
+    echo "Please check https://bit.ly/boa-caveats"
+    echo "Bye!"
+    clean_pid_exit check_manufacturer_compatibility_a
+  elif [[ "${_HOST_INFO}" =~ "Unknown" ]] || [ -z "${_HOST_INFO}" ]; then
+    echo "Mysterious environment: ${_HOST_INFO}"
+    echo "Please check https://bit.ly/boa-caveats"
+    echo "Bye!"
+    clean_pid_exit check_manufacturer_compatibility_b
+  fi
+}
 
 if_start_screen() {
   if [[ -n "$SSH_CONNECTION" || -n "$SSH_CLIENT" ]]; then
@@ -1673,28 +1651,29 @@ if_start_screen() {
   fi
 }
 
-if [ "${cmmand}" = "help" ] || [ "${cmmand}" = "info" ]; then
-  echo
-  echo "Usage: $(basename "$0") {version} {mode} {options}"
-  echo
-  echo "Usage: $(basename "$0") php-idle {enable|disable}"
-  echo
-  cat <<EOF
+if_display_help() {
+  if [ "${cmmand}" = "help" ] || [ "${cmmand}" = "info" ]; then
+    echo
+    echo "Usage: $(basename "$0") {version} {mode} {options}"
+    echo
+    echo "Usage: $(basename "$0") php-idle {enable|disable}"
+    echo
+    cat <<EOF
 
-  Accepted keywords and values in every option:
+    Accepted keywords and values in every option:
 
-  {version}
+    {version}
       up-lts <------- upgrade to Barracuda LTS release (no license)
       up-pro <------- upgrade to Barracuda PRO release (requires license)
       up-dev <------- upgrade to Barracuda Cutting Edge (requires license)
       php-idle <----- disable not used PHP versions or enable them again
 
-  {mode}
+    {mode}
       system <------- upgrade only system without Aegir Master (silent mode)
       aegir <-------- upgrade only Aegir Master Hostmaster (silent mode)
       log <---------- upgrade both system and Aegir Master (silent mode)
 
-  {options}
+    {options}
       newrelickey <-- activate New Relic integration with valid license key
       php-8.1 <------ enable single-PHP mode (8.1 or 8.2 or 8.3 or 7.4)
       php-min <------ install PHP 8.1, 8.2, 8.3, 7.4, use 8.1 by default (php-all)
@@ -1702,10 +1681,68 @@ if [ "${cmmand}" = "help" ] || [ "${cmmand}" = "info" ]; then
       nodns <-------- disable DNS/SMTP checks on the fly
       percona-8.0 <-- specify Percona version to use (5.7, 8.0, 8.3, 8.4)
 
-  See docs/UPGRADE.md for more details.
+    See docs/UPGRADE.md for more details.
 
 EOF
-  clean_pid_exit proceed_a
-else
-  proceed
-fi
+    clean_pid_exit proceed_a
+  fi
+}
+
+set_tree_vars() {
+  if [ ! -z "${silent}" ]; then
+    if [ "${silent}" = "log" ] \
+      || [ "${silent}" = "disable" ] \
+      || [ "${silent}" = "enable" ] \
+      || [ "${silent}" = "system" ] \
+      || [ "${silent}" = "distro" ]; then
+      silent="$2"
+    else
+      silent=
+      rkey="$2"
+      debug="$3"
+      sql="$4"
+    fi
+  fi
+  if [ "${cmmand}" = "up-dev" ]; then
+    tRee=dev
+  elif [ "${cmmand}" = "up-pro" ]; then
+    tRee=pro
+  elif [ "${cmmand}" = "up-lts" ]; then
+    tRee=lts
+  else
+    if [ "${cmmand}" = "php-idle" ] \
+      || [ "${cmmand}" = "help" ] \
+      || [ "${cmmand}" = "info" ] \
+      || [ "${cmmand}" = "up-distro" ]; then
+      tRee=dev
+    else
+      echo
+      echo "Sorry, you are trying not supported command.."
+      echo "Display supported commands with: $(basename "$0") help"
+      echo
+      clean_pid_exit cmmand_a
+    fi
+  fi
+  rlsn="BOA-5.4.0"
+  rlse="${rlsn}-${tRee}"
+  branch="5.x-${tRee}"
+  brnch=${branch//\//\\\/}
+  export tRee="${tRee}"
+  export rlsn="${rlsn}"
+}
+
+ARGS="$@"
+cmmand="$1"
+silent="$2"
+rkey="$3"
+debug="$4"
+sql="$5"
+
+check_root_direct
+set_tree_vars
+if_display_help
+check_manufacturer_compatibility
+if_start_screen
+proceed
+
+exit 0
