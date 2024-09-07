@@ -167,6 +167,41 @@ msg() {
   echo "AutoChimaera v.${tRee} [$(date +%T 2>&1)] ==> $*"
 }
 
+check_manufacturer_compatibility() {
+  # Install dmidecode of not present
+  if ! command -v dmidecode &> /dev/null; then
+    /usr/bin/apt-get update &> /dev/null
+    ${_INITINS} dmidecode &> /dev/null
+  fi
+  # Check if dmidecode is available
+  _DMI_TEST=$(which dmidecode 2>&1)
+  if [ -x "${_DMI_TEST}" ]; then
+    _HOST_INFO=$(dmidecode -s system-manufacturer 2>&1)
+  else
+    _HOST_INFO="Unknown, dmidecode not available"
+  fi
+  # Check for Amazon EC2 in the system manufacturer field
+  if dmidecode -s system-manufacturer | grep -i 'Amazon EC2' &> /dev/null; then
+    _VMFAMILY="AWS"
+    msg "Not supported environment detected: ${_HOST_INFO}" >> ${logAch}
+    msg "Please check https://bit.ly/boa-caveats" >> ${logAch}
+    msg "Bye!" >> ${logAch}
+    echo "Not supported environment detected: ${_HOST_INFO}"
+    echo "Please check https://bit.ly/boa-caveats"
+    echo "Bye!"
+    exit 1
+  elif [[ "${_HOST_INFO}" =~ "Unknown" ]] || [ -z "${_HOST_INFO}" ]; then
+    msg "Mysterious environment: ${_HOST_INFO}" >> ${logAch}
+    msg "Please check https://bit.ly/boa-caveats" >> ${logAch}
+    msg "Bye!" >> ${logAch}
+    echo "Mysterious environment: ${_HOST_INFO}"
+    echo "Please check https://bit.ly/boa-caveats"
+    echo "Bye!"
+    exit 1
+  fi
+}
+check_manufacturer_compatibility
+
 check_mysql_compatibility() {
   _DBS_TEST=$(which mysql 2>&1)
   if [ ! -z "${_DBS_TEST}" ]; then
