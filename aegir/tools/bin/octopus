@@ -1236,3 +1236,5 @@ os_detection_minimal
 if_start_screen
 check_dns_curl
 up_proceed
+
+exit 0

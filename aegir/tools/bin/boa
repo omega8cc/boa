@@ -2322,3 +2322,5 @@ EOF
              clean_pid_exit cmmand_a
   ;;
 esac
+
+exit 0
