@@ -1,8 +1,13 @@
 ## CAVEATS
 
-**Note:** BOA maintainers currently use only Devuan-based 64-bit systems/servers.
-We no longer use Ubuntu, while Debian is mainly supported as a starting point before migration to its systemd-free alternative -- Devuan.
+1. **Devuan-Based Systems Only**
+   BOA maintainers currently use only 64-bit systems based on Devuan. While Debian may be used as an initial setup, it is mainly supported as a transition step before migrating to Devuan, which is free of systemd. We no longer support or use Ubuntu systems.
 
-**Note:** BOA maintainers use only server (public) install mode and rarely test localhost (local) mode, which is considered highly experimental, while server (public) mode is considered stable and fully supported.
+2. **Amazon EC2 No Longer Supported**
+   Amazon EC2 is no longer considered a BOA-friendly environment. With its strict reliance on systemd, it has caused unexpected crashes on BOA instances that previously ran smoothly on legacy Debian Stretch. Additionally, it now prevents upgrading to Devuan, which is systemd-free.
 
-**Note:** By VMware we mean the system, not the company or its hosted service, the vCloud Air, which is known to cause serious issues for Drupal in general, which are not related to anything in BOA. The vCloud Air has a major flaw which breaks many Drupal features, including image derivatives, AdvAgg, and any other module which requires that the site can connect to itself via its public IP address.
+3. **Server (Public) Install Mode Preferred**
+   BOA maintainers primarily use the server (public) installation mode, which is considered stable and fully supported. The localhost (local) installation mode is rarely tested and remains highly experimental.
+
+4. **VMware Clarification**
+   When we refer to VMware in this context, we are talking about the virtualization technology, not the company or its vCloud Air service. The vCloud Air service is known to cause issues with Drupal, including problems with CSS/JS aggregation, the AdvAgg module, and other features that require the site to connect to itself via its public IP. These issues are unrelated to BOA itself.
