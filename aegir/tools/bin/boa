@@ -2161,22 +2161,27 @@ octopus_cleanup() {
   fi
 }
 
+if_start_screen() {
+  if [[ -n "$SSH_CONNECTION" || -n "$SSH_CLIENT" ]]; then
+    # Check if the user is inside a screen session
+    if [[ ! "${ARGS}" =~ (^|[[:space:]])(info|help|version|reboot)([[:space:]]|$) ]]; then
+      if [ -z "$STY" ]; then
+        # If not in screen, start a new screen session with the same script
+        echo "You are not inside a screen session. Starting screen..."
+        screen -S session_boa bash -c "$0 $ARGS; exec bash"
+        exit
+      else
+        # If already inside screen, continue the script
+        echo "You are already in a screen session, OK"
+      fi
+    fi
+  fi
+}
+
 check_root_direct
 os_detection_minimal
 
-# Check if the user is inside a screen session
 ARGS="$@"
-if [[ ! "${ARGS}" =~ (^|[[:space:]])(info|help|version|reboot)([[:space:]]|$) ]]; then
-  if [ -z "$STY" ]; then
-    # If not in screen, start a new screen session with the same script
-    echo "You are not inside a screen session. Starting screen..."
-    screen -S session_boa bash -c "$0 $ARGS; exec bash"
-    exit
-  else
-    # If already inside screen, continue the script
-    echo "You are already in a screen session."
-  fi
-fi
 
 case "$1" in
   info)      cmmand="$1"

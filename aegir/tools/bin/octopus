@@ -1177,16 +1177,18 @@ check_no_systemd() {
 }
 
 if_start_screen() {
-  # Check if the user is inside a screen session
-  if [[ ! "${ARGS}" =~ (^|[[:space:]])(info|help)([[:space:]]|$) ]]; then
-    if [ -z "$STY" ]; then
-      # If not in screen, start a new screen session with the same script
-      echo "You are not inside a screen session. Starting screen..."
-      screen -S session_octopus bash -c "$0 $ARGS; exec bash"
-      exit
-    else
-      # If already inside screen, continue the script
-      echo "You are already in a screen session."
+  if [[ -n "$SSH_CONNECTION" || -n "$SSH_CLIENT" ]]; then
+    # Check if the user is inside a screen session
+    if [[ ! "${ARGS}" =~ (^|[[:space:]])(info|help)([[:space:]]|$) ]]; then
+      if [ -z "$STY" ]; then
+        # If not in screen, start a new screen session with the same script
+        echo "You are not inside a screen session. Starting screen..."
+        screen -S session_octopus bash -c "$0 $ARGS; exec bash"
+        exit
+      else
+        # If already inside screen, continue the script
+        echo "You are already in a screen session, OK"
+      fi
     fi
   fi
 }
