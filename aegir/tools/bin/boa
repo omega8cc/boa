@@ -1694,6 +1694,45 @@ display_version() {
   fi
 }
 
+# Function to display time in appropriate units
+display_time() {
+  local service=$1
+  local pidfile=$2
+  if [ ! -f "$pidfile" ]; then
+    echo "  _XSE $service is not running (PID file not found)."
+    return
+  fi
+
+  # Get the PID from the PID file
+  pid=$(cat "$pidfile")
+
+  # Check if the process is running
+  if ! ps -p "$pid" > /dev/null 2>&1; then
+    echo "  _XSE $service is not running (stale PID file)."
+    return
+  fi
+
+  # Get the current time and the PID file modification time in seconds since epoch
+  current_time=$(date +%s)
+  file_time=$(stat -c %Y "$pidfile")
+
+  # Calculate the time difference in seconds
+  elapsed=$((current_time - file_time))
+
+  if [ $elapsed -lt 60 ]; then
+    echo "  _XSE $service is running for $elapsed seconds."
+  elif [ $elapsed -lt 3600 ]; then
+    minutes=$((elapsed / 60))
+    echo "  _XSE $service is running for $minutes minutes."
+  elif [ $elapsed -lt 172800 ]; then
+    hours=$((elapsed / 3600))
+    echo "  _XSE $service is running for $hours hours."
+  else
+    days=$((elapsed / 86400))
+    echo "  _XSE $service is running for $days days."
+  fi
+}
+
 display_info() {
   if [ `whoami` = "root" ]; then
     _HOST_INFO=$(dmidecode -s system-manufacturer 2>&1)
@@ -1897,6 +1936,32 @@ display_info() {
     [ "${mode}" != "report" ] && [ ! -z "${_UMY}" ] && echo "  _UMY ${_UMY}"
     [ "${mode}" != "report" ] && [ ! -z "${_XTR}" ] && echo "  _XTR ${_XTR}"
     [ "${mode}" != "report" ] && [ ! -z "${_AUT}" ] && echo "  _AUT ${_AUT}"
+    echo
+    echo "  _XSE Key Services Uptime Report"
+    echo
+    # List of services and their respective PID files
+    declare -A services=(
+      ["sshd"]="/run/sshd.pid"
+      ["crond"]="/run/crond.pid"
+      ["nginx"]="/run/nginx.pid"
+      ["php74-fpm"]="/run/php74-fpm.pid"
+      ["php81-fpm"]="/run/php81-fpm.pid"
+      ["php82-fpm"]="/run/php82-fpm.pid"
+      ["php83-fpm"]="/run/php83-fpm.pid"
+      ["mysql"]="/run/mysqld/mysqld.pid"
+      ["redis"]="/run/redis/redis.pid"
+      ["solr7"]="/var/solr7/solr-9077.pid"
+      ["jetty9"]="/run/jetty9.pid"
+      ["pure-ftpd"]="/run/pure-ftpd.pid"
+      ["lfd"]="/run/lfd.pid"
+      ["rsyslogd"]="/run/rsyslogd.pid"
+      ["unbound"]="/run/unbound/unbound.pid"
+      ["vnstat"]="/run/vnstat/vnstat.pid"
+    )
+    # Loop through the services and check their uptime
+    for service in "${!services[@]}"; do
+      display_time "$service" "${services[$service]}"
+    done
     echo
     if [ -e "/var/log/barracuda_log.txt" ]; then
       if [ "${mode}" = "report" ]; then
