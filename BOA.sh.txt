@@ -3131,8 +3131,8 @@ if [ `whoami` = "root" ]; then
     && [ -e "/var/log/barracuda_log.txt" ]; then
     fix_ping_perms
     fix_fpm_process_max
-    if_fix_python
-    fix_lshell
+#     if_fix_python
+#     fix_lshell
     fix_node_in_lshell_access
     fix_authorized_keys
     fix_tcp
