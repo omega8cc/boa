@@ -1888,6 +1888,12 @@ if_fix_python() {
 }
 
 fix_lshell() {
+  if [ ! -e "/usr/local/etc/lshell.conf" ] \
+    && [ ! -L "/usr/local/etc/lshell.conf" ] \
+    && [ -e "/etc/lshell.conf" ]; then
+    [ ! -d "/usr/local/etc" ] && mkdir -p /usr/local/etc
+    ln -sfn /etc/lshell.conf /usr/local/etc/lshell.conf
+  fi
   _LSHELL_VRN=0.9.18.10
   _PATH_LSHELL="${usrBin}/lshell"
   _LSHELL_CHK_VRN=0.9.18
