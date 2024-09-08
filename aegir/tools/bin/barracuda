@@ -1741,7 +1741,7 @@ sql="$5"
 check_root_direct
 set_tree_vars
 if_display_help
-check_manufacturer_compatibility
+###check_manufacturer_compatibility
 if_start_screen
 proceed
 
