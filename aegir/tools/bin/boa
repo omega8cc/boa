@@ -2246,7 +2246,6 @@ EOF
 }
 
 check_root_direct
-check_manufacturer_compatibility
 os_detection_minimal
 
 ARGS="$@"
@@ -2284,6 +2283,7 @@ case "$1" in
              extra="$6"
              output="$7"
              check_root
+             check_manufacturer_compatibility
              check_root_keys_pwd
              check_virt
              check_dns_curl
