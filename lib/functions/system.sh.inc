@@ -5170,7 +5170,7 @@ finale() {
       # fix_core_dgd
     fi
   fi
-  if [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]]; then
+  if [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
     _MTD_VR="BOA-5.4.0-omm"
   elif [ -e "/root/.host8.cnf" ]; then
     _MTD_VR="BOA-5.4.0-aln"
