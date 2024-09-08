@@ -2586,7 +2586,7 @@ update_boa_tools() {
       && [ -e "/root/.cache/duplicity" ] \
       && [ -e "/var/aegir/drush" ] \
       && [ -e "/var/xdrago" ]; then
-      backboa install
+#       backboa install
       touch ${pthLog}/duplicity.ctrl.${tRee}.${_X_SE}.pid
       touch /root/.backboa.autoupdate
     fi
