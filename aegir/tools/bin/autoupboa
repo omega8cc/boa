@@ -10,9 +10,9 @@ export HOME=${HOME}
 
 barCnf="/root/.barracuda.cnf"
 
-_X_SE="540ltsT02"
+_X_SE="540devT02"
 
-tRee=lts
+tRee=dev
 export tRee="${tRee}"
 
 crontab_check_clean_race() {
