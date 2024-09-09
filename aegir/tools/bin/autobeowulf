@@ -106,7 +106,7 @@ nrmUpArg="-fuy --allow-unauthenticated -q --config-file /opt/apt/apt.conf.noi.nr
 
 _TODAY=$(date +%y%m%d 2>&1)
 _TODAY=${_TODAY//[^0-9]/}
-_X_SE="540devT02"
+_X_SE="540ltsT02"
 _OS_CODE=check
 #
 
