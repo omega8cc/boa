@@ -87,6 +87,7 @@ if [ -z "${TERM+x}" ]; then
 fi
 tRee=lts
 export tRee="${tRee}"
+
 _INITINS="/usr/bin/apt-get -y --allow-unauthenticated install"
 dstUpArg="-fuy --allow-unauthenticated -q --config-file /opt/apt/apt.conf.noi.dist"
 nrmUpArg="-fuy --allow-unauthenticated -q --config-file /opt/apt/apt.conf.noi.nrml"
@@ -111,6 +112,48 @@ check_root() {
 }
 check_root
 cd /root/
+
+###
+### Noticeable messages
+###
+msg() {
+  echo "AutoInit v.${tRee} [$(date +%T 2>&1)] ==> $*"
+}
+
+check_manufacturer_compatibility() {
+  # Install dmidecode of not present
+  if ! command -v dmidecode &> /dev/null; then
+    /usr/bin/apt-get update &> /dev/null
+    ${_INITINS} dmidecode &> /dev/null
+  fi
+  # Check if dmidecode is available
+  _DMI_TEST=$(which dmidecode 2>&1)
+  if [ -x "${_DMI_TEST}" ]; then
+    _HOST_INFO=$(dmidecode -s system-manufacturer 2>&1)
+  else
+    _HOST_INFO="Unknown, dmidecode not available"
+  fi
+  # Check for Amazon EC2 in the system manufacturer field
+  if dmidecode -s system-manufacturer | grep -i 'Amazon EC2' &> /dev/null; then
+    _VMFAMILY="AWS"
+    msg "Not supported environment detected: ${_HOST_INFO}" >> ${logInt}
+    msg "Please check https://bit.ly/boa-caveats" >> ${logInt}
+    msg "Bye!" >> ${logInt}
+    echo "Not supported environment detected: ${_HOST_INFO}"
+    echo "Please check https://bit.ly/boa-caveats"
+    echo "Bye!"
+    exit 1
+  elif [[ "${_HOST_INFO}" =~ "Unknown" ]] || [ -z "${_HOST_INFO}" ]; then
+    msg "Mysterious environment: ${_HOST_INFO}" >> ${logInt}
+    msg "Please check https://bit.ly/boa-caveats" >> ${logInt}
+    msg "Bye!" >> ${logInt}
+    echo "Mysterious environment: ${_HOST_INFO}"
+    echo "Please check https://bit.ly/boa-caveats"
+    echo "Bye!"
+    exit 1
+  fi
+}
+check_manufacturer_compatibility
 
 if [ "${tRee}" = "dev" ]; then
   touch /root/.debug-boa-installer.cnf
@@ -229,13 +272,6 @@ cron_check_install_early() {
   fi
 }
 cron_check_install_early
-
-###
-### Noticeable messages
-###
-msg() {
-  echo "AutoInit v.${tRee} [$(date +%T 2>&1)] ==> $*"
-}
 
 if [ -e "/run/autoinit.pid" ]; then
   echo " " >> ${logSlt}
@@ -373,15 +409,17 @@ init_pre() {
       _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
       msg "We need to install some tools early..." >> ${logInt}
       /usr/bin/apt-get update >> ${logSlt}
-      _INITD_TEST=$(ls -la /etc/init.d/*cloud* 2>&1)
-      if [[ ! "${_INITD_TEST}" =~ "No such file" ]] \
-        || [ -e "/etc/cloud/cloud.cfg.d" ]; then
-        /usr/bin/apt-get remove cloud-utils cloud-init -y --purge --auto-remove -qq >> ${logSlt}
-        /usr/bin/apt-get remove cloud-image-utils cloud-guest-utils -y --purge --auto-remove -qq >> ${logSlt}
-        /usr/bin/apt-get autoremove --purge -y >> ${logSlt}
-        /usr/bin/apt-get autoclean -y >> ${logSlt}
-        if [ -e "/etc/cloud/cloud.cfg.d" ]; then
-          mv -f /etc/cloud /var/backups/
+      if [ "${_VMFAMILY}" != "AWS" ]; then
+        _INITD_TEST=$(ls -la /etc/init.d/*cloud* 2>&1)
+        if [[ ! "${_INITD_TEST}" =~ "No such file" ]] \
+          || [ -e "/etc/cloud/cloud.cfg.d" ]; then
+          /usr/bin/apt-get remove cloud-utils cloud-init -y --purge --auto-remove -qq >> ${logSlt}
+          /usr/bin/apt-get remove cloud-image-utils cloud-guest-utils -y --purge --auto-remove -qq >> ${logSlt}
+          /usr/bin/apt-get autoremove --purge -y >> ${logSlt}
+          /usr/bin/apt-get autoclean -y >> ${logSlt}
+          if [ -e "/etc/cloud/cloud.cfg.d" ]; then
+            mv -f /etc/cloud /var/backups/
+          fi
         fi
       fi
       ${_INITINS} cron >> ${logSlt}

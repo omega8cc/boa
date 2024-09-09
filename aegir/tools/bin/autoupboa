@@ -712,4 +712,7 @@ if [ -e "/var/aegir/drush" ]; then
     fi
   fi
 fi
+
+exit 0
+
 ###EOF2024###

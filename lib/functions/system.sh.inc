@@ -3479,7 +3479,9 @@ sshd_install_src() {
     | tr -d "\n" \
     | cut -d" " -f3 \
     | awk '{ print $1}' 2>&1)
-  _SSH_IF_SELINUX=$(ldd /usr/local/sbin/sshd | grep selinux 2>&1)
+  if [ -e "/usr/local/sbin/sshd" ]; then
+    _SSH_IF_SELINUX=$(ldd /usr/local/sbin/sshd | grep selinux 2>&1)
+  fi
   if [ -e "/usr/etc/sshd_config" ]; then
     _SSH_FORCE_REINSTALL=YES
     _OLD_SYSCONFDIR="/usr/etc"
@@ -5168,7 +5170,7 @@ finale() {
       # fix_core_dgd
     fi
   fi
-  if [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]]; then
+  if [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
     _MTD_VR="BOA-5.4.0-omm"
   elif [ -e "/root/.host8.cnf" ]; then
     _MTD_VR="BOA-5.4.0-aln"
@@ -7464,6 +7466,9 @@ myquick_install_upgrade() {
   elif [ "${_SQL_OS_CODE}" = "buster" ]; then
     _USE_CODE=buster
   else
+    _MYQUICK_SRC_INSTALL_REQUIRED=YES
+  fi
+  if [ -e "/root/.install.myquick.src.info" ]; then
     _MYQUICK_SRC_INSTALL_REQUIRED=YES
   fi
   check_mysql_version
