@@ -3003,7 +3003,7 @@ sysctl_update() {
 ###--------------------###
 if [ `whoami` = "root" ]; then
 
-  ###locales_check_fix_early
+  [ ! -e "/var/aegir/drush" ] && locales_check_fix_early
   os_detection_minimal
   find_fast_mirror_early
 
