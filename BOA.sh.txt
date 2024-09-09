@@ -3187,20 +3187,17 @@ if [ `whoami` = "root" ]; then
     echo
     echo "The system is ready for BOA installation!"
     echo
-    echo "We will start screen session for you in 15 seconds"
+    echo "We will start screen session for you automatically"
     echo "to avoid problems with dropped SSH connections"
     echo "during BOA stack installation, which may take up to"
-    echo "30-60 minutes, depending on your server speed."
+    echo "45-60 minutes, depending on your server speed."
     echo
     echo "If your connection will drop, simply log in again"
     echo "and re-attach your session with 'screen -R' command."
     echo
-    echo "Please wait a moment until this message disappears."
-    echo
     echo "Enjoy!"
     echo
-    sleep 15
-    screen -S session_boa_prepare
+    sleep 8
   else
     exit 0
   fi

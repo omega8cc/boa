@@ -2169,7 +2169,7 @@ if_start_screen() {
       if [ -z "$STY" ]; then
         # If not in screen, start a new screen session with the same script
         echo "You are not inside a screen session. Starting screen..."
-        screen -S session_boa bash -c "$0 $ARGS; exec bash"
+        screen -S session_boa bash -c "$0 $ARGS"
         exit
       else
         # If already inside screen, continue the script
