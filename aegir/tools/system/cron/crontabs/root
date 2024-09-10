@@ -11,11 +11,9 @@
 */5 * * * * /usr/bin/nice -n19 /usr/bin/ionice -c2 -n7 bash /var/xdrago/manage_solr_config.sh    >/dev/null 2>&1
 01 * * * *  /usr/bin/nice -n19 /usr/bin/ionice -c2 -n7 bash /var/xdrago/purge_binlogs.sh         >/dev/null 2>&1
 30 * * * *  /usr/bin/nice -n19 /usr/bin/ionice -c2 -n7 bash /var/xdrago/mysql_cleanup.sh         >/dev/null 2>&1
-01 0 * * *  /usr/bin/nice -n10 /usr/bin/ionice -c2 -n7 bash /var/xdrago/graceful.sh              >/dev/null 2>&1
-15 0 * * *  /usr/bin/nice -n19 /usr/bin/ionice -c2 -n7 bash /var/xdrago/mysql_backup.sh          >/dev/null 2>&1
-15 0 * * *  /usr/bin/nice -n19 /usr/bin/ionice -c2 -n7 bash /var/xdrago/mysql_cluster_backup.sh  >/dev/null 2>&1
-15 1 * * *  /usr/bin/nice -n19 /usr/bin/ionice -c2 -n7 bash /opt/local/bin/backboa backup        >/dev/null 2>&1
-15 2 * * *  /usr/bin/nice -n19 /usr/bin/ionice -c2 -n7 bash /var/xdrago/daily.sh                 >/dev/null 2>&1
-15 2 * * *  /usr/bin/nice -n19 /usr/bin/ionice -c2 -n7 bash /var/xdrago/fetch-remote.sh          >/dev/null 2>&1
-55 5 * * *  /usr/bin/nice -n19 /usr/bin/ionice -c2 -n7 bash /opt/local/bin/duobackboa backup     >/dev/null 2>&1
-
+15 1 * * *  /usr/bin/nice -n19 /usr/bin/ionice -c2 -n7 bash /var/xdrago/mysql_backup.sh          >/dev/null 2>&1
+15 2 * * *  /usr/bin/nice -n19 /usr/bin/ionice -c2 -n7 bash /var/xdrago/mysql_cluster_backup.sh  >/dev/null 2>&1
+15 3 * * *  /usr/bin/nice -n19 /usr/bin/ionice -c2 -n7 bash /opt/local/bin/backboa backup        >/dev/null 2>&1
+15 4 * * *  /usr/bin/nice -n19 /usr/bin/ionice -c2 -n7 bash /var/xdrago/daily.sh                 >/dev/null 2>&1
+15 5 * * *  /usr/bin/nice -n19 /usr/bin/ionice -c2 -n7 bash /opt/local/bin/duobackboa backup     >/dev/null 2>&1
+15 6 * * *  /usr/bin/nice -n10 /usr/bin/ionice -c2 -n7 bash /var/xdrago/graceful.sh              >/dev/null 2>&1
