@@ -1642,11 +1642,13 @@ if_start_screen() {
       if [ -z "$STY" ]; then
         # If not in screen, start a new screen session with the same script
         echo "You are not inside a screen session. Starting screen..."
+        sleep 5
         screen -S session_barracuda bash -c "$0 $ARGS"
         exit
       else
         # If already inside screen, continue the script
-        echo "You are already in a screen session, OK"
+        echo "You are in a screen session now"
+        sleep 3
       fi
     fi
   fi
