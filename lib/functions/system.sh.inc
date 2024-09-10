@@ -56,6 +56,7 @@ if_reinstall_curl_src() {
     apt-get install lsb-release -y -qq &> /dev/null
   fi
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  [ "${_OS_CODE}" = "wheezy" ] && _CURL_VRN=7.50.1
   [ "${_OS_CODE}" = "jessie" ] && _CURL_VRN=7.71.1
   [ "${_OS_CODE}" = "stretch" ] && _CURL_VRN=8.2.1
   isCurl=$(curl --version 2>&1)
@@ -3479,7 +3480,9 @@ sshd_install_src() {
     | tr -d "\n" \
     | cut -d" " -f3 \
     | awk '{ print $1}' 2>&1)
-  _SSH_IF_SELINUX=$(ldd /usr/local/sbin/sshd | grep selinux 2>&1)
+  if [ -e "/usr/local/sbin/sshd" ]; then
+    _SSH_IF_SELINUX=$(ldd /usr/local/sbin/sshd | grep selinux 2>&1)
+  fi
   if [ -e "/usr/etc/sshd_config" ]; then
     _SSH_FORCE_REINSTALL=YES
     _OLD_SYSCONFDIR="/usr/etc"
@@ -4191,6 +4194,7 @@ curl_install_src() {
     apt-get install lsb-release -y -qq &> /dev/null
   fi
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  [ "${_OS_CODE}" = "wheezy" ] && _CURL_VRN=7.50.1
   [ "${_OS_CODE}" = "jessie" ] && _CURL_VRN=7.71.1
   [ "${_OS_CODE}" = "stretch" ] && _CURL_VRN=8.2.1
 
@@ -5168,7 +5172,7 @@ finale() {
       # fix_core_dgd
     fi
   fi
-  if [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]]; then
+  if [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
     _MTD_VR="BOA-5.4.0-omm"
   elif [ -e "/root/.host8.cnf" ]; then
     _MTD_VR="BOA-5.4.0-aln"

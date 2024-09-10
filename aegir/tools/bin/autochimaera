@@ -95,12 +95,16 @@ if [ -z "${TERM+x}" ]; then
   export TERM=vt100
 fi
 
-tRee=pro
+tRee=dev
 export tRee="${tRee}"
+
+_INITINS="/usr/bin/apt-get -y --allow-unauthenticated install"
+dstUpArg="-fuy --allow-unauthenticated -q --config-file /opt/apt/apt.conf.noi.dist"
+nrmUpArg="-fuy --allow-unauthenticated -q --config-file /opt/apt/apt.conf.noi.nrml"
 
 _TODAY=$(date +%y%m%d 2>&1)
 _TODAY=${_TODAY//[^0-9]/}
-_X_SE="540proT02"
+_X_SE="540devT02"
 _OS_CODE=check
 #
 
@@ -136,6 +140,64 @@ fi
 msg() {
   echo "AutoChimaera v.${tRee} [$(date +%T 2>&1)] ==> $*"
 }
+
+check_manufacturer_compatibility() {
+  # Install dmidecode of not present
+  if ! command -v dmidecode &> /dev/null; then
+    /usr/bin/apt-get update &> /dev/null
+    ${_INITINS} dmidecode &> /dev/null
+  fi
+  # Check if dmidecode is available
+  _DMI_TEST=$(which dmidecode 2>&1)
+  if [ -x "${_DMI_TEST}" ]; then
+    _HOST_INFO=$(dmidecode -s system-manufacturer 2>&1)
+  else
+    _HOST_INFO="Unknown, dmidecode not available"
+  fi
+  # Check for Amazon EC2 in the system manufacturer field
+  if dmidecode -s system-manufacturer | grep -i 'Amazon EC2' &> /dev/null; then
+    _VMFAMILY="AWS"
+    msg "Not supported environment detected: ${_HOST_INFO}" >> ${logAch}
+    msg "Please check https://bit.ly/boa-caveats" >> ${logAch}
+    msg "Bye!" >> ${logAch}
+    echo "Not supported environment detected: ${_HOST_INFO}"
+    echo "Please check https://bit.ly/boa-caveats"
+    echo "Bye!"
+    exit 1
+  elif [[ "${_HOST_INFO}" =~ "Unknown" ]] || [ -z "${_HOST_INFO}" ]; then
+    msg "Mysterious environment: ${_HOST_INFO}" >> ${logAch}
+    msg "Please check https://bit.ly/boa-caveats" >> ${logAch}
+    msg "Bye!" >> ${logAch}
+    echo "Mysterious environment: ${_HOST_INFO}"
+    echo "Please check https://bit.ly/boa-caveats"
+    echo "Bye!"
+    exit 1
+  fi
+}
+check_manufacturer_compatibility
+
+check_mysql_compatibility() {
+  _DBS_TEST=$(which mysql 2>&1)
+  if [ ! -z "${_DBS_TEST}" ]; then
+    _DB_SERVER_TEST=$(mysql -V 2>&1)
+  fi
+  if [[ "${_DB_SERVER_TEST}" =~ "Ver 8.4." ]]; then
+    _DB_V=8.4
+  elif [[ "${_DB_SERVER_TEST}" =~ "Ver 8.3." ]]; then
+    _DB_V=8.3
+  elif [[ "${_DB_SERVER_TEST}" =~ "Ver 8.0." ]]; then
+    _DB_V=8.0
+  elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 5.7." ]]; then
+    _DB_V=5.7
+  else
+    _DB_V=UNSUPPORTED
+  fi
+  if [ "${_DB_V}" = "UNSUPPORTED" ]; then
+    msg "Not supported DB server detected ${_DB_SERVER_TEST}" >> ${logAch}
+    exit 1
+  fi
+}
+check_mysql_compatibility
 
 ###
 ### Faster reboot
@@ -241,29 +303,6 @@ check_os_compatibility() {
 }
 check_os_compatibility
 
-check_mysql_compatibility() {
-  _DBS_TEST=$(which mysql 2>&1)
-  if [ ! -z "${_DBS_TEST}" ]; then
-    _DB_SERVER_TEST=$(mysql -V 2>&1)
-  fi
-  if [[ "${_DB_SERVER_TEST}" =~ "Ver 8.4." ]]; then
-    _DB_V=8.4
-  elif [[ "${_DB_SERVER_TEST}" =~ "Ver 8.3." ]]; then
-    _DB_V=8.3
-  elif [[ "${_DB_SERVER_TEST}" =~ "Ver 8.0." ]]; then
-    _DB_V=8.0
-  elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 5.7." ]]; then
-    _DB_V=5.7
-  else
-    _DB_V=UNSUPPORTED
-  fi
-  if [ "${_DB_V}" = "UNSUPPORTED" ]; then
-    msg "Not supported DB server detected ${_DB_SERVER_TEST}" >> ${logAch}
-    exit 1
-  fi
-}
-check_mysql_compatibility
-
 if [ -x "/opt/local/bin/killer" ]; then
   sed -i "s/.*killer.*//gi" /etc/crontab &> /dev/null
   echo "*/1 *   * * *   root    bash /opt/local/bin/killer" >> /etc/crontab
@@ -284,7 +323,9 @@ if_remove_cloud_utils() {
     fi
   fi
 }
-if_remove_cloud_utils
+if [ "${_VMFAMILY}" != "AWS" ]; then
+  if_remove_cloud_utils
+fi
 
 if_clean_boa_env() {
   if [ ! -x "/etc/init.d/clean-boa-env" ] \

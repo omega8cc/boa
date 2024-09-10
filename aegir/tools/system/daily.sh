@@ -8,7 +8,7 @@ export PATH=${PATH}
 export SHELL=${SHELL}
 export HOME=${HOME}
 
-tRee=pro
+tRee=dev
 export tRee="${tRee}"
 
 check_root() {
@@ -41,7 +41,7 @@ if [ -e "/root/.pause_heavy_tasks_maint.cnf" ]; then
   exit 0
 fi
 
-_X_SE="540proT02"
+_X_SE="540devT02"
 _WEBG=www-data
 _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
 if [ -e "/root/.install.modern.openssl.cnf" ] \
@@ -754,7 +754,7 @@ not secure codebase, even if it was not affected by Drupageddon bug
 directly.
 
 Please be a good web citizen and upgrade to latest Drupal core provided
-by BOA-5.4.0-pro. As a bonus, you will be able to speed up your sites
+by BOA-5.4.0-dev. As a bonus, you will be able to speed up your sites
 considerably by switching PHP-FPM to 8.3
 
 We recommend to follow this upgrade how-to:
@@ -838,7 +838,7 @@ not secure codebase, even if it was not affected by Drupageddon bug
 directly.
 
 Please be a good web citizen and upgrade to latest Drupal core provided
-by BOA-5.4.0-pro. As a bonus, you will be able to speed up your sites
+by BOA-5.4.0-dev. As a bonus, you will be able to speed up your sites
 considerably by switching PHP-FPM to 8.3
 
 We recommend to follow this upgrade how-to:

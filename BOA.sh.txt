@@ -49,7 +49,7 @@ export PATH=${PATH}
 export SHELL=${SHELL}
 export HOME=${HOME}
 
-tRee=pro
+tRee=dev
 export tRee="${tRee}"
 
 ###
@@ -65,7 +65,7 @@ _NOW=$(date +%y%m%d-%H%M%S 2>&1)
 export _NOW=${_NOW//[^0-9-]/}
 _TODAY=$(date +%y%m%d 2>&1)
 export _TODAY=${_TODAY//[^0-9]/}
-_X_SE="540proT02"
+_X_SE="540devT02"
 #
 barCnf="/root/.barracuda.cnf"
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
@@ -2308,6 +2308,7 @@ if_reinstall_curl() {
     apt-get install lsb-release -y -qq &> /dev/null
   fi
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  [ "${_OS_CODE}" = "wheezy" ] && _CURL_VRN=7.50.1
   [ "${_OS_CODE}" = "jessie" ] && _CURL_VRN=7.71.1
   [ "${_OS_CODE}" = "stretch" ] && _CURL_VRN=8.2.1
 
@@ -3003,7 +3004,7 @@ sysctl_update() {
 ###--------------------###
 if [ `whoami` = "root" ]; then
 
-  ###locales_check_fix_early
+  [ ! -e "/var/aegir/drush" ] && locales_check_fix_early
   os_detection_minimal
   find_fast_mirror_early
 
@@ -3187,20 +3188,17 @@ if [ `whoami` = "root" ]; then
     echo
     echo "The system is ready for BOA installation!"
     echo
-    echo "We will start screen session for you in 15 seconds"
+    echo "We will start screen session for you automatically"
     echo "to avoid problems with dropped SSH connections"
     echo "during BOA stack installation, which may take up to"
-    echo "30-60 minutes, depending on your server speed."
+    echo "45-60 minutes, depending on your server speed."
     echo
     echo "If your connection will drop, simply log in again"
     echo "and re-attach your session with 'screen -R' command."
     echo
-    echo "Please wait a moment until this message disappears."
-    echo
     echo "Enjoy!"
     echo
-    sleep 15
-    screen
+    sleep 8
   else
     exit 0
   fi

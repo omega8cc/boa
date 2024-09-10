@@ -17,13 +17,13 @@ if [ -z "${TERM+x}" ]; then
   export TERM=vt100
 fi
 
-tRee=pro
+tRee=dev
 export tRee="${tRee}"
 
 _AEGIR_VERSION="${tRee}"
 _BRANCH_BOA="5.x-${tRee}"
 _X_VERSION="BOA-5.4.0-${tRee}"
-_X_SE="540proT02"
+_X_SE="540devT02"
 _MYSQLTUNER_VRN=1.9.4
 _PHP_FPM_WORKERS=AUTO
 _RESERVED_RAM=0
@@ -1498,5 +1498,7 @@ case "$1" in
   *)       tune_sql
   ;;
 esac
+
+exit 0
 
 ###EOF2024###

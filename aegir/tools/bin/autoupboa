@@ -10,9 +10,9 @@ export HOME=${HOME}
 
 barCnf="/root/.barracuda.cnf"
 
-_X_SE="540proT02"
+_X_SE="540devT02"
 
-tRee=pro
+tRee=dev
 export tRee="${tRee}"
 
 crontab_check_clean_race() {
@@ -712,4 +712,7 @@ if [ -e "/var/aegir/drush" ]; then
     fi
   fi
 fi
+
+exit 0
+
 ###EOF2024###

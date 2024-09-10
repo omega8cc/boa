@@ -36,3 +36,5 @@ done
 
 # printf "%s\n" "${slist[@]}"
 printf "${slist[@]}"
+
+exit 0

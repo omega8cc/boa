@@ -35,6 +35,7 @@ _VM_TEST=$(uname -a 2>&1)
 if [[ "${_VM_TEST}" =~ "-beng" ]]; then
   _VMFAMILY="VS"
 fi
+_INITINS="/usr/bin/apt-get -y --allow-unauthenticated install"
 
 ###
 ### Avoid too many questions
@@ -68,6 +69,34 @@ apt_clean_update() {
   #apt-get clean -qq 2> /dev/null
   #rm -rf /var/lib/apt/lists/* &> /dev/null
   ${_APT_UPDATE} -qq 2> /dev/null
+}
+
+check_manufacturer_compatibility() {
+  # Install dmidecode of not present
+  if ! command -v dmidecode &> /dev/null; then
+    /usr/bin/apt-get update &> /dev/null
+    ${_INITINS} dmidecode &> /dev/null
+  fi
+  # Check if dmidecode is available
+  _DMI_TEST=$(which dmidecode 2>&1)
+  if [ -x "${_DMI_TEST}" ]; then
+    _HOST_INFO=$(dmidecode -s system-manufacturer 2>&1)
+  else
+    _HOST_INFO="Unknown, dmidecode not available"
+  fi
+  # Check for Amazon EC2 in the system manufacturer field
+  if dmidecode -s system-manufacturer | grep -i 'Amazon EC2' &> /dev/null; then
+    _VMFAMILY="AWS"
+    echo "Not supported environment detected: ${_HOST_INFO}"
+    echo "Please check https://bit.ly/boa-caveats"
+    echo "Bye!"
+    clean_pid_exit check_manufacturer_compatibility_a
+  elif [[ "${_HOST_INFO}" =~ "Unknown" ]] || [ -z "${_HOST_INFO}" ]; then
+    echo "Mysterious environment: ${_HOST_INFO}"
+    echo "Please check https://bit.ly/boa-caveats"
+    echo "Bye!"
+    clean_pid_exit check_manufacturer_compatibility_b
+  fi
 }
 
 check_no_systemd() {
@@ -1694,6 +1723,45 @@ display_version() {
   fi
 }
 
+# Function to display time in appropriate units
+display_time() {
+  local service=$1
+  local pidfile=$2
+  if [ ! -f "$pidfile" ]; then
+    echo "  _XSE $service is not running (PID file not found)."
+    return
+  fi
+
+  # Get the PID from the PID file
+  pid=$(cat "$pidfile")
+
+  # Check if the process is running
+  if ! ps -p "$pid" > /dev/null 2>&1; then
+    echo "  _XSE $service is not running (stale PID file)."
+    return
+  fi
+
+  # Get the current time and the PID file modification time in seconds since epoch
+  current_time=$(date +%s)
+  file_time=$(stat -c %Y "$pidfile")
+
+  # Calculate the time difference in seconds
+  elapsed=$((current_time - file_time))
+
+  if [ $elapsed -lt 60 ]; then
+    echo "  _XSE $service is running for $elapsed seconds."
+  elif [ $elapsed -lt 3600 ]; then
+    minutes=$((elapsed / 60))
+    echo "  _XSE $service is running for $minutes minutes."
+  elif [ $elapsed -lt 172800 ]; then
+    hours=$((elapsed / 3600))
+    echo "  _XSE $service is running for $hours hours."
+  else
+    days=$((elapsed / 86400))
+    echo "  _XSE $service is running for $days days."
+  fi
+}
+
 display_info() {
   if [ `whoami` = "root" ]; then
     _HOST_INFO=$(dmidecode -s system-manufacturer 2>&1)
@@ -1898,6 +1966,32 @@ display_info() {
     [ "${mode}" != "report" ] && [ ! -z "${_XTR}" ] && echo "  _XTR ${_XTR}"
     [ "${mode}" != "report" ] && [ ! -z "${_AUT}" ] && echo "  _AUT ${_AUT}"
     echo
+    echo "  _XSE Key Services Uptime Report"
+    echo
+    # List of services and their respective PID files
+    declare -A services=(
+      ["sshd"]="/run/sshd.pid"
+      ["crond"]="/run/crond.pid"
+      ["nginx"]="/run/nginx.pid"
+      ["php74-fpm"]="/run/php74-fpm.pid"
+      ["php81-fpm"]="/run/php81-fpm.pid"
+      ["php82-fpm"]="/run/php82-fpm.pid"
+      ["php83-fpm"]="/run/php83-fpm.pid"
+      ["mysql"]="/run/mysqld/mysqld.pid"
+      ["redis"]="/run/redis/redis.pid"
+      ["solr7"]="/var/solr7/solr-9077.pid"
+      ["jetty9"]="/run/jetty9.pid"
+      ["pure-ftpd"]="/run/pure-ftpd.pid"
+      ["lfd"]="/run/lfd.pid"
+      ["rsyslogd"]="/run/rsyslogd.pid"
+      ["unbound"]="/run/unbound/unbound.pid"
+      ["vnstat"]="/run/vnstat/vnstat.pid"
+    )
+    # Loop through the services and check their uptime
+    for service in "${!services[@]}"; do
+      display_time "$service" "${services[$service]}"
+    done
+    echo
     if [ -e "/var/log/barracuda_log.txt" ]; then
       if [ "${mode}" = "report" ]; then
         display="system"
@@ -2068,8 +2162,95 @@ octopus_cleanup() {
   fi
 }
 
+if_start_screen() {
+  if [ -e "/root/.autoinit.log" ] && [ ! -e "/lib/systemd/systemd" ]; then
+    if [[ -n "$SSH_CONNECTION" || -n "$SSH_CLIENT" ]]; then
+      # Check if the user is inside a screen session
+      if [[ ! "${ARGS}" =~ (^|[[:space:]])(info|help|version|reboot)([[:space:]]|$) ]]; then
+        if [ -z "$STY" ]; then
+          # If not in screen, start a new screen session with the same script
+          echo "You are not inside a screen session. Starting screen..."
+          screen -S session_boa bash -c "$0 $ARGS"
+          exit
+        else
+          # If already inside screen, continue the script
+          echo "You are already in a screen session, OK"
+        fi
+      fi
+    fi
+  fi
+}
+
+if_display_help() {
+  if [ "${cmmand}" = "help" ]; then
+    echo
+    echo "Installation commands:"
+    echo
+    echo "Usage: $(basename "$0") {version} {kind} {fqdn} {email} {user} {extra} {output}"
+    echo "Usage: $(basename "$0") {in-octopus} {email} {o2} {lts|dev|pro} {output}"
+    echo
+    echo "Other available commands:"
+    echo
+    echo "Usage: $(basename "$0") version"
+    echo "Usage: $(basename "$0") info {more}"
+    echo "Usage: $(basename "$0") info report {octopus|backups|both}"
+    echo "Usage: $(basename "$0") cleanup {detect|purge} {user|batch}"
+    echo "Usage: $(basename "$0") reboot"
+    echo
+    cat <<EOF
+
+    Accepted keywords and values for installation and other commands:
+
+    {version}
+      in-lts <------- install BOA LTS release (no license)
+      in-dev <------- install BOA Cutting Edge (requires license)
+      in-octopus <--- install extra Octopus instance (lts|dev|pro)
+
+    {kind}
+      public <------- recommended for general use
+      local <-------- experimental
+
+    {fqdn}
+      my.fqdn <------ valid subdomain to use as a hostname
+
+    {email}
+      my@email <----- your valid email address
+
+    {user}
+      o1 <----------- default Octopus system account
+
+    {extra}
+      license <------ valid new relic license key
+      php-8.1 <------ enable single-PHP mode (8.1 or 8.2 or 8.3 or 7.4)
+      php-min <------ install PHP 8.1, 8.2, 8.3, 7.4, use 8.1 by default (php-all)
+      php-max <------ install PHP 8.1, 8.2, 8.3, 8.0, 7.4, 7.3, 7.2, 7.1, 7.0, 5.6
+      nodns <-------- disable DNS/SMTP checks on the fly
+      percona-8.0 <-- specify Percona version to use (5.7, 8.0, 8.3, 8.4)
+
+    {output}
+      verbose <------ barracuda and octopus installed (output in the console) (default)
+      minimal <------ barracuda and octopus installed (output mostly logged)
+      silent <------- barracuda and octopus installed (output only logged)
+      system <------- only barracuda is installed (output mostly logged)
+
+    {other}
+      version <------ display BOA and OS version
+      info <--------- generate various system reports
+      cleanup <------ (detect|purge) cancelled Octopus instances files (no dbs)
+      reboot <------- run accelerated system reboot
+
+    See docs/INSTALL.md for more details.
+
+EOF
+    clean_pid_exit cmmand_a
+
+  fi
+}
+
 check_root_direct
 os_detection_minimal
+
+ARGS="$@"
 
 case "$1" in
   info)      cmmand="$1"
@@ -2081,6 +2262,9 @@ case "$1" in
   version)   cmmand="$1"
              display_version
   ;;
+  help)      cmmand="$1"
+             if_display_help
+  ;;
   reboot)    service clean-boa-env stop
              wait
              reboot
@@ -2089,6 +2273,7 @@ case "$1" in
   cleanup)   cmmand="$1"
              action="$2"
              user="$3"
+             if_start_screen
              octopus_cleanup
   ;;
   in-lts)   cmmand="$1"
@@ -2100,9 +2285,11 @@ case "$1" in
              extra="$6"
              output="$7"
              check_root
+             check_manufacturer_compatibility
              check_root_keys_pwd
              check_virt
              check_dns_curl
+             if_start_screen
              # Capture the complete command with arguments
              _BOA_COMMAND="$0 $@"
              init_setup
@@ -2119,6 +2306,7 @@ case "$1" in
              check_root_keys_pwd
              check_virt
              check_dns_curl
+             if_start_screen
              # Capture the complete command with arguments
              _BOA_COMMAND="$0 $@"
              init_setup
@@ -2134,6 +2322,7 @@ case "$1" in
              check_root_keys_pwd
              check_virt
              check_dns_curl
+             if_start_screen
              # Capture the complete command with arguments
              _BOA_COMMAND="$0 $@"
              init_setup
@@ -2151,67 +2340,17 @@ case "$1" in
              check_root_keys_pwd
              check_virt
              check_dns_curl
+             if_start_screen
              # Capture the complete command with arguments
              _BOA_COMMAND="$0 $@"
              init_setup
   ;;
   *)         echo
-             echo "Installation commands"
-             echo "Usage: $(basename "$0") {version} {kind} {fqdn} {email} {user} {extra} {output}"
-             echo "Usage: $(basename "$0") {in-octopus} {email} {o2} {lts|dev|pro} {output}"
+             echo "Sorry, you are trying not supported command.."
+             echo "Display supported commands with: $(basename "$0") help"
              echo
-             echo "Other available commands"
-             echo "Usage: $(basename "$0") version"
-             echo "Usage: $(basename "$0") info {more}"
-             echo "Usage: $(basename "$0") info report {octopus|backups|both}"
-             echo "Usage: $(basename "$0") cleanup {detect|purge} {user|batch}"
-             echo "Usage: $(basename "$0") reboot"
-             echo
-             cat <<EOF
-
-  Accepted keywords and values for installation and other commands:
-
-  {version}
-      in-lts <------- install BOA LTS release (no license)
-      in-dev <------- install BOA Cutting Edge (requires license)
-      in-octopus <--- install extra Octopus instance (lts|dev|pro)
-
-  {kind}
-      public <------- recommended for general use
-      local <-------- experimental
-
-  {fqdn}
-      my.fqdn <------ valid subdomain to use as a hostname
-
-  {email}
-      my@email <----- your valid email address
-
-  {user}
-      o1 <----------- default Octopus system account
-
-  {extra}
-      license <------ valid new relic license key
-      php-8.1 <------ enable single-PHP mode (8.1 or 8.2 or 8.3 or 7.4)
-      php-min <------ install PHP 8.1, 8.2, 8.3, 7.4, use 8.1 by default (php-all)
-      php-max <------ install PHP 8.1, 8.2, 8.3, 8.0, 7.4, 7.3, 7.2, 7.1, 7.0, 5.6
-      nodns <-------- disable DNS/SMTP checks on the fly
-      percona-8.0 <-- specify Percona version to use (5.7, 8.0, 8.3, 8.4)
-
-  {output}
-      verbose <------ barracuda and octopus installed (output in the console) (default)
-      minimal <------ barracuda and octopus installed (output mostly logged)
-      silent <------- barracuda and octopus installed (output only logged)
-      system <------- only barracuda is installed (output mostly logged)
-
-  {other}
-      version <------ display BOA and OS version
-      info <--------- generate various system reports
-      cleanup <------ (detect|purge) cancelled Octopus instances files (no dbs)
-      reboot <------- run accelerated system reboot
-
-  See docs/INSTALL.md for more details.
-
-EOF
              clean_pid_exit cmmand_a
   ;;
 esac
+
+exit 0
