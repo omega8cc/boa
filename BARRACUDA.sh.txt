@@ -341,7 +341,6 @@ if_proxysql_update
 sys_packages_install
 java_check_fix
 locales_check_fix
-find_server_city
 
 
 ###
@@ -571,6 +570,7 @@ sysctl_update
 initd_update
 apticron_update
 barracuda_log_update
+find_server_city
 
 
 ###
