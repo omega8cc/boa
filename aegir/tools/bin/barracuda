@@ -1698,12 +1698,12 @@ set_tree_vars() {
       || [ "${silent}" = "enable" ] \
       || [ "${silent}" = "system" ] \
       || [ "${silent}" = "distro" ]; then
-      silent="$2"
+      export silent="$argsec"
     else
-      silent=
-      rkey="$2"
-      debug="$3"
-      sql="$4"
+      export silent=
+      export rkey="$argsec"
+      export debug="$argthr"
+      export sql="$argfth"
     fi
   fi
   if [ "${cmmand}" = "up-dev" ]; then
@@ -1726,20 +1726,24 @@ set_tree_vars() {
       clean_pid_exit cmmand_a
     fi
   fi
-  rlsn="BOA-5.4.0"
-  rlse="${rlsn}-${tRee}"
-  branch="5.x-${tRee}"
-  brnch=${branch//\//\\\/}
+  export rlsn="BOA-5.4.0"
+  export rlse="${rlsn}-${tRee}"
+  export branch="5.x-${tRee}"
+  export brnch=${branch//\//\\\/}
   export tRee="${tRee}"
   export rlsn="${rlsn}"
 }
 
-ARGS="$@"
-cmmand="$1"
-silent="$2"
-rkey="$3"
-debug="$4"
-sql="$5"
+export ARGS="$@"
+export cmmand="$1"
+export silent="$2"
+export rkey="$3"
+export debug="$4"
+export sql="$5"
+
+export argsec="$2"
+export argthr="$3"
+export argfth="$4"
 
 check_root_direct
 set_tree_vars

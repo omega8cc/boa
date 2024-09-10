@@ -2252,7 +2252,7 @@ EOF
 check_root_direct
 os_detection_minimal
 
-ARGS="$@"
+export ARGS="$@"
 
 case "$1" in
   info)      cmmand="$1"
