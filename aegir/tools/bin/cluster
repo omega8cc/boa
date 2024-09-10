@@ -23,7 +23,7 @@ aptYesUnth="-y --allow-unauthenticated"
 _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
 _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
 aptLiSys="/etc/apt/sources.list"
-tRee=dev
+tRee=pro
 export tRee="${tRee}"
 if [ -e "/var/aegir/drush" ]; then
   _DPKG_CNF="confold"
