@@ -371,6 +371,15 @@ if [ -e "/var/aegir/drush" ]; then
     _AUTO_OCT_UP_HOUR=${_AUTO_OCT_UP_HOUR//[^0-9]/}
     _AUTO_OCT_UP_MINUTE=${_AUTO_OCT_UP_MINUTE//[^0-9]/}
 
+    if [ ! -z "${_AUTO_UP_WEEKLY}" ] \
+      && [ ! -z "${_AUTO_UP_MONTH}" ] \
+      && [ ! -z "${_AUTO_UP_DAY}" ]; then
+      [ -z "${_AUTO_UP_HOUR}" ] && _AUTO_UP_HOUR=0
+      [ -z "${_AUTO_UP_MINUTE}" ] && _AUTO_UP_MINUTE=15
+      [ -z "${_AUTO_OCT_UP_HOUR}" ] && _AUTO_OCT_UP_HOUR=1
+      [ -z "${_AUTO_OCT_UP_MINUTE}" ] && _AUTO_OCT_UP_MINUTE=15
+    fi
+
     if [ -e "/etc/apticron/apticron.conf" ]; then
       sed -i "s/^# be something like.*/# be something like ${_MY_EMAIL}/g" \
         /etc/apticron/apticron.conf
@@ -393,15 +402,6 @@ if [ -e "/var/aegir/drush" ]; then
   fi
   if_hosted_sys
   if [ "${hostedSys}" = "YES" ]; then
-
-    [ -z "${_AUTO_UP_WEEKLY}" ] && _AUTO_UP_WEEKLY=7
-    [ -z "${_AUTO_UP_MONTH}" ] && _AUTO_UP_MONTH=8
-    [ -z "${_AUTO_UP_DAY}" ] && _AUTO_UP_DAY=8
-    [ -z "${_AUTO_UP_HOUR}" ] && _AUTO_UP_HOUR=0
-    [ -z "${_AUTO_UP_MINUTE}" ] && _AUTO_UP_MINUTE=15
-    [ -z "${_AUTO_OCT_UP_HOUR}" ] && _AUTO_OCT_UP_HOUR=1
-    [ -z "${_AUTO_OCT_UP_MINUTE}" ] && _AUTO_OCT_UP_MINUTE=15
-
 	if [[ "${_CHECK_HOST}" =~ ^(lcy1.ao.|lcy15.uk.) ]]; then
 	  _DONT_TOUCH=OK
 	  rm -f /etc/csf/csf.conf-pre*
@@ -576,14 +576,14 @@ if [ -e "/var/aegir/drush" ]; then
   fi
 
   if [ -e "/root/.dev.server.cnf" ]; then
-    if [ ! -e "/var/xdrago/log/.etc_crontab_update_dev_ctrl_f9.${tRee}.${_X_SE}.pid" ]; then
+    if [ ! -e "/var/xdrago/log/.etc_crontab_update_dev_ctrl_f10.${tRee}.${_X_SE}.pid" ]; then
       rm -f /var/xdrago/log/.*etc_crontab_update_dev_ctrl*
       crontab_cleanup
       service cron restart
-      touch /var/xdrago/log/.etc_crontab_update_dev_ctrl_f9.${tRee}.${_X_SE}.pid
+      touch /var/xdrago/log/.etc_crontab_update_dev_ctrl_f10.${tRee}.${_X_SE}.pid
     fi
   else
-    if [ ! -e "/var/xdrago/log/.etc_crontab_update_prod_ctrl_f9.${tRee}.${_X_SE}.pid" ]; then
+    if [ ! -e "/var/xdrago/log/.etc_crontab_update_prod_ctrl_f10.${tRee}.${_X_SE}.pid" ]; then
       rm -f /var/xdrago/log/.*etc_crontab_update_prod_ctrl*
       if [ ! -z "${_AUTO_UP_MONTH}" ] \
         && [ ! -z "${_AUTO_UP_DAY}" ]; then
@@ -592,7 +592,7 @@ if [ -e "/var/aegir/drush" ]; then
         crontab_cleanup
       fi
       service cron restart
-      touch /var/xdrago/log/.etc_crontab_update_prod_ctrl_f9.${tRee}.${_X_SE}.pid
+      touch /var/xdrago/log/.etc_crontab_update_prod_ctrl_f10.${tRee}.${_X_SE}.pid
     fi
   fi
 

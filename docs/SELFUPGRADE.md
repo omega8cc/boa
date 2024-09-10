@@ -28,12 +28,26 @@ You can further modify the auto-upgrade by specifying either `head` or `dev` wit
 
 Note that weekly system upgrades will start shortly after midnight on the specified weekday, while the day/month upgrades for both Barracuda and all Octopus instances will start at approximately 3 AM for the system and Ægir Master instance, and at approximately 4 AM for all Octopus-based Ægir instances.
 
-> **NOTE:** All three `_AUTO_UP_*` variables must be defined to enable auto-upgrade.
+> **NOTE:** All three main `_AUTO_UP_*` variables must be defined to enable auto-upgrade.
 
 ```ini
 _AUTO_UP_WEEKLY=  # Day of week (1-7) for weekly system upgrades
 _AUTO_UP_MONTH=   # Month (1-12) to define the date of one-time upgrade
 _AUTO_UP_DAY=     # Day (1-31) to define the date of one-time upgrade
-_AUTO_VER=dev     # The BOA version to use (dev by default)
+_AUTO_VER=lts     # The BOA version to use (lts by default)
 _AUTO_PHP=        # Useful to force php-min, otherwise ignored
 ```
+
+> **NOTE:** New extra `_AUTO_UP_*` variables can be also defined or default values will be used
+
+```ini
+_AUTO_UP_HOUR=    # Hour of the day (0-23) for barracuda upgrades
+_AUTO_UP_MINUTE=  # Minute of the hour (0-59) for barracuda upgrades
+```
+
+```ini
+_AUTO_OCT_UP_HOUR=    # Hour of the day (0-23) for octopus upgrades
+_AUTO_OCT_UP_MINUTE=  # Minute of the hour (0-59) for octopus upgrades
+```
+
+> **IMPORTANT:** pay attention to use correct values within ranges as listed above. Otherwise you can break and lock your system cron.
