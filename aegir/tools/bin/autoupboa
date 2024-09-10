@@ -15,6 +15,60 @@ _X_SE="540ltsT02"
 tRee=lts
 export tRee="${tRee}"
 
+# Define directories and error log path
+SSL_DIR="/etc/ssl/private"
+NGINX_ERROR_LOG="/var/log/nginx/error.log"
+
+# Function to check if a file is empty
+is_empty_file() {
+    local file="$1"
+    [[ ! -s "$file" ]]
+}
+
+# Check for empty .dhp files and attempt to replace or regenerate them
+process_dhp_files() {
+  local dhp_files=("$SSL_DIR"/*.dhp)
+  local non_empty_dhp=""
+  # Find the first non-empty .dhp file
+  for dhp_file in "${dhp_files[@]}"; do
+    if ! is_empty_file "$dhp_file"; then
+      non_empty_dhp="$dhp_file"
+      break
+    fi
+  done
+  # Loop over all .dhp files
+  for dhp_file in "${dhp_files[@]}"; do
+    if is_empty_file "$dhp_file"; then
+      if [[ -n "$non_empty_dhp" ]]; then
+        echo "Replacing empty file $dhp_file with $non_empty_dhp"
+        cp "$non_empty_dhp" "$dhp_file"
+      else
+        echo "No non-empty .dhp file found, generating new file for $dhp_file"
+        openssl dhparam -out "$dhp_file" 4096 > /dev/null 2>&1 &
+      fi
+    fi
+  done
+}
+
+# Scan Nginx error log for .dhp related errors
+scan_nginx_errors() {
+  grep "PEM_read_bio_DHparams" "$NGINX_ERROR_LOG" | awk -F'(")' '{print $2}' | while read -r missing_dhp; do
+    if [[ ! -f "$missing_dhp" ]]; then
+      echo "Missing .dhp file detected: $missing_dhp"
+      if [[ -n "$non_empty_dhp" ]]; then
+        echo "Copying non-empty .dhp file to $missing_dhp"
+        cp "$non_empty_dhp" "$missing_dhp"
+      else
+        echo "Generating new .dhp file for $missing_dhp"
+        openssl dhparam -out "$missing_dhp" 4096 > /dev/null 2>&1 &
+      fi
+    fi
+  done
+}
+
+process_dhp_files
+scan_nginx_errors
+
 crontab_check_clean_race() {
   _CSF_CRON_TEST=$(grep water /etc/crontab 2>&1)
   if [ -e "/etc/csf/csf.deny" ] \
