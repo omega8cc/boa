@@ -294,9 +294,9 @@ innodb_log_file_size_update() {
     if [ "${_DB_V}" = "5.7" ] || [ "${_DB_SERIES}" = "5.7" ]; then
       if [ "${_SQL_UPGRADE}" = "NO" ]; then
         if [ -e "/root/.dev.server.cnf" ]; then
-          echo "DEBUG: _DB_SERIES is ${_DB_SERIES}"
-          echo "DEBUG: _DB_V is ${_DB_V}"
-          echo "DEBUG: _SQL_UPGRADE is ${_SQL_UPGRADE}"
+          echo "DEBUG1: _DB_SERIES is ${_DB_SERIES}"
+          echo "DEBUG1: _DB_V is ${_DB_V}"
+          echo "DEBUG1: _SQL_UPGRADE is ${_SQL_UPGRADE}"
         fi
         sed -i "s/.*innodb_redo_log_capacity.*/#innodb_redo_log_capacity    = ${_INNODB_REDO_LOG_CAPACITY_MB}/g" /etc/mysql/my.cnf
         wait
@@ -308,9 +308,9 @@ innodb_log_file_size_update() {
     if [ "${_DB_V}" != "5.7" ] || [ "${_SQL_UPGRADE}" = "YES" ]; then
       if [ ! -z "${_DB_SERIES}" ] && [ "${_DB_SERIES}" != "5.7" ]; then
         if [ -e "/root/.dev.server.cnf" ]; then
-          echo "DEBUG: _DB_SERIES is ${_DB_SERIES}"
-          echo "DEBUG: _DB_V is ${_DB_V}"
-          echo "DEBUG: _SQL_UPGRADE is ${_SQL_UPGRADE}"
+          echo "DEBUG2: _DB_SERIES is ${_DB_SERIES}"
+          echo "DEBUG2: _DB_V is ${_DB_V}"
+          echo "DEBUG2: _SQL_UPGRADE is ${_SQL_UPGRADE}"
         fi
         sed -i "s/.*innodb_redo_log_capacity.*/innodb_redo_log_capacity    = ${_INNODB_REDO_LOG_CAPACITY_MB}/g" /etc/mysql/my.cnf
         wait
@@ -335,9 +335,9 @@ innodb_log_file_size_update() {
       if [ "${_DB_V}" = "5.7" ] || [ "${_DB_SERIES}" = "5.7" ]; then
         if [ "${_SQL_UPGRADE}" = "NO" ]; then
           if [ -e "/root/.dev.server.cnf" ]; then
-            echo "DEBUG: _DB_SERIES is ${_DB_SERIES}"
-            echo "DEBUG: _DB_V is ${_DB_V}"
-            echo "DEBUG: _SQL_UPGRADE is ${_SQL_UPGRADE}"
+            echo "DEBUG3: _DB_SERIES is ${_DB_SERIES}"
+            echo "DEBUG3: _DB_V is ${_DB_V}"
+            echo "DEBUG3: _SQL_UPGRADE is ${_SQL_UPGRADE}"
           fi
           sed -i "s/.*innodb_redo_log_capacity.*/#innodb_redo_log_capacity    = ${_INNODB_REDO_LOG_CAPACITY_MB}/g" /etc/mysql/my.cnf
           wait
@@ -349,9 +349,9 @@ innodb_log_file_size_update() {
       if [ "${_DB_V}" != "5.7" ] || [ "${_SQL_UPGRADE}" = "YES" ]; then
         if [ ! -z "${_DB_SERIES}" ] && [ "${_DB_SERIES}" != "5.7" ]; then
           if [ -e "/root/.dev.server.cnf" ]; then
-            echo "DEBUG: _DB_SERIES is ${_DB_SERIES}"
-            echo "DEBUG: _DB_V is ${_DB_V}"
-            echo "DEBUG: _SQL_UPGRADE is ${_SQL_UPGRADE}"
+            echo "DEBUG4: _DB_SERIES is ${_DB_SERIES}"
+            echo "DEBUG4: _DB_V is ${_DB_V}"
+            echo "DEBUG4: _SQL_UPGRADE is ${_SQL_UPGRADE}"
           fi
           sed -i "s/.*innodb_redo_log_capacity.*/innodb_redo_log_capacity    = ${_INNODB_REDO_LOG_CAPACITY_MB}/g" /etc/mysql/my.cnf
           wait
@@ -409,7 +409,7 @@ sql_conf_update() {
             _INNODB_LOG_FILE_SIZE_SAME=NO
           fi
           if [ -e "/root/.dev.server.cnf" ]; then
-            echo "DEBUG: _INNODB_LOG_FILE_SIZE_SAME is ${_INNODB_LOG_FILE_SIZE_SAME}"
+            echo "DEBUG5: _INNODB_LOG_FILE_SIZE_SAME is ${_INNODB_LOG_FILE_SIZE_SAME}"
           fi
         fi
       fi
@@ -463,12 +463,12 @@ sql_conf_update() {
     fi
     if [ "${_DB_V}" = "5.7" ] || [ "${_DB_SERIES}" = "5.7" ]; then
       if [ -e "/root/.dev.server.cnf" ]; then
-        echo "DEBUG: _DB_SERIES is ${_DB_SERIES}"
-        echo "DEBUG: _DB_V is ${_DB_V}"
+        echo "DEBUG6: _DB_SERIES is ${_DB_SERIES}"
+        echo "DEBUG6: _DB_V is ${_DB_V}"
       fi
       if [ "${_SQL_UPGRADE}" = "NO" ]; then
         if [ -e "/root/.dev.server.cnf" ]; then
-          echo "DEBUG: _SQL_UPGRADE is ${_SQL_UPGRADE}"
+          echo "DEBUG6: _SQL_UPGRADE is ${_SQL_UPGRADE}"
         fi
         if [ ! -z "${_INNODB_LOG_FILE_SIZE}" ] && [ "${_INNODB_LOG_FILE_SIZE}" -ge "50" ]; then
           _INNODB_LOG_FILE_SIZE_MB="${_INNODB_LOG_FILE_SIZE}M"
@@ -491,9 +491,9 @@ sql_conf_update() {
     fi
     if [ "${_DB_V}" != "5.7" ] || [ "${_SQL_UPGRADE}" = "YES" ]; then
       if [ -e "/root/.dev.server.cnf" ]; then
-        echo "DEBUG: _DB_SERIES is ${_DB_SERIES}"
-        echo "DEBUG: _DB_V is ${_DB_V}"
-        echo "DEBUG: _SQL_UPGRADE is ${_SQL_UPGRADE}"
+        echo "DEBUG7: _DB_SERIES is ${_DB_SERIES}"
+        echo "DEBUG7: _DB_V is ${_DB_V}"
+        echo "DEBUG7: _SQL_UPGRADE is ${_SQL_UPGRADE}"
       fi
       if [ ! -z "${_DB_SERIES}" ] && [ "${_DB_SERIES}" != "5.7" ]; then
         if [ ! -z "${_INNODB_LOG_FILE_SIZE}" ] && [ "${_INNODB_LOG_FILE_SIZE}" -ge "50" ]; then
