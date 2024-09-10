@@ -1207,10 +1207,10 @@ up_proceed() {
     echo
     clean_pid_exit up_proceed_a
   fi
-  rlsn="BOA-5.4.0"
-  rlse="${rlsn}-${tRee}"
-  branch="5.x-${tRee}"
-  brnch=${branch//\//\\\/}
+  export rlsn="BOA-5.4.0"
+  export rlse="${rlsn}-${tRee}"
+  export branch="5.x-${tRee}"
+  export brnch=${branch//\//\\\/}
   export tRee="${tRee}"
   export rlsn="${rlsn}"
   satellite_downgrade_protection
@@ -1225,11 +1225,11 @@ up_proceed() {
   up_finish
 }
 
-cmmand="$1"
-second="$2"
-cmmode="$3"
-silent="$4"
-ARGS="$@"
+export cmmand="$1"
+export second="$2"
+export cmmode="$3"
+export silent="$4"
+export ARGS="$@"
 
 if_display_help
 check_root_direct
