@@ -209,23 +209,6 @@ _MINUTE=${_MINUTE//[^0-9-]/}
 _NOW=$(date +%y%m%d-%H%M%S 2>&1)
 _NOW=${_NOW//[^0-9-]/}
 
-_DSU=$(date +%e 2>&1)
-_DSU=${_DSU//[^0-9]/}
-_DAY_SYSTEM_UP=$(( _DSU + 1 ))
-
-if [ "${_DAY_SYSTEM_UP}" = "31" ]; then
-  _DAY_SYSTEM_UP=30
-  _HOUR_OCTOPUS_UP=6
-  _HOUR_SYSTEM_UP=3
-  _MINUTE_OCTOPUS_UP="05"
-  _MINUTE_SYSTEM_UP=30
-else
-  _HOUR_OCTOPUS_UP=6
-  _HOUR_SYSTEM_UP=3
-  _MINUTE_OCTOPUS_UP="05"
-  _MINUTE_SYSTEM_UP="05"
-fi
-
 _CHECK_HOST=$(uname -n 2>&1)
 if_hosted_sys() {
   if [ -e "/root/.host8.cnf" ] \
@@ -299,19 +282,19 @@ crontab_update() {
     fi
     _OCTO_FULL="up-${_AUTO_VER} all force log"
 
-    if [ ! -z "${_AUTO_UP_WEEKLY}" ]; then
+    if [ ! -z "${_BCDA_SYST}" ]; then
       echo "# Barracuda weekly system only upgrade" >> /etc/crontab
-      echo "11 3    * * ${_AUTO_UP_WEEKLY}   root    bash /opt/local/bin/barracuda ${_BCDA_SYST}" >> /etc/crontab
-      echo "14 3    * * ${_AUTO_UP_WEEKLY}   root    bash /opt/local/bin/barracuda ${_BCDA_SYST}" >> /etc/crontab
+      echo "${_AUTO_UP_MINUTE} ${_AUTO_UP_HOUR}    * * ${_AUTO_UP_WEEKLY}   root    bash /opt/local/bin/barracuda ${_BCDA_SYST}" >> /etc/crontab
     fi
 
-    echo "# Barracuda ${_AUTO_VER} full upgrade" >> /etc/crontab
-    echo "${_MINUTE_SYSTEM_UP} ${_HOUR_SYSTEM_UP}    ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    bash /opt/local/bin/barracuda ${_BCDA_FULL}" >> /etc/crontab
+    if [ ! -z "${_BCDA_FULL}" ]; then
+      echo "# Barracuda ${_AUTO_VER} full upgrade" >> /etc/crontab
+      echo "${_AUTO_UP_MINUTE} ${_AUTO_UP_HOUR}    ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    bash /opt/local/bin/barracuda ${_BCDA_FULL}" >> /etc/crontab
+    fi
 
     if [ ! -z "${_OCTO_FULL}" ]; then
       echo "# Octopus ${_AUTO_VER} full upgrade" >> /etc/crontab
-      echo "${_MINUTE_OCTOPUS_UP} ${_HOUR_OCTOPUS_UP}    ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    bash /opt/local/bin/octopus ${_OCTO_FULL}" >> /etc/crontab
-      echo "55 7    ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    bash /var/xdrago/daily.sh >/dev/null 2>&1" >> /etc/crontab
+      echo "${_AUTO_OCT_UP_MINUTE} ${_AUTO_OCT_UP_HOUR}    ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    bash /opt/local/bin/octopus ${_OCTO_FULL}" >> /etc/crontab
     fi
 
     echo Cron Update Completed
@@ -379,9 +362,23 @@ if [ -e "/var/aegir/drush" ]; then
     _VMFAMILY="VS"
   fi
   if [ -e "${barCnf}" ]; then
+
     _AUTO_UP_WEEKLY=${_AUTO_UP_WEEKLY//[^0-9]/}
     _AUTO_UP_MONTH=${_AUTO_UP_MONTH//[^0-9]/}
     _AUTO_UP_DAY=${_AUTO_UP_DAY//[^0-9]/}
+    _AUTO_UP_HOUR=${_AUTO_UP_HOUR//[^0-9]/}
+    _AUTO_UP_MINUTE=${_AUTO_UP_MINUTE//[^0-9]/}
+    _AUTO_OCT_UP_HOUR=${_AUTO_OCT_UP_HOUR//[^0-9]/}
+    _AUTO_OCT_UP_MINUTE=${_AUTO_OCT_UP_MINUTE//[^0-9]/}
+
+    [ -z "${_AUTO_UP_WEEKLY}" ] && _AUTO_UP_WEEKLY=7
+    [ -z "${_AUTO_UP_MONTH}" ] && _AUTO_UP_MONTH=8
+    [ -z "${_AUTO_UP_DAY}" ] && _AUTO_UP_DAY=8
+    [ -z "${_AUTO_UP_HOUR}" ] && _AUTO_UP_HOUR=0
+    [ -z "${_AUTO_UP_MINUTE}" ] && _AUTO_UP_MINUTE=15
+    [ -z "${_AUTO_OCT_UP_HOUR}" ] && _AUTO_OCT_UP_HOUR=1
+    [ -z "${_AUTO_OCT_UP_MINUTE}" ] && _AUTO_OCT_UP_MINUTE=15
+
     if [ -e "/etc/apticron/apticron.conf" ]; then
       sed -i "s/^# be something like.*/# be something like ${_MY_EMAIL}/g" \
         /etc/apticron/apticron.conf
@@ -506,11 +503,17 @@ if [ -e "/var/aegir/drush" ]; then
       rm -f /etc/mysql/conf.d/mysqldump.cnf
       touch /var/xdrago/log/.custom_percona_forced.${_X_SE}.pid
     fi
-    _AUTO_UP_WEEKLY=7
-    _AUTO_UP_MONTH=7
-    _AUTO_UP_DAY=7
+
     _AUTO_PHP="php-min"
     _AUTO_VER="${tRee}"
+    _AUTO_UP_WEEKLY=7
+    _AUTO_UP_MONTH=9
+    _AUTO_UP_DAY=11
+    _AUTO_UP_HOUR=0
+    _AUTO_UP_MINUTE=30
+    _AUTO_OCT_UP_HOUR=1
+    _AUTO_OCT_UP_MINUTE=30
+
     if [ ! -e "/var/xdrago/log/.restart_site24x7_agent.${_X_SE}.pid" ]; then
       service site24x7monagent restart
       wait
@@ -570,16 +573,6 @@ if [ -e "/var/aegir/drush" ]; then
     _AUTO_UP_MONTH=
     _AUTO_UP_DAY=
   fi
-
-#   if [ ! -e "/root/.legacy_sys_prep_ugrade_ctrl.cnf" ]; then
-#     _AUTO_UP_WEEKLY=
-#     _AUTO_UP_MONTH=
-#     _AUTO_UP_DAY=${_DAY_SYSTEM_UP}
-#     _AUTO_VER="${tRee}"
-#     crontab_update
-#     wait
-#     touch /root/.legacy_sys_prep_ugrade_ctrl.cnf
-#   fi
 
   if [ -e "/root/.dev.server.cnf" ]; then
     if [ ! -e "/var/xdrago/log/.etc_crontab_update_dev_ctrl_f7.${tRee}.${_X_SE}.pid" ]; then
