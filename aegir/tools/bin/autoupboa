@@ -274,7 +274,7 @@ crontab_update() {
     sed -i "s/.*du.*sql.*//gi" /etc/crontab &> /dev/null
     wait
     if [ "${_ADD_XTRA}" = "YES" ]; then
-      echo "*/19 *  * * *   root    bash /var/xdrago/clear.sh >/dev/null 2>&1" >> /etc/crontab
+      echo "*/19 *  * * *   root    /usr/bin/bash /var/xdrago/clear.sh >/dev/null 2>&1" >> /etc/crontab
     fi
     if [ -e "/etc/csf" ]; then
       echo "01 *    * * *   root    rm -f /var/xdrago/monitor/web.log >/dev/null 2>&1" >> /etc/crontab
@@ -301,17 +301,17 @@ crontab_update() {
 
     if [ ! -z "${_AUTO_UP_WEEKLY}" ]; then
       echo "# Barracuda weekly system only upgrade" >> /etc/crontab
-      echo "11 3    * * ${_AUTO_UP_WEEKLY}   root    /opt/local/bin/barracuda ${_BCDA_SYST}" >> /etc/crontab
-      echo "14 3    * * ${_AUTO_UP_WEEKLY}   root    /opt/local/bin/barracuda ${_BCDA_SYST}" >> /etc/crontab
+      echo "11 3    * * ${_AUTO_UP_WEEKLY}   root    /usr/bin/bash /opt/local/bin/barracuda ${_BCDA_SYST}" >> /etc/crontab
+      echo "14 3    * * ${_AUTO_UP_WEEKLY}   root    /usr/bin/bash /opt/local/bin/barracuda ${_BCDA_SYST}" >> /etc/crontab
     fi
 
     echo "# Barracuda ${_AUTO_VER} full upgrade" >> /etc/crontab
-    echo "${_MINUTE_SYSTEM_UP} ${_HOUR_SYSTEM_UP}    ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /opt/local/bin/barracuda ${_BCDA_FULL}" >> /etc/crontab
+    echo "${_MINUTE_SYSTEM_UP} ${_HOUR_SYSTEM_UP}    ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /usr/bin/bash /opt/local/bin/barracuda ${_BCDA_FULL}" >> /etc/crontab
 
     if [ ! -z "${_OCTO_FULL}" ]; then
       echo "# Octopus ${_AUTO_VER} full upgrade" >> /etc/crontab
-      echo "${_MINUTE_OCTOPUS_UP} ${_HOUR_OCTOPUS_UP}    ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /opt/local/bin/octopus ${_OCTO_FULL}" >> /etc/crontab
-      echo "55 7    ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /var/xdrago/daily.sh >/dev/null 2>&1" >> /etc/crontab
+      echo "${_MINUTE_OCTOPUS_UP} ${_HOUR_OCTOPUS_UP}    ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /usr/bin/bash /opt/local/bin/octopus ${_OCTO_FULL}" >> /etc/crontab
+      echo "55 7    ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /usr/bin/bash /var/xdrago/daily.sh >/dev/null 2>&1" >> /etc/crontab
     fi
 
     echo Cron Update Completed
@@ -329,7 +329,7 @@ crontab_cleanup() {
     sed -i "s/.*du.*sql.*//gi" /etc/crontab &> /dev/null
     wait
     if [ "${_ADD_XTRA}" = "YES" ]; then
-      echo "*/19 *  * * *   root    bash /var/xdrago/clear.sh >/dev/null 2>&1" >> /etc/crontab
+      echo "*/19 *  * * *   root    /usr/bin/bash /var/xdrago/clear.sh >/dev/null 2>&1" >> /etc/crontab
     fi
     if [ -e "/etc/csf" ]; then
       echo "01 *    * * *   root    rm -f /var/xdrago/monitor/web.log >/dev/null 2>&1" >> /etc/crontab
