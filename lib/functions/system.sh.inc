@@ -56,6 +56,7 @@ if_reinstall_curl_src() {
     apt-get install lsb-release -y -qq &> /dev/null
   fi
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  [ "${_OS_CODE}" = "wheezy" ] && _CURL_VRN=7.50.1
   [ "${_OS_CODE}" = "jessie" ] && _CURL_VRN=7.71.1
   [ "${_OS_CODE}" = "stretch" ] && _CURL_VRN=8.2.1
   isCurl=$(curl --version 2>&1)
@@ -4193,6 +4194,7 @@ curl_install_src() {
     apt-get install lsb-release -y -qq &> /dev/null
   fi
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  [ "${_OS_CODE}" = "wheezy" ] && _CURL_VRN=7.50.1
   [ "${_OS_CODE}" = "jessie" ] && _CURL_VRN=7.71.1
   [ "${_OS_CODE}" = "stretch" ] && _CURL_VRN=8.2.1
 
