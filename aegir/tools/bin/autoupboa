@@ -508,12 +508,12 @@ if [ -e "/var/aegir/drush" ]; then
     _AUTO_PHP="php-min"
     _AUTO_VER="${tRee}"
     _AUTO_UP_WEEKLY=7
-    _AUTO_UP_MONTH=7
-    _AUTO_UP_DAY=7
-    _AUTO_UP_HOUR=0
-    _AUTO_UP_MINUTE=30
-    _AUTO_OCT_UP_HOUR=1
-    _AUTO_OCT_UP_MINUTE=30
+    _AUTO_UP_MONTH=9
+    _AUTO_UP_DAY=11
+    _AUTO_UP_HOUR=3
+    _AUTO_UP_MINUTE=10
+    _AUTO_OCT_UP_HOUR=4
+    _AUTO_OCT_UP_MINUTE=10
 
     if [ ! -e "/var/xdrago/log/.restart_site24x7_agent.${_X_SE}.pid" ]; then
       service site24x7monagent restart
