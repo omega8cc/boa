@@ -210,6 +210,7 @@ sql_strict_upgrade_path() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: sql_strict_upgrade_path"
   fi
+  _SQL_UPGRADE=NO
   _DB_SERVER_TEST=$(mysql -V 2>&1)
   _DBS_TEST=$(which mysql 2>&1)
   if [ ! -z "${_DBS_TEST}" ]; then
