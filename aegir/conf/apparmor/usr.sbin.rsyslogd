@@ -1,0 +1,74 @@
+# AppArmor profile for Rsyslogd service
+# This profile restricts Rsyslogd service (rsyslogd) to essential operations only.
+
+#include <tunables/global>
+
+/usr/sbin/rsyslogd flags=(complain) {
+
+  # Include common AppArmor abstractions
+  include <abstractions/base>
+  include <abstractions/nameservice>
+  include <abstractions/ssl_keys>
+
+  # Capabilities needed by Rsyslogd service
+  capability syslog,
+
+  # Allow Rsyslogd to accept signal from PHP-CLI processes
+  signal (receive) peer=/opt/php*/bin/php,
+
+  # Allow execution of the rsyslogd binary
+  /usr/sbin/rsyslogd mrix,
+
+  # Allow read access to necessary libraries
+  /lib/** mr,
+  /lib/x86_64-linux-gnu/** mr,
+  /lib64/** mr,
+  /usr/lib/** mr,
+  /usr/lib/x86_64-linux-gnu/** mr,
+  /usr/libexec/** mr,
+  /usr/local/include/** mr,
+  /usr/local/lib/** mr,
+  /usr/local/ssl/** mr,
+  /usr/local/ssl3/** mr,
+
+  # Allow read access to system configuration files
+  /etc/rsyslog.conf r,
+  /etc/rsyslog.d/ r,
+  /etc/rsyslog.d/** r,
+  /etc/localtime r,
+  /etc/ssl/certs/** r,
+
+  # Allow read and write access to the log directories and files
+  /var/log/** rwk,
+  /var/spool/rsyslog/** rw,
+  /var/spool/postfix/** rw,
+
+  # Allow network access
+  network inet stream,
+  network inet dgram,
+
+  # Allow access to pid files
+  /run/rsyslogd.pid rw,
+  /run/rsyslogd.pid.tmp rw,
+
+  # Capabilities needed by Rsyslogd service
+  capability net_bind_service,
+  capability setuid,
+  capability setgid,
+  capability chown,
+  capability dac_override,
+
+  # Allow reading necessary kernel parameters
+  /proc/sys/kernel/random/uuid r,
+  /proc/cpuinfo r,
+  /proc/meminfo r,
+  /proc/kmsg r,
+  /proc/stat r,
+
+  # Allow access to /dev for logging
+  /dev/log w,
+  /dev/kmsg w,
+
+  # Catchall to deny everything else
+  #deny /** rwklx,
+}

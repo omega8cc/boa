@@ -1,23 +1,19 @@
 
 
-if_install_jetty() {
+if_install_solr_jetty() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: if_install_jetty"
+    msg "PROC: if_install_solr_jetty"
   fi
   if_to_do_fix
+  if_hosted_sys
   if [[ "${_XTRAS_LIST}" =~ "SR7" ]] \
     || [[ "${_XTRAS_LIST}" =~ "ALL" ]] \
-    || [[ "${_THISHOST}" =~ ".host8." ]] \
-    || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
-    || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
-    || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]] \
-    || [ -e "/root/.auto.up.cnf" ] \
-    || [ -e "/root/.host8.cnf" ]; then
+    || [ "${hostedSys}" = "YES" ]; then
     _R_SOLR="7"
     _N_SOLR="solr${_R_SOLR}"
     _SOLR_VPATH="/var/${_N_SOLR}/data"
     _SOLR_CTRL="/var/${_N_SOLR}/solr-${_SOLR_7_VRN}-version.txt"
-    if [ "${_OSR}" = "jessie" ]; then
+    if [ "${_OS_CODE}" = "jessie" ]; then
       if [ -e "/etc/apt/sources.list.d/java8.list" ]; then
         rm -f /etc/apt/sources.list.d/java8.list
       fi
@@ -30,12 +26,7 @@ if_install_jetty() {
   fi
   if [[ "${_XTRAS_LIST}" =~ "SR7" ]] \
     || [[ "${_XTRAS_LIST}" =~ "ALL" ]] \
-    || [[ "${_THISHOST}" =~ ".host8." ]] \
-    || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
-    || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
-    || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]] \
-    || [ -e "/root/.auto.up.cnf" ] \
-    || [ -e "/root/.host8.cnf" ]; then
+    || [ "${hostedSys}" = "YES" ]; then
     if [ ! -d "${_SOLR_VPATH}" ]; then
       echo " "
       tPrmt="Do you want to install MultiCore Apache Solr ${_R_SOLR}"
@@ -61,8 +52,8 @@ if_install_jetty() {
     fi
   fi
   if [ -e "/etc/default/${_N_SOLR}.in.sh" ]; then
-    _SOLR7_JAVA_TEST=$(grep "BOA ${_X_SE} Path to Java on ${_OSR}" /etc/default/${_N_SOLR}.in.sh 2>&1)
-    if [[ "${_SOLR7_JAVA_TEST}" =~ "BOA ${_X_SE} Path to Java on ${_OSR}" ]]; then
+    _SOLR7_JAVA_TEST=$(grep "BOA ${_X_SE} Path to Java on ${_OS_CODE}" /etc/default/${_N_SOLR}.in.sh 2>&1)
+    if [[ "${_SOLR7_JAVA_TEST}" =~ "BOA ${_X_SE} Path to Java on ${_OS_CODE}" ]]; then
       _DO_NOTHING=YES
     else
       sed -i "s/^SOLR_JAVA_HOME=.*//g" /etc/default/${_N_SOLR}.in.sh
@@ -72,28 +63,28 @@ if_install_jetty() {
       sed -i "/^$/d" /etc/default/${_N_SOLR}.in.sh
       wait
       echo "LOG4J_FORMAT_MSG_NO_LOOKUPS=true" >> /etc/default/${_N_SOLR}.in.sh
-      if [ "${_OSR}" = "jessie" ]; then
+      if [ "${_OS_CODE}" = "jessie" ]; then
         echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-8-openjdk/jre\" # BOA ${_X_SE} Path to Java 8" >> \
           /etc/default/${_N_SOLR}.in.sh
-      elif [ "${_OSR}" = "stretch" ]; then
+      elif [ "${_OS_CODE}" = "stretch" ]; then
         echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-8-openjdk/jre\" # BOA ${_X_SE} Path to Java 8" >> \
           /etc/default/${_N_SOLR}.in.sh
-      elif [ "${_OSR}" = "buster" ]; then
+      elif [ "${_OS_CODE}" = "buster" ]; then
         echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-11-openjdk\" # BOA ${_X_SE} Path to Java 11" >> \
           /etc/default/${_N_SOLR}.in.sh
-      elif [ "${_OSR}" = "bullseye" ]; then
+      elif [ "${_OS_CODE}" = "bullseye" ]; then
         echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-11-openjdk\" # BOA ${_X_SE} Path to Java 11" >> \
           /etc/default/${_N_SOLR}.in.sh
-      elif [ "${_OSR}" = "bookworm" ]; then
+      elif [ "${_OS_CODE}" = "bookworm" ]; then
         echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-11-openjdk\" # BOA ${_X_SE} Path to Java 11" >> \
           /etc/default/${_N_SOLR}.in.sh
-      elif [ "${_OSR}" = "beowulf" ]; then
+      elif [ "${_OS_CODE}" = "beowulf" ]; then
         echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-11-openjdk\" # BOA ${_X_SE} Path to Java 11" >> \
           /etc/default/${_N_SOLR}.in.sh
-      elif [ "${_OSR}" = "chimaera" ]; then
+      elif [ "${_OS_CODE}" = "chimaera" ]; then
         echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-11-openjdk\" # BOA ${_X_SE} Path to Java 11" >> \
           /etc/default/${_N_SOLR}.in.sh
-      elif [ "${_OSR}" = "daedalus" ]; then
+      elif [ "${_OS_CODE}" = "daedalus" ]; then
         echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-11-openjdk\" # BOA ${_X_SE} Path to Java 11" >> \
           /etc/default/${_N_SOLR}.in.sh
       fi
@@ -111,7 +102,7 @@ if_install_jetty() {
   fi
   if [ "${_UP_JDK}" = "YES" ] && [ -e "/etc/init.d/${_N_SOLR}" ]; then
     msg "INFO: Solr 7 restart in progress - required after java upgrade"
-    mrun "service ${_N_SOLR} restart" &> /dev/null
+    mrun "service ${_N_SOLR} restart" 2> /dev/null
     msg "INFO: Solr 7 restart completed"
   fi
 
@@ -125,16 +116,8 @@ if_install_jetty() {
     _PORT_CTRL="${_JETTY_CTRL}"
   fi
   if [[ "${_XTRAS_LIST}" =~ "SR4" ]] \
-    || [[ "${_THISHOST}" =~ ".host8." ]] \
-    || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
-    || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
-    || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]] \
-    || [ -e "/root/.auto.up.cnf" ] \
-    || [ -e "/root/.host8.cnf" ]; then
-    if [ ! -d "/opt/solr4" ] \
-      && [ ! -e "/root/.mstr.clstr.cnf" ] \
-      && [ ! -e "/root/.wbhd.clstr.cnf" ] \
-      && [ ! -e "/root/.dbhd.clstr.cnf" ]; then
+    || [ "${hostedSys}" = "YES" ]; then
+    if [ ! -d "/opt/solr4" ]; then
       _R_JETTY=9
       echo " "
       tPrmt="Do you want to install MultiCore Apache Solr"
@@ -211,7 +194,7 @@ if_install_jetty() {
         chown -R jetty9:jetty9 /opt/solr4
         chown -R jetty9:jetty9 /opt/jetty9
         chown -R jetty9:jetty9 /var/log/jetty9
-        if [ "${_OSR}" = "jessie" ]; then
+        if [ "${_OS_CODE}" = "jessie" ]; then
           echo "JAVA=/usr/bin/java7 # Path to Java 1.7" > /etc/default/jetty9
           echo "JAVA_HOME=/usr/lib/jvm/java-7-openjdk/jre # Path to Java 1.7" >> \
             /etc/default/jetty9
@@ -242,8 +225,8 @@ if_install_jetty() {
         sed -i "s/8080/8099/g" /opt/jetty9/bin/jetty.sh &> /dev/null
         ln -sfn /opt/jetty9/bin/jetty.sh /etc/init.d/jetty9 &> /dev/null
         chmod 755 /etc/init.d/jetty9
-        mrun "update-rc.d jetty9 defaults" &> /dev/null
-        service jetty9 start &> /dev/null
+        mrun "update-rc.d jetty9 defaults" 2> /dev/null
+        mrun "service jetty9 start" 2> /dev/null
         echo ${_SOLR_4_VRN} > ${_SOLR_CTRL}
         msg "INFO: MultiCore Apache Solr with Jetty ${_R_JETTY} installed"
       else
@@ -254,11 +237,11 @@ if_install_jetty() {
   if [ "${_UP_JDK}" = "YES" ] && [ -e "/etc/init.d/jetty9" ]; then
     msg "INFO: Jetty 9 restart in progress - required after java upgrade"
     kill -9 $(ps aux | grep '[j]etty9' | awk '{print $2}') &> /dev/null
-    service jetty9 start &> /dev/null
+    mrun "service jetty9 star"t 2> /dev/null
     msg "INFO: Jetty 9 restart completed"
   fi
   if [ -e "/opt/jetty9/VERSION.txt" ]; then
-    if [ "${_OSR}" = "jessie" ]; then
+    if [ "${_OS_CODE}" = "jessie" ]; then
       _JETTY9_JAVA_TEST=$(grep "Path to Java 1.7" /etc/default/jetty9 2>&1)
     else
       _JETTY9_JAVA_TEST=$(grep "Path to Java 1.8" /etc/default/jetty9 2>&1)
@@ -266,7 +249,7 @@ if_install_jetty() {
     if [[ "${_JETTY9_JAVA_TEST}" =~ "Path to Java" ]]; then
       _DO_NOTHING=YES
     else
-      if [ "${_OSR}" = "jessie" ]; then
+      if [ "${_OS_CODE}" = "jessie" ]; then
         echo "JAVA=/usr/bin/java7 # Path to Java 1.7" > /etc/default/jetty9
         echo "JAVA_HOME=/usr/lib/jvm/java-7-openjdk/jre # Path to Java 1.7" >> \
           /etc/default/jetty9
@@ -334,7 +317,7 @@ if_install_jetty() {
       cp -af /var/opt/log4j-${_LOGJ4_VRN}/*.jar /opt/jetty9/lib/ext/
       rm -f /opt/jetty9/lib/ext/*sources.jar
       chown -R jetty9:jetty9 /opt/jetty9
-      service jetty9 start &> /dev/null
+      mrun "service jetty9 start" 2> /dev/null
       echo ${_SOLR_4_VRN} > ${_SOLR_CTRL}
       msg "INFO: MultiCore Apache Solr with Jetty ${_R_JETTY} upgrade completed"
     fi
@@ -425,8 +408,8 @@ if_install_jetty() {
         sed -i "s/8080/8088/g" /opt/jetty8/bin/jetty.sh &> /dev/null
         ln -sfn /opt/jetty8/bin/jetty.sh /etc/init.d/jetty8 &> /dev/null
         chmod 755 /etc/init.d/jetty8
-        mrun "update-rc.d jetty8 defaults" &> /dev/null
-        service jetty8 start &> /dev/null
+        mrun "update-rc.d jetty8 defaults" 2> /dev/null
+        mrun "service jetty8 start" 2> /dev/null
         echo ${_JETTY_8_VRN} > ${_JETTY_CTRL}
         echo ${_SOLR_3_VRN}  > ${_SOLR_CTRL}
         msg "INFO: MultiCore Apache Solr 3 with Jetty 8 installed"
@@ -438,7 +421,7 @@ if_install_jetty() {
   if [ "${_UP_JDK}" = "YES" ] && [ -e "/etc/init.d/jetty8" ]; then
     msg "INFO: Jetty 8 restart in progress - required after java upgrade"
     kill -9 $(ps aux | grep '[j]etty8' | awk '{print $2}') &> /dev/null
-    service jetty8 start &> /dev/null
+    mrun "service jetty8 start" 2> /dev/null
     msg "INFO: Jetty 8 restart completed"
   fi
   if [ -e "/opt/jetty8/VERSION.txt" ]; then
@@ -462,7 +445,7 @@ if_install_jetty() {
       done
       cd /var/opt
       chown -R jetty8:jetty8 /opt/jetty8
-      service jetty8 start &> /dev/null
+      mrun "service jetty8 start" 2> /dev/null
       echo ${_JETTY_8_VRN} > ${_JETTY_CTRL}
       echo ${_SOLR_3_VRN}  > ${_SOLR_CTRL}
       msg "INFO: MultiCore Apache Solr 3 with Jetty 8 upgrade completed"
@@ -556,8 +539,8 @@ if_install_jetty() {
         sed -i "s/8080/8077/g" /opt/jetty7/bin/jetty.sh &> /dev/null
         ln -sfn /opt/jetty7/bin/jetty.sh /etc/init.d/jetty7 &> /dev/null
         chmod 755 /etc/init.d/jetty7
-        mrun "update-rc.d jetty7 defaults" &> /dev/null
-        service jetty7 start &> /dev/null
+        mrun "update-rc.d jetty7 defaults" 2> /dev/null
+        mrun "service jetty7 start" 2> /dev/null
         echo ${_JETTY_7_VRN} > ${_JETTY_CTRL}
         echo ${_SOLR_1_VRN}  > ${_SOLR_CTRL}
         msg "INFO: MultiCore Apache Solr 1 with Jetty 7 installed"
@@ -569,7 +552,7 @@ if_install_jetty() {
   if [ "${_UP_JDK}" = "YES" ] && [ -e "/etc/init.d/jetty7" ]; then
     msg "INFO: Jetty 7 restart in progress - required after java upgrade"
     kill -9 $(ps aux | grep '[j]etty7' | awk '{print $2}') &> /dev/null
-    service jetty7 start &> /dev/null
+    mrun "service jetty7 start" 2> /dev/null
     msg "INFO: Jetty 7 restart completed"
   fi
   if [ "${_TOMCAT_TO_JETTY}" = "YES" ] \
@@ -577,8 +560,8 @@ if_install_jetty() {
     && [ -e "/etc/default/tomcat" ] \
     && [ -e "/etc/init.d/tomcat" ]; then
     msg "INFO: Tomcat 6 to Jetty 7 migration for Apache Solr 1 in progress..."
-    mrun "service tomcat stop" &> /dev/null
-    mrun "update-rc.d tomcat remove" &> /dev/null
+    mrun "service tomcat stop" 2> /dev/null
+    mrun "update-rc.d tomcat remove" 2> /dev/null
     mv -f /etc/init.d/tomcat /etc/init.d/offtomcat &> /dev/null
     mv -f /opt/solr1/solr.xml /opt/solr1/vanilla-solr.xml
     mv -f /opt/solr/* /opt/solr1/
@@ -595,7 +578,7 @@ if_install_jetty() {
       /opt/solr1/conf/solrcore.properties &> /dev/null
     msg "INFO: Jetty 7 restart in progress - required after migration from Tomcat"
     kill -9 $(ps aux | grep '[j]etty7' | awk '{print $2}') &> /dev/null
-    service jetty7 start &> /dev/null
+    mrun "service jetty7 start" 2> /dev/null
     sed -i "s/^_TOMCAT_TO_JETTY.*//g" ${barCnf}
     wait
     sed -i "/^$/d" ${barCnf}
@@ -623,7 +606,7 @@ if_install_jetty() {
       done
       cd /var/opt
       chown -R jetty7:jetty7 /opt/jetty7
-      service jetty7 start &> /dev/null
+      mrun "service jetty7 start" 2> /dev/null
       echo ${_JETTY_7_VRN} > ${_JETTY_CTRL}
       echo ${_SOLR_1_VRN}  > ${_SOLR_CTRL}
       msg "INFO: MultiCore Apache Solr 1 with Jetty 7 upgrade completed"

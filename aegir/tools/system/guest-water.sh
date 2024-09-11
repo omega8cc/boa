@@ -17,8 +17,6 @@ whitelist_ip_pingdom() {
     cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-pingdom-${_NOW}
     sed -i "s/.*pingdom.*//g" /etc/csf/csf.allow
     wait
-    sed -i "/^$/d" /etc/csf/csf.allow
-    wait
   fi
 
   _IPS=$(curl -k -s https://my.pingdom.com/probes/feed \
@@ -55,8 +53,6 @@ whitelist_ip_cloudflare() {
     cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-cloudflare-${_NOW}
     sed -i "s/.*cloudflare.*//g" /etc/csf/csf.allow
     wait
-    sed -i "/^$/d" /etc/csf/csf.allow
-    wait
   fi
 
   _IPS=$(curl -k -s https://www.cloudflare.com/ips-v4 \
@@ -91,8 +87,6 @@ whitelist_ip_imperva() {
     _NOW=$(date +%y%m%d-%H%M%S 2>&1)
     cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-imperva-${_NOW}
     sed -i "s/.*imperva.*//g" /etc/csf/csf.allow
-    wait
-    sed -i "/^$/d" /etc/csf/csf.allow
     wait
   fi
 
@@ -129,8 +123,6 @@ whitelist_ip_googlebot() {
     cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-googlebot-${_NOW}
     sed -i "s/.*googlebot.*//g" /etc/csf/csf.allow
     wait
-    sed -i "/^$/d" /etc/csf/csf.allow
-    wait
   fi
 
   _IPS="66.249.64.0/19"
@@ -153,7 +145,7 @@ whitelist_ip_googlebot() {
       echo "${_IP} already listed in /etc/csf/csf.allow"
     fi
   done
-  sed -i "s/66.249..*//g" /etc/csf/csf.deny
+  sed -i "s/^66.249..*//g" /etc/csf/csf.deny
   wait
 }
 
@@ -163,8 +155,6 @@ whitelist_ip_microsoft() {
     _NOW=$(date +%y%m%d-%H%M%S 2>&1)
     cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-microsoft-${_NOW}
     sed -i "s/.*microsoft.*//g" /etc/csf/csf.allow
-    wait
-    sed -i "/^$/d" /etc/csf/csf.allow
     wait
   fi
 
@@ -188,9 +178,9 @@ whitelist_ip_microsoft() {
       echo "${_IP} already listed in /etc/csf/csf.allow"
     fi
   done
-  sed -i "s/65.5.*//g" /etc/csf/csf.deny
+  sed -i "s/^65.5.*//g" /etc/csf/csf.deny
   wait
-  sed -i "s/199.30..*//g" /etc/csf/csf.deny
+  sed -i "s/^199.30..*//g" /etc/csf/csf.deny
   wait
 }
 
@@ -200,8 +190,6 @@ whitelist_ip_sucuri() {
     _NOW=$(date +%y%m%d-%H%M%S 2>&1)
     cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-sucuri-${_NOW}
     sed -i "s/.*sucuri.*//g" /etc/csf/csf.allow
-    wait
-    sed -i "/^$/d" /etc/csf/csf.allow
     wait
   fi
 
@@ -233,8 +221,6 @@ whitelist_ip_authzero() {
     _NOW=$(date +%y%m%d-%H%M%S 2>&1)
     cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-authzero-${_NOW}
     sed -i "s/.*authzero.*//g" /etc/csf/csf.allow
-    wait
-    sed -i "/^$/d" /etc/csf/csf.allow
     wait
   fi
 
@@ -309,12 +295,8 @@ whitelist_ip_site24x7() {
     cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-site24x7-${_NOW}
     sed -i "s/.*site24x7.*//g" /etc/csf/csf.allow
     wait
-    sed -i "/^$/d" /etc/csf/csf.allow
-    wait
     echo removing site24x7 ips from csf.ignore
     sed -i "s/.*site24x7.*//g" /etc/csf/csf.ignore
-    wait
-    sed -i "/^$/d" /etc/csf/csf.ignore
     wait
   fi
 
@@ -438,10 +420,6 @@ local_ip_rg() {
       | uniq`;do echo "${_IP} # local IP address" >> /root/.local.IP.list;done
     rm -f /root/.tmp.IP.list*
   fi
-  sed -i "/^$/d" /etc/csf/csf.ignore &> /dev/null
-  wait
-  sed -i "/^$/d" /etc/csf/csf.allow &> /dev/null
-  wait
 }
 
 guard_stats() {
@@ -590,19 +568,25 @@ whitelist_ip_dns() {
   _NOW=$(date +%y%m%d-%H%M%S 2>&1)
   cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-dns-${_NOW}
   sed -i "s/.*1.1.1.1.*//g"  /etc/csf/csf.allow
+  wait
   sed -i "s/.*1.1.1.1.*//g"  /etc/csf/csf.ignore
+  wait
   sed -i "s/.*1.0.0.1.*//g"  /etc/csf/csf.allow
+  wait
   sed -i "s/.*1.0.0.1.*//g"  /etc/csf/csf.ignore
+  wait
   echo "tcp|out|d=53|d=1.1.1.1 # Cloudflare DNS" >> /etc/csf/csf.allow
   echo "tcp|out|d=53|d=1.0.0.1 # Cloudflare DNS" >> /etc/csf/csf.allow
   sed -i "s/.*8.8.8.8.*//g"  /etc/csf/csf.allow
+  wait
   sed -i "s/.*8.8.8.8.*//g"  /etc/csf/csf.ignore
+  wait
   sed -i "s/.*8.8.4.4.*//g"  /etc/csf/csf.allow
+  wait
   sed -i "s/.*8.8.4.4.*//g"  /etc/csf/csf.ignore
+  wait
   echo "tcp|out|d=53|d=8.8.8.8 # Google DNS" >> /etc/csf/csf.allow
   echo "tcp|out|d=53|d=8.8.4.4 # Google DNS" >> /etc/csf/csf.allow
-  sed -i "/^$/d" /etc/csf/csf.ignore
-  sed -i "/^$/d" /etc/csf/csf.allow
 }
 
 if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
@@ -619,9 +603,21 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
   fi
 
   n=$((RANDOM%120+90))
-  touch /var/run/water.pid
+  touch /run/water.pid
   echo Waiting $n seconds...
   sleep $n
+
+  _NOW=$(date +%y%m%d-%H%M%S 2>&1)
+  _NOW=${_NOW//[^0-9-]/}
+  useCnfUpdate=NO
+  vBs="/var/backups"
+  useCnf="/etc/csf/csf.allow"
+  preCnf="${vBs}/dragon/t/csf.allow.backup-${_NOW}"
+  brkCnf="${vBs}/dragon/t/csf.allow.broken-${_NOW}"
+  if [ -f "${useCnf}" ]; then
+    mkdir -p ${vBs}/dragon/t/
+    cp -af ${useCnf} ${preCnf}
+  fi
 
   whitelist_ip_dns
   whitelist_ip_pingdom
@@ -634,9 +630,38 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
   [ -e "/root/.extended.firewall.exceptions.cnf" ] && whitelist_ip_site24x7_extra
   [ -e "/root/.extended.firewall.exceptions.cnf" ] && whitelist_ip_site24x7
 
+  if [ -f "${useCnf}" ]; then
+    diffCnfTest=$(diff -w -B \
+      -I pingdom \
+      -I cloudflare \
+      -I googlebot \
+      -I microsoft \
+      -I imperva \
+      -I sucuri \
+      -I authzero \
+      -I site24x7 \
+      -I DHCP ${useCnf} ${preCnf} 2>&1)
+    if [ -z "${diffCnfTest}" ]; then
+      useCnfUpdate=YES
+      echo "YES $(date 2>&1) diff0 empty" >> ${vBs}/dragon/t/csf.log
+    else
+      diffCnfTest=$(echo -n ${diffCnfTest} | fmt -su -w 2500 2>&1)
+      echo "NO $(date 2>&1) diff1 ${diffCnfTest}" >> ${vBs}/dragon/t/csf.log
+    fi
+    if [[ "${diffCnfTest}" =~ "No such file or directory" ]]; then
+      echo "NO $(date 2>&1) diff3 ${diffCnfTest}" >> ${vBs}/dragon/t/csf.log
+    fi
+  fi
+  if [ "${myCnfUpdate}" = "NO" ]; then
+    cp -af ${useCnf} ${brkCnf}
+    cp -af ${preCnf} ${useCnf}
+  fi
+
   if [ -e "/root/.full.csf.cleanup.cnf" ]; then
     sed -i "s/.*do not delete.*//g" /etc/csf/csf.deny
+    wait
     sed -i "/^$/d" /etc/csf/csf.deny
+    wait
   fi
 
   kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
@@ -690,11 +715,19 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
   _NOW=$(date +%y%m%d-%H%M%S 2>&1)
   cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-clear-${_NOW}
   sed -i "/^$/d" /etc/csf/csf.allow
-  _DHCP_TEST=$(grep DHCPREQUEST /var/log/syslog | cut -d ' ' -f13 | sort | uniq 2>&1)
-  if [[ "${_DHCP_TEST}" =~ "port" ]]; then
-    for _IP in `grep DHCPREQUEST /var/log/syslog | cut -d ' ' -f12 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
+  wait
+  sed -i "/^$/d" /etc/csf/csf.ignore
+  wait
+  if [ -e "/var/log/daemon.log" ]; then
+    _DHCP_LOG="/var/log/daemon.log"
   else
-    for _IP in `grep DHCPREQUEST /var/log/syslog | cut -d ' ' -f13 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
+    _DHCP_LOG="/var/log/syslog"
+  fi
+  _DHCP_TEST=$(grep DHCPREQUEST ${_DHCP_LOG} | cut -d ' ' -f13 | sort | uniq 2>&1)
+  if [[ "${_DHCP_TEST}" =~ "port" ]]; then
+    for _IP in `grep DHCPREQUEST ${_DHCP_LOG} | cut -d ' ' -f12 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
+  else
+    for _IP in `grep DHCPREQUEST ${_DHCP_LOG} | cut -d ' ' -f13 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
   fi
   csf -e
   wait
@@ -711,15 +744,9 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
       ip6tables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
     fi
   fi
-  rm -f /var/run/water.pid
+  rm -f /run/water.pid
   echo guard fin `date`
-  ntpdate pool.ntp.org
-else
-  if [ -e "/root/.mstr.clstr.cnf" ] \
-    || [ -e "/root/.wbhd.clstr.cnf" ] \
-    || [ -e "/root/.dbhd.clstr.cnf" ]; then
-    ntpdate pool.ntp.org
-  fi
+  ntpdate pool.ntp.org > /dev/null 2>&1 &
 fi
 exit 0
 ###EOF2024###

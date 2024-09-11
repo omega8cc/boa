@@ -1,0 +1,101 @@
+# AppArmor profile for Man service
+# This profile restricts Man service (man) to essential operations only.
+
+#include <tunables/global>
+
+/usr/bin/man flags=(complain) {
+
+  # Include common AppArmor abstractions
+  include <abstractions/base>
+
+  # Use a special profile when man calls anything groff-related. We only
+  # include the programs that actually parse input data in a non-trivial
+  # way, not wrappers such as groff and nroff, since the latter would need a
+  # broader profile.
+  /usr/bin/eqn mrCx -> &man_groff,
+  /usr/bin/grap mrCx -> &man_groff,
+  /usr/bin/pic mrCx -> &man_groff,
+  /usr/bin/preconv mrCx -> &man_groff,
+  /usr/bin/refer mrCx -> &man_groff,
+  /usr/bin/tbl mrCx -> &man_groff,
+  /usr/bin/troff mrCx -> &man_groff,
+  /usr/bin/vgrind mrCx -> &man_groff,
+
+  # Similarly, use a special profile when man calls decompressors and other
+  # simple filters.
+  /{,usr/}bin/bzip2 mrCx -> &man_filter,
+  /{,usr/}bin/gzip mrCx -> &man_filter,
+  /usr/bin/col mrCx -> &man_filter,
+  /usr/bin/compress mrCx -> &man_filter,
+  /usr/bin/iconv mrCx -> &man_filter,
+  /usr/bin/lzip.lzip mrCx -> &man_filter,
+  /usr/bin/tr mrCx -> &man_filter,
+  /usr/bin/xz mrCx -> &man_filter,
+
+  # Allow basic filesystem access, subject to DAC
+  /** mrixwlk,
+  unix,
+
+  # Capabilities needed by Man service
+  capability setuid,
+  capability setgid,
+
+  # Ordinary permission checks sometimes involve checking whether the
+  # process has this capability, which can produce audit log messages.
+  # Silence them.
+  deny capability dac_override,
+  deny capability dac_read_search,
+
+  signal peer=@{profile_name},
+  signal peer=/usr/bin/man//&man_groff,
+  signal peer=/usr/bin/man//&man_filter,
+}
+
+profile man_groff flags=(complain) {
+  include <abstractions/base>
+  include <abstractions/consoles>
+
+  /usr/bin/eqn mrix,
+  /usr/bin/grap mrix,
+  /usr/bin/pic mrix,
+  /usr/bin/preconv mrix,
+  /usr/bin/refer mrix,
+  /usr/bin/tbl mrix,
+  /usr/bin/troff mrix,
+  /usr/bin/vgrind mrix,
+
+  /etc/groff/** r,
+  /etc/papersize r,
+  /usr/lib/groff/site-tmac/** r,
+  /usr/share/groff/** r,
+
+  /tmp/groff* rw,
+
+  signal peer=/usr/bin/man,
+  signal peer=/usr/bin/man//&man_groff,
+}
+
+profile man_filter flags=(complain) {
+  include <abstractions/base>
+  include <abstractions/consoles>
+
+  /{,usr/}bin/bzip2 mrix,
+  /{,usr/}bin/gzip mrix,
+  /usr/bin/col mrix,
+  /usr/bin/compress mrix,
+  /usr/bin/iconv mrix,
+  /usr/bin/lzip.lzip mrix,
+  /usr/bin/tr mrix,
+  /usr/bin/xz mrix,
+
+  # Manual pages can be more or less anywhere, especially with "man -l", and
+  # there's no harm in allowing wide read access here since the worst it can
+  # do is feed data to the invoking man process.
+  /** r,
+
+  # Allow writing cat pages.
+  /var/cache/man/** rw,
+
+  signal peer=/usr/bin/man,
+  signal peer=/usr/bin/man//&man_filter,
+}

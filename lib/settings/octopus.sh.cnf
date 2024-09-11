@@ -55,45 +55,40 @@ _PHP_CLI_VERSION=8.1
 ### control which platforms will be installed,
 ### using the symbols listed below.
 ###
-###
-### Drupal 10.2 based
-###
+####### Drupal 10.4 #####
+### D104P D104S D104D --- Drupal 10.4 prod/stage/dev
+
+####### Drupal 10.3 #####
+### D103P D103S D103D --- Drupal 10.3 prod/stage/dev
+### THR ----------------- Thunder
+### VBX ----------------- Varbase 10
+
+####### Drupal 10.2 #####
 ### D102P D102S D102D --- Drupal 10.2 prod/stage/dev
-###
-###
-### Drupal 10.1 based
-###
+### SOC ----------------- Social
+### VBE ----------------- Varbase 9
+
+####### Drupal 10.1 #####
 ### D101P D101S D101D --- Drupal 10.1 prod/stage/dev
-### THR ----------- Thunder
-### VBE ----------- Varbase
-###
-###
-### Drupal 10.0 based
-###
+
+####### Drupal 10.0 #####
 ### D100P D100S D100D --- Drupal 10.0 prod/stage/dev
-###
-###
-### Drupal 9 based
-###
-### D9P D9S D9D --- Drupal 9 prod/stage/dev
-### OLS ----------- OpenLucius
-### OPG ----------- Opigno LMS
-### SOC ----------- Social
-###
-###
-### Drupal 7 based
-###
-### D7P D7S D7D --- Drupal 7 prod/stage/dev
-### CME ----------- Commerce v.2
-### DCE ----------- Commerce v.1
-### UC7 ----------- Ubercart
-###
-###
-### Drupal 6 based
-###
-### D6P D6S D6D --- Pressflow (LTS) prod/stage/dev
-### UCT ----------- Ubercart
-###
+
+####### Drupal 9 ########
+### D9P D9S D9D --------- Drupal 9 prod/stage/dev
+### OLS ----------------- OpenLucius
+### OPG ----------------- Opigno LMS
+
+####### Drupal 7 ########
+### D7P D7S D7D --------- Drupal 7 prod/stage/dev
+### CME ----------------- Commerce v.2
+### DCE ----------------- Commerce v.1
+### UC7 ----------------- Ubercart
+
+####### Drupal 6 ########
+### D6P D6S D6D --------- Pressflow (LTS) prod/stage/dev
+### UCT ----------------- Ubercart
+
 ### You can also use special keyword 'ALL' instead of any other symbols to have
 ### all available platforms installed, including newly added in all future BOA
 ### system releases.
@@ -101,12 +96,16 @@ _PHP_CLI_VERSION=8.1
 ### Examples:
 ###
 ### ALL
-### D101P D101S SOC
+### D102P D103P SOC UC7
 ###
-### Examples:
+### IMPORTANT: Supported Drupal core versions and distributions have different
+### PHP versions requirements, while not all PHP versions out of currently
+### supported ten versions are installed by default.
 ###
-### _PLATFORMS_LIST=ALL
-### _PLATFORMS_LIST="D101P D101S SOC"
+### Ensure that you have corresponding PHP versions installed with barracuda
+### before attempting to install older Drupal versions and distributions.
+###
+### On hosted BOA contact your host if you need any legacy PHP installed again.
 ###
 _PLATFORMS_LIST=
 
@@ -135,6 +134,18 @@ _AUTOPILOT=NO
 ### _HM_ONLY=YES
 ###
 _HM_ONLY=NO
+
+
+###----------------------------------------###
+### PLATFORMS MODE                         ###
+###----------------------------------------###
+###
+### To install ONLY new Aegir platforms,
+### change this to YES.
+###
+### _PLATFORMS_ONLY=YES
+###
+_PLATFORMS_ONLY=NO
 
 
 ###----------------------------------------###
@@ -466,7 +477,7 @@ _DEL_OLD_TMP="0"
 ### means it should work as a handy local
 ### setup on your wirelessly connected laptop
 ### or netbook, with improved DNS cache
-### support - pdnsd will save results in file.
+### support - unbound will save results in file.
 ###
 ### In this case you could use 127.0.1.1 as
 ### _LOCAL_NETWORK_IP to avoid issues with
@@ -617,15 +628,15 @@ _RESERVED_RAM=0
 ###----------------------------------------###
 
 
-_AEGIR_VERSION="AUTO"
-_AEGIR_XTS_VRN="AUTO"
-_BRANCH_BOA="AUTO"
-_BRANCH_PRN="AUTO"
-_X_VERSION="AUTO"
+_AEGIR_VERSION=AUTO
+_AEGIR_XTS_VRN=AUTO
+_BRANCH_BOA=AUTO
+_BRANCH_PRN=AUTO
+_X_VERSION=AUTO
 _BOA_REPO_NAME="boa"
 _BOA_REPO_GIT_URL="${gitHub}"
 aptYesUnth="-y --allow-unauthenticated"
-_X_SE="520proT02"
+_X_SE="540ltsT02"
 export _X_SE="${_X_SE}"
 tRee=lts
 export tRee="${tRee}"
@@ -635,11 +646,14 @@ export tRee="${tRee}"
 ### Determine correct _APT_UPDATE
 ###
 os_detection_minimal() {
+  if [ -e "/root/.dev.server.cnf" ]; then
+    echo "PROC: os_detection_minimal in octopus"
+  fi
   _APT_UPDATE="apt-get update"
-  _THIS_RV=$(lsb_release -sc 2>&1)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
   for e in ${_OS_LIST}; do
-    if [ "${e}" = "${_THIS_RV}" ]; then
+    if [ "${e}" = "${_OS_CODE}" ]; then
       _APT_UPDATE="apt-get update --allow-releaseinfo-change"
     fi
   done
@@ -651,9 +665,16 @@ os_detection_minimal
 ### Apt cleanup
 ###
 apt_clean_update() {
-  apt-get clean -qq 2> /dev/null
-  rm -rf /var/lib/apt/lists/* &> /dev/null
-  ${_APT_UPDATE} -qq 2> /dev/null
+  if [ -e "/root/.dev.server.cnf" ]; then
+    echo "PROC: apt_clean_update in octopus"
+  fi
+  #apt-get clean -qq 2> /dev/null
+  #rm -rf /var/lib/apt/lists/* &> /dev/null
+  if [ -e "/root/.dev.server.cnf" ]; then
+    ${_APT_UPDATE} -qq 2> /dev/null
+  else
+    ${_APT_UPDATE} -qq &> /dev/null
+  fi
 }
 
 
@@ -661,9 +682,12 @@ apt_clean_update() {
 ### Find the fastest mirror to use for downloads
 ###
 find_fast_mirror_cnf() {
-  if [ -d "/var/cache/pdnsd" ] \
-    && [ -e "/etc/resolvconf/run/interface/lo.pdnsd" ]; then
-    pdnsd-ctl empty-cache &> /dev/null
+  if [ -e "/root/.dev.server.cnf" ]; then
+    echo "PROC: find_fast_mirror_cnf in octopus"
+  fi
+  if [ -x "/usr/sbin/unbound-control" ] \
+    && [ -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
+    unbound-control reload &> /dev/null
   fi
   isNetc=$(which netcat 2>&1)
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
@@ -672,7 +696,8 @@ find_fast_mirror_cnf() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     apt_clean_update
-    apt-get install netcat ${aptYesUnth} &> /dev/null
+    apt-get install netcat ${aptYesUnth} 2> /dev/null
+    apt-get install netcat-traditional ${aptYesUnth} 2> /dev/null
     wait
   fi
   ffMirr=$(which ffmirror 2>&1)
@@ -708,6 +733,9 @@ find_fast_mirror_cnf() {
 ### Verify upgrade keys
 ###
 verify_upgrade_keys() {
+  if [ -e "/root/.dev.server.cnf" ]; then
+    echo "PROC: verify_upgrade_keys in octopus"
+  fi
   if [ "${tRee}" = "pro" ] || [ "${tRee}" = "dev" ]; then
     _allw=NO
     urlEnc="http://${_USE_MIR}/enc/2024"
@@ -737,8 +765,12 @@ verify_upgrade_keys() {
         echo "Your system requires valid license for upgrade to ${rlsn}-${tRee}"
         echo "Please visit https://omega8.cc/licenses to purchase your own"
         echo
+        if [ -e "/var/aegir/drush/vendor" ] && [ ! -e "/var/aegir/key/barracuda_key.txt" ]; then
+          mkdir -p /var/aegir/key
+          cat /var/opt/_encN_local.${encName}.tmp > /var/aegir/key/barracuda_key.txt
+        fi
         rm -f /var/opt/_encN*
-        clean_pid_exit
+        clean_pid_exit verify_upgrade_keys_a
       else
         if [ -e "/var/aegir/drush/vendor" ] && [ ! -e "/var/aegir/key/barracuda_key.txt" ]; then
           mkdir -p /var/aegir/key
@@ -751,35 +783,163 @@ verify_upgrade_keys() {
 
 
 ###
+### Extract archive
+###
+extract_archive_pre() {
+  if [ -e "/root/.dev.server.cnf" ]; then
+    echo "PROC: extract_archive_pre in octopus"
+  fi
+  if [ ! -z "$1" ]; then
+    case $1 in
+      *.tar.bz2)   tar xjf $1    ;;
+      *.tar.gz)    tar xzf $1    ;;
+      *.tar.xz)    tar xvf $1    ;;
+      *.bz2)       bunzip2 $1    ;;
+      *.rar)       unrar x $1    ;;
+      *.gz)        gunzip -q $1  ;;
+      *.tar)       tar xf $1     ;;
+      *.tbz2)      tar xjf $1    ;;
+      *.tgz)       tar xzf $1    ;;
+      *.zip)       unzip -qq $1  ;;
+      *.Z)         uncompress $1 ;;
+      *.7z)        7z x $1       ;;
+      *)           echo "'$1' cannot be extracted via >extract<" ;;
+    esac
+    rm -f $1
+  fi
+}
+
+
+###
+### Download and extract archive from dev/src mirror
+###
+get_dev_src_pre() {
+  if [ -e "/root/.dev.server.cnf" ]; then
+    echo "PROC: get_dev_src_pre in octopus"
+  fi
+  if [ ! -z "$1" ]; then
+    curl ${crlGet} "${urlDev}/src/$1" -o "$1"
+    if [ -e "$1" ]; then
+      extract_archive_pre "$1"
+    else
+      echo "OOPS: $1 failed download from ${urlDev}/src/$1"
+    fi
+  fi
+}
+
+
+###
 ### Download helpers and libs
 ###
 download_helpers_libs() {
+  if [ -e "/root/.dev.server.cnf" ]; then
+    echo "PROC: download_helpers_libs in octopus"
+  fi
   find_fast_mirror_cnf
   verify_upgrade_keys
   mkdir -p /opt/tmp
   cd /opt/tmp
   rm -rf /opt/tmp/boa
-  if [ "${_AEGIR_VERSION}" != "static" ]; then
+  if [ -e "/var/aegir/drush" ]; then
+    _GIT_VRN=2.45.2
     isGit=$(which git 2>&1)
-    if [ ! -x "${isGit}" ] || [ -z "${isGit}" ]; then
-      if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
-        && [ -e "/etc/apt/apt.conf.d" ]; then
-        echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
+    _GIT_INSTALL=NO
+    _GIT_V=$(git --version 2>&1 \
+      | cut -d" " -f3 \
+      | awk '{ print $1}' 2>&1)
+    if [ ! -z "${_GIT_V}" ]; then
+      if [ "${_GIT_V}" != "${_GIT_VRN}" ]; then
+        _GIT_INSTALL=YES
       fi
-      apt_clean_update
-      apt-get install git -fuy --allow-unauthenticated --reinstall &> /dev/null
-      wait
-      apt-get install git-core -fuy --allow-unauthenticated --reinstall &> /dev/null
-      wait
-      apt-get install git-man -fuy --allow-unauthenticated --reinstall &> /dev/null
-      wait
     fi
-    ${gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git \
-      ${bldPth} &> /dev/null
+    if [ "${_GIT_INSTALL}" = "YES" ] \
+      || [ ! -x "${isGit}" ] \
+      || [ -z "${isGit}" ]; then
+      echo "INFO: Building Git ${_GIT_VRN} from sources..."
+      echo "WAIT: This may take a while, please wait..."
+      if [ ! -x "/usr/local/bin/git" ]; then
+        apt_clean_update
+        if [ -e "/root/.dev.server.cnf" ]; then
+          apt-get install libcurl4 -y --allow-unauthenticated -qq 2> /dev/null
+          apt-get install libcurl4-openssl-dev -y --allow-unauthenticated -qq 2> /dev/null
+          apt-get install libcurl4-gnutls-dev -y --allow-unauthenticated -qq 2> /dev/null
+          apt-get remove git-core -y --purge --auto-remove -qq 2> /dev/null
+          apt-get remove git -y --purge --auto-remove -qq 2> /dev/null
+        else
+          apt-get install libcurl4 -y --allow-unauthenticated -qq &> /dev/null
+          apt-get install libcurl4-openssl-dev -y --allow-unauthenticated -qq &> /dev/null
+          apt-get install libcurl4-gnutls-dev -y --allow-unauthenticated -qq &> /dev/null
+          apt-get remove git-core -y --purge --auto-remove -qq &> /dev/null
+          apt-get remove git -y --purge --auto-remove -qq &> /dev/null
+        fi
+      fi
+      mkdir -p /var/opt
+      rm -rf /var/opt/git*
+      cd /var/opt
+      get_dev_src_pre "git-${_GIT_VRN}.tar.gz"
+      cd /var/opt/git-${_GIT_VRN}
+      if [ -e "/root/.dev.server.cnf" ]; then
+        make configure 2> /dev/null
+        bash ./configure --without-tcltk 2> /dev/null
+        make all -j $(nproc) 2> /dev/null
+        make install 2> /dev/null
+      else
+        make configure &> /dev/null
+        bash ./configure --without-tcltk &> /dev/null
+        make all -j $(nproc) &> /dev/null
+        make install &> /dev/null
+      fi
+      ldconfig 2> /dev/null
+      if [ -x "/usr/local/bin/git" ]; then
+        if [ -e "/usr/bin/git" ] && [ ! -L "/usr/bin/git" ]; then
+          mv -f /usr/bin/git /usr/bin/git-old
+        fi
+        ln -sfn /usr/local/bin/git /usr/bin/git
+      fi
+      cd /var/opt
+      echo "git hold" | dpkg --set-selections &> /dev/null
+      echo "git-core hold" | dpkg --set-selections &> /dev/null
+      echo "git-man hold" | dpkg --set-selections &> /dev/null
+    fi
+    isGit=$(which git 2>&1)
+    gCb="${isGit} clone --branch"
+    if [ -e "/root/.dev.server.cnf" ]; then
+      echo "Running ${gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git ${bldPth}"
+      if [ -x "${isGit}" ]; then
+        ${gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git ${bldPth}
+      else
+        echo "ERROR: ${isGit} is probably broken"
+      fi
+    else
+      ${gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git ${bldPth} &> /dev/null
+    fi
   else
-    curl ${crlGet} "${urlDev}/${_AEGIR_XTS_VRN}/boa.tar.gz" | tar -xzf -
-    _BOA_REPO_NAME="boa"
-    _THIS_CNF="${bldPth}/aegir/conf"
+    apt_clean_update
+    if [ -e "/root/.dev.server.cnf" ]; then
+#       apt-get install libcurl4 -y --allow-unauthenticated -qq 2> /dev/null
+#       apt-get install libcurl4-openssl-dev -y --allow-unauthenticated -qq 2> /dev/null
+#       apt-get install libcurl4-gnutls-dev -y --allow-unauthenticated -qq 2> /dev/null
+      apt-get install git-core -y --allow-unauthenticated -qq 2> /dev/null
+      apt-get install git -y --allow-unauthenticated -qq 2> /dev/null
+    else
+#       apt-get install libcurl4 -y --allow-unauthenticated -qq &> /dev/null
+#       apt-get install libcurl4-openssl-dev -y --allow-unauthenticated -qq &> /dev/null
+#       apt-get install libcurl4-gnutls-dev -y --allow-unauthenticated -qq &> /dev/null
+      apt-get install git-core -y --allow-unauthenticated -qq &> /dev/null
+      apt-get install git -y --allow-unauthenticated -qq &> /dev/null
+    fi
+    isGit=$(which git 2>&1)
+    gCb="${isGit} clone --branch"
+    if [ -e "/root/.dev.server.cnf" ]; then
+      echo "Running ${gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git ${bldPth}"
+      if [ -x "${isGit}" ]; then
+        ${gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git ${bldPth}
+      else
+        echo "ERROR: ${isGit} is probably broken"
+      fi
+    else
+      ${gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git ${bldPth} &> /dev/null
+    fi
   fi
   #
   if [ ! -e "${bldPth}/aegir/helpers/apt.conf.noi.nrml" ] \
@@ -790,12 +950,15 @@ download_helpers_libs() {
     echo "Also, make sure that the outgoing connections via port 443 work"
     echo "Bye"
     echo " "
-    clean_pid_exit
+    clean_pid_exit download_helpers_libs_a
   fi
   # Get apt helper
   rm -f apt.conf.noi*
   cp -af ${bldPth}/aegir/helpers/apt.conf.noi.nrml ./
   cp -af ${bldPth}/aegir/helpers/apt.conf.noi.dist ./
+  mkdir -p /opt/apt/
+  cp -af ${bldPth}/aegir/helpers/apt.conf.noi.nrml /opt/apt/
+  cp -af ${bldPth}/aegir/helpers/apt.conf.noi.dist /opt/apt/
   #
   # Create tmp stuff
   if [ ! -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ]; then

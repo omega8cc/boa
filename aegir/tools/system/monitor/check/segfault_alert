@@ -9,6 +9,12 @@ $ENV{'PATH'} = '/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin
 ### This is a segfault monitor for php-fpm and nginx
 ###
 
+use warnings;
+use File::Spec;
+
+if (!-e "/data/u/") {
+  exit;
+}
 $| = 1;
 $this_filename = "segfault_alert";
 $s=`uname -n 2>&1`;
@@ -50,12 +56,14 @@ INTROX
     #`echo "$intrx" >> $this_path`;
   }
   $this_archive="/var/xdrago/monitor/segfault_alert_archive";
+  if (!-f "$this_archive") {
+    `touch $this_archive`;
+  }
   open (NOT,"<$this_archive");
   @banetable = <NOT>;
   close (NOT);
   local(@MYARR)=`tail --lines=999 /var/log/syslog 2>&1`;
-  local($maxnumber,$critnumber,$alert);
-  local($sumar,$li_cnt{$DOMAIN},$li_cndx{$DOMAIN});
+  local($sumar) = 0;
   foreach $line (@MYARR) {
     $line =~ s/[^a-zA-Z0-9\:\s\t\/\-\@\_\(\)\*\[\]\.\,]//g;
     if ($line =~ /php\-.*: segfault/i) {
@@ -183,17 +191,11 @@ sub send_alert
     $cmail="notify\@omega8.cc";
     print "\nlmail___[$cmail]___\n";
   }
-  $mailx_test=`mail -V 2>&1`;
+  $mailx_test=`s-nail -V 2>&1`;
   $t=`date +%y%m%d-%H%M`;
   chomp($t);
-  if ($mailx_test =~ /(GNU Mailutils)/i) {
-    `cat $this_path | mail -e -a "From: notify\@omega8.cc" -a "Bcc: notify\@omega8.cc" -s "PHP Segfault Alert for [$dx] at [$s] on $t" $cmail`;
-  }
-  elsif ($mailx_test =~ /invalid/i) {
-    `cat $this_path | mail -a "From: notify\@omega8.cc" -e -b notify\@omega8.cc -s "PHP Segfault Alert for [$dx] at [$s] on $t" $cmail`;
-  }
-  else {
-    `cat $this_path | mail -r notify\@omega8.cc -e -b notify\@omega8.cc -s "PHP Segfault Alert for [$dx] at [$s] on $t" $cmail`;
+  if ($mailx_test =~ /(built for Linux)/i) {
+    `cat $this_path | s-nail -b notify\@omega8.cc -s "PHP Segfault Alert for [$dx] at [$s] on $t" $cmail`;
   }
   `cat /var/xdrago/monitor/segfault_alert >> /var/xdrago/monitor/segfault_alert_archive`;
   `rm -f /var/xdrago/monitor/segfault_alert`;

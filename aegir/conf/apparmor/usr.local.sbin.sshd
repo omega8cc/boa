@@ -1,0 +1,228 @@
+# AppArmor profile for SSHd daemon
+# This profile restricts the SSHd daemon (sshd) to essential operations only.
+
+#include <tunables/global>
+
+/usr/local/sbin/sshd flags=(complain) {
+
+  # Include common AppArmor abstractions
+  include <abstractions/authentication>
+  include <abstractions/base>
+  include <abstractions/bash>
+  include <abstractions/consoles>
+  include <abstractions/nameservice>
+  include <abstractions/openssl>
+  include <abstractions/python>
+  include <abstractions/wutmp>
+
+  # Allow execution of the sshd binary
+  /usr/local/sbin/sshd mrix,
+
+  # Capabilities needed by SSHd daemon
+  capability audit_control,
+  capability audit_write,
+  capability chown,
+  capability dac_override,
+  capability dac_read_search,
+  capability fowner,
+  capability fsetid,
+  capability kill,
+  capability net_bind_service,
+  capability setgid,
+  capability setuid,
+  capability sys_admin,
+  capability sys_chroot,
+  capability sys_resource,
+  capability sys_tty_config,
+
+  network inet stream,
+  network inet6 stream,
+
+  # Allow read access to necessary libraries
+  /lib/** mr,
+  /lib/x86_64-linux-gnu/** mr,
+  /lib64/** mr,
+  /usr/lib/** mr,
+  /usr/lib/x86_64-linux-gnu/** mr,
+  /usr/libexec/** mr,
+  /usr/local/include/** mr,
+  /usr/local/lib/** mr,
+  /usr/local/ssl/** mr,
+  /usr/local/ssl3/** mr,
+
+  # Read/Write access
+  /dev/null rw,
+  /dev/ptmx rw,
+  /dev/pts/* rw,
+  /dev/tty rw,
+  /dev/urandom r,
+  /proc/** rw,
+  /run/** rwk,
+  /sys/** r,
+  /tmp/ r,
+  /tmp/** rw,
+  /var/** r,
+  /var/lib/sshd/** rw,
+
+  # Read/Write owner access
+  owner /** rwk,
+  owner /etc/group rw,
+  owner /etc/motd rw,
+  owner /etc/passwd rw,
+  owner /etc/shadow rw,
+  owner /etc/ssh/* rw,
+  owner /proc/*/oom_score_adj rw,
+  owner /root/** rw,
+  owner /run/sshd.pid rw,
+
+  # Exec access
+  /{media,mnt,opt,srv}/** mrix,
+  /bin/* mrix,
+  /opt/local/bin/* mrix,
+  /usr/bin/* mrix,
+  /usr/local/bin/* mrix,
+  /usr/local/sbin/* mrix,
+  /usr/sbin/* mrix,
+
+  # Read access to SSH daemon configuration files
+  /etc/default/locale r,
+  /etc/environment r,
+  /etc/hosts.allow r,
+  /etc/hosts.deny r,
+  /etc/modules.conf r,
+  /etc/security/** r,
+  /etc/ssh/* r,
+  /etc/ssl/openssl.cnf r,
+
+  # Write access to the PID file
+  /run/sshd.pid rw,
+
+  # Allow network access for accepting inbound connections
+  network inet stream,
+  network inet6 stream,
+
+  # Allow reading user home directories and authorized keys
+  /home/*/*/ r,
+  /home/*/*/.ssh/ r,
+  /home/*/.ssh/authorized_keys{,2} r,
+
+  # Temporary files and directories
+  /tmp/ r,
+  /tmp/** rw,
+  /var/tmp/** rw,
+
+  /dev/pts/[0-9]* rw,
+  /etc/ssh/moduli r,
+  @{PROC}/@{pid}/mounts r,
+  /etc/motd r,
+  /{,var/}run/motd{,.new} rw,
+  /tmp/ssh-*/agent.[0-9]* rwl,
+  /tmp/ssh-*[0-9]*/ w,
+
+  # Allow execution of various shells
+  /bin/ash rUx,
+  /bin/bash rUx,
+  /bin/bash2 rUx,
+  /bin/bsh rUx,
+  /bin/csh rUx,
+  /bin/dash rUx,
+  /bin/ksh rUx,
+  /bin/sh rUx,
+  /bin/tcsh rUx,
+  /bin/zsh rUx,
+  /bin/zsh4 rUx,
+  /sbin/nologin rUx,
+  /usr/bin/mysecureshell rUx,
+  /usr/local/bin/lshell rUx,
+
+  # Allow ptrace read access for necessary binaries
+  ptrace read peer=unconfined,
+  ptrace read peer=/opt/php*/bin/php,
+  ptrace read peer=/opt/php*/sbin/php-fpm,
+  ptrace read peer=/usr/bin/newrelic-daemon,
+  ptrace read peer=/sbin/dhclient,
+  ptrace read peer=/usr/bin/mysqld_safe,
+  ptrace read peer=/usr/bin/mysqld,
+  ptrace read peer=/usr/bin/redis-server,
+  ptrace read peer=/usr/lib/jvm/java-11-openjdk-amd64/bin/java,
+  ptrace read peer=/usr/lib/postfix/sbin/master,
+  ptrace read peer=/usr/lib/postfix/sbin/pickup,
+  ptrace read peer=/usr/lib/postfix/sbin/qmgr,
+  ptrace read peer=/usr/local/sbin/pure-ftpd,
+  ptrace read peer=/usr/sbin/nginx,
+  ptrace read peer=/usr/sbin/unbound,
+
+  ^EXEC flags=(complain) {
+    # Include base abstractions
+    include <abstractions/base>
+
+    /bin/ash Ux,
+    /bin/bash Ux,
+    /bin/bash2 Ux,
+    /bin/bsh Ux,
+    /bin/csh Ux,
+    /bin/dash Ux,
+    /bin/ksh Ux,
+    /bin/sh Ux,
+    /bin/tcsh Ux,
+    /bin/zsh Ux,
+    /bin/zsh4 Ux,
+    /sbin/nologin Ux,
+    /usr/bin/mysecureshell Ux,
+    /usr/local/bin/lshell Ux,
+  }
+
+  ^PRIVSEP flags=(complain) {
+    # Include base and nameservice abstractions
+    include <abstractions/base>
+    include <abstractions/nameservice>
+
+    capability sys_chroot,
+    capability setuid,
+    capability setgid,
+  }
+
+  ^PRIVSEP_MONITOR flags=(complain) {
+    # Include authentication, base, nameservice, and wutmp abstractions
+    include <abstractions/authentication>
+    include <abstractions/base>
+    include <abstractions/nameservice>
+    include <abstractions/wutmp>
+
+    capability setuid,
+    capability setgid,
+    capability chown,
+
+    /home/*/.ssh/authorized_keys{,2} r,
+    /dev/ptmx rw,
+    /dev/pts/[0-9]* rw,
+    /dev/urandom r,
+    /etc/hosts.allow r,
+    /etc/hosts.deny r,
+    /etc/ssh/moduli r,
+    @{PROC}/@{pid}/mounts r,
+  }
+
+  ^AUTHENTICATED flags=(complain) {
+    # Include authentication, consoles, nameservice, and wutmp abstractions
+    include <abstractions/authentication>
+    include <abstractions/consoles>
+    include <abstractions/nameservice>
+    include <abstractions/wutmp>
+
+    capability sys_tty_config,
+    capability setgid,
+    capability setuid,
+
+    /dev/log w,
+    /dev/ptmx rw,
+    /etc/default/passwd r,
+    /etc/localtime r,
+    /etc/writable/localtime r,
+    /etc/login.defs r,
+    /etc/motd r,
+    /{,var/}run/motd{,.new} rw,
+    /tmp/ssh-*/agent.[0-9]* rwl,
+    /tmp/ssh-*[0-9]*/ w,
+  }
+}

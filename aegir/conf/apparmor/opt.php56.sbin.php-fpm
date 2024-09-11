@@ -1,0 +1,164 @@
+# AppArmor profile for PHP-FPM
+# This profile restricts the PHP-FPM (php56) to essential operations only.
+
+#include <tunables/global>
+
+/opt/php56/sbin/php-fpm flags=(attach_disconnected) {
+
+  # Include common AppArmor abstractions
+  include <abstractions/base>
+  include <abstractions/nameservice>
+  include <abstractions/php>
+  include <abstractions/mysql>
+
+  # Capabilities needed by PHP-FPM
+  capability chown,
+  capability dac_override,
+  capability dac_read_search,
+  capability fowner,
+  capability kill,
+  capability setgid,
+  capability setuid,
+  capability sys_resource,
+
+  # Allow PHP-FPM to accept signal from PHP-CLI processes
+  signal (receive) peer=/opt/php*/bin/php,
+
+  network inet stream,
+  network inet6 stream,
+
+  # Allow PHP-FPM to execute its own binary
+  /opt/php56/sbin/php-fpm mrix,
+
+  # Allow PHP-FPM to read its configuration files
+  /data/conf/ r,
+  /data/conf/** r,
+  /etc/ImageMagick-6/log.xml r,
+  /etc/ImageMagick-6/policy.xml r,
+  /etc/ld.so.cache r,
+  /etc/mailname r,
+  /etc/newrelic/upgrade_please.key r,
+  /etc/postfix/dynamicmaps.cf r,
+  /etc/postfix/dynamicmaps.cf.d/ r,
+  /etc/postfix/dynamicmaps.cf.d/* r,
+  /etc/postfix/main.cf r,
+  /home/*/.drush/** r,
+  /opt/etc/fpm/** r,
+  /var/spool/postfix/maildrop/ r,
+  /var/spool/postfix/maildrop/* rw,
+  /opt/php56/** r,
+
+  # Allow PHP-FPM to execute some other binaries
+  /bin/dash mrix,
+  /bin/websh mrix,
+  /usr/bin/advdef mrix,
+  /usr/bin/advpng mrix,
+  /usr/bin/convert mrix,
+  /usr/bin/id mrix,
+  /usr/bin/jpegoptim mrix,
+  /usr/bin/jpegtran mrix,
+  /usr/bin/magick mrix,
+  /usr/bin/optipng mrix,
+  /usr/bin/pngcrush mrix,
+  /usr/bin/pngquant mrix,
+  /usr/lib/postfix/sbin/smtpd mrix,
+  /usr/local/bin/curl mrix,
+  /usr/local/bin/wkhtmltoimage mrix,
+  /usr/local/bin/wkhtmltopdf mrix,
+  /usr/sbin/postdrop mrix,
+  /usr/sbin/sendmail mrix,
+
+  # Allow PHP-FPM to access some /dev
+  /dev/null rw,
+  /dev/random r,
+  /dev/tty wr,
+  /dev/urandom r,
+
+  # Allow PHP-FPM to access its run directory
+  /run/** rw,
+
+  # Allow PHP-FPM to use tmp files
+  /home/*/.tmp/ r,
+  /home/*/.tmp/** rw,
+  /tmp/ r,
+  /tmp/** rw,
+  /var/tmp/** rw,
+
+  # Allow read access to necessary libraries
+  /lib/** mr,
+  /lib/x86_64-linux-gnu/** mr,
+  /lib64/** mr,
+  /opt/php*/lib/php/** mr,
+  /usr/lib/** mr,
+  /usr/lib/x86_64-linux-gnu/** mr,
+  /usr/libexec/** mr,
+  /usr/local/include/** mr,
+  /usr/local/ioncube/ioncube_loader_lin_*.so mr,
+  /usr/local/lib/** mr,
+  /usr/local/ssl/** mr,
+  /usr/local/ssl3/** mr,
+
+  # Allow PHP-FPM to read and write its log files
+  /var/log/newrelic/php_agent.log rw,
+  /var/log/php/** rw,
+
+  # Allow PHP-FPM to access /proc and /sys for necessary information
+  /proc/** r,
+  /sys/** r,
+
+  # Allow PHP-FPM to use /dev/shm for temporary storage
+  /dev/shm/ r,
+  /dev/shm/** rw,
+
+  # Deny execution of binaries from these directories
+  deny /home/*/.tmp/** m,
+  deny /home/*/** m,
+  deny /tmp/** m,
+  deny /var/tmp/** m,
+
+  # Allow PHP-FPM to read and write in the custom web root directories
+
+  /var/www/** r,
+
+  /var/aegir/host_master/** r,
+  /var/aegir/platforms/** r,
+
+  /data/disk/*/aegir/** r,
+  /data/disk/*/distro/** r,
+  /data/disk/*/platforms/** r,
+  /data/disk/*/static/** r,
+  /data/disk/*/tools/le/** r,
+
+  /data/all/ r,
+  /data/all/* r,
+  /data/all/** r,
+  /data/conf/ r,
+  /data/conf/* r,
+  /data/conf/** r,
+
+  owner /var/aegir/host_master/** rw,
+  owner /var/aegir/platforms/** rw,
+
+  owner /data/disk/*/aegir/** rw,
+  owner /data/disk/*/distro/** rw,
+  owner /data/disk/*/platforms/** rw,
+  owner /data/disk/*/static/** rw,
+  owner /var/www/** rw,
+
+  /home/*.web/.aws/ r,
+  /home/*.web/.aws/* rw,
+  /home/*.web/.drush/ r,
+  /home/*.web/.drush/* r,
+  /home/*.web/.tmp/ r,
+  /home/*.web/.tmp/* rw,
+
+  # Deny access to various sensitive directories and files
+  deny /boot/** mrwklx,
+  deny /etc/shadow* rwlx,
+  deny /root/** mrwklx,
+
+  # Catchall to deny everything else
+  #deny /** rwklx,
+
+  # Site-specific additions and overrides can be added below
+}

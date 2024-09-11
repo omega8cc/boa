@@ -2,6 +2,15 @@
 tRee=lts
 export tRee="${tRee}"
 
+if_hosted_sys() {
+  if [ -e "/root/.host8.cnf" ] \
+    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
+    hostedSys=YES
+  else
+    hostedSys=NO
+  fi
+}
+
 ###
 ### Noticeable messages
 ###
@@ -79,7 +88,7 @@ not_supported_virt() {
   echo
   echo "Bye"
   echo
-  clean_pid_exit
+  clean_pid_exit not_supported_virt_a
 }
 
 #
@@ -94,7 +103,7 @@ not_supported_os() {
   echo
   echo "Bye"
   echo
-  clean_pid_exit
+  clean_pid_exit not_supported_os_a
 }
 
 ###
@@ -273,18 +282,13 @@ mode_detection() {
     _STATUS=UPGRADE
     msg "MODE: UPGRADE"
     barracuda_cnf
-    touch /var/run/boa_wait.pid
+    touch /run/boa_wait.pid
     [ -e "/root/.use.curl.from.packages.cnf" ] && chattr -i /root/.use.curl.from.packages.cnf
     [ -e "/root/.use.curl.from.packages.cnf" ] && rm -f /root/.use.curl.from.packages.cnf
     if [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ]; then
-      _XTRAS_LIST="ADM CSF FTP CSS DCS"
+      _XTRAS_LIST="ADM CSF FTP IMG"
     fi
-  elif [ ! -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ] \
-    && [ -e "/lib/systemd/systemd" ]; then
-    _STATUS=SYSTEMD
-    msg "MODE: SYSTEMD"
-    touch /var/run/boa_wait.pid
   else
     _STATUS=INIT
     [ -e "/root/.use.curl.from.packages.cnf" ] && chattr -i /root/.use.curl.from.packages.cnf
@@ -312,7 +316,7 @@ mode_detection() {
         if [ -z "${_EASY_HOSTNAME}" ] \
           || [ "${_EASY_HOSTNAME}" = "wildcard-enabled-hostname" ]; then
           msg "FATAL ERROR: You must define also _EASY_HOSTNAME"
-          clean_pid_exit
+          clean_pid_exit mode_detection_a
         fi
       fi
     fi
@@ -327,10 +331,10 @@ mode_detection() {
       _LOCAL_NETWORK_HN="aegir.local"
     elif [ "${_EASY_SETUP}" = "PUBLIC" ]; then
       msg "INFO: Public Setup Mode Active"
-      _XTRAS_LIST="ADM CSF FTP CSS DCS"
-      if [ -e "/root/.auto.up.cnf" ] \
-        || [ -e "/root/.host8.cnf" ]; then
-        _XTRAS_LIST="ADM CSF FTP CSS DCS"
+      _XTRAS_LIST="ADM CSF FTP IMG"
+      if_hosted_sys
+      if [ "${hostedSys}" = "YES" ]; then
+        _XTRAS_LIST="ADM CSF FTP IMG"
       fi
       _AUTOPILOT=YES
       _SSH_PORT=22
@@ -338,91 +342,53 @@ mode_detection() {
       _MY_FRONT="master.${_EASY_HOSTNAME}"
       validate_public_ip &> /dev/null
       _MY_OWNIP="${_THISHTIP}"
-    elif [ "${_EASY_SETUP}" = "MSTR" ]; then
-      msg "INFO: Cluster Master Mode Active"
-      _XTRAS_LIST=""
-      _AUTOPILOT=YES
-      _DB_SERVER=Percona
-      _DB_SERIES=5.7
-      _SSH_PORT=22
-      _DNS_SETUP_TEST=NO
-      _SMTP_RELAY_TEST=NO
-      _MY_HOSTN="${_EASY_HOSTNAME}"
-      _MY_FRONT="master.${_EASY_HOSTNAME}"
-      validate_public_ip &> /dev/null
-      _MY_OWNIP="${_THISHTIP}"
-      if [ ! -e "/root/.mstr.clstr.cnf" ]; then
-        touch /root/.mstr.clstr.cnf
-      fi
-    elif [ "${_EASY_SETUP}" = "WBHD" ]; then
-      msg "INFO: Cluster WEB Head Mode Active"
-      _XTRAS_LIST=""
-      _AUTOPILOT=YES
-      _DB_SERVER=Percona
-      _DB_SERIES=5.7
-      _SSH_PORT=22
-      _DNS_SETUP_TEST=NO
-      _SMTP_RELAY_TEST=NO
-      _MY_HOSTN="${_EASY_HOSTNAME}"
-      _MY_FRONT="master.${_EASY_HOSTNAME}"
-      validate_public_ip &> /dev/null
-      _MY_OWNIP="${_THISHTIP}"
-      if [ ! -e "/root/.wbhd.clstr.cnf" ]; then
-        touch /root/.wbhd.clstr.cnf
-      fi
-    elif [ "${_EASY_SETUP}" = "DBHD" ]; then
-      msg "INFO: Cluster DB Head Mode Active"
-      _XTRAS_LIST=""
-      _AUTOPILOT=YES
-      _DB_SERVER=Percona
-      _DB_SERIES=5.7
-      _SSH_PORT=22
-      _DNS_SETUP_TEST=NO
-      _SMTP_RELAY_TEST=NO
-      _MY_HOSTN="${_EASY_HOSTNAME}"
-      _MY_FRONT="master.${_EASY_HOSTNAME}"
-      validate_public_ip &> /dev/null
-      _MY_OWNIP="${_THISHTIP}"
-      if [ ! -e "/root/.dbhd.clstr.cnf" ]; then
-        touch /root/.dbhd.clstr.cnf
-      fi
     fi
-    if [ "${_STATUS}" != "SYSTEMD" ]; then
-      barracuda_cnf
-    fi
+    barracuda_cnf
   fi
-  if [ "${_STATUS}" != "SYSTEMD" ]; then
-    [ -e "/root/.use.curl.from.packages.cnf" ] && chattr -i /root/.use.curl.from.packages.cnf
-    [ -e "/root/.use.curl.from.packages.cnf" ] && rm -f /root/.use.curl.from.packages.cnf
-    kill -9 $(ps aux | grep '[s]ystemd-udevd' | awk '{print $2}') &> /dev/null
-  fi
+  [ -e "/root/.use.curl.from.packages.cnf" ] && chattr -i /root/.use.curl.from.packages.cnf
+  [ -e "/root/.use.curl.from.packages.cnf" ] && rm -f /root/.use.curl.from.packages.cnf
+  kill -9 $(ps aux | grep '[s]ystemd-udevd' | awk '{print $2}') &> /dev/null
   if [ "${_AEGIR_VERSION}" != "static" ]; then
     _USE_AEGIR_VER=SRC
   else
     _USE_AEGIR_VER=STATIC
   fi
+  if [ -e "/var/aegir/drush" ]; then
+    _DPKG_CNF="confold"
+  else
+    _DPKG_CNF="confnew"
+  fi
   if [ "${_USE_AEGIR_VER}" = "SRC" ] && [ ! -z "${_FORCE_GIT_MIRROR}" ]; then
     if [ "${_FORCE_GIT_MIRROR}" = "gitlab" ]; then
       _INSTAPP="/usr/bin/aptitude-fast -f -y -q \
+        -o Dpkg::Options::=--force-confmiss \
         -o Dpkg::Options::=--force-confdef \
-        -o Dpkg::Options::=--force-confold install"
+        -o Dpkg::Options::=--force-${_DPKG_CNF} install"
     else
       _INSTAPP="/usr/bin/aptitude -f -y -q \
         --allow-untrusted \
+        -o Dpkg::Options::=--force-confmiss \
         -o Dpkg::Options::=--force-confdef \
-        -o Dpkg::Options::=--force-confold install"
+        -o Dpkg::Options::=--force-${_DPKG_CNF} install"
     fi
   else
     _INSTAPP="/usr/bin/aptitude -f -y -q \
       --allow-untrusted \
+      -o Dpkg::Options::=--force-confmiss \
       -o Dpkg::Options::=--force-confdef \
-      -o Dpkg::Options::=--force-confold install"
+      -o Dpkg::Options::=--force-${_DPKG_CNF} install"
   fi
 
   _RMAPP="/usr/bin/aptitude -f -y -q \
     --allow-untrusted \
+    -o Dpkg::Options::=--force-confmiss \
     -o Dpkg::Options::=--force-confdef \
-    -o Dpkg::Options::=--force-confold remove"
+    -o Dpkg::Options::=--force-${_DPKG_CNF} remove"
+
+  if [ ! -e "/var/aegir/drush" ]; then
+    _INSTAPP="${_INSTALL_DIST}"
+    _RMAPP="apt-get -y -qq remove"
+  fi
 
   _SRCDIR="/opt/tmp/files"
   rm -rf /var/opt/*
@@ -430,7 +396,7 @@ mode_detection() {
   chmod -R 777 /opt/tmp &> /dev/null
   find /opt/tmp/boa -type d -exec chmod 0755 {} \; &> /dev/null
   find /opt/tmp/boa -type f -exec chmod 0644 {} \; &> /dev/null
-  rm -f /var/run/aegir_upgrade.pid
+  rm -f /run/aegir_upgrade.pid
   if [ "${_STATUS}" != "UPGRADE" ]; then
     _STRICT_BIN_PERMISSIONS=NO
   fi
@@ -473,7 +439,7 @@ check_exception_mycnf() {
 
 EOF
     msg "EXIT on error due to not found file with your ${_DB_SERVER} root password"
-    clean_pid_exit
+    clean_pid_exit check_exception_mycnf_a
     fi
   fi
 }
@@ -542,12 +508,9 @@ virt_detection() {
         echo
       fi
       msg "VIRT: This system is supported: ${_VIRT_IS}"
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        echo
-        msg "HINT: Command to run in another terminal window to watch details"
-        msg "CMND: tail -f ${_LOG}"
-        echo
-      fi
+      echo
+      msg "HINT: Command to run in another terminal window to watch details"
+      msg "CMND: tail -f ${_LOG}"
     else
       if [ -z "${_VIRT_TEST}" ] || [ "${_VIRT_TEST}" = "0" ]; then
         _VIRT_TEST="unknown / not a virtual machine"
@@ -565,106 +528,85 @@ os_detection_minimal() {
     msg "PROC: os_detection_minimal"
   fi
   _APT_UPDATE="apt-get update"
-  _THIS_RV=$(lsb_release -sc 2>&1)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
   for e in ${_OS_LIST}; do
-    if [ "${e}" = "${_THIS_RV}" ]; then
+    if [ "${e}" = "${_OS_CODE}" ]; then
       _APT_UPDATE="apt-get update --allow-releaseinfo-change"
     fi
   done
 }
 
 apt_clean_update() {
-  apt-get clean -qq 2> /dev/null
-  rm -rf /var/lib/apt/lists/* &> /dev/null
-  ${_APT_UPDATE} -qq 2> /dev/null
+  #apt-get clean -qq 2> /dev/null
+  #rm -rf /var/lib/apt/lists/* &> /dev/null
+  mrun "${_APT_UPDATE} -qq" 2> /dev/null
+}
+
+apt_clean_update_no_releaseinfo_change() {
+  #apt-get clean -qq 2> /dev/null
+  #rm -rf /var/lib/apt/lists/* &> /dev/null
+  mrun "apt-get update -qq" 2> /dev/null
 }
 
 os_detection() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: os_detection"
   fi
-  _THIS_OS=$(lsb_release -si 2>&1)
-  _THIS_RV=$(lsb_release -sc 2>&1)
-  if [ "${_THIS_OS}" = "Debian" ]; then
-    if [ "${_THIS_RV}" = "bookworm" ]; then
-      _OSR="bookworm"
-      _DB_SERVER=Percona
-      _DB_SERIES=5.7
-      _DBS_VRN="${_PERCONA_5_7_VRN}"
-    elif [ "${_THIS_RV}" = "bullseye" ]; then
-      _OSR="bullseye"
-      _DB_SERVER=Percona
-      _DB_SERIES=5.7
-      _DBS_VRN="${_PERCONA_5_7_VRN}"
-    elif [ "${_THIS_RV}" = "buster" ]; then
-      _OSR="buster"
-      _DB_SERVER=Percona
-      _DB_SERIES=5.7
-      _DBS_VRN="${_PERCONA_5_7_VRN}"
-    elif [ "${_THIS_RV}" = "stretch" ]; then
-      _OSR="stretch"
-    elif [ "${_THIS_RV}" = "jessie" ]; then
-      _OSR="jessie"
+  _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  _DB_SERVER=Percona
+  if [ "${_OS_DIST}" = "Debian" ]; then
+    if [ "${_OS_CODE}" = "bookworm" ]; then
+      _OS_CODE="bookworm"
+    elif [ "${_OS_CODE}" = "bullseye" ]; then
+      _OS_CODE="bullseye"
+    elif [ "${_OS_CODE}" = "buster" ]; then
+      _OS_CODE="buster"
+    elif [ "${_OS_CODE}" = "stretch" ]; then
+      _OS_CODE="stretch"
+    elif [ "${_OS_CODE}" = "jessie" ]; then
+      _OS_CODE="jessie"
     else
       not_supported_os
     fi
     _NGINX_FORWARD_SECRECY=YES
     _NGINX_SPDY=YES
-    if [ "${_DB_SERIES}" = "10.4" ]; then
-      _DB_SERVER=MariaDB
-      _DBS_VRN="${_MARIADB_10_4_VRN}"
-    elif [ "${_DB_SERIES}" = "10.3" ]; then
-      _DB_SERVER=MariaDB
-      _DBS_VRN="${_MARIADB_10_3_VRN}"
-    elif [ "${_DB_SERIES}" = "10.2" ]; then
-      _DB_SERVER=MariaDB
-      _DBS_VRN="${_MARIADB_10_2_VRN}"
+    if [ "${_DB_SERIES}" = "8.4" ]; then
+      _DBS_VRN="${_PERCONA_8_4_VRN}"
+    elif [ "${_DB_SERIES}" = "8.3" ]; then
+      _DBS_VRN="${_PERCONA_8_3_VRN}"
+    elif [ "${_DB_SERIES}" = "8.0" ]; then
+      _DBS_VRN="${_PERCONA_8_0_VRN}"
     elif [ "${_DB_SERIES}" = "5.7" ]; then
-      _DB_SERVER=Percona
       _DBS_VRN="${_PERCONA_5_7_VRN}"
     else
-      _DB_SERVER=Percona
       _DB_SERIES=5.7
       _DBS_VRN="${_PERCONA_5_7_VRN}"
     fi
     _SPINNER=NO
     _SKIP_LEGACY_PHP=YES
-  elif [ "${_THIS_OS}" = "Devuan" ]; then
-    if [ "${_THIS_RV}" = "daedalus" ]; then
-      _OSR="daedalus"
-      _DB_SERVER=Percona
-      _DB_SERIES=5.7
-      _DBS_VRN="${_PERCONA_5_7_VRN}"
-    elif [ "${_THIS_RV}" = "chimaera" ]; then
-      _OSR="chimaera"
-      _DB_SERVER=Percona
-      _DB_SERIES=5.7
-      _DBS_VRN="${_PERCONA_5_7_VRN}"
-    elif [ "${_THIS_RV}" = "beowulf" ]; then
-      _OSR="beowulf"
-      _DB_SERVER=Percona
-      _DB_SERIES=5.7
-      _DBS_VRN="${_PERCONA_5_7_VRN}"
+  elif [ "${_OS_DIST}" = "Devuan" ]; then
+    if [ "${_OS_CODE}" = "daedalus" ]; then
+      _OS_CODE="daedalus"
+    elif [ "${_OS_CODE}" = "chimaera" ]; then
+      _OS_CODE="chimaera"
+    elif [ "${_OS_CODE}" = "beowulf" ]; then
+      _OS_CODE="beowulf"
     else
       not_supported_os
     fi
     _NGINX_FORWARD_SECRECY=YES
     _NGINX_SPDY=YES
-    if [ "${_DB_SERIES}" = "10.4" ]; then
-      _DB_SERVER=MariaDB
-      _DBS_VRN="${_MARIADB_10_4_VRN}"
-    elif [ "${_DB_SERIES}" = "10.3" ]; then
-      _DB_SERVER=MariaDB
-      _DBS_VRN="${_MARIADB_10_3_VRN}"
-    elif [ "${_DB_SERIES}" = "10.2" ]; then
-      _DB_SERVER=MariaDB
-      _DBS_VRN="${_MARIADB_10_2_VRN}"
+    if [ "${_DB_SERIES}" = "8.4" ]; then
+      _DBS_VRN="${_PERCONA_8_4_VRN}"
+    elif [ "${_DB_SERIES}" = "8.3" ]; then
+      _DBS_VRN="${_PERCONA_8_3_VRN}"
+    elif [ "${_DB_SERIES}" = "8.0" ]; then
+      _DBS_VRN="${_PERCONA_8_0_VRN}"
     elif [ "${_DB_SERIES}" = "5.7" ]; then
-      _DB_SERVER=Percona
       _DBS_VRN="${_PERCONA_5_7_VRN}"
     else
-      _DB_SERVER=Percona
       _DB_SERIES=5.7
       _DBS_VRN="${_PERCONA_5_7_VRN}"
     fi
@@ -674,7 +616,7 @@ os_detection() {
     not_supported_os
   fi
   echo " "
-  thiSys="$(lsb_release -si 2>&1)/$(lsb_release -sc 2>&1) $(uname -m 2>&1)"
+  thiSys="$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)/$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1) $(uname -m 2>&1)"
   thiSys="$(uname -n 2>&1) ${thiSys} PHP ${_PHP_FPM_VERSION}"
   msg "Aegir on ${thiSys}"
   echo " "
@@ -696,7 +638,7 @@ check_boa_php_compatibility() {
     msg "NOTE: You can still install also legacy PHP 7.x and 5.6 versions"
     msg "NOTE: but you must also include at least 8.1 to support Drupal 10"
     msg "Bye"
-    clean_pid_exit
+    clean_pid_exit check_boa_php_compatibility_a
   fi
   if [ "${_PHP_FPM_VERSION}" = "5.3" ] \
     || [ "${_PHP_FPM_VERSION}" = "5.4" ] \
@@ -722,7 +664,7 @@ check_boa_php_compatibility() {
     msg "NOTE: You can still install also legacy PHP 7.x and 5.6 versions"
     msg "NOTE: but you must use as default version 8.1 to support Drupal 10"
     msg "Bye"
-    clean_pid_exit
+    clean_pid_exit check_boa_php_compatibility_b
   fi
 }
 
@@ -741,7 +683,7 @@ check_boa_version() {
       msg "You can not downgrade back to previous/older/lts BOA version"
       msg "Please use 'barracuda up-pro system' to upgrade this server"
       msg "Bye"
-      clean_pid_exit
+      clean_pid_exit check_boa_version_a
     fi
     if [[ "${_SERIES_TEST}" =~ "BOA-5." ]] \
       || [[ "${_SERIES_TEST}" =~ "BOA-4." ]]; then
@@ -751,7 +693,7 @@ check_boa_version() {
       msg "has been already upgraded to BOA-4.x or BOA-5.x release"
       msg "Please run 'barracuda up-${tRee}' full upgrade first!"
       msg "Bye"
-      clean_pid_exit
+      clean_pid_exit check_boa_version_b
     fi
     if [[ "${_SERIES_TEST}" =~ "BOA-4." ]] \
       || [[ "${_SERIES_TEST}" =~ "BOA-5." ]]; then
@@ -763,7 +705,7 @@ check_boa_version() {
         msg "You can not downgrade back to legacy or previous stable version"
         msg "Please use 'barracuda up-${tRee}' to upgrade this system"
         msg "Bye"
-        clean_pid_exit
+        clean_pid_exit check_boa_version_c
       fi
     fi
   fi
@@ -851,8 +793,17 @@ barracuda_log_update() {
     | cut -d"-" -f1 \
     | awk '{ print $1}' \
     | sed "s/[\,']//g" 2>&1)
+  if [ "${_LOG_DB_V}" = "Linux" ]; then
+    _LOG_DB_V=$(mysql -V 2>&1 \
+      | tr -d "\n" \
+      | cut -d" " -f4 \
+      | awk '{ print $1}' \
+      | cut -d"-" -f1 \
+      | awk '{ print $1}' \
+      | sed "s/[\,']//g" 2>&1)
+  fi
   _BARRACUDA_VERSION_INFO="$(date 2>&1) / \
-    $(lsb_release -si 2>&1).$(lsb_release -sc 2>&1) \
+    $(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1).$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1) \
     $(uname -m 2>&1) ${_VIRT_IS} / \
     Aegir ${_AEGIR_VERSION} / \
     Barracuda ${_X_VERSION}${_LOG_GIT_MIRROR} / \
@@ -869,5 +820,81 @@ barracuda_log_update() {
 
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: New entry added to /var/log/barracuda_log.txt"
+  fi
+}
+
+#
+# Turn Off AppArmor In Octopus.
+turn_off_apparmor_in_octopus() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: turn_off_apparmor_in_octopus"
+  fi
+  isAppArmOn=N
+  if [ -e "/sys/module/apparmor/parameters/enabled" ]; then
+    isAppArmOn=$(cat /sys/module/apparmor/parameters/enabled 2>&1)
+    isAppArmOn=$(echo -n ${isAppArmOn} | tr -d "\n" 2>&1)
+  fi
+  if [ "${isAppArmOn}" = "Y" ] && [ ! -e "/root/.turn_off_apparmor_in_octopus.cnf" ]; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "ARMR: Turning off AppArmor temporarily..."
+    fi
+    rm -rf /var/cache/apparmor/*
+    mrun "apparmor_parser -r /etc/apparmor.d/*" 2> /dev/null
+    mrun "aa-complain /etc/apparmor.d/*" 2> /dev/null
+    mrun "service apparmor stop" 2> /dev/null
+    mrun "aa-teardown" 2> /dev/null
+    mrun "service auditd stop" 2> /dev/null
+    touch /root/.turn_off_apparmor_in_octopus.cnf
+  fi
+}
+
+#
+# Switch to bash while running octopus.
+switch_to_bash_in_octopus() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: switch_to_bash_in_octopus"
+  fi
+  if [ -x "/bin/websh" ] && [ -L "/bin/sh" ]; then
+    _WEB_SH=`readlink -n /bin/sh`
+    _WEB_SH=`echo -n ${_WEB_SH} | tr -d "\n"`
+    if [ -x "/bin/dash" ] || [ -x "/usr/bin/dash" ]; then
+      if [ "${_WEB_SH}" != "/bin/dash" ]; then
+        if [ -x "/usr/bin/dash" ] && [ ! -L "/usr/bin/dash" ]; then
+          if [ -L "/usr/bin/sh" ]; then
+            ln -sfn /usr/bin/dash /usr/bin/sh
+          fi
+          if [ -L "/bin/sh" ]; then
+            ln -sfn /usr/bin/dash /bin/sh
+          fi
+        fi
+        if [ -x "/bin/dash" ] && [ ! -L "/bin/dash" ]; then
+          if [ -L "/usr/bin/sh" ]; then
+            ln -sfn /bin/dash /usr/bin/sh
+          fi
+          if [ -L "/bin/sh" ]; then
+            ln -sfn /bin/dash /bin/sh
+          fi
+        fi
+      fi
+    elif [ -x "/bin/bash" ] || [ -x "/usr/bin/bash" ]; then
+      if [ "${_WEB_SH}" != "/bin/bash" ]; then
+        if [ -x "/usr/bin/bash" ] && [ ! -L "/usr/bin/bash" ]; then
+          if [ -L "/usr/bin/sh" ]; then
+            ln -sfn /usr/bin/bash /usr/bin/sh
+          fi
+          if [ -L "/bin/sh" ]; then
+            ln -sfn /usr/bin/bash /bin/sh
+          fi
+        fi
+        if [ -x "/bin/bash" ] && [ ! -L "/bin/bash" ]; then
+          if [ -L "/usr/bin/sh" ]; then
+            ln -sfn /bin/bash /usr/bin/sh
+          fi
+          if [ -L "/bin/sh" ]; then
+            ln -sfn /bin/bash /bin/sh
+          fi
+        fi
+      fi
+    fi
   fi
 }

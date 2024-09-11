@@ -81,9 +81,9 @@ by the BOA install and upgrade tools exclusively.
 
  @=> /root/.use.local.nameservers.cnf
 
-  This file, if exists, allows to use original (or custom) nameservers
-  provided on the system install by your hosting provider. It will automatically
-  configure pdnsd server to use these IPs instead of public Cloudflare DNS servers.
+  This file, if exists, allows to use original (or custom) nameservers provided
+  on the system install by your hosting provider. It will auto-configure
+  unbound server to use these IPs instead of public Cloudflare DNS servers.
 
   It depends on existence of another file with custom name servers to use
   listed, one per line: /var/backups/resolv.conf.vanilla -- for example:
@@ -95,7 +95,7 @@ by the BOA install and upgrade tools exclusively.
 
  @=> /root/.use.default.nameservers.cnf
 
-  This file, if exists, allows to revert pdnsd cache server configuration
+  This file, if exists, allows to revert unbound cache server configuration
   to use Cloudflare DNS again (which is BOA default).
 
   Note that to restore default DNS cache configuration on barracuda upgrade,
@@ -131,14 +131,12 @@ by the BOA install and upgrade tools exclusively.
 
   This file, if exists, allows to automatically generate random, new mysql
   root password on every barracuda upgrade. This file is ignored if
-  /root/.mysql.no.new.password.cnf file also exists. Warning: this may cause
-  problems reported at: https://github.com/omega8cc/boa/issues/642
+  /root/.mysql.no.new.password.cnf file also exists, but is enabled by default.
 
  @=> /root/.mysql.no.new.password.cnf
 
   This file, if exists, allows to ignore /root/.mysql.yes.new.password.cnf
-  for backward compatibility and configuration consistency -- by default
-  BOA (since 2.4.4) doesn't change mysql root password.
+  as mentioned above.
 
  @=> /root/.mysql.force.legacy.backup.cnf
 

@@ -21,14 +21,8 @@ check_root() {
     ionice -c2 -n7 -p $$
     renice 19 -p $$
     chmod a+w /dev/null
-    if [ ! -e "/dev/fd" ]; then
-      if [ -e "/proc/self/fd" ]; then
-        rm -rf /dev/fd
-        ln -s /proc/self/fd /dev/fd
-      fi
-    fi
   else
-    echo "ERROR: This script should be ran as a root user"
+    echo "ERROR: This script should be run as a root user"
     exit 1
   fi
   _DF_TEST=$(df -kTh / -l \
@@ -50,10 +44,10 @@ fi
 
 os_detection_minimal() {
   _APT_UPDATE="apt-get update"
-  _THIS_RV=$(lsb_release -sc 2>&1)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
   for e in ${_OS_LIST}; do
-    if [ "${e}" = "${_THIS_RV}" ]; then
+    if [ "${e}" = "${_OS_CODE}" ]; then
       _APT_UPDATE="apt-get update --allow-releaseinfo-change"
     fi
   done
@@ -61,8 +55,8 @@ os_detection_minimal() {
 os_detection_minimal
 
 apt_clean_update() {
-  apt-get clean -qq 2> /dev/null
-  rm -rf /var/lib/apt/lists/* &> /dev/null
+  #apt-get clean -qq 2> /dev/null
+  #rm -rf /var/lib/apt/lists/* &> /dev/null
   ${_APT_UPDATE} -qq 2> /dev/null
 }
 
@@ -86,7 +80,8 @@ find_fast_mirror_early() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     apt_clean_update
-    apt-get install netcat ${aptYesUnth} &> /dev/null
+    apt-get install netcat ${aptYesUnth} 2> /dev/null
+    apt-get install netcat-traditional ${aptYesUnth} 2> /dev/null
     wait
   fi
   ffMirr=$(which ffmirror 2>&1)

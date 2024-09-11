@@ -13,18 +13,16 @@ check_root() {
     ionice -c2 -n7 -p $$
     renice 19 -p $$
     chmod a+w /dev/null
-    if [ ! -e "/dev/fd" ]; then
-      if [ -e "/proc/self/fd" ]; then
-        rm -rf /dev/fd
-        ln -s /proc/self/fd /dev/fd
-      fi
-    fi
   else
-    echo "ERROR: This script should be ran as a root user"
+    echo "ERROR: This script should be run as a root user"
     exit 1
   fi
 }
 check_root
+
+if [ -e "/root/.disable_mysql_cleanup.cnf" ]; then
+  exit 0
+fi
 
 if [ -e "/root/.proxy.cnf" ]; then
   echo "Ooops, that is a proxy server, we do not run this task on sql proxy"
@@ -67,17 +65,17 @@ _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
 
 create_locks() {
   echo "INFO: Creating locks for $1"
-  touch /var/run/mysql_backup_running.pid
+  touch /run/mysql_backup_running.pid
 }
 
 remove_locks() {
   echo "INFO: Removing locks for $1"
-  rm -f /var/run/mysql_backup_running.pid
+  rm -f /run/mysql_backup_running.pid
 }
 
 check_running() {
   while [ -z "${_IS_MYSQLD_RUNNING}" ] \
-    || [ ! -e "/var/run/mysqld/mysqld.sock" ]; do
+    || [ ! -e "/run/mysqld/mysqld.sock" ]; do
     _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       echo "INFO: Waiting for MySQLD availability..."
@@ -205,7 +203,7 @@ done
 
 echo "INFO: Completing all dbs cleanup on `date`"
 touch /var/xdrago/log/last-run-db-cleanup
-rm -f /var/run/mysql_backup_running.pid
+rm -f /run/mysql_backup_running.pid
 
 echo "INFO: ALL TASKS COMPLETED, BYE!"
 exit 0

@@ -1,0 +1,106 @@
+# AppArmor profile for Pure-FTPd server
+# This profile restricts Pure-FTPd server (pure-ftpd) to essential operations only.
+
+#include <tunables/global>
+
+/usr/local/sbin/pure-ftpd flags=(complain) {
+
+  # Include common AppArmor abstractions
+  include <abstractions/base>
+  include <abstractions/nameservice>
+  include <abstractions/authentication>
+  include <abstractions/ssl_keys>
+
+  # Capabilities needed by Pure-FTPd server
+  capability net_bind_service,
+  capability setgid,
+  capability setuid,
+  capability mknod,
+
+  network inet stream,
+  network inet6 stream,
+
+  # Allow Pure-FTPd to accept signal from PHP-CLI processes
+  signal (receive) peer=/opt/php*/bin/php,
+
+  # Allow execution of /bin/sh
+  /bin/sh mrix,
+  /bin/websh mrix,
+
+  # Allow access to /dev
+  /dev/log w,
+  /dev/urandom r,
+
+  # Allow read access to system configuration and password files
+  /etc/hostname r,
+  /etc/hosts r,
+  /etc/pure-ftpd.conf r,
+  /etc/passwd r,
+  /etc/group r,
+  /etc/shadow r,
+
+  # Allow read access to necessary libraries
+  /lib/** mr,
+  /lib/x86_64-linux-gnu/** mr,
+  /lib64/** mr,
+  /usr/lib/** mr,
+  /usr/lib/x86_64-linux-gnu/** mr,
+  /usr/libexec/** mr,
+  /usr/local/include/** mr,
+  /usr/local/lib/** mr,
+  /usr/local/ssl/** mr,
+  /usr/local/ssl3/** mr,
+
+  # Allow read access to SSL certificates
+  /etc/ssl/private/pure-ftpd.pem r,
+  /etc/ssl/private/pure-ftpd-dhparams.pem r,
+
+  # Allow reading necessary kernel parameters
+  /proc/** r,
+  /sys/** r,
+
+  # Allow access to run directory
+  /run/pure-ftpd.pid rw,
+  /run/pure-ftpd/ r,
+  /run/pure-ftpd/** rwk,
+
+  # Allow access to temporary directories
+  /tmp/ r,
+  /tmp/** rw,
+  /var/tmp/** rw,
+
+  # Allow write access to log files
+  /var/log/pureftpd.log rw,
+
+  # Allow execution of the pure-ftpd binary and configuration script
+  /usr/local/sbin/pure-ftpd mrix,
+  /usr/local/sbin/pure-config.pl mrix,
+
+  # Allow read access to Octopus user directories and files
+  /data/disk/*/.drush/ r,
+  /data/disk/*/.drush/** r,
+  /data/disk/*/backups/ r,
+  /data/disk/*/backups/** r,
+  /data/disk/*/clients/ r,
+  /data/disk/*/clients/** r,
+  /data/disk/*/distro/** r,
+  /data/disk/*/static/ r,
+  /data/disk/*/static/** r,
+  /home/*/.drush/ r,
+  /home/*/.drush/** r,
+  /opt/tools/drush/** r,
+
+  # Allow write access to Octopus user directories and files
+  owner /data/disk/*/distro/** rw,
+  owner /data/disk/*/static/ r,
+  owner /data/disk/*/static/** rw,
+  owner /home/*/ r,
+  owner /home/*/.drush/cache/ r,
+  owner /home/*/.drush/cache/** rw,
+  owner /home/*/** rw,
+
+  # Catchall to deny everything else
+  #deny /** rwklx,
+
+  # Site-specific additions and overrides can be added below
+}

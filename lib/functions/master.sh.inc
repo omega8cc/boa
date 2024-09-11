@@ -1,6 +1,6 @@
 
 tRee=lts
-rlsn="BOA-5.2.0"
+rlsn="BOA-5.4.0"
 rlse="${rlsn}-${tRee}"
 export tRee="${tRee}"
 export rlsn="${rlsn}"
@@ -57,8 +57,14 @@ provision_backend_dbpass_generate() {
         _ESC_PASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
       fi
     fi
+    isPythonTwo=$(which python2 2>&1)
+    isPythonThree=$(which python3 2>&1)
     _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
-    _ENC_PASS=$(python -c "import urllib; print urllib.quote('''${_ESC_PASS}''')")
+    if [ -x "${isPythonThree}" ]; then
+      _ENC_PASS=$(python3 -c "import urllib.parse; print(urllib.parse.quote('''${_ESC_PASS}'''))")
+    elif [ -x "${isPythonTwo}" ]; then
+      _ENC_PASS=$(python2 -c "import urllib; print urllib.quote('''${_ESC_PASS}''')")
+    fi
     _LEN_PASS=$(echo ${#_ESC_PASS} 2>&1)
   fi
 
@@ -117,9 +123,6 @@ provision_backend_dbpass_generate() {
     _THIS_DB_PORT=6033
   else
     _THIS_DB_PORT=3306
-  fi
-  if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
-    mkdir -p /etc/mysql/mariadb.conf.d/
   fi
   mysqladmin -u root flush-privileges &> /dev/null
 
@@ -223,9 +226,6 @@ ALTER USER '${_ADBU}'@'localhost' IDENTIFIED BY '${_ESC_PASS}';
 ALTER USER '${_ADBU}'@'%' IDENTIFIED BY '${_ESC_PASS}';
 EOFMYSQL
   fi
-  if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
-    mkdir -p /etc/mysql/mariadb.conf.d/
-  fi
   mysqladmin -u root flush-privileges &> /dev/null
 }
 
@@ -301,9 +301,6 @@ EOFMYSQL
       /var/aegir/.drush/server_*.alias.drushrc.php &> /dev/null
     wait
   fi
-  if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
-    mkdir -p /etc/mysql/mariadb.conf.d/
-  fi
   mysqladmin -u root flush-privileges &> /dev/null
   su -s /bin/bash - aegir -c "drush8 cc drush" &> /dev/null
   wait
@@ -317,9 +314,18 @@ EOFMYSQL
   fi
   wait
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "INFO: Running hosting-dispatch..."
+    msg "INFO: Running hosting-dispatch/hosting-tasks..."
   fi
   su -s /bin/bash - aegir -c "drush8 @hostmaster hosting-dispatch" &> /dev/null
+  wait
+  sleep 5
+  su -s /bin/bash - aegir -c "drush8 @hostmaster hosting-tasks --force" &> /dev/null
+  wait
+  sleep 5
+  su -s /bin/bash - aegir -c "drush8 @hostmaster hosting-tasks --force" &> /dev/null
+  wait
+  sleep 5
+  su -s /bin/bash - aegir -c "drush8 @hostmaster hosting-tasks --force" &> /dev/null
   wait
 }
 
@@ -398,9 +404,6 @@ ALTER USER '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_THIS_HM_DBPD}';
 ALTER USER '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_THIS_HM_DBPD}';
 EOFMYSQL
   fi
-  if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
-    mkdir -p /etc/mysql/mariadb.conf.d/
-  fi
   mysqladmin -u root flush-privileges &> /dev/null
 }
 
@@ -441,7 +444,7 @@ master_download_for_local_build() {
     get_dev_stc "admin_menu-7.x-3.0-rc7.tar.gz"
     get_dev_stc "betterlogin-7.x-1.5.tar.gz"
     get_dev_stc "ctools-7.x-1.21.tar.gz"
-    get_dev_stc "entity-7.x-1.10.tar.gz"
+    get_dev_stc "entity-7.x-1.11.tar.gz"
     get_dev_stc "libraries-7.x-2.5.tar.gz"
     get_dev_stc "module_filter-7.x-2.3.tar.gz"
     get_dev_stc "openidadmin-7.x-1.0.tar.gz"
@@ -476,10 +479,11 @@ aegir_master_upgrade() {
   if prompt_yes_no "Do you want to upgrade Aegir Master Instance?" ; then
     true
     msg "INFO: Running Aegir Master Instance upgrade"
-    if [ -x "/usr/bin/mariadb_upgrade" ]; then
-      mrun "mariadb_upgrade --force" &> /dev/null
-    elif [ -x "/usr/bin/mysql_upgrade" ]; then
-      mrun "mysql_upgrade -u root --force" &> /dev/null
+    if [ -x "/usr/bin/mysql_upgrade" ]; then
+      check_mysql_version
+      if [ "${_DB_V}" = "5.7" ]; then
+        mrun "mysql_upgrade -u root --force" &> /dev/null
+      fi
     fi
     if [ -e "/var/aegir/use_proxysql.txt" ]; then
       _SQL_CONNECT=127.0.0.1
@@ -501,7 +505,8 @@ aegir_master_upgrade() {
         chmod 0440 /etc/sudoers.d/${SCRIPT}
       fi
     done
-    if [ ! -d "/var/aegir/.drush/sys/provision/http" ]; then
+    if [ ! -d "/var/aegir/.drush/sys/provision/http" ] \
+      || [ ! -d "/var/aegir/drush/includes" ]; then
       rm -rf /var/aegir/.drush/{sys,xts,usr}
       rm -rf /var/aegir/.drush/{provision,drush_make}
       mkdir -p /var/aegir/.drush/{sys,xts,usr}
@@ -549,7 +554,7 @@ aegir_master_upgrade() {
     chown -R aegir:www-data ${_THIS_HM_SITE}/files
     chmod -R 02775 ${_THIS_HM_SITE}/files
 
-    _X_SE="520proT02"
+    _X_SE="540ltsT02"
     export _X_SE="${_X_SE}"
     export _X_VERSION="${_X_VERSION}"
 
@@ -572,9 +577,6 @@ aegir_master_upgrade() {
     echo "_X_SE=\"${_X_SE}\""                           >> ${vBs}/${filIncB}
     echo "_X_VERSION=\"${_X_VERSION}\""                 >> ${vBs}/${filIncB}
 
-    if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
-      mkdir -p /etc/mysql/mariadb.conf.d/
-    fi
     mysqladmin -u root flush-hosts &> /dev/null
     _RST=$(syncpass fix aegir 2>&1)
     find_correct_ip
@@ -594,7 +596,7 @@ aegir_master_upgrade() {
       msg "FATAL ERROR: AegirUpgrade installer failed"
       msg "FATAL ERROR: Aborting Barracuda installer NOW!"
       touch /opt/tmp/status-Barracuda-FAIL
-      clean_pid_exit
+      clean_pid_exit aegir_master_upgrade_a
     else
       chattr +i ${_U_HD}/php.ini
       hostmaster_frontend_dbpass_sync
@@ -604,7 +606,7 @@ aegir_master_upgrade() {
         ${mtrInc}/global.inc-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
     fi
     mkdir -p /data/conf
-    cp -af ${locCnf}/global.inc /data/conf/global.inc
+    cp -af ${locCnf}/global/global.inc /data/conf/global.inc
     sed -i "s/3600/${_SPEED_VALID_MAX}/g" /data/conf/global.inc &> /dev/null
     if [ -e "${mtrInc}" ] && [ ! -L "${mtrInc}/global.inc" ] \
       && [ -e "/data/conf/global.inc" ]; then
@@ -647,21 +649,16 @@ php_cli_cron_update() {
     msg "PROC: php_cli_cron_update"
   fi
   rm -f /var/spool/cron/crontabs/aegir
-  if [ ! -e "/root/.mstr.clstr.cnf" ] \
-    && [ ! -e "/root/.wbhd.clstr.cnf" ] \
-    && [ ! -e "/root/.dbhd.clstr.cnf" ]; then
-    if [ ! -e "/var/spool/cron/crontabs/aegir" ]; then
-      echo -e \
-        "SHELL=/bin/sh\nPATH=/opt/php56/bin:/usr/bin\n*/1 * * * * \
-        /usr/bin/env php /var/aegir/drush/drush.php '@hostmaster' \
-        hosting-dispatch >/dev/null 2>&1" \
-        | fmt -su -w 2500 \
-        | tee -a /var/spool/cron/crontabs/aegir >/dev/null 2>&1
-    fi
+  if [ ! -e "/var/spool/cron/crontabs/aegir" ]; then
+    #_DRUSH_HOSTING_TASKS_CMD="/usr/bin/drush @hostmaster hosting-tasks --force;"
+    _DRUSH_HOSTING_DISPATCH_CMD="/usr/bin/env php /var/aegir/drush/drush.php @hostmaster hosting-dispatch"
+    echo -e \
+    "\nSHELL=/bin/sh\nPATH=/opt/php74/bin:/usr/bin\n\n*/1 * * * * \
+    ${_DRUSH_HOSTING_DISPATCH_CMD}" \
+    | fmt -su -w 2500 \
+    | tee -a /var/spool/cron/crontabs/aegir >/dev/null 2>&1
   fi
   if [ -e "/var/spool/cron/crontabs/aegir" ]; then
-    sed -i "s/hosting-dispatch.*/hosting-dispatch \>\/dev\/null 2\>\&1/g" \
-      /var/spool/cron/crontabs/aegir &> /dev/null
     if [ "${_PHP_CLI_VERSION}" = "8.3" ] && [ -x "/opt/php83/bin/php" ]; then
       sed -i "s/^PATH=.*/PATH=\/opt\/php83\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
         /var/spool/cron/crontabs/aegir &> /dev/null
@@ -690,8 +687,8 @@ aegir_master_install_upgrade() {
   if [ "${_STATUS}" = "INIT" ]; then
 
   ###--------------------###
-    if [ ! -e "/var/run/mysqld/mysqld.pid" ] \
-      || [ ! -e "/var/run/mysqld/mysqld.sock" ]; then
+    if [ ! -e "/run/mysqld/mysqld.pid" ] \
+      || [ ! -e "/run/mysqld/mysqld.sock" ]; then
       msg "ALRT! ${_DB_SERVER} server not running properly!"
       msg "EXIT: We can't proceed and will exit now"
       msg "HINT: Please check ${_LOG} for more information,"
@@ -699,16 +696,11 @@ aegir_master_install_upgrade() {
       msg "Bye"
       [ -e "/root/.my.pass.txt" ] && rm -f /root/.my.pass.txt
       mkdir -p /var/aegir
-      clean_pid_exit
+      clean_pid_exit aegir_master_install_upgrade_a
     fi
 
   ###--------------------###
     msg "INFO: Installing Aegir Master Instance..."
-    if [ -e "/root/.mstr.clstr.cnf" ] \
-      || [ -e "/root/.wbhd.clstr.cnf" ] \
-      || [ -e "/root/.dbhd.clstr.cnf" ]; then
-      touch /data/conf/clstr.cnf &> /dev/null
-    fi
     adduser --system --group --home /var/aegir aegir &> /dev/null
     usermod -aG www-data aegir
     usermod -aG users aegir
@@ -746,7 +738,7 @@ aegir_master_install_upgrade() {
     _RESOLVEIP="${_LOC_IP}"
     if [ -z "${_RESOLVEIP}" ]; then
       msg "FATAL ERROR: DNS looks broken for server ${_AEGIR_HOST}"
-      clean_pid_exit
+      clean_pid_exit aegir_master_install_upgrade_b
     else
       _AEGIR_HOST_IP="${_RESOLVEIP}"
     fi
@@ -759,7 +751,7 @@ aegir_master_install_upgrade() {
         fi
       else
         msg "FATAL ERROR: ${_DB_SERVER} is not configured to listen on ${_AEGIR_HOST_IP}"
-        clean_pid_exit
+        clean_pid_exit aegir_master_install_upgrade_c
       fi
     fi
 
@@ -892,7 +884,7 @@ ALTER USER '${_AEGIR_DB_USER}'@'%' IDENTIFIED BY '${_ESC_PASS}';
 EOFMYSQL
     fi
 
-    _X_SE="520proT02"
+    _X_SE="540ltsT02"
     export _X_SE="${_X_SE}"
     export _X_VERSION="${_X_VERSION}"
 
@@ -943,7 +935,7 @@ EOFMYSQL
       msg "HINT: Please check /var/aegir/install.log"
       msg "HINT: for more information on errors occured"
       touch /opt/tmp/status-Barracuda-FAIL
-      clean_pid_exit
+      clean_pid_exit aegir_master_install_upgrade_d
     fi
     if [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ]; then
       _THIS_HM_ROOT=$(cat /var/aegir/.drush/hostmaster.alias.drushrc.php \
@@ -963,9 +955,18 @@ EOFMYSQL
     wait
     rm -rf /var/aegir/.tmp/cache
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "INFO: Running hosting-dispatch..."
+      msg "INFO: Running hosting-dispatch/hosting-tasks..."
     fi
     su -s /bin/bash - aegir -c "drush8 @hostmaster hosting-dispatch" &> /dev/null
+    wait
+    sleep 5
+    su -s /bin/bash - aegir -c "drush8 @hostmaster hosting-tasks --force" &> /dev/null
+    wait
+    sleep 5
+    su -s /bin/bash - aegir -c "drush8 @hostmaster hosting-tasks --force" &> /dev/null
+    wait
+    sleep 5
+    su -s /bin/bash - aegir -c "drush8 @hostmaster hosting-tasks --force" &> /dev/null
     wait
     if [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ]; then
       _THIS_HM_ROOT=$(cat /var/aegir/.drush/hostmaster.alias.drushrc.php \
@@ -990,7 +991,7 @@ EOFMYSQL
       msg "HINT: Please check /var/aegir/install.log for details, and then"
       msg "HINT: run the same install command again to complete installation."
       touch /root/.force.reinstall.cnf
-      clean_pid_exit
+      clean_pid_exit aegir_master_install_upgrade_e
     fi
 
   ###--------------------###
@@ -999,7 +1000,7 @@ EOFMYSQL
         ${mtrInc}/global.inc-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
     fi
     mkdir -p /data/conf
-    cp -af ${locCnf}/global.inc /data/conf/global.inc
+    cp -af ${locCnf}/global/global.inc /data/conf/global.inc
     sed -i "s/3600/${_SPEED_VALID_MAX}/g" /data/conf/global.inc &> /dev/null
     if [ -e "${mtrInc}" ] \
       && [ ! -L "${mtrInc}/global.inc" ] \
@@ -1023,11 +1024,11 @@ EOFMYSQL
     rm -f /etc/nginx/sites-available/default
     rm -f /etc/nginx/sites-enabled/default
     rm -f /etc/nginx/modules-enabled/*
-    if [ -e "${locCnf}/nginx.conf" ]; then
+    if [ -e "${locCnf}/nginx/nginx.conf" ]; then
       mv -f /etc/nginx/nginx.conf /etc/nginx/nginx.conf-old &> /dev/null
-      cp -af ${locCnf}/nginx.conf /etc/nginx/nginx.conf
+      cp -af ${locCnf}/nginx/nginx.conf /etc/nginx/nginx.conf
     fi
-    mrun "service nginx reload" &> /dev/null
+    mrun "service nginx reload" 2> /dev/null
     msg "INFO: Aegir Master Instance installed"
   else
     if [ "${tRee}" = "lts" ]; then
@@ -1039,7 +1040,7 @@ EOFMYSQL
         msg "Please use 'barracuda up-pro system' to upgrade this server"
         msg "Display all supported commands with: barracuda help"
         msg "Bye"
-        clean_pid_exit
+        clean_pid_exit aegir_master_install_upgrade_f
       fi
     fi
     echo " "
@@ -1060,19 +1061,14 @@ EOFMYSQL
         msg "INFO: Aegir Master Instance upgrade skipped"
       fi
     else
-      if [ ! -e "/var/run/mysqld/mysqld.pid" ] \
-        || [ ! -e "/var/run/mysqld/mysqld.sock" ]; then
+      if [ ! -e "/run/mysqld/mysqld.pid" ] \
+        || [ ! -e "/run/mysqld/mysqld.sock" ]; then
         msg "ALRT! ${_DB_SERVER} server not running properly!"
         msg "EXIT: We can't proceed and will exit now"
         msg "HINT: Please check ${_LOG} for more information,"
         msg "HINT: (re)start ${_DB_SERVER} server, then run the installer again"
         msg "Bye"
-        clean_pid_exit
-      fi
-      if [ -e "/root/.mstr.clstr.cnf" ] \
-        || [ -e "/root/.wbhd.clstr.cnf" ] \
-        || [ -e "/root/.dbhd.clstr.cnf" ]; then
-        touch /data/conf/clstr.cnf &> /dev/null
+        clean_pid_exit aegir_master_install_upgrade_g
       fi
       php_cli_cron_update
       aegir_master_upgrade
@@ -1092,7 +1088,7 @@ if_upgrade_only_aegir_master() {
       aegir_master_upgrade
       php_cli_cron_update
       mrun "sleep 8"
-      mrun "service nginx reload" &> /dev/null
+      mrun "service nginx reload" 2> /dev/null
       finale
       exit 0
     fi
@@ -1114,9 +1110,19 @@ aegir_master_display_login_link() {
       if [ ! -z "${_AEGIR_LOGIN_URL}" ]; then
         echo " "
         msg "INFO: Congratulations, Aegir have been installed successfully!"
-        msg "NOTE! Please wait 2 min before visiting Aegir at:"
+        msg "NOTE! Please wait 3 min before visiting Aegir at:"
         echo " "
         msg "LINK: ${_AEGIR_LOGIN_URL}"
+        echo " "
+        msg "NOTE! The initial one-time login link will no longer work."
+        sleep 3
+        msg "To access your Barracuda Aegir control panel after the procedure is finished..."
+        msg "...please generate a new link by running the following command:"
+        sleep 3
+        echo " "
+        echo "  su -s /bin/bash aegir -c \"drush @hm uli\""
+        echo " "
+        sleep 3
       else
         msg "ALRT! Something went wrong"
         msg "ALRT! Please check the install log for details:"

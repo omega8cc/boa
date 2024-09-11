@@ -23,7 +23,7 @@
 ### It is now possible to enable blazing fast migrations and cloning even sites
 ### with complex and giant databases with this empty control file:
 ###
-### ~/static/control/MyQuick.info
+###  ~/static/control/MyQuick.info
 ###
 ### By the way, how fast is the super-fast? It's faster than you would expect!
 ### We have seen it speeding up the clone and migrate tasks normally taking
@@ -85,23 +85,6 @@
 
 
 ###
-### Let's Encrypt support for live certificates
-###
-### Your Aegir system by default comes with Let's Encrypt support in demo mode,
-### so you won't hit LE limits for real certificates just by playing around.
-### This means that unless you have already added the control file, Aegir will
-### create a "demo" or "fake" LE certificates. Once you are ready to go live,
-### simply add an empty control file and run Verify task on the site with
-### enabled Encryption. Once the tasks completes in all-green, you can edit
-### the site's node again to make the Encryption Required, if you prefer.
-###
-### ~/static/control/ssl-live-mode.info
-###
-### It is a one-time operation, so even if you will delete this control file
-### later, the system will not switch your instance back to LE demo mode.
-###
-
-
 ### Aegir version provided by BOA is now fully compatible with PHP 8.0 and 8.1,
 ### so both can be used as default versions in the Aegir PHP configuration files
 ### ~/static/control/cli.info and ~/static/control/fpm.info
@@ -114,7 +97,7 @@
 ###
 ### Support for PHP-FPM version switch per Octopus instance (also per site)
 ###
-### ~/static/control/fpm.info
+###  ~/static/control/fpm.info
 ###
 ### This file, if exists and contains supported and installed PHP-FPM version,
 ### will be used by running every 2-3 minutes system agent to switch PHP-FPM
@@ -154,7 +137,7 @@
 ### simultaneously for sites on the Octopus instance with additional
 ### control file:
 ###
-### ~/static/control/multi-fpm.info
+###  ~/static/control/multi-fpm.info
 ###
 ### This file, if exists, will switch all sites listed in it to their
 ### respective PHP-FPM versions as shown in the example below, while all
@@ -173,7 +156,7 @@
 ###
 ### Support for PHP-CLI version switch per Octopus instance (all sites)
 ###
-### ~/static/control/cli.info
+###  ~/static/control/cli.info
 ###
 ### This file, while similar to fpm.info, if exists and contains supported
 ### and installed PHP version, will be used by running every 2-3 minutes
@@ -218,7 +201,7 @@
 ###
 ### Customize Octopus platform list via control file
 ###
-### ~/static/control/platforms.info
+###  ~/static/control/platforms.info
 ###
 ### This file, if exists and contains a list of symbols used to define supported
 ### platforms, allows to control/override the value of _PLATFORMS_LIST variable
@@ -233,45 +216,40 @@
 ### Supported values which can be written in this file, listed in a single line
 ### or one per line:
 ###
-###
-### Drupal 10.2 based
-###
+####### Drupal 10.4 #####
+### D104P D104S D104D --- Drupal 10.4 prod/stage/dev
+
+####### Drupal 10.3 #####
+### D103P D103S D103D --- Drupal 10.3 prod/stage/dev
+### THR ----------------- Thunder
+### VBX ----------------- Varbase 10
+
+####### Drupal 10.2 #####
 ### D102P D102S D102D --- Drupal 10.2 prod/stage/dev
-###
-###
-### Drupal 10.1 based
-###
+### SOC ----------------- Social
+### VBE ----------------- Varbase 9
+
+####### Drupal 10.1 #####
 ### D101P D101S D101D --- Drupal 10.1 prod/stage/dev
-### THR ----------- Thunder
-### VBE ----------- Varbase
-###
-###
-### Drupal 10.0 based
-###
+
+####### Drupal 10.0 #####
 ### D100P D100S D100D --- Drupal 10.0 prod/stage/dev
-###
-###
-### Drupal 9 based
-###
-### D9P D9S D9D --- Drupal 9 prod/stage/dev
-### OLS ----------- OpenLucius
-### OPG ----------- Opigno LMS
-### SOC ----------- Social
-###
-###
-### Drupal 7 based
-###
-### D7P D7S D7D --- Drupal 7 prod/stage/dev
-### CME ----------- Commerce v.2
-### DCE ----------- Commerce v.1
-### UC7 ----------- Ubercart
-###
-###
-### Drupal 6 based
-###
-### D6P D6S D6D --- Pressflow (LTS) prod/stage/dev
-### UCT ----------- Ubercart
-###
+
+####### Drupal 9 ########
+### D9P D9S D9D --------- Drupal 9 prod/stage/dev
+### OLS ----------------- OpenLucius
+### OPG ----------------- Opigno LMS
+
+####### Drupal 7 ########
+### D7P D7S D7D --------- Drupal 7 prod/stage/dev
+### CME ----------------- Commerce v.2
+### DCE ----------------- Commerce v.1
+### UC7 ----------------- Ubercart
+
+####### Drupal 6 ########
+### D6P D6S D6D --------- Pressflow (LTS) prod/stage/dev
+### UCT ----------------- Ubercart
+
 ### You can also use special keyword 'ALL' instead of any other symbols to have
 ### all available platforms installed, including newly added in all future BOA
 ### system releases.
@@ -279,14 +257,23 @@
 ### Examples:
 ###
 ### ALL
-### D101P D101S SOC
+### D102P D103P SOC UC7
+###
+### IMPORTANT: Supported Drupal core versions and distributions have different
+### PHP versions requirements, while not all PHP versions out of currently
+### supported ten versions are installed by default.
+###
+### Ensure that you have corresponding PHP versions installed with barracuda
+### before attempting to install older Drupal versions and distributions.
+###
+### On hosted BOA contact your host if you need any legacy PHP installed again.
 ###
 
 
 ###
 ### Support for forced Drush cache clear in the Aegir backend
 ###
-### ~/static/control/clear-drush-cache.info
+###  ~/static/control/clear-drush-cache.info
 ###
 ### Octopus instance will pause all scheduled tasks in its queue, if it will
 ### detect a platform build from the makefile in progress, to make sure
@@ -308,9 +295,9 @@
 ###
 ### Support for New Relic monitoring with per Octopus instance license key
 ###
-### ~/static/control/newrelic.info
+###  ~/static/control/newrelic.info
 ###
-### This new feature will disable global New Relic monitoring by deactivating
+### This feature will disable global New Relic monitoring by deactivating
 ### server-level license key, so it can safely auto-enable or auto-disable it
 ### every 5 minutes, but per Octopus instance -- for all sites hosted on
 ### the given instance -- when a valid license key is present in the special
@@ -331,35 +318,9 @@
 
 
 ###
-### Support for RVM to install Compass Tools or NPM to install Gulp/Bower
+### Support for Ruby Gems to install Compass or NPM to install Gulp/Bower
 ###
-### ~/static/control/compass.info
+###  ~/static/control/compass.info
 ###
-### Details: https://github.com/omega8cc/boa/blob/master/docs/RVM.txt
+### Details: https://github.com/omega8cc/boa/blob/5.x-dev/docs/GEM.md
 ###
-
-
-###
-### Support for optional Drupalgeddon daily checks on all hosted D7 sites
-###
-### ~/static/control/drupalgeddon.info
-###
-### Previously enabled by default, now requires this control file to still
-### run daily, because it may generate some false positives not always possible
-### to avoid or silence, so it no longer makes sense to run this check daily,
-### especially after BOA has run it automatically for a month and finally even
-### disabled automatically all clearly compromised sites.
-###
-### Note that your system administrator may still enable this with root level
-### control file /root/.force.drupalgeddon.cnf, so it will still run, even
-### if you will not create the Octopus instance level empty control file:
-### ~/static/control/drupalgeddon.info
-###
-### Please note that current version of Drupalgeddon Drush extension needs
-### the 'update' module to be enabled to avoid even more false positives,
-### so BOA will enable the 'update' module temporarily while running this
-### check, which in turn will result with even more emails notices sent
-### to the site admin email, if these notices are enabled.
-###
-
-

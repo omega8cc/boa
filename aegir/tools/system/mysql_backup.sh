@@ -13,14 +13,8 @@ check_root() {
     ionice -c2 -n7 -p $$
     renice 19 -p $$
     chmod a+w /dev/null
-    if [ ! -e "/dev/fd" ]; then
-      if [ -e "/proc/self/fd" ]; then
-        rm -rf /dev/fd
-        ln -s /proc/self/fd /dev/fd
-      fi
-    fi
   else
-    echo "ERROR: This script should be ran as a root user"
+    echo "ERROR: This script should be run as a root user"
     exit 1
   fi
   _DF_TEST=$(df -kTh / -l \
@@ -102,24 +96,24 @@ if [ -e "/root/.my.optimize.cnf" ]; then
 else
   _OPTIM=NO
 fi
-touch /var/run/boa_sql_backup.pid
+touch /run/boa_sql_backup.pid
 
 _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
 _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
 
 create_locks() {
   echo "INFO: Creating locks for $1"
-  touch /var/run/mysql_backup_running.pid
+  touch /run/mysql_backup_running.pid
 }
 
 remove_locks() {
   echo "INFO: Removing locks for $1"
-  rm -f /var/run/mysql_backup_running.pid
+  rm -f /run/mysql_backup_running.pid
 }
 
 check_running() {
   while [ -z "${_IS_MYSQLD_RUNNING}" ] \
-    || [ ! -e "/var/run/mysqld/mysqld.sock" ]; do
+    || [ ! -e "/run/mysqld/mysqld.sock" ]; do
     _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       echo "INFO: Waiting for MySQLD availability..."
@@ -257,7 +251,7 @@ backup_this_database_with_mysqldump() {
 }
 
 compress_backup() {
-  if [ "${_MYQUICK_STATUS}" = "OK" ]; then
+  if [ "${_MYQUICK_USE}" = "YES" ]; then
     for DbPath in `find ${_SAVELOCATION}/ -maxdepth 1 -mindepth 1 | sort`; do
       if [ -e "${DbPath}/metadata" ]; then
         DbName=$(echo ${DbPath} | cut -d'/' -f7 | awk '{ print $1}' 2>&1)
@@ -282,22 +276,45 @@ compress_backup() {
 
 [ ! -a ${_SAVELOCATION} ] && mkdir -p ${_SAVELOCATION};
 
-if [ "${_DB_SERIES}" = "10.4" ] \
-  || [ "${_DB_SERIES}" = "10.3" ] \
-  || [ "${_DB_SERIES}" = "10.2" ] \
-  || [ "${_DB_SERIES}" = "5.7" ]; then
-  check_running
-  mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
-  mysql -u root -e "SET GLOBAL innodb_change_buffering = 'none';" &> /dev/null
-  mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null
-  mysql -u root -e "SET GLOBAL innodb_io_capacity = 2000;" &> /dev/null
-  mysql -u root -e "SET GLOBAL innodb_io_capacity_max = 4000;" &> /dev/null
-  mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_pct = 100;" &> /dev/null
-  mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_now = ON;" &> /dev/null
-fi
+check_mysql_version() {
+  _DBS_TEST=$(which mysql 2>&1)
+  if [ ! -z "${_DBS_TEST}" ]; then
+    _DB_SERVER_TEST=$(mysql -V 2>&1)
+  fi
+  if [[ "${_DB_SERVER_TEST}" =~ "Ver 8.4." ]]; then
+    _DB_V=8.4
+  elif [[ "${_DB_SERVER_TEST}" =~ "Ver 8.3." ]]; then
+    _DB_V=8.3
+  elif [[ "${_DB_SERVER_TEST}" =~ "Ver 8.0." ]]; then
+    _DB_V=8.0
+  elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 5.7." ]]; then
+    _DB_V=5.7
+  fi
+  if [ ! -z "${_DB_V}" ]; then
+    mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
+    mysql -u root -e "SET GLOBAL innodb_change_buffering = 'none';" &> /dev/null
+    mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null
+    mysql -u root -e "SET GLOBAL innodb_io_capacity = 2000;" &> /dev/null
+    mysql -u root -e "SET GLOBAL innodb_io_capacity_max = 4000;" &> /dev/null
+    if [ "${_DB_V}" = "5.7" ]; then
+      mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_pct = 100;" &> /dev/null
+      mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_now = ON;" &> /dev/null
+    fi
+    mysql -u root -e "SET GLOBAL innodb_fast_shutdown = 1;" &> /dev/null
+  fi
+}
 
-_MYQUICK_STATUS=
+check_running
+check_mysql_version
+
+_MYQUICK_USE=NO
 if [ -x "/usr/local/bin/mydumper" ]; then
+  _MYQUICK_ITD=$(mydumper -V 2>&1 \
+    | tr -d "\n" \
+    | tr -d "," \
+    | tr -d "v" \
+    | cut -d" " -f2 \
+    | awk '{ print $1}' 2>&1)
   _DB_V=$(mysql -V 2>&1 \
     | tr -d "\n" \
     | cut -d" " -f6 \
@@ -305,6 +322,15 @@ if [ -x "/usr/local/bin/mydumper" ]; then
     | cut -d"-" -f1 \
     | awk '{ print $1}' \
     | sed "s/[\,']//g" 2>&1)
+  if [ "${_DB_V}" = "Linux" ]; then
+    _DB_V=$(mysql -V 2>&1 \
+      | tr -d "\n" \
+      | cut -d" " -f4 \
+      | awk '{ print $1}' \
+      | cut -d"-" -f1 \
+      | awk '{ print $1}' \
+      | sed "s/[\,']//g" 2>&1)
+  fi
   _MD_V=$(mydumper --version 2>&1 \
     | tr -d "\n" \
     | cut -d" " -f6 \
@@ -312,10 +338,9 @@ if [ -x "/usr/local/bin/mydumper" ]; then
     | cut -d"-" -f1 \
     | awk '{ print $1}' \
     | sed "s/[\,']//g" 2>&1)
-  if [ "${_DB_V}" = "${_MD_V}" ] \
-    && [ ! -e "/root/.mysql.force.legacy.backup.cnf" ]; then
-    _MYQUICK_STATUS=OK
-    echo "INFO: Installed MyQuick for ${_MD_V} (${_DB_V}) looks fine"
+  if [ ! -e "/root/.mysql.force.legacy.backup.cnf" ]; then
+    _MYQUICK_USE=YES
+    echo "INFO: Installed MyQuick ${_MYQUICK_ITD} for ${_MD_V} (${_DB_V})"
   fi
 fi
 
@@ -383,7 +408,7 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
         echo "INFO: All cache tables in ${_DB} truncated"
       fi
     fi
-    if [ "${_MYQUICK_STATUS}" = "OK" ]; then
+    if [ "${_MYQUICK_USE}" = "YES" ]; then
       backup_this_database_with_mydumper &> /dev/null
     else
       backup_this_database_with_mysqldump &> /dev/null
@@ -403,20 +428,9 @@ if [ "${_OPTIM}" = "YES" ] \
   && [ "${_DOM}" -ge "24" ] \
   && [ "${_DOM}" -lt "31" ] \
   && [ -e "/root/.my.restart_after_optimize.cnf" ] \
-  && [ ! -e "/var/run/boa_run.pid" ]; then
-  if [ "${_DB_SERIES}" = "10.4" ] \
-    || [ "${_DB_SERIES}" = "10.3" ] \
-    || [ "${_DB_SERIES}" = "10.2" ] \
-    || [ "${_DB_SERIES}" = "5.7" ]; then
-    check_running
-    mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
-    mysql -u root -e "SET GLOBAL innodb_change_buffering = 'none';" &> /dev/null
-    mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null
-    mysql -u root -e "SET GLOBAL innodb_io_capacity = 2000;" &> /dev/null
-    mysql -u root -e "SET GLOBAL innodb_io_capacity_max = 4000;" &> /dev/null
-    mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_pct = 100;" &> /dev/null
-    mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_now = ON;" &> /dev/null
-  fi
+  && [ ! -e "/run/boa_run.pid" ]; then
+  check_running
+  check_mysql_version
   echo "INFO: Running db server restart on `date`"
   bash /var/xdrago/move_sql.sh
   wait
@@ -424,7 +438,7 @@ if [ "${_OPTIM}" = "YES" ] \
 fi
 
 echo "INFO: Completing all dbs backups on `date`"
-rm -f /var/run/boa_sql_backup.pid
+rm -f /run/boa_sql_backup.pid
 touch /var/xdrago/log/last-run-backup
 
 if [ "${_VMFAMILY}" = "VS" ]; then

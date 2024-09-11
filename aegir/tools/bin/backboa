@@ -20,39 +20,14 @@ export PATH=${PATH}
 export SHELL=${SHELL}
 export HOME=${HOME}
 
-_DUPLICITY_VRN="0.7.19"
-_BOTO_VRN="2.49.0"
-_FASTENERS_VRN="0.14.1"
-_LOGPTH="/var/xdrago/log"
-_NOW=$(date +%y%m%d-%H%M%S 2>&1)
-_NOW=${_NOW//[^0-9-]/}
-_DOW=$(date +%u 2>&1)
-_DOW=${_DOW//[^1-7]/}
-_DOM=$(date +%e 2>&1)
-_DOM=${_DOM//[^0-9]/}
-_HST=$(uname -n 2>&1)
-_HST=${_HST//[^a-zA-Z0-9-.]/}
-_HST=$(echo -n ${_HST} | tr A-Z a-z 2>&1)
-_HST_DASH=$(echo -n ${_HST} | tr . - 2>&1)
-
-crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
-aptYesUnth="-y --allow-unauthenticated"
-tRee=lts
-export tRee="${tRee}"
-
 check_root() {
   if [ `whoami` = "root" ]; then
     ionice -c2 -n7 -p $$
     renice 19 -p $$
     chmod a+w /dev/null
-    if [ ! -e "/dev/fd" ]; then
-      if [ -e "/proc/self/fd" ]; then
-        rm -rf /dev/fd
-        ln -s /proc/self/fd /dev/fd
-      fi
-    fi
+    [ -e "/root/.gnupg" ] && chmod 700 /root/.gnupg
   else
-    echo "ERROR: This script should be ran as a root user"
+    echo "ERROR: This script should be run as a root user"
     exit 1
   fi
   _DF_TEST=$(df -kTh / -l \
@@ -72,12 +47,61 @@ if [ -e "/root/.pause_heavy_tasks_maint.cnf" ]; then
   exit 0
 fi
 
+# New OpenSSL 3.x version is required
+if [ ! -x "/usr/local/ssl3/bin/openssl" ]; then
+  echo "New OpenSSL 3.x version is required"
+  exit 1
+fi
+
+_PTN_VRN=3.12.5
+_DCY_VRN=3.0.2
+_LOGPTH="/var/xdrago/log"
+_NOW=$(date +%y%m%d-%H%M%S 2>&1)
+_NOW=${_NOW//[^0-9-]/}
+_DOW=$(date +%u 2>&1)
+_DOW=${_DOW//[^1-7]/}
+_DOM=$(date +%e 2>&1)
+_DOM=${_DOM//[^0-9]/}
+_HST=$(uname -n 2>&1)
+_HST=${_HST//[^a-zA-Z0-9-.]/}
+_HST=$(echo -n ${_HST} | tr A-Z a-z 2>&1)
+_HST_DASH=$(echo -n ${_HST} | tr . - 2>&1)
+
+crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
+aptYesUnth="-y --allow-unauthenticated"
+tRee=lts
+export tRee="${tRee}"
+
+if [ -e "/root/.barracuda.cnf" ]; then
+  source /root/.barracuda.cnf
+fi
+
+_AWS_VLV=${_AWS_VLV//[^a-z]/}
+if [ -z "${_AWS_VLV}" ]; then
+  _AWS_VLV="warning"
+fi
+
+# Set extra environment variables
+export PYTHONPATH="/usr/local/lib/python3.12/site-packages"
+
+_DCY_PTN="/usr/local/bin/python3"
+_DCY_CMD="/usr/local/bin/duplicity -v ${_AWS_VLV}"
+
+if [ "$1" != "help" ]; then
+  # Check the Python version to ensure we're using the correct one
+  echo "Checking expected Python ${_PTN_VRN} version..."
+  ${_DCY_PTN} --version
+  # Check the Duplicity version to ensure we're using the correct one
+  echo "Checking expected Duplicity ${_DCY_VRN} version..."
+  ${_DCY_CMD} --version
+fi
+
 os_detection_minimal() {
   _APT_UPDATE="apt-get update"
-  _THIS_RV=$(lsb_release -sc 2>&1)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
   for e in ${_OS_LIST}; do
-    if [ "${e}" = "${_THIS_RV}" ]; then
+    if [ "${e}" = "${_OS_CODE}" ]; then
       _APT_UPDATE="apt-get update --allow-releaseinfo-change"
     fi
   done
@@ -85,8 +109,8 @@ os_detection_minimal() {
 os_detection_minimal
 
 apt_clean_update() {
-  apt-get clean -qq 2> /dev/null
-  rm -rf /var/lib/apt/lists/* &> /dev/null
+  #apt-get clean -qq 2> /dev/null
+  #rm -rf /var/lib/apt/lists/* &> /dev/null
   ${_APT_UPDATE} -qq 2> /dev/null
 }
 
@@ -116,6 +140,7 @@ find_fast_mirror_early() {
     fi
     apt_clean_update
     apt-get install netcat ${aptYesUnth}
+    apt-get install netcat-traditional ${aptYesUnth}
     wait
   fi
   ffMirr=$(which ffmirror 2>&1)
@@ -150,13 +175,16 @@ install() {
   if [ ! -d "${_LOGPTH}" ]; then
     mkdir -p ${_LOGPTH}
   fi
+  [ -e "/root/.gnupg" ] && chmod 700 /root/.gnupg
   _DUPLICITY_ITD=$(duplicity --version 2>&1 \
     | tr -d "\n" \
     | cut -d" " -f2 \
     | awk '{ print $1}' 2>&1)
-  if [ "${_DUPLICITY_ITD}" = "${_DUPLICITY_VRN}" ] \
-    && [ -e "${_LOGPTH}/boto-${_BOTO_VRN}.log" ]; then
-    echo "Latest duplicity version ${_DUPLICITY_VRN} already installed"
+  if [ "${_DUPLICITY_ITD}" = "${_DCY_VRN}" ] \
+    && [ -L "/usr/local/bin/jp.py" ] \
+    && [ -L "/usr/local/bin/duplicity" ] \
+    && [ -L "/usr/local/bin/aws" ]; then
+    echo "Latest duplicity version ${_DCY_VRN} already installed"
   else
     echo "Installing duplicity dependencies..."
     cd
@@ -167,51 +195,62 @@ install() {
     fi
     apt_clean_update
     aptitude purge duplicity -y
-    rm -rf /usr/local/lib/python*/dist-packages/{fasteners*,duplicity*,boto*}
-    mkdir -p /usr/local/lib/python2.7/dist-packages/
     rm -f /usr/local/bin/duplicity
-    apt-get install librsync-dev -y
-    apt-get install python-dev -y
-    apt-get install python-lockfile -y
-    apt-get install python-setuptools -y
-    apt-get install python-monotonic -y
-    apt-get install s4cmd -y
-    mkdir -p /var/opt
-    rm -rf /var/opt/{fasteners*,boto*,duplicity*}
-    cd /var/opt
-    fe="fasteners-${_FASTENERS_VRN}.tar.gz"
-    curl ${crlGet} "${urlDev}/src/${fe}" -o ${fe}
-    tar xzf ${fe}
-    cd /var/opt/fasteners-${_FASTENERS_VRN}
-    python setup.py build
-    python setup.py install
-    echo ${_FASTENERS_VRN} > ${_LOGPTH}/fasteners-${_FASTENERS_VRN}.log
-    cd /var/opt
-    fe="boto-${_BOTO_VRN}.tar.gz"
-    curl ${crlGet} "${urlDev}/src/${fe}" -o ${fe}
-    tar xzf ${fe}
-    cd /var/opt/boto-${_BOTO_VRN}
-    python setup.py build
-    python setup.py install
-    echo ${_BOTO_VRN} > ${_LOGPTH}/boto-${_BOTO_VRN}.log
-    echo "Building duplicity version ${_DUPLICITY_VRN} from sources..."
-    cd /var/opt
-    fe="duplicity-${_DUPLICITY_VRN}.tar.gz"
-    curl ${crlGet} "${urlDev}/src/${fe}" -o ${fe}
-    tar xzf ${fe}
-    rm -rf /usr/local/lib/python*/dist-packages/duplicity*
-    cd /var/opt/duplicity-${_DUPLICITY_VRN}
-    python setup.py build
-    python setup.py install
-    cd
-    rm -rf /var/opt/{boto*,duplicity*}
-    echo "Installation complete!"
+    rm -f /usr/local/bin/jp.py
+    rm -f /usr/local/bin/aws*
+    apt-get install -y \
+        intltool \
+        libffi-dev \
+        par2 \
+        python3-pip \
+        python3-venv \
+        python3 \
+        rclone \
+        rdiff \
+        tzdata
+    _PTN_TEST=$(${_DCY_PTN} --version 2>&1)
+    if [[ ! "${_PTN_TEST}" =~ "Python ${_PTN_VRN}" ]] \
+      || [ ! -x "${_DCY_PTN}" ]; then
+      cd /var/opt
+      rm -rf Python*
+      wget -q -U iCab ${urlDev}/src/Python-${_PTN_VRN}.tgz
+      tar -xzf Python-${_PTN_VRN}.tgz
+      cd Python-${_PTN_VRN}
+      if [ -d "/usr/local/ssl3" ]; then
+        bash ./configure --with-openssl=/usr/local/ssl3
+      else
+        bash ./configure --with-openssl=/usr/local/ssl
+      fi
+      make -j $(nproc) --quiet
+      make install --quiet
+      cd
+    fi
+    _PTN_TEST=$(${_DCY_PTN} --version 2>&1)
+    if [[ "${_PTN_TEST}" =~ "Python ${_PTN_VRN}" ]]; then
+      python3 -m pip install pipx --break-system-packages --root-user-action ignore
+      pip3 install --upgrade pip --root-user-action ignore
+      export PIPX_BIN_DIR=/usr/local/bin
+      export PIPX_HOME=/opt/pipx/venvs
+      pipx install duplicity --include-deps --force
+      pipx install awscli --include-deps --force
+      pipx install boto3 --include-deps --force
+    else
+      echo "Python ${_PTN_VRN} installation failed with ${_PTN_TEST}"
+      exit 1
+    fi
+    _DCY_TEST=$(${_DCY_CMD} --version 2>&1)
+    if [[ "${_DCY_TEST}" =~ "duplicity ${_DCY_VRN}" ]]; then
+      echo "Installation complete!"
+    else
+      echo "Installation failed with ${_DCY_TEST}"
+      exit 1
+    fi
   fi
 }
 
-check_boto() {
-  if [ ! -e "${_LOGPTH}/boto-${_BOTO_VRN}.log" ]; then
-    echo "Upgrade to boto ${_BOTO_VRN} required..."
+check_aws() {
+  if [ ! -x "/usr/local/bin/aws" ]; then
+    echo "Upgrade to add AWS tools required..."
     install
   fi
 }
@@ -220,10 +259,6 @@ if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ]; then
   echo "The duplicity backup is already running!"
   echo "Active duplicity process detected..."
   exit 1
-fi
-
-if [ -e "/root/.barracuda.cnf" ]; then
-  source /root/.barracuda.cnf
 fi
 
 if [ -z "${_AWS_KEY}" ] || [ -z "${_AWS_SEC}" ] || [ -z "${_AWS_PWD}" ]; then
@@ -238,37 +273,48 @@ if [ -z "${_AWS_KEY}" ] || [ -z "${_AWS_SEC}" ] || [ -z "${_AWS_PWD}" ]; then
     _AWS_SEC='Your AWS Secret Access Key' ### [R] From your AWS S3 settings
     _AWS_PWD='Your Secret Password'       ### [R] Generate with 'openssl rand -base64 32'
     _AWS_REG='Your AWS Region ID'         ### [R] By default 'us-east-1'
+
     _AWS_TTL='Your Backup Rotation'       ### [O] By default '30D'
     _AWS_FLC='Your Backup Full Cycle'     ### [O] By default '7D'
-    _AWS_VLV='Your Backup Log Verbosity'  ### [O] By default '1'
-    _AWS_PRG='Your Backup Progress'       ### [O] By default 'NO' -- can be YES/NO
-    _AWS_EXB='Exclude Drush Archives'     ### [O] By default 'NO' -- can be YES/NO
+    _AWS_VLV='Your Backup Log Verbosity'  ### [O] By default 'warning' -- [ewnid]
+    _AWS_EXB='Exclude Aegir Backups'      ### [O] By default 'YES' -- can be YES/NO
 
-    Supported values to use as _AWS_REG (without the # comment):
+    Supported values to use as _AWS_REG (the symbol after the # comment):
 
-      us-east-2        # US East (Ohio)
-      us-east-1        # US East (N. Virginia)
-      us-west-1        # US West (N. California)
-      us-west-2        # US West (Oregon)
-      af-south-1       # Africa (Cape Town)
-      ap-east-1        # Asia Pacific (Hong Kong)
-      ap-south-1       # Asia Pacific (Mumbai)
-      ap-northeast-3   # Asia Pacific (Osaka-Local)
-      ap-northeast-2   # Asia Pacific (Seoul)
-      ap-southeast-1   # Asia Pacific (Singapore)
-      ap-southeast-2   # Asia Pacific (Sydney)
-      ap-northeast-1   # Asia Pacific (Tokyo)
-      ca-central-1     # Canada (Central)
-      cn-north-1       # China (Beijing)
-      cn-northwest-1   # China (Ningxia)
-      eu-central-1     # EU (Frankfurt)
-      eu-west-1        # EU (Ireland)
-      eu-west-2        # EU (London)
-      eu-south-1       # Europe (Milan)
-      eu-west-3        # Europe (Paris)
-      eu-north-1       # Europe (Stockholm)
-      me-south-1       # Middle East (Bahrain)
-      sa-east-1        # South America (São Paulo)
+      Africa (Cape Town)         # af-south-1
+      Asia Pacific (Hong Kong)   # ap-east-1
+      Asia Pacific (Hyderabad)   # ap-south-2
+      Asia Pacific (Jakarta)     # ap-southeast-3
+      Asia Pacific (Melbourne)   # ap-southeast-4
+      Asia Pacific (Mumbai)      # ap-south-1
+      Asia Pacific (Osaka)       # ap-northeast-3
+      Asia Pacific (Seoul)       # ap-northeast-2
+      Asia Pacific (Singapore)   # ap-southeast-1
+      Asia Pacific (Sydney)      # ap-southeast-2
+      Asia Pacific (Tokyo)       # ap-northeast-1
+      Canada (Central)           # ca-central-1
+      Canada West (Calgary)      # ca-west-1
+      Europe (Frankfurt)         # eu-central-1
+      Europe (Ireland)           # eu-west-1
+      Europe (London)            # eu-west-2
+      Europe (Milan)             # eu-south-1
+      Europe (Paris)             # eu-west-3
+      Europe (Spain)             # eu-south-2
+      Europe (Stockholm)         # eu-north-1
+      Europe (Zurich)            # eu-central-2
+      Israel (Tel Aviv)          # il-central-1
+      Middle East (Bahrain)      # me-south-1
+      Middle East (UAE)          # me-central-1
+      South America (São Paulo)  # sa-east-1
+      US East (N. Virginia)      # us-east-1
+      US East (Ohio)             # us-east-2
+      US West (N. California)    # us-west-1
+      US West (Oregon)           # us-west-2
+
+      ### Special regions, see: https://aws.amazon.com/govcloud-us/
+
+      AWS GovCloud (US-East)     # us-gov-east-1
+      AWS GovCloud (US-West)     # us-gov-west-1
 
     Source: http://docs.aws.amazon.com/general/latest/gr/rande.html#s3_region
 
@@ -291,36 +337,38 @@ if [ -z "${_AWS_REG}" ]; then
   _AWS_REG="us-east-1"
 fi
 
-if [ "${_AWS_REG}" = "us-east-2" ] \
-  || [ "${_AWS_REG}" = "us-east-1" ] \
-  || [ "${_AWS_REG}" = "us-west-1" ] \
-  || [ "${_AWS_REG}" = "us-west-2" ] \
-  || [ "${_AWS_REG}" = "af-south-1" ] \
+if [ "${_AWS_REG}" = "af-south-1" ] \
   || [ "${_AWS_REG}" = "ap-east-1" ] \
-  || [ "${_AWS_REG}" = "ap-south-1" ] \
-  || [ "${_AWS_REG}" = "ap-northeast-3" ] \
+  || [ "${_AWS_REG}" = "ap-northeast-1" ] \
   || [ "${_AWS_REG}" = "ap-northeast-2" ] \
+  || [ "${_AWS_REG}" = "ap-northeast-3" ] \
+  || [ "${_AWS_REG}" = "ap-south-1" ] \
+  || [ "${_AWS_REG}" = "ap-south-2" ] \
   || [ "${_AWS_REG}" = "ap-southeast-1" ] \
   || [ "${_AWS_REG}" = "ap-southeast-2" ] \
-  || [ "${_AWS_REG}" = "ap-northeast-1" ] \
+  || [ "${_AWS_REG}" = "ap-southeast-3" ] \
+  || [ "${_AWS_REG}" = "ap-southeast-4" ] \
   || [ "${_AWS_REG}" = "ca-central-1" ] \
-  || [ "${_AWS_REG}" = "cn-north-1" ] \
-  || [ "${_AWS_REG}" = "cn-northwest-1" ] \
+  || [ "${_AWS_REG}" = "ca-west-1" ] \
   || [ "${_AWS_REG}" = "eu-central-1" ] \
-  || [ "${_AWS_REG}" = "eu-west-1" ] \
-  || [ "${_AWS_REG}" = "eu-west-2 " ] \
-  || [ "${_AWS_REG}" = "eu-south-1 " ] \
-  || [ "${_AWS_REG}" = "eu-west-3" ] \
+  || [ "${_AWS_REG}" = "eu-central-2" ] \
   || [ "${_AWS_REG}" = "eu-north-1" ] \
+  || [ "${_AWS_REG}" = "eu-south-1" ] \
+  || [ "${_AWS_REG}" = "eu-south-2" ] \
+  || [ "${_AWS_REG}" = "eu-west-1" ] \
+  || [ "${_AWS_REG}" = "eu-west-2" ] \
+  || [ "${_AWS_REG}" = "eu-west-3" ] \
+  || [ "${_AWS_REG}" = "il-central-1" ] \
+  || [ "${_AWS_REG}" = "me-central-1" ] \
   || [ "${_AWS_REG}" = "me-south-1" ] \
-  || [ "${_AWS_REG}" = "sa-east-1" ]; then
+  || [ "${_AWS_REG}" = "sa-east-1" ] \
+  || [ "${_AWS_REG}" = "us-east-1" ] \
+  || [ "${_AWS_REG}" = "us-east-2" ] \
+  || [ "${_AWS_REG}" = "us-west-1" ] \
+  || [ "${_AWS_REG}" = "us-west-2" ] \
+  || [ "${_AWS_REG}" = "us-gov-east-1" ] \
+  || [ "${_AWS_REG}" = "us-gov-west-1" ]; then
   _GOOD_AWS_REG=YES
-fi
-
-if [ "${_AWS_REG}" = "us-east-1" ]; then
-  _AWS_URL="s3-external-1.amazonaws.com"
-else
-  _AWS_URL="s3-${_AWS_REG}.amazonaws.com"
 fi
 
 _AWS_TTL=${_AWS_TTL//[^A-Z0-9]/}
@@ -338,67 +386,58 @@ if [ "${_VMFAMILY}" = "HOSTED" ] \
   _AWS_FLC="14D"
 fi
 
-_AWS_VLV=${_AWS_VLV//[^0-9]/}
-if [ -z "${_AWS_VLV}" ]; then
-  _AWS_VLV="1"
-fi
-
-if [ ! -z "${_AWS_EXB}" ] && [ "${_AWS_EXB}" = "YES" ]; then
-  EXCLUDE="--exclude /data/conf/arch --exclude /data/disk/*/backups/*.tar.gz"
+if [ ! -z "${_AWS_EXB}" ] && [ "${_AWS_EXB}" = "NO" ]; then
+  _EXCLUDE="--exclude /data/conf/arch"
 else
-  EXCLUDE="--exclude /data/conf/arch"
+  _EXCLUDE="--exclude /data/conf/arch --exclude-regexp '^/data/disk/.*/backups/'"
 fi
 
-USER_INCLUDE=""
+_USER_INCLUDE=""
 if [ -f "/root/.backboa.include" ]; then
-  USER_INCLUDE="--include-filelist /root/.backboa.include"
+  _USER_INCLUDE="--include-filelist /root/.backboa.include"
 fi
 
-USER_EXCLUDE=""
+_USER_EXCLUDE=""
 if [ -f "/root/.backboa.exclude" ]; then
-  USER_EXCLUDE="--exclude-filelist /root/.backboa.exclude"
+  _USER_EXCLUDE="--exclude-filelist /root/.backboa.exclude"
 fi
-
-_AWS_PRG=${_AWS_PRG//[^A-Z]/}
-_AWS_OPX="--s3-use-new-style"
 
 export AWS_ACCESS_KEY_ID="${_AWS_KEY}"
 export AWS_SECRET_ACCESS_KEY="${_AWS_SEC}"
 export PASSPHRASE="${_AWS_PWD}"
 
-SOURCE="/etc /var/aegir /var/www /home /data"
-BUCKET="daily-boa-${_HST_DASH}"
-BUCKET_DOT="daily.boa.${_HST}"
-TARGET="s3://${_AWS_URL}/${BUCKET}"
-LOGFILE="${_LOGPTH}/${BUCKET}.log"
+_SOURCE="/etc /var/aegir /var/www /home /data"
+_BUCKET="daily-boa-${_HST_DASH}"
+_BUCKET_DOT="daily.boa.${_HST}"
+_TARGET="boto3+s3://${_BUCKET}"
+_LOGFILE="${_LOGPTH}/${_BUCKET}.log"
 _NAME="--name=daily-boa"
 
-if [ -e "${_LOGPTH}/${BUCKET_DOT}.archive.log" ]; then
-  cat ${_LOGPTH}/${BUCKET_DOT}.archive.log >> ${_LOGPTH}/${BUCKET}.archive.log
-  mv ${_LOGPTH}/${BUCKET_DOT}.archive.log /var/backups/${BUCKET_DOT}.archive.log
-  cat ${_LOGPTH}/${BUCKET_DOT}.randomize.cleanup.log >> ${_LOGPTH}/${BUCKET}.randomize.cleanup.log
-  mv ${_LOGPTH}/${BUCKET_DOT}.randomize.cleanup.log /var/backups/${BUCKET_DOT}.randomize.cleanup.log
-  apt-get clean -qq
-  rm -rf /var/lib/apt/lists/*
+_DCY_MN_CMD="/usr/local/bin/duplicity -v ${_AWS_VLV} \
+  --concurrency 4 \
+  --s3-endpoint-url https://s3.dualstack.${_AWS_REG}.amazonaws.com \
+  --s3-region-name ${_AWS_REG}"
+
+if [ -e "${_LOGPTH}/${_BUCKET_DOT}.archive.log" ]; then
+  cat ${_LOGPTH}/${_BUCKET_DOT}.archive.log >> ${_LOGPTH}/${_BUCKET}.archive.log
+  mv ${_LOGPTH}/${_BUCKET_DOT}.archive.log /var/backups/${_BUCKET_DOT}.archive.log
+  cat ${_LOGPTH}/${_BUCKET_DOT}.randomize.cleanup.log >> ${_LOGPTH}/${_BUCKET}.randomize.cleanup.log
+  mv ${_LOGPTH}/${_BUCKET_DOT}.randomize.cleanup.log /var/backups/${_BUCKET_DOT}.randomize.cleanup.log
+  #apt-get clean -qq
+  #rm -rf /var/lib/apt/lists/*
   if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
     && [ -e "/etc/apt/apt.conf.d" ]; then
     echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
   fi
-  apt_clean_update
-  apt-get install python-pip -y
-  pip install awscli
-  aws s3 mb s3://${BUCKET} --region ${_AWS_REG}
-  aws s3 sync s3://${BUCKET_DOT} s3://${BUCKET}
+  aws s3 mb s3://${_BUCKET} --region ${_AWS_REG}
+  aws s3 sync s3://${_BUCKET_DOT} s3://${_BUCKET}
 fi
 
 backup_prepare() {
-  if [ ! -z "${_AWS_PRG}" ] && [ "${_AWS_PRG}" = "YES" ]; then
-    _AWS_OPX="--s3-use-new-style --progress"
-  fi
-  INCLUDE=""
-  for CDIR in ${SOURCE}; do
-    TMP=" --include  ${CDIR}"
-    INCLUDE="${INCLUDE}${TMP}"
+  _INCLUDE=""
+  for _CDIR in ${_SOURCE}; do
+    TMP=" --include  ${_CDIR}"
+    _INCLUDE="${_INCLUDE}${TMP}"
   done
   if [ -e "/root/.cache/duplicity" ]; then
     CacheTest=$(find /root/.cache/duplicity/* \
@@ -416,43 +455,44 @@ backup_prepare() {
 }
 
 monthly_cleanup() {
-  if [ -e "${_LOGPTH}/${BUCKET}.randomize.cleanup.log" ]; then
-    _RCL=$(cat ${_LOGPTH}/${BUCKET}.randomize.cleanup.log 2>&1)
+  if [ -e "${_LOGPTH}/${_BUCKET}.randomize.cleanup.log" ]; then
+    _RCL=$(cat ${_LOGPTH}/${_BUCKET}.randomize.cleanup.log 2>&1)
     _RCL=$(echo -n ${_RCL} | tr -d "\n" 2>&1)
     _RCL=${_RCL//[^1-5]/}
   else
     _RCL=$((RANDOM%5+1))
     _RCL=${_RCL//[^1-5]/}
-    echo ${_RCL} > ${_LOGPTH}/${BUCKET}.randomize.cleanup.log
+    echo ${_RCL} > ${_LOGPTH}/${_BUCKET}.randomize.cleanup.log
   fi
-  if [ -e "${_LOGPTH}/${BUCKET}.archive.log" ] \
+  if [ -e "${_LOGPTH}/${_BUCKET}.archive.log" ] \
     && [ ! -e "/root/.skip_duplicity_monthly_cleanup.cnf" ] \
     && [ "${_DOM}" = "${_RCL}" ] \
     && [ "${_DO_CLEANUP}" = "YES" ]; then
     if [ -e "/root/.randomize_duplicity_full_backup_day.cnf" ]; then
       n=$((RANDOM%300+8))
-      echo "Waiting $n seconds on `date` before running cleanup --force" > ${LOGFILE}
+      echo "Waiting $n seconds on `date` before running cleanup --force" > ${_LOGFILE}
       sleep $n
     fi
-    echo "Running cleanup --force on `date`" >> ${LOGFILE}
-    duplicity -v ${_AWS_VLV} cleanup --force ${_AWS_OPX} ${_NAME} ${TARGET}
-    rm -f ${_LOGPTH}/${BUCKET}.randomize.full.log
-    rm -f ${_LOGPTH}/${BUCKET}.randomize.cleanup.log
+    echo "Running cleanup --force on `date`" >> ${_LOGFILE}
+    echo "Command is ${_DCY_MN_CMD} cleanup --force ${_NAME} ${_TARGET}"
+    ${_DCY_MN_CMD} cleanup --force ${_NAME} ${_TARGET}
+    rm -f ${_LOGPTH}/${_BUCKET}.randomize.full.log
+    rm -f ${_LOGPTH}/${_BUCKET}.randomize.cleanup.log
   fi
 }
 
 randomize_full() {
   if [ -e "/root/.randomize_duplicity_full_backup_day.cnf" ]; then
-    if [ -e "${_LOGPTH}/${BUCKET}.randomize.full.log" ]; then
-      _RDW=$(cat ${_LOGPTH}/${BUCKET}.randomize.full.log 2>&1)
+    if [ -e "${_LOGPTH}/${_BUCKET}.randomize.full.log" ]; then
+      _RDW=$(cat ${_LOGPTH}/${_BUCKET}.randomize.full.log 2>&1)
       _RDW=$(echo -n ${_RDW} | tr -d "\n" 2>&1)
       _RDW=${_RDW//[^1-7]/}
-      _MODE="incr"
+      _MODE="incremental"
     else
       _RDW=$((RANDOM%7+1))
       _RDW=${_RDW//[^1-7]/}
       _MODE="full"
-      echo ${_RDW} > ${_LOGPTH}/${BUCKET}.randomize.full.log
+      echo ${_RDW} > ${_LOGPTH}/${_BUCKET}.randomize.full.log
     fi
   else
     _RDW=7
@@ -466,54 +506,75 @@ set_mode() {
       _AWS_FLC="1M"
     fi
   else
-    if [ -e "${_LOGPTH}/${BUCKET}.archive.log" ] \
+    if [ -e "${_LOGPTH}/${_BUCKET}.archive.log" ] \
       && [ "${_DO_CLEANUP}" = "YES" ]; then
-      _MODE="incr"
+      _MODE="incremental"
     else
       _MODE="full"
     fi
   fi
 }
 
+set_cmd() {
+  _DCY_UP_CMD="/usr/local/bin/duplicity ${_MODE} -v ${_AWS_VLV} \
+    --allow-source-mismatch \
+    --concurrency 4 \
+    --full-if-older-than ${_AWS_FLC} \
+    --s3-endpoint-url https://s3.dualstack.${_AWS_REG}.amazonaws.com \
+    --s3-region-name ${_AWS_REG} \
+    --s3-use-ia \
+    --volsize 300"
+}
+
 run_backup() {
   if [ -e "/root/.randomize_duplicity_full_backup_day.cnf" ]; then
     if [ ! -e "/root/tmp/home/" ]; then
       n=$((RANDOM%300+8))
-      echo "Waiting $n seconds on `date` before running restore home 7D tmp/home" >> ${LOGFILE}
+      echo "Waiting $n seconds on `date` before running restore home 7D tmp/home" >> ${_LOGFILE}
       sleep $n
-      restore home 7D tmp/home >> ${LOGFILE}
+      restore home 7D tmp/home >> ${_LOGFILE}
     fi
     n=$((RANDOM%300+8))
-    echo "Waiting $n seconds on `date` before running ${_MODE} backup" >> ${LOGFILE}
+    echo "Waiting $n seconds on `date` before running ${_MODE} backup" >> ${_LOGFILE}
     sleep $n
   fi
-  echo "Running ${_MODE} backup on `date`" >> ${LOGFILE}
-  duplicity ${_MODE} -v ${_AWS_VLV} --volsize 300 \
-    --allow-source-mismatch \
-    --full-if-older-than ${_AWS_FLC} \
-    --asynchronous-upload ${_AWS_OPX} ${_NAME} \
-    ${EXCLUDE} ${USER_EXCLUDE} ${INCLUDE} ${USER_INCLUDE} --exclude '**' / ${TARGET} >> ${LOGFILE}
+  echo "Running ${_MODE} backup on `date`" >> ${_LOGFILE}
+  echo "Command is ${_DCY_UP_CMD} \
+    ${_NAME} \
+    ${_EXCLUDE} \
+    ${_USER_EXCLUDE} \
+    ${_INCLUDE} \
+    ${_USER_INCLUDE} \
+    --exclude '**' / ${_TARGET}"
+  ${_DCY_UP_CMD} \
+    ${_NAME} \
+    ${_EXCLUDE} \
+    ${_USER_EXCLUDE} \
+    ${_INCLUDE} \
+    ${_USER_INCLUDE} \
+    --exclude '**' / ${_TARGET} >> ${_LOGFILE}
 }
 
 remove_older_than() {
   if [ -e "/root/.randomize_duplicity_full_backup_day.cnf" ]; then
     n=$((RANDOM%300+8))
-    echo "Waiting $n seconds on `date` before running remove-older-than ${_AWS_TTL}" >> ${LOGFILE}
+    echo "Waiting $n seconds on `date` before running remove-older-than ${_AWS_TTL}" >> ${_LOGFILE}
     sleep $n
   fi
-  echo "Running remove-older-than on `date`" >> ${LOGFILE}
-  duplicity -v ${_AWS_VLV} remove-older-than ${_AWS_TTL} \
-    --force ${_AWS_OPX} ${_NAME} ${TARGET} >> ${LOGFILE}
+  echo "Running remove-older-than on `date`" >> ${_LOGFILE}
+  echo "Command is ${_DCY_MN_CMD} remove-older-than ${_AWS_TTL} --force ${_NAME} ${_TARGET}"
+  ${_DCY_MN_CMD} remove-older-than ${_AWS_TTL} --force ${_NAME} ${_TARGET} >> ${_LOGFILE}
 }
 
 collection_status() {
   if [ -e "/root/.randomize_duplicity_full_backup_day.cnf" ]; then
     n=$((RANDOM%300+8))
-    echo "Waiting $n seconds on `date` before running collection-status" >> ${LOGFILE}
+    echo "Waiting $n seconds on `date` before running collection-status" >> ${_LOGFILE}
     sleep $n
   fi
-  echo "Running collection-status on `date`" >> ${LOGFILE}
-  duplicity -v ${_AWS_VLV} collection-status ${_AWS_OPX} ${_NAME} ${TARGET} >> ${LOGFILE}
+  echo "Running collection-status on `date`" >> ${_LOGFILE}
+  echo "Command is ${_DCY_MN_CMD} collection-status ${_NAME} ${_TARGET}"
+  ${_DCY_MN_CMD} collection-status ${_NAME} ${_TARGET} >> ${_LOGFILE}
 }
 
 backup() {
@@ -521,97 +582,104 @@ backup() {
   monthly_cleanup
   randomize_full
   set_mode
+  set_cmd
   run_backup
-  if [ -e "${_LOGPTH}/${BUCKET}.archive.log" ] \
+  if [ -e "${_LOGPTH}/${_BUCKET}.archive.log" ] \
     && [ "${_DOW}" = "${_RDW}" ] \
     && [ "${_DO_CLEANUP}" = "YES" ]; then
     remove_older_than
     collection_status
   fi
-  if [ -n "${_MY_EMAIL}" ] && [ "${_AWS_VLV}" -lt "3" ]; then
-    echo "Sending email report on `date`" >> ${LOGFILE}
-    mail -s "Daily backup: ${_MODE} ${_HST} $(date 2>&1)" ${_MY_EMAIL} < ${LOGFILE}
+  if [ -n "${_MY_EMAIL}" ]; then
+    echo "Sending email report on `date`" >> ${_LOGFILE}
+    s-nail -s "Daily backup: ${_MODE} ${_HST} $(date 2>&1)" ${_MY_EMAIL} < ${_LOGFILE}
   fi
-  cat ${LOGFILE} >> ${_LOGPTH}/${BUCKET}.archive.log
-  rm -f ${LOGFILE}
+  cat ${_LOGFILE} >> ${_LOGPTH}/${_BUCKET}.archive.log
+  rm -f ${_LOGFILE}
 }
 
 conn_test() {
   if [ $# = 1 ]; then
-    BUCKET="daily-boa-$1"
-    TARGET="s3://${_AWS_URL}/${BUCKET}"
+    _BUCKET="daily-boa-$1"
+    _TARGET="boto3+s3://${_BUCKET}"
   fi
   echo "Running AWS connection test, please wait..."
-  ConnTest=$(duplicity -v 2 cleanup --dry-run \
-    --timeout 1 ${_AWS_OPX} ${_NAME} ${TARGET} 2>&1)
+  echo "Command is ${_DCY_MN_CMD} cleanup --dry-run --timeout 5 ${_NAME} ${_TARGET}"
+  ConnTest=$(${_DCY_MN_CMD} cleanup --dry-run --timeout 5 ${_NAME} ${_TARGET} 2>&1)
   ### echo ConnTest is STR ${ConnTest} END
   if [[ "${ConnTest}" =~ "No connection to backend" ]] \
     || [[ "${ConnTest}" =~ "IllegalLocationConstraintException" ]]; then
     echo
-    echo "  Sorry, I can't connect to ${TARGET}"
-    echo "  Please check if the bucket has expected name: ${BUCKET}"
+    echo "  Sorry, I can't connect to ${_TARGET}"
+    echo "  Please check if the bucket has expected name: ${_BUCKET}"
     echo "  This bucket must already exist in the ${_AWS_REG} AWS region"
     echo "  http://docs.aws.amazon.com/general/latest/gr/rande.html#s3_region"
     echo "  Bye"
     echo
     exit 1
   else
-    echo "OK, I can connect to ${TARGET}"
+    echo "OK, I can connect to ${_TARGET}"
   fi
 }
 
 status() {
-  duplicity -v ${_AWS_VLV} collection-status ${_AWS_OPX} ${_NAME} ${TARGET}
+  echo "Command is ${_DCY_MN_CMD} collection-status ${_NAME} ${_TARGET}"
+  ${_DCY_MN_CMD} collection-status ${_NAME} ${_TARGET}
 }
 
 cleanup() {
-  duplicity -v ${_AWS_VLV} cleanup --force ${_AWS_OPX} ${_NAME} ${TARGET}
-  duplicity -v ${_AWS_VLV} collection-status ${_AWS_OPX} ${_NAME} ${TARGET}
+  echo "Command is ${_DCY_MN_CMD} cleanup --force ${_NAME} ${_TARGET}"
+  ${_DCY_MN_CMD} cleanup --force ${_NAME} ${_TARGET}
+  echo "Command is ${_DCY_MN_CMD} collection-status ${_NAME} ${_TARGET}"
+  ${_DCY_MN_CMD} collection-status ${_NAME} ${_TARGET}
 }
 
 list() {
-  duplicity -v ${_AWS_VLV} list-current-files ${_AWS_OPX} ${_NAME} ${TARGET}
+  echo "Command is ${_DCY_MN_CMD} list-current-files ${_NAME} ${_TARGET}"
+  ${_DCY_MN_CMD} list-current-files ${_NAME} ${_TARGET}
 }
 
 restore() {
   if [ $# = 2 ]; then
-    duplicity -v ${_AWS_VLV} restore \
-      --file-to-restore $1 ${_AWS_OPX} ${_NAME} ${TARGET} $2
+    echo "Command is ${_DCY_MN_CMD} restore --file-to-restore $1 ${_NAME} ${_TARGET} $2"
+    ${_DCY_MN_CMD} restore --file-to-restore $1 ${_NAME} ${_TARGET} $2
   else
-    duplicity -v ${_AWS_VLV} restore \
-      --file-to-restore $1 --time $2 ${_AWS_OPX} ${_NAME} ${TARGET} $3
+    echo "Command is ${_DCY_MN_CMD} restore --file-to-restore $1 --time $2 ${_NAME} ${_TARGET} $3"
+    ${_DCY_MN_CMD} restore --file-to-restore $1 --time $2 ${_NAME} ${_TARGET} $3
   fi
 }
 
 retrieve() {
   if [ $# = 3 ]; then
     _HST_DASH=$(echo -n $3 | tr . - 2>&1)
-    BUCKET="daily-boa-${_HST_DASH}"
-    TARGET="s3://${_AWS_URL}/${BUCKET}"
-    duplicity restore --file-to-restore $1 ${_AWS_OPX} ${_NAME} ${TARGET} $2
+    _BUCKET="daily-boa-${_HST_DASH}"
+    _TARGET="boto3+s3://${_BUCKET}"
+    echo "Command is ${_DCY_MN_CMD} restore --file-to-restore $1 ${_NAME} ${_TARGET} $2"
+    ${_DCY_MN_CMD} restore --file-to-restore $1 ${_NAME} ${_TARGET} $2
   elif [ $# = 4 ]; then
     _HST_DASH=$(echo -n $4 | tr . - 2>&1)
-    BUCKET="daily-boa-${_HST_DASH}"
-    TARGET="s3://${_AWS_URL}/${BUCKET}"
-    duplicity restore --file-to-restore $1 --time $2 ${_AWS_OPX} ${_NAME} ${TARGET} $3
+    _BUCKET="daily-boa-${_HST_DASH}"
+    _TARGET="boto3+s3://${_BUCKET}"
+    echo "Command is ${_DCY_MN_CMD} restore --file-to-restore $1 --time $2 ${_NAME} ${_TARGET} $3"
+    ${_DCY_MN_CMD} restore --file-to-restore $1 --time $2 ${_NAME} ${_TARGET} $3
   fi
 }
 
 if [ "$1" = "backup" ]; then
-  if test -f /var/run/${_HST}_backup.pid ; then
+  if test -f /run/${_HST}_backup.pid ; then
     touch ${_LOGPTH}/wait_${_HST}_backup.log
     echo "The duplicity backup is running already?"
-    echo "Existing /var/run/${_HST}_backup.pid found..."
+    echo "Existing /run/${_HST}_backup.pid found..."
     echo "But no active duplicity process detected..."
     exit 1
   else
-    touch /var/run/${_HST}_backup.pid
+    touch /run/${_HST}_backup.pid
     echo "The duplicity backup is starting now..."
-    check_boto
+    check_aws
     backup
     echo "The duplicity backup is complete!"
     touch ${_LOGPTH}/run_${_HST}_backup.log
-    rm -f /var/run/${_HST}_backup.pid
+    rm -f /run/${_HST}_backup.pid
   fi
 elif [ "$1" = "install" ]; then
   install
@@ -635,7 +703,7 @@ elif [ "$1" = "retrieve" ]; then
     exit 1
   fi
 elif [ "$1" = "status" ]; then
-  check_boto
+  check_aws
   status
 elif [ "$1" = "test" ]; then
   conn_test

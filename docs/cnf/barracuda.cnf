@@ -2,7 +2,7 @@
 ### Barracuda
 ###
 ### Configuration stored in the /root/.barracuda.cnf file.
-### This example is for public install mode - see docs/INSTALL.txt
+### This example is for public install mode - see docs/INSTALL.md
 ###
 ### NOTE: the group of settings displayed below will *not* be overridden
 ### on upgrade by the Barracuda script nor by this configuration file.
@@ -25,7 +25,7 @@ _THIS_DB_HOST=localhost #------- Allows to use hostname in DB grants when FQDN
 _AUTOPILOT=NO #----------------- Allows to skip all Yes/No questions when YES
 _DEBUG_MODE=NO #---------------- Allows to enable Drush debugging when YES
 _MY_EMAIL="my@email" #---------- System admin email
-_XTRAS_LIST="" #---------------- See docs/NOTES.txt for details on add-ons
+_XTRAS_LIST="" #---------------- See docs/NOTES.md for details on add-ons
 ###
 _MODULES_FIX=YES #-------------- Allows to skip weekly modules en/dis when NO
 _MODULES_SKIP="" #-------------- Modules (machine names) to never auto-disable
@@ -36,12 +36,12 @@ _CPU_MAX_RATIO=6 #-------------- Max load per CPU core before disabling Nginx
 _CPU_SPIDER_RATIO=3 #----------- Max load per CPU core before blocking spiders
 ###
 _DB_BINARY_LOG=NO #------------- Allows to enable binary logging when YES
-_DB_SERIES=5.7 #---------------- Supported values: 5.7
-_DB_SERVER=Percona #------------ Install Percona or MariaDB (deprecated)
+_DB_SERIES=5.7 #---------------- Supported values: 5.7 8.0 8.3 8.4
+_DB_SERVER=Percona #------------ Install Percona SQL Server
 _USE_MYSQLTUNER=NO #------------ Use MySQLTuner to configure SQL limits when YES
 ###
 _DNS_SETUP_TEST=YES #----------- Allows to skip DNS testing when NO
-_EXTRA_PACKAGES="" #------------ Installs listed extra packages with apt-get
+_EXTRA_PACKAGES="" #------------ Installs listed extra packages with apt
 _FORCE_GIT_MIRROR="" #---------- Allows to use different mirror (deprecated)
 _LOCAL_DEVUAN_MIRROR= #--------- Allows to force non-default Devuan mirror
 _LOCAL_DEBIAN_MIRROR= #--------- Allows to force non-default Debian mirror
@@ -77,7 +77,7 @@ _REDIS_MAJOR_RELEASE=7 #-------- Redis major release version: 5, 6 or 7
 _RESERVED_RAM=0 #--------------- Allows to reserve RAM (in MB) for non-BOA apps
 _SPEED_VALID_MAX=3600 #--------- Defines Speed Booster hourly cache TTL in sec
 _SSH_ARMOUR=NO #---------------- Allows to enhance OpenSSH security when YES
-_SSH_FROM_SOURCES=NO #---------- Allows to build OpenSSH from sources on Debian
+_SSH_FROM_SOURCES=YES #--------- Allows to build OpenSSH from sources (default)
 _SSH_PORT=22 #------------------ Allows to configure non-standard SSH port
 _STRICT_BIN_PERMISSIONS=YES #--- Aggressively protect all binaries when YES
 _STRONG_PASSWORDS=YES #--------- Configurable length: 32-128, YES (64), NO (32)
@@ -87,7 +87,7 @@ _CUSTOM_CONFIG_LSHELL=NO #------ Protects custom Limited Shell config when YES
 _CUSTOM_CONFIG_REDIS=NO #------- Protects custom Redis config when YES
 _CUSTOM_CONFIG_SQL=NO #--------- Protects custom SQL config when YES
 ###
-_AEGIR_UPGRADE_ONLY=NO #-------- Run only Aegir upgrade when YES (deprecated)
+_AEGIR_UPGRADE_ONLY=NO #-------- Managed on the fly with 'aegir' keyword
 _SYSTEM_UPGRADE_ONLY=NO #------- Managed on the fly with 'system' keyword
 ###
 _SYS_COLLATION_SQL= #----------- By default on the DB server: utf8mb4_unicode_ci
@@ -175,7 +175,7 @@ _BACKEND_ITEMS_LIST=
 ### auto-updates do these things for you, while you sleep:
 ###
 ### * Daily version/release check and notification
-### * Hourly update for all meta-installers and related tools
+### * Every 6 minutes update for all meta-installers and related tools
 ### * Hourly check for D7 core vulnerability and patching if detected
 ### * Hourly update for key BOA tools, monitors and self-healing agents
 ### * Hourly check if your DNS resolver works as expected and repair if not
@@ -186,9 +186,13 @@ _BACKEND_ITEMS_LIST=
 ### BOA system never calls home, and whatever happens, is totally under
 ### your control.
 ###
-### Now you can disable this convenient magic completely by adding the line:
+### Now you can disable this convenient magic by adding the line:
 ###
 ###   _SKYNET_MODE=OFF
+###
+### NOTE: Critically important BOA tools will be still auto-updated
+###       every 6 minutes to keep your system ready for upgrade
+###       if/when needed and as initially intended.
 ###
 _SKYNET_MODE=ON
 
@@ -287,7 +291,7 @@ _BOOKWORM_TO_DAEDALUS=NO
 ###
 ### Use YES to run migration from Tomcat 6
 ### to Jetty 7 with Apache Solr 1.4.1
-### See also docs/SOLR.txt
+### See also docs/SOLR.md
 ###
 _TOMCAT_TO_JETTY=NO
 
@@ -327,7 +331,7 @@ _TOMCAT_TO_JETTY=NO
 ### $ innobackupex --copy-back /data/disk/arch/hourly/latest
 ### $ chown -R mysql:mysql: /var/lib/mysql
 ### $ chown -R mysql:mysql: /var/log/mysql
-### $ chown -R mysql:mysql: /var/run/mysqld
+### $ chown -R mysql:mysql: /run/mysqld
 ### $ service mysql start
 ### $ service cron start
 ###

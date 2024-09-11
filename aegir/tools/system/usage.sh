@@ -13,14 +13,8 @@ check_root() {
     ionice -c2 -n7 -p $$
     renice 19 -p $$
     chmod a+w /dev/null
-    if [ ! -e "/dev/fd" ]; then
-      if [ -e "/proc/self/fd" ]; then
-        rm -rf /dev/fd
-        ln -s /proc/self/fd /dev/fd
-      fi
-    fi
   else
-    echo "ERROR: This script should be ran as a root user"
+    echo "ERROR: This script should be run as a root user"
     exit 1
   fi
   _DF_TEST=$(df -kTh / -l \
@@ -45,6 +39,17 @@ if [ -e "/root/.pause_heavy_tasks_maint.cnf" ]; then
 fi
 
 ###-------------SYSTEM-----------------###
+
+_CHECK_HOST=$(uname -n 2>&1)
+if_hosted_sys() {
+  if [ -e "/root/.host8.cnf" ] \
+    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
+    hostedSys=YES
+  else
+    hostedSys=NO
+  fi
+}
+
 fix_clear_cache() {
   if [ -e "${Plr}/profiles/hostmaster" ]; then
     su -s /bin/bash - ${_THIS_U} -c "drush8 @hostmaster cache-clear all" &> /dev/null
@@ -127,9 +132,9 @@ send_notice_php() {
   _MY_EMAIL="support@omega8.cc"
   _BCC_EMAIL="omega8cc@gmail.com"
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
-  _MAILX_TEST=$(mail -V 2>&1)
-  if [[ "${_MAILX_TEST}" =~ "GNU Mailutils" ]]; then
-  cat <<EOF | mail -e -a "From: ${_MY_EMAIL}" -a "Bcc: ${_BCC_EMAIL}" \
+  _MAILX_TEST=$(s-nail -V 2>&1)
+  if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
+  cat <<EOF | s-nail -b ${_BCC_EMAIL} \
     -s "URGENT: Please switch your Aegir instance to PHP 8.1 [${_THIS_U}]" ${_CLIENT_EMAIL}
 Hello,
 
@@ -140,76 +145,6 @@ We have provided a few years of extended support for
 this PHP version, but now we can't extend it any further,
 because your system has to be upgraded to newest Debian version,
 which doesn't support many deprecated PHP versions.
-
-The upgrade will happen in the first week of May, 2023,
-and there are no exceptions possible to avoid it.
-
-This means that all Aegir instances still running PHP $1
-will stop working if not switched to one of currently
-supported versions: 8.1, 8.2, 8.3
-
-To switch PHP-FPM version on command line, please type:
-
-  echo 8.1 > ~/static/control/fpm.info
-
-You can find more details at: https://learn.omega8.cc/node/330
-
-We are working hard to provide secure and fast hosting
-for your Drupal sites, and we appreciate your efforts
-to meet the requirements, which are an integral part
-of the quality you can expect from Omega8.cc
-
---
-This email has been sent by your Aegir system monitor
-
-EOF
-  elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
-  cat <<EOF | mail -a "From: ${_MY_EMAIL}" -e -b ${_BCC_EMAIL} \
-    -s "URGENT: Please switch your Aegir instance to PHP 8.1 [${_THIS_U}]" ${_CLIENT_EMAIL}
-Hello,
-
-Our monitoring detected that you are still using deprecated
-and no longer supported PHP version: $1
-
-We have provided over a year of extended support for
-this PHP version, but now we can't extend it any further,
-because your system has to be upgraded to newest Debian version,
-which doesn't support deprecated PHP versions.
-
-The upgrade will happen in the first week of May, 2023,
-and there are no exceptions possible to avoid it.
-
-This means that all Aegir instances still running PHP $1
-will stop working if not switched to one of currently
-supported versions: 8.1, 8.2, 8.3
-
-To switch PHP-FPM version on command line, please type:
-
-  echo 8.1 > ~/static/control/fpm.info
-
-You can find more details at: https://learn.omega8.cc/node/330
-
-We are working hard to provide secure and fast hosting
-for your Drupal sites, and we appreciate your efforts
-to meet the requirements, which are an integral part
-of the quality you can expect from Omega8.cc
-
---
-This email has been sent by your Aegir system monitor
-
-EOF
-  else
-  cat <<EOF | mail -r ${_MY_EMAIL} -e -b ${_BCC_EMAIL} \
-    -s "URGENT: Please switch your Aegir instance to PHP 8.1 [${_THIS_U}]" ${_CLIENT_EMAIL}
-Hello,
-
-Our monitoring detected that you are still using deprecated
-and no longer supported PHP version: $1
-
-We have provided over a year of extended support for
-this PHP version, but now we can't extend it any further,
-because your system has to be upgraded to newest Debian version,
-which doesn't support deprecated PHP versions.
 
 The upgrade will happen in the first week of May, 2023,
 and there are no exceptions possible to avoid it.
@@ -261,65 +196,9 @@ send_notice_core() {
   _MY_EMAIL="support@omega8.cc"
   _BCC_EMAIL="omega8cc@gmail.com"
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
-  _MAILX_TEST=$(mail -V 2>&1)
-  if [[ "${_MAILX_TEST}" =~ "GNU Mailutils" ]]; then
-  cat <<EOF | mail -e -a "From: ${_MY_EMAIL}" -a "Bcc: ${_BCC_EMAIL}" \
-    -s "URGENT: Please migrate ${Dom} site to Pressflow (LTS)" ${_CLIENT_EMAIL}
-Hello,
-
-Our system detected that you are using vanilla Drupal core
-for site ${Dom}.
-
-The platform root directory for this site is:
-${Plr}
-
-Using non-Pressflow 5.x or 6.x core is not allowed
-on our servers, unless it is a temporary result of your site
-import, but every imported site should be migrated to Pressflow
-based platform as soon as possible.
-
-If the site is not migrated to Pressflow based platform
-in seven (7) days, it may cause service interruption.
-
-We are working hard to deliver top performance hosting
-for your Drupal sites and we appreciate your efforts
-to meet the requirements, which are an integral part
-of the quality you can expect from Omega8.cc.
-
---
-This email has been sent by your Aegir platform core monitor.
-
-EOF
-  elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
-  cat <<EOF | mail -a "From: ${_MY_EMAIL}" -e -b ${_BCC_EMAIL} \
-    -s "URGENT: Please migrate ${Dom} site to Pressflow (LTS)" ${_CLIENT_EMAIL}
-Hello,
-
-Our system detected that you are using vanilla Drupal core
-for site ${Dom}.
-
-The platform root directory for this site is:
-${Plr}
-
-Using non-Pressflow 5.x or 6.x core is not allowed
-on our servers, unless it is a temporary result of your site
-import, but every imported site should be migrated to Pressflow
-based platform as soon as possible.
-
-If the site is not migrated to Pressflow based platform
-in seven (7) days, it may cause service interruption.
-
-We are working hard to deliver top performance hosting
-for your Drupal sites and we appreciate your efforts
-to meet the requirements, which are an integral part
-of the quality you can expect from Omega8.cc.
-
---
-This email has been sent by your Aegir platform core monitor.
-
-EOF
-  else
-  cat <<EOF | mail -r ${_MY_EMAIL} -e -b ${_BCC_EMAIL} \
+  _MAILX_TEST=$(s-nail -V 2>&1)
+  if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
+  cat <<EOF | s-nail -b ${_BCC_EMAIL} \
     -s "URGENT: Please migrate ${Dom} site to Pressflow (LTS)" ${_CLIENT_EMAIL}
 Hello,
 
@@ -360,10 +239,8 @@ detect_vanilla_core() {
           && [ ! -e "/boot/grub/menu.lst" ] \
           && [[ "${Plr}" =~ "static" ]] \
           && [ ! -e "${Plr}/modules/cookie_cache_bypass" ]; then
-          if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-            || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
-            || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-            || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
+          if_hosted_sys
+          if [ "${hostedSys}" = "YES" ]; then
             echo Vanilla Drupal 5.x Platform detected in ${Plr}
             read_account_data
             if [ "${_THIS_MODE}" = "verbose" ]; then
@@ -378,10 +255,8 @@ detect_vanilla_core() {
           echo Vanilla Drupal 6.x Platform detected in ${Plr}
           if [ ! -e "/boot/grub/grub.cfg" ] \
             && [ ! -e "/boot/grub/menu.lst" ]; then
-            if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-              || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
-              || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-              || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
+            if_hosted_sys
+            if [ "${hostedSys}" = "YES" ]; then
               read_account_data
               if [ "${_THIS_MODE}" = "verbose" ]; then
                 send_notice_core
@@ -504,97 +379,9 @@ send_notice_sql() {
   _MY_EMAIL="billing@omega8.cc"
   _BCC_EMAIL="omega8cc@gmail.com"
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
-  _MAILX_TEST=$(mail -V 2>&1)
-  if [[ "${_MAILX_TEST}" =~ "GNU Mailutils" ]]; then
-  cat <<EOF | mail -e -a "From: ${_MY_EMAIL}" -a "Bcc: ${_BCC_EMAIL}" \
-    -s "NOTICE: Your ${_MODE} DB Usage on [${_THIS_U}] is too high: ${_SQL_NOW} MB" ${_CLIENT_EMAIL}
-Hello,
-
-You are using more resources than allocated in your subscription.
-You have currently ${_CLIENT_CORES} Aegir ${_CLIENT_OPTION} ${_ENGINE_NR}.
-
-Your allowed databases space for ${_MODE} sites is ${_SQL_LIM} MB,
-but you are currently using ${_SQL_NOW} MB of databases space.
-
-Please reduce your usage by deleting no longer used sites, or purchase
-enough Aegir Engines to cover your current usage.
-
-You can purchase more Aegir Engines easily online:
-
-  https://omega8.cc/pricing
-
-Note that we do not count(*) any site identified as temporary dev/test,
-by having in its main name a special keyword with two dots on both sides:
-
-  .dev.
-  .devel.
-  .temp.
-  .tmp.
-  .temporary.
-  .test.
-  .testing.
-  .stage.
-  .staging.
-
-For example, a site with main name: abc.test.foo.com is by default excluded
-from your allocated resources limits (not counted for billing purposes),
-as long as the total databases space used by such sites is no greater than
-three times (3x) your limit for LIVE sites listed on our order pages.
-
-However, if we discover that anyone is using this method to hide real
-usage via listed keywords in the main site name and adding live domain(s)
-as aliases, such account will be suspended without any warning.
-
---
-This email has been sent by your Aegir resources usage daily monitor.
-
-EOF
-  elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
-  cat <<EOF | mail -a "From: ${_MY_EMAIL}" -e -b ${_BCC_EMAIL} \
-    -s "NOTICE: Your ${_MODE} DB Usage on [${_THIS_U}] is too high: ${_SQL_NOW} MB" ${_CLIENT_EMAIL}
-Hello,
-
-You are using more resources than allocated in your subscription.
-You have currently ${_CLIENT_CORES} Aegir ${_CLIENT_OPTION} ${_ENGINE_NR}.
-
-Your allowed databases space for ${_MODE} sites is ${_SQL_LIM} MB,
-but you are currently using ${_SQL_NOW} MB of databases space.
-
-Please reduce your usage by deleting no longer used sites, or purchase
-enough Aegir Engines to cover your current usage.
-
-You can purchase more Aegir Engines easily online:
-
-  https://omega8.cc/pricing
-
-Note that we do not count(*) any site identified as temporary dev/test,
-by having in its main name a special keyword with two dots on both sides:
-
-  .dev.
-  .devel.
-  .temp.
-  .tmp.
-  .temporary.
-  .test.
-  .testing.
-  .stage.
-  .staging.
-
-For example, a site with main name: abc.test.foo.com is by default excluded
-from your allocated resources limits (not counted for billing purposes),
-as long as the total databases space used by such sites is no greater than
-three times (3x) your limit for LIVE sites listed on our order pages.
-
-However, if we discover that anyone is using this method to hide real
-usage via listed keywords in the main site name and adding live domain(s)
-as aliases, such account will be suspended without any warning.
-
---
-This email has been sent by your Aegir resources usage daily monitor.
-
-EOF
-  else
-  cat <<EOF | mail -r ${_MY_EMAIL} -e -b ${_BCC_EMAIL} \
+  _MAILX_TEST=$(s-nail -V 2>&1)
+  if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
+  cat <<EOF | s-nail -b ${_BCC_EMAIL} \
     -s "NOTICE: Your ${_MODE} DB Usage on [${_THIS_U}] is too high: ${_SQL_NOW} MB" ${_CLIENT_EMAIL}
 Hello,
 
@@ -645,63 +432,9 @@ send_notice_disk() {
   _MY_EMAIL="billing@omega8.cc"
   _BCC_EMAIL="omega8cc@gmail.com"
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
-  _MAILX_TEST=$(mail -V 2>&1)
-  if [[ "${_MAILX_TEST}" =~ "GNU Mailutils" ]]; then
-  cat <<EOF | mail -e -a "From: ${_MY_EMAIL}" -a "Bcc: ${_BCC_EMAIL}" \
-    -s "NOTICE: Your Disk Usage on [${_THIS_U}] is too high" ${_CLIENT_EMAIL}
-Hello,
-
-You are using more resources than allocated in your subscription.
-You have currently ${_CLIENT_CORES} Aegir ${_CLIENT_OPTION} ${_ENGINE_NR}.
-
-Your allowed disk space is ${_DSK_MIN_LIMIT} MB.
-You are currently using ${HomSizH} MB of disk space.
-
-Please reduce your usage by deleting old backups, files,
-and no longer used sites, or purchase enough Aegir Engines
-to cover your current usage.
-
-You can purchase more Aegir Engines easily online:
-
-  https://omega8.cc/buy
-
-Note that unlike with database space limits, for files related disk space
-we count all your sites, including also all dev/tmp sites, if they exist,
-even if they are marked as disabled in your Aegir control panel.
-
---
-This email has been sent by your Aegir resources usage daily monitor.
-
-EOF
-  elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
-  cat <<EOF | mail -a "From: ${_MY_EMAIL}" -e -b ${_BCC_EMAIL} \
-    -s "NOTICE: Your Disk Usage on [${_THIS_U}] is too high" ${_CLIENT_EMAIL}
-Hello,
-
-You are using more resources than allocated in your subscription.
-You have currently ${_CLIENT_CORES} Aegir ${_CLIENT_OPTION} ${_ENGINE_NR}.
-
-Your allowed disk space is ${_DSK_MIN_LIMIT} MB.
-You are currently using ${HomSizH} MB of disk space.
-
-Please reduce your usage by deleting old backups, files,
-and no longer used sites, or purchase enough Aegir Engines
-to cover your current usage.
-
-You can purchase more Aegir Engines easily online:
-
-  https://omega8.cc/buy
-
-Note that unlike with database space limits, for files related disk space
-we count all your sites, including also all dev/tmp sites, if they exist,
-even if they are marked as disabled in your Aegir control panel.
-
---
-This email has been sent by your Aegir resources usage daily monitor.
-
-EOF
-  else
-  cat <<EOF | mail -r ${_MY_EMAIL} -e -b ${_BCC_EMAIL} \
+  _MAILX_TEST=$(s-nail -V 2>&1)
+  if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
+  cat <<EOF | s-nail -b ${_BCC_EMAIL} \
     -s "NOTICE: Your Disk Usage on [${_THIS_U}] is too high" ${_CLIENT_EMAIL}
 Hello,
 
@@ -736,89 +469,9 @@ send_notice_gprd() {
   _MY_EMAIL="support@omega8.cc"
   _BCC_EMAIL="omega8cc@gmail.com"
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
-  _MAILX_TEST=$(mail -V 2>&1)
-  if [[ "${_MAILX_TEST}" =~ "GNU Mailutils" ]]; then
-  cat <<EOF | mail -e -a "From: ${_MY_EMAIL}" -a "Bcc: ${_BCC_EMAIL}" \
-    -s "GDPR compliance for your Aegir account" ${_CLIENT_EMAIL}
-Hello,
-
-Yes, yet another GDPR email, but it's important that you read and understand
-how this new law affects your hosting with us.
-
-The General Data Protection Regulation (GDPR) is a new European privacy law
-that goes into effect on May 25, 2018.
-
-The GDPR will replace the EU Data Protection Directive, also known as
-Directive 95/46/EC, and will apply a single data protection law
-throughout the EU.
-
-Data protection laws govern the way that businesses collect, use, and share
-personal data about individuals. Among other things, they require businesses
-to process an individual’s personal data fairly and lawfully, allow individuals
-to exercise legal rights in respect of their personal data (for example,
-to access, correct or delete their personal data), and ensure appropriate
-security protections are put in place to protect the personal data they process.
-
-We have taken steps to ensure that we will be compliant with the GDPR
-by May 25, 2018.
-
-Please read all details on our website at:
-
-https://omega8.cc/gdpr
-https://omega8.cc/gdpr-faq
-https://omega8.cc/gdpr-dpa
-https://omega8.cc/gdpr-portability
-
-Please contact us if you have any questions: https://omega8.cc/contact
-
-Thank you for your attention.
-
----
-Omega8.cc
-
-EOF
-  elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
-  cat <<EOF | mail -a "From: ${_MY_EMAIL}" -e -b ${_BCC_EMAIL} \
-    -s "GDPR compliance for your Aegir account" ${_CLIENT_EMAIL}
-Hello,
-
-Yes, yet another GDPR email, but it's important that you read and understand
-how this new law affects your hosting with us.
-
-The General Data Protection Regulation (GDPR) is a new European privacy law
-that goes into effect on May 25, 2018.
-
-The GDPR will replace the EU Data Protection Directive, also known as
-Directive 95/46/EC, and will apply a single data protection law
-throughout the EU.
-
-Data protection laws govern the way that businesses collect, use, and share
-personal data about individuals. Among other things, they require businesses
-to process an individual’s personal data fairly and lawfully, allow individuals
-to exercise legal rights in respect of their personal data (for example,
-to access, correct or delete their personal data), and ensure appropriate
-security protections are put in place to protect the personal data they process.
-
-We have taken steps to ensure that we will be compliant with the GDPR
-by May 25, 2018.
-
-Please read all details on our website at:
-
-https://omega8.cc/gdpr
-https://omega8.cc/gdpr-faq
-https://omega8.cc/gdpr-dpa
-https://omega8.cc/gdpr-portability
-
-Please contact us if you have any questions: https://omega8.cc/contact
-
-Thank you for your attention.
-
----
-Omega8.cc
-
-EOF
-  else
-  cat <<EOF | mail -r ${_MY_EMAIL} -e -b ${_BCC_EMAIL} \
+  _MAILX_TEST=$(s-nail -V 2>&1)
+  if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
+  cat <<EOF | s-nail -b ${_BCC_EMAIL} \
     -s "GDPR compliance for your Aegir account" ${_CLIENT_EMAIL}
 Hello,
 
@@ -880,7 +533,7 @@ check_limits() {
     _SQL_MAX_LIMIT=$(( _SQL_MIN_LIMIT + 2048 ))
     _DSK_MIN_LIMIT=$(( _DSK_MIN_LIMIT *= _DSK_CLU_LIMIT ))
     _DSK_MAX_LIMIT=$(( _DSK_MAX_LIMIT *= _DSK_CLU_LIMIT ))
-  elif [ "${_CLIENT_OPTION}" = "LTS" ]; then
+  elif [ "${_CLIENT_OPTION}" = "LITE" ]; then
     if [ -z "${_DSK_CLU_LIMIT}" ]; then
       _DSK_CLU_LIMIT=1
     fi
@@ -1135,10 +788,8 @@ action() {
         echo SumDir is ${SumDir} or ${SumDirH} MB
         echo SumDat is ${SumDat} or ${SumDatH} MB
         echo SkipDt is ${SkipDt} or ${SkipDtH} MB
-        if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-          || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
-          || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-          || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
+        if_hosted_sys
+        if [ "${hostedSys}" = "YES" ]; then
           check_limits
           if [ -e "${_THIS_HM_SITE}" ]; then
             su -s /bin/bash - ${_THIS_U} -c "drush8 @hostmaster \

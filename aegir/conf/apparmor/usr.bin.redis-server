@@ -1,0 +1,64 @@
+# AppArmor profile for Redis server
+# This profile restricts the Redis server (redis-server) to essential operations only.
+
+#include <tunables/global>
+
+/usr/bin/redis-server flags=(complain) {
+
+  # Include common AppArmor abstractions
+  include <abstractions/base>
+  include <abstractions/nameservice>
+  include <abstractions/user-tmp>
+
+  # Allow Redis to accept signal from PHP-CLI processes
+  signal (receive) peer=/opt/php*/bin/php,
+
+  # Allow reading necessary kernel parameters
+  /proc/sys/** r,
+  /sys/devices/** r,
+  /sys/kernel/** r,
+
+  # Allow execution of redis-server binary
+  /usr/bin/redis-server mrix,
+
+  # Allow Redis to read its configuration file
+  /etc/redis/redis.conf r,
+
+  # Allow Redis to read and write its data files
+  /var/lib/redis/** rwk,
+
+  # Allow Redis to read and write its log files
+  /var/log/redis/** rw,
+
+  # Allow Redis to open TCP sockets on any address
+  network inet stream,
+
+  # Allow Redis to use syslog
+  /dev/log w,
+  /usr/bin/logger ixr,
+
+  # Allow Redis to read system libraries
+  /lib/** mr,
+  /lib64/** mr,
+  /usr/lib/** mr,
+  /usr/local/sbin/* mrix,
+  /usr/local/ssl/** mr,
+  /usr/local/ssl3/** mr,
+
+  # Allow Redis to use /run for pid/sock files
+  /run/redis/** rw,
+
+  # Allow Redis to use tmp files
+  /tmp/ r,
+  /tmp/** rw,
+
+  owner /proc/*/smaps r,
+  owner /proc/*/stat r,
+  owner /var/lib/redis/ r,
+  owner /var/lib/redis/dump.rdb rw,
+  owner /var/lib/redis/temp-*.rdb rw,
+  owner /var/log/redis/redis-server.log rw,
+
+  # Catchall to deny everything else
+  #deny /** rwklx,
+}

@@ -9,6 +9,9 @@ $ENV{'PATH'} = '/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin
 ### This is an auth abuse monitor for ftp.
 ###
 
+use warnings;
+use File::Spec;
+
 $| = 1;
 $this_filename = "hackftp";
 $times=`date +%y%m%d-%H%M%S`;
@@ -30,7 +33,8 @@ sub makeactions
     close (NOT);
   }
   local(@MYARR)=`tail --lines=999 /var/log/messages 2>&1`;
-  local($sumar,$maxnumber);
+  local($sumar) = 0;
+  local($maxnumber) = 4;
   foreach $line (@MYARR) {
     $line =~ s/[^a-zA-Z0-9\:\s\t\/\-\@\_\(\)\*\[\]\.\,]//g;
     if ($line =~ /(Authentication failed for user)/i || $line =~ /(Sorry, cleartext sessions are not accepted)/i) {
@@ -50,7 +54,6 @@ sub makeactions
   foreach $VISITOR (sort keys %li_cnt) {
     $sumar = $sumar + $li_cnt{$VISITOR};
     local($thissumar) = $li_cnt{$VISITOR};
-    $maxnumber = 4;
     local($blocked) = 0;
     &check_ip($VISITOR);
     if ($thissumar > $maxnumber) {

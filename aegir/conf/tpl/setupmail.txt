@@ -1,0 +1,132 @@
+Hello,
+
+Welcome to your new Aegir control panel, designed for easy Drupal multi-site deployment, development, and management.
+
+Your Aegir control panel [version boa.version] is available at:
+
+https://aegir.url.name
+
+This Email Covers:
+1. Logging into your Aegir control panel
+2. Deploying Aegir default websites
+3. Adding modules & themes
+4. Managing your databases
+5. Advanced user information
+6. Articles and video tutorials
+
+Please read this email thoroughly. It contains important information required to properly leverage all your available Aegir features.
+
+----------------------------------------
+1. LOGGING INTO YOUR AEGIR CONTROL PANEL
+----------------------------------------
+
+To access your control panel, use the one-time login link you will receive in a separate email.
+
+If the one-time link no longer works, use the initial username and password sent in another email, or reset your password using your email address as your username at: https://aegir.url.name/user/password
+
+Please double-check your spam folder to ensure all emails are delivered.
+
+----------------------------------------
+2. DEPLOYING YOUR WEBSITES
+----------------------------------------
+
+Log into the control panel and start exploring how Aegir works. We are ready to assist and guide you step by step, so please don’t hesitate to ask questions!
+
+To create a new site:
+1. Click the Add Site tab.
+2. After adding a site, click the Home icon on the site's node in Aegir to access the admin area.
+
+If the Home icon no longer links to the one-time login page, run the "Reset password" task on the site's node, and once complete, click the Home icon again.
+
+A standard one-time login link will also be sent to your email address.
+
+For more details on site import and platform management, refer to:
+- Import Your Sites to Aegir: https://omega8.cc/import-your-sites-to-aegir-in-8-easy-steps-109
+- Add Custom Platform: https://omega8.cc/how-to-add-custom-platform-properly-140
+- Drupal Site Upgrade Workflow: https://omega8.cc/your-drupal-site-upgrade-safe-workflow-298
+
+To make a site "live" using any domain name, point its A or CNAME DNS record to your Aegir instance public IP address:
+
+yourdomain.com.           IN  A      166.84.6.231
+subdomain.yourdomain.com. IN  CNAME  aegir.url.name.
+
+For test sites, use any subdomain in *.aegir.url.name, e.g., http://atrium.aegir.url.name.
+
+Need assistance with site import? Contact us: https://omega8.cc/contact
+
+----------------------------------------
+3. ADDING MODULES & THEMES
+----------------------------------------
+
+To add modules/themes:
+1. Log into your FTPS/SSH/SFTP account:
+
+host: aegir.url.name
+user: dragon.ftp
+pass: FN8rXcQn
+port: 21 (FTPS)
+port: 22 (SSH/SFTP)
+
+2. Type "help" when logged in via SSH to see all available shell commands.
+3. Change your password via SSH with the "passwd" command every 3 months.
+
+Note: Use Explicit TLS mode with port 21 for FTPS and port 22 for SFTP (unless your Aegir instance uses a non-standard SSH port).
+
+Refer to Compatible FTP-SSL/TLS Clients: https://omega8.cc/dev/ftp-tls.txt for more information.
+
+----------------------------------------
+4. MANAGING YOUR DATABASES
+----------------------------------------
+
+Manage your databases via the Adminer Manager web interface, using credentials available in each site's drushrc.php file:
+
+Adminer Manager URL: https://166.84.6.231
+
+Note: Keep the SSH session active with a continuous command (e.g., ping -i 30 google.com) to maintain database access.
+
+Use a desktop SQL manager that supports SSH tunneling, as remote access over MySQL port 3306 is not available for security reasons. For a video tutorial, visit: http://bit.ly/om8rsql
+
+You can also manage databases via command line with Drush commands or tools like mysql and mysqldump.
+
+----------------------------------------
+5. ADVANCED USER INFORMATION
+----------------------------------------
+
+How-To Information: Check the built-in docs in your account at ~/static/control/README.txt.
+
+Directory Information:
+- Your home directory contains subdirectories in ~/platforms for different platform releases.
+- Use symlinks in ~/clients/client-name/ to find all your sites directly.
+
+Custom Platform Information:
+- Upload custom Drupal platforms to ~/static/platforms in separate subdirectories.
+- Enable custom platforms via the "Add platform" option in your Aegir control panel.
+
+Note: Only Pressflow (LTS) core-based platforms are allowed for Drupal 6.x versions; standard Drupal core can be used for Drupal 7 and newer versions.
+
+----------------------------------------
+6. ARTICLES & VIDEO TUTORIALS
+----------------------------------------
+
+Video Tutorials: http://bit.ly/aegir8cc
+
+Site Import & Development:
+- Development Library: https://learn.omega8.cc/library/development
+- Good to Know: https://learn.omega8.cc/library/good-to-know
+
+Performance Information:
+- Performance Library: https://learn.omega8.cc/library/performance
+- Tips & Tricks: https://learn.omega8.cc/library/tips-and-tricks
+
+Useful Hints: Problems & Solutions: https://learn.omega8.cc/library/problems-solutions
+
+Recommended Articles:
+- Biggest Misunderstanding Ever: https://learn.omega8.cc/the-biggest-misunderstanding-ever-122
+- Best Recipes for Disaster: https://learn.omega8.cc/the-best-recipes-for-disaster-139
+- Good Habits to Learn: https://learn.omega8.cc/are-there-any-specific-good-habits-to-learn-116
+
+For further assistance, contact us: https://omega8.cc/contact
+
+Thank you,
+The Omega8.cc Team
+

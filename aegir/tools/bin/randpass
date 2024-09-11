@@ -1,7 +1,7 @@
 #!/bin/bash
 
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-_OSR=$(lsb_release -sc 2>&1)
+_OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
 if [ -e "/root/.install.modern.openssl.cnf" ] \
   && [ -x "/usr/local/ssl3/bin/openssl" ]; then
   _SSL_BINARY=/usr/local/ssl3/bin/openssl
@@ -86,3 +86,5 @@ case "$2" in
          exit 1
   ;;
 esac
+
+exit 0

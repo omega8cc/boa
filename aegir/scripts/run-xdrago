@@ -18,14 +18,8 @@ check_root() {
     ionice -c2 -n7 -p $$
     renice 19 -p $$
     chmod a+w /dev/null
-    if [ ! -e "/dev/fd" ]; then
-      if [ -e "/proc/self/fd" ]; then
-        rm -rf /dev/fd
-        ln -s /proc/self/fd /dev/fd
-      fi
-    fi
   else
-    echo "ERROR: This script should be ran as a root user"
+    echo "ERROR: This script should be run as a root user"
     exit 1
   fi
   _DF_TEST=$(df -kTh / -l \
@@ -106,6 +100,45 @@ load_control() {
   _O_LOAD_SPR=$(( 99 * _CPU_SPIDER_RATIO ))
 }
 
+# Remove dangerous stuff from the string.
+sanitize_string() {
+  echo "$1" | sed 's/[\\\/\^\?\>\`\#\"\{\(\&\|\*]//g; s/\(['"'"'\]\)//g'
+}
+
+# Generate new sftp password and update expiration date
+if_sftp_password_update() {
+  upCtr="/data/disk/${_H_USER}/static/control/run-sftp-password-update.pid"
+  if [ -e "${upCtr}" ]; then
+    sftpUser="${_H_USER}.ftp"
+    rm -f ${upCtr}
+    _PWD_CHARS=64
+    _RANDPASS_TEST=$(randpass -V 2>&1)
+    if [[ "${_RANDPASS_TEST}" =~ "alnum" ]]; then
+      _ESC_PASS=$(randpass "${_PWD_CHARS}" alnum 2>&1)
+    else
+      _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
+      _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
+      _ESC_PASS=$(sanitize_string "${_ESC_PASS}" 2>&1)
+    fi
+    _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
+    _LEN_PASS=$(echo ${#_ESC_PASS} 2>&1)
+    if [ -z "${_ESC_PASS}" ] || [ "${_LEN_PASS}" -lt "9" ]; then
+      _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
+      _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
+      _ESC_PASS=$(sanitize_string "${_ESC_PASS}" 2>&1)
+    fi
+    _LEN_PASS=$(echo ${#_ESC_PASS} 2>&1)
+    if [ ! -z "${_ESC_PASS}" ] && [ "${_LEN_PASS}" -gt "9" ]; then
+      chage -I -1 -m 0 -M 99999 -E -1 ${sftpUser}
+      echo "${sftpUser}:${_ESC_PASS}" | chpasswd
+      chage -M 90 ${sftpUser}
+      chage -W 7 ${sftpUser}
+      chage -d $(date +%Y-%m-%d) ${sftpUser}
+      echo "${_ESC_PASS}" > /data/disk/${_H_USER}/static/control/new-${sftpUser}-password.txt
+    fi
+  fi
+}
+
 if_octopus_upgrade() {
   if [ "${_O_LOAD}" -lt "${_O_LOAD_SPR}" ]; then
     upCtr="/data/disk/${_H_USER}/static/control/run-upgrade.pid"
@@ -134,13 +167,13 @@ action() {
   fi
 }
 
-if [ -e "/var/run/boa_wait.pid" ] \
-  || [ -e "/var/run/manage_rvm_users.pid" ]; then
+if [ -e "/run/boa_wait.pid" ]; then
   touch /var/xdrago/log/wait-${_H_USER}
   exit 0
 else
   count_cpu
   load_control
+  if_sftp_password_update
   if_octopus_upgrade
   action
   exit 0

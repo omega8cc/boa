@@ -1,0 +1,91 @@
+# AppArmor profile for Nginx server
+# This profile restricts Nginx server (nginx) to essential operations only.
+
+#include <tunables/global>
+
+/usr/sbin/nginx flags=(complain) {
+
+  # Include common AppArmor abstractions
+  include <abstractions/base>
+  include <abstractions/consoles>
+  include <abstractions/dovecot-common>
+  include <abstractions/nameservice>
+  include <abstractions/postfix-common>
+  include <abstractions/ssl_keys>
+
+  # Capabilities needed by Nginx server
+  capability dac_override,
+  capability dac_read_search,
+  capability mknod,
+
+  # Allow Nginx to accept signal from PHP-CLI processes
+  signal (receive) peer=/opt/php*/bin/php,
+
+  # Allow read access to necessary libraries
+  /lib/** mr,
+  /lib/x86_64-linux-gnu/** mr,
+  /lib64/** mr,
+  /usr/lib/** mr,
+  /usr/lib/x86_64-linux-gnu/** mr,
+  /usr/libexec/** mr,
+  /usr/local/include/** mr,
+  /usr/local/lib/** mr,
+  /usr/local/ssl/** mr,
+  /usr/local/ssl3/** mr,
+
+  # Allow execution of the nginx binary
+  /usr/sbin/nginx mrix,
+
+  # Allow read/write access to nginx specific directories and files
+  /etc/default/nginx r,
+  /etc/nginx/ r,
+  /etc/nginx/** r,
+  /etc/nginx/conf.d/ r,
+  /etc/nginx/conf.d/** r,
+  /etc/nginx/fastcgi_params r,
+  /etc/nginx/mime.types r,
+  /etc/nginx/nginx.conf r,
+  /etc/ssl/private/ r,
+  /etc/ssl/private/* r,
+  /etc/ssl/private/nginx-wild-ssl.crt r,
+  /etc/ssl/private/nginx-wild-ssl.dhp r,
+  /etc/ssl/private/nginx-wild-ssl.key r,
+  /var/www/ r,
+  /var/www/** r,
+
+  # Specific directories used by Aegir (if applicable)
+  /var/aegir/.drush/ r,
+  /var/aegir/.drush/** r,
+  /var/aegir/config/ r,
+  /var/aegir/config/** r,
+  /var/aegir/host_master/** r,
+  /var/aegir/platforms/** r,
+
+  /data/disk/*/aegir/** r,
+  /data/disk/*/config/** r,
+  /data/disk/*/distro/** r,
+  /data/disk/*/platforms/** r,
+  /data/disk/*/static/** r,
+  /data/disk/*/tools/le/** r,
+
+  # Additional specific directories
+  /data/all/** r,
+  /data/conf/ r,
+  /data/conf/* r,
+
+  # Other required directories and files
+  /proc/sys/** r,
+  /run/nginx.pid rw,
+  /run/nginx.pid.oldbin rw,
+  /usr/fastcgi_temp/ r,
+  /usr/fastcgi_temp/** rw,
+  /usr/share/GeoIP/GeoIP.dat r,
+  /var/lib/nginx/ r,
+  /var/lib/nginx/** rw,
+  /var/log/nginx/ r,
+  /var/log/nginx/access.log w,
+  /var/log/nginx/error.log w,
+
+  # Catchall to deny everything else
+  #deny /** rwklx,
+}

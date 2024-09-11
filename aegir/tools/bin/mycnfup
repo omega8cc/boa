@@ -22,8 +22,8 @@ export tRee="${tRee}"
 
 _AEGIR_VERSION="${tRee}"
 _BRANCH_BOA="5.x-${tRee}"
-_X_VERSION="BOA-5.2.0-${tRee}"
-_X_SE="520proT02"
+_X_VERSION="BOA-5.4.0-${tRee}"
+_X_SE="540ltsT02"
 _MYSQLTUNER_VRN=1.9.4
 _PHP_FPM_WORKERS=AUTO
 _RESERVED_RAM=0
@@ -31,38 +31,48 @@ _RESERVED_RAM=0
 ###
 ### Commands shortcuts
 ###
-dstUpArg="-fuy --allow-downgrades --allow-unauthenticated -q --config-file /opt/apt/apt.conf.noi.dist"
-nrmUpArg="-fuy --allow-downgrades --allow-unauthenticated -q --config-file /opt/apt/apt.conf.noi.nrml"
-_INSTALL="/usr/bin/apt-get ${nrmUpArg} install"
-_INITINS="/usr/bin/apt-get -y --allow-downgrades --allow-unauthenticated install"
-aptYesUnth="-y --allow-downgrades --allow-unauthenticated"
+dstUpArg="-fuy --allow-unauthenticated -q --config-file /opt/apt/apt.conf.noi.dist"
+nrmUpArg="-fuy --allow-unauthenticated -q --config-file /opt/apt/apt.conf.noi.nrml"
+_INSTALL_DIST="/usr/bin/apt-get ${dstUpArg} install"
+_INSTALL_NRML="/usr/bin/apt-get ${nrmUpArg} install"
+_INITINS="/usr/bin/apt-get -y --allow-unauthenticated install"
+aptYesUnth="-y --allow-unauthenticated"
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
 vBs="/var/backups"
 tVr="0.7"
-_THIS_OS=$(lsb_release -si 2>&1)
-_OSR=$(lsb_release -sc 2>&1)
+_OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
+_OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+if [ -e "/var/aegir/drush" ]; then
+  _DPKG_CNF="confold"
+else
+  _DPKG_CNF="confnew"
+fi
 _INSTAPP="/usr/bin/aptitude -f -y -q \
   --allow-untrusted \
+  -o Dpkg::Options::=--force-confmiss \
   -o Dpkg::Options::=--force-confdef \
-  -o Dpkg::Options::=--force-confold install"
+  -o Dpkg::Options::=--force-${_DPKG_CNF} install"
+if [ ! -e "/var/aegir/drush" ]; then
+  _INSTAPP="${_INSTALL_DIST}"
+fi
 
 
 ###-------------SYSTEM-----------------###
 
 os_detection_minimal() {
   _APT_UPDATE="apt-get update"
-  _THIS_RV=$(lsb_release -sc 2>&1)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
   for e in ${_OS_LIST}; do
-    if [ "${e}" = "${_THIS_RV}" ]; then
+    if [ "${e}" = "${_OS_CODE}" ]; then
       _APT_UPDATE="apt-get update --allow-releaseinfo-change"
     fi
   done
 }
 
 apt_clean_update() {
-  apt-get clean -qq 2> /dev/null
-  rm -rf /var/lib/apt/lists/* &> /dev/null
+  #apt-get clean -qq 2> /dev/null
+  #rm -rf /var/lib/apt/lists/* &> /dev/null
   ${_APT_UPDATE} -qq 2> /dev/null
 }
 
@@ -99,16 +109,6 @@ locales_check_fix() {
       echo "AcceptEnv LANG LC_*" >> /etc/ssh/sshd_config
     fi
   fi
-  if [ -e "/usr/etc/sshd_config" ]; then
-    _SSH_LC_TEST=$(grep "^AcceptEnv LANG LC_" /usr/etc/sshd_config 2>&1)
-    if [[ "${_SSH_LC_TEST}" =~ "AcceptEnv LANG LC_" ]]; then
-      _DO_NOTHING=YES
-    else
-      sed -i "s/.*AcceptEnv.*//g" /usr/etc/sshd_config
-      wait
-      echo "AcceptEnv LANG LC_*" >> /usr/etc/sshd_config
-    fi
-  fi
   _LOC_TEST=$(locale 2>&1)
   if [[ "${_LOC_TEST}" =~ LANG=.*UTF-8 ]]; then
     _LOCALE_TEST=OK
@@ -142,7 +142,7 @@ locales_check_fix() {
 
 EOF
     sleep 5
-    if [ "${_THIS_OS}" = "Debian" ] || [ "${_THIS_OS}" = "Devuan" ]; then
+    if [ "${_OS_DIST}" = "Debian" ] || [ "${_OS_DIST}" = "Devuan" ]; then
       _LOCALE_GEN_TEST=$(grep -v "^#" /etc/locale.gen 2>&1)
       if [[ ! "${_LOCALE_GEN_TEST}" =~ "en_US.UTF-8 UTF-8" ]]; then
         echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
@@ -185,7 +185,7 @@ EOF
     export LC_IDENTIFICATION=en_US.UTF-8
     export LC_ALL=
   else
-    if [ "${_THIS_OS}" = "Debian" ] || [ "${_THIS_OS}" = "Devuan" ]; then
+    if [ "${_OS_DIST}" = "Debian" ] || [ "${_OS_DIST}" = "Devuan" ]; then
       _LOCALE_GEN_TEST=$(grep -v "^#" /etc/locale.gen 2>&1)
       if [[ ! "${_LOCALE_GEN_TEST}" =~ "en_US.UTF-8 UTF-8" ]]; then
         echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
@@ -246,9 +246,9 @@ remove_systemd() {
     if [ -e "/usr/share/sysvinit/inittab" ]; then
       cp -af /usr/share/sysvinit/inittab /etc/inittab
     fi
-    apt-get remove systemd -y -qq --purge --auto-remove --allow-remove-essential &> /dev/null
-    apt-get remove libnss-systemd -y -qq --purge --auto-remove --allow-remove-essential &> /dev/null
-    apt-get remove systemd-sysv -y -qq --purge --auto-remove --allow-remove-essential &> /dev/null
+    apt-get remove systemd -y --purge --auto-remove --allow-remove-essential -qq 2> /dev/null
+    apt-get remove libnss-systemd -y --purge --auto-remove --allow-remove-essential -qq 2> /dev/null
+    apt-get remove systemd-sysv -y --purge --auto-remove --allow-remove-essential -qq 2> /dev/null
     if [ ! -e "/etc/apt/preferences.d/offsystemd" ]; then
       rm -f /etc/apt/preferences.d/systemd
       echo -e 'Package: systemd\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/offsystemd
@@ -288,8 +288,6 @@ check_root() {
       fi
     fi
     _VM_TEST=$(uname -a 2>&1)
-    _AWS_TEST_A=$(dmidecode -s bios-version 2>&1)
-    _AWS_TEST_B=$(head -c 3 /sys/hypervisor/uuid 2>&1)
     if [ -e "/proc/bean_counters" ]; then
       _VMFAMILY="VZ"
     elif [ -e "/root/.tg.cnf" ]; then
@@ -300,8 +298,13 @@ check_root() {
     if [[ "${_VM_TEST}" =~ "-beng" ]]; then
       _VMFAMILY="VS"
     fi
-    if [[ "${_AWS_TEST_A}" =~ "amazon" ]] \
-      || [[ "${_AWS_TEST_B}" =~ "ec2" ]]; then
+    # Check if dmidecode is available
+    if ! command -v dmidecode &> /dev/null; then
+      apt_clean_update
+      ${_INITINS} dmidecode &> /dev/null
+    fi
+    # Check for Amazon EC2 in the system manufacturer field
+    if dmidecode -s system-manufacturer | grep -i 'Amazon EC2' &> /dev/null; then
       _VMFAMILY="AWS"
     fi
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
@@ -331,35 +334,35 @@ check_root() {
     fi
     _LSB_TEST=$(which lsb_release 2> /dev/null)
     if [ -x "${_LSB_TEST}" ]; then
-      if [ "${_THIS_OS}" != "Debian" ]; then
-        echo "ERROR: Not supported OS detected: ${_THIS_OS}/${_OSR}"
+      if [ "${_OS_DIST}" != "Debian" ]; then
+        echo "ERROR: Not supported OS detected: ${_OS_DIST}/${_OS_CODE}"
         exit 1
       fi
       echo
-      if [ "${_OSR}" = "stretch" ] || [ "${_OSR}" = "jessie" ]; then
+      if [ "${_OS_CODE}" = "stretch" ] || [ "${_OS_CODE}" = "jessie" ]; then
         _APT_MIRROR="archive.debian.org/debian"
-        _APT_REPSRC="${_OSR}-backports"
+        _APT_REPSRC="${_OS_CODE}-backports"
         _SEC_MIRROR="archive.debian.org/debian-security"
-        _SEC_REPSRC="${_OSR}/updates"
-      elif [ "${_OSR}" = "buster" ]; then
+        _SEC_REPSRC="${_OS_CODE}/updates"
+      elif [ "${_OS_CODE}" = "buster" ]; then
         _APT_MIRROR="${_MIRROR}/debian"
-        _APT_REPSRC="${_OSR}-updates"
+        _APT_REPSRC="${_OS_CODE}-updates"
         _SEC_MIRROR="security.debian.org"
-        _SEC_REPSRC="${_OSR}/updates"
-      elif [ "${_OSR}" = "bullseye" ]; then
+        _SEC_REPSRC="${_OS_CODE}/updates"
+      elif [ "${_OS_CODE}" = "bullseye" ]; then
         _APT_MIRROR="${_MIRROR}/debian"
-        _APT_REPSRC="${_OSR}-updates"
+        _APT_REPSRC="${_OS_CODE}-updates"
         _SEC_MIRROR="security.debian.org/debian-security"
-        _SEC_REPSRC="${_OSR}-security"
-      elif [ "${_OSR}" = "bookworm" ]; then
+        _SEC_REPSRC="${_OS_CODE}-security"
+      elif [ "${_OS_CODE}" = "bookworm" ]; then
         _APT_MIRROR="${_MIRROR}/debian"
-        _APT_REPSRC="${_OSR}-updates"
+        _APT_REPSRC="${_OS_CODE}-updates"
         _SEC_MIRROR="security.debian.org/debian-security"
-        _SEC_REPSRC="${_OSR}-security"
+        _SEC_REPSRC="${_OS_CODE}-security"
       fi
       echo "## DEBIAN MAIN REPOSITORIES" > ${aptLiSys}
-      echo "deb http://${_APT_MIRROR} ${_OSR} main contrib non-free" >> ${aptLiSys}
-      echo "deb-src http://${_APT_MIRROR} ${_OSR} main contrib non-free" >> ${aptLiSys}
+      echo "deb http://${_APT_MIRROR} ${_OS_CODE} main contrib non-free" >> ${aptLiSys}
+      echo "deb-src http://${_APT_MIRROR} ${_OS_CODE} main contrib non-free" >> ${aptLiSys}
       echo "" >> ${aptLiSys}
       echo "## MAJOR BUG FIX UPDATES produced after the final release" >> ${aptLiSys}
       echo "deb http://${_APT_MIRROR} ${_APT_REPSRC} main contrib non-free" >> ${aptLiSys}
@@ -371,8 +374,8 @@ check_root() {
       echo
       apt_clean_update
     fi
-    if [ "${_THIS_OS}" != "Debian" ]; then
-      echo "ERROR: Not supported OS detected: ${_THIS_OS}/${_OSR}"
+    if [ "${_OS_DIST}" != "Debian" ]; then
+      echo "ERROR: Not supported OS detected: ${_OS_DIST}/${_OS_CODE}"
       exit 1
     fi
     if [ "${_VMFAMILY}" = "VS" ]; then
@@ -391,20 +394,12 @@ check_root() {
         echo -e 'Package: makedev\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/makedev
         apt_clean_update
       fi
-      apt-get remove fuse -y -qq &> /dev/null
-      apt-get purge fuse -y -qq &> /dev/null
-      apt-get remove udev -y -qq &> /dev/null
-      apt-get purge udev -y -qq &> /dev/null
-      apt-get remove makedev -y -qq &> /dev/null
-      apt-get purge makedev -y -qq &> /dev/null
+      apt-get remove fuse -y --purge --auto-remove -qq 2> /dev/null
+      apt-get remove udev -y --purge --auto-remove -qq 2> /dev/null
+      apt-get remove makedev -y --purge --auto-remove -qq 2> /dev/null
       _PTMX=OK
       if [ -e "/sbin/hdparm" ]; then
-        apt-get remove hdparm -y -qq &> /dev/null
-        apt-get purge hdparm -y -qq &> /dev/null
-      fi
-      if [ -e "/sbin/auditd" ]; then
-        apt-get remove auditd -y -qq &> /dev/null
-        apt-get purge auditd -y -qq &> /dev/null
+        apt-get remove hdparm -y --purge --auto-remove -qq 2> /dev/null
       fi
       _REMOVE_LINKS="buagent \
                      checkroot.sh \
@@ -451,7 +446,7 @@ check_root() {
       /sbin/insserv -v -d &> /dev/null
     fi
   else
-    echo "ERROR: This script should be ran as a root user"
+    echo "ERROR: This script should be run as a root user"
     exit 1
   fi
   _DF_TEST=$(df -kTh / -l \
@@ -483,6 +478,7 @@ find_fast_mirror_early() {
     fi
     apt_clean_update
     ${_INSTAPP} netcat &> /dev/null
+    ${_INSTAPP} netcat-traditional &> /dev/null
     wait
   fi
   ffMirr=$(which ffmirror 2>&1)
@@ -521,7 +517,7 @@ sysctl_update() {
     mkdir -p /var/backups
     cd /var/backups
     rm -f /var/backups/sysctl.conf
-    curl ${crlGet} "${urlHmr}/conf/sysctl.conf" -o sysctl.conf
+    curl ${crlGet} "${urlHmr}/conf/var/sysctl.conf" -o sysctl.conf
     if [ -e "/var/backups/sysctl.conf" ]; then
       cp -af /var/backups/sysctl.conf /etc/sysctl.conf
     fi
@@ -595,23 +591,23 @@ _UP_LOG="${_LOG_DIR}/$(basename "$0")-up-${_NOW}.log"
 
 create_locks() {
   echo "running ${tVr} `hostname` create_locks procedure..."
-  if [ ! -e "/var/run/mysql_restart_running.pid" ]; then
+  if [ ! -e "/run/mysql_restart_running.pid" ]; then
     echo "Creating locks..."
-    touch /var/run/mysql_restart_running.pid
+    touch /run/mysql_restart_running.pid
   fi
 }
 
 remove_locks() {
   echo "running ${tVr} `hostname` remove_locks procedure..."
-  if [ -e "/var/run/mysql_restart_running.pid" ]; then
+  if [ -e "/run/mysql_restart_running.pid" ]; then
     echo "Removing locks..."
-    rm -f /var/run/mysql_restart_running.pid
+    rm -f /run/mysql_restart_running.pid
   fi
 }
 
 check_restart_if_running() {
   echo "running ${tVr} `hostname` check_restart_if_running procedure..."
-  if [ -e "/var/run/mysql_restart_running.pid" ]; then
+  if [ -e "/run/mysql_restart_running.pid" ]; then
     echo "MySQLD restart procedure in progress?"
     echo "Nothing to do, let's quit now. Bye!"
     exit 1
@@ -643,7 +639,7 @@ start_sql() {
     service mysql start
   fi
   while [ -z "${_IS_MYSQLD_RUNNING}" ] \
-    || [ ! -e "/var/run/mysqld/mysqld.sock" ]; do
+    || [ ! -e "/run/mysqld/mysqld.sock" ]; do
     _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
     echo "Waiting for MySQLD graceful start..."
     sleep 3
@@ -664,13 +660,29 @@ stop_sql() {
   _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
   if [ ! -z "${_IS_MYSQLD_RUNNING}" ]; then
     echo "Preparing MySQLD for quick shutdown..."
+    _DBS_TEST=$(which mysql 2>&1)
+    if [ ! -z "${_DBS_TEST}" ]; then
+      _DB_SERVER_TEST=$(mysql -V 2>&1)
+    fi
+    if [[ "${_DB_SERVER_TEST}" =~ "Ver 8.4." ]]; then
+      _DB_V=8.4
+    elif [[ "${_DB_SERVER_TEST}" =~ "Ver 8.3." ]]; then
+      _DB_V=8.3
+    elif [[ "${_DB_SERVER_TEST}" =~ "Ver 8.0." ]]; then
+      _DB_V=8.0
+    elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 5.7." ]]; then
+      _DB_V=5.7
+    fi
     mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
     mysql -u root -e "SET GLOBAL innodb_change_buffering = 'none';" &> /dev/null
     mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null
     mysql -u root -e "SET GLOBAL innodb_io_capacity = 2000;" &> /dev/null
     mysql -u root -e "SET GLOBAL innodb_io_capacity_max = 4000;" &> /dev/null
-    mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_pct = 100;" &> /dev/null
-    mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_now = ON;" &> /dev/null
+    if [ "${_DB_V}" = "5.7" ]; then
+      mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_pct = 100;" &> /dev/null
+      mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_now = ON;" &> /dev/null
+    fi
+    mysql -u root -e "SET GLOBAL innodb_fast_shutdown = 1;" &> /dev/null
     echo "Stopping MySQLD now..."
     update-rc.d -f mysql remove &> /dev/null
     service mysql stop
@@ -733,9 +745,6 @@ if_restart_sql() {
       echo "INFO: ${_DB_SERVER} diff3 ${diffMyTest}"
     fi
   fi
-  if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
-    mkdir -p /etc/mysql/mariadb.conf.d/
-  fi
   myUptime=$(mysqladmin -u root version | grep -i uptime 2>&1)
   myUptime=$(echo -n ${myUptime} | fmt -su -w 2500 2>&1)
   echo "INFO: ${_DB_SERVER} ${myUptime}"
@@ -754,7 +763,7 @@ if_restart_sql() {
 check_mysql_up() {
   echo "running ${tVr} `hostname` check_mysql_up procedure..."
   while [ -z "${_IS_MYSQLD_RUNNING}" ] \
-    || [ ! -e "/var/run/mysqld/mysqld.sock" ]; do
+    || [ ! -e "/run/mysqld/mysqld.sock" ]; do
     _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
     echo "Waiting for MySQLD availability..."
     sleep 15
@@ -841,6 +850,7 @@ EOFMYSQL
 #
 # Update innodb_log_file_size.
 innodb_log_file_size_update() {
+  check_mysql_version
   echo "running ${tVr} `hostname` innodb_log_file_size_update procedure..."
   echo "INFO: InnoDB log file will be set to ${_INNODB_LOG_FILE_SIZE_MB}..."
   mysql -u root -e "SET GLOBAL innodb_fast_shutdown = 0;" &> /dev/null
@@ -851,9 +861,20 @@ innodb_log_file_size_update() {
     sleep 1
     mv -f /var/lib/mysql/ib_logfile0 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
     mv -f /var/lib/mysql/ib_logfile1 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
-    sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
+    if [ "${_DB_V}" = "5.7" ]; then
+      sed -i "s/.*innodb_redo_log_capacity.*/#innodb_redo_log_capacity    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
+      wait
+      sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
+      wait
+      echo "innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}" > /root/.my.cluster_innodb_log_file_size.txt
+    else
+      sed -i "s/.*innodb_redo_log_capacity.*/innodb_redo_log_capacity    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
+      wait
+      sed -i "s/.*innodb_log_file_size.*/#innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
+      wait
+      echo "innodb_redo_log_capacity    = ${_INNODB_LOG_FILE_SIZE_MB}" > /root/.my.cluster_innodb_log_file_size.txt
+    fi
     wait
-    echo "innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}" > /root/.my.cluster_innodb_log_file_size.txt
     start_sql "chain"
   else
     echo "INFO: Waiting 180s for ${_DB_SERVER} clean shutdown..."
@@ -865,9 +886,19 @@ innodb_log_file_size_update() {
       mrun "sleep 1"
       mv -f /var/lib/mysql/ib_logfile0 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
       mv -f /var/lib/mysql/ib_logfile1 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
-      sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
-      wait
-      echo "innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}" > /root/.my.cluster_innodb_log_file_size.txt
+      if [ "${_DB_V}" = "5.7" ]; then
+        sed -i "s/.*innodb_redo_log_capacity.*/#innodb_redo_log_capacity    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
+        wait
+        sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
+        wait
+        echo "innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}" > /root/.my.cluster_innodb_log_file_size.txt
+      else
+        sed -i "s/.*innodb_redo_log_capacity.*/innodb_redo_log_capacity    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
+        wait
+        sed -i "s/.*innodb_log_file_size.*/#innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
+        wait
+        echo "innodb_redo_log_capacity    = ${_INNODB_LOG_FILE_SIZE_MB}" > /root/.my.cluster_innodb_log_file_size.txt
+      fi
       start_sql "chain"
     else
       echo "WARN: ${_DB_SERVER} refused to stop, InnoDB log file size not updated"
@@ -1262,7 +1293,11 @@ tune_memory_limits() {
   fi
   tune_sql_memory_limits
   sql_conf_update
+  PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
+  PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
+  PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
   if [[ "${PrTestPower}" =~ "POWER" ]] \
+    || [[ "${PrTestPhantom}" =~ "PHANTOM" ]] \
     || [ -e "/root/.my.cluster_root_pwd.txt" ] \
     || [[ "${PrTestCluster}" =~ "CLUSTER" ]]; then
     _UXC_SQL="${_MXC_SQL}"
@@ -1300,7 +1335,7 @@ tune_memory_limits() {
 
 tune_sql() {
   echo "running ${tVr} `hostname` tune_sql procedure..."
-  rm -f /var/run/mysql_restart_running.pid
+  rm -f /run/mysql_restart_running.pid
   check_mysql_up
   tune_memory_limits
   if_restart_sql
@@ -1309,15 +1344,18 @@ tune_sql() {
 
 db_head_to_stretch_first()
 {
-  if [ -e "/var/run/sshd.pid" ] && [ -e "/var/run/crond.pid" ]; then
+  if [ -e "/run/sshd.pid" ] && [ -e "/run/crond.pid" ]; then
     _HOST_HOSTNAME=`hostname 2>&1`
-    if [[ "${_OSR}" =~ "stretch" ]]; then
+    if [[ "${_OS_CODE}" =~ "stretch" ]]; then
       echo "The ${_HOST_HOSTNAME} is already running Stretch"
-    elif [[ "${_OSR}" =~ "jessie" ]]; then
+    elif [[ "${_OS_CODE}" =~ "jessie" ]]; then
   	  cat /etc/resolv.conf > /var/backups/resolv.conf.pre-dist-upgrade
   	  rm -f /etc/resolv.conf
-  	  echo "nameserver 8.8.8.8" >/etc/resolv.conf
-  	  echo "nameserver 8.8.4.4" >>/etc/resolv.conf
+  	  echo "nameserver 127.0.0.1" > /etc/resolv.conf
+      echo "nameserver 1.1.1.1" >> /etc/resolv.conf
+      echo "nameserver 1.0.0.1" >> /etc/resolv.conf
+  	  echo "nameserver 8.8.8.8" >> /etc/resolv.conf
+  	  echo "nameserver 8.8.4.4" >> /etc/resolv.conf
   	  cat /etc/resolv.conf
   	  if [ ! -e "/etc/apt/preferences.d/offsystemd" ]; then
   	    rm -f /etc/apt/preferences.d/systemd
@@ -1325,21 +1363,24 @@ db_head_to_stretch_first()
         echo -e '\n\nPackage: *systemd*\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/offsystemd
       fi
   	  apt_clean_update
-  	  echo "curl install"           | dpkg --set-selections
-  	  echo "git install"            | dpkg --set-selections
-  	  echo "git-core install"       | dpkg --set-selections
-  	  echo "git-man install"        | dpkg --set-selections
-  	  echo "libssl-dev install"     | dpkg --set-selections
-  	  echo "openssh-client install" | dpkg --set-selections
-  	  echo "openssh-server install" | dpkg --set-selections
-  	  echo "openssh-sftp-server install" | dpkg --set-selections
-  	  echo "openssl install"        | dpkg --set-selections
-  	  echo "ssh install"            | dpkg --set-selections
-  	  echo "zlib1g install"         | dpkg --set-selections
-  	  echo "zlib1g-dev install"     | dpkg --set-selections
-  	  echo "zlibc install"          | dpkg --set-selections
+      echo "curl install"           | dpkg --set-selections &> /dev/null
+      echo "git install"            | dpkg --set-selections &> /dev/null
+      echo "git-core install"       | dpkg --set-selections &> /dev/null
+      echo "git-man install"        | dpkg --set-selections &> /dev/null
+      echo "libssl-dev install"     | dpkg --set-selections &> /dev/null
+      echo "nginx install"          | dpkg --set-selections &> /dev/null
+      echo "nginx-common install"   | dpkg --set-selections &> /dev/null
+      echo "openssh-client install" | dpkg --set-selections &> /dev/null
+      echo "openssh-server install" | dpkg --set-selections &> /dev/null
+      echo "openssh-sftp-server install" | dpkg --set-selections &> /dev/null
+      echo "openssl install"        | dpkg --set-selections &> /dev/null
+      echo "ssh install"            | dpkg --set-selections &> /dev/null
+      echo "sysvinit-core install"  | dpkg --set-selections &> /dev/null
+      echo "sysvinit-utils install" | dpkg --set-selections &> /dev/null
+      echo "zlib1g install"         | dpkg --set-selections &> /dev/null
+      echo "zlib1g-dev install"     | dpkg --set-selections &> /dev/null
+      echo "zlibc install"          | dpkg --set-selections &> /dev/null
   	  apt-get upgrade ${nrmUpArg}
-  	  apt-get full-upgrade ${nrmUpArg}
   	  apt-get install lsb-release ${nrmUpArg}
       ### Check if we can continue
       _AUDIT_DPKG=$(dpkg --audit 2>&1)
@@ -1376,9 +1417,7 @@ db_head_to_stretch_first()
       sed -i "s/jessie/stretch/g"   /etc/apt/sources.list.d/*
       wait
       if [ -e "/etc/apt/apt.conf" ]; then
-        sed -i "s/APT::Default-Release.*/APT::Default-Release \"stretch\";/g" \
-        /etc/apt/apt.conf &> /dev/null
-        wait
+        rm -f /etc/apt/apt.conf
       fi
   	  cat /etc/apt/sources.list
   	  apt_clean_update
@@ -1387,6 +1426,7 @@ db_head_to_stretch_first()
   	  apt-get install apt dpkg aptitude util-linux ${dstUpArg}
   	  apt-get upgrade ${dstUpArg}
   	  apt-get dist-upgrade ${dstUpArg}
+  	  [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
   	  apt-get install lsb-release ${dstUpArg}
   	  if [ -x "/lib/systemd/systemd" ]; then
         ls -la /lib/systemd/systemd
@@ -1412,9 +1452,9 @@ db_head_to_stretch_first()
 
 db_head_to_stretch_second()
 {
-  if [ -e "/var/run/sshd.pid" ] && [ -e "/var/run/crond.pid" ]; then
+  if [ -e "/run/sshd.pid" ] && [ -e "/run/crond.pid" ]; then
     _HOST_HOSTNAME=`hostname 2>&1`
-    if [[ "${_OSR}" =~ "stretch" ]]; then
+    if [[ "${_OS_CODE}" =~ "stretch" ]]; then
   	  if [ -x "/lib/systemd/systemd" ]; then
         ls -la /lib/systemd/systemd
         apt_clean_update
@@ -1424,9 +1464,9 @@ db_head_to_stretch_second()
         if [ -e "/usr/share/sysvinit/inittab" ]; then
           cp -af /usr/share/sysvinit/inittab /etc/inittab
         fi
-        apt-get remove systemd -y -qq --purge --auto-remove --allow-remove-essential &> /dev/null
-        apt-get remove libnss-systemd -y -qq --purge --auto-remove --allow-remove-essential &> /dev/null
-        apt-get remove systemd-sysv -y -qq --purge --auto-remove --allow-remove-essential &> /dev/null
+        apt-get remove systemd -y --purge --auto-remove --allow-remove-essential -qq 2> /dev/null
+        apt-get remove libnss-systemd -y --purge --auto-remove --allow-remove-essential -qq 2> /dev/null
+        apt-get remove systemd-sysv -y --purge --auto-remove --allow-remove-essential -qq 2> /dev/null
         apt-get autoremove --purge -y -qq 2> /dev/null
         apt-get autoclean -y -qq 2> /dev/null
         if [ ! -e "/etc/apt/preferences.d/offsystemd" ]; then
@@ -1438,6 +1478,7 @@ db_head_to_stretch_second()
   	  apt_clean_update
   	  apt-get upgrade ${nrmUpArg}
   	  apt-get dist-upgrade ${nrmUpArg}
+  	  [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
   	  apt-get install lsb-release ${nrmUpArg}
   	  echo "Upgrade OS to Stretch 2nd stage complete!"
       echo "Bye!"
@@ -1457,5 +1498,7 @@ case "$1" in
   *)       tune_sql
   ;;
 esac
+
+exit 0
 
 ###EOF2024###

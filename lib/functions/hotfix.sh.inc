@@ -7,13 +7,13 @@ fix_core_dgd() {
   # https://www.drupal.org/SA-CORE-2014-005
   # sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g" /root/.barracuda.cnf
   if [ -e "/var/xdrago" ] \
-    && [ -e "/data/disk/arch/sql" ] \
+    && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${saPatch}" ]; then
     mkdir -p /var/xdrago/conf
     cp -a ${bldPth}/aegir/patches/7-core/${saCoreS}.patch -o ${saPatch}
   fi
   if [ -e "/var/xdrago" ] \
-    && [ -e "/data/disk/arch/sql" ] \
+    && [ -e "/var/aegir/drush" ] \
     && [ -e "${saPatch}" ] \
     && [ ! -e "${pthLog}/${saCoreN}-fixed-d7.log" ]; then
     if [ -d "/data/all/000/core" ]; then
@@ -34,7 +34,7 @@ fix_core_dgd() {
   fi
   # https://www.drupal.org/SA-CORE-2014-005 for ancient platforms
   if [ -e "/var/xdrago" ] \
-    && [ -e "/data/disk/arch/sql" ] \
+    && [ -e "/var/aegir/drush" ] \
     && [ -e "${saPatch}" ]; then
     if [ -d "/data/all" ] \
       && [ ! -e "${pthLog}/legacy-${saCoreN}-fixed-d7.log" ]; then
@@ -67,9 +67,9 @@ fix_core_dgd() {
   fi
   # https://www.drupal.org/SA-CORE-2014-005 for custom platforms
   if [ -e "/var/xdrago" ] \
-    && [ -e "/data/disk/arch/sql" ] \
+    && [ -e "/var/aegir/drush" ] \
     && [ -e "${saPatch}" ]; then
-    if [ -d "/data/disk" ] \
+    if [ -d "/data/u" ] \
       && [ ! -e "${pthLog}/batch-custom-${saCoreN}-fixed-d7.log" ]; then
       for File in `find /data/disk/*/static/*/${saIncDb} \
         -maxdepth 0 -mindepth 0 | sort`; do

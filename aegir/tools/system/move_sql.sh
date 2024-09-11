@@ -22,22 +22,22 @@ fi
 
 create_locks() {
   echo "Creating locks..."
-  touch /var/run/boa_wait.pid
-  touch /var/run/fmp_wait.pid
-  touch /var/run/restarting_fmp_wait.pid
-  touch /var/run/mysql_restart_running.pid
+  touch /run/boa_wait.pid
+  touch /run/fmp_wait.pid
+  touch /run/restarting_fmp_wait.pid
+  touch /run/mysql_restart_running.pid
 }
 
 remove_locks() {
   echo "Removing locks..."
-  [ -e "/var/run/boa_wait.pid" ] && rm -f /var/run/boa_wait.pid
-  rm -f /var/run/fmp_wait.pid
-  rm -f /var/run/restarting_fmp_wait.pid
-  rm -f /var/run/mysql_restart_running.pid
+  [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
+  rm -f /run/fmp_wait.pid
+  rm -f /run/restarting_fmp_wait.pid
+  rm -f /run/mysql_restart_running.pid
 }
 
 check_running() {
-  if [ -e "/var/run/mysql_restart_running.pid" ]; then
+  if [ -e "/run/mysql_restart_running.pid" ]; then
     echo "MySQLD restart procedure in progress?"
     echo "Nothing to do, let's quit now. Bye!"
     exit 1
@@ -60,7 +60,7 @@ start_sql() {
   renice ${_B_NICE} -p $$ &> /dev/null
   service mysql start &> /dev/null
   while [ -z "${_IS_MYSQLD_RUNNING}" ] \
-    || [ ! -e "/var/run/mysqld/mysqld.sock" ]; do
+    || [ ! -e "/run/mysqld/mysqld.sock" ]; do
     _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
     echo "Waiting for MySQLD graceful start..."
     sleep 3
@@ -103,10 +103,20 @@ stop_sql() {
 
   _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
   if [ ! -z "${_IS_MYSQLD_RUNNING}" ]; then
-    if [ "${_DB_SERIES}" = "10.4" ] \
-      || [ "${_DB_SERIES}" = "10.3" ] \
-      || [ "${_DB_SERIES}" = "10.2" ] \
-      || [ "${_DB_SERIES}" = "5.7" ]; then
+    _DBS_TEST=$(which mysql 2>&1)
+    if [ ! -z "${_DBS_TEST}" ]; then
+      _DB_SERVER_TEST=$(mysql -V 2>&1)
+    fi
+    if [[ "${_DB_SERVER_TEST}" =~ "Ver 8.4." ]]; then
+      _DB_V=8.4
+    elif [[ "${_DB_SERVER_TEST}" =~ "Ver 8.3." ]]; then
+      _DB_V=8.3
+    elif [[ "${_DB_SERVER_TEST}" =~ "Ver 8.0." ]]; then
+      _DB_V=8.0
+    elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 5.7." ]]; then
+      _DB_V=5.7
+    fi
+    if [ ! -z "${_DB_V}" ]; then
       echo "Preparing MySQLD for quick shutdown..."
       _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
       _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
@@ -115,9 +125,12 @@ stop_sql() {
       mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null
       mysql -u root -e "SET GLOBAL innodb_io_capacity = 2000;" &> /dev/null
       mysql -u root -e "SET GLOBAL innodb_io_capacity_max = 4000;" &> /dev/null
-      mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_pct = 100;" &> /dev/null
-      mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_now = ON;" &> /dev/null
+      if [ "${_DB_V}" = "5.7" ]; then
+        mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_pct = 100;" &> /dev/null
+        mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_now = ON;" &> /dev/null
+      fi
     fi
+    mysql -u root -e "SET GLOBAL innodb_fast_shutdown = 1;" &> /dev/null
     echo "Stopping MySQLD now..."
     service mysql stop &> /dev/null
   else
