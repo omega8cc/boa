@@ -1191,11 +1191,13 @@ db_server_install() {
     if [ "${_SQL_UPGRADE}" = "YES" ]; then
       msg "INFO: Running ${_DB_SERVER} upgrade..."
       msg "WAIT: This may take a while, please wait..."
-      bash -c 'echo -e "#!/bin/bash\ntrue" > /bin/systemctl'
-      chmod +x /bin/systemctl
-      [ -e "${locCnf}/var/mysql" ] && cp -af ${locCnf}/var/mysql /etc/init.d/mysql
-      chmod 755 /etc/init.d/mysql
-      mrun "update-rc.d mysql defaults" 2> /dev/null
+      if [ "${_DB_SERIES}" != "5.7" ]; then
+        bash -c 'echo -e "#!/bin/bash\ntrue" > /bin/systemctl'
+        chmod +x /bin/systemctl
+        [ -e "${locCnf}/var/mysql" ] && cp -af ${locCnf}/var/mysql /etc/init.d/mysql
+        chmod 755 /etc/init.d/mysql
+        mrun "update-rc.d mysql defaults" 2> /dev/null
+      fi
       sql_conf_update
       if [ ! -e "/root/.proxy.cnf" ]; then
         check_mysql_version
