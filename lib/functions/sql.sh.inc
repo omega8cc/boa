@@ -240,11 +240,6 @@ sql_strict_upgrade_path() {
   else
     _SQL_FORCE_REINSTALL=YES
   fi
-#   if [[ "${_DB_SERVER_TEST}" =~ "Distrib ${_DB_SERIES}." ]]; then
-#     _SQL_UPGRADE=NO
-#   else
-#     _SQL_UPGRADE=YES
-#   fi
   if [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
     _ALL_FORCE_REINSTALL=YES
   else
