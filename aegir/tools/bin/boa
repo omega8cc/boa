@@ -1727,8 +1727,9 @@ display_version() {
 display_time() {
   local service=$1
   local pidfile=$2
+
   if [ ! -f "$pidfile" ]; then
-    echo "  _XSE $service is not running (PID file not found)."
+    not_running_services+=("  _XSE $service is not running (PID file not found).")
     return
   fi
 
@@ -1737,7 +1738,7 @@ display_time() {
 
   # Check if the process is running
   if ! ps -p "$pid" > /dev/null 2>&1; then
-    echo "  _XSE $service is not running (stale PID file)."
+    not_running_services+=("  _XSE $service is not running (stale PID file).")
     return
   fi
 
@@ -1749,16 +1750,16 @@ display_time() {
   elapsed=$((current_time - file_time))
 
   if [ $elapsed -lt 60 ]; then
-    echo "  _XSE $service is running for $elapsed seconds."
+    running_services+=("  _XSE $service is running for $elapsed seconds.")
   elif [ $elapsed -lt 3600 ]; then
     minutes=$((elapsed / 60))
-    echo "  _XSE $service is running for $minutes minutes."
+    running_services+=("  _XSE $service is running for $minutes minutes.")
   elif [ $elapsed -lt 172800 ]; then
     hours=$((elapsed / 3600))
-    echo "  _XSE $service is running for $hours hours."
+    running_services+=("  _XSE $service is running for $hours hours.")
   else
     days=$((elapsed / 86400))
-    echo "  _XSE $service is running for $days days."
+    running_services+=("  _XSE $service is running for $days days.")
   fi
 }
 
@@ -1968,6 +1969,28 @@ display_info() {
     echo
     echo "  _XSE Key Services Uptime Report"
     echo
+    # Arrays to store results
+    running_services=()
+    not_running_services=()
+    # Indexed array to hold the services in the desired order
+    services_order=(
+      "sshd"
+      "crond"
+      "nginx"
+      "php74-fpm"
+      "php81-fpm"
+      "php82-fpm"
+      "php83-fpm"
+      "mysql"
+      "redis"
+      "solr7"
+      "jetty9"
+      "pure-ftpd"
+      "lfd"
+      "rsyslogd"
+      "unbound"
+      "vnstat"
+    )
     # List of services and their respective PID files
     declare -A services=(
       ["sshd"]="/run/sshd.pid"
@@ -1987,10 +2010,28 @@ display_info() {
       ["unbound"]="/run/unbound/unbound.pid"
       ["vnstat"]="/run/vnstat/vnstat.pid"
     )
-    # Loop through the services and check their uptime
-    for service in "${!services[@]}"; do
+    # Loop through the services in the correct order
+    for service in "${services_order[@]}"; do
       display_time "$service" "${services[$service]}"
     done
+    # Conditionally display headers only if there are both running and not running services
+    if [ ${#running_services[@]} -gt 0 ]; then
+      if [ ${#not_running_services[@]} -gt 0 ]; then
+        echo "  _XSE Running services:"
+        echo
+      fi
+      for service in "${running_services[@]}"; do
+        echo "$service"
+      done
+    fi
+    if [ ${#not_running_services[@]} -gt 0 ]; then
+      echo
+      echo "  _XSE Not running services:"
+      echo
+      for service in "${not_running_services[@]}"; do
+        echo "$service"
+      done
+    fi
     echo
     if [ -e "/var/log/barracuda_log.txt" ]; then
       if [ "${mode}" = "report" ]; then
