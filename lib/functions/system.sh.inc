@@ -654,6 +654,8 @@ tune_memory_limits() {
     elif [ "${_PHP_FPM_TIMEOUT}" -gt 180 ]; then
       _PHP_FPM_TIMEOUT=180
     fi
+  else
+    _PHP_FPM_TIMEOUT=180
   fi
   _MXC_SQL=$(( _L_PHP_FPM_WORKERS * 4 ))
   if [ "${_DEBUG_MODE}" = "YES" ]; then
