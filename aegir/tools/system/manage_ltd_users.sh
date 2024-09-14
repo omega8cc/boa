@@ -1070,6 +1070,8 @@ satellite_default_fpm_workers() {
     elif [ "${_PHP_FPM_TIMEOUT}" -gt 180 ]; then
       _PHP_FPM_TIMEOUT=180
     fi
+  else
+    _PHP_FPM_TIMEOUT=180
   fi
 
   if [ -e "/root/.dev.server.cnf" ]; then
