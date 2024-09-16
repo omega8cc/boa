@@ -26,7 +26,7 @@ exit;
 #############################################################################
 sub makeactions
 {
-  $this_path = "/var/xdrago/monitor/$this_filename";
+  $this_path = "/var/xdrago/monitor/log/$this_filename.log";
   if (!-e "$this_path") {
     $intro = <<INTRO
 This report is generated automatically when new segfault is discovered.
@@ -55,7 +55,7 @@ INTROX
     `echo "$intro" >> $this_path`;
     #`echo "$intrx" >> $this_path`;
   }
-  $this_archive="/var/xdrago/monitor/segfault_alert_archive";
+  $this_archive="/var/xdrago/monitor/log/$this_filename.archive.log";
   if (!-f "$this_archive") {
     `touch $this_archive`;
   }
@@ -197,8 +197,8 @@ sub send_alert
   if ($mailx_test =~ /(built for Linux)/i) {
     `cat $this_path | s-nail -b notify\@omega8.cc -s "PHP Segfault Alert for [$dx] at [$s] on $t" $cmail`;
   }
-  `cat /var/xdrago/monitor/segfault_alert >> /var/xdrago/monitor/segfault_alert_archive`;
-  `rm -f /var/xdrago/monitor/segfault_alert`;
+  `cat /var/xdrago/monitor/log/$this_filename.log >> /var/xdrago/monitor/log/$this_filename.archive.log`;
+  `rm -f /var/xdrago/monitor/log/$this_filename.log`;
 }
 
 ###EOF2024###

@@ -26,8 +26,8 @@ exit;
 #############################################################################
 sub makeactions
 {
-  if (-e "/var/xdrago/monitor/ftp.log") {
-    $this_path = "/var/xdrago/monitor/ftp.log";
+  if (-e "/var/xdrago/monitor/log/ftp.log") {
+    $this_path = "/var/xdrago/monitor/log/ftp.log";
     open (NOT,"<$this_path");
     @banetable = <NOT>;
     close (NOT);
@@ -58,8 +58,8 @@ sub makeactions
     &check_ip($VISITOR);
     if ($thissumar > $maxnumber) {
       if (!$blocked) {
-        `echo "$VISITOR # [x$thissumar] $times" >> /var/xdrago/monitor/ftp.log`;
-        `echo "$VISITOR # [x$thissumar] $times" >> /var/xdrago/monitor/$this_filename.archive.log`;
+        `echo "$VISITOR # [x$thissumar] $times" >> /var/xdrago/monitor/log/ftp.log`;
+        `echo "$VISITOR # [x$thissumar] $times" >> /var/xdrago/monitor/log/$this_filename.archive.log`;
         if (-e "/etc/csf/csf.deny" && -e "/usr/sbin/csf" && !-e "/var/xdrago/guest-fire.sh") {
           `/usr/sbin/csf -td $VISITOR 3600 -p 21`;
         }
@@ -101,7 +101,7 @@ sub verify_timestamp
 sub check_ip
 {
   local($IP) = @_;
-  if (-e "/var/xdrago/monitor/ftp.log") {
+  if (-e "/var/xdrago/monitor/log/ftp.log") {
     foreach $banerecord (@banetable) {
       chomp ($banerecord);
       local($ifbanned, $rest) = split(/\s+/,$banerecord);

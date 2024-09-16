@@ -15,7 +15,7 @@ $now_is=`date +%b:%d:%H:%M`;
 chomp($now_is);
 &makeactions;
 if ($status ne "CLEAN") {
-  `perl /var/xdrago/checksql.cgi`;
+  `perl /var/xdrago/checksql.pl`;
 }
 else {
   `touch /var/xdrago/log/last-sqlcheck-clean`;
