@@ -417,26 +417,19 @@ count_cpu() {
   fi
 }
 
-if [ -e "/root/.barracuda.cnf" ]; then
-  source /root/.barracuda.cnf
-  _CPU_SPIDER_RATIO=${_CPU_SPIDER_RATIO//[^0-9]/}
-  _CPU_MAX_RATIO=${_CPU_MAX_RATIO//[^0-9]/}
-  _CPU_CRIT_RATIO=${_CPU_CRIT_RATIO//[^0-9]/}
-  _B_NICE=${_B_NICE//[^0-9]/}
-fi
+[ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
 
-if [ -z "${_CPU_SPIDER_RATIO}" ]; then
-  _CPU_SPIDER_RATIO=3
-fi
-if [ -z "${_CPU_MAX_RATIO}" ]; then
-  _CPU_MAX_RATIO=6
-fi
-if [ -z "${_CPU_CRIT_RATIO}" ]; then
-  _CPU_CRIT_RATIO=9
-fi
-if [ -z "${_B_NICE}" ]; then
-  _B_NICE=10
-fi
+export _B_NICE=${_B_NICE//[^0-9]/}
+: "${_B_NICE:=10}"
+
+export _CPU_SPIDER_RATIO=${_CPU_SPIDER_RATIO//[^0-9]/}
+: "${_CPU_SPIDER_RATIO:=3}"
+
+export _CPU_MAX_RATIO=${_CPU_MAX_RATIO//[^0-9]/}
+: "${_CPU_MAX_RATIO:=6}"
+
+export _CPU_CRIT_RATIO=${_CPU_CRIT_RATIO//[^0-9]/}
+: "${_CPU_CRIT_RATIO:=9}"
 
 if [ ! -e "/var/tmp/fpm" ]; then
   mkdir -p /var/tmp/fpm

@@ -215,13 +215,9 @@ clean_pid_exit() {
 
 check_root() {
   if [ `whoami` = "root" ]; then
-    if [ -e "/root/.barracuda.cnf" ]; then
-      source /root/.barracuda.cnf
-      _B_NICE=${_B_NICE//[^0-9]/}
-    fi
-    if [ -z "${_B_NICE}" ]; then
-      _B_NICE=10
-    fi
+    [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
+    export _B_NICE=${_B_NICE//[^0-9]/}
+    : "${_B_NICE:=10}"
     renice ${_B_NICE} -p $$ &> /dev/null
     ionice -c2 -n7 -p $$
   else
@@ -1842,9 +1838,7 @@ if prompt_yes_no "${tPrmt}?" ; then
     mrun "sleep 30"
   fi
   msg "INFO: Tuning in progress, please wait..."
-  if [ -e "/root/.barracuda.cnf" ]; then
-    source /root/.barracuda.cnf
-  fi
+  [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
   restore_default_php
   php_conf_update
   tune_php
@@ -1861,9 +1855,7 @@ else
     service cron stop &> /dev/null
     mrun "sleep 30"
   fi
-  if [ -e "/root/.barracuda.cnf" ]; then
-    source /root/.barracuda.cnf
-  fi
+  [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
   restore_default_php
   php_conf_update
   restore_default_sql

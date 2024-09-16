@@ -3120,9 +3120,7 @@ fi
 mkdir -p /var/xdrago/log/daily
 mkdir -p /var/xdrago/log/le
 #
-if [ -e "/root/.barracuda.cnf" ]; then
-  source /root/.barracuda.cnf
-fi
+[ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
 #
 find_fast_mirror_early
 #

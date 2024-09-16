@@ -18,6 +18,7 @@ export tRee="${tRee}"
 
 check_root() {
   if [ `whoami` = "root" ]; then
+    [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
     ionice -c2 -n7 -p $$
     renice 19 -p $$
     chmod a+w /dev/null
@@ -60,9 +61,6 @@ apt_clean_update() {
   ${_APT_UPDATE} -qq 2> /dev/null
 }
 
-if [ -e "/root/.barracuda.cnf" ]; then
-  source /root/.barracuda.cnf
-fi
 
 if [ "${_ENABLE_GOACCESS}" != "YES" ]; then
   if [ -d "/var/www/adminer/access/archive" ]; then

@@ -64,13 +64,9 @@ echo "INFO: Waiting $n seconds on `date` before running backup..."
 sleep $n
 echo "INFO: Starting backup on `date`"
 
-if [ -e "/root/.barracuda.cnf" ]; then
-  source /root/.barracuda.cnf
-  _B_NICE=${_B_NICE//[^0-9]/}
-fi
-if [ -z "${_B_NICE}" ]; then
-  _B_NICE=10
-fi
+[ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
+export _B_NICE=${_B_NICE//[^0-9]/}
+: "${_B_NICE:=10}"
 
 _SQL_CACHE_EXC_DEF="cache_bootstrap cache_discovery cache_config"
 

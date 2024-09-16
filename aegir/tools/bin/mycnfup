@@ -272,13 +272,9 @@ check_root() {
     echo "22 22   * * *   root    du -s /var/lib/mysql/* > /root/.du.sql" >> /etc/crontab
     sed -i "/^$/d"  /etc/crontab
     grep du.sql /etc/crontab
-    if [ -e "/root/.barracuda.cnf" ]; then
-      source /root/.barracuda.cnf
-      _B_NICE=${_B_NICE//[^0-9]/}
-    fi
-    if [ -z "${_B_NICE}" ]; then
-      _B_NICE=10
-    fi
+    [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
+    export _B_NICE=${_B_NICE//[^0-9]/}
+    : "${_B_NICE:=10}"
     renice ${_B_NICE} -p $$ &> /dev/null
     chmod a+w /dev/null
     if [ ! -e "/dev/fd" ]; then

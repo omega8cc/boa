@@ -14,13 +14,9 @@ export tRee="${tRee}"
 
 check_root() {
   if [ `whoami` = "root" ]; then
-    if [ -e "/root/.barracuda.cnf" ]; then
-      source /root/.barracuda.cnf
-      _B_NICE=${_B_NICE//[^0-9]/}
-    fi
-    if [ -z "${_B_NICE}" ]; then
-      _B_NICE=10
-    fi
+    [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
+    export _B_NICE=${_B_NICE//[^0-9]/}
+    : "${_B_NICE:=10}"
     chmod a+w /dev/null
   else
     echo "ERROR: This script should be run as a root user"
@@ -203,9 +199,7 @@ check_dns_curl() {
 
 if [ ! -e "/run/boa_run.pid" ]; then
   check_dns_curl
-  if [ -e "/root/.barracuda.cnf" ]; then
-    source /root/.barracuda.cnf
-  fi
+  [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
   rm -f /tmp/*error*
   wget -qO- http://${_USE_MIR}/versions/${tRee}/boa/BOA.sh.txt | bash
   wait

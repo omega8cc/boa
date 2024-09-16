@@ -72,9 +72,7 @@ aptYesUnth="-y --allow-unauthenticated"
 tRee=dev
 export tRee="${tRee}"
 
-if [ -e "/root/.barracuda.cnf" ]; then
-  source /root/.barracuda.cnf
-fi
+[ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
 
 _AWS_VLV=${_AWS_VLV//[^a-z]/}
 if [ -z "${_AWS_VLV}" ]; then
