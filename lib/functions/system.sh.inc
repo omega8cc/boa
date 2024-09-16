@@ -7649,12 +7649,12 @@ xdrago_install_upgrade() {
       if [ -e "/root/.high_load.cnf" ] \
         && [ ! -e "/root/.big_db.cnf" ] \
         && [ ! -e "/root/.tg.cnf" ]; then
-        sed -i "s/3600/300/g" /var/xdrago/minute.sh &> /dev/null
+        sed -i "s/3600/300/g" /var/xdrago/monitor/check/mysql.sh &> /dev/null
         wait
       elif [ -e "/root/.big_db.cnf" ] || [ -e "/root/.tg.cnf" ]; then
         _DO_NOTHING=YES
       else
-        sed -i "s/3600/1800/g" /var/xdrago/minute.sh &> /dev/null
+        sed -i "s/3600/1800/g" /var/xdrago/monitor/check/mysql.sh &> /dev/null
         wait
       fi
     fi
@@ -7714,12 +7714,12 @@ xdrago_install_upgrade() {
         if [ -e "/root/.high_load.cnf" ] \
           && [ ! -e "/root/.big_db.cnf" ] \
           && [ ! -e "/root/.tg.cnf" ]; then
-          sed -i "s/3600/180/g" /var/xdrago/minute.sh &> /dev/null
+          sed -i "s/3600/300/g" /var/xdrago/monitor/check/mysql.sh &> /dev/null
           wait
         elif [ -e "/root/.big_db.cnf" ] || [ -e "/root/.tg.cnf" ]; then
           _DO_NOTHING=YES
         else
-          sed -i "s/3600/1800/g" /var/xdrago/minute.sh &> /dev/null
+          sed -i "s/3600/1800/g" /var/xdrago/monitor/check/mysql.sh &> /dev/null
           wait
         fi
         sed -i "s/rotate 52/rotate 7/g" /etc/logrotate.d/nginx &> /dev/null
@@ -7732,8 +7732,6 @@ xdrago_install_upgrade() {
   if [ -d "/var/xdrago-pre-${_X_SE}-${_X_VERSION}-${_NOW}" ]; then
     cp -af /var/xdrago-pre-${_X_SE}-${_X_VERSION}-${_NOW}/run-* /var/xdrago/ &> /dev/null
   fi
-  sed -i "s/firewall/monitor/g" /var/xdrago/minute.sh &> /dev/null
-  wait
   chmod -R 700 /var/xdrago/monitor/check &> /dev/null
   chmod 700 /var/xdrago/* &> /dev/null
   chmod 700 /var/xdrago &> /dev/null
