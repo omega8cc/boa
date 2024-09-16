@@ -1099,6 +1099,14 @@ _INCIDENT_EMAIL_REPORT=YES
 ###
 _SQL_MAX_TTL=3600
 
+###
+### Max TTL for mysql process per problematic user
+### listed in the /root/.sql.problematic.users.cnf
+### file -- one per line.
+###
+_SQL_LOW_MAX_TTL=60
+
+
 ###----------------------------------------###
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
