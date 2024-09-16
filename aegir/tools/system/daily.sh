@@ -2862,6 +2862,43 @@ cleanup_weblogx() {
   fi
 }
 
+incident_email_report() {
+  if [ -e "/root/.barracuda.cnf" ]; then
+    source /root/.barracuda.cnf
+    local thisEmail="${_MY_EMAIL}"
+    export _INCIDENT_EMAIL_REPORT=${_INCIDENT_EMAIL_REPORT//[^A-Z]/}
+    : "${_INCIDENT_EMAIL_REPORT:=YES}"
+  fi
+  if [ -n "${thisEmail}" ] && [ "${_INCIDENT_EMAIL_REPORT}" = "YES" ]; then
+    hName=$(cat /etc/hostname 2>&1)
+    echo "Sending Incident Report Email on $(date 2>&1)" >> ${thisLog}
+    s-nail -s "Incident Report during daily.sh: ${1} on ${hName} at $(date 2>&1)" ${_MY_EMAIL} < ${thisLog}
+  fi
+}
+
+incident_detection() {
+  # Array of errors to search for
+  declare -a errors=(
+    "urn:ietf:params:acme:error:unauthorized"
+    "urn:ietf:params:acme:error:badNonce"
+    "urn:ietf:params:acme:error:rateLimited"
+    "urn:acme:error:serverInternal"
+    "Remote PerformValidation RPC failed"
+    "ModuleNotFoundError"
+    "Traceback"
+    "Drush command terminated abnormally"
+    "ArgumentCountError"
+  )
+
+  # Loop through errors and check if any exist in the log file
+  for error in "${errors[@]}"; do
+    if grep -q "${error}" "${thisLog}"; then
+      incident_email_report "${error}"
+      break  # Exit the loop after the first detected error
+    fi
+  done
+}
+
 action() {
   if [ -n "${_ENABLE_GOACCESS}" ] && [ "${_ENABLE_GOACCESS}" = "YES" ]; then
     prepare_weblogx
@@ -3226,7 +3263,11 @@ else
   su -s /bin/bash - aegir -c "drush8 @hostmaster utf8mb4-convert-databases -y" &> /dev/null
   wait
 
-  action >/var/xdrago/log/daily/daily-${_NOW}.log 2>&1
+  thisLog="/var/xdrago/log/daily/daily-${_NOW}.log"
+
+  action > ${thisLog} 2>&1
+
+  incident_detection
 
   dhpWildPath="/etc/ssl/private/nginx-wild-ssl.dhp"
   if [ -e "/etc/ssl/private/4096.dhp" ]; then
