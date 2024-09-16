@@ -22,6 +22,7 @@ _THIS_DB_HOST=localhost #------- Allows to use hostname in DB grants when FQDN
 ### will *override* all listed settings in the Barracuda script,
 ### both on initial install and upgrade.
 ###
+_INCIDENT_EMAIL_REPORT=YES #---- Allows to disable incident reports when NO
 _AUTOPILOT=NO #----------------- Allows to skip all Yes/No questions when YES
 _DEBUG_MODE=NO #---------------- Allows to enable Drush debugging when YES
 _MY_EMAIL="my@email" #---------- System admin email

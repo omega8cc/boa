@@ -1076,6 +1076,12 @@ _PHP_FPM_WORKERS=AUTO
 ###
 _SPEED_VALID_MAX=3600
 
+###
+### When set to NO it will stop sending
+### e-mail reports on various incidents
+### detected and handled by auto-healing.
+###
+_INCIDENT_EMAIL_REPORT=YES
 ###----------------------------------------###
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
