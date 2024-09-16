@@ -29,6 +29,11 @@ if [ -e "/root/.proxy.cnf" ]; then
   exit 0
 fi
 
+if [ `ps aux | grep -v "grep" | grep --count "mysql_cleanup.sh"` -gt "2" ]; then
+  echo "Too many mysql_cleanup.sh running"
+  exit 0
+fi
+
 _IS_SQLBACKUP_RUNNING=$(ps aux | grep '[m]ysql_backup.sh' | awk '{print $2}' 2>&1)
 if [ ! -z "${_IS_SQLBACKUP_RUNNING}" ]; then
   echo "Ooops, another mysql procedure/backup is running at the moment"

@@ -38,6 +38,11 @@ if [ -e "/root/.pause_heavy_tasks_maint.cnf" ]; then
   exit 0
 fi
 
+if [ `ps aux | grep -v "grep" | grep --count "usage.sh"` -gt "2" ]; then
+  echo "Too many usage.sh running"
+  exit 0
+fi
+
 ###-------------SYSTEM-----------------###
 
 _CHECK_HOST=$(uname -n 2>&1)

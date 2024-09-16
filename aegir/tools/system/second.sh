@@ -14,6 +14,11 @@ if [ -e "/root/.proxy.cnf" ]; then
   exit 0
 fi
 
+if [ `ps aux | grep -v "grep" | grep --count "second.sh"` -gt "2" ]; then
+  echo "Too many second.sh running"
+  exit 0
+fi
+
 hold() {
   service nginx stop &> /dev/null
   wait

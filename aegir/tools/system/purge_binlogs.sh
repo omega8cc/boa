@@ -38,6 +38,11 @@ if [ -e "/root/.pause_tasks_maint.cnf" ]; then
   exit 0
 fi
 
+if [ `ps aux | grep -v "grep" | grep --count "purge_binlogs.sh"` -gt "2" ]; then
+  echo "Too many purge_binlogs.sh running"
+  exit 0
+fi
+
 count_cpu() {
   _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)
   _CPU_INFO=${_CPU_INFO//[^0-9]/}
