@@ -2568,9 +2568,11 @@ run_apt_get_dist_upgrade() {
     fi
   done
   if [ ! -e "/var/xdrago/log" ] && [ -e "/var/xdrago_wait/log" ]; then
-    mrun "perl /var/xdrago_wait/proc_num_ctrl.cgi" 2> /dev/null
+    mrun "perl /var/xdrago_wait/proc_num_ctrl.pl" 2> /dev/null
+    wait
   else
-    mrun "perl /var/xdrago/proc_num_ctrl.cgi" 2> /dev/null
+    mrun "perl /var/xdrago/proc_num_ctrl.pl" 2> /dev/null
+    wait
   fi
 }
 
@@ -5738,9 +5740,11 @@ if_post_major_os_upgrade() {
       fi
     done
     if [ ! -e "/var/xdrago/log" ] && [ -e "/var/xdrago_wait/log" ]; then
-      mrun "perl /var/xdrago_wait/proc_num_ctrl.cgi" 2> /dev/null
+      mrun "perl /var/xdrago_wait/proc_num_ctrl.pl" 2> /dev/null
+      wait
     else
-      mrun "perl /var/xdrago/proc_num_ctrl.cgi" 2> /dev/null
+      mrun "perl /var/xdrago/proc_num_ctrl.pl" 2> /dev/null
+      wait
     fi
 
     _REBUILD_SRC_ON_AUTO_NOW=YES
@@ -6419,9 +6423,11 @@ if_major_os_upgrade() {
       fi
     done
     if [ ! -e "/var/xdrago/log" ] && [ -e "/var/xdrago_wait/log" ]; then
-      mrun "perl /var/xdrago_wait/proc_num_ctrl.cgi" 2> /dev/null
+      mrun "perl /var/xdrago_wait/proc_num_ctrl.pl" 2> /dev/null
+      wait
     else
-      mrun "perl /var/xdrago/proc_num_ctrl.cgi" 2> /dev/null
+      mrun "perl /var/xdrago/proc_num_ctrl.pl" 2> /dev/null
+      wait
     fi
     ### Add info file to keep major OS upgrades track.
     touch /root/.${_LOC_OS_CODE}_to_${_NEW_OS_CODE}_major_os_upgrade.info
@@ -7598,16 +7604,16 @@ xdrago_install_upgrade() {
       fi
     fi
     sed -i "s/^_NGINX_DOS_LIMIT=.*/_NGINX_DOS_LIMIT=${_NGINX_DOS_LIMIT}/g"  ${barCnf}
-    sed -i "s/default_critnumber =.*/default_critnumber = ${_NGINX_DOS_LIMIT};/g" /var/xdrago/monitor/check/scan_nginx
+    sed -i "s/default_critnumber =.*/default_critnumber = ${_NGINX_DOS_LIMIT};/g" /var/xdrago/monitor/check/scan_nginx.pl
     wait
-    sed -i "s/default_lines =.*/default_lines = 1999;/g" /var/xdrago/monitor/check/scan_nginx
+    sed -i "s/default_lines =.*/default_lines = 1999;/g" /var/xdrago/monitor/check/scan_nginx.pl
     wait
     if [ ! -z "${_NGINX_DOS_KEYWORDS}" ]; then
       _NGINX_DOS_KEYWORDS=${_NGINX_DOS_KEYWORDS//[^a-zA-Z0-9|-]/}
       if [ ! -z "${_NGINX_DOS_KEYWORDS}" ]; then
         msg "INFO: Configured _NGINX_DOS_KEYWORDS: ${_NGINX_DOS_KEYWORDS}"
         sed -i "s/foobar/${_NGINX_DOS_KEYWORDS}/g" \
-          /var/xdrago/monitor/check/scan_nginx &> /dev/null
+          /var/xdrago/monitor/check/scan_nginx.pl &> /dev/null
         wait
       fi
     fi
@@ -7616,7 +7622,7 @@ xdrago_install_upgrade() {
       if [ ! -z "${_NGINX_DONTCOUNT_KEYWORDS}" ]; then
         msg "INFO: Configured _NGINX_DONTCOUNT_KEYWORDS: ${_NGINX_DONTCOUNT_KEYWORDS}"
         sed -i "s/dontcount/${_NGINX_DONTCOUNT_KEYWORDS}/g" \
-          /var/xdrago/monitor/check/scan_nginx &> /dev/null
+          /var/xdrago/monitor/check/scan_nginx.pl &> /dev/null
         wait
       fi
     fi
@@ -7677,16 +7683,16 @@ xdrago_install_upgrade() {
       fi
     fi
     sed -i "s/^_NGINX_DOS_LIMIT=.*/_NGINX_DOS_LIMIT=${_NGINX_DOS_LIMIT}/g"  ${barCnf}
-    sed -i "s/default_critnumber =.*/default_critnumber = ${_NGINX_DOS_LIMIT};/g" /var/xdrago/monitor/check/scan_nginx
+    sed -i "s/default_critnumber =.*/default_critnumber = ${_NGINX_DOS_LIMIT};/g" /var/xdrago/monitor/check/scan_nginx.pl
     wait
-    sed -i "s/default_lines =.*/default_lines = 1999;/g" /var/xdrago/monitor/check/scan_nginx
+    sed -i "s/default_lines =.*/default_lines = 1999;/g" /var/xdrago/monitor/check/scan_nginx.pl
     wait
     if [ ! -z "${_NGINX_DOS_KEYWORDS}" ]; then
       _NGINX_DOS_KEYWORDS=${_NGINX_DOS_KEYWORDS//[^a-zA-Z0-9|-]/}
       if [ ! -z "${_NGINX_DOS_KEYWORDS}" ]; then
         msg "INFO: Configured _NGINX_DOS_KEYWORDS: ${_NGINX_DOS_KEYWORDS}"
         sed -i "s/foobar/${_NGINX_DOS_KEYWORDS}/g" \
-          /var/xdrago/monitor/check/scan_nginx &> /dev/null
+          /var/xdrago/monitor/check/scan_nginx.pl &> /dev/null
         wait
       fi
     fi
@@ -7695,7 +7701,7 @@ xdrago_install_upgrade() {
       if [ ! -z "${_NGINX_DONTCOUNT_KEYWORDS}" ]; then
         msg "INFO: Configured _NGINX_DONTCOUNT_KEYWORDS: ${_NGINX_DONTCOUNT_KEYWORDS}"
         sed -i "s/dontcount/${_NGINX_DONTCOUNT_KEYWORDS}/g" \
-          /var/xdrago/monitor/check/scan_nginx &> /dev/null
+          /var/xdrago/monitor/check/scan_nginx.pl &> /dev/null
         wait
       fi
     fi
@@ -8673,15 +8679,15 @@ apticron_update() {
   sed -i "s/notify\@omega8.cc/${_MY_EMAIL}/g"  \
     /etc/csf/csf.conf &> /dev/null
   sed -i "s/notify\\\@omega8.cc/$XPTEMAIL/g" \
-    /var/xdrago/checksql.cgi
+    /var/xdrago/checksql.pl
   sed -i "s/notify\\\@omega8.cc/$XPTEMAIL/g" \
     /var/xdrago/daily.sh
   sed -i "s/notify\\\@omega8.cc/$XPTEMAIL/g" \
     /var/xdrago/usage.sh
   sed -i "s/notify\\\@omega8.cc/$XPTEMAIL/g" \
-    /var/xdrago/monitor/check/segfault_alert
+    /var/xdrago/monitor/check/segfault_alert.pl
   sed -i "s/notify\\\@omega8.cc/$XPTEMAIL/g" \
-    /var/xdrago/monitor/check/escapecheck
+    /var/xdrago/monitor/check/escapecheck.pl
   if [ -e "/usr/sbin/apticron" ]; then
     if [ -e "/etc/apticron/apticron.conf" ]; then
       _APTICRON_TEST=$(grep "NOTIFY_HOLDS" /etc/apticron/apticron.conf 2>&1)

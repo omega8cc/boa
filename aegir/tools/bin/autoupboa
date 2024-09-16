@@ -351,9 +351,9 @@ fi
 if [ -e "/var/aegir/drush" ]; then
   if [ ! -e "/var/xdrago/log/.sync_1999_scan_nginx.${_X_SE}.pid" ]; then
     sed -i "s/^_NGINX_DOS_LIMIT=.*/_NGINX_DOS_LIMIT=399/g"  ${barCnf}
-    sed -i "s/default_critnumber =.*/default_critnumber = 399;/g" /var/xdrago/monitor/check/scan_nginx
+    sed -i "s/default_critnumber =.*/default_critnumber = 399;/g" /var/xdrago/monitor/check/scan_nginx.pl
     wait
-    sed -i "s/default_lines =.*/default_lines = 1999;/g" /var/xdrago/monitor/check/scan_nginx
+    sed -i "s/default_lines =.*/default_lines = 1999;/g" /var/xdrago/monitor/check/scan_nginx.pl
     touch /var/xdrago/log/.sync_1999_scan_nginx.${_X_SE}.pid
   fi
   _VM_TEST=$(uname -a 2>&1)
@@ -451,9 +451,9 @@ if [ -e "/var/aegir/drush" ]; then
     fi
     if [ ! -e "/var/xdrago/log/.sync_1999_scan_nginx.${_X_SE}.pid" ]; then
       sed -i "s/^_NGINX_DOS_LIMIT=.*/_NGINX_DOS_LIMIT=399/g"  ${barCnf}
-      sed -i "s/default_critnumber =.*/default_critnumber = 399;/g" /var/xdrago/monitor/check/scan_nginx
+      sed -i "s/default_critnumber =.*/default_critnumber = 399;/g" /var/xdrago/monitor/check/scan_nginx.pl
       wait
-      sed -i "s/default_lines =.*/default_lines = 1999;/g" /var/xdrago/monitor/check/scan_nginx
+      sed -i "s/default_lines =.*/default_lines = 1999;/g" /var/xdrago/monitor/check/scan_nginx.pl
       touch /var/xdrago/log/.sync_1999_scan_nginx.${_X_SE}.pid
     fi
     if [ ! -e "/var/xdrago/log/.custom_percona_forced.${_X_SE}.pid" ]; then
@@ -734,7 +734,7 @@ if [ -e "/var/aegir/drush" ]; then
 
   _IS_PROCTRL_RUNNING=$(ps aux | grep '[p]roc_num_ctrl.cgi' | awk '{print $2}' 2>&1)
   if [ ! -z "${_IS_PROCTRL_RUNNING}" ]; then
-    if [ `ps aux | grep -v "grep" | grep --count "proc_num_ctrl.cgi"` -gt "1" ]; then
+    if [ `ps aux | grep -v "grep" | grep --count "proc_num_ctrl.pl"` -gt "1" ]; then
       kill -9 $(ps aux | grep '[p]roc_num_ctrl.cgi' | awk '{print $2}') &> /dev/null
       touch /var/xdrago/log/.proc_num_ctrl.${_X_SE}.pid
     fi

@@ -1095,7 +1095,7 @@ tune_sql() {
 restore_default_nginx() {
   msg "INFO: Restoring default Nginx configuration"
   cd /var/xdrago/monitor/check
-  cp -af ${bldPth}/aegir/tools/system/monitor/check/scan_nginx ./
+  cp -af ${bldPth}/aegir/tools/system/monitor/check/scan_nginx.pl ./
   if [ -d "${_TUNE_HOSTMASTER}" ]; then
     for Files in `find ${_TUNE_HOSTMASTER}/config/server_master/nginx/vhost.d -type f`; do
       sed -i "s/#limit_conn /limit_conn /g" $Files &> /dev/null
@@ -1109,7 +1109,7 @@ restore_default_nginx() {
 #
 tune_nginx() {
   msg "INFO: Tuning Nginx configuration"
-  sed -i "s/default_critnumber =.*/default_critnumber = ${_TUNE_NGINX_FIREWALL};/g" /var/xdrago/monitor/check/scan_nginx
+  sed -i "s/default_critnumber =.*/default_critnumber = ${_TUNE_NGINX_FIREWALL};/g" /var/xdrago/monitor/check/scan_nginx.pl
   wait
   sed -i "s/60/${_TUNE_NGINX_TIMEOUT}/g" /var/aegir/config/server_master/nginx.conf    &> /dev/null
   wait
