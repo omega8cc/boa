@@ -59,8 +59,8 @@ if [ ! -e "/run/fire.pid" ] && [ ! -e "/run/water.pid" ]; then
   touch /run/fire.pid
   echo start `date`
   for i in `dir -d /vservers/*`; do
-    if [ -e "${i}/var/xdrago/monitor/ssh.log" ] && [ -e "/usr/var/run${i}" ]; then
-      for _IP in `cat ${i}/var/xdrago/monitor/ssh.log | cut -d '#' -f1 | sort`; do
+    if [ -e "${i}/var/xdrago/monitor/log/ssh.log" ] && [ -e "/usr/var/run${i}" ]; then
+      for _IP in `cat ${i}/var/xdrago/monitor/log/ssh.log | cut -d '#' -f1 | sort`; do
         _FW_TEST=
         _FF_TEST=
         _FW_TEST=$(csf -g ${_IP} 2>&1)
@@ -80,8 +80,8 @@ if [ ! -e "/run/fire.pid" ] && [ ! -e "/run/water.pid" ]; then
         fi
       done
     fi
-    if [ -e "${i}/var/xdrago/monitor/web.log" ] && [ -e "/usr/var/run${i}" ]; then
-      for _IP in `cat ${i}/var/xdrago/monitor/web.log | cut -d '#' -f1 | sort`; do
+    if [ -e "${i}/var/xdrago/monitor/log/web.log" ] && [ -e "/usr/var/run${i}" ]; then
+      for _IP in `cat ${i}/var/xdrago/monitor/log/web.log | cut -d '#' -f1 | sort`; do
         _FW_TEST=
         _FF_TEST=
         _FW_TEST=$(csf -g ${_IP} 2>&1)
@@ -101,8 +101,8 @@ if [ ! -e "/run/fire.pid" ] && [ ! -e "/run/water.pid" ]; then
         fi
       done
     fi
-    if [ -e "${i}/var/xdrago/monitor/ftp.log" ] && [ -e "/usr/var/run${i}" ]; then
-      for _IP in `cat ${i}/var/xdrago/monitor/ftp.log | cut -d '#' -f1 | sort`; do
+    if [ -e "${i}/var/xdrago/monitor/log/ftp.log" ] && [ -e "/usr/var/run${i}" ]; then
+      for _IP in `cat ${i}/var/xdrago/monitor/log/ftp.log | cut -d '#' -f1 | sort`; do
         _FW_TEST=
         _FF_TEST=
         _FW_TEST=$(csf -g ${_IP} 2>&1)

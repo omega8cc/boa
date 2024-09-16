@@ -606,9 +606,9 @@ if_firewall_update() {
       echo "*  *    * * *   root    test -e /etc/csf/csf.error && ( rm -f /etc/csf/csf.error && service lfd restart && csf -q && echo WTF \`date\` >> /var/log/csf_wtf.log )" >> /etc/crontab
       echo "*  *    * * *   root    bash /opt/fire.sh >/dev/null 2>&1" >> /etc/crontab
       echo "05 5    * * *   root    bash /opt/water.sh >/dev/null 2>&1" >> /etc/crontab
-      echo "30 *    * * *   root    rm -f /vservers/*/var/xdrago/monitor/ssh.log >/dev/null 2>&1" >> /etc/crontab
-      echo "30 *    * * *   root    rm -f /vservers/*/var/xdrago/monitor/web.log >/dev/null 2>&1" >> /etc/crontab
-      echo "30 *    * * *   root    rm -f /vservers/*/var/xdrago/monitor/ftp.log >/dev/null 2>&1" >> /etc/crontab
+      echo "30 *    * * *   root    rm -f /vservers/*/var/xdrago/monitor/log/ssh.log >/dev/null 2>&1" >> /etc/crontab
+      echo "30 *    * * *   root    rm -f /vservers/*/var/xdrago/monitor/log/web.log >/dev/null 2>&1" >> /etc/crontab
+      echo "30 *    * * *   root    rm -f /vservers/*/var/xdrago/monitor/log/ftp.log >/dev/null 2>&1" >> /etc/crontab
       sed -i "/^$/d" /etc/crontab
     fi
     echo kernel.vshelper = /sbin/vshelper >> /etc/sysctl.conf

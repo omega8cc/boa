@@ -703,10 +703,11 @@ up_action() {
     fi
     if_hosted_sys
     if [ "${hostedSys}" != "YES" ]; then
-      mkdir -p ${vBs}/old-firewall-monitor/${_NOW}
+      mkdir -p ${vBs}/old-firewall-monitor/${_NOW}/legacy
       mv -f /var/xdrago/monitor/*.log \
+        ${vBs}/old-firewall-monitor/${_NOW}/legacy/ &> /dev/null
+      mv -f /var/xdrago/monitor/log/*.log \
         ${vBs}/old-firewall-monitor/${_NOW}/ &> /dev/null
-      rm -f /var/xdrago/monitor/* &> /dev/null
     fi
     if [ "${cmmand}" = "up-dev" ] \
       || [ "${cmmand}" = "up-pro" ] \

@@ -260,9 +260,9 @@ crontab_update() {
       echo "*/19 *  * * *   root    bash /var/xdrago/clear.sh >/dev/null 2>&1" >> /etc/crontab
     fi
     if [ -e "/etc/csf" ]; then
-      echo "01 *    * * *   root    rm -f /var/xdrago/monitor/web.log >/dev/null 2>&1" >> /etc/crontab
-      echo "01 *    * * *   root    rm -f /var/xdrago/monitor/ssh.log >/dev/null 2>&1" >> /etc/crontab
-      echo "01 *    * * *   root    rm -f /var/xdrago/monitor/ftp.log >/dev/null 2>&1" >> /etc/crontab
+      echo "01 *    * * *   root    rm -f /var/xdrago/monitor/log/web.log >/dev/null 2>&1" >> /etc/crontab
+      echo "01 *    * * *   root    rm -f /var/xdrago/monitor/log/ssh.log >/dev/null 2>&1" >> /etc/crontab
+      echo "01 *    * * *   root    rm -f /var/xdrago/monitor/log/ftp.log >/dev/null 2>&1" >> /etc/crontab
     fi
     sed -i "/^$/d" /etc/crontab &> /dev/null
     wait
@@ -315,9 +315,9 @@ crontab_cleanup() {
       echo "*/19 *  * * *   root    bash /var/xdrago/clear.sh >/dev/null 2>&1" >> /etc/crontab
     fi
     if [ -e "/etc/csf" ]; then
-      echo "01 *    * * *   root    rm -f /var/xdrago/monitor/web.log >/dev/null 2>&1" >> /etc/crontab
-      echo "01 *    * * *   root    rm -f /var/xdrago/monitor/ssh.log >/dev/null 2>&1" >> /etc/crontab
-      echo "01 *    * * *   root    rm -f /var/xdrago/monitor/ftp.log >/dev/null 2>&1" >> /etc/crontab
+      echo "01 *    * * *   root    rm -f /var/xdrago/monitor/log/web.log >/dev/null 2>&1" >> /etc/crontab
+      echo "01 *    * * *   root    rm -f /var/xdrago/monitor/log/ssh.log >/dev/null 2>&1" >> /etc/crontab
+      echo "01 *    * * *   root    rm -f /var/xdrago/monitor/log/ftp.log >/dev/null 2>&1" >> /etc/crontab
     fi
     sed -i "/^$/d" /etc/crontab &> /dev/null
     wait
