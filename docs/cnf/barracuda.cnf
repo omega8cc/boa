@@ -36,6 +36,7 @@ _CPU_CRIT_RATIO=9 #------------- Max load per CPU core before killing PHP/Drush
 _CPU_MAX_RATIO=6 #-------------- Max load per CPU core before disabling Nginx
 _CPU_SPIDER_RATIO=3 #----------- Max load per CPU core before blocking spiders
 ###
+_SQL_MAX_TTL=3600 #------------- Max TTL for mysql process per user (seconds)
 _DB_BINARY_LOG=NO #------------- Allows to enable binary logging when YES
 _DB_SERIES=5.7 #---------------- Supported values: 5.7 8.0 8.3 8.4
 _DB_SERVER=Percona #------------ Install Percona SQL Server
