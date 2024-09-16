@@ -2399,7 +2399,7 @@ process() {
                 fix_robots_txt
               fi
               le_ssl_check_update
-              if [ -e "${User}/static/control/goaccess/${Dom}.info" ]; then
+              if [ "${_ENABLE_GOACCESS}" = "YES" ] && [ -e "${User}/static/control/goaccess/${Dom}.info" ]; then
                 if_gen_goaccess ${Dom}
               fi
               ;;
@@ -2863,7 +2863,9 @@ cleanup_weblogx() {
 }
 
 action() {
-  prepare_weblogx
+  if [ -n "${_ENABLE_GOACCESS}" ] && [ "${_ENABLE_GOACCESS}" = "YES" ]; then
+    prepare_weblogx
+  fi
   for User in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
     count_cpu
     load_control
@@ -2997,7 +2999,7 @@ action() {
           rm -f /home/${_HM_U}.ftp/{.profile,.bash_logout,.bash_profile,.bashrc}
         fi
         le_hm_ssl_check_update ${_HM_U}
-        if [ -e "${User}/static/control/goaccess/ALL.info" ]; then
+        if [ "${_ENABLE_GOACCESS}" = "YES" ] && [ -e "${User}/static/control/goaccess/ALL.info" ]; then
           if_gen_goaccess "ALL"
         fi
         echo "Done for ${User}"
@@ -3013,7 +3015,9 @@ action() {
   shared_codebases_cleanup
   ghost_codebases_cleanup
   check_old_empty_hostmaster_platforms
-  cleanup_weblogx
+  if [ -n "${_ENABLE_GOACCESS}" ] && [ "${_ENABLE_GOACCESS}" = "YES" ]; then
+    cleanup_weblogx
+  fi
 }
 
 ###--------------------###
