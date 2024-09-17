@@ -413,6 +413,10 @@ sql_conf_update() {
             _INNODB_LOG_FILE_SIZE_SAME=NO
           fi
           if [ -e "/root/.dev.server.cnf" ]; then
+            echo "DEBUG5: _INNODB_LOG_FILE_SIZE_TEST is ${_INNODB_LOG_FILE_SIZE_TEST}"
+            echo "DEBUG5: _INNODB_REDO_LOG_CAPACITY_TEST is ${_INNODB_REDO_LOG_CAPACITY_TEST}"
+            echo "DEBUG5: _INNODB_LOG_FILE_SIZE_MB is ${_INNODB_LOG_FILE_SIZE_MB}"
+            echo "DEBUG5: _INNODB_REDO_LOG_CAPACITY_MB is ${_INNODB_REDO_LOG_CAPACITY_MB}"
             echo "DEBUG5: _INNODB_LOG_FILE_SIZE_SAME is ${_INNODB_LOG_FILE_SIZE_SAME}"
           fi
         fi
