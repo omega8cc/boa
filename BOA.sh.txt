@@ -613,7 +613,7 @@ update_agents() {
     [ -e "/var/xdrago/mysql_hourly.sh" ] && rm -f /var/xdrago/mysql_hourly.sh
 
     [ -e "/var/xdrago/monitor/check/sqlcheck" ] && rm -f ${pthLog}/*.ctrl.${tRee}.${_X_SE}.pid
-    [ -e "/var/xdrago/monitor/check/sqlcheck" ] && rm -f /var/xdrago/monitor/check/sqlcheck/*
+    [ -e "/var/xdrago/monitor/check/sqlcheck" ] && rm -f /var/xdrago/monitor/check/*
 
     [ ! -e "/var/xdrago/monitor/log" ] && mkdir -p /var/xdrago/monitor/log
     [ -e "/var/xdrago/monitor/hackcheck.archive.log" ] && rm -f /var/xdrago/monitor/.scan_nginx_arch*
