@@ -38,7 +38,7 @@ if [ -e "/root/.pause_heavy_tasks_maint.cnf" ]; then
   exit 0
 fi
 
-if [ `ps aux | grep -v "grep" | grep --count "usage.sh"` -gt "2" ]; then
+if [ $(pgrep -f usage.sh | wc -l) -gt 1 ]; then
   echo "Too many usage.sh running"
   exit 0
 fi

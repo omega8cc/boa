@@ -27,7 +27,7 @@ export _B_NICE=${_B_NICE//[^0-9]/}
 export _INCIDENT_EMAIL_REPORT=${_INCIDENT_EMAIL_REPORT//[^A-Z]/}
 : "${_INCIDENT_EMAIL_REPORT:=YES}"
 
-if [ `ps aux | grep -v "grep" | grep --count "nginx.sh"` -gt "2" ]; then
+if [ $(pgrep -f nginx.sh | wc -l) -gt 1 ]; then
   echo "Too many nginx.sh running"
   exit 0
 fi

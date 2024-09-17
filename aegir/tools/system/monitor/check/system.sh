@@ -24,7 +24,7 @@ check_root
 export _INCIDENT_EMAIL_REPORT=${_INCIDENT_EMAIL_REPORT//[^A-Z]/}
 : "${_INCIDENT_EMAIL_REPORT:=YES}"
 
-if [ `ps aux | grep -v "grep" | grep --count "system.sh"` -gt "2" ]; then
+if [ $(pgrep -f system.sh | wc -l) -gt 1 ]; then
   echo "Too many system.sh running"
   exit 0
 fi

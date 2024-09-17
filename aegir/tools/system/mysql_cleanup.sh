@@ -29,7 +29,7 @@ if [ -e "/root/.proxy.cnf" ]; then
   exit 0
 fi
 
-if [ `ps aux | grep -v "grep" | grep --count "mysql_cleanup.sh"` -gt "2" ]; then
+if [ $(pgrep -f mysql_cleanup.sh | wc -l) -gt 1 ]; then
   echo "Too many mysql_cleanup.sh running"
   exit 0
 fi

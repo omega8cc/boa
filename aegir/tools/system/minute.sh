@@ -22,7 +22,7 @@ check_root() {
 }
 check_root
 
-if [ `ps aux | grep -v "grep" | grep --count "minute.sh"` -gt "2" ]; then
+if [ $(pgrep -f minute.sh | wc -l) -gt 1 ]; then
   echo "Too many minute.sh running"
   exit 0
 fi
