@@ -35,7 +35,7 @@ if [ -e "/root/.proxy.cnf" ]; then
 fi
 
 if [ $(pgrep -f mysql_repair.sh | grep -v "^$$" | wc -l) -gt 1 ]; then
-  echo "Too many mysql_repair.sh running" >> /var/xdrago/log/too.many.log
+  echo "Too many mysql_repair.sh running $(date 2>&1)" >> /var/xdrago/log/too.many.log
   exit 0
 fi
 

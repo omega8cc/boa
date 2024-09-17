@@ -23,7 +23,7 @@ check_root() {
 check_root
 
 if [ $(pgrep -f minute.sh | grep -v "^$$" | wc -l) -gt 1 ]; then
-  echo "Too many minute.sh running" >> /var/xdrago/log/too.many.log
+  echo "Too many minute.sh running $(date 2>&1)" >> /var/xdrago/log/too.many.log
   exit 0
 fi
 
