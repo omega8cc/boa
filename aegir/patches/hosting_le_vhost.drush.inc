@@ -96,7 +96,7 @@ function hosting_le_vhost_provision_nginx_vhost_config($uri, $data) {
     $lines[] = "    if (\$is_crawler) {";
     $lines[] = "      return 403;";
     $lines[] = "    }";
-    $lines[] = "    include /var/aegir/config/includes/ip_access/sqladmin.*;";
+    $lines[] = "    include /var/aegir/config/includes/ip_access/sqladmin*;";
     $lines[] = "    alias /var/www/adminer;";
     $lines[] = "    index index.php index.html;";
     $lines[] = "    try_files \$uri 404;";
