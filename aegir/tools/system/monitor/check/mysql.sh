@@ -149,6 +149,8 @@ mysql_proc_control() {
 
 sql_busy_detection
 
+perl /var/xdrago/monitor/check/sqlcheck.pl &
+
 if [ -e "/run/boa_sql_backup.pid" ] \
   || [ -e "/run/boa_sql_cluster_backup.pid" ] \
   || [ -e "/run/boa_run.pid" ] \
@@ -165,9 +167,6 @@ sleep 15
 [ "${_SQL_CTRL}" = "YES" ] && mysql_proc_control "${_SQL_MAX_TTL}"
 sleep 15
 [ "${_SQL_CTRL}" = "YES" ] && mysql_proc_control "${_SQL_MAX_TTL}"
-
-perl /var/xdrago/monitor/check/sqlcheck.pl &> /dev/null
-wait
 
 echo DONE!
 exit 0

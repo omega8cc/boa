@@ -118,8 +118,7 @@ fpm_sockets_healing
 
 if [ ! -e "/root/.high_traffic.cnf" ] \
   && [ ! -e "/root/.giant_traffic.cnf" ]; then
-  perl /var/xdrago/monitor/check/segfault_alert.pl
-  wait
+  perl /var/xdrago/monitor/check/segfault_alert.pl &
 fi
 
 echo DONE!

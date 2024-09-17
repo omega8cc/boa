@@ -148,21 +148,16 @@ nginx_heatlh_check_fix
 
 if [ ! -e "/root/.high_traffic.cnf" ] \
   && [ ! -e "/root/.giant_traffic.cnf" ]; then
-  perl /var/xdrago/monitor/check/locked_nginx.pl &> /dev/null
-  wait
+  perl /var/xdrago/monitor/check/locked_nginx.pl &
 fi
 
-perl /var/xdrago/monitor/check/scan_nginx.pl &> /dev/null
-wait
+perl /var/xdrago/monitor/check/scan_nginx.pl &
 sleep 15
-perl /var/xdrago/monitor/check/scan_nginx.pl &> /dev/null
-wait
+perl /var/xdrago/monitor/check/scan_nginx.pl &
 sleep 15
-perl /var/xdrago/monitor/check/scan_nginx.pl &> /dev/null
-wait
+perl /var/xdrago/monitor/check/scan_nginx.pl &
 sleep 15
-perl /var/xdrago/monitor/check/scan_nginx.pl &> /dev/null
-wait
+perl /var/xdrago/monitor/check/scan_nginx.pl &
 
 echo DONE!
 exit 0

@@ -95,8 +95,7 @@ jetty_listen_conflict_detection() {
 
 if [ ! -e "/root/.high_traffic.cnf" ] \
   && [ ! -e "/root/.giant_traffic.cnf" ]; then
-  perl /var/xdrago/monitor/check/locked_java.pl &> /dev/null
-  wait
+  perl /var/xdrago/monitor/check/locked_java.pl &
 fi
 
 echo DONE!
