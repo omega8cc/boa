@@ -33,26 +33,16 @@ if [ -e "${pthOml}" ] && [ ! -e "${oldOml}" ]; then
   mv -f ${pthOml} ${oldOml}
 fi
 
-bash /var/xdrago/monitor/check/nginx.sh
-wait
-bash /var/xdrago/monitor/check/php.sh
-wait
-bash /var/xdrago/monitor/check/redis.sh
-wait
-bash /var/xdrago/monitor/check/mysql.sh
-wait
-bash /var/xdrago/monitor/check/unbound.sh
-wait
-bash /var/xdrago/monitor/check/system.sh
-wait
-bash /var/xdrago/monitor/check/java.sh
-wait
-perl /var/xdrago/monitor/check/hackcheck.pl
-wait
-perl /var/xdrago/monitor/check/hackftp.pl
-wait
-perl /var/xdrago/monitor/check/escapecheck.pl
-wait
+bash /var/xdrago/monitor/check/nginx.sh &
+bash /var/xdrago/monitor/check/php.sh &
+bash /var/xdrago/monitor/check/redis.sh &
+bash /var/xdrago/monitor/check/mysql.sh &
+bash /var/xdrago/monitor/check/unbound.sh &
+bash /var/xdrago/monitor/check/system.sh &
+bash /var/xdrago/monitor/check/java.sh &
+perl /var/xdrago/monitor/check/hackcheck.pl &
+perl /var/xdrago/monitor/check/hackftp.pl &
+perl /var/xdrago/monitor/check/escapecheck.pl &
 
 echo DONE!
 exit 0
