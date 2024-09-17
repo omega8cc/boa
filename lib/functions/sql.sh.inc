@@ -557,7 +557,7 @@ tune_sql_memory_limits() {
     _DO_NOTHING=YES
   else
     _DO_NOTHING=YES
-    #check_mysqld_running
+    check_mysqld_running
   fi
   if [ ! -e "${vBs}/dragon/t/my.cnf-pre-${_X_SE}-${_X_VERSION}-${_NOW}" ]; then
     mkdir -p ${vBs}/dragon/t/
