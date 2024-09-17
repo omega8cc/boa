@@ -8657,7 +8657,7 @@ sysctl_update() {
       mrun "service redis-server restart" 2> /dev/null
       mrun "service nginx restart" 2> /dev/null
       mrun "service sshd restart" 2> /dev/null
-      _PHP_V="83 82 81 74 73 72 71 70 56"
+      _PHP_V="83 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
           mrun "service php${e}-fpm reload" 2> /dev/null
