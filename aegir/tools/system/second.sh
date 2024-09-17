@@ -20,25 +20,12 @@ if [ $(pgrep -f second.sh | grep -v "^$$" | wc -l) -gt 4 ]; then
 fi
 
 hold() {
-  service nginx stop &> /dev/null
-  wait
-  kill -9 $(ps aux | grep '[n]ginx' | awk '{print $2}') &> /dev/null
-  echo "Nginx stopped" >> /var/xdrago/log/second.hold.log
-  _PHP_V="83 82 81 74 73 72 71 70 56"
-  for e in ${_PHP_V}; do
-    if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
-      service php${e}-fpm force-quit &> /dev/null
-    fi
-  done
-  until [ -z "${_IS_FPM_RUNNING}" ]; do
-    _IS_FPM_RUNNING=$(ps aux | grep '[p]hp-fpm' | awk '{print $2}' 2>&1)
-    echo "Waiting for PHP-FPM graceful shutdown..." >> /var/xdrago/log/second.hold.log
-    sleep 1
-  done
-  echo "PHP-FPM stopped" >> /var/xdrago/log/second.hold.log
-  echo "$(date 2>&1)" >> /var/xdrago/log/second.hold.log
-  ### echo "load is ${_O_LOAD}:${_F_LOAD} while
-  ### maxload is ${_O_LOAD_MAX}:${_F_LOAD_MAX}"
+  killall -9 nginx
+  killall -9 php-fpm
+  thisErrLog="$(date 2>&1) System Load $1 Web Server Paused"
+  echo ${thisErrLog} >> ${pthOml}
+  incident_email_report "System Load $1 Web Server Paused"
+  echo >> ${pthOml}
 }
 
 terminate() {
