@@ -33,21 +33,25 @@ if [ -e "${pthOml}" ] && [ ! -e "${oldOml}" ]; then
   mv -f ${pthOml} ${oldOml}
 fi
 
-nohup /var/xdrago/monitor/check/java.sh > /dev/null 2>&1 &
-nohup /var/xdrago/monitor/check/mysql.sh > /dev/null 2>&1 &
-nohup /var/xdrago/monitor/check/nginx.sh > /dev/null 2>&1 &
-nohup /var/xdrago/monitor/check/php.sh > /dev/null 2>&1 &
-nohup /var/xdrago/monitor/check/redis.sh > /dev/null 2>&1 &
-nohup /var/xdrago/monitor/check/system.sh > /dev/null 2>&1 &
-nohup /var/xdrago/monitor/check/unbound.sh > /dev/null 2>&1 &
-
-perl /var/xdrago/monitor/check/hackcheck.pl &> /dev/null
+bash /var/xdrago/monitor/check/nginx.sh
 wait
-
-perl /var/xdrago/monitor/check/hackftp.pl &> /dev/null
+bash /var/xdrago/monitor/check/php.sh
 wait
-
-perl /var/xdrago/monitor/check/escapecheck.pl &> /dev/null
+bash /var/xdrago/monitor/check/redis.sh
+wait
+bash /var/xdrago/monitor/check/mysql.sh
+wait
+bash /var/xdrago/monitor/check/unbound.sh
+wait
+bash /var/xdrago/monitor/check/system.sh
+wait
+bash /var/xdrago/monitor/check/java.sh
+wait
+perl /var/xdrago/monitor/check/hackcheck.pl
+wait
+perl /var/xdrago/monitor/check/hackftp.pl
+wait
+perl /var/xdrago/monitor/check/escapecheck.pl
 wait
 
 echo DONE!
