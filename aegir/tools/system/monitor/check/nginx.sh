@@ -77,6 +77,16 @@ nginx_oom_detection() {
   fi
 }
 
+
+nginx_bind_check_fix() {
+  if [ `tail --lines=8 /var/log/nginx/error.log \
+    | grep --count "Address already in use"` -gt "0" ]; then
+    thisErrLog="$(date 2>&1) Nginx BIND"
+    echo ${thisErrLog} >> ${pthOml}
+    restart_nginx "Nginx BIND"
+  fi
+}
+
 nginx_heatlh_check_fix() {
   # Initialize a flag to indicate whether Nginx has been restarted
   _NGINX_RESTARTED=false
@@ -142,6 +152,7 @@ if_nginx_restart() {
   fi
 }
 
+nginx_bind_check_fix
 nginx_oom_detection
 nginx_heatlh_check_fix
 [ -d "/data/u" ] && if_nginx_restart
