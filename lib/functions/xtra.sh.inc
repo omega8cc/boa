@@ -61,7 +61,7 @@ if_install_adminer() {
     _ADMINER_VHOST="${mtrNgx}/vhost.d/adminer.${_THIS_FRONT}"
     if [ ! -e "/var/www/adminer/index.php" ] \
       || [ ! -f "${_ADMINER_VHOST}" ] \
-      || [ ! -f "${pthLog}/adminer-${_ADMINER_VRN}.log" ]; then
+      || [ ! -f "${pthLog}/adminer-${_ADMINER_VRN}-sync-new-ip-access.log" ]; then
       echo " "
       if prompt_yes_no "Do you want to install Adminer Manager?" ; then
         true
@@ -80,7 +80,7 @@ if_install_adminer() {
         wait
         sed -i "s/adminer_name/adminer.${_THIS_FRONT} ${_THISHTIP}/g" ${_ADMINER_VHOST}
         wait
-        touch ${pthLog}/adminer-${_ADMINER_VRN}.log
+        touch ${pthLog}/adminer-${_ADMINER_VRN}-sync-new-ip-access.log
         msg "INFO: Adminer Manager installed"
       else
         msg "INFO: Adminer Manager installation skipped"
@@ -111,7 +111,7 @@ if_install_chive() {
     _CHIVE_VHOST="${mtrNgx}/vhost.d/chive.${_THIS_FRONT}"
     if [ ! -d "/var/www/chive" ] \
       || [ ! -f "${_CHIVE_VHOST}" ] \
-      || [ ! -f "${pthLog}/chive-${_CHIVE_VRN}.switch-to-adminer.log" ]; then
+      || [ ! -f "${pthLog}/chive-${_CHIVE_VRN}.sync-new-ip-access.log" ]; then
       echo " "
       if prompt_yes_no "Do you want to install Chive Manager?" ; then
         true
@@ -128,7 +128,7 @@ if_install_chive() {
         wait
         sed -i "s/chive_name/chive.${_THIS_FRONT}/g"       ${_CHIVE_VHOST}
         wait
-        touch ${pthLog}/chive-${_CHIVE_VRN}.switch-to-adminer.log
+        touch ${pthLog}/chive-${_CHIVE_VRN}.sync-new-ip-access.log
         msg "INFO: Chive Manager installed"
       else
         msg "INFO: Chive Manager installation skipped"
@@ -158,7 +158,7 @@ if_install_sqlbuddy() {
     _SQLBUDDY_VHOST="${mtrNgx}/vhost.d/sqlbuddy.${_THIS_FRONT}"
     if [ ! -d "/var/www/sqlbuddy" ] \
       || [ ! -f "${_SQLBUDDY_VHOST}" ] \
-      || [ ! -f "${pthLog}/sqlbuddy.fix-dns-vhost-wildcard.log" ]; then
+      || [ ! -f "${pthLog}/sqlbuddy.sync-new-ip-access.log" ]; then
       echo " "
       if prompt_yes_no "Do you want to install SQL Buddy Manager?" ; then
         true
@@ -175,7 +175,7 @@ if_install_sqlbuddy() {
         wait
         sed -i "s/buddy_name/sqlbuddy.${_THIS_FRONT}/g"   ${_SQLBUDDY_VHOST}
         wait
-        touch ${pthLog}/sqlbuddy.fix-dns-vhost-wildcard.log
+        touch ${pthLog}/sqlbuddy.sync-new-ip-access.log
         msg "INFO: SQL Buddy Manager installed"
       else
         msg "INFO: SQL Buddy Manager installation skipped"
@@ -248,7 +248,7 @@ if_install_collectd() {
     if [ ! -e "/run/cloud_vhost.pid" ]; then
       if [ ! -d "/var/www/cgp" ] \
         || [ ! -f "${_CGP_VHOST}" ] \
-        || [ ! -f "${pthLog}/cgp-${_CGP_VRN}.fix-dns-vhost-wildcard.log" ]; then
+        || [ ! -f "${pthLog}/cgp-${_CGP_VRN}.sync-new-ip-access.log" ]; then
         echo " "
         if prompt_yes_no "Do you want to install Collectd Graph Panel?" ; then
           true
@@ -274,7 +274,7 @@ if_install_collectd() {
           sed -i "s/cgp_name/cgp.${_THIS_FRONT}/g"           ${_CGP_VHOST}
           wait
           mrun "update-rc.d collectd defaults" 2> /dev/null
-          touch ${pthLog}/cgp-${_CGP_VRN}.fix-dns-vhost-wildcard.log
+          touch ${pthLog}/cgp-${_CGP_VRN}.sync-new-ip-access.log
           msg "INFO: Collectd Graph Panel installed"
         else
           msg "INFO: Collectd Graph Panel installation skipped"
