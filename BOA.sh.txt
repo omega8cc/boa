@@ -1575,7 +1575,7 @@ update_agents() {
   fi
 
   _Dir="/data/all/000/modules"
-  _REDIS_T_VERSION=8.x-1.6.1
+  _REDIS_T_VERSION=8.x-1.8.1
   if [ -e "/var/xdrago/manage_solr_config.sh" ]; then
     if [ ! -e "${_Dir}/redis_nine_ten/ver-${_REDIS_T_VERSION}.${_X_SE}.info" ]; then
       mkdir -p ${_Dir}
