@@ -385,21 +385,6 @@ load_control() {
   proc_control
 }
 
-check_fastcgi_temp() {
-  _FASTCGI_SIZE_TEST=$(du -s -h /usr/fastcgi_temp/*/*/* | grep G 2> /dev/null)
-  if [[ "${_FASTCGI_SIZE_TEST}" =~ "G" ]]; then
-    echo "fastcgi_temp too big"
-    echo "$(date 2>&1) fastcgi_temp too big, cleanup forced START" >> \
-      /var/xdrago/log/giant.fastcgi.incident.log
-    echo "$(date 2>&1) ${_FASTCGI_SIZE_TEST}" >> \
-      /var/xdrago/log/giant.fastcgi.incident.log
-    rm -f /usr/fastcgi_temp/*/*/*
-    hold
-    echo "$(date 2>&1) fastcgi_temp too big, cleanup forced END" >> \
-      /var/xdrago/log/giant.fastcgi.incident.log
-  fi
-}
-
 count_cpu() {
   _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)
   _CPU_INFO=${_CPU_INFO//[^0-9]/}
@@ -440,7 +425,6 @@ if [ ! -e "/var/tmp/fpm" ]; then
   chmod 777 /var/tmp/fpm
 fi
 
-check_fastcgi_temp
 count_cpu
 load_control
 sleep 3

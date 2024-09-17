@@ -110,11 +110,31 @@ fpm_sockets_healing() {
   fi
 }
 
+fpm_fastcgi_temp() {
+  _FASTCGI_SIZE_TEST=$(du -s -h /usr/fastcgi_temp/*/*/* | grep G 2> /dev/null)
+  if [[ "${_FASTCGI_SIZE_TEST}" =~ "G" ]]; then
+    rm -f /usr/fastcgi_temp/*/*/*
+    killall -9 nginx
+    killall -9 php-fpm
+    thisErrLog="$(date 2>&1) PHP fastcgi_temp too big, cleanup forced"
+    echo ${thisErrLog} >> ${pthOml}
+    echo "$(date 2>&1) ${_FASTCGI_SIZE_TEST}" >> ${pthOml}
+    incident_email_report "PHP fastcgi_temp too big, cleanup forced"
+    echo >> ${pthOml}
+  fi
+}
+
+if [ ! -e "/var/tmp/fpm" ]; then
+  mkdir -p /var/tmp/fpm
+  chmod 777 /var/tmp/fpm
+fi
+
 fpm_duplicate_instances_detection
 fpm_giant_log_detection
 fpm_listen_conflict_detection
 fpm_proc_max_detection
 fpm_sockets_healing
+fpm_fastcgi_temp
 
 if [ ! -e "/root/.high_traffic.cnf" ] \
   && [ ! -e "/root/.giant_traffic.cnf" ]; then
