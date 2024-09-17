@@ -186,44 +186,17 @@ count_cpu() {
 
 count_cpu
 load_control
-sleep 3
+sleep 10
 load_control
-sleep 3
+sleep 10
 load_control
-sleep 3
+sleep 10
 load_control
-sleep 3
+sleep 10
 load_control
-sleep 3
+sleep 10
 load_control
-sleep 3
-load_control
-sleep 3
-load_control
-sleep 3
-load_control
-sleep 3
-load_control
-sleep 3
-load_control
-sleep 3
-load_control
-sleep 3
-load_control
-sleep 3
-load_control
-sleep 3
-load_control
-sleep 3
-load_control
-sleep 3
-load_control
-sleep 3
-load_control
-sleep 3
-load_control
-sleep 3
-load_control
+
 echo Done !
 exit 0
 ###EOF2024###
