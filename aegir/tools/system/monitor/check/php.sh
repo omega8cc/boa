@@ -56,8 +56,8 @@ fpm_forced_restart() {
       service php${e}-fpm start
     fi
   done
-  echo >> ${pthOml}
   incident_email_report "PHP $1"
+  echo >> ${pthOml}
   sleep 3
   rm -f /run/fmp_wait.pid
   rm -f /run/restarting_fmp_wait.pid

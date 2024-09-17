@@ -75,8 +75,8 @@ redis_restart() {
   fi
   echo "$(date 2>&1) $1 incident redis-server restarted" >> ${pthOml}
   echo "$(date 2>&1) $1 incident response completed" >> ${pthOml}
-  echo >> ${pthOml}
   incident_email_report "$1"
+  echo >> ${pthOml}
   [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
   exit 0
 }

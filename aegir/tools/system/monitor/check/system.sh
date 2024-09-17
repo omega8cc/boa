@@ -48,8 +48,8 @@ wkhtmltopdf_php_cli_oom_kill() {
   killall -9 php
   echo "$(date 2>&1) OOM php-cli killed" >> ${pthOml}
   echo "$(date 2>&1) OOM wkhtmltopdf/php-cli incident response completed" >> ${pthOml}
-  echo >> ${pthOml}
   incident_email_report "OOM $1 wkhtmltopdf/php-cli"
+  echo >> ${pthOml}
   [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
   exit 0
 }
@@ -79,8 +79,8 @@ oom_critical_restart() {
   wait
   echo "$(date 2>&1) OOM mysql restarted" >> ${pthOml}
   echo "$(date 2>&1) OOM incident response completed" >> ${pthOml}
-  echo >> ${pthOml}
   incident_email_report "OOM $1 system"
+  echo >> ${pthOml}
   [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
   exit 0
 }
@@ -143,8 +143,8 @@ if_fix_dhcp() {
       csf -q &> /dev/null
       thisErrLog="$(date 2>&1) DHCP error detected, firewall updated"
       echo ${thisErrLog} >> ${pthOml}
-      echo >> ${pthOml}
       incident_email_report "DHCP error detected, firewall updated"
+      echo >> ${pthOml}
     fi
   fi
 }
@@ -157,8 +157,8 @@ cron_duplicate_instances_detection() {
     service cron start &> /dev/null
     thisErrLog="$(date 2>&1) Too many Cron instances, service restarted"
     echo ${thisErrLog} >> ${pthOml}
-    echo >> ${pthOml}
     incident_email_report "Too many Cron instances, service restarted"
+    echo >> ${pthOml}
   fi
 }
 
@@ -171,8 +171,8 @@ syslog_giant_log_detection() {
       wait
       thisErrLog="$(date 2>&1) Syslog ${_SYSLOG_SIZE_TEST} too big, logrotate forced"
       echo ${thisErrLog} >> ${pthOml}
-      echo >> ${pthOml}
       incident_email_report "Syslog ${_SYSLOG_SIZE_TEST} too big, logrotate forced"
+      echo >> ${pthOml}
     fi
   fi
 }

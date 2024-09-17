@@ -57,8 +57,8 @@ sql_restart() {
   wait
   echo "$(date 2>&1) $1 incident mysql restarted" >> ${pthOml}
   echo "$(date 2>&1) $1 incident response completed" >> ${pthOml}
-  echo >> ${pthOml}
   incident_email_report "$1"
+  echo >> ${pthOml}
   [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
   exit 0
 }

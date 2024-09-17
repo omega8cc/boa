@@ -89,8 +89,8 @@ unbound_check_fix() {
     service unbound start &> /dev/null
     wait
     echo "$(date 2>&1) Too many Unbound processes killed" >> ${pthOml}
-    echo >> ${pthOml}
     incident_email_report "Too many Unbound processes"
+    echo >> ${pthOml}
   fi
 }
 

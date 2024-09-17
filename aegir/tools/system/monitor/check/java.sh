@@ -60,8 +60,8 @@ jetty_restart() {
   fi
   thisErrLog="$(date 2>&1) Jetty has been restarted"
   echo ${thisErrLog} >> ${pthOml}
-  echo >> ${pthOml}
   incident_email_report "$1"
+  echo >> ${pthOml}
   [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
   exit 0
 }

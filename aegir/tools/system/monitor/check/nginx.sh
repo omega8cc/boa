@@ -60,8 +60,8 @@ restart_nginx() {
     echo "$(date 2>&1) NGX $1 incident nginx restart failed" >> ${pthOml}
   fi
   echo "$(date 2>&1) NGX $1 incident response completed" >> ${pthOml}
-  echo >> ${pthOml}
   incident_email_report "NGX $1"
+  echo >> ${pthOml}
   [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
   exit 0
 }
