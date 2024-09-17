@@ -80,7 +80,7 @@ Refer to Compatible FTP-SSL/TLS Clients: https://omega8.cc/dev/ftp-tls.txt for m
 
 Manage your databases via the Adminer Manager web interface, using credentials available in each site's drushrc.php file:
 
-Adminer Manager URL: https://166.84.6.231
+Adminer Manager URL: https://aegir.url.name/sqladmin/
 
 Note: Keep the SSH session active with a continuous command (e.g., ping -i 30 google.com) to maintain database access.
 
