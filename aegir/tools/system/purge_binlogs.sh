@@ -39,7 +39,7 @@ if [ -e "/root/.pause_tasks_maint.cnf" ]; then
 fi
 
 if [ $(pgrep -f purge_binlogs.sh | grep -v "^$$" | wc -l) -gt 1 ]; then
-  echo "Too many purge_binlogs.sh running"
+  echo "Too many purge_binlogs.sh running" >> /var/xdrago/log/too.many.log
   exit 0
 fi
 

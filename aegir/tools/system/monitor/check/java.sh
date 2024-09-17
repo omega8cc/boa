@@ -28,7 +28,7 @@ export _INCIDENT_EMAIL_REPORT=${_INCIDENT_EMAIL_REPORT//[^A-Z]/}
 : "${_INCIDENT_EMAIL_REPORT:=YES}"
 
 if [ $(pgrep -f java.sh | grep -v "^$$" | wc -l) -gt 1 ]; then
-  echo "Too many java.sh running"
+  echo "Too many java.sh running" >> /var/xdrago/log/too.many.log
   exit 0
 fi
 

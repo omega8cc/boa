@@ -15,7 +15,7 @@ if [ -e "/root/.proxy.cnf" ]; then
 fi
 
 if [ $(pgrep -f second.sh | grep -v "^$$" | wc -l) -gt 1 ]; then
-  echo "Too many second.sh running"
+  echo "Too many second.sh running" >> /var/xdrago/log/too.many.log
   exit 0
 fi
 
