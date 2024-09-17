@@ -613,7 +613,7 @@ update_agents() {
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${pthLog}/java.sh.ctrl.${_X_SE}.pid" ]; then
     mv -f /var/xdrago/monitor/check/java.sh /var/xdrago/monitor/check/java.sh.old
-    curl ${crlGet} "${urlHmr}/tools/system/java.sh" -o /var/xdrago/monitor/check/java.sh
+    curl ${crlGet} "${urlHmr}/tools/system/monitor/check/java.sh" -o /var/xdrago/monitor/check/java.sh
     if [ -e "/var/xdrago/monitor/check/java.sh" ]; then
       chmod 700 /var/xdrago/monitor/check/java.sh
       chown root:root /var/xdrago/monitor/check/java.sh
@@ -627,7 +627,7 @@ update_agents() {
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${pthLog}/mysql.ctrl.${_X_SE}.pid" ]; then
     mv -f /var/xdrago/monitor/check/mysql.sh /var/xdrago/monitor/check/mysql.sh.old
-    curl ${crlGet} "${urlHmr}/tools/system/minute.sh" -o /var/xdrago/monitor/check/mysql.sh
+    curl ${crlGet} "${urlHmr}/tools/system/monitor/check/mysql.sh" -o /var/xdrago/monitor/check/mysql.sh
     if [ -e "/var/xdrago/monitor/check/mysql.sh" ]; then
       if [ -e "/root/.debug.cnf" ] && [ ! -e "/root/.default.cnf" ]; then
         _DO_NOTHING=YES
@@ -654,7 +654,7 @@ update_agents() {
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${pthLog}/nginx.sh.ctrl.${_X_SE}.pid" ]; then
     mv -f /var/xdrago/monitor/check/nginx.sh /var/xdrago/monitor/check/nginx.sh.old
-    curl ${crlGet} "${urlHmr}/tools/system/nginx.sh" -o /var/xdrago/monitor/check/nginx.sh
+    curl ${crlGet} "${urlHmr}/tools/system/monitor/check/nginx.sh" -o /var/xdrago/monitor/check/nginx.sh
     if [ -e "/var/xdrago/monitor/check/nginx.sh" ]; then
       chmod 700 /var/xdrago/monitor/check/nginx.sh
       chown root:root /var/xdrago/monitor/check/nginx.sh
@@ -668,7 +668,7 @@ update_agents() {
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${pthLog}/php.sh.ctrl.${_X_SE}.pid" ]; then
     mv -f /var/xdrago/monitor/check/php.sh /var/xdrago/monitor/check/php.sh.old
-    curl ${crlGet} "${urlHmr}/tools/system/php.sh" -o /var/xdrago/monitor/check/php.sh
+    curl ${crlGet} "${urlHmr}/tools/system/monitor/check/php.sh" -o /var/xdrago/monitor/check/php.sh
     if [ -e "/var/xdrago/monitor/check/php.sh" ]; then
       chmod 700 /var/xdrago/monitor/check/php.sh
       chown root:root /var/xdrago/monitor/check/php.sh
@@ -682,7 +682,7 @@ update_agents() {
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${pthLog}/redis.sh.ctrl.${_X_SE}.pid" ]; then
     mv -f /var/xdrago/monitor/check/redis.sh /var/xdrago/monitor/check/redis.sh.old
-    curl ${crlGet} "${urlHmr}/tools/system/redis.sh" -o /var/xdrago/monitor/check/redis.sh
+    curl ${crlGet} "${urlHmr}/tools/system/monitor/check/redis.sh" -o /var/xdrago/monitor/check/redis.sh
     if [ -e "/var/xdrago/monitor/check/redis.sh" ]; then
       chmod 700 /var/xdrago/monitor/check/redis.sh
       chown root:root /var/xdrago/monitor/check/redis.sh
@@ -696,7 +696,7 @@ update_agents() {
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${pthLog}/system.sh.ctrl.${_X_SE}.pid" ]; then
     mv -f /var/xdrago/monitor/check/system.sh /var/xdrago/monitor/check/system.sh.old
-    curl ${crlGet} "${urlHmr}/tools/system/system.sh" -o /var/xdrago/monitor/check/system.sh
+    curl ${crlGet} "${urlHmr}/tools/system/monitor/check/system.sh" -o /var/xdrago/monitor/check/system.sh
     if [ -e "/var/xdrago/monitor/check/system.sh" ]; then
       chmod 700 /var/xdrago/monitor/check/system.sh
       chown root:root /var/xdrago/monitor/check/system.sh
@@ -710,7 +710,7 @@ update_agents() {
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${pthLog}/unbound.sh.ctrl.${_X_SE}.pid" ]; then
     mv -f /var/xdrago/monitor/check/unbound.sh /var/xdrago/monitor/check/unbound.sh.old
-    curl ${crlGet} "${urlHmr}/tools/system/unbound.sh" -o /var/xdrago/monitor/check/unbound.sh
+    curl ${crlGet} "${urlHmr}/tools/system/monitor/check/unbound.sh" -o /var/xdrago/monitor/check/unbound.sh
     if [ -e "/var/xdrago/monitor/check/unbound.sh" ]; then
       chmod 700 /var/xdrago/monitor/check/unbound.sh
       chown root:root /var/xdrago/monitor/check/unbound.sh
@@ -724,7 +724,7 @@ update_agents() {
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${pthLog}/escapecheck.pl.ctrl.${_X_SE}.pid" ]; then
     mv -f /var/xdrago/monitor/check/escapecheck.pl /var/xdrago/monitor/check/escapecheck.pl.old
-    curl ${crlGet} "${urlHmr}/tools/system/escapecheck.pl" -o /var/xdrago/monitor/check/escapecheck.pl
+    curl ${crlGet} "${urlHmr}/tools/system/monitor/check/escapecheck.pl" -o /var/xdrago/monitor/check/escapecheck.pl
     if [ -e "/var/xdrago/monitor/check/escapecheck.pl" ]; then
       chmod 700 /var/xdrago/monitor/check/escapecheck.pl
       chown root:root /var/xdrago/monitor/check/escapecheck.pl
@@ -738,7 +738,7 @@ update_agents() {
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${pthLog}/hackcheck.pl.ctrl.${_X_SE}.pid" ]; then
     mv -f /var/xdrago/monitor/check/hackcheck.pl /var/xdrago/monitor/check/hackcheck.pl.old
-    curl ${crlGet} "${urlHmr}/tools/system/hackcheck.pl" -o /var/xdrago/monitor/check/hackcheck.pl
+    curl ${crlGet} "${urlHmr}/tools/system/monitor/check/hackcheck.pl" -o /var/xdrago/monitor/check/hackcheck.pl
     if [ -e "/var/xdrago/monitor/check/hackcheck.pl" ]; then
       chmod 700 /var/xdrago/monitor/check/hackcheck.pl
       chown root:root /var/xdrago/monitor/check/hackcheck.pl
@@ -752,7 +752,7 @@ update_agents() {
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${pthLog}/hackftp.pl.ctrl.${_X_SE}.pid" ]; then
     mv -f /var/xdrago/monitor/check/hackftp.pl /var/xdrago/monitor/check/hackftp.pl.old
-    curl ${crlGet} "${urlHmr}/tools/system/hackftp.pl" -o /var/xdrago/monitor/check/hackftp.pl
+    curl ${crlGet} "${urlHmr}/tools/system/monitor/check/hackftp.pl" -o /var/xdrago/monitor/check/hackftp.pl
     if [ -e "/var/xdrago/monitor/check/hackftp.pl" ]; then
       chmod 700 /var/xdrago/monitor/check/hackftp.pl
       chown root:root /var/xdrago/monitor/check/hackftp.pl
@@ -766,7 +766,7 @@ update_agents() {
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${pthLog}/locked_java.pl.ctrl.${_X_SE}.pid" ]; then
     mv -f /var/xdrago/monitor/check/locked_java.pl /var/xdrago/monitor/check/locked_java.pl.old
-    curl ${crlGet} "${urlHmr}/tools/system/locked_java.pl" -o /var/xdrago/monitor/check/locked_java.pl
+    curl ${crlGet} "${urlHmr}/tools/system/monitor/check/locked_java.pl" -o /var/xdrago/monitor/check/locked_java.pl
     if [ -e "/var/xdrago/monitor/check/locked_java.pl" ]; then
       chmod 700 /var/xdrago/monitor/check/locked_java.pl
       chown root:root /var/xdrago/monitor/check/locked_java.pl
@@ -780,7 +780,7 @@ update_agents() {
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${pthLog}/locked_nginx.pl.ctrl.${_X_SE}.pid" ]; then
     mv -f /var/xdrago/monitor/check/locked_nginx.pl /var/xdrago/monitor/check/locked_nginx.pl.old
-    curl ${crlGet} "${urlHmr}/tools/system/locked_nginx.pl" -o /var/xdrago/monitor/check/locked_nginx.pl
+    curl ${crlGet} "${urlHmr}/tools/system/monitor/check/locked_nginx.pl" -o /var/xdrago/monitor/check/locked_nginx.pl
     if [ -e "/var/xdrago/monitor/check/locked_nginx.pl" ]; then
       chmod 700 /var/xdrago/monitor/check/locked_nginx.pl
       chown root:root /var/xdrago/monitor/check/locked_nginx.pl
@@ -794,7 +794,7 @@ update_agents() {
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${pthLog}/scan_nginx.pl.ctrl.${_X_SE}.pid" ]; then
     mv -f /var/xdrago/monitor/check/scan_nginx.pl /var/xdrago/monitor/check/scan_nginx.pl.old
-    curl ${crlGet} "${urlHmr}/tools/system/scan_nginx.pl" -o /var/xdrago/monitor/check/scan_nginx.pl
+    curl ${crlGet} "${urlHmr}/tools/system/monitor/check/scan_nginx.pl" -o /var/xdrago/monitor/check/scan_nginx.pl
     if [ -e "/var/xdrago/monitor/check/scan_nginx.pl" ]; then
       chmod 700 /var/xdrago/monitor/check/scan_nginx.pl
       chown root:root /var/xdrago/monitor/check/scan_nginx.pl
@@ -808,7 +808,7 @@ update_agents() {
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${pthLog}/segfault_alert.pl.ctrl.${_X_SE}.pid" ]; then
     mv -f /var/xdrago/monitor/check/segfault_alert.pl /var/xdrago/monitor/check/segfault_alert.pl.old
-    curl ${crlGet} "${urlHmr}/tools/system/segfault_alert.pl" -o /var/xdrago/monitor/check/segfault_alert.pl
+    curl ${crlGet} "${urlHmr}/tools/system/monitor/check/segfault_alert.pl" -o /var/xdrago/monitor/check/segfault_alert.pl
     if [ -e "/var/xdrago/monitor/check/segfault_alert.pl" ]; then
       chmod 700 /var/xdrago/monitor/check/segfault_alert.pl
       chown root:root /var/xdrago/monitor/check/segfault_alert.pl
@@ -822,7 +822,7 @@ update_agents() {
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${pthLog}/sqlcheck.pl.ctrl.${_X_SE}.pid" ]; then
     mv -f /var/xdrago/monitor/check/sqlcheck.pl /var/xdrago/monitor/check/sqlcheck.pl.old
-    curl ${crlGet} "${urlHmr}/tools/system/sqlcheck.pl" -o /var/xdrago/monitor/check/sqlcheck.pl
+    curl ${crlGet} "${urlHmr}/tools/system/monitor/check/sqlcheck.pl" -o /var/xdrago/monitor/check/sqlcheck.pl
     if [ -e "/var/xdrago/monitor/check/sqlcheck.pl" ]; then
       chmod 700 /var/xdrago/monitor/check/sqlcheck.pl
       chown root:root /var/xdrago/monitor/check/sqlcheck.pl
