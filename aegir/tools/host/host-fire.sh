@@ -48,8 +48,7 @@ guest_proc_monitor() {
       && [ ! -e "${i}/run/boa_run.pid" ] \
       && [ ! -e "${i}/run/mysql_restart_running.pid" ] \
       && [ -e "/usr/var/run${i}" ]; then
-      vserver ${_VS_NAME} exec perl /var/xdrago/proc_num_ctrl.pl
-      wait
+      vserver ${_VS_NAME} exec perl /var/xdrago/proc_num_ctrl.pl &
     fi
   done
 }

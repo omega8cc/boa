@@ -2568,11 +2568,9 @@ run_apt_get_dist_upgrade() {
     fi
   done
   if [ ! -e "/var/xdrago/log" ] && [ -e "/var/xdrago_wait/log" ]; then
-    mrun "perl /var/xdrago_wait/proc_num_ctrl.pl" 2> /dev/null
-    wait
+    perl /var/xdrago_wait/proc_num_ctrl.pl &
   else
-    mrun "perl /var/xdrago/proc_num_ctrl.pl" 2> /dev/null
-    wait
+    perl /var/xdrago/proc_num_ctrl.pl &
   fi
 }
 
@@ -5745,11 +5743,9 @@ if_post_major_os_upgrade() {
       fi
     done
     if [ ! -e "/var/xdrago/log" ] && [ -e "/var/xdrago_wait/log" ]; then
-      mrun "perl /var/xdrago_wait/proc_num_ctrl.pl" 2> /dev/null
-      wait
+      perl /var/xdrago_wait/proc_num_ctrl.pl &
     else
-      mrun "perl /var/xdrago/proc_num_ctrl.pl" 2> /dev/null
-      wait
+      perl /var/xdrago/proc_num_ctrl.pl &
     fi
 
     _REBUILD_SRC_ON_AUTO_NOW=YES
@@ -6428,11 +6424,9 @@ if_major_os_upgrade() {
       fi
     done
     if [ ! -e "/var/xdrago/log" ] && [ -e "/var/xdrago_wait/log" ]; then
-      mrun "perl /var/xdrago_wait/proc_num_ctrl.pl" 2> /dev/null
-      wait
+      perl /var/xdrago_wait/proc_num_ctrl.pl &
     else
-      mrun "perl /var/xdrago/proc_num_ctrl.pl" 2> /dev/null
-      wait
+      perl /var/xdrago/proc_num_ctrl.pl &
     fi
     ### Add info file to keep major OS upgrades track.
     touch /root/.${_LOC_OS_CODE}_to_${_NEW_OS_CODE}_major_os_upgrade.info

@@ -324,8 +324,7 @@ proc_control() {
       maxload is ${_O_LOAD_MAX}:${_F_LOAD_MAX}"
     echo ...OK now running proc_num_ctrl...
     renice ${_B_NICE} -p $$ &> /dev/null
-    perl /var/xdrago/proc_num_ctrl.pl
-    wait
+    perl /var/xdrago/proc_num_ctrl.pl &
     touch /var/xdrago/log/proc_num_ctrl.done.pid
     echo CTL done
   fi

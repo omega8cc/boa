@@ -65,8 +65,7 @@ unbound_check_fix() {
         sleep 1
         killall -9 unbound &> /dev/null
         renice ${_B_NICE} -p $$ &> /dev/null
-        perl /var/xdrago/proc_num_ctrl.pl
-        wait
+        perl /var/xdrago/proc_num_ctrl.pl &
       fi
     else
       rm -f /etc/resolv.conf
