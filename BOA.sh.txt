@@ -636,7 +636,7 @@ update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${pthLog}/mysql.ctrl.${_X_SE}.pid" ]; then
+    && [ ! -e "${pthLog}/mysql.sh.ctrl.${_X_SE}.pid" ]; then
     mv -f /var/xdrago/monitor/check/mysql.sh /var/xdrago/monitor/check/mysql.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/monitor/check/mysql.sh" -o /var/xdrago/monitor/check/mysql.sh
     if [ -e "/var/xdrago/monitor/check/mysql.sh" ]; then
@@ -655,7 +655,7 @@ update_agents() {
       fi
       chmod 700 /var/xdrago/monitor/check/mysql.sh
       chown root:root /var/xdrago/monitor/check/mysql.sh
-      touch ${pthLog}/mysql.ctrl.${_X_SE}.pid
+      touch ${pthLog}/mysql.sh.ctrl.${_X_SE}.pid
     else
       mv -f /var/xdrago/monitor/check/mysql.sh.old /var/xdrago/monitor/check/mysql.sh
     fi
@@ -875,13 +875,13 @@ update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${pthLog}/mysql_backup.ctrl.hf01.${_X_SE}.pid" ]; then
+    && [ ! -e "${pthLog}/mysql_backup.sh.ctrl.hf01.${_X_SE}.pid" ]; then
     mv -f /var/xdrago/mysql_backup.sh /var/xdrago/mysql_backup.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/mysql_backup.sh" -o /var/xdrago/mysql_backup.sh
     if [ -e "/var/xdrago/mysql_backup.sh" ]; then
       chmod 700 /var/xdrago/mysql_backup.sh
       chown root:root /var/xdrago/mysql_backup.sh
-      touch ${pthLog}/mysql_backup.ctrl.hf01.${_X_SE}.pid
+      touch ${pthLog}/mysql_backup.sh.ctrl.hf01.${_X_SE}.pid
     else
       mv -f /var/xdrago/mysql_backup.sh.old /var/xdrago/mysql_backup.sh
     fi
@@ -903,13 +903,13 @@ update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${pthLog}/mysql_cleanup.ctrl.hf01.${_X_SE}.pid" ]; then
+    && [ ! -e "${pthLog}/mysql_cleanup.sh.ctrl.hf01.${_X_SE}.pid" ]; then
     mv -f /var/xdrago/mysql_cleanup.sh /var/xdrago/mysql_cleanup.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/mysql_cleanup.sh" -o /var/xdrago/mysql_cleanup.sh
     if [ -e "/var/xdrago/mysql_cleanup.sh" ]; then
       chmod 700 /var/xdrago/mysql_cleanup.sh
       chown root:root /var/xdrago/mysql_cleanup.sh
-      touch ${pthLog}/mysql_cleanup.ctrl.hf01.${_X_SE}.pid
+      touch ${pthLog}/mysql_cleanup.sh.ctrl.hf01.${_X_SE}.pid
     else
       mv -f /var/xdrago/mysql_cleanup.sh.old /var/xdrago/mysql_cleanup.sh
     fi
@@ -917,13 +917,13 @@ update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${pthLog}/mysql_cluster_backup.ctrl.${tRee}.${_X_SE}.pid" ]; then
+    && [ ! -e "${pthLog}/mysql_cluster_backup.sh.ctrl.${tRee}.${_X_SE}.pid" ]; then
     mv -f /var/xdrago/mysql_cluster_backup.sh /var/xdrago/mysql_cluster_backup.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/mysql_cluster_backup.sh" -o /var/xdrago/mysql_cluster_backup.sh
     if [ -e "/var/xdrago/mysql_cluster_backup.sh" ]; then
       chmod 700 /var/xdrago/mysql_cluster_backup.sh
       chown root:root /var/xdrago/mysql_cluster_backup.sh
-      touch ${pthLog}/mysql_cluster_backup.ctrl.${tRee}.${_X_SE}.pid
+      touch ${pthLog}/mysql_cluster_backup.sh.ctrl.${tRee}.${_X_SE}.pid
     else
       mv -f /var/xdrago/mysql_cluster_backup.sh.old /var/xdrago/mysql_cluster_backup.sh
     fi
@@ -931,13 +931,13 @@ update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${pthLog}/runner.ctrl.${tRee}.${_X_SE}.pid" ]; then
+    && [ ! -e "${pthLog}/runner.sh.ctrl.${tRee}.${_X_SE}.pid" ]; then
     mv -f /var/xdrago/runner.sh /var/xdrago/runner.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/runner.sh" -o /var/xdrago/runner.sh
     if [ -e "/var/xdrago/runner.sh" ]; then
       chmod 700 /var/xdrago/runner.sh
       chown root:root /var/xdrago/runner.sh
-      touch ${pthLog}/runner.ctrl.${tRee}.${_X_SE}.pid
+      touch ${pthLog}/runner.sh.ctrl.${tRee}.${_X_SE}.pid
     else
       mv -f /var/xdrago/runner.sh.old /var/xdrago/runner.sh
     fi
@@ -1043,13 +1043,13 @@ update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${pthLog}/clear.ctrl.a2.${_X_SE}.pid" ]; then
+    && [ ! -e "${pthLog}/clear.sh.ctrl.${_X_SE}.pid" ]; then
     mv -f /var/xdrago/clear.sh /var/xdrago/clear.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/clear.sh" -o /var/xdrago/clear.sh
     if [ -e "/var/xdrago/clear.sh" ]; then
       chmod 700 /var/xdrago/clear.sh
       chown root:root /var/xdrago/clear.sh
-      touch ${pthLog}/clear.ctrl.a2.${_X_SE}.pid
+      touch ${pthLog}/clear.sh.ctrl.${_X_SE}.pid
     else
       mv -f /var/xdrago/clear.sh.old /var/xdrago/clear.sh
     fi
@@ -1057,13 +1057,13 @@ update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${pthLog}/daily.ctrl.hfx04.${_X_SE}.pid" ]; then
+    && [ ! -e "${pthLog}/daily.sh.ctrl.${_X_SE}.pid" ]; then
     mv -f /var/xdrago/daily.sh /var/xdrago/daily.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/daily.sh" -o /var/xdrago/daily.sh
     if [ -e "/var/xdrago/daily.sh" ]; then
       chmod 700 /var/xdrago/daily.sh
       chown root:root /var/xdrago/daily.sh
-      touch ${pthLog}/daily.ctrl.hfx04.${_X_SE}.pid
+      touch ${pthLog}/daily.sh.ctrl.${_X_SE}.pid
     else
       mv -f /var/xdrago/daily.sh.old /var/xdrago/daily.sh
     fi
@@ -1071,13 +1071,13 @@ update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${pthLog}/graceful_f2.ctrl.${tRee}.${_X_SE}.pid" ]; then
+    && [ ! -e "${pthLog}/graceful.sh.ctrl.ctrl.${tRee}.${_X_SE}.pid" ]; then
     mv -f /var/xdrago/graceful.sh /var/xdrago/graceful.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/graceful.sh" -o /var/xdrago/graceful.sh
     if [ -e "/var/xdrago/graceful.sh" ]; then
       chmod 700 /var/xdrago/graceful.sh
       chown root:root /var/xdrago/graceful.sh
-      touch ${pthLog}/graceful_f2.ctrl.${tRee}.${_X_SE}.pid
+      touch ${pthLog}/graceful.sh.ctrl.ctrl.${tRee}.${_X_SE}.pid
     else
       mv -f /var/xdrago/graceful.sh.old /var/xdrago/graceful.sh
     fi
@@ -1095,13 +1095,13 @@ update_agents() {
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
     && [ "${_MY_USAGE}" = "YES" ] \
-    && [ ! -e "${pthLog}/usage.ctrl.${tRee}.${_X_SE}.pid" ]; then
+    && [ ! -e "${pthLog}/usage.sh.ctrl.${tRee}.${_X_SE}.pid" ]; then
     mv -f /var/xdrago/usage.sh /var/xdrago/usage.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/usage.sh" -o /var/xdrago/usage.sh
     if [ -e "/var/xdrago/usage.sh" ]; then
       chmod 700 /var/xdrago/usage.sh
       chown root:root /var/xdrago/usage.sh
-      touch ${pthLog}/usage.ctrl.${tRee}.${_X_SE}.pid
+      touch ${pthLog}/usage.sh.ctrl.${tRee}.${_X_SE}.pid
     else
       mv -f /var/xdrago/usage.sh.old /var/xdrago/usage.sh
     fi
@@ -1109,14 +1109,14 @@ update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${pthLog}/manage_ltd_users.ctrl.${tRee}.${_X_SE}.pid" ]; then
+    && [ ! -e "${pthLog}/manage_ltd_users.sh.ctrl.${tRee}.${_X_SE}.pid" ]; then
     mv -f /var/xdrago/manage_ltd_users.sh /var/xdrago/manage_ltd_users.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/manage_ltd_users.sh" \
       -o /var/xdrago/manage_ltd_users.sh
     if [ -e "/var/xdrago/manage_ltd_users.sh" ]; then
       chmod 700 /var/xdrago/manage_ltd_users.sh
       chown root:root /var/xdrago/manage_ltd_users.sh
-      touch ${pthLog}/manage_ltd_users.ctrl.${tRee}.${_X_SE}.pid
+      touch ${pthLog}/manage_ltd_users.sh.ctrl.${tRee}.${_X_SE}.pid
       [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
     else
       mv -f /var/xdrago/manage_ltd_users.sh.old /var/xdrago/manage_ltd_users.sh
@@ -1125,14 +1125,14 @@ update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${pthLog}/manage_solr_config_f2.ctrl.${tRee}.${_X_SE}.pid" ]; then
+    && [ ! -e "${pthLog}/manage_solr_config.sh.ctrl.${tRee}.${_X_SE}.pid" ]; then
     mv -f /var/xdrago/manage_solr_config.sh /var/xdrago/manage_solr_config.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/manage_solr_config.sh" \
       -o /var/xdrago/manage_solr_config.sh
     if [ -e "/var/xdrago/manage_solr_config.sh" ]; then
       chmod 700 /var/xdrago/manage_solr_config.sh
       chown root:root /var/xdrago/manage_solr_config.sh
-      touch ${pthLog}/manage_solr_config_f2.ctrl.${tRee}.${_X_SE}.pid
+      touch ${pthLog}/manage_solr_config.sh.ctrl.${tRee}.${_X_SE}.pid
       rm -f /run/manage_solr_config.pid
     else
       mv -f /var/xdrago/manage_solr_config.sh.old /var/xdrago/manage_solr_config.sh
@@ -1141,14 +1141,14 @@ update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${pthLog}/proc_num_ctrl_f2.ctrl.${tRee}.${_X_SE}.pid" ]; then
+    && [ ! -e "${pthLog}/proc_num_ctrl.pl.ctrl.${tRee}.${_X_SE}.pid" ]; then
     mv -f /var/xdrago/proc_num_ctrl.pl /var/xdrago/proc_num_ctrl.pl.old
     curl ${crlGet} "${urlHmr}/tools/system/proc_num_ctrl.pl" \
       -o /var/xdrago/proc_num_ctrl.pl
     if [ -e "/var/xdrago/proc_num_ctrl.pl" ]; then
       chmod 700 /var/xdrago/proc_num_ctrl.pl
       chown root:root /var/xdrago/proc_num_ctrl.pl
-      touch ${pthLog}/proc_num_ctrl_f2.ctrl.${tRee}.${_X_SE}.pid
+      touch ${pthLog}/proc_num_ctrl.pl.ctrl.${tRee}.${_X_SE}.pid
     else
       mv -f /var/xdrago/proc_num_ctrl.pl.old /var/xdrago/proc_num_ctrl.pl
     fi
@@ -1177,14 +1177,14 @@ update_agents() {
     && [ -e "/var/aegir/drush" ] \
     && [ -x "/usr/sbin/csf" ] \
     && [ -e "/etc/csf/csf.deny" ] \
-    && [ ! -e "${pthLog}/guest-fire-sh2.ctrl.${tRee}.${_X_SE}.pid" ]; then
+    && [ ! -e "${pthLog}/guest-fire.sh.ctrl.${tRee}.${_X_SE}.pid" ]; then
     mv -f /var/xdrago/guest-fire.sh /var/xdrago/guest-fire.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/guest-fire.sh" \
       -o /var/xdrago/guest-fire.sh
     if [ -e "/var/xdrago/guest-fire.sh" ]; then
       chmod 700 /var/xdrago/guest-fire.sh
       chown root:root /var/xdrago/guest-fire.sh
-      touch ${pthLog}/guest-fire-sh2.ctrl.${tRee}.${_X_SE}.pid
+      touch ${pthLog}/guest-fire.sh.ctrl.${tRee}.${_X_SE}.pid
     else
       mv -f /var/xdrago/guest-fire.sh.old /var/xdrago/guest-fire.sh
     fi
@@ -1195,14 +1195,14 @@ update_agents() {
     && [ -e "/var/aegir/drush" ] \
     && [ -x "/usr/sbin/csf" ] \
     && [ -e "/etc/csf/csf.deny" ] \
-    && [ ! -e "${pthLog}/guest-water-sh2.ctrl.${tRee}.${_X_SE}.pid" ]; then
+    && [ ! -e "${pthLog}/guest-water.sh.ctrl.${tRee}.${_X_SE}.pid" ]; then
     mv -f /var/xdrago/guest-water.sh /var/xdrago/guest-water.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/guest-water.sh" \
       -o /var/xdrago/guest-water.sh
     if [ -e "/var/xdrago/guest-water.sh" ]; then
       chmod 700 /var/xdrago/guest-water.sh
       chown root:root /var/xdrago/guest-water.sh
-      touch ${pthLog}/guest-water-sh2.ctrl.${tRee}.${_X_SE}.pid
+      touch ${pthLog}/guest-water.sh.ctrl.${tRee}.${_X_SE}.pid
     else
       mv -f /var/xdrago/guest-water.sh.old /var/xdrago/guest-water.sh
     fi
@@ -1225,7 +1225,7 @@ update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${pthLog}/scan_nginx.ctrl.${tRee}.${_X_SE}.pid" ]; then
+    && [ ! -e "${pthLog}/scan_nginx.pl.ctrl.${tRee}.${_X_SE}.pid" ]; then
     [ ! -d "/var/xdrago/monitor/log" ] && mkdir -p /var/xdrago/monitor/log
     mv -f /var/xdrago/monitor/check/scan_nginx.pl /var/xdrago/monitor/check/scan_nginx.pl.old
     curl ${crlGet} "${urlHmr}/tools/system/monitor/check/scan_nginx.pl" \
@@ -1255,7 +1255,6 @@ update_agents() {
       fi
       chmod 700 /var/xdrago/monitor/check/scan_nginx.pl
       chown root:root /var/xdrago/monitor/check/scan_nginx.pl
-      touch ${pthLog}/scan_nginx.ctrl.${tRee}.${_X_SE}.pid
       if [ ! -e "/var/xdrago/monitor/log/.scan_nginx_arch.${_X_SE}.pid" ]; then
         if [ -e "/var/xdrago/monitor/scan_nginx.archive.log" ]; then
           mv -f /var/xdrago/monitor/scan_nginx.archive.log /var/xdrago/monitor/log/scan_nginx_legacy.archive.${_X_SE}.log
@@ -1268,6 +1267,7 @@ update_agents() {
         csf -df
         wait
       fi
+      touch ${pthLog}/scan_nginx.pl.ctrl.${tRee}.${_X_SE}.pid
     else
       mv -f /var/xdrago/monitor/check/scan_nginx.pl.old /var/xdrago/monitor/check/scan_nginx.pl
     fi
