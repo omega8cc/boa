@@ -8,16 +8,6 @@ export PATH=${PATH}
 export SHELL=${SHELL}
 export HOME=${HOME}
 
-second_flood_guard() {
-  thisCountSec=`ps aux | grep -v "grep" | grep -v "null" | grep --count "/second.sh"`
-  if [ ${thisCountSec} -gt "4" ]; then
-    echo "$(date 2>&1) Too many ${thisCountSec} second.sh processes killed" >> \
-      /var/log/sec-count.kill.log
-    kill -9 $(ps aux | grep '[s]econd.sh' | awk '{print $2}') &> /dev/null
-  fi
-}
-[ ! -e "/run/boa_run.pid" ] && second_flood_guard
-
 csf_flood_guard() {
   thisCountCsf=`ps aux | grep -v "grep" | grep -v "null" | grep --count "/csf"`
   if [ ! -e "/run/boa_run.pid" ] && [ ${thisCountCsf} -gt "4" ]; then

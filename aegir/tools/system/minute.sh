@@ -44,6 +44,16 @@ perl /var/xdrago/monitor/check/hackcheck.pl &
 perl /var/xdrago/monitor/check/hackftp.pl &
 perl /var/xdrago/monitor/check/escapecheck.pl &
 
+second_flood_guard() {
+  thisCountSec=`ps aux | grep -v "grep" | grep -v "null" | grep --count "/second.sh"`
+  if [ ${thisCountSec} -gt "4" ]; then
+    echo "$(date 2>&1) Too many ${thisCountSec} second.sh processes killed" >> \
+      /var/log/sec-count.kill.log
+    kill -9 $(ps aux | grep '[s]econd.sh' | awk '{print $2}') &> /dev/null
+  fi
+}
+[ ! -e "/run/boa_run.pid" ] && second_flood_guard
+
 echo DONE!
 exit 0
 ###EOF2024###
