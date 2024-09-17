@@ -27,7 +27,7 @@ export _B_NICE=${_B_NICE//[^0-9]/}
 export _INCIDENT_EMAIL_REPORT=${_INCIDENT_EMAIL_REPORT//[^A-Z]/}
 : "${_INCIDENT_EMAIL_REPORT:=YES}"
 
-if [ $(pgrep -f unbound.sh | wc -l) -gt 1 ]; then
+if [ $(pgrep -f unbound.sh | grep -v "^$$" | wc -l) -gt 1 ]; then
   echo "Too many unbound.sh running"
   exit 0
 fi

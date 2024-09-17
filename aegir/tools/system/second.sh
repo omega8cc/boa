@@ -14,7 +14,7 @@ if [ -e "/root/.proxy.cnf" ]; then
   exit 0
 fi
 
-if [ $(pgrep -f second.sh | wc -l) -gt 1 ]; then
+if [ $(pgrep -f second.sh | grep -v "^$$" | wc -l) -gt 1 ]; then
   echo "Too many second.sh running"
   exit 0
 fi
