@@ -333,6 +333,14 @@ if [ -e "/var/xdrago/log" ]; then
   if [ ! -z "${_BROKEN_UPDATE_TEST}" ]; then
     rm -f /var/xdrago/log/*.pid
   fi
+  _BROKEN_UPDATE_TEST=$(grep "Under Construction" /var/xdrago/monitor/check/* 2>&1)
+  if [ ! -z "${_BROKEN_UPDATE_TEST}" ]; then
+    rm -f /var/xdrago/log/*.pid
+  fi
+  _BROKEN_UPDATE_TEST=$(grep "404 Not Found" /var/xdrago/monitor/check/* 2>&1)
+  if [ ! -z "${_BROKEN_UPDATE_TEST}" ]; then
+    rm -f /var/xdrago/log/*.pid
+  fi
 fi
 
 if [ -e "/root/.pause_heavy_tasks_maint.cnf" ]; then
