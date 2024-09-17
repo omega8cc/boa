@@ -918,7 +918,7 @@ sql_conf_update() {
     if [ ! -z "${_INNODB_LOG_FILE_SIZE}" ]; then
       if [ "${_INNODB_LOG_FILE_SIZE}" -ge "50" ]; then
         _INNODB_LOG_FILE_SIZE_MB="${_INNODB_LOG_FILE_SIZE}M"
-        _INNODB_LOG_FILE_SIZE_TEST=$(grep "^innodb_log_file_size" \
+        _INNODB_LOG_FILE_SIZE_TEST=$(grep "innodb_log_file_size" \
           ${vBs}/dragon/t/my.cnf-pre-${_NOW} 2>&1)
         if [[ "${_INNODB_LOG_FILE_SIZE_TEST}" =~ "= ${_INNODB_LOG_FILE_SIZE_MB}" ]]; then
           _INNODB_LOG_FILE_SIZE_SAME=YES
@@ -949,7 +949,7 @@ sql_conf_update() {
   if [ ! -z "${_INNODB_LOG_FILE_SIZE}" ]; then
     if [ "${_INNODB_LOG_FILE_SIZE}" -ge "50" ]; then
       _INNODB_LOG_FILE_SIZE_MB="${_INNODB_LOG_FILE_SIZE}M"
-      _INNODB_LOG_FILE_SIZE_TEST=$(grep "^innodb_log_file_size" \
+      _INNODB_LOG_FILE_SIZE_TEST=$(grep "innodb_log_file_size" \
         /root/.my.cluster_innodb_log_file_size.txt 2>&1)
       if [[ "${_INNODB_LOG_FILE_SIZE_TEST}" =~ "= ${_INNODB_LOG_FILE_SIZE_MB}" ]]; then
         echo "No changes on `hostname` for ${_INNODB_LOG_FILE_SIZE_MB}"
