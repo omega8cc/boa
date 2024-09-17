@@ -24,7 +24,7 @@ check_root
 export _INCIDENT_EMAIL_REPORT=${_INCIDENT_EMAIL_REPORT//[^A-Z]/}
 : "${_INCIDENT_EMAIL_REPORT:=YES}"
 
-if [ $(pgrep -f system.sh | grep -v "^$$" | wc -l) -gt 1 ]; then
+if [ $(pgrep -f system.sh | grep -v "^$$" | wc -l) -gt 2 ]; then
   echo "Too many system.sh running $(date 2>&1)" >> /var/xdrago/log/too.many.log
   exit 0
 fi

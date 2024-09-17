@@ -38,7 +38,7 @@ if [ -e "/root/.pause_heavy_tasks_maint.cnf" ]; then
   exit 0
 fi
 
-if [ $(pgrep -f usage.sh | grep -v "^$$" | wc -l) -gt 1 ]; then
+if [ $(pgrep -f usage.sh | grep -v "^$$" | wc -l) -gt 2 ]; then
   echo "Too many usage.sh running $(date 2>&1)" >> /var/xdrago/log/too.many.log
   exit 0
 fi
