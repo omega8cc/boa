@@ -564,6 +564,13 @@ tune_sql_memory_limits() {
     if [ -e "/etc/mysql/my.cnf" ]; then
       cp -af /etc/mysql/my.cnf ${vBs}/dragon/t/my.cnf-pre-${_X_SE}-${_X_VERSION}-${_NOW}
     fi
+    if [ -e "/root/.dev.server.cnf" ]; then
+      echo "DEBUGX: ${vBs}/dragon/t/my.cnf-pre-${_X_SE}-${_X_VERSION}-${_NOW} created"
+    fi
+  else
+    if [ -e "/root/.dev.server.cnf" ]; then
+      echo "DEBUGX: ${vBs}/dragon/t/my.cnf-pre-${_X_SE}-${_X_VERSION}-${_NOW} exists"
+    fi
   fi
   if [ "${_CUSTOM_CONFIG_SQL}" = "YES" ]; then
     _DO_NOTHING=YES
