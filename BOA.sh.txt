@@ -580,6 +580,7 @@ update_agents() {
     [ ! -e "/var/xdrago/graceful.sh" ] && rm -f ${pthLog}/*.ctrl.${tRee}.${_X_SE}.pid
     [ ! -e "/var/xdrago/guest-fire.sh" ] && rm -f ${pthLog}/*.ctrl.${tRee}.${_X_SE}.pid
     [ ! -e "/var/xdrago/guest-water.sh" ] && rm -f ${pthLog}/*.ctrl.${tRee}.${_X_SE}.pid
+    [ ! -e "/var/xdrago/ip_access.sh" ] && rm -f ${pthLog}/*.ctrl.${tRee}.${_X_SE}.pid
     [ ! -e "/var/xdrago/manage_ltd_users.sh" ] && rm -f ${pthLog}/*.ctrl.${tRee}.${_X_SE}.pid
     [ ! -e "/var/xdrago/manage_solr_config.sh" ] && rm -f ${pthLog}/*.ctrl.${tRee}.${_X_SE}.pid
     [ ! -e "/var/xdrago/minute.sh" ] && rm -f ${pthLog}/*.ctrl.${tRee}.${_X_SE}.pid
@@ -973,15 +974,15 @@ update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${pthLog}/second.sh.ctrl.${_X_SE}.pid" ]; then
-    mv -f /var/xdrago/second.sh /var/xdrago/second.sh.old
-    curl ${crlGet} "${urlHmr}/tools/system/second.sh" -o /var/xdrago/second.sh
-    if [ -e "/var/xdrago/second.sh" ]; then
-      chmod 700 /var/xdrago/second.sh
-      chown root:root /var/xdrago/second.sh
-      touch ${pthLog}/second.sh.ctrl.${_X_SE}.pid
+    && [ ! -e "${pthLog}/ip_access.sh.ctrl.${_X_SE}.pid" ]; then
+    mv -f /var/xdrago/ip_access.sh /var/xdrago/ip_access.sh.old
+    curl ${crlGet} "${urlHmr}/tools/system/ip_access.sh" -o /var/xdrago/ip_access.sh
+    if [ -e "/var/xdrago/ip_access.sh" ]; then
+      chmod 700 /var/xdrago/ip_access.sh
+      chown root:root /var/xdrago/ip_access.sh
+      touch ${pthLog}/ip_access.sh.ctrl.${_X_SE}.pid
     else
-      mv -f /var/xdrago/second.sh.old /var/xdrago/second.sh
+      mv -f /var/xdrago/ip_access.sh.old /var/xdrago/ip_access.sh
     fi
   fi
 
