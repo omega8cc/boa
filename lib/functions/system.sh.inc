@@ -5376,7 +5376,12 @@ run_aptitude_deps_install() {
   mrun "${_INSTAPP} libssl-dev" 2> /dev/null
   mrun "${_INSTAPP} libc-client2007e libc-client2007e-dev" 2> /dev/null
   mrun "${_INSTAPP} mcrypt libc-client-dev" 2> /dev/null
-  mrun "${_INSTAPP} apticron aptitude apt-listchanges" 2> /dev/null
+  if [ "${_OS_DIST}" = "Devuan" ]; then
+    mrun "${_INSTAPP} apticron aptitude apt-listchanges" 2> /dev/null
+  else
+    mrun "${_INSTAPP} apticron aptitude" 2> /dev/null
+    mrun "dpkg --remove --force-remove-reinstreq apt-listchanges" 2> /dev/null
+  fi
   mrun "${_INSTAPP} sysstat telnet cron gnupg2 gnupg" 2> /dev/null
   mrun "${_INSTAPP} unzip unrtf wdiff pwgen flex re2c" 2> /dev/null
   mrun "${_INSTAPP} rsync strace ntpdate python-dev" 2> /dev/null
