@@ -153,8 +153,7 @@ cron_duplicate_instances_detection() {
   if [ `ps aux | grep -v "grep" | grep --count "/usr/sbin/cron"` -gt "1" ]; then
     thisErrLog="$(date 2>&1) Too many Cron instances running killed"
     echo ${thisErrLog} >> /var/xdrago/log/cron-count.kill.log
-    service cron stop &> /dev/null
-    killall cron &> /dev/null
+    killall -9 cron &> /dev/null
     service cron start &> /dev/null
     thisErrLog="$(date 2>&1) Too many Cron instances, service restarted"
     echo ${thisErrLog} >> ${pthOml}
