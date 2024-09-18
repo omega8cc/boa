@@ -165,7 +165,7 @@ fi
 aptLiSys="/etc/apt/sources.list"
 barCnf="/root/.barracuda.cnf"
 bldPth="/opt/tmp/boa"
-crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
+crlGet="-L --max-redirs 3 -k -s --retry 3 --retry-delay 5 -A iCab"
 aptYesUnth="-y --allow-unauthenticated"
 filIncB="barracuda.sh.cnf"
 gitHub="https://github.com/omega8cc"
