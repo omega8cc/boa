@@ -3949,24 +3949,6 @@ ssl_install_src() {
     _SSL_INSTALL_REQUIRED=YES
   fi
   if [ "${_STATUS}" = "UPGRADE" ]; then
-    if [ "${_RUNNING_MAJOR_OS_UPGRADE}" = "NO" ]; then
-      _PHP_COMPATIBILITY_TEST=$(php -i | grep "SSL Version" 2>&1)
-      _PHP_SSL_LOOK_FOR="${_OPENSSL_NEW_VRN}"
-      _PHP_SSL_ALTER_LOOK_FOR="GnuTLS"
-      _PHP_SSL_ALTER_MORE_LOOK_FOR="${_OPENSSL_MODERN_VRN}"
-      if [[ "${_PHP_COMPATIBILITY_TEST}" =~ "${_PHP_SSL_LOOK_FOR}" ]] \
-        || [[ "${_PHP_COMPATIBILITY_TEST}" =~ "${_PHP_SSL_ALTER_LOOK_FOR}" ]] \
-        || [[ "${_PHP_COMPATIBILITY_TEST}" =~ "${_PHP_SSL_ALTER_MORE_LOOK_FOR}" ]]; then
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "INFO: PHP ${_PHP_COMPATIBILITY_TEST}, looks OK"
-        fi
-      else
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "INFO: PHP ${_PHP_COMPATIBILITY_TEST}, rebuild forced later"
-        fi
-        _PHP_FORCE_REINSTALL=YES
-      fi
-    fi
     _SPDY_COMPATIBILITY_TEST=$(service nginx configtest 2>&1)
     if [[ "${_SPDY_COMPATIBILITY_TEST}" =~ "without OpenSSL ALPN or NPN" ]]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
