@@ -2259,18 +2259,14 @@ check_php_rebuild() {
   if [ "${_DO_FIX}" = "YES" ] || [ "${_STATUS}" != "UPGRADE" ]; then
     _PHP_FORCE_REINSTALL=NO
   fi
-  _PHP_SSL_TEST=$(/opt/php$1/bin/php -i | grep "SSL Version" 2>&1)
+  _PHP_SSL_TEST=$(/opt/php$1/bin/php -i | grep "OpenSSL Header Version" 2>&1)
   _PHP_SSL_LOOK_FOR="${_OPENSSL_USE_VRN}"
-  _PHP_SSL_ALTER_LOOK_FOR="GnuTLS"
-  _PHP_SSL_ALTER_MORE_LOOK_FOR="${_OPENSSL_MODERN_VRN}"
   if [ "$1" = "56" ] \
     || [ "$1" = "70" ] \
     || [ "$1" = "71" ] \
     || [ "$1" = "72" ] \
     || [ "$1" = "73" ]; then
-    if [[ "${_PHP_SSL_TEST}" =~ "${_PHP_SSL_LOOK_FOR}" ]] \
-      || [[ "${_PHP_SSL_TEST}" =~ "${_PHP_SSL_ALTER_LOOK_FOR}" ]] \
-      || [[ "${_PHP_SSL_TEST}" =~ "${_PHP_SSL_ALTER_MORE_LOOK_FOR}" ]]; then
+    if [[ "${_PHP_SSL_TEST}" =~ "${_PHP_SSL_LOOK_FOR}" ]]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         msg "INFO: Installed PHP ${_PHP_ITD} with ${_PHP_SSL_TEST}, OK"
       fi
