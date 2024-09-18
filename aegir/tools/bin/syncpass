@@ -12,7 +12,7 @@ _NOW=$(date +%y%m%d-%H%M%S 2>&1)
 _NOW=${_NOW//[^0-9-]/}
 vBs="/var/backups"
 _THIS_DB_PORT=3306
-crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
+crlGet="-L --max-redirs 3 -k -s --retry 3 --retry-delay 5 -A iCab"
 
 # Remove dangerous stuff from the string.
 sanitize_string() {
