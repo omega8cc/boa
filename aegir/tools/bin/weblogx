@@ -8,7 +8,7 @@ export PATH=${PATH}
 export SHELL=${SHELL}
 export HOME=${HOME}
 
-crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
+crlGet="-L --max-redirs 3 -k -s --retry 3 --retry-delay 5 -A iCab"
 _USE_GITHUB=/root/.goaccess.use.github.txt
 _GOACCESS_VRN=1.7.1
 sPmrs="https://raw.githubusercontent.com/matomo-org/referrer-spam-blacklist/master/spammers.txt"

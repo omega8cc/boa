@@ -121,7 +121,7 @@ _DRUSHCMD="${_T_CLI}/php ${_ROOT}/drush/drush.php"
 PATH=${_T_CLI}:/usr/local/bin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 #
-crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
+crlGet="-L --max-redirs 3 -k -s --retry 3 --retry-delay 5 -A iCab"
 gCb="git clone --branch"
 gitHub="https://github.com/omega8cc"
 gitLab="https://gitlab.com/omega8cc"

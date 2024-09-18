@@ -69,7 +69,7 @@ if [ -x "/usr/bin/gpg2" ]; then
 else
   _GPG=gpg
 fi
-crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
+crlGet="-L --max-redirs 3 -k -s --retry 3 --retry-delay 5 -A iCab"
 aptYesUnth="-y --allow-unauthenticated"
 
 ###-------------SYSTEM-----------------###
