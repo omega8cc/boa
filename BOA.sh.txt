@@ -2871,9 +2871,11 @@ update_boa_tools() {
            mycnfup \
            octopus \
            randpass \
+           sqlclean \
            sqlmagic \
            syncpass \
            thinkdifferent \
+           vhostcheck \
            weblogx \
            xboa"
   for cbn in ${boaBins}; do
@@ -2907,6 +2909,8 @@ update_boa_tools() {
   echo "### ${_TODAY} ###" >> ${optBin}/fancynow
   echo "### ${_TODAY} ###" >> ${optBin}/killer
   echo "### ${_TODAY} ###" >> ${optBin}/octopus
+  echo "### ${_TODAY} ###" >> ${optBin}/sqlclean
+  echo "### ${_TODAY} ###" >> ${optBin}/vhostcheck
   [ -e "/root/.backboa.autoupdate" ] && rm -f /root/.backboa.autoupdate
   if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ]; then
     echo "The duplicity backup is running!"
@@ -2926,7 +2930,7 @@ update_boa_tools() {
     fi
   fi
   chmod 700 ${optBin}/{autoinit,autodaedalus,autochimaera,autobeowulf,autoupboa,backboa,duobackboa}
-  chmod 700 ${optBin}/{barracuda,boa,ffmirror,killer,mycnfup,octopus,syncpass,xboa,weblogx}
+  chmod 700 ${optBin}/{barracuda,boa,ffmirror,killer,mycnfup,octopus,syncpass,xboa,weblogx,sqlclean,vhostcheck}
   chmod 755 ${optBin}/{fancynow,randpass,sqlmagic,thinkdifferent}
 }
 
