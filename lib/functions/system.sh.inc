@@ -1636,6 +1636,10 @@ php_if_versions_cleanup_cnf() {
           fi
         fi
       fi
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "INFO: _OPENSSL_NEW_VRN is ${_OPENSSL_NEW_VRN}"
+        msg "INFO: _local_PHP_MULTI_INSTALL is ${_local_PHP_MULTI_INSTALL}"
+      fi
 
       ### Add PHP 5.6 if used
       _is_PHP_multi_five_six=$(grep "5\.6" /data/disk/*/static/control/multi-fpm.info 2>&1)
