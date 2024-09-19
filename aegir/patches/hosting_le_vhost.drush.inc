@@ -89,20 +89,6 @@ function hosting_le_vhost_provision_nginx_vhost_config($uri, $data) {
     $lines[] = "  }";
     $lines[] = "\n";
 
-    $lines[] = "  ###";
-    $lines[] = "  ### Allow access to SQL Adminer.";
-    $lines[] = "  ###";
-    $lines[] = "  location ^~ /sqladmin/ {";
-    $lines[] = "    if (\$is_crawler) {";
-    $lines[] = "      return 403;";
-    $lines[] = "    }";
-    $lines[] = "    include /var/aegir/config/includes/ip_access/sqladmin*;";
-    $lines[] = "    alias /var/www/adminer;";
-    $lines[] = "    index index.php index.html;";
-    $lines[] = "    try_files \$uri 404;";
-    $lines[] = "  }";
-    $lines[] = "\n";
-
     return implode("\n", $lines);
   }
 

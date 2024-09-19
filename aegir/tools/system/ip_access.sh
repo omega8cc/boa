@@ -21,7 +21,7 @@ mkdir -p "$ctrl_dir"
 mkdir -p "$nginx_access_path"
 
 # Create a dummy input file if does not exist
-[[ ! -f "$input_file" ]] && echo "sqladmin 192.168.1.1" > $input_file
+[[ ! -f "$input_file" ]] && echo "sqladmin.com 192.168.1.1" > $input_file
 
 if [[ ! -f "$server_ip_file" ]]; then
   echo "Server IP file $server_ip_file not found. Exiting."

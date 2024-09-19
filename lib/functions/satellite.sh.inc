@@ -5075,6 +5075,50 @@ satellite_letsencrypt_crt_key_copy() {
   fi
 }
 
+satellite_letsencrypt_vhost_sync() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: satellite_letsencrypt_vhost_sync"
+    debug_proc
+  fi
+  [ -e "/root/.ssl.proxy.cnf" ] && rm -f /root/.ssl.proxy.cnf
+  sed -i "s/127.0.0.1:9000;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" ${Ssl}
+  wait
+  if [ -e "${crtPath}" ]; then
+    crtPath=${crtPath//\//\\\/}
+    sed -i "s/ssl_certificate .*/ssl_certificate              ${crtPath};/g" ${Ssl}
+    wait
+  fi
+  if [ -e "${keyPath}" ]; then
+    keyPath=${keyPath//\//\\\/}
+    sed -i "s/ssl_certificate_key .*/ssl_certificate_key          ${keyPath};/g" ${Ssl}
+    wait
+  fi
+  dhpWildPath="/etc/ssl/private/nginx-wild-ssl.dhp"
+  if [ -e "/etc/ssl/private/4096.dhp" ]; then
+    dhpPath="/etc/ssl/private/4096.dhp"
+    _DIFF_T=$(diff -w -B ${dhpPath} ${dhpWildPath} 2>&1)
+    if [ ! -z "${_DIFF_T}" ]; then
+      cp -af ${dhpPath} ${dhpWildPath}
+    fi
+  elif [ -e "/etc/ssl/private/${_DOMAIN}.dhp" ]; then
+    dhpPath="/etc/ssl/private/${_DOMAIN}.dhp"
+  elif [ -e "${dhpWildPath}" ]; then
+    dhpPath="${dhpWildPath}"
+  fi
+  if [ -e "${dhpPath}" ]; then
+    dhpPath=${dhpPath//\//\\\/}
+    sed -i "s/ssl_dhparam .*/ssl_dhparam                  ${dhpPath};/g" ${Ssl}
+  else
+    sed -i "s/.*ssl_dhparam .*//g" ${Ssl}
+  fi
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "${_STATUS} A: Reloading Nginx..."
+    service nginx reload
+  else
+    mrun "service nginx reload" 2> /dev/null
+  fi
+}
+
 satellite_letsencrypt_vhost_setup() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: satellite_letsencrypt_vhost_setup"
@@ -5109,15 +5153,23 @@ satellite_letsencrypt_vhost_setup() {
         fi
         satellite_letsencrypt_crt_key_copy
         _HTTP3_TEST=$(grep http3 ${Ssl} 2>&1)
-        if [[ ! "${_HTTP3_TEST}" =~ "http3" ]]; then
+        _SQLADMIN_TEST=$(grep sqladmin ${Ssl} 2>&1)
+        if [[ ! "${_HTTP3_TEST}" =~ "http3" ]] || [[ ! "${_SQLADMIN_TEST}" =~ "sqladmin" ]]; then
           if [ "${_DEBUG_MODE}" = "YES" ]; then
             msg "${_STATUS} A: pre.d/z_${_DOMAIN}_ssl_proxy.conf needs update..."
           fi
           echo "${_DOMAIN} ${_THISHTIP} ${_USER} ${_CLIENT_EMAIL} ${_THISHTIP}" > /root/.ssl.proxy.cnf
           if [ "${_DEBUG_MODE}" = "YES" ]; then
             bash /opt/local/bin/xboa ssl-gen
+            wait
           else
             mrun "bash /opt/local/bin/xboa ssl-gen" &> /dev/null
+            wait
+          fi
+          if [ -e "${Ssl}" ]; then
+            satellite_letsencrypt_vhost_sync
+          else
+            msg "${_STATUS} A: pre.d/z_${_DOMAIN}_ssl_proxy.conf doesn't exist!"
           fi
         fi
       else
@@ -5126,45 +5178,13 @@ satellite_letsencrypt_vhost_setup() {
         echo "${_DOMAIN} ${_THISHTIP} ${_USER} ${_CLIENT_EMAIL} ${_THISHTIP}" > /root/.ssl.proxy.cnf
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           bash /opt/local/bin/xboa ssl-gen
+          wait
         else
           mrun "bash /opt/local/bin/xboa ssl-gen" &> /dev/null
+          wait
         fi
         if [ -e "${Ssl}" ]; then
-          [ -e "/root/.ssl.proxy.cnf" ] && rm -f /root/.ssl.proxy.cnf
-          if [ -e "${crtPath}" ]; then
-            crtPath=${crtPath//\//\\\/}
-            sed -i "s/ssl_certificate .*/ssl_certificate              ${crtPath};/g" ${Ssl}
-            wait
-          fi
-          if [ -e "${keyPath}" ]; then
-            keyPath=${keyPath//\//\\\/}
-            sed -i "s/ssl_certificate_key .*/ssl_certificate_key          ${keyPath};/g" ${Ssl}
-            wait
-          fi
-          dhpWildPath="/etc/ssl/private/nginx-wild-ssl.dhp"
-          if [ -e "/etc/ssl/private/4096.dhp" ]; then
-            dhpPath="/etc/ssl/private/4096.dhp"
-            _DIFF_T=$(diff -w -B ${dhpPath} ${dhpWildPath} 2>&1)
-            if [ ! -z "${_DIFF_T}" ]; then
-              cp -af ${dhpPath} ${dhpWildPath}
-            fi
-          elif [ -e "/etc/ssl/private/${_DOMAIN}.dhp" ]; then
-            dhpPath="/etc/ssl/private/${_DOMAIN}.dhp"
-          elif [ -e "${dhpWildPath}" ]; then
-            dhpPath="${dhpWildPath}"
-          fi
-          if [ -e "${dhpPath}" ]; then
-            dhpPath=${dhpPath//\//\\\/}
-            sed -i "s/ssl_dhparam .*/ssl_dhparam                  ${dhpPath};/g" ${Ssl}
-          else
-            sed -i "s/.*ssl_dhparam .*//g" ${Ssl}
-          fi
-          if [ "${_DEBUG_MODE}" = "YES" ]; then
-            msg "${_STATUS} A: Reloading Nginx..."
-            service nginx reload
-          else
-            mrun "service nginx reload" 2> /dev/null
-          fi
+          satellite_letsencrypt_vhost_sync
         else
           msg "${_STATUS} A: pre.d/z_${_DOMAIN}_ssl_proxy.conf doesn't exist!"
         fi
