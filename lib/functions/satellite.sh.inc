@@ -5081,7 +5081,7 @@ satellite_letsencrypt_vhost_sync() {
     debug_proc
   fi
   [ -e "/root/.ssl.proxy.cnf" ] && rm -f /root/.ssl.proxy.cnf
-  sed -i "s/127.0.0.1:9000;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" ${Ssl}
+  sed -i "s/127.0.0.1:9000;/unix:\/var\/run\/${_PHP_FPM_VERSION}.fpm.socket;/g" ${Ssl}
   wait
   if [ -e "${crtPath}" ]; then
     crtPath=${crtPath//\//\\\/}
@@ -5154,7 +5154,10 @@ satellite_letsencrypt_vhost_setup() {
         satellite_letsencrypt_crt_key_copy
         _HTTP3_TEST=$(grep http3 ${Ssl} 2>&1)
         _SQLADMIN_TEST=$(grep sqladmin ${Ssl} 2>&1)
-        if [[ ! "${_HTTP3_TEST}" =~ "http3" ]] || [[ ! "${_SQLADMIN_TEST}" =~ "sqladmin" ]]; then
+        _FPM_SOCKET_TEST=$(grep "unix:/var/run/.fpm.socket" ${Ssl} 2>&1)
+        if [[ "${_FPM_SOCKET_TEST}" =~ "fpm.socket" ]] \
+          || [[ ! "${_HTTP3_TEST}" =~ "http3" ]] \
+          || [[ ! "${_SQLADMIN_TEST}" =~ "sqladmin" ]]; then
           if [ "${_DEBUG_MODE}" = "YES" ]; then
             msg "${_STATUS} A: pre.d/z_${_DOMAIN}_ssl_proxy.conf needs update..."
           fi
