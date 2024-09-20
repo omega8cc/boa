@@ -73,7 +73,8 @@ for db_name in "${!vhost_db_map[@]}"; do
   vhost_list=(${vhost_db_map[${db_name}]})
 
   # Remove duplicates within the same file and ensure we compare between different files
-  unique_vhost_files=$(echo "${vhost_list[@]}" | tr ' ' '' | sort | uniq)
+  unique_vhost_files=$(echo "${vhost_list[@]}" | tr ' ' '
+' | sort | uniq)
 
   # Only flag as duplicate if db_name is referenced in different vhost files
   if [ $(echo "${unique_vhost_files}" | wc -l) -gt 1 ]; then
