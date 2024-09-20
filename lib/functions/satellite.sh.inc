@@ -5081,7 +5081,9 @@ satellite_letsencrypt_vhost_sync() {
     debug_proc
   fi
   [ -e "/root/.ssl.proxy.cnf" ] && rm -f /root/.ssl.proxy.cnf
-  sed -i "s/127.0.0.1:9000;/unix:\/var\/run\/${_PHP_FPM_VERSION}.fpm.socket;/g" ${Ssl}
+  _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
+  _PHP_CN="www${_PHP_SV}"
+  sed -i "s/127.0.0.1:9000;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" ${Ssl}
   wait
   if [ -e "${crtPath}" ]; then
     crtPath=${crtPath//\//\\\/}
@@ -5154,8 +5156,10 @@ satellite_letsencrypt_vhost_setup() {
         satellite_letsencrypt_crt_key_copy
         _HTTP3_TEST=$(grep http3 ${Ssl} 2>&1)
         _SQLADMIN_TEST=$(grep sqladmin ${Ssl} 2>&1)
-        _FPM_SOCKET_TEST=$(grep "unix:/var/run/.fpm.socket" ${Ssl} 2>&1)
-        if [[ "${_FPM_SOCKET_TEST}" =~ "fpm.socket" ]] \
+        _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
+        _PHP_CN="www${_PHP_SV}"
+        _FPM_SOCKET_TEST=$(grep "unix:/var/run/${_PHP_CN}.fpm.socket" ${Ssl} 2>&1)
+        if [[ ! "${_FPM_SOCKET_TEST}" =~ "fpm.socket" ]] \
           || [[ ! "${_HTTP3_TEST}" =~ "http3" ]] \
           || [[ ! "${_SQLADMIN_TEST}" =~ "sqladmin" ]]; then
           if [ "${_DEBUG_MODE}" = "YES" ]; then
