@@ -3669,16 +3669,13 @@ ssl_crypto_lib_fix() {
   else
     _SSL_BINARY=/usr/local/ssl/bin/openssl
   fi
-  _SSL_ITD=$(${_SSL_BINARY} version 2>&1 \
-    | tr -d "\n" \
-    | cut -d" " -f2 \
-    | awk '{ print $1}')
+  [ -x "${_SSL_BINARY}" ] && _SSL_ITD=$(${_SSL_BINARY} version 2>&1 | awk '{print $2}')
   if [[ "${_SSL_ITD}" =~ "${_OPENSSL_MODERN_VRN}" ]] \
     || [ -e "/usr/local/ssl3/lib64/libssl.so.3" ]; then
     _SSL_INSTALLED=MODERN
   elif [[ "${_SSL_ITD}" =~ "1.1.1" ]]; then
     _SSL_INSTALLED=EOL
-  else
+  elif [[ "${_SSL_ITD}" =~ "1.0.2" ]]; then
     _SSL_INSTALLED=LEGACY
   fi
   if [ "${_SSL_INSTALLED}" = "LEGACY" ]; then
@@ -3865,235 +3862,158 @@ ssl_crypto_lib_fix() {
 }
 
 #
+# Update OpenSSL apt locks.
+ssl_apt_locks_update() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "INFO: PROC: ssl_paths_update"
+  fi
+
+  _SSL_GET_DPKG=$(dpkg --get-selections \
+    | grep openssl \
+    | grep 'hold$' 2>&1)
+
+  _ZLB_GET_DPKG=$(dpkg --get-selections \
+    | grep zlib \
+    | grep 'hold$' 2>&1)
+
+  if [[ ! "${_SSL_GET_DPKG}" =~ "hold" ]]; then
+    echo "openssl hold" | dpkg --set-selections &> /dev/null
+  fi
+
+  if [[ ! "${_ZLB_GET_DPKG}" =~ "hold" ]]; then
+    echo "zlib1g hold" | dpkg --set-selections &> /dev/null
+    echo "zlib1g-dev hold" | dpkg --set-selections &> /dev/null
+  fi
+}
+
+#
+# Update OpenSSL paths.
+ssl_paths_update() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "INFO: PROC: ssl_paths_update"
+  fi
+
+  if [ -x "${_SSL_MODERN_BINARY}" ]; then
+    _LINK_TO="${_SSL_MODERN_BINARY}"
+  elif [ -x "${_SSL_LEGACY_BINARY}" ]; then
+    _LINK_TO="${_SSL_LEGACY_BINARY}"
+  else
+    _LINK_TO=
+  fi
+
+  if [ -n "${_LINK_TO}" ]; then
+    if [ -e "/usr/bin/openssl" ]; then
+      cp -af /usr/bin/openssl /usr/bin/old-openssl-$(date +%y%m%d-%H%M%S 2>&1)
+    fi
+    ln -sfn ${_LINK_TO} /usr/bin/openssl
+    if [ -e "/bin/openssl" ] && [ ! -L "/bin" ]; then
+      cp -af /bin/openssl /bin/old-openssl-$(date +%y%m%d-%H%M%S 2>&1)
+      ln -sfn ${_LINK_TO} /bin/openssl
+    fi
+  fi
+
+  [ -x "${1}" ] && _THIS_SSL_ITD=$(${1} version 2>&1 | awk '{print $2}')
+
+  if [[ "${_THIS_SSL_ITD}" =~ "${_OPENSSL_NEW_VRN}" ]]; then
+    _SSL_PATH="/usr/local/ssl3"
+    _SSL_LIB_PATH="${_SSL_PATH}/lib64"
+  else
+    _SSL_PATH="/usr/local/ssl"
+    _SSL_LIB_PATH="${_SSL_PATH}/lib"
+  fi
+
+  sed -i "s/.*ssl.*//g" /etc/ld.so.conf.d/libc.conf
+  echo "${_SSL_LIB_PATH}" >> /etc/ld.so.conf.d/libc.conf
+  _LEGACY_SSL_LIB_PATH="/usr/local/ssl/lib"
+  if [ -e "${_LEGACY_SSL_LIB_PATH}" ] \
+    && [ "${_LEGACY_SSL_LIB_PATH}" != "${_SSL_LIB_PATH}" ]; then
+    echo "${_LEGACY_SSL_LIB_PATH}" >> /etc/ld.so.conf.d/libc.conf
+  fi
+  sed -i "/^$/d" /etc/ld.so.conf.d/libc.conf &> /dev/null
+  ldconfig 2> /dev/null
+}
+
+#
 # Install OpenSSL from sources.
 ssl_install_src() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: ssl_install_src"
+    msg "INFO: PROC: ssl_install_src"
   fi
-  _SSL_INSTALL_REQUIRED=NO
-  if [ -e "/usr/bin/openssl" ] && [ ! -L "/usr/bin/openssl" ]; then
-    if [ -x "/usr/local/ssl3/bin/openssl" ]; then
-      ln -sf /usr/local/ssl3/bin/openssl /usr/bin/openssl
-    elif [ -x "/usr/local/ssl/bin/openssl" ]; then
-      ln -sf /usr/local/ssl/bin/openssl /usr/bin/openssl
-    fi
+
+  if [ "${1}" = "Modern" ]; then
+    _OPENSSL_BUILD_VRN="${_OPENSSL_NEW_VRN}"
+    _THIS_SSL_BINARY="${_SSL_MODERN_BINARY}"
+  elif [ "${1}" = "Legacy" ]; then
+    _OPENSSL_BUILD_VRN="${_OPENSSL_OLD_VRN}"
+    _THIS_SSL_BINARY="${_SSL_LEGACY_BINARY}"
   fi
-  if [ -e "/root/.install.modern.openssl.cnf" ] \
-    && [ -x "/usr/local/ssl3/bin/openssl" ]; then
-    _SSL_BINARY=/usr/local/ssl3/bin/openssl
-  else
-    _SSL_BINARY=/usr/local/ssl/bin/openssl
+
+  ###--------------------###
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "INFO: Building zlib ${_ZLIB_VRN} from sources first..."
   fi
-  _SSL_ITD=$(${_SSL_BINARY} version 2>&1 \
-    | tr -d "\n" \
-    | cut -d" " -f2 \
-    | awk '{ print $1}' 2>&1)
-  if [ -e "/root/.install.modern.openssl.cnf" ]; then
-    _SSL_LIB_ITD=$(openssl version 2>&1 \
-      | tr -d "\n" \
-      | cut -d" " -f8 \
-      | awk '{ print $1}' 2>&1)
-  else
-    _SSL_LIB_ITD=$(openssl version 2>&1 \
-      | tr -d "\n" \
-      | cut -d" " -f9 \
-      | awk '{ print $1}' 2>&1)
-  fi
-  if [ "${_OS_CODE}" = "daedalus" ] \
-    || [ "${_OS_CODE}" = "chimaera" ] \
-    || [ "${_OS_CODE}" = "beowulf" ] \
-    || [ "${_OS_CODE}" = "bookworm" ] \
-    || [ "${_OS_CODE}" = "bullseye" ] \
-    || [ "${_OS_CODE}" = "buster" ]; then
-    _OPENSSL_NEW_VRN="${_OPENSSL_EOL_VRN}"
-    if [ -e "/root/.install.modern.openssl.cnf" ]; then
-      chattr +i /root/.install.modern.openssl.cnf
-      _OPENSSL_NEW_VRN="${_OPENSSL_MODERN_VRN}"
-    fi
-  elif [ "${_OS_CODE}" = "stretch" ]; then
-    if [ -e "/root/.install.modern.openssl.cnf" ]; then
-      chattr -i /root/.install.modern.openssl.cnf
-      rm -f /root/.install.modern.openssl.cnf
-    fi
-    _OPENSSL_NEW_VRN="${_OPENSSL_EOL_VRN}"
-    if [ -x "/usr/local/ssl3/bin/openssl" ]; then
-      mv -f /usr/local/ssl3 /usr/local/ssl3-off
-    fi
-  else
-    if [ -e "/root/.install.modern.openssl.cnf" ]; then
-      chattr -i /root/.install.modern.openssl.cnf
-      rm -f /root/.install.modern.openssl.cnf
-    fi
-    _OPENSSL_NEW_VRN="${_OPENSSL_LEGACY_VRN}"
-    if [ -x "/usr/local/ssl3/bin/openssl" ]; then
-      mv -f /usr/local/ssl3 /usr/local/ssl3-off
-    fi
-  fi
-  if [ -e "/root/.install.modern.openssl.cnf" ]; then
-    _SSL_BINARY=/usr/local/ssl3/bin/openssl
-    if [ ! -x "${_SSL_BINARY}" ]; then
-      _SSL_INSTALL_REQUIRED=YES
-    fi
-  else
-    _SSL_BINARY=/usr/local/ssl/bin/openssl
-    if [ ! -x "${_SSL_BINARY}" ]; then
-      _SSL_INSTALL_REQUIRED=YES
-    fi
-  fi
-  if [ "${_SSL_ITD}" != "${_OPENSSL_NEW_VRN}" ]; then
-    if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "INFO: OpenSSL is ${_SSL_ITD}, upgrade to ${_OPENSSL_NEW_VRN} required"
-    fi
-    _SSL_INSTALL_REQUIRED=YES
-  fi
-  if [ ! -z "${_SSL_LIB_ITD}" ] && [ "${_SSL_LIB_ITD}" != "${_OPENSSL_NEW_VRN}" ]; then
-    if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "INFO: OpenSSL Lib is ${_SSL_LIB_ITD}, upgrade to ${_OPENSSL_NEW_VRN} required"
-    fi
-    _SSL_INSTALL_REQUIRED=YES
-  fi
-  if [ "${_STATUS}" = "UPGRADE" ]; then
-    _SPDY_COMPATIBILITY_TEST=$(service nginx configtest 2>&1)
-    if [[ "${_SPDY_COMPATIBILITY_TEST}" =~ "without OpenSSL ALPN or NPN" ]]; then
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: OpenSSL is ${_SSL_ITD}, rebuild for Nginx forced"
-      fi
-      _SSL_INSTALL_REQUIRED=YES
-      _NGX_FORCE_REINSTALL=YES
-    fi
-  fi
-  if [ "${_OPENSSL_NEW_VRN}" = "${_OPENSSL_LEGACY_VRN}" ]; then
-    _BROKEN_SSL_LIBS_TEST=$(php -v 2>&1)
-    if [[ "${_BROKEN_SSL_LIBS_TEST}" =~ "no version information available" ]] \
-      || [[ "${_BROKEN_SSL_LIBS_TEST}" =~ "cannot open shared object file" ]]; then
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: OpenSSL legacy libs are broken, reinstall forced"
-      fi
-      mrun "apt-get install openssl --reinstall -y" 2> /dev/null
-      _SSL_FORCE_REINSTALL=YES
-    fi
-  fi
-  if [ "${_FULL_FORCE_REINSTALL}" = "YES" ] \
-    || [ "${_SSL_FORCE_REINSTALL}" = "YES" ]; then
-    _SSL_INSTALL_REQUIRED=YES
-    _SSH_FORCE_REINSTALL=YES
-    _NGX_FORCE_REINSTALL=YES
-    _PHP_FORCE_REINSTALL=YES
-    rm -f ${pthLog}/pure-ftpd-build-${_PURE_FTPD_VRN}-${_X_SE}-${_X_VERSION}.log
-    rm -f ${pthLog}/mss-build-${_MSS_VRN}-${_X_SE}-${_X_VERSION}.log
-    if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "INFO: Installed OpenSSL version ${_SSL_ITD}, rebuild forced"
-    fi
-  fi
-  if [ "${_SSL_INSTALL_REQUIRED}" = "YES" ]; then
-    ###--------------------###
-    if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "INFO: Building zlib ${_ZLIB_VRN} from sources first..."
-    fi
+  cd /var/opt
+  rm -rf zlib*
+  get_dev_src "zlib-${_ZLIB_VRN}.tar.gz"
+  cd /var/opt/zlib-${_ZLIB_VRN}
+  st_runner "bash ./configure --prefix=/usr" 2> /dev/null
+  mrun "make -j $(nproc) --quiet" 2> /dev/null
+  mrun "make --quiet install" 2> /dev/null
+  ldconfig 2> /dev/null
+
+  ###--------------------###
+  msg "INFO: Building ${1} OpenSSL from sources..."
+  msg "WAIT: This may take a while, please wait..."
+
+  if [ ! -e "/var/opt/openssl-${_OPENSSL_BUILD_VRN}" ]; then
     cd /var/opt
-    rm -rf zlib*
-    get_dev_src "zlib-${_ZLIB_VRN}.tar.gz"
-    cd /var/opt/zlib-${_ZLIB_VRN}
-    st_runner "bash ./configure --prefix=/usr" 2> /dev/null
-    mrun "make -j $(nproc) --quiet" 2> /dev/null
-    mrun "make --quiet install" 2> /dev/null
-    ldconfig 2> /dev/null
-    ###--------------------###
-    msg "INFO: Building OpenSSL ${_OPENSSL_NEW_VRN} from sources..."
-    msg "WAIT: This may take a while, please wait..."
-    if [ ! -e "/var/opt/openssl-${_OPENSSL_NEW_VRN}" ]; then
-      cd /var/opt
-      rm -rf openssl*
-      wget -q -U iCab ${urlDev}/src/openssl-${_OPENSSL_NEW_VRN}.tar.gz
-      if [ -e "openssl-${_OPENSSL_NEW_VRN}.tar.gz" ]; then
-        extract_archive "openssl-${_OPENSSL_NEW_VRN}.tar.gz"
-      else
-        msg "OOPS: failed download from ${urlDev}/src/openssl-${_OPENSSL_NEW_VRN}.tar.gz"
-      fi
-    fi
-    if [ -e "/var/opt/openssl-${_OPENSSL_NEW_VRN}" ]; then
-      cd /var/opt/openssl-${_OPENSSL_NEW_VRN}
-      if [ -e "/root/.install.modern.openssl.cnf" ]; then
-        _SSL_BUILD_ARGS="--prefix=/usr/local/ssl3 \
-          --openssldir=/usr/local/ssl3"
-        patchMakefile=YES
-      else
-        _SSL_BUILD_ARGS="--prefix=/usr/local/ssl \
-          --openssldir=/usr/local/ssl"
-        patchMakefile=YES
-      fi
-      mrun "sh ./config \
-        shared \
-        no-comp \
-        no-hw \
-        no-ssl3 \
-        zlib-dynamic \
-        enable-ec_nistp_64_gcc_128 \
-        ${_SSL_BUILD_ARGS}" 2> /dev/null
-      if [ "${patchMakefile}" = "YES" ]; then
-        sed -i "s/install_docs:.*/install_docs:/g" /var/opt/openssl-${_OPENSSL_NEW_VRN}/Makefile
-      fi
-      mrun "make depend" 2> /dev/null
-      mrun "make -j $(nproc)" 2> /dev/null
-      mrun "make install" 2> /dev/null
-    fi
-    if [ -x "${_SSL_BINARY}" ]; then
-      _SSL_ITD=$(${_SSL_BINARY} version 2>&1 \
-        | tr -d "\n" \
-        | cut -d" " -f2 \
-        | awk '{ print $1}')
-      if [[ "${_SSL_ITD}" =~ "${_OPENSSL_MODERN_VRN}" ]] \
-        || [ -e "/usr/local/ssl3/lib64/libssl.so.3" ]; then
-        _SSL_PATH="/usr/local/ssl3"
-        _SSL_LIB_PATH="${_SSL_PATH}/lib64"
-      else
-        _SSL_PATH="/usr/local/ssl"
-        _SSL_LIB_PATH="${_SSL_PATH}/lib"
-      fi
-      if [ -e "/usr/bin/openssl" ]; then
-        cp -af /usr/bin/openssl /usr/bin/old-openssl-$(date +%y%m%d-%H%M%S 2>&1)
-      fi
-      ln -sfn ${_SSL_BINARY} /usr/bin/openssl
-      if [ -e "/bin/openssl" ] && [ ! -L "/bin" ]; then
-        cp -af /bin/openssl /bin/old-openssl-$(date +%y%m%d-%H%M%S 2>&1)
-        ln -sfn ${_SSL_BINARY} /bin/openssl
-      fi
-      sed -i "s/.*ssl.*//g" /etc/ld.so.conf.d/libc.conf
-      echo "${_SSL_LIB_PATH}" >> /etc/ld.so.conf.d/libc.conf
-      _LEGACY_SSL_LIB_PATH="/usr/local/ssl/lib"
-      if [ -e "${_LEGACY_SSL_LIB_PATH}" ] \
-        && [ "${_LEGACY_SSL_LIB_PATH}" != "${_SSL_LIB_PATH}" ]; then
-        echo "${_LEGACY_SSL_LIB_PATH}" >> /etc/ld.so.conf.d/libc.conf
-      fi
-      sed -i "/^$/d" /etc/ld.so.conf.d/libc.conf &> /dev/null
-      ldconfig 2> /dev/null
-      ###--------------------###
-      _SSL_GET_DPKG=$(dpkg --get-selections \
-        | grep openssl \
-        | grep 'hold$' 2>&1)
-      _ZLB_GET_DPKG=$(dpkg --get-selections \
-        | grep zlib \
-        | grep 'hold$' 2>&1)
-      if [[ ! "${_SSL_GET_DPKG}" =~ "hold" ]]; then
-        echo "openssl hold" | dpkg --set-selections &> /dev/null
-      fi
-      if [[ ! "${_ZLB_GET_DPKG}" =~ "hold" ]]; then
-        echo "zlib1g hold" | dpkg --set-selections &> /dev/null
-        echo "zlib1g-dev hold" | dpkg --set-selections &> /dev/null
-      fi
+    rm -rf openssl*
+    wget -q -U iCab ${urlDev}/src/openssl-${_OPENSSL_BUILD_VRN}.tar.gz
+    if [ -e "openssl-${_OPENSSL_BUILD_VRN}.tar.gz" ]; then
+      extract_archive "openssl-${_OPENSSL_BUILD_VRN}.tar.gz"
     else
-      msg "OOPS: OpenSSL version ${_OPENSSL_NEW_VRN} was not installed!"
-      _SSL_INSTALL_REQUIRED=
-      _SSH_FORCE_REINSTALL=
-      _NGX_FORCE_REINSTALL=
-      _PHP_FORCE_REINSTALL=
-      _GIT_FORCE_REINSTALL=
-    fi
-  else
-    if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "INFO: OpenSSL version detected ${_SSL_ITD}, OK"
+      msg "OOPS: failed download from ${urlDev}/src/openssl-${_OPENSSL_BUILD_VRN}.tar.gz"
     fi
   fi
+  if [ -e "/var/opt/openssl-${_OPENSSL_BUILD_VRN}" ]; then
+    cd /var/opt/openssl-${_OPENSSL_BUILD_VRN}
+    if [ "${1}" = "Modern" ]; then
+      _SSL_BUILD_ARGS="--prefix=/usr/local/ssl3 \
+        --openssldir=/usr/local/ssl3"
+      patchMakefile=YES
+    else
+      _SSL_BUILD_ARGS="--prefix=/usr/local/ssl \
+        --openssldir=/usr/local/ssl"
+      patchMakefile=YES
+    fi
+    mrun "sh ./config \
+      shared \
+      no-comp \
+      no-hw \
+      no-ssl3 \
+      zlib-dynamic \
+      enable-ec_nistp_64_gcc_128 \
+      ${_SSL_BUILD_ARGS}" 2> /dev/null
+    if [ "${patchMakefile}" = "YES" ]; then
+      sed -i "s/install_docs:.*/install_docs:/g" /var/opt/openssl-${_OPENSSL_BUILD_VRN}/Makefile
+    fi
+    mrun "make depend" 2> /dev/null
+    mrun "make -j $(nproc)" 2> /dev/null
+    mrun "make install" 2> /dev/null
+  fi
+
+  if [ -x "${_THIS_SSL_BINARY}" ]; then
+    ssl_paths_update "${_THIS_SSL_BINARY}"
+    ssl_apt_locks_update
+  else
+    msg "OOPS: OpenSSL version ${_OPENSSL_NEW_VRN} was not installed!"
+    _SSL_INSTALL_REQUIRED=
+    _SSH_FORCE_REINSTALL=
+    _NGX_FORCE_REINSTALL=
+    _PHP_FORCE_REINSTALL=
+    _GIT_FORCE_REINSTALL=
+  fi
+
   if [ ! -e "/opt/php73/bin/php" ] \
     && [ ! -e "/opt/php72/bin/php" ] \
     && [ ! -e "/opt/php71/bin/php" ] \
@@ -4102,6 +4022,114 @@ ssl_install_src() {
     && [ -x "/usr/local/ssl3/bin/openssl" ] \
     && [ -x "/usr/local/ssl/bin/openssl" ]; then
     ldconfig 2> /dev/null
+  fi
+}
+
+#
+# If Install OpenSSL from sources.
+if_ssl_install_src() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: if_ssl_install_src"
+  fi
+
+  _SSL_LEGACY_INSTALL_REQUIRED=NO
+  _SSL_MODERN_INSTALL_REQUIRED=NO
+  _SSL_LEGACY_BINARY="/usr/local/ssl/bin/openssl"
+  _SSL_MODERN_BINARY="/usr/local/ssl3/bin/openssl"
+
+  [ ! -x "${_SSL_LEGACY_BINARY}" ] && _SSL_LEGACY_INSTALL_REQUIRED=YES
+
+  # Determine which OpenSSL version to use based on _OS_CODE
+  if [ "${_OS_CODE}" = "stretch" ] || [ "${_OS_CODE}" = "jessie" ]; then
+    if [ -e "/root/.install.modern.openssl.cnf" ]; then
+      chattr -i /root/.install.modern.openssl.cnf
+      rm -f /root/.install.modern.openssl.cnf
+    fi
+    if [ -x "/usr/local/ssl3/bin/openssl" ]; then
+      mv -f /usr/local/ssl3 /usr/local/ssl3-off
+    fi
+  else
+    [ ! -x "${_SSL_MODERN_BINARY}" ] && _SSL_MODERN_INSTALL_REQUIRED=YES
+    _OPENSSL_NEW_VRN="${_OPENSSL_MODERN_VRN}"
+  fi
+
+  if [ "${_OS_CODE}" = "jessie" ]; then
+    _OPENSSL_OLD_VRN="${_OPENSSL_LEGACY_VRN}"
+  else
+    _OPENSSL_OLD_VRN="${_OPENSSL_EOL_VRN}"
+  fi
+
+  # Get installed versions
+  [ -x "${_SSL_MODERN_BINARY}" ] && _SSL_MODERN_ITD=$(${_SSL_MODERN_BINARY} version 2>&1 | awk '{print $2}')
+  [ -x "${_SSL_LEGACY_BINARY}" ] && _SSL_LEGACY_ITD=$(${_SSL_LEGACY_BINARY} version 2>&1 | awk '{print $2}')
+
+  # Determine _SSL_LIB_ITD
+  [ -x "${_SSL_MODERN_BINARY}" ] && _SSL_LIB_ITD=$(${_SSL_MODERN_BINARY} version 2>&1 | awk '{print $8}')
+
+  # Check if legacy version needs upgrading
+  if [ ! -x "${_SSL_LEGACY_BINARY}" ] || [ "${_SSL_LEGACY_ITD}" != "${_OPENSSL_OLD_VRN}" ]; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "INFO: Legacy OpenSSL (${_SSL_LEGACY_ITD}), upgrade to (${_OPENSSL_OLD_VRN}) required"
+    fi
+    _SSL_LEGACY_INSTALL_REQUIRED=YES
+  fi
+
+  # Check if modern version needs upgrading
+  if [ "${_OS_CODE}" != "stretch" ] && [ "${_OS_CODE}" != "jessie" ]; then
+    if [ ! -x "${_SSL_MODERN_BINARY}" ] || [ "${_SSL_MODERN_ITD}" != "${_OPENSSL_NEW_VRN}" ]; then
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "INFO: Modern OpenSSL (${_SSL_MODERN_ITD}), upgrade to (${_OPENSSL_NEW_VRN}) required"
+      fi
+      _SSL_MODERN_INSTALL_REQUIRED=YES
+    fi
+  fi
+
+  # Check if OpenSSL 3.x libraries/headers match the binary version
+  if [ -x "${_SSL_MODERN_BINARY}" ] && [ "${_SSL_LIB_ITD}" != "${_SSL_MODERN_ITD}" ]; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "INFO: OpenSSL Lib is (${_SSL_LIB_ITD}) sync with (${_SSL_MODERN_ITD}) required"
+    fi
+    _SSL_MODERN_INSTALL_REQUIRED=YES
+  fi
+
+  if [ "${_FULL_FORCE_REINSTALL}" = "YES" ] \
+    || [ "${_SSL_FORCE_REINSTALL}" = "YES" ]; then
+    _SSL_LEGACY_INSTALL_REQUIRED=YES
+    _SSL_MODERN_INSTALL_REQUIRED=YES
+    _SSH_FORCE_REINSTALL=YES
+    _NGX_FORCE_REINSTALL=YES
+    _PHP_FORCE_REINSTALL=YES
+    rm -f ${pthLog}/pure-ftpd-build-${_PURE_FTPD_VRN}-${_X_SE}-${_X_VERSION}.log
+    rm -f ${pthLog}/mss-build-${_MSS_VRN}-${_X_SE}-${_X_VERSION}.log
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "INFO: OpenSSL rebuild forced"
+    fi
+  fi
+
+  # Perform the legacy OpenSSL installation or upgrade if required
+  if [ "${_SSL_LEGACY_INSTALL_REQUIRED}" = "YES" ]; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "INFO: Upgrading Legacy OpenSSL to ${_OPENSSL_OLD_VRN}"
+    fi
+    ssl_install_src "Legacy"
+  else
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "INFO: Legacy OpenSSL ${_OPENSSL_OLD_VRN} is up-to-date."
+    fi
+  fi
+
+  # Perform the modern OpenSSL installation or upgrade if required
+  if [ "${_OS_CODE}" != "stretch" ] && [ "${_OS_CODE}" != "jessie" ]; then
+    if [ "${_SSL_MODERN_INSTALL_REQUIRED}" = "YES" ]; then
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "INFO: Upgrading Modern OpenSSL to ${_OPENSSL_NEW_VRN}"
+      fi
+      ssl_install_src "Modern"
+    else
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "INFO: Modern OpenSSL ${_OPENSSL_NEW_VRN} is up-to-date."
+      fi
+    fi
   fi
 }
 
@@ -5763,7 +5791,7 @@ if_post_major_os_upgrade() {
       _SSH_FORCE_REINSTALL=YES
       _SSL_FORCE_REINSTALL=YES
       if_reinstall_curl_src
-      ssl_install_src
+      if_ssl_install_src
       ssl_crypto_lib_fix
       curl_install_src
       sshd_install_src
@@ -6442,7 +6470,7 @@ if_major_os_upgrade() {
       _SSH_FORCE_REINSTALL=YES
       php_libs_fix
       if_reinstall_curl_src
-      ssl_install_src
+      if_ssl_install_src
       ssl_crypto_lib_fix
       curl_install_src
       sshd_install_src

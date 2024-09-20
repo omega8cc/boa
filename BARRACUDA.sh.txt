@@ -370,7 +370,7 @@ if [ "${_STATUS}" = "INIT" ] || [ ! -x "/usr/local/ssl/bin/openssl" ]; then
     rm -f ${_MD_SSL_CTRL}
   fi
   touch ${_LC_SSL_CTRL}
-  ssl_install_src
+  if_ssl_install_src
   ssl_crypto_lib_fix
   curl_install_src
 fi
@@ -417,7 +417,7 @@ fi
 ### Install OpenSSL and cURL from sources
 ###
 if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ] || [ ! -x "/usr/local/ssl3/bin/openssl" ]; then
-  ssl_install_src
+  if_ssl_install_src
   ssl_crypto_lib_fix
   curl_install_src
 fi
