@@ -2270,7 +2270,8 @@ check_php_ssl_version() {
   fi
 
   # Return true if mismatch is found, otherwise false
-  if [ "${_PHP_SSL_TEST}" != *"${_PHP_SSL_LOOK_FOR}"* ]; then
+  if [[ ! "${_PHP_SSL_TEST}" =~ "${_PHP_SSL_LOOK_FOR}" ]]; then
+
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "INFO: PHP OpenSSL version mismatch detected, rebuild required"
     fi
