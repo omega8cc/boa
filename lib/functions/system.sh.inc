@@ -3865,7 +3865,7 @@ ssl_crypto_lib_fix() {
 # Update OpenSSL apt locks.
 ssl_apt_locks_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "INFO: PROC: ssl_paths_update"
+    msg "PROC: ssl_apt_locks_update"
   fi
 
   _SSL_GET_DPKG=$(dpkg --get-selections \
@@ -3890,7 +3890,7 @@ ssl_apt_locks_update() {
 # Update OpenSSL paths.
 ssl_paths_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "INFO: PROC: ssl_paths_update"
+    msg "PROC: ssl_paths_update"
   fi
 
   if [ -x "${_SSL_MODERN_BINARY}" ]; then
@@ -3937,7 +3937,7 @@ ssl_paths_update() {
 # Install OpenSSL from sources.
 ssl_install_src() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "INFO: PROC: ssl_install_src"
+    msg "PROC: ssl_install_src"
   fi
 
   if [ "${1}" = "Modern" ]; then
