@@ -2212,11 +2212,11 @@ check_php_ssl_version() {
     msg "PROC: check_php_ssl_version $1"
   fi
 
-  # Set OpenSSL version based on the OS and PHP version
+  # Set OpenSSL version based on the OS version
   case "${_OS_CODE}" in
     daedalus|chimaera|beowulf|bookworm|bullseye|buster)
       _OPENSSL_USE_VRN="${_OPENSSL_EOL_VRN}"  # 1.1.1w
-      if [ -e "/root/.install.modern.openssl.cnf" ] && [ -e "/usr/local/ssl3/lib64/libssl.so.3" ]; then
+      if [ -e "/usr/local/ssl3/lib64/libssl.so.3" ]; then
         _OPENSSL_USE_VRN="${_OPENSSL_MODERN_VRN}"  # 3.0.15
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           msg "INFO: Using modern OpenSSL version ${_OPENSSL_USE_VRN}"
@@ -2237,6 +2237,25 @@ check_php_ssl_version() {
       _OPENSSL_USE_VRN="${_OPENSSL_LEGACY_VRN}"  # 1.0.2u
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         msg "INFO: Using legacy OpenSSL version ${_OPENSSL_USE_VRN}"
+      fi
+      ;;
+  esac
+
+  # Set OpenSSL version based on PHP version and detected OpenSSL version
+  case "${1}" in
+    56|70|71|72|73)
+      if [ -e "/usr/local/ssl/lib/libssl.so.1.1" ]; then
+        _OPENSSL_USE_VRN="${_OPENSSL_EOL_VRN}"  # 1.1.1w
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          msg "INFO: Using EOL OpenSSL version ${_OPENSSL_USE_VRN} for PHP ${1}"
+        fi
+      elif [ -e "/usr/local/ssl/lib/libssl.so.1.0.0" ] \
+        || [ -e "/usr/local/ssl/lib/libssl.so.1.0.1" ] \
+        || [ -e "/usr/local/ssl/lib/libssl.so.1.0.2" ]; then
+        _OPENSSL_USE_VRN="${_OPENSSL_LEGACY_VRN}"  # 1.0.2u
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          msg "INFO: Using Legacy OpenSSL version ${_OPENSSL_LEGACY_VRN} for PHP ${1}"
+        fi
       fi
       ;;
   esac
