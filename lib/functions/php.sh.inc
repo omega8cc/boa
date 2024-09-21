@@ -2219,24 +2219,24 @@ check_php_ssl_version() {
       if [ -e "/usr/local/ssl3/lib64/libssl.so.3" ]; then
         _OPENSSL_USE_VRN="${_OPENSSL_MODERN_VRN}"  # 3.0.15
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "INFO: Using modern OpenSSL version ${_OPENSSL_USE_VRN}"
+          msg "INFO: Using modern OpenSSL ${_OPENSSL_USE_VRN} for PHP in ${_OS_CODE} by default"
         fi
       else
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "INFO: Using EOL OpenSSL version ${_OPENSSL_USE_VRN}"
+          msg "INFO: Using EOL OpenSSL ${_OPENSSL_USE_VRN} for PHP in ${_OS_CODE} by default"
         fi
       fi
       ;;
     stretch)
       _OPENSSL_USE_VRN="${_OPENSSL_EOL_VRN}"  # 1.1.1w
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: Using EOL OpenSSL version ${_OPENSSL_USE_VRN} for stretch"
+        msg "INFO: Using EOL OpenSSL ${_OPENSSL_USE_VRN} for PHP in ${_OS_CODE} by default"
       fi
       ;;
     *)
       _OPENSSL_USE_VRN="${_OPENSSL_LEGACY_VRN}"  # 1.0.2u
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: Using legacy OpenSSL version ${_OPENSSL_USE_VRN}"
+        msg "INFO: Using Legacy OpenSSL ${_OPENSSL_USE_VRN} for PHP in ${_OS_CODE} by default"
       fi
       ;;
   esac
@@ -2247,14 +2247,14 @@ check_php_ssl_version() {
       if [ -e "/usr/local/ssl/lib/libssl.so.1.1" ]; then
         _OPENSSL_USE_VRN="${_OPENSSL_EOL_VRN}"  # 1.1.1w
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "INFO: Using EOL OpenSSL version ${_OPENSSL_USE_VRN} for PHP ${1}"
+          msg "INFO: Using EOL OpenSSL ${_OPENSSL_USE_VRN} for PHP ${1}"
         fi
       elif [ -e "/usr/local/ssl/lib/libssl.so.1.0.0" ] \
         || [ -e "/usr/local/ssl/lib/libssl.so.1.0.1" ] \
         || [ -e "/usr/local/ssl/lib/libssl.so.1.0.2" ]; then
         _OPENSSL_USE_VRN="${_OPENSSL_LEGACY_VRN}"  # 1.0.2u
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "INFO: Using Legacy OpenSSL version ${_OPENSSL_LEGACY_VRN} for PHP ${1}"
+          msg "INFO: Using Legacy OpenSSL ${_OPENSSL_LEGACY_VRN} for PHP ${1}"
         fi
       fi
       ;;
@@ -2265,8 +2265,8 @@ check_php_ssl_version() {
   _PHP_SSL_LOOK_FOR="${_OPENSSL_USE_VRN}"
 
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "INFO: Expected OpenSSL version: ${_PHP_SSL_LOOK_FOR}"
-    msg "INFO: Detected PHP OpenSSL version: ${_PHP_SSL_TEST}"
+    msg "INFO: Expected PHP OpenSSL Header Version: ${_PHP_SSL_LOOK_FOR}"
+    msg "INFO: Detected PHP OpenSSL Header Version: ${_PHP_SSL_TEST}"
   fi
 
   # Return true if mismatch is found, otherwise false
@@ -2323,20 +2323,20 @@ check_php_rebuild() {
   # Check for presence of PHP drivers
   if [ -x "/opt/php$1/bin/php" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "INFO: Checking for drivers in PHP $1"
+      msg "INFO: Checking for mysql drivers in PHP $1"
     fi
 
     if [ "$1" = "56" ]; then
       # Check for 'with-mysql=mysqlnd' in PHP 5.6
       _PHP_DRIVERS=$(/opt/php$1/bin/php -i | grep "with-mysql=mysqlnd" 2>&1)
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: Checking 'with-mysql=mysqlnd' for PHP 5.6"
+        msg "INFO: Checking for 'with-mysql=mysqlnd' in PHP 5.6"
       fi
     else
       # Check for 'with-mysqli=mysqlnd' in PHP 7 or 8
       _PHP_DRIVERS=$(/opt/php$1/bin/php -i | grep "with-mysqli=mysqlnd" 2>&1)
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: Checking 'with-mysqli=mysqlnd' for PHP $1"
+        msg "INFO: Checking for 'with-mysqli=mysqlnd' in PHP $1"
       fi
     fi
 
@@ -2344,18 +2344,18 @@ check_php_rebuild() {
     if [ -z "${_PHP_DRIVERS}" ]; then
       _PHP_DRIVERS_BUILD=NO
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: PHP $1 missing drivers, forcing rebuild"
+        msg "INFO: PHP $1 has missing mysql drivers, forcing rebuild"
       fi
       _PHP_FORCE_REINSTALL=YES
     else
       _PHP_DRIVERS_BUILD=YES
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: PHP $1 drivers detected"
+        msg "INFO: PHP $1 with correct mysql drivers detected"
       fi
     fi
   else
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "INFO: PHP $1 binary not found, skipping driver check"
+      msg "INFO: PHP $1 binary not found, skipping mysql driver check"
     fi
   fi
 
