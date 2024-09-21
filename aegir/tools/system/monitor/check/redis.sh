@@ -63,7 +63,6 @@ redis_restart() {
   touch /run/boa_run.pid
   sleep 3
   echo "$(date 2>&1) $1 incident detected" >> ${pthOml}
-  echo "$(date 2>&1) $1 incident response started" >> ${pthOml}
   service redis-server stop &> /dev/null
   wait
   killall -9 redis-server &> /dev/null
@@ -84,7 +83,7 @@ redis_restart() {
 redis_bind_check_fix() {
   if [ `tail --lines=8 /var/log/redis/redis-server.log \
     | grep --count "Address already in use"` -gt "0" ]; then
-    thisErrLog="$(date 2>&1) RedisException BIND detected"
+    thisErrLog="$(date 2>&1) RedisException BIND detected, service restarted"
     echo ${thisErrLog} >> ${pthOml}
     redis_restart "Redis BIND"
   fi
@@ -93,7 +92,7 @@ redis_bind_check_fix() {
 redis_oom_check_fix() {
   if [ `tail --lines=500 /var/log/php/error_log_* \
     | grep --count "RedisException"` -gt "0" ]; then
-    thisErrLog="$(date 2>&1) RedisException OOM detected"
+    thisErrLog="$(date 2>&1) RedisException OOM detected, service restarted"
     echo ${thisErrLog} >> ${pthOml}
     redis_restart "Redis OOM"
   fi
@@ -102,7 +101,7 @@ redis_oom_check_fix() {
 redis_slow_check_fix() {
   if [ `tail --lines=500 /var/log/php/fpm-*-slow.log \
     | grep --count "PhpRedis.php"` -gt "5" ]; then
-    thisErrLog="$(date 2>&1) Slow PhpRedis detected"
+    thisErrLog="$(date 2>&1) Slow PhpRedis detected, service restarted"
     echo ${thisErrLog} >> ${pthOml}
     redis_restart "Redis SLOW"
   fi

@@ -41,7 +41,6 @@ wkhtmltopdf_php_cli_oom_kill() {
   touch /run/boa_run.pid
   echo "$(date 2>&1) OOM $1 wkhtmltopdf/php-cli detected" >> ${pthOml}
   sleep 3
-  echo "$(date 2>&1) OOM wkhtmltopdf/php-cli incident response started" >> ${pthOml}
   kill -9 $(ps aux | grep '[w]khtmltopdf' | awk '{print $2}') &> /dev/null
   echo "$(date 2>&1) OOM wkhtmltopdf killed" >> ${pthOml}
   killall -9 sleep &> /dev/null
@@ -57,8 +56,6 @@ wkhtmltopdf_php_cli_oom_kill() {
 oom_critical_restart() {
   touch /run/boa_run.pid
   echo "$(date 2>&1) OOM $1 detected" >> ${pthOml}
-  sleep 3
-  echo "$(date 2>&1) OOM incident response started" >> ${pthOml}
   kill -9 $(ps aux | grep '[w]khtmltopdf' | awk '{print $2}') &> /dev/null
   echo "$(date 2>&1) OOM wkhtmltopdf killed" >> ${pthOml}
   killall -9 sleep &> /dev/null
@@ -77,7 +74,7 @@ oom_critical_restart() {
   echo "$(date 2>&1) OOM redis-server killed" >> ${pthOml}
   bash /var/xdrago/move_sql.sh
   wait
-  echo "$(date 2>&1) OOM mysql restarted" >> ${pthOml}
+  echo "$(date 2>&1) OOM Percona MySQL Server restarted" >> ${pthOml}
   echo "$(date 2>&1) OOM incident response completed" >> ${pthOml}
   incident_email_report "OOM $1 system"
   echo >> ${pthOml}

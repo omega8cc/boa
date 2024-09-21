@@ -44,7 +44,6 @@ restart_nginx() {
   touch /run/boa_run.pid
   sleep 3
   echo "$(date 2>&1) NGX $1 detected" >> ${pthOml}
-  echo "$(date 2>&1) NGX $1 incident response started" >> ${pthOml}
   mv -f /var/log/nginx/error.log /var/log/nginx/`date +%y%m%d-%H%M`-error.log
   echo "Killing all Nginx processes and restarting Nginx..."
   killall -9 nginx
@@ -52,12 +51,12 @@ restart_nginx() {
   service nginx start
   wait
   if pidof nginx > /dev/null; then
-    echo "Nginx restarted successfully."
+    echo "Nginx service restarted successfully."
     _NGINX_RESTARTED=true
-    echo "$(date 2>&1) NGX $1 incident nginx restarted" >> ${pthOml}
+    echo "$(date 2>&1) NGX $1 incident Nginx service restarted" >> ${pthOml}
   else
     echo "Failed to restart Nginx."
-    echo "$(date 2>&1) NGX $1 incident nginx restart failed" >> ${pthOml}
+    echo "$(date 2>&1) NGX $1 incident Nginx restart failed" >> ${pthOml}
   fi
   echo "$(date 2>&1) NGX $1 incident response completed" >> ${pthOml}
   incident_email_report "NGX $1"
@@ -88,7 +87,7 @@ nginx_bind_check_fix() {
 }
 
 nginx_heatlh_check_fix() {
-  # Initialize a flag to indicate whether Nginx has been restarted
+  # Initialize a flag to indicate whether Nginx service has been restarted
   _NGINX_RESTARTED=false
   # Check if Nginx is running and capture the process details
   _NGINX_PROCESSES=$(ps aux | grep 'nginx: ' | grep -v 'grep')
@@ -130,7 +129,7 @@ nginx_heatlh_check_fix() {
     echo "Nginx is running normally. No anomalies detected."
   else
     echo "Nginx was restarted due to detected anomalies."
-    echo "$(date 2>&1) NGX was restarted due to detected anomalies" >> ${pthOml}
+    echo "$(date 2>&1) NGX service was restarted due to detected anomalies" >> ${pthOml}
   fi
 }
 

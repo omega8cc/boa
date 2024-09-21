@@ -50,12 +50,11 @@ sql_restart() {
   touch /run/boa_run.pid
   sleep 3
   echo "$(date 2>&1) $1 incident detected" >> ${pthOml}
-  echo "$(date 2>&1) $1 incident response started" >> ${pthOml}
   killall sleep &> /dev/null
   killall php
   bash /var/xdrago/move_sql.sh
   wait
-  echo "$(date 2>&1) $1 incident mysql restarted" >> ${pthOml}
+  echo "$(date 2>&1) $1 incident Percona MySQL server restarted" >> ${pthOml}
   echo "$(date 2>&1) $1 incident response completed" >> ${pthOml}
   incident_email_report "$1"
   echo >> ${pthOml}

@@ -58,7 +58,7 @@ jetty_restart() {
     service jetty7 start
     wait
   fi
-  thisErrLog="$(date 2>&1) Jetty has been restarted"
+  thisErrLog="$(date 2>&1) Jetty service has been restarted"
   echo ${thisErrLog} >> ${pthOml}
   incident_email_report "$1"
   echo >> ${pthOml}

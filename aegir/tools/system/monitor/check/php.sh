@@ -85,7 +85,7 @@ fpm_listen_conflict_detection() {
   if [ -e "/var/log/php" ]; then
     if [ `tail --lines=500 /var/log/php/php*-fpm-error.log \
       | grep --count "already listen on"` -gt "0" ]; then
-      thisErrLog="$(date 2>&1) FPM instances conflict detected"
+      thisErrLog="$(date 2>&1) FPM instances conflict detected, service restarted"
       echo ${thisErrLog} >> ${pthOml}
       fpm_forced_restart "FPM instances conflict"
     fi
@@ -95,7 +95,7 @@ fpm_listen_conflict_detection() {
 fpm_proc_max_detection() {
   if [ `tail --lines=500 /var/log/php/php*-fpm-error.log \
     | grep --count "process.max"` -gt "0" ]; then
-    thisErrLog="$(date 2>&1) Too many running FPM childs detected"
+    thisErrLog="$(date 2>&1) Too many running FPM childs detected, service restarted"
     echo ${thisErrLog} >> ${pthOml}
     fpm_forced_restart "Too many running FPM childs"
   fi
@@ -104,7 +104,7 @@ fpm_proc_max_detection() {
 fpm_sockets_healing() {
   if [ `tail --lines=500 /var/log/php/php*-fpm-error.log \
     | grep --count "Address already in use"` -gt "0" ]; then
-    thisErrLog="$(date 2>&1) FPM Sockets conflict detected"
+    thisErrLog="$(date 2>&1) FPM Sockets conflict detected, service restarted"
     echo ${thisErrLog} >> ${pthOml}
     fpm_forced_restart "FPM Sockets conflict"
   fi
