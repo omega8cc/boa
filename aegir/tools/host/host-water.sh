@@ -648,19 +648,19 @@ if [ -e "/vservers" ] \
   echo local start `date`
   local_ip_rg
 
-  _HA=var/xdrago/monitor/hackcheck.archive.log
-  _HX=var/xdrago/monitor/hackcheck.archive.x3.log
-  _WA=var/xdrago/monitor/scan_nginx.archive.log
-  _WX=var/xdrago/monitor/scan_nginx.archive.x3.log
-  _FA=var/xdrago/monitor/hackftp.archive.log
-  _FX=var/xdrago/monitor/hackftp.archive.x3.log
+  _HA=var/xdrago/monitor/log/hackcheck.archive.log
+  _HX=var/xdrago/monitor/log/hackcheck.archive.x3.log
+  _WA=var/xdrago/monitor/log/scan_nginx.archive.log
+  _WX=var/xdrago/monitor/log/scan_nginx.archive.x3.log
+  _FA=var/xdrago/monitor/log/hackftp.archive.log
+  _FX=var/xdrago/monitor/log/hackftp.archive.x3.log
 
   echo guard start `date`
   guard_stats
 
-  rm -f /vservers/*/var/xdrago/monitor/ssh.log
-  rm -f /vservers/*/var/xdrago/monitor/web.log
-  rm -f /vservers/*/var/xdrago/monitor/ftp.log
+  rm -f /vservers/*/var/xdrago/monitor/log/ssh.log
+  rm -f /vservers/*/var/xdrago/monitor/log/web.log
+  rm -f /vservers/*/var/xdrago/monitor/log/ftp.log
 
   kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
   killall sleep &> /dev/null

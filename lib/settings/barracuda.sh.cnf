@@ -1076,6 +1076,37 @@ _PHP_FPM_WORKERS=AUTO
 ###
 _SPEED_VALID_MAX=3600
 
+###
+### When set to NO it will stop sending
+### e-mail reports on various incidents
+### detected and handled by auto-healing.
+###
+_INCIDENT_EMAIL_REPORT=YES
+
+###
+### Max TTL for mysql process per user (seconds)
+###
+### It will be automatically lowered to 300 if
+### /root/.high_load.cnf file exists while empty
+### /root/.big_db.cnf file is not present.
+###
+### If both empty /root/.high_load.cnf and empty
+### /root/.big_db.cnf are not present, it will be
+### automatically lowered to 1800.
+###
+### It will remain set to 3600 if empty file
+### /root/.big_db.cnf is present.
+###
+_SQL_MAX_TTL=3600
+
+###
+### Max TTL for mysql process per problematic user
+### listed in the /root/.sql.problematic.users.cnf
+### file -- one per line.
+###
+_SQL_LOW_MAX_TTL=60
+
+
 ###----------------------------------------###
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###

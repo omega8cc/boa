@@ -36,8 +36,8 @@ exit;
 #############################################################################
 sub makeactions
 {
-  if (-e "/var/xdrago/monitor/web.log") {
-    $this_path = "/var/xdrago/monitor/web.log";
+  if (-e "/var/xdrago/monitor/log/web.log") {
+    $this_path = "/var/xdrago/monitor/log/web.log";
     open (NOT,"<$this_path");
     @banetable = <NOT>;
     close (NOT);
@@ -333,8 +333,8 @@ sub makeactions
       if ($thissumar > $critnumber) {
         if ($allowed ne 'ALLOWED' && !$blocked) {
           print "===[$thissumar] BLOCK li_cnt action for $VISITOR===\n" if ($VISITOR);
-          `echo "$VISITOR # [x$thissumar] $times" >> /var/xdrago/monitor/web.log`;
-          `echo "$VISITOR # [x$thissumar] $times" >> /var/xdrago/monitor/$this_filename.archive.log`;
+          `echo "$VISITOR # [x$thissumar] $times" >> /var/xdrago/monitor/log/web.log`;
+          `echo "$VISITOR # [x$thissumar] $times" >> /var/xdrago/monitor/log/$this_filename.archive.log`;
           if (-e "/etc/csf/csf.deny" && -e "/usr/sbin/csf" && !-e "/var/xdrago/guest-fire.sh") {
             `/usr/sbin/csf -td $VISITOR 3600 -p 80`;
           }
@@ -362,8 +362,8 @@ sub makeactions
       if ($thissumarpx > $critnumber) {
         if ($allowed ne 'ALLOWED' && !$blocked) {
           print "===[$thissumarpx] BLOCK px_cnt action for $PROXY===\n" if ($PROXY);
-          `echo "$PROXY # [x$thissumarpx] $times" >> /var/xdrago/monitor/web.log`;
-          `echo "$PROXY # [x$thissumarpx] $times" >> /var/xdrago/monitor/$this_filename.archive.log`;
+          `echo "$PROXY # [x$thissumarpx] $times" >> /var/xdrago/monitor/log/web.log`;
+          `echo "$PROXY # [x$thissumarpx] $times" >> /var/xdrago/monitor/log/$this_filename.archive.log`;
           if (-e "/etc/csf/csf.deny" && -e "/usr/sbin/csf" && !-e "/var/xdrago/guest-fire.sh") {
             `/usr/sbin/csf -td $PROXY 3600 -p 80`;
           }
@@ -391,8 +391,8 @@ sub makeactions
       if ($thisim_sumar > $critnumber) {
         if ($allowed ne 'ALLOWED' && !$blocked) {
           print "===[$thisim_sumar] BLOCK im_li_cnt action for $VISITOR===\n" if ($VISITOR);
-          `echo "$VISITOR # [x$thisim_sumar] $times" >> /var/xdrago/monitor/web.log`;
-          `echo "$VISITOR # [x$thisim_sumar] $times" >> /var/xdrago/monitor/$this_filename.archive.log`;
+          `echo "$VISITOR # [x$thisim_sumar] $times" >> /var/xdrago/monitor/log/web.log`;
+          `echo "$VISITOR # [x$thisim_sumar] $times" >> /var/xdrago/monitor/log/$this_filename.archive.log`;
           if (-e "/etc/csf/csf.deny" && -e "/usr/sbin/csf" && !-e "/var/xdrago/guest-fire.sh") {
             `/usr/sbin/csf -td $VISITOR 3600 -p 80`;
           }
@@ -420,8 +420,8 @@ sub makeactions
       if ($thisim_sumarpx > $critnumber) {
         if ($allowed ne 'ALLOWED' && !$blocked) {
           print "===[$thisim_sumarpx] BLOCK im_px_cnt action for $PROXY===\n" if ($PROXY);
-          `echo "$PROXY # [x$thisim_sumarpx] $times" >> /var/xdrago/monitor/web.log`;
-          `echo "$PROXY # [x$thisim_sumarpx] $times" >> /var/xdrago/monitor/$this_filename.archive.log`;
+          `echo "$PROXY # [x$thisim_sumarpx] $times" >> /var/xdrago/monitor/log/web.log`;
+          `echo "$PROXY # [x$thisim_sumarpx] $times" >> /var/xdrago/monitor/log/$this_filename.archive.log`;
           if (-e "/etc/csf/csf.deny" && -e "/usr/sbin/csf" && !-e "/var/xdrago/guest-fire.sh") {
             `/usr/sbin/csf -td $PROXY 3600 -p 80`;
           }
@@ -443,7 +443,7 @@ sub makeactions
 sub check_remote_ip
 {
   local($IP) = @_;
-  if (-e "/var/xdrago/monitor/web.log") {
+  if (-e "/var/xdrago/monitor/log/web.log") {
     foreach $banerecord (@banetable) {
       chomp ($banerecord);
       local($ifbanned, $rest) = split(/\s+/,$banerecord);

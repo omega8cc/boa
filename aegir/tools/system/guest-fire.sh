@@ -8,16 +8,6 @@ export PATH=${PATH}
 export SHELL=${SHELL}
 export HOME=${HOME}
 
-second_flood_guard() {
-  thisCountSec=`ps aux | grep -v "grep" | grep -v "null" | grep --count "/second.sh"`
-  if [ ${thisCountSec} -gt "4" ]; then
-    echo "$(date 2>&1) Too many ${thisCountSec} second.sh processes killed" >> \
-      /var/log/sec-count.kill.log
-    kill -9 $(ps aux | grep '[s]econd.sh' | awk '{print $2}') &> /dev/null
-  fi
-}
-[ ! -e "/run/boa_run.pid" ] && second_flood_guard
-
 csf_flood_guard() {
   thisCountCsf=`ps aux | grep -v "grep" | grep -v "null" | grep --count "/csf"`
   if [ ! -e "/run/boa_run.pid" ] && [ ${thisCountCsf} -gt "4" ]; then
@@ -51,8 +41,8 @@ csf_flood_guard() {
 guest_guard() {
 if [ ! -e "/run/fire.pid" ] && [ ! -e "/run/water.pid" ]; then
   touch /run/fire.pid
-  if [ -e "/var/xdrago/monitor/ssh.log" ]; then
-    for _IP in `cat /var/xdrago/monitor/ssh.log | cut -d '#' -f1 | sort`; do
+  if [ -e "/var/xdrago/monitor/log/ssh.log" ]; then
+    for _IP in `cat /var/xdrago/monitor/log/ssh.log | cut -d '#' -f1 | sort`; do
       _FW_TEST=
       _FF_TEST=
       _FW_TEST=$(csf -g ${_IP} 2>&1)
@@ -72,8 +62,8 @@ if [ ! -e "/run/fire.pid" ] && [ ! -e "/run/water.pid" ]; then
       fi
     done
   fi
-  if [ -e "/var/xdrago/monitor/web.log" ]; then
-    for _IP in `cat /var/xdrago/monitor/web.log | cut -d '#' -f1 | sort`; do
+  if [ -e "/var/xdrago/monitor/log/web.log" ]; then
+    for _IP in `cat /var/xdrago/monitor/log/web.log | cut -d '#' -f1 | sort`; do
       _FW_TEST=
       _FF_TEST=
       _FW_TEST=$(csf -g ${_IP} 2>&1)
@@ -93,8 +83,8 @@ if [ ! -e "/run/fire.pid" ] && [ ! -e "/run/water.pid" ]; then
       fi
     done
   fi
-  if [ -e "/var/xdrago/monitor/ftp.log" ]; then
-    for _IP in `cat /var/xdrago/monitor/ftp.log | cut -d '#' -f1 | sort`; do
+  if [ -e "/var/xdrago/monitor/log/ftp.log" ]; then
+    for _IP in `cat /var/xdrago/monitor/log/ftp.log | cut -d '#' -f1 | sort`; do
       _FW_TEST=
       _FF_TEST=
       _FW_TEST=$(csf -g ${_IP} 2>&1)

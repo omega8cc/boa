@@ -58,7 +58,7 @@ _ICU_MODERN_VRN=73-1
 _IMAGE_MAGICK_VRN=7.1.1-7
 _IMAGICK_OLD_VRN=3.1.2
 _IMAGICK_VRN=3.7.0
-_IONCUBE_VRN=13.0.4
+_IONCUBE_VRN=13.3.1
 _JETTY_7_VRN=7.6.17.v20150415
 _JETTY_8_VRN=8.1.17.v20150415
 _JETTY_9_VRN=9.2.16.v20160414
@@ -75,7 +75,7 @@ _MONGO_VRN=1.6.14
 _MONGODB_VRN=1.2.5
 _MSS_VRN=master-29-06-2024
 _MYQUICK_VRN_FIVE=0.11.5-2
-_MYQUICK_VRN_EIGHT=0.16.6-2
+_MYQUICK_VRN_EIGHT=0.16.7-3
 _MYSQLTUNER_VRN=1.9.4
 _NGINX_VRN=1.27.1
 _OPENSSH_VRN=9.8p1
@@ -370,7 +370,7 @@ if [ "${_STATUS}" = "INIT" ] || [ ! -x "/usr/local/ssl/bin/openssl" ]; then
     rm -f ${_MD_SSL_CTRL}
   fi
   touch ${_LC_SSL_CTRL}
-  ssl_install_src
+  if_ssl_install_src
   ssl_crypto_lib_fix
   curl_install_src
 fi
@@ -417,7 +417,7 @@ fi
 ### Install OpenSSL and cURL from sources
 ###
 if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ] || [ ! -x "/usr/local/ssl3/bin/openssl" ]; then
-  ssl_install_src
+  if_ssl_install_src
   ssl_crypto_lib_fix
   curl_install_src
 fi

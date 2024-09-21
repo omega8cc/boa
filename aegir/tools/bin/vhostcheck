@@ -1,0 +1,88 @@
+#!/bin/bash
+
+HOME=/root
+SHELL=/bin/bash
+PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+
+export PATH=${PATH}
+export SHELL=${SHELL}
+export HOME=${HOME}
+
+check_root() {
+  if [ `whoami` != "root" ]; then
+    echo "ERROR: This script should be run as a root user"
+    exit 1
+  fi
+}
+check_root
+
+# Define directories
+VHOSTS_DIRS=("/var/aegir/config/server_master/nginx/vhost.d" "/data/disk/*/config/server_master/nginx/vhost.d")
+VHOSTS_CLEANUP_LOG="/var/log/vhost_cleanup.log"
+GHOST_VHOSTS_LOG="/var/log/ghost_vhosts.log"
+DUPLICATE_VHOSTS_LOG="/var/log/duplicate_vhosts.log"
+
+# Create/empty the log files
+> "${VHOSTS_CLEANUP_LOG}"
+> "${GHOST_VHOSTS_LOG}"
+> "${DUPLICATE_VHOSTS_LOG}"
+
+# Step 1: Get the list of existing MySQL databases
+mapfile -t mysql_databases < <(mysql -u root -e "SHOW DATABASES;" | grep -Ev "(Database|information_schema|performance_schema|mysql|sys)")
+
+# Step 2: Get the list of vhosts and their db_name references
+declare -A vhost_db_map
+for dir_pattern in "${VHOSTS_DIRS[@]}"; do
+  for dir in ${dir_pattern}; do
+    if [ -d "${dir}" ]; then
+      for vhost_file in "${dir}"/*; do
+        if [ -f "${vhost_file}" ]; then
+          while IFS= read -r line; do
+            # Extract db_name by looking for the exact line containing it
+            if echo "${line}" | grep -q "fastcgi_param db_name"; then
+              db_name=$(echo "${line}" | awk '{print $NF}' | tr -d ';')
+              # Map db_name to the list of vhost files (ensure no duplicate entries within the same file)
+              if ! [[ " ${vhost_db_map["${db_name}"]} " =~ " ${vhost_file} " ]]; then
+                vhost_db_map["${db_name}"]+="${vhost_file} "
+              fi
+            fi
+          done < "${vhost_file}"
+        fi
+      done
+    else
+      echo "Directory ${dir} does not exist, skipping..." | tee -a "${VHOSTS_CLEANUP_LOG}"
+    fi
+  done
+done
+
+# Step 3: Identify and log ghost vhosts (vhosts referencing non-existing databases)
+echo "Vhosts referencing non-existing databases (ghost vhosts):" | tee -a "${GHOST_VHOSTS_LOG}"
+for db_name in "${!vhost_db_map[@]}"; do
+  if ! [[ " ${mysql_databases[*]} " =~ " ${db_name} " ]]; then
+    # Log the vhost as a ghost vhost if the database doesn't exist
+    for vhost_file in ${vhost_db_map[${db_name}]}; do
+      echo "Ghost vhost found: ${vhost_file} (references non-existing database: ${db_name})" | tee -a "${GHOST_VHOSTS_LOG}"
+    done
+  fi
+done
+
+# Step 4: Check for duplicate/conflicting vhosts referencing the same database (across different files)
+echo "Checking for duplicate/conflicting vhosts referencing the same database..." | tee -a "${DUPLICATE_VHOSTS_LOG}"
+for db_name in "${!vhost_db_map[@]}"; do
+  # Get the list of unique vhost files for this db_name
+  vhost_list=(${vhost_db_map[${db_name}]})
+
+  # Remove duplicates within the same file and ensure we compare between different files
+  unique_vhost_files=$(echo "${vhost_list[@]}" | tr ' ' '
+' | sort | uniq)
+
+  # Only flag as duplicate if db_name is referenced in different vhost files
+  if [ $(echo "${unique_vhost_files}" | wc -l) -gt 1 ]; then
+    echo "Duplicate vhosts found for database ${db_name} (in different vhost files):" | tee -a "${DUPLICATE_VHOSTS_LOG}"
+    for vhost_file in ${unique_vhost_files}; do
+      echo "  - ${vhost_file}" | tee -a "${DUPLICATE_VHOSTS_LOG}"
+    done
+  fi
+done
+
+exit 0

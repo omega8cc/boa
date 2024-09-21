@@ -215,13 +215,9 @@ clean_pid_exit() {
 
 check_root() {
   if [ `whoami` = "root" ]; then
-    if [ -e "/root/.barracuda.cnf" ]; then
-      source /root/.barracuda.cnf
-      _B_NICE=${_B_NICE//[^0-9]/}
-    fi
-    if [ -z "${_B_NICE}" ]; then
-      _B_NICE=10
-    fi
+    [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
+    export _B_NICE=${_B_NICE//[^0-9]/}
+    : "${_B_NICE:=10}"
     renice ${_B_NICE} -p $$ &> /dev/null
     ionice -c2 -n7 -p $$
   else
@@ -1007,7 +1003,7 @@ restore_default_sql() {
       if [ ! -z "${_INNODB_LOG_FILE_SIZE}" ]; then
         if [ "${_INNODB_LOG_FILE_SIZE}" -ge "50" ]; then
           _INNODB_LOG_FILE_SIZE_MB="${_INNODB_LOG_FILE_SIZE}M"
-          _INNODB_LOG_FILE_SIZE_TEST=$(grep "^innodb_log_file_size" \
+          _INNODB_LOG_FILE_SIZE_TEST=$(grep "innodb_log_file_size" \
             /var/backups/dragon/t/my.cnf-pre-${_X_SE}-${_X_VERSION}-${_NOW} 2>&1)
           if [[ "${_INNODB_LOG_FILE_SIZE_TEST}" =~ "= ${_INNODB_LOG_FILE_SIZE_MB}" ]]; then
             _INNODB_LOG_FILE_SIZE_SAME=YES
@@ -1067,7 +1063,7 @@ restore_default_sql() {
     if [ ! -z "${_INNODB_LOG_FILE_SIZE}" ]; then
       if [ "${_INNODB_LOG_FILE_SIZE}" -ge "50" ]; then
         _INNODB_LOG_FILE_SIZE_MB="${_INNODB_LOG_FILE_SIZE}M"
-        _INNODB_LOG_FILE_SIZE_TEST=$(grep "^innodb_log_file_size" /etc/mysql/my.cnf 2>&1)
+        _INNODB_LOG_FILE_SIZE_TEST=$(grep "innodb_log_file_size" /etc/mysql/my.cnf 2>&1)
         if [[ "${_INNODB_LOG_FILE_SIZE_TEST}" =~ "= ${_INNODB_LOG_FILE_SIZE_MB}" ]]; then
           _DO_NOTHING=YES
         else
@@ -1095,7 +1091,7 @@ tune_sql() {
 restore_default_nginx() {
   msg "INFO: Restoring default Nginx configuration"
   cd /var/xdrago/monitor/check
-  cp -af ${bldPth}/aegir/tools/system/monitor/check/scan_nginx ./
+  cp -af ${bldPth}/aegir/tools/system/monitor/check/scan_nginx.pl ./
   if [ -d "${_TUNE_HOSTMASTER}" ]; then
     for Files in `find ${_TUNE_HOSTMASTER}/config/server_master/nginx/vhost.d -type f`; do
       sed -i "s/#limit_conn /limit_conn /g" $Files &> /dev/null
@@ -1109,7 +1105,7 @@ restore_default_nginx() {
 #
 tune_nginx() {
   msg "INFO: Tuning Nginx configuration"
-  sed -i "s/default_critnumber =.*/default_critnumber = ${_TUNE_NGINX_FIREWALL};/g" /var/xdrago/monitor/check/scan_nginx
+  sed -i "s/default_critnumber =.*/default_critnumber = ${_TUNE_NGINX_FIREWALL};/g" /var/xdrago/monitor/check/scan_nginx.pl
   wait
   sed -i "s/60/${_TUNE_NGINX_TIMEOUT}/g" /var/aegir/config/server_master/nginx.conf    &> /dev/null
   wait
@@ -1131,7 +1127,7 @@ tune_nginx() {
 #
 restart_services() {
   msg "INFO: Reloading services"
-  _PHP_V="83 82 81 74 73 72 71 70 56"
+  _PHP_V="83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     if [ -e "/etc/init.d/php${e}-fpm" ]; then
       service php${e}-fpm reload &> /dev/null
@@ -1842,9 +1838,7 @@ if prompt_yes_no "${tPrmt}?" ; then
     mrun "sleep 30"
   fi
   msg "INFO: Tuning in progress, please wait..."
-  if [ -e "/root/.barracuda.cnf" ]; then
-    source /root/.barracuda.cnf
-  fi
+  [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
   restore_default_php
   php_conf_update
   tune_php
@@ -1861,9 +1855,7 @@ else
     service cron stop &> /dev/null
     mrun "sleep 30"
   fi
-  if [ -e "/root/.barracuda.cnf" ]; then
-    source /root/.barracuda.cnf
-  fi
+  [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
   restore_default_php
   php_conf_update
   restore_default_sql

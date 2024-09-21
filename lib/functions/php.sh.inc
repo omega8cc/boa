@@ -2205,192 +2205,175 @@ if_install_php_newrelic() {
 }
 
 #
+# Check if the PHP has correct SSL headers version.
+check_php_ssl_version() {
+  # Debug mode: log the start of the function
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: check_php_ssl_version $1"
+  fi
+
+  # Set OpenSSL version based on the OS version
+  case "${_OS_CODE}" in
+    daedalus|chimaera|beowulf|bookworm|bullseye|buster)
+      _OPENSSL_USE_VRN="${_OPENSSL_EOL_VRN}"  # 1.1.1w
+      if [ -e "/usr/local/ssl3/lib64/libssl.so.3" ]; then
+        _OPENSSL_USE_VRN="${_OPENSSL_MODERN_VRN}"  # 3.0.15
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          msg "INFO: Using modern OpenSSL version ${_OPENSSL_USE_VRN}"
+        fi
+      else
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          msg "INFO: Using EOL OpenSSL version ${_OPENSSL_USE_VRN}"
+        fi
+      fi
+      ;;
+    stretch)
+      _OPENSSL_USE_VRN="${_OPENSSL_EOL_VRN}"  # 1.1.1w
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "INFO: Using EOL OpenSSL version ${_OPENSSL_USE_VRN} for stretch"
+      fi
+      ;;
+    *)
+      _OPENSSL_USE_VRN="${_OPENSSL_LEGACY_VRN}"  # 1.0.2u
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "INFO: Using legacy OpenSSL version ${_OPENSSL_USE_VRN}"
+      fi
+      ;;
+  esac
+
+  # Set OpenSSL version based on PHP version and detected OpenSSL version
+  case "${1}" in
+    56|70|71|72|73)
+      if [ -e "/usr/local/ssl/lib/libssl.so.1.1" ]; then
+        _OPENSSL_USE_VRN="${_OPENSSL_EOL_VRN}"  # 1.1.1w
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          msg "INFO: Using EOL OpenSSL version ${_OPENSSL_USE_VRN} for PHP ${1}"
+        fi
+      elif [ -e "/usr/local/ssl/lib/libssl.so.1.0.0" ] \
+        || [ -e "/usr/local/ssl/lib/libssl.so.1.0.1" ] \
+        || [ -e "/usr/local/ssl/lib/libssl.so.1.0.2" ]; then
+        _OPENSSL_USE_VRN="${_OPENSSL_LEGACY_VRN}"  # 1.0.2u
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          msg "INFO: Using Legacy OpenSSL version ${_OPENSSL_LEGACY_VRN} for PHP ${1}"
+        fi
+      fi
+      ;;
+  esac
+
+  # Check the installed PHP OpenSSL version
+  _PHP_SSL_TEST=$(/opt/php$1/bin/php -i | grep "OpenSSL Header Version" 2>&1)
+  _PHP_SSL_LOOK_FOR="${_OPENSSL_USE_VRN}"
+
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "INFO: Expected OpenSSL version: ${_PHP_SSL_LOOK_FOR}"
+    msg "INFO: Detected PHP OpenSSL version: ${_PHP_SSL_TEST}"
+  fi
+
+  # Return true if mismatch is found, otherwise false
+  if [[ ! "${_PHP_SSL_TEST}" =~ "${_PHP_SSL_LOOK_FOR}" ]]; then
+
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "INFO: PHP OpenSSL version mismatch detected, rebuild required"
+    fi
+    return 1  # SSL version mismatch, rebuild needed
+  fi
+
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "INFO: PHP OpenSSL version is correct, no rebuild needed"
+  fi
+  return 0  # SSL version matches, no rebuild needed
+}
+
+#
 # Check if the PHP rebuild is required.
 check_php_rebuild() {
+  # Debug mode: log the function call
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: check_php_rebuild $1"
   fi
+
   if_to_do_fix
-  _PHP_ITD=$(/opt/php$1/bin/php -v \
-    | grep 'PHP 7' \
-    | cut -d: -f1 \
-    | awk '{ print $2}' 2>&1)
-  if [ -z "${_PHP_ITD}" ]; then
-    _PHP_ITD=$(/opt/php$1/bin/php -v \
-      | grep 'PHP 5' \
-      | cut -d: -f1 \
-      | awk '{ print $2}' 2>&1)
+
+  # Get PHP version (prioritize PHP 7, PHP 5, and PHP 8)
+  _PHP_ITD=$(/opt/php$1/bin/php -v | grep -E 'PHP [758]' | awk '{print $2}' 2>&1)
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "INFO: Detected PHP version: ${_PHP_ITD}"
   fi
-  if [ -z "${_PHP_ITD}" ]; then
-    _PHP_ITD=$(/opt/php$1/bin/php -v \
-      | grep 'PHP 8' \
-      | cut -d: -f1 \
-      | awk '{ print $2}' 2>&1)
-  fi
-  if [ "${_OS_CODE}" = "daedalus" ] \
-    || [ "${_OS_CODE}" = "chimaera" ] \
-    || [ "${_OS_CODE}" = "beowulf" ] \
-    || [ "${_OS_CODE}" = "bookworm" ] \
-    || [ "${_OS_CODE}" = "bullseye" ] \
-    || [ "${_OS_CODE}" = "buster" ]; then
-    _OPENSSL_USE_VRN="${_OPENSSL_EOL_VRN}"
-    if [ -e "/root/.install.modern.openssl.cnf" ] \
-      && [ -e "/usr/local/ssl3/lib64/libssl.so.3" ]; then
-      _OPENSSL_USE_VRN="${_OPENSSL_MODERN_VRN}"
+
+  # Compare installed PHP version with expected version
+  if [[ "${_PHP_ITD}" != "${_PHP_VERSION}" ]]; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "INFO: Upgrade needed from PHP ${_PHP_ITD} to ${_PHP_VERSION}"
     fi
-  elif [ "${_OS_CODE}" = "stretch" ]; then
-    _OPENSSL_USE_VRN="${_OPENSSL_EOL_VRN}"
+    _PHP_FORCE_REINSTALL=YES
   else
-    _OPENSSL_USE_VRN="${_OPENSSL_LEGACY_VRN}"
-  fi
-  if [ "$1" = "56" ] \
-    || [ "$1" = "70" ] \
-    || [ "$1" = "71" ] \
-    || [ "$1" = "72" ] \
-    || [ "$1" = "73" ]; then
-    if [ -e "/usr/local/ssl/lib/libssl.so.1.1" ]; then
-      _OPENSSL_USE_VRN="${_OPENSSL_EOL_VRN}"
-    elif [ -e "/usr/local/ssl/lib/libssl.so.1.0.0" ] \
-      || [ -e "/usr/local/ssl/lib/libssl.so.1.0.1" ] \
-      || [ -e "/usr/local/ssl/lib/libssl.so.1.0.2" ]; then
-      _OPENSSL_USE_VRN="${_OPENSSL_LEGACY_VRN}"
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "INFO: PHP version ${_PHP_VERSION} already installed"
     fi
   fi
-  if [ "${_DO_FIX}" = "YES" ] || [ "${_STATUS}" != "UPGRADE" ]; then
-    _PHP_FORCE_REINSTALL=NO
-  fi
-  _PHP_SSL_TEST=$(/opt/php$1/bin/php -i | grep "OpenSSL Header Version" 2>&1)
-  _PHP_SSL_LOOK_FOR="${_OPENSSL_USE_VRN}"
-  if [ "$1" = "56" ] \
-    || [ "$1" = "70" ] \
-    || [ "$1" = "71" ] \
-    || [ "$1" = "72" ] \
-    || [ "$1" = "73" ]; then
-    if [[ "${_PHP_SSL_TEST}" =~ "${_PHP_SSL_LOOK_FOR}" ]]; then
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: Installed PHP ${_PHP_ITD} with ${_PHP_SSL_TEST}, OK"
-      fi
-    else
-      if [ "${_DO_FIX}" = "YES" ] || [ "${_STATUS}" != "UPGRADE" ]; then
-        msg "INFO: PHP ${_PHP_ITD} ${_PHP_SSL_TEST}, rebuild on next upgrade"
-        _PHP_FORCE_REINSTALL=NO
-      else
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "INFO: PHP ${_PHP_ITD} ${_PHP_SSL_TEST}, thus rebuild forced"
-        fi
-        _PHP_FORCE_REINSTALL=YES
-      fi
+
+  # Run the SSL version check
+  if ! check_php_ssl_version "$1"; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "INFO: PHP ${_PHP_ITD} uses incorrect OpenSSL, forcing rebuild"
     fi
-  else
-    if [[ ! "${_PHP_SSL_TEST}" =~ "${_PHP_SSL_LOOK_FOR}" ]]; then
-      if [ "${_DO_FIX}" = "YES" ] || [ "${_STATUS}" != "UPGRADE" ]; then
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "INFO: PHP ${_PHP_ITD} ${_PHP_SSL_TEST}, rebuild on next upgrade"
-        fi
-        _PHP_FORCE_REINSTALL=NO
-      else
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "INFO: PHP ${_PHP_ITD} ${_PHP_SSL_TEST}, thus rebuild forced"
-        fi
-        _PHP_FORCE_REINSTALL=YES
-      fi
-    else
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: Installed PHP ${_PHP_ITD} with ${_PHP_SSL_TEST}, OK"
-      fi
-    fi
+    _PHP_FORCE_REINSTALL=YES
   fi
+
+  # Check for presence of PHP drivers
   if [ -x "/opt/php$1/bin/php" ]; then
-    if [ "$1" = "56" ]; then
-      _PHP_DRIVERS=$(/opt/php$1/bin/php -i | grep "with-mysql=mysqlnd" 2>&1)
-    else
-      _PHP_DRIVERS=$(/opt/php$1/bin/php -i | grep "with-mysqli=mysqlnd" 2>&1)
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "INFO: Checking for drivers in PHP $1"
     fi
+
+    if [ "$1" = "56" ]; then
+      # Check for 'with-mysql=mysqlnd' in PHP 5.6
+      _PHP_DRIVERS=$(/opt/php$1/bin/php -i | grep "with-mysql=mysqlnd" 2>&1)
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "INFO: Checking 'with-mysql=mysqlnd' for PHP 5.6"
+      fi
+    else
+      # Check for 'with-mysqli=mysqlnd' in PHP 7 or 8
+      _PHP_DRIVERS=$(/opt/php$1/bin/php -i | grep "with-mysqli=mysqlnd" 2>&1)
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "INFO: Checking 'with-mysqli=mysqlnd' for PHP $1"
+      fi
+    fi
+
+    # If drivers are not found, mark build as NO
     if [ -z "${_PHP_DRIVERS}" ]; then
       _PHP_DRIVERS_BUILD=NO
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "INFO: PHP $1 missing drivers, forcing rebuild"
+      fi
+      _PHP_FORCE_REINSTALL=YES
     else
       _PHP_DRIVERS_BUILD=YES
-    fi
-  fi
-  if [ "${_PHP_DRIVERS_BUILD}" = "NO" ] \
-    || [[ "${_PHP_ITD}" =~ "~" ]] \
-    || [[ "${_PHP_ITD}" =~ "dotdeb" ]]; then
-    if [ ! -e "${pthLog}/re-installed-php${1}-on-post_major_os_upgrade.info" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: Installed PHP version ${_PHP_ITD}, upgrade to mysqlnd required"
+        msg "INFO: PHP $1 drivers detected"
       fi
-      install_php_multi "$1"
-      _PHP_ALREADY_REBUILT=$1
-      _PHP_FORCE_REINSTALL=NO
     fi
   else
-    if [[ "${_PHP_ITD}" =~ "${_PHP_VERSION}" ]]; then
-      if [ "${_UP_PHP}" = "YES" ]; then
-        if [ ! -z "${_PHP_ALREADY_REBUILT}" ] \
-          && [ "${_PHP_ALREADY_REBUILT}" = "$1" ]; then
-          if [ "${_DEBUG_MODE}" = "YES" ]; then
-            msg "INFO: Installed PHP version ${_PHP_ITD}, OK"
-          fi
-        else
-          if [ "${_DO_FIX}" = "YES" ] || [ "${_STATUS}" != "UPGRADE" ]; then
-            if [ "${_DEBUG_MODE}" = "YES" ]; then
-              msg "INFO: PHP ${_PHP_ITD} libs related rebuild on next upgrade"
-            fi
-            _PHP_FORCE_REINSTALL=NO
-          else
-            if [ "${_DEBUG_MODE}" = "YES" ]; then
-              msg "INFO: PHP ${_PHP_ITD} libs related rebuild forced now"
-            fi
-            _PHP_FORCE_REINSTALL=YES
-          fi
-        fi
-      else
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "INFO: Installed PHP version ${_PHP_ITD}, OK"
-        fi
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "INFO: PHP $1 binary not found, skipping driver check"
+    fi
+  fi
+
+  # Additional conditions for force rebuild or upgrade
+  if [ "${_FULL_FORCE_REINSTALL}" = "YES" ] || [ "${_PHP_FORCE_REINSTALL}" = "YES" ]; then
+    if [ "${_DO_FIX}" = "YES" ] || [ "${_STATUS}" != "UPGRADE" ]; then
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "INFO: PHP ${_PHP_ITD} rebuild on next barracuda update"
       fi
-      if [ "${_FULL_FORCE_REINSTALL}" = "YES" ] \
-        || [ "${_PHP_FORCE_REINSTALL}" = "YES" ]; then
-        if [ "${_DO_FIX}" = "YES" ] || [ "${_STATUS}" != "UPGRADE" ]; then
-          if [ "${_DEBUG_MODE}" = "YES" ]; then
-            msg "INFO: PHP ${_PHP_ITD} forced rebuild on next barracuda up-${tRee}"
-          fi
-          _PHP_FORCE_REINSTALL=NO
-        else
-          if [ ! -e "${pthLog}/re-installed-php${1}-on-post_major_os_upgrade.info" ]; then
-            if [ "${_DEBUG_MODE}" = "YES" ]; then
-              msg "INFO: PHP ${_PHP_ITD} forced rebuild will happen now..."
-            fi
-            install_php_multi "$1"
-            _PHP_ALREADY_REBUILT=$1
-            _PHP_FORCE_REINSTALL=NO
-          fi
-        fi
-      fi
+      _PHP_FORCE_REINSTALL=NO
     else
-      if [ "${_FULL_FORCE_REINSTALL}" = "YES" ] \
-        || [ "${_PHP_FORCE_REINSTALL}" = "YES" ]; then
+      if [ ! -e "${pthLog}/re-installed-php${1}-on-post_major_os_upgrade.info" ]; then
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "INFO: Installed PHP version ${_PHP_ITD}, rebuild forced"
+          msg "INFO: PHP ${_PHP_ITD} rebuild happening now..."
         fi
-      else
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "INFO: Installed PHP version ${_PHP_ITD}, upgrade required"
-        fi
-      fi
-      if [ "${_DO_FIX}" = "YES" ] || [ "${_STATUS}" != "UPGRADE" ]; then
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "INFO: PHP ${_PHP_ITD} upgrade on next barracuda up-${tRee}"
-        fi
-      else
-        if [ ! -e "${pthLog}/re-installed-php${1}-on-post_major_os_upgrade.info" ]; then
-          if [ "${_DEBUG_MODE}" = "YES" ]; then
-            msg "INFO: PHP ${_PHP_ITD} upgrade will happen now..."
-          fi
-          install_php_multi "$1"
-          _PHP_ALREADY_REBUILT=$1
-          _PHP_FORCE_REINSTALL=NO
-        fi
+        install_php_multi "$1"
+        _PHP_ALREADY_REBUILT=$1
+        _PHP_FORCE_REINSTALL=NO
       fi
     fi
   fi

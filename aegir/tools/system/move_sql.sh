@@ -12,13 +12,9 @@ if [ -e "/root/.proxy.cnf" ]; then
   exit 0
 fi
 
-if [ -e "/root/.barracuda.cnf" ]; then
-  source /root/.barracuda.cnf
-  _B_NICE=${_B_NICE//[^0-9]/}
-fi
-if [ -z "${_B_NICE}" ]; then
-  _B_NICE=10
-fi
+[ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
+export _B_NICE=${_B_NICE//[^0-9]/}
+: "${_B_NICE:=10}"
 
 create_locks() {
   echo "Creating locks..."

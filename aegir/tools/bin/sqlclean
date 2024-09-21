@@ -1,0 +1,136 @@
+#!/bin/bash
+
+HOME=/root
+SHELL=/bin/bash
+PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+
+export PATH=${PATH}
+export SHELL=${SHELL}
+export HOME=${HOME}
+
+check_root() {
+  if [ `whoami` != "root" ]; then
+    echo "ERROR: This script should be run as a root user"
+    exit 1
+  fi
+}
+check_root
+
+# Define directories
+MYSQL_DB_DIR="/var/lib/mysql"
+VHOSTS_DIRS=("/var/aegir/config/server_master/nginx/vhost.d" "/data/disk/*/config/server_master/nginx/vhost.d")
+GHOST_DBS_LOG="/var/log/db_cleanup.log"
+ACTIVE_DBS_LOG="/var/log/dbs_to_remain.log"
+
+export LIVE_MODE=$1
+: "${LIVE_MODE:=DRY}"
+
+# Create/empty the log files
+> "${GHOST_DBS_LOG}"
+> "${ACTIVE_DBS_LOG}"
+
+# Step 1: Get the list of existing MySQL databases
+mapfile -t mysql_databases < <(find "${MYSQL_DB_DIR}" -maxdepth 1 -type d -exec basename {} \; | grep -v "^mysql$\|^information_schema$\|^performance_schema$\|^sys$")
+
+# Step 2: Get the list of databases from the vhost configurations
+declare -A vhost_db_map
+vhost_files=()
+for dir_pattern in "${VHOSTS_DIRS[@]}"; do
+  # Expand pattern and check if there are any matching directories
+  for dir in ${dir_pattern}; do
+    if [ -d "${dir}" ]; then
+      # Grep for db_name only if the directory exists and contains files
+      while IFS= read -r line; do
+        db_name=$(echo "${line}" | awk '{print $NF}' | tr -d ';')
+        vhost_file=$(echo "${line}" | awk -F':' '{print $1}')
+
+        # Track vhost files and map db_name to vhosts
+        vhost_files+=("${vhost_file}:${db_name}")
+        if ! [[ " ${vhost_db_map["${db_name}"]} " =~ " ${vhost_file} " ]]; then
+          vhost_db_map["${db_name}"]+="${vhost_file} "  # Append vhost file to the list for this db_name
+        fi
+
+      done < <(grep -h "fastcgi_param db_name" "${dir}"/* 2>/dev/null)
+    else
+      echo "Directory ${dir} does not exist, skipping..." | tee -a "${GHOST_DBS_LOG}"
+    fi
+  done
+done
+
+# Step 3: Compare and separate ghost and active databases
+ghost_databases=()
+active_databases=()
+for db in "${mysql_databases[@]}"; do
+  if [[ " ${!vhost_db_map[*]} " =~ " ${db} " ]]; then
+    active_databases+=("${db}")
+  else
+    ghost_databases+=("${db}")
+  fi
+done
+
+# Step 4: Log active databases
+echo "Databases to remain (referenced in vhosts):" | tee -a "${ACTIVE_DBS_LOG}"
+for active_db in "${active_databases[@]}"; do
+  echo "Active database: ${active_db}" | tee -a "${ACTIVE_DBS_LOG}"
+done
+
+# Function to drop a MySQL user and all host entries
+drop_mysql_user() {
+  local db_user=$1
+  # Get all user@host combinations for the user
+  mapfile -t user_hosts < <(mysql -e "SELECT CONCAT(User, '@', Host) FROM mysql.user WHERE User='${db_user}';")
+
+  # Drop each user@host entry
+  for user_host in "${user_hosts[@]}"; do
+    echo "Dropping user: ${user_host}" | tee -a "${GHOST_DBS_LOG}"
+    if [ "${LIVE_MODE}" == "LIVE" ]; then
+      mysql -e "DROP USER '${user_host}';" 2>>"${GHOST_DBS_LOG}"
+    fi
+  done
+}
+
+# Step 5: Prompt admin to confirm ghost database deletion
+confirm_deletion() {
+  local ghost_db=$1
+  while true; do
+    echo -e "\nGhost database found: ${ghost_db}"
+    read -p "Type the name of the ghost database '${ghost_db}' to confirm deletion, or type 'NO' to skip: " confirmation
+    if [ "${confirmation}" == "${ghost_db}" ]; then
+      echo "Confirmed. Proceeding with deletion of database ${ghost_db}." | tee -a "${GHOST_DBS_LOG}"
+      return 0  # Confirm deletion
+    elif [ "${confirmation}" == "NO" ]; then
+      echo "Skipping deletion of database ${ghost_db}." | tee -a "${GHOST_DBS_LOG}"
+      return 1  # Skip deletion
+    else
+      echo "Invalid input. Please type the database name or 'NO' to skip." | tee -a "${GHOST_DBS_LOG}"
+    fi
+  done
+}
+
+# Step 6: Drop ghost databases and their associated users after confirmation
+echo "Databases to drop (not referenced in any vhost):" | tee -a "${GHOST_DBS_LOG}"
+for ghost_db in "${ghost_databases[@]}"; do
+  if confirm_deletion "${ghost_db}"; then
+    # Drop the database
+    echo "Dropping database: ${ghost_db}" | tee -a "${GHOST_DBS_LOG}"
+    if [ "${LIVE_MODE}" == "LIVE" ]; then
+      mysql -e "DROP DATABASE ${ghost_db};" 2>>"${GHOST_DBS_LOG}"
+    fi
+
+    # Drop the associated db_user (assuming db_user matches db_name)
+    drop_mysql_user "${ghost_db}"
+  fi
+done
+
+echo
+if [ "${LIVE_MODE}" == "LIVE" ]; then
+  echo "Percona MySQL Server databases LIVE cleanup completed."
+  echo "Check SQL cleanup actions logs in ${GHOST_DBS_LOG}"
+  echo "Remaining active databases are listed in ${ACTIVE_DBS_LOG}"
+else
+  echo "Percona MySQL Server databases DRY cleanup completed."
+  echo "To launch real cleanup use 'sqlclean LIVE' command."
+fi
+echo
+
+exit 0

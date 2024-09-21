@@ -34,6 +34,11 @@ if [ -e "/root/.proxy.cnf" ]; then
   exit 0
 fi
 
+if [ $(pgrep -f mysql_repair.sh | grep -v "^$$" | wc -l) -gt 2 ]; then
+  echo "Too many mysql_repair.sh running $(date 2>&1)" >> /var/xdrago/log/too.many.log
+  exit 0
+fi
+
 touch /run/boa_wait.pid
 sleep 8
 dir=/var/xdrago/log/mysql_optimize

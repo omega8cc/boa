@@ -42,13 +42,13 @@ guest_proc_monitor() {
   for i in `dir -d /vservers/*`; do
     _THIS_VM=`echo $i | cut -d'/' -f3 | awk '{ print $1}'`
     _VS_NAME=`echo ${_THIS_VM} | cut -d'/' -f3 | awk '{ print $1}'`
-    if [ -e "${i}/var/xdrago/proc_num_ctrl.cgi" ] \
+    if [ -e "${i}/var/xdrago/proc_num_ctrl.pl" ] \
       && [ ! -e "${i}/run/fmp_wait.pid" ] \
       && [ ! -e "${i}/run/boa_wait.pid" ] \
       && [ ! -e "${i}/run/boa_run.pid" ] \
       && [ ! -e "${i}/run/mysql_restart_running.pid" ] \
       && [ -e "/usr/var/run${i}" ]; then
-      vserver ${_VS_NAME} exec perl /var/xdrago/proc_num_ctrl.cgi
+      vserver ${_VS_NAME} exec perl /var/xdrago/proc_num_ctrl.pl &
     fi
   done
 }
@@ -59,8 +59,8 @@ if [ ! -e "/run/fire.pid" ] && [ ! -e "/run/water.pid" ]; then
   touch /run/fire.pid
   echo start `date`
   for i in `dir -d /vservers/*`; do
-    if [ -e "${i}/var/xdrago/monitor/ssh.log" ] && [ -e "/usr/var/run${i}" ]; then
-      for _IP in `cat ${i}/var/xdrago/monitor/ssh.log | cut -d '#' -f1 | sort`; do
+    if [ -e "${i}/var/xdrago/monitor/log/ssh.log" ] && [ -e "/usr/var/run${i}" ]; then
+      for _IP in `cat ${i}/var/xdrago/monitor/log/ssh.log | cut -d '#' -f1 | sort`; do
         _FW_TEST=
         _FF_TEST=
         _FW_TEST=$(csf -g ${_IP} 2>&1)
@@ -80,8 +80,8 @@ if [ ! -e "/run/fire.pid" ] && [ ! -e "/run/water.pid" ]; then
         fi
       done
     fi
-    if [ -e "${i}/var/xdrago/monitor/web.log" ] && [ -e "/usr/var/run${i}" ]; then
-      for _IP in `cat ${i}/var/xdrago/monitor/web.log | cut -d '#' -f1 | sort`; do
+    if [ -e "${i}/var/xdrago/monitor/log/web.log" ] && [ -e "/usr/var/run${i}" ]; then
+      for _IP in `cat ${i}/var/xdrago/monitor/log/web.log | cut -d '#' -f1 | sort`; do
         _FW_TEST=
         _FF_TEST=
         _FW_TEST=$(csf -g ${_IP} 2>&1)
@@ -101,8 +101,8 @@ if [ ! -e "/run/fire.pid" ] && [ ! -e "/run/water.pid" ]; then
         fi
       done
     fi
-    if [ -e "${i}/var/xdrago/monitor/ftp.log" ] && [ -e "/usr/var/run${i}" ]; then
-      for _IP in `cat ${i}/var/xdrago/monitor/ftp.log | cut -d '#' -f1 | sort`; do
+    if [ -e "${i}/var/xdrago/monitor/log/ftp.log" ] && [ -e "/usr/var/run${i}" ]; then
+      for _IP in `cat ${i}/var/xdrago/monitor/log/ftp.log | cut -d '#' -f1 | sort`; do
         _FW_TEST=
         _FF_TEST=
         _FW_TEST=$(csf -g ${_IP} 2>&1)

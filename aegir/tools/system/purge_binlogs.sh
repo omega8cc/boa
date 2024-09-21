@@ -38,6 +38,11 @@ if [ -e "/root/.pause_tasks_maint.cnf" ]; then
   exit 0
 fi
 
+if [ $(pgrep -f purge_binlogs.sh | grep -v "^$$" | wc -l) -gt 2 ]; then
+  echo "Too many purge_binlogs.sh running $(date 2>&1)" >> /var/xdrago/log/too.many.log
+  exit 0
+fi
+
 count_cpu() {
   _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)
   _CPU_INFO=${_CPU_INFO//[^0-9]/}
@@ -61,16 +66,12 @@ count_cpu() {
 }
 
 load_control() {
-  if [ -e "/root/.barracuda.cnf" ]; then
-    source /root/.barracuda.cnf
-    _CPU_SPIDER_RATIO=${_CPU_SPIDER_RATIO//[^0-9]/}
-  fi
-  if [ -z "${_CPU_SPIDER_RATIO}" ]; then
-    _CPU_SPIDER_RATIO=6
-  fi
+  [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
+  export _CPU_MAX_RATIO=${_CPU_MAX_RATIO//[^0-9]/}
+  : "${_CPU_MAX_RATIO:=6}"
   _O_LOAD=$(awk '{print $1*100}' /proc/loadavg 2>&1)
   _O_LOAD=$(( _O_LOAD / _CPU_NR ))
-  _O_LOAD_MAX=$(( 99 * _CPU_SPIDER_RATIO ))
+  _O_LOAD_MAX=$(( 100 * _CPU_MAX_RATIO ))
 }
 
 action() {

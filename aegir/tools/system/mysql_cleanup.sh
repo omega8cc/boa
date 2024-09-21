@@ -29,6 +29,11 @@ if [ -e "/root/.proxy.cnf" ]; then
   exit 0
 fi
 
+if [ $(pgrep -f mysql_cleanup.sh | grep -v "^$$" | wc -l) -gt 2 ]; then
+  echo "Too many mysql_cleanup.sh running $(date 2>&1)" >> /var/xdrago/log/too.many.log
+  exit 0
+fi
+
 _IS_SQLBACKUP_RUNNING=$(ps aux | grep '[m]ysql_backup.sh' | awk '{print $2}' 2>&1)
 if [ ! -z "${_IS_SQLBACKUP_RUNNING}" ]; then
   echo "Ooops, another mysql procedure/backup is running at the moment"
@@ -43,13 +48,9 @@ fi
 
 echo "INFO: Starting dbs cleanup on `date`"
 
-if [ -e "/root/.barracuda.cnf" ]; then
-  source /root/.barracuda.cnf
-  _B_NICE=${_B_NICE//[^0-9]/}
-fi
-if [ -z "${_B_NICE}" ]; then
-  _B_NICE=10
-fi
+[ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
+export _B_NICE=${_B_NICE//[^0-9]/}
+: "${_B_NICE:=10}"
 
 _SQL_CACHE_EXC_DEF="cache_bootstrap cache_discovery cache_config"
 

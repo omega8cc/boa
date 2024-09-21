@@ -662,13 +662,9 @@ count_cpu() {
 }
 
 load_control() {
-  if [ -e "${barCnf}" ]; then
-    source ${barCnf}
-    _CPU_MAX_RATIO=${_CPU_MAX_RATIO//[^0-9]/}
-  fi
-  if [ -z "${_CPU_MAX_RATIO}" ]; then
-    _CPU_MAX_RATIO=6
-  fi
+  [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
+  export _CPU_MAX_RATIO=${_CPU_MAX_RATIO//[^0-9]/}
+  : "${_CPU_MAX_RATIO:=6}"
   _O_LOAD=$(awk '{print $1*100}' /proc/loadavg 2>&1)
   _O_LOAD=$(( _O_LOAD / _CPU_NR ))
   _O_LOAD_MAX=$(( 100 * _CPU_MAX_RATIO ))
@@ -1092,13 +1088,9 @@ check_root_keys_pwd() {
 
 check_root() {
   if [ `whoami` = "root" ]; then
-    if [ -e "/root/.barracuda.cnf" ]; then
-      source /root/.barracuda.cnf
-      _B_NICE=${_B_NICE//[^0-9]/}
-    fi
-    if [ -z "${_B_NICE}" ]; then
-      _B_NICE=10
-    fi
+    [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
+    export _B_NICE=${_B_NICE//[^0-9]/}
+    : "${_B_NICE:=10}"
     renice ${_B_NICE} -p $$ &> /dev/null
     ionice -c2 -n7 -p $$
   else

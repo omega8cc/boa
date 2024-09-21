@@ -260,9 +260,9 @@ crontab_update() {
       echo "*/19 *  * * *   root    bash /var/xdrago/clear.sh >/dev/null 2>&1" >> /etc/crontab
     fi
     if [ -e "/etc/csf" ]; then
-      echo "01 *    * * *   root    rm -f /var/xdrago/monitor/web.log >/dev/null 2>&1" >> /etc/crontab
-      echo "01 *    * * *   root    rm -f /var/xdrago/monitor/ssh.log >/dev/null 2>&1" >> /etc/crontab
-      echo "01 *    * * *   root    rm -f /var/xdrago/monitor/ftp.log >/dev/null 2>&1" >> /etc/crontab
+      echo "01 *    * * *   root    rm -f /var/xdrago/monitor/log/web.log >/dev/null 2>&1" >> /etc/crontab
+      echo "01 *    * * *   root    rm -f /var/xdrago/monitor/log/ssh.log >/dev/null 2>&1" >> /etc/crontab
+      echo "01 *    * * *   root    rm -f /var/xdrago/monitor/log/ftp.log >/dev/null 2>&1" >> /etc/crontab
     fi
     sed -i "/^$/d" /etc/crontab &> /dev/null
     wait
@@ -315,9 +315,9 @@ crontab_cleanup() {
       echo "*/19 *  * * *   root    bash /var/xdrago/clear.sh >/dev/null 2>&1" >> /etc/crontab
     fi
     if [ -e "/etc/csf" ]; then
-      echo "01 *    * * *   root    rm -f /var/xdrago/monitor/web.log >/dev/null 2>&1" >> /etc/crontab
-      echo "01 *    * * *   root    rm -f /var/xdrago/monitor/ssh.log >/dev/null 2>&1" >> /etc/crontab
-      echo "01 *    * * *   root    rm -f /var/xdrago/monitor/ftp.log >/dev/null 2>&1" >> /etc/crontab
+      echo "01 *    * * *   root    rm -f /var/xdrago/monitor/log/web.log >/dev/null 2>&1" >> /etc/crontab
+      echo "01 *    * * *   root    rm -f /var/xdrago/monitor/log/ssh.log >/dev/null 2>&1" >> /etc/crontab
+      echo "01 *    * * *   root    rm -f /var/xdrago/monitor/log/ftp.log >/dev/null 2>&1" >> /etc/crontab
     fi
     sed -i "/^$/d" /etc/crontab &> /dev/null
     wait
@@ -330,6 +330,14 @@ crontab_cleanup() {
 
 if [ -e "/var/xdrago/log" ]; then
   _BROKEN_UPDATE_TEST=$(grep "Under Construction" /var/xdrago/*.sh 2>&1)
+  if [ ! -z "${_BROKEN_UPDATE_TEST}" ]; then
+    rm -f /var/xdrago/log/*.pid
+  fi
+  _BROKEN_UPDATE_TEST=$(grep "Under Construction" /var/xdrago/monitor/check/* 2>&1)
+  if [ ! -z "${_BROKEN_UPDATE_TEST}" ]; then
+    rm -f /var/xdrago/log/*.pid
+  fi
+  _BROKEN_UPDATE_TEST=$(grep "404 Not Found" /var/xdrago/monitor/check/* 2>&1)
   if [ ! -z "${_BROKEN_UPDATE_TEST}" ]; then
     rm -f /var/xdrago/log/*.pid
   fi
@@ -351,9 +359,9 @@ fi
 if [ -e "/var/aegir/drush" ]; then
   if [ ! -e "/var/xdrago/log/.sync_1999_scan_nginx.${_X_SE}.pid" ]; then
     sed -i "s/^_NGINX_DOS_LIMIT=.*/_NGINX_DOS_LIMIT=399/g"  ${barCnf}
-    sed -i "s/default_critnumber =.*/default_critnumber = 399;/g" /var/xdrago/monitor/check/scan_nginx
+    sed -i "s/default_critnumber =.*/default_critnumber = 399;/g" /var/xdrago/monitor/check/scan_nginx.pl
     wait
-    sed -i "s/default_lines =.*/default_lines = 1999;/g" /var/xdrago/monitor/check/scan_nginx
+    sed -i "s/default_lines =.*/default_lines = 1999;/g" /var/xdrago/monitor/check/scan_nginx.pl
     touch /var/xdrago/log/.sync_1999_scan_nginx.${_X_SE}.pid
   fi
   _VM_TEST=$(uname -a 2>&1)
@@ -451,9 +459,9 @@ if [ -e "/var/aegir/drush" ]; then
     fi
     if [ ! -e "/var/xdrago/log/.sync_1999_scan_nginx.${_X_SE}.pid" ]; then
       sed -i "s/^_NGINX_DOS_LIMIT=.*/_NGINX_DOS_LIMIT=399/g"  ${barCnf}
-      sed -i "s/default_critnumber =.*/default_critnumber = 399;/g" /var/xdrago/monitor/check/scan_nginx
+      sed -i "s/default_critnumber =.*/default_critnumber = 399;/g" /var/xdrago/monitor/check/scan_nginx.pl
       wait
-      sed -i "s/default_lines =.*/default_lines = 1999;/g" /var/xdrago/monitor/check/scan_nginx
+      sed -i "s/default_lines =.*/default_lines = 1999;/g" /var/xdrago/monitor/check/scan_nginx.pl
       touch /var/xdrago/log/.sync_1999_scan_nginx.${_X_SE}.pid
     fi
     if [ ! -e "/var/xdrago/log/.custom_percona_forced.${_X_SE}.pid" ]; then
@@ -734,7 +742,7 @@ if [ -e "/var/aegir/drush" ]; then
 
   _IS_PROCTRL_RUNNING=$(ps aux | grep '[p]roc_num_ctrl.cgi' | awk '{print $2}' 2>&1)
   if [ ! -z "${_IS_PROCTRL_RUNNING}" ]; then
-    if [ `ps aux | grep -v "grep" | grep --count "proc_num_ctrl.cgi"` -gt "1" ]; then
+    if [ `ps aux | grep -v "grep" | grep --count "proc_num_ctrl.pl"` -gt "1" ]; then
       kill -9 $(ps aux | grep '[p]roc_num_ctrl.cgi' | awk '{print $2}') &> /dev/null
       touch /var/xdrago/log/.proc_num_ctrl.${_X_SE}.pid
     fi

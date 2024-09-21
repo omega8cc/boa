@@ -2399,7 +2399,7 @@ process() {
                 fix_robots_txt
               fi
               le_ssl_check_update
-              if [ -e "${User}/static/control/goaccess/${Dom}.info" ]; then
+              if [ "${_ENABLE_GOACCESS}" = "YES" ] && [ -e "${User}/static/control/goaccess/${Dom}.info" ]; then
                 if_gen_goaccess ${Dom}
               fi
               ;;
@@ -2779,16 +2779,10 @@ count_cpu() {
 }
 
 load_control() {
-  if [ -e "/root/.barracuda.cnf" ]; then
-    source /root/.barracuda.cnf
-    _CPU_MAX_RATIO=${_CPU_MAX_RATIO//[^0-9]/}
-  fi
-  if [ -z "${_CPU_MAX_RATIO}" ]; then
-    _CPU_MAX_RATIO=6
-  fi
-  if [ -e "/root/.force.sites.verify.cnf" ]; then
-    _CPU_MAX_RATIO=88
-  fi
+  [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
+  export _CPU_MAX_RATIO=${_CPU_MAX_RATIO//[^0-9]/}
+  : "${_CPU_MAX_RATIO:=6}"
+  [ -e "/root/.force.sites.verify.cnf" ] && _CPU_MAX_RATIO=88
   _O_LOAD=$(awk '{print $1*100}' /proc/loadavg 2>&1)
   _O_LOAD=$(( _O_LOAD / _CPU_NR ))
   _O_LOAD_MAX=$(( 100 * _CPU_MAX_RATIO ))
@@ -2868,8 +2862,47 @@ cleanup_weblogx() {
   fi
 }
 
+incident_email_report() {
+  if [ -e "/root/.barracuda.cnf" ]; then
+    source /root/.barracuda.cnf
+    local thisEmail="${_MY_EMAIL}"
+    export _INCIDENT_EMAIL_REPORT=${_INCIDENT_EMAIL_REPORT//[^A-Z]/}
+    : "${_INCIDENT_EMAIL_REPORT:=YES}"
+  fi
+  if [ -n "${thisEmail}" ] && [ "${_INCIDENT_EMAIL_REPORT}" = "YES" ]; then
+    hName=$(cat /etc/hostname 2>&1)
+    echo "Sending Incident Report Email on $(date 2>&1)" >> ${thisLog}
+    s-nail -s "Incident Report during daily.sh: ${1} on ${hName} at $(date 2>&1)" ${_MY_EMAIL} < ${thisLog}
+  fi
+}
+
+incident_detection() {
+  # Array of errors to search for
+  declare -a errors=(
+    "urn:ietf:params:acme:error:unauthorized"
+    "urn:ietf:params:acme:error:badNonce"
+    "urn:ietf:params:acme:error:rateLimited"
+    "urn:acme:error:serverInternal"
+    "Remote PerformValidation RPC failed"
+    "ModuleNotFoundError"
+    "Traceback"
+    "Drush command terminated abnormally"
+    "ArgumentCountError"
+  )
+
+  # Loop through errors and check if any exist in the log file
+  for error in "${errors[@]}"; do
+    if grep -q "${error}" "${thisLog}"; then
+      incident_email_report "${error}"
+      break  # Exit the loop after the first detected error
+    fi
+  done
+}
+
 action() {
-  prepare_weblogx
+  if [ -n "${_ENABLE_GOACCESS}" ] && [ "${_ENABLE_GOACCESS}" = "YES" ]; then
+    prepare_weblogx
+  fi
   for User in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
     count_cpu
     load_control
@@ -3003,7 +3036,7 @@ action() {
           rm -f /home/${_HM_U}.ftp/{.profile,.bash_logout,.bash_profile,.bashrc}
         fi
         le_hm_ssl_check_update ${_HM_U}
-        if [ -e "${User}/static/control/goaccess/ALL.info" ]; then
+        if [ "${_ENABLE_GOACCESS}" = "YES" ] && [ -e "${User}/static/control/goaccess/ALL.info" ]; then
           if_gen_goaccess "ALL"
         fi
         echo "Done for ${User}"
@@ -3019,7 +3052,9 @@ action() {
   shared_codebases_cleanup
   ghost_codebases_cleanup
   check_old_empty_hostmaster_platforms
-  cleanup_weblogx
+  if [ -n "${_ENABLE_GOACCESS}" ] && [ "${_ENABLE_GOACCESS}" = "YES" ]; then
+    cleanup_weblogx
+  fi
 }
 
 ###--------------------###
@@ -3126,9 +3161,7 @@ fi
 mkdir -p /var/xdrago/log/daily
 mkdir -p /var/xdrago/log/le
 #
-if [ -e "/root/.barracuda.cnf" ]; then
-  source /root/.barracuda.cnf
-fi
+[ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
 #
 find_fast_mirror_early
 #
@@ -3230,7 +3263,11 @@ else
   su -s /bin/bash - aegir -c "drush8 @hostmaster utf8mb4-convert-databases -y" &> /dev/null
   wait
 
-  action >/var/xdrago/log/daily/daily-${_NOW}.log 2>&1
+  thisLog="/var/xdrago/log/daily/daily-${_NOW}.log"
+
+  action > ${thisLog} 2>&1
+
+  incident_detection
 
   dhpWildPath="/etc/ssl/private/nginx-wild-ssl.dhp"
   if [ -e "/etc/ssl/private/4096.dhp" ]; then
