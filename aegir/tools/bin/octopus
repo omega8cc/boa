@@ -421,19 +421,33 @@ up_mode() {
 satellite_check_strict_php_cli() {
   _PHP_CLI=$(grep "/opt/php" ${User}/tools/drush/drush.php 2>&1)
   if [ "${_OS_CODE}" != "stretch" ] && [ "${_OS_CODE}" != "jessie" ]; then
-    if [[ ! "${_PHP_CLI}" =~ "php81" ]] && [ -x "/opt/php81/bin/php" ]; then
+    if [[ ! "${_PHP_CLI}" =~ php8[1-3] ]] && [[ ! "${_PHP_CLI}" =~ php74 ]]; then
       echo
-      echo "NOTE: This Aegir version requires PHP 8.1 during Hostmaster upgrade."
+      echo "NOTE: This Aegir version requires at least PHP 7.4 during upgrade."
       echo "NOTE: It will be reconfigured on the fly now, but you can change it"
       echo "NOTE: later for hosted sites management in ~/static/control/cli.info"
       echo
       php_cli_drush_update
       php_cli_local_ini_update
-      echo 8.1 > ${User}/log/cli.txt
-      echo 8.1 > ${User}/static/control/cli.info
-      chown -R ${octUsr}.ftp:users ${User}/static/control
-      sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=8.1/g" \
-        /root/.${octUsr}.octopus.cnf &> /dev/null
+      for version in 81 82 83 74; do
+        if [ -x "/opt/php${version}/bin/php" ]; then
+          if [ "${version}" = "74" ]; then
+            useCli="7.4"
+          else
+            useCli="8.${version:1}"
+          fi
+          break
+        fi
+      done
+      if [ -n "${useCli}" ]; then
+        echo ${useCli} > ${User}/log/cli.txt
+        echo ${useCli} > ${User}/static/control/cli.info
+        chown -R ${octUsr}.ftp:users ${User}/static/control
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${useCli}/g" \
+          /root/.${octUsr}.octopus.cnf &> /dev/null
+        echo "INFO: Your PHP-CLI has been switched to ${useCli}"
+        echo
+      fi
     fi
   fi
 }
@@ -510,9 +524,19 @@ satellite_check_supported_php_cli() {
         else
           _PHP_CLI_LEGACY_FREE=YES
         fi
+        for version in 81 82 83 74; do
+          if [ -x "/opt/php${version}/bin/php" ]; then
+            if [ "${version}" = "74" ]; then
+              useCli="7.4"
+            else
+              useCli="8.${version:1}"
+            fi
+            break
+          fi
+        done
         if [ "${_PHP_CLI_LEGACY_FREE}" = "NO" ]; then
-          if [ -x "/opt/php74/bin/php" ]; then
-            echo 7.4 > ${User}/static/control/cli.info
+          if [ -n "${useCli}" ]; then
+            echo ${useCli} > ${User}/static/control/cli.info
           fi
         fi
         chown -R ${octUsr}.ftp:users ${User}/static/control
@@ -539,15 +563,13 @@ satellite_check_supported_php_cli() {
 
 up_one() {
   if [ -e "${vBs}/${octName}" ]; then
-    if [ "${cmmand}" = "up-${tRee}" ]; then
-      satellite_check_supported_php_cli
-    else
-      _dis_strict=YES
-      ### satellite_check_strict_php_cli
-    fi
     if [ "${cmmand}" = "up-dev" ] \
       || [ "${cmmand}" = "up-pro" ] \
       || [ "${cmmand}" = "up-lts" ]; then
+
+      satellite_check_supported_php_cli
+      satellite_check_strict_php_cli
+
       sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"        ${vBs}/${tocIncO}
       wait
       sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${tRee}/g"   ${vBs}/${tocIncO}
@@ -556,40 +578,27 @@ up_one() {
       wait
       sed -i "s/^_X_VERSION=.*/_X_VERSION=${rlse}/g"           ${vBs}/${tocIncO}
       wait
-    else
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"        ${vBs}/${tocIncO}
-      wait
-      sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${tRee}/g"   ${vBs}/${tocIncO}
-      wait
-      sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${rlse}/g"   ${vBs}/${tocIncO}
-      wait
-      sed -i "s/^_X_VERSION=.*/_X_VERSION=${rlse}/g"           ${vBs}/${tocIncO}
-      wait
-    fi
-    if [ "${cmmand}" = "up-dev" ] \
-      || [ "${cmmand}" = "up-pro" ] \
-      || [ "${cmmand}" = "up-lts" ]; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"        ${vBs}/${tocIncO}
       wait
+      sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"               ${vBs}/${tocIncO}
+      wait
+      sed -i "s/^_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g"     ${vBs}/${tocIncO}
+      wait
+      sed -i "s/^_USER=o1/_USER=${octUsr}/g"                   ${vBs}/${tocName}
+      wait
+      sed -i "s/^_STRONG_PASSW.*/_STRONG_PASSWORDS=YES/g"      ${vBs}/${tocIncO}
+      wait
+      sed -i "s/^_PLATFORMS_LIST.*/_PLATFORMS_LIST=none/g"     ${vBs}/${tocIncO}
+      wait
+      sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=none/g"            ${octCnf}
+      wait
+      sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"                       ${octCnf}
+      wait
+      sed -i "s/^_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g"             ${octCnf}
+      wait
+      sed -i "s/^_STRONG_PASSW.*/_STRONG_PASSWORDS=YES/g"              ${octCnf}
+      wait
     fi
-    sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"                 ${vBs}/${tocIncO}
-    wait
-    sed -i "s/^_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g"       ${vBs}/${tocIncO}
-    wait
-    sed -i "s/^_USER=o1/_USER=${octUsr}/g"                     ${vBs}/${tocName}
-    wait
-    sed -i "s/^_STRONG_PASSW.*/_STRONG_PASSWORDS=YES/g"        ${vBs}/${tocIncO}
-    wait
-    sed -i "s/^_PLATFORMS_LIST.*/_PLATFORMS_LIST=none/g"       ${vBs}/${tocIncO}
-    wait
-    sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=none/g"      ${octCnf}
-    wait
-    sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"                 ${octCnf}
-    wait
-    sed -i "s/^_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g"       ${octCnf}
-    wait
-    sed -i "s/^_STRONG_PASSW.*/_STRONG_PASSWORDS=YES/g"        ${octCnf}
-    wait
 
     if [ -e "${vBs}/${tocName}" ]; then
       if [ -e "${User}/.drush/sys/provision/http" ]; then

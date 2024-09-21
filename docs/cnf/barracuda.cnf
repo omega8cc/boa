@@ -64,16 +64,16 @@ _NGINX_NAXSI=NO #--------------- Installs NAXSI WAF when YES - experimental
 _NGINX_SPDY=YES #--------------- Installs SPDY Nginx support when YES (default)
 _NGINX_WORKERS=AUTO #----------- Allows to override AUTO with a valid integer
 ###
-_PHP_CLI_VERSION=8.1 #---------- PHP-CLI for Master Instance
+_PHP_CLI_VERSION=8.3 #---------- PHP-CLI for Master Instance
 _PHP_EXTRA_CONF="" #------------ Allows to add custom options to PHP build
 _PHP_FPM_DENY="" #-------------- Modify disable_functions -- see info below
-_PHP_FPM_VERSION=8.1 #---------- PHP-FPM for Master Instance
+_PHP_FPM_VERSION=8.3 #---------- PHP-FPM for Master Instance
 _PHP_FPM_WORKERS=AUTO #--------- Allows to override AUTO with a valid integer
 _PHP_IONCUBE=NO #--------------- Installs ionCube for all PHP versions when YES
 _PHP_GEOS=NO #------------------ Installs GEOS for all PHP versions when YES
 _PHP_MONGODB=NO #--------------- Installs MONGODB for all PHP versions when YES
-_PHP_MULTI_INSTALL="8.1 7.4" #-- PHP versions to install 8.3/2/1/0 7.4/3/2/1/0 5.6
-_PHP_SINGLE_INSTALL="" #-------- Allows to force single PHP version, like: 8.1
+_PHP_MULTI_INSTALL="8.3 7.4" #-- PHP versions to install 8.3/2/1/0 7.4/3/2/1/0 5.6
+_PHP_SINGLE_INSTALL="" #-------- Allows to force single PHP version, like: 8.3
 ###
 _REDIS_LISTEN_MODE=SOCKET #----- Redis listen mode: SOCKET (recommended) or PORT
 _REDIS_MAJOR_RELEASE=7 #-------- Redis major release version: 5, 6 or 7
