@@ -2001,7 +2001,7 @@ display_info() {
     check_system_ram
 
     echo
-    echo "  _XSY System Uptime/Load/Kernel/Disk/Memory Report"
+    echo "  _XSY System Uptime/Load/Kernel/CPU/Memory/Disk Report"
     echo
     echo "  _XSU System Uptime: ${_XSU}"
     echo "  _XSL System Load: ${_XSL}"
