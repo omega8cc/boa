@@ -1921,6 +1921,25 @@ display_info() {
     [ ! -z "${_HOST_INFO}" ] && echo "  HOST ${_HOST_INFO}"
     [ ! -z "${_VIRT_IS}" ] && echo "  VPS ${_VIRT_IS}"
     [ -z "${_VIRT_IS}" ] && echo "  VPS unknown / not a virtual machine"
+
+    if [ -e "/root/.allow.any.virt.cnf" ]; then
+      echo
+      echo "WARNING! /root/.allow.any.virt.cnf detected..."
+      echo "WARNING! YOU ARE RUNNING EITHER ON BARE METAL"
+      echo "WARNING! OR NOT SUPPORTED VIRTUALIZATION SYSTEM."
+      if [ -n "${_VIRT_IS}" ]; then
+         echo
+         echo "WARNING! ${_VIRT_TEST}"
+      fi
+      echo
+      echo "WARNING! Please be aware that it may not work at all,"
+      echo "WARNING! or you can experience errors breaking BOA."
+      echo
+      echo "WARNING! BOA IS NOT DESIGNED TO RUN DIRECTLY ON A BARE METAL."
+      echo "WARNING! IT IS VERY DANGEROUS AND THUS EXTREMELY BAD IDEA!"
+      echo "WARNING! You are free to experiment but don't expect *ANY* support."
+    fi
+
     [ ! -z "${_SKY}" ] && echo "  SKY ${_SKY}"
     [ ! -z "${_NGX}" ] && echo "  NGX ${_NGX}"
     [ ! -z "${_PHP}" ] && echo "  PHP ${_PHP}"
