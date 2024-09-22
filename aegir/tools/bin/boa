@@ -1926,22 +1926,23 @@ display_info() {
 
     if [ -e "/root/.allow.any.virt.cnf" ]; then
       echo
-      echo "  WARNING! /root/.allow.any.virt.cnf detected..."
+      echo "  !!! WARNING !!! /root/.allow.any.virt.cnf detected..."
       echo
-      echo "  WARNING! YOU ARE RUNNING EITHER ON BARE METAL"
-      echo "  WARNING! OR NOT SUPPORTED VIRTUALIZATION SYSTEM."
+      echo "  !!! YOU ARE RUNNING EITHER ON BARE METAL"
+      echo "  !!! OR NOT SUPPORTED VIRTUALIZATION SYSTEM."
       if [ -n "${_VIRT_IS}" ]; then
          echo
-         echo "  WARNING! ${_VIRT_TEST}"
+         echo "  !!! ${_VIRT_TEST}"
       fi
       echo
-      echo "  WARNING! Please be aware that it may not work at all,"
-      echo "  WARNING! or you can experience errors breaking BOA."
+      echo "  !!! Please be aware that it may not work at all,"
+      echo "  !!! or you can experience errors breaking BOA."
       echo
-      echo "  WARNING! BOA IS NOT DESIGNED TO RUN DIRECTLY ON A BARE METAL."
-      echo "  WARNING! IT IS VERY DANGEROUS AND THUS EXTREMELY BAD IDEA!"
+      echo "  !!! BOA IS NOT DESIGNED TO RUN DIRECTLY ON A BARE METAL."
+      echo "  !!! IT IS VERY DANGEROUS AND THUS EXTREMELY BAD IDEA!"
       echo
-      echo "  WARNING! You are free to experiment but don't expect *ANY* support."
+      echo "  !!! WARNING !!! You are obviously free to experiment..."
+      echo "  !!! WARNING !!! But don't expect *ANY* support."
       echo
     fi
 
