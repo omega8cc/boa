@@ -2702,8 +2702,8 @@ satellite_download_for_local_build() {
       msg "${_STATUS} A: Downloading hostmaster modules..."
     fi
     ### Drupal Core
-    get_dev_ext "drupal-${_SMALLCORE7_V}.tar.gz"
-    mv -f ${mL}/drupal-${_SMALLCORE7_V} ${mL}/drupal
+    get_core_ext "${_DRUPAL7}.tar.gz"
+    mv -f ${mL}/${_DRUPAL7} ${mL}/drupal
     ### Aegir Core
       ${gCb} 5.x-${tRee} ${gitHub}/hostmaster.git    &> /dev/null
       ${gCb} 5.x-${tRee} ${gitHub}/hosting.git       &> /dev/null
@@ -3424,452 +3424,271 @@ satellite_if_add_update_user_platforms_symlinks() {
     chmod 700 /home/${_USERFTP} &> /dev/null
     rm -f ${_QH}/{cod,commerce,commons,openatrium,openscholar,drupal6,drupal7}
 
-    if [ -d "${_QR}/agov-${_AGOV}-${_SMALLCORE7_V}/sites" ]; then
-      if [ ! -L "${_QH}/agov-${_AGOV}-${_SMALLCORE7_V}" ]; then
-        _A="${_QR}/agov-${_AGOV}-${_SMALLCORE7_V}/sites"
-        _B="${_QH}/agov-${_AGOV}-${_SMALLCORE7_V}"
-        ln -sfn ${_A} ${_B}
-      fi
-    fi
-    if [ -d "${_QR}/civicrm-${_CIVICRM_M6}-${_SMALLCORE6_V}/sites" ]; then
-      if [ ! -L "${_QH}/civicrm-${_CIVICRM_M6}-${_SMALLCORE6_V}" ]; then
-        _A="${_QR}/civicrm-${_CIVICRM_M6}-${_SMALLCORE6_V}/sites"
-        _B="${_QH}/civicrm-${_CIVICRM_M6}-${_SMALLCORE6_V}"
-        ln -sfn ${_A} ${_B}
-      fi
-    fi
-    if [ -d "${_QR}/civicrm-${_CIVICRM_M7}-${_SMALLCORE7_V}/sites" ]; then
-      if [ ! -L "${_QH}/civicrm-${_CIVICRM_M7}-${_SMALLCORE7_V}" ]; then
-        _A="${_QR}/civicrm-${_CIVICRM_M7}-${_SMALLCORE7_V}/sites"
-        _B="${_QH}/civicrm-${_CIVICRM_M7}-${_SMALLCORE7_V}"
-        ln -sfn ${_A} ${_B}
-      fi
-    fi
-    if [ -d "${_QR}/cod-${_COD}-${_SMALLCORE7_V}/sites" ]; then
-      if [ ! -L "${_QH}/cod-${_COD}-${_SMALLCORE7_V}" ]; then
-        _A="${_QR}/cod-${_COD}-${_SMALLCORE7_V}/sites"
-        _B="${_QH}/cod-${_COD}-${_SMALLCORE7_V}"
-        ln -sfn ${_A} ${_B}
-      fi
-    fi
-    if [ -d "${_QR}/commerce-${_COMMERCE1}-${_SMALLCORE7_V}/sites" ]; then
-      if [ ! -L "${_QH}/commerce-${_COMMERCE1}-${_SMALLCORE7_V}" ]; then
-        _A="${_QR}/commerce-${_COMMERCE1}-${_SMALLCORE7_V}/sites"
-        _B="${_QH}/commerce-${_COMMERCE1}-${_SMALLCORE7_V}"
-        ln -sfn ${_A} ${_B}
-      fi
-    fi
-    if [ -d "${_QR}/commerce-${_COMMERCE2}-${_SMALLCORE7_V}/sites" ]; then
-      if [ ! -L "${_QH}/commerce-${_COMMERCE2}-${_SMALLCORE7_V}" ]; then
-        _A="${_QR}/commerce-${_COMMERCE2}-${_SMALLCORE7_V}/sites"
-        _B="${_QH}/commerce-${_COMMERCE2}-${_SMALLCORE7_V}"
-        ln -sfn ${_A} ${_B}
-      fi
-    fi
-    if [ -d "${_QR}/commons-${_COMMONS2}-${_SMALLCORE6_V}/sites" ]; then
-      if [ ! -L "${_QH}/commons-${_COMMONS2}-${_SMALLCORE6_V}" ]; then
-        _A="${_QR}/commons-${_COMMONS2}-${_SMALLCORE6_V}/sites"
-        _B="${_QH}/commons-${_COMMONS2}-${_SMALLCORE6_V}"
-        ln -sfn ${_A} ${_B}
-      fi
-    fi
-    if [ -d "${_QR}/commons-${_COMMONS3}-${_SMALLCORE7_V}/sites" ]; then
-      if [ ! -L "${_QH}/commons-${_COMMONS3}-${_SMALLCORE7_V}" ]; then
-        _A="${_QR}/commons-${_COMMONS3}-${_SMALLCORE7_V}/sites"
-        _B="${_QH}/commons-${_COMMONS3}-${_SMALLCORE7_V}"
-        ln -sfn ${_A} ${_B}
-      fi
-    fi
-
-    if [ -d "${_QR}/pressflow-${_SMALLCORE6_V}-dev/sites" ]; then
-      if [ ! -L "${_QH}/pressflow-${_SMALLCORE6_V}-dev" ]; then
-        _A="${_QR}/pressflow-${_SMALLCORE6_V}-dev/sites"
-        _B="${_QH}/pressflow-${_SMALLCORE6_V}-dev"
-        ln -sfn ${_A} ${_B}
-      fi
-    fi
-    if [ -d "${_QR}/pressflow-${_SMALLCORE6_V}-stage/sites" ]; then
-      if [ ! -L "${_QH}/pressflow-${_SMALLCORE6_V}-stage" ]; then
-        _A="${_QR}/pressflow-${_SMALLCORE6_V}-stage/sites"
-        _B="${_QH}/pressflow-${_SMALLCORE6_V}-stage"
-        ln -sfn ${_A} ${_B}
-      fi
-    fi
-    if [ ! -d "${_QR}/pressflow" ]; then
-      if [ -d "${_QR}/pressflow-${_SMALLCORE6_V}-prod/sites" ]; then
-        if [ ! -L "${_QH}/pressflow-${_SMALLCORE6_V}-prod" ]; then
-          _A="${_QR}/pressflow-${_SMALLCORE6_V}-prod/sites"
-          _B="${_QH}/pressflow-${_SMALLCORE6_V}-prod"
-          ln -sfn ${_A} ${_B}
-        fi
-      fi
-    elif [ ! -d "${_QR}/pressflow-${_SMALLCORE6_V}-prod" ]; then
-      if [ -d "${_QR}/pressflow/sites" ]; then
-        if [ ! -L "${_QH}/pressflow-${_SMALLCORE6_V}-prod" ]; then
-          _A="${_QR}/pressflow/sites"
-          _B="${_QH}/pressflow-${_SMALLCORE6_V}-prod"
-          ln -sfn ${_A} ${_B}
-        fi
-      fi
-    fi
-
-    if [ -d "${_QR}/${_DRUPAL7D}/sites" ]; then
-      if [ ! -L "${_QH}/${_DRUPAL7}-dev" ]; then
-        _A="${_QR}/${_DRUPAL7D}/sites"
-        _B="${_QH}/${_DRUPAL7}-dev"
-        ln -sfn ${_A} ${_B}
-      fi
-    fi
-    if [ -d "${_QR}/${_DRUPAL7S}/sites" ]; then
-      if [ ! -L "${_QH}/${_DRUPAL7}-stage" ]; then
-        _A="${_QR}/${_DRUPAL7S}/sites"
-        _B="${_QH}/${_DRUPAL7}-stage"
-        ln -sfn ${_A} ${_B}
-      fi
-    fi
-    if [ ! -d "${_QR}/${_DRUPAL7}" ]; then
-      if [ -d "${_QR}/${_DRUPAL7P}/sites" ]; then
-        if [ ! -L "${_QH}/${_DRUPAL7}-prod" ]; then
-          _A="${_QR}/${_DRUPAL7P}/sites"
-          _B="${_QH}/${_DRUPAL7}-prod"
-          ln -sfn ${_A} ${_B}
-        fi
-      fi
-    elif [ ! -d "${_QR}/${_DRUPAL7P}" ]; then
-      if [ -d "${_QR}/${_DRUPAL7}/sites" ]; then
-        if [ ! -L "${_QH}/${_DRUPAL7}-prod" ]; then
-          _A="${_QR}/${_DRUPAL7}/sites"
-          _B="${_QH}/${_DRUPAL7}-prod"
-          ln -sfn ${_A} ${_B}
-        fi
-      fi
-    fi
-
-    if [ -d "${_QR}/${_DRUPAL9_D}/sites" ]; then
-      if [ ! -L "${_QH}/${_DRUPAL9}-dev" ]; then
-        _A="${_QR}/${_DRUPAL9_D}/sites"
-        _B="${_QH}/${_DRUPAL9}-dev"
-        ln -sfn ${_A} ${_B}
-      fi
-    fi
-    if [ -d "${_QR}/${_DRUPAL9_S}/sites" ]; then
-      if [ ! -L "${_QH}/${_DRUPAL9}-stage" ]; then
-        _A="${_QR}/${_DRUPAL9_S}/sites"
-        _B="${_QH}/${_DRUPAL9}-stage"
-        ln -sfn ${_A} ${_B}
-      fi
-    fi
-    if [ ! -d "${_QR}/${_DRUPAL9}" ]; then
-      if [ -d "${_QR}/${_DRUPAL9_P}/sites" ]; then
-        if [ ! -L "${_QH}/${_DRUPAL9}-prod" ]; then
-          _A="${_QR}/${_DRUPAL9_P}/sites"
-          _B="${_QH}/${_DRUPAL9}-prod"
-          ln -sfn ${_A} ${_B}
-        fi
-      fi
-    elif [ ! -d "${_QR}/${_DRUPAL9_P}" ]; then
-      if [ -d "${_QR}/${_DRUPAL9}/sites" ]; then
-        if [ ! -L "${_QH}/${_DRUPAL9}-prod" ]; then
-          _A="${_QR}/${_DRUPAL9}/sites"
-          _B="${_QH}/${_DRUPAL9}-prod"
-          ln -sfn ${_A} ${_B}
-        fi
-      fi
-    fi
-
     if [ -d "${_QR}/${_DRUPAL10_0_D}/sites" ]; then
-      if [ ! -L "${_QH}/${_DRUPAL10_0}-dev" ]; then
+      if [ ! -L "${_QH}/${_DRUPAL10_0_D}" ]; then
         _A="${_QR}/${_DRUPAL10_0_D}/sites"
-        _B="${_QH}/${_DRUPAL10_0}-dev"
+        _B="${_QH}/${_DRUPAL10_0_D}"
         ln -sfn ${_A} ${_B}
       fi
     fi
     if [ -d "${_QR}/${_DRUPAL10_0_S}/sites" ]; then
-      if [ ! -L "${_QH}/${_DRUPAL10_0}-stage" ]; then
+      if [ ! -L "${_QH}/${_DRUPAL10_0_S}" ]; then
         _A="${_QR}/${_DRUPAL10_0_S}/sites"
-        _B="${_QH}/${_DRUPAL10_0}-stage"
+        _B="${_QH}/${_DRUPAL10_0_S}"
         ln -sfn ${_A} ${_B}
       fi
     fi
     if [ ! -d "${_QR}/${_DRUPAL10_0}" ]; then
       if [ -d "${_QR}/${_DRUPAL10_0_P}/sites" ]; then
-        if [ ! -L "${_QH}/${_DRUPAL10_0}-prod" ]; then
+        if [ ! -L "${_QH}/${_DRUPAL10_0_P}" ]; then
           _A="${_QR}/${_DRUPAL10_0_P}/sites"
-          _B="${_QH}/${_DRUPAL10_0}-prod"
+          _B="${_QH}/${_DRUPAL10_0_P}"
           ln -sfn ${_A} ${_B}
         fi
       fi
     elif [ ! -d "${_QR}/${_DRUPAL10_0_P}" ]; then
       if [ -d "${_QR}/${_DRUPAL10_0}/sites" ]; then
-        if [ ! -L "${_QH}/${_DRUPAL10_0}-prod" ]; then
+        if [ ! -L "${_QH}/${_DRUPAL10_0_P}" ]; then
           _A="${_QR}/${_DRUPAL10_0}/sites"
-          _B="${_QH}/${_DRUPAL10_0}-prod"
+          _B="${_QH}/${_DRUPAL10_0_P}"
           ln -sfn ${_A} ${_B}
         fi
       fi
     fi
 
     if [ -d "${_QR}/${_DRUPAL10_1_D}/sites" ]; then
-      if [ ! -L "${_QH}/${_DRUPAL10_1}-dev" ]; then
+      if [ ! -L "${_QH}/${_DRUPAL10_1_D}" ]; then
         _A="${_QR}/${_DRUPAL10_1_D}/sites"
-        _B="${_QH}/${_DRUPAL10_1}-dev"
+        _B="${_QH}/${_DRUPAL10_1_D}"
         ln -sfn ${_A} ${_B}
       fi
     fi
     if [ -d "${_QR}/${_DRUPAL10_1_S}/sites" ]; then
-      if [ ! -L "${_QH}/${_DRUPAL10_1}-stage" ]; then
+      if [ ! -L "${_QH}/${_DRUPAL10_1_S}" ]; then
         _A="${_QR}/${_DRUPAL10_1_S}/sites"
-        _B="${_QH}/${_DRUPAL10_1}-stage"
+        _B="${_QH}/${_DRUPAL10_1_S}"
         ln -sfn ${_A} ${_B}
       fi
     fi
     if [ ! -d "${_QR}/${_DRUPAL10_1}" ]; then
       if [ -d "${_QR}/${_DRUPAL10_1_P}/sites" ]; then
-        if [ ! -L "${_QH}/${_DRUPAL10_1}-prod" ]; then
+        if [ ! -L "${_QH}/${_DRUPAL10_1_P}" ]; then
           _A="${_QR}/${_DRUPAL10_1_P}/sites"
-          _B="${_QH}/${_DRUPAL10_1}-prod"
+          _B="${_QH}/${_DRUPAL10_1_P}"
           ln -sfn ${_A} ${_B}
         fi
       fi
     elif [ ! -d "${_QR}/${_DRUPAL10_1_P}" ]; then
       if [ -d "${_QR}/${_DRUPAL10_1}/sites" ]; then
-        if [ ! -L "${_QH}/${_DRUPAL10_1}-prod" ]; then
+        if [ ! -L "${_QH}/${_DRUPAL10_1_P}" ]; then
           _A="${_QR}/${_DRUPAL10_1}/sites"
-          _B="${_QH}/${_DRUPAL10_1}-prod"
+          _B="${_QH}/${_DRUPAL10_1_P}"
           ln -sfn ${_A} ${_B}
         fi
       fi
     fi
 
     if [ -d "${_QR}/${_DRUPAL10_2_D}/sites" ]; then
-      if [ ! -L "${_QH}/${_DRUPAL10_2}-dev" ]; then
+      if [ ! -L "${_QH}/${_DRUPAL10_2_D}" ]; then
         _A="${_QR}/${_DRUPAL10_2_D}/sites"
-        _B="${_QH}/${_DRUPAL10_2}-dev"
+        _B="${_QH}/${_DRUPAL10_2_D}"
         ln -sfn ${_A} ${_B}
       fi
     fi
     if [ -d "${_QR}/${_DRUPAL10_2_S}/sites" ]; then
-      if [ ! -L "${_QH}/${_DRUPAL10_2}-stage" ]; then
+      if [ ! -L "${_QH}/${_DRUPAL10_2_S}" ]; then
         _A="${_QR}/${_DRUPAL10_2_S}/sites"
-        _B="${_QH}/${_DRUPAL10_2}-stage"
+        _B="${_QH}/${_DRUPAL10_2_S}"
         ln -sfn ${_A} ${_B}
       fi
     fi
     if [ ! -d "${_QR}/${_DRUPAL10_2}" ]; then
       if [ -d "${_QR}/${_DRUPAL10_2_P}/sites" ]; then
-        if [ ! -L "${_QH}/${_DRUPAL10_2}-prod" ]; then
+        if [ ! -L "${_QH}/${_DRUPAL10_2_P}" ]; then
           _A="${_QR}/${_DRUPAL10_2_P}/sites"
-          _B="${_QH}/${_DRUPAL10_2}-prod"
+          _B="${_QH}/${_DRUPAL10_2_P}"
           ln -sfn ${_A} ${_B}
         fi
       fi
     elif [ ! -d "${_QR}/${_DRUPAL10_2_P}" ]; then
       if [ -d "${_QR}/${_DRUPAL10_2}/sites" ]; then
-        if [ ! -L "${_QH}/${_DRUPAL10_2}-prod" ]; then
+        if [ ! -L "${_QH}/${_DRUPAL10_2_P}" ]; then
           _A="${_QR}/${_DRUPAL10_2}/sites"
-          _B="${_QH}/${_DRUPAL10_2}-prod"
+          _B="${_QH}/${_DRUPAL10_2_P}"
           ln -sfn ${_A} ${_B}
         fi
       fi
     fi
 
     if [ -d "${_QR}/${_DRUPAL10_3_D}/sites" ]; then
-      if [ ! -L "${_QH}/${_DRUPAL10_3}-dev" ]; then
+      if [ ! -L "${_QH}/${_DRUPAL10_3_D}" ]; then
         _A="${_QR}/${_DRUPAL10_3_D}/sites"
-        _B="${_QH}/${_DRUPAL10_3}-dev"
+        _B="${_QH}/${_DRUPAL10_3_D}"
         ln -sfn ${_A} ${_B}
       fi
     fi
     if [ -d "${_QR}/${_DRUPAL10_3_S}/sites" ]; then
-      if [ ! -L "${_QH}/${_DRUPAL10_3}-stage" ]; then
+      if [ ! -L "${_QH}/${_DRUPAL10_3_S}" ]; then
         _A="${_QR}/${_DRUPAL10_3_S}/sites"
-        _B="${_QH}/${_DRUPAL10_3}-stage"
+        _B="${_QH}/${_DRUPAL10_3_S}"
         ln -sfn ${_A} ${_B}
       fi
     fi
     if [ ! -d "${_QR}/${_DRUPAL10_3}" ]; then
       if [ -d "${_QR}/${_DRUPAL10_3_P}/sites" ]; then
-        if [ ! -L "${_QH}/${_DRUPAL10_3}-prod" ]; then
+        if [ ! -L "${_QH}/${_DRUPAL10_3_P}" ]; then
           _A="${_QR}/${_DRUPAL10_3_P}/sites"
-          _B="${_QH}/${_DRUPAL10_3}-prod"
+          _B="${_QH}/${_DRUPAL10_3_P}"
           ln -sfn ${_A} ${_B}
         fi
       fi
     elif [ ! -d "${_QR}/${_DRUPAL10_3_P}" ]; then
       if [ -d "${_QR}/${_DRUPAL10_3}/sites" ]; then
-        if [ ! -L "${_QH}/${_DRUPAL10_3}-prod" ]; then
+        if [ ! -L "${_QH}/${_DRUPAL10_3_P}" ]; then
           _A="${_QR}/${_DRUPAL10_3}/sites"
-          _B="${_QH}/${_DRUPAL10_3}-prod"
+          _B="${_QH}/${_DRUPAL10_3_P}"
           ln -sfn ${_A} ${_B}
         fi
       fi
     fi
 
     if [ -d "${_QR}/${_DRUPAL10_4_D}/sites" ]; then
-      if [ ! -L "${_QH}/${_DRUPAL10_4}-dev" ]; then
+      if [ ! -L "${_QH}/${_DRUPAL10_4_D}" ]; then
         _A="${_QR}/${_DRUPAL10_4_D}/sites"
-        _B="${_QH}/${_DRUPAL10_4}-dev"
+        _B="${_QH}/${_DRUPAL10_4_D}"
         ln -sfn ${_A} ${_B}
       fi
     fi
     if [ -d "${_QR}/${_DRUPAL10_4_S}/sites" ]; then
-      if [ ! -L "${_QH}/${_DRUPAL10_4}-stage" ]; then
+      if [ ! -L "${_QH}/${_DRUPAL10_4_S}" ]; then
         _A="${_QR}/${_DRUPAL10_4_S}/sites"
-        _B="${_QH}/${_DRUPAL10_4}-stage"
+        _B="${_QH}/${_DRUPAL10_4_S}"
         ln -sfn ${_A} ${_B}
       fi
     fi
     if [ ! -d "${_QR}/${_DRUPAL10_4}" ]; then
       if [ -d "${_QR}/${_DRUPAL10_4_P}/sites" ]; then
-        if [ ! -L "${_QH}/${_DRUPAL10_4}-prod" ]; then
+        if [ ! -L "${_QH}/${_DRUPAL10_4_P}" ]; then
           _A="${_QR}/${_DRUPAL10_4_P}/sites"
-          _B="${_QH}/${_DRUPAL10_4}-prod"
+          _B="${_QH}/${_DRUPAL10_4_P}"
           ln -sfn ${_A} ${_B}
         fi
       fi
     elif [ ! -d "${_QR}/${_DRUPAL10_4_P}" ]; then
       if [ -d "${_QR}/${_DRUPAL10_4}/sites" ]; then
-        if [ ! -L "${_QH}/${_DRUPAL10_4}-prod" ]; then
+        if [ ! -L "${_QH}/${_DRUPAL10_4_P}" ]; then
           _A="${_QR}/${_DRUPAL10_4}/sites"
-          _B="${_QH}/${_DRUPAL10_4}-prod"
+          _B="${_QH}/${_DRUPAL10_4_P}"
           ln -sfn ${_A} ${_B}
         fi
       fi
     fi
 
-    if [ -d "${_QR}/erpal-${_ERPAL}-${_SMALLCORE7_V}/sites" ]; then
-      if [ ! -L "${_QH}/erpal-${_ERPAL}-${_SMALLCORE7_V}" ]; then
-        _A="${_QR}/erpal-${_ERPAL}-${_SMALLCORE7_V}/sites"
-        _B="${_QH}/erpal-${_ERPAL}-${_SMALLCORE7_V}"
+    if [ -d "${_QR}/${_DRUPAL9_D}/sites" ]; then
+      if [ ! -L "${_QH}/${_DRUPAL9_D}" ]; then
+        _A="${_QR}/${_DRUPAL9_D}/sites"
+        _B="${_QH}/${_DRUPAL9_D}"
         ln -sfn ${_A} ${_B}
       fi
     fi
-    if [ -d "${_QR}/fserver-${_SMALLCORE6_V}/sites" ]; then
-      if [ ! -L "${_QH}/fserver-${_SMALLCORE6_V}" ]; then
-        _A="${_QR}/fserver-${_SMALLCORE6_V}/sites"
-        _B="${_QH}/fserver-${_SMALLCORE6_V}"
+    if [ -d "${_QR}/${_DRUPAL9_S}/sites" ]; then
+      if [ ! -L "${_QH}/${_DRUPAL9_S}" ]; then
+        _A="${_QR}/${_DRUPAL9_S}/sites"
+        _B="${_QH}/${_DRUPAL9_S}"
         ln -sfn ${_A} ${_B}
       fi
     fi
-    if [ -d "${_QR}/guardr-${_GUARDR}-${_SMALLCORE7_V}/sites" ]; then
-      if [ ! -L "${_QH}/guardr-${_GUARDR}-${_SMALLCORE7_V}" ]; then
-        _A="${_QR}/guardr-${_GUARDR}-${_SMALLCORE7_V}/sites"
-        _B="${_QH}/guardr-${_GUARDR}-${_SMALLCORE7_V}"
+    if [ ! -d "${_QR}/${_DRUPAL9}" ]; then
+      if [ -d "${_QR}/${_DRUPAL9_P}/sites" ]; then
+        if [ ! -L "${_QH}/${_DRUPAL9_P}" ]; then
+          _A="${_QR}/${_DRUPAL9_P}/sites"
+          _B="${_QH}/${_DRUPAL9_P}"
+          ln -sfn ${_A} ${_B}
+        fi
+      fi
+    elif [ ! -d "${_QR}/${_DRUPAL9_P}" ]; then
+      if [ -d "${_QR}/${_DRUPAL9}/sites" ]; then
+        if [ ! -L "${_QH}/${_DRUPAL9_P}" ]; then
+          _A="${_QR}/${_DRUPAL9}/sites"
+          _B="${_QH}/${_DRUPAL9_P}"
+          ln -sfn ${_A} ${_B}
+        fi
+      fi
+    fi
+
+
+    if [ -d "${_QR}/${_DRUPAL7_D}/sites" ]; then
+      if [ ! -L "${_QH}/${_DRUPAL7_D}" ]; then
+        _A="${_QR}/${_DRUPAL7_D}/sites"
+        _B="${_QH}/${_DRUPAL7_D}"
         ln -sfn ${_A} ${_B}
       fi
     fi
-    if [ -d "${_QR}/openacademy-${_OPENACADEMY}-${_SMALLCORE7_V}/sites" ]; then
-      if [ ! -L "${_QH}/openacademy-${_OPENACADEMY}-${_SMALLCORE7_V}" ]; then
-        _A="${_QR}/openacademy-${_OPENACADEMY}-${_SMALLCORE7_V}/sites"
-        _B="${_QH}/openacademy-${_OPENACADEMY}-${_SMALLCORE7_V}"
+    if [ -d "${_QR}/${_DRUPAL7_S}/sites" ]; then
+      if [ ! -L "${_QH}/${_DRUPAL7_S}" ]; then
+        _A="${_QR}/${_DRUPAL7_S}/sites"
+        _B="${_QH}/${_DRUPAL7_S}"
         ln -sfn ${_A} ${_B}
       fi
     fi
-    if [ -d "${_QR}/openaid-${_OPENAID}-${_SMALLCORE7_V}/sites" ]; then
-      if [ ! -L "${_QH}/openaid-${_OPENAID}-${_SMALLCORE7_V}" ]; then
-        _A="${_QR}/openaid-${_OPENAID}-${_SMALLCORE7_V}/sites"
-        _B="${_QH}/openaid-${_OPENAID}-${_SMALLCORE7_V}"
+    if [ ! -d "${_QR}/${_DRUPAL7}" ]; then
+      if [ -d "${_QR}/${_DRUPAL7_P}/sites" ]; then
+        if [ ! -L "${_QH}/${_DRUPAL7_P}" ]; then
+          _A="${_QR}/${_DRUPAL7_P}/sites"
+          _B="${_QH}/${_DRUPAL7_P}"
+          ln -sfn ${_A} ${_B}
+        fi
+      fi
+    elif [ ! -d "${_QR}/${_DRUPAL7_P}" ]; then
+      if [ -d "${_QR}/${_DRUPAL7}/sites" ]; then
+        if [ ! -L "${_QH}/${_DRUPAL7_P}" ]; then
+          _A="${_QR}/${_DRUPAL7}/sites"
+          _B="${_QH}/${_DRUPAL7_P}"
+          ln -sfn ${_A} ${_B}
+        fi
+      fi
+    fi
+
+    if [ -d "${_QR}/${_DRUPAL6_D}/sites" ]; then
+      if [ ! -L "${_QH}/${_DRUPAL6_D}" ]; then
+        _A="${_QR}/${_DRUPAL6_D}/sites"
+        _B="${_QH}/${_DRUPAL6_D}"
         ln -sfn ${_A} ${_B}
       fi
     fi
-    if [ -d "${_QR}/openatrium-${_OPENATRIUM7}-${_SMALLCORE7_V}/sites" ]; then
-      if [ ! -L "${_QH}/openatrium-${_OPENATRIUM7}-${_SMALLCORE7_V}" ]; then
-        _A="${_QR}/openatrium-${_OPENATRIUM7}-${_SMALLCORE7_V}/sites"
-        _B="${_QH}/openatrium-${_OPENATRIUM7}-${_SMALLCORE7_V}"
+    if [ -d "${_QR}/${_DRUPAL6_S}/sites" ]; then
+      if [ ! -L "${_QH}/${_DRUPAL6_S}" ]; then
+        _A="${_QR}/${_DRUPAL6_S}/sites"
+        _B="${_QH}/${_DRUPAL6_S}"
         ln -sfn ${_A} ${_B}
       fi
     fi
-    if [ -d "${_QR}/openblog-${_OPENBLOG}-${_SMALLCORE7_V}/sites" ]; then
-      if [ ! -L "${_QH}/openblog-${_OPENBLOG}-${_SMALLCORE7_V}" ]; then
-        _A="${_QR}/openblog-${_OPENBLOG}-${_SMALLCORE7_V}/sites"
-        _B="${_QH}/openblog-${_OPENBLOG}-${_SMALLCORE7_V}"
+    if [ ! -d "${_QR}/pressflow" ]; then
+      if [ -d "${_QR}/${_DRUPAL6_P}/sites" ]; then
+        if [ ! -L "${_QH}/${_DRUPAL6_P}" ]; then
+          _A="${_QR}/${_DRUPAL6_P}/sites"
+          _B="${_QH}/${_DRUPAL6_P}"
+          ln -sfn ${_A} ${_B}
+        fi
+      fi
+    elif [ ! -d "${_QR}/${_DRUPAL6_P}" ]; then
+      if [ -d "${_QR}/pressflow/sites" ]; then
+        if [ ! -L "${_QH}/${_DRUPAL6_P}" ]; then
+          _A="${_QR}/pressflow/sites"
+          _B="${_QH}/${_DRUPAL6_P}"
+          ln -sfn ${_A} ${_B}
+        fi
+      fi
+    fi
+
+    if [ -d "${_QR}/social-${_SOCIAL}-${_SMALLCORE10_2_6_V}/html/sites" ]; then
+      if [ ! -L "${_QH}/social-${_SOCIAL}-${_SMALLCORE10_2_6_V}" ]; then
+        _A="${_QR}/social-${_SOCIAL}-${_SMALLCORE10_2_6_V}/html/sites"
+        _B="${_QH}/social-${_SOCIAL}-${_SMALLCORE10_2_6_V}"
         ln -sfn ${_A} ${_B}
       fi
     fi
-    if [ -d "${_QR}/openchurch-${_OPENCHURCH1}-${_SMALLCORE7_V}/sites" ]; then
-      if [ ! -L "${_QH}/openchurch-${_OPENCHURCH1}-${_SMALLCORE7_V}" ]; then
-        _A="${_QR}/openchurch-${_OPENCHURCH1}-${_SMALLCORE7_V}/sites"
-        _B="${_QH}/openchurch-${_OPENCHURCH1}-${_SMALLCORE7_V}"
-        ln -sfn ${_A} ${_B}
-      fi
-    fi
-    if [ -d "${_QR}/openchurch-${_OPENCHURCH2}-${_SMALLCORE7_V}/sites" ]; then
-      if [ ! -L "${_QH}/openchurch-${_OPENCHURCH2}-${_SMALLCORE7_V}" ]; then
-        _A="${_QR}/openchurch-${_OPENCHURCH2}-${_SMALLCORE7_V}/sites"
-        _B="${_QH}/openchurch-${_OPENCHURCH2}-${_SMALLCORE7_V}"
-        ln -sfn ${_A} ${_B}
-      fi
-    fi
-    if [ -d "${_QR}/opendeals-${_OPENDEALS}-${_SMALLCORE7_V}/sites" ]; then
-      if [ ! -L "${_QH}/opendeals-${_OPENDEALS}-${_SMALLCORE7_V}" ]; then
-        _A="${_QR}/opendeals-${_OPENDEALS}-${_SMALLCORE7_V}/sites"
-        _B="${_QH}/opendeals-${_OPENDEALS}-${_SMALLCORE7_V}"
-        ln -sfn ${_A} ${_B}
-      fi
-    fi
-    if [ -d "${_QR}/openlucius-${_OPENLUCIUS}-${_SMALLCORE9_V}/web/sites" ]; then
-      if [ ! -L "${_QH}/openlucius-${_OPENLUCIUS}-${_SMALLCORE9_V}" ]; then
-        _A="${_QR}/openlucius-${_OPENLUCIUS}-${_SMALLCORE9_V}/web/sites"
-        _B="${_QH}/openlucius-${_OPENLUCIUS}-${_SMALLCORE9_V}"
-        ln -sfn ${_A} ${_B}
-      fi
-    fi
-    if [ -d "${_QR}/openoutreach-${_OPENOUTREACH}-${_SMALLCORE7_V}/sites" ]; then
-      if [ ! -L "${_QH}/openoutreach-${_OPENOUTREACH}-${_SMALLCORE7_V}" ]; then
-        _A="${_QR}/openoutreach-${_OPENOUTREACH}-${_SMALLCORE7_V}/sites"
-        _B="${_QH}/openoutreach-${_OPENOUTREACH}-${_SMALLCORE7_V}"
-        ln -sfn ${_A} ${_B}
-      fi
-    fi
-    if [ -d "${_QR}/openpublic-${_OPENPUBLIC}-${_SMALLCORE7_V}/sites" ]; then
-      if [ ! -L "${_QH}/openpublic-${_OPENPUBLIC}-${_SMALLCORE7_V}" ]; then
-        _A="${_QR}/openpublic-${_OPENPUBLIC}-${_SMALLCORE7_V}/sites"
-        _B="${_QH}/openpublic-${_OPENPUBLIC}-${_SMALLCORE7_V}"
-        ln -sfn ${_A} ${_B}
-      fi
-    fi
-    if [ -d "${_QR}/openpublish-${_OPENPUBLISH}-${_SMALLCORE7_V}/sites" ]; then
-      if [ ! -L "${_QH}/openpublish-${_OPENPUBLISH}-${_SMALLCORE7_V}" ]; then
-        _A="${_QR}/openpublish-${_OPENPUBLISH}-${_SMALLCORE7_V}/sites"
-        _B="${_QH}/openpublish-${_OPENPUBLISH}-${_SMALLCORE7_V}"
-        ln -sfn ${_A} ${_B}
-      fi
-    fi
-    if [ -d "${_QR}/openscholar-${_OPENSCHOLAR}-${_SMALLCORE7_V}/sites" ]; then
-      if [ ! -L "${_QH}/openscholar-${_OPENSCHOLAR}-${_SMALLCORE7_V}" ]; then
-        _A="${_QR}/openscholar-${_OPENSCHOLAR}-${_SMALLCORE7_V}/sites"
-        _B="${_QH}/openscholar-${_OPENSCHOLAR}-${_SMALLCORE7_V}"
-        ln -sfn ${_A} ${_B}
-      fi
-    fi
-    if [ -d "${_QR}/opigno_lms-${_OPIGNOLMS7}-${_SMALLCORE7_V}/sites" ]; then
-      if [ ! -L "${_QH}/opigno_lms-${_OPIGNOLMS7}-${_SMALLCORE7_V}" ]; then
-        _A="${_QR}/opigno_lms-${_OPIGNOLMS7}-${_SMALLCORE7_V}/sites"
-        _B="${_QH}/opigno_lms-${_OPIGNOLMS7}-${_SMALLCORE7_V}"
-        ln -sfn ${_A} ${_B}
-      fi
-    fi
-    if [ -d "${_QR}/panopoly-${_PANOPOLY}-${_SMALLCORE7_V}/sites" ]; then
-      if [ ! -L "${_QH}/panopoly-${_PANOPOLY}-${_SMALLCORE7_V}" ]; then
-        _A="${_QR}/panopoly-${_PANOPOLY}-${_SMALLCORE7_V}/sites"
-        _B="${_QH}/panopoly-${_PANOPOLY}-${_SMALLCORE7_V}"
-        ln -sfn ${_A} ${_B}
-      fi
-    fi
-    if [ -d "${_QR}/recruiter-${_RECRUITER}-${_SMALLCORE7_V}/sites" ]; then
-      if [ ! -L "${_QH}/recruiter-${_RECRUITER}-${_SMALLCORE7_V}" ]; then
-        _A="${_QR}/recruiter-${_RECRUITER}-${_SMALLCORE7_V}/sites"
-        _B="${_QH}/recruiter-${_RECRUITER}-${_SMALLCORE7_V}"
-        ln -sfn ${_A} ${_B}
-      fi
-    fi
-    if [ -d "${_QR}/restaurant-${_RESTAURANT}-${_SMALLCORE7_V}/sites" ]; then
-      if [ ! -L "${_QH}/restaurant-${_RESTAURANT}-${_SMALLCORE7_V}" ]; then
-        _A="${_QR}/restaurant-${_RESTAURANT}-${_SMALLCORE7_V}/sites"
-        _B="${_QH}/restaurant-${_RESTAURANT}-${_SMALLCORE7_V}"
-        ln -sfn ${_A} ${_B}
-      fi
-    fi
+
     if [ -d "${_QR}/thunder-${_THUNDER}-${_SMALLCORE10_3_V}/docroot/sites" ]; then
       if [ ! -L "${_QH}/thunder-${_THUNDER}-${_SMALLCORE10_3_V}" ]; then
         _A="${_QR}/thunder-${_THUNDER}-${_SMALLCORE10_3_V}/docroot/sites"
@@ -3877,13 +3696,55 @@ satellite_if_add_update_user_platforms_symlinks() {
         ln -sfn ${_A} ${_B}
       fi
     fi
-    if [ -d "${_QR}/ubercart-${_UBERCART6}-${_SMALLCORE6_V}/sites" ]; then
-      if [ ! -L "${_QH}/ubercart-${_UBERCART6}-${_SMALLCORE6_V}" ]; then
-        _A="${_QR}/ubercart-${_UBERCART6}-${_SMALLCORE6_V}/sites"
-        _B="${_QH}/ubercart-${_UBERCART6}-${_SMALLCORE6_V}"
+
+    if [ -d "${_QR}/varbase-${_VARBASE9}-${_SMALLCORE10_2_6_V}/docroot/sites" ]; then
+      if [ ! -L "${_QH}/varbase-${_VARBASE9}-${_SMALLCORE10_2_6_V}" ]; then
+        _A="${_QR}/varbase-${_VARBASE9}-${_SMALLCORE10_2_6_V}/docroot/sites"
+        _B="${_QH}/varbase-${_VARBASE9}-${_SMALLCORE10_2_6_V}"
         ln -sfn ${_A} ${_B}
       fi
     fi
+
+    if [ -d "${_QR}/varbase-${_VARBASE10}-${_SMALLCORE10_3_V}/docroot/sites" ]; then
+      if [ ! -L "${_QH}/varbase-${_VARBASE10}-${_SMALLCORE10_3_V}" ]; then
+        _A="${_QR}/varbase-${_VARBASE10}-${_SMALLCORE10_3_V}/docroot/sites"
+        _B="${_QH}/varbase-${_VARBASE10}-${_SMALLCORE10_3_V}"
+        ln -sfn ${_A} ${_B}
+      fi
+    fi
+
+    if [ -d "${_QR}/openlucius-${_OPENLUCIUS}-${_SMALLCORE9_V}/web/sites" ]; then
+      if [ ! -L "${_QH}/openlucius-${_OPENLUCIUS}-${_SMALLCORE9_V}" ]; then
+        _A="${_QR}/openlucius-${_OPENLUCIUS}-${_SMALLCORE9_V}/web/sites"
+        _B="${_QH}/openlucius-${_OPENLUCIUS}-${_SMALLCORE9_V}"
+        ln -sfn ${_A} ${_B}
+      fi
+    fi
+
+    if [ -d "${_QR}/opigno_lms-${_OPIGNOLMS9}-${_SMALLCORE9_V}/web/sites" ]; then
+      if [ ! -L "${_QH}/opigno_lms-${_OPIGNOLMS9}-${_SMALLCORE9_V}" ]; then
+        _A="${_QR}/opigno_lms-${_OPIGNOLMS9}-${_SMALLCORE9_V}/web/sites"
+        _B="${_QH}/opigno_lms-${_OPIGNOLMS9}-${_SMALLCORE9_V}"
+        ln -sfn ${_A} ${_B}
+      fi
+    fi
+
+    if [ -d "${_QR}/commerce-${_COMMERCE1}-${_SMALLCORE7_V}/sites" ]; then
+      if [ ! -L "${_QH}/commerce-${_COMMERCE1}-${_SMALLCORE7_V}" ]; then
+        _A="${_QR}/commerce-${_COMMERCE1}-${_SMALLCORE7_V}/sites"
+        _B="${_QH}/commerce-${_COMMERCE1}-${_SMALLCORE7_V}"
+        ln -sfn ${_A} ${_B}
+      fi
+    fi
+
+    if [ -d "${_QR}/commerce-${_COMMERCE2}-${_SMALLCORE7_V}/sites" ]; then
+      if [ ! -L "${_QH}/commerce-${_COMMERCE2}-${_SMALLCORE7_V}" ]; then
+        _A="${_QR}/commerce-${_COMMERCE2}-${_SMALLCORE7_V}/sites"
+        _B="${_QH}/commerce-${_COMMERCE2}-${_SMALLCORE7_V}"
+        ln -sfn ${_A} ${_B}
+      fi
+    fi
+
     if [ -d "${_QR}/ubercart-${_UBERCART7}-${_SMALLCORE7_V}/sites" ]; then
       if [ ! -L "${_QH}/ubercart-${_UBERCART7}-${_SMALLCORE7_V}" ]; then
         _A="${_QR}/ubercart-${_UBERCART7}-${_SMALLCORE7_V}/sites"
@@ -3898,31 +3759,11 @@ satellite_if_add_update_user_platforms_symlinks() {
         ln -sfn ${_A} ${_B}
       fi
     fi
-    if [ -d "${_QR}/varbase-${_VARBASE9}-${_SMALLCORE10_2_6_V}/docroot/sites" ]; then
-      if [ ! -L "${_QH}/varbase-${_VARBASE9}-${_SMALLCORE10_2_6_V}" ]; then
-        _A="${_QR}/varbase-${_VARBASE9}-${_SMALLCORE10_2_6_V}/docroot/sites"
-        _B="${_QH}/varbase-${_VARBASE9}-${_SMALLCORE10_2_6_V}"
-        ln -sfn ${_A} ${_B}
-      fi
-    fi
-    if [ -d "${_QR}/varbase-${_VARBASE10}-${_SMALLCORE10_3_V}/docroot/sites" ]; then
-      if [ ! -L "${_QH}/varbase-${_VARBASE10}-${_SMALLCORE10_3_V}" ]; then
-        _A="${_QR}/varbase-${_VARBASE10}-${_SMALLCORE10_3_V}/docroot/sites"
-        _B="${_QH}/varbase-${_VARBASE10}-${_SMALLCORE10_3_V}"
-        ln -sfn ${_A} ${_B}
-      fi
-    fi
-    if [ -d "${_QR}/social-${_SOCIAL}-${_SMALLCORE10_2_6_V}/html/sites" ]; then
-      if [ ! -L "${_QH}/social-${_SOCIAL}-${_SMALLCORE10_2_6_V}" ]; then
-        _A="${_QR}/social-${_SOCIAL}-${_SMALLCORE10_2_6_V}/html/sites"
-        _B="${_QH}/social-${_SOCIAL}-${_SMALLCORE10_2_6_V}"
-        ln -sfn ${_A} ${_B}
-      fi
-    fi
-    if [ -d "${_QR}/opigno_lms-${_OPIGNOLMS9}-${_SMALLCORE9_V}/web/sites" ]; then
-      if [ ! -L "${_QH}/opigno_lms-${_OPIGNOLMS9}-${_SMALLCORE9_V}" ]; then
-        _A="${_QR}/opigno_lms-${_OPIGNOLMS9}-${_SMALLCORE9_V}/web/sites"
-        _B="${_QH}/opigno_lms-${_OPIGNOLMS9}-${_SMALLCORE9_V}"
+
+    if [ -d "${_QR}/ubercart-${_UBERCART6}-${_SMALLCORE6_V}/sites" ]; then
+      if [ ! -L "${_QH}/ubercart-${_UBERCART6}-${_SMALLCORE6_V}" ]; then
+        _A="${_QR}/ubercart-${_UBERCART6}-${_SMALLCORE6_V}/sites"
+        _B="${_QH}/ubercart-${_UBERCART6}-${_SMALLCORE6_V}"
         ln -sfn ${_A} ${_B}
       fi
     fi
@@ -4175,31 +4016,28 @@ satellite_make() {
 
   echo "_AEGIR_VERSION=\"${_AEGIR_VERSION}\""         >> ${writeTo}
   echo "_AEGIR_XTS_VRN=\"${_AEGIR_XTS_VRN}\""         >> ${writeTo}
-  echo "_AGOV=\"${_AGOV}\""                           >> ${writeTo}
   echo "_ALL_DISTRO=\"${_ALL_DISTRO}\""               >> ${writeTo}
   echo "_AUTOPILOT=\"${_AUTOPILOT}\""                 >> ${writeTo}
   echo "_BOA_REPO_GIT_URL=\"${_BOA_REPO_GIT_URL}\""   >> ${writeTo}
   echo "_BOA_REPO_NAME=\"${_BOA_REPO_NAME}\""         >> ${writeTo}
   echo "_BRANCH_BOA=\"${_BRANCH_BOA}\""               >> ${writeTo}
   echo "_BRANCH_PRN=\"${_BRANCH_PRN}\""               >> ${writeTo}
-  echo "_CIVICRM_M6=\"${_CIVICRM_M6}\""               >> ${writeTo}
-  echo "_CIVICRM_M7=\"${_CIVICRM_M7}\""               >> ${writeTo}
   echo "_CLIENT_CORES=\"${_CLIENT_CORES}\""           >> ${writeTo}
   echo "_CLIENT_EMAIL=\"${_CLIENT_EMAIL}\""           >> ${writeTo}
   echo "_CLIENT_OPTION=\"${_CLIENT_OPTION}\""         >> ${writeTo}
-  echo "_COD=\"${_COD}\""                             >> ${writeTo}
   echo "_COMMERCE1=\"${_COMMERCE1}\""                 >> ${writeTo}
   echo "_COMMERCE2=\"${_COMMERCE2}\""                 >> ${writeTo}
-  echo "_COMMONS2=\"${_COMMONS2}\""                   >> ${writeTo}
-  echo "_COMMONS3=\"${_COMMONS3}\""                   >> ${writeTo}
   echo "_DEBUG_MODE=\"${_DEBUG_MODE}\""               >> ${writeTo}
   echo "_DISTRO=\"${_DISTRO}\""                       >> ${writeTo}
   echo "_DOMAIN=\"${_DOMAIN}\""                       >> ${writeTo}
+  echo "_DRUPAL6=\"${_DRUPAL6}\""                     >> ${writeTo}
+  echo "_DRUPAL6_D=\"${_DRUPAL6}-dev\""               >> ${writeTo}
+  echo "_DRUPAL6_P=\"${_DRUPAL6}-prod\""              >> ${writeTo}
+  echo "_DRUPAL6_S=\"${_DRUPAL6}-stage\""             >> ${writeTo}
   echo "_DRUPAL7=\"${_DRUPAL7}\""                     >> ${writeTo}
-  echo "_DRUPAL7D=\"${_DRUPAL7}-dev\""                >> ${writeTo}
-  echo "_DRUPAL7P=\"${_DRUPAL7}-prod\""               >> ${writeTo}
-  echo "_DRUPAL7S=\"${_DRUPAL7}-stage\""              >> ${writeTo}
-  echo "_DRUPAL8=\"${_DRUPAL8}\""                     >> ${writeTo}
+  echo "_DRUPAL7_D=\"${_DRUPAL7}-dev\""               >> ${writeTo}
+  echo "_DRUPAL7_P=\"${_DRUPAL7}-prod\""              >> ${writeTo}
+  echo "_DRUPAL7_S=\"${_DRUPAL7}-stage\""             >> ${writeTo}
   echo "_DRUPAL9=\"${_DRUPAL9}\""                     >> ${writeTo}
   echo "_DRUPAL9_D=\"${_DRUPAL9}-dev\""               >> ${writeTo}
   echo "_DRUPAL9_P=\"${_DRUPAL9}-prod\""              >> ${writeTo}
@@ -4225,9 +4063,7 @@ satellite_make() {
   echo "_DRUPAL10_4_P=\"${_DRUPAL10_4}-prod\""        >> ${writeTo}
   echo "_DRUPAL10_4_S=\"${_DRUPAL10_4}-stage\""       >> ${writeTo}
   echo "_DRUSH_VERSION=\"${_DRUSH_VERSION}\""         >> ${writeTo}
-  echo "_ERPAL=\"${_ERPAL}\""                         >> ${writeTo}
   echo "_F_TIME=\"${_F_TIME}\""                       >> ${writeTo}
-  echo "_GUARDR=\"${_GUARDR}\""                       >> ${writeTo}
   echo "_HM_DISTRO=\"${_HM_DISTRO}\""                 >> ${writeTo}
   echo "_HM_ONLY=\"${_HM_ONLY}\""                     >> ${writeTo}
   echo "_HOT_SAUCE=\"${_HOT_SAUCE}\""                 >> ${writeTo}
@@ -4237,34 +4073,18 @@ satellite_make() {
   echo "_MY_EMAIL=\"${_MY_EMAIL}\""                   >> ${writeTo}
   echo "_MY_OWNIP=\"${_MY_OWNIP}\""                   >> ${writeTo}
   echo "_NOW=\"${_NOW}\""                             >> ${writeTo}
-  echo "_OPENACADEMY=\"${_OPENACADEMY}\""             >> ${writeTo}
-  echo "_OPENAID=\"${_OPENAID}\""                     >> ${writeTo}
-  echo "_OPENATRIUM7=\"${_OPENATRIUM7}\""             >> ${writeTo}
-  echo "_OPENBLOG=\"${_OPENBLOG}\""                   >> ${writeTo}
-  echo "_OPENCHURCH1=\"${_OPENCHURCH1}\""             >> ${writeTo}
-  echo "_OPENCHURCH2=\"${_OPENCHURCH2}\""             >> ${writeTo}
-  echo "_OPENDEALS=\"${_OPENDEALS}\""                 >> ${writeTo}
   echo "_OPENLUCIUS=\"${_OPENLUCIUS}\""               >> ${writeTo}
-  echo "_OPENOUTREACH=\"${_OPENOUTREACH}\""           >> ${writeTo}
-  echo "_OPENPUBLIC=\"${_OPENPUBLIC}\""               >> ${writeTo}
-  echo "_OPENPUBLISH=\"${_OPENPUBLISH}\""             >> ${writeTo}
-  echo "_OPENSCHOLAR=\"${_OPENSCHOLAR}\""             >> ${writeTo}
-  echo "_OPIGNOLMS7=\"${_OPIGNOLMS7}\""               >> ${writeTo}
   echo "_OPIGNOLMS9=\"${_OPIGNOLMS9}\""               >> ${writeTo}
   echo "_OS_CODE=\"${_OS_CODE}\""                     >> ${writeTo}
-  echo "_PANOPOLY=\"${_PANOPOLY}\""                   >> ${writeTo}
   echo "_PHP_CLI_VERSION=\"${_PHP_CLI_VERSION}\""     >> ${writeTo}
   echo "_PHP_FPM_VERSION=\"${_PHP_FPM_VERSION}\""     >> ${writeTo}
   echo "_PLATFORMS_LIST=\"${_PLATFORMS_LIST}\""       >> ${writeTo}
   echo "_PLATFORMS_ONLY=\"${_PLATFORMS_ONLY}\""       >> ${writeTo}
-  echo "_PURGE_FOR_SEVEN=\"${_PURGE_FOR_SEVEN}\""     >> ${writeTo}
   echo "_PURGE_MODE=\"${_PURGE_MODE}\""               >> ${writeTo}
-  echo "_RECRUITER=\"${_RECRUITER}\""                 >> ${writeTo}
   echo "_REDIS_C_VERSION=\"${_REDIS_C_VERSION}\""     >> ${writeTo}
   echo "_REDIS_L_VERSION=\"${_REDIS_L_VERSION}\""     >> ${writeTo}
   echo "_REDIS_N_VERSION=\"${_REDIS_N_VERSION}\""     >> ${writeTo}
   echo "_REDIS_T_VERSION=\"${_REDIS_T_VERSION}\""     >> ${writeTo}
-  echo "_RESTAURANT=\"${_RESTAURANT}\""               >> ${writeTo}
   echo "_SERIES_RESULT=\"${_SERIES_RESULT}\""         >> ${writeTo}
   echo "_SMALLCORE10_0_V=\"${_SMALLCORE10_0_V}\""     >> ${writeTo}
   echo "_SMALLCORE10_1_V=\"${_SMALLCORE10_1_V}\""     >> ${writeTo}

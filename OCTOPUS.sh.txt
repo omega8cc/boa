@@ -29,10 +29,13 @@
 ###
 ###----------------------------------------###
 
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+export SHELL=/bin/bash
 
 ###
-### Default values for main variables
+### Default values for main Octopus instance variables
 ###
+
 _USER=o1
 _MY_EMAIL="noc@omega8.cc"
 _CLIENT_EMAIL="notify@omega8.cc"
@@ -40,40 +43,103 @@ _CLIENT_OPTION=POWER
 _CLIENT_SUBSCR=M
 _CLIENT_CORES=1
 
-
 ###
 ### Required by AegirSetupA script, running in
 ### the same env, to avoid chicken/egg race.
 ###
 export _USER="${_USER}"
 
+###
+### Drush and Redis Variables
+###
+
+export _DRUSH_VERSION=8.4.12.9
+export _REDIS_C_VERSION=com-19-04-2021
+export _REDIS_L_VERSION=7.x-3.19.1
+export _REDIS_N_VERSION=com-19-04-2021
+export _REDIS_T_VERSION=8.x-1.8.1
 
 ###
-### Variables
+### Drupal Distributions
 ###
-_DRUSH_VERSION=8.4.12.9
-_PURGE_FOR_SEVEN=YES
-_REDIS_C_VERSION=com-19-04-2021
-_REDIS_L_VERSION=7.x-3.19.1
-_REDIS_N_VERSION=com-19-04-2021
-_REDIS_T_VERSION=8.x-1.8.1
-_SMALLCORE10_0_V=10.0.11
-_SMALLCORE10_1_V=10.1.8
-_SMALLCORE10_2_6_V=10.2.6
-_SMALLCORE10_2_V=10.2.7
-_SMALLCORE10_3_V=10.3.1
-_SMALLCORE10_4_V=10.4.x-dev
-_SMALLCORE6_V=6.60.1
-_SMALLCORE7_V=7.101.1
-_SMALLCORE9_V=9.5.11
-_SPINNER=NO
-_T_BUILD=SRC
-_USRG=users
-_WEBG=www-data
-PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-SHELL=/bin/bash
+
+export _COMMERCE1=1.72
+export _COMMERCE2=2.77
+export _OPENLUCIUS=2.0.0
+export _OPIGNOLMS9=3.1.0
+export _THUNDER=7.3.0
+export _UBERCART6=2.15
+export _UBERCART7=3.13
+export _VARBASE9=9.1.3
+export _VARBASE10=10.0.0
+export _SOCIAL=12.4.2
+
+###
+### Drupal Core Versions
+###
+
+export _SMALLCORE10_0_V=10.0.11
+export _SMALLCORE10_1_V=10.1.8
+export _SMALLCORE10_2_6_V=10.2.6
+export _SMALLCORE10_2_V=10.2.7
+export _SMALLCORE10_3_V=10.3.1
+export _SMALLCORE10_4_V=10.4.x-dev
+export _SMALLCORE6_V=6.60.1
+export _SMALLCORE7_V=7.101.1
+export _SMALLCORE9_V=9.5.11
+
+###
+### Drupal Core Variables
+###
+
+export _DRUPAL6="pressflow-${_SMALLCORE6_V}"
+export _DRUPAL7="drupal-${_SMALLCORE7_V}"
+export _DRUPAL9="drupal-${_SMALLCORE9_V}"
+export _DRUPAL10_0="drupal-${_SMALLCORE10_0_V}"
+export _DRUPAL10_1="drupal-${_SMALLCORE10_1_V}"
+export _DRUPAL10_2="drupal-${_SMALLCORE10_2_V}"
+export _DRUPAL10_3="drupal-${_SMALLCORE10_3_V}"
+export _DRUPAL10_4="drupal-${_SMALLCORE10_4_V}"
+
+export _DRUPAL6_D="${_DRUPAL6}-dev"
+export _DRUPAL6_P="${_DRUPAL6}-prod"
+export _DRUPAL6_S="${_DRUPAL6}-stage"
+
+export _DRUPAL7_D="${_DRUPAL7}-dev"
+export _DRUPAL7_P="${_DRUPAL7}-prod"
+export _DRUPAL7_S="${_DRUPAL7}-stage"
+
+export _DRUPAL9_D="${_DRUPAL9}-dev"
+export _DRUPAL9_P="${_DRUPAL9}-prod"
+export _DRUPAL9_S="${_DRUPAL9}-stage"
+
+export _DRUPAL10_0_D="${_DRUPAL10_0}-dev"
+export _DRUPAL10_0_P="${_DRUPAL10_0}-prod"
+export _DRUPAL10_0_S="${_DRUPAL10_0}-stage"
+
+export _DRUPAL10_1_D="${_DRUPAL10_1}-dev"
+export _DRUPAL10_1_P="${_DRUPAL10_1}-prod"
+export _DRUPAL10_1_S="${_DRUPAL10_1}-stage"
+
+export _DRUPAL10_2_D="${_DRUPAL10_2}-dev"
+export _DRUPAL10_2_P="${_DRUPAL10_2}-prod"
+export _DRUPAL10_2_S="${_DRUPAL10_2}-stage"
+
+export _DRUPAL10_3_D="${_DRUPAL10_3}-dev"
+export _DRUPAL10_3_P="${_DRUPAL10_3}-prod"
+export _DRUPAL10_3_S="${_DRUPAL10_3}-stage"
+
+export _DRUPAL10_4_D="${_DRUPAL10_4}-dev"
+export _DRUPAL10_4_P="${_DRUPAL10_4}-prod"
+export _DRUPAL10_4_S="${_DRUPAL10_4}-stage"
+
+export _SPINNER=NO
+export _T_BUILD=SRC
+export _USRG=users
+export _WEBG=www-data
+
 if [ -n "${STY+x}" ]; then
-  _SPINNER=NO
+  export _SPINNER=NO
 fi
 
 export _F_TIME=$(date 2>&1)
@@ -82,73 +148,28 @@ export _F_TIME=$(date 2>&1)
 ###
 ### Instance specific variables
 ###
-_WEB="${_USER}.web"
-_DOMAIN="${_USER}.$(uname -n 2>&1)"
-_ROOT="/data/disk/${_USER}"
-_THIS_DB_PORT=3306
-octCnf="/root/.${_USER}.octopus.cnf"
-octInc="${_ROOT}/config/includes"
-octTpl="${_ROOT}/.drush/sys/provision/http/Provision/Config/Nginx"
-octSetTpl="${_ROOT}/.drush/sys/provision/Provision/Config/Drupal"
+export _WEB="${_USER}.web"
+export _DOMAIN="${_USER}.$(uname -n 2>&1)"
+export _ROOT="/data/disk/${_USER}"
+export _THIS_DB_PORT=3306
+export octCnf="/root/.${_USER}.octopus.cnf"
+export octInc="${_ROOT}/config/includes"
+export octTpl="${_ROOT}/.drush/sys/provision/http/Provision/Config/Nginx"
+export octSetTpl="${_ROOT}/.drush/sys/provision/Provision/Config/Drupal"
 
 
 ###
 ### Helper variables
 ###
-bldPth="/opt/tmp/boa"
-crlGet="-L --max-redirs 3 -k -s --retry 3 --retry-delay 5 -A iCab"
-filIncO="octopus.sh.cnf"
-gCb="git clone --branch"
-gitHub="https://github.com/omega8cc"
-gitLab="https://gitlab.com/omega8cc"
-libFnc="${bldPth}/lib/functions"
-tocIncO="${filIncO}.${_USER}"
-vBs="/var/backups"
-
-
-###
-### Distributions
-###
-_AGOV=3.12
-_CIVICRM_M6=4.1.6
-_CIVICRM_M7=4.3.7
-_COD=1.0-alpha5
-_COMMERCE1=1.72
-_COMMERCE2=2.77
-_COMMONS2=2.27
-_COMMONS3=3.50
-_DRUPAL7="drupal-${_SMALLCORE7_V}"
-_DRUPAL9="drupal-${_SMALLCORE9_V}"
-_DRUPAL10_0="drupal-${_SMALLCORE10_0_V}"
-_DRUPAL10_1="drupal-${_SMALLCORE10_1_V}"
-_DRUPAL10_2="drupal-${_SMALLCORE10_2_V}"
-_DRUPAL10_3="drupal-${_SMALLCORE10_3_V}"
-_DRUPAL10_4="drupal-${_SMALLCORE10_4_V}"
-_ERPAL=2.3
-_GUARDR=2.57
-_OPENACADEMY=1.1
-_OPENAID=2.8
-_OPENATRIUM7=2.652
-_OPENBLOG=1.0-alpha3
-_OPENCHURCH1=1.17-beta2
-_OPENCHURCH2=2.2
-_OPENDEALS=1.35
-_OPENLUCIUS=2.0.0
-_OPENOUTREACH=1.69
-_OPENPUBLIC=1.30
-_OPENPUBLISH=1.0-beta7
-_OPENSCHOLAR=3.28.0
-_OPIGNOLMS7=1.59
-_OPIGNOLMS9=3.1.0
-_PANOPOLY=1.94
-_RECRUITER=1.7
-_RESTAURANT=1.15
-_THUNDER=7.3.0
-_UBERCART6=2.15
-_UBERCART7=3.13
-_VARBASE9=9.1.3
-_VARBASE10=10.0.0
-_SOCIAL=12.4.2
+export bldPth="/opt/tmp/boa"
+export crlGet="-L --max-redirs 3 -k -s --retry 3 --retry-delay 5 -A iCab"
+export filIncO="octopus.sh.cnf"
+export gCb="git clone --branch"
+export gitHub="https://github.com/omega8cc"
+export gitLab="https://gitlab.com/omega8cc"
+export libFnc="${bldPth}/lib/functions"
+export tocIncO="${filIncO}.${_USER}"
+export vBs="/var/backups"
 
 
 ###
