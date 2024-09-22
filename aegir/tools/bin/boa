@@ -1746,7 +1746,7 @@ calculate_ram_usage_percent() {
   total_ram_kb=$1
   available_ram_kb=$2
   used_ram_kb=$((total_ram_kb - available_ram_kb))
-  echo "scale=2; ($used_ram_kb / $total_ram_kb) * 100" | bc
+  echo "scale=0; ($used_ram_kb / $total_ram_kb) * 100" | bc
 }
 
 # Function to check and display system info
