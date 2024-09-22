@@ -1945,7 +1945,28 @@ display_info() {
     [ "${mode}" != "report" ] && [ ! -z "${_UMY}" ] && echo "  _UMY ${_UMY}"
     [ "${mode}" != "report" ] && [ ! -z "${_XTR}" ] && echo "  _XTR ${_XTR}"
     [ "${mode}" != "report" ] && [ ! -z "${_AUT}" ] && echo "  _AUT ${_AUT}"
+
+    # Get the currently running kernel version
+    _XSK=$(uname -r)
+
+    # Get the kernel version that will be activated after reboot (latest installed kernel)
+    _XSN=$(ls -1 /boot/vmlinuz-* | sort -V | tail -n 1 | sed 's/\/boot\/vmlinuz-//')
+
+    _XSU=$(uptime -p 2>&1)
+    _XSL=$(uptime | awk -F'load average:' '{ print $2 }' | sed 's/^ //' 2>&1)
+
     echo
+    echo "  _XSY System Kernel/Uptime/Load Report"
+    echo
+    echo "  _XSU System Uptime: ${_XSU}"
+    echo "  _XSL System Load: ${_XSL}"
+    echo "  _XSK Current Kernel Version: ${_XSK}"
+    # Only display the next kernel version if it's different from the current one
+    if [ "${_XSK}" != "${_XSN}" ]; then
+      echo "  _XSN Next Kernel Version (after reboot): ${_XSN}"
+    fi
+    echo
+
     echo "  _XSE Key Services Uptime Report"
     echo
     # Arrays to store results
