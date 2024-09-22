@@ -1989,10 +1989,12 @@ display_info() {
     if [ "${_XSK}" != "${_XSN}" ]; then
       echo "  _XSN Next Kernel Version (after reboot): ${_XSN}"
     fi
-    echo "  _DSK ${_DF_TEST}/100"
     echo "  _CPU ${_CPU_NR}"
     echo "  _RAM Total: ${total_ram_gb} GB"
     echo "  _RAM Usage: ${ram_usage_percent}%"
+    echo "  _DSK Usage for all partitions:"
+    # Loop through all partitions and display their usage
+    df -h | awk 'NR>1 {print "  _DSK " $1 ": " $5 " used (" $6 ")"}'
     echo
 
     echo "  _XSE Key Services Uptime Report"
