@@ -1736,6 +1736,32 @@ display_time() {
   fi
 }
 
+# Function to convert KB to GB (1 GB = 1024 * 1024 KB)
+convert_kb_to_gb() {
+  echo "scale=2; $1 / 1024 / 1024" | bc
+}
+
+# Function to calculate RAM usage percentage
+calculate_ram_usage_percent() {
+  total_ram_kb=$1
+  available_ram_kb=$2
+  used_ram_kb=$((total_ram_kb - available_ram_kb))
+  echo "scale=2; ($used_ram_kb / $total_ram_kb) * 100" | bc
+}
+
+# Function to check and display system info
+check_system_ram() {
+  # Get the total and available RAM in KB
+  total_ram_kb=$(grep MemTotal /proc/meminfo | awk '{print $2}')
+  available_ram_kb=$(grep MemAvailable /proc/meminfo | awk '{print $2}')
+
+  # Convert total RAM to GB
+  total_ram_gb=$(convert_kb_to_gb ${total_ram_kb})
+
+  # Calculate RAM usage percentage
+  ram_usage_percent=$(calculate_ram_usage_percent ${total_ram_kb} ${available_ram_kb})
+}
+
 display_info() {
   if [ `whoami` = "root" ]; then
     _HOST_INFO=$(dmidecode -s system-manufacturer 2>&1)
@@ -1847,7 +1873,6 @@ display_info() {
       | cut -d"_" -f2 \
       | awk '{ print $1}' 2>&1)
     _SSH=$(ssh -V 2>&1)
-    _RAM=$(free -mt | grep Mem: | awk '{ print $2 }' 2>&1)
     [ "${mode}" = "clear" ] && clear
     echo
     thiSys="$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)/$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1) $(uname -m 2>&1)"
@@ -1894,9 +1919,6 @@ display_info() {
     [ ! -z "${_HOST_INFO}" ] && echo "  HOST ${_HOST_INFO}"
     [ ! -z "${_VIRT_IS}" ] && echo "  VPS ${_VIRT_IS}"
     [ -z "${_VIRT_IS}" ] && echo "  VPS unknown / not a virtual machine"
-    echo "  DSK ${_DF_TEST}/100"
-    echo "  CPU ${_CPU_NR}"
-    echo "  RAM ${_RAM}"
     [ ! -z "${_SKY}" ] && echo "  SKY ${_SKY}"
     [ ! -z "${_NGX}" ] && echo "  NGX ${_NGX}"
     [ ! -z "${_PHP}" ] && echo "  PHP ${_PHP}"
@@ -1955,8 +1977,10 @@ display_info() {
     _XSU=$(uptime -p 2>&1)
     _XSL=$(uptime | awk -F'load average:' '{ print $2 }' | sed 's/^ //' 2>&1)
 
+    check_system_ram
+
     echo
-    echo "  _XSY System Kernel/Uptime/Load Report"
+    echo "  _XSY System Uptime/Load/Kernel/Disk/Memory Report"
     echo
     echo "  _XSU System Uptime: ${_XSU}"
     echo "  _XSL System Load: ${_XSL}"
@@ -1965,6 +1989,10 @@ display_info() {
     if [ "${_XSK}" != "${_XSN}" ]; then
       echo "  _XSN Next Kernel Version (after reboot): ${_XSN}"
     fi
+    echo "  _DSK ${_DF_TEST}/100"
+    echo "  _CPU ${_CPU_NR}"
+    echo "  _RAM Total: ${total_ram_gb} GB"
+    echo "  _RAM Usage: ${ram_usage_percent}%"
     echo
 
     echo "  _XSE Key Services Uptime Report"
