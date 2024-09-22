@@ -2015,7 +2015,7 @@ display_info() {
     echo "  _RAM Usage: ${ram_usage_percent}%"
     echo "  _DSK Usage for relevant partitions:"
     # Loop through all partitions and display their usage, excluding tmpfs, udev, and empty partitions
-    df -h | awk '$1 !~ /tmpfs|udev/ && $5 != "0%" {print "  _DSK " $1 ": " $5 " used (" $6 ")"}'
+    df -h | awk 'NR > 1 && $1 !~ /tmpfs|udev/ && $5 != "0%" {print "  _DSK " $1 ": " $5 " used (" $6 ")"}'
     echo
 
     echo "  _XSE Key Services Uptime Report"
