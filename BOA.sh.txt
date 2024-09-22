@@ -3227,7 +3227,7 @@ setup() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     apt_clean_update
-    apt-get install virt-what ${aptYesUnth} &> /dev/null
+    apt-get install virt-what ${aptYesUnth}
   fi
   _LSB_TEST=$(which lsb_release 2> /dev/null)
   if [ ! -x "${_LSB_TEST}" ]; then
@@ -3236,7 +3236,7 @@ setup() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     apt_clean_update
-    apt-get install lsb-release ${aptYesUnth} &> /dev/null
+    apt-get install lsb-release ${aptYesUnth}
   fi
   update_boa_tools
   echo
