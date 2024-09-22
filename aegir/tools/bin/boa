@@ -131,20 +131,22 @@ not_supported_virt() {
   echo "Please be aware that it may not work at all,"
   echo "or you can experience errors breaking BOA."
   echo
+  echo "WARNING! BOA IS NOT DESIGNED TO RUN DIRECTLY ON A BARE METAL."
+  echo "WARNING! IT IS VERY DANGEROUS AND THUS EXTREMELY BAD IDEA!"
+  echo "WARNING! You are free to experiment but don't expect *ANY* support."
+  echo
   echo "BOA is known to work well on:"
+  echo
+  echo " * Linux Containers (LXC)"
   echo " * Linux KVM guest"
-  echo " * Linux VServer guest"
+  echo " * Microsoft Hyper-V"
+  echo " * OpenVZ Containers"
   echo " * Parallels guest"
   echo " * VirtualBox guest"
   echo " * VMware ESXi guest (but excluding vCloud Air)"
+  echo " * Xen guest fully virtualized (HVM)"
   echo " * Xen guest"
-  echo
-  echo "BOA is not designed to run directly on a bare metal."
-  echo "We recommend to install Linux VServer if you plan to"
-  echo "use BOA on a dedicated machine -- server or laptop."
-  echo
-  echo "Note: There are plans to support Linux VServer installation"
-  echo "via BOA tools: https://github.com/omega8cc/boa/issues/980"
+  echo " * Xen paravirtualized guest domain"
   echo
   echo "Bye"
   echo
@@ -212,7 +214,6 @@ check_virt() {
       if [ -z "${_VIRT_TEST}" ] || [ "${_VIRT_TEST}" = "0" ]; then
         _VIRT_TEST="unknown / not a virtual machine"
       fi
-      echo "WARN: This system is not supported: ${_VIRT_TEST}"
     fi
   fi
 }
@@ -1763,6 +1764,34 @@ display_time() {
   fi
 }
 
+# Function to convert KB to GB (1 GB = 1024 * 1024 KB)
+convert_kb_to_gb() {
+  echo "scale=2; $1 / 1024 / 1024" | bc
+}
+
+# Function to calculate RAM usage percentage as an integer
+calculate_ram_usage_percent() {
+  total_ram_kb=$1
+  available_ram_kb=$2
+  used_ram_kb=$((total_ram_kb - available_ram_kb))
+
+  # Using integer division to get a whole number percentage
+  echo $(( (used_ram_kb * 100) / total_ram_kb ))
+}
+
+# Function to check and display system info
+check_system_ram() {
+  # Get the total and available RAM in KB
+  total_ram_kb=$(grep MemTotal /proc/meminfo | awk '{print $2}')
+  available_ram_kb=$(grep MemAvailable /proc/meminfo | awk '{print $2}')
+
+  # Convert total RAM to GB
+  total_ram_gb=$(convert_kb_to_gb ${total_ram_kb})
+
+  # Calculate RAM usage percentage
+  ram_usage_percent=$(calculate_ram_usage_percent ${total_ram_kb} ${available_ram_kb})
+}
+
 display_info() {
   if [ `whoami` = "root" ]; then
     _HOST_INFO=$(dmidecode -s system-manufacturer 2>&1)
@@ -1849,6 +1878,11 @@ display_info() {
           | awk '{ print $1}' 2>&1)
       fi
     fi
+    isLshell=$(which lshell 2>&1)
+    _LSH=$(${isLshell} --version 2>&1 \
+      | tr -d "\n" \
+      | cut -d"-" -f2 \
+      | awk '{ print $1}' 2>&1)
     if [ -e "/root/.install.modern.openssl.cnf" ] \
       && [ -x "/usr/local/ssl3/bin/openssl" ]; then
       _SSL_BINARY=/usr/local/ssl3/bin/openssl
@@ -1869,7 +1903,6 @@ display_info() {
       | cut -d"_" -f2 \
       | awk '{ print $1}' 2>&1)
     _SSH=$(ssh -V 2>&1)
-    _RAM=$(free -mt | grep Mem: | awk '{ print $2 }' 2>&1)
     [ "${mode}" = "clear" ] && clear
     echo
     thiSys="$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)/$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1) $(uname -m 2>&1)"
@@ -1916,9 +1949,29 @@ display_info() {
     [ ! -z "${_HOST_INFO}" ] && echo "  HOST ${_HOST_INFO}"
     [ ! -z "${_VIRT_IS}" ] && echo "  VPS ${_VIRT_IS}"
     [ -z "${_VIRT_IS}" ] && echo "  VPS unknown / not a virtual machine"
-    echo "  DSK ${_DF_TEST}/100"
-    echo "  CPU ${_CPU_NR}"
-    echo "  RAM ${_RAM}"
+
+    if [ -e "/root/.allow.any.virt.cnf" ]; then
+      echo
+      echo "  !!! WARNING !!! /root/.allow.any.virt.cnf detected..."
+      echo
+      echo "  !!! YOU ARE RUNNING EITHER ON BARE METAL"
+      echo "  !!! OR NOT SUPPORTED VIRTUALIZATION SYSTEM."
+      if [ -n "${_VIRT_IS}" ]; then
+         echo
+         echo "  !!! ${_VIRT_TEST}"
+      fi
+      echo
+      echo "  !!! Please be aware that it may not work at all,"
+      echo "  !!! or you can experience errors breaking BOA."
+      echo
+      echo "  !!! BOA IS NOT DESIGNED TO RUN DIRECTLY ON A BARE METAL."
+      echo "  !!! IT IS VERY DANGEROUS AND THUS EXTREMELY BAD IDEA!"
+      echo
+      echo "  !!! WARNING !!! You are obviously free to experiment..."
+      echo "  !!! WARNING !!! But don't expect *ANY* support."
+      echo
+    fi
+
     [ ! -z "${_SKY}" ] && echo "  SKY ${_SKY}"
     [ ! -z "${_NGX}" ] && echo "  NGX ${_NGX}"
     [ ! -z "${_PHP}" ] && echo "  PHP ${_PHP}"
@@ -1927,6 +1980,7 @@ display_info() {
     [ ! -z "${_PXY}" ] && echo "  PXY ${_PXY}"
     [ ! -z "${_SHD}" ] && echo "  SHD ${_SHD}"
     [ ! -z "${_SSH}" ] && echo "  SSH ${_SSH}"
+    [ ! -z "${_LSH}" ] && echo "  LSH ${_LSH}"
     [ ! -z "${_SSL}" ] && echo "  SSL ${_SSL}"
     [ ! -z "${_CRL}" ] && echo "  CRL ${_CRL}"
     if [ -e "/root/.use.curl.from.packages.cnf" ]; then
@@ -1966,7 +2020,36 @@ display_info() {
     [ "${mode}" != "report" ] && [ ! -z "${_UMY}" ] && echo "  _UMY ${_UMY}"
     [ "${mode}" != "report" ] && [ ! -z "${_XTR}" ] && echo "  _XTR ${_XTR}"
     [ "${mode}" != "report" ] && [ ! -z "${_AUT}" ] && echo "  _AUT ${_AUT}"
+
+    # Get the currently running kernel version
+    _XSK=$(uname -r)
+
+    # Get the kernel version that will be activated after reboot (latest installed kernel)
+    _XSN=$(ls -1 /boot/vmlinuz-* | sort -V | tail -n 1 | sed 's/\/boot\/vmlinuz-//')
+
+    _XSU=$(uptime -p 2>&1)
+    _XSL=$(uptime | awk -F'load average:' '{ print $2 }' | sed 's/^ //' 2>&1)
+
+    check_system_ram
+
     echo
+    echo "  _XSY System Uptime/Load/Kernel/CPU/Memory/Disk Report"
+    echo
+    echo "  _XSU System Uptime: ${_XSU}"
+    echo "  _XSL System Load: ${_XSL}"
+    echo "  _XSK Current Kernel Version: ${_XSK}"
+    # Only display the next kernel version if it's different from the current one
+    if [ "${_XSK}" != "${_XSN}" ]; then
+      echo "  _XSN Next Kernel Version (after reboot): ${_XSN}"
+    fi
+    echo "  _CPU ${_CPU_NR}"
+    echo "  _RAM Total: ${total_ram_gb} GB"
+    echo "  _RAM Usage: ${ram_usage_percent}%"
+    echo "  _DSK Usage for relevant partitions:"
+    # Loop through all partitions and display their usage, excluding tmpfs, udev, and empty partitions
+    df -h | awk 'NR > 1 && $1 !~ /tmpfs|udev/ && $5 != "0%" {print "  _DSK " $1 ": " $5 " used (" $6 ")"}'
+    echo
+
     echo "  _XSE Key Services Uptime Report"
     echo
     # Arrays to store results
