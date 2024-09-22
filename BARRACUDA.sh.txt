@@ -29,6 +29,8 @@
 ###
 ###----------------------------------------###
 
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+export SHELL=/bin/bash
 
 ###
 ### Software versions
@@ -152,8 +154,6 @@ _PURGE_ALL_THISHTIP=NO
 _SMALLCORE7_V=7.101.1
 _SPINNER=NO
 _THIS_DB_PORT=3306
-PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-SHELL=/bin/bash
 if [ -n "${STY+x}" ]; then
   _SPINNER=NO
 fi

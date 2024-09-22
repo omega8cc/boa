@@ -1,6 +1,7 @@
 #!/bin/bash
 
-PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+export SHELL=/bin/bash
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
 sqlmagic_fix() {
   if [ -f "$source" ]; then
