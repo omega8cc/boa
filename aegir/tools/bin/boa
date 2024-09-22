@@ -1741,18 +1741,14 @@ convert_kb_to_gb() {
   echo "scale=2; $1 / 1024 / 1024" | bc
 }
 
-# Function to calculate RAM usage percentage without decimal part
+# Function to calculate RAM usage percentage as an integer
 calculate_ram_usage_percent() {
   total_ram_kb=$1
   available_ram_kb=$2
   used_ram_kb=$((total_ram_kb - available_ram_kb))
 
-  if [ $total_ram_kb -gt 0 ]; then
-    # Using scale=0 to get an integer result for percentage
-    echo "scale=0; ($used_ram_kb / $total_ram_kb) * 100" | bc
-  else
-    echo "0"
-  fi
+  # Using integer division to get a whole number percentage
+  echo $(( (used_ram_kb * 100) / total_ram_kb ))
 }
 
 # Function to check and display system info
