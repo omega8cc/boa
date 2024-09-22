@@ -71,20 +71,22 @@ not_supported_virt() {
   echo "Please be aware that it may not work at all,"
   echo "or you can experience errors breaking BOA."
   echo
+  echo "WARNING! BOA IS NOT DESIGNED TO RUN DIRECTLY ON A BARE METAL."
+  echo "WARNING! IT IS VERY DANGEROUS AND THUS EXTREMELY BAD IDEA!"
+  echo "WARNING! You are free to experiment but don't expect *ANY* support."
+  echo
   echo "BOA is known to work well on:"
+  echo
+  echo " * Linux Containers (LXC)"
   echo " * Linux KVM guest"
-  echo " * Linux VServer guest"
+  echo " * Microsoft Hyper-V"
+  echo " * OpenVZ Containers"
   echo " * Parallels guest"
   echo " * VirtualBox guest"
   echo " * VMware ESXi guest (but excluding vCloud Air)"
+  echo " * Xen guest fully virtualized (HVM)"
   echo " * Xen guest"
-  echo
-  echo "BOA is not designed to run directly on a bare metal."
-  echo "We recommend to install Linux VServer if you plan to"
-  echo "use BOA on a dedicated machine -- server or laptop."
-  echo
-  echo "Note: There are plans to support Linux VServer installation"
-  echo "via BOA tools: https://github.com/omega8cc/boa/issues/980"
+  echo " * Xen paravirtualized guest domain"
   echo
   echo "Bye"
   echo
