@@ -1992,9 +1992,9 @@ display_info() {
     echo "  _CPU ${_CPU_NR}"
     echo "  _RAM Total: ${total_ram_gb} GB"
     echo "  _RAM Usage: ${ram_usage_percent}%"
-    echo "  _DSK Usage for all partitions:"
-    # Loop through all partitions and display their usage
-    df -h | awk 'NR>1 {print "  _DSK " $1 ": " $5 " used (" $6 ")"}'
+    echo "  _DSK Usage for relevant partitions:"
+    # Loop through all partitions and display their usage, excluding tmpfs, udev, and empty partitions
+    df -h | awk '$1 !~ /tmpfs|udev/ && $5 != "0%" {print "  _DSK " $1 ": " $5 " used (" $6 ")"}'
     echo
 
     echo "  _XSE Key Services Uptime Report"
