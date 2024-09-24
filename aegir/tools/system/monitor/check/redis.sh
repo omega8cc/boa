@@ -37,8 +37,6 @@ incident_email_report() {
 }
 
 fpm_reload() {
-  touch /run/fmp_wait.pid
-  sleep 3
   _NOW=$(date +%y%m%d-%H%M%S 2>&1)
   _NOW=${_NOW//[^0-9-]/}
   mkdir -p /var/backups/php-logs/${_NOW}/
@@ -50,9 +48,7 @@ fpm_reload() {
       service php${e}-fpm reload
     fi
   done
-  sleep 3
-  rm -f /run/fmp_wait.pid
-  exit 0
+  echo "$(date 2>&1) $1 incident PHP-FPM reloaded" >> ${pthOml}
 }
 
 redis_restart() {
@@ -65,10 +61,10 @@ redis_restart() {
   rm -f /var/lib/redis/*
   service redis-server start &> /dev/null
   wait
+  echo "$(date 2>&1) $1 incident redis-server restarted" >> ${pthOml}
   if [[ "${1}" =~ "OOM" ]] || [[ "${1}" =~ "SLOW" ]]; then
     fpm_reload
   fi
-  echo "$(date 2>&1) $1 incident redis-server restarted" >> ${pthOml}
   echo "$(date 2>&1) $1 incident response completed" >> ${pthOml}
   incident_email_report "$1"
   echo >> ${pthOml}
