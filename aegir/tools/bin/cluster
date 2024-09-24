@@ -329,7 +329,9 @@ check_root_direct() {
     echo "Bye"
     clean_pid_exit check_root_direct_a
   fi
-  [ ! -e "/root/.ignore.ifnames.cnf" ] && ifnames_grub_check_sync
+  if [ -e "/root/.auto.config.ifnames.grub.cnf" ] && [ ! -e "/root/.ignore.ifnames.cnf" ]; then
+    ifnames_grub_check_sync
+  fi
 }
 
 check_root_keys_pwd() {
