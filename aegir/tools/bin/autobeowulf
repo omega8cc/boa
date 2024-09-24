@@ -155,17 +155,17 @@ check_manufacturer_compatibility() {
   # Check for Amazon EC2 in the system manufacturer field
   if dmidecode -s system-manufacturer | grep -i 'Amazon EC2' &> /dev/null; then
     _VMFAMILY="AWS"
-    msg "Not supported environment detected: ${_HOST_INFO}" >> ${logAbf}
-    msg "Please check https://bit.ly/boa-caveats" >> ${logAbf}
-    msg "Bye!" >> ${logAbf}
+    msg "Not supported environment detected: ${_HOST_INFO}" >> "${logAbf}"
+    msg "Please check https://bit.ly/boa-caveats" >> "${logAbf}"
+    msg "Bye!" >> "${logAbf}"
     echo "Not supported environment detected: ${_HOST_INFO}"
     echo "Please check https://bit.ly/boa-caveats"
     echo "Bye!"
     exit 1
   elif [[ "${_HOST_INFO}" =~ "Unknown" ]] || [ -z "${_HOST_INFO}" ]; then
-    msg "Mysterious environment: ${_HOST_INFO}" >> ${logAbf}
-    msg "Please check https://bit.ly/boa-caveats" >> ${logAbf}
-    msg "Bye!" >> ${logAbf}
+    msg "Mysterious environment: ${_HOST_INFO}" >> "${logAbf}"
+    msg "Please check https://bit.ly/boa-caveats" >> "${logAbf}"
+    msg "Bye!" >> "${logAbf}"
     echo "Mysterious environment: ${_HOST_INFO}"
     echo "Please check https://bit.ly/boa-caveats"
     echo "Bye!"
@@ -191,7 +191,7 @@ check_mysql_compatibility() {
     _DB_V=UNSUPPORTED
   fi
   if [ "${_DB_V}" = "UNSUPPORTED" ]; then
-    msg "Not supported DB server detected ${_DB_SERVER_TEST}" >> ${logAbf}
+    msg "Not supported DB server detected ${_DB_SERVER_TEST}" >> "${logAbf}"
     exit 1
   fi
 }
@@ -201,14 +201,14 @@ check_mysql_compatibility
 ### Faster reboot
 ###
 faster_reboot() {
-  msg "Faster reboot prepare..." >> ${logAbf}
+  msg "Faster reboot prepare..." >> "${logAbf}"
   service cron stop &> /dev/null
   killall cron &> /dev/null
   kill -9 $(ps aux | grep '[s]econd.sh' | awk '{print $2}') &> /dev/null
   kill -9 $(ps aux | grep '[m]inute.sh' | awk '{print $2}') &> /dev/null
   kill -9 $(ps aux | grep '[r]unner.sh' | awk '{print $2}') &> /dev/null
-  msg "Cron has been stopped" >> ${logAbf}
-  msg "Now waiting 60 seconds for any running tasks to complete" >> ${logAbf}
+  msg "Cron has been stopped" >> "${logAbf}"
+  msg "Now waiting 60 seconds for any running tasks to complete" >> "${logAbf}"
   sleep 55
   if [ -e "/etc/init.d/clamav-daemon" ]; then
     update-rc.d -f clamav-daemon remove &> /dev/null
@@ -221,21 +221,21 @@ faster_reboot() {
   kill -9 $(ps aux | grep '[f]reshclam' | awk '{print $2}') &> /dev/null
   kill -9 $(ps aux | grep '[j]ava' | awk '{print $2}') &> /dev/null
   rm -f /run/clamav/*
-  msg "Java/Solr/Clamav have been stopped" >> ${logAbf}
+  msg "Java/Solr/Clamav have been stopped" >> "${logAbf}"
   service nginx stop &> /dev/null
   killall nginx &> /dev/null
   killall php &> /dev/null
   kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}') &> /dev/null
-  msg "Nginx, PHP-CLI and PHP-FPM have been stopped" >> ${logAbf}
+  msg "Nginx, PHP-CLI and PHP-FPM have been stopped" >> "${logAbf}"
   csf -df &> /dev/null
   csf -tf &> /dev/null
-  msg "Firewall has been purged" >> ${logAbf}
+  msg "Firewall has been purged" >> "${logAbf}"
   if [ -e "/root/.my.pass.txt" ]; then
     _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
     _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
     _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
     if [ ! -z "${_IS_MYSQLD_RUNNING}" ] && [ ! -z "${_SQL_PSWD}" ]; then
-      msg "Preparing MySQLD for quick shutdown..." >> ${logAbf}
+      msg "Preparing MySQLD for quick shutdown..." >> "${logAbf}"
       mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
       mysql -u root -e "SET GLOBAL innodb_change_buffering = 'none';" &> /dev/null
       mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null
@@ -246,15 +246,15 @@ faster_reboot() {
         mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_now = ON;" &> /dev/null
       fi
       mysql -u root -e "SET GLOBAL innodb_fast_shutdown = 1;" &> /dev/null
-      msg "Stopping MySQLD now..." >> ${logAbf}
+      msg "Stopping MySQLD now..." >> "${logAbf}"
       service mysql stop &> /dev/null
       wait
-      msg "MySQLD stopped" >> ${logAbf}
+      msg "MySQLD stopped" >> "${logAbf}"
     else
-      msg "MySQLD already stopped" >> ${logAbf}
+      msg "MySQLD already stopped" >> "${logAbf}"
     fi
   fi
-  msg "Faster reboot done" >> ${logAbf}
+  msg "Faster reboot done" >> "${logAbf}"
 }
 
 if [ ! -e "/root/.run-to-beowulf.cnf" ]; then
@@ -309,7 +309,7 @@ if_remove_cloud_utils() {
   _INITD_TEST=$(ls -la /etc/init.d/*cloud* 2>&1)
   if [[ ! "${_INITD_TEST}" =~ "No such file" ]] \
     || [ -e "/etc/cloud/cloud.cfg.d" ]; then
-    msg "Removing problematic cloud-utils detected on this system" >> ${logAbf}
+    msg "Removing problematic cloud-utils detected on this system" >> "${logAbf}"
     /usr/bin/apt-get update 2> /dev/null
     /usr/bin/apt-get remove cloud-utils cloud-init -y --purge --auto-remove -qq 2> /dev/null
     /usr/bin/apt-get remove cloud-image-utils cloud-guest-utils -y --purge --auto-remove -qq 2> /dev/null
@@ -371,14 +371,14 @@ if_fix_dhcp() {
 }
 
 if [ -e "/root/.run-to-beowulf.cnf" ]; then
-  echo " " >> ${logAbf}
+  echo " " >> "${logAbf}"
   if [ -e "/root/.run-auto-major-os-reboot-beowulf-one.cnf" ] \
     || [ -e "/root/.run-auto-major-os-reboot-beowulf-two.cnf" ]; then
-    msg "Waiting 30 seconds for the system start scripts to finish" >> ${logAbf}
+    msg "Waiting 30 seconds for the system start scripts to finish" >> "${logAbf}"
     sleep 30
     if_fix_dhcp
   else
-    msg "Automatic BOA System Major Upgrade Tool welcomes you aboard!" >> ${logAbf}
+    msg "Automatic BOA System Major Upgrade Tool welcomes you aboard!" >> "${logAbf}"
     sleep 3
     if_fix_dhcp
   fi
@@ -392,39 +392,39 @@ fi
 if [ -e "/root/.run-to-beowulf.cnf" ] \
   && [ ! -e "/root/.run-auto-major-os-reboot-beowulf-one.cnf" ] \
   && [ ! -e "/root/.run-auto-major-os-reboot-beowulf-two.cnf" ]; then
-  echo " " >> ${logAbf}
-  msg "Running barracuda php-idle disable to speed up upgrades" >> ${logAbf}
-  barracuda php-idle disable >> ${logAbf}
+  echo " " >> "${logAbf}"
+  msg "Running barracuda php-idle disable to speed up upgrades" >> "${logAbf}"
+  barracuda php-idle disable >> "${logAbf}"
   wait
-  msg "The barracuda php-idle disable completed" >> ${logAbf}
-  msg "Launching standard barracuda up-${tRee} system first" >> ${logAbf}
+  msg "The barracuda php-idle disable completed" >> "${logAbf}"
+  msg "Launching standard barracuda up-${tRee} system first" >> "${logAbf}"
   [ -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && rm -f /root/.force.rebuild.src.on.auto.now.cnf
-  /opt/local/bin/barracuda up-${tRee} system >> ${logAbf}
+  /opt/local/bin/barracuda up-${tRee} system >> "${logAbf}"
   wait
-  msg "The standard barracuda up-${tRee} system completed" >> ${logAbf}
+  msg "The standard barracuda up-${tRee} system completed" >> "${logAbf}"
   if [ -e "/root/.latest-barracuda-upgrade-finale.info" ]; then
     _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
     _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
     if [ "${_OS_CODE}" = "jessie" ]; then
       echo "_JESSIE_TO_BEOWULF=YES" >> ${barCnf}
-      msg "Launching major upgrade from ${_OS_DIST}/${_OS_CODE} to Devuan/beowulf" >> ${logAbf}
+      msg "Launching major upgrade from ${_OS_DIST}/${_OS_CODE} to Devuan/beowulf" >> "${logAbf}"
     elif [ "${_OS_CODE}" = "stretch" ]; then
       echo "_STRETCH_TO_BEOWULF=YES" >> ${barCnf}
-      msg "Launching major upgrade from ${_OS_DIST}/${_OS_CODE} to Devuan/beowulf" >> ${logAbf}
+      msg "Launching major upgrade from ${_OS_DIST}/${_OS_CODE} to Devuan/beowulf" >> "${logAbf}"
     elif [ "${_OS_CODE}" = "buster" ]; then
       echo "_BUSTER_TO_BEOWULF=YES" >> ${barCnf}
-      msg "Launching major upgrade from ${_OS_DIST}/${_OS_CODE} to Devuan/beowulf" >> ${logAbf}
+      msg "Launching major upgrade from ${_OS_DIST}/${_OS_CODE} to Devuan/beowulf" >> "${logAbf}"
     fi
-    msg "The first stage of major OS upgrade will start now" >> ${logAbf}
+    msg "The first stage of major OS upgrade will start now" >> "${logAbf}"
     [ -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && rm -f /root/.force.rebuild.src.on.auto.now.cnf
-    /opt/local/bin/barracuda up-${tRee} system >> ${logAbf}
+    /opt/local/bin/barracuda up-${tRee} system >> "${logAbf}"
     wait
     if [ -e "/root/.run_post_major_os_upgrade.info" ]; then
-      msg "The first stage of major OS upgrade completed" >> ${logAbf}
-      msg "The system will reboot now" >> ${logAbf}
+      msg "The first stage of major OS upgrade completed" >> "${logAbf}"
+      msg "The system will reboot now" >> "${logAbf}"
       rm -f /root/.latest-barracuda-upgrade-finale.info
       touch /root/.run-auto-major-os-reboot-beowulf-one.cnf
-      update-grub >> ${logAbf}
+      update-grub >> "${logAbf}"
       faster_reboot
       reboot
       exit 0
@@ -435,20 +435,20 @@ fi
 if [ -e "/root/.run-to-beowulf.cnf" ] \
   && [ -e "/root/.run-auto-major-os-reboot-beowulf-one.cnf" ] \
   && [ ! -e "/root/.run-auto-major-os-reboot-beowulf-two.cnf" ]; then
-  echo " " >> ${logAbf}
-  msg "Launching post-reboot barracuda up-${tRee} system" >> ${logAbf}
-  msg "to complete the first stage of major OS upgrade" >> ${logAbf}
+  echo " " >> "${logAbf}"
+  msg "Launching post-reboot barracuda up-${tRee} system" >> "${logAbf}"
+  msg "to complete the first stage of major OS upgrade" >> "${logAbf}"
   [ -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && rm -f /root/.force.rebuild.src.on.auto.now.cnf
-  /opt/local/bin/barracuda up-${tRee} system >> ${logAbf}
+  /opt/local/bin/barracuda up-${tRee} system >> "${logAbf}"
   wait
-  msg "The post-reboot barracuda up-${tRee} system completed" >> ${logAbf}
-  echo " " >> ${logAbf}
+  msg "The post-reboot barracuda up-${tRee} system completed" >> "${logAbf}"
+  echo " " >> "${logAbf}"
   if [ -e "/root/.latest-barracuda-upgrade-finale.info" ]; then
-    msg "The single stage major OS upgrade completed" >> ${logAbf}
-    msg "The system will reboot now for a final upgrade" >> ${logAbf}
+    msg "The single stage major OS upgrade completed" >> "${logAbf}"
+    msg "The system will reboot now for a final upgrade" >> "${logAbf}"
     rm -f /root/.latest-barracuda-upgrade-finale.info
     touch /root/.run-auto-major-os-reboot-beowulf-two.cnf
-    update-grub >> ${logAbf}
+    update-grub >> "${logAbf}"
     faster_reboot
     reboot
     exit 0
@@ -458,22 +458,22 @@ fi
 if [ -e "/root/.run-to-beowulf.cnf" ] \
   && [ -e "/root/.run-auto-major-os-reboot-beowulf-one.cnf" ] \
   && [ -e "/root/.run-auto-major-os-reboot-beowulf-two.cnf" ]; then
-  echo " " >> ${logAbf}
+  echo " " >> "${logAbf}"
   touch /root/.auto-upgraded-to-beowulf.cnf
-  msg "Launching the final post-second-reboot barracuda up-${tRee} system" >> ${logAbf}
+  msg "Launching the final post-second-reboot barracuda up-${tRee} system" >> "${logAbf}"
   [ ! -e "/root/.allow.apparmor.cnf" ] && touch /root/.allow.apparmor.cnf
   [ ! -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && touch /root/.force.rebuild.src.on.auto.now.cnf
-  /opt/local/bin/barracuda up-${tRee} system >> ${logAbf}
+  /opt/local/bin/barracuda up-${tRee} system >> "${logAbf}"
   wait
   [ -e "/root/.run-to-beowulf.cnf" ] && rm -f /root/.run-to-beowulf.cnf
   [ -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && rm -f /root/.force.rebuild.src.on.auto.now.cnf
   [ -e "/root/.run-auto-major-os-reboot-beowulf-one.cnf" ] rm -f /root/.run-auto-major-os-reboot-beowulf-one.cnf
   [ -e "/root/.run-auto-major-os-reboot-beowulf-two.cnf" ] rm -f /root/.run-auto-major-os-reboot-beowulf-two.cnf
   sed -i "s/^_AUTO_BEOWULF.*//g" /root/.barracuda.cnf
-  msg "The final post-reboot barracuda up-${tRee} system completed" >> ${logAbf}
-  msg "That's all folks!" >> ${logAbf}
-  msg "Bye!" >> ${logAbf}
-  echo " " >> ${logAbf}
+  msg "The final post-reboot barracuda up-${tRee} system completed" >> "${logAbf}"
+  msg "That's all folks!" >> "${logAbf}"
+  msg "Bye!" >> "${logAbf}"
+  echo " " >> "${logAbf}"
 fi
 
 exit 0
