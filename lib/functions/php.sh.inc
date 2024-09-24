@@ -1903,8 +1903,6 @@ newrelic_update() {
       _PHP_EXT_DIR_74="/opt/php74/${pthNrx}-${_PHP74_API}"
       _PHP_EXT_DIR_73="/opt/php73/${pthNrx}-${_PHP73_API}"
       _PHP_EXT_DIR_72="/opt/php72/${pthNrx}-${_PHP72_API}"
-      _PHP_EXT_DIR_71="/opt/php71/${pthNrx}-${_PHP71_API}"
-      _PHP_EXT_DIR_70="/opt/php70/${pthNrx}-${_PHP70_API}"
       msg "INFO: Installing latest version of New Relic Apps Monitor..."
       echo "## New Relic APT Repository" > ${nrList}
       if [ -e "/etc/apt/keyrings/newrelic.gpg" ]; then
@@ -1971,16 +1969,6 @@ newrelic_update() {
         ln -sfn ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP72_API}.so \
           ${_PHP_EXT_DIR_72}/newrelic.so
       fi
-      if [ -e "${_PHP_EXT_DIR_71}" ] && [ ! -e "${_PHP_EXT_DIR_71}/newrelic.so" ] \
-        && [ -e "${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP71_API}.so" ]; then
-        ln -sfn ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP71_API}.so \
-          ${_PHP_EXT_DIR_71}/newrelic.so
-      fi
-      if [ -e "${_PHP_EXT_DIR_70}" ] && [ ! -e "${_PHP_EXT_DIR_70}/newrelic.so" ] \
-        && [ -e "${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP70_API}.so" ]; then
-        ln -sfn ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP70_API}.so \
-          ${_PHP_EXT_DIR_70}/newrelic.so
-      fi
       if [ ! -e "/etc/newrelic/newrelic.cfg" ]; then
         echo "## New Relic Configuration" > \
           /etc/newrelic/newrelic.cfg
@@ -2033,8 +2021,6 @@ if_install_php_newrelic() {
     _PHP_EXT_DIR_74="/opt/php74/lib/php/extensions/no-debug-non-zts-${_PHP74_API}"
     _PHP_EXT_DIR_73="/opt/php73/lib/php/extensions/no-debug-non-zts-${_PHP73_API}"
     _PHP_EXT_DIR_72="/opt/php72/lib/php/extensions/no-debug-non-zts-${_PHP72_API}"
-    _PHP_EXT_DIR_71="/opt/php71/lib/php/extensions/no-debug-non-zts-${_PHP71_API}"
-    _PHP_EXT_DIR_70="/opt/php70/lib/php/extensions/no-debug-non-zts-${_PHP70_API}"
     if [ -e "${_PHP_EXT_DIR_83}" ] \
       && [ ! -e "${_PHP_EXT_DIR_83}/newrelic.so" ]; then
       _MULTI_NR=YES
@@ -2061,14 +2047,6 @@ if_install_php_newrelic() {
     fi
     if [ -e "${_PHP_EXT_DIR_72}" ] \
       && [ ! -e "${_PHP_EXT_DIR_72}/newrelic.so" ]; then
-      _MULTI_NR=YES
-    fi
-    if [ -e "${_PHP_EXT_DIR_71}" ] \
-      && [ ! -e "${_PHP_EXT_DIR_71}/newrelic.so" ]; then
-      _MULTI_NR=YES
-    fi
-    if [ -e "${_PHP_EXT_DIR_70}" ] \
-      && [ ! -e "${_PHP_EXT_DIR_70}/newrelic.so" ]; then
       _MULTI_NR=YES
     fi
     if [ "${_MULTI_NR}" = "YES" ] \
@@ -2168,16 +2146,6 @@ if_install_php_newrelic() {
           && [ -e "${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP72_API}.so" ]; then
           ln -sfn ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP72_API}.so \
             ${_PHP_EXT_DIR_72}/newrelic.so
-        fi
-        if [ -e "${_PHP_EXT_DIR_71}" ] && [ ! -e "${_PHP_EXT_DIR_71}/newrelic.so" ] \
-          && [ -e "${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP71_API}.so" ]; then
-          ln -sfn ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP71_API}.so \
-            ${_PHP_EXT_DIR_71}/newrelic.so
-        fi
-        if [ -e "${_PHP_EXT_DIR_70}" ] && [ ! -e "${_PHP_EXT_DIR_70}/newrelic.so" ] \
-          && [ -e "${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP70_API}.so" ]; then
-          ln -sfn ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP70_API}.so \
-            ${_PHP_EXT_DIR_70}/newrelic.so
         fi
         if [ ! -e "/etc/newrelic/newrelic.cfg" ]; then
           echo "## New Relic Configuration" > \

@@ -2541,6 +2541,25 @@ fix_newrelic() {
     ln -s ${_NR_SO} ${_PHP_EXT_DIR_74}/newrelic.so
     service php74-fpm reload
   fi
+
+  _PHP_EXT_DIR_71="/opt/php71/lib/php/extensions/no-debug-non-zts-20160303"
+  _NR_SO="/usr/lib/newrelic-php5/agent/x64/newrelic-20160303.so"
+  if [ -e "${_PHP_EXT_DIR_71}" ] \
+    && [ ! -e "${_NR_SO}" ] \
+    && [ -L "${_PHP_EXT_DIR_71}/newrelic.so" ]; then
+    rm -f ${_PHP_EXT_DIR_71}/newrelic.so
+    service php71-fpm reload
+  fi
+
+  _PHP_EXT_DIR_70="/opt/php70/lib/php/extensions/no-debug-non-zts-20151012"
+  _NR_SO="/usr/lib/newrelic-php5/agent/x64/newrelic-20151012.so"
+  if [ -e "${_PHP_EXT_DIR_70}" ] \
+    && [ ! -e "${_NR_SO}" ] \
+    && [ -L "${_PHP_EXT_DIR_70}/newrelic.so" ]; then
+    rm -f ${_PHP_EXT_DIR_70}/newrelic.so
+    service php70-fpm reload
+  fi
+
   _PHP_EXT_DIR_56="/opt/php56/lib/php/extensions/no-debug-non-zts-20131226"
   _NR_SO="/usr/lib/newrelic-php5/agent/x64/newrelic-20131226.so"
   if [ -e "${_PHP_EXT_DIR_56}" ] \
