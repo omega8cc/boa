@@ -2704,7 +2704,11 @@ php_upgrade_all() {
   if [ ! -z "${1}" ] && [ "${1}" != "force" ]; then
     _PHP_V="${1}"
   else
-    _PHP_V="56 70 71 72 73 74 80 81 82 83"
+    if [ "${_OS_CODE}" = "stretch" ] || [ "${_OS_CODE}" = "jessie" ]; then
+      _PHP_V="56 70 71 72 73 74 80 81"
+    else
+      _PHP_V="56 70 71 72 73 74 80 81 82 83"
+    fi
   fi
   for e in ${_PHP_V}; do
     if [ -x "/opt/php${e}/bin/php" ]; then
@@ -2859,27 +2863,29 @@ php_install_upgrade() {
     _T_PHP_PTH=""
     _FRESH_PHP81_BUILD=81
   fi
-  if [[ "${_PHP_MULTI_INSTALL}" =~ "8.2" ]] \
-    && [ ! -x "/opt/php82/bin/php" ]; then
-    _PHP_VERSION="${_PHP82_VRN}"
-    msg "INFO: PHP ${_PHP_VERSION} will be installed now"
-    install_php_multi "82"
-    switch_php_cli "82"
-    _PHP_VERSION=""
-    _T_PHP_VRN=""
-    _T_PHP_PTH=""
-    _FRESH_PHP82_BUILD=82
-  fi
-  if [[ "${_PHP_MULTI_INSTALL}" =~ "8.3" ]] \
-    && [ ! -x "/opt/php83/bin/php" ]; then
-    _PHP_VERSION="${_PHP83_VRN}"
-    msg "INFO: PHP ${_PHP_VERSION} will be installed now"
-    install_php_multi "83"
-    switch_php_cli "83"
-    _PHP_VERSION=""
-    _T_PHP_VRN=""
-    _T_PHP_PTH=""
-    _FRESH_PHP83_BUILD=83
+  if [ "${_OS_CODE}" != "stretch" ] && [ "${_OS_CODE}" != "jessie" ]; then
+    if [[ "${_PHP_MULTI_INSTALL}" =~ "8.2" ]] \
+      && [ ! -x "/opt/php82/bin/php" ]; then
+      _PHP_VERSION="${_PHP82_VRN}"
+      msg "INFO: PHP ${_PHP_VERSION} will be installed now"
+      install_php_multi "82"
+      switch_php_cli "82"
+      _PHP_VERSION=""
+      _T_PHP_VRN=""
+      _T_PHP_PTH=""
+      _FRESH_PHP82_BUILD=82
+    fi
+    if [[ "${_PHP_MULTI_INSTALL}" =~ "8.3" ]] \
+      && [ ! -x "/opt/php83/bin/php" ]; then
+      _PHP_VERSION="${_PHP83_VRN}"
+      msg "INFO: PHP ${_PHP_VERSION} will be installed now"
+      install_php_multi "83"
+      switch_php_cli "83"
+      _PHP_VERSION=""
+      _T_PHP_VRN=""
+      _T_PHP_PTH=""
+      _FRESH_PHP83_BUILD=83
+    fi
   fi
 }
 
@@ -2935,7 +2941,11 @@ php_check_if_rebuild() {
       msg "INFO: PHP rebuild required to add Sodium support..."
       _PHP_FORCE_REINSTALL=YES
       php_if_versions_cleanup_cnf
-      php_upgrade_all "74 80 81 82 83"
+      if [ "${_OS_CODE}" = "stretch" ]; then
+        php_upgrade_all "74 80 81"
+      else
+        php_upgrade_all "74 80 81 82 83"
+      fi
       _PHP_FORCE_REINSTALL=NO
     fi
   fi
