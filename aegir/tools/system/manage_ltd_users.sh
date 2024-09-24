@@ -1281,6 +1281,7 @@ satellite_web_user_update() {
           /data/all:      \
           /data/conf:     \
           /data/disk/all: \
+          /hdd:           \
           /mnt:           \
           /opt/php56:     \
           /opt/php70:     \
