@@ -132,17 +132,17 @@ check_manufacturer_compatibility() {
   # Check for Amazon EC2 in the system manufacturer field
   if dmidecode -s system-manufacturer | grep -i 'Amazon EC2' &> /dev/null; then
     _VMFAMILY="AWS"
-    msg "Not supported environment detected: ${_HOST_INFO}" >> ${logInt}
-    msg "Please check https://bit.ly/boa-caveats" >> ${logInt}
-    msg "Bye!" >> ${logInt}
+    msg "Not supported environment detected: ${_HOST_INFO}" >> "${logInt}"
+    msg "Please check https://bit.ly/boa-caveats" >> "${logInt}"
+    msg "Bye!" >> "${logInt}"
     echo "Not supported environment detected: ${_HOST_INFO}"
     echo "Please check https://bit.ly/boa-caveats"
     echo "Bye!"
     exit 1
   elif [[ "${_HOST_INFO}" =~ "Unknown" ]] || [ -z "${_HOST_INFO}" ]; then
-    msg "Mysterious environment: ${_HOST_INFO}" >> ${logInt}
-    msg "Please check https://bit.ly/boa-caveats" >> ${logInt}
-    msg "Bye!" >> ${logInt}
+    msg "Mysterious environment: ${_HOST_INFO}" >> "${logInt}"
+    msg "Please check https://bit.ly/boa-caveats" >> "${logInt}"
+    msg "Bye!" >> "${logInt}"
     echo "Mysterious environment: ${_HOST_INFO}"
     echo "Please check https://bit.ly/boa-caveats"
     echo "Bye!"
@@ -288,7 +288,7 @@ if_launch_boa_install() {
     fi
     if [[ "${_BOA_COMMAND}" =~ "boa in-lts" ]] \
       || [[ "${_BOA_COMMAND}" =~ "boa in-dev" ]]; then
-      msg "Time for ${_BOA_INSTALL_COMMAND}" >> ${logInt}
+      msg "Time for ${_BOA_INSTALL_COMMAND}" >> "${logInt}"
       eval "${_BOA_INSTALL_COMMAND}"
       wait
       mv -f ${_BOA_LOGFILE} /var/backups/
@@ -331,8 +331,8 @@ install_apparmor_utils() {
     || [ -z "${isAppArmorComplain}" ] \
     || [ -z "${isAppArmorStatus}" ] \
     || [ "${isAppArmorGrub}" = "NO" ]; then
-    msg "Installing AppArmor Tools early..." >> ${logInt}
-    echo " " >> ${logInt}
+    msg "Installing AppArmor Tools early..." >> "${logInt}"
+    echo " " >> "${logInt}"
     /usr/bin/apt-get install auditd \
       apparmor \
       apparmor-utils \
@@ -477,8 +477,8 @@ init_pre() {
       sed -i "s/.*killer.*//gi" /etc/crontab &> /dev/null
       echo "*/1 *   * * *   root    bash /opt/local/bin/killer" >> /etc/crontab
     fi
-    msg "Time for reboot and next upgrade cycle..." >> ${logInt}
-    echo " " >> ${logInt}
+    msg "Time for reboot and next upgrade cycle..." >> "${logInt}"
+    echo " " >> "${logInt}"
     rm -f /run/autoinit.pid
     reboot
     exit 0
@@ -490,7 +490,7 @@ init_pre() {
       ${_INITINS} lsb-release >> ${logSlt}
       _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
       _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
-      msg "We need to install some tools early..." >> ${logInt}
+      msg "We need to install some tools early..." >> "${logInt}"
       /usr/bin/apt-get update >> ${logSlt}
       if [ "${_VMFAMILY}" != "AWS" ]; then
         _INITD_TEST=$(ls -la /etc/init.d/*cloud* 2>&1)
@@ -517,8 +517,8 @@ init_pre() {
       fi
       install_apparmor_utils
       touch ${initFile}
-      msg "Time for reboot and next upgrade cycle..." >> ${logInt}
-      echo " " >> ${logInt}
+      msg "Time for reboot and next upgrade cycle..." >> "${logInt}"
+      echo " " >> "${logInt}"
       rm -f /run/autoinit.pid
       reboot
       exit 0
@@ -543,9 +543,9 @@ init_info() {
 init_offsystemd() {
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
-  msg "Running init_offsystemd procedure..." >> ${logInt}
+  msg "Running init_offsystemd procedure..." >> "${logInt}"
   touch /run/autoinit.pid
-  msg "Launching a quick dist-upgrade..." >> ${logInt}
+  msg "Launching a quick dist-upgrade..." >> "${logInt}"
   if [ ! -e "/etc/apt/preferences.d/offsystemd" ]; then
     rm -f /etc/apt/preferences.d/systemd
     echo -e 'Package: systemd\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/offsystemd
@@ -562,17 +562,17 @@ init_offsystemd() {
   [ -e "/root/.top-daedalus.cnf" ] && /usr/bin/apt-get install base-files=12.4devuan3 -y --allow-downgrades >> ${logSlt}
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
-  msg "Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> ${logInt}
+  msg "Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> "${logInt}"
   if [ "${_OS_CODE}" = "daedalus" ]; then
-    echo " " >> ${logInt}
-    msg "Time for reboot and then you can run boa install" >> ${logInt}
+    echo " " >> "${logInt}"
+    msg "Time for reboot and then you can run boa install" >> "${logInt}"
     rm -f /root/.init-to-devuan-ctrl.cnf
     sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
     if_launch_boa_install
   else
-    msg "Time for reboot and next upgrade cycle..." >> ${logInt}
+    msg "Time for reboot and next upgrade cycle..." >> "${logInt}"
   fi
-  echo " " >> ${logInt}
+  echo " " >> "${logInt}"
   touch /root/.run-offsystemd-devuan-init.cnf
   rm -f /run/autoinit.pid
   reboot
@@ -582,10 +582,10 @@ init_offsystemd() {
 init_cycle() {
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
-  msg "Running init_cycle procedure..." >> ${logInt}
+  msg "Running init_cycle procedure..." >> "${logInt}"
   touch /run/autoinit.pid
-  msg "Your current system is ${_OS_DIST}/${_OS_CODE}" >> ${logInt}
-  echo " " >> ${logInt}
+  msg "Your current system is ${_OS_DIST}/${_OS_CODE}" >> "${logInt}"
+  echo " " >> "${logInt}"
   _NEW_SYS=Devuan
   _OLD_SYS=Devuan
   if [ "${_OS_CODE}" = "bookworm" ]; then
@@ -607,9 +607,9 @@ init_cycle() {
     _NEW_OS_CODE=
     _NEW_SYS=
   else
-    msg "This procedure does not support ${_OS_DIST}/${_OS_CODE}" >> ${logInt}
-    msg "Bye!" >> ${logInt}
-    echo " " >> ${logInt}
+    msg "This procedure does not support ${_OS_DIST}/${_OS_CODE}" >> "${logInt}"
+    msg "Bye!" >> "${logInt}"
+    echo " " >> "${logInt}"
     exit 1
   fi
   if [ "${_OLD_SYS}" = "Devuan" ]; then
@@ -617,7 +617,7 @@ init_cycle() {
     /usr/bin/apt-get upgrade ${nrmUpArg} >> ${logSlt}
   fi
   if [ ! -z "${_NEW_OS_CODE}" ] && [ ! -z "${_NEW_SYS}" ]; then
-    msg "Launching a quick upgrade to ${_NEW_SYS}/${_NEW_OS_CODE}" >> ${logInt}
+    msg "Launching a quick upgrade to ${_NEW_SYS}/${_NEW_OS_CODE}" >> "${logInt}"
     aptLiSys="/etc/apt/sources.list"
     _TGT_MRR="deb.devuan.org/merged"
     echo "## DEVUAN MAIN REPOSITORIES" > ${aptLiSys}
@@ -657,24 +657,24 @@ init_cycle() {
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   if [ "${_OLD_SYS}" = "Debian" ]; then
-    msg "Time for reboot and next upgrade cycle..." >> ${logInt}
-    echo " " >> ${logInt}
+    msg "Time for reboot and next upgrade cycle..." >> "${logInt}"
+    echo " " >> "${logInt}"
     touch /root/.run-cycle-devuan-init.cnf
     rm -f /run/autoinit.pid
     reboot
     exit 0
   else
     if [ "${_OS_CODE}" = "daedalus" ]; then
-      msg "Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> ${logInt}
-      msg "Time for the last reboot and then you can run boa install" >> ${logInt}
+      msg "Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> "${logInt}"
+      msg "Time for the last reboot and then you can run boa install" >> "${logInt}"
       rm -f /root/.init-to-devuan-ctrl.cnf
       sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
       if_launch_boa_install
     else
-      msg "Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> ${logInt}
-      msg "Time for reboot and next upgrade cycle..." >> ${logInt}
+      msg "Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> "${logInt}"
+      msg "Time for reboot and next upgrade cycle..." >> "${logInt}"
     fi
-    echo " " >> ${logInt}
+    echo " " >> "${logInt}"
     touch /root/.run-cycle-devuan-init.cnf
     touch /root/.run-cycle-${_OS_CODE}-init.cnf
     rm -f /run/autoinit.pid
@@ -709,7 +709,7 @@ pre() {
   touch /run/autoinit.pid
   if [ ! -e "/root/.autoinit.log" ]; then
     echo "Launching BOA System INIT on ${_OS_DIST}/${_OS_CODE}..."
-    msg "Launching BOA System INIT on ${_OS_DIST}/${_OS_CODE}..." >> ${logInt}
+    msg "Launching BOA System INIT on ${_OS_DIST}/${_OS_CODE}..." >> "${logInt}"
   fi
   sleep 15
   init
