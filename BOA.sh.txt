@@ -41,13 +41,9 @@
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-HOME=/root
-SHELL=/bin/bash
-PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-
-export PATH=${PATH}
-export SHELL=${SHELL}
-export HOME=${HOME}
+export HOME=/root
+export SHELL=/bin/bash
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
 tRee=pro
 export tRee="${tRee}"
@@ -1420,20 +1416,36 @@ update_agents() {
           else
             sed -i "s/args.*q=/args ~* \"foobaroff=/g" ${ngxCnf}
           fi
+          for version in 81 82 83 74; do
+            if [ -x "/opt/php${version}/bin/php" ]; then
+              if [ "${version}" = "74" ]; then
+                useCli="7.4"
+                useFpm="7.4"
+              else
+                useCli="8.${version:1}"
+                useFpm="8.${version:1}"
+              fi
+              break
+            fi
+          done
           if [ ! -e "${dscUsr}/static/control/fpm.info" ] \
             && [ -e "/var/aegir/drush" ]; then
-            echo 8.1 > ${dscUsr}/static/control/fpm.info
-            chown ${tUsr}.ftp:${usrGroup} ${dscUsr}/static/control/fpm.info
-            chmod 0644 ${dscUsr}/static/control/fpm.info
+            if [ -n "${useFpm}" ]; then
+              echo ${useFpm} > ${dscUsr}/static/control/fpm.info
+              chown ${tUsr}.ftp:${usrGroup} ${dscUsr}/static/control/fpm.info
+              chmod 0644 ${dscUsr}/static/control/fpm.info
+            fi
           fi
           if [ ! -e "${dscUsr}/static/control/cli.info" ] \
             && [ -e "/var/aegir/drush" ]; then
             if [ -e "${dscUsr}/static/control/fpm.info" ]; then
               cp -af ${dscUsr}/static/control/fpm.info ${dscUsr}/static/control/cli.info
             else
-              echo 8.1 > ${dscUsr}/static/control/cli.info
-              chown ${tUsr}.ftp:${usrGroup} ${dscUsr}/static/control/cli.info
-              chmod 0644 ${dscUsr}/static/control/cli.info
+              if [ -n "${useCli}" ]; then
+                echo ${useCli} > ${dscUsr}/static/control/cli.info
+                chown ${tUsr}.ftp:${usrGroup} ${dscUsr}/static/control/cli.info
+                chmod 0644 ${dscUsr}/static/control/cli.info
+              fi
             fi
           fi
           if [ ! -e "${dscUsr}/static/control/.ctrl.${tRee}.${_X_SE}.pid" ] \
@@ -3211,7 +3223,7 @@ setup() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     apt_clean_update
-    apt-get install virt-what ${aptYesUnth} &> /dev/null
+    apt-get install virt-what ${aptYesUnth}
   fi
   _LSB_TEST=$(which lsb_release 2> /dev/null)
   if [ ! -x "${_LSB_TEST}" ]; then
@@ -3220,7 +3232,7 @@ setup() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     apt_clean_update
-    apt-get install lsb-release ${aptYesUnth} &> /dev/null
+    apt-get install lsb-release ${aptYesUnth}
   fi
   update_boa_tools
   echo

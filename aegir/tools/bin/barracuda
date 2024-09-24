@@ -1,12 +1,8 @@
 #!/bin/bash
 
-HOME=/root
-SHELL=/bin/bash
-PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-
-export PATH=${PATH}
-export SHELL=${SHELL}
-export HOME=${HOME}
+export HOME=/root
+export SHELL=/bin/bash
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
 _TODAY=$(date +%y%m%d 2>&1)
 export _TODAY=${_TODAY//[^0-9]/}
@@ -650,7 +646,7 @@ up_action() {
         else
           phpM="7.4 8.1 8.2 8.3"
         fi
-        phpS="8.1"
+        phpS="8.3"
 
         ### Debugging
         if [ "$debug" = "debug" ]; then
@@ -1679,8 +1675,8 @@ if_display_help() {
 
     {options}
       newrelickey <-- activate New Relic integration with valid license key
-      php-8.1 <------ enable single-PHP mode (8.1 or 8.2 or 8.3 or 7.4)
-      php-min <------ install PHP 8.1, 8.2, 8.3, 7.4, use 8.1 by default (php-all)
+      php-8.3 <------ enable single-PHP mode (8.1 or 8.2 or 8.3 or 7.4)
+      php-min <------ install PHP 8.1, 8.2, 8.3, 7.4, use 8.3 by default (php-all)
       php-max <------ install PHP 8.1, 8.2, 8.3, 8.0, 7.4, 7.3, 7.2, 7.1, 7.0, 5.6
       nodns <-------- disable DNS/SMTP checks on the fly
       percona-8.0 <-- specify Percona version to use (5.7, 8.0, 8.3, 8.4)

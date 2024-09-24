@@ -1,12 +1,8 @@
 #!/bin/bash
 
-HOME=/root
-SHELL=/bin/bash
-PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-
-export PATH=${PATH}
-export SHELL=${SHELL}
-export HOME=${HOME}
+export HOME=/root
+export SHELL=/bin/bash
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
 pthVhstd="/var/aegir/config/server_master/nginx/vhost.d"
 

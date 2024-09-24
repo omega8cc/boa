@@ -423,8 +423,8 @@ master_download_for_local_build() {
       msg "INFO: Downloading hostmaster modules..."
     fi
     ### Drupal Core
-    get_dev_ext "drupal-${_SMALLCORE7_V}.tar.gz"
-    mv -f ${mL}/drupal-${_SMALLCORE7_V} ${mL}/drupal
+    get_core_ext "${_DRUPAL7}.tar.gz"
+    mv -f ${mL}/${_DRUPAL7} ${mL}/drupal
     ### Aegir Core
       ${gCb} 5.x-${tRee} ${gitHub}/hostmaster.git    &> /dev/null
       ${gCb} 5.x-${tRee} ${gitHub}/hosting.git       &> /dev/null
@@ -653,7 +653,7 @@ php_cli_cron_update() {
     #_DRUSH_HOSTING_TASKS_CMD="/usr/bin/drush @hostmaster hosting-tasks --force;"
     _DRUSH_HOSTING_DISPATCH_CMD="/usr/bin/env php /var/aegir/drush/drush.php @hostmaster hosting-dispatch"
     echo -e \
-    "\nSHELL=/bin/sh\nPATH=/opt/php74/bin:/usr/bin\n\n*/1 * * * * \
+    "\nSHELL=/bin/sh\nPATH=/opt/php83/bin:/usr/bin\n\n*/1 * * * * \
     ${_DRUSH_HOSTING_DISPATCH_CMD}" \
     | fmt -su -w 2500 \
     | tee -a /var/spool/cron/crontabs/aegir >/dev/null 2>&1

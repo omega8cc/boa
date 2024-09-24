@@ -141,7 +141,7 @@ You can install or modify PHP versions active on your system during `barracuda` 
 
 `barracuda up-lts php-max` -- installs all supported versions if not installed before
 
-`barracuda up-lts php-min` -- installs PHP 8.1, 8.2, 8.3, 7.4, and uses 8.1 by default
+`barracuda up-lts php-min` -- installs PHP 8.3, 8.2, 8.1, 7.4, and uses 8.3 by default
 
 If you wish to define your own set of installed PHP versions, you can do so by modifying variables in the `/root/.barracuda.cnf` file before running the upgrade, where you can find `_PHP_MULTI_INSTALL`, `_PHP_CLI_VERSION`, and `_PHP_FPM_VERSION` -- note that the `_PHP_SINGLE_INSTALL` variable must be set empty to not override other related variables.
 

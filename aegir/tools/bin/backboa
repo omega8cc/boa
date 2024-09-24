@@ -12,13 +12,9 @@
 ### http://www.nongnu.org/duplicity/index.html
 ###
 
-HOME=/root
-SHELL=/bin/bash
-PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-
-export PATH=${PATH}
-export SHELL=${SHELL}
-export HOME=${HOME}
+export HOME=/root
+export SHELL=/bin/bash
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
 check_root() {
   if [ `whoami` = "root" ]; then

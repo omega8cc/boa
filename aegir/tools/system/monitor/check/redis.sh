@@ -1,12 +1,8 @@
 #!/bin/bash
 
-HOME=/root
-SHELL=/bin/bash
-PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-
-export PATH=${PATH}
-export SHELL=${SHELL}
-export HOME=${HOME}
+export HOME=/root
+export SHELL=/bin/bash
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
 pthOml="/var/xdrago/log/redis.incident.log"
 
@@ -41,8 +37,6 @@ incident_email_report() {
 }
 
 fpm_reload() {
-  touch /run/fmp_wait.pid
-  sleep 3
   _NOW=$(date +%y%m%d-%H%M%S 2>&1)
   _NOW=${_NOW//[^0-9-]/}
   mkdir -p /var/backups/php-logs/${_NOW}/
@@ -54,9 +48,7 @@ fpm_reload() {
       service php${e}-fpm reload
     fi
   done
-  sleep 3
-  rm -f /run/fmp_wait.pid
-  exit 0
+  echo "$(date 2>&1) $1 incident PHP-FPM reloaded" >> ${pthOml}
 }
 
 redis_restart() {
@@ -69,10 +61,10 @@ redis_restart() {
   rm -f /var/lib/redis/*
   service redis-server start &> /dev/null
   wait
+  echo "$(date 2>&1) $1 incident redis-server restarted" >> ${pthOml}
   if [[ "${1}" =~ "OOM" ]] || [[ "${1}" =~ "SLOW" ]]; then
     fpm_reload
   fi
-  echo "$(date 2>&1) $1 incident redis-server restarted" >> ${pthOml}
   echo "$(date 2>&1) $1 incident response completed" >> ${pthOml}
   incident_email_report "$1"
   echo >> ${pthOml}

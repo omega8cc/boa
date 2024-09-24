@@ -1766,7 +1766,7 @@ php_if_versions_cleanup_cnf() {
 
       if [ -z "${_PHP_MULTI_INSTALL}" ]; then
         ### Use default mini-legacy list if empty
-        _PHP_MULTI_INSTALL="8.1 7.4 5.6"
+        _PHP_MULTI_INSTALL="8.3 7.4 5.6"
       else
         ### Sort and remove duplicates from _PHP_MULTI_INSTALL
         php_multi_uniq
@@ -2022,7 +2022,7 @@ barracuda_cnf() {
         fCli=5.6
       fi
     else
-      fCli=8.1
+      fCli=8.3
     fi
     if [ -z "${_PHP_SINGLE_INSTALL}" ]; then
       sed -i "s/^_PHP_CLI_VERSION=5.6/_PHP_CLI_VERSION=${fCli}/g"    ${barCnf}
@@ -2355,7 +2355,7 @@ barracuda_cnf() {
         fCli=5.6
       fi
     else
-      fCli=8.1
+      fCli=8.3
     fi
     if [ -z "${_PHP_SINGLE_INSTALL}" ]; then
       sed -i "s/^_PHP_CLI_VERSION=5.6/_PHP_CLI_VERSION=${fCli}/g"    ${barCnf}

@@ -136,13 +136,17 @@ _TUNE_PHP_CLI_TIMEOUT=9999
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-tRee=pro
+export HOME=/root
+export SHELL=/bin/bash
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+
+tRee=dev
 export tRee="${tRee}"
 
 _AEGIR_VERSION="${tRee}"
 _BRANCH_BOA="5.x-${tRee}"
 _X_VERSION="BOA-5.4.0-${tRee}"
-_X_SE="540proT02"
+_X_SE="540devT02"
 _MYSQLTUNER_VRN=1.9.4
 
 _NOW=$(date +%y%m%d-%H%M%S 2>&1)
@@ -150,12 +154,6 @@ _NOW=${_NOW//[^0-9-]/}
 _RAM=$(free -mt | grep Mem: | awk '{ print $2 }' 2>&1)
 _THISHOST=$(uname -n 2>&1)
 _SPINNER=NO
-HOME=/root
-SHELL=/bin/bash
-PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-export PATH=${PATH}
-export SHELL=${SHELL}
-export HOME=${HOME}
 if [ -n "${STY+x}" ]; then
   _SPINNER=NO
 fi
