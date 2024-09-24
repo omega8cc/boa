@@ -98,7 +98,7 @@ check_root() {
   _DF_TEST=$(df -kTh / -l \
     | grep '/' \
     | sed 's/\%//g' \
-    | awk '{print $6}' >> ${logSlt})
+    | awk '{print $6}' >> "${logSlt}")
   _DF_TEST=${_DF_TEST//[^0-9]/}
   if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt "90" ]; then
     echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
@@ -270,9 +270,9 @@ cron_check_install_early() {
 cron_check_install_early
 
 if [ -e "/run/autoinit.pid" ]; then
-  echo " " >> ${logSlt}
-  msg "The /run/autoinit.pid is blocking this run..." >> ${logSlt}
-  echo " " >> ${logSlt}
+  echo " " >> "${logSlt}"
+  msg "The /run/autoinit.pid is blocking this run..." >> "${logSlt}"
+  echo " " >> "${logSlt}"
   exit 1
 fi
 
@@ -298,18 +298,18 @@ if_launch_boa_install() {
 
 disable_apparmor_utils() {
   if [ -e "/etc/apparmor.d" ] && [ -e "/var/cache/apparmor" ]; then
-    rm -rf /var/cache/apparmor/* >> ${logSlt}
-    apparmor_parser -r /etc/apparmor.d/* >> ${logSlt}
-    aa-complain /etc/apparmor.d/* >> ${logSlt}
+    rm -rf /var/cache/apparmor/* >> "${logSlt}"
+    apparmor_parser -r /etc/apparmor.d/* >> "${logSlt}"
+    aa-complain /etc/apparmor.d/* >> "${logSlt}"
   fi
   if [ -x "/etc/init.d/apparmor" ]; then
-    service apparmor stop >> ${logSlt}
-    update-rc.d -f apparmor remove >> ${logSlt}
-    service auditd stop >> ${logSlt}
-    update-rc.d -f auditd remove >> ${logSlt}
+    service apparmor stop >> "${logSlt}"
+    update-rc.d -f apparmor remove >> "${logSlt}"
+    service auditd stop >> "${logSlt}"
+    update-rc.d -f auditd remove >> "${logSlt}"
   fi
   if [ -x "/usr/sbin/aa-teardown" ]; then
-    aa-teardown >> ${logSlt}
+    aa-teardown >> "${logSlt}"
   fi
   [ ! -e "/root/.disable.apparmor.cnf" ] && touch /root/.disable.apparmor.cnf
 }
@@ -337,11 +337,11 @@ install_apparmor_utils() {
       apparmor \
       apparmor-utils \
       apparmor-notify \
-      apparmor-profiles -y -qq >> ${logSlt}
+      apparmor-profiles -y -qq >> "${logSlt}"
     mkdir -p /etc/default/grub.d
     echo 'GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT apparmor=1 security=apparmor"' \
       | tee ${isAppArmorGrubFile} &> /dev/null
-    update-grub >> ${logSlt}
+    update-grub >> "${logSlt}"
   fi
   isAppArmOn=N
   if [ -e "/sys/module/apparmor/parameters/enabled" ]; then
@@ -470,7 +470,7 @@ init_pre() {
   if [[ -n "${_ADD_GRUB_CMD}" ]]; then
     echo "Running init_pre procedure A..."
     touch /run/autoinit.pid
-    update-grub >> ${logSlt}
+    update-grub >> "${logSlt}"
     sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
     echo "*/1 *   * * *   root    bash /opt/local/bin/autoinit" >> /etc/crontab
     if [ -x "/opt/local/bin/killer" ]; then
@@ -486,29 +486,29 @@ init_pre() {
     if [ ! -x "/usr/bin/aptitude" ] || [ ! -x "/usr/bin/cc" ]; then
       echo "Running init_pre procedure B..."
       touch /run/autoinit.pid
-      /usr/bin/apt-get update >> ${logSlt}
-      ${_INITINS} lsb-release >> ${logSlt}
+      /usr/bin/apt-get update >> "${logSlt}"
+      ${_INITINS} lsb-release >> "${logSlt}"
       _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
       _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
       msg "We need to install some tools early..." >> "${logInt}"
-      /usr/bin/apt-get update >> ${logSlt}
+      /usr/bin/apt-get update >> "${logSlt}"
       if [ "${_VMFAMILY}" != "AWS" ]; then
         _INITD_TEST=$(ls -la /etc/init.d/*cloud* 2>&1)
         if [[ ! "${_INITD_TEST}" =~ "No such file" ]] \
           || [ -e "/etc/cloud/cloud.cfg.d" ]; then
-          /usr/bin/apt-get remove cloud-utils cloud-init -y --purge --auto-remove -qq >> ${logSlt}
-          /usr/bin/apt-get remove cloud-image-utils cloud-guest-utils -y --purge --auto-remove -qq >> ${logSlt}
-          /usr/bin/apt-get autoremove --purge -y >> ${logSlt}
-          /usr/bin/apt-get autoclean -y >> ${logSlt}
+          /usr/bin/apt-get remove cloud-utils cloud-init -y --purge --auto-remove -qq >> "${logSlt}"
+          /usr/bin/apt-get remove cloud-image-utils cloud-guest-utils -y --purge --auto-remove -qq >> "${logSlt}"
+          /usr/bin/apt-get autoremove --purge -y >> "${logSlt}"
+          /usr/bin/apt-get autoclean -y >> "${logSlt}"
           if [ -e "/etc/cloud/cloud.cfg.d" ]; then
             mv -f /etc/cloud /var/backups/
           fi
         fi
       fi
-      ${_INITINS} cron >> ${logSlt}
-      ${_INITINS} locales-all aptitude >> ${logSlt}
-      ${_INITINS} build-essential curl git >> ${logSlt}
-      ${_INITINS} libgd-dev libmagickwand-dev >> ${logSlt}
+      ${_INITINS} cron >> "${logSlt}"
+      ${_INITINS} locales-all aptitude >> "${logSlt}"
+      ${_INITINS} build-essential curl git >> "${logSlt}"
+      ${_INITINS} libgd-dev libmagickwand-dev >> "${logSlt}"
       sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
       echo "*/1 *   * * *   root    bash /opt/local/bin/autoinit" >> /etc/crontab
       if [ -x "/opt/local/bin/killer" ]; then
@@ -551,15 +551,15 @@ init_offsystemd() {
     echo -e 'Package: systemd\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/offsystemd
     echo -e '\n\nPackage: *systemd*\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/offsystemd
   fi
-  /usr/bin/apt-get update -qq >> ${logSlt}
-  /usr/bin/apt-get dist-upgrade ${dstUpArg} >> ${logSlt}
+  /usr/bin/apt-get update -qq >> "${logSlt}"
+  /usr/bin/apt-get dist-upgrade ${dstUpArg} >> "${logSlt}"
   [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
-  /usr/bin/apt-get remove systemd -y --purge --auto-remove --allow-remove-essential -qq >> ${logSlt}
-  /usr/bin/apt-get remove libnss-systemd -y --purge --auto-remove --allow-remove-essential -qq >> ${logSlt}
-  /usr/bin/apt-get remove systemd-sysv -y --purge --auto-remove --allow-remove-essential -qq >> ${logSlt}
-  /usr/bin/apt-get autoremove --purge -y -qq >> ${logSlt}
-  /usr/bin/apt-get autoclean -y -qq >> ${logSlt}
-  [ -e "/root/.top-daedalus.cnf" ] && /usr/bin/apt-get install base-files=12.4devuan3 -y --allow-downgrades >> ${logSlt}
+  /usr/bin/apt-get remove systemd -y --purge --auto-remove --allow-remove-essential -qq >> "${logSlt}"
+  /usr/bin/apt-get remove libnss-systemd -y --purge --auto-remove --allow-remove-essential -qq >> "${logSlt}"
+  /usr/bin/apt-get remove systemd-sysv -y --purge --auto-remove --allow-remove-essential -qq >> "${logSlt}"
+  /usr/bin/apt-get autoremove --purge -y -qq >> "${logSlt}"
+  /usr/bin/apt-get autoclean -y -qq >> "${logSlt}"
+  [ -e "/root/.top-daedalus.cnf" ] && /usr/bin/apt-get install base-files=12.4devuan3 -y --allow-downgrades >> "${logSlt}"
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   msg "Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> "${logInt}"
@@ -613,8 +613,8 @@ init_cycle() {
     exit 1
   fi
   if [ "${_OLD_SYS}" = "Devuan" ]; then
-    /usr/bin/apt-get update -qq >> ${logSlt}
-    /usr/bin/apt-get upgrade ${nrmUpArg} >> ${logSlt}
+    /usr/bin/apt-get update -qq >> "${logSlt}"
+    /usr/bin/apt-get upgrade ${nrmUpArg} >> "${logSlt}"
   fi
   if [ ! -z "${_NEW_OS_CODE}" ] && [ ! -z "${_NEW_SYS}" ]; then
     msg "Launching a quick upgrade to ${_NEW_SYS}/${_NEW_OS_CODE}" >> "${logInt}"
@@ -635,23 +635,23 @@ init_cycle() {
       rm -f /etc/apt/apt.conf
     fi
     if [ "${_OLD_SYS}" = "Debian" ]; then
-      /usr/bin/apt-get update --allow-insecure-repositories -qq >> ${logSlt}
-      /usr/bin/apt-get install devuan-keyring -y --allow-unauthenticated -qq >> ${logSlt}
+      /usr/bin/apt-get update --allow-insecure-repositories -qq >> "${logSlt}"
+      /usr/bin/apt-get install devuan-keyring -y --allow-unauthenticated -qq >> "${logSlt}"
     fi
-    /usr/bin/apt-get update -qq >> ${logSlt}
-    /usr/bin/apt-get upgrade ${dstUpArg} >> ${logSlt}
+    /usr/bin/apt-get update -qq >> "${logSlt}"
+    /usr/bin/apt-get upgrade ${dstUpArg} >> "${logSlt}"
     if [ "${_OLD_SYS}" = "Debian" ]; then
-      /usr/bin/apt-get install eudev sysvinit-core -y -qq >> ${logSlt}
-      /usr/bin/apt-get -f install -y -qq >> ${logSlt}
+      /usr/bin/apt-get install eudev sysvinit-core -y -qq >> "${logSlt}"
+      /usr/bin/apt-get -f install -y -qq >> "${logSlt}"
     else
-      /usr/bin/apt-get dist-upgrade ${dstUpArg} >> ${logSlt}
+      /usr/bin/apt-get dist-upgrade ${dstUpArg} >> "${logSlt}"
       [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
-      /usr/bin/apt-get -f install -y -qq >> ${logSlt}
-      /usr/bin/apt-get dist-upgrade ${dstUpArg} >> ${logSlt}
+      /usr/bin/apt-get -f install -y -qq >> "${logSlt}"
+      /usr/bin/apt-get dist-upgrade ${dstUpArg} >> "${logSlt}"
       [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
-      /usr/bin/apt-get autoremove --purge -y -qq >> ${logSlt}
-      /usr/bin/apt-get autoclean -y -qq >> ${logSlt}
-      [ -e "/root/.top-daedalus.cnf" ] && /usr/bin/apt-get install base-files=12.4devuan3 -y --allow-downgrades >> ${logSlt}
+      /usr/bin/apt-get autoremove --purge -y -qq >> "${logSlt}"
+      /usr/bin/apt-get autoclean -y -qq >> "${logSlt}"
+      [ -e "/root/.top-daedalus.cnf" ] && /usr/bin/apt-get install base-files=12.4devuan3 -y --allow-downgrades >> "${logSlt}"
     fi
   fi
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
