@@ -353,6 +353,92 @@ install_apparmor_utils() {
   fi
 }
 
+ifnames_grub_check_sync() {
+  _IS_IFACE=$(ip a 2>&1)
+  _ADD_GRUB_CMD=""
+  _GRUB_FILE="/etc/default/grub"
+
+  if [ -e "${_GRUB_FILE}" ]; then
+    if echo "${_IS_IFACE}" | grep -qE "eth[0-9]+"; then
+      _USE_IFNAMES="CLASSIC"
+      msg "Classic ethX interface naming found." >> "${logInt}"
+    elif echo "${_IS_IFACE}" | grep -qE "(ens|enp|eno|wlp|wlo)[0-9]+:"; then
+      _USE_IFNAMES="PREDICTABLE"
+      msg "Predictable (ensX, enpX, enoX, wlpX, wloX) interface naming found." >> "${logInt}"
+    else
+      _USE_IFNAMES="DONTMODIFY"
+      msg "GRUB config exists, but no recognized network interface naming found." >> "${logInt}"
+    fi
+
+    # Extract the current GRUB_CMDLINE_LINUX line
+    _GRUB_CMDLINE_LINUX=$(grep -E "^GRUB_CMDLINE_LINUX=" "${_GRUB_FILE}")
+    msg "Original _GRUB_CMDLINE_LINUX was ${_GRUB_CMDLINE_LINUX}" >> "${logInt}"
+
+    # Initialize variables to check for existing options
+    _SYS_NET_IFNAMES=$(echo "${_GRUB_CMDLINE_LINUX}" | grep -o "net.ifnames=[01]")
+    _SYS_BIOSDEVNAME=$(echo "${_GRUB_CMDLINE_LINUX}" | grep -o "biosdevname=[01]")
+    _SYS_MEMHP_STATE=$(echo "${_GRUB_CMDLINE_LINUX}" | grep -o "memhp_default_state=online")
+
+    # Function to append option to _ADD_GRUB_CMD if not already present
+    _append_grub_cmd_option() {
+      local _option="$1"
+      if [[ -z "${_ADD_GRUB_CMD}" ]]; then
+        _ADD_GRUB_CMD="${_option}"
+      else
+        _ADD_GRUB_CMD="${_ADD_GRUB_CMD} ${_option}"
+      fi
+    }
+
+    # Check and append options as necessary
+    if [[ -z "${_SYS_MEMHP_STATE}" ]]; then
+      _append_grub_cmd_option "memhp_default_state=online"
+    fi
+
+    if [[ "${_USE_IFNAMES}" == "CLASSIC" ]]; then
+      if [[ "${_SYS_NET_IFNAMES}" != "net.ifnames=0" ]]; then
+        _append_grub_cmd_option "net.ifnames=0"
+      fi
+      if [[ "${_SYS_BIOSDEVNAME}" != "biosdevname=0" ]]; then
+        _append_grub_cmd_option "biosdevname=0"
+      fi
+    elif [[ "${_USE_IFNAMES}" == "PREDICTABLE" ]]; then
+      if [[ "${_SYS_NET_IFNAMES}" != "net.ifnames=1" ]]; then
+        _append_grub_cmd_option "net.ifnames=1"
+      fi
+      if [[ "${_SYS_BIOSDEVNAME}" != "biosdevname=1" ]]; then
+        _append_grub_cmd_option "biosdevname=1"
+      fi
+    fi
+
+    if [[ -n "${_ADD_GRUB_CMD}" ]]; then
+      # Backup the GRUB file
+      cp "${_GRUB_FILE}" "${_GRUB_FILE}.bak"
+
+      # Remove existing options from GRUB_CMDLINE_LINUX
+      _NEW_GRUB_CMDLINE_LINUX=$(echo "${_GRUB_CMDLINE_LINUX}" | sed -E "s/(net.ifnames=[01]|biosdevname=[01]|memhp_default_state=online)//g")
+
+      # Clean up extra spaces and trailing spaces before the closing quote
+      _NEW_GRUB_CMDLINE_LINUX=$(echo "${_NEW_GRUB_CMDLINE_LINUX}" | tr -s ' ' | sed -E 's/\s*"$/"/')
+
+      # Extract current kernel parameters
+      _CURRENT_CMDLINE=$(echo "${_NEW_GRUB_CMDLINE_LINUX}" | sed -E 's/^GRUB_CMDLINE_LINUX="(.*)"$/\1/')
+
+      # Append new options
+      _UPDATED_CMDLINE="${_CURRENT_CMDLINE} ${_ADD_GRUB_CMD}"
+      _UPDATED_CMDLINE=$(echo "${_UPDATED_CMDLINE}" | sed 's/^ *//;s/ *$//')
+
+      # Form the new GRUB_CMDLINE_LINUX line
+      _NEW_GRUB_CMDLINE_LINUX="GRUB_CMDLINE_LINUX=\"${_UPDATED_CMDLINE}\""
+
+      # Update the GRUB file
+      sed -i "s|^GRUB_CMDLINE_LINUX=.*|${_NEW_GRUB_CMDLINE_LINUX}|" "${_GRUB_FILE}"
+      msg "GRUB_CMDLINE_LINUX updated with ${_UPDATED_CMDLINE}" >> "${logInt}"
+    fi
+  else
+    msg "GRUB config does not exist." >> "${logInt}"
+  fi
+}
+
 init_pre() {
   if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
     && [ -e "/etc/apt/apt.conf.d" ]; then
@@ -378,12 +464,13 @@ init_pre() {
     echo "DPkg::Pre-Install-Pkgs {\"/usr/sbin/dpkg-preconfigure --apt\";};" >> /opt/apt/apt.conf.noi.nrml
     echo "Dir::Etc::SourceList \"/etc/apt/sources.list\";" >> /opt/apt/apt.conf.noi.nrml
   fi
-  _SYS_IFNAMES=$(grep GRUB_CMDLINE_LINUX= /etc/default/grub | grep "net.ifnames=0" 2>&1)
-  if [ -e "/etc/default/grub" ] && [[ ! "${_SYS_IFNAMES}" =~ "net.ifnames=0" ]]; then
+
+  ifnames_grub_check_sync
+
+  if [[ -n "${_ADD_GRUB_CMD}" ]]; then
     echo "Running init_pre procedure A..."
     touch /run/autoinit.pid
-    echo 'GRUB_CMDLINE_LINUX="net.ifnames=0 biosdevname=0 memhp_default_state=online"' >> /etc/default/grub
-    grub-mkconfig -o /boot/grub/grub.cfg >> ${logSlt}
+    update-grub >> ${logSlt}
     sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
     echo "*/1 *   * * *   root    bash /opt/local/bin/autoinit" >> /etc/crontab
     if [ -x "/opt/local/bin/killer" ]; then
