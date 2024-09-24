@@ -127,7 +127,7 @@ check_root_direct() {
     echo "Bye"
     clean_pid_exit check_root_direct_a
   fi
-  check_ifnames
+  [ ! -e "/root/.ignore.ifnames.cnf" ] && check_ifnames
 }
 
 check_root_keys_pwd() {
