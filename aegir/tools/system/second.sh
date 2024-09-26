@@ -216,11 +216,11 @@ _load_control() {
 }
 
 # Main execution
-for _iteration in {1..6}; do
+for _iteration in {1..12}; do
   echo "----------------------------"
   echo "Iteration ${_iteration}:"
   _load_control
-  sleep 10
+  sleep 5
 done
 
 echo "Done!"
