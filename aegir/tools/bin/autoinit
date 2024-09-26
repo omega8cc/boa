@@ -372,7 +372,7 @@ ifnames_grub_check_sync() {
 
     # Extract the current GRUB_CMDLINE_LINUX line
     _GRUB_CMDLINE_LINUX=$(grep -E "^GRUB_CMDLINE_LINUX=" "${_GRUB_FILE}")
-    msg "GRUB: Original _GRUB_CMDLINE_LINUX was ${_GRUB_CMDLINE_LINUX}" >> "${logInt}"
+    msg "GRUB: Current _GRUB_CMDLINE_LINUX is ${_GRUB_CMDLINE_LINUX}" >> "${logInt}"
 
     # Initialize variables to check for existing options
     _SYS_NET_IFNAMES=$(echo "${_GRUB_CMDLINE_LINUX}" | grep -o "net.ifnames=[01]")
