@@ -2078,6 +2078,10 @@ display_info() {
     [ "${mode}" != "report" ] && [ ! -z "${_XTR}" ] && echo "  _XTR ${_XTR}"
     [ "${mode}" != "report" ] && [ ! -z "${_AUT}" ] && echo "  _AUT ${_AUT}"
 
+    # Get the currently used GRUB config affecting networking
+    _GRUB_FILE="/etc/default/grub"
+    _XSG=$(grep -E "^GRUB_CMDLINE_LINUX=" "${_GRUB_FILE}")
+
     # Get the currently running kernel version
     _XSK=$(uname -r)
 
@@ -2100,6 +2104,7 @@ display_info() {
       echo "  _XSN Next Kernel Version (after reboot): ${_XSN}"
     fi
     echo "  _CPU ${_CPU_NR}"
+    echo "  _XSG GRUB: ${_XSG}"
     echo "  _RAM Total: ${total_ram_gb} GB"
     echo "  _RAM Usage: ${ram_usage_percent}%"
     echo "  _DSK Usage for relevant partitions:"
