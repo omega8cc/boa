@@ -1466,6 +1466,33 @@ update_agents() {
     service nginx reload
   fi
 
+  # Create the destination directory if it doesn't exist
+  mkdir -p /var/backups/off-run/
+
+  # Loop through all files matching the pattern /var/xdrago/run-USER
+  for _file in /var/xdrago/run-*; do
+    # Skip iteration if no files match the pattern
+    [ -e "${_file}" ] || continue
+
+    # Extract the _USER from the filename
+    _USER=${_file#/var/xdrago/run-}
+
+    # Define the paths to check
+    _USER_DIR="/data/disk/${_USER}"
+    _CANCELLED_FILE="${_USER_DIR}/log/CANCELLED"
+    _PROXIED_PID_FILE="${_USER_DIR}/log/proxied.pid"
+    _CLI_INFO_FILE="${_USER_DIR}/static/control/cli.info"
+
+    # Check the conditions
+    if [ ! -d "${_USER_DIR}" ] || \
+       [ -f "${_CANCELLED_FILE}" ] || \
+       [ -f "${_PROXIED_PID_FILE}" ] || \
+       [ ! -f "${_CLI_INFO_FILE}" ]; then
+      # Move the file if any condition is met
+      mv -f "${_file}" /var/backups/off-run/
+    fi
+  done
+
   if [ -x "/opt/tools/drush/8/drush/drush.php" ] \
     && [ -e "${provLeIncFull}" ] \
     && [ -e "${hoLeIncFull}" ] \
