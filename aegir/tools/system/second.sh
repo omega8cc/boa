@@ -18,7 +18,6 @@ _check_root() {
     echo "ERROR: This script should be run as root"
     exit 1
   else
-    [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
     chmod a+w /dev/null
   fi
 }
@@ -27,9 +26,14 @@ _check_root
 # Set default values
 : "${_B_NICE:=10}"
 : "${_CPU_SPIDER_RATIO:=1.2}"
-: "${_CPU_MAX_RATIO:=2.5}"
-: "${_CPU_CRIT_RATIO:=3.7}"
+: "${_CPU_MAX_RATIO:=3.2}"
+: "${_CPU_CRIT_RATIO:=4.2}"
 : "${_INCIDENT_EMAIL_REPORT:=YES}"
+
+# Source configuration file to override defaults
+if [ -e "/root/.barracuda.cnf" ]; then
+  source /root/.barracuda.cnf
+fi
 
 # Sanitize numeric variables (allow digits and decimal point)
 _sanitize_number() {
