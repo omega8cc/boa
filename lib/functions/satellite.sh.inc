@@ -4010,8 +4010,7 @@ satellite_make() {
     writeTo="${vBs}/${filIncO}"
   fi
 
-  _X_SE="540devT02"
-  export _X_SE="${_X_SE}"
+  export _X_SE=540devT02
   export _X_VERSION="${_X_VERSION}"
 
   echo "_AEGIR_VERSION=\"${_AEGIR_VERSION}\""         >> ${writeTo}

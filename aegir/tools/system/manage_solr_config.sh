@@ -31,7 +31,7 @@ if [ -e "/root/.proxy.cnf" ]; then
   exit 0
 fi
 
-_X_SE="540devT02"
+_X_SE=540devT02
 crlGet="-L --max-redirs 3 -k -s --retry 3 --retry-delay 5 -A iCab"
 aptYesUnth="-y --allow-unauthenticated"
 vSet="variable-set --always-set"
