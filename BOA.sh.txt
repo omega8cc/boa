@@ -1220,7 +1220,7 @@ update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${pthLog}/scan_nginx.pl.ctrl.${tRee}.${_X_SE}.pid" ]; then
+    && [ ! -e "${pthLog}/scan_nginx.pl.ctrl.f1.${tRee}.${_X_SE}.pid" ]; then
     [ ! -d "/var/xdrago/monitor/log" ] && mkdir -p /var/xdrago/monitor/log
     mv -f /var/xdrago/monitor/check/scan_nginx.pl /var/xdrago/monitor/check/scan_nginx.pl.old
     curl ${crlGet} "${urlHmr}/tools/system/monitor/check/scan_nginx.pl" \
@@ -1262,7 +1262,7 @@ update_agents() {
         csf -df
         wait
       fi
-      touch ${pthLog}/scan_nginx.pl.ctrl.${tRee}.${_X_SE}.pid
+      touch ${pthLog}/scan_nginx.pl.ctrl.f1.${tRee}.${_X_SE}.pid
     else
       mv -f /var/xdrago/monitor/check/scan_nginx.pl.old /var/xdrago/monitor/check/scan_nginx.pl
     fi
