@@ -149,6 +149,9 @@ _get_load() {
 _load_control() {
   _get_load
 
+  # Initialize the limits exceeded flag
+  _limits_exceeded=false
+
   # Thresholds in percentages (calculate using bc)
   _CPU_SPIDER_THRESHOLD=$(echo "${_CPU_SPIDER_RATIO} * 100" | bc -l)
   _CPU_MAX_THRESHOLD=$(echo "${_CPU_MAX_RATIO} * 100" | bc -l)
@@ -168,10 +171,12 @@ _load_control() {
     _enable_spider_protection=true
     _current_load="${_O_LOAD}"
     _load_period="1-minute"
+    _limits_exceeded=true
   elif awk "BEGIN {exit !(${_F_LOAD} > ${_CPU_SPIDER_THRESHOLD} && ${_F_LOAD} < ${_CPU_MAX_THRESHOLD})}"; then
     _enable_spider_protection=true
     _current_load="${_F_LOAD}"
     _load_period="5-minute"
+    _limits_exceeded=true
   fi
 
   # Enable or disable spider protection as needed
@@ -189,6 +194,7 @@ _load_control() {
   # Check for max load to hold services
   if awk "BEGIN {exit !(${_O_LOAD} > ${_CPU_MAX_THRESHOLD} || ${_F_LOAD} > ${_CPU_MAX_THRESHOLD})}"; then
     echo "Load exceeds max threshold. Pausing web services."
+    _limits_exceeded=true
     if awk "BEGIN {exit !(${_O_LOAD} > ${_CPU_MAX_THRESHOLD})}"; then
       _current_load="${_O_LOAD}"
       _load_period="1-minute"
@@ -202,6 +208,7 @@ _load_control() {
   # Check for critical load to terminate processes
   if awk "BEGIN {exit !(${_O_LOAD} > ${_CPU_CRIT_THRESHOLD} || ${_F_LOAD} > ${_CPU_CRIT_THRESHOLD})}"; then
     echo "Load exceeds critical threshold. Terminating long-running processes."
+    _limits_exceeded=true
     if awk "BEGIN {exit !(${_O_LOAD} > ${_CPU_CRIT_THRESHOLD})}"; then
       _current_load="${_O_LOAD}"
       _load_period="1-minute"
@@ -212,7 +219,12 @@ _load_control() {
     _terminate_processes "${_current_load}" "${_CPU_CRIT_THRESHOLD}" "${_load_period}"
   fi
 
-  _proc_control
+  # Only run _proc_control if no limits have been exceeded
+  if [ "${_limits_exceeded}" = false ]; then
+    _proc_control
+  else
+    echo "Limits exceeded; skipping process control."
+  fi
 }
 
 # Main execution
