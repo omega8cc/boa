@@ -947,13 +947,13 @@ update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${pthLog}/second.sh.ctrl.f2.${tRee}.${_X_SE}.pid" ]; then
+    && [ ! -e "${pthLog}/second.sh.ctrl.f3.${tRee}.${_X_SE}.pid" ]; then
     mv -f /var/xdrago/second.sh /var/xdrago/second.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/second.sh" -o /var/xdrago/second.sh
     if [ -e "/var/xdrago/second.sh" ]; then
       chmod 700 /var/xdrago/second.sh
       chown root:root /var/xdrago/second.sh
-      touch ${pthLog}/second.sh.ctrl.f2.${tRee}.${_X_SE}.pid
+      touch ${pthLog}/second.sh.ctrl.f3.${tRee}.${_X_SE}.pid
     else
       mv -f /var/xdrago/second.sh.old /var/xdrago/second.sh
     fi
