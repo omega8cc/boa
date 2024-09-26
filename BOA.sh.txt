@@ -569,39 +569,42 @@ update_agents() {
 
 
   if [ -e "/var/aegir/drush" ]; then
-    [ ! -e "/var/xdrago/clear.sh" ] && rm -f ${pthLog}/*.ctrl.*.pid
-    [ ! -e "/var/xdrago/daily.sh" ] && rm -f ${pthLog}/*.ctrl.*.pid
-    [ ! -e "/var/xdrago/graceful.sh" ] && rm -f ${pthLog}/*.ctrl.*.pid
-    [ ! -e "/var/xdrago/guest-fire.sh" ] && rm -f ${pthLog}/*.ctrl.*.pid
-    [ ! -e "/var/xdrago/guest-water.sh" ] && rm -f ${pthLog}/*.ctrl.*.pid
-    [ ! -e "/var/xdrago/ip_access.sh" ] && rm -f ${pthLog}/*.ctrl.*.pid
-    [ ! -e "/var/xdrago/manage_ltd_users.sh" ] && rm -f ${pthLog}/*.ctrl.*.pid
-    [ ! -e "/var/xdrago/manage_solr_config.sh" ] && rm -f ${pthLog}/*.ctrl.*.pid
-    [ ! -e "/var/xdrago/minute.sh" ] && rm -f ${pthLog}/*.ctrl.*.pid
-    [ ! -e "/var/xdrago/move_sql.sh" ] && rm -f ${pthLog}/*.ctrl.*.pid
-    [ ! -e "/var/xdrago/mysql_backup.sh" ] && rm -f ${pthLog}/*.ctrl.*.pid
-    [ ! -e "/var/xdrago/mysql_cleanup.sh" ] && rm -f ${pthLog}/*.ctrl.*.pid
-    [ ! -e "/var/xdrago/proc_num_ctrl.pl" ] && rm -f ${pthLog}/*.ctrl.*.pid
-    [ ! -e "/var/xdrago/runner.sh" ] && rm -f ${pthLog}/*.ctrl.*.pid
-    [ ! -e "/var/xdrago/second.sh" ] && rm -f ${pthLog}/*.ctrl.*.pid
-    [ ! -e "/var/xdrago/usage.sh" ] && rm -f ${pthLog}/*.ctrl.*.pid
+    [ ! -e "/var/xdrago/checksql.pl" ] && rm -f ${pthLog}/checksql.pl.ctrl.*.pid
+    [ ! -e "/var/xdrago/clear.sh" ] && rm -f ${pthLog}/clear.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/daily.sh" ] && rm -f ${pthLog}/daily.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/graceful.sh" ] && rm -f ${pthLog}/graceful.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/guest-fire.sh" ] && rm -f ${pthLog}/guest-fire.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/guest-water.sh" ] && rm -f ${pthLog}/guest-water.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/ip_access.sh" ] && rm -f ${pthLog}/ip_access.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/manage_ltd_users.sh" ] && rm -f ${pthLog}/manage_ltd_users.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/manage_solr_config.sh" ] && rm -f ${pthLog}/manage_solr_config.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/minute.sh" ] && rm -f ${pthLog}/minute.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/move_sql.sh" ] && rm -f ${pthLog}/move_sql.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/mysql_backup.sh" ] && rm -f ${pthLog}/mysql_backup.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/mysql_cleanup.sh" ] && rm -f ${pthLog}/mysql_cleanup.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/mysql_cluster_backup.sh" ] && rm -f ${pthLog}/mysql_cluster_backup.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/mysql_repair.sh" ] && rm -f ${pthLog}/mysql_repair.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/proc_num_ctrl.pl" ] && rm -f ${pthLog}/proc_num_ctrl.pl.ctrl.*.pid
+    [ ! -e "/var/xdrago/runner.sh" ] && rm -f ${pthLog}/runner.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/second.sh" ] && rm -f ${pthLog}/second.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/usage.sh" ] && rm -f ${pthLog}/usage.sh.ctrl.*.pid
 
-    [ ! -e "/var/xdrago/monitor/check/java.sh" ] && rm -f ${pthLog}/*.ctrl.*.pid
-    [ ! -e "/var/xdrago/monitor/check/mysql.sh" ] && rm -f ${pthLog}/*.ctrl.*.pid
-    [ ! -e "/var/xdrago/monitor/check/nginx.sh" ] && rm -f ${pthLog}/*.ctrl.*.pid
-    [ ! -e "/var/xdrago/monitor/check/php.sh" ] && rm -f ${pthLog}/*.ctrl.*.pid
-    [ ! -e "/var/xdrago/monitor/check/redis.sh" ] && rm -f ${pthLog}/*.ctrl.*.pid
-    [ ! -e "/var/xdrago/monitor/check/system.sh" ] && rm -f ${pthLog}/*.ctrl.*.pid
-    [ ! -e "/var/xdrago/monitor/check/unbound.sh" ] && rm -f ${pthLog}/*.ctrl.*.pid
+    [ ! -e "/var/xdrago/monitor/check/java.sh" ] && rm -f ${pthLog}/java.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/monitor/check/mysql.sh" ] && rm -f ${pthLog}/mysql.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/monitor/check/nginx.sh" ] && rm -f ${pthLog}/nginx.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/monitor/check/php.sh" ] && rm -f ${pthLog}/php.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/monitor/check/redis.sh" ] && rm -f ${pthLog}/redis.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/monitor/check/system.sh" ] && rm -f ${pthLog}/system.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/monitor/check/unbound.sh" ] && rm -f ${pthLog}/unbound.sh.ctrl.*.pid
 
-    [ ! -e "/var/xdrago/monitor/check/escapecheck.pl" ] && rm -f ${pthLog}/*.ctrl.*.pid
-    [ ! -e "/var/xdrago/monitor/check/hackcheck.pl" ] && rm -f ${pthLog}/*.ctrl.*.pid
-    [ ! -e "/var/xdrago/monitor/check/hackftp.pl" ] && rm -f ${pthLog}/*.ctrl.*.pid
-    [ ! -e "/var/xdrago/monitor/check/locked_java.pl" ] && rm -f ${pthLog}/*.ctrl.*.pid
-    [ ! -e "/var/xdrago/monitor/check/locked_nginx.pl" ] && rm -f ${pthLog}/*.ctrl.*.pid
-    [ ! -e "/var/xdrago/monitor/check/scan_nginx.pl" ] && rm -f ${pthLog}/*.ctrl.*.pid
-    [ ! -e "/var/xdrago/monitor/check/segfault_alert.pl" ] && rm -f ${pthLog}/*.ctrl.*.pid
-    [ ! -e "/var/xdrago/monitor/check/sqlcheck.pl" ] && rm -f ${pthLog}/*.ctrl.*.pid
+    [ ! -e "/var/xdrago/monitor/check/escapecheck.pl" ] && rm -f ${pthLog}/escapecheck.pl.ctrl.*.pid
+    [ ! -e "/var/xdrago/monitor/check/hackcheck.pl" ] && rm -f ${pthLog}/hackcheck.pl.ctrl.*.pid
+    [ ! -e "/var/xdrago/monitor/check/hackftp.pl" ] && rm -f ${pthLog}/hackftp.pl.ctrl.*.pid
+    [ ! -e "/var/xdrago/monitor/check/locked_java.pl" ] && rm -f ${pthLog}/locked_java.pl.ctrl.*.pid
+    [ ! -e "/var/xdrago/monitor/check/locked_nginx.pl" ] && rm -f ${pthLog}/locked_nginx.pl.ctrl.*.pid
+    [ ! -e "/var/xdrago/monitor/check/scan_nginx.pl" ] && rm -f ${pthLog}/scan_nginx.pl.ctrl.*.pid
+    [ ! -e "/var/xdrago/monitor/check/segfault_alert.pl" ] && rm -f ${pthLog}/segfault_alert.pl.ctrl.*.pid
+    [ ! -e "/var/xdrago/monitor/check/sqlcheck.pl" ] && rm -f ${pthLog}/sqlcheck.pl.ctrl.*.pid
 
     [ -e "/var/xdrago/proc_num_ctrl.cgi" ] && rm -f /var/xdrago/proc_num_ctrl.cgi
     [ -e "/var/xdrago/checksql.cgi" ] && rm -f /var/xdrago/checksql.cgi
