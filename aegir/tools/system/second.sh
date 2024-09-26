@@ -1,5 +1,6 @@
 #!/bin/bash
 
+# Environment setup
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
@@ -11,20 +12,23 @@ _PTH_OML="/var/xdrago/log/high.load.incident.log"
 # Exit if proxy config exists
 [ -e "/root/.proxy.cnf" ] && exit 0
 
-# Ensure script is run as root
-if [ "$(id -u)" -ne 0 ]; then
-  echo "ERROR: This script should be run as root"
-  exit 1
-else
-  [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
-  chmod a+w /dev/null
-fi
+# Function to check if the script is run as root
+_check_root() {
+  if [ "$(id -u)" -ne 0 ]; then
+    echo "ERROR: This script should be run as root"
+    exit 1
+  else
+    [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
+    chmod a+w /dev/null
+  fi
+}
+_check_root
 
 # Set default values
 : "${_B_NICE:=10}"
-: "${_CPU_SPIDER_RATIO:=3}"
-: "${_CPU_MAX_RATIO:=6}"
-: "${_CPU_CRIT_RATIO:=9}"
+: "${_CPU_SPIDER_RATIO:=1}"
+: "${_CPU_MAX_RATIO:=2}"
+: "${_CPU_CRIT_RATIO:=3}"
 : "${_INCIDENT_EMAIL_REPORT:=YES}"
 
 # Sanitize numeric variables
@@ -47,6 +51,7 @@ fi
 _CPU_COUNT="$(nproc)"
 [ -z "${_CPU_COUNT}" ] && _CPU_COUNT=1
 
+# Function to send incident email report
 _incident_email_report() {
   local _message="$1"
   if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_EMAIL_REPORT}" = "YES" ]; then
@@ -57,6 +62,7 @@ _incident_email_report() {
   fi
 }
 
+# Function to pause web services
 _hold_services() {
   killall -9 nginx
   killall -9 php-fpm
@@ -68,6 +74,7 @@ _hold_services() {
   echo "Action Taken: Web services paused due to high load."
 }
 
+# Function to terminate long-running processes
 _terminate_processes() {
   if [ ! -e "/run/boa_run.pid" ]; then
     killall -9 php drush.php wget curl &> /dev/null
@@ -80,6 +87,7 @@ _terminate_processes() {
   fi
 }
 
+# Function to enable nginx high load configuration
 _nginx_high_load_on() {
   mv -f /data/conf/nginx_high_load_off.conf /data/conf/nginx_high_load.conf
   service nginx reload &> /dev/null
@@ -91,6 +99,7 @@ _nginx_high_load_on() {
   echo "Action Taken: Enabled protection from spiders (nginx high load configuration applied)."
 }
 
+# Function to disable nginx high load configuration
 _nginx_high_load_off() {
   mv -f /data/conf/nginx_high_load.conf /data/conf/nginx_high_load_off.conf
   service nginx reload &> /dev/null
@@ -102,6 +111,7 @@ _nginx_high_load_off() {
   echo "Action Taken: Disabled protection from spiders (nginx high load configuration removed)."
 }
 
+# Function to control processes
 _proc_control() {
   echo "Running process control..."
   renice "${_B_NICE}" -p $$ &> /dev/null
@@ -110,12 +120,14 @@ _proc_control() {
   echo "Process control done."
 }
 
+# Function to get system load averages
 _get_load() {
   read -r _one _five _rest <<< "$(cat /proc/loadavg)"
-  _O_LOAD=$(awk -v _load_value="${_one}" -v _cpus="${_CPU_COUNT}" 'BEGIN { printf "%d", (_load_value / _cpus) * 100 }')
-  _F_LOAD=$(awk -v _load_value="${_five}" -v _cpus="${_CPU_COUNT}" 'BEGIN { printf "%d", (_load_value / _cpus) * 100 }')
+  _O_LOAD=$(awk -v _load_value="${_one}" -v _cpus="${_CPU_COUNT}" 'BEGIN { printf "%.0f", (_load_value / _cpus) * 100 }')
+  _F_LOAD=$(awk -v _load_value="${_five}" -v _cpus="${_CPU_COUNT}" 'BEGIN { printf "%.0f", (_load_value / _cpus) * 100 }')
 }
 
+# Function to control system load actions
 _load_control() {
   _get_load
 
@@ -132,21 +144,28 @@ _load_control() {
   echo " - Max Load Threshold: ${_CPU_MAX_THRESHOLD}%"
   echo " - Critical Load Threshold: ${_CPU_CRIT_THRESHOLD}%"
 
-  # Check for nginx high load settings
-  if [ "${_O_LOAD}" -ge "${_CPU_SPIDER_THRESHOLD}" ] && [ "${_O_LOAD}" -lt "${_CPU_MAX_THRESHOLD}" ] && [ -e "/data/conf/nginx_high_load_off.conf" ]; then
+  # Determine if spider protection should be enabled
+  _enable_spider_protection=false
+  if [ "${_O_LOAD}" -ge "${_CPU_SPIDER_THRESHOLD}" ] && [ "${_O_LOAD}" -lt "${_CPU_MAX_THRESHOLD}" ]; then
+    _enable_spider_protection=true
+  elif [ "${_F_LOAD}" -ge "${_CPU_SPIDER_THRESHOLD}" ] && [ "${_F_LOAD}" -lt "${_CPU_MAX_THRESHOLD}" ]; then
+    _enable_spider_protection=true
+  fi
+
+  # Enable or disable spider protection as needed
+  if [ "${_enable_spider_protection}" = true ] && [ -e "/data/conf/nginx_high_load_off.conf" ]; then
     echo "Load exceeds spider protection threshold but below max threshold."
     _nginx_high_load_on "${_O_LOAD}/${_CPU_MAX_THRESHOLD}"
-  elif [ "${_F_LOAD}" -ge "${_CPU_SPIDER_THRESHOLD}" ] && [ "${_F_LOAD}" -lt "${_CPU_MAX_THRESHOLD}" ] && [ -e "/data/conf/nginx_high_load_off.conf" ]; then
-    echo "Load exceeds spider protection threshold but below max threshold."
-    _nginx_high_load_on "${_F_LOAD}/${_CPU_MAX_THRESHOLD}"
-  elif [ "${_O_LOAD}" -lt "${_CPU_SPIDER_THRESHOLD}" ] && [ "${_F_LOAD}" -lt "${_CPU_SPIDER_THRESHOLD}" ] && [ -e "/data/conf/nginx_high_load.conf" ]; then
+  elif [ "${_O_LOAD}" -lt "${_CPU_SPIDER_THRESHOLD}" ] && \
+     [ "${_F_LOAD}" -lt "${_CPU_SPIDER_THRESHOLD}" ] && \
+     [ -e "/data/conf/nginx_high_load.conf" ]; then
     echo "Load below spider protection threshold."
     _nginx_high_load_off "${_O_LOAD}/${_CPU_SPIDER_THRESHOLD}"
   else
     echo "Load within normal parameters."
   fi
 
-  # Check for critical load to hold services
+  # Check for max load to hold services
   if [ "${_O_LOAD}" -ge "${_CPU_MAX_THRESHOLD}" ] || [ "${_F_LOAD}" -ge "${_CPU_MAX_THRESHOLD}" ]; then
     echo "Load exceeds max threshold. Pausing web services."
     _hold_services "${_O_LOAD}/${_CPU_MAX_THRESHOLD}"
@@ -162,9 +181,9 @@ _load_control() {
 }
 
 # Main execution
-for _ in {1..6}; do
+for _iteration in {1..6}; do
   echo "----------------------------"
-  echo "Iteration $_:"
+  echo "Iteration ${_iteration}:"
   _load_control
   sleep 10
 done
