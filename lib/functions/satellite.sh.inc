@@ -1222,7 +1222,7 @@ satellite_child_b_update_ini_php_cli() {
   if [ "${_PHP_CLI_UPDATE}" = "YES" ] \
     || [ ! -e "${_U_II}" ] \
     || [ ! -d "${_U_TP}" ] \
-    || [ ! -e "${_U_HD}/.ctrl.${_X_SE}.pid" ]; then
+    || [ ! -e "${_U_HD}/.ctrl.${tRee}.${_X_SE}.pid" ]; then
     mkdir -p ${_U_TP}
     touch ${_U_TP}
     find ${_U_TP}/ -mtime +0 -exec rm -rf {} \; &> /dev/null
@@ -1281,7 +1281,7 @@ satellite_child_b_update_ini_php_cli() {
       sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
       wait
       echo > ${_U_HD}/.ctrl.php${_U_INI}.${_X_SE}.pid
-      echo > ${_U_HD}/.ctrl.${_X_SE}.pid
+      echo > ${_U_HD}/.ctrl.${tRee}.${_X_SE}.pid
     fi
   fi
 }
@@ -4196,7 +4196,7 @@ satellite_make() {
     fi
   fi
 
-  if [ ! -e "${_ROOT}/static/control/.ctrl.${_X_SE}.pid" ] \
+  if [ ! -e "${_ROOT}/static/control/.ctrl.${tRee}.${_X_SE}.pid" ] \
     && [ -e "/home/${_USER}.ftp/clients" ]; then
     if [ -e "/var/xdrago/conf/control-readme.txt" ]; then
       cp -af /var/xdrago/conf/control-readme.txt \
@@ -4204,7 +4204,7 @@ satellite_make() {
       chmod 0644 ${_ROOT}/static/control/README.txt
     fi
     rm -f ${_ROOT}/static/control/.ctrl.*
-    echo OK > ${_ROOT}/static/control/.ctrl.${_X_SE}.pid
+    echo OK > ${_ROOT}/static/control/.ctrl.${tRee}.${_X_SE}.pid
   fi
   chown -R ${_USER}.ftp:${_USRG} ${_ROOT}/static/control
 

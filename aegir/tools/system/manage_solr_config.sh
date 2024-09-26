@@ -626,12 +626,12 @@ start_up() {
     liveCpy="/data/conf/solr/search_api_solr/8/schema.xml"
     check_config_diff "${baseCpy}" "${liveCpy}"
     if [ ! -e "/data/conf/solr/search_api_solr/8/solrconfig_extra.xml" ] \
-      || [ ! -e "/data/conf/solr/.ctrl.${_X_SE}.pid" ] \
+      || [ ! -e "/data/conf/solr/.ctrl.${tRee}.${_X_SE}.pid" ] \
       || [ ! -z "${slrCnfUpdate}" ]; then
       rm -rf /data/conf/solr
       cp -af /var/xdrago/conf/solr /data/conf/
       rm -f /data/conf/solr/.ctrl*
-      touch /data/conf/solr/.ctrl.${_X_SE}.pid
+      touch /data/conf/solr/.ctrl.${tRee}.${_X_SE}.pid
     fi
   fi
   if [ -d "/var/xdrago/conf/solr/search_api_solr/7" ]; then
@@ -639,12 +639,12 @@ start_up() {
     liveCpy="/data/conf/solr/search_api_solr/7/schema.xml"
     check_config_diff "${baseCpy}" "${liveCpy}"
     if [ ! -e "/data/conf/solr/search_api_solr/7/solrconfig_extra.xml" ] \
-      || [ ! -e "/data/conf/solr/.ctrl.${_X_SE}.pid" ] \
+      || [ ! -e "/data/conf/solr/.ctrl.${tRee}.${_X_SE}.pid" ] \
       || [ ! -z "${slrCnfUpdate}" ]; then
       rm -rf /data/conf/solr
       cp -af /var/xdrago/conf/solr /data/conf/
       rm -f /data/conf/solr/.ctrl*
-      touch /data/conf/solr/.ctrl.${_X_SE}.pid
+      touch /data/conf/solr/.ctrl.${tRee}.${_X_SE}.pid
     fi
   fi
   if [ -d "/var/xdrago/conf/solr/apachesolr/7" ]; then
@@ -652,12 +652,12 @@ start_up() {
     liveCpy="/data/conf/solr/apachesolr/7/schema.xml"
     check_config_diff "${baseCpy}" "${liveCpy}"
     if [ ! -e "/data/conf/solr/apachesolr/7/solrconfig_extra.xml" ] \
-      || [ ! -e "/data/conf/solr/.ctrl.${_X_SE}.pid" ] \
+      || [ ! -e "/data/conf/solr/.ctrl.${tRee}.${_X_SE}.pid" ] \
       || [ ! -z "${slrCnfUpdate}" ]; then
       rm -rf /data/conf/solr
       cp -af /var/xdrago/conf/solr /data/conf/
       rm -f /data/conf/solr/.ctrl*
-      touch /data/conf/solr/.ctrl.${_X_SE}.pid
+      touch /data/conf/solr/.ctrl.${tRee}.${_X_SE}.pid
     fi
   fi
   for User in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do

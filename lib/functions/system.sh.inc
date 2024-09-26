@@ -3109,7 +3109,7 @@ get_drush_twelve() {
   rm -rf /opt/tools/drush/12/*
   cd /opt/tools/drush/12/
   get_dev_ext "drush-${_DRUSH_TWELVE_VRN}.tar.gz"
-  touch /opt/tools/drush/12/.ctrl.${_X_SE}.pid
+  touch /opt/tools/drush/12/.ctrl.${tRee}.${_X_SE}.pid
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: Drush ${_DRUSH_TWELVE_VRN} installation complete"
   fi
@@ -3124,7 +3124,7 @@ get_drush_eleven() {
   rm -rf /opt/tools/drush/11/*
   cd /opt/tools/drush/11/
   get_dev_ext "drush-${_DRUSH_ELEVEN_VRN}.tar.gz"
-  touch /opt/tools/drush/11/.ctrl.${_X_SE}.pid
+  touch /opt/tools/drush/11/.ctrl.${tRee}.${_X_SE}.pid
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: Drush ${_DRUSH_ELEVEN_VRN} installation complete"
   fi
@@ -3139,7 +3139,7 @@ get_drush_ten() {
   rm -rf /opt/tools/drush/10/*
   cd /opt/tools/drush/10/
   get_dev_ext "drush-${_DRUSH_TEN_VRN}.tar.gz"
-  touch /opt/tools/drush/10/.ctrl.${_X_SE}.pid
+  touch /opt/tools/drush/10/.ctrl.${tRee}.${_X_SE}.pid
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: Drush ${_DRUSH_TEN_VRN} installation complete"
   fi
@@ -3154,7 +3154,7 @@ get_drush_eight() {
   rm -rf /opt/tools/drush/8/*
   cd /opt/tools/drush/8/
   get_dev_ext "drush-${_DRUSH_EIGHT_VRN}.tar.gz"
-  touch /opt/tools/drush/8/.ctrl.${_X_SE}.pid
+  touch /opt/tools/drush/8/.ctrl.${tRee}.${_X_SE}.pid
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: Drush ${_DRUSH_EIGHT_VRN} installation complete"
   fi
@@ -3173,10 +3173,10 @@ drush_system_install_update() {
     fi
     ###
     ### Force all Drush versions update if serial is not new
-    rm -f /opt/tools/drush/8/.ctrl.${_X_SE}.pid
-    rm -f /opt/tools/drush/10/.ctrl.${_X_SE}.pid
-    rm -f /opt/tools/drush/11/.ctrl.${_X_SE}.pid
-    rm -f /opt/tools/drush/12/.ctrl.${_X_SE}.pid
+    rm -f /opt/tools/drush/8/.ctrl.${tRee}.${_X_SE}.pid
+    rm -f /opt/tools/drush/10/.ctrl.${tRee}.${_X_SE}.pid
+    rm -f /opt/tools/drush/11/.ctrl.${tRee}.${_X_SE}.pid
+    rm -f /opt/tools/drush/12/.ctrl.${tRee}.${_X_SE}.pid
     ###
     ###--------------------###
     if [ -e "/opt/tools/drush/launcher" ]; then
@@ -3212,7 +3212,7 @@ drush_system_install_update() {
         | awk '{ print $1}' 2>&1)
       if [ "${_DRUSH_ITD}" != "${_DRUSH_EIGHT_TEST_VRN}" ] \
         || [ ! -x "/opt/tools/drush/8/drush/drush.php" ] \
-        || [ ! -e "/opt/tools/drush/8/.ctrl.${_X_SE}.pid" ]; then
+        || [ ! -e "/opt/tools/drush/8/.ctrl.${tRee}.${_X_SE}.pid" ]; then
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           msg "INFO: Drush ${_DRUSH_EIGHT_VRN} re-installation required"
         fi
@@ -3230,7 +3230,7 @@ drush_system_install_update() {
         | awk '{ print $1}' 2>&1)
       if [ "${_DRUSH_ITD}" != "${_DRUSH_TEN_VRN}" ] \
         || [ ! -x "/opt/tools/drush/10/drush/vendor/drush/drush/drush" ] \
-        || [ ! -e "/opt/tools/drush/10/.ctrl.${_X_SE}.pid" ]; then
+        || [ ! -e "/opt/tools/drush/10/.ctrl.${tRee}.${_X_SE}.pid" ]; then
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           msg "INFO: Drush ${_DRUSH_TEN_VRN} re-installation required"
         fi
@@ -3248,7 +3248,7 @@ drush_system_install_update() {
         | awk '{ print $1}' 2>&1)
       if [ "${_DRUSH_ITD}" != "${_DRUSH_ELEVEN_VRN}" ] \
         || [ ! -x "/opt/tools/drush/11/drush/vendor/drush/drush/drush" ] \
-        || [ ! -e "/opt/tools/drush/11/.ctrl.${_X_SE}.pid" ]; then
+        || [ ! -e "/opt/tools/drush/11/.ctrl.${tRee}.${_X_SE}.pid" ]; then
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           msg "INFO: Drush ${_DRUSH_ELEVEN_VRN} re-installation required"
         fi
@@ -3266,7 +3266,7 @@ drush_system_install_update() {
         | awk '{ print $1}' 2>&1)
       if [ "${_DRUSH_ITD}" != "${_DRUSH_TWELVE_VRN}" ] \
         || [ ! -x "/opt/tools/drush/12/drush/vendor/bin/drush" ] \
-        || [ ! -e "/opt/tools/drush/12/.ctrl.${_X_SE}.pid" ]; then
+        || [ ! -e "/opt/tools/drush/12/.ctrl.${tRee}.${_X_SE}.pid" ]; then
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           msg "INFO: Drush ${_DRUSH_TWELVE_VRN} re-installation required"
         fi

@@ -598,13 +598,13 @@ if [ -e "/var/aegir/drush" ]; then
     fi
   fi
 
-  if [ ! -e "/var/xdrago/log/.etc_csf_allow_ctrl.${_X_SE}.pid" ]; then
+  if [ ! -e "/var/xdrago/log/.etc_csf_allow_ctrl.${tRee}.${_X_SE}.pid" ]; then
     mkdir -p /var/backups/csf
     cp -a /etc/csf/csf.ignore /var/backups/csf/csf.ignore.${_X_SE}.txt
     cp -a /etc/csf/csf.allow /var/backups/csf/csf.allow.${_X_SE}.txt
     rm -f /root/.*.pid
     rm -f /var/xdrago/log/.etc_csf_allow_ctrl*
-    touch /var/xdrago/log/.etc_csf_allow_ctrl.${_X_SE}.pid
+    touch /var/xdrago/log/.etc_csf_allow_ctrl.${tRee}.${_X_SE}.pid
   fi
 
   ###
@@ -664,35 +664,35 @@ if [ -e "/var/aegir/drush" ]; then
     if [ -e "/usr/sbin/ebtables-legacy" ]; then
       update-alternatives --set ebtables /usr/sbin/ebtables-legacy &> /dev/null
     fi
-    touch /var/xdrago/log/.nf_tables_ctrl.${_X_SE}.pid
+    touch /var/xdrago/log/.nf_tables_ctrl.${tRee}.${_X_SE}.pid
   fi
 
   if [ -x "/etc/init.d/site24x7monagent" ] \
-    && [ ! -e "/var/xdrago/log/.site24x7monagent_ctrl.${_X_SE}.pid" ]; then
+    && [ ! -e "/var/xdrago/log/.site24x7monagent_ctrl.${tRee}.${_X_SE}.pid" ]; then
     service site24x7monagent stop
     wait
     service site24x7monagent start
     rm -f /var/xdrago/log/.site24x7monagent*
-    touch /var/xdrago/log/.site24x7monagent_ctrl.${_X_SE}.pid
+    touch /var/xdrago/log/.site24x7monagent_ctrl.${tRee}.${_X_SE}.pid
   fi
 
   if [ -x "/usr/local/bin/curl" ] \
-    && [ ! -e "/var/xdrago/log/.curl_ctrl.${_X_SE}.pid" ]; then
+    && [ ! -e "/var/xdrago/log/.curl_ctrl.${tRee}.${_X_SE}.pid" ]; then
     if [ -f "/usr/bin/curl" ]; then
       mv -f /usr/bin/curl /usr/bin/legacy-curl
     fi
     ln -s /usr/local/bin/curl /usr/bin/curl
-    touch /var/xdrago/log/.curl_ctrl.${_X_SE}.pid
+    touch /var/xdrago/log/.curl_ctrl.${tRee}.${_X_SE}.pid
   fi
 
-  if [ ! -e "/var/xdrago/log/.force_nginx_restart_ctrl.${_X_SE}.pid" ]; then
+  if [ ! -e "/var/xdrago/log/.force_nginx_restart_ctrl.${tRee}.${_X_SE}.pid" ]; then
     _IS_NGINX_LOCKED=$(service nginx restart 2>&1)
     if [[ "${_IS_NGINX_LOCKED}" =~ "Address already in use" ]]; then
       kill -9 $(ps aux | grep '[n]ginx' | awk '{print $2}') &> /dev/null
       service nginx start
       wait
       rm -f /var/xdrago/log/.force_nginx_restart_ctrl*
-      touch /var/xdrago/log/.force_nginx_restart_ctrl.${_X_SE}.pid
+      touch /var/xdrago/log/.force_nginx_restart_ctrl.${tRee}.${_X_SE}.pid
     fi
   fi
 
@@ -712,7 +712,7 @@ if [ -e "/var/aegir/drush" ]; then
       rm -f /run/mysql_restart_running.pid
       rm -f /run/boa_wait.pid
       rm -f /var/xdrago/log/.move_sql_ctrl*
-      touch /var/xdrago/log/.move_sql_ctrl.${_X_SE}.pid
+      touch /var/xdrago/log/.move_sql_ctrl.${tRee}.${_X_SE}.pid
     fi
   fi
 
@@ -722,7 +722,7 @@ if [ -e "/var/aegir/drush" ]; then
       kill -9 $(ps aux | grep '[m]ysql_cleanup.sh' | awk '{print $2}') &> /dev/null
       rm -f /run/mysql_backup_running.pid
       rm -f /var/xdrago/log/.sqlcleanup_ctrl*
-      touch /var/xdrago/log/.sqlcleanup_ctrl.${_X_SE}.pid
+      touch /var/xdrago/log/.sqlcleanup_ctrl.${tRee}.${_X_SE}.pid
     fi
   fi
 
@@ -730,7 +730,7 @@ if [ -e "/var/aegir/drush" ]; then
   if [ ! -z "${_IS_SOLRSTART_RUNNING}" ]; then
     if [ `ps aux | grep -v "grep" | grep --count "solr start"` -gt "2" ]; then
       kill -9 $(ps aux | grep '[s]olr start' | awk '{print $2}') &> /dev/null
-      touch /var/xdrago/log/.solr_start_ctrl.${_X_SE}.pid
+      touch /var/xdrago/log/.solr_start_ctrl.${tRee}.${_X_SE}.pid
     fi
   fi
 
@@ -738,7 +738,7 @@ if [ -e "/var/aegir/drush" ]; then
   if [ ! -z "${_IS_PROCTRL_RUNNING}" ]; then
     if [ `ps aux | grep -v "grep" | grep --count "proc_num_ctrl.pl"` -gt "1" ]; then
       kill -9 $(ps aux | grep '[p]roc_num_ctrl.cgi' | awk '{print $2}') &> /dev/null
-      touch /var/xdrago/log/.proc_num_ctrl.${_X_SE}.pid
+      touch /var/xdrago/log/.proc_num_ctrl.${tRee}.${_X_SE}.pid
     fi
   fi
 
@@ -758,7 +758,7 @@ if [ -e "/var/aegir/drush" ]; then
       rm -f /run/boa_wait.pid
       rm -f /run/daily-fix.pid
       rm -f /var/xdrago/log/.sqlbackup_ctrl*
-      touch /var/xdrago/log/.sqlbackup_ctrl.${_X_SE}.pid
+      touch /var/xdrago/log/.sqlbackup_ctrl.${tRee}.${_X_SE}.pid
     fi
   fi
 fi
