@@ -6,6 +6,19 @@ export tRee="${tRee}"
 export rlsn="${rlsn}"
 
 #
+# Download and extract from core archive.
+get_core_ext() {
+  if [ ! -z "$1" ]; then
+    curl ${crlGet} "http://${_USE_MIR}/core/$1" -o "$1"
+    if [ -e "$1" ]; then
+      extract_archive "$1"
+    else
+      msg "OOPS: $1 failed download from http://${_USE_MIR}/core/$1"
+    fi
+  fi
+}
+
+#
 # Generate provision backend db_passwd.
 provision_backend_dbpass_generate() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
