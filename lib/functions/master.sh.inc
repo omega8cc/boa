@@ -1,9 +1,21 @@
 
-tRee=pro
+export tRee=dev
 rlsn="BOA-5.4.0"
 rlse="${rlsn}-${tRee}"
-export tRee="${tRee}"
 export rlsn="${rlsn}"
+
+#
+# Download and extract from core archive.
+get_core_ext() {
+  if [ ! -z "$1" ]; then
+    curl ${crlGet} "http://${_USE_MIR}/core/$1" -o "$1"
+    if [ -e "$1" ]; then
+      extract_archive "$1"
+    else
+      msg "OOPS: $1 failed download from http://${_USE_MIR}/core/$1"
+    fi
+  fi
+}
 
 #
 # Generate provision backend db_passwd.
@@ -554,8 +566,7 @@ aegir_master_upgrade() {
     chown -R aegir:www-data ${_THIS_HM_SITE}/files
     chmod -R 02775 ${_THIS_HM_SITE}/files
 
-    _X_SE="540proT02"
-    export _X_SE="${_X_SE}"
+    export _X_SE=540devT02
     export _X_VERSION="${_X_VERSION}"
 
     echo "_AEGIR_VERSION=\"${_AEGIR_VERSION}\""         >> ${vBs}/${filIncB}
@@ -566,6 +577,7 @@ aegir_master_upgrade() {
     echo "_BRANCH_PRN=\"${_BRANCH_PRN}\""               >> ${vBs}/${filIncB}
     echo "_DEBUG_MODE=\"${_DEBUG_MODE}\""               >> ${vBs}/${filIncB}
     echo "_DOMAIN=\"${_THIS_FRONT}\""                   >> ${vBs}/${filIncB}
+    echo "_DRUPAL7=\"${_DRUPAL7}\""                     >> ${vBs}/${filIncB}
     echo "_DRUSH_VERSION=\"${_DRUSH_VERSION}\""         >> ${vBs}/${filIncB}
     echo "_NOW=\"${_NOW}\""                             >> ${vBs}/${filIncB}
     echo "_PHP_CLI_VERSION=\"${_PHP_CLI_VERSION}\""     >> ${vBs}/${filIncB}
@@ -884,8 +896,7 @@ ALTER USER '${_AEGIR_DB_USER}'@'%' IDENTIFIED BY '${_ESC_PASS}';
 EOFMYSQL
     fi
 
-    _X_SE="540proT02"
-    export _X_SE="${_X_SE}"
+    export _X_SE=540devT02
     export _X_VERSION="${_X_VERSION}"
 
     echo "_AEGIR_DB_USER=\"${_AEGIR_DB_USER}\""         >> ${vBs}/${filIncB}
@@ -1156,7 +1167,7 @@ php_cli_local_ini_update() {
   if [ "${_PHP_CLI_UPDATE}" = "YES" ] \
     || [ ! -e "${_U_II}" ] \
     || [ ! -d "${_U_TP}" ] \
-    || [ ! -e "${_U_HD}/.ctrl.${_X_SE}.pid" ]; then
+    || [ ! -e "${_U_HD}/.ctrl.${tRee}.${_X_SE}.pid" ]; then
     mkdir -p ${_U_TP}
     touch ${_U_TP}
     find ${_U_TP}/ -mtime +0 -exec rm -rf {} \; &> /dev/null
@@ -1214,7 +1225,7 @@ php_cli_local_ini_update() {
       sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
       wait
       echo > ${_U_HD}/.ctrl.php${_U_INI}.${_X_SE}.pid
-      echo > ${_U_HD}/.ctrl.${_X_SE}.pid
+      echo > ${_U_HD}/.ctrl.${tRee}.${_X_SE}.pid
     fi
   fi
 }

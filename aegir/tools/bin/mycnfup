@@ -3,6 +3,7 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+export tRee=dev
 
 ###
 ### Avoid too many questions
@@ -13,13 +14,10 @@ if [ -z "${TERM+x}" ]; then
   export TERM=vt100
 fi
 
-tRee=pro
-export tRee="${tRee}"
-
 _AEGIR_VERSION="${tRee}"
 _BRANCH_BOA="5.x-${tRee}"
 _X_VERSION="BOA-5.4.0-${tRee}"
-_X_SE="540proT02"
+_X_SE=540devT02
 _MYSQLTUNER_VRN=1.9.4
 _PHP_FPM_WORKERS=AUTO
 _RESERVED_RAM=0

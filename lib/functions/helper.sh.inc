@@ -1,6 +1,5 @@
 
-tRee=pro
-export tRee="${tRee}"
+export tRee=dev
 
 if_hosted_sys() {
   if [ -e "/root/.host8.cnf" ] \

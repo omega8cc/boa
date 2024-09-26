@@ -3,11 +3,9 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+export tRee=dev
 
 _H_USER=EDIT_USER
-
-tRee=pro
-export tRee="${tRee}"
 
 check_root() {
   if [ `whoami` = "root" ]; then

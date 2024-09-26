@@ -3,6 +3,7 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+export tRee=dev
 
 _DB_SERIES=5.7
 _CSF_VRN=14.21
@@ -19,13 +20,13 @@ aptYesUnth="-y --allow-unauthenticated"
 _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
 _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
 aptLiSys="/etc/apt/sources.list"
-tRee=pro
-export tRee="${tRee}"
+
 if [ -e "/var/aegir/drush" ]; then
   _DPKG_CNF="confold"
 else
   _DPKG_CNF="confnew"
 fi
+
 _INSTALL_DIST="/usr/bin/apt-get ${dstUpArg} install"
 _INSTALL_NRML="/usr/bin/apt-get ${nrmUpArg} install"
 _INSTAPP="/usr/bin/aptitude -f -y -q \
@@ -33,6 +34,7 @@ _INSTAPP="/usr/bin/aptitude -f -y -q \
   -o Dpkg::Options::=--force-confmiss \
   -o Dpkg::Options::=--force-confdef \
   -o Dpkg::Options::=--force-${_DPKG_CNF} install"
+
 if [ ! -e "/var/aegir/drush" ]; then
   _INSTAPP="${_INSTALL_DIST}"
 fi
@@ -51,7 +53,7 @@ fi
 _TODAY=$(date +%y%m%d 2>&1)
 _TODAY=${_TODAY//[^0-9]/}
 _X_VERSION="BOA-5.4.0-${tRee}"
-_X_SE="540proT02"
+_X_SE=540devT02
 #
 barCnf="/root/.barracuda.cnf"
 crlGet="-L --max-redirs 3 -k -s --retry 3 --retry-delay 5 -A iCab"
@@ -210,31 +212,116 @@ check_no_systemd() {
   fi
 }
 
-check_ifnames() {
-  _SYS_IFNAMES=$(grep GRUB_CMDLINE_LINUX= /etc/default/grub | grep "net.ifnames=0" 2>&1)
-  if [ -e "/etc/default/grub" ] && [[ ! "${_SYS_IFNAMES}" =~ "net.ifnames=0" ]]; then
-    echo
-    echo "ERROR: BOA requires the classic network interface naming convention."
-    echo "ERROR: Typically it should be eth0 and not ens3 systemd convention."
-    echo
-    echo "RDOCS: Please study recommended docs before introducing any changes!"
-    echo
-    echo "RDOCS:   https://bit.ly/boa-network-config"
-    echo
-    echo "HINTS: You can check your active network interfaces with command:"
-    echo "HINTS:   ip addr show"
-    echo "HINTS: to make sure you are in fact using supported naming convention."
-    echo "HINTS: You may see names like eth0, eth1, eth2 -- they are supported."
-    echo
-    echo "HINTS: Add these two required parameters to GRUB_CMDLINE_LINUX variable:"
-    echo "HINTS:   net.ifnames=0 biosdevname=0"
-    echo "HINTS: in your /etc/default/grub configuration and then activate with"
-    echo "HINTS:   grub-mkconfig -o /boot/grub/grub.cfg"
-    echo "HINTS: Once this is done, reboot your system and run this installer again."
-    echo
-    echo "Bye"
-    echo
-    clean_pid_exit check_ifnames_a
+ifnames_grub_check_sync() {
+  _IS_IFACE=$(ip a 2>&1)
+  _ADD_GRUB_CMD=""
+  _GRUB_FILE="/etc/default/grub"
+
+  if [ -e "${_GRUB_FILE}" ]; then
+    if echo "${_IS_IFACE}" | grep -qE "eth[0-9]+"; then
+      _USE_IFNAMES="CLASSIC"
+      echo "GRUB: Classic ethX interface naming found."
+    elif echo "${_IS_IFACE}" | grep -qE "(ens|enp|eno|wlp|wlo)[0-9]+:"; then
+      _USE_IFNAMES="PREDICTABLE"
+      echo "GRUB: Predictable (ensX, enpX, enoX, wlpX, wloX) interface naming found."
+    else
+      _USE_IFNAMES="DONTMODIFY"
+      echo "GRUB: config exists, but no recognized network interface naming found."
+    fi
+
+    # Extract the current GRUB_CMDLINE_LINUX line
+    _GRUB_CMDLINE_LINUX=$(grep -E "^GRUB_CMDLINE_LINUX=" "${_GRUB_FILE}")
+    echo "GRUB: Current config is ${_GRUB_CMDLINE_LINUX}"
+
+    # Initialize variables to check for existing options
+    _SYS_NET_IFNAMES=$(echo "${_GRUB_CMDLINE_LINUX}" | grep -o "net.ifnames=[01]")
+    _SYS_BIOSDEVNAME=$(echo "${_GRUB_CMDLINE_LINUX}" | grep -o "biosdevname=[01]")
+    _SYS_MEMHP_STATE=$(echo "${_GRUB_CMDLINE_LINUX}" | grep -o "memhp_default_state=online")
+
+    # Function to append option to _ADD_GRUB_CMD if not already present
+    _append_grub_cmd_option() {
+      local _option="$1"
+      if [[ -z "${_ADD_GRUB_CMD}" ]]; then
+        _ADD_GRUB_CMD="${_option}"
+      else
+        _ADD_GRUB_CMD="${_ADD_GRUB_CMD} ${_option}"
+      fi
+    }
+
+    # Check and append options as necessary
+    if [[ -z "${_SYS_MEMHP_STATE}" ]]; then
+      _append_grub_cmd_option "memhp_default_state=online"
+    fi
+
+    if [[ "${_USE_IFNAMES}" == "CLASSIC" ]]; then
+      if [[ "${_SYS_NET_IFNAMES}" != "net.ifnames=0" ]]; then
+        _append_grub_cmd_option "net.ifnames=0"
+      fi
+      if [[ "${_SYS_BIOSDEVNAME}" != "biosdevname=0" ]]; then
+        _append_grub_cmd_option "biosdevname=0"
+      fi
+    elif [[ "${_USE_IFNAMES}" == "PREDICTABLE" ]]; then
+      if [[ "${_SYS_NET_IFNAMES}" != "net.ifnames=1" ]]; then
+        _append_grub_cmd_option "net.ifnames=1"
+      fi
+      if [[ "${_SYS_BIOSDEVNAME}" != "biosdevname=1" ]]; then
+        _append_grub_cmd_option "biosdevname=1"
+      fi
+    fi
+
+    if [ -e "/root/.auto.config.ifnames.grub.cnf" ] && [ ! -e "/root/.ignore.ifnames.cnf" ]; then
+      _NEW_GRUB=LIVE
+    else
+      _NEW_GRUB=DEMO
+    fi
+
+    if [[ -n "${_ADD_GRUB_CMD}" ]]; then
+      # Backup the GRUB file
+      cp "${_GRUB_FILE}" "${_GRUB_FILE}.bak"
+
+      # Remove existing options from GRUB_CMDLINE_LINUX
+      _NEW_GRUB_CMDLINE_LINUX=$(echo "${_GRUB_CMDLINE_LINUX}" | sed -E "s/(net.ifnames=[01]|biosdevname=[01]|memhp_default_state=online)//g")
+
+      # Clean up extra spaces and trailing spaces before the closing quote
+      _NEW_GRUB_CMDLINE_LINUX=$(echo "${_NEW_GRUB_CMDLINE_LINUX}" | tr -s ' ' | sed -E 's/\s*"$/"/')
+
+      # Extract current kernel parameters
+      _CURRENT_CMDLINE=$(echo "${_NEW_GRUB_CMDLINE_LINUX}" | sed -E 's/^GRUB_CMDLINE_LINUX="(.*)"$/\1/')
+
+      # Append new options
+      _UPDATED_CMDLINE="${_CURRENT_CMDLINE} ${_ADD_GRUB_CMD}"
+      _UPDATED_CMDLINE=$(echo "${_UPDATED_CMDLINE}" | sed 's/^ *//;s/ *$//')
+
+      # Form the new GRUB_CMDLINE_LINUX line
+      _NEW_GRUB_CMDLINE_LINUX="GRUB_CMDLINE_LINUX=\"${_UPDATED_CMDLINE}\""
+
+      echo " "
+      if [[ "${_NEW_GRUB}" == "LIVE" ]]; then
+        # Update the GRUB file
+        echo "GRUB: Update in the LIVE MODE"
+        sed -i "s|^GRUB_CMDLINE_LINUX=.*|${_NEW_GRUB_CMDLINE_LINUX}|" "${_GRUB_FILE}"
+        echo "GRUB_CMDLINE_LINUX has been updated with ${_UPDATED_CMDLINE}"
+      elif [[ "${_NEW_GRUB}" == "DEMO" ]]; then
+        # Demo info
+        echo "GRUB: Update in the DEMO MODE"
+        echo "GRUB_CMDLINE_LINUX would be updated with ${_UPDATED_CMDLINE}"
+        echo " "
+        echo "GRUB: Update in the LIVE MODE needs presence of control file:"
+        echo "GRUB   /root/.auto.config.ifnames.grub.cnf"
+        echo " "
+        echo "GRUB: Ensure that the file /root/.ignore.ifnames.cnf does not exist."
+        echo "GRUB: This requirement serves as a double-check to confirm"
+        echo "GRUB: that you are aware of and agree to auto-update GRUB configuration."
+        echo "GRUB: Incorrect GRUB settings can render your virtual machine unbootable"
+        echo "GRUB: necessitating a rescue operation using a CD-ROM or ISO image."
+        echo "GRUB: For this reason, running BOA directly on physical hardware (bare metal) is not supported"
+        echo " "
+        echo "GRUB: NEVER USE LIVE MODE IF YOU ARE NOT SURE IF YOU NEED IT"
+      fi
+      echo " "
+    fi
+  else
+    echo "GRUB config does not exist."
   fi
 }
 
@@ -267,7 +354,6 @@ check_root_direct() {
     echo "Bye"
     clean_pid_exit check_root_direct_a
   fi
-  [ ! -e "/root/.ignore.ifnames.cnf" ] && check_ifnames
 }
 
 check_root_keys_pwd() {
@@ -448,6 +534,7 @@ check_all() {
   check_root_direct
   check_root_keys_pwd
   check_no_systemd
+  ifnames_grub_check_sync
   os_detection_minimal
   system_check_clean
   locales_check_fix

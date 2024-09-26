@@ -21,15 +21,16 @@ Note: your custom rewrite rules will apply to *all* sites on the same Ægir Sate
 ```nginx
 location ~* ^.+\.(?:jpe?g|gif|png|ico|swf|pdf|ttf|html?)$ {
   access_log off;
-  expires    30d;
-  rewrite    ^/files/(.*)$     /sites/$server_name/files/$1 last;
-  rewrite    ^/images/(.*)$    /sites/$server_name/files/images/$1 last;
-  rewrite    ^/downloads/(.*)$ /sites/$server_name/files/downloads/$1 last;
-  rewrite    ^/download/(.*)$  /sites/$server_name/files/download/$1 last;
-  rewrite    ^/docs/(.*)$      /sites/$server_name/files/docs/$1 last;
-  rewrite    ^/documents/(.*)$ /sites/$server_name/files/documents/$1 last;
-  rewrite    ^/legacy/(.*)$    /sites/$server_name/files/legacy/$1 last;
-  try_files  $uri =404;
+  log_not_found off;
+  expires 30d;
+  rewrite ^/files/(.*)$     /sites/$server_name/files/$1 last;
+  rewrite ^/images/(.*)$    /sites/$server_name/files/images/$1 last;
+  rewrite ^/downloads/(.*)$ /sites/$server_name/files/downloads/$1 last;
+  rewrite ^/download/(.*)$  /sites/$server_name/files/download/$1 last;
+  rewrite ^/docs/(.*)$      /sites/$server_name/files/docs/$1 last;
+  rewrite ^/documents/(.*)$ /sites/$server_name/files/documents/$1 last;
+  rewrite ^/legacy/(.*)$    /sites/$server_name/files/legacy/$1 last;
+  try_files $uri =404;
 }
 ```
 

@@ -3,14 +3,13 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+export tRee=dev
 
 crlGet="-L --max-redirs 3 -k -s --retry 3 --retry-delay 5 -A iCab"
 _USE_GITHUB=/root/.goaccess.use.github.txt
 _GOACCESS_VRN=1.7.1
 sPmrs="https://raw.githubusercontent.com/matomo-org/referrer-spam-blacklist/master/spammers.txt"
 [ -e "/root/.goaccess.use.github.txt" ] && rm -f /root/.goaccess.use.github.txt
-tRee=pro
-export tRee="${tRee}"
 
 check_root() {
   if [ `whoami` = "root" ]; then

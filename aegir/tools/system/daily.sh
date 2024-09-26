@@ -3,9 +3,7 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-
-tRee=pro
-export tRee="${tRee}"
+export tRee=dev
 
 check_root() {
   if [ `whoami` = "root" ]; then
@@ -37,7 +35,7 @@ if [ -e "/root/.pause_heavy_tasks_maint.cnf" ]; then
   exit 0
 fi
 
-_X_SE="540proT02"
+_X_SE=540devT02
 _WEBG=www-data
 _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
 if [ -e "/root/.install.modern.openssl.cnf" ] \

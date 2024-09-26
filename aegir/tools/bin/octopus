@@ -604,7 +604,7 @@ up_one() {
         _IS_OLD=$(find ${User}/.drush/provision/ \
           -maxdepth 1 -mindepth 1 -mtime +0 -type d | grep example)
       fi
-      if [ -e "${User}/.drush/.ctrl.${_X_SE}.pid" ]; then
+      if [ -e "${User}/.drush/.ctrl.${tRee}.${_X_SE}.pid" ]; then
         _IS_OLD=
       else
         _IS_OLD=OLD

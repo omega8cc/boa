@@ -1,8 +1,7 @@
 
-tRee=pro
+export tRee=dev
 rlsn="BOA-5.4.0"
 rlse="${rlsn}-${tRee}"
-export tRee="${tRee}"
 export rlsn="${rlsn}"
 
 #
@@ -1102,27 +1101,27 @@ satellite_fix_multi_ip_cron_access() {
     | uniq \
     | tr -d "\s"`;do echo "  allow        ${_IP};" >> \
       /root/.local.IP.list.allow;done
-  echo "  allow        127.0.0.1;" >> /root/.local.IP.list.allow
-  echo "  deny         all;" >> /root/.local.IP.list.allow
+  echo "  allow 127.0.0.1;" >> /root/.local.IP.list.allow
+  echo "  deny all;" >> /root/.local.IP.list.allow
 
-  sed -i "s/allow        .*;//g; s/ *$//g; /^$/d" \
+  sed -i "s/allow 127.0.0.1;//g; s/ *$//g; /^$/d" \
     ${octTpl}/Inc/vhost_include.tpl.php
   wait
-  sed -i '/deny         all;/ {r /root/.local.IP.list.allow
+  sed -i '/deny all;/ {r /root/.local.IP.list.allow
 d;};' ${octTpl}/Inc/vhost_include.tpl.php
   wait
 
-  sed -i "s/allow        .*;//g; s/ *$//g; /^$/d" \
+  sed -i "s/allow 127.0.0.1;//g; s/ *$//g; /^$/d" \
     ${octTpl}/subdir.tpl.php
   wait
-  sed -i '/deny         all;/ {r /root/.local.IP.list.allow
+  sed -i '/deny all;/ {r /root/.local.IP.list.allow
 d;};' ${octTpl}/subdir.tpl.php
   wait
 
-  sed -i "s/allow        .*;//g; s/ *$//g; /^$/d" \
+  sed -i "s/allow 127.0.0.1;//g; s/ *$//g; /^$/d" \
     ${octInc}/nginx_vhost_common.conf
   wait
-  sed -i '/deny         all;/ {r /root/.local.IP.list.allow
+  sed -i '/deny all;/ {r /root/.local.IP.list.allow
 d;};' ${octInc}/nginx_vhost_common.conf
   wait
 }
@@ -1223,7 +1222,7 @@ satellite_child_b_update_ini_php_cli() {
   if [ "${_PHP_CLI_UPDATE}" = "YES" ] \
     || [ ! -e "${_U_II}" ] \
     || [ ! -d "${_U_TP}" ] \
-    || [ ! -e "${_U_HD}/.ctrl.${_X_SE}.pid" ]; then
+    || [ ! -e "${_U_HD}/.ctrl.${tRee}.${_X_SE}.pid" ]; then
     mkdir -p ${_U_TP}
     touch ${_U_TP}
     find ${_U_TP}/ -mtime +0 -exec rm -rf {} \; &> /dev/null
@@ -1282,7 +1281,7 @@ satellite_child_b_update_ini_php_cli() {
       sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
       wait
       echo > ${_U_HD}/.ctrl.php${_U_INI}.${_X_SE}.pid
-      echo > ${_U_HD}/.ctrl.${_X_SE}.pid
+      echo > ${_U_HD}/.ctrl.${tRee}.${_X_SE}.pid
     fi
   fi
 }
@@ -4011,8 +4010,7 @@ satellite_make() {
     writeTo="${vBs}/${filIncO}"
   fi
 
-  _X_SE="540proT02"
-  export _X_SE="${_X_SE}"
+  export _X_SE=540devT02
   export _X_VERSION="${_X_VERSION}"
 
   echo "_AEGIR_VERSION=\"${_AEGIR_VERSION}\""         >> ${writeTo}
@@ -4198,7 +4196,7 @@ satellite_make() {
     fi
   fi
 
-  if [ ! -e "${_ROOT}/static/control/.ctrl.${_X_SE}.pid" ] \
+  if [ ! -e "${_ROOT}/static/control/.ctrl.${tRee}.${_X_SE}.pid" ] \
     && [ -e "/home/${_USER}.ftp/clients" ]; then
     if [ -e "/var/xdrago/conf/control-readme.txt" ]; then
       cp -af /var/xdrago/conf/control-readme.txt \
@@ -4206,7 +4204,7 @@ satellite_make() {
       chmod 0644 ${_ROOT}/static/control/README.txt
     fi
     rm -f ${_ROOT}/static/control/.ctrl.*
-    echo OK > ${_ROOT}/static/control/.ctrl.${_X_SE}.pid
+    echo OK > ${_ROOT}/static/control/.ctrl.${tRee}.${_X_SE}.pid
   fi
   chown -R ${_USER}.ftp:${_USRG} ${_ROOT}/static/control
 
