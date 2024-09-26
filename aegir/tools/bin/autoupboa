@@ -9,6 +9,34 @@ barCnf="/root/.barracuda.cnf"
 
 _X_SE=540devT02
 
+# Define default values
+_DEFAULT_CPU_CRIT_RATIO="3.7"
+_DEFAULT_CPU_MAX_RATIO="2.5"
+_DEFAULT_CPU_SPIDER_RATIO="1.2"
+
+# Function to update or add variables in the configuration file
+_update_conf_variable() {
+  local _var_name="$1"
+  local _default_value="$2"
+  local _conf_file="$3"
+
+  if grep -qE "^#?${_var_name}=" "${_conf_file}"; then
+    # Variable exists, uncomment and update value
+    sed -i "s|^#\?${_var_name}=.*|${_var_name}=${_default_value}|g" "${_conf_file}"
+  else
+    # Variable doesn't exist, append to the file
+    echo "${_var_name}=${_default_value}" >> "${_conf_file}"
+  fi
+}
+
+if [ ! -e "/var/xdrago/log/.update_conf_variable.${_X_SE}.pid" ]; then
+  # Update variables
+  _update_conf_variable "_CPU_CRIT_RATIO" "${_DEFAULT_CPU_CRIT_RATIO}" "${barCnf}"
+  _update_conf_variable "_CPU_MAX_RATIO" "${_DEFAULT_CPU_MAX_RATIO}" "${barCnf}"
+  _update_conf_variable "_CPU_SPIDER_RATIO" "${_DEFAULT_CPU_SPIDER_RATIO}" "${barCnf}"
+  touch /var/xdrago/log/.update_conf_variable.${_X_SE}.pid
+fi
+
 # Define directories and error log path
 SSL_DIR="/etc/ssl/private"
 NGINX_ERROR_LOG="/var/log/nginx/error.log"
