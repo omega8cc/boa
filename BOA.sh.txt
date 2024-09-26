@@ -569,45 +569,45 @@ update_agents() {
 
 
   if [ -e "/var/aegir/drush" ]; then
-    [ ! -e "/var/xdrago/clear.sh" ] && rm -f ${pthLog}/*.ctrl.${tRee}.${_X_SE}.pid
-    [ ! -e "/var/xdrago/daily.sh" ] && rm -f ${pthLog}/*.ctrl.${tRee}.${_X_SE}.pid
-    [ ! -e "/var/xdrago/graceful.sh" ] && rm -f ${pthLog}/*.ctrl.${tRee}.${_X_SE}.pid
-    [ ! -e "/var/xdrago/guest-fire.sh" ] && rm -f ${pthLog}/*.ctrl.${tRee}.${_X_SE}.pid
-    [ ! -e "/var/xdrago/guest-water.sh" ] && rm -f ${pthLog}/*.ctrl.${tRee}.${_X_SE}.pid
-    [ ! -e "/var/xdrago/ip_access.sh" ] && rm -f ${pthLog}/*.ctrl.${tRee}.${_X_SE}.pid
-    [ ! -e "/var/xdrago/manage_ltd_users.sh" ] && rm -f ${pthLog}/*.ctrl.${tRee}.${_X_SE}.pid
-    [ ! -e "/var/xdrago/manage_solr_config.sh" ] && rm -f ${pthLog}/*.ctrl.${tRee}.${_X_SE}.pid
-    [ ! -e "/var/xdrago/minute.sh" ] && rm -f ${pthLog}/*.ctrl.${tRee}.${_X_SE}.pid
-    [ ! -e "/var/xdrago/move_sql.sh" ] && rm -f ${pthLog}/*.ctrl.${tRee}.${_X_SE}.pid
-    [ ! -e "/var/xdrago/mysql_backup.sh" ] && rm -f ${pthLog}/*.ctrl.${tRee}.${_X_SE}.pid
-    [ ! -e "/var/xdrago/mysql_cleanup.sh" ] && rm -f ${pthLog}/*.ctrl.${tRee}.${_X_SE}.pid
-    [ ! -e "/var/xdrago/proc_num_ctrl.pl" ] && rm -f ${pthLog}/*.ctrl.${tRee}.${_X_SE}.pid
-    [ ! -e "/var/xdrago/runner.sh" ] && rm -f ${pthLog}/*.ctrl.${tRee}.${_X_SE}.pid
-    [ ! -e "/var/xdrago/second.sh" ] && rm -f ${pthLog}/*.ctrl.${tRee}.${_X_SE}.pid
-    [ ! -e "/var/xdrago/usage.sh" ] && rm -f ${pthLog}/*.ctrl.${tRee}.${_X_SE}.pid
+    [ ! -e "/var/xdrago/clear.sh" ] && rm -f ${pthLog}/*.ctrl.*.pid
+    [ ! -e "/var/xdrago/daily.sh" ] && rm -f ${pthLog}/*.ctrl.*.pid
+    [ ! -e "/var/xdrago/graceful.sh" ] && rm -f ${pthLog}/*.ctrl.*.pid
+    [ ! -e "/var/xdrago/guest-fire.sh" ] && rm -f ${pthLog}/*.ctrl.*.pid
+    [ ! -e "/var/xdrago/guest-water.sh" ] && rm -f ${pthLog}/*.ctrl.*.pid
+    [ ! -e "/var/xdrago/ip_access.sh" ] && rm -f ${pthLog}/*.ctrl.*.pid
+    [ ! -e "/var/xdrago/manage_ltd_users.sh" ] && rm -f ${pthLog}/*.ctrl.*.pid
+    [ ! -e "/var/xdrago/manage_solr_config.sh" ] && rm -f ${pthLog}/*.ctrl.*.pid
+    [ ! -e "/var/xdrago/minute.sh" ] && rm -f ${pthLog}/*.ctrl.*.pid
+    [ ! -e "/var/xdrago/move_sql.sh" ] && rm -f ${pthLog}/*.ctrl.*.pid
+    [ ! -e "/var/xdrago/mysql_backup.sh" ] && rm -f ${pthLog}/*.ctrl.*.pid
+    [ ! -e "/var/xdrago/mysql_cleanup.sh" ] && rm -f ${pthLog}/*.ctrl.*.pid
+    [ ! -e "/var/xdrago/proc_num_ctrl.pl" ] && rm -f ${pthLog}/*.ctrl.*.pid
+    [ ! -e "/var/xdrago/runner.sh" ] && rm -f ${pthLog}/*.ctrl.*.pid
+    [ ! -e "/var/xdrago/second.sh" ] && rm -f ${pthLog}/*.ctrl.*.pid
+    [ ! -e "/var/xdrago/usage.sh" ] && rm -f ${pthLog}/*.ctrl.*.pid
 
-    [ ! -e "/var/xdrago/monitor/check/java.sh" ] && rm -f ${pthLog}/*.ctrl.${tRee}.${_X_SE}.pid
-    [ ! -e "/var/xdrago/monitor/check/mysql.sh" ] && rm -f ${pthLog}/*.ctrl.${tRee}.${_X_SE}.pid
-    [ ! -e "/var/xdrago/monitor/check/nginx.sh" ] && rm -f ${pthLog}/*.ctrl.${tRee}.${_X_SE}.pid
-    [ ! -e "/var/xdrago/monitor/check/php.sh" ] && rm -f ${pthLog}/*.ctrl.${tRee}.${_X_SE}.pid
-    [ ! -e "/var/xdrago/monitor/check/redis.sh" ] && rm -f ${pthLog}/*.ctrl.${tRee}.${_X_SE}.pid
-    [ ! -e "/var/xdrago/monitor/check/system.sh" ] && rm -f ${pthLog}/*.ctrl.${tRee}.${_X_SE}.pid
-    [ ! -e "/var/xdrago/monitor/check/unbound.sh" ] && rm -f ${pthLog}/*.ctrl.${tRee}.${_X_SE}.pid
+    [ ! -e "/var/xdrago/monitor/check/java.sh" ] && rm -f ${pthLog}/*.ctrl.*.pid
+    [ ! -e "/var/xdrago/monitor/check/mysql.sh" ] && rm -f ${pthLog}/*.ctrl.*.pid
+    [ ! -e "/var/xdrago/monitor/check/nginx.sh" ] && rm -f ${pthLog}/*.ctrl.*.pid
+    [ ! -e "/var/xdrago/monitor/check/php.sh" ] && rm -f ${pthLog}/*.ctrl.*.pid
+    [ ! -e "/var/xdrago/monitor/check/redis.sh" ] && rm -f ${pthLog}/*.ctrl.*.pid
+    [ ! -e "/var/xdrago/monitor/check/system.sh" ] && rm -f ${pthLog}/*.ctrl.*.pid
+    [ ! -e "/var/xdrago/monitor/check/unbound.sh" ] && rm -f ${pthLog}/*.ctrl.*.pid
 
-    [ ! -e "/var/xdrago/monitor/check/escapecheck.pl" ] && rm -f ${pthLog}/*.ctrl.${tRee}.${_X_SE}.pid
-    [ ! -e "/var/xdrago/monitor/check/hackcheck.pl" ] && rm -f ${pthLog}/*.ctrl.${tRee}.${_X_SE}.pid
-    [ ! -e "/var/xdrago/monitor/check/hackftp.pl" ] && rm -f ${pthLog}/*.ctrl.${tRee}.${_X_SE}.pid
-    [ ! -e "/var/xdrago/monitor/check/locked_java.pl" ] && rm -f ${pthLog}/*.ctrl.${tRee}.${_X_SE}.pid
-    [ ! -e "/var/xdrago/monitor/check/locked_nginx.pl" ] && rm -f ${pthLog}/*.ctrl.${tRee}.${_X_SE}.pid
-    [ ! -e "/var/xdrago/monitor/check/scan_nginx.pl" ] && rm -f ${pthLog}/*.ctrl.${tRee}.${_X_SE}.pid
-    [ ! -e "/var/xdrago/monitor/check/segfault_alert.pl" ] && rm -f ${pthLog}/*.ctrl.${tRee}.${_X_SE}.pid
-    [ ! -e "/var/xdrago/monitor/check/sqlcheck.pl" ] && rm -f ${pthLog}/*.ctrl.${tRee}.${_X_SE}.pid
+    [ ! -e "/var/xdrago/monitor/check/escapecheck.pl" ] && rm -f ${pthLog}/*.ctrl.*.pid
+    [ ! -e "/var/xdrago/monitor/check/hackcheck.pl" ] && rm -f ${pthLog}/*.ctrl.*.pid
+    [ ! -e "/var/xdrago/monitor/check/hackftp.pl" ] && rm -f ${pthLog}/*.ctrl.*.pid
+    [ ! -e "/var/xdrago/monitor/check/locked_java.pl" ] && rm -f ${pthLog}/*.ctrl.*.pid
+    [ ! -e "/var/xdrago/monitor/check/locked_nginx.pl" ] && rm -f ${pthLog}/*.ctrl.*.pid
+    [ ! -e "/var/xdrago/monitor/check/scan_nginx.pl" ] && rm -f ${pthLog}/*.ctrl.*.pid
+    [ ! -e "/var/xdrago/monitor/check/segfault_alert.pl" ] && rm -f ${pthLog}/*.ctrl.*.pid
+    [ ! -e "/var/xdrago/monitor/check/sqlcheck.pl" ] && rm -f ${pthLog}/*.ctrl.*.pid
 
     [ -e "/var/xdrago/proc_num_ctrl.cgi" ] && rm -f /var/xdrago/proc_num_ctrl.cgi
     [ -e "/var/xdrago/checksql.cgi" ] && rm -f /var/xdrago/checksql.cgi
     [ -e "/var/xdrago/mysql_hourly.sh" ] && rm -f /var/xdrago/mysql_hourly.sh
 
-    [ -e "/var/xdrago/monitor/check/sqlcheck" ] && rm -f ${pthLog}/*.ctrl.${tRee}.${_X_SE}.pid
+    [ -e "/var/xdrago/monitor/check/sqlcheck" ] && rm -f ${pthLog}/*.ctrl.*.pid
     [ -e "/var/xdrago/monitor/check/sqlcheck" ] && rm -f /var/xdrago/monitor/check/*
 
     [ ! -e "/var/xdrago/monitor/log" ] && mkdir -p /var/xdrago/monitor/log
@@ -954,13 +954,13 @@ update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${pthLog}/second.sh.ctrl.${tRee}.${_X_SE}.pid" ]; then
+    && [ ! -e "${pthLog}/second.sh.ctrl.f1.${tRee}.${_X_SE}.pid" ]; then
     mv -f /var/xdrago/second.sh /var/xdrago/second.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/second.sh" -o /var/xdrago/second.sh
     if [ -e "/var/xdrago/second.sh" ]; then
       chmod 700 /var/xdrago/second.sh
       chown root:root /var/xdrago/second.sh
-      touch ${pthLog}/second.sh.ctrl.${tRee}.${_X_SE}.pid
+      touch ${pthLog}/second.sh.ctrl.f1.${tRee}.${_X_SE}.pid
     else
       mv -f /var/xdrago/second.sh.old /var/xdrago/second.sh
     fi
@@ -1465,6 +1465,33 @@ update_agents() {
     touch ${pthLog}/fpm-cli.ctrl.${tRee}.${_X_SE}.pid
     service nginx reload
   fi
+
+  # Create the destination directory if it doesn't exist
+  mkdir -p /var/backups/off-run/
+
+  # Loop through all files matching the pattern /var/xdrago/run-USER
+  for _file in /var/xdrago/run-*; do
+    # Skip iteration if no files match the pattern
+    [ -e "${_file}" ] || continue
+
+    # Extract the _USER from the filename
+    _USER=${_file#/var/xdrago/run-}
+
+    # Define the paths to check
+    _USER_DIR="/data/disk/${_USER}"
+    _CANCELLED_FILE="${_USER_DIR}/log/CANCELLED"
+    _PROXIED_PID_FILE="${_USER_DIR}/log/proxied.pid"
+    _CLI_INFO_FILE="${_USER_DIR}/static/control/cli.info"
+
+    # Check the conditions
+    if [ ! -d "${_USER_DIR}" ] || \
+       [ -f "${_CANCELLED_FILE}" ] || \
+       [ -f "${_PROXIED_PID_FILE}" ] || \
+       [ ! -f "${_CLI_INFO_FILE}" ]; then
+      # Move the file if any condition is met
+      mv -f "${_file}" /var/backups/off-run/
+    fi
+  done
 
   if [ -x "/opt/tools/drush/8/drush/drush.php" ] \
     && [ -e "${provLeIncFull}" ] \
