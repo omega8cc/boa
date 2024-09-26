@@ -76,18 +76,18 @@ ifnames_grub_check_sync() {
   if [ -e "${_GRUB_FILE}" ]; then
     if echo "${_IS_IFACE}" | grep -qE "eth[0-9]+"; then
       _USE_IFNAMES="CLASSIC"
-      echo "Classic ethX interface naming found."
+      echo "GRUB: Classic ethX interface naming found."
     elif echo "${_IS_IFACE}" | grep -qE "(ens|enp|eno|wlp|wlo)[0-9]+:"; then
       _USE_IFNAMES="PREDICTABLE"
-      echo "Predictable (ensX, enpX, enoX, wlpX, wloX) interface naming found."
+      echo "GRUB: Predictable (ensX, enpX, enoX, wlpX, wloX) interface naming found."
     else
       _USE_IFNAMES="DONTMODIFY"
-      echo "GRUB config exists, but no recognized network interface naming found."
+      echo "GRUB: config exists, but no recognized network interface naming found."
     fi
 
     # Extract the current GRUB_CMDLINE_LINUX line
     _GRUB_CMDLINE_LINUX=$(grep -E "^GRUB_CMDLINE_LINUX=" "${_GRUB_FILE}")
-    echo "Original _GRUB_CMDLINE_LINUX was ${_GRUB_CMDLINE_LINUX}"
+    echo "GRUB: Original _GRUB_CMDLINE_LINUX was ${_GRUB_CMDLINE_LINUX}"
 
     # Initialize variables to check for existing options
     _SYS_NET_IFNAMES=$(echo "${_GRUB_CMDLINE_LINUX}" | grep -o "net.ifnames=[01]")
@@ -125,6 +125,12 @@ ifnames_grub_check_sync() {
       fi
     fi
 
+    if [ -e "/root/.auto.config.ifnames.grub.cnf" ] && [ ! -e "/root/.ignore.ifnames.cnf" ]; then
+      _NEW_GRUB=LIVE
+    else
+      _NEW_GRUB=DEMO
+    fi
+
     if [[ -n "${_ADD_GRUB_CMD}" ]]; then
       # Backup the GRUB file
       cp "${_GRUB_FILE}" "${_GRUB_FILE}.bak"
@@ -145,13 +151,30 @@ ifnames_grub_check_sync() {
       # Form the new GRUB_CMDLINE_LINUX line
       _NEW_GRUB_CMDLINE_LINUX="GRUB_CMDLINE_LINUX=\"${_UPDATED_CMDLINE}\""
 
-      # Update the GRUB file
-      sed -i "s|^GRUB_CMDLINE_LINUX=.*|${_NEW_GRUB_CMDLINE_LINUX}|" "${_GRUB_FILE}"
-      echo "GRUB_CMDLINE_LINUX updated with ${_UPDATED_CMDLINE}"
-
-      # Update the GRUB configuration
-      echo "Time to update the GRUB configuration"
-      update-grub
+      echo " "
+      if [[ "${_NEW_GRUB}" == "LIVE" ]]; then
+        # Update the GRUB file
+        echo "GRUB: Update in the LIVE MODE"
+        sed -i "s|^GRUB_CMDLINE_LINUX=.*|${_NEW_GRUB_CMDLINE_LINUX}|" "${_GRUB_FILE}"
+        echo "GRUB_CMDLINE_LINUX has been updated with ${_UPDATED_CMDLINE}"
+      elif [[ "${_NEW_GRUB}" == "DEMO" ]]; then
+        # Demo info
+        echo "GRUB: Update in the DEMO MODE"
+        echo "GRUB_CMDLINE_LINUX would be updated with ${_UPDATED_CMDLINE}"
+        echo " "
+        echo "GRUB: Update in the LIVE MODE needs presence of control file:"
+        echo "GRUB   /root/.auto.config.ifnames.grub.cnf"
+        echo " "
+        echo "GRUB: Ensure that the file /root/.ignore.ifnames.cnf does not exist."
+        echo "GRUB: This requirement serves as a double-check to confirm"
+        echo "GRUB: that you are aware of and agree to auto-update GRUB configuration."
+        echo "GRUB: Incorrect GRUB settings can render your virtual machine unbootable"
+        echo "GRUB: necessitating a rescue operation using a CD-ROM or ISO image."
+        echo "GRUB: For this reason, running BOA directly on physical hardware (bare metal) is not supported"
+        echo " "
+        echo "GRUB: NEVER USE LIVE MODE IF YOU ARE NOT SURE IF YOU NEED IT"
+      fi
+      echo " "
     fi
   else
     echo "GRUB config does not exist."
@@ -186,9 +209,6 @@ check_root_direct() {
     echo "       in the /etc/ssh/sshd_config file"
     echo "Bye"
     clean_pid_exit check_root_direct_a
-  fi
-  if [ -e "/root/.auto.config.ifnames.grub.cnf" ] && [ ! -e "/root/.ignore.ifnames.cnf" ]; then
-    ifnames_grub_check_sync
   fi
 }
 
@@ -1631,9 +1651,9 @@ old_apt_keys_cleanup() {
 proceed() {
   check_root_keys_pwd
   check_root
+  check_no_systemd
   up_start
   barracuda_downgrade_protection
-  check_no_systemd
   os_detection_minimal
   check_dns_curl
   check_php_cli
@@ -1767,10 +1787,13 @@ set_tree_vars() {
   fi
   if [ "${cmmand}" = "up-dev" ]; then
     tRee=dev
+    ifnames_grub_check_sync
   elif [ "${cmmand}" = "up-pro" ]; then
     tRee=pro
+    ifnames_grub_check_sync
   elif [ "${cmmand}" = "up-lts" ]; then
     tRee=lts
+    ifnames_grub_check_sync
   else
     if [ "${cmmand}" = "php-idle" ] \
       || [ "${cmmand}" = "help" ] \

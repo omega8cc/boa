@@ -361,18 +361,18 @@ ifnames_grub_check_sync() {
   if [ -e "${_GRUB_FILE}" ]; then
     if echo "${_IS_IFACE}" | grep -qE "eth[0-9]+"; then
       _USE_IFNAMES="CLASSIC"
-      msg "Classic ethX interface naming found." >> "${logInt}"
+      msg "GRUB: Classic ethX interface naming found." >> "${logInt}"
     elif echo "${_IS_IFACE}" | grep -qE "(ens|enp|eno|wlp|wlo)[0-9]+:"; then
       _USE_IFNAMES="PREDICTABLE"
-      msg "Predictable (ensX, enpX, enoX, wlpX, wloX) interface naming found." >> "${logInt}"
+      msg "GRUB: Predictable (ensX, enpX, enoX, wlpX, wloX) interface naming found." >> "${logInt}"
     else
       _USE_IFNAMES="DONTMODIFY"
-      msg "GRUB config exists, but no recognized network interface naming found." >> "${logInt}"
+      msg "GRUB: config exists, but no recognized network interface naming found." >> "${logInt}"
     fi
 
     # Extract the current GRUB_CMDLINE_LINUX line
     _GRUB_CMDLINE_LINUX=$(grep -E "^GRUB_CMDLINE_LINUX=" "${_GRUB_FILE}")
-    msg "Original _GRUB_CMDLINE_LINUX was ${_GRUB_CMDLINE_LINUX}" >> "${logInt}"
+    msg "GRUB: Original _GRUB_CMDLINE_LINUX was ${_GRUB_CMDLINE_LINUX}" >> "${logInt}"
 
     # Initialize variables to check for existing options
     _SYS_NET_IFNAMES=$(echo "${_GRUB_CMDLINE_LINUX}" | grep -o "net.ifnames=[01]")
@@ -410,6 +410,12 @@ ifnames_grub_check_sync() {
       fi
     fi
 
+    if [ -e "/root/.auto.config.ifnames.grub.cnf" ] && [ ! -e "/root/.ignore.ifnames.cnf" ]; then
+      _NEW_GRUB=LIVE
+    else
+      _NEW_GRUB=DEMO
+    fi
+
     if [[ -n "${_ADD_GRUB_CMD}" ]]; then
       # Backup the GRUB file
       cp "${_GRUB_FILE}" "${_GRUB_FILE}.bak"
@@ -430,9 +436,30 @@ ifnames_grub_check_sync() {
       # Form the new GRUB_CMDLINE_LINUX line
       _NEW_GRUB_CMDLINE_LINUX="GRUB_CMDLINE_LINUX=\"${_UPDATED_CMDLINE}\""
 
-      # Update the GRUB file
-      sed -i "s|^GRUB_CMDLINE_LINUX=.*|${_NEW_GRUB_CMDLINE_LINUX}|" "${_GRUB_FILE}"
-      msg "GRUB_CMDLINE_LINUX updated with ${_UPDATED_CMDLINE}" >> "${logInt}"
+      echo " " >> "${logInt}"
+      if [[ "${_NEW_GRUB}" == "LIVE" ]]; then
+        # Update the GRUB file
+        msg "GRUB: Update in the LIVE MODE" >> "${logInt}"
+        sed -i "s|^GRUB_CMDLINE_LINUX=.*|${_NEW_GRUB_CMDLINE_LINUX}|" "${_GRUB_FILE}"
+        msg "GRUB_CMDLINE_LINUX has been updated with ${_UPDATED_CMDLINE}" >> "${logInt}"
+      elif [[ "${_NEW_GRUB}" == "DEMO" ]]; then
+        # Demo info
+        msg "GRUB: Update in the DEMO MODE" >> "${logInt}"
+        msg "GRUB_CMDLINE_LINUX would be updated with ${_UPDATED_CMDLINE}" >> "${logInt}"
+        echo " " >> "${logInt}"
+        msg "GRUB: Update in the LIVE MODE needs presence of control file:" >> "${logInt}"
+        msg "GRUB   /root/.auto.config.ifnames.grub.cnf" >> "${logInt}"
+        echo " " >> "${logInt}"
+        msg "GRUB: Ensure that the file /root/.ignore.ifnames.cnf does not exist." >> "${logInt}"
+        msg "GRUB: This requirement serves as a double-check to confirm" >> "${logInt}"
+        msg "GRUB: that you are aware of and agree to auto-update GRUB configuration." >> "${logInt}"
+        msg "GRUB: Incorrect GRUB settings can render your virtual machine unbootable" >> "${logInt}"
+        msg "GRUB: necessitating a rescue operation using a CD-ROM or ISO image." >> "${logInt}"
+        msg "GRUB: For this reason, running BOA directly on physical hardware (bare metal) is not supported" >> "${logInt}"
+        echo " " >> "${logInt}"
+        msg "GRUB: NEVER USE LIVE MODE IF YOU ARE NOT SURE IF YOU NEED IT" >> "${logInt}"
+      fi
+      echo " " >> "${logInt}"
     fi
   else
     msg "GRUB config does not exist." >> "${logInt}"
@@ -467,7 +494,7 @@ init_pre() {
 
   ifnames_grub_check_sync
 
-  if [[ -n "${_ADD_GRUB_CMD}" ]]; then
+  if [[ -n "${_ADD_GRUB_CMD}" ]] && [[ "${_NEW_GRUB}" == "LIVE" ]]; then
     echo "Running init_pre procedure A..."
     touch /run/autoinit.pid
     update-grub >> "${logSlt}"
