@@ -569,6 +569,10 @@ update_agents() {
 
 
   if [ -e "/var/aegir/drush" ]; then
+
+    [ ! -e "/var/xdrago/monitor/check" ] && mkdir -p /var/xdrago/monitor/check
+    [ ! -e "/var/xdrago/monitor/log" ] && mkdir -p /var/xdrago/monitor/log
+
     [ ! -e "/var/xdrago/checksql.pl" ] && rm -f ${pthLog}/checksql.pl.ctrl.*.pid
     [ ! -e "/var/xdrago/clear.sh" ] && rm -f ${pthLog}/clear.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/daily.sh" ] && rm -f ${pthLog}/daily.sh.ctrl.*.pid
@@ -585,6 +589,7 @@ update_agents() {
     [ ! -e "/var/xdrago/mysql_cluster_backup.sh" ] && rm -f ${pthLog}/mysql_cluster_backup.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/mysql_repair.sh" ] && rm -f ${pthLog}/mysql_repair.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/proc_num_ctrl.pl" ] && rm -f ${pthLog}/proc_num_ctrl.pl.ctrl.*.pid
+    [ ! -e "/var/xdrago/purge_binlogs.sh" ] && rm -f ${pthLog}/purge_binlogs.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/runner.sh" ] && rm -f ${pthLog}/runner.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/second.sh" ] && rm -f ${pthLog}/second.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/usage.sh" ] && rm -f ${pthLog}/usage.sh.ctrl.*.pid
@@ -613,7 +618,6 @@ update_agents() {
     [ -e "/var/xdrago/monitor/check/sqlcheck" ] && rm -f ${pthLog}/*.ctrl.*.pid
     [ -e "/var/xdrago/monitor/check/sqlcheck" ] && rm -f /var/xdrago/monitor/check/*
 
-    [ ! -e "/var/xdrago/monitor/log" ] && mkdir -p /var/xdrago/monitor/log
     [ -e "/var/xdrago/monitor/hackcheck.archive.log" ] && rm -f /var/xdrago/monitor/.scan_nginx_arch*
     [ -e "/var/xdrago/monitor/hackcheck.archive.log" ] && mv -f /var/xdrago/monitor/*.log /var/xdrago/monitor/log/
   fi
