@@ -151,7 +151,7 @@ sub makeactions
           ### print "Not Counted Admin Request URI: $line\n";
           $ignore_admin = 1;
         }
-        elsif ($line =~ /(GET|POST) \/([a-z]{2}\/)?(civicrm|batch|advagg|views-bulk-operations|node\/[0-9]{1,}\/edit|media\/browser)|POST \/js\/|(GET|POST) \/([a-z]{2}\/)?(hosting|system|admin|app|ckeditor)\/|\/(ajax|autocomplete|shs)\/|plupload|json|api\/rest|GET \/(filefield_nginx_progress|filefield\/progress|files\/progress|file\/progress|elfinder\/connector)|\b(ajax|autocomplete)\b/) {
+        elsif ($line =~ /(GET|POST) \/([a-z]{2}\/)?(civicrm|batch|advagg|views-bulk-operations|node\/[0-9]{1,}\/edit|media\/browser)|POST \/js\/|(GET|POST) \/([a-z]{2}\/)?(hosting|system|admin|app|ckeditor)\/|\/(ajax|autocomplete|shs)\/|plupload|json|api\/rest|GET \/(filefield_nginx_progress|filefield\/progress|files\/progress|file\/progress|elfinder\/connector)|\b(ajax|autocomplete)\b|\b(\/files\/css\/css_)\b|\b(\/files\/js\/js_)\b|\b(\/files\/advagg_)\b/) {
           ### print "Not Counted Admin Request URI: $line\n";
           $skip_post = 1;
           $ignore_admin = 1;
@@ -251,7 +251,7 @@ sub makeactions
           ### print "Not Counted Admin Request URI: $line\n";
           $ignore_admin = 1;
         }
-        elsif ($line =~ /(GET|POST) \/([a-z]{2}\/)?(civicrm|batch|advagg|views-bulk-operations|node\/[0-9]{1,}\/edit|media\/browser)|POST \/js\/|(GET|POST) \/([a-z]{2}\/)?(hosting|system|admin|app|ckeditor)\/|\/(ajax|autocomplete|shs)\/|plupload|json|api\/rest|GET \/(filefield_nginx_progress|filefield\/progress|files\/progress|file\/progress|elfinder\/connector)|\b(ajax|autocomplete)\b/) {
+        elsif ($line =~ /(GET|POST) \/([a-z]{2}\/)?(civicrm|batch|advagg|views-bulk-operations|node\/[0-9]{1,}\/edit|media\/browser)|POST \/js\/|(GET|POST) \/([a-z]{2}\/)?(hosting|system|admin|app|ckeditor)\/|\/(ajax|autocomplete|shs)\/|plupload|json|api\/rest|GET \/(filefield_nginx_progress|filefield\/progress|files\/progress|file\/progress|elfinder\/connector)|\b(ajax|autocomplete)\b|\b(\/files\/css\/css_)\b|\b(\/files\/js\/js_)\b|\b(\/files\/advagg_)\b/) {
           ### print "Not Counted Admin Request URI: $line\n";
           $skip_post = 1;
           $ignore_admin = 1;
