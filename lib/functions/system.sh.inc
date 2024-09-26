@@ -1,6 +1,5 @@
 
-tRee=dev
-export tRee="${tRee}"
+export tRee=dev
 
 if_fix_iptables_symlinks() {
   ###

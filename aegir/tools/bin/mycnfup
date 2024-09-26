@@ -3,6 +3,7 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+export tRee=dev
 
 ###
 ### Avoid too many questions
@@ -12,9 +13,6 @@ export APT_LISTCHANGES_FRONTEND=none
 if [ -z "${TERM+x}" ]; then
   export TERM=vt100
 fi
-
-tRee=dev
-export tRee="${tRee}"
 
 _AEGIR_VERSION="${tRee}"
 _BRANCH_BOA="5.x-${tRee}"

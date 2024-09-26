@@ -3,13 +3,12 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+export tRee=dev
 
 barCnf="/root/.barracuda.cnf"
 
 _X_SE="540devT02"
 
-tRee=dev
-export tRee="${tRee}"
 
 # Define directories and error log path
 SSL_DIR="/etc/ssl/private"

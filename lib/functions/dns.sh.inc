@@ -1,6 +1,5 @@
 
-tRee=dev
-export tRee="${tRee}"
+export tRee=dev
 
 #
 # Fix DNS settings.
