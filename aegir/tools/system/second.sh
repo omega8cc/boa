@@ -153,8 +153,9 @@ _get_load() {
 _load_control() {
   _get_load
 
-  # Initialize the limits exceeded flag
+  # Initialize the flags
   _limits_exceeded=false
+  _skip_proc_control=false
 
   # Thresholds in percentages (calculate using bc)
   _CPU_SPIDER_THRESHOLD=$(echo "${_CPU_SPIDER_RATIO} * 100" | bc -l)
@@ -173,6 +174,7 @@ _load_control() {
   if awk "BEGIN {exit !(${_O_LOAD} > ${_CPU_CRIT_THRESHOLD} || ${_F_LOAD} > ${_CPU_CRIT_THRESHOLD})}"; then
     echo "Load exceeds critical threshold. Terminating processes and pausing web services."
     _limits_exceeded=true
+    _skip_proc_control=true
     if awk "BEGIN {exit !(${_O_LOAD} > ${_CPU_CRIT_THRESHOLD})}"; then
       _current_load="${_O_LOAD}"
       _load_period="1-minute"
@@ -186,6 +188,7 @@ _load_control() {
   elif awk "BEGIN {exit !(${_O_LOAD} > ${_CPU_MAX_THRESHOLD} || ${_F_LOAD} > ${_CPU_MAX_THRESHOLD})}"; then
     echo "Load exceeds max threshold. Pausing web services."
     _limits_exceeded=true
+    _skip_proc_control=true
     if awk "BEGIN {exit !(${_O_LOAD} > ${_CPU_MAX_THRESHOLD})}"; then
       _current_load="${_O_LOAD}"
       _load_period="1-minute"
@@ -198,6 +201,7 @@ _load_control() {
   elif awk "BEGIN {exit !(${_O_LOAD} > ${_CPU_SPIDER_THRESHOLD} && ${_O_LOAD} <= ${_CPU_MAX_THRESHOLD})}"; then
     echo "Load exceeds spider protection threshold but below max threshold."
     _limits_exceeded=true
+    # Do not set _skip_proc_control to true here
     _current_load="${_O_LOAD}"
     _load_period="1-minute"
     if [ -e "/data/conf/nginx_high_load_off.conf" ]; then
@@ -206,6 +210,7 @@ _load_control() {
   elif awk "BEGIN {exit !(${_F_LOAD} > ${_CPU_SPIDER_THRESHOLD} && ${_F_LOAD} <= ${_CPU_MAX_THRESHOLD})}"; then
     echo "Load exceeds spider protection threshold but below max threshold."
     _limits_exceeded=true
+    # Do not set _skip_proc_control to true here
     _current_load="${_F_LOAD}"
     _load_period="5-minute"
     if [ -e "/data/conf/nginx_high_load_off.conf" ]; then
@@ -222,8 +227,8 @@ _load_control() {
     fi
   fi
 
-  # Only run _proc_control if no limits have been exceeded
-  if [ "${_limits_exceeded}" = false ]; then
+  # Decide whether to run _proc_control
+  if [ "${_skip_proc_control}" = false ]; then
     _proc_control
   else
     echo "Limits exceeded; skipping process control."
