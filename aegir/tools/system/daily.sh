@@ -2775,7 +2775,7 @@ count_cpu() {
 load_control() {
   [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
   export _CPU_MAX_RATIO=${_CPU_MAX_RATIO//[^0-9]/}
-  : "${_CPU_MAX_RATIO:=6}"
+  : "${_CPU_MAX_RATIO:=2.5}"
   [ -e "/root/.force.sites.verify.cnf" ] && _CPU_MAX_RATIO=88
   _O_LOAD=$(awk '{print $1*100}' /proc/loadavg 2>&1)
   _O_LOAD=$(( _O_LOAD / _CPU_NR ))
