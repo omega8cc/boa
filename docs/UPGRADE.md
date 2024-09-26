@@ -2,6 +2,8 @@
 
 All standard non-major system upgrades can be run with **BARRACUDA** and all Ægir instances can be upgraded with **OCTOPUS**, but we highly recommend to use the fully automated procedure explained in Self-Upgrade How To: [docs/SELFUPGRADE.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/SELFUPGRADE.md)
 
+- Importance of Keeping SKYNET Enabled in BOA: [docs/SKYNET.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/SKYNET.md)
+
 ## Important Notes for Standard/Manual BOA Upgrade
 
 If you haven't run a full barracuda+octopus upgrade to the latest BOA edition yet, don't use any partial upgrade modes explained further below. Once the new BOA latest is available, you must run *full* upgrades with the commands:
