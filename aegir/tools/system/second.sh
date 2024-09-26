@@ -165,38 +165,25 @@ _load_control() {
   echo " - 1-minute Load (per CPU): ${_O_LOAD}%"
   echo " - 5-minute Load (per CPU): ${_F_LOAD}%"
   echo "Thresholds:"
-  echo " - Spider Protection Threshold: ${_CPU_SPIDER_THRESHOLD}%"
-  echo " - Max Load Threshold: ${_CPU_MAX_THRESHOLD}%"
   echo " - Critical Load Threshold: ${_CPU_CRIT_THRESHOLD}%"
+  echo " - Max Load Threshold: ${_CPU_MAX_THRESHOLD}%"
+  echo " - Spider Protection Threshold: ${_CPU_SPIDER_THRESHOLD}%"
 
-  # Determine if spider protection should be enabled
-  _enable_spider_protection=false
-  if awk "BEGIN {exit !(${_O_LOAD} > ${_CPU_SPIDER_THRESHOLD} && ${_O_LOAD} < ${_CPU_MAX_THRESHOLD})}"; then
-    _enable_spider_protection=true
-    _current_load="${_O_LOAD}"
-    _load_period="1-minute"
+  # Check for critical load to terminate processes and hold services
+  if awk "BEGIN {exit !(${_O_LOAD} > ${_CPU_CRIT_THRESHOLD} || ${_F_LOAD} > ${_CPU_CRIT_THRESHOLD})}"; then
+    echo "Load exceeds critical threshold. Terminating processes and pausing web services."
     _limits_exceeded=true
-  elif awk "BEGIN {exit !(${_F_LOAD} > ${_CPU_SPIDER_THRESHOLD} && ${_F_LOAD} < ${_CPU_MAX_THRESHOLD})}"; then
-    _enable_spider_protection=true
-    _current_load="${_F_LOAD}"
-    _load_period="5-minute"
-    _limits_exceeded=true
-  fi
-
-  # Enable or disable spider protection as needed
-  if [ "${_enable_spider_protection}" = true ] && [ -e "/data/conf/nginx_high_load_off.conf" ]; then
-    echo "Load exceeds spider protection threshold but below max threshold."
-    _nginx_high_load_on "${_current_load}" "${_CPU_SPIDER_THRESHOLD}" "${_load_period}"
-  elif awk "BEGIN {exit !(${_O_LOAD} <= ${_CPU_SPIDER_THRESHOLD} && ${_F_LOAD} <= ${_CPU_SPIDER_THRESHOLD})}" && \
-     [ -e "/data/conf/nginx_high_load.conf" ]; then
-    echo "Load below spider protection threshold."
-    _nginx_high_load_off
-  else
-    echo "Load within normal parameters."
-  fi
-
+    if awk "BEGIN {exit !(${_O_LOAD} > ${_CPU_CRIT_THRESHOLD})}"; then
+      _current_load="${_O_LOAD}"
+      _load_period="1-minute"
+    else
+      _current_load="${_F_LOAD}"
+      _load_period="5-minute"
+    fi
+    _terminate_processes "${_current_load}" "${_CPU_CRIT_THRESHOLD}" "${_load_period}"
+    _hold_services "${_current_load}" "${_CPU_MAX_THRESHOLD}" "${_load_period}"
   # Check for max load to hold services
-  if awk "BEGIN {exit !(${_O_LOAD} > ${_CPU_MAX_THRESHOLD} || ${_F_LOAD} > ${_CPU_MAX_THRESHOLD})}"; then
+  elif awk "BEGIN {exit !(${_O_LOAD} > ${_CPU_MAX_THRESHOLD} || ${_F_LOAD} > ${_CPU_MAX_THRESHOLD})}"; then
     echo "Load exceeds max threshold. Pausing web services."
     _limits_exceeded=true
     if awk "BEGIN {exit !(${_O_LOAD} > ${_CPU_MAX_THRESHOLD})}"; then
@@ -207,20 +194,32 @@ _load_control() {
       _load_period="5-minute"
     fi
     _hold_services "${_current_load}" "${_CPU_MAX_THRESHOLD}" "${_load_period}"
-  fi
-
-  # Check for critical load to terminate processes
-  if awk "BEGIN {exit !(${_O_LOAD} > ${_CPU_CRIT_THRESHOLD} || ${_F_LOAD} > ${_CPU_CRIT_THRESHOLD})}"; then
-    echo "Load exceeds critical threshold. Terminating long-running processes."
+  # Check for spider protection threshold
+  elif awk "BEGIN {exit !(${_O_LOAD} > ${_CPU_SPIDER_THRESHOLD} && ${_O_LOAD} <= ${_CPU_MAX_THRESHOLD})}"; then
+    echo "Load exceeds spider protection threshold but below max threshold."
     _limits_exceeded=true
-    if awk "BEGIN {exit !(${_O_LOAD} > ${_CPU_CRIT_THRESHOLD})}"; then
-      _current_load="${_O_LOAD}"
-      _load_period="1-minute"
-    else
-      _current_load="${_F_LOAD}"
-      _load_period="5-minute"
+    _current_load="${_O_LOAD}"
+    _load_period="1-minute"
+    if [ -e "/data/conf/nginx_high_load_off.conf" ]; then
+      _nginx_high_load_on "${_current_load}" "${_CPU_SPIDER_THRESHOLD}" "${_load_period}"
     fi
-    _terminate_processes "${_current_load}" "${_CPU_CRIT_THRESHOLD}" "${_load_period}"
+  elif awk "BEGIN {exit !(${_F_LOAD} > ${_CPU_SPIDER_THRESHOLD} && ${_F_LOAD} <= ${_CPU_MAX_THRESHOLD})}"; then
+    echo "Load exceeds spider protection threshold but below max threshold."
+    _limits_exceeded=true
+    _current_load="${_F_LOAD}"
+    _load_period="5-minute"
+    if [ -e "/data/conf/nginx_high_load_off.conf" ]; then
+      _nginx_high_load_on "${_current_load}" "${_CPU_SPIDER_THRESHOLD}" "${_load_period}"
+    fi
+  else
+    # If load is below spider protection threshold, disable spider protection if it's enabled
+    if [ -e "/data/conf/nginx_high_load.conf" ] && \
+       awk "BEGIN {exit !(${_O_LOAD} <= ${_CPU_SPIDER_THRESHOLD} && ${_F_LOAD} <= ${_CPU_SPIDER_THRESHOLD})}"; then
+      echo "Load below spider protection threshold."
+      _nginx_high_load_off
+    else
+      echo "Load within normal parameters."
+    fi
   fi
 
   # Only run _proc_control if no limits have been exceeded
