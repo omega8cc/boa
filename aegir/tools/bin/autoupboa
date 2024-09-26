@@ -10,8 +10,8 @@ barCnf="/root/.barracuda.cnf"
 _X_SE=540proT02
 
 # Define default values
-_DEFAULT_CPU_CRIT_RATIO="3.7"
-_DEFAULT_CPU_MAX_RATIO="2.5"
+_DEFAULT_CPU_CRIT_RATIO="4.2"
+_DEFAULT_CPU_MAX_RATIO="3.2"
 _DEFAULT_CPU_SPIDER_RATIO="1.2"
 
 # Function to update or add variables in the configuration file
