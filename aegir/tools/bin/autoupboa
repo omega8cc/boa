@@ -29,12 +29,12 @@ _update_conf_variable() {
   fi
 }
 
-if [ ! -e "/var/xdrago/log/.update_conf_variable.${_X_SE}.pid" ]; then
+if [ ! -e "/var/xdrago/log/.update_conf_variable.ctrl.f2.${_X_SE}.pid" ]; then
   # Update variables
   _update_conf_variable "_CPU_CRIT_RATIO" "${_DEFAULT_CPU_CRIT_RATIO}" "${barCnf}"
   _update_conf_variable "_CPU_MAX_RATIO" "${_DEFAULT_CPU_MAX_RATIO}" "${barCnf}"
   _update_conf_variable "_CPU_SPIDER_RATIO" "${_DEFAULT_CPU_SPIDER_RATIO}" "${barCnf}"
-  touch /var/xdrago/log/.update_conf_variable.${_X_SE}.pid
+  touch /var/xdrago/log/.update_conf_variable.ctrl.f2.${_X_SE}.pid
 fi
 
 # Define directories and error log path
