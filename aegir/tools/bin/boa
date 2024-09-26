@@ -2103,8 +2103,8 @@ display_info() {
     if [ "${_XSK}" != "${_XSN}" ]; then
       echo "  _XSN Next Kernel Version (after reboot): ${_XSN}"
     fi
-    echo "  _CPU ${_CPU_NR}"
     echo "  _XSG GRUB: ${_XSG}"
+    echo "  _CPU Number: ${_CPU_NR}"
     echo "  _RAM Total: ${total_ram_gb} GB"
     echo "  _RAM Usage: ${ram_usage_percent}%"
     echo "  _DSK Usage for relevant partitions:"
