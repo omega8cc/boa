@@ -579,6 +579,7 @@ aegir_master_upgrade() {
     echo "_BRANCH_PRN=\"${_BRANCH_PRN}\""               >> ${vBs}/${filIncB}
     echo "_DEBUG_MODE=\"${_DEBUG_MODE}\""               >> ${vBs}/${filIncB}
     echo "_DOMAIN=\"${_THIS_FRONT}\""                   >> ${vBs}/${filIncB}
+    echo "_DRUPAL7=\"${_DRUPAL7}\""                     >> ${vBs}/${filIncB}
     echo "_DRUSH_VERSION=\"${_DRUSH_VERSION}\""         >> ${vBs}/${filIncB}
     echo "_NOW=\"${_NOW}\""                             >> ${vBs}/${filIncB}
     echo "_PHP_CLI_VERSION=\"${_PHP_CLI_VERSION}\""     >> ${vBs}/${filIncB}
