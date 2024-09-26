@@ -7,7 +7,7 @@ export tRee=pro
 
 barCnf="/root/.barracuda.cnf"
 
-_X_SE=540devT02
+_X_SE=540proT02
 
 # Define directories and error log path
 SSL_DIR="/etc/ssl/private"
