@@ -1120,7 +1120,7 @@ _X_VERSION=AUTO
 _BOA_REPO_NAME="boa"
 _BOA_REPO_GIT_URL="${gitHub}"
 export _X_SE=540devT02
-export tRee=dev
+export tRee=pro
 
 
 ###

@@ -1,5 +1,5 @@
 
-export tRee=dev
+export tRee=pro
 rlsn="BOA-5.4.0"
 rlse="${rlsn}-${tRee}"
 export rlsn="${rlsn}"

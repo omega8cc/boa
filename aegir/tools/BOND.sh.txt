@@ -139,7 +139,7 @@ _TUNE_PHP_CLI_TIMEOUT=9999
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-export tRee=dev
+export tRee=pro
 
 _AEGIR_VERSION="${tRee}"
 _BRANCH_BOA="5.x-${tRee}"

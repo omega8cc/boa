@@ -1,5 +1,5 @@
 
-export tRee=dev
+export tRee=pro
 
 if_fix_iptables_symlinks() {
   ###

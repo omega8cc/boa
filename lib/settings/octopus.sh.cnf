@@ -637,7 +637,7 @@ _BOA_REPO_NAME="boa"
 _BOA_REPO_GIT_URL="${gitHub}"
 aptYesUnth="-y --allow-unauthenticated"
 export _X_SE=540devT02
-export tRee=dev
+export tRee=pro
 
 
 ###
