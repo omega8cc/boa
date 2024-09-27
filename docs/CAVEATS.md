@@ -1,4 +1,4 @@
-## CAVEATS
+# CAVEATS
 
 1. **Devuan-Based Systems Only**
 
