@@ -1,4 +1,4 @@
-## Importance of Keeping SKYNET Enabled in BOA
+# Importance of Keeping SKYNET Enabled in BOA
 
 The `_SKYNET_MODE=ON` setting (enabled by default) is essential for maintaining BOA's auto-healing functionality. It ensures that BOA tools remain operational by performing critical checks on components such as cURL, Python, and Lshell, verifying that they function correctly.
 
