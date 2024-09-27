@@ -935,13 +935,13 @@ _USE_MYSQLTUNER=NO
 ### Set max 1 min load per CPU core before blocking
 ### spiders temporarily, until the load stabilizes.
 ###
-_CPU_SPIDER_RATIO=1.2
+_CPU_SPIDER_RATIO=1
 
 ###
 ### Set max 1 min load per CPU core before disabling
 ### Nginx temporarily, until the load stabilizes.
 ###
-_CPU_MAX_RATIO=2.5
+_CPU_MAX_RATIO=1.8
 
 ###
 ### Set max 1 min load per CPU core before killing
@@ -953,7 +953,7 @@ _CPU_MAX_RATIO=2.5
 ### never starts them anyway, if the average load
 ### in the last minute is higher than 3.5
 ###
-_CPU_CRIT_RATIO=3.7
+_CPU_CRIT_RATIO=2.8
 
 ###
 ### Set max allowed page views from one IP
