@@ -47,7 +47,13 @@ _CPU_CRIT_RATIO="$(_sanitize_number "${_CPU_CRIT_RATIO}")"
 
 # Sanitize email report variable
 _INCIDENT_EMAIL_REPORT="${_INCIDENT_EMAIL_REPORT^^}"
-[ "${_INCIDENT_EMAIL_REPORT}" != "YES" ] && _INCIDENT_EMAIL_REPORT="NO"
+case "${_INCIDENT_EMAIL_REPORT}" in
+  "YES"|"NO"|"VERBOSE")
+    ;;
+  *)
+    _INCIDENT_EMAIL_REPORT="YES"
+    ;;
+esac
 
 # Ensure not too many instances are running
 if [ "$(pgrep -f second.sh | grep -v "^$$" | wc -l)" -gt 4 ]; then
@@ -63,11 +69,25 @@ _CPU_COUNT="$(nproc)"
 _incident_email_report() {
   local _message="$1"
   local _subject="$2"
-  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_EMAIL_REPORT}" = "YES" ]; then
-    local _hostname
-    _hostname="$(cat /etc/hostname)"
-    echo "Sending Incident Report Email on $(date)" >> "${_PTH_OML}"
-    s-nail -s "Incident Report on ${_hostname}: ${_subject}" "${_MY_EMAIL}" < "${_PTH_OML}"
+  local _incident_level="$3"  # "ALERT" or "INFO"
+
+  if [ -n "${_MY_EMAIL}" ]; then
+    local _send_email=false
+
+    if [ "${_INCIDENT_EMAIL_REPORT}" = "VERBOSE" ]; then
+      _send_email=true
+    elif [ "${_INCIDENT_EMAIL_REPORT}" = "YES" ]; then
+      if [ "${_incident_level}" = "ALERT" ]; then
+        _send_email=true
+      fi
+    fi
+
+    if [ "${_send_email}" = true ]; then
+      local _hostname
+      _hostname="$(cat /etc/hostname)"
+      echo "Sending Incident Report Email on $(date)" >> "${_PTH_OML}"
+      s-nail -s "Incident Report on ${_hostname}: ${_subject}" "${_MY_EMAIL}" < "${_PTH_OML}"
+    fi
   fi
 }
 
@@ -82,7 +102,7 @@ _hold_services() {
   _log_message="$(date) System Load ${_current_load}% (${_load_period}) - Web Server Paused"
   echo "${_log_message}" >> "${_PTH_OML}"
   local _subject="Web Services Paused - ${_load_period} Load ${_current_load}% exceeded Max Load Threshold ${_threshold}%"
-  _incident_email_report "${_log_message}" "${_subject}"
+  _incident_email_report "${_log_message}" "${_subject}" "ALERT"
   echo >> "${_PTH_OML}"
   echo "Action Taken: Web services paused due to high load."
 }
@@ -98,7 +118,7 @@ _terminate_processes() {
     _log_message="$(date) System Load ${_current_load}% (${_load_period}) - PHP/Wget/cURL terminated"
     echo "${_log_message}" >> "${_PTH_OML}"
     local _subject="Processes Terminated - ${_load_period} Load ${_current_load}% exceeded Critical Load Threshold ${_threshold}%"
-    _incident_email_report "${_log_message}" "${_subject}"
+    _incident_email_report "${_log_message}" "${_subject}" "ALERT"
     echo >> "${_PTH_OML}"
     echo "Action Taken: Long-running processes terminated due to critical load."
   fi
@@ -115,7 +135,7 @@ _nginx_high_load_on() {
   _log_message="$(date) nginx_high_load_on ${_load_period} Load: ${_current_load}%"
   echo "${_log_message}" >> "${_PTH_OML}"
   local _subject="Enabled Spider Protection - ${_load_period} Load ${_current_load}% exceeded Spider Protection Threshold ${_threshold}%"
-  _incident_email_report "${_log_message}" "${_subject}"
+  _incident_email_report "${_log_message}" "${_subject}" "INFO"
   echo >> "${_PTH_OML}"
   echo "Action Taken: Enabled protection from spiders (nginx high load configuration applied)."
 }
@@ -128,7 +148,7 @@ _nginx_high_load_off() {
   _log_message="$(date) nginx_high_load_off Load: ${_O_LOAD}%"
   echo "${_log_message}" >> "${_PTH_OML}"
   local _subject="Disabled Spider Protection - Load decreased below Spider Protection Threshold ${_CPU_SPIDER_THRESHOLD}%"
-  _incident_email_report "${_log_message}" "${_subject}"
+  _incident_email_report "${_log_message}" "${_subject}" "INFO"
   echo >> "${_PTH_OML}"
   echo "Action Taken: Disabled protection from spiders (nginx high load configuration removed)."
 }
