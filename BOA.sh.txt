@@ -44,7 +44,7 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-export tRee=pro
+export tRee=dev
 
 ###
 ### Avoid too many questions
@@ -59,7 +59,7 @@ _NOW=$(date +%y%m%d-%H%M%S 2>&1)
 export _NOW=${_NOW//[^0-9-]/}
 _TODAY=$(date +%y%m%d 2>&1)
 export _TODAY=${_TODAY//[^0-9]/}
-_X_SE=540proT02
+_X_SE=540devT02
 #
 barCnf="/root/.barracuda.cnf"
 crlGet="-L --max-redirs 3 -k -s --retry 3 --retry-delay 5 -A iCab"
@@ -749,13 +749,13 @@ update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${pthLog}/hackcheck.pl.ctrl.f1.${tRee}.${_X_SE}.pid" ]; then
+    && [ ! -e "${pthLog}/hackcheck.pl.ctrl.f2.${tRee}.${_X_SE}.pid" ]; then
     mv -f /var/xdrago/monitor/check/hackcheck.pl /var/xdrago/monitor/check/hackcheck.pl.old
     curl ${crlGet} "${urlHmr}/tools/system/monitor/check/hackcheck.pl" -o /var/xdrago/monitor/check/hackcheck.pl
     if [ -e "/var/xdrago/monitor/check/hackcheck.pl" ]; then
       chmod 700 /var/xdrago/monitor/check/hackcheck.pl
       chown root:root /var/xdrago/monitor/check/hackcheck.pl
-      touch ${pthLog}/hackcheck.pl.ctrl.f1.${tRee}.${_X_SE}.pid
+      touch ${pthLog}/hackcheck.pl.ctrl.f2.${tRee}.${_X_SE}.pid
     else
       mv -f /var/xdrago/monitor/check/hackcheck.pl.old /var/xdrago/monitor/check/hackcheck.pl
     fi
@@ -763,13 +763,13 @@ update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${pthLog}/hackftp.pl.ctrl.f1.${tRee}.${_X_SE}.pid" ]; then
+    && [ ! -e "${pthLog}/hackftp.pl.ctrl.f2.${tRee}.${_X_SE}.pid" ]; then
     mv -f /var/xdrago/monitor/check/hackftp.pl /var/xdrago/monitor/check/hackftp.pl.old
     curl ${crlGet} "${urlHmr}/tools/system/monitor/check/hackftp.pl" -o /var/xdrago/monitor/check/hackftp.pl
     if [ -e "/var/xdrago/monitor/check/hackftp.pl" ]; then
       chmod 700 /var/xdrago/monitor/check/hackftp.pl
       chown root:root /var/xdrago/monitor/check/hackftp.pl
-      touch ${pthLog}/hackftp.pl.ctrl.f1.${tRee}.${_X_SE}.pid
+      touch ${pthLog}/hackftp.pl.ctrl.f2.${tRee}.${_X_SE}.pid
     else
       mv -f /var/xdrago/monitor/check/hackftp.pl.old /var/xdrago/monitor/check/hackftp.pl
     fi
@@ -1198,22 +1198,7 @@ update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${pthLog}/hackcheck.pl.ctrl.f1.${tRee}.${_X_SE}.pid" ]; then
-    mv -f /var/xdrago/monitor/check/hackcheck.pl /var/xdrago/monitor/check/hackcheck.pl.old
-    curl ${crlGet} "${urlHmr}/tools/system/monitor/check/hackcheck.pl" \
-      -o /var/xdrago/monitor/check/hackcheck.pl
-    if [ -e "/var/xdrago/monitor/check/hackcheck.pl" ]; then
-      chmod 700 /var/xdrago/monitor/check/hackcheck.pl
-      chown root:root /var/xdrago/monitor/check/hackcheck.pl
-      touch ${pthLog}/hackcheck.pl.ctrl.f1.${tRee}.${_X_SE}.pid
-    else
-      mv -f /var/xdrago/monitor/check/hackcheck.pl.old /var/xdrago/monitor/check/hackcheck.pl
-    fi
-  fi
-
-  if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${pthLog}/scan_nginx.pl.ctrl.f2.${tRee}.${_X_SE}.pid" ]; then
+    && [ ! -e "${pthLog}/scan_nginx.pl.ctrl.f3.${tRee}.${_X_SE}.pid" ]; then
     [ ! -d "/var/xdrago/monitor/log" ] && mkdir -p /var/xdrago/monitor/log
     mv -f /var/xdrago/monitor/check/scan_nginx.pl /var/xdrago/monitor/check/scan_nginx.pl.old
     curl ${crlGet} "${urlHmr}/tools/system/monitor/check/scan_nginx.pl" \
@@ -1255,7 +1240,7 @@ update_agents() {
         csf -df
         wait
       fi
-      touch ${pthLog}/scan_nginx.pl.ctrl.f2.${tRee}.${_X_SE}.pid
+      touch ${pthLog}/scan_nginx.pl.ctrl.f3.${tRee}.${_X_SE}.pid
     else
       mv -f /var/xdrago/monitor/check/scan_nginx.pl.old /var/xdrago/monitor/check/scan_nginx.pl
     fi

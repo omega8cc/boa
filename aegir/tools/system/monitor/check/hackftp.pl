@@ -60,7 +60,7 @@ sub makeactions
       if (!$blocked) {
         `echo "$VISITOR # [x$thissumar] $times" >> /var/xdrago/monitor/log/ftp.log`;
         `echo "$VISITOR # [x$thissumar] $times" >> /var/xdrago/monitor/log/$this_filename.archive.log`;
-        if (-x "/usr/sbin/csf") {
+        if (-e "/etc/csf/csf.deny" && -e "/usr/sbin/csf" && !-e "/var/xdrago/guest-fire.sh") {
           `/usr/sbin/csf -td $VISITOR 3600 -p 21`;
         }
       }
