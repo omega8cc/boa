@@ -10,8 +10,8 @@ barCnf="/root/.barracuda.cnf"
 _X_SE=540devT02
 
 # Define default values
-_DEFAULT_CPU_CRIT_RATIO="2.8"
-_DEFAULT_CPU_MAX_RATIO="1.8"
+_DEFAULT_CPU_CRIT_RATIO="3.9"
+_DEFAULT_CPU_MAX_RATIO="3.3"
 _DEFAULT_CPU_SPIDER_RATIO="1"
 
 # Function to update or add variables in the configuration file
@@ -29,12 +29,12 @@ _update_conf_variable() {
   fi
 }
 
-if [ ! -e "/var/xdrago/log/.update_conf_variable.ctrl.f5.${_X_SE}.pid" ]; then
+if [ ! -e "/var/xdrago/log/.update_conf_variable.ctrl.f6.${_X_SE}.pid" ]; then
   # Update variables
   _update_conf_variable "_CPU_CRIT_RATIO" "${_DEFAULT_CPU_CRIT_RATIO}" "${barCnf}"
   _update_conf_variable "_CPU_MAX_RATIO" "${_DEFAULT_CPU_MAX_RATIO}" "${barCnf}"
   _update_conf_variable "_CPU_SPIDER_RATIO" "${_DEFAULT_CPU_SPIDER_RATIO}" "${barCnf}"
-  touch /var/xdrago/log/.update_conf_variable.ctrl.f5.${_X_SE}.pid
+  touch /var/xdrago/log/.update_conf_variable.ctrl.f6.${_X_SE}.pid
 fi
 
 # Define directories and error log path
