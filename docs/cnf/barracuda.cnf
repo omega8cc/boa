@@ -55,7 +55,14 @@ _ENABLE_GOACCESS=NO #----------- Generate statistics with GoAccess when YES
 ###
 _MAGICK_FROM_SOURCES=NO #------- Builds ImageMagick from sources when YES
 ###
-_NGINX_DOS_LIMIT=399 #---------- Allows to override default 399/9999 limit
+_NGINX_DOS_LINES=1999 #--------- Default number of access.log lines to check
+_NGINX_DOS_LIMIT=399 #---------- Default 399/1999 limit of page views per IP
+_NGINX_DOS_MODE=2 #------------- 1 or 2 (default)
+_NGINX_DOS_IGNORE="foo|bar" #--- Keywords to ignore the requests if found
+_NGINX_DOS_STOP="foo|bar" #----- Keywords to trigger counter +5 increase if found
+_NGINX_DOS_LOG=SILENT #--------- Logging mode, can be SILENT (none) or VERBOSE
+
+###
 _NGINX_EXTRA_CONF="" #---------- Allows to add custom options to Nginx build
 _NGINX_FORWARD_SECRECY=YES #---- Installs PFS Nginx support when YES (default)
 _NGINX_HEADERS=NO #------------- Installs Nginx Headers More support when YES
