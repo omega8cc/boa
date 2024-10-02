@@ -628,8 +628,8 @@ if [ -e "/var/aegir/drush" ]; then
 
   if [ ! -e "/var/xdrago/log/.etc_csf_allow_ctrl.${tRee}.${_X_SE}.pid" ]; then
     mkdir -p /var/backups/csf
-    cp -a /etc/csf/csf.ignore /var/backups/csf/csf.ignore.${_X_SE}.txt
-    cp -a /etc/csf/csf.allow /var/backups/csf/csf.allow.${_X_SE}.txt
+    cp -a /etc/csf/csf.ignore /var/backups/csf/csf.ignore.${tRee}.${_X_SE}.txt
+    cp -a /etc/csf/csf.allow /var/backups/csf/csf.allow.${tRee}.${_X_SE}.txt
     rm -f /root/.*.pid
     rm -f /var/xdrago/log/.etc_csf_allow_ctrl*
     touch /var/xdrago/log/.etc_csf_allow_ctrl.${tRee}.${_X_SE}.pid
