@@ -461,8 +461,10 @@ if [ -e "/var/aegir/drush" ]; then
 	    touch /var/xdrago/log/.csf_legacy_cleanup.${_X_SE}.pid
 	  fi
 	fi
+
 	rm -f /var/xdrago/*.old
 	rm -f /var/xdrago/.*.off
+
 	if [ ! -e "/var/xdrago/log/.csf_dhcp_udp_cleanup.${_X_SE}.pid" ]; then
       sed -i "s/.*DHCP.*//g" /etc/csf/csf.allow
       wait
@@ -472,19 +474,23 @@ if [ -e "/var/aegir/drush" ]; then
       else
         _DHCP_LOG="/var/log/syslog"
       fi
-      _DHCP_TEST=$(grep DHCPREQUEST ${_DHCP_LOG} | cut -d ' ' -f13 | sort | uniq 2>&1)
-      if [[ "${_DHCP_TEST}" =~ "port" ]]; then
-        for _IP in `grep DHCPREQUEST ${_DHCP_LOG} | cut -d ' ' -f12 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
-      else
-        for _IP in `grep DHCPREQUEST ${_DHCP_LOG} | cut -d ' ' -f13 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
-      fi
-	  csf -q
+      grep DHCPREQUEST "${_DHCP_LOG}" | awk '{print $12}' | sort -u | while read -r _IP; do
+        if [[ ${_IP} =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
+          IFS='.' read -r oct1 oct2 oct3 oct4 <<< "${_IP}"
+          if (( oct1 <= 255 && oct2 <= 255 && oct3 <= 255 && oct4 <= 255 )); then
+            echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow
+          fi
+        fi
+      done
+ 	  csf -q
 	  touch /var/xdrago/log/.csf_dhcp_udp_cleanup.${_X_SE}.pid
 	fi
+
     if [ ! -e "/var/xdrago/log/.disabled_modules_fix.${_X_SE}.pid" ]; then
       sed -i "s/^_MODULES_FIX=.*/_MODULES_FIX=NO/g"  ${barCnf}
       touch /var/xdrago/log/.disabled_modules_fix.${_X_SE}.pid
     fi
+
     if [ ! -e "/var/xdrago/log/.sync_1999_scan_nginx.${_X_SE}.pid" ]; then
       sed -i "s/^_NGINX_DOS_LIMIT=.*/_NGINX_DOS_LIMIT=399/g"  ${barCnf}
       sed -i "s/default_critnumber =.*/default_critnumber = 399;/g" /var/xdrago/monitor/check/scan_nginx.pl
@@ -492,6 +498,7 @@ if [ -e "/var/aegir/drush" ]; then
       sed -i "s/default_lines =.*/default_lines = 1999;/g" /var/xdrago/monitor/check/scan_nginx.pl
       touch /var/xdrago/log/.sync_1999_scan_nginx.${_X_SE}.pid
     fi
+
     if [ ! -e "/var/xdrago/log/.custom_percona_forced.${_X_SE}.pid" ]; then
       _DBS_TEST=$(which mysql 2>&1)
       if [ ! -z "${_DBS_TEST}" ]; then

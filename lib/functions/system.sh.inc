@@ -5334,12 +5334,14 @@ finale() {
     else
       _DHCP_LOG="/var/log/syslog"
     fi
-    _DHCP_TEST=$(grep DHCPREQUEST ${_DHCP_LOG} | cut -d ' ' -f13 | sort | uniq 2>&1)
-    if [[ "${_DHCP_TEST}" =~ "port" ]]; then
-      for _IP in `grep DHCPREQUEST ${_DHCP_LOG} | cut -d ' ' -f12 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
-    else
-      for _IP in `grep DHCPREQUEST ${_DHCP_LOG} | cut -d ' ' -f13 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
-    fi
+    grep DHCPREQUEST "${_DHCP_LOG}" | awk '{print $12}' | sort -u | while read -r _IP; do
+      if [[ ${_IP} =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
+        IFS='.' read -r oct1 oct2 oct3 oct4 <<< "${_IP}"
+        if (( oct1 <= 255 && oct2 <= 255 && oct3 <= 255 && oct4 <= 255 )); then
+          echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow
+        fi
+      fi
+    done
     csf -q  &> /dev/null
     mrun "service lfd start" 2> /dev/null
     wait
