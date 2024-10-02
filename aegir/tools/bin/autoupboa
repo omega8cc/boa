@@ -13,6 +13,8 @@ _X_SE=540devT02
 _DEFAULT_CPU_CRIT_RATIO="3.9"
 _DEFAULT_CPU_MAX_RATIO="3.3"
 _DEFAULT_CPU_SPIDER_RATIO="1"
+_LOCK_CPU_CONFIG="/root/.lock.cpu.config.cnf"
+_UPDATE_CPU_PID="/var/xdrago/log/.update_conf_variable.ctrl.${tRee}.${_X_SE}.pid"
 
 # Function to update or add variables in the configuration file
 _update_conf_variable() {
@@ -29,12 +31,16 @@ _update_conf_variable() {
   fi
 }
 
-if [ ! -e "/var/xdrago/log/.update_conf_variable.ctrl.f6.${_X_SE}.pid" ]; then
-  # Update variables
-  _update_conf_variable "_CPU_CRIT_RATIO" "${_DEFAULT_CPU_CRIT_RATIO}" "${barCnf}"
-  _update_conf_variable "_CPU_MAX_RATIO" "${_DEFAULT_CPU_MAX_RATIO}" "${barCnf}"
-  _update_conf_variable "_CPU_SPIDER_RATIO" "${_DEFAULT_CPU_SPIDER_RATIO}" "${barCnf}"
-  touch /var/xdrago/log/.update_conf_variable.ctrl.f6.${_X_SE}.pid
+if [ ! -e "${_LOCK_CPU_CONFIG}" ]; then
+  if [ ! -e "${_UPDATE_CPU_PID}" ]; then
+    # Update variables
+    _update_conf_variable "_CPU_CRIT_RATIO" "${_DEFAULT_CPU_CRIT_RATIO}" "${barCnf}"
+    _update_conf_variable "_CPU_MAX_RATIO" "${_DEFAULT_CPU_MAX_RATIO}" "${barCnf}"
+    _update_conf_variable "_CPU_SPIDER_RATIO" "${_DEFAULT_CPU_SPIDER_RATIO}" "${barCnf}"
+    rm -f /var/xdrago/log/.update_conf_variable.ctrl*
+    touch ${_UPDATE_CPU_PID}
+    touch ${_LOCK_CPU_CONFIG}
+  fi
 fi
 
 # Define directories and error log path
