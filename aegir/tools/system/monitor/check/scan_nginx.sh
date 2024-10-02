@@ -219,6 +219,7 @@ _block_ip() {
   # Block the IP using csf
   if [[ -x "/usr/sbin/csf" && ! -e "/var/xdrago/guest-fire.sh" ]]; then
     /usr/sbin/csf -td "${_IP}" 3600 -p 80
+    /usr/sbin/csf -td "${_IP}" 3600 -p 443
   fi
 
 
