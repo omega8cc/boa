@@ -60,10 +60,18 @@ _action() {
   # Clean up old log files
   echo "Cleaning up old log files..."
   rm -f /var/backups/.auth.IP.list*
-  find /var/xdrago/log/ -type f \( -name "*.pid" -mtime +3 -o -name "*.log" -mtime +30 -o -name "*.txt" -mtime +30 \
-    -o -name "last*" -mtime +30 -o -name "wait*" -mtime +30 -o -name "lshe*" -mtime +30 \
-    -o -name "ngin*" -mtime +30 -o -name "grac*" -mtime +30 -o -name "purg*" -mtime +30 \
-    -o -name "clea*" -mtime +30 -o -name "proc*" -mtime +30 -o -name "redi*" -mtime +30 \) -exec rm -f {} \; &> /dev/null
+  find /var/xdrago/log/*.pid -mtime +3  -type f -exec rm -rf {} \; &> /dev/null
+  find /var/xdrago/log/*.log -mtime +30 -type f -exec rm -rf {} \; &> /dev/null
+  find /var/xdrago/log/*.txt -mtime +30 -type f -exec rm -rf {} \; &> /dev/null
+  find /var/xdrago/log/last* -mtime +30 -type f -exec rm -rf {} \; &> /dev/null
+  find /var/xdrago/log/wait* -mtime +30 -type f -exec rm -rf {} \; &> /dev/null
+  find /var/xdrago/log/lshe* -mtime +30 -type f -exec rm -rf {} \; &> /dev/null
+  find /var/xdrago/log/ngin* -mtime +30 -type f -exec rm -rf {} \; &> /dev/null
+  find /var/xdrago/log/grac* -mtime +30 -type f -exec rm -rf {} \; &> /dev/null
+  find /var/xdrago/log/purg* -mtime +30 -type f -exec rm -rf {} \; &> /dev/null
+  find /var/xdrago/log/clea* -mtime +30 -type f -exec rm -rf {} \; &> /dev/null
+  find /var/xdrago/log/proc* -mtime +30 -type f -exec rm -rf {} \; &> /dev/null
+  find /var/xdrago/log/redi* -mtime +30 -type f -exec rm -rf {} \; &> /dev/null
 
   # Swap management
   if [ -d "/dev/disk" ]; then
