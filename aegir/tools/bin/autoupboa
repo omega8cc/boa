@@ -3,11 +3,11 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-export tRee=dev
+export tRee=pro
 
 barCnf="/root/.barracuda.cnf"
 
-_X_SE=540devT02
+_X_SE=540proT02
 
 # Define default values
 _DEFAULT_CPU_CRIT_RATIO="3.9"
