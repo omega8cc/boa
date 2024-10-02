@@ -158,14 +158,16 @@ if [ ! -e "/root/.high_traffic.cnf" ] \
   perl ${_monPath}/locked_nginx.pl &
 fi
 
-perl /var/xdrago/monitor/check/scan_nginx.pl &
-sleep 15
-perl /var/xdrago/monitor/check/scan_nginx.pl &
-sleep 15
-perl /var/xdrago/monitor/check/scan_nginx.pl &
-sleep 15
-perl /var/xdrago/monitor/check/scan_nginx.pl &
+# Main execution
+for _iteration in {1..12}; do
+  echo "----------------------------"
+  echo "Iteration ${_iteration}:"
+  [ -f "${_monPath}/scan_nginx.pl" ] && perl ${_monPath}/scan_nginx.pl &
+  sleep 1
+  [ -f "${_monPath}/scan_nginx.sh" ] && bash ${_monPath}/scan_nginx.sh &
+  sleep 4
+done
 
-echo DONE!
+echo "Done!"
 exit 0
 ###EOF2024###
