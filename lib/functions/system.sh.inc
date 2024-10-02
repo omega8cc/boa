@@ -1929,7 +1929,14 @@ barracuda_cnf() {
     echo "_MAGICK_FROM_SOURCES=${_MAGICK_FROM_SOURCES}"       >> ${barCnf}
 
     echo "###"                                                >> ${barCnf}
+    echo "_NGINX_DOS_LINES=${_NGINX_DOS_LINES}"               >> ${barCnf}
     echo "_NGINX_DOS_LIMIT=${_NGINX_DOS_LIMIT}"               >> ${barCnf}
+    echo "_NGINX_DOS_MODE=${_NGINX_DOS_MODE}"                 >> ${barCnf}
+    echo "_NGINX_DOS_LOG=${_NGINX_DOS_LOG}"                   >> ${barCnf}
+    echo "_NGINX_DOS_IGNORE=\"${_NGINX_DOS_IGNORE}\""         >> ${barCnf}
+    echo "_NGINX_DOS_STOP=\"${_NGINX_DOS_STOP}\""             >> ${barCnf}
+
+    echo "###"                                                >> ${barCnf}
     echo "_NGINX_EXTRA_CONF=\"${_NGINX_EXTRA_CONF}\""         >> ${barCnf}
     echo "_NGINX_FORWARD_SECRECY=${_NGINX_FORWARD_SECRECY}"   >> ${barCnf}
     echo "_NGINX_HEADERS=${_NGINX_HEADERS}"                   >> ${barCnf}
@@ -7606,7 +7613,7 @@ xdrago_install_upgrade() {
     if_hosted_sys
     if [ "${hostedSys}" = "YES" ]; then
       if [ ! -e "/etc/init.d/redis-server" ]; then
-        _NGINX_DOS_LIMIT=888
+        _NGINX_DOS_LIMIT=8888
       else
         if [ -z "${_NGINX_DOS_LIMIT}" ] \
           || [ "${_NGINX_DOS_LIMIT}" = "199" ] \
@@ -7620,20 +7627,20 @@ xdrago_install_upgrade() {
     wait
     sed -i "s/default_lines =.*/default_lines = 1999;/g" /var/xdrago/monitor/check/scan_nginx.pl
     wait
-    if [ ! -z "${_NGINX_DOS_KEYWORDS}" ]; then
-      _NGINX_DOS_KEYWORDS=${_NGINX_DOS_KEYWORDS//[^a-zA-Z0-9|-]/}
-      if [ ! -z "${_NGINX_DOS_KEYWORDS}" ]; then
-        msg "INFO: Configured _NGINX_DOS_KEYWORDS: ${_NGINX_DOS_KEYWORDS}"
-        sed -i "s/foobar/${_NGINX_DOS_KEYWORDS}/g" \
+    if [ ! -z "${_NGINX_DOS_STOP}" ]; then
+      _NGINX_DOS_STOP=${_NGINX_DOS_STOP//[^a-zA-Z0-9|-]/}
+      if [ ! -z "${_NGINX_DOS_STOP}" ]; then
+        msg "INFO: Configured _NGINX_DOS_STOP: ${_NGINX_DOS_STOP}"
+        sed -i "s/foobar/${_NGINX_DOS_STOP}/g" \
           /var/xdrago/monitor/check/scan_nginx.pl &> /dev/null
         wait
       fi
     fi
-    if [ ! -z "${_NGINX_DONTCOUNT_KEYWORDS}" ]; then
-      _NGINX_DONTCOUNT_KEYWORDS=${_NGINX_DONTCOUNT_KEYWORDS//[^a-zA-Z0-9|-]/}
-      if [ ! -z "${_NGINX_DONTCOUNT_KEYWORDS}" ]; then
-        msg "INFO: Configured _NGINX_DONTCOUNT_KEYWORDS: ${_NGINX_DONTCOUNT_KEYWORDS}"
-        sed -i "s/dontcount/${_NGINX_DONTCOUNT_KEYWORDS}/g" \
+    if [ ! -z "${_NGINX_DOS_IGNORE}" ]; then
+      _NGINX_DOS_IGNORE=${_NGINX_DOS_IGNORE//[^a-zA-Z0-9|-]/}
+      if [ ! -z "${_NGINX_DOS_IGNORE}" ]; then
+        msg "INFO: Configured _NGINX_DOS_IGNORE: ${_NGINX_DOS_IGNORE}"
+        sed -i "s/dontcount/${_NGINX_DOS_IGNORE}/g" \
           /var/xdrago/monitor/check/scan_nginx.pl &> /dev/null
         wait
       fi
@@ -7685,7 +7692,7 @@ xdrago_install_upgrade() {
     if_hosted_sys
     if [ "${hostedSys}" = "YES" ]; then
       if [ ! -e "/etc/init.d/redis-server" ]; then
-        _NGINX_DOS_LIMIT=888
+        _NGINX_DOS_LIMIT=8888
       else
         if [ -z "${_NGINX_DOS_LIMIT}" ] \
           || [ "${_NGINX_DOS_LIMIT}" = "199" ] \
@@ -7699,20 +7706,20 @@ xdrago_install_upgrade() {
     wait
     sed -i "s/default_lines =.*/default_lines = 1999;/g" /var/xdrago/monitor/check/scan_nginx.pl
     wait
-    if [ ! -z "${_NGINX_DOS_KEYWORDS}" ]; then
-      _NGINX_DOS_KEYWORDS=${_NGINX_DOS_KEYWORDS//[^a-zA-Z0-9|-]/}
-      if [ ! -z "${_NGINX_DOS_KEYWORDS}" ]; then
-        msg "INFO: Configured _NGINX_DOS_KEYWORDS: ${_NGINX_DOS_KEYWORDS}"
-        sed -i "s/foobar/${_NGINX_DOS_KEYWORDS}/g" \
+    if [ ! -z "${_NGINX_DOS_STOP}" ]; then
+      _NGINX_DOS_STOP=${_NGINX_DOS_STOP//[^a-zA-Z0-9|-]/}
+      if [ ! -z "${_NGINX_DOS_STOP}" ]; then
+        msg "INFO: Configured _NGINX_DOS_STOP: ${_NGINX_DOS_STOP}"
+        sed -i "s/foobar/${_NGINX_DOS_STOP}/g" \
           /var/xdrago/monitor/check/scan_nginx.pl &> /dev/null
         wait
       fi
     fi
-    if [ ! -z "${_NGINX_DONTCOUNT_KEYWORDS}" ]; then
-      _NGINX_DONTCOUNT_KEYWORDS=${_NGINX_DONTCOUNT_KEYWORDS//[^a-zA-Z0-9|-]/}
-      if [ ! -z "${_NGINX_DONTCOUNT_KEYWORDS}" ]; then
-        msg "INFO: Configured _NGINX_DONTCOUNT_KEYWORDS: ${_NGINX_DONTCOUNT_KEYWORDS}"
-        sed -i "s/dontcount/${_NGINX_DONTCOUNT_KEYWORDS}/g" \
+    if [ ! -z "${_NGINX_DOS_IGNORE}" ]; then
+      _NGINX_DOS_IGNORE=${_NGINX_DOS_IGNORE//[^a-zA-Z0-9|-]/}
+      if [ ! -z "${_NGINX_DOS_IGNORE}" ]; then
+        msg "INFO: Configured _NGINX_DOS_IGNORE: ${_NGINX_DOS_IGNORE}"
+        sed -i "s/dontcount/${_NGINX_DOS_IGNORE}/g" \
           /var/xdrago/monitor/check/scan_nginx.pl &> /dev/null
         wait
       fi

@@ -1210,19 +1210,19 @@ update_agents() {
       wait
       if_hosted_sys
       if [ "${hostedSys}" = "YES" ]; then
-        if [ -z "${_NGINX_DONTCOUNT_KEYWORDS}" ]; then
-          _NGINX_DONTCOUNT_KEYWORDS="doccomment"
+        if [ -z "${_NGINX_DOS_IGNORE}" ]; then
+          _NGINX_DOS_IGNORE="doccomment"
         fi
       fi
-      if [ ! -z "${_NGINX_DONTCOUNT_KEYWORDS}" ]; then
-        _NGINX_DONTCOUNT_KEYWORDS=${_NGINX_DONTCOUNT_KEYWORDS//[^a-zA-Z0-9|-]/}
-        sed -i "s/dontcount/${_NGINX_DONTCOUNT_KEYWORDS}/g" /var/xdrago/monitor/check/scan_nginx.pl
+      if [ ! -z "${_NGINX_DOS_IGNORE}" ]; then
+        _NGINX_DOS_IGNORE=${_NGINX_DOS_IGNORE//[^a-zA-Z0-9|-]/}
+        sed -i "s/dontcount/${_NGINX_DOS_IGNORE}/g" /var/xdrago/monitor/check/scan_nginx.pl
         wait
       fi
-      if [ ! -z "${_NGINX_DOS_KEYWORDS}" ]; then
-        _NGINX_DOS_KEYWORDS=${_NGINX_DOS_KEYWORDS//[^a-zA-Z0-9|-]/}
-        if [ ! -z "${_NGINX_DOS_KEYWORDS}" ]; then
-          sed -i "s/foobar/${_NGINX_DOS_KEYWORDS}/g" /var/xdrago/monitor/check/scan_nginx.pl
+      if [ ! -z "${_NGINX_DOS_STOP}" ]; then
+        _NGINX_DOS_STOP=${_NGINX_DOS_STOP//[^a-zA-Z0-9|-]/}
+        if [ ! -z "${_NGINX_DOS_STOP}" ]; then
+          sed -i "s/foobar/${_NGINX_DOS_STOP}/g" /var/xdrago/monitor/check/scan_nginx.pl
           wait
         fi
       fi
