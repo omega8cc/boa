@@ -104,18 +104,15 @@ if [ ! -e "/run/fire.pid" ] && [ ! -e "/run/water.pid" ]; then
 fi
 }
 
-if [ -e "/etc/csf/csf.deny" ] \
-  && [ ! -e "/run/water.pid" ] \
+if [ ! -e "/run/water.pid" ] \
   && [ -x "/usr/sbin/csf" ]; then
-  [ ! -e "/run/water.pid" ] && guest_guard
-  sleep 10
-  [ ! -e "/run/water.pid" ] && guest_guard
-  sleep 10
-  [ ! -e "/run/water.pid" ] && guest_guard
-  sleep 10
-  [ ! -e "/run/water.pid" ] && guest_guard
-  sleep 10
-  [ ! -e "/run/water.pid" ] && guest_guard
+  # Main execution
+  for _iteration in {1..12}; do
+    echo "----------------------------"
+    echo "Iteration ${_iteration}:"
+    [ ! -e "/run/water.pid" ] && guest_guard
+    sleep 5
+  done
   rm -f /run/fire.pid
 fi
 exit 0
