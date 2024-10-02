@@ -7195,7 +7195,6 @@ php_libs_fix() {
     || [ ! -e "/usr/lib/libicuio.so" ] \
     || [ ! -e "/usr/lib/liblber.so" ] \
     || [ ! -e "/var/xdrago/log/.php_libs_fix_${_OS_CODE}_${_LIB_NOW}.pid" ] \
-    || [ ! -e "/var/xdrago/log/.php_libs_fix_${_OS_CODE}_${_LIB_NOW}.pid" ] \
     || [ ! -e "/usr/include/gmp.h" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "INFO: Fix for PHP libs in ${_OS_DIST}/${_OS_CODE}"
