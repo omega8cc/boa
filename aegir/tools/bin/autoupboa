@@ -551,11 +551,6 @@ if [ -e "/var/aegir/drush" ]; then
     _AUTO_OCT_UP_HOUR=4
     _AUTO_OCT_UP_MINUTE=10
 
-    if [ ! -e "/var/xdrago/log/.restart_site24x7_agent.${_X_SE}.pid" ]; then
-      service site24x7monagent restart
-      wait
-      touch /var/xdrago/log/.restart_site24x7_agent.${_X_SE}.pid
-    fi
     #if [ ! -e "/root/.silent.update.cnf" ]; then
     #  touch /root/.silent.update.cnf
     #fi
