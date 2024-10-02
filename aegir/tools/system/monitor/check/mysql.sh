@@ -4,7 +4,7 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
-pthOml="/var/xdrago/log/mysql.incident.log"
+_pthOml="/var/xdrago/log/mysql.incident.log"
 
 check_root() {
   if [ `whoami` = "root" ]; then
@@ -34,26 +34,26 @@ if [ $(pgrep -f mysql.sh | grep -v "^$$" | wc -l) -gt 4 ]; then
   exit 0
 fi
 
-incident_email_report() {
+_incident_email_report() {
   if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_EMAIL_REPORT}" = "YES" ]; then
     hName=$(cat /etc/hostname 2>&1)
-    echo "Sending Incident Report Email on $(date 2>&1)" >> ${pthOml}
-    s-nail -s "Incident Report: ${1} on ${hName} at $(date 2>&1)" ${_MY_EMAIL} < ${pthOml}
+    echo "Sending Incident Report Email on $(date 2>&1)" >> ${_pthOml}
+    s-nail -s "Incident Report: ${1} on ${hName} at $(date 2>&1)" ${_MY_EMAIL} < ${_pthOml}
   fi
 }
 
 sql_restart() {
   touch /run/boa_run.pid
   sleep 3
-  echo "$(date 2>&1) $1 incident detected" >> ${pthOml}
+  echo "$(date 2>&1) $1 incident detected" >> ${_pthOml}
   killall sleep &> /dev/null
   killall php
   bash /var/xdrago/move_sql.sh
   wait
-  echo "$(date 2>&1) $1 incident Percona MySQL server restarted" >> ${pthOml}
-  echo "$(date 2>&1) $1 incident response completed" >> ${pthOml}
-  incident_email_report "$1"
-  echo >> ${pthOml}
+  echo "$(date 2>&1) $1 incident Percona MySQL server restarted" >> ${_pthOml}
+  echo "$(date 2>&1) $1 incident response completed" >> ${_pthOml}
+  _incident_email_report "$1"
+  echo >> ${_pthOml}
   [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
   exit 0
 }

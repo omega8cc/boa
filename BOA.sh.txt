@@ -599,6 +599,7 @@ update_agents() {
     [ ! -e "/var/xdrago/monitor/check/nginx.sh" ] && rm -f ${pthLog}/nginx.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/monitor/check/php.sh" ] && rm -f ${pthLog}/php.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/monitor/check/redis.sh" ] && rm -f ${pthLog}/redis.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/monitor/check/scan_nginx.sh" ] && rm -f ${pthLog}/scan_nginx.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/monitor/check/system.sh" ] && rm -f ${pthLog}/system.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/monitor/check/unbound.sh" ] && rm -f ${pthLog}/unbound.sh.ctrl.*.pid
 
@@ -1059,13 +1060,13 @@ update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${pthLog}/graceful.sh.ctrl.ctrl.${tRee}.${_X_SE}.pid" ]; then
+    && [ ! -e "${pthLog}/graceful.sh.ctrl.${tRee}.${_X_SE}.pid" ]; then
     mv -f /var/xdrago/graceful.sh /var/xdrago/graceful.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/graceful.sh" -o /var/xdrago/graceful.sh
     if [ -e "/var/xdrago/graceful.sh" ]; then
       chmod 700 /var/xdrago/graceful.sh
       chown root:root /var/xdrago/graceful.sh
-      touch ${pthLog}/graceful.sh.ctrl.ctrl.${tRee}.${_X_SE}.pid
+      touch ${pthLog}/graceful.sh.ctrl.${tRee}.${_X_SE}.pid
     else
       mv -f /var/xdrago/graceful.sh.old /var/xdrago/graceful.sh
     fi
@@ -1210,19 +1211,19 @@ update_agents() {
       wait
       if_hosted_sys
       if [ "${hostedSys}" = "YES" ]; then
-        if [ -z "${_NGINX_DONTCOUNT_KEYWORDS}" ]; then
-          _NGINX_DONTCOUNT_KEYWORDS="doccomment"
+        if [ -z "${_NGINX_DOS_IGNORE}" ]; then
+          _NGINX_DOS_IGNORE="doccomment"
         fi
       fi
-      if [ ! -z "${_NGINX_DONTCOUNT_KEYWORDS}" ]; then
-        _NGINX_DONTCOUNT_KEYWORDS=${_NGINX_DONTCOUNT_KEYWORDS//[^a-zA-Z0-9|-]/}
-        sed -i "s/dontcount/${_NGINX_DONTCOUNT_KEYWORDS}/g" /var/xdrago/monitor/check/scan_nginx.pl
+      if [ ! -z "${_NGINX_DOS_IGNORE}" ]; then
+        _NGINX_DOS_IGNORE=${_NGINX_DOS_IGNORE//[^a-zA-Z0-9|-]/}
+        sed -i "s/dontcount/${_NGINX_DOS_IGNORE}/g" /var/xdrago/monitor/check/scan_nginx.pl
         wait
       fi
-      if [ ! -z "${_NGINX_DOS_KEYWORDS}" ]; then
-        _NGINX_DOS_KEYWORDS=${_NGINX_DOS_KEYWORDS//[^a-zA-Z0-9|-]/}
-        if [ ! -z "${_NGINX_DOS_KEYWORDS}" ]; then
-          sed -i "s/foobar/${_NGINX_DOS_KEYWORDS}/g" /var/xdrago/monitor/check/scan_nginx.pl
+      if [ ! -z "${_NGINX_DOS_STOP}" ]; then
+        _NGINX_DOS_STOP=${_NGINX_DOS_STOP//[^a-zA-Z0-9|-]/}
+        if [ ! -z "${_NGINX_DOS_STOP}" ]; then
+          sed -i "s/foobar/${_NGINX_DOS_STOP}/g" /var/xdrago/monitor/check/scan_nginx.pl
           wait
         fi
       fi

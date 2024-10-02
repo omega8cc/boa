@@ -4,7 +4,7 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
-pthOml="/var/xdrago/log/unbound.incident.log"
+_pthOml="/var/xdrago/log/unbound.incident.log"
 
 check_root() {
   if [ `whoami` = "root" ]; then
@@ -28,11 +28,11 @@ if [ $(pgrep -f unbound.sh | grep -v "^$$" | wc -l) -gt 2 ]; then
   exit 0
 fi
 
-incident_email_report() {
+_incident_email_report() {
   if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_EMAIL_REPORT}" = "YES" ]; then
     hName=$(cat /etc/hostname 2>&1)
-    echo "Sending Incident Report Email on $(date 2>&1)" >> ${pthOml}
-    s-nail -s "Incident Report: ${1} on ${hName} at $(date 2>&1)" ${_MY_EMAIL} < ${pthOml}
+    echo "Sending Incident Report Email on $(date 2>&1)" >> ${_pthOml}
+    s-nail -s "Incident Report: ${1} on ${hName} at $(date 2>&1)" ${_MY_EMAIL} < ${_pthOml}
   fi
 }
 
@@ -84,9 +84,9 @@ unbound_check_fix() {
     kill -9 $(ps aux | grep '[u]sr/sbin/unbound' | awk '{print $2}') &> /dev/null
     service unbound start &> /dev/null
     wait
-    echo "$(date 2>&1) Too many Unbound processes killed" >> ${pthOml}
-    incident_email_report "Too many Unbound processes"
-    echo >> ${pthOml}
+    echo "$(date 2>&1) Too many Unbound processes killed" >> ${_pthOml}
+    _incident_email_report "Too many Unbound processes"
+    echo >> ${_pthOml}
   fi
 }
 

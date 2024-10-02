@@ -956,12 +956,41 @@ _CPU_MAX_RATIO=3.3
 _CPU_CRIT_RATIO=3.9
 
 ###
+### Default number of access.log lines to check.
+###
+_NGINX_DOS_LINES=1999
+
+###
 ### Set max allowed page views from one IP
-### out of last 999. Note that it will lock
+### out of last 1999. Note that it will lock
 ### the access completely for 1 hour on the
 ### firewall level in /etc/csf/csf.deny
 ###
 _NGINX_DOS_LIMIT=399
+
+###
+### Default Nginx DoS-guard mode which automatically
+### increases the counter +1 for every POST request.
+### When changed to 1 will increase the counter:
+###
+###  +5 for POST request to /user and /node/add
+###  +3 for GET request to /node/add
+###
+_NGINX_DOS_MODE=2
+
+###
+### Will make the request ignored when the keyword
+### is detected in the access.log -- can use regex
+### like _NGINX_DOS_IGNORE="foo|bar|etc"
+###
+_NGINX_DOS_IGNORE="doccomment"
+
+###
+### Increases the counter +5 when the keyword is
+### detected in the access.log -- can use regex
+### like _NGINX_DOS_STOP="foo|bar|etc"
+###
+_NGINX_DOS_STOP="foobar"
 
 ###
 ### Nginx Headers More support is available
@@ -1119,8 +1148,8 @@ _BRANCH_PRN=AUTO
 _X_VERSION=AUTO
 _BOA_REPO_NAME="boa"
 _BOA_REPO_GIT_URL="${gitHub}"
-export _X_SE=540proT02
-export tRee=pro
+export _X_SE=540devT02
+export tRee=dev
 
 
 ###
