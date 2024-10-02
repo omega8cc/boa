@@ -2856,7 +2856,7 @@ cleanup_weblogx() {
   fi
 }
 
-incident_email_report() {
+_incident_email_report() {
   if [ -e "/root/.barracuda.cnf" ]; then
     source /root/.barracuda.cnf
     local thisEmail="${_MY_EMAIL}"
@@ -2887,7 +2887,7 @@ incident_detection() {
   # Loop through errors and check if any exist in the log file
   for error in "${errors[@]}"; do
     if grep -q "${error}" "${thisLog}"; then
-      incident_email_report "${error}"
+      _incident_email_report "${error}"
       break  # Exit the loop after the first detected error
     fi
   done

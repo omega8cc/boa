@@ -4,7 +4,8 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
-pthOml="/var/xdrago/log/nginx.incident.log"
+_pthOml="/var/xdrago/log/nginx.incident.log"
+_monPath="/var/xdrago/monitor/check"
 
 check_root() {
   if [ `whoami` = "root" ]; then
@@ -28,18 +29,18 @@ if [ $(pgrep -f nginx.sh | grep -v "^$$" | wc -l) -gt 4 ]; then
   exit 0
 fi
 
-incident_email_report() {
+_incident_email_report() {
   if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_EMAIL_REPORT}" = "YES" ]; then
     hName=$(cat /etc/hostname 2>&1)
-    echo "Sending Incident Report Email on $(date 2>&1)" >> ${pthOml}
-    s-nail -s "Incident Report: ${1} on ${hName} at $(date 2>&1)" ${_MY_EMAIL} < ${pthOml}
+    echo "Sending Incident Report Email on $(date 2>&1)" >> ${_pthOml}
+    s-nail -s "Incident Report: ${1} on ${hName} at $(date 2>&1)" ${_MY_EMAIL} < ${_pthOml}
   fi
 }
 
 restart_nginx() {
   touch /run/boa_run.pid
   sleep 3
-  echo "$(date 2>&1) NGX $1 detected" >> ${pthOml}
+  echo "$(date 2>&1) NGX $1 detected" >> ${_pthOml}
   mv -f /var/log/nginx/error.log /var/log/nginx/`date +%y%m%d-%H%M`-error.log
   echo "Killing all Nginx processes and restarting Nginx..."
   killall -9 nginx
@@ -49,14 +50,14 @@ restart_nginx() {
   if pidof nginx > /dev/null; then
     echo "Nginx service restarted successfully."
     _NGINX_RESTARTED=true
-    echo "$(date 2>&1) NGX $1 incident Nginx service restarted" >> ${pthOml}
+    echo "$(date 2>&1) NGX $1 incident Nginx service restarted" >> ${_pthOml}
   else
     echo "Failed to restart Nginx."
-    echo "$(date 2>&1) NGX $1 incident Nginx restart failed" >> ${pthOml}
+    echo "$(date 2>&1) NGX $1 incident Nginx restart failed" >> ${_pthOml}
   fi
-  echo "$(date 2>&1) NGX $1 incident response completed" >> ${pthOml}
-  incident_email_report "NGX $1"
-  echo >> ${pthOml}
+  echo "$(date 2>&1) NGX $1 incident response completed" >> ${_pthOml}
+  _incident_email_report "NGX $1"
+  echo >> ${_pthOml}
   [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
   exit 0
 }
@@ -66,7 +67,7 @@ nginx_oom_detection() {
     if [ `tail --lines=500 /var/log/nginx/error.log \
       | grep --count "Cannot allocate memory"` -gt "0" ]; then
       thisErrLog="$(date 2>&1) Nginx OOM"
-      echo ${thisErrLog} >> ${pthOml}
+      echo ${thisErrLog} >> ${_pthOml}
       restart_nginx "Nginx OOM"
     fi
   fi
@@ -77,7 +78,7 @@ nginx_bind_check_fix() {
   if [ `tail --lines=8 /var/log/nginx/error.log \
     | grep --count "Address already in use"` -gt "0" ]; then
     thisErrLog="$(date 2>&1) Nginx BIND"
-    echo ${thisErrLog} >> ${pthOml}
+    echo ${thisErrLog} >> ${_pthOml}
     restart_nginx "Nginx BIND"
   fi
 }
@@ -92,8 +93,8 @@ nginx_heatlh_check_fix() {
     _MASTER_COUNT=$(echo "${_NGINX_PROCESSES}" | grep 'nginx: master process' | wc -l)
     if [ "${_MASTER_COUNT}" -gt 1 ]; then
       echo "Multiple Nginx master processes detected. Possible stuck processes."
-      echo "$(date 2>&1) NGX multiple master processes detected" >> ${pthOml}
-      echo "$(date 2>&1) NGX ${_NGINX_PROCESSES}" >> ${pthOml}
+      echo "$(date 2>&1) NGX multiple master processes detected" >> ${_pthOml}
+      echo "$(date 2>&1) NGX ${_NGINX_PROCESSES}" >> ${_pthOml}
       restart_nginx "_MASTER_COUNT ${_MASTER_COUNT}"
     fi
   fi
@@ -104,8 +105,8 @@ nginx_heatlh_check_fix() {
       || [ "${_MASTER_STATE}" = "T" ] \
       || [ "${_MASTER_STATE}" = "D" ]; then
       echo "Nginx master process is in an abnormal state: ${_MASTER_STATE}."
-      echo "$(date 2>&1) NGX master process is in an abnormal state: ${_MASTER_STATE}" >> ${pthOml}
-      echo "$(date 2>&1) NGX ${_NGINX_PROCESSES}" >> ${pthOml}
+      echo "$(date 2>&1) NGX master process is in an abnormal state: ${_MASTER_STATE}" >> ${_pthOml}
+      echo "$(date 2>&1) NGX ${_NGINX_PROCESSES}" >> ${_pthOml}
       restart_nginx "_MASTER_STATE ${_MASTER_STATE}"
     fi
   fi
@@ -115,8 +116,8 @@ nginx_heatlh_check_fix() {
     if [[ "${_WORKER_STATE}" =~ "Z" ]] \
       || [[ "${_WORKER_STATE}" =~ "T" ]]; then
       echo "Nginx worker process is in an abnormal state: ${_WORKER_STATE}."
-      echo "$(date 2>&1) NGX worker process is in an abnormal state: ${_WORKER_STATE}" >> ${pthOml}
-      echo "$(date 2>&1) NGX ${_NGINX_PROCESSES}" >> ${pthOml}
+      echo "$(date 2>&1) NGX worker process is in an abnormal state: ${_WORKER_STATE}" >> ${_pthOml}
+      echo "$(date 2>&1) NGX ${_NGINX_PROCESSES}" >> ${_pthOml}
       restart_nginx "_WORKER_STATE ${_WORKER_STATE}"
     fi
   fi
@@ -125,7 +126,7 @@ nginx_heatlh_check_fix() {
     echo "Nginx is running normally. No anomalies detected."
   else
     echo "Nginx was restarted due to detected anomalies."
-    echo "$(date 2>&1) NGX service was restarted due to detected anomalies" >> ${pthOml}
+    echo "$(date 2>&1) NGX service was restarted due to detected anomalies" >> ${_pthOml}
   fi
 }
 
@@ -141,7 +142,7 @@ if_nginx_restart() {
     if [ "${ReTest}" -ge "1" ]; then
       rm -f /data/disk/*/static/control/run-nginx-restart.pid
       thisErrLog="$(date 2>&1) Nginx Server Restart Requested"
-      echo ${thisErrLog} >> ${pthOml}
+      echo ${thisErrLog} >> ${_pthOml}
       restart_nginx "Nginx Server Restart Requested"
     fi
   fi
@@ -154,7 +155,7 @@ nginx_heatlh_check_fix
 
 if [ ! -e "/root/.high_traffic.cnf" ] \
   && [ ! -e "/root/.giant_traffic.cnf" ]; then
-  perl /var/xdrago/monitor/check/locked_nginx.pl &
+  perl ${_monPath}/locked_nginx.pl &
 fi
 
 perl /var/xdrago/monitor/check/scan_nginx.pl &

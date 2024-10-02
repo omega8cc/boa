@@ -4,8 +4,8 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
-pthOml="/var/xdrago/log/oom.incident.log"
-oldOml="/var/xdrago/log/oom.incident.old.log"
+_pthOml="/var/xdrago/log/oom.incident.log"
+_oldOml="/var/xdrago/log/oom.incident.old.log"
 
 check_root() {
   if [ `whoami` = "root" ]; then
@@ -25,8 +25,8 @@ fi
 
 [ ! -d "/var/xdrago/monitor/log" ] && mkdir -p /var/xdrago/monitor/log
 
-if [ -e "${pthOml}" ] && [ ! -e "${oldOml}" ]; then
-  mv -f ${pthOml} ${oldOml}
+if [ -e "${_pthOml}" ] && [ ! -e "${_oldOml}" ]; then
+  mv -f ${_pthOml} ${_oldOml}
 fi
 
 bash /var/xdrago/monitor/check/nginx.sh &
