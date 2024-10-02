@@ -599,6 +599,7 @@ update_agents() {
     [ ! -e "/var/xdrago/monitor/check/nginx.sh" ] && rm -f ${pthLog}/nginx.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/monitor/check/php.sh" ] && rm -f ${pthLog}/php.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/monitor/check/redis.sh" ] && rm -f ${pthLog}/redis.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/monitor/check/scan_nginx.sh" ] && rm -f ${pthLog}/scan_nginx.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/monitor/check/system.sh" ] && rm -f ${pthLog}/system.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/monitor/check/unbound.sh" ] && rm -f ${pthLog}/unbound.sh.ctrl.*.pid
 
