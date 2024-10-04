@@ -98,14 +98,32 @@ fi
 # ==============================
 
 # Function for logging in verbose mode
-# _verbose_log _log_details _log_reason
 _verbose_log() {
-  if [[ -e "/root/.debug.monitor.log.cnf" || "${_NGINX_DOS_LOG}" =~ VERBOSE ]]; then
-    if [[ "${1}" =~ Counter ]]; then
-      echo "$(date) ${1} REASON: ${2}" >> /var/log/scan_nginx_flood_debug.log
+  local _reason="${1}"
+  local _message="${2}"
+  local _timestamp
+  local _log_file
+
+  # Define log file paths
+  local _general_log="/var/log/scan_nginx_debug.log"
+  local _flood_log="/var/log/scan_nginx_flood_debug.log"
+  local _admin_log="/var/log/scan_nginx_admin_debug.log"
+
+  # Check if logging is enabled
+  if [[ -e "/root/.debug.monitor.log.cnf" || "${_NGINX_DOS_LOG}" =~ ^(NORMAL|VERBOSE)$ ]]; then
+    if [[ "${_reason}" =~ Counter && "${_NGINX_DOS_LOG}" =~ VERBOSE ]]; then
+      _log_file="${_flood_log}"
+    elif [[ "${_reason}" =~ "Admin URI To Ignore" && "${_NGINX_DOS_LOG}" =~ VERBOSE ]]; then
+      _log_file="${_admin_log}"
     else
-      echo "$(date) ${1} REASON: ${2}" >> /var/log/scan_nginx_debug.log
+      _log_file="${_general_log}"
     fi
+
+    # Generate timestamp
+    _timestamp=$(date)
+
+    # Write to the appropriate log file using printf
+    printf "%s %s REASON: %s\n" "${_timestamp}" "${_reason}" "${_message}" >> "${_log_file}"
   fi
 }
 
