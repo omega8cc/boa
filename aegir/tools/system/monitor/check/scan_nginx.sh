@@ -38,17 +38,17 @@ _MYIP=$(< /root/.found_correct_ipv4.cnf)
 # Default Configuration Values
 # ==============================
 
-# Default max allowed number for blocking (positive integer)
-_NGINX_DOS_LIMIT=399
-
 # Default number of lines to process from access.log (positive integer)
 _NGINX_DOS_LINES=1999
+
+# Default max allowed number for blocking (positive integer)
+_NGINX_DOS_LIMIT=399
 
 # Default mode (1 or 2)
 _NGINX_DOS_MODE=2
 
-# Default logging mode, can be SILENT (none) or VERBOSE
-_NGINX_DOS_LOG="SILENT"
+# Default logging mode, can be SILENT (none), NORMAL or VERBOSE
+_NGINX_DOS_LOG=SILENT
 
 # Default exclude keywords (empty by default; 'doccomment' will be used if not overridden)
 _NGINX_DOS_IGNORE="doccomment"
