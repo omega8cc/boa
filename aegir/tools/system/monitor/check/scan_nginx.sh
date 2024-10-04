@@ -5,7 +5,7 @@
 # ==============================
 
 # Exit if more than 2 instances of the script are running
-if (( $(pgrep -fc 'scan_nginx.sh') > 2 )); then
+if (( $(pgrep -fc 'scan_nginx.sh') > 4 )); then
   # Optional: Log too many instances
   # echo "Too many scan_nginx.sh running $(date)" >> /var/xdrago/log/too.many.log
   exit 0
