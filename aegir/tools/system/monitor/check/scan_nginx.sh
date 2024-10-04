@@ -349,6 +349,14 @@ _process_ip() {
       return
     fi
 
+    # Check if the IP is present in the csf.allow list early
+    _FF_TEST=$(grep -E "^tcp\|in\|d=80\|s=${_IP}\b" "/etc/csf/csf.allow")
+
+    # Determine if the IP is allowed or needs to be denied early
+    if [[ "${_FF_TEST}" =~ ${_IP} ]]; then
+      return
+    fi
+
     # Increment counter if not excluded
     (( _COUNTERS["${_IP}"]++ ))
   fi
