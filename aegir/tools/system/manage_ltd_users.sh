@@ -5,27 +5,6 @@ export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 export tRee=dev
 
-check_root() {
-  if [ `whoami` = "root" ]; then
-    ionice -c2 -n7 -p $$
-    renice 19 -p $$
-    chmod a+w /dev/null
-  else
-    echo "ERROR: This script should be run as a root user"
-    exit 1
-  fi
-  _DF_TEST=$(df -kTh / -l \
-    | grep '/' \
-    | sed 's/\%//g' \
-    | awk '{print $6}' 2> /dev/null)
-  _DF_TEST=${_DF_TEST//[^0-9]/}
-  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt "90" ]; then
-    echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
-    echo "ERROR: We can not proceed until it is below 90/100"
-    exit 1
-  fi
-}
-check_root
 
 if [ -e "/root/.proxy.cnf" ]; then
   exit 0
@@ -135,40 +114,8 @@ find_fast_mirror_early() {
   else
     _USE_MIR="files.aegir.cc"
   fi
-  urlDev="http://${_USE_MIR}/dev"
-  urlHmr="http://${_USE_MIR}/versions/${tRee}/boa/aegir"
-}
-
-extract_archive() {
-  if [ ! -z "$1" ]; then
-    case $1 in
-      *.tar.bz2)   tar xjf $1    ;;
-      *.tar.gz)    tar xzf $1    ;;
-      *.tar.xz)    tar xvf $1    ;;
-      *.bz2)       bunzip2 $1    ;;
-      *.rar)       unrar x $1    ;;
-      *.gz)        gunzip -q $1  ;;
-      *.tar)       tar xf $1     ;;
-      *.tbz2)      tar xjf $1    ;;
-      *.tgz)       tar xzf $1    ;;
-      *.zip)       unzip -qq $1  ;;
-      *.Z)         uncompress $1 ;;
-      *.7z)        7z x $1       ;;
-      *)           echo "'$1' cannot be extracted via >extract<" ;;
-    esac
-    rm -f $1
-  fi
-}
-
-get_dev_ext() {
-  if [ ! -z "$1" ]; then
-    curl ${crlGet} "${urlDev}/DEV/$1" -o "$1"
-    if [ -e "$1" ]; then
-      extract_archive "$1"
-    else
-      echo "OOPS: $1 failed download from ${urlDev}/DEV/$1"
-    fi
-  fi
+  _urlDev="http://${_USE_MIR}/dev"
+  _urlHmr="http://${_USE_MIR}/versions/${_tRee}/boa/aegir"
 }
 
 ###----------------------------###
