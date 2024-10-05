@@ -459,7 +459,7 @@ _fix_site_readonlymode() {
   fi
 }
 
-_fix_user_register_protection_with__vSet() {
+_fix_user_register_protection_with_vSet() {
   _sync_user_register_protection_ini_vars
   if [ "${_IGNORE_USER_REGISTER_PROTECTION}" = "NO" ] \
     && [ ! -e "${_Plr}/core" ]; then
@@ -2372,7 +2372,7 @@ _daily_process() {
               if [ "${_CLEAR_BOOST}" = "YES" ]; then
                 _fix_boost_cache
               fi
-              _fix_user_register_protection_with__vSet
+              _fix_user_register_protection_with_vSet
               if [[ "${_xSrl}" =~ "OFF" ]]; then
                 _run_drush8_cmd "advagg-force-new-aggregates"
                 _run_drush8_cmd "cache-clear all"
