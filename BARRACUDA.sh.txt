@@ -312,7 +312,7 @@ _check_prepare_dirs_permissions
 ### Turn Off AppArmor temporarily while running barracuda
 ###
 if [ "${_OS_CODE}" = "stretch" ] || [ "${_OS_CODE}" = "jessie" ]; then
-  [ ! -e "/root/._turn_off_apparmor_in_octopus.cnf" ] && touch /root/._turn_off_apparmor_in_octopus.cnf
+  [ ! -e "/root/.turn_off_apparmor_in_octopus.cnf" ] && touch /root/.turn_off_apparmor_in_octopus.cnf
 else
   _turn_off_apparmor_temporarily
 fi

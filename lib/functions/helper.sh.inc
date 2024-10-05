@@ -835,7 +835,7 @@ _turn_off_apparmor_in_octopus() {
     isAppArmOn=$(cat /sys/module/apparmor/parameters/enabled 2>&1)
     isAppArmOn=$(echo -n ${isAppArmOn} | tr -d "\n" 2>&1)
   fi
-  if [ "${isAppArmOn}" = "Y" ] && [ ! -e "/root/._turn_off_apparmor_in_octopus.cnf" ]; then
+  if [ "${isAppArmOn}" = "Y" ] && [ ! -e "/root/.turn_off_apparmor_in_octopus.cnf" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "ARMR: Turning off AppArmor temporarily..."
     fi
@@ -845,7 +845,7 @@ _turn_off_apparmor_in_octopus() {
     _mrun "service apparmor stop" 2> /dev/null
     _mrun "aa-teardown" 2> /dev/null
     _mrun "service auditd stop" 2> /dev/null
-    touch /root/._turn_off_apparmor_in_octopus.cnf
+    touch /root/.turn_off_apparmor_in_octopus.cnf
   fi
 }
 

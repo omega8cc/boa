@@ -5144,7 +5144,7 @@ _if_install_apparmor() {
   fi
   if [ "${isAppArmOn}" = "Y" ]; then
     _sync_apparmor_profiles
-    [ -e "/root/._turn_off_apparmor_in_octopus.cnf" ] && rm -f /root/._turn_off_apparmor_in_octopus.cnf
+    [ -e "/root/.turn_off_apparmor_in_octopus.cnf" ] && rm -f /root/.turn_off_apparmor_in_octopus.cnf
   fi
 }
 
