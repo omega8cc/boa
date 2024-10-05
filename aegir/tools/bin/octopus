@@ -203,7 +203,7 @@ _send_report() {
       _MY_EMAIL="$(basename "$0")@omega8.cc"
     fi
     if [ ! -z "${_MY_EMAIL}" ]; then
-      repSub="Successful Octopus upgrade for ${oc_tUsr}"
+      repSub="Successful Octopus upgrade for ${_octUsr}"
       repSub="REPORT: ${repSub} on ${_CHECK_HOST}"
       repSub=$(echo -n ${repSub} | fmt -su -w 2500 2>&1)
       cat ${_UP_LOG} | s-nail -s "${repSub} at ${_NOW}" ${_MY_EMAIL}
@@ -220,7 +220,7 @@ _send_alert() {
       _MY_EMAIL="$(basename "$0")@omega8.cc"
     fi
     if [ ! -z "${_MY_EMAIL}" ]; then
-      repSub="ALERT: Failed Octopus upgrade for ${oc_tUsr} on ${_CHECK_HOST}"
+      repSub="ALERT: Failed Octopus upgrade for ${_octUsr} on ${_CHECK_HOST}"
       repSub=$(echo -n ${repSub} | fmt -su -w 2500 2>&1)
       cat ${_UP_LOG} | s-nail -s "${repSub} at ${_NOW}" ${_MY_EMAIL}
       echo "${repSub} sent to ${_MY_EMAIL}"
@@ -343,7 +343,7 @@ _up_mode() {
     wait
     sed -i "s/^_PLATFORMS_ONLY=YES/_PLATFORMS_ONLY=NO/g"     ${_vBs}/${_tocIncO}
     wait
-    bash  ${_vBs}/${tocName}
+    bash  ${_vBs}/${_tocName}
     touch ${_usEr}/log/up-${_TODAY}
   elif [ "${_mCmd}" = "platforms" ]; then
     sed -i "s/^_PLATFORMS_ONLY=NO/_PLATFORMS_ONLY=YES/g"     ${_octCnf}
@@ -354,7 +354,7 @@ _up_mode() {
     wait
     sed -i "s/^_HM_ONLY=YES/_HM_ONLY=NO/g"                   ${_vBs}/${_tocIncO}
     wait
-    bash  ${_vBs}/${tocName}
+    bash  ${_vBs}/${_tocName}
     touch ${_usEr}/log/up-${_TODAY}
   elif [ "${_mCmd}" = "both" ] || [ "${_mCmd}" = "force" ]; then
     sed -i "s/^_HM_ONLY=YES/_HM_ONLY=NO/g"                   ${_octCnf}
@@ -365,7 +365,7 @@ _up_mode() {
     wait
     sed -i "s/^_PLATFORMS_ONLY=YES/_PLATFORMS_ONLY=NO/g"     ${_vBs}/${_tocIncO}
     wait
-    bash  ${_vBs}/${tocName}
+    bash  ${_vBs}/${_tocName}
     touch ${_usEr}/log/up-${_TODAY}
   else
     sed -i "s/^_HM_ONLY=YES/_HM_ONLY=NO/g"                   ${_octCnf}
@@ -376,7 +376,7 @@ _up_mode() {
     wait
     sed -i "s/^_PLATFORMS_ONLY=YES/_PLATFORMS_ONLY=NO/g"     ${_vBs}/${_tocIncO}
     wait
-    bash  ${_vBs}/${tocName}
+    bash  ${_vBs}/${_tocName}
     touch ${_usEr}/log/up-${_TODAY}
   fi
 }
@@ -405,9 +405,9 @@ _satellite_check_strict_php_cli() {
       if [ -n "${_useCli}" ]; then
         echo ${_useCli} > ${_usEr}/log/cli.txt
         echo ${_useCli} > ${_usEr}/static/control/cli.info
-        chown -R ${oc_tUsr}.ftp:users ${_usEr}/static/control
+        chown -R ${_octUsr}.ftp:users ${_usEr}/static/control
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${_useCli}/g" \
-          /root/.${oc_tUsr}.octopus.cnf &> /dev/null
+          /root/.${_octUsr}.octopus.cnf &> /dev/null
         echo "INFO: Your PHP-CLI has been switched to ${_useCli}"
         echo
       fi
@@ -417,7 +417,7 @@ _satellite_check_strict_php_cli() {
 
 _satellite_downgrade_protection() {
   _usEr="/data/disk/${_sCnd}"
-  oc_tUsr="${_sCnd}"
+  _octUsr="${_sCnd}"
   if [ -e "${_usEr}/log/octopus_log.txt" ] \
     && [ "${_cmNd}" = "up-lts" ]; then
     _SERIES_TEST=$(cat ${_usEr}/log/octopus_log.txt 2>&1)
@@ -425,7 +425,7 @@ _satellite_downgrade_protection() {
       echo
       echo "ERROR: Your Octopus has been already upgraded to ${_rLsn}-pro"
       echo "You can not downgrade back to previous/older/lts BOA version"
-      echo "Please use 'octopus up-pro ${oc_tUsr} force' to upgrade"
+      echo "Please use 'octopus up-pro ${_octUsr} force' to upgrade"
       echo "Bye"
       echo
       _clean_pid_exit _satellite_downgrade_protection_a
@@ -433,7 +433,7 @@ _satellite_downgrade_protection() {
       echo
       echo "ERROR: Your Octopus has been already upgraded to ${_rLsn}-dev"
       echo "You can not downgrade back to previous/older/lts BOA version"
-      echo "Please use 'octopus up-dev ${oc_tUsr} force' to upgrade"
+      echo "Please use 'octopus up-dev ${_octUsr} force' to upgrade"
       echo "Bye"
       echo
       _clean_pid_exit _satellite_downgrade_protection_b
@@ -452,7 +452,7 @@ _satellite_downgrade_protection() {
       echo
       echo "ERROR: Your system has been already upgraded to ${_rLsn}"
       echo "You can not downgrade back to previous/older BOA version"
-      echo "Please use 'octopus up-lts/pro/dev ${oc_tUsr} force' to upgrade"
+      echo "Please use 'octopus up-lts/pro/dev ${_octUsr} force' to upgrade"
       echo "Display all supported commands with: $(basename "$0") help"
       echo "Bye"
       echo
@@ -502,7 +502,7 @@ _satellite_check_supported_php_cli() {
             echo ${_useCli} > ${_usEr}/static/control/cli.info
           fi
         fi
-        chown -R ${oc_tUsr}.ftp:users ${_usEr}/static/control
+        chown -R ${_octUsr}.ftp:users ${_usEr}/static/control
       fi
       if [[ "${_SERIES_TEST}" =~ "${_rlsE}" ]]; then
         if [ "${_oMcm}" != "force" ]; then
@@ -510,7 +510,7 @@ _satellite_check_supported_php_cli() {
           _fMdy=force
           if [ ! -e "/root/.silent-octopus-upgrade.cnf" ]; then
             echo
-            echo "This Aegir Instance ${oc_tUsr} is already up to date!"
+            echo "This Aegir Instance ${_octUsr} is already up to date!"
             echo "If you wish to run/force the upgrade again,"
             echo "please use the forced upgrade mode, as shown below"
             echo
@@ -547,7 +547,7 @@ _up_one() {
       wait
       sed -i "s/^_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g"   ${_vBs}/${_tocIncO}
       wait
-      sed -i "s/^_USER=o1/_USER=${oc_tUsr}/g"                  ${_vBs}/${tocName}
+      sed -i "s/^_USER=o1/_USER=${_octUsr}/g"                  ${_vBs}/${_tocName}
       wait
       sed -i "s/^_STRONG_PASSW.*/_STRONG_PASSWORDS=YES/g"    ${_vBs}/${_tocIncO}
       wait
@@ -563,7 +563,7 @@ _up_one() {
       wait
     fi
 
-    if [ -e "${_vBs}/${tocName}" ]; then
+    if [ -e "${_vBs}/${_tocName}" ]; then
       if [ -e "${_usEr}/.drush/sys/provision/http" ]; then
         _IS_OLD=$(find ${_usEr}/.drush/sys/provision/ \
           -maxdepth 1 -mindepth 1 -mtime +0 -type d | grep example)
@@ -601,12 +601,12 @@ _up_one() {
           mkdir -p ${_usEr}/.drush/{sys,xts,usr}
           ${_gCb} ${_bRnh} ${_gitHub}/provision.git \
             ${_usEr}/.drush/sys/provision &> /dev/null
-          chown -R ${oc_tUsr}:users ${_usEr}/.drush/sys
+          chown -R ${_octUsr}:users ${_usEr}/.drush/sys
           _up_mode
         fi
       fi
     else
-      echo "${_vBs}/${tocName} installer not available - try again"
+      echo "${_vBs}/${_tocName} installer not available - try again"
       _clean_pid_exit _up_one_a
     fi
   fi
@@ -650,16 +650,16 @@ _up_action_all() {
       && [ -e "${_usEr}/log/cores.txt" ] \
       && [ ! -e "${_usEr}/log/CANCELLED" ]; then
       if [ "${_O_LOAD}" -lt "${_O_LOAD_MAX}" ]; then
-        oc_tUsr=$(echo ${_usEr} | cut -d'/' -f4 | awk '{ print $1}')
-        tocName="${_octName}.${oc_tUsr}"
-        _tocIncO="${_filIncO}.${oc_tUsr}"
+        _octUsr=$(echo ${_usEr} | cut -d'/' -f4 | awk '{ print $1}')
+        _tocName="${_octName}.${_octUsr}"
+        _tocIncO="${_filIncO}.${_octUsr}"
         if [ -e "${_vBs}/${_octName}" ]; then
-          cp -af ${_vBs}/${_octName} ${_vBs}/${tocName}
+          cp -af ${_vBs}/${_octName} ${_vBs}/${_tocName}
         fi
         if [ -e "${_vBs}/${_filIncO}" ]; then
           cp -af ${_vBs}/${_filIncO} ${_vBs}/${_tocIncO}
         fi
-        _octCnf="/root/.${oc_tUsr}.octopus.cnf"
+        _octCnf="/root/.${_octUsr}.octopus.cnf"
         echo load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}
         echo Octopus upgrade for User ${_usEr}
         n=$((RANDOM%9+2))
@@ -676,7 +676,7 @@ _up_action_all() {
         fi
 
         if [ "${_outP}" = "log" ]; then
-          _UP_LOG="${_LOG_DIR}/$(basename "$0")-up-${oc_tUsr}-${_NOW}.log"
+          _UP_LOG="${_LOG_DIR}/$(basename "$0")-up-${_octUsr}-${_NOW}.log"
           echo
           echo "Preparing the upgrade in silent mode..."
           echo
@@ -708,7 +708,7 @@ _up_action_all() {
         n=$((RANDOM%9+2))
         echo "Waiting $n _sCnds..."
         sleep $n
-        rm -f ${_vBs}/${tocName}
+        rm -f ${_vBs}/${_tocName}
         rm -f ${_vBs}/${_tocIncO}
         rm -rf ${_usEr}/.tmp/cache
         echo "Done for ${_usEr}"
@@ -728,16 +728,16 @@ _up_action_one() {
     && [ -e "${_usEr}/log/cores.txt" ] \
     && [ ! -e "${_usEr}/log/CANCELLED" ]; then
     if [ "${_O_LOAD}" -lt "${_O_LOAD_MAX}" ]; then
-      oc_tUsr="${_sCnd}"
-      tocName="${_octName}.${oc_tUsr}"
-      _tocIncO="${_filIncO}.${oc_tUsr}"
+      _octUsr="${_sCnd}"
+      _tocName="${_octName}.${_octUsr}"
+      _tocIncO="${_filIncO}.${_octUsr}"
       if [ -e "${_vBs}/${_octName}" ]; then
-        cp -af ${_vBs}/${_octName} ${_vBs}/${tocName}
+        cp -af ${_vBs}/${_octName} ${_vBs}/${_tocName}
       fi
       if [ -e "${_vBs}/${_filIncO}" ]; then
         cp -af ${_vBs}/${_filIncO} ${_vBs}/${_tocIncO}
       fi
-      _octCnf="/root/.${oc_tUsr}.octopus.cnf"
+      _octCnf="/root/.${_octUsr}.octopus.cnf"
       echo load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}
       echo Octopus upgrade for User ${_usEr}
       n=$((RANDOM%9+2))
@@ -752,7 +752,7 @@ _up_action_one() {
       fi
 
       if [ "${_outP}" = "log" ]; then
-        _UP_LOG="${_LOG_DIR}/$(basename "$0")-up-${oc_tUsr}-${_NOW}.log"
+        _UP_LOG="${_LOG_DIR}/$(basename "$0")-up-${_octUsr}-${_NOW}.log"
         echo
         echo "Preparing the upgrade in silent mode..."
         echo
@@ -782,7 +782,7 @@ _up_action_one() {
         _up_one
       fi
       sleep 3
-      rm -f ${_vBs}/${tocName}
+      rm -f ${_vBs}/${_tocName}
       rm -f ${_vBs}/${_tocIncO}
       rm -rf ${_usEr}/.tmp/cache
       echo Done for ${_usEr}
