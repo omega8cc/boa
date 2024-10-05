@@ -55,9 +55,9 @@ fi
 _C_SQL="mysql --user=root --password=${_SQL_PSWD} --host=${_SQL_HOST} --port=${_SQL_PORT} --protocol=tcp"
 
 echo "SQL --host=${_SQL_HOST} --port=${_SQL_PORT}"
-n=$((RANDOM%600+8))
-echo "INFO: Waiting $n seconds on `date` before running backup..."
-sleep $n
+_n=$((RANDOM%600+8))
+echo "INFO: Waiting ${_n} seconds on `date` before running backup..."
+sleep ${_n}
 echo "INFO: Starting backup on `date`"
 
 [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf

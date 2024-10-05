@@ -52,12 +52,12 @@ else
 fi
 
 if [ "${_VMFAMILY}" = "VS" ]; then
-  n=$((RANDOM%600+8))
-  echo "INFO: Waiting $n seconds 1/2 on `date` before running backup..."
-  sleep $n
-  n=$((RANDOM%300+8))
-  echo "INFO: Waiting $n seconds 2/2 on `date` before running backup..."
-  sleep $n
+  _n=$((RANDOM%600+8))
+  echo "INFO: Waiting ${_n} seconds 1/2 on `date` before running backup..."
+  sleep ${_n}
+  _n=$((RANDOM%300+8))
+  echo "INFO: Waiting ${_n} seconds 2/2 on `date` before running backup..."
+  sleep ${_n}
 fi
 
 echo "INFO: Starting dbs backup on `date`"
@@ -435,9 +435,9 @@ rm -f /run/boa_sql_backup.pid
 touch /var/xdrago/log/last-run-backup
 
 if [ "${_VMFAMILY}" = "VS" ]; then
-  n=$((RANDOM%300+8))
-  echo "INFO: Waiting $n seconds on `date` before running compress..."
-  sleep $n
+  _n=$((RANDOM%300+8))
+  echo "INFO: Waiting ${_n} seconds on `date` before running compress..."
+  sleep ${_n}
 fi
 echo "INFO: Starting dbs backup compress on `date`"
 _compress_backup &> /dev/null

@@ -76,9 +76,9 @@ for Runner in `find /var/xdrago -maxdepth 1 -mindepth 1 -type f \
     if [ ! -e "/run/boa_wait.pid" ]; then
       echo running ${Runner}
       bash ${Runner}
-      n=$((RANDOM%9+2))
-      echo waiting $n sec
-      sleep $n
+      _n=$((RANDOM%9+2))
+      echo waiting ${_n} sec
+      sleep ${_n}
     else
       echo "Another BOA task is running, we have to wait..."
     fi

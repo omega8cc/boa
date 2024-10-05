@@ -701,19 +701,19 @@ _octopus_install() {
     fi
 
     if [ "${_outP}" = "logged" ]; then
-      n=$((RANDOM%9+2))
+      _n=$((RANDOM%9+2))
       echo
       echo "Preparing to install Octopus in almost silent _mOde..."
       echo
       echo "NOTE: There will be no progress displayed in this console"
       echo "but you will receive an _eMal once the installation is complete"
       echo
-      sleep $n
+      sleep ${_n}
       echo "Please watch the progress in another console window with command:"
       echo "  tail -f ${_IN_OCTOPUS_LOG}"
       echo "or wait until you will see the line: BOA ${_cmNd} completed, Bye"
       echo
-      sleep $n
+      sleep ${_n}
       echo "Starting now..."
       echo
       sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"             ${_vBs}/${_octName}
@@ -900,7 +900,7 @@ _barracuda_install() {
     fi
 
     if [ "${_outP}" = "logged" ]; then
-      n=$((RANDOM%9+2))
+      _n=$((RANDOM%9+2))
       echo
       if [ "${_sYst}" = "bundle" ]; then
         echo "Preparing to install Barracuda and Octopus in almost silent _mOde..."
@@ -911,12 +911,12 @@ _barracuda_install() {
       echo "NOTE: There will be no progress displayed in this console"
       echo "but you will receive an _eMal once the installation is complete"
       echo
-      sleep $n
+      sleep ${_n}
       echo "Please watch the progress in another console window with command:"
       echo "  tail -f ${_IN_BARRACUDA_LOG}"
       echo "or wait until you will see the line: BOA ${_cmNd} completed, Bye"
       echo
-      sleep $n
+      sleep ${_n}
       echo "Starting now..."
       echo
       sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"               ${_vBs}/${_barName}
