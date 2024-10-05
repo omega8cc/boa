@@ -45,7 +45,7 @@ _clean_pid_exit() {
   echo "REASON ${e} on $(date 2>&1)" >> /root/.octopus.exit.exceptions.log
   [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
   [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
-  [ -e "/tmp/aegir_back_up_mode.txt" ] && rm -f /tmp/aegir_back_up_mode.txt
+  [ -e "/tmp/aegir_backup_mode.txt" ] && rm -f /tmp/aegir_backup_mode.txt
   service cron start &> /dev/null
   exit 1
 }
@@ -810,7 +810,7 @@ _up_start() {
     touch /run/boa_run.pid
     touch /run/boa_wait.pid
     touch /run/_octopus_install_run.pid
-    [ -e "/tmp/aegir_back_up_mode.txt" ] && rm -f /tmp/aegir_back_up_mode.txt
+    [ -e "/tmp/aegir_backup_mode.txt" ] && rm -f /tmp/aegir_backup_mode.txt
     mkdir -p ${_LOG_DIR}
     cd ${_vBs}
     rm -f ${_vBs}/OCTOPUS.sh*
@@ -837,7 +837,7 @@ _up_finish() {
   [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
   [ -e "/run/manage_ruby_users.pid" ] && rm -f /run/manage_ruby_users.pid
   [ -e "/run/_octopus_install_run.pid" ] && rm -f /run/_octopus_install_run.pid
-  [ -e "/tmp/aegir_back_up_mode.txt" ] && rm -f /tmp/aegir_back_up_mode.txt
+  [ -e "/tmp/aegir_backup_mode.txt" ] && rm -f /tmp/aegir_backup_mode.txt
   rm -f ${_vBs}/*.sh.cnf*
   rm -f ${_vBs}/OCTOPUS.sh*
   if [ -e "/opt/local/bin/php" ] || [ -e "/usr/local/bin/php" ]; then
