@@ -1818,7 +1818,7 @@ _convert_kb_to_gb() {
 }
 
 # Function to calculate RAM usage percentage as an integer
-_calculate__ram_usage_percent() {
+_calculate_ram_usage_percent() {
   total_ram_kb=$1
   available_ram_kb=$2
   used_ram_kb=$((total_ram_kb - available_ram_kb))
@@ -1837,7 +1837,7 @@ _check_system_ram() {
   _total_ram_gb=$(_convert_kb_to_gb ${total_ram_kb})
 
   # Calculate RAM usage percentage
-  _ram_usage_percent=$(_calculate__ram_usage_percent ${total_ram_kb} ${available_ram_kb})
+  _ram_usage_percent=$(_calculate_ram_usage_percent ${total_ram_kb} ${available_ram_kb})
 }
 
 _display_info() {
