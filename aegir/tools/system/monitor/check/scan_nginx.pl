@@ -300,8 +300,8 @@ sub makeactions {
           `echo "$VISITOR # [x$thissumar] $times" >> /var/xdrago/monitor/log/web.log`;
           `echo "$VISITOR # [x$thissumar] $times" >> /var/xdrago/monitor/log/$this_filename.archive.log`;
           if (-e "/etc/csf/csf.deny" && -e "/usr/sbin/csf" && !-e "/var/xdrago/guest-fire.sh") {
-            `/usr/sbin/csf -td $VISITOR 600 -p 80`;
-            `/usr/sbin/csf -td $VISITOR 600 -p 443`;
+            `/usr/sbin/csf -td $VISITOR 900 -p 80`;
+            `/usr/sbin/csf -td $VISITOR 900 -p 443`;
           }
         }
       }
@@ -333,8 +333,8 @@ sub makeactions {
           `echo "$PROXY # [x$thissumarpx] $times" >> /var/xdrago/monitor/log/web.log`;
           `echo "$PROXY # [x$thissumarpx] $times" >> /var/xdrago/monitor/log/$this_filename.archive.log`;
           if (-e "/etc/csf/csf.deny" && -e "/usr/sbin/csf" && !-e "/var/xdrago/guest-fire.sh") {
-            `/usr/sbin/csf -td $PROXY 600 -p 80`;
-            `/usr/sbin/csf -td $PROXY 600 -p 443`;
+            `/usr/sbin/csf -td $PROXY 900 -p 80`;
+            `/usr/sbin/csf -td $PROXY 900 -p 443`;
           }
         }
       }
@@ -366,8 +366,8 @@ sub makeactions {
           `echo "$VISITOR # [x$thisim_sumar] $times" >> /var/xdrago/monitor/log/web.log`;
           `echo "$VISITOR # [x$thisim_sumar] $times" >> /var/xdrago/monitor/log/$this_filename.archive.log`;
           if (-e "/etc/csf/csf.deny" && -e "/usr/sbin/csf" && !-e "/var/xdrago/guest-fire.sh") {
-            `/usr/sbin/csf -td $VISITOR 600 -p 80`;
-            `/usr/sbin/csf -td $VISITOR 600 -p 443`;
+            `/usr/sbin/csf -td $VISITOR 900 -p 80`;
+            `/usr/sbin/csf -td $VISITOR 900 -p 443`;
           }
         }
       }
@@ -399,8 +399,8 @@ sub makeactions {
           `echo "$PROXY # [x$thisim_sumarpx] $times" >> /var/xdrago/monitor/log/web.log`;
           `echo "$PROXY # [x$thisim_sumarpx] $times" >> /var/xdrago/monitor/log/$this_filename.archive.log`;
           if (-e "/etc/csf/csf.deny" && -e "/usr/sbin/csf" && !-e "/var/xdrago/guest-fire.sh") {
-            `/usr/sbin/csf -td $PROXY 600 -p 80`;
-            `/usr/sbin/csf -td $PROXY 600 -p 443`;
+            `/usr/sbin/csf -td $PROXY 900 -p 80`;
+            `/usr/sbin/csf -td $PROXY 900 -p 443`;
           }
         }
       }

@@ -234,12 +234,12 @@ _block_ip() {
   # Add the blocked IP to _BANNED_IPS to prevent duplicates within the same run
   _BANNED_IPS["${_IP}"]=1
 
-  # Block the IP using csf instantly but only for 10 minutes initially
+  # Block the IP using csf instantly but only for 15 minutes initially
   # this can be extended up to 1 hour once guest-fire.sh notices the IP
   # still present in /var/xdrago/monitor/log/web.log but no longer blocked
   if [[ -x "/usr/sbin/csf" ]]; then
-    /usr/sbin/csf -td "${_IP}" 600 -p 80
-    /usr/sbin/csf -td "${_IP}" 600 -p 443
+    /usr/sbin/csf -td "${_IP}" 900 -p 80
+    /usr/sbin/csf -td "${_IP}" 900 -p 443
   fi
 }
 

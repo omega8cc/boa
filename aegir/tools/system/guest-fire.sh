@@ -100,9 +100,9 @@ _guest_guard() {
         echo "${_IP} already denied on port 22"
         _verbose_log "DENIED" "${_IP} already denied on port 22"
       else
-        echo "Denying ${_IP} on port 22 in the next 10min"
-        csf -td ${_IP} 600 -p 22
-        _verbose_log "DENY" "Denying ${_IP} on port 22 in the next 10min"
+        echo "Denying ${_IP} on port 22 in the next 15 min"
+        csf -td ${_IP} 900 -p 22
+        _verbose_log "DENY" "Denying ${_IP} on port 22 in the next 15 min"
       fi
     done
   fi
@@ -136,10 +136,10 @@ _guest_guard() {
         echo "${_IP} already denied on port 443"
         _verbose_log "DENIED" "${_IP} already denied on port 443"
       else
-        echo "Denying ${_IP} on ports 443,80 in the next 10min"
-        csf -td ${_IP} 600 -p 80
-        csf -td ${_IP} 600 -p 443
-        _verbose_log "DENY" "Denying ${_IP} on ports 443,80 in the next 10min"
+        echo "Denying ${_IP} on ports 443,80 in the next 15 min"
+        csf -td ${_IP} 900 -p 80
+        csf -td ${_IP} 900 -p 443
+        _verbose_log "DENY" "Denying ${_IP} on ports 443,80 in the next 15 min"
       fi
     done
   fi
@@ -170,9 +170,9 @@ _guest_guard() {
         echo "${_IP} already denied on port 21"
         _verbose_log "DENIED" "${_IP} already denied on port 21"
       else
-        echo "Denying ${_IP} on port 21 in the next 10min"
-        csf -td ${_IP} 600 -p 21
-        _verbose_log "DENY" "Denying ${_IP} on port 21 in the next 10min"
+        echo "Denying ${_IP} on port 21 in the next 15 min"
+        csf -td ${_IP} 900 -p 21
+        _verbose_log "DENY" "Denying ${_IP} on port 21 in the next 15 min"
       fi
     done
   fi
