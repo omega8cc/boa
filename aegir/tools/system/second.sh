@@ -12,16 +12,6 @@ _PTH_OML="/var/xdrago/log/high.load.incident.log"
 # Exit if proxy config exists
 [ -e "/root/.proxy.cnf" ] && exit 0
 
-# Function to check if the script is run as root
-_check_root() {
-  if [ "$(id -u)" -ne 0 ]; then
-    echo "ERROR: This script should be run as root"
-    exit 1
-  else
-    chmod a+w /dev/null
-  fi
-}
-_check_root
 # Ensure not too many instances are running
 if (( $(pgrep -fc 'second.sh') > 2 )); then
   echo "Too many second.sh running $(date)" >> /var/xdrago/log/too.many.log
