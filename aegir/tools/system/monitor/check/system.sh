@@ -6,7 +6,7 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 
 _pthOml="/var/xdrago/log/system.incident.log"
 
-check_root() {
+_check_root() {
   if [ `whoami` = "root" ]; then
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
     chmod a+w /dev/null
@@ -15,7 +15,7 @@ check_root() {
     exit 1
   fi
 }
-check_root
+_check_root
 
 export _INCIDENT_EMAIL_REPORT=${_INCIDENT_EMAIL_REPORT//[^A-Z]/}
 : "${_INCIDENT_EMAIL_REPORT:=YES}"
@@ -33,7 +33,7 @@ _incident_email_report() {
   fi
 }
 
-wkhtmltopdf_php_cli_oom_kill() {
+_wkhtmltopdf_php_cli_oom_kill() {
   touch /run/boa_run.pid
   echo "$(date 2>&1) OOM $1 wkhtmltopdf/php-cli detected" >> ${_pthOml}
   sleep 3
@@ -49,7 +49,7 @@ wkhtmltopdf_php_cli_oom_kill() {
   exit 0
 }
 
-oom_critical_restart() {
+_oom_critical_restart() {
   touch /run/boa_run.pid
   echo "$(date 2>&1) OOM $1 detected" >> ${_pthOml}
   kill -9 $(ps aux | grep '[w]khtmltopdf' | awk '{print $2}') &> /dev/null
@@ -78,7 +78,7 @@ oom_critical_restart() {
   exit 0
 }
 
-system_oom_detection() {
+_system_oom_detection() {
   _RAM_TOTAL=$(free -mt | grep Mem: | cut -d: -f2 | awk '{ print $1}' 2>&1)
   _RAM_FREE_TEST=$(free -mt 2>&1)
   if [[ "${_RAM_FREE_TEST}" =~ "buffers/cache:" ]]; then
@@ -92,16 +92,16 @@ system_oom_detection() {
   echo _RAM_PCT_FREE is ${_RAM_PCT_FREE}
   if [ ! -z "${_RAM_PCT_FREE}" ]; then
     if [ "${_RAM_PCT_FREE}" -le "10" ]; then
-      oom_critical_restart "RAM ${_RAM_PCT_FREE}/${_RAM_TOTAL}"
+      _oom_critical_restart "RAM ${_RAM_PCT_FREE}/${_RAM_TOTAL}"
     elif [ "${_RAM_PCT_FREE}" -le "20" ]; then
       if [ `ps aux | grep -v "grep" | grep --count "wkhtmltopdf"` -gt "2" ]; then
-        wkhtmltopdf_php_cli_oom_kill "RAM ${_RAM_PCT_FREE}/${_RAM_TOTAL}"
+        _wkhtmltopdf_php_cli_oom_kill "RAM ${_RAM_PCT_FREE}/${_RAM_TOTAL}"
       fi
     fi
   fi
 }
 
-if_fix_locked_sshd() {
+_if_fix_locked_sshd() {
   _SSH_LOG="/var/log/auth.log"
   if [ `tail --lines=100 ${_SSH_LOG} \
     | grep --count "error: Bind to port 22"` -gt "0" ]; then
@@ -115,7 +115,7 @@ if_fix_locked_sshd() {
   fi
 }
 
-if_fix_dhcp() {
+_if_fix_dhcp() {
   if [ -e "/var/log/daemon.log" ]; then
     _DHCP_LOG="/var/log/daemon.log"
   else
@@ -144,7 +144,7 @@ if_fix_dhcp() {
   fi
 }
 
-cron_duplicate_instances_detection() {
+_cron_duplicate_instances_detection() {
   if [ `ps aux | grep -v "grep" | grep --count "/usr/sbin/cron"` -gt "1" ]; then
     thisErrLog="$(date 2>&1) Too many Cron instances running killed"
     echo ${thisErrLog} >> /var/xdrago/log/cron-count.kill.log
@@ -157,7 +157,7 @@ cron_duplicate_instances_detection() {
   fi
 }
 
-syslog_giant_log_detection() {
+_syslog_giant_log_detection() {
   if [ -e "/etc/cron.daily/logrotate" ]; then
     _SYSLOG_SIZE_TEST=$(du -s -h /var/log/syslog)
     if [[ "${_SYSLOG_SIZE_TEST}" =~ "G" ]]; then
@@ -172,7 +172,7 @@ syslog_giant_log_detection() {
   fi
 }
 
-gpg_too_many_instances_detection() {
+_gpg_too_many_instances_detection() {
   if [ `ps aux | grep -v "grep" | grep --count "gpg-agent"` -gt "5" ]; then
     thisErrLog="$(date 2>&1) Too many gpg-agent processes killed"
     echo ${thisErrLog} >> /var/xdrago/log/gpg-agent-count.kill.log
@@ -184,7 +184,7 @@ gpg_too_many_instances_detection() {
   fi
 }
 
-dirmngr_too_many_instances_detection() {
+_dirmngr_too_many_instances_detection() {
   if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt "5" ]; then
     thisErrLog="$(date 2>&1) Too many dirmngr processes killed"
     echo ${thisErrLog} >> /var/xdrago/log/dirmngr-count.kill.log
@@ -196,13 +196,13 @@ dirmngr_too_many_instances_detection() {
   fi
 }
 
-system_oom_detection
-if_fix_locked_sshd
-if_fix_dhcp
-cron_duplicate_instances_detection
-syslog_giant_log_detection
-gpg_too_many_instances_detection
-dirmngr_too_many_instances_detection
+_system_oom_detection
+_if_fix_locked_sshd
+_if_fix_dhcp
+_cron_duplicate_instances_detection
+_syslog_giant_log_detection
+_gpg_too_many_instances_detection
+_dirmngr_too_many_instances_detection
 
 echo DONE!
 exit 0

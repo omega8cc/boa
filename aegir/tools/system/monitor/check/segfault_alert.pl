@@ -103,7 +103,7 @@ sub trash_it_action
     `echo "### NGX: $ngxl" >> $this_path`;
     `echo "### PTH: $pthl" >> $this_path`;
     `echo "### VHT: $disl" >> $this_path`;
-    &send_alert;
+    &_send_alert;
   }
 }
 
@@ -175,7 +175,7 @@ sub find_domain
 }
 
 #############################################################################
-sub send_alert
+sub _send_alert
 {
   $this_email="/data/disk/$rx/log/email.txt";
   if (-f "$this_email") {

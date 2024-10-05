@@ -15,9 +15,11 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-export tRee=dev
+export _tRee=dev
 
-check_root() {
+_CHECK_HOST=$(uname -n 2>&1)
+
+_check_root() {
   if [ `whoami` = "root" ]; then
     ionice -c2 -n7 -p $$
     renice 19 -p $$
@@ -38,7 +40,7 @@ check_root() {
     exit 1
   fi
 }
-check_root
+_check_root
 
 if [ -e "/root/.pause_heavy_tasks_maint.cnf" ]; then
   exit 0
@@ -64,8 +66,8 @@ _HST=${_HST//[^a-zA-Z0-9-.]/}
 _HST=$(echo -n ${_HST} | tr A-Z a-z 2>&1)
 _HST_DASH=$(echo -n ${_HST} | tr . - 2>&1)
 
-crlGet="-L --max-redirs 3 -k -s --retry 3 --retry-delay 5 -A iCab"
-aptYesUnth="-y --allow-unauthenticated"
+_crlGet="-L --max-redirs 3 -k -s --retry 3 --retry-delay 5 -A iCab"
+_aptYesUnth="-y --allow-unauthenticated"
 
 [ -e "/root/.duobackboa.cnf" ] && source /root/.duobackboa.cnf
 
@@ -92,7 +94,7 @@ if [ "$1" != "help" ]; then
   ${_DCY_CMD} --version
 fi
 
-os_detection_minimal() {
+_os_detection_minimal() {
   _APT_UPDATE="apt-get update"
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
@@ -102,64 +104,58 @@ os_detection_minimal() {
     fi
   done
 }
-os_detection_minimal
+_os_detection_minimal
 
-apt_clean_update() {
+_apt_clean_update() {
   #apt-get clean -qq 2> /dev/null
   #rm -rf /var/lib/apt/lists/* &> /dev/null
   ${_APT_UPDATE} -qq 2> /dev/null
 }
 
-_CHECK_HOST=$(uname -n 2>&1)
-if_hosted_sys() {
+_if_hosted_sys() {
   if [ -e "/root/.host8.cnf" ] \
     || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
-    hostedSys=YES
+    _hostedSys=YES
   else
-    hostedSys=NO
+    _hostedSys=NO
   fi
 }
+_if_hosted_sys
 
-check_vps() {
+_check_vps() {
   _BENG_VS=NO
-  _VMFAMILY=NO
-  _CHECK_HOST=$(uname -n 2>&1)
   _VM_TEST=$(uname -a 2>&1)
   if [[ "${_VM_TEST}" =~ "-beng" ]]; then
     _BENG_VS=YES
   fi
-  if_hosted_sys
-  if [ "${hostedSys}" = "YES" ]; then
-    _VMFAMILY=HOSTED
-  fi
 }
-check_vps
+_check_vps
 
-find_fast_mirror_early() {
+_find_fast_mirror_early() {
   isNetc=$(which netcat 2>&1)
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
-    apt_clean_update
-    apt-get install netcat ${aptYesUnth}
-    apt-get install netcat-traditional ${aptYesUnth}
+    _apt_clean_update
+    apt-get install netcat ${_aptYesUnth}
+    apt-get install netcat-traditional ${_aptYesUnth}
     wait
   fi
-  ffMirr=$(which ffmirror 2>&1)
-  if [ -x "${ffMirr}" ]; then
-    ffList="/var/backups/boa-mirrors-2024-01.txt"
+  _ffMirr=$(which ffmirror 2>&1)
+  if [ -x "${_ffMirr}" ]; then
+    _ffList="/var/backups/boa-mirrors-2024-01.txt"
     mkdir -p /var/backups
-    if [ ! -e "${ffList}" ]; then
-      echo "de.files.aegir.cc"  > ${ffList}
-      echo "ny.files.aegir.cc" >> ${ffList}
-      echo "sg.files.aegir.cc" >> ${ffList}
+    if [ ! -e "${_ffList}" ]; then
+      echo "de.files.aegir.cc"  > ${_ffList}
+      echo "ny.files.aegir.cc" >> ${_ffList}
+      echo "sg.files.aegir.cc" >> ${_ffList}
     fi
-    if [ -e "${ffList}" ]; then
-      _BROKEN_FFMIRR_TEST=$(grep "stuff" ${ffMirr} 2>&1)
+    if [ -e "${_ffList}" ]; then
+      _BROKEN_FFMIRR_TEST=$(grep "stuff" ${_ffMirr} 2>&1)
       if [[ "${_BROKEN_FFMIRR_TEST}" =~ "stuff" ]]; then
-        _CHECK_MIRROR=$(bash ${ffMirr} < ${ffList} 2>&1)
+        _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _USE_MIR="${_CHECK_MIRROR}"
         [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.aegir.cc"
       else
@@ -171,11 +167,11 @@ find_fast_mirror_early() {
   else
     _USE_MIR="files.aegir.cc"
   fi
-  urlDev="http://${_USE_MIR}/dev"
-  urlHmr="http://${_USE_MIR}/versions/${tRee}/boa/aegir"
+  _urlDev="http://${_USE_MIR}/dev"
+  _urlHmr="http://${_USE_MIR}/versions/${_tRee}/boa/aegir"
 }
 
-install() {
+_install() {
   if [ ! -d "${_LOGPTH}" ]; then
     mkdir -p ${_LOGPTH}
   fi
@@ -192,12 +188,12 @@ install() {
   else
     echo "Installing duplicity dependencies..."
     cd
-    find_fast_mirror_early
+    _find_fast_mirror_early
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
-    apt_clean_update
+    _apt_clean_update
     aptitude purge duplicity -y
     rm -f /usr/local/bin/duplicity
     rm -f /usr/local/bin/jp.py
@@ -217,7 +213,7 @@ install() {
       || [ ! -x "${_DCY_PTN}" ]; then
       cd /var/opt
       rm -rf Python*
-      wget -q -U iCab ${urlDev}/src/Python-${_PTN_VRN}.tgz
+      wget -q -U iCab ${_urlDev}/src/Python-${_PTN_VRN}.tgz
       tar -xzf Python-${_PTN_VRN}.tgz
       cd Python-${_PTN_VRN}
       if [ -d "/usr/local/ssl3" ]; then
@@ -252,7 +248,7 @@ install() {
   fi
 }
 
-check_aws() {
+_check_aws() {
   if [ ! -x "/usr/local/bin/aws" ]; then
     echo "Upgrade to add AWS tools required..."
     install
@@ -360,7 +356,7 @@ if [ "${_AWS_REG}" = "af-south-1" ] \
   || [ "${_AWS_REG}" = "eu-south-1" ] \
   || [ "${_AWS_REG}" = "eu-south-2" ] \
   || [ "${_AWS_REG}" = "eu-west-1" ] \
-  || [ "${_AWS_REG}" = "eu-west-2 " ] \
+  || [ "${_AWS_REG}" = "eu-west-2" ] \
   || [ "${_AWS_REG}" = "eu-west-3" ] \
   || [ "${_AWS_REG}" = "il-central-1" ] \
   || [ "${_AWS_REG}" = "me-central-1" ] \
@@ -385,7 +381,7 @@ if [ -z "${_AWS_FLC}" ]; then
   _AWS_FLC="7D"
 fi
 
-if [ "${_VMFAMILY}" = "HOSTED" ] \
+if [ "${_hostedSys}" = "YES" ] \
   && [ -e "/var/xdrago" ]; then
   _AWS_FLC="14D"
 fi
@@ -437,7 +433,7 @@ if [ -e "${_LOGPTH}/${_BUCKET_DOT}.archive.log" ]; then
   aws s3 sync s3://${_BUCKET_DOT} s3://${_BUCKET}
 fi
 
-backup_prepare() {
+_backup_prepare() {
   _INCLUDE=""
   for _CDIR in ${_SOURCE}; do
     TMP=" --include  ${_CDIR}"
@@ -458,7 +454,7 @@ backup_prepare() {
   fi
 }
 
-monthly_cleanup() {
+_monthly_cleanup() {
   if [ -e "${_LOGPTH}/${_BUCKET}.randomize.cleanup.log" ]; then
     _RCL=$(cat ${_LOGPTH}/${_BUCKET}.randomize.cleanup.log 2>&1)
     _RCL=$(echo -n ${_RCL} | tr -d "\n" 2>&1)
@@ -485,7 +481,7 @@ monthly_cleanup() {
   fi
 }
 
-randomize_full() {
+_randomize_full() {
   if [ -e "/root/.randomize_duplicity_full_backup_day.cnf" ]; then
     if [ -e "${_LOGPTH}/${_BUCKET}.randomize.full.log" ]; then
       _RDW=$(cat ${_LOGPTH}/${_BUCKET}.randomize.full.log 2>&1)
@@ -503,7 +499,7 @@ randomize_full() {
   fi
 }
 
-set_mode() {
+_set_mode() {
   if [ "${_DOW}" = "${_RDW}" ] && [ "${_AWS_FLC}" = "7D" ]; then
     if [ ! -e "/root/.randomize_duplicity_full_backup_day.cnf" ]; then
       _MODE="full"
@@ -519,7 +515,7 @@ set_mode() {
   fi
 }
 
-set_cmd() {
+_set_cmd() {
   _DCY_UP_CMD="/usr/local/bin/duplicity ${_MODE} -v ${_AWS_VLV} \
     --allow-source-mismatch \
     --concurrency 4 \
@@ -530,7 +526,7 @@ set_cmd() {
     --volsize 300"
 }
 
-run_backup() {
+_run_backup() {
   if [ -e "/root/.randomize_duplicity_full_backup_day.cnf" ]; then
     if [ ! -e "/root/tmp/home/" ]; then
       n=$((RANDOM%300+8))
@@ -559,7 +555,7 @@ run_backup() {
     --exclude '**' / ${_TARGET} >> ${_LOGFILE}
 }
 
-remove_older_than() {
+_remove_older_than() {
   if [ -e "/root/.randomize_duplicity_full_backup_day.cnf" ]; then
     n=$((RANDOM%300+8))
     echo "Waiting $n seconds on `date` before running remove-older-than ${_AWS_TTL}" >> ${_LOGFILE}
@@ -570,7 +566,7 @@ remove_older_than() {
   ${_DCY_MN_CMD} remove-older-than ${_AWS_TTL} --force ${_NAME} ${_TARGET} >> ${_LOGFILE}
 }
 
-collection_status() {
+_collection_status() {
   if [ -e "/root/.randomize_duplicity_full_backup_day.cnf" ]; then
     n=$((RANDOM%300+8))
     echo "Waiting $n seconds on `date` before running collection-status" >> ${_LOGFILE}
@@ -581,18 +577,18 @@ collection_status() {
   ${_DCY_MN_CMD} collection-status ${_NAME} ${_TARGET} >> ${_LOGFILE}
 }
 
-backup() {
-  backup_prepare
-  monthly_cleanup
-  randomize_full
-  set_mode
-  set_cmd
-  run_backup
+_backup() {
+  _backup_prepare
+  _monthly_cleanup
+  _randomize_full
+  _set_mode
+  _set_cmd
+  _run_backup
   if [ -e "${_LOGPTH}/${_BUCKET}.archive.log" ] \
     && [ "${_DOW}" = "${_RDW}" ] \
     && [ "${_DO_CLEANUP}" = "YES" ]; then
-    remove_older_than
-    collection_status
+    _remove_older_than
+    _collection_status
   fi
   if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_EMAIL_REPORT}" = "YES" ]; then
     echo "Sending email report on `date`" >> ${_LOGFILE}
@@ -602,7 +598,7 @@ backup() {
   rm -f ${_LOGFILE}
 }
 
-conn_test() {
+_conn_test() {
   if [ $# = 1 ]; then
     _BUCKET="daily-remote-$1"
     _TARGET="boto3+s3://${_BUCKET}"
@@ -626,24 +622,24 @@ conn_test() {
   fi
 }
 
-status() {
+_status() {
   echo "Command is ${_DCY_MN_CMD} collection-status ${_NAME} ${_TARGET}"
   ${_DCY_MN_CMD} collection-status ${_NAME} ${_TARGET}
 }
 
-cleanup() {
+_cleanup() {
   echo "Command is ${_DCY_MN_CMD} cleanup --force ${_NAME} ${_TARGET}"
   ${_DCY_MN_CMD} cleanup --force ${_NAME} ${_TARGET}
   echo "Command is ${_DCY_MN_CMD} collection-status ${_NAME} ${_TARGET}"
   ${_DCY_MN_CMD} collection-status ${_NAME} ${_TARGET}
 }
 
-list() {
+_list() {
   echo "Command is ${_DCY_MN_CMD} list-current-files ${_NAME} ${_TARGET}"
   ${_DCY_MN_CMD} list-current-files ${_NAME} ${_TARGET}
 }
 
-restore() {
+_restore() {
   if [ $# = 2 ]; then
     echo "Command is ${_DCY_MN_CMD} restore --file-to-restore $1 ${_NAME} ${_TARGET} $2"
     ${_DCY_MN_CMD} restore --file-to-restore $1 ${_NAME} ${_TARGET} $2
@@ -653,7 +649,7 @@ restore() {
   fi
 }
 
-retrieve() {
+_retrieve() {
   if [ $# = 3 ]; then
     _HST_DASH=$(echo -n $3 | tr . - 2>&1)
     _BUCKET="daily-remote-${_HST_DASH}"
@@ -679,38 +675,38 @@ if [ "$1" = "backup" ]; then
   else
     touch /run/${_HST}_backup.pid
     echo "The duplicity backup is starting now..."
-    check_aws
-    backup
+    _check_aws
+    _backup
     echo "The duplicity backup is complete!"
     touch ${_LOGPTH}/run_${_HST}_backup.log
     rm -f /run/${_HST}_backup.pid
   fi
 elif [ "$1" = "install" ]; then
-  install
+  _install
 elif [ "$1" = "cleanup" ]; then
-  cleanup
+  _cleanup
 elif [ "$1" = "list" ]; then
-  list
+  _list
 elif [ "$1" = "restore" ]; then
   if [ $# = 3 ]; then
-    restore $2 $3
+    _restore $2 $3
   else
-    restore $2 $3 $4
+    _restore $2 $3 $4
   fi
 elif [ "$1" = "retrieve" ]; then
   if [ $# = 4 ]; then
-    retrieve $2 $3 $4
+    _retrieve $2 $3 $4
   elif [ $# = 5 ]; then
-    retrieve $2 $3 $4 $5
+    _retrieve $2 $3 $4 $5
   else
     echo "You have to specify also hostname of the backed up system"
     exit 1
   fi
 elif [ "$1" = "status" ]; then
-  check_aws
-  status
+  _check_aws
+  _status
 elif [ "$1" = "test" ]; then
-  conn_test
+  _conn_test
 else
   echo "
 

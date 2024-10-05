@@ -1,14 +1,14 @@
 #
 # Forced Redis password update.
-forced_redis_password_update() {
+_forced_redis_password_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: forced_redis_password_update"
+    _msg "PROC: _forced_redis_password_update"
   fi
   if [ "${_REDIS_LISTEN_MODE}" = "SOCKET" ] \
     || [ "${_REDIS_LISTEN_MODE}" = "PORT" ] \
     || [ "${_REDIS_LISTEN_MODE}" = "127.0.0.1" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "INFO: Generating random password for local Redis server"
+      _msg "INFO: Generating random password for local Redis server"
     fi
     _ESC_RPASS=""
     _LEN_RPASS=0
@@ -35,7 +35,7 @@ forced_redis_password_update() {
       else
         _ESC_RPASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
         _ESC_RPASS=$(echo -n "${_ESC_RPASS}" | tr -d "\n" 2>&1)
-        _ESC_RPASS=$(sanitize_string "${_ESC_RPASS}" 2>&1)
+        _ESC_RPASS=$(_sanitize_string "${_ESC_RPASS}" 2>&1)
       fi
       _ESC_RPASS=$(echo -n "${_ESC_RPASS}" | tr -d "\n" 2>&1)
       _LEN_RPASS=$(echo ${#_ESC_RPASS} 2>&1)
@@ -43,23 +43,23 @@ forced_redis_password_update() {
     if [ -z "${_ESC_RPASS}" ] || [ "${_LEN_RPASS}" -lt "9" ]; then
       _ESC_RPASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
       _ESC_RPASS=$(echo -n "${_ESC_RPASS}" | tr -d "\n" 2>&1)
-      _ESC_RPASS=$(sanitize_string "${_ESC_RPASS}" 2>&1)
+      _ESC_RPASS=$(_sanitize_string "${_ESC_RPASS}" 2>&1)
     fi
   else
-    msg "INFO: Managing password for remote Redis server"
+    _msg "INFO: Managing password for remote Redis server"
     if [ -e "/root/.redis.pass.txt" ] \
-      && [ -e "${pthLog}/remote-redis-passwd.log" ]; then
+      && [ -e "${_pthLog}/remote-redis-passwd.log" ]; then
       _ESC_RPASS=$(cat /root/.redis.pass.txt 2>&1)
       _ESC_RPASS=$(echo -n "${_ESC_RPASS}" | tr -d "\n" 2>&1)
-      _ESC_RPASS=$(sanitize_string "${_ESC_RPASS}" 2>&1)
+      _ESC_RPASS=$(_sanitize_string "${_ESC_RPASS}" 2>&1)
     else
       _ESC_RPASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
-      touch ${pthLog}/remote-redis-passwd.log
+      touch ${_pthLog}/remote-redis-passwd.log
     fi
   fi
   echo "${_ESC_RPASS}" > /root/.redis.pass.txt
   chmod 0600 /root/.redis.pass.txt &> /dev/null
-  touch ${pthLog}/sec-redis-pass-${_X_SE}-${_X_VERSION}-${_NOW}.log
+  touch ${_pthLog}/sec-redis-pass-${_xSrl}-${_X_VERSION}-${_NOW}.log
   if [ -e "/etc/redis/redis.conf" ]; then
     _FORCE_REDIS_RESTART=YES
     sed -i "s/^# requirepass /requirepass /g" \
@@ -72,14 +72,14 @@ forced_redis_password_update() {
     chmod 0600 /etc/redis/redis.conf
   fi
   if [ "${_FORCE_REDIS_RESTART}" = "YES" ]; then
-    mrun "service redis-server reload" 2> /dev/null
+    _mrun "service redis-server reload" 2> /dev/null
   fi
 }
 #
 # Fix Redis mode.
-fix_redis_mode() {
+_fix_redis_mode() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: fix_redis_mode"
+    _msg "PROC: _fix_redis_mode"
   fi
   mkdir -p /run/redis
   chown redis:redis /run/redis
@@ -114,7 +114,7 @@ fix_redis_mode() {
     else
       _REDIS_LISTEN_MODE=${_REDIS_LISTEN_MODE//[^0-9.]/}
       if [ ! -z "${_REDIS_LISTEN_MODE}" ]; then
-        find_correct_ip
+        _find_correct_ip
         _LOCAL_REDIS_PORT_TEST="${_LOC_IP}"
         if [ "${_LOCAL_REDIS_PORT_TEST}" = "${_REDIS_LISTEN_MODE}" ]; then
           _REDIS_HOST=LOCAL
@@ -145,21 +145,21 @@ fix_redis_mode() {
               sed -i "s/'127.0.0.1'/'${_REDIS_LISTEN_MODE}'/g" /data/conf/global.inc &> /dev/null
               wait
             fi
-            mrun "service redis-server stop" 2> /dev/null
+            _mrun "service redis-server stop" 2> /dev/null
             killall -9 redis-server &> /dev/null
             rm -f /var/lib/redis/*
-            mrun "update-rc.d -f redis-server remove" 2> /dev/null
-            mrun "service redis stop" 2> /dev/null
+            _mrun "update-rc.d -f redis-server remove" 2> /dev/null
+            _mrun "service redis stop" 2> /dev/null
             killall -9 redis &> /dev/null
-            mrun "update-rc.d -f redis remove" 2> /dev/null
+            _mrun "update-rc.d -f redis remove" 2> /dev/null
             mv -f /etc/init.d/redis /etc/init.d/redis-off &> /dev/null
             mv -f /etc/init.d/redis-server /etc/init.d/redis-server-off &> /dev/null
             killall -9 redis-server &> /dev/null
             rm -f /run/redis/redis.pid
             rm -f /var/xdrago/memcache.sh* &> /dev/null
             killall -9 memcached &> /dev/null
-            msg "INFO: Remote Redis IP set to ${_REDIS_LISTEN_MODE}"
-            msg "INFO: Local Redis instance has been disabled"
+            _msg "INFO: Remote Redis IP set to ${_REDIS_LISTEN_MODE}"
+            _msg "INFO: Local Redis instance has been disabled"
           fi
         else
           if [ -e "/data/conf/global/global-redis.inc" ]; then
@@ -170,21 +170,21 @@ fix_redis_mode() {
             sed -i "s/'127.0.0.1'/'${_REDIS_LISTEN_MODE}'/g" /data/conf/global.inc &> /dev/null
             wait
           fi
-          mrun "service redis-server stop" 2> /dev/null
+          _mrun "service redis-server stop" 2> /dev/null
           killall -9 redis-server &> /dev/null
           rm -f /var/lib/redis/*
-          mrun "update-rc.d -f redis-server remove" 2> /dev/null
-          mrun "service redis stop" 2> /dev/null
+          _mrun "update-rc.d -f redis-server remove" 2> /dev/null
+          _mrun "service redis stop" 2> /dev/null
           killall -9 redis &> /dev/null
-          mrun "update-rc.d -f redis remove" 2> /dev/null
+          _mrun "update-rc.d -f redis remove" 2> /dev/null
           mv -f /etc/init.d/redis /etc/init.d/redis-off &> /dev/null
           mv -f /etc/init.d/redis-server /etc/init.d/redis-server-off &> /dev/null
           killall -9 redis-server &> /dev/null
           rm -f /run/redis/redis.pid
           rm -f /var/xdrago/memcache.sh* &> /dev/null
           killall -9 memcached &> /dev/null
-          msg "INFO: Remote Redis IP set to ${_REDIS_LISTEN_MODE}"
-          msg "INFO: Local Redis instance has been disabled"
+          _msg "INFO: Remote Redis IP set to ${_REDIS_LISTEN_MODE}"
+          _msg "INFO: Local Redis instance has been disabled"
         fi
       fi
     fi
@@ -192,15 +192,15 @@ fix_redis_mode() {
 }
 #
 # Set or update Redis password.
-redis_password_update() {
+_redis_password_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: redis_password_update"
+    _msg "PROC: _redis_password_update"
   fi
   if [ -e "/etc/redis/redis.conf" ]; then
-    if [ ! -e "${pthLog}/sec-redis-pass-${_X_SE}-${_X_VERSION}-${_NOW}.log" ]; then
+    if [ ! -e "${_pthLog}/sec-redis-pass-${_xSrl}-${_X_VERSION}-${_NOW}.log" ]; then
       if [ ! -e "/root/.redis.no.new.password.cnf" ] \
         || [ ! -e "/root/.redis.pass.txt" ]; then
-         forced_redis_password_update
+         _forced_redis_password_update
       fi
     fi
   fi
@@ -218,7 +218,7 @@ redis_password_update() {
       else
         if [ ! -z "${RPASS}" ]; then
           mkdir -p /data/conf
-          cp -af ${locCnf}/global/global-if-redis.inc /data/conf/global/global-if-redis.inc
+          cp -af ${_locCnf}/global/global-if-redis.inc /data/conf/global/global-if-redis.inc
           sed -i "s/isfoobared/${RPASS}/g" /data/conf/global/global-if-redis.inc &> /dev/null
           wait
         fi
@@ -231,7 +231,7 @@ redis_password_update() {
       else
         if [ ! -z "${RPASS}" ]; then
           mkdir -p /data/conf
-          cp -af ${locCnf}/global/global-redis.inc /data/conf/global/global-redis.inc
+          cp -af ${_locCnf}/global/global-redis.inc /data/conf/global/global-redis.inc
           sed -i "s/isfoobared/${RPASS}/g" /data/conf/global/global-redis.inc &> /dev/null
           wait
         fi
@@ -244,41 +244,41 @@ redis_password_update() {
       else
         if [ ! -z "${RPASS}" ]; then
           mkdir -p /data/conf
-          cp -af ${locCnf}/global/global.inc /data/conf/global.inc
+          cp -af ${_locCnf}/global/global.inc /data/conf/global.inc
           sed -i "s/isfoobared/${RPASS}/g" /data/conf/global.inc &> /dev/null
           wait
         fi
       fi
     fi
-    if [ -e "${mtrInc}" ] \
-      && [ ! -L "${mtrInc}/global.inc" ] \
+    if [ -e "${_mtrInc}" ] \
+      && [ ! -L "${_mtrInc}/global.inc" ] \
       && [ -e "/data/conf/global.inc" ]; then
-      ln -sfn /data/conf/global.inc ${mtrInc}/global.inc
+      ln -sfn /data/conf/global.inc ${_mtrInc}/global.inc
     fi
-    fix_redis_mode
+    _fix_redis_mode
   fi
 }
 #
 # Install Redis from sources.
-install_redis_src() {
+_install_redis_src() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: install_redis_src"
+    _msg "PROC: _install_redis_src"
   fi
-  msg "INFO: Installing Redis ${_REDIS_VRN}..."
+  _msg "INFO: Installing Redis ${_REDIS_VRN}..."
   if [ ! -e "/var/lib/redis" ]; then
-    mrun "adduser --system --group redis --home /home/redis" 2> /dev/null
+    _mrun "adduser --system --group redis --home /home/redis" 2> /dev/null
   fi
   cd /var/opt
   rm -rf redis*
-  get_dev_src "redis-${_REDIS_VRN}.tar.gz"
+  _get_dev_src "redis-${_REDIS_VRN}.tar.gz"
   rm -f /usr/local/bin/redis*
   rm -f /usr/bin/redis*
   cd redis-${_REDIS_VRN}
-  mrun "make -j $(nproc) --quiet" 2> /dev/null
-  mrun "make --quiet PREFIX=/usr install" 2> /dev/null
-  cp -af ${locCnf}/redis/redis-server /etc/init.d/redis-server
+  _mrun "make -j $(nproc) --quiet" 2> /dev/null
+  _mrun "make --quiet PREFIX=/usr install" 2> /dev/null
+  cp -af ${_locCnf}/redis/redis-server /etc/init.d/redis-server
   chmod 755 /etc/init.d/redis-server &> /dev/null
-  mrun "update-rc.d redis-server defaults" 2> /dev/null
+  _mrun "update-rc.d redis-server defaults" 2> /dev/null
   mkdir -p /run/redis
   chown -R redis:redis /run/redis
   mkdir -p /var/log/redis
@@ -288,33 +288,33 @@ install_redis_src() {
   rm -f /var/lib/redis/*
   mkdir -p /etc/redis
   if [ -e "/etc/redis/redis.conf" ] && [ "${_STATUS}" = "UPGRADE" ]; then
-    if_hosted_sys
+    _if_hosted_sys
     if [ "${_CUSTOM_CONFIG_REDIS}" = "NO" ] \
-      || [ "${hostedSys}" = "YES" ]; then
+      || [ "${_hostedSys}" = "YES" ]; then
       if [ "${_CUSTOM_CONFIG_REDIS}" = "YES" ]; then
         _DO_NOTHING=YES
       else
         if [ "${_REDIS_INSTALL_MISMATCH}" = "YES" ] \
-          || [ ! -e "${pthLog}/redis-${_REDIS_VRN}-${_X_SE}-${_X_VERSION}.log" ]; then
-          cp -af ${locCnf}/redis/${redisCnfTpl} /etc/redis/redis.conf
+          || [ ! -e "${_pthLog}/redis-${_REDIS_VRN}-${_xSrl}-${_X_VERSION}.log" ]; then
+          cp -af ${_locCnf}/redis/${redisCnfTpl} /etc/redis/redis.conf
         fi
       fi
     fi
   else
     if [ ! -e "/etc/redis/redis.conf" ] \
       || [ "${_REDIS_INSTALL_MISMATCH}" = "YES" ] \
-      || [ ! -e "${pthLog}/redis-${_REDIS_VRN}-${_X_SE}-${_X_VERSION}.log" ]; then
-      cp -af ${locCnf}/redis/${redisCnfTpl} /etc/redis/redis.conf
+      || [ ! -e "${_pthLog}/redis-${_REDIS_VRN}-${_xSrl}-${_X_VERSION}.log" ]; then
+      cp -af ${_locCnf}/redis/${redisCnfTpl} /etc/redis/redis.conf
     fi
   fi
-  redis_password_update
-  touch ${pthLog}/redis-${_REDIS_VRN}-${_X_SE}-${_X_VERSION}.log
-  mrun "service redis-server reload" 2> /dev/null
+  _redis_password_update
+  touch ${_pthLog}/redis-${_REDIS_VRN}-${_xSrl}-${_X_VERSION}.log
+  _mrun "service redis-server reload" 2> /dev/null
 }
 
-redis_install_upgrade() {
+_redis_install_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: redis_install_upgrade"
+    _msg "PROC: _redis_install_upgrade"
   fi
   if [ "${_REDIS_MAJOR_RELEASE}" = "7" ] \
     && [ ! -z "${_REDIS_SEVEN_VRN}" ]; then
@@ -333,7 +333,7 @@ redis_install_upgrade() {
     redisCnfTpl="redis4.conf"
   fi
   if [ ! -e "/var/lib/redis" ]; then
-    mrun "adduser --system --group redis --home /home/redis" 2> /dev/null
+    _mrun "adduser --system --group redis --home /home/redis" 2> /dev/null
   fi
   mkdir -p /run/redis
   chown -R redis:redis /run/redis
@@ -356,12 +356,12 @@ redis_install_upgrade() {
     if [ "${_REDIS_V_ITD}" = "${_REDIS_VRN}" ]; then
       _REDIS_INSTALL_MISMATCH=NO
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: Installed Redis version ${_REDIS_V_ITD}, OK"
+        _msg "INFO: Installed Redis version ${_REDIS_V_ITD}, OK"
       fi
     else
       _REDIS_INSTALL_MISMATCH=YES
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: Installed Redis version ${_REDIS_V_ITD}, upgrade required"
+        _msg "INFO: Installed Redis version ${_REDIS_V_ITD}, upgrade required"
       fi
     fi
   else
@@ -380,23 +380,23 @@ redis_install_upgrade() {
       if [ "${_REDIS_V_ITD}" = "${_REDIS_VRN}" ]; then
         _REDIS_INSTALL_MISMATCH=NO
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "INFO: Installed Redis version ${_REDIS_V_ITD}, OK"
+          _msg "INFO: Installed Redis version ${_REDIS_V_ITD}, OK"
         fi
       else
         _REDIS_INSTALL_MISMATCH=YES
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "INFO: Installed Redis version ${_REDIS_V_ITD}, rebuild required"
+          _msg "INFO: Installed Redis version ${_REDIS_V_ITD}, rebuild required"
         fi
       fi
     fi
   fi
   if [ "${_REDIS_INSTALL_MISMATCH}" = "YES" ] \
-    || [ ! -e "${pthLog}/redis-${_REDIS_VRN}-${_X_SE}-${_X_VERSION}.log" ] \
+    || [ ! -e "${_pthLog}/redis-${_REDIS_VRN}-${_xSrl}-${_X_VERSION}.log" ] \
     || [ ! -d "/run/redis" ] \
     || [ ! -x "/usr/bin/redis-server" ] \
     || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
     if [ "${_REDIS_HOST}" = "LOCAL" ] || [ -z "${_REDIS_HOST}" ]; then
-      install_redis_src
+      _install_redis_src
     fi
   fi
 }

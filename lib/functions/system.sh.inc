@@ -1,7 +1,7 @@
 
-export tRee=dev
+export _tRee=dev
 
-if_fix_iptables_symlinks() {
+_if_fix_iptables_symlinks() {
   ###
   ### Fix for iptables paths backward compatibility
   ###
@@ -48,7 +48,7 @@ if_fix_iptables_symlinks() {
 
 #
 # Re-install curl if broken.
-if_reinstall_curl_src() {
+_if_reinstall_curl_src() {
   _CURL_VRN=8.9.1
   if ! command -v lsb_release &> /dev/null; then
     apt-get update -qq &> /dev/null
@@ -60,13 +60,13 @@ if_reinstall_curl_src() {
   [ "${_OS_CODE}" = "stretch" ] && _CURL_VRN=8.2.1
   isCurl=$(curl --version 2>&1)
   if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
-    msg "OOPS: cURL is broken! Re-installing.."
+    _msg "OOPS: cURL is broken! Re-installing.."
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     echo "curl install" | dpkg --set-selections 2> /dev/null
-    apt_clean_update
+    _apt_clean_update
     apt-get remove libssl1.0-dev -y --purge --auto-remove -qq 2> /dev/null
     apt-get autoremove -y 2> /dev/null
     apt-get install libssl-dev -y -qq 2> /dev/null
@@ -76,7 +76,7 @@ if_reinstall_curl_src() {
       apt-get install curl --reinstall -y -qq 2> /dev/null
     fi
     if [ -e "/var/aegir/drush" ]; then
-      msg "INFO: Installing curl from sources..."
+      _msg "INFO: Installing curl from sources..."
       mkdir -p /var/opt
       rm -rf /var/opt/curl*
       cd /var/opt
@@ -112,9 +112,9 @@ if_reinstall_curl_src() {
     if [ -f "/usr/local/bin/curl" ]; then
       isCurl=$(/usr/local/bin/curl --version 2>&1)
       if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
-        msg "ERRR: /usr/local/bin/curl is broken"
+        _msg "ERRR: /usr/local/bin/curl is broken"
       else
-        msg "GOOD: /usr/local/bin/curl works"
+        _msg "GOOD: /usr/local/bin/curl works"
       fi
     fi
   fi
@@ -122,45 +122,45 @@ if_reinstall_curl_src() {
 
 #
 # Install sysvinit with apt.
-sysvinit_install() {
+_sysvinit_install() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: sysvinit_install"
+    _msg "PROC: _sysvinit_install"
   fi
-  apt_clean_update
+  _apt_clean_update
   echo "sysvinit-core install" | dpkg --set-selections &> /dev/null
   echo "sysvinit-utils install" | dpkg --set-selections &> /dev/null
-  mrun "${_INITINS} sysvinit-core" 2> /dev/null
-  mrun "${_INITINS} sysvinit-utils" 2> /dev/null
+  _mrun "${_INITINS} sysvinit-core" 2> /dev/null
+  _mrun "${_INITINS} sysvinit-utils" 2> /dev/null
   echo "sysvinit-core hold" | dpkg --set-selections &> /dev/null
   echo "sysvinit-utils hold" | dpkg --set-selections &> /dev/null
 }
 
 #
 # Remove systemd with apt.
-systemd_remove_apt_cmd() {
+_systemd_remove_apt_cmd() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: systemd_remove_apt_cmd"
+    _msg "PROC: _systemd_remove_apt_cmd"
   fi
-  apt_clean_update
-  mrun "apt-get remove systemd -y --purge --auto-remove --allow-remove-essential -qq" 2> /dev/null
-  mrun "apt-get remove libnss-systemd -y --purge --auto-remove --allow-remove-essential -qq" 2> /dev/null
-  mrun "apt-get remove systemd-sysv -y --purge --auto-remove --allow-remove-essential -qq" 2> /dev/null
-  mrun "apt-get autoremove --purge -y --purge --auto-remove -qq" 2> /dev/null
-  mrun "apt-get autoclean -y --purge --auto-remove -qq" 2> /dev/null
-  mrun "apt-get autoremove -y --purge --auto-remove -qq" 2> /dev/null
-  apt_clean_update
+  _apt_clean_update
+  _mrun "apt-get remove systemd -y --purge --auto-remove --allow-remove-essential -qq" 2> /dev/null
+  _mrun "apt-get remove libnss-systemd -y --purge --auto-remove --allow-remove-essential -qq" 2> /dev/null
+  _mrun "apt-get remove systemd-sysv -y --purge --auto-remove --allow-remove-essential -qq" 2> /dev/null
+  _mrun "apt-get autoremove --purge -y --purge --auto-remove -qq" 2> /dev/null
+  _mrun "apt-get autoclean -y --purge --auto-remove -qq" 2> /dev/null
+  _mrun "apt-get autoremove -y --purge --auto-remove -qq" 2> /dev/null
+  _apt_clean_update
 }
 
 #
 # Detect and prepare for major OS upgrade.
-define_loc_osr() {
-  apt_clean_update_no_releaseinfo_change
-  mrun "apt-get upgrade ${nrmUpArg}" 2> /dev/null
-  mrun "apt-get install lsb-release ${nrmUpArg}" 2> /dev/null
+_define_loc_osr() {
+  _apt_clean_update_no_releaseinfo_change
+  _mrun "apt-get upgrade ${_nrmUpArg}" 2> /dev/null
+  _mrun "apt-get install lsb-release ${_nrmUpArg}" 2> /dev/null
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: define_loc_osr"
+    _msg "PROC: _define_loc_osr"
   fi
   _LOC_OS_CODE=
   _NEW_OS_CODE=
@@ -249,9 +249,9 @@ define_loc_osr() {
 
 #
 # Detect and prepare for major OS upgrade.
-if_to_do_fix() {
+_if_to_do_fix() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: if_to_do_fix"
+    _msg "PROC: _if_to_do_fix"
   fi
   _DO_FIX=
   if [ "${_JESSIE_TO_BEOWULF}" = "YES" ] \
@@ -302,9 +302,9 @@ if_to_do_fix() {
 
 #
 # Check system CPU power.
-count_cpu() {
+_count_cpu() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: count_cpu"
+    _msg "PROC: _count_cpu"
   fi
   _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)
   _CPU_INFO=${_CPU_INFO//[^0-9]/}
@@ -328,9 +328,9 @@ count_cpu() {
 
 #
 # Make sure that we are root.
-if_running_as_root_barracuda() {
+_if_running_as_root_barracuda() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: if_running_as_root_barracuda"
+    _msg "PROC: _if_running_as_root_barracuda"
   fi
   if [ `whoami` = "root" ]; then
     chmod a+w /dev/null
@@ -339,11 +339,11 @@ if_running_as_root_barracuda() {
     rm -f /tmp/pm-updatecode*
     rm -f /tmp/cache.inc*
     touch /run/boa_run.pid
-    mkdir -p ${pthLog}
+    mkdir -p ${_pthLog}
     find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -rf {} \; &> /dev/null
     # Check if dmidecode is available
     if ! command -v dmidecode &> /dev/null; then
-      apt_clean_update
+      _apt_clean_update
       ${_INITINS} dmidecode &> /dev/null
     fi
     # Check for Amazon EC2 in the system manufacturer field
@@ -357,28 +357,28 @@ if_running_as_root_barracuda() {
       if [ ! -e "/etc/apt/preferences.d/fuse" ]; then
         mkdir -p /etc/apt/preferences.d/
         echo -e 'Package: fuse\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/fuse
-        apt_clean_update
+        _apt_clean_update
       fi
       if [ ! -e "/etc/apt/preferences.d/udev" ]; then
         mkdir -p /etc/apt/preferences.d/
         echo -e 'Package: udev\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/udev
-        apt_clean_update
+        _apt_clean_update
       fi
       if [ ! -e "/etc/apt/preferences.d/makedev" ]; then
         mkdir -p /etc/apt/preferences.d/
         echo -e 'Package: makedev\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/makedev
-        apt_clean_update
+        _apt_clean_update
       fi
-      mrun "apt-get remove fuse -y --purge --auto-remove -qq" 2> /dev/null
-      mrun "apt-get remove udev -y --purge --auto-remove -qq" 2> /dev/null
-      mrun "apt-get remove makedev -y --purge --auto-remove -qq" 2> /dev/null
+      _mrun "apt-get remove fuse -y --purge --auto-remove -qq" 2> /dev/null
+      _mrun "apt-get remove udev -y --purge --auto-remove -qq" 2> /dev/null
+      _mrun "apt-get remove makedev -y --purge --auto-remove -qq" 2> /dev/null
       if [ -e "/sbin/hdparm" ]; then
-        mrun "apt-get remove hdparm -y --purge --auto-remove -qq" 2> /dev/null
+        _mrun "apt-get remove hdparm -y --purge --auto-remove -qq" 2> /dev/null
       fi
       if [ -d "/etc/webmin" ]; then
-        mrun "dpkg --configure --force-all -a" 2> /dev/null
-        apt_clean_update
-        mrun "apt-get remove webmin -y --purge --auto-remove -qq" 2> /dev/null
+        _mrun "dpkg --configure --force-all -a" 2> /dev/null
+        _apt_clean_update
+        _mrun "apt-get remove webmin -y --purge --auto-remove -qq" 2> /dev/null
         rm -rf /usr/share/webmin
       fi
       rm -f /etc/apt/sources.list.d/ksplice.list
@@ -387,16 +387,16 @@ if_running_as_root_barracuda() {
     fi
     sleep 1
   else
-    msg "ERROR: This script should be run as a root user"
-    clean_pid_exit if_running_as_root_barracuda_a
+    _msg "ERROR: This script should be run as a root user"
+    _clean_pid_exit _if_running_as_root_barracuda_a
   fi
 }
 
 #
 # Set xterm.
-set_xterm() {
+_set_xterm() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: set_xterm"
+    _msg "PROC: _set_xterm"
   fi
   if [ -e "/root/.bashrc" ]; then
     _XTERM_TEST=$(grep "export TERM" /root/.bashrc 2>&1)
@@ -409,9 +409,9 @@ set_xterm() {
 
 #
 # Kill nash-hotplug.
-kill_nash() {
+_kill_nash() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: kill_nash"
+    _msg "PROC: _kill_nash"
   fi
   _VM_TEST=$(uname -a 2>&1)
   if [[ "${_VM_TEST}" =~ "-beng" ]]; then
@@ -431,27 +431,27 @@ kill_nash() {
 
 #
 # Cleanup for Postfix.
-fix_postfix() {
+_fix_postfix() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: fix_postfix"
+    _msg "PROC: _fix_postfix"
   fi
   if [ "${_STATUS}" = "INIT" ]; then
-    mrun "apt-get remove exim4 -y --purge --auto-remove -qq" 2> /dev/null
-    mrun "apt-get remove exim4-base -y --purge --auto-remove -qq" 2> /dev/null
-    mrun "apt-get remove exim4-config -y --purge --auto-remove -qq" 2> /dev/null
-    mrun "apt-get remove sendmail -y --purge --auto-remove -qq" 2> /dev/null
-    mrun "apt-get remove sendmail-base -y --purge --auto-remove -qq" 2> /dev/null
-    mrun "apt-get remove sendmail-bin -y --purge --auto-remove -qq" 2> /dev/null
-    mrun "apt-get remove sendmail-cf -y --purge --auto-remove -qq" 2> /dev/null
+    _mrun "apt-get remove exim4 -y --purge --auto-remove -qq" 2> /dev/null
+    _mrun "apt-get remove exim4-base -y --purge --auto-remove -qq" 2> /dev/null
+    _mrun "apt-get remove exim4-config -y --purge --auto-remove -qq" 2> /dev/null
+    _mrun "apt-get remove sendmail -y --purge --auto-remove -qq" 2> /dev/null
+    _mrun "apt-get remove sendmail-base -y --purge --auto-remove -qq" 2> /dev/null
+    _mrun "apt-get remove sendmail-bin -y --purge --auto-remove -qq" 2> /dev/null
+    _mrun "apt-get remove sendmail-cf -y --purge --auto-remove -qq" 2> /dev/null
     rm -f /etc/aliases
     rm -rf /etc/mail
     killall -9 sendmail &> /dev/null
   else
     _POSTFIX_TEST=$(grep "fatal: open lock file" /var/log/mail.log 2>&1)
     if [[ "${_POSTFIX_TEST}" =~ "fatal: open lock file" ]]; then
-      mrun "dpkg --configure --force-all -a" 2> /dev/null
-      apt_clean_update
-      mrun "apt-get remove postfix -y -qq" 2> /dev/null
+      _mrun "dpkg --configure --force-all -a" 2> /dev/null
+      _apt_clean_update
+      _mrun "apt-get remove postfix -y -qq" 2> /dev/null
       echo > /var/log/mail.log
     fi
   fi
@@ -463,12 +463,12 @@ fix_postfix() {
 
 #
 # Fix FTPS PAM where required.
-fix_ftps_pam() {
+_fix_ftps_pam() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: fix_ftps_pam"
+    _msg "PROC: _fix_ftps_pam"
   fi
   if [ ! -e "/etc/ftpusers" ]; then
-    cp -af ${locCnf}/ftpd/ftpusers /etc/ftpusers
+    cp -af ${_locCnf}/ftpd/ftpusers /etc/ftpusers
   fi
   sed -i "s/pam_stack.so/pam_unix.so/g" /etc/pam.d/pure-ftpd &> /dev/null
   wait
@@ -478,30 +478,30 @@ fix_ftps_pam() {
 
 #
 # Fix FTPS and SFTP access on modern systems.
-sftp_ftps_modern_fix() {
+_sftp_ftps_modern_fix() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: sftp_ftps_modern_fix"
+    _msg "PROC: _sftp_ftps_modern_fix"
   fi
   _LSHELL_PATH_TEST=$(grep "/usr/bin/lshell" /etc/shells 2>&1)
   if [[ ! "${_LSHELL_PATH_TEST}" =~ "/usr/bin/lshell" ]]; then
     echo "/usr/bin/lshell" >> /etc/shells
   fi
-  if [ ! -e "${pthLog}/mss-build-${_MSS_VRN}-${_X_SE}-${_X_VERSION}.log" ] \
+  if [ ! -e "${_pthLog}/mss-build-${_MSS_VRN}-${_xSrl}-${_X_VERSION}.log" ] \
     || [ ! -e "/etc/ssh/sftp_config" ] \
     || [ ! -e "/usr/bin/mysecureshell" ] \
     || [ "${_SSL_INSTALL_REQUIRED}" = "YES" ]; then
     if [ "${_MSS_BUILD}" != "YES" ]; then
-      msg "INFO: Installing MySecureShell ${_MSS_VRN}..."
+      _msg "INFO: Installing MySecureShell ${_MSS_VRN}..."
       cd /var/opt
       rm -rf mysecureshell*
-      get_dev_src "mysecureshell-${_MSS_VRN}.tar.gz"
+      _get_dev_src "mysecureshell-${_MSS_VRN}.tar.gz"
       cd /var/opt/mysecureshell
-      mrun "bash ./configure" 2> /dev/null
-      mrun "make -j $(nproc) --quiet" 2> /dev/null
-      st_runner "sh ./install.sh yesall" 2> /dev/null
-      touch ${pthLog}/mss-build-${_MSS_VRN}-${_X_SE}-${_X_VERSION}.log
-      cp -af ${locCnf}/var/sftp_config /etc/ssh/sftp_config
-      mrun "service ssh restart" 2> /dev/null
+      _mrun "bash ./configure" 2> /dev/null
+      _mrun "make -j $(nproc) --quiet" 2> /dev/null
+      _st_runner "sh ./install.sh yesall" 2> /dev/null
+      touch ${_pthLog}/mss-build-${_MSS_VRN}-${_xSrl}-${_X_VERSION}.log
+      cp -af ${_locCnf}/var/sftp_config /etc/ssh/sftp_config
+      _mrun "service ssh restart" 2> /dev/null
       _MSS_BUILD=YES
     fi
   fi
@@ -523,21 +523,21 @@ sftp_ftps_modern_fix() {
   else
     echo "/usr/bin/mysecureshell" >> /etc/shells
   fi
-  if [ ! -e "${pthLog}/fixed-sftp-idle.log" ]; then
+  if [ ! -e "${_pthLog}/fixed-sftp-idle.log" ]; then
     sed -i "s/IdleTimeOut.*/IdleTimeOut            15m/g" /etc/ssh/sftp_config &> /dev/null
-    mrun "service ssh reload" 2> /dev/null
-    touch ${pthLog}/fixed-sftp-idle.log
+    _mrun "service ssh reload" 2> /dev/null
+    touch ${_pthLog}/fixed-sftp-idle.log
   fi
 }
 
 #
 # Disable Old Purge Cruft Machine.
-disable_old_purge_cruft_machine() {
+_disable_old_purge_cruft_machine() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: disable_old_purge_cruft_machine"
+    _msg "PROC: _disable_old_purge_cruft_machine"
   fi
-  if_hosted_sys
-  if [ "${hostedSys}" = "YES" ]; then
+  _if_hosted_sys
+  if [ "${_hostedSys}" = "YES" ]; then
     sed -i "s/.*purge_cruft.*//g" /etc/crontab &> /dev/null
     wait
     sed -i "/^$/d" /etc/crontab &> /dev/null
@@ -547,84 +547,84 @@ disable_old_purge_cruft_machine() {
 
 #
 # Update BOA INI templates.
-boa_ini_tpl_update() {
+_boa_ini_tpl_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: boa_ini_tpl_update"
+    _msg "PROC: _boa_ini_tpl_update"
   fi
   mkdir -p /data/conf
-  if [ -e "${locCnf}/ini/default.boa_platform_control.ini" ]; then
-    cp -af ${locCnf}/ini/default.boa_platform_control.ini /data/conf/default.boa_platform_control.ini
+  if [ -e "${_locCnf}/ini/default.boa_platform_control.ini" ]; then
+    cp -af ${_locCnf}/ini/default.boa_platform_control.ini /data/conf/default.boa_platform_control.ini
     rm -f /var/xdrago/conf/default.boa_platform_control.ini
   fi
-  if [ -e "${locCnf}/ini/default.boa_site_control.ini" ]; then
-    cp -af ${locCnf}/ini/default.boa_site_control.ini /data/conf/default.boa_site_control.ini
+  if [ -e "${_locCnf}/ini/default.boa_site_control.ini" ]; then
+    cp -af ${_locCnf}/ini/default.boa_site_control.ini /data/conf/default.boa_site_control.ini
     rm -f /var/xdrago/conf/default.boa_site_control.ini
   fi
 }
 
 #
 # Update global.inc Config.
-global_inc_conf_update() {
+_global_inc_conf_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: global_inc_conf_update"
+    _msg "PROC: _global_inc_conf_update"
   fi
   _GL_D=/data/conf/global
   [ ! -d "${_GL_D}" ] && mkdir -p ${_GL_D}
   _DR_V="11 10 9 8 7 6"
   for e in ${_DR_V}; do
     if [ -e "${_GL_D}/global-${e}.inc" ]; then
-      cp -af ${_GL_D}/global-${e}.inc ${_GL_D}/global-${e}.inc-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
+      cp -af ${_GL_D}/global-${e}.inc ${_GL_D}/global-${e}.inc-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
     fi
-    cp -af ${locCnf}/global/global-${e}.inc ${_GL_D}/global-${e}.inc
+    cp -af ${_locCnf}/global/global-${e}.inc ${_GL_D}/global-${e}.inc
   done
-  cp -af /data/conf/global.inc /data/conf/global.inc-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
-  cp -af ${locCnf}/global/global.inc /data/conf/global.inc
+  cp -af /data/conf/global.inc /data/conf/global.inc-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
+  cp -af ${_locCnf}/global/global.inc /data/conf/global.inc
   if [ ! -z "${_SPEED_VALID_MAX}" ]; then
     sed -i "s/3600/${_SPEED_VALID_MAX}/g" /data/conf/global.inc &> /dev/null
     wait
   fi
-  cp -af ${locCnf}/global/global-main.inc ${_GL_D}/global-main.inc
-  cp -af ${locCnf}/global/global-ini.inc ${_GL_D}/global-ini.inc
-  cp -af ${locCnf}/global/global-mode.inc ${_GL_D}/global-mode.inc
-  cp -af ${locCnf}/global/global-settings.inc ${_GL_D}/global-settings.inc
-  cp -af ${locCnf}/global/global-front-end.inc ${_GL_D}/global-front-end.inc
+  cp -af ${_locCnf}/global/global-main.inc ${_GL_D}/global-main.inc
+  cp -af ${_locCnf}/global/global-ini.inc ${_GL_D}/global-ini.inc
+  cp -af ${_locCnf}/global/global-mode.inc ${_GL_D}/global-mode.inc
+  cp -af ${_locCnf}/global/global-settings.inc ${_GL_D}/global-settings.inc
+  cp -af ${_locCnf}/global/global-front-end.inc ${_GL_D}/global-front-end.inc
   if [ ! -z "${_SPEED_VALID_MAX}" ]; then
     sed -i "s/3600/${_SPEED_VALID_MAX}/g" ${_GL_D}/global-front-end.inc &> /dev/null
   fi
-  cp -af ${locCnf}/global/global-if-redis.inc ${_GL_D}/global-if-redis.inc
-  cp -af ${locCnf}/global/global-redis.inc ${_GL_D}/global-redis.inc
-  cp -af ${locCnf}/global/global-newrelic.inc ${_GL_D}/global-newrelic.inc
-  cp -af ${locCnf}/global/global-extra.inc ${_GL_D}/global-extra.inc
+  cp -af ${_locCnf}/global/global-if-redis.inc ${_GL_D}/global-if-redis.inc
+  cp -af ${_locCnf}/global/global-redis.inc ${_GL_D}/global-redis.inc
+  cp -af ${_locCnf}/global/global-newrelic.inc ${_GL_D}/global-newrelic.inc
+  cp -af ${_locCnf}/global/global-extra.inc ${_GL_D}/global-extra.inc
 }
 
 #
 # Fix this on upgrade.
-fix_on_upgrade() {
+_fix_on_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: fix_on_upgrade"
+    _msg "PROC: _fix_on_upgrade"
   fi
   sed -i "s/loglevel.*/loglevel warning/g" /etc/redis/redis.conf &> /dev/null
   sed -i "s/^TLS.*/TLS 2/g" /usr/local/etc/pure-ftpd.conf &> /dev/null
-  cp -af ${locCnf}/var/clean-boa-env /etc/init.d/clean-boa-env
+  cp -af ${_locCnf}/var/clean-boa-env /etc/init.d/clean-boa-env
   chmod 755 /etc/init.d/clean-boa-env &> /dev/null
-  mrun "update-rc.d clean-boa-env defaults" 2> /dev/null
-  kill_nash
-  sftp_ftps_modern_fix
-  fix_ftps_pam
-  disable_old_purge_cruft_machine
-  php_config_check_update
-  nginx_conf_update
-  global_inc_conf_update
-  redis_password_update
+  _mrun "update-rc.d clean-boa-env defaults" 2> /dev/null
+  _kill_nash
+  _sftp_ftps_modern_fix
+  _fix_ftps_pam
+  _disable_old_purge_cruft_machine
+  _php_config_check_update
+  _nginx_conf_update
+  _global_inc_conf_update
+  _redis_password_update
 }
 
 #
 # Tune memory limits for PHP, Nginx and Percona.
-tune_memory_limits() {
+_tune_memory_limits() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: tune_memory_limits"
+    _msg "PROC: _tune_memory_limits"
   fi
-  count_cpu
+  _count_cpu
 
   # Set _PHP_FPM_WORKERS to AUTO if it is empty
   [ -z "${_PHP_FPM_WORKERS}" ] && _PHP_FPM_WORKERS=AUTO
@@ -658,9 +658,9 @@ tune_memory_limits() {
   fi
   _MXC_SQL=$(( _L_PHP_FPM_WORKERS * 4 ))
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "TUNE: _L_PHP_FPM_WORKERS is ${_L_PHP_FPM_WORKERS}"
-    msg "TUNE: _PHP_FPM_TIMEOUT is ${_PHP_FPM_TIMEOUT}"
-    msg "TUNE: _MXC_SQL is ${_MXC_SQL}"
+    _msg "TUNE: _L_PHP_FPM_WORKERS is ${_L_PHP_FPM_WORKERS}"
+    _msg "TUNE: _PHP_FPM_TIMEOUT is ${_PHP_FPM_TIMEOUT}"
+    _msg "TUNE: _MXC_SQL is ${_MXC_SQL}"
   fi
 
   _VM_TEST=$(uname -a 2>&1)
@@ -676,7 +676,7 @@ tune_memory_limits() {
   fi
   # Check if dmidecode is available
   if ! command -v dmidecode &> /dev/null; then
-    apt_clean_update
+    _apt_clean_update
     ${_INITINS} dmidecode &> /dev/null
   fi
   # Check for Amazon EC2 in the system manufacturer field
@@ -684,7 +684,7 @@ tune_memory_limits() {
     _VMFAMILY="AWS"
   fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "TUNE: _VMFAMILY is ${_VMFAMILY}"
+    _msg "TUNE: _VMFAMILY is ${_VMFAMILY}"
   fi
   _CPU_MX=$(( _CPU_NR * 2 ))
   if [ "${_CPU_MX}" -lt "4" ]; then
@@ -699,39 +699,39 @@ tune_memory_limits() {
     _CPU_VS=2
   fi
   PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
-  PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
-  PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
+  _PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
+  _PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
   if [[ "${PrTestPower}" =~ "POWER" ]] \
-    || [[ "${PrTestPhantom}" =~ "PHANTOM" ]] \
-    || [[ "${PrTestCluster}" =~ "CLUSTER" ]]; then
+    || [[ "${_PrTestPhantom}" =~ "PHANTOM" ]] \
+    || [[ "${_PrTestCluster}" =~ "CLUSTER" ]]; then
     if [ "${_CPU_VS}" -lt "8" ]; then
       _CPU_VS=8
     fi
   fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "TUNE: PrTestPower is ${PrTestPower}"
-    msg "TUNE: PrTestPhantom is ${PrTestPhantom}"
-    msg "TUNE: PrTestCluster is ${PrTestCluster}"
+    _msg "TUNE: PrTestPower is ${PrTestPower}"
+    _msg "TUNE: _PrTestPhantom is ${_PrTestPhantom}"
+    _msg "TUNE: _PrTestCluster is ${_PrTestCluster}"
   fi
   _RAM=$(free -mt | grep Mem: | awk '{ print $2 }' 2>&1)
   if [ "${_RESERVED_RAM}" -gt "0" ]; then
     _RAM=$(( _RAM - _RESERVED_RAM ))
   fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "TUNE: _CPU_NR is ${_CPU_NR}"
-    msg "TUNE: _CPU_MX is ${_CPU_MX}"
-    msg "TUNE: _CPU_TG is ${_CPU_TG}"
-    msg "TUNE: _CPU_VS is ${_CPU_VS}"
-    msg "TUNE: _RAM is ${_RAM}"
-    msg "TUNE: _RESERVED_RAM is ${_RESERVED_RAM}"
+    _msg "TUNE: _CPU_NR is ${_CPU_NR}"
+    _msg "TUNE: _CPU_MX is ${_CPU_MX}"
+    _msg "TUNE: _CPU_TG is ${_CPU_TG}"
+    _msg "TUNE: _CPU_VS is ${_CPU_VS}"
+    _msg "TUNE: _RAM is ${_RAM}"
+    _msg "TUNE: _RESERVED_RAM is ${_RESERVED_RAM}"
   fi
   _USE=$(( _RAM / 4 ))
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "TUNE: _USE is ${_USE}"
+    _msg "TUNE: _USE is ${_USE}"
   fi
-  if_hosted_sys
+  _if_hosted_sys
   if [ "${_VMFAMILY}" = "VS" ] \
-    || [ "${hostedSys}" = "YES" ]; then
+    || [ "${_hostedSys}" = "YES" ]; then
     if [ "${_VMFAMILY}" = "VS" ]; then
       if [ -e "/root/.tg.cnf" ]; then
         _USE_SQL=$(( _RAM / 12 ))
@@ -751,9 +751,9 @@ tune_memory_limits() {
   _SRT_SQL=$(( _USE_SQL * 2 ))
   _SRT_SQL="${_SRT_SQL}K"
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "TUNE: _USE_SQL is ${_USE_SQL}"
-    msg "TUNE: _TMP_SQL is ${_TMP_SQL}"
-    msg "TUNE: _SRT_SQL is ${_SRT_SQL}"
+    _msg "TUNE: _USE_SQL is ${_USE_SQL}"
+    _msg "TUNE: _TMP_SQL is ${_TMP_SQL}"
+    _msg "TUNE: _SRT_SQL is ${_SRT_SQL}"
   fi
   if [ "${_USE}" -ge "512" ] && [ "${_USE}" -lt "2048" ]; then
     _USE_PHP=1024
@@ -858,17 +858,17 @@ tune_memory_limits() {
     _USE_FPM=1024
   fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "TUNE: _CPU_NR is ${_CPU_NR}"
-    msg "TUNE: _L_NGX_WRKS is ${_L_NGX_WRKS}"
-    msg "TUNE: _PHP_FPM_WORKERS is ${_PHP_FPM_WORKERS}"
-    msg "TUNE: _L_PHP_FPM_WORKERS is ${_L_PHP_FPM_WORKERS}"
-    msg "TUNE: _USE_PHP is ${_USE_PHP}"
-    msg "TUNE: _USE_OPC is ${_USE_OPC}"
-    msg "TUNE: _USE_CLI is ${_USE_CLI}"
-    msg "TUNE: _QCE_SQL is ${_QCE_SQL}"
-    msg "TUNE: _RND_SQL is ${_RND_SQL}"
-    msg "TUNE: _JBF_SQL is ${_JBF_SQL}"
-    msg "TUNE: _MXC_SQL is ${_MXC_SQL}"
+    _msg "TUNE: _CPU_NR is ${_CPU_NR}"
+    _msg "TUNE: _L_NGX_WRKS is ${_L_NGX_WRKS}"
+    _msg "TUNE: _PHP_FPM_WORKERS is ${_PHP_FPM_WORKERS}"
+    _msg "TUNE: _L_PHP_FPM_WORKERS is ${_L_PHP_FPM_WORKERS}"
+    _msg "TUNE: _USE_PHP is ${_USE_PHP}"
+    _msg "TUNE: _USE_OPC is ${_USE_OPC}"
+    _msg "TUNE: _USE_CLI is ${_USE_CLI}"
+    _msg "TUNE: _QCE_SQL is ${_QCE_SQL}"
+    _msg "TUNE: _RND_SQL is ${_RND_SQL}"
+    _msg "TUNE: _JBF_SQL is ${_JBF_SQL}"
+    _msg "TUNE: _MXC_SQL is ${_MXC_SQL}"
   fi
   if [ ! -e "/var/xdrago/conf/fpm-pool-foo-multi.conf" ]; then
     mkdir -p /var/xdrago/conf
@@ -876,10 +876,10 @@ tune_memory_limits() {
   if [ ! -e "/data/conf" ]; then
     mkdir -p /data/conf
   fi
-  cp -af ${locCnf}/php/fpm-pool-foo-multi.conf /var/xdrago/conf/
-  cp -af ${locCnf}/php/fpm-pool-foo.conf /var/xdrago/conf/
-  cp -af ${locCnf}/hhvm /var/xdrago/conf/
-  cp -af ${locCnf}/hhvm/hhvm_intercept.php /data/conf/hhvm_intercept.php
+  cp -af ${_locCnf}/php/fpm-pool-foo-multi.conf /var/xdrago/conf/
+  cp -af ${_locCnf}/php/fpm-pool-foo.conf /var/xdrago/conf/
+  cp -af ${_locCnf}/hhvm /var/xdrago/conf/
+  cp -af ${_locCnf}/hhvm/hhvm_intercept.php /data/conf/hhvm_intercept.php
   chmod 644 /data/conf/hhvm_intercept.php
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ]; then
     sed -i "s/395/${_USE_FPM}/g" /opt/etc/fpm/fpm-pool-common.conf &> /dev/null
@@ -894,18 +894,18 @@ tune_memory_limits() {
     fi
   done
   if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ]; then
-    tune_sql_memory_limits
-    sql_conf_update
+    _tune_sql_memory_limits
+    _sql_conf_update
     if [[ "${PrTestPower}" =~ "POWER" ]] \
-      || [[ "${PrTestPhantom}" =~ "PHANTOM" ]] \
+      || [[ "${_PrTestPhantom}" =~ "PHANTOM" ]] \
       || [ -e "/root/.my.cluster_root_pwd.txt" ] \
-      || [[ "${PrTestCluster}" =~ "CLUSTER" ]]; then
+      || [[ "${_PrTestCluster}" =~ "CLUSTER" ]]; then
       _UXC_SQL="${_MXC_SQL}"
     else
       _UXC_SQL=$(echo "scale=0; ${_MXC_SQL}/2" | bc 2>&1)
     fi
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "TUNE: _UXC_SQL is ${_UXC_SQL}"
+      _msg "TUNE: _UXC_SQL is ${_UXC_SQL}"
     fi
     sed -i "s/= 191/= ${_UXC_SQL}/g"                                              /etc/mysql/my.cnf &> /dev/null
     wait
@@ -935,15 +935,15 @@ tune_memory_limits() {
   _MAX_REDIS="${_MAX_MEM_REDIS}MB"
   sed -i "s/^maxmemory .*/maxmemory ${_MAX_REDIS}/g" /etc/redis/redis.conf &> /dev/null
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "TUNE: _MAX_MEM_REDIS is ${_MAX_MEM_REDIS}"
-    msg "TUNE: _MAX_REDIS is ${_MAX_REDIS}"
+    _msg "TUNE: _MAX_MEM_REDIS is ${_MAX_MEM_REDIS}"
+    _msg "TUNE: _MAX_REDIS is ${_MAX_REDIS}"
   fi
 
   _USE_JETTY_MEM=$(( _RAM / 8 ))
   _USE_JETTY="-Xmx${_USE_JETTY_MEM}m"
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "TUNE: _USE_JETTY_MEM is ${_USE_JETTY_MEM}"
-    msg "TUNE: _USE_JETTY is ${_USE_JETTY}"
+    _msg "TUNE: _USE_JETTY_MEM is ${_USE_JETTY_MEM}"
+    _msg "TUNE: _USE_JETTY is ${_USE_JETTY}"
   fi
   if [ -e "/etc/default/jetty9" ] && [ -e "/opt/solr4" ]; then
     sed -i "s/^JAVA_OPTIONS.*/JAVA_OPTIONS=\"-Xms64m ${_USE_JETTY} -Djava.awt.headless=true -Dsolr.solr.home=\/opt\/solr4 \$JAVA_OPTIONS\" # Options/g" /etc/default/jetty9
@@ -958,8 +958,8 @@ tune_memory_limits() {
   _USE_SOLR_MEM=$(( _RAM / 8 ))
   _USE_SOLR="-Xmx${_USE_SOLR_MEM}m"
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "TUNE: _USE_SOLR_MEM is ${_USE_SOLR_MEM}"
-    msg "TUNE: _USE_SOLR is ${_USE_SOLR}"
+    _msg "TUNE: _USE_SOLR_MEM is ${_USE_SOLR_MEM}"
+    _msg "TUNE: _USE_SOLR is ${_USE_SOLR}"
   fi
   if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
     sed -i "s/^SOLR_HEAP/#SOLR_HEAP/g" /etc/default/solr7.in.sh &> /dev/null
@@ -969,12 +969,12 @@ tune_memory_limits() {
     sed -i "s/^SOLR_JAVA_MEM=.*/SOLR_JAVA_MEM=\"-Xms64m ${_USE_SOLR}\"/g" /etc/default/solr7.in.sh
     wait
   fi
-  tune_web_server_config
+  _tune_web_server_config
 }
 
 #
 # Find server city.
-find_server_city() {
+_find_server_city() {
   if [ ! -e "/root/.dont.use.fancy.bash.login.cnf" ]; then
     if [ -e "/root/.found_correct_city.cnf" ]; then
       _LOC_CITY=$(cat /root/.found_correct_city.cnf 2>&1)
@@ -982,7 +982,7 @@ find_server_city() {
     else
       if [ -e "/root/.found_correct_ipv4.cnf" ]; then
         _LOC_IP=$(cat /root/.found_correct_ipv4.cnf 2>&1)
-        _LOC_CITY=$(curl ${crlGet} ipinfo.io/${_LOC_IP}/city 2>&1)
+        _LOC_CITY=$(curl ${_crlGet} ipinfo.io/${_LOC_IP}/city 2>&1)
         _LOC_CITY=$(echo -n ${_LOC_CITY} | tr -d "\n" 2>&1)
       fi
       if [ ! -z "${_LOC_CITY}" ]; then
@@ -995,9 +995,9 @@ find_server_city() {
 
 #
 # Fix locales.
-locales_check_fix() {
+_locales_check_fix() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: locales_check_fix"
+    _msg "PROC: _locales_check_fix"
   fi
   ${_INITINS} locales &> /dev/null
   if [ -e "/etc/ssh/sshd_config" ]; then
@@ -1021,7 +1021,7 @@ locales_check_fix() {
     _LOCALE_TEST=BROKEN
   fi
   if [ "${_LOCALE_TEST}" = "BROKEN" ]; then
-    msg "NOTE!"
+    _msg "NOTE!"
     cat <<EOF
 
   Locales on this system are broken or not installed
@@ -1068,10 +1068,10 @@ EOF
       LC_MEASUREMENT=en_US.UTF-8 \
       LC_IDENTIFICATION=en_US.UTF-8 \
       LC_ALL= &> /dev/null
-    if [ -e "${locCnf}/var/boa.bashrc.txt" ]; then
+    if [ -e "${_locCnf}/var/boa.bashrc.txt" ]; then
       cp -af /root/.bashrc /root/.bashrc.bak.${_NOW}
-      cp -af ${locCnf}/var/boa.bashrc.txt /root/.bashrc
-      set_xterm
+      cp -af ${_locCnf}/var/boa.bashrc.txt /root/.bashrc
+      _set_xterm
     fi
     # Define all locale settings on the fly to prevent unnecessary
     # warnings during installation of packages.
@@ -1096,10 +1096,10 @@ EOF
       printf "\n" >> /root/.bashrc
     fi
   else
-    if [ -e "${locCnf}/var/boa.bashrc.txt" ]; then
+    if [ -e "${_locCnf}/var/boa.bashrc.txt" ]; then
       cp -af /root/.bashrc /root/.bashrc.bak.${_NOW}
-      cp -af ${locCnf}/var/boa.bashrc.txt /root/.bashrc
-      set_xterm
+      cp -af ${_locCnf}/var/boa.bashrc.txt /root/.bashrc
+      _set_xterm
     fi
     if [ "${_OS_DIST}" = "Debian" ] || [ "${_OS_DIST}" = "Devuan" ]; then
       _LOCALE_GEN_TEST=$(grep -v "^#" /etc/locale.gen 2>&1)
@@ -1177,81 +1177,81 @@ EOF
 
 #
 # Cleanup for Barracuda cnf file.
-barracuda_cnf_cleanup() {
+_barracuda_cnf_cleanup() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: barracuda_cnf_cleanup"
+    _msg "PROC: _barracuda_cnf_cleanup"
   fi
   ###
   ### legacy config cleanup start
   ###
-  _DB_ENGINE_TEST=$(grep _DB_ENGINE ${barCnf} 2>&1)
+  _DB_ENGINE_TEST=$(grep _DB_ENGINE ${_barCnf} 2>&1)
   if [[ "${_DB_ENGINE_TEST}" =~ "_DB_ENGINE" ]]; then
-    sed -i "s/^_DB_ENGINE.*//g" ${barCnf}
+    sed -i "s/^_DB_ENGINE.*//g" ${_barCnf}
     wait
   fi
-  _INNODB_LOG_FILE_SIZE_TEST=$(grep _INNODB_LOG_FILE_SIZE ${barCnf} 2>&1)
+  _INNODB_LOG_FILE_SIZE_TEST=$(grep _INNODB_LOG_FILE_SIZE ${_barCnf} 2>&1)
   if [[ "${_INNODB_LOG_FILE_SIZE_TEST}" =~ "_INNODB_LOG_FILE_SIZE" ]]; then
-    sed -i "s/^_INNODB_LOG_FILE_SIZE.*//g" ${barCnf}
+    sed -i "s/^_INNODB_LOG_FILE_SIZE.*//g" ${_barCnf}
     wait
   fi
-  _USE_STOCK_TEST=$(grep _USE_STOCK ${barCnf} 2>&1)
+  _USE_STOCK_TEST=$(grep _USE_STOCK ${_barCnf} 2>&1)
   if [[ "${_USE_STOCK_TEST}" =~ "_USE_STOCK" ]]; then
-    sed -i "s/^_USE_STOCK.*//g" ${barCnf}
+    sed -i "s/^_USE_STOCK.*//g" ${_barCnf}
     wait
   fi
-  _HTTP_WILDCARD_TEST=$(grep _HTTP_WILDCARD ${barCnf} 2>&1)
+  _HTTP_WILDCARD_TEST=$(grep _HTTP_WILDCARD ${_barCnf} 2>&1)
   if [[ "${_HTTP_WILDCARD_TEST}" =~ "_HTTP_WILDCARD" ]]; then
-    sed -i "s/^_HTTP_WILDCARD.*//g" ${barCnf}
+    sed -i "s/^_HTTP_WILDCARD.*//g" ${_barCnf}
     wait
   fi
-  _PHP_MODERN_ONLY_TEST=$(grep _PHP_MODERN_ONLY ${barCnf} 2>&1)
+  _PHP_MODERN_ONLY_TEST=$(grep _PHP_MODERN_ONLY ${_barCnf} 2>&1)
   if [[ "${_PHP_MODERN_ONLY_TEST}" =~ "_PHP_MODERN_ONLY" ]]; then
-    sed -i "s/^_PHP_MODERN_ONLY.*//g" ${barCnf}
+    sed -i "s/^_PHP_MODERN_ONLY.*//g" ${_barCnf}
     wait
   fi
-  _USE_SPEED_BOOSTER_TEST=$(grep _USE_SPEED_BOOSTER ${barCnf} 2>&1)
+  _USE_SPEED_BOOSTER_TEST=$(grep _USE_SPEED_BOOSTER ${_barCnf} 2>&1)
   if [[ "${_USE_SPEED_BOOSTER_TEST}" =~ "_USE_SPEED_BOOSTER" ]]; then
-    sed -i "s/^_USE_SPEED_BOOSTER.*//g" ${barCnf}
+    sed -i "s/^_USE_SPEED_BOOSTER.*//g" ${_barCnf}
     wait
   fi
-  _PHP_INSTALL_NEW_TEST=$(grep _PHP_INSTALL_NEW ${barCnf} 2>&1)
+  _PHP_INSTALL_NEW_TEST=$(grep _PHP_INSTALL_NEW ${_barCnf} 2>&1)
   if [[ "${_PHP_INSTALL_NEW_TEST}" =~ "_PHP_INSTALL_NEW" ]]; then
-    sed -i "s/^_PHP_INSTALL_NEW.*//g" ${barCnf}
+    sed -i "s/^_PHP_INSTALL_NEW.*//g" ${_barCnf}
     wait
   fi
-  _CUSTOM_CONFIG_PHP_TEST=$(grep _CUSTOM_CONFIG_PHP ${barCnf} 2>&1)
+  _CUSTOM_CONFIG_PHP_TEST=$(grep _CUSTOM_CONFIG_PHP ${_barCnf} 2>&1)
   if [[ "${_CUSTOM_CONFIG_PHP_TEST}" =~ "_CUSTOM_CONFIG_PHP" ]]; then
-    sed -i "s/^_CUSTOM_CONFIG_PHP.*//g" ${barCnf}
+    sed -i "s/^_CUSTOM_CONFIG_PHP.*//g" ${_barCnf}
     wait
   fi
-  _LOAD_LIMIT_ONE_TEST=$(grep _LOAD_LIMIT_ONE ${barCnf} 2>&1)
+  _LOAD_LIMIT_ONE_TEST=$(grep _LOAD_LIMIT_ONE ${_barCnf} 2>&1)
   if [[ "${_LOAD_LIMIT_ONE_TEST}" =~ "_LOAD_LIMIT_ONE" ]]; then
-    sed -i "s/^_LOAD_LIMIT_ONE.*//g" ${barCnf}
+    sed -i "s/^_LOAD_LIMIT_ONE.*//g" ${_barCnf}
     wait
   fi
-  _LOAD_LIMIT_TWO_TEST=$(grep _LOAD_LIMIT_TWO ${barCnf} 2>&1)
+  _LOAD_LIMIT_TWO_TEST=$(grep _LOAD_LIMIT_TWO ${_barCnf} 2>&1)
   if [[ "${_LOAD_LIMIT_TWO_TEST}" =~ "_LOAD_LIMIT_TWO" ]]; then
-    sed -i "s/^_LOAD_LIMIT_TWO.*//g" ${barCnf}
+    sed -i "s/^_LOAD_LIMIT_TWO.*//g" ${_barCnf}
     wait
   fi
-  _USE_MEMCACHED_TEST=$(grep _USE_MEMCACHED ${barCnf} 2>&1)
+  _USE_MEMCACHED_TEST=$(grep _USE_MEMCACHED ${_barCnf} 2>&1)
   if [[ "${_USE_MEMCACHED_TEST}" =~ "_USE_MEMCACHED" ]]; then
-    sed -i "s/^_USE_MEMCACHED.*//g" ${barCnf}
+    sed -i "s/^_USE_MEMCACHED.*//g" ${_barCnf}
     wait
   fi
-  _PHP_ZEND_OPCACHE_TEST=$(grep _PHP_ZEND_OPCACHE ${barCnf} 2>&1)
+  _PHP_ZEND_OPCACHE_TEST=$(grep _PHP_ZEND_OPCACHE ${_barCnf} 2>&1)
   if [[ "${_PHP_ZEND_OPCACHE_TEST}" =~ "_PHP_ZEND_OPCACHE" ]]; then
-    sed -i "s/^_PHP_ZEND_OPCACHE.*//g" ${barCnf}
+    sed -i "s/^_PHP_ZEND_OPCACHE.*//g" ${_barCnf}
     wait
   fi
-  _BUILD_FROM_SRC_TEST=$(grep _BUILD_FROM_SRC ${barCnf} 2>&1)
+  _BUILD_FROM_SRC_TEST=$(grep _BUILD_FROM_SRC ${_barCnf} 2>&1)
   if [[ "${_BUILD_FROM_SRC_TEST}" =~ "_BUILD_FROM_SRC" ]]; then
-    sed -i "s/^_BUILD_FROM_SRC.*//g" ${barCnf}
+    sed -i "s/^_BUILD_FROM_SRC.*//g" ${_barCnf}
     wait
   fi
-  _SSL_FROM_SOURCES_TEST=$(grep _SSL_FROM_SOURCES ${barCnf} 2>&1)
+  _SSL_FROM_SOURCES_TEST=$(grep _SSL_FROM_SOURCES ${_barCnf} 2>&1)
   if [[ "${_SSL_FROM_SOURCES_TEST}" =~ "_SSL_FROM_SOURCES" ]]; then
-    sed -i "s/^_SSL_FROM_SOURCES.*//g" ${barCnf}
+    sed -i "s/^_SSL_FROM_SOURCES.*//g" ${_barCnf}
     wait
   fi
   ###
@@ -1261,119 +1261,119 @@ barracuda_cnf_cleanup() {
   ###
   ### config cleanup start
   ###
-  _NGX_FORCE_REINSTALL_TEST=$(grep _NGX_FORCE_REINSTALL ${barCnf} 2>&1)
+  _NGX_FORCE_REINSTALL_TEST=$(grep _NGX_FORCE_REINSTALL ${_barCnf} 2>&1)
   if [[ "${_NGX_FORCE_REINSTALL_TEST}" =~ "_NGX_FORCE_REINSTALL" ]]; then
-    sed -i "s/^_NGX_FORCE_REINSTALL.*//g" ${barCnf}
+    sed -i "s/^_NGX_FORCE_REINSTALL.*//g" ${_barCnf}
     wait
   fi
-  _PHP_FORCE_REINSTALL_TEST=$(grep _PHP_FORCE_REINSTALL ${barCnf} 2>&1)
+  _PHP_FORCE_REINSTALL_TEST=$(grep _PHP_FORCE_REINSTALL ${_barCnf} 2>&1)
   if [[ "${_PHP_FORCE_REINSTALL_TEST}" =~ "_PHP_FORCE_REINSTALL" ]]; then
-    sed -i "s/^_PHP_FORCE_REINSTALL.*//g" ${barCnf}
+    sed -i "s/^_PHP_FORCE_REINSTALL.*//g" ${_barCnf}
     wait
   fi
-  _SQL_FORCE_REINSTALL_TEST=$(grep _SQL_FORCE_REINSTALL ${barCnf} 2>&1)
+  _SQL_FORCE_REINSTALL_TEST=$(grep _SQL_FORCE_REINSTALL ${_barCnf} 2>&1)
   if [[ "${_SQL_FORCE_REINSTALL_TEST}" =~ "_SQL_FORCE_REINSTALL" ]]; then
-    sed -i "s/^_SQL_FORCE_REINSTALL.*//g" ${barCnf}
+    sed -i "s/^_SQL_FORCE_REINSTALL.*//g" ${_barCnf}
     wait
   fi
-  _SSL_FORCE_REINSTALL_TEST=$(grep _SSL_FORCE_REINSTALL ${barCnf} 2>&1)
+  _SSL_FORCE_REINSTALL_TEST=$(grep _SSL_FORCE_REINSTALL ${_barCnf} 2>&1)
   if [[ "${_SSL_FORCE_REINSTALL_TEST}" =~ "_SSL_FORCE_REINSTALL" ]]; then
-    sed -i "s/^_SSL_FORCE_REINSTALL.*//g" ${barCnf}
+    sed -i "s/^_SSL_FORCE_REINSTALL.*//g" ${_barCnf}
     wait
   fi
-  _SSH_FORCE_REINSTALL_TEST=$(grep _SSH_FORCE_REINSTALL ${barCnf} 2>&1)
+  _SSH_FORCE_REINSTALL_TEST=$(grep _SSH_FORCE_REINSTALL ${_barCnf} 2>&1)
   if [[ "${_SSH_FORCE_REINSTALL_TEST}" =~ "_SSH_FORCE_REINSTALL" ]]; then
-    sed -i "s/^_SSH_FORCE_REINSTALL.*//g" ${barCnf}
+    sed -i "s/^_SSH_FORCE_REINSTALL.*//g" ${_barCnf}
     wait
   fi
-  _GIT_FORCE_REINSTALL_TEST=$(grep _GIT_FORCE_REINSTALL ${barCnf} 2>&1)
+  _GIT_FORCE_REINSTALL_TEST=$(grep _GIT_FORCE_REINSTALL ${_barCnf} 2>&1)
   if [[ "${_GIT_FORCE_REINSTALL_TEST}" =~ "_GIT_FORCE_REINSTALL" ]]; then
-    sed -i "s/^_GIT_FORCE_REINSTALL.*//g" ${barCnf}
+    sed -i "s/^_GIT_FORCE_REINSTALL.*//g" ${_barCnf}
     wait
   fi
-  _FULL_FORCE_REINSTALL_TEST=$(grep _FULL_FORCE_REINSTALL ${barCnf} 2>&1)
+  _FULL_FORCE_REINSTALL_TEST=$(grep _FULL_FORCE_REINSTALL ${_barCnf} 2>&1)
   if [[ "${_FULL_FORCE_REINSTALL_TEST}" =~ "_FULL_FORCE_REINSTALL" ]]; then
-    sed -i "s/^_FULL_FORCE_REINSTALL.*//g" ${barCnf}
+    sed -i "s/^_FULL_FORCE_REINSTALL.*//g" ${_barCnf}
     wait
   fi
-  _TOMCAT_TO_JETTY_TEST=$(grep _TOMCAT_TO_JETTY ${barCnf} 2>&1)
+  _TOMCAT_TO_JETTY_TEST=$(grep _TOMCAT_TO_JETTY ${_barCnf} 2>&1)
   if [[ "${_TOMCAT_TO_JETTY_TEST}" =~ "_TOMCAT_TO_JETTY" ]]; then
     if [ ! -e "/etc/init.d/tomcat" ]; then
-      sed -i "s/^_TOMCAT_TO_JETTY.*//g" ${barCnf}
+      sed -i "s/^_TOMCAT_TO_JETTY.*//g" ${_barCnf}
       wait
     fi
   fi
-  _BOOKWORM_TO_DAEDALUS_TEST=$(grep _BOOKWORM_TO_DAEDALUS ${barCnf} 2>&1)
+  _BOOKWORM_TO_DAEDALUS_TEST=$(grep _BOOKWORM_TO_DAEDALUS ${_barCnf} 2>&1)
   if [[ "${_BOOKWORM_TO_DAEDALUS_TEST}" =~ "_BOOKWORM_TO_DAEDALUS" ]]; then
-    sed -i "s/^_BOOKWORM_TO_DAEDALUS.*//g" ${barCnf}
+    sed -i "s/^_BOOKWORM_TO_DAEDALUS.*//g" ${_barCnf}
     wait
   fi
-  _CHIMAERA_TO_DAEDALUS_TEST=$(grep _CHIMAERA_TO_DAEDALUS ${barCnf} 2>&1)
+  _CHIMAERA_TO_DAEDALUS_TEST=$(grep _CHIMAERA_TO_DAEDALUS ${_barCnf} 2>&1)
   if [[ "${_CHIMAERA_TO_DAEDALUS_TEST}" =~ "_CHIMAERA_TO_DAEDALUS" ]]; then
-    sed -i "s/^_CHIMAERA_TO_DAEDALUS.*//g" ${barCnf}
+    sed -i "s/^_CHIMAERA_TO_DAEDALUS.*//g" ${_barCnf}
     wait
   fi
-  _BULLSEYE_TO_CHIMAERA_TEST=$(grep _BULLSEYE_TO_CHIMAERA ${barCnf} 2>&1)
+  _BULLSEYE_TO_CHIMAERA_TEST=$(grep _BULLSEYE_TO_CHIMAERA ${_barCnf} 2>&1)
   if [[ "${_BULLSEYE_TO_CHIMAERA_TEST}" =~ "_BULLSEYE_TO_CHIMAERA" ]]; then
-    sed -i "s/^_BULLSEYE_TO_CHIMAERA.*//g" ${barCnf}
+    sed -i "s/^_BULLSEYE_TO_CHIMAERA.*//g" ${_barCnf}
     wait
   fi
-  _BULLSEYE_TO_BOOKWORM_TEST=$(grep _BULLSEYE_TO_BOOKWORM ${barCnf} 2>&1)
+  _BULLSEYE_TO_BOOKWORM_TEST=$(grep _BULLSEYE_TO_BOOKWORM ${_barCnf} 2>&1)
   if [[ "${_BULLSEYE_TO_BOOKWORM_TEST}" =~ "_BULLSEYE_TO_BOOKWORM" ]]; then
-    sed -i "s/^_BULLSEYE_TO_BOOKWORM.*//g" ${barCnf}
+    sed -i "s/^_BULLSEYE_TO_BOOKWORM.*//g" ${_barCnf}
     wait
   fi
-  _BEOWULF_TO_CHIMAERA_TEST=$(grep _BEOWULF_TO_CHIMAERA ${barCnf} 2>&1)
+  _BEOWULF_TO_CHIMAERA_TEST=$(grep _BEOWULF_TO_CHIMAERA ${_barCnf} 2>&1)
   if [[ "${_BEOWULF_TO_CHIMAERA_TEST}" =~ "_BEOWULF_TO_CHIMAERA" ]]; then
-    sed -i "s/^_BEOWULF_TO_CHIMAERA.*//g" ${barCnf}
+    sed -i "s/^_BEOWULF_TO_CHIMAERA.*//g" ${_barCnf}
     wait
   fi
-  _BUSTER_TO_BEOWULF_TEST=$(grep _BUSTER_TO_BEOWULF ${barCnf} 2>&1)
+  _BUSTER_TO_BEOWULF_TEST=$(grep _BUSTER_TO_BEOWULF ${_barCnf} 2>&1)
   if [[ "${_BUSTER_TO_BEOWULF_TEST}" =~ "_BUSTER_TO_BEOWULF" ]]; then
-    sed -i "s/^_BUSTER_TO_BEOWULF.*//g" ${barCnf}
+    sed -i "s/^_BUSTER_TO_BEOWULF.*//g" ${_barCnf}
     wait
   fi
-  _STRETCH_TO_BEOWULF_TEST=$(grep _STRETCH_TO_BEOWULF ${barCnf} 2>&1)
+  _STRETCH_TO_BEOWULF_TEST=$(grep _STRETCH_TO_BEOWULF ${_barCnf} 2>&1)
   if [[ "${_STRETCH_TO_BEOWULF_TEST}" =~ "_STRETCH_TO_BEOWULF" ]]; then
-    sed -i "s/^_STRETCH_TO_BEOWULF.*//g" ${barCnf}
+    sed -i "s/^_STRETCH_TO_BEOWULF.*//g" ${_barCnf}
     wait
   fi
-  _JESSIE_TO_BEOWULF_TEST=$(grep _JESSIE_TO_BEOWULF ${barCnf} 2>&1)
+  _JESSIE_TO_BEOWULF_TEST=$(grep _JESSIE_TO_BEOWULF ${_barCnf} 2>&1)
   if [[ "${_JESSIE_TO_BEOWULF_TEST}" =~ "_JESSIE_TO_BEOWULF" ]]; then
-    sed -i "s/^_JESSIE_TO_BEOWULF.*//g" ${barCnf}
+    sed -i "s/^_JESSIE_TO_BEOWULF.*//g" ${_barCnf}
     wait
   fi
-  _BUSTER_TO_BULLSEYE_TEST=$(grep _BUSTER_TO_BULLSEYE ${barCnf} 2>&1)
+  _BUSTER_TO_BULLSEYE_TEST=$(grep _BUSTER_TO_BULLSEYE ${_barCnf} 2>&1)
   if [[ "${_BUSTER_TO_BULLSEYE_TEST}" =~ "_BUSTER_TO_BULLSEYE" ]]; then
-    sed -i "s/^_BUSTER_TO_BULLSEYE.*//g" ${barCnf}
+    sed -i "s/^_BUSTER_TO_BULLSEYE.*//g" ${_barCnf}
     wait
   fi
-  _STRETCH_TO_BUSTER_TEST=$(grep _STRETCH_TO_BUSTER ${barCnf} 2>&1)
+  _STRETCH_TO_BUSTER_TEST=$(grep _STRETCH_TO_BUSTER ${_barCnf} 2>&1)
   if [[ "${_STRETCH_TO_BUSTER_TEST}" =~ "_STRETCH_TO_BUSTER" ]]; then
-    sed -i "s/^_STRETCH_TO_BUSTER.*//g" ${barCnf}
+    sed -i "s/^_STRETCH_TO_BUSTER.*//g" ${_barCnf}
     wait
   fi
-  _JESSIE_TO_STRETCH_TEST=$(grep _JESSIE_TO_STRETCH ${barCnf} 2>&1)
+  _JESSIE_TO_STRETCH_TEST=$(grep _JESSIE_TO_STRETCH ${_barCnf} 2>&1)
   if [[ "${_JESSIE_TO_STRETCH_TEST}" =~ "_JESSIE_TO_STRETCH" ]]; then
-    sed -i "s/^_JESSIE_TO_STRETCH.*//g" ${barCnf}
+    sed -i "s/^_JESSIE_TO_STRETCH.*//g" ${_barCnf}
     wait
   fi
-  _WHEEZY_TO_JESSIE_TEST=$(grep _WHEEZY_TO_JESSIE ${barCnf} 2>&1)
+  _WHEEZY_TO_JESSIE_TEST=$(grep _WHEEZY_TO_JESSIE ${_barCnf} 2>&1)
   if [[ "${_WHEEZY_TO_JESSIE_TEST}" =~ "_WHEEZY_TO_JESSIE" ]]; then
-    sed -i "s/^_WHEEZY_TO_JESSIE.*//g" ${barCnf}
+    sed -i "s/^_WHEEZY_TO_JESSIE.*//g" ${_barCnf}
     wait
   fi
-  _SQUEEZE_TO_WHEEZY_TEST=$(grep _SQUEEZE_TO_WHEEZY ${barCnf} 2>&1)
+  _SQUEEZE_TO_WHEEZY_TEST=$(grep _SQUEEZE_TO_WHEEZY ${_barCnf} 2>&1)
   if [[ "${_SQUEEZE_TO_WHEEZY_TEST}" =~ "_SQUEEZE_TO_WHEEZY" ]]; then
-    sed -i "s/^_SQUEEZE_TO_WHEEZY.*//g" ${barCnf}
+    sed -i "s/^_SQUEEZE_TO_WHEEZY.*//g" ${_barCnf}
     wait
   fi
-  _LENNY_TO_SQUEEZE_TEST=$(grep _LENNY_TO_SQUEEZE ${barCnf} 2>&1)
+  _LENNY_TO_SQUEEZE_TEST=$(grep _LENNY_TO_SQUEEZE ${_barCnf} 2>&1)
   if [[ "${_LENNY_TO_SQUEEZE_TEST}" =~ "_LENNY_TO_SQUEEZE" ]]; then
-    sed -i "s/^_LENNY_TO_SQUEEZE.*//g" ${barCnf}
+    sed -i "s/^_LENNY_TO_SQUEEZE.*//g" ${_barCnf}
     wait
   fi
-  sed -i "/^$/d" ${barCnf}
+  sed -i "/^$/d" ${_barCnf}
   wait
   ###
   ### config cleanup end
@@ -1382,9 +1382,9 @@ barracuda_cnf_cleanup() {
 
 #
 # Sort and de-duplicate versions in _PHP_MULTI_INSTALL.
-php_multi_uniq() {
+_php_multi_uniq() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: php_multi_uniq"
+    _msg "PROC: _php_multi_uniq"
   fi
   _uniqPHPv=
   rm -f /var/backups/_vPHP.txt
@@ -1407,9 +1407,9 @@ php_multi_uniq() {
 
 #
 # Cleanup for legacy PHP versions.
-php_legacy_versions_cleanup_cnf() {
+_php_legacy_versions_cleanup_cnf() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: php_legacy_versions_cleanup_cnf"
+    _msg "PROC: _php_legacy_versions_cleanup_cnf"
   fi
   _PHP_CLI_LEGACY_IF_USED_A=$(grep "5\.2" /data/disk/*/log/cli.txt 2>&1)
   _PHP_CLI_LEGACY_IF_USED_B=$(grep "5\.2" /data/disk/*/static/control/cli.info 2>&1)
@@ -1419,7 +1419,7 @@ php_legacy_versions_cleanup_cnf() {
     || [[ "${_PHP_CLI_LEGACY_IF_USED_C}" =~ "5.2" ]]; then
     if [ -e "/opt/php52/bin/php" ] || [ -e "/etc/init.d/php52-fpm" ]; then
       echo " "
-      msg "Legacy PHP-CLI 5.2 is used on this system but will be removed"
+      _msg "Legacy PHP-CLI 5.2 is used on this system but will be removed"
     fi
   fi
 
@@ -1430,7 +1430,7 @@ php_legacy_versions_cleanup_cnf() {
     || [[ "${_PHP_FPM_LEGACY_IF_USED_B}" =~ "5.2" ]] \
     || [[ "${_PHP_FPM_LEGACY_IF_USED_C}" =~ "5.2" ]]; then
     if [ -e "/opt/php52/bin/php" ] || [ -e "/etc/init.d/php52-fpm" ]; then
-      msg "Legacy PHP-FPM 5.2 is used on this system but will be removed"
+      _msg "Legacy PHP-FPM 5.2 is used on this system but will be removed"
       echo " "
     fi
   fi
@@ -1443,7 +1443,7 @@ php_legacy_versions_cleanup_cnf() {
     || [[ "${_PHP_CLI_LEGACY_IF_USED_C}" =~ "5.3" ]]; then
     if [ -e "/opt/php53/bin/php" ] || [ -e "/etc/init.d/php53-fpm" ]; then
       echo " "
-      msg "Legacy PHP-CLI 5.3 is used on this system but will be removed"
+      _msg "Legacy PHP-CLI 5.3 is used on this system but will be removed"
     fi
   fi
 
@@ -1454,7 +1454,7 @@ php_legacy_versions_cleanup_cnf() {
     || [[ "${_PHP_FPM_LEGACY_IF_USED_B}" =~ "5.3" ]] \
     || [[ "${_PHP_FPM_LEGACY_IF_USED_C}" =~ "5.3" ]]; then
     if [ -e "/opt/php53/bin/php" ] || [ -e "/etc/init.d/php53-fpm" ]; then
-      msg "Legacy PHP-FPM 5.3 is used on this system but will be removed"
+      _msg "Legacy PHP-FPM 5.3 is used on this system but will be removed"
       echo " "
     fi
   fi
@@ -1467,7 +1467,7 @@ php_legacy_versions_cleanup_cnf() {
     || [[ "${_PHP_CLI_LEGACY_IF_USED_C}" =~ "5.4" ]]; then
     if [ -e "/opt/php54/bin/php" ] || [ -e "/etc/init.d/php54-fpm" ]; then
       echo " "
-      msg "Legacy PHP-CLI 5.4 is used on this system but will be removed"
+      _msg "Legacy PHP-CLI 5.4 is used on this system but will be removed"
     fi
   fi
 
@@ -1478,7 +1478,7 @@ php_legacy_versions_cleanup_cnf() {
     || [[ "${_PHP_FPM_LEGACY_IF_USED_B}" =~ "5.4" ]] \
     || [[ "${_PHP_FPM_LEGACY_IF_USED_C}" =~ "5.4" ]]; then
     if [ -e "/opt/php54/bin/php" ] || [ -e "/etc/init.d/php54-fpm" ]; then
-      msg "Legacy PHP-FPM 5.4 is used on this system but will be removed"
+      _msg "Legacy PHP-FPM 5.4 is used on this system but will be removed"
       echo " "
     fi
   fi
@@ -1491,7 +1491,7 @@ php_legacy_versions_cleanup_cnf() {
     || [[ "${_PHP_CLI_LEGACY_IF_USED_C}" =~ "5.5" ]]; then
     if [ -e "/opt/php55/bin/php" ] || [ -e "/etc/init.d/php55-fpm" ]; then
       echo " "
-      msg "Legacy PHP-CLI 5.5 is used on this system but will be removed"
+      _msg "Legacy PHP-CLI 5.5 is used on this system but will be removed"
     fi
   fi
 
@@ -1502,72 +1502,72 @@ php_legacy_versions_cleanup_cnf() {
     || [[ "${_PHP_FPM_LEGACY_IF_USED_B}" =~ "5.5" ]] \
     || [[ "${_PHP_FPM_LEGACY_IF_USED_C}" =~ "5.5" ]]; then
     if [ -e "/opt/php55/bin/php" ] || [ -e "/etc/init.d/php55-fpm" ]; then
-      msg "Legacy PHP-FPM 5.5 is used on this system but will be removed"
+      _msg "Legacy PHP-FPM 5.5 is used on this system but will be removed"
       echo " "
     fi
   fi
 
-  _PHP_MULTI_INSTALL_TEST=$(grep _PHP_MULTI_INSTALL ${barCnf} 2>&1)
+  _PHP_MULTI_INSTALL_TEST=$(grep _PHP_MULTI_INSTALL ${_barCnf} 2>&1)
 
   if [[ "${_PHP_MULTI_INSTALL_TEST}" =~ "5.2" ]]; then
     _R_M=5.2
     _PHP_MULTI_INSTALL=${_PHP_MULTI_INSTALL%%${_R_M}}
-    sed -i "s/^_PHP_MULTI_INSTALL.*/_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\"/g" ${barCnf}
+    sed -i "s/^_PHP_MULTI_INSTALL.*/_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\"/g" ${_barCnf}
     wait
-    sed -i "/^$/d" ${barCnf}
+    sed -i "/^$/d" ${_barCnf}
     wait
   fi
 
   if [[ "${_PHP_MULTI_INSTALL_TEST}" =~ "5.3" ]]; then
     _R_M=5.3
     _PHP_MULTI_INSTALL=${_PHP_MULTI_INSTALL%%${_R_M}}
-    sed -i "s/^_PHP_MULTI_INSTALL.*/_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\"/g" ${barCnf}
+    sed -i "s/^_PHP_MULTI_INSTALL.*/_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\"/g" ${_barCnf}
     wait
-    sed -i "/^$/d" ${barCnf}
+    sed -i "/^$/d" ${_barCnf}
     wait
   fi
 
   if [[ "${_PHP_MULTI_INSTALL_TEST}" =~ "5.4" ]]; then
     _R_M=5.4
     _PHP_MULTI_INSTALL=${_PHP_MULTI_INSTALL%%${_R_M}}
-    sed -i "s/^_PHP_MULTI_INSTALL.*/_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\"/g" ${barCnf}
+    sed -i "s/^_PHP_MULTI_INSTALL.*/_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\"/g" ${_barCnf}
     wait
-    sed -i "/^$/d" ${barCnf}
+    sed -i "/^$/d" ${_barCnf}
     wait
   fi
 
   if [[ "${_PHP_MULTI_INSTALL_TEST}" =~ "5.5" ]]; then
     _R_M=5.5
     _PHP_MULTI_INSTALL=${_PHP_MULTI_INSTALL%%${_R_M}}
-    sed -i "s/^_PHP_MULTI_INSTALL.*/_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\"/g" ${barCnf}
+    sed -i "s/^_PHP_MULTI_INSTALL.*/_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\"/g" ${_barCnf}
     wait
-    sed -i "/^$/d" ${barCnf}
+    sed -i "/^$/d" ${_barCnf}
     wait
   fi
 
   if [ -e "/etc/init.d/php-fpm" ]; then
-    mrun "service php-fpm stop" 2> /dev/null
-    mrun "update-rc.d -f php-fpm remove" 2> /dev/null
+    _mrun "service php-fpm stop" 2> /dev/null
+    _mrun "update-rc.d -f php-fpm remove" 2> /dev/null
     rm -f /etc/init.d/php-fpm
   fi
   if [ -e "/etc/init.d/php52-fpm" ]; then
-    mrun "service php52-fpm stop" 2> /dev/null
-    mrun "update-rc.d -f php52-fpm remove" 2> /dev/null
+    _mrun "service php52-fpm stop" 2> /dev/null
+    _mrun "update-rc.d -f php52-fpm remove" 2> /dev/null
     rm -f /etc/init.d/php52-fpm
   fi
   if [ -e "/etc/init.d/php53-fpm" ]; then
-    mrun "service php53-fpm stop" 2> /dev/null
-    mrun "update-rc.d -f php53-fpm remove" 2> /dev/null
+    _mrun "service php53-fpm stop" 2> /dev/null
+    _mrun "update-rc.d -f php53-fpm remove" 2> /dev/null
     rm -f /etc/init.d/php53-fpm
   fi
   if [ -e "/etc/init.d/php54-fpm" ]; then
-    mrun "service php54-fpm stop" 2> /dev/null
-    mrun "update-rc.d -f php54-fpm remove" 2> /dev/null
+    _mrun "service php54-fpm stop" 2> /dev/null
+    _mrun "update-rc.d -f php54-fpm remove" 2> /dev/null
     rm -f /etc/init.d/php54-fpm
   fi
   if [ -e "/etc/init.d/php55-fpm" ]; then
-    mrun "service php55-fpm stop" 2> /dev/null
-    mrun "update-rc.d -f php55-fpm remove" 2> /dev/null
+    _mrun "service php55-fpm stop" 2> /dev/null
+    _mrun "update-rc.d -f php55-fpm remove" 2> /dev/null
     rm -f /etc/init.d/php55-fpm
   fi
 
@@ -1581,9 +1581,9 @@ php_legacy_versions_cleanup_cnf() {
 
 #
 # Cleanup for PHP versions list.
-php_if_versions_cleanup_cnf() {
+_php_if_versions_cleanup_cnf() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: php_if_versions_cleanup_cnf"
+    _msg "PROC: _php_if_versions_cleanup_cnf"
   fi
   if [ -e "/root/.allow-php-multi-install-cleanup.cnf" ] \
     || [ -e "/root/.run-to-daedalus.cnf" ] \
@@ -1625,10 +1625,10 @@ php_if_versions_cleanup_cnf() {
       fi
 
       ### Include latest PHP 8.2 and 8.3 if conditions are met
-      if_hosted_sys
+      _if_hosted_sys
       if [ "${_STRICT_LIMIT_PHP}" = "NO" ]; then
         if [ -e "/root/.include-php-latest.cnf" ] \
-          || [ "${hostedSys}" = "YES" ]; then
+          || [ "${_hostedSys}" = "YES" ]; then
           if [ "${_OPENSSL_NEW_VRN}" != "${_OPENSSL_LEGACY_VRN}" ] \
             && [ "${_OPENSSL_NEW_VRN}" != "${_OPENSSL_EOL_VRN}" ]; then
             _local_PHP_MULTI_INSTALL="8.2 8.3 ${_local_PHP_MULTI_INSTALL}"
@@ -1636,8 +1636,8 @@ php_if_versions_cleanup_cnf() {
         fi
       fi
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: _OPENSSL_NEW_VRN is ${_OPENSSL_NEW_VRN}"
-        msg "INFO: _local_PHP_MULTI_INSTALL is ${_local_PHP_MULTI_INSTALL}"
+        _msg "INFO: _OPENSSL_NEW_VRN is ${_OPENSSL_NEW_VRN}"
+        _msg "INFO: _local_PHP_MULTI_INSTALL is ${_local_PHP_MULTI_INSTALL}"
       fi
 
       ### Add PHP 5.6 if used
@@ -1768,30 +1768,30 @@ php_if_versions_cleanup_cnf() {
         _PHP_MULTI_INSTALL="8.3 7.4 5.6"
       else
         ### Sort and remove duplicates from _PHP_MULTI_INSTALL
-        php_multi_uniq
+        _php_multi_uniq
       fi
       export _PHP_MULTI_INSTALL="${_PHP_MULTI_INSTALL}"
 
       ### Remove previous _PHP_MULTI_INSTALL in /root/.barracuda.cnf
-      _PHP_MULTI_TEST=$(grep _PHP_MULTI_INSTALL ${barCnf} 2>&1)
+      _PHP_MULTI_TEST=$(grep _PHP_MULTI_INSTALL ${_barCnf} 2>&1)
       if [[ "${_PHP_MULTI_TEST}" =~ "_PHP_MULTI_INSTALL" ]]; then
-        sed -i "s/^_PHP_MULTI_INSTALL.*//g" ${barCnf}
+        sed -i "s/^_PHP_MULTI_INSTALL.*//g" ${_barCnf}
         wait
-        sed -i "s/^_PHP_ORIG_MULTI.*//g" ${barCnf}
+        sed -i "s/^_PHP_ORIG_MULTI.*//g" ${_barCnf}
         wait
-        sed -i "/^$/d" ${barCnf}
+        sed -i "/^$/d" ${_barCnf}
         wait
       fi
 
       ### Add optimized _PHP_MULTI_INSTALL in /root/.barracuda.cnf
-      echo "_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\"" >> ${barCnf}
+      echo "_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\"" >> ${_barCnf}
 
       ### Export optimized list as a new var
       _PHP_MULTI_OPTIM="${_PHP_MULTI_INSTALL}"
       export _PHP_MULTI_OPTIM="${_PHP_MULTI_OPTIM}"
 
       ### Disable not used PHP versions
-      php_not_used_disable
+      _php_not_used_disable
 
       ### Ctrl files cleanup
       touch /root/.sorted.multi.php.cnf
@@ -1803,54 +1803,54 @@ php_if_versions_cleanup_cnf() {
 
 #
 # Cleanup for PHP versions list.
-if_php_idle_on_off() {
+_if_php_idle_on_off() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: if_php_idle_on_off"
+    _msg "PROC: _if_php_idle_on_off"
   fi
   if [ "${_PHP_IDLE}" = "ON" ]; then
     [ -e "/root/.allow-php-multi-install-cleanup.cnf" ] && rm -f /root/.allow-php-multi-install-cleanup.cnf
     if [ ! -e "/var/xdrago/log" ] && [ -e "/var/xdrago_wait/log" ]; then
       rm -f /var/xdrago_wait/log/*.log
-      rm -f /var/xdrago_wait/log/.php_libs_fix_*.pid
+      rm -f /var/xdrago_wait/log/._php_libs_fix_*.pid
     else
       rm -f /var/xdrago/log/*.log
-      rm -f /var/xdrago/log/.php_libs_fix_*.pid
+      rm -f /var/xdrago/log/._php_libs_fix_*.pid
     fi
     touch /root/.proxy.cnf
     kill -9 $(ps aux | grep '[s]econd.sh' | awk '{print $2}') &> /dev/null
     sleep 5
-    php_not_used_enable_again
-    sed -i "s/^_PHP_IDLE.*//g" ${barCnf}
+    _php_not_used_enable_again
+    sed -i "s/^_PHP_IDLE.*//g" ${_barCnf}
     [ -e "/root/.proxy.cnf" ] && rm -f /root/.proxy.cnf
-    php_install_deps
-    php_libs_fix
+    _php_install_deps
+    _php_libs_fix
     if [ "${_STATUS}" = "UPGRADE" ]; then
-      php_ioncube_check_if_update
-      php_check_if_rebuild
+      _php_ioncube_check_if_update
+      _php_check_if_rebuild
     fi
-    php_install_upgrade
-    php_config_check_update
-    php_upgrade_all
-    if_install_php_newrelic
-    newrelic_check_fix
-    complete
+    _php_install_upgrade
+    _php_config_check_update
+    _php_upgrade_all
+    _if_install_php_newrelic
+    _newrelic_check_fix
+    _complete
     exit 0
   elif [ "${_PHP_IDLE}" = "OFF" ]; then
     touch /root/.proxy.cnf
     kill -9 $(ps aux | grep '[s]econd.sh' | awk '{print $2}') &> /dev/null
     sleep 5
     touch /root/.allow-php-multi-install-cleanup.cnf
-    php_if_versions_cleanup_cnf
-    sed -i "s/^_PHP_IDLE.*//g" ${barCnf}
+    _php_if_versions_cleanup_cnf
+    sed -i "s/^_PHP_IDLE.*//g" ${_barCnf}
     [ -e "/root/.proxy.cnf" ] && rm -f /root/.proxy.cnf
     if [ -e "/root/.run-to-daedalus.cnf" ] \
       || [ -e "/root/.run-to-chimaera.cnf" ] \
       || [ -e "/root/.run-to-beowulf.cnf" ]; then
       echo " "
-      msg "Bye"
-      clean_pid_exit if_php_idle_on_off_a
+      _msg "Bye"
+      _clean_pid_exit _if_php_idle_on_off_a
     else
-      complete
+      _complete
       exit 0
     fi
   fi
@@ -1858,9 +1858,9 @@ if_php_idle_on_off() {
 
 #
 # Read or create Barracuda cnf file.
-barracuda_cnf() {
+_barracuda_cnf() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: barracuda_cnf"
+    _msg "PROC: _barracuda_cnf"
   fi
   _CHECK_HOST=$(uname -n 2>&1)
   _VMFAMILY=XEN
@@ -1868,150 +1868,150 @@ barracuda_cnf() {
   if [[ "${_VM_TEST}" =~ "-beng" ]]; then
     _VMFAMILY="VS"
   fi
-  if [ ! -e "${barCnf}" ]; then
+  if [ ! -e "${_barCnf}" ]; then
     if [[ "${_MY_EMAIL}" =~ "omega8.cc" ]]; then
-      if_hosted_sys
-      if [ "${hostedSys}" != "YES" ]; then
-        msg "EXIT: Invalid email address defined in the _MY_EMAIL variable"
-        msg "EXIT: Bye (1)"
-        clean_pid_exit barracuda_cnf_a
+      _if_hosted_sys
+      if [ "${_hostedSys}" != "YES" ]; then
+        _msg "EXIT: Invalid email address defined in the _MY_EMAIL variable"
+        _msg "EXIT: Bye (1)"
+        _clean_pid_exit _barracuda_cnf_a
       fi
     fi
 
-    php_multi_uniq
+    _php_multi_uniq
 
-    msg "INFO: Creating your ${barCnf} config file"
+    _msg "INFO: Creating your ${_barCnf} config file"
     sleep 1
-    echo "###"                                                 > ${barCnf}
-    echo "### Configuration created on ${_NOW}"               >> ${barCnf}
-    echo "###"                                                >> ${barCnf}
-    echo "_LOCAL_NETWORK_HN=\"${_LOCAL_NETWORK_HN}\""         >> ${barCnf}
-    echo "_LOCAL_NETWORK_IP=\"${_LOCAL_NETWORK_IP}\""         >> ${barCnf}
-    echo "_MY_FRONT=\"${_MY_FRONT}\""                         >> ${barCnf}
-    echo "_MY_HOSTN=\"${_MY_HOSTN}\""                         >> ${barCnf}
-    echo "_MY_OWNIP=\"${_MY_OWNIP}\""                         >> ${barCnf}
-    echo "_SMTP_RELAY_HOST=\"${_SMTP_RELAY_HOST}\""           >> ${barCnf}
-    echo "_SMTP_RELAY_TEST=${_SMTP_RELAY_TEST}"               >> ${barCnf}
-    echo "_THIS_DB_HOST=${_THIS_DB_HOST}"                     >> ${barCnf}
+    echo "###"                                                 > ${_barCnf}
+    echo "### Configuration created on ${_NOW}"               >> ${_barCnf}
+    echo "###"                                                >> ${_barCnf}
+    echo "_LOCAL_NETWORK_HN=\"${_LOCAL_NETWORK_HN}\""         >> ${_barCnf}
+    echo "_LOCAL_NETWORK_IP=\"${_LOCAL_NETWORK_IP}\""         >> ${_barCnf}
+    echo "_MY_FRONT=\"${_MY_FRONT}\""                         >> ${_barCnf}
+    echo "_MY_HOSTN=\"${_MY_HOSTN}\""                         >> ${_barCnf}
+    echo "_MY_OWNIP=\"${_MY_OWNIP}\""                         >> ${_barCnf}
+    echo "_SMTP_RELAY_HOST=\"${_SMTP_RELAY_HOST}\""           >> ${_barCnf}
+    echo "_SMTP_RELAY_TEST=${_SMTP_RELAY_TEST}"               >> ${_barCnf}
+    echo "_THIS_DB_HOST=${_THIS_DB_HOST}"                     >> ${_barCnf}
 
-    echo "###"                                                >> ${barCnf}
-    echo "_AUTOPILOT=${_AUTOPILOT}"                           >> ${barCnf}
-    echo "_DEBUG_MODE=${_DEBUG_MODE}"                         >> ${barCnf}
-    echo "_MY_EMAIL=\"${_MY_EMAIL}\""                         >> ${barCnf}
-    echo "_XTRAS_LIST=\"${_XTRAS_LIST}\""                     >> ${barCnf}
+    echo "###"                                                >> ${_barCnf}
+    echo "_AUTOPILOT=${_AUTOPILOT}"                           >> ${_barCnf}
+    echo "_DEBUG_MODE=${_DEBUG_MODE}"                         >> ${_barCnf}
+    echo "_MY_EMAIL=\"${_MY_EMAIL}\""                         >> ${_barCnf}
+    echo "_XTRAS_LIST=\"${_XTRAS_LIST}\""                     >> ${_barCnf}
 
-    echo "###"                                                >> ${barCnf}
-    echo "_MODULES_FIX=${_MODULES_FIX}"                       >> ${barCnf}
-    echo "_MODULES_SKIP=\"${_MODULES_SKIP}\""                 >> ${barCnf}
-    echo "_PERMISSIONS_FIX=${_PERMISSIONS_FIX}"               >> ${barCnf}
+    echo "###"                                                >> ${_barCnf}
+    echo "_MODULES_FIX=${_MODULES_FIX}"                       >> ${_barCnf}
+    echo "_MODULES_SKIP=\"${_MODULES_SKIP}\""                 >> ${_barCnf}
+    echo "_PERMISSIONS_FIX=${_PERMISSIONS_FIX}"               >> ${_barCnf}
 
-    echo "###"                                                >> ${barCnf}
-    echo "_CPU_CRIT_RATIO=${_CPU_CRIT_RATIO}"                 >> ${barCnf}
-    echo "_CPU_MAX_RATIO=${_CPU_MAX_RATIO}"                   >> ${barCnf}
-    echo "_CPU_SPIDER_RATIO=${_CPU_SPIDER_RATIO}"             >> ${barCnf}
+    echo "###"                                                >> ${_barCnf}
+    echo "_CPU_CRIT_RATIO=${_CPU_CRIT_RATIO}"                 >> ${_barCnf}
+    echo "_CPU_MAX_RATIO=${_CPU_MAX_RATIO}"                   >> ${_barCnf}
+    echo "_CPU_SPIDER_RATIO=${_CPU_SPIDER_RATIO}"             >> ${_barCnf}
 
-    echo "###"                                                >> ${barCnf}
-    echo "_DB_BINARY_LOG=${_DB_BINARY_LOG}"                   >> ${barCnf}
-    echo "_DB_SERIES=${_DB_SERIES}"                           >> ${barCnf}
-    echo "_DB_SERVER=${_DB_SERVER}"                           >> ${barCnf}
-    echo "_USE_MYSQLTUNER=${_USE_MYSQLTUNER}"                 >> ${barCnf}
+    echo "###"                                                >> ${_barCnf}
+    echo "_DB_BINARY_LOG=${_DB_BINARY_LOG}"                   >> ${_barCnf}
+    echo "_DB_SERIES=${_DB_SERIES}"                           >> ${_barCnf}
+    echo "_DB_SERVER=${_DB_SERVER}"                           >> ${_barCnf}
+    echo "_USE_MYSQLTUNER=${_USE_MYSQLTUNER}"                 >> ${_barCnf}
 
-    echo "###"                                                >> ${barCnf}
-    echo "_DNS_SETUP_TEST=${_DNS_SETUP_TEST}"                 >> ${barCnf}
-    echo "_EXTRA_PACKAGES=${_EXTRA_PACKAGES}"                 >> ${barCnf}
-    echo "_FORCE_GIT_MIRROR=\"${_FORCE_GIT_MIRROR}\""         >> ${barCnf}
-    echo "_LOCAL_DEVUAN_MIRROR=${_LOCAL_DEVUAN_MIRROR}"       >> ${barCnf}
-    echo "_LOCAL_DEBIAN_MIRROR=${_LOCAL_DEBIAN_MIRROR}"       >> ${barCnf}
-    echo "_NEWRELIC_KEY=${_NEWRELIC_KEY}"                     >> ${barCnf}
-    echo "_SCOUT_KEY=${_SCOUT_KEY}"                           >> ${barCnf}
+    echo "###"                                                >> ${_barCnf}
+    echo "_DNS_SETUP_TEST=${_DNS_SETUP_TEST}"                 >> ${_barCnf}
+    echo "_EXTRA_PACKAGES=${_EXTRA_PACKAGES}"                 >> ${_barCnf}
+    echo "_FORCE_GIT_MIRROR=\"${_FORCE_GIT_MIRROR}\""         >> ${_barCnf}
+    echo "_LOCAL_DEVUAN_MIRROR=${_LOCAL_DEVUAN_MIRROR}"       >> ${_barCnf}
+    echo "_LOCAL_DEBIAN_MIRROR=${_LOCAL_DEBIAN_MIRROR}"       >> ${_barCnf}
+    echo "_NEWRELIC_KEY=${_NEWRELIC_KEY}"                     >> ${_barCnf}
+    echo "_SCOUT_KEY=${_SCOUT_KEY}"                           >> ${_barCnf}
 
-    echo "###"                                                >> ${barCnf}
-    echo "_MAGICK_FROM_SOURCES=${_MAGICK_FROM_SOURCES}"       >> ${barCnf}
+    echo "###"                                                >> ${_barCnf}
+    echo "_MAGICK_FROM_SOURCES=${_MAGICK_FROM_SOURCES}"       >> ${_barCnf}
 
-    echo "###"                                                >> ${barCnf}
-    echo "_NGINX_DOS_LINES=${_NGINX_DOS_LINES}"               >> ${barCnf}
-    echo "_NGINX_DOS_LIMIT=${_NGINX_DOS_LIMIT}"               >> ${barCnf}
-    echo "_NGINX_DOS_MODE=${_NGINX_DOS_MODE}"                 >> ${barCnf}
-    echo "_NGINX_DOS_LOG=${_NGINX_DOS_LOG}"                   >> ${barCnf}
-    echo "_NGINX_DOS_IGNORE=\"${_NGINX_DOS_IGNORE}\""         >> ${barCnf}
-    echo "_NGINX_DOS_STOP=\"${_NGINX_DOS_STOP}\""             >> ${barCnf}
+    echo "###"                                                >> ${_barCnf}
+    echo "_NGINX_DOS_LINES=${_NGINX_DOS_LINES}"               >> ${_barCnf}
+    echo "_NGINX_DOS_LIMIT=${_NGINX_DOS_LIMIT}"               >> ${_barCnf}
+    echo "_NGINX_DOS_MODE=${_NGINX_DOS_MODE}"                 >> ${_barCnf}
+    echo "_NGINX_DOS_LOG=${_NGINX_DOS_LOG}"                   >> ${_barCnf}
+    echo "_NGINX_DOS_IGNORE=\"${_NGINX_DOS_IGNORE}\""         >> ${_barCnf}
+    echo "_NGINX_DOS_STOP=\"${_NGINX_DOS_STOP}\""             >> ${_barCnf}
 
-    echo "###"                                                >> ${barCnf}
-    echo "_NGINX_EXTRA_CONF=\"${_NGINX_EXTRA_CONF}\""         >> ${barCnf}
-    echo "_NGINX_FORWARD_SECRECY=${_NGINX_FORWARD_SECRECY}"   >> ${barCnf}
-    echo "_NGINX_HEADERS=${_NGINX_HEADERS}"                   >> ${barCnf}
-    echo "_NGINX_LDAP=${_NGINX_LDAP}"                         >> ${barCnf}
-    echo "_NGINX_NAXSI=${_NGINX_NAXSI}"                       >> ${barCnf}
-    echo "_NGINX_SPDY=${_NGINX_SPDY}"                         >> ${barCnf}
-    echo "_NGINX_WORKERS=${_NGINX_WORKERS}"                   >> ${barCnf}
+    echo "###"                                                >> ${_barCnf}
+    echo "_NGINX_EXTRA_CONF=\"${_NGINX_EXTRA_CONF}\""         >> ${_barCnf}
+    echo "_NGINX_FORWARD_SECRECY=${_NGINX_FORWARD_SECRECY}"   >> ${_barCnf}
+    echo "_NGINX_HEADERS=${_NGINX_HEADERS}"                   >> ${_barCnf}
+    echo "_NGINX_LDAP=${_NGINX_LDAP}"                         >> ${_barCnf}
+    echo "_NGINX_NAXSI=${_NGINX_NAXSI}"                       >> ${_barCnf}
+    echo "_NGINX_SPDY=${_NGINX_SPDY}"                         >> ${_barCnf}
+    echo "_NGINX_WORKERS=${_NGINX_WORKERS}"                   >> ${_barCnf}
 
-    echo "###"                                                >> ${barCnf}
-    echo "_PHP_CLI_VERSION=${_PHP_CLI_VERSION}"               >> ${barCnf}
-    echo "_PHP_EXTRA_CONF=\"${_PHP_EXTRA_CONF}\""             >> ${barCnf}
-    echo "_PHP_FPM_DENY=\"${_PHP_FPM_DENY}\""                 >> ${barCnf}
-    echo "_PHP_FPM_VERSION=${_PHP_FPM_VERSION}"               >> ${barCnf}
-    echo "_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}"               >> ${barCnf}
-    echo "_PHP_IONCUBE=${_PHP_IONCUBE}"                       >> ${barCnf}
-    echo "_PHP_GEOS=${_PHP_GEOS}"                             >> ${barCnf}
-    echo "_PHP_MONGODB=${_PHP_MONGODB}"                       >> ${barCnf}
-    echo "_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\""       >> ${barCnf}
-    echo "_PHP_SINGLE_INSTALL=${_PHP_SINGLE_INSTALL}"         >> ${barCnf}
+    echo "###"                                                >> ${_barCnf}
+    echo "_PHP_CLI_VERSION=${_PHP_CLI_VERSION}"               >> ${_barCnf}
+    echo "_PHP_EXTRA_CONF=\"${_PHP_EXTRA_CONF}\""             >> ${_barCnf}
+    echo "_PHP_FPM_DENY=\"${_PHP_FPM_DENY}\""                 >> ${_barCnf}
+    echo "_PHP_FPM_VERSION=${_PHP_FPM_VERSION}"               >> ${_barCnf}
+    echo "_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}"               >> ${_barCnf}
+    echo "_PHP_IONCUBE=${_PHP_IONCUBE}"                       >> ${_barCnf}
+    echo "_PHP_GEOS=${_PHP_GEOS}"                             >> ${_barCnf}
+    echo "_PHP_MONGODB=${_PHP_MONGODB}"                       >> ${_barCnf}
+    echo "_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\""       >> ${_barCnf}
+    echo "_PHP_SINGLE_INSTALL=${_PHP_SINGLE_INSTALL}"         >> ${_barCnf}
 
-    echo "###"                                                >> ${barCnf}
-    echo "_REDIS_LISTEN_MODE=${_REDIS_LISTEN_MODE}"           >> ${barCnf}
-    echo "_REDIS_MAJOR_RELEASE=${_REDIS_MAJOR_RELEASE}"       >> ${barCnf}
-    echo "_RESERVED_RAM=${_RESERVED_RAM}"                     >> ${barCnf}
-    echo "_SPEED_VALID_MAX=${_SPEED_VALID_MAX}"               >> ${barCnf}
-    echo "_SSH_ARMOUR=${_SSH_ARMOUR}"                         >> ${barCnf}
-    echo "_SSH_FROM_SOURCES=${_SSH_FROM_SOURCES}"             >> ${barCnf}
-    echo "_SSH_PORT=${_SSH_PORT}"                             >> ${barCnf}
-    echo "_STRICT_BIN_PERMISSIONS=${_STRICT_BIN_PERMISSIONS}" >> ${barCnf}
-    echo "_STRONG_PASSWORDS=${_STRONG_PASSWORDS}"             >> ${barCnf}
+    echo "###"                                                >> ${_barCnf}
+    echo "_REDIS_LISTEN_MODE=${_REDIS_LISTEN_MODE}"           >> ${_barCnf}
+    echo "_REDIS_MAJOR_RELEASE=${_REDIS_MAJOR_RELEASE}"       >> ${_barCnf}
+    echo "_RESERVED_RAM=${_RESERVED_RAM}"                     >> ${_barCnf}
+    echo "_SPEED_VALID_MAX=${_SPEED_VALID_MAX}"               >> ${_barCnf}
+    echo "_SSH_ARMOUR=${_SSH_ARMOUR}"                         >> ${_barCnf}
+    echo "_SSH_FROM_SOURCES=${_SSH_FROM_SOURCES}"             >> ${_barCnf}
+    echo "_SSH_PORT=${_SSH_PORT}"                             >> ${_barCnf}
+    echo "_STRICT_BIN_PERMISSIONS=${_STRICT_BIN_PERMISSIONS}" >> ${_barCnf}
+    echo "_STRONG_PASSWORDS=${_STRONG_PASSWORDS}"             >> ${_barCnf}
 
-    echo "###"                                                >> ${barCnf}
-    echo "_CUSTOM_CONFIG_CSF=${_CUSTOM_CONFIG_CSF}"           >> ${barCnf}
-    echo "_CUSTOM_CONFIG_LSHELL=${_CUSTOM_CONFIG_LSHELL}"     >> ${barCnf}
-    echo "_CUSTOM_CONFIG_REDIS=${_CUSTOM_CONFIG_REDIS}"       >> ${barCnf}
-    echo "_CUSTOM_CONFIG_SQL=${_CUSTOM_CONFIG_SQL}"           >> ${barCnf}
+    echo "###"                                                >> ${_barCnf}
+    echo "_CUSTOM_CONFIG_CSF=${_CUSTOM_CONFIG_CSF}"           >> ${_barCnf}
+    echo "_CUSTOM_CONFIG_LSHELL=${_CUSTOM_CONFIG_LSHELL}"     >> ${_barCnf}
+    echo "_CUSTOM_CONFIG_REDIS=${_CUSTOM_CONFIG_REDIS}"       >> ${_barCnf}
+    echo "_CUSTOM_CONFIG_SQL=${_CUSTOM_CONFIG_SQL}"           >> ${_barCnf}
 
-    echo "###"                                                >> ${barCnf}
-    echo "_AEGIR_UPGRADE_ONLY=${_AEGIR_UPGRADE_ONLY}"         >> ${barCnf}
-    echo "_SYSTEM_UPGRADE_ONLY=${_SYSTEM_UPGRADE_ONLY}"       >> ${barCnf}
-    echo "###"                                                >> ${barCnf}
+    echo "###"                                                >> ${_barCnf}
+    echo "_AEGIR_UPGRADE_ONLY=${_AEGIR_UPGRADE_ONLY}"         >> ${_barCnf}
+    echo "_SYSTEM_UP_ONLY=${_SYSTEM_UP_ONLY}"       >> ${_barCnf}
+    echo "###"                                                >> ${_barCnf}
     _CHECK_HOST=$(uname -n 2>&1)
     ### Force HTTP/2 or SPDY plus PFS on supported systems
-    sed -i "s/^_NGINX_SPDY=.*/_NGINX_SPDY=YES/g"                 ${barCnf}
+    sed -i "s/^_NGINX_SPDY=.*/_NGINX_SPDY=YES/g"                 ${_barCnf}
     wait
-    sed -i "s/^_NGINX_FORWARD.*/_NGINX_FORWARD_SECRECY=YES/g"    ${barCnf}
+    sed -i "s/^_NGINX_FORWARD.*/_NGINX_FORWARD_SECRECY=YES/g"    ${_barCnf}
     wait
     ### Force ImageMagick from packages
-    sed -i "s/^_MAGICK_FROM_S.*/_MAGICK_FROM_SOURCES=NO/g"       ${barCnf}
+    sed -i "s/^_MAGICK_FROM_S.*/_MAGICK_FROM_SOURCES=NO/g"       ${_barCnf}
     wait
-    sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                   ${barCnf}
+    sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                   ${_barCnf}
     wait
-    sed -i "s/^_FORCE_GIT_.*/_FORCE_GIT_MIRROR=\"\"/g"           ${barCnf}
+    sed -i "s/^_FORCE_GIT_.*/_FORCE_GIT_MIRROR=\"\"/g"           ${_barCnf}
     wait
 
     devM="deb.devuan.org"
     debM="deb.debian.org"
 
-    sed -i "s/^_LOCAL_DEVUAN_.*/_LOCAL_DEVUAN_MIRROR=${devM}/g"  ${barCnf}
+    sed -i "s/^_LOCAL_DEVUAN_.*/_LOCAL_DEVUAN_MIRROR=${devM}/g"  ${_barCnf}
     wait
-    sed -i "s/^_LOCAL_DEBIAN_.*/_LOCAL_DEBIAN_MIRROR=${debM}/g"  ${barCnf}
+    sed -i "s/^_LOCAL_DEBIAN_.*/_LOCAL_DEBIAN_MIRROR=${debM}/g"  ${_barCnf}
     wait
-    sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"     ${barCnf}
+    sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"     ${_barCnf}
     wait
-    sed -i "s/^_STRICT_BIN_.*/_STRICT_BIN_PERMISSIONS=YES/g"     ${barCnf}
+    sed -i "s/^_STRICT_BIN_.*/_STRICT_BIN_PERMISSIONS=YES/g"     ${_barCnf}
     wait
-    sed -i "s/^_STRONG_PASS.*/_STRONG_PASSWORDS=YES/g"           ${barCnf}
+    sed -i "s/^_STRONG_PASS.*/_STRONG_PASSWORDS=YES/g"           ${_barCnf}
     wait
-    sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g"       ${barCnf}
+    sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g"       ${_barCnf}
     wait
     sed -i "s/^_FORCE_GIT_.*/_FORCE_GIT_MIRROR=\"\"/g" /root/.*.octopus.cnf &> /dev/null
     wait
     sed -i "s/^_STRONG_PASS.*/_STRONG_PASSWORDS=YES/g" /root/.*.octopus.cnf &> /dev/null
     wait
-    sed -i "s/^_REDIS_LISTEN.*/_REDIS_LISTEN_MODE=SOCKET/g"      ${barCnf}
+    sed -i "s/^_REDIS_LISTEN.*/_REDIS_LISTEN_MODE=SOCKET/g"      ${_barCnf}
     wait
     if [ "${_OS_CODE}" = "stretch" ] || [ "${_OS_CODE}" = "jessie" ]; then
       if [ -x "/opt/php74/bin/php" ]; then
@@ -2031,320 +2031,320 @@ barracuda_cnf() {
       fCli=8.3
     fi
     if [ -z "${_PHP_SINGLE_INSTALL}" ]; then
-      sed -i "s/^_PHP_CLI_VERSION=5.6/_PHP_CLI_VERSION=${fCli}/g"    ${barCnf}
+      sed -i "s/^_PHP_CLI_VERSION=5.6/_PHP_CLI_VERSION=${fCli}/g"    ${_barCnf}
       wait
-      sed -i "s/^_PHP_FPM_VERSION=5.6/_PHP_FPM_VERSION=${fCli}/g"    ${barCnf}
+      sed -i "s/^_PHP_FPM_VERSION=5.6/_PHP_FPM_VERSION=${fCli}/g"    ${_barCnf}
       wait
-      sed -i "s/^_PHP_CLI_VERSION=7.0/_PHP_CLI_VERSION=${fCli}/g"    ${barCnf}
+      sed -i "s/^_PHP_CLI_VERSION=7.0/_PHP_CLI_VERSION=${fCli}/g"    ${_barCnf}
       wait
-      sed -i "s/^_PHP_FPM_VERSION=7.0/_PHP_FPM_VERSION=${fCli}/g"    ${barCnf}
+      sed -i "s/^_PHP_FPM_VERSION=7.0/_PHP_FPM_VERSION=${fCli}/g"    ${_barCnf}
       wait
-      sed -i "s/^_PHP_CLI_VERSION=7.1/_PHP_CLI_VERSION=${fCli}/g"    ${barCnf}
+      sed -i "s/^_PHP_CLI_VERSION=7.1/_PHP_CLI_VERSION=${fCli}/g"    ${_barCnf}
       wait
-      sed -i "s/^_PHP_FPM_VERSION=7.1/_PHP_FPM_VERSION=${fCli}/g"    ${barCnf}
+      sed -i "s/^_PHP_FPM_VERSION=7.1/_PHP_FPM_VERSION=${fCli}/g"    ${_barCnf}
       wait
-      sed -i "s/^_PHP_CLI_VERSION=7.2/_PHP_CLI_VERSION=${fCli}/g"    ${barCnf}
+      sed -i "s/^_PHP_CLI_VERSION=7.2/_PHP_CLI_VERSION=${fCli}/g"    ${_barCnf}
       wait
-      sed -i "s/^_PHP_FPM_VERSION=7.2/_PHP_FPM_VERSION=${fCli}/g"    ${barCnf}
+      sed -i "s/^_PHP_FPM_VERSION=7.2/_PHP_FPM_VERSION=${fCli}/g"    ${_barCnf}
       wait
-      sed -i "s/^_PHP_CLI_VERSION=7.3/_PHP_CLI_VERSION=${fCli}/g"    ${barCnf}
+      sed -i "s/^_PHP_CLI_VERSION=7.3/_PHP_CLI_VERSION=${fCli}/g"    ${_barCnf}
       wait
-      sed -i "s/^_PHP_FPM_VERSION=7.3/_PHP_FPM_VERSION=${fCli}/g"    ${barCnf}
+      sed -i "s/^_PHP_FPM_VERSION=7.3/_PHP_FPM_VERSION=${fCli}/g"    ${_barCnf}
       wait
-      sed -i "s/^_PHP_CLI_VERSION=8.0/_PHP_CLI_VERSION=${fCli}/g"    ${barCnf}
+      sed -i "s/^_PHP_CLI_VERSION=8.0/_PHP_CLI_VERSION=${fCli}/g"    ${_barCnf}
       wait
-      sed -i "s/^_PHP_FPM_VERSION=8.0/_PHP_FPM_VERSION=${fCli}/g"    ${barCnf}
+      sed -i "s/^_PHP_FPM_VERSION=8.0/_PHP_FPM_VERSION=${fCli}/g"    ${_barCnf}
       wait
     fi
-    if_hosted_sys
-    if [ "${hostedSys}" = "YES" ]; then
-      sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"notify\@omega8.cc\"/g" ${barCnf}
+    _if_hosted_sys
+    if [ "${_hostedSys}" = "YES" ]; then
+      sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"notify\@omega8.cc\"/g" ${_barCnf}
       wait
     fi
   else
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "INFO: Reading your ${barCnf} config file"
+      _msg "INFO: Reading your ${_barCnf} config file"
       sleep 1
-      msg "NOTE! Please review all config options displayed below"
-      msg "NOTE! It will *override* all settings in the Barracuda script"
+      _msg "NOTE! Please review all config options displayed below"
+      _msg "NOTE! It will *override* all settings in the Barracuda script"
     fi
-    sed -i "s/_SPEED_VALID_MAX=300/_SPEED_VALID_MAX=3600/g" ${barCnf}
+    sed -i "s/_SPEED_VALID_MAX=300/_SPEED_VALID_MAX=3600/g" ${_barCnf}
     wait
 
-    _NGINX_WORKERS_TEST=$(grep _NGINX_WORKERS ${barCnf} 2>&1)
+    _NGINX_WORKERS_TEST=$(grep _NGINX_WORKERS ${_barCnf} 2>&1)
     if [[ "${_NGINX_WORKERS_TEST}" =~ "_NGINX_WORKERS" ]]; then
       _DO_NOTHING=YES
     else
-      echo "_NGINX_WORKERS=${_NGINX_WORKERS}" >> ${barCnf}
+      echo "_NGINX_WORKERS=${_NGINX_WORKERS}" >> ${_barCnf}
     fi
 
-    _PHP_FPM_WORKERS_TEST=$(grep _PHP_FPM_WORKERS ${barCnf} 2>&1)
+    _PHP_FPM_WORKERS_TEST=$(grep _PHP_FPM_WORKERS ${_barCnf} 2>&1)
     if [[ "${_PHP_FPM_WORKERS_TEST}" =~ "_PHP_FPM_WORKERS" ]]; then
       _DO_NOTHING=YES
     else
-      echo "_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}" >> ${barCnf}
+      echo "_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}" >> ${_barCnf}
     fi
 
     if [ -d "/data/u" ]; then
-      php_legacy_versions_cleanup_cnf
+      _php_legacy_versions_cleanup_cnf
     fi
 
-    _PHP_FPM_VERSION_TEST=$(grep _PHP_FPM_VERSION ${barCnf} 2>&1)
+    _PHP_FPM_VERSION_TEST=$(grep _PHP_FPM_VERSION ${_barCnf} 2>&1)
     if [[ ! "${_PHP_FPM_VERSION_TEST}" =~ "_PHP_FPM_VERSION" ]]; then
-      echo "_PHP_FPM_VERSION=${_PHP_FPM_VERSION}" >> ${barCnf}
+      echo "_PHP_FPM_VERSION=${_PHP_FPM_VERSION}" >> ${_barCnf}
     fi
 
-    _PHP_CLI_VERSION_TEST=$(grep _PHP_CLI_VERSION ${barCnf} 2>&1)
+    _PHP_CLI_VERSION_TEST=$(grep _PHP_CLI_VERSION ${_barCnf} 2>&1)
     if [[ ! "${_PHP_CLI_VERSION_TEST}" =~ "_PHP_CLI_VERSION" ]]; then
-      echo "_PHP_CLI_VERSION=${_PHP_CLI_VERSION}" >> ${barCnf}
+      echo "_PHP_CLI_VERSION=${_PHP_CLI_VERSION}" >> ${_barCnf}
     fi
 
-    _PHP_SINGLE_INSTALL_TEST=$(grep _PHP_SINGLE_INSTALL ${barCnf} 2>&1)
+    _PHP_SINGLE_INSTALL_TEST=$(grep _PHP_SINGLE_INSTALL ${_barCnf} 2>&1)
     if [[ ! "${_PHP_SINGLE_INSTALL_TEST}" =~ "_PHP_SINGLE_INSTALL" ]]; then
-      echo "_PHP_SINGLE_INSTALL=${_PHP_SINGLE_INSTALL}" >> ${barCnf}
+      echo "_PHP_SINGLE_INSTALL=${_PHP_SINGLE_INSTALL}" >> ${_barCnf}
     fi
 
-    _CUSTOM_CONFIG_LSHELL_TEST=$(grep _CUSTOM_CONFIG_LSHELL ${barCnf} 2>&1)
+    _CUSTOM_CONFIG_LSHELL_TEST=$(grep _CUSTOM_CONFIG_LSHELL ${_barCnf} 2>&1)
     if [[ ! "${_CUSTOM_CONFIG_LSHELL_TEST}" =~ "_CUSTOM_CONFIG_LSHELL" ]]; then
-      echo "_CUSTOM_CONFIG_LSHELL=${_CUSTOM_CONFIG_LSHELL}" >> ${barCnf}
+      echo "_CUSTOM_CONFIG_LSHELL=${_CUSTOM_CONFIG_LSHELL}" >> ${_barCnf}
     fi
 
-    _CUSTOM_CONFIG_CSF_TEST=$(grep _CUSTOM_CONFIG_CSF ${barCnf} 2>&1)
+    _CUSTOM_CONFIG_CSF_TEST=$(grep _CUSTOM_CONFIG_CSF ${_barCnf} 2>&1)
     if [[ ! "${_CUSTOM_CONFIG_CSF_TEST}" =~ "_CUSTOM_CONFIG_CSF" ]]; then
-      echo "_CUSTOM_CONFIG_CSF=${_CUSTOM_CONFIG_CSF}" >> ${barCnf}
+      echo "_CUSTOM_CONFIG_CSF=${_CUSTOM_CONFIG_CSF}" >> ${_barCnf}
     fi
 
-    _CUSTOM_CONFIG_SQL_TEST=$(grep _CUSTOM_CONFIG_SQL ${barCnf} 2>&1)
+    _CUSTOM_CONFIG_SQL_TEST=$(grep _CUSTOM_CONFIG_SQL ${_barCnf} 2>&1)
     if [[ ! "${_CUSTOM_CONFIG_SQL_TEST}" =~ "_CUSTOM_CONFIG_SQL" ]]; then
-      echo "_CUSTOM_CONFIG_SQL=${_CUSTOM_CONFIG_SQL}" >> ${barCnf}
+      echo "_CUSTOM_CONFIG_SQL=${_CUSTOM_CONFIG_SQL}" >> ${_barCnf}
     fi
 
-    _SPEED_VALID_MAX_TEST=$(grep _SPEED_VALID_MAX ${barCnf} 2>&1)
+    _SPEED_VALID_MAX_TEST=$(grep _SPEED_VALID_MAX ${_barCnf} 2>&1)
     if [[ ! "${_SPEED_VALID_MAX_TEST}" =~ "_SPEED_VALID_MAX" ]]; then
-      echo "_SPEED_VALID_MAX=${_SPEED_VALID_MAX}" >> ${barCnf}
+      echo "_SPEED_VALID_MAX=${_SPEED_VALID_MAX}" >> ${_barCnf}
     fi
 
-    _NGINX_DOS_LIMIT_TEST=$(grep _NGINX_DOS_LIMIT ${barCnf} 2>&1)
+    _NGINX_DOS_LIMIT_TEST=$(grep _NGINX_DOS_LIMIT ${_barCnf} 2>&1)
     if [[ ! "${_NGINX_DOS_LIMIT_TEST}" =~ "_NGINX_DOS_LIMIT" ]]; then
-      echo "_NGINX_DOS_LIMIT=${_NGINX_DOS_LIMIT}" >> ${barCnf}
+      echo "_NGINX_DOS_LIMIT=${_NGINX_DOS_LIMIT}" >> ${_barCnf}
     fi
 
-    _CPU_SPIDER_RATIO_TEST=$(grep _CPU_SPIDER_RATIO ${barCnf} 2>&1)
+    _CPU_SPIDER_RATIO_TEST=$(grep _CPU_SPIDER_RATIO ${_barCnf} 2>&1)
     if [[ ! "${_CPU_SPIDER_RATIO_TEST}" =~ "_CPU_SPIDER_RATIO" ]]; then
-      echo "_CPU_SPIDER_RATIO=${_CPU_SPIDER_RATIO}" >> ${barCnf}
+      echo "_CPU_SPIDER_RATIO=${_CPU_SPIDER_RATIO}" >> ${_barCnf}
     fi
 
-    _CPU_MAX_RATIO_TEST=$(grep _CPU_MAX_RATIO ${barCnf} 2>&1)
+    _CPU_MAX_RATIO_TEST=$(grep _CPU_MAX_RATIO ${_barCnf} 2>&1)
     if [[ ! "${_CPU_MAX_RATIO_TEST}" =~ "_CPU_MAX_RATIO" ]]; then
-      echo "_CPU_MAX_RATIO=${_CPU_MAX_RATIO}" >> ${barCnf}
+      echo "_CPU_MAX_RATIO=${_CPU_MAX_RATIO}" >> ${_barCnf}
     fi
 
-    _CPU_CRIT_RATIO_TEST=$(grep _CPU_CRIT_RATIO ${barCnf} 2>&1)
+    _CPU_CRIT_RATIO_TEST=$(grep _CPU_CRIT_RATIO ${_barCnf} 2>&1)
     if [[ ! "${_CPU_CRIT_RATIO_TEST}" =~ "_CPU_CRIT_RATIO" ]]; then
-      echo "_CPU_CRIT_RATIO=${_CPU_CRIT_RATIO}" >> ${barCnf}
+      echo "_CPU_CRIT_RATIO=${_CPU_CRIT_RATIO}" >> ${_barCnf}
     fi
 
-    _SYSTEM_UPGRADE_ONLY_TEST=$(grep _SYSTEM_UPGRADE_ONLY ${barCnf} 2>&1)
-    if [[ ! "${_SYSTEM_UPGRADE_ONLY_TEST}" =~ "_SYSTEM_UPGRADE_ONLY" ]]; then
-      echo "_SYSTEM_UPGRADE_ONLY=${_SYSTEM_UPGRADE_ONLY}" >> ${barCnf}
+    _SYSTEM_UP_ONLY_TEST=$(grep _SYSTEM_UP_ONLY ${_barCnf} 2>&1)
+    if [[ ! "${_SYSTEM_UP_ONLY_TEST}" =~ "_SYSTEM_UP_ONLY" ]]; then
+      echo "_SYSTEM_UP_ONLY=${_SYSTEM_UP_ONLY}" >> ${_barCnf}
     fi
 
-    _AEGIR_UPGRADE_ONLY_TEST=$(grep _AEGIR_UPGRADE_ONLY ${barCnf} 2>&1)
+    _AEGIR_UPGRADE_ONLY_TEST=$(grep _AEGIR_UPGRADE_ONLY ${_barCnf} 2>&1)
     if [[ ! "${_AEGIR_UPGRADE_ONLY_TEST}" =~ "_AEGIR_UPGRADE_ONLY" ]]; then
-      echo "_AEGIR_UPGRADE_ONLY=${_AEGIR_UPGRADE_ONLY}" >> ${barCnf}
+      echo "_AEGIR_UPGRADE_ONLY=${_AEGIR_UPGRADE_ONLY}" >> ${_barCnf}
     fi
 
-    _CUSTOM_CONFIG_REDIS_TEST=$(grep _CUSTOM_CONFIG_REDIS ${barCnf} 2>&1)
+    _CUSTOM_CONFIG_REDIS_TEST=$(grep _CUSTOM_CONFIG_REDIS ${_barCnf} 2>&1)
     if [[ ! "${_CUSTOM_CONFIG_REDIS_TEST}" =~ "_CUSTOM_CONFIG_REDIS" ]]; then
-      echo "_CUSTOM_CONFIG_REDIS=${_CUSTOM_CONFIG_REDIS}" >> ${barCnf}
+      echo "_CUSTOM_CONFIG_REDIS=${_CUSTOM_CONFIG_REDIS}" >> ${_barCnf}
     fi
 
-    _NEWRELIC_KEY_TEST=$(grep _NEWRELIC_KEY ${barCnf} 2>&1)
+    _NEWRELIC_KEY_TEST=$(grep _NEWRELIC_KEY ${_barCnf} 2>&1)
     if [[ ! "${_NEWRELIC_KEY_TEST}" =~ "_NEWRELIC_KEY" ]]; then
       if [ ! -z "${_NEWRELIC_KEY}" ]; then
-        echo "_NEWRELIC_KEY=${_NEWRELIC_KEY}" >> ${barCnf}
+        echo "_NEWRELIC_KEY=${_NEWRELIC_KEY}" >> ${_barCnf}
       else
         if [ -e "/etc/newrelic/newrelic.cfg" ]; then
           _NEWRELIC_KEY=$(grep license_key /etc/newrelic/newrelic.cfg 2>&1)
           _NEWRELIC_KEY=$(echo -n ${_NEWRELIC_KEY} | tr -d "\n" 2>&1)
-          echo "_NEWRELIC_KEY=${_NEWRELIC_KEY}" >> ${barCnf}
-          sed -i "s/license_key=//g" ${barCnf}
+          echo "_NEWRELIC_KEY=${_NEWRELIC_KEY}" >> ${_barCnf}
+          sed -i "s/license_key=//g" ${_barCnf}
           wait
         fi
       fi
     fi
 
-    _SCOUT_KEY_TEST=$(grep _SCOUT_KEY ${barCnf} 2>&1)
+    _SCOUT_KEY_TEST=$(grep _SCOUT_KEY ${_barCnf} 2>&1)
     if [[ ! "${_SCOUT_KEY_TEST}" =~ "_SCOUT_KEY" ]]; then
-      echo "_SCOUT_KEY=${_SCOUT_KEY}" >> ${barCnf}
+      echo "_SCOUT_KEY=${_SCOUT_KEY}" >> ${_barCnf}
     fi
 
-    _EXTRA_PACKAGES_TEST=$(grep _EXTRA_PACKAGES ${barCnf} 2>&1)
+    _EXTRA_PACKAGES_TEST=$(grep _EXTRA_PACKAGES ${_barCnf} 2>&1)
     if [[ ! "${_EXTRA_PACKAGES_TEST}" =~ "_EXTRA_PACKAGES" ]]; then
-      echo "_EXTRA_PACKAGES=${_EXTRA_PACKAGES}" >> ${barCnf}
+      echo "_EXTRA_PACKAGES=${_EXTRA_PACKAGES}" >> ${_barCnf}
     fi
 
-    _PHP_EXTRA_CONF_TEST=$(grep _PHP_EXTRA_CONF ${barCnf} 2>&1)
+    _PHP_EXTRA_CONF_TEST=$(grep _PHP_EXTRA_CONF ${_barCnf} 2>&1)
     if [[ ! "${_PHP_EXTRA_CONF_TEST}" =~ "_PHP_EXTRA_CONF" ]]; then
-      echo "_PHP_EXTRA_CONF=\"${_PHP_EXTRA_CONF}\"" >> ${barCnf}
+      echo "_PHP_EXTRA_CONF=\"${_PHP_EXTRA_CONF}\"" >> ${_barCnf}
     fi
 
-    _PHP_FPM_DENY_TEST=$(grep _PHP_FPM_DENY ${barCnf} 2>&1)
+    _PHP_FPM_DENY_TEST=$(grep _PHP_FPM_DENY ${_barCnf} 2>&1)
     if [[ ! "${_PHP_FPM_DENY_TEST}" =~ "_PHP_FPM_DENY" ]]; then
-      echo "_PHP_FPM_DENY=\"${_PHP_FPM_DENY}\"" >> ${barCnf}
+      echo "_PHP_FPM_DENY=\"${_PHP_FPM_DENY}\"" >> ${_barCnf}
     fi
 
-    _STRONG_PASSWORDS_TEST=$(grep _STRONG_PASSWORDS ${barCnf} 2>&1)
+    _STRONG_PASSWORDS_TEST=$(grep _STRONG_PASSWORDS ${_barCnf} 2>&1)
     if [[ ! "${_STRONG_PASSWORDS_TEST}" =~ "_STRONG_PASSWORDS" ]]; then
-      echo "_STRONG_PASSWORDS=${_STRONG_PASSWORDS}" >> ${barCnf}
+      echo "_STRONG_PASSWORDS=${_STRONG_PASSWORDS}" >> ${_barCnf}
     fi
 
-    _DB_BINARY_LOG_TEST=$(grep _DB_BINARY_LOG ${barCnf} 2>&1)
+    _DB_BINARY_LOG_TEST=$(grep _DB_BINARY_LOG ${_barCnf} 2>&1)
     if [[ ! "${_DB_BINARY_LOG_TEST}" =~ "_DB_BINARY_LOG" ]]; then
-      echo "_DB_BINARY_LOG=${_DB_BINARY_LOG}" >> ${barCnf}
+      echo "_DB_BINARY_LOG=${_DB_BINARY_LOG}" >> ${_barCnf}
     fi
 
-    _USE_MYSQLTUNER_TEST=$(grep _USE_MYSQLTUNER ${barCnf} 2>&1)
+    _USE_MYSQLTUNER_TEST=$(grep _USE_MYSQLTUNER ${_barCnf} 2>&1)
     if [[ ! "${_USE_MYSQLTUNER_TEST}" =~ "_USE_MYSQLTUNER" ]]; then
-      echo "_USE_MYSQLTUNER=${_USE_MYSQLTUNER}" >> ${barCnf}
+      echo "_USE_MYSQLTUNER=${_USE_MYSQLTUNER}" >> ${_barCnf}
     fi
 
-    _REDIS_LISTEN_MODE_TEST=$(grep _REDIS_LISTEN_MODE ${barCnf} 2>&1)
+    _REDIS_LISTEN_MODE_TEST=$(grep _REDIS_LISTEN_MODE ${_barCnf} 2>&1)
     if [[ ! "${_REDIS_LISTEN_MODE_TEST}" =~ "_REDIS_LISTEN_MODE" ]]; then
-      echo "_REDIS_LISTEN_MODE=${_REDIS_LISTEN_MODE}" >> ${barCnf}
+      echo "_REDIS_LISTEN_MODE=${_REDIS_LISTEN_MODE}" >> ${_barCnf}
     fi
 
-    _REDIS_MAJOR_RELEASE_TEST=$(grep _REDIS_MAJOR_RELEASE ${barCnf} 2>&1)
+    _REDIS_MAJOR_RELEASE_TEST=$(grep _REDIS_MAJOR_RELEASE ${_barCnf} 2>&1)
     if [[ ! "${_REDIS_MAJOR_RELEASE_TEST}" =~ "_REDIS_MAJOR_RELEASE" ]]; then
-      echo "_REDIS_MAJOR_RELEASE=${_REDIS_MAJOR_RELEASE}" >> ${barCnf}
+      echo "_REDIS_MAJOR_RELEASE=${_REDIS_MAJOR_RELEASE}" >> ${_barCnf}
     fi
 
-    _NGINX_HEADERS_TEST=$(grep _NGINX_HEADERS ${barCnf} 2>&1)
+    _NGINX_HEADERS_TEST=$(grep _NGINX_HEADERS ${_barCnf} 2>&1)
     if [[ ! "${_NGINX_HEADERS_TEST}" =~ "_NGINX_HEADERS" ]]; then
-      echo "_NGINX_HEADERS=${_NGINX_HEADERS}" >> ${barCnf}
+      echo "_NGINX_HEADERS=${_NGINX_HEADERS}" >> ${_barCnf}
     fi
 
-    _NGINX_LDAP_TEST=$(grep _NGINX_LDAP ${barCnf} 2>&1)
+    _NGINX_LDAP_TEST=$(grep _NGINX_LDAP ${_barCnf} 2>&1)
     if [[ ! "${_NGINX_LDAP_TEST}" =~ "_NGINX_LDAP" ]]; then
-      echo "_NGINX_LDAP=${_NGINX_LDAP}" >> ${barCnf}
+      echo "_NGINX_LDAP=${_NGINX_LDAP}" >> ${_barCnf}
     fi
 
-    _NGINX_NAXSI_TEST=$(grep _NGINX_NAXSI ${barCnf} 2>&1)
+    _NGINX_NAXSI_TEST=$(grep _NGINX_NAXSI ${_barCnf} 2>&1)
     if [[ ! "${_NGINX_NAXSI_TEST}" =~ "_NGINX_NAXSI" ]]; then
-      echo "_NGINX_NAXSI=${_NGINX_NAXSI}" >> ${barCnf}
+      echo "_NGINX_NAXSI=${_NGINX_NAXSI}" >> ${_barCnf}
     fi
 
-    _NGINX_SPDY_TEST=$(grep _NGINX_SPDY ${barCnf} 2>&1)
+    _NGINX_SPDY_TEST=$(grep _NGINX_SPDY ${_barCnf} 2>&1)
     if [[ ! "${_NGINX_SPDY_TEST}" =~ "_NGINX_SPDY" ]]; then
-      echo "_NGINX_SPDY=${_NGINX_SPDY}" >> ${barCnf}
+      echo "_NGINX_SPDY=${_NGINX_SPDY}" >> ${_barCnf}
     fi
 
-    _NGINX_FORWARD_SECRECY_TEST=$(grep _NGINX_FORWARD_SECRECY ${barCnf} 2>&1)
+    _NGINX_FORWARD_SECRECY_TEST=$(grep _NGINX_FORWARD_SECRECY ${_barCnf} 2>&1)
     if [[ ! "${_NGINX_FORWARD_SECRECY_TEST}" =~ "_NGINX_FORWARD_SECRECY" ]]; then
-      echo "_NGINX_FORWARD_SECRECY=${_NGINX_FORWARD_SECRECY}" >> ${barCnf}
+      echo "_NGINX_FORWARD_SECRECY=${_NGINX_FORWARD_SECRECY}" >> ${_barCnf}
     fi
 
-    _PHP_IONCUBE_TEST=$(grep _PHP_IONCUBE ${barCnf} 2>&1)
+    _PHP_IONCUBE_TEST=$(grep _PHP_IONCUBE ${_barCnf} 2>&1)
     if [[ ! "${_PHP_IONCUBE_TEST}" =~ "_PHP_IONCUBE" ]]; then
-      echo "_PHP_IONCUBE=${_PHP_IONCUBE}" >> ${barCnf}
+      echo "_PHP_IONCUBE=${_PHP_IONCUBE}" >> ${_barCnf}
     fi
 
-    _PHP_GEOS_TEST=$(grep _PHP_GEOS ${barCnf} 2>&1)
+    _PHP_GEOS_TEST=$(grep _PHP_GEOS ${_barCnf} 2>&1)
     if [[ ! "${_PHP_GEOS_TEST}" =~ "_PHP_GEOS" ]]; then
-      echo "_PHP_GEOS=${_PHP_GEOS}" >> ${barCnf}
+      echo "_PHP_GEOS=${_PHP_GEOS}" >> ${_barCnf}
     fi
 
-    _PHP_MONGODB_TEST=$(grep _PHP_MONGODB ${barCnf} 2>&1)
+    _PHP_MONGODB_TEST=$(grep _PHP_MONGODB ${_barCnf} 2>&1)
     if [[ ! "${_PHP_MONGODB_TEST}" =~ "_PHP_MONGODB" ]]; then
-      echo "_PHP_MONGODB=${_PHP_MONGODB}" >> ${barCnf}
+      echo "_PHP_MONGODB=${_PHP_MONGODB}" >> ${_barCnf}
     fi
 
-    _PERMISSIONS_FIX_TEST=$(grep _PERMISSIONS_FIX ${barCnf} 2>&1)
+    _PERMISSIONS_FIX_TEST=$(grep _PERMISSIONS_FIX ${_barCnf} 2>&1)
     if [[ ! "${_PERMISSIONS_FIX_TEST}" =~ "_PERMISSIONS_FIX" ]]; then
-      echo "_PERMISSIONS_FIX=${_PERMISSIONS_FIX}" >> ${barCnf}
+      echo "_PERMISSIONS_FIX=${_PERMISSIONS_FIX}" >> ${_barCnf}
     fi
 
-    _MODULES_FIX_TEST=$(grep _MODULES_FIX ${barCnf} 2>&1)
+    _MODULES_FIX_TEST=$(grep _MODULES_FIX ${_barCnf} 2>&1)
     if [[ ! "${_MODULES_FIX_TEST}" =~ "_MODULES_FIX" ]]; then
-      echo "_MODULES_FIX=${_MODULES_FIX}" >> ${barCnf}
+      echo "_MODULES_FIX=${_MODULES_FIX}" >> ${_barCnf}
     fi
 
-    _MODULES_SKIP_TEST=$(grep _MODULES_SKIP ${barCnf} 2>&1)
+    _MODULES_SKIP_TEST=$(grep _MODULES_SKIP ${_barCnf} 2>&1)
     if [[ ! "${_MODULES_SKIP_TEST}" =~ "_MODULES_SKIP" ]]; then
-      echo "_MODULES_SKIP=\"${_MODULES_SKIP}\"" >> ${barCnf}
+      echo "_MODULES_SKIP=\"${_MODULES_SKIP}\"" >> ${_barCnf}
     fi
 
-    _SSH_FROM_SOURCES_TEST=$(grep _SSH_FROM_SOURCES ${barCnf} 2>&1)
+    _SSH_FROM_SOURCES_TEST=$(grep _SSH_FROM_SOURCES ${_barCnf} 2>&1)
     if [[ ! "${_SSH_FROM_SOURCES_TEST}" =~ "_SSH_FROM_SOURCES" ]]; then
-      echo "_SSH_FROM_SOURCES=${_SSH_FROM_SOURCES}" >> ${barCnf}
+      echo "_SSH_FROM_SOURCES=${_SSH_FROM_SOURCES}" >> ${_barCnf}
     fi
 
-    _SSH_ARMOUR_TEST=$(grep _SSH_ARMOUR ${barCnf} 2>&1)
+    _SSH_ARMOUR_TEST=$(grep _SSH_ARMOUR ${_barCnf} 2>&1)
     if [[ ! "${_SSH_ARMOUR_TEST}" =~ "_SSH_ARMOUR" ]]; then
-      echo "_SSH_ARMOUR=${_SSH_ARMOUR}" >> ${barCnf}
+      echo "_SSH_ARMOUR=${_SSH_ARMOUR}" >> ${_barCnf}
     fi
 
-    _MAGICK_FROM_SOURCES_TEST=$(grep _MAGICK_FROM_SOURCES ${barCnf} 2>&1)
+    _MAGICK_FROM_SOURCES_TEST=$(grep _MAGICK_FROM_SOURCES ${_barCnf} 2>&1)
     if [[ ! "${_MAGICK_FROM_SOURCES_TEST}" =~ "_MAGICK_FROM_SOURCES" ]]; then
-      echo "_MAGICK_FROM_SOURCES=${_MAGICK_FROM_SOURCES}" >> ${barCnf}
+      echo "_MAGICK_FROM_SOURCES=${_MAGICK_FROM_SOURCES}" >> ${_barCnf}
     fi
 
-    _RESERVED_RAM_TEST=$(grep _RESERVED_RAM ${barCnf} 2>&1)
+    _RESERVED_RAM_TEST=$(grep _RESERVED_RAM ${_barCnf} 2>&1)
     if [[ ! "${_RESERVED_RAM_TEST}" =~ "_RESERVED_RAM" ]]; then
-      echo "_RESERVED_RAM=${_RESERVED_RAM}" >> ${barCnf}
+      echo "_RESERVED_RAM=${_RESERVED_RAM}" >> ${_barCnf}
     fi
 
-    _STRICT_BIN_PERMISSIONS_TEST=$(grep _STRICT_BIN_PERMISSIONS ${barCnf} 2>&1)
+    _STRICT_BIN_PERMISSIONS_TEST=$(grep _STRICT_BIN_PERMISSIONS ${_barCnf} 2>&1)
     if [[ ! "${_STRICT_BIN_PERMISSIONS_TEST}" =~ "_STRICT_BIN_PERMISSIONS" ]]; then
-      echo "_STRICT_BIN_PERMISSIONS=${_STRICT_BIN_PERMISSIONS}" >> ${barCnf}
+      echo "_STRICT_BIN_PERMISSIONS=${_STRICT_BIN_PERMISSIONS}" >> ${_barCnf}
     fi
 
-    _DB_SERIES_TEST=$(grep _DB_SERIES ${barCnf} 2>&1)
+    _DB_SERIES_TEST=$(grep _DB_SERIES ${_barCnf} 2>&1)
     if [[ ! "${_DB_SERIES_TEST}" =~ "_DB_SERIES" ]]; then
-      echo "_DB_SERIES=${_DB_SERIES}" >> ${barCnf}
+      echo "_DB_SERIES=${_DB_SERIES}" >> ${_barCnf}
     fi
 
     if [ -e "/etc/init.d/tomcat" ]; then
-      echo "_TOMCAT_TO_JETTY=YES" >> ${barCnf}
+      echo "_TOMCAT_TO_JETTY=YES" >> ${_barCnf}
     fi
 
     sleep 1
     _CHECK_HOST=$(uname -n 2>&1)
     ### Force HTTP/2 or SPDY plus PFS on supported systems
-    sed -i "s/^_NGINX_SPDY=.*/_NGINX_SPDY=YES/g"                 ${barCnf}
+    sed -i "s/^_NGINX_SPDY=.*/_NGINX_SPDY=YES/g"                 ${_barCnf}
     wait
-    sed -i "s/^_NGINX_FORWARD.*/_NGINX_FORWARD_SECRECY=YES/g"    ${barCnf}
+    sed -i "s/^_NGINX_FORWARD.*/_NGINX_FORWARD_SECRECY=YES/g"    ${_barCnf}
     wait
     ### Force ImageMagick from packages
-    sed -i "s/^_MAGICK_FROM_S.*/_MAGICK_FROM_SOURCES=NO/g"       ${barCnf}
+    sed -i "s/^_MAGICK_FROM_S.*/_MAGICK_FROM_SOURCES=NO/g"       ${_barCnf}
     wait
     ### Force latest OpenSSH from sources on supported systems
-    sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"     ${barCnf}
+    sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"     ${_barCnf}
     wait
 
     devM="deb.devuan.org"
     debM="deb.debian.org"
 
-    sed -i "s/^_LOCAL_DEVUAN_.*/_LOCAL_DEVUAN_MIRROR=${devM}/g"  ${barCnf}
+    sed -i "s/^_LOCAL_DEVUAN_.*/_LOCAL_DEVUAN_MIRROR=${devM}/g"  ${_barCnf}
     wait
-    sed -i "s/^_LOCAL_DEBIAN_.*/_LOCAL_DEBIAN_MIRROR=${debM}/g"  ${barCnf}
+    sed -i "s/^_LOCAL_DEBIAN_.*/_LOCAL_DEBIAN_MIRROR=${debM}/g"  ${_barCnf}
     wait
 
-    sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                   ${barCnf}
+    sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                   ${_barCnf}
     wait
-    sed -i "s/^_FORCE_GIT_.*/_FORCE_GIT_MIRROR=\"\"/g"           ${barCnf}
+    sed -i "s/^_FORCE_GIT_.*/_FORCE_GIT_MIRROR=\"\"/g"           ${_barCnf}
     wait
-    sed -i "s/^_STRICT_BIN_.*/_STRICT_BIN_PERMISSIONS=YES/g"     ${barCnf}
+    sed -i "s/^_STRICT_BIN_.*/_STRICT_BIN_PERMISSIONS=YES/g"     ${_barCnf}
     wait
-    sed -i "s/^_STRONG_PASS.*/_STRONG_PASSWORDS=YES/g"           ${barCnf}
+    sed -i "s/^_STRONG_PASS.*/_STRONG_PASSWORDS=YES/g"           ${_barCnf}
     wait
-    sed -i "s/^_PERMISSIONS_.*/_PERMISSIONS_FIX=YES/g"           ${barCnf}
+    sed -i "s/^_PERMISSIONS_.*/_PERMISSIONS_FIX=YES/g"           ${_barCnf}
     wait
     sed -i "s/^_FORCE_GIT_.*/_FORCE_GIT_MIRROR=\"\"/g" /root/.*.octopus.cnf &> /dev/null
     wait
     sed -i "s/^_STRONG_PASS.*/_STRONG_PASSWORDS=YES/g" /root/.*.octopus.cnf &> /dev/null
     wait
-    sed -i "s/^_REDIS_LISTEN_.*/_REDIS_LISTEN_MODE=SOCKET/g"     ${barCnf}
+    sed -i "s/^_REDIS_LISTEN_.*/_REDIS_LISTEN_MODE=SOCKET/g"     ${_barCnf}
     wait
     if [ "${_OS_CODE}" = "stretch" ] || [ "${_OS_CODE}" = "jessie" ]; then
       if [ -x "/opt/php74/bin/php" ]; then
@@ -2364,53 +2364,53 @@ barracuda_cnf() {
       fCli=8.3
     fi
     if [ -z "${_PHP_SINGLE_INSTALL}" ]; then
-      sed -i "s/^_PHP_CLI_VERSION=5.6/_PHP_CLI_VERSION=${fCli}/g"    ${barCnf}
+      sed -i "s/^_PHP_CLI_VERSION=5.6/_PHP_CLI_VERSION=${fCli}/g"    ${_barCnf}
       wait
-      sed -i "s/^_PHP_FPM_VERSION=5.6/_PHP_FPM_VERSION=${fCli}/g"    ${barCnf}
+      sed -i "s/^_PHP_FPM_VERSION=5.6/_PHP_FPM_VERSION=${fCli}/g"    ${_barCnf}
       wait
-      sed -i "s/^_PHP_CLI_VERSION=7.0/_PHP_CLI_VERSION=${fCli}/g"    ${barCnf}
+      sed -i "s/^_PHP_CLI_VERSION=7.0/_PHP_CLI_VERSION=${fCli}/g"    ${_barCnf}
       wait
-      sed -i "s/^_PHP_FPM_VERSION=7.0/_PHP_FPM_VERSION=${fCli}/g"    ${barCnf}
+      sed -i "s/^_PHP_FPM_VERSION=7.0/_PHP_FPM_VERSION=${fCli}/g"    ${_barCnf}
       wait
-      sed -i "s/^_PHP_CLI_VERSION=7.1/_PHP_CLI_VERSION=${fCli}/g"    ${barCnf}
+      sed -i "s/^_PHP_CLI_VERSION=7.1/_PHP_CLI_VERSION=${fCli}/g"    ${_barCnf}
       wait
-      sed -i "s/^_PHP_FPM_VERSION=7.1/_PHP_FPM_VERSION=${fCli}/g"    ${barCnf}
+      sed -i "s/^_PHP_FPM_VERSION=7.1/_PHP_FPM_VERSION=${fCli}/g"    ${_barCnf}
       wait
-      sed -i "s/^_PHP_CLI_VERSION=7.2/_PHP_CLI_VERSION=${fCli}/g"    ${barCnf}
+      sed -i "s/^_PHP_CLI_VERSION=7.2/_PHP_CLI_VERSION=${fCli}/g"    ${_barCnf}
       wait
-      sed -i "s/^_PHP_FPM_VERSION=7.2/_PHP_FPM_VERSION=${fCli}/g"    ${barCnf}
+      sed -i "s/^_PHP_FPM_VERSION=7.2/_PHP_FPM_VERSION=${fCli}/g"    ${_barCnf}
       wait
-      sed -i "s/^_PHP_CLI_VERSION=7.3/_PHP_CLI_VERSION=${fCli}/g"    ${barCnf}
+      sed -i "s/^_PHP_CLI_VERSION=7.3/_PHP_CLI_VERSION=${fCli}/g"    ${_barCnf}
       wait
-      sed -i "s/^_PHP_FPM_VERSION=7.3/_PHP_FPM_VERSION=${fCli}/g"    ${barCnf}
+      sed -i "s/^_PHP_FPM_VERSION=7.3/_PHP_FPM_VERSION=${fCli}/g"    ${_barCnf}
       wait
-      sed -i "s/^_PHP_CLI_VERSION=7.4/_PHP_CLI_VERSION=${fCli}/g"    ${barCnf}
+      sed -i "s/^_PHP_CLI_VERSION=7.4/_PHP_CLI_VERSION=${fCli}/g"    ${_barCnf}
       wait
-      sed -i "s/^_PHP_FPM_VERSION=7.4/_PHP_FPM_VERSION=${fCli}/g"    ${barCnf}
+      sed -i "s/^_PHP_FPM_VERSION=7.4/_PHP_FPM_VERSION=${fCli}/g"    ${_barCnf}
       wait
-      sed -i "s/^_PHP_CLI_VERSION=8.0/_PHP_CLI_VERSION=${fCli}/g"    ${barCnf}
+      sed -i "s/^_PHP_CLI_VERSION=8.0/_PHP_CLI_VERSION=${fCli}/g"    ${_barCnf}
       wait
-      sed -i "s/^_PHP_FPM_VERSION=8.0/_PHP_FPM_VERSION=${fCli}/g"    ${barCnf}
-      wait
-    fi
-
-    if_hosted_sys
-    if [ "${hostedSys}" = "YES" ]; then
-      sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"notify\@omega8.cc\"/g" ${barCnf}
+      sed -i "s/^_PHP_FPM_VERSION=8.0/_PHP_FPM_VERSION=${fCli}/g"    ${_barCnf}
       wait
     fi
 
-    sed -i "/^$/d" ${barCnf}
+    _if_hosted_sys
+    if [ "${_hostedSys}" = "YES" ]; then
+      sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"notify\@omega8.cc\"/g" ${_barCnf}
+      wait
+    fi
+
+    sed -i "/^$/d" ${_barCnf}
     wait
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       echo " "
       while read line; do
         echo "$line"
-      done < ${barCnf}
+      done < ${_barCnf}
       echo " "
     fi
-    if [ -e "${barCnf}" ]; then
-      source ${barCnf}
+    if [ -e "${_barCnf}" ]; then
+      source ${_barCnf}
     fi
 
     if [ "${_DB_SERVER}" = "Percona" ]; then
@@ -2430,19 +2430,19 @@ barracuda_cnf() {
       _DB_SERVER=Percona
       _DB_SERIES=5.7
       _DBS_VRN="${_PERCONA_5_7_VRN}"
-      if [ -e "${barCnf}" ]; then
-        sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g" ${barCnf}
-        sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g" ${barCnf}
+      if [ -e "${_barCnf}" ]; then
+        sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g" ${_barCnf}
+        sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g" ${_barCnf}
       fi
     fi
 
     _CHECK_HOST=$(uname -n 2>&1)
     if [[ "${_MY_EMAIL}" =~ "omega8.cc" ]]; then
-      if_hosted_sys
-      if [ "${hostedSys}" != "YES" ]; then
-        msg "EXIT: Invalid email address defined in the _MY_EMAIL variable"
-        msg "EXIT: Bye (2)"
-        clean_pid_exit barracuda_cnf_b
+      _if_hosted_sys
+      if [ "${_hostedSys}" != "YES" ]; then
+        _msg "EXIT: Invalid email address defined in the _MY_EMAIL variable"
+        _msg "EXIT: Bye (2)"
+        _clean_pid_exit _barracuda_cnf_b
       fi
     fi
 
@@ -2455,11 +2455,11 @@ barracuda_cnf() {
         _PHP_MULTI_INSTALL=${_PHP_SINGLE_INSTALL}
         _PHP_CLI_VERSION=${_PHP_SINGLE_INSTALL}
         _PHP_FPM_VERSION=${_PHP_SINGLE_INSTALL}
-        sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=${_PHP_SINGLE_INSTALL}/g" ${barCnf}
+        sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=${_PHP_SINGLE_INSTALL}/g" ${_barCnf}
         wait
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${_PHP_SINGLE_INSTALL}/g"     ${barCnf}
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${_PHP_SINGLE_INSTALL}/g"     ${_barCnf}
         wait
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${_PHP_SINGLE_INSTALL}/g"     ${barCnf}
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${_PHP_SINGLE_INSTALL}/g"     ${_barCnf}
         wait
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${_PHP_SINGLE_INSTALL}/g" /root/.*.octopus.cnf &> /dev/null
         wait
@@ -2469,37 +2469,37 @@ barracuda_cnf() {
           for Ctrl in `find /data/disk/*/log -maxdepth 0 -mindepth 0 | sort`; do
             echo ${_PHP_SINGLE_INSTALL} > $Ctrl/fpm.txt
             echo ${_PHP_SINGLE_INSTALL} > $Ctrl/cli.txt
-            ### msg "INFO: Forced PHP ${_PHP_SINGLE_INSTALL} in $Ctrl"
+            ### _msg "INFO: Forced PHP ${_PHP_SINGLE_INSTALL} in $Ctrl"
           done
           for Ctrl in `find /data/disk/*/static/control \
             -maxdepth 0 -mindepth 0 | sort`; do
             echo ${_PHP_SINGLE_INSTALL} > $Ctrl/fpm.info
             echo ${_PHP_SINGLE_INSTALL} > $Ctrl/cli.info
-            ### msg "INFO: Forced PHP ${_PHP_SINGLE_INSTALL} in $Ctrl"
+            ### _msg "INFO: Forced PHP ${_PHP_SINGLE_INSTALL} in $Ctrl"
           done
           for Ctrl in `find /data/disk/*/.drush \
             -maxdepth 0 -mindepth 0 | sort`; do
             rm -f $Ctrl/.ctrl.php*
-            ### msg "INFO: Forced PHP ${_PHP_SINGLE_INSTALL} in $Ctrl"
+            ### _msg "INFO: Forced PHP ${_PHP_SINGLE_INSTALL} in $Ctrl"
           done
         fi
       fi
     fi
 
     if [ "${_STATUS}" = "INIT" ]; then
-      if prompt_yes_no "Do you want to proceed with the install?" ; then
+      if _prompt_yes_no "Do you want to proceed with the install?" ; then
         true
       else
         echo "Installation aborted by you"
-        clean_pid_exit barracuda_cnf_c
+        _clean_pid_exit _barracuda_cnf_c
       fi
     else
       echo " "
-      if prompt_yes_no "Do you want to proceed with the upgrade?" ; then
+      if _prompt_yes_no "Do you want to proceed with the upgrade?" ; then
         true
       else
         echo "Upgrade aborted by you"
-        clean_pid_exit barracuda_cnf_d
+        _clean_pid_exit _barracuda_cnf_d
       fi
     fi
   fi
@@ -2507,12 +2507,12 @@ barracuda_cnf() {
 
 #
 # Install MyTop.
-mytop_install() {
+_mytop_install() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: mytop_install"
+    _msg "PROC: _mytop_install"
   fi
   if [ -e "/usr/bin/mytop" ]; then
-    mrun "apt-get remove mytop -y -qq" 2> /dev/null
+    _mrun "apt-get remove mytop -y -qq" 2> /dev/null
     rm -f /usr/bin/mytop
   fi
   _MYTOP_REINSTALL=NO
@@ -2524,26 +2524,26 @@ mytop_install() {
   fi
   if [ -e "/usr/bin/mysql" ]; then
     if [ ! -e "/usr/local/bin/mytop" ] || [ "${_MYTOP_REINSTALL}" = "YES" ]; then
-      msg "INFO: Building MyTop from sources..."
-      check_mysql_version
-      apt_clean_update
-      mrun "${_INSTAPP} libperl-dev" 2> /dev/null
-      mrun "${_INSTAPP} cpanminus" 2> /dev/null
+      _msg "INFO: Building MyTop from sources..."
+      _check_mysql_version
+      _apt_clean_update
+      _mrun "${_INSTAPP} libperl-dev" 2> /dev/null
+      _mrun "${_INSTAPP} cpanminus" 2> /dev/null
       if [ "${_DB_V}" != "5.7" ] || [ "${_SQL_UPGRADE}" = "YES" ]; then
-        mrun "cpanm DBD::mysql" 2> /dev/null
-        mrun "cpanm DBI" 2> /dev/null
-        mrun "cpanm Term::ReadKey" 2> /dev/null
+        _mrun "cpanm DBD::mysql" 2> /dev/null
+        _mrun "cpanm DBI" 2> /dev/null
+        _mrun "cpanm Term::ReadKey" 2> /dev/null
       else
-        mrun "cpanm DBD::mysql@4.050" 2> /dev/null
-        mrun "cpanm Term::ReadKey" 2> /dev/null
+        _mrun "cpanm DBD::mysql@4.050" 2> /dev/null
+        _mrun "cpanm Term::ReadKey" 2> /dev/null
       fi
       cd /var/opt
       rm -rf git*
-      get_dev_src "mytop-1.6.tar.gz"
+      _get_dev_src "mytop-1.6.tar.gz"
       cd /var/opt/mytop-1.6
-      mrun "perl Makefile.PL" 2> /dev/null
-      mrun "make -j $(nproc) --quiet" 2> /dev/null
-      mrun "make --quiet install" 2> /dev/null
+      _mrun "perl Makefile.PL" 2> /dev/null
+      _mrun "make -j $(nproc) --quiet" 2> /dev/null
+      _mrun "make --quiet install" 2> /dev/null
       ldconfig 2> /dev/null
     fi
   fi
@@ -2551,30 +2551,30 @@ mytop_install() {
 
 #
 # Running apt-get full-dist-upgrade.
-run_apt_get_dist_upgrade() {
+_run_apt_get_dist_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: run_apt_get_dist_upgrade"
+    _msg "PROC: _run_apt_get_dist_upgrade"
   fi
-  msg "INFO: Running apt-get upgrade..."
-  apt_clean_update_no_releaseinfo_change
-  mrun "apt-get upgrade ${dstUpArg}" 2> /dev/null
+  _msg "INFO: Running apt-get upgrade..."
+  _apt_clean_update_no_releaseinfo_change
+  _mrun "apt-get upgrade ${_dstUpArg}" 2> /dev/null
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "INFO: Running apt-get dist-upgrade..."
+    _msg "INFO: Running apt-get dist-upgrade..."
   fi
-  mrun "apt-get dist-upgrade ${dstUpArg}" 2> /dev/null
+  _mrun "apt-get dist-upgrade ${_dstUpArg}" 2> /dev/null
   [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
-  mrun "apt-get dist-upgrade -y --allow-unauthenticated" 2> /dev/null
+  _mrun "apt-get dist-upgrade -y --allow-unauthenticated" 2> /dev/null
   [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
-  mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
+  _mrun "apt-get install lsb-release ${_dstUpArg}" 2> /dev/null
   ### Update rsyslog configuration early
-  rsyslog_config_update
+  _rsyslog_config_update
   ### Reload key services if needed early
-  mrun "service redis-server reload" 2> /dev/null
-  mrun "service nginx reload" 2> /dev/null
+  _mrun "service redis-server reload" 2> /dev/null
+  _mrun "service nginx reload" 2> /dev/null
   _PHP_V="83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
-      mrun "service php${e}-fpm reload" 2> /dev/null
+      _mrun "service php${e}-fpm reload" 2> /dev/null
     fi
   done
   if [ ! -e "/var/xdrago/log" ] && [ -e "/var/xdrago_wait/log" ]; then
@@ -2586,34 +2586,34 @@ run_apt_get_dist_upgrade() {
 
 #
 # Run aptitude full-upgrade.
-run_aptitude_full_upgrade() {
+_run_aptitude_full_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: run_aptitude_full_upgrade"
+    _msg "PROC: _run_aptitude_full_upgrade"
   fi
-  msg "INFO: Running aptitude full-upgrade..."
+  _msg "INFO: Running aptitude full-upgrade..."
   ###
   ### Make sure that percona-release package is locked in apt early.
   if [ ! -e "/etc/apt/preferences.d/percona-release" ]; then
     echo -e 'Package: percona-release\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/percona-release
-    apt_clean_update
+    _apt_clean_update
   fi
   ###
   _PERC_GET_DPKG=$(dpkg --get-selections | grep percona-release | grep 'hold$' 2>&1)
   if [[ ! "${_PERC_GET_DPKG}" =~ "hold" ]]; then
     aptitude hold percona-release &> /dev/null
     echo "percona-release hold" | dpkg --set-selections &> /dev/null
-    apt_clean_update
+    _apt_clean_update
   fi
-  mrun "apt-get remove percona-release -y -qq" 2> /dev/null
-  apt_clean_update
+  _mrun "apt-get remove percona-release -y -qq" 2> /dev/null
+  _apt_clean_update
   if [ -e "/var/aegir/drush" ]; then
     _DPKG_CNF="confold"
   else
     _DPKG_CNF="confnew"
   fi
-  st_runner "apt-get --fix-broken install -y" 2> /dev/null
-  st_runner "dpkg --configure --force-all -a" 2> /dev/null
-  st_runner "aptitude full-upgrade -f -y -q \
+  _st_runner "apt-get --fix-broken install -y" 2> /dev/null
+  _st_runner "dpkg --configure --force-all -a" 2> /dev/null
+  _st_runner "aptitude full-upgrade -f -y -q \
     --allow-untrusted \
     -o Dpkg::Options::=--force-confmiss \
     -o Dpkg::Options::=--force-confdef \
@@ -2622,30 +2622,30 @@ run_aptitude_full_upgrade() {
 
 #
 # Install latest Git.
-do_install_latest_git() {
+_do_install_latest_git() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: do_install_latest_git"
+    _msg "PROC: _do_install_latest_git"
   fi
   if [ "${_GIT_INSTALL}" = "YES" ]; then
-    msg "INFO: Building Git ${_GIT_VRN} from sources..."
-    msg "WAIT: This may take a while, please wait..."
+    _msg "INFO: Building Git ${_GIT_VRN} from sources..."
+    _msg "WAIT: This may take a while, please wait..."
     if [ ! -x "/usr/local/bin/git" ]; then
-      apt_clean_update
-      mrun "apt-get install libcurl4 -y --allow-unauthenticated" 2> /dev/null
-      mrun "apt-get install libcurl4-openssl-dev -y --allow-unauthenticated" 2> /dev/null
-      mrun "apt-get install libcurl4-gnutls-dev -y --allow-unauthenticated" 2> /dev/null
-      mrun "apt-get remove git-core -y --purge --auto-remove" 2> /dev/null
-      mrun "apt-get remove git -y --purge --auto-remove" 2> /dev/null
+      _apt_clean_update
+      _mrun "apt-get install libcurl4 -y --allow-unauthenticated" 2> /dev/null
+      _mrun "apt-get install libcurl4-openssl-dev -y --allow-unauthenticated" 2> /dev/null
+      _mrun "apt-get install libcurl4-gnutls-dev -y --allow-unauthenticated" 2> /dev/null
+      _mrun "apt-get remove git-core -y --purge --auto-remove" 2> /dev/null
+      _mrun "apt-get remove git -y --purge --auto-remove" 2> /dev/null
     fi
     mkdir -p /var/opt
     rm -rf /var/opt/git*
     cd /var/opt
-    get_dev_src "git-${_GIT_VRN}.tar.gz"
+    _get_dev_src "git-${_GIT_VRN}.tar.gz"
     cd /var/opt/git-${_GIT_VRN}
-    mrun "make configure" 2> /dev/null
-    mrun "bash ./configure --without-tcltk" 2> /dev/null
-    mrun "make all -j $(nproc)" 2> /dev/null
-    mrun "make install" 2> /dev/null
+    _mrun "make configure" 2> /dev/null
+    _mrun "bash ./configure --without-tcltk" 2> /dev/null
+    _mrun "make all -j $(nproc)" 2> /dev/null
+    _mrun "make install" 2> /dev/null
     ldconfig 2> /dev/null
     if [ -x "/usr/local/bin/git" ]; then
       if [ -e "/usr/bin/git" ] && [ ! -L "/usr/bin/git" ]; then
@@ -2654,22 +2654,22 @@ do_install_latest_git() {
       ln -sfn /usr/local/bin/git /usr/bin/git
     fi
     cd /var/opt
-    touch ${pthLog}/git-${_GIT_VRN}-${_X_SE}-${_X_VERSION}-${_NOW}.log
+    touch ${_pthLog}/git-${_GIT_VRN}-${_xSrl}-${_X_VERSION}-${_NOW}.log
     echo "git hold" | dpkg --set-selections &> /dev/null
     echo "git-core hold" | dpkg --set-selections &> /dev/null
     echo "git-man hold" | dpkg --set-selections &> /dev/null
   else
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "INFO: Git ${_GIT_V} already installed from sources ${_GIT_VRN}, OK"
+      _msg "INFO: Git ${_GIT_V} already installed from sources ${_GIT_VRN}, OK"
     fi
   fi
 }
 
 #
 # Check if latest Git should be installed.
-if_install_git_src() {
+_if_install_git_src() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: if_install_git_src"
+    _msg "PROC: _if_install_git_src"
   fi
   _GIT_INSTALL=NO
   _GIT_V=$(git --version 2>&1 \
@@ -2682,15 +2682,15 @@ if_install_git_src() {
   fi
   if [ "${_GIT_INSTALL}" = "YES" ] \
     || [ "${_GIT_FORCE_REINSTALL}" = "YES" ]; then
-    do_install_latest_git
+    _do_install_latest_git
   fi
 }
 
 #
 # Check apt-get updates.
-check_apt_updates() {
+_check_apt_updates() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: check_apt_updates"
+    _msg "PROC: _check_apt_updates"
   fi
   for Update in `/usr/bin/apt-get -q -y --allow-unauthenticated \
     -s dist-upgrade | grep ^Inst | cut -d\  -f2 | sort`; do
@@ -2710,9 +2710,9 @@ check_apt_updates() {
 
 #
 # Install modern ICU from sources.
-install_icu_modern() {
+_install_icu_modern() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: install_icu_modern"
+    _msg "PROC: _install_icu_modern"
   fi
   ###--------------------###
   if [ -e "/usr/lib/x86_64-linux-gnu/.old_icu" ]; then
@@ -2723,13 +2723,13 @@ install_icu_modern() {
     rm -rf /var/backups/.legacy_icu
     mv -f /usr/lib/x86_64-linux-gnu/.legacy_icu /var/backups/.legacy_icu
   fi
-  if [ ! -e "${pthLog}" ] && [ -e "/var/xdrago_wait/log" ]; then
-    pthLog="/var/xdrago_wait/log"
+  if [ ! -e "${_pthLog}" ] && [ -e "/var/xdrago_wait/log" ]; then
+    _pthLog="/var/xdrago_wait/log"
   fi
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
-  if [ -e "${pthLog}" ]; then
-    pthIcuLog="${pthLog}/icu-update-${_ICU_MODERN_VRN}-for-${_OS_CODE}.log"
-    pthIcuLcy="${pthLog}/icu-update-${_ICU_MODERN_VRN}.log"
+  if [ -e "${_pthLog}" ]; then
+    pthIcuLog="${_pthLog}/icu-update-${_ICU_MODERN_VRN}-for-${_OS_CODE}.log"
+    pthIcuLcy="${_pthLog}/icu-update-${_ICU_MODERN_VRN}.log"
   else
     pthIcuLog="/root/.icu-update-${_ICU_MODERN_VRN}-for-${_OS_CODE}.log"
     pthIcuLcy="/root/.icu-update-${_ICU_MODERN_VRN}.log"
@@ -2747,17 +2747,17 @@ install_icu_modern() {
   fi
   if [ ! -e "/usr/local/lib/icu/current" ] \
     || [ ! -e "${pthIcuLog}" ]; then
-    msg "INFO: Installing ICU libs version ${_ICU_MODERN_VRN}..."
-    msg "WAIT: This may take a while, please wait..."
+    _msg "INFO: Installing ICU libs version ${_ICU_MODERN_VRN}..."
+    _msg "WAIT: This may take a while, please wait..."
     if [ ! -e "/var/opt/icu-release-${_ICU_MODERN_VRN}/icu4c/source" ]; then
       cd /var/opt
       rm -rf icu*
-      get_dev_src "icu-release-${_ICU_MODERN_VRN}.tar.gz"
+      _get_dev_src "icu-release-${_ICU_MODERN_VRN}.tar.gz"
     fi
     cd /var/opt/icu-release-${_ICU_MODERN_VRN}/icu4c/source
-    mrun "bash ./configure --prefix=/usr/local" 2> /dev/null
-    mrun "make -j $(nproc) --quiet" 2> /dev/null
-    mrun "make --quiet install" 2> /dev/null
+    _mrun "bash ./configure --prefix=/usr/local" 2> /dev/null
+    _mrun "make -j $(nproc) --quiet" 2> /dev/null
+    _mrun "make --quiet install" 2> /dev/null
     ldconfig 2> /dev/null
     if [ -e "/usr/local/lib/icu" ]; then
       touch ${pthIcuLog}
@@ -2779,18 +2779,18 @@ install_icu_modern() {
 
 #
 # Install ICU from sources for Jessie.
-install_icu_jessie() {
+_install_icu_jessie() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: install_icu_jessie"
+    _msg "PROC: _install_icu_jessie"
   fi
   ###--------------------###
-  if [ ! -e "${pthLog}" ] && [ -e "/var/xdrago_wait/log" ]; then
-    pthLog="/var/xdrago_wait/log"
+  if [ ! -e "${_pthLog}" ] && [ -e "/var/xdrago_wait/log" ]; then
+    _pthLog="/var/xdrago_wait/log"
   fi
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
-  if [ -e "${pthLog}" ]; then
-    pthIcuLog="${pthLog}/icu-update-${_ICU_LEGACY_VRN}-for-${_OS_CODE}.log"
-    pthIcuLcy="${pthLog}/icu-update-${_ICU_LEGACY_VRN}.log"
+  if [ -e "${_pthLog}" ]; then
+    pthIcuLog="${_pthLog}/icu-update-${_ICU_LEGACY_VRN}-for-${_OS_CODE}.log"
+    pthIcuLcy="${_pthLog}/icu-update-${_ICU_LEGACY_VRN}.log"
   else
     pthIcuLog="/root/.icu-update-${_ICU_LEGACY_VRN}-for-${_OS_CODE}.log"
     pthIcuLcy="/root/.icu-update-${_ICU_LEGACY_VRN}.log"
@@ -2808,17 +2808,17 @@ install_icu_jessie() {
   fi
   if [ ! -e "/usr/local/lib/icu/current" ] \
     || [ ! -e "${pthIcuLog}" ]; then
-    msg "INFO: Installing ICU libs version ${_ICU_LEGACY_VRN}..."
-    msg "WAIT: This may take a while, please wait..."
+    _msg "INFO: Installing ICU libs version ${_ICU_LEGACY_VRN}..."
+    _msg "WAIT: This may take a while, please wait..."
     if [ ! -e "/var/opt/icu/source" ]; then
       cd /var/opt
       rm -rf icu*
-      get_dev_src "icu4c-${_ICU_LEGACY_VRN}-src.tgz"
+      _get_dev_src "icu4c-${_ICU_LEGACY_VRN}-src.tgz"
     fi
     cd /var/opt/icu/source/
-    mrun "bash ./configure --prefix=/usr/local" 2> /dev/null
-    mrun "make -j $(nproc) --quiet" 2> /dev/null
-    mrun "make --quiet install" 2> /dev/null
+    _mrun "bash ./configure --prefix=/usr/local" 2> /dev/null
+    _mrun "make -j $(nproc) --quiet" 2> /dev/null
+    _mrun "make --quiet install" 2> /dev/null
     ldconfig 2> /dev/null
     if [ -e "/usr/local/lib/icu" ]; then
       touch ${pthIcuLog}
@@ -2840,58 +2840,58 @@ install_icu_jessie() {
 
 #
 # Install PHP deps.
-php_install_deps() {
+_php_install_deps() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: php_install_deps"
+    _msg "PROC: _php_install_deps"
   fi
   ###--------------------###
-  apt_clean_update
-  mrun "${_INSTAPP} cmake" 2> /dev/null
-  mrun "${_INSTAPP} lbzip2" 2> /dev/null
+  _apt_clean_update
+  _mrun "${_INSTAPP} cmake" 2> /dev/null
+  _mrun "${_INSTAPP} lbzip2" 2> /dev/null
   if [ ! -e "/usr/local/include/curl/curl.h" ] \
     && [ ! -e "/usr/local/include/curl/easy.h" ]; then
-    mrun "${_INSTAPP} libcurl4-openssl-dev" 2> /dev/null
+    _mrun "${_INSTAPP} libcurl4-openssl-dev" 2> /dev/null
   fi
-  mrun "${_INSTAPP} libgd-dev" 2> /dev/null
-  mrun "${_INSTAPP} libgd3" 2> /dev/null
-  mrun "${_INSTAPP} libjpeg-dev" 2> /dev/null
-  mrun "${_INSTAPP} libjpeg62" 2> /dev/null
-  mrun "${_INSTAPP} libkrb5-dev" 2> /dev/null
-  mrun "${_INSTAPP} liblzf-dev" 2> /dev/null
-  mrun "${_INSTAPP} libmagickwand-dev" 2> /dev/null
-  mrun "${_INSTAPP} libonig-dev" 2> /dev/null
-  mrun "${_INSTAPP} libsodium-dev" 2> /dev/null
-  mrun "${_INSTAPP} libwebp-dev" 2> /dev/null
-  mrun "${_INSTAPP} libxpm-dev" 2> /dev/null
-  mrun "${_INSTAPP} libzip-dev" 2> /dev/null
+  _mrun "${_INSTAPP} libgd-dev" 2> /dev/null
+  _mrun "${_INSTAPP} libgd3" 2> /dev/null
+  _mrun "${_INSTAPP} libjpeg-dev" 2> /dev/null
+  _mrun "${_INSTAPP} libjpeg62" 2> /dev/null
+  _mrun "${_INSTAPP} libkrb5-dev" 2> /dev/null
+  _mrun "${_INSTAPP} liblzf-dev" 2> /dev/null
+  _mrun "${_INSTAPP} libmagickwand-dev" 2> /dev/null
+  _mrun "${_INSTAPP} libonig-dev" 2> /dev/null
+  _mrun "${_INSTAPP} libsodium-dev" 2> /dev/null
+  _mrun "${_INSTAPP} libwebp-dev" 2> /dev/null
+  _mrun "${_INSTAPP} libxpm-dev" 2> /dev/null
+  _mrun "${_INSTAPP} libzip-dev" 2> /dev/null
   if [ "${_OS_CODE}" = "daedalus" ] \
     || [ "${_OS_CODE}" = "bookworm" ]; then
     if [ ! -e "/root/.rebuild_src_on_auto_before_reboot.info" ]; then
-      mrun "${_INSTAPP} libldap-common" 2> /dev/null
-      mrun "${_INSTAPP} libldap-dev" 2> /dev/null
-      mrun "${_INSTAPP} libldap2-dev" 2> /dev/null
+      _mrun "${_INSTAPP} libldap-common" 2> /dev/null
+      _mrun "${_INSTAPP} libldap-dev" 2> /dev/null
+      _mrun "${_INSTAPP} libldap2-dev" 2> /dev/null
     fi
   else
-    mrun "${_INSTAPP} libldap-common" 2> /dev/null
-    mrun "${_INSTAPP} libldap2-dev" 2> /dev/null
+    _mrun "${_INSTAPP} libldap-common" 2> /dev/null
+    _mrun "${_INSTAPP} libldap2-dev" 2> /dev/null
   fi
   if [ "${_OS_CODE}" = "jessie" ]; then
-    install_icu_jessie
+    _install_icu_jessie
   else
-    install_icu_modern
-    # mrun "${_INSTAPP} libicu-dev icu-devtools" 2> /dev/null
+    _install_icu_modern
+    # _mrun "${_INSTAPP} libicu-dev icu-devtools" 2> /dev/null
   fi
 }
 
 #
 # Install wkhtmltopdf and wkhtmltoimage.
-if_install_wkhtmltox() {
+_if_install_wkhtmltox() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: if_install_wkhtmltox"
+    _msg "PROC: _if_install_wkhtmltox"
   fi
   ###--------------------###
-  apt_clean_update
-  mrun "${_INSTAPP} fonts-thai-tlwg" 2> /dev/null
+  _apt_clean_update
+  _mrun "${_INSTAPP} fonts-thai-tlwg" 2> /dev/null
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   _X86_64_TEST=$(uname -m 2>&1)
   _WOX_IS=OLD
@@ -2938,11 +2938,11 @@ if_install_wkhtmltox() {
       || [ -L "/usr/bin/wkhtmltoimage" ] \
       || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: Installing wkhtmltox tools v.0.${_WKHTMLTOX_VRN}..."
+        _msg "INFO: Installing wkhtmltox tools v.0.${_WKHTMLTOX_VRN}..."
       fi
-      apt_clean_update
-      mrun "${_INSTAPP} xfonts-75dpi xfonts-base" 2> /dev/null
-      mrun "${_INSTAPP} wkhtmltopdf" 2> /dev/null
+      _apt_clean_update
+      _mrun "${_INSTAPP} xfonts-75dpi xfonts-base" 2> /dev/null
+      _mrun "${_INSTAPP} wkhtmltopdf" 2> /dev/null
     fi
   else
     if [ "${_WOX_IS}" = "OLD" ] \
@@ -2967,21 +2967,21 @@ if_install_wkhtmltox() {
       if [ "${_WKHTML_SYS_RV}" != "none" ] && [ "${_X86_64_TEST}" = "x86_64" ]; then
         SYSTEM_ARCH="x86_64"
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "INFO: Installing wkhtmltox tools v.0.${_WKHTMLTOX_VRN}..."
+          _msg "INFO: Installing wkhtmltox tools v.0.${_WKHTMLTOX_VRN}..."
         fi
         cd /var/opt
         rm -rf wkhtmltox*
         mkdir -p /var/opt/wkhtmltox
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          mrun "${_INSTAPP} xfonts-75dpi xfonts-base" 2> /dev/null
-          get_dev_src "wkhtmltox/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_WKHTML_SYS_RV}_amd64.deb.gz"
+          _mrun "${_INSTAPP} xfonts-75dpi xfonts-base" 2> /dev/null
+          _get_dev_src "wkhtmltox/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_WKHTML_SYS_RV}_amd64.deb.gz"
           dpkg -i "/var/opt/wkhtmltox/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_WKHTML_SYS_RV}_amd64.deb"
-          mrun "apt-get install -f -y" 2> /dev/null
+          _mrun "apt-get install -f -y" 2> /dev/null
         else
-          mrun "${_INSTAPP} xfonts-75dpi xfonts-base" 2> /dev/null
-          get_dev_src "wkhtmltox/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_WKHTML_SYS_RV}_amd64.deb.gz" 2> /dev/null
+          _mrun "${_INSTAPP} xfonts-75dpi xfonts-base" 2> /dev/null
+          _get_dev_src "wkhtmltox/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_WKHTML_SYS_RV}_amd64.deb.gz" 2> /dev/null
           dpkg -i "/var/opt/wkhtmltox/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_WKHTML_SYS_RV}_amd64.deb" 2> /dev/null
-          mrun "apt-get install -f -y" 2> /dev/null
+          _mrun "apt-get install -f -y" 2> /dev/null
         fi
       fi
       if [ -x "/usr/local/bin/wkhtmltopdf" ]; then
@@ -3000,8 +3000,8 @@ if_install_wkhtmltox() {
       fi
       if [ -x "/usr/local/bin/wkhtmltoimage" ] \
         && [ -x "/usr/local/bin/wkhtmltopdf" ]; then
-        touch ${pthLog}/wkhtmltox-${_WKHTMLTOX_VRN}-fix.log
-        msg "INFO: The wkhtmltox tools v.0.${_WKHTMLTOX_VRN} installation complete"
+        touch ${_pthLog}/wkhtmltox-${_WKHTMLTOX_VRN}-fix.log
+        _msg "INFO: The wkhtmltox tools v.0.${_WKHTMLTOX_VRN} installation complete"
       fi
       cd /var/opt
     fi
@@ -3024,35 +3024,35 @@ if_install_wkhtmltox() {
 
 #
 # Clean Drush 12.
-clean_drush_twelve() {
+_clean_drush_twelve() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: clean_drush_twelve"
+    _msg "PROC: _clean_drush_twelve"
   fi
   rm -f /usr/bin/drush12*
   ln -sfn /opt/tools/drush/12/drush/vendor/bin/drush /usr/bin/drush12
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "INFO: Drush ${_DRUSH_TWELVE_VRN} setup complete"
+    _msg "INFO: Drush ${_DRUSH_TWELVE_VRN} setup complete"
   fi
 }
 
 #
 # Clean Drush 11.
-clean_drush_eleven() {
+_clean_drush_eleven() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: clean_drush_eleven"
+    _msg "PROC: _clean_drush_eleven"
   fi
   rm -f /usr/bin/drush11*
   ln -sfn /opt/tools/drush/11/drush/vendor/bin/drush /usr/bin/drush11
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "INFO: Drush ${_DRUSH_ELEVEN_VRN} setup complete"
+    _msg "INFO: Drush ${_DRUSH_ELEVEN_VRN} setup complete"
   fi
 }
 
 #
 # Clean Drush 10.
-clean_drush_ten() {
+_clean_drush_ten() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: clean_drush_ten"
+    _msg "PROC: _clean_drush_ten"
   fi
   rm -f /usr/bin/drush10*
   rm -f /usr/local/bin/dcg
@@ -3064,15 +3064,15 @@ clean_drush_ten() {
   rm -f /usr/local/bin/var-dump-server
   ln -sfn /opt/tools/drush/10/drush/vendor/bin/drush /usr/bin/drush10
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "INFO: Drush ${_DRUSH_TEN_VRN} setup complete"
+    _msg "INFO: Drush ${_DRUSH_TEN_VRN} setup complete"
   fi
 }
 
 #
 # Set Drush permissions.
-set_drush_perm() {
+_set_drush_perm() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: set_drush_perm"
+    _msg "PROC: _set_drush_perm"
   fi
   find /opt/tools -type d -exec chmod 0755 {} \; &> /dev/null
   find /opt/tools -type f -exec chmod 0644 {} \; &> /dev/null
@@ -3109,81 +3109,81 @@ set_drush_perm() {
 
 #
 # Install or update Drush 12.
-get_drush_twelve() {
+_get_drush_twelve() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: get_drush_twelve"
+    _msg "PROC: _get_drush_twelve"
   fi
   rm -rf /opt/tools/drush/12/*
   cd /opt/tools/drush/12/
-  get_dev_ext "drush-${_DRUSH_TWELVE_VRN}.tar.gz"
-  touch /opt/tools/drush/12/.ctrl.${tRee}.${_X_SE}.pid
+  _get_dev_ext "drush-${_DRUSH_TWELVE_VRN}.tar.gz"
+  touch /opt/tools/drush/12/.ctrl.${_tRee}.${_xSrl}.pid
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "INFO: Drush ${_DRUSH_TWELVE_VRN} installation complete"
+    _msg "INFO: Drush ${_DRUSH_TWELVE_VRN} installation complete"
   fi
 }
 
 #
 # Install or update Drush 11.
-get_drush_eleven() {
+_get_drush_eleven() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: get_drush_eleven"
+    _msg "PROC: _get_drush_eleven"
   fi
   rm -rf /opt/tools/drush/11/*
   cd /opt/tools/drush/11/
-  get_dev_ext "drush-${_DRUSH_ELEVEN_VRN}.tar.gz"
-  touch /opt/tools/drush/11/.ctrl.${tRee}.${_X_SE}.pid
+  _get_dev_ext "drush-${_DRUSH_ELEVEN_VRN}.tar.gz"
+  touch /opt/tools/drush/11/.ctrl.${_tRee}.${_xSrl}.pid
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "INFO: Drush ${_DRUSH_ELEVEN_VRN} installation complete"
+    _msg "INFO: Drush ${_DRUSH_ELEVEN_VRN} installation complete"
   fi
 }
 
 #
 # Install or update Drush 10.
-get_drush_ten() {
+_get_drush_ten() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: get_drush_ten"
+    _msg "PROC: _get_drush_ten"
   fi
   rm -rf /opt/tools/drush/10/*
   cd /opt/tools/drush/10/
-  get_dev_ext "drush-${_DRUSH_TEN_VRN}.tar.gz"
-  touch /opt/tools/drush/10/.ctrl.${tRee}.${_X_SE}.pid
+  _get_dev_ext "drush-${_DRUSH_TEN_VRN}.tar.gz"
+  touch /opt/tools/drush/10/.ctrl.${_tRee}.${_xSrl}.pid
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "INFO: Drush ${_DRUSH_TEN_VRN} installation complete"
+    _msg "INFO: Drush ${_DRUSH_TEN_VRN} installation complete"
   fi
 }
 
 #
 # Install or update Drush 8.
-get_drush_eight() {
+_get_drush_eight() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: get_drush_eight"
+    _msg "PROC: _get_drush_eight"
   fi
   rm -rf /opt/tools/drush/8/*
   cd /opt/tools/drush/8/
-  get_dev_ext "drush-${_DRUSH_EIGHT_VRN}.tar.gz"
-  touch /opt/tools/drush/8/.ctrl.${tRee}.${_X_SE}.pid
+  _get_dev_ext "drush-${_DRUSH_EIGHT_VRN}.tar.gz"
+  touch /opt/tools/drush/8/.ctrl.${_tRee}.${_xSrl}.pid
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "INFO: Drush ${_DRUSH_EIGHT_VRN} installation complete"
+    _msg "INFO: Drush ${_DRUSH_EIGHT_VRN} installation complete"
   fi
 }
 
 #
 # Install or update Drush versions.
-drush_system_install_update() {
+_drush_system_install_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: drush_system_install_update"
+    _msg "PROC: _drush_system_install_update"
   fi
   if [ ! -e "/root/.debug-barracuda-installer.cnf" ] \
     && [ ! -e "/root/.skip-aegir-master-upgrade.cnf" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "INFO: Installing supported Drush versions..."
+      _msg "INFO: Installing supported Drush versions..."
     fi
     ###
     ### Force all Drush versions update if serial is not new
-    rm -f /opt/tools/drush/8/.ctrl.${tRee}.${_X_SE}.pid
-    rm -f /opt/tools/drush/10/.ctrl.${tRee}.${_X_SE}.pid
-    rm -f /opt/tools/drush/11/.ctrl.${tRee}.${_X_SE}.pid
-    rm -f /opt/tools/drush/12/.ctrl.${tRee}.${_X_SE}.pid
+    rm -f /opt/tools/drush/8/.ctrl.${_tRee}.${_xSrl}.pid
+    rm -f /opt/tools/drush/10/.ctrl.${_tRee}.${_xSrl}.pid
+    rm -f /opt/tools/drush/11/.ctrl.${_tRee}.${_xSrl}.pid
+    rm -f /opt/tools/drush/12/.ctrl.${_tRee}.${_xSrl}.pid
     ###
     ###--------------------###
     if [ -e "/opt/tools/drush/launcher" ]; then
@@ -3219,14 +3219,14 @@ drush_system_install_update() {
         | awk '{ print $1}' 2>&1)
       if [ "${_DRUSH_ITD}" != "${_DRUSH_EIGHT_TEST_VRN}" ] \
         || [ ! -x "/opt/tools/drush/8/drush/drush.php" ] \
-        || [ ! -e "/opt/tools/drush/8/.ctrl.${tRee}.${_X_SE}.pid" ]; then
+        || [ ! -e "/opt/tools/drush/8/.ctrl.${_tRee}.${_xSrl}.pid" ]; then
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "INFO: Drush ${_DRUSH_EIGHT_VRN} re-installation required"
+          _msg "INFO: Drush ${_DRUSH_EIGHT_VRN} re-installation required"
         fi
-        get_drush_eight
+        _get_drush_eight
       else
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "INFO: Drush ${_DRUSH_EIGHT_VRN} already installed"
+          _msg "INFO: Drush ${_DRUSH_EIGHT_VRN} already installed"
         fi
       fi
     fi
@@ -3237,14 +3237,14 @@ drush_system_install_update() {
         | awk '{ print $1}' 2>&1)
       if [ "${_DRUSH_ITD}" != "${_DRUSH_TEN_VRN}" ] \
         || [ ! -x "/opt/tools/drush/10/drush/vendor/drush/drush/drush" ] \
-        || [ ! -e "/opt/tools/drush/10/.ctrl.${tRee}.${_X_SE}.pid" ]; then
+        || [ ! -e "/opt/tools/drush/10/.ctrl.${_tRee}.${_xSrl}.pid" ]; then
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "INFO: Drush ${_DRUSH_TEN_VRN} re-installation required"
+          _msg "INFO: Drush ${_DRUSH_TEN_VRN} re-installation required"
         fi
-        get_drush_ten
+        _get_drush_ten
       else
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "INFO: Drush ${_DRUSH_TEN_VRN} already installed"
+          _msg "INFO: Drush ${_DRUSH_TEN_VRN} already installed"
         fi
       fi
     fi
@@ -3255,14 +3255,14 @@ drush_system_install_update() {
         | awk '{ print $1}' 2>&1)
       if [ "${_DRUSH_ITD}" != "${_DRUSH_ELEVEN_VRN}" ] \
         || [ ! -x "/opt/tools/drush/11/drush/vendor/drush/drush/drush" ] \
-        || [ ! -e "/opt/tools/drush/11/.ctrl.${tRee}.${_X_SE}.pid" ]; then
+        || [ ! -e "/opt/tools/drush/11/.ctrl.${_tRee}.${_xSrl}.pid" ]; then
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "INFO: Drush ${_DRUSH_ELEVEN_VRN} re-installation required"
+          _msg "INFO: Drush ${_DRUSH_ELEVEN_VRN} re-installation required"
         fi
-        get_drush_eleven
+        _get_drush_eleven
       else
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "INFO: Drush ${_DRUSH_ELEVEN_VRN} already installed"
+          _msg "INFO: Drush ${_DRUSH_ELEVEN_VRN} already installed"
         fi
       fi
     fi
@@ -3273,40 +3273,40 @@ drush_system_install_update() {
         | awk '{ print $1}' 2>&1)
       if [ "${_DRUSH_ITD}" != "${_DRUSH_TWELVE_VRN}" ] \
         || [ ! -x "/opt/tools/drush/12/drush/vendor/bin/drush" ] \
-        || [ ! -e "/opt/tools/drush/12/.ctrl.${tRee}.${_X_SE}.pid" ]; then
+        || [ ! -e "/opt/tools/drush/12/.ctrl.${_tRee}.${_xSrl}.pid" ]; then
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "INFO: Drush ${_DRUSH_TWELVE_VRN} re-installation required"
+          _msg "INFO: Drush ${_DRUSH_TWELVE_VRN} re-installation required"
         fi
-        get_drush_twelve
+        _get_drush_twelve
       else
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "INFO: Drush ${_DRUSH_TWELVE_VRN} already installed"
+          _msg "INFO: Drush ${_DRUSH_TWELVE_VRN} already installed"
         fi
       fi
     fi
-    set_drush_perm
+    _set_drush_perm
     if [ -x "/opt/tools/drush/8/drush/drush.php" ]; then
       rm -f /usr/bin/drush8
       rm -f /usr/bin/drush
       ln -s /opt/tools/drush/8/drush/drush.php /usr/bin/drush8
       ln -s /opt/tools/drush/8/drush/drush.php /usr/bin/drush
     else
-      msg "FAIL: Drush ${_DRUSH_EIGHT_VRN} installation failed!"
+      _msg "FAIL: Drush ${_DRUSH_EIGHT_VRN} installation failed!"
     fi
     if [ -x "/opt/tools/drush/10/drush/vendor/drush/drush/drush" ]; then
-      clean_drush_ten
+      _clean_drush_ten
     else
-      msg "FAIL: Drush ${_DRUSH_TEN_VRN} installation failed!"
+      _msg "FAIL: Drush ${_DRUSH_TEN_VRN} installation failed!"
     fi
     if [ -x "/opt/tools/drush/11/drush/vendor/drush/drush/drush" ]; then
-      clean_drush_eleven
+      _clean_drush_eleven
     else
-      msg "FAIL: Drush ${_DRUSH_ELEVEN_VRN} installation failed!"
+      _msg "FAIL: Drush ${_DRUSH_ELEVEN_VRN} installation failed!"
     fi
     if [ -x "/opt/tools/drush/12/drush/vendor/bin/drush" ]; then
-      clean_drush_twelve
+      _clean_drush_twelve
     else
-      msg "FAIL: Drush ${_DRUSH_TWELVE_VRN} installation failed!"
+      _msg "FAIL: Drush ${_DRUSH_TWELVE_VRN} installation failed!"
     fi
     chown -R root:root /opt/tools/drush
     cd /opt/tmp
@@ -3315,16 +3315,16 @@ drush_system_install_update() {
 
 #
 # Update packages sources list.
-sources_list_update() {
+_sources_list_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: sources_list_update"
+    _msg "PROC: _sources_list_update"
   fi
   ###--------------------###
   apt-get clean -qq 2> /dev/null
   #rm -rf /var/lib/apt/lists/*
   ###--------------------###
-  if [ -e "${pthLog}/apt-deb-src-updates-${_X_SE}.txt" ] \
-    || [ -e "/var/log/apt-deb-src-updates-${_X_SE}.txt" ]; then
+  if [ -e "${_pthLog}/apt-deb-src-updates-${_xSrl}.txt" ] \
+    || [ -e "/var/log/apt-deb-src-updates-${_xSrl}.txt" ]; then
     _APT_SOURCES_REWRITE=NO
     if [ ! -z "${_LOCAL_DEVUAN_MIRROR}" ]; then
       _APT_SOURCES_REWRITE=YES
@@ -3337,10 +3337,10 @@ sources_list_update() {
   fi
   if [ "${_APT_SOURCES_REWRITE}" = "YES" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "INFO: Updating packages sources list..."
+      _msg "INFO: Updating packages sources list..."
     fi
-    mv -f ${aptLiSys} \
-      ${vBs}/sources.list-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
+    mv -f ${_aptLiSys} \
+      ${_vBs}/sources.list-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
     if [ "${_OS_DIST}" = "Devuan" ]; then
 	  if [ -z "${_LOCAL_DEVUAN_MIRROR}" ]; then
 		_MIRROR=deb.devuan.org
@@ -3348,20 +3348,20 @@ sources_list_update() {
 		_MIRROR=${_LOCAL_DEVUAN_MIRROR}
 	  fi
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: We will use ${_OS_DIST} mirror ${_MIRROR}"
+        _msg "INFO: We will use ${_OS_DIST} mirror ${_MIRROR}"
       fi
       cd /var/opt
-      echo "## DEVUAN MAIN REPOSITORIES" > ${aptLiSys}
-      echo "deb http://${_MIRROR}/merged ${_OS_CODE} main" >> ${aptLiSys}
-      echo "deb-src http://${_MIRROR}/merged ${_OS_CODE} main" >> ${aptLiSys}
-      echo "" >> ${aptLiSys}
-	  echo "## MAJOR BUG FIX UPDATES produced after the final release" >> ${aptLiSys}
-	  echo "deb http://${_MIRROR}/merged ${_OS_CODE}-updates main" >> ${aptLiSys}
-	  echo "deb-src http://${_MIRROR}/merged ${_OS_CODE}-updates main" >> ${aptLiSys}
-	  echo "" >> ${aptLiSys}
-      echo "## DEVUAN SECURITY UPDATES" >> ${aptLiSys}
-      echo "deb http://${_MIRROR}/merged ${_OS_CODE}-security main" >> ${aptLiSys}
-      echo "deb-src http://${_MIRROR}/merged ${_OS_CODE}-security main" >> ${aptLiSys}
+      echo "## DEVUAN MAIN REPOSITORIES" > ${_aptLiSys}
+      echo "deb http://${_MIRROR}/merged ${_OS_CODE} main" >> ${_aptLiSys}
+      echo "deb-src http://${_MIRROR}/merged ${_OS_CODE} main" >> ${_aptLiSys}
+      echo "" >> ${_aptLiSys}
+	  echo "## MAJOR BUG FIX UPDATES produced after the final release" >> ${_aptLiSys}
+	  echo "deb http://${_MIRROR}/merged ${_OS_CODE}-updates main" >> ${_aptLiSys}
+	  echo "deb-src http://${_MIRROR}/merged ${_OS_CODE}-updates main" >> ${_aptLiSys}
+	  echo "" >> ${_aptLiSys}
+      echo "## DEVUAN SECURITY UPDATES" >> ${_aptLiSys}
+      echo "deb http://${_MIRROR}/merged ${_OS_CODE}-security main" >> ${_aptLiSys}
+      echo "deb-src http://${_MIRROR}/merged ${_OS_CODE}-security main" >> ${_aptLiSys}
     elif [ "${_OS_DIST}" = "Debian" ]; then
       _MIRROR_CHECK=NO
       if [ "${_OS_CODE}" = "deprecated" ]; then
@@ -3379,18 +3379,18 @@ sources_list_update() {
       fi
       if [ "${_MIRROR_CHECK}" = "YES" ]; then
         if [ -z "${_LOCAL_DEBIAN_MIRROR}" ]; then
-          msg "INFO: Now looking for the best/fastest ${_OS_DIST} mirror"
-          msg "INFO: This may take a while, please wait..."
+          _msg "INFO: Now looking for the best/fastest ${_OS_DIST} mirror"
+          _msg "INFO: This may take a while, please wait..."
           hlpPth="/opt/tmp/boa/aegir/helpers"
-          ffMirr=$(which ffmirror 2>&1)
-          ffList="${hlpPth}/apt-list-debian.txt"
-          if [ -e "${ffMirr}" ] && [ -e "${ffList}" ]; then
-            _MIRROR=$(bash ${ffMirr} < ${ffList} 2>&1)
-            _MIRROR=$(bash ${ffMirr} < ${ffList} 2>&1)
+          _ffMirr=$(which ffmirror 2>&1)
+          _ffList="${hlpPth}/apt-list-debian.txt"
+          if [ -e "${_ffMirr}" ] && [ -e "${_ffList}" ]; then
+            _MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
+            _MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
             echo " "
             askThis="Enter your own mirror to use or press enter"
             askThis="${askThis} to use the fastest found mirror"
-            prompt_confirm_choice "${askThis}" ${_MIRROR}
+            _prompt_confirm_choice "${askThis}" ${_MIRROR}
             echo " "
             _MIRROR=${_CONFIRMED_ANSWER}
           else
@@ -3400,12 +3400,12 @@ sources_list_update() {
           _MIRROR=${_LOCAL_DEBIAN_MIRROR}
         fi
         if ! netcat -w 5 -z ${_MIRROR} 80 ; then
-          msg "INFO: The mirror ${_MIRROR} doesn't respond, let's try default"
+          _msg "INFO: The mirror ${_MIRROR} doesn't respond, let's try default"
           _MIRROR=deb.debian.org
         fi
       fi
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: We will use ${_OS_DIST} mirror ${_MIRROR}"
+        _msg "INFO: We will use ${_OS_DIST} mirror ${_MIRROR}"
       fi
       cd /var/opt
       if [ "${_OS_CODE}" = "stretch" ] || [ "${_OS_CODE}" = "jessie" ]; then
@@ -3429,32 +3429,32 @@ sources_list_update() {
         _SEC_MIRROR="security.debian.org/debian-security"
         _SEC_REPSRC="${_OS_CODE}-security"
       fi
-      echo "## DEBIAN MAIN REPOSITORIES" > ${aptLiSys}
-      echo "deb http://${_APT_MIRROR} ${_OS_CODE} main contrib non-free" >> ${aptLiSys}
-      echo "deb-src http://${_APT_MIRROR} ${_OS_CODE} main contrib non-free" >> ${aptLiSys}
-      echo "" >> ${aptLiSys}
-      echo "## MAJOR BUG FIX UPDATES produced after the final release" >> ${aptLiSys}
-      echo "deb http://${_APT_MIRROR} ${_APT_REPSRC} main contrib non-free" >> ${aptLiSys}
-      echo "deb-src http://${_APT_MIRROR} ${_APT_REPSRC} main contrib non-free" >> ${aptLiSys}
-      echo "" >> ${aptLiSys}
-      echo "## DEBIAN SECURITY UPDATES" >> ${aptLiSys}
-      echo "deb http://${_SEC_MIRROR} ${_SEC_REPSRC} main contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
-      echo "deb-src http://${_SEC_MIRROR} ${_SEC_REPSRC} main contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
+      echo "## DEBIAN MAIN REPOSITORIES" > ${_aptLiSys}
+      echo "deb http://${_APT_MIRROR} ${_OS_CODE} main contrib non-free" >> ${_aptLiSys}
+      echo "deb-src http://${_APT_MIRROR} ${_OS_CODE} main contrib non-free" >> ${_aptLiSys}
+      echo "" >> ${_aptLiSys}
+      echo "## MAJOR BUG FIX UPDATES produced after the final release" >> ${_aptLiSys}
+      echo "deb http://${_APT_MIRROR} ${_APT_REPSRC} main contrib non-free" >> ${_aptLiSys}
+      echo "deb-src http://${_APT_MIRROR} ${_APT_REPSRC} main contrib non-free" >> ${_aptLiSys}
+      echo "" >> ${_aptLiSys}
+      echo "## DEBIAN SECURITY UPDATES" >> ${_aptLiSys}
+      echo "deb http://${_SEC_MIRROR} ${_SEC_REPSRC} main contrib non-free" | fmt -su -w 2500 >> ${_aptLiSys}
+      echo "deb-src http://${_SEC_MIRROR} ${_SEC_REPSRC} main contrib non-free" | fmt -su -w 2500 >> ${_aptLiSys}
     fi
-    mkdir -p ${pthLog}
-    touch ${pthLog}/apt-deb-src-updates-${_X_SE}.txt
+    mkdir -p ${_pthLog}
+    touch ${_pthLog}/apt-deb-src-updates-${_xSrl}.txt
     cd /var/opt
   fi
   ###--------------------###
-  apt_clean_update
+  _apt_clean_update
   ###--------------------###
 }
 
 #
 # Install OpenSSH from sources.
-sshd_install_src() {
+_sshd_install_src() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: sshd_install_src"
+    _msg "PROC: _sshd_install_src"
   fi
   if [ "${_OS_CODE}" = "jessie" ]; then
     _OPENSSH_VRN=8.3p1
@@ -3519,31 +3519,31 @@ sshd_install_src() {
   fi
   if [ "${_SSH_SSL_ITD}" != "${_SSL_ITD}" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "INFO: OpenSSL in SSH is ${_SSH_SSL_ITD}, rebuild to ${_SSL_ITD} required"
+      _msg "INFO: OpenSSL in SSH is ${_SSH_SSL_ITD}, rebuild to ${_SSL_ITD} required"
     fi
     _SSH_INSTALL_REQUIRED=YES
   fi
   if [[ "${_SSH_IF_SELINUX}" =~ "libselinux" ]]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "INFO: SSH was built --with-selinux, rebuild required"
+      _msg "INFO: SSH was built --with-selinux, rebuild required"
     fi
     _SSH_INSTALL_REQUIRED=YES
   fi
   if [ "${_SSH_FORCE_REINSTALL}" = "YES" ]; then
     _SSH_INSTALL_REQUIRED=YES
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "INFO: OpenSSH ${_SSH_ITD}, rebuild forced"
+      _msg "INFO: OpenSSH ${_SSH_ITD}, rebuild forced"
     fi
   elif [ "${_SSH_ITD}" != "${_OPENSSH_VRN}" ]; then
     _SSH_INSTALL_REQUIRED=YES
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "INFO: Installed OpenSSH version ${_SSH_ITD}, upgrade required"
+      _msg "INFO: Installed OpenSSH version ${_SSH_ITD}, upgrade required"
     fi
   fi
   if [ "${_SSH_INSTALL_REQUIRED}" = "YES" ]; then
-    msg "INFO: Building OpenSSH ${_OPENSSH_VRN} from sources..."
-    msg "WAIT: This may take a while, please wait..."
-    mrun "${_INITINS} libpam0g-dev" &> /dev/null
+    _msg "INFO: Building OpenSSH ${_OPENSSH_VRN} from sources..."
+    _msg "WAIT: This may take a while, please wait..."
+    _mrun "${_INITINS} libpam0g-dev" &> /dev/null
     if [ ! -e "/var/lib/sshd" ]; then
       mkdir -p /var/lib/sshd
       chmod -R 700 /var/lib/sshd/
@@ -3553,7 +3553,7 @@ sshd_install_src() {
     _PKG_CONFIG_PATH="${_SSL_LIB_PATH}/pkgconfig"
     cd /var/opt
     rm -rf openssh*
-    get_dev_src "openssh-${_OPENSSH_VRN}.tar.gz"
+    _get_dev_src "openssh-${_OPENSSH_VRN}.tar.gz"
     cd /var/opt/openssh-${_OPENSSH_VRN}
     LIBS="-ldl -lpthread" PKG_CONFIG_PATH="${_PKG_CONFIG_PATH}" ./configure \
       --with-ssl-dir=${_SSL_PATH} \
@@ -3563,10 +3563,10 @@ sshd_install_src() {
       --without-openssl-header-check \
       --with-md5-passwords \
       --with-pam &> /dev/null
-    mrun "make -j $(nproc)" 2> /dev/null
-    mrun "make install" 2> /dev/null
+    _mrun "make -j $(nproc)" 2> /dev/null
+    _mrun "make install" 2> /dev/null
     ldconfig 2> /dev/null
-    mrun "service ssh restart" 2> /dev/null
+    _mrun "service ssh restart" 2> /dev/null
     if [[ ! "${_SSH_GET_DPKG}" =~ "hold" ]]; then
       aptitude hold openssh-server &> /dev/null
       aptitude hold openssh-client &> /dev/null
@@ -3602,18 +3602,18 @@ sshd_install_src() {
       rm -f ${_OLD_SYSCONFDIR}/ssh*
       rm -f ${_OLD_SYSCONFDIR}/moduli*
     fi
-    mrun "service ssh restart" 2> /dev/null
+    _mrun "service ssh restart" 2> /dev/null
   fi
   _SSH_FORCE_REINSTALL=NO
 }
 
 #
 # Install ImageMagick from sources.
-install_magick_src() {
+_install_magick_src() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: install_magick_src"
+    _msg "PROC: _install_magick_src"
   fi
-  _MAGICK_SRC_BUILD_CTRL="${pthLog}/ImageMagick-src-build-${_IMAGE_MAGICK_VRN}.log"
+  _MAGICK_SRC_BUILD_CTRL="${_pthLog}/ImageMagick-src-build-${_IMAGE_MAGICK_VRN}.log"
   _MAGICK_INSTALL_REQUIRED=NO
   _MAGICK_ITD=$(convert --version 2>&1 \
     | tr -d "\n" \
@@ -3626,19 +3626,19 @@ install_magick_src() {
     else
       _MAGICK_INSTALL_REQUIRED=YES
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: Installed ImageMagick version ${_MAGICK_ITD}, upgrade required"
+        _msg "INFO: Installed ImageMagick version ${_MAGICK_ITD}, upgrade required"
       fi
     fi
   fi
   if [ "${_MAGICK_INSTALL_REQUIRED}" = "YES" ]; then
-    msg "INFO: Installing ImageMagick ${_IMAGE_MAGICK_VRN}..."
-    msg "WAIT: This may take a while, please wait..."
+    _msg "INFO: Installing ImageMagick ${_IMAGE_MAGICK_VRN}..."
+    _msg "WAIT: This may take a while, please wait..."
     cd /var/opt
     rm -rf ImageMagick*
-    get_dev_src "ImageMagick-${_IMAGE_MAGICK_VRN}.tar.gz"
+    _get_dev_src "ImageMagick-${_IMAGE_MAGICK_VRN}.tar.gz"
     cd /var/opt/ImageMagick-${_IMAGE_MAGICK_VRN}
-    mrun "bash ./configure --prefix=/usr" 2> /dev/null
-    mrun "make -j $(nproc) --quiet" 2> /dev/null
+    _mrun "bash ./configure --prefix=/usr" 2> /dev/null
+    _mrun "make -j $(nproc) --quiet" 2> /dev/null
     if [ ! -e "/etc/.ImageMagick-6" ] \
       && [ -e "/etc/ImageMagick-6" ]; then
         cp -a /etc/ImageMagick-6 /etc/.ImageMagick-6
@@ -3647,14 +3647,14 @@ install_magick_src() {
       && [ -e "/etc/ImageMagick" ]; then
         cp -a /etc/ImageMagick /etc/.ImageMagick
     fi
-    mrun "apt-get remove imagemagick -y --purge --auto-remove -qq" 2> /dev/null
-    mrun "apt-get remove libmagickwand-dev -y --purge --auto-remove -qq" 2> /dev/null
-    mrun "apt-get remove graphviz -y --purge --auto-remove -qq" 2> /dev/null
-    mrun "apt-get remove libgraphviz-dev -y --purge --auto-remove -qq" 2> /dev/null
-    mrun "make --quiet install" 2> /dev/null
+    _mrun "apt-get remove imagemagick -y --purge --auto-remove -qq" 2> /dev/null
+    _mrun "apt-get remove libmagickwand-dev -y --purge --auto-remove -qq" 2> /dev/null
+    _mrun "apt-get remove graphviz -y --purge --auto-remove -qq" 2> /dev/null
+    _mrun "apt-get remove libgraphviz-dev -y --purge --auto-remove -qq" 2> /dev/null
+    _mrun "make --quiet install" 2> /dev/null
     ldconfig 2> /dev/null
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "HINT: Please modify /usr/etc/ImageMagick-7/policy.xml file, if needed"
+      _msg "HINT: Please modify /usr/etc/ImageMagick-7/policy.xml file, if needed"
     fi
     touch ${_MAGICK_SRC_BUILD_CTRL}
   fi
@@ -3662,12 +3662,12 @@ install_magick_src() {
 
 #
 # Fix symlinks for libs.
-ssl_crypto_lib_fix() {
+_ssl_crypto_lib_fix() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: ssl_crypto_lib_fix"
+    _msg "PROC: _ssl_crypto_lib_fix"
   fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "INFO: Fix for SSL libssl/libcrypto in ${_OS_DIST}/${_OS_CODE}"
+    _msg "INFO: Fix for SSL libssl/libcrypto in ${_OS_DIST}/${_OS_CODE}"
   fi
   if [ -e "/root/.install.modern.openssl.cnf" ] \
     && [ -x "/usr/local/ssl3/bin/openssl" ]; then
@@ -3869,9 +3869,9 @@ ssl_crypto_lib_fix() {
 
 #
 # Update OpenSSL apt locks.
-ssl_apt_locks_update() {
+_ssl_apt_locks_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: ssl_apt_locks_update"
+    _msg "PROC: _ssl_apt_locks_update"
   fi
 
   _SSL_GET_DPKG=$(dpkg --get-selections \
@@ -3894,9 +3894,9 @@ ssl_apt_locks_update() {
 
 #
 # Update OpenSSL paths.
-ssl_paths_update() {
+_ssl_paths_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: ssl_paths_update"
+    _msg "PROC: _ssl_paths_update"
   fi
 
   if [ -x "${_SSL_MODERN_BINARY}" ]; then
@@ -3941,9 +3941,9 @@ ssl_paths_update() {
 
 #
 # Install OpenSSL from sources.
-ssl_install_src() {
+_ssl_install_src() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: ssl_install_src"
+    _msg "PROC: _ssl_install_src"
   fi
 
   if [ "${1}" = "Modern" ]; then
@@ -3956,29 +3956,29 @@ ssl_install_src() {
 
   ###--------------------###
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "INFO: Building zlib ${_ZLIB_VRN} from sources first..."
+    _msg "INFO: Building zlib ${_ZLIB_VRN} from sources first..."
   fi
   cd /var/opt
   rm -rf zlib*
-  get_dev_src "zlib-${_ZLIB_VRN}.tar.gz"
+  _get_dev_src "zlib-${_ZLIB_VRN}.tar.gz"
   cd /var/opt/zlib-${_ZLIB_VRN}
-  st_runner "bash ./configure --prefix=/usr" 2> /dev/null
-  mrun "make -j $(nproc) --quiet" 2> /dev/null
-  mrun "make --quiet install" 2> /dev/null
+  _st_runner "bash ./configure --prefix=/usr" 2> /dev/null
+  _mrun "make -j $(nproc) --quiet" 2> /dev/null
+  _mrun "make --quiet install" 2> /dev/null
   ldconfig 2> /dev/null
 
   ###--------------------###
-  msg "INFO: Building ${1} OpenSSL from sources..."
-  msg "WAIT: This may take a while, please wait..."
+  _msg "INFO: Building ${1} OpenSSL from sources..."
+  _msg "WAIT: This may take a while, please wait..."
 
   if [ ! -e "/var/opt/openssl-${_OPENSSL_BUILD_VRN}" ]; then
     cd /var/opt
     rm -rf openssl*
-    wget -q -U iCab ${urlDev}/src/openssl-${_OPENSSL_BUILD_VRN}.tar.gz
+    wget -q -U iCab ${_urlDev}/src/openssl-${_OPENSSL_BUILD_VRN}.tar.gz
     if [ -e "openssl-${_OPENSSL_BUILD_VRN}.tar.gz" ]; then
-      extract_archive "openssl-${_OPENSSL_BUILD_VRN}.tar.gz"
+      _extract_archive "openssl-${_OPENSSL_BUILD_VRN}.tar.gz"
     else
-      msg "OOPS: failed download from ${urlDev}/src/openssl-${_OPENSSL_BUILD_VRN}.tar.gz"
+      _msg "OOPS: failed download from ${_urlDev}/src/openssl-${_OPENSSL_BUILD_VRN}.tar.gz"
     fi
   fi
   if [ -e "/var/opt/openssl-${_OPENSSL_BUILD_VRN}" ]; then
@@ -3992,7 +3992,7 @@ ssl_install_src() {
         --openssldir=/usr/local/ssl"
       patchMakefile=YES
     fi
-    mrun "sh ./config \
+    _mrun "sh ./config \
       shared \
       no-comp \
       no-hw \
@@ -4003,16 +4003,16 @@ ssl_install_src() {
     if [ "${patchMakefile}" = "YES" ]; then
       sed -i "s/install_docs:.*/install_docs:/g" /var/opt/openssl-${_OPENSSL_BUILD_VRN}/Makefile
     fi
-    mrun "make depend" 2> /dev/null
-    mrun "make -j $(nproc)" 2> /dev/null
-    mrun "make install" 2> /dev/null
+    _mrun "make depend" 2> /dev/null
+    _mrun "make -j $(nproc)" 2> /dev/null
+    _mrun "make install" 2> /dev/null
   fi
 
   if [ -x "${_THIS_SSL_BINARY}" ]; then
-    ssl_paths_update "${_THIS_SSL_BINARY}"
-    ssl_apt_locks_update
+    _ssl_paths_update "${_THIS_SSL_BINARY}"
+    _ssl_apt_locks_update
   else
-    msg "OOPS: OpenSSL version ${_OPENSSL_NEW_VRN} was not installed!"
+    _msg "OOPS: OpenSSL version ${_OPENSSL_NEW_VRN} was not installed!"
     _SSL_INSTALL_REQUIRED=
     _SSH_FORCE_REINSTALL=
     _NGX_FORCE_REINSTALL=
@@ -4033,9 +4033,9 @@ ssl_install_src() {
 
 #
 # If Install OpenSSL from sources.
-if_ssl_install_src() {
+_if_ssl_install_src() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: if_ssl_install_src"
+    _msg "PROC: _if_ssl_install_src"
   fi
 
   _SSL_LEGACY_INSTALL_REQUIRED=NO
@@ -4075,7 +4075,7 @@ if_ssl_install_src() {
   # Check if legacy version needs upgrading
   if [ ! -x "${_SSL_LEGACY_BINARY}" ] || [ "${_SSL_LEGACY_ITD}" != "${_OPENSSL_OLD_VRN}" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "INFO: Legacy OpenSSL (${_SSL_LEGACY_ITD}), upgrade to (${_OPENSSL_OLD_VRN}) required"
+      _msg "INFO: Legacy OpenSSL (${_SSL_LEGACY_ITD}), upgrade to (${_OPENSSL_OLD_VRN}) required"
     fi
     _SSL_LEGACY_INSTALL_REQUIRED=YES
   fi
@@ -4084,7 +4084,7 @@ if_ssl_install_src() {
   if [ "${_OS_CODE}" != "stretch" ] && [ "${_OS_CODE}" != "jessie" ]; then
     if [ ! -x "${_SSL_MODERN_BINARY}" ] || [ "${_SSL_MODERN_ITD}" != "${_OPENSSL_NEW_VRN}" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: Modern OpenSSL (${_SSL_MODERN_ITD}), upgrade to (${_OPENSSL_NEW_VRN}) required"
+        _msg "INFO: Modern OpenSSL (${_SSL_MODERN_ITD}), upgrade to (${_OPENSSL_NEW_VRN}) required"
       fi
       _SSL_MODERN_INSTALL_REQUIRED=YES
     fi
@@ -4093,7 +4093,7 @@ if_ssl_install_src() {
   # Check if OpenSSL 3.x libraries/headers match the binary version
   if [ -x "${_SSL_MODERN_BINARY}" ] && [ "${_SSL_LIB_ITD}" != "${_SSL_MODERN_ITD}" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "INFO: OpenSSL Lib is (${_SSL_LIB_ITD}) sync with (${_SSL_MODERN_ITD}) required"
+      _msg "INFO: OpenSSL Lib is (${_SSL_LIB_ITD}) sync with (${_SSL_MODERN_ITD}) required"
     fi
     _SSL_MODERN_INSTALL_REQUIRED=YES
   fi
@@ -4105,22 +4105,22 @@ if_ssl_install_src() {
     _SSH_FORCE_REINSTALL=YES
     _NGX_FORCE_REINSTALL=YES
     _PHP_FORCE_REINSTALL=YES
-    rm -f ${pthLog}/pure-ftpd-build-${_PURE_FTPD_VRN}-${_X_SE}-${_X_VERSION}.log
-    rm -f ${pthLog}/mss-build-${_MSS_VRN}-${_X_SE}-${_X_VERSION}.log
+    rm -f ${_pthLog}/pure-ftpd-build-${_PURE_FTPD_VRN}-${_xSrl}-${_X_VERSION}.log
+    rm -f ${_pthLog}/mss-build-${_MSS_VRN}-${_xSrl}-${_X_VERSION}.log
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "INFO: OpenSSL rebuild forced"
+      _msg "INFO: OpenSSL rebuild forced"
     fi
   fi
 
   # Perform the legacy OpenSSL installation or upgrade if required
   if [ "${_SSL_LEGACY_INSTALL_REQUIRED}" = "YES" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "INFO: Upgrading Legacy OpenSSL to ${_OPENSSL_OLD_VRN}"
+      _msg "INFO: Upgrading Legacy OpenSSL to ${_OPENSSL_OLD_VRN}"
     fi
-    ssl_install_src "Legacy"
+    _ssl_install_src "Legacy"
   else
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "INFO: Legacy OpenSSL ${_OPENSSL_OLD_VRN} is up-to-date."
+      _msg "INFO: Legacy OpenSSL ${_OPENSSL_OLD_VRN} is up-to-date."
     fi
   fi
 
@@ -4128,12 +4128,12 @@ if_ssl_install_src() {
   if [ "${_OS_CODE}" != "stretch" ] && [ "${_OS_CODE}" != "jessie" ]; then
     if [ "${_SSL_MODERN_INSTALL_REQUIRED}" = "YES" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: Upgrading Modern OpenSSL to ${_OPENSSL_NEW_VRN}"
+        _msg "INFO: Upgrading Modern OpenSSL to ${_OPENSSL_NEW_VRN}"
       fi
-      ssl_install_src "Modern"
+      _ssl_install_src "Modern"
     else
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: Modern OpenSSL ${_OPENSSL_NEW_VRN} is up-to-date."
+        _msg "INFO: Modern OpenSSL ${_OPENSSL_NEW_VRN} is up-to-date."
       fi
     fi
   fi
@@ -4141,59 +4141,59 @@ if_ssl_install_src() {
 
 #
 # Detect, remove, and report broken symlinks
-check_and_remove_broken_symlinks() {
+_check_and_remove_broken_symlinks() {
   local dir=$1
 
   # Find broken symlinks in the directory
-  broken_symlinks=$(find "${dir}" -maxdepth 1 -type l ! -exec test -e {} \; -print)
+  _broken_symlinks=$(find "${dir}" -maxdepth 1 -type l ! -exec test -e {} \; -print)
 
-  if [ -n "${broken_symlinks}" ]; then
+  if [ -n "${_broken_symlinks}" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "CLNP: Removing the following broken symlinks from ${dir}:"
-      msg "CLNP: ${broken_symlinks}"
+      _msg "CLNP: Removing the following broken symlinks from ${dir}:"
+      _msg "CLNP: ${_broken_symlinks}"
     fi
 
-    for symlink in $broken_symlinks; do
-      rm "${symlink}"
+    for _symlink in ${_broken_symlinks}; do
+      rm "${_symlink}"
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "CLNP: Removed broken symlink: ${symlink}"
+        _msg "CLNP: Removed broken symlink: ${_symlink}"
       fi
     done
 
-    # Set the ifAnySymlinksCleaned variable to true since we removed broken symlinks
-    ifAnySymlinksCleaned=YES
+    # Set the _ifAnySymlinksCleaned variable to true since we removed broken symlinks
+    _ifAnySymlinksCleaned=YES
   else
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "CLNP: No broken symlinks found in ${dir}"
+      _msg "CLNP: No broken symlinks found in ${dir}"
     fi
   fi
 }
 
 #
 # Check and move disallowed versions
-check_and_move() {
+_check_and_move() {
   local dir=$1
 
   # Determine the name of the backup subdirectory based on the source directory
-  local backup_dir="${backLegBase}$(echo "${dir}" | tr '/' '_')"
+  local _backup_dir="${backLegBase}$(echo "${dir}" | tr '/' '_')"
 
   # Find any libcurl.so files in the directory, excluding the allowed version and those without a complete version number
-  found_versions=$(find "${dir}" -maxdepth 1 -type f -name "libcurl.so.*" ! -name "${allowedFile}" | grep -E "libcurl\.so\.[0-9]+\.[0-9]+\.[0-9]+$")
+  _found_versions=$(find "${dir}" -maxdepth 1 -type f -name "libcurl.so.*" ! -name "${allowedFile}" | grep -E "libcurl\.so\.[0-9]+\.[0-9]+\.[0-9]+$")
 
-  if [ -n "${found_versions}" ]; then
+  if [ -n "${_found_versions}" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "CLNP: Moving the following disallowed versions from ${dir} to ${backup_dir}:"
-      msg "CLNP: ${found_versions}"
+      _msg "CLNP: Moving the following disallowed versions from ${dir} to ${_backup_dir}:"
+      _msg "CLNP: ${_found_versions}"
     fi
 
     # Create the backup directory if it doesn't exist
-    mkdir -p "${backup_dir}"
+    mkdir -p "${_backup_dir}"
 
     # Move each found version to the backup directory
-    for file in ${found_versions}; do
-      mv -f "${file}" "${backup_dir}/"
+    for file in ${_found_versions}; do
+      mv -f "${file}" "${_backup_dir}/"
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "CLNP: Moved ${file} to ${backup_dir}/"
+        _msg "CLNP: Moved ${file} to ${_backup_dir}/"
       fi
     done
 
@@ -4201,16 +4201,16 @@ check_and_move() {
     ifAnyFilesCleaned=YES
   else
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "CLNP: Only the allowed version (${allowedFile}) is present in ${dir}"
+      _msg "CLNP: Only the allowed version (${allowedFile}) is present in ${dir}"
     fi
   fi
 }
 
 #
 # Install cURL from sources.
-curl_install_src() {
+_curl_install_src() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: curl_install_src"
+    _msg "PROC: _curl_install_src"
   fi
 
   if ! command -v lsb_release &> /dev/null; then
@@ -4269,21 +4269,21 @@ curl_install_src() {
   if [ "${_CURL_ITD}" != "${_CURL_VRN}" ]; then
     _CURL_INSTALL_REQUIRED=YES
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "INFO: Installed cURL/lib ${_CURL_ITD}/${_CURL_LIB_ITD}, upgrade required"
+      _msg "INFO: Installed cURL/lib ${_CURL_ITD}/${_CURL_LIB_ITD}, upgrade required"
     fi
   fi
 
   if [ "${_CURL_LIB_ITD}" != "${_CURL_VRN}" ]; then
     _CURL_INSTALL_REQUIRED=YES
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "INFO: Installed cURL/lib ${_CURL_ITD}/${_CURL_LIB_ITD}, rebuild required"
+      _msg "INFO: Installed cURL/lib ${_CURL_ITD}/${_CURL_LIB_ITD}, rebuild required"
     fi
   fi
 
   if [ "${_CURL_SSL_ITD}" != "${_OPENSSL_NEW_VRN}" ]; then
     _CURL_INSTALL_REQUIRED=YES
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "INFO: cURL ${_CURL_ITD} with OpenSSL ${_CURL_SSL_ITD}, rebuild forced"
+      _msg "INFO: cURL ${_CURL_ITD} with OpenSSL ${_CURL_SSL_ITD}, rebuild forced"
     fi
   fi
 
@@ -4299,7 +4299,7 @@ curl_install_src() {
   if [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
     _CURL_INSTALL_REQUIRED=YES
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "INFO: Installed cURL version ${_CURL_ITD} but re-install forced"
+      _msg "INFO: Installed cURL version ${_CURL_ITD} but re-install forced"
     fi
   fi
 
@@ -4318,27 +4318,27 @@ curl_install_src() {
     ifAnyFilesCleaned=NO
 
     # Variable to track if any broken symlinks were found and removed
-    ifAnySymlinksCleaned=NO
+    _ifAnySymlinksCleaned=NO
 
-    # Iterate over the directories and apply the check_and_move function
+    # Iterate over the directories and apply the _check_and_move function
     for dir in "${dirsToClean[@]}"; do
-      check_and_move "${dir}"
+      _check_and_move "${dir}"
     done
 
-    # Iterate over the directories and apply the check_and_remove_broken_symlinks function
+    # Iterate over the directories and apply the _check_and_remove_broken_symlinks function
     for dir in "${dirsToClean[@]}"; do
-      check_and_remove_broken_symlinks "${dir}"
+      _check_and_remove_broken_symlinks "${dir}"
     done
 
     # Export the ifAnyFilesCleaned variable for later use
     export ifAnyFilesCleaned
 
-    # Export the ifAnySymlinksCleaned variable for later use
-    export ifAnySymlinksCleaned
+    # Export the _ifAnySymlinksCleaned variable for later use
+    export _ifAnySymlinksCleaned
 
   fi
 
-  if [ "${ifAnySymlinksCleaned}" = "YES" ] \
+  if [ "${_ifAnySymlinksCleaned}" = "YES" ] \
     || [ "${ifAnyFilesCleaned}" = "YES" ] \
     || [ "${_CURL_INSTALL_REQUIRED}" = "YES" ]; then
     _CURL_INSTALL_REQUIRED=YES
@@ -4353,7 +4353,7 @@ curl_install_src() {
     ###--------------------###
     if [ -e "/root/.use.curl.from.packages.cnf" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: cURL from packages is forced with /root/.use.curl.from.packages.cnf"
+        _msg "INFO: cURL from packages is forced with /root/.use.curl.from.packages.cnf"
       fi
       [ -e "/root/.sorted.multi.php.cnf" ] && rm -f /root/.sorted.multi.php.cnf
       if [ -e "/usr/local/bin/curl" ]; then
@@ -4362,33 +4362,33 @@ curl_install_src() {
       if [[ "${_CURL_GET_DPKG}" =~ "hold" ]]; then
         echo "curl install" | dpkg --set-selections &> /dev/null
         if [ -z "${_CURL_ALREADY_REBUILT}" ]; then
-          apt_clean_update
-          mrun "apt-get remove libssl1.0-dev -y --purge --auto-remove -qq" 2> /dev/null
-          mrun "apt-get autoremove -y" 2> /dev/null
-          mrun "${_INSTAPP} libssl-dev" 2> /dev/null
-          mrun "${_INSTAPP} libc-client2007e libc-client2007e-dev" 2> /dev/null
-          mrun "apt-get build-dep curl -y" 2> /dev/null
-          mrun "${_INSTAPP} curl" 2> /dev/null
+          _apt_clean_update
+          _mrun "apt-get remove libssl1.0-dev -y --purge --auto-remove -qq" 2> /dev/null
+          _mrun "apt-get autoremove -y" 2> /dev/null
+          _mrun "${_INSTAPP} libssl-dev" 2> /dev/null
+          _mrun "${_INSTAPP} libc-client2007e libc-client2007e-dev" 2> /dev/null
+          _mrun "apt-get build-dep curl -y" 2> /dev/null
+          _mrun "${_INSTAPP} curl" 2> /dev/null
         fi
       fi
     else
-      apt_clean_update
-      mrun "apt-get remove libssl1.0-dev -y --purge --auto-remove -qq" 2> /dev/null
-      mrun "apt-get autoremove -y" 2> /dev/null
-      mrun "${_INSTAPP} libssl-dev" 2> /dev/null
-      mrun "${_INSTAPP} libc-client2007e libc-client2007e-dev" 2> /dev/null
-      mrun "apt-get build-dep curl -y" 2> /dev/null
+      _apt_clean_update
+      _mrun "apt-get remove libssl1.0-dev -y --purge --auto-remove -qq" 2> /dev/null
+      _mrun "apt-get autoremove -y" 2> /dev/null
+      _mrun "${_INSTAPP} libssl-dev" 2> /dev/null
+      _mrun "${_INSTAPP} libc-client2007e libc-client2007e-dev" 2> /dev/null
+      _mrun "apt-get build-dep curl -y" 2> /dev/null
       cd /var/opt
       rm -rf curl*
-      wget -q -U iCab ${urlDev}/src/curl-${_CURL_VRN}.tar.gz
+      wget -q -U iCab ${_urlDev}/src/curl-${_CURL_VRN}.tar.gz
       if [ ! -e "curl-${_CURL_VRN}.tar.gz" ]; then
-        msg "OOPS: failed download from ${urlDev}/src/curl-${_CURL_VRN}.tar.gz"
+        _msg "OOPS: failed download from ${_urlDev}/src/curl-${_CURL_VRN}.tar.gz"
       else
-        extract_archive "curl-${_CURL_VRN}.tar.gz"
+        _extract_archive "curl-${_CURL_VRN}.tar.gz"
       fi
       if [ -e "/var/opt/curl-${_CURL_VRN}" ]; then
-        msg "INFO: Building cURL ${_CURL_VRN} from sources..."
-        msg "WAIT: This may take a while, please wait..."
+        _msg "INFO: Building cURL ${_CURL_VRN} from sources..."
+        _msg "WAIT: This may take a while, please wait..."
         if [ -e "/root/.install.modern.openssl.cnf" ] \
           && [ -x "/usr/local/ssl3/bin/openssl" ]; then
           _SSL_BINARY=/usr/local/ssl3/bin/openssl
@@ -4414,8 +4414,8 @@ curl_install_src() {
             --with-openssl \
             --with-zlib=/usr \
             --prefix=/usr/local &> /dev/null
-          mrun "make -j $(nproc)" 2> /dev/null
-          mrun "make install" 2> /dev/null
+          _mrun "make -j $(nproc)" 2> /dev/null
+          _mrun "make install" 2> /dev/null
           ldconfig 2> /dev/null
           if [ -x "/usr/local/bin/curl" ]; then
             mv -f /usr/bin/curl /usr/bin/old-curl-$(date +%y%m%d-%H%M%S 2>&1)
@@ -4426,15 +4426,15 @@ curl_install_src() {
           fi
           echo "curl hold" | dpkg --set-selections &> /dev/null
         else
-          msg "OOPS: Building OpenSSL ${_OPENSSL_NEW_VRN} from sources failed!"
+          _msg "OOPS: Building OpenSSL ${_OPENSSL_NEW_VRN} from sources failed!"
         fi
       else
-        msg "OOPS: cURL ${_CURL_VRN} could not be extracted..."
+        _msg "OOPS: cURL ${_CURL_VRN} could not be extracted..."
       fi
       if [ -x "/usr/local/bin/curl" ] \
         && [ ! -e "/var/xdrago/log/.curl_libs_fix_${_CURL_VRN}-${_X_VERSION}-${_NOW}.pid" ]; then
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "INFO: Updating cURL ${_CURL_VRN} libs symlinks..."
+          _msg "INFO: Updating cURL ${_CURL_VRN} libs symlinks..."
         fi
         if [ -e "/usr/local/lib/libcurl.so.4.8.0" ]; then
           ln -sfn /usr/local/lib/libcurl.so.4.8.0 /usr/lib/libcurl.so
@@ -4460,23 +4460,23 @@ curl_install_src() {
         && [ -e "/usr/local/include/curl/easy.h" ] \
         && [ -d "/usr/include/x86_64-linux-gnu/curl" ] \
         && [ ! -L "/usr/include/x86_64-linux-gnu/curl" ]; then
-        mrun "apt-get remove libcurl4-openssl-dev -y --purge --auto-remove -qq" 2> /dev/null
+        _mrun "apt-get remove libcurl4-openssl-dev -y --purge --auto-remove -qq" 2> /dev/null
         ln -sfn /usr/local/include/curl /usr/include/x86_64-linux-gnu/curl
         ldconfig 2> /dev/null
       fi
     fi
   else
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "INFO: cURL version detected ${_CURL_ITD}, OK"
+      _msg "INFO: cURL version detected ${_CURL_ITD}, OK"
     fi
   fi
 }
 
 #
 # Symlink to dash.
-symlink_to_dash() {
+_symlink_to_dash() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: symlink_to_dash"
+    _msg "PROC: _symlink_to_dash"
   fi
   if [ -x "/usr/bin/dash" ] && [ ! -L "/usr/bin/dash" ]; then
     if [ -L "/usr/bin/sh" ]; then
@@ -4498,9 +4498,9 @@ symlink_to_dash() {
 
 #
 # Symlink to bash.
-symlink_to_bash() {
+_symlink_to_bash() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: symlink_to_bash"
+    _msg "PROC: _symlink_to_bash"
   fi
   if [ -x "/usr/bin/bash" ] && [ ! -L "/usr/bin/bash" ]; then
     if [ -L "/usr/bin/sh" ]; then
@@ -4522,9 +4522,9 @@ symlink_to_bash() {
 
 #
 # Switch to dash.
-switch_to_dash() {
+_switch_to_dash() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: switch_to_dash"
+    _msg "PROC: _switch_to_dash"
   fi
   if [ -x "/usr/bin/dash" ] && [ ! -e "/bin/dash" ]; then
     cp -a /usr/bin/dash /bin/
@@ -4600,9 +4600,9 @@ switch_to_dash() {
 
 #
 # Switch to bash.
-switch_to_bash() {
+_switch_to_bash() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: switch_to_bash"
+    _msg "PROC: _switch_to_bash"
   fi
   if [ -x "/usr/bin/bash" ] && [ ! -e "/bin/bash" ]; then
     cp -a /usr/bin/bash /bin/
@@ -4678,9 +4678,9 @@ switch_to_bash() {
 
 #
 # Strict Permissions on All Binaries.
-strict_bin_permissions() {
+_strict_bin_permissions() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: strict_bin_permissions"
+    _msg "PROC: _strict_bin_permissions"
   fi
 
   _BIN_PATHS="/bin \
@@ -4900,7 +4900,7 @@ strict_bin_permissions() {
     fi
   fi
 
-  cp -af ${bldPth}/aegir/helpers/websh.sh.txt /bin/websh
+  cp -af ${_bldPth}/aegir/helpers/websh.sh.txt /bin/websh
   chmod 755 /bin/websh
   chown root:root /bin/websh
   chown root:root /etc/passwd*
@@ -4911,9 +4911,9 @@ strict_bin_permissions() {
 
 #
 # Turn Off AppArmor temporarily.
-turn_off_apparmor_temporarily() {
+_turn_off_apparmor_temporarily() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: turn_off_apparmor_temporarily"
+    _msg "PROC: _turn_off_apparmor_temporarily"
   fi
   isAppArmOn=N
   if [ -e "/sys/module/apparmor/parameters/enabled" ]; then
@@ -4922,22 +4922,22 @@ turn_off_apparmor_temporarily() {
   fi
   if [ "${isAppArmOn}" = "Y" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "ARMR: Turning off AppArmor temporarily..."
+      _msg "ARMR: Turning off AppArmor temporarily..."
     fi
     rm -rf /var/cache/apparmor/*
-    mrun "apparmor_parser -r /etc/apparmor.d/*" 2> /dev/null
-    mrun "aa-complain /etc/apparmor.d/*" 2> /dev/null
-    mrun "service apparmor stop" 2> /dev/null
-    mrun "aa-teardown" 2> /dev/null
-    mrun "service auditd stop" 2> /dev/null
+    _mrun "apparmor_parser -r /etc/apparmor.d/*" 2> /dev/null
+    _mrun "aa-complain /etc/apparmor.d/*" 2> /dev/null
+    _mrun "service apparmor stop" 2> /dev/null
+    _mrun "aa-teardown" 2> /dev/null
+    _mrun "service auditd stop" 2> /dev/null
   fi
 }
 
 #
 # Enforce AppArmor profiles.
-if_enforce_apparmor_profiles() {
+_if_enforce_apparmor_profiles() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: if_enforce_apparmor_profiles"
+    _msg "PROC: _if_enforce_apparmor_profiles"
   fi
   if [ "${isAppArmOn}" = "Y" ] || [ -d "/etc/apparmor.d" ]; then
     if [ -e "/root/.enforce.apparmor.cnf" ]; then
@@ -4952,15 +4952,15 @@ if_enforce_apparmor_profiles() {
         || [ -z "${_AA_TEST_D}" ] \
         || [ ! -z "${_AA_TEST_E}" ]; then
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "ARMR: Restarting services to switch them to the enforced mode"
+          _msg "ARMR: Restarting services to switch them to the enforced mode"
         fi
-        mrun "bash /var/xdrago/move_sql.sh" 2> /dev/null
+        _mrun "bash /var/xdrago/move_sql.sh" 2> /dev/null
         wait
-        mrun "service redis-server reload" 2> /dev/null
-        mrun "killall unbound" 2> /dev/null
-        mrun "killall pure-ftpd" 2> /dev/null
-        mrun "killall rsyslogd" 2> /dev/null
-        mrun "service rsyslog restart" 2> /dev/null
+        _mrun "service redis-server reload" 2> /dev/null
+        _mrun "killall unbound" 2> /dev/null
+        _mrun "killall pure-ftpd" 2> /dev/null
+        _mrun "killall rsyslogd" 2> /dev/null
+        _mrun "service rsyslog restart" 2> /dev/null
       fi
     fi
   fi
@@ -4968,12 +4968,12 @@ if_enforce_apparmor_profiles() {
 
 #
 # Sync AppArmor profiles.
-sync_apparmor_profiles() {
+_sync_apparmor_profiles() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: sync_apparmor_profiles"
+    _msg "PROC: _sync_apparmor_profiles"
   fi
   if [ "${isAppArmOn}" = "Y" ] || [ -d "/etc/apparmor.d" ]; then
-    msg "ARMR: All profiles will be updated now..."
+    _msg "ARMR: All profiles will be updated now..."
     if [ -d "/etc/apparmor.d" ]; then
       _backArmr="/var/backups/apparmor/"
       [ ! -e "${_backArmr}" ] && mkdir -p ${_backArmr}
@@ -5004,7 +5004,7 @@ sync_apparmor_profiles() {
       for _profArm in ${_profArmList}; do
         mv -f /etc/apparmor.d/*${_profArm}* ${_backArmr} &> /dev/null
       done
-      cp -af ${locCnf}/apparmor/* /etc/apparmor.d/
+      cp -af ${_locCnf}/apparmor/* /etc/apparmor.d/
       if [ -d "/etc/apparmor.d/disable" ]; then
         cp -af /etc/apparmor.d/*ssh* /etc/apparmor.d/disable/ &> /dev/null
       fi
@@ -5012,7 +5012,7 @@ sync_apparmor_profiles() {
     if [ ! -e "/root/.run-to-daedalus.cnf" ] \
       && [ ! -e "/root/.run-to-chimaera.cnf" ] \
       && [ ! -e "/root/.run-to-beowulf.cnf" ]; then
-      msg "WAIT: This may take a while, please wait..."
+      _msg "WAIT: This may take a while, please wait..."
     fi
     for proFile in `find /etc/apparmor.d/ -maxdepth 1 -mindepth 1 -type f | sort`; do
       profName=$(echo ${proFile} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
@@ -5022,7 +5022,7 @@ sync_apparmor_profiles() {
           && [ ! -e "/root/.run-to-chimaera.cnf" ] \
           && [ ! -e "/root/.run-to-beowulf.cnf" ]; then
           if [ "${isAppArmOn}" = "Y" ]; then
-            mrun "apparmor_parser -Q /etc/apparmor.d/${profName}" 2> /dev/null
+            _mrun "apparmor_parser -Q /etc/apparmor.d/${profName}" 2> /dev/null
           fi
         fi
       fi
@@ -5046,52 +5046,52 @@ sync_apparmor_profiles() {
     if [ "${isAppArmOn}" = "Y" ]; then
       if [ -e "/root/.activate.apparmor.cnf" ]; then
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "ARMR: Activating AppArmor in the complain mode"
+          _msg "ARMR: Activating AppArmor in the complain mode"
         fi
-        mrun "rm -rf /var/cache/apparmor/*" 2> /dev/null
+        _mrun "rm -rf /var/cache/apparmor/*" 2> /dev/null
         if [ -x "/etc/init.d/apparmor" ]; then
-          mrun "service apparmor restart" 2> /dev/null
+          _mrun "service apparmor restart" 2> /dev/null
         fi
         if [ -x "/etc/init.d/auditd" ]; then
-          mrun "service auditd restart" 2> /dev/null
+          _mrun "service auditd restart" 2> /dev/null
         fi
-        mrun "apparmor_parser -r /etc/apparmor.d/*" 2> /dev/null
-        mrun "aa-complain /etc/apparmor.d/*" 2> /dev/null
+        _mrun "apparmor_parser -r /etc/apparmor.d/*" 2> /dev/null
+        _mrun "aa-complain /etc/apparmor.d/*" 2> /dev/null
       elif [ -e "/root/.enforce.apparmor.cnf" ]; then
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "ARMR: Activating AppArmor in the enforced mode"
+          _msg "ARMR: Activating AppArmor in the enforced mode"
         fi
-        mrun "rm -rf /var/cache/apparmor/*" 2> /dev/null
+        _mrun "rm -rf /var/cache/apparmor/*" 2> /dev/null
         if [ -x "/etc/init.d/apparmor" ]; then
-          mrun "service apparmor restart" 2> /dev/null
+          _mrun "service apparmor restart" 2> /dev/null
         fi
         if [ -x "/etc/init.d/auditd" ]; then
-          mrun "service auditd restart" 2> /dev/null
+          _mrun "service auditd restart" 2> /dev/null
         fi
-        mrun "apparmor_parser -r /etc/apparmor.d/*" 2> /dev/null
-        mrun "aa-enforce /etc/apparmor.d/*" 2> /dev/null
+        _mrun "apparmor_parser -r /etc/apparmor.d/*" 2> /dev/null
+        _mrun "aa-enforce /etc/apparmor.d/*" 2> /dev/null
         if [ "${_OS_CODE}" != "stretch" ] && [ "${_OS_CODE}" != "jessie" ]; then
-          if_enforce_apparmor_profiles
+          _if_enforce_apparmor_profiles
         fi
       elif [ -e "/root/.disable.apparmor.cnf" ] \
         || [ ! -e "/root/.activate.apparmor.cnf" ] \
         || [ ! -e "/root/.enforce.apparmor.cnf" ]; then
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "ARMR: Deactivating AppArmor using aa-teardown"
+          _msg "ARMR: Deactivating AppArmor using aa-teardown"
         fi
-        mrun "rm -rf /var/cache/apparmor/*" 2> /dev/null
-        mrun "apparmor_parser -r /etc/apparmor.d/*" 2> /dev/null
-        mrun "aa-complain /etc/apparmor.d/*" 2> /dev/null
+        _mrun "rm -rf /var/cache/apparmor/*" 2> /dev/null
+        _mrun "apparmor_parser -r /etc/apparmor.d/*" 2> /dev/null
+        _mrun "aa-complain /etc/apparmor.d/*" 2> /dev/null
         if [ -x "/etc/init.d/apparmor" ]; then
-          mrun "service apparmor stop" 2> /dev/null
-          mrun "update-rc.d -f apparmor remove" 2> /dev/null
+          _mrun "service apparmor stop" 2> /dev/null
+          _mrun "update-rc.d -f apparmor remove" 2> /dev/null
         fi
         if [ -x "/etc/init.d/auditd" ]; then
-          mrun "service auditd stop" 2> /dev/null
-          mrun "update-rc.d -f auditd remove" 2> /dev/null
+          _mrun "service auditd stop" 2> /dev/null
+          _mrun "update-rc.d -f auditd remove" 2> /dev/null
         fi
         if [ -x "/usr/sbin/aa-teardown" ]; then
-          mrun "aa-teardown" 2> /dev/null
+          _mrun "aa-teardown" 2> /dev/null
         fi
       fi
     fi
@@ -5100,9 +5100,9 @@ sync_apparmor_profiles() {
 
 #
 # Manage AppArmor.
-if_install_apparmor() {
+_if_install_apparmor() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: if_install_apparmor"
+    _msg "PROC: _if_install_apparmor"
   fi
   ###--------------------###
   isAppArmorRevFile="/sys/kernel/security/apparmor/revision"
@@ -5122,12 +5122,12 @@ if_install_apparmor() {
     || [ -z "${isAppArmorStatus}" ] \
     || [ "${isAppArmorGrub}" = "NO" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "ARMR: The system AppArmor and auditd will be installed now, however..."
-      msg "ARMR: ...it will become active only after you reboot this server"
-      msg "ARMR: Use 'boa reboot' command for optimized reboot"
-      msg "WAIT: This may take a while, please wait..."
+      _msg "ARMR: The system AppArmor and auditd will be installed now, however..."
+      _msg "ARMR: ...it will become active only after you reboot this server"
+      _msg "ARMR: Use 'boa reboot' command for optimized reboot"
+      _msg "WAIT: This may take a while, please wait..."
     fi
-    mrun "${_INSTAPP} auditd \
+    _mrun "${_INSTAPP} auditd \
       apparmor \
       apparmor-utils \
       apparmor-notify \
@@ -5143,30 +5143,30 @@ if_install_apparmor() {
     isAppArmOn=$(echo -n ${isAppArmOn} | tr -d "\n" 2>&1)
   fi
   if [ "${isAppArmOn}" = "Y" ]; then
-    sync_apparmor_profiles
-    [ -e "/root/.turn_off_apparmor_in_octopus.cnf" ] && rm -f /root/.turn_off_apparmor_in_octopus.cnf
+    _sync_apparmor_profiles
+    [ -e "/root/._turn_off_apparmor_in_octopus.cnf" ] && rm -f /root/._turn_off_apparmor_in_octopus.cnf
   fi
 }
 
 #
 # Final cleanup.
-finale() {
+_finale() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: finale"
+    _msg "PROC: _finale"
   fi
   ###--------------------###
   if [ "${_STATUS}" = "INIT" ]; then
     _L_ST="install"
-    touch ${pthLog}/SA-CORE-2014-005-fixed-d7.log
+    touch ${_pthLog}/SA-CORE-2014-005-fixed-d7.log
   else
     _L_ST="upgrade"
   fi
-  msg "CARD: Now charging your credit card for this magic show..."
-  mrun "sleep 2"
-  msg "CARD: It will take a moment to process your payment..."
-  mrun "sleep 5"
-  msg "JOKE: Just kidding !!! Enjoy your Aegir Hosting System :)"
-  mrun "sleep 3"
+  _msg "CARD: Now charging your credit card for this magic show..."
+  _mrun "sleep 2"
+  _msg "CARD: It will take a moment to process your payment..."
+  _mrun "sleep 5"
+  _msg "JOKE: Just kidding !!! Enjoy your Aegir Hosting System :)"
+  _mrun "sleep 3"
   echo " "
   _KERNEL_UP=NO
   if [ -e "/run/reboot-required.pkgs" ]; then
@@ -5176,14 +5176,14 @@ finale() {
     fi
   fi
   if [ "${_UP_LNX}" = "YES" ] || [ "${_KERNEL_UP}" = "YES" ]; then
-    msg "NOTE: Your OS kernel has been upgraded"
-    msg "NOTE: Please reboot this server to activate the new kernel"
-    msg "NOTE: Use 'boa reboot' command for optimized reboot"
+    _msg "NOTE: Your OS kernel has been upgraded"
+    _msg "NOTE: Please reboot this server to activate the new kernel"
+    _msg "NOTE: Use 'boa reboot' command for optimized reboot"
     echo " "
-    mrun "sleep 8"
+    _mrun "sleep 8"
   fi
-  msg "Final post-${_L_ST} cleaning, one moment..."
-  barracuda_cnf_cleanup
+  _msg "Final post-${_L_ST} cleaning, one moment..."
+  _barracuda_cnf_cleanup
   if [ -e "/var/log/barracuda_log.txt" ]; then
     _T_SERIES_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
     if [[ "${_T_SERIES_TEST}" =~ "BOA-4." ]] \
@@ -5193,7 +5193,7 @@ finale() {
       _DO_NOTHING=YES
     else
       _DO_NOTHING=YES
-      # fix_core_dgd
+      # _fix_core_dgd
     fi
   fi
   if [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
@@ -5203,8 +5203,8 @@ finale() {
   else
     _MTD_VR="${_X_VERSION}"
   fi
-  mv -f /etc/motd ${vBs}/dragon/t/motd-pre-${_X_SE}-${_MTD_VR}-${_NOW} &> /dev/null
-  mv -f /etc/motd-pre-* ${vBs}/dragon/t/ &> /dev/null
+  mv -f /etc/motd ${_vBs}/dragon/t/motd-pre-${_xSrl}-${_MTD_VR}-${_NOW} &> /dev/null
+  mv -f /etc/motd-pre-* ${_vBs}/dragon/t/ &> /dev/null
   echo > /etc/motd
   echo " Skynet Agent v.${_MTD_VR} on $(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)/$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1) \
     welcomes you aboard" | fmt -su -w 2500 >> /etc/motd
@@ -5226,8 +5226,8 @@ finale() {
   rm -rf /var/opt/*
   rm -f /var/xdrago/monitor/acrashsql.sh
   rm -f /var/xdrago/acrashsql.sh
-  if_hosted_sys
-  if [ "${hostedSys}" = "YES" ]; then
+  _if_hosted_sys
+  if [ "${_hostedSys}" = "YES" ]; then
     _MY_USAGE=YES
   else
     _MY_USAGE=NO
@@ -5246,25 +5246,25 @@ finale() {
   [ -e "/run/manage_ruby_users.pid" ] && rm -f /run/manage_ruby_users.pid
   [ -e "/var/aegir/.drush/.alias.drushrc.php" ] && rm -f /var/aegir/.drush/.alias.drushrc.php
   [ -d "/data/u" ] && rm -f /data/disk/*/.drush/.alias.drushrc.php
-  rm -f ${pthLog}/protected-vhosts-clean.log
-  rm -f ${vBs}/.auth.IP.list*
+  rm -f ${_pthLog}/protected-vhosts-clean.log
+  rm -f ${_vBs}/.auth.IP.list*
   sed -i "s/### access .*//g; s/allow .*;//g; s/deny .*;//g; s/ *$//g; /^$/d" \
-    ${mtrNgx}/vhost.d/adminer.* &> /dev/null
+    ${_mtrNgx}/vhost.d/adminer.* &> /dev/null
   wait
   sed -i "s/### access .*//g; s/allow .*;//g; s/deny .*;//g; s/ *$//g; /^$/d" \
-    ${mtrNgx}/vhost.d/cgp.* &> /dev/null
+    ${_mtrNgx}/vhost.d/cgp.* &> /dev/null
   wait
   sed -i "s/### access .*//g; s/allow .*;//g; s/deny .*;//g; s/ *$//g; /^$/d" \
-    ${mtrNgx}/vhost.d/chive.* &> /dev/null
+    ${_mtrNgx}/vhost.d/chive.* &> /dev/null
   wait
   sed -i "s/### access .*//g; s/allow .*;//g; s/deny .*;//g; s/ *$//g; /^$/d" \
-    ${mtrNgx}/vhost.d/sqlbuddy.* &> /dev/null
+    ${_mtrNgx}/vhost.d/sqlbuddy.* &> /dev/null
   wait
   find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -rf {} \; &> /dev/null
   chmod 700 /root
   if [ ! -e "/etc/init.d/buagent" ] \
-    && [ -e "${vBs}/buagent-pre-${_X_SE}-${_X_VERSION}-${_NOW}" ]; then
-    mv -f ${vBs}/buagent-pre-${_X_SE}-${_X_VERSION}-${_NOW} \
+    && [ -e "${_vBs}/buagent-pre-${_xSrl}-${_X_VERSION}-${_NOW}" ]; then
+    mv -f ${_vBs}/buagent-pre-${_xSrl}-${_X_VERSION}-${_NOW} \
       /etc/init.d/buagent &> /dev/null
   fi
   _CSF_CRON_TEST=$(grep water /etc/crontab 2>&1)
@@ -5279,8 +5279,8 @@ finale() {
     wait
   fi
   killall -9 memcached &> /dev/null
-  php_deprecated_cleanup
-  php_single_initd_cleanup
+  _php_deprecated_cleanup
+  _php_single_initd_cleanup
   if [ -e "/root/.skip-aegir-master-upgrade.cnf" ] \
     && [ -e "/root/.completed_post_major_os_upgrade.info" ] \
     && [ ! -e "/root/.run_post_major_os_upgrade.info" ]; then
@@ -5288,7 +5288,7 @@ finale() {
   fi
   echo "FINALE" > /root/.latest-barracuda-upgrade-finale.info
   if [ ! -e "/root/.upstart.cnf" ]; then
-    mrun "service cron start" 2> /dev/null
+    _mrun "service cron start" 2> /dev/null
   fi
   if [ -x "/usr/sbin/csf" ] \
     && [ -e "/etc/csf/csf.deny" ] \
@@ -5297,16 +5297,16 @@ finale() {
     echo "iptables -t raw -A PREROUTING -p tcp --dport 21 -j CT --helper ftp" >> /etc/csf/csfpost.sh
     echo "iptables -t raw -A OUTPUT -p tcp --dport 21 -j CT --helper ftp" >> /etc/csf/csfpost.sh
     chmod 700 /etc/csf/csfpost.sh
-    mrun "service lfd stop" 2> /dev/null
+    _mrun "service lfd stop" 2> /dev/null
     wait
     kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
     killall sleep &> /dev/null
     rm -f /etc/csf/csf.error
     csf -x  &> /dev/null
     wait
-    mrun "service clean-boa-env start" 2> /dev/null
+    _mrun "service clean-boa-env start" 2> /dev/null
     wait
-    if_fix_iptables_symlinks
+    _if_fix_iptables_symlinks
     csf -uf &> /dev/null
     wait
     _NFTABLES_TEST=$(iptables -V 2>&1)
@@ -5343,7 +5343,7 @@ finale() {
       fi
     done
     csf -q  &> /dev/null
-    mrun "service lfd start" 2> /dev/null
+    _mrun "service lfd start" 2> /dev/null
     wait
     ### Linux kernel TCP SACK CVEs mitigation
     ### CVE-2019-11477 SACK Panic
@@ -5362,101 +5362,101 @@ finale() {
   chmod 711 bin boot data dev emul etc home lib lib64 lib32 media mnt opt \
     sbin selinux srv sys usr var share run &> /dev/null
   chmod 700 root &> /dev/null
-  msg "BYE!"
+  _msg "BYE!"
 }
 
-run_aptitude_deps_install() {
+_run_aptitude_deps_install() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: run_aptitude_deps_install"
+    _msg "PROC: _run_aptitude_deps_install"
   fi
-  if_to_do_fix
+  _if_to_do_fix
   if [ "${_OS_DIST}" = "Devuan" ]; then
     ${_INITINS} devuan-keyring &> /dev/null
   elif [ "${_OS_DIST}" = "Debian" ]; then
     ${_INITINS} debian-keyring debian-archive-keyring &> /dev/null
   fi
   if [ "${_STATUS}" = "INIT" ]; then
-    msg "INFO: Installing a large list of libraries and tools..."
+    _msg "INFO: Installing a large list of libraries and tools..."
   elif [ "${_STATUS}" = "UPGRADE" ]; then
-    msg "INFO: Upgrading a large list of libraries and tools..."
+    _msg "INFO: Upgrading a large list of libraries and tools..."
   fi
-  msg "WAIT: This may take a while, please wait..."
-  apt_clean_update
-  mrun "apt-get remove percona-xtrabackup-24 -y --purge --auto-remove -qq" 2> /dev/null
-  mrun "apt-get autoremove -y" 2> /dev/null
-  mrun "${_INSTAPP} build-essential libsasl2-modules" 2> /dev/null
-  mrun "${_INSTAPP} time vim cvs makepasswd" 2> /dev/null
-  mrun "${_INSTAPP} man-db dnsutils sudo symlinks iptables" 2> /dev/null
-  mrun "${_INSTAPP} autoconf automake autotools-dev m4 bc" 2> /dev/null
+  _msg "WAIT: This may take a while, please wait..."
+  _apt_clean_update
+  _mrun "apt-get remove percona-xtrabackup-24 -y --purge --auto-remove -qq" 2> /dev/null
+  _mrun "apt-get autoremove -y" 2> /dev/null
+  _mrun "${_INSTAPP} build-essential libsasl2-modules" 2> /dev/null
+  _mrun "${_INSTAPP} time vim cvs makepasswd" 2> /dev/null
+  _mrun "${_INSTAPP} man-db dnsutils sudo symlinks iptables" 2> /dev/null
+  _mrun "${_INSTAPP} autoconf automake autotools-dev m4 bc" 2> /dev/null
   if [ ! -x "/usr/local/bin/curl" ]; then
-    mrun "apt-get build-dep curl -y" 2> /dev/null
-    mrun "${_INSTAPP} curl" 2> /dev/null
+    _mrun "apt-get build-dep curl -y" 2> /dev/null
+    _mrun "${_INSTAPP} curl" 2> /dev/null
   fi
-  mrun "apt-get remove libssl1.0-dev -y --purge --auto-remove -qq" 2> /dev/null
-  mrun "${_INSTAPP} libssl-dev" 2> /dev/null
-  mrun "${_INSTAPP} libc-client2007e libc-client2007e-dev" 2> /dev/null
-  mrun "${_INSTAPP} mcrypt libc-client-dev" 2> /dev/null
+  _mrun "apt-get remove libssl1.0-dev -y --purge --auto-remove -qq" 2> /dev/null
+  _mrun "${_INSTAPP} libssl-dev" 2> /dev/null
+  _mrun "${_INSTAPP} libc-client2007e libc-client2007e-dev" 2> /dev/null
+  _mrun "${_INSTAPP} mcrypt libc-client-dev" 2> /dev/null
   if [ "${_OS_DIST}" = "Devuan" ]; then
-    mrun "${_INSTAPP} apticron aptitude apt-listchanges" 2> /dev/null
+    _mrun "${_INSTAPP} apticron aptitude apt-listchanges" 2> /dev/null
   else
-    mrun "${_INSTAPP} apticron aptitude" 2> /dev/null
-    mrun "dpkg --remove --force-remove-reinstreq apt-listchanges" 2> /dev/null
+    _mrun "${_INSTAPP} apticron aptitude" 2> /dev/null
+    _mrun "dpkg --remove --force-remove-reinstreq apt-listchanges" 2> /dev/null
   fi
-  mrun "${_INSTAPP} sysstat telnet cron gnupg2 gnupg" 2> /dev/null
-  mrun "${_INSTAPP} unzip unrtf wdiff pwgen flex re2c" 2> /dev/null
-  mrun "${_INSTAPP} rsync strace ntpdate python-dev" 2> /dev/null
-  mrun "${_INSTAPP} mc whois zlib1g zlib1g-dev librsync-dev" 2> /dev/null
-  mrun "${_INSTAPP} sqlite3 libsqlite3-dev s4cmd" 2> /dev/null
-  mrun "${_INSTAPP} ssh ssl-cert libpam-umask shtool" 2> /dev/null
-  mrun "${_INSTAPP} xml-core xml2 xpdf libtool rrdtool" 2> /dev/null
-  mrun "${_INSTAPP} ncurses-dev ncurses-term sipcalc" 2> /dev/null
+  _mrun "${_INSTAPP} sysstat telnet cron gnupg2 gnupg" 2> /dev/null
+  _mrun "${_INSTAPP} unzip unrtf wdiff pwgen flex re2c" 2> /dev/null
+  _mrun "${_INSTAPP} rsync strace ntpdate python-dev" 2> /dev/null
+  _mrun "${_INSTAPP} mc whois zlib1g zlib1g-dev librsync-dev" 2> /dev/null
+  _mrun "${_INSTAPP} sqlite3 libsqlite3-dev s4cmd" 2> /dev/null
+  _mrun "${_INSTAPP} ssh ssl-cert libpam-umask shtool" 2> /dev/null
+  _mrun "${_INSTAPP} xml-core xml2 xpdf libtool rrdtool" 2> /dev/null
+  _mrun "${_INSTAPP} ncurses-dev ncurses-term sipcalc" 2> /dev/null
   _OS_LIST="daedalus chimaera bullseye bookworm"
   for e in ${_OS_LIST}; do
     if [ "${e}" = "${_OS_CODE}" ]; then
-      mrun "${_INSTAPP} ncal" 2> /dev/null
+      _mrun "${_INSTAPP} ncal" 2> /dev/null
     fi
   done
-  mrun "${_INSTAPP} netcat libzip-dev libwww-perl" 2> /dev/null
-  mrun "${_INSTAPP} libfontconfig1 libfreetype6 libfreetype6-dev" 2> /dev/null
-  mrun "${_INSTAPP} libfribidi0 libgeoip-dev libgeoip1 libgmp3-dev" 2> /dev/null
-  mrun "${_INSTAPP} libonig-dev libpq5 libxml2-dev libxpm4" 2> /dev/null
-  mrun "${_INSTAPP} libxslt-dev libxslt1-dev libxslt1.1 subversion" 2> /dev/null
-  mrun "${_INSTAPP} libaprutil1 libapr1 ldap-utils ipset" 2> /dev/null
-  mrun "${_INSTAPP} pdftk patchutils p7zip-full fontconfig-config" 2> /dev/null
-  mrun "${_INSTAPP} bison catdoc cython3 geoip-database gettext" 2> /dev/null
-  mrun "${_INSTAPP} clamav clamav-base clamav-daemon clamdscan" 2> /dev/null
-  mrun "${_INSTAPP} ghostscript htop lemon lftp nano" 2> /dev/null
-  mrun "${_INSTAPP} python3-dev python3-debian python3-magic" 2> /dev/null
+  _mrun "${_INSTAPP} netcat libzip-dev libwww-perl" 2> /dev/null
+  _mrun "${_INSTAPP} libfontconfig1 libfreetype6 libfreetype6-dev" 2> /dev/null
+  _mrun "${_INSTAPP} libfribidi0 libgeoip-dev libgeoip1 libgmp3-dev" 2> /dev/null
+  _mrun "${_INSTAPP} libonig-dev libpq5 libxml2-dev libxpm4" 2> /dev/null
+  _mrun "${_INSTAPP} libxslt-dev libxslt1-dev libxslt1.1 subversion" 2> /dev/null
+  _mrun "${_INSTAPP} libaprutil1 libapr1 ldap-utils ipset" 2> /dev/null
+  _mrun "${_INSTAPP} pdftk patchutils p7zip-full fontconfig-config" 2> /dev/null
+  _mrun "${_INSTAPP} bison catdoc cython3 geoip-database gettext" 2> /dev/null
+  _mrun "${_INSTAPP} clamav clamav-base clamav-daemon clamdscan" 2> /dev/null
+  _mrun "${_INSTAPP} ghostscript htop lemon lftp nano" 2> /dev/null
+  _mrun "${_INSTAPP} python3-dev python3-debian python3-magic" 2> /dev/null
   if [ -e "/root/.dont.use.fancy.bash.login.cnf" ] \
     && [ -e "/usr/bin/screenfetch" ]; then
-    mrun "apt-get remove toilet -y --purge --auto-remove -qq" 2> /dev/null
-    mrun "apt-get remove figlet -y --purge --auto-remove -qq" 2> /dev/null
-    mrun "apt-get remove screenfetch -y --purge --auto-remove -qq" 2> /dev/null
+    _mrun "apt-get remove toilet -y --purge --auto-remove -qq" 2> /dev/null
+    _mrun "apt-get remove figlet -y --purge --auto-remove -qq" 2> /dev/null
+    _mrun "apt-get remove screenfetch -y --purge --auto-remove -qq" 2> /dev/null
   else
-    mrun "${_INSTAPP} toilet figlet screenfetch" 2> /dev/null
+    _mrun "${_INSTAPP} toilet figlet screenfetch" 2> /dev/null
   fi
-  fix_postfix
-  st_runner "${_INSTAPP} ${_MAILSERV}" 2> /dev/null
-  st_runner "${_INSTAPP} ${_APT_XTRA}" 2> /dev/null
-  st_runner "${_INSTAPP} ${_EXTRA_LIB_APT}" 2> /dev/null
-  st_runner "${_INSTAPP} ${_EXTRA_PACKAGES}" 2> /dev/null
-  st_runner "${_INSTAPP} ${_SYSLOGD}" 2> /dev/null
+  _fix_postfix
+  _st_runner "${_INSTAPP} ${_MAILSERV}" 2> /dev/null
+  _st_runner "${_INSTAPP} ${_APT_XTRA}" 2> /dev/null
+  _st_runner "${_INSTAPP} ${_EXTRA_LIB_APT}" 2> /dev/null
+  _st_runner "${_INSTAPP} ${_EXTRA_PACKAGES}" 2> /dev/null
+  _st_runner "${_INSTAPP} ${_SYSLOGD}" 2> /dev/null
   _EXTRA_APT="tree"
-  st_runner "apt-get install ${_EXTRA_APT} ${nrmUpArg}" 2> /dev/null
+  _st_runner "apt-get install ${_EXTRA_APT} ${_nrmUpArg}" 2> /dev/null
   if [ -e "/etc/init.d/php5-fpm" ]; then
-    mrun "service php5-fpm stop" 2> /dev/null
-    mrun "update-rc.d -f php5-fpm remove" 2> /dev/null
+    _mrun "service php5-fpm stop" 2> /dev/null
+    _mrun "update-rc.d -f php5-fpm remove" 2> /dev/null
   fi
 }
 
-basic_packages_install_on_init() {
+_basic_packages_install_on_init() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: basic_packages_install_on_init"
+    _msg "PROC: _basic_packages_install_on_init"
   fi
-  apt_clean_update
+  _apt_clean_update
   if [ ! -e "/var/aegir/drush" ] && [ ! -e "/var/xdrago/manage_solr_config.sh" ]; then
-#     mrun "apt-get remove unscd -y --purge --auto-remove -qq" 2> /dev/null
-#     mrun "apt-get remove dbus -y --purge --auto-remove -qq" 2> /dev/null
+#     _mrun "apt-get remove unscd -y --purge --auto-remove -qq" 2> /dev/null
+#     _mrun "apt-get remove dbus -y --purge --auto-remove -qq" 2> /dev/null
 #     if [ -e "/usr/share/dbus-1" ]; then
 #       rm -f /usr/share/dbus-1/*/*freedesktop*
 #     fi
@@ -5483,58 +5483,58 @@ basic_packages_install_on_init() {
   fi
   if [ "${_STATUS}" = "INIT" ]; then
     if [ ! -e "/root/.step.init.basic.cnf" ]; then
-      msg "INFO: Installing some basic tools..."
-      apt_clean_update
-      mrun "${_INITINS} locales" &> /dev/null
-      locales_check_fix
-      mrun "${_INITINS} lsb-release" &> /dev/null
-      mrun "${_INITINS} dnsutils" &> /dev/null
-      mrun "${_INITINS} netcat" &> /dev/null
-      mrun "${_INITINS} netcat-traditional" &> /dev/null
-      mrun "${_INITINS} aptitude" &> /dev/null
-      mrun "${_INITINS} curl" &> /dev/null
-      mrun "${_INITINS} wget" &> /dev/null
-      mrun "${_INITINS} hostname" &> /dev/null
-      mrun "${_INITINS} net-tools" &> /dev/null
-      mrun "${_INITINS} ntpdate" &> /dev/null
+      _msg "INFO: Installing some basic tools..."
+      _apt_clean_update
+      _mrun "${_INITINS} locales" &> /dev/null
+      _locales_check_fix
+      _mrun "${_INITINS} lsb-release" &> /dev/null
+      _mrun "${_INITINS} dnsutils" &> /dev/null
+      _mrun "${_INITINS} netcat" &> /dev/null
+      _mrun "${_INITINS} netcat-traditional" &> /dev/null
+      _mrun "${_INITINS} aptitude" &> /dev/null
+      _mrun "${_INITINS} curl" &> /dev/null
+      _mrun "${_INITINS} wget" &> /dev/null
+      _mrun "${_INITINS} hostname" &> /dev/null
+      _mrun "${_INITINS} net-tools" &> /dev/null
+      _mrun "${_INITINS} ntpdate" &> /dev/null
       touch /root/.step.init.basic.cnf
     fi
   fi
 }
 
-more_packages_install_on_init() {
+_more_packages_install_on_init() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: more_packages_install_on_init"
+    _msg "PROC: _more_packages_install_on_init"
   fi
   if [ "${_STATUS}" = "INIT" ]; then
-    msg "INFO: Installing more basic tools now..."
+    _msg "INFO: Installing more basic tools now..."
     if [ -e "/etc/debian_version" ]; then
       _L_DEB_TEST=$(grep "^5." /etc/debian_version 2>&1)
       if [ ! -z "${_L_DEB_TEST}" ]; then
-        sed -i "s/^deb.*security.debian.org.*/## security updates no longer available/g" ${aptLiSys} &> /dev/null
+        sed -i "s/^deb.*security.debian.org.*/## security updates no longer available/g" ${_aptLiSys} &> /dev/null
         wait
         sed -i "s/ftp.*debian.org/archive.debian.org/g" \
-          ${aptLiSys} &> /dev/null
+          ${_aptLiSys} &> /dev/null
         wait
         sed -i "s/volatile.debian.org/archive.debian.org/g" \
-          ${aptLiSys} &> /dev/null
+          ${_aptLiSys} &> /dev/null
         wait
       fi
     fi
-    apt_clean_update
-    mrun "${_INITINS} locales" &> /dev/null
-    locales_check_fix
-    mrun "${_INITINS} git" &> /dev/null
-    mrun "${_INITINS} git-core" &> /dev/null
-    mrun "${_INITINS} git-man" &> /dev/null
-    mrun "${_INITINS} axel" &> /dev/null
-    mrun "${_INITINS} build-essential" &> /dev/null
+    _apt_clean_update
+    _mrun "${_INITINS} locales" &> /dev/null
+    _locales_check_fix
+    _mrun "${_INITINS} git" &> /dev/null
+    _mrun "${_INITINS} git-core" &> /dev/null
+    _mrun "${_INITINS} git-man" &> /dev/null
+    _mrun "${_INITINS} axel" &> /dev/null
+    _mrun "${_INITINS} build-essential" &> /dev/null
   fi
 }
 
-if_proxysql_update() {
+_if_proxysql_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: if_proxysql_update"
+    _msg "PROC: _if_proxysql_update"
   fi
   if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
     isPxy=$(which proxysql 2>&1)
@@ -5544,7 +5544,7 @@ if_proxysql_update() {
         | tr -d "\n" \
         | cut -d"-" -f1 \
         | awk '{ print $3}' 2>&1)
-      msg "INFO: ProxySQL version detected ${_PXY}"
+      _msg "INFO: ProxySQL version detected ${_PXY}"
       pGc="/usr/bin/proxysql_galera_checker"
       if [ ! -e "${pGc}" ]; then
         _UP_PXC=YES
@@ -5573,32 +5573,32 @@ if_proxysql_update() {
     if [ "${_UP_PXC}" = "YES" ] \
       && [ "${_OS_DIST}" = "Debian" ]; then
       if [ "${_REINSTALL_PXC}" = "YES" ]; then
-        msg "INFO: Running ProxySQL upgrade to ${_PXC_VRN}..."
+        _msg "INFO: Running ProxySQL upgrade to ${_PXC_VRN}..."
       else
-        msg "INFO: Running ProxySQL re-install to ${_PXC_VRN}..."
-        apt_clean_update
-        mrun "${_INSTAPP} sysbench" 2> /dev/null
-        mrun "${_INSTAPP} debconf-utils" 2> /dev/null
-        mrun "apt-get remove proxysql -y --purge --auto-remove -qq" 2> /dev/null
-        apt_clean_update
-        mrun "${_INSTAPP} proxysql" 2> /dev/null
+        _msg "INFO: Running ProxySQL re-install to ${_PXC_VRN}..."
+        _apt_clean_update
+        _mrun "${_INSTAPP} sysbench" 2> /dev/null
+        _mrun "${_INSTAPP} debconf-utils" 2> /dev/null
+        _mrun "apt-get remove proxysql -y --purge --auto-remove -qq" 2> /dev/null
+        _apt_clean_update
+        _mrun "${_INSTAPP} proxysql" 2> /dev/null
       fi
       isPxy=$(which proxysql 2>&1)
       if [ ! -x "${isPxy}" ]; then
-        apt_clean_update
-        mrun "${_INSTAPP} sysbench" 2> /dev/null
-        mrun "${_INSTAPP} debconf-utils" 2> /dev/null
-        mrun "${_INSTAPP} proxysql" 2> /dev/null
+        _apt_clean_update
+        _mrun "${_INSTAPP} sysbench" 2> /dev/null
+        _mrun "${_INSTAPP} debconf-utils" 2> /dev/null
+        _mrun "${_INSTAPP} proxysql" 2> /dev/null
       else
-        mrun "apt-get install --only-upgrade ${nrmUpArg} proxysql" 2> /dev/null
+        _mrun "apt-get install --only-upgrade ${_nrmUpArg} proxysql" 2> /dev/null
       fi
       if [ ! -e "/etc/proxysql.cnf" ]; then
-        msg "OOPS: Unable to open config file /etc/proxysql.cnf"
+        _msg "OOPS: Unable to open config file /etc/proxysql.cnf"
       else
         chmod 640 /etc/proxysql.cnf
       fi
       if [ ! -e "/etc/proxysql-admin.cnf" ]; then
-        msg "OOPS: Unable to open config file /etc/proxysql-admin.cnf"
+        _msg "OOPS: Unable to open config file /etc/proxysql-admin.cnf"
       else
         chmod 640 /etc/proxysql-admin.cnf
       fi
@@ -5609,56 +5609,56 @@ if_proxysql_update() {
           | tr -d "\n" \
           | cut -d"-" -f1 \
           | awk '{ print $3}' 2>&1)
-        msg "INFO: ProxySQL version detected ${_PXY}"
-        msg "INFO: Updating ProxySQL Node Monitor..."
+        _msg "INFO: ProxySQL version detected ${_PXY}"
+        _msg "INFO: Updating ProxySQL Node Monitor..."
         if [ -e "${pNm}" ]; then
           rm -f ${pNm}
         fi
-        tBn="tools/bin"
-        tURL="${urlHmr}/${tBn}/proxysql_node_monitor"
-        msg "PNM download URL is ${tURL}"
+        _tBn="tools/bin"
+        tURL="${_urlHmr}/${_tBn}/proxysql_node_monitor"
+        _msg "PNM download URL is ${tURL}"
         curl -I ${tURL}
-        curl ${crlGet} "${tURL}" -o ${pNm}
+        curl ${_crlGet} "${tURL}" -o ${pNm}
         if [ ! -e "${pNm}" ]; then
-          curl ${crlGet} "${tURL}" -o ${pNm}
+          curl ${_crlGet} "${tURL}" -o ${pNm}
         else
           _PAV_TEST=$(grep Vivaldi ${pNm} 2>&1)
           if [[ ! "${_PAV_TEST}" =~ "Vivaldi" ]]; then
             rm -f ${pNm}
-            curl ${crlGet} "${tURL}" -o ${pNm}
+            curl ${_crlGet} "${tURL}" -o ${pNm}
           fi
         fi
-        curl ${crlGet} "${tURL}" -o ${pNm}
+        curl ${_crlGet} "${tURL}" -o ${pNm}
         ls -la ${pNm}
         if [ -e "${pNm}" ]; then
           chmod 755 ${pNm}
-          msg "INFO: `${pNm} --version`"
+          _msg "INFO: `${pNm} --version`"
         fi
 
-        msg "INFO: Updating ProxySQL Galera Checker..."
+        _msg "INFO: Updating ProxySQL Galera Checker..."
         if [ -e "${pGc}" ]; then
           rm -f ${pGc}
         fi
-        tBn="tools/bin"
-        tURL="${urlHmr}/${tBn}/proxysql_galera_checker"
-        msg "PGC download URL is ${tURL}"
+        _tBn="tools/bin"
+        tURL="${_urlHmr}/${_tBn}/proxysql_galera_checker"
+        _msg "PGC download URL is ${tURL}"
         curl -I ${tURL}
-        curl ${crlGet} "${tURL}" -o ${pGc}
+        curl ${_crlGet} "${tURL}" -o ${pGc}
         if [ ! -e "${pGc}" ]; then
-          curl ${crlGet} "${tURL}" -o ${pGc}
+          curl ${_crlGet} "${tURL}" -o ${pGc}
         else
           _PAV_TEST=$(grep Maestro ${pGc} 2>&1)
           if [[ ! "${_PAV_TEST}" =~ "Maestro" ]]; then
             rm -f ${pGc}
-            curl ${crlGet} "${tURL}" -o ${pGc}
+            curl ${_crlGet} "${tURL}" -o ${pGc}
           fi
         fi
-        curl ${crlGet} "${tURL}" -o ${pGc}
+        curl ${_crlGet} "${tURL}" -o ${pGc}
         ls -la ${pGc}
 
         if [ -e "${pGc}" ]; then
           chmod 755 ${pGc}
-          msg "INFO: `${pGc} --version`"
+          _msg "INFO: `${pGc} --version`"
           echo loadbal > /var/lib/proxysql/mode
           echo loadbal > /var/lib/proxysql/c1r_galera_mode
           echo loadbal > /var/lib/proxysql/--mode=singlewrite_mode
@@ -5671,24 +5671,24 @@ if_proxysql_update() {
           proxysql_galera_checker --log=/var/lib/proxysql/pxc_test_proxysql_galera_check.log --debug
           cat /var/lib/proxysql/pxc_test_proxysql_galera_check.log
           if [ "${_DEBUG_MODE}" = "YES" ]; then
-            msg "INFO: Restarting ProxySQL server..."
+            _msg "INFO: Restarting ProxySQL server..."
           fi
-          mrun "service proxysql restart" 2> /dev/null
+          _mrun "service proxysql restart" 2> /dev/null
           mysql -uadmin -p`cat /root/.my.proxysql_adm_pwd.txt` -h127.0.0.1 -P6032 -e "SELECT * FROM scheduler\G"
           mysql -uadmin -p`cat /root/.my.proxysql_adm_pwd.txt` -h127.0.0.1 -P6032 -e "SELECT * FROM mysql_servers;"
         else
-          msg "OOPS: ProxySQL Galera Checker will not work!"
+          _msg "OOPS: ProxySQL Galera Checker will not work!"
         fi
       else
-        msg "OOPS: ProxySQL will not work!"
+        _msg "OOPS: ProxySQL will not work!"
       fi
     fi
   fi
 }
 
-if_rebuild_src_on_major_os_upgrade() {
+_if_rebuild_src_on_major_os_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: if_rebuild_src_on_major_os_upgrade"
+    _msg "PROC: _if_rebuild_src_on_major_os_upgrade"
   fi
   _CHECKS_REMOTE_REPOS=YES
   if [ -e "/root/.run-to-daedalus.cnf" ] \
@@ -5705,9 +5705,9 @@ if_rebuild_src_on_major_os_upgrade() {
   fi
 }
 
-if_long_generate_on_major_os_upgrade() {
+_if_long_generate_on_major_os_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: if_long_generate_on_major_os_upgrade"
+    _msg "PROC: _if_long_generate_on_major_os_upgrade"
   fi
   if [ -e "/root/.run-to-daedalus.cnf" ] \
     || [ -e "/root/.run-to-chimaera.cnf" ] \
@@ -5718,50 +5718,50 @@ if_long_generate_on_major_os_upgrade() {
   fi
 }
 
-if_post_major_os_upgrade() {
+_if_post_major_os_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: if_post_major_os_upgrade"
+    _msg "PROC: _if_post_major_os_upgrade"
   fi
   if [ -e "/root/.run_post_major_os_upgrade.info" ] \
     && [ ! -e "/root/.completed_post_major_os_upgrade.info" ]; then
 
-    apt_clean_update_no_releaseinfo_change
-    mrun "${_APT_UPDATE} --allow-insecure-repositories -qq" 2> /dev/null
+    _apt_clean_update_no_releaseinfo_change
+    _mrun "${_APT_UPDATE} --allow-insecure-repositories -qq" 2> /dev/null
 
-    msg "INFO: Cleaning up any systemd remnants..."
-    sysvinit_install
-    systemd_remove_apt_cmd
-    sysvinit_install
+    _msg "INFO: Cleaning up any systemd remnants..."
+    _sysvinit_install
+    _systemd_remove_apt_cmd
+    _sysvinit_install
 
-    msg "INFO: Removing any packages orphaned by the migration process..."
-    mrun "apt-get autoremove --purge -y --purge --auto-remove -qq" 2> /dev/null
-    mrun "apt-get autoclean -y --purge --auto-remove -qq" 2> /dev/null
-    mrun "apt-get autoremove -y --purge --auto-remove -qq" 2> /dev/null
+    _msg "INFO: Removing any packages orphaned by the migration process..."
+    _mrun "apt-get autoremove --purge -y --purge --auto-remove -qq" 2> /dev/null
+    _mrun "apt-get autoclean -y --purge --auto-remove -qq" 2> /dev/null
+    _mrun "apt-get autoremove -y --purge --auto-remove -qq" 2> /dev/null
 
-    msg "INFO: Running dist-upgrade to complete the system upgrade..."
-    msg "WAIT: This may take a while, please wait..."
-    mrun "apt-get dist-upgrade ${dstUpArg}" 2> /dev/null
+    _msg "INFO: Running dist-upgrade to complete the system upgrade..."
+    _msg "WAIT: This may take a while, please wait..."
+    _mrun "apt-get dist-upgrade ${_dstUpArg}" 2> /dev/null
     [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
     if [ -e "/root/.allow.downgrades.on.same.os.dist.upgrade.cnf" ]; then
-      msg "INFO: dist-upgrade with --allow-downgrades option is used"
-      mrun "apt-get dist-upgrade -y --allow-downgrades" 2> /dev/null
+      _msg "INFO: dist-upgrade with --allow-downgrades option is used"
+      _mrun "apt-get dist-upgrade -y --allow-downgrades" 2> /dev/null
       [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
     else
-      mrun "apt-get dist-upgrade -y" 2> /dev/null
+      _mrun "apt-get dist-upgrade -y" 2> /dev/null
       [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
     fi
-    mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
-    mrun "apt-get ${dstUpArg} install" 2> /dev/null
+    _mrun "apt-get install lsb-release ${_dstUpArg}" 2> /dev/null
+    _mrun "apt-get ${_dstUpArg} install" 2> /dev/null
     [ -e "/root/.top-daedalus.cnf" ] && /usr/bin/apt-get install base-files=12.4devuan3 -y --allow-downgrades 2> /dev/null
     ### Update rsyslog configuration early
-    rsyslog_config_update
+    _rsyslog_config_update
     ### Reload key services if needed early
-    mrun "service redis-server reload" 2> /dev/null
-    mrun "service nginx reload" 2> /dev/null
+    _mrun "service redis-server reload" 2> /dev/null
+    _mrun "service nginx reload" 2> /dev/null
     _PHP_V="83 82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
       if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
-        mrun "service php${e}-fpm reload" 2> /dev/null
+        _mrun "service php${e}-fpm reload" 2> /dev/null
       fi
     done
     if [ ! -e "/var/xdrago/log" ] && [ -e "/var/xdrago_wait/log" ]; then
@@ -5775,7 +5775,7 @@ if_post_major_os_upgrade() {
       || [ -e "/root/.run-to-chimaera.cnf" ] \
       || [ -e "/root/.run-to-beowulf.cnf" ]; then
       _REBUILD_SRC_ON_AUTO_NOW=NO
-      php_if_versions_cleanup_cnf
+      _php_if_versions_cleanup_cnf
     fi
 
     if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
@@ -5785,82 +5785,82 @@ if_post_major_os_upgrade() {
     if [ -e "/root/.big_hop_on_major_os_upgrade.info" ] \
       && [ ! -e "/root/.rebuild_src_on_auto_before_reboot.info" ] \
       && [ "${_REBUILD_SRC_ON_AUTO_NOW}" = "YES" ]; then
-      msg "INFO: Time for re-installing services built from sources..."
+      _msg "INFO: Time for re-installing services built from sources..."
       if [ ! -e "/var/xdrago/log" ] && [ -e "/var/xdrago_wait/log" ]; then
         rm -f /var/xdrago_wait/log/*.log
-        rm -f /var/xdrago_wait/log/.php_libs_fix_*.pid
+        rm -f /var/xdrago_wait/log/._php_libs_fix_*.pid
       else
         rm -f /var/xdrago/log/*.log
-        rm -f /var/xdrago/log/.php_libs_fix_*.pid
+        rm -f /var/xdrago/log/._php_libs_fix_*.pid
       fi
       _PURGE_MODE=OFF
       _NGX_FORCE_REINSTALL=YES
       _PHP_FORCE_REINSTALL=YES
       _SSH_FORCE_REINSTALL=YES
       _SSL_FORCE_REINSTALL=YES
-      if_reinstall_curl_src
-      if_ssl_install_src
-      ssl_crypto_lib_fix
-      curl_install_src
-      sshd_install_src
-      nginx_install_upgrade
-      magick_install_upgrade
-      php_install_deps
-      php_libs_fix
-      php_if_versions_cleanup_cnf
+      _if_reinstall_curl_src
+      _if_ssl_install_src
+      _ssl_crypto_lib_fix
+      _curl_install_src
+      _sshd_install_src
+      _nginx_install_upgrade
+      _magick_install_upgrade
+      _php_install_deps
+      _php_libs_fix
+      _php_if_versions_cleanup_cnf
        if [ -x "/opt/php56/bin/php" ]; then
         _PHP_VERSION="${_PHP56_VRN}"
-        install_php_multi "56"
+        _install_php_multi "56"
       fi
       if [ -x "/opt/php70/bin/php" ]; then
         _PHP_VERSION="${_PHP70_VRN}"
-        install_php_multi "70"
+        _install_php_multi "70"
       fi
       if [ -x "/opt/php71/bin/php" ]; then
         _PHP_VERSION="${_PHP71_VRN}"
-        install_php_multi "71"
+        _install_php_multi "71"
       fi
       if [ -x "/opt/php72/bin/php" ]; then
         _PHP_VERSION="${_PHP72_VRN}"
-        install_php_multi "72"
+        _install_php_multi "72"
       fi
       if [ -x "/opt/php73/bin/php" ]; then
         _PHP_VERSION="${_PHP73_VRN}"
-        install_php_multi "73"
+        _install_php_multi "73"
       fi
       if [ -x "/opt/php74/bin/php" ]; then
         _PHP_VERSION="${_PHP74_VRN}"
-        install_php_multi "74"
+        _install_php_multi "74"
       fi
       if [ -x "/opt/php80/bin/php" ]; then
         _PHP_VERSION="${_PHP80_VRN}"
-        install_php_multi "80"
+        _install_php_multi "80"
       fi
       if [ -x "/opt/php81/bin/php" ]; then
         _PHP_VERSION="${_PHP81_VRN}"
-        install_php_multi "81"
+        _install_php_multi "81"
       fi
       if [ -x "/opt/php82/bin/php" ]; then
         _PHP_VERSION="${_PHP82_VRN}"
-        install_php_multi "82"
+        _install_php_multi "82"
       fi
       if [ -x "/opt/php83/bin/php" ]; then
         _PHP_VERSION="${_PHP83_VRN}"
-        install_php_multi "83"
+        _install_php_multi "83"
       fi
       _PHP_VERSION=""
       _T_PHP_VRN=""
       _T_PHP_PTH=""
-      php_libs_fix
+      _php_libs_fix
       if [ "${_STATUS}" = "UPGRADE" ]; then
-        php_ioncube_check_if_update
-        php_check_if_rebuild
+        _php_ioncube_check_if_update
+        _php_check_if_rebuild
       fi
-      php_install_upgrade
-      php_config_check_update
-      php_upgrade_all
-      if_install_php_newrelic
-      newrelic_check_fix
+      _php_install_upgrade
+      _php_config_check_update
+      _php_upgrade_all
+      _if_install_php_newrelic
+      _newrelic_check_fix
       _NGX_FORCE_REINSTALL=
       _PHP_FORCE_REINSTALL=
       _SSH_FORCE_REINSTALL=
@@ -5877,27 +5877,27 @@ if_post_major_os_upgrade() {
     fi
     rm -f /var/xdrago/log/.*_crontab_*
     touch /root/.completed_post_major_os_upgrade.info
-    msg "INFO: The post_major_os_upgrade procedure is complete"
+    _msg "INFO: The post_major_os_upgrade procedure is complete"
   fi
 }
 
-if_major_os_upgrade() {
+_if_major_os_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: if_major_os_upgrade"
+    _msg "PROC: _if_major_os_upgrade"
   fi
   _RUNNING_MAJOR_OS_UPGRADE=NO
-  define_loc_osr
+  _define_loc_osr
   if [ ! -z "${_MSG_LOC}" ]; then
     if [ ! -e "/usr/local/lib/icu/73.1" ] \
       && [ "${_LOC_OS_CODE}" != "jessie" ]; then
       echo
-      msg "OOPS: Please run normal 'barracuda up-${tRee}' upgrade"
-      msg "OOPS: before trying to run major OS upgrade"
+      _msg "OOPS: Please run normal 'barracuda up-${_tRee}' upgrade"
+      _msg "OOPS: before trying to run major OS upgrade"
       echo
-      mrun "sleep 3"
+      _mrun "sleep 3"
       echo "Bye"
-      barracuda_cnf_cleanup
-      clean_pid_exit if_major_os_upgrade_a
+      _barracuda_cnf_cleanup
+      _clean_pid_exit _if_major_os_upgrade_a
     fi
     if [ -e "/root/.run-to-daedalus.cnf" ] \
       || [ -e "/root/.run-to-chimaera.cnf" ] \
@@ -5905,46 +5905,46 @@ if_major_os_upgrade() {
       _AUTOPILOT=YES
     fi
     _RUNNING_MAJOR_OS_UPGRADE=YES
-    msg "MODE: ${_MSG_LOC} upgrade"
+    _msg "MODE: ${_MSG_LOC} upgrade"
     echo
-    msg "RLLY: Have you created a Fresh Backup Snapshot of this VM?"
+    _msg "RLLY: Have you created a Fresh Backup Snapshot of this VM?"
     echo
-    mrun "sleep 5"
-    msg "ATTN: You have to be prepared in case the upgrade will fail"
-    msg "ATTN: You have to be prepared for a crash of this system"
-    msg "ATTN: This procedure is well tested but things happen!"
+    _mrun "sleep 5"
+    _msg "ATTN: You have to be prepared in case the upgrade will fail"
+    _msg "ATTN: You have to be prepared for a crash of this system"
+    _msg "ATTN: This procedure is well tested but things happen!"
     echo
-    mrun "sleep 5"
+    _mrun "sleep 5"
     tPrmt="Are you sure you want to proceed?"
     tPrmt=$(echo -n ${tPrmt} | fmt -su -w 2500 2>&1)
-    if prompt_yes_no "${tPrmt}?" ; then
+    if _prompt_yes_no "${tPrmt}?" ; then
       true
       echo
-      msg "FINE: But you can still hit ctrl-c to stop if you wish"
-      msg "WAIT: We need a minute to stop all running cron tasks..."
-      mrun "service cron stop" 2> /dev/null
+      _msg "FINE: But you can still hit ctrl-c to stop if you wish"
+      _msg "WAIT: We need a minute to stop all running cron tasks..."
+      _mrun "service cron stop" 2> /dev/null
     else
       echo
-      msg "FINE: Please try again later once you are ready"
-      mrun "sleep 3"
-      clean_pid_exit if_major_os_upgrade_b
+      _msg "FINE: Please try again later once you are ready"
+      _mrun "sleep 3"
+      _clean_pid_exit _if_major_os_upgrade_b
     fi
     echo
-    mrun "sleep 5"
-    msg "WAIT: This major system upgrade will start in 60s..."
-    mrun "sleep 15"
-    msg "WAIT: ...it will start in 45s..."
-    mrun "sleep 15"
-    msg "WAIT: ...it will start in 30s..."
-    mrun "sleep 15"
-    msg "WAIT: ...it will start in 15s..."
-    mrun "sleep 5"
-    msg "ATTN: Ten seconds left to hit ctrl-c to stop..."
-    mrun "sleep 10"
-    msg "INFO: ${_MSG_LOC} upgrade in progress..."
+    _mrun "sleep 5"
+    _msg "WAIT: This major system upgrade will start in 60s..."
+    _mrun "sleep 15"
+    _msg "WAIT: ...it will start in 45s..."
+    _mrun "sleep 15"
+    _msg "WAIT: ...it will start in 30s..."
+    _mrun "sleep 15"
+    _msg "WAIT: ...it will start in 15s..."
+    _mrun "sleep 5"
+    _msg "ATTN: Ten seconds left to hit ctrl-c to stop..."
+    _mrun "sleep 10"
+    _msg "INFO: ${_MSG_LOC} upgrade in progress..."
     echo
-    msg "HINT: Command to run in another terminal window to watch details"
-    msg "CMND: tail -f ${_LOG}"
+    _msg "HINT: Command to run in another terminal window to watch details"
+    _msg "CMND: tail -f ${_LOG}"
     echo
     touch /root/.skip-aegir-master-upgrade.cnf
     if [ -e "/root/.run_post_major_os_upgrade.info" ]; then
@@ -5956,7 +5956,7 @@ if_major_os_upgrade() {
     if [ -e "/root/.big_hop_on_major_os_upgrade.info" ]; then
       rm -f /root/.big_hop_on_major_os_upgrade.info
     fi
-    check_dns_settings
+    _check_dns_settings
     if [ "${_USE_PROVIDER_DNS}" != "YES" ]; then
       if [ -e "/etc/resolv.conf" ]; then
         mv -f /etc/resolv.conf /etc/resolv.conf.pre-dist-upgrade
@@ -5971,35 +5971,35 @@ if_major_os_upgrade() {
         cat /etc/resolv.conf.pre-dist-upgrade >> /etc/resolv.conf
       fi
     fi
-    rm -f ${pthLog}/ruby-sys-clean-reload.log
+    rm -f ${_pthLog}/ruby-sys-clean-reload.log
     mv -f /var/xdrago /var/xdrago_wait &> /dev/null
-    rm -f ${mtrNgx}/pre.d/nginx_speed_purge.conf
+    rm -f ${_mtrNgx}/pre.d/nginx_speed_purge.conf
     if [ -e "/etc/init.d/bind" ]; then
       rm -f /etc/init.d/bind
     fi
     if [ -e "/etc/default/tomcat" ] && [ -e "/etc/init.d/tomcat" ]; then
-      mrun "service tomcat stop" 2> /dev/null
+      _mrun "service tomcat stop" 2> /dev/null
       mv /etc/init.d/tomcat /etc/init.d/offtomcat
       kill -9 $(ps aux | grep '[t]omcat' | awk '{print $2}') &> /dev/null
     fi
-    apt_clean_update_no_releaseinfo_change
-#     mrun "apt-get remove dbus -y --purge --auto-remove -qq" 2> /dev/null
+    _apt_clean_update_no_releaseinfo_change
+#     _mrun "apt-get remove dbus -y --purge --auto-remove -qq" 2> /dev/null
 #     if [ -e "/usr/share/dbus-1" ]; then
 #       rm -f /usr/share/dbus-1/*/*freedesktop*
 #     fi
-    mrun "apt-get remove collectd -y --purge --auto-remove -qq" 2> /dev/null
-    mrun "apt-get remove libc-client2007b-dev -y --purge --auto-remove -qq" 2> /dev/null
+    _mrun "apt-get remove collectd -y --purge --auto-remove -qq" 2> /dev/null
+    _mrun "apt-get remove libc-client2007b-dev -y --purge --auto-remove -qq" 2> /dev/null
     ###
-    mrun "apt-get remove --purge libmariadb3 -y -qq" 2> /dev/null
-    mrun "apt-get remove --purge mariadb-common -y -qq" 2> /dev/null
-    mrun "apt-get remove --purge mailutils -y -qq" 2> /dev/null
+    _mrun "apt-get remove --purge libmariadb3 -y -qq" 2> /dev/null
+    _mrun "apt-get remove --purge mariadb-common -y -qq" 2> /dev/null
+    _mrun "apt-get remove --purge mailutils -y -qq" 2> /dev/null
     ###
     ### Make sure that mariadb related packages are locked in apt.
     if [ ! -e "/etc/apt/preferences.d/mariadb-common" ]; then
       echo -e 'Package: libmariadb3\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/mariadb-common
       echo -e '\n\nPackage: mariadb-common\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/mariadb-common
       echo -e '\n\nPackage: mailutils\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/mariadb-common
-      apt_clean_update_no_releaseinfo_change
+      _apt_clean_update_no_releaseinfo_change
     fi
     ###
     _NGINX_GET_DPKG=$(dpkg --get-selections | grep mariadb-common | grep 'hold$' 2>&1)
@@ -6010,21 +6010,21 @@ if_major_os_upgrade() {
       echo "libmariadb3 hold" | dpkg --set-selections &> /dev/null
       echo "mariadb-common hold" | dpkg --set-selections &> /dev/null
       echo "mailutils hold" | dpkg --set-selections &> /dev/null
-      apt_clean_update_no_releaseinfo_change
+      _apt_clean_update_no_releaseinfo_change
     fi
     ###
-    mrun "apt-get remove nginx-extras -y -qq" 2> /dev/null
-    mrun "apt-get remove nginx -y -qq" 2> /dev/null
-    mrun "apt-get remove nginx-common -y -qq" 2> /dev/null
-    mrun "apt-get remove nginx-full -y -qq" 2> /dev/null
-    mrun "apt-get remove percona-release -y -qq" 2> /dev/null
+    _mrun "apt-get remove nginx-extras -y -qq" 2> /dev/null
+    _mrun "apt-get remove nginx -y -qq" 2> /dev/null
+    _mrun "apt-get remove nginx-common -y -qq" 2> /dev/null
+    _mrun "apt-get remove nginx-full -y -qq" 2> /dev/null
+    _mrun "apt-get remove percona-release -y -qq" 2> /dev/null
     ###
     ### Make sure that nginx packages are locked in apt.
     if [ ! -e "/etc/apt/preferences.d/nginx-common" ]; then
       rm -f /etc/apt/preferences.d/nginx
       echo -e 'Package: nginx\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/nginx-common
       echo -e '\n\nPackage: nginx-common\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/nginx-common
-      apt_clean_update_no_releaseinfo_change
+      _apt_clean_update_no_releaseinfo_change
     fi
     ###
     _NGINX_GET_DPKG=$(dpkg --get-selections | grep nginx-common | grep 'hold$' 2>&1)
@@ -6033,27 +6033,27 @@ if_major_os_upgrade() {
       aptitude hold nginx-common &> /dev/null
       echo "nginx hold" | dpkg --set-selections &> /dev/null
       echo "nginx-common hold" | dpkg --set-selections &> /dev/null
-      apt_clean_update_no_releaseinfo_change
+      _apt_clean_update_no_releaseinfo_change
     fi
     ###
     ### Make sure that percona-release package is locked in apt.
     if [ ! -e "/etc/apt/preferences.d/percona-release" ]; then
       echo -e 'Package: percona-release\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/percona-release
-      apt_clean_update
+      _apt_clean_update
     fi
     ###
     _PERC_GET_DPKG=$(dpkg --get-selections | grep percona-release | grep 'hold$' 2>&1)
     if [[ ! "${_PERC_GET_DPKG}" =~ "hold" ]]; then
       aptitude hold percona-release &> /dev/null
       echo "percona-release hold" | dpkg --set-selections &> /dev/null
-      apt_clean_update
+      _apt_clean_update
     fi
     ###
     if [ -e "/etc/php5/conf.d" ]; then
       touch /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini}
       touch /etc/php5/conf.d/{redis.ini,suhosin.ini,newrelic.ini}
     fi
-    mrun "apt-get remove php5 \
+    _mrun "apt-get remove php5 \
                          php5-cgi \
                          php5-curl \
                          php5-fpm \
@@ -6069,18 +6069,18 @@ if_major_os_upgrade() {
                          php5-sqlite \
                          php5-xmlrpc \
                          php5-xsl      -y --purge --auto-remove -qq" 2> /dev/null
-    mrun "apt-get remove phpunit       -y --purge --auto-remove -qq" 2> /dev/null
-    mrun "apt-get remove php-pear      -y --purge --auto-remove -qq" 2> /dev/null
-    mrun "apt-get remove php-benchmark -y --purge --auto-remove -qq" 2> /dev/null
-    mrun "apt-get remove php5-cli      -y --purge --auto-remove -qq" 2> /dev/null
-    mrun "apt-get remove php5-common   -y --purge --auto-remove -qq" 2> /dev/null
-    mrun "apt-get remove php5-apc      -y --purge --auto-remove -qq" 2> /dev/null
-    mrun "apt-get remove php-apc       -y --purge --auto-remove -qq" 2> /dev/null
+    _mrun "apt-get remove phpunit       -y --purge --auto-remove -qq" 2> /dev/null
+    _mrun "apt-get remove php-pear      -y --purge --auto-remove -qq" 2> /dev/null
+    _mrun "apt-get remove php-benchmark -y --purge --auto-remove -qq" 2> /dev/null
+    _mrun "apt-get remove php5-cli      -y --purge --auto-remove -qq" 2> /dev/null
+    _mrun "apt-get remove php5-common   -y --purge --auto-remove -qq" 2> /dev/null
+    _mrun "apt-get remove php5-apc      -y --purge --auto-remove -qq" 2> /dev/null
+    _mrun "apt-get remove php-apc       -y --purge --auto-remove -qq" 2> /dev/null
     if [ "${_LOC_OS_CODE}" = "jessie" ]; then
-      mrun "apt-get remove gnome-tweak-tool -y --purge --auto-remove -qq" 2> /dev/null
+      _mrun "apt-get remove gnome-tweak-tool -y --purge --auto-remove -qq" 2> /dev/null
     fi
     if [ "${_LOC_OS_CODE}" = "stretch" ]; then
-      mrun "apt-get remove libpam-systemd -y --purge --auto-remove -qq" 2> /dev/null
+      _mrun "apt-get remove libpam-systemd -y --purge --auto-remove -qq" 2> /dev/null
     fi
     echo "curl install"                | dpkg --set-selections &> /dev/null
     echo "git install"                 | dpkg --set-selections &> /dev/null
@@ -6108,29 +6108,29 @@ if_major_os_upgrade() {
     echo "zlibc install"               | dpkg --set-selections &> /dev/null
     ###
     ### Run pre-migration upgrade in the current OS version.
-    mrun "apt-get upgrade ${nrmUpArg}" 2> /dev/null
+    _mrun "apt-get upgrade ${_nrmUpArg}" 2> /dev/null
     ###
     ### Check if we can continue.
     _AUDIT_DPKG=$(dpkg --audit 2>&1)
     if [ ! -z "${_AUDIT_DPKG}" ]; then
-      msg "ALRT! I can not continue until dpkg --audit is clean"
-      msg "ALRT! ${_AUDIT_DPKG}"
-      msg "ALRT! Aborting installer NOW!"
-      clean_pid_exit if_major_os_upgrade_c
+      _msg "ALRT! I can not continue until dpkg --audit is clean"
+      _msg "ALRT! ${_AUDIT_DPKG}"
+      _msg "ALRT! Aborting installer NOW!"
+      _clean_pid_exit _if_major_os_upgrade_c
     fi
     _HOLD_TEST_DPKG=$(dpkg --get-selections | grep 'hold$' 2>&1)
     if [ ! -z "${_HOLD_TEST_DPKG}" ]; then
-      msg "ALRT! I can not continue until these packages are un-hold"
-      msg "ALRT! ${_HOLD_TEST_DPKG}"
-      msg "ALRT! Aborting installer NOW!"
-      clean_pid_exit if_major_os_upgrade_d
+      _msg "ALRT! I can not continue until these packages are un-hold"
+      _msg "ALRT! ${_HOLD_TEST_DPKG}"
+      _msg "ALRT! Aborting installer NOW!"
+      _clean_pid_exit _if_major_os_upgrade_d
     fi
     _HOLD_TEST_ATE=$(aptitude search "~ahold" 2>&1)
     if [ ! -z "${_HOLD_TEST_ATE}" ]; then
-      msg "ALRT! I can not continue until these packages are un-hold"
-      msg "ALRT! ${_HOLD_TEST_ATE}"
-      msg "ALRT! Aborting installer NOW!"
-      clean_pid_exit if_major_os_upgrade_e
+      _msg "ALRT! I can not continue until these packages are un-hold"
+      _msg "ALRT! ${_HOLD_TEST_ATE}"
+      _msg "ALRT! Aborting installer NOW!"
+      _clean_pid_exit _if_major_os_upgrade_e
     fi
     ###
     ### Switching db gears on the fly.
@@ -6155,30 +6155,30 @@ if_major_os_upgrade() {
     fi
     ###
     ### Now overwriting db gears apt sources.
-    if_sql_keyring_apt_update
+    _if_sql_keyring_apt_update
     ###
     ### Switching system gears on the fly.
     if [ "${_TGT_OSN}" = "Devuan" ]; then
       _TGT_MRR="deb.devuan.org/merged"
-      echo "## DEVUAN MAIN REPOSITORIES" > ${aptLiSys}
-      echo "deb http://${_TGT_MRR} ${_NEW_OS_CODE} main" >> ${aptLiSys}
-      echo "deb-src http://${_TGT_MRR} ${_NEW_OS_CODE} main" >> ${aptLiSys}
-      echo "" >> ${aptLiSys}
-      echo "## MAJOR BUG FIX UPDATES produced after the final release" >> ${aptLiSys}
-      echo "deb http://${_TGT_MRR} ${_NEW_OS_CODE}-updates main" >> ${aptLiSys}
-      echo "deb-src http://${_TGT_MRR} ${_NEW_OS_CODE}-updates main" >> ${aptLiSys}
-      echo "" >> ${aptLiSys}
-      echo "## DEVUAN SECURITY UPDATES" >> ${aptLiSys}
-      echo "deb http://${_TGT_MRR} ${_NEW_OS_CODE}-security main" >> ${aptLiSys}
-      echo "deb-src http://${_TGT_MRR} ${_NEW_OS_CODE}-security main" >> ${aptLiSys}
+      echo "## DEVUAN MAIN REPOSITORIES" > ${_aptLiSys}
+      echo "deb http://${_TGT_MRR} ${_NEW_OS_CODE} main" >> ${_aptLiSys}
+      echo "deb-src http://${_TGT_MRR} ${_NEW_OS_CODE} main" >> ${_aptLiSys}
+      echo "" >> ${_aptLiSys}
+      echo "## MAJOR BUG FIX UPDATES produced after the final release" >> ${_aptLiSys}
+      echo "deb http://${_TGT_MRR} ${_NEW_OS_CODE}-updates main" >> ${_aptLiSys}
+      echo "deb-src http://${_TGT_MRR} ${_NEW_OS_CODE}-updates main" >> ${_aptLiSys}
+      echo "" >> ${_aptLiSys}
+      echo "## DEVUAN SECURITY UPDATES" >> ${_aptLiSys}
+      echo "deb http://${_TGT_MRR} ${_NEW_OS_CODE}-security main" >> ${_aptLiSys}
+      echo "deb-src http://${_TGT_MRR} ${_NEW_OS_CODE}-security main" >> ${_aptLiSys}
       if [ -e "/etc/apt/apt.conf" ]; then
         rm -f /etc/apt/apt.conf
       fi
       ###
       ### Add devuan-keyring first.
-      apt_clean_update_no_releaseinfo_change
-      mrun "${_APT_UPDATE} --allow-insecure-repositories -qq" 2> /dev/null
-      mrun "${_INITINS} devuan-keyring" 2> /dev/null
+      _apt_clean_update_no_releaseinfo_change
+      _mrun "${_APT_UPDATE} --allow-insecure-repositories -qq" 2> /dev/null
+      _mrun "${_INITINS} devuan-keyring" 2> /dev/null
     else
       if [ "${_NEW_OS_CODE}" = "stretch" ]; then
         _NEW_APT_MIRROR="archive.debian.org/debian"
@@ -6201,17 +6201,17 @@ if_major_os_upgrade() {
         _NEW_SEC_MIRROR="security.debian.org/debian-security"
         _NEW_SEC_REPSRC="${_NEW_OS_CODE}-security"
       fi
-      echo "## DEBIAN MAIN REPOSITORIES" > ${aptLiSys}
-      echo "deb http://${_NEW_APT_MIRROR} ${_NEW_OS_CODE} main contrib non-free" >> ${aptLiSys}
-      echo "deb-src http://${_NEW_APT_MIRROR} ${_NEW_OS_CODE} main contrib non-free" >> ${aptLiSys}
-      echo "" >> ${aptLiSys}
-      echo "## MAJOR BUG FIX UPDATES produced after the final release" >> ${aptLiSys}
-      echo "deb http://${_NEW_APT_MIRROR} ${_NEW_APT_REPSRC} main contrib non-free" >> ${aptLiSys}
-      echo "deb-src http://${_NEW_APT_MIRROR} ${_NEW_APT_REPSRC} main contrib non-free" >> ${aptLiSys}
-      echo "" >> ${aptLiSys}
-      echo "## DEBIAN SECURITY UPDATES" >> ${aptLiSys}
-      echo "deb http://${_NEW_SEC_MIRROR} ${_NEW_SEC_REPSRC} main contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
-      echo "deb-src http://${_NEW_SEC_MIRROR} ${_NEW_SEC_REPSRC} main contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
+      echo "## DEBIAN MAIN REPOSITORIES" > ${_aptLiSys}
+      echo "deb http://${_NEW_APT_MIRROR} ${_NEW_OS_CODE} main contrib non-free" >> ${_aptLiSys}
+      echo "deb-src http://${_NEW_APT_MIRROR} ${_NEW_OS_CODE} main contrib non-free" >> ${_aptLiSys}
+      echo "" >> ${_aptLiSys}
+      echo "## MAJOR BUG FIX UPDATES produced after the final release" >> ${_aptLiSys}
+      echo "deb http://${_NEW_APT_MIRROR} ${_NEW_APT_REPSRC} main contrib non-free" >> ${_aptLiSys}
+      echo "deb-src http://${_NEW_APT_MIRROR} ${_NEW_APT_REPSRC} main contrib non-free" >> ${_aptLiSys}
+      echo "" >> ${_aptLiSys}
+      echo "## DEBIAN SECURITY UPDATES" >> ${_aptLiSys}
+      echo "deb http://${_NEW_SEC_MIRROR} ${_NEW_SEC_REPSRC} main contrib non-free" | fmt -su -w 2500 >> ${_aptLiSys}
+      echo "deb-src http://${_NEW_SEC_MIRROR} ${_NEW_SEC_REPSRC} main contrib non-free" | fmt -su -w 2500 >> ${_aptLiSys}
       if [ -e "/etc/apt/apt.conf" ]; then
         rm -f /etc/apt/apt.conf
       fi
@@ -6225,29 +6225,29 @@ if_major_os_upgrade() {
     fi
     ###
     ### Update packages registry.
-    apt_clean_update_no_releaseinfo_change
-    mrun "${_APT_UPDATE} --allow-insecure-repositories -qq" 2> /dev/null
+    _apt_clean_update_no_releaseinfo_change
+    _mrun "${_APT_UPDATE} --allow-insecure-repositories -qq" 2> /dev/null
     ###
     ### Two step upgrade with apt-get only.
-    mrun "apt-get install apt -t ${_NEW_OS_CODE} ${dstUpArg}" 2> /dev/null
-    apt_clean_update_no_releaseinfo_change
-    mrun "${_APT_UPDATE} --allow-insecure-repositories -qq" 2> /dev/null
+    _mrun "apt-get install apt -t ${_NEW_OS_CODE} ${_dstUpArg}" 2> /dev/null
+    _apt_clean_update_no_releaseinfo_change
+    _mrun "${_APT_UPDATE} --allow-insecure-repositories -qq" 2> /dev/null
     ###
     ### Requirement for Debian Stretch to Devuan Beowulf migration.
     ### The libtinfo package needs to be upgraded to prevent breaks.
     if [ "${_LOC_OS_CODE}" = "stretch" ]; then
-      mrun "apt-get install libtinfo6 ${dstUpArg}" 2> /dev/null
+      _mrun "apt-get install libtinfo6 ${_dstUpArg}" 2> /dev/null
     fi
     ###
     ### Note that this upgrade does not complete the migration yet.
-    mrun "apt-get upgrade ${dstUpArg}" 2> /dev/null
-    mrun "apt-get install apt dpkg aptitude util-linux ${dstUpArg}" 2> /dev/null
+    _mrun "apt-get upgrade ${_dstUpArg}" 2> /dev/null
+    _mrun "apt-get install apt dpkg aptitude util-linux ${_dstUpArg}" 2> /dev/null
     ###
     ### Back to BOA stuff re-install as needed.
     if [ -e "/etc/init.d/bind9" ] && [ ! -e "/etc/init.d/bind" ]; then
       ln -sfn /etc/init.d/bind9 /etc/init.d/bind
     fi
-    if [ -e "${mtrInc}/nginx_vhost_common.conf" ]; then
+    if [ -e "${_mtrInc}/nginx_vhost_common.conf" ]; then
       if [ -e "/root/.debug.cnf" ]; then
         mv -f /etc/init.d/networking /etc/init.d/networking.bak
         cp -af /etc/init.d/networking.dpkg-dist /etc/init.d/networking
@@ -6256,25 +6256,25 @@ if_major_os_upgrade() {
       fi
     fi
     if [ -d "/var/www/cgp" ]; then
-      mrun "apt-get install collectd ${dstUpArg}" 2> /dev/null
+      _mrun "apt-get install collectd ${_dstUpArg}" 2> /dev/null
     fi
-    mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
-    mrun "apt-get install libc-client2007e-dev ${dstUpArg}" 2> /dev/null
+    _mrun "apt-get install lsb-release ${_dstUpArg}" 2> /dev/null
+    _mrun "apt-get install libc-client2007e-dev ${_dstUpArg}" 2> /dev/null
     ###
     ### Make sure that org.freedesktop.systemd1 was not atempted by dbus.
-#     mrun "apt-get remove dbus -y --purge --auto-remove -qq" 2> /dev/null
+#     _mrun "apt-get remove dbus -y --purge --auto-remove -qq" 2> /dev/null
 #     if [ -e "/usr/share/dbus-1" ]; then
 #       rm -f /usr/share/dbus-1/*/*freedesktop*
 #     fi
     ###
     ### Fix any broken packages.
-    apt_clean_update_no_releaseinfo_change
-    mrun "apt-get --fix-broken install -y" 2> /dev/null
+    _apt_clean_update_no_releaseinfo_change
+    _mrun "apt-get --fix-broken install -y" 2> /dev/null
     ###
     ### Make sure that sysvinit-core is still installed and systemd removed.
-    sysvinit_install
-    systemd_remove_apt_cmd
-    sysvinit_install
+    _sysvinit_install
+    _systemd_remove_apt_cmd
+    _sysvinit_install
     ###
     ### Prepare for the last step.
     if [ "${_TGT_OSN}" = "Devuan" ]; then
@@ -6282,38 +6282,38 @@ if_major_os_upgrade() {
       ### The last step before migration to Devuan is to switch to eudev.
       ### Jessie exception needs testing, though.
       if [ "${_LOC_OS_CODE}" != "jessie" ]; then
-        mrun "apt-get install eudev ${dstUpArg}" 2> /dev/null
+        _mrun "apt-get install eudev ${_dstUpArg}" 2> /dev/null
       fi
     fi
     ###
     ### Upgrade all packages so that you have the latest versions.
     if [ "${_LOC_OS_CODE}" = "stretch" ]; then
-      mrun "apt-get upgrade ${dstUpArg}" 2> /dev/null
-      #mrun "apt-get full-upgrade ${dstUpArg}" 2> /dev/null
-      mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
+      _mrun "apt-get upgrade ${_dstUpArg}" 2> /dev/null
+      #_mrun "apt-get full-upgrade ${_dstUpArg}" 2> /dev/null
+      _mrun "apt-get install lsb-release ${_dstUpArg}" 2> /dev/null
     else
-      mrun "apt-get upgrade ${dstUpArg}" 2> /dev/null
-      mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
+      _mrun "apt-get upgrade ${_dstUpArg}" 2> /dev/null
+      _mrun "apt-get install lsb-release ${_dstUpArg}" 2> /dev/null
     fi
     ###
     ### Force install/upgrade to give it another chance to complete.
-    mrun "apt-get ${dstUpArg} install" 2> /dev/null
+    _mrun "apt-get ${_dstUpArg} install" 2> /dev/null
     ###
     ### Upgrade again all packages so that you have the latest versions.
     if [ "${_LOC_OS_CODE}" = "stretch" ]; then
-      mrun "apt-get upgrade ${dstUpArg}" 2> /dev/null
-      #mrun "apt-get full-upgrade ${dstUpArg}" 2> /dev/null
-      mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
+      _mrun "apt-get upgrade ${_dstUpArg}" 2> /dev/null
+      #_mrun "apt-get full-upgrade ${_dstUpArg}" 2> /dev/null
+      _mrun "apt-get install lsb-release ${_dstUpArg}" 2> /dev/null
     else
-      mrun "apt-get upgrade ${dstUpArg}" 2> /dev/null
-      mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
+      _mrun "apt-get upgrade ${_dstUpArg}" 2> /dev/null
+      _mrun "apt-get install lsb-release ${_dstUpArg}" 2> /dev/null
     fi
-    mrun "apt-get upgrade -y" 2> /dev/null
+    _mrun "apt-get upgrade -y" 2> /dev/null
     ###
     ### Make sure that sysvinit-core is still installed and systemd removed.
-    sysvinit_install
-    systemd_remove_apt_cmd
-    sysvinit_install
+    _sysvinit_install
+    _systemd_remove_apt_cmd
+    _sysvinit_install
     ###
     ### Finally, the proper dist-upgrade time.
     ### Note that Debian to Devuan migration always requires
@@ -6321,36 +6321,36 @@ if_major_os_upgrade() {
     _FORCE_REBUILD_SRC_ON_AUTO_NOW=NO
     if [ "${_LOC_OS_CODE}" = "bookworm" ] && [ "${_TGT_OSN}" = "Devuan" ]; then
       echo
-      msg "ATTN: NOTE! Debian Bookworm to Devuan migration"
-      msg "ATTN: requires the key dist-upgrade step AFTER reboot, so"
-      msg "ATTN: you MUST RUN ANOTHER Barracuda upgrade after reboot"
+      _msg "ATTN: NOTE! Debian Bookworm to Devuan migration"
+      _msg "ATTN: requires the key dist-upgrade step AFTER reboot, so"
+      _msg "ATTN: you MUST RUN ANOTHER Barracuda upgrade after reboot"
     elif [ "${_LOC_OS_CODE}" = "bullseye" ] && [ "${_TGT_OSN}" = "Devuan" ]; then
       echo
-      msg "ATTN: NOTE! Debian Bullseye to Devuan migration"
-      msg "ATTN: requires the key dist-upgrade step AFTER reboot, so"
-      msg "ATTN: you MUST RUN ANOTHER Barracuda upgrade after reboot"
+      _msg "ATTN: NOTE! Debian Bullseye to Devuan migration"
+      _msg "ATTN: requires the key dist-upgrade step AFTER reboot, so"
+      _msg "ATTN: you MUST RUN ANOTHER Barracuda upgrade after reboot"
     elif [ "${_LOC_OS_CODE}" = "buster" ] && [ "${_TGT_OSN}" = "Devuan" ]; then
       echo
-      msg "ATTN: NOTE! Debian Buster to Devuan migration"
-      msg "ATTN: requires the key dist-upgrade step AFTER reboot, so"
-      msg "ATTN: you MUST RUN ANOTHER Barracuda upgrade after reboot"
+      _msg "ATTN: NOTE! Debian Buster to Devuan migration"
+      _msg "ATTN: requires the key dist-upgrade step AFTER reboot, so"
+      _msg "ATTN: you MUST RUN ANOTHER Barracuda upgrade after reboot"
     elif [ "${_LOC_OS_CODE}" = "stretch" ] && [ "${_TGT_OSN}" = "Devuan" ]; then
       echo
-      msg "ATTN: NOTE! Debian Stretch to Devuan migration"
-      msg "ATTN: requires the key dist-upgrade step AFTER reboot, so"
-      msg "ATTN: you MUST RUN ANOTHER Barracuda upgrade after reboot"
+      _msg "ATTN: NOTE! Debian Stretch to Devuan migration"
+      _msg "ATTN: requires the key dist-upgrade step AFTER reboot, so"
+      _msg "ATTN: you MUST RUN ANOTHER Barracuda upgrade after reboot"
     elif [ "${_LOC_OS_CODE}" = "jessie" ] && [ "${_TGT_OSN}" = "Devuan" ]; then
       echo
-      msg "ATTN: NOTE! Debian Jessie to Devuan migration"
-      msg "ATTN: requires the key dist-upgrade step AFTER reboot, so"
-      msg "ATTN: you MUST RUN ANOTHER Barracuda upgrade after reboot"
+      _msg "ATTN: NOTE! Debian Jessie to Devuan migration"
+      _msg "ATTN: requires the key dist-upgrade step AFTER reboot, so"
+      _msg "ATTN: you MUST RUN ANOTHER Barracuda upgrade after reboot"
     else
       echo
-      mrun "apt-get dist-upgrade ${dstUpArg} --allow-downgrades" 2> /dev/null
+      _mrun "apt-get dist-upgrade ${_dstUpArg} --allow-downgrades" 2> /dev/null
       [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
-      mrun "apt-get dist-upgrade -y --allow-downgrades" 2> /dev/null
+      _mrun "apt-get dist-upgrade -y --allow-downgrades" 2> /dev/null
       [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
-      mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
+      _mrun "apt-get install lsb-release ${_dstUpArg}" 2> /dev/null
       ###
       if [ "${_LOC_OS_CODE}" = "chimaera" ] \
         && [ "${_NEW_OS_CODE}" = "daedalus" ]; then
@@ -6358,19 +6358,19 @@ if_major_os_upgrade() {
         ### Fix PHP early
         ###
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "DIST: Special procedure for ${_LOC_OS_CODE} to ${_NEW_OS_CODE} upgrade"
+          _msg "DIST: Special procedure for ${_LOC_OS_CODE} to ${_NEW_OS_CODE} upgrade"
         fi
         ###
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "TRCK: Removing libldap packages for a clean start"
+          _msg "TRCK: Removing libldap packages for a clean start"
         fi
-        mrun "apt-get remove libldap-common -y -qq" 2> /dev/null
-        mrun "apt-get remove libldap2-dev -y -qq" 2> /dev/null
-        mrun "apt-get remove libldap-dev -y -qq" 2> /dev/null
-        apt_clean_update
+        _mrun "apt-get remove libldap-common -y -qq" 2> /dev/null
+        _mrun "apt-get remove libldap2-dev -y -qq" 2> /dev/null
+        _mrun "apt-get remove libldap-dev -y -qq" 2> /dev/null
+        _apt_clean_update
         ###
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "TRCK: Installing now libldap packages from Chimaera"
+          _msg "TRCK: Installing now libldap packages from Chimaera"
         fi
         echo "## DEVUAN MAIN REPOSITORIES" > /etc/apt/sources.list.d/chimaera.list
         echo "deb http://deb.devuan.org/merged chimaera main" >> /etc/apt/sources.list.d/chimaera.list
@@ -6384,18 +6384,18 @@ if_major_os_upgrade() {
         echo "deb http://deb.devuan.org/merged chimaera-security main" >> /etc/apt/sources.list.d/chimaera.list
         echo "deb-src http://deb.devuan.org/merged chimaera-security main" >> /etc/apt/sources.list.d/chimaera.list
         echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
-        apt_clean_update
-        mrun "apt-get install -t chimaera libldap-common -y" 2> /dev/null
-        mrun "apt-get install -t chimaera libldap2-dev -y" 2> /dev/null
+        _apt_clean_update
+        _mrun "apt-get install -t chimaera libldap-common -y" 2> /dev/null
+        _mrun "apt-get install -t chimaera libldap2-dev -y" 2> /dev/null
         ###
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "TRCK: Locking libldap packages to prevent upgrade on Daedalus"
+          _msg "TRCK: Locking libldap packages to prevent upgrade on Daedalus"
         fi
         ### Make sure that libldap packages are locked in apt.
         echo -e 'Package: libldap-common\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/libldap
         echo -e '\n\nPackage: libldap2-dev\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/libldap
         echo -e '\n\nPackage: libldap-dev\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/libldap
-        apt_clean_update
+        _apt_clean_update
         ###
         _LDAP_GET_DPKG=$(dpkg --get-selections | grep libldap-common | grep 'hold$' 2>&1)
         if [[ ! "${_LDAP_GET_DPKG}" =~ "hold" ]]; then
@@ -6405,44 +6405,44 @@ if_major_os_upgrade() {
           echo "libldap-common hold" | dpkg --set-selections &> /dev/null
           echo "libldap2-dev hold" | dpkg --set-selections &> /dev/null
           echo "libldap-dev hold" | dpkg --set-selections &> /dev/null
-          apt_clean_update
+          _apt_clean_update
         fi
         rm -f /etc/apt/sources.list.d/chimaera.list
         rm -f /etc/apt/apt.conf
-        apt_clean_update
+        _apt_clean_update
         ldconfig 2> /dev/null
         ###
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "DIST: Signal that --allow-downgrades can be used after reboot"
+          _msg "DIST: Signal that --allow-downgrades can be used after reboot"
         fi
         touch /root/.allow.downgrades.on.same.os.dist.upgrade.cnf
         ###
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "DIST: Rebuidling key services from sources before reboot..."
+          _msg "DIST: Rebuidling key services from sources before reboot..."
         fi
         _FORCE_REBUILD_SRC_ON_AUTO_NOW=YES
         touch /root/.force.rebuild.src.on.auto.now.cnf
-        if_rebuild_src_on_major_os_upgrade
+        _if_rebuild_src_on_major_os_upgrade
       else
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "DIST: No quick rebuild from src on ${_LOC_OS_CODE} to ${_NEW_OS_CODE} upgrade"
+          _msg "DIST: No quick rebuild from src on ${_LOC_OS_CODE} to ${_NEW_OS_CODE} upgrade"
         fi
       fi
       ###
     fi
     ### Make sure that sysvinit-core is still installed and systemd removed.
-    sysvinit_install
-    systemd_remove_apt_cmd
-    sysvinit_install
+    _sysvinit_install
+    _systemd_remove_apt_cmd
+    _sysvinit_install
     ### Update rsyslog configuration early
-    rsyslog_config_update
+    _rsyslog_config_update
     ### Reload key services if needed early
-    mrun "service redis-server reload" 2> /dev/null
-    mrun "service nginx reload" 2> /dev/null
+    _mrun "service redis-server reload" 2> /dev/null
+    _mrun "service nginx reload" 2> /dev/null
     _PHP_V="83 82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
       if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
-        mrun "service php${e}-fpm reload" 2> /dev/null
+        _mrun "service php${e}-fpm reload" 2> /dev/null
       fi
     done
     if [ ! -e "/var/xdrago/log" ] && [ -e "/var/xdrago_wait/log" ]; then
@@ -6476,26 +6476,26 @@ if_major_os_upgrade() {
       _PHP_FORCE_REINSTALL=YES
       _SSL_FORCE_REINSTALL=YES
       _SSH_FORCE_REINSTALL=YES
-      php_libs_fix
-      if_reinstall_curl_src
-      if_ssl_install_src
-      ssl_crypto_lib_fix
-      curl_install_src
-      sshd_install_src
-      nginx_install_upgrade
-      magick_install_upgrade
-      php_install_deps
-      php_libs_fix
-      php_if_versions_cleanup_cnf
+      _php_libs_fix
+      _if_reinstall_curl_src
+      _if_ssl_install_src
+      _ssl_crypto_lib_fix
+      _curl_install_src
+      _sshd_install_src
+      _nginx_install_upgrade
+      _magick_install_upgrade
+      _php_install_deps
+      _php_libs_fix
+      _php_if_versions_cleanup_cnf
       if [ "${_STATUS}" = "UPGRADE" ]; then
-        php_ioncube_check_if_update
-        php_check_if_rebuild
+        _php_ioncube_check_if_update
+        _php_check_if_rebuild
       fi
-      php_install_upgrade
-      php_config_check_update
-      php_upgrade_all
-      if_install_php_newrelic
-      newrelic_check_fix
+      _php_install_upgrade
+      _php_config_check_update
+      _php_upgrade_all
+      _if_install_php_newrelic
+      _newrelic_check_fix
     fi
     if [ "${_TGT_OSN}" = "Devuan" ]; then
       if [ "${_LOC_OS_CODE}" = "bookworm" ] \
@@ -6511,17 +6511,17 @@ if_major_os_upgrade() {
     # if [ -e "/root/.big_hop_on_major_os_upgrade.info" ]; then
     #   _PHP_FORCE_REINSTALL=YES
     #   _SQL_FORCE_REINSTALL=YES
-    #   db_server_install
-    #   myquick_install_upgrade
-    #   php_install_deps
-    #   php_libs_fix
-    #   php_install_upgrade
-    #   php_config_check_update
-    #   php_upgrade_all
-    #   if_install_php_newrelic
-    #   newrelic_check_fix
-    #   php_ioncube_check_if_update
-    #   php_check_if_rebuild
+    #   _db_server_install
+    #   _myquick_install_upgrade
+    #   _php_install_deps
+    #   _php_libs_fix
+    #   _php_install_upgrade
+    #   _php_config_check_update
+    #   _php_upgrade_all
+    #   _if_install_php_newrelic
+    #   _newrelic_check_fix
+    #   _php_ioncube_check_if_update
+    #   _php_check_if_rebuild
     # fi
     ###
     ### Time for init scripts cleanup for VM running beng kernel.
@@ -6561,7 +6561,7 @@ if_major_os_upgrade() {
                      vnstat"
       for link in ${_REMOVE_LINKS}; do
         if [ -e "/etc/init.d/${link}" ]; then
-          mrun "update-rc.d -f ${link} remove" 2> /dev/null
+          _mrun "update-rc.d -f ${link} remove" 2> /dev/null
           mv -f /etc/init.d/${link} /var/backups/init.d.${link}
         fi
       done
@@ -6584,11 +6584,11 @@ if_major_os_upgrade() {
         _PTS=OK
       fi
       if [ "${_PTMX}" = "CHECK" ] && [ "${_PTS}" = "FIX" ]; then
-        msg "WARN: Required /dev/pts/ptmx does not exist! We will fix this now..."
+        _msg "WARN: Required /dev/pts/ptmx does not exist! We will fix this now..."
         mkdir -p /dev/pts
         rm -rf /dev/pts/*
-        apt_clean_update_no_releaseinfo_change
-        mrun "apt-get install udev -y --allow-unauthenticated" 2> /dev/null
+        _apt_clean_update_no_releaseinfo_change
+        _mrun "apt-get install udev -y --allow-unauthenticated" 2> /dev/null
         echo "devpts          /dev/pts        devpts  rw,noexec,nosuid,gid=5,mode=620 0  0" >> /etc/fstab
         mount -t devpts devpts /dev/pts &> /dev/null
       fi
@@ -6613,10 +6613,10 @@ if_major_os_upgrade() {
     ### Make sure that Aegir Octopus system users are added to sudo.
     if [ -d "/data/u" ]; then
       for User in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
-        if [ -e "${User}/config/server_master/nginx/vhost.d" ] \
-          && [ ! -e "${User}/log/proxied.pid" ] \
-          && [ ! -e "${User}/log/CANCELLED" ]; then
-          _HM_U=$(echo ${User} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
+        if [ -e "${_usEr}/config/server_master/nginx/vhost.d" ] \
+          && [ ! -e "${_usEr}/log/proxied.pid" ] \
+          && [ ! -e "${_usEr}/log/CANCELLED" ]; then
+          _HM_U=$(echo ${_usEr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
           _VAR_IF_PRESENT=$(grep "${_HM_U} ALL=NOPASSWD" /etc/sudoers 2>&1)
           if [[ ! "${_VAR_IF_PRESENT}" =~ "${_HM_U} ALL=NOPASSWD" ]]; then
             echo "${_HM_U} ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
@@ -6638,26 +6638,26 @@ if_major_os_upgrade() {
     rm -f /var/xdrago_wait/log/*.log
     mv -f /var/xdrago_wait /var/xdrago &> /dev/null
     ###
-    ### Add ctrl file to trigger if_post_major_os_upgrade() after reboot.
+    ### Add ctrl file to trigger _if_post_major_os_upgrade() after reboot.
     touch /root/.run_post_major_os_upgrade.info
     echo " "
-    msg "RLLY: No errors? ${_MSG_LOC} migration worked :)"
-    msg "STEP: Please reboot this server now"
-    msg "STEP: Once the system is up, run 'barracuda up-${tRee}' command again"
+    _msg "RLLY: No errors? ${_MSG_LOC} migration worked :)"
+    _msg "STEP: Please reboot this server now"
+    _msg "STEP: Once the system is up, run 'barracuda up-${_tRee}' command again"
     echo " "
-    msg "Bye"
+    _msg "Bye"
     touch /root/.latest-barracuda-upgrade-finale.info
-    barracuda_cnf_cleanup
-    clean_pid_exit if_major_os_upgrade_f
+    _barracuda_cnf_cleanup
+    _clean_pid_exit _if_major_os_upgrade_f
   fi
 }
 
-webmin_apt_update() {
+_webmin_apt_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: webmin_apt_update"
+    _msg "PROC: _webmin_apt_update"
   fi
   if [ -d "/etc/webmin" ]; then
-    if [ ! -e "${pthLog}/webmin_update_apt_src.log" ]; then
+    if [ ! -e "${_pthLog}/webmin_update_apt_src.log" ]; then
       cd /var/opt
       echo "## Webmin APT Repository" > /etc/apt/sources.list.d/webmin.list
       echo "deb http://download.webmin.com/download/repository \
@@ -6667,7 +6667,7 @@ webmin_apt_update() {
       _KEYS_SERVER_TEST=FALSE
       until [[ "${_KEYS_SERVER_TEST}" =~ "GnuPG" ]]; do
         rm -f jcameron-key.gpg*
-        wget -q -U iCab ${urlDev}/jcameron-key.gpg
+        wget -q -U iCab ${_urlDev}/jcameron-key.gpg
         _KEYS_SERVER_TEST=$(grep GnuPG jcameron-key.gpg 2>&1)
         sleep 2
       done
@@ -6678,12 +6678,12 @@ webmin_apt_update() {
       fi
       cat jcameron-key.gpg | ${_GPG} --import &> /dev/null
       rm -f jcameron-key.gpg*
-      touch ${pthLog}/webmin_update_apt_src.log
+      touch ${_pthLog}/webmin_update_apt_src.log
     fi
   fi
 }
 
-early_sys_ctrl_mark() {
+_early_sys_ctrl_mark() {
   if [ -e "/root/.run_post_major_os_upgrade.info" ]; then
     touch /root/.early-sys-ctrl-mark.cnf
   else
@@ -6691,7 +6691,7 @@ early_sys_ctrl_mark() {
   fi
 }
 
-normal_sys_ctrl_mark() {
+_normal_sys_ctrl_mark() {
   if [ -e "/root/.latest-barracuda-upgrade-finale.info" ]; then
     rm -f /root/.latest-barracuda-upgrade-finale.info
     touch /root/.normal-sys-ctrl-mark.cnf
@@ -6700,11 +6700,11 @@ normal_sys_ctrl_mark() {
   fi
 }
 
-sys_packages_update() {
+_sys_packages_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: sys_packages_update"
+    _msg "PROC: _sys_packages_update"
   fi
-  msg "INFO: Running system packages update..."
+  _msg "INFO: Running system packages update..."
   if [ -e "/var/aegir" ]; then
     echo "curl install"                | dpkg --set-selections &> /dev/null
     echo "git install"                 | dpkg --set-selections &> /dev/null
@@ -6731,33 +6731,33 @@ sys_packages_update() {
     echo "zlib1g-dev install"          | dpkg --set-selections &> /dev/null
     echo "zlibc install"               | dpkg --set-selections &> /dev/null
   fi
-  webmin_apt_update
-  apt_clean_update
+  _webmin_apt_update
+  _apt_clean_update
   if [ -e "/var/aegir/drush" ]; then
     _DPKG_CNF="confold"
   else
     _DPKG_CNF="confnew"
   fi
-  st_runner "aptitude full-upgrade -f -y -q \
+  _st_runner "aptitude full-upgrade -f -y -q \
     --allow-untrusted \
     -o Dpkg::Options::=--force-confmiss \
     -o Dpkg::Options::=--force-confdef \
     -o Dpkg::Options::=--force-${_DPKG_CNF}" &> /dev/null
   if [ "${_STATUS}" = "INIT" ]; then
-    apt_clean_update
-    st_runner "aptitude full-upgrade -f -y -q \
+    _apt_clean_update
+    _st_runner "aptitude full-upgrade -f -y -q \
       --allow-untrusted \
       -o Dpkg::Options::=--force-confmiss \
       -o Dpkg::Options::=--force-confdef \
       -o Dpkg::Options::=--force-${_DPKG_CNF}" &> /dev/null
-    st_runner "apt-get autoclean -y" &> /dev/null
+    _st_runner "apt-get autoclean -y" &> /dev/null
   else
     echo "gnupg-curl install" | dpkg --set-selections &> /dev/null
     if [ -e "/etc/php5/conf.d" ]; then
       touch /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini}
       touch /etc/php5/conf.d/{redis.ini,suhosin.ini,newrelic.ini}
     fi
-    mrun "${_RMAPP} php5 \
+    _mrun "${_RMAPP} php5 \
       php5-cgi \
       php5-curl \
       php5-fpm \
@@ -6773,13 +6773,13 @@ sys_packages_update() {
       php5-sqlite \
       php5-xmlrpc \
       php5-xsl" 2> /dev/null
-    mrun "${_RMAPP} phpunit php-pear php-benchmark" 2> /dev/null
-    mrun "${_RMAPP} php5-cli php5-common" 2> /dev/null
-    mrun "${_RMAPP} php5-apc" 2> /dev/null
-    mrun "${_RMAPP} php-apc" 2> /dev/null
-    mrun "${_RMAPP} apache2.2-common" 2> /dev/null
-    mrun "${_RMAPP} apache2.2-bin" 2> /dev/null
-    mrun "aptitude install lsof -y --allow-untrusted" 2> /dev/null
+    _mrun "${_RMAPP} phpunit php-pear php-benchmark" 2> /dev/null
+    _mrun "${_RMAPP} php5-cli php5-common" 2> /dev/null
+    _mrun "${_RMAPP} php5-apc" 2> /dev/null
+    _mrun "${_RMAPP} php-apc" 2> /dev/null
+    _mrun "${_RMAPP} apache2.2-common" 2> /dev/null
+    _mrun "${_RMAPP} apache2.2-bin" 2> /dev/null
+    _mrun "aptitude install lsof -y --allow-untrusted" 2> /dev/null
     if [ -e "/etc/php5/conf.d" ]; then
       rm -f /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini}
       rm -f /etc/php5/conf.d/{redis.ini,suhosin.ini,newrelic.ini}
@@ -6791,27 +6791,27 @@ sys_packages_update() {
     _UP_PHP=NO
     _UP_PXC=NO
     _UP_SQL=NO
-    check_apt_updates
+    _check_apt_updates
   fi
 }
 
-sys_packages_install() {
+_sys_packages_install() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: sys_packages_install"
+    _msg "PROC: _sys_packages_install"
   fi
-  if_to_do_fix
+  _if_to_do_fix
   if [ "${_STATUS}" = "INIT" ]; then
-    msg "INFO: Installing required libraries and tools..."
+    _msg "INFO: Installing required libraries and tools..."
   else
-    msg "INFO: Upgrading required libraries and tools..."
+    _msg "INFO: Upgrading required libraries and tools..."
     if [ ! -e "/etc/init.d/php5-fpm" ]; then
-      cp -af ${locCnf}/php/php5-fpm-init-vanilla /etc/init.d/php5-fpm
+      cp -af ${_locCnf}/php/php5-fpm-init-vanilla /etc/init.d/php5-fpm
     fi
   fi
   if [ "${_STATUS}" = "INIT" ]; then
-    if_hosted_sys
+    _if_hosted_sys
     if [[ "${_XTRAS_LIST}" =~ "SR" ]] \
-      || [ "${hostedSys}" = "YES" ]; then
+      || [ "${_hostedSys}" = "YES" ]; then
       if [ "${_OS_CODE}" = "jessie" ]; then
         _APT_XTRA="openjdk-7-jre-headless ca-certificates-java nginx"
       elif [ "${_OS_CODE}" = "stretch" ]; then
@@ -6824,14 +6824,14 @@ sys_packages_install() {
         _APT_XTRA="openjdk-17-jre-headless ca-certificates-java nginx"
         echo "deb http://deb.debian.org/debian bullseye main contrib non-free" > /etc/apt/sources.list.d/bullseye.list
         echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
-        apt_clean_update
+        _apt_clean_update
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "TRCK: Installing now openjdk-11-jre-headless from Bullseye"
+          _msg "TRCK: Installing now openjdk-11-jre-headless from Bullseye"
         fi
-        mrun "apt-get install -t bullseye openjdk-11-jre-headless -y" 2> /dev/null
+        _mrun "apt-get install -t bullseye openjdk-11-jre-headless -y" 2> /dev/null
         rm -f /etc/apt/sources.list.d/bullseye.list
         rm -f /etc/apt/apt.conf
-        apt_clean_update
+        _apt_clean_update
       elif [ "${_OS_CODE}" = "beowulf" ]; then
         _APT_XTRA="openjdk-11-jre-headless ca-certificates-java nginx"
       elif [ "${_OS_CODE}" = "chimaera" ]; then
@@ -6851,14 +6851,14 @@ sys_packages_install() {
           echo "deb http://deb.devuan.org/merged chimaera-security main" >> /etc/apt/sources.list.d/chimaera.list
           echo "deb-src http://deb.devuan.org/merged chimaera-security main" >> /etc/apt/sources.list.d/chimaera.list
           echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
-          apt_clean_update
+          _apt_clean_update
           if [ "${_DEBUG_MODE}" = "YES" ]; then
-            msg "TRCK: Installing now openjdk-11-jre-headless from Chimaera"
+            _msg "TRCK: Installing now openjdk-11-jre-headless from Chimaera"
           fi
-          mrun "apt-get install -t chimaera openjdk-11-jre-headless -y" 2> /dev/null
+          _mrun "apt-get install -t chimaera openjdk-11-jre-headless -y" 2> /dev/null
           rm -f /etc/apt/sources.list.d/chimaera.list
           rm -f /etc/apt/apt.conf
-          apt_clean_update
+          _apt_clean_update
         fi
       fi
     else
@@ -6868,15 +6868,15 @@ sys_packages_install() {
   else
     _APT_ITEM=$(dpkg --get-selections | grep openjdk-6-jdk | grep install 2>&1)
     if [[ "${_APT_ITEM}" =~ "install" ]]; then
-      mrun "apt-get remove openjdk-6-jdk -y --purge --auto-remove -qq" 2> /dev/null
+      _mrun "apt-get remove openjdk-6-jdk -y --purge --auto-remove -qq" 2> /dev/null
     fi
     _APT_ITEM=$(dpkg --get-selections | grep openjdk-7-jdk | grep install 2>&1)
     if [[ "${_APT_ITEM}" =~ "install" ]]; then
-      mrun "apt-get remove openjdk-7-jdk -y --purge --auto-remove -qq" 2> /dev/null
+      _mrun "apt-get remove openjdk-7-jdk -y --purge --auto-remove -qq" 2> /dev/null
     fi
-    if_hosted_sys
+    _if_hosted_sys
     if [[ "${_XTRAS_LIST}" =~ "SR" ]] \
-      || [ "${hostedSys}" = "YES" ]; then
+      || [ "${_hostedSys}" = "YES" ]; then
       if [ "${_OS_CODE}" = "jessie" ]; then
         _APT_XTRA="openjdk-7-jre-headless ca-certificates-java"
       elif [ "${_OS_CODE}" = "stretch" ]; then
@@ -6889,14 +6889,14 @@ sys_packages_install() {
         _APT_XTRA="openjdk-17-jre-headless ca-certificates-java"
         echo "deb http://deb.debian.org/debian bullseye main contrib non-free" > /etc/apt/sources.list.d/bullseye.list
         echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
-        apt_clean_update
+        _apt_clean_update
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "TRCK: Installing now openjdk-11-jre-headless from Bullseye"
+          _msg "TRCK: Installing now openjdk-11-jre-headless from Bullseye"
         fi
-        mrun "apt-get install -t bullseye openjdk-11-jre-headless -y" 2> /dev/null
+        _mrun "apt-get install -t bullseye openjdk-11-jre-headless -y" 2> /dev/null
         rm -f /etc/apt/sources.list.d/bullseye.list
         rm -f /etc/apt/apt.conf
-        apt_clean_update
+        _apt_clean_update
       elif [ "${_OS_CODE}" = "beowulf" ]; then
         _APT_XTRA="openjdk-11-jre-headless ca-certificates-java"
       elif [ "${_OS_CODE}" = "chimaera" ]; then
@@ -6919,35 +6919,35 @@ sys_packages_install() {
           echo "deb http://deb.devuan.org/merged chimaera-security main" >> /etc/apt/sources.list.d/chimaera.list
           echo "deb-src http://deb.devuan.org/merged chimaera-security main" >> /etc/apt/sources.list.d/chimaera.list
           echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
-          apt_clean_update
+          _apt_clean_update
           if [ "${_DEBUG_MODE}" = "YES" ]; then
-            msg "TRCK: Installing now openjdk-11-jre-headless from Chimaera"
+            _msg "TRCK: Installing now openjdk-11-jre-headless from Chimaera"
           fi
-          mrun "apt-get install -t chimaera openjdk-11-jre-headless -y" 2> /dev/null
+          _mrun "apt-get install -t chimaera openjdk-11-jre-headless -y" 2> /dev/null
           rm -f /etc/apt/sources.list.d/chimaera.list
           rm -f /etc/apt/apt.conf
-          apt_clean_update
+          _apt_clean_update
         fi
       fi
     else
       _APT_XTRA=""
     fi
     _APT_ELSE="netcat netcat-traditional"
-    apt_clean_update
-    mrun "service nginx start" 2> /dev/null
-    mrun "apt-get remove nginx-extras -y -qq" 2> /dev/null
-    mrun "apt-get remove nginx -y -qq" 2> /dev/null
-    mrun "apt-get remove nginx-common -y -qq" 2> /dev/null
-    mrun "apt-get remove nginx-full -y -qq" 2> /dev/null
-    mrun "apt-get remove redis-server -y -qq" 2> /dev/null
-    mrun "apt-get remove percona-release -y -qq" 2> /dev/null
+    _apt_clean_update
+    _mrun "service nginx start" 2> /dev/null
+    _mrun "apt-get remove nginx-extras -y -qq" 2> /dev/null
+    _mrun "apt-get remove nginx -y -qq" 2> /dev/null
+    _mrun "apt-get remove nginx-common -y -qq" 2> /dev/null
+    _mrun "apt-get remove nginx-full -y -qq" 2> /dev/null
+    _mrun "apt-get remove redis-server -y -qq" 2> /dev/null
+    _mrun "apt-get remove percona-release -y -qq" 2> /dev/null
     ###
     ### Make sure that nginx packages are locked in apt.
     if [ ! -e "/etc/apt/preferences.d/nginx-common" ]; then
       rm -f /etc/apt/preferences.d/nginx
       echo -e 'Package: nginx\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/nginx-common
       echo -e '\n\nPackage: nginx-common\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/nginx-common
-      apt_clean_update
+      _apt_clean_update
     fi
     ###
     _NGINX_GET_DPKG=$(dpkg --get-selections | grep nginx-common | grep 'hold$' 2>&1)
@@ -6956,32 +6956,32 @@ sys_packages_install() {
       aptitude hold nginx-common &> /dev/null
       echo "nginx hold" | dpkg --set-selections &> /dev/null
       echo "nginx-common hold" | dpkg --set-selections &> /dev/null
-      apt_clean_update
+      _apt_clean_update
     fi
     ###
     ### Make sure that percona-release package is locked in apt.
     if [ ! -e "/etc/apt/preferences.d/percona-release" ]; then
       echo -e 'Package: percona-release\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/percona-release
-      apt_clean_update
+      _apt_clean_update
     fi
     ###
     _PERC_GET_DPKG=$(dpkg --get-selections | grep percona-release | grep 'hold$' 2>&1)
     if [[ ! "${_PERC_GET_DPKG}" =~ "hold" ]]; then
       aptitude hold percona-release &> /dev/null
       echo "percona-release hold" | dpkg --set-selections &> /dev/null
-      apt_clean_update
+      _apt_clean_update
     fi
     ###
-    mrun "apt-get remove --purge libmariadb3 -y -qq" 2> /dev/null
-    mrun "apt-get remove --purge mariadb-common -y -qq" 2> /dev/null
-    mrun "apt-get remove --purge mailutils -y -qq" 2> /dev/null
+    _mrun "apt-get remove --purge libmariadb3 -y -qq" 2> /dev/null
+    _mrun "apt-get remove --purge mariadb-common -y -qq" 2> /dev/null
+    _mrun "apt-get remove --purge mailutils -y -qq" 2> /dev/null
     ###
     ### Make sure that mariadb related packages are locked in apt.
     if [ ! -e "/etc/apt/preferences.d/mariadb-common" ]; then
       echo -e 'Package: libmariadb3\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/mariadb-common
       echo -e '\n\nPackage: mariadb-common\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/mariadb-common
       echo -e '\n\nPackage: mailutils\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/mariadb-common
-      apt_clean_update_no_releaseinfo_change
+      _apt_clean_update_no_releaseinfo_change
     fi
     ###
     _NGINX_GET_DPKG=$(dpkg --get-selections | grep mariadb-common | grep 'hold$' 2>&1)
@@ -6992,7 +6992,7 @@ sys_packages_install() {
       echo "libmariadb3 hold" | dpkg --set-selections &> /dev/null
       echo "mariadb-common hold" | dpkg --set-selections &> /dev/null
       echo "mailutils hold" | dpkg --set-selections &> /dev/null
-      apt_clean_update_no_releaseinfo_change
+      _apt_clean_update_no_releaseinfo_change
     fi
   fi
   _EXTRA_LIB_APT="libmcrypt-dev"
@@ -7008,14 +7008,14 @@ sys_packages_install() {
   fi
   if [ "${_IS_VZ}" = "YES" ]; then
     _SYSLOGD=inetutils-syslogd
-    mrun "apt-get remove sysklogd -y --purge --auto-remove -qq" 2> /dev/null
-    mrun "apt-get remove rsyslog -y --purge --auto-remove -qq" 2> /dev/null
-    mrun "killall -9 sysklogd" 2> /dev/null
-    mrun "killall -9 rsyslogd" 2> /dev/null
+    _mrun "apt-get remove sysklogd -y --purge --auto-remove -qq" 2> /dev/null
+    _mrun "apt-get remove rsyslog -y --purge --auto-remove -qq" 2> /dev/null
+    _mrun "killall -9 sysklogd" 2> /dev/null
+    _mrun "killall -9 rsyslogd" 2> /dev/null
   elif [ -e "/root/.use.sysklogd.cnf" ]; then
     _SYSLOGD=sysklogd
-    mrun "apt-get remove rsyslog -y --purge --auto-remove -qq" 2> /dev/null
-    mrun "killall -9 rsyslogd" 2> /dev/null
+    _mrun "apt-get remove rsyslog -y --purge --auto-remove -qq" 2> /dev/null
+    _mrun "killall -9 rsyslogd" 2> /dev/null
   else
     _SYSLOGD=rsyslog
   fi
@@ -7157,10 +7157,10 @@ sys_packages_install() {
                    libwebp-dev \
                    ${_EXTRA_PACKAGES}"
 
-  if_hosted_sys
+  _if_hosted_sys
   if [[ "${_XTRAS_LIST}" =~ "IMG" ]] \
     || [[ "${_XTRAS_LIST}" =~ "ALL" ]] \
-    || [ "${hostedSys}" = "YES" ]; then
+    || [ "${_hostedSys}" = "YES" ]; then
     _EXTRA_PACKAGES="advancecomp \
                      jpegoptim \
                      libjpeg-progs \
@@ -7184,11 +7184,11 @@ sys_packages_install() {
   _MAILSERV="postfix postfix-pcre s-nail"
 }
 
-php_libs_fix() {
+_php_libs_fix() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: php_libs_fix"
+    _msg "PROC: _php_libs_fix"
   fi
-  if_to_do_fix
+  _if_to_do_fix
   _LIB_NOW=$(date +%y%m%d-%H%M 2>&1)
   _LIB_NOW=${_LIB_NOW//[^0-9-]/}
   if [ ! -L "/usr/lib/librtmp.so" ] \
@@ -7196,10 +7196,10 @@ php_libs_fix() {
     || [ ! -e "/usr/lib/libonig.so" ] \
     || [ ! -e "/usr/lib/libicuio.so" ] \
     || [ ! -e "/usr/lib/liblber.so" ] \
-    || [ ! -e "/var/xdrago/log/.php_libs_fix_${_OS_CODE}_${_LIB_NOW}.pid" ] \
+    || [ ! -e "/var/xdrago/log/._php_libs_fix_${_OS_CODE}_${_LIB_NOW}.pid" ] \
     || [ ! -e "/usr/include/gmp.h" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "INFO: Fix for PHP libs in ${_OS_DIST}/${_OS_CODE}"
+      _msg "INFO: Fix for PHP libs in ${_OS_DIST}/${_OS_CODE}"
     fi
     _X86_64_TEST=$(uname -m 2>&1)
     if [ "${_X86_64_TEST}" = "x86_64" ]; then
@@ -7303,23 +7303,23 @@ php_libs_fix() {
       fi
     fi
     if [ ! -e "/var/xdrago/log" ] && [ -e "/var/xdrago_wait/log" ]; then
-      touch /var/xdrago_wait/log/.php_libs_fix_${_OS_CODE}_${_LIB_NOW}.pid
-      touch /var/xdrago_wait/log/.php_libs_fix_${_OS_CODE}_${_LIB_NOW}.pid
+      touch /var/xdrago_wait/log/._php_libs_fix_${_OS_CODE}_${_LIB_NOW}.pid
+      touch /var/xdrago_wait/log/._php_libs_fix_${_OS_CODE}_${_LIB_NOW}.pid
     else
-      touch /var/xdrago/log/.php_libs_fix_${_OS_CODE}_${_LIB_NOW}.pid
-      touch /var/xdrago/log/.php_libs_fix_${_OS_CODE}_${_LIB_NOW}.pid
+      touch /var/xdrago/log/._php_libs_fix_${_OS_CODE}_${_LIB_NOW}.pid
+      touch /var/xdrago/log/._php_libs_fix_${_OS_CODE}_${_LIB_NOW}.pid
     fi
   fi
   ldconfig 2> /dev/null
 }
 
-smtp_check() {
+_smtp_check() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: smtp_check"
+    _msg "PROC: _smtp_check"
   fi
   if [ -z "${_SMTP_RELAY_HOST}" ] && [ "${_SMTP_RELAY_TEST}" = "YES" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "INFO: Checking SMTP connections..."
+      _msg "INFO: Checking SMTP connections..."
     fi
     if ! netcat -w 10 -z smtp.gmail.com 25 ; then
       cat <<EOF
@@ -7354,24 +7354,24 @@ EOF
   fi
 }
 
-if_install_vnstat() {
+_if_install_vnstat() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: if_install_vnstat"
+    _msg "PROC: _if_install_vnstat"
   fi
   if [ ! -e "/run/cloud_vhost.pid" ]; then
-    if [ ! -e "${pthLog}/vnstat-${_VNSTAT_VRN}.log" ] \
+    if [ ! -e "${_pthLog}/vnstat-${_VNSTAT_VRN}.log" ] \
       || [ ! -e "/usr/bin/vnstat" ] \
       || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: Installing VnStat monitor..."
+        _msg "INFO: Installing VnStat monitor..."
       fi
       cd /var/opt
       rm -rf vnstat*
-      get_dev_src "vnstat-${_VNSTAT_VRN}.tar.gz"
+      _get_dev_src "vnstat-${_VNSTAT_VRN}.tar.gz"
       cd vnstat-${_VNSTAT_VRN}
-      mrun "bash ./configure --prefix=/usr --sysconfdir=/etc" 2> /dev/null
-      mrun "make -j $(nproc) --quiet" 2> /dev/null
-      mrun "make --quiet install" 2> /dev/null
+      _mrun "bash ./configure --prefix=/usr --sysconfdir=/etc" 2> /dev/null
+      _mrun "make -j $(nproc) --quiet" 2> /dev/null
+      _mrun "make --quiet install" 2> /dev/null
       ldconfig 2> /dev/null
       for INF in `vnstat --iflist \
         | sed "s/Available interfaces//g; s/(1000 Mbit)//g; s/(100 Mbit)//g; s/ lo//g;" \
@@ -7379,61 +7379,61 @@ if_install_vnstat() {
       cp -af /var/opt/vnstat-${_VNSTAT_VRN}/examples/init.d/debian/vnstat \
         /etc/init.d/vnstat
       chmod 755 /etc/init.d/vnstat &> /dev/null
-      mrun "update-rc.d vnstat defaults" 2> /dev/null
+      _mrun "update-rc.d vnstat defaults" 2> /dev/null
       if [ -e "/usr/etc/vnstat.conf" ]; then
         sed -i "s/^MaxBandwidth.*/MaxBandwidth 1000/g" /usr/etc/vnstat.conf
       fi
       if [ -e "/etc/vnstat.conf" ]; then
         sed -i "s/^MaxBandwidth.*/MaxBandwidth 1000/g" /etc/vnstat.conf
       fi
-      mrun "service vnstat start" 2> /dev/null
-      mrun "killall vnstatd" 2> /dev/null
-      touch ${pthLog}/vnstat-${_VNSTAT_VRN}.log
-      mrun "service vnstat restart" 2> /dev/null
+      _mrun "service vnstat start" 2> /dev/null
+      _mrun "killall vnstatd" 2> /dev/null
+      touch ${_pthLog}/vnstat-${_VNSTAT_VRN}.log
+      _mrun "service vnstat restart" 2> /dev/null
     fi
   fi
   if [ -e "/etc/init.d/vnstat" ] \
     && [ "${_VMFAMILY}" = "VS" ] \
     && [ ! -e "/boot/grub/grub.cfg" ] \
     && [ ! -e "/boot/grub/menu.lst" ]; then
-    mrun "service vnstat stop" 2> /dev/null
-    mrun "update-rc.d -f vnstat remove" 2> /dev/null
+    _mrun "service vnstat stop" 2> /dev/null
+    _mrun "update-rc.d -f vnstat remove" 2> /dev/null
     rm -f /etc/init.d/vnstat
     rm -f /usr/bin/vnstat
     rm -rf /var/lib/vnstat
   fi
   if [ -e "/usr/etc/vnstat.conf" ]; then
     sed -i "s/^MaxBandwidth.*/MaxBandwidth 1000/g" /usr/etc/vnstat.conf
-    mrun "service vnstat restart" 2> /dev/null
+    _mrun "service vnstat restart" 2> /dev/null
   fi
 }
 
-install_myquick_src() {
+_install_myquick_src() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: install_myquick_src"
+    _msg "PROC: _install_myquick_src"
   fi
   if [ "${_MYQUICK_INSTALL_REQUIRED}" = "YES" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "INFO: Building MyQuick ${_MYQUICK_VRN_FIVE} from sources..."
+      _msg "INFO: Building MyQuick ${_MYQUICK_VRN_FIVE} from sources..."
     fi
-    apt_clean_update
-    mrun "${_INSTAPP} cmake" 2> /dev/null
-    mrun "${_INSTAPP} libssl-dev" 2> /dev/null
-#     mrun "${_INSTAPP} libcurl4" 2> /dev/null
-#     mrun "${_INSTAPP} libcurl4-gnutls-dev" 2> /dev/null
+    _apt_clean_update
+    _mrun "${_INSTAPP} cmake" 2> /dev/null
+    _mrun "${_INSTAPP} libssl-dev" 2> /dev/null
+#     _mrun "${_INSTAPP} libcurl4" 2> /dev/null
+#     _mrun "${_INSTAPP} libcurl4-gnutls-dev" 2> /dev/null
     if [ "${_DB_SERVER}" = "Percona" ]; then
       if [ "${_DB_SERIES}" = "5.7" ]; then
-        mrun "${_INSTAPP} libperconaserverclient20 libperconaserverclient20-dev" 2> /dev/null
+        _mrun "${_INSTAPP} libperconaserverclient20 libperconaserverclient20-dev" 2> /dev/null
       elif [ "${_DB_SERIES}" = "8.0" ]; then
-        mrun "${_INSTAPP} libperconaserverclient21 libperconaserverclient21-dev" 2> /dev/null
+        _mrun "${_INSTAPP} libperconaserverclient21 libperconaserverclient21-dev" 2> /dev/null
       else
-        mrun "${_INSTAPP} libperconaserverclient22 libperconaserverclient22-dev" 2> /dev/null
+        _mrun "${_INSTAPP} libperconaserverclient22 libperconaserverclient22-dev" 2> /dev/null
       fi
     fi
     ldconfig 2> /dev/null
     cd /var/opt
     rm -rf mydumper*
-    get_dev_src "mydumper-${_MYQUICK_VRN_FIVE}.tar.gz"
+    _get_dev_src "mydumper-${_MYQUICK_VRN_FIVE}.tar.gz"
     cd /var/opt/mydumper-${_MYQUICK_VRN_FIVE}
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
@@ -7443,8 +7443,8 @@ install_myquick_src() {
         -DWITH_SSL=ON \
         -DBUILD_DOCS=ON \
         -DCMAKE_C_FLAGS=-Wno-error=unused-function .
-      mrun "make" 2> /dev/null
-      mrun "make install" 2> /dev/null
+      _mrun "make" 2> /dev/null
+      _mrun "make install" 2> /dev/null
     else
       export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH &> /dev/null
       export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH &> /dev/null
@@ -7453,26 +7453,26 @@ install_myquick_src() {
         -DWITH_SSL=ON \
         -DBUILD_DOCS=ON \
         -DCMAKE_C_FLAGS=-Wno-error=unused-function . &> /dev/null
-      mrun "make --quiet" 2> /dev/null
-      mrun "make --quiet install" 2> /dev/null
+      _mrun "make --quiet" 2> /dev/null
+      _mrun "make --quiet install" 2> /dev/null
     fi
     ldconfig 2> /dev/null
   fi
 }
 
-install_myquick_deb() {
+_install_myquick_deb() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: install_myquick_deb"
+    _msg "PROC: _install_myquick_deb"
   fi
   if [ "${_MYQUICK_SRC_INSTALL_REQUIRED}" = "NO" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "INFO: Installing MyQuick ${_MYQUICK_VRN_EIGHT} from ${_USE_CODE} packages"
+      _msg "INFO: Installing MyQuick ${_MYQUICK_VRN_EIGHT} from ${_USE_CODE} packages"
     fi
     cd /var/opt
     rm -rf mydumper_*
-    get_dev_arch "mydumper_${_MYQUICK_VRN_EIGHT}.${_USE_CODE}_amd64.deb.gz"
+    _get_dev_arch "mydumper_${_MYQUICK_VRN_EIGHT}.${_USE_CODE}_amd64.deb.gz"
     if [ -e "/var/opt/mydumper_${_MYQUICK_VRN_EIGHT}.${_USE_CODE}_amd64.deb" ]; then
-      mrun "dpkg -i mydumper_${_MYQUICK_VRN_EIGHT}.${_USE_CODE}_amd64.deb" 2> /dev/null
+      _mrun "dpkg -i mydumper_${_MYQUICK_VRN_EIGHT}.${_USE_CODE}_amd64.deb" 2> /dev/null
     fi
     if [ -x "/usr/bin/mydumper" ]; then
       [ -e "/usr/local/bin/mydumper" ] && rm -f /usr/local/bin/mydumper
@@ -7482,13 +7482,13 @@ install_myquick_deb() {
     fi
   else
     _MYQUICK_INSTALL_REQUIRED=YES
-    install_myquick_src
+    _install_myquick_src
   fi
 }
 
-myquick_install_upgrade() {
+_myquick_install_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: myquick_install_upgrade"
+    _msg "PROC: _myquick_install_upgrade"
   fi
   _MYQUICK_SRC_INSTALL_REQUIRED=NO
   if [ "${_SQL_OS_CODE}" = "bookworm" ]; then
@@ -7503,14 +7503,14 @@ myquick_install_upgrade() {
   if [ -e "/root/.install.myquick.src.info" ]; then
     _MYQUICK_SRC_INSTALL_REQUIRED=YES
   fi
-  check_mysql_version
+  _check_mysql_version
   isMyQuick=$(which mydumper 2>&1)
   if [ ! -x "${isMyQuick}" ] \
     || [ -z "${isMyQuick}" ]; then
     if [ "${_MYQUICK_SRC_INSTALL_REQUIRED}" = "NO" ]; then
-      install_myquick_deb
+      _install_myquick_deb
     else
-      install_myquick_src
+      _install_myquick_src
     fi
   fi
   if [ "${_STATUS}" = "UPGRADE" ]; then
@@ -7549,17 +7549,17 @@ myquick_install_upgrade() {
         if [ "${_MYQUICK_ITD}" != "${_MYQUICK_VRN_EIGHT}" ]; then
           _MYQUICK_INSTALL_REQUIRED=YES
           if [ "${_DEBUG_MODE}" = "YES" ]; then
-            msg "INFO: Installed MyQuick version ${_MYQUICK_ITD}, upgrade required"
+            _msg "INFO: Installed MyQuick version ${_MYQUICK_ITD}, upgrade required"
           fi
-          install_myquick_deb
+          _install_myquick_deb
         fi
       else
         if [ "${_MYQUICK_ITD}" != "${_MYQUICK_VRN_FIVE}" ] || [ "${_MD_V}" != "${_DB_V}" ]; then
           _MYQUICK_INSTALL_REQUIRED=YES
           if [ "${_DEBUG_MODE}" = "YES" ]; then
-            msg "INFO: Installed MyQuick version ${_MYQUICK_ITD}, upgrade required"
+            _msg "INFO: Installed MyQuick version ${_MYQUICK_ITD}, upgrade required"
           fi
-          install_myquick_src
+          _install_myquick_src
         fi
       fi
     fi
@@ -7567,52 +7567,52 @@ myquick_install_upgrade() {
     if [ ! -e "${isMyQuick}" ]; then
       _MYQUICK_INSTALL_REQUIRED=YES
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: MyQuick not installed yet"
+        _msg "INFO: MyQuick not installed yet"
       fi
-      install_myquick_deb
+      _install_myquick_deb
     fi
   fi
 }
 
-xdrago_install_upgrade() {
+_xdrago_install_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: xdrago_install_upgrade"
+    _msg "PROC: _xdrago_install_upgrade"
   fi
   cd /var
   if [ -d "/var/xdrago/conf" ] \
     && [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "INFO: Upgrading a few more tools..."
+      _msg "INFO: Upgrading a few more tools..."
     fi
-    mv -f /var/xdrago-pre* ${vBs}/dragon/x/ &> /dev/null
-    rm -rf ${pthLog}/init.d-pre*
-    rm -rf ${vBs}/dragon/z/init.d-pre-*
-    rm -f ${pthLog}/cron-root-pre*
+    mv -f /var/xdrago-pre* ${_vBs}/dragon/x/ &> /dev/null
+    rm -rf ${_pthLog}/init.d-pre*
+    rm -rf ${_vBs}/dragon/z/init.d-pre-*
+    rm -f ${_pthLog}/cron-root-pre*
     cp -af /var/xdrago \
-      ${vBs}/dragon/x/xdrago-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
-    rm -f ${pthLog}/VISITOR_ABUSE_ONE.log
-    rm -f ${pthLog}/blackIP.log
+      ${_vBs}/dragon/x/xdrago-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
+    rm -f ${_pthLog}/VISITOR_ABUSE_ONE.log
+    rm -f ${_pthLog}/blackIP.log
     rm -f /var/xdrago/{enableStatus,graceful,move_sql,run_all,second,Minute}
     rm -f /var/xdrago/{firewall.sh,stop-mysql-innodb.sh,firewall_restarter}
     rm -f /var/xdrago/{FireStart,memcache,redis}
     cp -af /var/spool/cron/crontabs/root \
-      ${vBs}/dragon/z/cron-root-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
+      ${_vBs}/dragon/z/cron-root-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
     if [ "${_CUSTOM_CONFIG_LSHELL}" = "YES" ] \
       && [ -e "/var/xdrago/conf/lshell.conf" ]; then
-      cp -af /var/xdrago/conf/lshell.conf ${vBs}/custom_lshell.conf
+      cp -af /var/xdrago/conf/lshell.conf ${_vBs}/custom_lshell.conf
     fi
-    cp -af ${bldPth}/aegir/tools/system/* /var/xdrago/ &> /dev/null
+    cp -af ${_bldPth}/aegir/tools/system/* /var/xdrago/ &> /dev/null
     if [ "${_CUSTOM_CONFIG_LSHELL}" = "YES" ] \
-      && [ -e "${vBs}/custom_lshell.conf" ]; then
-      cp -af ${vBs}/custom_lshell.conf /var/xdrago/conf/lshell.conf
+      && [ -e "${_vBs}/custom_lshell.conf" ]; then
+      cp -af ${_vBs}/custom_lshell.conf /var/xdrago/conf/lshell.conf
     fi
     if [ -z "${_THISHTIP}" ]; then
       _LOC_DOM="${_THISHOST}"
-      find_correct_ip
+      _find_correct_ip
       _THISHTIP="${_LOC_IP}"
     fi
-    if_hosted_sys
-    if [ "${hostedSys}" = "YES" ]; then
+    _if_hosted_sys
+    if [ "${_hostedSys}" = "YES" ]; then
       if [ ! -e "/etc/init.d/redis-server" ]; then
         _NGINX_DOS_LIMIT=8888
       else
@@ -7623,7 +7623,7 @@ xdrago_install_upgrade() {
         fi
       fi
     fi
-    sed -i "s/^_NGINX_DOS_LIMIT=.*/_NGINX_DOS_LIMIT=${_NGINX_DOS_LIMIT}/g"  ${barCnf}
+    sed -i "s/^_NGINX_DOS_LIMIT=.*/_NGINX_DOS_LIMIT=${_NGINX_DOS_LIMIT}/g"  ${_barCnf}
     sed -i "s/default_critnumber =.*/default_critnumber = ${_NGINX_DOS_LIMIT};/g" /var/xdrago/monitor/check/scan_nginx.pl
     wait
     sed -i "s/default_lines =.*/default_lines = 1999;/g" /var/xdrago/monitor/check/scan_nginx.pl
@@ -7631,7 +7631,7 @@ xdrago_install_upgrade() {
     if [ ! -z "${_NGINX_DOS_STOP}" ]; then
       _NGINX_DOS_STOP=${_NGINX_DOS_STOP//[^a-zA-Z0-9|-]/}
       if [ ! -z "${_NGINX_DOS_STOP}" ]; then
-        msg "INFO: Configured _NGINX_DOS_STOP: ${_NGINX_DOS_STOP}"
+        _msg "INFO: Configured _NGINX_DOS_STOP: ${_NGINX_DOS_STOP}"
         sed -i "s/foobar/${_NGINX_DOS_STOP}/g" \
           /var/xdrago/monitor/check/scan_nginx.pl &> /dev/null
         wait
@@ -7640,21 +7640,21 @@ xdrago_install_upgrade() {
     if [ ! -z "${_NGINX_DOS_IGNORE}" ]; then
       _NGINX_DOS_IGNORE=${_NGINX_DOS_IGNORE//[^a-zA-Z0-9|-]/}
       if [ ! -z "${_NGINX_DOS_IGNORE}" ]; then
-        msg "INFO: Configured _NGINX_DOS_IGNORE: ${_NGINX_DOS_IGNORE}"
+        _msg "INFO: Configured _NGINX_DOS_IGNORE: ${_NGINX_DOS_IGNORE}"
         sed -i "s/dontcount/${_NGINX_DOS_IGNORE}/g" \
           /var/xdrago/monitor/check/scan_nginx.pl &> /dev/null
         wait
       fi
     fi
-    mv -f /etc/cron.daily/mlocate ${vBs}/ &> /dev/null
+    mv -f /etc/cron.daily/mlocate ${_vBs}/ &> /dev/null
     cp -af /var/xdrago/cron/crontabs/root /var/spool/cron/crontabs/ &> /dev/null
     if [ -e "/var/xdrago/cron/custom.txt" ]; then
       cat /var/xdrago/cron/custom.txt >> /var/spool/cron/crontabs/root
     fi
     chown root:crontab /var/spool/cron/crontabs/root
     chmod 600 /var/spool/cron/crontabs/root
-    if_hosted_sys
-    if [ "${hostedSys}" = "YES" ]; then
+    _if_hosted_sys
+    if [ "${_hostedSys}" = "YES" ]; then
       sed -i "s/rotate 52/rotate 7/g" /etc/logrotate.d/nginx &> /dev/null
       wait
       sed -i "s/rotate 1/rotate 7/g" /etc/logrotate.d/nginx &> /dev/null
@@ -7681,17 +7681,17 @@ xdrago_install_upgrade() {
   fi
   if [ "${_STATUS}" = "INIT" ]; then
     mkdir -p ./xdrago
-    cp -af ${bldPth}/aegir/tools/system/* ./xdrago/ &> /dev/null
+    cp -af ${_bldPth}/aegir/tools/system/* ./xdrago/ &> /dev/null
     cp -af /var/xdrago/cron/crontabs/root /var/spool/cron/crontabs/ &> /dev/null
     chown root:crontab /var/spool/cron/crontabs/root
     chmod 600 /var/spool/cron/crontabs/root
     if [ -z "${_THISHTIP}" ]; then
       _LOC_DOM="${_THISHOST}"
-      find_correct_ip
+      _find_correct_ip
       _THISHTIP="${_LOC_IP}"
     fi
-    if_hosted_sys
-    if [ "${hostedSys}" = "YES" ]; then
+    _if_hosted_sys
+    if [ "${_hostedSys}" = "YES" ]; then
       if [ ! -e "/etc/init.d/redis-server" ]; then
         _NGINX_DOS_LIMIT=8888
       else
@@ -7702,7 +7702,7 @@ xdrago_install_upgrade() {
         fi
       fi
     fi
-    sed -i "s/^_NGINX_DOS_LIMIT=.*/_NGINX_DOS_LIMIT=${_NGINX_DOS_LIMIT}/g"  ${barCnf}
+    sed -i "s/^_NGINX_DOS_LIMIT=.*/_NGINX_DOS_LIMIT=${_NGINX_DOS_LIMIT}/g"  ${_barCnf}
     sed -i "s/default_critnumber =.*/default_critnumber = ${_NGINX_DOS_LIMIT};/g" /var/xdrago/monitor/check/scan_nginx.pl
     wait
     sed -i "s/default_lines =.*/default_lines = 1999;/g" /var/xdrago/monitor/check/scan_nginx.pl
@@ -7710,7 +7710,7 @@ xdrago_install_upgrade() {
     if [ ! -z "${_NGINX_DOS_STOP}" ]; then
       _NGINX_DOS_STOP=${_NGINX_DOS_STOP//[^a-zA-Z0-9|-]/}
       if [ ! -z "${_NGINX_DOS_STOP}" ]; then
-        msg "INFO: Configured _NGINX_DOS_STOP: ${_NGINX_DOS_STOP}"
+        _msg "INFO: Configured _NGINX_DOS_STOP: ${_NGINX_DOS_STOP}"
         sed -i "s/foobar/${_NGINX_DOS_STOP}/g" \
           /var/xdrago/monitor/check/scan_nginx.pl &> /dev/null
         wait
@@ -7719,15 +7719,15 @@ xdrago_install_upgrade() {
     if [ ! -z "${_NGINX_DOS_IGNORE}" ]; then
       _NGINX_DOS_IGNORE=${_NGINX_DOS_IGNORE//[^a-zA-Z0-9|-]/}
       if [ ! -z "${_NGINX_DOS_IGNORE}" ]; then
-        msg "INFO: Configured _NGINX_DOS_IGNORE: ${_NGINX_DOS_IGNORE}"
+        _msg "INFO: Configured _NGINX_DOS_IGNORE: ${_NGINX_DOS_IGNORE}"
         sed -i "s/dontcount/${_NGINX_DOS_IGNORE}/g" \
           /var/xdrago/monitor/check/scan_nginx.pl &> /dev/null
         wait
       fi
     fi
-    mv -f /etc/cron.daily/mlocate ${vBs}/ &> /dev/null
-    if_hosted_sys
-    if [ "${hostedSys}" = "YES" ]; then
+    mv -f /etc/cron.daily/mlocate ${_vBs}/ &> /dev/null
+    _if_hosted_sys
+    if [ "${_hostedSys}" = "YES" ]; then
       if [ -e "/root/.debug.cnf" ] && [ ! -e "/root/.default.cnf" ]; then
         _DO_NOTHING=YES
       else
@@ -7749,17 +7749,17 @@ xdrago_install_upgrade() {
       fi
     fi
   fi
-  if [ -d "/var/xdrago-pre-${_X_SE}-${_X_VERSION}-${_NOW}" ]; then
-    cp -af /var/xdrago-pre-${_X_SE}-${_X_VERSION}-${_NOW}/run-* /var/xdrago/ &> /dev/null
+  if [ -d "/var/xdrago-pre-${_xSrl}-${_X_VERSION}-${_NOW}" ]; then
+    cp -af /var/xdrago-pre-${_xSrl}-${_X_VERSION}-${_NOW}/run-* /var/xdrago/ &> /dev/null
   fi
   chmod -R 700 /var/xdrago/monitor/check &> /dev/null
   chmod 700 /var/xdrago/* &> /dev/null
   chmod 700 /var/xdrago &> /dev/null
 }
 
-pam_umask_check_fix() {
+_pam_umask_check_fix() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: pam_umask_check_fix"
+    _msg "PROC: _pam_umask_check_fix"
   fi
   _PAM_UMASK_TEST=$(grep "pam_umask.so umask=0002" /etc/pam.d/login 2>&1)
   if [[ ! "${_PAM_UMASK_TEST}" =~ "pam_umask.so umask=0002" ]]; then
@@ -7784,13 +7784,13 @@ pam_umask_check_fix() {
   _SFTP_UMASK_TEST=$(grep "sftp-server -u 0002" /etc/ssh/sshd_config 2>&1)
   if [[ ! "${_SFTP_UMASK_TEST}" =~ "sftp-server -u 0002" ]]; then
     sed -e '/Subsystem\ssftp/s:server$:server -u 0002:' -i /etc/ssh/sshd_config
-    mrun "service ssh restart" 2> /dev/null
+    _mrun "service ssh restart" 2> /dev/null
   fi
 }
 
-pam_many_check_fix() {
+_pam_many_check_fix() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: pam_many_check_fix"
+    _msg "PROC: _pam_many_check_fix"
   fi
   _PAM_FIX=NO
   _PAM_MAIL_LOGIN_TEST=$(grep "pam_mail" /etc/pam.d/login 2>&1)
@@ -7816,15 +7816,15 @@ pam_many_check_fix() {
   fi
 }
 
-fix_node_in_lshell_access() {
+_fix_node_in_lshell_access() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: fix_node_in_lshell_access"
+    _msg "PROC: _fix_node_in_lshell_access"
   fi
   if [ "${_STATUS}" = "UPGRADE" ] && [ -e "/etc/lshell.conf" ]; then
-    PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
-    PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
-    if [[ "${PrTestPhantom}" =~ "PHANTOM" ]] \
-      || [[ "${PrTestCluster}" =~ "CLUSTER" ]] \
+    _PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
+    _PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
+    if [[ "${_PrTestPhantom}" =~ "PHANTOM" ]] \
+      || [[ "${_PrTestCluster}" =~ "CLUSTER" ]] \
       || [ -e "/root/.allow.node.lshell.cnf" ]; then
       _ALLOW_NODE=YES
     else
@@ -7853,15 +7853,15 @@ fix_node_in_lshell_access() {
   fi
 }
 
-lshell_install_upgrade() {
+_lshell_install_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: lshell_install_upgrade"
+    _msg "PROC: _lshell_install_upgrade"
   fi
   _PATH_LSHELL="/usr/local/bin/lshell"
   _LSHELL_CHK_VRN=0.9.18
   _LSHELL_FORCE_REINSTALL=NO
-  isLshell=$(which lshell 2>&1)
-  _LSHELL_ITD=$(${isLshell} --version 2>&1 \
+  _isLshell=$(which lshell 2>&1)
+  _LSHELL_ITD=$(${_isLshell} --version 2>&1 \
     | tr -d "\n" \
     | cut -d"-" -f2 \
     | awk '{ print $1}' 2>&1)
@@ -7876,48 +7876,48 @@ lshell_install_upgrade() {
     || [ "${_FULL_FORCE_REINSTALL}" = "YES" ] \
     || [ "${_SSL_INSTALL_REQUIRED}" = "YES" ]; then
     if [ "${_STATUS}" = "UPGRADE" ]; then
-      msg "INFO: Upgrading Limited Shell to version ${_LSHELL_VRN}..."
+      _msg "INFO: Upgrading Limited Shell to version ${_LSHELL_VRN}..."
       cp -af /etc/lshell.conf /etc/lshell.conf-bak-${_NOW} &> /dev/null
     else
-      msg "INFO: Installing Limited Shell ${_LSHELL_VRN}..."
+      _msg "INFO: Installing Limited Shell ${_LSHELL_VRN}..."
     fi
-    apt_clean_update
-    mrun "${_INSTAPP} python3-pip" 2> /dev/null
+    _apt_clean_update
+    _mrun "${_INSTAPP} python3-pip" 2> /dev/null
     if [ -x "/usr/local/bin/pip3" ]; then
-      usePip=/usr/local/bin/pip3
+      _usePip=/usr/local/bin/pip3
     elif [ -x "/usr/bin/pip3" ]; then
-      usePip=/usr/bin/pip3
+      _usePip=/usr/bin/pip3
     fi
-    _PIP_TEST=$(${usePip} --version 2>&1)
+    _PIP_TEST=$(${_usePip} --version 2>&1)
     if [[ "${_PIP_TEST}" =~ "python 3.11" ]] \
       || [[ "${_PIP_TEST}" =~ "python 3.12" ]]; then
-      mrun "${usePip} install --upgrade pip --root-user-action ignore" 2> /dev/null
+      _mrun "${_usePip} install --upgrade pip --root-user-action ignore" 2> /dev/null
     else
-      mrun "${usePip} install --upgrade pip" 2> /dev/null
+      _mrun "${_usePip} install --upgrade pip" 2> /dev/null
     fi
     cd /var/opt
     rm -rf lshell*
-    get_dev_src "lshell-${_LSHELL_VRN}.tar.gz"
-    for Files in `find /var/opt/lshell-${_LSHELL_VRN} -type f`; do
-      sed -i "s/kicked/logged/g" $Files &> /dev/null
+    _get_dev_src "lshell-${_LSHELL_VRN}.tar.gz"
+    for _Files in `find /var/opt/lshell-${_LSHELL_VRN} -type f`; do
+      sed -i "s/kicked/logged/g" ${_Files} &> /dev/null
       wait
-      sed -i "s/Kicked/Logged/g" $Files &> /dev/null
+      sed -i "s/Kicked/Logged/g" ${_Files} &> /dev/null
       wait
     done
     rm -rf /usr/local/lib/python*/site-packages/lshell*
     rm -rf /usr/local/lib/python*/dist-packages/lshell*
     cd /var/opt/lshell-${_LSHELL_VRN}
-    _PIP_TEST=$(${usePip} --version 2>&1)
+    _PIP_TEST=$(${_usePip} --version 2>&1)
     if [[ "${_PIP_TEST}" =~ "python 3.11" ]] \
       || [[ "${_PIP_TEST}" =~ "python 3.12" ]]; then
-      mrun "${usePip} install . --break-system-packages --root-user-action ignore" 2> /dev/null
+      _mrun "${_usePip} install . --break-system-packages --root-user-action ignore" 2> /dev/null
     else
-      mrun "${usePip} install . " 2> /dev/null
+      _mrun "${_usePip} install . " 2> /dev/null
     fi
     if [ "${_STATUS}" = "UPGRADE" ]; then
       cp -af /etc/lshell.conf-bak-${_NOW} /etc/lshell.conf &> /dev/null
     else
-      cp -af ${bldPth}/aegir/tools/system/conf/lshell.conf /etc/lshell.conf
+      cp -af ${_bldPth}/aegir/tools/system/conf/lshell.conf /etc/lshell.conf
       echo "${_PATH_LSHELL}" >> /etc/shells
     fi
     rm -f /etc/logrotate.d/lshell
@@ -7925,16 +7925,16 @@ lshell_install_upgrade() {
     mkdir -p /var/log/lsh
     chown :lshellg /var/log/lsh
     chmod 770 /var/log/lsh &> /dev/null
-    touch ${pthLog}/lshell-build-${_LSHELL_VRN}.log
+    touch ${_pthLog}/lshell-build-${_LSHELL_VRN}.log
     if [ -f "/var/xdrago/manage_ltd_users.sh" ]; then
       if [ "${_STATUS}" = "UPGRADE" ] \
         && [ "${_CUSTOM_CONFIG_LSHELL}" = "NO" ]; then
-        cp -af ${bldPth}/aegir/tools/system/conf/lshell.conf \
+        cp -af ${_bldPth}/aegir/tools/system/conf/lshell.conf \
           /var/xdrago/conf/lshell.conf
       fi
-      st_runner "bash /var/xdrago/manage_ltd_users.sh" &> /dev/null
+      _st_runner "bash /var/xdrago/manage_ltd_users.sh" &> /dev/null
     fi
-    fix_node_in_lshell_access
+    _fix_node_in_lshell_access
   fi
   if [ -f "/usr/local/bin/lshell" ]; then
     if [ ! -L "/usr/bin/lshell" ]; then
@@ -7943,28 +7943,28 @@ lshell_install_upgrade() {
   fi
 }
 
-if_install_ftpd() {
+_if_install_ftpd() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: if_install_ftpd"
+    _msg "PROC: _if_install_ftpd"
   fi
   if [[ "${_XTRAS_LIST}" =~ "ALL" ]] \
     || [[ "${_XTRAS_LIST}" =~ "FTP" ]]; then
     if [ ! -e "/var/ftp" ]; then
-      mrun "useradd -r -d /var/ftp -s /sbin/nologin -m ftp" 2> /dev/null
+      _mrun "useradd -r -d /var/ftp -s /sbin/nologin -m ftp" 2> /dev/null
     fi
     if [ ! -e "/etc/ssl/private/pure-ftpd.pem" ] \
       || [ ! -e "/usr/local/sbin/pure-ftpd" ] \
-      || [ ! -e "${pthLog}/pure-ftpd-build-${_PURE_FTPD_VRN}-${_X_SE}-${_X_VERSION}.log" ] \
+      || [ ! -e "${_pthLog}/pure-ftpd-build-${_PURE_FTPD_VRN}-${_xSrl}-${_X_VERSION}.log" ] \
       || [ ! -e "/etc/ssl/private/pure-ftpd-dhparams.pem" ] \
       || [ "${_FULL_FORCE_REINSTALL}" = "YES" ] \
       || [ "${_SSL_INSTALL_REQUIRED}" = "YES" ]; then
-      msg "INFO: Building Pure-FTPd server from sources..."
+      _msg "INFO: Building Pure-FTPd server from sources..."
       sed -i "/^$/d" /etc/ld.so.conf.d/libc.conf &> /dev/null
       if [ ! -e "/etc/ssl/private/pure-ftpd-dhparams.pem" ]; then
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "INFO: Generating DH parameters, 2048 bit..."
+          _msg "INFO: Generating DH parameters, 2048 bit..."
         fi
-        mrun "openssl dhparam -out /etc/ssl/private/pure-ftpd-dhparams.pem 2048" 2> /dev/null
+        _mrun "openssl dhparam -out /etc/ssl/private/pure-ftpd-dhparams.pem 2048" 2> /dev/null
         wait
       fi
       if [ ! -e "/usr/local/sbin/pure-config.pl" ]; then
@@ -7981,7 +7981,7 @@ if_install_ftpd() {
       cd /var/opt
       rm -rf pure-ftpd*
       mkdir -p /usr/local/etc
-      get_dev_src "pure-ftpd-${_PURE_FTPD_VRN}.tar.gz"
+      _get_dev_src "pure-ftpd-${_PURE_FTPD_VRN}.tar.gz"
       cd pure-ftpd-${_PURE_FTPD_VRN}
       bash autogen.sh &> /dev/null
       LIBS="-ldl -lpthread" PKG_CONFIG_PATH="/usr/local/ssl3/lib64/pkgconfig" ./configure \
@@ -7990,17 +7990,17 @@ if_install_ftpd() {
         --with-everything --with-virtualchroot \
         --without-humor --with-tls --with-diraliases --with-pam \
         --with-certfile=/etc/ssl/private/pure-ftpd.pem &> /dev/null
-      mrun "make -j $(nproc) --quiet" 2> /dev/null
-      mrun "make --quiet install" 2> /dev/null
+      _mrun "make -j $(nproc) --quiet" 2> /dev/null
+      _mrun "make --quiet install" 2> /dev/null
       cd /usr/local/sbin/
-      cp -af ${locCnf}/ftpd/pure-config.pl.txt ./
+      cp -af ${_locCnf}/ftpd/pure-config.pl.txt ./
       mv -f pure-config.pl.txt pure-config.pl 2> /dev/null
       chmod 755 /usr/local/sbin/pure-config.pl 2> /dev/null
       cp -af /var/opt/pure-ftpd-${_PURE_FTPD_VRN}/pam/pure-ftpd /etc/pam.d/
-      fix_ftps_pam
+      _fix_ftps_pam
       cd /usr/local/etc
       rm -f pure-ftpd.conf
-      cp -af ${locCnf}/ftpd/pure-ftpd.conf ./
+      cp -af ${_locCnf}/ftpd/pure-ftpd.conf ./
       ln -sfn /usr/local/etc/pure-ftpd.conf /usr/local/etc/pure-ftpd.conf~
       killall -9 pure-ftpd &> /dev/null
       ftpdInit="/usr/local/sbin/pure-config.pl"
@@ -8014,14 +8014,14 @@ if_install_ftpd() {
         fi
       fi
       cd /var/opt
-      touch ${pthLog}/pure-ftpd-build-${_PURE_FTPD_VRN}-${_X_SE}-${_X_VERSION}.log
+      touch ${_pthLog}/pure-ftpd-build-${_PURE_FTPD_VRN}-${_xSrl}-${_X_VERSION}.log
     fi
   fi
 }
 
-newrelic_check_fix() {
+_newrelic_check_fix() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: newrelic_check_fix"
+    _msg "PROC: _newrelic_check_fix"
   fi
   _NR_FORCE_REINSTALL=NO
   _NRS_TEST=$(which newrelic-daemon 2>&1)
@@ -8043,7 +8043,7 @@ newrelic_check_fix() {
   if [ "${_UP_NRC}" = "YES" ] \
     || [ "${_NR_FORCE_REINSTALL}" = "YES" ] \
     || [ -e /root/.force.newrelic.update.cnf ]; then
-    newrelic_update
+    _newrelic_update
   fi
   _NEWRELIC_APP_CFG="/etc/newrelic/newrelic.cfg"
   if [ -e "${_NEWRELIC_APP_CFG}" ]; then
@@ -8056,20 +8056,20 @@ newrelic_check_fix() {
     fi
     sed -i "s/^loglevel=.*/loglevel=error/g" ${_NEWRELIC_APP_CFG} &> /dev/null
     wait
-    mrun "service newrelic-daemon restart" 2> /dev/null
+    _mrun "service newrelic-daemon restart" 2> /dev/null
   else
     if [ -e "/etc/init.d/newrelic-daemon" ] \
       || [ -e "/etc/init.d/newrelic-sysmond" ]; then
-      mrun "service newrelic-daemon stop" 2> /dev/null
-      mrun "update-rc.d -f newrelic-daemon remove" 2> /dev/null
-      mrun "service newrelic-sysmond stop" 2> /dev/null
-      mrun "update-rc.d -f newrelic-sysmond remove" 2> /dev/null
-      st_runner "${_RMAPP} newrelic-php5 \
+      _mrun "service newrelic-daemon stop" 2> /dev/null
+      _mrun "update-rc.d -f newrelic-daemon remove" 2> /dev/null
+      _mrun "service newrelic-sysmond stop" 2> /dev/null
+      _mrun "update-rc.d -f newrelic-sysmond remove" 2> /dev/null
+      _st_runner "${_RMAPP} newrelic-php5 \
         newrelic-php5-common \
         newrelic-daemon \
         newrelic-sysmond" 2> /dev/null
       mv -f /etc/newrelic \
-        ${vBs}/nr/etc-newrelic-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
+        ${_vBs}/nr/etc-newrelic-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
       rm -f /etc/init.d/newrelic-sysmond
       rm -f /etc/init.d/newrelic-daemon
       killall -9 newrelic-daemon &> /dev/null
@@ -8092,16 +8092,16 @@ newrelic_check_fix() {
       ${_NEWRELIC_SYS_CFG} &> /dev/null
     wait
     if [ -e "/root/.enable.newrelic.sysmond.cnf" ]; then
-      mrun "service newrelic-sysmond restart" 2> /dev/null
+      _mrun "service newrelic-sysmond restart" 2> /dev/null
     else
-      mrun "service newrelic-sysmond stop" 2> /dev/null
+      _mrun "service newrelic-sysmond stop" 2> /dev/null
     fi
   fi
 }
 
-java_check_fix() {
+_java_check_fix() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: java_check_fix"
+    _msg "PROC: _java_check_fix"
   fi
 
   if [ "${_OS_CODE}" = "jessie" ]; then
@@ -8177,9 +8177,9 @@ java_check_fix() {
   fi
 }
 
-sshd_armour() {
+_sshd_armour() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: sshd_armour"
+    _msg "PROC: _sshd_armour"
   fi
   ###
   ### See: https://stribika.github.io/2015/01/04/secure-secure-shell.html
@@ -8261,31 +8261,31 @@ sshd_armour() {
       if [ ! -e "/etc/ssh/.ssh_host_ed25519_key.pid" ]; then
         mkdir -p /var/backups/sshd
         mv -f /etc/ssh/ssh_host_*key* /var/backups/sshd/
-        msg "INFO: Generating new ssh_host_ed25519_key..."
+        _msg "INFO: Generating new ssh_host_ed25519_key..."
         ssh-keygen -t ed25519 -N "" -q -f /etc/ssh/ssh_host_ed25519_key < /dev/null
         touch /etc/ssh/.ssh_host_ed25519_key.pid
       fi
       if [ ! -e "/etc/ssh/.ssh_host_rsa_key4096.pid" ]; then
-        msg "INFO: Generating new ssh_host_rsa_key..."
+        _msg "INFO: Generating new ssh_host_rsa_key..."
         ssh-keygen -t rsa -b 4096 -N "" -q -f /etc/ssh/ssh_host_rsa_key < /dev/null
         touch /etc/ssh/.ssh_host_rsa_key4096.pid
-        msg "NOTE: You will be asked to accept the new SSH fingerprint the next time you connect"
+        _msg "NOTE: You will be asked to accept the new SSH fingerprint the next time you connect"
       fi
       isKeyg=$(which ssh-keygen 2>&1)
       if [ -x "${isKeyg}" ] \
         && [ -e "${_SYSCONFDIR}/moduli" ] \
         && [ ! -e "${_SYSCONFDIR}/.moduli_bak" ]; then
-        msg "WAIT: New SSH moduli generate may take a long time, please wait..."
+        _msg "WAIT: New SSH moduli generate may take a long time, please wait..."
         cd /var/opt
         rm -rf /var/opt/moduli-*
-        mrun "${isKeyg} -M generate -O bits=2048 moduli-2048.candidates" 2> /dev/null
+        _mrun "${isKeyg} -M generate -O bits=2048 moduli-2048.candidates" 2> /dev/null
         wait
-        mrun "${isKeyg} -M screen -f moduli-2048.candidates moduli-2048" 2> /dev/null
+        _mrun "${isKeyg} -M screen -f moduli-2048.candidates moduli-2048" 2> /dev/null
         wait
         if [ -e "/var/opt/moduli-2048" ]; then
           cp -af ${_SYSCONFDIR}/moduli ${_SYSCONFDIR}/.moduli_bak
           cp -af /var/opt/moduli-2048 ${_SYSCONFDIR}/moduli
-          mrun "service ssh restart" 2> /dev/null
+          _mrun "service ssh restart" 2> /dev/null
         fi
       fi
       _SSH_KEXALGO_TEST=$(grep "KexAlgorithms" /etc/ssh/ssh_config 2>&1)
@@ -8323,20 +8323,20 @@ sshd_armour() {
         echo "  MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-512,hmac-sha2-256,umac-128@openssh.com" >> /etc/ssh/ssh_config
       fi
     fi
-    mrun "service ssh reload" 2> /dev/null
+    _mrun "service ssh reload" 2> /dev/null
   fi
 }
 
-initd_update() {
+_initd_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: initd_update"
+    _msg "PROC: _initd_update"
   fi
   _THIS_DB_PORT=3306
   if [ "${_STATUS}" = "INIT" ]; then
-    msg "INFO: Updating init scripts"
-    cp -af ${locCnf}/var/clean-boa-env /etc/init.d/clean-boa-env
+    _msg "INFO: Updating init scripts"
+    cp -af ${_locCnf}/var/clean-boa-env /etc/init.d/clean-boa-env
     chmod 755 /etc/init.d/clean-boa-env &> /dev/null
-    mrun "update-rc.d clean-boa-env defaults" 2> /dev/null
+    _mrun "update-rc.d clean-boa-env defaults" 2> /dev/null
     _SSH_USEDNS_TEST=$(grep "UseDNS" /etc/ssh/sshd_config 2>&1)
     _SSH_USEDNS_TEST=$(grep "UseDNS" /etc/ssh/sshd_config 2>&1)
     if [[ "${_SSH_USEDNS_TEST}" =~ (^)"UseDNS no" ]]; then
@@ -8358,55 +8358,55 @@ initd_update() {
       echo >> /etc/ssh/sshd_config
       echo "UsePAM no" >> /etc/ssh/sshd_config
     fi
-    mrun "service ssh reload" 2> /dev/null
-    tune_memory_limits
+    _mrun "service ssh reload" 2> /dev/null
+    _tune_memory_limits
     if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: Restarting Solr 7"
+        _msg "INFO: Restarting Solr 7"
       fi
       kill -9 $(ps aux | grep '[s]olr' | awk '{print $2}') &> /dev/null
-      mrun "service solr7 start" 2> /dev/null
+      _mrun "service solr7 start" 2> /dev/null
     fi
     if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: Restarting Jetty 9"
+        _msg "INFO: Restarting Jetty 9"
       fi
       kill -9 $(ps aux | grep '[j]etty9' | awk '{print $2}') &> /dev/null
-      mrun "service jetty9 start" 2> /dev/null
+      _mrun "service jetty9 start" 2> /dev/null
     fi
     if [ -e "/etc/default/jetty8" ] && [ -e "/etc/init.d/jetty8" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: Restarting Jetty 8"
+        _msg "INFO: Restarting Jetty 8"
       fi
       kill -9 $(ps aux | grep '[j]etty8' | awk '{print $2}') &> /dev/null
-      mrun "service jetty8 start" 2> /dev/null
+      _mrun "service jetty8 start" 2> /dev/null
     fi
     if [ -e "/etc/default/jetty7" ] && [ -e "/etc/init.d/jetty7" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: Restarting Jetty 7"
+        _msg "INFO: Restarting Jetty 7"
       fi
       kill -9 $(ps aux | grep '[j]etty7' | awk '{print $2}') &> /dev/null
-      mrun "service jetty7 start" 2> /dev/null
+      _mrun "service jetty7 start" 2> /dev/null
     fi
     if [ ! -e "/run/aegir_upgrade.pid" ]; then
-      msg "INFO: Starting Redis, PHP-FPM and Nginx"
-      mrun "service redis-server start" 2> /dev/null
-      mrun "service redis-server reload" 2> /dev/null
-      mrun "update-rc.d -f php5-fpm remove" 2> /dev/null
-      mrun "update-rc.d cron defaults" 2> /dev/null
+      _msg "INFO: Starting Redis, PHP-FPM and Nginx"
+      _mrun "service redis-server start" 2> /dev/null
+      _mrun "service redis-server reload" 2> /dev/null
+      _mrun "update-rc.d -f php5-fpm remove" 2> /dev/null
+      _mrun "update-rc.d cron defaults" 2> /dev/null
       _PHP_V="83 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
-          mrun "update-rc.d php${e}-fpm defaults" 2> /dev/null
-          mrun "service php${e}-fpm start" 2> /dev/null
+          _mrun "update-rc.d php${e}-fpm defaults" 2> /dev/null
+          _mrun "service php${e}-fpm start" 2> /dev/null
         fi
       done
-      mrun "update-rc.d nginx defaults" 2> /dev/null
-      mrun "service nginx start" 2> /dev/null
+      _mrun "update-rc.d nginx defaults" 2> /dev/null
+      _mrun "service nginx start" 2> /dev/null
     fi
   else
-    if_hosted_sys
-    if [ "${hostedSys}" = "YES" ] \
+    _if_hosted_sys
+    if [ "${_hostedSys}" = "YES" ] \
       || [ -e "/root/.ssh.root.auth.keys.only.cnf" ]; then
       sed -i "s/^#PermitRootLogin.*/PermitRootLogin prohibit-password/g" \
         /etc/ssh/sshd_config &> /dev/null
@@ -8446,78 +8446,78 @@ initd_update() {
     echo "TCPKeepAlive yes" >> /etc/ssh/sshd_config
     sed -i "/^$/d" /etc/ssh/sshd_config
     wait
-    mrun "service ssh reload" 2> /dev/null
-    fix_on_upgrade
-    tune_memory_limits
+    _mrun "service ssh reload" 2> /dev/null
+    _fix_on_upgrade
+    _tune_memory_limits
     if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: Restarting Solr 7"
+        _msg "INFO: Restarting Solr 7"
       fi
       kill -9 $(ps aux | grep '[s]olr' | awk '{print $2}') &> /dev/null
-      mrun "service solr7 start" 2> /dev/null
+      _mrun "service solr7 start" 2> /dev/null
     fi
     if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: Restarting Jetty 9"
+        _msg "INFO: Restarting Jetty 9"
       fi
       kill -9 $(ps aux | grep '[j]etty9' | awk '{print $2}') &> /dev/null
-      mrun "service jetty9 start" 2> /dev/null
+      _mrun "service jetty9 start" 2> /dev/null
     fi
     if [ -e "/etc/default/jetty8" ] && [ -e "/etc/init.d/jetty8" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: Restarting Jetty 8"
+        _msg "INFO: Restarting Jetty 8"
       fi
       kill -9 $(ps aux | grep '[j]etty8' | awk '{print $2}') &> /dev/null
-      mrun "service jetty8 start" 2> /dev/null
+      _mrun "service jetty8 start" 2> /dev/null
     fi
     if [ -e "/etc/default/jetty7" ] && [ -e "/etc/init.d/jetty7" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: Restarting Jetty 7"
+        _msg "INFO: Restarting Jetty 7"
       fi
       kill -9 $(ps aux | grep '[j]etty7' | awk '{print $2}') &> /dev/null
-      mrun "service jetty7 start" 2> /dev/null
+      _mrun "service jetty7 start" 2> /dev/null
     fi
     if [ ! -e "/run/aegir_upgrade.pid" ] \
       && [ ! -e "/root/.proxy.cnf" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: Reloading Redis, PHP-FPM and Nginx..."
+        _msg "INFO: Reloading Redis, PHP-FPM and Nginx..."
       fi
-      mrun "update-rc.d -f php5-fpm remove" 2> /dev/null
-      mrun "service redis-server reload" 2> /dev/null
+      _mrun "update-rc.d -f php5-fpm remove" 2> /dev/null
+      _mrun "service redis-server reload" 2> /dev/null
       _PHP_V="83 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
-          mrun "update-rc.d php${e}-fpm defaults" 2> /dev/null
+          _mrun "update-rc.d php${e}-fpm defaults" 2> /dev/null
         fi
       done
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
-          mrun "service php${e}-fpm reload" 2> /dev/null
+          _mrun "service php${e}-fpm reload" 2> /dev/null
         fi
       done
-      mrun "service nginx quietupgrade" 2> /dev/null
+      _mrun "service nginx quietupgrade" 2> /dev/null
       _DB_SERVER_TEST=$(mysql -V 2>&1)
       if [[ "${_DB_SERVER_TEST}" =~ "Distrib ${_DB_SERIES}." ]]; then
-        check_mysql_version
+        _check_mysql_version
         if [ "${_DB_V}" = "5.7" ]; then
           if [ "${_DEBUG_MODE}" = "YES" ]; then
-            msg "INFO: Running ${_DB_SERVER} system tables (2) upgrade..."
+            _msg "INFO: Running ${_DB_SERVER} system tables (2) upgrade..."
           fi
           rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
           if [ -x "/usr/bin/mysql_upgrade" ]; then
             _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
             _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
-            mrun "mysql_upgrade -u root --force" &> /dev/null
-            mrun "mysql_upgrade -u root --force" &> /dev/null
+            _mrun "mysql_upgrade -u root --force" &> /dev/null
+            _mrun "mysql_upgrade -u root --force" &> /dev/null
           fi
         fi
       fi
       myCnf="/etc/mysql/my.cnf"
-      preCnf="${vBs}/dragon/t/my.cnf-pre-${_X_SE}-${_X_VERSION}-${_NOW}"
+      preCnf="${_vBs}/dragon/t/my.cnf-pre-${_xSrl}-${_X_VERSION}-${_NOW}"
       if [ -f "${myCnf}" ]; then
         myCnfUpdate=NO
         if [ ! -f "${preCnf}" ]; then
-          mkdir -p ${vBs}/dragon/t/
+          mkdir -p ${_vBs}/dragon/t/
           cp -af ${myCnf} ${preCnf}
         fi
         diffMyTest=$(diff -w -B \
@@ -8531,31 +8531,31 @@ initd_update() {
         if [ -z "${diffMyTest}" ]; then
           myCnfUpdate=NO
           if [ "${_DEBUG_MODE}" = "YES" ]; then
-            msg "INFO: ${_DB_SERVER} diff0 empty"
+            _msg "INFO: ${_DB_SERVER} diff0 empty"
           fi
         else
           myCnfUpdate=YES
           # diffMyTest=$(echo -n ${diffMyTest} | fmt -su -w 2500 2>&1)
-          msg "INFO: ${_DB_SERVER} diff1 ${diffMyTest}"
+          _msg "INFO: ${_DB_SERVER} diff1 ${diffMyTest}"
         fi
         if [[ "${diffMyTest}" =~ "innodb_buffer_pool_size" ]]; then
           myCnfUpdate=NO
-          msg "INFO: ${_DB_SERVER} diff2 ${diffMyTest}"
+          _msg "INFO: ${_DB_SERVER} diff2 ${diffMyTest}"
         fi
         if [[ "${diffMyTest}" =~ "No such file or directory" ]]; then
           myCnfUpdate=NO
-          msg "INFO: ${_DB_SERVER} diff3 ${diffMyTest}"
+          _msg "INFO: ${_DB_SERVER} diff3 ${diffMyTest}"
         fi
       fi
       if [ "${_UP_SQL}" = "YES" ]; then
         myVnTest=$(mysql -V 2>&1)
         if [[ "${myVnTest}" =~ "${_DBS_VRN}" ]]; then
           if [ "${_DEBUG_MODE}" = "YES" ]; then
-            msg "INFO: ${_DB_SERVER} ${_DBS_VRN} already up to date"
+            _msg "INFO: ${_DB_SERVER} ${_DBS_VRN} already up to date"
           fi
           myCnfUpdate=YES
           if [ "${_DEBUG_MODE}" = "YES" ]; then
-            msg "INFO: ${_DB_SERVER} restart after upgrade forced"
+            _msg "INFO: ${_DB_SERVER} restart after upgrade forced"
           fi
         fi
       fi
@@ -8566,21 +8566,21 @@ initd_update() {
         _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
         myUptime=$(mysqladmin -u root version | grep -i uptime 2>&1)
         myUptime=$(echo -n ${myUptime} | fmt -su -w 2500 2>&1)
-        msg "INFO: ${_DB_SERVER} ${myUptime}"
+        _msg "INFO: ${_DB_SERVER} ${myUptime}"
         if [ "${myRstrd}" = "YES" ]; then
           myCnfUpdate=NO
-          msg "INFO: ${_DB_SERVER} already restarted!"
+          _msg "INFO: ${_DB_SERVER} already restarted!"
         fi
         if [ "${myCnfUpdate}" = "YES" ]; then
           if [ "${_DEBUG_MODE}" = "YES" ]; then
-            msg "INFO: Restarting ${_DB_SERVER} server..."
+            _msg "INFO: Restarting ${_DB_SERVER} server..."
           fi
           mysql -u root -e "INSTALL SONAME 'ha_archive';" &> /dev/null
-          mrun "bash /var/xdrago/move_sql.sh" &> /dev/null
+          _mrun "bash /var/xdrago/move_sql.sh" &> /dev/null
           wait
-          msg "INFO: ${_DB_SERVER} server restart completed"
+          _msg "INFO: ${_DB_SERVER} server restart completed"
         fi
-        check_mysql_version
+        _check_mysql_version
         if [ "${_DB_V}" = "5.7" ] || [ "${_DB_SERIES}" = "5.7" ]; then
           _CHECK_EXISTS=$(mysql -u root -e "SELECT EXISTS(SELECT 1 FROM mysql.user WHERE user = 'drandom_2test')" | grep "0" 2>&1)
           if [[ "${_CHECK_EXISTS}" =~ "0" ]]; then
@@ -8611,16 +8611,16 @@ initd_update() {
   fi
 }
 
-sysctl_update() {
+_sysctl_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: sysctl_update"
+    _msg "PROC: _sysctl_update"
   fi
   if [ ! -e "/root/.no.sysctl.update.cnf" ] \
-    && [ ! -e "${pthLog}/sysctl.conf-${_X_SE}-${_X_VERSION}-${_NOW}.log" ]; then
+    && [ ! -e "${_pthLog}/sysctl.conf-${_xSrl}-${_X_VERSION}-${_NOW}.log" ]; then
     cp -af /etc/sysctl.conf \
-      ${vBs}/dragon/t/sysctl.conf-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
-    if [ -e "${locCnf}/var/sysctl.conf" ]; then
-      cp -af ${locCnf}/var/sysctl.conf /etc/sysctl.conf
+      ${_vBs}/dragon/t/sysctl.conf-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
+    if [ -e "${_locCnf}/var/sysctl.conf" ]; then
+      cp -af ${_locCnf}/var/sysctl.conf /etc/sysctl.conf
     fi
     if [ -e "/etc/security/limits.conf" ]; then
       _IF_NF=$(grep '2097152' /etc/security/limits.conf 2>&1)
@@ -8675,23 +8675,23 @@ sysctl_update() {
       echo "solr7 hard nofile 524288" >> /etc/security/limits.d/solr7.conf
       echo "@www-data soft nofile 65535" > /etc/security/limits.d/www.conf
       echo "@www-data hard nofile 524288" >> /etc/security/limits.d/www.conf
-      mrun "service redis-server restart" 2> /dev/null
-      mrun "service nginx restart" 2> /dev/null
-      mrun "service sshd restart" 2> /dev/null
+      _mrun "service redis-server restart" 2> /dev/null
+      _mrun "service nginx restart" 2> /dev/null
+      _mrun "service sshd restart" 2> /dev/null
       _PHP_V="83 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
-          mrun "service php${e}-fpm reload" 2> /dev/null
+          _mrun "service php${e}-fpm reload" 2> /dev/null
         fi
       done
     fi
-    touch ${pthLog}/sysctl.conf-${_X_SE}-${_X_VERSION}-${_NOW}.log
+    touch ${_pthLog}/sysctl.conf-${_xSrl}-${_X_VERSION}-${_NOW}.log
   fi
 }
 
-apticron_update() {
+_apticron_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: apticron_update"
+    _msg "PROC: _apticron_update"
   fi
   XPTEMAIL=${_MY_EMAIL//\@/\\\\\@}
   sed -i "s/notify\@omega8.cc/${_MY_EMAIL}/g"  \
@@ -8723,8 +8723,8 @@ apticron_update() {
           /etc/apticron/apticron.conf
         wait
       else
-        mrun "apt-get remove apticron -y --purge --auto-remove -qq" 2> /dev/null
-        mrun "apt-get install apticron -y" 2> /dev/null
+        _mrun "apt-get remove apticron -y --purge --auto-remove -qq" 2> /dev/null
+        _mrun "apt-get install apticron -y" 2> /dev/null
         sed -i "s/^# NOTIFY_HOLDS=\"0\"/NOTIFY_HOLDS=\"0\"/g" \
           /etc/apticron/apticron.conf
         wait
@@ -8739,43 +8739,43 @@ apticron_update() {
         wait
       fi
     fi
-    barUpv="${tRee}"
+    barUpv="${_tRee}"
     sed -i "s/aptitude full-upgrade/barracuda up-${barUpv} system/g" /usr/sbin/apticron
       wait
     sed -i "s/apt-get dist-upgrade/barracuda up-${barUpv} system/g" /usr/sbin/apticron
       wait
-    sed -i "s/barracuda up-${tRee}.*/barracuda up-${barUpv} system/g" /usr/sbin/apticron
+    sed -i "s/barracuda up-${_tRee}.*/barracuda up-${barUpv} system/g" /usr/sbin/apticron
   fi
 }
 
-rsyslog_config_update() {
+_rsyslog_config_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: rsyslog_config_update"
+    _msg "PROC: _rsyslog_config_update"
   fi
   if [ -x "/etc/init.d/rsyslog" ] \
     && [ -e "/etc/rsyslog.conf" ]; then
     mv -f /etc/rsyslog.conf \
-      /var/backups/.etc.rsyslog.conf-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
-    cp -af ${locCnf}/var/rsyslog.conf /etc/rsyslog.conf
-    cp -af ${locCnf}/var/mysql-notices.conf /etc/rsyslog.d/mysql-notices.conf
-    cp -af ${locCnf}/var/logrotate.d.rsyslog.conf /etc/logrotate.d/rsyslog
+      /var/backups/.etc.rsyslog.conf-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
+    cp -af ${_locCnf}/var/rsyslog.conf /etc/rsyslog.conf
+    cp -af ${_locCnf}/var/mysql-notices.conf /etc/rsyslog.d/mysql-notices.conf
+    cp -af ${_locCnf}/var/logrotate.d.rsyslog.conf /etc/logrotate.d/rsyslog
     touch /var/log/mysql-notices.log
     chmod 640 /var/log/mysql-notices.log
     chown root:adm /var/log/mysql-notices.log
-    mrun "service rsyslog restart" 2> /dev/null
+    _mrun "service rsyslog restart" 2> /dev/null
   fi
 }
 
-complete() {
+_complete() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: complete"
+    _msg "PROC: _complete"
   fi
-  fix_lfd_whitelist
-  fix_lfd_uidignore
-  fix_cnf_postfix
-  re_set_default_php_cli
+  _fix_lfd_whitelist
+  _fix_lfd_uidignore
+  _fix_cnf_postfix
+  _re_set_default_php_cli
   if [ -d "/data/u" ]; then
-    composer_install_upgrade
+    _composer_install_upgrade
   fi
   if [ "${_STATUS}" != "UPGRADE" ]; then
     _STRICT_BIN_PERMISSIONS=NO
@@ -8792,15 +8792,15 @@ complete() {
     usermod -aG users sync &> /dev/null
     usermod -aG users sys &> /dev/null
     if [ -x "/bin/dash" ] || [ -x "/usr/bin/dash" ]; then
-      symlink_to_dash
-      switch_to_dash
+      _symlink_to_dash
+      _switch_to_dash
     elif [ -x "/bin/bash" ] || [ -x "/usr/bin/bash" ]; then
-      symlink_to_bash
-      switch_to_bash
+      _symlink_to_bash
+      _switch_to_bash
     fi
-    strict_bin_permissions
+    _strict_bin_permissions
     rm -f /etc/apt/apt.conf.d/00sandboxtmp
     rm -f /etc/apt/apt.conf.d/00temp
   fi
-  finale
+  _finale
 }

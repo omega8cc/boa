@@ -3,11 +3,11 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-export tRee=dev
+export _tRee=dev
 
 _H_USER=EDIT_USER
 
-check_root() {
+_check_root() {
   if [ `whoami` = "root" ]; then
     ionice -c2 -n7 -p $$
     renice 19 -p $$
@@ -27,14 +27,14 @@ check_root() {
     exit 1
   fi
 }
-check_root
+_check_root
 
-cleanup() {
+_run_cleanup() {
   buildTest="1"
-  tpDir="/data/disk/${_H_USER}/.tmp"
-  ceDir="${tpDir}/cache"
-  dlDir="${ceDir}/download"
-  gtDir="${ceDir}/git"
+  tp_Dir="/data/disk/${_H_USER}/.tmp"
+  ce_Dir="${tpDir}/cache"
+  dl_Dir="${ceDir}/download"
+  gt_Dir="${ceDir}/git"
   clCtr="/data/disk/${_H_USER}/static/control/clear-drush-cache.info"
   exCtr="/data/disk/${_H_USER}/backups/tmp_expim/metadata"
   if [ -e "${tpDir}" ]; then
@@ -58,9 +58,9 @@ cleanup() {
     rm -rf ${dlDir}
   fi
 }
-cleanup
+_run_cleanup
 
-count_cpu() {
+_count_cpu() {
   _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)
   _CPU_INFO=${_CPU_INFO//[^0-9]/}
   _NPROC_TEST=$(which nproc 2>&1)
@@ -81,7 +81,7 @@ count_cpu() {
   fi
 }
 
-load_control() {
+_load_control() {
   [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
   export _CPU_SPIDER_RATIO=${_CPU_SPIDER_RATIO//[^0-9]/}
   : "${_CPU_SPIDER_RATIO:=1.2}"
@@ -91,15 +91,15 @@ load_control() {
 }
 
 # Remove dangerous stuff from the string.
-sanitize_string() {
+_sanitize_string() {
   echo "$1" | sed 's/[\\\/\^\?\>\`\#\"\{\(\&\|\*]//g; s/\(['"'"'\]\)//g'
 }
 
 # Generate new sftp password and update expiration date
-if_sftp_password_update() {
+_if_sftp_password_update() {
   upCtr="/data/disk/${_H_USER}/static/control/run-sftp-password-update.pid"
   if [ -e "${upCtr}" ]; then
-    sftpUser="${_H_USER}.ftp"
+    sftp_usEr="${_H_USER}.ftp"
     rm -f ${upCtr}
     _PWD_CHARS=64
     _RANDPASS_TEST=$(randpass -V 2>&1)
@@ -108,14 +108,14 @@ if_sftp_password_update() {
     else
       _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
       _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
-      _ESC_PASS=$(sanitize_string "${_ESC_PASS}" 2>&1)
+      _ESC_PASS=$(_sanitize_string "${_ESC_PASS}" 2>&1)
     fi
     _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
     _LEN_PASS=$(echo ${#_ESC_PASS} 2>&1)
     if [ -z "${_ESC_PASS}" ] || [ "${_LEN_PASS}" -lt "9" ]; then
       _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
       _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
-      _ESC_PASS=$(sanitize_string "${_ESC_PASS}" 2>&1)
+      _ESC_PASS=$(_sanitize_string "${_ESC_PASS}" 2>&1)
     fi
     _LEN_PASS=$(echo ${#_ESC_PASS} 2>&1)
     if [ ! -z "${_ESC_PASS}" ] && [ "${_LEN_PASS}" -gt "9" ]; then
@@ -129,19 +129,19 @@ if_sftp_password_update() {
   fi
 }
 
-if_octopus_upgrade() {
+_if_octopus_upgrade() {
   if [ "${_O_LOAD}" -lt "${_O_LOAD_SPR}" ]; then
     upCtr="/data/disk/${_H_USER}/static/control/run-upgrade.pid"
     plCtr="/data/disk/${_H_USER}/static/control/platforms.info"
     if [ -e "${plCtr}" ] && [ -e "${upCtr}" ]; then
       rm -f ${upCtr}
       [ -e "/root/.silent.update.cnf" ] && rm -f /root/.silent.update.cnf
-      bash /opt/local/bin/octopus up-${tRee} ${_H_USER} force log
+      bash /opt/local/bin/octopus up-${_tRee} ${_H_USER} force log
     fi
   fi
 }
 
-action() {
+_run_action() {
   if [ "${_O_LOAD}" -lt "${_O_LOAD_SPR}" ]; then
     if [ "${buildTest}" = "0" ] \
       || [ -z "${buildTest}" ] \
@@ -161,10 +161,10 @@ if [ -e "/run/boa_wait.pid" ]; then
   touch /var/xdrago/log/wait-${_H_USER}
   exit 0
 else
-  count_cpu
-  load_control
-  if_sftp_password_update
-  if_octopus_upgrade
-  action
+  _count_cpu
+  _load_control
+  _if_sftp_password_update
+  _if_octopus_upgrade
+  _run_action
   exit 0
 fi

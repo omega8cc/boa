@@ -4,13 +4,13 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
-check_root() {
+_check_root() {
   if [ `whoami` != "root" ]; then
     echo "ERROR: This script should be run as a root user"
     exit 1
   fi
 }
-check_root
+_check_root
 
 # Define directories
 VHOSTS_DIRS=("/var/aegir/config/server_master/nginx/vhost.d" "/data/disk/*/config/server_master/nginx/vhost.d")

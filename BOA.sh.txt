@@ -44,7 +44,8 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-export tRee=dev
+export _tRee=dev
+export _xSrl=540devT02
 
 ###
 ### Avoid too many questions
@@ -59,40 +60,39 @@ _NOW=$(date +%y%m%d-%H%M%S 2>&1)
 export _NOW=${_NOW//[^0-9-]/}
 _TODAY=$(date +%y%m%d 2>&1)
 export _TODAY=${_TODAY//[^0-9]/}
-_X_SE=540devT02
 #
-barCnf="/root/.barracuda.cnf"
-crlGet="-L --max-redirs 3 -k -s --retry 3 --retry-delay 5 -A iCab"
-aptYesUnth="-y --allow-unauthenticated"
-optBin="/opt/local/bin"
-usrBin="/usr/local/bin"
-pthLog="/var/xdrago/log"
-if [ ! -e "${pthLog}" ] && [ -e "/var/xdrago_wait/log" ]; then
-  pthLog="/var/xdrago_wait/log"
+_barCnf="/root/.barracuda.cnf"
+_crlGet="-L --max-redirs 3 -k -s --retry 3 --retry-delay 5 -A iCab"
+_aptYesUnth="-y --allow-unauthenticated"
+_optBin="/opt/local/bin"
+_usrBin="/usr/local/bin"
+_pthLog="/var/xdrago/log"
+if [ ! -e "${_pthLog}" ] && [ -e "/var/xdrago_wait/log" ]; then
+  _pthLog="/var/xdrago_wait/log"
 fi
-tBn="tools/bin"
-vBs="/var/backups"
+_tBn="tools/bin"
+_vBs="/var/backups"
 #
-eldirF="0001-Print-site_footer-if-defined.patch"
-eldirP="/var/xdrago/conf/${eldirF}"
+_eldirF="0001-Print-site_footer-if-defined.patch"
+_eldirP="/var/xdrago/conf/${_eldirF}"
 #
-dctpF="drupal-ten-aegir-01.patch"
-dctpP="/data/conf/patches/${dctpF}"
+_dctpF="drupal-ten-aegir-01.patch"
+_dctpP="/data/conf/patches/${_dctpF}"
 #
-dctrF="drupal-ten-aegir-02.patch"
-dctrP="/data/conf/patches/${dctrF}"
+_dctrF="drupal-ten-aegir-02.patch"
+_dctrP="/data/conf/patches/${_dctrF}"
 #
-provLeInc="provision_hosting_le.drush.inc"
-provLeIncFull="/var/xdrago/conf/${provLeInc}"
+_provLeInc="provision_hosting_le.drush.inc"
+_provLeIncFull="/var/xdrago/conf/${_provLeInc}"
 #
-hoLeInc="hosting_le_vhost.drush.inc"
-hoLeIncFull="/var/xdrago/conf/${hoLeInc}"
+_hoLeInc="hosting_le_vhost.drush.inc"
+_hoLeIncFull="/var/xdrago/conf/${_hoLeInc}"
 #
-dehydName="dehydrated"
-dehydSrcPath="/var/xdrago/conf/${dehydName}"
-legacyLeSh="/var/xdrago/conf/letsencrypt.sh"
+_dehydName="dehydrated"
+_dehydSrcPath="/var/xdrago/conf/${_dehydName}"
+_legacyLeSh="/var/xdrago/conf/letsencrypt.sh"
 
-os_detection_minimal() {
+_os_detection_minimal() {
   _APT_UPDATE="apt-get update"
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
@@ -103,31 +103,31 @@ os_detection_minimal() {
   done
 }
 
-apt_clean_update() {
+_apt_clean_update() {
   ${_APT_UPDATE} -qq &> /dev/null
 }
 
 _CHECK_HOST=$(uname -n 2>&1)
-if_hosted_sys() {
+_if_hosted_sys() {
   if [ -e "/root/.host8.cnf" ] \
     || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
-    hostedSys=YES
+    _hostedSys=YES
   else
-    hostedSys=NO
+    _hostedSys=NO
   fi
 }
 
 #
 # Find correct IP.
-find_correct_ip() {
+_find_correct_ip() {
   if [ -e "/root/.found_correct_ipv4.cnf" ]; then
     _LOC_IP=$(cat /root/.found_correct_ipv4.cnf 2>&1)
     _LOC_IP=$(echo -n ${_LOC_IP} | tr -d "\n" 2>&1)
   else
-    _LOC_IP=$(curl ${crlGet} https://api.ipify.org \
+    _LOC_IP=$(curl ${_crlGet} https://api.ipify.org \
       | sed 's/[^0-9\.]//g' 2>&1)
     if [ -z "${_LOC_IP}" ]; then
-      _LOC_IP=$(curl ${crlGet} http://ipv4.icanhazip.com \
+      _LOC_IP=$(curl ${_crlGet} http://ipv4.icanhazip.com \
         | sed 's/[^0-9\.]//g' 2>&1)
     fi
     if [ ! -z "${_LOC_IP}" ]; then
@@ -136,9 +136,9 @@ find_correct_ip() {
   fi
 }
 
-fix_dns_settings() {
-  mkdir -p ${vBs}
-  rm -f ${vBs}/resolv.conf.tmp
+_fix_dns_settings() {
+  mkdir -p ${_vBs}
+  rm -f ${_vBs}/resolv.conf.tmp
   if [ -e "/etc/resolv.conf" ]; then
     if [ -L "/etc/resolv.conf" ]; then
       rslvT=`readlink -n /etc/resolv.conf`
@@ -147,40 +147,40 @@ fix_dns_settings() {
       fi
     fi
     if [ -e "/etc/resolv.conf" ]; then
-      cp -a /etc/resolv.conf ${vBs}/resolv.conf.tmp
+      cp -a /etc/resolv.conf ${_vBs}/resolv.conf.tmp
     fi
   fi
-  if [ ! -e "${vBs}/resolv.conf.tmp" ]; then
-    echo "nameserver 127.0.0.1" > ${vBs}/resolv.conf.tmp
-    echo "nameserver 1.1.1.1" >> ${vBs}/resolv.conf.tmp
-    echo "nameserver 1.0.0.1" >> ${vBs}/resolv.conf.tmp
-    echo "nameserver 8.8.8.8" >> ${vBs}/resolv.conf.tmp
-    echo "nameserver 8.8.4.4" >> ${vBs}/resolv.conf.tmp
+  if [ ! -e "${_vBs}/resolv.conf.tmp" ]; then
+    echo "nameserver 127.0.0.1" > ${_vBs}/resolv.conf.tmp
+    echo "nameserver 1.1.1.1" >> ${_vBs}/resolv.conf.tmp
+    echo "nameserver 1.0.0.1" >> ${_vBs}/resolv.conf.tmp
+    echo "nameserver 8.8.8.8" >> ${_vBs}/resolv.conf.tmp
+    echo "nameserver 8.8.4.4" >> ${_vBs}/resolv.conf.tmp
   fi
-  if [ ! -e "${vBs}/resolv.conf.vanilla" ] \
-    && [ -e "${vBs}/resolv.conf.tmp" ]; then
+  if [ ! -e "${_vBs}/resolv.conf.vanilla" ] \
+    && [ -e "${_vBs}/resolv.conf.tmp" ]; then
     if [ "${_USE_DEFAULT_DNS}" != "YES" ]; then
       rm -f /etc/resolv.conf
-      cp -a ${vBs}/resolv.conf.tmp /etc/resolv.conf
-      cp -a ${vBs}/resolv.conf.tmp ${vBs}/resolv.conf.vanilla
+      cp -a ${_vBs}/resolv.conf.tmp /etc/resolv.conf
+      cp -a ${_vBs}/resolv.conf.tmp ${_vBs}/resolv.conf.vanilla
     fi
   fi
-  sed -i "/^$/d" ${vBs}/resolv.conf.vanilla &> /dev/null
-  if [ -e "${vBs}/resolv.conf.vanilla" ]; then
+  sed -i "/^$/d" ${_vBs}/resolv.conf.vanilla &> /dev/null
+  if [ -e "${_vBs}/resolv.conf.vanilla" ]; then
     if [ "${_USE_DEFAULT_DNS}" != "YES" ]; then
       rm -f /etc/resolv.conf
-      cp -a ${vBs}/resolv.conf.vanilla /etc/resolv.conf
+      cp -a ${_vBs}/resolv.conf.vanilla /etc/resolv.conf
     fi
   else
-    if [ -e "${vBs}/resolv.conf.tmp" ] \
+    if [ -e "${_vBs}/resolv.conf.tmp" ] \
       && [ "${_USE_DEFAULT_DNS}" != "YES" ]; then
       rm -f /etc/resolv.conf
-      cp -a ${vBs}/resolv.conf.tmp /etc/resolv.conf
+      cp -a ${_vBs}/resolv.conf.tmp /etc/resolv.conf
     fi
   fi
 }
 
-check_dns_settings() {
+_check_dns_settings() {
   if [ -e "/root/.use.default.nameservers.cnf" ]; then
     _USE_DEFAULT_DNS=YES
   fi
@@ -195,8 +195,8 @@ check_dns_settings() {
     || [ "${_USE_PROVIDER_DNS}" = "YES" ]; then
     if [ "${_USE_DEFAULT_DNS}" = "YES" ] \
       || [ "${_USE_PROVIDER_DNS}" = "YES" ] \
-      || [ ! -e "${vBs}/resolv.conf.vanilla" ]; then
-      fix_dns_settings
+      || [ ! -e "${_vBs}/resolv.conf.vanilla" ]; then
+      _fix_dns_settings
       if [ -e "/etc/init.d/postfix" ]; then
         service postfix restart &> /dev/null
       fi
@@ -204,30 +204,30 @@ check_dns_settings() {
   fi
 }
 
-find_fast_mirror_early() {
+_find_fast_mirror_early() {
   isNetc=$(which netcat 2>&1)
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
-    apt_clean_update
-    apt-get install netcat ${aptYesUnth} &> /dev/null
-    apt-get install netcat-traditional ${aptYesUnth} &> /dev/null
+    _apt_clean_update
+    apt-get install netcat ${_aptYesUnth} &> /dev/null
+    apt-get install netcat-traditional ${_aptYesUnth} &> /dev/null
   fi
-  ffMirr=$(which ffmirror 2>&1)
-  if [ -x "${ffMirr}" ]; then
-    ffList="/var/backups/boa-mirrors-2024-01.txt"
+  _ffMirr=$(which ffmirror 2>&1)
+  if [ -x "${_ffMirr}" ]; then
+    _ffList="/var/backups/boa-mirrors-2024-01.txt"
     mkdir -p /var/backups
-    if [ ! -e "${ffList}" ]; then
-      echo "de.files.aegir.cc"  > ${ffList}
-      echo "ny.files.aegir.cc" >> ${ffList}
-      echo "sg.files.aegir.cc" >> ${ffList}
+    if [ ! -e "${_ffList}" ]; then
+      echo "de.files.aegir.cc"  > ${_ffList}
+      echo "ny.files.aegir.cc" >> ${_ffList}
+      echo "sg.files.aegir.cc" >> ${_ffList}
     fi
-    if [ -e "${ffList}" ]; then
-      _BROKEN_FFMIRR_TEST=$(grep "stuff" ${ffMirr} 2>&1)
+    if [ -e "${_ffList}" ]; then
+      _BROKEN_FFMIRR_TEST=$(grep "stuff" ${_ffMirr} 2>&1)
       if [[ "${_BROKEN_FFMIRR_TEST}" =~ "stuff" ]]; then
-        _CHECK_MIRROR=$(bash ${ffMirr} < ${ffList} 2>&1)
+        _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _USE_MIR="${_CHECK_MIRROR}"
         [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.aegir.cc"
       else
@@ -239,11 +239,11 @@ find_fast_mirror_early() {
   else
     _USE_MIR="files.aegir.cc"
   fi
-  urlDev="http://${_USE_MIR}/dev"
-  urlHmr="http://${_USE_MIR}/versions/${tRee}/boa/aegir"
+  _urlDev="http://${_USE_MIR}/dev"
+  _urlHmr="http://${_USE_MIR}/versions/${_tRee}/boa/aegir"
 }
 
-extract_archive() {
+_extract_archive() {
   if [ ! -z "$1" ]; then
     case $1 in
       *.tar.bz2)   tar xjf $1    ;;
@@ -266,33 +266,33 @@ extract_archive() {
 
 #
 # Download and extract archive from dev/src mirror.
-get_dev_src() {
+_get_dev_src() {
   if [ ! -z "$1" ]; then
-    curl ${crlGet} "${urlDev}/src/$1" -o "$1"
+    curl ${_crlGet} "${_urlDev}/src/$1" -o "$1"
     if [ -e "$1" ]; then
-      extract_archive "$1"
+      _extract_archive "$1"
     else
-      echo "OOPS: $1 failed download from ${urlDev}/src/$1"
+      echo "OOPS: $1 failed download from ${_urlDev}/src/$1"
     fi
   fi
 }
 
 #
 # Download and extract from dev/contrib mirror.
-get_dev_contrib() {
+_get_dev_contrib() {
   if [ ! -z "$1" ]; then
-    curl ${crlGet} "${urlDev}/DEV/contrib/$1" -o "$1"
+    curl ${_crlGet} "${_urlDev}/DEV/contrib/$1" -o "$1"
     if [ -e "$1" ]; then
-      extract_archive "$1"
+      _extract_archive "$1"
     else
-      msg "OOPS: $1 failed download from ${urlDev}/DEV/contrib/$1"
+      _msg "OOPS: $1 failed download from ${_urlDev}/DEV/contrib/$1"
     fi
   fi
 }
 
-if_clean_boa_env() {
+_if_clean_boa_env() {
   if [ ! -x "/etc/init.d/clean-boa-env" ]; then
-    curl ${crlGet} "${urlHmr}/conf/var/clean-boa-env" -o /etc/init.d/clean-boa-env
+    curl ${_crlGet} "${_urlHmr}/conf/var/clean-boa-env" -o /etc/init.d/clean-boa-env
     if [ -e "/etc/init.d/clean-boa-env" ]; then
       chmod 700 /etc/init.d/clean-boa-env
       chown root:root /etc/init.d/clean-boa-env
@@ -301,7 +301,7 @@ if_clean_boa_env() {
   fi
 }
 
-locales_check_fix_early() {
+_locales_check_fix_early() {
   isLoc=$(which locale 2>&1)
   if [ ! -x "${isLoc}" ] || [ -z "${isLoc}" ]; then
     _INITINS="/usr/bin/apt-get -y --allow-unauthenticated install"
@@ -396,7 +396,7 @@ locales_check_fix_early() {
   fi
 }
 
-if_fix_iptables_symlinks() {
+_if_fix_iptables_symlinks() {
   ###
   ### Fix for iptables paths backward compatibility
   ###
@@ -441,10 +441,10 @@ if_fix_iptables_symlinks() {
   ###
 }
 
-update_agents() {
+_update_agents() {
 
-  if_hosted_sys
-  if [ "${hostedSys}" = "YES" ]; then
+  _if_hosted_sys
+  if [ "${_hostedSys}" = "YES" ]; then
     if [ ! -e "/root/.extended.firewall.exceptions.cnf" ]; then
       echo host8 > /root/.extended.firewall.exceptions.cnf
     fi
@@ -456,15 +456,15 @@ update_agents() {
     && [ -e "/var/xdrago" ]; then
     [ ! -e "/root/.fast.cron.cnf" ] && echo ON > /root/.fast.cron.cnf
     PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
-    PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
-    PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
+    _PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
+    _PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
     InTest=$(ls /data/disk/*/static/control/cli.info | wc -l 2>&1)
     _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
     _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
     if [ "${InTest}" -lt "9" ] \
       && [[ ! "${PrTestPower}" =~ "POWER" ]] \
-      && [[ ! "${PrTestPhantom}" =~ "PHANTOM" ]] \
-      && [[ ! "${PrTestCluster}" =~ "CLUSTER" ]]; then
+      && [[ ! "${_PrTestPhantom}" =~ "PHANTOM" ]] \
+      && [[ ! "${_PrTestCluster}" =~ "CLUSTER" ]]; then
       [ ! -e "/root/.fast.cron.cnf" ] && echo ${InTest} > /root/.fast.cron.cnf
       [ -e "/root/.hr.monitor.cnf" ] && rm -f /root/.hr.monitor.cnf
       [ -e "/root/.slow.cron.cnf" ] && rm -f /root/.slow.cron.cnf
@@ -504,7 +504,7 @@ update_agents() {
       mysql -u root -e "SET GLOBAL max_user_connections = 150;"
       mysql -u root -e "SET GLOBAL group_concat_max_len = 10000;"
     fi
-    if [[ "${PrTestPhantom}" =~ "PHANTOM" ]]; then
+    if [[ "${_PrTestPhantom}" =~ "PHANTOM" ]]; then
       [ ! -e "/root/.tg.cnf" ] && echo ${InTest} > /root/.tg.cnf
       [ ! -e "/root/.fast.cron.cnf" ] && echo ${InTest} > /root/.fast.cron.cnf
       [ -e "/root/.hr.monitor.cnf" ] && rm -f /root/.hr.monitor.cnf
@@ -514,7 +514,7 @@ update_agents() {
       mysql -u root -e "SET GLOBAL max_user_connections = 150;"
       mysql -u root -e "SET GLOBAL group_concat_max_len = 10000;"
     fi
-    if [[ "${PrTestCluster}" =~ "CLUSTER" ]]; then
+    if [[ "${_PrTestCluster}" =~ "CLUSTER" ]]; then
       [ ! -e "/root/.tg.cnf" ] && echo ${InTest} > /root/.tg.cnf
       [ ! -e "/root/.fast.cron.cnf" ] && echo ${InTest} > /root/.fast.cron.cnf
       [ -e "/root/.hr.monitor.cnf" ] && rm -f /root/.hr.monitor.cnf
@@ -528,7 +528,7 @@ update_agents() {
     mysql -u root -e "SET GLOBAL sort_buffer_size = 262144;"
     if [ -e "/root/.tg.cnf" ]; then
       if [ ! -e "/root/.fixed_fpm_workers.pid" ]; then
-        sed -i "s/^_PHP_FPM_WORKERS=.*/_PHP_FPM_WORKERS=100/g" ${barCnf}
+        sed -i "s/^_PHP_FPM_WORKERS=.*/_PHP_FPM_WORKERS=100/g" ${_barCnf}
         touch /root/.fixed_fpm_workers.pid
       fi
     fi
@@ -573,50 +573,50 @@ update_agents() {
     [ ! -e "/var/xdrago/monitor/check" ] && mkdir -p /var/xdrago/monitor/check
     [ ! -e "/var/xdrago/monitor/log" ] && mkdir -p /var/xdrago/monitor/log
 
-    [ ! -e "/var/xdrago/checksql.pl" ] && rm -f ${pthLog}/checksql.pl.ctrl.*.pid
-    [ ! -e "/var/xdrago/clear.sh" ] && rm -f ${pthLog}/clear.sh.ctrl.*.pid
-    [ ! -e "/var/xdrago/daily.sh" ] && rm -f ${pthLog}/daily.sh.ctrl.*.pid
-    [ ! -e "/var/xdrago/graceful.sh" ] && rm -f ${pthLog}/graceful.sh.ctrl.*.pid
-    [ ! -e "/var/xdrago/guest-fire.sh" ] && rm -f ${pthLog}/guest-fire.sh.ctrl.*.pid
-    [ ! -e "/var/xdrago/guest-water.sh" ] && rm -f ${pthLog}/guest-water.sh.ctrl.*.pid
-    [ ! -e "/var/xdrago/ip_access.sh" ] && rm -f ${pthLog}/ip_access.sh.ctrl.*.pid
-    [ ! -e "/var/xdrago/manage_ltd_users.sh" ] && rm -f ${pthLog}/manage_ltd_users.sh.ctrl.*.pid
-    [ ! -e "/var/xdrago/manage_solr_config.sh" ] && rm -f ${pthLog}/manage_solr_config.sh.ctrl.*.pid
-    [ ! -e "/var/xdrago/minute.sh" ] && rm -f ${pthLog}/minute.sh.ctrl.*.pid
-    [ ! -e "/var/xdrago/move_sql.sh" ] && rm -f ${pthLog}/move_sql.sh.ctrl.*.pid
-    [ ! -e "/var/xdrago/mysql_backup.sh" ] && rm -f ${pthLog}/mysql_backup.sh.ctrl.*.pid
-    [ ! -e "/var/xdrago/mysql_cleanup.sh" ] && rm -f ${pthLog}/mysql_cleanup.sh.ctrl.*.pid
-    [ ! -e "/var/xdrago/mysql_cluster_backup.sh" ] && rm -f ${pthLog}/mysql_cluster_backup.sh.ctrl.*.pid
-    [ ! -e "/var/xdrago/mysql_repair.sh" ] && rm -f ${pthLog}/mysql_repair.sh.ctrl.*.pid
-    [ ! -e "/var/xdrago/proc_num_ctrl.pl" ] && rm -f ${pthLog}/proc_num_ctrl.pl.ctrl.*.pid
-    [ ! -e "/var/xdrago/purge_binlogs.sh" ] && rm -f ${pthLog}/purge_binlogs.sh.ctrl.*.pid
-    [ ! -e "/var/xdrago/runner.sh" ] && rm -f ${pthLog}/runner.sh.ctrl.*.pid
-    [ ! -e "/var/xdrago/second.sh" ] && rm -f ${pthLog}/second.sh.ctrl.*.pid
-    [ ! -e "/var/xdrago/usage.sh" ] && rm -f ${pthLog}/usage.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/checksql.pl" ] && rm -f ${_pthLog}/checksql.pl.ctrl.*.pid
+    [ ! -e "/var/xdrago/clear.sh" ] && rm -f ${_pthLog}/clear.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/daily.sh" ] && rm -f ${_pthLog}/daily.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/graceful.sh" ] && rm -f ${_pthLog}/graceful.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/guest-fire.sh" ] && rm -f ${_pthLog}/guest-fire.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/guest-water.sh" ] && rm -f ${_pthLog}/guest-water.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/ip_access.sh" ] && rm -f ${_pthLog}/ip_access.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/manage_ltd_users.sh" ] && rm -f ${_pthLog}/manage_ltd_users.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/manage_solr_config.sh" ] && rm -f ${_pthLog}/manage_solr_config.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/minute.sh" ] && rm -f ${_pthLog}/minute.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/move_sql.sh" ] && rm -f ${_pthLog}/move_sql.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/mysql_backup.sh" ] && rm -f ${_pthLog}/mysql_backup.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/mysql_cleanup.sh" ] && rm -f ${_pthLog}/mysql_cleanup.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/mysql_cluster_backup.sh" ] && rm -f ${_pthLog}/mysql_cluster_backup.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/mysql_repair.sh" ] && rm -f ${_pthLog}/mysql_repair.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/proc_num_ctrl.pl" ] && rm -f ${_pthLog}/proc_num_ctrl.pl.ctrl.*.pid
+    [ ! -e "/var/xdrago/purge_binlogs.sh" ] && rm -f ${_pthLog}/purge_binlogs.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/runner.sh" ] && rm -f ${_pthLog}/runner.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/second.sh" ] && rm -f ${_pthLog}/second.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/usage.sh" ] && rm -f ${_pthLog}/usage.sh.ctrl.*.pid
 
-    [ ! -e "/var/xdrago/monitor/check/java.sh" ] && rm -f ${pthLog}/java.sh.ctrl.*.pid
-    [ ! -e "/var/xdrago/monitor/check/mysql.sh" ] && rm -f ${pthLog}/mysql.sh.ctrl.*.pid
-    [ ! -e "/var/xdrago/monitor/check/nginx.sh" ] && rm -f ${pthLog}/nginx.sh.ctrl.*.pid
-    [ ! -e "/var/xdrago/monitor/check/php.sh" ] && rm -f ${pthLog}/php.sh.ctrl.*.pid
-    [ ! -e "/var/xdrago/monitor/check/redis.sh" ] && rm -f ${pthLog}/redis.sh.ctrl.*.pid
-    [ ! -e "/var/xdrago/monitor/check/scan_nginx.sh" ] && rm -f ${pthLog}/scan_nginx.sh.ctrl.*.pid
-    [ ! -e "/var/xdrago/monitor/check/system.sh" ] && rm -f ${pthLog}/system.sh.ctrl.*.pid
-    [ ! -e "/var/xdrago/monitor/check/unbound.sh" ] && rm -f ${pthLog}/unbound.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/monitor/check/java.sh" ] && rm -f ${_pthLog}/java.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/monitor/check/mysql.sh" ] && rm -f ${_pthLog}/mysql.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/monitor/check/nginx.sh" ] && rm -f ${_pthLog}/nginx.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/monitor/check/php.sh" ] && rm -f ${_pthLog}/php.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/monitor/check/redis.sh" ] && rm -f ${_pthLog}/redis.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/monitor/check/scan_nginx.sh" ] && rm -f ${_pthLog}/scan_nginx.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/monitor/check/system.sh" ] && rm -f ${_pthLog}/system.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/monitor/check/unbound.sh" ] && rm -f ${_pthLog}/unbound.sh.ctrl.*.pid
 
-    [ ! -e "/var/xdrago/monitor/check/escapecheck.pl" ] && rm -f ${pthLog}/escapecheck.pl.ctrl.*.pid
-    [ ! -e "/var/xdrago/monitor/check/hackcheck.pl" ] && rm -f ${pthLog}/hackcheck.pl.ctrl.*.pid
-    [ ! -e "/var/xdrago/monitor/check/hackftp.pl" ] && rm -f ${pthLog}/hackftp.pl.ctrl.*.pid
-    [ ! -e "/var/xdrago/monitor/check/locked_java.pl" ] && rm -f ${pthLog}/locked_java.pl.ctrl.*.pid
-    [ ! -e "/var/xdrago/monitor/check/locked_nginx.pl" ] && rm -f ${pthLog}/locked_nginx.pl.ctrl.*.pid
-    [ ! -e "/var/xdrago/monitor/check/scan_nginx.pl" ] && rm -f ${pthLog}/scan_nginx.pl.ctrl.*.pid
-    [ ! -e "/var/xdrago/monitor/check/segfault_alert.pl" ] && rm -f ${pthLog}/segfault_alert.pl.ctrl.*.pid
-    [ ! -e "/var/xdrago/monitor/check/sqlcheck.pl" ] && rm -f ${pthLog}/sqlcheck.pl.ctrl.*.pid
+    [ ! -e "/var/xdrago/monitor/check/escapecheck.pl" ] && rm -f ${_pthLog}/escapecheck.pl.ctrl.*.pid
+    [ ! -e "/var/xdrago/monitor/check/hackcheck.pl" ] && rm -f ${_pthLog}/hackcheck.pl.ctrl.*.pid
+    [ ! -e "/var/xdrago/monitor/check/hackftp.pl" ] && rm -f ${_pthLog}/hackftp.pl.ctrl.*.pid
+    [ ! -e "/var/xdrago/monitor/check/locked_java.pl" ] && rm -f ${_pthLog}/locked_java.pl.ctrl.*.pid
+    [ ! -e "/var/xdrago/monitor/check/locked_nginx.pl" ] && rm -f ${_pthLog}/locked_nginx.pl.ctrl.*.pid
+    [ ! -e "/var/xdrago/monitor/check/scan_nginx.pl" ] && rm -f ${_pthLog}/scan_nginx.pl.ctrl.*.pid
+    [ ! -e "/var/xdrago/monitor/check/segfault_alert.pl" ] && rm -f ${_pthLog}/segfault_alert.pl.ctrl.*.pid
+    [ ! -e "/var/xdrago/monitor/check/sqlcheck.pl" ] && rm -f ${_pthLog}/sqlcheck.pl.ctrl.*.pid
 
     [ -e "/var/xdrago/proc_num_ctrl.cgi" ] && rm -f /var/xdrago/proc_num_ctrl.cgi
     [ -e "/var/xdrago/checksql.cgi" ] && rm -f /var/xdrago/checksql.cgi
     [ -e "/var/xdrago/mysql_hourly.sh" ] && rm -f /var/xdrago/mysql_hourly.sh
 
-    [ -e "/var/xdrago/monitor/check/sqlcheck" ] && rm -f ${pthLog}/*.ctrl.*.pid
+    [ -e "/var/xdrago/monitor/check/sqlcheck" ] && rm -f ${_pthLog}/*.ctrl.*.pid
     [ -e "/var/xdrago/monitor/check/sqlcheck" ] && rm -f /var/xdrago/monitor/check/*
 
     [ -e "/var/xdrago/monitor/hackcheck.archive.log" ] && rm -f /var/xdrago/monitor/.scan_nginx_arch*
@@ -625,13 +625,13 @@ update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${pthLog}/java.sh.ctrl.${tRee}.${_X_SE}.pid" ]; then
+    && [ ! -e "${_pthLog}/java.sh.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/java.sh /var/xdrago/monitor/check/java.sh.old
-    curl ${crlGet} "${urlHmr}/tools/system/monitor/check/java.sh" -o /var/xdrago/monitor/check/java.sh
+    curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/java.sh" -o /var/xdrago/monitor/check/java.sh
     if [ -e "/var/xdrago/monitor/check/java.sh" ]; then
       chmod 700 /var/xdrago/monitor/check/java.sh
       chown root:root /var/xdrago/monitor/check/java.sh
-      touch ${pthLog}/java.sh.ctrl.${tRee}.${_X_SE}.pid
+      touch ${_pthLog}/java.sh.ctrl.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/monitor/check/java.sh.old /var/xdrago/monitor/check/java.sh
     fi
@@ -639,9 +639,9 @@ update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${pthLog}/mysql.sh.ctrl.${tRee}.${_X_SE}.pid" ]; then
+    && [ ! -e "${_pthLog}/mysql.sh.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/mysql.sh /var/xdrago/monitor/check/mysql.sh.old
-    curl ${crlGet} "${urlHmr}/tools/system/monitor/check/mysql.sh" -o /var/xdrago/monitor/check/mysql.sh
+    curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/mysql.sh" -o /var/xdrago/monitor/check/mysql.sh
     if [ -e "/var/xdrago/monitor/check/mysql.sh" ]; then
       if [ -e "/root/.debug.cnf" ] && [ ! -e "/root/.default.cnf" ]; then
         _DO_NOTHING=YES
@@ -658,7 +658,7 @@ update_agents() {
       fi
       chmod 700 /var/xdrago/monitor/check/mysql.sh
       chown root:root /var/xdrago/monitor/check/mysql.sh
-      touch ${pthLog}/mysql.sh.ctrl.${tRee}.${_X_SE}.pid
+      touch ${_pthLog}/mysql.sh.ctrl.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/monitor/check/mysql.sh.old /var/xdrago/monitor/check/mysql.sh
     fi
@@ -666,13 +666,13 @@ update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${pthLog}/nginx.sh.ctrl.${tRee}.${_X_SE}.pid" ]; then
+    && [ ! -e "${_pthLog}/nginx.sh.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/nginx.sh /var/xdrago/monitor/check/nginx.sh.old
-    curl ${crlGet} "${urlHmr}/tools/system/monitor/check/nginx.sh" -o /var/xdrago/monitor/check/nginx.sh
+    curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/nginx.sh" -o /var/xdrago/monitor/check/nginx.sh
     if [ -e "/var/xdrago/monitor/check/nginx.sh" ]; then
       chmod 700 /var/xdrago/monitor/check/nginx.sh
       chown root:root /var/xdrago/monitor/check/nginx.sh
-      touch ${pthLog}/nginx.sh.ctrl.${tRee}.${_X_SE}.pid
+      touch ${_pthLog}/nginx.sh.ctrl.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/monitor/check/nginx.sh.old /var/xdrago/monitor/check/nginx.sh
     fi
@@ -680,13 +680,13 @@ update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${pthLog}/php.sh.ctrl.${tRee}.${_X_SE}.pid" ]; then
+    && [ ! -e "${_pthLog}/php.sh.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/php.sh /var/xdrago/monitor/check/php.sh.old
-    curl ${crlGet} "${urlHmr}/tools/system/monitor/check/php.sh" -o /var/xdrago/monitor/check/php.sh
+    curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/php.sh" -o /var/xdrago/monitor/check/php.sh
     if [ -e "/var/xdrago/monitor/check/php.sh" ]; then
       chmod 700 /var/xdrago/monitor/check/php.sh
       chown root:root /var/xdrago/monitor/check/php.sh
-      touch ${pthLog}/php.sh.ctrl.${tRee}.${_X_SE}.pid
+      touch ${_pthLog}/php.sh.ctrl.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/monitor/check/php.sh.old /var/xdrago/monitor/check/php.sh
     fi
@@ -694,13 +694,13 @@ update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${pthLog}/redis.sh.ctrl.${tRee}.${_X_SE}.pid" ]; then
+    && [ ! -e "${_pthLog}/redis.sh.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/redis.sh /var/xdrago/monitor/check/redis.sh.old
-    curl ${crlGet} "${urlHmr}/tools/system/monitor/check/redis.sh" -o /var/xdrago/monitor/check/redis.sh
+    curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/redis.sh" -o /var/xdrago/monitor/check/redis.sh
     if [ -e "/var/xdrago/monitor/check/redis.sh" ]; then
       chmod 700 /var/xdrago/monitor/check/redis.sh
       chown root:root /var/xdrago/monitor/check/redis.sh
-      touch ${pthLog}/redis.sh.ctrl.${tRee}.${_X_SE}.pid
+      touch ${_pthLog}/redis.sh.ctrl.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/monitor/check/redis.sh.old /var/xdrago/monitor/check/redis.sh
     fi
@@ -708,13 +708,13 @@ update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${pthLog}/system.sh.ctrl.${tRee}.${_X_SE}.pid" ]; then
+    && [ ! -e "${_pthLog}/system.sh.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/system.sh /var/xdrago/monitor/check/system.sh.old
-    curl ${crlGet} "${urlHmr}/tools/system/monitor/check/system.sh" -o /var/xdrago/monitor/check/system.sh
+    curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/system.sh" -o /var/xdrago/monitor/check/system.sh
     if [ -e "/var/xdrago/monitor/check/system.sh" ]; then
       chmod 700 /var/xdrago/monitor/check/system.sh
       chown root:root /var/xdrago/monitor/check/system.sh
-      touch ${pthLog}/system.sh.ctrl.${tRee}.${_X_SE}.pid
+      touch ${_pthLog}/system.sh.ctrl.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/monitor/check/system.sh.old /var/xdrago/monitor/check/system.sh
     fi
@@ -722,13 +722,13 @@ update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${pthLog}/unbound.sh.ctrl.${tRee}.${_X_SE}.pid" ]; then
+    && [ ! -e "${_pthLog}/unbound.sh.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/unbound.sh /var/xdrago/monitor/check/unbound.sh.old
-    curl ${crlGet} "${urlHmr}/tools/system/monitor/check/unbound.sh" -o /var/xdrago/monitor/check/unbound.sh
+    curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/unbound.sh" -o /var/xdrago/monitor/check/unbound.sh
     if [ -e "/var/xdrago/monitor/check/unbound.sh" ]; then
       chmod 700 /var/xdrago/monitor/check/unbound.sh
       chown root:root /var/xdrago/monitor/check/unbound.sh
-      touch ${pthLog}/unbound.sh.ctrl.${tRee}.${_X_SE}.pid
+      touch ${_pthLog}/unbound.sh.ctrl.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/monitor/check/unbound.sh.old /var/xdrago/monitor/check/unbound.sh
     fi
@@ -736,13 +736,13 @@ update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${pthLog}/escapecheck.pl.ctrl.${tRee}.${_X_SE}.pid" ]; then
+    && [ ! -e "${_pthLog}/escapecheck.pl.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/escapecheck.pl /var/xdrago/monitor/check/escapecheck.pl.old
-    curl ${crlGet} "${urlHmr}/tools/system/monitor/check/escapecheck.pl" -o /var/xdrago/monitor/check/escapecheck.pl
+    curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/escapecheck.pl" -o /var/xdrago/monitor/check/escapecheck.pl
     if [ -e "/var/xdrago/monitor/check/escapecheck.pl" ]; then
       chmod 700 /var/xdrago/monitor/check/escapecheck.pl
       chown root:root /var/xdrago/monitor/check/escapecheck.pl
-      touch ${pthLog}/escapecheck.pl.ctrl.${tRee}.${_X_SE}.pid
+      touch ${_pthLog}/escapecheck.pl.ctrl.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/monitor/check/escapecheck.pl.old /var/xdrago/monitor/check/escapecheck.pl
     fi
@@ -750,13 +750,13 @@ update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${pthLog}/hackcheck.pl.ctrl.f2.${tRee}.${_X_SE}.pid" ]; then
+    && [ ! -e "${_pthLog}/hackcheck.pl.ctrl.f2.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/hackcheck.pl /var/xdrago/monitor/check/hackcheck.pl.old
-    curl ${crlGet} "${urlHmr}/tools/system/monitor/check/hackcheck.pl" -o /var/xdrago/monitor/check/hackcheck.pl
+    curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/hackcheck.pl" -o /var/xdrago/monitor/check/hackcheck.pl
     if [ -e "/var/xdrago/monitor/check/hackcheck.pl" ]; then
       chmod 700 /var/xdrago/monitor/check/hackcheck.pl
       chown root:root /var/xdrago/monitor/check/hackcheck.pl
-      touch ${pthLog}/hackcheck.pl.ctrl.f2.${tRee}.${_X_SE}.pid
+      touch ${_pthLog}/hackcheck.pl.ctrl.f2.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/monitor/check/hackcheck.pl.old /var/xdrago/monitor/check/hackcheck.pl
     fi
@@ -764,13 +764,13 @@ update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${pthLog}/hackftp.pl.ctrl.f2.${tRee}.${_X_SE}.pid" ]; then
+    && [ ! -e "${_pthLog}/hackftp.pl.ctrl.f2.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/hackftp.pl /var/xdrago/monitor/check/hackftp.pl.old
-    curl ${crlGet} "${urlHmr}/tools/system/monitor/check/hackftp.pl" -o /var/xdrago/monitor/check/hackftp.pl
+    curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/hackftp.pl" -o /var/xdrago/monitor/check/hackftp.pl
     if [ -e "/var/xdrago/monitor/check/hackftp.pl" ]; then
       chmod 700 /var/xdrago/monitor/check/hackftp.pl
       chown root:root /var/xdrago/monitor/check/hackftp.pl
-      touch ${pthLog}/hackftp.pl.ctrl.f2.${tRee}.${_X_SE}.pid
+      touch ${_pthLog}/hackftp.pl.ctrl.f2.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/monitor/check/hackftp.pl.old /var/xdrago/monitor/check/hackftp.pl
     fi
@@ -778,13 +778,13 @@ update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${pthLog}/locked_java.pl.ctrl.${tRee}.${_X_SE}.pid" ]; then
+    && [ ! -e "${_pthLog}/locked_java.pl.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/locked_java.pl /var/xdrago/monitor/check/locked_java.pl.old
-    curl ${crlGet} "${urlHmr}/tools/system/monitor/check/locked_java.pl" -o /var/xdrago/monitor/check/locked_java.pl
+    curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/locked_java.pl" -o /var/xdrago/monitor/check/locked_java.pl
     if [ -e "/var/xdrago/monitor/check/locked_java.pl" ]; then
       chmod 700 /var/xdrago/monitor/check/locked_java.pl
       chown root:root /var/xdrago/monitor/check/locked_java.pl
-      touch ${pthLog}/locked_java.pl.ctrl.${tRee}.${_X_SE}.pid
+      touch ${_pthLog}/locked_java.pl.ctrl.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/monitor/check/locked_java.pl.old /var/xdrago/monitor/check/locked_java.pl
     fi
@@ -792,13 +792,13 @@ update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${pthLog}/locked_nginx.pl.ctrl.${tRee}.${_X_SE}.pid" ]; then
+    && [ ! -e "${_pthLog}/locked_nginx.pl.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/locked_nginx.pl /var/xdrago/monitor/check/locked_nginx.pl.old
-    curl ${crlGet} "${urlHmr}/tools/system/monitor/check/locked_nginx.pl" -o /var/xdrago/monitor/check/locked_nginx.pl
+    curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/locked_nginx.pl" -o /var/xdrago/monitor/check/locked_nginx.pl
     if [ -e "/var/xdrago/monitor/check/locked_nginx.pl" ]; then
       chmod 700 /var/xdrago/monitor/check/locked_nginx.pl
       chown root:root /var/xdrago/monitor/check/locked_nginx.pl
-      touch ${pthLog}/locked_nginx.pl.ctrl.${tRee}.${_X_SE}.pid
+      touch ${_pthLog}/locked_nginx.pl.ctrl.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/monitor/check/locked_nginx.pl.old /var/xdrago/monitor/check/locked_nginx.pl
     fi
@@ -806,13 +806,13 @@ update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${pthLog}/segfault_alert.pl.ctrl.${tRee}.${_X_SE}.pid" ]; then
+    && [ ! -e "${_pthLog}/segfault_alert.pl.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/segfault_alert.pl /var/xdrago/monitor/check/segfault_alert.pl.old
-    curl ${crlGet} "${urlHmr}/tools/system/monitor/check/segfault_alert.pl" -o /var/xdrago/monitor/check/segfault_alert.pl
+    curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/segfault_alert.pl" -o /var/xdrago/monitor/check/segfault_alert.pl
     if [ -e "/var/xdrago/monitor/check/segfault_alert.pl" ]; then
       chmod 700 /var/xdrago/monitor/check/segfault_alert.pl
       chown root:root /var/xdrago/monitor/check/segfault_alert.pl
-      touch ${pthLog}/segfault_alert.pl.ctrl.${tRee}.${_X_SE}.pid
+      touch ${_pthLog}/segfault_alert.pl.ctrl.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/monitor/check/segfault_alert.pl.old /var/xdrago/monitor/check/segfault_alert.pl
     fi
@@ -820,20 +820,20 @@ update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${pthLog}/sqlcheck.pl.ctrl.${tRee}.${_X_SE}.pid" ]; then
+    && [ ! -e "${_pthLog}/sqlcheck.pl.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/sqlcheck.pl /var/xdrago/monitor/check/sqlcheck.pl.old
-    curl ${crlGet} "${urlHmr}/tools/system/monitor/check/sqlcheck.pl" -o /var/xdrago/monitor/check/sqlcheck.pl
+    curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/sqlcheck.pl" -o /var/xdrago/monitor/check/sqlcheck.pl
     if [ -e "/var/xdrago/monitor/check/sqlcheck.pl" ]; then
       chmod 700 /var/xdrago/monitor/check/sqlcheck.pl
       chown root:root /var/xdrago/monitor/check/sqlcheck.pl
-      touch ${pthLog}/sqlcheck.pl.ctrl.${tRee}.${_X_SE}.pid
+      touch ${_pthLog}/sqlcheck.pl.ctrl.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/monitor/check/sqlcheck.pl.old /var/xdrago/monitor/check/sqlcheck.pl
     fi
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
-    && [ ! -e "${pthLog}/drush8-symlink.ctrl.${tRee}.${_X_SE}.pid" ]; then
+    && [ ! -e "${_pthLog}/drush8-symlink.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     if [ -x "/opt/tools/drush/8/drush/drush.php" ] \
       && [ -L "/usr/bin/drush8" ]; then
       _DRUSH_SYMLINK=$(readlink -n /usr/bin/drush8 2>&1)
@@ -843,20 +843,20 @@ update_agents() {
         rm -f /usr/bin/drush
         ln -s /opt/tools/drush/8/drush/drush.php /usr/bin/drush8
         ln -s /opt/tools/drush/8/drush/drush.php /usr/bin/drush
-        touch ${pthLog}/drush8-symlink.ctrl.${tRee}.${_X_SE}.pid
+        touch ${_pthLog}/drush8-symlink.ctrl.${_tRee}.${_xSrl}.pid
       fi
     fi
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${pthLog}/clean-boa-env.ctrl.${tRee}.${_X_SE}.pid" ]; then
+    && [ ! -e "${_pthLog}/clean-boa-env.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /etc/init.d/clean-boa-env /var/xdrago/clean-boa-env.old
-    curl ${crlGet} "${urlHmr}/conf/var/clean-boa-env" -o /etc/init.d/clean-boa-env
+    curl ${_crlGet} "${_urlHmr}/conf/var/clean-boa-env" -o /etc/init.d/clean-boa-env
     if [ -e "/etc/init.d/clean-boa-env" ]; then
       chmod 700 /etc/init.d/clean-boa-env
       chown root:root /etc/init.d/clean-boa-env
-      touch ${pthLog}/clean-boa-env.ctrl.${tRee}.${_X_SE}.pid
+      touch ${_pthLog}/clean-boa-env.ctrl.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/clean-boa-env.old /etc/init.d/clean-boa-env
     fi
@@ -864,13 +864,13 @@ update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${pthLog}/mysql_backup.sh.ctrl.hf01.${_X_SE}.pid" ]; then
+    && [ ! -e "${_pthLog}/mysql_backup.sh.ctrl.hf01.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/mysql_backup.sh /var/xdrago/mysql_backup.sh.old
-    curl ${crlGet} "${urlHmr}/tools/system/mysql_backup.sh" -o /var/xdrago/mysql_backup.sh
+    curl ${_crlGet} "${_urlHmr}/tools/system/mysql_backup.sh" -o /var/xdrago/mysql_backup.sh
     if [ -e "/var/xdrago/mysql_backup.sh" ]; then
       chmod 700 /var/xdrago/mysql_backup.sh
       chown root:root /var/xdrago/mysql_backup.sh
-      touch ${pthLog}/mysql_backup.sh.ctrl.hf01.${_X_SE}.pid
+      touch ${_pthLog}/mysql_backup.sh.ctrl.hf01.${_xSrl}.pid
     else
       mv -f /var/xdrago/mysql_backup.sh.old /var/xdrago/mysql_backup.sh
     fi
@@ -878,13 +878,13 @@ update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${pthLog}/unbound-helper.ctrl.hf01.${_X_SE}.pid" ]; then
+    && [ ! -e "${_pthLog}/unbound-helper.ctrl.hf01.${_xSrl}.pid" ]; then
     mv -f /usr/libexec/unbound-helper /usr/libexec/unbound-helper.old
-    curl ${crlGet} "${urlHmr}/conf/dns/unbound-helper" -o /usr/libexec/unbound-helper
+    curl ${_crlGet} "${_urlHmr}/conf/dns/unbound-helper" -o /usr/libexec/unbound-helper
     if [ -e "/usr/libexec/unbound-helper" ]; then
       chmod 755 /usr/libexec/unbound-helper
       chown root:root /usr/libexec/unbound-helper
-      touch ${pthLog}/unbound-helper.ctrl.hf01.${_X_SE}.pid
+      touch ${_pthLog}/unbound-helper.ctrl.hf01.${_xSrl}.pid
     else
       mv -f /usr/libexec/unbound-helper.old /usr/libexec/unbound-helper
     fi
@@ -892,13 +892,13 @@ update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${pthLog}/mysql_cleanup.sh.ctrl.hf01.${_X_SE}.pid" ]; then
+    && [ ! -e "${_pthLog}/mysql_cleanup.sh.ctrl.hf01.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/mysql_cleanup.sh /var/xdrago/mysql_cleanup.sh.old
-    curl ${crlGet} "${urlHmr}/tools/system/mysql_cleanup.sh" -o /var/xdrago/mysql_cleanup.sh
+    curl ${_crlGet} "${_urlHmr}/tools/system/mysql_cleanup.sh" -o /var/xdrago/mysql_cleanup.sh
     if [ -e "/var/xdrago/mysql_cleanup.sh" ]; then
       chmod 700 /var/xdrago/mysql_cleanup.sh
       chown root:root /var/xdrago/mysql_cleanup.sh
-      touch ${pthLog}/mysql_cleanup.sh.ctrl.hf01.${_X_SE}.pid
+      touch ${_pthLog}/mysql_cleanup.sh.ctrl.hf01.${_xSrl}.pid
     else
       mv -f /var/xdrago/mysql_cleanup.sh.old /var/xdrago/mysql_cleanup.sh
     fi
@@ -906,13 +906,13 @@ update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${pthLog}/mysql_cluster_backup.sh.ctrl.${tRee}.${_X_SE}.pid" ]; then
+    && [ ! -e "${_pthLog}/mysql_cluster_backup.sh.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/mysql_cluster_backup.sh /var/xdrago/mysql_cluster_backup.sh.old
-    curl ${crlGet} "${urlHmr}/tools/system/mysql_cluster_backup.sh" -o /var/xdrago/mysql_cluster_backup.sh
+    curl ${_crlGet} "${_urlHmr}/tools/system/mysql_cluster_backup.sh" -o /var/xdrago/mysql_cluster_backup.sh
     if [ -e "/var/xdrago/mysql_cluster_backup.sh" ]; then
       chmod 700 /var/xdrago/mysql_cluster_backup.sh
       chown root:root /var/xdrago/mysql_cluster_backup.sh
-      touch ${pthLog}/mysql_cluster_backup.sh.ctrl.${tRee}.${_X_SE}.pid
+      touch ${_pthLog}/mysql_cluster_backup.sh.ctrl.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/mysql_cluster_backup.sh.old /var/xdrago/mysql_cluster_backup.sh
     fi
@@ -920,13 +920,13 @@ update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${pthLog}/runner.sh.ctrl.${tRee}.${_X_SE}.pid" ]; then
+    && [ ! -e "${_pthLog}/runner.sh.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/runner.sh /var/xdrago/runner.sh.old
-    curl ${crlGet} "${urlHmr}/tools/system/runner.sh" -o /var/xdrago/runner.sh
+    curl ${_crlGet} "${_urlHmr}/tools/system/runner.sh" -o /var/xdrago/runner.sh
     if [ -e "/var/xdrago/runner.sh" ]; then
       chmod 700 /var/xdrago/runner.sh
       chown root:root /var/xdrago/runner.sh
-      touch ${pthLog}/runner.sh.ctrl.${tRee}.${_X_SE}.pid
+      touch ${_pthLog}/runner.sh.ctrl.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/runner.sh.old /var/xdrago/runner.sh
     fi
@@ -934,13 +934,13 @@ update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${pthLog}/minute.sh.ctrl.${tRee}.${_X_SE}.pid" ]; then
+    && [ ! -e "${_pthLog}/minute.sh.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/minute.sh /var/xdrago/minute.sh.old
-    curl ${crlGet} "${urlHmr}/tools/system/minute.sh" -o /var/xdrago/minute.sh
+    curl ${_crlGet} "${_urlHmr}/tools/system/minute.sh" -o /var/xdrago/minute.sh
     if [ -e "/var/xdrago/minute.sh" ]; then
       chmod 700 /var/xdrago/minute.sh
       chown root:root /var/xdrago/minute.sh
-      touch ${pthLog}/minute.sh.ctrl.${tRee}.${_X_SE}.pid
+      touch ${_pthLog}/minute.sh.ctrl.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/minute.sh.old /var/xdrago/minute.sh
     fi
@@ -948,13 +948,13 @@ update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${pthLog}/second.sh.ctrl.f6.${tRee}.${_X_SE}.pid" ]; then
+    && [ ! -e "${_pthLog}/second.sh.ctrl.f6.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/second.sh /var/xdrago/second.sh.old
-    curl ${crlGet} "${urlHmr}/tools/system/second.sh" -o /var/xdrago/second.sh
+    curl ${_crlGet} "${_urlHmr}/tools/system/second.sh" -o /var/xdrago/second.sh
     if [ -e "/var/xdrago/second.sh" ]; then
       chmod 700 /var/xdrago/second.sh
       chown root:root /var/xdrago/second.sh
-      touch ${pthLog}/second.sh.ctrl.f6.${tRee}.${_X_SE}.pid
+      touch ${_pthLog}/second.sh.ctrl.f6.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/second.sh.old /var/xdrago/second.sh
     fi
@@ -962,13 +962,13 @@ update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${pthLog}/ip_access.sh.ctrl.${tRee}.${_X_SE}.pid" ]; then
+    && [ ! -e "${_pthLog}/ip_access.sh.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/ip_access.sh /var/xdrago/ip_access.sh.old
-    curl ${crlGet} "${urlHmr}/tools/system/ip_access.sh" -o /var/xdrago/ip_access.sh
+    curl ${_crlGet} "${_urlHmr}/tools/system/ip_access.sh" -o /var/xdrago/ip_access.sh
     if [ -e "/var/xdrago/ip_access.sh" ]; then
       chmod 700 /var/xdrago/ip_access.sh
       chown root:root /var/xdrago/ip_access.sh
-      touch ${pthLog}/ip_access.sh.ctrl.${tRee}.${_X_SE}.pid
+      touch ${_pthLog}/ip_access.sh.ctrl.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/ip_access.sh.old /var/xdrago/ip_access.sh
     fi
@@ -976,13 +976,13 @@ update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${pthLog}/move_sql.sh.ctrl.${tRee}.${_X_SE}.pid" ]; then
+    && [ ! -e "${_pthLog}/move_sql.sh.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/move_sql.sh /var/xdrago/move_sql.sh.old
-    curl ${crlGet} "${urlHmr}/tools/system/move_sql.sh" -o /var/xdrago/move_sql.sh
+    curl ${_crlGet} "${_urlHmr}/tools/system/move_sql.sh" -o /var/xdrago/move_sql.sh
     if [ -e "/var/xdrago/move_sql.sh" ]; then
       chmod 700 /var/xdrago/move_sql.sh
       chown root:root /var/xdrago/move_sql.sh
-      touch ${pthLog}/move_sql.sh.ctrl.${tRee}.${_X_SE}.pid
+      touch ${_pthLog}/move_sql.sh.ctrl.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/move_sql.sh.old /var/xdrago/move_sql.sh
     fi
@@ -990,13 +990,13 @@ update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${pthLog}/mysql_repair.sh.ctrl.${tRee}.${_X_SE}.pid" ]; then
+    && [ ! -e "${_pthLog}/mysql_repair.sh.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/mysql_repair.sh /var/xdrago/mysql_repair.sh.old
-    curl ${crlGet} "${urlHmr}/tools/system/mysql_repair.sh" -o /var/xdrago/mysql_repair.sh
+    curl ${_crlGet} "${_urlHmr}/tools/system/mysql_repair.sh" -o /var/xdrago/mysql_repair.sh
     if [ -e "/var/xdrago/mysql_repair.sh" ]; then
       chmod 700 /var/xdrago/mysql_repair.sh
       chown root:root /var/xdrago/mysql_repair.sh
-      touch ${pthLog}/mysql_repair.sh.ctrl.${tRee}.${_X_SE}.pid
+      touch ${_pthLog}/mysql_repair.sh.ctrl.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/mysql_repair.sh.old /var/xdrago/mysql_repair.sh
     fi
@@ -1004,13 +1004,13 @@ update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${pthLog}/purge_binlogs.sh.ctrl.${tRee}.${_X_SE}.pid" ]; then
+    && [ ! -e "${_pthLog}/purge_binlogs.sh.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/purge_binlogs.sh /var/xdrago/purge_binlogs.sh.old
-    curl ${crlGet} "${urlHmr}/tools/system/purge_binlogs.sh" -o /var/xdrago/purge_binlogs.sh
+    curl ${_crlGet} "${_urlHmr}/tools/system/purge_binlogs.sh" -o /var/xdrago/purge_binlogs.sh
     if [ -e "/var/xdrago/purge_binlogs.sh" ]; then
       chmod 700 /var/xdrago/purge_binlogs.sh
       chown root:root /var/xdrago/purge_binlogs.sh
-      touch ${pthLog}/purge_binlogs.sh.ctrl.${tRee}.${_X_SE}.pid
+      touch ${_pthLog}/purge_binlogs.sh.ctrl.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/purge_binlogs.sh.old /var/xdrago/purge_binlogs.sh
     fi
@@ -1018,13 +1018,13 @@ update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${pthLog}/checksql.pl.ctrl.${tRee}.${_X_SE}.pid" ]; then
+    && [ ! -e "${_pthLog}/checksql.pl.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/checksql.pl /var/xdrago/checksql.pl.old
-    curl ${crlGet} "${urlHmr}/tools/system/checksql.pl" -o /var/xdrago/checksql.pl
+    curl ${_crlGet} "${_urlHmr}/tools/system/checksql.pl" -o /var/xdrago/checksql.pl
     if [ -e "/var/xdrago/checksql.pl" ]; then
       chmod 700 /var/xdrago/checksql.pl
       chown root:root /var/xdrago/checksql.pl
-      touch ${pthLog}/checksql.pl.ctrl.${tRee}.${_X_SE}.pid
+      touch ${_pthLog}/checksql.pl.ctrl.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/checksql.pl.old /var/xdrago/checksql.pl
     fi
@@ -1032,13 +1032,13 @@ update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${pthLog}/clear.sh.ctrl.${tRee}.${_X_SE}.pid" ]; then
+    && [ ! -e "${_pthLog}/clear.sh.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/clear.sh /var/xdrago/clear.sh.old
-    curl ${crlGet} "${urlHmr}/tools/system/clear.sh" -o /var/xdrago/clear.sh
+    curl ${_crlGet} "${_urlHmr}/tools/system/clear.sh" -o /var/xdrago/clear.sh
     if [ -e "/var/xdrago/clear.sh" ]; then
       chmod 700 /var/xdrago/clear.sh
       chown root:root /var/xdrago/clear.sh
-      touch ${pthLog}/clear.sh.ctrl.${tRee}.${_X_SE}.pid
+      touch ${_pthLog}/clear.sh.ctrl.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/clear.sh.old /var/xdrago/clear.sh
     fi
@@ -1046,13 +1046,13 @@ update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${pthLog}/daily.sh.ctrl.${tRee}.${_X_SE}.pid" ]; then
+    && [ ! -e "${_pthLog}/daily.sh.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/daily.sh /var/xdrago/daily.sh.old
-    curl ${crlGet} "${urlHmr}/tools/system/daily.sh" -o /var/xdrago/daily.sh
+    curl ${_crlGet} "${_urlHmr}/tools/system/daily.sh" -o /var/xdrago/daily.sh
     if [ -e "/var/xdrago/daily.sh" ]; then
       chmod 700 /var/xdrago/daily.sh
       chown root:root /var/xdrago/daily.sh
-      touch ${pthLog}/daily.sh.ctrl.${tRee}.${_X_SE}.pid
+      touch ${_pthLog}/daily.sh.ctrl.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/daily.sh.old /var/xdrago/daily.sh
     fi
@@ -1060,20 +1060,20 @@ update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${pthLog}/graceful.sh.ctrl.${tRee}.${_X_SE}.pid" ]; then
+    && [ ! -e "${_pthLog}/graceful.sh.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/graceful.sh /var/xdrago/graceful.sh.old
-    curl ${crlGet} "${urlHmr}/tools/system/graceful.sh" -o /var/xdrago/graceful.sh
+    curl ${_crlGet} "${_urlHmr}/tools/system/graceful.sh" -o /var/xdrago/graceful.sh
     if [ -e "/var/xdrago/graceful.sh" ]; then
       chmod 700 /var/xdrago/graceful.sh
       chown root:root /var/xdrago/graceful.sh
-      touch ${pthLog}/graceful.sh.ctrl.${tRee}.${_X_SE}.pid
+      touch ${_pthLog}/graceful.sh.ctrl.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/graceful.sh.old /var/xdrago/graceful.sh
     fi
   fi
 
-  if_hosted_sys
-  if [ "${hostedSys}" = "YES" ]; then
+  _if_hosted_sys
+  if [ "${_hostedSys}" = "YES" ]; then
     _MY_USAGE=YES
   else
     _MY_USAGE=NO
@@ -1084,13 +1084,13 @@ update_agents() {
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
     && [ "${_MY_USAGE}" = "YES" ] \
-    && [ ! -e "${pthLog}/usage.sh.ctrl.${tRee}.${_X_SE}.pid" ]; then
+    && [ ! -e "${_pthLog}/usage.sh.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/usage.sh /var/xdrago/usage.sh.old
-    curl ${crlGet} "${urlHmr}/tools/system/usage.sh" -o /var/xdrago/usage.sh
+    curl ${_crlGet} "${_urlHmr}/tools/system/usage.sh" -o /var/xdrago/usage.sh
     if [ -e "/var/xdrago/usage.sh" ]; then
       chmod 700 /var/xdrago/usage.sh
       chown root:root /var/xdrago/usage.sh
-      touch ${pthLog}/usage.sh.ctrl.${tRee}.${_X_SE}.pid
+      touch ${_pthLog}/usage.sh.ctrl.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/usage.sh.old /var/xdrago/usage.sh
     fi
@@ -1098,14 +1098,14 @@ update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${pthLog}/manage_ltd_users.sh.ctrl.${tRee}.${_X_SE}.pid" ]; then
+    && [ ! -e "${_pthLog}/manage_ltd_users.sh.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/manage_ltd_users.sh /var/xdrago/manage_ltd_users.sh.old
-    curl ${crlGet} "${urlHmr}/tools/system/manage_ltd_users.sh" \
+    curl ${_crlGet} "${_urlHmr}/tools/system/manage_ltd_users.sh" \
       -o /var/xdrago/manage_ltd_users.sh
     if [ -e "/var/xdrago/manage_ltd_users.sh" ]; then
       chmod 700 /var/xdrago/manage_ltd_users.sh
       chown root:root /var/xdrago/manage_ltd_users.sh
-      touch ${pthLog}/manage_ltd_users.sh.ctrl.${tRee}.${_X_SE}.pid
+      touch ${_pthLog}/manage_ltd_users.sh.ctrl.${_tRee}.${_xSrl}.pid
       [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
     else
       mv -f /var/xdrago/manage_ltd_users.sh.old /var/xdrago/manage_ltd_users.sh
@@ -1114,14 +1114,14 @@ update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${pthLog}/manage_solr_config.sh.ctrl.${tRee}.${_X_SE}.pid" ]; then
+    && [ ! -e "${_pthLog}/manage_solr_config.sh.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/manage_solr_config.sh /var/xdrago/manage_solr_config.sh.old
-    curl ${crlGet} "${urlHmr}/tools/system/manage_solr_config.sh" \
+    curl ${_crlGet} "${_urlHmr}/tools/system/manage_solr_config.sh" \
       -o /var/xdrago/manage_solr_config.sh
     if [ -e "/var/xdrago/manage_solr_config.sh" ]; then
       chmod 700 /var/xdrago/manage_solr_config.sh
       chown root:root /var/xdrago/manage_solr_config.sh
-      touch ${pthLog}/manage_solr_config.sh.ctrl.${tRee}.${_X_SE}.pid
+      touch ${_pthLog}/manage_solr_config.sh.ctrl.${_tRee}.${_xSrl}.pid
       rm -f /run/manage_solr_config.pid
     else
       mv -f /var/xdrago/manage_solr_config.sh.old /var/xdrago/manage_solr_config.sh
@@ -1130,14 +1130,14 @@ update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${pthLog}/proc_num_ctrl.pl.ctrl.${tRee}.${_X_SE}.pid" ]; then
+    && [ ! -e "${_pthLog}/proc_num_ctrl.pl.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/proc_num_ctrl.pl /var/xdrago/proc_num_ctrl.pl.old
-    curl ${crlGet} "${urlHmr}/tools/system/proc_num_ctrl.pl" \
+    curl ${_crlGet} "${_urlHmr}/tools/system/proc_num_ctrl.pl" \
       -o /var/xdrago/proc_num_ctrl.pl
     if [ -e "/var/xdrago/proc_num_ctrl.pl" ]; then
       chmod 700 /var/xdrago/proc_num_ctrl.pl
       chown root:root /var/xdrago/proc_num_ctrl.pl
-      touch ${pthLog}/proc_num_ctrl.pl.ctrl.${tRee}.${_X_SE}.pid
+      touch ${_pthLog}/proc_num_ctrl.pl.ctrl.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/proc_num_ctrl.pl.old /var/xdrago/proc_num_ctrl.pl
     fi
@@ -1145,7 +1145,7 @@ update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${pthLog}/fast_shutdown.ctrl.${tRee}.${_X_SE}.pid" ]; then
+    && [ ! -e "${_pthLog}/fast_shutdown.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     sed -i "s/.*opcache.fast_shutdown.*//g" /opt/etc/fpm/fpm-pool-common.conf
     _PHP_V="83 82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
@@ -1159,21 +1159,21 @@ update_agents() {
         service php${e}-fpm force-quit &> /dev/null
       fi
     done
-    touch ${pthLog}/fast_shutdown.ctrl.${tRee}.${_X_SE}.pid
+    touch ${_pthLog}/fast_shutdown.ctrl.${_tRee}.${_xSrl}.pid
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
     && [ -x "/usr/sbin/csf" ] \
     && [ -e "/etc/csf/csf.deny" ] \
-    && [ ! -e "${pthLog}/guest-fire.sh.ctrl.${tRee}.${_X_SE}.pid" ]; then
+    && [ ! -e "${_pthLog}/guest-fire.sh.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/guest-fire.sh /var/xdrago/guest-fire.sh.old
-    curl ${crlGet} "${urlHmr}/tools/system/guest-fire.sh" \
+    curl ${_crlGet} "${_urlHmr}/tools/system/guest-fire.sh" \
       -o /var/xdrago/guest-fire.sh
     if [ -e "/var/xdrago/guest-fire.sh" ]; then
       chmod 700 /var/xdrago/guest-fire.sh
       chown root:root /var/xdrago/guest-fire.sh
-      touch ${pthLog}/guest-fire.sh.ctrl.${tRee}.${_X_SE}.pid
+      touch ${_pthLog}/guest-fire.sh.ctrl.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/guest-fire.sh.old /var/xdrago/guest-fire.sh
     fi
@@ -1184,14 +1184,14 @@ update_agents() {
     && [ -e "/var/aegir/drush" ] \
     && [ -x "/usr/sbin/csf" ] \
     && [ -e "/etc/csf/csf.deny" ] \
-    && [ ! -e "${pthLog}/guest-water.sh.ctrl.${tRee}.${_X_SE}.pid" ]; then
+    && [ ! -e "${_pthLog}/guest-water.sh.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/guest-water.sh /var/xdrago/guest-water.sh.old
-    curl ${crlGet} "${urlHmr}/tools/system/guest-water.sh" \
+    curl ${_crlGet} "${_urlHmr}/tools/system/guest-water.sh" \
       -o /var/xdrago/guest-water.sh
     if [ -e "/var/xdrago/guest-water.sh" ]; then
       chmod 700 /var/xdrago/guest-water.sh
       chown root:root /var/xdrago/guest-water.sh
-      touch ${pthLog}/guest-water.sh.ctrl.${tRee}.${_X_SE}.pid
+      touch ${_pthLog}/guest-water.sh.ctrl.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/guest-water.sh.old /var/xdrago/guest-water.sh
     fi
@@ -1199,18 +1199,18 @@ update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${pthLog}/scan_nginx.pl.ctrl.f3.${tRee}.${_X_SE}.pid" ]; then
+    && [ ! -e "${_pthLog}/scan_nginx.pl.ctrl.f3.${_tRee}.${_xSrl}.pid" ]; then
     [ ! -d "/var/xdrago/monitor/log" ] && mkdir -p /var/xdrago/monitor/log
     mv -f /var/xdrago/monitor/check/scan_nginx.pl /var/xdrago/monitor/check/scan_nginx.pl.old
-    curl ${crlGet} "${urlHmr}/tools/system/monitor/check/scan_nginx.pl" \
+    curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/scan_nginx.pl" \
       -o /var/xdrago/monitor/check/scan_nginx.pl
     if [ -e "/var/xdrago/monitor/check/scan_nginx.pl" ]; then
       sed -i "s/default_critnumber =.*/default_critnumber = 399;/g" /var/xdrago/monitor/check/scan_nginx.pl
       wait
       sed -i "s/default_lines =.*/default_lines = 1999;/g" /var/xdrago/monitor/check/scan_nginx.pl
       wait
-      if_hosted_sys
-      if [ "${hostedSys}" = "YES" ]; then
+      _if_hosted_sys
+      if [ "${_hostedSys}" = "YES" ]; then
         if [ -z "${_NGINX_DOS_IGNORE}" ]; then
           _NGINX_DOS_IGNORE="doccomment"
         fi
@@ -1229,19 +1229,19 @@ update_agents() {
       fi
       chmod 700 /var/xdrago/monitor/check/scan_nginx.pl
       chown root:root /var/xdrago/monitor/check/scan_nginx.pl
-      if [ ! -e "/var/xdrago/monitor/log/.scan_nginx_arch.${_X_SE}.pid" ]; then
+      if [ ! -e "/var/xdrago/monitor/log/.scan_nginx_arch.${_xSrl}.pid" ]; then
         if [ -e "/var/xdrago/monitor/scan_nginx.archive.log" ]; then
-          mv -f /var/xdrago/monitor/scan_nginx.archive.log /var/xdrago/monitor/log/scan_nginx_legacy.archive.${_X_SE}.log
+          mv -f /var/xdrago/monitor/scan_nginx.archive.log /var/xdrago/monitor/log/scan_nginx_legacy.archive.${_xSrl}.log
         fi
         if [ -e "/var/xdrago/monitor/log/scan_nginx.archive.log" ]; then
-          mv -f /var/xdrago/monitor/log/scan_nginx.archive.log /var/xdrago/monitor/log/scan_nginx.archive.${_X_SE}.log
+          mv -f /var/xdrago/monitor/log/scan_nginx.archive.log /var/xdrago/monitor/log/scan_nginx.archive.${_xSrl}.log
         fi
         rm -f /var/xdrago/monitor/log/.scan_nginx_arch*
-        touch /var/xdrago/monitor/log/.scan_nginx_arch.${_X_SE}.pid
+        touch /var/xdrago/monitor/log/.scan_nginx_arch.${_xSrl}.pid
         csf -df
         wait
       fi
-      touch ${pthLog}/scan_nginx.pl.ctrl.f3.${tRee}.${_X_SE}.pid
+      touch ${_pthLog}/scan_nginx.pl.ctrl.f3.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/monitor/check/scan_nginx.pl.old /var/xdrago/monitor/check/scan_nginx.pl
     fi
@@ -1250,16 +1250,16 @@ update_agents() {
   if [ -x "/opt/tools/drush/8/drush/drush.php" ] \
     && [ -e "/var/xdrago" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${pthLog}/lshell.ctrl.${tRee}.${_X_SE}.pid" ]; then
+    && [ ! -e "${_pthLog}/lshell.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     if [ -z "${_CUSTOM_CONFIG_LSHELL}" ] \
       || [ "${_CUSTOM_CONFIG_LSHELL}" = "NO" ]; then
       mv -f /var/xdrago/conf/lshell.conf /var/xdrago/conf/lshell.conf.old
-      curl ${crlGet} "${urlHmr}/tools/system/conf/lshell.conf" \
+      curl ${_crlGet} "${_urlHmr}/tools/system/conf/lshell.conf" \
         -o /var/xdrago/conf/lshell.conf
       if [ -e "/var/xdrago/conf/lshell.conf" ]; then
         chmod 644 /var/xdrago/conf/lshell.conf
         chown root:root /var/xdrago/conf/lshell.conf
-        touch ${pthLog}/lshell.ctrl.${tRee}.${_X_SE}.pid
+        touch ${_pthLog}/lshell.ctrl.${_tRee}.${_xSrl}.pid
       else
         mv -f /var/xdrago/conf/lshell.conf.old /var/xdrago/conf/lshell.conf
       fi
@@ -1269,14 +1269,14 @@ update_agents() {
   if [ -x "/opt/tools/drush/8/drush/drush.php" ] \
     && [ -e "/var/xdrago" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${pthLog}/multi.ctrl.${tRee}.${_X_SE}.pid" ]; then
+    && [ ! -e "${_pthLog}/multi.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/conf/fpm-pool-foo-multi.conf /var/xdrago/conf/fpm-pool-foo-multi.conf.old
-    curl ${crlGet} "${urlHmr}/conf/php/fpm-pool-foo-multi.conf" \
+    curl ${_crlGet} "${_urlHmr}/conf/php/fpm-pool-foo-multi.conf" \
       -o /var/xdrago/conf/fpm-pool-foo-multi.conf
     if [ -e "/var/xdrago/conf/fpm-pool-foo-multi.conf" ]; then
       chmod 644 /var/xdrago/conf/fpm-pool-foo-multi.conf
       chown root:root /var/xdrago/conf/fpm-pool-foo-multi.conf
-      touch ${pthLog}/multi.ctrl.${tRee}.${_X_SE}.pid
+      touch ${_pthLog}/multi.ctrl.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/conf/fpm-pool-foo-multi.conf.old /var/xdrago/conf/fpm-pool-foo-multi.conf
     fi
@@ -1285,14 +1285,14 @@ update_agents() {
   if [ -e "/opt/tools/drush" ] \
     && [ -e "/var/xdrago" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${pthLog}/single.ctrl.${tRee}.${_X_SE}.pid" ]; then
+    && [ ! -e "${_pthLog}/single.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/conf/fpm-pool-foo.conf /var/xdrago/conf/fpm-pool-foo.conf.old
-    curl ${crlGet} "${urlHmr}/conf/php/fpm-pool-foo.conf" \
+    curl ${_crlGet} "${_urlHmr}/conf/php/fpm-pool-foo.conf" \
       -o /var/xdrago/conf/fpm-pool-foo.conf
     if [ -e "/var/xdrago/conf/fpm-pool-foo.conf" ]; then
       chmod 644 /var/xdrago/conf/fpm-pool-foo.conf
       chown root:root /var/xdrago/conf/fpm-pool-foo.conf
-      touch ${pthLog}/single.ctrl.${tRee}.${_X_SE}.pid
+      touch ${_pthLog}/single.ctrl.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/conf/fpm-pool-foo.conf.old /var/xdrago/conf/fpm-pool-foo.conf
     fi
@@ -1300,19 +1300,19 @@ update_agents() {
 
   if [ -e "/etc/ImageMagick-6/policy.xml" ] \
     && [ -e "/var/xdrago" ] \
-    && [ ! -e "${pthLog}/policymap-hf-06.ctrl.${tRee}.${_X_SE}.pid" ]; then
+    && [ ! -e "${_pthLog}/policymap-hf-06.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     IsCurlBin=$(which curl 2>&1)
     chmod 755 ${IsCurlBin} &> /dev/null
     chgrp root ${IsCurlBin} &> /dev/null
     cp -af /etc/ImageMagick-6/policy.xml /var/xdrago/conf/etc-ImageMagick-6-policy.xml.hf-06.old
     rm -f /var/xdrago/conf/etc-ImageMagick-6-policy.xml
-    curl ${crlGet} "${urlHmr}/conf/etc/etc-ImageMagick-6-policy.xml" \
+    curl ${_crlGet} "${_urlHmr}/conf/etc/etc-ImageMagick-6-policy.xml" \
       -o /var/xdrago/conf/etc-ImageMagick-6-policy.xml
     if [ -e "/var/xdrago/conf/etc-ImageMagick-6-policy.xml" ]; then
       cp -af /var/xdrago/conf/etc-ImageMagick-6-policy.xml /etc/ImageMagick-6/policy.xml
       chmod 644 /etc/ImageMagick-6/policy.xml
       chown root:root /etc/ImageMagick-6/policy.xml
-      touch ${pthLog}/policymap-hf-06.ctrl.${tRee}.${_X_SE}.pid
+      touch ${_pthLog}/policymap-hf-06.ctrl.${_tRee}.${_xSrl}.pid
       _PHP_V="83 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
@@ -1330,20 +1330,20 @@ update_agents() {
     && [ -e "/var/xdrago" ] \
     && [ -e "/var/aegir/drush" ] \
     && [ -d "/data/u" ] \
-    && [ ! -e "${pthLog}/dispatch.ctrl.${tRee}.${_X_SE}.pid" ]; then
+    && [ ! -e "${_pthLog}/dispatch.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     sed -i "s/.*cache.*//g; s/.*cc drush.*//g; s/ *$//g; /^$/d" /data/disk/*/aegir.sh
-    touch ${pthLog}/dispatch.ctrl.${tRee}.${_X_SE}.pid
+    touch ${_pthLog}/dispatch.ctrl.${_tRee}.${_xSrl}.pid
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/xdrago/conf/control-readme.txt" ] \
-    && [ ! -e "${pthLog}/control-readme.txt.ctrl.${tRee}.${_X_SE}.pid" ]; then
+    && [ ! -e "${_pthLog}/control-readme.txt.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/conf/control-readme.txt /var/xdrago/conf/control-readme.txt.old
-    curl ${crlGet} "${urlHmr}/tools/system/conf/control-readme.txt" -o /var/xdrago/conf/control-readme.txt
+    curl ${_crlGet} "${_urlHmr}/tools/system/conf/control-readme.txt" -o /var/xdrago/conf/control-readme.txt
     if [ -e "/var/xdrago/conf/control-readme.txt" ]; then
       chmod 644 /var/xdrago/conf/control-readme.txt
       chown root:root /var/xdrago/conf/control-readme.txt
-      touch ${pthLog}/control-readme.txt.ctrl.${tRee}.${_X_SE}.pid
+      touch ${_pthLog}/control-readme.txt.ctrl.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/conf/control-readme.txt.old /var/xdrago/conf/control-readme.txt
     fi
@@ -1351,42 +1351,42 @@ update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -d "/data/u" ] \
-    && [ ! -e "${pthLog}/fpm-cli.ctrl.${tRee}.${_X_SE}.pid" ]; then
+    && [ ! -e "${_pthLog}/fpm-cli.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     usrGroup=users
     [ -e "/var/backups/off-run/" ] && cp -a /var/backups/off-run/run* /var/xdrago/ &> /dev/null
-    for pthSysUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
-      tUsr=
-      tUsr=$(echo ${pthSysUsr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
-      if [ "${tUsr}" != "arch" ]; then
-        if [ ! -e "${pthSysUsr}/static/control/MyQuick.info" ] \
-          && [ ! -e "${pthSysUsr}/static/control/MyClassic.info" ]; then
-          echo ON > ${pthSysUsr}/static/control/MyQuick.info
+    for _pthSysUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
+      _tUsr=
+      _tUsr=$(echo ${_pthSysUsr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
+      if [ "${_tUsr}" != "arch" ]; then
+        if [ ! -e "${_pthSysUsr}/static/control/MyQuick.info" ] \
+          && [ ! -e "${_pthSysUsr}/static/control/MyClassic.info" ]; then
+          echo ON > ${_pthSysUsr}/static/control/MyQuick.info
         fi
-        if [ ! -e "${pthSysUsr}/static/control/.disFastTrack.pid" ]; then
-          rm -f ${pthSysUsr}/static/control/FastTrack.info
-          touch ${pthSysUsr}/static/control/.disFastTrack.pid
+        if [ ! -e "${_pthSysUsr}/static/control/.disFastTrack.pid" ]; then
+          rm -f ${_pthSysUsr}/static/control/FastTrack.info
+          touch ${_pthSysUsr}/static/control/.disFastTrack.pid
         fi
-        if [ ! -e "${pthSysUsr}/static/control/FastTrack.info" ] \
-          && [ ! -e "${pthSysUsr}/static/control/ClassicTrack.info" ]; then
-          echo ON > ${pthSysUsr}/static/control/ClassicTrack.info
+        if [ ! -e "${_pthSysUsr}/static/control/FastTrack.info" ] \
+          && [ ! -e "${_pthSysUsr}/static/control/ClassicTrack.info" ]; then
+          echo ON > ${_pthSysUsr}/static/control/ClassicTrack.info
         fi
-        if [ -e "${pthSysUsr}/static/control/fpm.info" ] \
-          && [ ! -e "${pthSysUsr}/static/control/cli.info" ]; then
-          cp ${pthSysUsr}/static/control/fpm.info ${pthSysUsr}/static/control/cli.info
+        if [ -e "${_pthSysUsr}/static/control/fpm.info" ] \
+          && [ ! -e "${_pthSysUsr}/static/control/cli.info" ]; then
+          cp ${_pthSysUsr}/static/control/fpm.info ${_pthSysUsr}/static/control/cli.info
         fi
-        if [ -e "${pthSysUsr}/log/CANCELLED" ] \
-          || [ -e "${pthSysUsr}/log/proxied.pid" ] \
-          || [ ! -e "${pthSysUsr}/static/control/cli.info" ]; then
-          if [ -e "/var/xdrago/run-${tUsr}" ] \
+        if [ -e "${_pthSysUsr}/log/CANCELLED" ] \
+          || [ -e "${_pthSysUsr}/log/proxied.pid" ] \
+          || [ ! -e "${_pthSysUsr}/static/control/cli.info" ]; then
+          if [ -e "/var/xdrago/run-${_tUsr}" ] \
             && [ -e "/var/aegir/drush" ]; then
             if [ ! -e "/var/backups/off-run" ]; then
               mkdir -p /var/backups/off-run/
             fi
-            mv -f /var/xdrago/run-${tUsr} /var/backups/off-run/
+            mv -f /var/xdrago/run-${_tUsr} /var/backups/off-run/
           fi
         else
-          dscUsr="/data/disk/${tUsr}"
-          ngxCnf="${dscUsr}/config/includes/nginx_vhost_common.conf"
+          _dscUsr="/data/disk/${_tUsr}"
+          ngxCnf="${_dscUsr}/config/includes/nginx_vhost_common.conf"
           _NGINX_CNF_TEST=$(grep "foobaroff" ${ngxCnf} 2>&1)
           if [[ "${_NGINX_CNF_TEST}" =~ "foobaroff" ]]; then
             _DO_NOTHING=YES
@@ -1396,52 +1396,52 @@ update_agents() {
           for version in 81 82 83 74; do
             if [ -x "/opt/php${version}/bin/php" ]; then
               if [ "${version}" = "74" ]; then
-                useCli="7.4"
-                useFpm="7.4"
+                _useCli="7.4"
+                _useFpm="7.4"
               else
-                useCli="8.${version:1}"
-                useFpm="8.${version:1}"
+                _useCli="8.${version:1}"
+                _useFpm="8.${version:1}"
               fi
               break
             fi
           done
-          if [ ! -e "${dscUsr}/static/control/fpm.info" ] \
+          if [ ! -e "${_dscUsr}/static/control/fpm.info" ] \
             && [ -e "/var/aegir/drush" ]; then
-            if [ -n "${useFpm}" ]; then
-              echo ${useFpm} > ${dscUsr}/static/control/fpm.info
-              chown ${tUsr}.ftp:${usrGroup} ${dscUsr}/static/control/fpm.info
-              chmod 0644 ${dscUsr}/static/control/fpm.info
+            if [ -n "${_useFpm}" ]; then
+              echo ${_useFpm} > ${_dscUsr}/static/control/fpm.info
+              chown ${_tUsr}.ftp:${usrGroup} ${_dscUsr}/static/control/fpm.info
+              chmod 0644 ${_dscUsr}/static/control/fpm.info
             fi
           fi
-          if [ ! -e "${dscUsr}/static/control/cli.info" ] \
+          if [ ! -e "${_dscUsr}/static/control/cli.info" ] \
             && [ -e "/var/aegir/drush" ]; then
-            if [ -e "${dscUsr}/static/control/fpm.info" ]; then
-              cp -af ${dscUsr}/static/control/fpm.info ${dscUsr}/static/control/cli.info
+            if [ -e "${_dscUsr}/static/control/fpm.info" ]; then
+              cp -af ${_dscUsr}/static/control/fpm.info ${_dscUsr}/static/control/cli.info
             else
-              if [ -n "${useCli}" ]; then
-                echo ${useCli} > ${dscUsr}/static/control/cli.info
-                chown ${tUsr}.ftp:${usrGroup} ${dscUsr}/static/control/cli.info
-                chmod 0644 ${dscUsr}/static/control/cli.info
+              if [ -n "${_useCli}" ]; then
+                echo ${_useCli} > ${_dscUsr}/static/control/cli.info
+                chown ${_tUsr}.ftp:${usrGroup} ${_dscUsr}/static/control/cli.info
+                chmod 0644 ${_dscUsr}/static/control/cli.info
               fi
             fi
           fi
-          if [ ! -e "${dscUsr}/static/control/.ctrl.${tRee}.${_X_SE}.pid" ] \
-            && [ -e "/home/${tUsr}.ftp/clients" ]; then
-            mkdir -p ${dscUsr}/static/control
-            chmod 755 ${dscUsr}/static/control
+          if [ ! -e "${_dscUsr}/static/control/.ctrl.${_tRee}.${_xSrl}.pid" ] \
+            && [ -e "/home/${_tUsr}.ftp/clients" ]; then
+            mkdir -p ${_dscUsr}/static/control
+            chmod 755 ${_dscUsr}/static/control
             if [ -e "/var/xdrago/conf/control-readme.txt" ]; then
               cp -af /var/xdrago/conf/control-readme.txt \
-                ${dscUsr}/static/control/README.txt &> /dev/null
-              chmod 0644 ${dscUsr}/static/control/README.txt
+                ${_dscUsr}/static/control/README.txt &> /dev/null
+              chmod 0644 ${_dscUsr}/static/control/README.txt
             fi
-            chown -R ${tUsr}.ftp:${usrGroup} ${dscUsr}/static/control
-            rm -f ${dscUsr}/static/control/.ctrl.*
-            echo OK > ${dscUsr}/static/control/.ctrl.${tRee}.${_X_SE}.pid
+            chown -R ${_tUsr}.ftp:${usrGroup} ${_dscUsr}/static/control
+            rm -f ${_dscUsr}/static/control/.ctrl.*
+            echo OK > ${_dscUsr}/static/control/.ctrl.${_tRee}.${_xSrl}.pid
           fi
         fi
       fi
     done
-    touch ${pthLog}/fpm-cli.ctrl.${tRee}.${_X_SE}.pid
+    touch ${_pthLog}/fpm-cli.ctrl.${_tRee}.${_xSrl}.pid
     service nginx reload
   fi
 
@@ -1473,119 +1473,119 @@ update_agents() {
   done
 
   if [ -x "/opt/tools/drush/8/drush/drush.php" ] \
-    && [ -e "${provLeIncFull}" ] \
-    && [ -e "${hoLeIncFull}" ] \
+    && [ -e "${_provLeIncFull}" ] \
+    && [ -e "${_hoLeIncFull}" ] \
     && [ -e "/var/xdrago" ] \
     && [ -e "/var/aegir/drush" ] \
     && [ -d "/data/u" ] \
-    && [ ! -e "${pthLog}/hosting_le_vt.ctrl.${tRee}.${_X_SE}.pid" ]; then
-    leBasePath="profiles/hostmaster/modules/aegir/hosting_le"
-    lePath="${leBasePath}/drush/${provLeInc}"
-    leVhPath="${leBasePath}/hosting_le_vhost/drush/${hoLeInc}"
-    for pthSysUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
-      if [ -e "${pthSysUsr}/config/server_master/nginx/vhost.d" ] \
-        && [ -e "${pthSysUsr}/static/control/cli.info" ] \
-        && [ ! -e "${pthSysUsr}/log/proxied.pid" ] \
-        && [ ! -e "${pthSysUsr}/log/CANCELLED" ]; then
-        tUsr=
-        validReg=
-        validIPr=
-        tUsr=$(echo ${pthSysUsr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
-        dscUsr="/data/disk/${tUsr}"
-        hmPf=$(cat ${dscUsr}/.drush/hostmaster.alias.drushrc.php \
+    && [ ! -e "${_pthLog}/hosting_le_vt.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+    _leBasePath="profiles/hostmaster/modules/aegir/hosting_le"
+    _lePath="${_leBasePath}/drush/${_provLeInc}"
+    _leVhPath="${_leBasePath}/hosting_le_vhost/drush/${_hoLeInc}"
+    for _pthSysUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
+      if [ -e "${_pthSysUsr}/config/server_master/nginx/vhost.d" ] \
+        && [ -e "${_pthSysUsr}/static/control/cli.info" ] \
+        && [ ! -e "${_pthSysUsr}/log/proxied.pid" ] \
+        && [ ! -e "${_pthSysUsr}/log/CANCELLED" ]; then
+        _tUsr=
+        _validReg=
+        _validIPr=
+        _tUsr=$(echo ${_pthSysUsr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
+        _dscUsr="/data/disk/${_tUsr}"
+        _hmPf=$(cat ${_dscUsr}/.drush/hostmaster.alias.drushrc.php \
           | grep "root'" \
           | cut -d: -f2 \
           | awk '{ print $3}' \
           | sed "s/[\,']//g" 2>&1)
-        locFile="${hmPf}/${lePath}"
-        if [ -e "${locFile}" ] && [ -e "${provLeIncFull}" ]; then
-          cp -af ${provLeIncFull} ${locFile}
-          chown ${tUsr}:users ${locFile}
-          chmod 0644 ${locFile}
+        _locFile="${_hmPf}/${_lePath}"
+        if [ -e "${_locFile}" ] && [ -e "${_provLeIncFull}" ]; then
+          cp -af ${_provLeIncFull} ${_locFile}
+          chown ${_tUsr}:users ${_locFile}
+          chmod 0644 ${_locFile}
         fi
-        locVhFile="${hmPf}/${leVhPath}"
-        if [ -e "${locVhFile}" ] && [ -e "${hoLeIncFull}" ]; then
-          cp -af ${hoLeIncFull} ${locVhFile}
-          chown ${tUsr}:users ${locVhFile}
-          chmod 0644 ${locVhFile}
+        _locVhFile="${_hmPf}/${_leVhPath}"
+        if [ -e "${_locVhFile}" ] && [ -e "${_hoLeIncFull}" ]; then
+          cp -af ${_hoLeIncFull} ${_locVhFile}
+          chown ${_tUsr}:users ${_locVhFile}
+          chmod 0644 ${_locVhFile}
         fi
-        leRoot="${dscUsr}/tools/le"
-        exeLe="${leRoot}/dehydrated"
-        dehydFull="${leRoot}/${dehydName}"
-        legacyLeShFile="${leRoot}/letsencrypt.sh"
-        lockLeFile="${leRoot}/lock"
-        configIni="${leRoot}/config"
-        acctsDir="${leRoot}/accounts"
-        acctsDemoDir="${leRoot}/accounts-demo"
-        demoPid="${leRoot}/.ctrl/ssl-demo-mode.pid"
-        normalRegPid="${leRoot}/.ctrl/normal-re6-register.pid"
-        forcedRegPid="${leRoot}/.ctrl/forced-re6-register.pid"
-        onDemandRegPid="${leRoot}/.ctrl/onDemand-register.pid"
-        validIdn=$(grep "letsencrypt" ${acctsDir}/*/account_id.json 2>&1)
-        validReg=$(grep "valid" ${acctsDir}/*/registration_info.json 2>&1)
-        validIPr=$(grep "${_LOC_IP}" ${acctsDir}/*/registration_info.json 2>&1)
+        _leRoot="${_dscUsr}/tools/le"
+        _exeLe="${_leRoot}/dehydrated"
+        _dehydFull="${_leRoot}/${_dehydName}"
+        _legacyLeShFile="${_leRoot}/letsencrypt.sh"
+        _lockLeFile="${_leRoot}/lock"
+        _configIni="${_leRoot}/config"
+        _acctsDir="${_leRoot}/accounts"
+        __acctsDemoDir="${_leRoot}/accounts-demo"
+        _demoPid="${_leRoot}/.ctrl/ssl-demo-mode.pid"
+        _normalRegPid="${_leRoot}/.ctrl/normal-re6-register.pid"
+        _forcedRegPid="${_leRoot}/.ctrl/forced-re6-register.pid"
+        _onDemandRegPid="${_leRoot}/.ctrl/onDemand-register.pid"
+        _validIdn=$(grep "letsencrypt" ${_acctsDir}/*/account_id.json 2>&1)
+        _validReg=$(grep "valid" ${_acctsDir}/*/registration_info.json 2>&1)
+        _validIPr=$(grep "${_LOC_IP}" ${_acctsDir}/*/registration_info.json 2>&1)
         _HOUR=$(date +%H 2>&1)
         _HOUR=${_HOUR//[^0-9-]/}
-        if [ -e "${dehydSrcPath}" ]; then
-          cp -af ${dehydSrcPath} ${dehydFull}
-          chown ${tUsr}:users ${dehydFull}
-          chmod 0700 ${dehydFull}
+        if [ -e "${_dehydSrcPath}" ]; then
+          cp -af ${_dehydSrcPath} ${_dehydFull}
+          chown ${_tUsr}:users ${_dehydFull}
+          chmod 0700 ${_dehydFull}
         fi
-        if [ -e "${dehydFull}" ] \
-          && [ ! -e "${normalRegPid}" ]; then
+        if [ -e "${_dehydFull}" ] \
+          && [ ! -e "${_normalRegPid}" ]; then
           if [ "${_HOUR}" = "5" ] \
             || [ "${_HOUR}" = "17" ] \
-            || [ -e "${onDemandRegPid}" ]; then
-            su -s /bin/bash - ${tUsr} -c "bash ${exeLe} --register --accept-terms"
+            || [ -e "${_onDemandRegPid}" ]; then
+            su -s /bin/bash - ${_tUsr} -c "bash ${_exeLe} --register --accept-terms"
             wait
-            touch ${normalRegPid}
+            touch ${_normalRegPid}
           fi
         fi
-        if [ -e "${lockLeFile}" ]; then
-          rm -f ${lockLeFile}
+        if [ -e "${_lockLeFile}" ]; then
+          rm -f ${_lockLeFile}
           sleep 1
         fi
-        if [ -e "${demoPid}" ]; then
-          rm -f ${demoPid}
+        if [ -e "${_demoPid}" ]; then
+          rm -f ${_demoPid}
         fi
         if [ "${_HOUR}" = "11" ] \
           || [ "${_HOUR}" = "23" ] \
-          || [ -e "${onDemandRegPid}" ]; then
-          if [ -e "${legacyLeShFile}" ] \
-            || [ -e "${acctsDemoDir}" ] \
-            || [[ ! "${validIdn}" =~ "letsencrypt" ]] \
-            || [[ ! "${validReg}" =~ "valid" ]] \
-            || [[ ! "${validIPr}" =~ "${_LOC_IP}" ]] \
-            || [ ! -e "${forcedRegPid}" ]; then
-            rm -f ${legacyLeShFile}
-            rm -rf ${acctsDemoDir}
-            rm -rf ${acctsDir}
-            rm -f ${leRoot}/.ctrl/.forced*
-            rm -f ${leRoot}/.ctrl/.normal*
-            rm -f ${leRoot}/.ctrl/forced*
-            rm -f ${leRoot}/.ctrl/normal*
-            if [ -e "${exeLe}" ]; then
-              su -s /bin/bash - ${tUsr} -c "bash ${exeLe} --register --accept-terms"
+          || [ -e "${_onDemandRegPid}" ]; then
+          if [ -e "${_legacyLeShFile}" ] \
+            || [ -e "${_acctsDemoDir}" ] \
+            || [[ ! "${_validIdn}" =~ "letsencrypt" ]] \
+            || [[ ! "${_validReg}" =~ "valid" ]] \
+            || [[ ! "${_validIPr}" =~ "${_LOC_IP}" ]] \
+            || [ ! -e "${_forcedRegPid}" ]; then
+            rm -f ${_legacyLeShFile}
+            rm -rf ${_acctsDemoDir}
+            rm -rf ${_acctsDir}
+            rm -f ${_leRoot}/.ctrl/.forced*
+            rm -f ${_leRoot}/.ctrl/.normal*
+            rm -f ${_leRoot}/.ctrl/forced*
+            rm -f ${_leRoot}/.ctrl/normal*
+            if [ -e "${_exeLe}" ]; then
+              su -s /bin/bash - ${_tUsr} -c "bash ${_exeLe} --register --accept-terms"
               wait
-              touch ${forcedRegPid}
-              touch ${normalRegPid}
+              touch ${_forcedRegPid}
+              touch ${_normalRegPid}
             fi
           fi
         fi
       fi
     done
-    touch ${pthLog}/hosting_le_vt.ctrl.${tRee}.${_X_SE}.pid
+    touch ${_pthLog}/hosting_le_vt.ctrl.${_tRee}.${_xSrl}.pid
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${pthLog}/websh.fix-regr-04.ctrl.${tRee}.${_X_SE}.pid" ]; then
+    && [ ! -e "${_pthLog}/websh.fix-regr-04.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /bin/websh /var/xdrago/websh.sh.old
-    curl ${crlGet} "${urlHmr}/helpers/websh.sh.txt" -o /bin/websh
+    curl ${_crlGet} "${_urlHmr}/helpers/websh.sh.txt" -o /bin/websh
     if [ -e "/bin/websh" ]; then
       chmod 755 /bin/websh
       chown root:root /bin/websh
-      touch ${pthLog}/websh.fix-regr-04.ctrl.${tRee}.${_X_SE}.pid
+      touch ${_pthLog}/websh.fix-regr-04.ctrl.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/websh.sh.old /bin/websh
     fi
@@ -1594,126 +1594,126 @@ update_agents() {
   _Dir="/data/all/000/modules"
   _REDIS_T_VERSION=8.x-1.8.1
   if [ -e "/var/xdrago/manage_solr_config.sh" ]; then
-    if [ ! -e "${_Dir}/redis_nine_ten/ver-${_REDIS_T_VERSION}.${_X_SE}.info" ]; then
+    if [ ! -e "${_Dir}/redis_nine_ten/ver-${_REDIS_T_VERSION}.${_xSrl}.info" ]; then
       mkdir -p ${_Dir}
       cd ${_Dir}
       rm -rf ${_Dir}/redis_nine_ten
-      get_dev_contrib "redis_nine_ten-${_REDIS_T_VERSION}.tar.gz"
-      echo update > ${_Dir}/redis_nine_ten/ver-${_REDIS_T_VERSION}.${_X_SE}.info
+      _get_dev_contrib "redis_nine_ten-${_REDIS_T_VERSION}.tar.gz"
+      echo update > ${_Dir}/redis_nine_ten/ver-${_REDIS_T_VERSION}.${_xSrl}.info
       find ${_Dir} -type d -exec chmod 0755 {} \; &> /dev/null
       find ${_Dir} -type f -exec chmod 0644 {} \; &> /dev/null
-      touch ${pthLog}/redis_nine_ten.ctrl.${_X_SE}.log
+      touch ${_pthLog}/redis_nine_ten.ctrl.${_xSrl}.log
     fi
   fi
 
   _Dir="/data/all/000/modules"
   _REDIS_C_VERSION=com-19-04-2021
   if [ -e "/var/xdrago/manage_solr_config.sh" ]; then
-    if [ ! -e "${_Dir}/redis_compr/ver-${_REDIS_C_VERSION}.${_X_SE}.info" ]; then
+    if [ ! -e "${_Dir}/redis_compr/ver-${_REDIS_C_VERSION}.${_xSrl}.info" ]; then
       mkdir -p ${_Dir}
       cd ${_Dir}
       rm -rf ${_Dir}/redis_compr
-      get_dev_contrib "redis_compr-${_REDIS_C_VERSION}.tar.gz"
-      echo update > ${_Dir}/redis_compr/ver-${_REDIS_C_VERSION}.${_X_SE}.info
+      _get_dev_contrib "redis_compr-${_REDIS_C_VERSION}.tar.gz"
+      echo update > ${_Dir}/redis_compr/ver-${_REDIS_C_VERSION}.${_xSrl}.info
       find ${_Dir} -type d -exec chmod 0755 {} \; &> /dev/null
       find ${_Dir} -type f -exec chmod 0644 {} \; &> /dev/null
-      touch ${pthLog}/redis_compr.ctrl.${_X_SE}.log
+      touch ${_pthLog}/redis_compr.ctrl.${_xSrl}.log
     fi
   fi
 
   _Dir="/data/all/000/modules"
   _REDIS_L_VERSION=7.x-3.19.1
   if [ -e "/var/xdrago/manage_solr_config.sh" ]; then
-    if [ ! -e "${_Dir}/redis_edge/ver-${_REDIS_L_VERSION}.${_X_SE}.info" ]; then
+    if [ ! -e "${_Dir}/redis_edge/ver-${_REDIS_L_VERSION}.${_xSrl}.info" ]; then
       mkdir -p ${_Dir}
       cd ${_Dir}
       rm -rf ${_Dir}/redis_edge
-      get_dev_contrib "redis_edge-${_REDIS_L_VERSION}.tar.gz"
-      echo update > ${_Dir}/redis_edge/ver-${_REDIS_L_VERSION}.${_X_SE}.info
+      _get_dev_contrib "redis_edge-${_REDIS_L_VERSION}.tar.gz"
+      echo update > ${_Dir}/redis_edge/ver-${_REDIS_L_VERSION}.${_xSrl}.info
       find ${_Dir} -type d -exec chmod 0755 {} \; &> /dev/null
       find ${_Dir} -type f -exec chmod 0644 {} \; &> /dev/null
-      touch ${pthLog}/redis_edge.ctrl.${_X_SE}.log
+      touch ${_pthLog}/redis_edge.ctrl.${_xSrl}.log
     fi
   fi
 
   _Dir="/data/all/000/modules"
   _REDIS_N_VERSION=com-19-04-2021
   if [ -e "/var/xdrago/manage_solr_config.sh" ]; then
-    if [ ! -e "${_Dir}/redis_eight/ver-${_REDIS_N_VERSION}.${_X_SE}.info" ]; then
+    if [ ! -e "${_Dir}/redis_eight/ver-${_REDIS_N_VERSION}.${_xSrl}.info" ]; then
       mkdir -p ${_Dir}
       cd ${_Dir}
       rm -rf ${_Dir}/redis_eight
-      get_dev_contrib "redis_eight-${_REDIS_N_VERSION}.tar.gz"
-      echo update > ${_Dir}/redis_eight/ver-${_REDIS_N_VERSION}.${_X_SE}.info
+      _get_dev_contrib "redis_eight-${_REDIS_N_VERSION}.tar.gz"
+      echo update > ${_Dir}/redis_eight/ver-${_REDIS_N_VERSION}.${_xSrl}.info
       find ${_Dir} -type d -exec chmod 0755 {} \; &> /dev/null
       find ${_Dir} -type f -exec chmod 0644 {} \; &> /dev/null
-      touch ${pthLog}/redis_eight.ctrl.${_X_SE}.log
+      touch ${_pthLog}/redis_eight.ctrl.${_xSrl}.log
     fi
   fi
 }
 
-fix_core_dgd() {
-  # sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g" ${barCnf}
+_fix_core_dgd() {
+  # sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g" ${_barCnf}
 
-  saCoreS="${saCoreN}-D7"
-  saIncDb="includes/database/database.inc"
-  saPatch="/var/xdrago/conf/${saCoreS}.patch"
+  _saCoreS="${_saCoreN}-D7"
+  _saIncDb="includes/database/database.inc"
+  _saPatch="/var/xdrago/conf/${_saCoreS}.patch"
 
-  saQCoreN="${saCoreN}"
-  saQCoreS="${saQCoreN}-D8"
-  saQIncDb="core/includes/database.inc"
-  saQPatch="/var/xdrago/conf/${saQCoreS}.patch"
+  _saQCoreN="${_saCoreN}"
+  _saQCoreS="${_saQCoreN}-D8"
+  _saQIncDb="core/includes/database.inc"
+  _saQPatch="/var/xdrago/conf/${_saQCoreS}.patch"
 
-  saXCoreN="${saCoreN}"
-  saXCoreS="${saXCoreN}-D6"
-  saXIncDb="includes/database.inc"
-  saXPatch="/var/xdrago/conf/${saXCoreS}.patch"
+  _saXCoreN="${_saCoreN}"
+  _saXCoreS="${_saXCoreN}-D6"
+  _saXIncDb="includes/database.inc"
+  _saXPatch="/var/xdrago/conf/${_saXCoreS}.patch"
 
-  saBCoreP="${saCoreN}-provision"
-  saBPatch="/var/xdrago/conf/${saBCoreP}.patch"
+  _saBCoreP="${_saCoreN}-provision"
+  _saBPatch="/var/xdrago/conf/${_saBCoreP}.patch"
 
   # SA-CORE D8 patch
   if [ -e "/var/xdrago" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${saQPatch}" ]; then
+    && [ ! -e "${_saQPatch}" ]; then
     mkdir -p /var/xdrago/conf
-    curl ${crlGet} "${urlHmr}/patches/8-core/${saQCoreS}.patch" -o ${saQPatch}
+    curl ${_crlGet} "${_urlHmr}/patches/8-core/${_saQCoreS}.patch" -o ${_saQPatch}
   fi
 
   # SA-CORE D7 patch
   if [ -e "/var/xdrago" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${saPatch}" ]; then
+    && [ ! -e "${_saPatch}" ]; then
     mkdir -p /var/xdrago/conf
-    curl ${crlGet} "${urlHmr}/patches/7-core/${saCoreS}.patch" -o ${saPatch}
+    curl ${_crlGet} "${_urlHmr}/patches/7-core/${_saCoreS}.patch" -o ${_saPatch}
   fi
 
   # SA-CORE D6 patch
   # if [ -e "/var/xdrago" ] \
   #   && [ -e "/var/aegir/drush" ] \
-	#   && [ ! -e "${saXPatch}" ]; then
+	#   && [ ! -e "${_saXPatch}" ]; then
 	#   mkdir -p /var/xdrago/conf
-	#   curl ${crlGet} "${urlHmr}/patches/6-core/${saXCoreS}.patch" -o ${saXPatch}
+	#   curl ${_crlGet} "${_urlHmr}/patches/6-core/${_saXCoreS}.patch" -o ${_saXPatch}
   # fi
 
   # SA-CORE for Octopus hostmaster platforms
   if [ -e "/var/xdrago" ] \
     && [ -e "/var/aegir/drush" ] \
     && [ -d "/data/u" ] \
-    && [ -e "${saPatch}" ]; then
+    && [ -e "${_saPatch}" ]; then
     if [ -d "/data/all" ] \
-      && [ ! -e "${pthLog}/hostmaster-octopus-${saCoreN}-fixed-d7.log" ]; then
-      for File in `find /data/disk/*/aegir/distro/*/${saIncDb} \
+      && [ ! -e "${_pthLog}/hostmaster-octopus-${_saCoreN}-fixed-d7.log" ]; then
+      for _File in `find /data/disk/*/aegir/distro/*/${_saIncDb} \
         -maxdepth 0 -mindepth 0 | sort`; do
-        Core=$(echo $File \
+        _Core=$(echo ${_File} \
           | sed 's/\/includes.*//g' \
           | awk '{print $1}' 2> /dev/null)
-        if [ -d "${Core}" ] && [ ! -e "${Core}/core" ]; then
-          cd ${Core}
-          patch -p1 < ${saPatch} &> /dev/null
+        if [ -d "${_Core}" ] && [ ! -e "${_Core}/core" ]; then
+          cd ${_Core}
+          patch -p1 < ${_saPatch} &> /dev/null
         fi
       done
-      touch ${pthLog}/hostmaster-octopus-${saCoreN}-fixed-d7.log
+      touch ${_pthLog}/hostmaster-octopus-${_saCoreN}-fixed-d7.log
     fi
     cd
   fi
@@ -1721,32 +1721,32 @@ fix_core_dgd() {
   # SA-CORE for Barracuda hostmaster platforms
   if [ -e "/var/xdrago" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ -e "${saPatch}" ]; then
+    && [ -e "${_saPatch}" ]; then
     if [ -d "/data/all" ] \
-      && [ ! -e "${pthLog}/hostmaster-barracuda-${saCoreN}-fixed-d7.log" ]; then
-      for File in `find /var/aegir/host_master/*/${saIncDb} \
+      && [ ! -e "${_pthLog}/hostmaster-barracuda-${_saCoreN}-fixed-d7.log" ]; then
+      for _File in `find /var/aegir/host_master/*/${_saIncDb} \
         -maxdepth 0 -mindepth 0 | sort`; do
-        Core=$(echo $File \
+        _Core=$(echo ${_File} \
           | sed 's/\/includes.*//g' \
           | awk '{print $1}' 2> /dev/null)
-        if [ -d "${Core}" ] && [ ! -e "${Core}/core" ]; then
-          cd ${Core}
-          patch -p1 < ${saPatch} &> /dev/null
+        if [ -d "${_Core}" ] && [ ! -e "${_Core}/core" ]; then
+          cd ${_Core}
+          patch -p1 < ${_saPatch} &> /dev/null
         fi
       done
 
-      for File in `find /var/aegir/hostmaster*/${saIncDb} \
+      for _File in `find /var/aegir/hostmaster*/${_saIncDb} \
         -maxdepth 0 -mindepth 0 | sort`; do
-        Core=$(echo $File \
+        _Core=$(echo ${_File} \
           | sed 's/\/includes.*//g' \
           | awk '{print $1}' 2> /dev/null)
-        if [ -d "${Core}" ] && [ ! -e "${Core}/core" ]; then
-          cd ${Core}
-          patch -p1 < ${saPatch} &> /dev/null
+        if [ -d "${_Core}" ] && [ ! -e "${_Core}/core" ]; then
+          cd ${_Core}
+          patch -p1 < ${_saPatch} &> /dev/null
         fi
       done
 
-      touch ${pthLog}/hostmaster-barracuda-${saCoreN}-fixed-d7.log
+      touch ${_pthLog}/hostmaster-barracuda-${_saCoreN}-fixed-d7.log
     fi
     cd
   fi
@@ -1754,55 +1754,55 @@ fix_core_dgd() {
   # SA-CORE for built-in D7 platforms
   if [ -e "/var/xdrago" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ -e "${saPatch}" ] \
-    && [ ! -e "${pthLog}/${saCoreN}-fixed-d7.log" ]; then
+    && [ -e "${_saPatch}" ] \
+    && [ ! -e "${_pthLog}/${_saCoreN}-fixed-d7.log" ]; then
     if [ -d "/data/all/000/core" ]; then
-      for Core in `find /data/all/000/core/drupal-7* \
+      for _Core in `find /data/all/000/core/drupal-7* \
         -maxdepth 0 -mindepth 0 | sort`; do
-        cd ${Core}
-        patch -p1 < ${saPatch} &> /dev/null
+        cd ${_Core}
+        patch -p1 < ${_saPatch} &> /dev/null
       done
     elif [ -d "/data/disk/all/000/core" ]; then
-      for Core in `find /data/disk/all/000/core/drupal-7* \
+      for _Core in `find /data/disk/all/000/core/drupal-7* \
         -maxdepth 0 -mindepth 0 | sort`; do
-        cd ${Core}
-        patch -p1 < ${saPatch} &> /dev/null
+        cd ${_Core}
+        patch -p1 < ${_saPatch} &> /dev/null
       done
     fi
-    touch ${pthLog}/${saCoreN}-fixed-d7.log
+    touch ${_pthLog}/${_saCoreN}-fixed-d7.log
     cd
   fi
 
   # SA-CORE for ancient D7 platforms
   if [ -e "/var/xdrago" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ -e "${saPatch}" ]; then
+    && [ -e "${_saPatch}" ]; then
     if [ -d "/data/all" ] \
-      && [ ! -e "${pthLog}/legacy-${saCoreN}-fixed-d7.log" ]; then
-      for File in `find /data/all/*/*/${saIncDb} \
+      && [ ! -e "${_pthLog}/legacy-${_saCoreN}-fixed-d7.log" ]; then
+      for _File in `find /data/all/*/*/${_saIncDb} \
         -maxdepth 0 -mindepth 0 | sort`; do
-        Core=$(echo $File \
+        _Core=$(echo ${_File} \
           | sed 's/\/includes.*//g' \
           | awk '{print $1}' 2> /dev/null)
-        if [ -d "${Core}" ] && [ ! -e "${Core}/core" ]; then
-          cd ${Core}
-          patch -p1 < ${saPatch} &> /dev/null
+        if [ -d "${_Core}" ] && [ ! -e "${_Core}/core" ]; then
+          cd ${_Core}
+          patch -p1 < ${_saPatch} &> /dev/null
         fi
       done
-      touch ${pthLog}/legacy-${saCoreN}-fixed-d7.log
+      touch ${_pthLog}/legacy-${_saCoreN}-fixed-d7.log
     elif [ -d "/data/disk/all" ] \
-      && [ ! -e "${pthLog}/legacy-${saCoreN}-fixed-d7eee.log" ]; then
-      for File in `find /data/disk/all/*/*/${saIncDb} \
+      && [ ! -e "${_pthLog}/legacy-${_saCoreN}-fixed-d7eee.log" ]; then
+      for _File in `find /data/disk/all/*/*/${_saIncDb} \
         -maxdepth 0 -mindepth 0 | sort`; do
-        Core=$(echo $File \
+        _Core=$(echo ${_File} \
           | sed 's/\/includes.*//g' \
           | awk '{print $1}' 2> /dev/null)
-        if [ -d "${Core}" ] && [ ! -e "${Core}/core" ]; then
-          cd ${Core}
-          patch -p1 < ${saPatch} &> /dev/null
+        if [ -d "${_Core}" ] && [ ! -e "${_Core}/core" ]; then
+          cd ${_Core}
+          patch -p1 < ${_saPatch} &> /dev/null
         fi
       done
-      touch ${pthLog}/legacy-${saCoreN}-fixed-d7eee.log
+      touch ${_pthLog}/legacy-${_saCoreN}-fixed-d7eee.log
     fi
     cd
   fi
@@ -1810,207 +1810,207 @@ fix_core_dgd() {
   # SA-CORE for custom D7 platforms
   if [ -e "/var/xdrago" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ -e "${saPatch}" ]; then
+    && [ -e "${_saPatch}" ]; then
     if [ -d "/data/u" ] \
-      && [ ! -e "${pthLog}/batch-custom-${saCoreN}-fixed-d7.log" ]; then
-      for File in `find /data/disk/*/static/*/${saIncDb} \
+      && [ ! -e "${_pthLog}/batch-custom-${_saCoreN}-fixed-d7.log" ]; then
+      for _File in `find /data/disk/*/static/*/${_saIncDb} \
         -maxdepth 0 -mindepth 0 | sort`; do
-        Core=$(echo $File \
+        _Core=$(echo ${_File} \
           | sed 's/\/includes.*//g' \
           | awk '{print $1}' 2> /dev/null)
-        if [ -d "${Core}" ] \
-          && [ ! -e "${Core}/core" ] \
-          && [ ! -e "${Core}/profiles/${saCoreS}-fix.info" ]; then
-          cd ${Core}
-          patch -p1 < ${saPatch} &> /dev/null
-          echo fixed > ${Core}/profiles/${saCoreS}-fix.info
+        if [ -d "${_Core}" ] \
+          && [ ! -e "${_Core}/core" ] \
+          && [ ! -e "${_Core}/profiles/${_saCoreS}-fix.info" ]; then
+          cd ${_Core}
+          patch -p1 < ${_saPatch} &> /dev/null
+          echo fixed > ${_Core}/profiles/${_saCoreS}-fix.info
         fi
       done
-      for File in `find /data/disk/*/static/*/*/${saIncDb} \
+      for _File in `find /data/disk/*/static/*/*/${_saIncDb} \
         -maxdepth 0 -mindepth 0 | sort`; do
-        Core=$(echo $File \
+        _Core=$(echo ${_File} \
           | sed 's/\/includes.*//g' \
           | awk '{print $1}' 2> /dev/null)
-        if [ -d "${Core}" ] \
-          && [ ! -e "${Core}/core" ] \
-          && [ ! -e "${Core}/profiles/${saCoreS}-fix.info" ]; then
-          cd ${Core}
-          patch -p1 < ${saPatch} &> /dev/null
-          echo fixed > ${Core}/profiles/${saCoreS}-fix.info
+        if [ -d "${_Core}" ] \
+          && [ ! -e "${_Core}/core" ] \
+          && [ ! -e "${_Core}/profiles/${_saCoreS}-fix.info" ]; then
+          cd ${_Core}
+          patch -p1 < ${_saPatch} &> /dev/null
+          echo fixed > ${_Core}/profiles/${_saCoreS}-fix.info
         fi
       done
-      for File in `find /data/disk/*/static/*/*/*/${saIncDb} \
+      for _File in `find /data/disk/*/static/*/*/*/${_saIncDb} \
         -maxdepth 0 -mindepth 0 | sort`; do
-        Core=$(echo $File \
+        _Core=$(echo ${_File} \
           | sed 's/\/includes.*//g' \
           | awk '{print $1}' 2> /dev/null)
-        if [ -d "${Core}" ] \
-          && [ ! -e "${Core}/core" ] \
-          && [ ! -e "${Core}/profiles/${saCoreS}-fix.info" ]; then
-          cd ${Core}
-          patch -p1 < ${saPatch} &> /dev/null
-          echo fixed > ${Core}/profiles/${saCoreS}-fix.info
+        if [ -d "${_Core}" ] \
+          && [ ! -e "${_Core}/core" ] \
+          && [ ! -e "${_Core}/profiles/${_saCoreS}-fix.info" ]; then
+          cd ${_Core}
+          patch -p1 < ${_saPatch} &> /dev/null
+          echo fixed > ${_Core}/profiles/${_saCoreS}-fix.info
         fi
       done
-      for File in `find /data/disk/*/static/*/*/*/*/${saIncDb} \
+      for _File in `find /data/disk/*/static/*/*/*/*/${_saIncDb} \
         -maxdepth 0 -mindepth 0 | sort`; do
-        Core=$(echo $File \
+        _Core=$(echo ${_File} \
           | sed 's/\/includes.*//g' \
           | awk '{print $1}' 2> /dev/null)
-        if [ -d "${Core}" ] \
-          && [ ! -e "${Core}/core" ] \
-          && [ ! -e "${Core}/profiles/${saCoreS}-fix.info" ]; then
-          cd ${Core}
-          patch -p1 < ${saPatch} &> /dev/null
-          echo fixed > ${Core}/profiles/${saCoreS}-fix.info
+        if [ -d "${_Core}" ] \
+          && [ ! -e "${_Core}/core" ] \
+          && [ ! -e "${_Core}/profiles/${_saCoreS}-fix.info" ]; then
+          cd ${_Core}
+          patch -p1 < ${_saPatch} &> /dev/null
+          echo fixed > ${_Core}/profiles/${_saCoreS}-fix.info
         fi
       done
-      for File in `find /data/disk/*/static/*/*/*/*/*/${saIncDb} \
+      for _File in `find /data/disk/*/static/*/*/*/*/*/${_saIncDb} \
         -maxdepth 0 -mindepth 0 | sort`; do
-        Core=$(echo $File \
+        _Core=$(echo ${_File} \
           | sed 's/\/includes.*//g' \
           | awk '{print $1}' 2> /dev/null)
-        if [ -d "${Core}" ] \
-          && [ ! -e "${Core}/core" ] \
-          && [ ! -e "${Core}/profiles/${saCoreS}-fix.info" ]; then
-          cd ${Core}
-          patch -p1 < ${saPatch} &> /dev/null
-          echo fixed > ${Core}/profiles/${saCoreS}-fix.info
+        if [ -d "${_Core}" ] \
+          && [ ! -e "${_Core}/core" ] \
+          && [ ! -e "${_Core}/profiles/${_saCoreS}-fix.info" ]; then
+          cd ${_Core}
+          patch -p1 < ${_saPatch} &> /dev/null
+          echo fixed > ${_Core}/profiles/${_saCoreS}-fix.info
         fi
       done
     fi
     cd
-    touch ${pthLog}/batch-custom-${saCoreN}-fixed-d7.log
+    touch ${_pthLog}/batch-custom-${_saCoreN}-fixed-d7.log
   fi
 
   # SA-CORE for D8 platforms in ~/static
   if [ -e "/var/xdrago" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ -e "${saQPatch}" ]; then
+    && [ -e "${_saQPatch}" ]; then
     if [ -d "/data/u" ] \
-      && [ ! -e "${pthLog}/batch-custom-${saQCoreN}-fixed-d8.log" ]; then
-      for File in `find /data/disk/*/static/*/${saQIncDb} \
+      && [ ! -e "${_pthLog}/batch-custom-${_saQCoreN}-fixed-d8.log" ]; then
+      for _File in `find /data/disk/*/static/*/${_saQIncDb} \
         -maxdepth 0 -mindepth 0 | sort`; do
-        Core=$(echo $File \
+        _Core=$(echo ${_File} \
           | sed 's/\/core.*//g' \
           | awk '{print $1}' 2> /dev/null)
-        if [ -d "${Core}" ] \
-          && [ -e "${Core}/core" ] \
-          && [ ! -e "${Core}/profiles/${saQCoreS}-fix.info" ]; then
-          cd ${Core}
-          patch -p1 < ${saQPatch} &> /dev/null
-          echo fixed > ${Core}/profiles/${saQCoreS}-fix.info
+        if [ -d "${_Core}" ] \
+          && [ -e "${_Core}/core" ] \
+          && [ ! -e "${_Core}/profiles/${_saQCoreS}-fix.info" ]; then
+          cd ${_Core}
+          patch -p1 < ${_saQPatch} &> /dev/null
+          echo fixed > ${_Core}/profiles/${_saQCoreS}-fix.info
         fi
       done
-      for File in `find /data/disk/*/static/*/*/${saQIncDb} \
+      for _File in `find /data/disk/*/static/*/*/${_saQIncDb} \
         -maxdepth 0 -mindepth 0 | sort`; do
-        Core=$(echo $File \
+        _Core=$(echo ${_File} \
           | sed 's/\/core.*//g' \
           | awk '{print $1}' 2> /dev/null)
-        if [ -d "${Core}" ] \
-          && [ -e "${Core}/core" ] \
-          && [ ! -e "${Core}/profiles/${saQCoreS}-fix.info" ]; then
-          cd ${Core}
-          patch -p1 < ${saQPatch} &> /dev/null
-          echo fixed > ${Core}/profiles/${saQCoreS}-fix.info
+        if [ -d "${_Core}" ] \
+          && [ -e "${_Core}/core" ] \
+          && [ ! -e "${_Core}/profiles/${_saQCoreS}-fix.info" ]; then
+          cd ${_Core}
+          patch -p1 < ${_saQPatch} &> /dev/null
+          echo fixed > ${_Core}/profiles/${_saQCoreS}-fix.info
         fi
       done
-      for File in `find /data/disk/*/static/*/*/*/${saQIncDb} \
+      for _File in `find /data/disk/*/static/*/*/*/${_saQIncDb} \
         -maxdepth 0 -mindepth 0 | sort`; do
-        Core=$(echo $File \
+        _Core=$(echo ${_File} \
           | sed 's/\/core.*//g' \
           | awk '{print $1}' 2> /dev/null)
-        if [ -d "${Core}" ] \
-          && [ -e "${Core}/core" ] \
-          && [ ! -e "${Core}/profiles/${saQCoreS}-fix.info" ]; then
-          cd ${Core}
-          patch -p1 < ${saQPatch} &> /dev/null
-          echo fixed > ${Core}/profiles/${saQCoreS}-fix.info
+        if [ -d "${_Core}" ] \
+          && [ -e "${_Core}/core" ] \
+          && [ ! -e "${_Core}/profiles/${_saQCoreS}-fix.info" ]; then
+          cd ${_Core}
+          patch -p1 < ${_saQPatch} &> /dev/null
+          echo fixed > ${_Core}/profiles/${_saQCoreS}-fix.info
         fi
       done
-      for File in `find /data/disk/*/static/*/*/*/*/${saQIncDb} \
+      for _File in `find /data/disk/*/static/*/*/*/*/${_saQIncDb} \
         -maxdepth 0 -mindepth 0 | sort`; do
-        Core=$(echo $File \
+        _Core=$(echo ${_File} \
           | sed 's/\/core.*//g' \
           | awk '{print $1}' 2> /dev/null)
-        if [ -d "${Core}" ] \
-          && [ -e "${Core}/core" ] \
-          && [ ! -e "${Core}/profiles/${saQCoreS}-fix.info" ]; then
-          cd ${Core}
-          patch -p1 < ${saQPatch} &> /dev/null
-          echo fixed > ${Core}/profiles/${saQCoreS}-fix.info
+        if [ -d "${_Core}" ] \
+          && [ -e "${_Core}/core" ] \
+          && [ ! -e "${_Core}/profiles/${_saQCoreS}-fix.info" ]; then
+          cd ${_Core}
+          patch -p1 < ${_saQPatch} &> /dev/null
+          echo fixed > ${_Core}/profiles/${_saQCoreS}-fix.info
         fi
       done
-      for File in `find /data/disk/*/static/*/*/*/*/*/${saQIncDb} \
+      for _File in `find /data/disk/*/static/*/*/*/*/*/${_saQIncDb} \
         -maxdepth 0 -mindepth 0 | sort`; do
-        Core=$(echo $File \
+        _Core=$(echo ${_File} \
           | sed 's/\/core.*//g' \
           | awk '{print $1}' 2> /dev/null)
-        if [ -d "${Core}" ] \
-          && [ -e "${Core}/core" ] \
-          && [ ! -e "${Core}/profiles/${saQCoreS}-fix.info" ]; then
-          cd ${Core}
-          patch -p1 < ${saQPatch} &> /dev/null
-          echo fixed > ${Core}/profiles/${saQCoreS}-fix.info
+        if [ -d "${_Core}" ] \
+          && [ -e "${_Core}/core" ] \
+          && [ ! -e "${_Core}/profiles/${_saQCoreS}-fix.info" ]; then
+          cd ${_Core}
+          patch -p1 < ${_saQPatch} &> /dev/null
+          echo fixed > ${_Core}/profiles/${_saQCoreS}-fix.info
         fi
       done
     fi
     cd
-    touch ${pthLog}/batch-custom-${saQCoreN}-fixed-d8.log
+    touch ${_pthLog}/batch-custom-${_saQCoreN}-fixed-d8.log
   fi
 
   # SA-CORE for built-in D6 platforms
   if [ -e "/var/xdrago" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ -e "${saXPatch}" ] \
-    && [ ! -e "${pthLog}/${saXCoreN}-finally-fixed-d6.log" ]; then
+    && [ -e "${_saXPatch}" ] \
+    && [ ! -e "${_pthLog}/${_saXCoreN}-finally-fixed-d6.log" ]; then
     if [ -d "/data/all/000/core" ]; then
-      for Core in `find /data/all/000/core/pressflow-6* \
+      for _Core in `find /data/all/000/core/pressflow-6* \
         -maxdepth 0 -mindepth 0 | sort`; do
-        cd ${Core}
-        patch -p1 < ${saXPatch} &> /dev/null
+        cd ${_Core}
+        patch -p1 < ${_saXPatch} &> /dev/null
       done
     elif [ -d "/data/disk/all/000/core" ]; then
-      for Core in `find /data/disk/all/000/core/pressflow-6* \
+      for _Core in `find /data/disk/all/000/core/pressflow-6* \
         -maxdepth 0 -mindepth 0 | sort`; do
-        cd ${Core}
-        patch -p1 < ${saXPatch} &> /dev/null
+        cd ${_Core}
+        patch -p1 < ${_saXPatch} &> /dev/null
       done
     fi
-    touch ${pthLog}/${saXCoreN}-finally-fixed-d6.log
+    touch ${_pthLog}/${_saXCoreN}-finally-fixed-d6.log
     cd
   fi
 
   # SA-CORE for ancient D6 platforms
   if [ -e "/var/xdrago" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ -e "${saXPatch}" ]; then
+    && [ -e "${_saXPatch}" ]; then
     if [ -d "/data/all" ] \
-      && [ ! -e "${pthLog}/legacy-${saXCoreN}-finally-fixed-d6.log" ]; then
-      for File in `find /data/all/*/*/${saXIncDb} \
+      && [ ! -e "${_pthLog}/legacy-${_saXCoreN}-finally-fixed-d6.log" ]; then
+      for _File in `find /data/all/*/*/${_saXIncDb} \
         -maxdepth 0 -mindepth 0 | sort`; do
-        Core=$(echo $File \
+        _Core=$(echo ${_File} \
           | sed 's/\/includes.*//g' \
           | awk '{print $1}' 2> /dev/null)
-        if [ -d "${Core}" ] && [ ! -e "${Core}/core" ]; then
-          cd ${Core}
-          patch -p1 < ${saXPatch} &> /dev/null
+        if [ -d "${_Core}" ] && [ ! -e "${_Core}/core" ]; then
+          cd ${_Core}
+          patch -p1 < ${_saXPatch} &> /dev/null
         fi
       done
-      touch ${pthLog}/legacy-${saXCoreN}-finally-fixed-d6.log
+      touch ${_pthLog}/legacy-${_saXCoreN}-finally-fixed-d6.log
     elif [ -d "/data/disk/all" ] \
-      && [ ! -e "${pthLog}/legacy-${saXCoreN}-finally-fixed-d6eee.log" ]; then
-      for File in `find /data/disk/all/*/*/${saXIncDb} \
+      && [ ! -e "${_pthLog}/legacy-${_saXCoreN}-finally-fixed-d6eee.log" ]; then
+      for _File in `find /data/disk/all/*/*/${_saXIncDb} \
         -maxdepth 0 -mindepth 0 | sort`; do
-        Core=$(echo $File \
+        _Core=$(echo ${_File} \
           | sed 's/\/includes.*//g' \
           | awk '{print $1}' 2> /dev/null)
-        if [ -d "${Core}" ] && [ ! -e "${Core}/core" ]; then
-          cd ${Core}
-          patch -p1 < ${saXPatch} &> /dev/null
+        if [ -d "${_Core}" ] && [ ! -e "${_Core}/core" ]; then
+          cd ${_Core}
+          patch -p1 < ${_saXPatch} &> /dev/null
         fi
       done
-      touch ${pthLog}/legacy-${saXCoreN}-finally-fixed-d6eee.log
+      touch ${_pthLog}/legacy-${_saXCoreN}-finally-fixed-d6eee.log
     fi
     cd
   fi
@@ -2018,81 +2018,81 @@ fix_core_dgd() {
   # SA-CORE for custom D6 platforms
   if [ -e "/var/xdrago" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ -e "${saXPatch}" ]; then
+    && [ -e "${_saXPatch}" ]; then
     if [ -d "/data/u" ] \
-      && [ ! -e "${pthLog}/batch-custom-${saXCoreN}-finally-fixed-d6.log" ]; then
-      for File in `find /data/disk/*/static/*/${saXIncDb} \
+      && [ ! -e "${_pthLog}/batch-custom-${_saXCoreN}-finally-fixed-d6.log" ]; then
+      for _File in `find /data/disk/*/static/*/${_saXIncDb} \
         -maxdepth 0 -mindepth 0 | sort`; do
-        Core=$(echo $File \
+        _Core=$(echo ${_File} \
           | sed 's/\/includes.*//g' \
           | awk '{print $1}' 2> /dev/null)
-        if [ -d "${Core}" ] \
-          && [ ! -e "${Core}/core" ] \
-          && [ ! -e "${Core}/profiles/${saXCoreS}-fix-finally.info" ]; then
-          cd ${Core}
-          patch -p1 < ${saXPatch} &> /dev/null
-          echo fixed > ${Core}/profiles/${saXCoreS}-fix-finally.info
+        if [ -d "${_Core}" ] \
+          && [ ! -e "${_Core}/core" ] \
+          && [ ! -e "${_Core}/profiles/${_saXCoreS}-fix-finally.info" ]; then
+          cd ${_Core}
+          patch -p1 < ${_saXPatch} &> /dev/null
+          echo fixed > ${_Core}/profiles/${_saXCoreS}-fix-finally.info
         fi
       done
-      for File in `find /data/disk/*/static/*/*/${saXIncDb} \
+      for _File in `find /data/disk/*/static/*/*/${_saXIncDb} \
         -maxdepth 0 -mindepth 0 | sort`; do
-        Core=$(echo $File \
+        _Core=$(echo ${_File} \
           | sed 's/\/includes.*//g' \
           | awk '{print $1}' 2> /dev/null)
-        if [ -d "${Core}" ] \
-          && [ ! -e "${Core}/core" ] \
-          && [ ! -e "${Core}/profiles/${saXCoreS}-fix-finally.info" ]; then
-          cd ${Core}
-          patch -p1 < ${saXPatch} &> /dev/null
-          echo fixed > ${Core}/profiles/${saXCoreS}-fix-finally.info
+        if [ -d "${_Core}" ] \
+          && [ ! -e "${_Core}/core" ] \
+          && [ ! -e "${_Core}/profiles/${_saXCoreS}-fix-finally.info" ]; then
+          cd ${_Core}
+          patch -p1 < ${_saXPatch} &> /dev/null
+          echo fixed > ${_Core}/profiles/${_saXCoreS}-fix-finally.info
         fi
       done
-      for File in `find /data/disk/*/static/*/*/*/${saXIncDb} \
+      for _File in `find /data/disk/*/static/*/*/*/${_saXIncDb} \
         -maxdepth 0 -mindepth 0 | sort`; do
-        Core=$(echo $File \
+        _Core=$(echo ${_File} \
           | sed 's/\/includes.*//g' \
           | awk '{print $1}' 2> /dev/null)
-        if [ -d "${Core}" ] \
-          && [ ! -e "${Core}/core" ] \
-          && [ ! -e "${Core}/profiles/${saXCoreS}-fix-finally.info" ]; then
-          cd ${Core}
-          patch -p1 < ${saXPatch} &> /dev/null
-          echo fixed > ${Core}/profiles/${saXCoreS}-fix-finally.info
+        if [ -d "${_Core}" ] \
+          && [ ! -e "${_Core}/core" ] \
+          && [ ! -e "${_Core}/profiles/${_saXCoreS}-fix-finally.info" ]; then
+          cd ${_Core}
+          patch -p1 < ${_saXPatch} &> /dev/null
+          echo fixed > ${_Core}/profiles/${_saXCoreS}-fix-finally.info
         fi
       done
-      for File in `find /data/disk/*/static/*/*/*/*/${saXIncDb} \
+      for _File in `find /data/disk/*/static/*/*/*/*/${_saXIncDb} \
         -maxdepth 0 -mindepth 0 | sort`; do
-        Core=$(echo $File \
+        _Core=$(echo ${_File} \
           | sed 's/\/includes.*//g' \
           | awk '{print $1}' 2> /dev/null)
-        if [ -d "${Core}" ] \
-          && [ ! -e "${Core}/core" ] \
-          && [ ! -e "${Core}/profiles/${saXCoreS}-fix-finally.info" ]; then
-          cd ${Core}
-          patch -p1 < ${saXPatch} &> /dev/null
-          echo fixed > ${Core}/profiles/${saXCoreS}-fix-finally.info
+        if [ -d "${_Core}" ] \
+          && [ ! -e "${_Core}/core" ] \
+          && [ ! -e "${_Core}/profiles/${_saXCoreS}-fix-finally.info" ]; then
+          cd ${_Core}
+          patch -p1 < ${_saXPatch} &> /dev/null
+          echo fixed > ${_Core}/profiles/${_saXCoreS}-fix-finally.info
         fi
       done
-      for File in `find /data/disk/*/static/*/*/*/*/*/${saXIncDb} \
+      for _File in `find /data/disk/*/static/*/*/*/*/*/${_saXIncDb} \
         -maxdepth 0 -mindepth 0 | sort`; do
-        Core=$(echo $File \
+        _Core=$(echo ${_File} \
           | sed 's/\/includes.*//g' \
           | awk '{print $1}' 2> /dev/null)
-        if [ -d "${Core}" ] \
-          && [ ! -e "${Core}/core" ] \
-          && [ ! -e "${Core}/profiles/${saXCoreS}-fix-finally.info" ]; then
-          cd ${Core}
-          patch -p1 < ${saXPatch} &> /dev/null
-          echo fixed > ${Core}/profiles/${saXCoreS}-fix-finally.info
+        if [ -d "${_Core}" ] \
+          && [ ! -e "${_Core}/core" ] \
+          && [ ! -e "${_Core}/profiles/${_saXCoreS}-fix-finally.info" ]; then
+          cd ${_Core}
+          patch -p1 < ${_saXPatch} &> /dev/null
+          echo fixed > ${_Core}/profiles/${_saXCoreS}-fix-finally.info
         fi
       done
     fi
     cd
-    touch ${pthLog}/batch-custom-${saXCoreN}-finally-fixed-d6.log
+    touch ${_pthLog}/batch-custom-${_saXCoreN}-finally-fixed-d6.log
   fi
 }
 
-fix_ping_perms() {
+_fix_ping_perms() {
   if [ -e "/bin/ping" ]; then
     _PING_TEST=$(ls -la /bin/ping | grep rwsr-xr-x 2>&1)
     if [ -z "${_PING_TEST}" ]; then
@@ -2102,20 +2102,20 @@ fix_ping_perms() {
   fi
 }
 
-fix_fpm_process_max() {
-  if [ ! -e "${pthLog}/process.max.ctrl.${tRee}.${_X_SE}.pid" ]; then
+_fix_fpm_process_max() {
+  if [ ! -e "${_pthLog}/process.max.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     sed -i "s/process.max =.*/process.max = 0/g" /opt/php*/etc/php*-fpm.conf
-    touch ${pthLog}/process.max.ctrl.${tRee}.${_X_SE}.pid
+    touch ${_pthLog}/process.max.ctrl.${_tRee}.${_xSrl}.pid
   fi
 }
 
-fix_node_in_lshell_access() {
-  if [ ! -e "${pthLog}/node.lshell-fix-scp.ctrl.${tRee}.${_X_SE}.pid" ] \
+_fix_node_in_lshell_access() {
+  if [ ! -e "${_pthLog}/node.lshell-fix-scp.ctrl.${_tRee}.${_xSrl}.pid" ] \
     && [ -e "/etc/lshell.conf" ]; then
-    PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
-    PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
-    if [[ "${PrTestPhantom}" =~ "PHANTOM" ]] \
-      || [[ "${PrTestCluster}" =~ "CLUSTER" ]] \
+    _PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
+    _PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
+    if [[ "${_PrTestPhantom}" =~ "PHANTOM" ]] \
+      || [[ "${_PrTestCluster}" =~ "CLUSTER" ]] \
       || [ -e "/root/.allow.node.lshell.cnf" ]; then
       _ALLOW_NODE=YES
     else
@@ -2141,11 +2141,11 @@ fix_node_in_lshell_access() {
       sed -i "s/, 'scp',/,/g" /var/xdrago/conf/lshell.conf
       wait
     fi
-    touch ${pthLog}/node.lshell-fix-scp.ctrl.${tRee}.${_X_SE}.pid
+    touch ${_pthLog}/node.lshell-fix-scp.ctrl.${_tRee}.${_xSrl}.pid
   fi
 }
 
-fix_python() {
+_fix_python() {
   _PYTHON_VRN=3.12.5
   _DCY_PTN="/usr/local/bin/python3"
   if [ -x "${_DCY_PTN}" ]; then
@@ -2157,7 +2157,7 @@ fix_python() {
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
-    apt_clean_update
+    _apt_clean_update
     apt-get install -y \
         intltool \
         libffi-dev \
@@ -2170,7 +2170,7 @@ fix_python() {
         tzdata
     cd /var/opt
     rm -rf Python*
-    get_dev_src "Python-${_PYTHON_VRN}.tgz"
+    _get_dev_src "Python-${_PYTHON_VRN}.tgz"
     tar -xzf Python-${_PYTHON_VRN}.tgz
     cd Python-${_PYTHON_VRN}
     if [ -d "/usr/local/ssl3" ]; then
@@ -2181,29 +2181,29 @@ fix_python() {
     make -j $(nproc) --quiet
     make install --quiet
     cd
-    apt_clean_update
+    _apt_clean_update
     apt-get install python3-pip -y
     if [ -x "/usr/local/bin/pip3" ]; then
-      usePip=/usr/local/bin/pip3
+      _usePip=/usr/local/bin/pip3
     elif [ -x "/usr/bin/pip3" ]; then
-      usePip=/usr/bin/pip3
+      _usePip=/usr/bin/pip3
     fi
-    _PIP_TEST=$(${usePip} --version 2>&1)
+    _PIP_TEST=$(${_usePip} --version 2>&1)
     if [[ "${_PIP_TEST}" =~ "python 3.11" ]] \
       || [[ "${_PIP_TEST}" =~ "python 3.12" ]]; then
-      ${usePip} install --upgrade pip --root-user-action ignore
+      ${_usePip} install --upgrade pip --root-user-action ignore
     else
-      ${usePip} install --upgrade pip
+      ${_usePip} install --upgrade pip
     fi
   fi
 }
 
-if_fix_python() {
+_if_fix_python() {
   _PYTHON_FIX=NO
   _LSHELL_CHK_VRN=0.9.18
-  isLshell=$(which lshell 2>&1)
-  if [ -x "${isLshell}" ]; then
-    _LSHELL_ITD=$(${isLshell} --version 2>&1 \
+  _isLshell=$(which lshell 2>&1)
+  if [ -x "${_isLshell}" ]; then
+    _LSHELL_ITD=$(${_isLshell} --version 2>&1 \
       | tr -d "\n" \
       | cut -d"-" -f2 \
       | awk '{ print $1}' 2>&1)
@@ -2215,9 +2215,9 @@ if_fix_python() {
     fi
   fi
   _DUPLICITY_CHK_VRN=3.0.2
-  isDuplicity=$(which duplicity 2>&1)
-  if [ -x "${isDuplicity}" ]; then
-    _DUPLICITY_ITD=$(${isDuplicity} --version 2>&1 \
+  _isDuplicity=$(which duplicity 2>&1)
+  if [ -x "${_isDuplicity}" ]; then
+    _DUPLICITY_ITD=$(${_isDuplicity} --version 2>&1 \
       | tr -d "\n" \
       | cut -d" " -f2 \
       | awk '{ print $1}' 2>&1)
@@ -2226,11 +2226,11 @@ if_fix_python() {
     fi
   fi
   if [ "${_PYTHON_FIX}" = "YES" ]; then
-    fix_python
+    _fix_python
   fi
 }
 
-fix_lshell() {
+_fix_lshell() {
   if [ ! -e "/usr/local/etc/lshell.conf" ] \
     && [ ! -L "/usr/local/etc/lshell.conf" ] \
     && [ -e "/etc/lshell.conf" ]; then
@@ -2238,11 +2238,11 @@ fix_lshell() {
     ln -sfn /etc/lshell.conf /usr/local/etc/lshell.conf
   fi
   _LSHELL_VRN=0.9.18.10
-  _PATH_LSHELL="${usrBin}/lshell"
+  _PATH_LSHELL="${_usrBin}/lshell"
   _LSHELL_CHK_VRN=0.9.18
   _LSHELL_FORCE_REINSTALL=NO
-  isLshell=$(which lshell 2>&1)
-  _LSHELL_ITD=$(${isLshell} --version 2>&1 \
+  _isLshell=$(which lshell 2>&1)
+  _LSHELL_ITD=$(${_isLshell} --version 2>&1 \
     | tr -d "\n" \
     | cut -d"-" -f2 \
     | awk '{ print $1}' 2>&1)
@@ -2255,38 +2255,38 @@ fix_lshell() {
   if [ -e "${_PATH_LSHELL}" ] \
     && [ "${_LSHELL_FORCE_REINSTALL}" = "YES" ]; then
     cp -af /etc/lshell.conf /etc/lshell.conf-bak-${_LSHELL_VRN}-hotfix5
-    apt_clean_update
+    _apt_clean_update
     apt-get install python3-pip -y
     if [ -x "/usr/local/bin/pip3" ]; then
-      usePip=/usr/local/bin/pip3
+      _usePip=/usr/local/bin/pip3
     elif [ -x "/usr/bin/pip3" ]; then
-      usePip=/usr/bin/pip3
+      _usePip=/usr/bin/pip3
     fi
-    _PIP_TEST=$(${usePip} --version 2>&1)
+    _PIP_TEST=$(${_usePip} --version 2>&1)
     if [[ "${_PIP_TEST}" =~ "python 3.11" ]] \
       || [[ "${_PIP_TEST}" =~ "python 3.12" ]]; then
-      ${usePip} install --upgrade pip --root-user-action ignore
+      ${_usePip} install --upgrade pip --root-user-action ignore
     else
-      ${usePip} install --upgrade pip
+      ${_usePip} install --upgrade pip
     fi
     cd /var/opt
     rm -rf lshell*
-    get_dev_src "lshell-${_LSHELL_VRN}.tar.gz"
-    for Files in `find /var/opt/lshell-${_LSHELL_VRN} -type f`; do
-      sed -i "s/kicked/logged/g" $Files &> /dev/null
+    _get_dev_src "lshell-${_LSHELL_VRN}.tar.gz"
+    for _Files in `find /var/opt/lshell-${_LSHELL_VRN} -type f`; do
+      sed -i "s/kicked/logged/g" ${_Files} &> /dev/null
       wait
-      sed -i "s/Kicked/Logged/g" $Files &> /dev/null
+      sed -i "s/Kicked/Logged/g" ${_Files} &> /dev/null
       wait
     done
     rm -rf /usr/local/lib/python*/site-packages/lshell*
     rm -rf /usr/local/lib/python*/dist-packages/lshell*
     cd /var/opt/lshell-${_LSHELL_VRN}
-    _PIP_TEST=$(${usePip} --version 2>&1)
+    _PIP_TEST=$(${_usePip} --version 2>&1)
     if [[ "${_PIP_TEST}" =~ "python 3.11" ]] \
       || [[ "${_PIP_TEST}" =~ "python 3.12" ]]; then
-      ${usePip} install . --break-system-packages --root-user-action ignore
+      ${_usePip} install . --break-system-packages --root-user-action ignore
     else
-      ${usePip} install .
+      ${_usePip} install .
     fi
     cp -af /etc/lshell.conf-bak-${_LSHELL_VRN}-hotfix5 /etc/lshell.conf
     rm -f /etc/logrotate.d/lshell
@@ -2294,18 +2294,18 @@ fix_lshell() {
     mkdir -p /var/log/lsh
     chown :lshellg /var/log/lsh
     chmod 770 /var/log/lsh &> /dev/null
-    touch ${pthLog}/lshell-build-${_LSHELL_VRN}.log-hotfix5
+    touch ${_pthLog}/lshell-build-${_LSHELL_VRN}.log-hotfix5
     who | awk '$1 !~ /root/{ cmd="pkill -KILL -u " $1; system(cmd) }'
-    touch ${pthLog}/lshell-fix-build-${_LSHELL_VRN}.log
+    touch ${_pthLog}/lshell-fix-build-${_LSHELL_VRN}.log
   fi
-  if [ -f "${usrBin}/lshell" ]; then
+  if [ -f "${_usrBin}/lshell" ]; then
     if [ ! -L "/usr/bin/lshell" ]; then
-      ln -sfn ${usrBin}/lshell /usr/bin/lshell &> /dev/null
+      ln -sfn ${_usrBin}/lshell /usr/bin/lshell &> /dev/null
     fi
   fi
 }
 
-fix_log4j() {
+_fix_log4j() {
   _LOG4J_VRN=2.17.1
   _DO_SOLR_RESTART=
   if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
@@ -2313,7 +2313,7 @@ fix_log4j() {
       && [ ! -e "/opt/solr-7.7.3/server/lib/ext/log4j-core-${_LOG4J_VRN}.jar" ]; then
       cd /var/opt
       rm -rf apache-log4j*
-      get_dev_src "apache-log4j-${_LOG4J_VRN}-bin.tar.gz"
+      _get_dev_src "apache-log4j-${_LOG4J_VRN}-bin.tar.gz"
       if [ -e "/var/opt/apache-log4j-${_LOG4J_VRN}-bin/log4j-core-${_LOG4J_VRN}.jar" ]; then
         cd /var/opt/apache-log4j-${_LOG4J_VRN}-bin
         mkdir -p /var/backups/log4j/solr-7.7.3/
@@ -2335,7 +2335,7 @@ fix_log4j() {
       && [ ! -e "/opt/solr-7.6.0/server/lib/ext/log4j-core-${_LOG4J_VRN}.jar" ]; then
       cd /var/opt
       rm -rf apache-log4j*
-      get_dev_src "apache-log4j-${_LOG4J_VRN}-bin.tar.gz"
+      _get_dev_src "apache-log4j-${_LOG4J_VRN}-bin.tar.gz"
       if [ -e "/var/opt/apache-log4j-${_LOG4J_VRN}-bin/log4j-core-${_LOG4J_VRN}.jar" ]; then
         cd /var/opt/apache-log4j-${_LOG4J_VRN}-bin
         mkdir -p /var/backups/log4j/solr-7.6.0/
@@ -2364,36 +2364,36 @@ fix_log4j() {
   fi
 }
 
-fix_authorized_keys() {
-  if [ ! -e "${pthLog}/fix_authorized_keys.ctrl.${tRee}.${_X_SE}.pid" ]; then
+_fix_authorized_keys() {
+  if [ ! -e "${_pthLog}/_fix_authorized_keys.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     chmod 0600 /home/*/.ssh/authorized_keys &> /dev/null
     chmod 0700 /home/*/.ssh &> /dev/null
-    touch ${pthLog}/fix_authorized_keys.ctrl.${tRee}.${_X_SE}.pid
+    touch ${_pthLog}/_fix_authorized_keys.ctrl.${_tRee}.${_xSrl}.pid
   fi
 }
 
-fix_tcp() {
+_fix_tcp() {
   _TCP_FIX=$(grep "tcp_challenge_ack_limit" /etc/sysctl.conf 2>&1)
   if [ -z "${_TCP_FIX}" ]; then
     echo "net.ipv4.tcp_challenge_ack_limit = 1073741823" >> /etc/sysctl.conf
   fi
 }
 
-fix_aio() {
+_fix_aio() {
   _AIO_FIX=$(grep "fs.aio-max-nr" /etc/sysctl.conf 2>&1)
   if [ -z "${_AIO_FIX}" ]; then
     echo "fs.aio-max-nr = 2097152" >> /etc/sysctl.conf
   fi
 }
 
-fix_console_print() {
+_fix_console_print() {
   _PRK_FIX=$(grep "kernel.printk" /etc/sysctl.conf 2>&1)
   if [ -z "${_PRK_FIX}" ]; then
     echo "kernel.printk = 4 1 1 7" >> /etc/sysctl.conf
   fi
 }
 
-fix_java_symlinks() {
+_fix_java_symlinks() {
   if [ "${_OS_CODE}" = "jessie" ] && [ -x "/usr/lib/jvm/java-7-openjdk/jre/bin/java" ]; then
     if [ ! -e "/usr/bin/java" ] || [ ! -e "/etc/alternatives/java" ]; then
       ln -sfn /usr/lib/jvm/java-7-openjdk/jre/bin/java /etc/alternatives/java
@@ -2427,7 +2427,7 @@ fix_java_symlinks() {
   fi
 }
 
-fix_wkhtml_perms() {
+_fix_wkhtml_perms() {
 
   _WKHTML_ARRAY="/usr/local/bin/wkhtmltopdf \
                   /usr/bin/wkhtmltopdf \
@@ -2447,7 +2447,7 @@ fix_wkhtml_perms() {
   done
 }
 
-fix_wkhtml() {
+_fix_wkhtml() {
   if [ -x "/usr/local/bin/wkhtmltopdf" ] \
     && [ -L "/usr/bin/wkhtmltopdf" ]; then
     rm -f /usr/bin/wkhtmltopdf
@@ -2478,26 +2478,26 @@ fix_wkhtml() {
   fi
 }
 
-fix_eldir() {
+_fix_eldir() {
   if [ -e "/var/xdrago" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${eldirP}" ]; then
+    && [ ! -e "${_eldirP}" ]; then
     mkdir -p /var/xdrago/conf
-    curl ${crlGet} "${urlHmr}/patches/${eldirF}" -o ${eldirP}
+    curl ${_crlGet} "${_urlHmr}/patches/${_eldirF}" -o ${_eldirP}
   fi
 }
 
-fix_drupal_core_ten() {
+_fix_drupal_core_ten() {
   if [ -e "/var/xdrago" ]; then
-    if [ ! -e "${dctpP}" ] || [ ! -e "${dctrP}" ]; then
+    if [ ! -e "${_dctpP}" ] || [ ! -e "${_dctrP}" ]; then
       mkdir -p /data/conf/patches
-      curl ${crlGet} "${urlHmr}/patches/${dctrF}" -o ${dctrP}
-      cp -af ${dctrP} ${dctpP}
+      curl ${_crlGet} "${_urlHmr}/patches/${_dctrF}" -o ${_dctrP}
+      cp -af ${_dctrP} ${_dctpP}
     fi
   fi
 }
 
-fix_pure_ftpd() {
+_fix_pure_ftpd() {
   if [ -e "/usr/local/etc/pure-ftpd.conf" ]; then
     _PAM_AUTH=$(grep "^PAMAuthentication" /usr/local/etc/pure-ftpd.conf 2>&1)
     if [ ! -z "${_PAM_AUTH}" ]; then
@@ -2507,36 +2507,36 @@ fix_pure_ftpd() {
   fi
 }
 
-fix_hosting_le() {
+_fix_hosting_le() {
   if [ -d "/var/xdrago/conf" ]; then
-    if [ ! -e "${hoLeIncFull}.ctrl.${tRee}.${_X_SE}.pid" ] \
-      || [ -e "/var/xdrago/${provLeInc}" ] \
-      || [ -e "/var/xdrago/${hoLeInc}" ] \
-      || [ -e "/var/xdrago/${dehydName}" ] \
-      || [ -e "/root/${provLeInc}" ] \
-      || [ -e "/root/hosting_le_vhost.drush.inc.ctrl.${tRee}.${_X_SE}.pid" ] \
-      || [ -e "/root/${hoLeInc}" ] \
-      || [ -e "${legacyLeSh}" ] \
-      || [ ! -e "${dehydSrcPath}" ] \
-      || [ ! -e "${provLeIncFull}.ctrl.${tRee}.${_X_SE}.pid" ]; then
+    if [ ! -e "${_hoLeIncFull}.ctrl.${_tRee}.${_xSrl}.pid" ] \
+      || [ -e "/var/xdrago/${_provLeInc}" ] \
+      || [ -e "/var/xdrago/${_hoLeInc}" ] \
+      || [ -e "/var/xdrago/${_dehydName}" ] \
+      || [ -e "/root/${_provLeInc}" ] \
+      || [ -e "/root/hosting_le_vhost.drush.inc.ctrl.${_tRee}.${_xSrl}.pid" ] \
+      || [ -e "/root/${_hoLeInc}" ] \
+      || [ -e "${_legacyLeSh}" ] \
+      || [ ! -e "${_dehydSrcPath}" ] \
+      || [ ! -e "${_provLeIncFull}.ctrl.${_tRee}.${_xSrl}.pid" ]; then
       mkdir -p /var/xdrago/conf
       rm -f /var/xdrago/*.drush.inc*
       rm -f /root/*.drush.inc*
-      rm -f ${legacyLeSh}
-      rm -f ${dehydSrcPath}.ctrl.${tRee}.${_X_SE}.pid
-      rm -f ${hoLeIncFull}.ctrl.${tRee}.${_X_SE}.pid
-      rm -f ${provLeIncFull}.ctrl.${tRee}.${_X_SE}.pid
-      curl ${crlGet} "${urlHmr}/helpers/${dehydName}" -o ${dehydSrcPath}.ctrl.${tRee}.${_X_SE}.pid
-      cp -af ${dehydSrcPath}.ctrl.${tRee}.${_X_SE}.pid ${dehydSrcPath}
-      curl ${crlGet} "${urlHmr}/patches/${hoLeInc}" -o ${hoLeIncFull}.ctrl.${tRee}.${_X_SE}.pid
-      cp -af ${hoLeIncFull}.ctrl.${tRee}.${_X_SE}.pid ${hoLeIncFull}
-      curl ${crlGet} "${urlHmr}/patches/${provLeInc}" -o ${provLeIncFull}.ctrl.${tRee}.${_X_SE}.pid
-      cp -af ${provLeIncFull}.ctrl.${tRee}.${_X_SE}.pid ${provLeIncFull}
+      rm -f ${_legacyLeSh}
+      rm -f ${_dehydSrcPath}.ctrl.${_tRee}.${_xSrl}.pid
+      rm -f ${_hoLeIncFull}.ctrl.${_tRee}.${_xSrl}.pid
+      rm -f ${_provLeIncFull}.ctrl.${_tRee}.${_xSrl}.pid
+      curl ${_crlGet} "${_urlHmr}/helpers/${_dehydName}" -o ${_dehydSrcPath}.ctrl.${_tRee}.${_xSrl}.pid
+      cp -af ${_dehydSrcPath}.ctrl.${_tRee}.${_xSrl}.pid ${_dehydSrcPath}
+      curl ${_crlGet} "${_urlHmr}/patches/${_hoLeInc}" -o ${_hoLeIncFull}.ctrl.${_tRee}.${_xSrl}.pid
+      cp -af ${_hoLeIncFull}.ctrl.${_tRee}.${_xSrl}.pid ${_hoLeIncFull}
+      curl ${_crlGet} "${_urlHmr}/patches/${_provLeInc}" -o ${_provLeIncFull}.ctrl.${_tRee}.${_xSrl}.pid
+      cp -af ${_provLeIncFull}.ctrl.${_tRee}.${_xSrl}.pid ${_provLeIncFull}
     fi
   fi
 }
 
-fix_newrelic() {
+_fix_newrelic() {
   _PHP_EXT_DIR_74="/opt/php74/lib/php/extensions/no-debug-non-zts-20190902"
   _NR_SO="/usr/lib/newrelic-php5/agent/x64/newrelic-20190902.so"
   if [ -e "${_PHP_EXT_DIR_74}" ] \
@@ -2574,50 +2574,50 @@ fix_newrelic() {
   fi
 }
 
-fix_leftovers() {
+_fix_leftovers() {
   if [ -e "/data/disk/arch/static/control" ]; then
     rm -rf /data/disk/arch/static
   fi
 }
 
-force_rebuild() {
-  if [ ! -e "${pthLog}/forced.rebuild.glibc.txt" ]; then
-    echo "_GIT_FORCE_REINSTALL=YES" >> ${barCnf}
-    echo "_NGX_FORCE_REINSTALL=YES" >> ${barCnf}
-    echo "_PHP_FORCE_REINSTALL=YES" >> ${barCnf}
-    echo "_SSH_FORCE_REINSTALL=YES" >> ${barCnf}
-    echo "_SSL_FORCE_REINSTALL=YES" >> ${barCnf}
-    rm -f ${pthLog}/pure-ftpd-build*
-    rm -f ${pthLog}/mss-build*
-    rm -f ${pthLog}/lshell-build*
-    rm -f ${pthLog}/redis-*
-    touch ${pthLog}/forced.rebuild.glibc.txt
+_force_rebuild() {
+  if [ ! -e "${_pthLog}/forced.rebuild.glibc.txt" ]; then
+    echo "_GIT_FORCE_REINSTALL=YES" >> ${_barCnf}
+    echo "_NGX_FORCE_REINSTALL=YES" >> ${_barCnf}
+    echo "_PHP_FORCE_REINSTALL=YES" >> ${_barCnf}
+    echo "_SSH_FORCE_REINSTALL=YES" >> ${_barCnf}
+    echo "_SSL_FORCE_REINSTALL=YES" >> ${_barCnf}
+    rm -f ${_pthLog}/pure-ftpd-build*
+    rm -f ${_pthLog}/mss-build*
+    rm -f ${_pthLog}/lshell-build*
+    rm -f ${_pthLog}/redis-*
+    touch ${_pthLog}/forced.rebuild.glibc.txt
   fi
 }
 
 #
 # Detect, remove, and report broken symlinks
-check_and_remove_broken_symlinks() {
+_check_and_remove_broken_symlinks() {
   local dir=$1
 
   # Find broken symlinks in the directory
-  broken_symlinks=$(find "${dir}" -maxdepth 1 -type l ! -exec test -e {} \; -print)
+  _broken_symlinks=$(find "${dir}" -maxdepth 1 -type l ! -exec test -e {} \; -print)
 
-  if [ -n "${broken_symlinks}" ]; then
+  if [ -n "${_broken_symlinks}" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       echo "CLNP: Removing the following broken symlinks from ${dir}:"
-      echo "CLNP: ${broken_symlinks}"
+      echo "CLNP: ${_broken_symlinks}"
     fi
 
-    for symlink in $broken_symlinks; do
-      rm "${symlink}"
+    for _symlink in ${_broken_symlinks}; do
+      rm "${_symlink}"
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        echo "CLNP: Removed broken symlink: ${symlink}"
+        echo "CLNP: Removed broken symlink: ${_symlink}"
       fi
     done
 
-    # Set the ifAnySymlinksCleaned variable to true since we removed broken symlinks
-    ifAnySymlinksCleaned=YES
+    # Set the _ifAnySymlinksCleaned variable to true since we removed broken symlinks
+    _ifAnySymlinksCleaned=YES
   else
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       echo "CLNP: No broken symlinks found in ${dir}"
@@ -2627,29 +2627,29 @@ check_and_remove_broken_symlinks() {
 
 #
 # Check and move disallowed versions
-check_and_move() {
+_check_and_move() {
   local dir=$1
 
   # Determine the name of the backup subdirectory based on the source directory
-  local backup_dir="${backLegBase}$(echo "${dir}" | tr '/' '_')"
+  local _backup_dir="${backLegBase}$(echo "${dir}" | tr '/' '_')"
 
   # Find any libcurl.so files in the directory, excluding the allowed version and those without a complete version number
-  found_versions=$(find "${dir}" -maxdepth 1 -type f -name "libcurl.so.*" ! -name "${allowedFile}" | grep -E "libcurl\.so\.[0-9]+\.[0-9]+\.[0-9]+$")
+  _found_versions=$(find "${dir}" -maxdepth 1 -type f -name "libcurl.so.*" ! -name "${allowedFile}" | grep -E "libcurl\.so\.[0-9]+\.[0-9]+\.[0-9]+$")
 
-  if [ -n "${found_versions}" ]; then
+  if [ -n "${_found_versions}" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      echo "CLNP: Moving the following disallowed versions from ${dir} to ${backup_dir}:"
-      echo "CLNP: ${found_versions}"
+      echo "CLNP: Moving the following disallowed versions from ${dir} to ${_backup_dir}:"
+      echo "CLNP: ${_found_versions}"
     fi
 
     # Create the backup directory if it doesn't exist
-    mkdir -p "${backup_dir}"
+    mkdir -p "${_backup_dir}"
 
     # Move each found version to the backup directory
-    for file in ${found_versions}; do
-      mv -f "${file}" "${backup_dir}/"
+    for file in ${_found_versions}; do
+      mv -f "${file}" "${_backup_dir}/"
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        echo "CLNP: Moved ${file} to ${backup_dir}/"
+        echo "CLNP: Moved ${file} to ${_backup_dir}/"
       fi
     done
 
@@ -2662,7 +2662,7 @@ check_and_move() {
   fi
 }
 
-if_reinstall_curl() {
+_if_reinstall_curl() {
   _CURL_VRN=8.9.1
   _CURL_INSTALL_REQUIRED=NO
   if ! command -v lsb_release &> /dev/null; then
@@ -2691,27 +2691,27 @@ if_reinstall_curl() {
     ifAnyFilesCleaned=NO
 
     # Variable to track if any broken symlinks were found and removed
-    ifAnySymlinksCleaned=NO
+    _ifAnySymlinksCleaned=NO
 
-    # Iterate over the directories and apply the check_and_move function
+    # Iterate over the directories and apply the _check_and_move function
     for dir in "${dirsToClean[@]}"; do
-      check_and_move "${dir}"
+      _check_and_move "${dir}"
     done
 
-    # Iterate over the directories and apply the check_and_remove_broken_symlinks function
+    # Iterate over the directories and apply the _check_and_remove_broken_symlinks function
     for dir in "${dirsToClean[@]}"; do
-      check_and_remove_broken_symlinks "${dir}"
+      _check_and_remove_broken_symlinks "${dir}"
     done
 
     # Export the ifAnyFilesCleaned variable for later use
     export ifAnyFilesCleaned
 
-    # Export the ifAnySymlinksCleaned variable for later use
-    export ifAnySymlinksCleaned
+    # Export the _ifAnySymlinksCleaned variable for later use
+    export _ifAnySymlinksCleaned
 
   fi
 
-  if [ "${ifAnySymlinksCleaned}" = "YES" ] \
+  if [ "${_ifAnySymlinksCleaned}" = "YES" ] \
     || [ "${ifAnyFilesCleaned}" = "YES" ]; then
     ldconfig 2> /dev/null
     _CURL_INSTALL_REQUIRED=YES
@@ -2748,7 +2748,7 @@ if_reinstall_curl() {
   if [[ ! "${isCurl}" =~ "OpenSSL" ]] \
     || [[ "${isCurl}" =~ "libcurl.so.4" ]] \
     || [ -z "${isCurl}" ] \
-    || [ "${ifAnySymlinksCleaned}" = "YES" ] \
+    || [ "${_ifAnySymlinksCleaned}" = "YES" ] \
     || [ "${ifAnyFilesCleaned}" = "YES" ] \
     || [ "${_CURL_INSTALL_REQUIRED}" = "YES" ]; then
     if [ -e "/var/aegir/drush" ]; then
@@ -2759,7 +2759,7 @@ if_reinstall_curl() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     echo "curl install" | dpkg --set-selections 2> /dev/null
-    apt_clean_update
+    _apt_clean_update
     apt-get remove libssl1.0-dev -y --purge --auto-remove -qq 2> /dev/null
     apt-get autoremove -y 2> /dev/null
     apt-get install libssl-dev -y -qq 2> /dev/null
@@ -2843,7 +2843,7 @@ if_reinstall_curl() {
           && [ -e "/usr/local/include/curl/easy.h" ] \
           && [ -d "/usr/include/x86_64-linux-gnu/curl" ] \
           && [ ! -L "/usr/include/x86_64-linux-gnu/curl" ]; then
-          apt_clean_update
+          _apt_clean_update
           apt-get remove libcurl4-openssl-dev -y --purge --auto-remove -qq 2> /dev/null
           ln -sfn /usr/local/include/curl /usr/include/x86_64-linux-gnu/curl
           ldconfig 2> /dev/null
@@ -2853,7 +2853,7 @@ if_reinstall_curl() {
   fi
 }
 
-if_boa_key_tools_update_allowed() {
+_if_boa_key_tools_update_allowed() {
   if [ -e "/root/.run-to-daedalus.cnf" ] \
     || [ -e "/root/.run-to-chimaera.cnf" ] \
     || [ -e "/root/.run-to-beowulf.cnf" ]; then
@@ -2863,35 +2863,35 @@ if_boa_key_tools_update_allowed() {
   fi
 }
 
-update_boa_tools() {
-  mkdir -p ${usrBin}
-  if [ -e "${pthLog}" ] && [ ! -e "${pthLog}/updateFx07.ctrl.${tRee}.${_X_SE}.pid" ]; then
+_update_boa_tools() {
+  mkdir -p ${_usrBin}
+  if [ -e "${_pthLog}" ] && [ ! -e "${_pthLog}/updateFx07.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     fxPp="fix-drupal-platform-permissions.sh"
     fxSp="fix-drupal-site-permissions.sh"
     fxPo="fix-drupal-platform-ownership.sh"
     fxSo="fix-drupal-site-ownership.sh"
     fxLo="lock-local-drush-permissions.sh"
-    curl ${crlGet} "${urlHmr}/${tBn}/${fxPp}" -o ${usrBin}/${fxPp}
-    curl ${crlGet} "${urlHmr}/${tBn}/${fxSp}" -o ${usrBin}/${fxSp}
-    curl ${crlGet} "${urlHmr}/${tBn}/${fxPo}" -o ${usrBin}/${fxPo}
-    curl ${crlGet} "${urlHmr}/${tBn}/${fxSo}" -o ${usrBin}/${fxSo}
-    curl ${crlGet} "${urlHmr}/${tBn}/${fxLo}" -o ${usrBin}/${fxLo}
-    chmod 700 ${usrBin}/${fxPp}
-    chmod 700 ${usrBin}/${fxSp}
-    chmod 700 ${usrBin}/${fxPo}
-    chmod 700 ${usrBin}/${fxSo}
-    chmod 700 ${usrBin}/${fxLo}
-    touch ${pthLog}/updateFx07.ctrl.${tRee}.${_X_SE}.pid
+    curl ${_crlGet} "${_urlHmr}/${_tBn}/${fxPp}" -o ${_usrBin}/${fxPp}
+    curl ${_crlGet} "${_urlHmr}/${_tBn}/${fxSp}" -o ${_usrBin}/${fxSp}
+    curl ${_crlGet} "${_urlHmr}/${_tBn}/${fxPo}" -o ${_usrBin}/${fxPo}
+    curl ${_crlGet} "${_urlHmr}/${_tBn}/${fxSo}" -o ${_usrBin}/${fxSo}
+    curl ${_crlGet} "${_urlHmr}/${_tBn}/${fxLo}" -o ${_usrBin}/${fxLo}
+    chmod 700 ${_usrBin}/${fxPp}
+    chmod 700 ${_usrBin}/${fxSp}
+    chmod 700 ${_usrBin}/${fxPo}
+    chmod 700 ${_usrBin}/${fxSo}
+    chmod 700 ${_usrBin}/${fxLo}
+    touch ${_pthLog}/updateFx07.ctrl.${_tRee}.${_xSrl}.pid
   fi
-  mkdir -p ${optBin}
-  rm -f ${usrBin}/{autoinit*,barracuda*,boa*,fancynow*,killer*,octopus*}
+  mkdir -p ${_optBin}
+  rm -f ${_usrBin}/{autoinit*,barracuda*,boa*,fancynow*,killer*,octopus*}
   if [ ! -d "/data/u" ]; then
-    ln -s ${optBin}/autoinit  ${usrBin}/autoinit
-    ln -s ${optBin}/barracuda ${usrBin}/barracuda
-    ln -s ${optBin}/boa       ${usrBin}/boa
-    ln -s ${optBin}/fancynow  ${usrBin}/fancynow
-    ln -s ${optBin}/killer    ${usrBin}/killer
-    ln -s ${optBin}/octopus   ${usrBin}/octopus
+    ln -s ${_optBin}/autoinit  ${_usrBin}/autoinit
+    ln -s ${_optBin}/barracuda ${_usrBin}/barracuda
+    ln -s ${_optBin}/boa       ${_usrBin}/boa
+    ln -s ${_optBin}/fancynow  ${_usrBin}/fancynow
+    ln -s ${_optBin}/killer    ${_usrBin}/killer
+    ln -s ${_optBin}/octopus   ${_usrBin}/octopus
   fi
   boaBins="autobeowulf \
            autochimaera \
@@ -2914,7 +2914,7 @@ update_boa_tools() {
            weblogx \
            xboa"
   for cbn in ${boaBins}; do
-    if [ -e "${optBin}/${cbn}" ]; then
+    if [ -e "${_optBin}/${cbn}" ]; then
       if [ `ps aux | grep -v "grep" | grep --count "/${cbn}"` -gt "0" ]; then
         echo "The ${cbn} is running!"
       else
@@ -2922,54 +2922,54 @@ update_boa_tools() {
           && [ `ps aux | grep -v "grep" | grep --count "/daily.sh"` -gt "0" ]; then
           echo "The ${cbn} and daily.sh is running!"
         else
-          rm -f ${optBin}/${cbn}.new
-          curl ${crlGet} "${urlHmr}/${tBn}/${cbn}" -o ${optBin}/${cbn}.new
-          mv -f ${optBin}/${cbn} ${optBin}/${cbn}.prev
-          mv -f ${optBin}/${cbn}.new ${optBin}/${cbn}
-          if [ -e "${optBin}/${cbn}" ]; then
-            chmod 755 ${optBin}/${cbn}
-            rm -f ${optBin}/${cbn}.prev
+          rm -f ${_optBin}/${cbn}.new
+          curl ${_crlGet} "${_urlHmr}/${_tBn}/${cbn}" -o ${_optBin}/${cbn}.new
+          mv -f ${_optBin}/${cbn} ${_optBin}/${cbn}.prev
+          mv -f ${_optBin}/${cbn}.new ${_optBin}/${cbn}
+          if [ -e "${_optBin}/${cbn}" ]; then
+            chmod 755 ${_optBin}/${cbn}
+            rm -f ${_optBin}/${cbn}.prev
           else
-            mv -f ${optBin}/${cbn}.prev ${optBin}/${cbn}
+            mv -f ${_optBin}/${cbn}.prev ${_optBin}/${cbn}
           fi
         fi
       fi
     else
-      curl ${crlGet} "${urlHmr}/${tBn}/${cbn}" -o ${optBin}/${cbn}
+      curl ${_crlGet} "${_urlHmr}/${_tBn}/${cbn}" -o ${_optBin}/${cbn}
     fi
   done
-  echo "### ${_TODAY} ###" >> ${optBin}/autoinit
-  echo "### ${_TODAY} ###" >> ${optBin}/barracuda
-  echo "### ${_TODAY} ###" >> ${optBin}/boa
-  echo "### ${_TODAY} ###" >> ${optBin}/fancynow
-  echo "### ${_TODAY} ###" >> ${optBin}/killer
-  echo "### ${_TODAY} ###" >> ${optBin}/octopus
-  echo "### ${_TODAY} ###" >> ${optBin}/sqlclean
-  echo "### ${_TODAY} ###" >> ${optBin}/vhostcheck
+  echo "### ${_TODAY} ###" >> ${_optBin}/autoinit
+  echo "### ${_TODAY} ###" >> ${_optBin}/barracuda
+  echo "### ${_TODAY} ###" >> ${_optBin}/boa
+  echo "### ${_TODAY} ###" >> ${_optBin}/fancynow
+  echo "### ${_TODAY} ###" >> ${_optBin}/killer
+  echo "### ${_TODAY} ###" >> ${_optBin}/octopus
+  echo "### ${_TODAY} ###" >> ${_optBin}/sqlclean
+  echo "### ${_TODAY} ###" >> ${_optBin}/vhostcheck
   [ -e "/root/.backboa.autoupdate" ] && rm -f /root/.backboa.autoupdate
   if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ]; then
     echo "The duplicity backup is running!"
   else
-    rm -f ${optBin}/{backboa,duobackboa}
-    curl ${crlGet} "${urlHmr}/${tBn}/backboa"      -o ${optBin}/backboa
-    curl ${crlGet} "${urlHmr}/${tBn}/duobackboa"   -o ${optBin}/duobackboa
-    chmod 700 ${optBin}/{backboa,duobackboa}
-    if [ ! -e "${pthLog}/duplicity.ctrl.${tRee}.${_X_SE}.pid" ] \
+    rm -f ${_optBin}/{backboa,duobackboa}
+    curl ${_crlGet} "${_urlHmr}/${_tBn}/backboa"      -o ${_optBin}/backboa
+    curl ${_crlGet} "${_urlHmr}/${_tBn}/duobackboa"   -o ${_optBin}/duobackboa
+    chmod 700 ${_optBin}/{backboa,duobackboa}
+    if [ ! -e "${_pthLog}/duplicity.ctrl.${_tRee}.${_xSrl}.pid" ] \
       && [ -x "/usr/local/bin/duplicity" ] \
       && [ -e "/root/.cache/duplicity" ] \
       && [ -e "/var/aegir/drush" ] \
       && [ -e "/var/xdrago" ]; then
 #       backboa install
-      touch ${pthLog}/duplicity.ctrl.${tRee}.${_X_SE}.pid
+      touch ${_pthLog}/duplicity.ctrl.${_tRee}.${_xSrl}.pid
       touch /root/.backboa.autoupdate
     fi
   fi
-  chmod 700 ${optBin}/{autoinit,autodaedalus,autochimaera,autobeowulf,autoupboa,backboa,duobackboa}
-  chmod 700 ${optBin}/{barracuda,boa,ffmirror,killer,mycnfup,octopus,syncpass,xboa,weblogx,sqlclean,vhostcheck}
-  chmod 755 ${optBin}/{fancynow,randpass,sqlmagic,thinkdifferent}
+  chmod 700 ${_optBin}/{autoinit,autodaedalus,autochimaera,autobeowulf,autoupboa,backboa,duobackboa}
+  chmod 700 ${_optBin}/{barracuda,boa,ffmirror,killer,mycnfup,octopus,syncpass,xboa,weblogx,sqlclean,vhostcheck}
+  chmod 755 ${_optBin}/{fancynow,randpass,sqlmagic,thinkdifferent}
 }
 
-if_update_boa_key_tools_only() {
+_if_update_boa_key_tools_only() {
   sed -i "s/.*files.aegir.cc.*//g" /etc/hosts
   wait
   sed -i "s/.*github.*//g" /etc/hosts
@@ -2980,23 +2980,23 @@ if_update_boa_key_tools_only() {
   if [ ! -f "/etc/resolv.conf" ]; then
     rm -f /etc/resolv.conf
     echo "nameserver 127.0.0.1" > /etc/resolv.conf
-    if [ -e "${vBs}/resolv.conf.vanilla" ]; then
-      cat ${vBs}/resolv.conf.vanilla >> /etc/resolv.conf
+    if [ -e "${_vBs}/resolv.conf.vanilla" ]; then
+      cat ${_vBs}/resolv.conf.vanilla >> /etc/resolv.conf
     fi
     echo "nameserver 1.1.1.1" >> /etc/resolv.conf
     echo "nameserver 1.0.0.1" >> /etc/resolv.conf
     echo "nameserver 8.8.8.8" >> /etc/resolv.conf
     echo "nameserver 8.8.4.4" >> /etc/resolv.conf
-    check_dns_settings
+    _check_dns_settings
   else
-    check_dns_settings
+    _check_dns_settings
   fi
   if [ -x "/usr/sbin/unbound-control" ] \
     && [ -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
     unbound-control reload &> /dev/null
   fi
 
-  if_reinstall_curl
+  _if_reinstall_curl
 
   _CURL_TEST=$(curl -L -k -s \
     --max-redirs 10 \
@@ -3006,12 +3006,12 @@ if_update_boa_key_tools_only() {
   if [[ ! "${_CURL_TEST}" =~ "200 OK" ]]; then
     if [[ "${_CURL_TEST}" =~ "unknown option was passed in to libcurl" ]]; then
       echo "ERROR: cURL libs are out of sync! Re-installing.."
-      if_reinstall_curl
+      _if_reinstall_curl
     fi
     echo "ERROR: ${_USE_MIR} is not available, please try later"
     exit 1
   else
-    urlHmr="http://${_USE_MIR}/versions/${tRee}/boa/aegir"
+    _urlHmr="http://${_USE_MIR}/versions/${_tRee}/boa/aegir"
   fi
   _LSB_TEST=$(which lsb_release 2> /dev/null)
   if [ ! -x "${_LSB_TEST}" ]; then
@@ -3019,8 +3019,8 @@ if_update_boa_key_tools_only() {
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
-    apt_clean_update
-    apt-get install lsb-release ${aptYesUnth} &> /dev/null
+    _apt_clean_update
+    apt-get install lsb-release ${_aptYesUnth} &> /dev/null
   fi
   _IPSET_TEST=$(which ipset 2> /dev/null)
   if [ ! -x "${_IPSET_TEST}" ]; then
@@ -3028,14 +3028,14 @@ if_update_boa_key_tools_only() {
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
-    apt_clean_update
+    _apt_clean_update
     if [ -L "/sbin/ipset" ]; then
       rm -f /sbin/ipset
     fi
     if [ -L "/usr/sbin/ipset" ]; then
       rm -f /usr/sbin/ipset
     fi
-    apt-get install ipset ${aptYesUnth} &> /dev/null
+    apt-get install ipset ${_aptYesUnth} &> /dev/null
   fi
   if [ -x "/sbin/ipset" ] && [ ! -e "/usr/sbin/ipset" ]; then
     ln -s /sbin/ipset /usr/sbin/ipset
@@ -3054,7 +3054,7 @@ if_update_boa_key_tools_only() {
     if [ -x "${_CSF_TEST}" ]; then
       service clean-boa-env start &> /dev/null
       wait
-      if_fix_iptables_symlinks
+      _if_fix_iptables_symlinks
       csf -uf
       wait
       _NFTABLES_TEST=$(iptables -V 2>&1)
@@ -3110,7 +3110,7 @@ if_update_boa_key_tools_only() {
       echo _CC_SRC_TEST 2 is "${_CC_SRC_TEST}"
       service clean-boa-env start &> /dev/null
       wait
-      if_fix_iptables_symlinks
+      _if_fix_iptables_symlinks
       csf -uf
       wait
       _NFTABLES_TEST=$(iptables -V 2>&1)
@@ -3134,7 +3134,7 @@ if_update_boa_key_tools_only() {
       csf -q
     fi
   fi
-  update_boa_tools
+  _update_boa_tools
   if [ "${1}" = "verbose" ] || [ -z "${1}" ]; then
     echo
     echo "BOA Meta Installers setup completed"
@@ -3144,7 +3144,7 @@ if_update_boa_key_tools_only() {
   fi
 }
 
-setup() {
+_boa_setup() {
   _BENG_VS=NO
   _VMFAMILY=NO
   _CHECK_HOST=$(uname -n 2>&1)
@@ -3157,8 +3157,8 @@ setup() {
   else
     _RANDOMIZE=NO
   fi
-  if_hosted_sys
-  if [ "${hostedSys}" = "YES" ]; then
+  _if_hosted_sys
+  if [ "${_hostedSys}" = "YES" ]; then
     _VMFAMILY=HOSTED
   fi
   sed -i "s/.*files.aegir.cc.*//g" /etc/hosts
@@ -3171,16 +3171,16 @@ setup() {
   if [ ! -f "/etc/resolv.conf" ]; then
     rm -f /etc/resolv.conf
     echo "nameserver 127.0.0.1" > /etc/resolv.conf
-    if [ -e "${vBs}/resolv.conf.vanilla" ]; then
-      cat ${vBs}/resolv.conf.vanilla >> /etc/resolv.conf
+    if [ -e "${_vBs}/resolv.conf.vanilla" ]; then
+      cat ${_vBs}/resolv.conf.vanilla >> /etc/resolv.conf
     fi
     echo "nameserver 1.1.1.1" >> /etc/resolv.conf
     echo "nameserver 1.0.0.1" >> /etc/resolv.conf
     echo "nameserver 8.8.8.8" >> /etc/resolv.conf
     echo "nameserver 8.8.4.4" >> /etc/resolv.conf
-    check_dns_settings
+    _check_dns_settings
   else
-    check_dns_settings
+    _check_dns_settings
   fi
 
   if [ -e "/var/aegir/drush" ]; then
@@ -3202,7 +3202,7 @@ setup() {
     echo "APT::Get::AllowUnauthenticated \"true\";"     >> /etc/apt/apt.conf.d/99ignorestrict
     echo "Aptitude::CmdLine::Fix-Broken \"true\";"      >> /etc/apt/apt.conf.d/99ignorestrict
   fi
-  apt_clean_update
+  _apt_clean_update
 
   if [ ! -e "/var/aegir/drush" ] && [ ! -e "/var/xdrago/manage_solr_config.sh" ]; then
 #     apt-get remove unscd -y --purge --auto-remove -qq &> /dev/null
@@ -3221,7 +3221,7 @@ setup() {
     apt-get install hostname -y &> /dev/null
   fi
 
-  if_reinstall_curl
+  _if_reinstall_curl
 
   _CURL_TEST=$(curl -L -k -s \
     --max-redirs 10 \
@@ -3231,15 +3231,15 @@ setup() {
   if [[ ! "${_CURL_TEST}" =~ "200 OK" ]]; then
     if [[ "${_CURL_TEST}" =~ "unknown option was passed in to libcurl" ]]; then
       echo "ERROR: cURL libs are out of sync! Re-installing.."
-      if_reinstall_curl
+      _if_reinstall_curl
     fi
     echo "ERROR: ${_USE_MIR} is not available, please try later"
     exit 1
   else
-    urlHmr="http://${_USE_MIR}/versions/${tRee}/boa/aegir"
+    _urlHmr="http://${_USE_MIR}/versions/${_tRee}/boa/aegir"
   fi
 
-  if_clean_boa_env
+  _if_clean_boa_env
 
   _VIRT_TEST=$(which virt-what 2> /dev/null)
   if [ ! -x "${_VIRT_TEST}" ]; then
@@ -3247,8 +3247,8 @@ setup() {
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
-    apt_clean_update
-    apt-get install virt-what ${aptYesUnth}
+    _apt_clean_update
+    apt-get install virt-what ${_aptYesUnth}
   fi
   _LSB_TEST=$(which lsb_release 2> /dev/null)
   if [ ! -x "${_LSB_TEST}" ]; then
@@ -3256,10 +3256,10 @@ setup() {
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
-    apt_clean_update
-    apt-get install lsb-release ${aptYesUnth}
+    _apt_clean_update
+    apt-get install lsb-release ${_aptYesUnth}
   fi
-  update_boa_tools
+  _update_boa_tools
   echo
   echo "BOA Meta Installers setup completed"
   echo "Please check INSTALL.md and UPGRADE.md at https://github.com/omega8cc/boa"
@@ -3267,7 +3267,7 @@ setup() {
   echo
 }
 
-count_cpu() {
+_count_cpu() {
   _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)
   _CPU_INFO=${_CPU_INFO//[^0-9]/}
   _NPROC_TEST=$(which nproc 2>&1)
@@ -3292,13 +3292,13 @@ count_cpu() {
   chmod 644 /data/all/cpuinfo
 }
 
-sysctl_update() {
+_sysctl_update() {
   if [ ! -e "/root/.no.sysctl.update.cnf" ] \
-    && [ ! -e "/var/backups/sysctl.conf.up-hf01-${_X_SE}.log" ]; then
+    && [ ! -e "/var/backups/sysctl.conf.up-hf01-${_xSrl}.log" ]; then
     mkdir -p /var/backups
     cd /var/backups
     rm -f /var/backups/sysctl.conf
-    curl ${crlGet} "${urlHmr}/conf/var/sysctl.conf" -o sysctl.conf
+    curl ${_crlGet} "${_urlHmr}/conf/var/sysctl.conf" -o sysctl.conf
     if [ -e "/var/backups/sysctl.conf" ]; then
       cp -af /var/backups/sysctl.conf /etc/sysctl.conf
     fi
@@ -3365,21 +3365,21 @@ sysctl_update() {
         fi
       done
     fi
-    touch /var/backups/sysctl.conf.up-hf01-${_X_SE}.log
+    touch /var/backups/sysctl.conf.up-hf01-${_xSrl}.log
   fi
 }
 
 ###--------------------###
 if [ `whoami` = "root" ]; then
 
-  [ ! -e "/var/aegir/drush" ] && locales_check_fix_early
-  os_detection_minimal
-  find_fast_mirror_early
+  [ ! -e "/var/aegir/drush" ] && _locales_check_fix_early
+  _os_detection_minimal
+  _find_fast_mirror_early
 
   ### CVE-2021-44228 Log4j 2 Vulnerability
   ### CVE-2021-45046 Log4j 2 Vulnerability
   ### CVE-2021-45105 Log4j 2 Vulnerability
-  fix_log4j
+  _fix_log4j
 
   ### Linux kernel TCP SACK CVEs mitigation
   ### CVE-2019-11477 SACK Panic
@@ -3454,34 +3454,34 @@ if [ `whoami` = "root" ]; then
   fi
 
   if [ ! -e "/data/all/cpuinfo" ]; then
-    count_cpu
+    _count_cpu
   fi
 
-  if_boa_key_tools_update_allowed
+  _if_boa_key_tools_update_allowed
 
   if [ "${_BOA_KEY_TOOLS_UPDATE_ALLOWED}" = "YES" ] \
     && [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
     && [ -e "/var/xdrago" ]; then
-    if [ -e "${barCnf}" ]; then
-      source ${barCnf}
+    if [ -e "${_barCnf}" ]; then
+      source ${_barCnf}
     fi
     if [ ! -z "${_SKYNET_MODE}" ] && [ "${_SKYNET_MODE}" = "OFF" ]; then
       if [ -n "${SSH_TTY+x}" ]; then
         echo "STATUS: Skynet Agent is Inactive!"
         echo "STATUS: Please remove the _SKYNET_MODE=OFF line from"
-        echo "STATUS: ${barCnf} to enable me again."
+        echo "STATUS: ${_barCnf} to enable me again."
         echo "NOTE: Critically important BOA tools will be still updated"
-        if_update_boa_key_tools_only verbose
+        _if_update_boa_key_tools_only verbose
         exit 0
       else
-        if_update_boa_key_tools_only silent
+        _if_update_boa_key_tools_only silent
         exit 0
       fi
     else
       if [ -n "${SSH_TTY+x}" ]; then
         echo "STATUS: Skynet Agent is Active, OK!"
         echo "STATUS: You can add the _SKYNET_MODE=OFF line in"
-        echo "STATUS: ${barCnf} to disable me, if needed."
+        echo "STATUS: ${_barCnf} to disable me, if needed."
       fi
     fi
   else
@@ -3500,44 +3500,44 @@ if [ `whoami` = "root" ]; then
     fi
   fi
   if [ "${_BOA_KEY_TOOLS_UPDATE_ALLOWED}" = "YES" ]; then
-    setup
+    _boa_setup
   fi
   if [ "${_BOA_KEY_TOOLS_UPDATE_ALLOWED}" = "YES" ] \
     && [ -e "/var/log/barracuda_log.txt" ]; then
-    fix_ping_perms
-    fix_fpm_process_max
-    if_fix_python
-    fix_lshell
-    fix_node_in_lshell_access
-    fix_authorized_keys
-    fix_tcp
-    fix_aio
-    fix_console_print
-    fix_java_symlinks
-    fix_wkhtml
-    fix_wkhtml_perms
-    fix_eldir
-    fix_drupal_core_ten
-    fix_pure_ftpd
-    fix_hosting_le
-    fix_newrelic
-    fix_leftovers
-    update_agents
-    sysctl_update
-    # saCoreN="SA-CORE-2018-002"
-    # fix_core_dgd
+    _fix_ping_perms
+    _fix_fpm_process_max
+    _if_fix_python
+    _fix_lshell
+    _fix_node_in_lshell_access
+    _fix_authorized_keys
+    _fix_tcp
+    _fix_aio
+    _fix_console_print
+    _fix_java_symlinks
+    _fix_wkhtml
+    _fix_wkhtml_perms
+    _fix_eldir
+    _fix_drupal_core_ten
+    _fix_pure_ftpd
+    _fix_hosting_le
+    _fix_newrelic
+    _fix_leftovers
+    _update_agents
+    _sysctl_update
+    # _saCoreN="SA-CORE-2018-002"
+    # _fix_core_dgd
     # sleep 3
-    # saCoreN="SA-CORE-2018-004"
-    # fix_core_dgd
+    # _saCoreN="SA-CORE-2018-004"
+    # _fix_core_dgd
     # sleep 3
-    # saCoreN="SA-CORE-2018-006"
-    # fix_core_dgd
+    # _saCoreN="SA-CORE-2018-006"
+    # _fix_core_dgd
     # sleep 3
-    # saCoreN="SA-CORE-2019-004"
-    # fix_core_dgd
+    # _saCoreN="SA-CORE-2019-004"
+    # _fix_core_dgd
     # sleep 3
-    # saCoreN="3143016-83"
-    # fix_core_dgd
+    # _saCoreN="3143016-83"
+    # _fix_core_dgd
   fi
   if [ ! -e "/etc/ssl/private/4096.dhp" ] && [ -d "/var/xdrago" ]; then
     echo "Generating 4096.dhp -- it may take a very long time..."

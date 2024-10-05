@@ -3,7 +3,8 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-export tRee=dev
+export _tRee=dev
+export _xSrl=540devT02
 
 _DB_SERIES=5.7
 _CSF_VRN=14.21
@@ -11,15 +12,15 @@ _PROXYSQL_VRN="1.3.5-debian8_amd64"
 _UTIL_VRN="0.30.216-pre3126"
 _VNSTAT_VRN=2.7
 _APT_XTR="-y"
-dstUpArg="-fuy --allow-unauthenticated -q --config-file /opt/apt/apt.conf.noi.dist"
-nrmUpArg="-fuy --allow-unauthenticated -q --config-file /opt/apt/apt.conf.noi.nrml"
-_INSTALL_DIST="/usr/bin/apt-get ${dstUpArg} install"
-_INSTALL_NRML="/usr/bin/apt-get ${nrmUpArg} install"
+_dstUpArg="-fuy --allow-unauthenticated -q --config-file /opt/apt/apt.conf.noi.dist"
+_nrmUpArg="-fuy --allow-unauthenticated -q --config-file /opt/apt/apt.conf.noi.nrml"
+_INSTALL_DIST="/usr/bin/apt-get ${_dstUpArg} install"
+_INSTALL_NRML="/usr/bin/apt-get ${_nrmUpArg} install"
 _INITINS="/usr/bin/apt-get -y --allow-unauthenticated install"
-aptYesUnth="-y --allow-unauthenticated"
+_aptYesUnth="-y --allow-unauthenticated"
 _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
 _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
-aptLiSys="/etc/apt/sources.list"
+_aptLiSys="/etc/apt/sources.list"
 
 if [ -e "/var/aegir/drush" ]; then
   _DPKG_CNF="confold"
@@ -27,8 +28,8 @@ else
   _DPKG_CNF="confnew"
 fi
 
-_INSTALL_DIST="/usr/bin/apt-get ${dstUpArg} install"
-_INSTALL_NRML="/usr/bin/apt-get ${nrmUpArg} install"
+_INSTALL_DIST="/usr/bin/apt-get ${_dstUpArg} install"
+_INSTALL_NRML="/usr/bin/apt-get ${_nrmUpArg} install"
 _INSTAPP="/usr/bin/aptitude -f -y -q \
   --allow-untrusted \
   -o Dpkg::Options::=--force-confmiss \
@@ -52,31 +53,30 @@ fi
 
 _TODAY=$(date +%y%m%d 2>&1)
 _TODAY=${_TODAY//[^0-9]/}
-_X_VERSION="BOA-5.4.0-${tRee}"
-_X_SE=540devT02
+_X_VERSION="BOA-5.4.0-${_tRee}"
 #
-barCnf="/root/.barracuda.cnf"
-crlGet="-L --max-redirs 3 -k -s --retry 3 --retry-delay 5 -A iCab"
-aptYesUnth="-y --allow-unauthenticated"
-optBin="/opt/local/bin"
-usrBin="/usr/local/bin"
-pthLog="/var/xdrago/log"
-if [ ! -e "${pthLog}" ] && [ -e "/var/xdrago_wait/log" ]; then
-  pthLog="/var/xdrago_wait/log"
+_barCnf="/root/.barracuda.cnf"
+_crlGet="-L --max-redirs 3 -k -s --retry 3 --retry-delay 5 -A iCab"
+_aptYesUnth="-y --allow-unauthenticated"
+_optBin="/opt/local/bin"
+_usrBin="/usr/local/bin"
+_pthLog="/var/xdrago/log"
+if [ ! -e "${_pthLog}" ] && [ -e "/var/xdrago_wait/log" ]; then
+  _pthLog="/var/xdrago_wait/log"
 fi
-tBn="tools/bin"
+_tBn="tools/bin"
 #
 
 ###-------------SYSTEM-----------------###
 
-clean_pid_exit() {
+_clean_pid_exit() {
   echo "REASON ${e} on $(date 2>&1)" >> /root/.cluster.exit.exceptions.log
   rm -f /run/cluster_run.pid
   service cron start
   exit 1
 }
 
-os_detection_minimal() {
+_os_detection_minimal() {
   _APT_UPDATE="apt-get update"
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
@@ -87,7 +87,7 @@ os_detection_minimal() {
   done
 }
 
-check_mysql_version() {
+_check_mysql_version() {
   _DBS_TEST=$(which mysql 2>&1)
   if [ ! -z "${_DBS_TEST}" ]; then
     _DB_SERVER_TEST=$(mysql -V 2>&1)
@@ -103,13 +103,13 @@ check_mysql_version() {
   fi
 }
 
-apt_clean_update() {
+_apt_clean_update() {
   #apt-get clean -qq 2> /dev/null
   #rm -rf /var/lib/apt/lists/* &> /dev/null
   ${_APT_UPDATE} -qq 2> /dev/null
 }
 
-check_root() {
+_check_root() {
   if [ `whoami` = "root" ]; then
     chmod a+w /dev/null
     if [ ! -e "/dev/fd" ]; then
@@ -119,15 +119,15 @@ check_root() {
       fi
     fi
     [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
-    aptYesUnth="-y --allow-unauthenticated"
+    _aptYesUnth="-y --allow-unauthenticated"
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     _LSB_TEST=$(which lsb_release 2> /dev/null)
     if [ ! -x "${_LSB_TEST}" ]; then
-      apt_clean_update
-      apt-get install lsb-release ${aptYesUnth}
+      _apt_clean_update
+      apt-get install lsb-release ${_aptYesUnth}
     fi
     _LSB_TEST=$(which lsb_release 2> /dev/null)
     if [ -x "${_LSB_TEST}" ]; then
@@ -159,19 +159,19 @@ check_root() {
         _SEC_MIRROR="security.debian.org/debian-security"
         _SEC_REPSRC="${_OS_CODE}-security"
       fi
-      echo "## DEBIAN MAIN REPOSITORIES" > ${aptLiSys}
-      echo "deb http://${_APT_MIRROR} ${_OS_CODE} main contrib non-free" >> ${aptLiSys}
-      echo "deb-src http://${_APT_MIRROR} ${_OS_CODE} main contrib non-free" >> ${aptLiSys}
-      echo "" >> ${aptLiSys}
-      echo "## MAJOR BUG FIX UPDATES produced after the final release" >> ${aptLiSys}
-      echo "deb http://${_APT_MIRROR} ${_APT_REPSRC} main contrib non-free" >> ${aptLiSys}
-      echo "deb-src http://${_APT_MIRROR} ${_APT_REPSRC} main contrib non-free" >> ${aptLiSys}
-      echo "" >> ${aptLiSys}
-      echo "## DEBIAN SECURITY UPDATES" >> ${aptLiSys}
-      echo "deb http://${_SEC_MIRROR} ${_SEC_REPSRC} main contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
-      echo "deb-src http://${_SEC_MIRROR} ${_SEC_REPSRC} main contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
+      echo "## DEBIAN MAIN REPOSITORIES" > ${_aptLiSys}
+      echo "deb http://${_APT_MIRROR} ${_OS_CODE} main contrib non-free" >> ${_aptLiSys}
+      echo "deb-src http://${_APT_MIRROR} ${_OS_CODE} main contrib non-free" >> ${_aptLiSys}
+      echo "" >> ${_aptLiSys}
+      echo "## MAJOR BUG FIX UPDATES produced after the final release" >> ${_aptLiSys}
+      echo "deb http://${_APT_MIRROR} ${_APT_REPSRC} main contrib non-free" >> ${_aptLiSys}
+      echo "deb-src http://${_APT_MIRROR} ${_APT_REPSRC} main contrib non-free" >> ${_aptLiSys}
+      echo "" >> ${_aptLiSys}
+      echo "## DEBIAN SECURITY UPDATES" >> ${_aptLiSys}
+      echo "deb http://${_SEC_MIRROR} ${_SEC_REPSRC} main contrib non-free" | fmt -su -w 2500 >> ${_aptLiSys}
+      echo "deb-src http://${_SEC_MIRROR} ${_SEC_REPSRC} main contrib non-free" | fmt -su -w 2500 >> ${_aptLiSys}
       echo
-      apt_clean_update
+      _apt_clean_update
     fi
     if [ "${_OS_DIST}" = "Devuan" ] || [ "${_OS_DIST}" = "Debian" ]; then
       _SUPPORTED_OS=YES
@@ -204,15 +204,15 @@ check_root() {
   fi
 }
 
-check_no_systemd() {
+_check_no_systemd() {
   if [ -e "/lib/systemd/systemd" ]; then
     echo "ERROR: This script can not be used with systemd"
     echo "ERROR: Please run 'autoinit' first"
-    clean_pid_exit check_no_systemd_a_cluster
+    _clean_pid_exit _check_no_systemd_a_cluster
   fi
 }
 
-ifnames_grub_check_sync() {
+_ifnames_grub_check_sync() {
   _IS_IFACE=$(ip a 2>&1)
   _ADD_GRUB_CMD=""
   _GRUB_FILE="/etc/default/grub"
@@ -325,7 +325,7 @@ ifnames_grub_check_sync() {
   fi
 }
 
-check_root_direct() {
+_check_root_direct() {
   _U_TEST=DENY
   [ "${SUDO_USER}" ] && _U_TEST_SDO=${SUDO_USER} || _U_TEST_SDO=`whoami`
   _U_TEST_WHO=$(who am i | awk '{print $1}' 2>&1)
@@ -352,11 +352,11 @@ check_root_direct() {
     echo "         PermitRootLogin prohibit-password"
     echo "       in the /etc/ssh/sshd_config file"
     echo "Bye"
-    clean_pid_exit check_root_direct_a
+    _clean_pid_exit _check_root_direct_a
   fi
 }
 
-check_root_keys_pwd() {
+_check_root_keys_pwd() {
   _S_TEST=$(grep "root:\*:" /etc/shadow 2>&1)
   _R_TEST=CHECK
   if [ -e "/root/.ssh/authorized_keys" ]; then
@@ -378,11 +378,11 @@ check_root_keys_pwd() {
     echo
     echo "Bye"
     echo
-    clean_pid_exit check_root_keys_pwd_a
+    _clean_pid_exit _check_root_keys_pwd_a
   fi
 }
 
-system_check_clean() {
+_system_check_clean() {
   if [ -e "/etc/nginx" ] \
     || [ -e "/data/disk/all" ] \
     || [ -e "/etc/apache2" ] \
@@ -392,13 +392,13 @@ system_check_clean() {
     echo "ERROR: The only acceptable exceptions are: sshd and mail servers"
     echo "ERROR: This script must be run on a bare metal server main OS level"
     echo "Bye"
-    clean_pid_exit system_check_clean_a
+    _clean_pid_exit _system_check_clean_a
   fi
 }
 
 #
 # Fix locales.
-locales_check_fix() {
+_locales_check_fix() {
   ${_INITINS} locales &> /dev/null
   if [ -e "/etc/ssh/sshd_config" ]; then
     _SSH_LC_TEST=$(grep "^AcceptEnv LANG LC_" /etc/ssh/sshd_config 2>&1)
@@ -529,18 +529,18 @@ EOF
   fi
 }
 
-check_all() {
-  check_root
-  check_root_direct
-  check_root_keys_pwd
-  check_no_systemd
-  ifnames_grub_check_sync
-  os_detection_minimal
-  system_check_clean
-  locales_check_fix
+_check_all() {
+  _check_root
+  _check_root_direct
+  _check_root_keys_pwd
+  _check_no_systemd
+  _ifnames_grub_check_sync
+  _os_detection_minimal
+  _system_check_clean
+  _locales_check_fix
 }
 
-check_config_cluster() {
+_check_config_cluster() {
   if [ -e "/root/.cluster.cnf" ]; then
     source /root/.cluster.cnf
   fi
@@ -613,31 +613,31 @@ check_config_cluster() {
   fi
 }
 
-find_fast_mirror_early() {
+_find_fast_mirror_early() {
   isNetc=$(which netcat 2>&1)
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
-    apt_clean_update
-    apt-get install netcat ${aptYesUnth} 2> /dev/null
-    apt-get install netcat-traditional ${aptYesUnth} 2> /dev/null
+    _apt_clean_update
+    apt-get install netcat ${_aptYesUnth} 2> /dev/null
+    apt-get install netcat-traditional ${_aptYesUnth} 2> /dev/null
     wait
   fi
-  ffMirr=$(which ffmirror 2>&1)
-  if [ -x "${ffMirr}" ]; then
-    ffList="/var/backups/boa-mirrors-2024-01.txt"
+  _ffMirr=$(which ffmirror 2>&1)
+  if [ -x "${_ffMirr}" ]; then
+    _ffList="/var/backups/boa-mirrors-2024-01.txt"
     mkdir -p /var/backups
-    if [ ! -e "${ffList}" ]; then
-      echo "de.files.aegir.cc"  > ${ffList}
-      echo "ny.files.aegir.cc" >> ${ffList}
-      echo "sg.files.aegir.cc" >> ${ffList}
+    if [ ! -e "${_ffList}" ]; then
+      echo "de.files.aegir.cc"  > ${_ffList}
+      echo "ny.files.aegir.cc" >> ${_ffList}
+      echo "sg.files.aegir.cc" >> ${_ffList}
     fi
-    if [ -e "${ffList}" ]; then
-      _BROKEN_FFMIRR_TEST=$(grep "stuff" ${ffMirr} 2>&1)
+    if [ -e "${_ffList}" ]; then
+      _BROKEN_FFMIRR_TEST=$(grep "stuff" ${_ffMirr} 2>&1)
       if [[ "${_BROKEN_FFMIRR_TEST}" =~ "stuff" ]]; then
-        _CHECK_MIRROR=$(bash ${ffMirr} < ${ffList} 2>&1)
+        _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _USE_MIR="${_CHECK_MIRROR}"
         [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.aegir.cc"
       else
@@ -649,12 +649,12 @@ find_fast_mirror_early() {
   else
     _USE_MIR="files.aegir.cc"
   fi
-  urlDev="http://${_USE_MIR}/dev"
-  urlHmr="http://${_USE_MIR}/versions/${tRee}/boa/aegir"
+  _urlDev="http://${_USE_MIR}/dev"
+  _urlHmr="http://${_USE_MIR}/versions/${_tRee}/boa/aegir"
 }
-find_fast_mirror_early
+_find_fast_mirror_early
 
-if_firewall_update() {
+_if_firewall_update() {
   if [ -e "/etc/csf" ]; then
     echo "Running Firewall Update on `hostname`..."
     _NOW=`date +%y%m%d-%H%M`
@@ -665,10 +665,10 @@ if_firewall_update() {
     cp -af /opt/fire.sh      ${_WFC}/fire.sh-pre
     cp -af /etc/csf/csf.conf ${_WFC}/csf.conf-pre
     cd ${_WFC}
-    curl ${crlGet} "${urlHmr}/conf/var/sysctl.conf"      -o sysctl.conf
-    curl ${crlGet} "${urlHmr}/tools/host/host-water.sh"  -o host-water.sh
-    curl ${crlGet} "${urlHmr}/tools/host/host-fire.sh"   -o host-fire.sh
-    curl ${crlGet} "http://${_USE_MIR}/cluster/csf.conf" -o csf.conf
+    curl ${_crlGet} "${_urlHmr}/conf/var/sysctl.conf"      -o sysctl.conf
+    curl ${_crlGet} "${_urlHmr}/tools/host/host-water.sh"  -o host-water.sh
+    curl ${_crlGet} "${_urlHmr}/tools/host/host-fire.sh"   -o host-fire.sh
+    curl ${_crlGet} "http://${_USE_MIR}/cluster/csf.conf" -o csf.conf
     cp -af ${_WFC}/sysctl.conf   /etc/sysctl.conf
     cp -af ${_WFC}/host-water.sh /opt/water.sh
     cp -af ${_WFC}/host-fire.sh  /opt/fire.sh
@@ -739,7 +739,7 @@ if_firewall_update() {
   fi
 }
 
-install_proxysql() {
+_install_proxysql() {
 
   if [ -z "${_ROOT_SQL_PASWD}" ]; then
     vidn="${_CLUSTER_PREFIX}db0"
@@ -816,13 +816,13 @@ DPkg::Options {"--force-confdef";"--force-confmiss";"--force-confold"};
 DPkg::Pre-Install-Pkgs {"/usr/sbin/dpkg-preconfigure --apt";};
 Dir::Etc::SourceList "/etc/apt/sources.list";
 ' > /vservers/${idn}/opt/apt/apt.conf.noi.nrml
-    nrmUpArg="-fuy --allow-unauthenticated -q --config-file /opt/apt/apt.conf.noi.nrml"
+    _nrmUpArg="-fuy --allow-unauthenticated -q --config-file /opt/apt/apt.conf.noi.nrml"
     vserver ${idn} exec apt-get clean
     vserver ${idn} exec ${_APT_UPDATE} -qq
     vserver ${idn} exec ${_INSTAPP} sysbench
     vserver ${idn} exec ${_INSTAPP} debconf-utils
     vserver ${idn} exec ${_INSTAPP} proxysql
-    vserver ${idn} exec apt-get install --only-upgrade ${nrmUpArg} proxysql
+    vserver ${idn} exec apt-get install --only-upgrade ${_nrmUpArg} proxysql
     vserver ${idn} exec mkdir -p /var/log/proxysql
     vserver ${idn} exec chown -R proxysql:proxysql /var/log/proxysql
     vserver ${idn} exec chmod 700 /var/log/proxysql
@@ -1027,17 +1027,17 @@ Dir::Etc::SourceList "/etc/apt/sources.list";
       if [ -e "${pGc}" ]; then
         rm -f ${pGc}
       fi
-      tURL="${urlHmr}/${tBn}/proxysql_galera_checker"
+      tURL="${_urlHmr}/${_tBn}/proxysql_galera_checker"
       echo PGC download URL is ${tURL}
       curl -I ${tURL}
-      curl ${crlGet} "${tURL}" -o ${pGc}
+      curl ${_crlGet} "${tURL}" -o ${pGc}
       if [ ! -e "${pGc}" ]; then
-        curl ${crlGet} "${tURL}" -o ${pGc}
+        curl ${_crlGet} "${tURL}" -o ${pGc}
       else
         _PAV_TEST=$(grep PROXYSQL_ADMIN_VERSION ${pGc} 2>&1)
         if [[ ! "${_PAV_TEST}" =~ "PROXYSQL_ADMIN_VERSION" ]]; then
           rm -f ${pGc}
-          curl ${crlGet} "${tURL}" -o ${pGc}
+          curl ${_crlGet} "${tURL}" -o ${pGc}
         fi
       fi
       chmod 755 ${pGc}
@@ -1103,7 +1103,7 @@ Dir::Etc::SourceList "/etc/apt/sources.list";
   fi
 }
 
-install_vps() {
+_install_vps() {
 
   if [ ! -d "/vservers/" ]; then
     echo
@@ -1157,7 +1157,7 @@ install_vps() {
   if [ "${ver}" != "galera" ]; then
     echo "Installing BOA ${ver} in vps ${idn}..."
     rm -f BOA.sh.txt*
-    wget -q -U iCab http://${_USE_MIR}/versions/${tRee}/boa/BOA.sh.txt
+    wget -q -U iCab http://${_USE_MIR}/versions/${_tRee}/boa/BOA.sh.txt
     mv -f BOA.sh.txt /vservers/${idn}/root/
     vserver ${idn} exec bash /root/BOA.sh.txt
     vserver ${idn} exec /opt/local/bin/boa in-${ver} public ${hst} ${eml} o8 mini
@@ -1288,7 +1288,7 @@ install_vps() {
 
   if [ "${cmd}" = "in-all" ] || [ "${cmd}" = "in-web" ]; then
     if [ "${ver}" != "galera" ]; then
-      install_proxysql
+      _install_proxysql
     fi
   fi
 
@@ -1297,8 +1297,8 @@ install_vps() {
   echo
 }
 
-install_octopus() {
-  check_config_cluster
+_install_octopus() {
+  _check_config_cluster
   idn="${_CLUSTER_PREFIX}web"
   if [ -e "/vservers/${idn}/data/all" ] \
     && [[ "${idn}" =~ "web" ]]; then
@@ -1313,20 +1313,20 @@ install_octopus() {
   fi
 }
 
-re_install_pxy() {
-  check_config_cluster
+_re_install_pxy() {
+  _check_config_cluster
   idn="${idn}"
   vip="${vip}"
   fce="${fce}"
   if [ -e "/vservers/${idn}/usr/bin/mysql" ] \
     && [ "${vip}" = "${_WEB_NODE_IP}" ] \
     && [ "${fce}" = "force-reinstall" ]; then
-    install_proxysql
+    _install_proxysql
   fi
 }
 
-install_web_node() {
-  check_config_cluster
+_install_web_node() {
+  _check_config_cluster
   idn="${_CLUSTER_PREFIX}web"
   hst="${_WEB_FQDN}"
   vip="${_WEB_NODE_IP}"
@@ -1337,17 +1337,17 @@ install_web_node() {
   eml="${_CLUSTER_EMAIL}"
   if [ ! -e "/vservers/${idn}/" ] \
     && [[ "${idn}" =~ "web" ]]; then
-    install_vps
+    _install_vps
   fi
 }
 
-upgrade_web_node() {
-  check_config_cluster
+_upgrade_web_node() {
+  _check_config_cluster
   idn="${_CLUSTER_PREFIX}web"
   vserver ${idn} exec /opt/local/bin/barracuda up-${ver} system
 }
 
-default_my_cnf_copy() {
+_default_my_cnf_copy() {
 
   _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)
   _CPU_INFO=${_CPU_INFO//[^0-9]/}
@@ -1571,8 +1571,8 @@ interactive-timeout
 ' > /etc/mysql/my.cnf"
 }
 
-install_db_cluster() {
-  check_config_cluster
+_install_db_cluster() {
+  _check_config_cluster
 
   if [ "${_OS_CODE}" = "daedalus" ]; then
     _SQL_OS_CODE=bookworm
@@ -1643,7 +1643,7 @@ install_db_cluster() {
     eml="${_CLUSTER_EMAIL}"
     if [ ! -e "/vservers/${idn}/" ] \
       && [ ! -z "${idn}" ]; then
-      install_vps
+      _install_vps
       echo "Installing Percona Cluster on VPS ${idn}..."
     fi
     if [ ! -e "/vservers/${idn}/etc/apt/apt.conf.d/00sandboxoff" ] \
@@ -1673,7 +1673,7 @@ install_db_cluster() {
       fi
       vserver ${idn} exec apt-key del ${_PERCONA_KEYS_SIG} &> /dev/null
       if [ ! -e "/vservers/${idn}/etc/apt/keyrings/percona.gpg" ]; then
-        curl -fsSL ${urlDev}/percona-key.gpg | ${_GPG} --dearmor -o /vservers/${idn}/etc/apt/keyrings/percona.gpg
+        curl -fsSL ${_urlDev}/percona-key.gpg | ${_GPG} --dearmor -o /vservers/${idn}/etc/apt/keyrings/percona.gpg
       fi
       chmod 644 /vservers/${idn}/etc/apt/keyrings/percona.gpg
     fi
@@ -1700,11 +1700,11 @@ install_db_cluster() {
 
     ##echo "Running mysql_secure_installation procedure on ${IP} DB node..."
     ##vserver ${idn} exec mysqladmin -u root flush-hosts"
-    ##vserver ${idn} exec mysql -u root -e "DELETE FROM mysql.user WHERE User='';"
-    ##vserver ${idn} exec mysql -u root -e "DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');"
+    ##vserver ${idn} exec mysql -u root -e "DELETE FROM mysql.user WHERE _usEr='';"
+    ##vserver ${idn} exec mysql -u root -e "DELETE FROM mysql.user WHERE _usEr='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');"
     ##vserver ${idn} exec mysql -u root -e "DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';"
-    ##vserver ${idn} exec mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('${_ROOT_SQL_PASWD}') WHERE User='root';"
-    ##vserver ${idn} exec mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('${_MAINT_USER_PWD}') WHERE User='debian-sys-maint';"
+    ##vserver ${idn} exec mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('${_ROOT_SQL_PASWD}') WHERE _usEr='root';"
+    ##vserver ${idn} exec mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('${_MAINT_USER_PWD}') WHERE _usEr='debian-sys-maint';"
     ##if [ -e "/vservers/${idn}/etc/mysql/debian.cnf" ]; then
     ##  sed -i "s/^password =.*/password = ${_MAINT_USER_PWD}/g" /vservers/${idn}/etc/mysql/debian.cnf
     ##fi
@@ -1724,7 +1724,7 @@ socket   = /run/mysqld/mysqld.sock
 basedir  = /usr
 ' > /etc/mysql/debian.cnf"
 
-    default_my_cnf_copy
+    _default_my_cnf_copy
 
     ssh ${_NOSTRICT} root@${IP} "service mysql stop"
 
@@ -1740,7 +1740,7 @@ basedir  = /usr
   sleep 180
 
   echo "Adding grants for Galera sstuser on Percona Cluster..."
-  check_mysql_version
+  _check_mysql_version
   for IP in "${_DB_NODE_IP[@]}"; do
     pxyCmd="CREATE USER IF NOT EXISTS 'root'@'${IP}';"
       ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
@@ -1838,8 +1838,8 @@ basedir  = /usr
 
 }
 
-upgrade_db_cluster() {
-  check_config_cluster
+_upgrade_db_cluster() {
+  _check_config_cluster
 
   _CLUSTER_NAME="${_CLUSTER_PREFIX}_galera"
   _CLUSTER_STRING="gcomm://"$(IFS=, ; echo "${_DB_NODE_IP[*]}")
@@ -1863,22 +1863,22 @@ upgrade_db_cluster() {
       echo "APT::Sandbox::User \"root\";" > /vservers/${idn}/etc/apt/apt.conf.d/00sandboxoff
     fi
 
-    if [ -e "/vservers/${idn}${optBin}/boa" ]; then
-      rm -f /vservers/${idn}${optBin}/boa
+    if [ -e "/vservers/${idn}${_optBin}/boa" ]; then
+      rm -f /vservers/${idn}${_optBin}/boa
     fi
-    mkdir -p /vservers/${idn}/${optBin}
-    curl ${crlGet} "${urlHmr}/${tBn}/boa" -o /vservers/${idn}${optBin}/boa
-    ssh ${_NOSTRICT} root@${IP} "chmod 700 ${optBin}/boa"
+    mkdir -p /vservers/${idn}/${_optBin}
+    curl ${_crlGet} "${_urlHmr}/${_tBn}/boa" -o /vservers/${idn}${_optBin}/boa
+    ssh ${_NOSTRICT} root@${IP} "chmod 700 ${_optBin}/boa"
 
-    if [ -e "/vservers/${idn}${optBin}/mycnfup" ]; then
-      rm -f /vservers/${idn}${optBin}/mycnfup
+    if [ -e "/vservers/${idn}${_optBin}/mycnfup" ]; then
+      rm -f /vservers/${idn}${_optBin}/mycnfup
     fi
-    mkdir -p /vservers/${idn}/${optBin}
-    curl ${crlGet} "${urlHmr}/${tBn}/mycnfup" -o /vservers/${idn}${optBin}/mycnfup
-    ssh ${_NOSTRICT} root@${IP} "chmod 700 ${optBin}/mycnfup"
-    if [ -e "/vservers/${idn}${optBin}/mycnfup" ]; then
+    mkdir -p /vservers/${idn}/${_optBin}
+    curl ${_crlGet} "${_urlHmr}/${_tBn}/mycnfup" -o /vservers/${idn}${_optBin}/mycnfup
+    ssh ${_NOSTRICT} root@${IP} "chmod 700 ${_optBin}/mycnfup"
+    if [ -e "/vservers/${idn}${_optBin}/mycnfup" ]; then
       echo "Running mycnfup check on ${idn}/${IP}..."
-      ssh ${_NOSTRICT} root@${IP} "bash ${optBin}/mycnfup check"
+      ssh ${_NOSTRICT} root@${IP} "bash ${_optBin}/mycnfup check"
     fi
 
     if [ -x "/vservers/${idn}/usr/bin/gpg2" ]; then
@@ -1899,7 +1899,7 @@ upgrade_db_cluster() {
       fi
       vserver ${idn} exec apt-key del ${_PERCONA_KEYS_SIG} &> /dev/null
       if [ ! -e "/vservers/${idn}/etc/apt/keyrings/percona.gpg" ]; then
-        curl -fsSL ${urlDev}/percona-key.gpg | ${_GPG} --dearmor -o /vservers/${idn}/etc/apt/keyrings/percona.gpg
+        curl -fsSL ${_urlDev}/percona-key.gpg | ${_GPG} --dearmor -o /vservers/${idn}/etc/apt/keyrings/percona.gpg
       fi
       chmod 644 /vservers/${idn}/etc/apt/keyrings/percona.gpg
     fi
@@ -1912,11 +1912,11 @@ upgrade_db_cluster() {
   	vserver ${idn} exec dpkg --configure --force-all -a
   	vserver ${idn} exec update-rc.d -f mysql remove
 
-  	default_my_cnf_copy
+  	_default_my_cnf_copy
 
-    if [ -e "/vservers/${idn}${optBin}/mycnfup" ]; then
+    if [ -e "/vservers/${idn}${_optBin}/mycnfup" ]; then
       echo "Running mycnfup tune on ${idn}/${IP}..."
-      ssh ${_NOSTRICT} root@${IP} "bash ${optBin}/mycnfup tune"
+      ssh ${_NOSTRICT} root@${IP} "bash ${_optBin}/mycnfup tune"
       wait
     fi
     echo "Running mysql_upgrade on ${idn}/${IP} to update tables if needed"
@@ -1934,7 +1934,7 @@ upgrade_db_cluster() {
   echo "All DB nodes updated!"
 }
 
-install_host() {
+_install_host() {
 
   _CUSTOM_DNS_TEST=$(grep 8.8.8.8 /etc/resolv.conf 2>&1)
   if [[ ! "${_CUSTOM_DNS_TEST}" =~ "8.8.8.8" ]]; then
@@ -1977,23 +1977,23 @@ install_host() {
     _SEC_MIRROR="security.debian.org/debian-security"
     _SEC_REPSRC="${_OS_CODE}-security"
   fi
-  echo "## DEBIAN MAIN REPOSITORIES" > ${aptLiSys}
-  echo "deb http://${_APT_MIRROR} ${_OS_CODE} main contrib non-free" >> ${aptLiSys}
-  echo "deb-src http://${_APT_MIRROR} ${_OS_CODE} main contrib non-free" >> ${aptLiSys}
-  echo "" >> ${aptLiSys}
-  echo "## MAJOR BUG FIX UPDATES produced after the final release" >> ${aptLiSys}
-  echo "deb http://${_APT_MIRROR} ${_APT_REPSRC} main contrib non-free" >> ${aptLiSys}
-  echo "deb-src http://${_APT_MIRROR} ${_APT_REPSRC} main contrib non-free" >> ${aptLiSys}
-  echo "" >> ${aptLiSys}
-  echo "## DEBIAN SECURITY UPDATES" >> ${aptLiSys}
-  echo "deb http://${_SEC_MIRROR} ${_SEC_REPSRC} main contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
-  echo "deb-src http://${_SEC_MIRROR} ${_SEC_REPSRC} main contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
+  echo "## DEBIAN MAIN REPOSITORIES" > ${_aptLiSys}
+  echo "deb http://${_APT_MIRROR} ${_OS_CODE} main contrib non-free" >> ${_aptLiSys}
+  echo "deb-src http://${_APT_MIRROR} ${_OS_CODE} main contrib non-free" >> ${_aptLiSys}
+  echo "" >> ${_aptLiSys}
+  echo "## MAJOR BUG FIX UPDATES produced after the final release" >> ${_aptLiSys}
+  echo "deb http://${_APT_MIRROR} ${_APT_REPSRC} main contrib non-free" >> ${_aptLiSys}
+  echo "deb-src http://${_APT_MIRROR} ${_APT_REPSRC} main contrib non-free" >> ${_aptLiSys}
+  echo "" >> ${_aptLiSys}
+  echo "## DEBIAN SECURITY UPDATES" >> ${_aptLiSys}
+  echo "deb http://${_SEC_MIRROR} ${_SEC_REPSRC} main contrib non-free" | fmt -su -w 2500 >> ${_aptLiSys}
+  echo "deb-src http://${_SEC_MIRROR} ${_SEC_REPSRC} main contrib non-free" | fmt -su -w 2500 >> ${_aptLiSys}
   echo
   cat /etc/apt/sources.list
 
   echo "Installing basic tools..."
-  apt_clean_update
-  apt-get upgrade ${nrmUpArg}
+  _apt_clean_update
+  apt-get upgrade ${_nrmUpArg}
   ${_INSTAPP} locales
   ${_INSTAPP} lsb-release
   ${_INSTAPP} dnsutils
@@ -2048,7 +2048,7 @@ install_host() {
   invoke-rc.d csf start
   rm -rf /var/opt/csf*
 
-  if_firewall_update
+  _if_firewall_update
 
   echo "Improving sshd configuration..."
   sed -i "s/^PermitRootLogin.*/PermitRootLogin prohibit-password/g" /etc/ssh/sshd_config
@@ -2112,7 +2112,7 @@ install_host() {
     done
     cat pubkey.txt | ${_GPG} --import &> /dev/null
     rm -f pubkey.txt*
-    apt_clean_update
+    _apt_clean_update
     ${_INSTAPP} build-essential
     ${_INSTAPP} linux-headers-vserver-${_BENG_SERIES}-beng
     ${_INSTAPP} linux-image-vserver-${_BENG_SERIES}-beng
@@ -2127,7 +2127,7 @@ install_host() {
       || [ "${osx}" = "buster" ] \
       || [ "${osx}" = "bullseye" ] \
       || [ "${osx}" = "bookworm" ]; then
-      apt_clean_update
+      _apt_clean_update
       echo "sysvinit-core install" | dpkg --set-selections
       echo "sysvinit-utils install" | dpkg --set-selections
       ${_INSTAPP} sysvinit-core
@@ -2141,7 +2141,7 @@ install_host() {
         rm -f /etc/apt/preferences.d/systemd
         echo -e 'Package: systemd\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/offsystemd
         echo -e '\n\nPackage: *systemd*\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/offsystemd
-        apt_clean_update
+        _apt_clean_update
       fi
       echo "sysvinit-core hold" | dpkg --set-selections &> /dev/null
       echo "sysvinit-utils hold" | dpkg --set-selections &> /dev/null
@@ -2172,7 +2172,7 @@ EOF
   exit 0
 }
 
-upgrade_host() {
+_upgrade_host() {
 
   if [ "${mod}" = "upgrade" ]; then
     thisMode="UPGRADE"
@@ -2182,7 +2182,7 @@ upgrade_host() {
 
   if [ -x "/lib/systemd/systemd" ]; then
     echo "Removing systemd in ${_OS_DIST}/${_OS_CODE}..."
-    apt_clean_update
+    _apt_clean_update
     echo "sysvinit-core install" | dpkg --set-selections
     echo "sysvinit-utils install" | dpkg --set-selections
     if [ "${osx}" = "jessie" ] \
@@ -2201,7 +2201,7 @@ upgrade_host() {
         rm -f /etc/apt/preferences.d/systemd
         echo -e 'Package: systemd\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/offsystemd
         echo -e '\n\nPackage: *systemd*\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/offsystemd
-        apt_clean_update
+        _apt_clean_update
       fi
     fi
     apt-get remove systemd -y --purge --auto-remove --allow-remove-essential -qq 2> /dev/null
@@ -2215,7 +2215,7 @@ upgrade_host() {
 
   if [ "${thisMode}" = "UPGRADE" ]; then
     echo "Installing vserver tools dependencies..."
-    apt_clean_update
+    _apt_clean_update
     ${_INSTAPP} vlan
     ${_INSTAPP} e2fslibs-dev
     ${_INSTAPP} libnss3-dev
@@ -2256,7 +2256,7 @@ upgrade_host() {
 
   cd
   cp -af /etc/sysctl.conf /etc/sysctl.conf.thrd.three
-  wget -q -U iCab http://${_USE_MIR}/versions/${tRee}/boa/aegir/conf/sysctl.conf
+  wget -q -U iCab http://${_USE_MIR}/versions/${_tRee}/boa/aegir/conf/sysctl.conf
   cp -af sysctl.conf /etc/sysctl.conf
   echo "kernel.vshelper = /sbin/vshelper" >> /etc/sysctl.conf
   rm -f sysctl.conf*
@@ -2337,7 +2337,7 @@ upgrade_host() {
   fi
 
   echo "Updating packages on this system..."
-  apt_clean_update
+  _apt_clean_update
   apt-get install aptitude ${_APT_XTR} \
     && aptitude full-upgrade -f -y -q \
       -o Dpkg::Options::=--force-confmiss \
@@ -2345,7 +2345,7 @@ upgrade_host() {
       -o Dpkg::Options::=--force-confnew \
     && apt-get dist-upgrade ${_APT_XTR}
 
-  if_firewall_update
+  _if_firewall_update
 
   echo
   echo "That's all. Enjoy!"
@@ -2353,7 +2353,7 @@ upgrade_host() {
   exit 0
 }
 
-check_vsd() {
+_check_vsd() {
   _VSD_TEST=$(grep "cluster" /etc/init.d/vservers-default 2>&1)
   if [ -z "${_VSD_TEST}" ]; then
     echo "##" >> /etc/init.d/vservers-default
@@ -2363,20 +2363,20 @@ check_vsd() {
   fi
 }
 
-check_heads() {
-  check_config_cluster
-  check_vsd
+_check_heads() {
+  _check_config_cluster
+  _check_vsd
   idn="${_CLUSTER_PREFIX}web"
   for i in `dir -d /vservers/*` ; do
     _THIS_VM=`echo $i | cut -d'/' -f3 | awk '{ print $1}'`
     _VS_NAME=`echo ${_THIS_VM} | cut -d'/' -f3 | awk '{ print $1}'`
-    if [ -e "${i}${optBin}/boa" ]; then
-      rm -f ${i}${optBin}/boa
+    if [ -e "${i}${_optBin}/boa" ]; then
+      rm -f ${i}${_optBin}/boa
     fi
-    mkdir -p ${i}${optBin}
-    curl ${crlGet} "${urlHmr}/${tBn}/boa" -o ${i}${optBin}/boa
-    chmod 700 ${i}${optBin}/boa
-    ls -la ${i}${optBin}/boa
+    mkdir -p ${i}${_optBin}
+    curl ${_crlGet} "${_urlHmr}/${_tBn}/boa" -o ${i}${_optBin}/boa
+    chmod 700 ${i}${_optBin}/boa
+    ls -la ${i}${_optBin}/boa
     if [[ ${_THIS_VM} =~ v168q ]]; then
       echo Check Skipped for $i
     else
@@ -2385,28 +2385,28 @@ check_heads() {
         _VS_HOSTNAME=`vserver ${_VS_NAME} exec hostname 2>&1`
         _VS_OS=`vserver ${_VS_NAME} exec lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1`
         echo "The ${_VS_HOSTNAME} ${_VS_NAME} VM is running ${_VS_OS}"
-        vserver ${_VS_NAME} exec ${optBin}/boa info ${mod} ${ext}
+        vserver ${_VS_NAME} exec ${_optBin}/boa info ${mod} ${ext}
       fi
     fi
   done
 }
 
-restart_db_cluster() {
-  check_config_cluster
+_restart_db_cluster() {
+  _check_config_cluster
 
   inc="0"
   for IP in "${_DB_NODE_IP[@]}"; do
     idn="${_CLUSTER_PREFIX}db${inc}"
     vserver ${idn} exec update-rc.d -f mysql remove
-    if [ -e "/vservers/${idn}${optBin}/mycnfup" ]; then
+    if [ -e "/vservers/${idn}${_optBin}/mycnfup" ]; then
       echo "Running mycnfup stop on ${idn}/${IP}..."
-      ssh ${_NOSTRICT} root@${IP} "bash ${optBin}/mycnfup stop"
+      ssh ${_NOSTRICT} root@${IP} "bash ${_optBin}/mycnfup stop"
     else
-      mkdir -p /vservers/${idn}/${optBin}
-      curl ${crlGet} "${urlHmr}/${tBn}/mycnfup" -o /vservers/${idn}${optBin}/mycnfup
-      ssh ${_NOSTRICT} root@${IP} "chmod 700 ${optBin}/mycnfup"
+      mkdir -p /vservers/${idn}/${_optBin}
+      curl ${_crlGet} "${_urlHmr}/${_tBn}/mycnfup" -o /vservers/${idn}${_optBin}/mycnfup
+      ssh ${_NOSTRICT} root@${IP} "chmod 700 ${_optBin}/mycnfup"
       echo "Running mycnfup stop on ${idn}/${IP}..."
-      ssh ${_NOSTRICT} root@${IP} "bash ${optBin}/mycnfup stop"
+      ssh ${_NOSTRICT} root@${IP} "bash ${_optBin}/mycnfup stop"
     fi
     if [ "${IP}" = "${_DB_NODE_IP[1]}" ]; then
       sed -i "s/^safe_to_bootstrap.*/safe_to_bootstrap: 1/g"  /vservers/${idn}/var/lib/mysql/grastate.dat
@@ -2420,13 +2420,13 @@ restart_db_cluster() {
 
   echo "Waiting for ${_DB_NODE_IP[1]} DB node bootstrap-pxc..."
   echo "Running mycnfup init on ${_DB_NODE_IP[1]}..."
-  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "bash ${optBin}/mycnfup init"
+  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "bash ${_optBin}/mycnfup init"
   ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"SHOW STATUS LIKE 'wsrep%';\""
 
   for IP in "${_DB_NODE_IP[@]}"; do
     if [ "${IP}" != "${_DB_NODE_IP[1]}" ]; then
 	  echo "Running mycnfup start on ${IP}..."
-      ssh ${_NOSTRICT} root@${IP} "bash ${optBin}/mycnfup start"
+      ssh ${_NOSTRICT} root@${IP} "bash ${_optBin}/mycnfup start"
       ssh ${_NOSTRICT} root@${IP} "mysql -u root -e \"SHOW STATUS LIKE 'wsrep%';\""
     fi
   done
@@ -2436,18 +2436,18 @@ restart_db_cluster() {
 case "$1" in
   re-dbs)  cmd="$1"
            hst="$2"
-           check_all
-           restart_db_cluster
+           _check_all
+           _restart_db_cluster
   ;;
   in-host) cmd="$1"
            hst="$2"
-           check_all
-           install_host
+           _check_all
+           _install_host
   ;;
   up-host) cmd="$1"
            mod="$2"
-           check_all
-           upgrade_host
+           _check_all
+           _upgrade_host
   ;;
   in-vps)  cmd="$1"
            idn="$2"
@@ -2457,43 +2457,43 @@ case "$1" in
            ver="$6"
            eml="$7"
            fce="$8"
-           check_all
-           install_vps
+           _check_all
+           _install_vps
   ;;
   in-all)  cmd="$1"
            ver="$2"
            xer="$2"
-           check_all
-           install_db_cluster
-           install_web_node
+           _check_all
+           _install_db_cluster
+           _install_web_node
   ;;
   in-dbs)  cmd="$1"
            ver="$2"
            xer="$2"
-           check_all
-           install_db_cluster
+           _check_all
+           _install_db_cluster
   ;;
   in-web)  cmd="$1"
            ver="$2"
            xer="$2"
-           check_all
-           install_web_node
+           _check_all
+           _install_web_node
   ;;
   up-dbs)  cmd="$1"
            ver="$2"
-           check_all
-           upgrade_db_cluster
+           _check_all
+           _upgrade_db_cluster
   ;;
   up-web)  cmd="$1"
            ver="$2"
-           check_all
-           upgrade_web_node
+           _check_all
+           _upgrade_web_node
   ;;
   up-all)  cmd="$1"
            ver="$2"
-           check_all
-           upgrade_db_cluster
-           upgrade_web_node
+           _check_all
+           _upgrade_db_cluster
+           _upgrade_web_node
   ;;
   in-oct)  cmd="$1"
            email="$2"
@@ -2502,21 +2502,21 @@ case "$1" in
            copt="$5"
            csub="$6"
            ccor="$7"
-           check_all
-           install_octopus
+           _check_all
+           _install_octopus
   ;;
   in-pxy)  cmd="$1"
            idn="$2"
            vip="$3"
            fce="$4"
-           check_all
-           re_install_pxy
+           _check_all
+           _re_install_pxy
   ;;
   check)   cmd="$1"
            mod="$2"
            ext="$3"
-           check_all
-           check_heads
+           _check_all
+           _check_heads
   ;;
   *)       echo
            echo "Usage: cluster {in-host} {fqdn}"

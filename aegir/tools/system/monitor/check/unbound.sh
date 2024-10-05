@@ -6,7 +6,7 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 
 _pthOml="/var/xdrago/log/unbound.incident.log"
 
-check_root() {
+_check_root() {
   if [ `whoami` = "root" ]; then
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
     chmod a+w /dev/null
@@ -15,7 +15,7 @@ check_root() {
     exit 1
   fi
 }
-check_root
+_check_root
 
 export _B_NICE=${_B_NICE//[^0-9]/}
 : "${_B_NICE:=10}"
@@ -36,7 +36,7 @@ _incident_email_report() {
   fi
 }
 
-unbound_check_fix() {
+_unbound_check_fix() {
   if [ -x "/usr/sbin/unbound" ] \
     && [ ! -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
     mkdir -p /etc/resolvconf/run/interface
@@ -66,8 +66,8 @@ unbound_check_fix() {
     else
       rm -f /etc/resolv.conf
       echo "nameserver 127.0.0.1" > /etc/resolv.conf
-      if [ -e "${vBs}/resolv.conf.vanilla" ]; then
-        cat ${vBs}/resolv.conf.vanilla >> /etc/resolv.conf
+      if [ -e "${_vBs}/resolv.conf.vanilla" ]; then
+        cat ${_vBs}/resolv.conf.vanilla >> /etc/resolv.conf
       fi
       echo "nameserver 1.1.1.1" >> /etc/resolv.conf
       echo "nameserver 1.0.0.1" >> /etc/resolv.conf
@@ -90,7 +90,7 @@ unbound_check_fix() {
   fi
 }
 
-unbound_check_fix
+_unbound_check_fix
 
 echo DONE!
 exit 0

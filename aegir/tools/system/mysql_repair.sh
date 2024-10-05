@@ -4,7 +4,7 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
-check_root() {
+_check_root() {
   if [ `whoami` = "root" ]; then
     ionice -c2 -n7 -p $$
     renice 19 -p $$
@@ -24,7 +24,7 @@ check_root() {
     exit 1
   fi
 }
-check_root
+_check_root
 
 if [ -e "/root/.proxy.cnf" ]; then
   exit 0

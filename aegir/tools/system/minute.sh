@@ -7,7 +7,7 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 _pthOml="/var/xdrago/log/oom.incident.log"
 _oldOml="/var/xdrago/log/oom.incident.old.log"
 
-check_root() {
+_check_root() {
   if [ `whoami` = "root" ]; then
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
     chmod a+w /dev/null
@@ -16,7 +16,7 @@ check_root() {
     exit 1
   fi
 }
-check_root
+_check_root
 
 if [ $(pgrep -f minute.sh | grep -v "^$$" | wc -l) -gt 4 ]; then
   echo "Too many minute.sh running $(date 2>&1)" >> /var/xdrago/log/too.many.log
@@ -40,7 +40,7 @@ perl /var/xdrago/monitor/check/hackcheck.pl &
 perl /var/xdrago/monitor/check/hackftp.pl &
 perl /var/xdrago/monitor/check/escapecheck.pl &
 
-second_flood_guard() {
+_second_flood_guard() {
   thisCountSec=`ps aux | grep -v "grep" | grep -v "null" | grep --count "/second.sh"`
   if [ ${thisCountSec} -gt "4" ]; then
     echo "$(date 2>&1) Too many ${thisCountSec} second.sh processes killed" >> \
@@ -48,7 +48,7 @@ second_flood_guard() {
     kill -9 $(ps aux | grep '[s]econd.sh' | awk '{print $2}') &> /dev/null
   fi
 }
-[ ! -e "/run/boa_run.pid" ] && second_flood_guard
+[ ! -e "/run/boa_run.pid" ] && _second_flood_guard
 
 echo DONE!
 exit 0

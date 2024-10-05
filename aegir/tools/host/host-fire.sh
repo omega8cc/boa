@@ -11,7 +11,7 @@ if (( $(pgrep -fc 'host-fire.sh') > 2 )); then
   exit 0
 fi
 
-guest_proc_monitor() {
+_guest_proc_monitor() {
   for i in `dir -d /vservers/*`; do
     _THIS_VM=`echo $i | cut -d'/' -f3 | awk '{ print $1}'`
     _VS_NAME=`echo ${_THIS_VM} | cut -d'/' -f3 | awk '{ print $1}'`
@@ -25,9 +25,9 @@ guest_proc_monitor() {
     fi
   done
 }
-###guest_proc_monitor
+###_guest_proc_monitor
 
-guest_guard() {
+_guest_guard() {
 if [ ! -e "/run/fire.pid" ] && [ ! -e "/run/water.pid" ]; then
   touch /run/fire.pid
   echo start `date`
@@ -106,15 +106,15 @@ if [ -e "/vservers" ] \
   && [ -e "/etc/csf/csf.deny" ] \
   && [ ! -e "/run/water.pid" ] \
   && [ -x "/usr/sbin/csf" ]; then
-  [ ! -e "/run/water.pid" ] && guest_guard
+  [ ! -e "/run/water.pid" ] && _guest_guard
   sleep 10
-  [ ! -e "/run/water.pid" ] && guest_guard
+  [ ! -e "/run/water.pid" ] && _guest_guard
   sleep 10
-  [ ! -e "/run/water.pid" ] && guest_guard
+  [ ! -e "/run/water.pid" ] && _guest_guard
   sleep 10
-  [ ! -e "/run/water.pid" ] && guest_guard
+  [ ! -e "/run/water.pid" ] && _guest_guard
   sleep 10
-  [ ! -e "/run/water.pid" ] && guest_guard
+  [ ! -e "/run/water.pid" ] && _guest_guard
   rm -f /run/fire.pid
 fi
 exit 0

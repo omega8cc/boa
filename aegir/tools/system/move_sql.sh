@@ -12,7 +12,7 @@ fi
 export _B_NICE=${_B_NICE//[^0-9]/}
 : "${_B_NICE:=10}"
 
-create_locks() {
+_create_locks() {
   echo "Creating locks..."
   touch /run/boa_wait.pid
   touch /run/fmp_wait.pid
@@ -20,7 +20,7 @@ create_locks() {
   touch /run/mysql_restart_running.pid
 }
 
-remove_locks() {
+_remove_locks() {
   echo "Removing locks..."
   [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
   rm -f /run/fmp_wait.pid
@@ -28,7 +28,7 @@ remove_locks() {
   rm -f /run/mysql_restart_running.pid
 }
 
-check_running() {
+_check_running() {
   if [ -e "/run/mysql_restart_running.pid" ]; then
     echo "MySQLD restart procedure in progress?"
     echo "Nothing to do, let's quit now. Bye!"
@@ -36,15 +36,15 @@ check_running() {
   fi
 }
 
-start_sql() {
-  check_running
-  create_locks
+_start_sql() {
+  _check_running
+  _create_locks
 
   _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
   if [ ! -z "${_IS_MYSQLD_RUNNING}" ]; then
     echo "MySQLD already running?"
     echo "Nothing to do. Bye!"
-    remove_locks
+    _remove_locks
     [ "$1" != "chain" ] && exit 1
   fi
 
@@ -59,14 +59,14 @@ start_sql() {
   done
   echo "MySQLD started"
 
-  remove_locks
+  _remove_locks
   echo "MySQLD start procedure completed"
   [ "$1" != "chain" ] && exit 0
 }
 
-stop_sql() {
-  check_running
-  create_locks
+_stop_sql() {
+  _check_running
+  _create_locks
 
   echo "Stopping Nginx now..."
   service nginx stop &> /dev/null
@@ -128,7 +128,7 @@ stop_sql() {
   else
     echo "MySQLD already stopped?"
     echo "Nothing to do. Bye!"
-    remove_locks
+    _remove_locks
     [ "$1" != "chain" ] && exit 1
   fi
 
@@ -139,23 +139,23 @@ stop_sql() {
   done
   echo "MySQLD stopped"
 
-  remove_locks
+  _remove_locks
   echo "MySQLD stop procedure completed"
   [ "$1" != "chain" ] && exit 0
 }
 
-restart_sql() {
-  stop_sql "chain"
-  start_sql "chain"
-  remove_locks
+_re_start_sql() {
+  _stop_sql "chain"
+  _start_sql "chain"
+  _remove_locks
   exit 0
 }
 
 case "$1" in
-  restart) restart_sql ;;
-  start)   start_sql "only" ;;
-  stop)    stop_sql "only" ;;
-  *)       restart_sql
+  restart) _re_start_sql ;;
+  start)   _start_sql "only" ;;
+  stop)    _stop_sql "only" ;;
+  *)       _re_start_sql
   ;;
 esac
 

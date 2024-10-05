@@ -5,13 +5,13 @@ export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
 # Function to check if the script is run as root
-check_root() {
+_check_root() {
   if [ "$(whoami)" != "root" ]; then
     echo "ERROR: This script should be run as a root user"
     exit 1
   fi
 }
-check_root
+_check_root
 
 # Exit if the pause tasks maintenance config file exists
 if [ -e "/root/.pause_tasks_maint.cnf" ]; then
@@ -22,7 +22,7 @@ maxEtime="300"
 cmndsList="apt-get apt"
 
 # Function to kill long-running commands
-licence_to_kill() {
+_licence_to_kill() {
   if [[ "${1}" =~ "apt-get" ]]; then
     killCmnd="apt-get update"
     maxEtime="99"
@@ -43,7 +43,7 @@ licence_to_kill() {
 
 # Loop through the commands list
 for frozenCmnd in ${cmndsList}; do
-  licence_to_kill ${frozenCmnd} # Fixed: pass the correct variable
+  _licence_to_kill ${frozenCmnd} # Fixed: pass the correct variable
 done
 
 exit 0

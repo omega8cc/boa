@@ -38,23 +38,23 @@
 ###
 ### Helper variables
 ###
-bldPth="/opt/tmp/boa"
-crlGet="-L --max-redirs 3 -k -s --retry 3 --retry-delay 5 -A iCab"
-filIncO="octopus.sh.cnf"
-gCb="git clone --branch"
-gitHub="https://github.com/omega8cc"
-gitLab="https://gitlab.com/omega8cc"
-libFnc="${bldPth}/lib/functions"
-tocIncO="${filIncO}.$1"
-vBs="/var/backups"
-vSet="variable-set --always-set"
-export tRee=dev
+_bldPth="/opt/tmp/boa"
+_crlGet="-L --max-redirs 3 -k -s --retry 3 --retry-delay 5 -A iCab"
+_filIncO="octopus.sh.cnf"
+_gCb="git clone --branch"
+_gitHub="https://github.com/omega8cc"
+_gitLab="https://gitlab.com/omega8cc"
+_libFnc="${_bldPth}/lib/functions"
+_tocIncO="${_filIncO}.$1"
+_vBs="/var/backups"
+_vSet="variable-set --always-set"
+export _tRee=dev
 
 
 ###
 ### Panic on missing include
 ###
-panic_exit() {
+_panic_exit() {
   echo
   echo " EXIT: Required lib file not available?"
   echo " EXIT: $1"
@@ -69,14 +69,14 @@ panic_exit() {
 ###
 ### Include helper functions
 ###
-if [ -e "${vBs}/${tocIncO}" ]; then
-  source "${vBs}/${tocIncO}"
-  tInc="${vBs}/${tocIncO}"
-elif [ -e "${vBs}/${filIncO}" ]; then
-  source "${vBs}/${filIncO}"
-  tInc="${vBs}/${filIncO}"
+if [ -e "${_vBs}/${_tocIncO}" ]; then
+  source "${_vBs}/${_tocIncO}"
+  _tInc="${_vBs}/${_tocIncO}"
+elif [ -e "${_vBs}/${_filIncO}" ]; then
+  source "${_vBs}/${_filIncO}"
+  _tInc="${_vBs}/${_filIncO}"
 else
-  panic_exit "${tInc}"
+  _panic_exit "${_tInc}"
 fi
 
 
@@ -87,7 +87,7 @@ if [ "${_DEBUG_MODE}" = "YES" ]; then
   echo DEBUG AegirSetupB
   echo DEBUG AegirSetupB
   echo Effective _USER is $1
-  [ -r "${vBs}/${tocIncO}" ] && echo Effective tocIncO is ${tocIncO}
+  [ -r "${_vBs}/${_tocIncO}" ] && echo Effective _tocIncO is ${_tocIncO}
   echo DEBUG AegirSetupB
   echo DEBUG AegirSetupB
   env
@@ -99,8 +99,8 @@ fi
 ###
 ### More helper variables
 ###
-urlDev="http://${_USE_MIR}/dev"
-urlHmr="http://${_USE_MIR}/versions/${tRee}/boa/aegir"
+_urlDev="http://${_USE_MIR}/dev"
+_urlHmr="http://${_USE_MIR}/versions/${_tRee}/boa/aegir"
 
 
 ###
@@ -108,8 +108,8 @@ urlHmr="http://${_USE_MIR}/versions/${tRee}/boa/aegir"
 ###
 _FL="helper satellite"
 for f in ${_FL}; do
-  [ -r "${libFnc}/${f}.sh.inc" ] || panic_exit "${f}"
-  source "${libFnc}/${f}.sh.inc"
+  [ -r "${_libFnc}/${f}.sh.inc" ] || _panic_exit "${f}"
+  source "${_libFnc}/${f}.sh.inc"
 done
 
 
@@ -178,13 +178,13 @@ fi
 ### User check
 ###
 if [ `whoami` = "root" ]; then
-  msg "${_STATUS} B: FATAL ERROR: This script should be run as a non-root user"
-  msg "${_STATUS} B: FATAL ERROR: Aborting AegirSetupB installer NOW!"
+  _msg "${_STATUS} B: FATAL ERROR: This script should be run as a non-root user"
+  _msg "${_STATUS} B: FATAL ERROR: Aborting AegirSetupB installer NOW!"
   touch /opt/tmp/status-AegirSetupB-FAIL
   exit 1
 else
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "${_STATUS} B: Aegir automated install script part B"
+    _msg "${_STATUS} B: Aegir automated install script part B"
   fi
 fi
 
@@ -192,18 +192,18 @@ fi
 ###
 ### Run all child B procedures
 ###
-satellite_child_b_prepare_dirs_permissions
-satellite_child_b_install_drush
-satellite_child_b_drush_xts_cleanup
-satellite_child_b_drush_xts_install
-satellite_child_b_drush_test
-satellite_child_b_aegir_build
-satellite_child_b_aegir_health_check
-satellite_child_b_letsencrypt
-satellite_child_b_aegir_ui_enhance
-satellite_child_b_vhosts_hotfix
-satellite_child_b_symlink_global_inc
-satellite_child_b_redis_enable_finalize
+_satellite_child_b_prepare_dirs_permissions
+_satellite_child_b_install_drush
+_satellite_child_b_drush_xts_cleanup
+_satellite_child_b_drush_xts_install
+_satellite_child_b_drush_test
+_satellite_child_b_aegir_build
+_satellite_child_b_aegir_health_check
+_satellite_child_b_letsencrypt
+_satellite_child_b_aegir_ui_enhance
+_satellite_child_b_vhosts_hotfix
+_satellite_child_b_symlink_global_inc
+_satellite_child_b_redis_enable_finalize
 
 
 ###----------------------------------------###

@@ -1,14 +1,14 @@
 
-if_install_bzr() {
+_if_install_bzr() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: if_install_bzr"
+    _msg "PROC: _if_install_bzr"
   fi
   if [[ "${_XTRAS_LIST}" =~ "BZR" ]]; then
     _PATH_BZR="/usr/local/bin/bzr"
     if [ ! -e "${_PATH_BZR}" ] \
-      || [ ! -e "${pthLog}/bzr-${_BZR_VRN}.log" ] \
+      || [ ! -e "${_pthLog}/bzr-${_BZR_VRN}.log" ] \
       || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
-      msg "INFO: Building Bazaar (bzr) ${_BZR_VRN} from sources..."
+      _msg "INFO: Building Bazaar (bzr) ${_BZR_VRN} from sources..."
       if [ -e "/usr/local/lib/python2.6/dist-packages/bzrlib" ]; then
         rm -rf /usr/local/lib/python2.6/dist-packages/bzrlib
       fi
@@ -32,7 +32,7 @@ if_install_bzr() {
       fi
       cd /var/opt
       rm -rf bzr*
-      get_dev_src "bzr-${_BZR_VRN}.tar.gz"
+      _get_dev_src "bzr-${_BZR_VRN}.tar.gz"
       cd /var/opt/bzr-${_BZR_VRN}
       isPythonTwo=$(which python2 2>&1)
       isPythonThree=$(which python3 2>&1)
@@ -41,60 +41,60 @@ if_install_bzr() {
       elif [ -x "${isPythonTwo}" ]; then
         usePyth=python2
       fi
-      mrun "${usePyth} setup.py --quiet install build_ext -\
+      _mrun "${usePyth} setup.py --quiet install build_ext -\
         -allow-python-fallback" 2> /dev/null
-      mrun "make -j $(nproc) --quiet" 2> /dev/null
-      touch ${pthLog}/bzr-${_BZR_VRN}.log
+      _mrun "make -j $(nproc) --quiet" 2> /dev/null
+      touch ${_pthLog}/bzr-${_BZR_VRN}.log
       mkdir -p /root/.bazaar
       echo ignore_missing_extensions=True > /root/.bazaar/bazaar.conf
     fi
   fi
 }
 
-if_install_adminer() {
+_if_install_adminer() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: if_install_adminer"
+    _msg "PROC: _if_install_adminer"
   fi
   if [[ "${_XTRAS_LIST}" =~ "ALL" ]] \
     || [[ "${_XTRAS_LIST}" =~ "ADM" ]] \
     || [ -d "/var/www/chive" ]; then
-    _ADMINER_VHOST="${mtrNgx}/vhost.d/adminer.${_THIS_FRONT}"
+    _ADMINER_VHOST="${_mtrNgx}/vhost.d/adminer.${_THIS_FRONT}"
     if [ ! -e "/var/www/adminer/index.php" ] \
       || [ ! -f "${_ADMINER_VHOST}" ] \
-      || [ ! -f "${pthLog}/adminer-${_ADMINER_VRN}-sync-new-ip-access.log" ]; then
+      || [ ! -f "${_pthLog}/adminer-${_ADMINER_VRN}-sync-new-ip-access.log" ]; then
       echo " "
-      if prompt_yes_no "Do you want to install Adminer Manager?" ; then
+      if _prompt_yes_no "Do you want to install Adminer Manager?" ; then
         true
-        msg "INFO: Installing Adminer Manager..."
+        _msg "INFO: Installing Adminer Manager..."
         cd /var/www
         rm -rf /var/www/adminer &> /dev/null
-        get_dev_ext "adminer-${_ADMINER_VRN}.tar.gz"
+        _get_dev_ext "adminer-${_ADMINER_VRN}.tar.gz"
         cd /var/www/adminer
         mv -f adminer-${_ADMINER_VRN}-mysql.php index.php
-        validate_public_ip &> /dev/null
-        validate_xtras_ip &> /dev/null
-        cp -af ${locCnf}/nginx/nginx_sql_adminer.conf ${_ADMINER_VHOST}
+        _validate_public_ip &> /dev/null
+        _validate_xtras_ip &> /dev/null
+        cp -af ${_locCnf}/nginx/nginx_sql_adminer.conf ${_ADMINER_VHOST}
         sed -i "s/127.0.0.1:80/${_XTRAS_THISHTIP}:80/g"               ${_ADMINER_VHOST}
         wait
         sed -i "s/127.0.0.1:443/${_XTRAS_THISHTIP}:443/g"             ${_ADMINER_VHOST}
         wait
         sed -i "s/adminer_name/adminer.${_THIS_FRONT} ${_THISHTIP}/g" ${_ADMINER_VHOST}
         wait
-        touch ${pthLog}/adminer-${_ADMINER_VRN}-sync-new-ip-access.log
-        msg "INFO: Adminer Manager installed"
+        touch ${_pthLog}/adminer-${_ADMINER_VRN}-sync-new-ip-access.log
+        _msg "INFO: Adminer Manager installed"
       else
-        msg "INFO: Adminer Manager installation skipped"
+        _msg "INFO: Adminer Manager installation skipped"
       fi
     fi
   fi
   if [ -d "/var/www/adminer" ]; then
     if [ ! -z "${_PHP_CN}" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: _PHP_CN set to ${_PHP_CN} for Adminer Manager"
+        _msg "INFO: _PHP_CN set to ${_PHP_CN} for Adminer Manager"
       fi
       chown -R ${_PHP_CN}:www-data /var/www/adminer
     else
-      msg "NOTE: _PHP_CN not set for Adminer Manager"
+      _msg "NOTE: _PHP_CN not set for Adminer Manager"
       chown -R www-data:www-data /var/www/adminer
     fi
     find /var/www/adminer -type d -exec chmod 0755 {} \; &> /dev/null
@@ -103,46 +103,46 @@ if_install_adminer() {
   fi
 }
 
-if_install_chive() {
+_if_install_chive() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: if_install_chive"
+    _msg "PROC: _if_install_chive"
   fi
   if [[ "${_XTRAS_LIST}" =~ "CHV" ]] || [ -d "/var/www/chive" ]; then
-    _CHIVE_VHOST="${mtrNgx}/vhost.d/chive.${_THIS_FRONT}"
+    _CHIVE_VHOST="${_mtrNgx}/vhost.d/chive.${_THIS_FRONT}"
     if [ ! -d "/var/www/chive" ] \
       || [ ! -f "${_CHIVE_VHOST}" ] \
-      || [ ! -f "${pthLog}/chive-${_CHIVE_VRN}.sync-new-ip-access.log" ]; then
+      || [ ! -f "${_pthLog}/chive-${_CHIVE_VRN}.sync-new-ip-access.log" ]; then
       echo " "
-      if prompt_yes_no "Do you want to install Chive Manager?" ; then
+      if _prompt_yes_no "Do you want to install Chive Manager?" ; then
         true
-        msg "INFO: Installing Chive Manager..."
+        _msg "INFO: Installing Chive Manager..."
         cd /var/www
         rm -rf /var/www/chive &> /dev/null
-        get_dev_arch "chive_${_CHIVE_VRN}.tar.gz"
-        validate_public_ip &> /dev/null
-        validate_xtras_ip &> /dev/null
-        cp -af ${locCnf}/nginx/nginx_sql_chive.conf ${_CHIVE_VHOST}
+        _get_dev_arch "chive_${_CHIVE_VRN}.tar.gz"
+        _validate_public_ip &> /dev/null
+        _validate_xtras_ip &> /dev/null
+        cp -af ${_locCnf}/nginx/nginx_sql_chive.conf ${_CHIVE_VHOST}
         sed -i "s/127.0.0.1:80/${_XTRAS_THISHTIP}:80/g"    ${_CHIVE_VHOST}
         wait
         sed -i "s/127.0.0.1:443/${_XTRAS_THISHTIP}:443/g"  ${_CHIVE_VHOST}
         wait
         sed -i "s/chive_name/chive.${_THIS_FRONT}/g"       ${_CHIVE_VHOST}
         wait
-        touch ${pthLog}/chive-${_CHIVE_VRN}.sync-new-ip-access.log
-        msg "INFO: Chive Manager installed"
+        touch ${_pthLog}/chive-${_CHIVE_VRN}.sync-new-ip-access.log
+        _msg "INFO: Chive Manager installed"
       else
-        msg "INFO: Chive Manager installation skipped"
+        _msg "INFO: Chive Manager installation skipped"
       fi
     fi
   fi
   if [ -d "/var/www/chive" ]; then
     if [ ! -z "${_PHP_CN}" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: _PHP_CN set to ${_PHP_CN} for Chive Manager"
+        _msg "INFO: _PHP_CN set to ${_PHP_CN} for Chive Manager"
       fi
       chown -R ${_PHP_CN}:www-data /var/www/chive
     else
-      msg "NOTE: _PHP_CN not set for Chive Manager"
+      _msg "NOTE: _PHP_CN not set for Chive Manager"
       chown -R www-data:www-data /var/www/chive
     fi
     find /var/www/chive -type d -exec chmod 0775 {} \; &> /dev/null
@@ -150,46 +150,46 @@ if_install_chive() {
   fi
 }
 
-if_install_sqlbuddy() {
+_if_install_sqlbuddy() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: if_install_sqlbuddy"
+    _msg "PROC: _if_install_sqlbuddy"
   fi
   if [[ "${_XTRAS_LIST}" =~ "BDD" ]]; then
-    _SQLBUDDY_VHOST="${mtrNgx}/vhost.d/sqlbuddy.${_THIS_FRONT}"
+    _SQLBUDDY_VHOST="${_mtrNgx}/vhost.d/sqlbuddy.${_THIS_FRONT}"
     if [ ! -d "/var/www/sqlbuddy" ] \
       || [ ! -f "${_SQLBUDDY_VHOST}" ] \
-      || [ ! -f "${pthLog}/sqlbuddy.sync-new-ip-access.log" ]; then
+      || [ ! -f "${_pthLog}/sqlbuddy.sync-new-ip-access.log" ]; then
       echo " "
-      if prompt_yes_no "Do you want to install SQL Buddy Manager?" ; then
+      if _prompt_yes_no "Do you want to install SQL Buddy Manager?" ; then
         true
-        msg "INFO: Installing SQL Buddy Manager..."
+        _msg "INFO: Installing SQL Buddy Manager..."
         rm -rf /var/www/sqlbuddy
         cd /var/www
-        get_dev_arch "sqlbuddy_1_3_3.tar.gz"
-        validate_public_ip &> /dev/null
-        validate_xtras_ip &> /dev/null
-        cp -af ${locCnf}/nginx/nginx_sql_buddy.conf ${_SQLBUDDY_VHOST}
+        _get_dev_arch "sqlbuddy_1_3_3.tar.gz"
+        _validate_public_ip &> /dev/null
+        _validate_xtras_ip &> /dev/null
+        cp -af ${_locCnf}/nginx/nginx_sql_buddy.conf ${_SQLBUDDY_VHOST}
         sed -i "s/127.0.0.1:80/${_XTRAS_THISHTIP}:80/g"   ${_SQLBUDDY_VHOST}
         wait
         sed -i "s/127.0.0.1:443/${_XTRAS_THISHTIP}:443/g" ${_SQLBUDDY_VHOST}
         wait
         sed -i "s/buddy_name/sqlbuddy.${_THIS_FRONT}/g"   ${_SQLBUDDY_VHOST}
         wait
-        touch ${pthLog}/sqlbuddy.sync-new-ip-access.log
-        msg "INFO: SQL Buddy Manager installed"
+        touch ${_pthLog}/sqlbuddy.sync-new-ip-access.log
+        _msg "INFO: SQL Buddy Manager installed"
       else
-        msg "INFO: SQL Buddy Manager installation skipped"
+        _msg "INFO: SQL Buddy Manager installation skipped"
       fi
     fi
   fi
   if [ -d "/var/www/sqlbuddy" ]; then
     if [ ! -z "${_PHP_CN}" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: _PHP_CN set to ${_PHP_CN} for SQL Buddy Manager"
+        _msg "INFO: _PHP_CN set to ${_PHP_CN} for SQL Buddy Manager"
       fi
       chown -R ${_PHP_CN}:www-data /var/www/sqlbuddy
     else
-      msg "NOTE: _PHP_CN not set for SQL Buddy Manager"
+      _msg "NOTE: _PHP_CN not set for SQL Buddy Manager"
       chown -R www-data:www-data /var/www/sqlbuddy
     fi
     find /var/www/sqlbuddy -type d -exec chmod 0775 {} \; &> /dev/null
@@ -197,9 +197,9 @@ if_install_sqlbuddy() {
   fi
 }
 
-fix_collectd_rrd_syslog_flood() {
+_fix_collectd_rrd_syslog_flood() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: fix_collectd_rrd_syslog_flood"
+    _msg "PROC: _fix_collectd_rrd_syslog_flood"
   fi
   _COLLECTD_CNF="/etc/collectd/collectd.conf"
   if [ -e "${_COLLECTD_CNF}" ]; then
@@ -211,15 +211,15 @@ fix_collectd_rrd_syslog_flood() {
       echo "        FSType \"rootfs\""   >> ${_COLLECTD_CNF}
       echo "        IgnoreSelected true" >> ${_COLLECTD_CNF}
       echo "</Plugin>"                   >> ${_COLLECTD_CNF}
-      mrun "service collectd restart" 2> /dev/null
+      _mrun "service collectd restart" 2> /dev/null
     fi
   fi
 }
 ### Credit: http://emacstragic.net/collectd-causing-rrd-illegal-attempt-to-update-using-time-errors/
 
-fix_collectd_nginx() {
+_fix_collectd_nginx() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: fix_collectd_nginx"
+    _msg "PROC: _fix_collectd_nginx"
   fi
   _COLLECTD_CNF="/etc/collectd/collectd.conf"
   if [ -e "${_COLLECTD_CNF}" ]; then
@@ -234,29 +234,29 @@ fix_collectd_nginx() {
       echo "</Plugin>"                                     >> ${_COLLECTD_CNF}
       sed -i "s/^#LoadPlugin nginx/LoadPlugin nginx/g"        ${_COLLECTD_CNF}
       wait
-      mrun "service collectd restart" 2> /dev/null
+      _mrun "service collectd restart" 2> /dev/null
     fi
   fi
 }
 
-if_install_collectd() {
+_if_install_collectd() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: if_install_collectd"
+    _msg "PROC: _if_install_collectd"
   fi
   if [[ "${_XTRAS_LIST}" =~ "CGP" ]]; then
-    _CGP_VHOST="${mtrNgx}/vhost.d/cgp.${_THIS_FRONT}"
+    _CGP_VHOST="${_mtrNgx}/vhost.d/cgp.${_THIS_FRONT}"
     if [ ! -e "/run/cloud_vhost.pid" ]; then
       if [ ! -d "/var/www/cgp" ] \
         || [ ! -f "${_CGP_VHOST}" ] \
-        || [ ! -f "${pthLog}/cgp-${_CGP_VRN}.sync-new-ip-access.log" ]; then
+        || [ ! -f "${_pthLog}/cgp-${_CGP_VRN}.sync-new-ip-access.log" ]; then
         echo " "
-        if prompt_yes_no "Do you want to install Collectd Graph Panel?" ; then
+        if _prompt_yes_no "Do you want to install Collectd Graph Panel?" ; then
           true
-          msg "INFO: Installing Collectd Graph Panel..."
-          st_runner "${_INSTAPP} collectd" 2> /dev/null
+          _msg "INFO: Installing Collectd Graph Panel..."
+          _st_runner "${_INSTAPP} collectd" 2> /dev/null
           rm -rf /var/www/cgp
           cd /var/www
-          get_dev_arch "cgp-${_CGP_VRN}.tar.gz"
+          _get_dev_arch "cgp-${_CGP_VRN}.tar.gz"
           if [ -e "/var/www/cgp-${_CGP_VRN}" ]; then
             mv -f cgp-${_CGP_VRN} cgp &> /dev/null
           fi
@@ -264,20 +264,20 @@ if_install_collectd() {
           wait
           sed -i "s/'uncategorized'/'Barracuda Server'/g" /var/www/cgp/index.php
           wait
-          validate_public_ip &> /dev/null
-          validate_xtras_ip &> /dev/null
-          cp -af ${locCnf}/nginx/nginx_sql_cgp.conf ${_CGP_VHOST}
+          _validate_public_ip &> /dev/null
+          _validate_xtras_ip &> /dev/null
+          cp -af ${_locCnf}/nginx/nginx_sql_cgp.conf ${_CGP_VHOST}
           sed -i "s/127.0.0.1:80/${_XTRAS_THISHTIP}:80/g"    ${_CGP_VHOST}
           wait
           sed -i "s/127.0.0.1:443/${_XTRAS_THISHTIP}:443/g"  ${_CGP_VHOST}
           wait
           sed -i "s/cgp_name/cgp.${_THIS_FRONT}/g"           ${_CGP_VHOST}
           wait
-          mrun "update-rc.d collectd defaults" 2> /dev/null
-          touch ${pthLog}/cgp-${_CGP_VRN}.sync-new-ip-access.log
-          msg "INFO: Collectd Graph Panel installed"
+          _mrun "update-rc.d collectd defaults" 2> /dev/null
+          touch ${_pthLog}/cgp-${_CGP_VRN}.sync-new-ip-access.log
+          _msg "INFO: Collectd Graph Panel installed"
         else
-          msg "INFO: Collectd Graph Panel installation skipped"
+          _msg "INFO: Collectd Graph Panel installation skipped"
         fi
       fi
     fi
@@ -286,32 +286,32 @@ if_install_collectd() {
     && [ "${_VMFAMILY}" = "VS" ] \
     && [ ! -e "/boot/grub/grub.cfg" ] \
     && [ ! -e "/boot/grub/menu.lst" ]; then
-    rm -f ${mtrNgx}/vhost.d/cgp*
-    mrun "apt-get remove collectd -y --purge --auto-remove -qq" 2> /dev/null
+    rm -f ${_mtrNgx}/vhost.d/cgp*
+    _mrun "apt-get remove collectd -y --purge --auto-remove -qq" 2> /dev/null
     rm -rf /var/www/cgp
   fi
   if [ -d "/var/www/cgp" ]; then
     if [ ! -z "${_PHP_CN}" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: _PHP_CN set to ${_PHP_CN} for Collectd Graph Panel"
+        _msg "INFO: _PHP_CN set to ${_PHP_CN} for Collectd Graph Panel"
       fi
       chown -R ${_PHP_CN}:www-data /var/www/cgp
     else
-      msg "NOTE: _PHP_CN not set for Collectd Graph Panel"
+      _msg "NOTE: _PHP_CN not set for Collectd Graph Panel"
       chown -R www-data:www-data /var/www/cgp
     fi
     find /var/www/cgp -type d -exec chmod 0775 {} \; &> /dev/null
     find /var/www/cgp -type f -exec chmod 0664 {} \; &> /dev/null
-    fix_collectd_rrd_syslog_flood
-    fix_collectd_nginx
+    _fix_collectd_rrd_syslog_flood
+    _fix_collectd_nginx
   fi
 }
 
-if_install_hhvm() {
+_if_install_hhvm() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: if_install_hhvm"
+    _msg "PROC: _if_install_hhvm"
   fi
-  if_to_do_fix
+  _if_to_do_fix
   if [[ "${_XTRAS_LIST}" =~ "HVM" ]]; then
     if [ -x "/usr/bin/gpg2" ]; then
       _GPG=gpg2
@@ -324,9 +324,9 @@ if_install_hhvm() {
       || [ "${_DO_FIX}" = "YES" ]; then
       if [ ! -x "/usr/bin/hhvm" ]; then
         echo " "
-        if prompt_yes_no "Do you want to install HHVM Engine?" ; then
+        if _prompt_yes_no "Do you want to install HHVM Engine?" ; then
           true
-          msg "INFO: Installing HHVM Engine..."
+          _msg "INFO: Installing HHVM Engine..."
           cd /var/opt
           echo "## HHVM APT Repository" > /etc/apt/sources.list.d/hhvm.list
           if [ "${_OS_CODE}" = "jessie" ]; then
@@ -348,20 +348,20 @@ if_install_hhvm() {
             sleep 2
           done
           cat /var/opt/hhvm.gpg.key | ${_GPG} --import &> /dev/null
-          apt_clean_update
-          st_runner "apt-get install hhvm ${aptYesUnth}" 2> /dev/null
-          msg "INFO: HHVM Engine installed"
+          _apt_clean_update
+          _st_runner "apt-get install hhvm ${_aptYesUnth}" 2> /dev/null
+          _msg "INFO: HHVM Engine installed"
         else
-          msg "INFO: HHVM Engine installation skipped"
+          _msg "INFO: HHVM Engine installation skipped"
         fi
       fi
     fi
   fi
 }
 
-if_install_webmin() {
+_if_install_webmin() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: if_install_webmin"
+    _msg "PROC: _if_install_webmin"
   fi
   if [[ "${_XTRAS_LIST}" =~ "WMN" ]]; then
     if [ ! -d "/etc/webmin" ] && [ ! -e "/run/cloud_vhost.pid" ]; then
@@ -371,9 +371,9 @@ if_install_webmin() {
         _GPG=gpg
       fi
       echo " "
-      if prompt_yes_no "Do you want to install Webmin Control Panel?" ; then
+      if _prompt_yes_no "Do you want to install Webmin Control Panel?" ; then
         true
-        msg "INFO: Installing Webmin Control Panel..."
+        _msg "INFO: Installing Webmin Control Panel..."
         cd /var/opt
         echo "## Webmin APT Repository" > /etc/apt/sources.list.d/webmin.list
         echo "deb http://download.webmin.com/download/repository \
@@ -383,47 +383,47 @@ if_install_webmin() {
         _KEYS_SERVER_TEST=FALSE
         until [[ "${_KEYS_SERVER_TEST}" =~ "GnuPG" ]]; do
           rm -f jcameron-key.gpg*
-          wget -q -U iCab ${urlDev}/jcameron-key.gpg
+          wget -q -U iCab ${_urlDev}/jcameron-key.gpg
           _KEYS_SERVER_TEST=$(grep GnuPG jcameron-key.gpg 2>&1)
           sleep 2
         done
         cat jcameron-key.gpg | ${_GPG} --import &> /dev/null
         rm -f jcameron-key.gpg*
-        touch ${pthLog}/webmin_update_apt_src.log
-        apt_clean_update
-        st_runner "${_INSTAPP} webmin \
+        touch ${_pthLog}/webmin_update_apt_src.log
+        _apt_clean_update
+        _st_runner "${_INSTAPP} webmin \
                              libxml-simple-perl \
                              libcrypt-ssleay-perl" 2> /dev/null
-        mrun "update-rc.d webmin defaults" 2> /dev/null
-        msg "INFO: Webmin Control Panel installed"
+        _mrun "update-rc.d webmin defaults" 2> /dev/null
+        _msg "INFO: Webmin Control Panel installed"
       else
-        msg "INFO: Webmin Control Panel installation skipped"
+        _msg "INFO: Webmin Control Panel installation skipped"
       fi
     fi
   fi
 }
 
-if_install_bind() {
+_if_install_bind() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: if_install_bind"
+    _msg "PROC: _if_install_bind"
   fi
   if [[ "${_XTRAS_LIST}" =~ "BND" ]]; then
     if [ ! -e "/usr/sbin/named" ] || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
       echo " "
-      if prompt_yes_no "Do you want to install Bind9 DNS Server?" ; then
+      if _prompt_yes_no "Do you want to install Bind9 DNS Server?" ; then
         true
-        msg "INFO: Installing Bind9 DNS Server..."
+        _msg "INFO: Installing Bind9 DNS Server..."
         if [ -z "${_THISHTIP}" ]; then
           _LOC_DOM="${_THISHOST}"
-          find_correct_ip
+          _find_correct_ip
           _THISHTIP="${_LOC_IP}"
         fi
-        st_runner "${_INSTAPP} bind9" 2> /dev/null
+        _st_runner "${_INSTAPP} bind9" 2> /dev/null
         cp -af /etc/bind/named.conf.options \
-          ${vBs}/named.conf.options.pre-${_X_SE}-${_X_VERSION}-${_NOW}
-        cp -af ${locCnf}/var/named.conf.options /etc/bind/named.conf.options
+          ${_vBs}/named.conf.options.pre-${_xSrl}-${_X_VERSION}-${_NOW}
+        cp -af ${_locCnf}/var/named.conf.options /etc/bind/named.conf.options
         sed -i "s/127.0.1.1/${_THISHTIP}/g" /etc/bind/named.conf.options &> /dev/null
-        mrun "service bind9 restart" 2> /dev/null
+        _mrun "service bind9 restart" 2> /dev/null
         if [ ! -e "/etc/init.d/bind" ]; then
           ln -sfn /etc/init.d/bind9 /etc/init.d/bind
         fi
@@ -431,17 +431,17 @@ if_install_bind() {
         wait
         sed -i "/^$/d" /etc/sudoers &> /dev/null
         wait
-        msg "INFO: Bind9 DNS Server installed"
+        _msg "INFO: Bind9 DNS Server installed"
       else
-        msg "INFO: Bind9 DNS Server installation skipped"
+        _msg "INFO: Bind9 DNS Server installation skipped"
       fi
     fi
   fi
 }
 
-if_install_node() {
+_if_install_node() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: if_install_node"
+    _msg "PROC: _if_install_node"
   fi
   if [ -e "/root/.allow.node.lshell.cnf" ]; then
     if [[ "${_XTRAS_LIST}" =~ "ALL" ]] \
@@ -464,17 +464,17 @@ if_install_node() {
       [ -d "/opt/user/npm" ] && _NODE_INSTALL=NO
       if [ "${_NODE_INSTALL}" = "YES" ]; then
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "INFO: Node ${_NODE_VRN} ${_L_ST}"
+          _msg "INFO: Node ${_NODE_VRN} ${_L_ST}"
         fi
         rm -f /etc/apt/sources.list.d/nodesource.list
         rm -f /usr/share/keyrings/nodesource.gpg
-        apt_clean_update
+        _apt_clean_update
         if [ "${_OS_CODE}" = "stretch" ] || [ "${_OS_CODE}" = "jessie" ]; then
           curl -sL https://deb.nodesource.com/setup_16.x | sudo -E bash -
         else
           curl -sL https://deb.nodesource.com/setup_22.x | sudo -E bash -
         fi
-        mrun "${_INSTAPP} nodejs" 2> /dev/null
+        _mrun "${_INSTAPP} nodejs" 2> /dev/null
       fi
       [ ! -d "/opt/user/npm" ] && mkdir -p /opt/user/npm
       chown root:root /opt/user/npm
@@ -483,14 +483,14 @@ if_install_node() {
   else
     isNode=$(which node 2>&1)
     if [ -x "${isNode}" ]; then
-      mrun "apt-get remove nodejs -y --purge --auto-remove -qq" 2> /dev/null
+      _mrun "apt-get remove nodejs -y --purge --auto-remove -qq" 2> /dev/null
     fi
   fi
 }
 
-if_install_ruby_gems() {
+_if_install_ruby_gems() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: if_install_ruby_gems"
+    _msg "PROC: _if_install_ruby_gems"
   fi
   if [ -d "/opt/user/gems" ] \
     && [ -e "/usr/local/lib/ruby/gems/3.3.0" ] \
@@ -512,9 +512,9 @@ if_install_ruby_gems() {
   fi
 }
 
-if_install_ruby() {
+_if_install_ruby() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: if_install_ruby"
+    _msg "PROC: _if_install_ruby"
   fi
   if [[ "${_XTRAS_LIST}" =~ "ALL" ]] \
     || [[ "${_XTRAS_LIST}" =~ "CSS" ]]; then
@@ -538,19 +538,19 @@ if_install_ruby() {
       || [ ! -x "/usr/local/bin/ruby" ] \
       || [ ! -x "/usr/local/bin/gem" ]; then
       echo " "
-      if prompt_yes_no "Do you want to ${_L_ST} Ruby ${_RUBY_VRN} from sources?" ; then
+      if _prompt_yes_no "Do you want to ${_L_ST} Ruby ${_RUBY_VRN} from sources?" ; then
         true
-        msg "INFO: Installing Ruby ${_RUBY_VRN} from sources..."
+        _msg "INFO: Installing Ruby ${_RUBY_VRN} from sources..."
         mkdir -p /opt/user/gems
         chmod 1777 /opt/user/gems
         touch /run/manage_ruby_users.pid
         cd /var/opt
         rm -rf ruby*
-        get_dev_src "ruby-${_RUBY_VRN}.tar.gz"
+        _get_dev_src "ruby-${_RUBY_VRN}.tar.gz"
         cd /var/opt/ruby-${_RUBY_VRN}
-        mrun "./configure" 2> /dev/null
-        mrun "make -j $(nproc)" 2> /dev/null
-        mrun "make install" 2> /dev/null
+        _mrun "./configure" 2> /dev/null
+        _mrun "make -j $(nproc)" 2> /dev/null
+        _mrun "make install" 2> /dev/null
         ldconfig 2> /dev/null
         isRuby=$(which ruby 2>&1)
         if [ -x "${isRuby}" ]; then
@@ -559,16 +559,16 @@ if_install_ruby() {
             | awk '{ print $1}' 2>&1)
         fi
         if [ -x "/usr/local/bin/gem" ] && [ "${_RUBY_V}" = "${_RUBY_VRN}" ]; then
-          msg "INFO: Ruby ${_RUBY_VRN} from sources ${_L_ST} completed"
-          if_install_ruby_gems
+          _msg "INFO: Ruby ${_RUBY_VRN} from sources ${_L_ST} completed"
+          _if_install_ruby_gems
         else
           if [ "${_DEBUG_MODE}" = "YES" ]; then
-            msg "INFO: Ruby ${_RUBY_VRN} from sources ${_L_ST} failed"
+            _msg "INFO: Ruby ${_RUBY_VRN} from sources ${_L_ST} failed"
           fi
         fi
       else
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "INFO: Ruby ${_RUBY_VRN} from sources ${_L_ST} skipped"
+          _msg "INFO: Ruby ${_RUBY_VRN} from sources ${_L_ST} skipped"
         fi
       fi
     fi
@@ -576,25 +576,25 @@ if_install_ruby() {
   [ -e "/run/manage_ruby_users.pid" ] && rm -f /run/manage_ruby_users.pid
 }
 
-magick_install_upgrade() {
+_magick_install_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: magick_install_upgrade"
+    _msg "PROC: _magick_install_upgrade"
   fi
   if [ "${_MAGICK_FROM_SOURCES}" = "YES" ]; then
-    install_magick_src
+    _install_magick_src
   fi
 }
 
-if_install_ffmpeg() {
+_if_install_ffmpeg() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: if_install_ffmpeg"
+    _msg "PROC: _if_install_ffmpeg"
   fi
   if [[ "${_XTRAS_LIST}" =~ "FMG" ]]; then
     if [ ! -x "/usr/bin/ffmpeg" ]; then
       echo " "
-      if prompt_yes_no "Do you want to install FFmpeg?" ; then
+      if _prompt_yes_no "Do you want to install FFmpeg?" ; then
         true
-        msg "INFO: Installing FFmpeg..."
+        _msg "INFO: Installing FFmpeg..."
         cd /var/opt
         echo "## deb-multimedia APT Repository for FFmpeg" > /etc/apt/sources.list.d/ffmpeg.list
         if [ "${_OS_CODE}" = "bookworm" ] \
@@ -614,13 +614,13 @@ if_install_ffmpeg() {
           echo "deb http://www.deb-multimedia.org buster main non-free" >> /etc/apt/sources.list.d/ffmpeg.list
           echo "deb http://www.deb-multimedia.org buster-backports main" >> /etc/apt/sources.list.d/ffmpeg.list
         fi
-        apt_clean_update
-        st_runner "apt-get install deb-multimedia-keyring ${aptYesUnth}" 2> /dev/null
-        apt_clean_update
-        st_runner "${_INSTAPP} ffmpeg" 2> /dev/null
-        msg "INFO: FFmpeg installed"
+        _apt_clean_update
+        _st_runner "apt-get install deb-multimedia-keyring ${_aptYesUnth}" 2> /dev/null
+        _apt_clean_update
+        _st_runner "${_INSTAPP} ffmpeg" 2> /dev/null
+        _msg "INFO: FFmpeg installed"
       else
-        msg "INFO: FFmpeg installation skipped"
+        _msg "INFO: FFmpeg installation skipped"
       fi
     fi
   fi

@@ -1,14 +1,14 @@
 
-export tRee=dev
+export _tRee=dev
 
 #
 # Fix DNS settings.
-fix_dns_settings() {
+_fix_dns_settings() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: fix_dns_settings"
+    _msg "PROC: _fix_dns_settings"
   fi
-  mkdir -p ${vBs}
-  rm -f ${vBs}/resolv.conf.tmp
+  mkdir -p ${_vBs}
+  rm -f ${_vBs}/resolv.conf.tmp
   if [ -e "/etc/resolv.conf" ]; then
     if [ -L "/etc/resolv.conf" ]; then
       rslvT=`readlink -n /etc/resolv.conf`
@@ -17,51 +17,51 @@ fix_dns_settings() {
       fi
     fi
     if [ -e "/etc/resolv.conf" ]; then
-      cp -a /etc/resolv.conf ${vBs}/resolv.conf.tmp
+      cp -a /etc/resolv.conf ${_vBs}/resolv.conf.tmp
     fi
   fi
-  if [ ! -e "${vBs}/resolv.conf.tmp" ]; then
-    echo "nameserver 127.0.0.1" > ${vBs}/resolv.conf.tmp
-    echo "nameserver 1.1.1.1" >> ${vBs}/resolv.conf.tmp
-    echo "nameserver 1.0.0.1" >> ${vBs}/resolv.conf.tmp
-    echo "nameserver 8.8.8.8" >> ${vBs}/resolv.conf.tmp
-    echo "nameserver 8.8.4.4" >> ${vBs}/resolv.conf.tmp
+  if [ ! -e "${_vBs}/resolv.conf.tmp" ]; then
+    echo "nameserver 127.0.0.1" > ${_vBs}/resolv.conf.tmp
+    echo "nameserver 1.1.1.1" >> ${_vBs}/resolv.conf.tmp
+    echo "nameserver 1.0.0.1" >> ${_vBs}/resolv.conf.tmp
+    echo "nameserver 8.8.8.8" >> ${_vBs}/resolv.conf.tmp
+    echo "nameserver 8.8.4.4" >> ${_vBs}/resolv.conf.tmp
   fi
-  if [ ! -e "${vBs}/resolv.conf.vanilla" ]; then
-    for Pre in `ls -la ${vBs}/resolv.conf.pre-*`; do
+  if [ ! -e "${_vBs}/resolv.conf.vanilla" ]; then
+    for Pre in `ls -la ${_vBs}/resolv.conf.pre-*`; do
       if [ -e "${Pre}" ] && [ -f "${Pre}" ] && [ ! -L "${Pre}" ]; then
-        cp -a ${Pre} ${vBs}/resolv.conf.vanilla
+        cp -a ${Pre} ${_vBs}/resolv.conf.vanilla
       fi
     done
   fi
-  if [ ! -e "${vBs}/resolv.conf.vanilla" ] \
-    && [ -e "${vBs}/resolv.conf.tmp" ]; then
+  if [ ! -e "${_vBs}/resolv.conf.vanilla" ] \
+    && [ -e "${_vBs}/resolv.conf.tmp" ]; then
     if [ "${_USE_DEFAULT_DNS}" != "YES" ]; then
       rm -f /etc/resolv.conf
-      cp -a ${vBs}/resolv.conf.tmp /etc/resolv.conf
-      cp -a ${vBs}/resolv.conf.tmp ${vBs}/resolv.conf.vanilla
+      cp -a ${_vBs}/resolv.conf.tmp /etc/resolv.conf
+      cp -a ${_vBs}/resolv.conf.tmp ${_vBs}/resolv.conf.vanilla
     fi
   fi
-  sed -i "/^$/d" ${vBs}/resolv.conf.vanilla &> /dev/null
-  if [ -e "${vBs}/resolv.conf.vanilla" ]; then
+  sed -i "/^$/d" ${_vBs}/resolv.conf.vanilla &> /dev/null
+  if [ -e "${_vBs}/resolv.conf.vanilla" ]; then
     if [ "${_USE_DEFAULT_DNS}" != "YES" ]; then
       rm -f /etc/resolv.conf
-      cp -a ${vBs}/resolv.conf.vanilla /etc/resolv.conf
+      cp -a ${_vBs}/resolv.conf.vanilla /etc/resolv.conf
     fi
   else
-    if [ -e "${vBs}/resolv.conf.tmp" ] \
+    if [ -e "${_vBs}/resolv.conf.tmp" ] \
       && [ "${_USE_DEFAULT_DNS}" != "YES" ]; then
       rm -f /etc/resolv.conf
-      cp -a ${vBs}/resolv.conf.tmp /etc/resolv.conf
+      cp -a ${_vBs}/resolv.conf.tmp /etc/resolv.conf
     fi
   fi
 }
 
 #
 # Check DNS settings.
-check_dns_settings() {
+_check_dns_settings() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: check_dns_settings"
+    _msg "PROC: _check_dns_settings"
   fi
   if [ -e "/root/.use.default.nameservers.cnf" ]; then
     _USE_DEFAULT_DNS=YES
@@ -77,10 +77,10 @@ check_dns_settings() {
     || [ "${_USE_PROVIDER_DNS}" = "YES" ]; then
     if [ "${_USE_DEFAULT_DNS}" = "YES" ] \
       || [ "${_USE_PROVIDER_DNS}" = "YES" ] \
-      || [ ! -e "${vBs}/resolv.conf.vanilla" ]; then
-      fix_dns_settings
+      || [ ! -e "${_vBs}/resolv.conf.vanilla" ]; then
+      _fix_dns_settings
       if [ -e "/etc/init.d/postfix" ]; then
-        mrun "service postfix restart" 2> /dev/null
+        _mrun "service postfix restart" 2> /dev/null
       fi
     fi
   fi
@@ -88,9 +88,9 @@ check_dns_settings() {
 
 #
 # Check repo status.
-check_git_repos() {
+_check_git_repos() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: check_git_repos"
+    _msg "PROC: _check_git_repos"
   fi
   if [ "${_AEGIR_VERSION}" != "static" ]; then
     _GITHUB_WORKS=NO
@@ -103,44 +103,44 @@ check_git_repos() {
     fi
     if [ "${_FORCE_GIT_MIRROR}" = "github" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: We will use forced GitHub repository without testing connection"
+        _msg "INFO: We will use forced GitHub repository without testing connection"
       fi
       _GITHUB_WORKS=YES
       _GITLAB_WORKS=NO
       sleep 1
     elif [ "${_FORCE_GIT_MIRROR}" = "gitlab" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: We will use forced GitLab mirror without testing connection"
+        _msg "INFO: We will use forced GitLab mirror without testing connection"
       fi
       _GITHUB_WORKS=NO
       _GITLAB_WORKS=YES
       sleep 1
     else
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: Testing repository mirror servers availability..."
+        _msg "INFO: Testing repository mirror servers availability..."
       fi
       sleep 1
       _GITHUB_WORKS=YES
       _GITLAB_WORKS=YES
       if ! netcat -w 10 -z github.com 443 ; then
         _GITHUB_WORKS=NO
-        msg "WARN: The GitHub master repository server doesn't respond..."
+        _msg "WARN: The GitHub master repository server doesn't respond..."
       elif ! netcat -w 10 -z gitlab.com 443 ; then
         _GITLAB_WORKS=NO
-        msg "WARN: The GitLab mirror repository server doesn't respond..."
+        _msg "WARN: The GitLab mirror repository server doesn't respond..."
       fi
     fi
     if [ "${_GITHUB_WORKS}" = "YES" ]; then
       _BOA_REPO_NAME="boa"
-      _BOA_REPO_GIT_URL="${gitHub}"
+      _BOA_REPO_GIT_URL="${_gitHub}"
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: GitHub master repository will be used"
+        _msg "INFO: GitHub master repository will be used"
       fi
     elif [ "${_GITLAB_WORKS}" = "YES" ]; then
       _BOA_REPO_NAME="boa"
-      _BOA_REPO_GIT_URL="${gitLab}"
+      _BOA_REPO_GIT_URL="${_gitLab}"
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: GitLab mirror repository will be used"
+        _msg "INFO: GitLab mirror repository will be used"
       fi
     else
       cat <<EOF
@@ -153,25 +153,25 @@ check_git_repos() {
       Bye.
 
 EOF
-      clean_pid_exit check_git_repos_a
+      _clean_pid_exit _check_git_repos_a
     fi
   fi
 }
 
 #
 # Find correct IP.
-find_correct_ip() {
+_find_correct_ip() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: find_correct_ip"
+    _msg "PROC: _find_correct_ip"
   fi
   if [ -e "/root/.found_correct_ipv4.cnf" ]; then
     _LOC_IP=$(cat /root/.found_correct_ipv4.cnf 2>&1)
     _LOC_IP=$(echo -n ${_LOC_IP} | tr -d "\n" 2>&1)
   else
-    _LOC_IP=$(curl ${crlGet} https://api.ipify.org \
+    _LOC_IP=$(curl ${_crlGet} https://api.ipify.org \
       | sed 's/[^0-9\.]//g' 2>&1)
     if [ -z "${_LOC_IP}" ]; then
-      _LOC_IP=$(curl ${crlGet} http://ipv4.icanhazip.com \
+      _LOC_IP=$(curl ${_crlGet} http://ipv4.icanhazip.com \
         | sed 's/[^0-9\.]//g' 2>&1)
     fi
     if [ ! -z "${_LOC_IP}" ]; then
@@ -182,14 +182,14 @@ find_correct_ip() {
 
 #
 # Validate server public IP.
-validate_public_ip() {
+_validate_public_ip() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: validate_public_ip"
+    _msg "PROC: _validate_public_ip"
   fi
   if [ "${_VMFAMILY}" = "AWS" ]; then
     _LOC_DOM="${_MY_HOSTN}"
     if [ -z "${_MY_OWNIP}" ]; then
-      find_correct_ip
+      _find_correct_ip
       _MY_OWNIP="${_LOC_IP}"
     else
       _LOC_IP="${_MY_OWNIP}"
@@ -197,8 +197,8 @@ validate_public_ip() {
   fi
   if [ ! -z "${_LOCAL_NETWORK_IP}" ]; then
     if [ -z "${_LOCAL_NETWORK_HN}" ]; then
-      msg "FATAL ERROR: you must specify also _LOCAL_NETWORK_HN"
-      clean_pid_exit validate_public_ip_a
+      _msg "FATAL ERROR: you must specify also _LOCAL_NETWORK_HN"
+      _clean_pid_exit _validate_public_ip_a
     else
       _MY_OWNIP="${_LOCAL_NETWORK_IP}"
       _MY_HOSTN="${_LOCAL_NETWORK_HN}"
@@ -208,7 +208,7 @@ validate_public_ip() {
   else
     if [ "${_DNS_SETUP_TEST}" = "YES" ]; then
       if [ -z "${_MY_OWNIP}" ]; then
-        find_correct_ip
+        _find_correct_ip
         _THISHTIP="${_LOC_IP}"
       else
         _THISHTIP="${_MY_OWNIP}"
@@ -216,7 +216,7 @@ validate_public_ip() {
     else
       if [ -z "${_MY_OWNIP}" ] && [ ! -z "${_MY_HOSTN}" ]; then
         _LOC_DOM="${_MY_HOSTN}"
-        find_correct_ip
+        _find_correct_ip
         _THISHTIP="${_LOC_IP}"
       else
         _THISHTIP="${_MY_OWNIP}"
@@ -227,14 +227,14 @@ validate_public_ip() {
 
 #
 # Validate server IP for xtras.
-validate_xtras_ip() {
+_validate_xtras_ip() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: validate_xtras_ip"
+    _msg "PROC: _validate_xtras_ip"
   fi
   if [ "${_VMFAMILY}" = "AWS" ]; then
     _LOC_DOM="${_MY_HOSTN}"
     if [ -z "${_MY_OWNIP}" ]; then
-      find_correct_ip
+      _find_correct_ip
       _MY_OWNIP="${_LOC_IP}"
     else
       _LOC_IP="${_MY_OWNIP}"
@@ -245,16 +245,16 @@ validate_xtras_ip() {
 
 #
 # Validate server IP for purge vhost.
-validate_purge_ip() {
+_validate_purge_ip() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: validate_purge_ip"
+    _msg "PROC: _validate_purge_ip"
   fi
   if [ "${_PURGE_ALL_THISHTIP}" = "YES" ]; then
     _PURGE_THISHTIP="0.0.0.0/0"
   else
     if [ "${_DNS_SETUP_TEST}" = "YES" ]; then
       if [ -z "${_MY_OWNIP}" ]; then
-        find_correct_ip
+        _find_correct_ip
         _PURGE_THISHTIP="${_LOC_IP}"
       else
         _PURGE_THISHTIP="${_MY_OWNIP}"
@@ -264,7 +264,7 @@ validate_purge_ip() {
         if [ -e "/usr/bin/sipcalc" ]; then
           if [ -z "${_THISHTIP}" ]; then
             _LOC_DOM="${_THISHOST}"
-            find_correct_ip
+            _find_correct_ip
             _THISHTIP="${_LOC_IP}"
           fi
           _IP_TEST=$(sipcalc ${_THISHTIP} 2>&1)
@@ -290,47 +290,47 @@ validate_purge_ip() {
 
 #
 # Validate local server IP.
-validate_local_ip() {
+_validate_local_ip() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: validate_local_ip"
+    _msg "PROC: _validate_local_ip"
   fi
   _LOCAL_THISHTIP=all
 }
 
 #
 # Wait for connection.
-wait_for_connection() {
+_wait_for_connection() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: wait_for_connection"
+    _msg "PROC: _wait_for_connection"
   fi
   echo " "
-  msg "I can not connect to github.com on port 443 at the moment"
-  msg "I will try again in 60 seconds, please wait..."
-  msg "Waiting for attempt $1..."
+  _msg "I can not connect to github.com on port 443 at the moment"
+  _msg "I will try again in 60 seconds, please wait..."
+  _msg "Waiting for attempt $1..."
   sleep 60
 }
 
 #
 # Check connection.
-check_connection() {
+_check_connection() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: check_connection"
+    _msg "PROC: _check_connection"
   fi
   if ! netcat -w 10 -z github.com 443 ; then
-    wait_for_connection "2/4"
+    _wait_for_connection "2/4"
     if ! netcat -w 10 -z github.com 443 ; then
-      wait_for_connection "3/4"
+      _wait_for_connection "3/4"
       if ! netcat -w 10 -z github.com 443 ; then
-        wait_for_connection "4/4"
+        _wait_for_connection "4/4"
         if ! netcat -w 10 -z github.com 443 ; then
           echo " "
-          msg "Sorry, I gave up."
-          msg "EXIT on error due to GitHub git server at 443 downtime"
-          msg "Please try to run this script again in a few minutes"
-          msg "You may want to check https://www.githubstatus.com"
-          msg "Also, make sure that the outgoing connections via port 443 work"
-          msg "Bye"
-          clean_pid_exit check_connection_a
+          _msg "Sorry, I gave up."
+          _msg "EXIT on error due to GitHub git server at 443 downtime"
+          _msg "Please try to run this script again in a few minutes"
+          _msg "You may want to check https://www.githubstatus.com"
+          _msg "Also, make sure that the outgoing connections via port 443 work"
+          _msg "Bye"
+          _clean_pid_exit _check_connection_a
         fi
       fi
     fi
@@ -339,38 +339,38 @@ check_connection() {
 
 #
 # Install Unbound from sources.
-install_unbound_src() {
+_install_unbound_src() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: install_unbound_src"
+    _msg "PROC: _install_unbound_src"
   fi
-  msg "INFO: Installing Unbound ${_UNBOUND_VRN}..."
+  _msg "INFO: Installing Unbound ${_UNBOUND_VRN}..."
   ldconfig 2> /dev/null
   cd /var/opt
   rm -rf unbound*
-  get_dev_src "unbound-${_UNBOUND_VRN}.tar.gz"
+  _get_dev_src "unbound-${_UNBOUND_VRN}.tar.gz"
   cd unbound-${_UNBOUND_VRN}
   if [ -e "/usr/local/ssl3/" ]; then
-    mrun "bash ./configure \
+    _mrun "bash ./configure \
       --prefix=/usr \
       --with-libevent \
       --with-pidfile=/run/unbound/unbound.pid \
       --with-ssl=/usr/local/ssl3" 2> /dev/null
   elif [ -e "/usr/local/ssl/" ]; then
-    mrun "bash ./configure \
+    _mrun "bash ./configure \
       --prefix=/usr \
       --with-libevent \
       --with-pidfile=/run/unbound/unbound.pid \
       --with-ssl=/usr/local/ssl" 2> /dev/null
   fi
-  mrun "make -j $(nproc) --quiet" 2> /dev/null
-  mrun "make --quiet install" 2> /dev/null
+  _mrun "make -j $(nproc) --quiet" 2> /dev/null
+  _mrun "make --quiet install" 2> /dev/null
 }
 
 #
 # DNS cache Unbound.
-dns_unbound_install_upgrade() {
+_dns_unbound_install_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: dns_unbound_install_upgrade"
+    _msg "PROC: _dns_unbound_install_upgrade"
   fi
   isUnbnd=$(which unbound 2>&1)
   isUnbndErr=$(${isUnbnd} -V 2>&1)
@@ -397,13 +397,13 @@ dns_unbound_install_upgrade() {
     || [ ! -x "/etc/init.d/unbound" ] \
     || [ ! -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "INFO: Installing DNS cache Unbound server from packages..."
+      _msg "INFO: Installing DNS cache Unbound server from packages..."
     fi
     if [ -e "/etc/resolv.conf" ]; then
-      cp -af /etc/resolv.conf ${vBs}/resolv.conf.pre-${_X_SE}-${_X_VERSION}-${_NOW}
+      cp -af /etc/resolv.conf ${_vBs}/resolv.conf.pre-${_xSrl}-${_X_VERSION}-${_NOW}
     fi
-    check_dns_settings
-    fix_dns_settings
+    _check_dns_settings
+    _fix_dns_settings
     if [ "${_USE_PROVIDER_DNS}" != "YES" ]; then
       rm -f /etc/resolv.conf
       echo "nameserver 1.1.1.1" > /etc/resolv.conf
@@ -411,21 +411,21 @@ dns_unbound_install_upgrade() {
       echo "nameserver 8.8.8.8" >> /etc/resolv.conf
       echo "nameserver 8.8.4.4" >> /etc/resolv.conf
     fi
-    apt_clean_update
+    _apt_clean_update
     [ -e "/usr/etc/unbound/unbound.pid" ] && isUnbndFix=YES
     if [ "${isUnbndFix}" = "YES" ]; then
-      mrun "apt-get remove unbound -y --purge --auto-remove -qq" 2> /dev/null
-      mrun "apt-get remove unbound-anchor -y --purge --auto-remove -qq" 2> /dev/null
-      mrun "apt-get remove unbound-host -y --purge --auto-remove -qq" 2> /dev/null
-      mrun "apt-get remove dns-root-data -y --purge --auto-remove -qq" 2> /dev/null
+      _mrun "apt-get remove unbound -y --purge --auto-remove -qq" 2> /dev/null
+      _mrun "apt-get remove unbound-anchor -y --purge --auto-remove -qq" 2> /dev/null
+      _mrun "apt-get remove unbound-host -y --purge --auto-remove -qq" 2> /dev/null
+      _mrun "apt-get remove dns-root-data -y --purge --auto-remove -qq" 2> /dev/null
       rm -rf /etc/unbound
       rm -rf /usr/etc/unbound
     fi
-    mrun "apt-get remove resolvconf -y --purge --auto-remove -qq" 2> /dev/null
+    _mrun "apt-get remove resolvconf -y --purge --auto-remove -qq" 2> /dev/null
     rm -rf /lib/init/rw/resolvconf
     rm -rf /run/resolvconf
     rm -rf /etc/resolvconf
-    mrun "apt-get remove resolvconf -y --purge --auto-remove -qq" 2> /dev/null
+    _mrun "apt-get remove resolvconf -y --purge --auto-remove -qq" 2> /dev/null
     if [ "${_USE_PROVIDER_DNS}" != "YES" ]; then
       rm -f /etc/resolv.conf
       echo "nameserver 1.1.1.1" > /etc/resolv.conf
@@ -434,16 +434,16 @@ dns_unbound_install_upgrade() {
       echo "nameserver 8.8.4.4" >> /etc/resolv.conf
     fi
     if [ -x "/usr/sbin/aa-teardown" ]; then
-      mrun "aa-teardown" 2> /dev/null
+      _mrun "aa-teardown" 2> /dev/null
     fi
-    mrun "${_INSTAPP} libevent-dev" 2> /dev/null
-    mrun "${_INSTAPP} resolvconf" 2> /dev/null
-    mrun "${_INSTAPP} unbound" 2> /dev/null
-    mrun "${_INSTAPP} unbound-anchor" 2> /dev/null
-    mrun "${_INSTAPP} unbound-host" 2> /dev/null
-    mrun "${_INSTAPP} dns-root-data" 2> /dev/null
+    _mrun "${_INSTAPP} libevent-dev" 2> /dev/null
+    _mrun "${_INSTAPP} resolvconf" 2> /dev/null
+    _mrun "${_INSTAPP} unbound" 2> /dev/null
+    _mrun "${_INSTAPP} unbound-anchor" 2> /dev/null
+    _mrun "${_INSTAPP} unbound-host" 2> /dev/null
+    _mrun "${_INSTAPP} dns-root-data" 2> /dev/null
     if [ -x "/usr/sbin/aa-teardown" ]; then
-      mrun "aa-teardown" 2> /dev/null
+      _mrun "aa-teardown" 2> /dev/null
     fi
     ###
     [ ! -e "/run/unbound" ] && mkdir -p /run/unbound
@@ -454,23 +454,23 @@ dns_unbound_install_upgrade() {
     [ ! -e "/var/lib/unbound/" ] && mkdir -p /var/lib/unbound/
     [ -e "/usr/share/dns/" ] && cp -a /usr/share/dns/* /var/lib/unbound/
     [ -e "/var/lib/unbound/" ] && chown -R unbound:unbound /var/lib/unbound
-    [ ! -e "/etc/unbound/unbound_control.key" ] && mrun "unbound-control-setup" 2> /dev/null
-    cp -af ${locCnf}/dns/unbound /etc/init.d/unbound
+    [ ! -e "/etc/unbound/unbound_control.key" ] && _mrun "unbound-control-setup" 2> /dev/null
+    cp -af ${_locCnf}/dns/unbound /etc/init.d/unbound
     chmod 755 /etc/init.d/unbound
-    mrun "update-rc.d unbound defaults" 2> /dev/null
+    _mrun "update-rc.d unbound defaults" 2> /dev/null
     ###
     if [ -e "/etc/apparmor.d" ] && [ ! -e "/etc/apparmor.d/usr.sbin.unbound" ]; then
-      cat ${locCnf}/apparmor/usr.sbin.unbound > /etc/apparmor.d/usr.sbin.unbound
+      cat ${_locCnf}/apparmor/usr.sbin.unbound > /etc/apparmor.d/usr.sbin.unbound
       chmod 644 /etc/apparmor.d/usr.sbin.unbound
     fi
     ###
     [ ! -d "/usr/libexec" ] && mkdir -p /usr/libexec
-    [ ! -e "/usr/libexec/unbound-helper" ] && cp -a ${locCnf}/dns/unbound-helper /usr/libexec/
+    [ ! -e "/usr/libexec/unbound-helper" ] && cp -a ${_locCnf}/dns/unbound-helper /usr/libexec/
     [ -e "/usr/libexec/unbound-helper" ] && chmod 755 /usr/libexec/unbound-helper
-    cat ${locCnf}/dns/unbound.conf > /etc/unbound/unbound.conf.d/unbound.conf
+    cat ${_locCnf}/dns/unbound.conf > /etc/unbound/unbound.conf.d/unbound.conf
     if [ "${_USE_PROVIDER_DNS}" = "YES" ] \
-      && [ -e "${vBs}/resolv.conf.vanilla" ]; then
-      cat ${vBs}/resolv.conf.vanilla > /etc/resolvconf/resolv.conf.d/base
+      && [ -e "${_vBs}/resolv.conf.vanilla" ]; then
+      cat ${_vBs}/resolv.conf.vanilla > /etc/resolvconf/resolv.conf.d/base
     fi
     sed -i "s/pdnsd/unbound/g" /etc/resolvconf/interface-order
     mkdir -p /etc/resolvconf/run/interface
@@ -478,13 +478,13 @@ dns_unbound_install_upgrade() {
     resolvconf -u &> /dev/null
     [ -e "/etc/resolvconf/update.d/unbound" ] && chmod -x /etc/resolvconf/update.d/unbound
     killall -9 unbound &> /dev/null
-    mrun "service unbound restart" 2> /dev/null
+    _mrun "service unbound restart" 2> /dev/null
     wait
   fi
-  check_dns_settings
+  _check_dns_settings
   if [ "${_USE_PROVIDER_DNS}" = "YES" ] \
-    && [ -e "${vBs}/resolv.conf.vanilla" ]; then
-    cat ${vBs}/resolv.conf.vanilla > /etc/resolvconf/resolv.conf.d/base
+    && [ -e "${_vBs}/resolv.conf.vanilla" ]; then
+    cat ${_vBs}/resolv.conf.vanilla > /etc/resolvconf/resolv.conf.d/base
     sed -i "s/pdnsd/unbound/g" /etc/resolvconf/interface-order
     mkdir -p /etc/resolvconf/run/interface
     echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.unbound
@@ -502,8 +502,8 @@ dns_unbound_install_upgrade() {
     else
       rm -f /etc/resolv.conf
       echo "nameserver 127.0.0.1" > /etc/resolv.conf
-      if [ -e "${vBs}/resolv.conf.vanilla" ]; then
-        cat ${vBs}/resolv.conf.vanilla >> /etc/resolv.conf
+      if [ -e "${_vBs}/resolv.conf.vanilla" ]; then
+        cat ${_vBs}/resolv.conf.vanilla >> /etc/resolv.conf
       fi
       echo "nameserver 1.1.1.1" >> /etc/resolv.conf
       echo "nameserver 1.0.0.1" >> /etc/resolv.conf
@@ -511,7 +511,7 @@ dns_unbound_install_upgrade() {
       echo "nameserver 8.8.4.4" >> /etc/resolv.conf
       [ -e "/etc/resolvconf/update.d/unbound" ] && chmod -x /etc/resolvconf/update.d/unbound
       killall -9 unbound &> /dev/null
-      mrun "service unbound restart" 2> /dev/null
+      _mrun "service unbound restart" 2> /dev/null
       wait
       unbound-control reload &> /dev/null
     fi
@@ -519,8 +519,8 @@ dns_unbound_install_upgrade() {
   if [ ! -f "/etc/resolv.conf" ]; then
     rm -f /etc/resolv.conf
     echo "nameserver 127.0.0.1" > /etc/resolv.conf
-    if [ -e "${vBs}/resolv.conf.vanilla" ]; then
-      cat ${vBs}/resolv.conf.vanilla >> /etc/resolv.conf
+    if [ -e "${_vBs}/resolv.conf.vanilla" ]; then
+      cat ${_vBs}/resolv.conf.vanilla >> /etc/resolv.conf
     fi
     echo "nameserver 1.1.1.1" >> /etc/resolv.conf
     echo "nameserver 1.0.0.1" >> /etc/resolv.conf
@@ -528,14 +528,14 @@ dns_unbound_install_upgrade() {
     echo "nameserver 8.8.4.4" >> /etc/resolv.conf
     [ -e "/etc/resolvconf/update.d/unbound" ] && chmod -x /etc/resolvconf/update.d/unbound
     killall -9 unbound &> /dev/null
-    mrun "service unbound restart" 2> /dev/null
+    _mrun "service unbound restart" 2> /dev/null
     wait
     unbound-control reload &> /dev/null
   fi
   if [ -e "/etc/NetworkManager/NetworkManager.conf" ]; then
     sed -i "s/^dns=.*/dns=unbound/g" \
       /etc/NetworkManager/NetworkManager.conf &> /dev/null
-    mrun "service network-manager restart" 2> /dev/null
+    _mrun "service network-manager restart" 2> /dev/null
   fi
   if [ -x "${isUnbnd}" ] && [ "${isUnbndFix}" = "NO" ]; then
     _UNBOUND_V_ITD=$(${isUnbnd} -V 2>&1 \
@@ -546,12 +546,12 @@ dns_unbound_install_upgrade() {
     if [ "${_UNBOUND_V_ITD}" = "${_UNBOUND_VRN}" ]; then
       _UNBOUND_INSTALL_REQUIRED=NO
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: Installed Unbound version ${_UNBOUND_V_ITD}, OK"
+        _msg "INFO: Installed Unbound version ${_UNBOUND_V_ITD}, OK"
       fi
     else
       _UNBOUND_INSTALL_REQUIRED=YES
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: Installed Unbound version ${_UNBOUND_V_ITD}, upgrade required"
+        _msg "INFO: Installed Unbound version ${_UNBOUND_V_ITD}, upgrade required"
       fi
     fi
   else
@@ -560,7 +560,7 @@ dns_unbound_install_upgrade() {
   [ -e "/usr/etc/unbound/unbound.pid" ] && _UNBOUND_INSTALL_REQUIRED=YES
   [ -e "/usr/etc/unbound/unbound.pid" ] && rm -f /usr/etc/unbound/unbound.pid
   if [ "${_UNBOUND_INSTALL_REQUIRED}" = "YES" ]; then
-    install_unbound_src
+    _install_unbound_src
   fi
   [ -e "/usr/etc/unbound" ] && cp -af /etc/unbound/*.key /usr/etc/unbound/
   [ -e "/usr/etc/unbound" ] && cp -af /etc/unbound/*.pem /usr/etc/unbound/
@@ -578,14 +578,14 @@ dns_unbound_install_upgrade() {
   if [ "${isUnbndFix}" = "NO" ] || [ "${killPdnsd}" = "YES" ]; then
     isPdnsd=$(which pdnsd 2>&1)
     if [ -x "${isPdnsd}" ]; then
-      mrun "service pdnsd stop" 2> /dev/null
-      mrun "update-rc.d -f pdnsd remove" 2> /dev/null
+      _mrun "service pdnsd stop" 2> /dev/null
+      _mrun "update-rc.d -f pdnsd remove" 2> /dev/null
       killall -9 pdnsd &> /dev/null
       mv -f ${isPdnsd} /var/backups
     fi
     [ -e "/etc/resolvconf/update.d/unbound" ] && chmod -x /etc/resolvconf/update.d/unbound
     killall -9 unbound &> /dev/null
-    mrun "service unbound restart" 2> /dev/null
+    _mrun "service unbound restart" 2> /dev/null
     wait
   fi
   if [ -x "${isUnbnd}" ] \
@@ -594,45 +594,45 @@ dns_unbound_install_upgrade() {
     sed -i "s/pdnsd/unbound/g" /etc/resolvconf/interface-order
     [ -e "/etc/resolvconf/update.d/unbound" ] && chmod -x /etc/resolvconf/update.d/unbound
     killall -9 unbound &> /dev/null
-    mrun "service unbound restart" 2> /dev/null
+    _mrun "service unbound restart" 2> /dev/null
     wait
   fi
 }
 
-check_github_for_aegir_head_mode() {
+_check_github_for_aegir_head_mode() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: check_github_for_aegir_head_mode"
+    _msg "PROC: _check_github_for_aegir_head_mode"
   fi
   if [ "${_AEGIR_VERSION}" != "static" ]; then
     _USE_AEGIR_VER=SRC
   else
     _USE_AEGIR_VER=STATIC
   fi
-  if [ "${_SYSTEM_UPGRADE_ONLY}" = "NO" ] \
+  if [ "${_SYSTEM_UP_ONLY}" = "NO" ] \
     && [ "${_USE_AEGIR_VER}" = "SRC" ]; then
     rm -rf /opt/tmp/test-*
-    check_connection
-    _GITHUB_TEST=$(git clone ${gitHub}/provision.git \
+    _check_connection
+    _GITHUB_TEST=$(git clone ${_gitHub}/provision.git \
       /opt/tmp/test-provision 2>&1)
     if [[ "${_GITHUB_TEST}" =~ "fatal" ]]; then
       echo " "
-      msg "EXIT on error (provision) due to GitHub downtime"
-      msg "Please try to run this script again in a few minutes"
-      msg "You may want to check https://www.githubstatus.com"
-      msg "Bye"
+      _msg "EXIT on error (provision) due to GitHub downtime"
+      _msg "Please try to run this script again in a few minutes"
+      _msg "You may want to check https://www.githubstatus.com"
+      _msg "Bye"
       rm -rf /opt/tmp/test-*
-      clean_pid_exit check_github_for_aegir_head_mode_a
+      _clean_pid_exit _check_github_for_aegir_head_mode_a
     fi
-    _GITHUB_TEST=$(git clone ${gitHub}/hostmaster.git \
+    _GITHUB_TEST=$(git clone ${_gitHub}/hostmaster.git \
       /opt/tmp/test-hostmaster 2>&1)
     if [[ "${_GITHUB_TEST}" =~ "fatal" ]]; then
       echo " "
-      msg "EXIT on error (hostmaster) due to GitHub downtime"
-      msg "Please try to run this script again in a few minutes"
-      msg "You may want to check https://www.githubstatus.com"
-      msg "Bye"
+      _msg "EXIT on error (hostmaster) due to GitHub downtime"
+      _msg "Please try to run this script again in a few minutes"
+      _msg "You may want to check https://www.githubstatus.com"
+      _msg "Bye"
       rm -rf /opt/tmp/test-*
-      clean_pid_exit check_github_for_aegir_head_mode_b
+      _clean_pid_exit _check_github_for_aegir_head_mode_b
     fi
     rm -rf /opt/tmp/test-*
   fi
@@ -640,44 +640,44 @@ check_github_for_aegir_head_mode() {
     || [[ "${_X_VERSION}" =~ "-lts" ]] \
     || [[ "${_X_VERSION}" =~ "-pro" ]]; then
     rm -rf /opt/tmp/test-*
-    _GITHUB_TEST=$(git clone ${gitHub}/boa.git \
+    _GITHUB_TEST=$(git clone ${_gitHub}/boa.git \
       /opt/tmp/test-boa 2>&1)
     if [[ "${_GITHUB_TEST}" =~ "fatal" ]]; then
       echo " "
-      msg "EXIT on error (boa) due to GitHub downtime"
-      msg "Please try to run this script again in a few minutes"
-      msg "You may want to check https://www.githubstatus.com"
-      msg "Bye"
+      _msg "EXIT on error (boa) due to GitHub downtime"
+      _msg "Please try to run this script again in a few minutes"
+      _msg "You may want to check https://www.githubstatus.com"
+      _msg "Bye"
       rm -rf /opt/tmp/test-*
-      clean_pid_exit check_github_for_aegir_head_mode_c
+      _clean_pid_exit _check_github_for_aegir_head_mode_c
     fi
     rm -rf /opt/tmp/test-*
   fi
 }
 
-check_db_src() {
+_check_db_src() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: check_db_src"
+    _msg "PROC: _check_db_src"
   fi
   if ! netcat -w 14 -z ${_DB_SRC} 80 ; then
     echo " "
-    msg "EXIT on error due to ${_DB_SRC} downtime"
-    msg "Please try to run this script again in a few minutes"
-    msg "or better yet, hours"
-    msg "Bye"
-    clean_pid_exit check_db_src_a
+    _msg "EXIT on error due to ${_DB_SRC} downtime"
+    _msg "Please try to run this script again in a few minutes"
+    _msg "or better yet, hours"
+    _msg "Bye"
+    _clean_pid_exit _check_db_src_a
   fi
 }
 
-check_ip_hostname() {
+_check_ip_hostname() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: check_ip_hostname"
+    _msg "PROC: _check_ip_hostname"
   fi
   if [ "${_STATUS}" = "INIT" ]; then
     if [ ! -z "${_LOCAL_NETWORK_IP}" ]; then
       if [ -z "${_LOCAL_NETWORK_HN}" ]; then
-        msg "FATAL ERROR: you must specify also _LOCAL_NETWORK_HN"
-        clean_pid_exit check_ip_hostname_a
+        _msg "FATAL ERROR: you must specify also _LOCAL_NETWORK_HN"
+        _clean_pid_exit _check_ip_hostname_a
       else
         _DNS_SETUP_TEST=NO
         _SMTP_RELAY_TEST=NO
@@ -690,7 +690,7 @@ check_ip_hostname() {
       _THIS_DB_HOST=localhost
       _LOC_DOM="${_MY_HOSTN}"
       if [ -z "${_MY_OWNIP}" ]; then
-        find_correct_ip
+        _find_correct_ip
         _MY_OWNIP="${_LOC_IP}"
       else
         _LOC_IP="${_MY_OWNIP}"
@@ -717,17 +717,17 @@ check_ip_hostname() {
       _THISHTIP="${_MY_OWNIP}"
       _THISHOST="${_MY_HOSTN}"
       _LOC_DOM="${_THISHOST}"
-      find_correct_ip
+      _find_correct_ip
       _THISRDIP="${_LOC_IP}"
       if [ "${_THISRDIP}" = "${_THISHTIP}" ]; then
         _FQDNTEST="TRUE"
         _LOC_DOM="${_MY_FRONT}"
-        find_correct_ip
+        _find_correct_ip
         _THEFRDIP="${_LOC_IP}"
         if [ "${_THEFRDIP}" = "${_THISHTIP}" ]; then
           _TESTHOST=$(uname -n 2>&1)
           _LOC_DOM="${_TESTHOST}"
-          find_correct_ip
+          _find_correct_ip
           _TESTRDIP="${_LOC_IP}"
           if [ "${_TESTRDIP}" = "${_THISHTIP}" ]; then
             _FQDNTEST="TRUE"
@@ -742,7 +742,7 @@ check_ip_hostname() {
         _FQDNTEST="FALSE"
       fi
     else
-      find_correct_ip
+      _find_correct_ip
       _THISHTIP="${_LOC_IP}"
       _FQDNPROB=$(uname -n 2>&1)
       _FQDNTEST="FALSE"
@@ -752,7 +752,7 @@ check_ip_hostname() {
         _THISHOST=${_THISHOST//[^a-zA-Z0-9-.]/}
         _THISHOST=$(echo -n ${_THISHOST} | tr A-Z a-z 2>&1)
         _LOC_DOM="${_THISHOST}"
-        find_correct_ip
+        _find_correct_ip
         _THISRDIP="${_LOC_IP}"
         if [ "${_THISRDIP}" = "${_THISHTIP}" ]; then
           _FQDNTEST="TRUE"
@@ -764,7 +764,7 @@ check_ip_hostname() {
           _REVHOSTN=${_REVHOSTN//[^a-zA-Z0-9-.]/}
           _REVHOSTN=$(echo -n ${_REVHOSTN} | tr A-Z a-z 2>&1)
           _LOC_DOM="${_REVHOSTN}"
-          find_correct_ip
+          _find_correct_ip
           _REVHSTIP="${_LOC_IP}"
           if [ "${_REVHSTIP}" = "${_THISHTIP}" ]; then
             hostname -b ${_REVHOSTN}
@@ -780,7 +780,7 @@ check_ip_hostname() {
         _REVHOSTN=${_REVHOSTN//[^a-zA-Z0-9-.]/}
         _REVHOSTN=$(echo -n ${_REVHOSTN} | tr A-Z a-z 2>&1)
         _LOC_DOM="${_REVHOSTN}"
-        find_correct_ip
+        _find_correct_ip
         _REVHSTIP="${_LOC_IP}"
         if [ "${_REVHSTIP}" = "${_THISHTIP}" ]; then
           hostname -b ${_REVHOSTN}
@@ -800,13 +800,13 @@ check_ip_hostname() {
       _FQDNTEST=TRUE
     fi
     if [ "${_THISHOST}" = "localhost" ]; then
-      msg "FATAL ERROR: you can't use localhost as your FQDN hostname"
-      msg "Please try something like: aegir.local"
-      clean_pid_exit check_ip_hostname_b
+      _msg "FATAL ERROR: you can't use localhost as your FQDN hostname"
+      _msg "Please try something like: aegir.local"
+      _clean_pid_exit _check_ip_hostname_b
     fi
     if [ "${_FQDNTEST}" = "FALSE" ]; then
       echo " "
-      msg "EXIT on error due to invalid DNS setup"
+      _msg "EXIT on error due to invalid DNS setup"
       if [ ! -z "${_MY_OWNIP}" ]; then
         cat <<EOF
 
@@ -833,16 +833,16 @@ EOF
     Alternatively, disable this check with _DNS_SETUP_TEST=NO
 
 EOF
-      msg "EXIT on error due to invalid DNS setup"
-      clean_pid_exit check_ip_hostname_c
+      _msg "EXIT on error due to invalid DNS setup"
+      _clean_pid_exit _check_ip_hostname_c
     else
       echo "${_THISHOST}" > /etc/hostname
       echo "${_THISHOST}" > /etc/mailname
       hostname -b ${_THISHOST}
-      msg "INFO: DNS test: OK"
+      _msg "INFO: DNS test: OK"
     fi
     echo " "
-    msg "INSTALL START -> checkpoint: "
+    _msg "INSTALL START -> checkpoint: "
     cat <<EOF
 
     * Your email address is ${_MY_EMAIL}
@@ -850,11 +850,11 @@ EOF
     * Your hostname is ${_THISHOST}
 EOF
     echo " "
-    if prompt_yes_no "Do you want to proceed with the install?" ; then
+    if _prompt_yes_no "Do you want to proceed with the install?" ; then
       true
     else
       echo "Installation aborted by you"
-      clean_pid_exit check_ip_hostname_d
+      _clean_pid_exit _check_ip_hostname_d
     fi
   elif [ "${_STATUS}" = "UPGRADE" ]; then
     _THISHOST=$(cat /etc/hostname 2>&1)
@@ -870,13 +870,13 @@ EOF
     elif [ ! -z "${_MY_FRONT}" ]; then
       _THIS_FRONT="${_MY_FRONT}"
     else
-      msg "EXIT on error due to not found or not specified Aegir domain"
-      msg "Please specify your working Aegir domain as a value of _MY_FRONT"
-      clean_pid_exit check_ip_hostname_e
+      _msg "EXIT on error due to not found or not specified Aegir domain"
+      _msg "Please specify your working Aegir domain as a value of _MY_FRONT"
+      _clean_pid_exit _check_ip_hostname_e
     fi
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       echo " "
-      msg "UPGRADE START -> checkpoint: "
+      _msg "UPGRADE START -> checkpoint: "
       cat <<EOF
 
     * Your email address is ${_MY_EMAIL}
@@ -886,11 +886,11 @@ EOF
       echo " "
     fi
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      if prompt_yes_no "Do you want to proceed with the upgrade?" ; then
+      if _prompt_yes_no "Do you want to proceed with the upgrade?" ; then
         true
       else
         echo "Upgrade aborted by you"
-        clean_pid_exit check_ip_hostname_f
+        _clean_pid_exit _check_ip_hostname_f
       fi
     fi
   fi

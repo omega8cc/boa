@@ -6,7 +6,7 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 
 _pthOml="/var/xdrago/log/mysql.incident.log"
 
-check_root() {
+_check_root() {
   if [ `whoami` = "root" ]; then
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
     chmod a+w /dev/null
@@ -15,7 +15,7 @@ check_root() {
     exit 1
   fi
 }
-check_root
+_check_root
 
 export _B_NICE=${_B_NICE//[^0-9]/}
 : "${_B_NICE:=10}"
@@ -42,7 +42,7 @@ _incident_email_report() {
   fi
 }
 
-sql_restart() {
+_sql_restart() {
   touch /run/boa_run.pid
   sleep 3
   echo "$(date 2>&1) $1 incident detected" >> ${_pthOml}
@@ -58,7 +58,7 @@ sql_restart() {
   exit 0
 }
 
-sql_busy_detection() {
+_sql_busy_detection() {
   if [ -e "/var/log/daemon.log" ]; then
     _SQL_LOG="/var/log/daemon.log"
   else
@@ -67,7 +67,7 @@ sql_busy_detection() {
   if [ -e "${_SQL_LOG}" ]; then
     if [ `tail --lines=10 ${_SQL_LOG} \
       | grep --count "Too many connections"` -gt "0" ]; then
-      sql_restart "BUSY MySQL"
+      _sql_restart "BUSY MySQL"
     fi
   fi
   _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
@@ -77,12 +77,12 @@ sql_busy_detection() {
     _MYSQL_CONN_TEST=$(mysql -u root -e "status" 2>&1)
     echo _MYSQL_CONN_TEST ${_MYSQL_CONN_TEST}
     if [[ "${_MYSQL_CONN_TEST}" =~ "Too many connections" ]]; then
-      sql_restart "BUSY MySQL"
+      _sql_restart "BUSY MySQL"
     fi
   fi
 }
 
-mysql_proc_kill() {
+_mysql_proc_kill() {
   xtime=${xtime//[^0-9]/}
   echo "Monitoring process $each by $xuser running for $xtime seconds"
 
@@ -98,7 +98,7 @@ mysql_proc_kill() {
   fi
 }
 
-mysql_proc_control() {
+_mysql_proc_control() {
   # Log the MySQL process list if _SQLMONITOR is enabled
   if [[ "${_SQLMONITOR}" == "YES" ]]; then
     mysqladmin -u root proc -v >> /var/xdrago/log/mysqladmin.monitor.log
@@ -137,12 +137,12 @@ mysql_proc_control() {
         limit=${_SQL_MAX_TTL}  # Default limit for non-problematic users
       fi
 
-      mysql_proc_kill
+      _mysql_proc_kill
     fi
   done
 }
 
-sql_busy_detection
+_sql_busy_detection
 
 perl /var/xdrago/monitor/check/sqlcheck.pl &
 
@@ -155,13 +155,13 @@ else
   _SQL_CTRL=YES
 fi
 
-[ "${_SQL_CTRL}" = "YES" ] && mysql_proc_control "${_SQL_MAX_TTL}"
+[ "${_SQL_CTRL}" = "YES" ] && _mysql_proc_control "${_SQL_MAX_TTL}"
 sleep 15
-[ "${_SQL_CTRL}" = "YES" ] && mysql_proc_control "${_SQL_MAX_TTL}"
+[ "${_SQL_CTRL}" = "YES" ] && _mysql_proc_control "${_SQL_MAX_TTL}"
 sleep 15
-[ "${_SQL_CTRL}" = "YES" ] && mysql_proc_control "${_SQL_MAX_TTL}"
+[ "${_SQL_CTRL}" = "YES" ] && _mysql_proc_control "${_SQL_MAX_TTL}"
 sleep 15
-[ "${_SQL_CTRL}" = "YES" ] && mysql_proc_control "${_SQL_MAX_TTL}"
+[ "${_SQL_CTRL}" = "YES" ] && _mysql_proc_control "${_SQL_MAX_TTL}"
 
 echo DONE!
 exit 0

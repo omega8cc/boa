@@ -38,23 +38,23 @@
 ###
 ### Helper variables
 ###
-bldPth="/opt/tmp/boa"
-crlGet="-L --max-redirs 3 -k -s --retry 3 --retry-delay 5 -A iCab"
-filIncO="octopus.sh.cnf"
-gCb="git clone --branch"
-gitHub="https://github.com/omega8cc"
-gitLab="https://gitlab.com/omega8cc"
-libFnc="${bldPth}/lib/functions"
-tocIncO="${filIncO}.$1"
-vBs="/var/backups"
-vSet="variable-set --always-set"
-export tRee=dev
+_bldPth="/opt/tmp/boa"
+_crlGet="-L --max-redirs 3 -k -s --retry 3 --retry-delay 5 -A iCab"
+_filIncO="octopus.sh.cnf"
+_gCb="git clone --branch"
+_gitHub="https://github.com/omega8cc"
+_gitLab="https://gitlab.com/omega8cc"
+_libFnc="${_bldPth}/lib/functions"
+_tocIncO="${_filIncO}.$1"
+_vBs="/var/backups"
+_vSet="variable-set --always-set"
+export _tRee=dev
 
 
 ###
 ### Panic on missing include
 ###
-panic_exit() {
+_panic_exit() {
   echo
   echo " EXIT: Required lib file not available?"
   echo " EXIT: $1"
@@ -69,14 +69,14 @@ panic_exit() {
 ###
 ### Include helper functions
 ###
-if [ -e "${vBs}/${tocIncO}" ]; then
-  source "${vBs}/${tocIncO}"
-  tInc="${vBs}/${tocIncO}"
-elif [ -e "${vBs}/${filIncO}" ]; then
-  source "${vBs}/${filIncO}"
-  tInc="${vBs}/${filIncO}"
+if [ -e "${_vBs}/${_tocIncO}" ]; then
+  source "${_vBs}/${_tocIncO}"
+  _tInc="${_vBs}/${_tocIncO}"
+elif [ -e "${_vBs}/${_filIncO}" ]; then
+  source "${_vBs}/${_filIncO}"
+  _tInc="${_vBs}/${_filIncO}"
 else
-  panic_exit "${tInc}"
+  _panic_exit "${_tInc}"
 fi
 
 
@@ -87,7 +87,7 @@ if [ "${_DEBUG_MODE}" = "YES" ]; then
   echo DEBUG AegirSetupA
   echo DEBUG AegirSetupA
   echo Effective _USER is $1
-  [ -r "${vBs}/${tocIncO}" ] && echo Effective tocIncO is ${tocIncO}
+  [ -r "${_vBs}/${_tocIncO}" ] && echo Effective _tocIncO is ${_tocIncO}
   echo DEBUG AegirSetupA
   echo DEBUG AegirSetupA
   env
@@ -99,8 +99,8 @@ fi
 ###
 ### More helper variables
 ###
-urlDev="http://${_USE_MIR}/dev"
-urlHmr="http://${_USE_MIR}/versions/${tRee}/boa/aegir"
+_urlDev="http://${_USE_MIR}/dev"
+_urlHmr="http://${_USE_MIR}/versions/${_tRee}/boa/aegir"
 
 
 ###
@@ -108,8 +108,8 @@ urlHmr="http://${_USE_MIR}/versions/${tRee}/boa/aegir"
 ###
 _FL="helper satellite"
 for f in ${_FL}; do
-  [ -r "${libFnc}/${f}.sh.inc" ] || panic_exit "${f}"
-  source "${libFnc}/${f}.sh.inc"
+  [ -r "${_libFnc}/${f}.sh.inc" ] || _panic_exit "${f}"
+  source "${_libFnc}/${f}.sh.inc"
 done
 
 
@@ -184,11 +184,11 @@ fi
 ###
 if [ `whoami` = "root" ]; then
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "${_STATUS} A: Aegir automated install script part A"
+    _msg "${_STATUS} A: Aegir automated install script part A"
   fi
 else
-  msg "${_STATUS} A: FATAL ERROR: This script should be run as a root user"
-  msg "${_STATUS} A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
+  _msg "${_STATUS} A: FATAL ERROR: This script should be run as a root user"
+  _msg "${_STATUS} A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
   touch /opt/tmp/status-AegirSetupA-FAIL
   exit 1
 fi
@@ -197,47 +197,47 @@ fi
 ###
 ### Run key pre/child/post procedures
 ###
-satellite_hot_sauce_check
-satellite_add_user_dirs
-satellite_prepare_child_scripts
-satellite_run_pre_install
-satellite_download_for_local_build
-satellite_run_child_b
+_satellite_hot_sauce_check
+_satellite_add_user_dirs
+_satellite_prepare_child_scripts
+_satellite_run_pre_install
+_satellite_download_for_local_build
+_satellite_run_child_b
 
 
 ###
 ### Run accelerated tasks queue
 ###
-msg "${_STATUS} A: Aegir accelerated task queue will run for 60 seconds..."
-su -s /bin/bash - ${_USER} -c "drush8 @hostmaster ${vSet} hosting_queue_tasks_items 3" &> /dev/null
+_msg "${_STATUS} A: Aegir accelerated task queue will run for 60 seconds..."
+su -s /bin/bash - ${_USER} -c "drush8 @hostmaster ${_vSet} hosting_queue_tasks_items 3" &> /dev/null
 [ ! -e "/root/.force.queue.runner.cnf" ] && touch /root/.force.queue.runner.cnf
 bash /var/xdrago/runner.sh
 wait
 [ -e "/root/.force.queue.runner.cnf" ] && rm -f /root/.force.queue.runner.cnf
-su -s /bin/bash - ${_USER} -c "drush8 @hostmaster ${vSet} hosting_queue_tasks_items 1" &> /dev/null
+su -s /bin/bash - ${_USER} -c "drush8 @hostmaster ${_vSet} hosting_queue_tasks_items 1" &> /dev/null
 
 
 ###
 ### Run more pre/child/post procedures
 ###
-satellite_if_create_local_bin
-satellite_run_post_install
-satellite_set_permissions_for_all
-satellite_run_child_c
-satellite_if_legacy_permissions_fix
-satellite_child_scripts_cleanup
-satellite_if_add_ftps_lshell_access
-satellite_if_add_update_user_symlinks
-satellite_if_add_update_user_dot_dirs
-satellite_if_read_create_pass_txt
-satellite_if_add_update_user_platforms_symlinks
-satellite_if_add_update_backend_user_dirs_files_clean
-[ ! -e "/root/.silent.update.cnf" ] && satellite_prepare_setup_email_tpl
-[ ! -e "/root/.silent.update.cnf" ] && satellite_send_welcome_email
-satellite_letsencrypt_vhost_setup
-satellite_log_update
-satellite_batch_cleanup
-satellite_display_url_finalize
+_satellite_if_create_local_bin
+_satellite_run_post_install
+_satellite_set_permissions_for_all
+_satellite_run_child_c
+_satellite_if_legacy_permissions_fix
+_satellite_child_scripts_cleanup
+_satellite_if_add_ftps_lshell_access
+_satellite_if_add_update_user_symlinks
+_satellite_if_add_update_user_dot_dirs
+_satellite_if_read_create_pass_txt
+_satellite_if_add_update_user_platforms_symlinks
+_satellite_if_add_update_backend_user_dirs_files_clean
+[ ! -e "/root/.silent.update.cnf" ] && _satellite_prepare_setup_email_tpl
+[ ! -e "/root/.silent.update.cnf" ] && _satellite_send_welcome_email
+_satellite_letsencrypt_vhost_setup
+_satellite_log_update
+_satellite_batch_cleanup
+_satellite_display_url_finalize
 
 
 ###----------------------------------------###

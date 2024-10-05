@@ -78,10 +78,11 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-export tRee=dev
+export _tRee=dev
+export _xSrl=540devT02
 
-barCnf="/root/.barracuda.cnf"
-logAch="/root/.autochimaera.log"
+_barCnf="/root/.barracuda.cnf"
+_logAch="/root/.autochimaera.log"
 
 ###
 ### Avoid too many questions
@@ -93,16 +94,15 @@ if [ -z "${TERM+x}" ]; then
 fi
 
 _INITINS="/usr/bin/apt-get -y --allow-unauthenticated install"
-dstUpArg="-fuy --allow-unauthenticated -q --config-file /opt/apt/apt.conf.noi.dist"
-nrmUpArg="-fuy --allow-unauthenticated -q --config-file /opt/apt/apt.conf.noi.nrml"
+_dstUpArg="-fuy --allow-unauthenticated -q --config-file /opt/apt/apt.conf.noi.dist"
+_nrmUpArg="-fuy --allow-unauthenticated -q --config-file /opt/apt/apt.conf.noi.nrml"
 
 _TODAY=$(date +%y%m%d 2>&1)
 _TODAY=${_TODAY//[^0-9]/}
-_X_SE=540devT02
 _OS_CODE=check
 #
 
-check_root() {
+_check_root() {
   if [ `whoami` = "root" ]; then
     [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
   else
@@ -120,10 +120,10 @@ check_root() {
     exit 1
   fi
 }
-check_root
+_check_root
 cd /root/
 
-if [ "${tRee}" = "dev" ]; then
+if [ "${_tRee}" = "dev" ]; then
   touch /root/.debug-boa-installer.cnf
   touch /root/.debug-octopus-installer.cnf
 fi
@@ -131,11 +131,11 @@ fi
 ###
 ### Noticeable messages
 ###
-msg() {
-  echo "AutoChimaera v.${tRee} [$(date +%T 2>&1)] ==> $*"
+_msg() {
+  echo "AutoChimaera v.${_tRee} [$(date +%T 2>&1)] ==> $*"
 }
 
-check_manufacturer_compatibility() {
+_check_manufacturer_compatibility() {
   # Install dmidecode of not present
   if ! command -v dmidecode &> /dev/null; then
     /usr/bin/apt-get update &> /dev/null
@@ -151,26 +151,26 @@ check_manufacturer_compatibility() {
   # Check for Amazon EC2 in the system manufacturer field
   if dmidecode -s system-manufacturer | grep -i 'Amazon EC2' &> /dev/null; then
     _VMFAMILY="AWS"
-    msg "Not supported environment detected: ${_HOST_INFO}" >> "${logAch}"
-    msg "Please check https://bit.ly/boa-caveats" >> "${logAch}"
-    msg "Bye!" >> "${logAch}"
+    _msg "Not supported environment detected: ${_HOST_INFO}" >> "${_logAch}"
+    _msg "Please check https://bit.ly/boa-caveats" >> "${_logAch}"
+    _msg "Bye!" >> "${_logAch}"
     echo "Not supported environment detected: ${_HOST_INFO}"
     echo "Please check https://bit.ly/boa-caveats"
     echo "Bye!"
     exit 1
   elif [[ "${_HOST_INFO}" =~ "Unknown" ]] || [ -z "${_HOST_INFO}" ]; then
-    msg "Mysterious environment: ${_HOST_INFO}" >> "${logAch}"
-    msg "Please check https://bit.ly/boa-caveats" >> "${logAch}"
-    msg "Bye!" >> "${logAch}"
+    _msg "Mysterious environment: ${_HOST_INFO}" >> "${_logAch}"
+    _msg "Please check https://bit.ly/boa-caveats" >> "${_logAch}"
+    _msg "Bye!" >> "${_logAch}"
     echo "Mysterious environment: ${_HOST_INFO}"
     echo "Please check https://bit.ly/boa-caveats"
     echo "Bye!"
     exit 1
   fi
 }
-check_manufacturer_compatibility
+_check_manufacturer_compatibility
 
-check_mysql_compatibility() {
+_check_mysql_compatibility() {
   _DBS_TEST=$(which mysql 2>&1)
   if [ ! -z "${_DBS_TEST}" ]; then
     _DB_SERVER_TEST=$(mysql -V 2>&1)
@@ -187,24 +187,24 @@ check_mysql_compatibility() {
     _DB_V=UNSUPPORTED
   fi
   if [ "${_DB_V}" = "UNSUPPORTED" ]; then
-    msg "Not supported DB server detected ${_DB_SERVER_TEST}" >> "${logAch}"
+    _msg "Not supported DB server detected ${_DB_SERVER_TEST}" >> "${_logAch}"
     exit 1
   fi
 }
-check_mysql_compatibility
+_check_mysql_compatibility
 
 ###
 ### Faster reboot
 ###
-faster_reboot() {
-  msg "Faster reboot prepare..." >> "${logAch}"
+_faster_reboot() {
+  _msg "Faster reboot prepare..." >> "${_logAch}"
   service cron stop &> /dev/null
   killall cron &> /dev/null
   kill -9 $(ps aux | grep '[s]econd.sh' | awk '{print $2}') &> /dev/null
   kill -9 $(ps aux | grep '[m]inute.sh' | awk '{print $2}') &> /dev/null
   kill -9 $(ps aux | grep '[r]unner.sh' | awk '{print $2}') &> /dev/null
-  msg "Cron has been stopped" >> "${logAch}"
-  msg "Now waiting 60 seconds for any running tasks to complete" >> "${logAch}"
+  _msg "Cron has been stopped" >> "${_logAch}"
+  _msg "Now waiting 60 seconds for any running tasks to complete" >> "${_logAch}"
   sleep 55
   if [ -e "/etc/init.d/clamav-daemon" ]; then
     update-rc.d -f clamav-daemon remove &> /dev/null
@@ -217,21 +217,21 @@ faster_reboot() {
   kill -9 $(ps aux | grep '[f]reshclam' | awk '{print $2}') &> /dev/null
   kill -9 $(ps aux | grep '[j]ava' | awk '{print $2}') &> /dev/null
   rm -f /run/clamav/*
-  msg "Java/Solr/Clamav have been stopped" >> "${logAch}"
+  _msg "Java/Solr/Clamav have been stopped" >> "${_logAch}"
   service nginx stop &> /dev/null
   killall nginx &> /dev/null
   killall php &> /dev/null
   kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}') &> /dev/null
-  msg "Nginx, PHP-CLI and PHP-FPM have been stopped" >> "${logAch}"
+  _msg "Nginx, PHP-CLI and PHP-FPM have been stopped" >> "${_logAch}"
   csf -df &> /dev/null
   csf -tf &> /dev/null
-  msg "Firewall has been purged" >> "${logAch}"
+  _msg "Firewall has been purged" >> "${_logAch}"
   if [ -e "/root/.my.pass.txt" ]; then
     _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
     _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
     _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
     if [ ! -z "${_IS_MYSQLD_RUNNING}" ] && [ ! -z "${_SQL_PSWD}" ]; then
-      msg "Preparing MySQLD for quick shutdown..." >> "${logAch}"
+      _msg "Preparing MySQLD for quick shutdown..." >> "${_logAch}"
       mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
       mysql -u root -e "SET GLOBAL innodb_change_buffering = 'none';" &> /dev/null
       mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null
@@ -242,15 +242,15 @@ faster_reboot() {
         mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_now = ON;" &> /dev/null
       fi
       mysql -u root -e "SET GLOBAL innodb_fast_shutdown = 1;" &> /dev/null
-      msg "Stopping MySQLD now..." >> "${logAch}"
+      _msg "Stopping MySQLD now..." >> "${_logAch}"
       service mysql stop &> /dev/null
       wait
-      msg "MySQLD stopped" >> "${logAch}"
+      _msg "MySQLD stopped" >> "${_logAch}"
     else
-      msg "MySQLD already stopped" >> "${logAch}"
+      _msg "MySQLD already stopped" >> "${_logAch}"
     fi
   fi
-  msg "Faster reboot done" >> "${logAch}"
+  _msg "Faster reboot done" >> "${_logAch}"
 }
 
 if [ ! -e "/root/.run-to-chimaera.cnf" ]; then
@@ -260,7 +260,7 @@ fi
 
 [ ! -e "/root/.mysql.yes.new.password.cnf" ] && touch /root/.mysql.yes.new.password.cnf
 
-check_os_compatibility() {
+_check_os_compatibility() {
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   if [ "${_OS_CODE}" = "chimaera" ] \
@@ -295,18 +295,18 @@ check_os_compatibility() {
     fi
   fi
 }
-check_os_compatibility
+_check_os_compatibility
 
 if [ -x "/opt/local/bin/killer" ]; then
   sed -i "s/.*killer.*//gi" /etc/crontab &> /dev/null
   echo "*/1 *   * * *   root    bash /opt/local/bin/killer" >> /etc/crontab
 fi
 
-if_remove_cloud_utils() {
+_if_remove_cloud_utils() {
   _INITD_TEST=$(ls -la /etc/init.d/*cloud* 2>&1)
   if [[ ! "${_INITD_TEST}" =~ "No such file" ]] \
     || [ -e "/etc/cloud/cloud.cfg.d" ]; then
-    msg "Removing problematic cloud-utils detected on this system" >> "${logAch}"
+    _msg "Removing problematic cloud-utils detected on this system" >> "${_logAch}"
     /usr/bin/apt-get update 2> /dev/null
     /usr/bin/apt-get remove cloud-utils cloud-init -y --purge --auto-remove -qq 2> /dev/null
     /usr/bin/apt-get remove cloud-image-utils cloud-guest-utils -y --purge --auto-remove -qq 2> /dev/null
@@ -318,18 +318,18 @@ if_remove_cloud_utils() {
   fi
 }
 if [ "${_VMFAMILY}" != "AWS" ]; then
-  if_remove_cloud_utils
+  _if_remove_cloud_utils
 fi
 
-if_clean_boa_env() {
+_if_clean_boa_env() {
   if [ ! -x "/etc/init.d/clean-boa-env" ] \
     || [ ! -e "/root/.run-auto-update-clean-boa-env.cnf" ]; then
     if [ -e "/etc/init.d/clean-boa-env" ]; then
       mv -f /etc/init.d/clean-boa-env /var/backups/clean-boa-env-bak
     fi
-    crlGet="-L --max-redirs 3 -k -s --retry 3 --retry-delay 5 -A iCab"
-    urlHmr="http://files.aegir.cc/versions/${tRee}/boa/aegir"
-    curl ${crlGet} "${urlHmr}/conf/var/clean-boa-env" -o /etc/init.d/clean-boa-env
+    _crlGet="-L --max-redirs 3 -k -s --retry 3 --retry-delay 5 -A iCab"
+    _urlHmr="http://files.aegir.cc/versions/${_tRee}/boa/aegir"
+    curl ${_crlGet} "${_urlHmr}/conf/var/clean-boa-env" -o /etc/init.d/clean-boa-env
     if [ -e "/etc/init.d/clean-boa-env" ]; then
       chmod 700 /etc/init.d/clean-boa-env
       chown root:root /etc/init.d/clean-boa-env
@@ -342,9 +342,9 @@ if_clean_boa_env() {
     fi
   fi
 }
-if_clean_boa_env
+_if_clean_boa_env
 
-if_fix_dhcp() {
+_if_fix_dhcp() {
   if [ -e "/var/log/daemon.log" ]; then
     _DHCP_LOG="/var/log/daemon.log"
   else
@@ -368,67 +368,67 @@ if_fix_dhcp() {
 }
 
 if [ -e "/root/.run-to-chimaera.cnf" ]; then
-  echo " " >> "${logAch}"
+  echo " " >> "${_logAch}"
   if [ -e "/root/.run-auto-major-os-reboot-chimaera-one.cnf" ] \
     || [ -e "/root/.run-auto-major-os-reboot-chimaera-two.cnf" ]; then
-    msg "Waiting 30 seconds for the system start scripts to finish" >> "${logAch}"
+    _msg "Waiting 30 seconds for the system start scripts to finish" >> "${_logAch}"
     sleep 30
-    if_fix_dhcp
+    _if_fix_dhcp
   else
-    msg "Automatic BOA System Major Upgrade Tool welcomes you aboard!" >> "${logAch}"
+    _msg "Automatic BOA System Major Upgrade Tool welcomes you aboard!" >> "${_logAch}"
     sleep 3
-    if_fix_dhcp
+    _if_fix_dhcp
   fi
 fi
 
-_AUTO_CHIMAERA_TEST=$(grep _AUTO_CHIMAERA ${barCnf} 2>&1)
+_AUTO_CHIMAERA_TEST=$(grep _AUTO_CHIMAERA ${_barCnf} 2>&1)
 if [[ ! "${_AUTO_CHIMAERA_TEST}" =~ "_AUTO_CHIMAERA" ]]; then
-  echo "_AUTO_CHIMAERA=YES" >> ${barCnf}
+  echo "_AUTO_CHIMAERA=YES" >> ${_barCnf}
 fi
 
 if [ -e "/root/.run-to-chimaera.cnf" ] \
   && [ ! -e "/root/.run-auto-major-os-reboot-chimaera-one.cnf" ] \
   && [ ! -e "/root/.run-auto-major-os-reboot-chimaera-two.cnf" ]; then
-  echo " " >> "${logAch}"
-  msg "Running barracuda php-idle disable to speed up upgrades" >> "${logAch}"
-  barracuda php-idle disable >> "${logAch}"
+  echo " " >> "${_logAch}"
+  _msg "Running barracuda php-idle disable to speed up upgrades" >> "${_logAch}"
+  barracuda php-idle disable >> "${_logAch}"
   wait
-  msg "The barracuda php-idle disable completed" >> "${logAch}"
-  msg "Launching standard barracuda up-${tRee} system now" >> "${logAch}"
+  _msg "The barracuda php-idle disable completed" >> "${_logAch}"
+  _msg "Launching standard barracuda up-${_tRee} system now" >> "${_logAch}"
   [ -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && rm -f /root/.force.rebuild.src.on.auto.now.cnf
-  /opt/local/bin/barracuda up-${tRee} system >> "${logAch}"
+  /opt/local/bin/barracuda up-${_tRee} system >> "${_logAch}"
   wait
-  msg "The standard barracuda up-${tRee} system completed" >> "${logAch}"
+  _msg "The standard barracuda up-${_tRee} system completed" >> "${_logAch}"
   if [ -e "/root/.latest-barracuda-upgrade-finale.info" ]; then
     _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
     _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
     if [ "${_OS_CODE}" = "jessie" ]; then
-      echo "_JESSIE_TO_BEOWULF=YES" >> ${barCnf}
-      msg "Launching major upgrade from ${_OS_DIST}/${_OS_CODE} to Devuan/beowulf" >> "${logAch}"
+      echo "_JESSIE_TO_BEOWULF=YES" >> ${_barCnf}
+      _msg "Launching major upgrade from ${_OS_DIST}/${_OS_CODE} to Devuan/beowulf" >> "${_logAch}"
     elif [ "${_OS_CODE}" = "stretch" ]; then
-      echo "_STRETCH_TO_BEOWULF=YES" >> ${barCnf}
-      msg "Launching major upgrade from ${_OS_DIST}/${_OS_CODE} to Devuan/beowulf" >> "${logAch}"
+      echo "_STRETCH_TO_BEOWULF=YES" >> ${_barCnf}
+      _msg "Launching major upgrade from ${_OS_DIST}/${_OS_CODE} to Devuan/beowulf" >> "${_logAch}"
     elif [ "${_OS_CODE}" = "buster" ]; then
-      echo "_BUSTER_TO_BEOWULF=YES" >> ${barCnf}
-      msg "Launching major upgrade from ${_OS_DIST}/${_OS_CODE} to Devuan/beowulf" >> "${logAch}"
+      echo "_BUSTER_TO_BEOWULF=YES" >> ${_barCnf}
+      _msg "Launching major upgrade from ${_OS_DIST}/${_OS_CODE} to Devuan/beowulf" >> "${_logAch}"
     elif [ "${_OS_CODE}" = "bullseye" ]; then
-      echo "_BULLSEYE_TO_CHIMAERA=YES" >> ${barCnf}
-      msg "Launching major upgrade from ${_OS_DIST}/${_OS_CODE} to Devuan/chimaera" >> "${logAch}"
+      echo "_BULLSEYE_TO_CHIMAERA=YES" >> ${_barCnf}
+      _msg "Launching major upgrade from ${_OS_DIST}/${_OS_CODE} to Devuan/chimaera" >> "${_logAch}"
     elif [ "${_OS_CODE}" = "beowulf" ]; then
-      echo "_BEOWULF_TO_CHIMAERA=YES" >> ${barCnf}
-      msg "Launching major upgrade from ${_OS_DIST}/${_OS_CODE} to Devuan/chimaera" >> "${logAch}"
+      echo "_BEOWULF_TO_CHIMAERA=YES" >> ${_barCnf}
+      _msg "Launching major upgrade from ${_OS_DIST}/${_OS_CODE} to Devuan/chimaera" >> "${_logAch}"
     fi
-    msg "The first stage of major OS upgrade will start now" >> "${logAch}"
+    _msg "The first stage of major OS upgrade will start now" >> "${_logAch}"
     [ -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && rm -f /root/.force.rebuild.src.on.auto.now.cnf
-    /opt/local/bin/barracuda up-${tRee} system >> "${logAch}"
+    /opt/local/bin/barracuda up-${_tRee} system >> "${_logAch}"
     wait
     if [ -e "/root/.run_post_major_os_upgrade.info" ]; then
-      msg "The first stage of major OS upgrade completed" >> "${logAch}"
-      msg "The system will reboot now" >> "${logAch}"
+      _msg "The first stage of major OS upgrade completed" >> "${_logAch}"
+      _msg "The system will reboot now" >> "${_logAch}"
       rm -f /root/.latest-barracuda-upgrade-finale.info
       touch /root/.run-auto-major-os-reboot-chimaera-one.cnf
-      update-grub >> "${logAch}"
-      faster_reboot
+      update-grub >> "${_logAch}"
+      _faster_reboot
       reboot
       exit 0
     fi
@@ -438,14 +438,14 @@ fi
 if [ -e "/root/.run-to-chimaera.cnf" ] \
   && [ -e "/root/.run-auto-major-os-reboot-chimaera-one.cnf" ] \
   && [ ! -e "/root/.run-auto-major-os-reboot-chimaera-two.cnf" ]; then
-  echo " " >> "${logAch}"
-  msg "Launching post-reboot barracuda up-${tRee} system" >> "${logAch}"
-  msg "to complete the first stage of major OS upgrade" >> "${logAch}"
+  echo " " >> "${_logAch}"
+  _msg "Launching post-reboot barracuda up-${_tRee} system" >> "${_logAch}"
+  _msg "to complete the first stage of major OS upgrade" >> "${_logAch}"
   [ -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && rm -f /root/.force.rebuild.src.on.auto.now.cnf
-  /opt/local/bin/barracuda up-${tRee} system >> "${logAch}"
+  /opt/local/bin/barracuda up-${_tRee} system >> "${_logAch}"
   wait
-  msg "The post-reboot barracuda up-${tRee} system completed" >> "${logAch}"
-  echo " " >> "${logAch}"
+  _msg "The post-reboot barracuda up-${_tRee} system completed" >> "${_logAch}"
+  echo " " >> "${_logAch}"
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   if [ -e "/root/.beowulf_to_chimaera_major_os_upgrade.info" ] \
@@ -456,35 +456,35 @@ if [ -e "/root/.run-to-chimaera.cnf" ] \
   fi
   if [ "${_FURTHER_UPGRADE}" = "NO" ]; then
     if [ -e "/root/.latest-barracuda-upgrade-finale.info" ]; then
-      msg "The single stage major OS upgrade completed" >> "${logAch}"
-      msg "The system will reboot now for a final upgrade" >> "${logAch}"
+      _msg "The single stage major OS upgrade completed" >> "${_logAch}"
+      _msg "The system will reboot now for a final upgrade" >> "${_logAch}"
       rm -f /root/.latest-barracuda-upgrade-finale.info
       touch /root/.run-auto-major-os-reboot-chimaera-two.cnf
-      update-grub >> "${logAch}"
-      faster_reboot
+      update-grub >> "${_logAch}"
+      _faster_reboot
       reboot
       exit 0
     fi
   fi
   if [ "${_OS_CODE}" = "bullseye" ] && [ "${_FURTHER_UPGRADE}" = "YES" ]; then
-    echo "_BULLSEYE_TO_CHIMAERA=YES" >> ${barCnf}
-    msg "Launching major upgrade from ${_OS_DIST}/${_OS_CODE} to Devuan/chimaera" >> "${logAch}"
+    echo "_BULLSEYE_TO_CHIMAERA=YES" >> ${_barCnf}
+    _msg "Launching major upgrade from ${_OS_DIST}/${_OS_CODE} to Devuan/chimaera" >> "${_logAch}"
   elif [ "${_OS_CODE}" = "beowulf" ] && [ "${_FURTHER_UPGRADE}" = "YES" ]; then
-    echo "_BEOWULF_TO_CHIMAERA=YES" >> ${barCnf}
-    msg "Launching major upgrade from ${_OS_DIST}/${_OS_CODE} to Devuan/chimaera" >> "${logAch}"
+    echo "_BEOWULF_TO_CHIMAERA=YES" >> ${_barCnf}
+    _msg "Launching major upgrade from ${_OS_DIST}/${_OS_CODE} to Devuan/chimaera" >> "${_logAch}"
   fi
   if [ "${_FURTHER_UPGRADE}" = "YES" ]; then
-    msg "The second stage of major OS upgrade will start now" >> "${logAch}"
+    _msg "The second stage of major OS upgrade will start now" >> "${_logAch}"
     [ -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && rm -f /root/.force.rebuild.src.on.auto.now.cnf
-    /opt/local/bin/barracuda up-${tRee} system >> "${logAch}"
+    /opt/local/bin/barracuda up-${_tRee} system >> "${_logAch}"
     wait
     if [ -e "/root/.run_post_major_os_upgrade.info" ]; then
-      msg "The second stage of major OS upgrade completed" >> "${logAch}"
-      msg "The system will reboot now" >> "${logAch}"
+      _msg "The second stage of major OS upgrade completed" >> "${_logAch}"
+      _msg "The system will reboot now" >> "${_logAch}"
       rm -f /root/.latest-barracuda-upgrade-finale.info
       touch /root/.run-auto-major-os-reboot-chimaera-two.cnf
-      update-grub >> "${logAch}"
-      faster_reboot
+      update-grub >> "${_logAch}"
+      _faster_reboot
       reboot
       exit 0
     fi
@@ -494,22 +494,22 @@ fi
 if [ -e "/root/.run-to-chimaera.cnf" ] \
   && [ -e "/root/.run-auto-major-os-reboot-chimaera-one.cnf" ] \
   && [ -e "/root/.run-auto-major-os-reboot-chimaera-two.cnf" ]; then
-  echo " " >> "${logAch}"
+  echo " " >> "${_logAch}"
   touch /root/.auto-upgraded-to-chimaera.cnf
-  msg "Launching the final post-second-reboot barracuda up-${tRee} system" >> "${logAch}"
+  _msg "Launching the final post-second-reboot barracuda up-${_tRee} system" >> "${_logAch}"
   [ ! -e "/root/.allow.apparmor.cnf" ] && touch /root/.allow.apparmor.cnf
   [ ! -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && touch /root/.force.rebuild.src.on.auto.now.cnf
-  /opt/local/bin/barracuda up-${tRee} system >> "${logAch}"
+  /opt/local/bin/barracuda up-${_tRee} system >> "${_logAch}"
   wait
   [ -e "/root/.run-to-chimaera.cnf" ] && rm -f /root/.run-to-chimaera.cnf
   [ -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && rm -f /root/.force.rebuild.src.on.auto.now.cnf
   [ -e "/root/.run-auto-major-os-reboot-chimaera-one.cnf" ] && rm -f /root/.run-auto-major-os-reboot-chimaera-one.cnf
   [ -e "/root/.run-auto-major-os-reboot-chimaera-two.cnf" ] && rm -f /root/.run-auto-major-os-reboot-chimaera-two.cnf
   sed -i "s/^_AUTO_CHIMAERA.*//g" /root/.barracuda.cnf
-  msg "The final post-reboot barracuda up-${tRee} system completed" >> "${logAch}"
-  msg "That's all folks!" >> "${logAch}"
-  msg "Bye!" >> "${logAch}"
-  echo " " >> "${logAch}"
+  _msg "The final post-reboot barracuda up-${_tRee} system completed" >> "${_logAch}"
+  _msg "That's all folks!" >> "${_logAch}"
+  _msg "Bye!" >> "${_logAch}"
+  echo " " >> "${_logAch}"
 fi
 
 exit 0

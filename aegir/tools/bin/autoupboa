@@ -3,18 +3,28 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-export tRee=dev
+export _tRee=dev
+export _xSrl=540devT02
 
-barCnf="/root/.barracuda.cnf"
-
-_X_SE=540devT02
+_barCnf="/root/.barracuda.cnf"
 
 # Define default values
+_CHECK_HOST=$(uname -n 2>&1)
 _DEFAULT_CPU_CRIT_RATIO="3.9"
 _DEFAULT_CPU_MAX_RATIO="3.3"
 _DEFAULT_CPU_SPIDER_RATIO="1"
 _LOCK_CPU_CONFIG="/root/.lock.cpu.config.cnf"
-_UPDATE_CPU_PID="/var/xdrago/log/.update_conf_variable.ctrl.${tRee}.${_X_SE}.pid"
+_UPDATE_CPU_PID="/var/xdrago/log/.update_conf_variable.ctrl.${_tRee}.${_xSrl}.pid"
+
+_LOCK_DOS_CONFIG="/root/.lock.dos.config.cnf"
+_LOCK_DOS_PID="/var/xdrago/log/.sync_scan_nginx.ctrl.${_tRee}.${_xSrl}.pid"
+
+_DEFAULT_NGINX_DOS_LINES=1999
+_DEFAULT_NGINX_DOS_LIMIT=399
+_DEFAULT_NGINX_DOS_MODE=2
+_DEFAULT_NGINX_DOS_LOG=SILENT
+_DEFAULT_NGINX_DOS_IGNORE="doccomment"
+_DEFAULT_NGINX_DOS_STOP="foobar"
 
 # Function to update or add variables in the configuration file
 _update_conf_variable() {
@@ -24,19 +34,19 @@ _update_conf_variable() {
 
   if grep -qE "^#?${_var_name}=" "${_conf_file}"; then
     # Variable exists, uncomment and update value
-    sed -i "s|^#\?${_var_name}=.*|${_var_name}=${_default_value}|g" "${_conf_file}"
+    sed -i "s|^#\?${_var_name}=.*|${_var_name}=\"${_default_value}\"|g" "${_conf_file}"
   else
     # Variable doesn't exist, append to the file
-    echo "${_var_name}=${_default_value}" >> "${_conf_file}"
+    echo "${_var_name}=\"${_default_value}\"" >> "${_conf_file}"
   fi
 }
 
 if [ ! -e "${_LOCK_CPU_CONFIG}" ]; then
   if [ ! -e "${_UPDATE_CPU_PID}" ]; then
     # Update variables
-    _update_conf_variable "_CPU_CRIT_RATIO" "${_DEFAULT_CPU_CRIT_RATIO}" "${barCnf}"
-    _update_conf_variable "_CPU_MAX_RATIO" "${_DEFAULT_CPU_MAX_RATIO}" "${barCnf}"
-    _update_conf_variable "_CPU_SPIDER_RATIO" "${_DEFAULT_CPU_SPIDER_RATIO}" "${barCnf}"
+    _update_conf_variable "_CPU_CRIT_RATIO" "${_DEFAULT_CPU_CRIT_RATIO}" "${_barCnf}"
+    _update_conf_variable "_CPU_MAX_RATIO" "${_DEFAULT_CPU_MAX_RATIO}" "${_barCnf}"
+    _update_conf_variable "_CPU_SPIDER_RATIO" "${_DEFAULT_CPU_SPIDER_RATIO}" "${_barCnf}"
     rm -f /var/xdrago/log/.update_conf_variable.ctrl*
     touch ${_UPDATE_CPU_PID}
     touch ${_LOCK_CPU_CONFIG}
@@ -48,56 +58,56 @@ SSL_DIR="/etc/ssl/private"
 NGINX_ERROR_LOG="/var/log/nginx/error.log"
 
 # Function to check if a file is empty
-is_empty_file() {
+_is_empty_file() {
   local file="$1"
   [[ ! -s "$file" ]]
 }
 
 # Check for empty .dhp files and attempt to replace or regenerate them
-process_dhp_files() {
-  local dhp_files=("$SSL_DIR"/*.dhp)
+_process_dhp_files() {
+  local dhp_files=("${SSL_DIR}"/*.dhp)
   local non_empty_dhp=""
   # Find the first non-empty .dhp file
   for dhp_file in "${dhp_files[@]}"; do
-    if ! is_empty_file "$dhp_file"; then
-      non_empty_dhp="$dhp_file"
+    if ! _is_empty_file "${dhp_file}"; then
+      non_empty_dhp="${dhp_file}"
       break
     fi
   done
   # Loop over all .dhp files
   for dhp_file in "${dhp_files[@]}"; do
-    if is_empty_file "$dhp_file"; then
-      if [[ -n "$non_empty_dhp" ]]; then
-        echo "Replacing empty file $dhp_file with $non_empty_dhp"
-        cp "$non_empty_dhp" "$dhp_file"
+    if _is_empty_file "${dhp_file}"; then
+      if [[ -n "${non_empty_dhp}" ]]; then
+        echo "Replacing empty file ${dhp_file} with ${non_empty_dhp}"
+        cp "${non_empty_dhp}" "${dhp_file}"
       else
-        echo "No non-empty .dhp file found, generating new file for $dhp_file"
-        openssl dhparam -out "$dhp_file" 4096 > /dev/null 2>&1 &
+        echo "No non-empty .dhp file found, generating new file for ${dhp_file}"
+        openssl dhparam -out "${dhp_file}" 4096 > /dev/null 2>&1 &
       fi
     fi
   done
 }
 
 # Scan Nginx error log for .dhp related errors
-scan_nginx_errors() {
-  grep "PEM_read_bio_DHparams" "$NGINX_ERROR_LOG" | awk -F'(")' '{print $2}' | while read -r missing_dhp; do
-    if [[ ! -f "$missing_dhp" ]]; then
-      echo "Missing .dhp file detected: $missing_dhp"
-      if [[ -n "$non_empty_dhp" ]]; then
-        echo "Copying non-empty .dhp file to $missing_dhp"
-        cp "$non_empty_dhp" "$missing_dhp"
+_scan_nginx_errors() {
+  grep "PEM_read_bio_DHparams" "${NGINX_ERROR_LOG}" | awk -F'(")' '{print $2}' | while read -r missing_dhp; do
+    if [[ ! -f "${missing_dhp}" ]]; then
+      echo "Missing .dhp file detected: ${missing_dhp}"
+      if [[ -n "${non_empty_dhp}" ]]; then
+        echo "Copying non-empty .dhp file to ${missing_dhp}"
+        cp "${non_empty_dhp}" "${missing_dhp}"
       else
-        echo "Generating new .dhp file for $missing_dhp"
-        openssl dhparam -out "$missing_dhp" 4096 > /dev/null 2>&1 &
+        echo "Generating new .dhp file for ${missing_dhp}"
+        openssl dhparam -out "${missing_dhp}" 4096 > /dev/null 2>&1 &
       fi
     fi
   done
 }
 
-process_dhp_files
-scan_nginx_errors
+_process_dhp_files
+_scan_nginx_errors
 
-crontab_check_clean_race() {
+_crontab_check_clean_race() {
   _CSF_CRON_TEST=$(grep water /etc/crontab 2>&1)
   if [ -e "/etc/csf/csf.deny" ] \
     && [ -x "/usr/sbin/csf" ] \
@@ -110,9 +120,9 @@ crontab_check_clean_race() {
     wait
   fi
 }
-crontab_check_clean_race
+_crontab_check_clean_race
 
-bring_all_ram_cpu_online() {
+_bring_all_ram_cpu_online() {
   _RAM_AUTO_FILE="/sys/devices/system/memory/auto_online_blocks"
   if [ -f "${_RAM_AUTO_FILE}" ]; then
     if grep -qx offline "${_RAM_AUTO_FILE}"; then
@@ -140,9 +150,9 @@ bring_all_ram_cpu_online() {
     fi
   done
 }
-bring_all_ram_cpu_online
+_bring_all_ram_cpu_online
 
-if_disable_not_used_services() {
+_if_disable_not_used_services() {
   clearSwap=No
   if [ ! -e "/root/.allow.clamav.cnf" ] || [ -e "/root/.deny.clamav.cnf" ]; then
     if [ -e "/etc/init.d/clamav-daemon" ]; then
@@ -178,9 +188,9 @@ if_disable_not_used_services() {
     swapon -a
   fi
 }
-if_disable_not_used_services
+_if_disable_not_used_services
 
-os_detection_minimal() {
+_os_detection_minimal() {
   _APT_UPDATE="apt-get update"
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
@@ -190,17 +200,17 @@ os_detection_minimal() {
     fi
   done
 }
-os_detection_minimal
+_os_detection_minimal
 
-apt_clean_update() {
+_apt_clean_update() {
   #apt-get clean -qq 2> /dev/null
   #rm -rf /var/lib/apt/lists/* &> /dev/null
   ${_APT_UPDATE} -qq 2> /dev/null
 }
 
-system_hostname_check_fix() {
-  if [ -e "${barCnf}" ]; then
-    source ${barCnf}
+_system_hostname_check_fix() {
+  if [ -e "${_barCnf}" ]; then
+    source ${_barCnf}
     if [ ! -z "${_MY_HOSTN}" ]; then
       diffHostTest=$(diff -w -B /etc/hostname /etc/mailname 2>&1)
       if [ -z "${diffHostTest}" ]; then
@@ -219,7 +229,7 @@ system_hostname_check_fix() {
     fi
   fi
 }
-system_hostname_check_fix
+_system_hostname_check_fix
 
 rm -f /run/clear_m.pid
 
@@ -229,7 +239,6 @@ if [[ "${_CRON_TEST}" =~ "clear.xsh" ]]; then
   _ADD_XTRA=NO
 fi
 
-_CHECK_HOST=$(uname -n 2>&1)
 _TIME=$(date +%H%M 2>&1)
 _TIME=${_TIME//[^0-9-]/}
 _MINUTE=$(date +%M 2>&1)
@@ -237,23 +246,22 @@ _MINUTE=${_MINUTE//[^0-9-]/}
 _NOW=$(date +%y%m%d-%H%M%S 2>&1)
 _NOW=${_NOW//[^0-9-]/}
 
-_CHECK_HOST=$(uname -n 2>&1)
-if_hosted_sys() {
+_if_hosted_sys() {
   if [ -e "/root/.host8.cnf" ] \
     || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
-    hostedSys=YES
+    _hostedSys=YES
   else
-    hostedSys=NO
+    _hostedSys=NO
   fi
 }
 
-send_boa_system_report() {
-  if [ -e "${barCnf}" ]; then
+_send_boa_system_report() {
+  if [ -e "${_barCnf}" ]; then
     _RCPT_EMAIL=
     _BCC_EMAIL=
     repBodFile=/var/backups/hosted-boa-status.txt
-    if_hosted_sys
-    if [ "${hostedSys}" = "YES" ]; then
+    _if_hosted_sys
+    if [ "${_hostedSys}" = "YES" ]; then
       _RCPT_EMAIL="systems@omega8.cc"
       _BCC_EMAIL="notify@omega8.cc"
     fi
@@ -271,10 +279,10 @@ send_boa_system_report() {
 
 if [ "${_TIME}" = "1200" ] || [ "${_MINUTE}" = "00" ]; then
   export TERM=vt100
-  send_boa_system_report
+  _send_boa_system_report
 fi
 
-crontab_update() {
+_crontab_update() {
   if [ -e "/etc/crontab" ]; then
     sed -i "s/.*xdrago.*//gi" /etc/crontab &> /dev/null
     wait
@@ -329,7 +337,7 @@ crontab_update() {
   fi
 }
 
-crontab_cleanup() {
+_crontab_cleanup() {
   if [ -e "/etc/crontab" ]; then
     sed -i "s/.*xdrago.*//gi" /etc/crontab &> /dev/null
     wait
@@ -381,24 +389,33 @@ if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
   echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
   rm -f /etc/apt/apt.conf.d/00sandboxtmp
   rm -f /etc/apt/apt.conf.d/00temp
-  apt_clean_update
+  _apt_clean_update
 fi
 
 if [ -e "/var/aegir/drush" ]; then
-  if [ ! -e "/var/xdrago/log/.sync_1999_scan_nginx.${_X_SE}.pid" ]; then
-    sed -i "s/^_NGINX_DOS_LIMIT=.*/_NGINX_DOS_LIMIT=399/g"  ${barCnf}
-    sed -i "s/default_critnumber =.*/default_critnumber = 399;/g" /var/xdrago/monitor/check/scan_nginx.pl
-    wait
-    sed -i "s/default_lines =.*/default_lines = 1999;/g" /var/xdrago/monitor/check/scan_nginx.pl
-    touch /var/xdrago/log/.sync_1999_scan_nginx.${_X_SE}.pid
+  if [ ! -e "${_LOCK_DOS_CONFIG}" ]; then
+    if [ ! -e "${_LOCK_DOS_PID}" ]; then
+      # Update variables
+      _update_conf_variable "_NGINX_DOS_LINES" "${_DEFAULT_NGINX_DOS_LINES}" "${_barCnf}"
+      _update_conf_variable "_NGINX_DOS_LIMIT" "${_DEFAULT_NGINX_DOS_LIMIT}" "${_barCnf}"
+      _update_conf_variable "_NGINX_DOS_MODE" "${_DEFAULT_NGINX_DOS_MODE}" "${_barCnf}"
+      _update_conf_variable "_NGINX_DOS_LOG" "${_DEFAULT_NGINX_DOS_LOG}" "${_barCnf}"
+      _update_conf_variable "_NGINX_DOS_IGNORE" "${_DEFAULT_NGINX_DOS_IGNORE}" "${_barCnf}"
+      _update_conf_variable "_NGINX_DOS_STOP" "${_DEFAULT_NGINX_DOS_STOP}" "${_barCnf}"
+      # Update legacy Perl script too
+      sed -i "s/^_NGINX_DOS_LIMIT=.*/_NGINX_DOS_LIMIT=399/g"  ${_barCnf}
+      sed -i "s/default_critnumber =.*/default_critnumber = 399;/g" /var/xdrago/monitor/check/scan_nginx.pl
+      wait
+      sed -i "s/default_lines =.*/default_lines = 1999;/g" /var/xdrago/monitor/check/scan_nginx.pl
+      rm -f /var/xdrago/log/.sync_scan_nginx*
+      touch ${_LOCK_DOS_PID}
+      touch ${_LOCK_DOS_CONFIG}
+    fi
   fi
-  _VM_TEST=$(uname -a 2>&1)
-  [ -z "${_AUTO_VER}" ] && _AUTO_VER="${tRee}"
-  if [[ "${_VM_TEST}" =~ "-beng" ]]; then
-    _VMFAMILY="VS"
-  fi
-  if [ -e "${barCnf}" ]; then
 
+  [ -z "${_AUTO_VER}" ] && _AUTO_VER="${_tRee}"
+
+  if [ -e "${_barCnf}" ]; then
     _AUTO_UP_WEEKLY=${_AUTO_UP_WEEKLY//[^0-9]/}
     _AUTO_UP_MONTH=${_AUTO_UP_MONTH//[^0-9]/}
     _AUTO_UP_DAY=${_AUTO_UP_DAY//[^0-9]/}
@@ -436,13 +453,13 @@ if [ -e "/var/aegir/drush" ]; then
       [ -e "/root/.auto.up.cnf" ] && rm -f /root/.auto.up.cnf
     fi
   fi
-  if_hosted_sys
-  if [ "${hostedSys}" = "YES" ]; then
+  _if_hosted_sys
+  if [ "${_hostedSys}" = "YES" ]; then
 	if [[ "${_CHECK_HOST}" =~ ^(lcy1.ao.|lcy15.uk.) ]]; then
 	  _DONT_TOUCH=OK
 	  rm -f /etc/csf/csf.conf-pre*
 	else
-	  if [ ! -e "/var/xdrago/log/.csf_legacy_cleanup.${_X_SE}.pid" ]; then
+	  if [ ! -e "/var/xdrago/log/.csf_legacy_cleanup.${_xSrl}.pid" ]; then
 	    sed -i "s/.*Legacy.*//g"    /etc/csf/csf.ignore
 	    wait
 	    sed -i "s/.*Legacy.*//g"    /etc/csf/csf.allow
@@ -458,14 +475,14 @@ if [ -e "/var/aegir/drush" ]; then
 	    sed -i "/^$/d" /etc/csf/csf.ignore
 	    sed -i "/^$/d" /etc/csf/csf.allow
 	    rm -f /etc/csf/csf.conf-pre*
-	    touch /var/xdrago/log/.csf_legacy_cleanup.${_X_SE}.pid
+	    touch /var/xdrago/log/.csf_legacy_cleanup.${_xSrl}.pid
 	  fi
 	fi
 
 	rm -f /var/xdrago/*.old
 	rm -f /var/xdrago/.*.off
 
-	if [ ! -e "/var/xdrago/log/.csf_dhcp_udp_cleanup.${_X_SE}.pid" ]; then
+	if [ ! -e "/var/xdrago/log/.csf_dhcp_udp_cleanup.${_xSrl}.pid" ]; then
       sed -i "s/.*DHCP.*//g" /etc/csf/csf.allow
       wait
       sed -i "/^$/d" /etc/csf/csf.allow
@@ -483,23 +500,15 @@ if [ -e "/var/aegir/drush" ]; then
         fi
       done
  	  csf -q
-	  touch /var/xdrago/log/.csf_dhcp_udp_cleanup.${_X_SE}.pid
+	  touch /var/xdrago/log/.csf_dhcp_udp_cleanup.${_xSrl}.pid
 	fi
 
-    if [ ! -e "/var/xdrago/log/.disabled_modules_fix.${_X_SE}.pid" ]; then
-      sed -i "s/^_MODULES_FIX=.*/_MODULES_FIX=NO/g"  ${barCnf}
-      touch /var/xdrago/log/.disabled_modules_fix.${_X_SE}.pid
+    if [ ! -e "/var/xdrago/log/.disabled_modules_fix.${_xSrl}.pid" ]; then
+      sed -i "s/^_MODULES_FIX=.*/_MODULES_FIX=NO/g"  ${_barCnf}
+      touch /var/xdrago/log/.disabled_modules_fix.${_xSrl}.pid
     fi
 
-    if [ ! -e "/var/xdrago/log/.sync_1999_scan_nginx.${_X_SE}.pid" ]; then
-      sed -i "s/^_NGINX_DOS_LIMIT=.*/_NGINX_DOS_LIMIT=399/g"  ${barCnf}
-      sed -i "s/default_critnumber =.*/default_critnumber = 399;/g" /var/xdrago/monitor/check/scan_nginx.pl
-      wait
-      sed -i "s/default_lines =.*/default_lines = 1999;/g" /var/xdrago/monitor/check/scan_nginx.pl
-      touch /var/xdrago/log/.sync_1999_scan_nginx.${_X_SE}.pid
-    fi
-
-    if [ ! -e "/var/xdrago/log/.custom_percona_forced.${_X_SE}.pid" ]; then
+    if [ ! -e "/var/xdrago/log/.custom_percona_forced.${_xSrl}.pid" ]; then
       _DBS_TEST=$(which mysql 2>&1)
       if [ ! -z "${_DBS_TEST}" ]; then
         _DB_SERVER_TEST=$(mysql -V 2>&1)
@@ -515,8 +524,8 @@ if [ -e "/var/aegir/drush" ]; then
         _DB_V=5.7
       fi
       if [[ ! "${_DB_SERVER}" =~ "Percona" ]] || [ -z "${_DB_V}" ]; then
-        sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g"  ${barCnf}
-        sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g"  ${barCnf}
+        sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g"  ${_barCnf}
+        sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g"  ${_barCnf}
       elif [ ! -z "${_DB_V}" ] && [ "${_DB_V}" = "5.7" ]; then
         _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
         _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
@@ -543,13 +552,13 @@ if [ -e "/var/aegir/drush" ]; then
         mysql -u root -e "SET GLOBAL innodb_flush_log_at_timeout=5;" &> /dev/null
         mysql -u root -e "SET GLOBAL innodb_stats_on_metadata=0;" &> /dev/null
       fi
-      sed -i "s/^_USE_MYSQLTUNER=.*/_USE_MYSQLTUNER=NO/g"  ${barCnf}
+      sed -i "s/^_USE_MYSQLTUNER=.*/_USE_MYSQLTUNER=NO/g"  ${_barCnf}
       rm -f /etc/mysql/conf.d/mysqldump.cnf
-      touch /var/xdrago/log/.custom_percona_forced.${_X_SE}.pid
+      touch /var/xdrago/log/.custom_percona_forced.${_xSrl}.pid
     fi
 
     _AUTO_PHP="php-min"
-    _AUTO_VER="${tRee}"
+    _AUTO_VER="${_tRee}"
     _AUTO_UP_WEEKLY=7
     _AUTO_UP_MONTH=9
     _AUTO_UP_DAY=11
@@ -599,13 +608,10 @@ if [ -e "/var/aegir/drush" ]; then
     fi
   fi
   if [ ! -e "/etc/init.d/ssh" ] \
-    || [ ! -e "/etc/init.d/redis-server" ] \
-    || [[ "${_CHECK_HOST}" =~ "ex9.lon." ]] \
-    || [[ "${_CHECK_HOST}" =~ "ex11.eu." ]]; then
+    || [ ! -e "/etc/init.d/redis-server" ]; then
     _AUTO_UP_WEEKLY=
     _AUTO_UP_MONTH=
     _AUTO_UP_DAY=
-    _AUTO_VER="${tRee}"
   fi
   if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
     _AUTO_UP_WEEKLY=
@@ -614,33 +620,33 @@ if [ -e "/var/aegir/drush" ]; then
   fi
 
   if [ -e "/root/.dev.server.cnf" ]; then
-    if [ ! -e "/var/xdrago/log/.etc_crontab_update_dev_ctrl_f1.${tRee}.${_X_SE}.pid" ]; then
+    if [ ! -e "/var/xdrago/log/.etc_crontab_update_dev_ctrl_f1.${_tRee}.${_xSrl}.pid" ]; then
       rm -f /var/xdrago/log/.*etc_crontab_update_dev_ctrl*
-      crontab_cleanup
+      _crontab_cleanup
       service cron restart
-      touch /var/xdrago/log/.etc_crontab_update_dev_ctrl_f1.${tRee}.${_X_SE}.pid
+      touch /var/xdrago/log/.etc_crontab_update_dev_ctrl_f1.${_tRee}.${_xSrl}.pid
     fi
   else
-    if [ ! -e "/var/xdrago/log/.etc_crontab_update_prod_ctrl_f1.${tRee}.${_X_SE}.pid" ]; then
+    if [ ! -e "/var/xdrago/log/.etc_crontab_update_prod_ctrl_f1.${_tRee}.${_xSrl}.pid" ]; then
       rm -f /var/xdrago/log/.*etc_crontab_update_prod_ctrl*
       if [ ! -z "${_AUTO_UP_MONTH}" ] \
         && [ ! -z "${_AUTO_UP_DAY}" ]; then
-        crontab_update
+        _crontab_update
       else
-        crontab_cleanup
+        _crontab_cleanup
       fi
       service cron restart
-      touch /var/xdrago/log/.etc_crontab_update_prod_ctrl_f1.${tRee}.${_X_SE}.pid
+      touch /var/xdrago/log/.etc_crontab_update_prod_ctrl_f1.${_tRee}.${_xSrl}.pid
     fi
   fi
 
-  if [ ! -e "/var/xdrago/log/.etc_csf_allow_ctrl.${tRee}.${_X_SE}.pid" ]; then
+  if [ ! -e "/var/xdrago/log/.etc_csf_allow_ctrl.${_tRee}.${_xSrl}.pid" ]; then
     mkdir -p /var/backups/csf
-    cp -a /etc/csf/csf.ignore /var/backups/csf/csf.ignore.${tRee}.${_X_SE}.txt
-    cp -a /etc/csf/csf.allow /var/backups/csf/csf.allow.${tRee}.${_X_SE}.txt
+    cp -a /etc/csf/csf.ignore /var/backups/csf/csf.ignore.${_tRee}.${_xSrl}.txt
+    cp -a /etc/csf/csf.allow /var/backups/csf/csf.allow.${_tRee}.${_xSrl}.txt
     rm -f /root/.*.pid
     rm -f /var/xdrago/log/.etc_csf_allow_ctrl*
-    touch /var/xdrago/log/.etc_csf_allow_ctrl.${tRee}.${_X_SE}.pid
+    touch /var/xdrago/log/.etc_csf_allow_ctrl.${_tRee}.${_xSrl}.pid
   fi
 
   ###
@@ -700,45 +706,36 @@ if [ -e "/var/aegir/drush" ]; then
     if [ -e "/usr/sbin/ebtables-legacy" ]; then
       update-alternatives --set ebtables /usr/sbin/ebtables-legacy &> /dev/null
     fi
-    touch /var/xdrago/log/.nf_tables_ctrl.${tRee}.${_X_SE}.pid
+    touch /var/xdrago/log/.nf_tables_ctrl.${_tRee}.${_xSrl}.pid
   fi
 
   if [ -x "/etc/init.d/site24x7monagent" ] \
-    && [ ! -e "/var/xdrago/log/.site24x7monagent_ctrl.${tRee}.${_X_SE}.pid" ]; then
+    && [ ! -e "/var/xdrago/log/.site24x7monagent_ctrl.${_tRee}.${_xSrl}.pid" ]; then
     service site24x7monagent stop
     wait
     service site24x7monagent start
     rm -f /var/xdrago/log/.site24x7monagent*
-    touch /var/xdrago/log/.site24x7monagent_ctrl.${tRee}.${_X_SE}.pid
+    touch /var/xdrago/log/.site24x7monagent_ctrl.${_tRee}.${_xSrl}.pid
   fi
 
   if [ -x "/usr/local/bin/curl" ] \
-    && [ ! -e "/var/xdrago/log/.curl_ctrl.${tRee}.${_X_SE}.pid" ]; then
+    && [ ! -e "/var/xdrago/log/.curl_ctrl.${_tRee}.${_xSrl}.pid" ]; then
     if [ -f "/usr/bin/curl" ]; then
       mv -f /usr/bin/curl /usr/bin/legacy-curl
     fi
     ln -s /usr/local/bin/curl /usr/bin/curl
-    touch /var/xdrago/log/.curl_ctrl.${tRee}.${_X_SE}.pid
+    touch /var/xdrago/log/.curl_ctrl.${_tRee}.${_xSrl}.pid
   fi
 
-  if [ ! -e "/var/xdrago/log/.force_nginx_restart_ctrl.${tRee}.${_X_SE}.pid" ]; then
+  if [ ! -e "/var/xdrago/log/.force_nginx_restart_ctrl.${_tRee}.${_xSrl}.pid" ]; then
     _IS_NGINX_LOCKED=$(service nginx restart 2>&1)
     if [[ "${_IS_NGINX_LOCKED}" =~ "Address already in use" ]]; then
       kill -9 $(ps aux | grep '[n]ginx' | awk '{print $2}') &> /dev/null
       service nginx start
       wait
       rm -f /var/xdrago/log/.force_nginx_restart_ctrl*
-      touch /var/xdrago/log/.force_nginx_restart_ctrl.${tRee}.${_X_SE}.pid
+      touch /var/xdrago/log/.force_nginx_restart_ctrl.${_tRee}.${_xSrl}.pid
     fi
-  fi
-
-  _IS_NGINX_ZOMBIE=$(service nginx status 2>&1)
-  if [[ "${_IS_NGINX_ZOMBIE}" =~ "is NOT running" ]]; then
-    kill -9 $(ps aux | grep '[n]ginx' | awk '{print $2}') &> /dev/null
-    service nginx start
-    wait
-    echo "$(date 2>&1) Nginx Zombie restart forced" >> \
-        /var/xdrago/log/nginx-server-restart.event.log
   fi
 
   _IS_MOVESQL_RUNNING=$(ps aux | grep '[m]ove_sql.sh' | awk '{print $2}' 2>&1)
@@ -748,7 +745,7 @@ if [ -e "/var/aegir/drush" ]; then
       rm -f /run/mysql_restart_running.pid
       rm -f /run/boa_wait.pid
       rm -f /var/xdrago/log/.move_sql_ctrl*
-      touch /var/xdrago/log/.move_sql_ctrl.${tRee}.${_X_SE}.pid
+      touch /var/xdrago/log/.move_sql_ctrl.${_tRee}.${_xSrl}.pid
     fi
   fi
 
@@ -758,7 +755,7 @@ if [ -e "/var/aegir/drush" ]; then
       kill -9 $(ps aux | grep '[m]ysql_cleanup.sh' | awk '{print $2}') &> /dev/null
       rm -f /run/mysql_backup_running.pid
       rm -f /var/xdrago/log/.sqlcleanup_ctrl*
-      touch /var/xdrago/log/.sqlcleanup_ctrl.${tRee}.${_X_SE}.pid
+      touch /var/xdrago/log/.sqlcleanup_ctrl.${_tRee}.${_xSrl}.pid
     fi
   fi
 
@@ -766,7 +763,7 @@ if [ -e "/var/aegir/drush" ]; then
   if [ ! -z "${_IS_SOLRSTART_RUNNING}" ]; then
     if [ `ps aux | grep -v "grep" | grep --count "solr start"` -gt "2" ]; then
       kill -9 $(ps aux | grep '[s]olr start' | awk '{print $2}') &> /dev/null
-      touch /var/xdrago/log/.solr_start_ctrl.${tRee}.${_X_SE}.pid
+      touch /var/xdrago/log/.solr_start_ctrl.${_tRee}.${_xSrl}.pid
     fi
   fi
 
@@ -774,7 +771,7 @@ if [ -e "/var/aegir/drush" ]; then
   if [ ! -z "${_IS_PROCTRL_RUNNING}" ]; then
     if [ `ps aux | grep -v "grep" | grep --count "proc_num_ctrl.pl"` -gt "1" ]; then
       kill -9 $(ps aux | grep '[p]roc_num_ctrl.cgi' | awk '{print $2}') &> /dev/null
-      touch /var/xdrago/log/.proc_num_ctrl.${tRee}.${_X_SE}.pid
+      touch /var/xdrago/log/.proc_num_ctrl.${_tRee}.${_xSrl}.pid
     fi
   fi
 
@@ -794,7 +791,7 @@ if [ -e "/var/aegir/drush" ]; then
       rm -f /run/boa_wait.pid
       rm -f /run/daily-fix.pid
       rm -f /var/xdrago/log/.sqlbackup_ctrl*
-      touch /var/xdrago/log/.sqlbackup_ctrl.${tRee}.${_X_SE}.pid
+      touch /var/xdrago/log/.sqlbackup_ctrl.${_tRee}.${_xSrl}.pid
     fi
   fi
 fi

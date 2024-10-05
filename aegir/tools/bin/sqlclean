@@ -4,13 +4,13 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
-check_root() {
+_check_root() {
   if [ `whoami` != "root" ]; then
     echo "ERROR: This script should be run as a root user"
     exit 1
   fi
 }
-check_root
+_check_root
 
 # Define directories
 MYSQL_DB_DIR="/var/lib/mysql"
@@ -71,10 +71,10 @@ for active_db in "${active_databases[@]}"; do
 done
 
 # Function to drop a MySQL user and all host entries
-drop_mysql_user() {
+_drop_mysql_user() {
   local db_user=$1
   # Get all user@host combinations for the user
-  mapfile -t user_hosts < <(mysql -e "SELECT CONCAT(User, '@', Host) FROM mysql.user WHERE User='${db_user}';")
+  mapfile -t user_hosts < <(mysql -e "SELECT CONCAT(User, '@', Host) FROM mysql.user WHERE _usEr='${db_user}';")
 
   # Drop each user@host entry
   for user_host in "${user_hosts[@]}"; do
@@ -86,7 +86,7 @@ drop_mysql_user() {
 }
 
 # Step 5: Prompt admin to confirm ghost database deletion
-confirm_deletion() {
+_confirm_deletion() {
   local ghost_db=$1
   while true; do
     echo -e "\nGhost database found: ${ghost_db}"
@@ -106,7 +106,7 @@ confirm_deletion() {
 # Step 6: Drop ghost databases and their associated users after confirmation
 echo "Databases to drop (not referenced in any vhost):" | tee -a "${GHOST_DBS_LOG}"
 for ghost_db in "${ghost_databases[@]}"; do
-  if confirm_deletion "${ghost_db}"; then
+  if _confirm_deletion "${ghost_db}"; then
     # Drop the database
     echo "Dropping database: ${ghost_db}" | tee -a "${GHOST_DBS_LOG}"
     if [ "${LIVE_MODE}" == "LIVE" ]; then
@@ -114,7 +114,7 @@ for ghost_db in "${ghost_databases[@]}"; do
     fi
 
     # Drop the associated db_user (assuming db_user matches db_name)
-    drop_mysql_user "${ghost_db}"
+    _drop_mysql_user "${ghost_db}"
   fi
 done
 

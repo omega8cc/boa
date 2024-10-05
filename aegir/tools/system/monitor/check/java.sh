@@ -6,7 +6,7 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 
 _pthOml="/var/xdrago/log/java.incident.log"
 
-check_root() {
+_check_root() {
   if [ `whoami` = "root" ]; then
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
     chmod a+w /dev/null
@@ -15,7 +15,7 @@ check_root() {
     exit 1
   fi
 }
-check_root
+_check_root
 
 export _B_NICE=${_B_NICE//[^0-9]/}
 : "${_B_NICE:=10}"
@@ -36,7 +36,7 @@ _incident_email_report() {
   fi
 }
 
-jetty_restart() {
+_jetty_restart() {
   touch /run/boa_wait.pid
   sleep 3
   kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}') &> /dev/null
@@ -62,13 +62,13 @@ jetty_restart() {
   exit 0
 }
 
-jetty_listen_conflict_detection() {
+_jetty_listen_conflict_detection() {
   if [ -e "/var/log/jetty9" ]; then
     if [ `tail --lines=500 /var/log/jetty9/*stderrout.log \
       | grep --count "Address already in use"` -gt "0" ]; then
       thisErrLog="$(date 2>&1) Address already in use for jetty9"
       echo ${thisErrLog} >> ${_pthOml}
-      jetty_restart "jetty9 zombie"
+      _jetty_restart "jetty9 zombie"
     fi
   fi
   if [ -e "/var/log/jetty8" ]; then
@@ -76,7 +76,7 @@ jetty_listen_conflict_detection() {
       | grep --count "Address already in use"` -gt "0" ]; then
       thisErrLog="$(date 2>&1) Address already in use for jetty8"
       echo ${thisErrLog} >> ${_pthOml}
-      jetty_restart "jetty8 zombie"
+      _jetty_restart "jetty8 zombie"
     fi
   fi
   if [ -e "/var/log/jetty7" ]; then
@@ -84,7 +84,7 @@ jetty_listen_conflict_detection() {
       | grep --count "Address already in use"` -gt "0" ]; then
       thisErrLog="$(date 2>&1) Address already in use for jetty7"
       echo ${thisErrLog} >> ${_pthOml}
-      jetty_restart "jetty7 zombie"
+      _jetty_restart "jetty7 zombie"
     fi
   fi
 }

@@ -6,26 +6,26 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 
 _NOW=$(date +%y%m%d-%H%M%S 2>&1)
 _NOW=${_NOW//[^0-9-]/}
-vBs="/var/backups"
+_vBs="/var/backups"
 _THIS_DB_PORT=3306
-crlGet="-L --max-redirs 3 -k -s --retry 3 --retry-delay 5 -A iCab"
+_crlGet="-L --max-redirs 3 -k -s --retry 3 --retry-delay 5 -A iCab"
 
 # Remove dangerous stuff from the string.
-sanitize_string() {
+_sanitize_string() {
   echo "$1" | sed 's/[\\\/\^\?\>\`\#\"\{\(\&\|\*]//g; s/\(['"'"'\]\)//g'
 }
 
 #
 # Find correct IP.
-find_correct_ip() {
+_find_correct_ip() {
   if [ -e "/root/.found_correct_ipv4.cnf" ]; then
     _LOC_IP=$(cat /root/.found_correct_ipv4.cnf 2>&1)
     _LOC_IP=$(echo -n ${_LOC_IP} | tr -d "\n" 2>&1)
   else
-    _LOC_IP=$(curl ${crlGet} https://api.ipify.org \
+    _LOC_IP=$(curl ${_crlGet} https://api.ipify.org \
       | sed 's/[^0-9\.]//g' 2>&1)
     if [ -z "${_LOC_IP}" ]; then
-      _LOC_IP=$(curl ${crlGet} http://ipv4.icanhazip.com \
+      _LOC_IP=$(curl ${_crlGet} http://ipv4.icanhazip.com \
         | sed 's/[^0-9\.]//g' 2>&1)
     fi
     if [ ! -z "${_LOC_IP}" ]; then
@@ -34,7 +34,7 @@ find_correct_ip() {
   fi
 }
 
-check_generate() {
+_check_generate() {
   rm -f ${_L_SYS}
   if [ -e "${_L_SYS}" ]; then
     _ESC_PASS=$(cat ${_L_SYS} 2>&1)
@@ -68,7 +68,7 @@ check_generate() {
         else
           _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
           _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
-          _ESC_PASS=$(sanitize_string "${_ESC_PASS}" 2>&1)
+          _ESC_PASS=$(_sanitize_string "${_ESC_PASS}" 2>&1)
         fi
       fi
       isPythonTwo=$(which python2 2>&1)
@@ -84,7 +84,7 @@ check_generate() {
        echo "INFO: We will generate new random password using shuf tool"
       _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
       _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
-      _ESC_PASS=$(sanitize_string "${_ESC_PASS}" 2>&1)
+      _ESC_PASS=$(_sanitize_string "${_ESC_PASS}" 2>&1)
       _ENC_PASS="${_ESC_PASS}"
       echo "${_ESC_PASS}" > ${_L_SYS}
       chmod 0600 ${_L_SYS}
@@ -96,26 +96,26 @@ check_generate() {
      echo "INFO: We will generate new random password using shuf tool"
     _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
     _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
-    _ESC_PASS=$(sanitize_string "${_ESC_PASS}" 2>&1)
+    _ESC_PASS=$(_sanitize_string "${_ESC_PASS}" 2>&1)
     _ENC_PASS="${_ESC_PASS}"
     echo "${_ESC_PASS}" > ${_L_SYS}
     chmod 0600 ${_L_SYS}
   fi
 }
 
-do_syncpass() {
+_do_syncpass() {
   _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
   _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
   if [ ! -z "${uname}" ]; then
-    find_correct_ip
+    _find_correct_ip
     prH="/var/aegir/.drush"
     if [ "${uname}" = "aegir" ] && [ -e "/var/aegir/backups" ]; then
       _L_SYS="/var/aegir/backups/system/.aegir_root.pass.txt"
       cp ${prH}/server_localhost.alias.drushrc.php \
-        ${vBs}/server_localhost.alias.drushrc.php.${uname}-${_NOW} &> /dev/null
+        ${_vBs}/server_localhost.alias.drushrc.php.${uname}-${_NOW} &> /dev/null
       cp ${prH}/server_master.alias.drushrc.php \
-        ${vBs}/server_master.alias.drushrc.php.${uname}-${_NOW} &> /dev/null
-      check_generate
+        ${_vBs}/server_master.alias.drushrc.php.${uname}-${_NOW} &> /dev/null
+      _check_generate
       chown ${uname}:${uname} ${_L_SYS} &> /dev/null
       if [ ! -z "${_ESC_PASS}" ] && [ ! -z "${_ENC_PASS}" ]; then
         mysqladmin -u root flush-hosts &> /dev/null
@@ -176,10 +176,10 @@ EOFMYSQL
       if [ -e "/data/disk/${uname}" ]; then
         _L_SYS="/data/disk/${uname}/.${uname}.pass.txt"
         cp /data/disk/${uname}/.drush/server_localhost.alias.drushrc.php \
-          ${vBs}/server_localhost.alias.drushrc.php.${uname}-${_NOW} &> /dev/null
+          ${_vBs}/server_localhost.alias.drushrc.php.${uname}-${_NOW} &> /dev/null
         cp /data/disk/${uname}/.drush/server_master.alias.drushrc.php \
-          ${vBs}/server_master.alias.drushrc.php.${uname}-${_NOW} &> /dev/null
-        check_generate
+          ${_vBs}/server_master.alias.drushrc.php.${uname}-${_NOW} &> /dev/null
+        _check_generate
         chown ${uname}:users ${_L_SYS} &> /dev/null
         if [ ! -z "${_ESC_PASS}" ] && [ ! -z "${_ENC_PASS}" ]; then
           if [ -e "/data/conf/${uname}_use_proxysql.txt" ]; then
@@ -271,7 +271,7 @@ EOFMYSQL
   fi
 }
 
-check_root() {
+_check_root() {
   if [ `whoami` = "root" ]; then
     chmod a+w /dev/null
     if [ -e "/root/.barracuda.cnf" ]; then
@@ -297,8 +297,8 @@ check_root() {
 
 case "$1" in
   fix) uname="$2"
-       check_root
-       do_syncpass
+       _check_root
+       _do_syncpass
   ;;
   *)   echo "Usage: syncpass fix {aegir|o1}"
        exit 1
