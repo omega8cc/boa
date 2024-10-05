@@ -1119,10 +1119,10 @@ d;};' ${_octTpl}/subdir.tpl.php
   wait
 
   sed -i "s/allow 127.0.0.1;//g; s/ *$//g; /^$/d" \
-    ${_oc_tInc}/nginx_vhost_common.conf
+    ${_octInc}/nginx_vhost_common.conf
   wait
   sed -i '/deny all;/ {r /root/.local.IP.list.allow
-d;};' ${_oc_tInc}/nginx_vhost_common.conf
+d;};' ${_octInc}/nginx_vhost_common.conf
   wait
 }
 
@@ -1133,7 +1133,7 @@ _satellite_sub_satellite_force_advanced_nginx_config() {
     _msg "PROC: _satellite_sub_satellite_force_advanced_nginx_config"
     _debug_proc
   fi
-  if [ -d "${_oc_tInc}" ]; then
+  if [ -d "${_octInc}" ]; then
     _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
     if [ -z "${_PHP_SV}" ]; then
       _PHP_SV=74
@@ -1141,7 +1141,7 @@ _satellite_sub_satellite_force_advanced_nginx_config() {
     if [ -e "/opt/php${_PHP_SV}/etc/php${_PHP_SV}-fpm.conf" ]; then
       sed -i "s/set.*user_socket.*/set \$user_socket \"${_USER}\";/g" ${_octTpl}/Inc/vhost_include.tpl.php &> /dev/null
       sed -i "s/set.*user_socket.*/set \$user_socket \"${_USER}\";/g" ${_octTpl}/subdir.tpl.php            &> /dev/null
-      sed -i "s/set.*user_socket.*/set \$user_socket \"${_USER}\";/g" ${_oc_tInc}/nginx_vhost_common.conf   &> /dev/null
+      sed -i "s/set.*user_socket.*/set \$user_socket \"${_USER}\";/g" ${_octInc}/nginx_vhost_common.conf   &> /dev/null
     fi
     if [ ! -z "${_CUSTOM_COLLATION_SQL}" ]; then
       _SITES_COLLATION_SQL=${_CUSTOM_COLLATION_SQL}

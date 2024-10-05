@@ -152,7 +152,7 @@ export _DOMAIN="${_USER}.$(uname -n 2>&1)"
 export _ROOT="/data/disk/${_USER}"
 export _THIS_DB_PORT=3306
 export _octCnf="/root/.${_USER}.octopus.cnf"
-export _oc_tInc="${_ROOT}/config/includes"
+export _octInc="${_ROOT}/config/includes"
 export _octTpl="${_ROOT}/.drush/sys/provision/http/Provision/Config/Nginx"
 export _octSetTpl="${_ROOT}/.drush/sys/provision/Provision/Config/Drupal"
 

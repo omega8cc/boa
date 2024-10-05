@@ -2072,7 +2072,7 @@ _manage_user() {
       echo "_USER is == ${_USER} == at _manage_user"
       _WEB="${_USER}.web"
       _dscUsr="/data/disk/${_USER}"
-      _oc_tInc="${_dscUsr}/config/includes"
+      _octInc="${_dscUsr}/config/includes"
       _octTpl="${_dscUsr}/.drush/sys/provision/http/Provision/Config/Nginx"
       usrDgn="${_dscUsr}/.drush/usr/drupalgeddon"
       if [ -e "${_dscUsr}/log/imported.pid" ] \
