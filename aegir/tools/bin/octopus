@@ -662,9 +662,9 @@ _up_action_all() {
         _octCnf="/root/.${_octUsr}.octopus.cnf"
         echo load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}
         echo Octopus upgrade for User ${_usEr}
-        n=$((RANDOM%9+2))
-        echo Waiting $n _sCnds...
-        sleep $n
+        _n=$((RANDOM%9+2))
+        echo Waiting ${_n} seconds...
+        sleep ${_n}
 
         ### Enable debugging if requested
         if [ -e "/root/.debug-boa-installer.cnf" ] \
@@ -683,7 +683,7 @@ _up_action_all() {
           echo "NOTE: There will be no progress displayed in the console"
           echo "but you will receive an email once the upgrade is complete"
           echo
-          sleep $n
+          sleep ${_n}
           echo "You could watch the progress in another window with command:"
           echo "  tail -f ${_UP_LOG}"
           echo "or wait until you will see the line: OCTOPUS upgrade completed"
@@ -705,9 +705,9 @@ _up_action_all() {
           wait
           _up_one
         fi
-        n=$((RANDOM%9+2))
-        echo "Waiting $n _sCnds..."
-        sleep $n
+        _n=$((RANDOM%9+2))
+        echo "Waiting ${_n} seconds..."
+        sleep ${_n}
         rm -f ${_vBs}/${_tocName}
         rm -f ${_vBs}/${_tocIncO}
         rm -rf ${_usEr}/.tmp/cache
@@ -740,7 +740,7 @@ _up_action_one() {
       _octCnf="/root/.${_octUsr}.octopus.cnf"
       echo load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}
       echo Octopus upgrade for User ${_usEr}
-      n=$((RANDOM%9+2))
+      _n=$((RANDOM%9+2))
 
       ### Enable debugging if requested
       if [ -e "/root/.debug-boa-installer.cnf" ] \
@@ -759,7 +759,7 @@ _up_action_one() {
         echo "NOTE: There will be no progress displayed in the console"
         echo "but you will receive an email once the upgrade is complete"
         echo
-        sleep $n
+        sleep ${_n}
         echo "You could watch the progress in another window with command:"
         echo "  tail -f ${_UP_LOG}"
         echo "or wait until you will see the line: OCTOPUS upgrade completed"
