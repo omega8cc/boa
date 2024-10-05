@@ -1516,7 +1516,7 @@ _update_agents() {
         _lockLeFile="${_leRoot}/lock"
         _configIni="${_leRoot}/config"
         _acctsDir="${_leRoot}/accounts"
-        __acctsDemoDir="${_leRoot}/accounts-demo"
+        _acctsDemoDir="${_leRoot}/accounts-demo"
         _demoPid="${_leRoot}/.ctrl/ssl-demo-mode.pid"
         _normalRegPid="${_leRoot}/.ctrl/normal-re6-register.pid"
         _forcedRegPid="${_leRoot}/.ctrl/forced-re6-register.pid"
