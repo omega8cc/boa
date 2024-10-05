@@ -23,8 +23,8 @@ export _B_NICE=${_B_NICE//[^0-9]/}
 export _INCIDENT_EMAIL_REPORT=${_INCIDENT_EMAIL_REPORT//[^A-Z]/}
 : "${_INCIDENT_EMAIL_REPORT:=YES}"
 
-if [ $(pgrep -f unbound.sh | grep -v "^$$" | wc -l) -gt 2 ]; then
-  echo "Too many unbound.sh running $(date 2>&1)" >> /var/xdrago/log/too.many.log
+if (( $(pgrep -fc 'unbound.sh') > 2 )); then
+  echo "Too many unbound.sh running $(date)" >> /var/xdrago/log/too.many.log
   exit 0
 fi
 

@@ -29,8 +29,8 @@ export _SQL_LOW_MAX_TTL=${_SQL_LOW_MAX_TTL//[^0-9]/}
 export _INCIDENT_EMAIL_REPORT=${_INCIDENT_EMAIL_REPORT//[^A-Z]/}
 : "${_INCIDENT_EMAIL_REPORT:=YES}"
 
-if [ $(pgrep -f mysql.sh | grep -v "^$$" | wc -l) -gt 4 ]; then
-  echo "Too many mysql.sh running $(date 2>&1)" >> /var/xdrago/log/too.many.log
+if (( $(pgrep -fc 'mysql.sh') > 2 )); then
+  echo "Too many mysql.sh running $(date)" >> /var/xdrago/log/too.many.log
   exit 0
 fi
 

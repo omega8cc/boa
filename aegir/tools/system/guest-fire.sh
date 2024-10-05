@@ -7,7 +7,7 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 # Exit if more than 2 instances of the script are running
 if (( $(pgrep -fc 'guest-fire.sh') > 2 )); then
   # Optional: Log too many instances
-  echo "$(date) Too many guest-fire.sh running" >> /var/xdrago/log/too.many.log
+  echo "Too many guest-fire.sh running $(date)" >> /var/xdrago/log/too.many.log
   exit 0
 fi
 

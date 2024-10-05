@@ -18,8 +18,8 @@ _check_root() {
 }
 _check_root
 
-if [ $(pgrep -f minute.sh | grep -v "^$$" | wc -l) -gt 4 ]; then
-  echo "Too many minute.sh running $(date 2>&1)" >> /var/xdrago/log/too.many.log
+if (( $(pgrep -fc 'minute.sh') > 2 )); then
+  echo "Too many minute.sh running $(date)" >> /var/xdrago/log/too.many.log
   exit 0
 fi
 

@@ -25,8 +25,8 @@ if [ -e "/root/.proxy.cnf" ]; then
   exit 0
 fi
 
-if [ $(pgrep -f mysql_cleanup.sh | grep -v "^$$" | wc -l) -gt 2 ]; then
-  echo "Too many mysql_cleanup.sh running $(date 2>&1)" >> /var/xdrago/log/too.many.log
+if (( $(pgrep -fc 'mysql_cleanup.sh') > 2 )); then
+  echo "Too many mysql_cleanup.sh running $(date)" >> /var/xdrago/log/too.many.log
   exit 0
 fi
 
