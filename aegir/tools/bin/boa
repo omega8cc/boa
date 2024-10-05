@@ -974,8 +974,8 @@ _init_cleanup() {
   rm -f /root/BOA.sh*
   [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
   [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
-  [ -e "/run/manage_ltd__usErs.pid" ] && rm -f /run/manage_ltd__usErs.pid
-  [ -e "/run/manage_ruby__usErs.pid" ] && rm -f /run/manage_ruby__usErs.pid
+  [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
+  [ -e "/run/manage_ruby_users.pid" ] && rm -f /run/manage_ruby_users.pid
   rm -f ${_vBs}/*.sh.cnf*
   rm -f ${_vBs}/BARRACUDA.sh*
   rm -f ${_vBs}/OCTOPUS.sh*
@@ -986,8 +986,8 @@ _init_finish() {
   rm -f /root/BOA.sh*
   [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
   [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
-  [ -e "/run/manage_ltd__usErs.pid" ] && rm -f /run/manage_ltd__usErs.pid
-  [ -e "/run/manage_ruby__usErs.pid" ] && rm -f /run/manage_ruby__usErs.pid
+  [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
+  [ -e "/run/manage_ruby_users.pid" ] && rm -f /run/manage_ruby_users.pid
   rm -f ${_vBs}/*.sh.cnf*
   rm -f ${_vBs}/BARRACUDA.sh*
   rm -f ${_vBs}/OCTOPUS.sh*
