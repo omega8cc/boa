@@ -2335,7 +2335,7 @@ if [ -e "/run/manage_ruby_users.pid" ] \
   || [ -e "/run/manage_ltd_users.pid" ] \
   || [ -e "/run/boa_run.pid" ] \
   || [ -e "/run/boa_wait.pid" ] \
-  || [ -e "/run/_octopus_install_run.pid" ]; then
+  || [ -e "/run/octopus_install_run.pid" ]; then
   touch /var/xdrago/log/wait-manage-ltd-users.pid
   echo "Another BOA task is running, we have to wait"
   sleep 3
@@ -2381,7 +2381,7 @@ else
       rm -f ${_THIS_LTD_CONF}
     fi
   fi
-  if [ -L "/bin/sh" ] && [ ! -e "/run/_octopus_install_run.pid" ]; then
+  if [ -L "/bin/sh" ] && [ ! -e "/run/octopus_install_run.pid" ]; then
     _WEB_SH=$(readlink -n /bin/sh 2>&1)
     _WEB_SH=$(echo -n ${_WEB_SH} | tr -d "\n" 2>&1)
     if [ -x "/bin/websh" ]; then

@@ -1276,7 +1276,7 @@ _init_setup() {
     fi
   fi
   if [ "${_OCTOPUS_ONLY}" = "YES" ] || [ "${_sYst}" = "bundle" ]; then
-    [ ! -e "/run/_octopus_install_run.pid" ] && touch /run/_octopus_install_run.pid
+    [ ! -e "/run/octopus_install_run.pid" ] && touch /run/octopus_install_run.pid
     sleep 3
     _octopus_install
     rm -rf /data/disk/${_usEr}/.tmp/cache
@@ -1286,7 +1286,7 @@ _init_setup() {
   fi
   if [ "${_OCTOPUS_ONLY}" = "YES" ] || [ "${_sYst}" = "bundle" ]; then
     _init_cleanup
-    [ ! -e "/run/_octopus_install_run.pid" ] && touch /run/_octopus_install_run.pid
+    [ ! -e "/run/octopus_install_run.pid" ] && touch /run/octopus_install_run.pid
     sleep 3
     # Execute post-install octopus upgrade and exit
     touch /data/disk/${_usEr}/static/control/ssl-live-_mOde.info

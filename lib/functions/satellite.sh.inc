@@ -23,7 +23,7 @@ _debug_proc() {
   if [ -e "/root/.dev.server.cnf" ]; then
     _msg "DBLS: `ls -la /usr/bin/sh`"
     _msg "DBLS: `ls -la /bin/sh`"
-    _msg "DBLS: `ls -la /run/_octopus_install_run.pid`"
+    _msg "DBLS: `ls -la /run/octopus_install_run.pid`"
     [ -e "/data/disk/${_USER}/.tmp/cache" ] && _msg "DBLS: `ls -la /data/disk/${_USER}/.tmp/cache`"
   fi
 }
