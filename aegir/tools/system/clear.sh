@@ -62,8 +62,8 @@ fi
 #
 # Find the fastest mirror.
 _find_fast_mirror_early() {
-  isNetc=$(which netcat 2>&1)
-  if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
+  _isNetc=$(which netcat 2>&1)
+  if [ ! -x "${_isNetc}" ] || [ -z "${_isNetc}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
@@ -111,8 +111,8 @@ _if_reinstall_curl_src() {
   [ "${_OS_CODE}" = "wheezy" ] && _CURL_VRN=7.50.1
   [ "${_OS_CODE}" = "jessie" ] && _CURL_VRN=7.71.1
   [ "${_OS_CODE}" = "stretch" ] && _CURL_VRN=8.2.1
-  isCurl=$(curl --version 2>&1)
-  if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
+  _isCurl=$(curl --version 2>&1)
+  if [[ ! "${_isCurl}" =~ "OpenSSL" ]] || [ -z "${_isCurl}" ]; then
     echo "OOPS: cURL is broken! Re-installing.."
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
@@ -163,8 +163,8 @@ _if_reinstall_curl_src() {
       fi
     fi
     if [ -f "/usr/local/bin/curl" ]; then
-      isCurl=$(/usr/local/bin/curl --version 2>&1)
-      if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
+      _isCurl=$(/usr/local/bin/curl --version 2>&1)
+      if [[ ! "${_isCurl}" =~ "OpenSSL" ]] || [ -z "${_isCurl}" ]; then
         echo "ERRR: /usr/local/bin/curl is broken"
       else
         echo "GOOD: /usr/local/bin/curl works"
@@ -209,10 +209,10 @@ for _OCT in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
   if [ -e "${_OCT}/config/server_master/nginx/vhost.d" ]; then
     _SITES_NR=$(ls ${_OCT}/config/server_master/nginx/vhost.d | wc -l)
     if [ "${_SITES_NR}" -gt "0" ]; then
-      if [ -z "${chckSts}" ]; then
-        chckSts="SNR ${_OCT} ${_SITES_NR} "
+      if [ -z "${_chckSts}" ]; then
+        _chckSts="SNR ${_OCT} ${_SITES_NR} "
       else
-        chckSts="SNR ${_OCT} ${_SITES_NR} ${chckSts} "
+        _chckSts="SNR ${_OCT} ${_SITES_NR} ${_chckSts} "
       fi
     else
       _OCT_NR=$(( _OCT_NR - 1 ))
@@ -220,23 +220,23 @@ for _OCT in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
   fi
 done
 if [ -d "/data/u" ]; then
-  chckSts="OCT ${_OCT_NR} ${chckSts} "
+  _chckSts="OCT ${_OCT_NR} ${_chckSts} "
   _ALL_SITES_NR=$(ls /data/disk/*/config/server_master/nginx/vhost.d | wc -l)
   _ALL_SITES_NR=$(( _ALL_SITES_NR - _OCT_NR ))
-  chckSts="SST ${_ALL_SITES_NR} ${chckSts}"
-  chckHst=$(hostname 2>&1)
-  chckIps=$(hostname -I 2>&1)
-  checkVn=$(/opt/local/bin/boa version | tr -d "\n" 2>&1)
-  if [[ "${checkVn}" =~ "===" ]] || [ -z "${checkVn}" ]; then
+  _chckSts="SST ${_ALL_SITES_NR} ${_chckSts}"
+  _chckHst=$(hostname 2>&1)
+  _chckIps=$(hostname -I 2>&1)
+  _checkVn=$(/opt/local/bin/boa version | tr -d "\n" 2>&1)
+  if [[ "${_checkVn}" =~ "===" ]] || [ -z "${_checkVn}" ]; then
     if [ -e "/var/log/barracuda_log.txt" ]; then
-      checkVn=$(tail --lines=1 /var/log/barracuda_log.txt | tr -d "\n" 2>&1)
+      _checkVn=$(tail --lines=1 /var/log/barracuda_log.txt | tr -d "\n" 2>&1)
     else
-      checkVn="whereis barracuda_log.txt"
+      _checkVn="whereis barracuda_log.txt"
     fi
   fi
-  crlHead="-I -k -s --retry 3 --retry-delay 3"
-  urlBpth="http://${_USE_MIR}/versions/${_tRee}/boa/aegir/tools/bin"
-  curl ${crlHead} -A "${chckHst} ${chckIps} ${checkVn} ${chckSts}" "${urlBpth}/thinkdifferent" &> /dev/null
+  _crlHead="-I -k -s --retry 3 --retry-delay 3"
+  _urlBpth="http://${_USE_MIR}/versions/${_tRee}/boa/aegir/tools/bin"
+  curl ${_crlHead} -A "${_chckHst} ${_chckIps} ${_checkVn} ${_chckSts}" "${_urlBpth}/thinkdifferent" &> /dev/null
   wait
 fi
 

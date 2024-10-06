@@ -303,8 +303,8 @@ _fix_dns_settings() {
   rm -f ${_vBs}/resolv.conf.tmp
   if [ -e "/etc/resolv.conf" ]; then
     if [ -L "/etc/resolv.conf" ]; then
-      rslvT=`readlink -n /etc/resolv.conf`
-      if [ ! -e "${rslvT}" ]; then
+      _rslvT=`readlink -n /etc/resolv.conf`
+      if [ ! -e "${_rslvT}" ]; then
         rm -f /etc/resolv.conf
       fi
     fi
@@ -320,9 +320,9 @@ _fix_dns_settings() {
     echo "nameserver 8.8.4.4" >> ${_vBs}/resolv.conf.tmp
   fi
   if [ ! -e "${_vBs}/resolv.conf.vanilla" ]; then
-    for Pre in `ls -la ${_vBs}/resolv.conf.pre-*`; do
-      if [ -e "${Pre}" ] && [ -f "${Pre}" ] && [ ! -L "${Pre}" ]; then
-        cp -a ${Pre} ${_vBs}/resolv.conf.vanilla
+    for _Pre in `ls -la ${_vBs}/resolv.conf.pre-*`; do
+      if [ -e "${_Pre}" ] && [ -f "${_Pre}" ] && [ ! -L "${_Pre}" ]; then
+        cp -a ${_Pre} ${_vBs}/resolv.conf.vanilla
       fi
     done
   fi
@@ -457,12 +457,12 @@ _send_report() {
       _MY_EMAIL="$(basename "$0")@omega8.cc"
     fi
     if [ ! -z "${_MY_EMAIL}" ]; then
-      repSub="Successful Barracuda upgrade"
-      repSub="REPORT: ${repSub} on ${_CHECK_HOST}"
-      repSub=$(echo -n ${repSub} | fmt -su -w 2500 2>&1)
+      _repSub="Successful Barracuda upgrade"
+      _repSub="REPORT: ${_repSub} on ${_CHECK_HOST}"
+      _repSub=$(echo -n ${_repSub} | fmt -su -w 2500 2>&1)
       _if_extended_report
-      cat ${_UP_LOG} | s-nail -s "${repSub} at ${_NOW}" ${_MY_EMAIL}
-      echo "${repSub} sent to ${_MY_EMAIL}"
+      cat ${_UP_LOG} | s-nail -s "${_repSub} at ${_NOW}" ${_MY_EMAIL}
+      echo "${_repSub} sent to ${_MY_EMAIL}"
     fi
   fi
 }
@@ -475,11 +475,11 @@ _send_alert() {
       _MY_EMAIL="$(basename "$0")@omega8.cc"
     fi
     if [ ! -z "${_MY_EMAIL}" ]; then
-      repSub="${_ALERT_MSG} on ${_CHECK_HOST}"
-      repSub=$(echo -n ${repSub} | fmt -su -w 2500 2>&1)
+      _repSub="${_ALERT_MSG} on ${_CHECK_HOST}"
+      _repSub=$(echo -n ${_repSub} | fmt -su -w 2500 2>&1)
       _if_extended_report
-      cat ${_UP_LOG} | s-nail -s "${repSub} at ${_NOW}" ${_MY_EMAIL}
-      echo "${repSub} sent to ${_MY_EMAIL}"
+      cat ${_UP_LOG} | s-nail -s "${_repSub} at ${_NOW}" ${_MY_EMAIL}
+      echo "${_repSub} sent to ${_MY_EMAIL}"
     fi
   fi
 }
@@ -602,16 +602,16 @@ _up_action() {
   if [ -e "${_vBs}/${_barName}" ] && [ -e "${_barCnf}" ]; then
     if [ ! -z "${_rKey}" ]; then
       if [ "${_rKey}" = "php-83" ] || [ "${_rKey}" = "php-8.3" ]; then
-        phpS="8.3"
+        _phpS="8.3"
       elif [ "${_rKey}" = "php-82" ] || [ "${_rKey}" = "php-8.2" ]; then
-        phpS="8.2"
+        _phpS="8.2"
       elif [ "${_rKey}" = "php-81" ] || [ "${_rKey}" = "php-8.1" ]; then
-        phpS="8.1"
+        _phpS="8.1"
       elif [ "${_rKey}" = "php-all" ] || [ "${_rKey}" = "php-min" ]; then
-        phpS="MIN"
+        _phpS="MIN"
         [ -e "/root/.allow-php-multi-install-cleanup.cnf" ] && rm -f /root/.allow-php-multi-install-cleanup.cnf
       elif [ "${_rKey}" = "php-max" ]; then
-        phpS="MAX"
+        _phpS="MAX"
         [ -e "/root/.allow-php-multi-install-cleanup.cnf" ] && rm -f /root/.allow-php-multi-install-cleanup.cnf
       elif [ "${_rKey}" = "nodns" ]; then
         sed -i "s/^_SMTP_RELAY_TEST.*/_SMTP_RELAY_TEST=NO/g" ${_vBs}/${_barName}
@@ -651,54 +651,54 @@ _up_action() {
 
     fi
     ### Make sure that _PHP_SINGLE_INSTALL is set in ${_barCnf}
-    if [ "${phpS}" = "8.3" ] \
-      || [ "${phpS}" = "8.2" ] \
-      || [ "${phpS}" = "8.1" ] \
-      || [ "${phpS}" = "7.4" ]; then
+    if [ "${_phpS}" = "8.3" ] \
+      || [ "${_phpS}" = "8.2" ] \
+      || [ "${_phpS}" = "8.1" ] \
+      || [ "${_phpS}" = "7.4" ]; then
       _PHP_SINGLE_INSTALL_TEST=$(grep _PHP_SINGLE_INSTALL ${_barCnf} 2>&1)
       if [[ "${_PHP_SINGLE_INSTALL_TEST}" =~ "_PHP_SINGLE_INSTALL" ]]; then
-        sed -i "s/^_PHP_SINGLE.*/_PHP_SINGLE_INSTALL=${phpS}/g" ${_barCnf}
+        sed -i "s/^_PHP_SINGLE.*/_PHP_SINGLE_INSTALL=${_phpS}/g" ${_barCnf}
         wait
       else
-        echo "_PHP_SINGLE_INSTALL=${phpS}" >> ${_barCnf}
+        echo "_PHP_SINGLE_INSTALL=${_phpS}" >> ${_barCnf}
       fi
     fi
     ### Make sure that _PHP_SINGLE_INSTALL takes precedence
-    if [ ! -z "${phpS}" ]; then
-      if [ "${phpS}" = "8.3" ] \
-        || [ "${phpS}" = "8.2" ] \
-        || [ "${phpS}" = "8.1" ] \
-        || [ "${phpS}" = "7.4" ]; then
+    if [ ! -z "${_phpS}" ]; then
+      if [ "${_phpS}" = "8.3" ] \
+        || [ "${_phpS}" = "8.2" ] \
+        || [ "${_phpS}" = "8.1" ] \
+        || [ "${_phpS}" = "7.4" ]; then
 
         ### Debugging
         if [ "${_dEbg}" = "debug" ]; then
-          echo _PHP_MULTI_INSTALL is ${phpS}
-          echo _PHP_SINGLE_INSTALL is ${phpS}
+          echo _PHP_MULTI_INSTALL is ${_phpS}
+          echo _PHP_SINGLE_INSTALL is ${_phpS}
           echo waiting 8 seconds...
           sleep 8
         fi
         ###
 
-        sed -i "s/^_PHP_SIN.*/_PHP_SINGLE_INSTALL=${phpS}/g" ${_vBs}/${_filIncB}
+        sed -i "s/^_PHP_SIN.*/_PHP_SINGLE_INSTALL=${_phpS}/g" ${_vBs}/${_filIncB}
         wait
-        sed -i "s/^_PHP_MUL.*/_PHP_MULTI_INSTALL=${phpS}/g"  ${_vBs}/${_filIncB}
+        sed -i "s/^_PHP_MUL.*/_PHP_MULTI_INSTALL=${_phpS}/g"  ${_vBs}/${_filIncB}
         wait
-        sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=${phpS}/g"  ${_vBs}/${_filIncB}
+        sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=${_phpS}/g"  ${_vBs}/${_filIncB}
         wait
-        sed -i "s/^_PHP_FPM_V.*/_PHP_FPM_VERSION=${phpS}/g"  ${_vBs}/${_filIncB}
+        sed -i "s/^_PHP_FPM_V.*/_PHP_FPM_VERSION=${_phpS}/g"  ${_vBs}/${_filIncB}
         wait
-        sed -i "s/^_PHP_SINGL.*/_PHP_SINGLE_INSTALL=${phpS}/g"        ${_barCnf}
+        sed -i "s/^_PHP_SINGL.*/_PHP_SINGLE_INSTALL=${_phpS}/g"        ${_barCnf}
         wait
-        sed -i "s/^_PHP_MULTI.*/_PHP_MULTI_INSTALL=${phpS}/g"         ${_barCnf}
+        sed -i "s/^_PHP_MULTI.*/_PHP_MULTI_INSTALL=${_phpS}/g"         ${_barCnf}
         wait
-        sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=${phpS}/g"           ${_barCnf}
+        sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=${_phpS}/g"           ${_barCnf}
         wait
-        sed -i "s/^_PHP_FPM_V.*/_PHP_FPM_VERSION=${phpS}/g"           ${_barCnf}
+        sed -i "s/^_PHP_FPM_V.*/_PHP_FPM_VERSION=${_phpS}/g"           ${_barCnf}
         wait
-        sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=${phpS}/g" \
+        sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=${_phpS}/g" \
           /root/.*.octopus.cnf &> /dev/null
         wait
-        sed -i "s/^_PHP_FPM_V.*/_PHP_FPM_VERSION=${phpS}/g" \
+        sed -i "s/^_PHP_FPM_V.*/_PHP_FPM_VERSION=${_phpS}/g" \
           /root/.*.octopus.cnf &> /dev/null
         wait
 
@@ -712,27 +712,27 @@ _up_action() {
         ### Debugging
 
         if [ -d "/data/u" ] && [ -e "/data/conf/global.inc" ]; then
-          for Ctrl in `find /data/disk/*/log/fpm.txt \
+          for _Ctrl in `find /data/disk/*/log/fpm.txt \
             -maxdepth 0 -mindepth 0 | sort`; do
-            echo ${phpS} > ${Ctrl}
+            echo ${_phpS} > ${_Ctrl}
           done
-          for Ctrl in `find /data/disk/*/log/cli.txt \
+          for _Ctrl in `find /data/disk/*/log/cli.txt \
             -maxdepth 0 -mindepth 0 | sort`; do
-            echo ${phpS} > ${Ctrl}
+            echo ${_phpS} > ${_Ctrl}
           done
         fi
-      elif [ "${phpS}" = "MIN" ] || [ "${phpS}" = "MAX" ]; then
-        if [ "${phpS}" = "MAX" ]; then
-          phpM="5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2 8.3"
+      elif [ "${_phpS}" = "MIN" ] || [ "${_phpS}" = "MAX" ]; then
+        if [ "${_phpS}" = "MAX" ]; then
+          _phpM="5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2 8.3"
         else
-          phpM="7.4 8.1 8.2 8.3"
+          _phpM="7.4 8.1 8.2 8.3"
         fi
-        phpS="8.3"
+        _phpS="8.3"
 
         ### Debugging
         if [ "${_dEbg}" = "debug" ]; then
-          echo _PHP_MULTI_INSTALL is ${phpM}
-          echo _PHP_SINGLE_INSTALL is ${phpS}
+          echo _PHP_MULTI_INSTALL is ${_phpM}
+          echo _PHP_SINGLE_INSTALL is ${_phpS}
           echo waiting 8 seconds...
           sleep 8
         fi
@@ -740,24 +740,24 @@ _up_action() {
 
         sed -i "s/^_PHP_SINGLE.*/_PHP_SINGLE_INSTALL=/g"     ${_vBs}/${_filIncB}
         wait
-        sed -i "s/^_PHP_M.*/_PHP_MULTI_INSTALL=\"${phpM}\"/g" ${_vBs}/${_filIncB}
+        sed -i "s/^_PHP_M.*/_PHP_MULTI_INSTALL=\"${_phpM}\"/g" ${_vBs}/${_filIncB}
         wait
-        sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=${phpS}/g"  ${_vBs}/${_filIncB}
+        sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=${_phpS}/g"  ${_vBs}/${_filIncB}
         wait
-        sed -i "s/^_PHP_FPM_V.*/_PHP_FPM_VERSION=${phpS}/g"  ${_vBs}/${_filIncB}
+        sed -i "s/^_PHP_FPM_V.*/_PHP_FPM_VERSION=${_phpS}/g"  ${_vBs}/${_filIncB}
         wait
         sed -i "s/^_PHP_SINGL.*/_PHP_SINGLE_INSTALL=/g"               ${_barCnf}
         wait
-        sed -i "s/^_PHP_MULTI.*/_PHP_MULTI_INSTALL=\"${phpM}\"/g"     ${_barCnf}
+        sed -i "s/^_PHP_MULTI.*/_PHP_MULTI_INSTALL=\"${_phpM}\"/g"     ${_barCnf}
         wait
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${phpS}/g"    ${_barCnf}
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${_phpS}/g"    ${_barCnf}
         wait
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${phpS}/g"    ${_barCnf}
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${_phpS}/g"    ${_barCnf}
         wait
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${phpS}/g" \
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${_phpS}/g" \
           /root/.*.octopus.cnf &> /dev/null
         wait
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${phpS}/g" \
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${_phpS}/g" \
           /root/.*.octopus.cnf &> /dev/null
         wait
 
@@ -771,13 +771,13 @@ _up_action() {
         ### Debugging
 
         if [ -d "/data/u" ] && [ -e "/data/conf/global.inc" ]; then
-          for Ctrl in `find /data/disk/*/log/fpm.txt \
+          for _Ctrl in `find /data/disk/*/log/fpm.txt \
             -maxdepth 0 -mindepth 0 | sort`; do
-            echo ${phpS} > ${Ctrl}
+            echo ${_phpS} > ${_Ctrl}
           done
-          for Ctrl in `find /data/disk/*/log/cli.txt \
+          for _Ctrl in `find /data/disk/*/log/cli.txt \
             -maxdepth 0 -mindepth 0 | sort`; do
-            echo ${phpS} > ${Ctrl}
+            echo ${_phpS} > ${_Ctrl}
           done
         fi
       fi
@@ -1239,8 +1239,8 @@ _check_etc_apt_preferences() {
 }
 
 _find_fast_mirror_early() {
-  isNetc=$(which netcat 2>&1)
-  if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
+  _isNetc=$(which netcat 2>&1)
+  if [ ! -x "${_isNetc}" ] || [ -z "${_isNetc}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
@@ -1288,8 +1288,8 @@ _if_reinstall_curl() {
   [ "${_OS_CODE}" = "wheezy" ] && _CURL_VRN=7.50.1
   [ "${_OS_CODE}" = "jessie" ] && _CURL_VRN=7.71.1
   [ "${_OS_CODE}" = "stretch" ] && _CURL_VRN=8.2.1
-  isCurl=$(curl --version 2>&1)
-  if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
+  _isCurl=$(curl --version 2>&1)
+  if [[ ! "${_isCurl}" =~ "OpenSSL" ]] || [ -z "${_isCurl}" ]; then
     echo "OOPS: cURL is broken! Re-installing.."
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
@@ -1340,8 +1340,8 @@ _if_reinstall_curl() {
       fi
     fi
     if [ -f "/usr/local/bin/curl" ]; then
-      isCurl=$(/usr/local/bin/curl --version 2>&1)
-      if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
+      _isCurl=$(/usr/local/bin/curl --version 2>&1)
+      if [[ ! "${_isCurl}" =~ "OpenSSL" ]] || [ -z "${_isCurl}" ]; then
         echo "ERRR: curl is still broken, please install it and debug manually"
         _clean_pid_exit
       else
@@ -1540,10 +1540,10 @@ _check_root() {
                      umountroot \
                      urandom \
                      vnstat"
-      for link in ${_REMOVE_LINKS}; do
-        if [ -e "/etc/init.d/${link}" ]; then
-          update-rc.d -f ${link} remove &> /dev/null
-          mv -f /etc/init.d/${link} /var/backups/init.d.${link}
+      for _link in ${_REMOVE_LINKS}; do
+        if [ -e "/etc/init.d/${_link}" ]; then
+          update-rc.d -f ${_link} remove &> /dev/null
+          mv -f /etc/init.d/${_link} /var/backups/init.d.${_link}
         fi
       done
       for s in cron dbus ssh; do
@@ -1614,31 +1614,31 @@ _check_no_systemd() {
 }
 
 _old_apt_keys_cleanup() {
-  isAptKey=$(which apt-key 2>&1)
-  if [ -x "${isAptKey}" ]; then
-    _OLD_KEY_KSPLICE_TEST=$(${isAptKey} list | grep ksplice 2>&1)
-    _OLD_KEY_ORACLE_TEST=$(${isAptKey} list | grep oracle 2>&1)
-    _OLD_KEY_NEWRELIC_TEST=$(${isAptKey} list | grep newrelic 2>&1)
-    _OLD_KEY_PERCONA_TEST=$(${isAptKey} list | grep percona 2>&1)
-    _OLD_KEY_MALLORY_TEST=$(${isAptKey} list | grep mallory 2>&1)
-    _OLD_KEY_GHOST_TEST=$(${isAptKey} list | grep "6857 6280" 2>&1)
+  _isAptKey=$(which apt-key 2>&1)
+  if [ -x "${_isAptKey}" ]; then
+    _OLD_KEY_KSPLICE_TEST=$(${_isAptKey} list | grep ksplice 2>&1)
+    _OLD_KEY_ORACLE_TEST=$(${_isAptKey} list | grep oracle 2>&1)
+    _OLD_KEY_NEWRELIC_TEST=$(${_isAptKey} list | grep newrelic 2>&1)
+    _OLD_KEY_PERCONA_TEST=$(${_isAptKey} list | grep percona 2>&1)
+    _OLD_KEY_MALLORY_TEST=$(${_isAptKey} list | grep mallory 2>&1)
+    _OLD_KEY_GHOST_TEST=$(${_isAptKey} list | grep "6857 6280" 2>&1)
     if [[ "${_OLD_KEY_KSPLICE_TEST}" =~ "ksplice" ]]; then
-      ${isAptKey} del B6D4038E &> /dev/null
+      ${_isAptKey} del B6D4038E &> /dev/null
     fi
     if [[ "${_OLD_KEY_ORACLE_TEST}" =~ "oracle" ]]; then
-      ${isAptKey} del AD986DA3 &> /dev/null
+      ${_isAptKey} del AD986DA3 &> /dev/null
     fi
     if [[ "${_OLD_KEY_NEWRELIC_TEST}" =~ "newrelic" ]]; then
-      ${isAptKey} del 548C16BF &> /dev/null
+      ${_isAptKey} del 548C16BF &> /dev/null
     fi
     if [[ "${_OLD_KEY_PERCONA_TEST}" =~ "percona" ]]; then
-      ${isAptKey} del 8507EFA5 &> /dev/null
+      ${_isAptKey} del 8507EFA5 &> /dev/null
     fi
     if [[ "${_OLD_KEY_MALLORY_TEST}" =~ "mallory" ]]; then
-      ${isAptKey} del 8507EFA5 &> /dev/null
+      ${_isAptKey} del 8507EFA5 &> /dev/null
     fi
     if [[ "${_OLD_KEY_GHOST_TEST}" =~ "6857 6280" ]]; then
-      ${isAptKey} del 68576280 &> /dev/null
+      ${_isAptKey} del 68576280 &> /dev/null
     fi
   fi
 }

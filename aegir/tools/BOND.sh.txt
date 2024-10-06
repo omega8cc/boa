@@ -315,11 +315,11 @@ if [ "${_AUTOPILOT}" = "YES" ]; then
 else
   while true; do
     printf "$* [Y/n] "
-    read answer
-    if [ -z "${answer}" ]; then
+    read _answer
+    if [ -z "${_answer}" ]; then
       return 0
     fi
-    case ${answer} in
+    case ${_answer} in
       [Yy]|[Yy][Ee][Ss])
         return 0
         ;;
@@ -372,8 +372,8 @@ _count_cpu() {
 #
 # Find the fastest mirror.
 _find_fast_mirror_early() {
-  isNetc=$(which netcat 2>&1)
-  if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
+  _isNetc=$(which netcat 2>&1)
+  if [ ! -x "${_isNetc}" ] || [ -z "${_isNetc}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
@@ -1210,41 +1210,41 @@ _check_mysqld_running() {
 _tune_sql_memory_limits() {
   _check_mysqld_running
   # https://raw.githubusercontent.com/major/MySQLTuner-perl/master/mysqltuner.pl
-  pthTun="/var/opt/mysqltuner.pl"
-  outTun="/var/opt/mysqltuner-${_xSrl}-${_X_VERSION}-${_NOW}.txt"
-  if [ ! -e "${outTun}" ] \
+  _pthTun="/var/opt/mysqltuner.pl"
+  _outTun="/var/opt/mysqltuner-${_xSrl}-${_X_VERSION}-${_NOW}.txt"
+  if [ ! -e "${_outTun}" ] \
     && [ "${_STATUS}" = "UPGRADE" ]; then
     _msg "INFO: Running MySQLTuner check on all databases"
     _msg "WAIT: This may take a while, please wait..."
     _MYSQLTUNER_TEST_RESULT=OK
     rm -f /var/opt/mysqltuner*
-    curl ${_crlGet} "${_urlDev}/mysqltuner.pl.${_MYSQLTUNER_VRN}" -o ${pthTun}
-    if [ ! -e "${pthTun}" ]; then
-      curl ${_crlGet} "${_urlDev}/mysqltuner.pl" -o ${pthTun}
+    curl ${_crlGet} "${_urlDev}/mysqltuner.pl.${_MYSQLTUNER_VRN}" -o ${_pthTun}
+    if [ ! -e "${_pthTun}" ]; then
+      curl ${_crlGet} "${_urlDev}/mysqltuner.pl" -o ${_pthTun}
     fi
-    if [ -e "${pthTun}" ]; then
-      perl ${pthTun} > ${outTun} 2>&1
+    if [ -e "${_pthTun}" ]; then
+      perl ${_pthTun} > ${_outTun} 2>&1
     fi
   fi
-  if [ -e "${pthTun}" ] \
-    && [ -e "${outTun}" ] \
+  if [ -e "${_pthTun}" ] \
+    && [ -e "${_outTun}" ] \
     && [ "${_STATUS}" = "UPGRADE" ]; then
-    _REC_MYISAM_MEM=$(cat ${outTun} \
+    _REC_MYISAM_MEM=$(cat ${_outTun} \
       | grep "Data in MyISAM tables" \
       | cut -d: -f2 \
       | awk '{ print $1}' 2>&1)
-    _REC_INNODB_MEM=$(cat ${outTun} \
+    _REC_INNODB_MEM=$(cat ${_outTun} \
       | grep "data size:" \
       | cut -d/ -f3 \
       | awk '{ print $1}' 2>&1)
-    _MYSQLTUNER_TEST=$(cat ${outTun} 2>&1)
-    cp -a ${outTun} ${_pthLog}/
+    _MYSQLTUNER_TEST=$(cat ${_outTun} 2>&1)
+    cp -a ${_outTun} ${_pthLog}/
     if [ -z "${_REC_INNODB_MEM}" ] \
       || [[ "${_MYSQLTUNER_TEST}" =~ "Cannot calculate MyISAM index" ]] \
       || [[ "${_MYSQLTUNER_TEST}" =~ "InnoDB is enabled but isn" ]]; then
       _MYSQLTUNER_TEST_RESULT=FAIL
       _msg "NOTE: The MySQLTuner test failed!"
-      _msg "NOTE: Please review ${outTun}"
+      _msg "NOTE: Please review ${_outTun}"
       _msg "NOTE: We will use some sane SQL defaults instead, do not worry!"
     fi
     ###--------------------###
@@ -1367,20 +1367,20 @@ _tune_memory_limits() {
   if [ "${_CPU_VS}" -lt "2" ]; then
     _CPU_VS=2
   fi
-  PrTest=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
-  if [[ "${PrTest}" =~ "POWER" ]]; then
+  _PrTest=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
+  if [[ "${_PrTest}" =~ "POWER" ]]; then
     if [ "${_CPU_VS}" -lt "8" ]; then
       _CPU_VS=8
     fi
   fi
-  PrTest=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
-  if [[ "${PrTest}" =~ "PHANTOM" ]]; then
+  _PrTest=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
+  if [[ "${_PrTest}" =~ "PHANTOM" ]]; then
     if [ "${_CPU_VS}" -lt "8" ]; then
       _CPU_VS=8
     fi
   fi
-  PrTest=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
-  if [[ "${PrTest}" =~ "CLUSTER" ]]; then
+  _PrTest=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
+  if [[ "${_PrTest}" =~ "CLUSTER" ]]; then
     if [ "${_CPU_VS}" -lt "8" ]; then
       _CPU_VS=8
     fi
@@ -1627,10 +1627,10 @@ _tune_memory_limits() {
   fi
   if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ]; then
     _tune_sql_memory_limits
-    PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
+    _PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
     _PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
     _PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
-    if [[ "${PrTestPower}" =~ "POWER" ]] \
+    if [[ "${_PrTestPower}" =~ "POWER" ]] \
       || [[ "${_PrTestPhantom}" =~ "PHANTOM" ]] \
       || [ -e "/root/.my.cluster_root_pwd.txt" ] \
       || [[ "${_PrTestCluster}" =~ "CLUSTER" ]]; then
@@ -1822,10 +1822,10 @@ if [ "${_DEBUG_MODE}" = "YES" ]; then
 EOF
   echo " "
 fi
-tPrmt="Are you ready to tune your system"
-tPrmt="${tPrmt} with values shown above"
-tPrmt=$(echo -n ${tPrmt} | fmt -su -w 2500 2>&1)
-if _prompt_yes_no "${tPrmt}?" ; then
+_tPrmt="Are you ready to tune your system"
+_tPrmt="${_tPrmt} with values shown above"
+_tPrmt=$(echo -n ${_tPrmt} | fmt -su -w 2500 2>&1)
+if _prompt_yes_no "${_tPrmt}?" ; then
   true
   if [ ! -e "/root/.upstart.cnf" ]; then
     _msg "INFO: We will stop cron and then wait 30 seconds..."

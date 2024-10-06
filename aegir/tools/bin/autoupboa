@@ -54,8 +54,8 @@ if [ ! -e "${_LOCK_CPU_CONFIG}" ]; then
 fi
 
 # Define directories and error log path
-SSL_DIR="/etc/ssl/private"
-NGINX_ERROR_LOG="/var/log/nginx/error.log"
+_SSL_DIR="/etc/ssl/private"
+_NGINX_ERROR_LOG="/var/log/nginx/error.log"
 
 # Function to check if a file is empty
 _is_empty_file() {
@@ -65,24 +65,24 @@ _is_empty_file() {
 
 # Check for empty .dhp files and attempt to replace or regenerate them
 _process_dhp_files() {
-  local dhp_files=("${SSL_DIR}"/*.dhp)
-  local non_empty_dhp=""
+  local _dhp_files=("${_SSL_DIR}"/*.dhp)
+  local _non_empty_dhp=""
   # Find the first non-empty .dhp file
-  for dhp_file in "${dhp_files[@]}"; do
-    if ! _is_empty_file "${dhp_file}"; then
-      non_empty_dhp="${dhp_file}"
+  for _dhp_file in "${_dhp_files[@]}"; do
+    if ! _is_empty_file "${_dhp_file}"; then
+      _non_empty_dhp="${_dhp_file}"
       break
     fi
   done
   # Loop over all .dhp files
-  for dhp_file in "${dhp_files[@]}"; do
-    if _is_empty_file "${dhp_file}"; then
-      if [[ -n "${non_empty_dhp}" ]]; then
-        echo "Replacing empty file ${dhp_file} with ${non_empty_dhp}"
-        cp "${non_empty_dhp}" "${dhp_file}"
+  for _dhp_file in "${_dhp_files[@]}"; do
+    if _is_empty_file "${_dhp_file}"; then
+      if [[ -n "${_non_empty_dhp}" ]]; then
+        echo "Replacing empty file ${_dhp_file} with ${_non_empty_dhp}"
+        cp "${_non_empty_dhp}" "${_dhp_file}"
       else
-        echo "No non-empty .dhp file found, generating new file for ${dhp_file}"
-        openssl dhparam -out "${dhp_file}" 4096 > /dev/null 2>&1 &
+        echo "No non-empty .dhp file found, generating new file for ${_dhp_file}"
+        openssl dhparam -out "${_dhp_file}" 4096 > /dev/null 2>&1 &
       fi
     fi
   done
@@ -90,15 +90,15 @@ _process_dhp_files() {
 
 # Scan Nginx error log for .dhp related errors
 _scan_nginx_errors() {
-  grep "PEM_read_bio_DHparams" "${NGINX_ERROR_LOG}" | awk -F'(")' '{print $2}' | while read -r missing_dhp; do
-    if [[ ! -f "${missing_dhp}" ]]; then
-      echo "Missing .dhp file detected: ${missing_dhp}"
-      if [[ -n "${non_empty_dhp}" ]]; then
-        echo "Copying non-empty .dhp file to ${missing_dhp}"
-        cp "${non_empty_dhp}" "${missing_dhp}"
+  grep "PEM_read_bio_DHparams" "${_NGINX_ERROR_LOG}" | awk -F'(")' '{print $2}' | while read -r _missing_dhp; do
+    if [[ ! -f "${_missing_dhp}" ]]; then
+      echo "Missing .dhp file detected: ${_missing_dhp}"
+      if [[ -n "${_non_empty_dhp}" ]]; then
+        echo "Copying non-empty .dhp file to ${_missing_dhp}"
+        cp "${_non_empty_dhp}" "${_missing_dhp}"
       else
-        echo "Generating new .dhp file for ${missing_dhp}"
-        openssl dhparam -out "${missing_dhp}" 4096 > /dev/null 2>&1 &
+        echo "Generating new .dhp file for ${_missing_dhp}"
+        openssl dhparam -out "${_missing_dhp}" 4096 > /dev/null 2>&1 &
       fi
     fi
   done
@@ -153,15 +153,15 @@ _bring_all_ram_cpu_online() {
 _bring_all_ram_cpu_online
 
 _if_disable_not_used_services() {
-  clearSwap=No
+  _clearSwap=No
   if [ ! -e "/root/.allow.clamav.cnf" ] || [ -e "/root/.deny.clamav.cnf" ]; then
     if [ -e "/etc/init.d/clamav-daemon" ]; then
-      clearSwap=YES
+      _clearSwap=YES
       update-rc.d -f clamav-daemon remove &> /dev/null
       mv -f /etc/init.d/clamav-daemon /var/backups/
     fi
     if [ -e "/etc/init.d/clamav-freshclam" ]; then
-      clearSwap=YES
+      _clearSwap=YES
       update-rc.d -f clamav-freshclam remove &> /dev/null
       mv -f /etc/init.d/clamav-freshclam /var/backups/
     fi
@@ -171,19 +171,19 @@ _if_disable_not_used_services() {
   fi
   if [ -e "/root/.deny.java.cnf" ]; then
     if [ -e "/etc/init.d/solr7" ]; then
-      clearSwap=YES
+      _clearSwap=YES
       update-rc.d -f solr7 remove &> /dev/null
       mv -f /etc/init.d/solr7 /var/backups/
     fi
     if [ -e "/etc/init.d/jetty9" ]; then
-      clearSwap=YES
+      _clearSwap=YES
       update-rc.d -f jetty9 remove &> /dev/null
       mv -f /etc/init.d/jetty9 /var/backups/
     fi
     kill -9 $(ps aux | grep '[a]vahi-daemon' | awk '{print $2}') &> /dev/null
     kill -9 $(ps aux | grep '[j]ava' | awk '{print $2}') &> /dev/null
   fi
-  if [ "${clearSwap}" = "YES" ]; then
+  if [ "${_clearSwap}" = "YES" ]; then
     swapoff -a
     swapon -a
   fi
@@ -212,16 +212,16 @@ _system_hostname_check_fix() {
   if [ -e "${_barCnf}" ]; then
     source ${_barCnf}
     if [ ! -z "${_MY_HOSTN}" ]; then
-      diffHostTest=$(diff -w -B /etc/hostname /etc/mailname 2>&1)
-      if [ -z "${diffHostTest}" ]; then
-        hostUpdate=""
+      _diffHostTest=$(diff -w -B /etc/hostname /etc/mailname 2>&1)
+      if [ -z "${_diffHostTest}" ]; then
+        _hostUpdate=""
         echo "INFO: hostname/mailname diff empty -- nothing to update"
       else
-        hostUpdate=YES
-        diffHostTest=$(echo -n ${diffHostTest} | fmt -su -w 2500 2>&1)
-        echo "INFO: hostname/mailname diff ${diffHostTest}"
+        _hostUpdate=YES
+        _diffHostTest=$(echo -n ${_diffHostTest} | fmt -su -w 2500 2>&1)
+        echo "INFO: hostname/mailname diff ${_diffHostTest}"
       fi
-      if [ "${hostUpdate}" = "YES" ]; then
+      if [ "${_hostUpdate}" = "YES" ]; then
         hostname -b ${_MY_HOSTN} ### force our custom FQDN/local hostname
         echo "${_MY_HOSTN}" > /etc/hostname
         echo "${_MY_HOSTN}" > /etc/mailname
@@ -259,7 +259,7 @@ _send_boa_system_report() {
   if [ -e "${_barCnf}" ]; then
     _RCPT_EMAIL=
     _BCC_EMAIL=
-    repBodFile=/var/backups/hosted-boa-status.txt
+    _repBodFile=/var/backups/hosted-boa-status.txt
     _if_hosted_sys
     if [ "${_hostedSys}" = "YES" ]; then
       _RCPT_EMAIL="systems@omega8.cc"
@@ -268,11 +268,11 @@ _send_boa_system_report() {
     if [ ! -z "${_RCPT_EMAIL}" ] \
       && [ ! -z "${_BCC_EMAIL}" ] \
       && [ -e "/root/.run.example.report.cnf" ]; then
-      repSub="BOA Status on ${_CHECK_HOST}"
-      repSub=$(echo -n ${repSub} | fmt -su -w 2500 2>&1)
-      boa info report both > ${repBodFile}
-      cat ${repBodFile} | s-nail -b ${_BCC_EMAIL} -s "${repSub} at ${_NOW}" ${_RCPT_EMAIL}
-      rm -f ${repBodFile}
+      _repSub="BOA Status on ${_CHECK_HOST}"
+      _repSub=$(echo -n ${_repSub} | fmt -su -w 2500 2>&1)
+      boa info report both > ${_repBodFile}
+      cat ${_repBodFile} | s-nail -b ${_BCC_EMAIL} -s "${_repSub} at ${_NOW}" ${_RCPT_EMAIL}
+      rm -f ${_repBodFile}
     fi
   fi
 }

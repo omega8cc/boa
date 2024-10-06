@@ -465,8 +465,8 @@ _fix_dns_settings() {
   rm -f ${_vBs}/resolv.conf.tmp
   if [ -e "/etc/resolv.conf" ]; then
     if [ -L "/etc/resolv.conf" ]; then
-      rslvT=`readlink -n /etc/resolv.conf`
-      if [ ! -e "${rslvT}" ]; then
+      _rslvT=`readlink -n /etc/resolv.conf`
+      if [ ! -e "${_rslvT}" ]; then
         rm -f /etc/resolv.conf
       fi
     fi
@@ -576,12 +576,12 @@ _send_report() {
     _MY_EMAIL="$(basename "$0")@omega8.cc"
   fi
   if [ ! -z "${_MY_EMAIL}" ]; then
-    repSub="Successful ${_RS} installation"
-    repSub="REPORT: ${repSub} on ${_CHECK_HOST}"
-    repSub=$(echo -n ${repSub} | fmt -su -w 2500 2>&1)
+    _repSub="Successful ${_RS} installation"
+    _repSub="REPORT: ${_repSub} on ${_CHECK_HOST}"
+    _repSub=$(echo -n ${_repSub} | fmt -su -w 2500 2>&1)
     _if_extended_report
-    cat ${_THIS_LOG} | s-nail -s "${repSub} at ${_NOW}" ${_MY_EMAIL}
-    echo "${repSub} sent to ${_MY_EMAIL}"
+    cat ${_THIS_LOG} | s-nail -s "${_repSub} at ${_NOW}" ${_MY_EMAIL}
+    echo "${_repSub} sent to ${_MY_EMAIL}"
   fi
 }
 
@@ -603,9 +603,9 @@ _octopus_install() {
           sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"root\"/g"      ${_vBs}/${_octName}
           wait
         else
-          lml="${_MY_EMAIL}"
-          if [ ! -z "${lml}" ]; then
-            sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"${lml}\"/g"  ${_vBs}/${_octName}
+          _lml="${_MY_EMAIL}"
+          if [ ! -z "${_lml}" ]; then
+            sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"${_lml}\"/g"  ${_vBs}/${_octName}
             wait
           else
             sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"root\"/g"    ${_vBs}/${_octName}
@@ -797,26 +797,26 @@ _barracuda_install() {
       && [ -e "${_vBs}/${_filIncO}" ]; then
       if [ -n "${_eXtr}" ]; then
         if [ "${_eXtr}" = "php-83" ] || [ "${_eXtr}" = "php-8.3" ]; then
-          pI=8.3
+          _pI=8.3
         elif [ "${_eXtr}" = "php-82" ] || [ "${_eXtr}" = "php-8.2" ]; then
-          pI=8.2
+          _pI=8.2
         elif [ "${_eXtr}" = "php-81" ] || [ "${_eXtr}" = "php-8.1" ]; then
-          pI=8.1
+          _pI=8.1
         elif [ "${_eXtr}" = "php-74" ] || [ "${_eXtr}" = "php-7.4" ]; then
-          pI=7.4
+          _pI=7.4
         fi
-        if [ -n "${pI}" ]; then
-          sed -i "s/^_PHP_SIN.*/_PHP_SINGLE_INSTALL=${pI}/g" ${_vBs}/${_filIncB}
+        if [ -n "${_pI}" ]; then
+          sed -i "s/^_PHP_SI.*/_PHP_SINGLE_INSTALL=${_pI}/g" ${_vBs}/${_filIncB}
           wait
-          sed -i "s/^_PHP_MUL.*/_PHP_MULTI_INSTALL=${pI}/g"  ${_vBs}/${_filIncB}
+          sed -i "s/^_PHP_MU.*/_PHP_MULTI_INSTALL=${_pI}/g"  ${_vBs}/${_filIncB}
           wait
-          sed -i "s/^_PHP_FPM_V.*/_PHP_FPM_VERSION=${pI}/g"  ${_vBs}/${_filIncB}
+          sed -i "s/^_PHP_FPM_V.*/_PHP_FPM_VERSION=${_pI}/g" ${_vBs}/${_filIncB}
           wait
-          sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=${pI}/g"  ${_vBs}/${_filIncB}
+          sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=${_pI}/g" ${_vBs}/${_filIncB}
           wait
-          sed -i "s/^_PHP_FPM_V.*/_PHP_FPM_VERSION=${pI}/g"  ${_vBs}/${_filIncO}
+          sed -i "s/^_PHP_FPM_V.*/_PHP_FPM_VERSION=${_pI}/g" ${_vBs}/${_filIncO}
           wait
-          sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=${pI}/g"  ${_vBs}/${_filIncO}
+          sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=${_pI}/g" ${_vBs}/${_filIncO}
           wait
         fi
       elif [ "${_eXtr}" = "php-all" ] \
@@ -824,20 +824,20 @@ _barracuda_install() {
         || [ "${_eXtr}" = "php-max" ]; then
         sed -i "s/^_PHP_SINGLE_.*/_PHP_SINGLE_INSTALL=/g"    ${_vBs}/${_filIncB}
         if [ "${_eXtr}" = "php-max" ]; then
-          pA="5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2 8.3"
+          _pA="5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2 8.3"
         else
-          pA="7.4 8.1 8.2 8.3"
+          _pA="7.4 8.1 8.2 8.3"
         fi
-        pI=8.3
-        sed -i "s/^_PHP_MU.*/_PHP_MULTI_INSTALL=\"${pA}\"/g" ${_vBs}/${_filIncB}
+        _pI=8.3
+        sed -i "s/^_PHP_M.*/_PHP_MULTI_INSTALL=\"${_pA}\"/g" ${_vBs}/${_filIncB}
         wait
-        sed -i "s/^_PHP_FPM_VER.*/_PHP_FPM_VERSION=${pI}/g"  ${_vBs}/${_filIncB}
+        sed -i "s/^_PHP_FPM_VER.*/_PHP_FPM_VERSION=${_pI}/g" ${_vBs}/${_filIncB}
         wait
-        sed -i "s/^_PHP_CLI_VER.*/_PHP_CLI_VERSION=${pI}/g"  ${_vBs}/${_filIncB}
+        sed -i "s/^_PHP_CLI_VER.*/_PHP_CLI_VERSION=${_pI}/g" ${_vBs}/${_filIncB}
         wait
-        sed -i "s/^_PHP_FPM_VER.*/_PHP_FPM_VERSION=${pI}/g"  ${_vBs}/${_filIncO}
+        sed -i "s/^_PHP_FPM_VER.*/_PHP_FPM_VERSION=${_pI}/g" ${_vBs}/${_filIncO}
         wait
-        sed -i "s/^_PHP_CLI_VER.*/_PHP_CLI_VERSION=${pI}/g"  ${_vBs}/${_filIncO}
+        sed -i "s/^_PHP_CLI_VER.*/_PHP_CLI_VERSION=${_pI}/g" ${_vBs}/${_filIncO}
         wait
       elif [ "${_eXtr}" = "nodns" ]; then
         sed -i "s/^_SMTP_RELAY_TES.*/_SMTP_RELAY_TEST=NO/g"  ${_vBs}/${_filIncB}
@@ -1060,16 +1060,16 @@ _init_setup() {
 
     _if_hosted_sys
     if [ "${_hostedSys}" = "YES" ]; then
-      defaultOption=EDGE
+      _defaultOption=EDGE
     else
-      defaultOption=POWER
+      _defaultOption=POWER
     fi
 
     if [ "${_outP}" = "logged" ] \
       || [ -z "${_cOpt}" ] \
       || [ -z "${_cSub}" ] \
       || [ -z "${_cCor}" ]; then
-      _cOpt=${defaultOption}
+      _cOpt=${_defaultOption}
       _cSub=Q
       _cCor=1
     fi
@@ -1077,7 +1077,7 @@ _init_setup() {
       || [ -z "${_cOpt}" ] \
       || [ -z "${_cSub}" ] \
       || [ -z "${_cCor}" ]; then
-      _cOpt=${defaultOption}
+      _cOpt=${_defaultOption}
       _cSub=Q
       _cCor=1
     fi
@@ -1345,8 +1345,8 @@ _init_setup() {
 }
 
 _find_fast_mirror_early() {
-  isNetc=$(which netcat 2>&1)
-  if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
+  _isNetc=$(which netcat 2>&1)
+  if [ ! -x "${_isNetc}" ] || [ -z "${_isNetc}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
@@ -1385,10 +1385,10 @@ _find_fast_mirror_early() {
 }
 
 _if_reinstall_curl() {
-  isCurl=$(curl --version 2>&1)
-  if [[ ! "${isCurl}" =~ "OpenSSL" ]] \
-    || [[ "${isCurl}" =~ "libcurl.so.4" ]] \
-    || [ -z "${isCurl}" ]; then
+  _isCurl=$(curl --version 2>&1)
+  if [[ ! "${_isCurl}" =~ "OpenSSL" ]] \
+    || [[ "${_isCurl}" =~ "libcurl.so.4" ]] \
+    || [ -z "${_isCurl}" ]; then
     if [ -e "/var/aegir/drush" ]; then
       echo "OOPS: cURL is broken!"
     fi
@@ -1406,8 +1406,8 @@ _if_reinstall_curl() {
       apt-get build-dep curl -y 2> /dev/null
       apt-get install curl --reinstall -y -qq 2> /dev/null
     fi
-    isCurl=$(curl --version 2>&1)
-    if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
+    _isCurl=$(curl --version 2>&1)
+    if [[ ! "${_isCurl}" =~ "OpenSSL" ]] || [ -z "${_isCurl}" ]; then
       echo "ERRR: curl is still broken, please install it and debug manually"
       _clean_pid_exit
     fi
@@ -1672,10 +1672,10 @@ _check_root() {
                    umountroot \
                    urandom \
                    vnstat"
-    for link in ${_REMOVE_LINKS}; do
-      if [ -e "/etc/init.d/${link}" ]; then
-        update-rc.d -f ${link} remove &> /dev/null
-        mv -f /etc/init.d/${link} /var/backups/init.d.${link}
+    for _link in ${_REMOVE_LINKS}; do
+      if [ -e "/etc/init.d/${_link}" ]; then
+        update-rc.d -f ${_link} remove &> /dev/null
+        mv -f /etc/init.d/${_link} /var/backups/init.d.${_link}
       fi
     done
     for s in cron dbus ssh; do
@@ -1778,7 +1778,7 @@ _display_time() {
   local pidfile=$2
 
   if [ ! -f "$pidfile" ]; then
-    not_running_services+=("  _XSE $service is not running (PID file not found).")
+    _not_running_services+=("  _XSE ${_service} is not running (PID file not found).")
     return
   fi
 
@@ -1787,7 +1787,7 @@ _display_time() {
 
   # Check if the process is running
   if ! ps -p "$pid" > /dev/null 2>&1; then
-    not_running_services+=("  _XSE $service is not running (stale PID file).")
+    _not_running_services+=("  _XSE ${_service} is not running (stale PID file).")
     return
   fi
 
@@ -1799,16 +1799,16 @@ _display_time() {
   elapsed=$((current_time - file_time))
 
   if [ $elapsed -lt 60 ]; then
-    running_services+=("  _XSE $service is running for $elapsed seconds.")
+    _running_services+=("  _XSE ${_service} is running for $elapsed seconds.")
   elif [ $elapsed -lt 3600 ]; then
     minutes=$((elapsed / 60))
-    running_services+=("  _XSE $service is running for $minutes minutes.")
+    _running_services+=("  _XSE ${_service} is running for $minutes minutes.")
   elif [ $elapsed -lt 172800 ]; then
     hours=$((elapsed / 3600))
-    running_services+=("  _XSE $service is running for $hours hours.")
+    _running_services+=("  _XSE ${_service} is running for $hours hours.")
   else
     days=$((elapsed / 86400))
-    running_services+=("  _XSE $service is running for $days days.")
+    _running_services+=("  _XSE ${_service} is running for $days days.")
   fi
 }
 
@@ -1819,25 +1819,25 @@ _convert_kb_to_gb() {
 
 # Function to calculate RAM usage percentage as an integer
 _calculate_ram_usage_percent() {
-  total_ram_kb=$1
-  available_ram_kb=$2
-  used_ram_kb=$((total_ram_kb - available_ram_kb))
+  _total_ram_kb=$1
+  _available_ram_kb=$2
+  used_ram_kb=$((_total_ram_kb - _available_ram_kb))
 
   # Using integer division to get a whole number percentage
-  echo $(( (used_ram_kb * 100) / total_ram_kb ))
+  echo $(( (used_ram_kb * 100) / _total_ram_kb ))
 }
 
 # Function to check and display system info
 _check_system_ram() {
   # Get the total and available RAM in KB
-  total_ram_kb=$(grep MemTotal /proc/meminfo | awk '{print $2}')
-  available_ram_kb=$(grep MemAvailable /proc/meminfo | awk '{print $2}')
+  _total_ram_kb=$(grep MemTotal /proc/meminfo | awk '{print $2}')
+  _available_ram_kb=$(grep MemAvailable /proc/meminfo | awk '{print $2}')
 
   # Convert total RAM to GB
-  _total_ram_gb=$(_convert_kb_to_gb ${total_ram_kb})
+  _total_ram_gb=$(_convert_kb_to_gb ${_total_ram_kb})
 
   # Calculate RAM usage percentage
-  _ram_usage_percent=$(_calculate_ram_usage_percent ${total_ram_kb} ${available_ram_kb})
+  _ram_usage_percent=$(_calculate_ram_usage_percent ${_total_ram_kb} ${_available_ram_kb})
 }
 
 _display_info() {
@@ -2106,10 +2106,10 @@ _display_info() {
     echo "  _XSE Key Services Uptime Report"
     echo
     # Arrays to store results
-    running_services=()
-    not_running_services=()
+    _running_services=()
+    _not_running_services=()
     # Indexed array to hold the services in the desired order
-    services_order=(
+    _services_order=(
       "sshd"
       "crond"
       "nginx"
@@ -2128,7 +2128,7 @@ _display_info() {
       "vnstat"
     )
     # List of services and their respective PID files
-    declare -A services=(
+    declare -A _services=(
       ["sshd"]="/run/sshd.pid"
       ["crond"]="/run/crond.pid"
       ["nginx"]="/run/nginx.pid"
@@ -2147,31 +2147,31 @@ _display_info() {
       ["vnstat"]="/run/vnstat/vnstat.pid"
     )
     # Loop through the services in the correct order
-    for service in "${services_order[@]}"; do
-      _display_time "$service" "${services[$service]}"
+    for _service in "${_services_order[@]}"; do
+      _display_time "${_service}" "${_services[${_service}]}"
     done
     # Conditionally display headers only if there are both running and not running services
-    if [ ${#running_services[@]} -gt 0 ]; then
-      if [ ${#not_running_services[@]} -gt 0 ]; then
+    if [ ${#_running_services[@]} -gt 0 ]; then
+      if [ ${#_not_running_services[@]} -gt 0 ]; then
         echo "  _XSE Running services:"
         echo
       fi
-      for service in "${running_services[@]}"; do
-        echo "$service"
+      for _service in "${_running_services[@]}"; do
+        echo "${_service}"
       done
     fi
-    if [ ${#not_running_services[@]} -gt 0 ]; then
+    if [ ${#_not_running_services[@]} -gt 0 ]; then
       echo
       echo "  _XSE Not running services:"
       echo
-      for service in "${not_running_services[@]}"; do
-        echo "$service"
+      for _service in "${_not_running_services[@]}"; do
+        echo "${_service}"
       done
     fi
     echo
     if [ -e "/var/log/barracuda_log.txt" ]; then
       if [ "${_mOde}" = "report" ]; then
-        display="system"
+        _display="system"
         if [ "${_eXtr}" = "octopus" ] && [ -d "/data/u" ]; then
           grep _PHP_CLI_VERSION /root/.*.octopus.cnf
           echo
@@ -2214,15 +2214,15 @@ _display_info() {
       elif [ "${_mOde}" = "full" ]; then
         cat /var/log/barracuda_log.txt
       elif [ "${_mOde}" = "more" ]; then
-        display="default"
+        _display="default"
         cat /var/log/barracuda_log.txt | grep $(date +'%Y' -d 'last year')
         cat /var/log/barracuda_log.txt | grep $(date +%Y)
       else
-        display="default"
+        _display="default"
         tail --lines=5 /var/log/barracuda_log.txt
       fi
     fi
-    if [ "${display}" = "default" ]; then
+    if [ "${_display}" = "default" ]; then
       echo
       echo "Please link this information in your submission,"
       echo "but only in a form of Gist snippet and not inline,"
@@ -2244,19 +2244,19 @@ _octopus_cleanup() {
       echo "Accounts marked for cleanup or active"
       echo
       rm -f /root/.cleanup.detect.txt
-      for Usr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`
+      for _Usr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`
       do
-        if [ -d "${Usr}/config/server_master/nginx/vhost.d" ] \
-          && [ -e "${Usr}/log/cores.txt" ] \
-          && [ -e "${Usr}/log/CANCELLED" ]; then
-          sIze=$(du -s -h ${Usr} | cut -d' ' -f1 | awk '{ print $1}' 2>&1)
-          echo "CANCELLED ${Usr} ${sIze}"
-          iUsr=$(echo ${Usr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
-          echo "CANCELLED ${iUsr}" >> /root/.cleanup.detect.txt
+        if [ -d "${_Usr}/config/server_master/nginx/vhost.d" ] \
+          && [ -e "${_Usr}/log/cores.txt" ] \
+          && [ -e "${_Usr}/log/CANCELLED" ]; then
+          _sIze=$(du -s -h ${_Usr} | cut -d' ' -f1 | awk '{ print $1}' 2>&1)
+          echo "CANCELLED ${_Usr} ${_sIze}"
+          _iUsr=$(echo ${_Usr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
+          echo "CANCELLED ${_iUsr}" >> /root/.cleanup.detect.txt
         else
-          if [ -d "${Usr}/config/server_master/nginx/vhost.d" ] \
-            && [ -e "${Usr}/log/cores.txt" ]; then
-            echo "ACTIVE ${Usr}"
+          if [ -d "${_Usr}/config/server_master/nginx/vhost.d" ] \
+            && [ -e "${_Usr}/log/cores.txt" ]; then
+            echo "ACTIVE ${_Usr}"
           fi
         fi
       done
@@ -2265,67 +2265,67 @@ _octopus_cleanup() {
       && [ -e "/root/.cleanup.detect.txt" ]; then
         IFS=$'\12'
         for p in $(cat /root/.cleanup.detect.txt 2>&1);do
-          usr_purge=`echo $p | cut -d' ' -f2 | awk '{ print $1}'`
-          boa cleanup purge ${usr_purge}
+          _usr_purge=`echo $p | cut -d' ' -f2 | awk '{ print $1}'`
+          boa cleanup purge ${_usr_purge}
           wait
         done
     elif [ "${_aCtn}" = "purge" ] \
       && [ ! -z "${_usEr}" ] \
       && [ "${_usEr}" != "batch" ] \
       && [ -e "/root/.cleanup.detect.txt" ]; then
-      zombie_dir="/var/backups/zombie/purged/${_usEr}/home/"
-      nginx_inc="/var/aegir/config/server_master/nginx/platform.d"
-      nginx_ssl="/var/aegir/config/server_master/nginx/pre.d"
-      nginx_prx=$(ls ${nginx_ssl}/z_${_usEr}.*_ssl_proxy.conf 2>&1)
-      sites_nr=$(ls /data/disk/${_usEr}/config/server_master/nginx/vhost.d | wc -l)
+      _zombie_dir="/var/backups/zombie/purged/${_usEr}/home/"
+      _nginx_inc="/var/aegir/config/server_master/nginx/platform.d"
+      _nginx_ssl="/var/aegir/config/server_master/nginx/pre.d"
+      _nginx_prx=$(ls ${_nginx_ssl}/z_${_usEr}.*_ssl_proxy.conf 2>&1)
+      _sites_nr=$(ls /data/disk/${_usEr}/config/server_master/nginx/vhost.d | wc -l)
       if [ -d "/data/disk/${_usEr}/config/server_master/nginx/vhost.d" ] \
-        && [ "${sites_nr}" = "0" ] \
+        && [ "${_sites_nr}" = "0" ] \
         && [ -e "/data/disk/${_usEr}/log/cores.txt" ] \
         && [ -e "/data/disk/${_usEr}/log/CANCELLED" ]; then
         echo
         echo "Account to purge: ${_usEr}"
         echo
-        mkdir -p ${zombie_dir}
-        mv -f "${nginx_inc}/${_usEr}.conf" ${zombie_dir}
-        mv -f "${nginx_prx}" ${zombie_dir}
-        echo "${_usEr}:/data/disk/${_usEr}" > ${zombie_dir}.purge.list
-        echo "${_usEr}.ftp:/home/${_usEr}.ftp" >> ${zombie_dir}.purge.list
-        echo "${_usEr}.web:/home/${_usEr}.web" >> ${zombie_dir}.purge.list
+        mkdir -p ${_zombie_dir}
+        mv -f "${_nginx_inc}/${_usEr}.conf" ${_zombie_dir}
+        mv -f "${_nginx_prx}" ${_zombie_dir}
+        echo "${_usEr}:/data/disk/${_usEr}" > ${_zombie_dir}.purge.list
+        echo "${_usEr}.ftp:/home/${_usEr}.ftp" >> ${_zombie_dir}.purge.list
+        echo "${_usEr}.web:/home/${_usEr}.web" >> ${_zombie_dir}.purge.list
         _PHP_V="83 82 81 80 74 73 72 71 70 56"
         for e in ${_PHP_V}; do
           if [ -e "/opt/php${e}/etc/pool.d/${_usEr}.${e}.conf" ] \
             || [ -e "/home/${_usEr}.${e}.web" ]; then
             rm -f /opt/php${e}/etc/pool.d/${_usEr}.${e}.conf
-            echo "${_usEr}.${e}.web:/home/${_usEr}.${e}.web" >> ${zombie_dir}.purge.list
+            echo "${_usEr}.${e}.web:/home/${_usEr}.${e}.web" >> ${_zombie_dir}.purge.list
           fi
           if [ -e "/opt/php${e}/etc/pool.d/${_usEr}.conf" ] \
             || [ -e "/home/${_usEr}.web" ]; then
             rm -f /opt/php${e}/etc/pool.d/${_usEr}.conf
-            echo "${_usEr}.web:/home/${_usEr}.web" >> ${zombie_dir}.purge.list
+            echo "${_usEr}.web:/home/${_usEr}.web" >> ${_zombie_dir}.purge.list
           fi
         done
         kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
         IFS=$'\12'
-          for p in $(cat ${zombie_dir}.purge.list | grep "${_usEr}" 2>&1);do
-            usr_name=`echo $p | cut -d':' -f1 | awk '{ print $1}'`
-            usr_home=`echo $p | cut -d':' -f2 | awk '{ print $1}'`
-            echo disabling chattr for ${usr_name} in ${usr_home}..
-            chattr -i -R ${usr_home}/ &> /dev/null
-            if [ -d "${usr_home}/.drush/" ]; then
-              chattr -i ${usr_home}/.drush/
+          for p in $(cat ${_zombie_dir}.purge.list | grep "${_usEr}" 2>&1);do
+            _usr_name=`echo $p | cut -d':' -f1 | awk '{ print $1}'`
+            _usr_home=`echo $p | cut -d':' -f2 | awk '{ print $1}'`
+            echo disabling chattr for ${_usr_name} in ${_usr_home}..
+            chattr -i -R ${_usr_home}/ &> /dev/null
+            if [ -d "${_usr_home}/.drush/" ]; then
+              chattr -i ${_usr_home}/.drush/
             fi
-            rm -rf ${usr_home}/.gnupg
-            echo purging ${usr_name}..
-            if [ -d "${usr_home}/static" ]; then
-              rm -rf ${usr_home}/backups
-              rm -rf ${usr_home}/distro
-              rm -rf ${usr_home}/src
-              rm -rf ${usr_home}/static
-              rm -rf ${usr_home}/undo
+            rm -rf ${_usr_home}/.gnupg
+            echo purging ${_usr_name}..
+            if [ -d "${_usr_home}/static" ]; then
+              rm -rf ${_usr_home}/backups
+              rm -rf ${_usr_home}/distro
+              rm -rf ${_usr_home}/src
+              rm -rf ${_usr_home}/static
+              rm -rf ${_usr_home}/undo
             fi
             del_usEr \
               --remove-home \
-              --backup-to /var/backups/zombie/purged/${_usEr}/home/ ${usr_name} &> /dev/null
+              --backup-to /var/backups/zombie/purged/${_usEr}/home/ ${_usr_name} &> /dev/null
           done;
         echo
         echo "Cleanup complete"

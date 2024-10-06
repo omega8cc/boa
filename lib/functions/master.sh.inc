@@ -69,12 +69,12 @@ _provision_backend_dbpass_generate() {
         _ESC_PASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
       fi
     fi
-    isPythonTwo=$(which python2 2>&1)
-    isPythonThree=$(which python3 2>&1)
+    _isPythonTwo=$(which python2 2>&1)
+    _isPythonThree=$(which python3 2>&1)
     _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
-    if [ -x "${isPythonThree}" ]; then
+    if [ -x "${_isPythonThree}" ]; then
       _ENC_PASS=$(python3 -c "import urllib.parse; print(urllib.parse.quote('''${_ESC_PASS}'''))")
-    elif [ -x "${isPythonTwo}" ]; then
+    elif [ -x "${_isPythonTwo}" ]; then
       _ENC_PASS=$(python2 -c "import urllib; print urllib.quote('''${_ESC_PASS}''')")
     fi
     _LEN_PASS=$(echo ${#_ESC_PASS} 2>&1)
@@ -425,18 +425,18 @@ _master_download_for_local_build() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _master_download_for_local_build"
   fi
-  mL="/opt/tmp/make_local"
-  if [ ! -e "${mL}/hosting/hosting.info" ] \
-    || [ ! -e "${mL}/hosting_custom_settings/hosting_custom_settings.info" ]; then
-    rm -rf ${mL}
-    mkdir -p ${mL}
-    cd ${mL}
+  _mL="/opt/tmp/make_local"
+  if [ ! -e "${_mL}/hosting/hosting.info" ] \
+    || [ ! -e "${_mL}/hosting_custom_settings/hosting_custom_settings.info" ]; then
+    rm -rf ${_mL}
+    mkdir -p ${_mL}
+    cd ${_mL}
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: Downloading hostmaster modules..."
     fi
     ### Drupal Core
     _get_core_ext "${_DRUPAL7}.tar.gz"
-    mv -f ${mL}/${_DRUPAL7} ${mL}/drupal
+    mv -f ${_mL}/${_DRUPAL7} ${_mL}/drupal
     ### Aegir Core
       ${_gCb} 5.x-${_tRee} ${_gitHub}/hostmaster.git    &> /dev/null
       ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting.git       &> /dev/null
@@ -475,9 +475,9 @@ _master_download_for_local_build() {
     _get_dev_stc "strongarm-7.x-2.0.tar.gz"
     _get_dev_stc "userprotect-7.x-1.3.tar.gz"
   fi
-  find ${mL} -type d -exec chmod 0755 {} \; &> /dev/null
-  find ${mL} -type f -exec chmod 0644 {} \; &> /dev/null
-  chown -R root:root ${mL}
+  find ${_mL} -type d -exec chmod 0755 {} \; &> /dev/null
+  find ${_mL} -type f -exec chmod 0644 {} \; &> /dev/null
+  chown -R root:root ${_mL}
 }
 
 #
@@ -509,8 +509,8 @@ _aegir_master_upgrade() {
     if [[ ! "${_VAR_IF_PRESENT}" =~ "aegir ALL=NOPASSWD" ]]; then
       echo "aegir ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
     fi
-    SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership lock-local-drush-permissions)
-    for SCRIPT in ${SCRIPTS[@]}; do
+    _SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership lock-local-drush-permissions)
+    for SCRIPT in ${_SCRIPTS[@]}; do
       _VAR_IF_PRESENT=$(grep "aegir ALL=NOPASSWD: /usr/local/bin/${SCRIPT}.sh" /etc/sudoers.d/${SCRIPT} 2>&1)
       if [[ ! "${_VAR_IF_PRESENT}" =~ "aegir ALL=NOPASSWD" ]]; then
         echo "aegir ALL=NOPASSWD: /usr/local/bin/${SCRIPT}.sh" >> /etc/sudoers.d/${SCRIPT}

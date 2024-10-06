@@ -58,8 +58,8 @@ _if_reinstall_curl_src() {
   [ "${_OS_CODE}" = "wheezy" ] && _CURL_VRN=7.50.1
   [ "${_OS_CODE}" = "jessie" ] && _CURL_VRN=7.71.1
   [ "${_OS_CODE}" = "stretch" ] && _CURL_VRN=8.2.1
-  isCurl=$(curl --version 2>&1)
-  if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
+  _isCurl=$(curl --version 2>&1)
+  if [[ ! "${_isCurl}" =~ "OpenSSL" ]] || [ -z "${_isCurl}" ]; then
     _msg "OOPS: cURL is broken! Re-installing.."
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
@@ -110,8 +110,8 @@ _if_reinstall_curl_src() {
       fi
     fi
     if [ -f "/usr/local/bin/curl" ]; then
-      isCurl=$(/usr/local/bin/curl --version 2>&1)
-      if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
+      _isCurl=$(/usr/local/bin/curl --version 2>&1)
+      if [[ ! "${_isCurl}" =~ "OpenSSL" ]] || [ -z "${_isCurl}" ]; then
         _msg "ERRR: /usr/local/bin/curl is broken"
       else
         _msg "GOOD: /usr/local/bin/curl works"
@@ -698,10 +698,10 @@ _tune_memory_limits() {
   if [ "${_CPU_VS}" -lt "2" ]; then
     _CPU_VS=2
   fi
-  PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
+  _PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
   _PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
   _PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
-  if [[ "${PrTestPower}" =~ "POWER" ]] \
+  if [[ "${_PrTestPower}" =~ "POWER" ]] \
     || [[ "${_PrTestPhantom}" =~ "PHANTOM" ]] \
     || [[ "${_PrTestCluster}" =~ "CLUSTER" ]]; then
     if [ "${_CPU_VS}" -lt "8" ]; then
@@ -709,7 +709,7 @@ _tune_memory_limits() {
     fi
   fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "TUNE: PrTestPower is ${PrTestPower}"
+    _msg "TUNE: _PrTestPower is ${_PrTestPower}"
     _msg "TUNE: _PrTestPhantom is ${_PrTestPhantom}"
     _msg "TUNE: _PrTestCluster is ${_PrTestCluster}"
   fi
@@ -896,7 +896,7 @@ _tune_memory_limits() {
   if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ]; then
     _tune_sql_memory_limits
     _sql_conf_update
-    if [[ "${PrTestPower}" =~ "POWER" ]] \
+    if [[ "${_PrTestPower}" =~ "POWER" ]] \
       || [[ "${_PrTestPhantom}" =~ "PHANTOM" ]] \
       || [ -e "/root/.my.cluster_root_pwd.txt" ] \
       || [[ "${_PrTestCluster}" =~ "CLUSTER" ]]; then
@@ -1992,12 +1992,12 @@ _barracuda_cnf() {
     sed -i "s/^_FORCE_GIT_.*/_FORCE_GIT_MIRROR=\"\"/g"           ${_barCnf}
     wait
 
-    devM="deb.devuan.org"
-    debM="deb.debian.org"
+    _devM="deb.devuan.org"
+    _debM="deb.debian.org"
 
-    sed -i "s/^_LOCAL_DEVUAN_.*/_LOCAL_DEVUAN_MIRROR=${devM}/g"  ${_barCnf}
+    sed -i "s/^_LOCAL_DEVUAN_.*/_LOCAL_DEVUAN_MIRROR=${_devM}/g"  ${_barCnf}
     wait
-    sed -i "s/^_LOCAL_DEBIAN_.*/_LOCAL_DEBIAN_MIRROR=${debM}/g"  ${_barCnf}
+    sed -i "s/^_LOCAL_DEBIAN_.*/_LOCAL_DEBIAN_MIRROR=${_debM}/g"  ${_barCnf}
     wait
     sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"     ${_barCnf}
     wait
@@ -2015,45 +2015,45 @@ _barracuda_cnf() {
     wait
     if [ "${_OS_CODE}" = "stretch" ] || [ "${_OS_CODE}" = "jessie" ]; then
       if [ -x "/opt/php74/bin/php" ]; then
-        fCli=7.4
+        _fCli=7.4
       elif [ -x "/opt/php73/bin/php" ]; then
-        fCli=7.3
+        _fCli=7.3
       elif [ -x "/opt/php72/bin/php" ]; then
-        fCli=7.2
+        _fCli=7.2
       elif [ -x "/opt/php71/bin/php" ]; then
-        fCli=7.1
+        _fCli=7.1
       elif [ -x "/opt/php70/bin/php" ]; then
-        fCli=7.0
+        _fCli=7.0
       elif [ -x "/opt/php56/bin/php" ]; then
-        fCli=5.6
+        _fCli=5.6
       fi
     else
-      fCli=8.3
+      _fCli=8.3
     fi
     if [ -z "${_PHP_SINGLE_INSTALL}" ]; then
-      sed -i "s/^_PHP_CLI_VERSION=5.6/_PHP_CLI_VERSION=${fCli}/g"    ${_barCnf}
+      sed -i "s/^_PHP_CLI_VERSION=5.6/_PHP_CLI_VERSION=${_fCli}/g"    ${_barCnf}
       wait
-      sed -i "s/^_PHP_FPM_VERSION=5.6/_PHP_FPM_VERSION=${fCli}/g"    ${_barCnf}
+      sed -i "s/^_PHP_FPM_VERSION=5.6/_PHP_FPM_VERSION=${_fCli}/g"    ${_barCnf}
       wait
-      sed -i "s/^_PHP_CLI_VERSION=7.0/_PHP_CLI_VERSION=${fCli}/g"    ${_barCnf}
+      sed -i "s/^_PHP_CLI_VERSION=7.0/_PHP_CLI_VERSION=${_fCli}/g"    ${_barCnf}
       wait
-      sed -i "s/^_PHP_FPM_VERSION=7.0/_PHP_FPM_VERSION=${fCli}/g"    ${_barCnf}
+      sed -i "s/^_PHP_FPM_VERSION=7.0/_PHP_FPM_VERSION=${_fCli}/g"    ${_barCnf}
       wait
-      sed -i "s/^_PHP_CLI_VERSION=7.1/_PHP_CLI_VERSION=${fCli}/g"    ${_barCnf}
+      sed -i "s/^_PHP_CLI_VERSION=7.1/_PHP_CLI_VERSION=${_fCli}/g"    ${_barCnf}
       wait
-      sed -i "s/^_PHP_FPM_VERSION=7.1/_PHP_FPM_VERSION=${fCli}/g"    ${_barCnf}
+      sed -i "s/^_PHP_FPM_VERSION=7.1/_PHP_FPM_VERSION=${_fCli}/g"    ${_barCnf}
       wait
-      sed -i "s/^_PHP_CLI_VERSION=7.2/_PHP_CLI_VERSION=${fCli}/g"    ${_barCnf}
+      sed -i "s/^_PHP_CLI_VERSION=7.2/_PHP_CLI_VERSION=${_fCli}/g"    ${_barCnf}
       wait
-      sed -i "s/^_PHP_FPM_VERSION=7.2/_PHP_FPM_VERSION=${fCli}/g"    ${_barCnf}
+      sed -i "s/^_PHP_FPM_VERSION=7.2/_PHP_FPM_VERSION=${_fCli}/g"    ${_barCnf}
       wait
-      sed -i "s/^_PHP_CLI_VERSION=7.3/_PHP_CLI_VERSION=${fCli}/g"    ${_barCnf}
+      sed -i "s/^_PHP_CLI_VERSION=7.3/_PHP_CLI_VERSION=${_fCli}/g"    ${_barCnf}
       wait
-      sed -i "s/^_PHP_FPM_VERSION=7.3/_PHP_FPM_VERSION=${fCli}/g"    ${_barCnf}
+      sed -i "s/^_PHP_FPM_VERSION=7.3/_PHP_FPM_VERSION=${_fCli}/g"    ${_barCnf}
       wait
-      sed -i "s/^_PHP_CLI_VERSION=8.0/_PHP_CLI_VERSION=${fCli}/g"    ${_barCnf}
+      sed -i "s/^_PHP_CLI_VERSION=8.0/_PHP_CLI_VERSION=${_fCli}/g"    ${_barCnf}
       wait
-      sed -i "s/^_PHP_FPM_VERSION=8.0/_PHP_FPM_VERSION=${fCli}/g"    ${_barCnf}
+      sed -i "s/^_PHP_FPM_VERSION=8.0/_PHP_FPM_VERSION=${_fCli}/g"    ${_barCnf}
       wait
     fi
     _if_hosted_sys
@@ -2322,12 +2322,12 @@ _barracuda_cnf() {
     sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"     ${_barCnf}
     wait
 
-    devM="deb.devuan.org"
-    debM="deb.debian.org"
+    _devM="deb.devuan.org"
+    _debM="deb.debian.org"
 
-    sed -i "s/^_LOCAL_DEVUAN_.*/_LOCAL_DEVUAN_MIRROR=${devM}/g"  ${_barCnf}
+    sed -i "s/^_LOCAL_DEVUAN_.*/_LOCAL_DEVUAN_MIRROR=${_devM}/g"  ${_barCnf}
     wait
-    sed -i "s/^_LOCAL_DEBIAN_.*/_LOCAL_DEBIAN_MIRROR=${debM}/g"  ${_barCnf}
+    sed -i "s/^_LOCAL_DEBIAN_.*/_LOCAL_DEBIAN_MIRROR=${_debM}/g"  ${_barCnf}
     wait
 
     sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                   ${_barCnf}
@@ -2348,49 +2348,49 @@ _barracuda_cnf() {
     wait
     if [ "${_OS_CODE}" = "stretch" ] || [ "${_OS_CODE}" = "jessie" ]; then
       if [ -x "/opt/php74/bin/php" ]; then
-        fCli=7.4
+        _fCli=7.4
       elif [ -x "/opt/php73/bin/php" ]; then
-        fCli=7.3
+        _fCli=7.3
       elif [ -x "/opt/php72/bin/php" ]; then
-        fCli=7.2
+        _fCli=7.2
       elif [ -x "/opt/php71/bin/php" ]; then
-        fCli=7.1
+        _fCli=7.1
       elif [ -x "/opt/php70/bin/php" ]; then
-        fCli=7.0
+        _fCli=7.0
       elif [ -x "/opt/php56/bin/php" ]; then
-        fCli=5.6
+        _fCli=5.6
       fi
     else
-      fCli=8.3
+      _fCli=8.3
     fi
     if [ -z "${_PHP_SINGLE_INSTALL}" ]; then
-      sed -i "s/^_PHP_CLI_VERSION=5.6/_PHP_CLI_VERSION=${fCli}/g"    ${_barCnf}
+      sed -i "s/^_PHP_CLI_VERSION=5.6/_PHP_CLI_VERSION=${_fCli}/g"    ${_barCnf}
       wait
-      sed -i "s/^_PHP_FPM_VERSION=5.6/_PHP_FPM_VERSION=${fCli}/g"    ${_barCnf}
+      sed -i "s/^_PHP_FPM_VERSION=5.6/_PHP_FPM_VERSION=${_fCli}/g"    ${_barCnf}
       wait
-      sed -i "s/^_PHP_CLI_VERSION=7.0/_PHP_CLI_VERSION=${fCli}/g"    ${_barCnf}
+      sed -i "s/^_PHP_CLI_VERSION=7.0/_PHP_CLI_VERSION=${_fCli}/g"    ${_barCnf}
       wait
-      sed -i "s/^_PHP_FPM_VERSION=7.0/_PHP_FPM_VERSION=${fCli}/g"    ${_barCnf}
+      sed -i "s/^_PHP_FPM_VERSION=7.0/_PHP_FPM_VERSION=${_fCli}/g"    ${_barCnf}
       wait
-      sed -i "s/^_PHP_CLI_VERSION=7.1/_PHP_CLI_VERSION=${fCli}/g"    ${_barCnf}
+      sed -i "s/^_PHP_CLI_VERSION=7.1/_PHP_CLI_VERSION=${_fCli}/g"    ${_barCnf}
       wait
-      sed -i "s/^_PHP_FPM_VERSION=7.1/_PHP_FPM_VERSION=${fCli}/g"    ${_barCnf}
+      sed -i "s/^_PHP_FPM_VERSION=7.1/_PHP_FPM_VERSION=${_fCli}/g"    ${_barCnf}
       wait
-      sed -i "s/^_PHP_CLI_VERSION=7.2/_PHP_CLI_VERSION=${fCli}/g"    ${_barCnf}
+      sed -i "s/^_PHP_CLI_VERSION=7.2/_PHP_CLI_VERSION=${_fCli}/g"    ${_barCnf}
       wait
-      sed -i "s/^_PHP_FPM_VERSION=7.2/_PHP_FPM_VERSION=${fCli}/g"    ${_barCnf}
+      sed -i "s/^_PHP_FPM_VERSION=7.2/_PHP_FPM_VERSION=${_fCli}/g"    ${_barCnf}
       wait
-      sed -i "s/^_PHP_CLI_VERSION=7.3/_PHP_CLI_VERSION=${fCli}/g"    ${_barCnf}
+      sed -i "s/^_PHP_CLI_VERSION=7.3/_PHP_CLI_VERSION=${_fCli}/g"    ${_barCnf}
       wait
-      sed -i "s/^_PHP_FPM_VERSION=7.3/_PHP_FPM_VERSION=${fCli}/g"    ${_barCnf}
+      sed -i "s/^_PHP_FPM_VERSION=7.3/_PHP_FPM_VERSION=${_fCli}/g"    ${_barCnf}
       wait
-      sed -i "s/^_PHP_CLI_VERSION=7.4/_PHP_CLI_VERSION=${fCli}/g"    ${_barCnf}
+      sed -i "s/^_PHP_CLI_VERSION=7.4/_PHP_CLI_VERSION=${_fCli}/g"    ${_barCnf}
       wait
-      sed -i "s/^_PHP_FPM_VERSION=7.4/_PHP_FPM_VERSION=${fCli}/g"    ${_barCnf}
+      sed -i "s/^_PHP_FPM_VERSION=7.4/_PHP_FPM_VERSION=${_fCli}/g"    ${_barCnf}
       wait
-      sed -i "s/^_PHP_CLI_VERSION=8.0/_PHP_CLI_VERSION=${fCli}/g"    ${_barCnf}
+      sed -i "s/^_PHP_CLI_VERSION=8.0/_PHP_CLI_VERSION=${_fCli}/g"    ${_barCnf}
       wait
-      sed -i "s/^_PHP_FPM_VERSION=8.0/_PHP_FPM_VERSION=${fCli}/g"    ${_barCnf}
+      sed -i "s/^_PHP_FPM_VERSION=8.0/_PHP_FPM_VERSION=${_fCli}/g"    ${_barCnf}
       wait
     fi
 
@@ -2466,18 +2466,18 @@ _barracuda_cnf() {
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${_PHP_SINGLE_INSTALL}/g" /root/.*.octopus.cnf &> /dev/null
         wait
         if [ -d "/data/u" ] && [ -e "/data/conf/global.inc" ]; then
-          for Ctrl in `find /data/disk/*/log -maxdepth 0 -mindepth 0 | sort`; do
+          for _Ctrl in `find /data/disk/*/log -maxdepth 0 -mindepth 0 | sort`; do
             echo ${_PHP_SINGLE_INSTALL} > $Ctrl/fpm.txt
             echo ${_PHP_SINGLE_INSTALL} > $Ctrl/cli.txt
             ### _msg "INFO: Forced PHP ${_PHP_SINGLE_INSTALL} in $Ctrl"
           done
-          for Ctrl in `find /data/disk/*/static/control \
+          for _Ctrl in `find /data/disk/*/static/control \
             -maxdepth 0 -mindepth 0 | sort`; do
             echo ${_PHP_SINGLE_INSTALL} > $Ctrl/fpm.info
             echo ${_PHP_SINGLE_INSTALL} > $Ctrl/cli.info
             ### _msg "INFO: Forced PHP ${_PHP_SINGLE_INSTALL} in $Ctrl"
           done
-          for Ctrl in `find /data/disk/*/.drush \
+          for _Ctrl in `find /data/disk/*/.drush \
             -maxdepth 0 -mindepth 0 | sort`; do
             rm -f $Ctrl/.ctrl.php*
             ### _msg "INFO: Forced PHP ${_PHP_SINGLE_INSTALL} in $Ctrl"
@@ -2692,9 +2692,9 @@ _check_apt_updates() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _check_apt_updates"
   fi
-  for Update in `/usr/bin/apt-get -q -y --allow-unauthenticated \
+  for _Update in `/usr/bin/apt-get -q -y --allow-unauthenticated \
     -s dist-upgrade | grep ^Inst | cut -d\  -f2 | sort`; do
-    case "${Update}" in
+    case "${_Update}" in
       *libcurl*)    _UP_PHP=YES ;;
       *libmysql*)   _UP_SQL=YES ;;
       *libssl*)     _UP_PHP=YES ;;
@@ -2728,25 +2728,25 @@ _install_icu_modern() {
   fi
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   if [ -e "${_pthLog}" ]; then
-    pthIcuLog="${_pthLog}/icu-update-${_ICU_MODERN_VRN}-for-${_OS_CODE}.log"
-    pthIcuLcy="${_pthLog}/icu-update-${_ICU_MODERN_VRN}.log"
+    _pthIcuLog="${_pthLog}/icu-update-${_ICU_MODERN_VRN}-for-${_OS_CODE}.log"
+    _pthIcuLcy="${_pthLog}/icu-update-${_ICU_MODERN_VRN}.log"
   else
-    pthIcuLog="/root/.icu-update-${_ICU_MODERN_VRN}-for-${_OS_CODE}.log"
-    pthIcuLcy="/root/.icu-update-${_ICU_MODERN_VRN}.log"
+    _pthIcuLog="/root/.icu-update-${_ICU_MODERN_VRN}-for-${_OS_CODE}.log"
+    _pthIcuLcy="/root/.icu-update-${_ICU_MODERN_VRN}.log"
   fi
   if [ "${_OS_CODE}" = "daedalus" ] \
-    && [ -e "${pthIcuLcy}" ] \
-    && [ ! -e "${pthIcuLog}" ]; then
-    touch ${pthIcuLog}
+    && [ -e "${_pthIcuLcy}" ] \
+    && [ ! -e "${_pthIcuLog}" ]; then
+    touch ${_pthIcuLog}
   fi
-  if [ -e "${pthIcuLog}" ]; then
-    chattr -i ${pthIcuLog}
+  if [ -e "${_pthIcuLog}" ]; then
+    chattr -i ${_pthIcuLog}
   fi
-  if [ -e "${pthIcuLcy}" ]; then
-    chattr -i ${pthIcuLcy}
+  if [ -e "${_pthIcuLcy}" ]; then
+    chattr -i ${_pthIcuLcy}
   fi
   if [ ! -e "/usr/local/lib/icu/current" ] \
-    || [ ! -e "${pthIcuLog}" ]; then
+    || [ ! -e "${_pthIcuLog}" ]; then
     _msg "INFO: Installing ICU libs version ${_ICU_MODERN_VRN}..."
     _msg "WAIT: This may take a while, please wait..."
     if [ ! -e "/var/opt/icu-release-${_ICU_MODERN_VRN}/icu4c/source" ]; then
@@ -2760,7 +2760,7 @@ _install_icu_modern() {
     _mrun "make --quiet install" 2> /dev/null
     ldconfig 2> /dev/null
     if [ -e "/usr/local/lib/icu" ]; then
-      touch ${pthIcuLog}
+      touch ${_pthIcuLog}
     fi
     _X86_64_TEST=$(uname -m 2>&1)
     if [ "${_X86_64_TEST}" = "x86_64" ]; then
@@ -2789,25 +2789,25 @@ _install_icu_jessie() {
   fi
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   if [ -e "${_pthLog}" ]; then
-    pthIcuLog="${_pthLog}/icu-update-${_ICU_LEGACY_VRN}-for-${_OS_CODE}.log"
-    pthIcuLcy="${_pthLog}/icu-update-${_ICU_LEGACY_VRN}.log"
+    _pthIcuLog="${_pthLog}/icu-update-${_ICU_LEGACY_VRN}-for-${_OS_CODE}.log"
+    _pthIcuLcy="${_pthLog}/icu-update-${_ICU_LEGACY_VRN}.log"
   else
-    pthIcuLog="/root/.icu-update-${_ICU_LEGACY_VRN}-for-${_OS_CODE}.log"
-    pthIcuLcy="/root/.icu-update-${_ICU_LEGACY_VRN}.log"
+    _pthIcuLog="/root/.icu-update-${_ICU_LEGACY_VRN}-for-${_OS_CODE}.log"
+    _pthIcuLcy="/root/.icu-update-${_ICU_LEGACY_VRN}.log"
   fi
   if [ "${_OS_CODE}" = "daedalus" ] \
-    && [ -e "${pthIcuLcy}" ] \
-    && [ ! -e "${pthIcuLog}" ]; then
-    touch ${pthIcuLog}
+    && [ -e "${_pthIcuLcy}" ] \
+    && [ ! -e "${_pthIcuLog}" ]; then
+    touch ${_pthIcuLog}
   fi
-  if [ -e "${pthIcuLog}" ]; then
-    chattr -i ${pthIcuLog}
+  if [ -e "${_pthIcuLog}" ]; then
+    chattr -i ${_pthIcuLog}
   fi
-  if [ -e "${pthIcuLcy}" ]; then
-    chattr -i ${pthIcuLcy}
+  if [ -e "${_pthIcuLcy}" ]; then
+    chattr -i ${_pthIcuLcy}
   fi
   if [ ! -e "/usr/local/lib/icu/current" ] \
-    || [ ! -e "${pthIcuLog}" ]; then
+    || [ ! -e "${_pthIcuLog}" ]; then
     _msg "INFO: Installing ICU libs version ${_ICU_LEGACY_VRN}..."
     _msg "WAIT: This may take a while, please wait..."
     if [ ! -e "/var/opt/icu/source" ]; then
@@ -2821,7 +2821,7 @@ _install_icu_jessie() {
     _mrun "make --quiet install" 2> /dev/null
     ldconfig 2> /dev/null
     if [ -e "/usr/local/lib/icu" ]; then
-      touch ${pthIcuLog}
+      touch ${_pthIcuLog}
     fi
     _X86_64_TEST=$(uname -m 2>&1)
     if [ "${_X86_64_TEST}" = "x86_64" ]; then
@@ -3381,16 +3381,16 @@ _sources_list_update() {
         if [ -z "${_LOCAL_DEBIAN_MIRROR}" ]; then
           _msg "INFO: Now looking for the best/fastest ${_OS_DIST} mirror"
           _msg "INFO: This may take a while, please wait..."
-          hlpPth="/opt/tmp/boa/aegir/helpers"
+          _hlpPth="/opt/tmp/boa/aegir/helpers"
           _ffMirr=$(which ffmirror 2>&1)
-          _ffList="${hlpPth}/apt-list-debian.txt"
+          _ffList="${_hlpPth}/apt-list-debian.txt"
           if [ -e "${_ffMirr}" ] && [ -e "${_ffList}" ]; then
             _MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
             _MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
             echo " "
-            askThis="Enter your own mirror to use or press enter"
-            askThis="${askThis} to use the fastest found mirror"
-            _prompt_confirm_choice "${askThis}" ${_MIRROR}
+            _askThis="Enter your own mirror to use or press enter"
+            _askThis="${_askThis} to use the fastest found mirror"
+            _prompt_confirm_choice "${_askThis}" ${_MIRROR}
             echo " "
             _MIRROR=${_CONFIRMED_ANSWER}
           else
@@ -3986,11 +3986,11 @@ _ssl_install_src() {
     if [ "${1}" = "Modern" ]; then
       _SSL_BUILD_ARGS="--prefix=/usr/local/ssl3 \
         --openssldir=/usr/local/ssl3"
-      patchMakefile=YES
+      _patchMakefile=YES
     else
       _SSL_BUILD_ARGS="--prefix=/usr/local/ssl \
         --openssldir=/usr/local/ssl"
-      patchMakefile=YES
+      _patchMakefile=YES
     fi
     _mrun "sh ./config \
       shared \
@@ -4000,7 +4000,7 @@ _ssl_install_src() {
       zlib-dynamic \
       enable-ec_nistp_64_gcc_128 \
       ${_SSL_BUILD_ARGS}" 2> /dev/null
-    if [ "${patchMakefile}" = "YES" ]; then
+    if [ "${_patchMakefile}" = "YES" ]; then
       sed -i "s/install_docs:.*/install_docs:/g" /var/opt/openssl-${_OPENSSL_BUILD_VRN}/Makefile
     fi
     _mrun "make depend" 2> /dev/null
@@ -4142,14 +4142,14 @@ _if_ssl_install_src() {
 #
 # Detect, remove, and report broken symlinks
 _check_and_remove_broken_symlinks() {
-  local dir=$1
+  local _dir=$1
 
   # Find broken symlinks in the directory
-  _broken_symlinks=$(find "${dir}" -maxdepth 1 -type l ! -exec test -e {} \; -print)
+  _broken_symlinks=$(find "${_dir}" -maxdepth 1 -type l ! -exec test -e {} \; -print)
 
   if [ -n "${_broken_symlinks}" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      _msg "CLNP: Removing the following broken symlinks from ${dir}:"
+      _msg "CLNP: Removing the following broken symlinks from ${_dir}:"
       _msg "CLNP: ${_broken_symlinks}"
     fi
 
@@ -4164,7 +4164,7 @@ _check_and_remove_broken_symlinks() {
     _ifAnySymlinksCleaned=YES
   else
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      _msg "CLNP: No broken symlinks found in ${dir}"
+      _msg "CLNP: No broken symlinks found in ${_dir}"
     fi
   fi
 }
@@ -4172,17 +4172,17 @@ _check_and_remove_broken_symlinks() {
 #
 # Check and move disallowed versions
 _check_and_move() {
-  local dir=$1
+  local _dir=$1
 
   # Determine the name of the backup subdirectory based on the source directory
-  local _backup_dir="${backLegBase}$(echo "${dir}" | tr '/' '_')"
+  local _backup_dir="${_backLegBase}$(echo "${_dir}" | tr '/' '_')"
 
   # Find any libcurl.so files in the directory, excluding the allowed version and those without a complete version number
-  _found_versions=$(find "${dir}" -maxdepth 1 -type f -name "libcurl.so.*" ! -name "${allowedFile}" | grep -E "libcurl\.so\.[0-9]+\.[0-9]+\.[0-9]+$")
+  _found_versions=$(find "${_dir}" -maxdepth 1 -type f -name "libcurl.so.*" ! -name "${_allowedFile}" | grep -E "libcurl\.so\.[0-9]+\.[0-9]+\.[0-9]+$")
 
   if [ -n "${_found_versions}" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      _msg "CLNP: Moving the following disallowed versions from ${dir} to ${_backup_dir}:"
+      _msg "CLNP: Moving the following disallowed versions from ${_dir} to ${_backup_dir}:"
       _msg "CLNP: ${_found_versions}"
     fi
 
@@ -4190,18 +4190,18 @@ _check_and_move() {
     mkdir -p "${_backup_dir}"
 
     # Move each found version to the backup directory
-    for file in ${_found_versions}; do
-      mv -f "${file}" "${_backup_dir}/"
+    for _file in ${_found_versions}; do
+      mv -f "${_file}" "${_backup_dir}/"
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        _msg "CLNP: Moved ${file} to ${_backup_dir}/"
+        _msg "CLNP: Moved ${_file} to ${_backup_dir}/"
       fi
     done
 
-    # Set the ifAnyFilesCleaned variable to true since we moved files
-    ifAnyFilesCleaned=YES
+    # Set the _ifAnyFilesCleaned variable to true since we moved files
+    _ifAnyFilesCleaned=YES
   else
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      _msg "CLNP: Only the allowed version (${allowedFile}) is present in ${dir}"
+      _msg "CLNP: Only the allowed version (${_allowedFile}) is present in ${_dir}"
     fi
   fi
 }
@@ -4306,32 +4306,32 @@ _curl_install_src() {
   if [ "${_OS_CODE}" != "jessie" ] && [ "${_OS_CODE}" != "stretch" ]; then
 
     # Target version
-    allowedFile="libcurl.so.4.8.0"
+    _allowedFile="libcurl.so.4.8.0"
 
     # Directories to check
-    dirsToClean=("/usr/lib" "/usr/local/lib" "/usr/lib/x86_64-linux-gnu")
+    _dirsToClean=("/usr/lib" "/usr/local/lib" "/usr/lib/x86_64-linux-gnu")
 
     # Backup base directory
-    backLegBase="/var/backups/legacy-libcurl-${_X_VERSION}-${_NOW}"
+    _backLegBase="/var/backups/legacy-libcurl-${_X_VERSION}-${_NOW}"
 
     # Variable to track if any files were moved
-    ifAnyFilesCleaned=NO
+    _ifAnyFilesCleaned=NO
 
     # Variable to track if any broken symlinks were found and removed
     _ifAnySymlinksCleaned=NO
 
     # Iterate over the directories and apply the _check_and_move function
-    for dir in "${dirsToClean[@]}"; do
-      _check_and_move "${dir}"
+    for _dir in "${_dirsToClean[@]}"; do
+      _check_and_move "${_dir}"
     done
 
     # Iterate over the directories and apply the _check_and_remove_broken_symlinks function
-    for dir in "${dirsToClean[@]}"; do
-      _check_and_remove_broken_symlinks "${dir}"
+    for _dir in "${_dirsToClean[@]}"; do
+      _check_and_remove_broken_symlinks "${_dir}"
     done
 
-    # Export the ifAnyFilesCleaned variable for later use
-    export ifAnyFilesCleaned
+    # Export the _ifAnyFilesCleaned variable for later use
+    export _ifAnyFilesCleaned
 
     # Export the _ifAnySymlinksCleaned variable for later use
     export _ifAnySymlinksCleaned
@@ -4339,14 +4339,14 @@ _curl_install_src() {
   fi
 
   if [ "${_ifAnySymlinksCleaned}" = "YES" ] \
-    || [ "${ifAnyFilesCleaned}" = "YES" ] \
+    || [ "${_ifAnyFilesCleaned}" = "YES" ] \
     || [ "${_CURL_INSTALL_REQUIRED}" = "YES" ]; then
     _CURL_INSTALL_REQUIRED=YES
-    bkLibcurlPre="/var/backups/legacy-libcurl-pre-${_CURL_VRN}-${_NOW}"
-    mkdir -p ${bkLibcurlPre}
-    mv -f /usr/lib/x86_64-linux-gnu/libcurl.so* ${bkLibcurlPre}/ &> /dev/null
-    mv -f /usr/lib/x86_64-linux-gnu/libcurl.la ${bkLibcurlPre}/ &> /dev/null
-    mv -f /usr/lib/x86_64-linux-gnu/libcurl.a ${bkLibcurlPre}/ &> /dev/null
+    _bkLibcurlPre="/var/backups/legacy-libcurl-pre-${_CURL_VRN}-${_NOW}"
+    mkdir -p ${_bkLibcurlPre}
+    mv -f /usr/lib/x86_64-linux-gnu/libcurl.so* ${_bkLibcurlPre}/ &> /dev/null
+    mv -f /usr/lib/x86_64-linux-gnu/libcurl.la ${_bkLibcurlPre}/ &> /dev/null
+    mv -f /usr/lib/x86_64-linux-gnu/libcurl.a ${_bkLibcurlPre}/ &> /dev/null
   fi
 
   if [ "${_CURL_INSTALL_REQUIRED}" = "YES" ]; then
@@ -4915,12 +4915,12 @@ _turn_off_apparmor_temporarily() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _turn_off_apparmor_temporarily"
   fi
-  isAppArmOn=N
+  _isAppArmOn=N
   if [ -e "/sys/module/apparmor/parameters/enabled" ]; then
-    isAppArmOn=$(cat /sys/module/apparmor/parameters/enabled 2>&1)
-    isAppArmOn=$(echo -n ${isAppArmOn} | tr -d "\n" 2>&1)
+    _isAppArmOn=$(cat /sys/module/apparmor/parameters/enabled 2>&1)
+    _isAppArmOn=$(echo -n ${_isAppArmOn} | tr -d "\n" 2>&1)
   fi
-  if [ "${isAppArmOn}" = "Y" ]; then
+  if [ "${_isAppArmOn}" = "Y" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "ARMR: Turning off AppArmor temporarily..."
     fi
@@ -4939,7 +4939,7 @@ _if_enforce_apparmor_profiles() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _if_enforce_apparmor_profiles"
   fi
-  if [ "${isAppArmOn}" = "Y" ] || [ -d "/etc/apparmor.d" ]; then
+  if [ "${_isAppArmOn}" = "Y" ] || [ -d "/etc/apparmor.d" ]; then
     if [ -e "/root/.enforce.apparmor.cnf" ]; then
       _AA_TEST_A=$(aa-status | grep "profiles are loaded" 2>&1)
       _AA_TEST_B=$(aa-status | grep "0 processes are in complain mode" 2>&1)
@@ -4972,7 +4972,7 @@ _sync_apparmor_profiles() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _sync_apparmor_profiles"
   fi
-  if [ "${isAppArmOn}" = "Y" ] || [ -d "/etc/apparmor.d" ]; then
+  if [ "${_isAppArmOn}" = "Y" ] || [ -d "/etc/apparmor.d" ]; then
     _msg "ARMR: All profiles will be updated now..."
     if [ -d "/etc/apparmor.d" ]; then
       _backArmr="/var/backups/apparmor/"
@@ -5014,19 +5014,19 @@ _sync_apparmor_profiles() {
       && [ ! -e "/root/.run-to-beowulf.cnf" ]; then
       _msg "WAIT: This may take a while, please wait..."
     fi
-    for proFile in `find /etc/apparmor.d/ -maxdepth 1 -mindepth 1 -type f | sort`; do
-      profName=$(echo ${proFile} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
-      if [ ! -z "${isAppArmorComplain}" ] \
-        && [ -x "${isAppArmorComplain}" ]; then
+    for _proFile in `find /etc/apparmor.d/ -maxdepth 1 -mindepth 1 -type f | sort`; do
+      _profName=$(echo ${_proFile} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
+      if [ ! -z "${_isAppArmorComplain}" ] \
+        && [ -x "${_isAppArmorComplain}" ]; then
         if [ ! -e "/root/.run-to-daedalus.cnf" ] \
           && [ ! -e "/root/.run-to-chimaera.cnf" ] \
           && [ ! -e "/root/.run-to-beowulf.cnf" ]; then
-          if [ "${isAppArmOn}" = "Y" ]; then
-            _mrun "apparmor_parser -Q /etc/apparmor.d/${profName}" 2> /dev/null
+          if [ "${_isAppArmOn}" = "Y" ]; then
+            _mrun "apparmor_parser -Q /etc/apparmor.d/${_profName}" 2> /dev/null
           fi
         fi
       fi
-      chmod 644 ${proFile}
+      chmod 644 ${_proFile}
     done
     if [ -e "/etc/audit/auditd.conf" ]; then
       if [ -e "/root/.disable.auditd.logs.cnf" ]; then
@@ -5043,7 +5043,7 @@ _sync_apparmor_profiles() {
         echo "write_logs = yes" >> /etc/audit/auditd.conf
       fi
     fi
-    if [ "${isAppArmOn}" = "Y" ]; then
+    if [ "${_isAppArmOn}" = "Y" ]; then
       if [ -e "/root/.activate.apparmor.cnf" ]; then
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "ARMR: Activating AppArmor in the complain mode"
@@ -5105,22 +5105,22 @@ _if_install_apparmor() {
     _msg "PROC: _if_install_apparmor"
   fi
   ###--------------------###
-  isAppArmorRevFile="/sys/kernel/security/apparmor/revision"
-  isAppArmorGrubFile="/etc/default/grub.d/apparmor.cfg"
-  isAppArmorComplain=$(which aa-complain 2>&1)
-  isAppArmorStatus=$(which aa-status 2>&1)
-  isAppArmorGrub=NO
-  if [ -e "${isAppArmorGrubFile}" ]; then
-    _GRUB_APPARMOR_TEST=$(grep "apparmor=1 security=apparmor" ${isAppArmorGrubFile} 2>&1)
+  _isAppArmorRevFile="/sys/kernel/security/apparmor/revision"
+  _isAppArmorGrubFile="/etc/default/grub.d/apparmor.cfg"
+  _isAppArmorComplain=$(which aa-complain 2>&1)
+  _isAppArmorStatus=$(which aa-status 2>&1)
+  _isAppArmorGrub=NO
+  if [ -e "${_isAppArmorGrubFile}" ]; then
+    _GRUB_APPARMOR_TEST=$(grep "apparmor=1 security=apparmor" ${_isAppArmorGrubFile} 2>&1)
     if [[ "${_GRUB_APPARMOR_TEST}" =~ "apparmor=1 security=apparmor" ]]; then
-      isAppArmorGrub=YES
+      _isAppArmorGrub=YES
     fi
   fi
-  if [ ! -e "${isAppArmorRevFile}" ] \
-    || [ ! -e "${isAppArmorGrubFile}" ] \
-    || [ -z "${isAppArmorComplain}" ] \
-    || [ -z "${isAppArmorStatus}" ] \
-    || [ "${isAppArmorGrub}" = "NO" ]; then
+  if [ ! -e "${_isAppArmorRevFile}" ] \
+    || [ ! -e "${_isAppArmorGrubFile}" ] \
+    || [ -z "${_isAppArmorComplain}" ] \
+    || [ -z "${_isAppArmorStatus}" ] \
+    || [ "${_isAppArmorGrub}" = "NO" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "ARMR: The system AppArmor and auditd will be installed now, however..."
       _msg "ARMR: ...it will become active only after you reboot this server"
@@ -5134,15 +5134,15 @@ _if_install_apparmor() {
       apparmor-profiles" 2> /dev/null
     mkdir -p /etc/default/grub.d
     echo 'GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT apparmor=1 security=apparmor"' \
-      | tee ${isAppArmorGrubFile} &> /dev/null
+      | tee ${_isAppArmorGrubFile} &> /dev/null
     update-grub &> /dev/null
   fi
-  isAppArmOn=N
+  _isAppArmOn=N
   if [ -e "/sys/module/apparmor/parameters/enabled" ]; then
-    isAppArmOn=$(cat /sys/module/apparmor/parameters/enabled 2>&1)
-    isAppArmOn=$(echo -n ${isAppArmOn} | tr -d "\n" 2>&1)
+    _isAppArmOn=$(cat /sys/module/apparmor/parameters/enabled 2>&1)
+    _isAppArmOn=$(echo -n ${_isAppArmOn} | tr -d "\n" 2>&1)
   fi
-  if [ "${isAppArmOn}" = "Y" ]; then
+  if [ "${_isAppArmOn}" = "Y" ]; then
     _sync_apparmor_profiles
     [ -e "/root/.turn_off_apparmor_in_octopus.cnf" ] && rm -f /root/.turn_off_apparmor_in_octopus.cnf
   fi
@@ -5537,37 +5537,37 @@ _if_proxysql_update() {
     _msg "PROC: _if_proxysql_update"
   fi
   if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
-    isPxy=$(which proxysql 2>&1)
+    _isPxy=$(which proxysql 2>&1)
     _REINSTALL_PXC=NO
-    if [ -x "${isPxy}" ]; then
-      _PXY=$(${isPxy} --version 2>&1 \
+    if [ -x "${_isPxy}" ]; then
+      _PXY=$(${_isPxy} --version 2>&1 \
         | tr -d "\n" \
         | cut -d"-" -f1 \
         | awk '{ print $3}' 2>&1)
       _msg "INFO: ProxySQL version detected ${_PXY}"
-      pGc="/usr/bin/proxysql_galera_checker"
-      if [ ! -e "${pGc}" ]; then
+      _pGc="/usr/bin/proxysql_galera_checker"
+      if [ ! -e "${_pGc}" ]; then
         _UP_PXC=YES
         _REINSTALL_PXC=YES
       else
-        _PAV_TEST=$(grep Maestro ${pGc} 2>&1)
+        _PAV_TEST=$(grep Maestro ${_pGc} 2>&1)
         if [[ ! "${_PAV_TEST}" =~ "Maestro" ]]; then
           _UP_PXC=YES
         fi
       fi
-      pNm="/usr/bin/proxysql_node_monitor"
-      if [ ! -e "${pNm}" ]; then
+      _pNm="/usr/bin/proxysql_node_monitor"
+      if [ ! -e "${_pNm}" ]; then
         _UP_PXC=YES
         _REINSTALL_PXC=YES
       else
-        _PAV_TEST=$(grep Vivaldi ${pNm} 2>&1)
+        _PAV_TEST=$(grep Vivaldi ${_pNm} 2>&1)
         if [[ ! "${_PAV_TEST}" =~ "Vivaldi" ]]; then
           _UP_PXC=YES
         fi
       fi
     fi
-    isPxyVer=$(proxysql --version 2>&1)
-    if [[ ! "${isPxyVer}" =~ "${_PXC_VRN}" ]]; then
+    _isPxyVer=$(proxysql --version 2>&1)
+    if [[ ! "${_isPxyVer}" =~ "${_PXC_VRN}" ]]; then
       _UP_PXC=YES
     fi
     if [ "${_UP_PXC}" = "YES" ] \
@@ -5583,8 +5583,8 @@ _if_proxysql_update() {
         _apt_clean_update
         _mrun "${_INSTAPP} proxysql" 2> /dev/null
       fi
-      isPxy=$(which proxysql 2>&1)
-      if [ ! -x "${isPxy}" ]; then
+      _isPxy=$(which proxysql 2>&1)
+      if [ ! -x "${_isPxy}" ]; then
         _apt_clean_update
         _mrun "${_INSTAPP} sysbench" 2> /dev/null
         _mrun "${_INSTAPP} debconf-utils" 2> /dev/null
@@ -5602,63 +5602,63 @@ _if_proxysql_update() {
       else
         chmod 640 /etc/proxysql-admin.cnf
       fi
-      if [ -x "${isPxy}" ] \
+      if [ -x "${_isPxy}" ] \
         && [ -e "/etc/proxysql.cnf" ] \
         && [ -e "/etc/proxysql-admin.cnf" ]; then
-        _PXY=$(${isPxy} --version 2>&1 \
+        _PXY=$(${_isPxy} --version 2>&1 \
           | tr -d "\n" \
           | cut -d"-" -f1 \
           | awk '{ print $3}' 2>&1)
         _msg "INFO: ProxySQL version detected ${_PXY}"
         _msg "INFO: Updating ProxySQL Node Monitor..."
-        if [ -e "${pNm}" ]; then
-          rm -f ${pNm}
+        if [ -e "${_pNm}" ]; then
+          rm -f ${_pNm}
         fi
         _tBn="tools/bin"
-        tURL="${_urlHmr}/${_tBn}/proxysql_node_monitor"
-        _msg "PNM download URL is ${tURL}"
-        curl -I ${tURL}
-        curl ${_crlGet} "${tURL}" -o ${pNm}
-        if [ ! -e "${pNm}" ]; then
-          curl ${_crlGet} "${tURL}" -o ${pNm}
+        _tURL="${_urlHmr}/${_tBn}/proxysql_node_monitor"
+        _msg "PNM download URL is ${_tURL}"
+        curl -I ${_tURL}
+        curl ${_crlGet} "${_tURL}" -o ${_pNm}
+        if [ ! -e "${_pNm}" ]; then
+          curl ${_crlGet} "${_tURL}" -o ${_pNm}
         else
-          _PAV_TEST=$(grep Vivaldi ${pNm} 2>&1)
+          _PAV_TEST=$(grep Vivaldi ${_pNm} 2>&1)
           if [[ ! "${_PAV_TEST}" =~ "Vivaldi" ]]; then
-            rm -f ${pNm}
-            curl ${_crlGet} "${tURL}" -o ${pNm}
+            rm -f ${_pNm}
+            curl ${_crlGet} "${_tURL}" -o ${_pNm}
           fi
         fi
-        curl ${_crlGet} "${tURL}" -o ${pNm}
-        ls -la ${pNm}
-        if [ -e "${pNm}" ]; then
-          chmod 755 ${pNm}
-          _msg "INFO: `${pNm} --version`"
+        curl ${_crlGet} "${_tURL}" -o ${_pNm}
+        ls -la ${_pNm}
+        if [ -e "${_pNm}" ]; then
+          chmod 755 ${_pNm}
+          _msg "INFO: `${_pNm} --version`"
         fi
 
         _msg "INFO: Updating ProxySQL Galera Checker..."
-        if [ -e "${pGc}" ]; then
-          rm -f ${pGc}
+        if [ -e "${_pGc}" ]; then
+          rm -f ${_pGc}
         fi
         _tBn="tools/bin"
-        tURL="${_urlHmr}/${_tBn}/proxysql_galera_checker"
-        _msg "PGC download URL is ${tURL}"
-        curl -I ${tURL}
-        curl ${_crlGet} "${tURL}" -o ${pGc}
-        if [ ! -e "${pGc}" ]; then
-          curl ${_crlGet} "${tURL}" -o ${pGc}
+        _tURL="${_urlHmr}/${_tBn}/proxysql_galera_checker"
+        _msg "PGC download URL is ${_tURL}"
+        curl -I ${_tURL}
+        curl ${_crlGet} "${_tURL}" -o ${_pGc}
+        if [ ! -e "${_pGc}" ]; then
+          curl ${_crlGet} "${_tURL}" -o ${_pGc}
         else
-          _PAV_TEST=$(grep Maestro ${pGc} 2>&1)
+          _PAV_TEST=$(grep Maestro ${_pGc} 2>&1)
           if [[ ! "${_PAV_TEST}" =~ "Maestro" ]]; then
-            rm -f ${pGc}
-            curl ${_crlGet} "${tURL}" -o ${pGc}
+            rm -f ${_pGc}
+            curl ${_crlGet} "${_tURL}" -o ${_pGc}
           fi
         fi
-        curl ${_crlGet} "${tURL}" -o ${pGc}
-        ls -la ${pGc}
+        curl ${_crlGet} "${_tURL}" -o ${_pGc}
+        ls -la ${_pGc}
 
-        if [ -e "${pGc}" ]; then
-          chmod 755 ${pGc}
-          _msg "INFO: `${pGc} --version`"
+        if [ -e "${_pGc}" ]; then
+          chmod 755 ${_pGc}
+          _msg "INFO: `${_pGc} --version`"
           echo loadbal > /var/lib/proxysql/mode
           echo loadbal > /var/lib/proxysql/c1r_galera_mode
           echo loadbal > /var/lib/proxysql/--mode=singlewrite_mode
@@ -5915,9 +5915,9 @@ _if_major_os_upgrade() {
     _msg "ATTN: This procedure is well tested but things happen!"
     echo
     _mrun "sleep 5"
-    tPrmt="Are you sure you want to proceed?"
-    tPrmt=$(echo -n ${tPrmt} | fmt -su -w 2500 2>&1)
-    if _prompt_yes_no "${tPrmt}?" ; then
+    _tPrmt="Are you sure you want to proceed?"
+    _tPrmt=$(echo -n ${_tPrmt} | fmt -su -w 2500 2>&1)
+    if _prompt_yes_no "${_tPrmt}?" ; then
       true
       echo
       _msg "FINE: But you can still hit ctrl-c to stop if you wish"
@@ -6559,10 +6559,10 @@ _if_major_os_upgrade() {
                      umountroot \
                      urandom \
                      vnstat"
-      for link in ${_REMOVE_LINKS}; do
-        if [ -e "/etc/init.d/${link}" ]; then
-          _mrun "update-rc.d -f ${link} remove" 2> /dev/null
-          mv -f /etc/init.d/${link} /var/backups/init.d.${link}
+      for _link in ${_REMOVE_LINKS}; do
+        if [ -e "/etc/init.d/${_link}" ]; then
+          _mrun "update-rc.d -f ${_link} remove" 2> /dev/null
+          mv -f /etc/init.d/${_link} /var/backups/init.d.${_link}
         fi
       done
       for s in cron dbus ssh; do
@@ -6601,18 +6601,18 @@ _if_major_os_upgrade() {
     fi
     ###
     ### Make sure that Aegir special system-wide scripts are added to sudo.
-    SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership lock-local-drush-permissions)
-    for SCRIPT in ${SCRIPTS[@]}; do
-      _VAR_IF_PRESENT=$(grep "aegir ALL=NOPASSWD: /usr/local/bin/${SCRIPT}.sh" /etc/sudoers.d/${SCRIPT} 2>&1)
+    _SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership lock-local-drush-permissions)
+    for _SCRIPT in ${_SCRIPTS[@]}; do
+      _VAR_IF_PRESENT=$(grep "aegir ALL=NOPASSWD: /usr/local/bin/${_SCRIPT}.sh" /etc/sudoers.d/${_SCRIPT} 2>&1)
       if [[ ! "${_VAR_IF_PRESENT}" =~ "aegir ALL=NOPASSWD" ]]; then
-        echo "aegir ALL=NOPASSWD: /usr/local/bin/${SCRIPT}.sh" >> /etc/sudoers.d/${SCRIPT}
-        chmod 0440 /etc/sudoers.d/${SCRIPT}
+        echo "aegir ALL=NOPASSWD: /usr/local/bin/${_SCRIPT}.sh" >> /etc/sudoers.d/${_SCRIPT}
+        chmod 0440 /etc/sudoers.d/${_SCRIPT}
       fi
     done
     ###
     ### Make sure that Aegir Octopus system users are added to sudo.
     if [ -d "/data/u" ]; then
-      for User in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
+      for _usEr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
         if [ -e "${_usEr}/config/server_master/nginx/vhost.d" ] \
           && [ ! -e "${_usEr}/log/proxied.pid" ] \
           && [ ! -e "${_usEr}/log/CANCELLED" ]; then
@@ -6621,12 +6621,12 @@ _if_major_os_upgrade() {
           if [[ ! "${_VAR_IF_PRESENT}" =~ "${_HM_U} ALL=NOPASSWD" ]]; then
             echo "${_HM_U} ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
           fi
-          SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership lock-local-drush-permissions)
-          for SCRIPT in ${SCRIPTS[@]}; do
-            _VAR_IF_PRESENT=$(grep "${_HM_U} ALL=NOPASSWD: /usr/local/bin/${SCRIPT}.sh" /etc/sudoers.d/${SCRIPT} 2>&1)
+          _SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership lock-local-drush-permissions)
+          for _SCRIPT in ${_SCRIPTS[@]}; do
+            _VAR_IF_PRESENT=$(grep "${_HM_U} ALL=NOPASSWD: /usr/local/bin/${_SCRIPT}.sh" /etc/sudoers.d/${_SCRIPT} 2>&1)
             if [[ ! "${_VAR_IF_PRESENT}" =~ "${_HM_U} ALL=NOPASSWD" ]]; then
-              echo "${_HM_U} ALL=NOPASSWD: /usr/local/bin/${SCRIPT}.sh" >> /etc/sudoers.d/${SCRIPT}
-              chmod 0440 /etc/sudoers.d/${SCRIPT}
+              echo "${_HM_U} ALL=NOPASSWD: /usr/local/bin/${_SCRIPT}.sh" >> /etc/sudoers.d/${_SCRIPT}
+              chmod 0440 /etc/sudoers.d/${_SCRIPT}
             fi
           done
         fi
@@ -7504,9 +7504,9 @@ _myquick_install_upgrade() {
     _MYQUICK_SRC_INSTALL_REQUIRED=YES
   fi
   _check_mysql_version
-  isMyQuick=$(which mydumper 2>&1)
-  if [ ! -x "${isMyQuick}" ] \
-    || [ -z "${isMyQuick}" ]; then
+  _isMyQuick=$(which mydumper 2>&1)
+  if [ ! -x "${_isMyQuick}" ] \
+    || [ -z "${_isMyQuick}" ]; then
     if [ "${_MYQUICK_SRC_INSTALL_REQUIRED}" = "NO" ]; then
       _install_myquick_deb
     else
@@ -7544,7 +7544,7 @@ _myquick_install_upgrade() {
       | cut -d"-" -f1 \
       | awk '{ print $1}' \
       | sed "s/[\,']//g" 2>&1)
-    if [ -x "${isMyQuick}" ]; then
+    if [ -x "${_isMyQuick}" ]; then
       if [ "${_MYQUICK_SRC_INSTALL_REQUIRED}" = "NO" ]; then
         if [ "${_MYQUICK_ITD}" != "${_MYQUICK_VRN_EIGHT}" ]; then
           _MYQUICK_INSTALL_REQUIRED=YES
@@ -7563,8 +7563,8 @@ _myquick_install_upgrade() {
         fi
       fi
     fi
-    isMyQuick=$(which mydumper 2>&1)
-    if [ ! -e "${isMyQuick}" ]; then
+    _isMyQuick=$(which mydumper 2>&1)
+    if [ ! -e "${_isMyQuick}" ]; then
       _MYQUICK_INSTALL_REQUIRED=YES
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: MyQuick not installed yet"
@@ -8003,14 +8003,14 @@ _if_install_ftpd() {
       cp -af ${_locCnf}/ftpd/pure-ftpd.conf ./
       ln -sfn /usr/local/etc/pure-ftpd.conf /usr/local/etc/pure-ftpd.conf~
       killall -9 pure-ftpd &> /dev/null
-      ftpdInit="/usr/local/sbin/pure-config.pl"
-      ftpdConf="/usr/local/etc/pure-ftpd.conf"
-      ftpdBind="/usr/local/sbin/pure-ftpd"
-      if [ -x "${ftpdBind}" ] && [ -f "${ftpdConf}" ]; then
-        if [ -x "${ftpdInit}" ]; then
-          ${ftpdInit} ${ftpdConf} &> /dev/null
+      _ftpdInit="/usr/local/sbin/pure-config.pl"
+      _ftpdConf="/usr/local/etc/pure-ftpd.conf"
+      _ftpdBind="/usr/local/sbin/pure-ftpd"
+      if [ -x "${_ftpdBind}" ] && [ -f "${_ftpdConf}" ]; then
+        if [ -x "${_ftpdInit}" ]; then
+          ${_ftpdInit} ${_ftpdConf} &> /dev/null
         else
-          ${ftpdBind} ${ftpdConf} &> /dev/null
+          ${_ftpdBind} ${_ftpdConf} &> /dev/null
         fi
       fi
       cd /var/opt
@@ -8271,16 +8271,16 @@ _sshd_armour() {
         touch /etc/ssh/.ssh_host_rsa_key4096.pid
         _msg "NOTE: You will be asked to accept the new SSH fingerprint the next time you connect"
       fi
-      isKeyg=$(which ssh-keygen 2>&1)
-      if [ -x "${isKeyg}" ] \
+      _isKeyg=$(which ssh-keygen 2>&1)
+      if [ -x "${_isKeyg}" ] \
         && [ -e "${_SYSCONFDIR}/moduli" ] \
         && [ ! -e "${_SYSCONFDIR}/.moduli_bak" ]; then
         _msg "WAIT: New SSH moduli generate may take a long time, please wait..."
         cd /var/opt
         rm -rf /var/opt/moduli-*
-        _mrun "${isKeyg} -M generate -O bits=2048 moduli-2048.candidates" 2> /dev/null
+        _mrun "${_isKeyg} -M generate -O bits=2048 moduli-2048.candidates" 2> /dev/null
         wait
-        _mrun "${isKeyg} -M screen -f moduli-2048.candidates moduli-2048" 2> /dev/null
+        _mrun "${_isKeyg} -M screen -f moduli-2048.candidates moduli-2048" 2> /dev/null
         wait
         if [ -e "/var/opt/moduli-2048" ]; then
           cp -af ${_SYSCONFDIR}/moduli ${_SYSCONFDIR}/.moduli_bak
@@ -8512,48 +8512,48 @@ _initd_update() {
           fi
         fi
       fi
-      myCnf="/etc/mysql/my.cnf"
-      preCnf="${_vBs}/dragon/t/my.cnf-pre-${_xSrl}-${_X_VERSION}-${_NOW}"
-      if [ -f "${myCnf}" ]; then
-        myCnfUpdate=NO
-        if [ ! -f "${preCnf}" ]; then
+      _myCnf="/etc/mysql/my.cnf"
+      _preCnf="${_vBs}/dragon/t/my.cnf-pre-${_xSrl}-${_X_VERSION}-${_NOW}"
+      if [ -f "${_myCnf}" ]; then
+        _myCnfUpdate=NO
+        if [ ! -f "${_preCnf}" ]; then
           mkdir -p ${_vBs}/dragon/t/
-          cp -af ${myCnf} ${preCnf}
+          cp -af ${_myCnf} ${_preCnf}
         fi
-        diffMyTest=$(diff -w -B \
+        _diffMyTest=$(diff -w -B \
           -I innodb_buffer_pool_size \
           -I innodb_buffer_pool_instances \
           -I innodb_page_cleaners \
           -I tmp_table_size \
           -I max_heap_table_size \
           -I myisam_sort_buffer_size \
-          -I key_buffer_size ${myCnf} ${preCnf} 2>&1)
-        if [ -z "${diffMyTest}" ]; then
-          myCnfUpdate=NO
+          -I key_buffer_size ${_myCnf} ${_preCnf} 2>&1)
+        if [ -z "${_diffMyTest}" ]; then
+          _myCnfUpdate=NO
           if [ "${_DEBUG_MODE}" = "YES" ]; then
             _msg "INFO: ${_DB_SERVER} diff0 empty"
           fi
         else
-          myCnfUpdate=YES
-          # diffMyTest=$(echo -n ${diffMyTest} | fmt -su -w 2500 2>&1)
-          _msg "INFO: ${_DB_SERVER} diff1 ${diffMyTest}"
+          _myCnfUpdate=YES
+          # _diffMyTest=$(echo -n ${_diffMyTest} | fmt -su -w 2500 2>&1)
+          _msg "INFO: ${_DB_SERVER} diff1 ${_diffMyTest}"
         fi
-        if [[ "${diffMyTest}" =~ "innodb_buffer_pool_size" ]]; then
-          myCnfUpdate=NO
-          _msg "INFO: ${_DB_SERVER} diff2 ${diffMyTest}"
+        if [[ "${_diffMyTest}" =~ "innodb_buffer_pool_size" ]]; then
+          _myCnfUpdate=NO
+          _msg "INFO: ${_DB_SERVER} diff2 ${_diffMyTest}"
         fi
-        if [[ "${diffMyTest}" =~ "No such file or directory" ]]; then
-          myCnfUpdate=NO
-          _msg "INFO: ${_DB_SERVER} diff3 ${diffMyTest}"
+        if [[ "${_diffMyTest}" =~ "No such file or directory" ]]; then
+          _myCnfUpdate=NO
+          _msg "INFO: ${_DB_SERVER} diff3 ${_diffMyTest}"
         fi
       fi
       if [ "${_UP_SQL}" = "YES" ]; then
-        myVnTest=$(mysql -V 2>&1)
-        if [[ "${myVnTest}" =~ "${_DBS_VRN}" ]]; then
+        _myVnTest=$(mysql -V 2>&1)
+        if [[ "${_myVnTest}" =~ "${_DBS_VRN}" ]]; then
           if [ "${_DEBUG_MODE}" = "YES" ]; then
             _msg "INFO: ${_DB_SERVER} ${_DBS_VRN} already up to date"
           fi
-          myCnfUpdate=YES
+          _myCnfUpdate=YES
           if [ "${_DEBUG_MODE}" = "YES" ]; then
             _msg "INFO: ${_DB_SERVER} restart after upgrade forced"
           fi
@@ -8564,14 +8564,14 @@ _initd_update() {
         && [ ! -e "/root/.run-to-beowulf.cnf" ]; then
         _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
         _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
-        myUptime=$(mysqladmin -u root version | grep -i uptime 2>&1)
-        myUptime=$(echo -n ${myUptime} | fmt -su -w 2500 2>&1)
-        _msg "INFO: ${_DB_SERVER} ${myUptime}"
-        if [ "${myRstrd}" = "YES" ]; then
-          myCnfUpdate=NO
+        _myUptime=$(mysqladmin -u root version | grep -i uptime 2>&1)
+        _myUptime=$(echo -n ${_myUptime} | fmt -su -w 2500 2>&1)
+        _msg "INFO: ${_DB_SERVER} ${_myUptime}"
+        if [ "${_myRstrd}" = "YES" ]; then
+          _myCnfUpdate=NO
           _msg "INFO: ${_DB_SERVER} already restarted!"
         fi
-        if [ "${myCnfUpdate}" = "YES" ]; then
+        if [ "${_myCnfUpdate}" = "YES" ]; then
           if [ "${_DEBUG_MODE}" = "YES" ]; then
             _msg "INFO: Restarting ${_DB_SERVER} server..."
           fi
@@ -8739,12 +8739,12 @@ _apticron_update() {
         wait
       fi
     fi
-    barUpv="${_tRee}"
-    sed -i "s/aptitude full-upgrade/barracuda up-${barUpv} system/g" /usr/sbin/apticron
+    _barUpv="${_tRee}"
+    sed -i "s/aptitude full-upgrade/barracuda up-${_barUpv} system/g" /usr/sbin/apticron
       wait
-    sed -i "s/apt-get dist-upgrade/barracuda up-${barUpv} system/g" /usr/sbin/apticron
+    sed -i "s/apt-get dist-upgrade/barracuda up-${_barUpv} system/g" /usr/sbin/apticron
       wait
-    sed -i "s/barracuda up-${_tRee}.*/barracuda up-${barUpv} system/g" /usr/sbin/apticron
+    sed -i "s/barracuda up-${_tRee}.*/barracuda up-${_barUpv} system/g" /usr/sbin/apticron
   fi
 }
 

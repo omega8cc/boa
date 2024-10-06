@@ -27,9 +27,9 @@ fi
 
 _incident_email_report() {
   if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_EMAIL_REPORT}" = "YES" ]; then
-    hName=$(cat /etc/hostname 2>&1)
+    _hName=$(cat /etc/hostname 2>&1)
     echo "Sending Incident Report Email on $(date 2>&1)" >> ${_pthOml}
-    s-nail -s "Incident Report: ${1} on ${hName} at $(date 2>&1)" ${_MY_EMAIL} < ${_pthOml}
+    s-nail -s "Incident Report: ${1} on ${_hName} at $(date 2>&1)" ${_MY_EMAIL} < ${_pthOml}
   fi
 }
 
@@ -108,8 +108,8 @@ _if_fix_locked_sshd() {
     kill -9 $(ps aux | grep '[s]tartups' | awk '{print $2}') &> /dev/null
     service ssh start
     wait
-    thisErrLog="$(date 2>&1) SSHD BIND error detected, service restarted"
-    echo ${thisErrLog} >> ${_pthOml}
+    _thisErrLog="$(date 2>&1) SSHD BIND error detected, service restarted"
+    echo ${_thisErrLog} >> ${_pthOml}
     _incident_email_report "SSHD BIND error detected, service restarted"
     echo >> ${_pthOml}
   fi
@@ -136,8 +136,8 @@ _if_fix_dhcp() {
         fi
       done
       csf -q &> /dev/null
-      thisErrLog="$(date 2>&1) DHCP error detected, firewall updated"
-      echo ${thisErrLog} >> ${_pthOml}
+      _thisErrLog="$(date 2>&1) DHCP error detected, firewall updated"
+      echo ${_thisErrLog} >> ${_pthOml}
       _incident_email_report "DHCP error detected, firewall updated"
       echo >> ${_pthOml}
     fi
@@ -146,12 +146,12 @@ _if_fix_dhcp() {
 
 _cron_duplicate_instances_detection() {
   if [ `ps aux | grep -v "grep" | grep --count "/usr/sbin/cron"` -gt "1" ]; then
-    thisErrLog="$(date 2>&1) Too many Cron instances running killed"
-    echo ${thisErrLog} >> /var/xdrago/log/cron-count.kill.log
+    _thisErrLog="$(date 2>&1) Too many Cron instances running killed"
+    echo ${_thisErrLog} >> /var/xdrago/log/cron-count.kill.log
     killall -9 cron &> /dev/null
     service cron start &> /dev/null
-    thisErrLog="$(date 2>&1) Too many Cron instances, service restarted"
-    echo ${thisErrLog} >> ${_pthOml}
+    _thisErrLog="$(date 2>&1) Too many Cron instances, service restarted"
+    echo ${_thisErrLog} >> ${_pthOml}
     _incident_email_report "Too many Cron instances, service restarted"
     echo >> ${_pthOml}
   fi
@@ -164,8 +164,8 @@ _syslog_giant_log_detection() {
       echo ${_SYSLOG_SIZE_TEST} too big
       bash /etc/cron.daily/logrotate &> /dev/null
       wait
-      thisErrLog="$(date 2>&1) Syslog ${_SYSLOG_SIZE_TEST} too big, logrotate forced"
-      echo ${thisErrLog} >> ${_pthOml}
+      _thisErrLog="$(date 2>&1) Syslog ${_SYSLOG_SIZE_TEST} too big, logrotate forced"
+      echo ${_thisErrLog} >> ${_pthOml}
       _incident_email_report "Syslog ${_SYSLOG_SIZE_TEST} too big, logrotate forced"
       echo >> ${_pthOml}
     fi
@@ -174,11 +174,11 @@ _syslog_giant_log_detection() {
 
 _gpg_too_many_instances_detection() {
   if [ `ps aux | grep -v "grep" | grep --count "gpg-agent"` -gt "5" ]; then
-    thisErrLog="$(date 2>&1) Too many gpg-agent processes killed"
-    echo ${thisErrLog} >> /var/xdrago/log/gpg-agent-count.kill.log
+    _thisErrLog="$(date 2>&1) Too many gpg-agent processes killed"
+    echo ${_thisErrLog} >> /var/xdrago/log/gpg-agent-count.kill.log
     kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
-    thisErrLog="$(date 2>&1) Too many gpg-agent processes killed"
-    echo ${thisErrLog} >> ${_pthOml}
+    _thisErrLog="$(date 2>&1) Too many gpg-agent processes killed"
+    echo ${_thisErrLog} >> ${_pthOml}
     _incident_email_report "Too many gpg-agent processes killed"
     echo >> ${_pthOml}
   fi
@@ -186,11 +186,11 @@ _gpg_too_many_instances_detection() {
 
 _dirmngr_too_many_instances_detection() {
   if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt "5" ]; then
-    thisErrLog="$(date 2>&1) Too many dirmngr processes killed"
-    echo ${thisErrLog} >> /var/xdrago/log/dirmngr-count.kill.log
+    _thisErrLog="$(date 2>&1) Too many dirmngr processes killed"
+    echo ${_thisErrLog} >> /var/xdrago/log/dirmngr-count.kill.log
     kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
-    thisErrLog="$(date 2>&1) Too many dirmngr processes killed"
-    echo ${thisErrLog} >> ${_pthOml}
+    _thisErrLog="$(date 2>&1) Too many dirmngr processes killed"
+    echo ${_thisErrLog} >> ${_pthOml}
     _incident_email_report "Too many dirmngr processes killed"
     echo >> ${_pthOml}
   fi

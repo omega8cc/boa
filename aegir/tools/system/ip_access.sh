@@ -78,14 +78,14 @@ fi
 # Function to generate the IP whitelist include files per vhost
 _generate_whitelists() {
   while IFS= read -r _line; do
-    # Sk_ip empty lines
+    # Skip empty lines
     [[ -z "${_line}" ]] && continue
 
     # Split the line into an array
-    read -ra fields <<< "${_line}"
+    read -ra _fields <<< "${_line}"
 
     # The first field is the site name
-    _site_name="${fields[0]}"
+    _site_name="${_fields[0]}"
 
     # Convert the site name to lowercase
     _site_name=$(echo "${_site_name}" | tr '[:upper:]' '[:lower:]')
@@ -100,7 +100,7 @@ _generate_whitelists() {
     whitelist_file="${_nginx_access_path}/${_site_name}.conf"
 
     # Collect IP addresses for this site
-    _ip_addresses="${fields[@]:1}"
+    _ip_addresses="${_fields[@]:1}"
     _ip_list=()
 
     # Always include loopback, server's own IP, and SSH logged-in IPs

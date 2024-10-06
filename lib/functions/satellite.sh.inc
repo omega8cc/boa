@@ -116,9 +116,9 @@ _satellite_web_user_update() {
     _msg "PROC: _satellite_web_user_update"
     _debug_proc
   fi
-  isTest="${_WEB}"
-  isTest=${isTest//[^a-z0-9]/}
-  if [ ! -z "${isTest}" ]; then
+  _isTest="${_WEB}"
+  _isTest=${_isTest//[^a-z0-9]/}
+  if [ ! -z "${_isTest}" ]; then
     _T_HD="/home/${_WEB}/.drush"
     _T_TP="/home/${_WEB}/.tmp"
     _T_TS="/home/${_WEB}/.aws"
@@ -142,9 +142,9 @@ _satellite_web_user_update() {
         _msg "DEBUG: ${_WEB} in _satellite_web_user_update B"
         _msg "DEBUG: ARG1 is $1 in _satellite_web_user_update B"
       fi
-      isTest="$1"
-      isTest=${isTest//[^a-z0-9]/}
-      if [ ! -z "${isTest}" ]; then
+      _isTest="$1"
+      _isTest=${_isTest//[^a-z0-9]/}
+      if [ ! -z "${_isTest}" ]; then
         if [ "$1" = "hhvm" ]; then
           if [ -e "/opt/php56/etc/php56.ini" ]; then
             _T_PV=56
@@ -500,9 +500,9 @@ _enable_chattr() {
     _msg "PROC: _enable_chattr"
     _debug_proc
   fi
-  isTest="$1"
-  isTest=${isTest//[^a-z0-9]/}
-  if [ ! -z "${isTest}" ] && [ -d "/home/$1/" ]; then
+  _isTest="$1"
+  _isTest=${_isTest//[^a-z0-9]/}
+  if [ ! -z "${_isTest}" ] && [ -d "/home/$1/" ]; then
     if [ -d "/home/$1/platforms/" ]; then
       chattr +i /home/$1/platforms/
       chattr +i /home/$1/platforms/* &> /dev/null
@@ -529,9 +529,9 @@ _disable_chattr() {
     _msg "PROC: _disable_chattr"
     _debug_proc
   fi
-  isTest="$1"
-  isTest=${isTest//[^a-z0-9]/}
-  if [ ! -z "${isTest}" ] && [ -d "/home/$1/" ]; then
+  _isTest="$1"
+  _isTest=${_isTest//[^a-z0-9]/}
+  if [ ! -z "${_isTest}" ] && [ -d "/home/$1/" ]; then
     if [ -d "/home/$1/platforms/" ]; then
       chattr -i /home/$1/platforms/
       chattr -i /home/$1/platforms/* &> /dev/null
@@ -1079,10 +1079,10 @@ _satellite_fix_cron_curl() {
       | cut -d: -f2 \
       | awk '{ print $3}' \
       | sed "s/[\,']//g" 2>&1)
-    pthA="profiles/hostmaster/modules/aegir/hosting/cron"
-    pthB="hosting_cron.module"
-    if [ -e "${_THIS_HM_ROOT}/${pthA}/${pthB}" ]; then
-      sed -i "s/127.0.0.1/${_CRON_IP}/g" ${_THIS_HM_ROOT}/${pthA}/${pthB}
+    _pthA="profiles/hostmaster/modules/aegir/hosting/cron"
+    _pthB="hosting_cron.module"
+    if [ -e "${_THIS_HM_ROOT}/${_pthA}/${_pthB}" ]; then
+      sed -i "s/127.0.0.1/${_CRON_IP}/g" ${_THIS_HM_ROOT}/${_pthA}/${_pthB}
     fi
   fi
 }
@@ -2142,30 +2142,30 @@ _satellite_hot_sauce_check() {
     _msg "PROC: _satellite_hot_sauce_check"
     _debug_proc
   fi
-  mNewC="Shared platforms code v.${_ALL_DISTRO} (new) will be created"
-  mLstC="Shared platforms code v.${_LAST_ALL} will be used"
+  _mNewC="Shared platforms code v.${_ALL_DISTRO} (new) will be created"
+  _mLstC="Shared platforms code v.${_LAST_ALL} will be used"
   if [ "${_HOT_SAUCE}" = "NO" ]; then
     _CORE="${_D}/${_LAST_ALL}"
     _THIS_CORE="${_LAST_ALL}"
     if [ "${_USE_CURRENT}" = "YES" ] \
       && [ -e "${_D}/000/core-v-${_SMALLCORE6_V}.txt" ] \
       && [ -e "${_D}/000/core-v-${_SMALLCORE7_V}.txt" ]; then
-      _msg "${_STATUS} A: ${mLstC}"
+      _msg "${_STATUS} A: ${_mLstC}"
     elif [ "${_USE_CURRENT}" = "NO" ] \
       || [ ! -e "${_D}/000/core-v-${_SMALLCORE6_V}.txt" ] \
       || [ ! -e "${_D}/000/core-v-${_SMALLCORE7_V}.txt" ]; then
       _CORE="${_D}/${_ALL_DISTRO}"
       _THIS_CORE="${_ALL_DISTRO}"
-      _msg "${_STATUS} A: ${mNewC}"
+      _msg "${_STATUS} A: ${_mNewC}"
       sed -i "s/^_USE_CURRENT=.*/_USE_CURRENT=NO/g" ${_vBs}/${_filIncO}
       wait
     else
-      _msg "${_STATUS} A: ${mLstC}"
+      _msg "${_STATUS} A: ${_mLstC}"
     fi
   else
     _CORE="${_D}/${_ALL_DISTRO}"
     _THIS_CORE="${_ALL_DISTRO}"
-    _msg "${_STATUS} A: ${mNewC}"
+    _msg "${_STATUS} A: ${_mNewC}"
   fi
 }
 
@@ -2201,10 +2201,10 @@ _satellite_prepare_child_scripts() {
   fi
   chmod 0711 ${_ROOT}
   cd ${_ROOT}
-  AegirSetupB="${_bldPth}/aegir/scripts/AegirSetupB.sh.txt"
-  AegirSetupC="${_bldPth}/aegir/scripts/AegirSetupC.sh.txt"
-  chown ${_USER}:${_USRG} ${AegirSetupB} &> /dev/null
-  chown ${_USER}:${_USRG} ${AegirSetupC} &> /dev/null
+  _AegirSetupB="${_bldPth}/aegir/scripts/AegirSetupB.sh.txt"
+  _AegirSetupC="${_bldPth}/aegir/scripts/AegirSetupC.sh.txt"
+  chown ${_USER}:${_USRG} ${_AegirSetupB} &> /dev/null
+  chown ${_USER}:${_USRG} ${_AegirSetupC} &> /dev/null
 }
 
 #
@@ -2265,12 +2265,12 @@ _provision_backend_dbpass_generate() {
         _ESC_PASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
       fi
     fi
-    isPythonTwo=$(which python2 2>&1)
-    isPythonThree=$(which python3 2>&1)
+    _isPythonTwo=$(which python2 2>&1)
+    _isPythonThree=$(which python3 2>&1)
     _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
-    if [ -x "${isPythonThree}" ]; then
+    if [ -x "${_isPythonThree}" ]; then
       _ENC_PASS=$(python3 -c "import urllib.parse; print(urllib.parse.quote('''${_ESC_PASS}'''))")
-    elif [ -x "${isPythonTwo}" ]; then
+    elif [ -x "${_isPythonTwo}" ]; then
       _ENC_PASS=$(python2 -c "import urllib; print urllib.quote('''${_ESC_PASS}''')")
     fi
     _LEN_PASS=$(echo ${#_ESC_PASS} 2>&1)
@@ -2654,22 +2654,22 @@ _satellite_run_pre_install() {
     fi
     _provision_backend_dbpass_generate
     echo "${_USER} ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
-    SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership lock-local-drush-permissions)
-    for SCRIPT in ${SCRIPTS[@]}; do
-      echo "${_USER} ALL=NOPASSWD: /usr/local/bin/${SCRIPT}.sh" >> /etc/sudoers.d/${SCRIPT}
-      chmod 0440 /etc/sudoers.d/${SCRIPT}
+    _SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership lock-local-drush-permissions)
+    for _SCRIPT in ${_SCRIPTS[@]}; do
+      echo "${_USER} ALL=NOPASSWD: /usr/local/bin/${_SCRIPT}.sh" >> /etc/sudoers.d/${_SCRIPT}
+      chmod 0440 /etc/sudoers.d/${_SCRIPT}
     done
   else
     _VAR_IF_PRESENT=$(grep "${_USER} ALL=NOPASSWD" /etc/sudoers 2>&1)
     if [[ ! "${_VAR_IF_PRESENT}" =~ "${_USER} ALL=NOPASSWD" ]]; then
       echo "${_USER} ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
     fi
-    SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership lock-local-drush-permissions)
-    for SCRIPT in ${SCRIPTS[@]}; do
-      _VAR_IF_PRESENT=$(grep "${_USER} ALL=NOPASSWD: /usr/local/bin/${SCRIPT}.sh" /etc/sudoers.d/${SCRIPT} 2>&1)
+    _SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership lock-local-drush-permissions)
+    for _SCRIPT in ${_SCRIPTS[@]}; do
+      _VAR_IF_PRESENT=$(grep "${_USER} ALL=NOPASSWD: /usr/local/bin/${_SCRIPT}.sh" /etc/sudoers.d/${_SCRIPT} 2>&1)
       if [[ ! "${_VAR_IF_PRESENT}" =~ "${_USER} ALL=NOPASSWD" ]]; then
-        echo "${_USER} ALL=NOPASSWD: /usr/local/bin/${SCRIPT}.sh" >> /etc/sudoers.d/${SCRIPT}
-        chmod 0440 /etc/sudoers.d/${SCRIPT}
+        echo "${_USER} ALL=NOPASSWD: /usr/local/bin/${_SCRIPT}.sh" >> /etc/sudoers.d/${_SCRIPT}
+        chmod 0440 /etc/sudoers.d/${_SCRIPT}
       fi
     done
     if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
@@ -2692,18 +2692,18 @@ _satellite_download_for_local_build() {
     _msg "PROC: _satellite_download_for_local_build"
     _debug_proc
   fi
-  mL="/opt/tmp/make_local"
-  if [ ! -e "${mL}/hosting/hosting.info" ] \
-    || [ ! -e "${mL}/hosting_custom_settings/hosting_custom_settings.info" ]; then
-    rm -rf ${mL}
-    mkdir -p ${mL}
-    cd ${mL}
+  _mL="/opt/tmp/make_local"
+  if [ ! -e "${_mL}/hosting/hosting.info" ] \
+    || [ ! -e "${_mL}/hosting_custom_settings/hosting_custom_settings.info" ]; then
+    rm -rf ${_mL}
+    mkdir -p ${_mL}
+    cd ${_mL}
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "${_STATUS} A: Downloading hostmaster modules..."
     fi
     ### Drupal Core
     _get_core_ext "${_DRUPAL7}.tar.gz"
-    mv -f ${mL}/${_DRUPAL7} ${mL}/drupal
+    mv -f ${_mL}/${_DRUPAL7} ${_mL}/drupal
     ### Aegir Core
       ${_gCb} 5.x-${_tRee} ${_gitHub}/hostmaster.git    &> /dev/null
       ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting.git       &> /dev/null
@@ -2742,9 +2742,9 @@ _satellite_download_for_local_build() {
     _get_dev_stc "strongarm-7.x-2.0.tar.gz"
     _get_dev_stc "userprotect-7.x-1.3.tar.gz"
   fi
-  find ${mL} -type d -exec chmod 0755 {} \; &> /dev/null
-  find ${mL} -type f -exec chmod 0644 {} \; &> /dev/null
-  chown -R root:root ${mL}
+  find ${_mL} -type d -exec chmod 0755 {} \; &> /dev/null
+  find ${_mL} -type f -exec chmod 0644 {} \; &> /dev/null
+  chown -R root:root ${_mL}
 }
 
 #
@@ -2763,7 +2763,7 @@ _satellite_run_child_b() {
     rm -f /opt/tmp/testecho*
     chown root:${_USRG} /data/u &> /dev/null
     chmod 0771 /data/u &> /dev/null
-    su -s /bin/bash - ${_USER} -c "/bin/bash ${AegirSetupB} ${_USER}"
+    su -s /bin/bash - ${_USER} -c "/bin/bash ${_AegirSetupB} ${_USER}"
     wait
     if [ -e "/opt/tmp/status-AegirSetupB-FAIL" ]; then
       _msg "${_STATUS} A: FATAL ERROR: AegirSetupB installer failed"
@@ -2819,7 +2819,7 @@ _satellite_run_child_b() {
       chmod -R 02775 ${_THIS_HM_SITE}/files
       chown root:${_USRG} /data/u &> /dev/null
       chmod 0771 /data/u &> /dev/null
-      su -s /bin/bash - ${_USER} -c "/bin/bash ${AegirSetupB} ${_USER}"
+      su -s /bin/bash - ${_USER} -c "/bin/bash ${_AegirSetupB} ${_USER}"
       wait
       if [ -e "/opt/tmp/status-AegirSetupB-FAIL" ]; then
         _msg "${_STATUS} A: FATAL ERROR: AegirSetupB installer failed"
@@ -2956,8 +2956,8 @@ _satellite_run_child_c() {
       _msg "${_STATUS} A: Switching user and running Platforms build"
     fi
     cd ${_ROOT}
-    AegirSetupC="${_bldPth}/aegir/scripts/AegirSetupC.sh.txt"
-    su -s /bin/bash - ${_USER} -c "/bin/bash ${AegirSetupC} ${_USER}"
+    _AegirSetupC="${_bldPth}/aegir/scripts/AegirSetupC.sh.txt"
+    su -s /bin/bash - ${_USER} -c "/bin/bash ${_AegirSetupC} ${_USER}"
     wait
     if [ -e "/opt/tmp/status-AegirSetupC-FAIL" ]; then
       _msg "${_STATUS} A: FATAL ERROR: AegirSetupC installer failed"
@@ -2983,8 +2983,8 @@ _satellite_run_child_c() {
           _msg "${_STATUS} A: Switching user and running Platforms build"
         fi
         cd ${_ROOT}
-        AegirSetupC="${_bldPth}/aegir/scripts/AegirSetupC.sh.txt"
-        su -s /bin/bash - ${_USER} -c "/bin/bash ${AegirSetupC} ${_USER}"
+        _AegirSetupC="${_bldPth}/aegir/scripts/AegirSetupC.sh.txt"
+        su -s /bin/bash - ${_USER} -c "/bin/bash ${_AegirSetupC} ${_USER}"
         wait
         if [ -e "/opt/tmp/status-AegirSetupC-FAIL" ]; then
           _msg "${_STATUS} A: FATAL ERROR: AegirSetupC installer failed"
@@ -4151,8 +4151,8 @@ _satellite_make() {
   chmod 700 ${_bldPth}/aegir/scripts/* &> /dev/null
 
   ###
-  AegirSetupA="${_bldPth}/aegir/scripts/AegirSetupA.sh.txt"
-  bash ${AegirSetupA} ${_USER}
+  _AegirSetupA="${_bldPth}/aegir/scripts/AegirSetupA.sh.txt"
+  bash ${_AegirSetupA} ${_USER}
   wait
   ###
 
@@ -4599,52 +4599,52 @@ _satellite_if_init_or_upgrade() {
         fi
       fi
       #
-      # Check for last distro nr
+      # Check for _last distro nr
       if [ -d "${_ROOT}/distro" ]; then
         cd ${_ROOT}/distro
-        list=([0-9]*)
-        last=${list[@]: -1}
-        _LASTNUM=$last
+        _list=([0-9]*)
+        _last=${_list[@]: -1}
+        _LASTNUM=$_last
         _BASH_TEST=$(bash --version 2>&1)
         if [[ "${_BASH_TEST}" =~ "version 5.1" ]] || [[ "${_BASH_TEST}" =~ "version 5.2" ]]; then
-          nextnum=00$((10#0${last%%[^0-9]*} + 1))
+          _nextnum=00$((10#0${_last%%[^0-9]*} + 1))
         else
-          nextnum=00$((10#${last%%[^0-9]*} + 1))
+          _nextnum=00$((10#${_last%%[^0-9]*} + 1))
         fi
-        nextnum=${nextnum: -3}
-        _DISTRO=${nextnum}
+        _nextnum=${_nextnum: -3}
+        _DISTRO=${_nextnum}
       fi
       #
-      # Check for last hm nr
+      # Check for _last hm nr
       if [ -d "${_ROOT}/aegir/distro" ]; then
         cd ${_ROOT}/aegir/distro
-        listx=([0-9]*)
-        lastx=${listx[@]: -1}
-        _LAST_HMR=$lastx
+        _listx=([0-9]*)
+        _lastx=${_listx[@]: -1}
+        _LAST_HMR=$_lastx
         _BASH_TEST=$(bash --version 2>&1)
         if [[ "${_BASH_TEST}" =~ "version 5.1" ]] || [[ "${_BASH_TEST}" =~ "version 5.2" ]]; then
-          nextnumx=00$((10#0${lastx%%[^0-9]*} + 1))
+          _nextnumx=00$((10#0${_lastx%%[^0-9]*} + 1))
         else
-          nextnumx=00$((10#${lastx%%[^0-9]*} + 1))
+          _nextnumx=00$((10#${_lastx%%[^0-9]*} + 1))
         fi
-        nextnumx=${nextnumx: -3}
-        _HM_DISTRO=${nextnumx}
+        _nextnumx=${_nextnumx: -3}
+        _HM_DISTRO=${_nextnumx}
       fi
       #
-      # Check for last all nr
+      # Check for _last all nr
       if [ -d "/data/all" ]; then
         cd /data/all
-        listl=([0-9]*)
-        lastl=${listl[@]: -1}
-        export _LAST_ALL=$lastl
+        _listl=([0-9]*)
+        _lastl=${_listl[@]: -1}
+        export _LAST_ALL=${_lastl}
         _BASH_TEST=$(bash --version 2>&1)
         if [[ "${_BASH_TEST}" =~ "version 5.1" ]] || [[ "${_BASH_TEST}" =~ "version 5.2" ]]; then
-          nextnuml=00$((10#0${lastl%%[^0-9]*} + 1))
+          _nextnuml=00$((10#0${_lastl%%[^0-9]*} + 1))
         else
-          nextnuml=00$((10#${lastl%%[^0-9]*} + 1))
+          _nextnuml=00$((10#${_lastl%%[^0-9]*} + 1))
         fi
-        nextnuml=${nextnuml: -3}
-        export _ALL_DISTRO=${nextnuml}
+        _nextnuml=${_nextnuml: -3}
+        export _ALL_DISTRO=${_nextnuml}
       fi
     #
     #
@@ -4660,17 +4660,17 @@ _satellite_if_init_or_upgrade() {
     # Check for last all nr
     if [ -d "/data/all" ]; then
       cd /data/all
-      listl=([0-9]*)
-      lastl=${listl[@]: -1}
-      export _LAST_ALL=$lastl
+      _listl=([0-9]*)
+      _lastl=${_listl[@]: -1}
+      export _LAST_ALL=${_lastl}
       _BASH_TEST=$(bash --version 2>&1)
       if [[ "${_BASH_TEST}" =~ "version 5.1" ]] || [[ "${_BASH_TEST}" =~ "version 5.2" ]]; then
-        nextnuml=00$((10#0${lastl%%[^0-9]*} + 1))
+        _nextnuml=00$((10#0${_lastl%%[^0-9]*} + 1))
       else
-        nextnuml=00$((10#${lastl%%[^0-9]*} + 1))
+        _nextnuml=00$((10#${_lastl%%[^0-9]*} + 1))
       fi
-      nextnuml=${nextnuml: -3}
-      export _ALL_DISTRO=${nextnuml}
+      _nextnuml=${_nextnuml: -3}
+      export _ALL_DISTRO=${_nextnuml}
     fi
   fi
 }
@@ -4768,8 +4768,8 @@ _satellite_checkpoint() {
     _msg "START -> checkpoint: "
   fi
   if [ "${_STATUS}" = "INIT" ]; then
-    modeDetect="installation"
-    optInf="${_CLIENT_OPTION} / ${_CLIENT_SUBSCR} / ${_CLIENT_CORES} C"
+    _modeDetect="installation"
+    _optInf="${_CLIENT_OPTION} / ${_CLIENT_SUBSCR} / ${_CLIENT_CORES} C"
     cat <<EOF
 
     * Your email address is ${_MY_EMAIL}
@@ -4780,13 +4780,13 @@ _satellite_checkpoint() {
     * This Octopus will use PHP-CLI ${_PHP_CLI_VERSION} for all sites
     * This Octopus will use PHP-FPM ${_PHP_FPM_VERSION} for all sites
     * This Octopus includes platforms: ${_PLATFORMS_LIST}
-    * This Octopus options are listed as ${optInf}
+    * This Octopus options are listed as ${_optInf}
 
 EOF
   else
-    modeDetect="upgrade"
+    _modeDetect="upgrade"
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      optInf="${_CLIENT_OPTION} / ${_CLIENT_SUBSCR} / ${_CLIENT_CORES} C"
+      _optInf="${_CLIENT_OPTION} / ${_CLIENT_SUBSCR} / ${_CLIENT_CORES} C"
       cat <<EOF
 
     * Your Aegir control panel for this instance is available at:
@@ -4795,13 +4795,13 @@ EOF
     * This Octopus will use PHP-CLI ${_PHP_CLI_VERSION} for all sites
     * This Octopus will use PHP-FPM ${_PHP_FPM_VERSION} for all sites
     * This Octopus includes platforms: ${_PLATFORMS_LIST}
-    * This Octopus options are listed as ${optInf}
+    * This Octopus options are listed as ${_optInf}
 
 EOF
     else
       echo " "
-      thiSys="$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)/$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1) $(uname -m 2>&1)"
-      _msg "This Octopus System is ${thiSys}"
+      _thiSys="$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)/$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1) $(uname -m 2>&1)"
+      _msg "This Octopus System is ${_thiSys}"
       _msg "This Octopus PHP FPM/CLI version is ${_PHP_FPM_VERSION}/${_PHP_CLI_VERSION}"
       _msg "This Octopus URL address is ${_DOMAIN}"
       echo " "
@@ -4860,36 +4860,36 @@ _satellite_letsencrypt_crt_key_copy() {
     _msg "PROC: _satellite_letsencrypt_crt_key_copy"
     _debug_proc
   fi
-  if [ -e "${leCrtPath}/fullchain.pem" ]; then
-    crtPath="${leCrtPath}/fullchain.pem"
-  elif [ -e "${leCrtPath}/cert.pem" ]; then
-    crtPath="${leCrtPath}/cert.pem"
+  if [ -e "${_leCrtPath}/fullchain.pem" ]; then
+    _crtPath="${_leCrtPath}/fullchain.pem"
+  elif [ -e "${_leCrtPath}/cert.pem" ]; then
+    _crtPath="${_leCrtPath}/cert.pem"
   fi
-  if [ -e "${crtPath}" ]; then
-    if [ -L "${crtPath}" ]; then
-      crtPathR=$(readlink -n ${crtPath} 2>&1)
-      crtPathR=$(echo -n ${crtPathR} | tr -d "\n" 2>&1)
-      if [ -f "${leCrtPath}/${crtPathR}" ]; then
+  if [ -e "${_crtPath}" ]; then
+    if [ -L "${_crtPath}" ]; then
+      _crtPathR=$(readlink -n ${_crtPath} 2>&1)
+      _crtPathR=$(echo -n ${_crtPathR} | tr -d "\n" 2>&1)
+      if [ -f "${_leCrtPath}/${_crtPathR}" ]; then
         rm -f /etc/ssl/private/${_DOMAIN}.crt
-        cp -a ${leCrtPath}/${crtPathR} /etc/ssl/private/${_DOMAIN}.crt
+        cp -a ${_leCrtPath}/${_crtPathR} /etc/ssl/private/${_DOMAIN}.crt
       fi
     else
       rm -f /etc/ssl/private/${_DOMAIN}.crt
-      cp -a ${crtPath} /etc/ssl/private/${_DOMAIN}.crt
+      cp -a ${_crtPath} /etc/ssl/private/${_DOMAIN}.crt
     fi
   fi
-  keyPath="${leCrtPath}/privkey.pem"
-  if [ -e "${keyPath}" ]; then
-    if [ -L "${keyPath}" ]; then
-      keyPathR=$(readlink -n ${keyPath} 2>&1)
-      keyPathR=$(echo -n ${keyPathR} | tr -d "\n" 2>&1)
-      if [ -f "${leCrtPath}/${keyPathR}" ]; then
+  _keyPath="${_leCrtPath}/privkey.pem"
+  if [ -e "${_keyPath}" ]; then
+    if [ -L "${_keyPath}" ]; then
+      _keyPathR=$(readlink -n ${_keyPath} 2>&1)
+      _keyPathR=$(echo -n ${_keyPathR} | tr -d "\n" 2>&1)
+      if [ -f "${_leCrtPath}/${_keyPathR}" ]; then
         rm -f /etc/ssl/private/${_DOMAIN}.key
-        cp -a ${leCrtPath}/${keyPathR} /etc/ssl/private/${_DOMAIN}.key
+        cp -a ${_leCrtPath}/${_keyPathR} /etc/ssl/private/${_DOMAIN}.key
       fi
     else
       rm -f /etc/ssl/private/${_DOMAIN}.key
-      cp -a ${keyPath} /etc/ssl/private/${_DOMAIN}.key
+      cp -a ${_keyPath} /etc/ssl/private/${_DOMAIN}.key
     fi
   fi
 }
@@ -4902,35 +4902,35 @@ _satellite_letsencrypt_vhost_sync() {
   [ -e "/root/.ssl.proxy.cnf" ] && rm -f /root/.ssl.proxy.cnf
   _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
   _PHP_CN="www${_PHP_SV}"
-  sed -i "s/127.0.0.1:9000;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" ${Ssl}
+  sed -i "s/127.0.0.1:9000;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" ${_Ssl}
   wait
-  if [ -e "${crtPath}" ]; then
-    crtPath=${crtPath//\//\\\/}
-    sed -i "s/ssl_certificate .*/ssl_certificate              ${crtPath};/g" ${Ssl}
+  if [ -e "${_crtPath}" ]; then
+    _crtPath=${_crtPath//\//\\\/}
+    sed -i "s/ssl_certificate .*/ssl_certificate              ${_crtPath};/g" ${_Ssl}
     wait
   fi
-  if [ -e "${keyPath}" ]; then
-    keyPath=${keyPath//\//\\\/}
-    sed -i "s/ssl_certificate_key .*/ssl_certificate_key          ${keyPath};/g" ${Ssl}
+  if [ -e "${_keyPath}" ]; then
+    _keyPath=${_keyPath//\//\\\/}
+    sed -i "s/ssl_certificate_key .*/ssl_certificate_key          ${_keyPath};/g" ${_Ssl}
     wait
   fi
-  dhpWildPath="/etc/ssl/private/nginx-wild-ssl.dhp"
+  _dhpWildPath="/etc/ssl/private/nginx-wild-ssl.dhp"
   if [ -e "/etc/ssl/private/4096.dhp" ]; then
-    dhpPath="/etc/ssl/private/4096.dhp"
-    _DIFF_T=$(diff -w -B ${dhpPath} ${dhpWildPath} 2>&1)
+    _dhpPath="/etc/ssl/private/4096.dhp"
+    _DIFF_T=$(diff -w -B ${_dhpPath} ${_dhpWildPath} 2>&1)
     if [ ! -z "${_DIFF_T}" ]; then
-      cp -af ${dhpPath} ${dhpWildPath}
+      cp -af ${_dhpPath} ${_dhpWildPath}
     fi
   elif [ -e "/etc/ssl/private/${_DOMAIN}.dhp" ]; then
-    dhpPath="/etc/ssl/private/${_DOMAIN}.dhp"
-  elif [ -e "${dhpWildPath}" ]; then
-    dhpPath="${dhpWildPath}"
+    _dhpPath="/etc/ssl/private/${_DOMAIN}.dhp"
+  elif [ -e "${_dhpWildPath}" ]; then
+    _dhpPath="${_dhpWildPath}"
   fi
-  if [ -e "${dhpPath}" ]; then
-    dhpPath=${dhpPath//\//\\\/}
-    sed -i "s/ssl_dhparam .*/ssl_dhparam                  ${dhpPath};/g" ${Ssl}
+  if [ -e "${_dhpPath}" ]; then
+    _dhpPath=${_dhpPath//\//\\\/}
+    sed -i "s/ssl_dhparam .*/ssl_dhparam                  ${_dhpPath};/g" ${_Ssl}
   else
-    sed -i "s/.*ssl_dhparam .*//g" ${Ssl}
+    sed -i "s/.*ssl_dhparam .*//g" ${_Ssl}
   fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "${_STATUS} A: Reloading Nginx..."
@@ -4945,18 +4945,18 @@ _satellite_letsencrypt_vhost_setup() {
     _msg "PROC: _satellite_letsencrypt_vhost_setup"
     _debug_proc
   fi
-  ifvHst="YES"
+  _ifvHst="YES"
   _leRoot="${_ROOT}/tools/le"
-  leKeyJ="${_leRoot}/tools/le/private_key.json"
-  leKeyP="${_leRoot}/tools/le/private_key.pem"
-  leCrtPath="${_leRoot}/certs/${_DOMAIN}"
+  _leKeyJ="${_leRoot}/tools/le/private_key.json"
+  _leKeyP="${_leRoot}/tools/le/private_key.pem"
+  _leCrtPath="${_leRoot}/certs/${_DOMAIN}"
   _exeLe="${_leRoot}/dehydrated"
-  Ssl="/var/aegir/config/server_master/nginx/pre.d/z_${_DOMAIN}_ssl_proxy.conf"
+  _Ssl="/var/aegir/config/server_master/nginx/pre.d/z_${_DOMAIN}_ssl_proxy.conf"
   if [ -e "${_leRoot}/.ctrl/ssl-demo-mode.pid" ] \
     && [ -e "${_leRoot}/config.sh" ]; then
-    if [ -e "${Ssl}" ]; then
-      rm -f ${Ssl}
-      ifvHst="NO"
+    if [ -e "${_Ssl}" ]; then
+      rm -f ${_Ssl}
+      _ifvHst="NO"
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "${_STATUS} A: Reloading Nginx..."
         service nginx reload
@@ -4965,19 +4965,19 @@ _satellite_letsencrypt_vhost_setup() {
       fi
     fi
   fi
-  if [ "${ifvHst}" = "YES" ]; then
-    if [ -e "${leCrtPath}/fullchain.pem" ] \
-      || [ -e "${leCrtPath}/cert.pem" ]; then
-      if [ -e "${Ssl}" ]; then
+  if [ "${_ifvHst}" = "YES" ]; then
+    if [ -e "${_leCrtPath}/fullchain.pem" ] \
+      || [ -e "${_leCrtPath}/cert.pem" ]; then
+      if [ -e "${_Ssl}" ]; then
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "${_STATUS} A: pre.d/z_${_DOMAIN}_ssl_proxy.conf exists, OK!"
         fi
         _satellite_letsencrypt_crt_key_copy
-        _HTTP3_TEST=$(grep http3 ${Ssl} 2>&1)
-        _SQLADMIN_TEST=$(grep sqladmin ${Ssl} 2>&1)
+        _HTTP3_TEST=$(grep http3 ${_Ssl} 2>&1)
+        _SQLADMIN_TEST=$(grep sqladmin ${_Ssl} 2>&1)
         _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
         _PHP_CN="www${_PHP_SV}"
-        _FPM_SOCKET_TEST=$(grep "unix:/var/run/${_PHP_CN}.fpm.socket" ${Ssl} 2>&1)
+        _FPM_SOCKET_TEST=$(grep "unix:/var/run/${_PHP_CN}.fpm.socket" ${_Ssl} 2>&1)
         if [[ ! "${_FPM_SOCKET_TEST}" =~ "fpm.socket" ]] \
           || [[ ! "${_HTTP3_TEST}" =~ "http3" ]] \
           || [[ ! "${_SQLADMIN_TEST}" =~ "sqladmin" ]]; then
@@ -4992,7 +4992,7 @@ _satellite_letsencrypt_vhost_setup() {
             _mrun "bash /opt/local/bin/xboa ssl-gen" &> /dev/null
             wait
           fi
-          if [ -e "${Ssl}" ]; then
+          if [ -e "${_Ssl}" ]; then
             _satellite_letsencrypt_vhost_sync
           else
             _msg "${_STATUS} A: pre.d/z_${_DOMAIN}_ssl_proxy.conf doesn't exist!"
@@ -5009,7 +5009,7 @@ _satellite_letsencrypt_vhost_setup() {
           _mrun "bash /opt/local/bin/xboa ssl-gen" &> /dev/null
           wait
         fi
-        if [ -e "${Ssl}" ]; then
+        if [ -e "${_Ssl}" ]; then
           _satellite_letsencrypt_vhost_sync
         else
           _msg "${_STATUS} A: pre.d/z_${_DOMAIN}_ssl_proxy.conf doesn't exist!"
@@ -5356,24 +5356,24 @@ _satellite_child_b_drush_xts_install() {
     rm -rf ${_ROOT}/.drush/{sys,xts,usr}
     rm -rf ${_ROOT}/.drush/{provision,drush_make}
     mkdir -p ${_ROOT}/.drush/{sys,xts,usr}
-    rD="${_ROOT}/.drush"
+    _rD="${_ROOT}/.drush"
     ${_gCb} ${_BRANCH_PRN} ${_gitHub}/provision.git \
-      ${rD}/sys/provision &> /dev/null
+      ${_rD}/sys/provision &> /dev/null
     ${_gCb} 7.x-1.x-dev ${_gitHub}/drupalgeddon.git \
-      ${rD}/usr/drupalgeddon &> /dev/null
+      ${_rD}/usr/drupalgeddon &> /dev/null
     ${_gCb} 7.x-1.x ${_gitHub}/drush_ecl.git \
-      ${rD}/usr/drush_ecl &> /dev/null
+      ${_rD}/usr/drush_ecl &> /dev/null
     ${_gCb} 7.x-1.x ${_gitHub}/security_review.git \
-      ${rD}/xts/security_review &> /dev/null
+      ${_rD}/xts/security_review &> /dev/null
     ${_gCb} 7.x-2.x ${_gitHub}/provision_boost.git \
-      ${rD}/xts/provision_boost &> /dev/null
+      ${_rD}/xts/provision_boost &> /dev/null
     ${_gCb} 7.x-2.x ${_gitHub}/registry_rebuild.git \
-      ${rD}/usr/registry_rebuild &> /dev/null
+      ${_rD}/usr/registry_rebuild &> /dev/null
     ${_gCb} 7.x-1.x ${_gitHub}/safe_cache_form_clear.git \
-      ${rD}/usr/safe_cache_form_clear &> /dev/null
-    rm -rf ${rD}/*/.git
-    rm -rf ${rD}/*/*/.git
-    cd ${rD}/usr
+      ${_rD}/usr/safe_cache_form_clear &> /dev/null
+    rm -rf ${_rD}/*/.git
+    rm -rf ${_rD}/*/*/.git
+    cd ${_rD}/usr
     _get_dev_ext "clean_missing_modules.tar.gz"
     _get_dev_ext "utf8mb4_convert-7.x-1.3.tar.gz"
   else
@@ -5429,8 +5429,8 @@ _satellite_child_b_aegir_build() {
   fi
   if [ "${_LOCAL_STATUS}" = "INIT" ]; then
     cd ${_ROOT}
-    _AGRPXSWD=$(cat ${_ROOT}/.${_USER}.pass.txt 2>&1)
-    _AGRPASWD=$(echo -n ${_AGRPXSWD} | tr -d "\n" 2>&1)
+    _AGR_PXSWD=$(cat ${_ROOT}/.${_USER}.pass.txt 2>&1)
+    _AGRPASWD=$(echo -n ${_AGR_PXSWD} | tr -d "\n" 2>&1)
     if [ "${_THIS_DB_HOST}" = "localhost" ] \
       || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
       || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
@@ -5577,17 +5577,17 @@ _satellite_child_b_aegir_build() {
       mv -f ${_PREV_HM_ROOT} \
         ${_ROOT}/backups/system/empty-host-master-${_LAST_HMR}-${_NOW}
       cd ${_ROOT}/aegir/distro
-      list=([0-9]*)
-      last=${list[@]: -1}
-      _L_LAST_HMR=$last
+      _list=([0-9]*)
+      _last=${_list[@]: -1}
+      _L_LAST_HMR=$_last
       _BASH_TEST=$(bash --version 2>&1)
       if [[ "${_BASH_TEST}" =~ "version 5.1" ]] || [[ "${_BASH_TEST}" =~ "version 5.2" ]]; then
-        nextnum=00$((10#0${last%%[^0-9]*} + 1))
+        _nextnum=00$((10#0${_last%%[^0-9]*} + 1))
       else
-        nextnum=00$((10#${last%%[^0-9]*} + 1))
+        _nextnum=00$((10#${_last%%[^0-9]*} + 1))
       fi
-      nextnum=${nextnum: -3}
-      _L_HM_DISTRO=${nextnum}
+      _nextnum=${_nextnum: -3}
+      _L_HM_DISTRO=${_nextnum}
       _HM_ROOT="${_ROOT}/aegir/distro/${_L_HM_DISTRO}"
       _PREV_HM_ROOT="${_ROOT}/aegir/distro/${_L_LAST_HMR}"
       _msg "${_STATUS} B: Testing previous install again after removing zombie..."
@@ -5598,17 +5598,17 @@ _satellite_child_b_aegir_build() {
         mv -f ${_PREV_HM_ROOT} \
           ${_ROOT}/backups/system/empty-host-master-${_L_HM_DISTRO}-${_NOW}-sec
         cd ${_ROOT}/aegir/distro
-        list=([0-9]*)
-        last=${list[@]: -1}
-        _L_LAST_HMR=$last
+        _list=([0-9]*)
+        _last=${_list[@]: -1}
+        _L_LAST_HMR=$_last
         _BASH_TEST=$(bash --version 2>&1)
         if [[ "${_BASH_TEST}" =~ "version 5.1" ]] || [[ "${_BASH_TEST}" =~ "version 5.2" ]]; then
-          nextnum=00$((10#0${last%%[^0-9]*} + 1))
+          _nextnum=00$((10#0${_last%%[^0-9]*} + 1))
         else
-          nextnum=00$((10#${last%%[^0-9]*} + 1))
+          _nextnum=00$((10#${_last%%[^0-9]*} + 1))
         fi
-        nextnum=${nextnum: -3}
-        _L_HM_DISTRO=${nextnum}
+        _nextnum=${_nextnum: -3}
+        _L_HM_DISTRO=${_nextnum}
         _HM_ROOT="${_ROOT}/aegir/distro/${_L_HM_DISTRO}"
         _PREV_HM_ROOT="${_ROOT}/aegir/distro/${_L_LAST_HMR}"
         _msg "${_STATUS} B: Let's hope there are no more zombies left..."
@@ -5634,12 +5634,12 @@ _satellite_child_b_aegir_build() {
     #
     # Fix broken Entity module if needed.
     #
-    pthA="profiles/hostmaster/modules/contrib/entity"
-    pthB="module_filter.module"
+    _pthA="profiles/hostmaster/modules/contrib/entity"
+    _pthB="module_filter.module"
     #
-    if [ -e "${_PREV_HM_ROOT}/${pthA}/${pthB}" ]; then
+    if [ -e "${_PREV_HM_ROOT}/${_pthA}/${_pthB}" ]; then
       _msg "${_STATUS} B: Fixing broken Entity module..."
-      rm -rf ${_PREV_HM_ROOT}/${pthA}
+      rm -rf ${_PREV_HM_ROOT}/${_pthA}
       cd ${_PREV_HM_ROOT}/profiles/hostmaster/modules/contrib
       _get_dev_stc "entity-7.x-1.11.tar.gz"
       ${_DRUSHCMD} @hostmaster en entity -y
@@ -5915,21 +5915,21 @@ _satellite_child_b_letsencrypt() {
     _msg "PROC: _satellite_child_b_letsencrypt"
     _debug_proc
   fi
-  leParams="--cron --ipv4"
+  _leParams="--cron --ipv4"
   _leRoot="${_ROOT}/tools/le"
-  leKeyJ="${_leRoot}/tools/le/private_key.json"
-  leKeyP="${_leRoot}/tools/le/private_key.pem"
-  leCrtPath="${_leRoot}/certs/${_DOMAIN}"
+  _leKeyJ="${_leRoot}/tools/le/private_key.json"
+  _leKeyP="${_leRoot}/tools/le/private_key.pem"
+  _leCrtPath="${_leRoot}/certs/${_DOMAIN}"
   _exeLe="${_leRoot}/dehydrated"
-  pthLe="${_ROOT}/backups/system/dehydrated"
+  _pthLe="${_ROOT}/backups/system/dehydrated"
   mkdir -p ${_ROOT}/backups/system
   chmod 700 ${_ROOT}/backups/system
   rm -f ${_ROOT}/backups/system/letsencrypt*
-  curl ${_crlGet} "${_urlHmr}/helpers/dehydrated" -o ${pthLe}
+  curl ${_crlGet} "${_urlHmr}/helpers/dehydrated" -o ${_pthLe}
   if [ ! -e "${_leRoot}" ]; then
-    leSetup="YES"
+    _leSetup="YES"
   fi
-  if [ -e "${pthLe}" ]; then
+  if [ -e "${_pthLe}" ]; then
     mkdir -p ${_leRoot}/.ctrl
     chmod 0711 ${_leRoot}/.ctrl
     mkdir -p ${_leRoot}/.acme-challenges
@@ -5937,20 +5937,20 @@ _satellite_child_b_letsencrypt() {
     mkdir -p ${_leRoot}/certs
     chmod 0700 ${_leRoot}/certs
     chmod 0711 ${_leRoot}
-    cp -af ${pthLe} ${_exeLe}
+    cp -af ${_pthLe} ${_exeLe}
     if [ -e "${_exeLe}" ]; then
       chmod 0700 ${_exeLe}
       if [ "${_STATUS}" = "INIT" ] \
-        || [ "${leSetup}" = "YES" ] \
+        || [ "${_leSetup}" = "YES" ] \
         || [ -e "${_leRoot}/.ctrl/ssl-demo-mode.pid" ]; then
         touch ${_leRoot}/.ctrl/ssl-demo-mode.pid
         echo -e 'CA="https://acme-staging-v02.api.letsencrypt.org/directory"\n' > ${_leRoot}/config.sh
         cp -af ${_leRoot}/config.sh ${_leRoot}/config
-        if [ -e "${leKeyJ}" ]; then
-          mv -f ${leKeyJ} "${leKeyJ}-prev"
+        if [ -e "${_leKeyJ}" ]; then
+          mv -f ${_leKeyJ} "${_leKeyJ}-prev"
         fi
-        if [ -e "${leKeyP}" ]; then
-          mv -f ${leKeyP} "${leKeyP}-prev"
+        if [ -e "${_leKeyP}" ]; then
+          mv -f ${_leKeyP} "${_leKeyP}-prev"
         fi
         echo ""
         _msg "${_STATUS} B: Letsencrypt SSL mode: LIVE after auto-upgrade"
@@ -5969,17 +5969,17 @@ _satellite_child_b_letsencrypt() {
     && [ -e "${_leRoot}/config.sh" ]; then
     rm -f ${_leRoot}/config.sh
     rm -f ${_leRoot}/config
-    if [ -e "${leKeyJ}" ]; then
-      mv -f ${leKeyJ} "${leKeyJ}-prev"
+    if [ -e "${_leKeyJ}" ]; then
+      mv -f ${_leKeyJ} "${_leKeyJ}-prev"
     fi
-    if [ -e "${leKeyP}" ]; then
-      mv -f ${leKeyP} "${leKeyP}-prev"
+    if [ -e "${_leKeyP}" ]; then
+      mv -f ${_leKeyP} "${_leKeyP}-prev"
     fi
   fi
   if [ -x "${_exeLe}" ] \
     && [ ! -e "${_leRoot}/.ctrl/ssl-demo-mode.pid" ] \
     && [ ! -e "${_leRoot}/config.sh" ]; then
-    if [ -e "${leCrtPath}/fullchain.pem" ]; then
+    if [ -e "${_leCrtPath}/fullchain.pem" ]; then
       _msg "${_STATUS} B: Updating Letsencrypt cert for Hostmaster..."
     else
       _msg "${_STATUS} B: Creating Letsencrypt cert for Hostmaster..."
@@ -5992,13 +5992,13 @@ _satellite_child_b_letsencrypt() {
         wait
         bash ${_exeLe} --register --accept-terms
         wait
-        bash ${_exeLe} ${leParams} --domain ${_DOMAIN} --force
+        bash ${_exeLe} ${_leParams} --domain ${_DOMAIN} --force
         wait
         touch ${_leRoot}/.ctrl/forced-${_DOMAIN}-mode.pid
       else
         bash ${_exeLe} --register --accept-terms
         wait
-        bash ${_exeLe} ${leParams} --domain ${_DOMAIN}
+        bash ${_exeLe} ${_leParams} --domain ${_DOMAIN}
         wait
       fi
     else
@@ -6009,19 +6009,19 @@ _satellite_child_b_letsencrypt() {
         wait
         bash ${_exeLe} --register --accept-terms >>${_ROOT}/log/letsencrypt-${_NOW}.log 2>&1
         wait
-        bash ${_exeLe} ${leParams} --domain ${_DOMAIN} --force >>${_ROOT}/log/letsencrypt-${_NOW}.log 2>&1
+        bash ${_exeLe} ${_leParams} --domain ${_DOMAIN} --force >>${_ROOT}/log/letsencrypt-${_NOW}.log 2>&1
         wait
         touch ${_leRoot}/.ctrl/forced-${_DOMAIN}-mode.pid
       else
         bash ${_exeLe} --register --accept-terms >>${_ROOT}/log/letsencrypt-${_NOW}.log 2>&1
         wait
-        bash ${_exeLe} ${leParams} --domain ${_DOMAIN} >>${_ROOT}/log/letsencrypt-${_NOW}.log 2>&1
+        bash ${_exeLe} ${_leParams} --domain ${_DOMAIN} >>${_ROOT}/log/letsencrypt-${_NOW}.log 2>&1
         wait
       fi
     fi
   else
-    if [ -e "${leCrtPath}/fullchain.pem" ]; then
-      rm -rf ${leCrtPath}
+    if [ -e "${_leCrtPath}/fullchain.pem" ]; then
+      rm -rf ${_leCrtPath}
     fi
   fi
 }

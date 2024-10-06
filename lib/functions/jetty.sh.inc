@@ -29,10 +29,10 @@ _if_install_solr_jetty() {
     || [ "${_hostedSys}" = "YES" ]; then
     if [ ! -d "${_SOLR_VPATH}" ]; then
       echo " "
-      tPrmt="Do you want to install MultiCore Apache Solr ${_R_SOLR}"
-      tPrmt="${tPrmt} with Jetty ${_R_JETTY}"
-      tPrmt=$(echo -n ${tPrmt} | fmt -su -w 2500 2>&1)
-      if _prompt_yes_no "${tPrmt}?" ; then
+      _tPrmt="Do you want to install MultiCore Apache Solr ${_R_SOLR}"
+      _tPrmt="${_tPrmt} with Jetty ${_R_JETTY}"
+      _tPrmt=$(echo -n ${_tPrmt} | fmt -su -w 2500 2>&1)
+      if _prompt_yes_no "${_tPrmt}?" ; then
         true
         _msg "INFO: Installing MultiCore Apache Solr ${_R_SOLR}..."
         cd /var/opt
@@ -120,10 +120,10 @@ _if_install_solr_jetty() {
     if [ ! -d "/opt/solr4" ]; then
       _R_JETTY=9
       echo " "
-      tPrmt="Do you want to install MultiCore Apache Solr"
-      tPrmt="${tPrmt} with Jetty ${_R_JETTY}"
-      tPrmt=$(echo -n ${tPrmt} | fmt -su -w 2500 2>&1)
-      if _prompt_yes_no "${tPrmt}?" ; then
+      _tPrmt="Do you want to install MultiCore Apache Solr"
+      _tPrmt="${_tPrmt} with Jetty ${_R_JETTY}"
+      _tPrmt=$(echo -n ${_tPrmt} | fmt -su -w 2500 2>&1)
+      if _prompt_yes_no "${_tPrmt}?" ; then
         true
         _msg "INFO: Installing MultiCore Apache Solr with Jetty ${_R_JETTY}..."
         cd /var/opt
@@ -158,22 +158,22 @@ _if_install_solr_jetty() {
             wget -q -U iCab ${_urlDev}/tika-app-${e}.jar
           done
         fi
-        for Dir in `find /opt/solr4/core{0,1,2,3,4,5,6,7,8,9}/ \
+        for _Dir in `find /opt/solr4/core{0,1,2,3,4,5,6,7,8,9}/ \
           -maxdepth 1 -mindepth 1 -type d | grep conf`; do
           if [[ "${_Dir}" =~ "/opt/solr4/core" ]]; then
-            rm -rf $Dir/*
+            rm -rf ${_Dir}/*
           fi
           cp -af /var/opt/solr-${_SOLR_4_VRN}/example/solr/collection1/conf/* \
-            $Dir/ &> /dev/null
+            ${_Dir}/ &> /dev/null
         done
         adduser --system --group --home /opt/solr4 jetty9 &> /dev/null
         if [ ! -e "/opt/solr4/search_api_solr-7.x-1.15.log" ]; then
           cd /var/opt
           rm -rf search_api_solr*
           _get_dev_contrib "search_api_solr-7.x-1.15.tar.gz"
-          for Dir in `find /opt/solr4/core{0,1,2,3,4,5,6,7,8,9}/ \
+          for _Dir in `find /opt/solr4/core{0,1,2,3,4,5,6,7,8,9}/ \
             -maxdepth 1 -mindepth 1 -type d | grep conf`; do
-            cp -af /var/opt/search_api_solr/solr-conf/4.x/* $Dir/ &> /dev/null
+            cp -af /var/opt/search_api_solr/solr-conf/4.x/* ${_Dir}/ &> /dev/null
           done
           sed -i "s/8983/8099/g" \
             /opt/solr4/core{0,1,2,3,4,5,6,7,8,9}/conf/solrcore.properties &> /dev/null
@@ -182,12 +182,12 @@ _if_install_solr_jetty() {
         cp -af ${_bldPth}/docs/SOLR.txt /opt/solr4/README.txt &> /dev/null
         cd /var/opt
         _get_dev_arch "slf4j-${_SLF4J_VRN}.tar.gz"
-        slf4jPth="/var/opt/slf4j-${_SLF4J_VRN}"
+        _slf4jPth="/var/opt/slf4j-${_SLF4J_VRN}"
         rm -rf /opt/jetty9/lib/ext/*
-        cp -af ${slf4jPth}/jcl-over-slf4j*.jar /opt/jetty9/lib/ext/
-        cp -af ${slf4jPth}/jul-to-slf4j*.jar   /opt/jetty9/lib/ext/
-        cp -af ${slf4jPth}/slf4j-api*.jar      /opt/jetty9/lib/ext/
-        cp -af ${slf4jPth}/slf4j-log4j12*.jar  /opt/jetty9/lib/ext/
+        cp -af ${_slf4jPth}/jcl-over-slf4j*.jar /opt/jetty9/lib/ext/
+        cp -af ${_slf4jPth}/jul-to-slf4j*.jar   /opt/jetty9/lib/ext/
+        cp -af ${_slf4jPth}/slf4j-api*.jar      /opt/jetty9/lib/ext/
+        cp -af ${_slf4jPth}/slf4j-log4j12*.jar  /opt/jetty9/lib/ext/
         _get_dev_arch "log4j-${_LOGJ4_VRN}.tar.gz"
         cp -af /var/opt/log4j-${_LOGJ4_VRN}/*.jar /opt/jetty9/lib/ext/
         rm -f /opt/jetty9/lib/ext/*sources.jar
@@ -307,12 +307,12 @@ _if_install_solr_jetty() {
       done
       cd /var/opt
       _get_dev_arch "slf4j-${_SLF4J_VRN}.tar.gz"
-      slf4jPth="/var/opt/slf4j-${_SLF4J_VRN}"
+      _slf4jPth="/var/opt/slf4j-${_SLF4J_VRN}"
       rm -rf /opt/jetty9/lib/ext/*
-      cp -af ${slf4jPth}/jcl-over-slf4j*.jar /opt/jetty9/lib/ext/
-      cp -af ${slf4jPth}/jul-to-slf4j*.jar   /opt/jetty9/lib/ext/
-      cp -af ${slf4jPth}/slf4j-api*.jar      /opt/jetty9/lib/ext/
-      cp -af ${slf4jPth}/slf4j-log4j12*.jar  /opt/jetty9/lib/ext/
+      cp -af ${_slf4jPth}/jcl-over-slf4j*.jar /opt/jetty9/lib/ext/
+      cp -af ${_slf4jPth}/jul-to-slf4j*.jar   /opt/jetty9/lib/ext/
+      cp -af ${_slf4jPth}/slf4j-api*.jar      /opt/jetty9/lib/ext/
+      cp -af ${_slf4jPth}/slf4j-log4j12*.jar  /opt/jetty9/lib/ext/
       _get_dev_arch "log4j-${_LOGJ4_VRN}.tar.gz"
       cp -af /var/opt/log4j-${_LOGJ4_VRN}/*.jar /opt/jetty9/lib/ext/
       rm -f /opt/jetty9/lib/ext/*sources.jar
@@ -329,10 +329,10 @@ _if_install_solr_jetty() {
   if [[ "${_XTRAS_LIST}" =~ "SR3" ]]; then
     if [ ! -d "/opt/solr3" ]; then
       echo " "
-      tPrmt="Do you want to install MultiCore Apache Solr 3"
-      tPrmt="${tPrmt} with Jetty 8"
-      tPrmt=$(echo -n ${tPrmt} | fmt -su -w 2500 2>&1)
-      if _prompt_yes_no "${tPrmt}?" ; then
+      _tPrmt="Do you want to install MultiCore Apache Solr 3"
+      _tPrmt="${_tPrmt} with Jetty 8"
+      _tPrmt=$(echo -n ${_tPrmt} | fmt -su -w 2500 2>&1)
+      if _prompt_yes_no "${_tPrmt}?" ; then
         true
         _msg "INFO: Installing MultiCore Apache Solr 3 with Jetty 8..."
         cd /var/opt
@@ -365,22 +365,22 @@ _if_install_solr_jetty() {
             wget -q -U iCab ${_urlDev}/tika-app-${e}.jar
           done
         fi
-        for Dir in `find /opt/solr3/core{0,1,2,3,4,5,6,7,8,9}/ \
+        for _Dir in `find /opt/solr3/core{0,1,2,3,4,5,6,7,8,9}/ \
           -maxdepth 1 -mindepth 1 -type d | grep conf`; do
           if [[ "${_Dir}" =~ "/opt/solr3/core" ]]; then
-            rm -rf $Dir/*
+            rm -rf ${_Dir}/*
           fi
           cp -af /var/opt/apache-solr-${_SOLR_3_VRN}/example/solr/conf/* \
-            $Dir/ &> /dev/null
+            ${_Dir}/ &> /dev/null
         done
         adduser --system --group --home /opt/solr3 jetty8 &> /dev/null
         if [ ! -e "/opt/solr3/search_api_solr-7.x-1.15.log" ]; then
           cd /var/opt
           rm -rf search_api_solr*
           _get_dev_contrib "search_api_solr-7.x-1.15.tar.gz"
-          for Dir in `find /opt/solr3/core{0,1,2,3,4,5,6,7,8,9}/ \
+          for _Dir in `find /opt/solr3/core{0,1,2,3,4,5,6,7,8,9}/ \
             -maxdepth 1 -mindepth 1 -type d | grep conf`; do
-            cp -af /var/opt/search_api_solr/solr-conf/3.x/* $Dir/ &> /dev/null
+            cp -af /var/opt/search_api_solr/solr-conf/3.x/* ${_Dir}/ &> /dev/null
           done
           sed -i "s/8983/8088/g" \
             /opt/solr3/core{0,1,2,3,4,5,6,7,8,9}/conf/solrcore.properties &> /dev/null
@@ -458,10 +458,10 @@ _if_install_solr_jetty() {
   if [[ "${_XTRAS_LIST}" =~ "SR1" ]] || [ "${_TOMCAT_TO_JETTY}" = "YES" ]; then
     if [ ! -d "/opt/solr1" ]; then
       echo " "
-      tPrmt="Do you want to install MultiCore Apache Solr 1"
-      tPrmt="${tPrmt} with Jetty 7"
-      tPrmt=$(echo -n ${tPrmt} | fmt -su -w 2500 2>&1)
-      if _prompt_yes_no "${tPrmt}?" ; then
+      _tPrmt="Do you want to install MultiCore Apache Solr 1"
+      _tPrmt="${_tPrmt} with Jetty 7"
+      _tPrmt=$(echo -n ${_tPrmt} | fmt -su -w 2500 2>&1)
+      if _prompt_yes_no "${_tPrmt}?" ; then
         true
         _msg "INFO: Installing MultiCore Apache Solr 1 with Jetty 7..."
         cd /var/opt
@@ -494,23 +494,23 @@ _if_install_solr_jetty() {
             wget -q -U iCab ${_urlDev}/tika-app-${e}.jar
           done
         fi
-        for Dir in `find /opt/solr1/core{0,1,2,3,4,5,6,7,8,9}/ \
+        for _Dir in `find /opt/solr1/core{0,1,2,3,4,5,6,7,8,9}/ \
           -maxdepth 1 -mindepth 1 -type d | grep conf`; do
           if [[ "${_Dir}" =~ "/opt/solr1/core" ]]; then
-            rm -rf $Dir/*
+            rm -rf ${_Dir}/*
           fi
           cp -af /var/opt/apache-solr-${_SOLR_1_VRN}/example/solr/conf/* \
-          $Dir/ &> /dev/null
+          ${_Dir}/ &> /dev/null
         done
         adduser --system --group --home /opt/solr1 jetty7 &> /dev/null
         if [ ! -e "/opt/solr1/search_api_solr-7.x-1.15.log" ]; then
           cd /var/opt
           rm -rf search_api_solr*
           _get_dev_contrib "search_api_solr-7.x-1.15.tar.gz"
-          for Dir in `find /opt/solr1/core{0,1,2,3,4,5,6,7,8,9}/ \
+          for _Dir in `find /opt/solr1/core{0,1,2,3,4,5,6,7,8,9}/ \
             -maxdepth 1 -mindepth 1 -type d | grep conf`; do
             cp -af /var/opt/search_api_solr/solr-conf/1.4/* \
-              $Dir/ &> /dev/null
+              ${_Dir}/ &> /dev/null
           done
           sed -i "s/8983/8077/g" \
             /opt/solr1/core{0,1,2,3,4,5,6,7,8,9}/conf/solrcore.properties &> /dev/null

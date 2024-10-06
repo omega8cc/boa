@@ -141,8 +141,8 @@ _fix_dns_settings() {
   rm -f ${_vBs}/resolv.conf.tmp
   if [ -e "/etc/resolv.conf" ]; then
     if [ -L "/etc/resolv.conf" ]; then
-      rslvT=`readlink -n /etc/resolv.conf`
-      if [ ! -e "${rslvT}" ]; then
+      _rslvT=`readlink -n /etc/resolv.conf`
+      if [ ! -e "${_rslvT}" ]; then
         rm -f /etc/resolv.conf
       fi
     fi
@@ -205,8 +205,8 @@ _check_dns_settings() {
 }
 
 _find_fast_mirror_early() {
-  isNetc=$(which netcat 2>&1)
-  if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
+  _isNetc=$(which netcat 2>&1)
+  if [ ! -x "${_isNetc}" ] || [ -z "${_isNetc}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
@@ -302,8 +302,8 @@ _if_clean_boa_env() {
 }
 
 _locales_check_fix_early() {
-  isLoc=$(which locale 2>&1)
-  if [ ! -x "${isLoc}" ] || [ -z "${isLoc}" ]; then
+  _isLoc=$(which locale 2>&1)
+  if [ ! -x "${_isLoc}" ] || [ -z "${_isLoc}" ]; then
     _INITINS="/usr/bin/apt-get -y --allow-unauthenticated install"
     apt-get update -qq &> /dev/null
     ${_INITINS} locales locales-all &> /dev/null
@@ -455,14 +455,14 @@ _update_agents() {
     && [ -d "/data/u" ] \
     && [ -e "/var/xdrago" ]; then
     [ ! -e "/root/.fast.cron.cnf" ] && echo ON > /root/.fast.cron.cnf
-    PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
+    _PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
     _PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
     _PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
     InTest=$(ls /data/disk/*/static/control/cli.info | wc -l 2>&1)
     _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
     _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
     if [ "${InTest}" -lt "9" ] \
-      && [[ ! "${PrTestPower}" =~ "POWER" ]] \
+      && [[ ! "${_PrTestPower}" =~ "POWER" ]] \
       && [[ ! "${_PrTestPhantom}" =~ "PHANTOM" ]] \
       && [[ ! "${_PrTestCluster}" =~ "CLUSTER" ]]; then
       [ ! -e "/root/.fast.cron.cnf" ] && echo ${InTest} > /root/.fast.cron.cnf
@@ -494,7 +494,7 @@ _update_agents() {
       mysql -u root -e "SET GLOBAL max_user_connections = 80;"
       mysql -u root -e "SET GLOBAL group_concat_max_len = 10000;"
     fi
-    if [[ "${PrTestPower}" =~ "POWER" ]]; then
+    if [[ "${_PrTestPower}" =~ "POWER" ]]; then
       [ ! -e "/root/.tg.cnf" ] && echo ${InTest} > /root/.tg.cnf
       [ ! -e "/root/.fast.cron.cnf" ] && echo ${InTest} > /root/.fast.cron.cnf
       [ -e "/root/.hr.monitor.cnf" ] && rm -f /root/.hr.monitor.cnf
@@ -1352,7 +1352,7 @@ _update_agents() {
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -d "/data/u" ] \
     && [ ! -e "${_pthLog}/fpm-cli.ctrl.${_tRee}.${_xSrl}.pid" ]; then
-    usrGroup=users
+    _usrGroup=users
     [ -e "/var/backups/off-run/" ] && cp -a /var/backups/off-run/run* /var/xdrago/ &> /dev/null
     for _pthSysUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
       _tUsr=
@@ -1386,21 +1386,21 @@ _update_agents() {
           fi
         else
           _dscUsr="/data/disk/${_tUsr}"
-          ngxCnf="${_dscUsr}/config/includes/nginx_vhost_common.conf"
-          _NGINX_CNF_TEST=$(grep "foobaroff" ${ngxCnf} 2>&1)
+          _ngxCnf="${_dscUsr}/config/includes/nginx_vhost_common.conf"
+          _NGINX_CNF_TEST=$(grep "foobaroff" ${_ngxCnf} 2>&1)
           if [[ "${_NGINX_CNF_TEST}" =~ "foobaroff" ]]; then
             _DO_NOTHING=YES
           else
-            sed -i "s/args.*q=/args ~* \"foobaroff=/g" ${ngxCnf}
+            sed -i "s/args.*q=/args ~* \"foobaroff=/g" ${_ngxCnf}
           fi
-          for version in 81 82 83 74; do
-            if [ -x "/opt/php${version}/bin/php" ]; then
-              if [ "${version}" = "74" ]; then
+          for _version in 81 82 83 74; do
+            if [ -x "/opt/php${_version}/bin/php" ]; then
+              if [ "${_version}" = "74" ]; then
                 _useCli="7.4"
                 _useFpm="7.4"
               else
-                _useCli="8.${version:1}"
-                _useFpm="8.${version:1}"
+                _useCli="8.${_version:1}"
+                _useFpm="8.${_version:1}"
               fi
               break
             fi
@@ -1409,7 +1409,7 @@ _update_agents() {
             && [ -e "/var/aegir/drush" ]; then
             if [ -n "${_useFpm}" ]; then
               echo ${_useFpm} > ${_dscUsr}/static/control/fpm.info
-              chown ${_tUsr}.ftp:${usrGroup} ${_dscUsr}/static/control/fpm.info
+              chown ${_tUsr}.ftp:${_usrGroup} ${_dscUsr}/static/control/fpm.info
               chmod 0644 ${_dscUsr}/static/control/fpm.info
             fi
           fi
@@ -1420,7 +1420,7 @@ _update_agents() {
             else
               if [ -n "${_useCli}" ]; then
                 echo ${_useCli} > ${_dscUsr}/static/control/cli.info
-                chown ${_tUsr}.ftp:${usrGroup} ${_dscUsr}/static/control/cli.info
+                chown ${_tUsr}.ftp:${_usrGroup} ${_dscUsr}/static/control/cli.info
                 chmod 0644 ${_dscUsr}/static/control/cli.info
               fi
             fi
@@ -1434,7 +1434,7 @@ _update_agents() {
                 ${_dscUsr}/static/control/README.txt &> /dev/null
               chmod 0644 ${_dscUsr}/static/control/README.txt
             fi
-            chown -R ${_tUsr}.ftp:${usrGroup} ${_dscUsr}/static/control
+            chown -R ${_tUsr}.ftp:${_usrGroup} ${_dscUsr}/static/control
             rm -f ${_dscUsr}/static/control/.ctrl.*
             echo OK > ${_dscUsr}/static/control/.ctrl.${_tRee}.${_xSrl}.pid
           fi
@@ -2598,14 +2598,14 @@ _force_rebuild() {
 #
 # Detect, remove, and report broken symlinks
 _check_and_remove_broken_symlinks() {
-  local dir=$1
+  local _dir=$1
 
   # Find broken symlinks in the directory
-  _broken_symlinks=$(find "${dir}" -maxdepth 1 -type l ! -exec test -e {} \; -print)
+  _broken_symlinks=$(find "${_dir}" -maxdepth 1 -type l ! -exec test -e {} \; -print)
 
   if [ -n "${_broken_symlinks}" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      echo "CLNP: Removing the following broken symlinks from ${dir}:"
+      echo "CLNP: Removing the following broken symlinks from ${_dir}:"
       echo "CLNP: ${_broken_symlinks}"
     fi
 
@@ -2620,7 +2620,7 @@ _check_and_remove_broken_symlinks() {
     _ifAnySymlinksCleaned=YES
   else
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      echo "CLNP: No broken symlinks found in ${dir}"
+      echo "CLNP: No broken symlinks found in ${_dir}"
     fi
   fi
 }
@@ -2628,17 +2628,17 @@ _check_and_remove_broken_symlinks() {
 #
 # Check and move disallowed versions
 _check_and_move() {
-  local dir=$1
+  local _dir=$1
 
   # Determine the name of the backup subdirectory based on the source directory
-  local _backup_dir="${backLegBase}$(echo "${dir}" | tr '/' '_')"
+  local _backup_dir="${_backLegBase}$(echo "${_dir}" | tr '/' '_')"
 
   # Find any libcurl.so files in the directory, excluding the allowed version and those without a complete version number
-  _found_versions=$(find "${dir}" -maxdepth 1 -type f -name "libcurl.so.*" ! -name "${allowedFile}" | grep -E "libcurl\.so\.[0-9]+\.[0-9]+\.[0-9]+$")
+  _found_versions=$(find "${_dir}" -maxdepth 1 -type f -name "libcurl.so.*" ! -name "${_allowedFile}" | grep -E "libcurl\.so\.[0-9]+\.[0-9]+\.[0-9]+$")
 
   if [ -n "${_found_versions}" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      echo "CLNP: Moving the following disallowed versions from ${dir} to ${_backup_dir}:"
+      echo "CLNP: Moving the following disallowed versions from ${_dir} to ${_backup_dir}:"
       echo "CLNP: ${_found_versions}"
     fi
 
@@ -2646,18 +2646,18 @@ _check_and_move() {
     mkdir -p "${_backup_dir}"
 
     # Move each found version to the backup directory
-    for file in ${_found_versions}; do
-      mv -f "${file}" "${_backup_dir}/"
+    for _file in ${_found_versions}; do
+      mv -f "${_file}" "${_backup_dir}/"
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        echo "CLNP: Moved ${file} to ${_backup_dir}/"
+        echo "CLNP: Moved ${_file} to ${_backup_dir}/"
       fi
     done
 
-    # Set the ifAnyFilesCleaned variable to true since we moved files
-    ifAnyFilesCleaned=YES
+    # Set the _ifAnyFilesCleaned variable to true since we moved files
+    _ifAnyFilesCleaned=YES
   else
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      echo "CLNP: Only the allowed version (${allowedFile}) is present in ${dir}"
+      echo "CLNP: Only the allowed version (${_allowedFile}) is present in ${_dir}"
     fi
   fi
 }
@@ -2679,32 +2679,32 @@ _if_reinstall_curl() {
     && [ "${_OS_CODE}" != "stretch" ]; then
 
     # Target version
-    allowedFile="libcurl.so.4.8.0"
+    _allowedFile="libcurl.so.4.8.0"
 
     # Directories to check
-    dirsToClean=("/usr/lib" "/usr/local/lib" "/usr/lib/x86_64-linux-gnu")
+    _dirsToClean=("/usr/lib" "/usr/local/lib" "/usr/lib/x86_64-linux-gnu")
 
     # Backup base directory
-    backLegBase="/var/backups/legacy-libcurl-boa-${_NOW}"
+    _backLegBase="/var/backups/legacy-libcurl-boa-${_NOW}"
 
     # Variable to track if any files were moved
-    ifAnyFilesCleaned=NO
+    _ifAnyFilesCleaned=NO
 
     # Variable to track if any broken symlinks were found and removed
     _ifAnySymlinksCleaned=NO
 
     # Iterate over the directories and apply the _check_and_move function
-    for dir in "${dirsToClean[@]}"; do
-      _check_and_move "${dir}"
+    for _dir in "${_dirsToClean[@]}"; do
+      _check_and_move "${_dir}"
     done
 
     # Iterate over the directories and apply the _check_and_remove_broken_symlinks function
-    for dir in "${dirsToClean[@]}"; do
-      _check_and_remove_broken_symlinks "${dir}"
+    for _dir in "${_dirsToClean[@]}"; do
+      _check_and_remove_broken_symlinks "${_dir}"
     done
 
-    # Export the ifAnyFilesCleaned variable for later use
-    export ifAnyFilesCleaned
+    # Export the _ifAnyFilesCleaned variable for later use
+    export _ifAnyFilesCleaned
 
     # Export the _ifAnySymlinksCleaned variable for later use
     export _ifAnySymlinksCleaned
@@ -2712,14 +2712,14 @@ _if_reinstall_curl() {
   fi
 
   if [ "${_ifAnySymlinksCleaned}" = "YES" ] \
-    || [ "${ifAnyFilesCleaned}" = "YES" ]; then
+    || [ "${_ifAnyFilesCleaned}" = "YES" ]; then
     ldconfig 2> /dev/null
     _CURL_INSTALL_REQUIRED=YES
-    bkLibcurlPre="/var/backups/legacy-libcurl-pre-${_CURL_VRN}-${_NOW}"
-    mkdir -p ${bkLibcurlPre}
-    mv -f /usr/lib/x86_64-linux-gnu/libcurl.so* ${bkLibcurlPre}/ &> /dev/null
-    mv -f /usr/lib/x86_64-linux-gnu/libcurl.la ${bkLibcurlPre}/ &> /dev/null
-    mv -f /usr/lib/x86_64-linux-gnu/libcurl.a ${bkLibcurlPre}/ &> /dev/null
+    _bkLibcurlPre="/var/backups/legacy-libcurl-pre-${_CURL_VRN}-${_NOW}"
+    mkdir -p ${_bkLibcurlPre}
+    mv -f /usr/lib/x86_64-linux-gnu/libcurl.so* ${_bkLibcurlPre}/ &> /dev/null
+    mv -f /usr/lib/x86_64-linux-gnu/libcurl.la ${_bkLibcurlPre}/ &> /dev/null
+    mv -f /usr/lib/x86_64-linux-gnu/libcurl.a ${_bkLibcurlPre}/ &> /dev/null
   fi
 
   _CURL_ITD=$(curl --version 2>&1 \
@@ -2744,12 +2744,12 @@ _if_reinstall_curl() {
     echo "INFO: Installed cURL/lib ${_CURL_ITD}/${_CURL_LIB_ITD}, upgrade required"
   fi
 
-  isCurl=$(curl --version 2>&1)
-  if [[ ! "${isCurl}" =~ "OpenSSL" ]] \
-    || [[ "${isCurl}" =~ "libcurl.so.4" ]] \
-    || [ -z "${isCurl}" ] \
+  _isCurl=$(curl --version 2>&1)
+  if [[ ! "${_isCurl}" =~ "OpenSSL" ]] \
+    || [[ "${_isCurl}" =~ "libcurl.so.4" ]] \
+    || [ -z "${_isCurl}" ] \
     || [ "${_ifAnySymlinksCleaned}" = "YES" ] \
-    || [ "${ifAnyFilesCleaned}" = "YES" ] \
+    || [ "${_ifAnyFilesCleaned}" = "YES" ] \
     || [ "${_CURL_INSTALL_REQUIRED}" = "YES" ]; then
     if [ -e "/var/aegir/drush" ]; then
       echo "OOPS: cURL is broken! Re-installing.."
@@ -2866,21 +2866,21 @@ _if_boa_key_tools_update_allowed() {
 _update_boa_tools() {
   mkdir -p ${_usrBin}
   if [ -e "${_pthLog}" ] && [ ! -e "${_pthLog}/updateFx07.ctrl.${_tRee}.${_xSrl}.pid" ]; then
-    fxPp="fix-drupal-platform-permissions.sh"
-    fxSp="fix-drupal-site-permissions.sh"
-    fxPo="fix-drupal-platform-ownership.sh"
-    fxSo="fix-drupal-site-ownership.sh"
-    fxLo="lock-local-drush-permissions.sh"
-    curl ${_crlGet} "${_urlHmr}/${_tBn}/${fxPp}" -o ${_usrBin}/${fxPp}
-    curl ${_crlGet} "${_urlHmr}/${_tBn}/${fxSp}" -o ${_usrBin}/${fxSp}
-    curl ${_crlGet} "${_urlHmr}/${_tBn}/${fxPo}" -o ${_usrBin}/${fxPo}
-    curl ${_crlGet} "${_urlHmr}/${_tBn}/${fxSo}" -o ${_usrBin}/${fxSo}
-    curl ${_crlGet} "${_urlHmr}/${_tBn}/${fxLo}" -o ${_usrBin}/${fxLo}
-    chmod 700 ${_usrBin}/${fxPp}
-    chmod 700 ${_usrBin}/${fxSp}
-    chmod 700 ${_usrBin}/${fxPo}
-    chmod 700 ${_usrBin}/${fxSo}
-    chmod 700 ${_usrBin}/${fxLo}
+    _fxPp="fix-drupal-platform-permissions.sh"
+    _fxSp="fix-drupal-site-permissions.sh"
+    _fxPo="fix-drupal-platform-ownership.sh"
+    _fxSo="fix-drupal-site-ownership.sh"
+    _fxLo="lock-local-drush-permissions.sh"
+    curl ${_crlGet} "${_urlHmr}/${_tBn}/${_fxPp}" -o ${_usrBin}/${_fxPp}
+    curl ${_crlGet} "${_urlHmr}/${_tBn}/${_fxSp}" -o ${_usrBin}/${_fxSp}
+    curl ${_crlGet} "${_urlHmr}/${_tBn}/${_fxPo}" -o ${_usrBin}/${_fxPo}
+    curl ${_crlGet} "${_urlHmr}/${_tBn}/${_fxSo}" -o ${_usrBin}/${_fxSo}
+    curl ${_crlGet} "${_urlHmr}/${_tBn}/${_fxLo}" -o ${_usrBin}/${_fxLo}
+    chmod 700 ${_usrBin}/${_fxPp}
+    chmod 700 ${_usrBin}/${_fxSp}
+    chmod 700 ${_usrBin}/${_fxPo}
+    chmod 700 ${_usrBin}/${_fxSo}
+    chmod 700 ${_usrBin}/${_fxLo}
     touch ${_pthLog}/updateFx07.ctrl.${_tRee}.${_xSrl}.pid
   fi
   mkdir -p ${_optBin}
@@ -2893,7 +2893,7 @@ _update_boa_tools() {
     ln -s ${_optBin}/killer    ${_usrBin}/killer
     ln -s ${_optBin}/octopus   ${_usrBin}/octopus
   fi
-  boaBins="autobeowulf \
+  _boaBins="autobeowulf \
            autochimaera \
            autodaedalus \
            autoinit \
@@ -2913,29 +2913,29 @@ _update_boa_tools() {
            vhostcheck \
            weblogx \
            xboa"
-  for cbn in ${boaBins}; do
-    if [ -e "${_optBin}/${cbn}" ]; then
-      if [ `ps aux | grep -v "grep" | grep --count "/${cbn}"` -gt "0" ]; then
-        echo "The ${cbn} is running!"
+  for _cbn in ${_boaBins}; do
+    if [ -e "${_optBin}/${_cbn}" ]; then
+      if [ `ps aux | grep -v "grep" | grep --count "/${_cbn}"` -gt "0" ]; then
+        echo "The ${_cbn} is running!"
       else
-        if [ "${cbn}" = "weblogx" ] \
+        if [ "${_cbn}" = "weblogx" ] \
           && [ `ps aux | grep -v "grep" | grep --count "/daily.sh"` -gt "0" ]; then
-          echo "The ${cbn} and daily.sh is running!"
+          echo "The ${_cbn} and daily.sh is running!"
         else
-          rm -f ${_optBin}/${cbn}.new
-          curl ${_crlGet} "${_urlHmr}/${_tBn}/${cbn}" -o ${_optBin}/${cbn}.new
-          mv -f ${_optBin}/${cbn} ${_optBin}/${cbn}.prev
-          mv -f ${_optBin}/${cbn}.new ${_optBin}/${cbn}
-          if [ -e "${_optBin}/${cbn}" ]; then
-            chmod 755 ${_optBin}/${cbn}
-            rm -f ${_optBin}/${cbn}.prev
+          rm -f ${_optBin}/${_cbn}.new
+          curl ${_crlGet} "${_urlHmr}/${_tBn}/${_cbn}" -o ${_optBin}/${_cbn}.new
+          mv -f ${_optBin}/${_cbn} ${_optBin}/${_cbn}.prev
+          mv -f ${_optBin}/${_cbn}.new ${_optBin}/${_cbn}
+          if [ -e "${_optBin}/${_cbn}" ]; then
+            chmod 755 ${_optBin}/${_cbn}
+            rm -f ${_optBin}/${_cbn}.prev
           else
-            mv -f ${_optBin}/${cbn}.prev ${_optBin}/${cbn}
+            mv -f ${_optBin}/${_cbn}.prev ${_optBin}/${_cbn}
           fi
         fi
       fi
     else
-      curl ${_crlGet} "${_urlHmr}/${_tBn}/${cbn}" -o ${_optBin}/${cbn}
+      curl ${_crlGet} "${_urlHmr}/${_tBn}/${_cbn}" -o ${_optBin}/${_cbn}
     fi
   done
   echo "### ${_TODAY} ###" >> ${_optBin}/autoinit
@@ -3214,8 +3214,8 @@ _boa_setup() {
     sed -i "s/^#startup_message off/startup_message off/g" /etc/screenrc &> /dev/null
   fi
 
-  isScreen=$(screen --version 2>&1)
-  if [[ ! "${isScreen}" =~ "GNU" ]] || [ -z "${isScreen}" ]; then
+  _isScreen=$(screen --version 2>&1)
+  if [[ ! "${_isScreen}" =~ "GNU" ]] || [ -z "${_isScreen}" ]; then
     apt-get install screen -y &> /dev/null
     apt-get install net-tools -y &> /dev/null
     apt-get install hostname -y &> /dev/null

@@ -460,9 +460,9 @@ _handle_blocking() {
 # Load banned IPs from web.log into associative array
 _WEB_LOG="/var/xdrago/monitor/log/web.log"
 if [[ -e "${_WEB_LOG}" ]]; then
-  while IFS= read -r line; do
+  while IFS= read -r _line; do
     # Extract IP before any space or comment
-    _ip="${line%% *}"
+    _ip="${_line%% *}"
     # Clean IP
     _ip="${_ip//[^0-9.]/}"
     if [[ -n "${_ip}" ]]; then
@@ -474,8 +474,8 @@ fi
 # Load allowed local IPs into associative array
 _LOCAL_IP_LIST="/root/.local.IP.list"
 if [[ -e "${_LOCAL_IP_LIST}" ]]; then
-  while IFS= read -r line; do
-    _ip="${line%% *}"
+  while IFS= read -r _line; do
+    _ip="${_line%% *}"
     _ip="${_ip//[^0-9.]/}"
     if [[ -n "${_ip}" ]]; then
       _ALLOWED_IPS["${_ip}"]=1
@@ -521,9 +521,9 @@ while IFS= read -r _line <&3; do
 
   # Extract valid IPs using Bash's regex
   _IP_LIST=()
-  for ip_candidate in "${_ip_array[@]}"; do
-    if [[ "${ip_candidate}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
-      _IP_LIST+=("${ip_candidate}")
+  for _ip_candidate in "${_ip_array[@]}"; do
+    if [[ "${_ip_candidate}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
+      _IP_LIST+=("${_ip_candidate}")
     fi
   done
 

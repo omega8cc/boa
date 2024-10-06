@@ -132,8 +132,8 @@ _fix_dns_settings() {
   rm -f ${_vBs}/resolv.conf.tmp
   if [ -e "/etc/resolv.conf" ]; then
     if [ -L "/etc/resolv.conf" ]; then
-      rslvT=`readlink -n /etc/resolv.conf`
-      if [ ! -e "${rslvT}" ]; then
+      _rslvT=`readlink -n /etc/resolv.conf`
+      if [ ! -e "${_rslvT}" ]; then
         rm -f /etc/resolv.conf
       fi
     fi
@@ -203,11 +203,11 @@ _send_report() {
       _MY_EMAIL="$(basename "$0")@omega8.cc"
     fi
     if [ ! -z "${_MY_EMAIL}" ]; then
-      repSub="Successful Octopus upgrade for ${_octUsr}"
-      repSub="REPORT: ${repSub} on ${_CHECK_HOST}"
-      repSub=$(echo -n ${repSub} | fmt -su -w 2500 2>&1)
-      cat ${_UP_LOG} | s-nail -s "${repSub} at ${_NOW}" ${_MY_EMAIL}
-      echo "${repSub} sent to ${_MY_EMAIL}"
+      _repSub="Successful Octopus upgrade for ${_octUsr}"
+      _repSub="REPORT: ${_repSub} on ${_CHECK_HOST}"
+      _repSub=$(echo -n ${_repSub} | fmt -su -w 2500 2>&1)
+      cat ${_UP_LOG} | s-nail -s "${_repSub} at ${_NOW}" ${_MY_EMAIL}
+      echo "${_repSub} sent to ${_MY_EMAIL}"
     fi
   fi
 }
@@ -220,10 +220,10 @@ _send_alert() {
       _MY_EMAIL="$(basename "$0")@omega8.cc"
     fi
     if [ ! -z "${_MY_EMAIL}" ]; then
-      repSub="ALERT: Failed Octopus upgrade for ${_octUsr} on ${_CHECK_HOST}"
-      repSub=$(echo -n ${repSub} | fmt -su -w 2500 2>&1)
-      cat ${_UP_LOG} | s-nail -s "${repSub} at ${_NOW}" ${_MY_EMAIL}
-      echo "${repSub} sent to ${_MY_EMAIL}"
+      _repSub="ALERT: Failed Octopus upgrade for ${_octUsr} on ${_CHECK_HOST}"
+      _repSub=$(echo -n ${_repSub} | fmt -su -w 2500 2>&1)
+      cat ${_UP_LOG} | s-nail -s "${_repSub} at ${_NOW}" ${_MY_EMAIL}
+      echo "${_repSub} sent to ${_MY_EMAIL}"
     fi
   fi
 }
@@ -270,8 +270,8 @@ _php_cli_local_ini_update() {
     touch ${_U_TP}
     find ${_U_TP}/ -mtime +0 -exec rm -rf {} \; &> /dev/null
     mkdir -p ${_U_HD}
-    chown ${_USER}:${usrGroup} ${_U_TP}
-    chown ${_USER}:${usrGroup} ${_U_HD}
+    chown ${_USER}:${_usrGroup} ${_U_TP}
+    chown ${_USER}:${_usrGroup} ${_U_HD}
     chmod 755 ${_U_TP}
     chmod 755 ${_U_HD}
     chattr -i ${_U_II} &> /dev/null
@@ -310,7 +310,7 @@ _php_cli_local_ini_update() {
 }
 
 _php_cli_drush_update() {
-  usrGroup=users
+  _usrGroup=users
   _DRUSH_FILE="${_usEr}/tools/drush/drush.php"
   if [ -x "/opt/php74/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php74\/bin\/php/g" ${_DRUSH_FILE} &> /dev/null
@@ -328,7 +328,7 @@ _php_cli_drush_update() {
        \n${_DRUSH_HOSTING_DISPATCH_CMD} \
        \ntouch ${_usEr}/${_USER}-task.done" \
       | fmt -su -w 2500 | tee -a ${_usEr}/aegir.sh >/dev/null 2>&1
-    chown ${_USER}:${usrGroup} ${_usEr}/aegir.sh &> /dev/null
+    chown ${_USER}:${_usrGroup} ${_usEr}/aegir.sh &> /dev/null
     chmod 0700 ${_usEr}/aegir.sh &> /dev/null
   fi
 }
@@ -392,12 +392,12 @@ _satellite_check_strict_php_cli() {
       echo
       _php_cli_drush_update
       _php_cli_local_ini_update
-      for version in 81 82 83 74; do
-        if [ -x "/opt/php${version}/bin/php" ]; then
-          if [ "${version}" = "74" ]; then
+      for _version in 81 82 83 74; do
+        if [ -x "/opt/php${_version}/bin/php" ]; then
+          if [ "${_version}" = "74" ]; then
             _useCli="7.4"
           else
-            _useCli="8.${version:1}"
+            _useCli="8.${_version:1}"
           fi
           break
         fi
@@ -487,12 +487,12 @@ _satellite_check_supported_php_cli() {
         else
           _PHP_CLI_LEGACY_FREE=YES
         fi
-        for version in 81 82 83 74; do
-          if [ -x "/opt/php${version}/bin/php" ]; then
-            if [ "${version}" = "74" ]; then
+        for _version in 81 82 83 74; do
+          if [ -x "/opt/php${_version}/bin/php" ]; then
+            if [ "${_version}" = "74" ]; then
               _useCli="7.4"
             else
-              _useCli="8.${version:1}"
+              _useCli="8.${_version:1}"
             fi
             break
           fi
@@ -643,7 +643,7 @@ _load_control() {
 }
 
 _up_action_all() {
-  for User in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
+  for _usEr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
     _count_cpu
     _load_control
     if [ -d "${_usEr}/config/server_master/nginx/vhost.d" ] \
@@ -853,8 +853,8 @@ _up_finish() {
 }
 
 _find_fast_mirror_early() {
-  isNetc=$(which netcat 2>&1)
-  if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
+  _isNetc=$(which netcat 2>&1)
+  if [ ! -x "${_isNetc}" ] || [ -z "${_isNetc}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
@@ -901,8 +901,8 @@ _if_reinstall_curl() {
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   [ "${_OS_CODE}" = "jessie" ] && _CURL_VRN=7.71.1
   [ "${_OS_CODE}" = "stretch" ] && _CURL_VRN=8.2.1
-  isCurl=$(curl --version 2>&1)
-  if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
+  _isCurl=$(curl --version 2>&1)
+  if [[ ! "${_isCurl}" =~ "OpenSSL" ]] || [ -z "${_isCurl}" ]; then
     echo "OOPS: cURL is broken! Re-installing.."
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
@@ -953,8 +953,8 @@ _if_reinstall_curl() {
       fi
     fi
     if [ -f "/usr/local/bin/curl" ]; then
-      isCurl=$(/usr/local/bin/curl --version 2>&1)
-      if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
+      _isCurl=$(/usr/local/bin/curl --version 2>&1)
+      if [[ ! "${_isCurl}" =~ "OpenSSL" ]] || [ -z "${_isCurl}" ]; then
         echo "ERRR: curl is still broken, please install it and debug manually"
         _clean_pid_exit
       else

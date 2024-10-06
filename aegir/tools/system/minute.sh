@@ -41,9 +41,9 @@ perl /var/xdrago/monitor/check/hackftp.pl &
 perl /var/xdrago/monitor/check/escapecheck.pl &
 
 _second_flood_guard() {
-  thisCountSec=`ps aux | grep -v "grep" | grep -v "null" | grep --count "/second.sh"`
-  if [ ${thisCountSec} -gt "4" ]; then
-    echo "$(date 2>&1) Too many ${thisCountSec} second.sh processes killed" >> \
+  _thisCountSec=`ps aux | grep -v "grep" | grep -v "null" | grep --count "/second.sh"`
+  if [ ${_thisCountSec} -gt "4" ]; then
+    echo "$(date 2>&1) Too many ${_thisCountSec} second.sh processes killed" >> \
       /var/log/sec-count.kill.log
     kill -9 $(ps aux | grep '[s]econd.sh' | awk '{print $2}') &> /dev/null
   fi

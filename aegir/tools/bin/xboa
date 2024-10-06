@@ -94,9 +94,9 @@ EOF
 }
 
 _enable_chattr() {
-  isTest="$1"
-  isTest=${isTest//[^a-z0-9]/}
-  if [ ! -z "${isTest}" ] && [ -d "/home/$1/" ]; then
+  _isTest="$1"
+  _isTest=${_isTest//[^a-z0-9]/}
+  if [ ! -z "${_isTest}" ] && [ -d "/home/$1/" ]; then
     if [ "$1" != "${_THIS_HM_USER}.ftp" ]; then
       chattr +i /home/$1/
     else
@@ -121,9 +121,9 @@ _enable_chattr() {
 }
 
 _disable_chattr() {
-  isTest="$1"
-  isTest=${isTest//[^a-z0-9]/}
-  if [ ! -z "${isTest}" ] && [ -d "/home/$1/" ]; then
+  _isTest="$1"
+  _isTest=${_isTest//[^a-z0-9]/}
+  if [ ! -z "${_isTest}" ] && [ -d "/home/$1/" ]; then
     if [ "$1" != "${_THIS_HM_USER}.ftp" ]; then
       if [ -d "/home/$1/" ]; then
         chattr -i /home/$1/
@@ -164,15 +164,15 @@ _migrate_sites() {
   do
     _Dom=`echo ${_Site} | cut -d'/' -f9 | awk '{ print $1}'`
     _Vht="${_USR}/config/server_master/nginx/vhost.d/${_Dom}"
-    Vhd="${_USR}/config/server_master/nginx/vhost.d/.${_Dom}"
+    _Vhd="${_USR}/config/server_master/nginx/vhost.d/.${_Dom}"
     _Vhs="${_USR}/config/server_master/nginx/vhost.d/https.${_Dom}"
     if [ -e "${_Vht}" ] && [ ! -z "${_oct}" ]; then
       chown ${_oct}:users ${_Vht}
       chmod 600 ${_Vht}
     fi
-    if [ -e "${Vhd}" ] && [ ! -z "${_oct}" ]; then
-      chown ${_oct}:users ${Vhd}
-      chmod 600 ${Vhd}
+    if [ -e "${_Vhd}" ] && [ ! -z "${_oct}" ]; then
+      chown ${_oct}:users ${_Vhd}
+      chmod 600 ${_Vhd}
     fi
     if [ -e "${_USR}/.drush/${_Dom}.alias.drushrc.php" ]; then
       echo Dom is ${_Dom}
@@ -189,8 +189,8 @@ _migrate_sites() {
         echo "site ${_Dom} raw _DBP is ${_DBP}"
         _DBP=${_DBP//[^a-zA-Z0-9_]/}
         echo "site ${_Dom} clean _DBP is ${_DBP}"
-        if [ -e "${Vhd}" ]; then
-          mv -f ${Vhd} ${_Vht}
+        if [ -e "${_Vhd}" ]; then
+          mv -f ${_Vhd} ${_Vht}
         fi
         if [ ! -z "${_dst}" ]; then
           _TGT_HM_USER="${_dst}"
@@ -399,7 +399,7 @@ EOFMYSQL
               chown ${_oct}:users ${_Vhs}
               chmod 600 ${_Vhs}
             fi
-            mv -f ${_Vht} $Vhd
+            mv -f ${_Vht} $_Vhd
             cp -a /var/xdrago/conf/proxy.conf ${_Vht}
             sed -i "s/.*server_name.*;/  server_name                 ${_NMS};/g" ${_Vht}
             wait
@@ -650,11 +650,11 @@ _migrate_prepare() {
             sed -i "s/distro\/04.*',/distro\/001',/g"          ${_USR}/.drush/hm.alias.drushrc.php
             wait
             sed -i "s/distro\/05.*',/distro\/001',/g"          ${_USR}/.drush/hm.alias.drushrc.php
-            for Platform in `find ${_USR}/.drush/platform_* -maxdepth 1 -type f | sort`; do
-              _T_PFM_NAME=$(echo "${Platform}" \
+            for _Platform in `find ${_USR}/.drush/platform_* -maxdepth 1 -type f | sort`; do
+              _T_PFM_NAME=$(echo "${_Platform}" \
                 | sed "s/.*platform_//g; s/.alias.drushrc.php//g" \
                 | awk '{ print $1}' 2>&1)
-              _T_PFM_ROOT=$(cat ${Platform} \
+              _T_PFM_ROOT=$(cat ${_Platform} \
                 | grep "root'" \
                 | cut -d: -f2 \
                 | awk '{ print $3}' \
@@ -1086,86 +1086,86 @@ _pre_mig() {
 _sub_ssl_gen() {
   IFS=$'\12'
   for p in `cat /root/.ssl.proxy.cnf`;do
-    domain_name=`echo $p | cut -d' ' -f1 | awk '{ print $1}'`
-    target_ip=`echo $p | cut -d' ' -f2 | awk '{ print $1}'`
-    oct_uid=`echo $p | cut -d' ' -f3 | awk '{ print $1}'`
-    oct_mail=`echo $p | cut -d' ' -f4 | awk '{ print $1}'`
-    dedicated_ip=`echo $p | cut -d' ' -f5 | awk '{ print $1}'`
-    echo domain_name.${domain_name} target_ip.${target_ip} oct_uid.${oct_uid} oct_mail.${oct_mail} dedicated_ip.${dedicated_ip}
-    if [ ! -z "${domain_name}" ] \
-      && [ ! -z "${target_ip}" ] \
-      && [ ! -z "${oct_uid}" ] \
-      && [ ! -z "${oct_mail}" ] \
-      && [ ! -z "${dedicated_ip}" ]; then
-      oct_mail=`echo $oct_mail | sed "s/\@/\\\@/g"`;
-      if [ "${target_ip}" = "${dedicated_ip}" ]; then
-        dedicated_ip="*"
-        if [ -e "/data/disk/${oct_uid}/log/extra_domain.txt" ]; then
-          hmFrontExtra=$(cat /data/disk/${oct_uid}/log/extra_domain.txt 2>&1)
-          hmFrontExtra=$(echo -n ${hmFrontExtra} | tr -d "\n" 2>&1)
+    _domain_name=`echo $p | cut -d' ' -f1 | awk '{ print $1}'`
+    _target_ip=`echo $p | cut -d' ' -f2 | awk '{ print $1}'`
+    _oct_uid=`echo $p | cut -d' ' -f3 | awk '{ print $1}'`
+    _oct_mail=`echo $p | cut -d' ' -f4 | awk '{ print $1}'`
+    _dedicated_ip=`echo $p | cut -d' ' -f5 | awk '{ print $1}'`
+    echo domain_name.${_domain_name} target_ip.${_target_ip} oct_uid.${_oct_uid} oct_mail.${_oct_mail} dedicated_ip.${_dedicated_ip}
+    if [ ! -z "${_domain_name}" ] \
+      && [ ! -z "${_target_ip}" ] \
+      && [ ! -z "${_oct_uid}" ] \
+      && [ ! -z "${_oct_mail}" ] \
+      && [ ! -z "${_dedicated_ip}" ]; then
+      _oct_mail=`echo $oct_mail | sed "s/\@/\\\@/g"`;
+      if [ "${_target_ip}" = "${_dedicated_ip}" ]; then
+        _dedicated_ip="*"
+        if [ -e "/data/disk/${_oct_uid}/log/extra_domain.txt" ]; then
+          _hmFrontExtra=$(cat /data/disk/${_oct_uid}/log/extra_domain.txt 2>&1)
+          _hmFrontExtra=$(echo -n ${_hmFrontExtra} | tr -d "\n" 2>&1)
         fi
-        if [ ! -z "${hmFrontExtra}" ]; then
-          dedicated_sn="${domain_name} ${hmFrontExtra} www.${domain_name}"
+        if [ ! -z "${_hmFrontExtra}" ]; then
+          _dedicated_sn="${_domain_name} ${_hmFrontExtra} www.${_domain_name}"
         else
-          dedicated_sn="${domain_name} www.${domain_name}"
+          _dedicated_sn="${_domain_name} www.${_domain_name}"
         fi
-        single=YES
+        _single=YES
       else
-        dedicated_sn="_"
-        single=NO
+        _dedicated_sn="_"
+        _single=NO
       fi
       ###
-      Pln="/var/aegir/config/server_master/nginx/pre.d/z_${domain_name}_pln_proxy.conf"
-      Ssl="/var/aegir/config/server_master/nginx/pre.d/z_${domain_name}_ssl_proxy.conf"
+      _Pln="/var/aegir/config/server_master/nginx/pre.d/z_${_domain_name}_pln_proxy.conf"
+      _Ssl="/var/aegir/config/server_master/nginx/pre.d/z_${_domain_name}_ssl_proxy.conf"
       ###
-      if [ "${single}" = "YES" ]; then
-        rm -f ${Pln}
+      if [ "${_single}" = "YES" ]; then
+        rm -f ${_Pln}
       else
-        cp -af /var/xdrago/conf/pln_proxy.conf     ${Pln}
-        sed -i "s/domain_name/${domain_name}/g"    ${Pln}
+        cp -af /var/xdrago/conf/pln_proxy.conf      ${_Pln}
+        sed -i "s/domain_name/${_domain_name}/g"    ${_Pln}
         wait
-        sed -i "s/target_ip/${target_ip}/g"        ${Pln}
+        sed -i "s/target_ip/${_target_ip}/g"        ${_Pln}
         wait
-        sed -i "s/oct_uid/${oct_uid}/g"            ${Pln}
+        sed -i "s/oct_uid/${_oct_uid}/g"            ${_Pln}
         wait
-        sed -i "s/oct_mail/${oct_mail}/g"          ${Pln}
+        sed -i "s/oct_mail/${_oct_mail}/g"          ${_Pln}
         wait
-        sed -i "s/dedicated_ip/${dedicated_ip}/g"  ${Pln}
+        sed -i "s/dedicated_ip/${_dedicated_ip}/g"  ${_Pln}
         wait
-        sed -i "s/dedicated_sn/${dedicated_sn}/g"  ${Pln}
+        sed -i "s/_dedicated_sn/${_dedicated_sn}/g" ${_Pln}
         wait
-        echo OK created ${Pln}
+        echo OK created ${_Pln}
       fi
       ###
-      cp -af /var/xdrago/conf/ssl_proxy.conf       ${Ssl}
-      sed -i "s/domain_name/${domain_name}/g"      ${Ssl}
+      cp -af /var/xdrago/conf/ssl_proxy.conf        ${_Ssl}
+      sed -i "s/domain_name/${_domain_name}/g"      ${_Ssl}
       wait
-      sed -i "s/target_ip/${target_ip}/g"          ${Ssl}
+      sed -i "s/target_ip/${_target_ip}/g"          ${_Ssl}
       wait
-      sed -i "s/oct_uid/${oct_uid}/g"              ${Ssl}
+      sed -i "s/oct_uid/${_oct_uid}/g"              ${_Ssl}
       wait
-      sed -i "s/oct_mail/${oct_mail}/g"            ${Ssl}
+      sed -i "s/oct_mail/${_oct_mail}/g"            ${_Ssl}
       wait
-      sed -i "s/dedicated_ip/${dedicated_ip}/g"    ${Ssl}
+      sed -i "s/dedicated_ip/${_dedicated_ip}/g"    ${_Ssl}
       wait
-      sed -i "s/dedicated_sn/${dedicated_sn}/g"    ${Ssl}
+      sed -i "s/_dedicated_sn/${_dedicated_sn}/g"   ${_Ssl}
       wait
       ###
-      if [ -e "${Ssl}" ]; then
-        sslFile="/etc/ssl/private/${domain_name}.dhp"
-        if [ ! -e "${sslFile}" ]; then
+      if [ -e "${_Ssl}" ]; then
+        _sslFile="/etc/ssl/private/${_domain_name}.dhp"
+        if [ ! -e "${_sslFile}" ]; then
           echo "We will generate .dhp file now, please wait..."
-          openssl dhparam -out ${sslFile} 2048 &> /dev/null
+          openssl dhparam -out ${_sslFile} 2048 &> /dev/null
         else
-          _PFS_TEST=$(grep "DH PARAMETERS" ${sslFile} 2>&1)
+          _PFS_TEST=$(grep "DH PARAMETERS" ${_sslFile} 2>&1)
           if [[ ! "${_PFS_TEST}" =~ "DH PARAMETERS" ]]; then
             echo "We will generate .dhp file now, please wait..."
-            openssl dhparam -out ${sslFile} 2048 &> /dev/null
+            openssl dhparam -out ${_sslFile} 2048 &> /dev/null
           fi
         fi
       fi
       ###
-      echo OK created ${Ssl}
+      echo OK created ${_Ssl}
       service nginx reload
     else
       echo some variables missing in the record: $p

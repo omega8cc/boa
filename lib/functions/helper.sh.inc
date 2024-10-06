@@ -26,11 +26,11 @@ if [ "${_AUTOPILOT}" = "YES" ]; then
 else
   while true; do
     printf "$* [Y/n] "
-    read answer
-    if [ -z "${answer}" ]; then
+    read _answer
+    if [ -z "${_answer}" ]; then
       return 0
     fi
-    case ${answer} in
+    case ${_answer} in
       [Yy]|[Yy][Ee][Ss])
         return 0
         ;;
@@ -617,9 +617,9 @@ _os_detection() {
     _not_supported_os
   fi
   echo " "
-  thiSys="$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)/$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1) $(uname -m 2>&1)"
-  thiSys="$(uname -n 2>&1) ${thiSys} PHP ${_PHP_FPM_VERSION}"
-  _msg "Aegir on ${thiSys}"
+  _thiSys="$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)/$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1) $(uname -m 2>&1)"
+  _thiSys="$(uname -n 2>&1) ${_thiSys} PHP ${_PHP_FPM_VERSION}"
+  _msg "Aegir on ${_thiSys}"
   echo " "
 }
 
@@ -753,14 +753,14 @@ _aegir_bin_extra_check_fix() {
     _msg "PROC: _aegir_bin_extra_check_fix"
   fi
   SDIR="${_bldPth}/aegir/tools/bin"
-  SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership lock-local-drush-permissions)
+  _SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership lock-local-drush-permissions)
   if [ ! -x "/usr/local/bin/fix-drupal-site-permissions.sh" ] \
     || [ ! -e "/var/xdrago/log/fix-drupal-site-permissions-${_xSrl}-${_X_VERSION}.log" ]; then
     if [ -e "${SDIR}/fix-drupal-site-permissions.sh" ]; then
-      for SCRIPT in ${SCRIPTS[@]}; do
-        cp -af ${SDIR}/${SCRIPT}.sh /usr/local/bin/
-        chown root:root /usr/local/bin/${SCRIPT}.sh
-        chmod 700 /usr/local/bin/${SCRIPT}.sh
+      for _SCRIPT in ${_SCRIPTS[@]}; do
+        cp -af ${SDIR}/${_SCRIPT}.sh /usr/local/bin/
+        chown root:root /usr/local/bin/${_SCRIPT}.sh
+        chmod 700 /usr/local/bin/${_SCRIPT}.sh
       done
       touch /var/xdrago/log/fix-drupal-site-permissions-${_xSrl}-${_X_VERSION}.log
     fi
@@ -830,12 +830,12 @@ _turn_off_apparmor_in_octopus() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _turn_off_apparmor_in_octopus"
   fi
-  isAppArmOn=N
+  _isAppArmOn=N
   if [ -e "/sys/module/apparmor/parameters/enabled" ]; then
-    isAppArmOn=$(cat /sys/module/apparmor/parameters/enabled 2>&1)
-    isAppArmOn=$(echo -n ${isAppArmOn} | tr -d "\n" 2>&1)
+    _isAppArmOn=$(cat /sys/module/apparmor/parameters/enabled 2>&1)
+    _isAppArmOn=$(echo -n ${_isAppArmOn} | tr -d "\n" 2>&1)
   fi
-  if [ "${isAppArmOn}" = "Y" ] && [ ! -e "/root/.turn_off_apparmor_in_octopus.cnf" ]; then
+  if [ "${_isAppArmOn}" = "Y" ] && [ ! -e "/root/.turn_off_apparmor_in_octopus.cnf" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "ARMR: Turning off AppArmor temporarily..."
     fi

@@ -11,8 +11,8 @@ _fix_dns_settings() {
   rm -f ${_vBs}/resolv.conf.tmp
   if [ -e "/etc/resolv.conf" ]; then
     if [ -L "/etc/resolv.conf" ]; then
-      rslvT=`readlink -n /etc/resolv.conf`
-      if [ ! -e "${rslvT}" ]; then
+      _rslvT=`readlink -n /etc/resolv.conf`
+      if [ ! -e "${_rslvT}" ]; then
         rm -f /etc/resolv.conf
       fi
     fi
@@ -28,9 +28,9 @@ _fix_dns_settings() {
     echo "nameserver 8.8.4.4" >> ${_vBs}/resolv.conf.tmp
   fi
   if [ ! -e "${_vBs}/resolv.conf.vanilla" ]; then
-    for Pre in `ls -la ${_vBs}/resolv.conf.pre-*`; do
-      if [ -e "${Pre}" ] && [ -f "${Pre}" ] && [ ! -L "${Pre}" ]; then
-        cp -a ${Pre} ${_vBs}/resolv.conf.vanilla
+    for _Pre in `ls -la ${_vBs}/resolv.conf.pre-*`; do
+      if [ -e "${_Pre}" ] && [ -f "${_Pre}" ] && [ ! -L "${_Pre}" ]; then
+        cp -a ${_Pre} ${_vBs}/resolv.conf.vanilla
       fi
     done
   fi
@@ -372,24 +372,24 @@ _dns_unbound_install_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _dns_unbound_install_upgrade"
   fi
-  isUnbnd=$(which unbound 2>&1)
-  isUnbndErr=$(${isUnbnd} -V 2>&1)
-  [ -x "${isUnbnd}" ] && isUnbLibvt=$(ldd ${isUnbnd} | grep libevent 2>&1)
-  if [[ "${isUnbndErr}" =~ "cannot open shared object file" ]] \
-    || [[ "${isUnbndErr}" =~ "No such file or directory" ]] \
-    || [[ ! "${isUnbLibvt}" =~ "libevent" ]] \
-    || [ -z "${isUnbndErr}" ]; then
-    isUnbndFix=YES
+  _isUnbnd=$(which unbound 2>&1)
+  _isUnbndErr=$(${_isUnbnd} -V 2>&1)
+  [ -x "${_isUnbnd}" ] && _isUnbLibvt=$(ldd ${_isUnbnd} | grep libevent 2>&1)
+  if [[ "${_isUnbndErr}" =~ "cannot open shared object file" ]] \
+    || [[ "${_isUnbndErr}" =~ "No such file or directory" ]] \
+    || [[ ! "${_isUnbLibvt}" =~ "libevent" ]] \
+    || [ -z "${_isUnbndErr}" ]; then
+    _isUnbndFix=YES
   else
-    isUnbndFix=NO
-    isUnbndBr=$(service unbound restart 2>&1)
-    [[ "${isUnbndBr}" =~ "fatal error" ]] && isUnbndFix=YES
-    [[ "${isUnbndBr}" =~ "not found" ]] && isUnbndFix=YES
-    [[ "${isUnbndBr}" =~ "address already in use" ]] && killPdnsd=YES
+    _isUnbndFix=NO
+    _isUnbndBr=$(service unbound restart 2>&1)
+    [[ "${_isUnbndBr}" =~ "fatal error" ]] && _isUnbndFix=YES
+    [[ "${_isUnbndBr}" =~ "not found" ]] && _isUnbndFix=YES
+    [[ "${_isUnbndBr}" =~ "address already in use" ]] && _killPdnsd=YES
   fi
-  if [ ! -x "${isUnbnd}" ] \
-    || [ -z "${isUnbnd}" ] \
-    || [ "${isUnbndFix}" = "YES" ] \
+  if [ ! -x "${_isUnbnd}" ] \
+    || [ -z "${_isUnbnd}" ] \
+    || [ "${_isUnbndFix}" = "YES" ] \
     || [ -e "/usr/etc/unbound/unbound.pid" ] \
     || [ -e "/etc/unbound/unbound.conf.d/remote-control.conf" ] \
     || [ ! -e "/run/unbound" ] \
@@ -412,8 +412,8 @@ _dns_unbound_install_upgrade() {
       echo "nameserver 8.8.4.4" >> /etc/resolv.conf
     fi
     _apt_clean_update
-    [ -e "/usr/etc/unbound/unbound.pid" ] && isUnbndFix=YES
-    if [ "${isUnbndFix}" = "YES" ]; then
+    [ -e "/usr/etc/unbound/unbound.pid" ] && _isUnbndFix=YES
+    if [ "${_isUnbndFix}" = "YES" ]; then
       _mrun "apt-get remove unbound -y --purge --auto-remove -qq" 2> /dev/null
       _mrun "apt-get remove unbound-anchor -y --purge --auto-remove -qq" 2> /dev/null
       _mrun "apt-get remove unbound-host -y --purge --auto-remove -qq" 2> /dev/null
@@ -537,8 +537,8 @@ _dns_unbound_install_upgrade() {
       /etc/NetworkManager/NetworkManager.conf &> /dev/null
     _mrun "service network-manager restart" 2> /dev/null
   fi
-  if [ -x "${isUnbnd}" ] && [ "${isUnbndFix}" = "NO" ]; then
-    _UNBOUND_V_ITD=$(${isUnbnd} -V 2>&1 \
+  if [ -x "${_isUnbnd}" ] && [ "${_isUnbndFix}" = "NO" ]; then
+    _UNBOUND_V_ITD=$(${_isUnbnd} -V 2>&1 \
       | tr -d "\n" \
       | cut -d" " -f2 \
       | awk '{ print $1}' \
@@ -565,31 +565,31 @@ _dns_unbound_install_upgrade() {
   [ -e "/usr/etc/unbound" ] && cp -af /etc/unbound/*.key /usr/etc/unbound/
   [ -e "/usr/etc/unbound" ] && cp -af /etc/unbound/*.pem /usr/etc/unbound/
   [ -e "/usr/etc/unbound" ] && cp -af /etc/unbound/unbound.conf.d/unbound.conf /usr/etc/unbound/
-  isUnbnd=$(which unbound 2>&1)
-  isUnbndErr=$(${isUnbnd} -V 2>&1)
-  if [[ "${isUnbndErr}" =~ "cannot open shared object file" ]] \
-    || [[ "${isUnbndErr}" =~ "No such file or directory" ]] \
-    || [ -z "${isUnbndErr}" ]; then
-    isUnbndFix=YES
+  _isUnbnd=$(which unbound 2>&1)
+  _isUnbndErr=$(${_isUnbnd} -V 2>&1)
+  if [[ "${_isUnbndErr}" =~ "cannot open shared object file" ]] \
+    || [[ "${_isUnbndErr}" =~ "No such file or directory" ]] \
+    || [ -z "${_isUnbndErr}" ]; then
+    _isUnbndFix=YES
   else
-    isUnbndFix=NO
+    _isUnbndFix=NO
   fi
   [ -e "/etc/unbound/unbound.conf.d/remote-control.conf" ] && rm -f /etc/unbound/unbound.conf.d/remote-control.conf
-  if [ "${isUnbndFix}" = "NO" ] || [ "${killPdnsd}" = "YES" ]; then
-    isPdnsd=$(which pdnsd 2>&1)
-    if [ -x "${isPdnsd}" ]; then
+  if [ "${_isUnbndFix}" = "NO" ] || [ "${_killPdnsd}" = "YES" ]; then
+    _isPdnsd=$(which pdnsd 2>&1)
+    if [ -x "${_isPdnsd}" ]; then
       _mrun "service pdnsd stop" 2> /dev/null
       _mrun "update-rc.d -f pdnsd remove" 2> /dev/null
       killall -9 pdnsd &> /dev/null
-      mv -f ${isPdnsd} /var/backups
+      mv -f ${_isPdnsd} /var/backups
     fi
     [ -e "/etc/resolvconf/update.d/unbound" ] && chmod -x /etc/resolvconf/update.d/unbound
     killall -9 unbound &> /dev/null
     _mrun "service unbound restart" 2> /dev/null
     wait
   fi
-  if [ -x "${isUnbnd}" ] \
-    && [ "${isUnbndFix}" = "NO" ] \
+  if [ -x "${_isUnbnd}" ] \
+    && [ "${_isUnbndFix}" = "NO" ] \
     && [ -e "/etc/resolvconf/interface-order" ]; then
     sed -i "s/pdnsd/unbound/g" /etc/resolvconf/interface-order
     [ -e "/etc/resolvconf/update.d/unbound" ] && chmod -x /etc/resolvconf/update.d/unbound

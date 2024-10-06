@@ -8,7 +8,7 @@ export _tRee=dev
 _crlGet="-L --max-redirs 3 -k -s --retry 3 --retry-delay 5 -A iCab"
 _USE_GITHUB=/root/.goaccess.use.github.txt
 _GOACCESS_VRN=1.7.1
-sPmrs="https://raw.githubusercontent.com/matomo-org/referrer-spam-blacklist/master/spammers.txt"
+_sPmrs="https://raw.githubusercontent.com/matomo-org/referrer-spam-blacklist/master/spammers.txt"
 [ -e "/root/.goaccess.use.github.txt" ] && rm -f /root/.goaccess.use.github.txt
 
 _check_root() {
@@ -67,8 +67,8 @@ _apt_clean_update() {
 }
 
 _find_fast_mirror_early() {
-  isNetc=$(which netcat 2>&1)
-  if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
+  _isNetc=$(which netcat 2>&1)
+  if [ ! -x "${_isNetc}" ] || [ -z "${_isNetc}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
@@ -165,9 +165,9 @@ _install_goaccess() {
 }
 
 _if_install() {
-  isGoacs=$(which goaccess 2>&1)
-  if [ ! -x "${isGoacs}" ] \
-    || [ -z "${isGoacs}" ]; then
+  _isGoacs=$(which goaccess 2>&1)
+  if [ ! -x "${_isGoacs}" ] \
+    || [ -z "${_isGoacs}" ]; then
     _install_goaccess
   else
     _GOACCESS_ITD=$(goaccess --version 2>&1 \
@@ -212,7 +212,7 @@ _if_install() {
       echo 'exclude-ip 127.0.0.1' >> /root/.goaccessrc
       echo 'ignore-crawlers true' >> /root/.goaccessrc
       if [ ! -e "/usr/etc/goaccess/spammers.txt" ]; then
-        ### curl ${_crlGet} "${sPmrs}" -o /usr/etc/goaccess/spammers.txt
+        ### curl ${_crlGet} "${_sPmrs}" -o /usr/etc/goaccess/spammers.txt
         curl ${_crlGet} "${_urlDev}/src/spammers.txt" -o /usr/etc/goaccess/spammers.txt
       fi
       if [ -e "/usr/etc/goaccess/spammers.txt" ]; then

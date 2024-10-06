@@ -34,14 +34,14 @@ _if_install_bzr() {
       rm -rf bzr*
       _get_dev_src "bzr-${_BZR_VRN}.tar.gz"
       cd /var/opt/bzr-${_BZR_VRN}
-      isPythonTwo=$(which python2 2>&1)
-      isPythonThree=$(which python3 2>&1)
-      if [ -x "${isPythonThree}" ]; then
-        usePyth=python3
-      elif [ -x "${isPythonTwo}" ]; then
-        usePyth=python2
+      _isPythonTwo=$(which python2 2>&1)
+      _isPythonThree=$(which python3 2>&1)
+      if [ -x "${_isPythonThree}" ]; then
+        _usePyth=python3
+      elif [ -x "${_isPythonTwo}" ]; then
+        _usePyth=python2
       fi
-      _mrun "${usePyth} setup.py --quiet install build_ext -\
+      _mrun "${_usePyth} setup.py --quiet install build_ext -\
         -allow-python-fallback" 2> /dev/null
       _mrun "make -j $(nproc) --quiet" 2> /dev/null
       touch ${_pthLog}/bzr-${_BZR_VRN}.log
@@ -447,9 +447,9 @@ _if_install_node() {
     if [[ "${_XTRAS_LIST}" =~ "ALL" ]] \
       || [[ "${_XTRAS_LIST}" =~ "CSS" ]]; then
       _NODE_INSTALL=NO
-      isNode=$(which node 2>&1)
-      if [ -x "${isNode}" ]; then
-       _NODE_V=$(${isNode} --version \
+      _isNode=$(which node 2>&1)
+      if [ -x "${_isNode}" ]; then
+       _NODE_V=$(${_isNode} --version \
          | cut -d" " -f2 \
           | awk '{ print $1}' 2>&1)
         if [ "${_NODE_V}" != "${_NODE_VRN}" ]; then
@@ -481,8 +481,8 @@ _if_install_node() {
       chmod 1777 /opt/user/npm
     fi
   else
-    isNode=$(which node 2>&1)
-    if [ -x "${isNode}" ]; then
+    _isNode=$(which node 2>&1)
+    if [ -x "${_isNode}" ]; then
       _mrun "apt-get remove nodejs -y --purge --auto-remove -qq" 2> /dev/null
     fi
   fi
@@ -519,9 +519,9 @@ _if_install_ruby() {
   if [[ "${_XTRAS_LIST}" =~ "ALL" ]] \
     || [[ "${_XTRAS_LIST}" =~ "CSS" ]]; then
     _RUBY_INSTALL_SCR=NO
-    isRuby=$(which ruby 2>&1)
-    if [ -x "${isRuby}" ]; then
-      _RUBY_V=$(${isRuby} --version \
+    _isRuby=$(which ruby 2>&1)
+    if [ -x "${_isRuby}" ]; then
+      _RUBY_V=$(${_isRuby} --version \
         | cut -d" " -f2 \
         | awk '{ print $1}' 2>&1)
       if [ "${_RUBY_V}" != "${_RUBY_VRN}" ]; then
@@ -552,9 +552,9 @@ _if_install_ruby() {
         _mrun "make -j $(nproc)" 2> /dev/null
         _mrun "make install" 2> /dev/null
         ldconfig 2> /dev/null
-        isRuby=$(which ruby 2>&1)
-        if [ -x "${isRuby}" ]; then
-          _RUBY_V=$(${isRuby} --version \
+        _isRuby=$(which ruby 2>&1)
+        if [ -x "${_isRuby}" ]; then
+          _RUBY_V=$(${_isRuby} --version \
             | cut -d" " -f2 \
             | awk '{ print $1}' 2>&1)
         fi

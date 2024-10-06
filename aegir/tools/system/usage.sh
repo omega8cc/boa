@@ -301,46 +301,46 @@ _usage_count() {
           mkdir ${_Dir}/modules
         fi
         #echo "${_THIS_U},${_Dom},sitedir-exists"
-        Dat=$(cat ${_Dir}/drushrc.php \
+        _Dat=$(cat ${_Dir}/drushrc.php \
           | grep "options\['db_name'\] = " \
           | cut -d: -f2 \
           | awk '{ print $3}' \
           | sed "s/[\,';]//g" 2>&1)
-        #echo Dat is ${Dat}
-        if [ ! -z "${Dat}" ] && [ -e "${_Dir}" ]; then
+        #echo Dat is ${_Dat}
+        if [ ! -z "${_Dat}" ] && [ -e "${_Dir}" ]; then
           if [ -L "${_Dir}/files" ] || [ -L "${_Dir}/private" ]; then
-            DirSize=$(du -L -s ${_Dir} 2>&1)
+            _DirSize=$(du -L -s ${_Dir} 2>&1)
           else
-            DirSize=$(du -s ${_Dir} 2>&1)
+            _DirSize=$(du -s ${_Dir} 2>&1)
           fi
-          DirSize=$(echo "${DirSize}" \
+          _DirSize=$(echo "${_DirSize}" \
             | cut -d'/' -f1 \
             | awk '{ print $1}' \
             | sed "s/[\/\s+]//g" 2>&1)
-          Sum_Dir=$(( SumDir + DirSize ))
-          echo "${_THIS_U},${_Dom},DirSize:${DirSize}"
+          _SumDir=$(( _SumDir + _DirSize ))
+          echo "${_THIS_U},${_Dom},_DirSize:${_DirSize}"
         fi
-        if [ ! -z "${Dat}" ]; then
+        if [ ! -z "${_Dat}" ]; then
           if [ -e "/root/.du.sql" ]; then
-            DatSize=$(grep "/var/lib/mysql/${Dat}$" /root/.du.sql 2>&1)
+            DatSize=$(grep "/var/lib/mysql/${_Dat}$" /root/.du.sql 2>&1)
           elif [ -e "/root/.du.local.sql" ]; then
-            DatSize=$(grep "/var/lib/mysql/${Dat}$" /root/.du.local.sql 2>&1)
-          elif [ -e "/var/lib/mysql/${Dat}" ]; then
-            DatSize=$(du -s /var/lib/mysql/${Dat} 2>&1)
+            DatSize=$(grep "/var/lib/mysql/${_Dat}$" /root/.du.local.sql 2>&1)
+          elif [ -e "/var/lib/mysql/${_Dat}" ]; then
+            DatSize=$(du -s /var/lib/mysql/${_Dat} 2>&1)
           fi
           DatSize=$(echo "${DatSize}" \
             | cut -d'/' -f1 \
             | awk '{ print $1}' \
             | sed "s/[\/\s+]//g" 2>&1)
           if [ "${_DEV_URL}" = "YES" ]; then
-            SkipDt=$(( SkipDt + DatSize ))
-            echo "${_THIS_U},${_Dom},DatSize:${DatSize}:${Dat},skip"
+            _SkipDt=$(( _SkipDt + DatSize ))
+            echo "${_THIS_U},${_Dom},DatSize:${DatSize}:${_Dat},skip"
           else
-            SumDat=$(( SumDat + DatSize ))
-            echo "${_THIS_U},${_Dom},DatSize:${DatSize}:${Dat}"
+            _SumDat=$(( _SumDat + DatSize ))
+            echo "${_THIS_U},${_Dom},DatSize:${DatSize}:${_Dat}"
           fi
         else
-          echo "Database ${Dat} for ${_Dom} does not exist"
+          echo "Database ${_Dat} for ${_Dom} does not exist"
         fi
       fi
     fi
@@ -351,10 +351,10 @@ _send_notice_sql() {
   _MODE=$1
   if [ "${_MODE}" = "DEV" ]; then
     _SQL_LIM=${_SQL_DEV_LIMIT}
-    _SQL_NOW=${SkipDtH}
+    _SQL_NOW=${_SkipDtH}
   else
     _SQL_LIM=${_SQL_MIN_LIMIT}
-    _SQL_NOW=${SumDatH}
+    _SQL_NOW=${_SumDatH}
   fi
   _MY_EMAIL="billing@omega8.cc"
   _BCC_EMAIL="omega8cc@gmail.com"
@@ -422,7 +422,7 @@ You are using more resources than allocated in your subscription.
 You have currently ${_CLIENT_CORES} Aegir ${_CLIENT_OPTION} ${_ENGINE_NR}.
 
 Your allowed disk space is ${_DSK_MIN_LIMIT} MB.
-You are currently using ${HomSizH} MB of disk space.
+You are currently using ${_HomSizH} MB of disk space.
 
 Please reduce your usage by deleting old backups, files,
 and no longer used sites, or purchase enough Aegir Engines
@@ -598,7 +598,7 @@ _check_limits() {
   echo _SQL_DEV_LIMIT is ${_SQL_DEV_LIMIT}
   echo _DSK_MIN_LIMIT is ${_DSK_MIN_LIMIT}
   echo _DSK_MAX_LIMIT is ${_DSK_MAX_LIMIT}
-  if [ "${SumDatH}" -gt "${_SQL_MAX_LIMIT}" ]; then
+  if [ "${_SumDatH}" -gt "${_SQL_MAX_LIMIT}" ]; then
     if [ ! -e "${_usEr}/log/CANCELLED" ] \
       && [ ! -e "${_usEr}/log/proxied.pid" ]; then
       if [ "${_THIS_MODE}" = "verbose" ]; then
@@ -606,7 +606,7 @@ _check_limits() {
       fi
     fi
     echo SQL Usage for ${_THIS_U} above limits
-  elif [ "${SkipDtH}" -gt "${_SQL_DEV_LIMIT}" ]; then
+  elif [ "${_SkipDtH}" -gt "${_SQL_DEV_LIMIT}" ]; then
     if [ ! -e "${_usEr}/log/CANCELLED" ] \
       && [ ! -e "${_usEr}/log/proxied.pid" ]; then
       if [ "${_THIS_MODE}" = "verbose" ]; then
@@ -617,7 +617,7 @@ _check_limits() {
   else
     echo SQL Usage for ${_THIS_U} below limits
   fi
-  if [ "${HomSizH}" -gt "${_DSK_MAX_LIMIT}" ]; then
+  if [ "${_HomSizH}" -gt "${_DSK_MAX_LIMIT}" ]; then
     if [ ! -e "${_usEr}/log/CANCELLED" ] \
       && [ ! -e "${_usEr}/log/proxied.pid" ]; then
       if [ "${_THIS_MODE}" = "verbose" ]; then
@@ -672,29 +672,29 @@ _load_control() {
 
 _sub_count_usr_home() {
   if [ -e "$1" ]; then
-    HqmSiz=$(du -s $1 2>&1)
-    HqmSiz=$(echo "${HqmSiz}" \
+    _HqmSiz=$(du -s $1 2>&1)
+    _HqmSiz=$(echo "${_HqmSiz}" \
       | cut -d'/' -f1 \
       | awk '{ print $1}' \
       | sed "s/[\/\s+]//g" 2>&1)
-    HxmSiz=$(( HxmSiz + HqmSiz ))
-    ### echo $1 disk usage is $HqmSiz
-    ### echo HxmSiz total is $HxmSiz
+    _HxmSiz=$(( _HxmSiz + _HqmSiz ))
+    ### echo $1 disk usage is $_HqmSiz
+    ### echo _HxmSiz total is $_HxmSiz
   fi
 }
 
 _usage_action() {
-  for User in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
+  for _usEr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
     _count_cpu
     _load_control
     if [ -e "${_usEr}/config/server_master/nginx/vhost.d" ]; then
       if [ "${_O_LOAD}" -lt "${_O_LOAD_MAX}" ]; then
-        Sum_Dir=0
-        SumDat=0
-        SkipDt=0
-        HomSiz=0
-        HxmSiz=0
-        HqmSiz=0
+        _SumDir=0
+        _SumDat=0
+        _SkipDt=0
+        _HomSiz=0
+        _HxmSiz=0
+        _HqmSiz=0
         _THIS_U=$(echo ${_usEr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
         _THIS_HM_SITE=$(cat ${_usEr}/.drush/hostmaster.alias.drushrc.php \
           | grep "site_path'" \
@@ -730,49 +730,49 @@ _usage_action() {
         fi
         _usage_count
         if [ -d "/home/${_THIS_U}.ftp" ]; then
-          for uH in `find /home/${_THIS_U}.* -maxdepth 0 -mindepth 0 | sort`; do
-            if [ -d "${uH}" ]; then
-              _sub_count_usr_home ${uH}
+          for _uH in `find /home/${_THIS_U}.* -maxdepth 0 -mindepth 0 | sort`; do
+            if [ -d "${_uH}" ]; then
+              _sub_count_usr_home ${_uH}
             fi
           done
-          for uR in `find /var/solr7/data/oct.${_THIS_U}.* -maxdepth 0 -mindepth 0 | sort`; do
-            if [ -d "${uR}" ]; then
-              _sub_count_usr_home ${uR}
+          for _uR in `find /var/solr7/data/oct.${_THIS_U}.* -maxdepth 0 -mindepth 0 | sort`; do
+            if [ -d "${_uR}" ]; then
+              _sub_count_usr_home ${_uR}
             fi
           done
-          for uO in `find /opt/solr4/${_THIS_U}.* -maxdepth 0 -mindepth 0 | sort`; do
-            if [ -d "${uO}" ]; then
-              _sub_count_usr_home ${uO}
+          for _uO in `find /opt/solr4/${_THIS_U}.* -maxdepth 0 -mindepth 0 | sort`; do
+            if [ -d "${_uO}" ]; then
+              _sub_count_usr_home ${_uO}
             fi
           done
         fi
         if [ -L "${_usEr}" ]; then
-          HomSiz=$(du -D -s ${_usEr} 2>&1)
+          _HomSiz=$(du -D -s ${_usEr} 2>&1)
         else
-          HomSiz=$(du -s ${_usEr} 2>&1)
+          _HomSiz=$(du -s ${_usEr} 2>&1)
         fi
-        HomSiz=$(echo "${HomSiz}" \
+        _HomSiz=$(echo "${_HomSiz}" \
           | cut -d'/' -f1 \
           | awk '{ print $1}' \
           | sed "s/[\/\s+]//g" 2>&1)
-        HomSiz=$(( HomSiz + HxmSiz ))
-        HomSizH=$(echo "scale=0; ${HomSiz}/1024" | bc 2>&1)
-        SumDatH=$(echo "scale=0; ${SumDat}/1024" | bc 2>&1)
-        SkipDtH=$(echo "scale=0; ${SkipDt}/1024" | bc 2>&1)
-        SumDirH=$(echo "scale=0; ${SumDir}/1024" | bc 2>&1)
-        echo HomSiz is ${HomSiz} or ${HomSizH} MB
-        echo SumDir is ${SumDir} or ${SumDirH} MB
-        echo SumDat is ${SumDat} or ${SumDatH} MB
-        echo SkipDt is ${SkipDt} or ${SkipDtH} MB
+        _HomSiz=$(( _HomSiz + _HxmSiz ))
+        _HomSizH=$(echo "scale=0; ${_HomSiz}/1024" | bc 2>&1)
+        _SumDatH=$(echo "scale=0; ${_SumDat}/1024" | bc 2>&1)
+        _SkipDtH=$(echo "scale=0; ${_SkipDt}/1024" | bc 2>&1)
+        _SumDirH=$(echo "scale=0; ${_SumDir}/1024" | bc 2>&1)
+        echo _HomSiz is ${_HomSiz} or ${_HomSizH} MB
+        echo _SumDir is ${_SumDir} or ${_SumDirH} MB
+        echo _SumDat is ${_SumDat} or ${_SumDatH} MB
+        echo _SkipDt is ${_SkipDt} or ${_SkipDtH} MB
         _if_hosted_sys
         if [ "${_hostedSys}" = "YES" ]; then
           _check_limits
           if [ -e "${_THIS_HM_SITE}" ]; then
             su -s /bin/bash - ${_THIS_U} -c "drush8 @hostmaster \
               variable-set --always-set site_footer 'Usage on ${_DATE} \
-              | Files <strong>${HomSizH}</strong> MB \
-              | LiveDb <strong>${SumDatH}</strong> MB \
-              | DevDb <strong>${SkipDtH}</strong> MB \
+              | Files <strong>${_HomSizH}</strong> MB \
+              | LiveDb <strong>${_SumDatH}</strong> MB \
+              | DevDb <strong>${_SkipDtH}</strong> MB \
               | <strong>${_CLIENT_CORES}</strong> \
               ${_CLIENT_OPTION} ${_ENGINE_NR} \
               | CLI <strong>${_CLIENT_CLI}</strong> \
@@ -781,39 +781,39 @@ _usage_action() {
             if [ ! -e "${_usEr}/log/CANCELLED" ] \
               && [ "${_DEV_EXC}" = "NO" ] \
               && [ ! -e "${_usEr}/log/proxied.pid" ]; then
-              eMail=${_CLIENT_EMAIL//\\\@/\@}
-              AegirUrl=$(cat ${_usEr}/log/domain.txt 2>&1)
-              if [ "${HomSizH}" -gt "${_DSK_MAX_LIMIT}" ]; then
-                Files="!x!FilesAll"
+              _eMail=${_CLIENT_EMAIL//\\\@/\@}
+              _AegirUrl=$(cat ${_usEr}/log/domain.txt 2>&1)
+              if [ "${_HomSizH}" -gt "${_DSK_MAX_LIMIT}" ]; then
+                _Files="!x!FilesAll"
               else
-                Files="FilesAll"
+                _Files="FilesAll"
               fi
-              if [ "${SumDatH}" -gt "${_SQL_MAX_LIMIT}" ]; then
-                DbsL="!x!DbsLive"
+              if [ "${_SumDatH}" -gt "${_SQL_MAX_LIMIT}" ]; then
+                _DbsL="!x!DbsLive"
               else
-                DbsL="DbsLive"
+                _DbsL="DbsLive"
               fi
-              if [ "${SkipDtH}" -gt "${_SQL_DEV_LIMIT}" ]; then
-                DbsD="!x!DbsDev"
+              if [ "${_SkipDtH}" -gt "${_SQL_DEV_LIMIT}" ]; then
+                _DbsD="!x!DbsDev"
               else
-                DbsD="DbsDev"
+                _DbsD="DbsDev"
               fi
               if [ "${_THIS_MODE}" = "verbose" ] || [ -z "${_THIS_MODE}" ]; then
                 _LOG_FILE="usage-latest-verbose.log"
               elif [ "${_THIS_MODE}" = "silent" ]; then
                 _LOG_FILE="usage-latest-silent.log"
               fi
-              echo "${AegirUrl},${Files}:${HomSizH},${DbsL}:${SumDatH},${DbsD}:${SkipDtH},${eMail},Subs:${_CLIENT_OPTION}:${_CLIENT_CORES},${_THIS_U}" >> /var/xdrago/log/usage/${_LOG_FILE}
+              echo "${_AegirUrl},${_Files}:${_HomSizH},${_DbsL}:${_SumDatH},${_DbsD}:${_SkipDtH},${_eMail},Subs:${_CLIENT_OPTION}:${_CLIENT_CORES},${_THIS_U}" >> /var/xdrago/log/usage/${_LOG_FILE}
             fi
-            Tm_Dir="${_THIS_HM_PLR}/profiles/hostmaster/themes/aegir/eldir"
-            PgTpl="${TmDir}/page.tpl.php"
-            EldirF="0001-Print-site_footer-if-defined.patch"
-            TplPatch="/var/xdrago/conf/${EldirF}"
-            if [ -e "${PgTpl}" ] && [ -e "${TplPatch}" ]; then
-              _IS_SF=$(grep "site_footer" ${PgTpl} 2>&1)
+            _TmDir="${_THIS_HM_PLR}/profiles/hostmaster/themes/aegir/eldir"
+            _PgTpl="${_TmDir}/page.tpl.php"
+            _EldirF="0001-Print-site_footer-if-defined.patch"
+            _TplPatch="/var/xdrago/conf/${_EldirF}"
+            if [ -e "${_PgTpl}" ] && [ -e "${_TplPatch}" ]; then
+              _IS_SF=$(grep "site_footer" ${_PgTpl} 2>&1)
               if [[ ! "${_IS_SF}" =~ "site_footer" ]]; then
-                cd ${TmDir}
-                patch -p1 < ${TplPatch} &> /dev/null
+                cd ${_TmDir}
+                patch -p1 < ${_TplPatch} &> /dev/null
                 cd
               fi
             fi

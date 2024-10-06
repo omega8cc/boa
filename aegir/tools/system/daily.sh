@@ -93,8 +93,8 @@ _if_hosted_sys() {
 }
 
 _find_fast_mirror_early() {
-  isNetc=$(which netcat 2>&1)
-  if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
+  _isNetc=$(which netcat 2>&1)
+  if [ ! -x "${_isNetc}" ] || [ -z "${_isNetc}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
@@ -133,9 +133,9 @@ _find_fast_mirror_early() {
 }
 
 _enable_chattr() {
-  isTest="$1"
-  isTest=${isTest//[^a-z0-9]/}
-  if [ ! -z "${isTest}" ] && [ -d "/home/$1/" ]; then
+  _isTest="$1"
+  _isTest=${_isTest//[^a-z0-9]/}
+  if [ ! -z "${_isTest}" ] && [ -d "/home/$1/" ]; then
     if [ "$1" != "${_HM_U}.ftp" ]; then
       chattr +i /home/$1/
     else
@@ -160,9 +160,9 @@ _enable_chattr() {
 }
 
 _disable_chattr() {
-  isTest="$1"
-  isTest=${isTest//[^a-z0-9]/}
-  if [ ! -z "${isTest}" ] && [ -d "/home/$1/" ]; then
+  _isTest="$1"
+  _isTest=${_isTest//[^a-z0-9]/}
+  if [ ! -z "${_isTest}" ] && [ -d "/home/$1/" ]; then
     if [ "$1" != "${_HM_U}.ftp" ]; then
       if [ -d "/home/$1/" ]; then
         chattr -i /home/$1/
@@ -463,23 +463,23 @@ _fix_user_register_protection_with_vSet() {
   _sync_user_register_protection_ini_vars
   if [ "${_IGNORE_USER_REGISTER_PROTECTION}" = "NO" ] \
     && [ ! -e "${_Plr}/core" ]; then
-    Prm=$(_run_drush8_nosilent_cmd "${_vGet} ^user_register$" \
+    _Prm=$(_run_drush8_nosilent_cmd "${_vGet} ^user_register$" \
       | cut -d: -f2 \
       | awk '{ print $1}' \
       | sed "s/['\"]//g" \
       | tr -d "\n" 2>&1)
-    Prm=${Prm//[^0-2]/}
-    echo "Prm user_register for ${_Dom} is ${Prm}"
+    _Prm=${_Prm//[^0-2]/}
+    echo "_Prm user_register for ${_Dom} is ${_Prm}"
     if [ "${_ENABLE_STRICT_USER_REGISTER_PROTECTION}" = "YES" ]; then
       _run_drush8_cmd "${_vSet} user_register 0"
-      echo "Prm user_register for ${_Dom} set to 0"
+      echo "_Prm user_register for ${_Dom} set to 0"
     else
-      if [ "${Prm}" = "1" ] || [ -z "${Prm}" ]; then
+      if [ "${_Prm}" = "1" ] || [ -z "${_Prm}" ]; then
         _run_drush8_cmd "${_vSet} user_register 2"
-        echo "Prm user_register for ${_Dom} set to 2"
+        echo "_Prm user_register for ${_Dom} set to 2"
       fi
       _run_drush8_cmd "${_vSet} user_email_verification 1"
-      echo "Prm user_email_verification for ${_Dom} set to 1"
+      echo "_Prm user_email_verification for ${_Dom} set to 1"
     fi
   fi
   _fix_site_readonlymode
@@ -1003,16 +1003,16 @@ _fix_modules() {
     fi
     _AUTO_CNF_PF_DL=NO
     if [ "${_PRIV_TEST_RESULT}" = "OK" ]; then
-      Pri=$(_run_drush8_nosilent_cmd "${_vGet} ^file_default_scheme$" \
+      _Pri=$(_run_drush8_nosilent_cmd "${_vGet} ^file_default_scheme$" \
         | cut -d: -f2 \
         | awk '{ print $1}' \
         | sed "s/['\"]//g" \
         | tr -d "\n" 2>&1)
-      Pri=${Pri//[^a-z]/}
-      if [ "$Pri" = "private" ] || [ "$Pri" = "public" ]; then
-        echo Pri file_default_scheme for ${_Dom} is $Pri
+      _Pri=${_Pri//[^a-z]/}
+      if [ "${_Pri}" = "private" ] || [ "${_Pri}" = "public" ]; then
+        echo _Pri file_default_scheme for ${_Dom} is ${_Pri}
       fi
-      if [ "$Pri" = "private" ]; then
+      if [ "${_Pri}" = "private" ]; then
         _AUTO_CNF_PF_DL=YES
       fi
     fi
@@ -2000,144 +2000,144 @@ _cleanup_ghost_drushrc() {
 
 _if_le_hm_ssl_old() {
   # Get the current time in seconds since epoch
-  current_time=$(date +%s)
+  _current_time=$(date +%s)
 
   # Path to the file you want to check
-  fi_lePath="$1"
+  _filePath="$1"
 
   # Define the thresholds
-  recent_threshold_days=60  # 60 days to consider for new updates
-  update_check_days=30      # Don't update NEW if it was already set within the last 30 days
+  _recent_threshold_days=60  # 60 days to consider for new updates
+  _update_check_days=30      # Don't update NEW if it was already set within the last 30 days
 
   # Check if the path is a symlink
-  if [ -L "${fi_lePath}" ]; then
-    target_file=$(readlink -f "${fi_lePath}")
+  if [ -L "${_filePath}" ]; then
+    _target_file=$(readlink -f "${_filePath}")
     # Get the file's modification time in seconds since epoch
-    file_mod_time=$(stat -c %Y "$target_file")
+    _file_mod_time=$(stat -c %Y "${_target_file}")
   else
     # Get the file's modification time in seconds since epoch
-    file_mod_time=$(stat -c %Y "${fi_lePath}")
+    _file_mod_time=$(stat -c %Y "${_filePath}")
   fi
 
   # Calculate the time difference in minutes
-  time_diff_minutes=$(( (current_time - file_mod_time) / 60 ))
+  _time_diff_minutes=$(( (_current_time - _file_mod_time) / 60 ))
 
   # Calculate the time difference in days
-  time_diff_days=$(( time_diff_minutes / 1440 ))
+  _time_diff_days=$(( _time_diff_minutes / 1440 ))
 
   # Calculate the last update check time (from some state file, if exists)
-  if [ -f "${fi_lePath}.lastupdate" ]; then
-    last_update_time=$(cat "${fi_lePath}.lastupdate")
+  if [ -f "${_filePath}.lastupdate" ]; then
+    _last_update_time=$(cat "${_filePath}.lastupdate")
   else
-    last_update_time=0
+    _last_update_time=0
   fi
 
-  last_update_diff_days=$(( (current_time - last_update_time) / 86400 ))  # 86400 seconds in a day
+  _last_update_diff_days=$(( (_current_time - _last_update_time) / 86400 ))  # 86400 seconds in a day
 
   # Check if the file was modified within the last 30 minutes
-  if [ $time_diff_minutes -lt 30 ]; then
-    crtLastMod=NEW
+  if [ ${_time_diff_minutes} -lt 30 ]; then
+    _crtLastMod=NEW
   # Check if the file was modified within the last 60 days and not marked NEW in the last 30 days
-  elif [ $time_diff_days -le $recent_threshold_days ] && [ $last_update_diff_days -ge $update_check_days ]; then
-    crtLastMod=NEW
-    echo $current_time > "${fi_lePath}.lastupdate"
+  elif [ ${_time_diff_days} -le ${_recent_threshold_days} ] && [ ${_last_update_diff_days} -ge ${_update_check_days} ]; then
+    _crtLastMod=NEW
+    echo ${_current_time} > "${_filePath}.lastupdate"
   else
-    crtLastMod=OLD
+    _crtLastMod=OLD
   fi
 }
 
 _if_le_hm_ssl_crt_key_copy() {
-  if [ -e "${leCrtPath}/fullchain.pem" ]; then
-    crtPath="${leCrtPath}/fullchain.pem"
-  elif [ -e "${leCrtPath}/cert.pem" ]; then
-    crtPath="${leCrtPath}/cert.pem"
+  if [ -e "${_leCrtPath}/fullchain.pem" ]; then
+    _crtPath="${_leCrtPath}/fullchain.pem"
+  elif [ -e "${_leCrtPath}/cert.pem" ]; then
+    _crtPath="${_leCrtPath}/cert.pem"
   fi
-  if [ -e "${crtPath}" ]; then
-    if [ -L "${crtPath}" ]; then
-      crtPathR=$(readlink -n ${crtPath} 2>&1)
-      crtPathR=$(echo -n ${crtPathR} | tr -d "\n" 2>&1)
-      if [ -f "${leCrtPath}/${crtPathR}" ]; then
-        rm -f /etc/ssl/private/${hmFront}.crt
-        cp -a ${leCrtPath}/${crtPathR} /etc/ssl/private/${hmFront}.crt
+  if [ -e "${_crtPath}" ]; then
+    if [ -L "${_crtPath}" ]; then
+      _crtPathR=$(readlink -n ${_crtPath} 2>&1)
+      _crtPathR=$(echo -n ${_crtPathR} | tr -d "\n" 2>&1)
+      if [ -f "${_leCrtPath}/${_crtPathR}" ]; then
+        rm -f /etc/ssl/private/${_hmFront}.crt
+        cp -a ${_leCrtPath}/${_crtPathR} /etc/ssl/private/${_hmFront}.crt
       fi
     else
-      rm -f /etc/ssl/private/${hmFront}.crt
-      cp -a ${crtPath} /etc/ssl/private/${hmFront}.crt
+      rm -f /etc/ssl/private/${_hmFront}.crt
+      cp -a ${_crtPath} /etc/ssl/private/${_hmFront}.crt
     fi
   fi
-  keyPath="${leCrtPath}/privkey.pem"
-  if [ -e "${keyPath}" ]; then
-    if [ -L "${keyPath}" ]; then
-      keyPathR=$(readlink -n ${keyPath} 2>&1)
-      keyPathR=$(echo -n ${keyPathR} | tr -d "\n" 2>&1)
-      if [ -f "${leCrtPath}/${keyPathR}" ]; then
-        rm -f /etc/ssl/private/${hmFront}.key
-        cp -a ${leCrtPath}/${keyPathR} /etc/ssl/private/${hmFront}.key
+  _keyPath="${_leCrtPath}/privkey.pem"
+  if [ -e "${_keyPath}" ]; then
+    if [ -L "${_keyPath}" ]; then
+      _keyPathR=$(readlink -n ${_keyPath} 2>&1)
+      _keyPathR=$(echo -n ${_keyPathR} | tr -d "\n" 2>&1)
+      if [ -f "${_leCrtPath}/${_keyPathR}" ]; then
+        rm -f /etc/ssl/private/${_hmFront}.key
+        cp -a ${_leCrtPath}/${_keyPathR} /etc/ssl/private/${_hmFront}.key
       fi
     else
-      rm -f /etc/ssl/private/${hmFront}.key
-      cp -a ${keyPath} /etc/ssl/private/${hmFront}.key
+      rm -f /etc/ssl/private/${_hmFront}.key
+      cp -a ${_keyPath} /etc/ssl/private/${_hmFront}.key
     fi
   fi
 }
 
 _le_hm_ssl_check_update() {
-  leCrtPath=
+  _leCrtPath=
   _exeLe="${_usEr}/tools/le/dehydrated"
   if [ -e "${_usEr}/log/domain.txt" ]; then
-    hmFront=$(cat ${_usEr}/log/domain.txt 2>&1)
-    hmFront=$(echo -n ${hmFront} | tr -d "\n" 2>&1)
+    _hmFront=$(cat ${_usEr}/log/domain.txt 2>&1)
+    _hmFront=$(echo -n ${_hmFront} | tr -d "\n" 2>&1)
   fi
   if [ -e "${_usEr}/log/extra_domain.txt" ]; then
-    hmFrontExtra=$(cat ${_usEr}/log/extra_domain.txt 2>&1)
-    hmFrontExtra=$(echo -n ${hmFrontExtra} | tr -d "\n" 2>&1)
+    _hmFrontExtra=$(cat ${_usEr}/log/extra_domain.txt 2>&1)
+    _hmFrontExtra=$(echo -n ${_hmFrontExtra} | tr -d "\n" 2>&1)
   fi
-  if [ -z "${hmFront}" ]; then
+  if [ -z "${_hmFront}" ]; then
     if [ -e "${_usEr}/.drush/hostmaster.alias.drushrc.php" ]; then
-      hmFront=$(cat ${_usEr}/.drush/hostmaster.alias.drushrc.php \
+      _hmFront=$(cat ${_usEr}/.drush/hostmaster.alias.drushrc.php \
         | grep "uri'" \
         | cut -d: -f2 \
         | awk '{ print $3}' \
         | sed "s/[\,']//g" 2>&1)
     fi
   fi
-  if [ ! -z "${hmFront}" ]; then
-    leCrtPath="${_usEr}/tools/le/certs/${hmFront}"
+  if [ ! -z "${_hmFront}" ]; then
+    _leCrtPath="${_usEr}/tools/le/certs/${_hmFront}"
   fi
   if [ -x "${_exeLe}" ] \
-    && [ ! -z "${hmFront}" ] \
-    && [ -e "${leCrtPath}/fullchain.pem" ]; then
+    && [ ! -z "${_hmFront}" ] \
+    && [ -e "${_leCrtPath}/fullchain.pem" ]; then
     _DOM=$(date +%e 2>&1)
     _DOM=${_DOM//[^0-9]/}
     _RDM=$((RANDOM%25+6))
     if [ "${_DOM}" = "${_RDM}" ] || [ -e "${_usEr}/static/control/force-ssl-certs-rebuild.info" ]; then
-      if [ ! -e "${_usEr}/log/ctrl/site.${hmFront}.cert-x1-rebuilt.info" ]; then
-        leParams="--cron --ipv4 --preferred-chain 'ISRG Root X1' --force"
+      if [ ! -e "${_usEr}/log/ctrl/site.${_hmFront}.cert-x1-rebuilt.info" ]; then
+        _leParams="--cron --ipv4 --preferred-chain 'ISRG Root X1' --force"
         mkdir -p ${_usEr}/log/ctrl
-        touch ${_usEr}/log/ctrl/site.${hmFront}.cert-x1-rebuilt.info
+        touch ${_usEr}/log/ctrl/site.${_hmFront}.cert-x1-rebuilt.info
       else
-        leParams="--cron --ipv4 --preferred-chain 'ISRG Root X1'"
+        _leParams="--cron --ipv4 --preferred-chain 'ISRG Root X1'"
       fi
     else
-      leParams="--cron --ipv4 --preferred-chain 'ISRG Root X1'"
+      _leParams="--cron --ipv4 --preferred-chain 'ISRG Root X1'"
     fi
-    if [ ! -z "${hmFrontExtra}" ]; then
-      echo "Running LE cert check directly for hostmaster ${_HM_U} with ${hmFrontExtra}"
-      su -s /bin/bash - ${_HM_U} -c "${_exeLe} ${leParams} --domain ${hmFront} --domain ${hmFrontExtra}"
+    if [ ! -z "${_hmFrontExtra}" ]; then
+      echo "Running LE cert check directly for hostmaster ${_HM_U} with ${_hmFrontExtra}"
+      su -s /bin/bash - ${_HM_U} -c "${_exeLe} ${_leParams} --domain ${_hmFront} --domain ${_hmFrontExtra}"
       wait
     else
       echo "Running LE cert check directly for hostmaster ${_HM_U}"
-      su -s /bin/bash - ${_HM_U} -c "${_exeLe} ${leParams} --domain ${hmFront}"
+      su -s /bin/bash - ${_HM_U} -c "${_exeLe} ${_leParams} --domain ${_hmFront}"
       wait
     fi
   fi
-  crtLastMod=OLD
-  _if_le_hm_ssl_old "${leCrtPath}/fullchain.pem"
-  if [ "${crtLastMod}" = "NEW" ]; then
-    echo "Copying NEW LE cert for hostmaster ${hmFront} to /etc/ssl/private/"
+  _crtLastMod=OLD
+  _if_le_hm_ssl_old "${_leCrtPath}/fullchain.pem"
+  if [ "${_crtLastMod}" = "NEW" ]; then
+    echo "Copying NEW LE cert for hostmaster ${_hmFront} to /etc/ssl/private/"
     _if_le_hm_ssl_crt_key_copy
   else
-    echo "No new LE cert for hostmaster ${hmFront} to copy"
+    echo "No new LE cert for hostmaster ${_hmFront} to copy"
   fi
 }
 
@@ -2194,16 +2194,16 @@ _le_ssl_check_update() {
 		_RDM=$((RANDOM%25+6))
 		if [ "${_DOM}" = "${_RDM}" ] || [ -e "${_usEr}/static/control/force-ssl-certs-rebuild.info" ]; then
 		  if [ ! -e "${_usEr}/log/ctrl/site.${_Dom}.cert-x1-rebuilt.info" ]; then
-			leParams="--cron --ipv4 --preferred-chain 'ISRG Root X1' --force"
+			_leParams="--cron --ipv4 --preferred-chain 'ISRG Root X1' --force"
 			mkdir -p ${_usEr}/log/ctrl
 			touch ${_usEr}/log/ctrl/site.${_Dom}.cert-x1-rebuilt.info
 		  else
-			leParams="--cron --ipv4 --preferred-chain 'ISRG Root X1'"
+			_leParams="--cron --ipv4 --preferred-chain 'ISRG Root X1'"
 		  fi
 		else
-		  leParams="--cron --ipv4 --preferred-chain 'ISRG Root X1'"
+		  _leParams="--cron --ipv4 --preferred-chain 'ISRG Root X1'"
 		fi
-        dhArgs="--domain ${_Dom} ${_usEaliases}"
+        _dhArgs="--domain ${_Dom} ${_usEaliases}"
         if [ -e "${_usEr}/static/control/wildcard-enable-${_Dom}.info" ]; then
           _Dom=$(echo ${_Dom} | sed 's/^www.//g' 2>&1)
           echo "--domain *.${_Dom}"
@@ -2215,14 +2215,14 @@ _le_ssl_check_update() {
           fi
           if [ -e "${_usEr}/tools/le/hooks/cloudflare/hook.py" ]; then
             if [ -e "${_usEr}/tools/le/config" ]; then
-              dhArgs="--alias ${_Dom} --domain *.${_Dom} --domain ${_Dom} ${_usEaliases}"
-              dhArgs=" ${dhArgs} --challenge dns-01 --hook '${_usEr}/tools/le/hooks/cloudflare/hook.py'"
+              _dhArgs="--alias ${_Dom} --domain *.${_Dom} --domain ${_Dom} ${_usEaliases}"
+              _dhArgs=" ${_dhArgs} --challenge dns-01 --hook '${_usEr}/tools/le/hooks/cloudflare/hook.py'"
             fi
           fi
         fi
-        echo "leParams is ${leParams}"
-        echo "dhArgs is ${dhArgs}"
-        su -s /bin/bash - ${_HM_U} -c "${_exeLe} ${leParams} ${dhArgs}"
+        echo "_leParams is ${_leParams}"
+        echo "_dhArgs is ${_dhArgs}"
+        su -s /bin/bash - ${_HM_U} -c "${_exeLe} ${_leParams} ${_dhArgs}"
         wait
         if [ -e "${_usEr}/static/control/wildcard-enable-${_Dom}.info" ]; then
           sleep 30
@@ -2240,9 +2240,9 @@ _if_gen_goaccess() {
   _PrTestCluster=$(grep "CLUSTER" /root/.${_HM_U}.octopus.cnf 2>&1)
   if [[ "${_PrTestPhantom}" =~ "PHANTOM" ]] \
     || [[ "${_PrTestCluster}" =~ "CLUSTER" ]]; then
-    isWblgx=$(which weblogx 2>&1)
-    if [ -x "${isWblgx}" ]; then
-      ${isWblgx} --site="${1}" --env="${_HM_U}"
+    _isWblgx=$(which weblogx 2>&1)
+    if [ -x "${_isWblgx}" ]; then
+      ${_isWblgx} --site="${1}" --env="${_HM_U}"
       wait
       if [ ! -e "/data/disk/${_HM_U}/static/goaccess" ]; then
         mkdir -p /data/disk/${_HM_U}/static/goaccess
@@ -2443,12 +2443,12 @@ _check_old_empty_hostmaster_platforms() {
     if [ "${_DEL_OLD_EMPTY_PLATFORMS}" -gt "0" ]; then
       echo "_DEL_OLD_EMPTY_PLATFORMS is set to \
         ${_DEL_OLD_EMPTY_PLATFORMS} days on /var/aegir instance"
-      for Platform in `find /var/aegir/.drush/platform_* -maxdepth 1 -mtime \
+      for _Platform in `find /var/aegir/.drush/platform_* -maxdepth 1 -mtime \
         +${_DEL_OLD_EMPTY_PLATFORMS} -type f | sort`; do
-        _T_PFM_NAME=$(echo "${Platform}" \
+        _T_PFM_NAME=$(echo "${_Platform}" \
           | sed "s/.*platform_//g; s/.alias.drushrc.php//g" \
           | awk '{ print $1}' 2>&1)
-        _T_PFM_ROOT=$(cat ${Platform} \
+        _T_PFM_ROOT=$(cat ${_Platform} \
           | grep "root'" \
           | cut -d: -f2 \
           | awk '{ print $3}' \
@@ -2498,12 +2498,12 @@ _check_old_empty_platforms() {
     if [ "${_DEL_OLD_EMPTY_PLATFORMS}" -gt "0" ]; then
       echo "_DEL_OLD_EMPTY_PLATFORMS is set to \
         ${_DEL_OLD_EMPTY_PLATFORMS} days on ${_HM_U} instance"
-      for Platform in `find ${_usEr}/.drush/platform_* -maxdepth 1 -mtime \
+      for _Platform in `find ${_usEr}/.drush/platform_* -maxdepth 1 -mtime \
         +${_DEL_OLD_EMPTY_PLATFORMS} -type f | sort`; do
-        _T_PFM_NAME=$(echo "${Platform}" \
+        _T_PFM_NAME=$(echo "${_Platform}" \
           | sed "s/.*platform_//g; s/.alias.drushrc.php//g" \
           | awk '{ print $1}' 2>&1)
-        _T_PFM_ROOT=$(cat ${Platform} \
+        _T_PFM_ROOT=$(cat ${_Platform} \
           | grep "root'" \
           | cut -d: -f2 \
           | awk '{ print $3}' \
@@ -2644,11 +2644,11 @@ _purge_cruft_machine() {
 
   for i in `dir -d /home/${_HM_U}.ftp/platforms/*`; do
     if [ -e "${i}" ]; then
-      RevisionTest=$(ls ${i} \
+      _RevisionTest=$(ls ${i} \
         | wc -l \
         | tr -d "\n" 2>&1)
-      if [ "${RevisionTest}" -lt "${_LOW_NR}" ] \
-        && [ ! -z "${RevisionTest}" ]; then
+      if [ "${_RevisionTest}" -lt "${_LOW_NR}" ] \
+        && [ ! -z "${_RevisionTest}" ]; then
         if [ -d "/home/${_HM_U}.ftp/platforms" ]; then
           chattr -i /home/${_HM_U}.ftp/platforms
           chattr -i /home/${_HM_U}.ftp/platforms/* &> /dev/null
@@ -2666,9 +2666,9 @@ _purge_cruft_machine() {
       if [ ! -d "${i}/keys" ]; then
         mkdir -p ${i}/keys
       fi
-      RevisionTest=$(ls ${i} | wc -l 2>&1)
-      if [ "${RevisionTest}" -lt "2" ] && [ ! -z "${RevisionTest}" ]; then
-        echo "RevisionTest is ${RevisionTest}"
+      _RevisionTest=$(ls ${i} | wc -l 2>&1)
+      if [ "${_RevisionTest}" -lt "2" ] && [ ! -z "${_RevisionTest}" ]; then
+        echo "_RevisionTest is ${_RevisionTest}"
         _NOW=$(date +%y%m%d-%H%M%S 2>&1)
         mkdir -p ${_usEr}/undo/dist/${_NOW}
         mv -f ${i} ${_usEr}/undo/dist/${_NOW}/ &> /dev/null
@@ -2679,7 +2679,7 @@ _purge_cruft_machine() {
 
   for i in `dir -d ${_usEr}/distro/*`; do
     if [ -e "${i}" ]; then
-      distTrNr=$(echo ${i} \
+      _distTrNr=$(echo ${i} \
         | cut -d'/' -f6 \
         | awk '{ print $1}' 2> /dev/null)
       if [ -d "/home/${_HM_U}.ftp/platforms" ]; then
@@ -2691,27 +2691,27 @@ _purge_cruft_machine() {
         chown ${_HM_U}.ftp:${_WEBG} ${i}/keys &> /dev/null
         chmod 02775 ${i}/keys &> /dev/null
       fi
-      if [ ! -e "/home/${_HM_U}.ftp/platforms/${distTrNr}" ]; then
-        mkdir -p /home/${_HM_U}.ftp/platforms/${distTrNr}
+      if [ ! -e "/home/${_HM_U}.ftp/platforms/${_distTrNr}" ]; then
+        mkdir -p /home/${_HM_U}.ftp/platforms/${_distTrNr}
       fi
-      if [ -e "${i}/keys" ] && [ ! -e "/home/${_HM_U}.ftp/platforms/${distTrNr}/keys" ]; then
-        ln -sfn ${i}/keys /home/${_HM_U}.ftp/platforms/${distTrNr}/keys
+      if [ -e "${i}/keys" ] && [ ! -e "/home/${_HM_U}.ftp/platforms/${_distTrNr}/keys" ]; then
+        ln -sfn ${i}/keys /home/${_HM_U}.ftp/platforms/${_distTrNr}/keys
       fi
       if [ -e "/home/${_HM_U}.ftp/platforms/data" ]; then
         _NOW=$(date +%y%m%d-%H%M%S 2>&1)
         [ ! -e "/var/backups/ghost/${_HM_U}/${_NOW}" ] && mkdir -p /var/backups/ghost/${_HM_U}/${_NOW}
         mv -f /home/${_HM_U}.ftp/platforms/data /var/backups/ghost/${_HM_U}/${_NOW}/platforms_data
       fi
-      for Codebase in `find ${i}/* \
+      for _Codebase in `find ${i}/* \
         -maxdepth 1 \
         -mindepth 1 \
         -type d \
         | grep "/sites$" 2>&1`; do
-        CodebaseName=$(echo ${Codebase} \
+        _CodebaseName=$(echo ${_Codebase} \
           | cut -d'/' -f7 \
           | awk '{ print $1}' 2> /dev/null)
-        ln -sfn ${Codebase} /home/${_HM_U}.ftp/platforms/${distTrNr}/${CodebaseName}
-        echo "Fixed ${CodebaseName} in ${distTrNr} symlink to ${Codebase} for ${_HM_U}.ftp"
+        ln -sfn ${_Codebase} /home/${_HM_U}.ftp/platforms/${_distTrNr}/${_CodebaseName}
+        echo "Fixed ${_CodebaseName} in ${_distTrNr} symlink to ${_Codebase} for ${_HM_U}.ftp"
       done
     fi
   done
@@ -2758,18 +2758,18 @@ _shared_codebases_cleanup() {
   fi
   for i in `dir -d /data/all/*/`; do
     if [ -d "${i}o_contrib" ]; then
-      for Codebase in `find ${i}* -maxdepth 1 -mindepth 1 -type d \
+      for _Codebase in `find ${i}* -maxdepth 1 -mindepth 1 -type d \
         | grep "/profiles$" 2>&1`; do
-        Codebase_Dir=$(echo ${Codebase} \
+        _CodebaseDir=$(echo ${_Codebase} \
           | sed 's/\/profiles//g' \
           | awk '{print $1}' 2> /dev/null)
-        CodebaseTest=$(find /data/disk/*/distro/*/*/ -maxdepth 1 -mindepth 1 \
-          -type l -lname ${Codebase} | sort 2>&1)
-        if [[ "${CodebaseTest}" =~ "No such file or directory" ]] \
-          || [ -z "${CodebaseTest}" ]; then
+        _CodebaseTest=$(find /data/disk/*/distro/*/*/ -maxdepth 1 -mindepth 1 \
+          -type l -lname ${_Codebase} | sort 2>&1)
+        if [[ "${_CodebaseTest}" =~ "No such file or directory" ]] \
+          || [ -z "${_CodebaseTest}" ]; then
           mkdir -p ${_CLD}${i}
-          echo "Moving no longer used ${CodebaseDir} to ${_CLD}${i}"
-          ### mv -f ${CodebaseDir} ${_CLD}${i}
+          echo "Moving no longer used ${_CodebaseDir} to ${_CLD}${i}"
+          ### mv -f ${_CodebaseDir} ${_CLD}${i}
         fi
       done
     fi
@@ -2779,16 +2779,16 @@ _shared_codebases_cleanup() {
 _ghost_codebases_cleanup() {
   _CLD="/var/backups/ghost-codebases-cleanup"
   for i in `dir -d /data/disk/*/distro/*/*/`; do
-    CodebaseTest=$(find ${i} -maxdepth 1 -mindepth 1 \
+    _CodebaseTest=$(find ${i} -maxdepth 1 -mindepth 1 \
       -type d -name vendor | sort 2>&1)
-    for vendor in ${CodebaseTest}; do
-      Parent_Dir=`echo ${vendor} | sed "s/\/vendor//g"`
-      if [ -d "${ParentDir}/docroot/sites/all" ] \
-        || [ -d "${ParentDir}/html/sites/all" ] \
-        || [ -d "${ParentDir}/web/sites/all" ]; then
+    for _vendor in ${_CodebaseTest}; do
+      _ParentDir=`echo ${_vendor} | sed "s/\/vendor//g"`
+      if [ -d "${_ParentDir}/docroot/sites/all" ] \
+        || [ -d "${_ParentDir}/html/sites/all" ] \
+        || [ -d "${_ParentDir}/web/sites/all" ]; then
         _CLEAN_THIS=SKIP
       else
-        _CLEAN_THIS="${ParentDir}"
+        _CLEAN_THIS="${_ParentDir}"
         _TSTAMP=`date +%y%m%d-%H%M%S`
         mkdir -p ${_CLD}${i}${_TSTAMP}
         echo "Moving ghost ${_CLEAN_THIS} to ${_CLD}${i}${_TSTAMP}/"
@@ -2827,20 +2827,20 @@ _cleanup_weblogx() {
 _incident_email_report() {
   if [ -e "/root/.barracuda.cnf" ]; then
     source /root/.barracuda.cnf
-    local thisEmail="${_MY_EMAIL}"
+    local _thisEmail="${_MY_EMAIL}"
     export _INCIDENT_EMAIL_REPORT=${_INCIDENT_EMAIL_REPORT//[^A-Z]/}
     : "${_INCIDENT_EMAIL_REPORT:=YES}"
   fi
-  if [ -n "${thisEmail}" ] && [ "${_INCIDENT_EMAIL_REPORT}" = "YES" ]; then
-    hName=$(cat /etc/hostname 2>&1)
-    echo "Sending Incident Report Email on $(date 2>&1)" >> ${thisLog}
-    s-nail -s "Incident Report during daily.sh: ${1} on ${hName} at $(date 2>&1)" ${_MY_EMAIL} < ${thisLog}
+  if [ -n "${_thisEmail}" ] && [ "${_INCIDENT_EMAIL_REPORT}" = "YES" ]; then
+    _hName=$(cat /etc/hostname 2>&1)
+    echo "Sending Incident Report Email on $(date 2>&1)" >> ${_thisLog}
+    s-nail -s "Incident Report during daily.sh: ${1} on ${_hName} at $(date 2>&1)" ${_MY_EMAIL} < ${_thisLog}
   fi
 }
 
 _incident_detection() {
   # Array of errors to search for
-  declare -a errors=(
+  declare -a _errors=(
     "urn:ietf:params:acme:error:unauthorized"
     "urn:ietf:params:acme:error:badNonce"
     "urn:ietf:params:acme:error:rateLimited"
@@ -2853,9 +2853,9 @@ _incident_detection() {
   )
 
   # Loop through errors and check if any exist in the log file
-  for error in "${errors[@]}"; do
-    if grep -q "${error}" "${thisLog}"; then
-      _incident_email_report "${error}"
+  for _error in "${_errors[@]}"; do
+    if grep -q "${_error}" "${_thisLog}"; then
+      _incident_email_report "${_error}"
       break  # Exit the loop after the first detected error
     fi
   done
@@ -2865,7 +2865,7 @@ _daily_action() {
   if [ -n "${_ENABLE_GOACCESS}" ] && [ "${_ENABLE_GOACCESS}" = "YES" ]; then
     _prepare_weblogx
   fi
-  for User in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
+  for _usEr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
     _count_cpu
     _load_control
     if [ -e "${_usEr}/config/server_master/nginx/vhost.d" ] \
@@ -3089,8 +3089,8 @@ _CTRL_TPL_FORCE_UPDATE=YES
 # Check for last all nr
 if [ -e "/data/all" ]; then
   cd /data/all
-  listl=([0-9]*)
-  _LAST_ALL=${listl[@]: -1}
+  _listl=([0-9]*)
+  _LAST_ALL=${_listl[@]: -1}
   _O_CONTRIB="/data/all/${_LAST_ALL}/o_contrib"
   _O_CONTRIB_SEVEN="/data/all/${_LAST_ALL}/o_contrib_seven"
   _O_CONTRIB_EIGHT="/data/all/${_LAST_ALL}/o_contrib_eight"
@@ -3098,8 +3098,8 @@ if [ -e "/data/all" ]; then
   _O_CONTRIB_TEN="/data/all/${_LAST_ALL}/o_contrib_ten"
 elif [ -e "/data/disk/all" ]; then
   cd /data/disk/all
-  listl=([0-9]*)
-  _LAST_ALL=${listl[@]: -1}
+  _listl=([0-9]*)
+  _LAST_ALL=${_listl[@]: -1}
   _O_CONTRIB="/data/disk/all/${_LAST_ALL}/o_contrib"
   _O_CONTRIB_SEVEN="/data/disk/all/${_LAST_ALL}/o_contrib_seven"
   _O_CONTRIB_EIGHT="/data/disk/all/${_LAST_ALL}/o_contrib_eight"
@@ -3213,18 +3213,18 @@ else
   su -s /bin/bash - aegir -c "drush8 @hostmaster utf8mb4-convert-databases -y" &> /dev/null
   wait
 
-  thisLog="/var/xdrago/log/daily/daily-${_NOW}.log"
+  _thisLog="/var/xdrago/log/daily/daily-${_NOW}.log"
 
-  _daily_action > ${thisLog} 2>&1
+  _daily_action > ${_thisLog} 2>&1
 
   _incident_detection
 
-  dhpWildPath="/etc/ssl/private/nginx-wild-ssl.dhp"
+  _dhpWildPath="/etc/ssl/private/nginx-wild-ssl.dhp"
   if [ -e "/etc/ssl/private/4096.dhp" ]; then
-    dhpPath="/etc/ssl/private/4096.dhp"
-    _DIFF_T=$(diff -w -B ${dhpPath} ${dhpWildPath} 2>&1)
+    _dhpPath="/etc/ssl/private/4096.dhp"
+    _DIFF_T=$(diff -w -B ${_dhpPath} ${_dhpWildPath} 2>&1)
     if [ ! -z "${_DIFF_T}" ]; then
-      cp -af ${dhpPath} ${dhpWildPath}
+      cp -af ${_dhpPath} ${_dhpWildPath}
     fi
   fi
 
@@ -3234,53 +3234,53 @@ else
       openssl dhparam -out /etc/ssl/private/4096.dhp 4096 > /dev/null 2>&1 &
     fi
     for f in `find /etc/ssl/private/*.crt -type f`; do
-      sslName=$(echo ${f} | cut -d'/' -f5 | awk '{ print $1}' | sed "s/.crt//g")
-      sslFile="/etc/ssl/private/${sslName}.dhp"
-      sslFileZ=${sslFile//\//\\\/}
-      if [ -e "${f}" ] && [ ! -z "${sslName}" ]; then
-        if [ ! -e "${sslFile}" ]; then
-          openssl dhparam -out ${sslFile} 2048 &> /dev/null
+      _sslName=$(echo ${f} | cut -d'/' -f5 | awk '{ print $1}' | sed "s/.crt//g")
+      _sslFile="/etc/ssl/private/${_sslName}.dhp"
+      _sslFileZ=${_sslFile//\//\\\/}
+      if [ -e "${f}" ] && [ ! -z "${_sslName}" ]; then
+        if [ ! -e "${_sslFile}" ]; then
+          openssl dhparam -out ${_sslFile} 2048 &> /dev/null
         else
-          _PFS_TEST=$(grep "DH PARAMETERS" ${sslFile} 2>&1)
+          _PFS_TEST=$(grep "DH PARAMETERS" ${_sslFile} 2>&1)
           if [[ ! "${_PFS_TEST}" =~ "DH PARAMETERS" ]]; then
-            openssl dhparam -out ${sslFile} 2048 &> /dev/null
+            openssl dhparam -out ${_sslFile} 2048 &> /dev/null
           fi
-          sslRootd="/var/aegir/config/server_master/nginx/pre.d"
-          sslFileX="${sslRootd}/z_${sslName}_ssl_proxy.conf"
-          sslFileY="${sslRootd}/${sslName}_ssl_proxy.conf"
-          if [ -e "${sslFileX}" ]; then
-            _DHP_TEST=$(grep "sslFile" ${sslFileX} 2>&1)
-            if [[ "${_DHP_TEST}" =~ "sslFile" ]]; then
-              sed -i "s/.*sslFile.*//g" ${sslFileX} &> /dev/null
+          _sslRootd="/var/aegir/config/server_master/nginx/pre.d"
+          _sslFileX="${_sslRootd}/z_${_sslName}_ssl_proxy.conf"
+          _sslFileY="${_sslRootd}/${_sslName}_ssl_proxy.conf"
+          if [ -e "${_sslFileX}" ]; then
+            _DHP_TEST=$(grep "_sslFile" ${_sslFileX} 2>&1)
+            if [[ "${_DHP_TEST}" =~ "_sslFile" ]]; then
+              sed -i "s/.*_sslFile.*//g" ${_sslFileX} &> /dev/null
               wait
-              sed -i "s/ *$//g; /^$/d" ${sslFileX} &> /dev/null
+              sed -i "s/ *$//g; /^$/d" ${_sslFileX} &> /dev/null
               wait
             fi
           fi
-          if [ -e "${sslFileY}" ]; then
-            _DHP_TEST=$(grep "sslFile" ${sslFileY} 2>&1)
-            if [[ "${_DHP_TEST}" =~ "sslFile" ]]; then
-              sed -i "s/.*sslFile.*//g" ${sslFileY} &> /dev/null
+          if [ -e "${_sslFileY}" ]; then
+            _DHP_TEST=$(grep "_sslFile" ${_sslFileY} 2>&1)
+            if [[ "${_DHP_TEST}" =~ "_sslFile" ]]; then
+              sed -i "s/.*_sslFile.*//g" ${_sslFileY} &> /dev/null
               wait
-              sed -i "s/ *$//g; /^$/d" ${sslFileY} &> /dev/null
+              sed -i "s/ *$//g; /^$/d" ${_sslFileY} &> /dev/null
               wait
             fi
           fi
-          if [ -e "${sslFileX}" ]; then
-            _DHP_TEST=$(grep "ssl_dhparam" ${sslFileX} 2>&1)
+          if [ -e "${_sslFileX}" ]; then
+            _DHP_TEST=$(grep "ssl_dhparam" ${_sslFileX} 2>&1)
             if [[ ! "${_DHP_TEST}" =~ "ssl_dhparam" ]]; then
-              sed -i "s/ssl_session_timeout .*/ssl_session_timeout          5m;\n  ssl_dhparam                  ${sslFileZ};/g" ${sslFileX} &> /dev/null
+              sed -i "s/ssl_session_timeout .*/ssl_session_timeout          5m;\n  ssl_dhparam                  ${_sslFileZ};/g" ${_sslFileX} &> /dev/null
               wait
-              sed -i "s/ *$//g; /^$/d" ${sslFileX} &> /dev/null
+              sed -i "s/ *$//g; /^$/d" ${_sslFileX} &> /dev/null
               wait
             fi
           fi
-          if [ -e "${sslFileY}" ]; then
-            _DHP_TEST=$(grep "ssl_dhparam" ${sslFileY} 2>&1)
+          if [ -e "${_sslFileY}" ]; then
+            _DHP_TEST=$(grep "ssl_dhparam" ${_sslFileY} 2>&1)
             if [[ ! "${_DHP_TEST}" =~ "ssl_dhparam" ]]; then
-              sed -i "s/ssl_session_timeout .*/ssl_session_timeout          5m;\n  ssl_dhparam                  ${sslFileZ};/g" ${sslFileY} &> /dev/null
+              sed -i "s/ssl_session_timeout .*/ssl_session_timeout          5m;\n  ssl_dhparam                  ${_sslFileZ};/g" ${_sslFileY} &> /dev/null
               wait
-              sed -i "s/ *$//g; /^$/d" ${sslFileY} &> /dev/null
+              sed -i "s/ *$//g; /^$/d" ${_sslFileY} &> /dev/null
               wait
             fi
           fi

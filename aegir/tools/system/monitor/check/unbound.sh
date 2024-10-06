@@ -30,9 +30,9 @@ fi
 
 _incident_email_report() {
   if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_EMAIL_REPORT}" = "YES" ]; then
-    hName=$(cat /etc/hostname 2>&1)
+    _hName=$(cat /etc/hostname 2>&1)
     echo "Sending Incident Report Email on $(date 2>&1)" >> ${_pthOml}
-    s-nail -s "Incident Report: ${1} on ${hName} at $(date 2>&1)" ${_MY_EMAIL} < ${_pthOml}
+    s-nail -s "Incident Report: ${1} on ${_hName} at $(date 2>&1)" ${_MY_EMAIL} < ${_pthOml}
   fi
 }
 

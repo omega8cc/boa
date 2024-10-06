@@ -163,8 +163,8 @@ if [ -e "/var/aegir" ]; then
 fi
 
 _locales_check_fix_early() {
-  isLoc=$(which locale 2>&1)
-  if [ ! -x "${isLoc}" ] || [ -z "${isLoc}" ]; then
+  _isLoc=$(which locale 2>&1)
+  if [ ! -x "${_isLoc}" ] || [ -z "${_isLoc}" ]; then
     _INITINS="/usr/bin/apt-get -y --allow-unauthenticated install"
     apt-get update -qq &> /dev/null
     ${_INITINS} locales locales-all &> /dev/null
@@ -259,8 +259,8 @@ _locales_check_fix_early() {
 _locales_check_fix_early
 
 _cron_check_install_early() {
-  isCrn=$(which cron 2>&1)
-  if [ ! -x "${isCrn}" ] || [ -z "${isCrn}" ]; then
+  _isCrn=$(which cron 2>&1)
+  if [ ! -x "${_isCrn}" ] || [ -z "${_isCrn}" ]; then
     _INITINS="/usr/bin/apt-get -y --allow-unauthenticated install"
     apt-get update -qq &> /dev/null
     ${_INITINS} cron &> /dev/null
@@ -314,22 +314,22 @@ _disable_apparmor_utils() {
 }
 
 _install_apparmor_utils() {
-  isAppArmorRevFile="/sys/kernel/security/apparmor/revision"
-  isAppArmorGrubFile="/etc/default/grub.d/apparmor.cfg"
-  isAppArmorComplain=$(which aa-complain 2>&1)
-  isAppArmorStatus=$(which aa-status 2>&1)
-  isAppArmorGrub=NO
-  if [ -e "${isAppArmorGrubFile}" ]; then
-    _GRUB_APPARMOR_TEST=$(grep "apparmor=1 security=apparmor" ${isAppArmorGrubFile} 2>&1)
+  _isAppArmorRevFile="/sys/kernel/security/apparmor/revision"
+  _isAppArmorGrubFile="/etc/default/grub.d/apparmor.cfg"
+  _isAppArmorComplain=$(which aa-complain 2>&1)
+  _isAppArmorStatus=$(which aa-status 2>&1)
+  _isAppArmorGrub=NO
+  if [ -e "${_isAppArmorGrubFile}" ]; then
+    _GRUB_APPARMOR_TEST=$(grep "apparmor=1 security=apparmor" ${_isAppArmorGrubFile} 2>&1)
     if [[ "${_GRUB_APPARMOR_TEST}" =~ "apparmor=1 security=apparmor" ]]; then
-      isAppArmorGrub=YES
+      _isAppArmorGrub=YES
     fi
   fi
-  if [ ! -e "${isAppArmorRevFile}" ] \
-    || [ ! -e "${isAppArmorGrubFile}" ] \
-    || [ -z "${isAppArmorComplain}" ] \
-    || [ -z "${isAppArmorStatus}" ] \
-    || [ "${isAppArmorGrub}" = "NO" ]; then
+  if [ ! -e "${_isAppArmorRevFile}" ] \
+    || [ ! -e "${_isAppArmorGrubFile}" ] \
+    || [ -z "${_isAppArmorComplain}" ] \
+    || [ -z "${_isAppArmorStatus}" ] \
+    || [ "${_isAppArmorGrub}" = "NO" ]; then
     _msg "Installing AppArmor Tools early..." >> "${_logInt}"
     echo " " >> "${_logInt}"
     /usr/bin/apt-get install auditd \
@@ -339,15 +339,15 @@ _install_apparmor_utils() {
       apparmor-profiles -y -qq >> "${_logSlt}"
     mkdir -p /etc/default/grub.d
     echo 'GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT apparmor=1 security=apparmor"' \
-      | tee ${isAppArmorGrubFile} &> /dev/null
+      | tee ${_isAppArmorGrubFile} &> /dev/null
     update-grub >> "${_logSlt}"
   fi
-  isAppArmOn=N
+  _isAppArmOn=N
   if [ -e "/sys/module/apparmor/parameters/enabled" ]; then
-    isAppArmOn=$(cat /sys/module/apparmor/parameters/enabled 2>&1)
-    isAppArmOn=$(echo -n ${isAppArmOn} | tr -d "\n" 2>&1)
+    _isAppArmOn=$(cat /sys/module/apparmor/parameters/enabled 2>&1)
+    _isAppArmOn=$(echo -n ${_isAppArmOn} | tr -d "\n" 2>&1)
   fi
-  if [ "${isAppArmOn}" = "Y" ]; then
+  if [ "${_isAppArmOn}" = "Y" ]; then
     _disable_apparmor_utils
   fi
 }

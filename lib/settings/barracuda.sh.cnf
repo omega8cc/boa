@@ -1219,8 +1219,8 @@ _find_fast_mirror_cnf() {
     && [ -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
     unbound-control reload &> /dev/null
   fi
-  isNetc=$(which netcat 2>&1)
-  if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
+  _isNetc=$(which netcat 2>&1)
+  if [ ! -x "${_isNetc}" ] || [ -z "${_isNetc}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
@@ -1268,43 +1268,43 @@ _verify_upgrade_keys() {
   fi
   if [ "${_tRee}" = "pro" ] || [ "${_tRee}" = "dev" ]; then
     _allw=NO
-    urlEnc="http://${_USE_MIR}/enc/2024"
-    hName=$(cat /etc/hostname 2>&1)
-    hName=$(echo -n ${hName} | tr -d "\n" 2>&1)
-    encName=$(echo ${hName} \
+    _urlEnc="http://${_USE_MIR}/enc/2024"
+    _hName=$(cat /etc/hostname 2>&1)
+    _hName=$(echo -n ${_hName} | tr -d "\n" 2>&1)
+    _encName=$(echo ${_hName} \
               | openssl md5 \
               | awk '{ print $2}' \
               | tr -d "\n" 2>&1)
-    if [[ "${hName}" =~ ".aegir.cc"($) ]] \
-      || [[ "${hName}" =~ ".o8.io"($) ]] \
-      || [[ "${hName}" =~ ".boa.io"($) ]]; then
+    if [[ "${_hName}" =~ ".aegir.cc"($) ]] \
+      || [[ "${_hName}" =~ ".o8.io"($) ]] \
+      || [[ "${_hName}" =~ ".boa.io"($) ]]; then
       _allw=YES
     fi
     mkdir -p /var/opt
     rm -f /var/opt/_encN*
-    curl ${_crlGet} "${urlEnc}/${encName}" -o /var/opt/_encN.${encName}.tmp
+    curl ${_crlGet} "${_urlEnc}/${_encName}" -o /var/opt/_encN.${_encName}.tmp
     wait
-    echo "${hName}.${encName}" > /var/opt/_encN_local.${encName}.tmp
+    echo "${_hName}.${_encName}" > /var/opt/_encN_local.${_encName}.tmp
     wait
-    if [ -e "/var/opt/_encN.${encName}.tmp" ] \
-      && [ -e "/var/opt/_encN_local.${encName}.tmp" ]; then
-      diffTestIf=$(diff -w -B /var/opt/_encN.${encName}.tmp \
-        /var/opt/_encN_local.${encName}.tmp 2>&1)
-      if [ ! -z "${diffTestIf}" ] && [ "${_allw}" = "NO" ]; then
+    if [ -e "/var/opt/_encN.${_encName}.tmp" ] \
+      && [ -e "/var/opt/_encN_local.${_encName}.tmp" ]; then
+      _diffTestIf=$(diff -w -B /var/opt/_encN.${_encName}.tmp \
+        /var/opt/_encN_local.${_encName}.tmp 2>&1)
+      if [ ! -z "${_diffTestIf}" ] && [ "${_allw}" = "NO" ]; then
         echo
         echo "Your system requires valid license for upgrade to ${_rLsn}-${_tRee}"
         echo "Please visit https://omega8.cc/licenses to purchase your own"
         echo
         if [ -e "/var/aegir/drush/vendor" ] && [ ! -e "/var/aegir/key/barracuda_key.txt" ]; then
           mkdir -p /var/aegir/key
-          cat /var/opt/_encN_local.${encName}.tmp > /var/aegir/key/barracuda_key.txt
+          cat /var/opt/_encN_local.${_encName}.tmp > /var/aegir/key/barracuda_key.txt
         fi
         rm -f /var/opt/_encN*
         _clean_pid_exit _verify_upgrade_keys_a
       else
         if [ -e "/var/aegir/drush/vendor" ] && [ ! -e "/var/aegir/key/barracuda_key.txt" ]; then
           mkdir -p /var/aegir/key
-          cat /var/opt/_encN_local.${encName}.tmp > /var/aegir/key/barracuda_key.txt
+          cat /var/opt/_encN_local.${_encName}.tmp > /var/aegir/key/barracuda_key.txt
         fi
       fi
     fi
@@ -1372,7 +1372,7 @@ _download_helpers_libs() {
   rm -rf /opt/tmp/boa
   if [ -e "/var/aegir/drush" ]; then
     _GIT_VRN=2.45.2
-    isGit=$(which git 2>&1)
+    _isGit=$(which git 2>&1)
     _GIT_INSTALL=NO
     _GIT_V=$(git --version 2>&1 \
       | cut -d" " -f3 \
@@ -1383,8 +1383,8 @@ _download_helpers_libs() {
       fi
     fi
     if [ "${_GIT_INSTALL}" = "YES" ] \
-      || [ ! -x "${isGit}" ] \
-      || [ -z "${isGit}" ]; then
+      || [ ! -x "${_isGit}" ] \
+      || [ -z "${_isGit}" ]; then
       echo "INFO: Building Git ${_GIT_VRN} from sources..."
       echo "WAIT: This may take a while, please wait..."
       if [ ! -x "/usr/local/bin/git" ]; then
@@ -1431,14 +1431,14 @@ _download_helpers_libs() {
       echo "git-core hold" | dpkg --set-selections &> /dev/null
       echo "git-man hold" | dpkg --set-selections &> /dev/null
     fi
-    isGit=$(which git 2>&1)
-    _gCb="${isGit} clone --branch"
+    _isGit=$(which git 2>&1)
+    _gCb="${_isGit} clone --branch"
     if [ -e "/root/.dev.server.cnf" ]; then
       echo "Running ${_gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git ${_bldPth}"
-      if [ -x "${isGit}" ]; then
+      if [ -x "${_isGit}" ]; then
         ${_gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git ${_bldPth}
       else
-        echo "ERROR: ${isGit} is probably broken"
+        echo "ERROR: ${_isGit} is probably broken"
       fi
     else
       ${_gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git ${_bldPth} &> /dev/null
@@ -1458,14 +1458,14 @@ _download_helpers_libs() {
       apt-get install git-core -y --allow-unauthenticated -qq &> /dev/null
       apt-get install git -y --allow-unauthenticated -qq &> /dev/null
     fi
-    isGit=$(which git 2>&1)
-    _gCb="${isGit} clone --branch"
+    _isGit=$(which git 2>&1)
+    _gCb="${_isGit} clone --branch"
     if [ -e "/root/.dev.server.cnf" ]; then
       echo "Running ${_gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git ${_bldPth}"
-      if [ -x "${isGit}" ]; then
+      if [ -x "${_isGit}" ]; then
         ${_gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git ${_bldPth}
       else
-        echo "ERROR: ${isGit} is probably broken"
+        echo "ERROR: ${_isGit} is probably broken"
       fi
     else
       ${_gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git ${_bldPth} &> /dev/null

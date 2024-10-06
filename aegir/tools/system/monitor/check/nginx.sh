@@ -31,9 +31,9 @@ fi
 
 _incident_email_report() {
   if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_EMAIL_REPORT}" = "YES" ]; then
-    hName=$(cat /etc/hostname 2>&1)
+    _hName=$(cat /etc/hostname 2>&1)
     echo "Sending Incident Report Email on $(date 2>&1)" >> ${_pthOml}
-    s-nail -s "Incident Report: ${1} on ${hName} at $(date 2>&1)" ${_MY_EMAIL} < ${_pthOml}
+    s-nail -s "Incident Report: ${1} on ${_hName} at $(date 2>&1)" ${_MY_EMAIL} < ${_pthOml}
   fi
 }
 
@@ -66,8 +66,8 @@ _nginx_oom_detection() {
   if [ -e "/var/log/nginx/error.log" ]; then
     if [ `tail --lines=500 /var/log/nginx/error.log \
       | grep --count "Cannot allocate memory"` -gt "0" ]; then
-      thisErrLog="$(date 2>&1) Nginx OOM"
-      echo ${thisErrLog} >> ${_pthOml}
+      _thisErrLog="$(date 2>&1) Nginx OOM"
+      echo ${_thisErrLog} >> ${_pthOml}
       _restart_nginx "Nginx OOM"
     fi
   fi
@@ -77,8 +77,8 @@ _nginx_oom_detection() {
 _nginx_bind_check_fix() {
   if [ `tail --lines=8 /var/log/nginx/error.log \
     | grep --count "Address already in use"` -gt "0" ]; then
-    thisErrLog="$(date 2>&1) Nginx BIND"
-    echo ${thisErrLog} >> ${_pthOml}
+    _thisErrLog="$(date 2>&1) Nginx BIND"
+    echo ${_thisErrLog} >> ${_pthOml}
     _restart_nginx "Nginx BIND"
   fi
 }
@@ -131,18 +131,18 @@ _nginx_heatlh_check_fix() {
 }
 
 _if_nginx_restart() {
-  PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
+  _PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
   _PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
   _PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
   ReTest=$(ls /data/disk/*/static/control/run-nginx-restart.pid | wc -l 2>&1)
-  if [[ "${PrTestPower}" =~ "POWER" ]] \
+  if [[ "${_PrTestPower}" =~ "POWER" ]] \
     || [[ "${_PrTestPhantom}" =~ "PHANTOM" ]] \
     || [[ "${_PrTestCluster}" =~ "CLUSTER" ]] \
     || [ -e "/root/.allow.nginx.restart.cnf" ]; then
     if [ "${ReTest}" -ge "1" ]; then
       rm -f /data/disk/*/static/control/run-nginx-restart.pid
-      thisErrLog="$(date 2>&1) Nginx Server Restart Requested"
-      echo ${thisErrLog} >> ${_pthOml}
+      _thisErrLog="$(date 2>&1) Nginx Server Restart Requested"
+      echo ${_thisErrLog} >> ${_pthOml}
       _restart_nginx "Nginx Server Restart Requested"
     fi
   fi

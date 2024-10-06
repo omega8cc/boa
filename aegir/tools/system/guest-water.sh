@@ -605,14 +605,14 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
 
   _NOW=$(date +%y%m%d-%H%M%S 2>&1)
   _NOW=${_NOW//[^0-9-]/}
-  useCnfUpdate=NO
+  _useCnfUpdate=NO
   _vBs="/var/backups"
-  useCnf="/etc/csf/csf.allow"
-  preCnf="${_vBs}/dragon/t/csf.allow.backup-${_NOW}"
-  brkCnf="${_vBs}/dragon/t/csf.allow.broken-${_NOW}"
-  if [ -f "${useCnf}" ]; then
+  _useCnf="/etc/csf/csf.allow"
+  _preCnf="${_vBs}/dragon/t/csf.allow.backup-${_NOW}"
+  _brkCnf="${_vBs}/dragon/t/csf.allow.broken-${_NOW}"
+  if [ -f "${_useCnf}" ]; then
     mkdir -p ${_vBs}/dragon/t/
-    cp -af ${useCnf} ${preCnf}
+    cp -af ${_useCnf} ${_preCnf}
   fi
 
   _whitelist_ip_dns
@@ -626,8 +626,8 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
   [ -e "/root/.extended.firewall.exceptions.cnf" ] && _whitelist_ip_site24x7_extra
   [ -e "/root/.extended.firewall.exceptions.cnf" ] && _whitelist_ip_site24x7
 
-  if [ -f "${useCnf}" ]; then
-    diffCnfTest=$(diff -w -B \
+  if [ -f "${_useCnf}" ]; then
+    _diffCnfTest=$(diff -w -B \
       -I pingdom \
       -I cloudflare \
       -I googlebot \
@@ -636,21 +636,21 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
       -I sucuri \
       -I authzero \
       -I site24x7 \
-      -I DHCP ${useCnf} ${preCnf} 2>&1)
-    if [ -z "${diffCnfTest}" ]; then
-      useCnfUpdate=YES
+      -I DHCP ${_useCnf} ${_preCnf} 2>&1)
+    if [ -z "${_diffCnfTest}" ]; then
+      _useCnfUpdate=YES
       echo "YES $(date 2>&1) diff0 empty" >> ${_vBs}/dragon/t/csf.log
     else
-      diffCnfTest=$(echo -n ${diffCnfTest} | fmt -su -w 2500 2>&1)
-      echo "NO $(date 2>&1) diff1 ${diffCnfTest}" >> ${_vBs}/dragon/t/csf.log
+      _diffCnfTest=$(echo -n ${_diffCnfTest} | fmt -su -w 2500 2>&1)
+      echo "NO $(date 2>&1) diff1 ${_diffCnfTest}" >> ${_vBs}/dragon/t/csf.log
     fi
-    if [[ "${diffCnfTest}" =~ "No such file or directory" ]]; then
-      echo "NO $(date 2>&1) diff3 ${diffCnfTest}" >> ${_vBs}/dragon/t/csf.log
+    if [[ "${_diffCnfTest}" =~ "No such file or directory" ]]; then
+      echo "NO $(date 2>&1) diff3 ${_diffCnfTest}" >> ${_vBs}/dragon/t/csf.log
     fi
   fi
-  if [ "${myCnfUpdate}" = "NO" ]; then
-    cp -af ${useCnf} ${brkCnf}
-    cp -af ${preCnf} ${useCnf}
+  if [ "${_myCnfUpdate}" = "NO" ]; then
+    cp -af ${_useCnf} ${_brkCnf}
+    cp -af ${_preCnf} ${_useCnf}
   fi
 
   if [ -e "/root/.full.csf.cleanup.cnf" ]; then

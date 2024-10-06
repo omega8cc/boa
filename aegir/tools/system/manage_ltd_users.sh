@@ -9,7 +9,7 @@ export _xSrl=540devT02
 _CHECK_HOST=$(uname -n 2>&1)
 _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
 
-usrGroup=users
+_usrGroup=users
 _WEBG=www-data
 _crlGet="-L --max-redirs 3 -k -s --retry 3 --retry-delay 5 -A iCab"
 _aptYesUnth="-y --allow-unauthenticated"
@@ -80,8 +80,8 @@ _count_cpu() {
 }
 
 _find_fast_mirror_early() {
-  isNetc=$(which netcat 2>&1)
-  if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
+  _isNetc=$(which netcat 2>&1)
+  if [ ! -x "${_isNetc}" ] || [ -z "${_isNetc}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
@@ -140,9 +140,9 @@ _add_ltd_group_if_not_exists() {
 #
 # Enable chattr.
 _enable_chattr() {
-  isTest="$1"
-  isTest=${isTest//[^a-z0-9]/}
-  if [ ! -z "${isTest}" ] && [ -d "/home/$1/" ]; then
+  _isTest="$1"
+  _isTest=${_isTest//[^a-z0-9]/}
+  if [ ! -z "${_isTest}" ] && [ -d "/home/$1/" ]; then
     _U_HD="/home/$1/.drush"
     _U_TP="/home/$1/.tmp"
     _U_II="${_U_HD}/php.ini"
@@ -163,8 +163,8 @@ _enable_chattr() {
       mkdir -p ${_U_TP}
       touch ${_U_TP}
       find ${_U_TP}/ -mtime +0 -exec rm -rf {} \; &> /dev/null
-      chown $1:${usrGroup} ${_U_TP}
-      chown $1:${usrGroup} ${_U_HD}
+      chown $1:${_usrGroup} ${_U_TP}
+      chown $1:${_usrGroup} ${_U_HD}
       chmod 02755 ${_U_TP}
       chmod 02755 ${_U_HD}
       if [ ! -L "${_U_HD}/usr/registry_rebuild" ] \
@@ -327,20 +327,20 @@ _enable_chattr() {
       fi
     fi
 
-    UQ="$1"
-    chage -M 99999 ${UQ} &> /dev/null
+    _UQ="$1"
+    chage -M 99999 ${_UQ} &> /dev/null
     _UPDATE_GEMS=NO
     ###
     ### Cleanup of no longer used/allowed Ruby Gems and NPM access leftovers
     ###
-    [ -e "/home/${UQ}/.rvm" ] && rm -rf /home/${UQ}/.rvm*
-    [ -e "/home/${UQ}/.gem" ] && rm -rf /home/${UQ}/.gem*
-    [ -e "/home/${UQ}/.npm" ] && rm -rf /home/${UQ}/.npm*
-    [ -e "/home/${UQ}/.mkshrc" ] && rm -rf /home/${UQ}/.mkshrc
+    [ -e "/home/${_UQ}/.rvm" ] && rm -rf /home/${_UQ}/.rvm*
+    [ -e "/home/${_UQ}/.gem" ] && rm -rf /home/${_UQ}/.gem*
+    [ -e "/home/${_UQ}/.npm" ] && rm -rf /home/${_UQ}/.npm*
+    [ -e "/home/${_UQ}/.mkshrc" ] && rm -rf /home/${_UQ}/.mkshrc
     if [ "$1" = "${_USER}.ftp" ]; then
-      [ ! -d "/home/${UQ}/.composer" ] && su -s /bin/bash - ${UQ} -c "mkdir ~/.composer"
+      [ ! -d "/home/${_UQ}/.composer" ] && su -s /bin/bash - ${_UQ} -c "mkdir ~/.composer"
     else
-      [ -d "/home/${UQ}/.composer" ] && rm -rf /home/${UQ}/.composer
+      [ -d "/home/${_UQ}/.composer" ] && rm -rf /home/${_UQ}/.composer
     fi
     ###
     ### Check if Ruby Gems and NPM access should be added or removed
@@ -349,11 +349,11 @@ _enable_chattr() {
       ###
       ### Check if Ruby Gems access needs an update
       ###
-      if [ ! -e "/opt/user/gems/${UQ}/gems/oily_png-1.1.1" ] \
-        || [ ! -e "${_dscUsr}/log/.gems.build.rb.${UQ}.${_xSrl}.txt" ]; then
+      if [ ! -e "/opt/user/gems/${_UQ}/gems/oily_png-1.1.1" ] \
+        || [ ! -e "${_dscUsr}/log/.gems.build.rb.${_UQ}.${_xSrl}.txt" ]; then
         _UPDATE_GEMS=YES
       fi
-      if [ ! -e "/opt/user/npm/${UQ}/.npm-packages/bin" ] \
+      if [ ! -e "/opt/user/npm/${_UQ}/.npm-packages/bin" ] \
         && [ -e "/root/.allow.node.lshell.cnf" ]; then
         _UPDATE_GEMS=YES
       fi
@@ -361,9 +361,9 @@ _enable_chattr() {
       ###
       ### Remove no longer used Ruby Gems and NPM access
       ###
-      [ -e "/home/${UQ}/.npm" ] && rm -rf /home/${UQ}/.npm*
-      [ -e "/opt/user/gems/${UQ}" ] && rm -rf /opt/user/gems/${UQ}
-      [ -e "/opt/user/npm/${UQ}" ] && rm -rf /opt/user/npm/${UQ}
+      [ -e "/home/${_UQ}/.npm" ] && rm -rf /home/${_UQ}/.npm*
+      [ -e "/opt/user/gems/${_UQ}" ] && rm -rf /opt/user/gems/${_UQ}
+      [ -e "/opt/user/npm/${_UQ}" ] && rm -rf /opt/user/npm/${_UQ}
       [ -e "${_dscUsr}/log" ] && rm -f ${_dscUsr}/log/.gems.build*
       [ -e "${_dscUsr}/log" ] && rm -f ${_dscUsr}/log/.npm.build*
     fi
@@ -371,20 +371,20 @@ _enable_chattr() {
       ###
       ### Ruby Gems are allowed for both main and client SSH accounts
       ###
-      [ ! -d "/opt/user/gems/${UQ}" ] && mkdir -p /opt/user/gems/${UQ}
+      [ ! -d "/opt/user/gems/${_UQ}" ] && mkdir -p /opt/user/gems/${_UQ}
       chmod 1777 /opt/user/gems
-      chown -R ${UQ}:users /opt/user/gems/${UQ}
+      chown -R ${_UQ}:users /opt/user/gems/${_UQ}
       chown root:root /opt/user/gems
-      if [ -d "/opt/user/gems/${UQ}" ] \
+      if [ -d "/opt/user/gems/${_UQ}" ] \
         && [ -e "/usr/local/lib/ruby/gems/3.3.0/gems/oily_png-1.1.1" ] \
-        && [ ! -e "/opt/user/gems/${UQ}/gems/oily_png-1.1.1" ]; then
-        cp -a /usr/local/lib/ruby/gems/3.3.0/gems /opt/user/gems/${UQ}/
-        cp -a /usr/local/lib/ruby/gems/3.3.0/specifications /opt/user/gems/${UQ}/
-        cp -a /usr/local/lib/ruby/gems/3.3.0/extensions /opt/user/gems/${UQ}/
-        cp -a /usr/local/lib/ruby/gems/3.3.0/doc /opt/user/gems/${UQ}/
-        chown -R ${UQ}:users /opt/user/gems/${UQ}
+        && [ ! -e "/opt/user/gems/${_UQ}/gems/oily_png-1.1.1" ]; then
+        cp -a /usr/local/lib/ruby/gems/3.3.0/gems /opt/user/gems/${_UQ}/
+        cp -a /usr/local/lib/ruby/gems/3.3.0/specifications /opt/user/gems/${_UQ}/
+        cp -a /usr/local/lib/ruby/gems/3.3.0/extensions /opt/user/gems/${_UQ}/
+        cp -a /usr/local/lib/ruby/gems/3.3.0/doc /opt/user/gems/${_UQ}/
+        chown -R ${_UQ}:users /opt/user/gems/${_UQ}
         [ -e "${_dscUsr}/log" ] && rm -f ${_dscUsr}/log/.gems.build*
-        touch ${_dscUsr}/log/.gems.build.rb.${UQ}.${_xSrl}.txt
+        touch ${_dscUsr}/log/.gems.build.rb.${_UQ}.${_xSrl}.txt
       fi
       ###
       ### Check if NPM support is allowed and if needs an update
@@ -393,34 +393,34 @@ _enable_chattr() {
       if [ -e "/root/.allow.node.lshell.cnf" ] \
         && [ "$1" = "${_USER}.ftp" ] \
         && [ -x "/usr/bin/node" ] \
-        && [ -e "/home/${UQ}/static/control" ]; then
-        if [ ! -e "/opt/user/npm/${UQ}/.npm-packages/bin" ] \
-          || [ ! -e "${_dscUsr}/log/.npm.build.${UQ}.${_xSrl}.txt" ]; then
+        && [ -e "/home/${_UQ}/static/control" ]; then
+        if [ ! -e "/opt/user/npm/${_UQ}/.npm-packages/bin" ] \
+          || [ ! -e "${_dscUsr}/log/.npm.build.${_UQ}.${_xSrl}.txt" ]; then
           [ ! -d "/opt/user/npm" ] && mkdir -p /opt/user/npm
           chown root:root /opt/user/npm
           chmod 1777 /opt/user/npm
-          [ ! -d "/opt/user/npm/${UQ}" ] && mkdir -p /opt/user/npm/${UQ}
-          [ ! -e "/home/${UQ}/.npmrc" ] && su -s /bin/bash - ${UQ} -c "echo 'prefix = /opt/user/npm/${UQ}/.npm-packages' > ~/.npmrc"
-          [ -e "/home/${UQ}/.npmrc" ] && chattr +i /home/${UQ}/.npmrc
-          mkdir -p /opt/user/npm/${UQ}/.bundle
-          mkdir -p /opt/user/npm/${UQ}/.composer
-          mkdir -p /opt/user/npm/${UQ}/.config
-          mkdir -p /opt/user/npm/${UQ}/.npm
-          mkdir -p /opt/user/npm/${UQ}/.npm-packages/bin
-          mkdir -p /opt/user/npm/${UQ}/.npm-packages/lib/node_modules
-          mkdir -p /opt/user/npm/${UQ}/.sass-cache
-          chown -R ${UQ}:users /opt/user/npm/${UQ}
+          [ ! -d "/opt/user/npm/${_UQ}" ] && mkdir -p /opt/user/npm/${_UQ}
+          [ ! -e "/home/${_UQ}/.npmrc" ] && su -s /bin/bash - ${_UQ} -c "echo 'prefix = /opt/user/npm/${_UQ}/.npm-packages' > ~/.npmrc"
+          [ -e "/home/${_UQ}/.npmrc" ] && chattr +i /home/${_UQ}/.npmrc
+          mkdir -p /opt/user/npm/${_UQ}/.bundle
+          mkdir -p /opt/user/npm/${_UQ}/.composer
+          mkdir -p /opt/user/npm/${_UQ}/.config
+          mkdir -p /opt/user/npm/${_UQ}/.npm
+          mkdir -p /opt/user/npm/${_UQ}/.npm-packages/bin
+          mkdir -p /opt/user/npm/${_UQ}/.npm-packages/lib/node_modules
+          mkdir -p /opt/user/npm/${_UQ}/.sass-cache
+          chown -R ${_UQ}:users /opt/user/npm/${_UQ}
           [ -e "${_dscUsr}/log" ] && rm -f ${_dscUsr}/log/.npm.build*
-          touch ${_dscUsr}/log/.npm.build.${UQ}.${_xSrl}.txt
+          touch ${_dscUsr}/log/.npm.build.${_UQ}.${_xSrl}.txt
         fi
       else
-        [ -e "/home/${UQ}/.npm" ] && rm -rf /home/${UQ}/.npm*
-        [ -e "/opt/user/npm/${UQ}" ] && rm -rf /opt/user/npm/${UQ}
+        [ -e "/home/${_UQ}/.npm" ] && rm -rf /home/${_UQ}/.npm*
+        [ -e "/opt/user/npm/${_UQ}" ] && rm -rf /opt/user/npm/${_UQ}
         [ -e "${_dscUsr}/log" ] && rm -f ${_dscUsr}/log/.npm.build*
       fi
     fi
-    rm -f /home/${UQ}/{.profile,.bash_logout,.bash_profile,.bashrc,.zlogin,.zshrc}
-    chage -M 90 ${UQ} &> /dev/null
+    rm -f /home/${_UQ}/{.profile,.bash_logout,.bash_profile,.bashrc,.z_login,.zshrc}
+    chage -M 90 ${_UQ} &> /dev/null
 
     if [ "$1" != "${_USER}.ftp" ]; then
       if [ -d "/home/$1/" ]; then
@@ -449,9 +449,9 @@ _enable_chattr() {
 #
 # Disable chattr.
 _disable_chattr() {
-  isTest="$1"
-  isTest=${isTest//[^a-z0-9]/}
-  if [ ! -z "${isTest}" ] && [ -d "/home/$1/" ]; then
+  _isTest="$1"
+  _isTest=${_isTest//[^a-z0-9]/}
+  if [ ! -z "${_isTest}" ] && [ -d "/home/$1/" ]; then
     if [ "$1" != "${_USER}.ftp" ]; then
       if [ -d "/home/$1/" ]; then
         chattr -i /home/$1/
@@ -479,51 +479,51 @@ _disable_chattr() {
 #
 # Kill zombies.
 _kill_zombies() {
-  for Existing in `cat /etc/passwd | cut -d ':' -f1 | sort`; do
-    _SEC_IDY=$(id -nG ${Existing} 2>&1)
+  for _Existing in `cat /etc/passwd | cut -d ':' -f1 | sort`; do
+    _SEC_IDY=$(id -nG ${_Existing} 2>&1)
     if [[ "${_SEC_IDY}" =~ "ltd-shell" ]] \
-      && [ ! -z "${Existing}" ] \
-      && [[ ! "${Existing}" =~ ".ftp"($) ]] \
-      && [[ ! "${Existing}" =~ ".web"($) ]]; then
-      usrParent=$(echo ${Existing} | cut -d. -f1 | awk '{ print $1}' 2>&1)
-      usrParentTest=${usrParent//[^a-z0-9]/}
-      if [ ! -z "${usrParentTest}" ]; then
-        _PAR_DIR="/data/disk/${usrParent}/clients"
-        _SEC_SYM="/home/${Existing}/sites"
+      && [ ! -z "${_Existing}" ] \
+      && [[ ! "${_Existing}" =~ ".ftp"($) ]] \
+      && [[ ! "${_Existing}" =~ ".web"($) ]]; then
+      _usrParent=$(echo ${_Existing} | cut -d. -f1 | awk '{ print $1}' 2>&1)
+      _usrParentTest=${_usrParent//[^a-z0-9]/}
+      if [ ! -z "${_usrParentTest}" ]; then
+        _PAR_DIR="/data/disk/${_usrParent}/clients"
+        _SEC_SYM="/home/${_Existing}/sites"
         _SEC_DIR=$(readlink -n ${_SEC_SYM} 2>&1)
         _SEC_DIR=$(echo -n ${_SEC_DIR} | tr -d "\n" 2>&1)
         if [ ! -L "${_SEC_SYM}" ] || [ ! -e "${_SEC_DIR}" ] \
-          || [ ! -e "/home/${usrParent}.ftp/users/${Existing}" ]; then
+          || [ ! -e "/home/${_usrParent}.ftp/users/${_Existing}" ]; then
           mkdir -p /var/backups/zombie/deleted/${_NOW}
           kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
-          _disable_chattr ${Existing}
-          rm -rf /home/${Existing}/.gnupg
+          _disable_chattr ${_Existing}
+          rm -rf /home/${_Existing}/.gnupg
           deluser \
             --remove-home \
-            --backup-to /var/backups/zombie/deleted/${_NOW} ${Existing} &> /dev/null
-          rm -f /home/${usrParent}.ftp/users/${Existing}
-          echo Zombie from etc.passwd ${Existing} killed
+            --backup-to /var/backups/zombie/deleted/${_NOW} ${_Existing} &> /dev/null
+          rm -f /home/${_usrParent}.ftp/users/${_Existing}
+          echo Zombie from etc.passwd ${_Existing} killed
           echo
         fi
       fi
     fi
   done
-  for Existing in `ls /home | cut -d '/' -f1 | sort`; do
-    isTest=${Existing//[^a-z0-9]/}
-    if [ ! -z "${isTest}" ]; then
-      _SEC_IDY=$(id -nG ${Existing} 2>&1)
+  for _Existing in `ls /home | cut -d '/' -f1 | sort`; do
+    _isTest=${_Existing//[^a-z0-9]/}
+    if [ ! -z "${_isTest}" ]; then
+      _SEC_IDY=$(id -nG ${_Existing} 2>&1)
       if [[ "${_SEC_IDY}" =~ "No such user" ]] \
-        && [ ! -z "${Existing}" ] \
-        && [[ ! "${Existing}" =~ ".ftp"($) ]] \
-        && [[ ! "${Existing}" =~ ".web"($) ]]; then
-        _disable_chattr ${Existing}
+        && [ ! -z "${_Existing}" ] \
+        && [[ ! "${_Existing}" =~ ".ftp"($) ]] \
+        && [[ ! "${_Existing}" =~ ".web"($) ]]; then
+        _disable_chattr ${_Existing}
         mkdir -p /var/backups/zombie/deleted/${_NOW}
-        mv /home/${Existing} /var/backups/zombie/deleted/${_NOW}/.leftover-${Existing}
-        usrParent=$(echo ${Existing} | cut -d. -f1 | awk '{ print $1}' 2>&1)
-        if [ -e "/home/${usrParent}.ftp/users/${Existing}" ]; then
-          rm -f /home/${usrParent}.ftp/users/${Existing}
+        mv /home/${_Existing} /var/backups/zombie/deleted/${_NOW}/.leftover-${_Existing}
+        _usrParent=$(echo ${_Existing} | cut -d. -f1 | awk '{ print $1}' 2>&1)
+        if [ -e "/home/${_usrParent}.ftp/users/${_Existing}" ]; then
+          rm -f /home/${_usrParent}.ftp/users/${_Existing}
         fi
-        echo Zombie from home.dir ${Existing} killed
+        echo Zombie from home.dir ${_Existing} killed
         echo
       fi
     fi
@@ -532,51 +532,51 @@ _kill_zombies() {
 #
 # Fix dot dirs.
 _fix_dot_dirs() {
-  usrLtdTest=${usrLtd//[^a-z0-9]/}
-  if [ ! -z "${usrLtdTest}" ]; then
-    usrTmp="/home/${usrLtd}/.tmp"
-    if [ ! -d "${usrTmp}" ]; then
-      mkdir -p ${usrTmp}
-      chown ${usrLtd}:${usrGroup} ${usrTmp}
-      chmod 02755 ${usrTmp}
+  _usrLtdTest=${_usrLtd//[^a-z0-9]/}
+  if [ ! -z "${_usrLtdTest}" ]; then
+    _usrTmp="/home/${_usrLtd}/.tmp"
+    if [ ! -d "${_usrTmp}" ]; then
+      mkdir -p ${_usrTmp}
+      chown ${_usrLtd}:${_usrGroup} ${_usrTmp}
+      chmod 02755 ${_usrTmp}
     fi
-    usrLftp="/home/${usrLtd}/.lftp"
-    if [ ! -d "${usrLftp}" ]; then
-      mkdir -p ${usrLftp}
-      chown ${usrLtd}:${usrGroup} ${usrLftp}
-      chmod 02755 ${usrLftp}
+    _usrLftp="/home/${_usrLtd}/.lftp"
+    if [ ! -d "${_usrLftp}" ]; then
+      mkdir -p ${_usrLftp}
+      chown ${_usrLtd}:${_usrGroup} ${_usrLftp}
+      chmod 02755 ${_usrLftp}
     fi
-    usrLhist="/home/${usrLtd}/.lhistory"
-    if [ ! -e "${usrLhist}" ]; then
-      touch ${usrLhist}
-      chown ${usrLtd}:${usrGroup} ${usrLhist}
-      chmod 644 ${usrLhist}
+    _usrLhist="/home/${_usrLtd}/.lhistory"
+    if [ ! -e "${_usrLhist}" ]; then
+      touch ${_usrLhist}
+      chown ${_usrLtd}:${_usrGroup} ${_usrLhist}
+      chmod 644 ${_usrLhist}
     fi
-    usrDrush="/home/${usrLtd}/.drush"
-    if [ ! -d "${usrDrush}" ]; then
-      mkdir -p ${usrDrush}
-      chown ${usrLtd}:${usrGroup} ${usrDrush}
-      chmod 700 ${usrDrush}
+    _usrDrush="/home/${_usrLtd}/.drush"
+    if [ ! -d "${_usrDrush}" ]; then
+      mkdir -p ${_usrDrush}
+      chown ${_usrLtd}:${_usrGroup} ${_usrDrush}
+      chmod 700 ${_usrDrush}
     fi
-    usrSsh="/home/${usrLtd}/.ssh"
-    if [ ! -d "${usrSsh}" ]; then
-      mkdir -p ${usrSsh}
-      chown -R ${usrLtd}:${usrGroup} ${usrSsh}
-      chmod 700 ${usrSsh}
+    _usrSsh="/home/${_usrLtd}/.ssh"
+    if [ ! -d "${_usrSsh}" ]; then
+      mkdir -p ${_usrSsh}
+      chown -R ${_usrLtd}:${_usrGroup} ${_usrSsh}
+      chmod 700 ${_usrSsh}
     fi
-    chmod 600 ${usrSsh}/id_{r,d}sa &> /dev/null
-    chmod 600 ${usrSsh}/known_hosts &> /dev/null
-    usrBzr="/home/${usrLtd}/.bazaar"
+    chmod 600 ${_usrSsh}/id_{r,d}sa &> /dev/null
+    chmod 600 ${_usrSsh}/known_hosts &> /dev/null
+    _usrBzr="/home/${_usrLtd}/.bazaar"
     if [ -x "/usr/local/bin/bzr" ]; then
-      if [ ! -z "${usrLtd}" ] && [ ! -e "${usrBzr}/bazaar.conf" ]; then
-        mkdir -p ${usrBzr}
-        echo ignore_missing_extensions=True > ${usrBzr}/bazaar.conf
-        chown -R ${usrLtd}:${usrGroup} ${usrBzr}
-        chmod 700 ${usrBzr}
+      if [ ! -z "${_usrLtd}" ] && [ ! -e "${_usrBzr}/bazaar.conf" ]; then
+        mkdir -p ${_usrBzr}
+        echo ignore_missing_extensions=True > ${_usrBzr}/bazaar.conf
+        chown -R ${_usrLtd}:${_usrGroup} ${_usrBzr}
+        chmod 700 ${_usrBzr}
       fi
     else
-      if [ ! -z "${usrLtd}" ] && [ -d "${usrBzr}" ]; then
-        rm -rf ${usrBzr}
+      if [ ! -z "${_usrLtd}" ] && [ -d "${_usrBzr}" ]; then
+        rm -rf ${_usrBzr}
       fi
     fi
   fi
@@ -584,40 +584,40 @@ _fix_dot_dirs() {
 #
 # Manage Drush _Aliases.
 _manage_sec_user_drush_aliases() {
-  if [ -e "${Client}" ]; then
-    if [ -L "${usrLtdRoot}/sites" ]; then
-      symTgt=$(readlink -n ${usrLtdRoot}/sites 2>&1)
-      symTgt=$(echo -n ${symTgt} | tr -d "\n" 2>&1)
+  if [ -e "${_Client}" ]; then
+    if [ -L "${_usrLtdRoot}/sites" ]; then
+      _symTgt=$(readlink -n ${_usrLtdRoot}/sites 2>&1)
+      _symTgt=$(echo -n ${_symTgt} | tr -d "\n" 2>&1)
     else
-      rm -f ${usrLtdRoot}/sites
+      rm -f ${_usrLtdRoot}/sites
     fi
-    if [ "${symTgt}" != "${Client}" ] \
-      || [ ! -e "${usrLtdRoot}/sites" ]; then
-      rm -f ${usrLtdRoot}/sites
-      ln -sfn ${Client} ${usrLtdRoot}/sites
+    if [ "${_symTgt}" != "${_Client}" ] \
+      || [ ! -e "${_usrLtdRoot}/sites" ]; then
+      rm -f ${_usrLtdRoot}/sites
+      ln -sfn ${_Client} ${_usrLtdRoot}/sites
     fi
   fi
-  if [ ! -e "${usrLtdRoot}/.drush" ]; then
-    mkdir -p ${usrLtdRoot}/.drush
+  if [ ! -e "${_usrLtdRoot}/.drush" ]; then
+    mkdir -p ${_usrLtdRoot}/.drush
   fi
-  for _Alias in `find ${usrLtdRoot}/.drush/*.alias.drushrc.php \
+  for _Alias in `find ${_usrLtdRoot}/.drush/*.alias.drushrc.php \
     -maxdepth 1 -type f | sort`; do
     _AliasName=$(echo "${_Alias}" | cut -d'/' -f5 | awk '{ print $1}' 2>&1)
     _AliasName=$(echo "${_AliasName}" \
       | sed "s/.alias.drushrc.php//g" \
       | awk '{ print $1}' 2>&1)
     if [ ! -z "${_AliasName}" ] \
-      && [ ! -e "${usrLtdRoot}/sites/${_AliasName}" ]; then
-      rm -f ${usrLtdRoot}/.drush/${_AliasName}.alias.drushrc.php
+      && [ ! -e "${_usrLtdRoot}/sites/${_AliasName}" ]; then
+      rm -f ${_usrLtdRoot}/.drush/${_AliasName}.alias.drushrc.php
     fi
   done
-  for Symlink in `find ${usrLtdRoot}/sites/ \
+  for _Symlink in `find ${_usrLtdRoot}/sites/ \
     -maxdepth 1 -mindepth 1 | sort`; do
-    _SiteName=$(echo ${Symlink}  \
+    _SiteName=$(echo ${_Symlink}  \
       | cut -d'/' -f5 \
       | awk '{ print $1}' 2>&1)
     _pthAliasMain="${_pthParen_tUsr}/.drush/${_SiteName}.alias.drushrc.php"
-    _pthAliasCopy="${usrLtdRoot}/.drush/${_SiteName}.alias.drushrc.php"
+    _pthAliasCopy="${_usrLtdRoot}/.drush/${_SiteName}.alias.drushrc.php"
     if [ ! -z "${_SiteName}" ] && [ ! -e "${_pthAliasCopy}" ]; then
       cp -af ${_pthAliasMain} ${_pthAliasCopy}
       chmod 440 ${_pthAliasCopy}
@@ -633,25 +633,25 @@ _manage_sec_user_drush_aliases() {
 #
 # OK, create user.
 _ok_create_user() {
-  usrLtdTest=${usrLtd//[^a-z0-9]/}
-  if [ ! -z "${usrLtdTest}" ]; then
+  _usrLtdTest=${_usrLtd//[^a-z0-9]/}
+  if [ ! -z "${_usrLtdTest}" ]; then
     _ADMIN="${_USER}.ftp"
     echo "_ADMIN is == ${_ADMIN} == at _ok_create_user"
-    usrLtdRoot="/home/${usrLtd}"
-    _SEC_SYM="${usrLtdRoot}/sites"
+    _usrLtdRoot="/home/${_usrLtd}"
+    _SEC_SYM="${_usrLtdRoot}/sites"
     _TMP="/var/tmp"
     if [ ! -L "${_SEC_SYM}" ]; then
       mkdir -p /var/backups/zombie/deleted/${_NOW}
-      mv -f ${usrLtdRoot} /var/backups/zombie/deleted/${_NOW}/ &> /dev/null
+      mv -f ${_usrLtdRoot} /var/backups/zombie/deleted/${_NOW}/ &> /dev/null
     fi
-    if [ ! -d "${usrLtdRoot}" ]; then
+    if [ ! -d "${_usrLtdRoot}" ]; then
       if [ -e "/usr/bin/mysecureshell" ] && [ -e "/etc/ssh/sftp_config" ]; then
-        useradd -d ${usrLtdRoot} -s /usr/bin/mysecureshell -m -N -r ${usrLtd}
-        echo "usrLtdRoot is == ${usrLtdRoot} == at _ok_create_user"
+        useradd -d ${_usrLtdRoot} -s /usr/bin/mysecureshell -m -N -r ${_usrLtd}
+        echo "_usrLtdRoot is == ${_usrLtdRoot} == at _ok_create_user"
       else
-        useradd -d ${usrLtdRoot} -s /usr/bin/lshell -m -N -r ${usrLtd}
+        useradd -d ${_usrLtdRoot} -s /usr/bin/lshell -m -N -r ${_usrLtd}
       fi
-      adduser ${usrLtd} ${_WEBG}
+      adduser ${_usrLtd} ${_WEBG}
       _ESC_LUPASS=""
       _LEN_LUPASS=0
       if [ "${_STRONG_PASSWORDS}" = "YES" ]  ; then
@@ -689,121 +689,121 @@ _ok_create_user() {
       fi
       ph=$(mkpasswd -m sha-512 "${_ESC_LUPASS}" \
         $(openssl rand -base64 16 | tr -d '+=' | head -c 16) 2>&1)
-      usermod -p $ph ${usrLtd}
-      passwd -w 7 -x 90 ${usrLtd}
-      usermod -aG lshellg ${usrLtd}
-      usermod -aG ltd-shell ${usrLtd}
+      usermod -p $ph ${_usrLtd}
+      passwd -w 7 -x 90 ${_usrLtd}
+      usermod -aG lshellg ${_usrLtd}
+      usermod -aG ltd-shell ${_usrLtd}
     fi
-    if [ ! -e "/home/${_ADMIN}/users/${usrLtd}" ] \
+    if [ ! -e "/home/${_ADMIN}/users/${_usrLtd}" ] \
       && [ ! -z "${_ESC_LUPASS}" ]; then
       if [ -e "/usr/bin/mysecureshell" ] \
         && [ -e "/etc/ssh/sftp_config" ]; then
-        chsh -s /usr/bin/mysecureshell ${usrLtd}
+        chsh -s /usr/bin/mysecureshell ${_usrLtd}
       else
-        chsh -s /usr/bin/lshell ${usrLtd}
+        chsh -s /usr/bin/lshell ${_usrLtd}
       fi
       echo >> ${_THIS_LTD_CONF}
-      echo "[${usrLtd}]" >> ${_THIS_LTD_CONF}
+      echo "[${_usrLtd}]" >> ${_THIS_LTD_CONF}
       echo "path : [${_ALLD_DIR}]" >> ${_THIS_LTD_CONF}
-      chmod 700 ${usrLtdRoot}
+      chmod 700 ${_usrLtdRoot}
       mkdir -p /home/${_ADMIN}/users
-      echo "${_ESC_LUPASS}" > /home/${_ADMIN}/users/${usrLtd}
+      echo "${_ESC_LUPASS}" > /home/${_ADMIN}/users/${_usrLtd}
     fi
     _fix_dot_dirs
-    rm -f ${usrLtdRoot}/{.profile,.bash_logout,.bash_profile,.bashrc}
+    rm -f ${_usrLtdRoot}/{.profile,.bash_logout,.bash_profile,.bashrc}
   fi
 }
 #
 # OK, update user.
 _ok_update_user() {
-  usrLtdTest=${usrLtd//[^a-z0-9]/}
-  if [ ! -z "${usrLtdTest}" ]; then
+  _usrLtdTest=${_usrLtd//[^a-z0-9]/}
+  if [ ! -z "${_usrLtdTest}" ]; then
     _ADMIN="${_USER}.ftp"
-    usrLtdRoot="/home/${usrLtd}"
-    if [ -e "/home/${_ADMIN}/users/${usrLtd}" ]; then
+    _usrLtdRoot="/home/${_usrLtd}"
+    if [ -e "/home/${_ADMIN}/users/${_usrLtd}" ]; then
       echo >> ${_THIS_LTD_CONF}
-      echo "[${usrLtd}]" >> ${_THIS_LTD_CONF}
+      echo "[${_usrLtd}]" >> ${_THIS_LTD_CONF}
       echo "path : [${_ALLD_DIR}]" >> ${_THIS_LTD_CONF}
       _manage_sec_user_drush_aliases
-      chmod 700 ${usrLtdRoot}
+      chmod 700 ${_usrLtdRoot}
     fi
     _fix_dot_dirs
-    rm -f ${usrLtdRoot}/{.profile,.bash_logout,.bash_profile,.bashrc}
+    rm -f ${_usrLtdRoot}/{.profile,.bash_logout,.bash_profile,.bashrc}
   fi
 }
 #
 # Add user if not exists.
 _add_user_if_not_exists() {
-  usrLtdTest=${usrLtd//[^a-z0-9]/}
-  if [ ! -z "${usrLtdTest}" ]; then
-    _ID_EXISTS=$(getent passwd ${usrLtd} 2>&1)
-    _ID_SHELLS=$(id -nG ${usrLtd} 2>&1)
+  _usrLtdTest=${_usrLtd//[^a-z0-9]/}
+  if [ ! -z "${_usrLtdTest}" ]; then
+    _ID_EXISTS=$(getent passwd ${_usrLtd} 2>&1)
+    _ID_SHELLS=$(id -nG ${_usrLtd} 2>&1)
     echo "_ID_EXISTS is == ${_ID_EXISTS} == at _add_user_if_not_exists"
     echo "_ID_SHELLS is == ${_ID_SHELLS} == at _add_user_if_not_exists"
     if [ -z "${_ID_EXISTS}" ]; then
-      echo "We will create user == ${usrLtd} =="
+      echo "We will create user == ${_usrLtd} =="
       _ok_create_user
       _manage_sec_user_drush_aliases
-      _enable_chattr ${usrLtd}
-    elif [[ "${_ID_EXISTS}" =~ "${usrLtd}" ]] \
+      _enable_chattr ${_usrLtd}
+    elif [[ "${_ID_EXISTS}" =~ "${_usrLtd}" ]] \
       && [[ "${_ID_SHELLS}" =~ "ltd-shell" ]]; then
-      echo "We will update user == ${usrLtd} =="
-      _disable_chattr ${usrLtd}
-      rm -rf /home/${usrLtd}/drush-backups
-      usrTmp="/home/${usrLtd}/.tmp"
-      if [ ! -d "${usrTmp}" ]; then
-        mkdir -p ${usrTmp}
-        chown ${usrLtd}:${usrGroup} ${usrTmp}
-        chmod 02755 ${usrTmp}
+      echo "We will update user == ${_usrLtd} =="
+      _disable_chattr ${_usrLtd}
+      rm -rf /home/${_usrLtd}/drush-backups
+      _usrTmp="/home/${_usrLtd}/.tmp"
+      if [ ! -d "${_usrTmp}" ]; then
+        mkdir -p ${_usrTmp}
+        chown ${_usrLtd}:${_usrGroup} ${_usrTmp}
+        chmod 02755 ${_usrTmp}
       fi
-      find ${usrTmp} -mtime +0 -exec rm -rf {} \; &> /dev/null
+      find ${_usrTmp} -mtime +0 -exec rm -rf {} \; &> /dev/null
       _ok_update_user
-      _enable_chattr ${usrLtd}
+      _enable_chattr ${_usrLtd}
     fi
   fi
 }
 #
 # Manage Access Paths.
 _manage_sec_access_paths() {
-#for Domain in `find ${Client}/ -maxdepth 1 -mindepth 1 -type l -printf %P\\n | sort`
-for Domain in `find ${Client}/ -maxdepth 1 -mindepth 1 -type l | sort`; do
-  raw_Dom=$(echo ${Domain} | cut -d'/' -f7 | awk '{ print $1}' 2>&1)
-  _STATIC_FILES="${_pthParen_tUsr}/static/files/${rawDom}.files"
-  _STATIC_PRIVATE="${_pthParen_tUsr}/static/files/${rawDom}.private"
-  _PATH_DOM=$(readlink -n ${Domain} 2>&1)
+#for _Domain in `find ${_Client}/ -maxdepth 1 -mindepth 1 -type l -printf %P\\n | sort`
+for _Domain in `find ${_Client}/ -maxdepth 1 -mindepth 1 -type l | sort`; do
+  _rawDom=$(echo ${_Domain} | cut -d'/' -f7 | awk '{ print $1}' 2>&1)
+  _STATIC_FILES="${_pthParen_tUsr}/static/files/${_rawDom}.files"
+  _STATIC_PRIVATE="${_pthParen_tUsr}/static/files/${_rawDom}.private"
+  _PATH_DOM=$(readlink -n ${_Domain} 2>&1)
   _PATH_DOM=$(echo -n ${_PATH_DOM} | tr -d "\n" 2>&1)
-  _RUBY_PATH="/opt/user/gems/${usrLtd}"
-  _NPM_PATH="/opt/user/npm/${usrLtd}"
+  _RUBY_PATH="/opt/user/gems/${_usrLtd}"
+  _NPM_PATH="/opt/user/npm/${_usrLtd}"
   _ALLD_DIR="${_ALLD_DIR}, '${_PATH_DOM}', '${_STATIC_FILES}', '${_STATIC_PRIVATE}', '${_RUBY_PATH}', '${_NPM_PATH}'"
   if [ -e "${_PATH_DOM}" ]; then
     _ALLD_NUM=$(( _ALLD_NUM += 1 ))
   fi
-  echo Done for ${Domain} at ${Client}
+  echo Done for ${_Domain} at ${_Client}
 done
 }
 #
 # Manage Secondary Users.
 _manage_sec() {
-for Client in `find ${_pthParen_tUsr}/clients/ -maxdepth 1 -mindepth 1 -type d | sort`; do
-  usrLtd=$(echo ${Client} | cut -d'/' -f6 | awk '{ print $1}' 2>&1)
-  usrLtd=${usrLtd//[^a-zA-Z0-9]/}
-  usrLtd=$(echo -n ${usrLtd} | tr A-Z a-z 2>&1)
-  if [ ! -z "${usrLtd}" ]; then
-    usrLtd="${_USER}.${usrLtd}"
-    echo "usrLtd is == ${usrLtd} == at _manage_sec"
+for _Client in `find ${_pthParen_tUsr}/clients/ -maxdepth 1 -mindepth 1 -type d | sort`; do
+  _usrLtd=$(echo ${_Client} | cut -d'/' -f6 | awk '{ print $1}' 2>&1)
+  _usrLtd=${_usrLtd//[^a-zA-Z0-9]/}
+  _usrLtd=$(echo -n ${_usrLtd} | tr A-Z a-z 2>&1)
+  if [ ! -z "${_usrLtd}" ]; then
+    _usrLtd="${_USER}.${_usrLtd}"
+    echo "_usrLtd is == ${_usrLtd} == at _manage_sec"
     _ALLD_NUM="0"
     _ALLD_CTL="1"
-    _ALLD_DIR="'${Client}'"
-    cd ${Client}
+    _ALLD_DIR="'${_Client}'"
+    cd ${_Client}
     _manage_sec_access_paths
-    #_ALLD_DIR="${_ALLD_DIR}, '/home/${usrLtd}'"
+    #_ALLD_DIR="${_ALLD_DIR}, '/home/${_usrLtd}'"
     if [ "${_ALLD_NUM}" -ge "${_ALLD_CTL}" ]; then
       _add_user_if_not_exists
-      echo Done for ${Client} at ${_pthParen_tUsr}
+      echo Done for ${_Client} at ${_pthParen_tUsr}
     else
-      echo Empty ${Client} at ${_pthParen_tUsr} - deleting now
-      if [ -e "${Client}" ]; then
-        rmdir ${Client}
+      echo Empty ${_Client} at ${_pthParen_tUsr} - deleting now
+      if [ -e "${_Client}" ]; then
+        rmdir ${_Client}
       fi
     fi
   fi
@@ -832,8 +832,8 @@ _php_cli_local_ini_update() {
     touch ${_U_TP}
     find ${_U_TP}/ -mtime +0 -exec rm -rf {} \; &> /dev/null
     mkdir -p ${_U_HD}
-    chown ${_USER}:${usrGroup} ${_U_TP}
-    chown ${_USER}:${usrGroup} ${_U_HD}
+    chown ${_USER}:${_usrGroup} ${_U_TP}
+    chown ${_USER}:${_usrGroup} ${_U_HD}
     chmod 755 ${_U_TP}
     chmod 755 ${_U_HD}
     chattr -i ${_U_II}
@@ -969,7 +969,7 @@ _php_cli_drush_update() {
       \n${_DRUSH_HOSTING_DISPATCH_CMD} \
       \ntouch ${_dscUsr}/${_USER}-task.done" \
       | fmt -su -w 2500 | tee -a ${_dscUsr}/aegir.sh >/dev/null 2>&1
-    chown ${_USER}:${usrGroup} ${_dscUsr}/aegir.sh &> /dev/null
+    chown ${_USER}:${_usrGroup} ${_dscUsr}/aegir.sh &> /dev/null
     chmod 0700 ${_dscUsr}/aegir.sh &> /dev/null
   fi
   echo OK > ${_dscUsr}/static/control/.ctrl.cli.${_xSrl}.pid
@@ -1141,13 +1141,13 @@ _enable_newrelic() {
 #
 # Switch New Relic on or off per Octopus instance.
 _switch_newrelic() {
-  isPhp="$1"
-  isPhp=${isPhp//[^0-9]/}
-  isUsr="$2"
-  isUsr=${isUsr//[^a-z0-9]/}
-  isRld="$3"
-  isRld=${isRld//[^0-1]/}
-  if [ ! -z "${isPhp}" ] && [ ! -z "${isUsr}" ] && [ ! -z "${isRld}" ]; then
+  _isPhp="$1"
+  _isPhp=${_isPhp//[^0-9]/}
+  _isUsr="$2"
+  _isUsr=${_isUsr//[^a-z0-9]/}
+  _isRld="$3"
+  _isRld=${_isRld//[^0-1]/}
+  if [ ! -z "${_isPhp}" ] && [ ! -z "${_isUsr}" ] && [ ! -z "${_isRld}" ]; then
     if [ -e "${_dscUsr}/static/control/newrelic.info" ]; then
       _enable_newrelic $1 $2 $3
     else
@@ -1158,9 +1158,9 @@ _switch_newrelic() {
 #
 # Update web user.
 _satellite_web_user_update() {
-  isTest="${_WEB}"
-  isTest=${isTest//[^a-z0-9]/}
-  if [ ! -z "${isTest}" ] && [[ ! "${_WEB}" =~ ".ftp"($) ]]; then
+  _isTest="${_WEB}"
+  _isTest=${_isTest//[^a-z0-9]/}
+  if [ ! -z "${_isTest}" ] && [[ ! "${_WEB}" =~ ".ftp"($) ]]; then
     _T_HD="/home/${_WEB}/.drush"
     _T_TP="/home/${_WEB}/.tmp"
     _T_TS="/home/${_WEB}/.aws"
@@ -1175,9 +1175,9 @@ _satellite_web_user_update() {
       fi
       mkdir -p /home/${_WEB}/.{tmp,drush,aws}
       touch /home/${_WEB}/.lock
-      isTest="$1"
-      isTest=${isTest//[^a-z0-9]/}
-      if [ ! -z "${isTest}" ]; then
+      _isTest="$1"
+      _isTest=${_isTest//[^a-z0-9]/}
+      if [ ! -z "${_isTest}" ]; then
         if [ "$1" = "hhvm" ]; then
           if [ -e "/opt/php56/etc/php56.ini" ] \
             && [ -x "/opt/php56/bin/php" ]; then
@@ -1299,9 +1299,9 @@ _satellite_web_user_update() {
 #
 # Remove web user.
 _satellite_remove_web_user() {
-  isTest="${_WEB}"
-  isTest=${isTest//[^a-z0-9]/}
-  if [ ! -z "${isTest}" ] && [[ ! "${_WEB}" =~ ".ftp"($) ]]; then
+  _isTest="${_WEB}"
+  _isTest=${_isTest//[^a-z0-9]/}
+  if [ ! -z "${_isTest}" ] && [[ ! "${_WEB}" =~ ".ftp"($) ]]; then
     if [ -d "/home/${_WEB}/" ] || [ "$1" = "clean" ]; then
       chattr -i /home/${_WEB}/
       if [ -d "/home/${_WEB}/.drush/" ]; then
@@ -1320,9 +1320,9 @@ _satellite_remove_web_user() {
 #
 # Add web user.
 _satellite_create_web_user() {
-  isTest="${_WEB}"
-  isTest=${isTest//[^a-z0-9]/}
-  if [ ! -z "${isTest}" ] && [[ ! "${_WEB}" =~ ".ftp"($) ]]; then
+  _isTest="${_WEB}"
+  _isTest=${_isTest//[^a-z0-9]/}
+  if [ ! -z "${_isTest}" ] && [[ ! "${_WEB}" =~ ".ftp"($) ]]; then
     _T_HD="/home/${_WEB}/.drush"
     _T_II="${_T_HD}/php.ini"
     _T_ID_EXISTS=$(getent passwd ${_WEB} 2>&1)
@@ -1338,84 +1338,84 @@ _satellite_create_web_user() {
 #
 # Add site specific socket config include.
 _site_socket_inc_gen() {
-  unlAeg="${_dscUsr}/static/control/unlock-aegir-php.info"
-  mltFpm="${_dscUsr}/static/control/multi-fpm.info"
-  preFpm="${_dscUsr}/static/control/.prev-multi-fpm.info"
-  mltNgx="${_dscUsr}/static/control/.multi-nginx-fpm.pid"
-  fpmPth="${_dscUsr}/config/server_master/nginx/post.d"
+  _unlAeg="${_dscUsr}/static/control/unlock-aegir-php.info"
+  _mltFpm="${_dscUsr}/static/control/multi-fpm.info"
+  _preFpm="${_dscUsr}/static/control/.prev-multi-fpm.info"
+  _mltNgx="${_dscUsr}/static/control/.multi-nginx-fpm.pid"
+  _fpmPth="${_dscUsr}/config/server_master/nginx/post.d"
 
-  hmFront=$(cat ${_dscUsr}/log/domain.txt 2>&1)
-  hmFront=$(echo -n ${hmFront} | tr -d "\n" 2>&1)
-  hmstAls="${_dscUsr}/.drush/${hmFront}.alias.drushrc.php"
+  _hmFront=$(cat ${_dscUsr}/log/domain.txt 2>&1)
+  _hmFront=$(echo -n ${_hmFront} | tr -d "\n" 2>&1)
+  _hmstAls="${_dscUsr}/.drush/${_hmFront}.alias.drushrc.php"
 
-  hmstCli=$(cat ${_dscUsr}/log/cli.txt 2>&1)
-  hmstCli=$(echo -n ${hmstCli} | tr -d "\n" 2>&1)
+  _hmstCli=$(cat ${_dscUsr}/log/cli.txt 2>&1)
+  _hmstCli=$(echo -n ${_hmstCli} | tr -d "\n" 2>&1)
 
-  if [ ! -e "${hmstAls}" ]; then
-    ln -s ${_dscUsr}/.drush/hostmaster.alias.drushrc.php ${hmstAls}
+  if [ ! -e "${_hmstAls}" ]; then
+    ln -s ${_dscUsr}/.drush/hostmaster.alias.drushrc.php ${_hmstAls}
   fi
 
-  _PLACEHOLDER_TEST=$(grep "place.holder.dont.remove" ${mltFpm} 2>&1)
+  _PLACEHOLDER_TEST=$(grep "place.holder.dont.remove" ${_mltFpm} 2>&1)
 
   if [ ! -e "${_dscUsr}/log/no-lock-aegir-fpm.txt" ] \
     || [[ ! "${_PLACEHOLDER_TEST}" =~ "place.holder.dont.remove" ]]; then
-    sed -i "s/^${hmFront} .*//g" ${mltFpm}
+    sed -i "s/^${_hmFront} .*//g" ${_mltFpm}
     wait
-    sed -i "s/^place.holder.dont.remove .*//g" ${mltFpm}
+    sed -i "s/^place.holder.dont.remove .*//g" ${_mltFpm}
     wait
     _PHP_V="83 82 81 74"
-    phpFnd=NO
+    _phpFnd=NO
     for e in ${_PHP_V}; do
-      if [ -x "/opt/php${e}/bin/php" ] && [ "${phpFnd}" = "NO" ]; then
+      if [ -x "/opt/php${e}/bin/php" ] && [ "${_phpFnd}" = "NO" ]; then
         if [ "${e}" = "83" ]; then
-          phpDot=8.3
+          _phpDot=8.3
         elif [ "${e}" = "82" ]; then
-          phpDot=8.2
+          _phpDot=8.2
         elif [ "${e}" = "81" ]; then
-          phpDot=8.1
+          _phpDot=8.1
         elif [ "${e}" = "74" ]; then
-          phpDot=7.4
+          _phpDot=7.4
         fi
-        echo "place.holder.dont.remove ${phpDot}" >> ${mltFpm}
-        phpFnd=YES
+        echo "place.holder.dont.remove ${_phpDot}" >> ${_mltFpm}
+        _phpFnd=YES
       fi
     done
-    sed -i "s/ *$//g; /^$/d" ${mltFpm}
+    sed -i "s/ *$//g; /^$/d" ${_mltFpm}
     wait
     touch ${_dscUsr}/log/no-lock-aegir-fpm.txt
     rm -f ${_dscUsr}/log/locked-aegir-fpm.txt
     touch ${_dscUsr}/log/unlocked-aegir-fpm.txt
-    mltFpmUpdateForce=YES
+    _mltFpmUpdateForce=YES
   fi
 
   if [ -x "/opt/php83/bin/php" ] && [ ! -e "/home/${_USER}.83.web" ]; then
     rm -f /data/disk/${_USER}/config/server_master/nginx/post.d/fpm_include_default.inc
-    mltFpmUpdateForce=YES
+    _mltFpmUpdateForce=YES
   elif [ -x "/opt/php82/bin/php" ] && [ ! -e "/home/${_USER}.82.web" ]; then
     rm -f /data/disk/${_USER}/config/server_master/nginx/post.d/fpm_include_default.inc
-    mltFpmUpdateForce=YES
+    _mltFpmUpdateForce=YES
   elif [ -x "/opt/php81/bin/php" ] && [ ! -e "/home/${_USER}.81.web" ]; then
     rm -f /data/disk/${_USER}/config/server_master/nginx/post.d/fpm_include_default.inc
-    mltFpmUpdateForce=YES
+    _mltFpmUpdateForce=YES
   fi
 
-  if [ -f "${mltFpm}" ]; then
-    chown ${_USER}.ftp:${usrGroup} ${_dscUsr}/static/control/*.info
-    mltFpmUpdate=NO
-    if [ ! -f "${preFpm}" ]; then
-      rm -rf ${preFpm}
-      cp -af ${mltFpm} ${preFpm}
+  if [ -f "${_mltFpm}" ]; then
+    chown ${_USER}.ftp:${_usrGroup} ${_dscUsr}/static/control/*.info
+    _mltFpmUpdate=NO
+    if [ ! -f "${_preFpm}" ]; then
+      rm -rf ${_preFpm}
+      cp -af ${_mltFpm} ${_preFpm}
     fi
-    diffFpmTest=$(diff -w -B ${mltFpm} ${preFpm} 2>&1)
-    if [ ! -z "${diffFpmTest}" ]; then
-      mltFpmUpdate=YES
+    _diffFpmTest=$(diff -w -B ${_mltFpm} ${_preFpm} 2>&1)
+    if [ ! -z "${_diffFpmTest}" ]; then
+      _mltFpmUpdate=YES
     fi
-    if [ ! -f "${mltNgx}" ] \
-      || [ "${mltFpmUpdate}" = "YES" ] \
-      || [ "${mltFpmUpdateForce}" = "YES" ]; then
-      rm -f ${fpmPth}/fpm_include_site_*
+    if [ ! -f "${_mltNgx}" ] \
+      || [ "${_mltFpmUpdate}" = "YES" ] \
+      || [ "${_mltFpmUpdateForce}" = "YES" ]; then
+      rm -f ${_fpmPth}/fpm_include_site_*
       IFS=$'\12'
-      for p in `cat ${mltFpm}`;do
+      for p in `cat ${_mltFpm}`;do
         _SITE_NAME=`echo $p | cut -d' ' -f1 | awk '{ print $1}'`
         _SITE_NAME=${_SITE_NAME//[^a-zA-Z0-9-.]/}
         _SITE_NAME=$(echo -n ${_SITE_NAME} | tr A-Z a-z 2>&1)
@@ -1428,24 +1428,24 @@ _site_socket_inc_gen() {
           && [ ! -z "${_SITE_SOCKET}" ] \
           && [ -e "${_dscUsr}/.drush/${_SITE_NAME}.alias.drushrc.php" ] \
           && [ -e "/run/${_SOCKET_L_NAME}.fpm.socket" ]; then
-          fpmInc="${fpmPth}/fpm_include_site_${_SITE_NAME}.inc"
-          echo "if ( \$main_site_name = ${_SITE_NAME} ) {" > ${fpmInc}
-          echo "  set \$user_socket \"${_SOCKET_L_NAME}\";" >> ${fpmInc}
-          echo "}" >> ${fpmInc}
+          _fpmInc="${_fpmPth}/fpm_include_site_${_SITE_NAME}.inc"
+          echo "if ( \$main_site_name = ${_SITE_NAME} ) {" > ${_fpmInc}
+          echo "  set \$user_socket \"${_SOCKET_L_NAME}\";" >> ${_fpmInc}
+          echo "}" >> ${_fpmInc}
         fi
       done
-      touch ${mltNgx}
-      rm -rf ${preFpm}
-      cp -af ${mltFpm} ${preFpm}
+      touch ${_mltNgx}
+      rm -rf ${_preFpm}
+      cp -af ${_mltFpm} ${_preFpm}
       ### reload nginx
       service nginx reload &> /dev/null
     fi
   else
-    if [ -f "${mltNgx}" ]; then
-      rm -f ${mltNgx}
+    if [ -f "${_mltNgx}" ]; then
+      rm -f ${_mltNgx}
     fi
-    if [ -f "${preFpm}" ]; then
-      rm -f ${preFpm}
+    if [ -f "${_preFpm}" ]; then
+      rm -f ${_preFpm}
     fi
   fi
 }
@@ -1569,8 +1569,8 @@ _switch_php() {
           || [ ! -e "${_dscUsr}/static/control/.ctrl.cli.${_xSrl}.pid" ]; then
           _PHP_CLI_UPDATE=YES
           _DRUSH_FILES="drush.php drush"
-          for df in ${_DRUSH_FILES}; do
-            _php_cli_drush_update "${df}"
+          for _df in ${_DRUSH_FILES}; do
+            _php_cli_drush_update "${_df}"
           done
           if [ -x "${_T_CLI}/php" ]; then
             _php_cli_local_ini_update
@@ -1579,7 +1579,7 @@ _switch_php() {
             wait
             echo ${_T_CLI_VRN} > ${_dscUsr}/log/cli.txt
             echo ${_T_CLI_VRN} > ${_dscUsr}/static/control/cli.info
-            chown ${_USER}.ftp:${usrGroup} ${_dscUsr}/static/control/cli.info
+            chown ${_USER}.ftp:${_usrGroup} ${_dscUsr}/static/control/cli.info
           fi
         fi
       fi
@@ -1655,7 +1655,7 @@ _switch_php() {
         service nginx reload &> /dev/null
         ### create dummy control file to enable PHP-FPM again
         echo 7.4 > ${_dscUsr}/static/control/fpm.info
-        chown ${_USER}.ftp:${usrGroup} ${_dscUsr}/static/control/fpm.info
+        chown ${_USER}.ftp:${_usrGroup} ${_dscUsr}/static/control/fpm.info
         _FORCE_FPM_SETUP=YES
       fi
     fi
@@ -1814,7 +1814,7 @@ _switch_php() {
           if [ "${_PHP_FPM_MULTI}" = "NO" ]; then
             echo ${_T_FPM_VRN} > ${_dscUsr}/static/control/fpm.info
           fi
-          chown ${_USER}.ftp:${usrGroup} ${_dscUsr}/static/control/fpm.info
+          chown ${_USER}.ftp:${_usrGroup} ${_dscUsr}/static/control/fpm.info
           _PHP_OLD_SV=${_PHP_FPM_VERSION//[^0-9]/}
           _PHP_SV=${_T_FPM_VRN//[^0-9]/}
           if [ -z "${_PHP_SV}" ]; then
@@ -1932,7 +1932,7 @@ _switch_php() {
                 wait
               fi
               _switch_newrelic ${m} ${_POOL} 0
-              nrCheck=YES
+              _nrCheck=YES
               if [ -e "/etc/init.d/php${_PHP_OLD_SV}-fpm" ]; then
                 service php${_PHP_OLD_SV}-fpm reload &> /dev/null
               fi
@@ -2110,7 +2110,7 @@ _manage_user() {
         mkdir -p ${_dscUsr}/.tmp
         touch ${_dscUsr}/.tmp
         find ${_dscUsr}/.tmp/ -mtime +0 -exec rm -rf {} \; &> /dev/null
-        chown ${_USER}:${usrGroup} ${_dscUsr}/.tmp &> /dev/null
+        chown ${_USER}:${_usrGroup} ${_dscUsr}/.tmp &> /dev/null
         chmod 02755 ${_dscUsr}/.tmp &> /dev/null
         echo OK > ${_dscUsr}/.tmp/.ctrl.${_tRee}.${_xSrl}.pid
       fi
@@ -2123,7 +2123,7 @@ _manage_user() {
             ${_dscUsr}/static/control/README.txt &> /dev/null
           chmod 0644 ${_dscUsr}/static/control/README.txt
         fi
-        chown -R ${_USER}.ftp:${usrGroup} ${_dscUsr}/static/control
+        chown -R ${_USER}.ftp:${_usrGroup} ${_dscUsr}/static/control
         rm -f ${_dscUsr}/static/control/.ctrl.*
         echo OK > ${_dscUsr}/static/control/.ctrl.${_tRee}.${_xSrl}.pid
       fi
@@ -2146,11 +2146,11 @@ _manage_user() {
           echo 5.6 > ${_dscUsr}/static/control/cli.info
         fi
       fi
-      nrCheck=
+      _nrCheck=
       _switch_php
       ### reload nginx
       service nginx reload &> /dev/null
-      if [ -z ${nrCheck} ]; then
+      if [ -z ${_nrCheck} ]; then
         if [ -z ${_PHP_SV} ]; then
           _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
           if [ -z "${_PHP_SV}" ]; then
@@ -2195,7 +2195,7 @@ _manage_user() {
           _manage_site_drush_alias_mirror
           _manage_sec
           if [ -d "/home/${_USER}.ftp/clients" ]; then
-            chown -R ${_USER}.ftp:${usrGroup} /home/${_USER}.ftp/users
+            chown -R ${_USER}.ftp:${_usrGroup} /home/${_USER}.ftp/users
             chmod 700 /home/${_USER}.ftp/users
             chmod 600 /home/${_USER}.ftp/users/*
           fi
@@ -2209,7 +2209,7 @@ _manage_user() {
             rm -rf /home/${_USER}.ftp/.drush/cache
             rm -rf /home/${_USER}.ftp/.tmp
             mkdir -p /home/${_USER}.ftp/.tmp
-            chown ${_USER}.ftp:${usrGroup} /home/${_USER}.ftp/.tmp &> /dev/null
+            chown ${_USER}.ftp:${_usrGroup} /home/${_USER}.ftp/.tmp &> /dev/null
             chmod 700 /home/${_USER}.ftp/.tmp &> /dev/null
             echo OK > /home/${_USER}.ftp/.tmp/.ctrl.${_tRee}.${_xSrl}.pid
           fi
@@ -2293,27 +2293,27 @@ if [ ! -e "/home/.ctrl.${_tRee}.${_xSrl}.pid" ]; then
   chmod 0711 /home
   chown root:root /home
   rm -f /home/.ctrl.*
-  while IFS=':' read -r login pass uid gid uname homedir shell; do
-    if [[ "${homedir}" = **/home/** ]]; then
-      if [ -d "${homedir}" ]; then
-        chattr -i ${homedir}
-        chown ${uid}:${gid} ${homedir} &> /dev/null
-        if [ -d "${homedir}/.ssh" ]; then
-          chattr -i ${homedir}/.ssh
-          chown -R ${uid}:${gid} ${homedir}/.ssh &> /dev/null
+  while IFS=':' read -r _login _pass _uid _gid _uname _homedir _shell; do
+    if [[ "${_homedir}" = **/home/** ]]; then
+      if [ -d "${_homedir}" ]; then
+        chattr -i ${_homedir}
+        chown ${_uid}:${_gid} ${_homedir} &> /dev/null
+        if [ -d "${_homedir}/.ssh" ]; then
+          chattr -i ${_homedir}/.ssh
+          chown -R ${_uid}:${_gid} ${_homedir}/.ssh &> /dev/null
         fi
-        if [ -d "${homedir}/.tmp" ]; then
-          chattr -i ${homedir}/.tmp
-          chown -R ${uid}:${gid} ${homedir}/.tmp &> /dev/null
+        if [ -d "${_homedir}/.tmp" ]; then
+          chattr -i ${_homedir}/.tmp
+          chown -R ${_uid}:${_gid} ${_homedir}/.tmp &> /dev/null
         fi
-        if [ -d "${homedir}/.drush" ]; then
-          chattr +i ${homedir}/.drush/usr
-          chattr +i ${homedir}/.drush/*.ini
-          chattr +i ${homedir}/.drush
+        if [ -d "${_homedir}/.drush" ]; then
+          chattr +i ${_homedir}/.drush/usr
+          chattr +i ${_homedir}/.drush/*.ini
+          chattr +i ${_homedir}/.drush
         fi
-        if [[ ! "${login}" =~ ".ftp"($) ]] \
-          && [[ ! "${login}" =~ ".web"($) ]]; then
-          chattr +i ${homedir}
+        if [[ ! "${_login}" =~ ".ftp"($) ]] \
+          && [[ ! "${_login}" =~ ".web"($) ]]; then
+          chattr +i ${_homedir}
         fi
       fi
     fi

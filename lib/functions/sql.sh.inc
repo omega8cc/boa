@@ -71,19 +71,19 @@ _if_sql_keyring_apt_update() {
   if [ "${_DB_V}" = "8.4" ] || [ "${_DB_SERIES}" = "8.4" ]; then
     if [ "${_DB_SERVER}" = "Percona" ]; then
       _DB_SRC="repo.percona.com"
-      percNodot="${_DB_SERIES//./}"
+      _percNodot="${_DB_SERIES//./}"
       _SQL_DEB_SRC_TEST_A=$(grep ${_DB_SRC} \
         /etc/apt/sources.list.d/percona-release.list 2>&1)
       _SQL_DEB_SRC_TEST_B=$(grep ${_SQL_OS_CODE} \
         /etc/apt/sources.list.d/percona-release.list 2>&1)
-      _SQL_DEB_SRC_TEST_C=$(grep ps-${percNodot}-lts \
+      _SQL_DEB_SRC_TEST_C=$(grep ps-${_percNodot}-lts \
         /etc/apt/sources.list.d/percona-release.list 2>&1)
       _SQL_DEB_SRC_TEST_D=$(grep ps-8x-innovation \
         /etc/apt/sources.list.d/percona-release.list 2>&1)
     fi
     if [[ "${_SQL_DEB_SRC_TEST_A}" =~ "${_DB_SRC}" ]] \
       && [[ "${_SQL_DEB_SRC_TEST_B}" =~ "${_SQL_OS_CODE}" ]] \
-      && [[ "${_SQL_DEB_SRC_TEST_C}" =~ "ps-${percNodot}-lts" ]] \
+      && [[ "${_SQL_DEB_SRC_TEST_C}" =~ "ps-${_percNodot}-lts" ]] \
       && [ -e "/etc/apt/keyrings/percona.gpg" ] \
       && [ -e "/etc/apt/preferences.d/00percona.pref" ]; then
       _SQL_DEB_SRC_UPDATE=NO
@@ -96,12 +96,12 @@ _if_sql_keyring_apt_update() {
   elif [ "${_DB_V}" = "8.3" ] || [ "${_DB_SERIES}" = "8.3" ]; then
     if [ "${_DB_SERVER}" = "Percona" ]; then
       _DB_SRC="repo.percona.com"
-      percNodot="${_DB_SERIES//./}"
+      _percNodot="${_DB_SERIES//./}"
       _SQL_DEB_SRC_TEST_A=$(grep ${_DB_SRC} \
         /etc/apt/sources.list.d/percona-release.list 2>&1)
       _SQL_DEB_SRC_TEST_B=$(grep ${_SQL_OS_CODE} \
         /etc/apt/sources.list.d/percona-release.list 2>&1)
-      _SQL_DEB_SRC_TEST_C=$(grep ps-${percNodot} \
+      _SQL_DEB_SRC_TEST_C=$(grep ps-${_percNodot} \
         /etc/apt/sources.list.d/percona-release.list 2>&1)
       _SQL_DEB_SRC_TEST_D=$(grep ps-8x-innovation \
         /etc/apt/sources.list.d/percona-release.list 2>&1)
@@ -115,25 +115,25 @@ _if_sql_keyring_apt_update() {
     else
       _SQL_DEB_SRC_UPDATE=YES
     fi
-    if [[ "${_SQL_DEB_SRC_TEST_C}" =~ "ps-${percNodot}" ]]; then
+    if [[ "${_SQL_DEB_SRC_TEST_C}" =~ "ps-${_percNodot}" ]]; then
       _SQL_DEB_SRC_UPDATE=YES
     fi
   else
     if [ "${_DB_SERVER}" = "Percona" ]; then
       _DB_SRC="repo.percona.com"
-      percNodot="${_DB_SERIES//./}"
+      _percNodot="${_DB_SERIES//./}"
       _SQL_DEB_SRC_TEST_A=$(grep ${_DB_SRC} \
         /etc/apt/sources.list.d/percona-release.list 2>&1)
       _SQL_DEB_SRC_TEST_B=$(grep ${_SQL_OS_CODE} \
         /etc/apt/sources.list.d/percona-release.list 2>&1)
-      _SQL_DEB_SRC_TEST_C=$(grep ps-${percNodot} \
+      _SQL_DEB_SRC_TEST_C=$(grep ps-${_percNodot} \
         /etc/apt/sources.list.d/percona-release.list 2>&1)
       _SQL_DEB_SRC_TEST_D=$(grep ps-8x-innovation \
         /etc/apt/sources.list.d/percona-release.list 2>&1)
     fi
     if [[ "${_SQL_DEB_SRC_TEST_A}" =~ "${_DB_SRC}" ]] \
       && [[ "${_SQL_DEB_SRC_TEST_B}" =~ "${_SQL_OS_CODE}" ]] \
-      && [[ "${_SQL_DEB_SRC_TEST_C}" =~ "ps-${percNodot}" ]] \
+      && [[ "${_SQL_DEB_SRC_TEST_C}" =~ "ps-${_percNodot}" ]] \
       && [ -e "/etc/apt/keyrings/percona.gpg" ] \
       && [ -e "/etc/apt/preferences.d/00percona.pref" ]; then
       _SQL_DEB_SRC_UPDATE=NO
@@ -150,55 +150,55 @@ _if_sql_keyring_apt_update() {
     rm -f /etc/apt/sources.list.d/ourdelta*
     rm -f /etc/apt/sources.list.d/percona*
     rm -f /etc/apt/sources.list.d/xtrabackup*
-    percList="/etc/apt/sources.list.d/percona-release.list"
+    _percList="/etc/apt/sources.list.d/percona-release.list"
     if [ "${_DB_V}" = "8.4" ] || [ "${_DB_SERIES}" = "8.4" ]; then
-      percRepo="${_DB_SRC}/ps-${percNodot}-lts/apt"
+      _percRepo="${_DB_SRC}/ps-${_percNodot}-lts/apt"
     elif [ "${_DB_V}" = "8.3" ] || [ "${_DB_SERIES}" = "8.3" ]; then
-      percRepo="${_DB_SRC}/ps-8x-innovation/apt"
+      _percRepo="${_DB_SRC}/ps-8x-innovation/apt"
     else
-      percRepo="${_DB_SRC}/ps-${percNodot}/apt"
+      _percRepo="${_DB_SRC}/ps-${_percNodot}/apt"
     fi
-    percTools="${_DB_SRC}/tools/apt"
-    percTelem="${_DB_SRC}/telemetry/apt"
-    percPrelr="${_DB_SRC}/prel/apt"
-    echo "## Percona Server APT Repository" > ${percList}
+    _percTools="${_DB_SRC}/tools/apt"
+    _percTelem="${_DB_SRC}/telemetry/apt"
+    _percPrelr="${_DB_SRC}/prel/apt"
+    echo "## Percona Server APT Repository" > ${_percList}
     if [ -e "/etc/apt/keyrings/percona.gpg" ]; then
-      echo "deb [signed-by=/etc/apt/keyrings/percona.gpg] http://${percRepo} ${_SQL_OS_CODE} main" >> ${percList}
-      echo "deb-src [signed-by=/etc/apt/keyrings/percona.gpg] http://${percRepo} ${_SQL_OS_CODE} main" >> ${percList}
+      echo "deb [signed-by=/etc/apt/keyrings/percona.gpg] http://${_percRepo} ${_SQL_OS_CODE} main" >> ${_percList}
+      echo "deb-src [signed-by=/etc/apt/keyrings/percona.gpg] http://${_percRepo} ${_SQL_OS_CODE} main" >> ${_percList}
     else
-      echo "deb http://${percRepo} ${_SQL_OS_CODE} main" >> ${percList}
-      echo "deb-src http://${percRepo} ${_SQL_OS_CODE} main" >> ${percList}
+      echo "deb http://${_percRepo} ${_SQL_OS_CODE} main" >> ${_percList}
+      echo "deb-src http://${_percRepo} ${_SQL_OS_CODE} main" >> ${_percList}
     fi
     if [ "${_SQL_DEBUG_MODE}" = "YES" ]; then
-      echo " " >> ${percList}
-      echo "## Percona Tools APT Repository" >> ${percList}
+      echo " " >> ${_percList}
+      echo "## Percona Tools APT Repository" >> ${_percList}
       if [ -e "/etc/apt/keyrings/percona.gpg" ]; then
-        echo "deb [signed-by=/etc/apt/keyrings/percona.gpg] http://${percTools} ${_SQL_OS_CODE} main" >> ${percList}
-        echo "deb-src [signed-by=/etc/apt/keyrings/percona.gpg] http://${percTools} ${_SQL_OS_CODE} main" >> ${percList}
+        echo "deb [signed-by=/etc/apt/keyrings/percona.gpg] http://${_percTools} ${_SQL_OS_CODE} main" >> ${_percList}
+        echo "deb-src [signed-by=/etc/apt/keyrings/percona.gpg] http://${_percTools} ${_SQL_OS_CODE} main" >> ${_percList}
       else
-        echo "deb http://${percTools} ${_SQL_OS_CODE} main" >> ${percList}
-        echo "deb-src http://${percTools} ${_SQL_OS_CODE} main" >> ${percList}
+        echo "deb http://${_percTools} ${_SQL_OS_CODE} main" >> ${_percList}
+        echo "deb-src http://${_percTools} ${_SQL_OS_CODE} main" >> ${_percList}
       fi
-      echo " " >> ${percList}
-      echo "## Percona Telemetry APT Repository" >> ${percList}
+      echo " " >> ${_percList}
+      echo "## Percona Telemetry APT Repository" >> ${_percList}
       if [ -e "/etc/apt/keyrings/percona.gpg" ]; then
-        echo "deb [signed-by=/etc/apt/keyrings/percona.gpg] http://${percTelem} ${_SQL_OS_CODE} main" >> ${percList}
-        echo "deb-src [signed-by=/etc/apt/keyrings/percona.gpg] http://${percTelem} ${_SQL_OS_CODE} main" >> ${percList}
+        echo "deb [signed-by=/etc/apt/keyrings/percona.gpg] http://${_percTelem} ${_SQL_OS_CODE} main" >> ${_percList}
+        echo "deb-src [signed-by=/etc/apt/keyrings/percona.gpg] http://${_percTelem} ${_SQL_OS_CODE} main" >> ${_percList}
       else
-        echo "deb http://${percTelem} ${_SQL_OS_CODE} main" >> ${percList}
-        echo "deb-src http://${percTelem} ${_SQL_OS_CODE} main" >> ${percList}
+        echo "deb http://${_percTelem} ${_SQL_OS_CODE} main" >> ${_percList}
+        echo "deb-src http://${_percTelem} ${_SQL_OS_CODE} main" >> ${_percList}
       fi
-      echo " " >> ${percList}
-      echo "## Percona Release APT Repository" >> ${percList}
+      echo " " >> ${_percList}
+      echo "## Percona Release APT Repository" >> ${_percList}
       if [ -e "/etc/apt/keyrings/percona.gpg" ]; then
-        echo "deb [signed-by=/etc/apt/keyrings/percona.gpg] http://${percPrelr} ${_SQL_OS_CODE} main" >> ${percList}
-        echo "deb-src [signed-by=/etc/apt/keyrings/percona.gpg] http://${percPrelr} ${_SQL_OS_CODE} main" >> ${percList}
+        echo "deb [signed-by=/etc/apt/keyrings/percona.gpg] http://${_percPrelr} ${_SQL_OS_CODE} main" >> ${_percList}
+        echo "deb-src [signed-by=/etc/apt/keyrings/percona.gpg] http://${_percPrelr} ${_SQL_OS_CODE} main" >> ${_percList}
       else
-        echo "deb http://${percPrelr} ${_SQL_OS_CODE} main" >> ${percList}
-        echo "deb-src http://${percPrelr} ${_SQL_OS_CODE} main" >> ${percList}
+        echo "deb http://${_percPrelr} ${_SQL_OS_CODE} main" >> ${_percList}
+        echo "deb-src http://${_percPrelr} ${_SQL_OS_CODE} main" >> ${_percList}
       fi
     fi
-    chmod 644 ${percList}
+    chmod 644 ${_percList}
     echo -e 'Package: *\nPin: release o=Percona Development Team\nPin-Priority: 1001' > /etc/apt/preferences.d/00percona.pref
     _apt_clean_update
   fi
@@ -578,48 +578,48 @@ _tune_sql_memory_limits() {
     cp -af ${_locCnf}/var/my.cnf.txt /etc/mysql/my.cnf
   fi
   # https://raw.githubusercontent.com/major/MySQLTuner-perl/master/mysqltuner.pl
-  pthTun="/var/opt/mysqltuner.pl"
-  outTun="/var/opt/mysqltuner-${_xSrl}-${_X_VERSION}-${_NOW}.txt"
+  _pthTun="/var/opt/mysqltuner.pl"
+  _outTun="/var/opt/mysqltuner-${_xSrl}-${_X_VERSION}-${_NOW}.txt"
   if [ -e "/root/.run-to-daedalus.cnf" ] \
     || [ -e "/root/.run-to-chimaera.cnf" ] \
     || [ -e "/root/.run-to-beowulf.cnf" ]; then
     _USE_MYSQLTUNER=NO
   fi
-  if [ ! -e "${outTun}" ] \
+  if [ ! -e "${_outTun}" ] \
     && [ "${_USE_MYSQLTUNER}" != "NO" ] \
     && [ "${_STATUS}" = "UPGRADE" ]; then
     _msg "INFO: Running MySQLTuner check on all databases"
     _msg "WAIT: This may take a while, please wait..."
     _MYSQLTUNER_TEST_RESULT=OK
     rm -f /var/opt/mysqltuner*
-    curl ${_crlGet} "${_urlDev}/mysqltuner.pl.${_MYSQLTUNER_VRN}" -o ${pthTun}
-    if [ ! -e "${pthTun}" ]; then
-      curl ${_crlGet} "${_urlDev}/mysqltuner.pl" -o ${pthTun}
+    curl ${_crlGet} "${_urlDev}/mysqltuner.pl.${_MYSQLTUNER_VRN}" -o ${_pthTun}
+    if [ ! -e "${_pthTun}" ]; then
+      curl ${_crlGet} "${_urlDev}/mysqltuner.pl" -o ${_pthTun}
     fi
-    if [ -e "${pthTun}" ]; then
-      perl ${pthTun} > ${outTun} 2>&1
+    if [ -e "${_pthTun}" ]; then
+      perl ${_pthTun} > ${_outTun} 2>&1
     fi
   fi
-  if [ -e "${pthTun}" ] \
-    && [ -e "${outTun}" ] \
+  if [ -e "${_pthTun}" ] \
+    && [ -e "${_outTun}" ] \
     && [ "${_USE_MYSQLTUNER}" != "NO" ] \
     && [ "${_STATUS}" = "UPGRADE" ]; then
-    _REC_MYISAM_MEM=$(cat ${outTun} \
+    _REC_MYISAM_MEM=$(cat ${_outTun} \
       | grep "Data in MyISAM tables" \
       | cut -d: -f2 \
       | awk '{ print $1}' 2>&1)
-    _REC_INNODB_MEM=$(cat ${outTun} \
+    _REC_INNODB_MEM=$(cat ${_outTun} \
       | grep "data size:" \
       | cut -d/ -f3 \
       | awk '{ print $1}' 2>&1)
-    _MYSQLTUNER_TEST=$(cat ${outTun} 2>&1)
-    cp -a ${outTun} ${_pthLog}/
+    _MYSQLTUNER_TEST=$(cat ${_outTun} 2>&1)
+    cp -a ${_outTun} ${_pthLog}/
     if [ -z "${_REC_INNODB_MEM}" ] \
       || [[ "${_MYSQLTUNER_TEST}" =~ "Cannot calculate MyISAM index" ]] \
       || [[ "${_MYSQLTUNER_TEST}" =~ "InnoDB is enabled but isn" ]]; then
       _MYSQLTUNER_TEST_RESULT=FAIL
       _msg "NOTE: The MySQLTuner test failed!"
-      _msg "NOTE: Please review ${outTun}"
+      _msg "NOTE: Please review ${_outTun}"
       _msg "NOTE: We will use some sane SQL defaults instead, do not worry!"
     fi
     ###--------------------###
@@ -880,18 +880,18 @@ _prep_for_install_db_sql() {
   fi
 
   if [ "${_DB_SERIES}" = "5.7" ]; then
-    SQLDEB="percona-server-server-${_DB_SERIES}"
+    _SQLDEB="percona-server-server-${_DB_SERIES}"
   else
-    SQLDEB="percona-server-server"
+    _SQLDEB="percona-server-server"
   fi
-  SQLXTR="libdbi-perl"
+  _SQLXTR="libdbi-perl"
 
   if [ "${_DB_SERIES}" = "5.7" ]; then
-    SQLADD="libperconaserverclient20 libperconaserverclient20-dev"
+    _SQLADD="libperconaserverclient20 libperconaserverclient20-dev"
   elif [ "${_DB_SERIES}" = "8.0" ]; then
-    SQLADD="libperconaserverclient21 libperconaserverclient21-dev"
+    _SQLADD="libperconaserverclient21 libperconaserverclient21-dev"
   else
-    SQLADD="libperconaserverclient22 libperconaserverclient22-dev"
+    _SQLADD="libperconaserverclient22 libperconaserverclient22-dev"
   fi
 }
 
@@ -904,13 +904,13 @@ _install_with_aptitude_sql() {
   fi
   _prep_for_install_db_sql
   if [ "${_SQL_SCR}" = "APT" ]; then
-    _st_runner "${_INSTAPP} ${SQLDEB}" 2> /dev/null
-    _st_runner "${_INSTAPP} ${SQLADD}" 2> /dev/null
-    _st_runner "${_INSTAPP} ${SQLXTR}" 2> /dev/null
-    _st_runner "${_INSTAPP} ${SQLDEB}" 2> /dev/null
+    _st_runner "${_INSTAPP} ${_SQLDEB}" 2> /dev/null
+    _st_runner "${_INSTAPP} ${_SQLADD}" 2> /dev/null
+    _st_runner "${_INSTAPP} ${_SQLXTR}" 2> /dev/null
+    _st_runner "${_INSTAPP} ${_SQLDEB}" 2> /dev/null
   elif [ "${_SQL_SCR}" = "GIT" ]; then
     ### TBD -- only for testing
-    _st_runner "${_INSTAPP} ${SQLXTR}" 2> /dev/null
+    _st_runner "${_INSTAPP} ${_SQLXTR}" 2> /dev/null
   fi
   if [ -x "/usr/sbin/aa-teardown" ]; then
     _mrun "aa-teardown" 2> /dev/null
@@ -1275,40 +1275,40 @@ _db_server_install() {
         fi
       fi
       _tune_memory_limits
-      myCnf="/etc/mysql/my.cnf"
-      preCnf="${_vBs}/dragon/t/my.cnf-pre-${_xSrl}-${_X_VERSION}-${_NOW}"
-      if [ -f "${myCnf}" ]; then
-        myCnfUpdate=NO
-        myRstrd=NO
-        if [ ! -f "${preCnf}" ]; then
+      _myCnf="/etc/mysql/my.cnf"
+      _preCnf="${_vBs}/dragon/t/my.cnf-pre-${_xSrl}-${_X_VERSION}-${_NOW}"
+      if [ -f "${_myCnf}" ]; then
+        _myCnfUpdate=NO
+        _myRstrd=NO
+        if [ ! -f "${_preCnf}" ]; then
           mkdir -p ${_vBs}/dragon/t/
-          cp -af ${myCnf} ${preCnf}
+          cp -af ${_myCnf} ${_preCnf}
         fi
-        diffMyTest=$(diff -w -B \
+        _diffMyTest=$(diff -w -B \
           -I innodb_buffer_pool_size \
           -I innodb_buffer_pool_instances \
           -I innodb_page_cleaners \
           -I tmp_table_size \
           -I max_heap_table_size \
           -I myisam_sort_buffer_size \
-          -I key_buffer_size ${myCnf} ${preCnf} 2>&1)
-        if [ -z "${diffMyTest}" ]; then
-          myCnfUpdate=NO
+          -I key_buffer_size ${_myCnf} ${_preCnf} 2>&1)
+        if [ -z "${_diffMyTest}" ]; then
+          _myCnfUpdate=NO
           if [ "${_DEBUG_MODE}" = "YES" ]; then
             _msg "INFO: ${_DB_SERVER} diff0 empty"
           fi
         else
-          myCnfUpdate=YES
-          # diffMyTest=$(echo -n ${diffMyTest} | fmt -su -w 2500 2>&1)
-          _msg "INFO: ${_DB_SERVER} diff1 ${diffMyTest}"
+          _myCnfUpdate=YES
+          # _diffMyTest=$(echo -n ${_diffMyTest} | fmt -su -w 2500 2>&1)
+          _msg "INFO: ${_DB_SERVER} diff1 ${_diffMyTest}"
         fi
-        if [[ "${diffMyTest}" =~ "innodb_buffer_pool_size" ]]; then
-          myCnfUpdate=NO
-          _msg "INFO: ${_DB_SERVER} diff2 ${diffMyTest}"
+        if [[ "${_diffMyTest}" =~ "innodb_buffer_pool_size" ]]; then
+          _myCnfUpdate=NO
+          _msg "INFO: ${_DB_SERVER} diff2 ${_diffMyTest}"
         fi
-        if [[ "${diffMyTest}" =~ "No such file or directory" ]]; then
-          myCnfUpdate=NO
-          _msg "INFO: ${_DB_SERVER} diff3 ${diffMyTest}"
+        if [[ "${_diffMyTest}" =~ "No such file or directory" ]]; then
+          _myCnfUpdate=NO
+          _msg "INFO: ${_DB_SERVER} diff3 ${_diffMyTest}"
         fi
       fi
       if [ ! -e "/root/.run-to-daedalus.cnf" ] \
@@ -1316,10 +1316,10 @@ _db_server_install() {
         && [ ! -e "/root/.run-to-beowulf.cnf" ]; then
         _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
         _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
-        myUptime=$(mysqladmin -u root version | grep -i uptime 2>&1)
-        myUptime=$(echo -n ${myUptime} | fmt -su -w 2500 2>&1)
-        _msg "INFO: ${_DB_SERVER} ${myUptime}"
-        if [ "${myCnfUpdate}" = "YES" ]; then
+        _myUptime=$(mysqladmin -u root version | grep -i uptime 2>&1)
+        _myUptime=$(echo -n ${_myUptime} | fmt -su -w 2500 2>&1)
+        _msg "INFO: ${_DB_SERVER} ${_myUptime}"
+        if [ "${_myCnfUpdate}" = "YES" ]; then
           if [ "${_DEBUG_MODE}" = "YES" ]; then
             _msg "INFO: Restarting ${_DB_SERVER} server..."
           fi
@@ -1327,7 +1327,7 @@ _db_server_install() {
           _mrun "bash /var/xdrago/move_sql.sh" &> /dev/null
           wait
           _msg "INFO: ${_DB_SERVER} server restart completed"
-          myRstrd=YES
+          _myRstrd=YES
         fi
         _check_mysql_version
         if [ "${_DB_V}" = "5.7" ] || [ "${_DB_SERIES}" = "5.7" ]; then
@@ -1496,19 +1496,19 @@ _sql_root_credentials_update() {
       _check_mysql_version
       myUsrTbl="mysql.user"
       if [ -z "${_ESC_PASS}" ]; then
-        PXSWD=$(cat /root/.my.pass.txt 2>&1)
+        _PXSWD=$(cat /root/.my.pass.txt 2>&1)
       else
-        PXSWD="${_ESC_PASS}"
+        _PXSWD="${_ESC_PASS}"
       fi
-      PASWD=$(echo -n ${PXSWD} | tr -d "\n" 2>&1)
+      _PASWD=$(echo -n ${_PXSWD} | tr -d "\n" 2>&1)
       _ESC="*.*"
-      if [ -z "${PASWD}" ]; then
+      if [ -z "${_PASWD}" ]; then
         _msg "CRIT: PASWD for ${_DB_SERVER} is empty!"
       elif [ -z "${_DB_V}" ]; then
         _msg "CRIT: _DB_V for ${_DB_SERVER} is empty!"
       else
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "DBEF: ${_DB_SERVER} PASWD ${PASWD}"
+          _msg "DBEF: ${_DB_SERVER} PASWD ${_PASWD}"
           mysql -u root -e "SHOW GRANTS FOR 'root'@'localhost';"
           if [ "${_SQL_DEBUG_MODE}" = "YES" ]; then
             mysql -u root -e "SHOW GRANTS FOR 'root'@'127.0.0.1';"
@@ -1521,53 +1521,53 @@ _sql_root_credentials_update() {
         mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'localhost';"
         mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'localhost' WITH GRANT OPTION;"
         if [ "${_DB_V}" = "5.7" ]; then
-          mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '${PASWD}';"
+          mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '${_PASWD}';"
         else
-          mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH caching_sha2_password BY '${PASWD}';"
+          mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH caching_sha2_password BY '${_PASWD}';"
         fi
         echo "[client]" > /root/.my.cnf
         echo "user=root" >> /root/.my.cnf
-        echo "password=${PASWD}" >> /root/.my.cnf
+        echo "password=${_PASWD}" >> /root/.my.cnf
         echo " " >> /root/.my.cnf
         echo "[mysql]" >> /root/.my.cnf
         echo "user=root" >> /root/.my.cnf
-        echo "password=${PASWD}" >> /root/.my.cnf
+        echo "password=${_PASWD}" >> /root/.my.cnf
           echo " " >> /root/.my.cnf
         echo "[mysqldump]" >> /root/.my.cnf
         echo "user=root" >> /root/.my.cnf
-        echo "password=${PASWD}" >> /root/.my.cnf
+        echo "password=${_PASWD}" >> /root/.my.cnf
           echo " " >> /root/.my.cnf
         echo "[mydumper]" >> /root/.my.cnf
         echo "user=root" >> /root/.my.cnf
-        echo "password=${PASWD}" >> /root/.my.cnf
+        echo "password=${_PASWD}" >> /root/.my.cnf
           echo " " >> /root/.my.cnf
         echo "[myloader]" >> /root/.my.cnf
         echo "user=root" >> /root/.my.cnf
-        echo "password=${PASWD}" >> /root/.my.cnf
+        echo "password=${_PASWD}" >> /root/.my.cnf
           echo " " >> /root/.my.cnf
         echo "[boa]" >> /root/.my.cnf
         echo "user=root" >> /root/.my.cnf
-        echo "password=${PASWD}" >> /root/.my.cnf
+        echo "password=${_PASWD}" >> /root/.my.cnf
           echo " " >> /root/.my.cnf
         echo "[barracuda]" >> /root/.my.cnf
         echo "user=root" >> /root/.my.cnf
-        echo "password=${PASWD}" >> /root/.my.cnf
+        echo "password=${_PASWD}" >> /root/.my.cnf
           echo " " >> /root/.my.cnf
         echo "[octopus]" >> /root/.my.cnf
         echo "user=root" >> /root/.my.cnf
-        echo "password=${PASWD}" >> /root/.my.cnf
+        echo "password=${_PASWD}" >> /root/.my.cnf
           echo " " >> /root/.my.cnf
         echo "[mycnfup]" >> /root/.my.cnf
         echo "user=root" >> /root/.my.cnf
-        echo "password=${PASWD}" >> /root/.my.cnf
+        echo "password=${_PASWD}" >> /root/.my.cnf
           echo " " >> /root/.my.cnf
         echo "[syncpass]" >> /root/.my.cnf
         echo "user=root" >> /root/.my.cnf
-        echo "password=${PASWD}" >> /root/.my.cnf
+        echo "password=${_PASWD}" >> /root/.my.cnf
           echo " " >> /root/.my.cnf
         echo "[xboa]" >> /root/.my.cnf
         echo "user=root" >> /root/.my.cnf
-        echo "password=${PASWD}" >> /root/.my.cnf
+        echo "password=${_PASWD}" >> /root/.my.cnf
           echo " " >> /root/.my.cnf
         chmod 0600 /root/.my.cnf
         echo "db=mysql" > /root/.mytop
@@ -1579,18 +1579,18 @@ _sql_root_credentials_update() {
         mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'::1' WITH GRANT OPTION;"
         mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'${_MY_OWNIP}' WITH GRANT OPTION;"
         if [ "${_DB_V}" = "5.7" ]; then
-          mysql -u root -e "ALTER USER 'root'@'127.0.0.1' IDENTIFIED WITH mysql_native_password BY '${PASWD}';"
-          mysql -u root -e "ALTER USER 'root'@'::1' IDENTIFIED WITH mysql_native_password BY '${PASWD}';"
-          mysql -u root -e "ALTER USER 'root'@'${_MY_OWNIP}' IDENTIFIED WITH mysql_native_password BY '${PASWD}';"
+          mysql -u root -e "ALTER USER 'root'@'127.0.0.1' IDENTIFIED WITH mysql_native_password BY '${_PASWD}';"
+          mysql -u root -e "ALTER USER 'root'@'::1' IDENTIFIED WITH mysql_native_password BY '${_PASWD}';"
+          mysql -u root -e "ALTER USER 'root'@'${_MY_OWNIP}' IDENTIFIED WITH mysql_native_password BY '${_PASWD}';"
         else
-          mysql -u root -e "ALTER USER 'root'@'127.0.0.1' IDENTIFIED WITH caching_sha2_password BY '${PASWD}';"
-          mysql -u root -e "ALTER USER 'root'@'::1' IDENTIFIED WITH caching_sha2_password BY '${PASWD}';"
-          mysql -u root -e "ALTER USER 'root'@'${_MY_OWNIP}' IDENTIFIED WITH caching_sha2_password BY '${PASWD}';"
+          mysql -u root -e "ALTER USER 'root'@'127.0.0.1' IDENTIFIED WITH caching_sha2_password BY '${_PASWD}';"
+          mysql -u root -e "ALTER USER 'root'@'::1' IDENTIFIED WITH caching_sha2_password BY '${_PASWD}';"
+          mysql -u root -e "ALTER USER 'root'@'${_MY_OWNIP}' IDENTIFIED WITH caching_sha2_password BY '${_PASWD}';"
         fi
         mysqladmin -u root flush-privileges
         mysqladmin -u root flush-hosts
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "DAFT: ${_DB_SERVER} PASWD ${PASWD}"
+          _msg "DAFT: ${_DB_SERVER} PASWD ${_PASWD}"
           mysql -u root -e "SHOW GRANTS FOR 'root'@'localhost';"
           if [ "${_SQL_DEBUG_MODE}" = "YES" ]; then
             mysql -u root -e "SHOW GRANTS FOR 'root'@'127.0.0.1';"

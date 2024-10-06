@@ -899,26 +899,26 @@ _nginx_config_update_fix() {
 
     if [ -d "/data/u" ]; then
       for _OCT in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
-        pthPrN="provision/http/Provision/Config/Nginx"
+        _pthPrN="provision/http/Provision/Config/Nginx"
         if [ -e "${_OCT}/.drush/sys/drush_make" ]; then
           sed -i "s/\!empty.*';/'*';/g" \
-            ${_OCT}/.drush/sys/${pNx}/server.tpl.php &> /dev/null
+            ${_OCT}/.drush/sys/${_pNx}/server.tpl.php &> /dev/null
           wait
           sed -i "s/\!empty.*';/'*';/g" \
-            ${_OCT}/.drush/sys/${pNx}/vhost.tpl.php &> /dev/null
+            ${_OCT}/.drush/sys/${_pNx}/vhost.tpl.php &> /dev/null
           wait
           sed -i "s/\!empty.*';/'*';/g" \
-            ${_OCT}/.drush/sys/${pNx}/vhost_disabled.tpl.php &> /dev/null
+            ${_OCT}/.drush/sys/${_pNx}/vhost_disabled.tpl.php &> /dev/null
           wait
         elif [ -e "${_OCT}/.drush/drush_make" ]; then
           sed -i "s/\!empty.*';/'*';/g" \
-            ${_OCT}/.drush/${pNx}/server.tpl.php &> /dev/null
+            ${_OCT}/.drush/${_pNx}/server.tpl.php &> /dev/null
           wait
           sed -i "s/\!empty.*';/'*';/g" \
-            ${_OCT}/.drush/${pNx}/vhost.tpl.php &> /dev/null
+            ${_OCT}/.drush/${_pNx}/vhost.tpl.php &> /dev/null
           wait
           sed -i "s/\!empty.*';/'*';/g" \
-            ${_OCT}/.drush/${pNx}/vhost_disabled.tpl.php &> /dev/null
+            ${_OCT}/.drush/${_pNx}/vhost_disabled.tpl.php &> /dev/null
           wait
         fi
       done
@@ -937,21 +937,21 @@ _nginx_config_update_fix() {
         | awk '{ print $1}'`; do
         rm -f /data/disk/$Vght/config/server_*/nginx/vhost.d/*
       done
-      wildPth="/data/disk/*/.drush/sys/provision/http/Provision/Service/http/*.conf"
-      sed -i "s/OctopusMicroNoCacheID/NoCacheID/g" ${wildPth} &> /dev/null
+      _wildPth="/data/disk/*/.drush/sys/provision/http/Provision/Service/http/*.conf"
+      sed -i "s/OctopusMicroNoCacheID/NoCacheID/g" ${_wildPth} &> /dev/null
       wait
-      sed -i "s/OctopusNCookie/AegirCookie/g"      ${wildPth} &> /dev/null
+      sed -i "s/OctopusNCookie/AegirCookie/g"      ${_wildPth} &> /dev/null
       wait
-      sed -i "s/OctopusNoCacheID/NoCacheID/g"      ${wildPth} &> /dev/null
+      sed -i "s/OctopusNoCacheID/NoCacheID/g"      ${_wildPth} &> /dev/null
       wait
     fi
     if [ -e "/var/aegir" ]; then
-      wildPth="/var/aegir/.drush/sys/provision/http/Provision/Service/http/*.conf"
-      sed -i "s/OctopusMicroNoCacheID/NoCacheID/g" ${wildPth} &> /dev/null
+      _wildPth="/var/aegir/.drush/sys/provision/http/Provision/Service/http/*.conf"
+      sed -i "s/OctopusMicroNoCacheID/NoCacheID/g" ${_wildPth} &> /dev/null
       wait
-      sed -i "s/OctopusNCookie/AegirCookie/g"      ${wildPth} &> /dev/null
+      sed -i "s/OctopusNCookie/AegirCookie/g"      ${_wildPth} &> /dev/null
       wait
-      sed -i "s/OctopusNoCacheID/NoCacheID/g"      ${wildPth} &> /dev/null
+      sed -i "s/OctopusNoCacheID/NoCacheID/g"      ${_wildPth} &> /dev/null
       wait
       sed -i "s/60/180/g" /var/aegir/config/server_*/nginx.conf  &> /dev/null
       wait

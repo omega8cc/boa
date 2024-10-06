@@ -24,65 +24,65 @@ if [[ "${_SSL_ITD}" =~ "3.2." ]] \
 fi
 
 _randpass() {
-  if [ "${integer}" -ge "32" ]; then
-    rkey="${integer}"
+  if [ "${_integer}" -ge "32" ]; then
+    _rkey="${_integer}"
   else
-    rkey=32
+    _rkey=32
   fi
-  if [ "${kind}" = "graph" ]; then
-    CHAR="[:graph:]"
+  if [ "${_kind}" = "graph" ]; then
+    _CHAR="[:graph:]"
     cat /dev/urandom \
-      | tr -cd "$CHAR" \
-      | head -c ${1:-$rkey} \
+      | tr -cd "${_CHAR}" \
+      | head -c ${1:-${_rkey}} \
       | tr -d "\n"
-  elif [ "${kind}" = "esc" ]; then
-    CHAR="[:graph:]"
+  elif [ "${_kind}" = "esc" ]; then
+    _CHAR="[:graph:]"
     cat /dev/urandom \
-      | tr -cd "$CHAR" \
-      | head -c ${1:-$rkey} \
+      | tr -cd "${_CHAR}" \
+      | head -c ${1:-${_rkey}} \
       | tr -d "\n" \
       | sed 's/[\\\/\^\?\>\`\#\"\{\(\$\@\&\|\*]//g; s/\(['"'"'\]\)//g'
-  elif [ "${kind}" = "hash" ]; then
-    CHAR="[:alnum:]"
+  elif [ "${_kind}" = "hash" ]; then
+    _CHAR="[:alnum:]"
     if [ "${_NEW_SSL}" = "YES" ]; then
       cat /dev/urandom \
-        | tr -cd "$CHAR" \
-        | head -c ${1:-$rkey} \
+        | tr -cd "${_CHAR}" \
+        | head -c ${1:-${_rkey}} \
         | openssl md5 \
         | awk '{ print $2}' \
         | tr -d "\n"
     else
       cat /dev/urandom \
-        | tr -cd "$CHAR" \
-        | head -c ${1:-$rkey} \
+        | tr -cd "${_CHAR}" \
+        | head -c ${1:-${_rkey}} \
         | openssl md5 \
         | tr -d "\n"
     fi
   else
-    CHAR="[:alnum:]"
+    _CHAR="[:alnum:]"
     cat /dev/urandom \
-      | tr -cd "$CHAR" \
-      | head -c ${1:-$rkey} \
+      | tr -cd "${_CHAR}" \
+      | head -c ${1:-${_rkey}} \
       | tr -d "\n"
   fi
   echo
 }
 
 case "$2" in
-  alnum) integer="$1"
-         kind="$2"
+  alnum) _integer="$1"
+         _kind="$2"
          _randpass
   ;;
-  graph) integer="$1"
-         kind="$2"
+  graph) _integer="$1"
+         _kind="$2"
          _randpass
   ;;
-  hash)  integer="$1"
-         kind="$2"
+  hash)  _integer="$1"
+         _kind="$2"
          _randpass
   ;;
-  esc)   integer="$1"
-         kind="$2"
+  esc)   _integer="$1"
+         _kind="$2"
          _randpass
   ;;
   *)     echo "Usage: randpass {32-128} {alnum|graph|hash|esc}"

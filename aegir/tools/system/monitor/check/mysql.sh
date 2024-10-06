@@ -36,9 +36,9 @@ fi
 
 _incident_email_report() {
   if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_EMAIL_REPORT}" = "YES" ]; then
-    hName=$(cat /etc/hostname 2>&1)
+    _hName=$(cat /etc/hostname 2>&1)
     echo "Sending Incident Report Email on $(date 2>&1)" >> ${_pthOml}
-    s-nail -s "Incident Report: ${1} on ${hName} at $(date 2>&1)" ${_MY_EMAIL} < ${_pthOml}
+    s-nail -s "Incident Report: ${1} on ${_hName} at $(date 2>&1)" ${_MY_EMAIL} < ${_pthOml}
   fi
 }
 
@@ -83,18 +83,18 @@ _sql_busy_detection() {
 }
 
 _mysql_proc_kill() {
-  xtime=${xtime//[^0-9]/}
-  echo "Monitoring process $each by $xuser running for $xtime seconds"
+  _xtime=${_xtime//[^0-9]/}
+  echo "Monitoring process ${_each} by ${_xuser} running for ${_xtime} seconds"
 
-  if [[ -n "$xtime" && $xtime -gt $limit ]]; then
-    echo "Killing process $each by $xuser after $xtime seconds"
-    xkill=$(mysqladmin -u root kill $each 2>&1)
-    times=$(date)
-    load=$(cat /proc/loadavg)
+  if [[ -n "${_xtime}" && ${_xtime} -gt ${_limit} ]]; then
+    echo "Killing process ${_each} by ${_xuser} after ${_xtime} seconds"
+    _xkill=$(mysqladmin -u root kill ${_each} 2>&1)
+    _times=$(date)
+    _load=$(cat /proc/_loadavg)
 
-    # Log the load and the process killing details
-    echo "$load" >> /var/xdrago/log/sql_watch.log
-    echo "$times $each $xuser $xtime $xkill" >> /var/xdrago/log/sql_watch.log
+    # Log the _load and the process killing details
+    echo "${_load}" >> /var/xdrago/log/sql_watch.log
+    echo "${_times} ${_each} ${_xuser} ${_xtime} ${_xkill}" >> /var/xdrago/log/sql_watch.log
   fi
 }
 
@@ -104,37 +104,37 @@ _mysql_proc_control() {
     mysqladmin -u root proc -v >> /var/xdrago/log/mysqladmin.monitor.log
   fi
 
-  # Default TTL limit in seconds (can be adjusted)
-  limit=${1:-3600}
+  # Default TTL _limit in seconds (can be adjusted)
+  _limit=${1:-3600}
 
   # Get all MySQL processes and extract PID, user, and running time
-  mysql_proc_list=$(mysqladmin -u root proc | awk 'NR>3 {print $2, $4, $12}')
+  _mysql_proc_list=$(mysqladmin -u root proc | awk 'NR>3 {print $2, $4, $12}')
 
-  # Iterate over each process
-  echo "$mysql_proc_list" | while read -r each xuser xtime; do
-    each=${each//[^0-9]/}
-    xuser=${xuser//[^0-9a-z_]/}
-    xtime=${xtime//[^0-9]/}
+  # Iterate over _each process
+  echo "${_mysql_proc_list}" | while read -r _each _xuser _xtime; do
+    _each=${_each//[^0-9]/}
+    _xuser=${_xuser//[^0-9a-z_]/}
+    _xtime=${_xtime//[^0-9]/}
 
     # Skip root user processes
-    if [[ "$xuser" == "root" ]]; then
-      echo "Skipping root process: $each"
+    if [[ "${_xuser}" == "root" ]]; then
+      echo "Skipping root process: ${_each}"
       continue
     fi
 
-    if [[ -n "$each" && "$each" -gt 5 && -n "$xtime" ]]; then
-      echo "Process ID: $each, User: $xuser, Time: $xtime seconds"
+    if [[ -n "${_each}" && "${_each}" -gt 5 && -n "${_xtime}" ]]; then
+      echo "Process ID: ${_each}, User: ${_xuser}, Time: ${_xtime} seconds"
 
       # Check if the user is listed on the problematic users list
       if [[ -e "/root/.sql.problematic.users.cnf" ]]; then
         for _XQ in $(cat /root/.sql.problematic.users.cnf | cut -d '#' -f1 | sort | uniq); do
-          if [[ "$xuser" == "$_XQ" ]]; then
-            echo "Problematic user detected: $xuser, applying lower limit"
-            limit=${_SQL_LOW_MAX_TTL}
+          if [[ "${_xuser}" == "${_XQ}" ]]; then
+            echo "Problematic user detected: ${_xuser}, applying lower limit"
+            _limit=${_SQL_LOW_MAX_TTL}
           fi
         done
       else
-        limit=${_SQL_MAX_TTL}  # Default limit for non-problematic users
+        _limit=${_SQL_MAX_TTL}  # Default _limit for non-problematic users
       fi
 
       _mysql_proc_kill

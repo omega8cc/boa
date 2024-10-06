@@ -30,32 +30,32 @@ _check_root() {
 _check_root
 
 _run_cleanup() {
-  buildTest="1"
-  tp_Dir="/data/disk/${_H_USER}/.tmp"
-  ce_Dir="${tpDir}/cache"
-  dl_Dir="${ceDir}/download"
-  gt_Dir="${ceDir}/git"
-  clCtr="/data/disk/${_H_USER}/static/control/clear-drush-cache.info"
-  exCtr="/data/disk/${_H_USER}/backups/tmp_expim/metadata"
-  if [ -e "${tpDir}" ]; then
-    buildTest=$(ls ${tpDir} | grep "_tmp_" | wc -l | tr -d "\n" 2>&1)
-    buildTest=${buildTest//[^0-9]/}
+  _buildTest="1"
+  _tpDir="/data/disk/${_H_USER}/.tmp"
+  _ceDir="${_tpDir}/cache"
+  _dlDir="${_ceDir}/download"
+  _gtDir="${_ceDir}/git"
+  _clCtr="/data/disk/${_H_USER}/static/control/clear-drush-cache.info"
+  _exCtr="/data/disk/${_H_USER}/backups/tmp_expim/metadata"
+  if [ -e "${_tpDir}" ]; then
+    _buildTest=$(ls ${_tpDir} | grep "_tmp_" | wc -l | tr -d "\n" 2>&1)
+    _buildTest=${_buildTest//[^0-9]/}
   fi
-  if [ -e "${clCtr}" ]; then
-    if [ -e "${exCtr}" ]; then
-      rm -f ${exCtr}
-      rm -f ${clCtr}
-      buildTest="0"
+  if [ -e "${_clCtr}" ]; then
+    if [ -e "${_exCtr}" ]; then
+      rm -f ${_exCtr}
+      rm -f ${_clCtr}
+      _buildTest="0"
     fi
-    if [ -e "${gtDir}" ] || [ "${buildTest}" -ge "1" ]; then
-      rm -rf ${tpDir}/*
-      rm -f ${clCtr}
-      buildTest="0"
+    if [ -e "${_gtDir}" ] || [ "${_buildTest}" -ge "1" ]; then
+      rm -rf ${_tpDir}/*
+      rm -f ${_clCtr}
+      _buildTest="0"
     fi
   fi
-  if [ "${buildTest}" = "0" ] && [ -e "${gtDir}" ]; then
-    rm -rf ${gtDir}
-    rm -rf ${dlDir}
+  if [ "${_buildTest}" = "0" ] && [ -e "${_gtDir}" ]; then
+    rm -rf ${_gtDir}
+    rm -rf ${_dlDir}
   fi
 }
 _run_cleanup
@@ -97,10 +97,10 @@ _sanitize_string() {
 
 # Generate new sftp password and update expiration date
 _if_sftp_password_update() {
-  upCtr="/data/disk/${_H_USER}/static/control/run-sftp-password-update.pid"
-  if [ -e "${upCtr}" ]; then
-    sftp_usEr="${_H_USER}.ftp"
-    rm -f ${upCtr}
+  _upCtr="/data/disk/${_H_USER}/static/control/run-sftp-password-update.pid"
+  if [ -e "${_upCtr}" ]; then
+    _sftpUser="${_H_USER}.ftp"
+    rm -f ${_upCtr}
     _PWD_CHARS=64
     _RANDPASS_TEST=$(randpass -V 2>&1)
     if [[ "${_RANDPASS_TEST}" =~ "alnum" ]]; then
@@ -119,22 +119,22 @@ _if_sftp_password_update() {
     fi
     _LEN_PASS=$(echo ${#_ESC_PASS} 2>&1)
     if [ ! -z "${_ESC_PASS}" ] && [ "${_LEN_PASS}" -gt "9" ]; then
-      chage -I -1 -m 0 -M 99999 -E -1 ${sftpUser}
-      echo "${sftpUser}:${_ESC_PASS}" | chpasswd
-      chage -M 90 ${sftpUser}
-      chage -W 7 ${sftpUser}
-      chage -d $(date +%Y-%m-%d) ${sftpUser}
-      echo "${_ESC_PASS}" > /data/disk/${_H_USER}/static/control/new-${sftpUser}-password.txt
+      chage -I -1 -m 0 -M 99999 -E -1 ${_sftpUser}
+      echo "${_sftpUser}:${_ESC_PASS}" | chpasswd
+      chage -M 90 ${_sftpUser}
+      chage -W 7 ${_sftpUser}
+      chage -d $(date +%Y-%m-%d) ${_sftpUser}
+      echo "${_ESC_PASS}" > /data/disk/${_H_USER}/static/control/new-${_sftpUser}-password.txt
     fi
   fi
 }
 
 _if_octopus_upgrade() {
   if [ "${_O_LOAD}" -lt "${_O_LOAD_SPR}" ]; then
-    upCtr="/data/disk/${_H_USER}/static/control/run-upgrade.pid"
-    plCtr="/data/disk/${_H_USER}/static/control/platforms.info"
-    if [ -e "${plCtr}" ] && [ -e "${upCtr}" ]; then
-      rm -f ${upCtr}
+    _upCtr="/data/disk/${_H_USER}/static/control/run-upgrade.pid"
+    _plCtr="/data/disk/${_H_USER}/static/control/platforms.info"
+    if [ -e "${_plCtr}" ] && [ -e "${_upCtr}" ]; then
+      rm -f ${_upCtr}
       [ -e "/root/.silent.update.cnf" ] && rm -f /root/.silent.update.cnf
       bash /opt/local/bin/octopus up-${_tRee} ${_H_USER} force log
     fi
@@ -143,9 +143,9 @@ _if_octopus_upgrade() {
 
 _run_action() {
   if [ "${_O_LOAD}" -lt "${_O_LOAD_SPR}" ]; then
-    if [ "${buildTest}" = "0" ] \
-      || [ -z "${buildTest}" ] \
-      || [ ! -e "${ceDir}" ]; then
+    if [ "${_buildTest}" = "0" ] \
+      || [ -z "${_buildTest}" ] \
+      || [ ! -e "${_ceDir}" ]; then
       su -s /bin/bash - ${_H_USER} -c "drush8 cc drush" &> /dev/null
       wait
       su -s /bin/bash - ${_H_USER} -c "bash /data/disk/${_H_USER}/aegir.sh"

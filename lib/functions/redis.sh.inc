@@ -296,7 +296,7 @@ _install_redis_src() {
       else
         if [ "${_REDIS_INSTALL_MISMATCH}" = "YES" ] \
           || [ ! -e "${_pthLog}/redis-${_REDIS_VRN}-${_xSrl}-${_X_VERSION}.log" ]; then
-          cp -af ${_locCnf}/redis/${redisCnfTpl} /etc/redis/redis.conf
+          cp -af ${_locCnf}/redis/${_redisCnfTpl} /etc/redis/redis.conf
         fi
       fi
     fi
@@ -304,7 +304,7 @@ _install_redis_src() {
     if [ ! -e "/etc/redis/redis.conf" ] \
       || [ "${_REDIS_INSTALL_MISMATCH}" = "YES" ] \
       || [ ! -e "${_pthLog}/redis-${_REDIS_VRN}-${_xSrl}-${_X_VERSION}.log" ]; then
-      cp -af ${_locCnf}/redis/${redisCnfTpl} /etc/redis/redis.conf
+      cp -af ${_locCnf}/redis/${_redisCnfTpl} /etc/redis/redis.conf
     fi
   fi
   _redis_password_update
@@ -319,18 +319,18 @@ _redis_install_upgrade() {
   if [ "${_REDIS_MAJOR_RELEASE}" = "7" ] \
     && [ ! -z "${_REDIS_SEVEN_VRN}" ]; then
     _REDIS_VRN=${_REDIS_SEVEN_VRN}
-    redisCnfTpl="redis7.conf"
+    _redisCnfTpl="redis7.conf"
   elif [ "${_REDIS_MAJOR_RELEASE}" = "6" ] \
     && [ ! -z "${_REDIS_SIX_VRN}" ]; then
     _REDIS_VRN=${_REDIS_SIX_VRN}
-    redisCnfTpl="redis6.conf"
+    _redisCnfTpl="redis6.conf"
   elif [ "${_REDIS_MAJOR_RELEASE}" = "5" ] \
     && [ ! -z "${_REDIS_FIVE_VRN}" ]; then
     _REDIS_VRN=${_REDIS_FIVE_VRN}
-    redisCnfTpl="redis5.conf"
+    _redisCnfTpl="redis5.conf"
   else
     _REDIS_VRN=${_REDIS_FOUR_VRN}
-    redisCnfTpl="redis4.conf"
+    _redisCnfTpl="redis4.conf"
   fi
   if [ ! -e "/var/lib/redis" ]; then
     _mrun "adduser --system --group redis --home /home/redis" 2> /dev/null

@@ -132,8 +132,8 @@ _check_vps() {
 _check_vps
 
 _find_fast_mirror_early() {
-  isNetc=$(which netcat 2>&1)
-  if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
+  _isNetc=$(which netcat 2>&1)
+  if [ ! -x "${_isNetc}" ] || [ -z "${_isNetc}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
@@ -440,13 +440,13 @@ _backup_prepare() {
     _INCLUDE="${_INCLUDE}${TMP}"
   done
   if [ -e "/root/.cache/duplicity" ]; then
-    CacheTest=$(find /root/.cache/duplicity/* \
+    _CacheTest=$(find /root/.cache/duplicity/* \
       -maxdepth 1 \
       -mindepth 1 \
       -type f \
       | sort 2>&1)
-    if [[ "${CacheTest}" =~ "No such file or directory" ]] \
-      || [ -z "${CacheTest}" ]; then
+    if [[ "${_CacheTest}" =~ "No such file or directory" ]] \
+      || [ -z "${_CacheTest}" ]; then
       _DO_CLEANUP=NO
     else
       _DO_CLEANUP=YES
@@ -605,10 +605,10 @@ _conn_test() {
   fi
   echo "Running AWS connection test, please wait..."
   echo "Command is ${_DCY_MN_CMD} cleanup --dry-run --timeout 5 ${_NAME} ${_TARGET}"
-  ConnTest=$(${_DCY_MN_CMD} cleanup --dry-run --timeout 5 ${_NAME} ${_TARGET} 2>&1)
-  ### echo ConnTest is STR ${ConnTest} END
-  if [[ "${ConnTest}" =~ "No connection to backend" ]] \
-    || [[ "${ConnTest}" =~ "IllegalLocationConstraintException" ]]; then
+  _ConnTest=$(${_DCY_MN_CMD} cleanup --dry-run --timeout 5 ${_NAME} ${_TARGET} 2>&1)
+  ### echo _ConnTest is STR ${_ConnTest} END
+  if [[ "${_ConnTest}" =~ "No connection to backend" ]] \
+    || [[ "${_ConnTest}" =~ "IllegalLocationConstraintException" ]]; then
     echo
     echo "  Sorry, I can't connect to ${_TARGET}"
     echo "  Please check if the bucket has expected name: ${_BUCKET}"
