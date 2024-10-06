@@ -5,6 +5,19 @@ export _rlsE="${_rLsn}-${_tRee}"
 export _bRnh="5.x-${_tRee}"
 
 #
+# Download and extract from core archive.
+_get_core_ext() {
+  if [ ! -z "$1" ]; then
+    curl ${_crlGet} "http://${_USE_MIR}/core/$1" -o "$1"
+    if [ -e "$1" ]; then
+      _extract_archive "$1"
+    else
+      _msg "OOPS: $1 failed download from http://${_USE_MIR}/core/$1"
+    fi
+  fi
+}
+
+#
 # Check key things in every proc.
 _debug_proc() {
   if [ -e "/root/.dev.server.cnf" ]; then
