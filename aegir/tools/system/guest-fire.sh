@@ -4,6 +4,37 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
+# Protect from high load due to csf loop/flood
+_csf_flood_guard() {
+  _thisCountCsf=`ps aux | grep -v "grep" | grep -v "null" | grep --count "/csf"`
+  if [ ! -e "/run/boa_run.pid" ] && [ ${_thisCountCsf} -gt "4" ]; then
+    echo "$(date 2>&1) Too many ${_thisCountCsf} csf processes killed" >> \
+      /var/log/csf-count.kill.log
+    kill -9 $(ps aux | grep '[c]sf' | awk '{print $2}') &> /dev/null
+    csf -tf
+    wait
+    csf -df
+    wait
+  fi
+  _thisCountFire=`ps aux | grep -v "grep" | grep -v "null" | grep --count "fire.sh"`
+  if [ ! -e "/run/boa_run.pid" ] && [ ${_thisCountFire} -gt "9" ]; then
+    echo "$(date 2>&1) Too many ${_thisCountFire} fire.sh processes killed and rules purged" >> \
+      /var/log/fire-purge.kill.log
+    csf -tf
+    wait
+    csf -df
+    wait
+    kill -9 $(ps aux | grep '[f]ire.sh' | awk '{print $2}') &> /dev/null
+  elif [ ! -e "/run/boa_run.pid" ] && [ ${_thisCountFire} -gt "7" ]; then
+    echo "$(date 2>&1) Too many ${_thisCountFire} fire.sh processes killed" >> \
+      /var/log/fire-count.kill.log
+    csf -tf
+    wait
+    kill -9 $(ps aux | grep '[f]ire.sh' | awk '{print $2}') &> /dev/null
+  fi
+}
+[ ! -e "/run/water.pid" ] && _csf_flood_guard
+
 # Exit if more than 2 instances of the script are running
 if (( $(pgrep -fc 'guest-fire.sh') > 2 )); then
   # Optional: Log too many instances
