@@ -159,16 +159,17 @@ if [ ! -e "/root/.high_traffic.cnf" ] \
 fi
 
 # Main execution
-for _iteration in {1..12}; do
-  echo "----------------------------"
-  echo "Iteration ${_iteration}:"
-  if [ -f "${_monPath}/scan_nginx.sh" ]; then
+if [ -f "${_monPath}/scan_nginx.sh" ]; then
+  for _iteration in {1..4}; do
     bash ${_monPath}/scan_nginx.sh &
-  elif [ -f "${_monPath}/scan_nginx.pl" ]; then
+    sleep 12
+  done
+elif [ -f "${_monPath}/scan_nginx.pl" ]; then
+  for _iteration in {1..10}; do
     perl ${_monPath}/scan_nginx.pl &
-  fi
-  sleep 5
-done
+    sleep 5
+  done
+fi
 
 echo "Done!"
 exit 0
