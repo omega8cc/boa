@@ -90,7 +90,14 @@ _unbound_check_fix() {
   fi
 }
 
-_unbound_check_fix
+if [ -e "/run/boa_run.pid" ] \
+  || [ -e "/run/boa_wait.pid" ]; then
+  _ALLOW_CTRL=NO
+else
+  _ALLOW_CTRL=YES
+fi
+
+[ "${_ALLOW_CTRL}" = "YES" ] && _unbound_check_fix
 
 echo DONE!
 exit 0

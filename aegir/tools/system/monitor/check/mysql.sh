@@ -149,6 +149,7 @@ perl /var/xdrago/monitor/check/sqlcheck.pl &
 if [ -e "/run/boa_sql_backup.pid" ] \
   || [ -e "/run/boa_sql_cluster_backup.pid" ] \
   || [ -e "/run/boa_run.pid" ] \
+  || [ -e "/run/boa_wait.pid" ] \
   || [ -e "/run/mysql_restart_running.pid" ]; then
   _SQL_CTRL=NO
 else

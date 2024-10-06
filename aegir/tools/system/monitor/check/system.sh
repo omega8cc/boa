@@ -196,13 +196,24 @@ _dirmngr_too_many_instances_detection() {
   fi
 }
 
-_system_oom_detection
+if [ -e "/run/boa_sql_backup.pid" ] \
+  || [ -e "/run/boa_sql_cluster_backup.pid" ] \
+  || [ -e "/run/boa_run.pid" ] \
+  || [ -e "/run/boa_wait.pid" ] \
+  || [ -e "/run/mysql_restart_running.pid" ]; then
+  _ALLOW_CTRL=NO
+else
+  _ALLOW_CTRL=YES
+fi
+
 _if_fix_locked_sshd
 _if_fix_dhcp
 _cron_duplicate_instances_detection
 _syslog_giant_log_detection
-_gpg_too_many_instances_detection
-_dirmngr_too_many_instances_detection
+
+[ "${_ALLOW_CTRL}" = "YES" ] && _system_oom_detection
+[ "${_ALLOW_CTRL}" = "YES" ] && _gpg_too_many_instances_detection
+[ "${_ALLOW_CTRL}" = "YES" ] && _dirmngr_too_many_instances_detection
 
 echo DONE!
 exit 0

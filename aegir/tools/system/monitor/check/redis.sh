@@ -117,10 +117,17 @@ _if_redis_restart() {
   fi
 }
 
-[ -d "/data/u" ] && _if_redis_restart
-_redis_slow_check_fix
-_redis_oom_check_fix
-_redis_bind_check_fix
+if [ -e "/run/boa_run.pid" ] \
+  || [ -e "/run/boa_wait.pid" ]; then
+  _ALLOW_CTRL=NO
+else
+  _ALLOW_CTRL=YES
+fi
+
+[ "${_ALLOW_CTRL}" = "YES" ] && _redis_slow_check_fix
+[ "${_ALLOW_CTRL}" = "YES" ] && _redis_oom_check_fix
+[ "${_ALLOW_CTRL}" = "YES" ] && _redis_bind_check_fix
+[ "${_ALLOW_CTRL}" = "YES" ] && [ -d "/data/u" ] && _if_redis_restart
 
 echo DONE!
 exit 0
