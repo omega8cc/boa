@@ -243,6 +243,34 @@ _block_ip() {
   fi
 }
 
+# Function to increment counters based on specific suspicious log patterns
+_if_increment_counters() {
+  if [[ "${_IP}" = "unknown" ]]; then
+    (( _COUNTERS["${_IP}"] += _INC_NUMBER ))
+    _verbose_log "Counter++ for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "unknown"
+  fi
+  if [[ "${_line}" =~ '" 404' ]]; then
+    (( _COUNTERS["${_IP}"] += _INC_NUMBER ))
+    _verbose_log "Counter++ for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "404 flood protection"
+  fi
+  if [[ "${_line}" =~ '" 403' ]]; then
+    (( _COUNTERS["${_IP}"] += _INC_NUMBER ))
+    _verbose_log "Counter++ for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "403 flood protection"
+  fi
+  if [[ "${_line}" =~ '" 500' ]]; then
+    (( _COUNTERS["${_IP}"] += _INC_NUMBER ))
+    _verbose_log "Counter++ for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "500 flood protection"
+  fi
+  if [[ "${_line}" =~ wp-(content|admin|includes) ]]; then
+    (( _COUNTERS["${_IP}"] += _INC_NUMBER ))
+    _verbose_log "Counter++ for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "wp-x flood protection"
+  fi
+  if [[ "${_line}" =~ "(POST|GET) /user/login" ]]; then
+    (( _COUNTERS["${_IP}"] += _INC_S_NUMBER ))
+    _verbose_log "Counter++ for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "/user/login flood protection"
+  fi
+}
+
 # Function to process each IP
 _process_ip() {
   local _IP="$1"
@@ -283,32 +311,6 @@ _process_ip() {
     (( _COUNTERS["${_IP}"]++ ))
   else
     _COUNTERS["${_IP}"]=1
-  fi
-
-  # Increment counters based on specific suspicious log patterns
-  if [[ "${_IP}" = "unknown" ]]; then
-    (( _COUNTERS["${_IP}"] += _INC_NUMBER ))
-    _verbose_log "Counter++ for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "unknown"
-  fi
-  if [[ "${_line}" =~ '" 404' ]]; then
-    (( _COUNTERS["${_IP}"] += _INC_NUMBER ))
-    _verbose_log "Counter++ for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "404 flood protection"
-  fi
-  if [[ "${_line}" =~ '" 403' ]]; then
-    (( _COUNTERS["${_IP}"] += _INC_NUMBER ))
-    _verbose_log "Counter++ for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "403 flood protection"
-  fi
-  if [[ "${_line}" =~ '" 500' ]]; then
-    (( _COUNTERS["${_IP}"] += _INC_NUMBER ))
-    _verbose_log "Counter++ for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "500 flood protection"
-  fi
-  if [[ "${_line}" =~ wp-(content|admin|includes) ]]; then
-    (( _COUNTERS["${_IP}"] += _INC_NUMBER ))
-    _verbose_log "Counter++ for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "wp-x flood protection"
-  fi
-  if [[ "${_line}" =~ "(POST|GET) /user/login" ]]; then
-    (( _COUNTERS["${_IP}"] += _INC_S_NUMBER ))
-    _verbose_log "Counter++ for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "/user/login flood protection"
   fi
 
   # Define lines to check
@@ -381,6 +383,9 @@ _process_ip() {
 
   # Additional counting based on mode
   if [[ "${_SKIP_POST}" -eq 0 || "${_IGNORE_ADMIN}" -eq 0 ]]; then
+
+    _if_increment_counters
+
     if [[ "${_NGINX_DOS_MODE}" -eq 1 ]]; then
       if [[ "${_line}" =~ POST && "${_line}" =~ (/user|user/(register|pass|login)|node/add) ]]; then
         (( _COUNTERS["${_IP}"] += 5 ))
