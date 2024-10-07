@@ -73,7 +73,6 @@ _nginx_oom_detection() {
   fi
 }
 
-
 _nginx_bind_check_fix() {
   if [ `tail --lines=8 /var/log/nginx/error.log \
     | grep --count "Address already in use"` -gt "0" ]; then
