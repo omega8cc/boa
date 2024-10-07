@@ -3134,13 +3134,16 @@ _if_update_boa_key_tools_only() {
       csf -q
     fi
   fi
-  _update_boa_tools
-  if [ "${1}" = "verbose" ] || [ -z "${1}" ]; then
-    echo
-    echo "BOA Meta Installers setup completed"
-    echo "Please check INSTALL.md and UPGRADE.md at https://github.com/omega8cc/boa"
-    echo "Bye"
-    echo
+  if [ -e "${_pthLog}" ] && [ ! -e "${_pthLog}/updateBt00.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+    _update_boa_tools
+    touch ${_pthLog}/updateBt00.ctrl.${_tRee}.${_xSrl}.pid
+    if [ "${1}" = "verbose" ] || [ -z "${1}" ]; then
+      echo
+      echo "BOA Meta Installers setup completed"
+      echo "Please check INSTALL.md and UPGRADE.md at https://github.com/omega8cc/boa"
+      echo "Bye"
+      echo
+    fi
   fi
 }
 
@@ -3259,12 +3262,15 @@ _boa_setup() {
     _apt_clean_update
     apt-get install lsb-release ${_aptYesUnth}
   fi
-  _update_boa_tools
-  echo
-  echo "BOA Meta Installers setup completed"
-  echo "Please check INSTALL.md and UPGRADE.md at https://github.com/omega8cc/boa"
-  echo "Bye"
-  echo
+  if [ -e "${_pthLog}" ] && [ ! -e "${_pthLog}/updateBt00.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+    _update_boa_tools
+    touch ${_pthLog}/updateBt00.ctrl.${_tRee}.${_xSrl}.pid
+    echo
+    echo "BOA Meta Installers setup completed"
+    echo "Please check INSTALL.md and UPGRADE.md at https://github.com/omega8cc/boa"
+    echo "Bye"
+    echo
+  fi
 }
 
 _count_cpu() {
