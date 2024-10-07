@@ -80,8 +80,9 @@ _get_total_mem_mb() {
 # Function to get memory usage of a process or group of processes in MB
 _get_mem_usage_mb() {
   local _process_name=$1
-  local _mem_usage_kb=$(ps aux | grep -E "${_process_name}" | grep -v grep | awk '{sum += $6} END {print sum}')
-  echo $((_mem_usage_kb / 1024))
+  local _mem_usage_kb=$(ps -eo rss,args | grep -w "${_process_name}" | grep -v grep | awk '{sum+=$1} END {print sum}')
+  _mem_usage_kb=${_mem_usage_kb:-0}
+  echo "scale=2; $_mem_usage_kb / 1024" | bc
 }
 
 # Function to get MySQL server uptime in seconds
@@ -149,12 +150,24 @@ _parse_mysqltuner_recommendations() {
   _REC_READ_RND_BUFFER_SIZE_MB=$((_REC_READ_RND_BUFFER_SIZE_MB / 1024))
   _REC_JOIN_BUFFER_SIZE_MB=$((_REC_JOIN_BUFFER_SIZE_MB / 1024))
 
+  # Parse innodb_log_file_size or innodb_redo_log_capacity
+  if [[ "${_MYSQL_VERSION}" =~ ^8\. ]]; then
+    _REC_INNODB_LOG_SIZE_MB=$(echo "${_mysqltuner_output}" | \
+      grep -i "innodb_redo_log_capacity should be" | \
+      grep -o '[0-9]\+M' | tr -d 'M')
+  else
+    _REC_INNODB_LOG_SIZE_MB=$(echo "${_mysqltuner_output}" | \
+      grep -i "innodb_log_file_size should be" | \
+      grep -o '[0-9]\+M' | tr -d 'M')
+  fi
+
   # If recommendations are not found, set to default values
   : ${_REC_INNODB_BUFFER_POOL_SIZE_MB:=0}
   : ${_REC_KEY_BUFFER_SIZE_MB:=0}
   : ${_REC_TMP_TABLE_SIZE_MB:=0}
   : ${_REC_READ_RND_BUFFER_SIZE_MB:=0}
   : ${_REC_JOIN_BUFFER_SIZE_MB:=0}
+  : ${_REC_INNODB_LOG_SIZE_MB:=0}
 }
 
 # Function to get current MySQL settings from /etc/mysql/my.cnf
@@ -178,34 +191,48 @@ _get_current_mysql_settings() {
 # Get total system memory
 _TOTAL_MEM_MB=$(_get_total_mem_mb)
 
-# Get current memory usage of mysql server
-_MYSQL_MEM_MB=$(_get_mem_usage_mb 'mysql')
+# Get current memory usage of MySQL server
+_MYSQL_MEM_MB=$(_get_mem_usage_mb 'mysqld')
 
 # Get current memory usage of other services
 _NGINX_MEM_MB=$(_get_mem_usage_mb 'nginx')
 _PHP_FPM_MEM_MB=$(_get_mem_usage_mb 'php-fpm')
 _AEGIR_DRUSH_MEM_MB=$(_get_mem_usage_mb 'drush')
 _REDIS_MEM_MB=$(_get_mem_usage_mb 'redis')
-_SOLR_MEM_MB=$(_get_mem_usage_mb 'java')
+_SOLR_MEM_MB=$(_get_mem_usage_mb 'java')  # Adjust if necessary
+
+# Ensure variables are not empty
+_NGINX_MEM_MB=${_NGINX_MEM_MB:-0}
+_PHP_FPM_MEM_MB=${_PHP_FPM_MEM_MB:-0}
+_AEGIR_DRUSH_MEM_MB=${_AEGIR_DRUSH_MEM_MB:-0}
+_REDIS_MEM_MB=${_REDIS_MEM_MB:-0}
+_SOLR_MEM_MB=${_SOLR_MEM_MB:-0}
+
+# Debugging statements to verify memory usage
+echo "_NGINX_MEM_MB: ${_NGINX_MEM_MB} MB"
+echo "_PHP_FPM_MEM_MB: ${_PHP_FPM_MEM_MB} MB"
+echo "_AEGIR_DRUSH_MEM_MB: ${_AEGIR_DRUSH_MEM_MB} MB"
+echo "_REDIS_MEM_MB: ${_REDIS_MEM_MB} MB"
+echo "_SOLR_MEM_MB: ${_SOLR_MEM_MB} MB"
 
 # Sum up the memory usage of other services
-_TOTAL_OTHER_SERVICES_MEM_MB=$((_NGINX_MEM_MB + _PHP_FPM_MEM_MB + _AEGIR_DRUSH_MEM_MB + _REDIS_MEM_MB + _SOLR_MEM_MB))
+_TOTAL_OTHER_SERVICES_MEM_MB=$(echo "${_NGINX_MEM_MB} + ${_PHP_FPM_MEM_MB} + ${_AEGIR_DRUSH_MEM_MB} + ${_REDIS_MEM_MB} + ${_SOLR_MEM_MB}" | bc)
 
 # Get current MySQL usage statistics
 _MYSQL_VERSION=$(_get_mysql_version)
 _NUMBER_OF_DATABASES=$(_get_number_of_databases)
 
 # Calculate available memory for MySQL
-_AVA_MEM_FOR_MYSQL_MB=$((_TOTAL_MEM_MB - _TOTAL_OTHER_SERVICES_MEM_MB))
+_AVA_MEM_FOR_MYSQL_MB=$(echo "${_TOTAL_MEM_MB} - ${_TOTAL_OTHER_SERVICES_MEM_MB}" | bc)
 
-echo "Memory available for all services: ${_TOTAL_MEM_MB}"
-echo "Memory actually used by other services now: ${_TOTAL_OTHER_SERVICES_MEM_MB}"
-echo "Memory actually used by MySQL now: ${_MYSQL_MEM_MB}"
-echo "Memory available for MySQL theoretically: ${_AVA_MEM_FOR_MYSQL_MB}"
+echo "Memory available for all services: ${_TOTAL_MEM_MB} MB"
+echo "Memory actually used by other services now: ${_TOTAL_OTHER_SERVICES_MEM_MB} MB"
+echo "Memory actually used by MySQL now: ${_MYSQL_MEM_MB} MB"
+echo "Memory available for MySQL theoretically: ${_AVA_MEM_FOR_MYSQL_MB} MB"
 
 # Safety check: Ensure there's enough memory for MySQL
 _MIN_MYSQL_MEM_MB=1024  # Minimum memory required for MySQL in MB
-if [ "${_AVA_MEM_FOR_MYSQL_MB}" -lt "${_MIN_MYSQL_MEM_MB}" ]; then
+if (( $(echo "${_AVA_MEM_FOR_MYSQL_MB} < ${_MIN_MYSQL_MEM_MB}" | bc -l) )); then
   echo "Error: Not enough memory available for MySQL after accounting for other services."
   echo "Available memory for MySQL: ${_AVA_MEM_FOR_MYSQL_MB} MB"
   echo "Consider upgrading your system's RAM."
@@ -215,8 +242,8 @@ fi
 # Get MySQL uptime
 _MYSQL_UPTIME_SECONDS=$(_get_mysql_uptime)
 
-# Run MySQLTuner-perl only if uptime >= 6 hours (21600 seconds)
-if [ "${_NUMBER_OF_DATABASES}" -lt 100 ] && [ "${_MYSQL_UPTIME_SECONDS}" -ge 21600 ]; then
+# Run MySQLTuner-perl only if uptime >= 24 hours (86400 seconds)
+if [ "${_NUMBER_OF_DATABASES}" -lt 100 ] && [ "${_MYSQL_UPTIME_SECONDS}" -ge 86400 ]; then
   echo "Running MySQLTuner-perl to gather recommendations..."
   _parse_mysqltuner_recommendations
 else
@@ -224,69 +251,75 @@ else
   if [ "${_NUMBER_OF_DATABASES}" -ge 100 ]; then
     echo "Reason: Number of databases is ${_NUMBER_OF_DATABASES} (>=100)."
   fi
-  if [ "${_MYSQL_UPTIME_SECONDS}" -lt 21600 ]; then
-    echo "Reason: MySQL uptime is less than 6 hours."
+  if [ "${_MYSQL_UPTIME_SECONDS}" -lt 86400 ]; then
+    echo "Reason: MySQL uptime is less than 24 hours."
   fi
   _REC_INNODB_BUFFER_POOL_SIZE_MB=0
   _REC_KEY_BUFFER_SIZE_MB=0
   _REC_TMP_TABLE_SIZE_MB=0
   _REC_READ_RND_BUFFER_SIZE_MB=0
   _REC_JOIN_BUFFER_SIZE_MB=0
+  _REC_INNODB_LOG_SIZE_MB=0
 fi
 
 # Calculate recommended InnoDB buffer pool size
 if [ "${_REC_INNODB_BUFFER_POOL_SIZE_MB}" -gt 0 ]; then
-  _REC_INNODB_BUFFER_POOL_SIZE_MB=${_REC_INNODB_BUFFER_POOL_SIZE_MB}
+  echo "Using MySQLTuner recommended InnoDB buffer pool size: ${_REC_INNODB_BUFFER_POOL_SIZE_MB} MB"
 else
   # Default to 75% of available MySQL memory
-  _REC_INNODB_BUFFER_POOL_SIZE_MB=$(( (_AVA_MEM_FOR_MYSQL_MB * 75) / 100 ))
+  _REC_INNODB_BUFFER_POOL_SIZE_MB=$(echo "(${_AVA_MEM_FOR_MYSQL_MB} * 75) / 100" | bc)
+  echo "Calculated InnoDB buffer pool size: ${_REC_INNODB_BUFFER_POOL_SIZE_MB} MB"
 fi
 
 # Ensure InnoDB buffer pool size does not exceed available memory
-if [ "${_REC_INNODB_BUFFER_POOL_SIZE_MB}" -gt "${_AVA_MEM_FOR_MYSQL_MB}" ]; then
+if (( $(echo "${_REC_INNODB_BUFFER_POOL_SIZE_MB} > ${_AVA_MEM_FOR_MYSQL_MB}" | bc -l) )); then
   _REC_INNODB_BUFFER_POOL_SIZE_MB=${_AVA_MEM_FOR_MYSQL_MB}
 fi
 
 # Calculate recommended key_buffer_size
 if [ "${_REC_KEY_BUFFER_SIZE_MB}" -gt 0 ]; then
-  _REC_KEY_BUFFER_SIZE_MB=${_REC_KEY_BUFFER_SIZE_MB}
+  echo "Using MySQLTuner recommended key_buffer_size: ${_REC_KEY_BUFFER_SIZE_MB} MB"
 else
   # Default to a minimal value if MyISAM is not used much
   _REC_KEY_BUFFER_SIZE_MB=8
+  echo "Calculated key_buffer_size: ${_REC_KEY_BUFFER_SIZE_MB} MB"
 fi
 
 # Calculate tmp_table_size and max_heap_table_size
 if [ "${_REC_TMP_TABLE_SIZE_MB}" -gt 0 ]; then
-  _REC_TMP_TABLE_SIZE_MB=${_REC_TMP_TABLE_SIZE_MB}
+  echo "Using MySQLTuner recommended tmp_table_size: ${_REC_TMP_TABLE_SIZE_MB} MB"
 else
   _EST_MEM_PER_TMP_TABLE_MB=64  # Estimated size per temp table in MB
-  _REC_TMP_TABLE_SIZE_MB=$((_AVA_MEM_FOR_MYSQL_MB / 4))
-  if [ "${_REC_TMP_TABLE_SIZE_MB}" -gt "${_EST_MEM_PER_TMP_TABLE_MB}" ]; then
+  _REC_TMP_TABLE_SIZE_MB=$(echo "${_AVA_MEM_FOR_MYSQL_MB} / 4" | bc)
+  if (( $(echo "${_REC_TMP_TABLE_SIZE_MB} > ${_EST_MEM_PER_TMP_TABLE_MB}" | bc -l) )); then
     _REC_TMP_TABLE_SIZE_MB=${_EST_MEM_PER_TMP_TABLE_MB}
   fi
+  echo "Calculated tmp_table_size: ${_REC_TMP_TABLE_SIZE_MB} MB"
 fi
 
 # Calculate read_rnd_buffer_size
 if [ "${_REC_READ_RND_BUFFER_SIZE_MB}" -gt 0 ]; then
-  _REC_READ_RND_BUFFER_SIZE_MB=${_REC_READ_RND_BUFFER_SIZE_MB}
+  echo "Using MySQLTuner recommended read_rnd_buffer_size: ${_REC_READ_RND_BUFFER_SIZE_MB} MB"
 else
   # Default value
   _REC_READ_RND_BUFFER_SIZE_MB=4  # 4MB is a reasonable default
+  echo "Calculated read_rnd_buffer_size: ${_REC_READ_RND_BUFFER_SIZE_MB} MB"
 fi
 
 # Calculate join_buffer_size
 if [ "${_REC_JOIN_BUFFER_SIZE_MB}" -gt 0 ]; then
-  _REC_JOIN_BUFFER_SIZE_MB=${_REC_JOIN_BUFFER_SIZE_MB}
+  echo "Using MySQLTuner recommended join_buffer_size: ${_REC_JOIN_BUFFER_SIZE_MB} MB"
 else
   # Default value
   _REC_JOIN_BUFFER_SIZE_MB=8  # 8MB is a reasonable default
+  echo "Calculated join_buffer_size: ${_REC_JOIN_BUFFER_SIZE_MB} MB"
 fi
 
 # Estimate average memory per connection, including per-connection buffers
-_EST_MEM_PER_CON_MB=$((_REC_READ_RND_BUFFER_SIZE_MB + _REC_JOIN_BUFFER_SIZE_MB + 4))  # 4MB for other per-connection buffers
+_EST_MEM_PER_CON_MB=$(echo "${_REC_READ_RND_BUFFER_SIZE_MB} + ${_REC_JOIN_BUFFER_SIZE_MB} + 4" | bc)  # 4MB for other per-connection buffers
 
 # Calculate max_connections based on available memory
-_MAX_POS_CONS=$((_AVA_MEM_FOR_MYSQL_MB / _EST_MEM_PER_CON_MB))
+_MAX_POS_CONS=$(echo "${_AVA_MEM_FOR_MYSQL_MB} / ${_EST_MEM_PER_CON_MB}" | bc)
 
 # Ensure max_connections is not set unreasonably high
 if [ "${_MAX_POS_CONS}" -gt 1000 ]; then
@@ -296,20 +329,30 @@ elif [ "${_MAX_POS_CONS}" -lt 100 ]; then
 else
   _REC_MAX_CONS=${_MAX_POS_CONS}
 fi
+echo "Calculated max_connections: ${_REC_MAX_CONS}"
 
 # Calculate innodb_log_file_size or innodb_redo_log_capacity
 if [[ "${_MYSQL_VERSION}" =~ ^8\. ]]; then
-  # For MySQL 8.x
-  _REC_INNODB_LOG_SIZE_MB=$(( (_REC_INNODB_BUFFER_POOL_SIZE_MB * 20) / 100 ))
-  if [ "${_REC_INNODB_LOG_SIZE_MB}" -gt "${_AVA_MEM_FOR_MYSQL_MB}" ]; then
-    _REC_INNODB_LOG_SIZE_MB=${_AVA_MEM_FOR_MYSQL_MB}
+  if [ "${_REC_INNODB_LOG_SIZE_MB}" -gt 0 ]; then
+    echo "Using MySQLTuner recommended innodb_redo_log_capacity: ${_REC_INNODB_LOG_SIZE_MB} MB"
+  else
+    # Default calculation
+    _REC_INNODB_LOG_SIZE_MB=$(echo "(${_REC_INNODB_BUFFER_POOL_SIZE_MB} * 20) / 100" | bc)
+    echo "Calculated innodb_redo_log_capacity: ${_REC_INNODB_LOG_SIZE_MB} MB"
   fi
 else
-  # For MySQL 5.7
-  _REC_INNODB_LOG_SIZE_MB=$(( (_REC_INNODB_BUFFER_POOL_SIZE_MB * 25) / 100 ))
-  if [ "${_REC_INNODB_LOG_SIZE_MB}" -gt "${_AVA_MEM_FOR_MYSQL_MB}" ]; then
-    _REC_INNODB_LOG_SIZE_MB=${_AVA_MEM_FOR_MYSQL_MB}
+  if [ "${_REC_INNODB_LOG_SIZE_MB}" -gt 0 ]; then
+    echo "Using MySQLTuner recommended innodb_log_file_size: ${_REC_INNODB_LOG_SIZE_MB} MB"
+  else
+    # Default calculation
+    _REC_INNODB_LOG_SIZE_MB=$(echo "(${_REC_INNODB_BUFFER_POOL_SIZE_MB} * 25) / 100" | bc)
+    echo "Calculated innodb_log_file_size: ${_REC_INNODB_LOG_SIZE_MB} MB"
   fi
+fi
+
+# Ensure it does not exceed available memory
+if (( $(echo "${_REC_INNODB_LOG_SIZE_MB} > ${_AVA_MEM_FOR_MYSQL_MB}" | bc -l) )); then
+  _REC_INNODB_LOG_SIZE_MB=${_AVA_MEM_FOR_MYSQL_MB}
 fi
 
 # Get current MySQL settings
@@ -318,45 +361,62 @@ _get_current_mysql_settings
 # Initialize a variable to track if a restart is needed
 _NEEDS_RESTART=0
 
+# Function to update MySQL configuration settings
+_update_setting() {
+  local _setting_name=$1
+  local _new_value=$2
+  local _current_value=$3
+  local _requires_restart=$4
+  local _is_memory_size=$5  # New parameter indicating if setting is a memory size
+
+  if [ "${_current_value}" != "${_new_value}" ]; then
+    if grep -q "^${_setting_name}" "${_TMP_CONFIG_FILE}"; then
+      if [ "${_is_memory_size}" -eq 1 ]; then
+        sed -i "s|^${_setting_name}.*|${_setting_name} = ${_new_value}M|" "${_TMP_CONFIG_FILE}"
+      else
+        sed -i "s|^${_setting_name}.*|${_setting_name} = ${_new_value}|" "${_TMP_CONFIG_FILE}"
+      fi
+    else
+      if [ "${_is_memory_size}" -eq 1 ]; then
+        echo "${_setting_name} = ${_new_value}M" >> "${_TMP_CONFIG_FILE}"
+      else
+        echo "${_setting_name} = ${_new_value}" >> "${_TMP_CONFIG_FILE}"
+      fi
+    fi
+
+    if [ "${_requires_restart}" -eq 1 ]; then
+      _NEEDS_RESTART=1
+    else
+      if [ "${_is_memory_size}" -eq 1 ]; then
+        # Apply setting dynamically with multiplication
+        mysql -e "SET GLOBAL ${_setting_name}=${_new_value}*1024*1024;"
+      else
+        # Apply setting dynamically without multiplication
+        mysql -e "SET GLOBAL ${_setting_name}=${_new_value};"
+      fi
+    fi
+  fi
+}
+
 # Update /etc/mysql/my.cnf if settings differ
 _update_mysql_config() {
   _CONFIG_FILE="/etc/mysql/my.cnf"
   _TMP_CONFIG_FILE="/tmp/my.cnf.$$"
   cp "${_CONFIG_FILE}" "${_TMP_CONFIG_FILE}"
 
-  _update_setting() {
-    local _setting_name=$1
-    local _new_value=$2
-    local _current_value=$3
-    local _requires_restart=$4
-    if [ "${_current_value}" != "${_new_value}" ]; then
-      if grep -q "^${_setting_name}" "${_TMP_CONFIG_FILE}"; then
-        sed -i "s|^${_setting_name}.*|${_setting_name} = ${_new_value}M|" "${_TMP_CONFIG_FILE}"
-      else
-        echo "${_setting_name} = ${_new_value}M" >> "${_TMP_CONFIG_FILE}"
-      fi
-      if [ "${_requires_restart}" -eq 1 ]; then
-        _NEEDS_RESTART=1
-      else
-        # Apply setting dynamically
-        mysql -e "SET GLOBAL ${_setting_name}=${_new_value}*1024*1024;"
-      fi
-    fi
-  }
-
   # Update settings
-  _update_setting "innodb_buffer_pool_size" "${_REC_INNODB_BUFFER_POOL_SIZE_MB}" "${_CUR_INNODB_BUFFER_POOL_SIZE}" 1
+  _update_setting "innodb_buffer_pool_size" "${_REC_INNODB_BUFFER_POOL_SIZE_MB}" "${_CUR_INNODB_BUFFER_POOL_SIZE}" 1 1
   if [[ "${_MYSQL_VERSION}" =~ ^8\. ]]; then
-    _update_setting "innodb_redo_log_capacity" "${_REC_INNODB_LOG_SIZE_MB}" "${_CUR_INNODB_LOG_SIZE}" 1
+    _update_setting "innodb_redo_log_capacity" "${_REC_INNODB_LOG_SIZE_MB}" "${_CUR_INNODB_LOG_SIZE}" 1 1
   else
-    _update_setting "innodb_log_file_size" "${_REC_INNODB_LOG_SIZE_MB}" "${_CUR_INNODB_LOG_SIZE}" 1
+    _update_setting "innodb_log_file_size" "${_REC_INNODB_LOG_SIZE_MB}" "${_CUR_INNODB_LOG_SIZE}" 1 1
   fi
-  _update_setting "key_buffer_size" "${_REC_KEY_BUFFER_SIZE_MB}" "${_CUR_KEY_BUFFER_SIZE}" 1
-  _update_setting "max_connections" "${_REC_MAX_CONS}" "${_CUR_MAX_CONS}" 0
-  _update_setting "tmp_table_size" "${_REC_TMP_TABLE_SIZE_MB}" "${_CUR_TMP_TABLE_SIZE}" 0
-  _update_setting "max_heap_table_size" "${_REC_TMP_TABLE_SIZE_MB}" "${_CUR_TMP_TABLE_SIZE}" 0
-  _update_setting "read_rnd_buffer_size" "${_REC_READ_RND_BUFFER_SIZE_MB}" "${_CUR_READ_RND_BUFFER_SIZE}" 0
-  _update_setting "join_buffer_size" "${_REC_JOIN_BUFFER_SIZE_MB}" "${_CUR_JOIN_BUFFER_SIZE}" 0
+  _update_setting "key_buffer_size" "${_REC_KEY_BUFFER_SIZE_MB}" "${_CUR_KEY_BUFFER_SIZE}" 1 1
+  _update_setting "max_connections" "${_REC_MAX_CONS}" "${_CUR_MAX_CONS}" 0 0  # Not a memory size
+  _update_setting "tmp_table_size" "${_REC_TMP_TABLE_SIZE_MB}" "${_CUR_TMP_TABLE_SIZE}" 0 1
+  _update_setting "max_heap_table_size" "${_REC_TMP_TABLE_SIZE_MB}" "${_CUR_TMP_TABLE_SIZE}" 0 1
+  _update_setting "read_rnd_buffer_size" "${_REC_READ_RND_BUFFER_SIZE_MB}" "${_CUR_READ_RND_BUFFER_SIZE}" 0 1
+  _update_setting "join_buffer_size" "${_REC_JOIN_BUFFER_SIZE_MB}" "${_CUR_JOIN_BUFFER_SIZE}" 0 1
 
   # Replace the original config file if changes were made
   if cmp -s "${_TMP_CONFIG_FILE}" "${_CONFIG_FILE}"; then
