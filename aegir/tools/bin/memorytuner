@@ -20,7 +20,7 @@ _clean_pid_exit() {
 _check_sql_running() {
   while [ -z "${_IS_MYSQLD_RUNNING}" ] \
     || [ ! -e "/run/mysqld/mysqld.sock" ]; do
-    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
+    _IS_MYSQLD_RUNNING=$(pgrep mysqld 2>&1)
     echo "INFO: Waiting for MySQLD availability..."
     sleep 5
   done
@@ -48,7 +48,7 @@ _check_sql_access() {
     echo " "
     _clean_pid_exit _check_sql_access_b
   else
-    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
+    _IS_MYSQLD_RUNNING=$(pgrep mysqld 2>&1)
     if [ -z "${_IS_MYSQLD_RUNNING}" ]; then
       echo "ALERT: SQL server on this system is not running at all."
       echo "ALERT: Please fix this before trying again, giving up."
@@ -72,21 +72,57 @@ _check_sql_access
 
 # Function to get total system memory in MB
 _get_total_mem_mb() {
-  local _mem_kb=$(grep MemTotal /proc/meminfo | awk '{print $2}')
+  local _mem_kb
+  _mem_kb=$(grep MemTotal /proc/meminfo | awk '{print $2}')
   echo $((_mem_kb / 1024))
 }
 
 # Function to get memory usage of a process or group of processes in MB
 _get_mem_usage_mb() {
   local _process_name=$1
-  local _mem_usage_kb=$(ps -eo rss,args | grep -w "${_process_name}" | grep -v grep | awk '{sum+=$1} END {print sum}')
+  local _mem_usage_kb
+  _mem_usage_kb=$(ps -eo rss,args | grep -w "${_process_name}" | grep -v grep | awk '{sum+=$1} END {print sum}')
   _mem_usage_kb=${_mem_usage_kb:-0}
-  echo "scale=2; $_mem_usage_kb / 1024" | bc
+  echo "scale=2; ${_mem_usage_kb} / 1024" | bc
+}
+
+# Function to get service uptime in seconds
+_get_service_uptime() {
+  local service_name=$1
+  local pidfile=$2
+
+  if [ ! -f "$pidfile" ]; then
+    echo 0  # Service is not running
+    return
+  fi
+
+  # Get the PID from the PID file
+  local pid
+  pid=$(cat "$pidfile")
+
+  # Check if the process is running
+  if ! ps -p "$pid" > /dev/null 2>&1; then
+    echo 0  # Process is not running
+    return
+  fi
+
+  # Get the current time and the PID file modification time in seconds since epoch
+  local current_time
+  local file_time
+  current_time=$(date +%s)
+  file_time=$(stat -c %Y "$pidfile")
+
+  # Calculate the uptime in seconds
+  local uptime
+  uptime=$((current_time - file_time))
+
+  echo "$uptime"
 }
 
 # Function to get MySQL server uptime in seconds
 _get_mysql_uptime() {
-  local _uptime=$(mysql -Nse "SHOW GLOBAL STATUS LIKE 'Uptime';" | awk '{print $2}')
+  local _uptime
+  _uptime=$(mysql -Nse "SHOW GLOBAL STATUS LIKE 'Uptime';" | awk '{print $2}')
   echo "${_uptime}"
 }
 
@@ -190,36 +226,88 @@ _get_current_mysql_settings() {
 # Get total system memory
 _TOTAL_MEM_MB=$(_get_total_mem_mb)
 
+# Define services and their PID files
+declare -A _services_pidfiles=(
+  ["nginx"]="/run/nginx.pid"
+  ["php74-fpm"]="/run/php74-fpm.pid"
+  ["php81-fpm"]="/run/php81-fpm.pid"
+  ["php82-fpm"]="/run/php82-fpm.pid"
+  ["php83-fpm"]="/run/php83-fpm.pid"
+  ["redis"]="/run/redis/redis.pid"
+  ["java"]="/var/solr7/solr-9077.pid"
+)
+
+# Define estimated memory usage for services (in MB)
+declare -A _service_estimated_mem_mb=(
+  ["nginx"]=100
+  ["php74-fpm"]=500
+  ["php81-fpm"]=500
+  ["php82-fpm"]=500
+  ["php83-fpm"]=500
+  ["redis"]=100
+  ["java"]=500
+)
+
+# Threshold for uptime (e.g., 1 hour = 3600 seconds)
+_UPTIME_THRESHOLD=3600
+
+# Initialize total memory usage of other services
+_TOTAL_OTHER_SERVICES_MEM_MB=0
+
+# Array to store debugging information
+declare -A _service_mem_usage_mb
+
+# Loop through the services
+for _service in "${!_services_pidfiles[@]}"; do
+  _pidfile="${_services_pidfiles[${_service}]}"
+  _uptime=$(_get_service_uptime "${_service}" "${_pidfile}")
+
+  if [ "${_uptime}" -ge "${_UPTIME_THRESHOLD}" ]; then
+    # Use actual memory usage
+    _mem_usage_mb=$(_get_mem_usage_mb "${_service}")
+  else
+    # Use estimated memory usage
+    _mem_usage_mb=${_service_estimated_mem_mb[${_service}]}
+    echo "Service ${_service} has short uptime (${_uptime} seconds). Using estimated memory usage: ${_mem_usage_mb} MB"
+  fi
+
+  # Ensure _mem_usage_mb is a valid number
+  if ! [[ "${_mem_usage_mb}" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
+    _mem_usage_mb=0
+  fi
+
+  # Accumulate total memory usage
+  _TOTAL_OTHER_SERVICES_MEM_MB=${_TOTAL_OTHER_SERVICES_MEM_MB:-0}
+  _TOTAL_OTHER_SERVICES_MEM_MB=$(echo "${_TOTAL_OTHER_SERVICES_MEM_MB} + ${_mem_usage_mb}" | bc)
+  # Store for debugging
+  _service_mem_usage_mb["${_service}"]=${_mem_usage_mb}
+done
+
 # Get current memory usage of MySQL server
 _MYSQL_MEM_MB=$(_get_mem_usage_mb 'mysqld')
 
-# Get current memory usage of other services
-_NGINX_MEM_MB=$(_get_mem_usage_mb 'nginx')
-_PHP_FPM_MEM_MB=$(_get_mem_usage_mb 'php-fpm')
-_AEGIR_DRUSH_MEM_MB=$(_get_mem_usage_mb 'drush')
-_REDIS_MEM_MB=$(_get_mem_usage_mb 'redis')
-_SOLR_MEM_MB=$(_get_mem_usage_mb 'java')  # Adjust if necessary
-
-# Ensure variables are not empty
-_NGINX_MEM_MB=${_NGINX_MEM_MB:-0}
-_PHP_FPM_MEM_MB=${_PHP_FPM_MEM_MB:-0}
-_AEGIR_DRUSH_MEM_MB=${_AEGIR_DRUSH_MEM_MB:-0}
-_REDIS_MEM_MB=${_REDIS_MEM_MB:-0}
-_SOLR_MEM_MB=${_SOLR_MEM_MB:-0}
+# Ensure variables are not empty and are valid numbers
+for _service in "${!_service_mem_usage_mb[@]}"; do
+  _mem_usage=${_service_mem_usage_mb[${_service}]}
+  if ! [[ "${_mem_usage}" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
+    _mem_usage=0
+  fi
+  _service_mem_usage_mb[${_service}]=${_mem_usage}
+done
 
 # Debugging statements to verify memory usage
-echo "_NGINX_MEM_MB: ${_NGINX_MEM_MB} MB"
-echo "_PHP_FPM_MEM_MB: ${_PHP_FPM_MEM_MB} MB"
-echo "_AEGIR_DRUSH_MEM_MB: ${_AEGIR_DRUSH_MEM_MB} MB"
-echo "_REDIS_MEM_MB: ${_REDIS_MEM_MB} MB"
-echo "_SOLR_MEM_MB: ${_SOLR_MEM_MB} MB"
-
-# Sum up the memory usage of other services
-_TOTAL_OTHER_SERVICES_MEM_MB=$(echo "${_NGINX_MEM_MB} + ${_PHP_FPM_MEM_MB} + ${_AEGIR_DRUSH_MEM_MB} + ${_REDIS_MEM_MB} + ${_SOLR_MEM_MB}" | bc)
+for _service in "${!_service_mem_usage_mb[@]}"; do
+  echo "${_service} Memory Usage: ${_service_mem_usage_mb[${_service}]} MB"
+done
 
 # Get current MySQL usage statistics
 _MYSQL_VERSION=$(_get_mysql_version)
 _NUMBER_OF_DATABASES=$(_get_number_of_databases)
+
+# Ensure _TOTAL_OTHER_SERVICES_MEM_MB is valid
+if ! [[ "${_TOTAL_OTHER_SERVICES_MEM_MB}" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
+  _TOTAL_OTHER_SERVICES_MEM_MB=0
+fi
 
 # Calculate available memory for MySQL
 _AVA_MEM_FOR_MYSQL_MB=$(echo "${_TOTAL_MEM_MB} - ${_TOTAL_OTHER_SERVICES_MEM_MB}" | bc)
@@ -259,6 +347,11 @@ else
   _REC_READ_RND_BUFFER_SIZE_MB=0
   _REC_JOIN_BUFFER_SIZE_MB=0
   _REC_INNODB_LOG_SIZE_MB=0
+fi
+
+# Ensure _AVA_MEM_FOR_MYSQL_MB is valid
+if ! [[ "${_AVA_MEM_FOR_MYSQL_MB}" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
+  _AVA_MEM_FOR_MYSQL_MB=0
 fi
 
 # Calculate recommended InnoDB buffer pool size
@@ -317,8 +410,18 @@ fi
 # Estimate average memory per connection, including per-connection buffers
 _EST_MEM_PER_CON_MB=$(echo "${_REC_READ_RND_BUFFER_SIZE_MB} + ${_REC_JOIN_BUFFER_SIZE_MB} + 4" | bc)  # 4MB for other per-connection buffers
 
+# Ensure _EST_MEM_PER_CON_MB is valid
+if ! [[ "${_EST_MEM_PER_CON_MB}" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
+  _EST_MEM_PER_CON_MB=16  # Default value
+fi
+
 # Calculate max_connections based on available memory
 _MAX_POS_CONS=$(echo "${_AVA_MEM_FOR_MYSQL_MB} / ${_EST_MEM_PER_CON_MB}" | bc)
+
+# Ensure _MAX_POS_CONS is valid
+if ! [[ "${_MAX_POS_CONS}" =~ ^[0-9]+$ ]]; then
+  _MAX_POS_CONS=100
+fi
 
 # Ensure max_connections is not set unreasonably high
 if [ "${_MAX_POS_CONS}" -gt 1000 ]; then
@@ -368,6 +471,12 @@ _update_setting() {
   local _requires_restart=$4
   local _is_memory_size=$5  # New parameter indicating if setting is a memory size
 
+  # Ensure _new_value is valid
+  if [ -z "${_new_value}" ] || ! [[ "${_new_value}" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
+    echo "Warning: Invalid value for ${_setting_name}. Skipping update."
+    return
+  fi
+
   if [ "${_current_value}" != "${_new_value}" ]; then
     if grep -q "^${_setting_name}" "${_TMP_CONFIG_FILE}"; then
       if [ "${_is_memory_size}" -eq 1 ]; then
@@ -388,7 +497,7 @@ _update_setting() {
     else
       if [ "${_is_memory_size}" -eq 1 ]; then
         # Apply setting dynamically with multiplication
-        mysql -e "SET GLOBAL ${_setting_name}=${_new_value}*1024*1024;"
+        mysql -e "SET GLOBAL ${_setting_name}=$(echo "${_new_value} * 1024 * 1024" | bc);"
       else
         # Apply setting dynamically without multiplication
         mysql -e "SET GLOBAL ${_setting_name}=${_new_value};"
