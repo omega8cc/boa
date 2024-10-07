@@ -27,6 +27,50 @@ _check_sql_running() {
 }
 _check_sql_running
 
+# Function to check if MySQL server access credentials for root are working
+_check_sql_access() {
+  if [ -e "/root/.my.pass.txt" ] && [ -e "/root/.my.cnf" ]; then
+    _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
+    _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+    _IS_SYNC_SQL_PSWD=$(grep "${_SQL_PSWD}" /root/.my.cnf 2>&1)
+  else
+    echo "ALERT: /root/.my.cnf or /root/.my.pass.txt not found."
+    echo "ALERT: Please fix this before trying again, giving up."
+    echo "Bye"
+    echo " "
+    _clean_pid_exit _check_sql_access_a
+  fi
+  if [ -z "${_IS_SYNC_SQL_PSWD}" ] \
+    || [[ ! "${_IS_SYNC_SQL_PSWD}" =~ "password=${_SQL_PSWD}" ]]; then
+    echo "ALERT: SQL password is out of sync between"
+    echo "ALERT: /root/.my.cnf and /root/.my.pass.txt"
+    echo "ALERT: Please fix this before trying again, giving up."
+    echo "Bye"
+    echo " "
+    _clean_pid_exit _check_sql_access_b
+  else
+    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
+    if [ -z "${_IS_MYSQLD_RUNNING}" ]; then
+      echo "ALERT: SQL server on this system is not running at all."
+      echo "ALERT: Please fix this before trying again, giving up."
+      echo "Bye"
+      echo " "
+      _clean_pid_exit _check_sql_access_c
+    else
+      _MYSQL_CONN_TEST=$(mysql -u root -e "status" 2>&1)
+      if [ -z "${_MYSQL_CONN_TEST}" ] \
+        || [[ "${_MYSQL_CONN_TEST}" =~ "Access denied" ]]; then
+        echo "ALERT: SQL password in /root/.my.cnf does not work."
+        echo "ALERT: Please fix this before trying again, giving up."
+        echo "Bye"
+        echo " "
+        _clean_pid_exit _check_sql_access_d
+      fi
+    fi
+  fi
+}
+_check_sql_access
+
 # Function to get total system memory in MB
 _get_total_mem_mb() {
   local _mem_kb=$(grep MemTotal /proc/meminfo | awk '{print $2}')
