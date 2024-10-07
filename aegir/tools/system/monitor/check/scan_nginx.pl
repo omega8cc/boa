@@ -114,12 +114,12 @@ sub makeactions {
       chomp($line);
 
       # Increment counters with proper initialization
-      $li_cnt{$VISITOR} = ($li_cnt{$VISITOR} // 0) + 99 if ($block_unknown > 0);
-      $li_cnt{$VISITOR} = ($li_cnt{$VISITOR} // 0) + 99 if ($line =~ /\" 404 /);
-      $li_cnt{$VISITOR} = ($li_cnt{$VISITOR} // 0) + 99 if ($line =~ /\" 403 /);
-      $li_cnt{$VISITOR} = ($li_cnt{$VISITOR} // 0) + 99 if ($line =~ /\" 500 /);
-      $li_cnt{$VISITOR} = ($li_cnt{$VISITOR} // 0) + 99 if ($line =~ /wp-(content|admin|includes)/);
-      $li_cnt{$VISITOR} = ($li_cnt{$VISITOR} // 0) + 19 if ($line =~ /(POST|GET) \/user\/login/);
+      $li_cnt{$VISITOR} = ($li_cnt{$VISITOR} // 0) + 19 if ($block_unknown > 0);
+      $li_cnt{$VISITOR} = ($li_cnt{$VISITOR} // 0) + 19 if ($line =~ /\" 404 /);
+      $li_cnt{$VISITOR} = ($li_cnt{$VISITOR} // 0) + 19 if ($line =~ /\" 403 /);
+      $li_cnt{$VISITOR} = ($li_cnt{$VISITOR} // 0) + 19 if ($line =~ /\" 500 /);
+      $li_cnt{$VISITOR} = ($li_cnt{$VISITOR} // 0) + 19 if ($line =~ /wp-(content|admin|includes)/);
+      $li_cnt{$VISITOR} = ($li_cnt{$VISITOR} // 0) + 10 if ($line =~ /(POST|GET) \/user\/login/);
 
       # Initialize flags
       my $ignore_admin = 0;
@@ -199,12 +199,12 @@ sub makeactions {
       chomp($line);
 
       # Increment counters with proper initialization
-      $px_cnt{$PROXY} = ($px_cnt{$PROXY} // 0) + 99 if ($block_unknown > 0);
-      $px_cnt{$PROXY} = ($px_cnt{$PROXY} // 0) + 99 if ($line =~ /\" 404 /);
-      $px_cnt{$PROXY} = ($px_cnt{$PROXY} // 0) + 99 if ($line =~ /\" 403 /);
-      $px_cnt{$PROXY} = ($px_cnt{$PROXY} // 0) + 99 if ($line =~ /\" 500 /);
-      $px_cnt{$PROXY} = ($px_cnt{$PROXY} // 0) + 99 if ($line =~ /wp-(content|admin|includes)/);
-      $px_cnt{$PROXY} = ($px_cnt{$PROXY} // 0) + 19 if ($line =~ /(POST|GET) \/user\/login/);
+      $px_cnt{$PROXY} = ($px_cnt{$PROXY} // 0) + 19 if ($block_unknown > 0);
+      $px_cnt{$PROXY} = ($px_cnt{$PROXY} // 0) + 19 if ($line =~ /\" 404 /);
+      $px_cnt{$PROXY} = ($px_cnt{$PROXY} // 0) + 19 if ($line =~ /\" 403 /);
+      $px_cnt{$PROXY} = ($px_cnt{$PROXY} // 0) + 19 if ($line =~ /\" 500 /);
+      $px_cnt{$PROXY} = ($px_cnt{$PROXY} // 0) + 19 if ($line =~ /wp-(content|admin|includes)/);
+      $px_cnt{$PROXY} = ($px_cnt{$PROXY} // 0) + 10 if ($line =~ /(POST|GET) \/user\/login/);
 
       # Initialize flags
       my $skip_post  = 0;
