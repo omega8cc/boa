@@ -2904,6 +2904,8 @@ _update_boa_tools() {
            ffmirror \
            killer \
            mycnfup \
+           mysqltuner5 \
+           mysqltuner8 \
            octopus \
            randpass \
            sqlclean \
@@ -2923,7 +2925,11 @@ _update_boa_tools() {
           echo "The ${_cbn} and daily.sh is running!"
         else
           rm -f ${_optBin}/${_cbn}.new
-          curl ${_crlGet} "${_urlHmr}/${_tBn}/${_cbn}" -o ${_optBin}/${_cbn}.new
+          if [ "${_cbn}" = "mysqltuner5" ] || [ "${_cbn}" = "mysqltuner8" ]; then
+            curl ${_crlGet} "${_urlHmr}/helpers/${_cbn}" -o ${_optBin}/${_cbn}.new
+          else
+            curl ${_crlGet} "${_urlHmr}/${_tBn}/${_cbn}" -o ${_optBin}/${_cbn}.new
+          fi
           mv -f ${_optBin}/${_cbn} ${_optBin}/${_cbn}.prev
           mv -f ${_optBin}/${_cbn}.new ${_optBin}/${_cbn}
           if [ -e "${_optBin}/${_cbn}" ]; then
@@ -2935,7 +2941,11 @@ _update_boa_tools() {
         fi
       fi
     else
-      curl ${_crlGet} "${_urlHmr}/${_tBn}/${_cbn}" -o ${_optBin}/${_cbn}
+      if [ "${_cbn}" = "mysqltuner5" ] || [ "${_cbn}" = "mysqltuner8" ]; then
+        curl ${_crlGet} "${_urlHmr}/helpers/${_cbn}" -o ${_optBin}/${_cbn}
+      else
+        curl ${_crlGet} "${_urlHmr}/${_tBn}/${_cbn}" -o ${_optBin}/${_cbn}
+      fi
     fi
   done
   echo "### ${_TODAY} ###" >> ${_optBin}/autoinit
@@ -2964,7 +2974,7 @@ _update_boa_tools() {
       touch /root/.backboa.autoupdate
     fi
   fi
-  chmod 700 ${_optBin}/{autoinit,autodaedalus,autochimaera,autobeowulf,autoupboa,backboa,duobackboa}
+  chmod 700 ${_optBin}/{autoinit,autodaedalus,autochimaera,autobeowulf,autoupboa,backboa,duobackboa,mysqltuner5,mysqltuner8}
   chmod 700 ${_optBin}/{barracuda,boa,ffmirror,killer,mycnfup,octopus,syncpass,xboa,weblogx,sqlclean,vhostcheck}
   chmod 755 ${_optBin}/{fancynow,randpass,sqlmagic,thinkdifferent}
 }
