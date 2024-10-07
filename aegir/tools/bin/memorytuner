@@ -1,0 +1,319 @@
+#!/bin/bash
+
+export HOME=/root
+export SHELL=/bin/bash
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+
+# Ensure the script is run with root privileges
+if [ "$EUID" -ne 0 ]; then
+  echo "Please run as root."
+  exit 1
+fi
+
+# Function to get total system memory in MB
+_get_total_mem_mb() {
+  local _mem_kb=$(grep MemTotal /proc/meminfo | awk '{print $2}')
+  echo $((_mem_kb / 1024))
+}
+
+# Function to get memory usage of a process or group of processes in MB
+_get_mem_usage_mb() {
+  local _process_name=$1
+  local _mem_usage_kb=$(ps aux | grep -E "${_process_name}" | grep -v grep | awk '{sum += $6} END {print sum}')
+  echo $((_mem_usage_kb / 1024))
+}
+
+# Function to get MySQL server uptime in seconds
+_get_mysql_uptime() {
+  local _uptime=$(mysql -Nse "SHOW GLOBAL STATUS LIKE 'Uptime';" | awk '{print $2}')
+  echo "${_uptime}"
+}
+
+# Function to get MySQL version
+_get_mysql_version() {
+  mysql -V | awk '{print $5}' | tr -d ','
+}
+
+# Function to get number of databases
+_get_number_of_databases() {
+  mysql -Nse "SELECT COUNT(*) FROM information_schema.schemata;"
+}
+
+# Function to parse MySQLTuner-perl recommendations with progress indicator
+_parse_mysqltuner_recommendations() {
+  if [[ "${_MYSQL_VERSION}" =~ ^8\. ]]; then
+    # Use mysqltuner8 for Percona 8.x
+    if ! command -v mysqltuner8 &> /dev/null; then
+      echo "mysqltuner8 is not installed. Please install it before running this script."
+      exit 1
+    fi
+    echo "Running mysqltuner8..."
+    local _tempfile=$(mktemp)
+    mysqltuner8 --nogood --nocolor --nographics --buffers --silent > "${_tempfile}" &
+    local _mysqltuner_pid=$!
+  elif [[ "${_MYSQL_VERSION}" =~ ^5\.7 ]]; then
+    # Use mysqltuner5 for Percona 5.7
+    if ! command -v mysqltuner5 &> /dev/null; then
+      echo "mysqltuner5 is not installed. Please install it before running this script."
+      exit 1
+    fi
+    echo "Running mysqltuner5..."
+    local _tempfile=$(mktemp)
+    mysqltuner5 --nogood --nocolor --nographics --buffers --silent > "${_tempfile}" &
+    local _mysqltuner_pid=$!
+  else
+    echo "Unsupported MySQL version: ${_MYSQL_VERSION}"
+    exit 1
+  fi
+
+  # Show progress while mysqltuner is running
+  echo -n "Processing"
+  while kill -0 ${_mysqltuner_pid} 2>/dev/null; do
+    echo -n "."
+    sleep 5
+  done
+  echo " Done."
+
+  local _mysqltuner_output=$(cat "${_tempfile}")
+  rm "${_tempfile}"
+
+  # Parse key recommendations
+  _REC_INNODB_BUFFER_POOL_SIZE_MB=$(echo "${_mysqltuner_output}" | grep -i "InnoDB Buffer Pool" | grep -o '[0-9]\+M' | tr -d 'M')
+  _REC_KEY_BUFFER_SIZE_MB=$(echo "${_mysqltuner_output}" | grep -i "Key buffer size" | grep -o '[0-9]\+M' | tr -d 'M')
+  _REC_TMP_TABLE_SIZE_MB=$(echo "${_mysqltuner_output}" | grep -i "Temporary tables" | grep -o '[0-9]\+M' | tr -d 'M')
+  _REC_READ_RND_BUFFER_SIZE_MB=$(echo "${_mysqltuner_output}" | grep -i "read_rnd_buffer_size" | grep -o '[0-9]\+K' | tr -d 'K')
+  _REC_JOIN_BUFFER_SIZE_MB=$(echo "${_mysqltuner_output}" | grep -i "join_buffer_size" | grep -o '[0-9]\+K' | tr -d 'K')
+
+  # Convert K to M for read_rnd_buffer_size and join_buffer_size
+  _REC_READ_RND_BUFFER_SIZE_MB=$((_REC_READ_RND_BUFFER_SIZE_MB / 1024))
+  _REC_JOIN_BUFFER_SIZE_MB=$((_REC_JOIN_BUFFER_SIZE_MB / 1024))
+
+  # If recommendations are not found, set to default values
+  : ${_REC_INNODB_BUFFER_POOL_SIZE_MB:=0}
+  : ${_REC_KEY_BUFFER_SIZE_MB:=0}
+  : ${_REC_TMP_TABLE_SIZE_MB:=0}
+  : ${_REC_READ_RND_BUFFER_SIZE_MB:=0}
+  : ${_REC_JOIN_BUFFER_SIZE_MB:=0}
+}
+
+# Function to get current MySQL settings from /etc/mysql/my.cnf
+_get_current_mysql_settings() {
+  _CUR_INNODB_BUFFER_POOL_SIZE=$(grep -i "^innodb_buffer_pool_size" /etc/mysql/my.cnf | awk -F'=' '{print $2}' | tr -d 'M ')
+  _CUR_KEY_BUFFER_SIZE=$(grep -i "^key_buffer_size" /etc/mysql/my.cnf | awk -F'=' '{print $2}' | tr -d 'M ')
+  _CUR_TMP_TABLE_SIZE=$(grep -i "^tmp_table_size" /etc/mysql/my.cnf | awk -F'=' '{print $2}' | tr -d 'M ')
+  _CUR_MAX_CONS=$(grep -i "^max_connections" /etc/mysql/my.cnf | awk -F'=' '{print $2}' | tr -d ' ')
+  _CUR_READ_RND_BUFFER_SIZE=$(grep -i "^read_rnd_buffer_size" /etc/mysql/my.cnf | awk -F'=' '{print $2}' | tr -d 'M ')
+  _CUR_JOIN_BUFFER_SIZE=$(grep -i "^join_buffer_size" /etc/mysql/my.cnf | awk -F'=' '{print $2}' | tr -d 'M ')
+
+  if [[ "${_MYSQL_VERSION}" =~ ^8\. ]]; then
+    _CUR_INNODB_LOG_SIZE=$(grep -i "^innodb_redo_log_capacity" /etc/mysql/my.cnf | awk -F'=' '{print $2}' | tr -d 'M ')
+  else
+    _CUR_INNODB_LOG_SIZE=$(grep -i "^innodb_log_file_size" /etc/mysql/my.cnf | awk -F'=' '{print $2}' | tr -d 'M ')
+  fi
+}
+
+### Main script starts here
+
+# Get total system memory
+_TOTAL_MEM_MB=$(_get_total_mem_mb)
+
+# Get current memory usage of mysql server
+_MYSQL_MEM_MB=$(_get_mem_usage_mb 'mysql')
+
+# Get current memory usage of other services
+_NGINX_MEM_MB=$(_get_mem_usage_mb 'nginx')
+_PHP_FPM_MEM_MB=$(_get_mem_usage_mb 'php-fpm')
+_AEGIR_DRUSH_MEM_MB=$(_get_mem_usage_mb 'drush')
+_REDIS_MEM_MB=$(_get_mem_usage_mb 'redis')
+_SOLR_MEM_MB=$(_get_mem_usage_mb 'java')
+
+# Sum up the memory usage of other services
+_TOTAL_OTHER_SERVICES_MEM_MB=$((_NGINX_MEM_MB + _PHP_FPM_MEM_MB + _AEGIR_DRUSH_MEM_MB + _REDIS_MEM_MB + _SOLR_MEM_MB))
+
+# Get current MySQL usage statistics
+_MYSQL_VERSION=$(_get_mysql_version)
+_NUMBER_OF_DATABASES=$(_get_number_of_databases)
+
+# Calculate available memory for MySQL
+_AVA_MEM_FOR_MYSQL_MB=$((_TOTAL_MEM_MB - _TOTAL_OTHER_SERVICES_MEM_MB))
+
+echo "Memory available for all services: ${_TOTAL_MEM_MB}"
+echo "Memory actually used by other services now: ${_TOTAL_OTHER_SERVICES_MEM_MB}"
+echo "Memory actually used by MySQL now: ${_MYSQL_MEM_MB}"
+echo "Memory available for MySQL theoretically: ${_AVA_MEM_FOR_MYSQL_MB}"
+
+# Safety check: Ensure there's enough memory for MySQL
+_MIN_MYSQL_MEM_MB=1024  # Minimum memory required for MySQL in MB
+if [ "${_AVA_MEM_FOR_MYSQL_MB}" -lt "${_MIN_MYSQL_MEM_MB}" ]; then
+  echo "Error: Not enough memory available for MySQL after accounting for other services."
+  echo "Available memory for MySQL: ${_AVA_MEM_FOR_MYSQL_MB} MB"
+  echo "Consider upgrading your system's RAM."
+  exit 1
+fi
+
+# Get MySQL uptime
+_MYSQL_UPTIME_SECONDS=$(_get_mysql_uptime)
+
+# Run MySQLTuner-perl only if uptime >= 6 hours (21600 seconds)
+if [ "${_NUMBER_OF_DATABASES}" -lt 100 ] && [ "${_MYSQL_UPTIME_SECONDS}" -ge 21600 ]; then
+  echo "Running MySQLTuner-perl to gather recommendations..."
+  _parse_mysqltuner_recommendations
+else
+  echo "Skipping MySQLTuner-perl."
+  if [ "${_NUMBER_OF_DATABASES}" -ge 100 ]; then
+    echo "Reason: Number of databases is ${_NUMBER_OF_DATABASES} (>=100)."
+  fi
+  if [ "${_MYSQL_UPTIME_SECONDS}" -lt 21600 ]; then
+    echo "Reason: MySQL uptime is less than 6 hours."
+  fi
+  _REC_INNODB_BUFFER_POOL_SIZE_MB=0
+  _REC_KEY_BUFFER_SIZE_MB=0
+  _REC_TMP_TABLE_SIZE_MB=0
+  _REC_READ_RND_BUFFER_SIZE_MB=0
+  _REC_JOIN_BUFFER_SIZE_MB=0
+fi
+
+# Calculate recommended InnoDB buffer pool size
+if [ "${_REC_INNODB_BUFFER_POOL_SIZE_MB}" -gt 0 ]; then
+  _REC_INNODB_BUFFER_POOL_SIZE_MB=${_REC_INNODB_BUFFER_POOL_SIZE_MB}
+else
+  # Default to 75% of available MySQL memory
+  _REC_INNODB_BUFFER_POOL_SIZE_MB=$(( (_AVA_MEM_FOR_MYSQL_MB * 75) / 100 ))
+fi
+
+# Ensure InnoDB buffer pool size does not exceed available memory
+if [ "${_REC_INNODB_BUFFER_POOL_SIZE_MB}" -gt "${_AVA_MEM_FOR_MYSQL_MB}" ]; then
+  _REC_INNODB_BUFFER_POOL_SIZE_MB=${_AVA_MEM_FOR_MYSQL_MB}
+fi
+
+# Calculate recommended key_buffer_size
+if [ "${_REC_KEY_BUFFER_SIZE_MB}" -gt 0 ]; then
+  _REC_KEY_BUFFER_SIZE_MB=${_REC_KEY_BUFFER_SIZE_MB}
+else
+  # Default to a minimal value if MyISAM is not used much
+  _REC_KEY_BUFFER_SIZE_MB=8
+fi
+
+# Calculate tmp_table_size and max_heap_table_size
+if [ "${_REC_TMP_TABLE_SIZE_MB}" -gt 0 ]; then
+  _REC_TMP_TABLE_SIZE_MB=${_REC_TMP_TABLE_SIZE_MB}
+else
+  _EST_MEM_PER_TMP_TABLE_MB=64  # Estimated size per temp table in MB
+  _REC_TMP_TABLE_SIZE_MB=$((_AVA_MEM_FOR_MYSQL_MB / 4))
+  if [ "${_REC_TMP_TABLE_SIZE_MB}" -gt "${_EST_MEM_PER_TMP_TABLE_MB}" ]; then
+    _REC_TMP_TABLE_SIZE_MB=${_EST_MEM_PER_TMP_TABLE_MB}
+  fi
+fi
+
+# Calculate read_rnd_buffer_size
+if [ "${_REC_READ_RND_BUFFER_SIZE_MB}" -gt 0 ]; then
+  _REC_READ_RND_BUFFER_SIZE_MB=${_REC_READ_RND_BUFFER_SIZE_MB}
+else
+  # Default value
+  _REC_READ_RND_BUFFER_SIZE_MB=4  # 4MB is a reasonable default
+fi
+
+# Calculate join_buffer_size
+if [ "${_REC_JOIN_BUFFER_SIZE_MB}" -gt 0 ]; then
+  _REC_JOIN_BUFFER_SIZE_MB=${_REC_JOIN_BUFFER_SIZE_MB}
+else
+  # Default value
+  _REC_JOIN_BUFFER_SIZE_MB=8  # 8MB is a reasonable default
+fi
+
+# Estimate average memory per connection, including per-connection buffers
+_EST_MEM_PER_CON_MB=$((_REC_READ_RND_BUFFER_SIZE_MB + _REC_JOIN_BUFFER_SIZE_MB + 4))  # 4MB for other per-connection buffers
+
+# Calculate max_connections based on available memory
+_MAX_POS_CONS=$((_AVA_MEM_FOR_MYSQL_MB / _EST_MEM_PER_CON_MB))
+
+# Ensure max_connections is not set unreasonably high
+if [ "${_MAX_POS_CONS}" -gt 1000 ]; then
+  _REC_MAX_CONS=1000
+elif [ "${_MAX_POS_CONS}" -lt 100 ]; then
+  _REC_MAX_CONS=100
+else
+  _REC_MAX_CONS=${_MAX_POS_CONS}
+fi
+
+# Calculate innodb_log_file_size or innodb_redo_log_capacity
+if [[ "${_MYSQL_VERSION}" =~ ^8\. ]]; then
+  # For MySQL 8.x
+  _REC_INNODB_LOG_SIZE_MB=$(( (_REC_INNODB_BUFFER_POOL_SIZE_MB * 20) / 100 ))
+  if [ "${_REC_INNODB_LOG_SIZE_MB}" -gt "${_AVA_MEM_FOR_MYSQL_MB}" ]; then
+    _REC_INNODB_LOG_SIZE_MB=${_AVA_MEM_FOR_MYSQL_MB}
+  fi
+else
+  # For MySQL 5.7
+  _REC_INNODB_LOG_SIZE_MB=$(( (_REC_INNODB_BUFFER_POOL_SIZE_MB * 25) / 100 ))
+  if [ "${_REC_INNODB_LOG_SIZE_MB}" -gt "${_AVA_MEM_FOR_MYSQL_MB}" ]; then
+    _REC_INNODB_LOG_SIZE_MB=${_AVA_MEM_FOR_MYSQL_MB}
+  fi
+fi
+
+# Get current MySQL settings
+_get_current_mysql_settings
+
+# Initialize a variable to track if a restart is needed
+_NEEDS_RESTART=0
+
+# Update /etc/mysql/my.cnf if settings differ
+_update_mysql_config() {
+  _CONFIG_FILE="/etc/mysql/my.cnf"
+  _TMP_CONFIG_FILE="/tmp/my.cnf.$$"
+  cp "${_CONFIG_FILE}" "${_TMP_CONFIG_FILE}"
+
+  _update_setting() {
+    local _setting_name=$1
+    local _new_value=$2
+    local _current_value=$3
+    local _requires_restart=$4
+    if [ "${_current_value}" != "${_new_value}" ]; then
+      if grep -q "^${_setting_name}" "${_TMP_CONFIG_FILE}"; then
+        sed -i "s|^${_setting_name}.*|${_setting_name} = ${_new_value}M|" "${_TMP_CONFIG_FILE}"
+      else
+        echo "${_setting_name} = ${_new_value}M" >> "${_TMP_CONFIG_FILE}"
+      fi
+      if [ "${_requires_restart}" -eq 1 ]; then
+        _NEEDS_RESTART=1
+      else
+        # Apply setting dynamically
+        mysql -e "SET GLOBAL ${_setting_name}=${_new_value}*1024*1024;"
+      fi
+    fi
+  }
+
+  # Update settings
+  _update_setting "innodb_buffer_pool_size" "${_REC_INNODB_BUFFER_POOL_SIZE_MB}" "${_CUR_INNODB_BUFFER_POOL_SIZE}" 1
+  if [[ "${_MYSQL_VERSION}" =~ ^8\. ]]; then
+    _update_setting "innodb_redo_log_capacity" "${_REC_INNODB_LOG_SIZE_MB}" "${_CUR_INNODB_LOG_SIZE}" 1
+  else
+    _update_setting "innodb_log_file_size" "${_REC_INNODB_LOG_SIZE_MB}" "${_CUR_INNODB_LOG_SIZE}" 1
+  fi
+  _update_setting "key_buffer_size" "${_REC_KEY_BUFFER_SIZE_MB}" "${_CUR_KEY_BUFFER_SIZE}" 1
+  _update_setting "max_connections" "${_REC_MAX_CONS}" "${_CUR_MAX_CONS}" 0
+  _update_setting "tmp_table_size" "${_REC_TMP_TABLE_SIZE_MB}" "${_CUR_TMP_TABLE_SIZE}" 0
+  _update_setting "max_heap_table_size" "${_REC_TMP_TABLE_SIZE_MB}" "${_CUR_TMP_TABLE_SIZE}" 0
+  _update_setting "read_rnd_buffer_size" "${_REC_READ_RND_BUFFER_SIZE_MB}" "${_CUR_READ_RND_BUFFER_SIZE}" 0
+  _update_setting "join_buffer_size" "${_REC_JOIN_BUFFER_SIZE_MB}" "${_CUR_JOIN_BUFFER_SIZE}" 0
+
+  # Replace the original config file if changes were made
+  if cmp -s "${_TMP_CONFIG_FILE}" "${_CONFIG_FILE}"; then
+    rm "${_TMP_CONFIG_FILE}"
+  else
+    mv "${_TMP_CONFIG_FILE}" "${_CONFIG_FILE}"
+  fi
+}
+
+_update_mysql_config
+
+if [ "${_NEEDS_RESTART}" -eq 1 ]; then
+  echo "Some settings require a MySQL restart to take effect."
+  echo "Invoking /var/xdrago/move_sql.sh to safely restart MySQL."
+  bash /var/xdrago/move_sql.sh
+  wait
+else
+  echo "Settings have been applied dynamically where possible."
+  echo "No restart required."
+fi
+echo "MySQL configuration update completed."
