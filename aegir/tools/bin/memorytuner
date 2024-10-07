@@ -31,8 +31,8 @@ _check_sql_running
 _check_sql_access() {
   if [ -e "/root/.my.pass.txt" ] && [ -e "/root/.my.cnf" ]; then
     _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
-    _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
-    _IS_SYNC_SQL_PSWD=$(grep "${_SQL_PSWD}" /root/.my.cnf 2>&1)
+    _SQL_PSWD=$(echo -n "${_SQL_PSWD}" | tr -d "\n" 2>&1)
+    _IS_SYNC_SQL_PSWD=$(grep "password=${_SQL_PSWD}" /root/.my.cnf 2>&1)
   else
     echo "ALERT: /root/.my.cnf or /root/.my.pass.txt not found."
     echo "ALERT: Please fix this before trying again, giving up."
@@ -40,8 +40,7 @@ _check_sql_access() {
     echo " "
     _clean_pid_exit _check_sql_access_a
   fi
-  if [ -z "${_IS_SYNC_SQL_PSWD}" ] \
-    || [[ ! "${_IS_SYNC_SQL_PSWD}" =~ "password=${_SQL_PSWD}" ]]; then
+  if [ -z "${_IS_SYNC_SQL_PSWD}" ]; then
     echo "ALERT: SQL password is out of sync between"
     echo "ALERT: /root/.my.cnf and /root/.my.pass.txt"
     echo "ALERT: Please fix this before trying again, giving up."
