@@ -19,18 +19,69 @@ my $myip = `cat /root/.found_correct_ipv4.cnf`;
 chomp($myip);
 print "myip is $myip\n";
 
-# Set default parameters based on configuration file existence
-my ($default_critnumber, $default_lines, $default_mode);
+# ==============================
+# Default Configuration Values
+# ==============================
+
+my $NGINX_DOS_LINES = 1999;
+my $NGINX_DOS_LIMIT = 399;
+my $NGINX_DOS_LOG = 'SILENT';
+my $NGINX_DOS_IGNORE = 'doccomment';
+my $NGINX_DOS_STOP = 'foobar';
+my $NGINX_DOS_MODE = 2;
+
+# ==============================
+# Load Configuration File
+# ==============================
+
+my $config_file = '/root/.barracuda.cnf';
+
+if (-e $config_file) {
+  open my $fh, '<', $config_file or die "Could not open '$config_file' $!";
+  while (my $line = <$fh>) {
+    chomp $line;
+    # Skip comments and empty lines
+    next if $line =~ /^\s*#/ || $line =~ /^\s*$/;
+
+    # Parse lines in the form of 'key=value'
+    if ($line =~ /^_NGINX_DOS_LINES=(\d+)/) {
+      my $NGINX_DOS_LINES = $1;
+    }
+    if ($line =~ /^_NGINX_DOS_LIMIT=(\d+)/) {
+      my $NGINX_DOS_LIMIT = $1;
+    }
+    if ($line =~ /^_NGINX_DOS_MODE=(\d+)/) {
+      my $NGINX_DOS_MODE = $1;
+    }
+    if ($line =~ /^_NGINX_DOS_LOG=(\S+)/) {
+      my $NGINX_DOS_LOG = $1;
+    }
+    if ($line =~ /^_NGINX_DOS_IGNORE=(\S+)/) {
+      my $NGINX_DOS_IGNORE = $1;
+    }
+    if ($line =~ /^_NGINX_DOS_STOP=(\S+)/) {
+      my $NGINX_DOS_STOP = $1;
+    }
+  }
+  close $fh;
+}
+
 if (-e "/root/.hr.monitor.cnf") {
-  $default_critnumber = 399;
-  $default_lines = 1999;
-  $default_mode = 1;
+  my $NGINX_DOS_MODE = 1;
 }
 else {
-  $default_critnumber = 399;
-  $default_lines = 1999;
-  $default_mode = 2;
+  my $NGINX_DOS_MODE = 2;
 }
+
+# Precompute increments based on $NGINX_DOS_LIMIT
+my $INC_NUMBER   = int(($NGINX_DOS_LIMIT + 2) / 4);  # Approx division by 4
+my $INC_S_NUMBER = int(($NGINX_DOS_LIMIT + 4) / 8);  # Approx division by 8
+
+# Print the configuration for verification
+print "CONFIG: NGINX_DOS_LIMIT is $NGINX_DOS_LIMIT\n";
+print "CONFIG: NGINX_DOS_LINES is $NGINX_DOS_LINES\n";
+print "CONFIG: INC_NUMBER is $INC_NUMBER\n";
+print "CONFIG: INC_S_NUMBER is $INC_S_NUMBER\n";
 
 # Execute the main action subroutine
 makeactions();
@@ -62,12 +113,12 @@ sub makeactions {
     close ($loc_fh);
   }
 
-  # Read the last $default_lines from access.log
-  my @MYARR = `tail --lines=$default_lines /var/log/nginx/access.log 2>&1`;
+  # Read the last $NGINX_DOS_LINES from access.log
+  my @MYARR = `tail --lines=$NGINX_DOS_LINES /var/log/nginx/access.log 2>&1`;
   chomp(@MYARR);
 
   # Calculate mininumber
-  my $mininumber = $default_critnumber / 3;
+  my $mininumber = $NGINX_DOS_LIMIT / 3;
   print "\n===[$mininumber] mininumber===\n";
 
   foreach my $line (@MYARR) {
@@ -112,14 +163,6 @@ sub makeactions {
     # Process VISITOR if it's a valid public IP
     if (defined $VISITOR && $VISITOR !~ /^(192\.168\.|172\.16\.|10\.|127\.0\.)/ && $VISITOR =~ /^(\d{1,3}\.){3}\d{1,3}$/) {
       chomp($line);
-
-      # Increment counters with proper initialization
-      $li_cnt{$VISITOR} = ($li_cnt{$VISITOR} // 0) + 19 if ($block_unknown > 0);
-      $li_cnt{$VISITOR} = ($li_cnt{$VISITOR} // 0) + 19 if ($line =~ /\" 404 /);
-      $li_cnt{$VISITOR} = ($li_cnt{$VISITOR} // 0) + 19 if ($line =~ /\" 403 /);
-      $li_cnt{$VISITOR} = ($li_cnt{$VISITOR} // 0) + 19 if ($line =~ /\" 500 /);
-      $li_cnt{$VISITOR} = ($li_cnt{$VISITOR} // 0) + 19 if ($line =~ /wp-(content|admin|includes)/);
-      $li_cnt{$VISITOR} = ($li_cnt{$VISITOR} // 0) + 10 if ($line =~ /(POST|GET) \/user\/login/);
 
       # Initialize flags
       my $ignore_admin = 0;
@@ -167,7 +210,16 @@ sub makeactions {
 
         # Additional counter increments based on mode
         if (!$skip_post && !$ignore_admin) {
-          if ($default_mode == 1) {
+
+          # Increment counters with proper initialization
+          $li_cnt{$VISITOR} = ($li_cnt{$VISITOR} // 0) + $INC_NUMBER if ($block_unknown > 0);
+          $li_cnt{$VISITOR} = ($li_cnt{$VISITOR} // 0) + $INC_NUMBER if ($line =~ /\" 404 /);
+          $li_cnt{$VISITOR} = ($li_cnt{$VISITOR} // 0) + $INC_NUMBER if ($line =~ /\" 403 /);
+          $li_cnt{$VISITOR} = ($li_cnt{$VISITOR} // 0) + $INC_NUMBER if ($line =~ /\" 500 /);
+          $li_cnt{$VISITOR} = ($li_cnt{$VISITOR} // 0) + $INC_NUMBER if ($line =~ /wp-(content|admin|includes)/);
+          $li_cnt{$VISITOR} = ($li_cnt{$VISITOR} // 0) + $INC_S_NUMBER if ($line =~ /(POST|GET) \/user\/login/);
+
+          if ($NGINX_DOS_MODE == 1) {
             $li_cnt{$VISITOR} += 5 if ($line =~ /POST/ && $line =~ /(\/user)|(user\/(register|pass|login))|(node\/add)/);
             $li_cnt{$VISITOR} += 3 if ($line =~ /GET/ && $line =~ /node\/add/);
             $li_cnt{$VISITOR} += 5 if ($line =~ /foobar/);
@@ -197,14 +249,6 @@ sub makeactions {
       $PROXY !~ /^(192\.168\.|172\.16\.|10\.|127\.0\.)/ &&
       $PROXY =~ /^(\d{1,3}\.){3}\d{1,3}$/) {
       chomp($line);
-
-      # Increment counters with proper initialization
-      $px_cnt{$PROXY} = ($px_cnt{$PROXY} // 0) + 19 if ($block_unknown > 0);
-      $px_cnt{$PROXY} = ($px_cnt{$PROXY} // 0) + 19 if ($line =~ /\" 404 /);
-      $px_cnt{$PROXY} = ($px_cnt{$PROXY} // 0) + 19 if ($line =~ /\" 403 /);
-      $px_cnt{$PROXY} = ($px_cnt{$PROXY} // 0) + 19 if ($line =~ /\" 500 /);
-      $px_cnt{$PROXY} = ($px_cnt{$PROXY} // 0) + 19 if ($line =~ /wp-(content|admin|includes)/);
-      $px_cnt{$PROXY} = ($px_cnt{$PROXY} // 0) + 10 if ($line =~ /(POST|GET) \/user\/login/);
 
       # Initialize flags
       my $skip_post  = 0;
@@ -252,7 +296,16 @@ sub makeactions {
 
         # Additional counter increments based on mode
         if (!$skip_post && !$ignore_admin) {
-          if ($default_mode == 1) {
+
+          # Increment counters with proper initialization
+          $px_cnt{$PROXY} = ($px_cnt{$PROXY} // 0) + $INC_NUMBER if ($block_unknown > 0);
+          $px_cnt{$PROXY} = ($px_cnt{$PROXY} // 0) + $INC_NUMBER if ($line =~ /\" 404 /);
+          $px_cnt{$PROXY} = ($px_cnt{$PROXY} // 0) + $INC_NUMBER if ($line =~ /\" 403 /);
+          $px_cnt{$PROXY} = ($px_cnt{$PROXY} // 0) + $INC_NUMBER if ($line =~ /\" 500 /);
+          $px_cnt{$PROXY} = ($px_cnt{$PROXY} // 0) + $INC_NUMBER if ($line =~ /wp-(content|admin|includes)/);
+          $px_cnt{$PROXY} = ($px_cnt{$PROXY} // 0) + $INC_S_NUMBER if ($line =~ /(POST|GET) \/user\/login/);
+
+          if ($NGINX_DOS_MODE == 1) {
             $px_cnt{$PROXY} += 5 if ($line =~ /POST/ && $line =~ /(\/user)|(user\/(register|pass|login))|(node\/add)/);
             $px_cnt{$PROXY} += 3 if ($line =~ /GET/ && $line =~ /node\/add/);
             $px_cnt{$PROXY} += 5 if ($line =~ /foobar/);
@@ -279,8 +332,8 @@ sub makeactions {
   foreach my $VISITOR (sort keys %li_cnt) {
     my $thissumar = $li_cnt{$VISITOR};
     $sumar += $thissumar;
-    my $current_critnumber = $default_critnumber;
-    my $current_mininumber = $current_critnumber / 3;
+    my $current_critnumber = $NGINX_DOS_LIMIT;
+    my $current_mininumber = int(($current_critnumber + 1) / 2);  # Approx division by 2
 
     if ($thissumar > $current_mininumber) {
       my $isloggedin = check_who($VISITOR);
@@ -312,8 +365,8 @@ sub makeactions {
   foreach my $PROXY (sort keys %px_cnt) {
     my $thissumarpx = $px_cnt{$PROXY};
     $sumarpx += $thissumarpx;
-    my $current_critnumber = $default_critnumber;
-    my $current_mininumber = $current_critnumber / 3;
+    my $current_critnumber = $NGINX_DOS_LIMIT;
+    my $current_mininumber = int(($current_critnumber + 1) / 2);  # Approx division by 2
 
     if ($thissumarpx > $current_mininumber) {
       my $isloggedin = check_who($PROXY);
@@ -345,8 +398,8 @@ sub makeactions {
   foreach my $VISITOR (sort keys %im_li_cnt) {
     my $thisim_sumar = $im_li_cnt{$VISITOR};
     $im_sumar += $thisim_sumar;
-    my $current_critnumber = $default_critnumber;
-    my $current_mininumber = $current_critnumber / 3;
+    my $current_critnumber = $NGINX_DOS_LIMIT;
+    my $current_mininumber = int(($current_critnumber + 1) / 2);  # Approx division by 2
 
     if ($thisim_sumar > $current_mininumber) {
       my $isloggedin = check_who($VISITOR);
@@ -378,8 +431,8 @@ sub makeactions {
   foreach my $PROXY (sort keys %im_px_cnt) {
     my $thisim_sumarpx = $im_px_cnt{$PROXY};
     $im_sumarpx += $thisim_sumarpx;
-    my $current_critnumber = $default_critnumber;
-    my $current_mininumber = $current_critnumber / 3;
+    my $current_critnumber = $NGINX_DOS_LIMIT;
+    my $current_mininumber = int(($current_critnumber + 1) / 2);  # Approx division by 2
 
     if ($thisim_sumarpx > $current_mininumber) {
       my $isloggedin = check_who($PROXY);
