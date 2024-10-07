@@ -10,6 +10,23 @@ if [ "$EUID" -ne 0 ]; then
   exit 1
 fi
 
+# Function to register failures
+_clean_pid_exit() {
+  echo "REASON ${e} on $(date 2>&1)" >> /root/.memorytuner.exit.exceptions.log
+  exit 1
+}
+
+# Function to check if MySQL server is running
+_check_sql_running() {
+  while [ -z "${_IS_MYSQLD_RUNNING}" ] \
+    || [ ! -e "/run/mysqld/mysqld.sock" ]; do
+    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
+    echo "INFO: Waiting for MySQLD availability..."
+    sleep 5
+  done
+}
+_check_sql_running
+
 # Function to get total system memory in MB
 _get_total_mem_mb() {
   local _mem_kb=$(grep MemTotal /proc/meminfo | awk '{print $2}')
