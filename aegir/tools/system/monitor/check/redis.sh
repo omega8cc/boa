@@ -63,7 +63,7 @@ _redis_restart() {
   wait
   echo "$(date 2>&1) $1 incident redis-server restarted" >> ${_pthOml}
   if [[ "${1}" =~ "OOM" ]] || [[ "${1}" =~ "SLOW" ]]; then
-    _fpm_reload
+    _fpm_reload "$1"
   fi
   echo "$(date 2>&1) $1 incident response completed" >> ${_pthOml}
   _incident_email_report "$1"
@@ -75,7 +75,7 @@ _redis_restart() {
 _redis_bind_check_fix() {
   if [ `tail --lines=8 /var/log/redis/redis-server.log \
     | grep --count "Address already in use"` -gt "0" ]; then
-    _thisErrLog="$(date 2>&1) RedisException BIND detected, service restarted"
+    _thisErrLog="$(date 2>&1) RedisException BIND detected, service will be restarted"
     echo ${_thisErrLog} >> ${_pthOml}
     _redis_restart "Redis BIND"
   fi
@@ -84,7 +84,7 @@ _redis_bind_check_fix() {
 _redis_oom_check_fix() {
   if [ `tail --lines=500 /var/log/php/error_log_* \
     | grep --count "RedisException"` -gt "0" ]; then
-    _thisErrLog="$(date 2>&1) RedisException OOM detected, service restarted"
+    _thisErrLog="$(date 2>&1) RedisException OOM detected, service will be restarted"
     echo ${_thisErrLog} >> ${_pthOml}
     _redis_restart "Redis OOM"
   fi
@@ -93,7 +93,7 @@ _redis_oom_check_fix() {
 _redis_slow_check_fix() {
   if [ `tail --lines=500 /var/log/php/fpm-*-slow.log \
     | grep --count "PhpRedis.php"` -gt "5" ]; then
-    _thisErrLog="$(date 2>&1) Slow PhpRedis detected, service restarted"
+    _thisErrLog="$(date 2>&1) Slow PhpRedis detected, service will be restarted"
     echo ${_thisErrLog} >> ${_pthOml}
     _redis_restart "Redis SLOW"
   fi
