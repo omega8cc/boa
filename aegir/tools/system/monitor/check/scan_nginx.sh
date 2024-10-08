@@ -7,7 +7,7 @@
 # Exit if more than 2 instances of the script are running
 if (( $(pgrep -fc 'scan_nginx.sh') > 2 )); then
   # Optional: Log too many instances
-  # echo "Too many scan_nginx.sh running $(date)" >> /var/xdrago/log/too.many.log
+  echo "Too many scan_nginx.sh running $(date)" >> /var/xdrago/log/too.many.log
   exit 0
 fi
 
@@ -38,17 +38,17 @@ _MYIP=$(< /root/.found_correct_ipv4.cnf)
 # Default Configuration Values
 # ==============================
 
-# Default max allowed number for blocking (positive integer)
-_NGINX_DOS_LIMIT=399
-
 # Default number of lines to process from access.log (positive integer)
 _NGINX_DOS_LINES=1999
+
+# Default max allowed number for blocking (positive integer)
+_NGINX_DOS_LIMIT=399
 
 # Default mode (1 or 2)
 _NGINX_DOS_MODE=2
 
-# Default logging mode, can be SILENT (none) or VERBOSE
-_NGINX_DOS_LOG="SILENT"
+# Default logging mode, can be SILENT (none), NORMAL or VERBOSE
+_NGINX_DOS_LOG=SILENT
 
 # Default exclude keywords (empty by default; 'doccomment' will be used if not overridden)
 _NGINX_DOS_IGNORE="doccomment"
@@ -98,14 +98,32 @@ fi
 # ==============================
 
 # Function for logging in verbose mode
-# _verbose_log _log_details _log_reason
 _verbose_log() {
-  if [[ -e "/root/.debug.monitor.log.cnf" || "${_NGINX_DOS_LOG}" =~ VERBOSE ]]; then
-    if [[ "${1}" =~ Counter ]]; then
-      echo "$(date) ${1} REASON: ${2}" >> /var/log/scan_nginx_flood_debug.log
+  local _reason="${1}"
+  local _message="${2}"
+  local _timestamp
+  local _log_file
+
+  # Define log file paths
+  local _general_log="/var/log/scan_nginx_debug.log"
+  local _flood_log="/var/log/scan_nginx_flood_debug.log"
+  local _admin_log="/var/log/scan_nginx_admin_debug.log"
+
+  # Check if logging is enabled
+  if [[ -e "/root/.debug.monitor.log.cnf" || "${_NGINX_DOS_LOG}" =~ ^(NORMAL|VERBOSE)$ ]]; then
+    if [[ "${_reason}" =~ Counter && "${_NGINX_DOS_LOG}" =~ VERBOSE ]]; then
+      _log_file="${_flood_log}"
+    elif [[ "${_reason}" =~ "Admin URI To Ignore" && "${_NGINX_DOS_LOG}" =~ VERBOSE ]]; then
+      _log_file="${_admin_log}"
     else
-      echo "$(date) ${1} REASON: ${2}" >> /var/log/scan_nginx_debug.log
+      _log_file="${_general_log}"
     fi
+
+    # Generate timestamp
+    _timestamp=$(date)
+
+    # Write to the appropriate log file using printf
+    printf "%s %s REASON: %s\n" "${_timestamp}" "${_reason}" "${_message}" >> "${_log_file}"
   fi
 }
 
@@ -216,12 +234,41 @@ _block_ip() {
   # Add the blocked IP to _BANNED_IPS to prevent duplicates within the same run
   _BANNED_IPS["${_IP}"]=1
 
-  # Block the IP using csf
-  if [[ -x "/usr/sbin/csf" && ! -e "/var/xdrago/guest-fire.sh" ]]; then
-    /usr/sbin/csf -td "${_IP}" 3600 -p 80
+  # Block the IP using csf instantly but only for 15 minutes initially
+  # this can be extended up to 1 hour once guest-fire.sh notices the IP
+  # still present in /var/xdrago/monitor/log/web.log but no longer blocked
+  if [[ -x "/usr/sbin/csf" ]]; then
+    /usr/sbin/csf -td "${_IP}" 900 -p 80
+    /usr/sbin/csf -td "${_IP}" 900 -p 443
   fi
+}
 
-
+# Function to increment counters based on specific suspicious log patterns
+_if_increment_counters() {
+  if [[ "${_IP}" = "unknown" ]]; then
+    (( _COUNTERS["${_IP}"] += _INC_NUMBER ))
+    _verbose_log "Counter++ for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "unknown"
+  fi
+  if [[ "${_line}" =~ '" 404' ]]; then
+    (( _COUNTERS["${_IP}"] += _INC_NUMBER ))
+    _verbose_log "Counter++ for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "404 flood protection"
+  fi
+  if [[ "${_line}" =~ '" 403' ]]; then
+    (( _COUNTERS["${_IP}"] += _INC_NUMBER ))
+    _verbose_log "Counter++ for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "403 flood protection"
+  fi
+  if [[ "${_line}" =~ '" 500' ]]; then
+    (( _COUNTERS["${_IP}"] += _INC_NUMBER ))
+    _verbose_log "Counter++ for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "500 flood protection"
+  fi
+  if [[ "${_line}" =~ wp-(content|admin|includes) ]]; then
+    (( _COUNTERS["${_IP}"] += _INC_NUMBER ))
+    _verbose_log "Counter++ for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "wp-x flood protection"
+  fi
+  if [[ "${_line}" =~ "(POST|GET) /user/login" ]]; then
+    (( _COUNTERS["${_IP}"] += _INC_S_NUMBER ))
+    _verbose_log "Counter++ for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "/user/login flood protection"
+  fi
 }
 
 # Function to process each IP
@@ -264,32 +311,6 @@ _process_ip() {
     (( _COUNTERS["${_IP}"]++ ))
   else
     _COUNTERS["${_IP}"]=1
-  fi
-
-  # Increment counters based on specific suspicious log patterns
-  if [[ "${_IP}" = "unknown" ]]; then
-    (( _COUNTERS["${_IP}"] += _INC_NUMBER ))
-    _verbose_log "Counter++ for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "unknown"
-  fi
-  if [[ "${_line}" =~ '" 404' ]]; then
-    (( _COUNTERS["${_IP}"] += _INC_NUMBER ))
-    _verbose_log "Counter++ for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "404 flood protection"
-  fi
-  if [[ "${_line}" =~ '" 403' ]]; then
-    (( _COUNTERS["${_IP}"] += _INC_NUMBER ))
-    _verbose_log "Counter++ for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "403 flood protection"
-  fi
-  if [[ "${_line}" =~ '" 500' ]]; then
-    (( _COUNTERS["${_IP}"] += _INC_NUMBER ))
-    _verbose_log "Counter++ for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "500 flood protection"
-  fi
-  if [[ "${_line}" =~ wp-(content|admin|includes) ]]; then
-    (( _COUNTERS["${_IP}"] += _INC_NUMBER ))
-    _verbose_log "Counter++ for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "wp-x flood protection"
-  fi
-  if [[ "${_line}" =~ "(POST|GET) /user/login" ]]; then
-    (( _COUNTERS["${_IP}"] += _INC_S_NUMBER ))
-    _verbose_log "Counter++ for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "/user/login flood protection"
   fi
 
   # Define lines to check
@@ -348,12 +369,23 @@ _process_ip() {
       return
     fi
 
+    # Check if the IP is present in the csf.allow list early
+    _FF_TEST=$(grep -E "^tcp\|in\|d=80\|s=${_IP}\b" "/etc/csf/csf.allow")
+
+    # Determine if the IP is allowed or needs to be denied early
+    if [[ "${_FF_TEST}" =~ ${_IP} ]]; then
+      return
+    fi
+
     # Increment counter if not excluded
     (( _COUNTERS["${_IP}"]++ ))
   fi
 
   # Additional counting based on mode
   if [[ "${_SKIP_POST}" -eq 0 || "${_IGNORE_ADMIN}" -eq 0 ]]; then
+
+    _if_increment_counters
+
     if [[ "${_NGINX_DOS_MODE}" -eq 1 ]]; then
       if [[ "${_line}" =~ POST && "${_line}" =~ (/user|user/(register|pass|login)|node/add) ]]; then
         (( _COUNTERS["${_IP}"] += 5 ))
@@ -433,9 +465,9 @@ _handle_blocking() {
 # Load banned IPs from web.log into associative array
 _WEB_LOG="/var/xdrago/monitor/log/web.log"
 if [[ -e "${_WEB_LOG}" ]]; then
-  while IFS= read -r line; do
+  while IFS= read -r _line; do
     # Extract IP before any space or comment
-    _ip="${line%% *}"
+    _ip="${_line%% *}"
     # Clean IP
     _ip="${_ip//[^0-9.]/}"
     if [[ -n "${_ip}" ]]; then
@@ -447,8 +479,8 @@ fi
 # Load allowed local IPs into associative array
 _LOCAL_IP_LIST="/root/.local.IP.list"
 if [[ -e "${_LOCAL_IP_LIST}" ]]; then
-  while IFS= read -r line; do
-    _ip="${line%% *}"
+  while IFS= read -r _line; do
+    _ip="${_line%% *}"
     _ip="${_ip//[^0-9.]/}"
     if [[ -n "${_ip}" ]]; then
       _ALLOWED_IPS["${_ip}"]=1
@@ -494,9 +526,9 @@ while IFS= read -r _line <&3; do
 
   # Extract valid IPs using Bash's regex
   _IP_LIST=()
-  for ip_candidate in "${_ip_array[@]}"; do
-    if [[ "${ip_candidate}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
-      _IP_LIST+=("${ip_candidate}")
+  for _ip_candidate in "${_ip_array[@]}"; do
+    if [[ "${_ip_candidate}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
+      _IP_LIST+=("${_ip_candidate}")
     fi
   done
 
