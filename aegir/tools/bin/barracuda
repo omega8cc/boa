@@ -945,14 +945,14 @@ _up_action() {
           touch /run/boa_system_wait.pid
           if [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
             && [ -d "/var/aegir/config/server_master/nginx/subdir.d" ]; then
-            sed -i "s/^_SYSTEM_U.*/_SYSTEM_UP_ONLY=YES/g" ${_vBs}/${_filIncB}
+            sed -i "s/^_SYSTEM_UP.*/_SYSTEM_UP_ONLY=YES/g"   ${_vBs}/${_filIncB}
             wait
-            sed -i "s/^_SYSTEM_U.*/_SYSTEM_UP_ONLY=YES/g"             ${_barCnf}
+            sed -i "s/^_SYSTEM_UP.*/_SYSTEM_UP_ONLY=YES/g"            ${_barCnf}
             wait
           else
-            sed -i "s/^_SYSTEM_U.*/_SYSTEM_UP_ONLY=NO/g"     ${_vBs}/${_filIncB}
+            sed -i "s/^_SYSTEM_UP.*/_SYSTEM_UP_ONLY=NO/g"    ${_vBs}/${_filIncB}
             wait
-            sed -i "s/^_SYSTEM_U.*/_SYSTEM_UP_ONLY=NO/g"              ${_barCnf}
+            sed -i "s/^_SYSTEM_UP.*/_SYSTEM_UP_ONLY=NO/g"             ${_barCnf}
             wait
           fi
           sed -i "s/^_AEGIR_UP.*/_AEGIR_UPGRADE_ONLY=NO/g"   ${_vBs}/${_filIncB}
@@ -963,9 +963,9 @@ _up_action() {
           wait
           _check_report
         elif [ "${_outP}" = "log" ]; then
-          sed -i "s/^_SYSTEM_U.*/_SYSTEM_UP_ONLY=NO/g"       ${_vBs}/${_filIncB}
+          sed -i "s/^_SYSTEM_UP.*/_SYSTEM_UP_ONLY=NO/g"      ${_vBs}/${_filIncB}
           wait
-          sed -i "s/^_SYSTEM_U.*/_SYSTEM_UP_ONLY=NO/g"                ${_barCnf}
+          sed -i "s/^_SYSTEM_UP.*/_SYSTEM_UP_ONLY=NO/g"               ${_barCnf}
           wait
           sed -i "s/^_AEGIR_UP.*/_AEGIR_UPGRADE_ONLY=NO/g"   ${_vBs}/${_filIncB}
           wait
@@ -975,9 +975,9 @@ _up_action() {
           wait
           _check_report
         elif [ "${_outP}" = "aegir" ]; then
-          sed -i "s/^_SYSTEM_U.*/_SYSTEM_UP_ONLY=NO/g"       ${_vBs}/${_filIncB}
+          sed -i "s/^_SYSTEM_UP.*/_SYSTEM_UP_ONLY=NO/g"      ${_vBs}/${_filIncB}
           wait
-          sed -i "s/^_SYSTEM_U.*/_SYSTEM_UP_ONLY=NO/g"                ${_barCnf}
+          sed -i "s/^_SYSTEM_UP.*/_SYSTEM_UP_ONLY=NO/g"               ${_barCnf}
           wait
           sed -i "s/^_AEGIR_UP.*/_AEGIR_UPGRADE_ONLY=YES/g"  ${_vBs}/${_filIncB}
           wait
@@ -1000,9 +1000,9 @@ _up_action() {
           wait
         fi
       else
-        sed -i "s/^_SYSTEM_U.*/_SYSTEM_UP_ONLY=NO/g"         ${_vBs}/${_filIncB}
+        sed -i "s/^_SYSTEM_UP.*/_SYSTEM_UP_ONLY=NO/g"        ${_vBs}/${_filIncB}
         wait
-        sed -i "s/^_SYSTEM_U.*/_SYSTEM_UP_ONLY=NO/g"                  ${_barCnf}
+        sed -i "s/^_SYSTEM_UP.*/_SYSTEM_UP_ONLY=NO/g"                 ${_barCnf}
         wait
         sed -i "s/^_AEGIR_UP.*/_AEGIR_UPGRADE_ONLY=NO/g"     ${_vBs}/${_filIncB}
         wait

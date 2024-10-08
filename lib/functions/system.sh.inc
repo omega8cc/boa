@@ -1976,7 +1976,7 @@ _barracuda_cnf() {
 
     echo "###"                                                >> ${_barCnf}
     echo "_AEGIR_UPGRADE_ONLY=${_AEGIR_UPGRADE_ONLY}"         >> ${_barCnf}
-    echo "_SYSTEM_UP_ONLY=${_SYSTEM_UP_ONLY}"       >> ${_barCnf}
+    echo "_SYSTEM_UP_ONLY=${_SYSTEM_UP_ONLY}"                 >> ${_barCnf}
     echo "###"                                                >> ${_barCnf}
     _CHECK_HOST=$(uname -n 2>&1)
     ### Force HTTP/2 or SPDY plus PFS on supported systems
@@ -1999,19 +1999,19 @@ _barracuda_cnf() {
     wait
     sed -i "s/^_LOCAL_DEBIAN_.*/_LOCAL_DEBIAN_MIRROR=${_debM}/g"  ${_barCnf}
     wait
-    sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"     ${_barCnf}
+    sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"      ${_barCnf}
     wait
-    sed -i "s/^_STRICT_BIN_.*/_STRICT_BIN_PERMISSIONS=YES/g"     ${_barCnf}
+    sed -i "s/^_STRICT_BIN_.*/_STRICT_BIN_PERMISSIONS=YES/g"      ${_barCnf}
     wait
-    sed -i "s/^_STRONG_PASS.*/_STRONG_PASSWORDS=YES/g"           ${_barCnf}
+    sed -i "s/^_STRONG_PASS.*/_STRONG_PASSWORDS=YES/g"            ${_barCnf}
     wait
-    sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g"       ${_barCnf}
+    sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g"        ${_barCnf}
     wait
     sed -i "s/^_FORCE_GIT_.*/_FORCE_GIT_MIRROR=\"\"/g" /root/.*.octopus.cnf &> /dev/null
     wait
     sed -i "s/^_STRONG_PASS.*/_STRONG_PASSWORDS=YES/g" /root/.*.octopus.cnf &> /dev/null
     wait
-    sed -i "s/^_REDIS_LISTEN.*/_REDIS_LISTEN_MODE=SOCKET/g"      ${_barCnf}
+    sed -i "s/^_REDIS_LISTEN.*/_REDIS_LISTEN_MODE=SOCKET/g"       ${_barCnf}
     wait
     if [ "${_OS_CODE}" = "stretch" ] || [ "${_OS_CODE}" = "jessie" ]; then
       if [ -x "/opt/php74/bin/php" ]; then
