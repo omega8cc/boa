@@ -49,7 +49,7 @@ _if_fix_iptables_symlinks() {
 #
 # Re-install curl if broken.
 _if_reinstall_curl_src() {
-  _CURL_VRN=8.9.1
+  _CURL_VRN=8.10.1
   if ! command -v lsb_release &> /dev/null; then
     apt-get update -qq &> /dev/null
     apt-get install lsb-release -y -qq &> /dev/null

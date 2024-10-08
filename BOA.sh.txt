@@ -2663,7 +2663,7 @@ _check_and_move() {
 }
 
 _if_reinstall_curl() {
-  _CURL_VRN=8.9.1
+  _CURL_VRN=8.10.1
   _CURL_INSTALL_REQUIRED=NO
   if ! command -v lsb_release &> /dev/null; then
     apt-get update -qq &> /dev/null

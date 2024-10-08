@@ -41,7 +41,7 @@ _CGP_VRN=master-22-07-2020
 _CHIVE_VRN=1.3
 _COMPOSER_VRN=2.7.9
 _CSF_VRN=14.21
-_CURL_VRN=8.9.1
+_CURL_VRN=8.10.1
 _DB_SRC=repo.percona.com
 ###
 ###
