@@ -62,7 +62,7 @@ _NGINX_DOS_DIV_INC_S_NR=$(( _NGINX_DOS_DIV_INC_NR * 2 ))
 _NGINX_DOS_INC_MIN=3
 
 # Default logging mode, can be SILENT (none), NORMAL or VERBOSE
-_NGINX_DOS_LOG=SILENT
+_NGINX_DOS_LOG=VERBOSE
 
 # Default exclude keywords (empty by default; 'doccomment' will be used if not overridden)
 _NGINX_DOS_IGNORE="doccomment"
