@@ -7,7 +7,7 @@ export tRee=pro
 
 barCnf="/root/.barracuda.cnf"
 
-_X_SE=540proT02
+_X_SE=540proT03
 
 # Define default values
 _DEFAULT_CPU_CRIT_RATIO="3.9"
