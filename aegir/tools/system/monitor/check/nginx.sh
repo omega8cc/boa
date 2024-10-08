@@ -7,7 +7,7 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 _pthOml="/var/xdrago/log/nginx.incident.log"
 _monPath="/var/xdrago/monitor/check"
 
-check_root() {
+_check_root() {
   if [ `whoami` = "root" ]; then
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
     chmod a+w /dev/null
@@ -16,7 +16,7 @@ check_root() {
     exit 1
   fi
 }
-check_root
+_check_root
 
 export _B_NICE=${_B_NICE//[^0-9]/}
 : "${_B_NICE:=10}"
@@ -24,20 +24,20 @@ export _B_NICE=${_B_NICE//[^0-9]/}
 export _INCIDENT_EMAIL_REPORT=${_INCIDENT_EMAIL_REPORT//[^A-Z]/}
 : "${_INCIDENT_EMAIL_REPORT:=YES}"
 
-if [ $(pgrep -f nginx.sh | grep -v "^$$" | wc -l) -gt 4 ]; then
-  echo "Too many nginx.sh running $(date 2>&1)" >> /var/xdrago/log/too.many.log
+if (( $(pgrep -fc 'nginx.sh') > 2 )); then
+  echo "Too many nginx.sh running $(date)" >> /var/xdrago/log/too.many.log
   exit 0
 fi
 
 _incident_email_report() {
   if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_EMAIL_REPORT}" = "YES" ]; then
-    hName=$(cat /etc/hostname 2>&1)
+    _hName=$(cat /etc/hostname 2>&1)
     echo "Sending Incident Report Email on $(date 2>&1)" >> ${_pthOml}
-    s-nail -s "Incident Report: ${1} on ${hName} at $(date 2>&1)" ${_MY_EMAIL} < ${_pthOml}
+    s-nail -s "Incident Report: ${1} on ${_hName} at $(date 2>&1)" ${_MY_EMAIL} < ${_pthOml}
   fi
 }
 
-restart_nginx() {
+_restart_nginx() {
   touch /run/boa_run.pid
   sleep 3
   echo "$(date 2>&1) NGX $1 detected" >> ${_pthOml}
@@ -62,28 +62,27 @@ restart_nginx() {
   exit 0
 }
 
-nginx_oom_detection() {
+_nginx_oom_detection() {
   if [ -e "/var/log/nginx/error.log" ]; then
     if [ `tail --lines=500 /var/log/nginx/error.log \
       | grep --count "Cannot allocate memory"` -gt "0" ]; then
-      thisErrLog="$(date 2>&1) Nginx OOM"
-      echo ${thisErrLog} >> ${_pthOml}
-      restart_nginx "Nginx OOM"
+      _thisErrLog="$(date 2>&1) Nginx OOM"
+      echo ${_thisErrLog} >> ${_pthOml}
+      _restart_nginx "Nginx OOM"
     fi
   fi
 }
 
-
-nginx_bind_check_fix() {
+_nginx_bind_check_fix() {
   if [ `tail --lines=8 /var/log/nginx/error.log \
     | grep --count "Address already in use"` -gt "0" ]; then
-    thisErrLog="$(date 2>&1) Nginx BIND"
-    echo ${thisErrLog} >> ${_pthOml}
-    restart_nginx "Nginx BIND"
+    _thisErrLog="$(date 2>&1) Nginx BIND"
+    echo ${_thisErrLog} >> ${_pthOml}
+    _restart_nginx "Nginx BIND"
   fi
 }
 
-nginx_heatlh_check_fix() {
+_nginx_heatlh_check_fix() {
   # Initialize a flag to indicate whether Nginx service has been restarted
   _NGINX_RESTARTED=false
   # Check if Nginx is running and capture the process details
@@ -95,7 +94,7 @@ nginx_heatlh_check_fix() {
       echo "Multiple Nginx master processes detected. Possible stuck processes."
       echo "$(date 2>&1) NGX multiple master processes detected" >> ${_pthOml}
       echo "$(date 2>&1) NGX ${_NGINX_PROCESSES}" >> ${_pthOml}
-      restart_nginx "_MASTER_COUNT ${_MASTER_COUNT}"
+      _restart_nginx "_MASTER_COUNT ${_MASTER_COUNT}"
     fi
   fi
   # Check the state of the master process
@@ -107,7 +106,7 @@ nginx_heatlh_check_fix() {
       echo "Nginx master process is in an abnormal state: ${_MASTER_STATE}."
       echo "$(date 2>&1) NGX master process is in an abnormal state: ${_MASTER_STATE}" >> ${_pthOml}
       echo "$(date 2>&1) NGX ${_NGINX_PROCESSES}" >> ${_pthOml}
-      restart_nginx "_MASTER_STATE ${_MASTER_STATE}"
+      _restart_nginx "_MASTER_STATE ${_MASTER_STATE}"
     fi
   fi
   # Check the state of the worker processes
@@ -118,7 +117,7 @@ nginx_heatlh_check_fix() {
       echo "Nginx worker process is in an abnormal state: ${_WORKER_STATE}."
       echo "$(date 2>&1) NGX worker process is in an abnormal state: ${_WORKER_STATE}" >> ${_pthOml}
       echo "$(date 2>&1) NGX ${_NGINX_PROCESSES}" >> ${_pthOml}
-      restart_nginx "_WORKER_STATE ${_WORKER_STATE}"
+      _restart_nginx "_WORKER_STATE ${_WORKER_STATE}"
     fi
   fi
   # Final status message
@@ -130,28 +129,28 @@ nginx_heatlh_check_fix() {
   fi
 }
 
-if_nginx_restart() {
-  PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
-  PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
-  PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
+_if_nginx_restart() {
+  _PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
+  _PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
+  _PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
   ReTest=$(ls /data/disk/*/static/control/run-nginx-restart.pid | wc -l 2>&1)
-  if [[ "${PrTestPower}" =~ "POWER" ]] \
-    || [[ "${PrTestPhantom}" =~ "PHANTOM" ]] \
-    || [[ "${PrTestCluster}" =~ "CLUSTER" ]] \
+  if [[ "${_PrTestPower}" =~ "POWER" ]] \
+    || [[ "${_PrTestPhantom}" =~ "PHANTOM" ]] \
+    || [[ "${_PrTestCluster}" =~ "CLUSTER" ]] \
     || [ -e "/root/.allow.nginx.restart.cnf" ]; then
     if [ "${ReTest}" -ge "1" ]; then
       rm -f /data/disk/*/static/control/run-nginx-restart.pid
-      thisErrLog="$(date 2>&1) Nginx Server Restart Requested"
-      echo ${thisErrLog} >> ${_pthOml}
-      restart_nginx "Nginx Server Restart Requested"
+      _thisErrLog="$(date 2>&1) Nginx Server Restart Requested"
+      echo ${_thisErrLog} >> ${_pthOml}
+      _restart_nginx "Nginx Server Restart Requested"
     fi
   fi
 }
 
-nginx_bind_check_fix
-nginx_oom_detection
-nginx_heatlh_check_fix
-[ -d "/data/u" ] && if_nginx_restart
+_nginx_bind_check_fix
+_nginx_oom_detection
+_nginx_heatlh_check_fix
+[ -d "/data/u" ] && _if_nginx_restart
 
 if [ ! -e "/root/.high_traffic.cnf" ] \
   && [ ! -e "/root/.giant_traffic.cnf" ]; then
@@ -159,14 +158,17 @@ if [ ! -e "/root/.high_traffic.cnf" ] \
 fi
 
 # Main execution
-for _iteration in {1..12}; do
-  echo "----------------------------"
-  echo "Iteration ${_iteration}:"
-  [ -f "${_monPath}/scan_nginx.pl" ] && perl ${_monPath}/scan_nginx.pl &
-  sleep 1
-  [ -f "${_monPath}/scan_nginx.sh" ] && bash ${_monPath}/scan_nginx.sh &
-  sleep 4
-done
+if [ -f "${_monPath}/scan_nginx.sh" ]; then
+  for _iteration in {1..4}; do
+    bash ${_monPath}/scan_nginx.sh &
+    sleep 12
+  done
+elif [ -f "${_monPath}/scan_nginx.pl" ]; then
+  for _iteration in {1..10}; do
+    perl ${_monPath}/scan_nginx.pl &
+    sleep 5
+  done
+fi
 
 echo "Done!"
 exit 0
