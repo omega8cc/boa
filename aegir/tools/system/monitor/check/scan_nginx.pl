@@ -224,9 +224,9 @@ sub makeactions {
             $li_cnt{$VISITOR} += 3 if ($line =~ /GET/ && $line =~ /node\/add/);
             $li_cnt{$VISITOR} += 5 if ($line =~ /foobar/);
           }
-          else {
-            $li_cnt{$VISITOR} += 1 if ($line =~ /POST/);
-          }
+#           else {
+#             $li_cnt{$VISITOR} += 1 if ($line =~ /POST/);
+#           }
         }
       }
       else {
@@ -310,9 +310,9 @@ sub makeactions {
             $px_cnt{$PROXY} += 3 if ($line =~ /GET/ && $line =~ /node\/add/);
             $px_cnt{$PROXY} += 5 if ($line =~ /foobar/);
           }
-          else {
-            $px_cnt{$PROXY} += 1 if ($line =~ /POST/);
-          }
+#           else {
+#             $px_cnt{$PROXY} += 1 if ($line =~ /POST/);
+#           }
         }
       }
       else {
