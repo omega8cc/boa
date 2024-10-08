@@ -22,6 +22,8 @@ _LOCK_DOS_PID="/var/xdrago/log/.sync_scan_nginx.ctrl.${_tRee}.${_xSrl}.pid"
 _DEFAULT_NGINX_DOS_LINES=1999
 _DEFAULT_NGINX_DOS_LIMIT=399
 _DEFAULT_NGINX_DOS_MODE=2
+_DEFAULT_NGINX_DOS_DIV_INC_NR=40
+_DEFAULT_NGINX_DOS_INC_MIN=3
 _DEFAULT_NGINX_DOS_LOG=SILENT
 _DEFAULT_NGINX_DOS_IGNORE="doccomment"
 _DEFAULT_NGINX_DOS_STOP="foobar"
@@ -399,6 +401,8 @@ if [ -e "/var/aegir/drush" ]; then
       _update_conf_variable "_NGINX_DOS_LINES" "${_DEFAULT_NGINX_DOS_LINES}" "${_barCnf}"
       _update_conf_variable "_NGINX_DOS_LIMIT" "${_DEFAULT_NGINX_DOS_LIMIT}" "${_barCnf}"
       _update_conf_variable "_NGINX_DOS_MODE" "${_DEFAULT_NGINX_DOS_MODE}" "${_barCnf}"
+      _update_conf_variable "_NGINX_DOS_DIV_INC_NR" "${_DEFAULT_NGINX_DOS_DIV_INC_NR}" "${_barCnf}"
+      _update_conf_variable "_NGINX_DOS_INC_MIN" "${_DEFAULT_NGINX_DOS_INC_MIN}" "${_barCnf}"
       _update_conf_variable "_NGINX_DOS_LOG" "${_DEFAULT_NGINX_DOS_LOG}" "${_barCnf}"
       _update_conf_variable "_NGINX_DOS_IGNORE" "${_DEFAULT_NGINX_DOS_IGNORE}" "${_barCnf}"
       _update_conf_variable "_NGINX_DOS_STOP" "${_DEFAULT_NGINX_DOS_STOP}" "${_barCnf}"
