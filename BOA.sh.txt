@@ -2722,28 +2722,6 @@ _if_reinstall_curl() {
     mv -f /usr/lib/x86_64-linux-gnu/libcurl.a ${_bkLibcurlPre}/ &> /dev/null
   fi
 
-  _CURL_ITD=$(curl --version 2>&1 \
-    | tr -d "\n" \
-    | cut -d" " -f2 \
-    | awk '{ print $1}' 2>&1)
-  _CURL_SSL_ITD=$(curl --version 2>&1 \
-    | tr -d "\n" \
-    | cut -d" " -f5 \
-    | awk '{ print $1}' \
-    | cut -d"/" -f2 \
-    | awk '{ print $1}' 2>&1)
-  _CURL_LIB_ITD=$(curl --version 2>&1 \
-    | tr -d "\n" \
-    | cut -d" " -f4 \
-    | awk '{ print $1}' \
-    | cut -d"/" -f2 \
-    | awk '{ print $1}' 2>&1)
-
-  if [ "${_CURL_ITD}" != "${_CURL_VRN}" ] && [ -e "/var/aegir/drush" ]; then
-    _CURL_INSTALL_REQUIRED=YES
-    echo "INFO: Installed cURL/lib ${_CURL_ITD}/${_CURL_LIB_ITD}, upgrade required"
-  fi
-
   _isCurl=$(curl --version 2>&1)
   if [[ ! "${_isCurl}" =~ "OpenSSL" ]] \
     || [[ "${_isCurl}" =~ "libcurl.so.4" ]] \
@@ -2802,12 +2780,12 @@ _if_reinstall_curl() {
         ldconfig 2> /dev/null
       fi
     fi
-    if [ -x "/usr/local/bin/curl" ]; then
+    if [ -x "/usr/local/bin/curl" ] && [ -e "/var/aegir/drush" ]; then
       _CURL_ITD=$(/usr/local/bin/curl --version 2>&1 \
         | tr -d "\n" \
         | cut -d" " -f2 \
         | awk '{ print $1}' 2>&1)
-      if [ "${_CURL_ITD}" != "${_CURL_VRN}" ]; then
+      if [[ ! "${_CURL_ITD}" =~ OpenSSL ]]; then
         echo "ERRR: /usr/local/bin/curl is broken"
         echo "ERRR: Please install cURL and debug manually"
       else
