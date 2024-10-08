@@ -240,13 +240,17 @@ declare -A _services_pidfiles=(
 # Define estimated memory usage for services (in MB)
 declare -A _service_estimated_mem_mb=(
   ["nginx"]=100
-  ["php74-fpm"]=500
-  ["php81-fpm"]=500
-  ["php82-fpm"]=500
-  ["php83-fpm"]=500
-  ["redis"]=100
-  ["java"]=500
+  ["php74-fpm"]=200
+  ["php81-fpm"]=200
+  ["php82-fpm"]=200
+  ["php83-fpm"]=200
+  ["redis"]=200
+  ["java"]=100
 )
+
+# Ensure _TOTAL_MEM_MB is set by default to 75% of available RAM
+_MAX_MEM_MB="${_TOTAL_MEM_MB}"
+_TOTAL_MEM_MB=$(echo "(${_TOTAL_MEM_MB} * 75) / 100" | bc)
 
 # Threshold for uptime (e.g., 1 hour = 3600 seconds)
 _UPTIME_THRESHOLD=3600
@@ -309,13 +313,18 @@ if ! [[ "${_TOTAL_OTHER_SERVICES_MEM_MB}" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
   _TOTAL_OTHER_SERVICES_MEM_MB=0
 fi
 
-# Calculate available memory for MySQL
-_AVA_MEM_FOR_MYSQL_MB=$(echo "${_TOTAL_MEM_MB} - ${_TOTAL_OTHER_SERVICES_MEM_MB}" | bc)
+# Calculate max memory for MySQL
+_MAX_MEM_FOR_MYSQL_MB=$(echo "${_TOTAL_MEM_MB} - ${_TOTAL_OTHER_SERVICES_MEM_MB}" | bc)
 
-echo "Memory available for all services: ${_TOTAL_MEM_MB} MB"
+# Ensure _AVA_MEM_FOR_MYSQL_MB is set by default to 75% of _MAX_MEM_FOR_MYSQL_MB
+_AVA_MEM_FOR_MYSQL_MB=$(echo "(${_MAX_MEM_FOR_MYSQL_MB} * 75) / 100" | bc)
+
+echo "Max raw RAM available: ${_MAX_MEM_MB} MB"
+echo "Memory safely available for all services: ${_TOTAL_MEM_MB} MB"
 echo "Memory actually used by other services now: ${_TOTAL_OTHER_SERVICES_MEM_MB} MB"
 echo "Memory actually used by MySQL now: ${_MYSQL_MEM_MB} MB"
 echo "Memory available for MySQL theoretically: ${_AVA_MEM_FOR_MYSQL_MB} MB"
+echo "Max RAM available for MySQL: ${_MAX_MEM_FOR_MYSQL_MB} MB"
 
 # Safety check: Ensure there's enough memory for MySQL
 _MIN_MYSQL_MEM_MB=1024  # Minimum memory required for MySQL in MB
@@ -420,14 +429,14 @@ _MAX_POS_CONS=$(echo "${_AVA_MEM_FOR_MYSQL_MB} / ${_EST_MEM_PER_CON_MB}" | bc)
 
 # Ensure _MAX_POS_CONS is valid
 if ! [[ "${_MAX_POS_CONS}" =~ ^[0-9]+$ ]]; then
-  _MAX_POS_CONS=100
+  _MAX_POS_CONS=25
 fi
 
 # Ensure max_connections is not set unreasonably high
-if [ "${_MAX_POS_CONS}" -gt 1000 ]; then
-  _REC_MAX_CONS=1000
-elif [ "${_MAX_POS_CONS}" -lt 100 ]; then
-  _REC_MAX_CONS=100
+if [ "${_MAX_POS_CONS}" -gt 500 ]; then
+  _REC_MAX_CONS=500
+elif [ "${_MAX_POS_CONS}" -lt 25 ]; then
+  _REC_MAX_CONS=25
 else
   _REC_MAX_CONS=${_MAX_POS_CONS}
 fi
