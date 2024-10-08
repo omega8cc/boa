@@ -248,9 +248,9 @@ declare -A _service_estimated_mem_mb=(
   ["java"]=100
 )
 
-# Ensure _TOTAL_MEM_MB is set by default to 75% of available RAM
+# Ensure _TOTAL_MEM_MB is set by default to 85% of available RAM
 _MAX_MEM_MB="${_TOTAL_MEM_MB}"
-_TOTAL_MEM_MB=$(echo "(${_TOTAL_MEM_MB} * 75) / 100" | bc)
+_TOTAL_MEM_MB=$(echo "(${_TOTAL_MEM_MB} * 85) / 100" | bc)
 
 # Threshold for uptime (e.g., 1 hour = 3600 seconds)
 _UPTIME_THRESHOLD=3600
@@ -316,8 +316,8 @@ fi
 # Calculate max memory for MySQL
 _MAX_MEM_FOR_MYSQL_MB=$(echo "${_TOTAL_MEM_MB} - ${_TOTAL_OTHER_SERVICES_MEM_MB}" | bc)
 
-# Ensure _AVA_MEM_FOR_MYSQL_MB is set by default to 75% of _MAX_MEM_FOR_MYSQL_MB
-_AVA_MEM_FOR_MYSQL_MB=$(echo "(${_MAX_MEM_FOR_MYSQL_MB} * 75) / 100" | bc)
+# Ensure _AVA_MEM_FOR_MYSQL_MB is set by default to 85% of _MAX_MEM_FOR_MYSQL_MB
+_AVA_MEM_FOR_MYSQL_MB=$(echo "(${_MAX_MEM_FOR_MYSQL_MB} * 85) / 100" | bc)
 
 echo "Max raw RAM available: ${_MAX_MEM_MB} MB"
 echo "Memory safely available for all services: ${_TOTAL_MEM_MB} MB"
