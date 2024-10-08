@@ -74,8 +74,8 @@ else {
 }
 
 # Precompute increments based on $NGINX_DOS_LIMIT
-my $INC_NUMBER   = int(($NGINX_DOS_LIMIT + 2) / 4);  # Approx division by 4
-my $INC_S_NUMBER = int(($NGINX_DOS_LIMIT + 4) / 8);  # Approx division by 8
+my $INC_NUMBER   = int(($NGINX_DOS_LIMIT + 20) / 40);  # Approx division by 40
+my $INC_S_NUMBER = int(($NGINX_DOS_LIMIT + 40) / 80);  # Approx division by 80
 
 # Print the configuration for verification
 print "CONFIG: NGINX_DOS_LIMIT is $NGINX_DOS_LIMIT\n";
