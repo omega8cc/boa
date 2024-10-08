@@ -438,9 +438,9 @@ _process_ip() {
         fi
       fi
     else
-      if [[ "${_line}" =~ POST ]]; then
-        (( _COUNTERS["${_IP}"] += 1 ))
-      fi
+#       if [[ "${_line}" =~ POST ]]; then
+#         (( _COUNTERS["${_IP}"] += 1 ))
+#       fi
       if [[ -n "${_NGINX_DOS_STOP}" ]]; then
         if [[ "${_line}" =~ (${_NGINX_DOS_STOP}) ]]; then
           (( _COUNTERS["${_IP}"] += 5 ))
