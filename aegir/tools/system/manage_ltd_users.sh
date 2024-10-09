@@ -2149,7 +2149,7 @@ _manage_user() {
       _nrCheck=
       _switch_php
       ### reload nginx
-      service nginx reload &> /dev/null
+      ### service nginx reload &> /dev/null
       if [ -z ${_nrCheck} ]; then
         if [ -z ${_PHP_SV} ]; then
           _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
