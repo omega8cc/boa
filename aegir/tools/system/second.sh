@@ -21,8 +21,8 @@ fi
 # Set default values
 : "${_B_NICE:=10}"
 : "${_CPU_SPIDER_RATIO:=1}"
-: "${_CPU_MAX_RATIO:=3.3}"
-: "${_CPU_CRIT_RATIO:=3.9}"
+: "${_CPU_MAX_RATIO:=4.1}"
+: "${_CPU_CRIT_RATIO:=5.1}"
 : "${_INCIDENT_EMAIL_REPORT:=YES}"
 
 # Source configuration file to override defaults

@@ -32,8 +32,8 @@ _MODULES_FIX=YES #-------------- Allows to skip weekly modules en/dis when NO
 _MODULES_SKIP="" #-------------- Modules (machine names) to never auto-disable
 _PERMISSIONS_FIX=YES #---------- Allows to skip daily permissions fix when NO
 ###
-_CPU_CRIT_RATIO=3.9 #----------- Max load per CPU core before killing PHP/Drush
-_CPU_MAX_RATIO=3.3 #------------ Max load per CPU core before disabling Nginx
+_CPU_CRIT_RATIO=5.1 #----------- Max load per CPU core before killing PHP/Drush
+_CPU_MAX_RATIO=4.1 #------------ Max load per CPU core before disabling Nginx
 _CPU_SPIDER_RATIO=1 #----------- Max load per CPU core before blocking spiders
 ###
 _SQL_MAX_TTL=3600 #------------- Max TTL for mysql process per user (seconds)

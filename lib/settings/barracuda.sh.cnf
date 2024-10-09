@@ -941,7 +941,7 @@ _CPU_SPIDER_RATIO=1
 ### Set max 1 min load per CPU core before disabling
 ### Nginx temporarily, until the load stabilizes.
 ###
-_CPU_MAX_RATIO=3.3
+_CPU_MAX_RATIO=4.1
 
 ###
 ### Set max 1 min load per CPU core before killing
@@ -953,7 +953,7 @@ _CPU_MAX_RATIO=3.3
 ### never starts them anyway, if the average load
 ### in the last minute is higher than 3.5
 ###
-_CPU_CRIT_RATIO=3.9
+_CPU_CRIT_RATIO=5.1
 
 ###
 ### Default number of access.log lines to check.
