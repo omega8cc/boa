@@ -390,20 +390,20 @@ EOFMYSQL
               cp -a /var/xdrago/conf/https_proxy_le.conf ${_Vhs}
               sed -i "s/.*server_name.*;/  server_name                 ${_NMS};/g" ${_Vhs}
               wait
-              sed -i "s/target_ip/${_tgt}/g" ${_Vhs}
+              sed -i "s/_target_ip/${_tgt}/g" ${_Vhs}
               wait
-              sed -i "s/oct_uid/${_oct}/g" ${_Vhs}
+              sed -i "s/_oct_uid/${_oct}/g" ${_Vhs}
               wait
-              sed -i "s/domain_name/${_Dom}/g" ${_Vhs}
+              sed -i "s/_domain_name/${_Dom}/g" ${_Vhs}
               wait
               chown ${_oct}:users ${_Vhs}
               chmod 600 ${_Vhs}
             fi
-            mv -f ${_Vht} $_Vhd
+            mv -f ${_Vht} ${_Vhd}
             cp -a /var/xdrago/conf/proxy.conf ${_Vht}
             sed -i "s/.*server_name.*;/  server_name                 ${_NMS};/g" ${_Vht}
             wait
-            sed -i "s/target_ip/${_tgt}/g" ${_Vht}
+            sed -i "s/_target_ip/${_tgt}/g" ${_Vht}
             wait
             chown ${_oct}:users ${_Vht}
             chmod 600 ${_Vht}
@@ -1091,13 +1091,13 @@ _sub_ssl_gen() {
     _oct_uid=`echo $p | cut -d' ' -f3 | awk '{ print $1}'`
     _oct_mail=`echo $p | cut -d' ' -f4 | awk '{ print $1}'`
     _dedicated_ip=`echo $p | cut -d' ' -f5 | awk '{ print $1}'`
-    echo domain_name.${_domain_name} target_ip.${_target_ip} oct_uid.${_oct_uid} oct_mail.${_oct_mail} dedicated_ip.${_dedicated_ip}
+    echo _domain_name.${_domain_name} _target_ip.${_target_ip} _oct_uid.${_oct_uid} _oct_mail.${_oct_mail} _dedicated_ip.${_dedicated_ip}
     if [ ! -z "${_domain_name}" ] \
       && [ ! -z "${_target_ip}" ] \
       && [ ! -z "${_oct_uid}" ] \
       && [ ! -z "${_oct_mail}" ] \
       && [ ! -z "${_dedicated_ip}" ]; then
-      _oct_mail=`echo $oct_mail | sed "s/\@/\\\@/g"`;
+      _oct_mail=`echo ${_oct_mail} | sed "s/\@/\\\@/g"`;
       if [ "${_target_ip}" = "${_dedicated_ip}" ]; then
         _dedicated_ip="*"
         if [ -e "/data/disk/${_oct_uid}/log/extra_domain.txt" ]; then
@@ -1122,15 +1122,15 @@ _sub_ssl_gen() {
         rm -f ${_Pln}
       else
         cp -af /var/xdrago/conf/pln_proxy.conf      ${_Pln}
-        sed -i "s/domain_name/${_domain_name}/g"    ${_Pln}
+        sed -i "s/_domain_name/${_domain_name}/g"    ${_Pln}
         wait
-        sed -i "s/target_ip/${_target_ip}/g"        ${_Pln}
+        sed -i "s/_target_ip/${_target_ip}/g"        ${_Pln}
         wait
-        sed -i "s/oct_uid/${_oct_uid}/g"            ${_Pln}
+        sed -i "s/_oct_uid/${_oct_uid}/g"            ${_Pln}
         wait
-        sed -i "s/oct_mail/${_oct_mail}/g"          ${_Pln}
+        sed -i "s/_oct_mail/${_oct_mail}/g"          ${_Pln}
         wait
-        sed -i "s/dedicated_ip/${_dedicated_ip}/g"  ${_Pln}
+        sed -i "s/_dedicated_ip/${_dedicated_ip}/g"  ${_Pln}
         wait
         sed -i "s/_dedicated_sn/${_dedicated_sn}/g" ${_Pln}
         wait
@@ -1138,15 +1138,15 @@ _sub_ssl_gen() {
       fi
       ###
       cp -af /var/xdrago/conf/ssl_proxy.conf        ${_Ssl}
-      sed -i "s/domain_name/${_domain_name}/g"      ${_Ssl}
+      sed -i "s/_domain_name/${_domain_name}/g"      ${_Ssl}
       wait
-      sed -i "s/target_ip/${_target_ip}/g"          ${_Ssl}
+      sed -i "s/_target_ip/${_target_ip}/g"          ${_Ssl}
       wait
-      sed -i "s/oct_uid/${_oct_uid}/g"              ${_Ssl}
+      sed -i "s/_oct_uid/${_oct_uid}/g"              ${_Ssl}
       wait
-      sed -i "s/oct_mail/${_oct_mail}/g"            ${_Ssl}
+      sed -i "s/_oct_mail/${_oct_mail}/g"            ${_Ssl}
       wait
-      sed -i "s/dedicated_ip/${_dedicated_ip}/g"    ${_Ssl}
+      sed -i "s/_dedicated_ip/${_dedicated_ip}/g"    ${_Ssl}
       wait
       sed -i "s/_dedicated_sn/${_dedicated_sn}/g"   ${_Ssl}
       wait
