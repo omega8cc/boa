@@ -938,6 +938,12 @@ _USE_MYSQLTUNER=NO
 _CPU_SPIDER_RATIO=1
 
 ###
+### Define max 1 min load per CPU core before
+### launching task queue for Octopus instances.
+###
+_CPU_TASK_RATIO=2.1
+
+###
 ### Set max 1 min load per CPU core before disabling
 ### Nginx temporarily, until the load stabilizes.
 ###
@@ -951,7 +957,7 @@ _CPU_MAX_RATIO=4.1
 ### This shouldn't affect any innocent Aegir tasks,
 ### including cron for sites, because the system
 ### never starts them anyway, if the average load
-### in the last minute is higher than 3.5
+### in the last minute is higher than 2.1
 ###
 _CPU_CRIT_RATIO=5.1
 

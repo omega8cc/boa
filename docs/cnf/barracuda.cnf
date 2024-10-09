@@ -34,6 +34,7 @@ _PERMISSIONS_FIX=YES #---------- Allows to skip daily permissions fix when NO
 ###
 _CPU_CRIT_RATIO=5.1 #----------- Max load per CPU core before killing PHP/Drush
 _CPU_MAX_RATIO=4.1 #------------ Max load per CPU core before disabling Nginx
+_CPU_TASK_RATIO=2.1 #----------- Max load per CPU core to launch tasks queue
 _CPU_SPIDER_RATIO=1 #----------- Max load per CPU core before blocking spiders
 ###
 _SQL_MAX_TTL=3600 #------------- Max TTL for mysql process per user (seconds)

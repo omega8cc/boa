@@ -12,9 +12,10 @@ _barCnf="/root/.barracuda.cnf"
 _CHECK_HOST=$(uname -n 2>&1)
 _DEFAULT_CPU_CRIT_RATIO="5.1"
 _DEFAULT_CPU_MAX_RATIO="4.1"
+_DEFAULT_CPU_TASK_RATIO="2.1"
 _DEFAULT_CPU_SPIDER_RATIO="1"
 _LOCK_CPU_CONFIG="/root/.lock.cpu.update.cnf"
-_UPDATE_CPU_PID="/var/xdrago/log/.update_conf_variable.ctrl.${_tRee}.${_xSrl}.pid"
+_UPDATE_CPU_PID="/var/xdrago/log/.update_conf_variable.ctrl.f1.${_tRee}.${_xSrl}.pid"
 
 _LOCK_DOS_CONFIG="/root/.lock.dos.update.cnf"
 _LOCK_DOS_PID="/var/xdrago/log/.sync_scan_nginx.ctrl.${_tRee}.${_xSrl}.pid"
@@ -48,6 +49,7 @@ if [ ! -e "${_LOCK_CPU_CONFIG}" ]; then
     # Update variables
     _update_conf_variable "_CPU_CRIT_RATIO" "${_DEFAULT_CPU_CRIT_RATIO}" "${_barCnf}"
     _update_conf_variable "_CPU_MAX_RATIO" "${_DEFAULT_CPU_MAX_RATIO}" "${_barCnf}"
+    _update_conf_variable "_CPU_TASK_RATIO" "${_DEFAULT_CPU_TASK_RATIO}" "${_barCnf}"
     _update_conf_variable "_CPU_SPIDER_RATIO" "${_DEFAULT_CPU_SPIDER_RATIO}" "${_barCnf}"
     rm -f /var/xdrago/log/.update_conf_variable.ctrl*
     touch ${_UPDATE_CPU_PID}
