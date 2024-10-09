@@ -60,36 +60,6 @@ _run_cleanup() {
 }
 _run_cleanup
 
-_count_cpu() {
-  _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)
-  _CPU_INFO=${_CPU_INFO//[^0-9]/}
-  _NPROC_TEST=$(which nproc 2>&1)
-  if [ -z "${_NPROC_TEST}" ]; then
-    _CPU_NR="${_CPU_INFO}"
-  else
-    _CPU_NR=$(nproc 2>&1)
-  fi
-  _CPU_NR=${_CPU_NR//[^0-9]/}
-  if [ ! -z "${_CPU_NR}" ] \
-    && [ ! -z "${_CPU_INFO}" ] \
-    && [ "${_CPU_NR}" -gt "${_CPU_INFO}" ] \
-    && [ "${_CPU_INFO}" -gt "0" ]; then
-    _CPU_NR="${_CPU_INFO}"
-  fi
-  if [ -z "${_CPU_NR}" ] || [ "${_CPU_NR}" -lt "1" ]; then
-    _CPU_NR=1
-  fi
-}
-
-_load_control() {
-  [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
-  export _CPU_SPIDER_RATIO=${_CPU_SPIDER_RATIO//[^0-9]/}
-  : "${_CPU_SPIDER_RATIO:=1.2}"
-  _O_LOAD=$(awk '{print $1*100}' /proc/loadavg 2>&1)
-  _O_LOAD=$(( _O_LOAD / _CPU_NR ))
-  _O_LOAD_SPR=$(( 100 * _CPU_SPIDER_RATIO ))
-}
-
 # Remove dangerous stuff from the string.
 _sanitize_string() {
   echo "$1" | sed 's/[\\\/\^\?\>\`\#\"\{\(\&\|\*]//g; s/\(['"'"'\]\)//g'
@@ -161,8 +131,6 @@ if [ -e "/run/boa_wait.pid" ]; then
   touch /var/xdrago/log/wait-${_H_USER}
   exit 0
 else
-  _count_cpu
-  _load_control
   _if_sftp_password_update
   _if_octopus_upgrade
   _run_action
