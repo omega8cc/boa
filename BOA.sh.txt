@@ -625,6 +625,20 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
+    && [ ! -e "${_pthLog}/scan_nginx.sh.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+    mv -f /var/xdrago/monitor/check/scan_nginx.sh /var/xdrago/monitor/check/scan_nginx.sh.old
+    curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/scan_nginx.sh" -o /var/xdrago/monitor/check/scan_nginx.sh
+    if [ -e "/var/xdrago/monitor/check/scan_nginx.sh" ]; then
+      chmod 700 /var/xdrago/monitor/check/scan_nginx.sh
+      chown root:root /var/xdrago/monitor/check/scan_nginx.sh
+      touch ${_pthLog}/scan_nginx.sh.ctrl.${_tRee}.${_xSrl}.pid
+    else
+      mv -f /var/xdrago/monitor/check/scan_nginx.sh.old /var/xdrago/monitor/check/scan_nginx.sh
+    fi
+  fi
+
+  if [ -e "/var/xdrago/monitor/check" ] \
+    && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/java.sh.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/java.sh /var/xdrago/monitor/check/java.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/java.sh" -o /var/xdrago/monitor/check/java.sh
