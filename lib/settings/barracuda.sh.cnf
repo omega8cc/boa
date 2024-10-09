@@ -987,7 +987,7 @@ _NGINX_DOS_MODE=2
 ###
 ### Logging mode, can be SILENT, NORMAL or VERBOSE
 ###
-_NGINX_DOS_LOG=SILENT
+_NGINX_DOS_LOG=VERBOSE
 
 ###
 ### Will make the request ignored when the keyword
