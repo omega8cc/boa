@@ -241,7 +241,7 @@ if [ -d "/data/u" ]; then
 fi
 
 renice ${_B_NICE} -p $$ &> /dev/null
-service ssh restart
+
 _if_fix_locked_sshd() {
   _SSH_LOG="/var/log/auth.log"
   if [ `tail --lines=100 ${_SSH_LOG} \
