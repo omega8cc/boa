@@ -1122,15 +1122,15 @@ _sub_ssl_gen() {
         rm -f ${_Pln}
       else
         cp -af /var/xdrago/conf/pln_proxy.conf      ${_Pln}
-        sed -i "s/_domain_name/${_domain_name}/g"    ${_Pln}
+        sed -i "s/_domain_name/${_domain_name}/g"   ${_Pln}
         wait
-        sed -i "s/_target_ip/${_target_ip}/g"        ${_Pln}
+        sed -i "s/_target_ip/${_target_ip}/g"       ${_Pln}
         wait
-        sed -i "s/_oct_uid/${_oct_uid}/g"            ${_Pln}
+        sed -i "s/_oct_uid/${_oct_uid}/g"           ${_Pln}
         wait
-        sed -i "s/_oct_mail/${_oct_mail}/g"          ${_Pln}
+        sed -i "s/_oct_mail/${_oct_mail}/g"         ${_Pln}
         wait
-        sed -i "s/_dedicated_ip/${_dedicated_ip}/g"  ${_Pln}
+        sed -i "s/_dedicated_ip/${_dedicated_ip}/g" ${_Pln}
         wait
         sed -i "s/_dedicated_sn/${_dedicated_sn}/g" ${_Pln}
         wait
@@ -1138,15 +1138,15 @@ _sub_ssl_gen() {
       fi
       ###
       cp -af /var/xdrago/conf/ssl_proxy.conf        ${_Ssl}
-      sed -i "s/_domain_name/${_domain_name}/g"      ${_Ssl}
+      sed -i "s/_domain_name/${_domain_name}/g"     ${_Ssl}
       wait
-      sed -i "s/_target_ip/${_target_ip}/g"          ${_Ssl}
+      sed -i "s/_target_ip/${_target_ip}/g"         ${_Ssl}
       wait
-      sed -i "s/_oct_uid/${_oct_uid}/g"              ${_Ssl}
+      sed -i "s/_oct_uid/${_oct_uid}/g"             ${_Ssl}
       wait
-      sed -i "s/_oct_mail/${_oct_mail}/g"            ${_Ssl}
+      sed -i "s/_oct_mail/${_oct_mail}/g"           ${_Ssl}
       wait
-      sed -i "s/_dedicated_ip/${_dedicated_ip}/g"    ${_Ssl}
+      sed -i "s/_dedicated_ip/${_dedicated_ip}/g"   ${_Ssl}
       wait
       sed -i "s/_dedicated_sn/${_dedicated_sn}/g"   ${_Ssl}
       wait
