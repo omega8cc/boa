@@ -48,7 +48,7 @@ _libFnc="${_bldPth}/lib/functions"
 _tocIncO="${_filIncO}.$1"
 _vBs="/var/backups"
 _vSet="variable-set --always-set"
-export _tRee=dev
+export _tRee=pro
 
 
 ###

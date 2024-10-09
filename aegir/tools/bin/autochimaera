@@ -78,8 +78,8 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-export _tRee=dev
-export _xSrl=540devT03
+export _tRee=pro
+export _xSrl=540proT05
 
 _barCnf="/root/.barracuda.cnf"
 _logAch="/root/.autochimaera.log"
