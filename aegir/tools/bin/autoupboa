@@ -16,7 +16,7 @@ _DEFAULT_CPU_SPIDER_RATIO="1"
 _LOCK_CPU_CONFIG="/root/.lock.cpu.update.cnf"
 _UPDATE_CPU_PID="/var/xdrago/log/.update_conf_variable.ctrl.${_tRee}.${_xSrl}.pid"
 
-_LOCK_DOS_CONFIG="/root/.lock.dos.config.cnf"
+_LOCK_DOS_CONFIG="/root/.lock.dos.update.cnf"
 _LOCK_DOS_PID="/var/xdrago/log/.sync_scan_nginx.ctrl.${_tRee}.${_xSrl}.pid"
 
 _DEFAULT_NGINX_DOS_LINES=1999
