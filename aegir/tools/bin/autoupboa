@@ -13,7 +13,7 @@ _CHECK_HOST=$(uname -n 2>&1)
 _DEFAULT_CPU_CRIT_RATIO="5.1"
 _DEFAULT_CPU_MAX_RATIO="4.1"
 _DEFAULT_CPU_SPIDER_RATIO="1"
-_LOCK_CPU_CONFIG="/root/.lock.cpu.config.cnf"
+_LOCK_CPU_CONFIG="/root/.lock.cpu.update.cnf"
 _UPDATE_CPU_PID="/var/xdrago/log/.update_conf_variable.ctrl.${_tRee}.${_xSrl}.pid"
 
 _LOCK_DOS_CONFIG="/root/.lock.dos.config.cnf"
