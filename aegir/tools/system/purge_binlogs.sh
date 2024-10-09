@@ -4,7 +4,7 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
-check_root() {
+_check_root() {
   if [ `whoami` = "root" ]; then
     ionice -c2 -n7 -p $$
     renice 19 -p $$
@@ -24,7 +24,7 @@ check_root() {
     exit 1
   fi
 }
-check_root
+_check_root
 
 if [ -e "/root/.proxy.cnf" ]; then
   exit 0
@@ -34,12 +34,12 @@ if [ -e "/root/.pause_tasks_maint.cnf" ]; then
   exit 0
 fi
 
-if [ $(pgrep -f purge_binlogs.sh | grep -v "^$$" | wc -l) -gt 2 ]; then
-  echo "Too many purge_binlogs.sh running $(date 2>&1)" >> /var/xdrago/log/too.many.log
+if (( $(pgrep -fc 'purge_binlogs.sh') > 2 )); then
+  echo "Too many purge_binlogs.sh running $(date)" >> /var/xdrago/log/too.many.log
   exit 0
 fi
 
-count_cpu() {
+_count_cpu() {
   _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)
   _CPU_INFO=${_CPU_INFO//[^0-9]/}
   _NPROC_TEST=$(which nproc 2>&1)
@@ -61,7 +61,7 @@ count_cpu() {
   fi
 }
 
-load_control() {
+_load_control() {
   [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
   export _CPU_MAX_RATIO=${_CPU_MAX_RATIO//[^0-9]/}
   : "${_CPU_MAX_RATIO:=2.5}"
@@ -70,9 +70,9 @@ load_control() {
   _O_LOAD_MAX=$(( 100 * _CPU_MAX_RATIO ))
 }
 
-action() {
-  count_cpu
-  load_control
+_purge_action() {
+  _count_cpu
+  _load_control
   if [ "${_O_LOAD}" -lt "${_O_LOAD_MAX}" ]; then
     echo load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}
 /usr/bin/mysql mysql<<EOFMYSQL
@@ -86,7 +86,7 @@ if [ -e "/run/boa_wait.pid" ]; then
   touch /var/xdrago/log/wait-purge.pid
   exit 0
 else
-  action
+  _purge_action
   touch /var/xdrago/log/last-run-purge
   exit 0
 fi

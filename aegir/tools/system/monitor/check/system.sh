@@ -6,7 +6,7 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 
 _pthOml="/var/xdrago/log/system.incident.log"
 
-check_root() {
+_check_root() {
   if [ `whoami` = "root" ]; then
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
     chmod a+w /dev/null
@@ -15,25 +15,25 @@ check_root() {
     exit 1
   fi
 }
-check_root
+_check_root
 
 export _INCIDENT_EMAIL_REPORT=${_INCIDENT_EMAIL_REPORT//[^A-Z]/}
 : "${_INCIDENT_EMAIL_REPORT:=YES}"
 
-if [ $(pgrep -f system.sh | grep -v "^$$" | wc -l) -gt 2 ]; then
-  echo "Too many system.sh running $(date 2>&1)" >> /var/xdrago/log/too.many.log
+if (( $(pgrep -fc 'system.sh') > 2 )); then
+  echo "Too many system.sh running $(date)" >> /var/xdrago/log/too.many.log
   exit 0
 fi
 
 _incident_email_report() {
   if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_EMAIL_REPORT}" = "YES" ]; then
-    hName=$(cat /etc/hostname 2>&1)
+    _hName=$(cat /etc/hostname 2>&1)
     echo "Sending Incident Report Email on $(date 2>&1)" >> ${_pthOml}
-    s-nail -s "Incident Report: ${1} on ${hName} at $(date 2>&1)" ${_MY_EMAIL} < ${_pthOml}
+    s-nail -s "Incident Report: ${1} on ${_hName} at $(date 2>&1)" ${_MY_EMAIL} < ${_pthOml}
   fi
 }
 
-wkhtmltopdf_php_cli_oom_kill() {
+_wkhtmltopdf_php_cli_oom_kill() {
   touch /run/boa_run.pid
   echo "$(date 2>&1) OOM $1 wkhtmltopdf/php-cli detected" >> ${_pthOml}
   sleep 3
@@ -49,7 +49,7 @@ wkhtmltopdf_php_cli_oom_kill() {
   exit 0
 }
 
-oom_critical_restart() {
+_oom_critical_restart() {
   touch /run/boa_run.pid
   echo "$(date 2>&1) OOM $1 detected" >> ${_pthOml}
   kill -9 $(ps aux | grep '[w]khtmltopdf' | awk '{print $2}') &> /dev/null
@@ -78,7 +78,7 @@ oom_critical_restart() {
   exit 0
 }
 
-system_oom_detection() {
+_system_oom_detection() {
   _RAM_TOTAL=$(free -mt | grep Mem: | cut -d: -f2 | awk '{ print $1}' 2>&1)
   _RAM_FREE_TEST=$(free -mt 2>&1)
   if [[ "${_RAM_FREE_TEST}" =~ "buffers/cache:" ]]; then
@@ -92,30 +92,30 @@ system_oom_detection() {
   echo _RAM_PCT_FREE is ${_RAM_PCT_FREE}
   if [ ! -z "${_RAM_PCT_FREE}" ]; then
     if [ "${_RAM_PCT_FREE}" -le "10" ]; then
-      oom_critical_restart "RAM ${_RAM_PCT_FREE}/${_RAM_TOTAL}"
+      _oom_critical_restart "RAM ${_RAM_PCT_FREE}/${_RAM_TOTAL}"
     elif [ "${_RAM_PCT_FREE}" -le "20" ]; then
       if [ `ps aux | grep -v "grep" | grep --count "wkhtmltopdf"` -gt "2" ]; then
-        wkhtmltopdf_php_cli_oom_kill "RAM ${_RAM_PCT_FREE}/${_RAM_TOTAL}"
+        _wkhtmltopdf_php_cli_oom_kill "RAM ${_RAM_PCT_FREE}/${_RAM_TOTAL}"
       fi
     fi
   fi
 }
 
-if_fix_locked_sshd() {
+_if_fix_locked_sshd() {
   _SSH_LOG="/var/log/auth.log"
   if [ `tail --lines=100 ${_SSH_LOG} \
     | grep --count "error: Bind to port 22"` -gt "0" ]; then
     kill -9 $(ps aux | grep '[s]tartups' | awk '{print $2}') &> /dev/null
     service ssh start
     wait
-    thisErrLog="$(date 2>&1) SSHD BIND error detected, service restarted"
-    echo ${thisErrLog} >> ${_pthOml}
+    _thisErrLog="$(date 2>&1) SSHD BIND error detected, service restarted"
+    echo ${_thisErrLog} >> ${_pthOml}
     _incident_email_report "SSHD BIND error detected, service restarted"
     echo >> ${_pthOml}
   fi
 }
 
-if_fix_dhcp() {
+_if_fix_dhcp() {
   if [ -e "/var/log/daemon.log" ]; then
     _DHCP_LOG="/var/log/daemon.log"
   else
@@ -127,80 +127,93 @@ if_fix_dhcp() {
       sed -i "s/.*DHCP.*//g" /etc/csf/csf.allow
       wait
       sed -i "/^$/d" /etc/csf/csf.allow
-      _DHCP_TEST=$(grep DHCPREQUEST ${_DHCP_LOG} | cut -d ' ' -f13 | sort | uniq 2>&1)
-      if [[ "${_DHCP_TEST}" =~ "port" ]]; then
-        for _IP in `grep DHCPREQUEST ${_DHCP_LOG} | cut -d ' ' -f12 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
-      else
-        for _IP in `grep DHCPREQUEST ${_DHCP_LOG} | cut -d ' ' -f13 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
-      fi
+      grep DHCPREQUEST "${_DHCP_LOG}" | awk '{print $12}' | sort -u | while read -r _IP; do
+        if [[ ${_IP} =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
+          IFS='.' read -r oct1 oct2 oct3 oct4 <<< "${_IP}"
+          if (( oct1 <= 255 && oct2 <= 255 && oct3 <= 255 && oct4 <= 255 )); then
+            echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow
+          fi
+        fi
+      done
       csf -q &> /dev/null
-      thisErrLog="$(date 2>&1) DHCP error detected, firewall updated"
-      echo ${thisErrLog} >> ${_pthOml}
+      _thisErrLog="$(date 2>&1) DHCP error detected, firewall updated"
+      echo ${_thisErrLog} >> ${_pthOml}
       _incident_email_report "DHCP error detected, firewall updated"
       echo >> ${_pthOml}
     fi
   fi
 }
 
-cron_duplicate_instances_detection() {
+_cron_duplicate_instances_detection() {
   if [ `ps aux | grep -v "grep" | grep --count "/usr/sbin/cron"` -gt "1" ]; then
-    thisErrLog="$(date 2>&1) Too many Cron instances running killed"
-    echo ${thisErrLog} >> /var/xdrago/log/cron-count.kill.log
+    _thisErrLog="$(date 2>&1) Too many Cron instances running killed"
+    echo ${_thisErrLog} >> /var/xdrago/log/cron-count.kill.log
     killall -9 cron &> /dev/null
     service cron start &> /dev/null
-    thisErrLog="$(date 2>&1) Too many Cron instances, service restarted"
-    echo ${thisErrLog} >> ${_pthOml}
+    _thisErrLog="$(date 2>&1) Too many Cron instances, service restarted"
+    echo ${_thisErrLog} >> ${_pthOml}
     _incident_email_report "Too many Cron instances, service restarted"
     echo >> ${_pthOml}
   fi
 }
 
-syslog_giant_log_detection() {
+_syslog_giant_log_detection() {
   if [ -e "/etc/cron.daily/logrotate" ]; then
     _SYSLOG_SIZE_TEST=$(du -s -h /var/log/syslog)
     if [[ "${_SYSLOG_SIZE_TEST}" =~ "G" ]]; then
       echo ${_SYSLOG_SIZE_TEST} too big
       bash /etc/cron.daily/logrotate &> /dev/null
       wait
-      thisErrLog="$(date 2>&1) Syslog ${_SYSLOG_SIZE_TEST} too big, logrotate forced"
-      echo ${thisErrLog} >> ${_pthOml}
+      _thisErrLog="$(date 2>&1) Syslog ${_SYSLOG_SIZE_TEST} too big, logrotate forced"
+      echo ${_thisErrLog} >> ${_pthOml}
       _incident_email_report "Syslog ${_SYSLOG_SIZE_TEST} too big, logrotate forced"
       echo >> ${_pthOml}
     fi
   fi
 }
 
-gpg_too_many_instances_detection() {
+_gpg_too_many_instances_detection() {
   if [ `ps aux | grep -v "grep" | grep --count "gpg-agent"` -gt "5" ]; then
-    thisErrLog="$(date 2>&1) Too many gpg-agent processes killed"
-    echo ${thisErrLog} >> /var/xdrago/log/gpg-agent-count.kill.log
+    _thisErrLog="$(date 2>&1) Too many gpg-agent processes killed"
+    echo ${_thisErrLog} >> /var/xdrago/log/gpg-agent-count.kill.log
     kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
-    thisErrLog="$(date 2>&1) Too many gpg-agent processes killed"
-    echo ${thisErrLog} >> ${_pthOml}
+    _thisErrLog="$(date 2>&1) Too many gpg-agent processes killed"
+    echo ${_thisErrLog} >> ${_pthOml}
     _incident_email_report "Too many gpg-agent processes killed"
     echo >> ${_pthOml}
   fi
 }
 
-dirmngr_too_many_instances_detection() {
+_dirmngr_too_many_instances_detection() {
   if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt "5" ]; then
-    thisErrLog="$(date 2>&1) Too many dirmngr processes killed"
-    echo ${thisErrLog} >> /var/xdrago/log/dirmngr-count.kill.log
+    _thisErrLog="$(date 2>&1) Too many dirmngr processes killed"
+    echo ${_thisErrLog} >> /var/xdrago/log/dirmngr-count.kill.log
     kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
-    thisErrLog="$(date 2>&1) Too many dirmngr processes killed"
-    echo ${thisErrLog} >> ${_pthOml}
+    _thisErrLog="$(date 2>&1) Too many dirmngr processes killed"
+    echo ${_thisErrLog} >> ${_pthOml}
     _incident_email_report "Too many dirmngr processes killed"
     echo >> ${_pthOml}
   fi
 }
 
-system_oom_detection
-if_fix_locked_sshd
-if_fix_dhcp
-cron_duplicate_instances_detection
-syslog_giant_log_detection
-gpg_too_many_instances_detection
-dirmngr_too_many_instances_detection
+if [ -e "/run/boa_sql_backup.pid" ] \
+  || [ -e "/run/boa_sql_cluster_backup.pid" ] \
+  || [ -e "/run/boa_run.pid" ] \
+  || [ -e "/run/boa_wait.pid" ] \
+  || [ -e "/run/mysql_restart_running.pid" ]; then
+  _ALLOW_CTRL=NO
+else
+  _ALLOW_CTRL=YES
+fi
+
+_if_fix_locked_sshd
+_if_fix_dhcp
+_cron_duplicate_instances_detection
+_syslog_giant_log_detection
+
+[ "${_ALLOW_CTRL}" = "YES" ] && _system_oom_detection
+[ "${_ALLOW_CTRL}" = "YES" ] && _gpg_too_many_instances_detection
+[ "${_ALLOW_CTRL}" = "YES" ] && _dirmngr_too_many_instances_detection
 
 echo DONE!
 exit 0

@@ -4,37 +4,14 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
-csf_flood_guard() {
-  thisCountCsf=`ps aux | grep -v "grep" | grep -v "null" | grep --count "/csf"`
-  if [ ${thisCountCsf} -gt "4" ]; then
-    echo "$(date 2>&1) Too many ${thisCountCsf} csf processes killed" >> \
-      /var/log/csf-count.kill.log
-    kill -9 $(ps aux | grep '[c]sf' | awk '{print $2}') &> /dev/null
-    csf -tf
-    wait
-    csf -df
-    wait
-  fi
-  thisCountFire=`ps aux | grep -v "grep" | grep -v "null" | grep --count "/fire.sh"`
-  if [ ${thisCountFire} -gt "9" ]; then
-    echo "$(date 2>&1) Too many ${thisCountFire} fire.sh processes killed and rules purged" >> \
-      /var/log/fire-purge.kill.log
-    csf -tf
-    wait
-    csf -df
-    wait
-    kill -9 $(ps aux | grep '[f]ire.sh' | awk '{print $2}') &> /dev/null
-  elif [ ${thisCountFire} -gt "7" ]; then
-    echo "$(date 2>&1) Too many ${thisCountFire} fire.sh processes killed" >> \
-      /var/log/fire-count.kill.log
-    csf -tf
-    wait
-    kill -9 $(ps aux | grep '[f]ire.sh' | awk '{print $2}') &> /dev/null
-  fi
-}
-[ ! -e "/run/water.pid" ] && csf_flood_guard
+# Exit if more than 2 instances of the script are running
+if (( $(pgrep -fc 'host-fire.sh') > 2 )); then
+  # Optional: Log too many instances
+  echo "Too many host-fire.sh running $(date)" >> /var/xdrago/log/too.many.log
+  exit 0
+fi
 
-guest_proc_monitor() {
+_guest_proc_monitor() {
   for i in `dir -d /vservers/*`; do
     _THIS_VM=`echo $i | cut -d'/' -f3 | awk '{ print $1}'`
     _VS_NAME=`echo ${_THIS_VM} | cut -d'/' -f3 | awk '{ print $1}'`
@@ -48,9 +25,9 @@ guest_proc_monitor() {
     fi
   done
 }
-###guest_proc_monitor
+###_guest_proc_monitor
 
-guest_guard() {
+_guest_guard() {
 if [ ! -e "/run/fire.pid" ] && [ ! -e "/run/water.pid" ]; then
   touch /run/fire.pid
   echo start `date`
@@ -129,15 +106,15 @@ if [ -e "/vservers" ] \
   && [ -e "/etc/csf/csf.deny" ] \
   && [ ! -e "/run/water.pid" ] \
   && [ -x "/usr/sbin/csf" ]; then
-  [ ! -e "/run/water.pid" ] && guest_guard
+  [ ! -e "/run/water.pid" ] && _guest_guard
   sleep 10
-  [ ! -e "/run/water.pid" ] && guest_guard
+  [ ! -e "/run/water.pid" ] && _guest_guard
   sleep 10
-  [ ! -e "/run/water.pid" ] && guest_guard
+  [ ! -e "/run/water.pid" ] && _guest_guard
   sleep 10
-  [ ! -e "/run/water.pid" ] && guest_guard
+  [ ! -e "/run/water.pid" ] && _guest_guard
   sleep 10
-  [ ! -e "/run/water.pid" ] && guest_guard
+  [ ! -e "/run/water.pid" ] && _guest_guard
   rm -f /run/fire.pid
 fi
 exit 0

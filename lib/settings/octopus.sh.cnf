@@ -634,18 +634,19 @@ _BRANCH_BOA=AUTO
 _BRANCH_PRN=AUTO
 _X_VERSION=AUTO
 _BOA_REPO_NAME="boa"
-_BOA_REPO_GIT_URL="${gitHub}"
-aptYesUnth="-y --allow-unauthenticated"
-export _X_SE=540proT03
-export tRee=pro
+_BOA_REPO_GIT_URL="${_gitHub}"
+_aptYesUnth="-y --allow-unauthenticated"
+
+export _tRee=dev
+export _xSrl=540devT03
 
 
 ###
 ### Determine correct _APT_UPDATE
 ###
-os_detection_minimal() {
+_os_detection_minimal() {
   if [ -e "/root/.dev.server.cnf" ]; then
-    echo "PROC: os_detection_minimal in octopus"
+    echo "PROC: _os_detection_minimal in octopus"
   fi
   _APT_UPDATE="apt-get update"
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
@@ -656,15 +657,15 @@ os_detection_minimal() {
     fi
   done
 }
-os_detection_minimal
+_os_detection_minimal
 
 
 ###
 ### Apt cleanup
 ###
-apt_clean_update() {
+_apt_clean_update() {
   if [ -e "/root/.dev.server.cnf" ]; then
-    echo "PROC: apt_clean_update in octopus"
+    echo "PROC: _apt_clean_update in octopus"
   fi
   #apt-get clean -qq 2> /dev/null
   #rm -rf /var/lib/apt/lists/* &> /dev/null
@@ -679,38 +680,38 @@ apt_clean_update() {
 ###
 ### Find the fastest mirror to use for downloads
 ###
-find_fast_mirror_cnf() {
+_find_fast_mirror_cnf() {
   if [ -e "/root/.dev.server.cnf" ]; then
-    echo "PROC: find_fast_mirror_cnf in octopus"
+    echo "PROC: _find_fast_mirror_cnf in octopus"
   fi
   if [ -x "/usr/sbin/unbound-control" ] \
     && [ -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
     unbound-control reload &> /dev/null
   fi
-  isNetc=$(which netcat 2>&1)
-  if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
+  _isNetc=$(which netcat 2>&1)
+  if [ ! -x "${_isNetc}" ] || [ -z "${_isNetc}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
-    apt_clean_update
-    apt-get install netcat ${aptYesUnth} 2> /dev/null
-    apt-get install netcat-traditional ${aptYesUnth} 2> /dev/null
+    _apt_clean_update
+    apt-get install netcat ${_aptYesUnth} 2> /dev/null
+    apt-get install netcat-traditional ${_aptYesUnth} 2> /dev/null
     wait
   fi
-  ffMirr=$(which ffmirror 2>&1)
-  if [ -x "${ffMirr}" ]; then
-    ffList="/var/backups/boa-mirrors-2024-01.txt"
+  _ffMirr=$(which ffmirror 2>&1)
+  if [ -x "${_ffMirr}" ]; then
+    _ffList="/var/backups/boa-mirrors-2024-01.txt"
     mkdir -p /var/backups
-    if [ ! -e "${ffList}" ]; then
-      echo "de.files.aegir.cc"  > ${ffList}
-      echo "ny.files.aegir.cc" >> ${ffList}
-      echo "sg.files.aegir.cc" >> ${ffList}
+    if [ ! -e "${_ffList}" ]; then
+      echo "de.files.aegir.cc"  > ${_ffList}
+      echo "ny.files.aegir.cc" >> ${_ffList}
+      echo "sg.files.aegir.cc" >> ${_ffList}
     fi
-    if [ -e "${ffList}" ]; then
-      _BROKEN_FFMIRR_TEST=$(grep "stuff" ${ffMirr} 2>&1)
+    if [ -e "${_ffList}" ]; then
+      _BROKEN_FFMIRR_TEST=$(grep "stuff" ${_ffMirr} 2>&1)
       if [[ "${_BROKEN_FFMIRR_TEST}" =~ "stuff" ]]; then
-        _CHECK_MIRROR=$(bash ${ffMirr} < ${ffList} 2>&1)
+        _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _USE_MIR="${_CHECK_MIRROR}"
         [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.aegir.cc"
       else
@@ -722,57 +723,57 @@ find_fast_mirror_cnf() {
   else
     _USE_MIR="files.aegir.cc"
   fi
-  urlDev="http://${_USE_MIR}/dev"
-  urlHmr="http://${_USE_MIR}/versions/${tRee}/boa/aegir"
+  _urlDev="http://${_USE_MIR}/dev"
+  _urlHmr="http://${_USE_MIR}/versions/${_tRee}/boa/aegir"
 }
 
 
 ###
 ### Verify upgrade keys
 ###
-verify_upgrade_keys() {
+_verify_upgrade_keys() {
   if [ -e "/root/.dev.server.cnf" ]; then
-    echo "PROC: verify_upgrade_keys in octopus"
+    echo "PROC: _verify_upgrade_keys in octopus"
   fi
-  if [ "${tRee}" = "pro" ] || [ "${tRee}" = "dev" ]; then
+  if [ "${_tRee}" = "pro" ] || [ "${_tRee}" = "dev" ]; then
     _allw=NO
-    urlEnc="http://${_USE_MIR}/enc/2024"
-    hName=$(cat /etc/hostname 2>&1)
-    hName=$(echo -n ${hName} | tr -d "\n" 2>&1)
-    encName=$(echo ${hName} \
+    _urlEnc="http://${_USE_MIR}/enc/2024"
+    _hName=$(cat /etc/hostname 2>&1)
+    _hName=$(echo -n ${_hName} | tr -d "\n" 2>&1)
+    _encName=$(echo ${_hName} \
               | openssl md5 \
               | awk '{ print $2}' \
               | tr -d "\n" 2>&1)
-    if [[ "${hName}" =~ ".aegir.cc"($) ]] \
-      || [[ "${hName}" =~ ".o8.io"($) ]] \
-      || [[ "${hName}" =~ ".boa.io"($) ]]; then
+    if [[ "${_hName}" =~ ".aegir.cc"($) ]] \
+      || [[ "${_hName}" =~ ".o8.io"($) ]] \
+      || [[ "${_hName}" =~ ".boa.io"($) ]]; then
       _allw=YES
     fi
     mkdir -p /var/opt
     rm -f /var/opt/_encN*
-    curl ${crlGet} "${urlEnc}/${encName}" -o /var/opt/_encN.${encName}.tmp
+    curl ${_crlGet} "${_urlEnc}/${_encName}" -o /var/opt/_encN.${_encName}.tmp
     wait
-    echo "${hName}.${encName}" > /var/opt/_encN_local.${encName}.tmp
+    echo "${_hName}.${_encName}" > /var/opt/_encN_local.${_encName}.tmp
     wait
-    if [ -e "/var/opt/_encN.${encName}.tmp" ] \
-      && [ -e "/var/opt/_encN_local.${encName}.tmp" ]; then
-      diffTestIf=$(diff -w -B /var/opt/_encN.${encName}.tmp \
-        /var/opt/_encN_local.${encName}.tmp 2>&1)
-      if [ ! -z "${diffTestIf}" ] && [ "${_allw}" = "NO" ]; then
+    if [ -e "/var/opt/_encN.${_encName}.tmp" ] \
+      && [ -e "/var/opt/_encN_local.${_encName}.tmp" ]; then
+      _diffTestIf=$(diff -w -B /var/opt/_encN.${_encName}.tmp \
+        /var/opt/_encN_local.${_encName}.tmp 2>&1)
+      if [ ! -z "${_diffTestIf}" ] && [ "${_allw}" = "NO" ]; then
         echo
-        echo "Your system requires valid license for upgrade to ${rlsn}-${tRee}"
+        echo "Your system requires valid license for upgrade to ${_rLsn}-${_tRee}"
         echo "Please visit https://omega8.cc/licenses to purchase your own"
         echo
         if [ -e "/var/aegir/drush/vendor" ] && [ ! -e "/var/aegir/key/barracuda_key.txt" ]; then
           mkdir -p /var/aegir/key
-          cat /var/opt/_encN_local.${encName}.tmp > /var/aegir/key/barracuda_key.txt
+          cat /var/opt/_encN_local.${_encName}.tmp > /var/aegir/key/barracuda_key.txt
         fi
         rm -f /var/opt/_encN*
-        clean_pid_exit verify_upgrade_keys_a
+        _clean_pid_exit _verify_upgrade_keys_a
       else
         if [ -e "/var/aegir/drush/vendor" ] && [ ! -e "/var/aegir/key/barracuda_key.txt" ]; then
           mkdir -p /var/aegir/key
-          cat /var/opt/_encN_local.${encName}.tmp > /var/aegir/key/barracuda_key.txt
+          cat /var/opt/_encN_local.${_encName}.tmp > /var/aegir/key/barracuda_key.txt
         fi
       fi
     fi
@@ -783,9 +784,9 @@ verify_upgrade_keys() {
 ###
 ### Extract archive
 ###
-extract_archive_pre() {
+_extract_archive_pre() {
   if [ -e "/root/.dev.server.cnf" ]; then
-    echo "PROC: extract_archive_pre in octopus"
+    echo "PROC: _extract_archive_pre in octopus"
   fi
   if [ ! -z "$1" ]; then
     case $1 in
@@ -811,16 +812,16 @@ extract_archive_pre() {
 ###
 ### Download and extract archive from dev/src mirror
 ###
-get_dev_src_pre() {
+_get_dev_src_pre() {
   if [ -e "/root/.dev.server.cnf" ]; then
-    echo "PROC: get_dev_src_pre in octopus"
+    echo "PROC: _get_dev_src_pre in octopus"
   fi
   if [ ! -z "$1" ]; then
-    curl ${crlGet} "${urlDev}/src/$1" -o "$1"
+    curl ${_crlGet} "${_urlDev}/src/$1" -o "$1"
     if [ -e "$1" ]; then
-      extract_archive_pre "$1"
+      _extract_archive_pre "$1"
     else
-      echo "OOPS: $1 failed download from ${urlDev}/src/$1"
+      echo "OOPS: $1 failed download from ${_urlDev}/src/$1"
     fi
   fi
 }
@@ -829,18 +830,18 @@ get_dev_src_pre() {
 ###
 ### Download helpers and libs
 ###
-download_helpers_libs() {
+_download_helpers_libs() {
   if [ -e "/root/.dev.server.cnf" ]; then
-    echo "PROC: download_helpers_libs in octopus"
+    echo "PROC: _download_helpers_libs in octopus"
   fi
-  find_fast_mirror_cnf
-  verify_upgrade_keys
+  _find_fast_mirror_cnf
+  _verify_upgrade_keys
   mkdir -p /opt/tmp
   cd /opt/tmp
   rm -rf /opt/tmp/boa
   if [ -e "/var/aegir/drush" ]; then
     _GIT_VRN=2.45.2
-    isGit=$(which git 2>&1)
+    _isGit=$(which git 2>&1)
     _GIT_INSTALL=NO
     _GIT_V=$(git --version 2>&1 \
       | cut -d" " -f3 \
@@ -851,12 +852,12 @@ download_helpers_libs() {
       fi
     fi
     if [ "${_GIT_INSTALL}" = "YES" ] \
-      || [ ! -x "${isGit}" ] \
-      || [ -z "${isGit}" ]; then
+      || [ ! -x "${_isGit}" ] \
+      || [ -z "${_isGit}" ]; then
       echo "INFO: Building Git ${_GIT_VRN} from sources..."
       echo "WAIT: This may take a while, please wait..."
       if [ ! -x "/usr/local/bin/git" ]; then
-        apt_clean_update
+        _apt_clean_update
         if [ -e "/root/.dev.server.cnf" ]; then
           apt-get install libcurl4 -y --allow-unauthenticated -qq 2> /dev/null
           apt-get install libcurl4-openssl-dev -y --allow-unauthenticated -qq 2> /dev/null
@@ -874,7 +875,7 @@ download_helpers_libs() {
       mkdir -p /var/opt
       rm -rf /var/opt/git*
       cd /var/opt
-      get_dev_src_pre "git-${_GIT_VRN}.tar.gz"
+      _get_dev_src_pre "git-${_GIT_VRN}.tar.gz"
       cd /var/opt/git-${_GIT_VRN}
       if [ -e "/root/.dev.server.cnf" ]; then
         make configure 2> /dev/null
@@ -899,20 +900,20 @@ download_helpers_libs() {
       echo "git-core hold" | dpkg --set-selections &> /dev/null
       echo "git-man hold" | dpkg --set-selections &> /dev/null
     fi
-    isGit=$(which git 2>&1)
-    gCb="${isGit} clone --branch"
+    _isGit=$(which git 2>&1)
+    _gCb="${_isGit} clone --branch"
     if [ -e "/root/.dev.server.cnf" ]; then
-      echo "Running ${gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git ${bldPth}"
-      if [ -x "${isGit}" ]; then
-        ${gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git ${bldPth}
+      echo "Running ${_gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git ${_bldPth}"
+      if [ -x "${_isGit}" ]; then
+        ${_gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git ${_bldPth}
       else
-        echo "ERROR: ${isGit} is probably broken"
+        echo "ERROR: ${_isGit} is probably broken"
       fi
     else
-      ${gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git ${bldPth} &> /dev/null
+      ${_gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git ${_bldPth} &> /dev/null
     fi
   else
-    apt_clean_update
+    _apt_clean_update
     if [ -e "/root/.dev.server.cnf" ]; then
 #       apt-get install libcurl4 -y --allow-unauthenticated -qq 2> /dev/null
 #       apt-get install libcurl4-openssl-dev -y --allow-unauthenticated -qq 2> /dev/null
@@ -926,43 +927,43 @@ download_helpers_libs() {
       apt-get install git-core -y --allow-unauthenticated -qq &> /dev/null
       apt-get install git -y --allow-unauthenticated -qq &> /dev/null
     fi
-    isGit=$(which git 2>&1)
-    gCb="${isGit} clone --branch"
+    _isGit=$(which git 2>&1)
+    _gCb="${_isGit} clone --branch"
     if [ -e "/root/.dev.server.cnf" ]; then
-      echo "Running ${gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git ${bldPth}"
-      if [ -x "${isGit}" ]; then
-        ${gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git ${bldPth}
+      echo "Running ${_gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git ${_bldPth}"
+      if [ -x "${_isGit}" ]; then
+        ${_gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git ${_bldPth}
       else
-        echo "ERROR: ${isGit} is probably broken"
+        echo "ERROR: ${_isGit} is probably broken"
       fi
     else
-      ${gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git ${bldPth} &> /dev/null
+      ${_gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git ${_bldPth} &> /dev/null
     fi
   fi
   #
-  if [ ! -e "${bldPth}/aegir/helpers/apt.conf.noi.nrml" ] \
-    || [ ! -e "${bldPth}/aegir/helpers/apt.conf.noi.dist" ]; then
+  if [ ! -e "${_bldPth}/aegir/helpers/apt.conf.noi.nrml" ] \
+    || [ ! -e "${_bldPth}/aegir/helpers/apt.conf.noi.dist" ]; then
     echo " "
     echo "EXIT on error due to missing helpers"
     echo "Please try to run this script again in a few minutes"
     echo "Also, make sure that the outgoing connections via port 443 work"
     echo "Bye"
     echo " "
-    clean_pid_exit download_helpers_libs_a
+    _clean_pid_exit _download_helpers_libs_a
   fi
   # Get apt helper
   rm -f apt.conf.noi*
-  cp -af ${bldPth}/aegir/helpers/apt.conf.noi.nrml ./
-  cp -af ${bldPth}/aegir/helpers/apt.conf.noi.dist ./
+  cp -af ${_bldPth}/aegir/helpers/apt.conf.noi.nrml ./
+  cp -af ${_bldPth}/aegir/helpers/apt.conf.noi.dist ./
   mkdir -p /opt/apt/
-  cp -af ${bldPth}/aegir/helpers/apt.conf.noi.nrml /opt/apt/
-  cp -af ${bldPth}/aegir/helpers/apt.conf.noi.dist /opt/apt/
+  cp -af ${_bldPth}/aegir/helpers/apt.conf.noi.nrml /opt/apt/
+  cp -af ${_bldPth}/aegir/helpers/apt.conf.noi.dist /opt/apt/
   #
   # Create tmp stuff
   if [ ! -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ]; then
-    _LOG=${vBs}/octopus-install-${_NOW}.log
+    _LOG=${_vBs}/octopus-install-${_NOW}.log
   else
-    _LOG=${vBs}/octopus-upgrade-${_NOW}.log
+    _LOG=${_vBs}/octopus-upgrade-${_NOW}.log
   fi
   touch ${_LOG}
   chmod 646 ${_LOG}
@@ -974,12 +975,12 @@ download_helpers_libs() {
   #
   # Get spinner
   rm -f spinner*
-  cp -af ${bldPth}/aegir/helpers/spinner ./
+  cp -af ${_bldPth}/aegir/helpers/spinner ./
   chmod +x spinner &> /dev/null
   #
   # Get axelerator
   if [ ! -e "/usr/bin/aptitude-fast" ]; then
-    git clone ${gitHub}/apt-fast.git /opt/tmp/apt-fast &> /dev/null
+    git clone ${_gitHub}/apt-fast.git /opt/tmp/apt-fast &> /dev/null
     cp -af /opt/tmp/apt-fast/apt-fast /usr/bin/aptitude-fast &> /dev/null
     chmod +x /usr/bin/aptitude-fast &> /dev/null
     cd /opt/tmp

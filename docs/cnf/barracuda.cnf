@@ -32,8 +32,8 @@ _MODULES_FIX=YES #-------------- Allows to skip weekly modules en/dis when NO
 _MODULES_SKIP="" #-------------- Modules (machine names) to never auto-disable
 _PERMISSIONS_FIX=YES #---------- Allows to skip daily permissions fix when NO
 ###
-_CPU_CRIT_RATIO=3.9 #----------- Max load per CPU core before killing PHP/Drush
-_CPU_MAX_RATIO=3.3 #------------ Max load per CPU core before disabling Nginx
+_CPU_CRIT_RATIO=5.1 #----------- Max load per CPU core before killing PHP/Drush
+_CPU_MAX_RATIO=4.1 #------------ Max load per CPU core before disabling Nginx
 _CPU_SPIDER_RATIO=1 #----------- Max load per CPU core before blocking spiders
 ###
 _SQL_MAX_TTL=3600 #------------- Max TTL for mysql process per user (seconds)
@@ -58,9 +58,9 @@ _MAGICK_FROM_SOURCES=NO #------- Builds ImageMagick from sources when YES
 _NGINX_DOS_LINES=1999 #--------- Default number of access.log lines to check
 _NGINX_DOS_LIMIT=399 #---------- Default 399/1999 limit of page views per IP
 _NGINX_DOS_MODE=2 #------------- 1 or 2 (default)
+_NGINX_DOS_LOG=SILENT #--------- Logging mode, can be SILENT, NORMAL or VERBOSE
 _NGINX_DOS_IGNORE="foo|bar" #--- Keywords to ignore the requests if found
 _NGINX_DOS_STOP="foo|bar" #----- Keywords to trigger counter +5 increase if found
-_NGINX_DOS_LOG=SILENT #--------- Logging mode, can be SILENT (none) or VERBOSE
 
 ###
 _NGINX_EXTRA_CONF="" #---------- Allows to add custom options to Nginx build
@@ -98,7 +98,7 @@ _CUSTOM_CONFIG_REDIS=NO #------- Protects custom Redis config when YES
 _CUSTOM_CONFIG_SQL=NO #--------- Protects custom SQL config when YES
 ###
 _AEGIR_UPGRADE_ONLY=NO #-------- Managed on the fly with 'aegir' keyword
-_SYSTEM_UPGRADE_ONLY=NO #------- Managed on the fly with 'system' keyword
+_SYSTEM_UP_ONLY=NO #------------ Managed on the fly with 'system' keyword
 ###
 _SYS_COLLATION_SQL= #----------- By default on the DB server: utf8mb4_unicode_ci
 ###

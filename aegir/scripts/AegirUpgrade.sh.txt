@@ -38,17 +38,17 @@
 ###
 ### Default variables
 ###
-bldPth="/opt/tmp/boa"
-filIncB="barracuda.sh.cnf"
-libFnc="${bldPth}/lib/functions"
-vBs="/var/backups"
-export tRee=pro
+_bldPth="/opt/tmp/boa"
+_filIncB="barracuda.sh.cnf"
+_libFnc="${_bldPth}/lib/functions"
+_vBs="/var/backups"
+export _tRee=dev
 
 
 ###
 ### Panic on missing include
 ###
-panic_exit() {
+_panic_exit() {
   echo
   echo " EXIT: Required lib file not available?"
   echo " EXIT: $1"
@@ -63,8 +63,8 @@ panic_exit() {
 ###
 ### Include default settings and basic functions
 ###
-[ -r "${vBs}/${filIncB}" ] || panic_exit "${vBs}/${filIncB}"
-  source "${vBs}/${filIncB}"
+[ -r "${_vBs}/${_filIncB}" ] || _panic_exit "${_vBs}/${_filIncB}"
+  source "${_vBs}/${_filIncB}"
 
 
 ###
@@ -72,8 +72,8 @@ panic_exit() {
 ###
 _FL="helper master"
 for f in ${_FL}; do
-  [ -r "${libFnc}/${f}.sh.inc" ] || panic_exit "${f}"
-  source "${libFnc}/${f}.sh.inc"
+  [ -r "${_libFnc}/${f}.sh.inc" ] || _panic_exit "${f}"
+  source "${_libFnc}/${f}.sh.inc"
 done
 
 
@@ -120,13 +120,13 @@ _DRUSHCMD="${_T_CLI}/php ${_ROOT}/drush/drush.php"
 PATH=${_T_CLI}:/usr/local/bin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 #
-crlGet="-L --max-redirs 3 -k -s --retry 3 --retry-delay 5 -A iCab"
-gCb="git clone --branch"
-gitHub="https://github.com/omega8cc"
-gitLab="https://gitlab.com/omega8cc"
+_crlGet="-L --max-redirs 3 -k -s --retry 3 --retry-delay 5 -A iCab"
+_gCb="git clone --branch"
+_gitHub="https://github.com/omega8cc"
+_gitLab="https://gitlab.com/omega8cc"
 #
-urlDev="http://${_USE_MIR}/dev"
-urlHmr="http://${_USE_MIR}/versions/${tRee}/boa/aegir"
+_urlDev="http://${_USE_MIR}/dev"
+_urlHmr="http://${_USE_MIR}/versions/${_tRee}/boa/aegir"
 
 
 ###---### Local functions
@@ -139,7 +139,7 @@ if [ -z "${TERM+x}" ]; then
 fi
 #
 # Update php-cli for Drush.
-php_cli_drush_update() {
+_php_cli_drush_update() {
   if [ ! -z "${1}" ]; then
     _DRUSH_FILE="${_ROOT}/drush/${1}"
   else
@@ -186,17 +186,17 @@ php_cli_drush_update() {
     sed -i "s/^#\!\/.*/#\!\/opt\/php56\/bin\/php/g" \
       ${_DRUSH_FILE} &> /dev/null
   else
-    msg "FATAL ERROR: _PHP_CLI_VERSION must be set to one of supported versions"
-    msg "FATAL ERROR: Aborting AegirUpgrade installer NOW!"
+    _msg "FATAL ERROR: _PHP_CLI_VERSION must be set to one of supported versions"
+    _msg "FATAL ERROR: Aborting AegirUpgrade installer NOW!"
     touch /opt/tmp/status-AegirUpgrade-FAIL
     exit 1
   fi
 }
 #
 #
-hostmaster_mv_up() {
+_hostmaster_mv_up() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "INFO: Moving old directories"
+    _msg "INFO: Moving old directories"
   fi
   mkdir -p ${_ROOT}/backups/system
   chmod 700 ${_ROOT}/backups/system
@@ -229,15 +229,15 @@ hostmaster_mv_up() {
   done
 }
 #
-hostmaster_dr_up() {
+_hostmaster_dr_up() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "INFO: Downloading drush ${_DRUSH_VERSION}..."
+    _msg "INFO: Downloading drush ${_DRUSH_VERSION}..."
   fi
   mkdir -p ${_ROOT}/backups/system
   chmod 700 ${_ROOT}/backups/system
   cd ${_ROOT}
   mv -f drush ${_ROOT}/backups/system/drush-pre-${_DISTRO}-${_NOW} &> /dev/null
-  get_dev_ext "drush-${_DRUSH_VERSION}.tar.gz"
+  _get_dev_ext "drush-${_DRUSH_VERSION}.tar.gz"
   cd ${_ROOT}/drush/
   find ${_ROOT}/drush -type d -exec chmod 0755 {} \; &> /dev/null
   find ${_ROOT}/drush -type f -exec chmod 0644 {} \; &> /dev/null
@@ -250,15 +250,15 @@ hostmaster_dr_up() {
   chmod 755 ${_ROOT}/drush/examples/git-bisect.example.sh
   chmod 755 ${_ROOT}/drush/examples/helloworld.script
   _DRUSH_FILES="drush.php drush"
-  for df in ${_DRUSH_FILES}; do
-    php_cli_drush_update "${df}"
+  for _df in ${_DRUSH_FILES}; do
+    _php_cli_drush_update "${_df}"
   done
-  php_cli_local_ini_update
+  _php_cli_local_ini_update
 }
 #
-hostmaster_go_up() {
+_hostmaster_go_up() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "INFO: Installing Aegir Provision backend..."
+    _msg "INFO: Installing Aegir Provision backend..."
   fi
   mkdir -p ${_ROOT}/.drush/{sys,xts,usr}
   rm -rf ${_ROOT}/.drush/drush_make
@@ -267,47 +267,47 @@ hostmaster_go_up() {
   if [ "${_AEGIR_VERSION}" != "static" ]; then
     cd ${_ROOT}/.drush
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "INFO: Downloading Drush and Provision extensions..."
+      _msg "INFO: Downloading Drush and Provision extensions..."
     fi
     rm -rf ${_ROOT}/.drush/{sys,xts,usr}
     rm -rf ${_ROOT}/.drush/{provision,drush_make}
     mkdir -p ${_ROOT}/.drush/{sys,xts,usr}
-    rD="${_ROOT}/.drush"
-    ${gCb} ${_BRANCH_PRN} ${gitHub}/provision.git \
-      ${rD}/sys/provision &> /dev/null
-    ${gCb} 7.x-1.x-dev ${gitHub}/drupalgeddon.git \
-      ${rD}/usr/drupalgeddon &> /dev/null
-    ${gCb} 7.x-1.x ${gitHub}/drush_ecl.git \
-      ${rD}/usr/drush_ecl &> /dev/null
-    ${gCb} 7.x-1.x ${gitHub}/security_review.git \
-      ${rD}/xts/security_review &> /dev/null
-    ${gCb} 7.x-2.x ${gitHub}/provision_boost.git \
-      ${rD}/xts/provision_boost &> /dev/null
-    ${gCb} 7.x-2.x ${gitHub}/registry_rebuild.git \
-      ${rD}/usr/registry_rebuild &> /dev/null
-    ${gCb} 7.x-1.x ${gitHub}/safe_cache_form_clear.git \
-      ${rD}/usr/safe_cache_form_clear &> /dev/null
-    rm -rf ${rD}/*/.git
-    rm -rf ${rD}/*/*/.git
-    cd ${rD}/usr
-    get_dev_ext "clean_missing_modules.tar.gz"
-    get_dev_ext "utf8mb4_convert-7.x-1.3.tar.gz"
+    _rD="${_ROOT}/.drush"
+    ${_gCb} ${_BRANCH_PRN} ${_gitHub}/provision.git \
+      ${_rD}/sys/provision &> /dev/null
+    ${_gCb} 7.x-1.x-dev ${_gitHub}/drupalgeddon.git \
+      ${_rD}/usr/drupalgeddon &> /dev/null
+    ${_gCb} 7.x-1.x ${_gitHub}/drush_ecl.git \
+      ${_rD}/usr/drush_ecl &> /dev/null
+    ${_gCb} 7.x-1.x ${_gitHub}/security_review.git \
+      ${_rD}/xts/security_review &> /dev/null
+    ${_gCb} 7.x-2.x ${_gitHub}/provision_boost.git \
+      ${_rD}/xts/provision_boost &> /dev/null
+    ${_gCb} 7.x-2.x ${_gitHub}/registry_rebuild.git \
+      ${_rD}/usr/registry_rebuild &> /dev/null
+    ${_gCb} 7.x-1.x ${_gitHub}/safe_cache_form_clear.git \
+      ${_rD}/usr/safe_cache_form_clear &> /dev/null
+    rm -rf ${_rD}/*/.git
+    rm -rf ${_rD}/*/*/.git
+    cd ${_rD}/usr
+    _get_dev_ext "clean_missing_modules.tar.gz"
+    _get_dev_ext "utf8mb4_convert-7.x-1.3.tar.gz"
   else
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "INFO: Downloading Drush and Provision extensions..."
+      _msg "INFO: Downloading Drush and Provision extensions..."
     fi
     cd ${_ROOT}/.drush/sys
-    get_dev_ext "provision.tar.gz"
+    _get_dev_ext "provision.tar.gz"
     cd ${_ROOT}/.drush/usr
-    get_dev_ext "clean_missing_modules.tar.gz"
-    get_dev_ext "drupalgeddon.tar.gz"
-    get_dev_ext "drush_ecl.tar.gz"
-    get_dev_ext "registry_rebuild.tar.gz"
-    get_dev_ext "safe_cache_form_clear.tar.gz"
-    get_dev_ext "utf8mb4_convert-7.x-1.3.tar.gz"
+    _get_dev_ext "clean_missing_modules.tar.gz"
+    _get_dev_ext "drupalgeddon.tar.gz"
+    _get_dev_ext "drush_ecl.tar.gz"
+    _get_dev_ext "registry_rebuild.tar.gz"
+    _get_dev_ext "safe_cache_form_clear.tar.gz"
+    _get_dev_ext "utf8mb4_convert-7.x-1.3.tar.gz"
     cd ${_ROOT}/.drush/xts
-    get_dev_ext "provision_boost.tar.gz"
-    get_dev_ext "security_review.tar.gz"
+    _get_dev_ext "provision_boost.tar.gz"
+    _get_dev_ext "security_review.tar.gz"
   fi
   rm -rf ${_ROOT}/.drush/*/.git
   rm -rf ${_ROOT}/.drush/*/*/.git
@@ -316,21 +316,21 @@ hostmaster_go_up() {
   cd ${_PREV_HM_ROOT}
 }
 #
-hostmaster_dr_tt() {
+_hostmaster_dr_tt() {
   if ${_DRUSHCMD} help | grep "^ provision-install" > /dev/null ; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "${_STATUS} B: Drush test result OK"
+      _msg "${_STATUS} B: Drush test result OK"
     fi
   else
-    msg "FATAL ERROR: Drush is broken (${_DRUSHCMD} help failed)"
-    msg "FATAL ERROR: Aborting AegirUpgrade installer NOW!"
+    _msg "FATAL ERROR: Drush is broken (${_DRUSHCMD} help failed)"
+    _msg "FATAL ERROR: Aborting AegirUpgrade installer NOW!"
     touch /opt/tmp/status-AegirUpgrade-FAIL
     exit 1
   fi
 }
 #
-hostmaster_mi_up() {
-  msg "INFO: Running hostmaster-migrate, please wait..."
+_hostmaster_mi_up() {
+  _msg "INFO: Running hostmaster-migrate, please wait..."
   ### security_review breaks the upgrade if active
   mv -f ${_ROOT}/.drush/xts/security_review/security_review.drush.inc \
     ${_ROOT}/.drush/xts/security_review/foo.txt  &> /dev/null
@@ -343,14 +343,14 @@ hostmaster_mi_up() {
   #
   # Fix broken Entity module if needed.
   #
-  pthA="profiles/hostmaster/modules/contrib/entity"
-  pthB="module_filter.module"
+  _pthA="profiles/hostmaster/modules/contrib/entity"
+  _pthB="module_filter.module"
   #
-  if [ -e "${_PREV_HM_ROOT}/${pthA}/${pthB}" ]; then
-    msg "INFO: Fixing broken Entity module..."
-    rm -rf ${_PREV_HM_ROOT}/${pthA}
+  if [ -e "${_PREV_HM_ROOT}/${_pthA}/${_pthB}" ]; then
+    _msg "INFO: Fixing broken Entity module..."
+    rm -rf ${_PREV_HM_ROOT}/${_pthA}
     cd ${_PREV_HM_ROOT}/profiles/hostmaster/modules/contrib
-    get_dev_stc "entity-7.x-1.11.tar.gz"
+    _get_dev_stc "entity-7.x-1.11.tar.gz"
     ${_DRUSHCMD} @hostmaster en entity -y
     ${_DRUSHCMD} @hostmaster dis hosting_ssl -y
     ${_DRUSHCMD} @hostmaster dis hosting_le -y
@@ -371,12 +371,12 @@ hostmaster_mi_up() {
     sleep 5
     ${_DRUSHCMD} @hostmaster hosting-tasks --force
     wait
-    msg "INFO: Waiting 15 seconds..."
+    _msg "INFO: Waiting 15 seconds..."
     sleep 15
   fi
   _BROKEN_SSL_TEST=$(grep "nginx default ssl server" /var/aegir/config/server_master/nginx.conf 2>&1)
   if [ ! -z "${_BROKEN_SSL_TEST}" ]; then
-    msg "INFO: Disabling nginx_ssl on master..."
+    _msg "INFO: Disabling nginx_ssl on master..."
     ${_DRUSHCMD} @hostmaster dis hosting_ssl -y
     ${_DRUSHCMD} @hostmaster dis hosting_le -y
     ${_DRUSHCMD} @hostmaster dis hosting_le_vhost -y
@@ -397,7 +397,7 @@ hostmaster_mi_up() {
     ${_DRUSHCMD} @hostmaster hosting-tasks --force
     wait
     touch /var/aegir/disable_nginx_ssl.log
-    msg "INFO: Waiting 5 seconds..."
+    _msg "INFO: Waiting 5 seconds..."
     sleep 5
   fi
   if [ -e "${_PREV_HM_ROOT}/modules/path_alias_cache" ]; then
@@ -427,7 +427,7 @@ hostmaster_mi_up() {
   fi
   ${_DRUSHCMD} cc drush &> /dev/null
   rm -rf ${_ROOT}/.tmp/cache
-  ${_DRUSHCMD} @hostmaster sqlc < ${bldPth}/aegir/helpers/hosting_cron.sql &> /dev/null
+  ${_DRUSHCMD} @hostmaster sqlc < ${_bldPth}/aegir/helpers/hosting_cron.sql &> /dev/null
   ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM hosting_task_log \
     WHERE timestamp < UNIX_TIMESTAMP(DATE_SUB(NOW(), INTERVAL 3 MONTH))" &> /dev/null
   ${_DRUSHCMD} @hostmaster sqlq "OPTIMIZE TABLE hosting_task_log" &> /dev/null
@@ -497,75 +497,75 @@ fi
 
 if [ -d "${_ROOT}/host_master/000" ]; then
   cd ${_ROOT}/host_master
-  list=([0-9]*)
-  last=${list[@]: -1}
-  _LASTNUM=$last
+  _list=([0-9]*)
+  _last=${_list[@]: -1}
+  _LASTNUM=$_last
   _BASH_TEST=$(bash --version 2>&1)
   if [[ "${_BASH_TEST}" =~ "version 5.1" ]] || [[ "${_BASH_TEST}" =~ "version 5.2" ]]; then
-    nextnum=00$((10#0${last%%[^0-9]*} + 1))
+    _nextnum=00$((10#0${_last%%[^0-9]*} + 1))
   else
-    nextnum=00$((10#${last%%[^0-9]*} + 1))
+    _nextnum=00$((10#${_last%%[^0-9]*} + 1))
   fi
-  nextnum=${nextnum: -3}
+  _nextnum=${_nextnum: -3}
   _PREV_HM_ROOT_TEST="${_ROOT}/host_master/${_LASTNUM}"
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "INFO: Testing previous install..."
+    _msg "INFO: Testing previous install..."
   fi
   if [ -e "${_PREV_HM_ROOT_TEST}/sites/${_DOMAIN}/settings.php" ]; then
-    _DISTRO=${nextnum}
+    _DISTRO=${_nextnum}
     _PREV_HM_ROOT="${_ROOT}/host_master/${_LASTNUM}"
     if [ -e "${_PREV_HM_ROOT}/modules/path_alias_cache" ]; then
       _DEBUG_MODE=YES
     fi
   else
     _DEBUG_MODE=YES
-    msg "INFO: Testing previous install..."
-    msg "INFO: OPS, zombie found, moving it to backups..."
+    _msg "INFO: Testing previous install..."
+    _msg "INFO: OPS, zombie found, moving it to backups..."
     sleep 1
     mv -f ${_PREV_HM_ROOT_TEST} \
       ${_ROOT}/backups/system/empty-hm-${_LASTNUM}-${_NOW} &> /dev/null
     cd ${_ROOT}/host_master
-    list=([0-9]*)
-    last=${list[@]: -1}
-    _LASTNUM=$last
+    _list=([0-9]*)
+    _last=${_list[@]: -1}
+    _LASTNUM=$_last
     _BASH_TEST=$(bash --version 2>&1)
     if [[ "${_BASH_TEST}" =~ "version 5.1" ]] || [[ "${_BASH_TEST}" =~ "version 5.2" ]]; then
-      nextnum=00$((10#0${last%%[^0-9]*} + 1))
+      _nextnum=00$((10#0${_last%%[^0-9]*} + 1))
     else
-      nextnum=00$((10#${last%%[^0-9]*} + 1))
+      _nextnum=00$((10#${_last%%[^0-9]*} + 1))
     fi
-    nextnum=${nextnum: -3}
-    _DISTRO=${nextnum}
+    _nextnum=${_nextnum: -3}
+    _DISTRO=${_nextnum}
     _PREV_HM_ROOT_TEST="${_ROOT}/host_master/${_LASTNUM}"
-    msg "INFO: Testing previous install again after removing zombie..."
+    _msg "INFO: Testing previous install again after removing zombie..."
     sleep 1
     if [ -e "${_PREV_HM_ROOT_TEST}/sites/${_DOMAIN}/settings.php" ]; then
-      _DISTRO=${nextnum}
+      _DISTRO=${_nextnum}
       _PREV_HM_ROOT="${_ROOT}/host_master/${_LASTNUM}"
     else
       _DEBUG_MODE=YES
-      msg "INFO: Testing previous install again..."
-      msg "INFO: OPS, another zombie found, moving it to backups..."
+      _msg "INFO: Testing previous install again..."
+      _msg "INFO: OPS, another zombie found, moving it to backups..."
       sleep 1
       mv -f ${_PREV_HM_ROOT_TEST} \
         ${_ROOT}/backups/system/empty-hm-${_LASTNUM}-${_NOW}-sec &> /dev/null
       cd ${_ROOT}/host_master
-      list=([0-9]*)
-      last=${list[@]: -1}
-      _LASTNUM=$last
+      _list=([0-9]*)
+      _last=${_list[@]: -1}
+      _LASTNUM=$_last
       _BASH_TEST=$(bash --version 2>&1)
       if [[ "${_BASH_TEST}" =~ "version 5.1" ]] || [[ "${_BASH_TEST}" =~ "version 5.2" ]]; then
-        nextnum=00$((10#0${last%%[^0-9]*} + 1))
+        _nextnum=00$((10#0${_last%%[^0-9]*} + 1))
       else
-        nextnum=00$((10#${last%%[^0-9]*} + 1))
+        _nextnum=00$((10#${_last%%[^0-9]*} + 1))
       fi
-      nextnum=${nextnum: -3}
-      _DISTRO=${nextnum}
+      _nextnum=${_nextnum: -3}
+      _DISTRO=${_nextnum}
       _PREV_HM_ROOT_TEST="${_ROOT}/host_master/${_LASTNUM}"
-      msg "INFO: Testing previous install again after removing second zombie..."
+      _msg "INFO: Testing previous install again after removing second zombie..."
       sleep 1
       if [ -e "${_PREV_HM_ROOT_TEST}/sites/${_DOMAIN}/settings.php" ]; then
-        _DISTRO=${nextnum}
+        _DISTRO=${_nextnum}
         _PREV_HM_ROOT="${_ROOT}/host_master/${_LASTNUM}"
       fi
     fi
@@ -574,9 +574,9 @@ fi
 
 _HM_ROOT="${_ROOT}/host_master/${_DISTRO}"
 if [ -d "${_HM_ROOT}" ]; then
-  msg "FATAL ERROR: ${_HM_ROOT} already exists"
-  msg "FATAL ERROR: Too many zombies to delete! Try again..."
-  msg "FATAL ERROR: Aborting AegirUpgrade installer NOW!"
+  _msg "FATAL ERROR: ${_HM_ROOT} already exists"
+  _msg "FATAL ERROR: Too many zombies to delete! Try again..."
+  _msg "FATAL ERROR: Aborting AegirUpgrade installer NOW!"
   touch /opt/tmp/status-AegirUpgrade-FAIL
   exit 1
 fi
@@ -584,26 +584,26 @@ fi
 mkdir -p ${_ROOT}/host_master
 chmod 711 ${_ROOT}/host_master &> /dev/null
 if [ ! -d "/var/aegir/.drush/sys/provision/http" ]; then
-  msg "FATAL ERROR: Required directory does not exist:"
-  msg "FATAL ERROR: /var/aegir/.drush/sys/provision/http"
-  msg "FATAL ERROR: Aborting AegirUpgrade installer NOW!"
+  _msg "FATAL ERROR: Required directory does not exist:"
+  _msg "FATAL ERROR: /var/aegir/.drush/sys/provision/http"
+  _msg "FATAL ERROR: Aborting AegirUpgrade installer NOW!"
   touch /opt/tmp/status-AegirUpgrade-FAIL
   exit 1
 fi
 if [ -e "${_PREV_HM_ROOT}/sites/${_DOMAIN}/settings.php" ]; then
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "INFO: Test OK, we can proceed with Hostmaster upgrade"
+    _msg "INFO: Test OK, we can proceed with Hostmaster upgrade"
   fi
-  hostmaster_mv_up
-  hostmaster_dr_up
-  hostmaster_go_up
-  hostmaster_dr_tt
-  hostmaster_mi_up
+  _hostmaster_mv_up
+  _hostmaster_dr_up
+  _hostmaster_go_up
+  _hostmaster_dr_tt
+  _hostmaster_mi_up
 else
-  msg "FATAL ERROR: Your setup is probably broken because required file"
-  msg "FATAL ERROR: ${_PREV_HM_ROOT}/sites/${_DOMAIN}/settings.php"
-  msg "FATAL ERROR: does not exist"
-  msg "FATAL ERROR: Aborting AegirUpgrade installer NOW!"
+  _msg "FATAL ERROR: Your setup is probably broken because required file"
+  _msg "FATAL ERROR: ${_PREV_HM_ROOT}/sites/${_DOMAIN}/settings.php"
+  _msg "FATAL ERROR: does not exist"
+  _msg "FATAL ERROR: Aborting AegirUpgrade installer NOW!"
   touch /opt/tmp/status-AegirUpgrade-FAIL
   exit 1
 fi

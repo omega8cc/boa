@@ -139,18 +139,18 @@ _TUNE_PHP_CLI_TIMEOUT=9999
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-export tRee=pro
+export _tRee=dev
+export _xSrl=540devT03
 
-_AEGIR_VERSION="${tRee}"
-_BRANCH_BOA="5.x-${tRee}"
-_X_VERSION="BOA-5.4.0-${tRee}"
-_X_SE=540proT03
+_AEGIR_VERSION="${_tRee}"
+_BRANCH_BOA="5.x-${_tRee}"
+_X_VERSION="BOA-5.4.0-${_tRee}"
 _MYSQLTUNER_VRN=1.9.4
 
 _NOW=$(date +%y%m%d-%H%M%S 2>&1)
 _NOW=${_NOW//[^0-9-]/}
 _RAM=$(free -mt | grep Mem: | awk '{ print $2 }' 2>&1)
-_THISHOST=$(uname -n 2>&1)
+_CHECK_HOST=$(uname -n 2>&1)
 _SPINNER=NO
 if [ -n "${STY+x}" ]; then
   _SPINNER=NO
@@ -170,24 +170,24 @@ _PHP74_VRN=7.4.33
 _PHP80_API=20200930
 _PHP80_VRN=8.0.30
 _PHP81_API=20210902
-_PHP81_VRN=8.1.29
+_PHP81_VRN=8.1.30
 _PHP82_API=20220829
-_PHP82_VRN=8.2.23
+_PHP82_VRN=8.2.24
 _PHP83_API=20230831
-_PHP83_VRN=8.3.11
+_PHP83_VRN=8.3.12
 
 ###
 ### Helper variables
 ###
-bldPth="/opt/tmp/boa"
-crlGet="-L --max-redirs 3 -k -s --retry 3 --retry-delay 5 -A iCab"
-aptYesUnth="-y --allow-unauthenticated"
-gCb="git clone --branch"
-gitHub="https://github.com/omega8cc"
-gitLab="https://gitlab.com/omega8cc"
-libFnc="${bldPth}/lib/functions"
-locCnf="${bldPth}/aegir/conf"
-vBs="/var/backups"
+_bldPth="/opt/tmp/boa"
+_crlGet="-L --max-redirs 3 -k -s --retry 3 --retry-delay 5 -A iCab"
+_aptYesUnth="-y --allow-unauthenticated"
+_gCb="git clone --branch"
+_gitHub="https://github.com/omega8cc"
+_gitLab="https://gitlab.com/omega8cc"
+_libFnc="${_bldPth}/lib/functions"
+_locCnf="${_bldPth}/aegir/conf"
+_vBs="/var/backups"
 
 ###
 ### Avoid too many questions
@@ -201,7 +201,7 @@ fi
 ###---### Functions
 #
 # Clean pid files on exit.
-clean_pid_exit() {
+_clean_pid_exit() {
   echo "REASON ${e} on $(date 2>&1)" >> /root/.bond.sh.exit.exceptions.log
   [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
   [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
@@ -209,7 +209,7 @@ clean_pid_exit() {
   exit 1
 }
 
-check_root() {
+_check_root() {
   if [ `whoami` = "root" ]; then
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
     export _B_NICE=${_B_NICE//[^0-9]/}
@@ -218,12 +218,12 @@ check_root() {
     ionice -c2 -n7 -p $$
   else
     echo "ERROR: This script should be run as a root user"
-    clean_pid_exit check_root_a
+    _clean_pid_exit _check_root_a
   fi
 }
-check_root
+_check_root
 
-os_detection_minimal() {
+_os_detection_minimal() {
   _APT_UPDATE="apt-get update"
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
@@ -233,25 +233,24 @@ os_detection_minimal() {
     fi
   done
 }
-os_detection_minimal
+_os_detection_minimal
 
-apt_clean_update() {
+_apt_clean_update() {
   #apt-get clean -qq 2> /dev/null
   #rm -rf /var/lib/apt/lists/* &> /dev/null
-  mrun "${_APT_UPDATE} -qq" 2> /dev/null
+  _mrun "${_APT_UPDATE} -qq" 2> /dev/null
 }
 
-if_hosted_sys() {
-  _CHECK_HOST=$(uname -n 2>&1)
+_if_hosted_sys() {
   if [ -e "/root/.host8.cnf" ] \
     || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
-    hostedSys=YES
+    _hostedSys=YES
   else
-    hostedSys=NO
+    _hostedSys=NO
   fi
 }
 
-check_sql_running() {
+_check_sql_running() {
   while [ -z "${_IS_MYSQLD_RUNNING}" ] \
     || [ ! -e "/run/mysqld/mysqld.sock" ]; do
     _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
@@ -259,9 +258,9 @@ check_sql_running() {
     sleep 3
   done
 }
-check_sql_running
+_check_sql_running
 
-check_sql_access() {
+_check_sql_access() {
   if [ -e "/root/.my.pass.txt" ] && [ -e "/root/.my.cnf" ]; then
     _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
     _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
@@ -271,7 +270,7 @@ check_sql_access() {
     echo "ALERT: Please fix this before trying again, giving up."
     echo "Bye"
     echo " "
-    clean_pid_exit check_sql_access_a
+    _clean_pid_exit _check_sql_access_a
   fi
   if [ -z "${_IS_SYNC_SQL_PSWD}" ] \
     || [[ ! "${_IS_SYNC_SQL_PSWD}" =~ "password=${_SQL_PSWD}" ]]; then
@@ -280,7 +279,7 @@ check_sql_access() {
     echo "ALERT: Please fix this before trying again, giving up."
     echo "Bye"
     echo " "
-    clean_pid_exit check_sql_access_b
+    _clean_pid_exit _check_sql_access_b
   else
     _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
     if [ -z "${_IS_MYSQLD_RUNNING}" ]; then
@@ -288,7 +287,7 @@ check_sql_access() {
       echo "ALERT: Please fix this before trying again, giving up."
       echo "Bye"
       echo " "
-      clean_pid_exit check_sql_access_c
+      _clean_pid_exit _check_sql_access_c
     else
       _MYSQL_CONN_TEST=$(mysql -u root -e "status" 2>&1)
       if [ -z "${_MYSQL_CONN_TEST}" ] \
@@ -297,30 +296,30 @@ check_sql_access() {
         echo "ALERT: Please fix this before trying again, giving up."
         echo "Bye"
         echo " "
-        clean_pid_exit check_sql_access_d
+        _clean_pid_exit _check_sql_access_d
       fi
     fi
   fi
 }
-check_sql_access
+_check_sql_access
 
 #
 # Noticeable messages.
-msg() {
+_msg() {
   echo "Tuner [$(date 2>&1)] ==> $*"
 }
 # Simple prompt.
-prompt_yes_no() {
+_prompt_yes_no() {
 if [ "${_AUTOPILOT}" = "YES" ]; then
   return 0
 else
   while true; do
     printf "$* [Y/n] "
-    read answer
-    if [ -z "${answer}" ]; then
+    read _answer
+    if [ -z "${_answer}" ]; then
       return 0
     fi
-    case ${answer} in
+    case ${_answer} in
       [Yy]|[Yy][Ee][Ss])
         return 0
         ;;
@@ -336,7 +335,7 @@ fi
 }
 #
 # Small spinner.
-mrun() {
+_mrun() {
   CMD="$1"
   touch busy
   if [ "${_SPINNER}" = "YES" ]; then
@@ -350,7 +349,7 @@ mrun() {
 }
 #
 # Count system CPUs.
-count_cpu() {
+_count_cpu() {
   _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)
   _CPU_INFO=${_CPU_INFO//[^0-9]/}
   _NPROC_TEST=$(which nproc 2>&1)
@@ -372,31 +371,31 @@ count_cpu() {
 }
 #
 # Find the fastest mirror.
-find_fast_mirror_early() {
-  isNetc=$(which netcat 2>&1)
-  if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
+_find_fast_mirror_early() {
+  _isNetc=$(which netcat 2>&1)
+  if [ ! -x "${_isNetc}" ] || [ -z "${_isNetc}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
-    apt_clean_update
-    apt-get install netcat ${aptYesUnth} 2> /dev/null
-    apt-get install netcat-traditional ${aptYesUnth} 2> /dev/null
+    _apt_clean_update
+    apt-get install netcat ${_aptYesUnth} 2> /dev/null
+    apt-get install netcat-traditional ${_aptYesUnth} 2> /dev/null
     wait
   fi
-  ffMirr=$(which ffmirror 2>&1)
-  if [ -x "${ffMirr}" ]; then
-    ffList="/var/backups/boa-mirrors-2024-01.txt"
+  _ffMirr=$(which ffmirror 2>&1)
+  if [ -x "${_ffMirr}" ]; then
+    _ffList="/var/backups/boa-mirrors-2024-01.txt"
     mkdir -p /var/backups
-    if [ ! -e "${ffList}" ]; then
-      echo "de.files.aegir.cc"  > ${ffList}
-      echo "ny.files.aegir.cc" >> ${ffList}
-      echo "sg.files.aegir.cc" >> ${ffList}
+    if [ ! -e "${_ffList}" ]; then
+      echo "de.files.aegir.cc"  > ${_ffList}
+      echo "ny.files.aegir.cc" >> ${_ffList}
+      echo "sg.files.aegir.cc" >> ${_ffList}
     fi
-    if [ -e "${ffList}" ]; then
-      _BROKEN_FFMIRR_TEST=$(grep "stuff" ${ffMirr} 2>&1)
+    if [ -e "${_ffList}" ]; then
+      _BROKEN_FFMIRR_TEST=$(grep "stuff" ${_ffMirr} 2>&1)
       if [[ "${_BROKEN_FFMIRR_TEST}" =~ "stuff" ]]; then
-        _CHECK_MIRROR=$(bash ${ffMirr} < ${ffList} 2>&1)
+        _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _USE_MIR="${_CHECK_MIRROR}"
         [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.aegir.cc"
       else
@@ -408,20 +407,20 @@ find_fast_mirror_early() {
   else
     _USE_MIR="files.aegir.cc"
   fi
-  urlDev="http://${_USE_MIR}/dev"
-  urlHmr="http://${_USE_MIR}/versions/${tRee}/boa/aegir"
+  _urlDev="http://${_USE_MIR}/dev"
+  _urlHmr="http://${_USE_MIR}/versions/${_tRee}/boa/aegir"
 }
 #
 # Find correct IP.
-find_correct_ip() {
+_find_correct_ip() {
   if [ -e "/root/.found_correct_ipv4.cnf" ]; then
     _LOC_IP=$(cat /root/.found_correct_ipv4.cnf 2>&1)
     _LOC_IP=$(echo -n ${_LOC_IP} | tr -d "\n" 2>&1)
   else
-    _LOC_IP=$(curl ${crlGet} https://api.ipify.org \
+    _LOC_IP=$(curl ${_crlGet} https://api.ipify.org \
       | sed 's/[^0-9\.]//g' 2>&1)
     if [ -z "${_LOC_IP}" ]; then
-      _LOC_IP=$(curl ${crlGet} http://ipv4.icanhazip.com \
+      _LOC_IP=$(curl ${_crlGet} http://ipv4.icanhazip.com \
         | sed 's/[^0-9\.]//g' 2>&1)
     fi
     if [ ! -z "${_LOC_IP}" ]; then
@@ -431,7 +430,7 @@ find_correct_ip() {
 }
 #
 # Fix php.ini files to remove ionCube
-fix_php_ini_ioncube() {
+_fix_php_ini_ioncube() {
   if [ -e "${_THIS_FILE}" ] && [ "${_PHP_IONCUBE}" = "NO" ]; then
     _IONCUBE_INI_TEST=$(grep "ioncube_loader" ${_THIS_FILE} 2>&1)
     if [[ "${_IONCUBE_INI_TEST}" =~ "ioncube_loader" ]]; then
@@ -442,7 +441,7 @@ fix_php_ini_ioncube() {
 }
 #
 # Fix php.ini files to remove jsmin.so
-remove_php_ini_jsmin() {
+_remove_php_ini_jsmin() {
   if [ -e "${_THIS_FILE}" ]; then
     _JSMIN_INI_TEST=$(grep "^extension=jsmin.so" ${_THIS_FILE} 2>&1)
     if [[ "${_JSMIN_INI_TEST}" =~ "extension=jsmin.so" ]]; then
@@ -453,7 +452,7 @@ remove_php_ini_jsmin() {
 }
 #
 # Fix php.ini files to remove suhosin.so
-remove_php_ini_suhosin() {
+_remove_php_ini_suhosin() {
   if [ -e "${_THIS_FILE}" ]; then
     _SUHOSIN_INI_TEST=$(grep "^extension=suhosin.so" ${_THIS_FILE} 2>&1)
     if [[ "${_SUHOSIN_INI_TEST}" =~ "extension=suhosin.so" ]]; then
@@ -464,7 +463,7 @@ remove_php_ini_suhosin() {
 }
 #
 # Fix php.ini files to add mailparse.so
-fix_php_ini_mailparse() {
+_fix_php_ini_mailparse() {
   if [ -e "${_THIS_FILE}" ]; then
     _MAILPARSE_INI_TEST=$(grep "^extension=mailparse.so" ${_THIS_FILE} 2>&1)
     if [[ "${_MAILPARSE_INI_TEST}" =~ "extension=mailparse.so" ]]; then
@@ -476,7 +475,7 @@ fix_php_ini_mailparse() {
 }
 #
 # Fix php.ini files to add yaml.so
-fix_php_ini_yaml() {
+_fix_php_ini_yaml() {
   if [ -e "${_THIS_FILE}" ]; then
     _YAML_INI_TEST=$(grep "^extension=yaml.so" ${_THIS_FILE} 2>&1)
     if [[ "${_YAML_INI_TEST}" =~ "extension=yaml.so" ]]; then
@@ -488,7 +487,7 @@ fix_php_ini_yaml() {
 }
 #
 # Fix php.ini files to add jsmin.so
-add_php_ini_jsmin() {
+_add_php_ini_jsmin() {
   if [ -e "${_THIS_FILE}" ]; then
     _JSMIN_INI_TEST=$(grep "^extension=jsmin.so" ${_THIS_FILE} 2>&1)
     if [[ "${_JSMIN_INI_TEST}" =~ "extension=jsmin.so" ]]; then
@@ -500,7 +499,7 @@ add_php_ini_jsmin() {
 }
 #
 # Fix php.ini files to add twig.so
-fix_php_ini_twig() {
+_fix_php_ini_twig() {
   if [ -e "${_THIS_FILE}" ]; then
     _TWIG_INI_TEST=$(grep "^extension=twig.so" ${_THIS_FILE} 2>&1)
     if [[ "${_TWIG_INI_TEST}" =~ "extension=twig.so" ]]; then
@@ -512,7 +511,7 @@ fix_php_ini_twig() {
 }
 #
 # Fix php.ini files to add redis.so
-fix_php_ini_redis() {
+_fix_php_ini_redis() {
   if [ -e "${_THIS_FILE}" ]; then
     _REDIS_INI_TEST=$(grep "^extension=redis.so" ${_THIS_FILE} 2>&1)
     if [[ "${_REDIS_INI_TEST}" =~ "extension=redis.so" ]]; then
@@ -524,7 +523,7 @@ fix_php_ini_redis() {
 }
 #
 # Fix php.ini files to add mcrypt.so
-fix_php_ini_mcrypt() {
+_fix_php_ini_mcrypt() {
   if [ -e "${_THIS_FILE}" ]; then
     _MCRYPT_INI_TEST=$(grep "^extension=mcrypt.so" ${_THIS_FILE} 2>&1)
     if [[ "${_MCRYPT_INI_TEST}" =~ "extension=mcrypt.so" ]]; then
@@ -536,7 +535,7 @@ fix_php_ini_mcrypt() {
 }
 #
 # Fix php.ini files to add apcu.so
-fix_php_ini_apcu() {
+_fix_php_ini_apcu() {
   if [ -e "${_THIS_FILE}" ]; then
     _APCU_INI_TEST=$(grep "^apc.shm_size" ${_THIS_FILE} 2>&1)
     if [[ "${_APCU_INI_TEST}" =~ "apc.shm_size" ]]; then
@@ -549,7 +548,7 @@ fix_php_ini_apcu() {
 }
 #
 # Fix php.ini files to add igbinary.so
-fix_php_ini_igbinary() {
+_fix_php_ini_igbinary() {
   if [ -e "${_THIS_FILE}" ]; then
     _IGBINARY_INI_TEST=$(grep "^extension=igbinary.so" ${_THIS_FILE} 2>&1)
     if [[ "${_IGBINARY_INI_TEST}" =~ "extension=igbinary.so" ]]; then
@@ -561,8 +560,8 @@ fix_php_ini_igbinary() {
 }
 #
 # Fix php.ini file to add newrelic.ini
-fix_php_ini_newrelic() {
-  _NR_TPL="${locCnf}/php/newrelic.ini"
+_fix_php_ini_newrelic() {
+  _NR_TPL="${_locCnf}/php/newrelic.ini"
   if [ -e "${_THIS_FILE}" ]; then
     _NEWRELIC_INI_TEST_A=$(grep "^extension=newrelic.so" ${_THIS_FILE} 2>&1)
     if [[ "${_NEWRELIC_INI_TEST_A}" =~ "extension=newrelic.so" ]]; then
@@ -584,7 +583,7 @@ fix_php_ini_newrelic() {
 }
 #
 # Fix all php.ini files to add newrelic.ini
-fix_php_ini_newrelic_all() {
+_fix_php_ini_newrelic_all() {
   if [ -e "/etc/newrelic/newrelic.cfg" ]; then
     if [ -z "${_NEWRELIC_KEY}" ]; then
       _NEWRELIC_KEY=$(grep license_key /etc/newrelic/newrelic.cfg 2>&1)
@@ -593,15 +592,15 @@ fix_php_ini_newrelic_all() {
     _PHP_V="83 82 81 80 74 73 72 71 70"
     for e in ${_PHP_V}; do
       _THIS_FILE=/opt/php${e}/etc/php${e}.ini
-      fix_php_ini_newrelic
+      _fix_php_ini_newrelic
       _THIS_FILE=/opt/php${e}/lib/php.ini
-      fix_php_ini_newrelic
+      _fix_php_ini_newrelic
     done
   fi
 }
 #
 # Fix FMP php.ini file to add opcache.so
-fix_php_ini_opcache() {
+_fix_php_ini_opcache() {
   if [ -e "${_THIS_FILE}" ]; then
     _OPCACHE_INI_TEST=$(grep "opcache.so" ${_THIS_FILE} 2>&1)
     if [[ "${_OPCACHE_INI_TEST}" =~ "opcache.so" ]]; then
@@ -619,7 +618,7 @@ fix_php_ini_opcache() {
 }
 #
 # Fix all FMP php.ini files to add Zend OPcache
-fix_php_ini_opcache_all() {
+_fix_php_ini_opcache_all() {
   _PHP_V="83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     _P_API=
@@ -634,18 +633,18 @@ fix_php_ini_opcache_all() {
       71) _P_API="${_PHP71_API}" ;;
       70) _P_API="${_PHP70_API}" ;;
       56) _P_API="${_PHP56_API}" ;;
-      *)  msg "WARN: Unknown PHP API version for PHP ${e}"
+      *)  _msg "WARN: Unknown PHP API version for PHP ${e}"
       ;;
     esac
     _THIS_FILE=/opt/php${e}/etc/php${e}.ini
     _OPCACHE_LP="/opt/php${e}/lib/php/extensions/no-debug-non-zts"
     _OPCACHE_SO="${_OPCACHE_LP}-${_P_API}/opcache.so"
-    fix_php_ini_opcache "${e}"
+    _fix_php_ini_opcache "${e}"
   done
 }
 #
 # Fix php.ini file to add php_tet.so
-fix_php_ini_tet() {
+_fix_php_ini_tet() {
   if [ -e "${_THIS_FILE}" ]; then
     _TET_INI_TEST=$(grep "^extension=php_tet.so" ${_THIS_FILE} 2>&1)
     if [[ "${_TET_INI_TEST}" =~ "extension=php_tet.so" ]]; then
@@ -657,7 +656,7 @@ fix_php_ini_tet() {
 }
 #
 # Fix all php.ini files to add php_tet.so
-fix_php_ini_tet_all() {
+_fix_php_ini_tet_all() {
   if [ "${_PHP_TET}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "TET" ]]; then
     _PHP_V="83 82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
@@ -673,7 +672,7 @@ fix_php_ini_tet_all() {
         71) _P_API="${_PHP71_API}" ;;
         70) _P_API="${_PHP70_API}" ;;
         56) _P_API="${_PHP56_API}" ;;
-        *)  msg "WARN: Unknown PHP API version for PHP ${e}"
+        *)  _msg "WARN: Unknown PHP API version for PHP ${e}"
         ;;
       esac
       _TET_BASE="/opt/php${e}/lib/php/extensions/no-debug-non-zts"
@@ -687,7 +686,7 @@ fix_php_ini_tet_all() {
         if [ ! -e "/var/opt/TET-${_TET_VRN}/bind/php" ]; then
           mkdir -p  /var/opt
           cd /var/opt
-          get_dev_src "TET-${_TET_VRN}.tar.gz"
+          _get_dev_src "TET-${_TET_VRN}.tar.gz"
         fi
         if [ -e "/var/opt/TET-${_TET_VRN}/bind/php/php-${e}0-nts" ]; then
           cd /var/opt/TET-${_TET_VRN}/bind/php/php-${e}0-nts/
@@ -696,16 +695,16 @@ fix_php_ini_tet_all() {
       fi
       if [ -e "${_TET_SO}" ]; then
         _THIS_FILE=/opt/php${e}/etc/php${e}.ini
-        fix_php_ini_tet
+        _fix_php_ini_tet
         _THIS_FILE=/opt/php${e}/lib/php.ini
-        fix_php_ini_tet
+        _fix_php_ini_tet
       fi
     done
   fi
 }
 #
 # Fix php.ini file to add geos.so
-fix_php_ini_geos() {
+_fix_php_ini_geos() {
   if [ -e "${_THIS_FILE}" ]; then
     _GEOS_INI_TEST=$(grep "^extension=geos.so" ${_THIS_FILE} 2>&1)
     if [[ "${_GEOS_INI_TEST}" =~ "extension=geos.so" ]]; then
@@ -717,20 +716,20 @@ fix_php_ini_geos() {
 }
 #
 # Fix all php.ini files to add geos.so
-fix_php_ini_geos_all() {
+_fix_php_ini_geos_all() {
   if [ "${_PHP_GEOS}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "GEO" ]]; then
     _PHP_V="56"
     for e in ${_PHP_V}; do
       _THIS_FILE=/opt/php${e}/etc/php${e}.ini
-      fix_php_ini_geos
+      _fix_php_ini_geos
       _THIS_FILE=/opt/php${e}/lib/php.ini
-      fix_php_ini_geos
+      _fix_php_ini_geos
     done
   fi
 }
 #
 # Fix php.ini file to add mongo.so
-fix_php_ini_mongo() {
+_fix_php_ini_mongo() {
   if [ -e "${_THIS_FILE}" ]; then
     _MONGO_INI_TEST=$(grep "^extension=mongo.so" ${_THIS_FILE} 2>&1)
     if [[ "${_MONGO_INI_TEST}" =~ "extension=mongo.so" ]]; then
@@ -742,7 +741,7 @@ fix_php_ini_mongo() {
 }
 #
 # Fix php.ini file to add mongodb.so
-fix_php_ini_mongodb() {
+_fix_php_ini_mongodb() {
   if [ -e "${_THIS_FILE}" ]; then
     _MONGODB_INI_TEST=$(grep "^extension=mongodb.so" ${_THIS_FILE} 2>&1)
     if [[ "${_MONGODB_INI_TEST}" =~ "extension=mongodb.so" ]]; then
@@ -754,37 +753,37 @@ fix_php_ini_mongodb() {
 }
 #
 # Fix all php.ini files to add mongo.so or mongodb.so
-fix_php_ini_mongo_all() {
+_fix_php_ini_mongo_all() {
   if [ "${_PHP_MONGODB}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "MNG" ]]; then
     _PHP_V="56"
     for e in ${_PHP_V}; do
       _THIS_FILE=/opt/php${e}/etc/php${e}.ini
-      fix_php_ini_mongo
+      _fix_php_ini_mongo
       _THIS_FILE=/opt/php${e}/lib/php.ini
-      fix_php_ini_mongo
+      _fix_php_ini_mongo
     done
     _PHP_V="72 71 70"
     for e in ${_PHP_V}; do
       _THIS_FILE=/opt/php${e}/etc/php${e}.ini
-      fix_php_ini_mongodb
+      _fix_php_ini_mongodb
       _THIS_FILE=/opt/php${e}/lib/php.ini
-      fix_php_ini_mongodb
+      _fix_php_ini_mongodb
     done
   fi
 }
 #
 # Update PHP Config.
-php_conf_update() {
+_php_conf_update() {
   if [ -z "${_THISHTIP}" ]; then
-    _LOC_DOM="${_THISHOST}"
-    find_correct_ip
+    _LOC_DOM="${_CHECK_HOST}"
+    _find_correct_ip
     _THISHTIP="${_LOC_IP}"
   fi
   if [ ! -e "/opt/etc/fpm" ] \
     || [ ! -e "/opt/etc/fpm/fpm-pool-common.conf" ]; then
     mkdir -p /opt/etc/fpm
   fi
-  cp -af ${locCnf}/php/fpm-pool-common.conf /opt/etc/fpm/fpm-pool-common.conf
+  cp -af ${_locCnf}/php/fpm-pool-common.conf /opt/etc/fpm/fpm-pool-common.conf
   sed -i "s/127.0.0.1/127.0.0.1,${_THISHTIP}/g" /opt/etc/fpm/fpm-pool-common.conf
   wait
   sed -i "s/mode =.*/mode = 0660/g" /opt/etc/fpm/fpm-pool-common.conf
@@ -798,62 +797,62 @@ php_conf_update() {
     if [ ! -e "/opt/php${e}/etc/php${e}.ini" ] \
       || [ ! -e "/opt/php${e}/etc/pool.d/www${e}.conf" ]; then
       mkdir -p /opt/php${e}/etc/pool.d
-      cp -af ${locCnf}/php/php${e}.ini /opt/php${e}/etc/php${e}.ini
+      cp -af ${_locCnf}/php/php${e}.ini /opt/php${e}/etc/php${e}.ini
     fi
-    cp -af ${locCnf}/php/fpm${e}-pool-www.conf /opt/php${e}/etc/pool.d/www${e}.conf
+    cp -af ${_locCnf}/php/fpm${e}-pool-www.conf /opt/php${e}/etc/pool.d/www${e}.conf
     if [ ! -e "/opt/php${e}/lib/php.ini" ]; then
       mkdir -p /opt/php${e}/lib
-      cp -af ${locCnf}/php/php${e}-cli.ini /opt/php${e}/lib/php.ini
+      cp -af ${_locCnf}/php/php${e}-cli.ini /opt/php${e}/lib/php.ini
     fi
-    cp -af ${locCnf}/php/php${e}.ini /opt/php${e}/etc/php${e}.ini
-    cp -af ${locCnf}/php/php${e}-cli.ini /opt/php${e}/lib/php.ini
-    cp -af ${locCnf}/php/php${e}-fpm.conf /opt/php${e}/etc/php${e}-fpm.conf
+    cp -af ${_locCnf}/php/php${e}.ini /opt/php${e}/etc/php${e}.ini
+    cp -af ${_locCnf}/php/php${e}-cli.ini /opt/php${e}/lib/php.ini
+    cp -af ${_locCnf}/php/php${e}-fpm.conf /opt/php${e}/etc/php${e}-fpm.conf
 
     _THIS_FILE=/opt/php${e}/etc/php${e}.ini
     if [ "${e}" != "56" ]; then
-      fix_php_ini_apcu
+      _fix_php_ini_apcu
     fi
     if [ "${e}" != "56" ] && [ "${e}" != "70" ] && [ "${e}" != "71" ]; then
-      fix_php_ini_mcrypt
+      _fix_php_ini_mcrypt
     fi
     if [ "${e}" = "56" ]; then
-      fix_php_ini_mailparse
-      fix_php_ini_twig
+      _fix_php_ini_mailparse
+      _fix_php_ini_twig
     fi
     if [ "${e}" != "80" ] && [ "${e}" != "81" ]; then
-      add_php_ini_jsmin
+      _add_php_ini_jsmin
     fi
     if [ "${e}" = "80" ] || [ "${e}" = "81" ]; then
-      remove_php_ini_jsmin
+      _remove_php_ini_jsmin
     fi
-    fix_php_ini_igbinary
-    fix_php_ini_redis
-    fix_php_ini_ioncube
-    remove_php_ini_suhosin
-    fix_php_ini_yaml
+    _fix_php_ini_igbinary
+    _fix_php_ini_redis
+    _fix_php_ini_ioncube
+    _remove_php_ini_suhosin
+    _fix_php_ini_yaml
 
     _THIS_FILE=/opt/php${e}/lib/php.ini
     if [ "${e}" != "56" ]; then
-      fix_php_ini_apcu
+      _fix_php_ini_apcu
     fi
     if [ "${e}" != "56" ] && [ "${e}" != "70" ] && [ "${e}" != "71" ]; then
-      fix_php_ini_mcrypt
+      _fix_php_ini_mcrypt
     fi
     if [ "${e}" = "56" ]; then
-      fix_php_ini_mailparse
-      fix_php_ini_twig
+      _fix_php_ini_mailparse
+      _fix_php_ini_twig
     fi
     if [ "${e}" != "80" ] && [ "${e}" != "81" ]; then
-      add_php_ini_jsmin
+      _add_php_ini_jsmin
     fi
     if [ "${e}" = "80" ] || [ "${e}" = "81" ]; then
-      remove_php_ini_jsmin
+      _remove_php_ini_jsmin
     fi
-    fix_php_ini_igbinary
-    fix_php_ini_redis
-    fix_php_ini_ioncube
-    remove_php_ini_suhosin
-    fix_php_ini_yaml
+    _fix_php_ini_igbinary
+    _fix_php_ini_redis
+    _fix_php_ini_ioncube
+    _remove_php_ini_suhosin
+    _fix_php_ini_yaml
 
     if [ -e "/opt/php${e}/etc/php${e}.ini" ]; then
       sed -i "s/^zlib.output_compression.*/zlib.output_compression = Off/g"       /opt/php${e}/etc/php${e}.ini
@@ -870,39 +869,39 @@ php_conf_update() {
   done
   rm -f /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini}
   rm -f /etc/php5/conf.d/{redis.ini,suhosin.ini,newrelic.ini}
-  fix_php_ini_newrelic_all
-  fix_php_ini_geos_all
-  fix_php_ini_mongo_all
-  fix_php_ini_tet_all
-  fix_php_ini_opcache_all
+  _fix_php_ini_newrelic_all
+  _fix_php_ini_geos_all
+  _fix_php_ini_mongo_all
+  _fix_php_ini_tet_all
+  _fix_php_ini_opcache_all
 }
 #
-restore_default_php() {
-  msg "INFO: Restoring default PHP configuration"
-  cp -af ${locCnf}/php/php83-cli.ini /opt/php83/lib/php.ini &> /dev/null
-  cp -af ${locCnf}/php/php83.ini /opt/php83/etc/php83.ini   &> /dev/null
-  cp -af ${locCnf}/php/php82-cli.ini /opt/php82/lib/php.ini &> /dev/null
-  cp -af ${locCnf}/php/php82.ini /opt/php82/etc/php82.ini   &> /dev/null
-  cp -af ${locCnf}/php/php81-cli.ini /opt/php81/lib/php.ini &> /dev/null
-  cp -af ${locCnf}/php/php81.ini /opt/php81/etc/php81.ini   &> /dev/null
-  cp -af ${locCnf}/php/php80-cli.ini /opt/php80/lib/php.ini &> /dev/null
-  cp -af ${locCnf}/php/php80.ini /opt/php80/etc/php80.ini   &> /dev/null
-  cp -af ${locCnf}/php/php74-cli.ini /opt/php74/lib/php.ini &> /dev/null
-  cp -af ${locCnf}/php/php74.ini /opt/php74/etc/php74.ini   &> /dev/null
-  cp -af ${locCnf}/php/php73-cli.ini /opt/php73/lib/php.ini &> /dev/null
-  cp -af ${locCnf}/php/php73.ini /opt/php73/etc/php73.ini   &> /dev/null
-  cp -af ${locCnf}/php/php72-cli.ini /opt/php72/lib/php.ini &> /dev/null
-  cp -af ${locCnf}/php/php72.ini /opt/php72/etc/php72.ini   &> /dev/null
-  cp -af ${locCnf}/php/php71-cli.ini /opt/php71/lib/php.ini &> /dev/null
-  cp -af ${locCnf}/php/php71.ini /opt/php71/etc/php71.ini   &> /dev/null
-  cp -af ${locCnf}/php/php70-cli.ini /opt/php70/lib/php.ini &> /dev/null
-  cp -af ${locCnf}/php/php70.ini /opt/php70/etc/php70.ini   &> /dev/null
-  cp -af ${locCnf}/php/php56-cli.ini /opt/php56/lib/php.ini &> /dev/null
-  cp -af ${locCnf}/php/php56.ini /opt/php56/etc/php56.ini   &> /dev/null
+_restore_default_php() {
+  _msg "INFO: Restoring default PHP configuration"
+  cp -af ${_locCnf}/php/php83-cli.ini /opt/php83/lib/php.ini &> /dev/null
+  cp -af ${_locCnf}/php/php83.ini /opt/php83/etc/php83.ini   &> /dev/null
+  cp -af ${_locCnf}/php/php82-cli.ini /opt/php82/lib/php.ini &> /dev/null
+  cp -af ${_locCnf}/php/php82.ini /opt/php82/etc/php82.ini   &> /dev/null
+  cp -af ${_locCnf}/php/php81-cli.ini /opt/php81/lib/php.ini &> /dev/null
+  cp -af ${_locCnf}/php/php81.ini /opt/php81/etc/php81.ini   &> /dev/null
+  cp -af ${_locCnf}/php/php80-cli.ini /opt/php80/lib/php.ini &> /dev/null
+  cp -af ${_locCnf}/php/php80.ini /opt/php80/etc/php80.ini   &> /dev/null
+  cp -af ${_locCnf}/php/php74-cli.ini /opt/php74/lib/php.ini &> /dev/null
+  cp -af ${_locCnf}/php/php74.ini /opt/php74/etc/php74.ini   &> /dev/null
+  cp -af ${_locCnf}/php/php73-cli.ini /opt/php73/lib/php.ini &> /dev/null
+  cp -af ${_locCnf}/php/php73.ini /opt/php73/etc/php73.ini   &> /dev/null
+  cp -af ${_locCnf}/php/php72-cli.ini /opt/php72/lib/php.ini &> /dev/null
+  cp -af ${_locCnf}/php/php72.ini /opt/php72/etc/php72.ini   &> /dev/null
+  cp -af ${_locCnf}/php/php71-cli.ini /opt/php71/lib/php.ini &> /dev/null
+  cp -af ${_locCnf}/php/php71.ini /opt/php71/etc/php71.ini   &> /dev/null
+  cp -af ${_locCnf}/php/php70-cli.ini /opt/php70/lib/php.ini &> /dev/null
+  cp -af ${_locCnf}/php/php70.ini /opt/php70/etc/php70.ini   &> /dev/null
+  cp -af ${_locCnf}/php/php56-cli.ini /opt/php56/lib/php.ini &> /dev/null
+  cp -af ${_locCnf}/php/php56.ini /opt/php56/etc/php56.ini   &> /dev/null
 }
 #
-tune_php() {
-  msg "INFO: Tuning PHP configuration"
+_tune_php() {
+  _msg "INFO: Tuning PHP configuration"
   if [ "${_TUNE_PHP_FPM_TIMEOUT}" -lt "60" ]; then
     _TUNE_PHP_FPM_TIMEOUT=60
   fi
@@ -933,8 +932,8 @@ tune_php() {
 }
 #
 # Update innodb_log_file_size.
-innodb_log_file_size_update() {
-  msg "INFO: InnoDB log file will be set to ${_INNODB_LOG_FILE_SIZE_MB}..."
+_innodb_log_file_size_update() {
+  _msg "INFO: InnoDB log file will be set to ${_INNODB_LOG_FILE_SIZE_MB}..."
   _DBS_TEST=$(which mysql 2>&1)
   if [ ! -z "${_DBS_TEST}" ]; then
     _DB_SERVER_TEST=$(mysql -V 2>&1)
@@ -963,44 +962,44 @@ innodb_log_file_size_update() {
     fi
     mysql -u root -e "SET GLOBAL innodb_fast_shutdown = 0;" &> /dev/null
   fi
-  mrun "service mysql stop" 2> /dev/null
+  _mrun "service mysql stop" 2> /dev/null
   echo "Waiting 15 seconds..."
-  mrun "sleep 15"
+  _mrun "sleep 15"
   if [ ! -e "/run/mysqld/mysqld.sock" ] \
     && [ ! -e "/run/mysqld/mysqld.pid" ]; then
-    mkdir -p ${vBs}/old-sql-ib-log-${_NOW}
-    mrun "sleep 5"
-    mv -f /var/lib/mysql/ib_logfile0 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
-    mv -f /var/lib/mysql/ib_logfile1 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
+    mkdir -p ${_vBs}/old-sql-ib-log-${_NOW}
+    _mrun "sleep 5"
+    mv -f /var/lib/mysql/ib_logfile0 ${_vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
+    mv -f /var/lib/mysql/ib_logfile1 ${_vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
     sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
     wait
     echo "Waiting 15 seconds..."
-    mrun "sleep 15"
+    _mrun "sleep 15"
   fi
   if [ ! -e "/run/mysqld/mysqld.sock" ]; then
     service mysql start &> /dev/null
   fi
 }
 #
-restore_default_sql() {
-  msg "INFO: Restoring default SQL configuration"
+_restore_default_sql() {
+  _msg "INFO: Restoring default SQL configuration"
   sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" /etc/mysql/debian-start &> /dev/null
   wait
-  if_hosted_sys
+  _if_hosted_sys
   if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ] \
-    || [ "${hostedSys}" = "YES" ]; then
+    || [ "${_hostedSys}" = "YES" ]; then
     if [ "${_CUSTOM_CONFIG_SQL}" = "YES" ]; then
       _DO_NOTHING=YES
     else
       cp -af /etc/mysql/my.cnf \
-        /var/backups/dragon/t/my.cnf-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
-      cp -af ${locCnf}/var/my.cnf.txt /etc/mysql/my.cnf
+        /var/backups/dragon/t/my.cnf-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
+      cp -af ${_locCnf}/var/my.cnf.txt /etc/mysql/my.cnf
       _INNODB_LOG_FILE_SIZE=${_INNODB_LOG_FILE_SIZE//[^0-9]/}
       if [ ! -z "${_INNODB_LOG_FILE_SIZE}" ]; then
         if [ "${_INNODB_LOG_FILE_SIZE}" -ge "50" ]; then
           _INNODB_LOG_FILE_SIZE_MB="${_INNODB_LOG_FILE_SIZE}M"
           _INNODB_LOG_FILE_SIZE_TEST=$(grep "innodb_log_file_size" \
-            /var/backups/dragon/t/my.cnf-pre-${_X_SE}-${_X_VERSION}-${_NOW} 2>&1)
+            /var/backups/dragon/t/my.cnf-pre-${_xSrl}-${_X_VERSION}-${_NOW} 2>&1)
           if [[ "${_INNODB_LOG_FILE_SIZE_TEST}" =~ "= ${_INNODB_LOG_FILE_SIZE_MB}" ]]; then
             _INNODB_LOG_FILE_SIZE_SAME=YES
           else
@@ -1068,7 +1067,7 @@ restore_default_sql() {
               /etc/mysql/my.cnf &> /dev/null
             wait
           else
-            innodb_log_file_size_update
+            _innodb_log_file_size_update
           fi
         fi
       fi
@@ -1076,31 +1075,31 @@ restore_default_sql() {
   fi
 }
 #
-tune_sql() {
-  msg "INFO: Tuning SQL configuration"
+_tune_sql() {
+  _msg "INFO: Tuning SQL configuration"
   sed -i "s/9999/${_TUNE_SQL_TIMEOUT}/g" /etc/mysql/my.cnf     &> /dev/null
   wait
   sed -i "s/9999/${_TUNE_SQL_TIMEOUT}/g" /var/xdrago/minute.sh &> /dev/null
   wait
 }
 #
-restore_default_nginx() {
-  msg "INFO: Restoring default Nginx configuration"
+_restore_default_nginx() {
+  _msg "INFO: Restoring default Nginx configuration"
   cd /var/xdrago/monitor/check
-  cp -af ${bldPth}/aegir/tools/system/monitor/check/scan_nginx.pl ./
+  cp -af ${_bldPth}/aegir/tools/system/monitor/check/scan_nginx.pl ./
   if [ -d "${_TUNE_HOSTMASTER}" ]; then
-    for Files in `find ${_TUNE_HOSTMASTER}/config/server_master/nginx/vhost.d -type f`; do
-      sed -i "s/#limit_conn /limit_conn /g" $Files &> /dev/null
+    for _Files in `find ${_TUNE_HOSTMASTER}/config/server_master/nginx/vhost.d -type f`; do
+      sed -i "s/#limit_conn /limit_conn /g" ${_Files} &> /dev/null
       wait
     done
   fi
   su -s /bin/bash - aegir -c "drush8 @server_master provision-verify" &> /dev/null
   wait
-  mrun "sleep 8"
+  _mrun "sleep 8"
 }
 #
-tune_nginx() {
-  msg "INFO: Tuning Nginx configuration"
+_tune_nginx() {
+  _msg "INFO: Tuning Nginx configuration"
   sed -i "s/default_critnumber =.*/default_critnumber = ${_TUNE_NGINX_FIREWALL};/g" /var/xdrago/monitor/check/scan_nginx.pl
   wait
   sed -i "s/60/${_TUNE_NGINX_TIMEOUT}/g" /var/aegir/config/server_master/nginx.conf    &> /dev/null
@@ -1113,16 +1112,16 @@ tune_nginx() {
     sed -i "s/limit_conn /#limit_conn /g" /var/aegir/config/server_master/nginx.conf &> /dev/null
     wait
     if [ -d "${_TUNE_HOSTMASTER}" ]; then
-      for Files in `find ${_TUNE_HOSTMASTER}/config/server_master/nginx/vhost.d -type f`; do
-        sed -i "s/limit_conn /#limit_conn /g" $Files &> /dev/null
+      for _Files in `find ${_TUNE_HOSTMASTER}/config/server_master/nginx/vhost.d -type f`; do
+        sed -i "s/limit_conn /#limit_conn /g" ${_Files} &> /dev/null
         wait
       done
     fi
   fi
 }
 #
-restart_services() {
-  msg "INFO: Reloading services"
+_restart_services() {
+  _msg "INFO: Reloading services"
   _PHP_V="83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     if [ -e "/etc/init.d/php${e}-fpm" ]; then
@@ -1134,7 +1133,7 @@ restart_services() {
   service nginx reload &> /dev/null
   service redis-server reload &> /dev/null
   if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
-    mrun "csf -q" &> /dev/null
+    _mrun "csf -q" &> /dev/null
     ### Linux kernel TCP SACK CVEs mitigation
     ### CVE-2019-11477 SACK Panic
     ### CVE-2019-11478 SACK Slowness
@@ -1151,11 +1150,11 @@ restart_services() {
 }
 #
 # Tune Web Sever configuration.
-tune_web_server_config() {
+_tune_web_server_config() {
   _LIM_FPM="${_L_PHP_FPM_WORKERS}"
   if [ "${_LIM_FPM}" -lt "48" ]; then
-    if_hosted_sys
-    if [ "${hostedSys}" = "YES" ]; then
+    _if_hosted_sys
+    if [ "${_hostedSys}" = "YES" ]; then
       _LIM_FPM=48
     fi
   fi
@@ -1197,56 +1196,56 @@ tune_web_server_config() {
 }
 #
 #
-check_mysqld_running() {
+_check_mysqld_running() {
   while [ -z "${_IS_MYSQLD_RUNNING}" ] \
     || [ ! -e "/run/mysqld/mysqld.sock" ]; do
     _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
-    msg "INFO: Waiting for MySQLD availability before tune_sql_memory_limits..."
+    _msg "INFO: Waiting for MySQLD availability before _tune_sql_memory_limits..."
     sleep 5
     service mysql start &> /dev/null
   done
 }
 #
 # Tune memory limits for SQL server.
-tune_sql_memory_limits() {
-  check_mysqld_running
+_tune_sql_memory_limits() {
+  _check_mysqld_running
   # https://raw.githubusercontent.com/major/MySQLTuner-perl/master/mysqltuner.pl
-  pthTun="/var/opt/mysqltuner.pl"
-  outTun="/var/opt/mysqltuner-${_X_SE}-${_X_VERSION}-${_NOW}.txt"
-  if [ ! -e "${outTun}" ] \
+  _pthTun="/var/opt/mysqltuner.pl"
+  _outTun="/var/opt/mysqltuner-${_xSrl}-${_X_VERSION}-${_NOW}.txt"
+  if [ ! -e "${_outTun}" ] \
     && [ "${_STATUS}" = "UPGRADE" ]; then
-    msg "INFO: Running MySQLTuner check on all databases"
-    msg "WAIT: This may take a while, please wait..."
+    _msg "INFO: Running MySQLTuner check on all databases"
+    _msg "WAIT: This may take a while, please wait..."
     _MYSQLTUNER_TEST_RESULT=OK
     rm -f /var/opt/mysqltuner*
-    curl ${crlGet} "${urlDev}/mysqltuner.pl.${_MYSQLTUNER_VRN}" -o ${pthTun}
-    if [ ! -e "${pthTun}" ]; then
-      curl ${crlGet} "${urlDev}/mysqltuner.pl" -o ${pthTun}
+    curl ${_crlGet} "${_urlDev}/mysqltuner.pl.${_MYSQLTUNER_VRN}" -o ${_pthTun}
+    if [ ! -e "${_pthTun}" ]; then
+      curl ${_crlGet} "${_urlDev}/mysqltuner.pl" -o ${_pthTun}
     fi
-    if [ -e "${pthTun}" ]; then
-      perl ${pthTun} > ${outTun} 2>&1
+    if [ -e "${_pthTun}" ]; then
+      perl ${_pthTun} > ${_outTun} 2>&1
     fi
   fi
-  if [ -e "${pthTun}" ] \
-    && [ -e "${outTun}" ] \
+  if [ -e "${_pthTun}" ] \
+    && [ -e "${_outTun}" ] \
     && [ "${_STATUS}" = "UPGRADE" ]; then
-    _REC_MYISAM_MEM=$(cat ${outTun} \
+    _REC_MYISAM_MEM=$(cat ${_outTun} \
       | grep "Data in MyISAM tables" \
       | cut -d: -f2 \
       | awk '{ print $1}' 2>&1)
-    _REC_INNODB_MEM=$(cat ${outTun} \
+    _REC_INNODB_MEM=$(cat ${_outTun} \
       | grep "data size:" \
       | cut -d/ -f3 \
       | awk '{ print $1}' 2>&1)
-    _MYSQLTUNER_TEST=$(cat ${outTun} 2>&1)
-    cp -a ${outTun} ${pthLog}/
+    _MYSQLTUNER_TEST=$(cat ${_outTun} 2>&1)
+    cp -a ${_outTun} ${_pthLog}/
     if [ -z "${_REC_INNODB_MEM}" ] \
       || [[ "${_MYSQLTUNER_TEST}" =~ "Cannot calculate MyISAM index" ]] \
       || [[ "${_MYSQLTUNER_TEST}" =~ "InnoDB is enabled but isn" ]]; then
       _MYSQLTUNER_TEST_RESULT=FAIL
-      msg "NOTE: The MySQLTuner test failed!"
-      msg "NOTE: Please review ${outTun}"
-      msg "NOTE: We will use some sane SQL defaults instead, do not worry!"
+      _msg "NOTE: The MySQLTuner test failed!"
+      _msg "NOTE: Please review ${_outTun}"
+      _msg "NOTE: We will use some sane SQL defaults instead, do not worry!"
     fi
     ###--------------------###
     if [ ! -z "${_REC_MYISAM_MEM}" ] \
@@ -1269,7 +1268,7 @@ tune_sql_memory_limits() {
     else
       _USE_MYISAM_MEM="${_USE_SQL}M"
       if [ "${_MYSQLTUNER_TEST_RESULT}" = "FAIL" ]; then
-        msg "NOTE: _USE_MYISAM_MEM is ${_USE_MYISAM_MEM} because _REC_MYISAM_MEM was empty!"
+        _msg "NOTE: _USE_MYISAM_MEM is ${_USE_MYISAM_MEM} because _REC_MYISAM_MEM was empty!"
       fi
       sed -i "s/^key_buffer_size.*/key_buffer_size         = ${_USE_MYISAM_MEM}/g"  /etc/mysql/my.cnf
       wait
@@ -1306,7 +1305,7 @@ tune_sql_memory_limits() {
       wait
     else
       _USE_INNODB_MEM="${_USE_SQL}M"
-      msg "NOTE: _USE_INNODB_MEM is ${_USE_INNODB_MEM} because _REC_INNODB_MEM was empty!"
+      _msg "NOTE: _USE_INNODB_MEM is ${_USE_INNODB_MEM} because _REC_INNODB_MEM was empty!"
       sed -i "s/^innodb_buffer_pool_size.*/innodb_buffer_pool_size = ${_USE_INNODB_MEM}/g"  /etc/mysql/my.cnf
       wait
     fi
@@ -1314,8 +1313,8 @@ tune_sql_memory_limits() {
     _THIS_USE_MEM="${_USE_SQL}M"
     if [ "${_MYSQLTUNER_TEST_RESULT}" = "FAIL" ] \
       && [ "${_STATUS}" = "UPGRADE" ]; then
-      msg "NOTE: _USE_MYISAM_MEM is ${_THIS_USE_MEM} because _REC_MYISAM_MEM was empty!"
-      msg "NOTE: _USE_INNODB_MEM is ${_THIS_USE_MEM} because _REC_INNODB_MEM was empty!"
+      _msg "NOTE: _USE_MYISAM_MEM is ${_THIS_USE_MEM} because _REC_MYISAM_MEM was empty!"
+      _msg "NOTE: _USE_INNODB_MEM is ${_THIS_USE_MEM} because _REC_INNODB_MEM was empty!"
     fi
     sed -i "s/= 181/= ${_USE_SQL}/g"  /etc/mysql/my.cnf
     wait
@@ -1323,8 +1322,8 @@ tune_sql_memory_limits() {
 }
 #
 # Tune memory limits for PHP, Nginx and Percona.
-tune_memory_limits() {
-  msg "INFO: Default Memory Tuning"
+_tune_memory_limits() {
+  _msg "INFO: Default Memory Tuning"
   _VM_TEST=$(uname -a 2>&1)
   if [ -e "/proc/bean_counters" ]; then
     _VMFAMILY="VZ"
@@ -1368,20 +1367,20 @@ tune_memory_limits() {
   if [ "${_CPU_VS}" -lt "2" ]; then
     _CPU_VS=2
   fi
-  PrTest=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
-  if [[ "${PrTest}" =~ "POWER" ]]; then
+  _PrTest=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
+  if [[ "${_PrTest}" =~ "POWER" ]]; then
     if [ "${_CPU_VS}" -lt "8" ]; then
       _CPU_VS=8
     fi
   fi
-  PrTest=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
-  if [[ "${PrTest}" =~ "PHANTOM" ]]; then
+  _PrTest=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
+  if [[ "${_PrTest}" =~ "PHANTOM" ]]; then
     if [ "${_CPU_VS}" -lt "8" ]; then
       _CPU_VS=8
     fi
   fi
-  PrTest=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
-  if [[ "${PrTest}" =~ "CLUSTER" ]]; then
+  _PrTest=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
+  if [[ "${_PrTest}" =~ "CLUSTER" ]]; then
     if [ "${_CPU_VS}" -lt "8" ]; then
       _CPU_VS=8
     fi
@@ -1391,9 +1390,9 @@ tune_memory_limits() {
     _RAM=$(( _RAM - _RESERVED_RAM ))
   fi
   _USE=$(( _RAM / 4 ))
-  if_hosted_sys
+  _if_hosted_sys
   if [ "${_VMFAMILY}" = "VS" ] \
-    || [ "${hostedSys}" = "YES" ]; then
+    || [ "${_hostedSys}" = "YES" ]; then
     if [ "${_VMFAMILY}" = "VS" ]; then
       if [ -e "/root/.tg.cnf" ]; then
         _USE_SQL=$(( _RAM / 12 ))
@@ -1557,10 +1556,10 @@ tune_memory_limits() {
   if [ ! -e "/data/conf" ]; then
     mkdir -p /data/conf
   fi
-  cp -af ${locCnf}/php/fpm-pool-foo-multi.conf /var/xdrago/conf/
-  cp -af ${locCnf}/php/fpm-pool-foo.conf /var/xdrago/conf/
-  cp -af ${locCnf}/hhvm /var/xdrago/conf/
-  cp -af ${locCnf}/hhvm/hhvm_intercept.php /data/conf/hhvm_intercept.php
+  cp -af ${_locCnf}/php/fpm-pool-foo-multi.conf /var/xdrago/conf/
+  cp -af ${_locCnf}/php/fpm-pool-foo.conf /var/xdrago/conf/
+  cp -af ${_locCnf}/hhvm /var/xdrago/conf/
+  cp -af ${_locCnf}/hhvm/hhvm_intercept.php /data/conf/hhvm_intercept.php
   chmod 644 /data/conf/hhvm_intercept.php
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ]; then
     sed -i "s/395/${_USE_FPM}/g" /opt/etc/fpm/fpm-pool-common.conf &> /dev/null
@@ -1627,14 +1626,14 @@ tune_memory_limits() {
     sed -i "s/395/${_USE_CLI}/g" /opt/php56/lib/php.ini   &> /dev/null
   fi
   if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ]; then
-    tune_sql_memory_limits
-    PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
-    PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
-    PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
-    if [[ "${PrTestPower}" =~ "POWER" ]] \
-      || [[ "${PrTestPhantom}" =~ "PHANTOM" ]] \
+    _tune_sql_memory_limits
+    _PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
+    _PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
+    _PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
+    if [[ "${_PrTestPower}" =~ "POWER" ]] \
+      || [[ "${_PrTestPhantom}" =~ "PHANTOM" ]] \
       || [ -e "/root/.my.cluster_root_pwd.txt" ] \
-      || [[ "${PrTestCluster}" =~ "CLUSTER" ]]; then
+      || [[ "${_PrTestCluster}" =~ "CLUSTER" ]]; then
       _UXC_SQL="${_MXC_SQL}"
     else
       _UXC_SQL=$(echo "scale=0; ${_MXC_SQL}/2" | bc 2>&1)
@@ -1675,10 +1674,10 @@ tune_memory_limits() {
     sed -i "s/^JAVA_OPTIONS.*/JAVA_OPTIONS=\"-Xms64m ${_USE_JETTY} -Djava.awt.headless=true -Dsolr.solr.home=\/opt\/solr1 \$JAVA_OPTIONS\" # Options/g" /etc/default/jetty7
     wait
   fi
-  tune_web_server_config
+  _tune_web_server_config
 }
 #
-check_git_repos() {
+_check_git_repos() {
   _GITHUB_WORKS=NO
   _GITLAB_WORKS=NO
   if [ "${_FORCE_GIT_MIRROR}" = "drupal" ]; then
@@ -1688,41 +1687,41 @@ check_git_repos() {
     _FORCE_GIT_MIRROR=gitlab
   fi
   if [ "${_FORCE_GIT_MIRROR}" = "github" ]; then
-    msg "INFO: We will use forced GitHub repository without testing connection"
+    _msg "INFO: We will use forced GitHub repository without testing connection"
     _GITHUB_WORKS=YES
     _GITLAB_WORKS=NO
     sleep 1
   elif [ "${_FORCE_GIT_MIRROR}" = "gitlab" ]; then
-    msg "INFO: We will use forced GitLab mirror without testing connection"
+    _msg "INFO: We will use forced GitLab mirror without testing connection"
     _GITHUB_WORKS=NO
     _GITLAB_WORKS=YES
     sleep 1
   else
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "INFO: Testing repository mirror servers availability..."
+      _msg "INFO: Testing repository mirror servers availability..."
     fi
     sleep 1
     _GITHUB_WORKS=YES
     _GITLAB_WORKS=YES
     if ! netcat -w 10 -z github.com 443 ; then
       _GITHUB_WORKS=NO
-      msg "WARN: The GitHub master repository server doesn't respond..."
+      _msg "WARN: The GitHub master repository server doesn't respond..."
     elif ! netcat -w 10 -z gitlab.com 443 ; then
       _GITLAB_WORKS=NO
-      msg "WARN: The GitLab mirror repository server doesn't respond..."
+      _msg "WARN: The GitLab mirror repository server doesn't respond..."
     fi
   fi
   if [ "${_GITHUB_WORKS}" = "YES" ]; then
     _BOA_REPO_NAME="boa"
     _BOA_REPO_GIT_URL="https://github.com/omega8cc"
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "INFO: GitHub master repository will be used"
+      _msg "INFO: GitHub master repository will be used"
     fi
   elif [ "${_GITLAB_WORKS}" = "YES" ]; then
     _BOA_REPO_NAME="boa"
-    _BOA_REPO_GIT_URL="${gitLab}"
+    _BOA_REPO_GIT_URL="${_gitLab}"
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "INFO: GitLab mirror repository will be used"
+      _msg "INFO: GitLab mirror repository will be used"
     fi
   else
     cat <<EOF
@@ -1735,7 +1734,7 @@ check_git_repos() {
     Bye.
 
 EOF
-    clean_pid_exit check_git_repos_a
+    _clean_pid_exit _check_git_repos_a
   fi
 }
 
@@ -1747,34 +1746,34 @@ touch /run/boa_run.pid
 _BOA_REPO_NAME="boa"
 _BOA_REPO_GIT_URL="https://github.com/omega8cc"
 if [ "${_AEGIR_VERSION}" != "static" ]; then
-  check_git_repos
+  _check_git_repos
 fi
 #
 #
 if [ `whoami` = "root" ]; then
   chmod a+w /dev/null
-  msg "INFO: This script is ran as a root user"
-  count_cpu
-  find_fast_mirror_early
+  _msg "INFO: This script is ran as a root user"
+  _count_cpu
+  _find_fast_mirror_early
 else
-  msg "ERROR: This script should be run as a root user"
-  msg "Bye"
-  clean_pid_exit root_a
+  _msg "ERROR: This script should be run as a root user"
+  _msg "Bye"
+  _clean_pid_exit root_a
 fi
 #
 #
 if [ ! -f "/var/log/barracuda_log.txt" ]; then
-  msg "ERROR: Please upgrade this system to BOA version ${_X_VERSION} first"
-  msg "Bye"
-  clean_pid_exit version_a
+  _msg "ERROR: Please upgrade this system to BOA version ${_X_VERSION} first"
+  _msg "Bye"
+  _clean_pid_exit version_a
 else
   _VERSIONS_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
   if [[ "${_VERSIONS_TEST}" =~ "${_X_VERSION}" ]]; then
     _VERSIONS_TEST_RESULT=OK
   else
-    msg "ERROR: Please upgrade this system to BOA version ${_X_VERSION} first"
-    msg "Bye"
-    clean_pid_exit version_b
+    _msg "ERROR: Please upgrade this system to BOA version ${_X_VERSION} first"
+    _msg "Bye"
+    _clean_pid_exit version_b
   fi
 fi
 #
@@ -1787,16 +1786,16 @@ chmod -R 777 /opt/tmp &> /dev/null
 cd /opt/tmp
 rm -rf /opt/tmp/boa
 if [ "${_AEGIR_VERSION}" != "static" ]; then
-  ${gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git &> /dev/null
+  ${_gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git &> /dev/null
 else
-  curl ${crlGet} "${urlDev}/${_AEGIR_VERSION}/boa.tar.gz" | tar -xzf -
+  curl ${_crlGet} "${_urlDev}/${_AEGIR_VERSION}/boa.tar.gz" | tar -xzf -
   _BOA_REPO_NAME="boa"
 fi
 #
 # Get spinner
 cd ${_SRCDIR}
 rm -f spinner*
-cp -af ${bldPth}/aegir/helpers/spinner ./
+cp -af ${_bldPth}/aegir/helpers/spinner ./
 chmod +x spinner &> /dev/null
 #
 # Create tmp stuff
@@ -1809,7 +1808,7 @@ _LOG=/var/backups/bond-${_NOW}.log
 #
 echo " "
 if [ "${_DEBUG_MODE}" = "YES" ]; then
-  msg "TUNER START -> checkpoint: "
+  _msg "TUNER START -> checkpoint: "
   cat <<EOF
 
   * Aegir Satellite Instance to tune: ${_TUNE_HOSTMASTER}
@@ -1823,42 +1822,42 @@ if [ "${_DEBUG_MODE}" = "YES" ]; then
 EOF
   echo " "
 fi
-tPrmt="Are you ready to tune your system"
-tPrmt="${tPrmt} with values shown above"
-tPrmt=$(echo -n ${tPrmt} | fmt -su -w 2500 2>&1)
-if prompt_yes_no "${tPrmt}?" ; then
+_tPrmt="Are you ready to tune your system"
+_tPrmt="${_tPrmt} with values shown above"
+_tPrmt=$(echo -n ${_tPrmt} | fmt -su -w 2500 2>&1)
+if _prompt_yes_no "${_tPrmt}?" ; then
   true
   if [ ! -e "/root/.upstart.cnf" ]; then
-    msg "INFO: We will stop cron and then wait 30 seconds..."
+    _msg "INFO: We will stop cron and then wait 30 seconds..."
     service cron stop &> /dev/null
-    mrun "sleep 30"
+    _mrun "sleep 30"
   fi
-  msg "INFO: Tuning in progress, please wait..."
+  _msg "INFO: Tuning in progress, please wait..."
   [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
-  restore_default_php
-  php_conf_update
-  tune_php
-  restore_default_sql
-  tune_sql
-  restore_default_nginx
-  tune_nginx
-  tune_memory_limits
-  restart_services
-  msg "INFO: Tuning completed"
+  _restore_default_php
+  _php_conf_update
+  _tune_php
+  _restore_default_sql
+  _tune_sql
+  _restore_default_nginx
+  _tune_nginx
+  _tune_memory_limits
+  _restart_services
+  _msg "INFO: Tuning completed"
 else
   if [ ! -e "/root/.upstart.cnf" ]; then
-    msg "INFO: We will stop cron and then wait 30 seconds..."
+    _msg "INFO: We will stop cron and then wait 30 seconds..."
     service cron stop &> /dev/null
-    mrun "sleep 30"
+    _mrun "sleep 30"
   fi
   [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
-  restore_default_php
-  php_conf_update
-  restore_default_sql
-  restore_default_nginx
-  tune_memory_limits
-  restart_services
-  msg "INFO: Tuning stopped and default settings restored"
+  _restore_default_php
+  _php_conf_update
+  _restore_default_sql
+  _restore_default_nginx
+  _tune_memory_limits
+  _restart_services
+  _msg "INFO: Tuning stopped and default settings restored"
 fi
 rm -rf /var/opt/*
 rm -rf /opt/tmp/*
@@ -1867,9 +1866,9 @@ if [ ! -e "/root/.upstart.cnf" ]; then
   service cron start &> /dev/null
 fi
 if [ "${_DEBUG_MODE}" = "YES" ]; then
-  msg "INFO: Cron started again"
+  _msg "INFO: Cron started again"
 fi
-msg "BYE!"
+_msg "BYE!"
 
 ###----------------------------------------###
 ###

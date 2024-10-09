@@ -12,8 +12,8 @@
 #       for i in ${TOILET_FONT_PATH:=/usr/share/figlet}/*.{t,f}lf; do j=${i##*/}; toilet -d "${i%/*}" -f "$j" "${j%.*}"; done
 
 # Setup for 92 character wide terminal
-DateColumn=55 # Default is 27 for 80 character line, 34 for 92 character line
-TimeColumn=80 # Default is 49 for   "   "   "   "    61 "   "   "   "
+_DateColumn=55 # Default is 27 for 80 character line, 34 for 92 character line
+_TimeColumn=80 # Default is 49 for   "   "   "   "    61 "   "   "   "
 
   if [ -e "/root/.found_correct_city.cnf" ]; then
     _LOC_CITY=$(cat /root/.found_correct_city.cnf 2>&1)
@@ -28,20 +28,20 @@ curl wttr.in/${_LOC_CITY}?0 --silent --max-time 2 > /tmp/now-weather
 
 [ ! -e "/tmp/now-weather" ] && exit 0
 
-readarray aWeather < /tmp/now-weather
+readarray _aWeather < /tmp/now-weather
 rm -f /tmp/now-weather
 
 # Was valid weather report found or an error message?
-if [[ "${aWeather[0]}" == "Weather report:"* ]]; then
-    WeatherSuccess=true
-    if [[ "${aWeather[0]}" =~ "+" ]]; then
-      iWeather=$(echo "${aWeather[@]}" | tr '+' ' ' 2>&1)
-      echo "${iWeather}"
+if [[ "${_aWeather[0]}" == "Weather report:"* ]]; then
+    _WeatherSuccess=true
+    if [[ "${_aWeather[0]}" =~ "+" ]]; then
+      _iWeather=$(echo "${_aWeather[@]}" | tr '+' ' ' 2>&1)
+      echo "${_iWeather}"
     else
-      echo "${aWeather[@]}"
+      echo "${_aWeather[@]}"
     fi
 else
-    WeatherSuccess=false
+    _WeatherSuccess=false
     echo "                              "
     echo "                              "
     echo "                              "
@@ -65,17 +65,17 @@ tput sc                 # Save cursor position.
 i=0
 while [ $((++i)) -lt 10 ]; do tput cuu1; done
 
-if [[ "$WeatherSuccess" == true ]]; then
+if [[ "${_WeatherSuccess}" == true ]]; then
     # Depending on length of your city name and country name you will:
     #   1. Comment out next three lines of code. Uncomment fourth code line.
     #   2. Change subtraction value and set number of print spaces to match
     #      subtraction value. Then place comment on fourth code line.
-    Column=$((DateColumn - 10))
-    tput cuf $Column        # Move x column number
+    _Column=$((_DateColumn - 10))
+    tput cuf ${_Column}        # Move x column number
     # Blank out ", country" with x spaces
     printf "          "
 else
-    tput cuf $DateColumn    # Position to column 27 for date display
+    tput cuf ${_DateColumn}    # Position to column 27 for date display
 fi
 
 # -h needed to turn off formating: https://askubuntu.com/questions/1013954/bash-substring-stringoffsetlength-error/1013960#1013960
@@ -83,21 +83,21 @@ cal > /tmp/terminal1
 # -h not supported in Ubuntu 18.04. Use second answer: https://askubuntu.com/a/1028566/307523
 tr -cd '\11\12\15\40\60-\136\140-\176' < /tmp/terminal1  > /tmp/terminal
 
-CalLineCnt=1
-Today=$(date +"%e")
+_CalLineCnt=1
+_Today=$(date +"%e")
 
 printf "\033[32m"   # color green -- see list above.
 
 while IFS= read -r Cal; do
     printf "%s" "$Cal"
-    if [[ $CalLineCnt -gt 2 ]]; then
+    if [[ ${_CalLineCnt} -gt 2 ]]; then
         # See if today is on current line & invert background
         tput cub 22
         for (( j=0 ; j <= 18 ; j += 3 )) ; do
             Test=${Cal:$j:2}            # Current day on calendar line
-            if [[ "$Test" == "$Today" ]]; then
+            if [[ "$Test" == "${_Today}" ]]; then
                 printf "\033[7m"        # Reverse: [ 7 m
-                printf "%s" "$Today"
+                printf "%s" "${_Today}"
                 printf "\033[0m"        # Normal: [ 0 m
                 printf "\033[32m"       # color green -- see list above.
                 tput cuf 1
@@ -108,8 +108,8 @@ while IFS= read -r Cal; do
     fi
 
     tput cud1               # Down one line
-    tput cuf $DateColumn    # Move 27 columns right
-    CalLineCnt=$((++CalLineCnt))
+    tput cuf ${_DateColumn}    # Move 27 columns right
+    _CalLineCnt=$((++_CalLineCnt))
 done < /tmp/terminal
 
 printf "\033[00m"           # color -- bright white (default)
@@ -123,7 +123,7 @@ tput sc                 # Save cursor position.
 # Move up 8 lines
 i=0
 while [ $((++i)) -lt 9 ]; do tput cuu1; done
-tput cuf $TimeColumn    # Move 49 columns right
+tput cuf ${_TimeColumn}    # Move 49 columns right
 
 # Do we have the toilet package?
 if hash toilet 2>/dev/null; then
@@ -139,11 +139,11 @@ else
     date +"%I:%M %P" > /tmp/terminal
 fi
 
-while IFS= read -r Time; do
+while IFS= read -r _Time; do
     printf "\033[01;36m"    # color cyan
-    printf "%s" "$Time"
+    printf "%s" "${_Time}"
     tput cud1               # Up one line
-    tput cuf $TimeColumn    # Move 49 columns right
+    tput cuf ${_TimeColumn}    # Move 49 columns right
 done < /tmp/terminal
 
 tput rc                     # Restore saved cursor position.

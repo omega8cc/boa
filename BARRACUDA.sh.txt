@@ -39,9 +39,9 @@ _ADMINER_VRN=4.8.1
 _BZR_VRN=2.6.0
 _CGP_VRN=master-22-07-2020
 _CHIVE_VRN=1.3
-_COMPOSER_VRN=2.7.9
+_COMPOSER_VRN=2.8.1
 _CSF_VRN=14.21
-_CURL_VRN=8.9.1
+_CURL_VRN=8.10.1
 _DB_SRC=repo.percona.com
 ###
 ###
@@ -79,11 +79,11 @@ _MSS_VRN=master-29-06-2024
 _MYQUICK_VRN_FIVE=0.11.5-2
 _MYQUICK_VRN_EIGHT=0.16.7-3
 _MYSQLTUNER_VRN=1.9.4
-_NGINX_VRN=1.27.1
-_OPENSSH_VRN=9.8p1
+_NGINX_VRN=1.27.2
+_OPENSSH_VRN=9.9p1
 _OPENSSL_LEGACY_VRN=1.0.2u
 _OPENSSL_EOL_VRN=1.1.1w
-_OPENSSL_MODERN_VRN=3.0.15
+_OPENSSL_MODERN_VRN=3.3.2
 _PDNSD_VRN=1.2.9a
 _PERCONA_5_7_VRN=5.7
 _PERCONA_8_0_VRN=8.0
@@ -104,11 +104,11 @@ _PHP74_VRN=7.4.33
 _PHP80_API=20200930
 _PHP80_VRN=8.0.30
 _PHP81_API=20210902
-_PHP81_VRN=8.1.29
+_PHP81_VRN=8.1.30
 _PHP82_API=20220829
-_PHP82_VRN=8.2.23
+_PHP82_VRN=8.2.24
 _PHP83_API=20230831
-_PHP83_VRN=8.3.11
+_PHP83_VRN=8.3.12
 _PHP_APCU=5.1.23
 _PHP_IGBINARY_THREE=3.2.15
 _PHP_IGBINARY_TWO=2.0.8
@@ -130,7 +130,7 @@ _SOLR_3_VRN=3.6.2
 _SOLR_4_VRN=4.9.1
 _SOLR_7_VRN=7.7.3
 _TWIGC_VRN=1.24.0
-_UNBOUND_VRN=1.21.0
+_UNBOUND_VRN=1.21.1
 _UPROGRESS_LEGACY_VRN=1.0.3.1
 _UPROGRESS_SEVEN_VRN=2.0.1.6
 _UPROGRESS_EIGHT_VRN=2.0.2
@@ -163,33 +163,33 @@ fi
 ###
 ### Helper variables
 ###
-aptLiSys="/etc/apt/sources.list"
-barCnf="/root/.barracuda.cnf"
-bldPth="/opt/tmp/boa"
-crlGet="-L --max-redirs 3 -k -s --retry 3 --retry-delay 5 -A iCab"
-aptYesUnth="-y --allow-unauthenticated"
-filIncB="barracuda.sh.cnf"
-gitHub="https://github.com/omega8cc"
-gitLab="https://gitlab.com/omega8cc"
-libFnc="${bldPth}/lib/functions"
-locCnf="${bldPth}/aegir/conf"
-mtrInc="/var/aegir/config/includes"
-mtrNgx="/var/aegir/config/server_master/nginx"
-mtrTpl="/var/aegir/.drush/sys/provision/http/Provision/Config/Nginx"
-pthLog="/var/xdrago/log"
-if [ ! -e "${pthLog}" ] && [ -e "/var/xdrago_wait/log" ]; then
-  pthLog="/var/xdrago_wait/log"
+_aptLiSys="/etc/apt/sources.list"
+_barCnf="/root/.barracuda.cnf"
+_bldPth="/opt/tmp/boa"
+_crlGet="-L --max-redirs 3 -k -s --retry 3 --retry-delay 5 -A iCab"
+_aptYesUnth="-y --allow-unauthenticated"
+_filIncB="barracuda.sh.cnf"
+_gitHub="https://github.com/omega8cc"
+_gitLab="https://gitlab.com/omega8cc"
+_libFnc="${_bldPth}/lib/functions"
+_locCnf="${_bldPth}/aegir/conf"
+_mtrInc="/var/aegir/config/includes"
+_mtrNgx="/var/aegir/config/server_master/nginx"
+_mtrTpl="/var/aegir/.drush/sys/provision/http/Provision/Config/Nginx"
+_pthLog="/var/xdrago/log"
+if [ ! -e "${_pthLog}" ] && [ -e "/var/xdrago_wait/log" ]; then
+  _pthLog="/var/xdrago_wait/log"
 fi
-vBs="/var/backups"
+_vBs="/var/backups"
 
 
 ###
 ### SA variables
 ###
-saCoreN="SA-CORE-2014-005"
-saCoreS="${saCoreN}-D7"
-saIncDb="includes/database/database.inc"
-saPatch="/var/xdrago/conf/${saCoreS}.patch"
+_saCoreN="SA-CORE-2014-005"
+_saCoreS="${_saCoreN}-D7"
+_saIncDb="includes/database/database.inc"
+_saPatch="/var/xdrago/conf/${_saCoreS}.patch"
 
 
 ###
@@ -205,7 +205,7 @@ fi
 ###
 ### Clean pid files on exit
 ###
-clean_pid_exit() {
+_clean_pid_exit() {
   echo "REASON ${e} on $(date 2>&1)" >> /root/.barracuda.sh.exit.exceptions.log
   [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
   [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
@@ -217,28 +217,28 @@ clean_pid_exit() {
 ###
 ### Panic on missing include
 ###
-panic_exit() {
+_panic_exit() {
   echo
   echo " EXIT: Required lib file not available?"
   echo " EXIT: $1"
   echo " EXIT: Cannot continue"
   echo " EXIT: Bye (0)"
   echo
-  clean_pid_exit panic_exit_a
+  _clean_pid_exit _panic_exit_a
 }
 
 
 ###
 ### Include default settings and basic functions
 ###
-[ -r "${vBs}/${filIncB}" ] || panic_exit "${vBs}/${filIncB}"
-  source "${vBs}/${filIncB}"
+[ -r "${_vBs}/${_filIncB}" ] || _panic_exit "${_vBs}/${_filIncB}"
+  source "${_vBs}/${_filIncB}"
 
 
 ###
 ### Download helpers and libs
 ###
-download_helpers_libs
+_download_helpers_libs
 
 
 ###
@@ -246,22 +246,22 @@ download_helpers_libs
 ###
 _FL="helper dns system sql redis nginx php jetty master xtra firewall hotfix"
 for f in ${_FL}; do
-  [ -r "${libFnc}/${f}.sh.inc" ] || panic_exit "${f}"
-  source "${libFnc}/${f}.sh.inc"
+  [ -r "${_libFnc}/${f}.sh.inc" ] || _panic_exit "${f}"
+  source "${_libFnc}/${f}.sh.inc"
 done
 
 
 ###
 ### Make sure we are running as root
 ###
-if_running_as_root_barracuda
+_if_running_as_root_barracuda
 
 
 ###
 ### Welcome msg
 ###
 echo " "
-msg "Skynet Agent v.${_X_VERSION} on $(dmidecode -s system-manufacturer 2>&1) welcomes you aboard!"
+_msg "Skynet Agent v.${_X_VERSION} on $(dmidecode -s system-manufacturer 2>&1) welcomes you aboard!"
 echo " "
 sleep 3
 
@@ -269,43 +269,43 @@ sleep 3
 ###
 ### Early procedures
 ###
-normalize_ip_name_variables
-mode_detection
-check_exception_mycnf
-virt_detection
-os_detection
-os_detection_minimal
-if_rebuild_src_on_major_os_upgrade
-if_long_generate_on_major_os_upgrade
+_normalize_ip_name_variables
+_mode_detection
+_check_exception_mycnf
+_virt_detection
+_os_detection
+_os_detection_minimal
+_if_rebuild_src_on_major_os_upgrade
+_if_long_generate_on_major_os_upgrade
 
 
 ###
 ### Quick php-idle ON/OFF procedure only
 ###
-if_php_idle_on_off
+_if_php_idle_on_off
 
 
 ###
 ### Packages install/update on init
 ###
-sources_list_update
-basic_packages_install_on_init
-more_packages_install_on_init
-run_aptitude_full_upgrade
+_sources_list_update
+_basic_packages_install_on_init
+_more_packages_install_on_init
+_run_aptitude_full_upgrade
 
 
 ###
 ### Misc checks
 ###
-check_boa_php_compatibility
-check_boa_version
+_check_boa_php_compatibility
+_check_boa_version
 if [ "${_CHECKS_REMOTE_REPOS}" = "YES" ]; then
-  check_github_for_aegir_head_mode
-  check_db_src
-  check_git_repos
+  _check_github_for_aegir_head_mode
+  _check_db_src
+  _check_git_repos
 fi
-check_ip_hostname
-check_prepare_dirs_permissions
+_check_ip_hostname
+_check_prepare_dirs_permissions
 
 
 ###
@@ -314,34 +314,34 @@ check_prepare_dirs_permissions
 if [ "${_OS_CODE}" = "stretch" ] || [ "${_OS_CODE}" = "jessie" ]; then
   [ ! -e "/root/.turn_off_apparmor_in_octopus.cnf" ] && touch /root/.turn_off_apparmor_in_octopus.cnf
 else
-  turn_off_apparmor_temporarily
+  _turn_off_apparmor_temporarily
 fi
 
 
 ###
 ### Optional major system upgrades
 ###
-early_sys_ctrl_mark
-if_post_major_os_upgrade
-if_major_os_upgrade
-normal_sys_ctrl_mark
+_early_sys_ctrl_mark
+_if_post_major_os_upgrade
+_if_major_os_upgrade
+_normal_sys_ctrl_mark
 
 
 ###
 ### Upgrade only Aegir Master Instance (obsolete mode)
 ###
 if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
-  if_upgrade_only_aegir_master
+  _if_upgrade_only_aegir_master
 fi
 
 ###
 ### System packages install and update
 ###
-sys_packages_update
-if_proxysql_update
-sys_packages_install
-java_check_fix
-locales_check_fix
+_sys_packages_update
+_if_proxysql_update
+_sys_packages_install
+_java_check_fix
+_locales_check_fix
 
 
 ###
@@ -355,9 +355,9 @@ fi
 ###
 ### Install key packages first
 ###
-run_aptitude_full_upgrade
-run_aptitude_deps_install
-kill_nash
+_run_aptitude_full_upgrade
+_run_aptitude_deps_install
+_kill_nash
 
 
 ###
@@ -371,9 +371,9 @@ if [ "${_STATUS}" = "INIT" ] || [ ! -x "/usr/local/ssl/bin/openssl" ]; then
     rm -f ${_MD_SSL_CTRL}
   fi
   touch ${_LC_SSL_CTRL}
-  if_ssl_install_src
-  ssl_crypto_lib_fix
-  curl_install_src
+  _if_ssl_install_src
+  _ssl_crypto_lib_fix
+  _curl_install_src
 fi
 if [ -x "/usr/local/ssl/bin/openssl" ]; then
   [ -e "${_LC_SSL_CTRL}" ] && rm -f ${_LC_SSL_CTRL}
@@ -418,9 +418,9 @@ fi
 ### Install OpenSSL and cURL from sources
 ###
 if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ] || [ ! -x "/usr/local/ssl3/bin/openssl" ]; then
-  if_ssl_install_src
-  ssl_crypto_lib_fix
-  curl_install_src
+  _if_ssl_install_src
+  _ssl_crypto_lib_fix
+  _curl_install_src
 fi
 
 
@@ -430,8 +430,8 @@ fi
 if [ "${_SSH_FROM_SOURCES}" = "YES" ] && [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
   if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "UPGRADE" ]; then
     if [ "${_OS_DIST}" = "Debian" ] || [ "${_OS_DIST}" = "Devuan" ]; then
-      sshd_install_src
-      sshd_armour
+      _sshd_install_src
+      _sshd_armour
     fi
   fi
 fi
@@ -442,7 +442,7 @@ fi
 ###
 if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "UPGRADE" ]; then
   if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
-    dns_unbound_install_upgrade
+    _dns_unbound_install_upgrade
   fi
 fi
 
@@ -450,60 +450,60 @@ fi
 ###
 ### Install Percona server
 ###
-db_server_install
+_db_server_install
 
 
 ###
 ### Finalize initial Percona server and tools setup
 ###
-init_sql_root_credentials
-sql_root_credentials_update
-mytop_install
-myquick_install_upgrade
+_init_sql_root_credentials
+_sql_root_credentials_update
+_mytop_install
+_myquick_install_upgrade
 
 
 ###
 ### Install other services
 ###
 if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
-  nginx_install_upgrade
-  nginx_initd_check
-  nginx_mime_check_fix
-  redis_install_upgrade
-  lshell_install_upgrade
-  magick_install_upgrade
-  php_install_deps
-  php_libs_fix
-  php_if_versions_cleanup_cnf
+  _nginx_install_upgrade
+  _nginx_initd_check
+  _nginx_mime_check_fix
+  _redis_install_upgrade
+  _lshell_install_upgrade
+  _magick_install_upgrade
+  _php_install_deps
+  _php_libs_fix
+  _php_if_versions_cleanup_cnf
   if [ "${_STATUS}" = "UPGRADE" ]; then
-    php_ioncube_check_if_update
-    php_check_if_rebuild
+    _php_ioncube_check_if_update
+    _php_check_if_rebuild
   fi
-  php_install_upgrade
-  php_config_check_update
-  php_upgrade_all
-  if_install_php_newrelic
-  newrelic_check_fix
+  _php_install_upgrade
+  _php_config_check_update
+  _php_upgrade_all
+  _if_install_php_newrelic
+  _newrelic_check_fix
 fi
-smtp_check
-xdrago_install_upgrade
+_smtp_check
+_xdrago_install_upgrade
 
 
 ###
 ### Download system-wide Drush versions
 ###
-drush_system_install_update
+_drush_system_install_update
 
 
 ###
 ### Install or upgrade Aegir Master Instance
 ###
 if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
-  aegir_master_install_upgrade
-  aegir_bin_extra_check_fix
-  nginx_wildcard_ssl_install
-  nginx_config_update_fix
-  aegir_master_display_login_link
+  _aegir_master_install_upgrade
+  _aegir_bin_extra_check_fix
+  _nginx_wildcard_ssl_install
+  _nginx_config_update_fix
+  _aegir_master_display_login_link
 fi
 
 
@@ -512,23 +512,23 @@ fi
 ###
 if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "UPGRADE" ]; then
   if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
-    if_install_ftpd
-    if_install_vnstat
-    if_install_wkhtmltox
-    if_install_git_src
-    if_install_ffmpeg
-    if_install_bzr
-    if_install_solr_jetty
-    if_install_adminer
-    if_install_chive
-    if_install_sqlbuddy
-    if_install_collectd
-    if_install_hhvm
-    if_install_webmin
-    if_install_bind
-    if_install_ruby
-    if_install_node
-    sftp_ftps_modern_fix
+    _if_install_ftpd
+    _if_install_vnstat
+    _if_install_wkhtmltox
+    _if_install_git_src
+    _if_install_ffmpeg
+    _if_install_bzr
+    _if_install_solr_jetty
+    _if_install_adminer
+    _if_install_chive
+    _if_install_sqlbuddy
+    _if_install_collectd
+    _if_install_hhvm
+    _if_install_webmin
+    _if_install_bind
+    _if_install_ruby
+    _if_install_node
+    _sftp_ftps_modern_fix
   fi
 fi
 
@@ -536,13 +536,13 @@ fi
 ###
 ### Install or upgrade csf/lfd monitoring
 ###
-csf_lfd_install_upgrade
+_csf_lfd_install_upgrade
 
 
 ###
 ### Update rsyslog configuration
 ###
-rsyslog_config_update
+_rsyslog_config_update
 
 
 ###
@@ -555,7 +555,7 @@ if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "UPGRADE" ]; then
     && [ ! -e "/root/.run-to-chimaera.cnf" ] \
     && [ ! -e "/root/.run-to-beowulf.cnf" ]; then
     if [ "${_OS_CODE}" != "stretch" ] && [ "${_OS_CODE}" != "jessie" ]; then
-      if_install_apparmor
+      _if_install_apparmor
     fi
   fi
 fi
@@ -564,20 +564,20 @@ fi
 ###
 ### Update barracuda log, tools and system settings
 ###
-pam_umask_check_fix
-pam_many_check_fix
-avatars_check_fix
-sysctl_update
-initd_update
-apticron_update
-barracuda_log_update
-find_server_city
+_pam_umask_check_fix
+_pam_many_check_fix
+_avatars_check_fix
+_sysctl_update
+_initd_update
+_apticron_update
+_barracuda_log_update
+_find_server_city
 
 
 ###
 ### Complete system checks and cleanup
 ###
-complete
+_complete
 exit 0
 
 

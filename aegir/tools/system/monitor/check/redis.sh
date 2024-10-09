@@ -6,7 +6,7 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 
 _pthOml="/var/xdrago/log/redis.incident.log"
 
-check_root() {
+_check_root() {
   if [ `whoami` = "root" ]; then
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
     chmod a+w /dev/null
@@ -15,7 +15,7 @@ check_root() {
     exit 1
   fi
 }
-check_root
+_check_root
 
 export _B_NICE=${_B_NICE//[^0-9]/}
 : "${_B_NICE:=10}"
@@ -23,16 +23,16 @@ export _B_NICE=${_B_NICE//[^0-9]/}
 export _INCIDENT_EMAIL_REPORT=${_INCIDENT_EMAIL_REPORT//[^A-Z]/}
 : "${_INCIDENT_EMAIL_REPORT:=YES}"
 
-if [ $(pgrep -f redis.sh | grep -v "^$$" | wc -l) -gt 4 ]; then
-  echo "Too many redis.sh running $(date 2>&1)" >> /var/xdrago/log/too.many.log
+if (( $(pgrep -fc 'redis.sh') > 2 )); then
+  echo "Too many redis.sh running $(date)" >> /var/xdrago/log/too.many.log
   exit 0
 fi
 
 _incident_email_report() {
   if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_EMAIL_REPORT}" = "YES" ]; then
-    hName=$(cat /etc/hostname 2>&1)
+    _hName=$(cat /etc/hostname 2>&1)
     echo "Sending Incident Report Email on $(date 2>&1)" >> ${_pthOml}
-    s-nail -s "Incident Report: ${1} on ${hName} at $(date 2>&1)" ${_MY_EMAIL} < ${_pthOml}
+    s-nail -s "Incident Report: ${1} on ${_hName} at $(date 2>&1)" ${_MY_EMAIL} < ${_pthOml}
   fi
 }
 
@@ -51,7 +51,7 @@ _fpm_reload() {
   echo "$(date 2>&1) $1 incident PHP-FPM reloaded" >> ${_pthOml}
 }
 
-redis_restart() {
+_redis_restart() {
   touch /run/boa_run.pid
   sleep 3
   echo "$(date 2>&1) $1 incident detected" >> ${_pthOml}
@@ -63,7 +63,7 @@ redis_restart() {
   wait
   echo "$(date 2>&1) $1 incident redis-server restarted" >> ${_pthOml}
   if [[ "${1}" =~ "OOM" ]] || [[ "${1}" =~ "SLOW" ]]; then
-    _fpm_reload
+    _fpm_reload "$1"
   fi
   echo "$(date 2>&1) $1 incident response completed" >> ${_pthOml}
   _incident_email_report "$1"
@@ -72,55 +72,62 @@ redis_restart() {
   exit 0
 }
 
-redis_bind_check_fix() {
+_redis_bind_check_fix() {
   if [ `tail --lines=8 /var/log/redis/redis-server.log \
     | grep --count "Address already in use"` -gt "0" ]; then
-    thisErrLog="$(date 2>&1) RedisException BIND detected, service restarted"
-    echo ${thisErrLog} >> ${_pthOml}
-    redis_restart "Redis BIND"
+    _thisErrLog="$(date 2>&1) RedisException BIND detected, service will be restarted"
+    echo ${_thisErrLog} >> ${_pthOml}
+    _redis_restart "Redis BIND"
   fi
 }
 
-redis_oom_check_fix() {
+_redis_oom_check_fix() {
   if [ `tail --lines=500 /var/log/php/error_log_* \
     | grep --count "RedisException"` -gt "0" ]; then
-    thisErrLog="$(date 2>&1) RedisException OOM detected, service restarted"
-    echo ${thisErrLog} >> ${_pthOml}
-    redis_restart "Redis OOM"
+    _thisErrLog="$(date 2>&1) RedisException OOM detected, service will be restarted"
+    echo ${_thisErrLog} >> ${_pthOml}
+    _redis_restart "Redis OOM"
   fi
 }
 
-redis_slow_check_fix() {
+_redis_slow_check_fix() {
   if [ `tail --lines=500 /var/log/php/fpm-*-slow.log \
     | grep --count "PhpRedis.php"` -gt "5" ]; then
-    thisErrLog="$(date 2>&1) Slow PhpRedis detected, service restarted"
-    echo ${thisErrLog} >> ${_pthOml}
-    redis_restart "Redis SLOW"
+    _thisErrLog="$(date 2>&1) Slow PhpRedis detected, service will be restarted"
+    echo ${_thisErrLog} >> ${_pthOml}
+    _redis_restart "Redis SLOW"
   fi
 }
 
-if_redis_restart() {
-  PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
-  PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
-  PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
+_if_redis_restart() {
+  _PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
+  _PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
+  _PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
   ReTest=$(ls /data/disk/*/static/control/run-redis-restart.pid | wc -l 2>&1)
-  if [[ "${PrTestPower}" =~ "POWER" ]] \
-    || [[ "${PrTestPhantom}" =~ "PHANTOM" ]] \
-    || [[ "${PrTestCluster}" =~ "CLUSTER" ]] \
+  if [[ "${_PrTestPower}" =~ "POWER" ]] \
+    || [[ "${_PrTestPhantom}" =~ "PHANTOM" ]] \
+    || [[ "${_PrTestCluster}" =~ "CLUSTER" ]] \
     || [ -e "/root/.allow.redis.restart.cnf" ]; then
     if [ "${ReTest}" -ge "1" ]; then
       rm -f /data/disk/*/static/control/run-redis-restart.pid
-      thisErrLog="$(date 2>&1) Redis Server Restart Requested"
-      echo ${thisErrLog} >> ${_pthOml}
-      redis_restart "Redis Server Restart Requested"
+      _thisErrLog="$(date 2>&1) Redis Server Restart Requested"
+      echo ${_thisErrLog} >> ${_pthOml}
+      _redis_restart "Redis Server Restart Requested"
     fi
   fi
 }
 
-[ -d "/data/u" ] && if_redis_restart
-redis_slow_check_fix
-redis_oom_check_fix
-redis_bind_check_fix
+if [ -e "/run/boa_run.pid" ] \
+  || [ -e "/run/boa_wait.pid" ]; then
+  _ALLOW_CTRL=NO
+else
+  _ALLOW_CTRL=YES
+fi
+
+[ "${_ALLOW_CTRL}" = "YES" ] && _redis_slow_check_fix
+[ "${_ALLOW_CTRL}" = "YES" ] && _redis_oom_check_fix
+[ "${_ALLOW_CTRL}" = "YES" ] && _redis_bind_check_fix
+[ "${_ALLOW_CTRL}" = "YES" ] && [ -d "/data/u" ] && _if_redis_restart
 
 echo DONE!
 exit 0

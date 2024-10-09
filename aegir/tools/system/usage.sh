@@ -4,28 +4,6 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
-check_root() {
-  if [ `whoami` = "root" ]; then
-    ionice -c2 -n7 -p $$
-    renice 19 -p $$
-    chmod a+w /dev/null
-  else
-    echo "ERROR: This script should be run as a root user"
-    exit 1
-  fi
-  _DF_TEST=$(df -kTh / -l \
-    | grep '/' \
-    | sed 's/\%//g' \
-    | awk '{print $6}' 2> /dev/null)
-  _DF_TEST=${_DF_TEST//[^0-9]/}
-  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt "90" ]; then
-    echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
-    echo "ERROR: We can not proceed until it is below 90/100"
-    exit 1
-  fi
-}
-check_root
-
 if [ -e "/root/.proxy.cnf" ]; then
   exit 0
 fi
@@ -34,31 +12,32 @@ if [ -e "/root/.pause_heavy_tasks_maint.cnf" ]; then
   exit 0
 fi
 
-if [ $(pgrep -f usage.sh | grep -v "^$$" | wc -l) -gt 2 ]; then
-  echo "Too many usage.sh running $(date 2>&1)" >> /var/xdrago/log/too.many.log
+if (( $(pgrep -fc 'usage.sh') > 2 )); then
+  echo "Too many usage.sh running $(date)" >> /var/xdrago/log/too.many.log
   exit 0
 fi
 
 ###-------------SYSTEM-----------------###
 
 _CHECK_HOST=$(uname -n 2>&1)
-if_hosted_sys() {
+
+_if_hosted_sys() {
   if [ -e "/root/.host8.cnf" ] \
     || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
-    hostedSys=YES
+    _hostedSys=YES
   else
-    hostedSys=NO
+    _hostedSys=NO
   fi
 }
 
-fix_clear_cache() {
-  if [ -e "${Plr}/profiles/hostmaster" ]; then
+_fix_clear_cache() {
+  if [ -e "${_Plr}/profiles/hostmaster" ]; then
     su -s /bin/bash - ${_THIS_U} -c "drush8 @hostmaster cache-clear all" &> /dev/null
     wait
   fi
 }
 
-check_account_exceptions() {
+_check_account_exceptions() {
   _DEV_EXC=NO
   chckStringA="omega8.cc"
   chckStringB="omega8cc"
@@ -74,7 +53,7 @@ check_account_exceptions() {
   esac
 }
 
-read_account_data() {
+_read_account_data() {
   _CLIENT_CORES=
   _EXTRA_ENGINE=
   _ENGINE_NR=
@@ -84,7 +63,7 @@ read_account_data() {
   if [ -e "/data/disk/${_THIS_U}/log/email.txt" ]; then
     _CLIENT_EMAIL=$(cat /data/disk/${_THIS_U}/log/email.txt 2>&1)
     _CLIENT_EMAIL=$(echo -n ${_CLIENT_EMAIL} | tr -d "\n" 2>&1)
-    check_account_exceptions
+    _check_account_exceptions
   fi
   if [ -e "/root/.debug.email.txt" ]; then
     _CLIENT_EMAIL="omega8cc@gmail.com"
@@ -129,7 +108,7 @@ read_account_data() {
   fi
 }
 
-send_notice_php() {
+_send_notice_php() {
   _MY_EMAIL="support@omega8.cc"
   _BCC_EMAIL="omega8cc@gmail.com"
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
@@ -173,41 +152,41 @@ EOF
   echo "INFO: PHP notice sent to ${_CLIENT_EMAIL} [${_THIS_U}]: OK"
 }
 
-detect_deprecated_php() {
+_detect_deprecated_php() {
   _PHP_FPM_VERSION=
-  if [ -e "${User}/static/control/fpm.info" ] \
-    && [ ! -e "${User}/log/proxied.pid" ] \
-    && [ ! -e "${User}/log/CANCELLED" ]; then
-    _PHP_FPM_VERSION=$(cat ${User}/static/control/fpm.info 2>&1)
+  if [ -e "${_usEr}/static/control/fpm.info" ] \
+    && [ ! -e "${_usEr}/log/proxied.pid" ] \
+    && [ ! -e "${_usEr}/log/CANCELLED" ]; then
+    _PHP_FPM_VERSION=$(cat ${_usEr}/static/control/fpm.info 2>&1)
     _PHP_FPM_VERSION=$(echo -n ${_PHP_FPM_VERSION} | tr -d "\n" 2>&1)
     if [ "${_PHP_FPM_VERSION}" = "5.5" ] \
       || [ "${_PHP_FPM_VERSION}" = "5.4" ] \
       || [ "${_PHP_FPM_VERSION}" = "5.3" ] \
       || [ "${_PHP_FPM_VERSION}" = "5.2" ]; then
       echo Deprecated PHP-FPM ${_PHP_FPM_VERSION} detected in ${_THIS_U}
-      read_account_data
+      _read_account_data
       if [ "${_THIS_MODE}" = "verbose" ]; then
-        send_notice_php ${_PHP_FPM_VERSION}
+        _send_notice_php ${_PHP_FPM_VERSION}
       fi
     fi
   fi
 }
 
-send_notice_core() {
+_send_notice_core() {
   _MY_EMAIL="support@omega8.cc"
   _BCC_EMAIL="omega8cc@gmail.com"
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
   _MAILX_TEST=$(s-nail -V 2>&1)
   if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
   cat <<EOF | s-nail -b ${_BCC_EMAIL} \
-    -s "URGENT: Please migrate ${Dom} site to Pressflow (LTS)" ${_CLIENT_EMAIL}
+    -s "URGENT: Please migrate ${_Dom} site to Pressflow (LTS)" ${_CLIENT_EMAIL}
 Hello,
 
 Our system detected that you are using vanilla Drupal core
-for site ${Dom}.
+for site ${_Dom}.
 
 The platform root directory for this site is:
-${Plr}
+${_Plr}
 
 Using non-Pressflow 5.x or 6.x core is not allowed
 on our servers, unless it is a temporary result of your site
@@ -230,37 +209,37 @@ EOF
   echo "INFO: Pressflow notice sent to ${_CLIENT_EMAIL} [${_THIS_U}]: OK"
 }
 
-detect_vanilla_core() {
-  if [ ! -e "${Plr}/core" ]; then
-    if [ -e "${Plr}/web.config" ]; then
+_detect_vanilla_core() {
+  if [ ! -e "${_Plr}/core" ]; then
+    if [ -e "${_Plr}/web.config" ]; then
       _DO_NOTHING=YES
     else
-      if [ -e "${Plr}/modules/watchdog" ]; then
+      if [ -e "${_Plr}/modules/watchdog" ]; then
         if [ ! -e "/boot/grub/grub.cfg" ] \
           && [ ! -e "/boot/grub/menu.lst" ] \
-          && [[ "${Plr}" =~ "static" ]] \
-          && [ ! -e "${Plr}/modules/cookie_cache_bypass" ]; then
-          if_hosted_sys
-          if [ "${hostedSys}" = "YES" ]; then
-            echo Vanilla Drupal 5.x Platform detected in ${Plr}
-            read_account_data
+          && [[ "${_Plr}" =~ "static" ]] \
+          && [ ! -e "${_Plr}/modules/cookie_cache_bypass" ]; then
+          _if_hosted_sys
+          if [ "${_hostedSys}" = "YES" ]; then
+            echo Vanilla Drupal 5.x Platform detected in ${_Plr}
+            _read_account_data
             if [ "${_THIS_MODE}" = "verbose" ]; then
-              send_notice_core
+              _send_notice_core
             fi
           fi
         fi
       else
-        if [ ! -e "${Plr}/modules/path_alias_cache" ] \
-          && [ -e "${Plr}/modules/user" ] \
-          && [[ "${Plr}" =~ "static" ]]; then
-          echo Vanilla Drupal 6.x Platform detected in ${Plr}
+        if [ ! -e "${_Plr}/modules/path_alias_cache" ] \
+          && [ -e "${_Plr}/modules/user" ] \
+          && [[ "${_Plr}" =~ "static" ]]; then
+          echo Vanilla Drupal 6.x Platform detected in ${_Plr}
           if [ ! -e "/boot/grub/grub.cfg" ] \
             && [ ! -e "/boot/grub/menu.lst" ]; then
-            if_hosted_sys
-            if [ "${hostedSys}" = "YES" ]; then
-              read_account_data
+            _if_hosted_sys
+            if [ "${_hostedSys}" = "YES" ]; then
+              _read_account_data
               if [ "${_THIS_MODE}" = "verbose" ]; then
-                send_notice_core
+                _send_notice_core
               fi
             fi
           fi
@@ -270,12 +249,12 @@ detect_vanilla_core() {
   fi
 }
 
-count() {
-  for Site in `find ${User}/config/server_master/nginx/vhost.d \
+_usage_count() {
+  for _Site in `find ${_usEr}/config/server_master/nginx/vhost.d \
     -maxdepth 1 -mindepth 1 -type f | sort`; do
-    #echo Counting Site $Site
-    Dom=$(echo $Site | cut -d'/' -f9 | awk '{ print $1}' 2>&1)
-    #echo "${_THIS_U},${Dom},vhost-exists"
+    #echo Counting Site ${_Site}
+    #echo "${_THIS_U},${_Dom},vhost-exists"
+    _Dom=$(echo ${_Site} | cut -d'/' -f9 | awk '{ print $1}' 2>&1)
     _DEV_URL=NO
     searchStringB=".dev."
     searchStringC=".devel."
@@ -286,7 +265,7 @@ count() {
     searchStringH=".testing."
     searchStringI=".stage."
     searchStringJ=".staging."
-    case ${Dom} in
+    case ${_Dom} in
       *"$searchStringB"*) _DEV_URL=YES ;;
       *"$searchStringC"*) _DEV_URL=YES ;;
       *"$searchStringD"*) _DEV_URL=YES ;;
@@ -299,83 +278,83 @@ count() {
       *)
       ;;
     esac
-    if [ -e "${User}/.drush/${Dom}.alias.drushrc.php" ]; then
-      #echo "${_THIS_U},${Dom},drushrc-exists"
-      Dir=$(cat ${User}/.drush/${Dom}.alias.drushrc.php \
+    if [ -e "${_usEr}/.drush/${_Dom}.alias.drushrc.php" ]; then
+      #echo "${_THIS_U},${_Dom},drushrc-exists"
+      _Dir=$(cat ${_usEr}/.drush/${_Dom}.alias.drushrc.php \
         | grep "site_path'" \
         | cut -d: -f2 \
         | awk '{ print $3}' \
         | sed "s/[\,']//g" 2>&1)
-      Plr=$(cat ${User}/.drush/${Dom}.alias.drushrc.php \
+      _Plr=$(cat ${_usEr}/.drush/${_Dom}.alias.drushrc.php \
         | grep "root'" \
         | cut -d: -f2 \
         | awk '{ print $3}' \
         | sed "s/[\,']//g" 2>&1)
-      detect_vanilla_core
-      fix_clear_cache
-      #echo Dir is ${Dir}
-      if [ -e "${Dir}/drushrc.php" ] \
-        && [ -e "${Dir}/files" ] \
-        && [ -e "${Dir}/private" ] \
-        && [ ! -e "${Plr}/profiles/hostmaster" ]; then
-        if [ ! -e "${Dir}/modules" ]; then
-          mkdir ${Dir}/modules
+      _detect_vanilla_core
+      _fix_clear_cache
+      #echo Dir is ${_Dir}
+      if [ -e "${_Dir}/drushrc.php" ] \
+        && [ -e "${_Dir}/files" ] \
+        && [ -e "${_Dir}/private" ] \
+        && [ ! -e "${_Plr}/profiles/hostmaster" ]; then
+        if [ ! -e "${_Dir}/modules" ]; then
+          mkdir ${_Dir}/modules
         fi
-        #echo "${_THIS_U},${Dom},sitedir-exists"
-        Dat=$(cat ${Dir}/drushrc.php \
+        #echo "${_THIS_U},${_Dom},sitedir-exists"
+        _Dat=$(cat ${_Dir}/drushrc.php \
           | grep "options\['db_name'\] = " \
           | cut -d: -f2 \
           | awk '{ print $3}' \
           | sed "s/[\,';]//g" 2>&1)
-        #echo Dat is ${Dat}
-        if [ ! -z "${Dat}" ] && [ -e "${Dir}" ]; then
-          if [ -L "${Dir}/files" ] || [ -L "${Dir}/private" ]; then
-            DirSize=$(du -L -s ${Dir} 2>&1)
+        #echo Dat is ${_Dat}
+        if [ ! -z "${_Dat}" ] && [ -e "${_Dir}" ]; then
+          if [ -L "${_Dir}/files" ] || [ -L "${_Dir}/private" ]; then
+            _DirSize=$(du -L -s ${_Dir} 2>&1)
           else
-            DirSize=$(du -s ${Dir} 2>&1)
+            _DirSize=$(du -s ${_Dir} 2>&1)
           fi
-          DirSize=$(echo "${DirSize}" \
+          _DirSize=$(echo "${_DirSize}" \
             | cut -d'/' -f1 \
             | awk '{ print $1}' \
             | sed "s/[\/\s+]//g" 2>&1)
-          SumDir=$(( SumDir + DirSize ))
-          echo "${_THIS_U},${Dom},DirSize:${DirSize}"
+          _SumDir=$(( _SumDir + _DirSize ))
+          echo "${_THIS_U},${_Dom},_DirSize:${_DirSize}"
         fi
-        if [ ! -z "${Dat}" ]; then
+        if [ ! -z "${_Dat}" ]; then
           if [ -e "/root/.du.sql" ]; then
-            DatSize=$(grep "/var/lib/mysql/${Dat}$" /root/.du.sql 2>&1)
+            DatSize=$(grep "/var/lib/mysql/${_Dat}$" /root/.du.sql 2>&1)
           elif [ -e "/root/.du.local.sql" ]; then
-            DatSize=$(grep "/var/lib/mysql/${Dat}$" /root/.du.local.sql 2>&1)
-          elif [ -e "/var/lib/mysql/${Dat}" ]; then
-            DatSize=$(du -s /var/lib/mysql/${Dat} 2>&1)
+            DatSize=$(grep "/var/lib/mysql/${_Dat}$" /root/.du.local.sql 2>&1)
+          elif [ -e "/var/lib/mysql/${_Dat}" ]; then
+            DatSize=$(du -s /var/lib/mysql/${_Dat} 2>&1)
           fi
           DatSize=$(echo "${DatSize}" \
             | cut -d'/' -f1 \
             | awk '{ print $1}' \
             | sed "s/[\/\s+]//g" 2>&1)
           if [ "${_DEV_URL}" = "YES" ]; then
-            SkipDt=$(( SkipDt + DatSize ))
-            echo "${_THIS_U},${Dom},DatSize:${DatSize}:${Dat},skip"
+            _SkipDt=$(( _SkipDt + DatSize ))
+            echo "${_THIS_U},${_Dom},DatSize:${DatSize}:${_Dat},skip"
           else
-            SumDat=$(( SumDat + DatSize ))
-            echo "${_THIS_U},${Dom},DatSize:${DatSize}:${Dat}"
+            _SumDat=$(( _SumDat + DatSize ))
+            echo "${_THIS_U},${_Dom},DatSize:${DatSize}:${_Dat}"
           fi
         else
-          echo "Database ${Dat} for ${Dom} does not exist"
+          echo "Database ${_Dat} for ${_Dom} does not exist"
         fi
       fi
     fi
   done
 }
 
-send_notice_sql() {
+_send_notice_sql() {
   _MODE=$1
   if [ "${_MODE}" = "DEV" ]; then
     _SQL_LIM=${_SQL_DEV_LIMIT}
-    _SQL_NOW=${SkipDtH}
+    _SQL_NOW=${_SkipDtH}
   else
     _SQL_LIM=${_SQL_MIN_LIMIT}
-    _SQL_NOW=${SumDatH}
+    _SQL_NOW=${_SumDatH}
   fi
   _MY_EMAIL="billing@omega8.cc"
   _BCC_EMAIL="omega8cc@gmail.com"
@@ -429,7 +408,7 @@ EOF
   echo "INFO: Notice sent to ${_CLIENT_EMAIL} [${_THIS_U}]: OK"
 }
 
-send_notice_disk() {
+_send_notice_disk() {
   _MY_EMAIL="billing@omega8.cc"
   _BCC_EMAIL="omega8cc@gmail.com"
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
@@ -443,7 +422,7 @@ You are using more resources than allocated in your subscription.
 You have currently ${_CLIENT_CORES} Aegir ${_CLIENT_OPTION} ${_ENGINE_NR}.
 
 Your allowed disk space is ${_DSK_MIN_LIMIT} MB.
-You are currently using ${HomSizH} MB of disk space.
+You are currently using ${_HomSizH} MB of disk space.
 
 Please reduce your usage by deleting old backups, files,
 and no longer used sites, or purchase enough Aegir Engines
@@ -466,7 +445,7 @@ EOF
 }
 
 
-send_notice_gprd() {
+_send_notice_gprd() {
   _MY_EMAIL="support@omega8.cc"
   _BCC_EMAIL="omega8cc@gmail.com"
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
@@ -515,14 +494,14 @@ EOF
   echo "INFO: GDPR notice sent to ${_CLIENT_EMAIL} [${_THIS_U}]: OK"
 }
 
-check_limits() {
+_check_limits() {
   _SQL_MIN_LIMIT=0
   _SQL_MAX_LIMIT=0
   _SQL_DEV_LIMIT=0
   _DSK_MIN_LIMIT=0
   _DSK_MAX_LIMIT=0
   _DSK_CLU_LIMIT=1
-  read_account_data
+  _read_account_data
   if [ "${_CLIENT_OPTION}" = "CLUSTER" ]; then
     if [ -z "${_DSK_CLU_LIMIT}" ]; then
       _DSK_CLU_LIMIT=1
@@ -619,49 +598,49 @@ check_limits() {
   echo _SQL_DEV_LIMIT is ${_SQL_DEV_LIMIT}
   echo _DSK_MIN_LIMIT is ${_DSK_MIN_LIMIT}
   echo _DSK_MAX_LIMIT is ${_DSK_MAX_LIMIT}
-  if [ "${SumDatH}" -gt "${_SQL_MAX_LIMIT}" ]; then
-    if [ ! -e "${User}/log/CANCELLED" ] \
-      && [ ! -e "${User}/log/proxied.pid" ]; then
+  if [ "${_SumDatH}" -gt "${_SQL_MAX_LIMIT}" ]; then
+    if [ ! -e "${_usEr}/log/CANCELLED" ] \
+      && [ ! -e "${_usEr}/log/proxied.pid" ]; then
       if [ "${_THIS_MODE}" = "verbose" ]; then
-        send_notice_sql "LIVE"
+        _send_notice_sql "LIVE"
       fi
     fi
     echo SQL Usage for ${_THIS_U} above limits
-  elif [ "${SkipDtH}" -gt "${_SQL_DEV_LIMIT}" ]; then
-    if [ ! -e "${User}/log/CANCELLED" ] \
-      && [ ! -e "${User}/log/proxied.pid" ]; then
+  elif [ "${_SkipDtH}" -gt "${_SQL_DEV_LIMIT}" ]; then
+    if [ ! -e "${_usEr}/log/CANCELLED" ] \
+      && [ ! -e "${_usEr}/log/proxied.pid" ]; then
       if [ "${_THIS_MODE}" = "verbose" ]; then
-        send_notice_sql "DEV"
+        _send_notice_sql "DEV"
       fi
     fi
     echo SQL Usage for ${_THIS_U} above limits
   else
     echo SQL Usage for ${_THIS_U} below limits
   fi
-  if [ "${HomSizH}" -gt "${_DSK_MAX_LIMIT}" ]; then
-    if [ ! -e "${User}/log/CANCELLED" ] \
-      && [ ! -e "${User}/log/proxied.pid" ]; then
+  if [ "${_HomSizH}" -gt "${_DSK_MAX_LIMIT}" ]; then
+    if [ ! -e "${_usEr}/log/CANCELLED" ] \
+      && [ ! -e "${_usEr}/log/proxied.pid" ]; then
       if [ "${_THIS_MODE}" = "verbose" ]; then
-        send_notice_disk
+        _send_notice_disk
       fi
     fi
     echo Disk Usage for ${_THIS_U} above limits
   else
     echo Disk Usage for ${_THIS_U} below limits
   fi
-  if [ ! -e "${User}/log/GDPRsent.log" ]; then
-    if [ ! -e "${User}/log/CANCELLED" ] \
-      && [ ! -e "${User}/log/proxied.pid" ]; then
+  if [ ! -e "${_usEr}/log/GDPRsent.log" ]; then
+    if [ ! -e "${_usEr}/log/CANCELLED" ] \
+      && [ ! -e "${_usEr}/log/proxied.pid" ]; then
       if [ "${_THIS_MODE}" = "verbose" ]; then
-        send_notice_gprd
-        touch ${User}/log/GDPRsent.log
+        _send_notice_gprd
+        touch ${_usEr}/log/GDPRsent.log
         echo GDPR info for ${_THIS_U} sent
       fi
     fi
   fi
 }
 
-count_cpu() {
+_count_cpu() {
   _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)
   _CPU_INFO=${_CPU_INFO//[^0-9]/}
   _NPROC_TEST=$(which nproc 2>&1)
@@ -682,7 +661,7 @@ count_cpu() {
   fi
 }
 
-load_control() {
+_load_control() {
   [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
   export _CPU_MAX_RATIO=${_CPU_MAX_RATIO//[^0-9]/}
   : "${_CPU_MAX_RATIO:=2.5}"
@@ -691,45 +670,45 @@ load_control() {
   _O_LOAD_MAX=$(( 100 * _CPU_MAX_RATIO ))
 }
 
-sub_count_usr_home() {
+_sub_count_usr_home() {
   if [ -e "$1" ]; then
-    HqmSiz=$(du -s $1 2>&1)
-    HqmSiz=$(echo "${HqmSiz}" \
+    _HqmSiz=$(du -s $1 2>&1)
+    _HqmSiz=$(echo "${_HqmSiz}" \
       | cut -d'/' -f1 \
       | awk '{ print $1}' \
       | sed "s/[\/\s+]//g" 2>&1)
-    HxmSiz=$(( HxmSiz + HqmSiz ))
-    ### echo $1 disk usage is $HqmSiz
-    ### echo HxmSiz total is $HxmSiz
+    _HxmSiz=$(( _HxmSiz + _HqmSiz ))
+    ### echo $1 disk usage is $_HqmSiz
+    ### echo _HxmSiz total is $_HxmSiz
   fi
 }
 
-action() {
-  for User in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
-    count_cpu
-    load_control
-    if [ -e "${User}/config/server_master/nginx/vhost.d" ]; then
+_usage_action() {
+  for _usEr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
+    _count_cpu
+    _load_control
+    if [ -e "${_usEr}/config/server_master/nginx/vhost.d" ]; then
       if [ "${_O_LOAD}" -lt "${_O_LOAD_MAX}" ]; then
-        SumDir=0
-        SumDat=0
-        SkipDt=0
-        HomSiz=0
-        HxmSiz=0
-        HqmSiz=0
-        _THIS_U=$(echo ${User} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
-        _THIS_HM_SITE=$(cat ${User}/.drush/hostmaster.alias.drushrc.php \
+        _SumDir=0
+        _SumDat=0
+        _SkipDt=0
+        _HomSiz=0
+        _HxmSiz=0
+        _HqmSiz=0
+        _THIS_U=$(echo ${_usEr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
+        _THIS_HM_SITE=$(cat ${_usEr}/.drush/hostmaster.alias.drushrc.php \
           | grep "site_path'" \
           | cut -d: -f2 \
           | awk '{ print $3}' \
           | sed "s/[\,']//g" 2>&1)
-        _THIS_HM_PLR=$(cat ${User}/.drush/hostmaster.alias.drushrc.php \
+        _THIS_HM_PLR=$(cat ${_usEr}/.drush/hostmaster.alias.drushrc.php \
           | grep "root'" \
           | cut -d: -f2 \
           | awk '{ print $3}' \
           | sed "s/[\,']//g" 2>&1)
         echo load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}
-        if [ ! -e "${User}/log/skip-force-cleanup.txt" ]; then
-          cd ${User}
+        if [ ! -e "${_usEr}/log/skip-force-cleanup.txt" ]; then
+          cd ${_usEr}
           echo "Remove various tmp/dot files breaking du command"
           find . -name ".DS_Store" -type f | xargs rm -rf &> /dev/null
           find . -name "*~" -type f | xargs rm -rf &> /dev/null
@@ -743,98 +722,98 @@ action() {
           find . -name "*--" -type l | xargs rm -rf &> /dev/null
           find . -name "._*" -type l | xargs rm -rf &> /dev/null
         fi
-        echo Counting User ${User}
+        echo Counting User ${_usEr}
         _DOW=$(date +%u 2>&1)
         _DOW=${_DOW//[^1-7]/}
         if [ "${_DOW}" = "2" ]; then
-          detect_deprecated_php
+          _detect_deprecated_php
         fi
-        count
+        _usage_count
         if [ -d "/home/${_THIS_U}.ftp" ]; then
-          for uH in `find /home/${_THIS_U}.* -maxdepth 0 -mindepth 0 | sort`; do
-            if [ -d "${uH}" ]; then
-              sub_count_usr_home ${uH}
+          for _uH in `find /home/${_THIS_U}.* -maxdepth 0 -mindepth 0 | sort`; do
+            if [ -d "${_uH}" ]; then
+              _sub_count_usr_home ${_uH}
             fi
           done
-          for uR in `find /var/solr7/data/oct.${_THIS_U}.* -maxdepth 0 -mindepth 0 | sort`; do
-            if [ -d "${uR}" ]; then
-              sub_count_usr_home ${uR}
+          for _uR in `find /var/solr7/data/oct.${_THIS_U}.* -maxdepth 0 -mindepth 0 | sort`; do
+            if [ -d "${_uR}" ]; then
+              _sub_count_usr_home ${_uR}
             fi
           done
-          for uO in `find /opt/solr4/${_THIS_U}.* -maxdepth 0 -mindepth 0 | sort`; do
-            if [ -d "${uO}" ]; then
-              sub_count_usr_home ${uO}
+          for _uO in `find /opt/solr4/${_THIS_U}.* -maxdepth 0 -mindepth 0 | sort`; do
+            if [ -d "${_uO}" ]; then
+              _sub_count_usr_home ${_uO}
             fi
           done
         fi
-        if [ -L "${User}" ]; then
-          HomSiz=$(du -D -s ${User} 2>&1)
+        if [ -L "${_usEr}" ]; then
+          _HomSiz=$(du -D -s ${_usEr} 2>&1)
         else
-          HomSiz=$(du -s ${User} 2>&1)
+          _HomSiz=$(du -s ${_usEr} 2>&1)
         fi
-        HomSiz=$(echo "${HomSiz}" \
+        _HomSiz=$(echo "${_HomSiz}" \
           | cut -d'/' -f1 \
           | awk '{ print $1}' \
           | sed "s/[\/\s+]//g" 2>&1)
-        HomSiz=$(( HomSiz + HxmSiz ))
-        HomSizH=$(echo "scale=0; ${HomSiz}/1024" | bc 2>&1)
-        SumDatH=$(echo "scale=0; ${SumDat}/1024" | bc 2>&1)
-        SkipDtH=$(echo "scale=0; ${SkipDt}/1024" | bc 2>&1)
-        SumDirH=$(echo "scale=0; ${SumDir}/1024" | bc 2>&1)
-        echo HomSiz is ${HomSiz} or ${HomSizH} MB
-        echo SumDir is ${SumDir} or ${SumDirH} MB
-        echo SumDat is ${SumDat} or ${SumDatH} MB
-        echo SkipDt is ${SkipDt} or ${SkipDtH} MB
-        if_hosted_sys
-        if [ "${hostedSys}" = "YES" ]; then
-          check_limits
+        _HomSiz=$(( _HomSiz + _HxmSiz ))
+        _HomSizH=$(echo "scale=0; ${_HomSiz}/1024" | bc 2>&1)
+        _SumDatH=$(echo "scale=0; ${_SumDat}/1024" | bc 2>&1)
+        _SkipDtH=$(echo "scale=0; ${_SkipDt}/1024" | bc 2>&1)
+        _SumDirH=$(echo "scale=0; ${_SumDir}/1024" | bc 2>&1)
+        echo _HomSiz is ${_HomSiz} or ${_HomSizH} MB
+        echo _SumDir is ${_SumDir} or ${_SumDirH} MB
+        echo _SumDat is ${_SumDat} or ${_SumDatH} MB
+        echo _SkipDt is ${_SkipDt} or ${_SkipDtH} MB
+        _if_hosted_sys
+        if [ "${_hostedSys}" = "YES" ]; then
+          _check_limits
           if [ -e "${_THIS_HM_SITE}" ]; then
             su -s /bin/bash - ${_THIS_U} -c "drush8 @hostmaster \
               variable-set --always-set site_footer 'Usage on ${_DATE} \
-              | Files <strong>${HomSizH}</strong> MB \
-              | LiveDb <strong>${SumDatH}</strong> MB \
-              | DevDb <strong>${SkipDtH}</strong> MB \
+              | Files <strong>${_HomSizH}</strong> MB \
+              | LiveDb <strong>${_SumDatH}</strong> MB \
+              | DevDb <strong>${_SkipDtH}</strong> MB \
               | <strong>${_CLIENT_CORES}</strong> \
               ${_CLIENT_OPTION} ${_ENGINE_NR} \
               | CLI <strong>${_CLIENT_CLI}</strong> \
               | FPM <strong>${_CLIENT_FPM}</strong>'" &> /dev/null
             wait
-            if [ ! -e "${User}/log/CANCELLED" ] \
+            if [ ! -e "${_usEr}/log/CANCELLED" ] \
               && [ "${_DEV_EXC}" = "NO" ] \
-              && [ ! -e "${User}/log/proxied.pid" ]; then
-              eMail=${_CLIENT_EMAIL//\\\@/\@}
-              AegirUrl=$(cat ${User}/log/domain.txt 2>&1)
-              if [ "${HomSizH}" -gt "${_DSK_MAX_LIMIT}" ]; then
-                Files="!x!FilesAll"
+              && [ ! -e "${_usEr}/log/proxied.pid" ]; then
+              _eMail=${_CLIENT_EMAIL//\\\@/\@}
+              _AegirUrl=$(cat ${_usEr}/log/domain.txt 2>&1)
+              if [ "${_HomSizH}" -gt "${_DSK_MAX_LIMIT}" ]; then
+                _Files="!x!FilesAll"
               else
-                Files="FilesAll"
+                _Files="FilesAll"
               fi
-              if [ "${SumDatH}" -gt "${_SQL_MAX_LIMIT}" ]; then
-                DbsL="!x!DbsLive"
+              if [ "${_SumDatH}" -gt "${_SQL_MAX_LIMIT}" ]; then
+                _DbsL="!x!DbsLive"
               else
-                DbsL="DbsLive"
+                _DbsL="DbsLive"
               fi
-              if [ "${SkipDtH}" -gt "${_SQL_DEV_LIMIT}" ]; then
-                DbsD="!x!DbsDev"
+              if [ "${_SkipDtH}" -gt "${_SQL_DEV_LIMIT}" ]; then
+                _DbsD="!x!DbsDev"
               else
-                DbsD="DbsDev"
+                _DbsD="DbsDev"
               fi
               if [ "${_THIS_MODE}" = "verbose" ] || [ -z "${_THIS_MODE}" ]; then
                 _LOG_FILE="usage-latest-verbose.log"
               elif [ "${_THIS_MODE}" = "silent" ]; then
                 _LOG_FILE="usage-latest-silent.log"
               fi
-              echo "${AegirUrl},${Files}:${HomSizH},${DbsL}:${SumDatH},${DbsD}:${SkipDtH},${eMail},Subs:${_CLIENT_OPTION}:${_CLIENT_CORES},${_THIS_U}" >> /var/xdrago/log/usage/${_LOG_FILE}
+              echo "${_AegirUrl},${_Files}:${_HomSizH},${_DbsL}:${_SumDatH},${_DbsD}:${_SkipDtH},${_eMail},Subs:${_CLIENT_OPTION}:${_CLIENT_CORES},${_THIS_U}" >> /var/xdrago/log/usage/${_LOG_FILE}
             fi
-            TmDir="${_THIS_HM_PLR}/profiles/hostmaster/themes/aegir/eldir"
-            PgTpl="${TmDir}/page.tpl.php"
-            EldirF="0001-Print-site_footer-if-defined.patch"
-            TplPatch="/var/xdrago/conf/${EldirF}"
-            if [ -e "${PgTpl}" ] && [ -e "${TplPatch}" ]; then
-              _IS_SF=$(grep "site_footer" ${PgTpl} 2>&1)
+            _TmDir="${_THIS_HM_PLR}/profiles/hostmaster/themes/aegir/eldir"
+            _PgTpl="${_TmDir}/page.tpl.php"
+            _EldirF="0001-Print-site_footer-if-defined.patch"
+            _TplPatch="/var/xdrago/conf/${_EldirF}"
+            if [ -e "${_PgTpl}" ] && [ -e "${_TplPatch}" ]; then
+              _IS_SF=$(grep "site_footer" ${_PgTpl} 2>&1)
               if [[ ! "${_IS_SF}" =~ "site_footer" ]]; then
-                cd ${TmDir}
-                patch -p1 < ${TplPatch} &> /dev/null
+                cd ${_TmDir}
+                patch -p1 < ${_TplPatch} &> /dev/null
                 cd
               fi
             fi
@@ -853,7 +832,7 @@ action() {
             wait
           fi
         fi
-        echo "Done for ${User}"
+        echo "Done for ${_usEr}"
       else
         echo "load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}"
         echo "...we have to wait..."
@@ -878,7 +857,7 @@ elif [ "${1}" = "silent" ]; then
   _THIS_MODE="silent"
   rm -f /var/xdrago/log/usage/usage-latest-silent.log
 fi
-action >/var/xdrago/log/usage/usage-${_NOW}.log 2>&1
+_usage_action >/var/xdrago/log/usage/usage-${_NOW}.log 2>&1
 echo "INFO: Completing usage monitoring on `date`"
 exit 0
 ###EOF2024###

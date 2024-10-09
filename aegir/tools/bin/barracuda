@@ -10,21 +10,21 @@ export _TODAY=${_TODAY//[^0-9]/}
 _NOW=$(date +%y%m%d-%H%M%S 2>&1)
 export _NOW=${_NOW//[^0-9-]/}
 
-barCnf="/root/.barracuda.cnf"
-barName="BARRACUDA.sh.txt"
-crlGet="-L --max-redirs 3 -k -s --retry 3 --retry-delay 5 -A iCab"
-aptYesUnth="-y --allow-unauthenticated"
-filIncB="barracuda.sh.cnf"
-filIncO="octopus.sh.cnf"
-octName="OCTOPUS.sh.txt"
-bldPth="/opt/tmp/boa"
-pthIncB="lib/settings/${filIncB}"
-pthIncO="lib/settings/${filIncO}"
-rgUrl="https://raw.githubusercontent.com/omega8cc/boa"
-vBs="/var/backups"
+_barCnf="/root/.barracuda.cnf"
+_barName="BARRACUDA.sh.txt"
+_crlGet="-L --max-redirs 3 -k -s --retry 3 --retry-delay 5 -A iCab"
+_aptYesUnth="-y --allow-unauthenticated"
+_filIncB="barracuda.sh.cnf"
+_filIncO="octopus.sh.cnf"
+_octName="OCTOPUS.sh.txt"
+_bldPth="/opt/tmp/boa"
+_pthIncB="lib/settings/${_filIncB}"
+_pthIncO="lib/settings/${_filIncO}"
+_rgUrl="https://raw.githubusercontent.com/omega8cc/boa"
+_vBs="/var/backups"
 
 _CHECK_HOST=$(uname -n 2>&1)
-_LOG_DIR="${vBs}/reports/up/$(basename "$0")/${_TODAY}"
+_LOG_DIR="${_vBs}/reports/up/$(basename "$0")/${_TODAY}"
 _UP_LOG="${_LOG_DIR}/$(basename "$0")-up-${_NOW}.log"
 _VMFAMILY=XEN
 _VM_TEST=$(uname -a 2>&1)
@@ -42,7 +42,7 @@ if [ -z "${TERM+x}" ]; then
   export TERM=vt100
 fi
 
-clean_pid_exit() {
+_clean_pid_exit() {
   echo "REASON ${e} on $(date 2>&1)" >> /root/.barracuda.exit.exceptions.log
   [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
   [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
@@ -51,7 +51,7 @@ clean_pid_exit() {
   exit 1
 }
 
-os_detection_minimal() {
+_os_detection_minimal() {
   _APT_UPDATE="apt-get update"
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
@@ -62,13 +62,13 @@ os_detection_minimal() {
   done
 }
 
-apt_clean_update() {
+_apt_clean_update() {
   #apt-get clean -qq 2> /dev/null
   #rm -rf /var/lib/apt/lists/* &> /dev/null
   ${_APT_UPDATE} -qq 2> /dev/null
 }
 
-ifnames_grub_check_sync() {
+_ifnames_grub_check_sync() {
   _IS_IFACE=$(ip a 2>&1)
   _ADD_GRUB_CMD=""
   _GRUB_FILE="/etc/default/grub"
@@ -181,7 +181,7 @@ ifnames_grub_check_sync() {
   fi
 }
 
-check_root_direct() {
+_check_root_direct() {
   _U_TEST=DENY
   [ "${SUDO_USER}" ] && _U_TEST_SDO=${SUDO_USER} || _U_TEST_SDO=`whoami`
   _U_TEST_WHO=$(who am i | awk '{print $1}' 2>&1)
@@ -208,11 +208,11 @@ check_root_direct() {
     echo "         PermitRootLogin prohibit-password"
     echo "       in the /etc/ssh/sshd_config file"
     echo "Bye"
-    clean_pid_exit check_root_direct_a
+    _clean_pid_exit _check_root_direct_a
   fi
 }
 
-check_root_keys_pwd() {
+_check_root_keys_pwd() {
   _S_TEST=$(grep "root:\*:" /etc/shadow 2>&1)
   _R_TEST=CHECK
   if [ -e "/root/.ssh/authorized_keys" ]; then
@@ -234,11 +234,11 @@ check_root_keys_pwd() {
     echo
     echo "Bye"
     echo
-    clean_pid_exit check_root_keys_pwd_a
+    _clean_pid_exit _check_root_keys_pwd_a
   fi
 }
 
-check_sql_running() {
+_check_sql_running() {
   while [ -z "${_IS_MYSQLD_RUNNING}" ] \
     || [ ! -e "/run/mysqld/mysqld.sock" ]; do
     _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
@@ -247,7 +247,7 @@ check_sql_running() {
   done
 }
 
-check_sql_access() {
+_check_sql_access() {
   if [ -e "/root/.my.pass.txt" ] && [ -e "/root/.my.cnf" ]; then
     _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
     _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
@@ -257,7 +257,7 @@ check_sql_access() {
     echo "ALERT: Please fix this before trying again, giving up."
     echo "Bye"
     echo " "
-    clean_pid_exit check_sql_access_a
+    _clean_pid_exit _check_sql_access_a
   fi
   if [ -z "${_IS_SYNC_SQL_PSWD}" ] \
     || [[ ! "${_IS_SYNC_SQL_PSWD}" =~ "password=${_SQL_PSWD}" ]]; then
@@ -266,7 +266,7 @@ check_sql_access() {
     echo "ALERT: Please fix this before trying again, giving up."
     echo "Bye"
     echo " "
-    clean_pid_exit check_sql_access_b
+    _clean_pid_exit _check_sql_access_b
   else
     _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
     if [ -z "${_IS_MYSQLD_RUNNING}" ]; then
@@ -274,7 +274,7 @@ check_sql_access() {
       echo "ALERT: Please fix this before trying again, giving up."
       echo "Bye"
       echo " "
-      clean_pid_exit check_sql_access_c
+      _clean_pid_exit _check_sql_access_c
     else
       _MYSQL_CONN_TEST=$(mysql -u root -e "status" 2>&1)
       if [ -z "${_MYSQL_CONN_TEST}" ] \
@@ -283,74 +283,73 @@ check_sql_access() {
         echo "ALERT: Please fix this before trying again, giving up."
         echo "Bye"
         echo " "
-        clean_pid_exit check_sql_access_d
+        _clean_pid_exit _check_sql_access_d
       fi
     fi
   fi
 }
 
-_CHECK_HOST=$(uname -n 2>&1)
-if_hosted_sys() {
+_if_hosted_sys() {
   if [ -e "/root/.host8.cnf" ] \
     || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
-    hostedSys=YES
+    _hostedSys=YES
   else
-    hostedSys=NO
+    _hostedSys=NO
   fi
 }
 
-fix_dns_settings() {
-  mkdir -p ${vBs}
-  rm -f ${vBs}/resolv.conf.tmp
+_fix_dns_settings() {
+  mkdir -p ${_vBs}
+  rm -f ${_vBs}/resolv.conf.tmp
   if [ -e "/etc/resolv.conf" ]; then
     if [ -L "/etc/resolv.conf" ]; then
-      rslvT=`readlink -n /etc/resolv.conf`
-      if [ ! -e "${rslvT}" ]; then
+      _rslvT=`readlink -n /etc/resolv.conf`
+      if [ ! -e "${_rslvT}" ]; then
         rm -f /etc/resolv.conf
       fi
     fi
     if [ -e "/etc/resolv.conf" ]; then
-      cp -a /etc/resolv.conf ${vBs}/resolv.conf.tmp
+      cp -a /etc/resolv.conf ${_vBs}/resolv.conf.tmp
     fi
   fi
-  if [ ! -e "${vBs}/resolv.conf.tmp" ]; then
-    echo "nameserver 127.0.0.1" > ${vBs}/resolv.conf.tmp
-    echo "nameserver 1.1.1.1" >> ${vBs}/resolv.conf.tmp
-    echo "nameserver 1.0.0.1" >> ${vBs}/resolv.conf.tmp
-    echo "nameserver 8.8.8.8" >> ${vBs}/resolv.conf.tmp
-    echo "nameserver 8.8.4.4" >> ${vBs}/resolv.conf.tmp
+  if [ ! -e "${_vBs}/resolv.conf.tmp" ]; then
+    echo "nameserver 127.0.0.1" > ${_vBs}/resolv.conf.tmp
+    echo "nameserver 1.1.1.1" >> ${_vBs}/resolv.conf.tmp
+    echo "nameserver 1.0.0.1" >> ${_vBs}/resolv.conf.tmp
+    echo "nameserver 8.8.8.8" >> ${_vBs}/resolv.conf.tmp
+    echo "nameserver 8.8.4.4" >> ${_vBs}/resolv.conf.tmp
   fi
-  if [ ! -e "${vBs}/resolv.conf.vanilla" ]; then
-    for Pre in `ls -la ${vBs}/resolv.conf.pre-*`; do
-      if [ -e "${Pre}" ] && [ -f "${Pre}" ] && [ ! -L "${Pre}" ]; then
-        cp -a ${Pre} ${vBs}/resolv.conf.vanilla
+  if [ ! -e "${_vBs}/resolv.conf.vanilla" ]; then
+    for _Pre in `ls -la ${_vBs}/resolv.conf.pre-*`; do
+      if [ -e "${_Pre}" ] && [ -f "${_Pre}" ] && [ ! -L "${_Pre}" ]; then
+        cp -a ${_Pre} ${_vBs}/resolv.conf.vanilla
       fi
     done
   fi
-  if [ ! -e "${vBs}/resolv.conf.vanilla" ] \
-    && [ -e "${vBs}/resolv.conf.tmp" ]; then
+  if [ ! -e "${_vBs}/resolv.conf.vanilla" ] \
+    && [ -e "${_vBs}/resolv.conf.tmp" ]; then
     if [ "${_USE_DEFAULT_DNS}" != "YES" ]; then
       rm -f /etc/resolv.conf
-      cp -a ${vBs}/resolv.conf.tmp /etc/resolv.conf
-      cp -a ${vBs}/resolv.conf.tmp ${vBs}/resolv.conf.vanilla
+      cp -a ${_vBs}/resolv.conf.tmp /etc/resolv.conf
+      cp -a ${_vBs}/resolv.conf.tmp ${_vBs}/resolv.conf.vanilla
     fi
   fi
-  sed -i "/^$/d" ${vBs}/resolv.conf.vanilla &> /dev/null
-  if [ -e "${vBs}/resolv.conf.vanilla" ]; then
+  sed -i "/^$/d" ${_vBs}/resolv.conf.vanilla &> /dev/null
+  if [ -e "${_vBs}/resolv.conf.vanilla" ]; then
     if [ "${_USE_DEFAULT_DNS}" != "YES" ]; then
       rm -f /etc/resolv.conf
-      cp -a ${vBs}/resolv.conf.vanilla /etc/resolv.conf
+      cp -a ${_vBs}/resolv.conf.vanilla /etc/resolv.conf
     fi
   else
-    if [ -e "${vBs}/resolv.conf.tmp" ] \
+    if [ -e "${_vBs}/resolv.conf.tmp" ] \
       && [ "${_USE_DEFAULT_DNS}" != "YES" ]; then
       rm -f /etc/resolv.conf
-      cp -a ${vBs}/resolv.conf.tmp /etc/resolv.conf
+      cp -a ${_vBs}/resolv.conf.tmp /etc/resolv.conf
     fi
   fi
 }
 
-check_dns_settings() {
+_check_dns_settings() {
   if [ -e "/root/.use.default.nameservers.cnf" ]; then
     _USE_DEFAULT_DNS=YES
   fi
@@ -365,8 +364,8 @@ check_dns_settings() {
     || [ "${_USE_PROVIDER_DNS}" = "YES" ]; then
     if [ "${_USE_DEFAULT_DNS}" = "YES" ] \
       || [ "${_USE_PROVIDER_DNS}" = "YES" ] \
-      || [ ! -e "${vBs}/resolv.conf.vanilla" ]; then
-      fix_dns_settings
+      || [ ! -e "${_vBs}/resolv.conf.vanilla" ]; then
+      _fix_dns_settings
       if [ -e "/etc/init.d/postfix" ]; then
         service postfix restart &> /dev/null
       fi
@@ -374,45 +373,45 @@ check_dns_settings() {
   fi
 }
 
-barracuda_downgrade_protection() {
-  if [ "${cmmand}" != "php-idle" ] \
-    && [ "${cmmand}" != "up-distro" ] \
+_barracuda_downgrade_protection() {
+  if [ "${_cmNd}" != "php-idle" ] \
+    && [ "${_cmNd}" != "up-distro" ] \
     && [ -e "/var/log/barracuda_log.txt" ]; then
     _SERIES_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
-    if [ "${cmmand}" = "up-lts" ]; then
-      if [[ "${_SERIES_TEST}" =~ "Barracuda ${rlsn}-pro" ]]; then
+    if [ "${_cmNd}" = "up-lts" ]; then
+      if [[ "${_SERIES_TEST}" =~ "Barracuda ${_rLsn}-pro" ]]; then
         echo
-        echo "ERROR: Your system has been already upgraded to ${rlsn}-pro"
+        echo "ERROR: Your system has been already upgraded to ${_rLsn}-pro"
         echo "You can not downgrade back to previous/older/lts BOA version"
         echo "Please use 'barracuda up-pro system' to upgrade this server"
         echo "Bye"
         echo
-        clean_pid_exit barracuda_downgrade_protection_a
-      elif [[ "${_SERIES_TEST}" =~ "Barracuda ${rlsn}-dev" ]]; then
+        _clean_pid_exit _barracuda_downgrade_protection_a
+      elif [[ "${_SERIES_TEST}" =~ "Barracuda ${_rLsn}-dev" ]]; then
         echo
-        echo "ERROR: Your system has been already upgraded to ${rlsn}-dev"
+        echo "ERROR: Your system has been already upgraded to ${_rLsn}-dev"
         echo "You can not downgrade back to previous/older/lts BOA version"
         echo "Please use 'barracuda up-dev system' to upgrade this server"
         echo "Bye"
         echo
-        clean_pid_exit barracuda_downgrade_protection_b
+        _clean_pid_exit _barracuda_downgrade_protection_b
       fi
     fi
-    if [ "${cmmand}" != "up-dev" ] \
-      && [ "${cmmand}" != "up-pro" ] \
-      && [ "${cmmand}" != "up-lts" ] \
-      && [ "${cmmand}" != "help" ] \
-      && [ "${cmmand}" != "info" ]; then
+    if [ "${_cmNd}" != "up-dev" ] \
+      && [ "${_cmNd}" != "up-pro" ] \
+      && [ "${_cmNd}" != "up-lts" ] \
+      && [ "${_cmNd}" != "help" ] \
+      && [ "${_cmNd}" != "info" ]; then
       echo
       echo "Sorry, you are trying not supported command.."
       echo "Display supported commands with: $(basename "$0") help"
       echo
-      clean_pid_exit barracuda_downgrade_protection_c
+      _clean_pid_exit _barracuda_downgrade_protection_c
     fi
   fi
 }
 
-if_extended_report() {
+_if_extended_report() {
   _EXTENDED=NO
   if [ -e "/root/.run-to-daedalus.cnf" ] \
     || [ -e "/root/.run-to-chimaera.cnf" ] \
@@ -450,42 +449,42 @@ if_extended_report() {
   fi
 }
 
-send_report() {
-  if [ -e "${barCnf}" ]; then
-    source ${barCnf}
-    if_hosted_sys
-    if [ "${hostedSys}" = "YES" ]; then
+_send_report() {
+  if [ -e "${_barCnf}" ]; then
+    source ${_barCnf}
+    _if_hosted_sys
+    if [ "${_hostedSys}" = "YES" ]; then
       _MY_EMAIL="$(basename "$0")@omega8.cc"
     fi
     if [ ! -z "${_MY_EMAIL}" ]; then
-      repSub="Successful Barracuda upgrade"
-      repSub="REPORT: ${repSub} on ${_CHECK_HOST}"
-      repSub=$(echo -n ${repSub} | fmt -su -w 2500 2>&1)
-      if_extended_report
-      cat ${_UP_LOG} | s-nail -s "${repSub} at ${_NOW}" ${_MY_EMAIL}
-      echo "${repSub} sent to ${_MY_EMAIL}"
+      _repSub="Successful Barracuda upgrade"
+      _repSub="REPORT: ${_repSub} on ${_CHECK_HOST}"
+      _repSub=$(echo -n ${_repSub} | fmt -su -w 2500 2>&1)
+      _if_extended_report
+      cat ${_UP_LOG} | s-nail -s "${_repSub} at ${_NOW}" ${_MY_EMAIL}
+      echo "${_repSub} sent to ${_MY_EMAIL}"
     fi
   fi
 }
 
-send_alert() {
-  if [ -e "${barCnf}" ]; then
-    source ${barCnf}
-    if_hosted_sys
-    if [ "${hostedSys}" = "YES" ]; then
+_send_alert() {
+  if [ -e "${_barCnf}" ]; then
+    source ${_barCnf}
+    _if_hosted_sys
+    if [ "${_hostedSys}" = "YES" ]; then
       _MY_EMAIL="$(basename "$0")@omega8.cc"
     fi
     if [ ! -z "${_MY_EMAIL}" ]; then
-      repSub="${_ALERT_MSG} on ${_CHECK_HOST}"
-      repSub=$(echo -n ${repSub} | fmt -su -w 2500 2>&1)
-      if_extended_report
-      cat ${_UP_LOG} | s-nail -s "${repSub} at ${_NOW}" ${_MY_EMAIL}
-      echo "${repSub} sent to ${_MY_EMAIL}"
+      _repSub="${_ALERT_MSG} on ${_CHECK_HOST}"
+      _repSub=$(echo -n ${_repSub} | fmt -su -w 2500 2>&1)
+      _if_extended_report
+      cat ${_UP_LOG} | s-nail -s "${_repSub} at ${_NOW}" ${_MY_EMAIL}
+      echo "${_repSub} sent to ${_MY_EMAIL}"
     fi
   fi
 }
 
-check_report() {
+_check_report() {
   sed -i "s/^_AWS_.*//g"         ${_UP_LOG}
   wait
   sed -i "s/^_NEWRELIC_KEY.*//g" ${_UP_LOG}
@@ -553,13 +552,13 @@ check_report() {
     _ALERT_MSG="ALERT: Failed (libs) Barracuda upgrade"
   fi
   if [ "${_SEND_ALERT}" = "YES" ]; then
-    send_alert
+    _send_alert
   else
-    send_report
+    _send_report
   fi
 }
 
-check_php_cli() {
+_check_php_cli() {
   _PHP_CHECK=$(readlink -n /usr/bin/php 2>&1)
   if [ ! -x "${_PHP_CHECK}" ]; then
     if [ "${_PHP_CLI_VERSION}" = "8.1" ]; then
@@ -594,41 +593,41 @@ check_php_cli() {
     else
       echo "ERROR: I can not find PHP-CLI anywhere!"
       echo "ERROR: BOA requires PHP 8.1 or newer"
-      clean_pid_exit check_php_cli_a
+      _clean_pid_exit _check_php_cli_a
     fi
   fi
 }
 
-up_action() {
-  if [ -e "${vBs}/${barName}" ] && [ -e "${barCnf}" ]; then
-    if [ ! -z "${rkey}" ]; then
-      if [ "${rkey}" = "php-83" ] || [ "${rkey}" = "php-8.3" ]; then
-        phpS="8.3"
-      elif [ "${rkey}" = "php-82" ] || [ "${rkey}" = "php-8.2" ]; then
-        phpS="8.2"
-      elif [ "${rkey}" = "php-81" ] || [ "${rkey}" = "php-8.1" ]; then
-        phpS="8.1"
-      elif [ "${rkey}" = "php-all" ] || [ "${rkey}" = "php-min" ]; then
-        phpS="MIN"
+_up_action() {
+  if [ -e "${_vBs}/${_barName}" ] && [ -e "${_barCnf}" ]; then
+    if [ ! -z "${_rKey}" ]; then
+      if [ "${_rKey}" = "php-83" ] || [ "${_rKey}" = "php-8.3" ]; then
+        _phpS="8.3"
+      elif [ "${_rKey}" = "php-82" ] || [ "${_rKey}" = "php-8.2" ]; then
+        _phpS="8.2"
+      elif [ "${_rKey}" = "php-81" ] || [ "${_rKey}" = "php-8.1" ]; then
+        _phpS="8.1"
+      elif [ "${_rKey}" = "php-all" ] || [ "${_rKey}" = "php-min" ]; then
+        _phpS="MIN"
         [ -e "/root/.allow-php-multi-install-cleanup.cnf" ] && rm -f /root/.allow-php-multi-install-cleanup.cnf
-      elif [ "${rkey}" = "php-max" ]; then
-        phpS="MAX"
+      elif [ "${_rKey}" = "php-max" ]; then
+        _phpS="MAX"
         [ -e "/root/.allow-php-multi-install-cleanup.cnf" ] && rm -f /root/.allow-php-multi-install-cleanup.cnf
-      elif [ "${rkey}" = "nodns" ]; then
-        sed -i "s/^_SMTP_RELAY_TEST=.*/_SMTP_RELAY_TEST=NO/g"  ${vBs}/${barName}
+      elif [ "${_rKey}" = "nodns" ]; then
+        sed -i "s/^_SMTP_RELAY_TEST.*/_SMTP_RELAY_TEST=NO/g" ${_vBs}/${_barName}
         wait
-        sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=NO/g"    ${vBs}/${barName}
+        sed -i "s/^_DNS_SETUP_TEST.*/_DNS_SETUP_TEST=NO/g"   ${_vBs}/${_barName}
         wait
-        sed -i "s/^_SMTP_RELAY_TEST=.*/_SMTP_RELAY_TEST=NO/g"          ${barCnf}
+        sed -i "s/^_SMTP_RELAY_TEST.*/_SMTP_RELAY_TEST=NO/g"          ${_barCnf}
         wait
-        sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=NO/g"            ${barCnf}
+        sed -i "s/^_DNS_SETUP_TEST.*/_DNS_SETUP_TEST=NO/g"            ${_barCnf}
         wait
       else
-        _L_KEY=$(echo ${#rkey} 2>&1)
+        _L_KEY=$(echo ${#_rKey} 2>&1)
         if [ ! -z "${_L_KEY}" ] && [ "${_L_KEY}" = "40" ]; then
-          sed -i "s/^_NEWRELIC.*/_NEWRELIC_KEY=\"${rkey}\"/g"  ${vBs}/${barName}
+          sed -i "s/^_NEWREL.*/_NEWRELIC_KEY=\"${_rKey}\"/g" ${_vBs}/${_barName}
           wait
-          sed -i "s/^_NEWRELIC.*/_NEWRELIC_KEY=\"${rkey}\"/g"          ${barCnf}
+          sed -i "s/^_NEWRELIC.*/_NEWRELIC_KEY=\"${_rKey}\"/g"        ${_barCnf}
           wait
         fi
       fi
@@ -636,425 +635,417 @@ up_action() {
       ### Enable debugging if requested
       if [ -e "/root/.debug-boa-installer.cnf" ] \
         || [ -e "/root/.debug-barracuda-installer.cnf" ]; then
-        sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"           ${vBs}/${filIncB}
+        sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"         ${_vBs}/${_filIncB}
         wait
-        sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"                   ${barCnf}
+        sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"                  ${_barCnf}
         wait
       fi
 
       ### Debugging
-      if [ "$debug" = "debug" ]; then
-        echo rkey is ${rkey}
+      if [ "${_dEbg}" = "debug" ]; then
+        echo _rKey is ${_rKey}
         echo waiting 8 seconds...
         sleep 8
       fi
       ### Debugging
 
     fi
-    ### Make sure that _PHP_SINGLE_INSTALL is set in ${barCnf}
-    if [ "${phpS}" = "8.3" ] \
-      || [ "${phpS}" = "8.2" ] \
-      || [ "${phpS}" = "8.1" ] \
-      || [ "${phpS}" = "7.4" ]; then
-      _PHP_SINGLE_INSTALL_TEST=$(grep _PHP_SINGLE_INSTALL ${barCnf} 2>&1)
+    ### Make sure that _PHP_SINGLE_INSTALL is set in ${_barCnf}
+    if [ "${_phpS}" = "8.3" ] \
+      || [ "${_phpS}" = "8.2" ] \
+      || [ "${_phpS}" = "8.1" ] \
+      || [ "${_phpS}" = "7.4" ]; then
+      _PHP_SINGLE_INSTALL_TEST=$(grep _PHP_SINGLE_INSTALL ${_barCnf} 2>&1)
       if [[ "${_PHP_SINGLE_INSTALL_TEST}" =~ "_PHP_SINGLE_INSTALL" ]]; then
-        sed -i "s/^_PHP_SINGLE.*/_PHP_SINGLE_INSTALL=${phpS}/g" ${barCnf}
+        sed -i "s/^_PHP_SINGLE.*/_PHP_SINGLE_INSTALL=${_phpS}/g" ${_barCnf}
         wait
       else
-        echo "_PHP_SINGLE_INSTALL=${phpS}" >> ${barCnf}
+        echo "_PHP_SINGLE_INSTALL=${_phpS}" >> ${_barCnf}
       fi
     fi
     ### Make sure that _PHP_SINGLE_INSTALL takes precedence
-    if [ ! -z "${phpS}" ]; then
-      if [ "${phpS}" = "8.3" ] \
-        || [ "${phpS}" = "8.2" ] \
-        || [ "${phpS}" = "8.1" ] \
-        || [ "${phpS}" = "7.4" ]; then
+    if [ ! -z "${_phpS}" ]; then
+      if [ "${_phpS}" = "8.3" ] \
+        || [ "${_phpS}" = "8.2" ] \
+        || [ "${_phpS}" = "8.1" ] \
+        || [ "${_phpS}" = "7.4" ]; then
 
         ### Debugging
-        if [ "$debug" = "debug" ]; then
-          echo _PHP_MULTI_INSTALL is ${phpS}
-          echo _PHP_SINGLE_INSTALL is ${phpS}
+        if [ "${_dEbg}" = "debug" ]; then
+          echo _PHP_MULTI_INSTALL is ${_phpS}
+          echo _PHP_SINGLE_INSTALL is ${_phpS}
           echo waiting 8 seconds...
           sleep 8
         fi
         ###
 
-        sed -i "s/^_PHP_SIN.*/_PHP_SINGLE_INSTALL=${phpS}/g"   ${vBs}/${filIncB}
+        sed -i "s/^_PHP_SIN.*/_PHP_SINGLE_INSTALL=${_phpS}/g" ${_vBs}/${_filIncB}
         wait
-        sed -i "s/^_PHP_MUL.*/_PHP_MULTI_INSTALL=${phpS}/g"    ${vBs}/${filIncB}
+        sed -i "s/^_PHP_MUL.*/_PHP_MULTI_INSTALL=${_phpS}/g"  ${_vBs}/${_filIncB}
         wait
-        sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=${phpS}/g"    ${vBs}/${filIncB}
+        sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=${_phpS}/g"  ${_vBs}/${_filIncB}
         wait
-        sed -i "s/^_PHP_FPM_V.*/_PHP_FPM_VERSION=${phpS}/g"    ${vBs}/${filIncB}
+        sed -i "s/^_PHP_FPM_V.*/_PHP_FPM_VERSION=${_phpS}/g"  ${_vBs}/${_filIncB}
         wait
-        sed -i "s/^_PHP_SINGL.*/_PHP_SINGLE_INSTALL=${phpS}/g"         ${barCnf}
+        sed -i "s/^_PHP_SINGL.*/_PHP_SINGLE_INSTALL=${_phpS}/g"        ${_barCnf}
         wait
-        sed -i "s/^_PHP_MULTI.*/_PHP_MULTI_INSTALL=${phpS}/g"          ${barCnf}
+        sed -i "s/^_PHP_MULTI.*/_PHP_MULTI_INSTALL=${_phpS}/g"         ${_barCnf}
         wait
-        sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=${phpS}/g"            ${barCnf}
+        sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=${_phpS}/g"           ${_barCnf}
         wait
-        sed -i "s/^_PHP_FPM_V.*/_PHP_FPM_VERSION=${phpS}/g"            ${barCnf}
+        sed -i "s/^_PHP_FPM_V.*/_PHP_FPM_VERSION=${_phpS}/g"           ${_barCnf}
         wait
-        sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=${phpS}/g" \
+        sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=${_phpS}/g" \
           /root/.*.octopus.cnf &> /dev/null
         wait
-        sed -i "s/^_PHP_FPM_V.*/_PHP_FPM_VERSION=${phpS}/g" \
+        sed -i "s/^_PHP_FPM_V.*/_PHP_FPM_VERSION=${_phpS}/g" \
           /root/.*.octopus.cnf &> /dev/null
         wait
 
         ### Debugging
-        if [ "$debug" = "debug" ]; then
-          cat ${barCnf}
+        if [ "${_dEbg}" = "debug" ]; then
+          cat ${_barCnf}
           echo
           echo test fin!
-          clean_pid_exit debug_a
+          _clean_pid_exit debug_a
         fi
         ### Debugging
 
         if [ -d "/data/u" ] && [ -e "/data/conf/global.inc" ]; then
-          for Ctrl in `find /data/disk/*/log/fpm.txt \
+          for _Ctrl in `find /data/disk/*/log/fpm.txt \
             -maxdepth 0 -mindepth 0 | sort`; do
-            echo ${phpS} > ${Ctrl}
+            echo ${_phpS} > ${_Ctrl}
           done
-          for Ctrl in `find /data/disk/*/log/cli.txt \
+          for _Ctrl in `find /data/disk/*/log/cli.txt \
             -maxdepth 0 -mindepth 0 | sort`; do
-            echo ${phpS} > ${Ctrl}
+            echo ${_phpS} > ${_Ctrl}
           done
         fi
-      elif [ "${phpS}" = "MIN" ] || [ "${phpS}" = "MAX" ]; then
-        if [ "${phpS}" = "MAX" ]; then
-          phpM="5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2 8.3"
+      elif [ "${_phpS}" = "MIN" ] || [ "${_phpS}" = "MAX" ]; then
+        if [ "${_phpS}" = "MAX" ]; then
+          _phpM="5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2 8.3"
         else
-          phpM="7.4 8.1 8.2 8.3"
+          _phpM="7.4 8.1 8.2 8.3"
         fi
-        phpS="8.3"
+        _phpS="8.3"
 
         ### Debugging
-        if [ "$debug" = "debug" ]; then
-          echo _PHP_MULTI_INSTALL is ${phpM}
-          echo _PHP_SINGLE_INSTALL is ${phpS}
+        if [ "${_dEbg}" = "debug" ]; then
+          echo _PHP_MULTI_INSTALL is ${_phpM}
+          echo _PHP_SINGLE_INSTALL is ${_phpS}
           echo waiting 8 seconds...
           sleep 8
         fi
         ###
 
-        sed -i "s/^_PHP_SINGLE.*/_PHP_SINGLE_INSTALL=/g"       ${vBs}/${filIncB}
+        sed -i "s/^_PHP_SINGLE.*/_PHP_SINGLE_INSTALL=/g"     ${_vBs}/${_filIncB}
         wait
-        sed -i "s/^_PHP_MU.*/_PHP_MULTI_INSTALL=\"${phpM}\"/g" ${vBs}/${filIncB}
+        sed -i "s/^_PHP_M.*/_PHP_MULTI_INSTALL=\"${_phpM}\"/g" ${_vBs}/${_filIncB}
         wait
-        sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=${phpS}/g"    ${vBs}/${filIncB}
+        sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=${_phpS}/g"  ${_vBs}/${_filIncB}
         wait
-        sed -i "s/^_PHP_FPM_V.*/_PHP_FPM_VERSION=${phpS}/g"    ${vBs}/${filIncB}
+        sed -i "s/^_PHP_FPM_V.*/_PHP_FPM_VERSION=${_phpS}/g"  ${_vBs}/${_filIncB}
         wait
-        sed -i "s/^_PHP_SINGL.*/_PHP_SINGLE_INSTALL=/g"                ${barCnf}
+        sed -i "s/^_PHP_SINGL.*/_PHP_SINGLE_INSTALL=/g"               ${_barCnf}
         wait
-        sed -i "s/^_PHP_MULTI.*/_PHP_MULTI_INSTALL=\"${phpM}\"/g"      ${barCnf}
+        sed -i "s/^_PHP_MULTI.*/_PHP_MULTI_INSTALL=\"${_phpM}\"/g"     ${_barCnf}
         wait
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${phpS}/g"     ${barCnf}
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${_phpS}/g"    ${_barCnf}
         wait
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${phpS}/g"     ${barCnf}
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${_phpS}/g"    ${_barCnf}
         wait
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${phpS}/g" \
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${_phpS}/g" \
           /root/.*.octopus.cnf &> /dev/null
         wait
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${phpS}/g" \
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${_phpS}/g" \
           /root/.*.octopus.cnf &> /dev/null
         wait
 
         ### Debugging
-        if [ "$debug" = "debug" ]; then
-          cat ${barCnf}
+        if [ "${_dEbg}" = "debug" ]; then
+          cat ${_barCnf}
           echo
           echo test fin!
-          clean_pid_exit debug_b
+          _clean_pid_exit debug_b
         fi
         ### Debugging
 
         if [ -d "/data/u" ] && [ -e "/data/conf/global.inc" ]; then
-          for Ctrl in `find /data/disk/*/log/fpm.txt \
+          for _Ctrl in `find /data/disk/*/log/fpm.txt \
             -maxdepth 0 -mindepth 0 | sort`; do
-            echo ${phpS} > ${Ctrl}
+            echo ${_phpS} > ${_Ctrl}
           done
-          for Ctrl in `find /data/disk/*/log/cli.txt \
+          for _Ctrl in `find /data/disk/*/log/cli.txt \
             -maxdepth 0 -mindepth 0 | sort`; do
-            echo ${phpS} > ${Ctrl}
+            echo ${_phpS} > ${_Ctrl}
           done
         fi
       fi
     fi
-    if_hosted_sys
-    if [ "${hostedSys}" != "YES" ]; then
-      mkdir -p ${vBs}/old-firewall-monitor/${_NOW}/legacy
+    _if_hosted_sys
+    if [ "${_hostedSys}" != "YES" ]; then
+      mkdir -p ${_vBs}/old-firewall-monitor/${_NOW}/legacy
       mv -f /var/xdrago/monitor/*.log \
-        ${vBs}/old-firewall-monitor/${_NOW}/legacy/ &> /dev/null
+        ${_vBs}/old-firewall-monitor/${_NOW}/legacy/ &> /dev/null
       mv -f /var/xdrago/monitor/log/*.log \
-        ${vBs}/old-firewall-monitor/${_NOW}/ &> /dev/null
+        ${_vBs}/old-firewall-monitor/${_NOW}/ &> /dev/null
     fi
-    if [ "${cmmand}" = "up-dev" ] \
-      || [ "${cmmand}" = "up-pro" ] \
-      || [ "${cmmand}" = "up-lts" ] \
-      || [ "${cmmand}" = "up-distro" ] \
-      || [ "${cmmand}" = "php-idle" ]; then
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"        ${vBs}/${filIncB}
+    if [ "${_cmNd}" = "up-dev" ] \
+      || [ "${_cmNd}" = "up-pro" ] \
+      || [ "${_cmNd}" = "up-lts" ] \
+      || [ "${_cmNd}" = "up-distro" ] \
+      || [ "${_cmNd}" = "php-idle" ]; then
+      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${_bRnh}/g"      ${_vBs}/${_filIncB}
       wait
-      sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${tRee}/g"   ${vBs}/${filIncB}
+      sed -i "s/^_AEGIR_VERSION.*/_AEGIR_VERSION=${_tRee}/g" ${_vBs}/${_filIncB}
       wait
-      sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${tRee}/g"   ${vBs}/${filIncB}
+      sed -i "s/^_AEGIR_XTS_VRN.*/_AEGIR_XTS_VRN=${_tRee}/g" ${_vBs}/${_filIncB}
       wait
-      sed -i "s/^_X_VERSION=.*/_X_VERSION=${rlse}/g"           ${vBs}/${filIncB}
+      sed -i "s/^_X_VERSION=.*/_X_VERSION=${_rlsE}/g"        ${_vBs}/${_filIncB}
       wait
-      sed -i "s/^_REDIS_MAJOR_RELEASE=.*/_REDIS_MAJOR_RELEASE=7/g"     ${barCnf}
+      sed -i "s/^_REDIS_MAJOR_RELEASE=.*/_REDIS_MAJOR_RELEASE=7/g"    ${_barCnf}
       wait
     else
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"        ${vBs}/${filIncB}
+      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${_bRnh}/g"      ${_vBs}/${_filIncB}
       wait
-      sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${tRee}/g"   ${vBs}/${filIncB}
+      sed -i "s/^_AEGIR_VERSION.*/_AEGIR_VERSION=${_tRee}/g" ${_vBs}/${_filIncB}
       wait
-      sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${rlse}/g"   ${vBs}/${filIncB}
+      sed -i "s/^_AEGIR_XTS_VRN.*/_AEGIR_XTS_VRN=${_rlsE}/g" ${_vBs}/${_filIncB}
       wait
-      sed -i "s/^_X_VERSION=.*/_X_VERSION=${rlse}/g"           ${vBs}/${filIncB}
+      sed -i "s/^_X_VERSION=.*/_X_VERSION=${_rlsE}/g"        ${_vBs}/${_filIncB}
       wait
     fi
-    if [ "${cmmand}" = "up-dev" ] \
-      || [ "${cmmand}" = "up-pro" ] \
-      || [ "${cmmand}" = "up-lts" ] \
-      || [ "${cmmand}" = "up-distro" ] \
-      || [ "${cmmand}" = "php-idle" ]; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"        ${vBs}/${filIncB}
+    if [ "${_cmNd}" = "up-dev" ] \
+      || [ "${_cmNd}" = "up-pro" ] \
+      || [ "${_cmNd}" = "up-lts" ] \
+      || [ "${_cmNd}" = "up-distro" ] \
+      || [ "${_cmNd}" = "php-idle" ]; then
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${_bRnh}/g"      ${_vBs}/${_filIncB}
       wait
     else
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"        ${vBs}/${filIncB}
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${_bRnh}/g"      ${_vBs}/${_filIncB}
       wait
     fi
-    sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"                 ${vBs}/${filIncB}
+    sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"               ${_vBs}/${_filIncB}
     wait
-    sed -i "s/^_SMTP_RELAY_TEST=YES/_SMTP_RELAY_TEST=NO/g"     ${vBs}/${filIncB}
+    sed -i "s/^_SMTP_RELAY_TEST=YES/_SMTP_RELAY_TEST=NO/g"   ${_vBs}/${_filIncB}
     wait
     ### Force HTTP/2 or SPDY plus PFS on supported systems
-    sed -i "s/^_NGINX_SPDY=.*/_NGINX_SPDY=YES/g"                       ${barCnf}
+    sed -i "s/^_NGINX_SPDY=.*/_NGINX_SPDY=YES/g"                      ${_barCnf}
     wait
-    sed -i "s/^_NGINX_FORWARD.*/_NGINX_FORWARD_SECRECY=YES/g"          ${barCnf}
+    sed -i "s/^_NGINX_FORWARD.*/_NGINX_FORWARD_SECRECY=YES/g"         ${_barCnf}
     wait
     ### Force Redis SOCKET mode if PORT was used before
-    sed -i "s/^_REDIS_LISTEN_MODE=PORT/_REDIS_LISTEN_MODE=SOCKET/g"    ${barCnf}
+    sed -i "s/^_REDIS_LISTEN_MODE=PORT/_REDIS_LISTEN_MODE=SOCKET/g"   ${_barCnf}
     wait
     ### Force latest OpenSSH from sources on supported systems
-    sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"           ${barCnf}
+    sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"          ${_barCnf}
     wait
-    sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g"             ${vBs}/${filIncB}
+    sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g"           ${_vBs}/${_filIncB}
     wait
-    sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g"                     ${barCnf}
+    sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g"                    ${_barCnf}
     wait
-    if [ "${sql}" = "percona-8.4" ] \
-      || [ "${rkey}" = "percona-8.4" ] \
-      || [ "${debug}" = "percona-8.4" ] \
+    if [ "${_sQld}" = "percona-8.4" ] \
+      || [ "${_rKey}" = "percona-8.4" ] \
+      || [ "${_dEbg}" = "percona-8.4" ] \
       || [ -e "/root/.percona.8.4.cnf" ]; then
-      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=8.4/g"               ${vBs}/${filIncB}
-      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=8.4/g"                       ${barCnf}
-    elif [ "${sql}" = "percona-8.3" ] \
-      || [ "${rkey}" = "percona-8.3" ] \
-      || [ "${debug}" = "percona-8.3" ] \
+      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=8.4/g"             ${_vBs}/${_filIncB}
+      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=8.4/g"                      ${_barCnf}
+    elif [ "${_sQld}" = "percona-8.3" ] \
+      || [ "${_rKey}" = "percona-8.3" ] \
+      || [ "${_dEbg}" = "percona-8.3" ] \
       || [ -e "/root/.percona.8.3.cnf" ]; then
-      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=8.3/g"               ${vBs}/${filIncB}
-      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=8.3/g"                       ${barCnf}
-    elif [ "${sql}" = "percona-8.0" ] \
-      || [ "${rkey}" = "percona-8.0" ] \
-      || [ "${debug}" = "percona-8.0" ] \
+      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=8.3/g"             ${_vBs}/${_filIncB}
+      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=8.3/g"                      ${_barCnf}
+    elif [ "${_sQld}" = "percona-8.0" ] \
+      || [ "${_rKey}" = "percona-8.0" ] \
+      || [ "${_dEbg}" = "percona-8.0" ] \
       || [ -e "/root/.percona.8.0.cnf" ]; then
-      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=8.0/g"               ${vBs}/${filIncB}
-      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=8.0/g"                       ${barCnf}
-    elif [ "${sql}" = "percona-5.7" ] \
-      || [ "${rkey}" = "percona-5.7" ] \
-      || [ "${debug}" = "percona-5.7" ] \
+      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=8.0/g"             ${_vBs}/${_filIncB}
+      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=8.0/g"                      ${_barCnf}
+    elif [ "${_sQld}" = "percona-5.7" ] \
+      || [ "${_rKey}" = "percona-5.7" ] \
+      || [ "${_dEbg}" = "percona-5.7" ] \
       || [ -e "/root/.percona.5.7.cnf" ]; then
-      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g"               ${vBs}/${filIncB}
-      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g"                       ${barCnf}
+      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g"             ${_vBs}/${_filIncB}
+      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g"                      ${_barCnf}
     else
-      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g"               ${vBs}/${filIncB}
-      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g"                       ${barCnf}
+      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g"             ${_vBs}/${_filIncB}
+      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g"                      ${_barCnf}
     fi
 
-    if [ -e "${barCnf}" ]; then
+    if [ -e "${_barCnf}" ]; then
       wait
-      sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                       ${barCnf}
+      sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                      ${_barCnf}
       wait
-      sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=YES/g"             ${barCnf}
+      sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=YES/g"            ${_barCnf}
       wait
-      sed -i "s/^_SMTP_RELAY_TEST=.*/_SMTP_RELAY_TEST=NO/g"            ${barCnf}
+      sed -i "s/^_SMTP_RELAY_TEST=.*/_SMTP_RELAY_TEST=NO/g"           ${_barCnf}
       wait
-      sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"         ${barCnf}
+      sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"        ${_barCnf}
       wait
-      sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g"           ${barCnf}
+      sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g"          ${_barCnf}
       wait
-      sed -i "s/^_REDIS_LISTEN.*/_REDIS_LISTEN_MODE=SOCKET/g"          ${barCnf}
+      sed -i "s/^_REDIS_LISTEN.*/_REDIS_LISTEN_MODE=SOCKET/g"         ${_barCnf}
       wait
       if [ -e "/etc/init.d/redis-server" ]; then
-        sed -i "s/^_USE_MYSQLTUNER=.*/_USE_MYSQLTUNER=NO/g"            ${barCnf}
+        sed -i "s/^_USE_MYSQLTUNER=.*/_USE_MYSQLTUNER=NO/g"           ${_barCnf}
         wait
       fi
     fi
 
-    if_hosted_sys
-    if [ "${hostedSys}" = "YES" ]; then
-      sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"notify\@omega8.cc\"/g"       ${barCnf}
+    _if_hosted_sys
+    if [ "${_hostedSys}" = "YES" ]; then
+      sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"notify\@omega8.cc\"/g"      ${_barCnf}
       wait
     fi
 
     if [ -e "/etc/default/tomcat" ] \
       && [ -e "/etc/init.d/tomcat" ] \
-      && [ -e "${barCnf}" ]; then
-      sed -i "s/^_TOMCAT_TO_JETTY=.*/_TOMCAT_TO_JETTY=YES/g"   ${vBs}/${barName}
+      && [ -e "${_barCnf}" ]; then
+      sed -i "s/^_TOMCAT_TO_JETTY=.*/_TOMCAT_TO_JETTY=YES/g" ${_vBs}/${_barName}
       wait
-      sed -i "s/^_TOMCAT_TO_JETTY.*//g"                                ${barCnf}
+      sed -i "s/^_TOMCAT_TO_JETTY.*//g"                               ${_barCnf}
       wait
-      sed -i "/^$/d"                                                   ${barCnf}
+      sed -i "/^$/d"                                                  ${_barCnf}
       wait
-      echo "_TOMCAT_TO_JETTY=YES" >>                                   ${barCnf}
+      echo "_TOMCAT_TO_JETTY=YES" >>                                  ${_barCnf}
     fi
 
-    if [ -e "${vBs}/${barName}" ]; then
-      if [ "${silent}" = "log" ] \
-        || [ "${silent}" = "system" ] \
-        || [ "${silent}" = "disable" ] \
-        || [ "${silent}" = "enable" ]; then
-        if [ "${_VMFAMILY}" = "VS" ]; then
-          if [ -e "/root/.debug.cnf" ]; then
-            n=8
-          else
-            n=$((RANDOM%9+2))
-          fi
-        else
-          n=8
-        fi
-        if [ "${silent}" = "log" ] \
-          || [ "${silent}" = "system" ] \
-          || [ "${silent}" = "aegir" ]; then
+    if [ -e "${_vBs}/${_barName}" ]; then
+      if [ "${_outP}" = "log" ] \
+        || [ "${_outP}" = "system" ] \
+        || [ "${_outP}" = "disable" ] \
+        || [ "${_outP}" = "enable" ]; then
+
+        if [ "${_outP}" = "log" ] \
+          || [ "${_outP}" = "system" ] \
+          || [ "${_outP}" = "aegir" ]; then
           echo
           echo "Preparing the upgrade in silent mode..."
           echo
           echo "NOTE: There will be no progress displayed in the console"
           echo "but you will receive an email once the upgrade is complete"
           echo
-          sleep $n
+          sleep 5
           echo "You could watch the progress in another window with command:"
           echo "  tail -f ${_UP_LOG}"
           echo "or wait until you will see the line: BARRACUDA upgrade completed"
           echo
-          echo "Waiting $n seconds..."
-          sleep $n
+          echo "Waiting 5 seconds..."
+          sleep 5
           echo "Starting the upgrade in silent mode now..."
           echo
-          sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                   ${barCnf}
+          sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                  ${_barCnf}
           wait
-          sed -i "s/^_SPINNER=YES/_SPINNER=NO/g"               ${vBs}/${barName}
+          sed -i "s/^_SPINNER=YES/_SPINNER=NO/g"             ${_vBs}/${_barName}
           wait
         fi
-        if [ "${silent}" = "system" ]; then
+        if [ "${_outP}" = "system" ]; then
           touch /run/boa_system_wait.pid
           if [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
             && [ -d "/var/aegir/config/server_master/nginx/subdir.d" ]; then
-            sed -i "s/^_SYSTEM_U.*/_SYSTEM_UPGRADE_ONLY=YES/g" ${vBs}/${filIncB}
+            sed -i "s/^_SYSTEM_UP.*/_SYSTEM_UP_ONLY=YES/g"   ${_vBs}/${_filIncB}
             wait
-            sed -i "s/^_SYSTEM_U.*/_SYSTEM_UPGRADE_ONLY=YES/g"         ${barCnf}
+            sed -i "s/^_SYSTEM_UP.*/_SYSTEM_UP_ONLY=YES/g"            ${_barCnf}
             wait
           else
-            sed -i "s/^_SYSTEM_U.*/_SYSTEM_UPGRADE_ONLY=NO/g"  ${vBs}/${filIncB}
+            sed -i "s/^_SYSTEM_UP.*/_SYSTEM_UP_ONLY=NO/g"    ${_vBs}/${_filIncB}
             wait
-            sed -i "s/^_SYSTEM_U.*/_SYSTEM_UPGRADE_ONLY=NO/g"          ${barCnf}
-            wait
-          fi
-          sed -i "s/^_AEGIR_UP.*/_AEGIR_UPGRADE_ONLY=NO/g"     ${vBs}/${filIncB}
-          wait
-          sed -i "s/^_AEGIR_UP.*/_AEGIR_UPGRADE_ONLY=NO/g"             ${barCnf}
-          wait
-          bash ${vBs}/${barName} >${_UP_LOG} 2>&1
-          wait
-          check_report
-        elif [ "${silent}" = "log" ]; then
-          sed -i "s/^_SYSTEM_U.*/_SYSTEM_UPGRADE_ONLY=NO/g"    ${vBs}/${filIncB}
-          wait
-          sed -i "s/^_SYSTEM_U.*/_SYSTEM_UPGRADE_ONLY=NO/g"            ${barCnf}
-          wait
-          sed -i "s/^_AEGIR_UP.*/_AEGIR_UPGRADE_ONLY=NO/g"     ${vBs}/${filIncB}
-          wait
-          sed -i "s/^_AEGIR_UP.*/_AEGIR_UPGRADE_ONLY=NO/g"             ${barCnf}
-          wait
-          bash ${vBs}/${barName} >${_UP_LOG} 2>&1
-          wait
-          check_report
-        elif [ "${silent}" = "aegir" ]; then
-          sed -i "s/^_SYSTEM_U.*/_SYSTEM_UPGRADE_ONLY=NO/g"    ${vBs}/${filIncB}
-          wait
-          sed -i "s/^_SYSTEM_U.*/_SYSTEM_UPGRADE_ONLY=NO/g"            ${barCnf}
-          wait
-          sed -i "s/^_AEGIR_UP.*/_AEGIR_UPGRADE_ONLY=YES/g"    ${vBs}/${filIncB}
-          wait
-          sed -i "s/^_AEGIR_UP.*/_AEGIR_UPGRADE_ONLY=YES/g"            ${barCnf}
-          wait
-          bash ${vBs}/${barName} >${_UP_LOG} 2>&1
-          wait
-          check_report
-        elif [ "${silent}" = "enable" ] || [ "${silent}" = "disable" ]; then
-          sed -i "s/^_PHP_IDLE.*//g"                                   ${barCnf}
-          wait
-          if [ "${silent}" = "enable" ]; then
-            echo "_PHP_IDLE=ON"                                     >> ${barCnf}
-            wait
-          elif [ "${silent}" = "disable" ]; then
-            echo "_PHP_IDLE=OFF"                                    >> ${barCnf}
+            sed -i "s/^_SYSTEM_UP.*/_SYSTEM_UP_ONLY=NO/g"             ${_barCnf}
             wait
           fi
-          bash ${vBs}/${barName}
+          sed -i "s/^_AEGIR_UP.*/_AEGIR_UPGRADE_ONLY=NO/g"   ${_vBs}/${_filIncB}
+          wait
+          sed -i "s/^_AEGIR_UP.*/_AEGIR_UPGRADE_ONLY=NO/g"            ${_barCnf}
+          wait
+          bash ${_vBs}/${_barName} >${_UP_LOG} 2>&1
+          wait
+          _check_report
+        elif [ "${_outP}" = "log" ]; then
+          sed -i "s/^_SYSTEM_UP.*/_SYSTEM_UP_ONLY=NO/g"      ${_vBs}/${_filIncB}
+          wait
+          sed -i "s/^_SYSTEM_UP.*/_SYSTEM_UP_ONLY=NO/g"               ${_barCnf}
+          wait
+          sed -i "s/^_AEGIR_UP.*/_AEGIR_UPGRADE_ONLY=NO/g"   ${_vBs}/${_filIncB}
+          wait
+          sed -i "s/^_AEGIR_UP.*/_AEGIR_UPGRADE_ONLY=NO/g"            ${_barCnf}
+          wait
+          bash ${_vBs}/${_barName} >${_UP_LOG} 2>&1
+          wait
+          _check_report
+        elif [ "${_outP}" = "aegir" ]; then
+          sed -i "s/^_SYSTEM_UP.*/_SYSTEM_UP_ONLY=NO/g"      ${_vBs}/${_filIncB}
+          wait
+          sed -i "s/^_SYSTEM_UP.*/_SYSTEM_UP_ONLY=NO/g"               ${_barCnf}
+          wait
+          sed -i "s/^_AEGIR_UP.*/_AEGIR_UPGRADE_ONLY=YES/g"  ${_vBs}/${_filIncB}
+          wait
+          sed -i "s/^_AEGIR_UP.*/_AEGIR_UPGRADE_ONLY=YES/g"           ${_barCnf}
+          wait
+          bash ${_vBs}/${_barName} >${_UP_LOG} 2>&1
+          wait
+          _check_report
+        elif [ "${_outP}" = "enable" ] || [ "${_outP}" = "disable" ]; then
+          sed -i "s/^_PHP_IDLE.*//g"                                  ${_barCnf}
+          wait
+          if [ "${_outP}" = "enable" ]; then
+            echo "_PHP_IDLE=ON"                                    >> ${_barCnf}
+            wait
+          elif [ "${_outP}" = "disable" ]; then
+            echo "_PHP_IDLE=OFF"                                   >> ${_barCnf}
+            wait
+          fi
+          bash ${_vBs}/${_barName}
           wait
         fi
       else
-        sed -i "s/^_SYSTEM_U.*/_SYSTEM_UPGRADE_ONLY=NO/g"      ${vBs}/${filIncB}
+        sed -i "s/^_SYSTEM_UP.*/_SYSTEM_UP_ONLY=NO/g"        ${_vBs}/${_filIncB}
         wait
-        sed -i "s/^_SYSTEM_U.*/_SYSTEM_UPGRADE_ONLY=NO/g"              ${barCnf}
+        sed -i "s/^_SYSTEM_UP.*/_SYSTEM_UP_ONLY=NO/g"                 ${_barCnf}
         wait
-        sed -i "s/^_AEGIR_UP.*/_AEGIR_UPGRADE_ONLY=NO/g"       ${vBs}/${filIncB}
+        sed -i "s/^_AEGIR_UP.*/_AEGIR_UPGRADE_ONLY=NO/g"     ${_vBs}/${_filIncB}
         wait
-        sed -i "s/^_AEGIR_UP.*/_AEGIR_UPGRADE_ONLY=NO/g"               ${barCnf}
+        sed -i "s/^_AEGIR_UP.*/_AEGIR_UPGRADE_ONLY=NO/g"              ${_barCnf}
         wait
-        sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=NO/g"                      ${barCnf}
+        sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=NO/g"                     ${_barCnf}
         wait
-        if [ "${cmmand}" = "php-idle" ]; then
-          sed -i "s/^_PHP_IDLE.*//g"                                   ${barCnf}
+        if [ "${_cmNd}" = "php-idle" ]; then
+          sed -i "s/^_PHP_IDLE.*//g"                                  ${_barCnf}
           wait
-          if [ "${silent}" = "enable" ]; then
-            echo "_PHP_IDLE=ON"                                     >> ${barCnf}
+          if [ "${_outP}" = "enable" ]; then
+            echo "_PHP_IDLE=ON"                                    >> ${_barCnf}
             wait
-          elif [ "${silent}" = "disable" ]; then
-            echo "_PHP_IDLE=OFF"                                    >> ${barCnf}
+          elif [ "${_outP}" = "disable" ]; then
+            echo "_PHP_IDLE=OFF"                                   >> ${_barCnf}
             wait
           fi
         fi
-        if [ "${cmmand}" = "up-distro" ]; then
-          sed -i "s/^_UP_DISTRO.*//g"                                  ${barCnf}
+        if [ "${_cmNd}" = "up-distro" ]; then
+          sed -i "s/^_UP_DISTRO.*//g"                                 ${_barCnf}
           wait
-          if [ "${silent}" = "enable" ]; then
-            echo "_UP_DISTRO=ON"                                    >> ${barCnf}
+          if [ "${_outP}" = "enable" ]; then
+            echo "_UP_DISTRO=ON"                                   >> ${_barCnf}
             wait
-          elif [ "${silent}" = "disable" ]; then
-            echo "_UP_DISTRO=OFF"                                   >> ${barCnf}
+          elif [ "${_outP}" = "disable" ]; then
+            echo "_UP_DISTRO=OFF"                                  >> ${_barCnf}
             wait
           fi
         fi
-        bash ${vBs}/${barName}
+        bash ${_vBs}/${_barName}
         wait
       fi
     fi
   else
     echo
-    echo "  ${vBs}/${barName} installer not available - try again later"
-    echo "  Make sure that required ${barCnf} file also exists"
+    echo "  ${_vBs}/${_barName} installer not available - try again later"
+    echo "  Make sure that required ${_barCnf} file also exists"
     echo
-    clean_pid_exit up_action_a
+    _clean_pid_exit _up_action_a
   fi
 }
 
-up_start() {
+_up_start() {
   if [ -e "/run/boa_run.pid" ]; then
     echo
     echo "  Another BOA installer is running probably"
@@ -1074,8 +1065,8 @@ up_start() {
     #kill -9 $(ps aux | grep '[d]aily.sh' | awk '{print $2}') &> /dev/null
     #rm -f /run/*daily*.pid
     mkdir -p ${_LOG_DIR}
-    cd ${vBs}
-    rm -f ${vBs}/BARRACUDA.sh*
+    cd ${_vBs}
+    rm -f ${_vBs}/BARRACUDA.sh*
   fi
   if [ -e "/opt/local/bin/php" ] \
     || [ -e "/opt/local/bin/pear" ] \
@@ -1088,7 +1079,7 @@ up_start() {
   fi
 }
 
-if_fix_iptables_symlinks() {
+_if_fix_iptables_symlinks() {
   ###
   ### Fix for iptables paths backward compatibility
   ###
@@ -1133,7 +1124,7 @@ if_fix_iptables_symlinks() {
   ###
 }
 
-up_finish() {
+_up_finish() {
   rm -f /root/.bashrc.bak*
   rm -f /root/BOA.sh*
   [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
@@ -1143,16 +1134,16 @@ up_finish() {
   [ -e "/run/manage_ruby_users.pid" ] && rm -f /run/manage_ruby_users.pid
   [ -e "/tmp/aegir_backup_mode.txt" ] && rm -f /tmp/aegir_backup_mode.txt
   if [ -d "/data/u" ]; then
-    rm -f ${vBs}/*.sh.cnf*
-    rm -f ${vBs}/BARRACUDA.sh*
+    rm -f ${_vBs}/*.sh.cnf*
+    rm -f ${_vBs}/BARRACUDA.sh*
   fi
   if [ -e "/opt/local/bin/php" ] \
     || [ -e "/usr/local/bin/php" ]; then
     rm -f /opt/local/bin/php
     rm -f /usr/local/bin/php
   fi
-  if_hosted_sys
-  if [ "${hostedSys}" = "YES" ]; then
+  _if_hosted_sys
+  if [ "${_hostedSys}" = "YES" ]; then
     service webmin stop &> /dev/null
     service usermin stop &> /dev/null
   fi
@@ -1175,7 +1166,7 @@ up_finish() {
     wait
     service clean-boa-env start &> /dev/null
     wait
-    if_fix_iptables_symlinks
+    _if_fix_iptables_symlinks
     csf -uf &> /dev/null
     wait
     _NFTABLES_TEST=$(iptables -V 2>&1)
@@ -1203,12 +1194,14 @@ up_finish() {
     else
       _DHCP_LOG="/var/log/syslog"
     fi
-    _DHCP_TEST=$(grep DHCPREQUEST ${_DHCP_LOG} | cut -d ' ' -f13 | sort | uniq 2>&1)
-    if [[ "${_DHCP_TEST}" =~ "port" ]]; then
-      for _IP in `grep DHCPREQUEST ${_DHCP_LOG} | cut -d ' ' -f12 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
-    else
-      for _IP in `grep DHCPREQUEST ${_DHCP_LOG} | cut -d ' ' -f13 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
-    fi
+    grep DHCPREQUEST "${_DHCP_LOG}" | awk '{print $12}' | sort -u | while read -r _IP; do
+      if [[ ${_IP} =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
+        IFS='.' read -r oct1 oct2 oct3 oct4 <<< "${_IP}"
+        if (( oct1 <= 255 && oct2 <= 255 && oct3 <= 255 && oct4 <= 255 )); then
+          echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow
+        fi
+      fi
+    done
     csf -q  &> /dev/null
     service lfd start &> /dev/null
     wait
@@ -1238,38 +1231,38 @@ up_finish() {
   exit 0
 }
 
-check_etc_apt_preferences() {
+_check_etc_apt_preferences() {
   if [ -e "/etc/apt/preferences" ] \
     && [ ! -e "/var/backups/old_etc_apt_preferences" ]; then
     mv -f /etc/apt/preferences /var/backups/old_etc_apt_preferences
   fi
 }
 
-find_fast_mirror_early() {
-  isNetc=$(which netcat 2>&1)
-  if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
+_find_fast_mirror_early() {
+  _isNetc=$(which netcat 2>&1)
+  if [ ! -x "${_isNetc}" ] || [ -z "${_isNetc}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
-    apt_clean_update
-    apt-get install netcat ${aptYesUnth} 2> /dev/null
-    apt-get install netcat-traditional ${aptYesUnth} 2> /dev/null
+    _apt_clean_update
+    apt-get install netcat ${_aptYesUnth} 2> /dev/null
+    apt-get install netcat-traditional ${_aptYesUnth} 2> /dev/null
     wait
   fi
-  ffMirr=$(which ffmirror 2>&1)
-  if [ -x "${ffMirr}" ]; then
-    ffList="/var/backups/boa-mirrors-2024-01.txt"
+  _ffMirr=$(which ffmirror 2>&1)
+  if [ -x "${_ffMirr}" ]; then
+    _ffList="/var/backups/boa-mirrors-2024-01.txt"
     mkdir -p /var/backups
-    if [ ! -e "${ffList}" ]; then
-      echo "de.files.aegir.cc"  > ${ffList}
-      echo "ny.files.aegir.cc" >> ${ffList}
-      echo "sg.files.aegir.cc" >> ${ffList}
+    if [ ! -e "${_ffList}" ]; then
+      echo "de.files.aegir.cc"  > ${_ffList}
+      echo "ny.files.aegir.cc" >> ${_ffList}
+      echo "sg.files.aegir.cc" >> ${_ffList}
     fi
-    if [ -e "${ffList}" ]; then
-      _BROKEN_FFMIRR_TEST=$(grep "stuff" ${ffMirr} 2>&1)
+    if [ -e "${_ffList}" ]; then
+      _BROKEN_FFMIRR_TEST=$(grep "stuff" ${_ffMirr} 2>&1)
       if [[ "${_BROKEN_FFMIRR_TEST}" =~ "stuff" ]]; then
-        _CHECK_MIRROR=$(bash ${ffMirr} < ${ffList} 2>&1)
+        _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _USE_MIR="${_CHECK_MIRROR}"
         [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.aegir.cc"
       else
@@ -1281,12 +1274,12 @@ find_fast_mirror_early() {
   else
     _USE_MIR="files.aegir.cc"
   fi
-  urlDev="http://${_USE_MIR}/dev"
-  urlHmr="http://${_USE_MIR}/versions/${tRee}/boa/aegir"
+  _urlDev="http://${_USE_MIR}/dev"
+  _urlHmr="http://${_USE_MIR}/versions/${_tRee}/boa/aegir"
 }
 
-if_reinstall_curl() {
-  _CURL_VRN=8.9.1
+_if_reinstall_curl() {
+  _CURL_VRN=8.10.1
   if ! command -v lsb_release &> /dev/null; then
     apt-get update -qq &> /dev/null
     apt-get install lsb-release -y -qq &> /dev/null
@@ -1295,15 +1288,15 @@ if_reinstall_curl() {
   [ "${_OS_CODE}" = "wheezy" ] && _CURL_VRN=7.50.1
   [ "${_OS_CODE}" = "jessie" ] && _CURL_VRN=7.71.1
   [ "${_OS_CODE}" = "stretch" ] && _CURL_VRN=8.2.1
-  isCurl=$(curl --version 2>&1)
-  if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
+  _isCurl=$(curl --version 2>&1)
+  if [[ ! "${_isCurl}" =~ "OpenSSL" ]] || [ -z "${_isCurl}" ]; then
     echo "OOPS: cURL is broken! Re-installing.."
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     echo "curl install" | dpkg --set-selections 2> /dev/null
-    apt_clean_update
+    _apt_clean_update
     apt-get remove libssl1.0-dev -y --purge --auto-remove -qq 2> /dev/null
     apt-get autoremove -y 2> /dev/null
     apt-get install libssl-dev -y -qq 2> /dev/null
@@ -1347,10 +1340,10 @@ if_reinstall_curl() {
       fi
     fi
     if [ -f "/usr/local/bin/curl" ]; then
-      isCurl=$(/usr/local/bin/curl --version 2>&1)
-      if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
+      _isCurl=$(/usr/local/bin/curl --version 2>&1)
+      if [[ ! "${_isCurl}" =~ "OpenSSL" ]] || [ -z "${_isCurl}" ]; then
         echo "ERRR: curl is still broken, please install it and debug manually"
-        clean_pid_exit
+        _clean_pid_exit
       else
         echo "GOOD: /usr/local/bin/curl works"
       fi
@@ -1358,27 +1351,27 @@ if_reinstall_curl() {
   fi
 }
 
-check_dns_curl() {
+_check_dns_curl() {
   if [ ! -f "/etc/resolv.conf" ]; then
     rm -f /etc/resolv.conf
     echo "nameserver 127.0.0.1" > /etc/resolv.conf
-    if [ -e "${vBs}/resolv.conf.vanilla" ]; then
-      cat ${vBs}/resolv.conf.vanilla >> /etc/resolv.conf
+    if [ -e "${_vBs}/resolv.conf.vanilla" ]; then
+      cat ${_vBs}/resolv.conf.vanilla >> /etc/resolv.conf
     fi
     echo "nameserver 1.1.1.1" >> /etc/resolv.conf
     echo "nameserver 1.0.0.1" >> /etc/resolv.conf
     echo "nameserver 8.8.8.8" >> /etc/resolv.conf
     echo "nameserver 8.8.4.4" >> /etc/resolv.conf
-    check_dns_settings
+    _check_dns_settings
   else
-    check_dns_settings
+    _check_dns_settings
   fi
   if [ -x "/usr/sbin/unbound-control" ] \
     && [ -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
     unbound-control reload &> /dev/null
   fi
-  find_fast_mirror_early
-  if_reinstall_curl
+  _find_fast_mirror_early
+  _if_reinstall_curl
   _CURL_TEST=$(curl -L -k -s \
     --max-redirs 10 \
     --retry 3 \
@@ -1387,15 +1380,15 @@ check_dns_curl() {
   if [[ ! "${_CURL_TEST}" =~ "200 OK" ]]; then
     if [[ "${_CURL_TEST}" =~ "unknown option was passed in to libcurl" ]]; then
       echo "ERROR: cURL libs are out of sync! Re-installing again.."
-      if_reinstall_curl
+      _if_reinstall_curl
     else
       echo "ERROR: ${_USE_MIR} is not available, please try later"
-      clean_pid_exit check_dns_curl_a
+      _clean_pid_exit _check_dns_curl_a
     fi
   fi
 }
 
-csf_check_fix() {
+_csf_check_fix() {
   if [ -x "/usr/sbin/csf" ] \
     && [ -e "/etc/csf/csf.deny" ] \
     && [ ! -x "/etc/csf/csfpost.sh" ]; then
@@ -1416,7 +1409,7 @@ csf_check_fix() {
     wait
     service clean-boa-env start &> /dev/null
     wait
-    if_fix_iptables_symlinks
+    _if_fix_iptables_symlinks
     csf -uf &> /dev/null
     wait
     _NFTABLES_TEST=$(iptables -V 2>&1)
@@ -1444,12 +1437,14 @@ csf_check_fix() {
     else
       _DHCP_LOG="/var/log/syslog"
     fi
-    _DHCP_TEST=$(grep DHCPREQUEST ${_DHCP_LOG} | cut -d ' ' -f13 | sort | uniq 2>&1)
-    if [[ "${_DHCP_TEST}" =~ "port" ]]; then
-      for _IP in `grep DHCPREQUEST ${_DHCP_LOG} | cut -d ' ' -f12 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
-    else
-      for _IP in `grep DHCPREQUEST ${_DHCP_LOG} | cut -d ' ' -f13 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
-    fi
+    grep DHCPREQUEST "${_DHCP_LOG}" | awk '{print $12}' | sort -u | while read -r _IP; do
+      if [[ ${_IP} =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
+        IFS='.' read -r oct1 oct2 oct3 oct4 <<< "${_IP}"
+        if (( oct1 <= 255 && oct2 <= 255 && oct3 <= 255 && oct4 <= 255 )); then
+          echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow
+        fi
+      fi
+    done
     csf -q  &> /dev/null
     service lfd start &> /dev/null
     wait
@@ -1468,13 +1463,13 @@ csf_check_fix() {
   fi
 }
 
-check_root() {
+_check_root() {
   if [ `whoami` = "root" ]; then
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
     export _B_NICE=${_B_NICE//[^0-9]/}
     : "${_B_NICE:=10}"
     renice ${_B_NICE} -p $$ &> /dev/null
-    csf_check_fix
+    _csf_check_fix
     chmod a+w /dev/null
     if [ ! -e "/dev/fd" ]; then
       if [ -e "/proc/self/fd" ]; then
@@ -1495,17 +1490,17 @@ check_root() {
       if [ ! -e "/etc/apt/preferences.d/fuse" ]; then
         mkdir -p /etc/apt/preferences.d/
         echo -e 'Package: fuse\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/fuse
-        apt_clean_update
+        _apt_clean_update
       fi
       if [ ! -e "/etc/apt/preferences.d/udev" ]; then
         mkdir -p /etc/apt/preferences.d/
         echo -e 'Package: udev\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/udev
-        apt_clean_update
+        _apt_clean_update
       fi
       if [ ! -e "/etc/apt/preferences.d/makedev" ]; then
         mkdir -p /etc/apt/preferences.d/
         echo -e 'Package: makedev\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/makedev
-        apt_clean_update
+        _apt_clean_update
       fi
       apt-get remove fuse -y --purge --auto-remove -qq 2> /dev/null
       apt-get remove udev -y --purge --auto-remove -qq 2> /dev/null
@@ -1545,10 +1540,10 @@ check_root() {
                      umountroot \
                      urandom \
                      vnstat"
-      for link in ${_REMOVE_LINKS}; do
-        if [ -e "/etc/init.d/${link}" ]; then
-          update-rc.d -f ${link} remove &> /dev/null
-          mv -f /etc/init.d/${link} /var/backups/init.d.${link}
+      for _link in ${_REMOVE_LINKS}; do
+        if [ -e "/etc/init.d/${_link}" ]; then
+          update-rc.d -f ${_link} remove &> /dev/null
+          mv -f /etc/init.d/${_link} /var/backups/init.d.${_link}
         fi
       done
       for s in cron dbus ssh; do
@@ -1574,7 +1569,7 @@ check_root() {
         && [ -e "/etc/apt/apt.conf.d" ]; then
         echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
       fi
-      apt_clean_update
+      _apt_clean_update
       apt-get install udev -y --allow-unauthenticated 2> /dev/null
       echo "devpts          /dev/pts        devpts  rw,noexec,nosuid,gid=5,mode=620 0  0" >> /etc/fstab
       mount -t devpts devpts /dev/pts &> /dev/null
@@ -1593,7 +1588,7 @@ check_root() {
     fi
   else
     echo "ERROR: This script should be run as a root user"
-    clean_pid_exit check_root_a
+    _clean_pid_exit _check_root_a
   fi
   _DF_TEST=$(df -kTh / -l \
     | grep '/' \
@@ -1603,63 +1598,63 @@ check_root() {
   if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt "90" ]; then
     echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
     echo "ERROR: We can not proceed until it is below 90/100"
-    clean_pid_exit check_root_b
+    _clean_pid_exit _check_root_b
   fi
-  if [ -e "${barCnf}" ]; then
-    source ${barCnf}
+  if [ -e "${_barCnf}" ]; then
+    source ${_barCnf}
   fi
 }
 
-check_no_systemd() {
+_check_no_systemd() {
   if [ -e "/lib/systemd/systemd" ]; then
     echo "ERROR: This script can not be used with systemd"
     echo "ERROR: Please run 'autoinit' first"
-    clean_pid_exit check_no_systemd_a_barracuda
+    _clean_pid_exit _check_no_systemd_a_barracuda
   fi
 }
 
-old_apt_keys_cleanup() {
-  isAptKey=$(which apt-key 2>&1)
-  if [ -x "${isAptKey}" ]; then
-    _OLD_KEY_KSPLICE_TEST=$(${isAptKey} list | grep ksplice 2>&1)
-    _OLD_KEY_ORACLE_TEST=$(${isAptKey} list | grep oracle 2>&1)
-    _OLD_KEY_NEWRELIC_TEST=$(${isAptKey} list | grep newrelic 2>&1)
-    _OLD_KEY_PERCONA_TEST=$(${isAptKey} list | grep percona 2>&1)
-    _OLD_KEY_MALLORY_TEST=$(${isAptKey} list | grep mallory 2>&1)
-    _OLD_KEY_GHOST_TEST=$(${isAptKey} list | grep "6857 6280" 2>&1)
+_old_apt_keys_cleanup() {
+  _isAptKey=$(which apt-key 2>&1)
+  if [ -x "${_isAptKey}" ]; then
+    _OLD_KEY_KSPLICE_TEST=$(${_isAptKey} list | grep ksplice 2>&1)
+    _OLD_KEY_ORACLE_TEST=$(${_isAptKey} list | grep oracle 2>&1)
+    _OLD_KEY_NEWRELIC_TEST=$(${_isAptKey} list | grep newrelic 2>&1)
+    _OLD_KEY_PERCONA_TEST=$(${_isAptKey} list | grep percona 2>&1)
+    _OLD_KEY_MALLORY_TEST=$(${_isAptKey} list | grep mallory 2>&1)
+    _OLD_KEY_GHOST_TEST=$(${_isAptKey} list | grep "6857 6280" 2>&1)
     if [[ "${_OLD_KEY_KSPLICE_TEST}" =~ "ksplice" ]]; then
-      ${isAptKey} del B6D4038E &> /dev/null
+      ${_isAptKey} del B6D4038E &> /dev/null
     fi
     if [[ "${_OLD_KEY_ORACLE_TEST}" =~ "oracle" ]]; then
-      ${isAptKey} del AD986DA3 &> /dev/null
+      ${_isAptKey} del AD986DA3 &> /dev/null
     fi
     if [[ "${_OLD_KEY_NEWRELIC_TEST}" =~ "newrelic" ]]; then
-      ${isAptKey} del 548C16BF &> /dev/null
+      ${_isAptKey} del 548C16BF &> /dev/null
     fi
     if [[ "${_OLD_KEY_PERCONA_TEST}" =~ "percona" ]]; then
-      ${isAptKey} del 8507EFA5 &> /dev/null
+      ${_isAptKey} del 8507EFA5 &> /dev/null
     fi
     if [[ "${_OLD_KEY_MALLORY_TEST}" =~ "mallory" ]]; then
-      ${isAptKey} del 8507EFA5 &> /dev/null
+      ${_isAptKey} del 8507EFA5 &> /dev/null
     fi
     if [[ "${_OLD_KEY_GHOST_TEST}" =~ "6857 6280" ]]; then
-      ${isAptKey} del 68576280 &> /dev/null
+      ${_isAptKey} del 68576280 &> /dev/null
     fi
   fi
 }
 
-proceed() {
-  check_root_keys_pwd
-  check_root
-  check_no_systemd
-  up_start
-  barracuda_downgrade_protection
-  os_detection_minimal
-  check_dns_curl
-  check_php_cli
-  old_apt_keys_cleanup &> /dev/null
-  check_etc_apt_preferences
-  if [ "${tRee}" = "dev" ]; then
+_proceed() {
+  _check_root_keys_pwd
+  _check_root
+  _check_no_systemd
+  _up_start
+  _barracuda_downgrade_protection
+  _os_detection_minimal
+  _check_dns_curl
+  _check_php_cli
+  _old_apt_keys_cleanup &> /dev/null
+  _check_etc_apt_preferences
+  if [ "${_tRee}" = "dev" ]; then
     touch /root/.debug-boa-installer.cnf
     touch /root/.debug-octopus-installer.cnf
   fi
@@ -1667,26 +1662,26 @@ proceed() {
   if [ -e "/root/.run-to-daedalus.cnf" ] \
     || [ -e "/root/.run-to-chimaera.cnf" ] \
     || [ -e "/root/.run-to-beowulf.cnf" ] \
-    || [ "${cmmand}" = "help" ] \
-    || [ "${cmmand}" = "info" ] \
-    || [ "${cmmand}" = "php-idle" ] \
-    || [ "${cmmand}" = "up-distro" ]; then
+    || [ "${_cmNd}" = "help" ] \
+    || [ "${_cmNd}" = "info" ] \
+    || [ "${_cmNd}" = "php-idle" ] \
+    || [ "${_cmNd}" = "up-distro" ]; then
     _CHECK_SQL=NO
   else
     _CHECK_SQL=YES
   fi
   if [ "${_CHECK_SQL}" = "YES" ]; then
-    check_sql_running
-    check_sql_access
+    _check_sql_running
+    _check_sql_access
   fi
-  _SCRIPT_URL="${rgUrl}/${brnch}/${barName}"
-  curl ${crlGet} "${rgUrl}/${brnch}/${pthIncB}" -o ${vBs}/${filIncB}
-  curl ${crlGet} ${_SCRIPT_URL} -o ${vBs}/${barName}
-  up_action
-  up_finish
+  _SCRIPT_URL="${_rgUrl}/${_bRnh}/${_barName}"
+  curl ${_crlGet} "${_rgUrl}/${_bRnh}/${_pthIncB}" -o ${_vBs}/${_filIncB}
+  curl ${_crlGet} ${_SCRIPT_URL} -o ${_vBs}/${_barName}
+  _up_action
+  _up_finish
 }
 
-check_manufacturer_compatibility() {
+_check_manufacturer_compatibility() {
   # Install dmidecode of not present
   if ! command -v dmidecode &> /dev/null; then
     /usr/bin/apt-get update &> /dev/null
@@ -1705,24 +1700,24 @@ check_manufacturer_compatibility() {
     echo "Not supported environment detected: ${_HOST_INFO}"
     echo "Please check https://bit.ly/boa-caveats"
     echo "Bye!"
-    clean_pid_exit check_manufacturer_compatibility_a
+    _clean_pid_exit _check_manufacturer_compatibility_a
   elif [[ "${_HOST_INFO}" =~ "Unknown" ]] || [ -z "${_HOST_INFO}" ]; then
     echo "Mysterious environment: ${_HOST_INFO}"
     echo "Please check https://bit.ly/boa-caveats"
     echo "Bye!"
-    clean_pid_exit check_manufacturer_compatibility_b
+    _clean_pid_exit _check_manufacturer_compatibility_b
   fi
 }
 
-if_start_screen() {
+_if_start_screen() {
   if [[ -n "$SSH_CONNECTION" || -n "$SSH_CLIENT" ]]; then
     # Check if the user is inside a screen session
-    if [[ ! "${ARGS}" =~ (^|[[:space:]])(info|help)([[:space:]]|$) ]]; then
+    if [[ ! "${_ARGS}" =~ (^|[[:space:]])(info|help)([[:space:]]|$) ]]; then
       if [ -z "$STY" ]; then
         # If not in screen, start a new screen session with the same script
         echo "You are not inside a screen session. Starting screen..."
         sleep 5
-        screen -S session_barracuda bash -c "$0 $ARGS"
+        screen -S session_barracuda bash -c "$0 ${_ARGS}"
         exit
       else
         # If already inside screen, continue the script
@@ -1733,8 +1728,8 @@ if_start_screen() {
   fi
 }
 
-if_display_help() {
-  if [ "${cmmand}" = "help" ] || [ "${cmmand}" = "info" ]; then
+_if_display_help() {
+  if [ "${_cmNd}" = "help" ] || [ "${_cmNd}" = "info" ]; then
     echo
     echo "Usage: $(basename "$0") {version} {mode} {options}"
     echo
@@ -1766,72 +1761,72 @@ if_display_help() {
     See docs/UPGRADE.md for more details.
 
 EOF
-    clean_pid_exit proceed_a
+    _clean_pid_exit _proceed_a
   fi
 }
 
-set_tree_vars() {
-  if [ ! -z "${silent}" ]; then
-    if [ "${silent}" = "log" ] \
-      || [ "${silent}" = "disable" ] \
-      || [ "${silent}" = "enable" ] \
-      || [ "${silent}" = "system" ] \
-      || [ "${silent}" = "distro" ]; then
-      export silent="$argsec"
+_set_tree_vars() {
+  if [ ! -z "${_outP}" ]; then
+    if [ "${_outP}" = "log" ] \
+      || [ "${_outP}" = "disable" ] \
+      || [ "${_outP}" = "enable" ] \
+      || [ "${_outP}" = "system" ] \
+      || [ "${_outP}" = "distro" ]; then
+      export _outP="${_argS}"
     else
-      export silent=
-      export rkey="$argsec"
-      export debug="$argthr"
-      export sql="$argfth"
+      export _outP=
+      export _rKey="${_argS}"
+      export _dEbg="${_argT}"
+      export _sQld="${_argF}"
     fi
   fi
-  if [ "${cmmand}" = "up-dev" ]; then
-    tRee=dev
-    ifnames_grub_check_sync
-  elif [ "${cmmand}" = "up-pro" ]; then
-    tRee=pro
-    ifnames_grub_check_sync
-  elif [ "${cmmand}" = "up-lts" ]; then
-    tRee=lts
-    ifnames_grub_check_sync
+  if [ "${_cmNd}" = "up-dev" ]; then
+    _tRee=dev
+    _ifnames_grub_check_sync
+  elif [ "${_cmNd}" = "up-pro" ]; then
+    _tRee=pro
+    _ifnames_grub_check_sync
+  elif [ "${_cmNd}" = "up-lts" ]; then
+    _tRee=lts
+    _ifnames_grub_check_sync
   else
-    if [ "${cmmand}" = "php-idle" ] \
-      || [ "${cmmand}" = "help" ] \
-      || [ "${cmmand}" = "info" ] \
-      || [ "${cmmand}" = "up-distro" ]; then
-      tRee=pro
+    if [ "${_cmNd}" = "php-idle" ] \
+      || [ "${_cmNd}" = "help" ] \
+      || [ "${_cmNd}" = "info" ] \
+      || [ "${_cmNd}" = "up-distro" ]; then
+      _tRee=dev
     else
       echo
       echo "Sorry, you are trying not supported command.."
       echo "Display supported commands with: $(basename "$0") help"
       echo
-      clean_pid_exit cmmand_a
+      _clean_pid_exit _cmNd_a
     fi
   fi
-  export rlsn="BOA-5.4.0"
-  export rlse="${rlsn}-${tRee}"
-  export branch="5.x-${tRee}"
-  export brnch=${branch//\//\\\/}
-  export tRee="${tRee}"
-  export rlsn="${rlsn}"
+
+  export _tRee="${_tRee}"
+  export _rLsn="BOA-5.4.0"
+  export _rlsE="${_rLsn}-${_tRee}"
+  export _bRnh="5.x-${_tRee}"
+
 }
 
-export ARGS="$@"
-export cmmand="$1"
-export silent="$2"
-export rkey="$3"
-export debug="$4"
-export sql="$5"
+export _ARGS="$@"
+export _cmNd="$1"
+export _outP="$2"
+export _rKey="$3"
+export _dEbg="$4"
+export _sQld="$5"
 
-export argsec="$2"
-export argthr="$3"
-export argfth="$4"
+export _argS="$2"
+export _argT="$3"
+export _argF="$4"
 
-check_root_direct
-set_tree_vars
-if_display_help
-###check_manufacturer_compatibility
-if_start_screen
-proceed
+_check_root_direct
+_set_tree_vars
+_if_display_help
+###_check_manufacturer_compatibility
+_if_start_screen
+_proceed
 
 exit 0

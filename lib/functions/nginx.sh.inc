@@ -1,93 +1,93 @@
 #
 # Update Nginx Config.
-nginx_conf_update() {
+_nginx_conf_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: nginx_conf_update"
+    _msg "PROC: _nginx_conf_update"
   fi
-  if [ ! -e "${pthLog}/nginx-config-params-fixed-${_X_SE}-${_X_VERSION}.log" ] \
+  if [ ! -e "${_pthLog}/nginx-config-params-fixed-${_xSrl}-${_X_VERSION}.log" ] \
     && [ -d "/var/aegir" ]; then
-    if [ -e "${locCnf}/nginx/nginx.conf" ] \
+    if [ -e "${_locCnf}/nginx/nginx.conf" ] \
       && [ -e "/etc/nginx/nginx.conf" ]; then
-      mv -f /etc/nginx/nginx.conf-* ${vBs}/dragon/t/ &> /dev/null
-      mv -f /etc/nginx/mime.types-pre-* ${vBs}/dragon/t/ &> /dev/null
-      mv -f /etc/nginx/fastcgi_params-pre-* ${vBs}/dragon/t/ &> /dev/null
-      mv -f /etc/nginx/nginx.conf ${vBs}/dragon/t/nginx.conf-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
-      mv -f /etc/nginx/fastcgi_params ${vBs}/dragon/t/fastcgi_params-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
-      cp -af ${locCnf}/nginx/nginx.conf /etc/nginx/nginx.conf
-      cp -af ${locCnf}/nginx/fastcgi_params.txt /etc/nginx/fastcgi_params
-      touch ${pthLog}/nginx-config-params-fixed-${_X_SE}-${_X_VERSION}.log
+      mv -f /etc/nginx/nginx.conf-* ${_vBs}/dragon/t/ &> /dev/null
+      mv -f /etc/nginx/mime.types-pre-* ${_vBs}/dragon/t/ &> /dev/null
+      mv -f /etc/nginx/fastcgi_params-pre-* ${_vBs}/dragon/t/ &> /dev/null
+      mv -f /etc/nginx/nginx.conf ${_vBs}/dragon/t/nginx.conf-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
+      mv -f /etc/nginx/fastcgi_params ${_vBs}/dragon/t/fastcgi_params-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
+      cp -af ${_locCnf}/nginx/nginx.conf /etc/nginx/nginx.conf
+      cp -af ${_locCnf}/nginx/fastcgi_params.txt /etc/nginx/fastcgi_params
+      touch ${_pthLog}/nginx-config-params-fixed-${_xSrl}-${_X_VERSION}.log
     fi
   fi
-  if [ -e "${mtrNgx}/pre.d/nginx_speed_purge.conf" ]; then
-    rm -f ${mtrNgx}/pre.d/nginx_speed_purge.conf
+  if [ -e "${_mtrNgx}/pre.d/nginx_speed_purge.conf" ]; then
+    rm -f ${_mtrNgx}/pre.d/nginx_speed_purge.conf
   fi
 }
 
 #
 # Sub Force advanced Nginx configuration.
-sub_force_advanced_nginx_config() {
+_sub_force_advanced_nginx_config() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: sub_force_advanced_nginx_config"
+    _msg "PROC: _sub_force_advanced_nginx_config"
   fi
   if [ -e "/opt/php${_PHP_SV}/etc/php${_PHP_SV}-fpm.conf" ]; then
-    sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"             ${mtrInc}/nginx_compact_include.conf &> /dev/null
+    sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"             ${_mtrInc}/nginx_compact_include.conf &> /dev/null
 
-    sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"             ${mtrInc}/nginx_vhost_common.conf &> /dev/null
+    sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"             ${_mtrInc}/nginx_vhost_common.conf &> /dev/null
     wait
-    sed -i "s/data.*post.d/var\/aegir\/config\/includes/g"                         ${mtrInc}/nginx_vhost_common.conf &> /dev/null
+    sed -i "s/data.*post.d/var\/aegir\/config\/includes/g"                         ${_mtrInc}/nginx_vhost_common.conf &> /dev/null
     wait
-    sed -i "s/unix:.*fpm.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"        ${mtrInc}/nginx_vhost_common.conf &> /dev/null
+    sed -i "s/unix:.*fpm.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"        ${_mtrInc}/nginx_vhost_common.conf &> /dev/null
     wait
-    sed -i "s/set.*user_socket.*/set \$user_socket \"${_PHP_CN}\";/g"              ${mtrInc}/nginx_vhost_common.conf &> /dev/null
+    sed -i "s/set.*user_socket.*/set \$user_socket \"${_PHP_CN}\";/g"              ${_mtrInc}/nginx_vhost_common.conf &> /dev/null
 
-    sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"             ${mtrTpl}/subdir.tpl.php &> /dev/null
+    sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"             ${_mtrTpl}/subdir.tpl.php &> /dev/null
     wait
-    sed -i "s/data.*post.d/var\/aegir\/config\/includes/g"                         ${mtrTpl}/subdir.tpl.php &> /dev/null
+    sed -i "s/data.*post.d/var\/aegir\/config\/includes/g"                         ${_mtrTpl}/subdir.tpl.php &> /dev/null
     wait
-    sed -i "s/unix:.*fpm.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"        ${mtrTpl}/subdir.tpl.php &> /dev/null
+    sed -i "s/unix:.*fpm.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"        ${_mtrTpl}/subdir.tpl.php &> /dev/null
     wait
-    sed -i "s/set.*user_socket.*/set \$user_socket \"${_PHP_CN}\";/g"              ${mtrTpl}/subdir.tpl.php &> /dev/null
+    sed -i "s/set.*user_socket.*/set \$user_socket \"${_PHP_CN}\";/g"              ${_mtrTpl}/subdir.tpl.php &> /dev/null
 
-    sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"             ${mtrTpl}/Inc/vhost_include.tpl.php &> /dev/null
+    sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"             ${_mtrTpl}/Inc/vhost_include.tpl.php &> /dev/null
     wait
-    sed -i "s/data.*post.d/var\/aegir\/config\/includes/g"                         ${mtrTpl}/Inc/vhost_include.tpl.php &> /dev/null
+    sed -i "s/data.*post.d/var\/aegir\/config\/includes/g"                         ${_mtrTpl}/Inc/vhost_include.tpl.php &> /dev/null
     wait
-    sed -i "s/unix:.*fpm.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"        ${mtrTpl}/Inc/vhost_include.tpl.php &> /dev/null
+    sed -i "s/unix:.*fpm.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"        ${_mtrTpl}/Inc/vhost_include.tpl.php &> /dev/null
     wait
-    sed -i "s/set.*user_socket.*/set \$user_socket \"${_PHP_CN}\";/g"              ${mtrTpl}/Inc/vhost_include.tpl.php &> /dev/null
+    sed -i "s/set.*user_socket.*/set \$user_socket \"${_PHP_CN}\";/g"              ${_mtrTpl}/Inc/vhost_include.tpl.php &> /dev/null
   fi
 }
 
 #
 # Force advanced Nginx configuration.
-force_advanced_nginx_config() {
+_force_advanced_nginx_config() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: force_advanced_nginx_config"
+    _msg "PROC: _force_advanced_nginx_config"
   fi
   if [ ! -e "/etc/ssl/private/nginx-wild-ssl.dhp" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "INFO: Generating DH parameters, 2048 bit..."
+      _msg "INFO: Generating DH parameters, 2048 bit..."
     fi
-    mrun "openssl dhparam -out /etc/ssl/private/nginx-wild-ssl.dhp 2048" 2> /dev/null
+    _mrun "openssl dhparam -out /etc/ssl/private/nginx-wild-ssl.dhp 2048" 2> /dev/null
     wait
   fi
-  cp -af ${locCnf}/nginx/nginx_compact_include.conf ${mtrInc}/nginx_compact_include.conf
-  validate_local_ip &> /dev/null
-  sub_force_advanced_nginx_config
-  sed -i "s/ 90;/ 180;/g" ${mtrNgx}/pre.d/*.conf &> /dev/null
+  cp -af ${_locCnf}/nginx/nginx_compact_include.conf ${_mtrInc}/nginx_compact_include.conf
+  _validate_local_ip &> /dev/null
+  _sub_force_advanced_nginx_config
+  sed -i "s/ 90;/ 180;/g" ${_mtrNgx}/pre.d/*.conf &> /dev/null
   wait
   if [ "${_NGINX_SPDY}" = "YES" ]; then
-    sed -i "s/:443;/:443 ssl;/g" ${mtrNgx}/pre.d/*.conf &> /dev/null
+    sed -i "s/:443;/:443 ssl;/g" ${_mtrNgx}/pre.d/*.conf &> /dev/null
     wait
-    sed -i "s/:443;/:443 ssl;/g" ${mtrNgx}/vhost.d/* &> /dev/null
+    sed -i "s/:443;/:443 ssl;/g" ${_mtrNgx}/vhost.d/* &> /dev/null
     wait
-    sed -i "s/:443 ssl spdy;/:443 ssl;/g" ${mtrNgx}/pre.d/*.conf &> /dev/null
+    sed -i "s/:443 ssl spdy;/:443 ssl;/g" ${_mtrNgx}/pre.d/*.conf &> /dev/null
     wait
-    sed -i "s/:443 ssl spdy;/:443 ssl;/g" ${mtrNgx}/vhost.d/* &> /dev/null
+    sed -i "s/:443 ssl spdy;/:443 ssl;/g" ${_mtrNgx}/vhost.d/* &> /dev/null
     wait
-    sed -i "s/:443 ssl http2;/:443 ssl;/g" ${mtrNgx}/pre.d/*.conf &> /dev/null
+    sed -i "s/:443 ssl http2;/:443 ssl;/g" ${_mtrNgx}/pre.d/*.conf &> /dev/null
     wait
-    sed -i "s/:443 ssl http2;/:443 ssl;/g" ${mtrNgx}/vhost.d/* &> /dev/null
+    sed -i "s/:443 ssl http2;/:443 ssl;/g" ${_mtrNgx}/vhost.d/* &> /dev/null
     wait
   fi
   if [ -e "/root/.install.modern.openssl.cnf" ] \
@@ -167,61 +167,61 @@ force_advanced_nginx_config() {
   fi
   if [ "${_ALLOW_NGINX_FORWARD_SECRECY}" = "YES" ]; then
     sed -i "s/ssl_protocols .*/ssl_protocols                ${_SSL_PROTOCOLS}/g" \
-      ${mtrNgx}/pre.d/*.conf &> /dev/null
+      ${_mtrNgx}/pre.d/*.conf &> /dev/null
     wait
     sed -i "s/ssl_protocols .*/ssl_protocols                ${_SSL_PROTOCOLS}/g" \
-      ${mtrNgx}/vhost.d/* &> /dev/null
+      ${_mtrNgx}/vhost.d/* &> /dev/null
     wait
     sed -i "s/ssl_ciphers .*/ssl_ciphers                  ${_SSL_CIPHERS}/g" \
-      ${mtrNgx}/pre.d/*.conf &> /dev/null
+      ${_mtrNgx}/pre.d/*.conf &> /dev/null
     wait
     sed -i "s/ssl_ciphers .*/ssl_ciphers                  ${_SSL_CIPHERS}/g" \
-      ${mtrNgx}/vhost.d/* &> /dev/null
+      ${_mtrNgx}/vhost.d/* &> /dev/null
     wait
   fi
-  if [ -e "${mtrInc}/nginx_vhost_common.conf" ]; then
-    rm -f ${mtrInc}/nginx_advanced_include.conf
-    rm -f ${mtrInc}/nginx_legacy_include.conf
-    rm -f ${mtrInc}/nginx_modern_include.conf
-    rm -f ${mtrInc}/nginx_octopus_include.conf
-    rm -f ${mtrInc}/nginx_simple_include.conf
+  if [ -e "${_mtrInc}/nginx_vhost_common.conf" ]; then
+    rm -f ${_mtrInc}/nginx_advanced_include.conf
+    rm -f ${_mtrInc}/nginx_legacy_include.conf
+    rm -f ${_mtrInc}/nginx_modern_include.conf
+    rm -f ${_mtrInc}/nginx_octopus_include.conf
+    rm -f ${_mtrInc}/nginx_simple_include.conf
   fi
-  chown aegir:aegir ${mtrInc}/*
+  chown aegir:aegir ${_mtrInc}/*
   chown aegir:aegir /var/aegir/.drush/sys/provision/http/Provision/Config/Nginx/*
   if [ ! -e "/data/conf/nginx_high_load_off.conf" ]; then
     mkdir -p /data/conf
-    cp -af ${locCnf}/nginx/nginx_high_load_off.conf /data/conf/nginx_high_load_off.conf
+    cp -af ${_locCnf}/nginx/nginx_high_load_off.conf /data/conf/nginx_high_load_off.conf
     chmod 644 /data/conf/nginx_high_load_off.conf &> /dev/null
   fi
   if [ -e "/root/.giant_traffic.cnf" ]; then
-    sed -i "s/access_log .*/access_log             /var/log/nginx/access.log main buffer=32k;/g" ${mtrNgx}.conf &> /dev/null
+    sed -i "s/access_log .*/access_log             /var/log/nginx/access.log main buffer=32k;/g" ${_mtrNgx}.conf &> /dev/null
     wait
   fi
 }
 
 #
 # Check for Linux/Cdorked.A malware and delete if discovered.
-detect_cdorked_malware() {
+_detect_cdorked_malware() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: detect_cdorked_malware"
+    _msg "PROC: _detect_cdorked_malware"
   fi
   if [ -x "/usr/sbin/nginx" ]; then
     _C_DORKED=NO
-    _C_FILE=${bldPth}/aegir/helpers/dump_cdorked_config.c
+    _C_FILE=${_bldPth}/aegir/helpers/dump_cdorked_config.c
     if [ -e "${_C_FILE}" ]; then
-      ### msg "INFO: Checking for Linux/Cdorked.A malware..."
+      ### _msg "INFO: Checking for Linux/Cdorked.A malware..."
       chattr -ai /usr/sbin/nginx
-      cd ${vBs}
+      cd ${_vBs}
       rm -rf /var/opt/foo_bar*
-      gcc -o /var/opt/foo_bar ${bldPth}/aegir/helpers/dump_cdorked_config.c &> /dev/null
+      gcc -o /var/opt/foo_bar ${_bldPth}/aegir/helpers/dump_cdorked_config.c &> /dev/null
       _C_DORKED_TEST=$(/var/opt/foo_bar 2>&1)
       if [[ "${_C_DORKED_TEST}" =~ "No shared memory matching Cdorked signature" ]]; then
         _DO_NOTHING=YES
-        ### msg "INFO: No Linux/Cdorked.A malware traces found - system clean"
+        ### _msg "INFO: No Linux/Cdorked.A malware traces found - system clean"
       else
-        msg "ALRT! Your system is probably infected by Linux/Cdorked.A malware!"
-        msg "ALRT! Please send the ${vBs}/httpd_cdorked_config.bin file"
-        msg "ALRT! to leveille@eset.com for investigation"
+        _msg "ALRT! Your system is probably infected by Linux/Cdorked.A malware!"
+        _msg "ALRT! Please send the ${_vBs}/httpd_cdorked_config.bin file"
+        _msg "ALRT! to leveille@eset.com for investigation"
         rm -f $(which nginx)
         _NGX_FORCE_REINSTALL=YES
         _C_DORKED=YES
@@ -232,9 +232,9 @@ detect_cdorked_malware() {
 
 #
 # Purge legacy Nginx config.
-nginx_clean_legacy_config() {
+_nginx_clean_legacy_config() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: nginx_clean_legacy_config"
+    _msg "PROC: _nginx_clean_legacy_config"
   fi
   if [ -e "/var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf" ]; then
     rm -f /var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf
@@ -260,17 +260,17 @@ nginx_clean_legacy_config() {
       wait
     fi
   fi
-  mrun "service nginx reload" 2> /dev/null
+  _mrun "service nginx reload" 2> /dev/null
 }
 
 #
 # Install or upgrade Nginx.
-nginx_install_upgrade() {
+_nginx_install_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: nginx_install_upgrade"
+    _msg "PROC: _nginx_install_upgrade"
   fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "INFO: Testing Nginx version..."
+    _msg "INFO: Testing Nginx version..."
   fi
   if [ "${_STATUS}" = "UPGRADE" ]; then
     _NGINX_INSTALL_REQUIRED=NO
@@ -283,38 +283,38 @@ nginx_install_upgrade() {
       && [ "${_STATUS}" = "UPGRADE" ]; then
       _NGINX_INSTALL_REQUIRED=NO
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: Installed Nginx ${_NGINX_F_ITD}, OK"
+        _msg "INFO: Installed Nginx ${_NGINX_F_ITD}, OK"
       fi
     elif [ "${_NGINX_F_ITD}" = "${_NGINX_VRN}" ] \
       && [ "${_STATUS}" = "INIT" ]; then
       _NGINX_INSTALL_REQUIRED=NO
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: Installed Nginx ${_NGINX_F_ITD}, OK"
+        _msg "INFO: Installed Nginx ${_NGINX_F_ITD}, OK"
       fi
     elif [ "${_NGINX_F_ITD}" != "${_NGINX_VRN}" ]; then
       _NGINX_INSTALL_REQUIRED=YES
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: Installed Nginx ${_NGINX_F_ITD}, upgrade required"
+        _msg "INFO: Installed Nginx ${_NGINX_F_ITD}, upgrade required"
       fi
     fi
     if [ "${_NGINX_F_ITD}" = "${_NGINX_VRN}" ]; then
       if [[ ! "${_NGINX_V_ITD}" =~ "geoip" ]]; then
         _NGINX_INSTALL_REQUIRED=YES
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "INFO: Installed Nginx ${_NGINX_F_ITD}"
-          msg "INFO: Nginx forced rebuild to include geoip module"
+          _msg "INFO: Installed Nginx ${_NGINX_F_ITD}"
+          _msg "INFO: Nginx forced rebuild to include geoip module"
         fi
       fi
       if [[ "${_NGINX_V_ITD}" =~ "nginx-development-kit" ]]; then
         _NGINX_INSTALL_REQUIRED=YES
-        msg "INFO: Nginx rebuild required to avoid apt-get overwrite"
+        _msg "INFO: Nginx rebuild required to avoid apt-get overwrite"
       fi
       if [[ ! "${_NGINX_V_ITD}" =~ "http_flv_module" ]] \
         || [[ ! "${_NGINX_V_ITD}" =~ "http_mp4_module" ]]; then
         _NGINX_INSTALL_REQUIRED=YES
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "INFO: Installed Nginx ${_NGINX_F_ITD}"
-          msg "INFO: Nginx forced rebuild to include pseudo-streaming support"
+          _msg "INFO: Installed Nginx ${_NGINX_F_ITD}"
+          _msg "INFO: Nginx forced rebuild to include pseudo-streaming support"
         fi
       fi
       if [ "${_OS_CODE}" = "daedalus" ] \
@@ -339,16 +339,16 @@ nginx_install_upgrade() {
       if [[ ! "${_NGINX_V_ITD}" =~ "openssl-${_OPENSSL_NEW_VRN}" ]]; then
         _NGINX_INSTALL_REQUIRED=YES
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "INFO: Installed Nginx ${_NGINX_F_ITD}"
-          msg "INFO: Nginx forced rebuild to include latest OpenSSL version"
+          _msg "INFO: Installed Nginx ${_NGINX_F_ITD}"
+          _msg "INFO: Nginx forced rebuild to include latest OpenSSL version"
         fi
       fi
       if [ "${_NGINX_HEADERS}" = "YES" ]; then
         if [[ ! "${_NGINX_V_ITD}" =~ "nginx-headers-more" ]]; then
           _NGINX_INSTALL_REQUIRED=YES
           if [ "${_DEBUG_MODE}" = "YES" ]; then
-            msg "INFO: Installed Nginx ${_NGINX_F_ITD}"
-            msg "INFO: Nginx forced rebuild to include Headers More support"
+            _msg "INFO: Installed Nginx ${_NGINX_F_ITD}"
+            _msg "INFO: Nginx forced rebuild to include Headers More support"
           fi
         fi
       fi
@@ -356,8 +356,8 @@ nginx_install_upgrade() {
         if [[ ! "${_NGINX_V_ITD}" =~ "nginx-auth-ldap" ]]; then
           _NGINX_INSTALL_REQUIRED=YES
           if [ "${_DEBUG_MODE}" = "YES" ]; then
-            msg "INFO: Installed Nginx ${_NGINX_F_ITD}"
-            msg "INFO: Nginx forced rebuild to include LDAP support"
+            _msg "INFO: Installed Nginx ${_NGINX_F_ITD}"
+            _msg "INFO: Nginx forced rebuild to include LDAP support"
           fi
         fi
       fi
@@ -365,8 +365,8 @@ nginx_install_upgrade() {
         if [[ ! "${_NGINX_V_ITD}" =~ "purge" ]]; then
           _NGINX_INSTALL_REQUIRED=YES
           if [ "${_DEBUG_MODE}" = "YES" ]; then
-            msg "INFO: Installed Nginx ${_NGINX_F_ITD}"
-            msg "INFO: Nginx forced rebuild to include purge module"
+            _msg "INFO: Installed Nginx ${_NGINX_F_ITD}"
+            _msg "INFO: Nginx forced rebuild to include purge module"
           fi
         fi
       fi
@@ -374,8 +374,8 @@ nginx_install_upgrade() {
         if [[ ! "${_NGINX_V_ITD}" =~ "naxsi" ]]; then
           _NGINX_INSTALL_REQUIRED=YES
           if [ "${_DEBUG_MODE}" = "YES" ]; then
-            msg "INFO: Installed Nginx ${_NGINX_F_ITD}"
-            msg "INFO: Nginx forced rebuild to include NAXSI module"
+            _msg "INFO: Installed Nginx ${_NGINX_F_ITD}"
+            _msg "INFO: Nginx forced rebuild to include NAXSI module"
           fi
         fi
       fi
@@ -383,16 +383,16 @@ nginx_install_upgrade() {
         if [[ ! "${_NGINX_V_ITD}" =~ "http_v2_module" ]]; then
           _NGINX_INSTALL_REQUIRED=YES
           if [ "${_DEBUG_MODE}" = "YES" ]; then
-            msg "INFO: Installed Nginx ${_NGINX_F_ITD}"
-            msg "INFO: Nginx forced rebuild to include HTTP/2 support"
+            _msg "INFO: Installed Nginx ${_NGINX_F_ITD}"
+            _msg "INFO: Nginx forced rebuild to include HTTP/2 support"
           fi
         fi
         if [[ ! "${_NGINX_V_ITD}" =~ "http_v3_module" ]] \
           && [ "${_OPENSSL_NEW_VRN}" != "${_OPENSSL_LEGACY_VRN}" ]; then
           _NGINX_INSTALL_REQUIRED=YES
           if [ "${_DEBUG_MODE}" = "YES" ]; then
-            msg "INFO: Installed Nginx ${_NGINX_F_ITD}"
-            msg "INFO: Nginx forced rebuild to include HTTP/3 support"
+            _msg "INFO: Installed Nginx ${_NGINX_F_ITD}"
+            _msg "INFO: Nginx forced rebuild to include HTTP/3 support"
           fi
         fi
       fi
@@ -400,21 +400,21 @@ nginx_install_upgrade() {
   else
     _NGINX_INSTALL_REQUIRED=YES
   fi
-  detect_cdorked_malware
+  _detect_cdorked_malware
   if [ "${_C_DORKED}" = "YES" ]; then
     _NGINX_INSTALL_REQUIRED=YES
-    msg "INFO: Nginx rebuild required to remove possible Linux/Cdorked.A malware"
+    _msg "INFO: Nginx rebuild required to remove possible Linux/Cdorked.A malware"
   fi
   if [ "${_NGINX_INSTALL_REQUIRED}" = "YES" ] \
     || [ "${_FULL_FORCE_REINSTALL}" = "YES" ] \
     || [ "${_NGX_FORCE_REINSTALL}" = "YES" ]; then
     if [ "${_STATUS}" = "UPGRADE" ]; then
-      msg "INFO: Upgrading Nginx to ${_NGINX_VRN}..."
+      _msg "INFO: Upgrading Nginx to ${_NGINX_VRN}..."
     else
-      msg "INFO: Installing Nginx ${_NGINX_VRN}..."
+      _msg "INFO: Installing Nginx ${_NGINX_VRN}..."
     fi
     cd /var/opt; rm -rf nginx*
-    get_dev_src "nginx-${_NGINX_VRN}.tar.gz"
+    _get_dev_src "nginx-${_NGINX_VRN}.tar.gz"
     sed -i "s/nginx/${_CUSTOM_NAME}/g" \
       /var/opt/nginx-${_NGINX_VRN}/src/core/nginx.h &> /dev/null
     wait
@@ -426,7 +426,7 @@ nginx_install_upgrade() {
     if [ "${_NGINX_HEADERS}" = "YES" ]; then
       cd /var/opt
       rm -rf /var/opt/nginx-headers-more*
-      get_dev_src "nginx-headers-more.tar.gz"
+      _get_dev_src "nginx-headers-more.tar.gz"
       if [ -e "/var/opt/nginx-headers-more" ]; then
         _NGINX_EXTRA="--add-module=/var/opt/nginx-headers-more/ ${_NGINX_EXTRA}"
       fi
@@ -434,7 +434,7 @@ nginx_install_upgrade() {
     if [ "${_NGINX_LDAP}" = "YES" ]; then
       cd /var/opt
       rm -rf /var/opt/nginx-auth-ldap*
-      get_dev_src "nginx-auth-ldap.tar.gz"
+      _get_dev_src "nginx-auth-ldap.tar.gz"
       if [ -e "/var/opt/nginx-auth-ldap" ]; then
         _NGINX_EXTRA="--add-module=/var/opt/nginx-auth-ldap/ ${_NGINX_EXTRA}"
       fi
@@ -442,7 +442,7 @@ nginx_install_upgrade() {
     if [ "${_NGINX_NAXSI}" = "YES" ]; then
       cd /var/opt
       rm -rf /var/opt/nginx-naxsi*
-      get_dev_src "nginx-naxsi.tar.gz"
+      _get_dev_src "nginx-naxsi.tar.gz"
       if [ -e "/var/opt/nginx-naxsi" ]; then
         _NGINX_EXTRA="--add-module=/var/opt/nginx-naxsi/naxsi_src/ ${_NGINX_EXTRA}"
       fi
@@ -479,10 +479,10 @@ nginx_install_upgrade() {
     if [ ! -e "/var/opt/openssl-${_OPENSSL_NEW_VRN}" ]; then
       cd /var/opt
       rm -rf openssl*
-      get_dev_src "openssl-${_OPENSSL_NEW_VRN}.tar.gz"
+      _get_dev_src "openssl-${_OPENSSL_NEW_VRN}.tar.gz"
     fi
     cd /var/opt/nginx-${_NGINX_VRN}
-    mrun "bash ./configure \
+    _mrun "bash ./configure \
       --prefix=/usr \
       --sbin-path=/usr/sbin/nginx \
       --conf-path=/etc/nginx/nginx.conf \
@@ -508,11 +508,11 @@ nginx_install_upgrade() {
       --without-mail_smtp_module \
       --with-openssl=/var/opt/openssl-${_OPENSSL_NEW_VRN} \
       --with-debug ${_NGINX_EXTRA}" 2> /dev/null
-    mrun "make -j $(nproc)" 2> /dev/null
-    mrun "make install" 2> /dev/null
+    _mrun "make -j $(nproc)" 2> /dev/null
+    _mrun "make install" 2> /dev/null
     ldconfig 2> /dev/null
-    nginx_clean_legacy_config
-    mrun "service nginx quietupgrade" 2> /dev/null
+    _nginx_clean_legacy_config
+    _mrun "service nginx quietupgrade" 2> /dev/null
     _NGINX_INSTALL_REQUIRED=NO
   fi
   if [ ! -L "/usr/bin/nginx" ]; then
@@ -522,9 +522,9 @@ nginx_install_upgrade() {
 
 #
 # Fix multi-IP cron access.
-master_fix_multi_ip_cron_access() {
+_master_fix_multi_ip_cron_access() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: master_fix_multi_ip_cron_access"
+    _msg "PROC: _master_fix_multi_ip_cron_access"
   fi
   [ -e "/root/.local.IP.list.allow" ] && rm -f /root/.local.IP.list.allow
   for _IP in `cat /root/.local.IP.list \
@@ -537,30 +537,30 @@ master_fix_multi_ip_cron_access() {
   echo "  deny all;" >> /root/.local.IP.list.allow
 
   sed -i "s/allow 127.0.0.1;//g; s/ *$//g; /^$/d" \
-    ${mtrTpl}/Inc/vhost_include.tpl.php
+    ${_mtrTpl}/Inc/vhost_include.tpl.php
   wait
   sed -i '/deny all;/ {r /root/.local.IP.list.allow
-d;};' ${mtrTpl}/Inc/vhost_include.tpl.php
+d;};' ${_mtrTpl}/Inc/vhost_include.tpl.php
   wait
 
   sed -i "s/allow 127.0.0.1;//g; s/ *$//g; /^$/d" \
-    ${mtrTpl}/subdir.tpl.php
+    ${_mtrTpl}/subdir.tpl.php
   wait
   sed -i '/deny all;/ {r /root/.local.IP.list.allow
-d;};' ${mtrTpl}/subdir.tpl.php
+d;};' ${_mtrTpl}/subdir.tpl.php
   wait
 
   sed -i "s/allow 127.0.0.1;//g; s/ *$//g; /^$/d" \
-    ${mtrInc}/nginx_vhost_common.conf
+    ${_mtrInc}/nginx_vhost_common.conf
   wait
   sed -i '/deny all;/ {r /root/.local.IP.list.allow
-d;};' ${mtrInc}/nginx_vhost_common.conf
+d;};' ${_mtrInc}/nginx_vhost_common.conf
   wait
 }
 
-nginx_initd_check() {
+_nginx_initd_check() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: nginx_initd_check"
+    _msg "PROC: _nginx_initd_check"
   fi
   _X_INIT_TEST=
   if [ -e "/etc/init.d/nginx" ]; then
@@ -568,92 +568,92 @@ nginx_initd_check() {
   fi
   if [[ "${_X_INIT_TEST}" =~ "ULIMIT" ]]; then
     chmod 755 /etc/init.d/nginx &> /dev/null
-    mrun "update-rc.d nginx defaults" 2> /dev/null
+    _mrun "update-rc.d nginx defaults" 2> /dev/null
   else
     mv -f /etc/init.d/nginx \
-      ${vBs}/nginx-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
-    cp -af ${locCnf}/nginx/nginx /etc/init.d/nginx
+      ${_vBs}/nginx-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
+    cp -af ${_locCnf}/nginx/nginx /etc/init.d/nginx
     chmod 755 /etc/init.d/nginx &> /dev/null
-    mrun "update-rc.d nginx defaults" 2> /dev/null
-    mrun "service nginx start" 2> /dev/null
+    _mrun "update-rc.d nginx defaults" 2> /dev/null
+    _mrun "service nginx start" 2> /dev/null
   fi
 }
 
-nginx_mime_check_fix() {
+_nginx_mime_check_fix() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: nginx_mime_check_fix"
+    _msg "PROC: _nginx_mime_check_fix"
   fi
-  if [ -e "${locCnf}/nginx/mime.types" ]; then
+  if [ -e "${_locCnf}/nginx/mime.types" ]; then
     mv -f /etc/nginx/mime.types \
-      /etc/nginx/mime.types-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
-    cp -af ${locCnf}/nginx/mime.types /etc/nginx/mime.types
+      /etc/nginx/mime.types-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
+    cp -af ${_locCnf}/nginx/mime.types /etc/nginx/mime.types
     if [ ! -L "/var/www/nginx-default/index.html" ] \
       && [ ! -L "/var/www/nginx-default/under_construction.jpg" ]; then
       mkdir -p /var/www/nginx-default
       mv -f /var/www/nginx-default/index.html \
-        /var/www/nginx-default/index.html-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
-      cp -af ${locCnf}/tpl/uc.html /var/www/nginx-default/index.html
-      cp -af ${locCnf}/tpl/under_construction.jpg \
+        /var/www/nginx-default/index.html-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
+      cp -af ${_locCnf}/tpl/uc.html /var/www/nginx-default/index.html
+      cp -af ${_locCnf}/tpl/under_construction.jpg \
         /var/www/nginx-default/under_construction.jpg
     fi
     rm -f /etc/nginx/sites-available/default
     rm -f /etc/nginx/sites-enabled/default
     rm -f /etc/nginx/modules-enabled/*
     if [ ! -e "/run/aegir_upgrade.pid" ]; then
-      mrun "service nginx reload" 2> /dev/null
+      _mrun "service nginx reload" 2> /dev/null
     fi
   fi
 }
 
-nginx_wildcard_ssl_install() {
+_nginx_wildcard_ssl_install() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: nginx_wildcard_ssl_install"
+    _msg "PROC: _nginx_wildcard_ssl_install"
   fi
-  _WILD_SSL_VHOST="${mtrNgx}/pre.d/nginx_wild_ssl.conf"
+  _WILD_SSL_VHOST="${_mtrNgx}/pre.d/nginx_wild_ssl.conf"
   if [ ! -e "${_WILD_SSL_VHOST}" ]; then
-    msg "INFO: Installing default SSL Wildcard Nginx Proxy..."
-    validate_public_ip &> /dev/null
-    validate_xtras_ip &> /dev/null
+    _msg "INFO: Installing default SSL Wildcard Nginx Proxy..."
+    _validate_public_ip &> /dev/null
+    _validate_xtras_ip &> /dev/null
     openssl req -x509 -nodes -sha256 -days 7300 \
       -subj "/C=US/ST=New York/O=Aegir/OU=Cloud/L=New York/CN=*.${_THISHOST}" \
       -newkey rsa:2048 \
       -keyout /etc/ssl/private/nginx-wild-ssl.key \
       -out /etc/ssl/private/nginx-wild-ssl.crt -batch 2> /dev/null
-    cp -af ${locCnf}/nginx/nginx_wild_ssl.conf ${_WILD_SSL_VHOST}
+    cp -af ${_locCnf}/nginx/nginx_wild_ssl.conf ${_WILD_SSL_VHOST}
     sed -i "s/127.0.0.1:80/localhost:80/g" ${_WILD_SSL_VHOST} &> /dev/null
     sed -i "s/127.0.0.1:443/${_XTRAS_THISHTIP}:443/g" ${_WILD_SSL_VHOST} &> /dev/null
     mkdir -p /data/conf
-    if [ -e "${locCnf}/global/global.inc" ]; then
-      cp -af ${locCnf}/global/global.inc /data/conf/global.inc
+    if [ -e "${_locCnf}/global/global.inc" ]; then
+      cp -af ${_locCnf}/global/global.inc /data/conf/global.inc
     fi
-    if [ -e "${mtrInc}" ] \
-      && [ ! -L "${mtrInc}/global.inc" ] \
+    if [ -e "${_mtrInc}" ] \
+      && [ ! -L "${_mtrInc}/global.inc" ] \
       && [ -e "/data/conf/global.inc" ]; then
-      ln -sfn /data/conf/global.inc ${mtrInc}/global.inc
+      ln -sfn /data/conf/global.inc ${_mtrInc}/global.inc
     fi
     sed -i "s/3600/${_SPEED_VALID_MAX}/g" /data/conf/global.inc &> /dev/null
-    redis_password_update
-    mrun "service nginx quietupgrade" 2> /dev/null
+    _redis_password_update
+    _mrun "service nginx quietupgrade" 2> /dev/null
   else
     _WILD_SSL_PROXY_UP=NO
     _HTTP3_TEST=$(grep http3 ${_WILD_SSL_VHOST} 2>&1)
     if [[ ! "${_HTTP3_TEST}" =~ "http3" ]]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: nginx_wild_ssl.conf proxy needs http3 update..."
+        _msg "INFO: nginx_wild_ssl.conf proxy needs http3 update..."
       fi
       _WILD_SSL_PROXY_UP=YES
     fi
     _WILDCARD_SSL_TEST=$(grep "localhost:80" ${_WILD_SSL_VHOST} 2>&1)
     if [[ ! "${_WILDCARD_SSL_TEST}" =~ "localhost:80" ]]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: nginx_wild_ssl.conf proxy needs port update..."
+        _msg "INFO: nginx_wild_ssl.conf proxy needs port update..."
       fi
       _WILD_SSL_PROXY_UP=YES
     fi
     if [ "${_WILD_SSL_PROXY_UP}" = "YES" ]; then
-      validate_public_ip &> /dev/null
-      validate_xtras_ip &> /dev/null
-      cp -af ${locCnf}/nginx/nginx_wild_ssl.conf ${_WILD_SSL_VHOST}
+      _validate_public_ip &> /dev/null
+      _validate_xtras_ip &> /dev/null
+      cp -af ${_locCnf}/nginx/nginx_wild_ssl.conf ${_WILD_SSL_VHOST}
       sed -i "s/127.0.0.1:80/localhost:80/g" ${_WILD_SSL_VHOST}
       wait
       sed -i "s/127.0.0.1:443/${_XTRAS_THISHTIP}:443/g" ${_WILD_SSL_VHOST}
@@ -661,20 +661,20 @@ nginx_wildcard_ssl_install() {
   fi
 }
 
-nginx_config_update_fix() {
+_nginx_config_update_fix() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: nginx_config_update_fix"
+    _msg "PROC: _nginx_config_update_fix"
   fi
   if [ "${_STATUS}" = "INIT" ]; then
-    mrun "service cron start" 2> /dev/null
+    _mrun "service cron start" 2> /dev/null
     if [ "${_EASY_SETUP}" = "NO" ]; then
       echo " "
-      msg "Now waiting 2 minutes before restarting Nginx..."
-      mrun "sleep 111"
+      _msg "Now waiting 2 minutes before restarting Nginx..."
+      _mrun "sleep 111"
     fi
-    force_advanced_nginx_config
-    mrun "sleep 8"
-    mrun "service nginx restart" 2> /dev/null
+    _force_advanced_nginx_config
+    _mrun "sleep 8"
+    _mrun "service nginx restart" 2> /dev/null
   else
     if [ -e "/var/aegir/config" ]; then
       sed -i "s/.*ssl .*on;//g" /var/aegir/config/server_*/nginx/vhost.d/* &> /dev/null
@@ -899,26 +899,26 @@ nginx_config_update_fix() {
 
     if [ -d "/data/u" ]; then
       for _OCT in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
-        pthPrN="provision/http/Provision/Config/Nginx"
+        _pthPrN="provision/http/Provision/Config/Nginx"
         if [ -e "${_OCT}/.drush/sys/drush_make" ]; then
           sed -i "s/\!empty.*';/'*';/g" \
-            ${_OCT}/.drush/sys/${pNx}/server.tpl.php &> /dev/null
+            ${_OCT}/.drush/sys/${_pNx}/server.tpl.php &> /dev/null
           wait
           sed -i "s/\!empty.*';/'*';/g" \
-            ${_OCT}/.drush/sys/${pNx}/vhost.tpl.php &> /dev/null
+            ${_OCT}/.drush/sys/${_pNx}/vhost.tpl.php &> /dev/null
           wait
           sed -i "s/\!empty.*';/'*';/g" \
-            ${_OCT}/.drush/sys/${pNx}/vhost_disabled.tpl.php &> /dev/null
+            ${_OCT}/.drush/sys/${_pNx}/vhost_disabled.tpl.php &> /dev/null
           wait
         elif [ -e "${_OCT}/.drush/drush_make" ]; then
           sed -i "s/\!empty.*';/'*';/g" \
-            ${_OCT}/.drush/${pNx}/server.tpl.php &> /dev/null
+            ${_OCT}/.drush/${_pNx}/server.tpl.php &> /dev/null
           wait
           sed -i "s/\!empty.*';/'*';/g" \
-            ${_OCT}/.drush/${pNx}/vhost.tpl.php &> /dev/null
+            ${_OCT}/.drush/${_pNx}/vhost.tpl.php &> /dev/null
           wait
           sed -i "s/\!empty.*';/'*';/g" \
-            ${_OCT}/.drush/${pNx}/vhost_disabled.tpl.php &> /dev/null
+            ${_OCT}/.drush/${_pNx}/vhost_disabled.tpl.php &> /dev/null
           wait
         fi
       done
@@ -929,7 +929,7 @@ nginx_config_update_fix() {
     ### in all Octopus instances which could break Nginx restart
     ###
     if [ -d "/data/u" ]; then
-      for File in $(find /data/disk/*/config/includes/ -type f -exec grep -l will_expire_in {} +); do
+      for _File in $(find /data/disk/*/config/includes/ -type f -exec grep -l will_expire_in {} +); do
         rm -f "$File"
       done
       for Vght in `ls /data/disk/*/log/CANCELLED 2> /dev/null \
@@ -937,28 +937,28 @@ nginx_config_update_fix() {
         | awk '{ print $1}'`; do
         rm -f /data/disk/$Vght/config/server_*/nginx/vhost.d/*
       done
-      wildPth="/data/disk/*/.drush/sys/provision/http/Provision/Service/http/*.conf"
-      sed -i "s/OctopusMicroNoCacheID/NoCacheID/g" ${wildPth} &> /dev/null
+      _wildPth="/data/disk/*/.drush/sys/provision/http/Provision/Service/http/*.conf"
+      sed -i "s/OctopusMicroNoCacheID/NoCacheID/g" ${_wildPth} &> /dev/null
       wait
-      sed -i "s/OctopusNCookie/AegirCookie/g"      ${wildPth} &> /dev/null
+      sed -i "s/OctopusNCookie/AegirCookie/g"      ${_wildPth} &> /dev/null
       wait
-      sed -i "s/OctopusNoCacheID/NoCacheID/g"      ${wildPth} &> /dev/null
+      sed -i "s/OctopusNoCacheID/NoCacheID/g"      ${_wildPth} &> /dev/null
       wait
     fi
     if [ -e "/var/aegir" ]; then
-      wildPth="/var/aegir/.drush/sys/provision/http/Provision/Service/http/*.conf"
-      sed -i "s/OctopusMicroNoCacheID/NoCacheID/g" ${wildPth} &> /dev/null
+      _wildPth="/var/aegir/.drush/sys/provision/http/Provision/Service/http/*.conf"
+      sed -i "s/OctopusMicroNoCacheID/NoCacheID/g" ${_wildPth} &> /dev/null
       wait
-      sed -i "s/OctopusNCookie/AegirCookie/g"      ${wildPth} &> /dev/null
+      sed -i "s/OctopusNCookie/AegirCookie/g"      ${_wildPth} &> /dev/null
       wait
-      sed -i "s/OctopusNoCacheID/NoCacheID/g"      ${wildPth} &> /dev/null
+      sed -i "s/OctopusNoCacheID/NoCacheID/g"      ${_wildPth} &> /dev/null
       wait
       sed -i "s/60/180/g" /var/aegir/config/server_*/nginx.conf  &> /dev/null
       wait
       sed -i "s/300/180/g" /var/aegir/config/server_*/nginx.conf &> /dev/null
       wait
     fi
-    validate_public_ip &> /dev/null
+    _validate_public_ip &> /dev/null
     _CRON_IP=${_THISHTIP//[^0-9.]/}
     if [ ! -e "/root/.local.IP.list" ]; then
       rm -f /root/.tmp.IP.list*
@@ -980,8 +980,8 @@ nginx_config_update_fix() {
     if [ ! -z "${_CRON_IP}" ] \
       && [ "${_IP_PRESENT}" = "YES" ] \
       && [ -e "/root/.local.IP.list" ]; then
-      master_fix_multi_ip_cron_access
+      _master_fix_multi_ip_cron_access
     fi
-    mrun "service nginx reload" 2> /dev/null
+    _mrun "service nginx reload" 2> /dev/null
   fi
 }

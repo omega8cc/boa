@@ -6,7 +6,7 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 
 _pthOml="/var/xdrago/log/unbound.incident.log"
 
-check_root() {
+_check_root() {
   if [ `whoami` = "root" ]; then
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
     chmod a+w /dev/null
@@ -15,7 +15,7 @@ check_root() {
     exit 1
   fi
 }
-check_root
+_check_root
 
 export _B_NICE=${_B_NICE//[^0-9]/}
 : "${_B_NICE:=10}"
@@ -23,20 +23,20 @@ export _B_NICE=${_B_NICE//[^0-9]/}
 export _INCIDENT_EMAIL_REPORT=${_INCIDENT_EMAIL_REPORT//[^A-Z]/}
 : "${_INCIDENT_EMAIL_REPORT:=YES}"
 
-if [ $(pgrep -f unbound.sh | grep -v "^$$" | wc -l) -gt 2 ]; then
-  echo "Too many unbound.sh running $(date 2>&1)" >> /var/xdrago/log/too.many.log
+if (( $(pgrep -fc 'unbound.sh') > 2 )); then
+  echo "Too many unbound.sh running $(date)" >> /var/xdrago/log/too.many.log
   exit 0
 fi
 
 _incident_email_report() {
   if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_EMAIL_REPORT}" = "YES" ]; then
-    hName=$(cat /etc/hostname 2>&1)
+    _hName=$(cat /etc/hostname 2>&1)
     echo "Sending Incident Report Email on $(date 2>&1)" >> ${_pthOml}
-    s-nail -s "Incident Report: ${1} on ${hName} at $(date 2>&1)" ${_MY_EMAIL} < ${_pthOml}
+    s-nail -s "Incident Report: ${1} on ${_hName} at $(date 2>&1)" ${_MY_EMAIL} < ${_pthOml}
   fi
 }
 
-unbound_check_fix() {
+_unbound_check_fix() {
   if [ -x "/usr/sbin/unbound" ] \
     && [ ! -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
     mkdir -p /etc/resolvconf/run/interface
@@ -66,8 +66,8 @@ unbound_check_fix() {
     else
       rm -f /etc/resolv.conf
       echo "nameserver 127.0.0.1" > /etc/resolv.conf
-      if [ -e "${vBs}/resolv.conf.vanilla" ]; then
-        cat ${vBs}/resolv.conf.vanilla >> /etc/resolv.conf
+      if [ -e "${_vBs}/resolv.conf.vanilla" ]; then
+        cat ${_vBs}/resolv.conf.vanilla >> /etc/resolv.conf
       fi
       echo "nameserver 1.1.1.1" >> /etc/resolv.conf
       echo "nameserver 1.0.0.1" >> /etc/resolv.conf
@@ -90,7 +90,14 @@ unbound_check_fix() {
   fi
 }
 
-unbound_check_fix
+if [ -e "/run/boa_run.pid" ] \
+  || [ -e "/run/boa_wait.pid" ]; then
+  _ALLOW_CTRL=NO
+else
+  _ALLOW_CTRL=YES
+fi
+
+[ "${_ALLOW_CTRL}" = "YES" ] && _unbound_check_fix
 
 echo DONE!
 exit 0

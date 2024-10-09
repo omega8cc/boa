@@ -6,7 +6,7 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 
 [ ! -d "/var/backups/csf/water" ] && mkdir -p /var/backups/csf/water
 
-whitelist_ip_pingdom() {
+_whitelist_ip_pingdom() {
   if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
     echo removing pingdom ips from csf.allow
     _NOW=$(date +%y%m%d-%H%M%S 2>&1)
@@ -42,7 +42,7 @@ whitelist_ip_pingdom() {
   done
 }
 
-whitelist_ip_cloudflare() {
+_whitelist_ip_cloudflare() {
   if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
     echo removing cloudflare ips from csf.allow
     _NOW=$(date +%y%m%d-%H%M%S 2>&1)
@@ -77,7 +77,7 @@ whitelist_ip_cloudflare() {
   done
 }
 
-whitelist_ip_imperva() {
+_whitelist_ip_imperva() {
   if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
     echo removing imperva ips from csf.allow
     _NOW=$(date +%y%m%d-%H%M%S 2>&1)
@@ -112,7 +112,7 @@ whitelist_ip_imperva() {
   done
 }
 
-whitelist_ip_googlebot() {
+_whitelist_ip_googlebot() {
   if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
     echo removing googlebot ips from csf.allow
     _NOW=$(date +%y%m%d-%H%M%S 2>&1)
@@ -145,7 +145,7 @@ whitelist_ip_googlebot() {
   wait
 }
 
-whitelist_ip_microsoft() {
+_whitelist_ip_microsoft() {
   if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
     echo removing microsoft ips from csf.allow
     _NOW=$(date +%y%m%d-%H%M%S 2>&1)
@@ -180,7 +180,7 @@ whitelist_ip_microsoft() {
   wait
 }
 
-whitelist_ip_sucuri() {
+_whitelist_ip_sucuri() {
   if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
     echo removing sucuri ips from csf.allow
     _NOW=$(date +%y%m%d-%H%M%S 2>&1)
@@ -211,7 +211,7 @@ whitelist_ip_sucuri() {
   done
 }
 
-whitelist_ip_authzero() {
+_whitelist_ip_authzero() {
   if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
     echo removing authzero ips from csf.allow
     _NOW=$(date +%y%m%d-%H%M%S 2>&1)
@@ -242,7 +242,7 @@ whitelist_ip_authzero() {
   done
 }
 
-whitelist_ip_site24x7_extra() {
+_whitelist_ip_site24x7_extra() {
 
   _IPS="87.252.213.0/24 89.36.170.0/24 185.172.199.128/26 185.230.214.0/23 185.172.199.0/27"
 
@@ -284,7 +284,7 @@ whitelist_ip_site24x7_extra() {
   fi
 }
 
-whitelist_ip_site24x7() {
+_whitelist_ip_site24x7() {
   if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
     echo removing site24x7 ips from csf.allow
     _NOW=$(date +%y%m%d-%H%M%S 2>&1)
@@ -360,7 +360,7 @@ whitelist_ip_site24x7() {
   fi
 }
 
-local_ip_rg() {
+_local_ip_rg() {
   if [ -e "/root/.local.IP.list" ]; then
     echo "the file /root/.local.IP.list already exists"
     for _IP in `hostname -I`; do
@@ -418,7 +418,7 @@ local_ip_rg() {
   fi
 }
 
-guard_stats() {
+_guard_stats() {
   if [ ! -e "${_HX}" ] && [ -e "${_HA}" ]; then
     mv -f ${_HA} ${_HX}
   fi
@@ -556,7 +556,7 @@ guard_stats() {
   fi
 }
 
-whitelist_ip_dns() {
+_whitelist_ip_dns() {
   csf -tr 1.1.1.1
   csf -tr 1.0.0.1
   csf -dr 1.1.1.1
@@ -598,36 +598,36 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
     done
   fi
 
-  n=$((RANDOM%120+90))
+  _n=$((RANDOM%120+90))
   touch /run/water.pid
   echo Waiting $n seconds...
-  sleep $n
+  sleep ${_n}
 
   _NOW=$(date +%y%m%d-%H%M%S 2>&1)
   _NOW=${_NOW//[^0-9-]/}
-  useCnfUpdate=NO
-  vBs="/var/backups"
-  useCnf="/etc/csf/csf.allow"
-  preCnf="${vBs}/dragon/t/csf.allow.backup-${_NOW}"
-  brkCnf="${vBs}/dragon/t/csf.allow.broken-${_NOW}"
-  if [ -f "${useCnf}" ]; then
-    mkdir -p ${vBs}/dragon/t/
-    cp -af ${useCnf} ${preCnf}
+  _useCnfUpdate=NO
+  _vBs="/var/backups"
+  _useCnf="/etc/csf/csf.allow"
+  _preCnf="${_vBs}/dragon/t/csf.allow.backup-${_NOW}"
+  _brkCnf="${_vBs}/dragon/t/csf.allow.broken-${_NOW}"
+  if [ -f "${_useCnf}" ]; then
+    mkdir -p ${_vBs}/dragon/t/
+    cp -af ${_useCnf} ${_preCnf}
   fi
 
-  whitelist_ip_dns
-  whitelist_ip_pingdom
-  whitelist_ip_cloudflare
-  whitelist_ip_googlebot
-  whitelist_ip_microsoft
-  [ -e "/root/.extended.firewall.exceptions.cnf" ] && whitelist_ip_imperva
-  [ -e "/root/.extended.firewall.exceptions.cnf" ] && whitelist_ip_sucuri
-  [ -e "/root/.extended.firewall.exceptions.cnf" ] && whitelist_ip_authzero
-  [ -e "/root/.extended.firewall.exceptions.cnf" ] && whitelist_ip_site24x7_extra
-  [ -e "/root/.extended.firewall.exceptions.cnf" ] && whitelist_ip_site24x7
+  _whitelist_ip_dns
+  _whitelist_ip_pingdom
+  _whitelist_ip_cloudflare
+  _whitelist_ip_googlebot
+  _whitelist_ip_microsoft
+  [ -e "/root/.extended.firewall.exceptions.cnf" ] && _whitelist_ip_imperva
+  [ -e "/root/.extended.firewall.exceptions.cnf" ] && _whitelist_ip_sucuri
+  [ -e "/root/.extended.firewall.exceptions.cnf" ] && _whitelist_ip_authzero
+  [ -e "/root/.extended.firewall.exceptions.cnf" ] && _whitelist_ip_site24x7_extra
+  [ -e "/root/.extended.firewall.exceptions.cnf" ] && _whitelist_ip_site24x7
 
-  if [ -f "${useCnf}" ]; then
-    diffCnfTest=$(diff -w -B \
+  if [ -f "${_useCnf}" ]; then
+    _diffCnfTest=$(diff -w -B \
       -I pingdom \
       -I cloudflare \
       -I googlebot \
@@ -636,21 +636,21 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
       -I sucuri \
       -I authzero \
       -I site24x7 \
-      -I DHCP ${useCnf} ${preCnf} 2>&1)
-    if [ -z "${diffCnfTest}" ]; then
-      useCnfUpdate=YES
-      echo "YES $(date 2>&1) diff0 empty" >> ${vBs}/dragon/t/csf.log
+      -I DHCP ${_useCnf} ${_preCnf} 2>&1)
+    if [ -z "${_diffCnfTest}" ]; then
+      _useCnfUpdate=YES
+      echo "YES $(date 2>&1) diff0 empty" >> ${_vBs}/dragon/t/csf.log
     else
-      diffCnfTest=$(echo -n ${diffCnfTest} | fmt -su -w 2500 2>&1)
-      echo "NO $(date 2>&1) diff1 ${diffCnfTest}" >> ${vBs}/dragon/t/csf.log
+      _diffCnfTest=$(echo -n ${_diffCnfTest} | fmt -su -w 2500 2>&1)
+      echo "NO $(date 2>&1) diff1 ${_diffCnfTest}" >> ${_vBs}/dragon/t/csf.log
     fi
-    if [[ "${diffCnfTest}" =~ "No such file or directory" ]]; then
-      echo "NO $(date 2>&1) diff3 ${diffCnfTest}" >> ${vBs}/dragon/t/csf.log
+    if [[ "${_diffCnfTest}" =~ "No such file or directory" ]]; then
+      echo "NO $(date 2>&1) diff3 ${_diffCnfTest}" >> ${_vBs}/dragon/t/csf.log
     fi
   fi
-  if [ "${myCnfUpdate}" = "NO" ]; then
-    cp -af ${useCnf} ${brkCnf}
-    cp -af ${preCnf} ${useCnf}
+  if [ "${_myCnfUpdate}" = "NO" ]; then
+    cp -af ${_useCnf} ${_brkCnf}
+    cp -af ${_preCnf} ${_useCnf}
   fi
 
   if [ -e "/root/.full.csf.cleanup.cnf" ]; then
@@ -684,7 +684,7 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
   fi
 
   echo local start `date`
-  local_ip_rg
+  _local_ip_rg
 
   _HA=/var/xdrago/monitor/log/hackcheck.archive.log
   _HX=/var/xdrago/monitor/log/hackcheck.archive.x3.log
@@ -694,7 +694,7 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
   _FX=/var/xdrago/monitor/log/hackftp.archive.x3.log
 
   echo guard start `date`
-  guard_stats
+  _guard_stats
   rm -f /var/xdrago/monitor/log/ssh.log
   rm -f /var/xdrago/monitor/log/web.log
   rm -f /var/xdrago/monitor/log/ftp.log
@@ -719,12 +719,14 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
   else
     _DHCP_LOG="/var/log/syslog"
   fi
-  _DHCP_TEST=$(grep DHCPREQUEST ${_DHCP_LOG} | cut -d ' ' -f13 | sort | uniq 2>&1)
-  if [[ "${_DHCP_TEST}" =~ "port" ]]; then
-    for _IP in `grep DHCPREQUEST ${_DHCP_LOG} | cut -d ' ' -f12 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
-  else
-    for _IP in `grep DHCPREQUEST ${_DHCP_LOG} | cut -d ' ' -f13 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
-  fi
+  grep DHCPREQUEST "${_DHCP_LOG}" | awk '{print $12}' | sort -u | while read -r _IP; do
+    if [[ ${_IP} =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
+      IFS='.' read -r oct1 oct2 oct3 oct4 <<< "${_IP}"
+      if (( oct1 <= 255 && oct2 <= 255 && oct3 <= 255 && oct4 <= 255 )); then
+        echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow
+      fi
+    fi
+  done
   csf -e
   wait
   csf -q

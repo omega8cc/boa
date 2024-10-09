@@ -6,7 +6,7 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 
 _pthOml="/var/xdrago/log/java.incident.log"
 
-check_root() {
+_check_root() {
   if [ `whoami` = "root" ]; then
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
     chmod a+w /dev/null
@@ -15,7 +15,7 @@ check_root() {
     exit 1
   fi
 }
-check_root
+_check_root
 
 export _B_NICE=${_B_NICE//[^0-9]/}
 : "${_B_NICE:=10}"
@@ -23,20 +23,20 @@ export _B_NICE=${_B_NICE//[^0-9]/}
 export _INCIDENT_EMAIL_REPORT=${_INCIDENT_EMAIL_REPORT//[^A-Z]/}
 : "${_INCIDENT_EMAIL_REPORT:=YES}"
 
-if [ $(pgrep -f java.sh | grep -v "^$$" | wc -l) -gt 2 ]; then
-  echo "Too many java.sh running $(date 2>&1)" >> /var/xdrago/log/too.many.log
+if (( $(pgrep -fc 'java.sh') > 2 )); then
+  echo "Too many java.sh running $(date)" >> /var/xdrago/log/too.many.log
   exit 0
 fi
 
 _incident_email_report() {
   if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_EMAIL_REPORT}" = "YES" ]; then
-    hName=$(cat /etc/hostname 2>&1)
+    _hName=$(cat /etc/hostname 2>&1)
     echo "Sending Incident Report Email on $(date 2>&1)" >> ${_pthOml}
-    s-nail -s "Incident Report: ${1} on ${hName} at $(date 2>&1)" ${_MY_EMAIL} < ${_pthOml}
+    s-nail -s "Incident Report: ${1} on ${_hName} at $(date 2>&1)" ${_MY_EMAIL} < ${_pthOml}
   fi
 }
 
-jetty_restart() {
+_jetty_restart() {
   touch /run/boa_wait.pid
   sleep 3
   kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}') &> /dev/null
@@ -54,37 +54,37 @@ jetty_restart() {
     service jetty7 start
     wait
   fi
-  thisErrLog="$(date 2>&1) Jetty service has been restarted"
-  echo ${thisErrLog} >> ${_pthOml}
+  _thisErrLog="$(date 2>&1) Jetty service has been restarted"
+  echo ${_thisErrLog} >> ${_pthOml}
   _incident_email_report "$1"
   echo >> ${_pthOml}
   [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
   exit 0
 }
 
-jetty_listen_conflict_detection() {
+_jetty_listen_conflict_detection() {
   if [ -e "/var/log/jetty9" ]; then
     if [ `tail --lines=500 /var/log/jetty9/*stderrout.log \
       | grep --count "Address already in use"` -gt "0" ]; then
-      thisErrLog="$(date 2>&1) Address already in use for jetty9"
-      echo ${thisErrLog} >> ${_pthOml}
-      jetty_restart "jetty9 zombie"
+      _thisErrLog="$(date 2>&1) Address already in use for jetty9"
+      echo ${_thisErrLog} >> ${_pthOml}
+      _jetty_restart "jetty9 zombie"
     fi
   fi
   if [ -e "/var/log/jetty8" ]; then
     if [ `tail --lines=500 /var/log/jetty8/*stderrout.log \
       | grep --count "Address already in use"` -gt "0" ]; then
-      thisErrLog="$(date 2>&1) Address already in use for jetty8"
-      echo ${thisErrLog} >> ${_pthOml}
-      jetty_restart "jetty8 zombie"
+      _thisErrLog="$(date 2>&1) Address already in use for jetty8"
+      echo ${_thisErrLog} >> ${_pthOml}
+      _jetty_restart "jetty8 zombie"
     fi
   fi
   if [ -e "/var/log/jetty7" ]; then
     if [ `tail --lines=500 /var/log/jetty7/*stderrout.log \
       | grep --count "Address already in use"` -gt "0" ]; then
-      thisErrLog="$(date 2>&1) Address already in use for jetty7"
-      echo ${thisErrLog} >> ${_pthOml}
-      jetty_restart "jetty7 zombie"
+      _thisErrLog="$(date 2>&1) Address already in use for jetty7"
+      echo ${_thisErrLog} >> ${_pthOml}
+      _jetty_restart "jetty7 zombie"
     fi
   fi
 }

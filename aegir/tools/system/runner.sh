@@ -6,7 +6,7 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 
 ###-------------SYSTEM-----------------###
 
-check_root() {
+_check_root() {
   if [ `whoami` = "root" ]; then
     chmod a+w /dev/null
   else
@@ -24,7 +24,7 @@ check_root() {
     exit 1
   fi
 }
-check_root
+_check_root
 
 if [ -e "/root/.proxy.cnf" ]; then
   exit 0
@@ -34,7 +34,7 @@ if [ -e "/root/.pause_tasks_maint.cnf" ]; then
   exit 0
 fi
 
-count_cpu() {
+_count_cpu() {
   _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)
   _CPU_INFO=${_CPU_INFO//[^0-9]/}
   _NPROC_TEST=$(which nproc 2>&1)
@@ -55,7 +55,7 @@ count_cpu() {
   fi
 }
 
-load_control() {
+_load_control() {
   [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
   export _CPU_MAX_RATIO=${_CPU_MAX_RATIO//[^0-9]/}
   : "${_CPU_MAX_RATIO:=2.5}"
@@ -64,21 +64,21 @@ load_control() {
   _O_LOAD_MAX=$(( 100 * _CPU_MAX_RATIO ))
 }
 
-action() {
+_runner_action() {
 for Runner in `find /var/xdrago -maxdepth 1 -mindepth 1 -type f \
   | grep run- \
   | uniq \
   | sort`; do
-  count_cpu
-  load_control
+  _count_cpu
+  _load_control
   if [ "${_O_LOAD}" -lt "${_O_LOAD_MAX}" ]; then
     echo load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}
     if [ ! -e "/run/boa_wait.pid" ]; then
       echo running ${Runner}
       bash ${Runner}
-      n=$((RANDOM%9+2))
-      echo waiting $n sec
-      sleep $n
+      _n=$((RANDOM%9+2))
+      echo waiting ${_n} sec
+      sleep ${_n}
     else
       echo "Another BOA task is running, we have to wait..."
     fi
@@ -108,34 +108,34 @@ else
   if [ -e "/root/.slow.cron.cnf" ] && [ ! -e "/root/.force.queue.runner.cnf" ]; then
     touch /run/boa_cron_wait.pid
     sleep 15
-    action
+    _runner_action
     sleep 15
     rm -f /run/boa_cron_wait.pid
   elif [ -e "/root/.fast.cron.cnf" ] || [ -e "/root/.force.queue.runner.cnf" ]; then
     rm -f /run/boa_cron_wait.pid
-    action
+    _runner_action
     sleep 5
-    action
+    _runner_action
     sleep 5
-    action
+    _runner_action
     sleep 5
-    action
+    _runner_action
     sleep 5
-    action
+    _runner_action
     sleep 5
-    action
+    _runner_action
     sleep 5
-    action
+    _runner_action
     sleep 5
-    action
+    _runner_action
     sleep 5
-    action
+    _runner_action
     sleep 5
-    action
+    _runner_action
     sleep 5
-    action
+    _runner_action
   else
-    action
+    _runner_action
   fi
   exit 0
 fi

@@ -6,7 +6,7 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 
 _WEBG=www-data
 _THIS_DB_PORT=3306
-ieni="--ignore-errors"
+_ieni="--ignore-errors"
 
 ###
 ### Avoid too many questions
@@ -19,7 +19,7 @@ fi
 
 ###-------------SYSTEM-----------------###
 
-send_notice_migration_complete() {
+_send_notice_migration_complete() {
   _MAILX_TEST=`s-nail -V 2>&1`
   if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
   cat <<EOF | s-nail -b ${_BCC_EMAIL} -s "IMPORTANT: Completed migration to the new facility for ${_DOMAIN}" ${_CLIENT_EMAIL}
@@ -69,7 +69,7 @@ EOF
   echo "INFO: Migration complete notice sent to ${_CLIENT_EMAIL} [${_THIS_HM_USER}]: OK"
 }
 
-send_notice_migration_start() {
+_send_notice_migration_start() {
   _MAILX_TEST=`s-nail -V 2>&1`
   if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
   cat <<EOF | s-nail -b ${_BCC_EMAIL} -s "STATUS: Running migration to the new facility for ${_DOMAIN}" ${_CLIENT_EMAIL}
@@ -93,10 +93,10 @@ EOF
   echo "INFO: Migration start notice sent to ${_CLIENT_EMAIL} [${_THIS_HM_USER}]: OK"
 }
 
-enable_chattr() {
-  isTest="$1"
-  isTest=${isTest//[^a-z0-9]/}
-  if [ ! -z "${isTest}" ] && [ -d "/home/$1/" ]; then
+_enable_chattr() {
+  _isTest="$1"
+  _isTest=${_isTest//[^a-z0-9]/}
+  if [ ! -z "${_isTest}" ] && [ -d "/home/$1/" ]; then
     if [ "$1" != "${_THIS_HM_USER}.ftp" ]; then
       chattr +i /home/$1/
     else
@@ -120,10 +120,10 @@ enable_chattr() {
   fi
 }
 
-disable_chattr() {
-  isTest="$1"
-  isTest=${isTest//[^a-z0-9]/}
-  if [ ! -z "${isTest}" ] && [ -d "/home/$1/" ]; then
+_disable_chattr() {
+  _isTest="$1"
+  _isTest=${_isTest//[^a-z0-9]/}
+  if [ ! -z "${_isTest}" ] && [ -d "/home/$1/" ]; then
     if [ "$1" != "${_THIS_HM_USER}.ftp" ]; then
       if [ -d "/home/$1/" ]; then
         chattr -i /home/$1/
@@ -149,65 +149,65 @@ disable_chattr() {
   fi
 }
 
-run_drush8_hmr_cmd() {
+_run_drush8_hmr_cmd() {
   su -s /bin/bash - ${_THIS_HM_USER} -c "drush8 @hostmaster $1"
   wait
 }
 
-run_drush8_nosilent_cmd() {
-  su -s /bin/bash - ${_THIS_HM_USER} -c "drush8 @${Dom} $1"
+_run_drush8_nosilent_cmd() {
+  su -s /bin/bash - ${_THIS_HM_USER} -c "drush8 @${_Dom} $1"
   wait
 }
 
-migrate_sites() {
-  for Site in `find ${_USR}/config/server_master/nginx/vhost.d -maxdepth 1 -mindepth 1 -type f | sort`
+_migrate_sites() {
+  for _Site in `find ${_USR}/config/server_master/nginx/vhost.d -maxdepth 1 -mindepth 1 -type f | sort`
   do
-    Dom=`echo $Site | cut -d'/' -f9 | awk '{ print $1}'`
-    Vht="${_USR}/config/server_master/nginx/vhost.d/${Dom}"
-    Vhd="${_USR}/config/server_master/nginx/vhost.d/.${Dom}"
-    Vhs="${_USR}/config/server_master/nginx/vhost.d/https.${Dom}"
-    if [ -e "${Vht}" ] && [ ! -z "${oct}" ]; then
-      chown ${oct}:users ${Vht}
-      chmod 600 ${Vht}
+    _Dom=`echo ${_Site} | cut -d'/' -f9 | awk '{ print $1}'`
+    _Vht="${_USR}/config/server_master/nginx/vhost.d/${_Dom}"
+    _Vhd="${_USR}/config/server_master/nginx/vhost.d/.${_Dom}"
+    _Vhs="${_USR}/config/server_master/nginx/vhost.d/https.${_Dom}"
+    if [ -e "${_Vht}" ] && [ ! -z "${_oct}" ]; then
+      chown ${_oct}:users ${_Vht}
+      chmod 600 ${_Vht}
     fi
-    if [ -e "${Vhd}" ] && [ ! -z "${oct}" ]; then
-      chown ${oct}:users ${Vhd}
-      chmod 600 ${Vhd}
+    if [ -e "${_Vhd}" ] && [ ! -z "${_oct}" ]; then
+      chown ${_oct}:users ${_Vhd}
+      chmod 600 ${_Vhd}
     fi
-    if [ -e "${_USR}/.drush/${Dom}.alias.drushrc.php" ]; then
-      echo Dom is ${Dom}
-      Dir=`cat ${_USR}/.drush/${Dom}.alias.drushrc.php | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
-      Plr=`cat ${_USR}/.drush/${Dom}.alias.drushrc.php | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
-      if [ "${cmd}" = "import" ] || [ "${cmd}" = "export" ]; then
-        _DBN=`cat ${Dir}/drushrc.php | grep "options\['db_name'\] = " | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,';]//g"`
-        echo "site ${Dom} raw _DBN is ${_DBN}"
+    if [ -e "${_USR}/.drush/${_Dom}.alias.drushrc.php" ]; then
+      echo Dom is ${_Dom}
+      _Dir=`cat ${_USR}/.drush/${_Dom}.alias.drushrc.php | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
+      _Plr=`cat ${_USR}/.drush/${_Dom}.alias.drushrc.php | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
+      if [ "${_cmd}" = "import" ] || [ "${_cmd}" = "export" ]; then
+        _DBN=`cat ${_Dir}/drushrc.php | grep "options\['db_name'\] = " | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,';]//g"`
+        echo "site ${_Dom} raw _DBN is ${_DBN}"
         _DBN=${_DBN//[^a-zA-Z0-9_]/}
-        echo "site ${Dom} clean _DBN is ${_DBN}"
+        echo "site ${_Dom} clean _DBN is ${_DBN}"
       fi
-      if [ "${cmd}" = "import" ]; then
-        _DBP=`cat ${Dir}/drushrc.php | grep "options\['db_passwd'\] = " | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,';]//g"`
-        echo "site ${Dom} raw _DBP is ${_DBP}"
+      if [ "${_cmd}" = "import" ]; then
+        _DBP=`cat ${_Dir}/drushrc.php | grep "options\['db_passwd'\] = " | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,';]//g"`
+        echo "site ${_Dom} raw _DBP is ${_DBP}"
         _DBP=${_DBP//[^a-zA-Z0-9_]/}
-        echo "site ${Dom} clean _DBP is ${_DBP}"
-        if [ -e "${Vhd}" ]; then
-          mv -f ${Vhd} ${Vht}
+        echo "site ${_Dom} clean _DBP is ${_DBP}"
+        if [ -e "${_Vhd}" ]; then
+          mv -f ${_Vhd} ${_Vht}
         fi
-        if [ ! -z "${dst}" ]; then
-          _TGT_HM_USER="${dst}"
+        if [ ! -z "${_dst}" ]; then
+          _TGT_HM_USER="${_dst}"
         else
-          _TGT_HM_USER="${oct}"
+          _TGT_HM_USER="${_oct}"
         fi
-        chown ${_TGT_HM_USER}:users ${Vht}
-        chmod 600 ${Vht}
-        if [ -e "${Dir}/drushrc.php" ]; then
-          sed -i "s/\$options\['db_host'\] = '.*/\$options[\'db_host\'] = \'localhost\';/g" ${Dir}/drushrc.php
+        chown ${_TGT_HM_USER}:users ${_Vht}
+        chmod 600 ${_Vht}
+        if [ -e "${_Dir}/drushrc.php" ]; then
+          sed -i "s/\$options\['db_host'\] = '.*/\$options[\'db_host\'] = \'localhost\';/g" ${_Dir}/drushrc.php
           wait
         fi
-        if [ -e "${Vht}" ]; then
-          sed -i "s/.*fastcgi_param.*db_host.*;/  fastcgi_param db_host   localhost;/g" ${Vht}
+        if [ -e "${_Vht}" ]; then
+          sed -i "s/.*fastcgi_param.*db_host.*;/  fastcgi_param db_host   localhost;/g" ${_Vht}
           wait
         fi
-        echo "INFO: site ${Dom} db_host on ${_TGT_HM_USER} fixed"
+        echo "INFO: site ${_Dom} db_host on ${_TGT_HM_USER} fixed"
         if [ ! -z "${_DBN}" ] && [ ! -z "${_DBP}" ]; then
           if [ ! -d "/var/lib/mysql/${_DBN}" ]; then
             if [ -e "/data/conf/${_USR}_use_proxysql.txt" ]; then
@@ -250,9 +250,9 @@ EOFMYSQL
             else
               mysqladmin -u root flush-privileges &> /dev/null
             fi
-            echo "INFO: site ${Dom} db setup on ${oct} complete"
+            echo "INFO: site ${_Dom} db setup on ${_oct} complete"
           else
-            echo "ALRT: site ${Dom} db ${_DBN} already exists!"
+            echo "ALRT: site ${_Dom} db ${_DBN} already exists!"
           fi
           if [ -e "${_USR}/src/${_DBN}" ]; then
             if [ -e "/data/conf/${_USR}_use_proxysql.txt" ]; then
@@ -304,34 +304,34 @@ EOFMYSQL
               --threads=4 \
               --overwrite-tables \
               --verbose=1
-            echo "INFO: site ${Dom} db import on ${oct} complete"
+            echo "INFO: site ${_Dom} db import on ${_oct} complete"
             ###
             ### Activate readonly on source via global.inc and not via drush
             ###
-            ### run_drush8_nosilent_cmd "variable-set --always-set site_readonly 0"
-            ### run_drush8_nosilent_cmd "dis readonlymode -y"
-            ### echo "INFO: site ${Dom} readonlymode on ${oct} disabled"
+            ### _run_drush8_nosilent_cmd "variable-set --always-set site_readonly 0"
+            ### _run_drush8_nosilent_cmd "dis readonlymode -y"
+            ### echo "INFO: site ${_Dom} readonlymode on ${_oct} disabled"
             ###
           else
-            echo "ALRT: site ${Dom} db failure due to missing ${_USR}/src/${_DBN}"
+            echo "ALRT: site ${_Dom} db failure due to missing ${_USR}/src/${_DBN}"
           fi
-          if [ -e "${_USR}/.drush/${Dom}.alias.drushrc.php" ]; then
-            run_drush8_hmr_cmd "hosting-task @${Dom} verify --force"
-            echo "INFO: site ${Dom} verify on ${oct} scheduled"
+          if [ -e "${_USR}/.drush/${_Dom}.alias.drushrc.php" ]; then
+            _run_drush8_hmr_cmd "hosting-task @${_Dom} verify --force"
+            echo "INFO: site ${_Dom} verify on ${_oct} scheduled"
           else
-            echo "ALRT: site ${Dom} verify failure due to missing ${_USR}/.drush/${Dom}.alias.drushrc.php"
+            echo "ALRT: site ${_Dom} verify failure due to missing ${_USR}/.drush/${_Dom}.alias.drushrc.php"
           fi
         else
-          echo "ALRT: site ${Dom} db failure due to empty _DBN/${_DBN} or _DBP/${_DBP}"
+          echo "ALRT: site ${_Dom} db failure due to empty _DBN/${_DBN} or _DBP/${_DBP}"
         fi
-      elif [ "${cmd}" = "export" ]; then
-        run_drush8_nosilent_cmd "en readonlymode -y"
+      elif [ "${_cmd}" = "export" ]; then
+        _run_drush8_nosilent_cmd "en readonlymode -y"
         ###
         ### Activate readonly on source via global.inc and not via drush
         ###
-        ### run_drush8_nosilent_cmd "variable-set --always-set site_readonly 1"
+        ### _run_drush8_nosilent_cmd "variable-set --always-set site_readonly 1"
         ###
-        echo "INFO: site ${Dom} readonlymode module on ${oct} enabled"
+        echo "INFO: site ${_Dom} readonlymode module on ${_oct} enabled"
         if [ -x "/usr/local/bin/mydumper" ]; then
           _MYQUICK_ITD=$(mydumper -V 2>&1 \
             | tr -d "\n" \
@@ -380,57 +380,57 @@ EOFMYSQL
           --less-locking \
           --long-query-guard=900 \
           --verbose=1
-        echo "INFO: site ${Dom} db export on ${oct} complete"
-      elif [ "${cmd}" = "proxy" ]; then
-        if [ -e "${_USR}/log/exported.pid" ] && [ ! -z "${tgt}" ]; then
-          if [ -e "${Vht}" ]; then
-            _NMS=`cat ${Vht} | grep "server_name" | sed "s/server_name//g; s/;//g" | sort | uniq | tr -d "\n" | sed "s/  / /g; s/  / /g; s/  / /g" | sort | uniq`
-            if [ -e "${_USR}/config/server_master/ssl.d/${Dom}/openssl.key" ] \
+        echo "INFO: site ${_Dom} db export on ${_oct} complete"
+      elif [ "${_cmd}" = "proxy" ]; then
+        if [ -e "${_USR}/log/exported.pid" ] && [ ! -z "${_tgt}" ]; then
+          if [ -e "${_Vht}" ]; then
+            _NMS=`cat ${_Vht} | grep "server_name" | sed "s/server_name//g; s/;//g" | sort | uniq | tr -d "\n" | sed "s/  / /g; s/  / /g; s/  / /g" | sort | uniq`
+            if [ -e "${_USR}/config/server_master/ssl.d/${_Dom}/openssl.key" ] \
               && [ -e "/var/xdrago/conf/https_proxy_le.conf" ]; then
-              cp -a /var/xdrago/conf/https_proxy_le.conf ${Vhs}
-              sed -i "s/.*server_name.*;/  server_name                 ${_NMS};/g" ${Vhs}
+              cp -a /var/xdrago/conf/https_proxy_le.conf ${_Vhs}
+              sed -i "s/.*server_name.*;/  server_name                 ${_NMS};/g" ${_Vhs}
               wait
-              sed -i "s/target_ip/${tgt}/g" ${Vhs}
+              sed -i "s/_target_ip/${_tgt}/g" ${_Vhs}
               wait
-              sed -i "s/oct_uid/${oct}/g" ${Vhs}
+              sed -i "s/_oct_uid/${_oct}/g" ${_Vhs}
               wait
-              sed -i "s/domain_name/${Dom}/g" ${Vhs}
+              sed -i "s/_domain_name/${_Dom}/g" ${_Vhs}
               wait
-              chown ${oct}:users ${Vhs}
-              chmod 600 ${Vhs}
+              chown ${_oct}:users ${_Vhs}
+              chmod 600 ${_Vhs}
             fi
-            mv -f ${Vht} $Vhd
-            cp -a /var/xdrago/conf/proxy.conf ${Vht}
-            sed -i "s/.*server_name.*;/  server_name                 ${_NMS};/g" ${Vht}
+            mv -f ${_Vht} ${_Vhd}
+            cp -a /var/xdrago/conf/proxy.conf ${_Vht}
+            sed -i "s/.*server_name.*;/  server_name                 ${_NMS};/g" ${_Vht}
             wait
-            sed -i "s/target_ip/${tgt}/g" ${Vht}
+            sed -i "s/_target_ip/${_tgt}/g" ${_Vht}
             wait
-            chown ${oct}:users ${Vht}
-            chmod 600 ${Vht}
-            echo "INFO: site ${Dom} proxy conversion on ${oct} complete"
+            chown ${_oct}:users ${_Vht}
+            chmod 600 ${_Vht}
+            echo "INFO: site ${_Dom} proxy conversion on ${_oct} complete"
           else
-            echo "ALRT: site ${Dom} proxy conversion on ${oct} failed due to missing ${Vht}"
+            echo "ALRT: site ${_Dom} proxy conversion on ${_oct} failed due to missing ${_Vht}"
           fi
         else
-          echo "ALRT: site ${Dom} proxy conversion on ${oct} failed due to empty tgt/${tgt}"
+          echo "ALRT: site ${_Dom} proxy conversion on ${_oct} failed due to empty tgt/${_tgt}"
         fi
       fi
     fi
   done
 }
 
-delete_this_platform() {
-  run_drush8_hmr_cmd "hosting-task @platform_${_T_PFM_NAME} delete --force"
+_delete_this_platform() {
+  _run_drush8_hmr_cmd "hosting-task @platform_${_T_PFM_NAME} delete --force"
   echo "Old empty platform_${_T_PFM_NAME} will be deleted"
-  run_drush8_hmr_cmd "hosting-dispatch"
+  _run_drush8_hmr_cmd "hosting-dispatch"
   sleep 5
-  run_drush8_hmr_cmd "hosting-tasks --force"
+  _run_drush8_hmr_cmd "hosting-tasks --force"
   sleep 1
 }
 
-migrate_prepare() {
-  _THIS_HM_USER=${oct}
-  _USR=/data/disk/${oct}
+_migrate_prepare() {
+  _THIS_HM_USER=${_oct}
+  _USR=/data/disk/${_oct}
   _THIS_HM_SITE=`cat ${_USR}/.drush/hostmaster.alias.drushrc.php \
     | grep "site_path'" \
     | cut -d: -f2 \
@@ -474,16 +474,16 @@ migrate_prepare() {
   echo "_CLIENT_SUBSCR is ${_CLIENT_SUBSCR}"
   echo "_CLIENT_CORES is ${_CLIENT_CORES}"
 
-  if [ "${cmd}" = "export" ] && [ ! -z "${_CLIENT_EMAIL}" ]; then
-    send_notice_migration_start
+  if [ "${_cmd}" = "export" ] && [ ! -z "${_CLIENT_EMAIL}" ]; then
+    _send_notice_migration_start
   fi
 
   su -s /bin/bash ${_THIS_HM_USER} -c "drush8 cc drush" &> /dev/null
   wait
-  disable_chattr ${_THIS_HM_USER}.ftp &> /dev/null
+  _disable_chattr ${_THIS_HM_USER}.ftp &> /dev/null
   rm -rf /home/${_THIS_HM_USER}.ftp/drush-backups
-  run_drush8_hmr_cmd "sqlq \"DELETE FROM hosting_task WHERE task_type='delete' AND task_status='-1'\""
-  run_drush8_hmr_cmd "sqlq \"DELETE FROM hosting_task WHERE task_type='delete' AND task_status='0' AND executed='0'\""
+  _run_drush8_hmr_cmd "sqlq \"DELETE FROM hosting_task WHERE task_type='delete' AND task_status='-1'\""
+  _run_drush8_hmr_cmd "sqlq \"DELETE FROM hosting_task WHERE task_type='delete' AND task_status='0' AND executed='0'\""
   rm -rf ${_USR}/clients/*/backups
   symlinks -dr ${_USR}/clients &> /dev/null
   if [ -d "/home/${_THIS_HM_USER}.ftp" ]; then
@@ -503,7 +503,7 @@ migrate_prepare() {
     echo "no ${_THIS_HM_SITE}/drushrc.php found"
   fi
   mkdir -p ${_USR}/src
-  if [ "${cmd}" = "export" ] \
+  if [ "${_cmd}" = "export" ] \
     && [ ! -z "${_HDB}" ] \
     && [ ! -e "${_USR}/src/prev_hostmaster.sql" ] \
     && [ ! -e "${_USR}/log/exported.pid" ]; then
@@ -585,35 +585,35 @@ migrate_prepare() {
         users \
         users_roles \
         > ${_USR}/src/prev_hostmaster.sql
-    run_drush8_hmr_cmd "variable-set --always-set maintenance_mode 1"
+    _run_drush8_hmr_cmd "variable-set --always-set maintenance_mode 1"
     if [ -e "${_USR}/src/prev_hostmaster.sql" ]; then
-      echo "INFO: hostmaster ${oct} db export complete"
+      echo "INFO: hostmaster ${_oct} db export complete"
       touch ${_USR}/log/exported.pid
     else
       echo "ALRT: no ${_USR}/src/prev_hostmaster.sql exists!"
       exit 1
     fi
   fi
-  if [ "${cmd}" = "import" ] \
+  if [ "${_cmd}" = "import" ] \
     && [ -e "${_USR}/config/includes/nginx_vhost_common.conf" ] \
     && [ ! -z "${_HDB}" ] \
     && [ -e "${_USR}/src/prev_hostmaster.sql" ] \
     && [ ! -e "${_USR}/log/imported.pid" ]; then
-    if [ ! -z "${dst}" ]; then
-      if [ "${oct}" = "${dst}" ]; then
+    if [ ! -z "${_dst}" ]; then
+      if [ "${_oct}" = "${_dst}" ]; then
         [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL5 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp"
         mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp ${_HDB} < ${_USR}/src/prev_hostmaster.sql
-        run_drush8_hmr_cmd "variable-set --always-set site_frontpage 'hosting/sites'"
+        _run_drush8_hmr_cmd "variable-set --always-set site_frontpage 'hosting/sites'"
         touch ${_USR}/log/imported.pid
       fi
     else
       [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL6 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp"
       mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp ${_HDB} < ${_USR}/src/prev_hostmaster.sql
-      run_drush8_hmr_cmd "variable-set --always-set site_frontpage 'hosting/sites'"
+      _run_drush8_hmr_cmd "variable-set --always-set site_frontpage 'hosting/sites'"
       touch ${_USR}/log/imported.pid
     fi
 
-    if [ "${fix}" = "fix" ]; then
+    if [ "${_fix}" = "fix" ]; then
       if [ ! -e "${_USR}/log/post-merge-fix.pid" ]; then
         echo "HOTFIX B: Hostmaster STATUS: Fix for migrated/merged instance 1/2 start"
         _DOMAIN=`cat ${_USR}/log/domain.txt`
@@ -650,11 +650,11 @@ migrate_prepare() {
             sed -i "s/distro\/04.*',/distro\/001',/g"          ${_USR}/.drush/hm.alias.drushrc.php
             wait
             sed -i "s/distro\/05.*',/distro\/001',/g"          ${_USR}/.drush/hm.alias.drushrc.php
-            for Platform in `find ${_USR}/.drush/platform_* -maxdepth 1 -type f | sort`; do
-              _T_PFM_NAME=$(echo "${Platform}" \
+            for _Platform in `find ${_USR}/.drush/platform_* -maxdepth 1 -type f | sort`; do
+              _T_PFM_NAME=$(echo "${_Platform}" \
                 | sed "s/.*platform_//g; s/.alias.drushrc.php//g" \
                 | awk '{ print $1}' 2>&1)
-              _T_PFM_ROOT=$(cat ${Platform} \
+              _T_PFM_ROOT=$(cat ${_Platform} \
                 | grep "root'" \
                 | cut -d: -f2 \
                 | awk '{ print $3}' \
@@ -664,7 +664,7 @@ migrate_prepare() {
                 | grep site_path 2>&1)
               if [ ! -e "${_T_PFM_ROOT}/sites/all" ] \
                 && [ "${_T_PFM_NAME}" != "hostmaster" ]; then
-                delete_this_platform
+                _delete_this_platform
                 mkdir -p ${_USR}/undo
                 mv -f ${_USR}/.drush/platform_${_T_PFM_NAME}.alias.drushrc.php \
                   ${_USR}/undo/ &> /dev/null
@@ -676,106 +676,106 @@ migrate_prepare() {
               if [ -z "${_T_PFM_SITE}" ] \
                 && [ "${_T_PFM_NAME}" != "hostmaster" ] \
                 && [ -e "${_T_PFM_ROOT}/sites/all" ]; then
-                delete_this_platform
+                _delete_this_platform
               fi
             done
           fi
         fi
 
-        run_drush8_hmr_cmd "sqlq \"REPLACE INTO hosting_context (nid, name) VALUES ('4', 'server_localhost'), ('2', 'server_master')\"" &> /dev/null
-        run_drush8_hmr_cmd "sqlq \"REPLACE INTO hosting_package (vid, nid, package_type, short_name, old_short_name, description) VALUES ('6', '6', 'platform', 'drupal', '', '')\"" &> /dev/null
-        run_drush8_hmr_cmd "sqlq \"REPLACE INTO node_revision (nid, vid, uid, title, body, teaser, log, timestamp, format) VALUES ('6', '6', '1', 'drupal', '', '', '', '1412168340', '0')\"" &> /dev/null
-        run_drush8_hmr_cmd "sqlq \"REPLACE INTO node (nid, vid, type, language, title, uid, status, created, changed, comment, promote, moderate, sticky, tnid, translate) VALUES ('6', '6', 'package', '', 'drupal', '1', '1', '1412168321', '1412168340', '0', '0', '0', '0', '0', '0')\"" &> /dev/null
-        run_drush8_hmr_cmd "sqlq \"DELETE FROM hosting_package WHERE nid='2' AND short_name='drupal'\"" &> /dev/null
-        run_drush8_hmr_cmd "sqlq \"DELETE FROM hosting_package WHERE nid='4' AND short_name='drupal'\"" &> /dev/null
-        run_drush8_hmr_cmd "sqlq \"DELETE FROM node WHERE nid='8' AND type='site'\"" &> /dev/null
-        run_drush8_hmr_cmd "sqlq \"DELETE FROM node_revision WHERE nid='8'\"" &> /dev/null
-        run_drush8_hmr_cmd "sqlq \"UPDATE node SET type='server' WHERE nid='2'\"" &> /dev/null
-        run_drush8_hmr_cmd "sqlq \"UPDATE node SET type='server' WHERE nid='4'\"" &> /dev/null
-        run_drush8_hmr_cmd "sqlq \"UPDATE node SET title='${_USE_AEGIR_HOST}' WHERE nid='2'\"" &> /dev/null
-        run_drush8_hmr_cmd "sqlq \"UPDATE node SET title='localhost' WHERE nid='4'\"" &> /dev/null
-        run_drush8_hmr_cmd "sqlq \"UPDATE node_revision SET title='${_USE_AEGIR_HOST}' WHERE nid='2'\"" &> /dev/null
-        run_drush8_hmr_cmd "sqlq \"UPDATE node_revision SET title='localhost' WHERE nid='4'\"" &> /dev/null
-        run_drush8_hmr_cmd "sqlq \"UPDATE hosting_site SET db_server='4' WHERE db_server='2'\"" &> /dev/null
-        run_drush8_hmr_cmd "sqlq \"UPDATE hosting_platform SET web_server='2' WHERE web_server='0'\"" &> /dev/null
-        run_drush8_hmr_cmd "sqlq \"UPDATE users_roles SET rid='7' WHERE rid='5'\"" &> /dev/null
+        _run_drush8_hmr_cmd "sqlq \"REPLACE INTO hosting_context (nid, name) VALUES ('4', 'server_localhost'), ('2', 'server_master')\"" &> /dev/null
+        _run_drush8_hmr_cmd "sqlq \"REPLACE INTO hosting_package (vid, nid, package_type, short_name, old_short_name, description) VALUES ('6', '6', 'platform', 'drupal', '', '')\"" &> /dev/null
+        _run_drush8_hmr_cmd "sqlq \"REPLACE INTO node_revision (nid, vid, uid, title, body, teaser, log, timestamp, format) VALUES ('6', '6', '1', 'drupal', '', '', '', '1412168340', '0')\"" &> /dev/null
+        _run_drush8_hmr_cmd "sqlq \"REPLACE INTO node (nid, vid, type, language, title, uid, status, created, changed, comment, promote, moderate, sticky, tnid, translate) VALUES ('6', '6', 'package', '', 'drupal', '1', '1', '1412168321', '1412168340', '0', '0', '0', '0', '0', '0')\"" &> /dev/null
+        _run_drush8_hmr_cmd "sqlq \"DELETE FROM hosting_package WHERE nid='2' AND short_name='drupal'\"" &> /dev/null
+        _run_drush8_hmr_cmd "sqlq \"DELETE FROM hosting_package WHERE nid='4' AND short_name='drupal'\"" &> /dev/null
+        _run_drush8_hmr_cmd "sqlq \"DELETE FROM node WHERE nid='8' AND type='site'\"" &> /dev/null
+        _run_drush8_hmr_cmd "sqlq \"DELETE FROM node_revision WHERE nid='8'\"" &> /dev/null
+        _run_drush8_hmr_cmd "sqlq \"UPDATE node SET type='server' WHERE nid='2'\"" &> /dev/null
+        _run_drush8_hmr_cmd "sqlq \"UPDATE node SET type='server' WHERE nid='4'\"" &> /dev/null
+        _run_drush8_hmr_cmd "sqlq \"UPDATE node SET title='${_USE_AEGIR_HOST}' WHERE nid='2'\"" &> /dev/null
+        _run_drush8_hmr_cmd "sqlq \"UPDATE node SET title='localhost' WHERE nid='4'\"" &> /dev/null
+        _run_drush8_hmr_cmd "sqlq \"UPDATE node_revision SET title='${_USE_AEGIR_HOST}' WHERE nid='2'\"" &> /dev/null
+        _run_drush8_hmr_cmd "sqlq \"UPDATE node_revision SET title='localhost' WHERE nid='4'\"" &> /dev/null
+        _run_drush8_hmr_cmd "sqlq \"UPDATE hosting_site SET db_server='4' WHERE db_server='2'\"" &> /dev/null
+        _run_drush8_hmr_cmd "sqlq \"UPDATE hosting_platform SET web_server='2' WHERE web_server='0'\"" &> /dev/null
+        _run_drush8_hmr_cmd "sqlq \"UPDATE users_roles SET rid='7' WHERE rid='5'\"" &> /dev/null
         su -s /bin/bash ${_THIS_HM_USER} -c "drush8 cc drush" &> /dev/null
         wait
         rm -rf ${_USR}/.tmp/cache
-        run_drush8_hmr_cmd "hosting-task @server_localhost verify --force" &> /dev/null
-        run_drush8_hmr_cmd "hosting-dispatch" &> /dev/null
+        _run_drush8_hmr_cmd "hosting-task @server_localhost verify --force" &> /dev/null
+        _run_drush8_hmr_cmd "hosting-dispatch" &> /dev/null
         sleep 5
-        run_drush8_hmr_cmd "hosting-tasks --force" &> /dev/null
+        _run_drush8_hmr_cmd "hosting-tasks --force" &> /dev/null
         echo "HOTFIX B: Hostmaster STATUS: Fix for migrated/merged instance 1/2 complete"
       fi
-      run_drush8_hmr_cmd "sqlq \"UPDATE hosting_site SET client='1' WHERE profile='7'\"" &> /dev/null
-      run_drush8_hmr_cmd "sqlq \"UPDATE hosting_site SET client='1' WHERE profile='9'\"" &> /dev/null
-      run_drush8_hmr_cmd "sqlq \"UPDATE hosting_site SET client='1' WHERE client='0'\"" &> /dev/null
-      run_drush8_hmr_cmd "sqlq \"UPDATE hosting_platform SET web_server='2' WHERE web_server='0'\"" &> /dev/null
-      run_drush8_hmr_cmd "sqlq \"UPDATE node SET uid='1' WHERE uid='0'\"" &> /dev/null
-      run_drush8_hmr_cmd "sqlq \"UPDATE node_revision SET uid='1' WHERE uid='0'\"" &> /dev/null
-      _HM_NID=$(run_drush8_hmr_cmd "sqlq \"SELECT site.nid FROM hosting_site site JOIN hosting_package_instance pkgi ON pkgi.rid=site.nid JOIN hosting_package pkg ON pkg.nid=pkgi.package_id WHERE pkg.short_name='hostmaster'\"" 2>&1)
+      _run_drush8_hmr_cmd "sqlq \"UPDATE hosting_site SET client='1' WHERE profile='7'\"" &> /dev/null
+      _run_drush8_hmr_cmd "sqlq \"UPDATE hosting_site SET client='1' WHERE profile='9'\"" &> /dev/null
+      _run_drush8_hmr_cmd "sqlq \"UPDATE hosting_site SET client='1' WHERE client='0'\"" &> /dev/null
+      _run_drush8_hmr_cmd "sqlq \"UPDATE hosting_platform SET web_server='2' WHERE web_server='0'\"" &> /dev/null
+      _run_drush8_hmr_cmd "sqlq \"UPDATE node SET uid='1' WHERE uid='0'\"" &> /dev/null
+      _run_drush8_hmr_cmd "sqlq \"UPDATE node_revision SET uid='1' WHERE uid='0'\"" &> /dev/null
+      _HM_NID=$(_run_drush8_hmr_cmd "sqlq \"SELECT site.nid FROM hosting_site site JOIN hosting_package_instance pkgi ON pkgi.rid=site.nid JOIN hosting_package pkg ON pkg.nid=pkgi.package_id WHERE pkg.short_name='hostmaster'\"" 2>&1)
       _HM_NID=${_HM_NID//[^0-9]/}
       if [ ! -z "${_HM_NID}" ]; then
         echo "HOTFIX B: Hostmaster STATUS: Fix 1/2 hosting_context ${_HM_NID}"
         if [ -e "${_USR}/aegir/distro/001/sites/${_DOMAIN}/drushrc.php" ]; then
-          _HM_PLF=$(run_drush8_hmr_cmd "sqlq \"SELECT platform FROM hosting_site WHERE nid='${_HM_NID}'\"" 2>&1)
+          _HM_PLF=$(_run_drush8_hmr_cmd "sqlq \"SELECT platform FROM hosting_site WHERE nid='${_HM_NID}'\"" 2>&1)
           _HM_PLF=${_HM_PLF//[^0-9]/}
-          run_drush8_hmr_cmd "sqlq \"DELETE FROM hosting_context WHERE name='platform_hostmaster' AND nid != '${_HM_PLF}'\"" &> /dev/null
-          run_drush8_hmr_cmd "sqlq \"UPDATE hosting_context SET name='platform_hostmaster' WHERE nid='${_HM_PLF}'\"" &> /dev/null
+          _run_drush8_hmr_cmd "sqlq \"DELETE FROM hosting_context WHERE name='platform_hostmaster' AND nid != '${_HM_PLF}'\"" &> /dev/null
+          _run_drush8_hmr_cmd "sqlq \"UPDATE hosting_context SET name='platform_hostmaster' WHERE nid='${_HM_PLF}'\"" &> /dev/null
         fi
-        run_drush8_hmr_cmd "sqlq \"UPDATE hosting_context SET name='hostmaster' WHERE nid='${_HM_NID}'\"" &> /dev/null
-        run_drush8_hmr_cmd "sqlq \"UPDATE node SET title='${_DOMAIN}' WHERE nid='${_HM_NID}'\"" &> /dev/null
-        run_drush8_hmr_cmd "sqlq \"UPDATE node_revision SET title='${_DOMAIN}' WHERE nid='${_HM_NID}'\"" &> /dev/null
-        run_drush8_hmr_cmd "sqlq \"UPDATE hosting_site_alias SET alias='www.${_DOMAIN}' WHERE nid='${_HM_NID}'\"" &> /dev/null
+        _run_drush8_hmr_cmd "sqlq \"UPDATE hosting_context SET name='hostmaster' WHERE nid='${_HM_NID}'\"" &> /dev/null
+        _run_drush8_hmr_cmd "sqlq \"UPDATE node SET title='${_DOMAIN}' WHERE nid='${_HM_NID}'\"" &> /dev/null
+        _run_drush8_hmr_cmd "sqlq \"UPDATE node_revision SET title='${_DOMAIN}' WHERE nid='${_HM_NID}'\"" &> /dev/null
+        _run_drush8_hmr_cmd "sqlq \"UPDATE hosting_site_alias SET alias='www.${_DOMAIN}' WHERE nid='${_HM_NID}'\"" &> /dev/null
         echo FIXED > ${_USR}/log/post-merge-fix.pid
       else
         echo "HOTFIX B: Hostmaster STATUS: Fix 1/2 hosting_context _HM_NID empty!"
       fi
       if [ -e "${_USR}/aegir/distro/001/sites/${_DOMAIN}/drushrc.php" ] \
         && [ ! -e "${_USR}/log/hmpathfix.pid" ]; then
-        run_drush8_hmr_cmd "sqlq \"UPDATE hosting_platform SET publish_path='${_USR}/aegir/distro/001' WHERE publish_path LIKE '%/aegir/distro/%'\"" &> /dev/null
+        _run_drush8_hmr_cmd "sqlq \"UPDATE hosting_platform SET publish_path='${_USR}/aegir/distro/001' WHERE publish_path LIKE '%/aegir/distro/%'\"" &> /dev/null
         touch ${_USR}/log/hmpathfix.pid
       fi
     fi
 
   fi
-  if [ "${cmd}" = "create" ]; then
-    if [ ! -z "${dst}" ]; then
-      _TGT_HM_USER="${dst}"
+  if [ "${_cmd}" = "create" ]; then
+    if [ ! -z "${_dst}" ]; then
+      _TGT_HM_USER="${_dst}"
     else
-      _TGT_HM_USER="${oct}"
+      _TGT_HM_USER="${_oct}"
     fi
     if [ ! -z "${_CLIENT_EMAIL}" ] \
       && [ ! -z "${_TGT_HM_USER}" ] \
       && [ ! -z "${_CLIENT_OPTION}" ] \
       && [ ! -z "${_CLIENT_SUBSCR}" ] \
       && [ ! -z "${_CLIENT_CORES}" ]; then
-      ssh root@${tgt} "/opt/local/bin/boa in-octopus ${_CLIENT_EMAIL} ${_TGT_HM_USER} none ${_CLIENT_OPTION} ${_CLIENT_SUBSCR} ${_CLIENT_CORES}"
-      ssh root@${tgt} "/bin/rm -f /data/disk/${_TGT_HM_USER}/tools/le/.ctrl/ssl-demo-mode.pid"
-      ssh root@${tgt} "/bin/rm -f /data/disk/${_TGT_HM_USER}/tools/le/config"
-      ssh root@${tgt} "/bin/rm -f /data/disk/${_TGT_HM_USER}/tools/le/config.sh"
-      echo "INFO: new octopus ${_TGT_HM_USER} setup on ${tgt} complete"
+      ssh root@${_tgt} "/opt/local/bin/boa in-octopus ${_CLIENT_EMAIL} ${_TGT_HM_USER} none ${_CLIENT_OPTION} ${_CLIENT_SUBSCR} ${_CLIENT_CORES}"
+      ssh root@${_tgt} "/bin/rm -f /data/disk/${_TGT_HM_USER}/tools/le/.ctrl/ssl-demo-mode.pid"
+      ssh root@${_tgt} "/bin/rm -f /data/disk/${_TGT_HM_USER}/tools/le/config"
+      ssh root@${_tgt} "/bin/rm -f /data/disk/${_TGT_HM_USER}/tools/le/config.sh"
+      echo "INFO: new octopus ${_TGT_HM_USER} setup on ${_tgt} complete"
     else
-      echo "ALRT: new octopus ${_TGT_HM_USER} setup on ${tgt} failed because of missing arguments"
+      echo "ALRT: new octopus ${_TGT_HM_USER} setup on ${_tgt} failed because of missing arguments"
       exit 1
     fi
   fi
-  if [ "${cmd}" = "import" ] \
-    || [ "${cmd}" = "export" ] \
-    || [ "${cmd}" = "proxy" ]; then
-    migrate_sites
+  if [ "${_cmd}" = "import" ] \
+    || [ "${_cmd}" = "export" ] \
+    || [ "${_cmd}" = "proxy" ]; then
+    _migrate_sites
   fi
-  echo Done ${cmd} for ${_USR}
-  enable_chattr ${_THIS_HM_USER}.ftp &> /dev/null
+  echo Done ${_cmd} for ${_USR}
+  _enable_chattr ${_THIS_HM_USER}.ftp &> /dev/null
 }
 
-migrate_init() {
-  _USR=/data/disk/${oct}
-  if [ ! -e "${_USR}/tools/le/dehydrated" ] && [ "${oct}" != "shared" ]; then
+_migrate_init() {
+  _USR=/data/disk/${_oct}
+  if [ ! -e "${_USR}/tools/le/dehydrated" ] && [ "${_oct}" != "shared" ]; then
     echo
     echo "ERROR: This version of xboa migration tool supports only BOA-3.2.2 or newer"
-    echo "ERROR: Please upgrade ${oct} instance to current BOA head before trying again"
+    echo "ERROR: Please upgrade ${_oct} instance to current BOA head before trying again"
     echo "Bye."
     echo
     exit 1
@@ -785,55 +785,55 @@ migrate_init() {
     _THIS_DB_PORT=6033
   fi
   rm -f /root/scentral_migration_notice.sh.txt
-  if [ "${oct}" = "xusage" ]; then
-    echo "INFO: ${cmd} for ${oct} to ${tgt} start"
+  if [ "${_oct}" = "xusage" ]; then
+    echo "INFO: ${_cmd} for ${_oct} to ${_tgt} start"
     if [ -e "/var/xdrago/log/usage" ]; then
-      rsync -aEAXq ${ieni} -e ssh /var/xdrago/log/usage/* root@${tgt}:/var/xdrago/log/usage/
-      echo "INFO: ${cmd} for ${oct} /var/xdrago/log/usage complete"
+      rsync -aEAXq ${_ieni} -e ssh /var/xdrago/log/usage/* root@${_tgt}:/var/xdrago/log/usage/
+      echo "INFO: ${_cmd} for ${_oct} /var/xdrago/log/usage complete"
     fi
-    echo "INFO: ${cmd} for ${oct} to ${tgt} complete"
-  elif [ "${oct}" = "shared" ]; then
-    echo "INFO: ${cmd} for ${oct} to ${tgt} start"
+    echo "INFO: ${_cmd} for ${_oct} to ${_tgt} complete"
+  elif [ "${_oct}" = "shared" ]; then
+    echo "INFO: ${_cmd} for ${_oct} to ${_tgt} start"
     if [ -d "/data/all" ] && [ ! -L "/data/all" ]; then
-      rsync -aEAXqu ${ieni} -e ssh /data/all  root@${tgt}:/data/
-      echo "INFO: ${cmd} for ${oct} /data/all complete"
+      rsync -aEAXqu ${_ieni} -e ssh /data/all  root@${_tgt}:/data/
+      echo "INFO: ${_cmd} for ${_oct} /data/all complete"
     fi
     if [ -d "/data/disk/all" ]; then
-      rsync -aEAXqu ${ieni} -e ssh /data/disk/all  root@${tgt}:/data/
-      echo "INFO: ${cmd} for ${oct} /data/disk/all complete"
+      rsync -aEAXqu ${_ieni} -e ssh /data/disk/all  root@${_tgt}:/data/
+      echo "INFO: ${_cmd} for ${_oct} /data/disk/all complete"
     fi
     if [ -e "/data/disk/arch" ]; then
-      rsync -aEAXqu ${ieni} -e ssh /data/disk/arch  root@${tgt}:/data/disk/
-      echo "INFO: ${cmd} for ${oct} /data/disk/arch complete"
+      rsync -aEAXqu ${_ieni} -e ssh /data/disk/arch  root@${_tgt}:/data/disk/
+      echo "INFO: ${_cmd} for ${_oct} /data/disk/arch complete"
     fi
     if [ -e "/opt/solr4" ]; then
-      rsync -aEAXq ${ieni} -e ssh /opt/solr4 root@${tgt}:/opt/
-      echo "INFO: ${cmd} for ${oct} /opt/solr4 complete"
+      rsync -aEAXq ${_ieni} -e ssh /opt/solr4 root@${_tgt}:/opt/
+      echo "INFO: ${_cmd} for ${_oct} /opt/solr4 complete"
     fi
     if [ -e "/var/solr7/data" ]; then
-      rsync -aEAXq ${ieni} -e ssh /var/solr7/data root@${tgt}:/var/solr7/
-      echo "INFO: ${cmd} for ${oct} /var/solr7/data complete"
+      rsync -aEAXq ${_ieni} -e ssh /var/solr7/data root@${_tgt}:/var/solr7/
+      echo "INFO: ${_cmd} for ${_oct} /var/solr7/data complete"
     fi
     if [ -e "/var/www/static" ]; then
-      rsync -aEAXq ${ieni} -e ssh /var/www/static root@${tgt}:/var/www/
-      echo "INFO: ${cmd} for ${oct} /var/www/static complete"
+      rsync -aEAXq ${_ieni} -e ssh /var/www/static root@${_tgt}:/var/www/
+      echo "INFO: ${_cmd} for ${_oct} /var/www/static complete"
     fi
     if [ -e "/etc/bind" ]; then
-      rsync -aEAXq ${ieni} -e ssh /etc/bind root@${tgt}:/etc/
-      echo "INFO: ${cmd} for ${oct} /etc/bind complete"
+      rsync -aEAXq ${_ieni} -e ssh /etc/bind root@${_tgt}:/etc/
+      echo "INFO: ${_cmd} for ${_oct} /etc/bind complete"
     fi
     if [ -e "/var/xdrago/log/usage" ]; then
-      rsync -aEAXq ${ieni} -e ssh /var/xdrago/log/usage root@${tgt}:/var/xdrago/log/
-      echo "INFO: ${cmd} for ${oct} /var/xdrago/log/usage complete"
+      rsync -aEAXq ${_ieni} -e ssh /var/xdrago/log/usage root@${_tgt}:/var/xdrago/log/
+      echo "INFO: ${_cmd} for ${_oct} /var/xdrago/log/usage complete"
     fi
     if [ -e "/data/disk/legacy" ]; then
-      echo "INFO: ${cmd} for ${oct} /data/disk/legacy start"
-      rsync -aEAXq ${ieni} -e ssh /data/disk/legacy root@${tgt}:/data/disk/
-      echo "INFO: ${cmd} for ${oct} /data/disk/legacy complete"
+      echo "INFO: ${_cmd} for ${_oct} /data/disk/legacy start"
+      rsync -aEAXq ${_ieni} -e ssh /data/disk/legacy root@${_tgt}:/data/disk/
+      echo "INFO: ${_cmd} for ${_oct} /data/disk/legacy complete"
     fi
-    echo "INFO: ${cmd} for ${oct} to ${tgt} complete"
+    echo "INFO: ${_cmd} for ${_oct} to ${_tgt} complete"
   else
-    _USR=/data/disk/${oct}
+    _USR=/data/disk/${_oct}
     if [ -e "${_USR}/log/email.txt" ]; then
       _CHECK_EMAIL=`cat ${_USR}/log/email.txt`
       _CHECK_EMAIL=`echo -n ${_CHECK_EMAIL} | tr -d "\n"`
@@ -846,149 +846,149 @@ migrate_init() {
         _RESULT_EMAIL=OK
       fi
     fi
-    if [ "${oct}" = "arch" ] \
-      || [ "${oct}" = "all" ] \
-      || [ "${oct}" = "lost+found" ] \
-      || [ "${oct}" = "lostfound" ] \
-      || [ "${oct}" = "backups" ] \
-      || [ "${oct}" = "codebases-cleanup" ]; then
-      echo "_USR ${oct} is not eligible for migration: system dir"
+    if [ "${_oct}" = "arch" ] \
+      || [ "${_oct}" = "all" ] \
+      || [ "${_oct}" = "lost+found" ] \
+      || [ "${_oct}" = "lostfound" ] \
+      || [ "${_oct}" = "backups" ] \
+      || [ "${_oct}" = "codebases-cleanup" ]; then
+      echo "_USR ${_oct} is not eligible for migration: system dir"
       exit 1
     elif [ ! -e "${_USR}/log/cores.txt" ] \
       || [ ! -e "${_USR}/log/option.txt" ] \
       || [ ! -e "${_USR}/log/email.txt" ]; then
-      echo "_USR ${oct} is not eligible for migration: broken"
+      echo "_USR ${_oct} is not eligible for migration: broken"
       exit 1
     elif [ -e "${_USR}/log/CANCELLED" ]; then
-      echo "_USR ${oct} is not eligible for migration: cancelled"
+      echo "_USR ${_oct} is not eligible for migration: cancelled"
       exit 1
     elif [ -e "${_USR}/log/proxied.pid" ]; then
-      echo "_USR ${oct} is not eligible for migration: already migrated"
+      echo "_USR ${_oct} is not eligible for migration: already migrated"
       exit 1
-    elif [ "${cmd}" = "create" ] && [ -e "${_USR}/log/exported.pid" ]; then
-      echo "_USR ${oct} is not eligible for migration: already created"
+    elif [ "${_cmd}" = "create" ] && [ -e "${_USR}/log/exported.pid" ]; then
+      echo "_USR ${_oct} is not eligible for migration: already created"
       exit 1
-    elif [ "${cmd}" = "export" ] && [ -e "${_USR}/log/exported.pid" ]; then
-      echo "_USR ${oct} is not eligible for migration: already exported"
+    elif [ "${_cmd}" = "export" ] && [ -e "${_USR}/log/exported.pid" ]; then
+      echo "_USR ${_oct} is not eligible for migration: already exported"
       exit 1
-    elif [ "${cmd}" = "transfer" ] && [ -e "${_USR}/log/transferred.pid" ]; then
-      echo "_USR ${oct} is not eligible for migration: already transferred"
+    elif [ "${_cmd}" = "transfer" ] && [ -e "${_USR}/log/transferred.pid" ]; then
+      echo "_USR ${_oct} is not eligible for migration: already transferred"
       exit 1
-    elif [ "${cmd}" = "import" ] && [ -e "${_USR}/log/imported.pid" ]; then
-      echo "_USR ${oct} is not eligible for migration: already imported"
+    elif [ "${_cmd}" = "import" ] && [ -e "${_USR}/log/imported.pid" ]; then
+      echo "_USR ${_oct} is not eligible for migration: already imported"
       exit 1
-    elif [ "${cmd}" = "proxy" ] && [ -e "${_USR}/log/proxied.pid" ]; then
-      echo "_USR ${oct} is not eligible for migration: already proxied"
+    elif [ "${_cmd}" = "proxy" ] && [ -e "${_USR}/log/proxied.pid" ]; then
+      echo "_USR ${_oct} is not eligible for migration: already proxied"
       exit 1
     elif [ "${_RESULT_EMAIL}" = "OUR" ]; then
-      echo "_USR ${oct} is not eligible for migration: internal only"
+      echo "_USR ${_oct} is not eligible for migration: internal only"
       exit 1
     else
-      echo "INFO: ${cmd} for ${oct} to ${tgt} ${dst} start"
-      if [ "${cmd}" = "transfer" ]; then
-        if [ ! -z "${dst}" ]; then
-          _DST=/data/disk/${dst}
+      echo "INFO: ${_cmd} for ${_oct} to ${_tgt} ${_dst} start"
+      if [ "${_cmd}" = "transfer" ]; then
+        if [ ! -z "${_dst}" ]; then
+          _DST=/data/disk/${_dst}
         else
-          _DST=/data/disk/${oct}
+          _DST=/data/disk/${_oct}
         fi
         if [ -e "${_USR}" ]; then
-          rsync -aEAXqu ${ieni} -e ssh ${_USR}/distro/*         root@${tgt}:${_DST}/distro/
-          rsync -aEAXqu ${ieni} -e ssh ${_USR}/src/*            root@${tgt}:${_DST}/src/
-          rsync -aEAXqu ${ieni} -e ssh ${_USR}/static/*         root@${tgt}:${_DST}/static/
+          rsync -aEAXqu ${_ieni} -e ssh ${_USR}/distro/*         root@${_tgt}:${_DST}/distro/
+          rsync -aEAXqu ${_ieni} -e ssh ${_USR}/src/*            root@${_tgt}:${_DST}/src/
+          rsync -aEAXqu ${_ieni} -e ssh ${_USR}/static/*         root@${_tgt}:${_DST}/static/
           #
-          rsync -aEAXqu ${ieni} -e ssh ${_USR}/clients/*        root@${tgt}:${_DST}/clients/        &> /dev/null
-          rsync -aEAXqu ${ieni} -e ssh ${_USR}/log/*            root@${tgt}:${_DST}/log/
-          rsync -aEAXqu ${ieni} -e ssh ${_USR}/static/control/* root@${tgt}:${_DST}/static/control/ &> /dev/null
+          rsync -aEAXqu ${_ieni} -e ssh ${_USR}/clients/*        root@${_tgt}:${_DST}/clients/        &> /dev/null
+          rsync -aEAXqu ${_ieni} -e ssh ${_USR}/log/*            root@${_tgt}:${_DST}/log/
+          rsync -aEAXqu ${_ieni} -e ssh ${_USR}/static/control/* root@${_tgt}:${_DST}/static/control/ &> /dev/null
           #
-          rsync -aEAXqu ${ieni} -e ssh ${_USR}/backups/*        root@${tgt}:${_DST}/backups/        &> /dev/null
-          rsync -aEAXqu ${ieni} -e ssh ${_USR}/undo/*           root@${tgt}:${_DST}/undo/           &> /dev/null
-          if [ ! -z "${dst}" ]; then
-            rsync -aEAXqu ${ieni} -e ssh /home/${oct}.ftp/.ssh  root@${tgt}:/home/${dst}.ftp/
+          rsync -aEAXqu ${_ieni} -e ssh ${_USR}/backups/*        root@${_tgt}:${_DST}/backups/        &> /dev/null
+          rsync -aEAXqu ${_ieni} -e ssh ${_USR}/undo/*           root@${_tgt}:${_DST}/undo/           &> /dev/null
+          if [ ! -z "${_dst}" ]; then
+            rsync -aEAXqu ${_ieni} -e ssh /home/${_oct}.ftp/.ssh  root@${_tgt}:/home/${_dst}.ftp/
           else
-            rsync -aEAXqu ${ieni} -e ssh /home/${oct}.ftp/.ssh  root@${tgt}:/home/${oct}.ftp/
+            rsync -aEAXqu ${_ieni} -e ssh /home/${_oct}.ftp/.ssh  root@${_tgt}:/home/${_oct}.ftp/
           fi
 
           rsync -aEAXqu \
-            ${ieni} \
+            ${_ieni} \
             --exclude=server_ \
             --exclude=hostmaster \
             -e ssh ${_USR}/.drush/*.alias.drushrc.php \
-            root@${tgt}:${_DST}/.drush/
+            root@${_tgt}:${_DST}/.drush/
 
           rsync -aEAXqu \
-            ${ieni} \
+            ${_ieni} \
             --exclude=host8.biz \
             --exclude=boa.io \
             --exclude=aegir.cc \
             -e ssh ${_USR}/config/server_master/nginx/vhost.d/* \
-            root@${tgt}:${_DST}/config/server_master/nginx/vhost.d/
+            root@${_tgt}:${_DST}/config/server_master/nginx/vhost.d/
 
           rsync -aEAXqu \
-            ${ieni} \
+            ${_ieni} \
             -e ssh ${_USR}/config/server_master/nginx/pre.d/* \
-            root@${tgt}:${_DST}/config/server_master/nginx/pre.d/ &> /dev/null
+            root@${_tgt}:${_DST}/config/server_master/nginx/pre.d/ &> /dev/null
 
           rsync -aEAXqu \
-            ${ieni} \
+            ${_ieni} \
             -e ssh ${_USR}/config/server_master/nginx/post.d/* \
-            root@${tgt}:${_DST}/config/server_master/nginx/post.d/ &> /dev/null
+            root@${_tgt}:${_DST}/config/server_master/nginx/post.d/ &> /dev/null
 
           rsync -aEAXqu \
-            ${ieni} \
+            ${_ieni} \
             -e ssh ${_USR}/config/server_master/nginx/subdir.d/* \
-            root@${tgt}:${_DST}/config/server_master/nginx/subdir.d/ &> /dev/null
+            root@${_tgt}:${_DST}/config/server_master/nginx/subdir.d/ &> /dev/null
 
           rsync -aEAXqu \
-            ${ieni} \
+            ${_ieni} \
             -e ssh ${_USR}/config/server_master/nginx/platform.d/* \
-            root@${tgt}:${_DST}/config/server_master/nginx/platform.d/ &> /dev/null
+            root@${_tgt}:${_DST}/config/server_master/nginx/platform.d/ &> /dev/null
 
           rsync -aEAXqu \
-            ${ieni} \
+            ${_ieni} \
             -e ssh ${_USR}/config/ssl.d/* \
-            root@${tgt}:${_DST}/config/ssl.d/ &> /dev/null
+            root@${_tgt}:${_DST}/config/ssl.d/ &> /dev/null
 
           rsync -aEAXqu \
-            ${ieni} \
+            ${_ieni} \
             -e ssh ${_USR}/config/server_master/ssl.d/* \
-            root@${tgt}:${_DST}/config/server_master/ssl.d/ &> /dev/null
+            root@${_tgt}:${_DST}/config/server_master/ssl.d/ &> /dev/null
 
           rsync -aEAXqu \
-            ${ieni} \
+            ${_ieni} \
             -e ssh ${_USR}/tools/le \
-            root@${tgt}:${_DST}/tools/ &> /dev/null
+            root@${_tgt}:${_DST}/tools/ &> /dev/null
 
-          echo "INFO: ${cmd} for ${oct} to ${tgt} ${dst} complete"
+          echo "INFO: ${_cmd} for ${_oct} to ${_tgt} ${_dst} complete"
           touch ${_USR}/log/transferred.pid
         fi
       else
-        if [ -e "/root/.${oct}.octopus.cnf" ]; then
-          source /root/.${oct}.octopus.cnf
+        if [ -e "/root/.${_oct}.octopus.cnf" ]; then
+          source /root/.${_oct}.octopus.cnf
         fi
         ### We are using max verbose mode by default
-        migrate_prepare
+        _migrate_prepare
           ### _NOW=`date +%y%m%d-%H%M`
           ### mkdir -p /var/xdrago/log/migrate
-          ### migrate_prepare >/var/xdrago/log/migrate/migrate-${oct}-${cmd}-${_NOW}.log 2>&1
-        if [ "${cmd}" = "proxy" ]; then
+          ### _migrate_prepare >/var/xdrago/log/migrate/migrate-${_oct}-${_cmd}-${_NOW}.log 2>&1
+        if [ "${_cmd}" = "proxy" ]; then
           service nginx reload
-          send_notice_migration_complete
+          _send_notice_migration_complete
           echo COMPLETE > ${_USR}/log/proxied.pid
         fi
       fi
-      echo "INFO: ${cmd} for ${oct} to ${tgt} ${dst} complete"
+      echo "INFO: ${_cmd} for ${_oct} to ${_tgt} ${_dst} complete"
       exit 0
     fi
   fi
 }
 
-post_mig() {
+_post_mig() {
   if [ -e "/vservers" ]; then
-    echo You can not run post_mig on the parent system
+    echo You can not run _post_mig on the parent system
     echo Exit now
     exit 1
   else
-    echo Running post_mig inside vm `hostname`
+    echo Running _post_mig inside vms `hostname`
     if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
       #kill -9 $(ps aux | grep '[s]olr' | awk '{print $2}') &> /dev/null
       service solr7 restart
@@ -1026,13 +1026,13 @@ post_mig() {
   fi
 }
 
-pre_mig() {
+_pre_mig() {
   if [ -e "/vservers" ]; then
-    echo You can not run pre_mig on the parent system
+    echo You can not run _pre_mig on the parent system
     echo Exit now
     exit 1
   else
-    echo Running pre_mig inside vm `hostname`
+    echo Running _pre_mig inside vms `hostname`
     if [ -e "/var/xdrago/runner.sh" ]; then
       mv -f /var/xdrago/runner.sh /var/xdrago/.runner.sh.off
       kill -9 $(ps aux | grep '[r]unner' | awk '{print $2}') &> /dev/null
@@ -1053,7 +1053,7 @@ pre_mig() {
       mv -f /var/xdrago/manage_ltd_users.sh /var/xdrago/.manage_ltd_users.sh.off
       kill -9 $(ps aux | grep '[m]anage_ltd_users' | awk '{print $2}') &> /dev/null
     fi
-    if [ `hostname` = "${hst}" ]; then
+    if [ `hostname` = "${_hst}" ]; then
       echo Preparing source `hostname` for outgoing migration...
       if [ ! -e "/root/.ssh/id_rsa.pub" ]; then
         echo Create id_rsa.pub...
@@ -1071,7 +1071,7 @@ pre_mig() {
       mkdir -p /root/.ssh
       rm -f /root/.ssh/auth_undefined_keys.txt*
       rm -f /var/www/nginx-default/auth_undefined_keys.txt*
-      curl -s -A iCab "http://undefined.${hst}/auth_undefined_keys.txt" -o /root/.ssh/auth_undefined_keys.txt
+      curl -s -A iCab "http://undefined.${_hst}/auth_undefined_keys.txt" -o /root/.ssh/auth_undefined_keys.txt
       if [ -e "/root/.ssh/auth_undefined_keys.txt" ]; then
         cat /root/.ssh/auth_undefined_keys.txt >> /root/.ssh/authorized_keys
         chmod 600 /root/.ssh/authorized_keys
@@ -1083,89 +1083,89 @@ pre_mig() {
   echo All done!
 }
 
-sub_ssl_gen() {
+_sub_ssl_gen() {
   IFS=$'\12'
   for p in `cat /root/.ssl.proxy.cnf`;do
-    domain_name=`echo $p | cut -d' ' -f1 | awk '{ print $1}'`
-    target_ip=`echo $p | cut -d' ' -f2 | awk '{ print $1}'`
-    oct_uid=`echo $p | cut -d' ' -f3 | awk '{ print $1}'`
-    oct_mail=`echo $p | cut -d' ' -f4 | awk '{ print $1}'`
-    dedicated_ip=`echo $p | cut -d' ' -f5 | awk '{ print $1}'`
-    echo domain_name.${domain_name} target_ip.${target_ip} oct_uid.${oct_uid} oct_mail.${oct_mail} dedicated_ip.${dedicated_ip}
-    if [ ! -z "${domain_name}" ] \
-      && [ ! -z "${target_ip}" ] \
-      && [ ! -z "${oct_uid}" ] \
-      && [ ! -z "${oct_mail}" ] \
-      && [ ! -z "${dedicated_ip}" ]; then
-      oct_mail=`echo $oct_mail | sed "s/\@/\\\@/g"`;
-      if [ "${target_ip}" = "${dedicated_ip}" ]; then
-        dedicated_ip="*"
-        if [ -e "/data/disk/${oct_uid}/log/extra_domain.txt" ]; then
-          hmFrontExtra=$(cat /data/disk/${oct_uid}/log/extra_domain.txt 2>&1)
-          hmFrontExtra=$(echo -n ${hmFrontExtra} | tr -d "\n" 2>&1)
+    _domain_name=`echo $p | cut -d' ' -f1 | awk '{ print $1}'`
+    _target_ip=`echo $p | cut -d' ' -f2 | awk '{ print $1}'`
+    _oct_uid=`echo $p | cut -d' ' -f3 | awk '{ print $1}'`
+    _oct_mail=`echo $p | cut -d' ' -f4 | awk '{ print $1}'`
+    _dedicated_ip=`echo $p | cut -d' ' -f5 | awk '{ print $1}'`
+    echo _domain_name.${_domain_name} _target_ip.${_target_ip} _oct_uid.${_oct_uid} _oct_mail.${_oct_mail} _dedicated_ip.${_dedicated_ip}
+    if [ ! -z "${_domain_name}" ] \
+      && [ ! -z "${_target_ip}" ] \
+      && [ ! -z "${_oct_uid}" ] \
+      && [ ! -z "${_oct_mail}" ] \
+      && [ ! -z "${_dedicated_ip}" ]; then
+      _oct_mail=`echo ${_oct_mail} | sed "s/\@/\\\@/g"`;
+      if [ "${_target_ip}" = "${_dedicated_ip}" ]; then
+        _dedicated_ip="*"
+        if [ -e "/data/disk/${_oct_uid}/log/extra_domain.txt" ]; then
+          _hmFrontExtra=$(cat /data/disk/${_oct_uid}/log/extra_domain.txt 2>&1)
+          _hmFrontExtra=$(echo -n ${_hmFrontExtra} | tr -d "\n" 2>&1)
         fi
-        if [ ! -z "${hmFrontExtra}" ]; then
-          dedicated_sn="${domain_name} ${hmFrontExtra} www.${domain_name}"
+        if [ ! -z "${_hmFrontExtra}" ]; then
+          _dedicated_sn="${_domain_name} ${_hmFrontExtra} www.${_domain_name}"
         else
-          dedicated_sn="${domain_name} www.${domain_name}"
+          _dedicated_sn="${_domain_name} www.${_domain_name}"
         fi
-        single=YES
+        _single=YES
       else
-        dedicated_sn="_"
-        single=NO
+        _dedicated_sn="_"
+        _single=NO
       fi
       ###
-      Pln="/var/aegir/config/server_master/nginx/pre.d/z_${domain_name}_pln_proxy.conf"
-      Ssl="/var/aegir/config/server_master/nginx/pre.d/z_${domain_name}_ssl_proxy.conf"
+      _Pln="/var/aegir/config/server_master/nginx/pre.d/z_${_domain_name}_pln_proxy.conf"
+      _Ssl="/var/aegir/config/server_master/nginx/pre.d/z_${_domain_name}_ssl_proxy.conf"
       ###
-      if [ "${single}" = "YES" ]; then
-        rm -f ${Pln}
+      if [ "${_single}" = "YES" ]; then
+        rm -f ${_Pln}
       else
-        cp -af /var/xdrago/conf/pln_proxy.conf     ${Pln}
-        sed -i "s/domain_name/${domain_name}/g"    ${Pln}
+        cp -af /var/xdrago/conf/pln_proxy.conf      ${_Pln}
+        sed -i "s/_domain_name/${_domain_name}/g"   ${_Pln}
         wait
-        sed -i "s/target_ip/${target_ip}/g"        ${Pln}
+        sed -i "s/_target_ip/${_target_ip}/g"       ${_Pln}
         wait
-        sed -i "s/oct_uid/${oct_uid}/g"            ${Pln}
+        sed -i "s/_oct_uid/${_oct_uid}/g"           ${_Pln}
         wait
-        sed -i "s/oct_mail/${oct_mail}/g"          ${Pln}
+        sed -i "s/_oct_mail/${_oct_mail}/g"         ${_Pln}
         wait
-        sed -i "s/dedicated_ip/${dedicated_ip}/g"  ${Pln}
+        sed -i "s/_dedicated_ip/${_dedicated_ip}/g" ${_Pln}
         wait
-        sed -i "s/dedicated_sn/${dedicated_sn}/g"  ${Pln}
+        sed -i "s/_dedicated_sn/${_dedicated_sn}/g" ${_Pln}
         wait
-        echo OK created ${Pln}
+        echo OK created ${_Pln}
       fi
       ###
-      cp -af /var/xdrago/conf/ssl_proxy.conf       ${Ssl}
-      sed -i "s/domain_name/${domain_name}/g"      ${Ssl}
+      cp -af /var/xdrago/conf/ssl_proxy.conf        ${_Ssl}
+      sed -i "s/_domain_name/${_domain_name}/g"     ${_Ssl}
       wait
-      sed -i "s/target_ip/${target_ip}/g"          ${Ssl}
+      sed -i "s/_target_ip/${_target_ip}/g"         ${_Ssl}
       wait
-      sed -i "s/oct_uid/${oct_uid}/g"              ${Ssl}
+      sed -i "s/_oct_uid/${_oct_uid}/g"             ${_Ssl}
       wait
-      sed -i "s/oct_mail/${oct_mail}/g"            ${Ssl}
+      sed -i "s/_oct_mail/${_oct_mail}/g"           ${_Ssl}
       wait
-      sed -i "s/dedicated_ip/${dedicated_ip}/g"    ${Ssl}
+      sed -i "s/_dedicated_ip/${_dedicated_ip}/g"   ${_Ssl}
       wait
-      sed -i "s/dedicated_sn/${dedicated_sn}/g"    ${Ssl}
+      sed -i "s/_dedicated_sn/${_dedicated_sn}/g"   ${_Ssl}
       wait
       ###
-      if [ -e "${Ssl}" ]; then
-        sslFile="/etc/ssl/private/${domain_name}.dhp"
-        if [ ! -e "${sslFile}" ]; then
+      if [ -e "${_Ssl}" ]; then
+        _sslFile="/etc/ssl/private/${_domain_name}.dhp"
+        if [ ! -e "${_sslFile}" ]; then
           echo "We will generate .dhp file now, please wait..."
-          openssl dhparam -out ${sslFile} 2048 &> /dev/null
+          openssl dhparam -out ${_sslFile} 2048 &> /dev/null
         else
-          _PFS_TEST=$(grep "DH PARAMETERS" ${sslFile} 2>&1)
+          _PFS_TEST=$(grep "DH PARAMETERS" ${_sslFile} 2>&1)
           if [[ ! "${_PFS_TEST}" =~ "DH PARAMETERS" ]]; then
             echo "We will generate .dhp file now, please wait..."
-            openssl dhparam -out ${sslFile} 2048 &> /dev/null
+            openssl dhparam -out ${_sslFile} 2048 &> /dev/null
           fi
         fi
       fi
       ###
-      echo OK created ${Ssl}
+      echo OK created ${_Ssl}
       service nginx reload
     else
       echo some variables missing in the record: $p
@@ -1173,7 +1173,7 @@ sub_ssl_gen() {
   done
 }
 
-ssl_gen() {
+_ssl_gen() {
   if [ ! -e "/root/.ssl.proxy.cnf" ]; then
     echo "please create /root/.ssl.proxy.cnf first"
     exit 1
@@ -1184,14 +1184,14 @@ ssl_gen() {
     echo "file /var/xdrago/conf/ssl_proxy.conf does not exist"
     exit 1
   elif [ ! -e "/var/aegir/config/server_master/nginx/pre.d" ]; then
-    echo "vm $vm aegir master not ready"
+    echo "vms ${_vms} aegir master not ready"
     exit 1
   else
-    [ -e "/root/.ssl.proxy.cnf" ] && sub_ssl_gen
+    [ -e "/root/.ssl.proxy.cnf" ] && _sub_ssl_gen
   fi
 }
 
-check_root() {
+_check_root() {
   if [ `whoami` = "root" ]; then
     ionice -c2 -n7 -p $$
     chmod a+w /dev/null
@@ -1237,62 +1237,62 @@ check_root() {
 }
 
 case "$1" in
-  export)   cmd="$1"
-            oct="$2"
-            tgt="$3"
-            dst="$4"
-            check_root
-            migrate_init
+  export)   _cmd="$1"
+            _oct="$2"
+            _tgt="$3"
+            _dst="$4"
+            _check_root
+            _migrate_init
   ;;
-  create)   cmd="$1"
-            oct="$2"
-            tgt="$3"
-            dst="$4"
-            check_root
-            migrate_init
+  create)   _cmd="$1"
+            _oct="$2"
+            _tgt="$3"
+            _dst="$4"
+            _check_root
+            _migrate_init
   ;;
-  import)   cmd="$1"
-            oct="$2"
-            tgt="$3"
-            dst="$4"
-            fix="fix"
-            check_root
-            migrate_init
+  import)   _cmd="$1"
+            _oct="$2"
+            _tgt="$3"
+            _dst="$4"
+            _fix="fix"
+            _check_root
+            _migrate_init
   ;;
-  transfer) cmd="$1"
-            oct="$2"
-            tgt="$3"
-            dst="$4"
-            check_root
-            migrate_init
+  transfer) _cmd="$1"
+            _oct="$2"
+            _tgt="$3"
+            _dst="$4"
+            _check_root
+            _migrate_init
   ;;
-  proxy)    cmd="$1"
-            oct="$2"
-            tgt="$3"
-            dst="$4"
-            check_root
-            migrate_init
+  proxy)    _cmd="$1"
+            _oct="$2"
+            _tgt="$3"
+            _dst="$4"
+            _check_root
+            _migrate_init
   ;;
-  pre-mig)  cmd="$1"
-            hst="$2"
-            check_root
-            pre_mig
+  pre-mig)  _cmd="$1"
+            _hst="$2"
+            _check_root
+            _pre_mig
   ;;
-  post-mig) cmd="$1"
-            hst="$2"
-            check_root
-            post_mig
+  post-mig) _cmd="$1"
+            _hst="$2"
+            _check_root
+            _post_mig
   ;;
-  ssl-gen) cmd="$1"
-            vm="$2"
-            check_root
-            ssl_gen
+  ssl-gen)  _cmd="$1"
+            _vms="$2"
+            _check_root
+            _ssl_gen
   ;;
   *)        echo
-            echo "Usage: xboa {pre-mig} {fqdn} (source+target vm)"
+            echo "Usage: xboa {pre-mig} {fqdn} (source+target vms)"
             echo "Usage: xboa {export|create|transfer|proxy} {o1|shared} {target-ip} {o2}"
-            echo "Usage: xboa {import} {o1} {target-ip} (target vm)"
-            echo "Usage: xboa {post-mig} {fqdn} (source+target vm)"
+            echo "Usage: xboa {import} {o1} {target-ip} (target vms)"
+            echo "Usage: xboa {post-mig} {fqdn} (source+target vms)"
             echo
             echo "Usage: xboa {ssl-gen}"
             echo

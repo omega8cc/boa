@@ -151,24 +151,24 @@ export _WEB="${_USER}.web"
 export _DOMAIN="${_USER}.$(uname -n 2>&1)"
 export _ROOT="/data/disk/${_USER}"
 export _THIS_DB_PORT=3306
-export octCnf="/root/.${_USER}.octopus.cnf"
-export octInc="${_ROOT}/config/includes"
-export octTpl="${_ROOT}/.drush/sys/provision/http/Provision/Config/Nginx"
-export octSetTpl="${_ROOT}/.drush/sys/provision/Provision/Config/Drupal"
+export _octCnf="/root/.${_USER}.octopus.cnf"
+export _octInc="${_ROOT}/config/includes"
+export _octTpl="${_ROOT}/.drush/sys/provision/http/Provision/Config/Nginx"
+export _octSetTpl="${_ROOT}/.drush/sys/provision/Provision/Config/Drupal"
 
 
 ###
 ### Helper variables
 ###
-export bldPth="/opt/tmp/boa"
-export crlGet="-L --max-redirs 3 -k -s --retry 3 --retry-delay 5 -A iCab"
-export filIncO="octopus.sh.cnf"
-export gCb="git clone --branch"
-export gitHub="https://github.com/omega8cc"
-export gitLab="https://gitlab.com/omega8cc"
-export libFnc="${bldPth}/lib/functions"
-export tocIncO="${filIncO}.${_USER}"
-export vBs="/var/backups"
+export _bldPth="/opt/tmp/boa"
+export _crlGet="-L --max-redirs 3 -k -s --retry 3 --retry-delay 5 -A iCab"
+export _filIncO="octopus.sh.cnf"
+export _gCb="git clone --branch"
+export _gitHub="https://github.com/omega8cc"
+export _gitLab="https://gitlab.com/omega8cc"
+export _libFnc="${_bldPth}/lib/functions"
+export _tocIncO="${_filIncO}.${_USER}"
+export _vBs="/var/backups"
 
 
 ###
@@ -184,7 +184,7 @@ fi
 ###
 ### Clean pid files on exit
 ###
-clean_pid_exit() {
+_clean_pid_exit() {
   echo "REASON ${e} on $(date 2>&1)" >> /root/.octopus.sh.exit.exceptions.log
   [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
   [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
@@ -196,35 +196,35 @@ clean_pid_exit() {
 ###
 ### Panic on missing include
 ###
-panic_exit() {
+_panic_exit() {
   echo
   echo " EXIT: Required lib file not available?"
   echo " EXIT: $1"
   echo " EXIT: Cannot continue"
   echo " EXIT: Bye (0)"
   echo
-  clean_pid_exit panic_exit_a
+  _clean_pid_exit _panic_exit_a
 }
 
 
 ###
 ### Include default settings and basic functions
 ###
-if [ -e "${vBs}/${tocIncO}" ]; then
-  source "${vBs}/${tocIncO}"
-  tInc="${vBs}/${tocIncO}"
-elif [ -e "${vBs}/${filIncO}" ]; then
-  source "${vBs}/${filIncO}"
-  tInc="${vBs}/${filIncO}"
+if [ -e "${_vBs}/${_tocIncO}" ]; then
+  source "${_vBs}/${_tocIncO}"
+  _tInc="${_vBs}/${_tocIncO}"
+elif [ -e "${_vBs}/${_filIncO}" ]; then
+  source "${_vBs}/${_filIncO}"
+  _tInc="${_vBs}/${_filIncO}"
 else
-  panic_exit "${tInc}"
+  _panic_exit "${_tInc}"
 fi
 
 
 ###
 ### Download helpers and libs
 ###
-download_helpers_libs
+_download_helpers_libs
 
 
 ###
@@ -232,8 +232,8 @@ download_helpers_libs
 ###
 _FL="helper dns satellite"
 for f in ${_FL}; do
-  [ -r "${libFnc}/${f}.sh.inc" ] || panic_exit "${f}"
-  source "${libFnc}/${f}.sh.inc"
+  [ -r "${_libFnc}/${f}.sh.inc" ] || _panic_exit "${f}"
+  source "${_libFnc}/${f}.sh.inc"
 done
 
 
@@ -241,7 +241,7 @@ done
 ### Welcome msg
 ###
 echo " "
-msg "Skynet Agent v.${_X_VERSION} on $(dmidecode -s system-manufacturer 2>&1) welcomes you aboard!"
+_msg "Skynet Agent v.${_X_VERSION} on $(dmidecode -s system-manufacturer 2>&1) welcomes you aboard!"
 echo " "
 sleep 3
 
@@ -249,13 +249,13 @@ sleep 3
 ###
 ### Turn Off AppArmor while running octopus
 ###
-turn_off_apparmor_in_octopus
+_turn_off_apparmor_in_octopus
 
 
 ###
 ### Switch to bash while running octopus
 ###
-switch_to_bash_in_octopus
+_switch_to_bash_in_octopus
 
 
 ###
@@ -273,29 +273,29 @@ _STATUS=INIT
 ###
 ### Misc checks
 ###
-satellite_check_php_compatibility
-satellite_check_octopus_vs_barracuda_ver
-satellite_if_head_github_connection_test
-satellite_if_sql_exception_test
-satellite_if_running_as_root_octopus
-satellite_check_sanitize_user_name
-satellite_if_localhost_mode_magic
-satellite_check_sanitize_domain_name
-satellite_detect_vm_family
-check_git_repos
+_satellite_check_php_compatibility
+_satellite_check_octopus_vs_barracuda_ver
+_satellite_if_head_github_connection_test
+_satellite_if_sql_exception_test
+_satellite_if_running_as_root_octopus
+_satellite_check_sanitize_user_name
+_satellite_if_localhost_mode_magic
+_satellite_check_sanitize_domain_name
+_satellite_detect_vm_family
+_check_git_repos
 
 
 ###
 ### Main procedures
 ###
-satellite_cnf
-satellite_if_init_or_upgrade
-satellite_if_major_upgrade
-satellite_if_check_dns
-satellite_checkpoint
-satellite_pre_cleanup
-satellite_make
-satellite_post_cleanup
+_satellite_cnf
+_satellite_if_init_or_upgrade
+_satellite_if_major_upgrade
+_satellite_if_check_dns
+_satellite_checkpoint
+_satellite_pre_cleanup
+_satellite_make
+_satellite_post_cleanup
 exit 0
 
 

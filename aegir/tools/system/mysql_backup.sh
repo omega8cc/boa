@@ -4,7 +4,7 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
-check_root() {
+_check_root() {
   if [ `whoami` = "root" ]; then
     ionice -c2 -n7 -p $$
     renice 19 -p $$
@@ -24,7 +24,7 @@ check_root() {
     exit 1
   fi
 }
-check_root
+_check_root
 
 if [ -e "/root/.proxy.cnf" ]; then
   exit 0
@@ -52,12 +52,12 @@ else
 fi
 
 if [ "${_VMFAMILY}" = "VS" ]; then
-  n=$((RANDOM%600+8))
-  echo "INFO: Waiting $n seconds 1/2 on `date` before running backup..."
-  sleep $n
-  n=$((RANDOM%300+8))
-  echo "INFO: Waiting $n seconds 2/2 on `date` before running backup..."
-  sleep $n
+  _n=$((RANDOM%600+8))
+  echo "INFO: Waiting ${_n} seconds 1/2 on `date` before running backup..."
+  sleep ${_n}
+  _n=$((RANDOM%300+8))
+  echo "INFO: Waiting ${_n} seconds 2/2 on `date` before running backup..."
+  sleep ${_n}
 fi
 
 echo "INFO: Starting dbs backup on `date`"
@@ -94,17 +94,17 @@ touch /run/boa_sql_backup.pid
 _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
 _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
 
-create_locks() {
+_create_locks() {
   echo "INFO: Creating locks for $1"
   touch /run/mysql_backup_running.pid
 }
 
-remove_locks() {
+_remove_locks() {
   echo "INFO: Removing locks for $1"
   rm -f /run/mysql_backup_running.pid
 }
 
-check_running() {
+_check_running() {
   while [ -z "${_IS_MYSQLD_RUNNING}" ] \
     || [ ! -e "/run/mysqld/mysqld.sock" ]; do
     _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
@@ -115,8 +115,8 @@ check_running() {
   done
 }
 
-truncate_cache_tables() {
-  check_running
+_truncate_cache_tables() {
+  _check_running
   _TABLES=$(mysql ${_DB} -u root -e "show tables" -s | grep ^cache | uniq | sort 2>&1)
   for C in ${_TABLES}; do
     _IF_SKIP_C=
@@ -133,8 +133,8 @@ EOFMYSQL
   done
 }
 
-truncate_watchdog_tables() {
-  check_running
+_truncate_watchdog_tables() {
+  _check_running
   _TABLES=$(mysql ${_DB} -u root -e "show tables" -s | grep ^watchdog$ 2>&1)
   for W in ${_TABLES}; do
 mysql ${_DB}<<EOFMYSQL
@@ -143,8 +143,8 @@ EOFMYSQL
   done
 }
 
-truncate_accesslog_tables() {
-  check_running
+_truncate_accesslog_tables() {
+  _check_running
   _TABLES=$(mysql ${_DB} -u root -e "show tables" -s | grep ^accesslog$ 2>&1)
   for A in ${_TABLES}; do
 mysql ${_DB}<<EOFMYSQL
@@ -153,8 +153,8 @@ EOFMYSQL
   done
 }
 
-truncate_batch_tables() {
-  check_running
+_truncate_batch_tables() {
+  _check_running
   _TABLES=$(mysql ${_DB} -u root -e "show tables" -s | grep ^batch$ 2>&1)
   for B in ${_TABLES}; do
 mysql ${_DB}<<EOFMYSQL
@@ -163,8 +163,8 @@ EOFMYSQL
   done
 }
 
-truncate_queue_tables() {
-  check_running
+_truncate_queue_tables() {
+  _check_running
   _TABLES=$(mysql ${_DB} -u root -e "show tables" -s | grep ^queue$ 2>&1)
   for Q in ${_TABLES}; do
 mysql ${_DB}<<EOFMYSQL
@@ -173,8 +173,8 @@ EOFMYSQL
   done
 }
 
-truncate_views_data_export() {
-  check_running
+_truncate_views_data_export() {
+  _check_running
   _TABLES=$(mysql ${_DB} -u root -e "show tables" -s | grep ^views_data_export_index_ 2>&1)
   for V in ${_TABLES}; do
 mysql ${_DB}<<EOFMYSQL
@@ -186,13 +186,13 @@ TRUNCATE views_data_export_object_cache;
 EOFMYSQL
 }
 
-repair_this_database() {
-  check_running
+_repair_this_database() {
+  _check_running
   mysqlcheck -u root --auto-repair --silent ${_DB}
 }
 
-optimize_this_database() {
-  check_running
+_optimize_this_database() {
+  _check_running
   _TABLES=$(mysql ${_DB} -u root -e "show tables" -s | uniq | sort 2>&1)
   for T in ${_TABLES}; do
 mysql ${_DB}<<EOFMYSQL
@@ -201,8 +201,8 @@ EOFMYSQL
   done
 }
 
-convert_to_innodb() {
-  check_running
+_convert_to_innodb() {
+  _check_running
   _TABLES=$(mysql ${_DB} -u root -e "show tables" -s | uniq | sort 2>&1)
   for T in ${_TABLES}; do
 mysql ${_DB}<<EOFMYSQL
@@ -211,8 +211,8 @@ EOFMYSQL
   done
 }
 
-backup_this_database_with_mydumper() {
-  check_running
+_backup_this_database_with_mydumper() {
+  _check_running
   if [ ! -d "${_SAVELOCATION}/${_DB}" ]; then
     mkdir -p ${_SAVELOCATION}/${_DB}
   fi
@@ -231,8 +231,8 @@ backup_this_database_with_mydumper() {
     --verbose=1
 }
 
-backup_this_database_with_mysqldump() {
-  check_running
+_backup_this_database_with_mysqldump() {
+  _check_running
   mysqldump \
     --single-transaction \
     --quick \
@@ -243,7 +243,7 @@ backup_this_database_with_mysqldump() {
     > ${_SAVELOCATION}/${_DB}.sql
 }
 
-compress_backup() {
+_compress_backup() {
   if [ "${_MYQUICK_USE}" = "YES" ]; then
     for DbPath in `find ${_SAVELOCATION}/ -maxdepth 1 -mindepth 1 | sort`; do
       if [ -e "${DbPath}/metadata" ]; then
@@ -269,7 +269,7 @@ compress_backup() {
 
 [ ! -a ${_SAVELOCATION} ] && mkdir -p ${_SAVELOCATION};
 
-check_mysql_version() {
+_check_mysql_version() {
   _DBS_TEST=$(which mysql 2>&1)
   if [ ! -z "${_DBS_TEST}" ]; then
     _DB_SERVER_TEST=$(mysql -V 2>&1)
@@ -297,8 +297,8 @@ check_mysql_version() {
   fi
 }
 
-check_running
-check_mysql_version
+_check_running
+_check_mysql_version
 
 _MYQUICK_USE=NO
 if [ -x "/usr/local/bin/mydumper" ]; then
@@ -341,46 +341,46 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
   if [ "${_DB}" != "Database" ] \
     && [ "${_DB}" != "information_schema" ] \
     && [ "${_DB}" != "performance_schema" ]; then
-    check_running
-    create_locks ${_DB}
+    _check_running
+    _create_locks ${_DB}
     if [ "${_DB}" != "mysql" ]; then
       if [ -e "/var/lib/mysql/${_DB}/queue.ibd" ]; then
         _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/queue.ibd | grep "G" 2>&1)
         if [[ "${_IS_GB}" =~ "queue" ]]; then
-          truncate_queue_tables &> /dev/null
+          _truncate_queue_tables &> /dev/null
           echo "INFO: Truncated giant queue in ${_DB}"
         fi
       fi
       if [ -e "/var/lib/mysql/${_DB}/batch.ibd" ]; then
         _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/batch.ibd | grep "G" 2>&1)
         if [[ "${_IS_GB}" =~ "batch" ]]; then
-          truncate_batch_tables &> /dev/null
+          _truncate_batch_tables &> /dev/null
           echo "INFO: Truncated giant batch in ${_DB}"
         fi
       fi
       if [ -e "/var/lib/mysql/${_DB}/watchdog.ibd" ]; then
         _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/watchdog.ibd | grep "G" 2>&1)
         if [[ "${_IS_GB}" =~ "watchdog" ]]; then
-          truncate_watchdog_tables &> /dev/null
+          _truncate_watchdog_tables &> /dev/null
           echo "INFO: Truncated giant watchdog in ${_DB}"
         fi
       fi
       if [ -e "/var/lib/mysql/${_DB}/accesslog.ibd" ]; then
         _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/accesslog.ibd | grep "G" 2>&1)
         if [[ "${_IS_GB}" =~ "accesslog" ]]; then
-          truncate_accesslog_tables &> /dev/null
+          _truncate_accesslog_tables &> /dev/null
           echo "INFO: Truncated giant accesslog in ${_DB}"
         fi
       fi
-      truncate_views_data_export &> /dev/null
+      _truncate_views_data_export &> /dev/null
       echo "INFO: Truncated not used views_data_export in ${_DB}"
       _CACHE_CLEANUP=NONE
       if [ "${_DOW}" = "6" ] && [ -e "/root/.my.batch_innodb.cnf" ]; then
-        repair_this_database &> /dev/null
+        _repair_this_database &> /dev/null
         echo "INFO: Repair task for ${_DB} completed"
-        truncate_cache_tables &> /dev/null
+        _truncate_cache_tables &> /dev/null
         echo "INFO: All cache tables in ${_DB} truncated"
-        convert_to_innodb &> /dev/null
+        _convert_to_innodb &> /dev/null
         echo "INFO: InnoDB conversion task for ${_DB} completed"
         _CACHE_CLEANUP=DONE
       fi
@@ -388,25 +388,25 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
         && [ "${_DOW}" = "7" ] \
         && [ "${_DOM}" -ge "24" ] \
         && [ "${_DOM}" -lt "31" ]; then
-        repair_this_database &> /dev/null
+        _repair_this_database &> /dev/null
         echo "INFO: Repair task for ${_DB} completed"
-        truncate_cache_tables &> /dev/null
+        _truncate_cache_tables &> /dev/null
         echo "INFO: All cache tables in ${_DB} truncated"
-        optimize_this_database &> /dev/null
+        _optimize_this_database &> /dev/null
         echo "INFO: Optimize task for ${_DB} completed"
         _CACHE_CLEANUP=DONE
       fi
       if [ "${_CACHE_CLEANUP}" != "DONE" ]; then
-        truncate_cache_tables &> /dev/null
+        _truncate_cache_tables &> /dev/null
         echo "INFO: All cache tables in ${_DB} truncated"
       fi
     fi
     if [ "${_MYQUICK_USE}" = "YES" ]; then
-      backup_this_database_with_mydumper &> /dev/null
+      _backup_this_database_with_mydumper &> /dev/null
     else
-      backup_this_database_with_mysqldump &> /dev/null
+      _backup_this_database_with_mysqldump &> /dev/null
     fi
-    remove_locks ${_DB}
+    _remove_locks ${_DB}
     echo "INFO: Backup completed for ${_DB}"
     echo
   fi
@@ -422,8 +422,8 @@ if [ "${_OPTIM}" = "YES" ] \
   && [ "${_DOM}" -lt "31" ] \
   && [ -e "/root/.my.restart_after_optimize.cnf" ] \
   && [ ! -e "/run/boa_run.pid" ]; then
-  check_running
-  check_mysql_version
+  _check_running
+  _check_mysql_version
   echo "INFO: Running db server restart on `date`"
   bash /var/xdrago/move_sql.sh
   wait
@@ -435,12 +435,12 @@ rm -f /run/boa_sql_backup.pid
 touch /var/xdrago/log/last-run-backup
 
 if [ "${_VMFAMILY}" = "VS" ]; then
-  n=$((RANDOM%300+8))
-  echo "INFO: Waiting $n seconds on `date` before running compress..."
-  sleep $n
+  _n=$((RANDOM%300+8))
+  echo "INFO: Waiting ${_n} seconds on `date` before running compress..."
+  sleep ${_n}
 fi
 echo "INFO: Starting dbs backup compress on `date`"
-compress_backup &> /dev/null
+_compress_backup &> /dev/null
 echo "INFO: Completing dbs backup compress on `date`"
 
 echo "INFO: Starting dbs backup cleanup on `date`"

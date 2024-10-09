@@ -1,27 +1,27 @@
 
-export tRee=pro
-rlsn="BOA-5.4.0"
-rlse="${rlsn}-${tRee}"
-export rlsn="${rlsn}"
+export _tRee=dev
+export _rLsn="BOA-5.4.0"
+export _rlsE="${_rLsn}-${_tRee}"
+export _bRnh="5.x-${_tRee}"
 
 #
 # Download and extract from core archive.
-get_core_ext() {
+_get_core_ext() {
   if [ ! -z "$1" ]; then
-    curl ${crlGet} "http://${_USE_MIR}/core/$1" -o "$1"
+    curl ${_crlGet} "http://${_USE_MIR}/core/$1" -o "$1"
     if [ -e "$1" ]; then
-      extract_archive "$1"
+      _extract_archive "$1"
     else
-      msg "OOPS: $1 failed download from http://${_USE_MIR}/core/$1"
+      _msg "OOPS: $1 failed download from http://${_USE_MIR}/core/$1"
     fi
   fi
 }
 
 #
 # Generate provision backend db_passwd.
-provision_backend_dbpass_generate() {
+_provision_backend_dbpass_generate() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: provision_backend_dbpass_generate"
+    _msg "PROC: _provision_backend_dbpass_generate"
   fi
   _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
   _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
@@ -59,7 +59,7 @@ provision_backend_dbpass_generate() {
         else
           _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
           _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
-          _ESC_PASS=$(sanitize_string "${_ESC_PASS}" 2>&1)
+          _ESC_PASS=$(_sanitize_string "${_ESC_PASS}" 2>&1)
         fi
       fi
     else
@@ -69,12 +69,12 @@ provision_backend_dbpass_generate() {
         _ESC_PASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
       fi
     fi
-    isPythonTwo=$(which python2 2>&1)
-    isPythonThree=$(which python3 2>&1)
+    _isPythonTwo=$(which python2 2>&1)
+    _isPythonThree=$(which python3 2>&1)
     _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
-    if [ -x "${isPythonThree}" ]; then
+    if [ -x "${_isPythonThree}" ]; then
       _ENC_PASS=$(python3 -c "import urllib.parse; print(urllib.parse.quote('''${_ESC_PASS}'''))")
-    elif [ -x "${isPythonTwo}" ]; then
+    elif [ -x "${_isPythonTwo}" ]; then
       _ENC_PASS=$(python2 -c "import urllib; print urllib.quote('''${_ESC_PASS}''')")
     fi
     _LEN_PASS=$(echo ${#_ESC_PASS} 2>&1)
@@ -87,7 +87,7 @@ provision_backend_dbpass_generate() {
       || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
       _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
       _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
-      _ESC_PASS=$(sanitize_string "${_ESC_PASS}" 2>&1)
+      _ESC_PASS=$(_sanitize_string "${_ESC_PASS}" 2>&1)
     else
       if [ -e "/root/.my.pass.txt" ]; then
         _ESC_PASS=$(cat /root/.my.pass.txt 2>&1)
@@ -210,7 +210,7 @@ EOFMYSQL
     _EXTRA_GRANTS=NO
   else
     _LOCAL_HOST=$(uname -n 2>&1)
-    find_correct_ip
+    _find_correct_ip
     _LOCAL_IP="${_LOC_IP}"
     [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL9 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
     if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
@@ -243,17 +243,17 @@ EOFMYSQL
 
 #
 # Sync provision backend db_passwd.
-provision_backend_dbpass_sync() {
+_provision_backend_dbpass_sync() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: provision_backend_dbpass_sync"
+    _msg "PROC: _provision_backend_dbpass_sync"
   fi
   _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
   _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
-  find_correct_ip
+  _find_correct_ip
   _USE_RESOLVEIP="${_LOC_IP}"
   _RESOLVEIP="${_LOC_IP}"
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "INFO: Syncing provision backend db_passwd..."
+    _msg "INFO: Syncing provision backend db_passwd..."
   fi
   if [ -e "/var/aegir/use_proxysql.txt" ]; then
     _SQL_CONNECT=127.0.0.1
@@ -263,8 +263,8 @@ provision_backend_dbpass_sync() {
   fi
   _ADBU=aegir_root
   _L_SYS="/var/aegir/backups/system/.${_ADBU}.pass.txt"
-  mv -f ${_L_SYS} ${_L_SYS}-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
-  provision_backend_dbpass_generate
+  mv -f ${_L_SYS} ${_L_SYS}-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
+  _provision_backend_dbpass_generate
   if [ ! -z "${_ESC_PASS}" ] && [ ! -z "${_ENC_PASS}" ]; then
     su -s /bin/bash - aegir -c "drush8 @hostmaster \
       sqlq \"UPDATE hosting_db_server SET db_passwd='${_ESC_PASS}' \
@@ -326,7 +326,7 @@ EOFMYSQL
   fi
   wait
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "INFO: Running hosting-dispatch/hosting-tasks..."
+    _msg "INFO: Running hosting-dispatch/hosting-tasks..."
   fi
   su -s /bin/bash - aegir -c "drush8 @hostmaster hosting-dispatch" &> /dev/null
   wait
@@ -343,12 +343,12 @@ EOFMYSQL
 
 #
 # Sync hostmaster frontend db_passwd.
-hostmaster_frontend_dbpass_sync() {
+_hostmaster_frontend_dbpass_sync() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: hostmaster_frontend_dbpass_sync"
+    _msg "PROC: _hostmaster_frontend_dbpass_sync"
   fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "INFO: Syncing hostmaster frontend db_passwd..."
+    _msg "INFO: Syncing hostmaster frontend db_passwd..."
   fi
   _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
   _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
@@ -421,80 +421,80 @@ EOFMYSQL
 
 #
 # Download for Drush Make Local build.
-master_download_for_local_build() {
+_master_download_for_local_build() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: master_download_for_local_build"
+    _msg "PROC: _master_download_for_local_build"
   fi
-  mL="/opt/tmp/make_local"
-  if [ ! -e "${mL}/hosting/hosting.info" ] \
-    || [ ! -e "${mL}/hosting_custom_settings/hosting_custom_settings.info" ]; then
-    rm -rf ${mL}
-    mkdir -p ${mL}
-    cd ${mL}
+  _mL="/opt/tmp/make_local"
+  if [ ! -e "${_mL}/hosting/hosting.info" ] \
+    || [ ! -e "${_mL}/hosting_custom_settings/hosting_custom_settings.info" ]; then
+    rm -rf ${_mL}
+    mkdir -p ${_mL}
+    cd ${_mL}
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "INFO: Downloading hostmaster modules..."
+      _msg "INFO: Downloading hostmaster modules..."
     fi
     ### Drupal Core
-    get_core_ext "${_DRUPAL7}.tar.gz"
-    mv -f ${mL}/${_DRUPAL7} ${mL}/drupal
+    _get_core_ext "${_DRUPAL7}.tar.gz"
+    mv -f ${_mL}/${_DRUPAL7} ${_mL}/drupal
     ### Aegir Core
-      ${gCb} 5.x-${tRee} ${gitHub}/hostmaster.git    &> /dev/null
-      ${gCb} 5.x-${tRee} ${gitHub}/hosting.git       &> /dev/null
-      ${gCb} 5.x-${tRee} ${gitHub}/eldir.git         &> /dev/null
+      ${_gCb} 5.x-${_tRee} ${_gitHub}/hostmaster.git    &> /dev/null
+      ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting.git       &> /dev/null
+      ${_gCb} 5.x-${_tRee} ${_gitHub}/eldir.git         &> /dev/null
     ### Aegir Golden + BOA Settings
-      ${gCb} 5.x-${tRee} ${gitHub}/aegir_objects.git                  &> /dev/null
-      ${gCb} 5.x-${tRee} ${gitHub}/hosting_civicrm.git                &> /dev/null
-      ${gCb} 5.x-${tRee} ${gitHub}/hosting_custom_settings.git        &> /dev/null
-      ${gCb} 5.x-${tRee} ${gitHub}/hosting_deploy.git                 &> /dev/null
-      ${gCb} 5.x-${tRee} ${gitHub}/hosting_git.git                    &> /dev/null
-      ${gCb} 5.x-${tRee} ${gitHub}/hosting_le.git                     &> /dev/null
-      ${gCb} 5.x-${tRee} ${gitHub}/hosting_remote_import.git          &> /dev/null
-      ${gCb} 5.x-${tRee} ${gitHub}/hosting_site_backup_manager.git    &> /dev/null
-      ${gCb} 5.x-${tRee} ${gitHub}/hosting_tasks_extra.git            &> /dev/null
+      ${_gCb} 5.x-${_tRee} ${_gitHub}/aegir_objects.git                  &> /dev/null
+      ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_civicrm.git                &> /dev/null
+      ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_custom_settings.git        &> /dev/null
+      ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_deploy.git                 &> /dev/null
+      ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_git.git                    &> /dev/null
+      ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_le.git                     &> /dev/null
+      ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_remote_import.git          &> /dev/null
+      ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_site_backup_manager.git    &> /dev/null
+      ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_tasks_extra.git            &> /dev/null
       rm -rf */.git
     ### Aegir Drupal Contrib
-    get_dev_stc "admin_menu-7.x-3.0-rc7.tar.gz"
-    get_dev_stc "betterlogin-7.x-1.5.tar.gz"
-    get_dev_stc "ctools-7.x-1.21.tar.gz"
-    get_dev_stc "entity-7.x-1.11.tar.gz"
-    get_dev_stc "libraries-7.x-2.5.tar.gz"
-    get_dev_stc "module_filter-7.x-2.3.tar.gz"
-    get_dev_stc "openidadmin-7.x-1.0.tar.gz"
-    get_dev_stc "overlay_paths-7.x-1.3.tar.gz"
-    get_dev_stc "r4032login-7.x-1.8.tar.gz"
-    get_dev_stc "tfa_basic-7.x-1.1.tar.gz"
-    get_dev_stc "tfa-7.x-2.1.tar.gz"
-    get_dev_stc "timeago-7.x-2.3.tar.gz"
-    get_dev_stc "views_bulk_operations-7.x-3.7.tar.gz"
-    get_dev_stc "views-7.x-3.29.tar.gz"
+    _get_dev_stc "admin_menu-7.x-3.0-rc7.tar.gz"
+    _get_dev_stc "betterlogin-7.x-1.5.tar.gz"
+    _get_dev_stc "ctools-7.x-1.21.tar.gz"
+    _get_dev_stc "entity-7.x-1.11.tar.gz"
+    _get_dev_stc "libraries-7.x-2.5.tar.gz"
+    _get_dev_stc "module_filter-7.x-2.3.tar.gz"
+    _get_dev_stc "openidadmin-7.x-1.0.tar.gz"
+    _get_dev_stc "overlay_paths-7.x-1.3.tar.gz"
+    _get_dev_stc "r4032login-7.x-1.8.tar.gz"
+    _get_dev_stc "tfa_basic-7.x-1.1.tar.gz"
+    _get_dev_stc "tfa-7.x-2.1.tar.gz"
+    _get_dev_stc "timeago-7.x-2.3.tar.gz"
+    _get_dev_stc "views_bulk_operations-7.x-3.7.tar.gz"
+    _get_dev_stc "views-7.x-3.29.tar.gz"
     ### BOA Drupal Contrib
-    get_dev_stc "features_extra-7.x-1.0.tar.gz"
-    get_dev_stc "features-7.x-2.15.tar.gz"
-    get_dev_stc "idna_convert-7.x-1.0.tar.gz"
-    get_dev_stc "revision_deletion-7.x-1.3.tar.gz"
-    get_dev_stc "strongarm-7.x-2.0.tar.gz"
-    get_dev_stc "userprotect-7.x-1.3.tar.gz"
+    _get_dev_stc "features_extra-7.x-1.0.tar.gz"
+    _get_dev_stc "features-7.x-2.15.tar.gz"
+    _get_dev_stc "idna_convert-7.x-1.0.tar.gz"
+    _get_dev_stc "revision_deletion-7.x-1.3.tar.gz"
+    _get_dev_stc "strongarm-7.x-2.0.tar.gz"
+    _get_dev_stc "userprotect-7.x-1.3.tar.gz"
   fi
-  find ${mL} -type d -exec chmod 0755 {} \; &> /dev/null
-  find ${mL} -type f -exec chmod 0644 {} \; &> /dev/null
-  chown -R root:root ${mL}
+  find ${_mL} -type d -exec chmod 0755 {} \; &> /dev/null
+  find ${_mL} -type f -exec chmod 0644 {} \; &> /dev/null
+  chown -R root:root ${_mL}
 }
 
 #
 # Upgrade Aegir Master Instance.
-aegir_master_upgrade() {
+_aegir_master_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: aegir_master_upgrade"
+    _msg "PROC: _aegir_master_upgrade"
   fi
   _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
   _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
-  if prompt_yes_no "Do you want to upgrade Aegir Master Instance?" ; then
+  if _prompt_yes_no "Do you want to upgrade Aegir Master Instance?" ; then
     true
-    msg "INFO: Running Aegir Master Instance upgrade"
+    _msg "INFO: Running Aegir Master Instance upgrade"
     if [ -x "/usr/bin/mysql_upgrade" ]; then
-      check_mysql_version
+      _check_mysql_version
       if [ "${_DB_V}" = "5.7" ]; then
-        mrun "mysql_upgrade -u root --force" &> /dev/null
+        _mrun "mysql_upgrade -u root --force" &> /dev/null
       fi
     fi
     if [ -e "/var/aegir/use_proxysql.txt" ]; then
@@ -509,8 +509,8 @@ aegir_master_upgrade() {
     if [[ ! "${_VAR_IF_PRESENT}" =~ "aegir ALL=NOPASSWD" ]]; then
       echo "aegir ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
     fi
-    SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership lock-local-drush-permissions)
-    for SCRIPT in ${SCRIPTS[@]}; do
+    _SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership lock-local-drush-permissions)
+    for SCRIPT in ${_SCRIPTS[@]}; do
       _VAR_IF_PRESENT=$(grep "aegir ALL=NOPASSWD: /usr/local/bin/${SCRIPT}.sh" /etc/sudoers.d/${SCRIPT} 2>&1)
       if [[ ! "${_VAR_IF_PRESENT}" =~ "aegir ALL=NOPASSWD" ]]; then
         echo "aegir ALL=NOPASSWD: /usr/local/bin/${SCRIPT}.sh" >> /etc/sudoers.d/${SCRIPT}
@@ -522,13 +522,13 @@ aegir_master_upgrade() {
       rm -rf /var/aegir/.drush/{sys,xts,usr}
       rm -rf /var/aegir/.drush/{provision,drush_make}
       mkdir -p /var/aegir/.drush/{sys,xts,usr}
-      ${gCb} ${_BRANCH_PRN} ${gitHub}/provision.git \
+      ${_gCb} ${_BRANCH_PRN} ${_gitHub}/provision.git \
         /var/aegir/.drush/sys/provision &> /dev/null
       sed -i "s/files.aegir.cc/${_USE_MIR}/g" \
         /var/aegir/.drush/sys/provision/aegir.make &> /dev/null
       rm -rf /var/aegir/drush
       cd /var/aegir
-      get_dev_ext "drush-${_DRUSH_VERSION}.tar.gz"
+      _get_dev_ext "drush-${_DRUSH_VERSION}.tar.gz"
       cd /var/aegir/drush/
       find /var/aegir/drush -type d -exec chmod 0755 {} \; &> /dev/null
       find /var/aegir/drush -type f -exec chmod 0644 {} \; &> /dev/null
@@ -566,76 +566,76 @@ aegir_master_upgrade() {
     chown -R aegir:www-data ${_THIS_HM_SITE}/files
     chmod -R 02775 ${_THIS_HM_SITE}/files
 
-    export _X_SE=540proT03
+    export _xSrl=540devT03
     export _X_VERSION="${_X_VERSION}"
 
-    echo "_AEGIR_VERSION=\"${_AEGIR_VERSION}\""         >> ${vBs}/${filIncB}
-    echo "_AEGIR_XTS_VRN=\"${_AEGIR_XTS_VRN}\""         >> ${vBs}/${filIncB}
-    echo "_BOA_REPO_GIT_URL=\"${_BOA_REPO_GIT_URL}\""   >> ${vBs}/${filIncB}
-    echo "_BOA_REPO_NAME=\"${_BOA_REPO_NAME}\""         >> ${vBs}/${filIncB}
-    echo "_BRANCH_BOA=\"${_BRANCH_BOA}\""               >> ${vBs}/${filIncB}
-    echo "_BRANCH_PRN=\"${_BRANCH_PRN}\""               >> ${vBs}/${filIncB}
-    echo "_DEBUG_MODE=\"${_DEBUG_MODE}\""               >> ${vBs}/${filIncB}
-    echo "_DOMAIN=\"${_THIS_FRONT}\""                   >> ${vBs}/${filIncB}
-    echo "_DRUPAL7=\"${_DRUPAL7}\""                     >> ${vBs}/${filIncB}
-    echo "_DRUSH_VERSION=\"${_DRUSH_VERSION}\""         >> ${vBs}/${filIncB}
-    echo "_NOW=\"${_NOW}\""                             >> ${vBs}/${filIncB}
-    echo "_PHP_CLI_VERSION=\"${_PHP_CLI_VERSION}\""     >> ${vBs}/${filIncB}
-    echo "_PHP_FPM_VERSION=\"${_PHP_FPM_VERSION}\""     >> ${vBs}/${filIncB}
-    echo "_SMALLCORE7_V=\"${_SMALLCORE7_V}\""           >> ${vBs}/${filIncB}
-    echo "_STRONG_PASSWORDS=\"${_STRONG_PASSWORDS}\""   >> ${vBs}/${filIncB}
-    echo "_THIS_DB_HOST=\"${_THIS_DB_HOST}\""           >> ${vBs}/${filIncB}
-    echo "_USE_MIR=\"${_USE_MIR}\""                     >> ${vBs}/${filIncB}
-    echo "_X_SE=\"${_X_SE}\""                           >> ${vBs}/${filIncB}
-    echo "_X_VERSION=\"${_X_VERSION}\""                 >> ${vBs}/${filIncB}
+    echo "_AEGIR_VERSION=\"${_AEGIR_VERSION}\""         >> ${_vBs}/${_filIncB}
+    echo "_AEGIR_XTS_VRN=\"${_tRee}\""                  >> ${_vBs}/${_filIncB}
+    echo "_BOA_REPO_GIT_URL=\"${_BOA_REPO_GIT_URL}\""   >> ${_vBs}/${_filIncB}
+    echo "_BOA_REPO_NAME=\"${_BOA_REPO_NAME}\""         >> ${_vBs}/${_filIncB}
+    echo "_BRANCH_BOA=\"${_BRANCH_BOA}\""               >> ${_vBs}/${_filIncB}
+    echo "_BRANCH_PRN=\"${_BRANCH_PRN}\""               >> ${_vBs}/${_filIncB}
+    echo "_DEBUG_MODE=\"${_DEBUG_MODE}\""               >> ${_vBs}/${_filIncB}
+    echo "_DOMAIN=\"${_THIS_FRONT}\""                   >> ${_vBs}/${_filIncB}
+    echo "_DRUPAL7=\"${_DRUPAL7}\""                     >> ${_vBs}/${_filIncB}
+    echo "_DRUSH_VERSION=\"${_DRUSH_VERSION}\""         >> ${_vBs}/${_filIncB}
+    echo "_NOW=\"${_NOW}\""                             >> ${_vBs}/${_filIncB}
+    echo "_PHP_CLI_VERSION=\"${_PHP_CLI_VERSION}\""     >> ${_vBs}/${_filIncB}
+    echo "_PHP_FPM_VERSION=\"${_PHP_FPM_VERSION}\""     >> ${_vBs}/${_filIncB}
+    echo "_SMALLCORE7_V=\"${_SMALLCORE7_V}\""           >> ${_vBs}/${_filIncB}
+    echo "_STRONG_PASSWORDS=\"${_STRONG_PASSWORDS}\""   >> ${_vBs}/${_filIncB}
+    echo "_THIS_DB_HOST=\"${_THIS_DB_HOST}\""           >> ${_vBs}/${_filIncB}
+    echo "_USE_MIR=\"${_USE_MIR}\""                     >> ${_vBs}/${_filIncB}
+    echo "_xSrl=\"${_xSrl}\""                           >> ${_vBs}/${_filIncB}
+    echo "_X_VERSION=\"${_X_VERSION}\""                 >> ${_vBs}/${_filIncB}
 
     mysqladmin -u root flush-hosts &> /dev/null
     _RST=$(syncpass fix aegir 2>&1)
-    find_correct_ip
+    _find_correct_ip
     _USE_RESOLVEIP="${_LOC_IP}"
     _RESOLVEIP="${_LOC_IP}"
-    provision_backend_dbpass_sync
-    hostmaster_frontend_dbpass_sync
-    master_download_for_local_build
+    _provision_backend_dbpass_sync
+    _hostmaster_frontend_dbpass_sync
+    _master_download_for_local_build
 
     ###
-    AegirUpgrade="${bldPth}/aegir/scripts/AegirUpgrade.sh.txt"
+    AegirUpgrade="${_bldPth}/aegir/scripts/AegirUpgrade.sh.txt"
     su -s /bin/bash - aegir -c "/bin/bash ${AegirUpgrade} aegir"
     wait
     ###
 
     if [ -e "/opt/tmp/status-AegirUpgrade-FAIL" ]; then
-      msg "FATAL ERROR: AegirUpgrade installer failed"
-      msg "FATAL ERROR: Aborting Barracuda installer NOW!"
+      _msg "FATAL ERROR: AegirUpgrade installer failed"
+      _msg "FATAL ERROR: Aborting Barracuda installer NOW!"
       touch /opt/tmp/status-Barracuda-FAIL
-      clean_pid_exit aegir_master_upgrade_a
+      _clean_pid_exit _aegir_master_upgrade_a
     else
       chattr +i ${_U_HD}/php.ini
-      hostmaster_frontend_dbpass_sync
+      _hostmaster_frontend_dbpass_sync
     fi
-    if [ ! -L "${mtrInc}/global.inc" ] && [ -e "${mtrInc}/global.inc" ]; then
-      mv -f ${mtrInc}/global.inc \
-        ${mtrInc}/global.inc-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
+    if [ ! -L "${_mtrInc}/global.inc" ] && [ -e "${_mtrInc}/global.inc" ]; then
+      mv -f ${_mtrInc}/global.inc \
+        ${_mtrInc}/global.inc-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
     fi
     mkdir -p /data/conf
-    cp -af ${locCnf}/global/global.inc /data/conf/global.inc
+    cp -af ${_locCnf}/global/global.inc /data/conf/global.inc
     sed -i "s/3600/${_SPEED_VALID_MAX}/g" /data/conf/global.inc &> /dev/null
-    if [ -e "${mtrInc}" ] && [ ! -L "${mtrInc}/global.inc" ] \
+    if [ -e "${_mtrInc}" ] && [ ! -L "${_mtrInc}/global.inc" ] \
       && [ -e "/data/conf/global.inc" ]; then
-      ln -sfn /data/conf/global.inc ${mtrInc}/global.inc
+      ln -sfn /data/conf/global.inc ${_mtrInc}/global.inc
     fi
-    redis_password_update
-    force_advanced_nginx_config
+    _redis_password_update
+    _force_advanced_nginx_config
     cd /var/aegir
-    if [ -d "${mtrNgx}/conf.d" ]; then
-      if [ ! -d "${mtrNgx}/pre.d" ]; then
-        cd ${mtrNgx}
+    if [ -d "${_mtrNgx}/conf.d" ]; then
+      if [ ! -d "${_mtrNgx}/pre.d" ]; then
+        cd ${_mtrNgx}
         cp -a conf.d pre.d
       else
-        rm -rf ${mtrNgx}/conf.d
+        rm -rf ${_mtrNgx}/conf.d
       fi
-      if [ -e "${mtrNgx}/pre.d/custom_nginx.conf" ]; then
-        rm -f ${mtrNgx}/pre.d/custom_nginx.conf
+      if [ -e "${_mtrNgx}/pre.d/custom_nginx.conf" ]; then
+        rm -f ${_mtrNgx}/pre.d/custom_nginx.conf
       fi
     fi
     find /var/aegir/host_master/*/profiles/* -type d -exec chmod 0755 {} \; &> /dev/null
@@ -647,18 +647,18 @@ aegir_master_upgrade() {
     find /var/aegir/.drush -type f -exec chmod 0644 {} \; &> /dev/null
     chmod 0440 /var/aegir/.drush/*.php &> /dev/null
     chmod 0711 /var/aegir/.drush &> /dev/null
-    msg "INFO: Aegir Master Instance upgrade completed"
+    _msg "INFO: Aegir Master Instance upgrade completed"
   else
-    msg "INFO: Aegir Master Instance not upgraded this time"
+    _msg "INFO: Aegir Master Instance not upgraded this time"
   fi
   rm -f /var/aegir/*install.sh.txt
 }
 
 #
 # Update php-cli in the cron entry.
-php_cli_cron_update() {
+_php_cli_cron_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: php_cli_cron_update"
+    _msg "PROC: _php_cli_cron_update"
   fi
   rm -f /var/spool/cron/crontabs/aegir
   if [ ! -e "/var/spool/cron/crontabs/aegir" ]; then
@@ -689,9 +689,9 @@ php_cli_cron_update() {
   fi
 }
 
-aegir_master_install_upgrade() {
+_aegir_master_install_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: aegir_master_install_upgrade"
+    _msg "PROC: _aegir_master_install_upgrade"
   fi
   _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
   _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
@@ -701,24 +701,24 @@ aegir_master_install_upgrade() {
   ###--------------------###
     if [ ! -e "/run/mysqld/mysqld.pid" ] \
       || [ ! -e "/run/mysqld/mysqld.sock" ]; then
-      msg "ALRT! ${_DB_SERVER} server not running properly!"
-      msg "EXIT: We can't proceed and will exit now"
-      msg "HINT: Please check ${_LOG} for more information,"
-      msg "HINT: (re)start ${_DB_SERVER} server, then run the installer again"
-      msg "Bye"
+      _msg "ALRT! ${_DB_SERVER} server not running properly!"
+      _msg "EXIT: We can't proceed and will exit now"
+      _msg "HINT: Please check ${_LOG} for more information,"
+      _msg "HINT: (re)start ${_DB_SERVER} server, then run the installer again"
+      _msg "Bye"
       [ -e "/root/.my.pass.txt" ] && rm -f /root/.my.pass.txt
       mkdir -p /var/aegir
-      clean_pid_exit aegir_master_install_upgrade_a
+      _clean_pid_exit _aegir_master_install_upgrade_a
     fi
 
   ###--------------------###
-    msg "INFO: Installing Aegir Master Instance..."
+    _msg "INFO: Installing Aegir Master Instance..."
     adduser --system --group --home /var/aegir aegir &> /dev/null
     usermod -aG www-data aegir
     usermod -aG users aegir
     echo "aegir ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
     ln -sfn /var/aegir/config/nginx.conf /etc/nginx/conf.d/aegir.conf &> /dev/null
-    nginx_conf_update
+    _nginx_conf_update
 
     if [ "${_THIS_DB_HOST}" = "localhost" ] \
       || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
@@ -746,11 +746,11 @@ aegir_master_install_upgrade() {
       _SQL_CONNECT=localhost
     fi
 
-    find_correct_ip
+    _find_correct_ip
     _RESOLVEIP="${_LOC_IP}"
     if [ -z "${_RESOLVEIP}" ]; then
-      msg "FATAL ERROR: DNS looks broken for server ${_AEGIR_HOST}"
-      clean_pid_exit aegir_master_install_upgrade_b
+      _msg "FATAL ERROR: DNS looks broken for server ${_AEGIR_HOST}"
+      _clean_pid_exit _aegir_master_install_upgrade_b
     else
       _AEGIR_HOST_IP="${_RESOLVEIP}"
     fi
@@ -759,11 +759,11 @@ aegir_master_install_upgrade() {
       _MYSQLTEST=$(mysql --silent -u root -h${_AEGIR_HOST_IP} -uINVALIDLOGIN -pINVALIDPASS 2>&1 >/dev/null | cat)
       if [ -z `echo ${_MYSQLTEST} | grep -q "ERROR \(2003\|1130\)"` ]; then
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "INFO: ${_DB_SERVER} is listening on ${_AEGIR_HOST_IP}."
+          _msg "INFO: ${_DB_SERVER} is listening on ${_AEGIR_HOST_IP}."
         fi
       else
-        msg "FATAL ERROR: ${_DB_SERVER} is not configured to listen on ${_AEGIR_HOST_IP}"
-        clean_pid_exit aegir_master_install_upgrade_c
+        _msg "FATAL ERROR: ${_DB_SERVER} is not configured to listen on ${_AEGIR_HOST_IP}"
+        _clean_pid_exit _aegir_master_install_upgrade_c
       fi
     fi
 
@@ -802,7 +802,7 @@ aegir_master_install_upgrade() {
           else
             _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
             _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
-            _ESC_PASS=$(sanitize_string "${_ESC_PASS}" 2>&1)
+            _ESC_PASS=$(_sanitize_string "${_ESC_PASS}" 2>&1)
           fi
         fi
       else
@@ -823,7 +823,7 @@ aegir_master_install_upgrade() {
         || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
         _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
         _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
-        _ESC_PASS=$(sanitize_string "${_ESC_PASS}" 2>&1)
+        _ESC_PASS=$(_sanitize_string "${_ESC_PASS}" 2>&1)
       else
         if [ -e "/root/.my.pass.txt" ]; then
           _ESC_PASS=$(cat /root/.my.pass.txt 2>&1)
@@ -867,7 +867,7 @@ EOFMYSQL
       _EXTRA_GRANTS=NO
     else
       _LOCAL_HOST=$(uname -n 2>&1)
-      find_correct_ip
+      _find_correct_ip
       _LOCAL_IP="${_LOC_IP}"
       [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL13 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
       if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
@@ -896,36 +896,36 @@ ALTER USER '${_AEGIR_DB_USER}'@'%' IDENTIFIED BY '${_ESC_PASS}';
 EOFMYSQL
     fi
 
-    export _X_SE=540proT03
+    export _xSrl=540devT03
     export _X_VERSION="${_X_VERSION}"
 
-    echo "_AEGIR_DB_USER=\"${_AEGIR_DB_USER}\""         >> ${vBs}/${filIncB}
-    echo "_AEGIR_HOST=\"${_AEGIR_HOST}\""               >> ${vBs}/${filIncB}
-    echo "_AEGIR_VERSION=\"${_AEGIR_VERSION}\""         >> ${vBs}/${filIncB}
-    echo "_AEGIR_XTS_VRN=\"${_AEGIR_XTS_VRN}\""         >> ${vBs}/${filIncB}
-    echo "_BOA_REPO_GIT_URL=\"${_BOA_REPO_GIT_URL}\""   >> ${vBs}/${filIncB}
-    echo "_BOA_REPO_NAME=\"${_BOA_REPO_NAME}\""         >> ${vBs}/${filIncB}
-    echo "_BRANCH_BOA=\"${_BRANCH_BOA}\""               >> ${vBs}/${filIncB}
-    echo "_BRANCH_PRN=\"${_BRANCH_PRN}\""               >> ${vBs}/${filIncB}
-    echo "_DEBUG_MODE=\"${_DEBUG_MODE}\""               >> ${vBs}/${filIncB}
-    echo "_DOMAIN=\"${_THIS_FRONT}\""                   >> ${vBs}/${filIncB}
-    echo "_DRUSH_VERSION=\"${_DRUSH_VERSION}\""         >> ${vBs}/${filIncB}
-    echo "_ESC_PASS=\"${_ESC_PASS}\""                   >> ${vBs}/${filIncB}
-    echo "_LOCAL_NETWORK_IP=\"${_LOCAL_NETWORK_IP}\""   >> ${vBs}/${filIncB}
-    echo "_MY_OWNIP=\"${_MY_OWNIP}\""                   >> ${vBs}/${filIncB}
-    echo "_NOW=\"${_NOW}\""                             >> ${vBs}/${filIncB}
-    echo "_PHP_CLI_VERSION=\"${_PHP_CLI_VERSION}\""     >> ${vBs}/${filIncB}
-    echo "_PHP_FPM_VERSION=\"${_PHP_FPM_VERSION}\""     >> ${vBs}/${filIncB}
-    echo "_STRONG_PASSWORDS=\"${_STRONG_PASSWORDS}\""   >> ${vBs}/${filIncB}
-    echo "_THIS_DB_HOST=\"${_THIS_DB_HOST}\""           >> ${vBs}/${filIncB}
-    echo "_USE_MIR=\"${_USE_MIR}\""                     >> ${vBs}/${filIncB}
-    echo "_X_SE=\"${_X_SE}\""                           >> ${vBs}/${filIncB}
-    echo "_X_VERSION=\"${_X_VERSION}\""                 >> ${vBs}/${filIncB}
+    echo "_AEGIR_DB_USER=\"${_AEGIR_DB_USER}\""         >> ${_vBs}/${_filIncB}
+    echo "_AEGIR_HOST=\"${_AEGIR_HOST}\""               >> ${_vBs}/${_filIncB}
+    echo "_AEGIR_VERSION=\"${_AEGIR_VERSION}\""         >> ${_vBs}/${_filIncB}
+    echo "_AEGIR_XTS_VRN=\"${_tRee}\""                  >> ${_vBs}/${_filIncB}
+    echo "_BOA_REPO_GIT_URL=\"${_BOA_REPO_GIT_URL}\""   >> ${_vBs}/${_filIncB}
+    echo "_BOA_REPO_NAME=\"${_BOA_REPO_NAME}\""         >> ${_vBs}/${_filIncB}
+    echo "_BRANCH_BOA=\"${_BRANCH_BOA}\""               >> ${_vBs}/${_filIncB}
+    echo "_BRANCH_PRN=\"${_BRANCH_PRN}\""               >> ${_vBs}/${_filIncB}
+    echo "_DEBUG_MODE=\"${_DEBUG_MODE}\""               >> ${_vBs}/${_filIncB}
+    echo "_DOMAIN=\"${_THIS_FRONT}\""                   >> ${_vBs}/${_filIncB}
+    echo "_DRUSH_VERSION=\"${_DRUSH_VERSION}\""         >> ${_vBs}/${_filIncB}
+    echo "_ESC_PASS=\"${_ESC_PASS}\""                   >> ${_vBs}/${_filIncB}
+    echo "_LOCAL_NETWORK_IP=\"${_LOCAL_NETWORK_IP}\""   >> ${_vBs}/${_filIncB}
+    echo "_MY_OWNIP=\"${_MY_OWNIP}\""                   >> ${_vBs}/${_filIncB}
+    echo "_NOW=\"${_NOW}\""                             >> ${_vBs}/${_filIncB}
+    echo "_PHP_CLI_VERSION=\"${_PHP_CLI_VERSION}\""     >> ${_vBs}/${_filIncB}
+    echo "_PHP_FPM_VERSION=\"${_PHP_FPM_VERSION}\""     >> ${_vBs}/${_filIncB}
+    echo "_STRONG_PASSWORDS=\"${_STRONG_PASSWORDS}\""   >> ${_vBs}/${_filIncB}
+    echo "_THIS_DB_HOST=\"${_THIS_DB_HOST}\""           >> ${_vBs}/${_filIncB}
+    echo "_USE_MIR=\"${_USE_MIR}\""                     >> ${_vBs}/${_filIncB}
+    echo "_xSrl=\"${_xSrl}\""                           >> ${_vBs}/${_filIncB}
+    echo "_X_VERSION=\"${_X_VERSION}\""                 >> ${_vBs}/${_filIncB}
 
-    master_download_for_local_build
+    _master_download_for_local_build
 
     ###
-    AegirSetupM="${bldPth}/aegir/scripts/AegirSetupM.sh.txt"
+    AegirSetupM="${_bldPth}/aegir/scripts/AegirSetupM.sh.txt"
     ###
 
     if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -941,12 +941,12 @@ EOFMYSQL
     fi
     wait
     if [ -e "/opt/tmp/status-AegirSetupM-FAIL" ]; then
-      msg "FATAL ERROR: AegirSetupM installer failed"
-      msg "FATAL ERROR: Aborting Barracuda installer NOW!"
-      msg "HINT: Please check /var/aegir/install.log"
-      msg "HINT: for more information on errors occured"
+      _msg "FATAL ERROR: AegirSetupM installer failed"
+      _msg "FATAL ERROR: Aborting Barracuda installer NOW!"
+      _msg "HINT: Please check /var/aegir/install.log"
+      _msg "HINT: for more information on errors occured"
       touch /opt/tmp/status-Barracuda-FAIL
-      clean_pid_exit aegir_master_install_upgrade_d
+      _clean_pid_exit _aegir_master_install_upgrade_d
     fi
     if [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ]; then
       _THIS_HM_ROOT=$(cat /var/aegir/.drush/hostmaster.alias.drushrc.php \
@@ -966,7 +966,7 @@ EOFMYSQL
     wait
     rm -rf /var/aegir/.tmp/cache
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "INFO: Running hosting-dispatch/hosting-tasks..."
+      _msg "INFO: Running hosting-dispatch/hosting-tasks..."
     fi
     su -s /bin/bash - aegir -c "drush8 @hostmaster hosting-dispatch" &> /dev/null
     wait
@@ -994,33 +994,33 @@ EOFMYSQL
     chown -R aegir:aegir ${_THIS_HM_ROOT}/sites/all &> /dev/null
 
   ###--------------------###
-    if [ -e "${mtrInc}/nginx_vhost_common.conf" ]; then
+    if [ -e "${_mtrInc}/nginx_vhost_common.conf" ]; then
       _DO_NOTHING=YES
       [ -e "/root/.force.reinstall.cnf" ] && rm -f /root/.force.reinstall.cnf
     else
-      msg "FATAL ERROR: Something went wrong, Aegir Master Instance not installed!"
-      msg "HINT: Please check /var/aegir/install.log for details, and then"
-      msg "HINT: run the same install command again to complete installation."
+      _msg "FATAL ERROR: Something went wrong, Aegir Master Instance not installed!"
+      _msg "HINT: Please check /var/aegir/install.log for details, and then"
+      _msg "HINT: run the same install command again to complete installation."
       touch /root/.force.reinstall.cnf
-      clean_pid_exit aegir_master_install_upgrade_e
+      _clean_pid_exit _aegir_master_install_upgrade_e
     fi
 
   ###--------------------###
-    if [ ! -L "${mtrInc}/global.inc" ] && [ -e "${mtrInc}/global.inc" ]; then
-      mv -f ${mtrInc}/global.inc \
-        ${mtrInc}/global.inc-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
+    if [ ! -L "${_mtrInc}/global.inc" ] && [ -e "${_mtrInc}/global.inc" ]; then
+      mv -f ${_mtrInc}/global.inc \
+        ${_mtrInc}/global.inc-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
     fi
     mkdir -p /data/conf
-    cp -af ${locCnf}/global/global.inc /data/conf/global.inc
+    cp -af ${_locCnf}/global/global.inc /data/conf/global.inc
     sed -i "s/3600/${_SPEED_VALID_MAX}/g" /data/conf/global.inc &> /dev/null
-    if [ -e "${mtrInc}" ] \
-      && [ ! -L "${mtrInc}/global.inc" ] \
+    if [ -e "${_mtrInc}" ] \
+      && [ ! -L "${_mtrInc}/global.inc" ] \
       && [ -e "/data/conf/global.inc" ]; then
-      ln -sfn /data/conf/global.inc ${mtrInc}/global.inc
+      ln -sfn /data/conf/global.inc ${_mtrInc}/global.inc
     fi
-    redis_password_update
-    force_advanced_nginx_config
-    chmod 0711 ${mtrInc} &> /dev/null
+    _redis_password_update
+    _force_advanced_nginx_config
+    chmod 0711 ${_mtrInc} &> /dev/null
     chmod 0711 /var/aegir/config &> /dev/null
     find /var/aegir/host_master/*/profiles/* -type d -exec chmod 0755 {} \; &> /dev/null
     find /var/aegir/host_master/*/profiles/* -type f -exec chmod 0644 {} \; &> /dev/null
@@ -1035,84 +1035,84 @@ EOFMYSQL
     rm -f /etc/nginx/sites-available/default
     rm -f /etc/nginx/sites-enabled/default
     rm -f /etc/nginx/modules-enabled/*
-    if [ -e "${locCnf}/nginx/nginx.conf" ]; then
+    if [ -e "${_locCnf}/nginx/nginx.conf" ]; then
       mv -f /etc/nginx/nginx.conf /etc/nginx/nginx.conf-old &> /dev/null
-      cp -af ${locCnf}/nginx/nginx.conf /etc/nginx/nginx.conf
+      cp -af ${_locCnf}/nginx/nginx.conf /etc/nginx/nginx.conf
     fi
-    mrun "service nginx reload" 2> /dev/null
-    msg "INFO: Aegir Master Instance installed"
+    _mrun "service nginx reload" 2> /dev/null
+    _msg "INFO: Aegir Master Instance installed"
   else
-    if [ "${tRee}" = "lts" ]; then
+    if [ "${_tRee}" = "lts" ]; then
       _SERIES_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
-      if [[ "${_SERIES_TEST}" =~ "Barracuda ${rlsn}-pro" ]] \
+      if [[ "${_SERIES_TEST}" =~ "Barracuda ${_rLsn}-pro" ]] \
         || [ -e "/var/aegir/key/barracuda_key.txt" ]; then
-        msg "ERROR: Your system has been already upgraded to ${rlsn}-pro"
-        msg "You can not downgrade back to previous/older/lts BOA version"
-        msg "Please use 'barracuda up-pro system' to upgrade this server"
-        msg "Display all supported commands with: barracuda help"
-        msg "Bye"
-        clean_pid_exit aegir_master_install_upgrade_f
+        _msg "ERROR: Your system has been already upgraded to ${_rLsn}-pro"
+        _msg "You can not downgrade back to previous/older/lts BOA version"
+        _msg "Please use 'barracuda up-pro system' to upgrade this server"
+        _msg "Display all supported commands with: barracuda help"
+        _msg "Bye"
+        _clean_pid_exit _aegir_master_install_upgrade_f
       fi
     fi
     echo " "
     if [ -e "/root/.debug-barracuda-installer.cnf" ] \
       || [ -e "/root/.skip-aegir-master-upgrade.cnf" ]; then
-      _SYSTEM_UPGRADE_ONLY=YES
+      _SYSTEM_UP_ONLY=YES
     fi
-    if_to_do_fix
+    _if_to_do_fix
     if [ "${_DO_FIX}" = "YES" ]; then
-      msg "INFO: Aegir Master Instance upgrade skipped!"
+      _msg "INFO: Aegir Master Instance upgrade skipped!"
       echo " "
-      msg "NOTE! You must reboot the server and run barracuda upgrade"
-      msg "NOTE! again to complete all system upgrades and upgrade also"
-      msg "NOTE! Aegir Master Instance."
+      _msg "NOTE! You must reboot the server and run barracuda upgrade"
+      _msg "NOTE! again to complete all system upgrades and upgrade also"
+      _msg "NOTE! Aegir Master Instance."
       echo " "
-    elif [ "${_SYSTEM_UPGRADE_ONLY}" = "YES" ]; then
+    elif [ "${_SYSTEM_UP_ONLY}" = "YES" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: Aegir Master Instance upgrade skipped"
+        _msg "INFO: Aegir Master Instance upgrade skipped"
       fi
     else
       if [ ! -e "/run/mysqld/mysqld.pid" ] \
         || [ ! -e "/run/mysqld/mysqld.sock" ]; then
-        msg "ALRT! ${_DB_SERVER} server not running properly!"
-        msg "EXIT: We can't proceed and will exit now"
-        msg "HINT: Please check ${_LOG} for more information,"
-        msg "HINT: (re)start ${_DB_SERVER} server, then run the installer again"
-        msg "Bye"
-        clean_pid_exit aegir_master_install_upgrade_g
+        _msg "ALRT! ${_DB_SERVER} server not running properly!"
+        _msg "EXIT: We can't proceed and will exit now"
+        _msg "HINT: Please check ${_LOG} for more information,"
+        _msg "HINT: (re)start ${_DB_SERVER} server, then run the installer again"
+        _msg "Bye"
+        _clean_pid_exit _aegir_master_install_upgrade_g
       fi
-      php_cli_cron_update
-      aegir_master_upgrade
-      php_cli_cron_update
+      _php_cli_cron_update
+      _aegir_master_upgrade
+      _php_cli_cron_update
     fi
   fi
 }
 
-if_upgrade_only_aegir_master() {
+_if_upgrade_only_aegir_master() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: if_upgrade_only_aegir_master"
+    _msg "PROC: _if_upgrade_only_aegir_master"
   fi
   if [ "${_STATUS}" = "UPGRADE" ]; then
     if [ "${_AEGIR_UPGRADE_ONLY}" = "YES" ] \
-      && [ "${_SYSTEM_UPGRADE_ONLY}" = "NO" ]; then
-      php_cli_cron_update
-      aegir_master_upgrade
-      php_cli_cron_update
-      mrun "sleep 8"
-      mrun "service nginx reload" 2> /dev/null
-      finale
+      && [ "${_SYSTEM_UP_ONLY}" = "NO" ]; then
+      _php_cli_cron_update
+      _aegir_master_upgrade
+      _php_cli_cron_update
+      _mrun "sleep 8"
+      _mrun "service nginx reload" 2> /dev/null
+      _finale
       exit 0
     fi
   fi
 }
 
-aegir_master_display_login_link() {
+_aegir_master_display_login_link() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: aegir_master_display_login_link"
+    _msg "PROC: _aegir_master_display_login_link"
   fi
   if [ "${_STATUS}" = "INIT" ]; then
     if [ "${_EASY_SETUP}" != "LOCAL" ]; then
-      mrun "bash /usr/sbin/apticron" &> /dev/null
+      _mrun "bash /usr/sbin/apticron" &> /dev/null
     fi
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _DO_NOTHING=YES
@@ -1120,37 +1120,37 @@ aegir_master_display_login_link() {
       _AEGIR_LOGIN_URL=$(tail --lines=11 /var/aegir/install.log | grep --text "^http:" 2>&1)
       if [ ! -z "${_AEGIR_LOGIN_URL}" ]; then
         echo " "
-        msg "INFO: Congratulations, Aegir have been installed successfully!"
-        msg "NOTE! Please wait 3 min before visiting Aegir at:"
+        _msg "INFO: Congratulations, Aegir have been installed successfully!"
+        _msg "NOTE! Please wait 3 min before visiting Aegir at:"
         echo " "
-        msg "LINK: ${_AEGIR_LOGIN_URL}"
+        _msg "LINK: ${_AEGIR_LOGIN_URL}"
         echo " "
-        msg "NOTE! The initial one-time login link will no longer work."
+        _msg "NOTE! The initial one-time login link will no longer work."
         sleep 3
-        msg "To access your Barracuda Aegir control panel after the procedure is finished..."
-        msg "...please generate a new link by running the following command:"
+        _msg "To access your Barracuda Aegir control panel after the procedure is finished..."
+        _msg "...please generate a new link by running the following command:"
         sleep 3
         echo " "
         echo "  su -s /bin/bash aegir -c \"drush @hm uli\""
         echo " "
         sleep 3
       else
-        msg "ALRT! Something went wrong"
-        msg "ALRT! Please check the install log for details:"
-        msg "ALRT! /var/aegir/install.log"
+        _msg "ALRT! Something went wrong"
+        _msg "ALRT! Please check the install log for details:"
+        _msg "ALRT! /var/aegir/install.log"
       fi
     fi
   fi
-  if [ ! -e "${pthLog}/cron_aegir_off.pid" ]; then
-    touch ${pthLog}/cron_aegir_off.pid
+  if [ ! -e "${_pthLog}/cron_aegir_off.pid" ]; then
+    touch ${_pthLog}/cron_aegir_off.pid
   fi
 }
 
 #
 # Update local INI for PHP CLI on the Aegir Master Instance.
-php_cli_local_ini_update() {
+_php_cli_local_ini_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: php_cli_local_ini_update"
+    _msg "PROC: _php_cli_local_ini_update"
   fi
   _U_HD="/var/aegir/.drush"
   _U_TP="/var/aegir/.tmp"
@@ -1160,14 +1160,14 @@ php_cli_local_ini_update() {
   _PHP_V="83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     if [[ "${_CHECK_USE_PHP_CLI}" =~ "php${e}" ]] \
-      && [ ! -e "${_U_HD}/.ctrl.php${e}.${_X_SE}.pid" ]; then
+      && [ ! -e "${_U_HD}/.ctrl.php${e}.${_xSrl}.pid" ]; then
       _PHP_CLI_UPDATE=YES
     fi
   done
   if [ "${_PHP_CLI_UPDATE}" = "YES" ] \
     || [ ! -e "${_U_II}" ] \
     || [ ! -d "${_U_TP}" ] \
-    || [ ! -e "${_U_HD}/.ctrl.${tRee}.${_X_SE}.pid" ]; then
+    || [ ! -e "${_U_HD}/.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     mkdir -p ${_U_TP}
     touch ${_U_TP}
     find ${_U_TP}/ -mtime +0 -exec rm -rf {} \; &> /dev/null
@@ -1224,8 +1224,8 @@ php_cli_local_ini_update() {
       wait
       sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
       wait
-      echo > ${_U_HD}/.ctrl.php${_U_INI}.${_X_SE}.pid
-      echo > ${_U_HD}/.ctrl.${tRee}.${_X_SE}.pid
+      echo > ${_U_HD}/.ctrl.php${_U_INI}.${_xSrl}.pid
+      echo > ${_U_HD}/.ctrl.${_tRee}.${_xSrl}.pid
     fi
   fi
 }

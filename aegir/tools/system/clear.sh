@@ -3,11 +3,11 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-export tRee=pro
+export _tRee=dev
 
-aptYesUnth="-y --allow-unauthenticated"
+_aptYesUnth="-y --allow-unauthenticated"
 
-check_root() {
+_check_root() {
   if [ `whoami` = "root" ]; then
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
     export _B_NICE=${_B_NICE//[^0-9]/}
@@ -18,9 +18,9 @@ check_root() {
     exit 1
   fi
 }
-check_root
+_check_root
 
-os_detection_minimal() {
+_os_detection_minimal() {
   _APT_UPDATE="apt-get update"
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
@@ -30,9 +30,9 @@ os_detection_minimal() {
     fi
   done
 }
-os_detection_minimal
+_os_detection_minimal
 
-apt_clean_update() {
+_apt_clean_update() {
   #apt-get clean -qq 2> /dev/null
   #rm -rf /var/lib/apt/lists/* &> /dev/null
   ${_APT_UPDATE} -qq 2> /dev/null
@@ -61,31 +61,31 @@ fi
 
 #
 # Find the fastest mirror.
-find_fast_mirror_early() {
-  isNetc=$(which netcat 2>&1)
-  if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
+_find_fast_mirror_early() {
+  _isNetc=$(which netcat 2>&1)
+  if [ ! -x "${_isNetc}" ] || [ -z "${_isNetc}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
-    apt_clean_update
-    apt-get install netcat ${aptYesUnth} 2> /dev/null
-    apt-get install netcat-traditional ${aptYesUnth} 2> /dev/null
+    _apt_clean_update
+    apt-get install netcat ${_aptYesUnth} 2> /dev/null
+    apt-get install netcat-traditional ${_aptYesUnth} 2> /dev/null
     wait
   fi
-  ffMirr=$(which ffmirror 2>&1)
-  if [ -x "${ffMirr}" ]; then
-    ffList="/var/backups/boa-mirrors-2024-01.txt"
+  _ffMirr=$(which ffmirror 2>&1)
+  if [ -x "${_ffMirr}" ]; then
+    _ffList="/var/backups/boa-mirrors-2024-01.txt"
     mkdir -p /var/backups
-    if [ ! -e "${ffList}" ]; then
-      echo "de.files.aegir.cc"  > ${ffList}
-      echo "ny.files.aegir.cc" >> ${ffList}
-      echo "sg.files.aegir.cc" >> ${ffList}
+    if [ ! -e "${_ffList}" ]; then
+      echo "de.files.aegir.cc"  > ${_ffList}
+      echo "ny.files.aegir.cc" >> ${_ffList}
+      echo "sg.files.aegir.cc" >> ${_ffList}
     fi
-    if [ -e "${ffList}" ]; then
-      _BROKEN_FFMIRR_TEST=$(grep "stuff" ${ffMirr} 2>&1)
+    if [ -e "${_ffList}" ]; then
+      _BROKEN_FFMIRR_TEST=$(grep "stuff" ${_ffMirr} 2>&1)
       if [[ "${_BROKEN_FFMIRR_TEST}" =~ "stuff" ]]; then
-        _CHECK_MIRROR=$(bash ${ffMirr} < ${ffList} 2>&1)
+        _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _USE_MIR="${_CHECK_MIRROR}"
         [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.aegir.cc"
       else
@@ -97,12 +97,12 @@ find_fast_mirror_early() {
   else
     _USE_MIR="files.aegir.cc"
   fi
-  urlDev="http://${_USE_MIR}/dev"
-  urlHmr="http://${_USE_MIR}/versions/${tRee}/boa/aegir"
+  _urlDev="http://${_USE_MIR}/dev"
+  _urlHmr="http://${_USE_MIR}/versions/${_tRee}/boa/aegir"
 }
 
-if_reinstall_curl_src() {
-  _CURL_VRN=8.9.1
+_if_reinstall_curl_src() {
+  _CURL_VRN=8.10.1
   if ! command -v lsb_release &> /dev/null; then
     apt-get update -qq &> /dev/null
     apt-get install lsb-release -y -qq &> /dev/null
@@ -111,15 +111,15 @@ if_reinstall_curl_src() {
   [ "${_OS_CODE}" = "wheezy" ] && _CURL_VRN=7.50.1
   [ "${_OS_CODE}" = "jessie" ] && _CURL_VRN=7.71.1
   [ "${_OS_CODE}" = "stretch" ] && _CURL_VRN=8.2.1
-  isCurl=$(curl --version 2>&1)
-  if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
+  _isCurl=$(curl --version 2>&1)
+  if [[ ! "${_isCurl}" =~ "OpenSSL" ]] || [ -z "${_isCurl}" ]; then
     echo "OOPS: cURL is broken! Re-installing.."
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     echo "curl install" | dpkg --set-selections 2> /dev/null
-    apt_clean_update
+    _apt_clean_update
     apt-get remove libssl1.0-dev -y --purge --auto-remove -qq 2> /dev/null
     apt-get autoremove -y 2> /dev/null
     apt-get install libssl-dev -y -qq 2> /dev/null
@@ -163,8 +163,8 @@ if_reinstall_curl_src() {
       fi
     fi
     if [ -f "/usr/local/bin/curl" ]; then
-      isCurl=$(/usr/local/bin/curl --version 2>&1)
-      if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
+      _isCurl=$(/usr/local/bin/curl --version 2>&1)
+      if [[ ! "${_isCurl}" =~ "OpenSSL" ]] || [ -z "${_isCurl}" ]; then
         echo "ERRR: /usr/local/bin/curl is broken"
       else
         echo "GOOD: /usr/local/bin/curl works"
@@ -173,9 +173,9 @@ if_reinstall_curl_src() {
   fi
 }
 
-check_dns_curl() {
-  find_fast_mirror_early
-  if_reinstall_curl_src
+_check_dns_curl() {
+  _find_fast_mirror_early
+  _if_reinstall_curl_src
   _CURL_TEST=$(curl -L -k -s \
     --max-redirs 10 \
     --retry 3 \
@@ -184,19 +184,19 @@ check_dns_curl() {
   if [[ ! "${_CURL_TEST}" =~ "200 OK" ]]; then
     if [[ "${_CURL_TEST}" =~ "unknown option was passed in to libcurl" ]]; then
       echo "ERROR: cURL libs are out of sync! Re-installing again.."
-      if_reinstall_curl_src
+      _if_reinstall_curl_src
     else
       echo "ERROR: ${_USE_MIR} is not available, please try later"
-      clean_pid_exit check_dns_curl_clear_a
+      _clean_pid_exit _check_dns_curl_clear_a
     fi
   fi
 }
 
 if [ ! -e "/run/boa_run.pid" ]; then
-  check_dns_curl
+  _check_dns_curl
   [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
   rm -f /tmp/*error*
-  wget -qO- http://${_USE_MIR}/versions/${tRee}/boa/BOA.sh.txt | bash
+  wget -qO- http://${_USE_MIR}/versions/${_tRee}/boa/BOA.sh.txt | bash
   wait
   bash /opt/local/bin/autoupboa
   wait
@@ -209,10 +209,10 @@ for _OCT in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
   if [ -e "${_OCT}/config/server_master/nginx/vhost.d" ]; then
     _SITES_NR=$(ls ${_OCT}/config/server_master/nginx/vhost.d | wc -l)
     if [ "${_SITES_NR}" -gt "0" ]; then
-      if [ -z "${chckSts}" ]; then
-        chckSts="SNR ${_OCT} ${_SITES_NR} "
+      if [ -z "${_chckSts}" ]; then
+        _chckSts="SNR ${_OCT} ${_SITES_NR} "
       else
-        chckSts="SNR ${_OCT} ${_SITES_NR} ${chckSts} "
+        _chckSts="SNR ${_OCT} ${_SITES_NR} ${_chckSts} "
       fi
     else
       _OCT_NR=$(( _OCT_NR - 1 ))
@@ -220,29 +220,29 @@ for _OCT in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
   fi
 done
 if [ -d "/data/u" ]; then
-  chckSts="OCT ${_OCT_NR} ${chckSts} "
+  _chckSts="OCT ${_OCT_NR} ${_chckSts} "
   _ALL_SITES_NR=$(ls /data/disk/*/config/server_master/nginx/vhost.d | wc -l)
   _ALL_SITES_NR=$(( _ALL_SITES_NR - _OCT_NR ))
-  chckSts="SST ${_ALL_SITES_NR} ${chckSts}"
-  chckHst=$(hostname 2>&1)
-  chckIps=$(hostname -I 2>&1)
-  checkVn=$(/opt/local/bin/boa version | tr -d "\n" 2>&1)
-  if [[ "${checkVn}" =~ "===" ]] || [ -z "${checkVn}" ]; then
+  _chckSts="SST ${_ALL_SITES_NR} ${_chckSts}"
+  _chckHst=$(hostname 2>&1)
+  _chckIps=$(hostname -I 2>&1)
+  _checkVn=$(/opt/local/bin/boa version | tr -d "\n" 2>&1)
+  if [[ "${_checkVn}" =~ "===" ]] || [ -z "${_checkVn}" ]; then
     if [ -e "/var/log/barracuda_log.txt" ]; then
-      checkVn=$(tail --lines=1 /var/log/barracuda_log.txt | tr -d "\n" 2>&1)
+      _checkVn=$(tail --lines=1 /var/log/barracuda_log.txt | tr -d "\n" 2>&1)
     else
-      checkVn="whereis barracuda_log.txt"
+      _checkVn="whereis barracuda_log.txt"
     fi
   fi
-  crlHead="-I -k -s --retry 3 --retry-delay 3"
-  urlBpth="http://${_USE_MIR}/versions/${tRee}/boa/aegir/tools/bin"
-  curl ${crlHead} -A "${chckHst} ${chckIps} ${checkVn} ${chckSts}" "${urlBpth}/thinkdifferent" &> /dev/null
+  _crlHead="-I -k -s --retry 3 --retry-delay 3"
+  _urlBpth="http://${_USE_MIR}/versions/${_tRee}/boa/aegir/tools/bin"
+  curl ${_crlHead} -A "${_chckHst} ${_chckIps} ${_checkVn} ${_chckSts}" "${_urlBpth}/thinkdifferent" &> /dev/null
   wait
 fi
 
 renice ${_B_NICE} -p $$ &> /dev/null
 service ssh restart
-if_fix_locked_sshd() {
+_if_fix_locked_sshd() {
   _SSH_LOG="/var/log/auth.log"
   if [ `tail --lines=100 ${_SSH_LOG} \
     | grep --count "error: Bind to port 22"` -gt "0" ]; then
@@ -250,7 +250,7 @@ if_fix_locked_sshd() {
     service ssh start
   fi
 }
-if_fix_locked_sshd
+_if_fix_locked_sshd
 touch /var/xdrago/log/clear.done.pid
 exit 0
 ###EOF2024###

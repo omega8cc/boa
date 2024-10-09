@@ -6,26 +6,26 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 
 _NOW=$(date +%y%m%d-%H%M%S 2>&1)
 _NOW=${_NOW//[^0-9-]/}
-vBs="/var/backups"
+_vBs="/var/backups"
 _THIS_DB_PORT=3306
-crlGet="-L --max-redirs 3 -k -s --retry 3 --retry-delay 5 -A iCab"
+_crlGet="-L --max-redirs 3 -k -s --retry 3 --retry-delay 5 -A iCab"
 
 # Remove dangerous stuff from the string.
-sanitize_string() {
+_sanitize_string() {
   echo "$1" | sed 's/[\\\/\^\?\>\`\#\"\{\(\&\|\*]//g; s/\(['"'"'\]\)//g'
 }
 
 #
 # Find correct IP.
-find_correct_ip() {
+_find_correct_ip() {
   if [ -e "/root/.found_correct_ipv4.cnf" ]; then
     _LOC_IP=$(cat /root/.found_correct_ipv4.cnf 2>&1)
     _LOC_IP=$(echo -n ${_LOC_IP} | tr -d "\n" 2>&1)
   else
-    _LOC_IP=$(curl ${crlGet} https://api.ipify.org \
+    _LOC_IP=$(curl ${_crlGet} https://api.ipify.org \
       | sed 's/[^0-9\.]//g' 2>&1)
     if [ -z "${_LOC_IP}" ]; then
-      _LOC_IP=$(curl ${crlGet} http://ipv4.icanhazip.com \
+      _LOC_IP=$(curl ${_crlGet} http://ipv4.icanhazip.com \
         | sed 's/[^0-9\.]//g' 2>&1)
     fi
     if [ ! -z "${_LOC_IP}" ]; then
@@ -34,7 +34,7 @@ find_correct_ip() {
   fi
 }
 
-check_generate() {
+_check_generate() {
   rm -f ${_L_SYS}
   if [ -e "${_L_SYS}" ]; then
     _ESC_PASS=$(cat ${_L_SYS} 2>&1)
@@ -68,15 +68,15 @@ check_generate() {
         else
           _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
           _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
-          _ESC_PASS=$(sanitize_string "${_ESC_PASS}" 2>&1)
+          _ESC_PASS=$(_sanitize_string "${_ESC_PASS}" 2>&1)
         fi
       fi
-      isPythonTwo=$(which python2 2>&1)
-      isPythonThree=$(which python3 2>&1)
+      _isPythonTwo=$(which python2 2>&1)
+      _isPythonThree=$(which python3 2>&1)
       _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
-      if [ -x "${isPythonThree}" ]; then
+      if [ -x "${_isPythonThree}" ]; then
         _ENC_PASS=$(python3 -c "import urllib.parse; print(urllib.parse.quote('''${_ESC_PASS}'''))")
-      elif [ -x "${isPythonTwo}" ]; then
+      elif [ -x "${_isPythonTwo}" ]; then
         _ENC_PASS=$(python2 -c "import urllib; print urllib.quote('''${_ESC_PASS}''')")
       fi
       echo "${_ESC_PASS}" > ${_L_SYS}
@@ -84,7 +84,7 @@ check_generate() {
        echo "INFO: We will generate new random password using shuf tool"
       _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
       _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
-      _ESC_PASS=$(sanitize_string "${_ESC_PASS}" 2>&1)
+      _ESC_PASS=$(_sanitize_string "${_ESC_PASS}" 2>&1)
       _ENC_PASS="${_ESC_PASS}"
       echo "${_ESC_PASS}" > ${_L_SYS}
       chmod 0600 ${_L_SYS}
@@ -96,37 +96,37 @@ check_generate() {
      echo "INFO: We will generate new random password using shuf tool"
     _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
     _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
-    _ESC_PASS=$(sanitize_string "${_ESC_PASS}" 2>&1)
+    _ESC_PASS=$(_sanitize_string "${_ESC_PASS}" 2>&1)
     _ENC_PASS="${_ESC_PASS}"
     echo "${_ESC_PASS}" > ${_L_SYS}
     chmod 0600 ${_L_SYS}
   fi
 }
 
-do_syncpass() {
+_do_syncpass() {
   _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
   _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
-  if [ ! -z "${uname}" ]; then
-    find_correct_ip
-    prH="/var/aegir/.drush"
-    if [ "${uname}" = "aegir" ] && [ -e "/var/aegir/backups" ]; then
+  if [ ! -z "${_uname}" ]; then
+    _find_correct_ip
+    _prH="/var/aegir/.drush"
+    if [ "${_uname}" = "aegir" ] && [ -e "/var/aegir/backups" ]; then
       _L_SYS="/var/aegir/backups/system/.aegir_root.pass.txt"
-      cp ${prH}/server_localhost.alias.drushrc.php \
-        ${vBs}/server_localhost.alias.drushrc.php.${uname}-${_NOW} &> /dev/null
-      cp ${prH}/server_master.alias.drushrc.php \
-        ${vBs}/server_master.alias.drushrc.php.${uname}-${_NOW} &> /dev/null
-      check_generate
-      chown ${uname}:${uname} ${_L_SYS} &> /dev/null
+      cp ${_prH}/server_localhost.alias.drushrc.php \
+        ${_vBs}/server_localhost.alias.drushrc.php.${_uname}-${_NOW} &> /dev/null
+      cp ${_prH}/server_master.alias.drushrc.php \
+        ${_vBs}/server_master.alias.drushrc.php.${_uname}-${_NOW} &> /dev/null
+      _check_generate
+      chown ${_uname}:${_uname} ${_L_SYS} &> /dev/null
       if [ ! -z "${_ESC_PASS}" ] && [ ! -z "${_ENC_PASS}" ]; then
         mysqladmin -u root flush-hosts &> /dev/null
-        su -s /bin/bash - ${uname} -c "drush8 @hostmaster \
+        su -s /bin/bash - ${_uname} -c "drush8 @hostmaster \
           sqlq \"UPDATE hosting_db_server \
           SET db_passwd='${_ESC_PASS}' \
           WHERE db_user='aegir_root'\"" &> /dev/null
         wait
         _ESC="*.*"
         _USE_DB_USER="aegir_root"
-        _USE_AEGIR_HOST="$(uname -n 2>&1)"
+        _USE_AEGIR_HOST="$(_uname -n 2>&1)"
         _USE_RESOLVEIP="${_LOC_IP}"
         [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL1 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
         if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
@@ -161,7 +161,7 @@ ALTER USER '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_ESC_PASS}';
 EOFMYSQL
         sed -i \
           "s/mysql:\/\/aegir_root:.*/mysql:\/\/aegir_root:${_ENC_PASS}@${_SQL_CONNECT}',/g" \
-          ${prH}/server_*.alias.drushrc.php &> /dev/null
+          ${_prH}/server_*.alias.drushrc.php &> /dev/null
         wait
         mysqladmin -u root flush-privileges &> /dev/null
       else
@@ -173,29 +173,29 @@ EOFMYSQL
       echo "INFO: New system password=${_ESC_PASS} encoded=${_ENC_PASS}"
       echo "BYE!"
     else
-      if [ -e "/data/disk/${uname}" ]; then
-        _L_SYS="/data/disk/${uname}/.${uname}.pass.txt"
-        cp /data/disk/${uname}/.drush/server_localhost.alias.drushrc.php \
-          ${vBs}/server_localhost.alias.drushrc.php.${uname}-${_NOW} &> /dev/null
-        cp /data/disk/${uname}/.drush/server_master.alias.drushrc.php \
-          ${vBs}/server_master.alias.drushrc.php.${uname}-${_NOW} &> /dev/null
-        check_generate
-        chown ${uname}:users ${_L_SYS} &> /dev/null
+      if [ -e "/data/disk/${_uname}" ]; then
+        _L_SYS="/data/disk/${_uname}/.${_uname}.pass.txt"
+        cp /data/disk/${_uname}/.drush/server_localhost.alias.drushrc.php \
+          ${_vBs}/server_localhost.alias.drushrc.php.${_uname}-${_NOW} &> /dev/null
+        cp /data/disk/${_uname}/.drush/server_master.alias.drushrc.php \
+          ${_vBs}/server_master.alias.drushrc.php.${_uname}-${_NOW} &> /dev/null
+        _check_generate
+        chown ${_uname}:users ${_L_SYS} &> /dev/null
         if [ ! -z "${_ESC_PASS}" ] && [ ! -z "${_ENC_PASS}" ]; then
-          if [ -e "/data/conf/${uname}_use_proxysql.txt" ]; then
+          if [ -e "/data/conf/${_uname}_use_proxysql.txt" ]; then
             _SQL_CONNECT=127.0.0.1
             _THIS_DB_PORT=6033
             mysqladmin -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-hosts &> /dev/null
           else
             mysqladmin -u root flush-hosts &> /dev/null
           fi
-          su -s /bin/bash - ${uname} -c "drush8 @hostmaster \
+          su -s /bin/bash - ${_uname} -c "drush8 @hostmaster \
             sqlq \"UPDATE hosting_db_server SET db_passwd='${_ESC_PASS}' \
-            WHERE db_user='${uname}'\"" &> /dev/null
+            WHERE db_user='${_uname}'\"" &> /dev/null
           wait
           _ESC="*.*"
-          _USE_DB_USER="${uname}"
-          _USE_AEGIR_HOST="$(uname -n 2>&1)"
+          _USE_DB_USER="${_uname}"
+          _USE_AEGIR_HOST="$(_uname -n 2>&1)"
           _USE_RESOLVEIP="${_LOC_IP}"
           [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL2 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
           if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
@@ -229,10 +229,10 @@ ALTER USER '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_PASS}';
 ALTER USER '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_ESC_PASS}';
 EOFMYSQL
           sed -i \
-            "s/mysql:\/\/${uname}:.*/mysql:\/\/${uname}:${_ENC_PASS}@${_SQL_CONNECT}',/g" \
-            /data/disk/${uname}/.drush/server_*.alias.drushrc.php &> /dev/null
+            "s/mysql:\/\/${_uname}:.*/mysql:\/\/${_uname}:${_ENC_PASS}@${_SQL_CONNECT}',/g" \
+            /data/disk/${_uname}/.drush/server_*.alias.drushrc.php &> /dev/null
           wait
-          if [ -e "/data/conf/${uname}_use_proxysql.txt" ]; then
+          if [ -e "/data/conf/${_uname}_use_proxysql.txt" ]; then
             _SQL_CONNECT=127.0.0.1
             _THIS_DB_PORT=6033
             mysqladmin -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges &> /dev/null
@@ -240,20 +240,20 @@ EOFMYSQL
             mysqladmin -u root flush-privileges &> /dev/null
           fi
         else
-          echo "ERROR: Auto-generated password for ${uname} system user"
+          echo "ERROR: Auto-generated password for ${_uname} system user"
           echo "ERROR: did not work as expected, please try again"
           exit 1
         fi
-        _L_SYS_PHP="/data/disk/${uname}/.${uname}.pass.php"
+        _L_SYS_PHP="/data/disk/${_uname}/.${_uname}.pass.php"
         echo "<?php" > ${_L_SYS_PHP}
-        echo "\$oct_db_user = \"${uname}\";" >> ${_L_SYS_PHP}
+        echo "\$oct_db_user = \"${_uname}\";" >> ${_L_SYS_PHP}
         echo "\$oct_db_pass = \"${_ESC_PASS}\";" >> ${_L_SYS_PHP}
         echo "\$oct_db_host = \"${_THIS_DB_HOST}\";" >> ${_L_SYS_PHP}
         echo "\$oct_db_port = \"${_THIS_DB_PORT}\";" >> ${_L_SYS_PHP}
-        echo "\$oct_db_dirs = \"/data/disk/${uname}/backups\";" >> ${_L_SYS_PHP}
-        chown ${uname}:users ${_L_SYS_PHP}
+        echo "\$oct_db_dirs = \"/data/disk/${_uname}/backups\";" >> ${_L_SYS_PHP}
+        chown ${_uname}:users ${_L_SYS_PHP}
         chmod 0600 ${_L_SYS_PHP}
-        echo "INFO: Fixed Aegir Satellite Instance system user=${uname}"
+        echo "INFO: Fixed Aegir Satellite Instance system user=${_uname}"
         echo "INFO: New system password=${_ESC_PASS} encoded=${_ENC_PASS}"
         echo "INFO: With Satellite oct_db_host=${_THIS_DB_HOST}"
         echo "INFO: With Satellite oct_db_port=${_THIS_DB_PORT}"
@@ -271,7 +271,7 @@ EOFMYSQL
   fi
 }
 
-check_root() {
+_check_root() {
   if [ `whoami` = "root" ]; then
     chmod a+w /dev/null
     if [ -e "/root/.barracuda.cnf" ]; then
@@ -296,9 +296,9 @@ check_root() {
 }
 
 case "$1" in
-  fix) uname="$2"
-       check_root
-       do_syncpass
+  fix) _uname="$2"
+       _check_root
+       _do_syncpass
   ;;
   *)   echo "Usage: syncpass fix {aegir|o1}"
        exit 1

@@ -37,7 +37,7 @@ _if_hosted_sys() {
 }
 
 # Main action function
-_action() {
+_graceful_action() {
   echo "Starting system maintenance tasks..."
 
   # Clean up postfix queue to get rid of bounced emails
@@ -189,7 +189,7 @@ else
   echo "Waiting for 60 seconds before starting maintenance tasks..."
   touch /run/boa_wait.pid
   sleep 60
-  _action
+  _graceful_action
   [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
   exit 0
 fi

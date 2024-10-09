@@ -4,7 +4,7 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
-whitelist_ip_pingdom() {
+_whitelist_ip_pingdom() {
   if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
     echo removing pingdom ips from csf.allow
     sed -i "s/.*pingdom.*//g" /etc/csf/csf.allow
@@ -40,7 +40,7 @@ whitelist_ip_pingdom() {
   done
 }
 
-whitelist_ip_cloudflare() {
+_whitelist_ip_cloudflare() {
   if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
     echo removing cloudflare ips from csf.allow
     sed -i "s/.*cloudflare.*//g" /etc/csf/csf.allow
@@ -75,7 +75,7 @@ whitelist_ip_cloudflare() {
   done
 }
 
-whitelist_ip_imperva() {
+_whitelist_ip_imperva() {
   if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
     echo removing imperva ips from csf.allow
     sed -i "s/.*imperva.*//g" /etc/csf/csf.allow
@@ -110,7 +110,7 @@ whitelist_ip_imperva() {
   done
 }
 
-whitelist_ip_googlebot() {
+_whitelist_ip_googlebot() {
   if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
     echo removing googlebot ips from csf.allow
     sed -i "s/.*googlebot.*//g" /etc/csf/csf.allow
@@ -143,7 +143,7 @@ whitelist_ip_googlebot() {
   wait
 }
 
-whitelist_ip_microsoft() {
+_whitelist_ip_microsoft() {
   if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
     echo removing microsoft ips from csf.allow
     sed -i "s/.*microsoft.*//g" /etc/csf/csf.allow
@@ -178,7 +178,7 @@ whitelist_ip_microsoft() {
   wait
 }
 
-whitelist_ip_sucuri() {
+_whitelist_ip_sucuri() {
   if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
     echo removing sucuri ips from csf.allow
     sed -i "s/.*sucuri.*//g" /etc/csf/csf.allow
@@ -209,7 +209,7 @@ whitelist_ip_sucuri() {
   done
 }
 
-whitelist_ip_authzero() {
+_whitelist_ip_authzero() {
   if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
     echo removing authzero ips from csf.allow
     sed -i "s/.*authzero.*//g" /etc/csf/csf.allow
@@ -240,7 +240,7 @@ whitelist_ip_authzero() {
   done
 }
 
-whitelist_ip_site24x7_extra() {
+_whitelist_ip_site24x7_extra() {
 
   _IPS="87.252.213.0/24 89.36.170.0/24 185.172.199.128/26 185.230.214.0/23 185.172.199.0/27"
 
@@ -282,7 +282,7 @@ whitelist_ip_site24x7_extra() {
   fi
 }
 
-whitelist_ip_site24x7() {
+_whitelist_ip_site24x7() {
   if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
     echo removing site24x7 ips from csf.allow
     sed -i "s/.*site24x7.*//g" /etc/csf/csf.allow
@@ -360,7 +360,7 @@ whitelist_ip_site24x7() {
   fi
 }
 
-local_ip_rg() {
+_local_ip_rg() {
   if [ -e "/root/.local.IP.list" ]; then
     echo "the file /root/.local.IP.list already exists"
     for _IP in `hostname -I`; do
@@ -418,7 +418,7 @@ local_ip_rg() {
   wait
 }
 
-guard_stats() {
+_guard_stats() {
   for i in `dir -d /vservers/*`; do
     if [ -e "/root/.local.IP.list" ]; then
       cp -af /root/.local.IP.list ${i}/root/.local.IP.list
@@ -561,7 +561,7 @@ guard_stats() {
   done
 }
 
-whitelist_ip_dns() {
+_whitelist_ip_dns() {
   csf -tr 1.1.1.1
   csf -tr 1.0.0.1
   csf -dr 1.1.1.1
@@ -597,21 +597,21 @@ if [ -e "/vservers" ] \
     done
   fi
 
-  n=$((RANDOM%120+90))
+  _n=$((RANDOM%120+90))
   touch /run/water.pid
   echo Waiting $n seconds...
-  sleep $n
+  sleep ${_n}
 
-  whitelist_ip_dns
-  whitelist_ip_pingdom
-  whitelist_ip_cloudflare
-  whitelist_ip_googlebot
-  whitelist_ip_microsoft
-  [ -e "/root/.extended.firewall.exceptions.cnf" ] && whitelist_ip_imperva
-  [ -e "/root/.extended.firewall.exceptions.cnf" ] && whitelist_ip_sucuri
-  [ -e "/root/.extended.firewall.exceptions.cnf" ] && whitelist_ip_authzero
-  [ -e "/root/.extended.firewall.exceptions.cnf" ] && whitelist_ip_site24x7_extra
-  [ -e "/root/.extended.firewall.exceptions.cnf" ] && whitelist_ip_site24x7
+  _whitelist_ip_dns
+  _whitelist_ip_pingdom
+  _whitelist_ip_cloudflare
+  _whitelist_ip_googlebot
+  _whitelist_ip_microsoft
+  [ -e "/root/.extended.firewall.exceptions.cnf" ] && _whitelist_ip_imperva
+  [ -e "/root/.extended.firewall.exceptions.cnf" ] && _whitelist_ip_sucuri
+  [ -e "/root/.extended.firewall.exceptions.cnf" ] && _whitelist_ip_authzero
+  [ -e "/root/.extended.firewall.exceptions.cnf" ] && _whitelist_ip_site24x7_extra
+  [ -e "/root/.extended.firewall.exceptions.cnf" ] && _whitelist_ip_site24x7
 
   if [ -e "/root/.full.csf.cleanup.cnf" ]; then
     sed -i "s/.*do not delete.*//g" /etc/csf/csf.deny
@@ -642,7 +642,7 @@ if [ -e "/vservers" ] \
   fi
 
   echo local start `date`
-  local_ip_rg
+  _local_ip_rg
 
   _HA=var/xdrago/monitor/log/hackcheck.archive.log
   _HX=var/xdrago/monitor/log/hackcheck.archive.x3.log
@@ -652,7 +652,7 @@ if [ -e "/vservers" ] \
   _FX=var/xdrago/monitor/log/hackftp.archive.x3.log
 
   echo guard start `date`
-  guard_stats
+  _guard_stats
 
   rm -f /vservers/*/var/xdrago/monitor/log/ssh.log
   rm -f /vservers/*/var/xdrago/monitor/log/web.log
@@ -671,12 +671,14 @@ if [ -e "/vservers" ] \
   else
     _DHCP_LOG="/var/log/syslog"
   fi
-  _DHCP_TEST=$(grep DHCPREQUEST ${_DHCP_LOG} | cut -d ' ' -f13 | sort | uniq 2>&1)
-  if [[ "${_DHCP_TEST}" =~ "port" ]]; then
-    for _IP in `grep DHCPREQUEST ${_DHCP_LOG} | cut -d ' ' -f12 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
-  else
-    for _IP in `grep DHCPREQUEST ${_DHCP_LOG} | cut -d ' ' -f13 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
-  fi
+  grep DHCPREQUEST "${_DHCP_LOG}" | awk '{print $12}' | sort -u | while read -r _IP; do
+    if [[ ${_IP} =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
+      IFS='.' read -r oct1 oct2 oct3 oct4 <<< "${_IP}"
+      if (( oct1 <= 255 && oct2 <= 255 && oct3 <= 255 && oct4 <= 255 )); then
+        echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow
+      fi
+    fi
+  done
   csf -e
   wait
   csf -q

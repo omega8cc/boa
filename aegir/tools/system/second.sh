@@ -12,22 +12,17 @@ _PTH_OML="/var/xdrago/log/high.load.incident.log"
 # Exit if proxy config exists
 [ -e "/root/.proxy.cnf" ] && exit 0
 
-# Function to check if the script is run as root
-_check_root() {
-  if [ "$(id -u)" -ne 0 ]; then
-    echo "ERROR: This script should be run as root"
-    exit 1
-  else
-    chmod a+w /dev/null
-  fi
-}
-_check_root
+# Ensure not too many instances are running
+if (( $(pgrep -fc 'second.sh') > 2 )); then
+  echo "Too many second.sh running $(date)" >> /var/xdrago/log/too.many.log
+  exit 0
+fi
 
 # Set default values
 : "${_B_NICE:=10}"
 : "${_CPU_SPIDER_RATIO:=1}"
-: "${_CPU_MAX_RATIO:=3.3}"
-: "${_CPU_CRIT_RATIO:=3.9}"
+: "${_CPU_MAX_RATIO:=4.1}"
+: "${_CPU_CRIT_RATIO:=5.1}"
 : "${_INCIDENT_EMAIL_REPORT:=YES}"
 
 # Source configuration file to override defaults
@@ -54,12 +49,6 @@ case "${_INCIDENT_EMAIL_REPORT}" in
     _INCIDENT_EMAIL_REPORT="YES"
     ;;
 esac
-
-# Ensure not too many instances are running
-if [ "$(pgrep -f second.sh | grep -v "^$$" | wc -l)" -gt 4 ]; then
-  echo "Too many second.sh running $(date)" >> /var/xdrago/log/too.many.log
-  exit 0
-fi
 
 # Get CPU count
 _CPU_COUNT="$(nproc)"

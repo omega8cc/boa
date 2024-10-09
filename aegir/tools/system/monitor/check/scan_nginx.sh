@@ -34,6 +34,13 @@ IFS=$'\n\t'
 _TIMES=$(date +%y%m%d-%H%M%S)
 _MYIP=$(< /root/.found_correct_ipv4.cnf)
 
+# Function to perform rounded division
+_inc_round_division() {
+  local numerator=$1
+  local denominator=$2
+  echo $(( (numerator + (denominator / 2)) / denominator ))
+}
+
 # ==============================
 # Default Configuration Values
 # ==============================
@@ -47,23 +54,21 @@ _NGINX_DOS_LIMIT=399
 # Default mode (1 or 2)
 _NGINX_DOS_MODE=2
 
+# Default divisor for increments (positive integer)
+_NGINX_DOS_DIV_INC_NR=40
+_NGINX_DOS_DIV_INC_S_NR=$(( _NGINX_DOS_DIV_INC_NR * 2 ))
+
+# Default min allowed number for increments (positive integer)
+_NGINX_DOS_INC_MIN=3
+
 # Default logging mode, can be SILENT (none), NORMAL or VERBOSE
-_NGINX_DOS_LOG=SILENT
+_NGINX_DOS_LOG=VERBOSE
 
 # Default exclude keywords (empty by default; 'doccomment' will be used if not overridden)
 _NGINX_DOS_IGNORE="doccomment"
 
 # Default DoS keywords (empty by default; 'foobar' will be used if not overridden)
 _NGINX_DOS_STOP="foobar"
-
-# Precompute increments based on _NGINX_DOS_LIMIT
-_INC_NUMBER=$(( (_NGINX_DOS_LIMIT + 2) / 4 ))  # Approx division by 4
-_INC_S_NUMBER=$(( (_NGINX_DOS_LIMIT + 4) / 8 ))  # Approx division by 8
-
-echo "CONFIG: _NGINX_DOS_LIMIT is ${_NGINX_DOS_LIMIT}"
-echo "CONFIG: _NGINX_DOS_LINES is ${_NGINX_DOS_LINES}"
-echo "CONFIG: _INC_NUMBER is ${_INC_NUMBER}"
-echo "CONFIG: _INC_S_NUMBER is ${_INC_S_NUMBER}"
 
 # ==============================
 # Load Configuration File
@@ -75,6 +80,40 @@ if [[ -e "${_CONFIG_FILE}" ]]; then
   # shellcheck source=/dev/null
   source "${_CONFIG_FILE}"
 fi
+
+# ==============================
+# Validate and adjust variables
+# ==============================
+
+# Config Constants
+_MAX_LIMIT=${_NGINX_DOS_LINES}
+_MIN_LIMIT=$(_inc_round_division "${_MAX_LIMIT}" "40")
+_DEFAULT_LIMIT=$(_inc_round_division "${_MAX_LIMIT}" "5")
+
+# Validate _NGINX_DOS_INC_MIN: must be a positive integer
+if ! [[ "${_NGINX_DOS_INC_MIN}" =~ ^[1-9][0-9]*$ ]]; then
+  echo "Warning: Invalid _NGINX_DOS_INC_MIN ('${_NGINX_DOS_INC_MIN}'). Setting to default (3)."
+  _NGINX_DOS_INC_MIN=3
+fi
+
+# Validate _NGINX_DOS_LIMIT: must be a number within the range
+if ! [[ "${_NGINX_DOS_LIMIT}" =~ ^[0-9]+$ ]] || (( _NGINX_DOS_LIMIT < _MIN_LIMIT || _NGINX_DOS_LIMIT > _MAX_LIMIT )); then
+  echo "Warning: Invalid _NGINX_DOS_LIMIT ('${_NGINX_DOS_LIMIT}'). Setting to default (${_DEFAULT_LIMIT})."
+  _NGINX_DOS_LIMIT=${_DEFAULT_LIMIT}
+fi
+
+# Calculate increments with rounded division
+_INC_NR=$(_inc_round_division "${_NGINX_DOS_LIMIT}" "${_NGINX_DOS_DIV_INC_NR}")
+_INC_S_NR=$(_inc_round_division "${_NGINX_DOS_LIMIT}" "${_NGINX_DOS_DIV_INC_S_NR}")
+
+# Ensure increments are at least _NGINX_DOS_INC_MIN
+_INC_NR=$(( _INC_NR < _NGINX_DOS_INC_MIN ? _NGINX_DOS_INC_MIN : _INC_NR ))
+_INC_S_NR=$(( _INC_S_NR < _NGINX_DOS_INC_MIN ? _NGINX_DOS_INC_MIN : _INC_S_NR ))
+
+echo "CONFIG: _NGINX_DOS_LIMIT is ${_NGINX_DOS_LIMIT}"
+echo "CONFIG: _NGINX_DOS_LINES is ${_NGINX_DOS_LINES}"
+echo "CONFIG: _INC_NR is ${_INC_NR}"
+echo "CONFIG: _INC_S_NR is ${_INC_S_NR}"
 
 # ==============================
 # Declare Associative Arrays
@@ -246,27 +285,27 @@ _block_ip() {
 # Function to increment counters based on specific suspicious log patterns
 _if_increment_counters() {
   if [[ "${_IP}" = "unknown" ]]; then
-    (( _COUNTERS["${_IP}"] += _INC_NUMBER ))
+    (( _COUNTERS["${_IP}"] += _INC_NR ))
     _verbose_log "Counter++ for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "unknown"
   fi
   if [[ "${_line}" =~ '" 404' ]]; then
-    (( _COUNTERS["${_IP}"] += _INC_NUMBER ))
+    (( _COUNTERS["${_IP}"] += _INC_NR ))
     _verbose_log "Counter++ for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "404 flood protection"
   fi
   if [[ "${_line}" =~ '" 403' ]]; then
-    (( _COUNTERS["${_IP}"] += _INC_NUMBER ))
+    (( _COUNTERS["${_IP}"] += _INC_NR ))
     _verbose_log "Counter++ for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "403 flood protection"
   fi
   if [[ "${_line}" =~ '" 500' ]]; then
-    (( _COUNTERS["${_IP}"] += _INC_NUMBER ))
+    (( _COUNTERS["${_IP}"] += _INC_NR ))
     _verbose_log "Counter++ for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "500 flood protection"
   fi
   if [[ "${_line}" =~ wp-(content|admin|includes) ]]; then
-    (( _COUNTERS["${_IP}"] += _INC_NUMBER ))
+    (( _COUNTERS["${_IP}"] += _INC_NR ))
     _verbose_log "Counter++ for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "wp-x flood protection"
   fi
   if [[ "${_line}" =~ "(POST|GET) /user/login" ]]; then
-    (( _COUNTERS["${_IP}"] += _INC_S_NUMBER ))
+    (( _COUNTERS["${_IP}"] += _INC_S_NR ))
     _verbose_log "Counter++ for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "/user/login flood protection"
   fi
 }
@@ -399,9 +438,9 @@ _process_ip() {
         fi
       fi
     else
-      if [[ "${_line}" =~ POST ]]; then
-        (( _COUNTERS["${_IP}"] += 1 ))
-      fi
+#       if [[ "${_line}" =~ POST ]]; then
+#         (( _COUNTERS["${_IP}"] += 1 ))
+#       fi
       if [[ -n "${_NGINX_DOS_STOP}" ]]; then
         if [[ "${_line}" =~ (${_NGINX_DOS_STOP}) ]]; then
           (( _COUNTERS["${_IP}"] += 5 ))

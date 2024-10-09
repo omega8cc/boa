@@ -6,7 +6,7 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 
 _pthOml="/var/xdrago/log/mysql.incident.log"
 
-check_root() {
+_check_root() {
   if [ `whoami` = "root" ]; then
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
     chmod a+w /dev/null
@@ -15,7 +15,7 @@ check_root() {
     exit 1
   fi
 }
-check_root
+_check_root
 
 export _B_NICE=${_B_NICE//[^0-9]/}
 : "${_B_NICE:=10}"
@@ -29,20 +29,20 @@ export _SQL_LOW_MAX_TTL=${_SQL_LOW_MAX_TTL//[^0-9]/}
 export _INCIDENT_EMAIL_REPORT=${_INCIDENT_EMAIL_REPORT//[^A-Z]/}
 : "${_INCIDENT_EMAIL_REPORT:=YES}"
 
-if [ $(pgrep -f mysql.sh | grep -v "^$$" | wc -l) -gt 4 ]; then
-  echo "Too many mysql.sh running $(date 2>&1)" >> /var/xdrago/log/too.many.log
+if (( $(pgrep -fc 'mysql.sh') > 2 )); then
+  echo "Too many mysql.sh running $(date)" >> /var/xdrago/log/too.many.log
   exit 0
 fi
 
 _incident_email_report() {
   if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_EMAIL_REPORT}" = "YES" ]; then
-    hName=$(cat /etc/hostname 2>&1)
+    _hName=$(cat /etc/hostname 2>&1)
     echo "Sending Incident Report Email on $(date 2>&1)" >> ${_pthOml}
-    s-nail -s "Incident Report: ${1} on ${hName} at $(date 2>&1)" ${_MY_EMAIL} < ${_pthOml}
+    s-nail -s "Incident Report: ${1} on ${_hName} at $(date 2>&1)" ${_MY_EMAIL} < ${_pthOml}
   fi
 }
 
-sql_restart() {
+_sql_restart() {
   touch /run/boa_run.pid
   sleep 3
   echo "$(date 2>&1) $1 incident detected" >> ${_pthOml}
@@ -58,7 +58,7 @@ sql_restart() {
   exit 0
 }
 
-sql_busy_detection() {
+_sql_busy_detection() {
   if [ -e "/var/log/daemon.log" ]; then
     _SQL_LOG="/var/log/daemon.log"
   else
@@ -67,7 +67,7 @@ sql_busy_detection() {
   if [ -e "${_SQL_LOG}" ]; then
     if [ `tail --lines=10 ${_SQL_LOG} \
       | grep --count "Too many connections"` -gt "0" ]; then
-      sql_restart "BUSY MySQL"
+      _sql_restart "BUSY MySQL"
     fi
   fi
   _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
@@ -77,91 +77,92 @@ sql_busy_detection() {
     _MYSQL_CONN_TEST=$(mysql -u root -e "status" 2>&1)
     echo _MYSQL_CONN_TEST ${_MYSQL_CONN_TEST}
     if [[ "${_MYSQL_CONN_TEST}" =~ "Too many connections" ]]; then
-      sql_restart "BUSY MySQL"
+      _sql_restart "BUSY MySQL"
     fi
   fi
 }
 
-mysql_proc_kill() {
-  xtime=${xtime//[^0-9]/}
-  echo "Monitoring process $each by $xuser running for $xtime seconds"
+_mysql_proc_kill() {
+  _xtime=${_xtime//[^0-9]/}
+  echo "Monitoring process ${_each} by ${_xuser} running for ${_xtime} seconds"
 
-  if [[ -n "$xtime" && $xtime -gt $limit ]]; then
-    echo "Killing process $each by $xuser after $xtime seconds"
-    xkill=$(mysqladmin -u root kill $each 2>&1)
-    times=$(date)
-    load=$(cat /proc/loadavg)
+  if [[ -n "${_xtime}" && ${_xtime} -gt ${_limit} ]]; then
+    echo "Killing process ${_each} by ${_xuser} after ${_xtime} seconds"
+    _xkill=$(mysqladmin -u root kill ${_each} 2>&1)
+    _times=$(date)
+    _load=$(cat /proc/_loadavg)
 
-    # Log the load and the process killing details
-    echo "$load" >> /var/xdrago/log/sql_watch.log
-    echo "$times $each $xuser $xtime $xkill" >> /var/xdrago/log/sql_watch.log
+    # Log the _load and the process killing details
+    echo "${_load}" >> /var/xdrago/log/sql_watch.log
+    echo "${_times} ${_each} ${_xuser} ${_xtime} ${_xkill}" >> /var/xdrago/log/sql_watch.log
   fi
 }
 
-mysql_proc_control() {
+_mysql_proc_control() {
   # Log the MySQL process list if _SQLMONITOR is enabled
   if [[ "${_SQLMONITOR}" == "YES" ]]; then
     mysqladmin -u root proc -v >> /var/xdrago/log/mysqladmin.monitor.log
   fi
 
-  # Default TTL limit in seconds (can be adjusted)
-  limit=${1:-3600}
+  # Default TTL _limit in seconds (can be adjusted)
+  _limit=${1:-3600}
 
   # Get all MySQL processes and extract PID, user, and running time
-  mysql_proc_list=$(mysqladmin -u root proc | awk 'NR>3 {print $2, $4, $12}')
+  _mysql_proc_list=$(mysqladmin -u root proc | awk 'NR>3 {print $2, $4, $12}')
 
-  # Iterate over each process
-  echo "$mysql_proc_list" | while read -r each xuser xtime; do
-    each=${each//[^0-9]/}
-    xuser=${xuser//[^0-9a-z_]/}
-    xtime=${xtime//[^0-9]/}
+  # Iterate over _each process
+  echo "${_mysql_proc_list}" | while read -r _each _xuser _xtime; do
+    _each=${_each//[^0-9]/}
+    _xuser=${_xuser//[^0-9a-z_]/}
+    _xtime=${_xtime//[^0-9]/}
 
     # Skip root user processes
-    if [[ "$xuser" == "root" ]]; then
-      echo "Skipping root process: $each"
+    if [[ "${_xuser}" == "root" ]]; then
+      echo "Skipping root process: ${_each}"
       continue
     fi
 
-    if [[ -n "$each" && "$each" -gt 5 && -n "$xtime" ]]; then
-      echo "Process ID: $each, User: $xuser, Time: $xtime seconds"
+    if [[ -n "${_each}" && "${_each}" -gt 5 && -n "${_xtime}" ]]; then
+      echo "Process ID: ${_each}, User: ${_xuser}, Time: ${_xtime} seconds"
 
       # Check if the user is listed on the problematic users list
       if [[ -e "/root/.sql.problematic.users.cnf" ]]; then
         for _XQ in $(cat /root/.sql.problematic.users.cnf | cut -d '#' -f1 | sort | uniq); do
-          if [[ "$xuser" == "$_XQ" ]]; then
-            echo "Problematic user detected: $xuser, applying lower limit"
-            limit=${_SQL_LOW_MAX_TTL}
+          if [[ "${_xuser}" == "${_XQ}" ]]; then
+            echo "Problematic user detected: ${_xuser}, applying lower limit"
+            _limit=${_SQL_LOW_MAX_TTL}
           fi
         done
       else
-        limit=${_SQL_MAX_TTL}  # Default limit for non-problematic users
+        _limit=${_SQL_MAX_TTL}  # Default _limit for non-problematic users
       fi
 
-      mysql_proc_kill
+      _mysql_proc_kill
     fi
   done
 }
 
-sql_busy_detection
+_sql_busy_detection
 
 perl /var/xdrago/monitor/check/sqlcheck.pl &
 
 if [ -e "/run/boa_sql_backup.pid" ] \
   || [ -e "/run/boa_sql_cluster_backup.pid" ] \
   || [ -e "/run/boa_run.pid" ] \
+  || [ -e "/run/boa_wait.pid" ] \
   || [ -e "/run/mysql_restart_running.pid" ]; then
   _SQL_CTRL=NO
 else
   _SQL_CTRL=YES
 fi
 
-[ "${_SQL_CTRL}" = "YES" ] && mysql_proc_control "${_SQL_MAX_TTL}"
+[ "${_SQL_CTRL}" = "YES" ] && _mysql_proc_control "${_SQL_MAX_TTL}"
 sleep 15
-[ "${_SQL_CTRL}" = "YES" ] && mysql_proc_control "${_SQL_MAX_TTL}"
+[ "${_SQL_CTRL}" = "YES" ] && _mysql_proc_control "${_SQL_MAX_TTL}"
 sleep 15
-[ "${_SQL_CTRL}" = "YES" ] && mysql_proc_control "${_SQL_MAX_TTL}"
+[ "${_SQL_CTRL}" = "YES" ] && _mysql_proc_control "${_SQL_MAX_TTL}"
 sleep 15
-[ "${_SQL_CTRL}" = "YES" ] && mysql_proc_control "${_SQL_MAX_TTL}"
+[ "${_SQL_CTRL}" = "YES" ] && _mysql_proc_control "${_SQL_MAX_TTL}"
 
 echo DONE!
 exit 0

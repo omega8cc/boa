@@ -4,7 +4,7 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
-check_root() {
+_check_root() {
   if [ `whoami` = "root" ]; then
     ionice -c2 -n7 -p $$
     renice 19 -p $$
@@ -24,7 +24,7 @@ check_root() {
     exit 1
   fi
 }
-check_root
+_check_root
 
 [ -e "/root/.proxy.cnf" ] && exit 0
 [ ! -e "/root/.my.cluster_write_node.txt" ] && exit 0
@@ -55,9 +55,9 @@ fi
 _C_SQL="mysql --user=root --password=${_SQL_PSWD} --host=${_SQL_HOST} --port=${_SQL_PORT} --protocol=tcp"
 
 echo "SQL --host=${_SQL_HOST} --port=${_SQL_PORT}"
-n=$((RANDOM%600+8))
-echo "INFO: Waiting $n seconds on `date` before running backup..."
-sleep $n
+_n=$((RANDOM%600+8))
+echo "INFO: Waiting ${_n} seconds on `date` before running backup..."
+sleep ${_n}
 echo "INFO: Starting backup on `date`"
 
 [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
@@ -94,17 +94,17 @@ else
 fi
 touch /run/boa_sql_cluster_backup.pid
 
-create_locks() {
+_create_locks() {
   echo "Creating locks for $1"
   touch /run/mysql_cluster_backup_running.pid
 }
 
-remove_locks() {
+_remove_locks() {
   echo "Removing locks for $1"
   rm -f /run/mysql_cluster_backup_running.pid
 }
 
-check_running() {
+_check_running() {
   _IS_PROXYSQL_RUNNING=$(ps aux | grep '[p]roxysql' | awk '{print $2}' 2>&1)
   while [ -z "${_IS_PROXYSQL_RUNNING}" ] \
     || [ ! -e "/var/lib/proxysql/proxysql.pid" ]; do
@@ -114,8 +114,8 @@ check_running() {
   done
 }
 
-truncate_cache_tables() {
-  check_running
+_truncate_cache_tables() {
+  _check_running
   _TABLES=$(${_C_SQL} ${_DB} -e "show tables" -s | grep ^cache | uniq | sort 2>&1)
   for C in ${_TABLES}; do
     _IF_SKIP_C=
@@ -132,8 +132,8 @@ EOFMYSQL
   done
 }
 
-truncate_watchdog_tables() {
-  check_running
+_truncate_watchdog_tables() {
+  _check_running
   _TABLES=$(${_C_SQL} ${_DB} -e "show tables" -s | grep ^watchdog$ 2>&1)
   for W in ${_TABLES}; do
 ${_C_SQL} ${_DB}<<EOFMYSQL
@@ -142,8 +142,8 @@ EOFMYSQL
   done
 }
 
-truncate_accesslog_tables() {
-  check_running
+_truncate_accesslog_tables() {
+  _check_running
   _TABLES=$(${_C_SQL} ${_DB} -e "show tables" -s | grep ^accesslog$ 2>&1)
   for A in ${_TABLES}; do
 ${_C_SQL} ${_DB}<<EOFMYSQL
@@ -152,8 +152,8 @@ EOFMYSQL
   done
 }
 
-truncate_batch_tables() {
-  check_running
+_truncate_batch_tables() {
+  _check_running
   _TABLES=$(mysql ${_DB} -u root -e "show tables" -s | grep ^batch$ 2>&1)
   for B in ${_TABLES}; do
 ${_C_SQL} ${_DB}<<EOFMYSQL
@@ -162,8 +162,8 @@ EOFMYSQL
   done
 }
 
-truncate_queue_tables() {
-  check_running
+_truncate_queue_tables() {
+  _check_running
   _TABLES=$(${_C_SQL} ${_DB} -e "show tables" -s | grep ^queue$ 2>&1)
   for Q in ${_TABLES}; do
 ${_C_SQL} ${_DB}<<EOFMYSQL
@@ -172,8 +172,8 @@ EOFMYSQL
   done
 }
 
-truncate_views_data_export() {
-  check_running
+_truncate_views_data_export() {
+  _check_running
   _TABLES=$(mysql ${_DB} -u root -e "show tables" -s | grep ^views_data_export_index_ 2>&1)
   for V in ${_TABLES}; do
 ${_C_SQL} ${_DB}<<EOFMYSQL
@@ -185,13 +185,13 @@ TRUNCATE views_data_export_object_cache;
 EOFMYSQL
 }
 
-repair_this_database() {
-  check_running
+_repair_this_database() {
+  _check_running
   mysqlcheck --host=${_SQL_HOST} --port=${_SQL_PORT} --protocol=tcp -u root --auto-repair --silent ${_DB}
 }
 
-optimize_this_database() {
-  check_running
+_optimize_this_database() {
+  _check_running
   _TABLES=$(${_C_SQL} ${_DB} -e "show tables" -s | uniq | sort 2>&1)
   for T in ${_TABLES}; do
 ${_C_SQL} ${_DB}<<EOFMYSQL
@@ -200,8 +200,8 @@ EOFMYSQL
   done
 }
 
-convert_to_innodb() {
-  check_running
+_convert_to_innodb() {
+  _check_running
   _TABLES=$(${_C_SQL} ${_DB} -e "show tables" -s | uniq | sort 2>&1)
   for T in ${_TABLES}; do
 ${_C_SQL} ${_DB}<<EOFMYSQL
@@ -210,8 +210,8 @@ EOFMYSQL
   done
 }
 
-backup_this_database_with_mydumper() {
-  check_running
+_backup_this_database_with_mydumper() {
+  _check_running
   if [ ! -d "${_SAVELOCATION}/${_DB}" ]; then
     mkdir -p ${_SAVELOCATION}/${_DB}
   fi
@@ -230,8 +230,8 @@ backup_this_database_with_mydumper() {
     --verbose=1
 }
 
-backup_this_database_with_mysqldump() {
-  check_running
+_backup_this_database_with_mysqldump() {
+  _check_running
   mysqldump \
     --user=root \
     --password=${_SQL_PSWD} \
@@ -247,7 +247,7 @@ backup_this_database_with_mysqldump() {
     > ${_SAVELOCATION}/${_DB}.sql
 }
 
-compress_backup() {
+_compress_backup() {
   if [ "${_MYQUICK_USE}" = "YES" ]; then
     for DbPath in `find ${_SAVELOCATION}/ -maxdepth 1 -mindepth 1 | sort`; do
       if [ -e "${DbPath}/metadata" ]; then
@@ -273,7 +273,7 @@ compress_backup() {
 
 [ ! -a ${_SAVELOCATION} ] && mkdir -p ${_SAVELOCATION};
 
-check_mysql_version() {
+_check_mysql_version() {
   _DBS_TEST=$(which mysql 2>&1)
   if [ ! -z "${_DBS_TEST}" ]; then
     _DB_SERVER_TEST=$(mysql -V 2>&1)
@@ -301,8 +301,8 @@ check_mysql_version() {
   fi
 }
 
-check_running
-check_mysql_version
+_check_running
+_check_mysql_version
 
 _MYQUICK_USE=NO
 if [ -x "/usr/local/bin/mydumper" ]; then
@@ -345,8 +345,8 @@ for _DB in `${_C_SQL} -e "show databases" -s | uniq | sort`; do
   if [ "${_DB}" != "Database" ] \
     && [ "${_DB}" != "information_schema" ] \
     && [ "${_DB}" != "performance_schema" ]; then
-    check_running
-    create_locks ${_DB}
+    _check_running
+    _create_locks ${_DB}
     if [ "${_DB}" != "mysql" ]; then
       _IS_GB=$(${_C_SQL} --skip-column-names --silent -e "SELECT table_name 'Table Name', round(((data_length + index_length)/1024/1024),0)
 'Table Size (MB)' FROM information_schema.TABLES WHERE table_schema = '${_DB}' AND table_name ='watchdog';" | cut -d'/' -f1 | awk '{ print $2}' | sed "s/[\/\s+]//g" | bc 2>&1)
@@ -354,21 +354,21 @@ for _DB in `${_C_SQL} -e "show databases" -s | uniq | sort`; do
       _SQL_MAX_LIMIT="1024"
       if [ ! -z "${_IS_GB}" ]; then
         if [ "${_IS_GB}" -gt "${_SQL_MAX_LIMIT}" ]; then
-          truncate_watchdog_tables &> /dev/null
+          _truncate_watchdog_tables &> /dev/null
           echo "INFO: Truncated giant ${_IS_GB} watchdog in ${_DB}"
         fi
       fi
-      # truncate_accesslog_tables &> /dev/null
+      # _truncate_accesslog_tables &> /dev/null
       # echo "Truncated not used accesslog in ${_DB}"
-      # truncate_queue_tables &> /dev/null
+      # _truncate_queue_tables &> /dev/null
       # echo "Truncated queue table in ${_DB}"
       _CACHE_CLEANUP=NONE
       # if [ "${_DOW}" = "6" ] && [ -e "/root/.my.batch_innodb.cnf" ]; then
-      #   repair_this_database &> /dev/null
+      #   _repair_this_database &> /dev/null
       #   echo "Repair task for ${_DB} completed"
-      #   truncate_cache_tables &> /dev/null
+      #   _truncate_cache_tables &> /dev/null
       #   echo "All cache tables in ${_DB} truncated"
-      #   convert_to_innodb &> /dev/null
+      #   _convert_to_innodb &> /dev/null
       #   echo "InnoDB conversion task for ${_DB} completed"
       #   _CACHE_CLEANUP=DONE
       # fi
@@ -376,25 +376,25 @@ for _DB in `${_C_SQL} -e "show databases" -s | uniq | sort`; do
       #   && [ "${_DOW}" = "7" ] \
       #   && [ "${_DOM}" -ge "24" ] \
       #   && [ "${_DOM}" -lt "31" ]; then
-      #   repair_this_database &> /dev/null
+      #   _repair_this_database &> /dev/null
       #   echo "Repair task for ${_DB} completed"
-      #   truncate_cache_tables &> /dev/null
+      #   _truncate_cache_tables &> /dev/null
       #   echo "All cache tables in ${_DB} truncated"
-      #   optimize_this_database &> /dev/null
+      #   _optimize_this_database &> /dev/null
       #   echo "Optimize task for ${_DB} completed"
       #   _CACHE_CLEANUP=DONE
       # fi
       if [ "${_CACHE_CLEANUP}" != "DONE" ]; then
-        truncate_cache_tables &> /dev/null
+        _truncate_cache_tables &> /dev/null
         echo "INFO: All cache tables in ${_DB} truncated"
       fi
     fi
     if [ "${_MYQUICK_USE}" = "YES" ]; then
-      backup_this_database_with_mydumper &> /dev/null
+      _backup_this_database_with_mydumper &> /dev/null
     else
-      backup_this_database_with_mysqldump &> /dev/null
+      _backup_this_database_with_mysqldump &> /dev/null
     fi
-    remove_locks ${_DB}
+    _remove_locks ${_DB}
     echo "INFO: Backup completed for ${_DB}"
     echo
   fi
@@ -405,7 +405,7 @@ rm -f /run/boa_sql_cluster_backup.pid
 touch /var/xdrago/log/last-run-cluster-backup
 
 echo "INFO: Starting dbs backup compress on `date`"
-compress_backup &> /dev/null
+_compress_backup &> /dev/null
 echo "INFO: Completing dbs backup compress on `date`"
 
 echo "INFO: Starting dbs backup cleanup on `date`"

@@ -38,17 +38,17 @@
 ###
 ### Default variables
 ###
-bldPth="/opt/tmp/boa"
-filIncB="barracuda.sh.cnf"
-libFnc="${bldPth}/lib/functions"
-vBs="/var/backups"
-export tRee=pro
+_bldPth="/opt/tmp/boa"
+_filIncB="barracuda.sh.cnf"
+_libFnc="${_bldPth}/lib/functions"
+_vBs="/var/backups"
+export _tRee=dev
 
 
 ###
 ### Panic on missing include
 ###
-panic_exit() {
+_panic_exit() {
   echo
   echo " EXIT: Required lib file not available?"
   echo " EXIT: $1"
@@ -63,8 +63,8 @@ panic_exit() {
 ###
 ### Include default settings and basic functions
 ###
-[ -r "${vBs}/${filIncB}" ] || panic_exit "${vBs}/${filIncB}"
-  source "${vBs}/${filIncB}"
+[ -r "${_vBs}/${_filIncB}" ] || _panic_exit "${_vBs}/${_filIncB}"
+  source "${_vBs}/${_filIncB}"
 
 
 ###
@@ -72,8 +72,8 @@ panic_exit() {
 ###
 _FL="helper master"
 for f in ${_FL}; do
-  [ -r "${libFnc}/${f}.sh.inc" ] || panic_exit "${f}"
-  source "${libFnc}/${f}.sh.inc"
+  [ -r "${_libFnc}/${f}.sh.inc" ] || _panic_exit "${f}"
+  source "${_libFnc}/${f}.sh.inc"
 done
 
 
@@ -102,20 +102,20 @@ _DRUSHCMD="${_T_CLI}/php ${_ROOT}/drush/drush.php"
 PATH=${_T_CLI}:/usr/local/bin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 #
-crlGet="-L --max-redirs 3 -k -s --retry 3 --retry-delay 5 -A iCab"
-gCb="git clone --branch"
-gitHub="https://github.com/omega8cc"
-gitLab="https://gitlab.com/omega8cc"
+_crlGet="-L --max-redirs 3 -k -s --retry 3 --retry-delay 5 -A iCab"
+_gCb="git clone --branch"
+_gitHub="https://github.com/omega8cc"
+_gitLab="https://gitlab.com/omega8cc"
 #
-urlDev="http://${_USE_MIR}/dev"
-urlHmr="http://${_USE_MIR}/versions/${tRee}/boa/aegir"
+_urlDev="http://${_USE_MIR}/dev"
+_urlHmr="http://${_USE_MIR}/versions/${_tRee}/boa/aegir"
 
 
 ###---### Local functions
 #
 #
 # Update php-cli for Drush.
-php_cli_drush_update() {
+_php_cli_drush_update() {
   if [ ! -z "${1}" ]; then
     _DRUSH_FILE="${_ROOT}/drush/${1}"
   else
@@ -138,8 +138,8 @@ php_cli_drush_update() {
     sed -i "s/^#\!\/.*/#\!\/opt\/php74\/bin\/php/g" \
       ${_DRUSH_FILE} &> /dev/null
   else
-    msg "FATAL ERROR: _PHP_CLI_VERSION must be set to one of supported values"
-    msg "FATAL ERROR: Aborting AegirSetupM installer NOW!"
+    _msg "FATAL ERROR: _PHP_CLI_VERSION must be set to one of supported values"
+    _msg "FATAL ERROR: Aborting AegirSetupM installer NOW!"
     touch /opt/tmp/status-AegirSetupM-FAIL
     exit 1
   fi
@@ -149,17 +149,17 @@ php_cli_drush_update() {
 ###--------------------###
 
 if [ `whoami` = "root" ]; then
-  msg "FATAL ERROR: This script should be run as a non-root user"
-  msg "FATAL ERROR: Aborting AegirSetupM installer NOW!"
+  _msg "FATAL ERROR: This script should be run as a non-root user"
+  _msg "FATAL ERROR: Aborting AegirSetupM installer NOW!"
   touch /opt/tmp/status-AegirSetupM-FAIL
   exit 1
 fi
 
 if [ "${_DEBUG_MODE}" = "YES" ]; then
-  msg "INFO: Installing drush in ${_ROOT}"
+  _msg "INFO: Installing drush in ${_ROOT}"
 fi
 cd ${_ROOT}
-get_dev_ext "drush-${_DRUSH_VERSION}.tar.gz"
+_get_dev_ext "drush-${_DRUSH_VERSION}.tar.gz"
 cd ${_ROOT}/drush/
 find ${_ROOT}/drush -type d -exec chmod 0755 {} \; &> /dev/null
 find ${_ROOT}/drush -type f -exec chmod 0644 {} \; &> /dev/null
@@ -173,68 +173,68 @@ chmod 755 ${_ROOT}/drush/examples/git-bisect.example.sh
 chmod 755 ${_ROOT}/drush/examples/helloworld.script
 
 _DRUSH_FILES="drush.php drush"
-for df in ${_DRUSH_FILES}; do
-  php_cli_drush_update "${df}"
+for _df in ${_DRUSH_FILES}; do
+  _php_cli_drush_update "${_df}"
 done
-php_cli_local_ini_update
+_php_cli_local_ini_update
 
 if [ "${_DEBUG_MODE}" = "YES" ]; then
-  msg "INFO: Installing Aegir Provision backend..."
+  _msg "INFO: Installing Aegir Provision backend..."
 fi
 mkdir -p ${_ROOT}/.drush/{sys,xts,usr}
 if [ "${_AEGIR_VERSION}" != "static" ]; then
   cd ${_ROOT}/.drush
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "INFO: Downloading Drush and Provision extensions..."
+    _msg "INFO: Downloading Drush and Provision extensions..."
   fi
   rm -rf ${_ROOT}/.drush/{sys,xts,usr}
   rm -rf ${_ROOT}/.drush/{provision,drush_make}
   mkdir -p ${_ROOT}/.drush/{sys,xts,usr}
-  rD="${_ROOT}/.drush"
-  ${gCb} ${_BRANCH_PRN} ${gitHub}/provision.git \
-    ${rD}/sys/provision &> /dev/null
-  ${gCb} 7.x-1.x-dev ${gitHub}/drupalgeddon.git \
-    ${rD}/usr/drupalgeddon &> /dev/null
-  ${gCb} 7.x-1.x ${gitHub}/drush_ecl.git \
-    ${rD}/usr/drush_ecl &> /dev/null
-  ${gCb} 7.x-1.x ${gitHub}/security_review.git \
-    ${rD}/xts/security_review &> /dev/null
-  ${gCb} 7.x-2.x ${gitHub}/provision_boost.git \
-    ${rD}/xts/provision_boost &> /dev/null
-  ${gCb} 7.x-2.x ${gitHub}/registry_rebuild.git \
-    ${rD}/usr/registry_rebuild &> /dev/null
-  ${gCb} 7.x-1.x ${gitHub}/safe_cache_form_clear.git \
-    ${rD}/usr/safe_cache_form_clear &> /dev/null
-  rm -rf ${rD}/*/.git
-  rm -rf ${rD}/*/*/.git
-  cd ${rD}/usr
-  get_dev_ext "clean_missing_modules.tar.gz"
-  get_dev_ext "utf8mb4_convert-7.x-1.3.tar.gz"
+  _rD="${_ROOT}/.drush"
+  ${_gCb} ${_BRANCH_PRN} ${_gitHub}/provision.git \
+    ${_rD}/sys/provision &> /dev/null
+  ${_gCb} 7.x-1.x-dev ${_gitHub}/drupalgeddon.git \
+    ${_rD}/usr/drupalgeddon &> /dev/null
+  ${_gCb} 7.x-1.x ${_gitHub}/drush_ecl.git \
+    ${_rD}/usr/drush_ecl &> /dev/null
+  ${_gCb} 7.x-1.x ${_gitHub}/security_review.git \
+    ${_rD}/xts/security_review &> /dev/null
+  ${_gCb} 7.x-2.x ${_gitHub}/provision_boost.git \
+    ${_rD}/xts/provision_boost &> /dev/null
+  ${_gCb} 7.x-2.x ${_gitHub}/registry_rebuild.git \
+    ${_rD}/usr/registry_rebuild &> /dev/null
+  ${_gCb} 7.x-1.x ${_gitHub}/safe_cache_form_clear.git \
+    ${_rD}/usr/safe_cache_form_clear &> /dev/null
+  rm -rf ${_rD}/*/.git
+  rm -rf ${_rD}/*/*/.git
+  cd ${_rD}/usr
+  _get_dev_ext "clean_missing_modules.tar.gz"
+  _get_dev_ext "utf8mb4_convert-7.x-1.3.tar.gz"
 else
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "INFO: Downloading Drush and Provision extensions..."
+    _msg "INFO: Downloading Drush and Provision extensions..."
   fi
   cd ${_ROOT}/.drush/sys
-  get_dev_ext "provision.tar.gz"
+  _get_dev_ext "provision.tar.gz"
   cd ${_ROOT}/.drush/usr
-  get_dev_ext "clean_missing_modules.tar.gz"
-  get_dev_ext "drupalgeddon.tar.gz"
-  get_dev_ext "drush_ecl.tar.gz"
-  get_dev_ext "registry_rebuild.tar.gz"
-  get_dev_ext "safe_cache_form_clear.tar.gz"
-  get_dev_ext "utf8mb4_convert-7.x-1.3.tar.gz"
+  _get_dev_ext "clean_missing_modules.tar.gz"
+  _get_dev_ext "drupalgeddon.tar.gz"
+  _get_dev_ext "drush_ecl.tar.gz"
+  _get_dev_ext "registry_rebuild.tar.gz"
+  _get_dev_ext "safe_cache_form_clear.tar.gz"
+  _get_dev_ext "utf8mb4_convert-7.x-1.3.tar.gz"
   cd ${_ROOT}/.drush/xts
-  get_dev_ext "provision_boost.tar.gz"
-  get_dev_ext "security_review.tar.gz"
+  _get_dev_ext "provision_boost.tar.gz"
+  _get_dev_ext "security_review.tar.gz"
 fi
 
 if ${_DRUSHCMD} help | grep "^ provision-install" > /dev/null ; then
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "INFO: Drush test result OK"
+    _msg "INFO: Drush test result OK"
   fi
 else
-  msg "FATAL ERROR: Drush is broken (${_DRUSHCMD} help failed)"
-  msg "FATAL ERROR: Aborting AegirSetupM installer NOW!"
+  _msg "FATAL ERROR: Drush is broken (${_DRUSHCMD} help failed)"
+  _msg "FATAL ERROR: Aborting AegirSetupM installer NOW!"
   touch /opt/tmp/status-AegirSetupM-FAIL
   exit 1
 fi
@@ -244,7 +244,7 @@ sed -i "s/files.aegir.cc/${_USE_MIR}/g" \
 wait
 
 if [ "${_DEBUG_MODE}" = "YES" ]; then
-  msg "INFO: Installing the frontend"
+  _msg "INFO: Installing the frontend"
 fi
 ${_DRUSHCMD} cc drush >${_ROOT}/install.log 2>&1
 rm -rf ${_ROOT}/.tmp/cache
