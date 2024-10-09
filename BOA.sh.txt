@@ -3138,9 +3138,9 @@ _if_update_boa_key_tools_only() {
       csf -q
     fi
   fi
-  if [ -e "${_pthLog}" ] && [ ! -e "${_pthLog}/updateBt02.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+  if [ -e "${_pthLog}" ] && [ ! -e "${_pthLog}/updateBt03.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     _update_boa_tools
-    touch ${_pthLog}/updateBt02.ctrl.${_tRee}.${_xSrl}.pid
+    touch ${_pthLog}/updateBt03.ctrl.${_tRee}.${_xSrl}.pid
     if [ "${1}" = "verbose" ] || [ -z "${1}" ]; then
       echo
       echo "BOA Meta Installers setup completed"
@@ -3266,9 +3266,9 @@ _boa_setup() {
     _apt_clean_update
     apt-get install lsb-release ${_aptYesUnth}
   fi
-  if [ -e "${_pthLog}" ] && [ ! -e "${_pthLog}/updateBt02.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+  if [ -e "${_pthLog}" ] && [ ! -e "${_pthLog}/updateBt03.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     _update_boa_tools
-    touch ${_pthLog}/updateBt02.ctrl.${_tRee}.${_xSrl}.pid
+    touch ${_pthLog}/updateBt03.ctrl.${_tRee}.${_xSrl}.pid
     echo
     echo "BOA Meta Installers setup completed"
     echo "Please check INSTALL.md and UPGRADE.md at https://github.com/omega8cc/boa"
