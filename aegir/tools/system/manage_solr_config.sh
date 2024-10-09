@@ -514,13 +514,17 @@ _count_cpu() {
   chmod 644 /data/all/cpuinfo &> /dev/null
 }
 
+_get_load() {
+  read -r _one _five _rest <<< "$(cat /proc/loadavg)"
+  _O_LOAD=$(awk -v _load_value="${_one}" -v _cpus="${_CPU_NR}" 'BEGIN { printf "%.1f", (_load_value / _cpus) * 100 }')
+}
+
 _load_control() {
   [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
-  export _CPU_MAX_RATIO=${_CPU_MAX_RATIO//[^0-9]/}
-  : "${_CPU_MAX_RATIO:=2.5}"
-  _O_LOAD=$(awk '{print $1*100}' /proc/loadavg 2>&1)
-  _O_LOAD=$(( _O_LOAD / _CPU_NR ))
-  _O_LOAD_MAX=$(( 100 * _CPU_MAX_RATIO ))
+  : "${_CPU_TASK_RATIO:=2.1}"
+  _CPU_TASK_RATIO="$(_sanitize_number "${_CPU_TASK_RATIO}")"
+  _O_LOAD_MAX=$(echo "${_CPU_TASK_RATIO} * 100" | bc -l)
+  _get_load
 }
 
 _fix_solr7_cnf() {
@@ -644,7 +648,7 @@ _start_up() {
     if [ -e "${_usEr}/config/server_master/nginx/vhost.d" ] \
       && [ ! -e "${_usEr}/log/proxied.pid" ] \
       && [ ! -e "${_usEr}/log/CANCELLED" ]; then
-      if [ "${_O_LOAD}" -lt "${_O_LOAD_MAX}" ]; then
+      if (( $(echo "${_O_LOAD} < ${_O_LOAD_MAX}" | bc -l) )); then
         _HM_U=$(echo ${_usEr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
         _THIS_HM_SITE=$(cat ${_usEr}/.drush/hostmaster.alias.drushrc.php \
           | grep "site_path'" \

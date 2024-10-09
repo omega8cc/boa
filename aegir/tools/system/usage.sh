@@ -661,13 +661,17 @@ _count_cpu() {
   fi
 }
 
+_get_load() {
+  read -r _one _five _rest <<< "$(cat /proc/loadavg)"
+  _O_LOAD=$(awk -v _load_value="${_one}" -v _cpus="${_CPU_NR}" 'BEGIN { printf "%.1f", (_load_value / _cpus) * 100 }')
+}
+
 _load_control() {
   [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
-  export _CPU_MAX_RATIO=${_CPU_MAX_RATIO//[^0-9]/}
-  : "${_CPU_MAX_RATIO:=2.5}"
-  _O_LOAD=$(awk '{print $1*100}' /proc/loadavg 2>&1)
-  _O_LOAD=$(( _O_LOAD / _CPU_NR ))
-  _O_LOAD_MAX=$(( 100 * _CPU_MAX_RATIO ))
+  : "${_CPU_TASK_RATIO:=2.1}"
+  _CPU_TASK_RATIO="$(_sanitize_number "${_CPU_TASK_RATIO}")"
+  _O_LOAD_MAX=$(echo "${_CPU_TASK_RATIO} * 100" | bc -l)
+  _get_load
 }
 
 _sub_count_usr_home() {
@@ -688,7 +692,7 @@ _usage_action() {
     _count_cpu
     _load_control
     if [ -e "${_usEr}/config/server_master/nginx/vhost.d" ]; then
-      if [ "${_O_LOAD}" -lt "${_O_LOAD_MAX}" ]; then
+      if (( $(echo "${_O_LOAD} < ${_O_LOAD_MAX}" | bc -l) )); then
         _SumDir=0
         _SumDat=0
         _SkipDt=0
