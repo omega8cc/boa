@@ -159,11 +159,12 @@ if (!-f "/root/.run-to-daedalus.cnf" && !-f "/root/.run-to-chimaera.cnf" && !-f 
 if (!$nginxsumar && -f "/etc/init.d/nginx") {
   system("killall -9 nginx");
   system("service nginx start");
+  `echo "$timedate KILL START $nginxsumar" >> /var/xdrago/log/nginx.kill-start.log`;
 }
 
 if ($fpmsumar > 10 ) {
   system("killall -9 php-fpm");
-  `echo "$timedate KILL FPM $fpmsumar" >> /var/xdrago/log/fpm.kill.log`;
+  `echo "$timedate KILL FPM $fpmsumar" >> /var/xdrago/log/fpm.kill-all.log`;
 }
 system("service php83-fpm start") if ((!$php83lives || !$fpmsumar || !-f "/run/php83-fpm.pid") && -f "/etc/init.d/php83-fpm");
 system("service php82-fpm start") if ((!$php82lives || !$fpmsumar || !-f "/run/php82-fpm.pid") && -f "/etc/init.d/php82-fpm");

@@ -10,15 +10,15 @@ _barCnf="/root/.barracuda.cnf"
 
 # Define default values
 _CHECK_HOST=$(uname -n 2>&1)
-_DEFAULT_CPU_CRIT_RATIO="5.1"
+_DEFAULT_CPU_CRIT_RATIO="6.1"
 _DEFAULT_CPU_MAX_RATIO="4.1"
-_DEFAULT_CPU_TASK_RATIO="2.1"
-_DEFAULT_CPU_SPIDER_RATIO="1"
-_LOCK_CPU_CONFIG="/root/.lock.cpu.update.f1.cnf"
-_UPDATE_CPU_PID="/var/xdrago/log/.update_conf_variable.ctrl.f1.${_tRee}.${_xSrl}.pid"
+_DEFAULT_CPU_TASK_RATIO="3.1"
+_DEFAULT_CPU_SPIDER_RATIO="2.1"
+_LOCK_CPU_CONFIG="/root/.lock.cpu.update.f99.cnf"
+_UPDATE_CPU_PID="/var/xdrago/log/.update_conf_variable.ctrl.f99.${_tRee}.${_xSrl}.pid"
 
-_LOCK_DOS_CONFIG="/root/.lock.dos.update.f1.cnf"
-_LOCK_DOS_PID="/var/xdrago/log/.sync_scan_nginx.ctrl.f1.${_tRee}.${_xSrl}.pid"
+_LOCK_DOS_CONFIG="/root/.lock.dos.update.f99.cnf"
+_LOCK_DOS_PID="/var/xdrago/log/.sync_scan_nginx.ctrl.f99.${_tRee}.${_xSrl}.pid"
 
 _DEFAULT_NGINX_DOS_LINES=1999
 _DEFAULT_NGINX_DOS_LIMIT=399
@@ -731,17 +731,6 @@ if [ -e "/var/aegir/drush" ]; then
     fi
     ln -s /usr/local/bin/curl /usr/bin/curl
     touch /var/xdrago/log/.curl_ctrl.${_tRee}.${_xSrl}.pid
-  fi
-
-  if [ ! -e "/var/xdrago/log/.force_nginx_restart_ctrl.${_tRee}.${_xSrl}.pid" ]; then
-    _IS_NGINX_LOCKED=$(service nginx restart 2>&1)
-    if [[ "${_IS_NGINX_LOCKED}" =~ "Address already in use" ]]; then
-      kill -9 $(ps aux | grep '[n]ginx' | awk '{print $2}') &> /dev/null
-      service nginx start
-      wait
-      rm -f /var/xdrago/log/.force_nginx_restart_ctrl*
-      touch /var/xdrago/log/.force_nginx_restart_ctrl.${_tRee}.${_xSrl}.pid
-    fi
   fi
 
   _IS_MOVESQL_RUNNING=$(ps aux | grep '[m]ove_sql.sh' | awk '{print $2}' 2>&1)
