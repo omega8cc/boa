@@ -733,17 +733,6 @@ if [ -e "/var/aegir/drush" ]; then
     touch /var/xdrago/log/.curl_ctrl.${_tRee}.${_xSrl}.pid
   fi
 
-  if [ ! -e "/var/xdrago/log/.force_nginx_restart_ctrl.${_tRee}.${_xSrl}.pid" ]; then
-    _IS_NGINX_LOCKED=$(service nginx restart 2>&1)
-    if [[ "${_IS_NGINX_LOCKED}" =~ "Address already in use" ]]; then
-      kill -9 $(ps aux | grep '[n]ginx' | awk '{print $2}') &> /dev/null
-      service nginx start
-      wait
-      rm -f /var/xdrago/log/.force_nginx_restart_ctrl*
-      touch /var/xdrago/log/.force_nginx_restart_ctrl.${_tRee}.${_xSrl}.pid
-    fi
-  fi
-
   _IS_MOVESQL_RUNNING=$(ps aux | grep '[m]ove_sql.sh' | awk '{print $2}' 2>&1)
   if [ ! -z "${_IS_MOVESQL_RUNNING}" ]; then
     if [ `ps aux | grep -v "grep" | grep --count "move_sql.sh"` -gt "2" ]; then
