@@ -6,8 +6,7 @@ export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
 # Paths
-_PTH_VHOSTD="/var/aegir/config/server_master/nginx/vhost.d"
-_PTH_OML="/var/xdrago/log/high.load.incident.log"
+_pthOml="/var/xdrago/log/high.load.incident.log"
 
 # Exit if proxy config exists
 [ -e "/root/.proxy.cnf" ] && exit 0
@@ -74,8 +73,8 @@ _incident_email_report() {
     if [ "${_send_email}" = true ]; then
       local _hostname
       _hostname="$(cat /etc/hostname)"
-      echo "Sending Incident Report Email on $(date)" >> "${_PTH_OML}"
-      s-nail -s "Incident Report on ${_hostname}: ${_subject}" "${_MY_EMAIL}" < "${_PTH_OML}"
+      echo "Sending Incident Report Email on $(date)" >> "${_pthOml}"
+      s-nail -s "Incident Report on ${_hostname}: ${_subject}" "${_MY_EMAIL}" < "${_pthOml}"
     fi
   fi
 }
@@ -89,10 +88,10 @@ _hold_services() {
   killall -9 php-fpm
   local _log_message
   _log_message="$(date) System Load ${_current_load}% (${_load_period}) - Web Server Paused"
-  echo "${_log_message}" >> "${_PTH_OML}"
+  echo "${_log_message}" >> "${_pthOml}"
   local _subject="Web Services Paused - ${_load_period} Load ${_current_load}% exceeded Max Load Threshold ${_threshold}%"
   _incident_email_report "${_log_message}" "${_subject}" "ALERT"
-  echo >> "${_PTH_OML}"
+  echo >> "${_pthOml}"
   echo "Action Taken: Web services paused due to high load."
 }
 
@@ -105,10 +104,10 @@ _terminate_processes() {
     killall -9 php drush.php wget curl &> /dev/null
     local _log_message
     _log_message="$(date) System Load ${_current_load}% (${_load_period}) - PHP/Wget/cURL terminated"
-    echo "${_log_message}" >> "${_PTH_OML}"
+    echo "${_log_message}" >> "${_pthOml}"
     local _subject="Processes Terminated - ${_load_period} Load ${_current_load}% exceeded Critical Load Threshold ${_threshold}%"
     _incident_email_report "${_log_message}" "${_subject}" "ALERT"
-    echo >> "${_PTH_OML}"
+    echo >> "${_pthOml}"
     echo "Action Taken: Long-running processes terminated due to critical load."
   fi
 }
@@ -122,10 +121,10 @@ _nginx_high_load_on() {
   service nginx reload &> /dev/null
   local _log_message
   _log_message="$(date) nginx_high_load_on ${_load_period} Load: ${_current_load}%"
-  echo "${_log_message}" >> "${_PTH_OML}"
+  echo "${_log_message}" >> "${_pthOml}"
   local _subject="Enabled Spider Protection - ${_load_period} Load ${_current_load}% exceeded Spider Protection Threshold ${_threshold}%"
   _incident_email_report "${_log_message}" "${_subject}" "INFO"
-  echo >> "${_PTH_OML}"
+  echo >> "${_pthOml}"
   echo "Action Taken: Enabled protection from spiders (nginx high load configuration applied)."
 }
 
@@ -135,10 +134,10 @@ _nginx_high_load_off() {
   service nginx reload &> /dev/null
   local _log_message
   _log_message="$(date) nginx_high_load_off Load: ${_O_LOAD}%"
-  echo "${_log_message}" >> "${_PTH_OML}"
+  echo "${_log_message}" >> "${_pthOml}"
   local _subject="Disabled Spider Protection - Load decreased below Spider Protection Threshold ${_CPU_SPIDER_THRESHOLD}%"
   _incident_email_report "${_log_message}" "${_subject}" "INFO"
-  echo >> "${_PTH_OML}"
+  echo >> "${_pthOml}"
   echo "Action Taken: Disabled protection from spiders (nginx high load configuration removed)."
 }
 
