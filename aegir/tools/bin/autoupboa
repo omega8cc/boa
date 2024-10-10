@@ -14,11 +14,11 @@ _DEFAULT_CPU_CRIT_RATIO="5.1"
 _DEFAULT_CPU_MAX_RATIO="4.1"
 _DEFAULT_CPU_TASK_RATIO="2.1"
 _DEFAULT_CPU_SPIDER_RATIO="1"
-_LOCK_CPU_CONFIG="/root/.lock.cpu.update.f1.cnf"
-_UPDATE_CPU_PID="/var/xdrago/log/.update_conf_variable.ctrl.f1.${_tRee}.${_xSrl}.pid"
+_LOCK_CPU_CONFIG="/root/.lock.cpu.update.f99.cnf"
+_UPDATE_CPU_PID="/var/xdrago/log/.update_conf_variable.ctrl.f99.${_tRee}.${_xSrl}.pid"
 
-_LOCK_DOS_CONFIG="/root/.lock.dos.update.f1.cnf"
-_LOCK_DOS_PID="/var/xdrago/log/.sync_scan_nginx.ctrl.f1.${_tRee}.${_xSrl}.pid"
+_LOCK_DOS_CONFIG="/root/.lock.dos.update.f99.cnf"
+_LOCK_DOS_PID="/var/xdrago/log/.sync_scan_nginx.ctrl.f99.${_tRee}.${_xSrl}.pid"
 
 _DEFAULT_NGINX_DOS_LINES=1999
 _DEFAULT_NGINX_DOS_LIMIT=399
