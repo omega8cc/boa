@@ -10,10 +10,10 @@ _barCnf="/root/.barracuda.cnf"
 
 # Define default values
 _CHECK_HOST=$(uname -n 2>&1)
-_DEFAULT_CPU_CRIT_RATIO="5.1"
+_DEFAULT_CPU_CRIT_RATIO="6.1"
 _DEFAULT_CPU_MAX_RATIO="4.1"
-_DEFAULT_CPU_TASK_RATIO="2.1"
-_DEFAULT_CPU_SPIDER_RATIO="1"
+_DEFAULT_CPU_TASK_RATIO="3.1"
+_DEFAULT_CPU_SPIDER_RATIO="2.1"
 _LOCK_CPU_CONFIG="/root/.lock.cpu.update.f99.cnf"
 _UPDATE_CPU_PID="/var/xdrago/log/.update_conf_variable.ctrl.f99.${_tRee}.${_xSrl}.pid"
 
