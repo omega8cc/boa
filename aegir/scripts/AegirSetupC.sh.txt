@@ -1455,6 +1455,276 @@ _drupal10_4_install() {
 }
 
 
+# Define distros names and their key-words for configuration
+declare -A _distros_names=(
+  ["CM1"]="Commerce v.1"
+  ["CM2"]="Commerce v.2"
+  ["DXP"]="DXPR Marketing"
+  ["EZC"]="EzContent"
+  ["FOS"]="farmOS"
+  ["LGV"]="LocalGov"
+  ["OCS"]="OpenCulturas"
+  ["OFD"]="OpenFed"
+  ["OLS"]="OpenLucius"
+  ["OPG"]="Opigno LMS"
+  ["SCR"]="Sector"
+  ["SOC"]="Social"
+  ["THR"]="Thunder"
+  ["UC6"]="Ubercart D6"
+  ["UC7"]="Ubercart D7"
+  ["VBE"]="Varbase IX"
+  ["VBX"]="Varbase X"
+
+  ["DL6"]="Drupal VI"
+  ["DL7"]="Drupal VII"
+  ["DL9"]="Drupal IX"
+
+  ["DX0"]="Drupal X0"
+  ["DX1"]="Drupal X1"
+  ["DX2"]="Drupal X2"
+  ["DX3"]="Drupal X3"
+  ["DX4"]="Drupal X4"
+)
+
+# Define distros web dirs for configuration
+declare -A _distros_web_dirs=(
+  ["CM1"]=""
+  ["CM2"]=""
+  ["DXP"]="/web"
+  ["EZC"]="/web"
+  ["FOS"]="/web"
+  ["LGV"]="/web"
+  ["OCS"]="/web"
+  ["OFD"]="/docroot"
+  ["OLS"]="/web"
+  ["OPG"]="/web"
+  ["SCR"]="/web"
+  ["SOC"]="/html"
+  ["THR"]="/docroot"
+  ["UC6"]=""
+  ["UC7"]=""
+  ["VBE"]="/docroot"
+  ["VBX"]="/docroot"
+
+  ["DL6"]=""
+  ["DL7"]=""
+  ["DL9"]="/web"
+
+  ["DX0"]="/web"
+  ["DX1"]="/web"
+  ["DX2"]="/web"
+  ["DX3"]="/web"
+  ["DX4"]="/web"
+)
+
+# Define distros profiles paths for configuration
+declare -A _distros_profiles_paths=(
+  ["CM1"]="/"
+  ["CM2"]="/"
+  ["DXP"]="contrib/"
+  ["EZC"]="contrib/"
+  ["FOS"]="/"
+  ["LGV"]="contrib/"
+  ["OCS"]="contrib/"
+  ["OFD"]="contrib/"
+  ["OLS"]="contrib/"
+  ["OPG"]="contrib/"
+  ["SCR"]="contrib/"
+  ["SOC"]="/"
+  ["THR"]="contrib/"
+  ["UC6"]="/"
+  ["UC7"]="/"
+  ["VBE"]="/"
+  ["VBX"]="/"
+
+  ["DL6"]="/"
+  ["DL7"]="/"
+  ["DL9"]="/"
+
+  ["DX0"]="/"
+  ["DX1"]="/"
+  ["DX2"]="/"
+  ["DX3"]="/"
+  ["DX4"]="/"
+)
+
+# Define distros profiles names for configuration
+declare -A _distros_profiles_names=(
+  ["CM1"]="commerce_kickstart"
+  ["CM2"]="commerce_kickstart"
+  ["DXP"]="dxpr_marketing_cms"
+  ["EZC"]="ezcontent"
+  ["FOS"]="farm"
+  ["LGV"]="localgov"
+  ["OCS"]="openculturas"
+  ["OFD"]="openfed"
+  ["OLS"]="openlucius"
+  ["OPG"]="opigno_lms"
+  ["SCR"]="sector"
+  ["SOC"]="social"
+  ["THR"]="thunder"
+  ["UC6"]="uberdrupal"
+  ["UC7"]="minimal"
+  ["VBE"]="varbase"
+  ["VBX"]="varbase"
+
+  ["DL6"]="default"
+  ["DL7"]="standard"
+  ["DL9"]="standard"
+
+  ["DX0"]="standard"
+  ["DX1"]="standard"
+  ["DX2"]="standard"
+  ["DX3"]="standard"
+  ["DX4"]="standard"
+
+)
+
+# Define distros Drupal cores versions for configuration
+declare -A _distros_drupal_cores=(
+  ["CM1"]="${_SMALLCORE7_V}"
+  ["CM2"]="${_SMALLCORE7_V}"
+  ["DXP"]="${_SMALLCORE10_3_V}"
+  ["EZC"]="${_SMALLCORE10_3_V}"
+  ["FOS"]="${_SMALLCORE10_2_V}"
+  ["LGV"]="${_SMALLCORE10_3_V}"
+  ["OCS"]="${_SMALLCORE10_3_V}"
+  ["OFD"]="${_SMALLCORE10_2_V}"
+  ["OLS"]="${_SMALLCORE9_V}"
+  ["OPG"]="${_SMALLCORE9_V}"
+  ["SCR"]="${_SMALLCORE10_2_V}"
+  ["SOC"]="${_SMALLCORE10_2_V}"
+  ["THR"]="${_SMALLCORE10_3_V}"
+  ["UC6"]="${_SMALLCORE6_V}"
+  ["UC7"]="${_SMALLCORE7_V}"
+  ["VBE"]="${_SMALLCORE10_3_V}"
+  ["VBX"]="${_SMALLCORE10_3_V}"
+
+  ["DL6"]="${_SMALLCORE6_V}"
+  ["DL7"]="${_SMALLCORE7_V}"
+  ["DL9"]="${_SMALLCORE9_V}"
+
+  ["DX0"]="${_SMALLCORE10_0_V}"
+  ["DX1"]="${_SMALLCORE10_1_V}"
+  ["DX2"]="${_SMALLCORE10_2_V}"
+  ["DX3"]="${_SMALLCORE10_3_V}"
+  ["DX4"]="${_SMALLCORE10_4_V}"
+)
+
+# Define distros versions for configuration
+declare -A _distros_versions=(
+  ["CM1"]="1.72"
+  ["CM2"]="2.77"
+  ["DXP"]="10.3.0"
+  ["EZC"]="2.2.12"
+  ["FOS"]="3.2.4"
+  ["LGV"]="3.1.1"
+  ["OCS"]="2.2.1"
+  ["OFD"]="12.2.2"
+  ["OLS"]="2.0.0"
+  ["OPG"]="3.1.0"
+  ["SCR"]="10.0.0-rc5"
+  ["SOC"]="12.4.2"
+  ["THR"]="7.3.0"
+  ["UC6"]="2.15"
+  ["UC7"]="3.13"
+  ["VBE"]="9.1.3"
+  ["VBX"]="10.0.0"
+
+  ["DL6"]="${_SMALLCORE6_V}"
+  ["DL7"]="${_SMALLCORE7_V}"
+  ["DL9"]="${_SMALLCORE9_V}"
+
+  ["DX0"]="${_SMALLCORE10_0_V}"
+  ["DX1"]="${_SMALLCORE10_1_V}"
+  ["DX2"]="${_SMALLCORE10_2_V}"
+  ["DX3"]="${_SMALLCORE10_3_V}"
+  ["DX4"]="${_SMALLCORE10_4_V}"
+)
+
+# Define distros names and their compatible max PHP versions for information
+declare -A _distros_php_versions=(
+  ["CM1"]="7.4"
+  ["CM2"]="7.4"
+  ["DXP"]="8.3"
+  ["EZC"]="8.3"
+  ["FOS"]="8.3"
+  ["LGV"]="8.3"
+  ["OCS"]="8.3"
+  ["OFD"]="8.3"
+  ["OLS"]="8.3"
+  ["OPG"]="8.3"
+  ["SCR"]="8.3"
+  ["SOC"]="8.3"
+  ["THR"]="8.3"
+  ["UC6"]="7.4"
+  ["UC7"]="7.4"
+  ["VBE"]="8.3"
+  ["VBX"]="8.3"
+
+  ["DL6"]="7.4"
+  ["DL7"]="8.3"
+  ["DL9"]="8.3"
+
+  ["DX0"]="8.3"
+  ["DX1"]="8.3"
+  ["DX2"]="8.3"
+  ["DX3"]="8.3"
+  ["DX4"]="8.3"
+)
+
+
+# Loop through the _distros_names
+for _dist in "${!_distros_names[@]}"; do
+   local _d_name=${_distros_names[${_dist}]}
+   local _d_vers=${_distros_versions[${_dist}]}
+   local _d_core=${_distros_drupal_cores[${_dist}]}
+   local _d_ppth=${_distros_profiles_paths[${_dist}]}
+   local _d_prfn=${_distros_profiles_names[${_dist}]}
+   local _d_webd=${_distros_web_dirs[${_dist}]}
+   local _d_phpv=${_distros_php_versions[${_dist}]}
+
+   local _d_desc="${_d_name} ${_d_core} [${_THIS_CORE}]"
+
+   if [[ "${_dist}" =~ DL || "${_dist}" =~ DX ]]; then
+     _d_core_platform_install "${_dist}" "${_d_vers}" "${_d_core}" "${_d_desc}" "${_d_ppth}" "${_d_prfn}" "${_d_webd}" "${_d_phpv}"
+   else
+     _d_dist_platform_install "${_dist}" "${_d_vers}" "${_d_core}" "${_d_desc}" "${_d_ppth}" "${_d_prfn}" "${_d_webd}" "${_d_phpv}"
+   fi
+done
+
+
+_d_dist_platform_install() {
+###---### Template function
+#
+  local _DIST_PLNAME="${_d_prfn}-${_d_vers}-${_d_core}"
+  local _DIST_PLPATH="${_CORE}/${_DIST_PLNAME}"
+  local _DIST_PRPATH="${_DIST_PLPATH}/profiles/${_d_ppth}${_d_prfn}"
+  local _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_DIST_PLNAME}${_d_webd}"
+  if [ "${_ALLOW_ALL}" = "YES" ]; then
+    if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
+      || [[ "${_PLATFORMS_LIST}" =~ ${_dist} ]]; then
+      if [ ! -d "${_OCTO_PLPATH}" ]; then
+        if _prompt_yes_no "${_d_desc}" ; then
+          true
+          [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${_d_desc} ${_yOk}"
+          if [ ! -d "${_OCTO_PLPATH}" ]; then
+            cd ${_ROOT}/distro/${_THIS_CORE}
+            _get_distro_ext "${_DIST_PLNAME}.tar.gz"
+          fi
+          if [ -d "${_OCTO_PLPATH}" ]; then
+            _msg "DISTRO: ${_d_desc} installed"
+            _RUN_VERIFY=YES
+          fi
+        else
+          [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${_d_desc} ${_noT}"
+        fi
+      fi
+    fi
+  fi
+}
+
+
 _openlucius_install() {
 ###---### OpenLucius
 #
