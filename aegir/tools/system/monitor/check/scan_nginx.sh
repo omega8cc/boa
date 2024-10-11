@@ -303,7 +303,7 @@ _if_increment_counters() {
     (( _COUNTERS["${_IP}"] += _INC_NR ))
     _verbose_log "Counter++ for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "500 flood protection"
   fi
-  if [[ "${_line}" =~ wp-(content|admin|includes) ]]; then
+  if [[ "${_line}" =~ wp-(content|admin|includes|json) ]]; then
     (( _COUNTERS["${_IP}"] += _INC_NR ))
     _verbose_log "Counter++ for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "wp-x flood protection"
   fi
@@ -359,30 +359,34 @@ _process_ip() {
   if [[ "${_line}" =~ (GET|HEAD|POST) && ! "${_line}" =~ \"\ 301 ]]; then
 
     # Define admin URIs to ignore
-    if [[ "${_line}" =~ (GET|POST)\ /([a-z]{2}/)?admin/content.*\"\ 200 ]]; then
+    if [[ "${_line}" =~ (GET|POST)\ /([a-z]{2}/)?admin/content.*\"\ (200|302) ]]; then
       _IGNORE_ADMIN=1
-    elif [[ "${_line}" =~ (GET|POST)\ /([a-z]{2}/)?quickedit.*\"\ 200 ]]; then
+    elif [[ "${_line}" =~ (GET|POST)\ /([a-z]{2}/)?quickedit.*\"\ (200|302) ]]; then
       _IGNORE_ADMIN=1
-    elif [[ "${_line}" =~ (GET|POST)\ /([a-z]{2}/)?node/add.*\"\ 200 ]]; then
+    elif [[ "${_line}" =~ (GET|POST)\ /([a-z]{2}/)?node/add.*\"\ (200|302) ]]; then
       _IGNORE_ADMIN=1
-    elif [[ "${_line}" =~ (GET|POST)\ /([a-z]{2}/)?node/[0-9]+/edit.*\"\ 200 ]]; then
+    elif [[ "${_line}" =~ (GET|POST)\ /([a-z]{2}/)?node/[0-9]+/edit.*\"\ (200|302) ]]; then
       _IGNORE_ADMIN=1
-    elif [[ "${_line}" =~ (GET|POST)\ /([a-z]{2}/)?entity_reference_autocomplete.*\"\ 200 ]]; then
+    elif [[ "${_line}" =~ (GET|POST)\ /([a-z]{2}/)?entity_reference_autocomplete.*\"\ (200|302) ]]; then
       _IGNORE_ADMIN=1
-    elif [[ "${_line}" =~ (GET|POST)\ /([a-z]{2}/)?(hosting|system|admin|app|ckeditor)/.*\"\ 200 ]]; then
+    elif [[ "${_line}" =~ (GET|POST)\ /([a-z]{2}/)?(hosting|system|admin|app|ckeditor)/.*\"\ (200|302) ]]; then
       _IGNORE_ADMIN=1
-    elif [[ "${_line}" =~ (GET|POST)\ /([a-z]{2}/)?entity-browser.*\"\ 200 ]]; then
+    elif [[ "${_line}" =~ (GET|POST)\ /([a-z]{2}/)?entity-browser.*\"\ (200|302) ]]; then
       _IGNORE_ADMIN=1
-    elif [[ "${_line}" =~ (GET|POST)\ /([a-z]{2}/)?contextual/render.*\"\ 200 ]]; then
+    elif [[ "${_line}" =~ (GET|POST)\ /([a-z]{2}/)?contextual/render.*\"\ (200|302) ]]; then
       _IGNORE_ADMIN=1
-    elif [[ "${_line}" =~ (GET|POST)\ /([a-z]{2}/)?views-bulk-operations.*\"\ 200 ]]; then
+    elif [[ "${_line}" =~ (GET|POST)\ /([a-z]{2}/)?views-bulk-operations.*\"\ (200|302) ]]; then
       _IGNORE_ADMIN=1
-    elif [[ "${_line}" =~ (GET|POST)\ /([a-z]{2}/)?civicrm.*\"\ 200 ]]; then
+    elif [[ "${_line}" =~ (GET|POST)\ /([a-z]{2}/)?civicrm.*\"\ (200|302) ]]; then
       _IGNORE_ADMIN=1
-    elif [[ "${_line}" =~ (GET|POST)\ /([a-z]{2}/)?batch.*\"\ 200 ]]; then
+    elif [[ "${_line}" =~ (GET|POST)\ /([a-z]{2}/)?batch.*\"\ (200|302) ]]; then
       _IGNORE_ADMIN=1
-    elif [[ "${_line}" =~ (GET|POST)\ /([a-z]{2}/)?media/browser.*\"\ 200 ]]; then
+    elif [[ "${_line}" =~ (GET|POST)\ /([a-z]{2}/)?media/browser.*\"\ (200|302) ]]; then
       _IGNORE_ADMIN=1
+    fi
+
+    if [[ "${_line}" =~ (GET|HEAD|POST)\ /.*\"\ 403 ]] || [[ "${_line}" =~ wp-(content|admin|includes|json) ]]; then
+      _IGNORE_ADMIN=0
     fi
 
     if [[ "${_IGNORE_ADMIN}" -eq 1 ]]; then
@@ -390,7 +394,7 @@ _process_ip() {
     fi
 
     # Define other patterns to skip
-    if [[ "${_line}" =~ (GET|POST)\ /([a-z]{2}/)?advagg ]]; then
+    if [[ "${_line}" =~ (GET|POST)\ /([a-z]{2}/)?advagg.*\"\ (200|302) ]]; then
       _SKIP_POST=1
     elif [[ "${_line}" =~ /files/css/css_ ]]; then
       _SKIP_POST=1
@@ -398,23 +402,25 @@ _process_ip() {
       _SKIP_POST=1
     elif [[ "${_line}" =~ /files/advagg_ ]]; then
       _SKIP_POST=1
-    elif [[ "${_line}" =~ (ajax|autocomplete|shs) ]]; then
+    elif [[ "${_line}" =~ /files/(imagecache|styles) ]]; then
       _SKIP_POST=1
-    elif [[ "${_line}" =~ (plupload|json|api/rest) ]]; then
+    elif [[ "${_line}" =~ (ajax|autocomplete|shs).*\"\ (200|302) ]]; then
       _SKIP_POST=1
-    elif [[ "${_line}" =~ GET\ /(filefield/progress|files/progress|file/progress|elfinder/connector) ]]; then
+    elif [[ "${_line}" =~ (plupload|json|api/rest).*\"\ (200|302) ]]; then
       _SKIP_POST=1
-    elif [[ "${_line}" =~ POST\ /js/ ]]; then
+    elif [[ "${_line}" =~ GET\ /(filefield/progress|files/progress|file/progress|elfinder/connector).*\"\ (200|302) ]]; then
       _SKIP_POST=1
-    elif [[ "${_line}" =~ /files/(imagecache|styles|media) ]]; then
+    elif [[ "${_line}" =~ POST\ /js/.*\"\ (200|302) ]]; then
       _SKIP_POST=1
-    elif [[ "${_line}" =~ GET\ /.*\.(mp4|m4a|flv|avi|mpeg|mov|wmv|mp3|ogg|ogv|wav|midi|zip|tar|tgz|rar|dmg|exe|apk|pxl|ipa)\" ]]; then
+    elif [[ "${_line}" =~ /files/media.*\"\ (200|302) ]]; then
       _SKIP_POST=1
-    elif [[ "${_line}" =~ GET\ /timemachine/[0-9]{4}/ ]]; then
+    elif [[ "${_line}" =~ GET\ /.*\.(mp4|m4a|flv|avi|mpeg|mov|wmv|mp3|ogg|ogv|wav|midi|zip|tar|tgz|rar|dmg|exe|apk|pxl|ipa|jpe?g|gif|png|ico).*\"\ (200|302) ]]; then
       _SKIP_POST=1
-    elif [[ "${_line}" =~ POST\ /.*/cart/checkout ]]; then
+    elif [[ "${_line}" =~ GET\ /timemachine/[0-9]{4}/.*\"\ (200|302) ]]; then
       _SKIP_POST=1
-    elif [[ "${_line}" =~ POST\ /.*/embed/preview ]]; then
+    elif [[ "${_line}" =~ POST\ /.*/cart/checkout.*\"\ (200|302) ]]; then
+      _SKIP_POST=1
+    elif [[ "${_line}" =~ POST\ /.*/embed/preview.*\"\ (200|302) ]]; then
       _SKIP_POST=1
     elif [[ "${_line}" =~ files\.aegir\.cc ]]; then
       _SKIP_POST=1
@@ -422,16 +428,20 @@ _process_ip() {
 
     # Exclude based on _NGINX_DOS_IGNORE or default to 'doccomment'
     if [[ -n "${_NGINX_DOS_IGNORE}" ]]; then
-      if [[ "${_line}" =~ (${_NGINX_DOS_IGNORE}) ]]; then
+      if [[ "${_line}" =~ (${_NGINX_DOS_IGNORE}).*\"\ (200|302) ]]; then
         _SKIP_POST=1
       fi
     else
-      if [[ "${_line}" =~ doccomment ]]; then
+      if [[ "${_line}" =~ doccomment.*\"\ (200|302) ]]; then
         _SKIP_POST=1
       fi
     fi
 
-    if [[ "${_SKIP_POST}" -eq 1 ]]; then
+    if [[ "${_line}" =~ (GET|HEAD|POST)\ /.*\"\ 403 ]] || [[ "${_line}" =~ wp-(content|admin|includes|json) ]]; then
+      _SKIP_POST=0
+    fi
+
+    if [[ "${_IGNORE_ADMIN}" -eq 0 ]] && [[ "${_SKIP_POST}" -eq 1 ]]; then
       _verbose_log "Other URI To Ignore" "${_line}"
     fi
 
