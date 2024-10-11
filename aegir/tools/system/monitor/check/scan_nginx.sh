@@ -147,6 +147,7 @@ _verbose_log() {
   local _general_log="/var/log/scan_nginx_debug.log"
   local _flood_log="/var/log/scan_nginx_flood_debug.log"
   local _admin_log="/var/log/scan_nginx_admin_debug.log"
+  local _other_log="/var/log/scan_nginx_other_debug.log"
 
   # Check if logging is enabled
   if [[ -e "/root/.debug.monitor.log.cnf" || "${_NGINX_DOS_LOG}" =~ ^(NORMAL|VERBOSE)$ ]]; then
@@ -154,6 +155,8 @@ _verbose_log() {
       _log_file="${_flood_log}"
     elif [[ "${_reason}" =~ "Admin URI To Ignore" && "${_NGINX_DOS_LOG}" =~ VERBOSE ]]; then
       _log_file="${_admin_log}"
+    elif [[ "${_reason}" =~ "Other URI To Ignore" && "${_NGINX_DOS_LOG}" =~ VERBOSE ]]; then
+      _log_file="${_other_log}"
     else
       _log_file="${_general_log}"
     fi
@@ -383,7 +386,6 @@ _process_ip() {
     fi
 
     if [[ "${_IGNORE_ADMIN}" -eq 1 ]]; then
-      _SKIP_POST=1
       _verbose_log "Admin URI To Ignore" "${_line}"
     fi
 
@@ -410,9 +412,9 @@ _process_ip() {
       _SKIP_POST=1
     elif [[ "${_line}" =~ GET\ /timemachine/[0-9]{4}/ ]]; then
       _SKIP_POST=1
-    elif [[ "${_line}" =~ POST\ /.*\/cart\/checkout ]]; then
+    elif [[ "${_line}" =~ POST\ /.*/cart/checkout ]]; then
       _SKIP_POST=1
-    elif [[ "${_line}" =~ POST\ /.*\/embed\/preview ]]; then
+    elif [[ "${_line}" =~ POST\ /.*/embed/preview ]]; then
       _SKIP_POST=1
     elif [[ "${_line}" =~ files\.aegir\.cc ]]; then
       _SKIP_POST=1
@@ -427,6 +429,10 @@ _process_ip() {
       if [[ "${_line}" =~ doccomment ]]; then
         _SKIP_POST=1
       fi
+    fi
+
+    if [[ "${_SKIP_POST}" -eq 1 ]]; then
+      _verbose_log "Other URI To Ignore" "${_line}"
     fi
 
     if [[ "${_SKIP_POST}" -eq 1 || "${_IGNORE_ADMIN}" -eq 1 ]]; then
