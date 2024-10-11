@@ -410,9 +410,9 @@ _process_ip() {
       _SKIP_POST=1
     elif [[ "${_line}" =~ GET\ /timemachine/[0-9]{4}/ ]]; then
       _SKIP_POST=1
-    elif [[ "${_line}" =~ POST\ /.*\/cart\/checkout ]]; then
+    elif [[ "${_line}" =~ POST\ /.*/cart/checkout ]]; then
       _SKIP_POST=1
-    elif [[ "${_line}" =~ POST\ /.*\/embed\/preview ]]; then
+    elif [[ "${_line}" =~ POST\ /.*/embed/preview ]]; then
       _SKIP_POST=1
     elif [[ "${_line}" =~ files\.aegir\.cc ]]; then
       _SKIP_POST=1
