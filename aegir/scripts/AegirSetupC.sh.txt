@@ -731,7 +731,6 @@ else
 fi
 _D6_CORE_DIR="/data/all/000/core/${_DRUPAL6}"
 _D7_CORE_DIR="/data/all/000/core/${_DRUPAL7}"
-_D9_CORE_DIR="/data/all/000/core/${_DRUPAL9}"
 
 _USE_AEGIR_VER=SRC
 _T_BUILD=SRC
