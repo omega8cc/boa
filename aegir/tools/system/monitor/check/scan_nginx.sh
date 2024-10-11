@@ -289,27 +289,27 @@ _block_ip() {
 _if_increment_counters() {
   if [[ "${_IP}" = "unknown" ]]; then
     (( _COUNTERS["${_IP}"] += _INC_NR ))
-    _verbose_log "Counter++ for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "unknown"
+    _verbose_log "Counter++ ${_INC_NR} for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "unknown"
   fi
   if [[ "${_line}" =~ \"\ 404 ]]; then
     (( _COUNTERS["${_IP}"] += _INC_NR ))
-    _verbose_log "Counter++ for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "404 flood protection"
+    _verbose_log "Counter++ ${_INC_NR} for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "404 flood protection"
   fi
   if [[ "${_line}" =~ \"\ 403 ]]; then
     (( _COUNTERS["${_IP}"] += _INC_NR ))
-    _verbose_log "Counter++ for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "403 flood protection"
+    _verbose_log "Counter++ ${_INC_NR} for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "403 flood protection"
   fi
   if [[ "${_line}" =~ \"\ 500 ]]; then
     (( _COUNTERS["${_IP}"] += _INC_NR ))
-    _verbose_log "Counter++ for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "500 flood protection"
+    _verbose_log "Counter++ ${_INC_NR} for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "500 flood protection"
   fi
   if [[ "${_line}" =~ wp-(content|admin|includes|json) ]]; then
     (( _COUNTERS["${_IP}"] += _INC_NR ))
-    _verbose_log "Counter++ for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "wp-x flood protection"
+    _verbose_log "Counter++ ${_INC_NR} for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "wp-x flood protection"
   fi
   if [[ "${_line}" =~ (POST|GET)\ /user/login ]]; then
     (( _COUNTERS["${_IP}"] += _INC_S_NR ))
-    _verbose_log "Counter++ for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "/user/login flood protection"
+    _verbose_log "Counter++ ${_INC_S_NR} for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "/user/login flood protection"
   fi
 }
 
