@@ -2177,19 +2177,10 @@ _save_verify_platforms() {
         ${_pthDst}/${_DRUPAL10_0_S}/web &> /dev/null
     fi
   fi
-  if [ ! -d "${_pthDst}/${_DRUPAL10_0}/web" ]; then
-    if [ -d "${_pthDst}/${_DRUPAL10_0_P}/web" ]; then
-      if [ ! -e "${_pthDst}/${_DRUPAL10_0_P}/web/$drhSrc" ]; then
-        ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL10_0_P}" standard \
-          ${_pthDst}/${_DRUPAL10_0_P}/web &> /dev/null
-      fi
-    fi
-  elif [ ! -d "${_pthDst}/${_DRUPAL10_0_P}/web" ]; then
-    if [ -d "${_pthDst}/${_DRUPAL10_0}/web" ]; then
-      if [ ! -e "${_pthDst}/${_DRUPAL10_0}/web/$drhSrc" ]; then
-        ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL10_0_P}" standard \
-          ${_pthDst}/${_DRUPAL10_0}/web &> /dev/null
-      fi
+  if [ -d "${_pthDst}/${_DRUPAL10_0_P}/web" ]; then
+    if [ ! -e "${_pthDst}/${_DRUPAL10_0_P}/web/${_drhSrc}" ]; then
+      ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL10_0_P}" standard \
+        ${_pthDst}/${_DRUPAL10_0_P}/web &> /dev/null
     fi
   fi
 
@@ -2205,19 +2196,10 @@ _save_verify_platforms() {
         ${_pthDst}/${_DRUPAL10_1_S}/web &> /dev/null
     fi
   fi
-  if [ ! -d "${_pthDst}/${_DRUPAL10_1}/web" ]; then
-    if [ -d "${_pthDst}/${_DRUPAL10_1_P}/web" ]; then
-      if [ ! -e "${_pthDst}/${_DRUPAL10_1_P}/web/$drhSrc" ]; then
-        ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL10_1_P}" standard \
-          ${_pthDst}/${_DRUPAL10_1_P}/web &> /dev/null
-      fi
-    fi
-  elif [ ! -d "${_pthDst}/${_DRUPAL10_1_P}/web" ]; then
-    if [ -d "${_pthDst}/${_DRUPAL10_1}/web" ]; then
-      if [ ! -e "${_pthDst}/${_DRUPAL10_1}/web/$drhSrc" ]; then
-        ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL10_1_P}" standard \
-          ${_pthDst}/${_DRUPAL10_1}/web &> /dev/null
-      fi
+  if [ -d "${_pthDst}/${_DRUPAL10_1_P}/web" ]; then
+    if [ ! -e "${_pthDst}/${_DRUPAL10_1_P}/web/${_drhSrc}" ]; then
+      ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL10_1_P}" standard \
+        ${_pthDst}/${_DRUPAL10_1_P}/web &> /dev/null
     fi
   fi
 
@@ -2233,19 +2215,10 @@ _save_verify_platforms() {
         ${_pthDst}/${_DRUPAL10_2_S}/web &> /dev/null
     fi
   fi
-  if [ ! -d "${_pthDst}/${_DRUPAL10_2}/web" ]; then
-    if [ -d "${_pthDst}/${_DRUPAL10_2_P}/web" ]; then
-      if [ ! -e "${_pthDst}/${_DRUPAL10_2_P}/web/$drhSrc" ]; then
-        ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL10_2_P}" standard \
-          ${_pthDst}/${_DRUPAL10_2_P}/web &> /dev/null
-      fi
-    fi
-  elif [ ! -d "${_pthDst}/${_DRUPAL10_2_P}/web" ]; then
-    if [ -d "${_pthDst}/${_DRUPAL10_2}/web" ]; then
-      if [ ! -e "${_pthDst}/${_DRUPAL10_2}/web/$drhSrc" ]; then
-        ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL10_2_P}" standard \
-          ${_pthDst}/${_DRUPAL10_2}/web &> /dev/null
-      fi
+  if [ -d "${_pthDst}/${_DRUPAL10_2_P}/web" ]; then
+    if [ ! -e "${_pthDst}/${_DRUPAL10_2_P}/web/${_drhSrc}" ]; then
+      ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL10_2_P}" standard \
+        ${_pthDst}/${_DRUPAL10_2_P}/web &> /dev/null
     fi
   fi
 
@@ -2261,19 +2234,10 @@ _save_verify_platforms() {
         ${_pthDst}/${_DRUPAL10_3_S}/web &> /dev/null
     fi
   fi
-  if [ ! -d "${_pthDst}/${_DRUPAL10_3}/web" ]; then
-    if [ -d "${_pthDst}/${_DRUPAL10_3_P}/web" ]; then
-      if [ ! -e "${_pthDst}/${_DRUPAL10_3_P}/web/$drhSrc" ]; then
-        ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL10_3_P}" standard \
-          ${_pthDst}/${_DRUPAL10_3_P}/web &> /dev/null
-      fi
-    fi
-  elif [ ! -d "${_pthDst}/${_DRUPAL10_3_P}/web" ]; then
-    if [ -d "${_pthDst}/${_DRUPAL10_3}/web" ]; then
-      if [ ! -e "${_pthDst}/${_DRUPAL10_3}/web/$drhSrc" ]; then
-        ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL10_3_P}" standard \
-          ${_pthDst}/${_DRUPAL10_3}/web &> /dev/null
-      fi
+  if [ -d "${_pthDst}/${_DRUPAL10_3_P}/web" ]; then
+    if [ ! -e "${_pthDst}/${_DRUPAL10_3_P}/web/${_drhSrc}" ]; then
+      ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL10_3_P}" standard \
+        ${_pthDst}/${_DRUPAL10_3_P}/web &> /dev/null
     fi
   fi
 
@@ -2289,19 +2253,10 @@ _save_verify_platforms() {
         ${_pthDst}/${_DRUPAL10_4_S}/web &> /dev/null
     fi
   fi
-  if [ ! -d "${_pthDst}/${_DRUPAL10_4}/web" ]; then
-    if [ -d "${_pthDst}/${_DRUPAL10_4_P}/web" ]; then
-      if [ ! -e "${_pthDst}/${_DRUPAL10_4_P}/web/$drhSrc" ]; then
-        ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL10_4_P}" standard \
-          ${_pthDst}/${_DRUPAL10_4_P}/web &> /dev/null
-      fi
-    fi
-  elif [ ! -d "${_pthDst}/${_DRUPAL10_4_P}/web" ]; then
-    if [ -d "${_pthDst}/${_DRUPAL10_4}/web" ]; then
-      if [ ! -e "${_pthDst}/${_DRUPAL10_4}/web/$drhSrc" ]; then
-        ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL10_4_P}" standard \
-          ${_pthDst}/${_DRUPAL10_4}/web &> /dev/null
-      fi
+  if [ -d "${_pthDst}/${_DRUPAL10_4_P}/web" ]; then
+    if [ ! -e "${_pthDst}/${_DRUPAL10_4_P}/web/${_drhSrc}" ]; then
+      ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL10_4_P}" standard \
+        ${_pthDst}/${_DRUPAL10_4_P}/web &> /dev/null
     fi
   fi
 
@@ -2317,19 +2272,10 @@ _save_verify_platforms() {
         ${_pthDst}/${_DRUPAL9_S}/web &> /dev/null
     fi
   fi
-  if [ ! -d "${_pthDst}/${_DRUPAL9}/web" ]; then
-    if [ -d "${_pthDst}/${_DRUPAL9_P}/web" ]; then
-      if [ ! -e "${_pthDst}/${_DRUPAL9_P}/web/$drhSrc" ]; then
-        ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL9_P}" standard \
-          ${_pthDst}/${_DRUPAL9_P}/web &> /dev/null
-      fi
-    fi
-  elif [ ! -d "${_pthDst}/${_DRUPAL9_P}/web" ]; then
-    if [ -d "${_pthDst}/${_DRUPAL9}/web" ]; then
-      if [ ! -e "${_pthDst}/${_DRUPAL9}/web/$drhSrc" ]; then
-        ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL9_P}" standard \
-          ${_pthDst}/${_DRUPAL9}/web &> /dev/null
-      fi
+  if [ -d "${_pthDst}/${_DRUPAL9_P}/web" ]; then
+    if [ ! -e "${_pthDst}/${_DRUPAL9_P}/web/${_drhSrc}" ]; then
+      ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL9_P}" standard \
+        ${_pthDst}/${_DRUPAL9_P}/web &> /dev/null
     fi
   fi
 
@@ -2345,19 +2291,10 @@ _save_verify_platforms() {
         ${_pthDst}/${_DRUPAL7_S} &> /dev/null
     fi
   fi
-  if [ ! -d "${_pthDst}/${_DRUPAL7}" ]; then
-    if [ -d "${_pthDst}/${_DRUPAL7_P}" ]; then
-      if [ ! -e "${_pthDst}/${_DRUPAL7_P}/$drhSrc" ]; then
-        ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL7_P}" standard \
-          ${_pthDst}/${_DRUPAL7_P} &> /dev/null
-      fi
-    fi
-  elif [ ! -d "${_pthDst}/${_DRUPAL7_P}" ]; then
-    if [ -d "${_pthDst}/${_DRUPAL7}" ]; then
-      if [ ! -e "${_pthDst}/${_DRUPAL7}/$drhSrc" ]; then
-        ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL7_P}" standard \
-          ${_pthDst}/${_DRUPAL7} &> /dev/null
-      fi
+  if [ -d "${_pthDst}/${_DRUPAL7_P}" ]; then
+    if [ ! -e "${_pthDst}/${_DRUPAL7_P}/${_drhSrc}" ]; then
+      ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL7_P}" standard \
+        ${_pthDst}/${_DRUPAL7_P} &> /dev/null
     fi
   fi
 
@@ -2373,19 +2310,10 @@ _save_verify_platforms() {
         ${_pthDst}/${_DRUPAL6_S} &> /dev/null
     fi
   fi
-  if [ ! -d "${_pthDst}/pressflow" ]; then
-    if [ -d "${_pthDst}/${_DRUPAL6_P}" ]; then
-      if [ ! -e "${_pthDst}/${_DRUPAL6_P}/$drhSrc" ]; then
-        ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL6_P}" default \
-          ${_pthDst}/${_DRUPAL6_P} &> /dev/null
-      fi
-    fi
-  elif [ ! -d "${_pthDst}/${_DRUPAL6_P}" ]; then
-    if [ -d "${_pthDst}/pressflow" ]; then
-      if [ ! -e "${_pthDst}/pressflow/$drhSrc" ]; then
-        ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL6_P}" default \
-          ${_pthDst}/pressflow &> /dev/null
-      fi
+  if [ -d "${_pthDst}/${_DRUPAL6_P}" ]; then
+    if [ ! -e "${_pthDst}/${_DRUPAL6_P}/${_drhSrc}" ]; then
+      ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL6_P}" default \
+        ${_pthDst}/${_DRUPAL6_P} &> /dev/null
     fi
   fi
 
