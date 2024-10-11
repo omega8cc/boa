@@ -21,7 +21,7 @@ if [[ -e "/root/.debug.monitor.cnf" ]]; then
 fi
 
 # Enable strict error handling
-#set -euo pipefail
+# set -euo pipefail
 
 # Set environment variables
 export HOME='/root'
@@ -196,7 +196,7 @@ _resolve_real_ip_traversal() {
 
   # Traverse proxies up to 3 levels
   for _proxy in "${_PROXY1}" "${_PROXY2}" "${_PROXY3}"; do
-    if [[ "${_REAL_IP}" =~ ^(192\.168\.|172\.16\.|unknown|10\.|127\.0\.) ]]; then
+    if [[ "${_IP}" =~ ^(10\.|127\.|169\.254\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.) ]]; then
       if [[ -n "${_proxy}" ]]; then
         _PROXIES_TO_CHECK+=("${_REAL_IP}")
         _REAL_IP="${_proxy}"
@@ -209,7 +209,7 @@ _resolve_real_ip_traversal() {
   done
 
   # Final check if the last IP is still private
-  if [[ "${_REAL_IP}" =~ ^(192\.168\.|172\.16\.|unknown|10\.|127\.0\.) ]]; then
+  if [[ "${_IP}" =~ ^(10\.|127\.|169\.254\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.) ]]; then
     _PROXIES_TO_CHECK+=("${_REAL_IP}")
     _REAL_IP=""
   fi
@@ -288,15 +288,15 @@ _if_increment_counters() {
     (( _COUNTERS["${_IP}"] += _INC_NR ))
     _verbose_log "Counter++ for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "unknown"
   fi
-  if [[ "${_line}" =~ '" 404' ]]; then
+  if [[ "${_line}" =~ \"\ 404 ]]; then
     (( _COUNTERS["${_IP}"] += _INC_NR ))
     _verbose_log "Counter++ for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "404 flood protection"
   fi
-  if [[ "${_line}" =~ '" 403' ]]; then
+  if [[ "${_line}" =~ \"\ 403 ]]; then
     (( _COUNTERS["${_IP}"] += _INC_NR ))
     _verbose_log "Counter++ for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "403 flood protection"
   fi
-  if [[ "${_line}" =~ '" 500' ]]; then
+  if [[ "${_line}" =~ \"\ 500 ]]; then
     (( _COUNTERS["${_IP}"] += _INC_NR ))
     _verbose_log "Counter++ for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "500 flood protection"
   fi
@@ -304,7 +304,7 @@ _if_increment_counters() {
     (( _COUNTERS["${_IP}"] += _INC_NR ))
     _verbose_log "Counter++ for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "wp-x flood protection"
   fi
-  if [[ "${_line}" =~ "(POST|GET) /user/login" ]]; then
+  if [[ "${_line}" =~ (POST|GET)\ /user/login ]]; then
     (( _COUNTERS["${_IP}"] += _INC_S_NR ))
     _verbose_log "Counter++ for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "/user/login flood protection"
   fi
@@ -339,8 +339,8 @@ _process_ip() {
   fi
 
   # Skip private and local IPs
-  if [[ "${_IP}" =~ ^(192\.168\.|172\.16\.|10\.|127\.0\.) ]]; then
-    _verbose_log "Private IP ${_IP} -- Skipping" "_validate_ip"
+  if [[ "${_IP}" =~ ^(10\.|127\.|169\.254\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.) ]]; then
+    _verbose_log "Private IP ${_IP} -- Skipping" "_process_ip"
     echo "Private IP ${_IP} -- Skipping."
     return
   fi
@@ -353,33 +353,58 @@ _process_ip() {
   fi
 
   # Define lines to check
-  if [[ "${_line}" =~ (GET|HEAD|POST) && ! "${_line}" =~ '" 301' ]]; then
+  if [[ "${_line}" =~ (GET|HEAD|POST) && ! "${_line}" =~ \"\ 301 ]]; then
 
     # Define admin URIs to ignore
-    if [[ "${_line}" =~ /admin/content || \
-        "${_line}" =~ POST\ /quickedit || \
-        "${_line}" =~ POST\ /node/add || \
-        "${_line}" =~ GET\ /entity_reference_autocomplete || \
-        "${_line}" =~ POST\ /entity-browser || \
-        "${_line}" =~ POST\ /contextual/render || \
-        "${_line}" =~ POST\ /node/ ]]; then
+    if [[ "${_line}" =~ (GET|POST)\ /([a-z]{2}/)?admin/content.*\"\ 200 ]]; then
       _IGNORE_ADMIN=1
+    elif [[ "${_line}" =~ (GET|POST)\ /([a-z]{2}/)?quickedit.*\"\ 200 ]]; then
+      _IGNORE_ADMIN=1
+    elif [[ "${_line}" =~ (GET|POST)\ /([a-z]{2}/)?node/add.*\"\ 200 ]]; then
+      _IGNORE_ADMIN=1
+    elif [[ "${_line}" =~ (GET|POST)\ /([a-z]{2}/)?node/[0-9]+/edit.*\"\ 200 ]]; then
+      _IGNORE_ADMIN=1
+    elif [[ "${_line}" =~ (GET|POST)\ /([a-z]{2}/)?entity_reference_autocomplete.*\"\ 200 ]]; then
+      _IGNORE_ADMIN=1
+    elif [[ "${_line}" =~ (GET|POST)\ /([a-z]{2}/)?(hosting|system|admin|app|ckeditor)/.*\"\ 200 ]]; then
+      _IGNORE_ADMIN=1
+    elif [[ "${_line}" =~ (GET|POST)\ /([a-z]{2}/)?entity-browser.*\"\ 200 ]]; then
+      _IGNORE_ADMIN=1
+    elif [[ "${_line}" =~ (GET|POST)\ /([a-z]{2}/)?contextual/render.*\"\ 200 ]]; then
+      _IGNORE_ADMIN=1
+    elif [[ "${_line}" =~ (GET|POST)\ /([a-z]{2}/)?views-bulk-operations.*\"\ 200 ]]; then
+      _IGNORE_ADMIN=1
+    elif [[ "${_line}" =~ (GET|POST)\ /([a-z]{2}/)?civicrm.*\"\ 200 ]]; then
+      _IGNORE_ADMIN=1
+    elif [[ "${_line}" =~ (GET|POST)\ /([a-z]{2}/)?batch.*\"\ 200 ]]; then
+      _IGNORE_ADMIN=1
+    elif [[ "${_line}" =~ (GET|POST)\ /([a-z]{2}/)?media/browser.*\"\ 200 ]]; then
+      _IGNORE_ADMIN=1
+    fi
+
+    if [[ "${_IGNORE_ADMIN}" -eq 1 ]]; then
+      _SKIP_POST=1
       _verbose_log "Admin URI To Ignore" "${_line}"
     fi
 
     # Define other patterns to skip
-    if [[ "${_line}" =~ (GET|POST)\ /([a-z]{2}/)?(civicrm|batch|advagg|views-bulk-operations|node/[0-9]+/edit|media/browser) || \
-        "${_line}" =~ (GET|POST)\ /([a-z]{2}/)?(hosting|system|admin|app|ckeditor)/ || \
-        "${_line}" =~ \b(/files/css/css_)\b || \
-        "${_line}" =~ \b(/files/js/js_)\b || \
-        "${_line}" =~ \b(/files/advagg_)\b || \
-        "${_line}" =~ \b(ajax|autocomplete|shs)\b || \
-        "${_line}" =~ \b(plupload|json|api/rest)\b || \
-        "${_line}" =~ GET\ /(filefield_nginx_progress|filefield/progress|files/progress|file/progress|elfinder/connector) || \
-        "${_line}" =~ POST\ /js/ ]]; then
+    if [[ "${_line}" =~ (GET|POST)\ /([a-z]{2}/)?advagg ]]; then
       _SKIP_POST=1
-      _IGNORE_ADMIN=1
-    elif [[ "${_line}" =~ files/(imagecache|styles|media) ]]; then
+    elif [[ "${_line}" =~ /files/css/css_ ]]; then
+      _SKIP_POST=1
+    elif [[ "${_line}" =~ /files/js/js_ ]]; then
+      _SKIP_POST=1
+    elif [[ "${_line}" =~ /files/advagg_ ]]; then
+      _SKIP_POST=1
+    elif [[ "${_line}" =~ (ajax|autocomplete|shs) ]]; then
+      _SKIP_POST=1
+    elif [[ "${_line}" =~ (plupload|json|api/rest) ]]; then
+      _SKIP_POST=1
+    elif [[ "${_line}" =~ GET\ /(filefield/progress|files/progress|file/progress|elfinder/connector) ]]; then
+      _SKIP_POST=1
+    elif [[ "${_line}" =~ POST\ /js/ ]]; then
+      _SKIP_POST=1
+    elif [[ "${_line}" =~ /files/(imagecache|styles|media) ]]; then
       _SKIP_POST=1
     elif [[ "${_line}" =~ GET\ /.*\.(mp4|m4a|flv|avi|mpeg|mov|wmv|mp3|ogg|ogv|wav|midi|zip|tar|tgz|rar|dmg|exe|apk|pxl|ipa)\" ]]; then
       _SKIP_POST=1
@@ -421,15 +446,15 @@ _process_ip() {
   fi
 
   # Additional counting based on mode
-  if [[ "${_SKIP_POST}" -eq 0 || "${_IGNORE_ADMIN}" -eq 0 ]]; then
+  if [[ "${_SKIP_POST}" -eq 0 && "${_IGNORE_ADMIN}" -eq 0 ]]; then
 
     _if_increment_counters
 
     if [[ "${_NGINX_DOS_MODE}" -eq 1 ]]; then
-      if [[ "${_line}" =~ POST && "${_line}" =~ (/user|user/(register|pass|login)|node/add) ]]; then
+      if [[ "${_line}" =~ POST\ /([a-z]{2}/)?(user|user/(register|pass|login)|node/add) ]]; then
         (( _COUNTERS["${_IP}"] += 5 ))
       fi
-      if [[ "${_line}" =~ GET && "${_line}" =~ node/add ]]; then
+      if [[ "${_line}" =~ GET\ /([a-z]{2}/)?node/add ]]; then
         (( _COUNTERS["${_IP}"] += 3 ))
       fi
       if [[ -n "${_NGINX_DOS_STOP}" ]]; then
@@ -438,9 +463,6 @@ _process_ip() {
         fi
       fi
     else
-#       if [[ "${_line}" =~ POST ]]; then
-#         (( _COUNTERS["${_IP}"] += 1 ))
-#       fi
       if [[ -n "${_NGINX_DOS_STOP}" ]]; then
         if [[ "${_line}" =~ (${_NGINX_DOS_STOP}) ]]; then
           (( _COUNTERS["${_IP}"] += 5 ))
