@@ -119,6 +119,7 @@ done
 if [ "${_THIS_DB_HOST}" = "FQDN" ]; then
   _THIS_DB_HOST=$(uname -n 2>&1)
 fi
+_RUN_VERIFY=NO
 _DIST_INSTALL=NO
 _STATUS=INIT
 _USE_DISTRO_CORE=NO
