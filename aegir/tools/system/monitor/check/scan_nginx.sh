@@ -289,27 +289,27 @@ _block_ip() {
 _if_increment_counters() {
   if [[ "${_IP}" = "unknown" ]]; then
     (( _COUNTERS["${_IP}"] += _INC_NR ))
-    _verbose_log "Counter++ for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "unknown"
+    _verbose_log "Counter++ ${_INC_NR} for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "unknown"
   fi
   if [[ "${_line}" =~ \"\ 404 ]]; then
     (( _COUNTERS["${_IP}"] += _INC_NR ))
-    _verbose_log "Counter++ for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "404 flood protection"
+    _verbose_log "Counter++ ${_INC_NR} for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "404 flood protection"
   fi
   if [[ "${_line}" =~ \"\ 403 ]]; then
     (( _COUNTERS["${_IP}"] += _INC_NR ))
-    _verbose_log "Counter++ for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "403 flood protection"
+    _verbose_log "Counter++ ${_INC_NR} for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "403 flood protection"
   fi
   if [[ "${_line}" =~ \"\ 500 ]]; then
     (( _COUNTERS["${_IP}"] += _INC_NR ))
-    _verbose_log "Counter++ for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "500 flood protection"
+    _verbose_log "Counter++ ${_INC_NR} for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "500 flood protection"
   fi
   if [[ "${_line}" =~ wp-(content|admin|includes|json) ]]; then
     (( _COUNTERS["${_IP}"] += _INC_NR ))
-    _verbose_log "Counter++ for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "wp-x flood protection"
+    _verbose_log "Counter++ ${_INC_NR} for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "wp-x flood protection"
   fi
   if [[ "${_line}" =~ (POST|GET)\ /user/login ]]; then
     (( _COUNTERS["${_IP}"] += _INC_S_NR ))
-    _verbose_log "Counter++ for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "/user/login flood protection"
+    _verbose_log "Counter++ ${_INC_S_NR} for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "/user/login flood protection"
   fi
 }
 
@@ -346,13 +346,6 @@ _process_ip() {
     _verbose_log "Private IP ${_IP} -- Skipping" "_process_ip"
     echo "Private IP ${_IP} -- Skipping."
     return
-  fi
-
-  # Initialize or increment the counter safely
-  if [[ -v _COUNTERS["${_IP}"] ]]; then
-    (( _COUNTERS["${_IP}"]++ ))
-  else
-    _COUNTERS["${_IP}"]=1
   fi
 
   # Define lines to check
@@ -457,8 +450,12 @@ _process_ip() {
       return
     fi
 
-    # Increment counter if not excluded
-    (( _COUNTERS["${_IP}"]++ ))
+    # Initialize or increment the counter safely if not excluded
+    if [[ -v _COUNTERS["${_IP}"] ]]; then
+      (( _COUNTERS["${_IP}"]++ ))
+    else
+      _COUNTERS["${_IP}"]=1
+    fi
   fi
 
   # Additional counting based on mode
