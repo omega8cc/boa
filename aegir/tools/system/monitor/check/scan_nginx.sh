@@ -348,13 +348,6 @@ _process_ip() {
     return
   fi
 
-  # Initialize or increment the counter safely
-  if [[ -v _COUNTERS["${_IP}"] ]]; then
-    (( _COUNTERS["${_IP}"]++ ))
-  else
-    _COUNTERS["${_IP}"]=1
-  fi
-
   # Define lines to check
   if [[ "${_line}" =~ (GET|HEAD|POST) && ! "${_line}" =~ \"\ 301 ]]; then
 
@@ -457,8 +450,12 @@ _process_ip() {
       return
     fi
 
-    # Increment counter if not excluded
-    (( _COUNTERS["${_IP}"]++ ))
+    # Initialize or increment the counter safely if not excluded
+    if [[ -v _COUNTERS["${_IP}"] ]]; then
+      (( _COUNTERS["${_IP}"]++ ))
+    else
+      _COUNTERS["${_IP}"]=1
+    fi
   fi
 
   # Additional counting based on mode
