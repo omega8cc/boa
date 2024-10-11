@@ -2158,21 +2158,21 @@ _save_verify_platforms() {
   mv -f make_platform.php.txt make_platform.php &> /dev/null
 
   if [ "${_SERIES_RESULT}" = "OK" ]; then
-    drhSrc="sites/all/drush/drushrc.php"
+    _drhSrc="sites/all/drush/drushrc.php"
   else
-    drhSrc="drushrc.php"
+    _drhSrc="drushrc.php"
   fi
 
   _pthDst="${_ROOT}/distro/${_THIS_CORE}"
 
   if [ -d "${_pthDst}/${_DRUPAL10_0_D}/web" ]; then
-    if [ ! -e "${_pthDst}/${_DRUPAL10_0_D}/web/$drhSrc" ]; then
+    if [ ! -e "${_pthDst}/${_DRUPAL10_0_D}/web/${_drhSrc}" ]; then
       ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL10_0_D}" standard \
         ${_pthDst}/${_DRUPAL10_0_D}/web &> /dev/null
     fi
   fi
   if [ -d "${_pthDst}/${_DRUPAL10_0_S}/web" ]; then
-    if [ ! -e "${_pthDst}/${_DRUPAL10_0_S}/web/$drhSrc" ]; then
+    if [ ! -e "${_pthDst}/${_DRUPAL10_0_S}/web/${_drhSrc}" ]; then
       ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL10_0_S}" standard \
         ${_pthDst}/${_DRUPAL10_0_S}/web &> /dev/null
     fi
@@ -2194,13 +2194,13 @@ _save_verify_platforms() {
   fi
 
   if [ -d "${_pthDst}/${_DRUPAL10_1_D}/web" ]; then
-    if [ ! -e "${_pthDst}/${_DRUPAL10_1_D}/web/$drhSrc" ]; then
+    if [ ! -e "${_pthDst}/${_DRUPAL10_1_D}/web/${_drhSrc}" ]; then
       ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL10_1_D}" standard \
         ${_pthDst}/${_DRUPAL10_1_D}/web &> /dev/null
     fi
   fi
   if [ -d "${_pthDst}/${_DRUPAL10_1_S}/web" ]; then
-    if [ ! -e "${_pthDst}/${_DRUPAL10_1_S}/web/$drhSrc" ]; then
+    if [ ! -e "${_pthDst}/${_DRUPAL10_1_S}/web/${_drhSrc}" ]; then
       ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL10_1_S}" standard \
         ${_pthDst}/${_DRUPAL10_1_S}/web &> /dev/null
     fi
@@ -2222,13 +2222,13 @@ _save_verify_platforms() {
   fi
 
   if [ -d "${_pthDst}/${_DRUPAL10_2_D}/web" ]; then
-    if [ ! -e "${_pthDst}/${_DRUPAL10_2_D}/web/$drhSrc" ]; then
+    if [ ! -e "${_pthDst}/${_DRUPAL10_2_D}/web/${_drhSrc}" ]; then
       ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL10_2_D}" standard \
         ${_pthDst}/${_DRUPAL10_2_D}/web &> /dev/null
     fi
   fi
   if [ -d "${_pthDst}/${_DRUPAL10_2_S}/web" ]; then
-    if [ ! -e "${_pthDst}/${_DRUPAL10_2_S}/web/$drhSrc" ]; then
+    if [ ! -e "${_pthDst}/${_DRUPAL10_2_S}/web/${_drhSrc}" ]; then
       ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL10_2_S}" standard \
         ${_pthDst}/${_DRUPAL10_2_S}/web &> /dev/null
     fi
@@ -2250,13 +2250,13 @@ _save_verify_platforms() {
   fi
 
   if [ -d "${_pthDst}/${_DRUPAL10_3_D}/web" ]; then
-    if [ ! -e "${_pthDst}/${_DRUPAL10_3_D}/web/$drhSrc" ]; then
+    if [ ! -e "${_pthDst}/${_DRUPAL10_3_D}/web/${_drhSrc}" ]; then
       ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL10_3_D}" standard \
         ${_pthDst}/${_DRUPAL10_3_D}/web &> /dev/null
     fi
   fi
   if [ -d "${_pthDst}/${_DRUPAL10_3_S}/web" ]; then
-    if [ ! -e "${_pthDst}/${_DRUPAL10_3_S}/web/$drhSrc" ]; then
+    if [ ! -e "${_pthDst}/${_DRUPAL10_3_S}/web/${_drhSrc}" ]; then
       ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL10_3_S}" standard \
         ${_pthDst}/${_DRUPAL10_3_S}/web &> /dev/null
     fi
@@ -2278,13 +2278,13 @@ _save_verify_platforms() {
   fi
 
   if [ -d "${_pthDst}/${_DRUPAL10_4_D}/web" ]; then
-    if [ ! -e "${_pthDst}/${_DRUPAL10_4_D}/web/$drhSrc" ]; then
+    if [ ! -e "${_pthDst}/${_DRUPAL10_4_D}/web/${_drhSrc}" ]; then
       ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL10_4_D}" standard \
         ${_pthDst}/${_DRUPAL10_4_D}/web &> /dev/null
     fi
   fi
   if [ -d "${_pthDst}/${_DRUPAL10_4_S}/web" ]; then
-    if [ ! -e "${_pthDst}/${_DRUPAL10_4_S}/web/$drhSrc" ]; then
+    if [ ! -e "${_pthDst}/${_DRUPAL10_4_S}/web/${_drhSrc}" ]; then
       ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL10_4_S}" standard \
         ${_pthDst}/${_DRUPAL10_4_S}/web &> /dev/null
     fi
@@ -2306,13 +2306,13 @@ _save_verify_platforms() {
   fi
 
   if [ -d "${_pthDst}/${_DRUPAL9_D}/web" ]; then
-    if [ ! -e "${_pthDst}/${_DRUPAL9_D}/web/$drhSrc" ]; then
+    if [ ! -e "${_pthDst}/${_DRUPAL9_D}/web/${_drhSrc}" ]; then
       ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL9_D}" standard \
         ${_pthDst}/${_DRUPAL9_D}/web &> /dev/null
     fi
   fi
   if [ -d "${_pthDst}/${_DRUPAL9_S}/web" ]; then
-    if [ ! -e "${_pthDst}/${_DRUPAL9_S}/web/$drhSrc" ]; then
+    if [ ! -e "${_pthDst}/${_DRUPAL9_S}/web/${_drhSrc}" ]; then
       ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL9_S}" standard \
         ${_pthDst}/${_DRUPAL9_S}/web &> /dev/null
     fi
@@ -2334,13 +2334,13 @@ _save_verify_platforms() {
   fi
 
   if [ -d "${_pthDst}/${_DRUPAL7_D}" ]; then
-    if [ ! -e "${_pthDst}/${_DRUPAL7_D}/$drhSrc" ]; then
+    if [ ! -e "${_pthDst}/${_DRUPAL7_D}/${_drhSrc}" ]; then
       ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL7_D}" standard \
         ${_pthDst}/${_DRUPAL7_D} &> /dev/null
     fi
   fi
   if [ -d "${_pthDst}/${_DRUPAL7_S}" ]; then
-    if [ ! -e "${_pthDst}/${_DRUPAL7_S}/$drhSrc" ]; then
+    if [ ! -e "${_pthDst}/${_DRUPAL7_S}/${_drhSrc}" ]; then
       ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL7_S}" standard \
         ${_pthDst}/${_DRUPAL7_S} &> /dev/null
     fi
@@ -2362,13 +2362,13 @@ _save_verify_platforms() {
   fi
 
   if [ -d "${_pthDst}/${_DRUPAL6_D}" ]; then
-    if [ ! -e "${_pthDst}/${_DRUPAL6_D}/$drhSrc" ]; then
+    if [ ! -e "${_pthDst}/${_DRUPAL6_D}/${_drhSrc}" ]; then
       ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL6_D}" default \
         ${_pthDst}/${_DRUPAL6_D} &> /dev/null
     fi
   fi
   if [ -d "${_pthDst}/${_DRUPAL6_S}" ]; then
-    if [ ! -e "${_pthDst}/${_DRUPAL6_S}/$drhSrc" ]; then
+    if [ ! -e "${_pthDst}/${_DRUPAL6_S}/${_drhSrc}" ]; then
       ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL6_S}" default \
         ${_pthDst}/${_DRUPAL6_S} &> /dev/null
     fi
@@ -2390,76 +2390,76 @@ _save_verify_platforms() {
   fi
 
   if [ -d "${_pthDst}/social-${_SOCIAL}-${_SMALLCORE10_2_6_V}/html" ]; then
-    if [ ! -e "${_pthDst}/social-${_SOCIAL}-${_SMALLCORE10_2_6_V}/html/$drhSrc" ]; then
+    if [ ! -e "${_pthDst}/social-${_SOCIAL}-${_SMALLCORE10_2_6_V}/html/${_drhSrc}" ]; then
       ${_DRUSHCMD} php-script make_platform "${_F_SOCIAL}" social \
         ${_pthDst}/social-${_SOCIAL}-${_SMALLCORE10_2_6_V}/html &> /dev/null
     fi
   fi
 
   if [ -d "${_pthDst}/thunder-${_THUNDER}-${_SMALLCORE10_3_V}/docroot" ]; then
-    if [ ! -e "${_pthDst}/thunder-${_THUNDER}-${_SMALLCORE10_3_V}/docroot/$drhSrc" ]; then
+    if [ ! -e "${_pthDst}/thunder-${_THUNDER}-${_SMALLCORE10_3_V}/docroot/${_drhSrc}" ]; then
       ${_DRUSHCMD} php-script make_platform "${_F_THUNDER}" thunder \
         ${_pthDst}/thunder-${_THUNDER}-${_SMALLCORE10_3_V}/docroot &> /dev/null
     fi
   fi
 
   if [ -d "${_pthDst}/varbase-${_VARBASE9}-${_SMALLCORE10_2_6_V}/docroot" ]; then
-    if [ ! -e "${_pthDst}/varbase-${_VARBASE9}-${_SMALLCORE10_2_6_V}/docroot/$drhSrc" ]; then
+    if [ ! -e "${_pthDst}/varbase-${_VARBASE9}-${_SMALLCORE10_2_6_V}/docroot/${_drhSrc}" ]; then
       ${_DRUSHCMD} php-script make_platform "${_F_VARBASE9}" varbase \
         ${_pthDst}/varbase-${_VARBASE9}-${_SMALLCORE10_2_6_V}/docroot &> /dev/null
     fi
   fi
 
   if [ -d "${_pthDst}/varbase-${_VARBASE10}-${_SMALLCORE10_3_V}/docroot" ]; then
-    if [ ! -e "${_pthDst}/varbase-${_VARBASE10}-${_SMALLCORE10_3_V}/docroot/$drhSrc" ]; then
+    if [ ! -e "${_pthDst}/varbase-${_VARBASE10}-${_SMALLCORE10_3_V}/docroot/${_drhSrc}" ]; then
       ${_DRUSHCMD} php-script make_platform "${_F_VARBASE10}" varbase \
         ${_pthDst}/varbase-${_VARBASE10}-${_SMALLCORE10_3_V}/docroot &> /dev/null
     fi
   fi
 
   if [ -d "${_pthDst}/openlucius-${_OPENLUCIUS}-${_SMALLCORE9_V}/web" ]; then
-    if [ ! -e "${_pthDst}/openlucius-${_OPENLUCIUS}-${_SMALLCORE9_V}/web/$drhSrc" ]; then
+    if [ ! -e "${_pthDst}/openlucius-${_OPENLUCIUS}-${_SMALLCORE9_V}/web/${_drhSrc}" ]; then
       ${_DRUSHCMD} php-script make_platform "${_F_OPENLUCIUS}" openlucius \
         ${_pthDst}/openlucius-${_OPENLUCIUS}-${_SMALLCORE9_V}/web &> /dev/null
     fi
   fi
 
   if [ -d "${_pthDst}/opigno_lms-${_OPIGNOLMS9}-${_SMALLCORE9_V}/web" ]; then
-    if [ ! -e "${_pthDst}/opigno_lms-${_OPIGNOLMS9}-${_SMALLCORE9_V}/web/$drhSrc" ]; then
+    if [ ! -e "${_pthDst}/opigno_lms-${_OPIGNOLMS9}-${_SMALLCORE9_V}/web/${_drhSrc}" ]; then
       ${_DRUSHCMD} php-script make_platform "${_F_OPIGNOLMS9}" opigno_lms \
         ${_pthDst}/opigno_lms-${_OPIGNOLMS9}-${_SMALLCORE9_V}/web &> /dev/null
     fi
   fi
 
   if [ -d "${_pthDst}/commerce-${_COMMERCE1}-${_SMALLCORE7_V}" ]; then
-    if [ ! -e "${_pthDst}/commerce-${_COMMERCE1}-${_SMALLCORE7_V}/$drhSrc" ]; then
+    if [ ! -e "${_pthDst}/commerce-${_COMMERCE1}-${_SMALLCORE7_V}/${_drhSrc}" ]; then
       ${_DRUSHCMD} php-script make_platform "${_F_COMMERCE1}" commerce_kickstart \
         ${_pthDst}/commerce-${_COMMERCE1}-${_SMALLCORE7_V} &> /dev/null
     fi
   fi
 
   if [ -d "${_pthDst}/commerce-${_COMMERCE2}-${_SMALLCORE7_V}" ]; then
-    if [ ! -e "${_pthDst}/commerce-${_COMMERCE2}-${_SMALLCORE7_V}/$drhSrc" ]; then
+    if [ ! -e "${_pthDst}/commerce-${_COMMERCE2}-${_SMALLCORE7_V}/${_drhSrc}" ]; then
       ${_DRUSHCMD} php-script make_platform "${_F_COMMERCE2}" commerce_kickstart \
         ${_pthDst}/commerce-${_COMMERCE2}-${_SMALLCORE7_V} &> /dev/null
     fi
   fi
 
   if [ -d "${_pthDst}/ubercart-${_UBERCART7}-${_SMALLCORE7_V}" ]; then
-    if [ ! -e "${_pthDst}/ubercart-${_UBERCART7}-${_SMALLCORE7_V}/$drhSrc" ]; then
+    if [ ! -e "${_pthDst}/ubercart-${_UBERCART7}-${_SMALLCORE7_V}/${_drhSrc}" ]; then
       ${_DRUSHCMD} php-script make_platform "${_F_UBERCART7}" minimal \
         ${_pthDst}/ubercart-${_UBERCART7}-${_SMALLCORE7_V} &> /dev/null
     fi
   fi
   if [ -d "${_pthDst}/ubercart-testing-${_UBERCART7}-${_SMALLCORE7_V}" ]; then
-    if [ ! -e "${_pthDst}/ubercart-testing-${_UBERCART7}-${_SMALLCORE7_V}/$drhSrc" ]; then
+    if [ ! -e "${_pthDst}/ubercart-testing-${_UBERCART7}-${_SMALLCORE7_V}/${_drhSrc}" ]; then
       ${_DRUSHCMD} php-script make_platform "${_F_UBER_CART_T}" testing \
         ${_pthDst}/ubercart-testing-${_UBERCART7}-${_SMALLCORE7_V} &> /dev/null
     fi
   fi
 
   if [ -d "${_pthDst}/ubercart-${_UBERCART6}-${_SMALLCORE6_V}" ]; then
-    if [ ! -e "${_pthDst}/ubercart-${_UBERCART6}-${_SMALLCORE6_V}/$drhSrc" ]; then
+    if [ ! -e "${_pthDst}/ubercart-${_UBERCART6}-${_SMALLCORE6_V}/${_drhSrc}" ]; then
       ${_DRUSHCMD} php-script make_platform "${_F_UBERCART6}" uberdrupal \
         ${_pthDst}/ubercart-${_UBERCART6}-${_SMALLCORE6_V} &> /dev/null
     fi
