@@ -319,7 +319,7 @@ _process_ip() {
   local _COUNT_REF="$2"
   local _line="$3"
   local _IGNORE_ADMIN=0
-  local _SKIP_POST=0
+  local _IGNORE_OTHER=0
 
   # Debug: Print the value of _COUNT_REF
   # _verbose_log "${_IP} with counter reference: ${_COUNT_REF}" "_process_ip"
@@ -384,61 +384,59 @@ _process_ip() {
 
     if [[ "${_IGNORE_ADMIN}" -eq 1 ]]; then
       _verbose_log "Admin URI To Ignore" "${_line}"
+      return
     fi
 
     # Define other patterns to skip
     if [[ "${_line}" =~ (GET|POST)\ /([a-z]{2}/)?advagg.*\"\ (200|302) ]]; then
-      _SKIP_POST=1
+      _IGNORE_OTHER=1
     elif [[ "${_line}" =~ /files/css/css_ ]]; then
-      _SKIP_POST=1
+      _IGNORE_OTHER=1
     elif [[ "${_line}" =~ /files/js/js_ ]]; then
-      _SKIP_POST=1
+      _IGNORE_OTHER=1
     elif [[ "${_line}" =~ /files/advagg_ ]]; then
-      _SKIP_POST=1
+      _IGNORE_OTHER=1
     elif [[ "${_line}" =~ /files/(imagecache|styles) ]]; then
-      _SKIP_POST=1
+      _IGNORE_OTHER=1
     elif [[ "${_line}" =~ (ajax|autocomplete|shs).*\"\ (200|302) ]]; then
-      _SKIP_POST=1
+      _IGNORE_OTHER=1
     elif [[ "${_line}" =~ (plupload|json|api/rest).*\"\ (200|302) ]]; then
-      _SKIP_POST=1
+      _IGNORE_OTHER=1
     elif [[ "${_line}" =~ GET\ /(filefield/progress|files/progress|file/progress|elfinder/connector).*\"\ (200|302) ]]; then
-      _SKIP_POST=1
+      _IGNORE_OTHER=1
     elif [[ "${_line}" =~ POST\ /js/.*\"\ (200|302) ]]; then
-      _SKIP_POST=1
+      _IGNORE_OTHER=1
     elif [[ "${_line}" =~ /files/media.*\"\ (200|302) ]]; then
-      _SKIP_POST=1
+      _IGNORE_OTHER=1
     elif [[ "${_line}" =~ GET\ /.*\.(mp4|m4a|flv|avi|mpeg|mov|wmv|mp3|ogg|ogv|wav|midi|zip|tar|tgz|rar|dmg|exe|apk|pxl|ipa|jpe?g|gif|png|ico).*\"\ (200|302) ]]; then
-      _SKIP_POST=1
+      _IGNORE_OTHER=1
     elif [[ "${_line}" =~ GET\ /timemachine/[0-9]{4}/.*\"\ (200|302) ]]; then
-      _SKIP_POST=1
+      _IGNORE_OTHER=1
     elif [[ "${_line}" =~ POST\ /.*/cart/checkout.*\"\ (200|302) ]]; then
-      _SKIP_POST=1
+      _IGNORE_OTHER=1
     elif [[ "${_line}" =~ POST\ /.*/embed/preview.*\"\ (200|302) ]]; then
-      _SKIP_POST=1
+      _IGNORE_OTHER=1
     elif [[ "${_line}" =~ files\.aegir\.cc ]]; then
-      _SKIP_POST=1
+      _IGNORE_OTHER=1
     fi
 
     # Exclude based on _NGINX_DOS_IGNORE or default to 'doccomment'
     if [[ -n "${_NGINX_DOS_IGNORE}" ]]; then
       if [[ "${_line}" =~ (${_NGINX_DOS_IGNORE}).*\"\ (200|302) ]]; then
-        _SKIP_POST=1
+        _IGNORE_OTHER=1
       fi
     else
       if [[ "${_line}" =~ doccomment.*\"\ (200|302) ]]; then
-        _SKIP_POST=1
+        _IGNORE_OTHER=1
       fi
     fi
 
     if [[ "${_line}" =~ (GET|HEAD|POST)\ /.*\"\ 403 ]] || [[ "${_line}" =~ wp-(content|admin|includes|json) ]]; then
-      _SKIP_POST=0
+      _IGNORE_OTHER=0
     fi
 
-    if [[ "${_IGNORE_ADMIN}" -eq 0 ]] && [[ "${_SKIP_POST}" -eq 1 ]]; then
+    if [[ "${_IGNORE_OTHER}" -eq 1 ]]; then
       _verbose_log "Other URI To Ignore" "${_line}"
-    fi
-
-    if [[ "${_SKIP_POST}" -eq 1 || "${_IGNORE_ADMIN}" -eq 1 ]]; then
       return
     fi
 
@@ -459,26 +457,30 @@ _process_ip() {
   fi
 
   # Additional counting based on mode
-  if [[ "${_SKIP_POST}" -eq 0 && "${_IGNORE_ADMIN}" -eq 0 ]]; then
+  if [[ "${_IGNORE_OTHER}" -eq 0 && "${_IGNORE_ADMIN}" -eq 0 ]]; then
 
     _if_increment_counters
 
     if [[ "${_NGINX_DOS_MODE}" -eq 1 ]]; then
       if [[ "${_line}" =~ POST\ /([a-z]{2}/)?(user|user/(register|pass|login)|node/add) ]]; then
         (( _COUNTERS["${_IP}"] += 5 ))
+        _verbose_log "Counter++ 5 for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "/user/ and /node/add POST flood protection"
       fi
       if [[ "${_line}" =~ GET\ /([a-z]{2}/)?node/add ]]; then
         (( _COUNTERS["${_IP}"] += 3 ))
+        _verbose_log "Counter++ 3 for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "/node/add GET flood protection"
       fi
       if [[ -n "${_NGINX_DOS_STOP}" ]]; then
         if [[ "${_line}" =~ (${_NGINX_DOS_STOP}) ]]; then
           (( _COUNTERS["${_IP}"] += 5 ))
+          _verbose_log "Counter++ 5 for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "_NGINX_DOS_STOP protection"
         fi
       fi
     else
       if [[ -n "${_NGINX_DOS_STOP}" ]]; then
         if [[ "${_line}" =~ (${_NGINX_DOS_STOP}) ]]; then
           (( _COUNTERS["${_IP}"] += 5 ))
+          _verbose_log "Counter++ 5 for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "_NGINX_DOS_STOP protection"
         fi
       fi
     fi
