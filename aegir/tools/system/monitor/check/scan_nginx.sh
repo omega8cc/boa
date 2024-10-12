@@ -464,19 +464,23 @@ _process_ip() {
     if [[ "${_NGINX_DOS_MODE}" -eq 1 ]]; then
       if [[ "${_line}" =~ POST\ /([a-z]{2}/)?(user|user/(register|pass|login)|node/add) ]]; then
         (( _COUNTERS["${_IP}"] += 5 ))
+        _verbose_log "Counter++ 5 for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "/user/ and /node/add POST flood protection"
       fi
       if [[ "${_line}" =~ GET\ /([a-z]{2}/)?node/add ]]; then
         (( _COUNTERS["${_IP}"] += 3 ))
+        _verbose_log "Counter++ 3 for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "/node/add GET flood protection"
       fi
       if [[ -n "${_NGINX_DOS_STOP}" ]]; then
         if [[ "${_line}" =~ (${_NGINX_DOS_STOP}) ]]; then
           (( _COUNTERS["${_IP}"] += 5 ))
+          _verbose_log "Counter++ 5 for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "_NGINX_DOS_STOP protection"
         fi
       fi
     else
       if [[ -n "${_NGINX_DOS_STOP}" ]]; then
         if [[ "${_line}" =~ (${_NGINX_DOS_STOP}) ]]; then
           (( _COUNTERS["${_IP}"] += 5 ))
+          _verbose_log "Counter++ 5 for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "_NGINX_DOS_STOP protection"
         fi
       fi
     fi
