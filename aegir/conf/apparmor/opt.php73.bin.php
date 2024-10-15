@@ -116,6 +116,7 @@
   /bin/touch mrix,
   /bin/websh mrix,
   /data/disk/*/**/vendor/bin/drush mrix,
+  /data/disk/*/**/vendor/drush/drush/drush.php mrix,
   /etc/init.d/nginx mrix,
   /sbin/killall5 mrix,
   /sbin/unix_chkpwd mrix,
