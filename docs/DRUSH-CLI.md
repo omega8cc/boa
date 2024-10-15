@@ -130,5 +130,5 @@ BOA still provides standalone `drush10` and `drush11`, though, because we still 
 
 By the way, due to constant dependencies versions updates, you could get pretty different versions of the same Drush 10+ release installed depending on *when* you have installed it. Sometimes they will be too old and sometimes too new for the Drupal codebase in question. This makes using them as standalone a completely unpredictable mess.
 
-That’s also why Drush 12 has been officially announced as the first version which can’t be used as standalone at all — no matter how hard you would try. We still try, though, because we already have a good track record of making the impossible possible, like hosting Drupal 10 on Drush 8 based Ægir. Watch this space.
+That’s also why Drush 12 has been officially announced as the first version which can’t be used as standalone at all — no matter how hard you would try.
 

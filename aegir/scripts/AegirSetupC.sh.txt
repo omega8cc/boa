@@ -169,7 +169,7 @@ SHELL=/bin/bash
 #
 _pthPch="/opt/tmp/boa/aegir/patches"
 _urlDrp="http://ftp.drupal.org/files/projects"
-_urlPrt="https://drupal.org/project"
+_urlPrt="https://www.drupal.org/project"
 #
 _noT="not installed"
 _yOk="installation in progress..."
@@ -537,6 +537,40 @@ _create_drupal7_basic() {
   fi
   _init_this_distro_root
 }
+
+
+#
+# Create Drupal core-only basic platform in normal mode.
+_create_drupal_core_basic() {
+  local _L_OCTO_PLPATH="${_OCTO_PLPATH}"
+  local _L_SHRD_PLNAME="${_SHRD_PLNAME}"
+  local _L_REAL_PRNAME="${_d_prfn}"
+
+  if [ ! -d "${_THIS_OCTO_PLPATH}" ]; then
+    cd ${_ROOT}/distro/${_THIS_CORE}
+    _get_core_ext "${_DRUPAL9}.tar.gz"
+    mv -f ${_DRUPAL9} ${_SHRD_PLNAME}
+    cd ${_SHRD_PLNAME}
+    _rename_drupal9_profiles
+  fi
+}
+#
+# Create Drupal core-only basic platform in verbose/debug mode.
+_create_drupal_core_basic_dev() {
+  echo 1 _OCTO_PLPATH is ${_OCTO_PLPATH}
+  if [ ! -d "${_OCTO_PLPATH}" ]; then
+    echo 2 CD is ${_ROOT}/distro/${_THIS_CORE}
+    cd ${_ROOT}/distro/${_THIS_CORE}
+    echo 3 GET is ${_DRUPAL9}.tar.gz
+    _get_core_ext "${_DRUPAL9}.tar.gz"
+    echo 4 MV is ${_DRUPAL9} to ${_SHRD_PLNAME}
+    mv -f ${_DRUPAL9} ${_SHRD_PLNAME}
+    cd ${_SHRD_PLNAME}
+    _rename_drupal9_profiles
+  fi
+}
+
+
 #
 # Create D9 basic platform.
 _create_drupal9_basic() {
@@ -737,7 +771,6 @@ _T_BUILD=SRC
 
 ###---### Distributions full names.
 #
-_F_COMMERCE1="Commerce ${_COMMERCE1} ${_SMALLCORE7_V} [${_THIS_CORE}]"
 _F_COMMERCE2="Commerce ${_COMMERCE2} ${_SMALLCORE7_V} [${_THIS_CORE}]"
 _F_DRUPAL6="Drupal ${_SMALLCORE6_V} [${_THIS_CORE}]"
 _F_DRUPAL7="Drupal ${_SMALLCORE7_V} [${_THIS_CORE}]"
@@ -811,73 +844,17 @@ _prepare_drupal6_core
 _prepare_drupal7_core
 
 
-_commerce_7_1_install() {
-###---### Commerce 7.x-1.x
-#
-  _REAL_PRNAME="commerce_kickstart"
-  _VIRT_PRNAME="commerce"
-  _SHRD_PLNAME="${_VIRT_PRNAME}-${_COMMERCE1}-${_SMALLCORE7_V}"
-  _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
-  _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
-  _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
-  if [ "${_ALLOW_ALL}" = "YES" ]; then
-    if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
-      || [[ "${_PLATFORMS_LIST}" =~ "DCE" ]]; then
-      if [ ! -d "${_OCTO_PLPATH}" ]; then
-        if _prompt_yes_no "${_F_COMMERCE1} - http://drupalcommerce.org" ; then
-          true
-          [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${_F_COMMERCE1} ${_yOk}"
-          if [ ! -d "${_SHRD_PLPATH}" ]; then
-            cd ${_CORE}
-            if [ "${_USE_AEGIR_VER}" = "SRC" ] \
-              && [ "${_T_BUILD}" = "SRC" ]; then
-              if [ ! -e "${_D7_CORE_DIR}" ]; then
-                _prepare_drupal7_core
-              fi
-              curl ${_crlGet} \
-                "${_urlDrp}/${_REAL_PRNAME}-7.x-${_COMMERCE1}-core.tar.gz" \
-                | tar -xzf -
-              if [ -d "${_CORE}/commerce-7.x-${_COMMERCE1}" ]; then
-                mv commerce-7.x-${_COMMERCE1} ${_SHRD_PLNAME}
-              elif [ -d "${_CORE}/${_REAL_PRNAME}-7.x-${_COMMERCE1}" ]; then
-                mv ${_REAL_PRNAME}-7.x-${_COMMERCE1} ${_SHRD_PLNAME}
-              fi
-              _nocore_d7_dist_clean
-              _remove_default_core_seven_profiles
-              _upgrade_contrib_less
-              if [ "${_COMMERCE1}" = "1.32" ]; then
-                cd ${_SHRD_PRPATH}/modules/
-                rm -rf commerce
-                _get_dev_contrib "commerce-7.x-1.11.tar.gz"
-              fi
-            else
-              _get_distro_ext "${_SHRD_PLNAME}.tar.gz"
-            fi
-          fi
-          _init_this_distro_root
-          _msg "DISTRO: ${_F_COMMERCE1} installed"
-          _RUN_VERIFY=YES
-        else
-          [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${_F_COMMERCE1} ${_noT}"
-        fi
-      fi
-    fi
-  fi
-}
-
-
 _commerce_7_2_install() {
 ###---### Commerce 7.x-2.x
 #
   _REAL_PRNAME="commerce_kickstart"
-  _VIRT_PRNAME="commerce"
-  _SHRD_PLNAME="${_VIRT_PRNAME}-${_COMMERCE2}-${_SMALLCORE7_V}"
+  _SHRD_PLNAME="${_REAL_PRNAME}-${_COMMERCE2}-${_SMALLCORE7_V}"
   _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
   _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
   _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
   if [ "${_ALLOW_ALL}" = "YES" ]; then
     if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
-      || [[ "${_PLATFORMS_LIST}" =~ "CME" ]]; then
+      || [[ "${_PLATFORMS_LIST}" =~ "CK1" ]]; then
       if [ ! -d "${_OCTO_PLPATH}" ]; then
         if _prompt_yes_no "${_F_COMMERCE2} - http://drupalcommerce.org" ; then
           true
@@ -889,21 +866,10 @@ _commerce_7_2_install() {
               if [ ! -e "${_D7_CORE_DIR}" ]; then
                 _prepare_drupal7_core
               fi
-              curl ${_crlGet} \
-                "${_urlDrp}/${_REAL_PRNAME}-7.x-${_COMMERCE2}-core.tar.gz" \
-                | tar -xzf -
-              if [ -d "${_CORE}/commerce-7.x-${_COMMERCE2}" ]; then
-                mv commerce-7.x-${_COMMERCE2} ${_SHRD_PLNAME}
-              elif [ -d "${_CORE}/${_REAL_PRNAME}-7.x-${_COMMERCE2}" ]; then
-                mv ${_REAL_PRNAME}-7.x-${_COMMERCE2} ${_SHRD_PLNAME}
-              fi
+              _get_distro_ext "${_SHRD_PLNAME}.tar.gz"
               _nocore_d7_dist_clean
               _remove_default_core_seven_profiles
               _upgrade_contrib_less
-              if [ "${_COMMERCE2}" = "2.22" ]; then
-                cd ${_SHRD_PLPATH}
-                patch -p1 < ${_pthPch}/${_REAL_PRNAME}.patch &> /dev/null
-              fi
             else
               _get_distro_ext "${_SHRD_PLNAME}.tar.gz"
             fi
@@ -1454,11 +1420,11 @@ _drupal10_4_install() {
   fi
 }
 
-
 # Define distros names and their key-words for configuration
 declare -A _distros_names=(
-  ["CM1"]="Commerce v.1"
-  ["CM2"]="Commerce v.2"
+  ["CK1"]="Commerce Kickstart v.1"
+  ["CK2"]="Commerce Base v.2"
+  ["CK3"]="Commerce Kickstart v.3"
   ["DXP"]="DXPR Marketing"
   ["EZC"]="EzContent"
   ["FOS"]="farmOS"
@@ -1474,11 +1440,9 @@ declare -A _distros_names=(
   ["UC7"]="Ubercart D7"
   ["VBE"]="Varbase IX"
   ["VBX"]="Varbase X"
-
   ["DL6"]="Drupal VI"
   ["DL7"]="Drupal VII"
   ["DL9"]="Drupal IX"
-
   ["DX0"]="Drupal X0"
   ["DX1"]="Drupal X1"
   ["DX2"]="Drupal X2"
@@ -1486,135 +1450,41 @@ declare -A _distros_names=(
   ["DX4"]="Drupal X4"
 )
 
-# Define distros web dirs for configuration
-declare -A _distros_web_dirs=(
-  ["CM1"]=""
-  ["CM2"]=""
-  ["DXP"]="/web"
-  ["EZC"]="/web"
-  ["FOS"]="/web"
-  ["LGV"]="/web"
-  ["OCS"]="/web"
-  ["OFD"]="/docroot"
-  ["OLS"]="/web"
-  ["OPG"]="/web"
-  ["SCR"]="/web"
-  ["SOC"]="/html"
-  ["THR"]="/docroot"
-  ["UC6"]=""
-  ["UC7"]=""
-  ["VBE"]="/docroot"
-  ["VBX"]="/docroot"
-
-  ["DL6"]=""
-  ["DL7"]=""
-  ["DL9"]="/web"
-
-  ["DX0"]="/web"
-  ["DX1"]="/web"
-  ["DX2"]="/web"
-  ["DX3"]="/web"
-  ["DX4"]="/web"
-)
-
-# Define distros profiles paths for configuration
-declare -A _distros_profiles_paths=(
-  ["CM1"]="/"
-  ["CM2"]="/"
-  ["DXP"]="contrib/"
-  ["EZC"]="contrib/"
-  ["FOS"]="/"
-  ["LGV"]="contrib/"
-  ["OCS"]="contrib/"
-  ["OFD"]="contrib/"
-  ["OLS"]="contrib/"
-  ["OPG"]="contrib/"
-  ["SCR"]="contrib/"
-  ["SOC"]="/"
-  ["THR"]="contrib/"
-  ["UC6"]="/"
-  ["UC7"]="/"
-  ["VBE"]="/"
-  ["VBX"]="/"
-
-  ["DL6"]="/"
-  ["DL7"]="/"
-  ["DL9"]="/"
-
-  ["DX0"]="/"
-  ["DX1"]="/"
-  ["DX2"]="/"
-  ["DX3"]="/"
-  ["DX4"]="/"
-)
-
-# Define distros profiles names for configuration
-declare -A _distros_profiles_names=(
-  ["CM1"]="commerce_kickstart"
-  ["CM2"]="commerce_kickstart"
-  ["DXP"]="dxpr_marketing_cms"
-  ["EZC"]="ezcontent"
-  ["FOS"]="farm"
-  ["LGV"]="localgov"
-  ["OCS"]="openculturas"
-  ["OFD"]="openfed"
-  ["OLS"]="openlucius"
-  ["OPG"]="opigno_lms"
-  ["SCR"]="sector"
-  ["SOC"]="social"
-  ["THR"]="thunder"
-  ["UC6"]="uberdrupal"
-  ["UC7"]="minimal"
-  ["VBE"]="varbase"
-  ["VBX"]="varbase"
-
-  ["DL6"]="default"
-  ["DL7"]="standard"
-  ["DL9"]="standard"
-
-  ["DX0"]="standard"
-  ["DX1"]="standard"
-  ["DX2"]="standard"
-  ["DX3"]="standard"
-  ["DX4"]="standard"
-
-)
-
-# Define distros Drupal cores versions for configuration
-declare -A _distros_drupal_cores=(
-  ["CM1"]="${_SMALLCORE7_V}"
-  ["CM2"]="${_SMALLCORE7_V}"
-  ["DXP"]="${_SMALLCORE10_3_V}"
-  ["EZC"]="${_SMALLCORE10_3_V}"
-  ["FOS"]="${_SMALLCORE10_2_V}"
-  ["LGV"]="${_SMALLCORE10_3_V}"
-  ["OCS"]="${_SMALLCORE10_3_V}"
-  ["OFD"]="${_SMALLCORE10_2_V}"
-  ["OLS"]="${_SMALLCORE9_V}"
-  ["OPG"]="${_SMALLCORE9_V}"
-  ["SCR"]="${_SMALLCORE10_2_V}"
-  ["SOC"]="${_SMALLCORE10_2_V}"
-  ["THR"]="${_SMALLCORE10_3_V}"
-  ["UC6"]="${_SMALLCORE6_V}"
-  ["UC7"]="${_SMALLCORE7_V}"
-  ["VBE"]="${_SMALLCORE10_3_V}"
-  ["VBX"]="${_SMALLCORE10_3_V}"
-
-  ["DL6"]="${_SMALLCORE6_V}"
-  ["DL7"]="${_SMALLCORE7_V}"
-  ["DL9"]="${_SMALLCORE9_V}"
-
-  ["DX0"]="${_SMALLCORE10_0_V}"
-  ["DX1"]="${_SMALLCORE10_1_V}"
-  ["DX2"]="${_SMALLCORE10_2_V}"
-  ["DX3"]="${_SMALLCORE10_3_V}"
-  ["DX4"]="${_SMALLCORE10_4_V}"
+# Define distros names and their URLs for information
+declare -A _distros_urls=(
+  ["CK1"]="${_urlPrt}/commerce_kickstart"
+  ["CK2"]="${_urlPrt}/commerce"
+  ["CK3"]="${_urlPrt}/commerce_kickstart"
+  ["DXP"]="DXPR Marketing"
+  ["EZC"]="EzContent"
+  ["FOS"]="farmOS"
+  ["LGV"]="LocalGov"
+  ["OCS"]="OpenCulturas"
+  ["OFD"]="OpenFed"
+  ["OLS"]="${_urlPrt}/openlucius"
+  ["OPG"]="${_urlPrt}/opigno_lms"
+  ["SCR"]="Sector"
+  ["SOC"]="Social"
+  ["THR"]="${_urlPrt}/thunder"
+  ["UC6"]="${_urlPrt}/ubercart"
+  ["UC7"]="${_urlPrt}/ubercart"
+  ["VBE"]="${_urlPrt}/varbase"
+  ["VBX"]="${_urlPrt}/varbase"
+  ["DL6"]="${_urlPrt}/drupal/releases/${_SMALLCORE6_V}"
+  ["DL7"]="${_urlPrt}/drupal/releases/${_SMALLCORE7_V}"
+  ["DL9"]="${_urlPrt}/drupal/releases/${_SMALLCORE9_V}"
+  ["DX0"]="${_urlPrt}/drupal/releases/${_SMALLCORE10_0_V}"
+  ["DX1"]="${_urlPrt}/drupal/releases/${_SMALLCORE10_1_V}"
+  ["DX2"]="${_urlPrt}/drupal/releases/${_SMALLCORE10_2_V}"
+  ["DX3"]="${_urlPrt}/drupal/releases/${_SMALLCORE10_3_V}"
+  ["DX4"]="${_urlPrt}/drupal/releases/${_SMALLCORE10_4_V}"
 )
 
 # Define distros versions for configuration
 declare -A _distros_versions=(
-  ["CM1"]="1.72"
-  ["CM2"]="2.77"
+  ["CK1"]="2.77"
+  ["CK2"]="2.40"
+  ["CK3"]="3.0.0-beta1"
   ["DXP"]="10.3.0"
   ["EZC"]="2.2.12"
   ["FOS"]="3.2.4"
@@ -1630,11 +1500,9 @@ declare -A _distros_versions=(
   ["UC7"]="3.13"
   ["VBE"]="9.1.3"
   ["VBX"]="10.0.0"
-
   ["DL6"]="${_SMALLCORE6_V}"
   ["DL7"]="${_SMALLCORE7_V}"
   ["DL9"]="${_SMALLCORE9_V}"
-
   ["DX0"]="${_SMALLCORE10_0_V}"
   ["DX1"]="${_SMALLCORE10_1_V}"
   ["DX2"]="${_SMALLCORE10_2_V}"
@@ -1642,10 +1510,132 @@ declare -A _distros_versions=(
   ["DX4"]="${_SMALLCORE10_4_V}"
 )
 
+# Define distros Drupal cores versions for configuration
+declare -A _distros_drupal_cores=(
+  ["CK1"]="${_SMALLCORE7_V}"
+  ["CK2"]="${_SMALLCORE10_1_V}"
+  ["CK3"]="${_SMALLCORE10_3_V}"
+  ["DXP"]="${_SMALLCORE10_3_V}"
+  ["EZC"]="${_SMALLCORE10_3_V}"
+  ["FOS"]="${_SMALLCORE10_2_V}"
+  ["LGV"]="${_SMALLCORE10_3_V}"
+  ["OCS"]="${_SMALLCORE10_3_V}"
+  ["OFD"]="${_SMALLCORE10_2_V}"
+  ["OLS"]="${_SMALLCORE9_V}"
+  ["OPG"]="${_SMALLCORE9_V}"
+  ["SCR"]="${_SMALLCORE10_2_V}"
+  ["SOC"]="${_SMALLCORE10_2_V}"
+  ["THR"]="${_SMALLCORE10_3_V}"
+  ["UC6"]="${_SMALLCORE6_V}"
+  ["UC7"]="${_SMALLCORE7_V}"
+  ["VBE"]="${_SMALLCORE10_3_V}"
+  ["VBX"]="${_SMALLCORE10_3_V}"
+  ["DL6"]="${_SMALLCORE6_V}"
+  ["DL7"]="${_SMALLCORE7_V}"
+  ["DL9"]="${_SMALLCORE9_V}"
+  ["DX0"]="${_SMALLCORE10_0_V}"
+  ["DX1"]="${_SMALLCORE10_1_V}"
+  ["DX2"]="${_SMALLCORE10_2_V}"
+  ["DX3"]="${_SMALLCORE10_3_V}"
+  ["DX4"]="${_SMALLCORE10_4_V}"
+)
+
+# Define distros profiles names for configuration
+declare -A _distros_profiles_names=(
+  ["CK1"]="commerce_kickstart"
+  ["CK2"]="commerce_base"
+  ["CK3"]="commerce_kickstart"
+  ["DXP"]="dxpr_marketing_cms"
+  ["EZC"]="ezcontent"
+  ["FOS"]="farm"
+  ["LGV"]="localgov"
+  ["OCS"]="openculturas"
+  ["OFD"]="openfed"
+  ["OLS"]="openlucius"
+  ["OPG"]="opigno_lms"
+  ["SCR"]="sector"
+  ["SOC"]="social"
+  ["THR"]="thunder"
+  ["UC6"]="uberdrupal"
+  ["UC7"]="minimal"
+  ["VBE"]="varbase"
+  ["VBX"]="varbase"
+  ["DL6"]="default"
+  ["DL7"]="standard"
+  ["DL9"]="standard"
+  ["DX0"]="standard"
+  ["DX1"]="standard"
+  ["DX2"]="standard"
+  ["DX3"]="standard"
+  ["DX4"]="standard"
+)
+
+# Define distros profiles paths for configuration
+declare -A _distros_profiles_paths=(
+  ["CK1"]="/"
+  ["CK2"]="contrib/"
+  ["CK3"]="contrib/"
+  ["DXP"]="contrib/"
+  ["EZC"]="contrib/"
+  ["FOS"]="/"
+  ["LGV"]="contrib/"
+  ["OCS"]="contrib/"
+  ["OFD"]="contrib/"
+  ["OLS"]="contrib/"
+  ["OPG"]="contrib/"
+  ["SCR"]="contrib/"
+  ["SOC"]="/"
+  ["THR"]="contrib/"
+  ["UC6"]="/"
+  ["UC7"]="/"
+  ["VBE"]="/"
+  ["VBX"]="/"
+  ["DL6"]="/"
+  ["DL7"]="/"
+  ["DL9"]="/"
+  ["DX0"]="/"
+  ["DX1"]="/"
+  ["DX2"]="/"
+  ["DX3"]="/"
+  ["DX4"]="/"
+)
+
+# Define distros web dirs for configuration
+declare -A _distros_web_dirs=(
+  ["CK1"]=""
+  ["CK2"]="/web"
+  ["CK3"]="/web"
+  ["DXP"]="/web"
+  ["EZC"]="/web"
+  ["FOS"]="/web"
+  ["LGV"]="/web"
+  ["OCS"]="/web"
+  ["OFD"]="/docroot"
+  ["OLS"]="/web"
+  ["OPG"]="/web"
+  ["SCR"]="/web"
+  ["SOC"]="/html"
+  ["THR"]="/docroot"
+  ["UC6"]=""
+  ["UC7"]=""
+  ["VBE"]="/docroot"
+  ["VBX"]="/docroot"
+  ["DL6"]=""
+  ["DL7"]=""
+  ["DL9"]="/web"
+  ["DX0"]="/web"
+  ["DX1"]="/web"
+  ["DX2"]="/web"
+  ["DX3"]="/web"
+  ["DX4"]="/web"
+)
+
+
 # Define distros names and their compatible max PHP versions for information
 declare -A _distros_php_versions=(
-  ["CM1"]="7.4"
-  ["CM2"]="7.4"
+  ["CK1"]="7.4"
+  ["CK2"]="8.3"
+  ["CK3"]="8.3"
   ["DXP"]="8.3"
   ["EZC"]="8.3"
   ["FOS"]="8.3"
@@ -1661,11 +1651,9 @@ declare -A _distros_php_versions=(
   ["UC7"]="7.4"
   ["VBE"]="8.3"
   ["VBX"]="8.3"
-
   ["DL6"]="7.4"
   ["DL7"]="8.3"
   ["DL9"]="8.3"
-
   ["DX0"]="8.3"
   ["DX1"]="8.3"
   ["DX2"]="8.3"
@@ -1674,51 +1662,135 @@ declare -A _distros_php_versions=(
 )
 
 
-# Loop through the _distros_names
-for _dist in "${!_distros_names[@]}"; do
-   local _d_name=${_distros_names[${_dist}]}
-   local _d_vers=${_distros_versions[${_dist}]}
-   local _d_core=${_distros_drupal_cores[${_dist}]}
-   local _d_ppth=${_distros_profiles_paths[${_dist}]}
-   local _d_prfn=${_distros_profiles_names[${_dist}]}
-   local _d_webd=${_distros_web_dirs[${_dist}]}
-   local _d_phpv=${_distros_php_versions[${_dist}]}
-
-   local _d_desc="${_d_name} ${_d_core} [${_THIS_CORE}]"
-
-   if [[ "${_dist}" =~ DL || "${_dist}" =~ DX ]]; then
-     _d_core_platform_install "${_dist}" "${_d_vers}" "${_d_core}" "${_d_desc}" "${_d_ppth}" "${_d_prfn}" "${_d_webd}" "${_d_phpv}"
-   else
-     _d_dist_platform_install "${_dist}" "${_d_vers}" "${_d_core}" "${_d_desc}" "${_d_ppth}" "${_d_prfn}" "${_d_webd}" "${_d_phpv}"
-   fi
-done
+_d_dist_custom_platform_install() {
+###---### Template function for distros-custom-type platforms
+#
+  if [[ "${1}" == "CK1" ]]; then
+    _commerce_7_2_install "${2}"
+  elif [[ "${1}" == "UC6" ]]; then
+    _ubercart6_install "${2}"
+  elif [[ "${1}" == "UC7" ]]; then
+    _ubercart7_install "${2}"
+    _ubercart7_testing_install "${2}"
+  fi
+}
 
 
 _d_dist_platform_install() {
-###---### Template function
+###---### Template function for distros-type platforms
 #
-  local _DIST_PLNAME="${_d_prfn}-${_d_vers}-${_d_core}"
+  local _REAL_PRNAME="${6}"
+  local _VIRT_PRNAME="${6}"
+  local _DIST_PLNAME="${_VIRT_PRNAME}-${2}-${3}"
   local _DIST_PLPATH="${_CORE}/${_DIST_PLNAME}"
-  local _DIST_PRPATH="${_DIST_PLPATH}/profiles/${_d_ppth}${_d_prfn}"
+  local _DIST_PRPATH="${_DIST_PLPATH}/profiles/${_d_ppth}${6}"
   local _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_DIST_PLNAME}${_d_webd}"
   if [ "${_ALLOW_ALL}" = "YES" ]; then
     if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
-      || [[ "${_PLATFORMS_LIST}" =~ ${_dist} ]]; then
+      || [[ "${_PLATFORMS_LIST}" =~ ${1} ]]; then
       if [ ! -d "${_OCTO_PLPATH}" ]; then
-        if _prompt_yes_no "${_d_desc}" ; then
+        if _prompt_yes_no "${4} - ${_d_xurl}" ; then
           true
-          [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${_d_desc} ${_yOk}"
+          [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${4} ${_yOk}"
           if [ ! -d "${_OCTO_PLPATH}" ]; then
             cd ${_ROOT}/distro/${_THIS_CORE}
             _get_distro_ext "${_DIST_PLNAME}.tar.gz"
           fi
           if [ -d "${_OCTO_PLPATH}" ]; then
-            _msg "DISTRO: ${_d_desc} installed"
+            _msg "DISTRO: ${4} installed"
             _RUN_VERIFY=YES
           fi
         else
-          [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${_d_desc} ${_noT}"
+          [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${4} ${_noT}"
         fi
+      fi
+    fi
+  fi
+}
+
+
+# Loop through the _distros_names
+for _dist in "${!_distros_names[@]}"; do
+   local _d_name="${_distros_names[${_dist}]}"
+   local _d_vers="${_distros_versions[${_dist}]}"
+   local _d_core="${_distros_drupal_cores[${_dist}]}"
+   local _d_desc="${_d_name} ${_d_vers} ${_d_core} [${_THIS_CORE}]"
+   local _d_ppth="${_distros_profiles_paths[${_dist}]}"
+   local _d_prfn="${_distros_profiles_names[${_dist}]}"
+   local _d_webd="${_distros_web_dirs[${_dist}]}"
+   local _d_phpv="${_distros_php_versions[${_dist}]}"
+   local _d_xurl="${_distros_urls[${_dist}]}"
+   if [[ "${_dist}" =~ DL || "${_dist}" =~ DX ]]; then
+     _d_core_platform_install "${_dist}" "${_d_vers}" "${_d_core}" "${_d_desc}" "${_d_ppth}" "${_d_prfn}" "${_d_webd}" "${_d_phpv}" "${_d_xurl}"
+   elif [[ "${_dist}" =~ CK1 || "${_dist}" =~ UC ]]; then
+     _d_dist_custom_platform_install "${_dist}" "${_d_xurl}"
+   else
+     _d_dist_platform_install "${_dist}" "${_d_vers}" "${_d_core}" "${_d_desc}" "${_d_ppth}" "${_d_prfn}" "${_d_webd}" "${_d_phpv}" "${_d_xurl}"
+   fi
+done
+
+
+_d_core_platform_install() {
+###---### Template function for core-only-type platforms
+#
+  local _REAL_PRNAME="${_d_prfn}"
+  local _VIRT_PRNAME="${_d_prfn}"
+  [ "${_REAL_PRNAME}" = "default" ] && local _VIRT_PRNAME="pressflow"
+
+  if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
+    || [[ "${_PLATFORMS_LIST}" =~ "D104D" ]] \
+    || [[ "${_PLATFORMS_LIST}" =~ "D104S" ]] \
+    || [[ "${_PLATFORMS_LIST}" =~ "D104P" ]]; then
+    if [ ! -d "${_ROOT}/distro/${_THIS_CORE}/${_DRUPAL10_4_D}" ]; then
+      if _prompt_yes_no "${_F_DRUPAL10_4} - https://drupal.org/project/drupal/releases/${_SMALLCORE10_4_V}" ; then
+        true
+        ###---### Drupal 10.4 Development
+        #
+        _REAL_PRNAME="standard"
+        _SHRD_PLNAME="${_DRUPAL10_4_D}"
+        _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
+        if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
+          || [[ "${_PLATFORMS_LIST}" =~ "D104D" ]]; then
+          [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${_F_DRUPAL10_4_D} ${_yOk}"
+          [ "${_DEBUG_MODE}" = "YES" ] && _create_drupal10_4_basic_dev
+          [ "${_DEBUG_MODE}" = "NO" ] && _create_drupal10_4_basic
+          if [ -d "${_OCTO_PLPATH}" ]; then
+            _msg "DISTRO: ${_F_DRUPAL10_4_D} installed"
+            _RUN_VERIFY=YES
+          fi
+        fi
+        ###---### Drupal 10.4 Staging
+        #
+        _REAL_PRNAME="standard"
+        _SHRD_PLNAME="${_DRUPAL10_4_S}"
+        _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
+        if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
+          || [[ "${_PLATFORMS_LIST}" =~ "D104S" ]]; then
+          [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${_F_DRUPAL10_4_S} ${_yOk}"
+          [ "${_DEBUG_MODE}" = "YES" ] && _create_drupal10_4_basic_dev
+          [ "${_DEBUG_MODE}" = "NO" ] && _create_drupal10_4_basic
+          if [ -d "${_OCTO_PLPATH}" ]; then
+            _msg "DISTRO: ${_F_DRUPAL10_4_S} installed"
+            _RUN_VERIFY=YES
+          fi
+        fi
+        ###---### Drupal 10.4 Production
+        #
+        _REAL_PRNAME="standard"
+        _SHRD_PLNAME="${_DRUPAL10_4_P}"
+        _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
+        if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
+          || [[ "${_PLATFORMS_LIST}" =~ "D104P" ]]; then
+          [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${_F_DRUPAL10_4_P} ${_yOk}"
+          [ "${_DEBUG_MODE}" = "YES" ] && _create_drupal10_4_basic_dev
+          [ "${_DEBUG_MODE}" = "NO" ] && _create_drupal10_4_basic
+          if [ -d "${_OCTO_PLPATH}" ]; then
+            _msg "DISTRO: ${_F_DRUPAL10_4_P} installed"
+            _RUN_VERIFY=YES
+          fi
+        fi
+      else
+        [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${_F_DRUPAL10_4} ${_noT}"
       fi
     fi
   fi
@@ -2405,8 +2477,7 @@ _save_verify_platforms() {
         _FOUND_HM=YES
       else
         _PLATF_NAME=${_PLATF##*/}
-        ${_DRUSHCMD} php-script make_platform "${_PLATF_NAME} ($RANDOM)" default \
-          ${_PLATF}
+        ${_DRUSHCMD} php-script make_platform "${_PLATF_NAME} ($RANDOM)" default ${_PLATF}
       fi
     done
   fi
@@ -2414,7 +2485,6 @@ _save_verify_platforms() {
 }
 
 
-_commerce_7_1_install
 _commerce_7_2_install
 _drupal10_0_install
 _drupal10_1_install

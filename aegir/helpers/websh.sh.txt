@@ -33,7 +33,25 @@ if [[ ! "${_ARGS}" =~ "composer" ]] \
   && [[ ! "${_ARGS}" =~ "mysql" ]] \
   && [[ ! "${_ARGS}" =~ "sudo" ]]; then
   _ARR=
-  if [[ "${_ARGS}" =~ "vendor/drush/drush/drush" ]]; then
+  if [[ "${_ARGS}" =~ "vendor/drush/drush/drush.php " ]]; then
+    if [[ "${_ARGS}" =~ "set -m" ]]; then
+      _R_M=`echo -n ${_ARGS}  | grep -o "set -m\; vendor/drush/drush/drush.php"`
+    else
+      _R_M=`echo -n ${_ARGS}  | grep -o "vendor/drush/drush/drush.php"`
+    fi
+    ### echo _R_M is ${_R_M}
+    _R_M=${_R_M//\//\\\/}
+    ### echo _R_M is ${_R_M}
+    _CLR=`echo ${_ARGS}  | sed "s/\${_R_M}//g"`
+    _ARR=() # the buffer array for filtered parameters
+    for arg in "${_CLR}"; do
+      case ${_R_M} in
+        $arg\ * | *\ $arg | *\ $arg\ *) ;;
+        *) _ARR+=("$arg") ;;
+      esac
+    done
+    ### echo _ARR is ${_ARR}
+  elif [[ "${_ARGS}" =~ "vendor/drush/drush/drush" ]]; then
     _ARR="${_ARGS}"
     ### echo _ARR is ${_ARR}
   elif [[ "${_ARGS}" =~ "/vendor/bin/drush" ]]; then
@@ -110,22 +128,6 @@ if [[ ! "${_ARGS}" =~ "composer" ]] \
       _R_M=`echo -n ${_ARGS}  | grep -o "set -m\; drush11"`
     else
       _R_M=`echo -n ${_ARGS}  | grep -o "drush11"`
-    fi
-    ### echo _R_M is ${_R_M}
-    _CLR=`echo ${_ARGS}  | sed "s/\${_R_M}//g"`
-    _ARR=() # the buffer array for filtered parameters
-    for arg in "${_CLR}"; do
-      case ${_R_M} in
-        $arg\ * | *\ $arg | *\ $arg\ *) ;;
-        *) _ARR+=("$arg") ;;
-      esac
-    done
-    ### echo _ARR is ${_ARR}
-  elif [[ "${_ARGS}" =~ "drush12 " ]]; then
-    if [[ "${_ARGS}" =~ "set -m" ]]; then
-      _R_M=`echo -n ${_ARGS}  | grep -o "set -m\; drush12"`
-    else
-      _R_M=`echo -n ${_ARGS}  | grep -o "drush12"`
     fi
     ### echo _R_M is ${_R_M}
     _CLR=`echo ${_ARGS}  | sed "s/\${_R_M}//g"`
@@ -395,57 +397,22 @@ if [ "${_LTD_GID}" = "www-data users" ] \
         || [[ "${_ARGS}" =~ "drush8 " ]] \
         || [[ "${_ARGS}" =~ "drush10 " ]] \
         || [[ "${_ARGS}" =~ "drush11 " ]] \
-        || [[ "${_ARGS}" =~ "drush12 " ]]; then
+        || [[ "${_ARGS}" =~ "vendor/drush/drush/drush.php " ]]; then
         _PWD=$(pwd 2>&1)
         _DEST_DRUSH="/opt/tools/drush/8/drush/drush.php"
         if [[ "${_ARGS}" =~ "vendor/bin/drush " ]]; then
           _DEST_DRUSH="vendor/bin/drush"
         fi
-        if [[ "${_ARGS}" =~ "vendor/drush/drush/drush" ]]; then
+        if [[ "${_ARGS}" =~ "vendor/drush/drush/drush " ]]; then
           _DEST_DRUSH=
         fi
         if [[ "${_ARGS}" =~ "/vendor/bin/drush " ]]; then
           _DEST_DRUSH=
         fi
-        if [[ "${_ARGS}" =~ "drush12 " ]] \
-          && [[ ! "${HOME}" =~ (^)"/data/disk/" ]]; then
-          _DEST_DRUSH="/usr/bin/drush12"
-          _PHP_V="81 82 83"
-          for e in ${_PHP_V}; do
-            if [ -e "${_DRUSH_CLI_CTRL}/php${e}.info" ] && [ -x "/opt/php${e}/bin/php" ]; then
-              DRUSH_PHP="/opt/php${e}/bin/php"
-              PHP_INI="/opt/php${e}/lib/php.ini"
-              PHPRC="/opt/php${e}/lib"
-              if [ -f "${HOME}/.drush/php${e}/php.ini" ]; then
-                PHP_INI="${HOME}/.drush/php${e}/php.ini"
-                PHPRC="${HOME}/.drush/php${e}"
-              fi
-            fi
-          done
-          if [ ! -z "${DRUSH_PHP}" ] && [ ! -z "${PHP_INI}" ]; then
-            export DRUSH_PHP;export PHP_INI;export PHPRC;
-            ### echo INF 2 DRUSH_PHP is ${DRUSH_PHP}
-            ### echo INF 2 PHP_INI is ${PHP_INI}
-            ### echo INF 2 PHPRC is ${PHPRC}
-            ### echo INF 2 _DEST_DRUSH is ${_DEST_DRUSH}
-          else
-            echo
-            echo "  Drush 12 requires either PHP 8.1 or 8.2 or 8.3"
-            echo "  Please create empty control file:"
-            echo
-            echo "  ${_DRUSH_CLI_CTRL}/php81.info"
-            echo "  or"
-            echo "  ${_DRUSH_CLI_CTRL}/php82.info"
-            echo "  or"
-            echo "  ${_DRUSH_CLI_CTRL}/php83.info"
-            echo
-            echo "  NOTE: If you create more than one,"
-            echo "        the highest version wins."
-            echo "  Bye"
-            echo
-            exit 0
-          fi
-        elif [[ "${_ARGS}" =~ "drush11 " ]] \
+        if [[ "${_ARGS}" =~ "vendor/drush/drush/drush.php " ]]; then
+          _DEST_DRUSH="vendor/drush/drush/drush.php"
+        fi
+        if [[ "${_ARGS}" =~ "drush11 " ]] \
           || [[ "${_ARGS}" =~ "drush10 " ]]; then
           if [[ "${_ARGS}" =~ "drush11 " ]]; then
             _DEST_DRUSH="/usr/bin/drush11"
@@ -482,6 +449,8 @@ if [ "${_LTD_GID}" = "www-data users" ] \
             echo "  ${_DRUSH_CLI_CTRL}/php81.info"
             echo "  or"
             echo "  ${_DRUSH_CLI_CTRL}/php82.info"
+            echo "  or"
+            echo "  ${_DRUSH_CLI_CTRL}/php83.info"
             echo
             echo "  NOTE: If you create more than one,"
             echo "        the highest version wins."
@@ -495,11 +464,14 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           if [[ "${_ARGS}" =~ "vendor/bin/drush " ]]; then
             _DEST_DRUSH="vendor/bin/drush"
           fi
-          if [[ "${_ARGS}" =~ "vendor/drush/drush/drush" ]]; then
+          if [[ "${_ARGS}" =~ "vendor/drush/drush/drush " ]]; then
             _DEST_DRUSH=
           fi
           if [[ "${_ARGS}" =~ "/vendor/bin/drush " ]]; then
             _DEST_DRUSH=
+          fi
+          if [[ "${_ARGS}" =~ "vendor/drush/drush/drush.php " ]]; then
+            _DEST_DRUSH="vendor/drush/drush/drush.php"
           fi
           if [[ ! "${HOME}" =~ (^)"/data/disk/" ]]; then
             _PHP_V="56 70 71 72 73 74 80 81 82 83"
@@ -529,14 +501,14 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           || [[ "${_ARGS}" =~ "drush8 cc drush" ]] \
           || [[ "${_ARGS}" =~ "drush10 cr drush" ]] \
           || [[ "${_ARGS}" =~ "drush11 cr drush" ]] \
-          || [[ "${_ARGS}" =~ "drush12 cr drush" ]] \
+          || [[ "${_ARGS}" =~ "vendor/drush/drush/drush.php cr drush" ]] \
           || [[ "${_ARGS}" =~ "vendor/bin/drush cr drush" ]]; then
           if [[ "${_PWD}" =~ "/static" ]] \
             || [[ "${_ARGS}" =~ "drush cc drush" ]] \
             || [[ "${_ARGS}" =~ "drush8 cc drush" ]] \
             || [[ "${_ARGS}" =~ "drush10 cr drush" ]] \
             || [[ "${_ARGS}" =~ "drush11 cr drush" ]] \
-            || [[ "${_ARGS}" =~ "drush12 cr drush" ]] \
+            || [[ "${_ARGS}" =~ "vendor/drush/drush/drush.php cr drush" ]] \
             || [[ "${_ARGS}" =~ "vendor/bin/drush cr drush" ]]; then
             _CORRECT=YES
           else
@@ -563,13 +535,13 @@ if [ "${_LTD_GID}" = "www-data users" ] \
             || [[ "${_ARGS}" =~ "drush8 @" ]] \
             || [[ "${_ARGS}" =~ "drush10 @" ]] \
             || [[ "${_ARGS}" =~ "drush11 @" ]] \
-            || [[ "${_ARGS}" =~ "drush12 @" ]] \
+            || [[ "${_ARGS}" =~ "vendor/drush/drush/drush.php @" ]] \
             || [[ "${_ARGS}" =~ "vendor/bin/drush @" ]] \
             || [[ "${_ARGS}" =~ "drush -vvv @" ]] \
             || [[ "${_ARGS}" =~ "drush8 -vvv @" ]] \
             || [[ "${_ARGS}" =~ "drush10 -vvv @" ]] \
             || [[ "${_ARGS}" =~ "drush11 -vvv @" ]] \
-            || [[ "${_ARGS}" =~ "drush12 -vvv @" ]] \
+            || [[ "${_ARGS}" =~ "vendor/drush/drush/drush.php -vvv @" ]] \
             || [[ "${_ARGS}" =~ "vendor/bin/drush -vvv @" ]]; then
             if [[ "${2}" =~ "restore"($) ]] \
               || [[ "${2}" =~ "arr"($) ]] \
@@ -610,24 +582,16 @@ if [ "${_LTD_GID}" = "www-data users" ] \
             || [[ "${_ARGS}" =~ "drush8 sa" ]] \
             || [[ "${_ARGS}" =~ "set -m; drush10 --version" ]] \
             || [[ "${_ARGS}" =~ "set -m; drush10 help" ]] \
-            || [[ "${_ARGS}" =~ "drush10 dl" ]] \
-            || [[ "${_ARGS}" =~ "drush10 pm-download" ]] \
             || [[ "${_ARGS}" =~ "drush10 aliases" ]] \
             || [[ "${_ARGS}" =~ "drush10 sa" ]] \
             || [[ "${_ARGS}" =~ "set -m; drush11 --version" ]] \
             || [[ "${_ARGS}" =~ "set -m; drush11 help" ]] \
-            || [[ "${_ARGS}" =~ "drush11 dl" ]] \
-            || [[ "${_ARGS}" =~ "drush11 pm-download" ]] \
             || [[ "${_ARGS}" =~ "drush11 aliases" ]] \
             || [[ "${_ARGS}" =~ "drush11 sa" ]] \
-            || [[ "${_ARGS}" =~ "set -m; drush12 --version" ]] \
-            || [[ "${_ARGS}" =~ "set -m; drush12 help" ]] \
-            || [[ "${_ARGS}" =~ "drush12 dl" ]] \
-            || [[ "${_ARGS}" =~ "drush12 pm-download" ]] \
+            || [[ "${_ARGS}" =~ "set -m; vendor/drush/drush/drush.php --version" ]] \
+            || [[ "${_ARGS}" =~ "set -m; vendor/drush/drush/drush.php help" ]] \
             || [[ "${_ARGS}" =~ "set -m; vendor/bin/drush --version" ]] \
             || [[ "${_ARGS}" =~ "set -m; vendor/bin/drush help" ]] \
-            || [[ "${_ARGS}" =~ "vendor/bin/drush dl" ]] \
-            || [[ "${_ARGS}" =~ "vendor/bin/drush pm-download" ]] \
             || [[ "${_ARGS}" =~ "set -m; drush --version" ]] \
             || [[ "${_ARGS}" =~ "set -m; drush help" ]] \
             || [[ "${_ARGS}" =~ "drush dl" ]] \
@@ -649,7 +613,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
                 || [[ "${_ARGS}" =~ "drush8 " ]] \
                 || [[ "${_ARGS}" =~ "drush10 " ]] \
                 || [[ "${_ARGS}" =~ "drush11 " ]] \
-                || [[ "${_ARGS}" =~ "drush12 " ]] \
+                || [[ "${_ARGS}" =~ "vendor/drush/drush/drush.php " ]] \
                 || [[ "${_ARGS}" =~ "vendor/bin/drush " ]]; then
                 _CORRECT=YES
               fi
@@ -662,13 +626,13 @@ if [ "${_LTD_GID}" = "www-data users" ] \
         || [[ "${_ARGS}" =~ "drush8 @" ]] \
         || [[ "${_ARGS}" =~ "drush10 @" ]] \
         || [[ "${_ARGS}" =~ "drush11 @" ]] \
-        || [[ "${_ARGS}" =~ "drush12 @" ]] \
+        || [[ "${_ARGS}" =~ "vendor/drush/drush/drush.php @" ]] \
         || [[ "${_ARGS}" =~ "vendor/bin/drush @" ]] \
         || [[ "${_ARGS}" =~ "drush -vvv @" ]] \
         || [[ "${_ARGS}" =~ "drush8 -vvv @" ]] \
         || [[ "${_ARGS}" =~ "drush10 -vvv @" ]] \
         || [[ "${_ARGS}" =~ "drush11 -vvv @" ]] \
-        || [[ "${_ARGS}" =~ "drush12 -vvv @" ]] \
+        || [[ "${_ARGS}" =~ "vendor/drush/drush/drush.php -vvv @" ]] \
         || [[ "${_ARGS}" =~ "vendor/bin/drush -vvv @" ]]; then
         if [[ "${2}" =~ "restore"($) ]] \
           || [[ "${2}" =~ "arr"($) ]] \
@@ -753,13 +717,13 @@ if [ "${_LTD_GID}" = "www-data users" ] \
       || [[ "${_ARGS}" =~ "drush8 @" ]] \
       || [[ "${_ARGS}" =~ "drush10 @" ]] \
       || [[ "${_ARGS}" =~ "drush11 @" ]] \
-      || [[ "${_ARGS}" =~ "drush12 @" ]] \
+      || [[ "${_ARGS}" =~ "vendor/drush/drush/drush.php @" ]] \
       || [[ "${_ARGS}" =~ "vendor/bin/drush @" ]] \
       || [[ "${_ARGS}" =~ "drush -vvv @" ]] \
       || [[ "${_ARGS}" =~ "drush8 -vvv @" ]] \
       || [[ "${_ARGS}" =~ "drush10 -vvv @" ]] \
       || [[ "${_ARGS}" =~ "drush11 -vvv @" ]] \
-      || [[ "${_ARGS}" =~ "drush12 -vvv @" ]] \
+      || [[ "${_ARGS}" =~ "vendor/drush/drush/drush.php -vvv @" ]] \
       || [[ "${_ARGS}" =~ "vendor/bin/drush -vvv @" ]]; then
       if [[ "${2}" =~ "restore"($) ]] \
         || [[ "${2}" =~ "arr"($) ]] \
