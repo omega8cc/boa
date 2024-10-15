@@ -1264,7 +1264,7 @@ _update_agents() {
   if [ -x "/opt/tools/drush/8/drush/drush.php" ] \
     && [ -e "/var/xdrago" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/lshell.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/lshell.fix-regr-05.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     if [ -z "${_CUSTOM_CONFIG_LSHELL}" ] \
       || [ "${_CUSTOM_CONFIG_LSHELL}" = "NO" ]; then
       mv -f /var/xdrago/conf/lshell.conf /var/xdrago/conf/lshell.conf.old
@@ -1273,7 +1273,7 @@ _update_agents() {
       if [ -e "/var/xdrago/conf/lshell.conf" ]; then
         chmod 644 /var/xdrago/conf/lshell.conf
         chown root:root /var/xdrago/conf/lshell.conf
-        touch ${_pthLog}/lshell.ctrl.${_tRee}.${_xSrl}.pid
+        touch ${_pthLog}/lshell.fix-regr-05.ctrl.${_tRee}.${_xSrl}.pid
       else
         mv -f /var/xdrago/conf/lshell.conf.old /var/xdrago/conf/lshell.conf
       fi
