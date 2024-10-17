@@ -3451,21 +3451,11 @@ _satellite_if_add_update_user_platforms_symlinks() {
         ln -sfn ${_A} ${_B}
       fi
     fi
-    if [ ! -d "${_QR}/${_DRUPAL10_0}" ]; then
-      if [ -d "${_QR}/${_DRUPAL10_0_P}/sites" ]; then
-        if [ ! -L "${_QH}/${_DRUPAL10_0_P}" ]; then
-          _A="${_QR}/${_DRUPAL10_0_P}/sites"
-          _B="${_QH}/${_DRUPAL10_0_P}"
-          ln -sfn ${_A} ${_B}
-        fi
-      fi
-    elif [ ! -d "${_QR}/${_DRUPAL10_0_P}" ]; then
-      if [ -d "${_QR}/${_DRUPAL10_0}/sites" ]; then
-        if [ ! -L "${_QH}/${_DRUPAL10_0_P}" ]; then
-          _A="${_QR}/${_DRUPAL10_0}/sites"
-          _B="${_QH}/${_DRUPAL10_0_P}"
-          ln -sfn ${_A} ${_B}
-        fi
+    if [ -d "${_QR}/${_DRUPAL10_0_P}/sites" ]; then
+      if [ ! -L "${_QH}/${_DRUPAL10_0_P}" ]; then
+        _A="${_QR}/${_DRUPAL10_0_P}/sites"
+        _B="${_QH}/${_DRUPAL10_0_P}"
+        ln -sfn ${_A} ${_B}
       fi
     fi
 
@@ -3483,21 +3473,11 @@ _satellite_if_add_update_user_platforms_symlinks() {
         ln -sfn ${_A} ${_B}
       fi
     fi
-    if [ ! -d "${_QR}/${_DRUPAL10_1}" ]; then
-      if [ -d "${_QR}/${_DRUPAL10_1_P}/sites" ]; then
-        if [ ! -L "${_QH}/${_DRUPAL10_1_P}" ]; then
-          _A="${_QR}/${_DRUPAL10_1_P}/sites"
-          _B="${_QH}/${_DRUPAL10_1_P}"
-          ln -sfn ${_A} ${_B}
-        fi
-      fi
-    elif [ ! -d "${_QR}/${_DRUPAL10_1_P}" ]; then
-      if [ -d "${_QR}/${_DRUPAL10_1}/sites" ]; then
-        if [ ! -L "${_QH}/${_DRUPAL10_1_P}" ]; then
-          _A="${_QR}/${_DRUPAL10_1}/sites"
-          _B="${_QH}/${_DRUPAL10_1_P}"
-          ln -sfn ${_A} ${_B}
-        fi
+    if [ -d "${_QR}/${_DRUPAL10_1_P}/sites" ]; then
+      if [ ! -L "${_QH}/${_DRUPAL10_1_P}" ]; then
+        _A="${_QR}/${_DRUPAL10_1_P}/sites"
+        _B="${_QH}/${_DRUPAL10_1_P}"
+        ln -sfn ${_A} ${_B}
       fi
     fi
 
@@ -3515,21 +3495,11 @@ _satellite_if_add_update_user_platforms_symlinks() {
         ln -sfn ${_A} ${_B}
       fi
     fi
-    if [ ! -d "${_QR}/${_DRUPAL10_2}" ]; then
-      if [ -d "${_QR}/${_DRUPAL10_2_P}/sites" ]; then
-        if [ ! -L "${_QH}/${_DRUPAL10_2_P}" ]; then
-          _A="${_QR}/${_DRUPAL10_2_P}/sites"
-          _B="${_QH}/${_DRUPAL10_2_P}"
-          ln -sfn ${_A} ${_B}
-        fi
-      fi
-    elif [ ! -d "${_QR}/${_DRUPAL10_2_P}" ]; then
-      if [ -d "${_QR}/${_DRUPAL10_2}/sites" ]; then
-        if [ ! -L "${_QH}/${_DRUPAL10_2_P}" ]; then
-          _A="${_QR}/${_DRUPAL10_2}/sites"
-          _B="${_QH}/${_DRUPAL10_2_P}"
-          ln -sfn ${_A} ${_B}
-        fi
+    if [ -d "${_QR}/${_DRUPAL10_2_P}/sites" ]; then
+      if [ ! -L "${_QH}/${_DRUPAL10_2_P}" ]; then
+        _A="${_QR}/${_DRUPAL10_2_P}/sites"
+        _B="${_QH}/${_DRUPAL10_2_P}"
+        ln -sfn ${_A} ${_B}
       fi
     fi
 
@@ -3547,21 +3517,11 @@ _satellite_if_add_update_user_platforms_symlinks() {
         ln -sfn ${_A} ${_B}
       fi
     fi
-    if [ ! -d "${_QR}/${_DRUPAL10_3}" ]; then
-      if [ -d "${_QR}/${_DRUPAL10_3_P}/sites" ]; then
-        if [ ! -L "${_QH}/${_DRUPAL10_3_P}" ]; then
-          _A="${_QR}/${_DRUPAL10_3_P}/sites"
-          _B="${_QH}/${_DRUPAL10_3_P}"
-          ln -sfn ${_A} ${_B}
-        fi
-      fi
-    elif [ ! -d "${_QR}/${_DRUPAL10_3_P}" ]; then
-      if [ -d "${_QR}/${_DRUPAL10_3}/sites" ]; then
-        if [ ! -L "${_QH}/${_DRUPAL10_3_P}" ]; then
-          _A="${_QR}/${_DRUPAL10_3}/sites"
-          _B="${_QH}/${_DRUPAL10_3_P}"
-          ln -sfn ${_A} ${_B}
-        fi
+    if [ -d "${_QR}/${_DRUPAL10_3_P}/sites" ]; then
+      if [ ! -L "${_QH}/${_DRUPAL10_3_P}" ]; then
+        _A="${_QR}/${_DRUPAL10_3_P}/sites"
+        _B="${_QH}/${_DRUPAL10_3_P}"
+        ln -sfn ${_A} ${_B}
       fi
     fi
 
@@ -3579,21 +3539,11 @@ _satellite_if_add_update_user_platforms_symlinks() {
         ln -sfn ${_A} ${_B}
       fi
     fi
-    if [ ! -d "${_QR}/${_DRUPAL10_4}" ]; then
-      if [ -d "${_QR}/${_DRUPAL10_4_P}/sites" ]; then
-        if [ ! -L "${_QH}/${_DRUPAL10_4_P}" ]; then
-          _A="${_QR}/${_DRUPAL10_4_P}/sites"
-          _B="${_QH}/${_DRUPAL10_4_P}"
-          ln -sfn ${_A} ${_B}
-        fi
-      fi
-    elif [ ! -d "${_QR}/${_DRUPAL10_4_P}" ]; then
-      if [ -d "${_QR}/${_DRUPAL10_4}/sites" ]; then
-        if [ ! -L "${_QH}/${_DRUPAL10_4_P}" ]; then
-          _A="${_QR}/${_DRUPAL10_4}/sites"
-          _B="${_QH}/${_DRUPAL10_4_P}"
-          ln -sfn ${_A} ${_B}
-        fi
+    if [ -d "${_QR}/${_DRUPAL10_4_P}/sites" ]; then
+      if [ ! -L "${_QH}/${_DRUPAL10_4_P}" ]; then
+        _A="${_QR}/${_DRUPAL10_4_P}/sites"
+        _B="${_QH}/${_DRUPAL10_4_P}"
+        ln -sfn ${_A} ${_B}
       fi
     fi
 
@@ -3611,24 +3561,13 @@ _satellite_if_add_update_user_platforms_symlinks() {
         ln -sfn ${_A} ${_B}
       fi
     fi
-    if [ ! -d "${_QR}/${_DRUPAL9}" ]; then
-      if [ -d "${_QR}/${_DRUPAL9_P}/sites" ]; then
-        if [ ! -L "${_QH}/${_DRUPAL9_P}" ]; then
-          _A="${_QR}/${_DRUPAL9_P}/sites"
-          _B="${_QH}/${_DRUPAL9_P}"
-          ln -sfn ${_A} ${_B}
-        fi
-      fi
-    elif [ ! -d "${_QR}/${_DRUPAL9_P}" ]; then
-      if [ -d "${_QR}/${_DRUPAL9}/sites" ]; then
-        if [ ! -L "${_QH}/${_DRUPAL9_P}" ]; then
-          _A="${_QR}/${_DRUPAL9}/sites"
-          _B="${_QH}/${_DRUPAL9_P}"
-          ln -sfn ${_A} ${_B}
-        fi
+    if [ -d "${_QR}/${_DRUPAL9_P}/sites" ]; then
+      if [ ! -L "${_QH}/${_DRUPAL9_P}" ]; then
+        _A="${_QR}/${_DRUPAL9_P}/sites"
+        _B="${_QH}/${_DRUPAL9_P}"
+        ln -sfn ${_A} ${_B}
       fi
     fi
-
 
     if [ -d "${_QR}/${_DRUPAL7_D}/sites" ]; then
       if [ ! -L "${_QH}/${_DRUPAL7_D}" ]; then
@@ -3644,21 +3583,11 @@ _satellite_if_add_update_user_platforms_symlinks() {
         ln -sfn ${_A} ${_B}
       fi
     fi
-    if [ ! -d "${_QR}/${_DRUPAL7}" ]; then
-      if [ -d "${_QR}/${_DRUPAL7_P}/sites" ]; then
-        if [ ! -L "${_QH}/${_DRUPAL7_P}" ]; then
-          _A="${_QR}/${_DRUPAL7_P}/sites"
-          _B="${_QH}/${_DRUPAL7_P}"
-          ln -sfn ${_A} ${_B}
-        fi
-      fi
-    elif [ ! -d "${_QR}/${_DRUPAL7_P}" ]; then
-      if [ -d "${_QR}/${_DRUPAL7}/sites" ]; then
-        if [ ! -L "${_QH}/${_DRUPAL7_P}" ]; then
-          _A="${_QR}/${_DRUPAL7}/sites"
-          _B="${_QH}/${_DRUPAL7_P}"
-          ln -sfn ${_A} ${_B}
-        fi
+    if [ -d "${_QR}/${_DRUPAL7_P}/sites" ]; then
+      if [ ! -L "${_QH}/${_DRUPAL7_P}" ]; then
+        _A="${_QR}/${_DRUPAL7_P}/sites"
+        _B="${_QH}/${_DRUPAL7_P}"
+        ln -sfn ${_A} ${_B}
       fi
     fi
 
@@ -3676,21 +3605,11 @@ _satellite_if_add_update_user_platforms_symlinks() {
         ln -sfn ${_A} ${_B}
       fi
     fi
-    if [ ! -d "${_QR}/pressflow" ]; then
-      if [ -d "${_QR}/${_DRUPAL6_P}/sites" ]; then
-        if [ ! -L "${_QH}/${_DRUPAL6_P}" ]; then
-          _A="${_QR}/${_DRUPAL6_P}/sites"
-          _B="${_QH}/${_DRUPAL6_P}"
-          ln -sfn ${_A} ${_B}
-        fi
-      fi
-    elif [ ! -d "${_QR}/${_DRUPAL6_P}" ]; then
-      if [ -d "${_QR}/pressflow/sites" ]; then
-        if [ ! -L "${_QH}/${_DRUPAL6_P}" ]; then
-          _A="${_QR}/pressflow/sites"
-          _B="${_QH}/${_DRUPAL6_P}"
-          ln -sfn ${_A} ${_B}
-        fi
+    if [ -d "${_QR}/${_DRUPAL6_P}/sites" ]; then
+      if [ ! -L "${_QH}/${_DRUPAL6_P}" ]; then
+        _A="${_QR}/${_DRUPAL6_P}/sites"
+        _B="${_QH}/${_DRUPAL6_P}"
+        ln -sfn ${_A} ${_B}
       fi
     fi
 
