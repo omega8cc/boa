@@ -4037,7 +4037,6 @@ _satellite_make() {
   echo "_CLIENT_CORES=\"${_CLIENT_CORES}\""           >> ${_writeTo}
   echo "_CLIENT_EMAIL=\"${_CLIENT_EMAIL}\""           >> ${_writeTo}
   echo "_CLIENT_OPTION=\"${_CLIENT_OPTION}\""         >> ${_writeTo}
-  echo "_COMMERCE1=\"${_COMMERCE1}\""                 >> ${_writeTo}
   echo "_COMMERCE2=\"${_COMMERCE2}\""                 >> ${_writeTo}
   echo "_DEBUG_MODE=\"${_DEBUG_MODE}\""               >> ${_writeTo}
   echo "_DISTRO=\"${_DISTRO}\""                       >> ${_writeTo}

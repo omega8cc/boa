@@ -63,7 +63,6 @@ export _REDIS_T_VERSION=8.x-1.8.1
 ### Drupal Distributions
 ###
 
-export _COMMERCE1=1.72
 export _COMMERCE2=2.77
 export _OPENLUCIUS=2.0.0
 export _OPIGNOLMS9=3.1.0
