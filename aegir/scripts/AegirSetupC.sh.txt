@@ -687,107 +687,80 @@ _upgrade_contrib_less() {
   fi
 }
 
-#
-# Create D6 basic platform.
-_create_drupal6_basic() {
+# Create Drupal basic platform for versions 6 and 7.
+_create_drupal6_or_7_basic() {
+  local version="$1"  # Accepts "6" or "7"
   if [ ! -d "${_SHRD_PLPATH}" ]; then
-    mkdir -p ${_SHRD_PLPATH}
-    if [ ! -e "${_D6_CORE_DIR}" ]; then
-      _prepare_drupal6_core
+    mkdir -p "${_SHRD_PLPATH}"
+    local core_dir_var="_D${version}_CORE_DIR"
+    local core_dir="${!core_dir_var}"
+    if [ ! -e "${core_dir}" ]; then
+      local prepare_func="_prepare_drupal${version}_core"
+      if declare -f "$prepare_func" > /dev/null; then
+        "$prepare_func"
+      else
+        echo "Function $prepare_func does not exist."
+      fi
     fi
-    cd ${_CORE}
-    _nocore_d6_dist_clean
-    _enable_drupal6_admin
+    if [ "$version" = "6" ]; then
+      cd "${_CORE}"
+      _nocore_d6_dist_clean
+      _enable_drupal6_admin
+    elif [ "$version" = "7" ]; then
+      _nocore_d7_dist_clean
+    fi
   fi
   _init_this_distro_root
 }
 
-#
-# Create D7 basic platform.
-_create_drupal7_basic() {
-  if [ ! -d "${_SHRD_PLPATH}" ]; then
-    mkdir -p ${_SHRD_PLPATH}
-    if [ ! -e "${_D7_CORE_DIR}" ]; then
-      _prepare_drupal7_core
+# Create Drupal basic platform for versions 9 and 10.x.
+_create_drupal_basic_version() {
+  local version="$1"  # Accepts "9", "10_0", "10_1", etc.
+  if [ ! -d "${_OCTO_PLPATH}" ]; then
+    cd "${_pthDst}"
+    local drupal_var="_DRUPAL${version}"
+    local drupal_version="${!drupal_var}"
+    _get_core_ext "${drupal_version}.tar.gz"
+    mv -f "${drupal_version}" "${_SHRD_PLNAME}"
+    if [ "$version" = "9" ]; then
+      cd "${_SHRD_PLNAME}"
+      _rename_drupal9_profiles
     fi
-    _nocore_d7_dist_clean
-  fi
-  _init_this_distro_root
-}
-
-#
-# Create D9 basic platform.
-_create_drupal9_basic() {
-  if [ ! -d "${_OCTO_PLPATH}" ]; then
-    cd ${_pthDst}
-    _get_core_ext "${_DRUPAL9}.tar.gz"
-    mv -f ${_DRUPAL9} ${_SHRD_PLNAME}
-    cd ${_SHRD_PLNAME}
-    _rename_drupal9_profiles
   fi
 }
 
-#
-# Create D10.0 basic platform.
-_create_drupal10_0_basic() {
-  if [ ! -d "${_OCTO_PLPATH}" ]; then
-    cd ${_pthDst}
-    _get_core_ext "${_DRUPAL10_0}.tar.gz"
-    mv -f ${_DRUPAL10_0} ${_SHRD_PLNAME}
-  fi
-}
-
-#
-# Create D10.1 basic platform.
-_create_drupal10_1_basic() {
-  if [ ! -d "${_OCTO_PLPATH}" ]; then
-    cd ${_pthDst}
-    _get_core_ext "${_DRUPAL10_1}.tar.gz"
-    mv -f ${_DRUPAL10_1} ${_SHRD_PLNAME}
-  fi
-}
-
-#
-# Create D10.2 basic platform.
-_create_drupal10_2_basic() {
-  if [ ! -d "${_OCTO_PLPATH}" ]; then
-    cd ${_pthDst}
-    _get_core_ext "${_DRUPAL10_2}.tar.gz"
-    mv -f ${_DRUPAL10_2} ${_SHRD_PLNAME}
-  fi
-}
-
-#
-# Create D10.3 basic platform.
-_create_drupal10_3_basic() {
-  if [ ! -d "${_OCTO_PLPATH}" ]; then
-    cd ${_pthDst}
-    _get_core_ext "${_DRUPAL10_3}.tar.gz"
-    mv -f ${_DRUPAL10_3} ${_SHRD_PLNAME}
-  fi
-}
-
-#
-# Create D10.4 basic platform.
-_create_drupal10_4_basic() {
-  if [ ! -d "${_OCTO_PLPATH}" ]; then
-    cd ${_pthDst}
-    _get_core_ext "${_DRUPAL10_4}.tar.gz"
-    mv -f ${_DRUPAL10_4} ${_SHRD_PLNAME}
-  fi
-}
-
-#
 # Create Drupal core-only basic platform.
 _create_drupal_core_basic() {
-  [ "${1}" = "DL6" ] && _create_drupal6_basic
-  [ "${1}" = "DL7" ] && _create_drupal7_basic
-  [ "${1}" = "DL9" ] && _create_drupal9_basic
-  [ "${1}" = "DX0" ] && _create_drupal10_0_basic
-  [ "${1}" = "DX1" ] && _create_drupal10_1_basic
-  [ "${1}" = "DX2" ] && _create_drupal10_2_basic
-  [ "${1}" = "DX3" ] && _create_drupal10_3_basic
-  [ "${1}" = "DX4" ] && _create_drupal10_4_basic
+  local version_code="$1"
+  case "$version_code" in
+    "DL6")
+      _create_drupal6_or_7_basic "6"
+      ;;
+    "DL7")
+      _create_drupal6_or_7_basic "7"
+      ;;
+    "DL9")
+      _create_drupal_basic_version "9"
+      ;;
+    "DX0")
+      _create_drupal_basic_version "10_0"
+      ;;
+    "DX1")
+      _create_drupal_basic_version "10_1"
+      ;;
+    "DX2")
+      _create_drupal_basic_version "10_2"
+      ;;
+    "DX3")
+      _create_drupal_basic_version "10_3"
+      ;;
+    "DX4")
+      _create_drupal_basic_version "10_4"
+      ;;
+    *)
+      echo "Unsupported version code: $version_code"
+      ;;
+  esac
 }
 
 # Define distros names and their key-words for configuration
