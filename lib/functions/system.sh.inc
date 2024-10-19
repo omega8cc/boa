@@ -7803,7 +7803,7 @@ _lshell_install_upgrade() {
     _msg "PROC: _lshell_install_upgrade"
   fi
   _PATH_LSHELL="/usr/local/bin/lshell"
-  _LSHELL_CHK_VRN=0.9.18
+  _LSHELL_CHK_VRN=0.10
   _LSHELL_FORCE_REINSTALL=NO
   _isLshell=$(which lshell 2>&1)
   _LSHELL_ITD=$(${_isLshell} --version 2>&1 \
