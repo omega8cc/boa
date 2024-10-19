@@ -64,14 +64,8 @@ export _REDIS_T_VERSION=8.x-1.8.1
 ###
 
 export _COMMERCE2=2.77
-export _OPENLUCIUS=2.0.0
-export _OPIGNOLMS9=3.1.0
-export _THUNDER=7.3.0
 export _UBERCART6=2.15
 export _UBERCART7=3.13
-export _VARBASE9=9.1.3
-export _VARBASE10=10.0.0
-export _SOCIAL=12.4.2
 
 ###
 ### Drupal Core Versions

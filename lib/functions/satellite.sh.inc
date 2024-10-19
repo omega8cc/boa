@@ -3801,8 +3801,6 @@ _satellite_make() {
   echo "_MY_EMAIL=\"${_MY_EMAIL}\""                   >> ${_writeTo}
   echo "_MY_OWNIP=\"${_MY_OWNIP}\""                   >> ${_writeTo}
   echo "_NOW=\"${_NOW}\""                             >> ${_writeTo}
-  echo "_OPENLUCIUS=\"${_OPENLUCIUS}\""               >> ${_writeTo}
-  echo "_OPIGNOLMS9=\"${_OPIGNOLMS9}\""               >> ${_writeTo}
   echo "_OS_CODE=\"${_OS_CODE}\""                     >> ${_writeTo}
   echo "_PHP_CLI_VERSION=\"${_PHP_CLI_VERSION}\""     >> ${_writeTo}
   echo "_PHP_FPM_VERSION=\"${_PHP_FPM_VERSION}\""     >> ${_writeTo}
@@ -3817,13 +3815,11 @@ _satellite_make() {
   echo "_SMALLCORE10_0_V=\"${_SMALLCORE10_0_V}\""     >> ${_writeTo}
   echo "_SMALLCORE10_1_V=\"${_SMALLCORE10_1_V}\""     >> ${_writeTo}
   echo "_SMALLCORE10_2_V=\"${_SMALLCORE10_2_V}\""     >> ${_writeTo}
-  echo "_SMALLCORE10_2_6_V=\"${_SMALLCORE10_2_6_V}\"" >> ${_writeTo}
   echo "_SMALLCORE10_3_V=\"${_SMALLCORE10_3_V}\""     >> ${_writeTo}
   echo "_SMALLCORE10_4_V=\"${_SMALLCORE10_4_V}\""     >> ${_writeTo}
   echo "_SMALLCORE6_V=\"${_SMALLCORE6_V}\""           >> ${_writeTo}
   echo "_SMALLCORE7_V=\"${_SMALLCORE7_V}\""           >> ${_writeTo}
   echo "_SMALLCORE9_V=\"${_SMALLCORE9_V}\""           >> ${_writeTo}
-  echo "_SOCIAL=\"${_SOCIAL}\""                       >> ${_writeTo}
   echo "_SPINNER=\"${_SPINNER}\""                     >> ${_writeTo}
   echo "_STRONG_PASSWORDS=\"${_STRONG_PASSWORDS}\""   >> ${_writeTo}
   echo "_T_BUILD=\"${_T_BUILD}\""                     >> ${_writeTo}
@@ -3831,7 +3827,6 @@ _satellite_make() {
   echo "_THIS_DB_PORT=\"${_THIS_DB_PORT}\""           >> ${_writeTo}
   echo "_OS_DIST=\"${_OS_DIST}\""                     >> ${_writeTo}
   echo "_THISHTIP=\"${_THISHTIP}\""                   >> ${_writeTo}
-  echo "_THUNDER=\"${_THUNDER}\""                     >> ${_writeTo}
   echo "_TODAY=\"${_TODAY}\""                         >> ${_writeTo}
   echo "_UBERCART6=\"${_UBERCART6}\""                 >> ${_writeTo}
   echo "_UBERCART7=\"${_UBERCART7}\""                 >> ${_writeTo}
@@ -3839,8 +3834,6 @@ _satellite_make() {
   echo "_USE_MIR=\"${_USE_MIR}\""                     >> ${_writeTo}
   echo "_USER=\"${_USER}\""                           >> ${_writeTo}
   echo "_USRG=\"${_USRG}\""                           >> ${_writeTo}
-  echo "_VARBASE9=\"${_VARBASE9}\""                   >> ${_writeTo}
-  echo "_VARBASE10=\"${_VARBASE10}\""                 >> ${_writeTo}
   echo "_WEBG=\"${_WEBG}\""                           >> ${_writeTo}
   echo "_xSrl=\"${_xSrl}\""                           >> ${_writeTo}
   echo "_X_VERSION=\"${_X_VERSION}\""                 >> ${_writeTo}
