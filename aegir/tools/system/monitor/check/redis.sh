@@ -62,7 +62,7 @@ _redis_restart() {
   service redis-server start &> /dev/null
   wait
   echo "$(date 2>&1) $1 incident redis-server restarted" >> ${_pthOml}
-  if [[ "${1}" =~ "OOM" ]] || [[ "${1}" =~ "SLOW" ]]; then
+  if [[ "${1}" =~ "REFUSED" ]] || [[ "${1}" =~ "SLOW" ]]; then
     _fpm_reload "$1"
   fi
   echo "$(date 2>&1) $1 incident response completed" >> ${_pthOml}
@@ -81,18 +81,18 @@ _redis_bind_check_fix() {
   fi
 }
 
-_redis_oom_check_fix() {
+_redis_connection_check_fix() {
   if [ `tail --lines=500 /var/log/php/error_log_* \
-    | grep --count "RedisException"` -gt "0" ]; then
-    _thisErrLog="$(date 2>&1) RedisException OOM detected, service will be restarted"
+    | grep --count "RedisException: Connection refused"` -gt "19" ]; then
+    _thisErrLog="$(date 2>&1) RedisException Connection refused detected, service will be restarted"
     echo ${_thisErrLog} >> ${_pthOml}
-    _redis_restart "Redis OOM"
+    _redis_restart "Redis REFUSED"
   fi
 }
 
 _redis_slow_check_fix() {
   if [ `tail --lines=500 /var/log/php/fpm-*-slow.log \
-    | grep --count "PhpRedis.php"` -gt "5" ]; then
+    | grep --count "PhpRedis.php"` -gt "19" ]; then
     _thisErrLog="$(date 2>&1) Slow PhpRedis detected, service will be restarted"
     echo ${_thisErrLog} >> ${_pthOml}
     _redis_restart "Redis SLOW"
@@ -125,7 +125,7 @@ else
 fi
 
 [ "${_ALLOW_CTRL}" = "YES" ] && _redis_slow_check_fix
-[ "${_ALLOW_CTRL}" = "YES" ] && _redis_oom_check_fix
+[ "${_ALLOW_CTRL}" = "YES" ] && _redis_connection_check_fix
 [ "${_ALLOW_CTRL}" = "YES" ] && _redis_bind_check_fix
 [ "${_ALLOW_CTRL}" = "YES" ] && [ -d "/data/u" ] && _if_redis_restart
 
