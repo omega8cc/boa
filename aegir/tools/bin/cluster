@@ -1401,7 +1401,6 @@ binlog_row_image=minimal
 wsrep_slave_threads=${_CPU_MX}
 wsrep_log_conflicts=ON
 pxc_strict_mode=PERMISSIVE
-performance_schema=OFF
 
 ### Optional Memory Settings for Galera
 #
@@ -1465,7 +1464,6 @@ transaction-isolation   = READ-COMMITTED
 transaction-read-only   = OFF
 skip-external-locking
 skip-name-resolve
-performance_schema      = OFF
 connect_timeout         = 60
 join_buffer_size        = 4M
 key_buffer_size         = 1024M
