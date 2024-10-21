@@ -519,6 +519,7 @@ _init_pre() {
       _msg "We need to install some tools early..." >> "${_logInt}"
       /usr/bin/apt-get update >> "${_logSlt}"
       if [ "${_VMFAMILY}" != "AWS" ]; then
+        /usr/bin/apt-get remove chrony -y --purge --auto-remove -qq >> "${_logSlt}"
         _INITD_TEST=$(ls -la /etc/init.d/*cloud* 2>&1)
         if [[ ! "${_INITD_TEST}" =~ "No such file" ]] \
           || [ -e "/etc/cloud/cloud.cfg.d" ]; then
