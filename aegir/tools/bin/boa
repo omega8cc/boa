@@ -19,7 +19,7 @@ _filIncO="octopus.sh.cnf"
 _octName="OCTOPUS.sh.txt"
 _pthIncB="lib/settings/${_filIncB}"
 _pthIncO="lib/settings/${_filIncO}"
-_rgUrl="https://raw.github_usErcontent.com/omega8cc/boa"
+_rgUrl="https://raw.githubusercontent.com/omega8cc/boa"
 _vBs="/var/backups"
 
 _CHECK_HOST=$(uname -n 2>&1)
@@ -426,12 +426,12 @@ _satellite_check_id() {
   if [ -z "${_ID_EXISTS}" ]; then
     _DO_NOTHING=YES
   elif [[ "${_ID_EXISTS}" =~ "${_USER}" ]]; then
-    echo "ERROR: ${_USER} _usErname is already taken"
-    echo "Please choose different _usErname"
+    echo "ERROR: ${_USER} username is already taken"
+    echo "Please choose different username"
     _clean_pid_exit _satellite_check_id_a
   else
-    echo "ERROR: ${_USER} _usErname check failed"
-    echo "Please try different _usErname"
+    echo "ERROR: ${_USER} username check failed"
+    echo "Please try different username"
     _clean_pid_exit _satellite_check_id_b
   fi
   if [ "${_USER}" = "admin" ] \
@@ -440,7 +440,7 @@ _satellite_check_id() {
     || [ "${_USER}" = "octopus" ] \
     || [ "${_USER}" = "boa" ] \
     || [ "${_USER}" = "all" ]; then
-    echo "ERROR: ${_USER} is a restricted _usErname, \
+    echo "ERROR: ${_USER} is a restricted username, \
       please choose different _USER"
     _clean_pid_exit _satellite_check_id_c
   elif [[ "${_USER}" =~ "aegir" ]] \
@@ -454,7 +454,7 @@ _satellite_check_id() {
   fi
   _REGEX="^[[:digit:]]"
   if [[ "${_USER}" =~ "${_REGEX}" ]]; then
-    echo "ERROR: ${_USER} is a wrong _usErname, \
+    echo "ERROR: ${_USER} is a wrong username, \
       it should start with a letter, not digit"
     _clean_pid_exit _satellite_check_id_e
   fi
