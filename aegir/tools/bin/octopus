@@ -286,7 +286,7 @@ _php_cli_local_ini_update() {
         /dev/urandom:        \
         /opt/tmp/make_local: \
         /opt/tools/drush:    \
-        ${_usEr}:             \
+        ${_usEr}:            \
         /usr/local/bin:      \
         /usr/bin\""
       _INI=$(echo "${_INI}" | sed "s/ //g" 2>&1)
@@ -546,7 +546,7 @@ _up_one() {
       wait
       sed -i "s/^_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g"   ${_vBs}/${_tocIncO}
       wait
-      sed -i "s/^_USER=o1/_USER=${_octUsr}/g"                  ${_vBs}/${_tocName}
+      sed -i "s/^_USER=o1/_USER=${_octUsr}/g"                ${_vBs}/${_tocName}
       wait
       sed -i "s/^_STRONG_PASSW.*/_STRONG_PASSWORDS=YES/g"    ${_vBs}/${_tocIncO}
       wait
