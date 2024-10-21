@@ -227,7 +227,7 @@
 ####### Drupal 10.2 #####
 ### D102P D102S D102D --- Drupal 10.2 prod/stage/dev
 ### SOC ----------------- Social
-### VBE ----------------- Varbase 9
+### VB9 ----------------- Varbase 9
 
 ####### Drupal 10.1 #####
 ### D101P D101S D101D --- Drupal 10.1 prod/stage/dev

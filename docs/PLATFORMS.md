@@ -58,45 +58,53 @@ This file, if it exists and contains a list of symbols used to define supported 
 
 ### Drupal 10.4
 
-- `D104P D104S D104D` — Drupal 10.4 prod/stage/dev
+- `DX4` — Drupal 10.4 prod/stage/dev
 
 ### Drupal 10.3
 
-- `D103P D103S D103D` — Drupal 10.3 prod/stage/dev
+- `DX3` — Drupal 10.3 prod/stage/dev
+- `CK3` — Commerce Kickstart v.3
+- `DXP` — DXPR Marketing
+- `EZC` — EzContent
+- `FOS` — farmOS
+- `LGV` — LocalGov
+- `OCS` — OpenCulturas
 - `THR` — Thunder
+- `VB9` — Varbase 9
 - `VBX` — Varbase 10
 
 ### Drupal 10.2
 
-- `D102P D102S D102D` — Drupal 10.2 prod/stage/dev
+- `DX2` — Drupal 10.2 prod/stage/dev
+- `OFD` — OpenFed
+- `SCR` — Sector
 - `SOC` — Social
-- `VBE` — Varbase 9
 
 ### Drupal 10.1
 
-- `D101P D101S D101D` — Drupal 10.1 prod/stage/dev
+- `DX1` — Drupal 10.1 prod/stage/dev
+- `CK2` — Commerce Base v.2
 
 ### Drupal 10.0
 
-- `D100P D100S D100D` — Drupal 10.0 prod/stage/dev
+- `DX0` — Drupal 10.0 prod/stage/dev
 
 ### Drupal 9
 
-- `D9P D9S D9D` — Drupal 9 prod/stage/dev
+- `DL9` — Drupal 9 prod/stage/dev
 - `OLS` — OpenLucius
 - `OPG` — Opigno LMS
 
 ### Drupal 7
 
-- `D7P D7S D7D` — Drupal 7 prod/stage/dev
-- `CME` — Commerce v.2
-- `DCE` — Commerce v.1
+- `DL7` — Drupal 7 prod/stage/dev
+- `CK1` — Commerce v.1
 - `UC7` — Ubercart
 
 ### Drupal 6
 
-- `D6P D6S D6D` — Pressflow (LTS) prod/stage/dev
-- `UCT` — Ubercart
+- `DL6` — Pressflow (LTS) prod/stage/dev
+- `UC6` — Ubercart
 
 You can also use the special keyword `ALL` instead of any other symbols to have all available platforms installed, including newly added platforms in all future BOA system releases.
 
