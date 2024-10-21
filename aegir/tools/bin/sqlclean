@@ -74,7 +74,7 @@ done
 _drop_mysql_user() {
   local _db_user=$1
   # Get all user@host combinations for the user
-  mapfile -t _user_hosts < <(mysql -e "SELECT CONCAT(User, '@', Host) FROM mysql.user WHERE _usEr='${_db_user}';")
+  mapfile -t _user_hosts < <(mysql -e "SELECT CONCAT(User, '@', Host) FROM mysql.user WHERE user='${_db_user}';")
 
   # Drop each user@host entry
   for _user_host in "${_user_hosts[@]}"; do
