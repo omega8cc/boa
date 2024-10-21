@@ -3128,9 +3128,14 @@ _if_update_boa_key_tools_only() {
       csf -q
     fi
   fi
+  _BOA_TOOLS_UPDATE=NO
   if [ -e "${_pthLog}" ] && [ ! -e "${_pthLog}/updateBt04.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+    _BOA_TOOLS_UPDATE=YES
+  fi
+  [ ! -e "/var/aegir/drush" ] && _BOA_TOOLS_UPDATE=YES
+  if [ "${_BOA_TOOLS_UPDATE}" = "YES" ]; then
     _update_boa_tools
-    touch ${_pthLog}/updateBt04.ctrl.${_tRee}.${_xSrl}.pid
+    [ -e "${_pthLog}" ] && touch ${_pthLog}/updateBt04.ctrl.${_tRee}.${_xSrl}.pid
     if [ "${1}" = "verbose" ] || [ -z "${1}" ]; then
       echo
       echo "BOA Meta Installers setup completed"
@@ -3256,9 +3261,14 @@ _boa_setup() {
     _apt_clean_update
     apt-get install lsb-release ${_aptYesUnth}
   fi
+  _BOA_TOOLS_UPDATE=NO
   if [ -e "${_pthLog}" ] && [ ! -e "${_pthLog}/updateBt04.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+    _BOA_TOOLS_UPDATE=YES
+  fi
+  [ ! -e "/var/aegir/drush" ] && _BOA_TOOLS_UPDATE=YES
+  if [ "${_BOA_TOOLS_UPDATE}" = "YES" ]; then
     _update_boa_tools
-    touch ${_pthLog}/updateBt04.ctrl.${_tRee}.${_xSrl}.pid
+    [ -e "${_pthLog}" ] && touch ${_pthLog}/updateBt04.ctrl.${_tRee}.${_xSrl}.pid
     echo
     echo "BOA Meta Installers setup completed"
     echo "Please check INSTALL.md and UPGRADE.md at https://github.com/omega8cc/boa"
