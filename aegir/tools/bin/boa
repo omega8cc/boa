@@ -703,7 +703,7 @@ _octopus_install() {
     if [ "${_outP}" = "logged" ]; then
       _n=$((RANDOM%9+2))
       echo
-      echo "Preparing to install Octopus in almost silent _mOde..."
+      echo "Preparing to install Octopus in almost silent mode..."
       echo
       echo "NOTE: There will be no progress displayed in this console"
       echo "but you will receive an _eMal once the installation is complete"
@@ -903,9 +903,9 @@ _barracuda_install() {
       _n=$((RANDOM%9+2))
       echo
       if [ "${_sYst}" = "bundle" ]; then
-        echo "Preparing to install Barracuda and Octopus in almost silent _mOde..."
+        echo "Preparing to install Barracuda and Octopus in almost silent mode..."
       else
-        echo "Preparing to install only Barracuda in almost silent _mOde..."
+        echo "Preparing to install only Barracuda in almost silent mode..."
       fi
       echo
       echo "NOTE: There will be no progress displayed in this console"
@@ -1122,7 +1122,7 @@ _init_setup() {
       echo
       echo "  Since this system is not ready for BOA installation yet,"
       echo "  we will run the 'autoinit' for you first, reboot and then"
-      echo "  your original boa command will be run in a silent _mOde"
+      echo "  your original boa command will be run in a silent mode"
       echo
       echo "  The command to run once autonit is complete:"
       echo
@@ -1289,8 +1289,8 @@ _init_setup() {
     [ ! -e "/run/octopus_install_run.pid" ] && touch /run/octopus_install_run.pid
     sleep 3
     # Execute post-install octopus upgrade and exit
-    touch /data/disk/${_usEr}/static/control/ssl-live-_mOde.info
-    rm -f /data/disk/${_usEr}/tools/le/.ctrl/ssl-demo-_mOde.pid
+    touch /data/disk/${_usEr}/static/control/ssl-live-mode.info
+    rm -f /data/disk/${_usEr}/tools/le/.ctrl/ssl-demo-mode.pid
     rm -rf /data/disk/${_usEr}/.tmp/cache
     echo
     if [ ! -e "/root/.dont.upgrade.octopus.on.install.cnf" ]; then
