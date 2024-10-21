@@ -65,19 +65,21 @@ _sql_busy_detection() {
     _SQL_LOG="/var/log/syslog"
   fi
   if [ -e "${_SQL_LOG}" ]; then
-    if [ `tail --lines=10 ${_SQL_LOG} \
-      | grep --count "Too many connections"` -gt "0" ]; then
+    if [ `tail --lines=50 ${_SQL_LOG} \
+      | grep --count "Too many connections"` -gt "40" ]; then
       _sql_restart "BUSY MySQL"
     fi
   fi
-  _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
-  _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
-  _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
-  if [ ! -z "${_IS_MYSQLD_RUNNING}" ] && [ ! -z "${_SQL_PSWD}" ]; then
-    _MYSQL_CONN_TEST=$(mysql -u root -e "status" 2>&1)
-    echo _MYSQL_CONN_TEST ${_MYSQL_CONN_TEST}
-    if [[ "${_MYSQL_CONN_TEST}" =~ "Too many connections" ]]; then
-      _sql_restart "BUSY MySQL"
+  if [ -e "/root/.instant.busy.mysql.action.cnf" ]; then
+    _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
+    _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
+    if [ ! -z "${_IS_MYSQLD_RUNNING}" ] && [ ! -z "${_SQL_PSWD}" ]; then
+      _MYSQL_CONN_TEST=$(mysql -u root -e "status" 2>&1)
+      echo _MYSQL_CONN_TEST ${_MYSQL_CONN_TEST}
+      if [[ "${_MYSQL_CONN_TEST}" =~ "Too many connections" ]]; then
+        _sql_restart "BUSY MySQL"
+      fi
     fi
   fi
 }
