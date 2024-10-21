@@ -1698,11 +1698,11 @@ _install_db_cluster() {
 
     ##echo "Running mysql_secure_installation procedure on ${IP} DB node..."
     ##vserver ${_idn} exec mysqladmin -u root flush-hosts"
-    ##vserver ${_idn} exec mysql -u root -e "DELETE FROM mysql.user WHERE _usEr='';"
-    ##vserver ${_idn} exec mysql -u root -e "DELETE FROM mysql.user WHERE _usEr='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');"
+    ##vserver ${_idn} exec mysql -u root -e "DELETE FROM mysql.user WHERE user='';"
+    ##vserver ${_idn} exec mysql -u root -e "DELETE FROM mysql.user WHERE user='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');"
     ##vserver ${_idn} exec mysql -u root -e "DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';"
-    ##vserver ${_idn} exec mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('${_ROOT_SQL_PASWD}') WHERE _usEr='root';"
-    ##vserver ${_idn} exec mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('${_MAINT_USER_PWD}') WHERE _usEr='debian-sys-maint';"
+    ##vserver ${_idn} exec mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('${_ROOT_SQL_PASWD}') WHERE user='root';"
+    ##vserver ${_idn} exec mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('${_MAINT_USER_PWD}') WHERE user='debian-sys-maint';"
     ##if [ -e "/vservers/${_idn}/etc/mysql/debian.cnf" ]; then
     ##  sed -i "s/^password =.*/password = ${_MAINT_USER_PWD}/g" /vservers/${_idn}/etc/mysql/debian.cnf
     ##fi

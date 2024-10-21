@@ -381,7 +381,7 @@ _check_root_direct() {
   if [ "${_U_TEST}" = "DENY" ]; then
     echo
     echo "ERROR: This script must be run as root directly,"
-    echo "ERROR: without sudo/su switch from regular system _usEr"
+    echo "ERROR: without sudo/su switch from regular system user"
     echo "ERROR: Please add and test your SSH (RSA) keys for root account"
     echo "ERROR: with direct access before trying again"
     echo
@@ -1598,7 +1598,7 @@ _check_root() {
     sed -i "/^$/d" /etc/hosts
     wait
   else
-    echo "ERROR: This script should be run as a root _usEr"
+    echo "ERROR: This script should be run as a root user"
     _clean_pid_exit _check_root_a
   fi
   _DF_TEST=$(df -kTh / -l \
@@ -1767,7 +1767,7 @@ _display_version() {
     echo "${_crlBoav} on ${_thiSys} on ${_VIRT_IS} on ${_HOST_INFO}"
     exit 0
   else
-    echo "ERROR: This script should be run as a root _usEr"
+    echo "ERROR: This script should be run as a root user"
     exit 1
   fi
 }
@@ -2232,7 +2232,7 @@ _display_info() {
     fi
     exit 0
   else
-    echo "ERROR: This script should be run as a root _usEr"
+    echo "ERROR: This script should be run as a root user"
     exit 1
   fi
 }
@@ -2323,7 +2323,7 @@ _octopus_cleanup() {
               rm -rf ${_usr_home}/static
               rm -rf ${_usr_home}/undo
             fi
-            del_usEr \
+            deluser \
               --remove-home \
               --backup-to /var/backups/zombie/purged/${_usEr}/home/ ${_usr_name} &> /dev/null
           done;
@@ -2342,7 +2342,7 @@ _octopus_cleanup() {
 _if_start_screen() {
   if [ -e "/root/.autoinit.log" ] && [ ! -e "/lib/systemd/systemd" ]; then
     if [[ -n "$SSH_CONNECTION" || -n "$SSH_CLIENT" ]]; then
-      # Check if the _usEr is inside a screen session
+      # Check if the user is inside a screen session
       if [[ ! "${_ARGS}" =~ (^|[[:space:]])(info|help|version|reboot)([[:space:]]|$) ]]; then
         if [ -z "$STY" ]; then
           # If not in screen, start a new screen session with the same script
