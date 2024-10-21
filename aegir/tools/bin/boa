@@ -19,7 +19,6 @@ _filIncO="octopus.sh.cnf"
 _octName="OCTOPUS.sh.txt"
 _pthIncB="lib/settings/${_filIncB}"
 _pthIncO="lib/settings/${_filIncO}"
-_rgUrl="https://raw.githubusercontent.com/omega8cc/boa"
 _vBs="/var/backups"
 
 _CHECK_HOST=$(uname -n 2>&1)
@@ -1232,19 +1231,20 @@ _init_setup() {
   export _rLsn="BOA-5.4.0"
   export _rlsE="${_rLsn}-${_tRee}"
   export _bRnh="5.x-${_tRee}"
+  export _rgUrl="http://files.aegir.cc/versions/${_tRee}/boa"
 
   if [ "${_cmNd}" = "in-dev" ] \
     || [ "${_cmNd}" = "in-lts" ]; then
-    curl ${_crlGet} "${_rgUrl}/${_bRnh}/${_barName}"      -o ${_vBs}/${_barName}
-    curl ${_crlGet} "${_rgUrl}/${_bRnh}/${_octName}"      -o ${_vBs}/${_octName}
-    curl ${_crlGet} "${_rgUrl}/${_bRnh}/${_pthIncB}"      -o ${_vBs}/${_filIncB}
-    curl ${_crlGet} "${_rgUrl}/${_bRnh}/${_pthIncO}"      -o ${_vBs}/${_filIncO}
+    curl ${_crlGet} "${_rgUrl}/${_barName}"  -o ${_vBs}/${_barName}
+    curl ${_crlGet} "${_rgUrl}/${_octName}"  -o ${_vBs}/${_octName}
+    curl ${_crlGet} "${_rgUrl}/${_pthIncB}"  -o ${_vBs}/${_filIncB}
+    curl ${_crlGet} "${_rgUrl}/${_pthIncO}"  -o ${_vBs}/${_filIncO}
   elif [ "${_cmNd}" = "in-octopus" ] \
     || [ "${_cmNd}" = "in-oct" ]; then
-    curl ${_crlGet} "${_rgUrl}/${_bRnh}/${_barName}"      -o ${_vBs}/${_barName}
-    curl ${_crlGet} "${_rgUrl}/${_bRnh}/${_octName}"      -o ${_vBs}/${_octName}
-    curl ${_crlGet} "${_rgUrl}/${_bRnh}/${_pthIncB}"      -o ${_vBs}/${_filIncB}
-    curl ${_crlGet} "${_rgUrl}/${_bRnh}/${_pthIncO}"      -o ${_vBs}/${_filIncO}
+    curl ${_crlGet} "${_rgUrl}/${_barName}"  -o ${_vBs}/${_barName}
+    curl ${_crlGet} "${_rgUrl}/${_octName}"  -o ${_vBs}/${_octName}
+    curl ${_crlGet} "${_rgUrl}/${_pthIncB}"  -o ${_vBs}/${_filIncB}
+    curl ${_crlGet} "${_rgUrl}/${_pthIncO}"  -o ${_vBs}/${_filIncO}
   fi
   if [ -e "/root/.debug-boa-installer.cnf" ]; then
     sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"             ${_vBs}/${_filIncB}

@@ -21,7 +21,6 @@ _gCb="git clone --branch"
 _octName="OCTOPUS.sh.txt"
 _pthIncB="lib/settings/${_filIncB}"
 _pthIncO="lib/settings/${_filIncO}"
-_rgUrl="https://raw.githubusercontent.com/omega8cc/boa"
 _vBs="/var/backups"
 
 _CHECK_HOST=$(uname -n 2>&1)
@@ -1180,12 +1179,13 @@ _up_proceed() {
   export _rLsn="BOA-5.4.0"
   export _rlsE="${_rLsn}-${_tRee}"
   export _bRnh="5.x-${_tRee}"
+  export _rgUrl="http://files.aegir.cc/versions/${_tRee}/boa"
 
   _satellite_downgrade_protection
   _up_start
 
-  curl ${_crlGet} "${_rgUrl}/${_bRnh}/${_octName}"  -o ${_vBs}/${_octName}
-  curl ${_crlGet} "${_rgUrl}/${_bRnh}/${_pthIncO}"  -o ${_vBs}/${_filIncO}
+  curl ${_crlGet} "${_rgUrl}/${_octName}"  -o ${_vBs}/${_octName}
+  curl ${_crlGet} "${_rgUrl}/${_pthIncO}"  -o ${_vBs}/${_filIncO}
 
   if [ "${_sCnd}" = "all" ]; then
     _up_action_all

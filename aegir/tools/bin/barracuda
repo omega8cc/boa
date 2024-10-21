@@ -20,7 +20,6 @@ _octName="OCTOPUS.sh.txt"
 _bldPth="/opt/tmp/boa"
 _pthIncB="lib/settings/${_filIncB}"
 _pthIncO="lib/settings/${_filIncO}"
-_rgUrl="https://raw.githubusercontent.com/omega8cc/boa"
 _vBs="/var/backups"
 
 _CHECK_HOST=$(uname -n 2>&1)
@@ -1674,9 +1673,10 @@ _proceed() {
     _check_sql_running
     _check_sql_access
   fi
-  _SCRIPT_URL="${_rgUrl}/${_bRnh}/${_barName}"
-  curl ${_crlGet} "${_rgUrl}/${_bRnh}/${_pthIncB}" -o ${_vBs}/${_filIncB}
-  curl ${_crlGet} ${_SCRIPT_URL} -o ${_vBs}/${_barName}
+
+  curl ${_crlGet} "${_rgUrl}/${_barName}" -o ${_vBs}/${_barName}
+  curl ${_crlGet} "${_rgUrl}/${_pthIncB}" -o ${_vBs}/${_filIncB}
+
   _up_action
   _up_finish
 }
@@ -1808,6 +1808,7 @@ _set_tree_vars() {
   export _rLsn="BOA-5.4.0"
   export _rlsE="${_rLsn}-${_tRee}"
   export _bRnh="5.x-${_tRee}"
+  export _rgUrl="http://files.aegir.cc/versions/${_tRee}/boa"
 
 }
 
