@@ -1086,15 +1086,6 @@ _update_agents() {
     fi
   fi
 
-  _if_hosted_sys
-  if [ "${_hostedSys}" = "YES" ]; then
-    _MY_USAGE=YES
-  else
-    _MY_USAGE=NO
-    if [ -e "/var/xdrago/usage.sh" ]; then
-      rm -f /var/xdrago/usage.sh
-    fi
-  fi
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
     && [ "${_MY_USAGE}" = "YES" ] \
