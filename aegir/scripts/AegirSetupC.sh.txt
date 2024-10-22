@@ -1334,6 +1334,29 @@ _d_core_platform_install() {
   fi
 }
 
+_d_dist_loop() {
+  # Loop through the _distros_names
+  for _dist in "${!_distros_names[@]}"; do
+    local _d_name="${_distros_names[${_dist}]}"
+    local _d_vers="${_distros_versions[${_dist}]}"
+    local _d_core="${_distros_drupal_cores[${_dist}]}"
+    local _d_desc="${_d_name} ${_d_vers} ${_d_core} [${_THIS_CORE}]"
+    local _d_ppth="${_distros_profiles_paths[${_dist}]}"
+    local _d_prfn="${_distros_profiles_names[${_dist}]}"
+    local _d_webd="${_distros_web_dirs[${_dist}]}"
+    local _d_phpv="${_distros_php_versions[${_dist}]}"
+    local _d_xurl="${_distros_urls[${_dist}]}"
+    if [[ "${_dist}" =~ DL || "${_dist}" =~ DX ]]; then
+      _d_core_platform_install "${_dist}" "${_d_vers}" "${_d_core}" "${_d_desc}" "${_d_ppth}" "${_d_prfn}" "${_d_webd}" "${_d_phpv}" "${_d_xurl}"
+    elif [[ "${_dist}" =~ CK1 || "${_dist}" =~ UC ]]; then
+      _d_dist_custom_platform_install "${_dist}" "${_d_xurl}"
+      _save_verify_this_platform "${_dist}" "${_d_vers}" "${_d_core}" "${_d_desc}" "${_d_ppth}" "${_d_prfn}" "${_d_webd}"
+    else
+      _d_dist_platform_install "${_dist}" "${_d_vers}" "${_d_core}" "${_d_desc}" "${_d_ppth}" "${_d_prfn}" "${_d_webd}" "${_d_phpv}" "${_d_xurl}"
+      _save_verify_this_platform "${_dist}" "${_d_vers}" "${_d_core}" "${_d_desc}" "${_d_ppth}" "${_d_prfn}" "${_d_webd}"
+    fi
+  done
+}
 
 ###
 ###---### Action starts here.
@@ -1345,32 +1368,11 @@ _d_core_platform_install() {
 _prepare_drupal6_core
 _prepare_drupal7_core
 
-
 # Prepare
 _prepare_for_save_verify_platforms
 
-
-# Loop through the _distros_names
-for _dist in "${!_distros_names[@]}"; do
-  local _d_name="${_distros_names[${_dist}]}"
-  local _d_vers="${_distros_versions[${_dist}]}"
-  local _d_core="${_distros_drupal_cores[${_dist}]}"
-  local _d_desc="${_d_name} ${_d_vers} ${_d_core} [${_THIS_CORE}]"
-  local _d_ppth="${_distros_profiles_paths[${_dist}]}"
-  local _d_prfn="${_distros_profiles_names[${_dist}]}"
-  local _d_webd="${_distros_web_dirs[${_dist}]}"
-  local _d_phpv="${_distros_php_versions[${_dist}]}"
-  local _d_xurl="${_distros_urls[${_dist}]}"
-  if [[ "${_dist}" =~ DL || "${_dist}" =~ DX ]]; then
-    _d_core_platform_install "${_dist}" "${_d_vers}" "${_d_core}" "${_d_desc}" "${_d_ppth}" "${_d_prfn}" "${_d_webd}" "${_d_phpv}" "${_d_xurl}"
-  elif [[ "${_dist}" =~ CK1 || "${_dist}" =~ UC ]]; then
-    _d_dist_custom_platform_install "${_dist}" "${_d_xurl}"
-    _save_verify_this_platform "${_dist}" "${_d_vers}" "${_d_core}" "${_d_desc}" "${_d_ppth}" "${_d_prfn}" "${_d_webd}"
-  else
-    _d_dist_platform_install "${_dist}" "${_d_vers}" "${_d_core}" "${_d_desc}" "${_d_ppth}" "${_d_prfn}" "${_d_webd}" "${_d_phpv}" "${_d_xurl}"
-    _save_verify_this_platform "${_dist}" "${_d_vers}" "${_d_core}" "${_d_desc}" "${_d_ppth}" "${_d_prfn}" "${_d_webd}"
-  fi
-done
+# Loop
+_d_dist_loop
 
 
 ###---### Remove some unused core files.
