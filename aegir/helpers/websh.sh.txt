@@ -167,6 +167,20 @@ if [[ ! "${_ARGS}" =~ "composer" ]] \
 	  esac
     done
     ### echo _ARR is ${_ARR}
+  elif [[ "${_ARGS}" =~ php\ /mnt/.*/data/disk/ ]]; then
+    _R_M=`echo -n ${_ARGS} | grep -o "php /mnt/.*/data/disk/.*/tools/drush/drush.php"`
+    ### echo _R_M is ${_R_M}
+    _R_M=${_R_M//\//\\\/}
+    ### echo _R_M is ${_R_M}
+    _CLR=`echo ${_ARGS} | sed "s/\${_R_M}//g"`
+    _ARR=() # the buffer array for filtered parameters
+    for arg in "${_CLR}"; do
+      case ${_R_M} in
+        $arg\ * | *\ $arg | *\ $arg\ *) ;;
+        *) _ARR+=("$arg") ;;
+	  esac
+    done
+    ### echo _ARR is ${_ARR}
   fi
 fi
 
