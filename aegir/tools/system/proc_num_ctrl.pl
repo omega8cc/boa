@@ -159,10 +159,14 @@ if (!-f "/root/.run-to-daedalus.cnf" && !-f "/root/.run-to-chimaera.cnf" && !-f 
 if (!$nginxsumar && -f "/etc/init.d/nginx") {
   system("killall -9 nginx");
   system("service nginx start");
+  $timedate=`date +%y%m%d-%H%M%S`;
+  chomp($timedate);
   `echo "$timedate KILL START $nginxsumar" >> /var/xdrago/log/nginx.kill-start.log`;
 }
 
 if ($fpmsumar > 10 ) {
+  $timedate=`date +%y%m%d-%H%M%S`;
+  chomp($timedate);
   system("killall -9 php-fpm");
   `echo "$timedate KILL FPM $fpmsumar" >> /var/xdrago/log/fpm.kill-all.log`;
 }
