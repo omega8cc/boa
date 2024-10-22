@@ -39,6 +39,10 @@ if (( $(pgrep -fc 'purge_binlogs.sh') > 2 )); then
   exit 0
 fi
 
+_sanitize_number() {
+  echo "$1" | sed 's/[^0-9.]//g'
+}
+
 _count_cpu() {
   _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)
   _CPU_INFO=${_CPU_INFO//[^0-9]/}
