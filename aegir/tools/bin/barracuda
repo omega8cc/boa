@@ -597,6 +597,34 @@ _check_php_cli() {
   fi
 }
 
+_oops_mysql_exit() {
+  echo "Oops.. ${1}"
+  echo "We can not continue"
+  echo "Bye!"
+  _clean_pid_exit _mysql_exit
+}
+
+_mysql_downgrade_protection() {
+  _DB_V=""
+  _DBS_TEST=$(which mysql 2>&1)
+  if [ ! -z "${_DBS_TEST}" ]; then
+    _DB_SERVER_TEST=$(mysql -V 2>&1)
+  else
+    _oops_mysql_exit "MISSING MySQL: ${_DBS_TEST}"
+  fi
+  if [[ "${_DB_SERVER_TEST}" =~ "Ver 8.4." ]]; then
+    _DB_V=8.4
+  elif [[ "${_DB_SERVER_TEST}" =~ "Ver 8.3." ]]; then
+    _DB_V=8.3
+  elif [[ "${_DB_SERVER_TEST}" =~ "Ver 8.0." ]]; then
+    _DB_V=8.0
+  elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 5.7." ]]; then
+    _DB_V=5.7
+  else
+    _oops_mysql_exit "MYSTERIOUS MySQL: ${_DB_SERVER_TEST}"
+  fi
+}
+
 _up_action() {
   if [ -e "${_vBs}/${_barName}" ] && [ -e "${_barCnf}" ]; then
     if [ ! -z "${_rKey}" ]; then
@@ -848,29 +876,39 @@ _up_action() {
       || [ "${_rKey}" = "percona-8.4" ] \
       || [ "${_dEbg}" = "percona-8.4" ] \
       || [ -e "/root/.percona.8.4.cnf" ]; then
-      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=8.4/g"             ${_vBs}/${_filIncB}
-      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=8.4/g"                      ${_barCnf}
+      if [[ "${_DB_V}" =~ 8.3 || "${_DB_V}" =~ 8.0 || "${_DB_V}" =~ 5.7 ]]; then
+        sed -i "s/^_DB_SERIES=.*/_DB_SERIES=8.4/g" ${_vBs}/${_filIncB}
+        sed -i "s/^_DB_SERIES=.*/_DB_SERIES=8.4/g" ${_barCnf}
+      fi
     elif [ "${_sQld}" = "percona-8.3" ] \
       || [ "${_rKey}" = "percona-8.3" ] \
       || [ "${_dEbg}" = "percona-8.3" ] \
       || [ -e "/root/.percona.8.3.cnf" ]; then
-      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=8.3/g"             ${_vBs}/${_filIncB}
-      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=8.3/g"                      ${_barCnf}
+      if [[ "${_DB_V}" =~ 8.0 || "${_DB_V}" =~ 5.7 ]]; then
+        sed -i "s/^_DB_SERIES=.*/_DB_SERIES=8.3/g" ${_vBs}/${_filIncB}
+        sed -i "s/^_DB_SERIES=.*/_DB_SERIES=8.3/g" ${_barCnf}
+      fi
     elif [ "${_sQld}" = "percona-8.0" ] \
       || [ "${_rKey}" = "percona-8.0" ] \
       || [ "${_dEbg}" = "percona-8.0" ] \
       || [ -e "/root/.percona.8.0.cnf" ]; then
-      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=8.0/g"             ${_vBs}/${_filIncB}
-      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=8.0/g"                      ${_barCnf}
+      if [[ "${_DB_V}" =~ 5.7 ]]; then
+        sed -i "s/^_DB_SERIES=.*/_DB_SERIES=8.0/g" ${_vBs}/${_filIncB}
+        sed -i "s/^_DB_SERIES=.*/_DB_SERIES=8.0/g" ${_barCnf}
+      fi
     elif [ "${_sQld}" = "percona-5.7" ] \
       || [ "${_rKey}" = "percona-5.7" ] \
       || [ "${_dEbg}" = "percona-5.7" ] \
       || [ -e "/root/.percona.5.7.cnf" ]; then
-      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g"             ${_vBs}/${_filIncB}
-      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g"                      ${_barCnf}
+      if [[ "${_DB_V}" =~ 5.7 ]]; then
+        sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g" ${_vBs}/${_filIncB}
+        sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g" ${_barCnf}
+      fi
     else
-      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g"             ${_vBs}/${_filIncB}
-      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g"                      ${_barCnf}
+      if [[ "${_DB_V}" =~ 5.7 ]]; then
+        sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g" ${_vBs}/${_filIncB}
+        sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g" ${_barCnf}
+      fi
     fi
 
     if [ -e "${_barCnf}" ]; then
@@ -1646,6 +1684,7 @@ _proceed() {
   _check_root_keys_pwd
   _check_root
   _check_no_systemd
+  _mysql_downgrade_protection
   _up_start
   _barracuda_downgrade_protection
   _os_detection_minimal
