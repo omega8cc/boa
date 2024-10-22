@@ -100,30 +100,26 @@ _if_sftp_password_update() {
 }
 
 _if_octopus_upgrade() {
-  if [ "${_O_LOAD}" -lt "${_O_LOAD_SPR}" ]; then
-    _upCtr="/data/disk/${_H_USER}/static/control/run-upgrade.pid"
-    _plCtr="/data/disk/${_H_USER}/static/control/platforms.info"
-    if [ -e "${_plCtr}" ] && [ -e "${_upCtr}" ]; then
-      rm -f ${_upCtr}
-      [ -e "/root/.silent.update.cnf" ] && rm -f /root/.silent.update.cnf
-      bash /opt/local/bin/octopus up-${_tRee} ${_H_USER} force log
-    fi
+  _upCtr="/data/disk/${_H_USER}/static/control/run-upgrade.pid"
+  _plCtr="/data/disk/${_H_USER}/static/control/platforms.info"
+  if [ -e "${_plCtr}" ] && [ -e "${_upCtr}" ]; then
+    rm -f ${_upCtr}
+    [ -e "/root/.silent.update.cnf" ] && rm -f /root/.silent.update.cnf
+    bash /opt/local/bin/octopus up-${_tRee} ${_H_USER} force log
   fi
 }
 
 _run_action() {
-  if [ "${_O_LOAD}" -lt "${_O_LOAD_SPR}" ]; then
-    if [ "${_buildTest}" = "0" ] \
-      || [ -z "${_buildTest}" ] \
-      || [ ! -e "${_ceDir}" ]; then
-      su -s /bin/bash - ${_H_USER} -c "drush8 cc drush" &> /dev/null
-      wait
-      su -s /bin/bash - ${_H_USER} -c "bash /data/disk/${_H_USER}/aegir.sh"
-      wait
-      touch /var/xdrago/log/last-run-${_H_USER}
-    else
-      touch /var/xdrago/log/skip-run-${_H_USER}
-    fi
+  if [ "${_buildTest}" = "0" ] \
+    || [ -z "${_buildTest}" ] \
+    || [ ! -e "${_ceDir}" ]; then
+    su -s /bin/bash - ${_H_USER} -c "drush8 cc drush" &> /dev/null
+    wait
+    su -s /bin/bash - ${_H_USER} -c "bash /data/disk/${_H_USER}/aegir.sh"
+    wait
+    touch /var/xdrago/log/last-run-${_H_USER}
+  else
+    touch /var/xdrago/log/skip-run-${_H_USER}
   fi
 }
 
