@@ -499,6 +499,7 @@ _prepare_drupal6_core() {
       unlink ${_D6_CORE_DIR}
     fi
     cd /data/all/000/core
+    [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _get_core_ext '${_DRUPAL6}.tar.gz'"
     _get_core_ext "${_DRUPAL6}.tar.gz"
     find ${_D6_CORE_DIR} -type d -exec chmod 0755 {} \; &> /dev/null
     find ${_D6_CORE_DIR} -type f -exec chmod 0644 {} \; &> /dev/null
@@ -528,6 +529,7 @@ _prepare_drupal7_core() {
       unlink ${_D7_CORE_DIR}
     fi
     cd /data/all/000/core
+    [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _get_core_ext '${_DRUPAL7}.tar.gz'"
     _get_core_ext "${_DRUPAL7}.tar.gz"
     find ${_D7_CORE_DIR} -type d -exec chmod 0755 {} \; &> /dev/null
     find ${_D7_CORE_DIR} -type f -exec chmod 0644 {} \; &> /dev/null
@@ -714,6 +716,7 @@ _create_drupal_basic_version() {
     cd "${_pthDst}"
     local drupal_var="_DRUPAL${version}"
     local drupal_version="${!drupal_var}"
+    [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _get_core_ext '${drupal_version}.tar.gz'"
     _get_core_ext "${drupal_version}.tar.gz"
     mv -f "${drupal_version}" "${_SHRD_PLNAME}"
     if [ "$version" = "9" ]; then
@@ -1040,11 +1043,13 @@ _commerce_7_2_install() {
               if [ ! -e "${_D7_CORE_DIR}" ]; then
                 _prepare_drupal7_core
               fi
+              [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _get_distro_ext '${_SHRD_PLNAME}.tar.gz'"
               _get_distro_ext "${_SHRD_PLNAME}.tar.gz"
               _nocore_d7_dist_clean
               _remove_default_core_seven_profiles
               _upgrade_contrib_less
             else
+              [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _get_distro_ext '${_SHRD_PLNAME}.tar.gz'"
               _get_distro_ext "${_SHRD_PLNAME}.tar.gz"
             fi
           fi
@@ -1143,6 +1148,7 @@ _ubercart6_install() {
             _get_dev_contrib "acquia_prosper-6.x-1.1.tar.gz"
           else
             cd ${_CORE}
+            [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _get_distro_ext '${_SHRD_PLNAME}.tar.gz'"
             _get_distro_ext "${_SHRD_PLNAME}.tar.gz"
           fi
         fi
@@ -1234,6 +1240,7 @@ _ubercart7_install() {
               patch -p1 < \
                 ${_pthPch}/views-exposed-sorts-2037469-1.patch &> /dev/null
             else
+              [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _get_distro_ext '${_SHRD_PLNAME}.tar.gz'"
               _get_distro_ext "${_SHRD_PLNAME}.tar.gz"
             fi
           fi
@@ -1322,6 +1329,7 @@ _d_dist_platform_install() {
           [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${params[description]} ${_yOk}"
           if [ ! -d "${_OCTO_PLPATH}" ]; then
             cd ${_pthDst}
+            [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _get_distro_ext '${_DIST_PLNAME}.tar.gz'"
             _get_distro_ext "${_DIST_PLNAME}.tar.gz"
           fi
           if [ -d "${_OCTO_PLPATH}" ]; then
