@@ -38,16 +38,16 @@
 ###
 ### Helper variables
 ###
-_bldPth="/opt/tmp/boa"
-_crlGet="-L --max-redirs 3 -k -s --retry 3 --retry-delay 5 -A iCab"
-_filIncO="octopus.sh.cnf"
-_gCb="git clone --branch"
-_gitHub="https://github.com/omega8cc"
-_gitLab="https://gitlab.com/omega8cc"
-_libFnc="${_bldPth}/lib/functions"
-_tocIncO="${_filIncO}.$1"
-_vBs="/var/backups"
-_vSet="variable-set --always-set"
+export _bldPth="/opt/tmp/boa"
+export _crlGet="-L --max-redirs 3 -k -s --retry 3 --retry-delay 5 -A iCab"
+export _filIncO="octopus.sh.cnf"
+export _gCb="git clone --branch"
+export _gitHub="https://github.com/omega8cc"
+export _gitLab="https://gitlab.com/omega8cc"
+export _libFnc="${_bldPth}/lib/functions"
+export _tocIncO="${_filIncO}.$1"
+export _vBs="/var/backups"
+export _vSet="variable-set --always-set"
 export _tRee=dev
 
 
@@ -99,8 +99,8 @@ fi
 ###
 ### More helper variables
 ###
-_urlDev="http://${_USE_MIR}/dev"
-_urlHmr="http://${_USE_MIR}/versions/${_tRee}/boa/aegir"
+export _urlDev="http://${_USE_MIR}/dev"
+export _urlHmr="http://${_USE_MIR}/versions/${_tRee}/boa/aegir"
 
 
 ###
@@ -117,22 +117,23 @@ done
 ### Local variables
 ###
 if [ "${_THIS_DB_HOST}" = "FQDN" ]; then
-  _THIS_DB_HOST=$(uname -n 2>&1)
+  export _THIS_DB_HOST=$(uname -n 2>&1)
 fi
-_USE_AEGIR_VER=SRC
-_T_BUILD=SRC
-_RUN_VERIFY=NO
-_DIST_INSTALL=NO
-_STATUS=INIT
-_USE_DISTRO_CORE=NO
-_LOCAL_STATUS="${_STATUS}"
-_ROOT="/data/disk/${_USER}"
-_HM_ROOT="${_ROOT}/aegir/distro/${_HM_DISTRO}"
-_DISTRO_ROOT="${_ROOT}/distro/${_DISTRO}"
-_PREV_HM_ROOT="${_ROOT}/aegir/distro/${_LAST_HMR}"
-_D="/data/all"
-_SRCDIR="/opt/tmp/files"
-_LOG="/var/backups/octopus-${_USER}-${_NOW}.log"
+export _USE_AEGIR_VER=SRC
+export _T_BUILD=SRC
+export _RUN_VERIFY=NO
+export _DIST_INSTALL=NO
+export _STATUS=INIT
+export _USE_DISTRO_CORE=NO
+export _LOCAL_STATUS="${_STATUS}"
+export _ROOT="/data/disk/${_USER}"
+export _HM_ROOT="${_ROOT}/aegir/distro/${_HM_DISTRO}"
+export _DISTRO_ROOT="${_ROOT}/distro/${_DISTRO}"
+export _PREV_HM_ROOT="${_ROOT}/aegir/distro/${_LAST_HMR}"
+export _D="/data/all"
+export _SRCDIR="/opt/tmp/files"
+export _LOG="/var/backups/octopus-${_USER}-${_NOW}.log"
+
 if [ "${_PHP_CLI_VERSION}" = "8.3" ] \
   && [ -x "/opt/php83/bin/php" ]; then
   _T_CLI=/opt/php83/bin
@@ -164,17 +165,17 @@ elif [ "${_PHP_CLI_VERSION}" = "5.6" ] \
   && [ -x "/opt/php56/bin/php" ]; then
   _T_CLI=/opt/php56/bin
 fi
-_DRUSHCMD="${_T_CLI}/php ${_ROOT}/tools/drush/drush.php"
+export _DRUSHCMD="${_T_CLI}/php ${_ROOT}/tools/drush/drush.php"
 #
-PATH=${_T_CLI}:/usr/local/bin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-SHELL=/bin/bash
+export PATH=${_T_CLI}:/usr/local/bin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+export SHELL=/bin/bash
 #
-_pthPch="/opt/tmp/boa/aegir/patches"
-_urlDrp="http://ftp.drupal.org/files/projects"
-_urlPrt="https://drupal.org/project"
+export _pthPch="/opt/tmp/boa/aegir/patches"
+export _urlDrp="http://ftp.drupal.org/files/projects"
+export _urlPrt="https://drupal.org/project"
 #
-_noT="not installed"
-_yOk="installation in progress..."
+export _noT="not installed"
+export _yOk="installation in progress..."
 
 
 ###---### Checking status.
@@ -203,8 +204,8 @@ fi
 ###---### Hot Sauce check.
 #
 if [ "${_HOT_SAUCE}" = "NO" ]; then
-  _CORE="/data/all/${_LAST_ALL}"
-  _THIS_CORE="${_LAST_ALL}"
+  export _CORE="/data/all/${_LAST_ALL}"
+  export _THIS_CORE="${_LAST_ALL}"
   if [ "${_USE_CURRENT}" = "YES" ] \
     && [ -e "/data/all/000/core-v-${_SMALLCORE6_V}.txt" ] \
     && [ -e "/data/all/000/core-v-${_SMALLCORE7_V}.txt" ]; then
@@ -214,8 +215,8 @@ if [ "${_HOT_SAUCE}" = "NO" ]; then
   elif [ "${_USE_CURRENT}" = "NO" ] \
     || [ ! -e "/data/all/000/core-v-${_SMALLCORE6_V}.txt" ] \
     || [ ! -e "/data/all/000/core-v-${_SMALLCORE7_V}.txt" ]; then
-    _CORE="/data/all/${_ALL_DISTRO}"
-    _THIS_CORE="${_ALL_DISTRO}"
+    export _CORE="/data/all/${_ALL_DISTRO}"
+    export _THIS_CORE="${_ALL_DISTRO}"
     _msg "${_STATUS} C: Shared platforms code v.${_ALL_DISTRO} (new) will be created"
   else
     if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -223,21 +224,21 @@ if [ "${_HOT_SAUCE}" = "NO" ]; then
     fi
   fi
 else
-  _CORE="/data/all/${_ALL_DISTRO}"
-  _THIS_CORE="${_ALL_DISTRO}"
+  export _CORE="/data/all/${_ALL_DISTRO}"
+  export _THIS_CORE="${_ALL_DISTRO}"
   _msg "${_STATUS} C: Shared platforms code v.${_ALL_DISTRO} (new) will be created"
 fi
-_D6_CORE_DIR="/data/all/000/core/${_DRUPAL6}"
-_D7_CORE_DIR="/data/all/000/core/${_DRUPAL7}"
+export _D6_CORE_DIR="/data/all/000/core/${_DRUPAL6}"
+export _D7_CORE_DIR="/data/all/000/core/${_DRUPAL7}"
 
-_pthDst="${_ROOT}/distro/${_THIS_CORE}"
+export _pthDst="${_ROOT}/distro/${_THIS_CORE}"
 
 mkdir -p ${_pthDst}
 chmod 0711 ${_ROOT}/distro &> /dev/null
 chmod 0711 ${_pthDst} &> /dev/null
 
 ###---###
-_ALLOW_ALL=YES
+export _ALLOW_ALL=YES
 if [ "${_CLIENT_CORES}" -lt "1" ]; then
   _ALLOW_ALL=NO
   _D_8_ALLOW=NO
@@ -275,9 +276,9 @@ _prepare_for_save_verify_platforms() {
     cp -af /opt/tmp/boa/aegir/helpers/make_platform.php.txt ${_THIS_HM}/make_platform.php
   fi
   if [ "${_SERIES_RESULT}" = "OK" ]; then
-    _drhSrc="sites/all/drush/drushrc.php"
+    export _drhSrc="sites/all/drush/drushrc.php"
   else
-    _drhSrc="drushrc.php"
+    export _drhSrc="drushrc.php"
   fi
 }
 
