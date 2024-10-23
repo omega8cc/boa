@@ -2204,6 +2204,15 @@ _fix_python() {
 
 _if_fix_python() {
   _PYTHON_FIX=NO
+  _PYTHON_VRN=3.12.5
+  _DCY_PTN="/usr/local/bin/python3"
+  if [ -x "${_DCY_PTN}" ]; then
+    _PYTHON_TEST=$(${_DCY_PTN} --version 2>&1)
+  fi
+  if [[ ! "${_PYTHON_TEST}" =~ "Python ${_PYTHON_VRN}" ]] \
+    || [ ! -x "${_DCY_PTN}" ]; then
+    _fix_python
+  fi
   _LSHELL_CHK_VRN=0.10
   _isLshell=$(which lshell 2>&1)
   if [ -x "${_isLshell}" ]; then
