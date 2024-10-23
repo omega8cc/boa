@@ -284,10 +284,32 @@ _prepare_for_save_verify_platforms() {
 #
 # Save & Verify Platform
 _save_verify_this_platform() {
+
+  # Declare 'params' as local to the function
+  local -A params=(
+    [dist]="$1"
+    [version]="$2"
+    [core_version]="$3"
+    [description]="$4"
+    [profile_path]="$5"
+    [profile_name]="$6"
+    [web_dir]="$7"
+    [php_version]="$8"
+    [url]="$9"
+  )
+
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "DEBUG: _save_verify_this_platform"
+    for key in "${!params[@]}"; do
+      _msg "DEBUG: ${key} is '${params[$key]}'"
+    done
+  fi
+
   if [ -d "${_pthDst}/${6}-${2}-${3}${7}" ]; then
     if [ ! -e "${_pthDst}/${6}-${2}-${3}${7}/${_drhSrc}" ]; then
       if [ -d "${_THIS_HM}" ] && [ -e "${_THIS_HM}/make_platform.php" ]; then
         cd ${_THIS_HM}
+        [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: ${_DRUSHCMD} php-script make_platform '${4}' ${6} ${_pthDst}/${6}-${2}-${3}${7}"
         ${_DRUSHCMD} php-script make_platform "${4}" ${6} ${_pthDst}/${6}-${2}-${3}${7} &> /dev/null
       fi
     fi
@@ -1056,7 +1078,7 @@ _commerce_7_2_install() {
           _init_this_distro_root
           _msg "DISTRO: ${params[description]} installed"
           _RUN_VERIFY=YES
-          [ "${_DEBUG_MODE}" = "YES" ] && _msg "_save_verify_this_platform '${1}' '${2}' '${3}' '${_SHRD_PLNAME}' '${5}' '${6}' '${7}'"
+          [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _save_verify_this_platform '${1}' '${2}' '${3}' '${_SHRD_PLNAME}' '${5}' '${6}' '${7}'"
           _save_verify_this_platform "${1}" "${2}" "${3}" "${_SHRD_PLNAME}" "${5}" "${6}" "${7}"
         else
           [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${params[description]} ${_noT}"
@@ -1155,7 +1177,7 @@ _ubercart6_install() {
         _init_this_distro_root
         _msg "DISTRO: ${params[description]} installed"
         _RUN_VERIFY=YES
-        [ "${_DEBUG_MODE}" = "YES" ] && _msg "_save_verify_this_platform '${1}' '${2}' '${3}' '${_SHRD_PLNAME}' '${5}' '${6}' '${7}'"
+        [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _save_verify_this_platform '${1}' '${2}' '${3}' '${_SHRD_PLNAME}' '${5}' '${6}' '${7}'"
         _save_verify_this_platform "${1}" "${2}" "${3}" "${_SHRD_PLNAME}" "${5}" "${6}" "${7}"
       else
         [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${params[description]} ${_noT}"
@@ -1247,7 +1269,7 @@ _ubercart7_install() {
           _init_this_distro_root
           _msg "DISTRO: ${params[description]} installed"
           _RUN_VERIFY=YES
-          [ "${_DEBUG_MODE}" = "YES" ] && _msg "_save_verify_this_platform '${1}' '${2}' '${3}' '${_SHRD_PLNAME}' '${5}' '${6}' '${7}'"
+          [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _save_verify_this_platform '${1}' '${2}' '${3}' '${_SHRD_PLNAME}' '${5}' '${6}' '${7}'"
           _save_verify_this_platform "${1}" "${2}" "${3}" "${_SHRD_PLNAME}" "${5}" "${6}" "${7}"
         else
           [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${params[description]} ${_noT}"
@@ -1335,7 +1357,7 @@ _d_dist_platform_install() {
           if [ -d "${_OCTO_PLPATH}" ]; then
             _msg "DISTRO: ${params[description]} installed"
             _RUN_VERIFY=YES
-            [ "${_DEBUG_MODE}" = "YES" ] && _msg "_save_verify_this_platform '${1}' '${2}' '${3}' '${_DIST_PLNAME}' '${5}' '${6}' '${7}'"
+            [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _save_verify_this_platform '${1}' '${2}' '${3}' '${_DIST_PLNAME}' '${5}' '${6}' '${7}'"
             _save_verify_this_platform "${1}" "${2}" "${3}" "${_DIST_PLNAME}" "${5}" "${6}" "${7}"
           fi
         else
@@ -1423,7 +1445,7 @@ _d_core_platform_install() {
           if [ -d "${_OCTO_PLPATH}" ]; then
             _msg "DISTRO: ${params[description]} [D.${_THIS_CORE}] installed"
             _RUN_VERIFY=YES
-            [ "${_DEBUG_MODE}" = "YES" ] && _msg "_save_verify_this_platform '${1}' '${2}' '${3}' '${_SHRD_PLNAME}' '${5}' '${6}' '${7}'"
+            [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _save_verify_this_platform '${1}' '${2}' '${3}' '${_SHRD_PLNAME}' '${5}' '${6}' '${7}'"
             _save_verify_this_platform "${1}" "${2}" "${3}" "${_SHRD_PLNAME}" "${5}" "${6}" "${7}"
           fi
 
@@ -1438,7 +1460,7 @@ _d_core_platform_install() {
           if [ -d "${_OCTO_PLPATH}" ]; then
             _msg "DISTRO: ${params[description]} [S.${_THIS_CORE}] installed"
             _RUN_VERIFY=YES
-            [ "${_DEBUG_MODE}" = "YES" ] && _msg "_save_verify_this_platform '${1}' '${2}' '${3}' '${_SHRD_PLNAME}' '${5}' '${6}' '${7}'"
+            [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _save_verify_this_platform '${1}' '${2}' '${3}' '${_SHRD_PLNAME}' '${5}' '${6}' '${7}'"
             _save_verify_this_platform "${1}" "${2}" "${3}" "${_SHRD_PLNAME}" "${5}" "${6}" "${7}"
           fi
 
@@ -1453,7 +1475,7 @@ _d_core_platform_install() {
         if [ -d "${_OCTO_PLPATH}" ]; then
           _msg "DISTRO: ${params[description]} [P.${_THIS_CORE}] installed"
           _RUN_VERIFY=YES
-          [ "${_DEBUG_MODE}" = "YES" ] && _msg "_save_verify_this_platform '${1}' '${2}' '${3}' '${_SHRD_PLNAME}' '${5}' '${6}' '${7}'"
+          [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _save_verify_this_platform '${1}' '${2}' '${3}' '${_SHRD_PLNAME}' '${5}' '${6}' '${7}'"
           _save_verify_this_platform "${1}" "${2}" "${3}" "${_SHRD_PLNAME}" "${5}" "${6}" "${7}"
         fi
       else
