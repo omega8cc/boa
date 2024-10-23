@@ -5364,7 +5364,7 @@ _run_aptitude_deps_install() {
   _mrun "${_INSTAPP} bison catdoc cython3 geoip-database gettext" 2> /dev/null
   _mrun "${_INSTAPP} clamav clamav-base clamav-daemon clamdscan" 2> /dev/null
   _mrun "${_INSTAPP} ghostscript htop lemon lftp nano" 2> /dev/null
-  _mrun "${_INSTAPP} python3-dev python3-debian python3-magic" 2> /dev/null
+  _mrun "${_INSTAPP} python3-full python3-dev python3-debian python3-magic" 2> /dev/null
   if [ -e "/root/.dont.use.fancy.bash.login.cnf" ] \
     && [ -e "/usr/bin/screenfetch" ]; then
     _mrun "apt-get remove toilet -y --purge --auto-remove -qq" 2> /dev/null
