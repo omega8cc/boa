@@ -2149,7 +2149,7 @@ _fix_node_in_lshell_access() {
   fi
 }
 
-_fix_python() {
+_fix_python_src() {
   _PYTHON_VRN=3.12.5
   _DCY_PTN="/usr/local/bin/python3"
   if [ -x "${_DCY_PTN}" ]; then
@@ -2202,7 +2202,7 @@ _fix_python() {
   fi
 }
 
-_if_fix_python() {
+_if_fix_python_src_for_duplicity() {
   _PYTHON_FIX=NO
   _PYTHON_VRN=3.12.5
   _DCY_PTN="/usr/local/bin/python3"
@@ -2211,21 +2211,7 @@ _if_fix_python() {
   fi
   if [[ ! "${_PYTHON_TEST}" =~ "Python ${_PYTHON_VRN}" ]] \
     || [ ! -x "${_DCY_PTN}" ]; then
-    _fix_python
-  fi
-  _LSHELL_CHK_VRN=0.10
-  _isLshell=$(which lshell 2>&1)
-  if [ -x "${_isLshell}" ]; then
-    _LSHELL_ITD=$(${_isLshell} --version 2>&1 \
-      | tr -d "\n" \
-      | cut -d"-" -f2 \
-      | awk '{ print $1}' 2>&1)
-    if [ "${_LSHELL_ITD}" != "${_LSHELL_CHK_VRN}" ] \
-      || [[ "${_LSHELL_ITD}" =~ "Traceback" ]] \
-      || [[ "${_LSHELL_ITD}" =~ "bad interpreter" ]] \
-      || [[ "${_LSHELL_ITD}" =~ "ImportError" ]]; then
-      _PYTHON_FIX=YES
-    fi
+    _PYTHON_FIX=YES
   fi
   _DUPLICITY_CHK_VRN=3.0.2
   _isDuplicity=$(which duplicity 2>&1)
@@ -2239,11 +2225,11 @@ _if_fix_python() {
     fi
   fi
   if [ "${_PYTHON_FIX}" = "YES" ]; then
-    _fix_python
+    _fix_python_src
   fi
 }
 
-_fix_lshell() {
+_if_fix_lshell() {
   if [ ! -e "/usr/local/etc/lshell.conf" ] \
     && [ ! -L "/usr/local/etc/lshell.conf" ] \
     && [ -e "/etc/lshell.conf" ]; then
@@ -2259,21 +2245,22 @@ _fix_lshell() {
     | tr -d "\n" \
     | cut -d"-" -f2 \
     | awk '{ print $1}' 2>&1)
-  if [ "${_LSHELL_ITD}" != "${_LSHELL_CHK_VRN}" ] \
+  if [ -z "${_isLshell}" ] \
+    || [ -z "${_PATH_LSHELL}" ] \
+    || [ "${_LSHELL_ITD}" != "${_LSHELL_CHK_VRN}" ] \
     || [[ "${_LSHELL_ITD}" =~ "Traceback" ]] \
     || [[ "${_LSHELL_ITD}" =~ "bad interpreter" ]] \
     || [[ "${_LSHELL_ITD}" =~ "ImportError" ]]; then
     _LSHELL_FORCE_REINSTALL=YES
   fi
-  if [ -e "${_PATH_LSHELL}" ] \
-    && [ "${_LSHELL_FORCE_REINSTALL}" = "YES" ]; then
-    cp -af /etc/lshell.conf /etc/lshell.conf-bak-${_LSHELL_VRN}-hotfix5
+  if [ "${_LSHELL_FORCE_REINSTALL}" = "YES" ]; then
+    [ -f "/etc/lshell.conf" ] && cp -af /etc/lshell.conf /etc/lshell.conf-bak-${_LSHELL_VRN}
     _apt_clean_update
     apt-get install python3-pip -y
-    if [ -x "/usr/local/bin/pip3" ]; then
-      _usePip=/usr/local/bin/pip3
-    elif [ -x "/usr/bin/pip3" ]; then
+    if [ -x "/usr/bin/pip3" ]; then
       _usePip=/usr/bin/pip3
+    elif [ -x "/usr/local/bin/pip3" ]; then
+      _usePip=/usr/local/bin/pip3
     fi
     _PIP_TEST=$(${_usePip} --version 2>&1)
     if [[ "${_PIP_TEST}" =~ "python 3.11" ]] \
@@ -2301,17 +2288,18 @@ _fix_lshell() {
     else
       ${_usePip} install .
     fi
-    cp -af /etc/lshell.conf-bak-${_LSHELL_VRN}-hotfix5 /etc/lshell.conf
+    [ -f "/etc/lshell.conf-bak-${_LSHELL_VRN}" ] && cp -af /etc/lshell.conf-bak-${_LSHELL_VRN} /etc/lshell.conf
     rm -f /etc/logrotate.d/lshell
     addgroup --system lshellg &> /dev/null
     mkdir -p /var/log/lsh
     chown :lshellg /var/log/lsh
     chmod 770 /var/log/lsh &> /dev/null
-    touch ${_pthLog}/lshell-build-${_LSHELL_VRN}.log-hotfix5
     who | awk '$1 !~ /root/{ cmd="pkill -KILL -u " $1; system(cmd) }'
     touch ${_pthLog}/lshell-fix-build-${_LSHELL_VRN}.log
   fi
-  if [ -f "${_usrBin}/lshell" ]; then
+  if [ -e "${_usrBin}/lshell" ]; then
+    chown root:users ${_usrBin}/lshell
+    chmod 750 ${_usrBin}/lshell
     if [ ! -L "/usr/bin/lshell" ]; then
       ln -sfn ${_usrBin}/lshell /usr/bin/lshell &> /dev/null
     fi
@@ -3525,8 +3513,8 @@ if [ `whoami` = "root" ]; then
     && [ -e "/var/log/barracuda_log.txt" ]; then
     _fix_ping_perms
     _fix_fpm_process_max
-    _if_fix_python
-    _fix_lshell
+    _if_fix_python_src_for_duplicity
+    _if_fix_lshell
     _fix_node_in_lshell_access
     _fix_authorized_keys
     _fix_tcp
