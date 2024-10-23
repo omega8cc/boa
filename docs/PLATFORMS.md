@@ -111,6 +111,9 @@ You can also use the special keyword `ALL` instead of any other symbols to have 
 ### Examples:
 
 ```
+DX2 DX3 SOC UC7
+```
+
+```
 ALL
-D102P D103P SOC UC7
 ```
