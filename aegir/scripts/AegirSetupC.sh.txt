@@ -243,12 +243,6 @@ if [ "${_CLIENT_CORES}" -lt "1" ]; then
   _D_8_ALLOW=NO
 fi
 
-###---### Custom Distributions full names.
-#
-_F_COMMERCE2="Commerce ${_COMMERCE2} ${_SMALLCORE7_V} [${_THIS_CORE}]"
-_F_UBERCART6="Ubercart ${_UBERCART6} ${_SMALLCORE6_V} [${_THIS_CORE}]"
-_F_UBERCART7="Ubercart ${_UBERCART7} ${_SMALLCORE7_V} [${_THIS_CORE}]"
-#
 
 ###
 ###---### Functions.
@@ -793,36 +787,6 @@ declare -A _distros_names=(
   ["DX4"]="Drupal X4"
 )
 
-# Define distros names and their URLs for information
-declare -A _distros_urls=(
-  ["CK1"]="${_urlPrt}/commerce_kickstart"
-  ["CK2"]="${_urlPrt}/commerce"
-  ["CK3"]="${_urlPrt}/commerce_kickstart"
-  ["DXP"]="DXPR Marketing"
-  ["EZC"]="EzContent"
-  ["FOS"]="farmOS"
-  ["LGV"]="LocalGov"
-  ["OCS"]="OpenCulturas"
-  ["OFD"]="OpenFed"
-  ["OLS"]="${_urlPrt}/openlucius"
-  ["OPG"]="${_urlPrt}/opigno_lms"
-  ["SCR"]="Sector"
-  ["SOC"]="Social"
-  ["THR"]="${_urlPrt}/thunder"
-  ["UC6"]="${_urlPrt}/ubercart"
-  ["UC7"]="${_urlPrt}/ubercart"
-  ["VB9"]="${_urlPrt}/varbase"
-  ["VBX"]="${_urlPrt}/varbase"
-  ["DL6"]="${_urlPrt}/drupal/releases/${_SMALLCORE6_V}"
-  ["DL7"]="${_urlPrt}/drupal/releases/${_SMALLCORE7_V}"
-  ["DL9"]="${_urlPrt}/drupal/releases/${_SMALLCORE9_V}"
-  ["DX0"]="${_urlPrt}/drupal/releases/${_SMALLCORE10_0_V}"
-  ["DX1"]="${_urlPrt}/drupal/releases/${_SMALLCORE10_1_V}"
-  ["DX2"]="${_urlPrt}/drupal/releases/${_SMALLCORE10_2_V}"
-  ["DX3"]="${_urlPrt}/drupal/releases/${_SMALLCORE10_3_V}"
-  ["DX4"]="${_urlPrt}/drupal/releases/${_SMALLCORE10_4_V}"
-)
-
 # Define distros versions for configuration
 declare -A _distros_versions=(
   ["CK1"]="2.77"
@@ -973,6 +937,36 @@ declare -A _distros_web_dirs=(
   ["DX4"]="/web"
 )
 
+# Define distros names and their URLs for information
+declare -A _distros_urls=(
+  ["CK1"]="${_urlPrt}/commerce_kickstart"
+  ["CK2"]="${_urlPrt}/commerce"
+  ["CK3"]="${_urlPrt}/commerce_kickstart"
+  ["DXP"]="DXPR Marketing"
+  ["EZC"]="EzContent"
+  ["FOS"]="farmOS"
+  ["LGV"]="LocalGov"
+  ["OCS"]="OpenCulturas"
+  ["OFD"]="OpenFed"
+  ["OLS"]="${_urlPrt}/openlucius"
+  ["OPG"]="${_urlPrt}/opigno_lms"
+  ["SCR"]="Sector"
+  ["SOC"]="Social"
+  ["THR"]="${_urlPrt}/thunder"
+  ["UC6"]="${_urlPrt}/ubercart"
+  ["UC7"]="${_urlPrt}/ubercart"
+  ["VB9"]="${_urlPrt}/varbase"
+  ["VBX"]="${_urlPrt}/varbase"
+  ["DL6"]="${_urlPrt}/drupal/releases/${_SMALLCORE6_V}"
+  ["DL7"]="${_urlPrt}/drupal/releases/${_SMALLCORE7_V}"
+  ["DL9"]="${_urlPrt}/drupal/releases/${_SMALLCORE9_V}"
+  ["DX0"]="${_urlPrt}/drupal/releases/${_SMALLCORE10_0_V}"
+  ["DX1"]="${_urlPrt}/drupal/releases/${_SMALLCORE10_1_V}"
+  ["DX2"]="${_urlPrt}/drupal/releases/${_SMALLCORE10_2_V}"
+  ["DX3"]="${_urlPrt}/drupal/releases/${_SMALLCORE10_3_V}"
+  ["DX4"]="${_urlPrt}/drupal/releases/${_SMALLCORE10_4_V}"
+)
+
 # Define distros names and their compatible max PHP versions for information
 declare -A _distros_php_versions=(
   ["CK1"]="7.4"
@@ -1007,18 +1001,38 @@ declare -A _distros_php_versions=(
 _commerce_7_2_install() {
 ###---### Commerce 7.x-2.x
 #
-  _REAL_PRNAME="commerce_kickstart"
-  _SHRD_PLNAME="${_REAL_PRNAME}-${_COMMERCE2}-${_SMALLCORE7_V}"
+  # Declare 'params' as local to the function
+  local -A params=(
+    [dist]="$1"
+    [version]="$2"
+    [core_version]="$3"
+    [description]="$4"
+    [profile_path]="$5"
+    [profile_name]="$6"
+    [web_dir]="$7"
+    [php_version]="$8"
+    [url]="$9"
+  )
+
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "DEBUG: _commerce_7_2_install"
+    for key in "${!params[@]}"; do
+      _msg "DEBUG: ${key} is '${params[$key]}'"
+    done
+  fi
+
+  _REAL_PRNAME="${params[profile_name]}"
+  _SHRD_PLNAME="${params[profile_name]}-${params[version]}-${params[core_version]}"
   _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
   _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
   _OCTO_PLPATH="${_pthDst}/${_SHRD_PLNAME}"
   if [ "${_ALLOW_ALL}" = "YES" ]; then
-    if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
-      || [[ "${_PLATFORMS_LIST}" =~ "CK1" ]]; then
+    if [[ "${_PLATFORMS_LIST}" =~ ALL ]] \
+      || [[ "${_PLATFORMS_LIST}" =~ ${params[dist]} ]]; then
       if [ ! -d "${_OCTO_PLPATH}" ]; then
-        if _prompt_yes_no "${_F_COMMERCE2} - ${1}" ; then
+        if _prompt_yes_no "${params[description]} - ${params[url]}" ; then
           true
-          [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${_F_COMMERCE2} ${_yOk}"
+          [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${params[description]} ${_yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
             if [ "${_USE_AEGIR_VER}" = "SRC" ] \
@@ -1035,10 +1049,12 @@ _commerce_7_2_install() {
             fi
           fi
           _init_this_distro_root
-          _msg "DISTRO: ${_F_COMMERCE2} installed"
+          _msg "DISTRO: ${params[description]} installed"
           _RUN_VERIFY=YES
+          [ "${_DEBUG_MODE}" = "YES" ] && _msg "_save_verify_this_platform '${1}' '${2}' '${3}' '${_SHRD_PLNAME}' '${5}' '${6}' '${7}'"
+          _save_verify_this_platform "${1}" "${2}" "${3}" "${_SHRD_PLNAME}" "${5}" "${6}" "${7}"
         else
-          [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${_F_COMMERCE2} ${_noT}"
+          [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${params[description]} ${_noT}"
         fi
       fi
     fi
@@ -1049,18 +1065,38 @@ _commerce_7_2_install() {
 _ubercart6_install() {
 ###---### Ubercart 2
 #
-  _REAL_PRNAME="uberdrupal"
+  # Declare 'params' as local to the function
+  local -A params=(
+    [dist]="$1"
+    [version]="$2"
+    [core_version]="$3"
+    [description]="$4"
+    [profile_path]="$5"
+    [profile_name]="$6"
+    [web_dir]="$7"
+    [php_version]="$8"
+    [url]="$9"
+  )
+
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "DEBUG: _ubercart6_install"
+    for key in "${!params[@]}"; do
+      _msg "DEBUG: ${key} is '${params[$key]}'"
+    done
+  fi
+
+  _REAL_PRNAME="${params[profile_name]}"
   _VIRT_PRNAME="ubercart"
-  _SHRD_PLNAME="${_VIRT_PRNAME}-${_UBERCART6}-${_SMALLCORE6_V}"
+  _SHRD_PLNAME="${_VIRT_PRNAME}-${params[version]}-${params[core_version]}"
   _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
   _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
   _OCTO_PLPATH="${_pthDst}/${_SHRD_PLNAME}"
-  if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
-    || [[ "${_PLATFORMS_LIST}" =~ "UCT" ]]; then
+  if [[ "${_PLATFORMS_LIST}" =~ ALL ]] \
+    || [[ "${_PLATFORMS_LIST}" =~ ${params[dist]} ]]; then
     if [ ! -d "${_OCTO_PLPATH}/modules/path_alias_cache" ]; then
-      if _prompt_yes_no "${_F_UBERCART6} - ${1}" ; then
+      if _prompt_yes_no "${params[description]} - ${params[url]}" ; then
         true
-        [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${_F_UBERCART6} ${_yOk}"
+        [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${params[description]} ${_yOk}"
         if [ ! -d "${_SHRD_PLPATH}" ]; then
           if [ "${_USE_AEGIR_VER}" = "SRC" ] \
             && [ "${_T_BUILD}" = "SRC" ]; then
@@ -1093,7 +1129,7 @@ _ubercart6_install() {
             _get_dev_contrib "rules-6.x-1.5.tar.gz"
             _get_dev_contrib "skinr-6.x-1.7.tar.gz"
             _get_dev_contrib "token-6.x-1.19.tar.gz"
-            _get_dev_contrib "ubercart-6.x-${_UBERCART6}.tar.gz"
+            _get_dev_contrib "ubercart-6.x-${params[version]}.tar.gz"
             _get_dev_contrib "views-6.x-3.3.tar.gz"
             _get_dev_contrib "webform-6.x-3.23.tar.gz"
             ### https://drupal.org/node/1167276#comment-5138248
@@ -1111,10 +1147,12 @@ _ubercart6_install() {
           fi
         fi
         _init_this_distro_root
-        _msg "DISTRO: ${_F_UBERCART6} installed"
+        _msg "DISTRO: ${params[description]} installed"
         _RUN_VERIFY=YES
+        [ "${_DEBUG_MODE}" = "YES" ] && _msg "_save_verify_this_platform '${1}' '${2}' '${3}' '${_SHRD_PLNAME}' '${5}' '${6}' '${7}'"
+        _save_verify_this_platform "${1}" "${2}" "${3}" "${_SHRD_PLNAME}" "${5}" "${6}" "${7}"
       else
-        [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${_F_UBERCART6} ${_noT}"
+        [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${params[description]} ${_noT}"
       fi
     fi
   fi
@@ -1124,19 +1162,39 @@ _ubercart6_install() {
 _ubercart7_install() {
 ###---### Ubercart 3
 #
-  _REAL_PRNAME="minimal"
+  # Declare 'params' as local to the function
+  local -A params=(
+    [dist]="$1"
+    [version]="$2"
+    [core_version]="$3"
+    [description]="$4"
+    [profile_path]="$5"
+    [profile_name]="$6"
+    [web_dir]="$7"
+    [php_version]="$8"
+    [url]="$9"
+  )
+
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "DEBUG: _ubercart7_install"
+    for key in "${!params[@]}"; do
+      _msg "DEBUG: ${key} is '${params[$key]}'"
+    done
+  fi
+
+  _REAL_PRNAME="${params[profile_name]}"
   _VIRT_PRNAME="ubercart"
-  _SHRD_PLNAME="${_VIRT_PRNAME}-${_UBERCART7}-${_SMALLCORE7_V}"
+  _SHRD_PLNAME="${_VIRT_PRNAME}-${params[version]}-${params[core_version]}"
   _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
   _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
   _OCTO_PLPATH="${_pthDst}/${_SHRD_PLNAME}"
   if [ "${_ALLOW_ALL}" = "YES" ]; then
-    if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
-      || [[ "${_PLATFORMS_LIST}" =~ "UC7" ]]; then
+    if [[ "${_PLATFORMS_LIST}" =~ ALL ]] \
+      || [[ "${_PLATFORMS_LIST}" =~ ${params[dist]} ]]; then
       if [ ! -d "${_OCTO_PLPATH}" ]; then
-        if _prompt_yes_no "${_F_UBERCART7} - ${1}" ; then
+        if _prompt_yes_no "${params[description]} - ${params[url]}" ; then
           true
-          [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${_F_UBERCART7} ${_yOk}"
+          [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${params[description]} ${_yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
             if [ "${_USE_AEGIR_VER}" = "SRC" ] \
@@ -1166,7 +1224,7 @@ _ubercart7_install() {
               _get_dev_contrib "pathauto-7.x-1.3.tar.gz"
               _get_dev_contrib "rules-7.x-2.12.tar.gz"
               _get_dev_contrib "token-7.x-1.7.tar.gz"
-              _get_dev_contrib "ubercart-7.x-${_UBERCART7}.tar.gz"
+              _get_dev_contrib "ubercart-7.x-${params[version]}.tar.gz"
               _get_dev_contrib "views-7.x-3.29.tar.gz"
               cd ${_SHRD_PRPATH}/modules/views
               # https://drupal.org/node/1766338#comment-6445882
@@ -1180,10 +1238,12 @@ _ubercart7_install() {
             fi
           fi
           _init_this_distro_root
-          _msg "DISTRO: ${_F_UBERCART7} installed"
+          _msg "DISTRO: ${params[description]} installed"
           _RUN_VERIFY=YES
+          [ "${_DEBUG_MODE}" = "YES" ] && _msg "_save_verify_this_platform '${1}' '${2}' '${3}' '${_SHRD_PLNAME}' '${5}' '${6}' '${7}'"
+          _save_verify_this_platform "${1}" "${2}" "${3}" "${_SHRD_PLNAME}" "${5}" "${6}" "${7}"
         else
-          [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${_F_UBERCART7} ${_noT}"
+          [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${params[description]} ${_noT}"
         fi
       fi
     fi
@@ -1194,12 +1254,32 @@ _ubercart7_install() {
 _d_dist_custom_platform_install() {
 ###---### Template function for distros-custom-type platforms
 #
+  # Declare 'params' as local to the function
+  local -A params=(
+    [dist]="$1"
+    [version]="$2"
+    [core_version]="$3"
+    [description]="$4"
+    [profile_path]="$5"
+    [profile_name]="$6"
+    [web_dir]="$7"
+    [php_version]="$8"
+    [url]="$9"
+  )
+
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "DEBUG: _d_dist_custom_platform_install"
+    for key in "${!params[@]}"; do
+      _msg "DEBUG: ${key} is '${params[$key]}'"
+    done
+  fi
+
   if [[ "${1}" == "CK1" ]]; then
-    _commerce_7_2_install "${2}"
+    _commerce_7_2_install "${1}" "${2}" "${3}" "${4}" "${5}" "${6}" "${7}" "${8}" "${9}"
   elif [[ "${1}" == "UC6" ]]; then
-    _ubercart6_install "${2}"
+    _ubercart6_install "${1}" "${2}" "${3}" "${4}" "${5}" "${6}" "${7}" "${8}" "${9}"
   elif [[ "${1}" == "UC7" ]]; then
-    _ubercart7_install "${2}"
+    _ubercart7_install "${1}" "${2}" "${3}" "${4}" "${5}" "${6}" "${7}" "${8}" "${9}"
   fi
 }
 
@@ -1207,28 +1287,51 @@ _d_dist_custom_platform_install() {
 _d_dist_platform_install() {
 ###---### Template function for distros-type platforms
 #
-  local _REAL_PRNAME="${6}"
-  local _DIST_PLNAME="${_REAL_PRNAME}-${2}-${3}"
-  local _DIST_PLPATH="${_CORE}/${_DIST_PLNAME}"
-  local _DIST_PRPATH="${_DIST_PLPATH}/profiles/${5}${6}"
-  local _OCTO_PLPATH="${_pthDst}/${_DIST_PLNAME}${7}"
+  # Declare 'params' as local to the function
+  local -A params=(
+    [dist]="$1"
+    [version]="$2"
+    [core_version]="$3"
+    [description]="$4"
+    [profile_path]="$5"
+    [profile_name]="$6"
+    [web_dir]="$7"
+    [php_version]="$8"
+    [url]="$9"
+  )
+
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "DEBUG: _d_dist_platform_install"
+    for key in "${!params[@]}"; do
+      _msg "DEBUG: ${key} is '${params[$key]}'"
+    done
+  fi
+
+  # Access parameters by name
+  _REAL_PRNAME="${params[profile_name]}"
+  _DIST_PLNAME="${params[profile_name]}-${params[version]}-${params[core_version]}"
+  _DIST_PLPATH="${_CORE}/${_DIST_PLNAME}"
+  _DIST_PRPATH="${_DIST_PLPATH}/profiles/${params[profile_path]}${params[profile_name]}"
+  _OCTO_PLPATH="${_pthDst}/${_DIST_PLNAME}${7}"
   if [ "${_ALLOW_ALL}" = "YES" ]; then
-    if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
-      || [[ "${_PLATFORMS_LIST}" =~ ${1} ]]; then
+    if [[ "${_PLATFORMS_LIST}" =~ ALL ]] \
+      || [[ "${_PLATFORMS_LIST}" =~ ${params[dist]} ]]; then
       if [ ! -d "${_OCTO_PLPATH}" ]; then
-        if _prompt_yes_no "${4} - ${9}" ; then
+        if _prompt_yes_no "${params[description]} - ${params[url]}" ; then
           true
-          [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${4} ${_yOk}"
+          [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${params[description]} ${_yOk}"
           if [ ! -d "${_OCTO_PLPATH}" ]; then
             cd ${_pthDst}
             _get_distro_ext "${_DIST_PLNAME}.tar.gz"
           fi
           if [ -d "${_OCTO_PLPATH}" ]; then
-            _msg "DISTRO: ${4} installed"
+            _msg "DISTRO: ${params[description]} installed"
             _RUN_VERIFY=YES
+            [ "${_DEBUG_MODE}" = "YES" ] && _msg "_save_verify_this_platform '${1}' '${2}' '${3}' '${_DIST_PLNAME}' '${5}' '${6}' '${7}'"
+            _save_verify_this_platform "${1}" "${2}" "${3}" "${_DIST_PLNAME}" "${5}" "${6}" "${7}"
           fi
         else
-          [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${4} ${_noT}"
+          [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${params[description]} ${_noT}"
         fi
       fi
     fi
@@ -1239,7 +1342,6 @@ _d_dist_platform_install() {
 _d_core_platform_install() {
 ###---### Template function for core-only-type platforms
 #
-  local _REAL_PRNAME="${6}"
   if [ "${1}" = "DX4" ]; then
     _CORE_DEV="${_DRUPAL10_4_D}"
     _CORE_STG="${_DRUPAL10_4_S}"
@@ -1274,10 +1376,33 @@ _d_core_platform_install() {
     _CORE_PRD="${_DRUPAL6_P}"
   fi
 
-  if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
-    || [[ "${_PLATFORMS_LIST}" =~ "${1}" ]]; then
+  # Declare 'params' as local to the function
+  local -A params=(
+    [dist]="$1"
+    [version]="$2"
+    [core_version]="$3"
+    [description]="$4"
+    [profile_path]="$5"
+    [profile_name]="$6"
+    [web_dir]="$7"
+    [php_version]="$8"
+    [url]="$9"
+  )
+
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "DEBUG: _d_core_platform_install"
+    for key in "${!params[@]}"; do
+      _msg "DEBUG: ${key} is '${params[$key]}'"
+    done
+  fi
+
+  # Access parameters by name
+  _REAL_PRNAME="${params[profile_name]}"
+
+  if [[ "${_PLATFORMS_LIST}" =~ ALL ]] \
+    || [[ "${_PLATFORMS_LIST}" =~ ${params[dist]} ]]; then
     if [ ! -d "${_pthDst}/${_CORE_DEV}" ]; then
-      if _prompt_yes_no "${4} - ${9}" ; then
+      if _prompt_yes_no "${params[description]} - ${params[url]}" ; then
         true
         ###---### Drupal Core-Only Development
         #
@@ -1285,50 +1410,46 @@ _d_core_platform_install() {
         [[ "${1}" =~ DL7 || "${1}" =~ DL6 ]] && _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
         [[ "${1}" =~ DL7 || "${1}" =~ DL6 ]] && _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
         _OCTO_PLPATH="${_pthDst}/${_SHRD_PLNAME}"
-        if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
-          || [[ "${_PLATFORMS_LIST}" =~ "${1}" ]]; then
-          [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${4}.D ${_yOk}"
-          _create_drupal_core_basic "${1}"
+          [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${params[description]} [D.${_THIS_CORE}] ${_yOk}"
+          _create_drupal_core_basic "${params[dist]}"
           if [ -d "${_OCTO_PLPATH}" ]; then
-            _msg "DISTRO: ${4}.D installed"
+            _msg "DISTRO: ${params[description]} [D.${_THIS_CORE}] installed"
             _RUN_VERIFY=YES
+            [ "${_DEBUG_MODE}" = "YES" ] && _msg "_save_verify_this_platform '${1}' '${2}' '${3}' '${_SHRD_PLNAME}' '${5}' '${6}' '${7}'"
             _save_verify_this_platform "${1}" "${2}" "${3}" "${_SHRD_PLNAME}" "${5}" "${6}" "${7}"
           fi
-        fi
+
         ###---### Drupal Core-Only Staging
         #
         _SHRD_PLNAME="${_CORE_STG}"
         [[ "${1}" =~ DL7 || "${1}" =~ DL6 ]] && _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
         [[ "${1}" =~ DL7 || "${1}" =~ DL6 ]] && _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
         _OCTO_PLPATH="${_pthDst}/${_SHRD_PLNAME}"
-        if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
-          || [[ "${_PLATFORMS_LIST}" =~ "${1}" ]]; then
-          [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${4}.S ${_yOk}"
-          _create_drupal_core_basic "${1}"
+          [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${params[description]} [S.${_THIS_CORE}] ${_yOk}"
+          _create_drupal_core_basic "${params[dist]}"
           if [ -d "${_OCTO_PLPATH}" ]; then
-            _msg "DISTRO: ${4}.S installed"
+            _msg "DISTRO: ${params[description]} [S.${_THIS_CORE}] installed"
             _RUN_VERIFY=YES
+            [ "${_DEBUG_MODE}" = "YES" ] && _msg "_save_verify_this_platform '${1}' '${2}' '${3}' '${_SHRD_PLNAME}' '${5}' '${6}' '${7}'"
             _save_verify_this_platform "${1}" "${2}" "${3}" "${_SHRD_PLNAME}" "${5}" "${6}" "${7}"
           fi
-        fi
+
         ###---### Drupal Core-Only Production
         #
         _SHRD_PLNAME="${_CORE_PRD}"
         [[ "${1}" =~ DL7 || "${1}" =~ DL6 ]] && _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
         [[ "${1}" =~ DL7 || "${1}" =~ DL6 ]] && _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
         _OCTO_PLPATH="${_pthDst}/${_SHRD_PLNAME}"
-        if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
-          || [[ "${_PLATFORMS_LIST}" =~ "${1}" ]]; then
-          [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${4}.P ${_yOk}"
-          _create_drupal_core_basic "${1}"
-          if [ -d "${_OCTO_PLPATH}" ]; then
-            _msg "DISTRO: ${4}.P installed"
-            _RUN_VERIFY=YES
-            _save_verify_this_platform "${1}" "${2}" "${3}" "${_SHRD_PLNAME}" "${5}" "${6}" "${7}"
-          fi
+        [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${params[description]} [P.${_THIS_CORE}] ${_yOk}"
+        _create_drupal_core_basic "${params[dist]}"
+        if [ -d "${_OCTO_PLPATH}" ]; then
+          _msg "DISTRO: ${params[description]} [P.${_THIS_CORE}] installed"
+          _RUN_VERIFY=YES
+          [ "${_DEBUG_MODE}" = "YES" ] && _msg "_save_verify_this_platform '${1}' '${2}' '${3}' '${_SHRD_PLNAME}' '${5}' '${6}' '${7}'"
+          _save_verify_this_platform "${1}" "${2}" "${3}" "${_SHRD_PLNAME}" "${5}" "${6}" "${7}"
         fi
       else
-        [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${4} ${_noT}"
+        [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${params[description]} ${_noT}"
       fi
     fi
   fi
@@ -1337,23 +1458,22 @@ _d_core_platform_install() {
 _d_dist_loop() {
   # Loop through the _distros_names
   for _dist in "${!_distros_names[@]}"; do
-    local _d_name="${_distros_names[${_dist}]}"
-    local _d_vers="${_distros_versions[${_dist}]}"
-    local _d_core="${_distros_drupal_cores[${_dist}]}"
-    local _d_desc="${_d_name} ${_d_vers} ${_d_core} [${_THIS_CORE}]"
-    local _d_ppth="${_distros_profiles_paths[${_dist}]}"
-    local _d_prfn="${_distros_profiles_names[${_dist}]}"
-    local _d_webd="${_distros_web_dirs[${_dist}]}"
-    local _d_phpv="${_distros_php_versions[${_dist}]}"
-    local _d_xurl="${_distros_urls[${_dist}]}"
+    _d_name="${_distros_names[${_dist}]}"
+    _d_vers="${_distros_versions[${_dist}]}"
+    _d_core="${_distros_drupal_cores[${_dist}]}"
+    _d_desc="${_d_name} ${_d_vers} ${_d_core} [${_THIS_CORE}]"
+    _d_xdes="${_d_name} ${_d_vers}"
+    _d_ppth="${_distros_profiles_paths[${_dist}]}"
+    _d_prfn="${_distros_profiles_names[${_dist}]}"
+    _d_webd="${_distros_web_dirs[${_dist}]}"
+    _d_phpv="${_distros_php_versions[${_dist}]}"
+    _d_xurl="${_distros_urls[${_dist}]}"
     if [[ "${_dist}" =~ DL || "${_dist}" =~ DX ]]; then
-      _d_core_platform_install "${_dist}" "${_d_vers}" "${_d_core}" "${_d_desc}" "${_d_ppth}" "${_d_prfn}" "${_d_webd}" "${_d_phpv}" "${_d_xurl}"
+      _d_core_platform_install "${_dist}" "${_d_vers}" "${_d_core}" "${_d_xdes}" "${_d_ppth}" "${_d_prfn}" "${_d_webd}" "${_d_phpv}" "${_d_xurl}"
     elif [[ "${_dist}" =~ CK1 || "${_dist}" =~ UC ]]; then
-      _d_dist_custom_platform_install "${_dist}" "${_d_xurl}"
-      _save_verify_this_platform "${_dist}" "${_d_vers}" "${_d_core}" "${_d_desc}" "${_d_ppth}" "${_d_prfn}" "${_d_webd}"
+      _d_dist_custom_platform_install "${_dist}" "${_d_vers}" "${_d_core}" "${_d_desc}" "${_d_ppth}" "${_d_prfn}" "${_d_webd}" "${_d_phpv}" "${_d_xurl}"
     else
       _d_dist_platform_install "${_dist}" "${_d_vers}" "${_d_core}" "${_d_desc}" "${_d_ppth}" "${_d_prfn}" "${_d_webd}" "${_d_phpv}" "${_d_xurl}"
-      _save_verify_this_platform "${_dist}" "${_d_vers}" "${_d_core}" "${_d_desc}" "${_d_ppth}" "${_d_prfn}" "${_d_webd}"
     fi
   done
 }
