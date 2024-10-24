@@ -1,10 +1,13 @@
 #!/bin/bash
 
-export PATH=$PATH:/opt/local/bin
+export PATH=/usr/local/bin:/usr/bin:/bin:/usr/local/bin:/opt/local/bin:/usr/local/ssl3
 _DEST_DRUSH="/opt/tools/drush/8/drush/drush.php"
 
 _ALL="$@"
 ### echo _ALL is ${_ALL}
+
+_ENV=$(env 2>&1)
+### echo _ENV is ${_ENV}
 
 if [ "${1}" = "-c" ]; then
   _ARGS="${2}"
