@@ -306,17 +306,30 @@ _save_verify_this_platform() {
     done
   fi
 
-  if [ -d "${_pthDst}/${6}-${2}-${3}${7}" ]; then
-    if [ ! -e "${_pthDst}/${6}-${2}-${3}${7}/${_drhSrc}" ]; then
+  # _save_verify_this_platform 'OCS' '2.2.1' '10.3.6' 'openculturas-2.2.1-10.3.6' 'contrib/' 'openculturas' '/web'
+  local _make_p="${_pthDst}/${params[profile_name]}-${params[version]}-${params[core_version]}${params[web_dir]}"
+
+  # _save_verify_this_platform 'DX3' '10.3.6' '10.3.6' 'drupal-10.3.6-dev' '/' 'standard' '/web'
+  local _make_x="${_pthDst}/${params[profile_name]}-${params[core_version]}${params[web_dir]}"
+
+  if [ -d "${_make_p}" ]; then
+    if [ ! -e "${_make_p}/${_drhSrc}" ]; then
       if [ -d "${_THIS_HM}" ] && [ -e "${_THIS_HM}/make_platform.php" ]; then
         cd ${_THIS_HM}
-        [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: ${_DRUSHCMD} php-script make_platform '${4}' ${6} ${_pthDst}/${6}-${2}-${3}${7}"
-        ${_DRUSHCMD} php-script make_platform "${4}" ${6} ${_pthDst}/${6}-${2}-${3}${7} &> /dev/null
+        [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: ${_DRUSHCMD} php-script make_platform '${4}' ${6} ${_make_p}"
+        ${_DRUSHCMD} php-script make_platform "${4}" ${6} ${_make_p} &> /dev/null
+      fi
+    fi
+  elif [ -d "${_make_x}" ]; then
+    if [ ! -e "${_make_x}/${_drhSrc}" ]; then
+      if [ -d "${_THIS_HM}" ] && [ -e "${_THIS_HM}/make_platform.php" ]; then
+        cd ${_THIS_HM}
+        [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: ${_DRUSHCMD} php-script make_platform '${4}' ${6} ${_make_x}"
+        ${_DRUSHCMD} php-script make_platform "${4}" ${6} ${_make_x} &> /dev/null
       fi
     fi
   fi
 }
-
 #
 # Complete Save & Verify Platforms.
 _complete_save_verify_platforms() {
