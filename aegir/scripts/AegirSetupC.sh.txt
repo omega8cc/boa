@@ -815,9 +815,9 @@ _create_drupal_core_basic() {
 
 # Define distros names and their key-words for configuration
 declare -A _distros_names=(
-  ["CK1"]="Commerce Kickstart v.1"
-  ["CK2"]="Commerce Base v.2"
-  ["CK3"]="Commerce Kickstart v.3"
+  ["CK1"]="Commerce Kickstart"
+  ["CK2"]="Commerce Base"
+  ["CK3"]="Commerce Kickstart"
   ["DXP"]="DXPR Marketing"
   ["EZC"]="EzContent"
   ["FOS"]="farmOS"
@@ -829,18 +829,18 @@ declare -A _distros_names=(
   ["SCR"]="Sector"
   ["SOC"]="Social"
   ["THR"]="Thunder"
-  ["UC6"]="Ubercart D6"
-  ["UC7"]="Ubercart D7"
-  ["VB9"]="Varbase 9"
-  ["VBX"]="Varbase 10"
-  ["DL6"]="Drupal 6"
-  ["DL7"]="Drupal 7"
-  ["DL9"]="Drupal 9"
-  ["DX0"]="Drupal X0"
-  ["DX1"]="Drupal X1"
-  ["DX2"]="Drupal X2"
-  ["DX3"]="Drupal X3"
-  ["DX4"]="Drupal X4"
+  ["UC6"]="Ubercart"
+  ["UC7"]="Ubercart"
+  ["VB9"]="Varbase"
+  ["VBX"]="Varbase"
+  ["DL6"]="Pressflow"
+  ["DL7"]="Drupal"
+  ["DL9"]="Drupal"
+  ["DX0"]="Drupal"
+  ["DX1"]="Drupal"
+  ["DX2"]="Drupal"
+  ["DX3"]="Drupal"
+  ["DX4"]="Drupal"
 )
 
 # Define distros versions for configuration
