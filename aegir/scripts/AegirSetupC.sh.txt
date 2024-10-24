@@ -1110,8 +1110,8 @@ _commerce_7_2_install() {
           _init_this_distro_root
           _msg "DISTRO: ${params[description]} installed"
           _RUN_VERIFY=YES
-          [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _save_verify_this_platform '${1}' '${2}' '${3}' '${params[description]} [${_THIS_CORE}]' '${5}' '${6}' '${7}'"
-          _save_verify_this_platform "${1}" "${2}" "${3}" "${params[description]} [${_THIS_CORE}]" "${5}" "${6}" "${7}"
+          [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _save_verify_this_platform '${1}' '${2}' '${3}' '${params[description]}' '${5}' '${6}' '${7}'"
+          _save_verify_this_platform "${1}" "${2}" "${3}" "${params[description]}" "${5}" "${6}" "${7}"
         else
           [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${params[description]} ${_noT}"
         fi
@@ -1210,8 +1210,8 @@ _ubercart6_install() {
         _init_this_distro_root
         _msg "DISTRO: ${params[description]} installed"
         _RUN_VERIFY=YES
-        [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _save_verify_this_platform '${1}' '${2}' '${3}' '${params[description]} [${_THIS_CORE}]' '${5}' '${6}' '${7}'"
-        _save_verify_this_platform "${1}" "${2}" "${3}" "${params[description]} [${_THIS_CORE}]" "${5}" "${6}" "${7}"
+        [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _save_verify_this_platform '${1}' '${2}' '${3}' '${params[description]}' '${5}' '${6}' '${7}'"
+        _save_verify_this_platform "${1}" "${2}" "${3}" "${params[description]}" "${5}" "${6}" "${7}"
       else
         [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${params[description]} ${_noT}"
       fi
@@ -1303,8 +1303,8 @@ _ubercart7_install() {
           _init_this_distro_root
           _msg "DISTRO: ${params[description]} installed"
           _RUN_VERIFY=YES
-          [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _save_verify_this_platform '${1}' '${2}' '${3}' '${params[description]} [${_THIS_CORE}]' '${5}' '${6}' '${7}'"
-          _save_verify_this_platform "${1}" "${2}" "${3}" "${params[description]} [${_THIS_CORE}]" "${5}" "${6}" "${7}"
+          [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _save_verify_this_platform '${1}' '${2}' '${3}' '${params[description]}' '${5}' '${6}' '${7}'"
+          _save_verify_this_platform "${1}" "${2}" "${3}" "${params[description]}" "${5}" "${6}" "${7}"
           # _save_verify_this_platform 'UC7' '3.13' '7.101.1' 'ubercart-3.13-7.101.1' '/' 'minimal' ''
         else
           [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${params[description]} ${_noT}"
@@ -1392,8 +1392,8 @@ _d_dist_platform_install() {
           if [ -d "${_OCTO_PLPATH}" ]; then
             _msg "DISTRO: ${params[description]} installed"
             _RUN_VERIFY=YES
-            [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _save_verify_this_platform '${1}' '${2}' '${3}' '${params[description]} [${_THIS_CORE}]' '${5}' '${6}' '${7}'"
-            _save_verify_this_platform "${1}" "${2}" "${3}" "${params[description]} [${_THIS_CORE}]" "${5}" "${6}" "${7}"
+            [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _save_verify_this_platform '${1}' '${2}' '${3}' '${params[description]}' '${5}' '${6}' '${7}'"
+            _save_verify_this_platform "${1}" "${2}" "${3}" "${params[description]}" "${5}" "${6}" "${7}"
           fi
         else
           [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${params[description]} ${_noT}"
