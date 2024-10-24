@@ -1099,6 +1099,11 @@ _commerce_7_2_install() {
               fi
               [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _get_distro_ext '${params[profile_name]}-7.x-${params[version]}-core.tar.gz'"
               _get_distro_ext "${params[profile_name]}-7.x-${params[version]}-core.tar.gz"
+              if [ -d "${_CORE}/commerce-7.x-${params[version]}" ]; then
+                mv -f commerce-7.x-${params[version]} ${_SHRD_PLNAME}
+              elif [ -d "${_CORE}/${_REAL_PRNAME}-7.x-${params[version]}" ]; then
+                mv -f ${_REAL_PRNAME}-7.x-${params[version]} ${_SHRD_PLNAME}
+              fi
               _nocore_d7_dist_clean
               _remove_default_core_seven_profiles
               _upgrade_contrib_less
