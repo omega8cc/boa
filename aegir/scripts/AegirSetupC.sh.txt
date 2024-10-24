@@ -302,15 +302,21 @@ _save_verify_this_platform() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "DEBUG: _save_verify_this_platform"
     for key in "${!params[@]}"; do
-      _msg "DEBUG: ${key} is '${params[$key]}'"
+      _msg "DEBUG: _save_verify_this_platform ${key} is '${params[$key]}'"
     done
   fi
 
   # _save_verify_this_platform 'OCS' '2.2.1' '10.3.6' 'openculturas-2.2.1-10.3.6' 'contrib/' 'openculturas' '/web'
+  # make_platform 'ezcontent-2.2.15-10.3.6' ezcontent /data/disk/o8/distro/001/ezcontent-2.2.15-10.3.6/web
+  # make_platform 'commerce_base-2.40-10.1.8' commerce_base /data/disk/o8/distro/001/commerce_base-2.40-10.1.8/web
   local _make_p="${_pthDst}/${params[profile_name]}-${params[version]}-${params[core_version]}${params[web_dir]}"
 
+  # _save_verify_this_platform 'UC7' '3.13' '7.101.1' 'ubercart-3.13-7.101.1' '/' 'minimal' ''
+  local _make_u="${_pthDst}/ubercart-${params[version]}-${params[core_version]}${params[web_dir]}"
+
   # _save_verify_this_platform 'DX3' '10.3.6' '10.3.6' 'drupal-10.3.6-dev' '/' 'standard' '/web'
-  local _make_x="${_pthDst}/${params[profile_name]}-${params[core_version]}${params[web_dir]}"
+  # /data/disk/o8/distro/001/drupal-10.3.6-prod
+  local _make_x="${_pthDst}/${params[description]}${params[web_dir]}"
 
   if [ -d "${_make_p}" ]; then
     if [ ! -e "${_make_p}/${_drhSrc}" ]; then
@@ -318,6 +324,14 @@ _save_verify_this_platform() {
         cd ${_THIS_HM}
         [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: ${_DRUSHCMD} php-script make_platform '${4}' ${6} ${_make_p}"
         ${_DRUSHCMD} php-script make_platform "${4}" ${6} ${_make_p} &> /dev/null
+      fi
+    fi
+  elif [ -d "${_make_u}" ]; then
+    if [ ! -e "${_make_u}/${_drhSrc}" ]; then
+      if [ -d "${_THIS_HM}" ] && [ -e "${_THIS_HM}/make_platform.php" ]; then
+        cd ${_THIS_HM}
+        [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: ${_DRUSHCMD} php-script make_platform '${4}' ${6} ${_make_u}"
+        ${_DRUSHCMD} php-script make_platform "${4}" ${6} ${_make_u} &> /dev/null
       fi
     fi
   elif [ -d "${_make_x}" ]; then
@@ -1056,10 +1070,11 @@ _commerce_7_2_install() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "DEBUG: _commerce_7_2_install"
     for key in "${!params[@]}"; do
-      _msg "DEBUG: ${key} is '${params[$key]}'"
+      _msg "DEBUG: _commerce_7_2_install ${key} is '${params[$key]}'"
     done
   fi
 
+  # /data/disk/o8/distro/001/commerce_kickstart-2.77-7.101.1
   _REAL_PRNAME="${params[profile_name]}"
   _SHRD_PLNAME="${params[profile_name]}-${params[version]}-${params[core_version]}"
   _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
@@ -1079,8 +1094,8 @@ _commerce_7_2_install() {
               if [ ! -e "${_D7_CORE_DIR}" ]; then
                 _prepare_drupal7_core
               fi
-              [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _get_distro_ext '${_SHRD_PLNAME}.tar.gz'"
-              _get_distro_ext "${_SHRD_PLNAME}.tar.gz"
+              [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _get_distro_ext '${params[profile_name]}-7.x-${params[version]}-core.tar.gz'"
+              _get_distro_ext "${params[profile_name]}-7.x-${params[version]}-core.tar.gz"
               _nocore_d7_dist_clean
               _remove_default_core_seven_profiles
               _upgrade_contrib_less
@@ -1122,10 +1137,11 @@ _ubercart6_install() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "DEBUG: _ubercart6_install"
     for key in "${!params[@]}"; do
-      _msg "DEBUG: ${key} is '${params[$key]}'"
+      _msg "DEBUG: _ubercart6_install ${key} is '${params[$key]}'"
     done
   fi
 
+  # /data/disk/o8/distro/001/ubercart-2.15-6.60.1
   _REAL_PRNAME="${params[profile_name]}"
   _VIRT_PRNAME="ubercart"
   _SHRD_PLNAME="${_VIRT_PRNAME}-${params[version]}-${params[core_version]}"
@@ -1220,16 +1236,17 @@ _ubercart7_install() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "DEBUG: _ubercart7_install"
     for key in "${!params[@]}"; do
-      _msg "DEBUG: ${key} is '${params[$key]}'"
+      _msg "DEBUG: _ubercart7_install ${key} is '${params[$key]}'"
     done
   fi
 
-  _REAL_PRNAME="${params[profile_name]}"
-  _VIRT_PRNAME="ubercart"
-  _SHRD_PLNAME="${_VIRT_PRNAME}-${params[version]}-${params[core_version]}"
-  _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
-  _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
-  _OCTO_PLPATH="${_pthDst}/${_SHRD_PLNAME}"
+  # /data/disk/o8/distro/001/ubercart-3.13-7.101.1
+  local _REAL_PRNAME="${params[profile_name]}"
+  local _VIRT_PRNAME="ubercart"
+  local _SHRD_PLNAME="${_VIRT_PRNAME}-${params[version]}-${params[core_version]}"
+  local _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
+  local _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
+  local _OCTO_PLPATH="${_pthDst}/${_SHRD_PLNAME}"
   if [ "${_ALLOW_ALL}" = "YES" ]; then
     if [[ "${_PLATFORMS_LIST}" =~ ALL ]] \
       || [[ "${_PLATFORMS_LIST}" =~ ${params[dist]} ]]; then
@@ -1285,6 +1302,7 @@ _ubercart7_install() {
           _RUN_VERIFY=YES
           [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _save_verify_this_platform '${1}' '${2}' '${3}' '${_SHRD_PLNAME}' '${5}' '${6}' '${7}'"
           _save_verify_this_platform "${1}" "${2}" "${3}" "${_SHRD_PLNAME}" "${5}" "${6}" "${7}"
+          # _save_verify_this_platform 'UC7' '3.13' '7.101.1' 'ubercart-3.13-7.101.1' '/' 'minimal' ''
         else
           [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${params[description]} ${_noT}"
         fi
@@ -1313,7 +1331,7 @@ _d_dist_custom_platform_install() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "DEBUG: _d_dist_custom_platform_install"
     for key in "${!params[@]}"; do
-      _msg "DEBUG: ${key} is '${params[$key]}'"
+      _msg "DEBUG: _d_dist_custom_platform_install ${key} is '${params[$key]}'"
     done
   fi
 
@@ -1346,7 +1364,7 @@ _d_dist_platform_install() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "DEBUG: _d_dist_platform_install"
     for key in "${!params[@]}"; do
-      _msg "DEBUG: ${key} is '${params[$key]}'"
+      _msg "DEBUG: _d_dist_platform_install ${key} is '${params[$key]}'"
     done
   fi
 
@@ -1436,7 +1454,7 @@ _d_core_platform_install() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "DEBUG: _d_core_platform_install"
     for key in "${!params[@]}"; do
-      _msg "DEBUG: ${key} is '${params[$key]}'"
+      _msg "DEBUG: _d_core_platform_install ${key} is '${params[$key]}'"
     done
   fi
 
