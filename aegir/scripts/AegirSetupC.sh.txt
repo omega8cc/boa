@@ -306,6 +306,9 @@ _save_verify_this_platform() {
     done
   fi
 
+  # _save_verify_this_platform "${1}" "${_SHRD_PLNAME}" "${3}" "${params[description]} [P.${_THIS_CORE}]" "${5}" "${6}" "${7}"
+  # _save_verify_this_platform "${1}" "${2}" "${3}" "${_DIST_PLNAME}" "${5}" "${6}" "${7}"
+
   # _save_verify_this_platform 'OCS' '2.2.1' '10.3.6' 'openculturas-2.2.1-10.3.6' 'contrib/' 'openculturas' '/web'
   # make_platform 'ezcontent-2.2.15-10.3.6' ezcontent /data/disk/o8/distro/001/ezcontent-2.2.15-10.3.6/web
   # make_platform 'commerce_base-2.40-10.1.8' commerce_base /data/disk/o8/distro/001/commerce_base-2.40-10.1.8/web
@@ -316,7 +319,7 @@ _save_verify_this_platform() {
 
   # _save_verify_this_platform 'DX3' '10.3.6' '10.3.6' 'drupal-10.3.6-dev' '/' 'standard' '/web'
   # /data/disk/o8/distro/001/drupal-10.3.6-prod
-  local _make_x="${_pthDst}/${params[description]}${params[web_dir]}"
+  local _make_x="${_pthDst}/${params[version]}${params[web_dir]}"
 
   if [ -d "${_make_p}" ]; then
     if [ ! -e "${_make_p}/${_drhSrc}" ]; then
@@ -1107,8 +1110,8 @@ _commerce_7_2_install() {
           _init_this_distro_root
           _msg "DISTRO: ${params[description]} installed"
           _RUN_VERIFY=YES
-          [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _save_verify_this_platform '${1}' '${2}' '${3}' '${_SHRD_PLNAME}' '${5}' '${6}' '${7}'"
-          _save_verify_this_platform "${1}" "${2}" "${3}" "${_SHRD_PLNAME}" "${5}" "${6}" "${7}"
+          [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _save_verify_this_platform '${1}' '${2}' '${3}' '${params[description]} [${_THIS_CORE}]' '${5}' '${6}' '${7}'"
+          _save_verify_this_platform "${1}" "${2}" "${3}" "${params[description]} [${_THIS_CORE}]" "${5}" "${6}" "${7}"
         else
           [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${params[description]} ${_noT}"
         fi
@@ -1207,8 +1210,8 @@ _ubercart6_install() {
         _init_this_distro_root
         _msg "DISTRO: ${params[description]} installed"
         _RUN_VERIFY=YES
-        [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _save_verify_this_platform '${1}' '${2}' '${3}' '${_SHRD_PLNAME}' '${5}' '${6}' '${7}'"
-        _save_verify_this_platform "${1}" "${2}" "${3}" "${_SHRD_PLNAME}" "${5}" "${6}" "${7}"
+        [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _save_verify_this_platform '${1}' '${2}' '${3}' '${params[description]} [${_THIS_CORE}]' '${5}' '${6}' '${7}'"
+        _save_verify_this_platform "${1}" "${2}" "${3}" "${params[description]} [${_THIS_CORE}]" "${5}" "${6}" "${7}"
       else
         [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${params[description]} ${_noT}"
       fi
@@ -1300,8 +1303,8 @@ _ubercart7_install() {
           _init_this_distro_root
           _msg "DISTRO: ${params[description]} installed"
           _RUN_VERIFY=YES
-          [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _save_verify_this_platform '${1}' '${2}' '${3}' '${_SHRD_PLNAME}' '${5}' '${6}' '${7}'"
-          _save_verify_this_platform "${1}" "${2}" "${3}" "${_SHRD_PLNAME}" "${5}" "${6}" "${7}"
+          [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _save_verify_this_platform '${1}' '${2}' '${3}' '${params[description]} [${_THIS_CORE}]' '${5}' '${6}' '${7}'"
+          _save_verify_this_platform "${1}" "${2}" "${3}" "${params[description]} [${_THIS_CORE}]" "${5}" "${6}" "${7}"
           # _save_verify_this_platform 'UC7' '3.13' '7.101.1' 'ubercart-3.13-7.101.1' '/' 'minimal' ''
         else
           [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${params[description]} ${_noT}"
@@ -1389,8 +1392,8 @@ _d_dist_platform_install() {
           if [ -d "${_OCTO_PLPATH}" ]; then
             _msg "DISTRO: ${params[description]} installed"
             _RUN_VERIFY=YES
-            [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _save_verify_this_platform '${1}' '${2}' '${3}' '${_DIST_PLNAME}' '${5}' '${6}' '${7}'"
-            _save_verify_this_platform "${1}" "${2}" "${3}" "${_DIST_PLNAME}" "${5}" "${6}" "${7}"
+            [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _save_verify_this_platform '${1}' '${2}' '${3}' '${params[description]} [${_THIS_CORE}]' '${5}' '${6}' '${7}'"
+            _save_verify_this_platform "${1}" "${2}" "${3}" "${params[description]} [${_THIS_CORE}]" "${5}" "${6}" "${7}"
           fi
         else
           [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${params[description]} ${_noT}"
@@ -1472,14 +1475,14 @@ _d_core_platform_install() {
         [[ "${1}" =~ DL7 || "${1}" =~ DL6 ]] && _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
         [[ "${1}" =~ DL7 || "${1}" =~ DL6 ]] && _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
         _OCTO_PLPATH="${_pthDst}/${_SHRD_PLNAME}"
-          [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${params[description]} [D.${_THIS_CORE}] ${_yOk}"
-          _create_drupal_core_basic "${params[dist]}"
-          if [ -d "${_OCTO_PLPATH}" ]; then
-            _msg "DISTRO: ${params[description]} [D.${_THIS_CORE}] installed"
-            _RUN_VERIFY=YES
-            [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _save_verify_this_platform '${1}' '${2}' '${3}' '${_SHRD_PLNAME}' '${5}' '${6}' '${7}'"
-            _save_verify_this_platform "${1}" "${2}" "${3}" "${_SHRD_PLNAME}" "${5}" "${6}" "${7}"
-          fi
+        [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${params[description]} [D.${_THIS_CORE}] ${_yOk}"
+        _create_drupal_core_basic "${params[dist]}"
+        if [ -d "${_OCTO_PLPATH}" ]; then
+          _msg "DISTRO: ${params[description]} [D.${_THIS_CORE}] installed"
+          _RUN_VERIFY=YES
+          [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _save_verify_this_platform '${1}' '${_SHRD_PLNAME}' '${3}' '${params[description]} [D.${_THIS_CORE}]' '${5}' '${6}' '${7}'"
+          _save_verify_this_platform "${1}" "${_SHRD_PLNAME}" "${3}" "${params[description]} [D.${_THIS_CORE}]" "${5}" "${6}" "${7}"
+        fi
 
         ###---### Drupal Core-Only Staging
         #
@@ -1487,14 +1490,14 @@ _d_core_platform_install() {
         [[ "${1}" =~ DL7 || "${1}" =~ DL6 ]] && _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
         [[ "${1}" =~ DL7 || "${1}" =~ DL6 ]] && _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
         _OCTO_PLPATH="${_pthDst}/${_SHRD_PLNAME}"
-          [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${params[description]} [S.${_THIS_CORE}] ${_yOk}"
-          _create_drupal_core_basic "${params[dist]}"
-          if [ -d "${_OCTO_PLPATH}" ]; then
-            _msg "DISTRO: ${params[description]} [S.${_THIS_CORE}] installed"
-            _RUN_VERIFY=YES
-            [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _save_verify_this_platform '${1}' '${2}' '${3}' '${_SHRD_PLNAME}' '${5}' '${6}' '${7}'"
-            _save_verify_this_platform "${1}" "${2}" "${3}" "${_SHRD_PLNAME}" "${5}" "${6}" "${7}"
-          fi
+        [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${params[description]} [S.${_THIS_CORE}] ${_yOk}"
+        _create_drupal_core_basic "${params[dist]}"
+        if [ -d "${_OCTO_PLPATH}" ]; then
+          _msg "DISTRO: ${params[description]} [S.${_THIS_CORE}] installed"
+          _RUN_VERIFY=YES
+          [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _save_verify_this_platform '${1}' '${_SHRD_PLNAME}' '${3}' '${params[description]} [S.${_THIS_CORE}]' '${5}' '${6}' '${7}'"
+          _save_verify_this_platform "${1}" "${_SHRD_PLNAME}" "${3}" "${params[description]} [S.${_THIS_CORE}]" "${5}" "${6}" "${7}"
+        fi
 
         ###---### Drupal Core-Only Production
         #
@@ -1507,8 +1510,8 @@ _d_core_platform_install() {
         if [ -d "${_OCTO_PLPATH}" ]; then
           _msg "DISTRO: ${params[description]} [P.${_THIS_CORE}] installed"
           _RUN_VERIFY=YES
-          [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _save_verify_this_platform '${1}' '${2}' '${3}' '${_SHRD_PLNAME}' '${5}' '${6}' '${7}'"
-          _save_verify_this_platform "${1}" "${2}" "${3}" "${_SHRD_PLNAME}" "${5}" "${6}" "${7}"
+          [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _save_verify_this_platform '${1}' '${_SHRD_PLNAME}' '${3}' '${params[description]} [P.${_THIS_CORE}]' '${5}' '${6}' '${7}'"
+          _save_verify_this_platform "${1}" "${_SHRD_PLNAME}" "${3}" "${params[description]} [P.${_THIS_CORE}]" "${5}" "${6}" "${7}"
         fi
       else
         [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${params[description]} ${_noT}"
