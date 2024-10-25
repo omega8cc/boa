@@ -30,6 +30,10 @@ _if_hosted_sys() {
   fi
 }
 
+_sanitize_number() {
+  echo "$1" | sed 's/[^0-9.]//g'
+}
+
 _fix_clear_cache() {
   if [ -e "${_Plr}/profiles/hostmaster" ]; then
     su -s /bin/bash - ${_THIS_U} -c "drush8 @hostmaster cache-clear all" &> /dev/null
@@ -638,10 +642,6 @@ _check_limits() {
       fi
     fi
   fi
-}
-
-_sanitize_number() {
-  echo "$1" | sed 's/[^0-9.]//g'
 }
 
 _count_cpu() {

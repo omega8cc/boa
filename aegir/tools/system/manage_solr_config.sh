@@ -16,6 +16,10 @@ _vSet="variable-set --always-set"
 
 ###-------------SYSTEM-----------------###
 
+_sanitize_number() {
+  echo "$1" | sed 's/[^0-9.]//g'
+}
+
 _check_config_diff() {
   # $1 is template path
   # $2 is a path to core config
@@ -489,10 +493,6 @@ _check_sites_list() {
       _proceed_solr
     fi
   done
-}
-
-_sanitize_number() {
-  echo "$1" | sed 's/[^0-9.]//g'
 }
 
 _count_cpu() {
