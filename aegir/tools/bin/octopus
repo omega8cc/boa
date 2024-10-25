@@ -40,6 +40,10 @@ if [ -z "${TERM+x}" ]; then
   export TERM=vt100
 fi
 
+_sanitize_number() {
+  echo "$1" | sed 's/[^0-9.]//g'
+}
+
 _clean_pid_exit() {
   echo "REASON ${e} on $(date 2>&1)" >> /root/.octopus.exit.exceptions.log
   [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
@@ -609,10 +613,6 @@ _up_one() {
       _clean_pid_exit _up_one_a
     fi
   fi
-}
-
-_sanitize_number() {
-  echo "$1" | sed 's/[^0-9.]//g'
 }
 
 _count_cpu() {

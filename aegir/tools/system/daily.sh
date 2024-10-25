@@ -65,6 +65,10 @@ _vSet="variable-set --always-set"
 
 ###-------------SYSTEM-----------------###
 
+_sanitize_number() {
+  echo "$1" | sed 's/[^0-9.]//g'
+}
+
 _os_detection_minimal() {
   _APT_UPDATE="apt-get update"
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
@@ -2715,10 +2719,6 @@ _purge_cruft_machine() {
       done
     fi
   done
-}
-
-_sanitize_number() {
-  echo "$1" | sed 's/[^0-9.]//g'
 }
 
 _count_cpu() {
