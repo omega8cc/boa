@@ -626,11 +626,11 @@ if [ -e "/var/aegir/drush" ]; then
   fi
 
   if [ -e "/root/.dev.server.cnf" ]; then
-    if [ ! -e "/var/xdrago/log/.etc_crontab_update_dev_ctrl_f1.${_tRee}.${_xSrl}.pid" ]; then
+    if [ ! -e "/var/xdrago/log/.etc_crontab_update_dev_ctrl_f2.${_tRee}.${_xSrl}.pid" ]; then
       rm -f /var/xdrago/log/.*etc_crontab_update_dev_ctrl*
       _crontab_cleanup
       service cron restart
-      touch /var/xdrago/log/.etc_crontab_update_dev_ctrl_f1.${_tRee}.${_xSrl}.pid
+      touch /var/xdrago/log/.etc_crontab_update_dev_ctrl_f2.${_tRee}.${_xSrl}.pid
     fi
   else
     if [ ! -e "/var/xdrago/log/.etc_crontab_update_prod_ctrl_f1.${_tRee}.${_xSrl}.pid" ]; then
