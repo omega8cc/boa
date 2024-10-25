@@ -42,6 +42,13 @@ _incident_email_report() {
   fi
 }
 
+_redis_cold_restart() {
+  killall -9 redis-server &> /dev/null
+  rm -f /var/lib/redis/*
+  service redis-server start &> /dev/null
+  wait
+}
+
 _sql_restart() {
   touch /run/boa_run.pid
   sleep 3
@@ -51,6 +58,8 @@ _sql_restart() {
   bash /var/xdrago/move_sql.sh
   wait
   echo "$(date 2>&1) $1 incident Percona MySQL server restarted" >> ${_pthOml}
+  _redis_cold_restart
+  echo "$(date 2>&1) $1 incident Redis server restarted" >> ${_pthOml}
   echo "$(date 2>&1) $1 incident response completed" >> ${_pthOml}
   _incident_email_report "$1"
   echo >> ${_pthOml}
