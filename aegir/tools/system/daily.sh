@@ -1654,6 +1654,8 @@ _fix_permissions() {
     && [ -e "${_Dir}/drushrc.php" ] \
     && [ -e "${_Dir}/files" ] \
     && [ -e "${_Dir}/private" ]; then
+    ### Cleanup
+    rm ${_Dir}/*.{hm-fix-*,ctm-lock-*,lock-*,perm-fix-*}.info
     ### directory and settings files - site level
     if [ ! -e "${_Dir}/modules" ]; then
       mkdir ${_Dir}/modules
