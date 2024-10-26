@@ -16,46 +16,76 @@ _LOG_FILE="/var/xdrago/log/core/incompatible-$(date +%y%m%d-%H%M%S).log"
 
 # Function to get Drupal core version
 get_drupal_version() {
-  local _version=""
+  echo "Checking Drupal version in path: ${_DRUPAL_PATH}" >&2
+
   # Check for Drupal 8 and above
   if [ -f "${_DRUPAL_PATH}/core/lib/Drupal.php" ]; then
-    _version_line=$(grep -m1 'const VERSION =' "${_DRUPAL_PATH}/core/lib/Drupal.php")
-    _version=$(echo "${_version_line}" | awk -F"'" '{print $2}')
+    echo "Detected Drupal 8 or higher." >&2
+    _version_line=$(grep -m1 'const VERSION' "${_DRUPAL_PATH}/core/lib/Drupal.php")
+    echo "Version line: ${_version_line}" >&2
+    _version=$(echo "${_version_line}" | sed -E "s/.*const VERSION\s*=\s*'([^']+)'.*/\1/")
+    echo "Extracted version: ${_version}" >&2
+    echo >&2
+    echo "Detected Drupal version: ${_version}" >&2
     echo "${_version}"
     return
   fi
 
   # Check for Drupal 7
   if [ -f "${_DRUPAL_PATH}/includes/bootstrap.inc" ]; then
-    _version_line=$(grep -m1 "define('VERSION'," "${_DRUPAL_PATH}/includes/bootstrap.inc")
-    _version=$(echo "${_version_line}" | awk -F"'" '{print $2}')
-    echo "${_version}"
-    return
+    if grep -q "define('VERSION'," "${_DRUPAL_PATH}/includes/bootstrap.inc"; then
+      echo "Detected Drupal 7." >&2
+      _version_line=$(grep -m1 "define('VERSION'," "${_DRUPAL_PATH}/includes/bootstrap.inc")
+      echo "Version line: ${_version_line}" >&2
+      _version=$(echo "${_version_line}" | sed -E "s/.*define\('VERSION',\s*'([^']+)'\);.*/\1/")
+      echo "Extracted version: ${_version}" >&2
+      echo >&2
+      echo "Detected Drupal version: ${_version}" >&2
+      echo "${_version}"
+      return
+    fi
   fi
 
   # Check for Drupal 6
   if [ -f "${_DRUPAL_PATH}/modules/system/system.module" ]; then
-    _version_line=$(grep -m1 "define('VERSION'," "${_DRUPAL_PATH}/modules/system/system.module")
-    _version=$(echo "${_version_line}" | awk -F"'" '{print $2}')
-    echo "${_version}"
-    return
+    if grep -q "define('VERSION'," "${_DRUPAL_PATH}/modules/system/system.module"; then
+      echo "Detected Drupal 6." >&2
+      _version_line=$(grep -m1 "define('VERSION'," "${_DRUPAL_PATH}/modules/system/system.module")
+      echo "Version line: ${_version_line}" >&2
+      _version=$(echo "${_version_line}" | sed -E "s/.*define\('VERSION',\s*'([^']+)'\);.*/\1/")
+      echo "Extracted version: ${_version}" >&2
+      echo >&2
+      echo "Detected Drupal version: ${_version}" >&2
+      echo "${_version}"
+      return
+    fi
   fi
 
   # Try to get version from VERSION.txt
   if [ -f "${_DRUPAL_PATH}/core/VERSION.txt" ]; then
+    echo "Found core/VERSION.txt" >&2
     _version=$(cat "${_DRUPAL_PATH}/core/VERSION.txt" | tr -d '[:space:]')
+    echo "Extracted version: ${_version}" >&2
+    echo >&2
+    echo "Detected Drupal version: ${_version}" >&2
     echo "${_version}"
     return
   fi
 
   if [ -f "${_DRUPAL_PATH}/VERSION.txt" ]; then
+    echo "Found VERSION.txt" >&2
     _version=$(cat "${_DRUPAL_PATH}/VERSION.txt" | tr -d '[:space:]')
+    echo "Extracted version: ${_version}" >&2
+    echo >&2
+    echo "Detected Drupal version: ${_version}" >&2
     echo "${_version}"
     return
   fi
 
   # Version not found
+  echo "Could not determine Drupal version for codebase at ${_DRUPAL_PATH}" >&2
   echo ""
+  return
 }
 
 # Function to compare versions
@@ -67,24 +97,27 @@ version_lt() {
 # Function to check compatibility based on Drupal version
 check_compatibility() {
   local _version="$1"
-  local _major_version=$(echo "${_version}" | cut -d '.' -f1)
+  local _major_version
+  _major_version=$(echo "${_version}" | cut -d '.' -f1)
 
   if [ -z "${_version}" ]; then
     # Could not determine version
-    echo "Could not determine Drupal version for codebase at ${_DRUPAL_PATH}" >> "${_LOG_FILE}"
+    echo "Could not determine Drupal version for codebase at ${_DRUPAL_PATH}" | tee -a "${_LOG_FILE}"
     return 1
   fi
 
+  echo "Checking compatibility for Drupal version: ${_version}"
+
   # Drupal 6 does not support MySQL 8.0
   if [ "${_major_version}" = "6" ]; then
-    echo "Drupal 6 (${_version}) does not support MySQL 8.0" >> "${_LOG_FILE}"
+    echo "Drupal 6 (${_version}) does not support MySQL 8.0" | tee -a "${_LOG_FILE}"
     return 1
   fi
 
   # Drupal 7 supports MySQL 8.0 since version 7.76
   if [ "${_major_version}" = "7" ]; then
     if version_lt "${_version}" "7.76"; then
-      echo "Drupal 7 (${_version}) supports MySQL 8.0 since version 7.76" >> "${_LOG_FILE}"
+      echo "Drupal 7 (${_version}) supports MySQL 8.0 since version 7.76" | tee -a "${_LOG_FILE}"
       return 1
     fi
   fi
@@ -92,41 +125,59 @@ check_compatibility() {
   # Drupal 8 supports MySQL 8.0 since version 8.6.0
   if [ "${_major_version}" = "8" ]; then
     if version_lt "${_version}" "8.6.0"; then
-      echo "Drupal 8 (${_version}) supports MySQL 8.0 since version 8.6.0" >> "${_LOG_FILE}"
+      echo "Drupal 8 (${_version}) supports MySQL 8.0 since version 8.6.0" | tee -a "${_LOG_FILE}"
       return 1
     fi
   fi
 
   # Drupal 11 no longer supports MySQL 5.7
   if [ "${_major_version}" = "11" ]; then
-    echo "Drupal 11 (${_version}) requires MySQL 8.0" >> "${_LOG_FILE}"
+    echo "Drupal 11 (${_version}) requires MySQL 8.0" | tee -a "${_LOG_FILE}"
     # No need to return 1, as it's compatible with MySQL 8.0
   fi
 
   # All other versions are considered compatible
+  echo "Drupal version ${_version} is compatible with MySQL 8.0"
   return 0
 }
 
 # Function to list contributed modules and their versions
 list_contrib_modules() {
   local _module_paths=()
+  echo "Listing contributed modules..."
+
   # Drupal 7 and below modules path
   if [ -d "${_DRUPAL_PATH}/sites/all/modules" ]; then
     _module_paths+=("${_DRUPAL_PATH}/sites/all/modules")
   fi
+  # Include site-specific modules
+  if ls -d "${_DRUPAL_PATH}/sites/"*/modules 1> /dev/null 2>&1; then
+    for dir in "${_DRUPAL_PATH}/sites/"*/modules; do
+      _module_paths+=("${dir}")
+    done
+  fi
   # Drupal 8 and above modules path
+  if [ -d "${_DRUPAL_PATH}/modules/contrib" ]; then
+    _module_paths+=("${_DRUPAL_PATH}/modules/contrib")
+  fi
+  if [ -d "${_DRUPAL_PATH}/modules/custom" ]; then
+    _module_paths+=("${_DRUPAL_PATH}/modules/custom")
+  fi
+  # Include top-level modules directory for Drupal 8+
   if [ -d "${_DRUPAL_PATH}/modules" ]; then
     _module_paths+=("${_DRUPAL_PATH}/modules")
   fi
 
   for _module_dir in "${_module_paths[@]}"; do
+    echo "Scanning directory: ${_module_dir}"
     find "${_module_dir}" -type f \( -name "*.info.yml" -o -name "*.info" \) | while read -r _file; do
       _module_name=$(basename "$(dirname "${_file}")")
-      _module_version=$(grep -E '^version[:=]' "${_file}" 2>/dev/null | awk -F'[:=]' '{print $2}' | tr -d '[:space:]')
+      # Try to extract version
+      _module_version=$(grep -E '^(version|core)[:=]' "${_file}" 2>/dev/null | head -n1 | awk -F'[:=]' '{print $2}' | tr -d '[:space:]')
       if [ -z "${_module_version}" ]; then
         _module_version="(version not specified)"
       fi
-      echo "Module: ${_module_name}, Version: ${_module_version}, Path: $(dirname "${_file}")" >> "${_LOG_FILE}"
+      echo "Module: ${_module_name}, Version: ${_module_version}, Path: $(dirname "${_file}")" | tee -a "${_LOG_FILE}"
     done
   done
 }
@@ -150,9 +201,9 @@ fi
 
 # If any incompatibilities were found, log the codebase path and list contributed modules
 if [ "${_INCOMPATIBILITY_FOUND}" -eq 1 ]; then
-  echo "Incompatibility detected in codebase at ${_DRUPAL_PATH}" >> "${_LOG_FILE}"
-  echo "Drupal version: ${_DRUPAL_VERSION}" >> "${_LOG_FILE}"
-  echo "Listing contributed modules for manual compatibility check:" >> "${_LOG_FILE}"
+  echo "Incompatibility detected in codebase at ${_DRUPAL_PATH}" | tee -a "${_LOG_FILE}"
+  echo "Drupal version: ${_DRUPAL_VERSION}" | tee -a "${_LOG_FILE}"
+  echo "Listing contributed modules for manual compatibility check:" | tee -a "${_LOG_FILE}"
   list_contrib_modules
-  echo "-----------------------------" >> "${_LOG_FILE}"
+  echo "-----------------------------" | tee -a "${_LOG_FILE}"
 fi
