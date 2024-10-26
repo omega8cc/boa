@@ -1,5 +1,176 @@
 ###
-### Stable BOA-5.4.0-lts - Full Edition
+### Stable BOA-5.5.0-pro - Full Edition
+### Date: Sat 26 Oct 2024 09:49:51 AM PDT in Santa Clara
+###
+
+@=> New BOA-5.5.0 PRO Release – Thank You for Your Support!
+
+  We're thrilled to introduce BOA-5.5.0 PRO, our latest release and the third
+  under our new branch structure and dual licensing model.
+
+  This PRO release brings the project fully in sync with the DEV branch,
+  which has been actively developed over the past several months, incorporating
+  nearly 400 commits since BOA-5.4.0.
+
+  BOA-5.5.0 PRO also comes equipped with 26 Aegir-ready platforms, supporting
+  either Drupal core alone or various popular Drupal distributions—seven of
+  which are new! These platforms include options like Commerce, DXPR Marketing,
+  EzContent, farmOS, LocalGov, OpenCulturas, OpenFed, OpenLucius, Opigno LMS,
+  Sector, Social, Thunder, Ubercart, and Varbase.
+
+  We extend our heartfelt thanks to all of you who support our work
+  by purchasing a BOA Pro license: https://omega8.cc/boapro.
+
+  As always, this announcement covers only the most impactful new features,
+  critical fixes, and enhancements. For a comprehensive list of all updates,
+  please refer to the full commit history.
+
+@=> New Features
+
+    * Added codebasecheck tool for codebase compatibility check with Percona 8.0
+    * Added Drush 13 support by invoking vendor/drush/drush/drush.php directly
+    * Added dedicated memorytuner (for testing for now)
+    * Added mysqltuner5 and mysqltuner8
+    * Added bash version scan_nginx.sh -- the Nginx DoS Guard
+    * Added support for more granular load limits like 1.2 2.5 3.
+    * Added support for non-standard /hdd mount point
+    * Added support for /mnt/ paths in Drush
+    * Added sqlclean and vhostcheck tools for root
+    * SQL Adminer access moved to Octopus Aegir HTTPS vhost URL at /sqladmin
+    * Added incident_email_report() feature to all monitor/check/ scripts
+    * Allow SSH based access authorization to SQL Adminer at new /sqladmin/ URL
+    * Added incident detection and email reporting for LE certs renewal failures
+    * Added screen auto-start in boa, barracuda and octopus
+    * Added support for Percona 8.4 LTS (for testing only, you should use 8.0)
+    * Added support for Percona 8.3 (for testing only, you should use 8.0)
+    * Added support for Percona 8.0 (production ready)
+
+@=> Improvements
+
+    * Added _redis_cold_restart to mysql restart in the monitor/check/ scripts
+    * Rewrite the code used to install many new Drupal distros in Octopus
+    * Added Troubleshooting Docs in docs/FIXME.md (more entries soon)
+    * Faster _sql_busy_detection() in the monitor/check/ scripts
+    * Added _mysql_downgrade_protection() to avoid downgrade from Percona 8.0
+    * Many improvements in the Nginx DoS Guard in the monitor/check/ scripts
+    * Do not use fast firewall block unless /root/.instant.csf.block.cnf
+    * Pause some new monitors sub-tasks during BOA upgrades and backups
+    * Use underscore as prefix for all functions and camelCase vars
+    * Block only relevant ports using the monitor/check/ scripts
+    * Added docs on _NGINX_DOS_ variables
+    * Added doc on PHP versions management — fixes #1807
+    * Added separate docs/PHP-FPM.md and docs/DRUSH-CLI.md
+    * Added docs on Importance of Keeping SKYNET Enabled in BOA
+    * Added _CPU_TASK_RATIO to the CPU logic in auto-healing scripts
+    * Display currently used GRUB config in boa info
+    * Make the not_supported_virt() BOLD ENOUGH in boa info
+    * Added WARNING if /root/.allow.any.virt.cnf exists in boa info
+    * Display _DSK Usage for relevant partitions only in boa info
+    * Improved _XSY System Uptime/Load/Kernel/Disk/Memory Report in boa info
+    * Added Lshell version to boa info
+    * Always attach basic boa info report to barracuda upgrade log/email
+    * Improve check_php_rebuild() and add separate check_php_ssl_version()
+    * Explained _INCIDENT_EMAIL_REPORT variable
+    * Explained _SQL_MAX_TTL variable
+    * Explained _SQL_LOW_MAX_TTL variable
+    * Split big minute.sh into smaller auto-healing scripts
+    * Added procedure to fix empty or missing .dhp files
+    * Improved /root/.dont.use.fancy.bash.login.cnf logic
+    * Improved the octopus upgrade email tpl
+    * Added Key Services Uptime Report to boa info
+    * Pretty large defunct code cleanup
+
+@=> Changes
+
+    * Install python3-full packages
+    * Duplicity: Remove Python 2 support and require OpenSSL 3
+    * Remove restrictions for opcache_compile_file (Grav CMS support)
+    * Removed legacy manage_ip_auth_access() for SQL Adminer access
+    * PHP 8.3 is the new default version
+    * Prefer system default Python3 for Lshell and src build for Duplicity
+    * Always run ifnames_grub_check_sync in DEMO mode unless ctrl file exists
+    * Remove chrony if preinstalled
+    * PHP 8.1 is the max version supported on Stretch and Jessie
+    * New Relic removed support for legacy PHP 7.0 and 7.1
+    * Run _update_boa_tools only when new serial or pid key is detected
+    * Redis extension 8.x-1.8.2 (with not needed db schema update reverted)
+    * Disabled backboa install in auto mode
+    * Allow all 7.x PHP versions on legacy (Debian) systems
+    * Amazon EC2 No Longer Supported (system crashes, doesn't support Devuan)
+    * Use legacy PHP 7.x by default on legacy Debian systems
+
+@=> Upgrades
+
+    * Lshell 0.10
+    * Composer 2.8.1
+    * Unbound 1.21.1
+    * OpenSSL 3.3.2
+    * PHP 8.3.12
+    * PHP 8.2.24
+    * PHP 8.1.30
+    * OpenSSH 9.9p1
+    * Python 3.12.5 (for Duplicity)
+    * cURL 8.10.1
+    * Nginx 1.27.2
+    * ionCube 13.3.1 (also for PHP 8.3)
+    * MyQuick 0.16.7-3
+    * CSF 14.21
+    * Duplicity 3.0.2
+
+@=> Important Fixes
+
+    * Fix PATH in the websh wrapper (fixes git and OpenSSL issues)
+    * Fix for _PHP_FPM_TIMEOUT logic
+    * Remove apt-listchanges on Debian (for legacy systems with broken debconf)
+    * Improve _if_fix_python() procedure logic
+    * Fix the logic for _update_boa_tools on init
+    * Do not remove usage.sh — fixes #1824
+    * Add cleanup for exclude.tag (could result with no files on clone)
+    * Do not restart sshd every minute
+    * Do not reload nginx every few minutes by default
+    * cURL version upgrade should happen only with barracuda upgrade
+    * Fix for too broad cleanup in /var/xdrago/log/
+    * Ignore all dynamic requests related to css/js while they are generated
+    * Do not log redirects (Nginx)
+    * Inconsistent checks for SSL version in check_php_rebuild — fixes #1815
+    * Use _CURL_VRN=7.50.1 for Wheezy compatibility
+    * Use separate log for mysql notices — fixes #1805
+    * Add built-in /run/unbound setup — fixes #1804
+    * Percona 5.7 still depends on legacy packages naming — fixes #1808
+    * Compatibility with legacy Python 3.5
+
+@=> Drupal platforms available for installation -- docs/PLATFORMS.md
+
+    * Commerce Kickstart 2.77 (7.101.1)
+    * Commerce Base 2.40 (10.1.8)
+    * Commerce Kickstart 3.0.0 (10.3.6)
+    * DXPR Marketing 10.3.0 (10.3.6)
+    * EzContent 2.2.15 (10.3.6)
+    * farmOS 3.3.1 (10.3.6)
+    * LocalGov 3.0.11 (10.3.6)
+    * OpenCulturas 2.2.1 (10.3.6)
+    * OpenFed 12.2.4 (10.2.10)
+    * OpenLucius 2.0.0 (9.5.11)
+    * Opigno LMS 3.1.0 (9.5.11)
+    * Sector 10.0.0-rc5 (10.2.10)
+    * Social 12.4.5 (10.2.10)
+    * Thunder 7.3.7 (10.3.6)
+    * Ubercart 2.15 (6.60.1)
+    * Ubercart 3.13 (7.101.1)
+    * Varbase 9.1.6 (10.3.6)
+    * Varbase 10.0.2 (10.3.6)
+    * Pressflow 6.60.1 (core only)
+    * Drupal 7.101.1 (core only)
+    * Drupal 9.5.11 (core only)
+    * Drupal 10.0.11 (core only)
+    * Drupal 10.1.8 (core only)
+    * Drupal 10.2.10 (core only)
+    * Drupal 10.3.6 (core only)
+    * Drupal 10.4.x-dev (core only)
+
+
+###
+### Stable BOA-5.4.0-pro - Full Edition
 ### Date: Wed 14 Aug 2024 06:24:03 AM AEST in Sydney
 ###
 

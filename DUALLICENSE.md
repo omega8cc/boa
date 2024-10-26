@@ -1,4 +1,4 @@
-## Dual License and BOA Branches Explained
+# Dual License and BOA Branches Explained
 
 **BOA** remains a **Free/Libre Open Source Project**. While all of **BOA** code is **Free/Libre Open Source**, only the **BOA LTS** branch and **Ægir** are available without any cost or restrictions.
 

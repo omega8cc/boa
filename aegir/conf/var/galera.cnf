@@ -15,7 +15,6 @@ innodb_autoinc_lock_mode=2
 #
 innodb_flush_log_at_trx_commit=0
 binlog_row_image=minimal
-performance_schema=OFF
 
 ### Basic Galera Settings
 #

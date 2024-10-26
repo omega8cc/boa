@@ -1,14 +1,14 @@
-## Security Considerations for Multi-Ægir Systems
+# Security Considerations for Multi-Ægir Systems
 
 In a multi-Ægir instance system, all instances utilize the same Nginx server. Consequently, installing a site with the same domain on multiple instances can cause conflicts. **The instances are not aware of each other**, so it is crucial to manage the system responsibly.
 
 It is **imperative** to never grant anyone access to the Ægir **system user** on any Octopus instance. This user has near-root access to **all** sites databases hosted across **all** Octopus instances on the same BOA server. Only provide **restricted shell** access accounts and **non-admin** Ægir control panel accounts to end-users.
 
-## Security Considerations for Node/NPM Access
+# Security Considerations for Node/NPM Access
 
 Given that `node` can be exploited to bypass Limited Shell and pose a significant security risk to the BOA system, it should not be enabled on any BOA system with multiple `lshell` users. Consequently, Node/NPM support is not enabled in BOA by default. To enable it, you must create an empty control file `/root/.allow.node.lshell.cnf` to lift the restriction. In hosted BOA environments, Node/NPM support is available only on dedicated systems such as Phantom and Cluster.
 
-## BOA System Security Features Explained
+# BOA System Security Features Explained
 
 BOA offers a highly secure hosting environment for Ægir and Drupal sites, featuring comprehensive built-in security monitoring and autonomous attack prevention systems. Below is a list of key features that collectively provide robust protection for all hosted sites. For additional information, consider reading about [running performance or load tests](https://learn.omega8.cc/how-to-run-performance-or-load-test-300).
 
@@ -25,9 +25,9 @@ BOA offers a highly secure hosting environment for Ægir and Drupal sites, featu
 11. **Restricted Admin Access**: Admin account access (uid=1) is unavailable in Ægir to prevent potential misuse. Non-admin main account access provides sufficient privileges for safe management in a multi-Ægir environment.
 12. **Restricted System Binaries Access**: BOA modifies access permissions to system binaries and commands that could potentially be used as attack vectors by web shells and other intrusion methods, significantly limiting damage potential even for sites running older Drupal versions.
 
-## Customizing PHP Function Restrictions
+# Customizing PHP Function Restrictions
 
-### Option in `/root/.barracuda.cnf`
+## Option in `/root/.barracuda.cnf`
 
 You can define a custom list of functions to disable in addition to those already denied in the system-level `disable_functions`.
 
@@ -55,7 +55,7 @@ _PHP_FPM_DENY="passthru,popen,system"
 
 While this improves security, it can also break modules that rely on any disabled functions.
 
-### Option in `/root/.USER.octopus.cnf`
+## Option in `/root/.USER.octopus.cnf`
 
 You can define a custom list of functions to disable in addition to those already denied in the system-level `disable_functions`.
 
@@ -81,9 +81,9 @@ _PHP_FPM_DENY="system,exec,shell_exec"
 
 While this improves security, it can also break modules that rely on any disabled functions.
 
-## Strict Binary Permissions
+# Strict Binary Permissions
 
-### Option in `/root/.barracuda.cnf`
+## Option in `/root/.barracuda.cnf`
 
 We highly recommend enabling this option to improve system security when certain PHP functions, especially `exec`, `passthru`, `shell_exec`, `system`, `proc_open`, `popen`, are not disabled via the `_PHP_FPM_DENY` option above.
 

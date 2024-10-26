@@ -1,14 +1,10 @@
 #!/bin/bash
 
-HOME=/root
-SHELL=/bin/bash
-PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+export HOME=/root
+export SHELL=/bin/bash
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
-export PATH=${PATH}
-export SHELL=${SHELL}
-export HOME=${HOME}
-
-check_root() {
+_check_root() {
   if [ `whoami` = "root" ]; then
     ionice -c2 -n7 -p $$
     renice 19 -p $$
@@ -28,9 +24,14 @@ check_root() {
     exit 1
   fi
 }
-check_root
+_check_root
 
 if [ -e "/root/.proxy.cnf" ]; then
+  exit 0
+fi
+
+if (( $(pgrep -fc 'mysql_repair.sh') > 2 )); then
+  echo "Too many mysql_repair.sh running $(date)" >> /var/xdrago/log/too.many.log
   exit 0
 fi
 

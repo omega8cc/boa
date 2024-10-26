@@ -26,7 +26,7 @@ exit;
 #############################################################################
 sub makeactions
 {
-  $this_path = "/var/xdrago/monitor/$this_filename";
+  $this_path = "/var/xdrago/monitor/log/$this_filename.log";
   if (!-e "$this_path") {
     $intro = <<INTRO
 This report is generated automatically when new segfault is discovered.
@@ -44,7 +44,7 @@ INTRO
     $intrx = <<INTROX
 Note that any vhost file (not the site) listed below as causing
 segfault has been automatically (re)moved to the /var/backups/segfault/
-directory, so affected site will display standard Under Construction page
+directory, so affected site will display standard UnderConstruction page
 until you will run Verify task in the Aegir control panel for this site.
 
 However, if the problem is not fixed and it still causes segfault,
@@ -55,7 +55,7 @@ INTROX
     `echo "$intro" >> $this_path`;
     #`echo "$intrx" >> $this_path`;
   }
-  $this_archive="/var/xdrago/monitor/segfault_alert_archive";
+  $this_archive="/var/xdrago/monitor/log/$this_filename.archive.log";
   if (!-f "$this_archive") {
     `touch $this_archive`;
   }
@@ -103,7 +103,7 @@ sub trash_it_action
     `echo "### NGX: $ngxl" >> $this_path`;
     `echo "### PTH: $pthl" >> $this_path`;
     `echo "### VHT: $disl" >> $this_path`;
-    &send_alert;
+    &_send_alert;
   }
 }
 
@@ -175,7 +175,7 @@ sub find_domain
 }
 
 #############################################################################
-sub send_alert
+sub _send_alert
 {
   $this_email="/data/disk/$rx/log/email.txt";
   if (-f "$this_email") {
@@ -197,8 +197,8 @@ sub send_alert
   if ($mailx_test =~ /(built for Linux)/i) {
     `cat $this_path | s-nail -b notify\@omega8.cc -s "PHP Segfault Alert for [$dx] at [$s] on $t" $cmail`;
   }
-  `cat /var/xdrago/monitor/segfault_alert >> /var/xdrago/monitor/segfault_alert_archive`;
-  `rm -f /var/xdrago/monitor/segfault_alert`;
+  `cat /var/xdrago/monitor/log/$this_filename.log >> /var/xdrago/monitor/log/$this_filename.archive.log`;
+  `rm -f /var/xdrago/monitor/log/$this_filename.log`;
 }
 
 ###EOF2024###

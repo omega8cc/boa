@@ -1,8 +1,8 @@
 #
 # Fix csf.uidignore file to whitelist important system uids when UID_INTERVAL != 0
-fix_lfd_uidignore() {
+_fix_lfd_uidignore() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: fix_lfd_uidignore"
+    _msg "PROC: _fix_lfd_uidignore"
   fi
   _THIS_FILE=/etc/csf/csf.uidignore
   if [ -e "${_THIS_FILE}" ]; then
@@ -36,9 +36,9 @@ fix_lfd_uidignore() {
 
 #
 # Fix csf.fignore file to whitelist /tmp/drush_*
-fix_lfd_whitelist() {
+_fix_lfd_whitelist() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: fix_lfd_whitelist"
+    _msg "PROC: _fix_lfd_whitelist"
   fi
   _THIS_FILE=/etc/csf/csf.fignore
   if [ -e "${_THIS_FILE}" ]; then
@@ -61,26 +61,26 @@ fix_lfd_whitelist() {
 
 #
 # install csf/lfd firewall
-csf_install() {
+_csf_install() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: csf_install"
+    _msg "PROC: _csf_install"
   fi
   if [ "${_CSF_MODE}" = "install" ]; then
-    msg "INFO: Installing csf/lfd firewall..."
+    _msg "INFO: Installing csf/lfd firewall..."
   else
-    msg "INFO: Upgrading csf/lfd firewall..."
+    _msg "INFO: Upgrading csf/lfd firewall..."
   fi
   cd /var/opt
   _IPSET_TEST=$(which ipset 2> /dev/null)
   if [ ! -x "${_IPSET_TEST}" ]; then
-    apt_clean_update
+    _apt_clean_update
     if [ -L "/sbin/ipset" ]; then
       rm -f /sbin/ipset
     fi
     if [ -L "/usr/sbin/ipset" ]; then
       rm -f /usr/sbin/ipset
     fi
-    mrun "apt-get install ipset ${aptYesUnth}" 2> /dev/null
+    _mrun "apt-get install ipset ${_aptYesUnth}" 2> /dev/null
   fi
   if [ -x "/sbin/ipset" ] && [ ! -e "/usr/sbin/ipset" ]; then
     ln -s /sbin/ipset /usr/sbin/ipset
@@ -130,11 +130,11 @@ csf_install() {
   ###
   ### Fix for iptables paths backward compatibility
   ###
-  rm -f ${pthLog}/lastFire
+  rm -f ${_pthLog}/lastFire
   ### from https://download.configserver.com/csf.tgz
-  get_dev_src "csf-${_CSF_VRN}.tgz"
+  _get_dev_src "csf-${_CSF_VRN}.tgz"
   cd csf
-  mrun "sh install.sh" 2> /dev/null
+  _mrun "sh install.sh" 2> /dev/null
   _NFTABLES_TEST=$(iptables -V 2>&1)
   if [[ "${_NFTABLES_TEST}" =~ "nf_tables" ]]; then
     if [ -e "/usr/sbin/iptables-legacy" ]; then
@@ -151,8 +151,8 @@ csf_install() {
     fi
   fi
   cd /var/opt
-  if_hosted_sys
-  if [ "${hostedSys}" = "YES" ]; then
+  _if_hosted_sys
+  if [ "${_hostedSys}" = "YES" ]; then
     _SSH_PORT=22
   fi
   _CSF_COMPATIBILITY_TEST=$(perl /etc/csf/csftest.pl 2>&1)
@@ -175,16 +175,16 @@ csf_install() {
     || [ "${_CSF_COMPATIBILITY}" = "PARTIAL" ]; then
     if [ "${_CSF_COMPATIBILITY}" = "PARTIAL" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "TEST: csf/lfd firewall should mostly work on this system"
+        _msg "TEST: csf/lfd firewall should mostly work on this system"
       fi
     else
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "TEST: csf/lfd firewall should work fine on this system"
+        _msg "TEST: csf/lfd firewall should work fine on this system"
       fi
     fi
     mv -f /etc/csf/csf.conf \
-      /etc/csf/csf.conf-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
-    cp -af ${locCnf}/var/csf.conf /etc/csf/csf.conf
+      /etc/csf/csf.conf-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
+    cp -af ${_locCnf}/var/csf.conf /etc/csf/csf.conf
     sed -i "s/notify\@omega8.cc/${_MY_EMAIL}/g" /etc/csf/csf.conf &> /dev/null
     wait
     sed -i "s/TCP_IN = \"20,21,22,/TCP_IN = \"20,21,${_SSH_PORT},/g" \
@@ -205,36 +205,36 @@ csf_install() {
       sed -i "s/^#TCPKeepAlive.*/TCPKeepAlive yes/g" /etc/ssh/sshd_config
       wait
     fi
-    mrun "service ssh restart" 2> /dev/null
+    _mrun "service ssh restart" 2> /dev/null
     if [ "${_CSF_MODE}" = "install" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: csf/lfd firewall installed"
+        _msg "INFO: csf/lfd firewall installed"
       fi
     else
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: csf/lfd firewall upgrade completed"
+        _msg "INFO: csf/lfd firewall upgrade completed"
       fi
     fi
-    touch ${pthLog}/csf_${_X_VERSION}.log
+    touch ${_pthLog}/csf_${_X_VERSION}.log
   else
-    msg "TEST: csf/lfd firewall can not be installed on this system"
+    _msg "TEST: csf/lfd firewall can not be installed on this system"
   fi
 }
 
-csf_lfd_install_upgrade() {
+_csf_lfd_install_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: csf_lfd_install_upgrade"
+    _msg "PROC: _csf_lfd_install_upgrade"
   fi
   _IPSET_TEST=$(which ipset 2> /dev/null)
   if [ ! -x "${_IPSET_TEST}" ]; then
-    apt_clean_update
+    _apt_clean_update
     if [ -L "/sbin/ipset" ]; then
       rm -f /sbin/ipset
     fi
     if [ -L "/usr/sbin/ipset" ]; then
       rm -f /usr/sbin/ipset
     fi
-    mrun "apt-get install ipset ${aptYesUnth}" 2> /dev/null
+    _mrun "apt-get install ipset ${_aptYesUnth}" 2> /dev/null
   fi
   if [ -x "/sbin/ipset" ] && [ ! -e "/usr/sbin/ipset" ]; then
     ln -s /sbin/ipset /usr/sbin/ipset
@@ -248,12 +248,12 @@ csf_lfd_install_upgrade() {
     if [ ! -e "/run/cloud_vhost.pid" ]; then
       if [ ! -e "/usr/sbin/csf" ]; then
         echo " "
-        if prompt_yes_no "Do you want to install csf/lfd firewall?" ; then
+        if _prompt_yes_no "Do you want to install csf/lfd firewall?" ; then
           true
           _CSF_MODE=install
-          csf_install
+          _csf_install
         else
-          msg "INFO: csf/lfd firewall installation skipped"
+          _msg "INFO: csf/lfd firewall installation skipped"
         fi
       fi
     fi
@@ -270,15 +270,15 @@ csf_lfd_install_upgrade() {
       _REMOVE_CSF=YES
     fi
     if [ "${_REMOVE_CSF}" = "YES" ]; then
-      mrun "service lfd stop" 2> /dev/null
+      _mrun "service lfd stop" 2> /dev/null
       wait
       kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
       killall sleep &> /dev/null
       rm -f /etc/csf/csf.error
       csf -x &> /dev/null
       wait
-      mrun "update-rc.d -f csf remove" 2> /dev/null
-      mrun "update-rc.d -f lfd remove" 2> /dev/null
+      _mrun "update-rc.d -f csf remove" 2> /dev/null
+      _mrun "update-rc.d -f lfd remove" 2> /dev/null
       rm -f /etc/cron.d/{csf,lfd}*
       rm -f /usr/sbin/{csf,lfd}
       rm -f /etc/init.d/{csf,lfd}
@@ -288,7 +288,7 @@ csf_lfd_install_upgrade() {
         _DO_NOTHING=YES
       else
         _CSF_MODE=upgrade
-        csf_install
+        _csf_install
       fi
       sed -i "s/^AUTO_UPDATES .*/AUTO_UPDATES = \"0\"/g" /etc/csf/csf.conf &> /dev/null
       wait
@@ -300,19 +300,19 @@ csf_lfd_install_upgrade() {
         sed -i "s/^USE_CONNTRACK .*/USE_CONNTRACK = \"0\"/g" /etc/csf/csf.conf &> /dev/null
         wait
       fi
-      if [ -e "${pthLog}/lastFire" ]; then
-        rm -f ${pthLog}/lastFire
-        mrun "service lfd stop" 2> /dev/null
+      if [ -e "${_pthLog}/lastFire" ]; then
+        rm -f ${_pthLog}/lastFire
+        _mrun "service lfd stop" 2> /dev/null
         wait
         kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
         killall sleep &> /dev/null
         rm -f /etc/csf/csf.error
-        mrun "csf -x" &> /dev/null
+        _mrun "csf -x" &> /dev/null
         wait
-        mrun "csf -e" &> /dev/null
+        _mrun "csf -e" &> /dev/null
         wait
-        mrun "csf -q" &> /dev/null
-        mrun "service lfd start" 2> /dev/null
+        _mrun "csf -q" &> /dev/null
+        _mrun "service lfd start" 2> /dev/null
         wait
         ### Linux kernel TCP SACK CVEs mitigation
         ### CVE-2019-11477 SACK Panic

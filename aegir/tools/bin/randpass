@@ -1,6 +1,9 @@
 #!/bin/bash
 
-PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+export HOME=/root
+export SHELL=/bin/bash
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+
 _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
 if [ -e "/root/.install.modern.openssl.cnf" ] \
   && [ -x "/usr/local/ssl3/bin/openssl" ]; then
@@ -12,7 +15,8 @@ _SSL_ITD=$(${_SSL_BINARY} version 2>&1 \
   | tr -d "\n" \
   | cut -d" " -f2 \
   | awk '{ print $1}')
-if [[ "${_SSL_ITD}" =~ "3.2." ]] \
+if [[ "${_SSL_ITD}" =~ "3.3." ]] \
+  || [[ "${_SSL_ITD}" =~ "3.2." ]] \
   || [[ "${_SSL_ITD}" =~ "3.1." ]] \
   || [[ "${_SSL_ITD}" =~ "3.0." ]] \
   || [[ "${_SSL_ITD}" =~ "1.1." ]] \
@@ -20,67 +24,67 @@ if [[ "${_SSL_ITD}" =~ "3.2." ]] \
   _NEW_SSL=YES
 fi
 
-randpass() {
-  if [ "${integer}" -ge "32" ]; then
-    rkey="${integer}"
+_randpass() {
+  if [ "${_integer}" -ge "32" ]; then
+    _rkey="${_integer}"
   else
-    rkey=32
+    _rkey=32
   fi
-  if [ "${kind}" = "graph" ]; then
-    CHAR="[:graph:]"
+  if [ "${_kind}" = "graph" ]; then
+    _CHAR="[:graph:]"
     cat /dev/urandom \
-      | tr -cd "$CHAR" \
-      | head -c ${1:-$rkey} \
+      | tr -cd "${_CHAR}" \
+      | head -c ${1:-${_rkey}} \
       | tr -d "\n"
-  elif [ "${kind}" = "esc" ]; then
-    CHAR="[:graph:]"
+  elif [ "${_kind}" = "esc" ]; then
+    _CHAR="[:graph:]"
     cat /dev/urandom \
-      | tr -cd "$CHAR" \
-      | head -c ${1:-$rkey} \
+      | tr -cd "${_CHAR}" \
+      | head -c ${1:-${_rkey}} \
       | tr -d "\n" \
       | sed 's/[\\\/\^\?\>\`\#\"\{\(\$\@\&\|\*]//g; s/\(['"'"'\]\)//g'
-  elif [ "${kind}" = "hash" ]; then
-    CHAR="[:alnum:]"
+  elif [ "${_kind}" = "hash" ]; then
+    _CHAR="[:alnum:]"
     if [ "${_NEW_SSL}" = "YES" ]; then
       cat /dev/urandom \
-        | tr -cd "$CHAR" \
-        | head -c ${1:-$rkey} \
+        | tr -cd "${_CHAR}" \
+        | head -c ${1:-${_rkey}} \
         | openssl md5 \
         | awk '{ print $2}' \
         | tr -d "\n"
     else
       cat /dev/urandom \
-        | tr -cd "$CHAR" \
-        | head -c ${1:-$rkey} \
+        | tr -cd "${_CHAR}" \
+        | head -c ${1:-${_rkey}} \
         | openssl md5 \
         | tr -d "\n"
     fi
   else
-    CHAR="[:alnum:]"
+    _CHAR="[:alnum:]"
     cat /dev/urandom \
-      | tr -cd "$CHAR" \
-      | head -c ${1:-$rkey} \
+      | tr -cd "${_CHAR}" \
+      | head -c ${1:-${_rkey}} \
       | tr -d "\n"
   fi
   echo
 }
 
 case "$2" in
-  alnum) integer="$1"
-         kind="$2"
-         randpass
+  alnum) _integer="$1"
+         _kind="$2"
+         _randpass
   ;;
-  graph) integer="$1"
-         kind="$2"
-         randpass
+  graph) _integer="$1"
+         _kind="$2"
+         _randpass
   ;;
-  hash)  integer="$1"
-         kind="$2"
-         randpass
+  hash)  _integer="$1"
+         _kind="$2"
+         _randpass
   ;;
-  esc)   integer="$1"
-         kind="$2"
-         randpass
+  esc)   _integer="$1"
+         _kind="$2"
+         _randpass
   ;;
   *)     echo "Usage: randpass {32-128} {alnum|graph|hash|esc}"
          exit 1

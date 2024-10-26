@@ -22,6 +22,7 @@ _THIS_DB_HOST=localhost #------- Allows to use hostname in DB grants when FQDN
 ### will *override* all listed settings in the Barracuda script,
 ### both on initial install and upgrade.
 ###
+_INCIDENT_EMAIL_REPORT=YES #---- Allows to disable incident reports when NO
 _AUTOPILOT=NO #----------------- Allows to skip all Yes/No questions when YES
 _DEBUG_MODE=NO #---------------- Allows to enable Drush debugging when YES
 _MY_EMAIL="my@email" #---------- System admin email
@@ -31,10 +32,13 @@ _MODULES_FIX=YES #-------------- Allows to skip weekly modules en/dis when NO
 _MODULES_SKIP="" #-------------- Modules (machine names) to never auto-disable
 _PERMISSIONS_FIX=YES #---------- Allows to skip daily permissions fix when NO
 ###
-_CPU_CRIT_RATIO=9 #------------- Max load per CPU core before killing PHP/Drush
-_CPU_MAX_RATIO=6 #-------------- Max load per CPU core before disabling Nginx
-_CPU_SPIDER_RATIO=3 #----------- Max load per CPU core before blocking spiders
+_CPU_CRIT_RATIO=6.1 #----------- Max load per CPU core before killing PHP/Drush
+_CPU_MAX_RATIO=4.1 #------------ Max load per CPU core before disabling Nginx
+_CPU_TASK_RATIO=3.1 #----------- Max load per CPU core to launch tasks queue
+_CPU_SPIDER_RATIO=2.1 #--------- Max load per CPU core before blocking spiders
 ###
+_SQL_MAX_TTL=3600 #------------- Max TTL for mysql process per user (seconds)
+_SQL_LOW_MAX_TTL=60 #----------- Max TTL for mysql process per problematic user
 _DB_BINARY_LOG=NO #------------- Allows to enable binary logging when YES
 _DB_SERIES=5.7 #---------------- Supported values: 5.7 8.0 8.3 8.4
 _DB_SERVER=Percona #------------ Install Percona SQL Server
@@ -52,7 +56,14 @@ _ENABLE_GOACCESS=NO #----------- Generate statistics with GoAccess when YES
 ###
 _MAGICK_FROM_SOURCES=NO #------- Builds ImageMagick from sources when YES
 ###
-_NGINX_DOS_LIMIT=399 #---------- Allows to override default 399/9999 limit
+_NGINX_DOS_LINES=1999 #--------- Default number of access.log lines to check
+_NGINX_DOS_LIMIT=399 #---------- Default 399/1999 limit of page views per IP
+_NGINX_DOS_MODE=2 #------------- 1 or 2 (default)
+_NGINX_DOS_LOG=VERBOSE #-------- Logging mode, can be SILENT, NORMAL or VERBOSE
+_NGINX_DOS_IGNORE="foo|bar" #--- Keywords to ignore the requests if found
+_NGINX_DOS_STOP="foo|bar" #----- Keywords to trigger counter +5 increase if found
+
+###
 _NGINX_EXTRA_CONF="" #---------- Allows to add custom options to Nginx build
 _NGINX_FORWARD_SECRECY=YES #---- Installs PFS Nginx support when YES (default)
 _NGINX_HEADERS=NO #------------- Installs Nginx Headers More support when YES
@@ -61,16 +72,16 @@ _NGINX_NAXSI=NO #--------------- Installs NAXSI WAF when YES - experimental
 _NGINX_SPDY=YES #--------------- Installs SPDY Nginx support when YES (default)
 _NGINX_WORKERS=AUTO #----------- Allows to override AUTO with a valid integer
 ###
-_PHP_CLI_VERSION=8.1 #---------- PHP-CLI for Master Instance
+_PHP_CLI_VERSION=8.3 #---------- PHP-CLI for Master Instance
 _PHP_EXTRA_CONF="" #------------ Allows to add custom options to PHP build
 _PHP_FPM_DENY="" #-------------- Modify disable_functions -- see info below
-_PHP_FPM_VERSION=8.1 #---------- PHP-FPM for Master Instance
+_PHP_FPM_VERSION=8.3 #---------- PHP-FPM for Master Instance
 _PHP_FPM_WORKERS=AUTO #--------- Allows to override AUTO with a valid integer
 _PHP_IONCUBE=NO #--------------- Installs ionCube for all PHP versions when YES
 _PHP_GEOS=NO #------------------ Installs GEOS for all PHP versions when YES
 _PHP_MONGODB=NO #--------------- Installs MONGODB for all PHP versions when YES
-_PHP_MULTI_INSTALL="8.1 7.4" #-- PHP versions to install 8.3/2/1/0 7.4/3/2/1/0 5.6
-_PHP_SINGLE_INSTALL="" #-------- Allows to force single PHP version, like: 8.1
+_PHP_MULTI_INSTALL="8.3 7.4" #-- PHP versions to install 8.3/2/1/0 7.4/3/2/1/0 5.6
+_PHP_SINGLE_INSTALL="" #-------- Allows to force single PHP version, like: 8.3
 ###
 _REDIS_LISTEN_MODE=SOCKET #----- Redis listen mode: SOCKET (recommended) or PORT
 _REDIS_MAJOR_RELEASE=7 #-------- Redis major release version: 5, 6 or 7
@@ -88,7 +99,7 @@ _CUSTOM_CONFIG_REDIS=NO #------- Protects custom Redis config when YES
 _CUSTOM_CONFIG_SQL=NO #--------- Protects custom SQL config when YES
 ###
 _AEGIR_UPGRADE_ONLY=NO #-------- Managed on the fly with 'aegir' keyword
-_SYSTEM_UPGRADE_ONLY=NO #------- Managed on the fly with 'system' keyword
+_SYSTEM_UP_ONLY=NO #------------ Managed on the fly with 'system' keyword
 ###
 _SYS_COLLATION_SQL= #----------- By default on the DB server: utf8mb4_unicode_ci
 ###

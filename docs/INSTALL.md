@@ -79,7 +79,7 @@
 
    `barracuda up-lts php-max` -- installs all supported versions if not installed before
 
-   `barracuda up-lts php-min` -- installs PHP 8.1, 8.2, 8.3, 7.4, and uses 8.1 by default
+   `barracuda up-lts php-min` -- installs PHP 8.3, 8.2, 8.1, 7.4, and uses 8.3 by default
 
    `barracuda up-lts percona-8.0` -- runs upgrade to Percona 8.0 (experimental, do not use in production yet)
 

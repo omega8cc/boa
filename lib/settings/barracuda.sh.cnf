@@ -63,7 +63,7 @@ _EASY_HOSTNAME="wildcard-enabled-hostname"
 ### 7.4, 7.3, 7.2, 7.1, 7.0
 ### 5.6
 ###
-### NOTE: 8.1 is required
+### NOTE: 8.3 is required
 ###
 ### Example: _PHP_MULTI_INSTALL="7.4 8.1 8.2 8.3"
 ###
@@ -93,7 +93,7 @@ _PHP_MULTI_INSTALL="7.4 8.1 8.2 8.3"
 ### Available options:
 ### 8.3, 8.2, 8.1, 7.4
 ###
-### Example: _PHP_SINGLE_INSTALL=8.1
+### Example: _PHP_SINGLE_INSTALL=8.3
 ###
 _PHP_SINGLE_INSTALL=
 
@@ -111,11 +111,11 @@ _PHP_SINGLE_INSTALL=
 ### 7.4, 7.3, 7.2, 7.1, 7.0
 ### 5.6
 ###
-### Note that 8.1 will be set automatically
+### Note that 8.3 will be set automatically
 ### if you specify any other, not installed
 ### version.
 ###
-_PHP_FPM_VERSION=8.1
+_PHP_FPM_VERSION=8.3
 
 
 ###----------------------------------------###
@@ -131,11 +131,11 @@ _PHP_FPM_VERSION=8.1
 ### 7.4, 7.3, 7.2, 7.1, 7.0
 ### 5.6
 ###
-### Note that 8.1 will be set automatically
+### Note that 8.3 will be set automatically
 ### if you specify any other, not installed
 ### version.
 ###
-_PHP_CLI_VERSION=8.1
+_PHP_CLI_VERSION=8.3
 
 
 ###----------------------------------------###
@@ -229,7 +229,7 @@ _AUTOPILOT=NO
 ### Use YES to upgrade system only and skip
 ### Aegir Master Instance upgrade.
 ###
-_SYSTEM_UPGRADE_ONLY=NO
+_SYSTEM_UP_ONLY=NO
 
 ###
 ### Use YES to upgrade Aegir Master Instance
@@ -935,13 +935,19 @@ _USE_MYSQLTUNER=NO
 ### Set max 1 min load per CPU core before blocking
 ### spiders temporarily, until the load stabilizes.
 ###
-_CPU_SPIDER_RATIO=3
+_CPU_SPIDER_RATIO=2.1
+
+###
+### Define max 1 min load per CPU core before
+### launching task queue for Octopus instances.
+###
+_CPU_TASK_RATIO=3.1
 
 ###
 ### Set max 1 min load per CPU core before disabling
 ### Nginx temporarily, until the load stabilizes.
 ###
-_CPU_MAX_RATIO=6
+_CPU_MAX_RATIO=4.1
 
 ###
 ### Set max 1 min load per CPU core before killing
@@ -951,17 +957,51 @@ _CPU_MAX_RATIO=6
 ### This shouldn't affect any innocent Aegir tasks,
 ### including cron for sites, because the system
 ### never starts them anyway, if the average load
-### in the last minute is higher than 3.5
+### in the last minute is higher than 3.1
 ###
-_CPU_CRIT_RATIO=9
+_CPU_CRIT_RATIO=6.1
+
+###
+### Default number of access.log lines to check.
+###
+_NGINX_DOS_LINES=1999
 
 ###
 ### Set max allowed page views from one IP
-### out of last 999. Note that it will lock
+### out of last 1999. Note that it will lock
 ### the access completely for 1 hour on the
 ### firewall level in /etc/csf/csf.deny
 ###
 _NGINX_DOS_LIMIT=399
+
+###
+### Default Nginx DoS-guard mode which automatically
+### increases the counter +1 for every POST request.
+### When changed to 1 will increase the counter:
+###
+###  +5 for POST request to /user and /node/add
+###  +3 for GET request to /node/add
+###
+_NGINX_DOS_MODE=2
+
+###
+### Logging mode, can be SILENT, NORMAL or VERBOSE
+###
+_NGINX_DOS_LOG=VERBOSE
+
+###
+### Will make the request ignored when the keyword
+### is detected in the access.log -- can use regex
+### like _NGINX_DOS_IGNORE="foo|bar|etc"
+###
+_NGINX_DOS_IGNORE="doccomment"
+
+###
+### Increases the counter +5 when the keyword is
+### detected in the access.log -- can use regex
+### like _NGINX_DOS_STOP="foo|bar|etc"
+###
+_NGINX_DOS_STOP="foobar"
 
 ###
 ### Nginx Headers More support is available
@@ -1076,6 +1116,37 @@ _PHP_FPM_WORKERS=AUTO
 ###
 _SPEED_VALID_MAX=3600
 
+###
+### When set to NO it will stop sending
+### e-mail reports on various incidents
+### detected and handled by auto-healing.
+###
+_INCIDENT_EMAIL_REPORT=YES
+
+###
+### Max TTL for mysql process per user (seconds)
+###
+### It will be automatically lowered to 300 if
+### /root/.high_load.cnf file exists while empty
+### /root/.big_db.cnf file is not present.
+###
+### If both empty /root/.high_load.cnf and empty
+### /root/.big_db.cnf are not present, it will be
+### automatically lowered to 1800.
+###
+### It will remain set to 3600 if empty file
+### /root/.big_db.cnf is present.
+###
+_SQL_MAX_TTL=3600
+
+###
+### Max TTL for mysql process per problematic user
+### listed in the /root/.sql.problematic.users.cnf
+### file -- one per line.
+###
+_SQL_LOW_MAX_TTL=60
+
+
 ###----------------------------------------###
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
@@ -1087,22 +1158,21 @@ _BRANCH_BOA=AUTO
 _BRANCH_PRN=AUTO
 _X_VERSION=AUTO
 _BOA_REPO_NAME="boa"
-_BOA_REPO_GIT_URL="${gitHub}"
-_X_SE="540ltsT02"
-export _X_SE="${_X_SE}"
-tRee=lts
-export tRee="${tRee}"
+_BOA_REPO_GIT_URL="${_gitHub}"
+
+export _tRee=dev
+export _xSrl=550devT00
 
 
 ###
 ### Commands shortcuts
 ###
-dstUpArg="-fuy --allow-unauthenticated -q --config-file /opt/apt/apt.conf.noi.dist"
-nrmUpArg="-fuy --allow-unauthenticated -q --config-file /opt/apt/apt.conf.noi.nrml"
+_dstUpArg="-fuy --allow-unauthenticated -q --config-file /opt/apt/apt.conf.noi.dist"
+_nrmUpArg="-fuy --allow-unauthenticated -q --config-file /opt/apt/apt.conf.noi.nrml"
 _INITINS="/usr/bin/apt-get -y --allow-unauthenticated install"
-_INSTALL_DIST="/usr/bin/apt-get ${dstUpArg} install"
-_INSTALL_NRML="/usr/bin/apt-get ${nrmUpArg} install"
-aptYesUnth="-y --allow-unauthenticated"
+_INSTALL_DIST="/usr/bin/apt-get ${_dstUpArg} install"
+_INSTALL_NRML="/usr/bin/apt-get ${_nrmUpArg} install"
+_aptYesUnth="-y --allow-unauthenticated"
 if [ ! -e "/var/aegir/drush" ]; then
   _INSTAPP="${_INSTALL_DIST}"
 fi
@@ -1111,9 +1181,9 @@ fi
 ###
 ### Determine correct _APT_UPDATE
 ###
-os_detection_minimal() {
+_os_detection_minimal() {
   if [ -e "/root/.dev.server.cnf" ]; then
-    echo "PROC: os_detection_minimal in barracuda"
+    echo "PROC: _os_detection_minimal in barracuda"
   fi
   _APT_UPDATE="apt-get update"
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
@@ -1124,15 +1194,15 @@ os_detection_minimal() {
     fi
   done
 }
-os_detection_minimal
+_os_detection_minimal
 
 
 ###
 ### Apt cleanup
 ###
-apt_clean_update() {
+_apt_clean_update() {
   if [ -e "/root/.dev.server.cnf" ]; then
-    echo "PROC: apt_clean_update in barracuda"
+    echo "PROC: _apt_clean_update in barracuda"
   fi
   #apt-get clean -qq 2> /dev/null
   #rm -rf /var/lib/apt/lists/* &> /dev/null
@@ -1147,38 +1217,38 @@ apt_clean_update() {
 ###
 ### Find the fastest mirror to use for downloads
 ###
-find_fast_mirror_cnf() {
+_find_fast_mirror_cnf() {
   if [ -e "/root/.dev.server.cnf" ]; then
-    echo "PROC: find_fast_mirror_cnf in barracuda"
+    echo "PROC: _find_fast_mirror_cnf in barracuda"
   fi
   if [ -x "/usr/sbin/unbound-control" ] \
     && [ -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
     unbound-control reload &> /dev/null
   fi
-  isNetc=$(which netcat 2>&1)
-  if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
+  _isNetc=$(which netcat 2>&1)
+  if [ ! -x "${_isNetc}" ] || [ -z "${_isNetc}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
-    apt_clean_update
-    apt-get install netcat ${aptYesUnth} 2> /dev/null
-    apt-get install netcat-traditional ${aptYesUnth} 2> /dev/null
+    _apt_clean_update
+    apt-get install netcat ${_aptYesUnth} 2> /dev/null
+    apt-get install netcat-traditional ${_aptYesUnth} 2> /dev/null
     wait
   fi
-  ffMirr=$(which ffmirror 2>&1)
-  if [ -x "${ffMirr}" ]; then
-    ffList="/var/backups/boa-mirrors-2024-01.txt"
+  _ffMirr=$(which ffmirror 2>&1)
+  if [ -x "${_ffMirr}" ]; then
+    _ffList="/var/backups/boa-mirrors-2024-01.txt"
     mkdir -p /var/backups
-    if [ ! -e "${ffList}" ]; then
-      echo "de.files.aegir.cc"  > ${ffList}
-      echo "ny.files.aegir.cc" >> ${ffList}
-      echo "sg.files.aegir.cc" >> ${ffList}
+    if [ ! -e "${_ffList}" ]; then
+      echo "de.files.aegir.cc"  > ${_ffList}
+      echo "ny.files.aegir.cc" >> ${_ffList}
+      echo "sg.files.aegir.cc" >> ${_ffList}
     fi
-    if [ -e "${ffList}" ]; then
-      _BROKEN_FFMIRR_TEST=$(grep "stuff" ${ffMirr} 2>&1)
+    if [ -e "${_ffList}" ]; then
+      _BROKEN_FFMIRR_TEST=$(grep "stuff" ${_ffMirr} 2>&1)
       if [[ "${_BROKEN_FFMIRR_TEST}" =~ "stuff" ]]; then
-        _CHECK_MIRROR=$(bash ${ffMirr} < ${ffList} 2>&1)
+        _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _USE_MIR="${_CHECK_MIRROR}"
         [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.aegir.cc"
       else
@@ -1190,57 +1260,57 @@ find_fast_mirror_cnf() {
   else
     _USE_MIR="files.aegir.cc"
   fi
-  urlDev="http://${_USE_MIR}/dev"
-  urlHmr="http://${_USE_MIR}/versions/${tRee}/boa/aegir"
+  _urlDev="http://${_USE_MIR}/dev"
+  _urlHmr="http://${_USE_MIR}/versions/${_tRee}/boa/aegir"
 }
 
 
 ###
 ### Verify upgrade keys
 ###
-verify_upgrade_keys() {
+_verify_upgrade_keys() {
   if [ -e "/root/.dev.server.cnf" ]; then
-    echo "PROC: verify_upgrade_keys in barracuda"
+    echo "PROC: _verify_upgrade_keys in barracuda"
   fi
-  if [ "${tRee}" = "pro" ] || [ "${tRee}" = "dev" ]; then
+  if [ "${_tRee}" = "pro" ] || [ "${_tRee}" = "dev" ]; then
     _allw=NO
-    urlEnc="http://${_USE_MIR}/enc/2024"
-    hName=$(cat /etc/hostname 2>&1)
-    hName=$(echo -n ${hName} | tr -d "\n" 2>&1)
-    encName=$(echo ${hName} \
+    _urlEnc="http://${_USE_MIR}/enc/2024"
+    _hName=$(cat /etc/hostname 2>&1)
+    _hName=$(echo -n ${_hName} | tr -d "\n" 2>&1)
+    _encName=$(echo ${_hName} \
               | openssl md5 \
               | awk '{ print $2}' \
               | tr -d "\n" 2>&1)
-    if [[ "${hName}" =~ ".aegir.cc"($) ]] \
-      || [[ "${hName}" =~ ".o8.io"($) ]] \
-      || [[ "${hName}" =~ ".boa.io"($) ]]; then
+    if [[ "${_hName}" =~ ".aegir.cc"($) ]] \
+      || [[ "${_hName}" =~ ".o8.io"($) ]] \
+      || [[ "${_hName}" =~ ".boa.io"($) ]]; then
       _allw=YES
     fi
     mkdir -p /var/opt
     rm -f /var/opt/_encN*
-    curl ${crlGet} "${urlEnc}/${encName}" -o /var/opt/_encN.${encName}.tmp
+    curl ${_crlGet} "${_urlEnc}/${_encName}" -o /var/opt/_encN.${_encName}.tmp
     wait
-    echo "${hName}.${encName}" > /var/opt/_encN_local.${encName}.tmp
+    echo "${_hName}.${_encName}" > /var/opt/_encN_local.${_encName}.tmp
     wait
-    if [ -e "/var/opt/_encN.${encName}.tmp" ] \
-      && [ -e "/var/opt/_encN_local.${encName}.tmp" ]; then
-      diffTestIf=$(diff -w -B /var/opt/_encN.${encName}.tmp \
-        /var/opt/_encN_local.${encName}.tmp 2>&1)
-      if [ ! -z "${diffTestIf}" ] && [ "${_allw}" = "NO" ]; then
+    if [ -e "/var/opt/_encN.${_encName}.tmp" ] \
+      && [ -e "/var/opt/_encN_local.${_encName}.tmp" ]; then
+      _diffTestIf=$(diff -w -B /var/opt/_encN.${_encName}.tmp \
+        /var/opt/_encN_local.${_encName}.tmp 2>&1)
+      if [ ! -z "${_diffTestIf}" ] && [ "${_allw}" = "NO" ]; then
         echo
-        echo "Your system requires valid license for upgrade to ${rlsn}-${tRee}"
+        echo "Your system requires valid license for upgrade to ${_rLsn}-${_tRee}"
         echo "Please visit https://omega8.cc/licenses to purchase your own"
         echo
         if [ -e "/var/aegir/drush/vendor" ] && [ ! -e "/var/aegir/key/barracuda_key.txt" ]; then
           mkdir -p /var/aegir/key
-          cat /var/opt/_encN_local.${encName}.tmp > /var/aegir/key/barracuda_key.txt
+          cat /var/opt/_encN_local.${_encName}.tmp > /var/aegir/key/barracuda_key.txt
         fi
         rm -f /var/opt/_encN*
-        clean_pid_exit verify_upgrade_keys_a
+        _clean_pid_exit _verify_upgrade_keys_a
       else
         if [ -e "/var/aegir/drush/vendor" ] && [ ! -e "/var/aegir/key/barracuda_key.txt" ]; then
           mkdir -p /var/aegir/key
-          cat /var/opt/_encN_local.${encName}.tmp > /var/aegir/key/barracuda_key.txt
+          cat /var/opt/_encN_local.${_encName}.tmp > /var/aegir/key/barracuda_key.txt
         fi
       fi
     fi
@@ -1251,9 +1321,9 @@ verify_upgrade_keys() {
 ###
 ### Extract archive
 ###
-extract_archive_pre() {
+_extract_archive_pre() {
   if [ -e "/root/.dev.server.cnf" ]; then
-    echo "PROC: extract_archive_pre in barracuda"
+    echo "PROC: _extract_archive_pre in barracuda"
   fi
   if [ ! -z "$1" ]; then
     case $1 in
@@ -1279,16 +1349,16 @@ extract_archive_pre() {
 ###
 ### Download and extract archive from dev/src mirror
 ###
-get_dev_src_pre() {
+_get_dev_src_pre() {
   if [ -e "/root/.dev.server.cnf" ]; then
-    echo "PROC: get_dev_src_pre in barracuda"
+    echo "PROC: _get_dev_src_pre in barracuda"
   fi
   if [ ! -z "$1" ]; then
-    curl ${crlGet} "${urlDev}/src/$1" -o "$1"
+    curl ${_crlGet} "${_urlDev}/src/$1" -o "$1"
     if [ -e "$1" ]; then
-      extract_archive_pre "$1"
+      _extract_archive_pre "$1"
     else
-      echo "OOPS: $1 failed download from ${urlDev}/src/$1"
+      echo "OOPS: $1 failed download from ${_urlDev}/src/$1"
     fi
   fi
 }
@@ -1297,18 +1367,18 @@ get_dev_src_pre() {
 ###
 ### Download helpers and libs
 ###
-download_helpers_libs() {
+_download_helpers_libs() {
   if [ -e "/root/.dev.server.cnf" ]; then
-    echo "PROC: download_helpers_libs in barracuda"
+    echo "PROC: _download_helpers_libs in barracuda"
   fi
-  find_fast_mirror_cnf
-  verify_upgrade_keys
+  _find_fast_mirror_cnf
+  _verify_upgrade_keys
   mkdir -p /opt/tmp
   cd /opt/tmp
   rm -rf /opt/tmp/boa
   if [ -e "/var/aegir/drush" ]; then
     _GIT_VRN=2.45.2
-    isGit=$(which git 2>&1)
+    _isGit=$(which git 2>&1)
     _GIT_INSTALL=NO
     _GIT_V=$(git --version 2>&1 \
       | cut -d" " -f3 \
@@ -1319,12 +1389,12 @@ download_helpers_libs() {
       fi
     fi
     if [ "${_GIT_INSTALL}" = "YES" ] \
-      || [ ! -x "${isGit}" ] \
-      || [ -z "${isGit}" ]; then
+      || [ ! -x "${_isGit}" ] \
+      || [ -z "${_isGit}" ]; then
       echo "INFO: Building Git ${_GIT_VRN} from sources..."
       echo "WAIT: This may take a while, please wait..."
       if [ ! -x "/usr/local/bin/git" ]; then
-        apt_clean_update
+        _apt_clean_update
         if [ -e "/root/.dev.server.cnf" ]; then
           apt-get install libcurl4 -y --allow-unauthenticated -qq 2> /dev/null
           apt-get install libcurl4-openssl-dev -y --allow-unauthenticated -qq 2> /dev/null
@@ -1342,7 +1412,7 @@ download_helpers_libs() {
       mkdir -p /var/opt
       rm -rf /var/opt/git*
       cd /var/opt
-      get_dev_src_pre "git-${_GIT_VRN}.tar.gz"
+      _get_dev_src_pre "git-${_GIT_VRN}.tar.gz"
       cd /var/opt/git-${_GIT_VRN}
       if [ -e "/root/.dev.server.cnf" ]; then
         make configure 2> /dev/null
@@ -1367,20 +1437,20 @@ download_helpers_libs() {
       echo "git-core hold" | dpkg --set-selections &> /dev/null
       echo "git-man hold" | dpkg --set-selections &> /dev/null
     fi
-    isGit=$(which git 2>&1)
-    gCb="${isGit} clone --branch"
+    _isGit=$(which git 2>&1)
+    _gCb="${_isGit} clone --branch"
     if [ -e "/root/.dev.server.cnf" ]; then
-      echo "Running ${gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git ${bldPth}"
-      if [ -x "${isGit}" ]; then
-        ${gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git ${bldPth}
+      echo "Running ${_gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git ${_bldPth}"
+      if [ -x "${_isGit}" ]; then
+        ${_gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git ${_bldPth}
       else
-        echo "ERROR: ${isGit} is probably broken"
+        echo "ERROR: ${_isGit} is probably broken"
       fi
     else
-      ${gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git ${bldPth} &> /dev/null
+      ${_gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git ${_bldPth} &> /dev/null
     fi
   else
-    apt_clean_update
+    _apt_clean_update
     if [ -e "/root/.dev.server.cnf" ]; then
 #       apt-get install libcurl4 -y --allow-unauthenticated -qq 2> /dev/null
 #       apt-get install libcurl4-openssl-dev -y --allow-unauthenticated -qq 2> /dev/null
@@ -1394,43 +1464,43 @@ download_helpers_libs() {
       apt-get install git-core -y --allow-unauthenticated -qq &> /dev/null
       apt-get install git -y --allow-unauthenticated -qq &> /dev/null
     fi
-    isGit=$(which git 2>&1)
-    gCb="${isGit} clone --branch"
+    _isGit=$(which git 2>&1)
+    _gCb="${_isGit} clone --branch"
     if [ -e "/root/.dev.server.cnf" ]; then
-      echo "Running ${gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git ${bldPth}"
-      if [ -x "${isGit}" ]; then
-        ${gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git ${bldPth}
+      echo "Running ${_gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git ${_bldPth}"
+      if [ -x "${_isGit}" ]; then
+        ${_gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git ${_bldPth}
       else
-        echo "ERROR: ${isGit} is probably broken"
+        echo "ERROR: ${_isGit} is probably broken"
       fi
     else
-      ${gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git ${bldPth} &> /dev/null
+      ${_gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git ${_bldPth} &> /dev/null
     fi
   fi
   #
-  if [ ! -e "${bldPth}/aegir/helpers/apt.conf.noi.nrml" ] \
-    || [ ! -e "${bldPth}/aegir/helpers/apt.conf.noi.dist" ]; then
+  if [ ! -e "${_bldPth}/aegir/helpers/apt.conf.noi.nrml" ] \
+    || [ ! -e "${_bldPth}/aegir/helpers/apt.conf.noi.dist" ]; then
     echo " "
     echo "EXIT on error due to missing helpers"
     echo "Please try to run this script again in a few minutes"
     echo "Also, make sure that the outgoing connections via port 443 work"
     echo "Bye"
     echo " "
-    clean_pid_exit download_helpers_libs_a
+    _clean_pid_exit _download_helpers_libs_a
   fi
   # Get apt helpers
   rm -f apt.conf.noi*
-  cp -af ${bldPth}/aegir/helpers/apt.conf.noi.nrml ./
-  cp -af ${bldPth}/aegir/helpers/apt.conf.noi.dist ./
+  cp -af ${_bldPth}/aegir/helpers/apt.conf.noi.nrml ./
+  cp -af ${_bldPth}/aegir/helpers/apt.conf.noi.dist ./
   mkdir -p /opt/apt/
-  cp -af ${bldPth}/aegir/helpers/apt.conf.noi.nrml /opt/apt/
-  cp -af ${bldPth}/aegir/helpers/apt.conf.noi.dist /opt/apt/
+  cp -af ${_bldPth}/aegir/helpers/apt.conf.noi.nrml /opt/apt/
+  cp -af ${_bldPth}/aegir/helpers/apt.conf.noi.dist /opt/apt/
   #
   # Create tmp stuff
   if [ ! -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ]; then
-    _LOG=${vBs}/barracuda-install-${_NOW}.log
+    _LOG=${_vBs}/barracuda-install-${_NOW}.log
   else
-    _LOG=${vBs}/barracuda-upgrade-${_NOW}.log
+    _LOG=${_vBs}/barracuda-upgrade-${_NOW}.log
   fi
   touch ${_LOG}
   chmod 600 ${_LOG}
@@ -1442,12 +1512,12 @@ download_helpers_libs() {
   #
   # Get spinner
   rm -f spinner*
-  cp -af ${bldPth}/aegir/helpers/spinner ./
+  cp -af ${_bldPth}/aegir/helpers/spinner ./
   chmod +x spinner &> /dev/null
   #
   # Get axelerator
   if [ ! -e "/usr/bin/aptitude-fast" ]; then
-    git clone ${gitHub}/apt-fast.git /opt/tmp/apt-fast &> /dev/null
+    git clone ${_gitHub}/apt-fast.git /opt/tmp/apt-fast &> /dev/null
     cp -af /opt/tmp/apt-fast/apt-fast /usr/bin/aptitude-fast &> /dev/null
     chmod +x /usr/bin/aptitude-fast &> /dev/null
     cd /opt/tmp

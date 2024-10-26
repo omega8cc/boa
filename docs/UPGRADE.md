@@ -2,6 +2,8 @@
 
 All standard non-major system upgrades can be run with **BARRACUDA** and all Ægir instances can be upgraded with **OCTOPUS**, but we highly recommend to use the fully automated procedure explained in Self-Upgrade How To: [docs/SELFUPGRADE.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/SELFUPGRADE.md)
 
+- Importance of Keeping SKYNET Enabled in BOA: [docs/SKYNET.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/SKYNET.md)
+
 ## Important Notes for Standard/Manual BOA Upgrade
 
 If you haven't run a full barracuda+octopus upgrade to the latest BOA edition yet, don't use any partial upgrade modes explained further below. Once the new BOA latest is available, you must run *full* upgrades with the commands:
@@ -141,7 +143,7 @@ You can install or modify PHP versions active on your system during `barracuda` 
 
 `barracuda up-lts php-max` -- installs all supported versions if not installed before
 
-`barracuda up-lts php-min` -- installs PHP 8.1, 8.2, 8.3, 7.4, and uses 8.1 by default
+`barracuda up-lts php-min` -- installs PHP 8.3, 8.2, 8.1, 7.4, and uses 8.3 by default
 
 If you wish to define your own set of installed PHP versions, you can do so by modifying variables in the `/root/.barracuda.cnf` file before running the upgrade, where you can find `_PHP_MULTI_INSTALL`, `_PHP_CLI_VERSION`, and `_PHP_FPM_VERSION` -- note that the `_PHP_SINGLE_INSTALL` variable must be set empty to not override other related variables.
 
