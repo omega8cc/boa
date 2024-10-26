@@ -1833,7 +1833,7 @@ _set_tree_vars() {
       || [ "${_cmNd}" = "help" ] \
       || [ "${_cmNd}" = "info" ] \
       || [ "${_cmNd}" = "up-distro" ]; then
-      _tRee=pro
+      _tRee=dev
     else
       echo
       echo "Sorry, you are trying not supported command.."
