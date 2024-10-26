@@ -1,0 +1,49 @@
+#!/bin/bash
+
+export HOME=/root
+export SHELL=/bin/bash
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+
+# Script to check Drupal codebase compatibility with Percona 8.0
+# and identify any code or versions which depend on Percona 5.7
+
+# Set the path to your Drupal codebase; can be passed as the first argument
+_DRUPAL_PATH="${1:-/path/to/drupal}"
+
+# Log file to store incompatibility results
+[ ! -d "/var/xdrago/log/core" ] && mkdir -p /var/xdrago/log/core
+_LOG_FILE="/var/xdrago/log/core/incompatible-$(date +%y%m%d-%H%M%S).log"
+
+# Patterns of known incompatibilities between Percona 5.7 and Percona 8.0
+declare -a _PATTERNS=(
+  "NO_AUTO_CREATE_USER"    # Removed in Percona 8.0
+  "SQL_CALC_FOUND_ROWS"    # Deprecated in Percona 8.0
+  "utf8_general_ci"        # Should be updated to utf8mb4_general_ci
+  "utf8_unicode_ci"        # Should be updated to utf8mb4_unicode_ci
+  "CHARACTER SET utf8"     # Should be updated to utf8mb4
+  "ENGINE=MyISAM"          # InnoDB is the default in Percona 8.0
+  "SET SESSION sql_mode"   # May set incompatible SQL modes
+  "innodb_large_prefix"    # Removed in Percona 8.0
+  "innodb_file_format"     # Removed in Percona 8.0
+)
+
+# Initialize variable to track if incompatibilities are found
+_INCOMPATIBILITIES_FOUND=0
+_INCOMPATIBILITIES=""
+
+# Search for known incompatible patterns
+for _PATTERN in "${_PATTERNS[@]}"; do
+  # Search for the pattern in the Drupal codebase
+  _RESULT=$(grep -rnw "${_DRUPAL_PATH}" -e "${_PATTERN}")
+  if [ -n "${_RESULT}" ]; then
+    _INCOMPATIBILITIES_FOUND=1
+    _INCOMPATIBILITIES+="Pattern: ${_PATTERN}\n${_RESULT}\n\n"
+  fi
+done
+
+# If incompatibilities are found, log them
+if [ "${_INCOMPATIBILITIES_FOUND}" -eq 1 ]; then
+  echo -e "Incompatibilities found in codebase at ${_DRUPAL_PATH}:\n" >> "${_LOG_FILE}"
+  echo -e "${_INCOMPATIBILITIES}" >> "${_LOG_FILE}"
+  echo -e " " >> "${_LOG_FILE}"
+fi

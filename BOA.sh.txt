@@ -2881,6 +2881,7 @@ _update_boa_tools() {
            autoupboa \
            barracuda \
            boa \
+           codebasecheck \
            fancynow \
            ffmirror \
            killer \
@@ -2933,6 +2934,7 @@ _update_boa_tools() {
   echo "### ${_TODAY} ###" >> ${_optBin}/autoinit
   echo "### ${_TODAY} ###" >> ${_optBin}/barracuda
   echo "### ${_TODAY} ###" >> ${_optBin}/boa
+  echo "### ${_TODAY} ###" >> ${_optBin}/codebasecheck
   echo "### ${_TODAY} ###" >> ${_optBin}/fancynow
   echo "### ${_TODAY} ###" >> ${_optBin}/killer
   echo "### ${_TODAY} ###" >> ${_optBin}/memorytuner
@@ -2959,7 +2961,7 @@ _update_boa_tools() {
   fi
   chmod 700 ${_optBin}/{autoinit,autodaedalus,autochimaera,autobeowulf,autoupboa,backboa,duobackboa,mysqltuner5,mysqltuner8}
   chmod 700 ${_optBin}/{barracuda,boa,ffmirror,killer,mycnfup,octopus,syncpass,xboa,weblogx,sqlclean,vhostcheck,memorytuner}
-  chmod 755 ${_optBin}/{fancynow,randpass,sqlmagic,thinkdifferent}
+  chmod 755 ${_optBin}/{fancynow,randpass,sqlmagic,thinkdifferent,codebasecheck}
 }
 
 _if_update_boa_key_tools_only() {
