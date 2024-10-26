@@ -12,15 +12,24 @@ On hosted BOA contact your host if you need any legacy PHP installed again.
 
 ## Drupal 10
 
-- [Drupal 10.4.x-dev](https://drupal.org/project/drupal/releases/10.4.x-dev)
-- [Drupal 10.3.1](https://drupal.org/project/drupal/releases/10.3.1)
-- [Drupal 10.2.7](https://drupal.org/project/drupal/releases/10.2.7)
-- [Drupal 10.1.8](https://drupal.org/project/drupal/releases/10.1.8)
+- [Commerce Base 2.40](https://drupal.org/project/commerce) (10.1.8)
+- [Commerce Kickstart 3.0.0](https://drupal.org/project/commerce_kickstart) (10.3.6)
 - [Drupal 10.0.11](https://drupal.org/project/drupal/releases/10.0.11)
-- [Social 12.4.2](https://drupal.org/project/social) (10.2.6)
-- [Thunder 7.3.0](https://drupal.org/project/thunder) (10.3.1)
-- [Varbase 10.0.0](https://drupal.org/project/varbase) (10.3.1)
-- [Varbase 9.1.3](https://drupal.org/project/varbase) (10.2.6)
+- [Drupal 10.1.8](https://drupal.org/project/drupal/releases/10.1.8)
+- [Drupal 10.2.10](https://drupal.org/project/drupal/releases/10.2.10)
+- [Drupal 10.3.6](https://drupal.org/project/drupal/releases/10.3.6)
+- [Drupal 10.4.x-dev](https://drupal.org/project/drupal/releases/10.4.x-dev)
+- [DXPR Marketing 10.3.0 ](https://drupal.org/project/dxpr_marketing_cms) (10.3.6)
+- [EzContent 2.2.15](https://drupal.org/project/ezcontent) (10.3.6)
+- [farmOS 3.3.1](https://drupal.org/project/farm) (10.3.6)
+- [LocalGov 3.0.11](https://drupal.org/project/localgov) (10.3.6)
+- [OpenCulturas 2.2.1](https://drupal.org/project/openculturas) (10.3.6)
+- [OpenFed 12.2.4](https://drupal.org/project/openfed) (10.2.10)
+- [Sector 10.0.0-rc5](https://drupal.org/project/sector) (10.2.10)
+- [Social 12.4.5](https://drupal.org/project/social) (10.2.10)
+- [Thunder 7.3.7](https://drupal.org/project/thunder) (10.3.6)
+- [Varbase 10.0.2](https://drupal.org/project/varbase) (10.3.6)
+- [Varbase 9.1.6](https://drupal.org/project/varbase) (10.3.6)
 
 ## Drupal 9
 
@@ -30,15 +39,14 @@ On hosted BOA contact your host if you need any legacy PHP installed again.
 
 ## Drupal 7
 
-- [Commerce 1.72](https://drupal.org/project/commerce_kickstart)
-- [Commerce 2.77](https://drupal.org/project/commerce_kickstart)
+- [Commerce Kickstart 2.77](https://drupal.org/project/commerce_kickstart) (7.101.1)
 - [Drupal 7.101.1](https://drupal.org/project/drupal/releases/7.101)
-- [Ubercart 3.13](https://drupal.org/project/ubercart)
+- [Ubercart 3.13](https://drupal.org/project/ubercart) (7.101.1)
 
 ## Drupal 6
 
 - [Pressflow 6.60.1](https://www.pressflow.org)
-- [Ubercart 2.15](https://drupal.org/project/ubercart)
+- [Ubercart 2.15](https://drupal.org/project/ubercart) (6.60.1)
 
 * All D7 platforms have been enhanced using [Drupal 7.101.1 +Extra core](https://github.com/omega8cc/7x/tree/7.x-om8)
 
