@@ -1931,6 +1931,18 @@ _display_info() {
       | tr -d "\n" \
       | cut -d"-" -f2 \
       | awk '{ print $1}' 2>&1)
+    if [ -x "/usr/bin/python3" ]; then
+      _PY3=$(/usr/bin/python3 --version 2>&1 \
+        | tr -d "\n" \
+        | cut -d" " -f2 \
+        | awk '{ print $1}' 2>&1)
+    fi
+    if [ -x "/usr/local/bin/python3" ]; then
+      _PX3=$(/usr/local/bin/python3 --version 2>&1 \
+        | tr -d "\n" \
+        | cut -d" " -f2 \
+        | awk '{ print $1}' 2>&1)
+    fi
     if [ -e "/root/.install.modern.openssl.cnf" ] \
       && [ -x "/usr/local/ssl3/bin/openssl" ]; then
       _SSL_BINARY=/usr/local/ssl3/bin/openssl
@@ -2029,6 +2041,8 @@ _display_info() {
     [ ! -z "${_SHD}" ] && echo "  SHD ${_SHD}"
     [ ! -z "${_SSH}" ] && echo "  SSH ${_SSH}"
     [ ! -z "${_LSH}" ] && echo "  LSH ${_LSH}"
+    [ ! -z "${_PY3}" ] && echo "  PY3 ${_PY3}"
+    [ ! -z "${_PX3}" ] && echo "  PX3 ${_PX3}"
     [ ! -z "${_SSL}" ] && echo "  SSL ${_SSL}"
     [ ! -z "${_CRL}" ] && echo "  CRL ${_CRL}"
     if [ -e "/root/.use.curl.from.packages.cnf" ]; then
