@@ -1655,7 +1655,7 @@ _fix_permissions() {
     && [ -e "${_Dir}/files" ] \
     && [ -e "${_Dir}/private" ]; then
     ### Cleanup
-    rm ${_Dir}/*.{hm-fix-*,ctm-lock-*,lock-*,perm-fix-*}.info
+    rm ${_Dir}/*.{hm-fix-*,ctm-lock-*,lock-*,perm-fix-*}.info &> /dev/null
     ### directory and settings files - site level
     if [ ! -e "${_Dir}/modules" ]; then
       mkdir ${_Dir}/modules
