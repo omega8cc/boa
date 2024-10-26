@@ -15,7 +15,8 @@ _SSL_ITD=$(${_SSL_BINARY} version 2>&1 \
   | tr -d "\n" \
   | cut -d" " -f2 \
   | awk '{ print $1}')
-if [[ "${_SSL_ITD}" =~ "3.2." ]] \
+if [[ "${_SSL_ITD}" =~ "3.3." ]] \
+  || [[ "${_SSL_ITD}" =~ "3.2." ]] \
   || [[ "${_SSL_ITD}" =~ "3.1." ]] \
   || [[ "${_SSL_ITD}" =~ "3.0." ]] \
   || [[ "${_SSL_ITD}" =~ "1.1." ]] \
