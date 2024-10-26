@@ -2306,12 +2306,6 @@ _daily_process() {
         | sed "s/[\,']//g" 2>&1)
       _PLR_CTRL_F="${_Plr}/sites/all/modules/boa_platform_control.ini"
       if [ -e "${_Plr}" ]; then
-        _codeBaseCheckInfo="${_usEr}/log/ctrl/plr.${_PlrID}.codebasecheck-${_NOW}.info"
-        if [ -x "/opt/local/bin/codebasecheck" ] && [ ! -f "${_codeBaseCheckInfo}" ]; then
-          codebasecheck ${_Plr}
-          wait
-          touch ${_codeBaseCheckInfo}
-        fi
         if [ "${_NEW_SSL}" = "YES" ]; then
           _PlrID=$(echo ${_Plr} \
             | openssl md5 \
@@ -2321,6 +2315,12 @@ _daily_process() {
           _PlrID=$(echo ${_Plr} \
             | openssl md5 \
             | tr -d "\n" 2>&1)
+        fi
+        _codeBaseCheckInfo="${_usEr}/log/ctrl/plr.${_PlrID}.codebasecheck-${_NOW}.info"
+        if [ -x "/opt/local/bin/codebasecheck" ] && [ ! -f "${_codeBaseCheckInfo}" ]; then
+          codebasecheck ${_Plr}
+          wait
+          touch ${_codeBaseCheckInfo}
         fi
         _fix_platform_control_files
         _fix_o_contrib_symlink
