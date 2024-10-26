@@ -1,6 +1,7 @@
 #!/bin/bash
 
-export PATH=/usr/bin:/bin:/usr/local/bin:/opt/local/bin:/usr/local/ssl3
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/local/ssl3
+
 _DEST_DRUSH="/opt/tools/drush/8/drush/drush.php"
 
 _ALL="$@"
