@@ -2956,9 +2956,10 @@ _update_boa_tools() {
       touch /root/.backboa.autoupdate
     fi
   fi
-  chmod 700 ${_optBin}/{autoinit,autodaedalus,autochimaera,autobeowulf,autoupboa,backboa,duobackboa,mysqltuner5,mysqltuner8}
-  chmod 700 ${_optBin}/{barracuda,boa,ffmirror,killer,mycnfup,octopus,syncpass,xboa,weblogx,sqlclean,vhostcheck,memorytuner}
-  chmod 755 ${_optBin}/{fancynow,randpass,sqlmagic,thinkdifferent,codebasecheck}
+  chmod 700 ${_optBin}/{autoinit,autodaedalus,autochimaera,autobeowulf,autoupboa,backboa,duobackboa}
+  chmod 700 ${_optBin}/{barracuda,boa,ffmirror,killer,mycnfup,octopus,syncpass,xboa,weblogx,sqlclean}
+  chmod 700 ${_optBin}/{fancynow,codebasecheck,vhostcheck,memorytuner,mysqltuner5,mysqltuner8}
+  chmod 755 ${_optBin}/{randpass,sqlmagic,thinkdifferent}
 }
 
 _if_update_boa_key_tools_only() {
