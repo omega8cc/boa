@@ -25,9 +25,17 @@ get_drupal_version() {
     return
   fi
 
-  # Check for Drupal 7 and below
+  # Check for Drupal 7
   if [ -f "${_DRUPAL_PATH}/includes/bootstrap.inc" ]; then
     _version_line=$(grep -m1 "define('VERSION'," "${_DRUPAL_PATH}/includes/bootstrap.inc")
+    _version=$(echo "${_version_line}" | awk -F"'" '{print $2}')
+    echo "${_version}"
+    return
+  fi
+
+  # Check for Drupal 6
+  if [ -f "${_DRUPAL_PATH}/modules/system/system.module" ]; then
+    _version_line=$(grep -m1 "define('VERSION'," "${_DRUPAL_PATH}/modules/system/system.module")
     _version=$(echo "${_version_line}" | awk -F"'" '{print $2}')
     echo "${_version}"
     return
