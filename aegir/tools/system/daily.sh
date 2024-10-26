@@ -283,15 +283,15 @@ _check_if_required_with_drush8() {
         "echo _REQ for $1 is ${_REQ} in ${_Dom} == 7 == via ${_REW_TEST}"
       fi
     fi
-    Profile=$(_run_drush8_nosilent_cmd "${_vGet} ^install_profile$" \
+    _Profile=$(_run_drush8_nosilent_cmd "${_vGet} ^install_profile$" \
       | cut -d: -f2 \
       | awk '{ print $1}' \
       | sed "s/['\"]//g" \
       | tr -d "\n" 2>&1)
-    Profile=${Profile//[^a-z_]/}
-    echo "Profile is == ${Profile} =="
-    if [ ! -z "${Profile}" ]; then
-      _REP_TEST=$(echo "${_REI_TEST}" | grep "Required by.*:.*${Profile}" 2>&1)
+    _Profile=${_Profile//[^a-z_]/}
+    echo "_Profile is == ${_Profile} =="
+    if [ ! -z "${_Profile}" ]; then
+      _REP_TEST=$(echo "${_REI_TEST}" | grep "Required by.*:.*${_Profile}" 2>&1)
       if [[ "${_REP_TEST}" =~ "Required by" ]]; then
         _REQ=NO
         echo "_REQ for $1 is ${_REQ} in ${_Dom} == 8 == via ${_REP_TEST}"
@@ -2843,7 +2843,7 @@ _incident_email_report() {
   if [ -n "${_thisEmail}" ] && [ "${_INCIDENT_EMAIL_REPORT}" = "YES" ]; then
     _hName=$(cat /etc/hostname 2>&1)
     echo "Sending Incident Report Email on $(date 2>&1)" >> ${_thisLog}
-    s-nail -s "Incident Report during daily.sh: ${1} on ${_hName} at $(date 2>&1)" ${_MY_EMAIL} < ${_thisLog}
+    s-nail -s "Incident Report during daily.sh: ${1} on ${_hName} at $(date 2>&1)" ${_thisEmail} < ${_thisLog}
   fi
 }
 
