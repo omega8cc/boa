@@ -44,8 +44,8 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-export _tRee=pro
-export _xSrl=540proT05
+export _tRee=dev
+export _xSrl=540devT03
 
 ###
 ### Avoid too many questions
@@ -2148,7 +2148,7 @@ _fix_node_in_lshell_access() {
   fi
 }
 
-_fix_python() {
+_fix_python_src() {
   _PYTHON_VRN=3.12.5
   _DCY_PTN="/usr/local/bin/python3"
   if [ -x "${_DCY_PTN}" ]; then
@@ -2201,21 +2201,16 @@ _fix_python() {
   fi
 }
 
-_if_fix_python() {
+_if_fix_python_src_for_duplicity() {
   _PYTHON_FIX=NO
-  _LSHELL_CHK_VRN=0.9.18
-  _isLshell=$(which lshell 2>&1)
-  if [ -x "${_isLshell}" ]; then
-    _LSHELL_ITD=$(${_isLshell} --version 2>&1 \
-      | tr -d "\n" \
-      | cut -d"-" -f2 \
-      | awk '{ print $1}' 2>&1)
-    if [ "${_LSHELL_ITD}" != "${_LSHELL_CHK_VRN}" ] \
-      || [[ "${_LSHELL_ITD}" =~ "Traceback" ]] \
-      || [[ "${_LSHELL_ITD}" =~ "bad interpreter" ]] \
-      || [[ "${_LSHELL_ITD}" =~ "ImportError" ]]; then
-      _PYTHON_FIX=YES
-    fi
+  _PYTHON_VRN=3.12.5
+  _DCY_PTN="/usr/local/bin/python3"
+  if [ -x "${_DCY_PTN}" ]; then
+    _PYTHON_TEST=$(${_DCY_PTN} --version 2>&1)
+  fi
+  if [[ ! "${_PYTHON_TEST}" =~ "Python ${_PYTHON_VRN}" ]] \
+    || [ ! -x "${_DCY_PTN}" ]; then
+    _PYTHON_FIX=YES
   fi
   _DUPLICITY_CHK_VRN=3.0.2
   _isDuplicity=$(which duplicity 2>&1)
@@ -2229,41 +2224,42 @@ _if_fix_python() {
     fi
   fi
   if [ "${_PYTHON_FIX}" = "YES" ]; then
-    _fix_python
+    _fix_python_src
   fi
 }
 
-_fix_lshell() {
+_if_fix_lshell() {
   if [ ! -e "/usr/local/etc/lshell.conf" ] \
     && [ ! -L "/usr/local/etc/lshell.conf" ] \
     && [ -e "/etc/lshell.conf" ]; then
     [ ! -d "/usr/local/etc" ] && mkdir -p /usr/local/etc
     ln -sfn /etc/lshell.conf /usr/local/etc/lshell.conf
   fi
-  _LSHELL_VRN=0.9.18.10
+  _LSHELL_VRN=0.10
   _PATH_LSHELL="${_usrBin}/lshell"
-  _LSHELL_CHK_VRN=0.9.18
+  _LSHELL_CHK_VRN=0.10
   _LSHELL_FORCE_REINSTALL=NO
   _isLshell=$(which lshell 2>&1)
   _LSHELL_ITD=$(${_isLshell} --version 2>&1 \
     | tr -d "\n" \
     | cut -d"-" -f2 \
     | awk '{ print $1}' 2>&1)
-  if [ "${_LSHELL_ITD}" != "${_LSHELL_CHK_VRN}" ] \
+  if [ -z "${_isLshell}" ] \
+    || [ -z "${_PATH_LSHELL}" ] \
+    || [ "${_LSHELL_ITD}" != "${_LSHELL_CHK_VRN}" ] \
     || [[ "${_LSHELL_ITD}" =~ "Traceback" ]] \
     || [[ "${_LSHELL_ITD}" =~ "bad interpreter" ]] \
     || [[ "${_LSHELL_ITD}" =~ "ImportError" ]]; then
     _LSHELL_FORCE_REINSTALL=YES
   fi
-  if [ -e "${_PATH_LSHELL}" ] \
-    && [ "${_LSHELL_FORCE_REINSTALL}" = "YES" ]; then
-    cp -af /etc/lshell.conf /etc/lshell.conf-bak-${_LSHELL_VRN}-hotfix5
+  if [ "${_LSHELL_FORCE_REINSTALL}" = "YES" ]; then
+    [ -f "/etc/lshell.conf" ] && cp -af /etc/lshell.conf /etc/lshell.conf-bak-${_LSHELL_VRN}
     _apt_clean_update
     apt-get install python3-pip -y
-    if [ -x "/usr/local/bin/pip3" ]; then
-      _usePip=/usr/local/bin/pip3
-    elif [ -x "/usr/bin/pip3" ]; then
+    if [ -x "/usr/bin/pip3" ]; then
       _usePip=/usr/bin/pip3
+    elif [ -x "/usr/local/bin/pip3" ]; then
+      _usePip=/usr/local/bin/pip3
     fi
     _PIP_TEST=$(${_usePip} --version 2>&1)
     if [[ "${_PIP_TEST}" =~ "python 3.11" ]] \
@@ -2291,17 +2287,18 @@ _fix_lshell() {
     else
       ${_usePip} install .
     fi
-    cp -af /etc/lshell.conf-bak-${_LSHELL_VRN}-hotfix5 /etc/lshell.conf
+    [ -f "/etc/lshell.conf-bak-${_LSHELL_VRN}" ] && cp -af /etc/lshell.conf-bak-${_LSHELL_VRN} /etc/lshell.conf
     rm -f /etc/logrotate.d/lshell
     addgroup --system lshellg &> /dev/null
     mkdir -p /var/log/lsh
     chown :lshellg /var/log/lsh
     chmod 770 /var/log/lsh &> /dev/null
-    touch ${_pthLog}/lshell-build-${_LSHELL_VRN}.log-hotfix5
     who | awk '$1 !~ /root/{ cmd="pkill -KILL -u " $1; system(cmd) }'
     touch ${_pthLog}/lshell-fix-build-${_LSHELL_VRN}.log
   fi
-  if [ -f "${_usrBin}/lshell" ]; then
+  if [ -e "${_usrBin}/lshell" ]; then
+    chown root:users ${_usrBin}/lshell
+    chmod 750 ${_usrBin}/lshell
     if [ ! -L "/usr/bin/lshell" ]; then
       ln -sfn ${_usrBin}/lshell /usr/bin/lshell &> /dev/null
     fi
@@ -3131,13 +3128,13 @@ _if_update_boa_key_tools_only() {
     fi
   fi
   _BOA_TOOLS_UPDATE=NO
-  if [ -e "${_pthLog}" ] && [ ! -e "${_pthLog}/updateBOAtoolsAD.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+  if [ -e "${_pthLog}" ] && [ ! -e "${_pthLog}/updateBOAtoolsAE.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     _BOA_TOOLS_UPDATE=YES
   fi
   [ ! -e "/var/aegir/drush" ] && _BOA_TOOLS_UPDATE=YES
   if [ "${_BOA_TOOLS_UPDATE}" = "YES" ]; then
     _update_boa_tools
-    [ -e "${_pthLog}" ] && touch ${_pthLog}/updateBOAtoolsAD.ctrl.${_tRee}.${_xSrl}.pid
+    [ -e "${_pthLog}" ] && touch ${_pthLog}/updateBOAtoolsAE.ctrl.${_tRee}.${_xSrl}.pid
     if [ "${1}" = "verbose" ] || [ -z "${1}" ]; then
       echo
       echo "BOA Meta Installers setup completed"
@@ -3264,13 +3261,13 @@ _boa_setup() {
     apt-get install lsb-release ${_aptYesUnth}
   fi
   _BOA_TOOLS_UPDATE=NO
-  if [ -e "${_pthLog}" ] && [ ! -e "${_pthLog}/updateBOAtoolsAD.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+  if [ -e "${_pthLog}" ] && [ ! -e "${_pthLog}/updateBOAtoolsAE.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     _BOA_TOOLS_UPDATE=YES
   fi
   [ ! -e "/var/aegir/drush" ] && _BOA_TOOLS_UPDATE=YES
   if [ "${_BOA_TOOLS_UPDATE}" = "YES" ]; then
     _update_boa_tools
-    [ -e "${_pthLog}" ] && touch ${_pthLog}/updateBOAtoolsAD.ctrl.${_tRee}.${_xSrl}.pid
+    [ -e "${_pthLog}" ] && touch ${_pthLog}/updateBOAtoolsAE.ctrl.${_tRee}.${_xSrl}.pid
     echo
     echo "BOA Meta Installers setup completed"
     echo "Please check INSTALL.md and UPGRADE.md at https://github.com/omega8cc/boa"
@@ -3518,8 +3515,8 @@ if [ `whoami` = "root" ]; then
     && [ -e "/var/log/barracuda_log.txt" ]; then
     _fix_ping_perms
     _fix_fpm_process_max
-    _if_fix_python
-    _fix_lshell
+    _if_fix_python_src_for_duplicity
+    _if_fix_lshell
     _fix_node_in_lshell_access
     _fix_authorized_keys
     _fix_tcp

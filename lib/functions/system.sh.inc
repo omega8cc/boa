@@ -5364,7 +5364,7 @@ _run_aptitude_deps_install() {
   _mrun "${_INSTAPP} bison catdoc cython3 geoip-database gettext" 2> /dev/null
   _mrun "${_INSTAPP} clamav clamav-base clamav-daemon clamdscan" 2> /dev/null
   _mrun "${_INSTAPP} ghostscript htop lemon lftp nano" 2> /dev/null
-  _mrun "${_INSTAPP} python3-dev python3-debian python3-magic" 2> /dev/null
+  _mrun "${_INSTAPP} python3-full python3-dev python3-debian python3-magic" 2> /dev/null
   if [ -e "/root/.dont.use.fancy.bash.login.cnf" ] \
     && [ -e "/usr/bin/screenfetch" ]; then
     _mrun "apt-get remove toilet -y --purge --auto-remove -qq" 2> /dev/null
@@ -7796,35 +7796,36 @@ _lshell_install_upgrade() {
     _msg "PROC: _lshell_install_upgrade"
   fi
   _PATH_LSHELL="/usr/local/bin/lshell"
-  _LSHELL_CHK_VRN=0.9.18
+  _LSHELL_CHK_VRN=0.10
   _LSHELL_FORCE_REINSTALL=NO
   _isLshell=$(which lshell 2>&1)
   _LSHELL_ITD=$(${_isLshell} --version 2>&1 \
     | tr -d "\n" \
     | cut -d"-" -f2 \
     | awk '{ print $1}' 2>&1)
-  if [ "${_LSHELL_ITD}" != "${_LSHELL_CHK_VRN}" ] \
+  if [ -z "${_isLshell}" ] \
+    || [ -z "${_PATH_LSHELL}" ] \
+    || [ "${_LSHELL_ITD}" != "${_LSHELL_CHK_VRN}" ] \
     || [[ "${_LSHELL_ITD}" =~ "Traceback" ]] \
     || [[ "${_LSHELL_ITD}" =~ "bad interpreter" ]] \
     || [[ "${_LSHELL_ITD}" =~ "ImportError" ]]; then
     _LSHELL_FORCE_REINSTALL=YES
   fi
-  if [ ! -e "${_PATH_LSHELL}" ] \
-    || [ "${_LSHELL_FORCE_REINSTALL}" = "YES" ] \
+  if [ "${_LSHELL_FORCE_REINSTALL}" = "YES" ] \
     || [ "${_FULL_FORCE_REINSTALL}" = "YES" ] \
     || [ "${_SSL_INSTALL_REQUIRED}" = "YES" ]; then
     if [ "${_STATUS}" = "UPGRADE" ]; then
       _msg "INFO: Upgrading Limited Shell to version ${_LSHELL_VRN}..."
-      cp -af /etc/lshell.conf /etc/lshell.conf-bak-${_NOW} &> /dev/null
+      [ -f "/etc/lshell.conf" ] && cp -af /etc/lshell.conf /etc/lshell.conf-bak-${_NOW} &> /dev/null
     else
       _msg "INFO: Installing Limited Shell ${_LSHELL_VRN}..."
     fi
     _apt_clean_update
     _mrun "${_INSTAPP} python3-pip" 2> /dev/null
-    if [ -x "/usr/local/bin/pip3" ]; then
-      _usePip=/usr/local/bin/pip3
-    elif [ -x "/usr/bin/pip3" ]; then
+    if [ -x "/usr/bin/pip3" ]; then
       _usePip=/usr/bin/pip3
+    elif [ -x "/usr/local/bin/pip3" ]; then
+      _usePip=/usr/local/bin/pip3
     fi
     _PIP_TEST=$(${_usePip} --version 2>&1)
     if [[ "${_PIP_TEST}" =~ "python 3.11" ]] \
@@ -7853,7 +7854,7 @@ _lshell_install_upgrade() {
       _mrun "${_usePip} install . " 2> /dev/null
     fi
     if [ "${_STATUS}" = "UPGRADE" ]; then
-      cp -af /etc/lshell.conf-bak-${_NOW} /etc/lshell.conf &> /dev/null
+      [ -f "/etc/lshell.conf-bak-${_NOW}" ] && cp -af /etc/lshell.conf-bak-${_NOW} /etc/lshell.conf &> /dev/null
     else
       cp -af ${_bldPth}/aegir/tools/system/conf/lshell.conf /etc/lshell.conf
       echo "${_PATH_LSHELL}" >> /etc/shells
@@ -7875,6 +7876,8 @@ _lshell_install_upgrade() {
     _fix_node_in_lshell_access
   fi
   if [ -f "/usr/local/bin/lshell" ]; then
+    chown root:users /usr/local/bin/lshell
+    chmod 750 /usr/local/bin/lshell
     if [ ! -L "/usr/bin/lshell" ]; then
       ln -sfn /usr/local/bin/lshell /usr/bin/lshell &> /dev/null
     fi

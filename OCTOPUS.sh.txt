@@ -60,28 +60,13 @@ export _REDIS_N_VERSION=com-19-04-2021
 export _REDIS_T_VERSION=8.x-1.8.2
 
 ###
-### Drupal Distributions
-###
-
-export _COMMERCE1=1.72
-export _COMMERCE2=2.77
-export _OPENLUCIUS=2.0.0
-export _OPIGNOLMS9=3.1.0
-export _THUNDER=7.3.0
-export _UBERCART6=2.15
-export _UBERCART7=3.13
-export _VARBASE9=9.1.3
-export _VARBASE10=10.0.0
-export _SOCIAL=12.4.2
-
-###
 ### Drupal Core Versions
 ###
 
 export _SMALLCORE10_0_V=10.0.11
 export _SMALLCORE10_1_V=10.1.8
-export _SMALLCORE10_2_V=10.2.8
-export _SMALLCORE10_3_V=10.3.5
+export _SMALLCORE10_2_V=10.2.10
+export _SMALLCORE10_3_V=10.3.6
 export _SMALLCORE10_4_V=10.4.x-dev
 export _SMALLCORE6_V=6.60.1
 export _SMALLCORE7_V=7.101.1

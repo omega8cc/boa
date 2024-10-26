@@ -3409,378 +3409,95 @@ _satellite_if_read_create_pass_txt() {
   fi
 }
 
-###---### Creating platforms symlinks.
+###---### Add/Update platforms ftp symlinks.
 #
 _satellite_if_add_update_user_platforms_symlinks() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _satellite_if_add_update_user_platforms_symlinks"
     _debug_proc
   fi
-  if [ "${_DIST_INSTALL}" = "YES" ]; then
-    if [ "${_DEBUG_MODE}" = "YES" ]; then
-      _msg "${_STATUS} A: Creating ftp symlinks"
-    fi
 
-    _QR="${_ROOT}/distro/${_THIS_CORE}"
-    _QH="/home/${_USERFTP}/platforms/${_THIS_CORE}"
-
-    if [ ! -d "${_QH}" ]; then
-      mkdir -p ${_QH}
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        _msg "DEBUG: _QH is ${_QH} in action symlinks 1"
-      fi
-    fi
-    if [ "${_DEBUG_MODE}" = "YES" ]; then
-      _msg "DEBUG: _QH is ${_QH} in action symlinks 2"
-    fi
-    chown -R ${_USER}:${_USRG} /home/${_USERFTP}/platforms &> /dev/null
-    chmod 700 /home/${_USERFTP} &> /dev/null
-    rm -f ${_QH}/{cod,commerce,commons,openatrium,openscholar,drupal6,drupal7}
-
-    if [ -d "${_QR}/${_DRUPAL10_0_D}/sites" ]; then
-      if [ ! -L "${_QH}/${_DRUPAL10_0_D}" ]; then
-        _A="${_QR}/${_DRUPAL10_0_D}/sites"
-        _B="${_QH}/${_DRUPAL10_0_D}"
-        ln -sfn ${_A} ${_B}
-      fi
-    fi
-    if [ -d "${_QR}/${_DRUPAL10_0_S}/sites" ]; then
-      if [ ! -L "${_QH}/${_DRUPAL10_0_S}" ]; then
-        _A="${_QR}/${_DRUPAL10_0_S}/sites"
-        _B="${_QH}/${_DRUPAL10_0_S}"
-        ln -sfn ${_A} ${_B}
-      fi
-    fi
-    if [ ! -d "${_QR}/${_DRUPAL10_0}" ]; then
-      if [ -d "${_QR}/${_DRUPAL10_0_P}/sites" ]; then
-        if [ ! -L "${_QH}/${_DRUPAL10_0_P}" ]; then
-          _A="${_QR}/${_DRUPAL10_0_P}/sites"
-          _B="${_QH}/${_DRUPAL10_0_P}"
-          ln -sfn ${_A} ${_B}
-        fi
-      fi
-    elif [ ! -d "${_QR}/${_DRUPAL10_0_P}" ]; then
-      if [ -d "${_QR}/${_DRUPAL10_0}/sites" ]; then
-        if [ ! -L "${_QH}/${_DRUPAL10_0_P}" ]; then
-          _A="${_QR}/${_DRUPAL10_0}/sites"
-          _B="${_QH}/${_DRUPAL10_0_P}"
-          ln -sfn ${_A} ${_B}
-        fi
-      fi
-    fi
-
-    if [ -d "${_QR}/${_DRUPAL10_1_D}/sites" ]; then
-      if [ ! -L "${_QH}/${_DRUPAL10_1_D}" ]; then
-        _A="${_QR}/${_DRUPAL10_1_D}/sites"
-        _B="${_QH}/${_DRUPAL10_1_D}"
-        ln -sfn ${_A} ${_B}
-      fi
-    fi
-    if [ -d "${_QR}/${_DRUPAL10_1_S}/sites" ]; then
-      if [ ! -L "${_QH}/${_DRUPAL10_1_S}" ]; then
-        _A="${_QR}/${_DRUPAL10_1_S}/sites"
-        _B="${_QH}/${_DRUPAL10_1_S}"
-        ln -sfn ${_A} ${_B}
-      fi
-    fi
-    if [ ! -d "${_QR}/${_DRUPAL10_1}" ]; then
-      if [ -d "${_QR}/${_DRUPAL10_1_P}/sites" ]; then
-        if [ ! -L "${_QH}/${_DRUPAL10_1_P}" ]; then
-          _A="${_QR}/${_DRUPAL10_1_P}/sites"
-          _B="${_QH}/${_DRUPAL10_1_P}"
-          ln -sfn ${_A} ${_B}
-        fi
-      fi
-    elif [ ! -d "${_QR}/${_DRUPAL10_1_P}" ]; then
-      if [ -d "${_QR}/${_DRUPAL10_1}/sites" ]; then
-        if [ ! -L "${_QH}/${_DRUPAL10_1_P}" ]; then
-          _A="${_QR}/${_DRUPAL10_1}/sites"
-          _B="${_QH}/${_DRUPAL10_1_P}"
-          ln -sfn ${_A} ${_B}
-        fi
-      fi
-    fi
-
-    if [ -d "${_QR}/${_DRUPAL10_2_D}/sites" ]; then
-      if [ ! -L "${_QH}/${_DRUPAL10_2_D}" ]; then
-        _A="${_QR}/${_DRUPAL10_2_D}/sites"
-        _B="${_QH}/${_DRUPAL10_2_D}"
-        ln -sfn ${_A} ${_B}
-      fi
-    fi
-    if [ -d "${_QR}/${_DRUPAL10_2_S}/sites" ]; then
-      if [ ! -L "${_QH}/${_DRUPAL10_2_S}" ]; then
-        _A="${_QR}/${_DRUPAL10_2_S}/sites"
-        _B="${_QH}/${_DRUPAL10_2_S}"
-        ln -sfn ${_A} ${_B}
-      fi
-    fi
-    if [ ! -d "${_QR}/${_DRUPAL10_2}" ]; then
-      if [ -d "${_QR}/${_DRUPAL10_2_P}/sites" ]; then
-        if [ ! -L "${_QH}/${_DRUPAL10_2_P}" ]; then
-          _A="${_QR}/${_DRUPAL10_2_P}/sites"
-          _B="${_QH}/${_DRUPAL10_2_P}"
-          ln -sfn ${_A} ${_B}
-        fi
-      fi
-    elif [ ! -d "${_QR}/${_DRUPAL10_2_P}" ]; then
-      if [ -d "${_QR}/${_DRUPAL10_2}/sites" ]; then
-        if [ ! -L "${_QH}/${_DRUPAL10_2_P}" ]; then
-          _A="${_QR}/${_DRUPAL10_2}/sites"
-          _B="${_QH}/${_DRUPAL10_2_P}"
-          ln -sfn ${_A} ${_B}
-        fi
-      fi
-    fi
-
-    if [ -d "${_QR}/${_DRUPAL10_3_D}/sites" ]; then
-      if [ ! -L "${_QH}/${_DRUPAL10_3_D}" ]; then
-        _A="${_QR}/${_DRUPAL10_3_D}/sites"
-        _B="${_QH}/${_DRUPAL10_3_D}"
-        ln -sfn ${_A} ${_B}
-      fi
-    fi
-    if [ -d "${_QR}/${_DRUPAL10_3_S}/sites" ]; then
-      if [ ! -L "${_QH}/${_DRUPAL10_3_S}" ]; then
-        _A="${_QR}/${_DRUPAL10_3_S}/sites"
-        _B="${_QH}/${_DRUPAL10_3_S}"
-        ln -sfn ${_A} ${_B}
-      fi
-    fi
-    if [ ! -d "${_QR}/${_DRUPAL10_3}" ]; then
-      if [ -d "${_QR}/${_DRUPAL10_3_P}/sites" ]; then
-        if [ ! -L "${_QH}/${_DRUPAL10_3_P}" ]; then
-          _A="${_QR}/${_DRUPAL10_3_P}/sites"
-          _B="${_QH}/${_DRUPAL10_3_P}"
-          ln -sfn ${_A} ${_B}
-        fi
-      fi
-    elif [ ! -d "${_QR}/${_DRUPAL10_3_P}" ]; then
-      if [ -d "${_QR}/${_DRUPAL10_3}/sites" ]; then
-        if [ ! -L "${_QH}/${_DRUPAL10_3_P}" ]; then
-          _A="${_QR}/${_DRUPAL10_3}/sites"
-          _B="${_QH}/${_DRUPAL10_3_P}"
-          ln -sfn ${_A} ${_B}
-        fi
-      fi
-    fi
-
-    if [ -d "${_QR}/${_DRUPAL10_4_D}/sites" ]; then
-      if [ ! -L "${_QH}/${_DRUPAL10_4_D}" ]; then
-        _A="${_QR}/${_DRUPAL10_4_D}/sites"
-        _B="${_QH}/${_DRUPAL10_4_D}"
-        ln -sfn ${_A} ${_B}
-      fi
-    fi
-    if [ -d "${_QR}/${_DRUPAL10_4_S}/sites" ]; then
-      if [ ! -L "${_QH}/${_DRUPAL10_4_S}" ]; then
-        _A="${_QR}/${_DRUPAL10_4_S}/sites"
-        _B="${_QH}/${_DRUPAL10_4_S}"
-        ln -sfn ${_A} ${_B}
-      fi
-    fi
-    if [ ! -d "${_QR}/${_DRUPAL10_4}" ]; then
-      if [ -d "${_QR}/${_DRUPAL10_4_P}/sites" ]; then
-        if [ ! -L "${_QH}/${_DRUPAL10_4_P}" ]; then
-          _A="${_QR}/${_DRUPAL10_4_P}/sites"
-          _B="${_QH}/${_DRUPAL10_4_P}"
-          ln -sfn ${_A} ${_B}
-        fi
-      fi
-    elif [ ! -d "${_QR}/${_DRUPAL10_4_P}" ]; then
-      if [ -d "${_QR}/${_DRUPAL10_4}/sites" ]; then
-        if [ ! -L "${_QH}/${_DRUPAL10_4_P}" ]; then
-          _A="${_QR}/${_DRUPAL10_4}/sites"
-          _B="${_QH}/${_DRUPAL10_4_P}"
-          ln -sfn ${_A} ${_B}
-        fi
-      fi
-    fi
-
-    if [ -d "${_QR}/${_DRUPAL9_D}/sites" ]; then
-      if [ ! -L "${_QH}/${_DRUPAL9_D}" ]; then
-        _A="${_QR}/${_DRUPAL9_D}/sites"
-        _B="${_QH}/${_DRUPAL9_D}"
-        ln -sfn ${_A} ${_B}
-      fi
-    fi
-    if [ -d "${_QR}/${_DRUPAL9_S}/sites" ]; then
-      if [ ! -L "${_QH}/${_DRUPAL9_S}" ]; then
-        _A="${_QR}/${_DRUPAL9_S}/sites"
-        _B="${_QH}/${_DRUPAL9_S}"
-        ln -sfn ${_A} ${_B}
-      fi
-    fi
-    if [ ! -d "${_QR}/${_DRUPAL9}" ]; then
-      if [ -d "${_QR}/${_DRUPAL9_P}/sites" ]; then
-        if [ ! -L "${_QH}/${_DRUPAL9_P}" ]; then
-          _A="${_QR}/${_DRUPAL9_P}/sites"
-          _B="${_QH}/${_DRUPAL9_P}"
-          ln -sfn ${_A} ${_B}
-        fi
-      fi
-    elif [ ! -d "${_QR}/${_DRUPAL9_P}" ]; then
-      if [ -d "${_QR}/${_DRUPAL9}/sites" ]; then
-        if [ ! -L "${_QH}/${_DRUPAL9_P}" ]; then
-          _A="${_QR}/${_DRUPAL9}/sites"
-          _B="${_QH}/${_DRUPAL9_P}"
-          ln -sfn ${_A} ${_B}
-        fi
-      fi
-    fi
-
-
-    if [ -d "${_QR}/${_DRUPAL7_D}/sites" ]; then
-      if [ ! -L "${_QH}/${_DRUPAL7_D}" ]; then
-        _A="${_QR}/${_DRUPAL7_D}/sites"
-        _B="${_QH}/${_DRUPAL7_D}"
-        ln -sfn ${_A} ${_B}
-      fi
-    fi
-    if [ -d "${_QR}/${_DRUPAL7_S}/sites" ]; then
-      if [ ! -L "${_QH}/${_DRUPAL7_S}" ]; then
-        _A="${_QR}/${_DRUPAL7_S}/sites"
-        _B="${_QH}/${_DRUPAL7_S}"
-        ln -sfn ${_A} ${_B}
-      fi
-    fi
-    if [ ! -d "${_QR}/${_DRUPAL7}" ]; then
-      if [ -d "${_QR}/${_DRUPAL7_P}/sites" ]; then
-        if [ ! -L "${_QH}/${_DRUPAL7_P}" ]; then
-          _A="${_QR}/${_DRUPAL7_P}/sites"
-          _B="${_QH}/${_DRUPAL7_P}"
-          ln -sfn ${_A} ${_B}
-        fi
-      fi
-    elif [ ! -d "${_QR}/${_DRUPAL7_P}" ]; then
-      if [ -d "${_QR}/${_DRUPAL7}/sites" ]; then
-        if [ ! -L "${_QH}/${_DRUPAL7_P}" ]; then
-          _A="${_QR}/${_DRUPAL7}/sites"
-          _B="${_QH}/${_DRUPAL7_P}"
-          ln -sfn ${_A} ${_B}
-        fi
-      fi
-    fi
-
-    if [ -d "${_QR}/${_DRUPAL6_D}/sites" ]; then
-      if [ ! -L "${_QH}/${_DRUPAL6_D}" ]; then
-        _A="${_QR}/${_DRUPAL6_D}/sites"
-        _B="${_QH}/${_DRUPAL6_D}"
-        ln -sfn ${_A} ${_B}
-      fi
-    fi
-    if [ -d "${_QR}/${_DRUPAL6_S}/sites" ]; then
-      if [ ! -L "${_QH}/${_DRUPAL6_S}" ]; then
-        _A="${_QR}/${_DRUPAL6_S}/sites"
-        _B="${_QH}/${_DRUPAL6_S}"
-        ln -sfn ${_A} ${_B}
-      fi
-    fi
-    if [ ! -d "${_QR}/pressflow" ]; then
-      if [ -d "${_QR}/${_DRUPAL6_P}/sites" ]; then
-        if [ ! -L "${_QH}/${_DRUPAL6_P}" ]; then
-          _A="${_QR}/${_DRUPAL6_P}/sites"
-          _B="${_QH}/${_DRUPAL6_P}"
-          ln -sfn ${_A} ${_B}
-        fi
-      fi
-    elif [ ! -d "${_QR}/${_DRUPAL6_P}" ]; then
-      if [ -d "${_QR}/pressflow/sites" ]; then
-        if [ ! -L "${_QH}/${_DRUPAL6_P}" ]; then
-          _A="${_QR}/pressflow/sites"
-          _B="${_QH}/${_DRUPAL6_P}"
-          ln -sfn ${_A} ${_B}
-        fi
-      fi
-    fi
-
-    if [ -d "${_QR}/social-${_SOCIAL}-${_SMALLCORE10_2_6_V}/html/sites" ]; then
-      if [ ! -L "${_QH}/social-${_SOCIAL}-${_SMALLCORE10_2_6_V}" ]; then
-        _A="${_QR}/social-${_SOCIAL}-${_SMALLCORE10_2_6_V}/html/sites"
-        _B="${_QH}/social-${_SOCIAL}-${_SMALLCORE10_2_6_V}"
-        ln -sfn ${_A} ${_B}
-      fi
-    fi
-
-    if [ -d "${_QR}/thunder-${_THUNDER}-${_SMALLCORE10_3_V}/docroot/sites" ]; then
-      if [ ! -L "${_QH}/thunder-${_THUNDER}-${_SMALLCORE10_3_V}" ]; then
-        _A="${_QR}/thunder-${_THUNDER}-${_SMALLCORE10_3_V}/docroot/sites"
-        _B="${_QH}/thunder-${_THUNDER}-${_SMALLCORE10_3_V}"
-        ln -sfn ${_A} ${_B}
-      fi
-    fi
-
-    if [ -d "${_QR}/varbase-${_VARBASE9}-${_SMALLCORE10_2_6_V}/docroot/sites" ]; then
-      if [ ! -L "${_QH}/varbase-${_VARBASE9}-${_SMALLCORE10_2_6_V}" ]; then
-        _A="${_QR}/varbase-${_VARBASE9}-${_SMALLCORE10_2_6_V}/docroot/sites"
-        _B="${_QH}/varbase-${_VARBASE9}-${_SMALLCORE10_2_6_V}"
-        ln -sfn ${_A} ${_B}
-      fi
-    fi
-
-    if [ -d "${_QR}/varbase-${_VARBASE10}-${_SMALLCORE10_3_V}/docroot/sites" ]; then
-      if [ ! -L "${_QH}/varbase-${_VARBASE10}-${_SMALLCORE10_3_V}" ]; then
-        _A="${_QR}/varbase-${_VARBASE10}-${_SMALLCORE10_3_V}/docroot/sites"
-        _B="${_QH}/varbase-${_VARBASE10}-${_SMALLCORE10_3_V}"
-        ln -sfn ${_A} ${_B}
-      fi
-    fi
-
-    if [ -d "${_QR}/openlucius-${_OPENLUCIUS}-${_SMALLCORE9_V}/web/sites" ]; then
-      if [ ! -L "${_QH}/openlucius-${_OPENLUCIUS}-${_SMALLCORE9_V}" ]; then
-        _A="${_QR}/openlucius-${_OPENLUCIUS}-${_SMALLCORE9_V}/web/sites"
-        _B="${_QH}/openlucius-${_OPENLUCIUS}-${_SMALLCORE9_V}"
-        ln -sfn ${_A} ${_B}
-      fi
-    fi
-
-    if [ -d "${_QR}/opigno_lms-${_OPIGNOLMS9}-${_SMALLCORE9_V}/web/sites" ]; then
-      if [ ! -L "${_QH}/opigno_lms-${_OPIGNOLMS9}-${_SMALLCORE9_V}" ]; then
-        _A="${_QR}/opigno_lms-${_OPIGNOLMS9}-${_SMALLCORE9_V}/web/sites"
-        _B="${_QH}/opigno_lms-${_OPIGNOLMS9}-${_SMALLCORE9_V}"
-        ln -sfn ${_A} ${_B}
-      fi
-    fi
-
-    if [ -d "${_QR}/commerce-${_COMMERCE1}-${_SMALLCORE7_V}/sites" ]; then
-      if [ ! -L "${_QH}/commerce-${_COMMERCE1}-${_SMALLCORE7_V}" ]; then
-        _A="${_QR}/commerce-${_COMMERCE1}-${_SMALLCORE7_V}/sites"
-        _B="${_QH}/commerce-${_COMMERCE1}-${_SMALLCORE7_V}"
-        ln -sfn ${_A} ${_B}
-      fi
-    fi
-
-    if [ -d "${_QR}/commerce-${_COMMERCE2}-${_SMALLCORE7_V}/sites" ]; then
-      if [ ! -L "${_QH}/commerce-${_COMMERCE2}-${_SMALLCORE7_V}" ]; then
-        _A="${_QR}/commerce-${_COMMERCE2}-${_SMALLCORE7_V}/sites"
-        _B="${_QH}/commerce-${_COMMERCE2}-${_SMALLCORE7_V}"
-        ln -sfn ${_A} ${_B}
-      fi
-    fi
-
-    if [ -d "${_QR}/ubercart-${_UBERCART7}-${_SMALLCORE7_V}/sites" ]; then
-      if [ ! -L "${_QH}/ubercart-${_UBERCART7}-${_SMALLCORE7_V}" ]; then
-        _A="${_QR}/ubercart-${_UBERCART7}-${_SMALLCORE7_V}/sites"
-        _B="${_QH}/ubercart-${_UBERCART7}-${_SMALLCORE7_V}"
-        ln -sfn ${_A} ${_B}
-      fi
-    fi
-    if [ -d "${_QR}/ubercart-testing-${_UBERCART7}-${_SMALLCORE7_V}/sites" ]; then
-      if [ ! -L "${_QH}/ubercart-testing-${_UBERCART7}-${_SMALLCORE7_V}" ]; then
-        _A="${_QR}/ubercart-testing-${_UBERCART7}-${_SMALLCORE7_V}/sites"
-        _B="${_QH}/ubercart-testing-${_UBERCART7}-${_SMALLCORE7_V}"
-        ln -sfn ${_A} ${_B}
-      fi
-    fi
-
-    if [ -d "${_QR}/ubercart-${_UBERCART6}-${_SMALLCORE6_V}/sites" ]; then
-      if [ ! -L "${_QH}/ubercart-${_UBERCART6}-${_SMALLCORE6_V}" ]; then
-        _A="${_QR}/ubercart-${_UBERCART6}-${_SMALLCORE6_V}/sites"
-        _B="${_QH}/ubercart-${_UBERCART6}-${_SMALLCORE6_V}"
-        ln -sfn ${_A} ${_B}
-      fi
-    fi
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "${_STATUS} A: Add/Update platforms ftp symlinks"
   fi
+
+  _HM_U="${_USER}"
+  _LOW_NR="2"
+  _usEr="${_ROOT}"
+
+  for i in `dir -d /home/${_HM_U}.ftp/platforms/*`; do
+    if [ -e "${i}" ]; then
+      _RevisionTest=$(ls ${i} \
+        | wc -l \
+        | tr -d "\n" 2>&1)
+      if [ "${_RevisionTest}" -lt "${_LOW_NR}" ] \
+        && [ ! -z "${_RevisionTest}" ]; then
+        if [ -d "/home/${_HM_U}.ftp/platforms" ]; then
+          chattr -i /home/${_HM_U}.ftp/platforms
+          chattr -i /home/${_HM_U}.ftp/platforms/* &> /dev/null
+        fi
+        _NOW=$(date +%y%m%d-%H%M%S 2>&1)
+        [ ! -e "/var/backups/ghost/${_HM_U}/${_NOW}" ] && mkdir -p /var/backups/ghost/${_HM_U}/${_NOW}
+        [ "${_DEBUG_MODE}" = "YES" ] && echo "Moving ${i} to /var/backups/ghost/${_HM_U}/${_NOW}"
+        mv -f ${i} /var/backups/ghost/${_HM_U}/${_NOW}/
+      fi
+    fi
+  done
+
+  for i in `dir -d ${_usEr}/distro/*`; do
+    if [ -d "${i}" ]; then
+      if [ ! -d "${i}/keys" ]; then
+        mkdir -p ${i}/keys
+      fi
+      _RevisionTest=$(ls ${i} | wc -l 2>&1)
+      if [ "${_RevisionTest}" -lt "2" ] && [ ! -z "${_RevisionTest}" ]; then
+        [ "${_DEBUG_MODE}" = "YES" ] && echo "_RevisionTest is ${_RevisionTest}"
+        _NOW=$(date +%y%m%d-%H%M%S 2>&1)
+        mkdir -p ${_usEr}/undo/dist/${_NOW}
+        mv -f ${i} ${_usEr}/undo/dist/${_NOW}/ &> /dev/null
+        [ "${_DEBUG_MODE}" = "YES" ] && echo "GHOST revision ${i} detected and moved to ${_usEr}/undo/dist/${_NOW}/"
+      fi
+    fi
+  done
+
+  for i in `dir -d ${_usEr}/distro/*`; do
+    if [ -e "${i}" ]; then
+      _distTrNr=$(echo ${i} \
+        | cut -d'/' -f6 \
+        | awk '{ print $1}' 2> /dev/null)
+      if [ -d "/home/${_HM_U}.ftp/platforms" ]; then
+        chattr -i /home/${_HM_U}.ftp/platforms
+        chattr -i /home/${_HM_U}.ftp/platforms/* &> /dev/null
+      fi
+      if [ ! -e "${i}/keys" ]; then
+        mkdir -p ${i}/keys
+        chown ${_HM_U}.ftp:${_WEBG} ${i}/keys &> /dev/null
+        chmod 02775 ${i}/keys &> /dev/null
+      fi
+      if [ ! -e "/home/${_HM_U}.ftp/platforms/${_distTrNr}" ]; then
+        mkdir -p /home/${_HM_U}.ftp/platforms/${_distTrNr}
+      fi
+      if [ -e "${i}/keys" ] && [ ! -e "/home/${_HM_U}.ftp/platforms/${_distTrNr}/keys" ]; then
+        ln -sfn ${i}/keys /home/${_HM_U}.ftp/platforms/${_distTrNr}/keys
+      fi
+      if [ -e "/home/${_HM_U}.ftp/platforms/data" ]; then
+        _NOW=$(date +%y%m%d-%H%M%S 2>&1)
+        [ ! -e "/var/backups/ghost/${_HM_U}/${_NOW}" ] && mkdir -p /var/backups/ghost/${_HM_U}/${_NOW}
+        mv -f /home/${_HM_U}.ftp/platforms/data /var/backups/ghost/${_HM_U}/${_NOW}/platforms_data
+      fi
+      for _Codebase in `find ${i}/* \
+        -maxdepth 1 \
+        -mindepth 1 \
+        -type d \
+        | grep "/sites$" 2>&1`; do
+        _CodebaseName=$(echo ${_Codebase} \
+          | cut -d'/' -f7 \
+          | awk '{ print $1}' 2> /dev/null)
+        ln -sfn ${_Codebase} /home/${_HM_U}.ftp/platforms/${_distTrNr}/${_CodebaseName}
+        [ "${_DEBUG_MODE}" = "YES" ] && echo "Fixed ${_CodebaseName} in ${_distTrNr} symlink to ${_Codebase} for ${_HM_U}.ftp"
+      done
+    fi
+  done
 }
 
 _satellite_if_add_update_backend_user_dirs_files_clean() {
@@ -4026,108 +3743,97 @@ _satellite_make() {
   export _xSrl=540proT05
   export _X_VERSION="${_X_VERSION}"
 
-  echo "_AEGIR_VERSION=\"${_AEGIR_VERSION}\""         >> ${_writeTo}
-  echo "_AEGIR_XTS_VRN=\"${_tRee}\""                  >> ${_writeTo}
-  echo "_ALL_DISTRO=\"${_ALL_DISTRO}\""               >> ${_writeTo}
-  echo "_AUTOPILOT=\"${_AUTOPILOT}\""                 >> ${_writeTo}
-  echo "_BOA_REPO_GIT_URL=\"${_BOA_REPO_GIT_URL}\""   >> ${_writeTo}
-  echo "_BOA_REPO_NAME=\"${_BOA_REPO_NAME}\""         >> ${_writeTo}
-  echo "_BRANCH_BOA=\"${_BRANCH_BOA}\""               >> ${_writeTo}
-  echo "_BRANCH_PRN=\"${_BRANCH_PRN}\""               >> ${_writeTo}
-  echo "_CLIENT_CORES=\"${_CLIENT_CORES}\""           >> ${_writeTo}
-  echo "_CLIENT_EMAIL=\"${_CLIENT_EMAIL}\""           >> ${_writeTo}
-  echo "_CLIENT_OPTION=\"${_CLIENT_OPTION}\""         >> ${_writeTo}
-  echo "_COMMERCE1=\"${_COMMERCE1}\""                 >> ${_writeTo}
-  echo "_COMMERCE2=\"${_COMMERCE2}\""                 >> ${_writeTo}
-  echo "_DEBUG_MODE=\"${_DEBUG_MODE}\""               >> ${_writeTo}
-  echo "_DISTRO=\"${_DISTRO}\""                       >> ${_writeTo}
-  echo "_DOMAIN=\"${_DOMAIN}\""                       >> ${_writeTo}
-  echo "_DRUPAL6=\"${_DRUPAL6}\""                     >> ${_writeTo}
-  echo "_DRUPAL6_D=\"${_DRUPAL6}-dev\""               >> ${_writeTo}
-  echo "_DRUPAL6_P=\"${_DRUPAL6}-prod\""              >> ${_writeTo}
-  echo "_DRUPAL6_S=\"${_DRUPAL6}-stage\""             >> ${_writeTo}
-  echo "_DRUPAL7=\"${_DRUPAL7}\""                     >> ${_writeTo}
-  echo "_DRUPAL7_D=\"${_DRUPAL7}-dev\""               >> ${_writeTo}
-  echo "_DRUPAL7_P=\"${_DRUPAL7}-prod\""              >> ${_writeTo}
-  echo "_DRUPAL7_S=\"${_DRUPAL7}-stage\""             >> ${_writeTo}
-  echo "_DRUPAL9=\"${_DRUPAL9}\""                     >> ${_writeTo}
-  echo "_DRUPAL9_D=\"${_DRUPAL9}-dev\""               >> ${_writeTo}
-  echo "_DRUPAL9_P=\"${_DRUPAL9}-prod\""              >> ${_writeTo}
-  echo "_DRUPAL9_S=\"${_DRUPAL9}-stage\""             >> ${_writeTo}
-  echo "_DRUPAL10_0=\"${_DRUPAL10_0}\""               >> ${_writeTo}
-  echo "_DRUPAL10_0_D=\"${_DRUPAL10_0}-dev\""         >> ${_writeTo}
-  echo "_DRUPAL10_0_P=\"${_DRUPAL10_0}-prod\""        >> ${_writeTo}
-  echo "_DRUPAL10_0_S=\"${_DRUPAL10_0}-stage\""       >> ${_writeTo}
-  echo "_DRUPAL10_1=\"${_DRUPAL10_1}\""               >> ${_writeTo}
-  echo "_DRUPAL10_1_D=\"${_DRUPAL10_1}-dev\""         >> ${_writeTo}
-  echo "_DRUPAL10_1_P=\"${_DRUPAL10_1}-prod\""        >> ${_writeTo}
-  echo "_DRUPAL10_1_S=\"${_DRUPAL10_1}-stage\""       >> ${_writeTo}
-  echo "_DRUPAL10_2=\"${_DRUPAL10_2}\""               >> ${_writeTo}
-  echo "_DRUPAL10_2_D=\"${_DRUPAL10_2}-dev\""         >> ${_writeTo}
-  echo "_DRUPAL10_2_P=\"${_DRUPAL10_2}-prod\""        >> ${_writeTo}
-  echo "_DRUPAL10_2_S=\"${_DRUPAL10_2}-stage\""       >> ${_writeTo}
-  echo "_DRUPAL10_3=\"${_DRUPAL10_3}\""               >> ${_writeTo}
-  echo "_DRUPAL10_3_D=\"${_DRUPAL10_3}-dev\""         >> ${_writeTo}
-  echo "_DRUPAL10_3_P=\"${_DRUPAL10_3}-prod\""        >> ${_writeTo}
-  echo "_DRUPAL10_3_S=\"${_DRUPAL10_3}-stage\""       >> ${_writeTo}
-  echo "_DRUPAL10_4=\"${_DRUPAL10_4}\""               >> ${_writeTo}
-  echo "_DRUPAL10_4_D=\"${_DRUPAL10_4}-dev\""         >> ${_writeTo}
-  echo "_DRUPAL10_4_P=\"${_DRUPAL10_4}-prod\""        >> ${_writeTo}
-  echo "_DRUPAL10_4_S=\"${_DRUPAL10_4}-stage\""       >> ${_writeTo}
-  echo "_DRUSH_VERSION=\"${_DRUSH_VERSION}\""         >> ${_writeTo}
-  echo "_F_TIME=\"${_F_TIME}\""                       >> ${_writeTo}
-  echo "_HM_DISTRO=\"${_HM_DISTRO}\""                 >> ${_writeTo}
-  echo "_HM_ONLY=\"${_HM_ONLY}\""                     >> ${_writeTo}
-  echo "_HOT_SAUCE=\"${_HOT_SAUCE}\""                 >> ${_writeTo}
-  echo "_LAST_ALL=\"${_LAST_ALL}\""                   >> ${_writeTo}
-  echo "_LAST_HMR=\"${_LAST_HMR}\""                   >> ${_writeTo}
-  echo "_LASTNUM=\"${_LASTNUM}\""                     >> ${_writeTo}
-  echo "_MY_EMAIL=\"${_MY_EMAIL}\""                   >> ${_writeTo}
-  echo "_MY_OWNIP=\"${_MY_OWNIP}\""                   >> ${_writeTo}
-  echo "_NOW=\"${_NOW}\""                             >> ${_writeTo}
-  echo "_OPENLUCIUS=\"${_OPENLUCIUS}\""               >> ${_writeTo}
-  echo "_OPIGNOLMS9=\"${_OPIGNOLMS9}\""               >> ${_writeTo}
-  echo "_OS_CODE=\"${_OS_CODE}\""                     >> ${_writeTo}
-  echo "_PHP_CLI_VERSION=\"${_PHP_CLI_VERSION}\""     >> ${_writeTo}
-  echo "_PHP_FPM_VERSION=\"${_PHP_FPM_VERSION}\""     >> ${_writeTo}
-  echo "_PLATFORMS_LIST=\"${_PLATFORMS_LIST}\""       >> ${_writeTo}
-  echo "_PLATFORMS_ONLY=\"${_PLATFORMS_ONLY}\""       >> ${_writeTo}
-  echo "_PURGE_MODE=\"${_PURGE_MODE}\""               >> ${_writeTo}
-  echo "_REDIS_C_VERSION=\"${_REDIS_C_VERSION}\""     >> ${_writeTo}
-  echo "_REDIS_L_VERSION=\"${_REDIS_L_VERSION}\""     >> ${_writeTo}
-  echo "_REDIS_N_VERSION=\"${_REDIS_N_VERSION}\""     >> ${_writeTo}
-  echo "_REDIS_T_VERSION=\"${_REDIS_T_VERSION}\""     >> ${_writeTo}
-  echo "_SERIES_RESULT=\"${_SERIES_RESULT}\""         >> ${_writeTo}
-  echo "_SMALLCORE10_0_V=\"${_SMALLCORE10_0_V}\""     >> ${_writeTo}
-  echo "_SMALLCORE10_1_V=\"${_SMALLCORE10_1_V}\""     >> ${_writeTo}
-  echo "_SMALLCORE10_2_V=\"${_SMALLCORE10_2_V}\""     >> ${_writeTo}
-  echo "_SMALLCORE10_2_6_V=\"${_SMALLCORE10_2_6_V}\"" >> ${_writeTo}
-  echo "_SMALLCORE10_3_V=\"${_SMALLCORE10_3_V}\""     >> ${_writeTo}
-  echo "_SMALLCORE10_4_V=\"${_SMALLCORE10_4_V}\""     >> ${_writeTo}
-  echo "_SMALLCORE6_V=\"${_SMALLCORE6_V}\""           >> ${_writeTo}
-  echo "_SMALLCORE7_V=\"${_SMALLCORE7_V}\""           >> ${_writeTo}
-  echo "_SMALLCORE9_V=\"${_SMALLCORE9_V}\""           >> ${_writeTo}
-  echo "_SOCIAL=\"${_SOCIAL}\""                       >> ${_writeTo}
-  echo "_SPINNER=\"${_SPINNER}\""                     >> ${_writeTo}
-  echo "_STRONG_PASSWORDS=\"${_STRONG_PASSWORDS}\""   >> ${_writeTo}
-  echo "_T_BUILD=\"${_T_BUILD}\""                     >> ${_writeTo}
-  echo "_THIS_DB_HOST=\"${_THIS_DB_HOST}\""           >> ${_writeTo}
-  echo "_THIS_DB_PORT=\"${_THIS_DB_PORT}\""           >> ${_writeTo}
-  echo "_OS_DIST=\"${_OS_DIST}\""                     >> ${_writeTo}
-  echo "_THISHTIP=\"${_THISHTIP}\""                   >> ${_writeTo}
-  echo "_THUNDER=\"${_THUNDER}\""                     >> ${_writeTo}
-  echo "_TODAY=\"${_TODAY}\""                         >> ${_writeTo}
-  echo "_UBERCART6=\"${_UBERCART6}\""                 >> ${_writeTo}
-  echo "_UBERCART7=\"${_UBERCART7}\""                 >> ${_writeTo}
-  echo "_USE_CURRENT=\"${_USE_CURRENT}\""             >> ${_writeTo}
-  echo "_USE_MIR=\"${_USE_MIR}\""                     >> ${_writeTo}
-  echo "_USER=\"${_USER}\""                           >> ${_writeTo}
-  echo "_USRG=\"${_USRG}\""                           >> ${_writeTo}
-  echo "_VARBASE9=\"${_VARBASE9}\""                   >> ${_writeTo}
-  echo "_VARBASE10=\"${_VARBASE10}\""                 >> ${_writeTo}
-  echo "_WEBG=\"${_WEBG}\""                           >> ${_writeTo}
-  echo "_xSrl=\"${_xSrl}\""                           >> ${_writeTo}
-  echo "_X_VERSION=\"${_X_VERSION}\""                 >> ${_writeTo}
+  echo "export _AEGIR_VERSION=\"${_AEGIR_VERSION}\""         >> ${_writeTo}
+  echo "export _AEGIR_XTS_VRN=\"${_tRee}\""                  >> ${_writeTo}
+  echo "export _ALL_DISTRO=\"${_ALL_DISTRO}\""               >> ${_writeTo}
+  echo "export _AUTOPILOT=\"${_AUTOPILOT}\""                 >> ${_writeTo}
+  echo "export _BOA_REPO_GIT_URL=\"${_BOA_REPO_GIT_URL}\""   >> ${_writeTo}
+  echo "export _BOA_REPO_NAME=\"${_BOA_REPO_NAME}\""         >> ${_writeTo}
+  echo "export _BRANCH_BOA=\"${_BRANCH_BOA}\""               >> ${_writeTo}
+  echo "export _BRANCH_PRN=\"${_BRANCH_PRN}\""               >> ${_writeTo}
+  echo "export _CLIENT_CORES=\"${_CLIENT_CORES}\""           >> ${_writeTo}
+  echo "export _CLIENT_EMAIL=\"${_CLIENT_EMAIL}\""           >> ${_writeTo}
+  echo "export _CLIENT_OPTION=\"${_CLIENT_OPTION}\""         >> ${_writeTo}
+  echo "export _DEBUG_MODE=\"${_DEBUG_MODE}\""               >> ${_writeTo}
+  echo "export _DISTRO=\"${_DISTRO}\""                       >> ${_writeTo}
+  echo "export _DOMAIN=\"${_DOMAIN}\""                       >> ${_writeTo}
+  echo "export _DRUPAL6=\"${_DRUPAL6}\""                     >> ${_writeTo}
+  echo "export _DRUPAL6_D=\"${_DRUPAL6}-dev\""               >> ${_writeTo}
+  echo "export _DRUPAL6_P=\"${_DRUPAL6}-prod\""              >> ${_writeTo}
+  echo "export _DRUPAL6_S=\"${_DRUPAL6}-stage\""             >> ${_writeTo}
+  echo "export _DRUPAL7=\"${_DRUPAL7}\""                     >> ${_writeTo}
+  echo "export _DRUPAL7_D=\"${_DRUPAL7}-dev\""               >> ${_writeTo}
+  echo "export _DRUPAL7_P=\"${_DRUPAL7}-prod\""              >> ${_writeTo}
+  echo "export _DRUPAL7_S=\"${_DRUPAL7}-stage\""             >> ${_writeTo}
+  echo "export _DRUPAL9=\"${_DRUPAL9}\""                     >> ${_writeTo}
+  echo "export _DRUPAL9_D=\"${_DRUPAL9}-dev\""               >> ${_writeTo}
+  echo "export _DRUPAL9_P=\"${_DRUPAL9}-prod\""              >> ${_writeTo}
+  echo "export _DRUPAL9_S=\"${_DRUPAL9}-stage\""             >> ${_writeTo}
+  echo "export _DRUPAL10_0=\"${_DRUPAL10_0}\""               >> ${_writeTo}
+  echo "export _DRUPAL10_0_D=\"${_DRUPAL10_0}-dev\""         >> ${_writeTo}
+  echo "export _DRUPAL10_0_P=\"${_DRUPAL10_0}-prod\""        >> ${_writeTo}
+  echo "export _DRUPAL10_0_S=\"${_DRUPAL10_0}-stage\""       >> ${_writeTo}
+  echo "export _DRUPAL10_1=\"${_DRUPAL10_1}\""               >> ${_writeTo}
+  echo "export _DRUPAL10_1_D=\"${_DRUPAL10_1}-dev\""         >> ${_writeTo}
+  echo "export _DRUPAL10_1_P=\"${_DRUPAL10_1}-prod\""        >> ${_writeTo}
+  echo "export _DRUPAL10_1_S=\"${_DRUPAL10_1}-stage\""       >> ${_writeTo}
+  echo "export _DRUPAL10_2=\"${_DRUPAL10_2}\""               >> ${_writeTo}
+  echo "export _DRUPAL10_2_D=\"${_DRUPAL10_2}-dev\""         >> ${_writeTo}
+  echo "export _DRUPAL10_2_P=\"${_DRUPAL10_2}-prod\""        >> ${_writeTo}
+  echo "export _DRUPAL10_2_S=\"${_DRUPAL10_2}-stage\""       >> ${_writeTo}
+  echo "export _DRUPAL10_3=\"${_DRUPAL10_3}\""               >> ${_writeTo}
+  echo "export _DRUPAL10_3_D=\"${_DRUPAL10_3}-dev\""         >> ${_writeTo}
+  echo "export _DRUPAL10_3_P=\"${_DRUPAL10_3}-prod\""        >> ${_writeTo}
+  echo "export _DRUPAL10_3_S=\"${_DRUPAL10_3}-stage\""       >> ${_writeTo}
+  echo "export _DRUPAL10_4=\"${_DRUPAL10_4}\""               >> ${_writeTo}
+  echo "export _DRUPAL10_4_D=\"${_DRUPAL10_4}-dev\""         >> ${_writeTo}
+  echo "export _DRUPAL10_4_P=\"${_DRUPAL10_4}-prod\""        >> ${_writeTo}
+  echo "export _DRUPAL10_4_S=\"${_DRUPAL10_4}-stage\""       >> ${_writeTo}
+  echo "export _DRUSH_VERSION=\"${_DRUSH_VERSION}\""         >> ${_writeTo}
+  echo "export _F_TIME=\"${_F_TIME}\""                       >> ${_writeTo}
+  echo "export _HM_DISTRO=\"${_HM_DISTRO}\""                 >> ${_writeTo}
+  echo "export _HM_ONLY=\"${_HM_ONLY}\""                     >> ${_writeTo}
+  echo "export _HOT_SAUCE=\"${_HOT_SAUCE}\""                 >> ${_writeTo}
+  echo "export _LAST_ALL=\"${_LAST_ALL}\""                   >> ${_writeTo}
+  echo "export _LAST_HMR=\"${_LAST_HMR}\""                   >> ${_writeTo}
+  echo "export _LASTNUM=\"${_LASTNUM}\""                     >> ${_writeTo}
+  echo "export _MY_EMAIL=\"${_MY_EMAIL}\""                   >> ${_writeTo}
+  echo "export _MY_OWNIP=\"${_MY_OWNIP}\""                   >> ${_writeTo}
+  echo "export _NOW=\"${_NOW}\""                             >> ${_writeTo}
+  echo "export _OS_CODE=\"${_OS_CODE}\""                     >> ${_writeTo}
+  echo "export _PHP_CLI_VERSION=\"${_PHP_CLI_VERSION}\""     >> ${_writeTo}
+  echo "export _PHP_FPM_VERSION=\"${_PHP_FPM_VERSION}\""     >> ${_writeTo}
+  echo "export _PLATFORMS_LIST=\"${_PLATFORMS_LIST}\""       >> ${_writeTo}
+  echo "export _PLATFORMS_ONLY=\"${_PLATFORMS_ONLY}\""       >> ${_writeTo}
+  echo "export _PURGE_MODE=\"${_PURGE_MODE}\""               >> ${_writeTo}
+  echo "export _REDIS_C_VERSION=\"${_REDIS_C_VERSION}\""     >> ${_writeTo}
+  echo "export _REDIS_L_VERSION=\"${_REDIS_L_VERSION}\""     >> ${_writeTo}
+  echo "export _REDIS_N_VERSION=\"${_REDIS_N_VERSION}\""     >> ${_writeTo}
+  echo "export _REDIS_T_VERSION=\"${_REDIS_T_VERSION}\""     >> ${_writeTo}
+  echo "export _SERIES_RESULT=\"${_SERIES_RESULT}\""         >> ${_writeTo}
+  echo "export _SMALLCORE10_0_V=\"${_SMALLCORE10_0_V}\""     >> ${_writeTo}
+  echo "export _SMALLCORE10_1_V=\"${_SMALLCORE10_1_V}\""     >> ${_writeTo}
+  echo "export _SMALLCORE10_2_V=\"${_SMALLCORE10_2_V}\""     >> ${_writeTo}
+  echo "export _SMALLCORE10_3_V=\"${_SMALLCORE10_3_V}\""     >> ${_writeTo}
+  echo "export _SMALLCORE10_4_V=\"${_SMALLCORE10_4_V}\""     >> ${_writeTo}
+  echo "export _SMALLCORE6_V=\"${_SMALLCORE6_V}\""           >> ${_writeTo}
+  echo "export _SMALLCORE7_V=\"${_SMALLCORE7_V}\""           >> ${_writeTo}
+  echo "export _SMALLCORE9_V=\"${_SMALLCORE9_V}\""           >> ${_writeTo}
+  echo "export _SPINNER=\"${_SPINNER}\""                     >> ${_writeTo}
+  echo "export _STRONG_PASSWORDS=\"${_STRONG_PASSWORDS}\""   >> ${_writeTo}
+  echo "export _T_BUILD=\"${_T_BUILD}\""                     >> ${_writeTo}
+  echo "export _THIS_DB_HOST=\"${_THIS_DB_HOST}\""           >> ${_writeTo}
+  echo "export _THIS_DB_PORT=\"${_THIS_DB_PORT}\""           >> ${_writeTo}
+  echo "export _OS_DIST=\"${_OS_DIST}\""                     >> ${_writeTo}
+  echo "export _THISHTIP=\"${_THISHTIP}\""                   >> ${_writeTo}
+  echo "export _TODAY=\"${_TODAY}\""                         >> ${_writeTo}
+  echo "export _USE_CURRENT=\"${_USE_CURRENT}\""             >> ${_writeTo}
+  echo "export _USE_MIR=\"${_USE_MIR}\""                     >> ${_writeTo}
+  echo "export _USER=\"${_USER}\""                           >> ${_writeTo}
+  echo "export _USRG=\"${_USRG}\""                           >> ${_writeTo}
+  echo "export _WEBG=\"${_WEBG}\""                           >> ${_writeTo}
+  echo "export _xSrl=\"${_xSrl}\""                           >> ${_writeTo}
+  echo "export _X_VERSION=\"${_X_VERSION}\""                 >> ${_writeTo}
 
   _THISHOST=$(cat /etc/hostname 2>&1)
   _THISHOST=$(echo -n ${_THISHOST} | tr -d "\n" 2>&1)
