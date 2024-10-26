@@ -2861,6 +2861,7 @@ _incident_detection() {
     "urn:ietf:params:acme:error:unauthorized"
     "urn:ietf:params:acme:error:badNonce"
     "urn:ietf:params:acme:error:rateLimited"
+    "urn:ietf:params:acme:error:dns"
     "urn:acme:error:serverInternal"
     "Remote PerformValidation RPC failed"
     "ModuleNotFoundError"
