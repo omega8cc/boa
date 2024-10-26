@@ -106,7 +106,7 @@
     * Unbound 1.21.1
     * OpenSSL 3.3.2
     * PHP 8.3.12
-    * PHP 8.2.24
+    * PHP 8.2.25
     * PHP 8.1.30
     * OpenSSH 9.9p1
     * Python 3.12.5 (for Duplicity)
