@@ -2204,12 +2204,10 @@ _display_info() {
               else
                 _OCT_NR=$(( _OCT_NR - 1 ))
               fi
-              echo "  PHP versions used"
               _PHP_CLI=$(grep _PHP_CLI_VERSION /root/.${_THIS_U}.octopus.cnf)
               _PHP_FPM=$(grep _PHP_FPM_VERSION /root/.${_THIS_U}.octopus.cnf)
               echo "  ${_PHP_CLI}"
               echo "  ${_PHP_FPM}"
-              echo "  Number of Hosted Sites in ${_OCT} is ${_SITES_NR}"
               _OCT_ERR=$(grep "Incompatibility detected in codebase at ${_OCT}/" /var/xdrago/log/core/incompatible-*.log)
               if [ -n "${_OCT_ERR}" ]; then
                 echo
