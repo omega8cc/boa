@@ -2208,9 +2208,9 @@ _display_info() {
               _PHP_FPM=$(grep _PHP_FPM_VERSION /root/.${_THIS_U}.octopus.cnf)
               echo "  ${_PHP_CLI}"
               echo "  ${_PHP_FPM}"
+              echo
               _OCT_ERR=$(grep "Incompatibility detected in codebase at ${_OCT}/" /var/xdrago/log/core/incompatible-*.log)
               if [ -n "${_OCT_ERR}" ]; then
-                echo
                 echo "  ${_THIS_U} Percona 8.0 Incompatibility Report"
                 echo ${_OCT_ERR}
               fi
