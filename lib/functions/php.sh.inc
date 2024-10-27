@@ -2329,6 +2329,13 @@ _check_php_rebuild() {
 
   # Additional conditions for force rebuild or upgrade
   if [ "${_FULL_FORCE_REINSTALL}" = "YES" ] || [ "${_PHP_FORCE_REINSTALL}" = "YES" ]; then
+    if [ ! -e "/var/xdrago/log" ] && [ -e "/var/xdrago_wait/log" ]; then
+      rm -f /var/xdrago_wait/log/*.log
+      rm -f /var/xdrago_wait/log/._php_libs_fix_*.pid
+    else
+      rm -f /var/xdrago/log/*.log
+      rm -f /var/xdrago/log/._php_libs_fix_*.pid
+    fi
     if [ "${_DO_FIX}" = "YES" ] || [ "${_STATUS}" != "UPGRADE" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: PHP ${_PHP_ITD} rebuild on next barracuda update"
@@ -3011,6 +3018,13 @@ _php_ioncube_check_if_update() {
     if [ ! -e "${_pthLog}/ioncube-update-${_IONCUBE_VRN}.log" ] \
       || [ "${_PHP_FORCE_REINSTALL}" = "YES" ] \
       || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
+      if [ ! -e "/var/xdrago/log" ] && [ -e "/var/xdrago_wait/log" ]; then
+        rm -f /var/xdrago_wait/log/*.log
+        rm -f /var/xdrago_wait/log/._php_libs_fix_*.pid
+      else
+        rm -f /var/xdrago/log/*.log
+        rm -f /var/xdrago/log/._php_libs_fix_*.pid
+      fi
       _if_install_php_ioncube
     fi
   fi
