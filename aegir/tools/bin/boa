@@ -275,7 +275,7 @@ _ifnames_grub_check_sync() {
     _SYS_BIOSDEVNAME=$(echo "${_GRUB_CMDLINE_LINUX}" | grep -o "biosdevname=[01]")
     _SYS_MEMHP_STATE=$(echo "${_GRUB_CMDLINE_LINUX}" | grep -o "memhp_default_state=online")
 
-    # Function to append option to _ADD_GRUB_CMD if not already present
+    # Function to append option to _ADD_GRUB_CMD
     _append_grub_cmd_option() {
       local _option="$1"
       if [[ -z "${_ADD_GRUB_CMD}" ]]; then
@@ -285,25 +285,17 @@ _ifnames_grub_check_sync() {
       fi
     }
 
-    # Check and append options as necessary
-    if [[ -z "${_SYS_MEMHP_STATE}" ]]; then
-      _append_grub_cmd_option "memhp_default_state=online"
-    fi
+    # Always add memhp_default_state=online
+    _append_grub_cmd_option "memhp_default_state=online"
 
     if [[ "${_USE_IFNAMES}" == "CLASSIC" ]]; then
-      if [[ "${_SYS_NET_IFNAMES}" != "net.ifnames=0" ]]; then
-        _append_grub_cmd_option "net.ifnames=0"
-      fi
-      if [[ "${_SYS_BIOSDEVNAME}" != "biosdevname=0" ]]; then
-        _append_grub_cmd_option "biosdevname=0"
-      fi
+      # Always set net.ifnames=0 and biosdevname=0
+      _append_grub_cmd_option "net.ifnames=0"
+      _append_grub_cmd_option "biosdevname=0"
     elif [[ "${_USE_IFNAMES}" == "PREDICTABLE" ]]; then
-      if [[ "${_SYS_NET_IFNAMES}" != "net.ifnames=1" ]]; then
-        _append_grub_cmd_option "net.ifnames=1"
-      fi
-      if [[ "${_SYS_BIOSDEVNAME}" != "biosdevname=1" ]]; then
-        _append_grub_cmd_option "biosdevname=1"
-      fi
+      # Always set net.ifnames=1 and biosdevname=1
+      _append_grub_cmd_option "net.ifnames=1"
+      _append_grub_cmd_option "biosdevname=1"
     fi
 
     if [ -e "/root/.auto.config.ifnames.grub.cnf" ] && [ ! -e "/root/.ignore.ifnames.cnf" ]; then
