@@ -2655,7 +2655,7 @@ _purge_cruft_machine() {
   find ${_usEr}/static/trash/* \
     -mtime +${_PURGE_TMP} -exec rm -rf {} \; &> /dev/null
 
-  for i in `dir -d /home/${_HM_U}.ftp/platforms/*`; do
+  for i in $(dir -d /home/${_HM_U}.ftp/platforms/* 2>/dev/null); do
     if [ -e "${i}" ]; then
       _RevisionTest=$(ls ${i} \
         | wc -l \
@@ -2674,7 +2674,7 @@ _purge_cruft_machine() {
     fi
   done
 
-  for i in `dir -d ${_usEr}/distro/*`; do
+  for i in $(dir -d ${_usEr}/distro/* 2>/dev/null); do
     if [ -d "${i}" ]; then
       if [ ! -d "${i}/keys" ]; then
         mkdir -p ${i}/keys
@@ -2690,7 +2690,7 @@ _purge_cruft_machine() {
     fi
   done
 
-  for i in `dir -d ${_usEr}/distro/*`; do
+  for i in $(dir -d ${_usEr}/distro/* 2>/dev/null); do
     if [ -e "${i}" ]; then
       _distTrNr=$(echo ${i} \
         | cut -d'/' -f6 \
