@@ -2184,16 +2184,10 @@ _display_info() {
       if [ "${_mOde}" = "report" ]; then
         _display="system"
         if [ "${_eXtr}" = "octopus" ] && [ -d "/data/u" ]; then
-          echo "  Octopus PHP versions used"
-          echo
-          grep _PHP_CLI_VERSION /root/.*.octopus.cnf
-          echo
-          grep _PHP_FPM_VERSION /root/.*.octopus.cnf
           echo
           _OCT_NR=$(ls /data/disk | wc -l)
           _OCT_NR=$(( _OCT_NR - 1 ))
           echo "  All Octopus Instances: ${_OCT_NR}"
-          echo
           for _OCT in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
             _SITES_NR=0
             _THIS_U=$(echo ${_OCT} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
@@ -2210,16 +2204,22 @@ _display_info() {
               else
                 _OCT_NR=$(( _OCT_NR - 1 ))
               fi
+              echo "  PHP versions used"
+              _PHP_CLI=$(grep _PHP_CLI_VERSION /root/.${_THIS_U}.octopus.cnf)
+              _PHP_FPM=$(grep _PHP_FPM_VERSION /root/.${_THIS_U}.octopus.cnf)
+              echo "  ${_PHP_CLI}"
+              echo "  ${_PHP_FPM}"
+              echo "  Number of Hosted Sites in ${_OCT} is ${_SITES_NR}"
               _OCT_ERR=$(grep "Incompatibility detected in codebase at ${_OCT}/" /var/xdrago/log/core/incompatible-*.log)
               if [ -n "${_OCT_ERR}" ]; then
                 echo
-                echo "Percona 8.0 Incompatibility Report"
+                echo "  ${_THIS_U} Percona 8.0 Incompatibility Report"
                 echo ${_OCT_ERR}
               fi
             fi
           done
           echo
-          echo "  Active Octopus Instances: ${_OCT_NR}"
+          echo "  All Active Octopus Instances: ${_OCT_NR}"
           _ALL_SITES_NR=$(ls /data/disk/*/config/server_master/nginx/vhost.d | wc -l)
           _ALL_SITES_NR=$(( _ALL_SITES_NR - _OCT_NR ))
           echo "  Number of All Hosted Sites: ${_ALL_SITES_NR}"
