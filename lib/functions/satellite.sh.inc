@@ -3425,7 +3425,7 @@ _satellite_if_add_update_user_platforms_symlinks() {
   _LOW_NR="2"
   _usEr="${_ROOT}"
 
-  for i in `dir -d /home/${_HM_U}.ftp/platforms/*`; do
+  for i in $(dir -d /home/${_HM_U}.ftp/platforms/* 2>/dev/null); do
     if [ -e "${i}" ]; then
       _RevisionTest=$(ls ${i} \
         | wc -l \
@@ -3433,7 +3433,7 @@ _satellite_if_add_update_user_platforms_symlinks() {
       if [ "${_RevisionTest}" -lt "${_LOW_NR}" ] \
         && [ ! -z "${_RevisionTest}" ]; then
         if [ -d "/home/${_HM_U}.ftp/platforms" ]; then
-          chattr -i /home/${_HM_U}.ftp/platforms
+          chattr -i /home/${_HM_U}.ftp/platforms &> /dev/null
           chattr -i /home/${_HM_U}.ftp/platforms/* &> /dev/null
         fi
         _NOW=$(date +%y%m%d-%H%M%S 2>&1)
@@ -3444,7 +3444,7 @@ _satellite_if_add_update_user_platforms_symlinks() {
     fi
   done
 
-  for i in `dir -d ${_usEr}/distro/*`; do
+  for i in $(dir -d ${_usEr}/distro/* 2>/dev/null); do
     if [ -d "${i}" ]; then
       if [ ! -d "${i}/keys" ]; then
         mkdir -p ${i}/keys
@@ -3460,13 +3460,13 @@ _satellite_if_add_update_user_platforms_symlinks() {
     fi
   done
 
-  for i in `dir -d ${_usEr}/distro/*`; do
+  for i in $(dir -d ${_usEr}/distro/* 2>/dev/null); do
     if [ -e "${i}" ]; then
       _distTrNr=$(echo ${i} \
         | cut -d'/' -f6 \
         | awk '{ print $1}' 2> /dev/null)
       if [ -d "/home/${_HM_U}.ftp/platforms" ]; then
-        chattr -i /home/${_HM_U}.ftp/platforms
+        chattr -i /home/${_HM_U}.ftp/platforms &> /dev/null
         chattr -i /home/${_HM_U}.ftp/platforms/* &> /dev/null
       fi
       if [ ! -e "${i}/keys" ]; then
