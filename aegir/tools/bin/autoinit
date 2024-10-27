@@ -465,7 +465,7 @@ _ifnames_grub_check_sync() {
   fi
 }
 
-_init_pre() {
+_init_prepare() {
   if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
     && [ -e "/etc/apt/apt.conf.d" ]; then
     echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
@@ -494,7 +494,7 @@ _init_pre() {
   _ifnames_grub_check_sync
 
   if [[ -n "${_ADD_GRUB_CMD}" ]] && [[ "${_NEW_GRUB}" == "LIVE" ]]; then
-    echo "Running _init_pre procedure A..."
+    echo "Running _init_prepare procedure A..."
     touch /run/autoinit.pid
     update-grub >> "${_logSlt}"
     sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
@@ -510,7 +510,7 @@ _init_pre() {
     exit 0
   else
     if [ ! -x "/usr/bin/aptitude" ] || [ ! -x "/usr/bin/cc" ]; then
-      echo "Running _init_pre procedure B..."
+      echo "Running _init_prepare procedure B..."
       touch /run/autoinit.pid
       /usr/bin/apt-get update >> "${_logSlt}"
       ${_INITINS} lsb-release >> "${_logSlt}"
@@ -554,7 +554,7 @@ _init_pre() {
 }
 
 _init_info() {
-  echo "Running _init_pre procedure, please wait..."
+  echo "Running _init_prepare procedure, please wait..."
   sleep 3
   echo "The system will reboot and continue several times..."
   sleep 3
@@ -715,7 +715,7 @@ _init_conf() {
     if [ ! -x "/usr/bin/cc" ]; then
       _init_info
     fi
-    _init_pre &> /dev/null
+    _init_prepare &> /dev/null
   fi
 }
 
@@ -730,7 +730,7 @@ _init_start() {
   fi
 }
 
-_init_pre() {
+_init_launch() {
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   touch /run/autoinit.pid
@@ -743,7 +743,7 @@ _init_pre() {
 }
 
 if [ ! -e "/run/autoinit.pid" ]; then
-  _init_pre
+  _init_launch
 fi
 
 exit 0
