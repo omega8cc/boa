@@ -2047,163 +2047,181 @@ _display_info() {
     else
       echo "  CRL_Local_Bin NO"
     fi
-    [ "${_mOde}" != "report" ] && [ ! -z "${_AUT}" ] && echo "  _AUT ${_AUT}"
-    [ "${_mOde}" != "report" ] && [ ! -z "${_BIL}" ] && echo "  _BIL ${_BIL}"
-    [ "${_mOde}" != "report" ] && [ ! -z "${_CCC}" ] && echo "  _CCC ${_CCC}"
-    [ "${_mOde}" != "report" ] && [ ! -z "${_CCL}" ] && echo "  _CCL ${_CCL}"
-    [ "${_mOde}" != "report" ] && [ ! -z "${_CCR}" ] && echo "  _CCR ${_CCR}"
-    [ "${_mOde}" != "report" ] && [ ! -z "${_CCS}" ] && echo "  _CCS ${_CCS}"
-    [ "${_mOde}" != "report" ] && [ ! -z "${_DBG}" ] && echo "  _DBG ${_DBG}"
-    [ "${_mOde}" != "report" ] && [ ! -z "${_DBS}" ] && echo "  _DBS ${_DBS}"
-    [ "${_mOde}" != "report" ] && [ ! -z "${_DNS}" ] && echo "  _DNS ${_DNS}"
-    [ "${_mOde}" != "report" ] && [ ! -z "${_EXP}" ] && echo "  _EXP ${_EXP}"
-    [ "${_mOde}" != "report" ] && [ ! -z "${_MFS}" ] && echo "  _MFS ${_MFS}"
-    [ "${_mOde}" != "report" ] && [ ! -z "${_MFX}" ] && echo "  _MFX ${_MFX}"
-    [ "${_mOde}" != "report" ] && [ ! -z "${_PCV}" ] && echo "  _PCV ${_PCV}"
-    [ "${_mOde}" != "report" ] && [ ! -z "${_PEC}" ] && echo "  _PEC ${_PEC}"
-    [ "${_mOde}" != "report" ] && [ ! -z "${_PFD}" ] && echo "  _PFD ${_PFD}"
-    [ "${_mOde}" != "report" ] && [ ! -z "${_PFV}" ] && echo "  _PFV ${_PFV}"
-    [ "${_mOde}" != "report" ] && [ ! -z "${_PFX}" ] && echo "  _PFX ${_PFX}"
-    [ "${_mOde}" != "report" ] && [ ! -z "${_PMI}" ] && echo "  _PMI ${_PMI}"
-    [ "${_mOde}" != "report" ] && [ ! -z "${_PSI}" ] && echo "  _PSI ${_PSI}"
-    [ "${_mOde}" != "report" ] && [ ! -z "${_SAR}" ] && echo "  _SAR ${_SAR}"
-    [ "${_mOde}" != "report" ] && [ ! -z "${_SBP}" ] && echo "  _SBP ${_SBP}"
-    [ "${_mOde}" != "report" ] && [ ! -z "${_SFS}" ] && echo "  _SFS ${_SFS}"
-    [ "${_mOde}" != "report" ] && [ ! -z "${_STP}" ] && echo "  _STP ${_STP}"
-    [ "${_mOde}" != "report" ] && [ ! -z "${_SUO}" ] && echo "  _SUO ${_SUO}"
-    [ "${_mOde}" != "report" ] && [ ! -z "${_UMY}" ] && echo "  _UMY ${_UMY}"
-    [ "${_mOde}" != "report" ] && [ ! -z "${_XTR}" ] && echo "  _XTR ${_XTR}"
-    [ "${_mOde}" != "report" ] && [ ! -z "${_AUT}" ] && echo "  _AUT ${_AUT}"
 
-    # Get the currently used GRUB config affecting networking
-    _GRUB_FILE="/etc/default/grub"
-    _XSG=$(grep -E "^GRUB_CMDLINE_LINUX=" "${_GRUB_FILE}")
+    if [ "${_mOde}" != "report" ]; then
 
-    # Get the currently running kernel version
-    _XSK=$(uname -r)
+      [ ! -z "${_AUT}" ] && echo "  _AUT ${_AUT}"
+      [ ! -z "${_BIL}" ] && echo "  _BIL ${_BIL}"
+      [ ! -z "${_CCC}" ] && echo "  _CCC ${_CCC}"
+      [ ! -z "${_CCL}" ] && echo "  _CCL ${_CCL}"
+      [ ! -z "${_CCR}" ] && echo "  _CCR ${_CCR}"
+      [ ! -z "${_CCS}" ] && echo "  _CCS ${_CCS}"
+      [ ! -z "${_DBG}" ] && echo "  _DBG ${_DBG}"
+      [ ! -z "${_DBS}" ] && echo "  _DBS ${_DBS}"
+      [ ! -z "${_DNS}" ] && echo "  _DNS ${_DNS}"
+      [ ! -z "${_EXP}" ] && echo "  _EXP ${_EXP}"
+      [ ! -z "${_MFS}" ] && echo "  _MFS ${_MFS}"
+      [ ! -z "${_MFX}" ] && echo "  _MFX ${_MFX}"
+      [ ! -z "${_PCV}" ] && echo "  _PCV ${_PCV}"
+      [ ! -z "${_PEC}" ] && echo "  _PEC ${_PEC}"
+      [ ! -z "${_PFD}" ] && echo "  _PFD ${_PFD}"
+      [ ! -z "${_PFV}" ] && echo "  _PFV ${_PFV}"
+      [ ! -z "${_PFX}" ] && echo "  _PFX ${_PFX}"
+      [ ! -z "${_PMI}" ] && echo "  _PMI ${_PMI}"
+      [ ! -z "${_PSI}" ] && echo "  _PSI ${_PSI}"
+      [ ! -z "${_SAR}" ] && echo "  _SAR ${_SAR}"
+      [ ! -z "${_SBP}" ] && echo "  _SBP ${_SBP}"
+      [ ! -z "${_SFS}" ] && echo "  _SFS ${_SFS}"
+      [ ! -z "${_STP}" ] && echo "  _STP ${_STP}"
+      [ ! -z "${_SUO}" ] && echo "  _SUO ${_SUO}"
+      [ ! -z "${_UMY}" ] && echo "  _UMY ${_UMY}"
+      [ ! -z "${_XTR}" ] && echo "  _XTR ${_XTR}"
+      [ ! -z "${_AUT}" ] && echo "  _AUT ${_AUT}"
 
-    # Get the kernel version that will be activated after reboot (latest installed kernel)
-    _XSN=$(ls -1 /boot/vmlinuz-* | sort -V | tail -n 1 | sed 's/\/boot\/vmlinuz-//')
+      # Get the currently used GRUB config affecting networking
+      _GRUB_FILE="/etc/default/grub"
+      _XSG=$(grep -E "^GRUB_CMDLINE_LINUX=" "${_GRUB_FILE}")
 
-    _XSU=$(uptime -p 2>&1)
-    _XSL=$(uptime | awk -F'load average:' '{ print $2 }' | sed 's/^ //' 2>&1)
+      # Get the currently running kernel version
+      _XSK=$(uname -r)
 
-    _check_system_ram
+      # Get the kernel version that will be activated after reboot (latest installed kernel)
+      _XSN=$(ls -1 /boot/vmlinuz-* | sort -V | tail -n 1 | sed 's/\/boot\/vmlinuz-//')
 
-    echo
-    echo "  _XSY System Uptime/Load/Kernel/CPU/Memory/Disk Report"
-    echo
-    echo "  _XSU System Uptime: ${_XSU}"
-    echo "  _XSL System Load: ${_XSL}"
-    echo "  _XSK Current Kernel Version: ${_XSK}"
-    # Only display the next kernel version if it's different from the current one
-    if [ "${_XSK}" != "${_XSN}" ]; then
-      echo "  _XSN Next Kernel Version (after reboot): ${_XSN}"
-    fi
-    echo "  _XSG GRUB: ${_XSG}"
-    echo "  _CPU Number: ${_CPU_NR}"
-    echo "  _RAM Total: ${_total_ram_gb} GB"
-    echo "  _RAM Usage: ${_ram_usage_percent}%"
-    echo "  _DSK Usage for relevant partitions:"
-    # Loop through all partitions and display their usage, excluding tmpfs, udev, and empty partitions
-    df -h | awk 'NR > 1 && $1 !~ /tmpfs|udev/ && $5 != "0%" {print "  _DSK " $1 ": " $5 " used (" $6 ")"}'
-    echo
+      _XSU=$(uptime -p 2>&1)
+      _XSL=$(uptime | awk -F'load average:' '{ print $2 }' | sed 's/^ //' 2>&1)
 
-    echo "  _XSE Key Services Uptime Report"
-    echo
-    # Arrays to store results
-    _running_services=()
-    _not_running_services=()
-    # Indexed array to hold the services in the desired order
-    _services_order=(
-      "sshd"
-      "crond"
-      "nginx"
-      "php74-fpm"
-      "php81-fpm"
-      "php82-fpm"
-      "php83-fpm"
-      "mysql"
-      "redis"
-      "solr7"
-      "jetty9"
-      "pure-ftpd"
-      "lfd"
-      "rsyslogd"
-      "unbound"
-      "vnstat"
-    )
-    # List of services and their respective PID files
-    declare -A _services=(
-      ["sshd"]="/run/sshd.pid"
-      ["crond"]="/run/crond.pid"
-      ["nginx"]="/run/nginx.pid"
-      ["php74-fpm"]="/run/php74-fpm.pid"
-      ["php81-fpm"]="/run/php81-fpm.pid"
-      ["php82-fpm"]="/run/php82-fpm.pid"
-      ["php83-fpm"]="/run/php83-fpm.pid"
-      ["mysql"]="/run/mysqld/mysqld.pid"
-      ["redis"]="/run/redis/redis.pid"
-      ["solr7"]="/var/solr7/solr-9077.pid"
-      ["jetty9"]="/run/jetty9.pid"
-      ["pure-ftpd"]="/run/pure-ftpd.pid"
-      ["lfd"]="/run/lfd.pid"
-      ["rsyslogd"]="/run/rsyslogd.pid"
-      ["unbound"]="/run/unbound/unbound.pid"
-      ["vnstat"]="/run/vnstat/vnstat.pid"
-    )
-    # Loop through the services in the correct order
-    for _service in "${_services_order[@]}"; do
-      _display_time "${_service}" "${_services[${_service}]}"
-    done
-    # Conditionally display headers only if there are both running and not running services
-    if [ ${#_running_services[@]} -gt 0 ]; then
-      if [ ${#_not_running_services[@]} -gt 0 ]; then
-        echo "  _XSE Running services:"
-        echo
+      _check_system_ram
+
+      echo
+      echo "  _XSY System Uptime/Load/Kernel/CPU/Memory/Disk Report"
+      echo
+      echo "  _XSU System Uptime: ${_XSU}"
+      echo "  _XSL System Load: ${_XSL}"
+      echo "  _XSK Current Kernel Version: ${_XSK}"
+      # Only display the next kernel version if it's different from the current one
+      if [ "${_XSK}" != "${_XSN}" ]; then
+        echo "  _XSN Next Kernel Version (after reboot): ${_XSN}"
       fi
-      for _service in "${_running_services[@]}"; do
-        echo "${_service}"
-      done
-    fi
-    if [ ${#_not_running_services[@]} -gt 0 ]; then
+      echo "  _XSG GRUB: ${_XSG}"
+      echo "  _CPU Number: ${_CPU_NR}"
+      echo "  _RAM Total: ${_total_ram_gb} GB"
+      echo "  _RAM Usage: ${_ram_usage_percent}%"
+      echo "  _DSK Usage for relevant partitions:"
+      # Loop through all partitions and display their usage, excluding tmpfs, udev, and empty partitions
+      df -h | awk 'NR > 1 && $1 !~ /tmpfs|udev/ && $5 != "0%" {print "  _DSK " $1 ": " $5 " used (" $6 ")"}'
       echo
-      echo "  _XSE Not running services:"
+
+      echo "  _XSE Key Services Uptime Report"
       echo
-      for _service in "${_not_running_services[@]}"; do
-        echo "${_service}"
+      # Arrays to store results
+      _running_services=()
+      _not_running_services=()
+      # Indexed array to hold the services in the desired order
+      _services_order=(
+        "sshd"
+        "crond"
+        "nginx"
+        "php74-fpm"
+        "php81-fpm"
+        "php82-fpm"
+        "php83-fpm"
+        "mysql"
+        "redis"
+        "solr7"
+        "jetty9"
+        "pure-ftpd"
+        "lfd"
+        "rsyslogd"
+        "unbound"
+        "vnstat"
+      )
+      # List of services and their respective PID files
+      declare -A _services=(
+        ["sshd"]="/run/sshd.pid"
+        ["crond"]="/run/crond.pid"
+        ["nginx"]="/run/nginx.pid"
+        ["php74-fpm"]="/run/php74-fpm.pid"
+        ["php81-fpm"]="/run/php81-fpm.pid"
+        ["php82-fpm"]="/run/php82-fpm.pid"
+        ["php83-fpm"]="/run/php83-fpm.pid"
+        ["mysql"]="/run/mysqld/mysqld.pid"
+        ["redis"]="/run/redis/redis.pid"
+        ["solr7"]="/var/solr7/solr-9077.pid"
+        ["jetty9"]="/run/jetty9.pid"
+        ["pure-ftpd"]="/run/pure-ftpd.pid"
+        ["lfd"]="/run/lfd.pid"
+        ["rsyslogd"]="/run/rsyslogd.pid"
+        ["unbound"]="/run/unbound/unbound.pid"
+        ["vnstat"]="/run/vnstat/vnstat.pid"
+      )
+      # Loop through the services in the correct order
+      for _service in "${_services_order[@]}"; do
+        _display_time "${_service}" "${_services[${_service}]}"
       done
+      # Conditionally display headers only if there are both running and not running services
+      if [ ${#_running_services[@]} -gt 0 ]; then
+        if [ ${#_not_running_services[@]} -gt 0 ]; then
+          echo "  _XSE Running services:"
+          echo
+        fi
+        for _service in "${_running_services[@]}"; do
+          echo "${_service}"
+        done
+      fi
+      if [ ${#_not_running_services[@]} -gt 0 ]; then
+        echo
+        echo "  _XSE Not running services:"
+        echo
+        for _service in "${_not_running_services[@]}"; do
+          echo "${_service}"
+        done
+      fi
+      echo
     fi
-    echo
+
     if [ -e "/var/log/barracuda_log.txt" ]; then
       if [ "${_mOde}" = "report" ]; then
         _display="system"
         if [ "${_eXtr}" = "octopus" ] && [ -d "/data/u" ]; then
-          grep _PHP_CLI_VERSION /root/.*.octopus.cnf
-          echo
-          grep _PHP_FPM_VERSION /root/.*.octopus.cnf
           echo
           _OCT_NR=$(ls /data/disk | wc -l)
           _OCT_NR=$(( _OCT_NR - 1 ))
-          echo ALL _OCT_NR is ${_OCT_NR}
-          echo
+          echo "  All Octopus Instances: ${_OCT_NR}"
           for _OCT in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
             _SITES_NR=0
+            _THIS_U=$(echo ${_OCT} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
+            _OCT_USG=$(grep ",${_THIS_U}" /var/xdrago/log/usage/usage-latest-silent.log)
+            if [ -n "${_OCT_USG}" ]; then
+              echo
+              echo "  Usage Report for ${_OCT}"
+              echo "  ${_OCT_USG}"
+            fi
             if [ -e "${_OCT}/config/server_master/nginx/vhost.d" ]; then
               _SITES_NR=$(ls ${_OCT}/config/server_master/nginx/vhost.d | wc -l)
               if [ "${_SITES_NR}" -gt "0" ]; then
-                echo _SITES_NR in ${_OCT} is ${_SITES_NR}
+                echo "  Number of Hosted Sites in ${_OCT} is ${_SITES_NR}"
               else
                 _OCT_NR=$(( _OCT_NR - 1 ))
+              fi
+              _PHP_CLI=$(grep _PHP_CLI_VERSION /root/.${_THIS_U}.octopus.cnf)
+              _PHP_FPM=$(grep _PHP_FPM_VERSION /root/.${_THIS_U}.octopus.cnf)
+              echo "  ${_PHP_CLI}"
+              echo "  ${_PHP_FPM}"
+              echo
+              _OCT_ERR=$(grep "Incompatibility detected in codebase at ${_OCT}/" /var/xdrago/log/core/incompatible-*.log)
+              if [ -n "${_OCT_ERR}" ]; then
+                echo "  ${_THIS_U} Percona 8.0 Incompatibility Report"
+                echo ${_OCT_ERR}
               fi
             fi
           done
           echo
-          echo ACTIVE _OCT_NR is ${_OCT_NR}
+          echo "  All Active Octopus Instances: ${_OCT_NR}"
           _ALL_SITES_NR=$(ls /data/disk/*/config/server_master/nginx/vhost.d | wc -l)
           _ALL_SITES_NR=$(( _ALL_SITES_NR - _OCT_NR ))
+          echo "  Number of All Hosted Sites: ${_ALL_SITES_NR}"
           echo
-          echo _ALL_SITES_NR is ${_ALL_SITES_NR}
         fi
         if [ "${_eXtr}" = "backups" ]; then
           tail --lines=19 /var/xdrago/log/*.archive.log
