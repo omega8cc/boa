@@ -47,7 +47,7 @@ fi
 # ----------------------------
 
 # Default logging mode, can be SILENT (none), NORMAL or VERBOSE
-_NGINX_DOS_LOG=VERBOSE
+_NGINX_DOS_LOG=SILENT
 
 # ==============================
 # Load Configuration File
