@@ -615,8 +615,14 @@ _migrate_prepare() {
       _run_drush8_hmr_cmd "variable-set --always-set site_frontpage 'hosting/sites'"
       touch ${_USR}/log/imported.pid
     fi
-
-    if [ "${_fix}" = "fix" ]; then
+    if [ -n "${_dst}" ] && [ "${_dst}" = "fix" ]; then
+      _FIX=fix
+    elif [ -n "${_fix}" ] && [ "${_fix}" = "fix" ]; then
+      _FIX=fix
+    else
+      _FIX=
+    fi
+    if [ "${_FIX}" = "fix" ]; then
       if [ ! -e "${_USR}/log/post-merge-fix.pid" ]; then
         echo "HOTFIX B: Hostmaster STATUS: Fix for migrated/merged instance 1/2 start"
         _DOMAIN=`cat ${_USR}/log/domain.txt`
@@ -1258,7 +1264,7 @@ case "$1" in
             _oct="$2"
             _tgt="$3"
             _dst="$4"
-            _fix="fix"
+            _fix="$5"
             _check_root
             _migrate_init
   ;;
