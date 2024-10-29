@@ -352,7 +352,7 @@ _if_fix_dhcp() {
     _DHCP_LOG="/var/log/syslog"
   fi
   if [ -e "${_DHCP_LOG}" ]; then
-    if [ `tail --lines=100 ${_DHCP_LOG} \
+    if [ `tail --lines=3 ${_DHCP_LOG} \
       | grep --count "dhclient.*Failed"` -gt "0" ]; then
       sed -i "s/.*DHCP.*//g" /etc/csf/csf.allow
       wait
