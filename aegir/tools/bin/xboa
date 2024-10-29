@@ -559,6 +559,9 @@ _migrate_prepare() {
         hosting_client_user \
         hosting_context \
         hosting_cron \
+        hosting_git \
+        hosting_git_pull \
+        hosting_http_basic_auth \
         hosting_package \
         hosting_package_instance \
         hosting_package_languages \
