@@ -3,6 +3,8 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+export _tRee=dev
+export _xSrl=550devT00
 
 _WEBG=www-data
 _THIS_DB_PORT=3306
@@ -559,6 +561,9 @@ _migrate_prepare() {
         hosting_client_user \
         hosting_context \
         hosting_cron \
+        hosting_git \
+        hosting_git_pull \
+        hosting_http_basic_auth \
         hosting_package \
         hosting_package_instance \
         hosting_package_languages \
@@ -599,21 +604,25 @@ _migrate_prepare() {
     && [ ! -z "${_HDB}" ] \
     && [ -e "${_USR}/src/prev_hostmaster.sql" ] \
     && [ ! -e "${_USR}/log/imported.pid" ]; then
-    if [ ! -z "${_dst}" ]; then
-      if [ "${_oct}" = "${_dst}" ]; then
-        [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL5 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp"
-        mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp ${_HDB} < ${_USR}/src/prev_hostmaster.sql
-        _run_drush8_hmr_cmd "variable-set --always-set site_frontpage 'hosting/sites'"
-        touch ${_USR}/log/imported.pid
-      fi
+    if [ -n "${_dst}" ] && [ "${_oct}" = "${_dst}" ]; then
+      [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL5 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp"
+      mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp ${_HDB} < ${_USR}/src/prev_hostmaster.sql
+      _run_drush8_hmr_cmd "variable-set --always-set site_frontpage 'hosting/sites'"
+      touch ${_USR}/log/imported.pid
     else
       [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL6 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp"
       mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp ${_HDB} < ${_USR}/src/prev_hostmaster.sql
       _run_drush8_hmr_cmd "variable-set --always-set site_frontpage 'hosting/sites'"
       touch ${_USR}/log/imported.pid
     fi
-
-    if [ "${_fix}" = "fix" ]; then
+    if [ -n "${_dst}" ] && [ "${_dst}" = "fix" ]; then
+      _FIX=fix
+    elif [ -n "${_fix}" ] && [ "${_fix}" = "fix" ]; then
+      _FIX=fix
+    else
+      _FIX=
+    fi
+    if [ "${_FIX}" = "fix" ]; then
       if [ ! -e "${_USR}/log/post-merge-fix.pid" ]; then
         echo "HOTFIX B: Hostmaster STATUS: Fix for migrated/merged instance 1/2 start"
         _DOMAIN=`cat ${_USR}/log/domain.txt`
@@ -751,7 +760,7 @@ _migrate_prepare() {
       && [ ! -z "${_CLIENT_OPTION}" ] \
       && [ ! -z "${_CLIENT_SUBSCR}" ] \
       && [ ! -z "${_CLIENT_CORES}" ]; then
-      ssh root@${_tgt} "/opt/local/bin/boa in-octopus ${_CLIENT_EMAIL} ${_TGT_HM_USER} none ${_CLIENT_OPTION} ${_CLIENT_SUBSCR} ${_CLIENT_CORES}"
+      ssh root@${_tgt} "/opt/local/bin/boa in-octopus ${_CLIENT_EMAIL} ${_TGT_HM_USER} ${_tRee} ${_CLIENT_OPTION} ${_CLIENT_SUBSCR} ${_CLIENT_CORES}"
       ssh root@${_tgt} "/bin/rm -f /data/disk/${_TGT_HM_USER}/tools/le/.ctrl/ssl-demo-mode.pid"
       ssh root@${_tgt} "/bin/rm -f /data/disk/${_TGT_HM_USER}/tools/le/config"
       ssh root@${_tgt} "/bin/rm -f /data/disk/${_TGT_HM_USER}/tools/le/config.sh"
@@ -1255,7 +1264,7 @@ case "$1" in
             _oct="$2"
             _tgt="$3"
             _dst="$4"
-            _fix="fix"
+            _fix="$5"
             _check_root
             _migrate_init
   ;;
