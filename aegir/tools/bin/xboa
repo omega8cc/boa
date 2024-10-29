@@ -922,6 +922,7 @@ _migrate_init() {
           rsync -aEAXqu ${_ieni} -e ssh ${_USR}/distro/*         root@${_tgt}:${_DST}/distro/
           rsync -aEAXqu ${_ieni} -e ssh ${_USR}/src/*            root@${_tgt}:${_DST}/src/
           rsync -aEAXqu ${_ieni} -e ssh ${_USR}/static/*         root@${_tgt}:${_DST}/static/
+          rsync -aEAXquL ${_ieni} -e ssh ${_USR}/static/files    root@${_tgt}:${_DST}/static/
           #
           rsync -aEAXqu ${_ieni} -e ssh ${_USR}/clients/*        root@${_tgt}:${_DST}/clients/        &> /dev/null
           rsync -aEAXqu ${_ieni} -e ssh ${_USR}/log/*            root@${_tgt}:${_DST}/log/
