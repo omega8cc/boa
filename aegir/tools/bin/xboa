@@ -622,34 +622,34 @@ _migrate_prepare() {
 
         ### Pre-Fix for migrated/merged instances
         if [ -e "${_USR}/log/imported.pid" ] || [ -e "${_USR}/log/exported.pid" ]; then
-          if [ -e "${_USR}/aegir/distro/001/sites/${_DOMAIN}/drushrc.php" ]; then
-            sed -i "s/platform_0.*'/platform_hostmaster'/g"    ${_USR}/.drush/hostmaster.alias.drushrc.php
+          if [ -e "${_USR}/aegir/distro/002/sites/${_DOMAIN}/drushrc.php" ]; then
+            sed -i "s/platform_0.*'/platform_002'/g"           ${_USR}/.drush/hostmaster.alias.drushrc.php
             wait
-            sed -i "s/distro\/0.*\/sites/distro\/001\/sites/g" ${_USR}/.drush/hostmaster.alias.drushrc.php
+            sed -i "s/distro\/0.*\/sites/distro\/002\/sites/g" ${_USR}/.drush/hostmaster.alias.drushrc.php
             wait
-            sed -i "s/distro\/01.*',/distro\/001',/g"          ${_USR}/.drush/hostmaster.alias.drushrc.php
+            sed -i "s/distro\/01.*',/distro\/002',/g"          ${_USR}/.drush/hostmaster.alias.drushrc.php
             wait
-            sed -i "s/distro\/02.*',/distro\/001',/g"          ${_USR}/.drush/hostmaster.alias.drushrc.php
+            sed -i "s/distro\/02.*',/distro\/002',/g"          ${_USR}/.drush/hostmaster.alias.drushrc.php
             wait
-            sed -i "s/distro\/03.*',/distro\/001',/g"          ${_USR}/.drush/hostmaster.alias.drushrc.php
+            sed -i "s/distro\/03.*',/distro\/002',/g"          ${_USR}/.drush/hostmaster.alias.drushrc.php
             wait
-            sed -i "s/distro\/04.*',/distro\/001',/g"          ${_USR}/.drush/hostmaster.alias.drushrc.php
+            sed -i "s/distro\/04.*',/distro\/002',/g"          ${_USR}/.drush/hostmaster.alias.drushrc.php
             wait
-            sed -i "s/distro\/05.*',/distro\/001',/g"          ${_USR}/.drush/hostmaster.alias.drushrc.php
+            sed -i "s/distro\/05.*',/distro\/002',/g"          ${_USR}/.drush/hostmaster.alias.drushrc.php
             wait
-            sed -i "s/platform_0.*'/platform_hostmaster'/g"    ${_USR}/.drush/hm.alias.drushrc.php
+            sed -i "s/platform_0.*'/platform_002'/g"           ${_USR}/.drush/hm.alias.drushrc.php
             wait
-            sed -i "s/distro\/0.*\/sites/distro\/001\/sites/g" ${_USR}/.drush/hm.alias.drushrc.php
+            sed -i "s/distro\/0.*\/sites/distro\/002\/sites/g" ${_USR}/.drush/hm.alias.drushrc.php
             wait
-            sed -i "s/distro\/01.*',/distro\/001',/g"          ${_USR}/.drush/hm.alias.drushrc.php
+            sed -i "s/distro\/01.*',/distro\/002',/g"          ${_USR}/.drush/hm.alias.drushrc.php
             wait
-            sed -i "s/distro\/02.*',/distro\/001',/g"          ${_USR}/.drush/hm.alias.drushrc.php
+            sed -i "s/distro\/02.*',/distro\/002',/g"          ${_USR}/.drush/hm.alias.drushrc.php
             wait
-            sed -i "s/distro\/03.*',/distro\/001',/g"          ${_USR}/.drush/hm.alias.drushrc.php
+            sed -i "s/distro\/03.*',/distro\/002',/g"          ${_USR}/.drush/hm.alias.drushrc.php
             wait
-            sed -i "s/distro\/04.*',/distro\/001',/g"          ${_USR}/.drush/hm.alias.drushrc.php
+            sed -i "s/distro\/04.*',/distro\/002',/g"          ${_USR}/.drush/hm.alias.drushrc.php
             wait
-            sed -i "s/distro\/05.*',/distro\/001',/g"          ${_USR}/.drush/hm.alias.drushrc.php
+            sed -i "s/distro\/05.*',/distro\/002',/g"          ${_USR}/.drush/hm.alias.drushrc.php
             for _Platform in `find ${_USR}/.drush/platform_* -maxdepth 1 -type f | sort`; do
               _T_PFM_NAME=$(echo "${_Platform}" \
                 | sed "s/.*platform_//g; s/.alias.drushrc.php//g" \
@@ -718,11 +718,11 @@ _migrate_prepare() {
       _HM_NID=${_HM_NID//[^0-9]/}
       if [ ! -z "${_HM_NID}" ]; then
         echo "HOTFIX B: Hostmaster STATUS: Fix 1/2 hosting_context ${_HM_NID}"
-        if [ -e "${_USR}/aegir/distro/001/sites/${_DOMAIN}/drushrc.php" ]; then
+        if [ -e "${_USR}/aegir/distro/002/sites/${_DOMAIN}/drushrc.php" ]; then
           _HM_PLF=$(_run_drush8_hmr_cmd "sqlq \"SELECT platform FROM hosting_site WHERE nid='${_HM_NID}'\"" 2>&1)
           _HM_PLF=${_HM_PLF//[^0-9]/}
-          _run_drush8_hmr_cmd "sqlq \"DELETE FROM hosting_context WHERE name='platform_hostmaster' AND nid != '${_HM_PLF}'\"" &> /dev/null
-          _run_drush8_hmr_cmd "sqlq \"UPDATE hosting_context SET name='platform_hostmaster' WHERE nid='${_HM_PLF}'\"" &> /dev/null
+          _run_drush8_hmr_cmd "sqlq \"DELETE FROM hosting_context WHERE name='platform_002' AND nid != '${_HM_PLF}'\"" &> /dev/null
+          _run_drush8_hmr_cmd "sqlq \"UPDATE hosting_context SET name='platform_002' WHERE nid='${_HM_PLF}'\"" &> /dev/null
         fi
         _run_drush8_hmr_cmd "sqlq \"UPDATE hosting_context SET name='hostmaster' WHERE nid='${_HM_NID}'\"" &> /dev/null
         _run_drush8_hmr_cmd "sqlq \"UPDATE node SET title='${_DOMAIN}' WHERE nid='${_HM_NID}'\"" &> /dev/null
@@ -732,9 +732,9 @@ _migrate_prepare() {
       else
         echo "HOTFIX B: Hostmaster STATUS: Fix 1/2 hosting_context _HM_NID empty!"
       fi
-      if [ -e "${_USR}/aegir/distro/001/sites/${_DOMAIN}/drushrc.php" ] \
+      if [ -e "${_USR}/aegir/distro/002/sites/${_DOMAIN}/drushrc.php" ] \
         && [ ! -e "${_USR}/log/hmpathfix.pid" ]; then
-        _run_drush8_hmr_cmd "sqlq \"UPDATE hosting_platform SET publish_path='${_USR}/aegir/distro/001' WHERE publish_path LIKE '%/aegir/distro/%'\"" &> /dev/null
+        _run_drush8_hmr_cmd "sqlq \"UPDATE hosting_platform SET publish_path='${_USR}/aegir/distro/002' WHERE publish_path LIKE '%/aegir/distro/%'\"" &> /dev/null
         touch ${_USR}/log/hmpathfix.pid
       fi
     fi
