@@ -1224,6 +1224,7 @@ _install_vps() {
     echo "Host *" >> /vservers/${_idn}/root/.ssh/config
     echo "   StrictHostKeyChecking no" >> /vservers/${_idn}/root/.ssh/config
     echo "   UserKnownHostsFile=/dev/null" >> /vservers/${_idn}/root/.ssh/config
+    echo >> /vservers/${_idn}/root/.ssh/authorized_keys
     cat /root/.ssh/id_rsa.pub >> /vservers/${_idn}/root/.ssh/authorized_keys
     vserver ${_idn} exec chmod 600 ~/.ssh/authorized_keys
     vserver ${_idn} exec chmod 700 ~/.ssh/

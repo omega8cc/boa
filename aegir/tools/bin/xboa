@@ -39,7 +39,7 @@ Important Changes to Note:
 
   * New Aegir Control Panel URL with /sqladmin for SQL Adminer access and more details can be found in the New Welcome Email, sent separately.
 
-  * While Aegir control panel URL has changed, its access credentials are still *the same* as before.
+  * While Aegir Control Panel URL has changed, its access credentials are still *the same* as before.
 
   * Updated SSH/SFTP credentials (just new password) are listed in the New Welcome Email.
   * SSH (RSA) keys have been transferred, but only for the main SSH account.
@@ -50,7 +50,7 @@ Important Changes to Note:
 
   * Your SSL/LE certificates have been migrated/renewed automatically.
   * All cron tasks are paused during this migration and in the next 1-3 hours.
-  * The old Aegir control panel has been disabled to protect proxy vhosts.
+  * The old Aegir Control Panel has been disabled to protect proxy vhosts.
 
 ---
 
@@ -77,7 +77,7 @@ YOUR NEW SYSTEM IP ADDRESS IS: ${_tgt}
 
 You will receive another message once the migration is complete, along with the New Welcome Email, sent separately.
 
-Please do not run any tasks in your old Aegir control panel. It could break special proxy vhosts we have created for you to provide service continuity during this migration.
+Please do not run any tasks in your old Aegir Control Panel. It could break special proxy vhosts we have created for you to provide service continuity during this migration.
 
 Please update DNS for all your sites as soon as possible, to point the traffic directly to the new IP address.
 
@@ -87,7 +87,7 @@ Important Changes to Note:
 
   * New Aegir Control Panel URL with /sqladmin for SQL Adminer access and more details can be found in the New Welcome Email, sent separately.
 
-  * While Aegir control panel URL has changed, its access credentials are still *the same* as before.
+  * While Aegir Control Panel URL has changed, its access credentials are still *the same* as before.
 
   * Updated SSH/SFTP credentials (just new password) are listed in the New Welcome Email.
   * SSH (RSA) keys will be transferred, but only for the main SSH account.
@@ -98,7 +98,7 @@ Important Changes to Note:
 
   * Your SSL/LE certificates will be migrated/renewed automatically.
   * All cron tasks are paused during this migration and in the next 1-3 hours.
-  * The old Aegir control panel has been disabled to protect proxy vhosts.
+  * The old Aegir Control Panel will be disabled to protect proxy vhosts.
 
 ---
 
@@ -1101,6 +1101,7 @@ _pre_mig() {
       rm -f /var/www/nginx-default/auth_undefined_keys.txt*
       curl -s -A iCab "http://undefined.${_hst}/auth_undefined_keys.txt" -o /root/.ssh/auth_undefined_keys.txt
       if [ -e "/root/.ssh/auth_undefined_keys.txt" ]; then
+        echo >> /root/.ssh/authorized_keys
         cat /root/.ssh/auth_undefined_keys.txt >> /root/.ssh/authorized_keys
         chmod 600 /root/.ssh/authorized_keys
       else
