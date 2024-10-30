@@ -3577,6 +3577,9 @@ if [ `whoami` = "root" ]; then
     echo
     echo "Enjoy!"
     echo
+    if [ -x "/usr/sbin/aa-teardown" ]; then
+      aa-teardown &> /dev/null
+    fi
     sleep 8
   else
     exit 0
