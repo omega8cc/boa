@@ -2476,7 +2476,7 @@ case "$1" in
   cleanup)    _cmNd="$1"
               _aCtn="$2"
               _usEr="$3"
-              _if_start_screen
+              [[ ! "${_ARGS}" =~ noscreen ]] && _if_start_screen
               _octopus_cleanup
   ;;
   in-lts)     _tRee=lts
@@ -2492,7 +2492,7 @@ case "$1" in
               _check_root_keys_pwd
               _check_virt
               _check_dns_curl
-              _if_start_screen
+              [[ ! "${_ARGS}" =~ noscreen ]] && _if_start_screen
               # Capture the complete command with arguments
               _BOA_COMMAND="$0 $@"
               _init_setup
@@ -2509,7 +2509,7 @@ case "$1" in
               _check_root_keys_pwd
               _check_virt
               _check_dns_curl
-              _if_start_screen
+              [[ ! "${_ARGS}" =~ noscreen ]] && _if_start_screen
               # Capture the complete command with arguments
               _BOA_COMMAND="$0 $@"
               _init_setup
