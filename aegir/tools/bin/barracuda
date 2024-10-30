@@ -1858,7 +1858,7 @@ _check_root_direct
 _set_tree_vars
 _if_display_help
 ###_check_manufacturer_compatibility
-_if_start_screen
+[[ ! "${_ARGS}" =~ noscreen ]] && _if_start_screen
 _proceed
 
 exit 0

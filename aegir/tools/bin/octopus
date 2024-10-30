@@ -1212,7 +1212,7 @@ _check_root
 _check_no_systemd
 _os_detection_minimal
 _check_dns_curl
-_if_start_screen
+[[ ! "${_ARGS}" =~ noscreen ]] && _if_start_screen
 _up_proceed
 
 exit 0
