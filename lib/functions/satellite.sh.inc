@@ -5788,8 +5788,7 @@ _satellite_child_b_aegir_ui_enhance() {
     ${_DRUSHCMD} @hostmaster ${_vSet} clone 1 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${_vSet} hosting_admin_client 1 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${_vSet} hosting_client_register_user 1 &> /dev/null
-    ${_DRUSHCMD} @hostmaster ${_vSet} hosting_client_send_welcome 1 &> /dev/null
-    ${_DRUSHCMD} @hostmaster ${_vSet} hosting_client_send_welcome 1 &> /dev/null
+    ${_DRUSHCMD} @hostmaster ${_vSet} hosting_client_send_welcome 0 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${_vSet} hosting_feature_client 1 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${_vSet} \
       hosting_cron_default_interval 3600 &> /dev/null
