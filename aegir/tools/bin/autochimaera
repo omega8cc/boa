@@ -396,7 +396,7 @@ if [ -e "/root/.run-to-chimaera.cnf" ] \
   _msg "The barracuda php-idle disable completed" >> "${_logAch}"
   _msg "Launching standard barracuda up-${_tRee} system now" >> "${_logAch}"
   [ -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && rm -f /root/.force.rebuild.src.on.auto.now.cnf
-  /opt/local/bin/barracuda up-${_tRee} system >> "${_logAch}"
+  /opt/local/bin/barracuda up-${_tRee} system noscreen >> "${_logAch}"
   wait
   _msg "The standard barracuda up-${_tRee} system completed" >> "${_logAch}"
   if [ -e "/root/.latest-barracuda-upgrade-finale.info" ]; then
@@ -420,7 +420,7 @@ if [ -e "/root/.run-to-chimaera.cnf" ] \
     fi
     _msg "The first stage of major OS upgrade will start now" >> "${_logAch}"
     [ -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && rm -f /root/.force.rebuild.src.on.auto.now.cnf
-    /opt/local/bin/barracuda up-${_tRee} system >> "${_logAch}"
+    /opt/local/bin/barracuda up-${_tRee} system noscreen >> "${_logAch}"
     wait
     if [ -e "/root/.run_post_major_os_upgrade.info" ]; then
       _msg "The first stage of major OS upgrade completed" >> "${_logAch}"
@@ -442,7 +442,7 @@ if [ -e "/root/.run-to-chimaera.cnf" ] \
   _msg "Launching post-reboot barracuda up-${_tRee} system" >> "${_logAch}"
   _msg "to complete the first stage of major OS upgrade" >> "${_logAch}"
   [ -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && rm -f /root/.force.rebuild.src.on.auto.now.cnf
-  /opt/local/bin/barracuda up-${_tRee} system >> "${_logAch}"
+  /opt/local/bin/barracuda up-${_tRee} system noscreen >> "${_logAch}"
   wait
   _msg "The post-reboot barracuda up-${_tRee} system completed" >> "${_logAch}"
   echo " " >> "${_logAch}"
@@ -476,7 +476,7 @@ if [ -e "/root/.run-to-chimaera.cnf" ] \
   if [ "${_FURTHER_UPGRADE}" = "YES" ]; then
     _msg "The second stage of major OS upgrade will start now" >> "${_logAch}"
     [ -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && rm -f /root/.force.rebuild.src.on.auto.now.cnf
-    /opt/local/bin/barracuda up-${_tRee} system >> "${_logAch}"
+    /opt/local/bin/barracuda up-${_tRee} system noscreen >> "${_logAch}"
     wait
     if [ -e "/root/.run_post_major_os_upgrade.info" ]; then
       _msg "The second stage of major OS upgrade completed" >> "${_logAch}"
@@ -499,7 +499,7 @@ if [ -e "/root/.run-to-chimaera.cnf" ] \
   _msg "Launching the final post-second-reboot barracuda up-${_tRee} system" >> "${_logAch}"
   [ ! -e "/root/.allow.apparmor.cnf" ] && touch /root/.allow.apparmor.cnf
   [ ! -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && touch /root/.force.rebuild.src.on.auto.now.cnf
-  /opt/local/bin/barracuda up-${_tRee} system >> "${_logAch}"
+  /opt/local/bin/barracuda up-${_tRee} system noscreen >> "${_logAch}"
   wait
   [ -e "/root/.run-to-chimaera.cnf" ] && rm -f /root/.run-to-chimaera.cnf
   [ -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && rm -f /root/.force.rebuild.src.on.auto.now.cnf

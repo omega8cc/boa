@@ -1260,10 +1260,10 @@ _init_setup() {
       echo
       echo "Time for a quick barracuda system upgrade to complete installation"
       echo
-      /opt/local/bin/barracuda up-${_tRee} system
+      /opt/local/bin/barracuda up-${_tRee} system noscreen
       wait
     else
-      /opt/local/bin/barracuda up-${_tRee} system > /dev/null 2>&1
+      /opt/local/bin/barracuda up-${_tRee} system noscreen > /dev/null 2>&1
       wait
     fi
   fi
@@ -1324,9 +1324,9 @@ _init_setup() {
     if [ ! -e "/root/.dont.upgrade.octopus.on.install.cnf" ]; then
       rm -rf /data/disk/${_usEr}/.tmp/cache
       if [ "${_OCTOPUS_ONLY}" = "YES" ]; then
-        nohup /opt/local/bin/octopus up-${_tRee} ${_usEr} force log > /dev/null 2>&1 &
+        nohup /opt/local/bin/octopus up-${_tRee} ${_usEr} force log noscreen > /dev/null 2>&1 &
       else
-        /opt/local/bin/octopus up-${_tRee} ${_usEr} force log > /dev/null 2>&1
+        /opt/local/bin/octopus up-${_tRee} ${_usEr} force log noscreen > /dev/null 2>&1
       fi
     fi
     sleep 1

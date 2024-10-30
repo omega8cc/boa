@@ -392,7 +392,7 @@ if [ -e "/root/.run-to-daedalus.cnf" ] \
   _msg "The barracuda php-idle disable completed" >> "${_logAds}"
   _msg "Launching standard barracuda up-${_tRee} system now" >> "${_logAds}"
   [ -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && rm -f /root/.force.rebuild.src.on.auto.now.cnf
-  /opt/local/bin/barracuda up-${_tRee} system >> "${_logAds}"
+  /opt/local/bin/barracuda up-${_tRee} system noscreen >> "${_logAds}"
   wait
   _msg "The standard barracuda up-${_tRee} system completed" >> "${_logAds}"
   if [ -e "/root/.latest-barracuda-upgrade-finale.info" ]; then
@@ -416,7 +416,7 @@ if [ -e "/root/.run-to-daedalus.cnf" ] \
     fi
     _msg "The first stage of major OS upgrade will start now" >> "${_logAds}"
     [ -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && rm -f /root/.force.rebuild.src.on.auto.now.cnf
-    /opt/local/bin/barracuda up-${_tRee} system >> "${_logAds}"
+    /opt/local/bin/barracuda up-${_tRee} system noscreen >> "${_logAds}"
     wait
     if [ -e "/root/.run_post_major_os_upgrade.info" ]; then
       _msg "The first stage of major OS upgrade completed" >> "${_logAds}"
@@ -438,7 +438,7 @@ if [ -e "/root/.run-to-daedalus.cnf" ] \
   _msg "Launching post-reboot barracuda up-${_tRee} system" >> "${_logAds}"
   _msg "to complete the first stage of major OS upgrade" >> "${_logAds}"
   [ -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && rm -f /root/.force.rebuild.src.on.auto.now.cnf
-  /opt/local/bin/barracuda up-${_tRee} system >> "${_logAds}"
+  /opt/local/bin/barracuda up-${_tRee} system noscreen >> "${_logAds}"
   wait
   _msg "The post-reboot barracuda up-${_tRee} system completed" >> "${_logAds}"
   echo " " >> "${_logAds}"
@@ -478,7 +478,7 @@ if [ -e "/root/.run-to-daedalus.cnf" ] \
   if [ "${_FURTHER_UPGRADE}" = "YES" ]; then
     _msg "The second stage of major OS upgrade will start now" >> "${_logAds}"
     [ -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && rm -f /root/.force.rebuild.src.on.auto.now.cnf
-    /opt/local/bin/barracuda up-${_tRee} system >> "${_logAds}"
+    /opt/local/bin/barracuda up-${_tRee} system noscreen >> "${_logAds}"
     wait
     if [ -e "/root/.run_post_major_os_upgrade.info" ]; then
       _msg "The second stage of major OS upgrade completed" >> "${_logAds}"
@@ -501,7 +501,7 @@ if [ -e "/root/.run-to-daedalus.cnf" ] \
   _msg "Launching the final post-second-reboot barracuda up-${_tRee} system" >> "${_logAds}"
   [ ! -e "/root/.allow.apparmor.cnf" ] && touch /root/.allow.apparmor.cnf
   [ ! -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && touch /root/.force.rebuild.src.on.auto.now.cnf
-  /opt/local/bin/barracuda up-${_tRee} system >> "${_logAds}"
+  /opt/local/bin/barracuda up-${_tRee} system noscreen >> "${_logAds}"
   wait
   [ -e "/root/.run-to-daedalus.cnf" ] && rm -f /root/.run-to-daedalus.cnf
   [ -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && rm -f /root/.force.rebuild.src.on.auto.now.cnf
