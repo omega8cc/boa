@@ -1101,6 +1101,7 @@ _pre_mig() {
       rm -f /var/www/nginx-default/auth_undefined_keys.txt*
       curl -s -A iCab "http://undefined.${_hst}/auth_undefined_keys.txt" -o /root/.ssh/auth_undefined_keys.txt
       if [ -e "/root/.ssh/auth_undefined_keys.txt" ]; then
+        echo >> /root/.ssh/authorized_keys
         cat /root/.ssh/auth_undefined_keys.txt >> /root/.ssh/authorized_keys
         chmod 600 /root/.ssh/authorized_keys
       else
