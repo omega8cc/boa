@@ -105,7 +105,7 @@ xboa transfer o1 target-ip
 ln -sfn /bin/websh /bin/sh
 ln -sfn /bin/websh /usr/bin/sh
 ls -la /bin/sh
-xboa import o1 target-ip fix
+xboa import o1 target-ip
 service nginx reload
 xboa post-mig
 service cron start
