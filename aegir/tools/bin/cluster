@@ -1275,7 +1275,7 @@ _install_vps() {
     if [ ! -z "${_ROOT_SQL_PASWD}" ]; then
       echo "${_ROOT_SQL_PASWD}" > /vservers/${_idn}/root/.my.cluster_root_pwd.txt
     fi
-    vserver ${_idn} exec /opt/local/bin/barracuda up-${_ver} noscreen
+    vserver ${_idn} exec /opt/local/bin/barracuda up-${_ver}
     echo
   fi
 
@@ -1337,7 +1337,7 @@ _install_web_node() {
 _upgrade_web_node() {
   _check_config_cluster
   _idn="${_CLUSTER_PREFIX}web"
-  vserver ${_idn} exec /opt/local/bin/barracuda up-${_ver} system noscreen
+  vserver ${_idn} exec /opt/local/bin/barracuda up-${_ver} system
 }
 
 _default_my_cnf_copy() {

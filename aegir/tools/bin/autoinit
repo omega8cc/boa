@@ -279,6 +279,7 @@ _if_launch_boa_install() {
   _BOA_LOGFILE="/root/.boa.install.command.cnf"
   if [[ -s "${_BOA_LOGFILE}" ]]; then
     _BOA_COMMAND=$(cat "${_BOA_LOGFILE}")
+    _BOA_COMMAND=$(echo "${_BOA_COMMAND}" | sed -E "s/noscreen//g")
     if [[ "${_BOA_COMMAND}" =~ " silent" ]] \
       || [[ "${_BOA_COMMAND}" =~ " system" ]]; then
       _BOA_INSTALL_COMMAND="${_BOA_COMMAND}"
@@ -287,8 +288,8 @@ _if_launch_boa_install() {
     fi
     if [[ "${_BOA_COMMAND}" =~ "boa in-lts" ]] \
       || [[ "${_BOA_COMMAND}" =~ "boa in-dev" ]]; then
-      _msg "Time for ${_BOA_INSTALL_COMMAND}" >> "${_logInt}"
-      eval "${_BOA_INSTALL_COMMAND}"
+      _msg "Time for ${_BOA_INSTALL_COMMAND} noscreen" >> "${_logInt}"
+      eval "${_BOA_INSTALL_COMMAND} noscreen"
       wait
       mv -f ${_BOA_LOGFILE} /var/backups/
     fi
