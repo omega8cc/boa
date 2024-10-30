@@ -39,7 +39,7 @@ Important Changes to Note:
 
   * New Aegir Control Panel URL with /sqladmin for SQL Adminer access and more details can be found in the New Welcome Email, sent separately.
 
-  * While Aegir Control Panel URL has changed, its access credentials are still *the same* as before.
+  * While Aegir Control Panel URL has changed, its access credentials for all existing admins remain **the same as before**.
 
   * Updated SSH/SFTP credentials (just new password) are listed in the New Welcome Email.
   * SSH (RSA) keys have been transferred, but only for the main SSH account.
@@ -87,7 +87,7 @@ Important Changes to Note:
 
   * New Aegir Control Panel URL with /sqladmin for SQL Adminer access and more details can be found in the New Welcome Email, sent separately.
 
-  * While Aegir Control Panel URL has changed, its access credentials are still *the same* as before.
+  * While Aegir Control Panel URL has changed, its access credentials for all existing admins remain **the same as before**.
 
   * Updated SSH/SFTP credentials (just new password) are listed in the New Welcome Email.
   * SSH (RSA) keys will be transferred, but only for the main SSH account.
@@ -735,6 +735,8 @@ _migrate_prepare() {
         _run_drush8_hmr_cmd "hosting-tasks --force" &> /dev/null
         echo "HOTFIX B: Hostmaster STATUS: Fix for migrated/merged instance 1/2 complete"
       fi
+      _vSet="variable-set --always-set"
+      _run_drush8_hmr_cmd "${_vSet} hosting_client_send_welcome 0" &> /dev/null
       _run_drush8_hmr_cmd "sqlq \"UPDATE hosting_site SET client='1' WHERE profile='7'\"" &> /dev/null
       _run_drush8_hmr_cmd "sqlq \"UPDATE hosting_site SET client='1' WHERE profile='9'\"" &> /dev/null
       _run_drush8_hmr_cmd "sqlq \"UPDATE hosting_site SET client='1' WHERE client='0'\"" &> /dev/null
