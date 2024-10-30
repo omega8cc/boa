@@ -799,6 +799,15 @@ _migrate_prepare() {
 
 _migrate_init() {
   _USR=/data/disk/${_oct}
+  if [ "${_oct}" = "arch" ] \
+    || [ "${_oct}" = "all" ] \
+    || [ "${_oct}" = "lost+found" ] \
+    || [ "${_oct}" = "lostfound" ] \
+    || [ "${_oct}" = "backups" ] \
+    || [ "${_oct}" = "codebases-cleanup" ]; then
+    echo "_USR ${_oct} is not eligible for migration: system dir"
+    exit 1
+  fi
   if [ ! -e "${_USR}/tools/le/dehydrated" ] && [ "${_oct}" != "shared" ]; then
     echo
     echo "ERROR: This version of xboa migration tool supports only BOA-3.2.2 or newer"
