@@ -2525,7 +2525,6 @@ case "$1" in
               _check_root_keys_pwd
               _check_virt
               _check_dns_curl
-              _if_start_screen
               # Capture the complete command with arguments
               _BOA_COMMAND="$0 $@"
               _init_setup
@@ -2543,7 +2542,6 @@ case "$1" in
               _check_root_keys_pwd
               _check_virt
               _check_dns_curl
-              _if_start_screen
               # Capture the complete command with arguments
               _BOA_COMMAND="$0 $@"
               _init_setup
