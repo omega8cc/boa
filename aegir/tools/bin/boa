@@ -2495,6 +2495,7 @@ case "$1" in
               [[ ! "${_ARGS}" =~ noscreen ]] && _if_start_screen
               # Capture the complete command with arguments
               _BOA_COMMAND="$0 $@"
+              [[ "${_ARGS}" =~ noscreen ]] && _BOA_COMMAND=$(echo "${_BOA_COMMAND}" | sed -E "s/noscreen//g")
               _init_setup
   ;;
   in-dev)     _tRee=dev
@@ -2512,6 +2513,7 @@ case "$1" in
               [[ ! "${_ARGS}" =~ noscreen ]] && _if_start_screen
               # Capture the complete command with arguments
               _BOA_COMMAND="$0 $@"
+              [[ "${_ARGS}" =~ noscreen ]] && _BOA_COMMAND=$(echo "${_BOA_COMMAND}" | sed -E "s/noscreen//g")
               _init_setup
   ;;
   in-octopus) _cmNd="$1"
@@ -2528,6 +2530,7 @@ case "$1" in
               [[ ! "${_ARGS}" =~ noscreen ]] && _if_start_screen
               # Capture the complete command with arguments
               _BOA_COMMAND="$0 $@"
+              [[ "${_ARGS}" =~ noscreen ]] && _BOA_COMMAND=$(echo "${_BOA_COMMAND}" | sed -E "s/noscreen//g")
               _init_setup
   ;;
   in-oct)     _cmNd="$1"
@@ -2546,6 +2549,7 @@ case "$1" in
               [[ ! "${_ARGS}" =~ noscreen ]] && _if_start_screen
               # Capture the complete command with arguments
               _BOA_COMMAND="$0 $@"
+              [[ "${_ARGS}" =~ noscreen ]] && _BOA_COMMAND=$(echo "${_BOA_COMMAND}" | sed -E "s/noscreen//g")
               _init_setup
   ;;
   *)          echo
