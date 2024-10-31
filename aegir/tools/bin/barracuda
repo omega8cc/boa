@@ -13,7 +13,8 @@ export _NOW=${_NOW//[^0-9-]/}
 _barCnf="/root/.barracuda.cnf"
 _barName="BARRACUDA.sh.txt"
 _crlGet="-L --max-redirs 3 -k -s --retry 3 --retry-delay 5 -A iCab"
-_aptYesUnth="-y -o Acquire::AllowUnauthenticated=true"
+_aptAllow="--allow-insecure-repositories --allow-unauthenticated"
+_aptYesUnth="-y ${_aptAllow}"
 _filIncB="barracuda.sh.cnf"
 _filIncO="octopus.sh.cnf"
 _octName="OCTOPUS.sh.txt"
@@ -30,7 +31,7 @@ _VM_TEST=$(uname -a 2>&1)
 if [[ "${_VM_TEST}" =~ "-beng" ]]; then
   _VMFAMILY="VS"
 fi
-_INITINS="/usr/bin/apt-get -y install"
+_INITINS="/usr/bin/apt-get ${_aptAllow} -y install"
 
 ###
 ### Avoid too many questions
@@ -1311,7 +1312,7 @@ _if_reinstall_curl() {
   _CURL_VRN=8.10.1
   if ! command -v lsb_release &> /dev/null; then
     apt-get update -qq &> /dev/null
-    apt-get install lsb-release -y -qq &> /dev/null
+    apt-get install lsb-release ${_aptYesUnth} -qq &> /dev/null
   fi
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   [ "${_OS_CODE}" = "wheezy" ] && _CURL_VRN=7.50.1
@@ -1328,11 +1329,11 @@ _if_reinstall_curl() {
     _apt_clean_update
     apt-get remove libssl1.0-dev -y --purge --auto-remove -qq 2> /dev/null
     apt-get autoremove -y 2> /dev/null
-    apt-get install libssl-dev -y -qq 2> /dev/null
-    apt-get install libc-client2007e libc-client2007e-dev -y -qq 2> /dev/null
-    apt-get build-dep curl -y 2> /dev/null
+    apt-get install libssl-dev ${_aptYesUnth} -qq 2> /dev/null
+    apt-get install libc-client2007e libc-client2007e-dev ${_aptYesUnth} -qq 2> /dev/null
+    apt-get build-dep curl ${_aptYesUnth} 2> /dev/null
     if [ ! -e "/var/aegir/drush" ]; then
-      apt-get install curl --reinstall -y -qq 2> /dev/null
+      apt-get install curl --reinstall ${_aptYesUnth} -qq 2> /dev/null
     fi
     if [ -e "/var/aegir/drush" ]; then
       echo "INFO: Installing curl from sources..."
@@ -1599,7 +1600,7 @@ _check_root() {
         echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
       fi
       _apt_clean_update
-      apt-get install udev -y 2> /dev/null
+      apt-get install udev ${_aptYesUnth} 2> /dev/null
       echo "devpts          /dev/pts        devpts  rw,noexec,nosuid,gid=5,mode=620 0  0" >> /etc/fstab
       mount -t devpts devpts /dev/pts &> /dev/null
     fi

@@ -63,7 +63,8 @@ export _TODAY=${_TODAY//[^0-9]/}
 #
 _barCnf="/root/.barracuda.cnf"
 _crlGet="-L --max-redirs 3 -k -s --retry 3 --retry-delay 5 -A iCab"
-_aptYesUnth="-y -o Acquire::AllowUnauthenticated=true"
+_aptAllow="--allow-insecure-repositories --allow-unauthenticated"
+_aptYesUnth="-y ${_aptAllow}"
 _optBin="/opt/local/bin"
 _usrBin="/usr/local/bin"
 _pthLog="/var/xdrago/log"
@@ -304,7 +305,7 @@ _if_clean_boa_env() {
 _locales_check_fix_early() {
   _isLoc=$(which locale 2>&1)
   if [ ! -x "${_isLoc}" ] || [ -z "${_isLoc}" ]; then
-    _INITINS="/usr/bin/apt-get -y install"
+    _INITINS="/usr/bin/apt-get ${_aptAllow} -y install"
     apt-get update -qq &> /dev/null
     ${_INITINS} locales locales-all &> /dev/null
   fi
@@ -2161,7 +2162,7 @@ _fix_python_src() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     _apt_clean_update
-    apt-get install -y \
+    apt-get install ${_aptYesUnth} \
         intltool \
         libffi-dev \
         par2 \
@@ -2185,7 +2186,7 @@ _fix_python_src() {
     make install --quiet
     cd
     _apt_clean_update
-    apt-get install python3-pip -y
+    apt-get install python3-pip ${_aptYesUnth}
     if [ -x "/usr/local/bin/pip3" ]; then
       _usePip=/usr/local/bin/pip3
     elif [ -x "/usr/bin/pip3" ]; then
@@ -2255,7 +2256,7 @@ _if_fix_lshell() {
   if [ "${_LSHELL_FORCE_REINSTALL}" = "YES" ]; then
     [ -f "/etc/lshell.conf" ] && cp -af /etc/lshell.conf /etc/lshell.conf-bak-${_LSHELL_VRN}
     _apt_clean_update
-    apt-get install python3-pip -y
+    apt-get install python3-pip ${_aptYesUnth}
     if [ -x "/usr/bin/pip3" ]; then
       _usePip=/usr/bin/pip3
     elif [ -x "/usr/local/bin/pip3" ]; then
@@ -2667,7 +2668,7 @@ _if_reinstall_curl() {
   _CURL_INSTALL_REQUIRED=NO
   if ! command -v lsb_release &> /dev/null; then
     apt-get update -qq &> /dev/null
-    apt-get install lsb-release -y -qq &> /dev/null
+    apt-get install lsb-release ${_aptYesUnth} -qq &> /dev/null
   fi
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   [ "${_OS_CODE}" = "wheezy" ] && _CURL_VRN=7.50.1
@@ -2740,11 +2741,11 @@ _if_reinstall_curl() {
     _apt_clean_update
     apt-get remove libssl1.0-dev -y --purge --auto-remove -qq 2> /dev/null
     apt-get autoremove -y 2> /dev/null
-    apt-get install libssl-dev -y -qq 2> /dev/null
-    apt-get install libc-client2007e libc-client2007e-dev -y -qq 2> /dev/null
-    apt-get build-dep curl -y 2> /dev/null
+    apt-get install libssl-dev ${_aptYesUnth} -qq 2> /dev/null
+    apt-get install libc-client2007e libc-client2007e-dev ${_aptYesUnth}-qq 2> /dev/null
+    apt-get build-dep curl ${_aptYesUnth} 2> /dev/null
     if [ ! -e "/var/aegir/drush" ]; then
-      apt-get install curl --reinstall -y -qq 2> /dev/null
+      apt-get install curl --reinstall ${_aptYesUnth} -qq 2> /dev/null
     fi
     if [ -e "/var/aegir/drush" ]; then
       echo "INFO: Installing curl from sources..."
@@ -3203,7 +3204,7 @@ _boa_setup() {
 
   # Desired configuration content
   _DESIRED_APT_CONFIG='Acquire::AllowInsecureRepositories "true";
-    Acquire::AllowUnauthenticated "true";
+    APT::Get::AllowUnauthenticated "true";
     Aptitude::CmdLine::Fix-Broken "true";'
 
   # Remove leading whitespace from each line

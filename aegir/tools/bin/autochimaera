@@ -93,9 +93,10 @@ if [ -z "${TERM+x}" ]; then
   export TERM=vt100
 fi
 
-_INITINS="/usr/bin/apt-get -y install"
-_dstUpArg="-fuy -q --config-file /opt/apt/apt.conf.noi.dist"
-_nrmUpArg="-fuy -q --config-file /opt/apt/apt.conf.noi.nrml"
+_aptAllow="--allow-insecure-repositories --allow-unauthenticated"
+_INITINS="/usr/bin/apt-get ${_aptAllow} -y install"
+_dstUpArg="-fuy -q ${_aptAllow} --config-file /opt/apt/apt.conf.noi.dist"
+_nrmUpArg="-fuy -q ${_aptAllow} --config-file /opt/apt/apt.conf.noi.nrml"
 
 _TODAY=$(date +%y%m%d 2>&1)
 _TODAY=${_TODAY//[^0-9]/}

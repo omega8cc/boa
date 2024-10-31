@@ -5,6 +5,8 @@ export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 export _tRee=lts
 
+_aptAllow="--allow-insecure-repositories --allow-unauthenticated"
+_aptYesUnth="-y ${_aptAllow}"
 _crlGet="-L --max-redirs 3 -k -s --retry 3 --retry-delay 5 -A iCab"
 _USE_GITHUB=/root/.goaccess.use.github.txt
 _GOACCESS_VRN=1.7.1
@@ -138,10 +140,10 @@ _install_goaccess() {
   fi
   _apt_clean_update
   aptitude purge goaccess -y
-  apt-get install libmaxminddb-dev -y
-  apt-get install libncurses5-dev -y
-  apt-get install libncursesw5-dev -y
-  apt-get install autopoint -y
+  apt-get install libmaxminddb-dev ${_aptYesUnth}
+  apt-get install libncurses5-dev ${_aptYesUnth}
+  apt-get install libncursesw5-dev ${_aptYesUnth}
+  apt-get install autopoint ${_aptYesUnth}
   _find_fast_mirror_early
   mkdir -p /var/opt
   cd /var/opt

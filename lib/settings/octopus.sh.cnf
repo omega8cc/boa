@@ -654,7 +654,8 @@ _BRANCH_PRN=AUTO
 _X_VERSION=AUTO
 _BOA_REPO_NAME="boa"
 _BOA_REPO_GIT_URL="${_gitHub}"
-_aptYesUnth="-y -o Acquire::AllowUnauthenticated=true"
+_aptAllow="--allow-insecure-repositories --allow-unauthenticated"
+_aptYesUnth="-y ${_aptAllow}"
 
 export _tRee=lts
 export _xSrl=550ltsT00
@@ -878,15 +879,15 @@ _download_helpers_libs() {
       if [ ! -x "/usr/local/bin/git" ]; then
         _apt_clean_update
         if [ -e "/root/.dev.server.cnf" ]; then
-          apt-get install libcurl4 -y -qq 2> /dev/null
-          apt-get install libcurl4-openssl-dev -y -qq 2> /dev/null
-          apt-get install libcurl4-gnutls-dev -y -qq 2> /dev/null
+          apt-get install libcurl4 ${_aptYesUnth} -qq 2> /dev/null
+          apt-get install libcurl4-openssl-dev ${_aptYesUnth} -qq 2> /dev/null
+          apt-get install libcurl4-gnutls-dev ${_aptYesUnth} -qq 2> /dev/null
           apt-get remove git-core -y --purge --auto-remove -qq 2> /dev/null
           apt-get remove git -y --purge --auto-remove -qq 2> /dev/null
         else
-          apt-get install libcurl4 -y -qq &> /dev/null
-          apt-get install libcurl4-openssl-dev -y -qq &> /dev/null
-          apt-get install libcurl4-gnutls-dev -y -qq &> /dev/null
+          apt-get install libcurl4 ${_aptYesUnth} -qq &> /dev/null
+          apt-get install libcurl4-openssl-dev ${_aptYesUnth} -qq &> /dev/null
+          apt-get install libcurl4-gnutls-dev ${_aptYesUnth} -qq &> /dev/null
           apt-get remove git-core -y --purge --auto-remove -qq &> /dev/null
           apt-get remove git -y --purge --auto-remove -qq &> /dev/null
         fi
@@ -934,17 +935,17 @@ _download_helpers_libs() {
   else
     _apt_clean_update
     if [ -e "/root/.dev.server.cnf" ]; then
-#       apt-get install libcurl4 -y -qq 2> /dev/null
-#       apt-get install libcurl4-openssl-dev -y -qq 2> /dev/null
-#       apt-get install libcurl4-gnutls-dev -y -qq 2> /dev/null
-      apt-get install git-core -y -qq 2> /dev/null
-      apt-get install git -y -qq 2> /dev/null
+#       apt-get install libcurl4 ${_aptYesUnth} -qq 2> /dev/null
+#       apt-get install libcurl4-openssl-dev ${_aptYesUnth} -qq 2> /dev/null
+#       apt-get install libcurl4-gnutls-dev ${_aptYesUnth} -qq 2> /dev/null
+      apt-get install git-core ${_aptYesUnth} -qq 2> /dev/null
+      apt-get install git ${_aptYesUnth} -qq 2> /dev/null
     else
-#       apt-get install libcurl4 -y -qq &> /dev/null
-#       apt-get install libcurl4-openssl-dev -y -qq &> /dev/null
-#       apt-get install libcurl4-gnutls-dev -y -qq &> /dev/null
-      apt-get install git-core -y -qq &> /dev/null
-      apt-get install git -y -qq &> /dev/null
+#       apt-get install libcurl4 ${_aptYesUnth} -qq &> /dev/null
+#       apt-get install libcurl4-openssl-dev ${_aptYesUnth} -qq &> /dev/null
+#       apt-get install libcurl4-gnutls-dev ${_aptYesUnth} -qq &> /dev/null
+      apt-get install git-core ${_aptYesUnth} -qq &> /dev/null
+      apt-get install git ${_aptYesUnth} -qq &> /dev/null
     fi
     _isGit=$(which git 2>&1)
     _gCb="${_isGit} clone --branch"

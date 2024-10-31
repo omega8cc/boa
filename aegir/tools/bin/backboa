@@ -67,7 +67,8 @@ _HST=$(echo -n ${_HST} | tr A-Z a-z 2>&1)
 _HST_DASH=$(echo -n ${_HST} | tr . - 2>&1)
 
 _crlGet="-L --max-redirs 3 -k -s --retry 3 --retry-delay 5 -A iCab"
-_aptYesUnth="-y -o Acquire::AllowUnauthenticated=true"
+_aptAllow="--allow-insecure-repositories --allow-unauthenticated"
+_aptYesUnth="-y ${_aptAllow}"
 
 [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
 
@@ -198,7 +199,7 @@ _install() {
     rm -f /usr/local/bin/duplicity
     rm -f /usr/local/bin/jp.py
     rm -f /usr/local/bin/aws*
-    apt-get install -y \
+    apt-get install ${_aptYesUnth} \
         intltool \
         libffi-dev \
         par2 \

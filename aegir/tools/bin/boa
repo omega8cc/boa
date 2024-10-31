@@ -13,7 +13,8 @@ export _NOW=${_NOW//[^0-9-]/}
 _barCnf="/root/.barracuda.cnf"
 _barName="BARRACUDA.sh.txt"
 _crlGet="-L --max-redirs 3 -k -s --retry 3 --retry-delay 5 -A iCab"
-_aptYesUnth="-y -o Acquire::AllowUnauthenticated=true"
+_aptAllow="--allow-insecure-repositories --allow-unauthenticated"
+_aptYesUnth="-y ${_aptAllow}"
 _filIncB="barracuda.sh.cnf"
 _filIncO="octopus.sh.cnf"
 _octName="OCTOPUS.sh.txt"
@@ -30,7 +31,7 @@ _VM_TEST=$(uname -a 2>&1)
 if [[ "${_VM_TEST}" =~ "-beng" ]]; then
   _VMFAMILY="VS"
 fi
-_INITINS="/usr/bin/apt-get -y install"
+_INITINS="/usr/bin/apt-get ${_aptAllow} -y install"
 
 ###
 ### Avoid too many questions
@@ -1393,10 +1394,10 @@ _if_reinstall_curl() {
       _apt_clean_update
       apt-get remove libssl1.0-dev -y --purge --auto-remove -qq 2> /dev/null
       apt-get autoremove -y 2> /dev/null
-      apt-get install libssl-dev -y -qq 2> /dev/null
-      apt-get install libc-client2007e libc-client2007e-dev -y -qq 2> /dev/null
-      apt-get build-dep curl -y 2> /dev/null
-      apt-get install curl --reinstall -y -qq 2> /dev/null
+      apt-get install libssl-dev ${_aptYesUnth} -qq 2> /dev/null
+      apt-get install libc-client2007e libc-client2007e-dev ${_aptYesUnth} -qq 2> /dev/null
+      apt-get build-dep curl ${_aptYesUnth} 2> /dev/null
+      apt-get install curl --reinstall ${_aptYesUnth} -qq 2> /dev/null
     fi
     _isCurl=$(curl --version 2>&1)
     if [[ ! "${_isCurl}" =~ "OpenSSL" ]] || [ -z "${_isCurl}" ]; then
