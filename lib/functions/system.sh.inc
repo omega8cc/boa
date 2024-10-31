@@ -5311,8 +5311,8 @@ _run_aptitude_deps_install() {
   fi
   _if_to_do_fix
   if [ "${_OS_DIST}" = "Devuan" ]; then
-    ${_INITINS} devuan-keyring ${_aptAllow} &> /dev/null
-    ${_INITINS} devuan-keyring ${_aptAllow} &> /dev/null
+    ${_INITINS} devuan-keyring &> /dev/null
+    ${_INITINS} devuan-keyring &> /dev/null
   elif [ "${_OS_DIST}" = "Debian" ]; then
     ${_INITINS} debian-keyring debian-archive-keyring &> /dev/null
     ${_INITINS} debian-keyring debian-archive-keyring &> /dev/null
@@ -6165,7 +6165,7 @@ _if_major_os_upgrade() {
       ### Add devuan-keyring first.
       _apt_clean_update_no_releaseinfo_change
       _mrun "${_APT_UPDATE} ${_aptAllow}" 2> /dev/null
-      _mrun "${_INITINS} devuan-keyring ${_aptAllow}" 2> /dev/null
+      _mrun "${_INITINS} devuan-keyring" 2> /dev/null
     else
       if [ "${_NEW_OS_CODE}" = "stretch" ]; then
         _NEW_APT_MIRROR="archive.debian.org/debian"
