@@ -308,19 +308,23 @@ _crontab_update() {
     wait
 
     if [ "${_AUTO_PHP}" = "php-all" ]; then
-      _BCDA_FULL="up-${_AUTO_VER} log php-all noscreen"
-      _BCDA_SYST="up-${_AUTO_VER} system php-all noscreen"
+      _BCDA_FULL="up-${_AUTO_VER} log php-all"
+      _BCDA_SYST="up-${_AUTO_VER} system php-all"
     elif [ "${_AUTO_PHP}" = "php-min" ]; then
-      _BCDA_FULL="up-${_AUTO_VER} log php-min noscreen"
-      _BCDA_SYST="up-${_AUTO_VER} system php-min noscreen"
+      _BCDA_FULL="up-${_AUTO_VER} log php-min"
+      _BCDA_SYST="up-${_AUTO_VER} system php-min"
     elif [ "${_AUTO_PHP}" = "php-max" ]; then
-      _BCDA_FULL="up-${_AUTO_VER} log php-max noscreen"
-      _BCDA_SYST="up-${_AUTO_VER} system php-max noscreen"
+      _BCDA_FULL="up-${_AUTO_VER} log php-max"
+      _BCDA_SYST="up-${_AUTO_VER} system php-max"
     else
-      _BCDA_FULL="up-${_AUTO_VER} log noscreen"
-      _BCDA_SYST="up-${_AUTO_VER} system noscreen"
+      _BCDA_FULL="up-${_AUTO_VER} log"
+      _BCDA_SYST="up-${_AUTO_VER} system"
     fi
-    _OCTO_FULL="up-${_AUTO_VER} all force log noscreen"
+    _OCTO_FULL="up-${_AUTO_VER} all force log"
+
+    _BCDA_FULL="${_BCDA_FULL} noscreen"
+    _BCDA_SYST="${_BCDA_SYST} noscreen"
+    _OCTO_FULL="${_OCTO_FULL} noscreen"
 
     if [ ! -z "${_BCDA_SYST}" ]; then
       echo "# Barracuda weekly system only upgrade" >> /etc/crontab
@@ -627,14 +631,14 @@ if [ -e "/var/aegir/drush" ]; then
   fi
 
   if [ -e "/root/.dev.server.cnf" ]; then
-    if [ ! -e "/var/xdrago/log/.etc_crontab_update_dev_ctrl_f004.${_tRee}.${_xSrl}.pid" ]; then
+    if [ ! -e "/var/xdrago/log/.etc_crontab_update_dev_ctrl_f005.${_tRee}.${_xSrl}.pid" ]; then
       rm -f /var/xdrago/log/.*etc_crontab_update_dev_ctrl*
       _crontab_cleanup
       service cron restart
-      touch /var/xdrago/log/.etc_crontab_update_dev_ctrl_f004.${_tRee}.${_xSrl}.pid
+      touch /var/xdrago/log/.etc_crontab_update_dev_ctrl_f005.${_tRee}.${_xSrl}.pid
     fi
   else
-    if [ ! -e "/var/xdrago/log/.etc_crontab_update_prod_ctrl_f004.${_tRee}.${_xSrl}.pid" ]; then
+    if [ ! -e "/var/xdrago/log/.etc_crontab_update_prod_ctrl_f005.${_tRee}.${_xSrl}.pid" ]; then
       rm -f /var/xdrago/log/.*etc_crontab_update_prod_ctrl*
       if [ ! -z "${_AUTO_UP_MONTH}" ] \
         && [ ! -z "${_AUTO_UP_DAY}" ]; then
@@ -643,7 +647,7 @@ if [ -e "/var/aegir/drush" ]; then
         _crontab_cleanup
       fi
       service cron restart
-      touch /var/xdrago/log/.etc_crontab_update_prod_ctrl_f004.${_tRee}.${_xSrl}.pid
+      touch /var/xdrago/log/.etc_crontab_update_prod_ctrl_f005.${_tRee}.${_xSrl}.pid
     fi
   fi
 

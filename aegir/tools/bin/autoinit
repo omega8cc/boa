@@ -279,6 +279,7 @@ _if_launch_boa_install() {
   _BOA_LOGFILE="/root/.boa.install.command.cnf"
   if [[ -s "${_BOA_LOGFILE}" ]]; then
     _BOA_COMMAND=$(cat "${_BOA_LOGFILE}")
+    _BOA_COMMAND=$(echo "${_BOA_COMMAND}" | sed -E "s/noscreen//g")
     if [[ "${_BOA_COMMAND}" =~ " silent" ]] \
       || [[ "${_BOA_COMMAND}" =~ " system" ]]; then
       _BOA_INSTALL_COMMAND="${_BOA_COMMAND}"
@@ -287,8 +288,8 @@ _if_launch_boa_install() {
     fi
     if [[ "${_BOA_COMMAND}" =~ "boa in-lts" ]] \
       || [[ "${_BOA_COMMAND}" =~ "boa in-dev" ]]; then
-      _msg "Time for ${_BOA_INSTALL_COMMAND}" >> "${_logInt}"
-      eval "${_BOA_INSTALL_COMMAND}"
+      _msg "Time for ${_BOA_INSTALL_COMMAND} noscreen" >> "${_logInt}"
+      eval "${_BOA_INSTALL_COMMAND} noscreen"
       wait
       mv -f ${_BOA_LOGFILE} /var/backups/
     fi
@@ -572,13 +573,23 @@ _init_offsystemd() {
   fi
   /usr/bin/apt-get update -qq >> "${_logSlt}"
   /usr/bin/apt-get dist-upgrade ${_dstUpArg} >> "${_logSlt}"
+  /usr/bin/apt-get dist-upgrade ${_dstUpArg} >> "${_logSlt}"
   [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
   /usr/bin/apt-get remove systemd -y --purge --auto-remove --allow-remove-essential -qq >> "${_logSlt}"
   /usr/bin/apt-get remove libnss-systemd -y --purge --auto-remove --allow-remove-essential -qq >> "${_logSlt}"
   /usr/bin/apt-get remove systemd-sysv -y --purge --auto-remove --allow-remove-essential -qq >> "${_logSlt}"
   /usr/bin/apt-get autoremove --purge -y -qq >> "${_logSlt}"
   /usr/bin/apt-get autoclean -y -qq >> "${_logSlt}"
-  [ -e "/root/.top-daedalus.cnf" ] && /usr/bin/apt-get install base-files=12.4devuan3 -y --allow-downgrades >> "${_logSlt}"
+  if [ -e "/root/.top-daedalus.cnf" ]; then
+    if cat /etc/os-release | grep -i 'daedalus' &> /dev/null; then
+      _msg "The /etc/os-release already mentions daedalus" >> "${_logInt}"
+    elif apt policy base-files | grep -i 'daedalus' &> /dev/null; then
+      _msg "The apt policy base-files already mentions daedalus" >> "${_logInt}"
+    else
+      _msg "The base-files may need update to daedalus with base-files=12.4+deb12u7devuan1" >> "${_logInt}"
+      /usr/bin/apt-get install base-files=12.4+deb12u7devuan1 -y --allow-downgrades >> "${_logSlt}"
+    fi
+  fi
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   _msg "Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
@@ -664,13 +675,25 @@ _init_cycle() {
       /usr/bin/apt-get -f install -y -qq >> "${_logSlt}"
     else
       /usr/bin/apt-get dist-upgrade ${_dstUpArg} >> "${_logSlt}"
+      /usr/bin/apt-get dist-upgrade ${_dstUpArg} >> "${_logSlt}"
       [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
       /usr/bin/apt-get -f install -y -qq >> "${_logSlt}"
+      /usr/bin/apt-get -f install -y -qq >> "${_logSlt}"
+      /usr/bin/apt-get dist-upgrade ${_dstUpArg} >> "${_logSlt}"
       /usr/bin/apt-get dist-upgrade ${_dstUpArg} >> "${_logSlt}"
       [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
       /usr/bin/apt-get autoremove --purge -y -qq >> "${_logSlt}"
       /usr/bin/apt-get autoclean -y -qq >> "${_logSlt}"
-      [ -e "/root/.top-daedalus.cnf" ] && /usr/bin/apt-get install base-files=12.4devuan3 -y --allow-downgrades >> "${_logSlt}"
+      if [ -e "/root/.top-daedalus.cnf" ]; then
+        if cat /etc/os-release | grep -i 'daedalus' &> /dev/null; then
+          _msg "The /etc/os-release already mentions daedalus" >> "${_logInt}"
+        elif apt policy base-files | grep -i 'daedalus' &> /dev/null; then
+          _msg "The apt policy base-files already mentions daedalus" >> "${_logInt}"
+        else
+          _msg "The base-files may need update to daedalus with base-files=12.4+deb12u7devuan1" >> "${_logInt}"
+          /usr/bin/apt-get install base-files=12.4+deb12u7devuan1 -y --allow-downgrades >> "${_logSlt}"
+        fi
+      fi
     fi
   fi
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)

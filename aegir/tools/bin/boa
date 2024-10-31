@@ -2430,7 +2430,7 @@ _if_display_help() {
       nodns <-------- disable DNS/SMTP checks on the fly
       percona-8.0 <-- specify Percona version to use (5.7, 8.0, 8.3, 8.4)
 
-    {_outP}
+    {output}
       verbose <------ barracuda and octopus installed (output in the console) (default)
       minimal <------ barracuda and octopus installed (output mostly logged)
       silent <------- barracuda and octopus installed (output only logged)
@@ -2495,6 +2495,7 @@ case "$1" in
               [[ ! "${_ARGS}" =~ noscreen ]] && _if_start_screen
               # Capture the complete command with arguments
               _BOA_COMMAND="$0 $@"
+              [[ "${_ARGS}" =~ noscreen ]] && _BOA_COMMAND=$(echo "${_BOA_COMMAND}" | sed -E "s/noscreen//g")
               _init_setup
   ;;
   in-dev)     _tRee=dev
@@ -2512,6 +2513,7 @@ case "$1" in
               [[ ! "${_ARGS}" =~ noscreen ]] && _if_start_screen
               # Capture the complete command with arguments
               _BOA_COMMAND="$0 $@"
+              [[ "${_ARGS}" =~ noscreen ]] && _BOA_COMMAND=$(echo "${_BOA_COMMAND}" | sed -E "s/noscreen//g")
               _init_setup
   ;;
   in-octopus) _cmNd="$1"
@@ -2528,6 +2530,7 @@ case "$1" in
               [[ ! "${_ARGS}" =~ noscreen ]] && _if_start_screen
               # Capture the complete command with arguments
               _BOA_COMMAND="$0 $@"
+              [[ "${_ARGS}" =~ noscreen ]] && _BOA_COMMAND=$(echo "${_BOA_COMMAND}" | sed -E "s/noscreen//g")
               _init_setup
   ;;
   in-oct)     _cmNd="$1"
@@ -2546,6 +2549,7 @@ case "$1" in
               [[ ! "${_ARGS}" =~ noscreen ]] && _if_start_screen
               # Capture the complete command with arguments
               _BOA_COMMAND="$0 $@"
+              [[ "${_ARGS}" =~ noscreen ]] && _BOA_COMMAND=$(echo "${_BOA_COMMAND}" | sed -E "s/noscreen//g")
               _init_setup
   ;;
   *)          echo
