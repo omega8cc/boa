@@ -5,7 +5,7 @@ export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 export _tRee=lts
 
-_aptAllow="--allow-insecure-repositories --allow-unauthenticated"
+_aptAllow="--allow-unauthenticated"
 _aptYesUnth="-y ${_aptAllow}"
 
 _check_root() {

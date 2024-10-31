@@ -12,7 +12,7 @@ _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
 _usrGroup=users
 _WEBG=www-data
 _crlGet="-L --max-redirs 3 -k -s --retry 3 --retry-delay 5 -A iCab"
-_aptAllow="--allow-insecure-repositories --allow-unauthenticated"
+_aptAllow="--allow-unauthenticated"
 _aptYesUnth="-y ${_aptAllow}"
 
 

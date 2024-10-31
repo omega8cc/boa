@@ -83,7 +83,7 @@ if [ -z "${TERM+x}" ]; then
   export TERM=vt100
 fi
 
-_aptAllow="--allow-insecure-repositories --allow-unauthenticated"
+_aptAllow="--allow-unauthenticated"
 _INITINS="/usr/bin/apt-get ${_aptAllow} -y install"
 _dstUpArg="-fuy -q ${_aptAllow} --config-file /opt/apt/apt.conf.noi.dist"
 _nrmUpArg="-fuy -q ${_aptAllow} --config-file /opt/apt/apt.conf.noi.nrml"
@@ -119,7 +119,7 @@ _msg() {
 _check_manufacturer_compatibility() {
   # Install dmidecode of not present
   if ! command -v dmidecode &> /dev/null; then
-    /usr/bin/apt-get update &> /dev/null
+    /usr/bin/apt-get update --allow-insecure-repositories &> /dev/null
     ${_INITINS} dmidecode &> /dev/null
   fi
   # Check if dmidecode is available
@@ -166,7 +166,7 @@ fi
 _locales_check_fix_early() {
   _isLoc=$(which locale 2>&1)
   if [ ! -x "${_isLoc}" ] || [ -z "${_isLoc}" ]; then
-    apt-get update -qq &> /dev/null
+    apt-get update --allow-insecure-repositories -qq &> /dev/null
     ${_INITINS} locales locales-all &> /dev/null
   fi
   _LOC_TEST=$(locale 2>&1)
@@ -261,7 +261,7 @@ _locales_check_fix_early
 _cron_check_install_early() {
   _isCrn=$(which cron 2>&1)
   if [ ! -x "${_isCrn}" ] || [ -z "${_isCrn}" ]; then
-    apt-get update -qq &> /dev/null
+    apt-get update --allow-insecure-repositories -qq &> /dev/null
     ${_INITINS} cron &> /dev/null
   fi
 }
@@ -504,12 +504,12 @@ _init_prepare() {
     if [ ! -x "/usr/bin/aptitude" ] || [ ! -x "/usr/bin/cc" ]; then
       echo "Running _init_prepare procedure B..."
       touch /run/autoinit.pid
-      /usr/bin/apt-get update >> "${_logSlt}"
+      /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
       ${_INITINS} lsb-release >> "${_logSlt}"
       _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
       _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
       _msg "We need to install some tools early..." >> "${_logInt}"
-      /usr/bin/apt-get update >> "${_logSlt}"
+      /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
       if [ "${_VMFAMILY}" != "AWS" ]; then
         /usr/bin/apt-get remove chrony -y --purge --auto-remove -qq >> "${_logSlt}"
         _INITD_TEST=$(ls -la /etc/init.d/*cloud* 2>&1)
@@ -570,7 +570,7 @@ _init_offsystemd() {
     echo -e 'Package: systemd\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/offsystemd
     echo -e '\n\nPackage: *systemd*\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/offsystemd
   fi
-  /usr/bin/apt-get update -qq >> "${_logSlt}"
+  /usr/bin/apt-get update --allow-insecure-repositories -qq >> "${_logSlt}"
   /usr/bin/apt-get dist-upgrade ${_dstUpArg} >> "${_logSlt}"
   /usr/bin/apt-get dist-upgrade ${_dstUpArg} >> "${_logSlt}"
   [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
@@ -652,7 +652,7 @@ _init_cycle() {
     exit 1
   fi
   if [ "${_OLD_SYS}" = "Devuan" ]; then
-    /usr/bin/apt-get update -qq >> "${_logSlt}"
+    /usr/bin/apt-get update --allow-insecure-repositories -qq >> "${_logSlt}"
     /usr/bin/apt-get upgrade ${_nrmUpArg} >> "${_logSlt}"
   fi
   if [ ! -z "${_NEW_OS_CODE}" ] && [ ! -z "${_NEW_SYS}" ]; then
@@ -673,13 +673,13 @@ _init_cycle() {
     if [ -e "/etc/apt/apt.conf" ]; then
       rm -f /etc/apt/apt.conf
     fi
-    /usr/bin/apt-get update ${_aptAllow} >> "${_logSlt}"
-    /usr/bin/apt-get update ${_aptAllow} >> "${_logSlt}"
+    /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
+    /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
     if [ "${_OLD_SYS}" = "Debian" ]; then
       ${_INITINS} devuan-keyring >> "${_logSlt}"
       ${_INITINS} devuan-keyring >> "${_logSlt}"
     else
-      /usr/bin/apt-get update >> "${_logSlt}"
+      /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
     fi
     /usr/bin/apt-get upgrade ${_dstUpArg} >> "${_logSlt}"
     if [ "${_OLD_SYS}" = "Debian" ]; then
