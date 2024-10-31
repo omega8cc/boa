@@ -83,9 +83,10 @@ if [ -z "${TERM+x}" ]; then
   export TERM=vt100
 fi
 
-_INITINS="/usr/bin/apt-get -y install"
-_dstUpArg="-fuy -q --config-file /opt/apt/apt.conf.noi.dist"
-_nrmUpArg="-fuy -q --config-file /opt/apt/apt.conf.noi.nrml"
+_aptAllow="--allow-insecure-repositories --allow-unauthenticated"
+_INITINS="/usr/bin/apt-get ${_aptAllow} -y install"
+_dstUpArg="-fuy -q ${_aptAllow} --config-file /opt/apt/apt.conf.noi.dist"
+_nrmUpArg="-fuy -q ${_aptAllow} --config-file /opt/apt/apt.conf.noi.nrml"
 
 _check_root() {
   if [ `whoami` = "root" ]; then
@@ -165,7 +166,6 @@ fi
 _locales_check_fix_early() {
   _isLoc=$(which locale 2>&1)
   if [ ! -x "${_isLoc}" ] || [ -z "${_isLoc}" ]; then
-    _INITINS="/usr/bin/apt-get -y install"
     apt-get update -qq &> /dev/null
     ${_INITINS} locales locales-all &> /dev/null
   fi
@@ -261,7 +261,6 @@ _locales_check_fix_early
 _cron_check_install_early() {
   _isCrn=$(which cron 2>&1)
   if [ ! -x "${_isCrn}" ] || [ -z "${_isCrn}" ]; then
-    _INITINS="/usr/bin/apt-get -y install"
     apt-get update -qq &> /dev/null
     ${_INITINS} cron &> /dev/null
   fi
@@ -333,11 +332,11 @@ _install_apparmor_utils() {
     || [ "${_isAppArmorGrub}" = "NO" ]; then
     _msg "Installing AppArmor Tools early..." >> "${_logInt}"
     echo " " >> "${_logInt}"
-    /usr/bin/apt-get install auditd \
+    ${_INITINS} auditd \
       apparmor \
       apparmor-utils \
       apparmor-notify \
-      apparmor-profiles -y -qq >> "${_logSlt}"
+      apparmor-profiles -qq >> "${_logSlt}"
     mkdir -p /etc/default/grub.d
     echo 'GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT apparmor=1 security=apparmor"' \
       | tee ${_isAppArmorGrubFile} &> /dev/null
@@ -583,11 +582,21 @@ _init_offsystemd() {
   if [ -e "/root/.top-daedalus.cnf" ]; then
     if cat /etc/os-release | grep -i 'daedalus' &> /dev/null; then
       _msg "The /etc/os-release already mentions daedalus" >> "${_logInt}"
-    elif apt policy base-files | grep -i 'daedalus' &> /dev/null; then
-      _msg "The apt policy base-files already mentions daedalus" >> "${_logInt}"
+      _needsBaseFilesUpdate=NO
     else
-      _msg "The base-files may need update to daedalus with base-files=12.4+deb12u7devuan1" >> "${_logInt}"
-      /usr/bin/apt-get install base-files=12.4+deb12u7devuan1 -y --allow-downgrades >> "${_logSlt}"
+      _msg "The /etc/os-release doesn't mention daedalus yet" >> "${_logInt}"
+      _needsBaseFilesUpdate=YES
+    fi
+    if apt policy base-files | grep -i 'daedalus' &> /dev/null; then
+      _msg "The apt policy base-files already mentions daedalus" >> "${_logInt}"
+      _needsBaseFilesUpdate=NO
+    else
+      _msg "The apt policy base-files doesn't mention daedalus yet" >> "${_logInt}"
+      _needsBaseFilesUpdate=YES
+    fi
+    if [ "${_needsBaseFilesUpdate}" = "YES" ]; then
+      _msg "Upgrade to base-files=12.4+deb12u7devuan1 is forced" >> "${_logInt}"
+      ${_INITINS} base-files=12.4+deb12u7devuan1 --allow-downgrades >> "${_logSlt}"
     fi
   fi
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
@@ -664,24 +673,24 @@ _init_cycle() {
     if [ -e "/etc/apt/apt.conf" ]; then
       rm -f /etc/apt/apt.conf
     fi
-    /usr/bin/apt-get update -o Acquire::AllowInsecureRepositories=true >> "${_logSlt}"
-    /usr/bin/apt-get update -o Acquire::AllowInsecureRepositories=true >> "${_logSlt}"
+    /usr/bin/apt-get update ${_aptAllow} >> "${_logSlt}"
+    /usr/bin/apt-get update ${_aptAllow} >> "${_logSlt}"
     if [ "${_OLD_SYS}" = "Debian" ]; then
-      /usr/bin/apt-get install devuan-keyring -o Acquire::AllowUnauthenticated=true -y >> "${_logSlt}"
-      /usr/bin/apt-get install devuan-keyring -o Acquire::AllowUnauthenticated=true -y >> "${_logSlt}"
+      ${_INITINS} devuan-keyring >> "${_logSlt}"
+      ${_INITINS} devuan-keyring >> "${_logSlt}"
     else
       /usr/bin/apt-get update >> "${_logSlt}"
     fi
     /usr/bin/apt-get upgrade ${_dstUpArg} >> "${_logSlt}"
     if [ "${_OLD_SYS}" = "Debian" ]; then
-      /usr/bin/apt-get install eudev sysvinit-core -y -qq >> "${_logSlt}"
-      /usr/bin/apt-get -f install -y -qq >> "${_logSlt}"
+      ${_INITINS} eudev sysvinit-core -qq >> "${_logSlt}"
+      /usr/bin/apt-get -f install ${_aptAllow} -y -qq >> "${_logSlt}"
     else
       [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
       /usr/bin/apt-get dist-upgrade ${_dstUpArg} >> "${_logSlt}"
       /usr/bin/apt-get dist-upgrade ${_dstUpArg} >> "${_logSlt}"
-      /usr/bin/apt-get -f install -y -qq >> "${_logSlt}"
-      /usr/bin/apt-get -f install -y -qq >> "${_logSlt}"
+      /usr/bin/apt-get -f install ${_aptAllow} -y -qq >> "${_logSlt}"
+      /usr/bin/apt-get -f install ${_aptAllow} -y -qq >> "${_logSlt}"
       /usr/bin/apt-get dist-upgrade ${_dstUpArg} >> "${_logSlt}"
       /usr/bin/apt-get dist-upgrade ${_dstUpArg} >> "${_logSlt}"
       [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
@@ -690,12 +699,21 @@ _init_cycle() {
       if [ -e "/root/.top-daedalus.cnf" ]; then
         if cat /etc/os-release | grep -i 'daedalus' &> /dev/null; then
           _msg "The /etc/os-release already mentions daedalus" >> "${_logInt}"
-        elif apt policy base-files | grep -i 'daedalus' &> /dev/null; then
-          _msg "The apt policy base-files already mentions daedalus" >> "${_logInt}"
+          _needsBaseFilesUpdate=NO
         else
-          _msg "The base-files may need update to daedalus with base-files=12.4+deb12u7devuan1" >> "${_logInt}"
-          /usr/bin/apt-get install base-files=12.4+deb12u7devuan1 -y --allow-downgrades >> "${_logSlt}"
-          /usr/bin/apt-get dist-upgrade ${_dstUpArg} >> "${_logSlt}"
+          _msg "The /etc/os-release doesn't mention daedalus yet" >> "${_logInt}"
+          _needsBaseFilesUpdate=YES
+        fi
+        if apt policy base-files | grep -i 'daedalus' &> /dev/null; then
+          _msg "The apt policy base-files already mentions daedalus" >> "${_logInt}"
+          _needsBaseFilesUpdate=NO
+        else
+          _msg "The apt policy base-files doesn't mention daedalus yet" >> "${_logInt}"
+          _needsBaseFilesUpdate=YES
+        fi
+        if [ "${_needsBaseFilesUpdate}" = "YES" ]; then
+          _msg "Upgrade to base-files=12.4+deb12u7devuan1 is forced" >> "${_logInt}"
+          ${_INITINS} base-files=12.4+deb12u7devuan1 --allow-downgrades >> "${_logSlt}"
         fi
       fi
     fi

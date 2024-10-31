@@ -11,7 +11,8 @@ if [ -e "/root/.proxy.cnf" ]; then
 fi
 
 _crlGet="-L --max-redirs 3 -k -s --retry 3 --retry-delay 5 -A iCab"
-_aptYesUnth="-y -o Acquire::AllowUnauthenticated=true"
+_aptAllow="--allow-insecure-repositories --allow-unauthenticated"
+_aptYesUnth="-y ${_aptAllow}"
 _vSet="variable-set --always-set"
 
 ###-------------SYSTEM-----------------###

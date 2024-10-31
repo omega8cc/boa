@@ -52,7 +52,7 @@ _if_reinstall_curl_src() {
   _CURL_VRN=8.10.1
   if ! command -v lsb_release &> /dev/null; then
     apt-get update -qq &> /dev/null
-    apt-get install lsb-release -y -qq &> /dev/null
+    apt-get install lsb-release ${_aptYesUnth} -qq &> /dev/null
   fi
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   [ "${_OS_CODE}" = "wheezy" ] && _CURL_VRN=7.50.1
@@ -69,11 +69,11 @@ _if_reinstall_curl_src() {
     _apt_clean_update
     apt-get remove libssl1.0-dev -y --purge --auto-remove -qq 2> /dev/null
     apt-get autoremove -y 2> /dev/null
-    apt-get install libssl-dev -y -qq 2> /dev/null
-    apt-get install libc-client2007e libc-client2007e-dev -y -qq 2> /dev/null
-    apt-get build-dep curl -y 2> /dev/null
+    apt-get install libssl-dev ${_aptYesUnth} -qq 2> /dev/null
+    apt-get install libc-client2007e libc-client2007e-dev ${_aptYesUnth} -qq 2> /dev/null
+    apt-get build-dep curl ${_aptYesUnth} 2> /dev/null
     if [ ! -e "/var/aegir/drush" ]; then
-      apt-get install curl --reinstall -y -qq 2> /dev/null
+      apt-get install curl --reinstall ${_aptYesUnth} -qq 2> /dev/null
     fi
     if [ -e "/var/aegir/drush" ]; then
       _msg "INFO: Installing curl from sources..."
@@ -2564,8 +2564,8 @@ _run_apt_get_dist_upgrade() {
   _mrun "apt-get dist-upgrade ${_dstUpArg}" 2> /dev/null
   _mrun "apt-get dist-upgrade ${_dstUpArg}" 2> /dev/null
   [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
-  _mrun "apt-get dist-upgrade -y --allow-unauthenticated" 2> /dev/null
-  _mrun "apt-get dist-upgrade -y --allow-unauthenticated" 2> /dev/null
+  _mrun "apt-get dist-upgrade ${_aptYesUnth}" 2> /dev/null
+  _mrun "apt-get dist-upgrade ${_aptYesUnth}" 2> /dev/null
   [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
   _mrun "apt-get install lsb-release ${_dstUpArg}" 2> /dev/null
   ### Update rsyslog configuration early
@@ -2633,9 +2633,9 @@ _do_install_latest_git() {
     _msg "WAIT: This may take a while, please wait..."
     if [ ! -x "/usr/local/bin/git" ]; then
       _apt_clean_update
-      _mrun "apt-get install libcurl4 -y --allow-unauthenticated" 2> /dev/null
-      _mrun "apt-get install libcurl4-openssl-dev -y --allow-unauthenticated" 2> /dev/null
-      _mrun "apt-get install libcurl4-gnutls-dev -y --allow-unauthenticated" 2> /dev/null
+      _mrun "apt-get install libcurl4 -y ${_aptAllow}" 2> /dev/null
+      _mrun "apt-get install libcurl4-openssl-dev -y ${_aptAllow}" 2> /dev/null
+      _mrun "apt-get install libcurl4-gnutls-dev -y ${_aptAllow}" 2> /dev/null
       _mrun "apt-get remove git-core -y --purge --auto-remove" 2> /dev/null
       _mrun "apt-get remove git -y --purge --auto-remove" 2> /dev/null
     fi
@@ -4162,7 +4162,7 @@ _curl_install_src() {
 
   if ! command -v lsb_release &> /dev/null; then
     apt-get update -qq &> /dev/null
-    apt-get install lsb-release -y -qq &> /dev/null
+    apt-get install lsb-release ${_aptYesUnth} -qq &> /dev/null
   fi
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   [ "${_OS_CODE}" = "wheezy" ] && _CURL_VRN=7.50.1
@@ -5311,8 +5311,8 @@ _run_aptitude_deps_install() {
   fi
   _if_to_do_fix
   if [ "${_OS_DIST}" = "Devuan" ]; then
-    ${_INITINS} devuan-keyring -o Acquire::AllowUnauthenticated=true &> /dev/null
-    ${_INITINS} devuan-keyring -o Acquire::AllowUnauthenticated=true &> /dev/null
+    ${_INITINS} devuan-keyring ${_aptAllow} &> /dev/null
+    ${_INITINS} devuan-keyring ${_aptAllow} &> /dev/null
   elif [ "${_OS_DIST}" = "Debian" ]; then
     ${_INITINS} debian-keyring debian-archive-keyring &> /dev/null
     ${_INITINS} debian-keyring debian-archive-keyring &> /dev/null
@@ -5422,7 +5422,7 @@ _basic_packages_install_on_init() {
 
   # Desired configuration content
   _DESIRED_APT_CONFIG='Acquire::AllowInsecureRepositories "true";
-    Acquire::AllowUnauthenticated "true";
+    APT::Get::AllowUnauthenticated "true";
     Aptitude::CmdLine::Fix-Broken "true";'
 
   # Remove leading whitespace from each line
@@ -5688,7 +5688,7 @@ _if_post_major_os_upgrade() {
     && [ ! -e "/root/.completed_post_major_os_upgrade.info" ]; then
 
     _apt_clean_update_no_releaseinfo_change
-    _mrun "${_APT_UPDATE} -o Acquire::AllowInsecureRepositories=true -qq" 2> /dev/null
+    _mrun "${_APT_UPDATE} ${_aptAllow} -qq" 2> /dev/null
 
     _msg "INFO: Cleaning up any systemd remnants..."
     _sysvinit_install
@@ -5707,12 +5707,12 @@ _if_post_major_os_upgrade() {
     [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
     if [ -e "/root/.allow.downgrades.on.same.os.dist.upgrade.cnf" ]; then
       _msg "INFO: dist-upgrade with --allow-downgrades option is used"
-      _mrun "apt-get dist-upgrade -y --allow-downgrades" 2> /dev/null
-      _mrun "apt-get dist-upgrade -y --allow-downgrades" 2> /dev/null
+      _mrun "apt-get dist-upgrade ${_aptYesUnth} --allow-downgrades" 2> /dev/null
+      _mrun "apt-get dist-upgrade ${_aptYesUnth} --allow-downgrades" 2> /dev/null
       [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
     else
-      _mrun "apt-get dist-upgrade -y" 2> /dev/null
-      _mrun "apt-get dist-upgrade -y" 2> /dev/null
+      _mrun "apt-get dist-upgrade ${_aptYesUnth}" 2> /dev/null
+      _mrun "apt-get dist-upgrade ${_aptYesUnth}" 2> /dev/null
       [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
     fi
     _mrun "apt-get install lsb-release ${_dstUpArg}" 2> /dev/null
@@ -5721,12 +5721,22 @@ _if_post_major_os_upgrade() {
     ### Update base-files on daedalus if needed
     if [ -e "/root/.top-daedalus.cnf" ]; then
       if cat /etc/os-release | grep -i 'daedalus' &> /dev/null; then
-        _msg "INFO: The /etc/os-release already mentions daedalus"
-      elif apt policy base-files | grep -i 'daedalus' &> /dev/null; then
-        _msg "INFO: The apt policy base-files already mentions daedalus"
+        _msg "The /etc/os-release already mentions daedalus"
+        _needsBaseFilesUpdate=NO
       else
-        _msg "INFO: The base-files may need update to daedalus with base-files=12.4+deb12u7devuan1"
-        /usr/bin/apt-get install base-files=12.4+deb12u7devuan1 -y --allow-downgrades 2> /dev/null
+        _msg "The /etc/os-release doesn't mention daedalus yet"
+        _needsBaseFilesUpdate=YES
+      fi
+      if apt policy base-files | grep -i 'daedalus' &> /dev/null; then
+        _msg "The apt policy base-files already mentions daedalus"
+        _needsBaseFilesUpdate=NO
+      else
+        _msg "The apt policy base-files doesn't mention daedalus yet"
+        _needsBaseFilesUpdate=YES
+      fi
+      if [ "${_needsBaseFilesUpdate}" = "YES" ]; then
+        _msg "Upgrade to base-files=12.4+deb12u7devuan1 is forced"
+        _mrun "${_INITINS} base-files=12.4+deb12u7devuan1 --allow-downgrades" 2> /dev/null
       fi
     fi
 
@@ -6154,8 +6164,8 @@ _if_major_os_upgrade() {
       ###
       ### Add devuan-keyring first.
       _apt_clean_update_no_releaseinfo_change
-      _mrun "${_APT_UPDATE} -o Acquire::AllowInsecureRepositories=true" 2> /dev/null
-      _mrun "${_INITINS} devuan-keyring -o Acquire::AllowUnauthenticated=true" 2> /dev/null
+      _mrun "${_APT_UPDATE} ${_aptAllow}" 2> /dev/null
+      _mrun "${_INITINS} devuan-keyring ${_aptAllow}" 2> /dev/null
     else
       if [ "${_NEW_OS_CODE}" = "stretch" ]; then
         _NEW_APT_MIRROR="archive.debian.org/debian"
@@ -6203,12 +6213,12 @@ _if_major_os_upgrade() {
     ###
     ### Update packages registry.
     _apt_clean_update_no_releaseinfo_change
-    _mrun "${_APT_UPDATE} -o Acquire::AllowInsecureRepositories=true -qq" 2> /dev/null
+    _mrun "${_APT_UPDATE} ${_aptAllow} -qq" 2> /dev/null
     ###
     ### Two step upgrade with apt-get only.
     _mrun "apt-get install apt -t ${_NEW_OS_CODE} ${_dstUpArg}" 2> /dev/null
     _apt_clean_update_no_releaseinfo_change
-    _mrun "${_APT_UPDATE} -o Acquire::AllowInsecureRepositories=true -qq" 2> /dev/null
+    _mrun "${_APT_UPDATE} ${_aptAllow} -qq" 2> /dev/null
     ###
     ### Requirement for Debian Stretch to Devuan Beowulf migration.
     ### The libtinfo package needs to be upgraded to prevent breaks.
@@ -6326,8 +6336,8 @@ _if_major_os_upgrade() {
       _mrun "apt-get dist-upgrade ${_dstUpArg} --allow-downgrades" 2> /dev/null
       _mrun "apt-get dist-upgrade ${_dstUpArg} --allow-downgrades" 2> /dev/null
       [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
-      _mrun "apt-get dist-upgrade -y --allow-downgrades" 2> /dev/null
-      _mrun "apt-get dist-upgrade -y --allow-downgrades" 2> /dev/null
+      _mrun "apt-get dist-upgrade ${_aptYesUnth} --allow-downgrades" 2> /dev/null
+      _mrun "apt-get dist-upgrade ${_aptYesUnth} --allow-downgrades" 2> /dev/null
       [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
       _mrun "apt-get install lsb-release ${_dstUpArg}" 2> /dev/null
       ###
@@ -6364,8 +6374,8 @@ _if_major_os_upgrade() {
         echo "deb-src http://deb.devuan.org/merged chimaera-security main" >> /etc/apt/sources.list.d/chimaera.list
         echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
         _apt_clean_update
-        _mrun "apt-get install -t chimaera libldap-common -y" 2> /dev/null
-        _mrun "apt-get install -t chimaera libldap2-dev -y" 2> /dev/null
+        _mrun "apt-get install -t chimaera libldap-common ${_aptYesUnth}" 2> /dev/null
+        _mrun "apt-get install -t chimaera libldap2-dev ${_aptYesUnth}" 2> /dev/null
         ###
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "TRCK: Locking libldap packages to prevent upgrade on Daedalus"
@@ -6567,7 +6577,7 @@ _if_major_os_upgrade() {
         mkdir -p /dev/pts
         rm -rf /dev/pts/*
         _apt_clean_update_no_releaseinfo_change
-        _mrun "apt-get install udev -y --allow-unauthenticated" 2> /dev/null
+        _mrun "apt-get install udev ${_aptYesUnth}" 2> /dev/null
         echo "devpts          /dev/pts        devpts  rw,noexec,nosuid,gid=5,mode=620 0  0" >> /etc/fstab
         mount -t devpts devpts /dev/pts &> /dev/null
       fi
@@ -6807,7 +6817,7 @@ _sys_packages_install() {
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "TRCK: Installing now openjdk-11-jre-headless from Bullseye"
         fi
-        _mrun "apt-get install -t bullseye openjdk-11-jre-headless -y" 2> /dev/null
+        _mrun "apt-get install -t bullseye openjdk-11-jre-headless ${_aptYesUnth}" 2> /dev/null
         rm -f /etc/apt/sources.list.d/bullseye.list
         rm -f /etc/apt/apt.conf
         _apt_clean_update
@@ -6834,7 +6844,7 @@ _sys_packages_install() {
           if [ "${_DEBUG_MODE}" = "YES" ]; then
             _msg "TRCK: Installing now openjdk-11-jre-headless from Chimaera"
           fi
-          _mrun "apt-get install -t chimaera openjdk-11-jre-headless -y" 2> /dev/null
+          _mrun "apt-get install -t chimaera openjdk-11-jre-headless ${_aptYesUnth}" 2> /dev/null
           rm -f /etc/apt/sources.list.d/chimaera.list
           rm -f /etc/apt/apt.conf
           _apt_clean_update
@@ -6872,7 +6882,7 @@ _sys_packages_install() {
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "TRCK: Installing now openjdk-11-jre-headless from Bullseye"
         fi
-        _mrun "apt-get install -t bullseye openjdk-11-jre-headless -y" 2> /dev/null
+        _mrun "apt-get install -t bullseye openjdk-11-jre-headless ${_aptYesUnth}" 2> /dev/null
         rm -f /etc/apt/sources.list.d/bullseye.list
         rm -f /etc/apt/apt.conf
         _apt_clean_update
@@ -6902,7 +6912,7 @@ _sys_packages_install() {
           if [ "${_DEBUG_MODE}" = "YES" ]; then
             _msg "TRCK: Installing now openjdk-11-jre-headless from Chimaera"
           fi
-          _mrun "apt-get install -t chimaera openjdk-11-jre-headless -y" 2> /dev/null
+          _mrun "apt-get install -t chimaera openjdk-11-jre-headless ${_aptYesUnth}" 2> /dev/null
           rm -f /etc/apt/sources.list.d/chimaera.list
           rm -f /etc/apt/apt.conf
           _apt_clean_update
@@ -8706,7 +8716,7 @@ _apticron_update() {
         wait
       else
         _mrun "apt-get remove apticron -y --purge --auto-remove -qq" 2> /dev/null
-        _mrun "apt-get install apticron -y" 2> /dev/null
+        _mrun "apt-get install apticron ${_aptYesUnth}" 2> /dev/null
         sed -i "s/^# NOTIFY_HOLDS=\"0\"/NOTIFY_HOLDS=\"0\"/g" \
           /etc/apticron/apticron.conf
         wait

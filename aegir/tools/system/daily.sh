@@ -58,7 +58,8 @@ if [[ "${_SSL_ITD}" =~ "3.3." ]] \
   _NEW_SSL=YES
 fi
 _crlGet="-L --max-redirs 3 -k -s --retry 3 --retry-delay 5 -A iCab"
-_aptYesUnth="-y -o Acquire::AllowUnauthenticated=true"
+_aptAllow="--allow-insecure-repositories --allow-unauthenticated"
+_aptYesUnth="-y ${_aptAllow}"
 _cGet="config-get user.settings"
 _cSet="config-set user.settings"
 _vGet="variable-get"

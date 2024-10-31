@@ -29,36 +29,45 @@ Hello,
 
 This is a notification to inform you that the migration of your Aegir hosting system has been successfully completed. Below are important details and instructions regarding the changes.
 
-YOUR NEW SYSTEM IP ADDRESS IS: ${_tgt}
+YOUR NEW SYSTEM IP ADDRESS IS: [${_tgt}]
 
-Please update DNS for all your sites as soon as possible, to point the traffic directly to the new IP address.
+Please update DNS for all your sites as soon as possible to point traffic directly to the new IP address. The old servers with an HTTP proxy will remain active for a maximum of 10 days after migration.
 
 ---
 
 Important Changes to Note:
 
-  * New Aegir Control Panel URL with /sqladmin for SQL Adminer access and more details can be found in the New Welcome Email, sent separately.
+1. New Aegir Control Panel URL
+   Your new welcome email will include details about the updated Aegir URL, including SQL Adminer access.
 
-  * While Aegir Control Panel URL has changed, its access credentials for all existing admins remain **the same as before**.
+2. Access Credentials
+   Aegir Control Panel access credentials for all current admins remain the same. Updated SSH/SFTP credentials (with a new password) are in your welcome email.
 
-  * Updated SSH/SFTP credentials (just new password) are listed in the New Welcome Email.
-  * SSH (RSA) keys have been transferred, but only for the main SSH account.
-  * The main SSH account home directory contents has *not* been migrated.
-  * SSH sub-accounts (Clients), if used, will be recreated from scratch.
+3. SSH Key Transfer
+   Only the main SSH account keys have been transferred.
+   - SSH sub-accounts (Clients) will need to be recreated, so their old passwords and SSH keys will no longer work.
 
-  * The Aegir backend USER.id_rsa.pub public SSH key has changed.
+4. Main SSH Account Directory
+   The contents of your main SSH account’s home directory have NOT been migrated. Please download any necessary files from the old server.
 
-  * Your SSL/LE certificates have been migrated/renewed automatically.
-  * All cron tasks are paused during this migration and in the next 1-3 hours.
-  * The old Aegir Control Panel has been disabled to protect proxy vhosts.
+5. Aegir Backend Key Update
+   The public SSH key (USER.id_rsa.pub) for the Aegir backend has changed. This is important if you use integration with a remote Git repository.
+
+6. SSL Certificates
+   SSL/Let’s Encrypt certificates have been migrated automatically. Renewals will be handled on the new server, so updating DNS promptly is advised.
+
+7. Paused Cron Tasks
+   All scheduled tasks were paused during migration and will resume within 1-3 hours.
+
+8. Old Aegir Control Panel
+   The old control panel has been disabled to secure proxy configurations.
 
 ---
 
-Thank you for your cooperation and understanding during this migration. If you have any questions or need assistance, please let us know.
+Thank you for your cooperation during this migration. If you have any questions or need assistance, please feel free to reach out.
 
-Kind Regards,
---
-BOA Server Skynet Agent
+Kind regards,
+BOA Servers Sysadmins
 
 EOF
   fi
@@ -71,42 +80,52 @@ _send_notice_migration_start() {
   cat <<EOF | s-nail -b ${_BCC_EMAIL} -s "STATUS: Running migration to ${_tgt} for ${_DOMAIN}" ${_CLIENT_EMAIL}
 Hello,
 
-You are receiving this notification because your Aegir hosting system migration process has been started.
+This notification is to inform you that the migration of your Aegir hosting system to the new platform has started.
 
-YOUR NEW SYSTEM IP ADDRESS IS: ${_tgt}
+YOUR NEW SYSTEM IP ADDRESS IS: [${_tgt}]
 
-You will receive another message once the migration is complete, along with the New Welcome Email, sent separately.
+You will receive another message once the migration is complete, along with a separate New Welcome Email containing important details about your updated system.
 
-Please do not run any tasks in your old Aegir Control Panel. It could break special proxy vhosts we have created for you to provide service continuity during this migration.
+Please do not run any tasks in your old Aegir Control Panel during this migration, as it may interfere with special proxy configurations set up to ensure service continuity.
 
-Please update DNS for all your sites as soon as possible, to point the traffic directly to the new IP address.
+Important: Update DNS for All Your Sites
+Once migrated, update DNS for all your sites to point traffic directly to the new IP address. The old servers with an HTTP proxy will remain active for up to 10 days after migration to assist in the transition.
 
 ---
 
 Important Changes to Note:
 
-  * New Aegir Control Panel URL with /sqladmin for SQL Adminer access and more details can be found in the New Welcome Email, sent separately.
+1. New Aegir Control Panel URL
+   Your New Welcome Email will include details about the updated Aegir URL, including SQL Adminer access.
 
-  * While Aegir Control Panel URL has changed, its access credentials for all existing admins remain **the same as before**.
+2. Access Credentials
+   Aegir Control Panel credentials for all current admins will remain the same. Updated SSH/SFTP credentials (with a new password) will be provided in your welcome email.
 
-  * Updated SSH/SFTP credentials (just new password) are listed in the New Welcome Email.
-  * SSH (RSA) keys will be transferred, but only for the main SSH account.
-  * The main SSH account home directory contents will *not* be migrated.
-  * SSH sub-accounts (Clients), if used, will be recreated from scratch.
+3. SSH Key Transfer
+   Only the main SSH account keys will be transferred.
+   - SSH sub-accounts (Clients) will need to be recreated, so their old passwords and SSH keys will no longer work.
 
-  * The Aegir backend USER.id_rsa.pub public SSH key will change.
+4. Main SSH Account Directory
+   The contents of your main SSH account’s home directory will NOT be migrated. Please download any necessary files from the old server.
 
-  * Your SSL/LE certificates will be migrated/renewed automatically.
-  * All cron tasks are paused during this migration and in the next 1-3 hours.
-  * The old Aegir Control Panel will be disabled to protect proxy vhosts.
+5. Aegir Backend Key Update
+   The public SSH key (USER.id_rsa.pub) for the Aegir backend will change. This is important if you use integration with a remote Git repository.
+
+6. SSL Certificates
+   SSL/Let’s Encrypt certificates will be migrated automatically. Renewals will be handled on the new server, so updating DNS promptly is advised.
+
+7. Paused Cron Tasks
+   All scheduled tasks will be paused during migration and for an additional 1-3 hours afterward.
+
+8. Old Aegir Control Panel
+   The old control panel will be disabled to secure proxy configurations.
 
 ---
 
-Thank you for your cooperation and understanding during this migration. If you have any questions or need assistance, please let us know.
+Thank you for your cooperation during this migration. If you have any questions or need assistance, please feel free to reach out.
 
-Kind Regards,
---
-BOA Server Skynet Agent
+Kind regards,
+BOA Servers Sysadmins
 
 EOF
   fi
