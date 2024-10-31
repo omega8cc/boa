@@ -1167,12 +1167,12 @@ export _xSrl=550proT00
 ###
 ### Commands shortcuts
 ###
-_dstUpArg="-fuy --allow-unauthenticated -q --config-file /opt/apt/apt.conf.noi.dist"
-_nrmUpArg="-fuy --allow-unauthenticated -q --config-file /opt/apt/apt.conf.noi.nrml"
-_INITINS="/usr/bin/apt-get -y --allow-unauthenticated install"
+_dstUpArg="-fuy -q --config-file /opt/apt/apt.conf.noi.dist"
+_nrmUpArg="-fuy -q --config-file /opt/apt/apt.conf.noi.nrml"
+_INITINS="/usr/bin/apt-get -y install"
 _INSTALL_DIST="/usr/bin/apt-get ${_dstUpArg} install"
 _INSTALL_NRML="/usr/bin/apt-get ${_nrmUpArg} install"
-_aptYesUnth="-y --allow-unauthenticated"
+_aptYesUnth="-y -o Acquire::AllowUnauthenticated=true"
 if [ ! -e "/var/aegir/drush" ]; then
   _INSTAPP="${_INSTALL_DIST}"
 fi
@@ -1396,15 +1396,15 @@ _download_helpers_libs() {
       if [ ! -x "/usr/local/bin/git" ]; then
         _apt_clean_update
         if [ -e "/root/.dev.server.cnf" ]; then
-          apt-get install libcurl4 -y --allow-unauthenticated -qq 2> /dev/null
-          apt-get install libcurl4-openssl-dev -y --allow-unauthenticated -qq 2> /dev/null
-          apt-get install libcurl4-gnutls-dev -y --allow-unauthenticated -qq 2> /dev/null
+          apt-get install libcurl4 -y -qq 2> /dev/null
+          apt-get install libcurl4-openssl-dev -y -qq 2> /dev/null
+          apt-get install libcurl4-gnutls-dev -y -qq 2> /dev/null
           apt-get remove git-core -y --purge --auto-remove -qq 2> /dev/null
           apt-get remove git -y --purge --auto-remove -qq 2> /dev/null
         else
-          apt-get install libcurl4 -y --allow-unauthenticated -qq &> /dev/null
-          apt-get install libcurl4-openssl-dev -y --allow-unauthenticated -qq &> /dev/null
-          apt-get install libcurl4-gnutls-dev -y --allow-unauthenticated -qq &> /dev/null
+          apt-get install libcurl4 -y -qq &> /dev/null
+          apt-get install libcurl4-openssl-dev -y -qq &> /dev/null
+          apt-get install libcurl4-gnutls-dev -y -qq &> /dev/null
           apt-get remove git-core -y --purge --auto-remove -qq &> /dev/null
           apt-get remove git -y --purge --auto-remove -qq &> /dev/null
         fi
@@ -1452,17 +1452,17 @@ _download_helpers_libs() {
   else
     _apt_clean_update
     if [ -e "/root/.dev.server.cnf" ]; then
-#       apt-get install libcurl4 -y --allow-unauthenticated -qq 2> /dev/null
-#       apt-get install libcurl4-openssl-dev -y --allow-unauthenticated -qq 2> /dev/null
-#       apt-get install libcurl4-gnutls-dev -y --allow-unauthenticated -qq 2> /dev/null
-      apt-get install git-core -y --allow-unauthenticated -qq 2> /dev/null
-      apt-get install git -y --allow-unauthenticated -qq 2> /dev/null
+#       apt-get install libcurl4 -y -qq 2> /dev/null
+#       apt-get install libcurl4-openssl-dev -y -qq 2> /dev/null
+#       apt-get install libcurl4-gnutls-dev -y -qq 2> /dev/null
+      apt-get install git-core -y -qq 2> /dev/null
+      apt-get install git -y -qq 2> /dev/null
     else
-#       apt-get install libcurl4 -y --allow-unauthenticated -qq &> /dev/null
-#       apt-get install libcurl4-openssl-dev -y --allow-unauthenticated -qq &> /dev/null
-#       apt-get install libcurl4-gnutls-dev -y --allow-unauthenticated -qq &> /dev/null
-      apt-get install git-core -y --allow-unauthenticated -qq &> /dev/null
-      apt-get install git -y --allow-unauthenticated -qq &> /dev/null
+#       apt-get install libcurl4 -y -qq &> /dev/null
+#       apt-get install libcurl4-openssl-dev -y -qq &> /dev/null
+#       apt-get install libcurl4-gnutls-dev -y -qq &> /dev/null
+      apt-get install git-core -y -qq &> /dev/null
+      apt-get install git -y -qq &> /dev/null
     fi
     _isGit=$(which git 2>&1)
     _gCb="${_isGit} clone --branch"

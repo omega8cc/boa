@@ -63,7 +63,7 @@ export _TODAY=${_TODAY//[^0-9]/}
 #
 _barCnf="/root/.barracuda.cnf"
 _crlGet="-L --max-redirs 3 -k -s --retry 3 --retry-delay 5 -A iCab"
-_aptYesUnth="-y --allow-unauthenticated"
+_aptYesUnth="-y -o Acquire::AllowUnauthenticated=true"
 _optBin="/opt/local/bin"
 _usrBin="/usr/local/bin"
 _pthLog="/var/xdrago/log"
@@ -304,7 +304,7 @@ _if_clean_boa_env() {
 _locales_check_fix_early() {
   _isLoc=$(which locale 2>&1)
   if [ ! -x "${_isLoc}" ] || [ -z "${_isLoc}" ]; then
-    _INITINS="/usr/bin/apt-get -y --allow-unauthenticated install"
+    _INITINS="/usr/bin/apt-get -y install"
     apt-get update -qq &> /dev/null
     ${_INITINS} locales locales-all &> /dev/null
   fi
@@ -3198,12 +3198,32 @@ _boa_setup() {
     && [ -e "/etc/apt/apt.conf.d" ]; then
     echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
   fi
-  if [ ! -e "/etc/apt/apt.conf.d/99ignorestrict" ] \
-    && [ -e "/etc/apt/apt.conf.d" ]; then
-    echo "APT::Get::AllowInsecureRepositories \"true\";" > /etc/apt/apt.conf.d/99ignorestrict
-    echo "APT::Get::AllowUnauthenticated \"true\";"     >> /etc/apt/apt.conf.d/99ignorestrict
-    echo "Aptitude::CmdLine::Fix-Broken \"true\";"      >> /etc/apt/apt.conf.d/99ignorestrict
+
+  _APT_CONFIG_FILE="/etc/apt/apt.conf.d/99ignorestrict"
+
+  # Desired configuration content
+  _DESIRED_APT_CONFIG='Acquire::AllowInsecureRepositories "true";
+    Acquire::AllowUnauthenticated "true";
+    Aptitude::CmdLine::Fix-Broken "true";'
+
+  # Remove leading whitespace from each line
+  _CLEANED_DESIRED_APT_CONFIG=$(echo "${_DESIRED_APT_CONFIG}" | sed 's/^[[:space:]]\+//')
+
+  # Normalize the existing file content
+  if [[ -f "${_APT_CONFIG_FILE}" ]]; then
+    _CURRENT_APT_CONFIG=$(tr -d '[:space:]' < "${_APT_CONFIG_FILE}")
+  else
+    _CURRENT_APT_CONFIG=""
   fi
+
+  # Normalize the cleaned desired configuration content
+  _NORMALIZED_DESIRED_APT_CONFIG=$(echo "${_CLEANED_DESIRED_APT_CONFIG}" | tr -d '[:space:]')
+
+  # Compare normalized contents and update if necessary
+  if [[ "${_CURRENT_APT_CONFIG}" != "${_NORMALIZED_DESIRED_APT_CONFIG}" ]]; then
+    echo "${_CLEANED_DESIRED_APT_CONFIG}" | sudo tee "${_APT_CONFIG_FILE}" > /dev/null
+  fi
+
   _apt_clean_update
 
   if [ ! -e "/var/aegir/drush" ] && [ ! -e "/var/xdrago/manage_solr_config.sh" ]; then

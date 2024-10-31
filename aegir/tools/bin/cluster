@@ -12,12 +12,12 @@ _PROXYSQL_VRN="1.3.5-debian8_amd64"
 _UTIL_VRN="0.30.216-pre3126"
 _VNSTAT_VRN=2.7
 _APT_XTR="-y"
-_dstUpArg="-fuy --allow-unauthenticated -q --config-file /opt/apt/apt.conf.noi.dist"
-_nrmUpArg="-fuy --allow-unauthenticated -q --config-file /opt/apt/apt.conf.noi.nrml"
+_dstUpArg="-fuy -q --config-file /opt/apt/apt.conf.noi.dist"
+_nrmUpArg="-fuy -q --config-file /opt/apt/apt.conf.noi.nrml"
 _INSTALL_DIST="/usr/bin/apt-get ${_dstUpArg} install"
 _INSTALL_NRML="/usr/bin/apt-get ${_nrmUpArg} install"
-_INITINS="/usr/bin/apt-get -y --allow-unauthenticated install"
-_aptYesUnth="-y --allow-unauthenticated"
+_INITINS="/usr/bin/apt-get -y install"
+_aptYesUnth="-y -o Acquire::AllowUnauthenticated=true"
 _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
 _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
 _aptLiSys="/etc/apt/sources.list"
@@ -57,7 +57,7 @@ _X_VERSION="BOA-5.5.0-${_tRee}"
 #
 _barCnf="/root/.barracuda.cnf"
 _crlGet="-L --max-redirs 3 -k -s --retry 3 --retry-delay 5 -A iCab"
-_aptYesUnth="-y --allow-unauthenticated"
+_aptYesUnth="-y -o Acquire::AllowUnauthenticated=true"
 _optBin="/opt/local/bin"
 _usrBin="/usr/local/bin"
 _pthLog="/var/xdrago/log"
@@ -119,7 +119,7 @@ _check_root() {
       fi
     fi
     [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
-    _aptYesUnth="-y --allow-unauthenticated"
+    _aptYesUnth="-y -o Acquire::AllowUnauthenticated=true"
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
@@ -808,7 +808,7 @@ DPkg::Options {"--force-confdef";"--force-confmiss";"--force-confold"};
 DPkg::Pre-Install-Pkgs {"/usr/sbin/dpkg-preconfigure --apt";};
 Dir::Etc::SourceList "/etc/apt/sources.list";
 ' > /vservers/${_idn}/opt/apt/apt.conf.noi.nrml
-    _nrmUpArg="-fuy --allow-unauthenticated -q --config-file /opt/apt/apt.conf.noi.nrml"
+    _nrmUpArg="-fuy -q --config-file /opt/apt/apt.conf.noi.nrml"
     vserver ${_idn} exec apt-get clean
     vserver ${_idn} exec ${_APT_UPDATE} -qq
     vserver ${_idn} exec ${_INSTAPP} sysbench

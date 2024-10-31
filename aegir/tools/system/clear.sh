@@ -5,7 +5,7 @@ export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 export _tRee=pro
 
-_aptYesUnth="-y --allow-unauthenticated"
+_aptYesUnth="-y -o Acquire::AllowUnauthenticated=true"
 
 _check_root() {
   if [ `whoami` = "root" ]; then

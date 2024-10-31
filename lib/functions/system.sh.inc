@@ -2694,7 +2694,7 @@ _check_apt_updates() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _check_apt_updates"
   fi
-  for _Update in `/usr/bin/apt-get -q -y --allow-unauthenticated \
+  for _Update in `/usr/bin/apt-get -q -y \
     -s dist-upgrade | grep ^Inst | cut -d\  -f2 | sort`; do
     case "${_Update}" in
       *libcurl*)    _UP_PHP=YES ;;
@@ -5311,8 +5311,10 @@ _run_aptitude_deps_install() {
   fi
   _if_to_do_fix
   if [ "${_OS_DIST}" = "Devuan" ]; then
-    ${_INITINS} devuan-keyring &> /dev/null
+    ${_INITINS} devuan-keyring -o Acquire::AllowUnauthenticated=true &> /dev/null
+    ${_INITINS} devuan-keyring -o Acquire::AllowUnauthenticated=true &> /dev/null
   elif [ "${_OS_DIST}" = "Debian" ]; then
+    ${_INITINS} debian-keyring debian-archive-keyring &> /dev/null
     ${_INITINS} debian-keyring debian-archive-keyring &> /dev/null
   fi
   if [ "${_STATUS}" = "INIT" ]; then
@@ -5415,12 +5417,32 @@ _basic_packages_install_on_init() {
     && [ -e "/etc/apt/apt.conf.d" ]; then
     echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
   fi
-  if [ ! -e "/etc/apt/apt.conf.d/99ignorestrict" ] \
-    && [ -e "/etc/apt/apt.conf.d" ]; then
-    echo "APT::Get::AllowInsecureRepositories \"true\";" > /etc/apt/apt.conf.d/99ignorestrict
-    echo "APT::Get::AllowUnauthenticated \"true\";"     >> /etc/apt/apt.conf.d/99ignorestrict
-    echo "Aptitude::CmdLine::Fix-Broken \"true\";"      >> /etc/apt/apt.conf.d/99ignorestrict
+
+  _APT_CONFIG_FILE="/etc/apt/apt.conf.d/99ignorestrict"
+
+  # Desired configuration content
+  _DESIRED_APT_CONFIG='Acquire::AllowInsecureRepositories "true";
+    Acquire::AllowUnauthenticated "true";
+    Aptitude::CmdLine::Fix-Broken "true";'
+
+  # Remove leading whitespace from each line
+  _CLEANED_DESIRED_APT_CONFIG=$(echo "${_DESIRED_APT_CONFIG}" | sed 's/^[[:space:]]\+//')
+
+  # Normalize the existing file content
+  if [[ -f "${_APT_CONFIG_FILE}" ]]; then
+    _CURRENT_APT_CONFIG=$(tr -d '[:space:]' < "${_APT_CONFIG_FILE}")
+  else
+    _CURRENT_APT_CONFIG=""
   fi
+
+  # Normalize the cleaned desired configuration content
+  _NORMALIZED_DESIRED_APT_CONFIG=$(echo "${_CLEANED_DESIRED_APT_CONFIG}" | tr -d '[:space:]')
+
+  # Compare normalized contents and update if necessary
+  if [[ "${_CURRENT_APT_CONFIG}" != "${_NORMALIZED_DESIRED_APT_CONFIG}" ]]; then
+    echo "${_CLEANED_DESIRED_APT_CONFIG}" | sudo tee "${_APT_CONFIG_FILE}" > /dev/null
+  fi
+
   if [ "${_STATUS}" = "INIT" ]; then
     if [ ! -e "/root/.step.init.basic.cnf" ]; then
       _msg "INFO: Installing some basic tools..."
@@ -5666,7 +5688,7 @@ _if_post_major_os_upgrade() {
     && [ ! -e "/root/.completed_post_major_os_upgrade.info" ]; then
 
     _apt_clean_update_no_releaseinfo_change
-    _mrun "${_APT_UPDATE} --allow-insecure-repositories -qq" 2> /dev/null
+    _mrun "${_APT_UPDATE} -o Acquire::AllowInsecureRepositories=true -qq" 2> /dev/null
 
     _msg "INFO: Cleaning up any systemd remnants..."
     _sysvinit_install
@@ -6132,8 +6154,8 @@ _if_major_os_upgrade() {
       ###
       ### Add devuan-keyring first.
       _apt_clean_update_no_releaseinfo_change
-      _mrun "${_APT_UPDATE} --allow-insecure-repositories -qq" 2> /dev/null
-      _mrun "${_INITINS} devuan-keyring" 2> /dev/null
+      _mrun "${_APT_UPDATE} -o Acquire::AllowInsecureRepositories=true" 2> /dev/null
+      _mrun "${_INITINS} devuan-keyring -o Acquire::AllowUnauthenticated=true" 2> /dev/null
     else
       if [ "${_NEW_OS_CODE}" = "stretch" ]; then
         _NEW_APT_MIRROR="archive.debian.org/debian"
@@ -6181,12 +6203,12 @@ _if_major_os_upgrade() {
     ###
     ### Update packages registry.
     _apt_clean_update_no_releaseinfo_change
-    _mrun "${_APT_UPDATE} --allow-insecure-repositories -qq" 2> /dev/null
+    _mrun "${_APT_UPDATE} -o Acquire::AllowInsecureRepositories=true -qq" 2> /dev/null
     ###
     ### Two step upgrade with apt-get only.
     _mrun "apt-get install apt -t ${_NEW_OS_CODE} ${_dstUpArg}" 2> /dev/null
     _apt_clean_update_no_releaseinfo_change
-    _mrun "${_APT_UPDATE} --allow-insecure-repositories -qq" 2> /dev/null
+    _mrun "${_APT_UPDATE} -o Acquire::AllowInsecureRepositories=true -qq" 2> /dev/null
     ###
     ### Requirement for Debian Stretch to Devuan Beowulf migration.
     ### The libtinfo package needs to be upgraded to prevent breaks.
