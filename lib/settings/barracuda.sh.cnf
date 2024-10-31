@@ -1167,7 +1167,7 @@ export _xSrl=550proT00
 ###
 ### Commands shortcuts
 ###
-_aptAllow="--allow-insecure-repositories --allow-unauthenticated"
+_aptAllow="--allow-unauthenticated"
 _dstUpArg="-fuy -q ${_aptAllow} --config-file /opt/apt/apt.conf.noi.dist"
 _nrmUpArg="-fuy -q ${_aptAllow} --config-file /opt/apt/apt.conf.noi.nrml"
 _INITINS="/usr/bin/apt-get ${_aptAllow} -y install"

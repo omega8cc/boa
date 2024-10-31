@@ -654,7 +654,7 @@ _BRANCH_PRN=AUTO
 _X_VERSION=AUTO
 _BOA_REPO_NAME="boa"
 _BOA_REPO_GIT_URL="${_gitHub}"
-_aptAllow="--allow-insecure-repositories --allow-unauthenticated"
+_aptAllow="--allow-unauthenticated"
 _aptYesUnth="-y ${_aptAllow}"
 
 export _tRee=pro

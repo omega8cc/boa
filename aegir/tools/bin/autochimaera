@@ -93,7 +93,7 @@ if [ -z "${TERM+x}" ]; then
   export TERM=vt100
 fi
 
-_aptAllow="--allow-insecure-repositories --allow-unauthenticated"
+_aptAllow="--allow-unauthenticated"
 _INITINS="/usr/bin/apt-get ${_aptAllow} -y install"
 _dstUpArg="-fuy -q ${_aptAllow} --config-file /opt/apt/apt.conf.noi.dist"
 _nrmUpArg="-fuy -q ${_aptAllow} --config-file /opt/apt/apt.conf.noi.nrml"
