@@ -579,7 +579,16 @@ _init_offsystemd() {
   /usr/bin/apt-get remove systemd-sysv -y --purge --auto-remove --allow-remove-essential -qq >> "${_logSlt}"
   /usr/bin/apt-get autoremove --purge -y -qq >> "${_logSlt}"
   /usr/bin/apt-get autoclean -y -qq >> "${_logSlt}"
-  [ -e "/root/.top-daedalus.cnf" ] && /usr/bin/apt-get install base-files=12.4devuan3 -y --allow-downgrades >> "${_logSlt}"
+  if [ -e "/root/.top-daedalus.cnf" ]; then
+    if cat /etc/os-release | grep -i 'daedalus' &> /dev/null; then
+      _msg "The /etc/os-release already mentions daedalus" >> "${_logInt}"
+    elif apt policy base-files | grep -i 'daedalus' &> /dev/null; then
+      _msg "The apt policy base-files already mentions daedalus" >> "${_logInt}"
+    else
+      _msg "The base-files may need update to daedalus with base-files=12.4+deb12u7devuan1" >> "${_logInt}"
+      /usr/bin/apt-get install base-files=12.4+deb12u7devuan1 -y --allow-downgrades >> "${_logSlt}"
+    fi
+  fi
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   _msg "Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
@@ -671,7 +680,16 @@ _init_cycle() {
       [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
       /usr/bin/apt-get autoremove --purge -y -qq >> "${_logSlt}"
       /usr/bin/apt-get autoclean -y -qq >> "${_logSlt}"
-      [ -e "/root/.top-daedalus.cnf" ] && /usr/bin/apt-get install base-files=12.4devuan3 -y --allow-downgrades >> "${_logSlt}"
+      if [ -e "/root/.top-daedalus.cnf" ]; then
+        if cat /etc/os-release | grep -i 'daedalus' &> /dev/null; then
+          _msg "The /etc/os-release already mentions daedalus" >> "${_logInt}"
+        elif apt policy base-files | grep -i 'daedalus' &> /dev/null; then
+          _msg "The apt policy base-files already mentions daedalus" >> "${_logInt}"
+        else
+          _msg "The base-files may need update to daedalus with base-files=12.4+deb12u7devuan1" >> "${_logInt}"
+          /usr/bin/apt-get install base-files=12.4+deb12u7devuan1 -y --allow-downgrades >> "${_logSlt}"
+        fi
+      fi
     fi
   fi
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)

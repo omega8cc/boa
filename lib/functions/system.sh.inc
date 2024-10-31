@@ -5690,7 +5690,19 @@ _if_post_major_os_upgrade() {
     fi
     _mrun "apt-get install lsb-release ${_dstUpArg}" 2> /dev/null
     _mrun "apt-get ${_dstUpArg} install" 2> /dev/null
-    [ -e "/root/.top-daedalus.cnf" ] && /usr/bin/apt-get install base-files=12.4devuan3 -y --allow-downgrades 2> /dev/null
+
+    ### Update base-files on daedalus if needed
+    if [ -e "/root/.top-daedalus.cnf" ]; then
+      if cat /etc/os-release | grep -i 'daedalus' &> /dev/null; then
+        _msg "INFO: The /etc/os-release already mentions daedalus"
+      elif apt policy base-files | grep -i 'daedalus' &> /dev/null; then
+        _msg "INFO: The apt policy base-files already mentions daedalus"
+      else
+        _msg "INFO: The base-files may need update to daedalus with base-files=12.4+deb12u7devuan1"
+        /usr/bin/apt-get install base-files=12.4+deb12u7devuan1 -y --allow-downgrades 2> /dev/null
+      fi
+    fi
+
     ### Update rsyslog configuration early
     _rsyslog_config_update
     ### Reload key services if needed early
