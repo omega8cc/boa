@@ -2562,7 +2562,9 @@ _run_apt_get_dist_upgrade() {
     _msg "INFO: Running apt-get dist-upgrade..."
   fi
   _mrun "apt-get dist-upgrade ${_dstUpArg}" 2> /dev/null
+  _mrun "apt-get dist-upgrade ${_dstUpArg}" 2> /dev/null
   [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
+  _mrun "apt-get dist-upgrade -y --allow-unauthenticated" 2> /dev/null
   _mrun "apt-get dist-upgrade -y --allow-unauthenticated" 2> /dev/null
   [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
   _mrun "apt-get install lsb-release ${_dstUpArg}" 2> /dev/null
@@ -5679,12 +5681,15 @@ _if_post_major_os_upgrade() {
     _msg "INFO: Running dist-upgrade to complete the system upgrade..."
     _msg "WAIT: This may take a while, please wait..."
     _mrun "apt-get dist-upgrade ${_dstUpArg}" 2> /dev/null
+    _mrun "apt-get dist-upgrade ${_dstUpArg}" 2> /dev/null
     [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
     if [ -e "/root/.allow.downgrades.on.same.os.dist.upgrade.cnf" ]; then
       _msg "INFO: dist-upgrade with --allow-downgrades option is used"
       _mrun "apt-get dist-upgrade -y --allow-downgrades" 2> /dev/null
+      _mrun "apt-get dist-upgrade -y --allow-downgrades" 2> /dev/null
       [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
     else
+      _mrun "apt-get dist-upgrade -y" 2> /dev/null
       _mrun "apt-get dist-upgrade -y" 2> /dev/null
       [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
     fi
@@ -6297,7 +6302,9 @@ _if_major_os_upgrade() {
     else
       echo
       _mrun "apt-get dist-upgrade ${_dstUpArg} --allow-downgrades" 2> /dev/null
+      _mrun "apt-get dist-upgrade ${_dstUpArg} --allow-downgrades" 2> /dev/null
       [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
+      _mrun "apt-get dist-upgrade -y --allow-downgrades" 2> /dev/null
       _mrun "apt-get dist-upgrade -y --allow-downgrades" 2> /dev/null
       [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
       _mrun "apt-get install lsb-release ${_dstUpArg}" 2> /dev/null

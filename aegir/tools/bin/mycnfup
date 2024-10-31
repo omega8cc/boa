@@ -1415,6 +1415,7 @@ _db_head_to_stretch_first() {
   	  apt-get install apt dpkg aptitude util-linux ${_dstUpArg}
   	  apt-get upgrade ${_dstUpArg}
   	  apt-get dist-upgrade ${_dstUpArg}
+  	  apt-get dist-upgrade ${_dstUpArg}
   	  [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
   	  apt-get install lsb-release ${_dstUpArg}
   	  if [ -x "/lib/systemd/systemd" ]; then
@@ -1465,6 +1466,7 @@ _db_head_to_stretch_second() {
   	  fi
   	  _apt_clean_update
   	  apt-get upgrade ${_nrmUpArg}
+  	  apt-get dist-upgrade ${_nrmUpArg}
   	  apt-get dist-upgrade ${_nrmUpArg}
   	  [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
   	  apt-get install lsb-release ${_nrmUpArg}
