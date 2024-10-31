@@ -1898,6 +1898,7 @@ _upgrade_db_cluster() {
   	vserver ${_idn} exec ${_INSTAPP} bc
   	vserver ${_idn} exec apt-get upgrade ${_APT_XTR}
   	vserver ${_idn} exec apt-get dist-upgrade ${_APT_XTR}
+  	vserver ${_idn} exec apt-get dist-upgrade ${_APT_XTR}
   	vserver ${_idn} exec rm -f /var/lib/man-db/auto-update
   	vserver ${_idn} exec apt-get install lsb-release
   	vserver ${_idn} exec dpkg --configure --force-all -a
@@ -2334,6 +2335,7 @@ _upgrade_host() {
       -o Dpkg::Options::=--force-confmiss \
       -o Dpkg::Options::=--force-confdef \
       -o Dpkg::Options::=--force-confnew \
+    && apt-get dist-upgrade ${_APT_XTR} \
     && apt-get dist-upgrade ${_APT_XTR}
 
   _if_firewall_update

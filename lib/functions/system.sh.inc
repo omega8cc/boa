@@ -2562,7 +2562,9 @@ _run_apt_get_dist_upgrade() {
     _msg "INFO: Running apt-get dist-upgrade..."
   fi
   _mrun "apt-get dist-upgrade ${_dstUpArg}" 2> /dev/null
+  _mrun "apt-get dist-upgrade ${_dstUpArg}" 2> /dev/null
   [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
+  _mrun "apt-get dist-upgrade -y --allow-unauthenticated" 2> /dev/null
   _mrun "apt-get dist-upgrade -y --allow-unauthenticated" 2> /dev/null
   [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
   _mrun "apt-get install lsb-release ${_dstUpArg}" 2> /dev/null
@@ -5679,18 +5681,33 @@ _if_post_major_os_upgrade() {
     _msg "INFO: Running dist-upgrade to complete the system upgrade..."
     _msg "WAIT: This may take a while, please wait..."
     _mrun "apt-get dist-upgrade ${_dstUpArg}" 2> /dev/null
+    _mrun "apt-get dist-upgrade ${_dstUpArg}" 2> /dev/null
     [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
     if [ -e "/root/.allow.downgrades.on.same.os.dist.upgrade.cnf" ]; then
       _msg "INFO: dist-upgrade with --allow-downgrades option is used"
       _mrun "apt-get dist-upgrade -y --allow-downgrades" 2> /dev/null
+      _mrun "apt-get dist-upgrade -y --allow-downgrades" 2> /dev/null
       [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
     else
+      _mrun "apt-get dist-upgrade -y" 2> /dev/null
       _mrun "apt-get dist-upgrade -y" 2> /dev/null
       [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
     fi
     _mrun "apt-get install lsb-release ${_dstUpArg}" 2> /dev/null
     _mrun "apt-get ${_dstUpArg} install" 2> /dev/null
-    [ -e "/root/.top-daedalus.cnf" ] && /usr/bin/apt-get install base-files=12.4devuan3 -y --allow-downgrades 2> /dev/null
+
+    ### Update base-files on daedalus if needed
+    if [ -e "/root/.top-daedalus.cnf" ]; then
+      if cat /etc/os-release | grep -i 'daedalus' &> /dev/null; then
+        _msg "INFO: The /etc/os-release already mentions daedalus"
+      elif apt policy base-files | grep -i 'daedalus' &> /dev/null; then
+        _msg "INFO: The apt policy base-files already mentions daedalus"
+      else
+        _msg "INFO: The base-files may need update to daedalus with base-files=12.4+deb12u7devuan1"
+        /usr/bin/apt-get install base-files=12.4+deb12u7devuan1 -y --allow-downgrades 2> /dev/null
+      fi
+    fi
+
     ### Update rsyslog configuration early
     _rsyslog_config_update
     ### Reload key services if needed early
@@ -6285,7 +6302,9 @@ _if_major_os_upgrade() {
     else
       echo
       _mrun "apt-get dist-upgrade ${_dstUpArg} --allow-downgrades" 2> /dev/null
+      _mrun "apt-get dist-upgrade ${_dstUpArg} --allow-downgrades" 2> /dev/null
       [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
+      _mrun "apt-get dist-upgrade -y --allow-downgrades" 2> /dev/null
       _mrun "apt-get dist-upgrade -y --allow-downgrades" 2> /dev/null
       [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
       _mrun "apt-get install lsb-release ${_dstUpArg}" 2> /dev/null
