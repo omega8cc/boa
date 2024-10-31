@@ -13,7 +13,7 @@ export _NOW=${_NOW//[^0-9-]/}
 _barCnf="/root/.barracuda.cnf"
 _barName="BARRACUDA.sh.txt"
 _crlGet="-L --max-redirs 3 -k -s --retry 3 --retry-delay 5 -A iCab"
-_aptYesUnth="-y --allow-unauthenticated"
+_aptYesUnth="-y -o Acquire::AllowUnauthenticated=true"
 _filIncB="barracuda.sh.cnf"
 _filIncO="octopus.sh.cnf"
 _octName="OCTOPUS.sh.txt"
@@ -30,7 +30,7 @@ _VM_TEST=$(uname -a 2>&1)
 if [[ "${_VM_TEST}" =~ "-beng" ]]; then
   _VMFAMILY="VS"
 fi
-_INITINS="/usr/bin/apt-get -y --allow-unauthenticated install"
+_INITINS="/usr/bin/apt-get -y install"
 
 ###
 ### Avoid too many questions
@@ -1599,7 +1599,7 @@ _check_root() {
         echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
       fi
       _apt_clean_update
-      apt-get install udev -y --allow-unauthenticated 2> /dev/null
+      apt-get install udev -y 2> /dev/null
       echo "devpts          /dev/pts        devpts  rw,noexec,nosuid,gid=5,mode=620 0  0" >> /etc/fstab
       mount -t devpts devpts /dev/pts &> /dev/null
     fi
