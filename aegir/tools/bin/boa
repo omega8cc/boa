@@ -217,7 +217,7 @@ _system_check_ready() {
   if [ ! -e "/etc/nginx" ] \
     || [ ! -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ] \
     || [ ! -e "/etc/mysql" ] \
-    || [ ! -e "/var/lib/mysql" ]; then
+    || [ ! -e "/var/lib/mysql/mysql" ]; then
     echo "ERROR: Please install complete BOA system before trying"
     echo "ERROR: to install additional Aegir / Octopus instances"
     echo "Bye"
@@ -230,14 +230,16 @@ _system_check_clean() {
     mv -f /etc/mysql /etc/mysql_pre
   fi
   if [ -e "/etc/nginx" ] \
-    || [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ] \
     || [ -e "/etc/apache2" ] \
-    || [ -e "/var/lib/mysql" ]; then
+    || [ -e "/etc/mysql" ] \
+    || [ -e "/var/lib/mysql/mysql" ] \
+    || [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ]; then
+    echo
     echo "ERROR: BOA requires minimal supported OS with no services installed."
     echo
     echo "Please make sure you don't have MySQL nor Apache installed."
     echo "Here's the list of directories which shouldn't exist:"
-    echo "/etc/nginx /etc/apache2 /etc/mysql /var/lib/mysql /var/aegir"
+    echo "/etc/nginx /etc/apache2 /etc/mysql /var/lib/mysql/mysql /var/aegir"
     if [ ! -e "/etc/nginx" ]; then
       echo
       echo "HINT: Try to run: 'apt-get purge mysql-common' and then try again."

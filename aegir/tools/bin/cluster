@@ -404,7 +404,7 @@ _system_check_clean() {
     || [ -e "/data/disk/all" ] \
     || [ -e "/etc/apache2" ] \
     || [ -e "/etc/mysql" ] \
-    || [ -e "/var/lib/mysql" ]; then
+    || [ -e "/var/lib/mysql/mysql" ]; then
     echo "ERROR: Cluster requires minimal, supported OS, with no services installed"
     echo "ERROR: The only acceptable exceptions are: sshd and mail servers"
     echo "ERROR: This script must be run on a bare metal server main OS level"
