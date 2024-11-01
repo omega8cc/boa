@@ -30,6 +30,13 @@ xterm*|rxvt*|vt100)
   ;;
 esac
 
+# workaround for immediate refresh in screen session
+if [ -n "$STY" ]; then
+    alias mc='TERM=dumb mc'
+else
+    alias mc='mc'
+fi
+
 if [ -x /usr/bin/dircolors ]; then
   test -r ~/.dircolors && eval "$(dircolors -b ~/.dircolors)" || eval "$(dircolors -b)"
   alias ll="ls -l --group-directories-first --color=auto"

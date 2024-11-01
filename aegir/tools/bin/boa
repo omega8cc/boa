@@ -726,7 +726,7 @@ _octopus_install() {
       echo "Preparing to install Octopus in almost silent mode..."
       echo
       echo "NOTE: There will be no progress displayed in this console"
-      echo "but you will receive an _eMal once the installation is complete"
+      echo "but you will receive an email once the installation is complete"
       echo
       sleep ${_n}
       echo "Please watch the progress in another console window with command:"
@@ -929,7 +929,7 @@ _barracuda_install() {
       fi
       echo
       echo "NOTE: There will be no progress displayed in this console"
-      echo "but you will receive an _eMal once the installation is complete"
+      echo "but you will receive an email once the installation is complete"
       echo
       sleep ${_n}
       echo "Please watch the progress in another console window with command:"
@@ -1154,7 +1154,7 @@ _init_setup() {
       echo
       echo "  PLEASE DON'T REBOOT THIS SERVER WHILE THE PROCEDURE IS RUNNING!"
       echo
-      echo "  You should receive an _eMal once the installation is complete"
+      echo "  You should receive an email once the installation is complete"
       echo
       echo "  Bye!"
       echo
