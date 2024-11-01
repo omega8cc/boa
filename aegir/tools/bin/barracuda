@@ -205,24 +205,50 @@ _check_root_direct() {
 }
 
 _check_root_keys_pwd() {
-  _S_TEST=$(grep "root:\*:" /etc/shadow 2>&1)
-  _R_TEST=CHECK
-  if [ -e "/root/.ssh/authorized_keys" ]; then
-    _R_TEST=$(grep "ssh-rsa" /root/.ssh/authorized_keys 2>&1)
+  # Check if root's password is locked
+  _ROOT_PWD_LOCKED="NO"
+  _S_TEST=$(grep 'root:\*:' /etc/shadow 2>&1)
+  if [[ "${_S_TEST}" =~ root:\*: ]]; then
+    _ROOT_PWD_LOCKED="YES"
   fi
-  if [[ ! "${_S_TEST}" =~ "root:" ]] \
-    && [[ ! "${_R_TEST}" =~ "ssh-rsa" ]]; then
+
+  # Check for presence of SSH keys
+  _SSH_KEYS_OK="NO"
+  if [ -e "/root/.ssh/authorized_keys" ]; then
+    if grep -qE '^(ssh-rsa|ssh-ed25519|ecdsa-sha2)' /root/.ssh/authorized_keys; then
+      _SSH_KEYS_OK="YES"
+    fi
+  fi
+
+  if [[ "${_ROOT_PWD_LOCKED}" == "NO" ]] && [[ "${_SSH_KEYS_OK}" == "NO" ]]; then
     echo
-    echo "ERROR: BOA requires working SSH (RSA) keys for system root present"
-    echo "ERROR: Please add and test your SSH (RSA) keys for root account"
+    echo "ERROR: BOA requires working SSH keys for system root present"
+    echo "ERROR: Please add and test your SSH keys for root account"
     echo "ERROR: before trying again"
     echo
-    echo "HINTS: Run this command on your local PC machine:"
-    echo "HINTS:   ssh-keygen -b 4096 -t rsa -N '' -f ~/.ssh/id_rsa"
-    echo "HINTS: Then copy the ~/.ssh/id_rsa.pub file from your PC"
-    echo "HINTS: to ~/.ssh/authorized_keys file on the server"
-    echo "HINTS: Make sure the key is not split into more than 1 line"
-    echo "HINTS: Remember to run: chmod 600 ~/.ssh/authorized_keys"
+    echo "HOWTO: Run one of these commands on your local PC machine:"
+    echo "  ssh-keygen -t ecdsa -b 256 -N '' -f ~/.ssh/id_ecdsa"
+    echo "  ssh-keygen -t ed25519 -N '' -f ~/.ssh/id_ed25519"
+    echo "  ssh-keygen -b 4096 -t rsa -N '' -f ~/.ssh/id_rsa"
+    echo
+    echo "HOWTO: Copy the public key to the server's ~/.ssh/authorized_keys file:"
+    echo "  ssh-copy-id -i ~/.ssh/id_ed25519 root@your_server_ip"
+    echo
+    echo "HOWTO: Or copy manually to ~/.ssh/authorized_keys file on the server"
+    echo "  cat ~/.ssh/id_ecdsa.pub"
+    echo "  cat ~/.ssh/id_ed25519.pub"
+    echo "  cat ~/.ssh/id_rsa.pub"
+    echo
+    echo "HOWTO: Ensure the each key is not split into more than 1 line"
+    echo
+    echo "HOWTO: Ensure the authorized_keys file has the correct permissions:"
+    echo "  chmod 600 ~/.ssh/authorized_keys"
+    echo
+    echo "HOWTO: You can prioritize your keys by adding to ~/.ssh/config lines:"
+    echo " Host *"
+    echo "   IdentityFile ~/.ssh/id_ed25519"
+    echo "   IdentityFile ~/.ssh/id_ecdsa"
+    echo "   IdentityFile ~/.ssh/id_rsa"
     echo
     echo "Bye"
     echo
