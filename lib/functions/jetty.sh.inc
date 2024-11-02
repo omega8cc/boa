@@ -4,11 +4,10 @@ _if_fix_solr_permissions() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _if_fix_solr_permissions"
   fi
-  # Create the directory if it doesn't exist
   [ ! -e "/var/solr7" ] && mkdir -p /var/solr7
-
-  # Set ownership to solr7:solr7 and permissions to drwxr-x---
-  [ -e "/var/solr7" ] && chown -R solr7:solr7 /var/solr7
+  [ -L "/var/solr7" ] && chown -R solr7:solr7 /mnt/*/var/solr7
+  [ -L "/var/solr7" ] && chmod 750 /mnt/*/var/solr7
+  [ -e "/var/solr7" ] && chown -R solr7:solr7 /var/solr7/*
   [ -e "/var/solr7" ] && chmod 750 /var/solr7
 }
 
