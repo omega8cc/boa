@@ -3281,6 +3281,7 @@ _boa_setup() {
     apt-get install screen -y &> /dev/null
     apt-get install net-tools -y &> /dev/null
     apt-get install hostname -y &> /dev/null
+    apt-get install ntpdate -y &> /dev/null
   fi
 
   _if_reinstall_curl
