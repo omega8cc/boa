@@ -328,5 +328,6 @@ _csf_lfd_install_upgrade() {
         fi
       fi
     fi
+    [ -x "/usr/sbin/csf" ] && nohup /var/xdrago/guest-water.sh > /dev/null 2>&1 &
   fi
 }
