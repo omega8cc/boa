@@ -1,8 +1,24 @@
 
 
+_if_fix_solr_permissions() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _if_fix_solr_permissions"
+  fi
+  # Create the directory if it doesn't exist
+  [ ! -e "/var/solr7" ] && mkdir -p /var/solr7
+
+  # Set ownership to solr7:solr7 and permissions to drwxr-x---
+  [ -e "/var/solr7" ] && chown -R solr7:solr7 /var/solr7
+  [ -e "/var/solr7" ] && chmod 750 /var/solr7
+}
+
+
 _if_install_solr_jetty() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _if_install_solr_jetty"
+  fi
+  if [ -e "/var/solr7" ] && [ -L "/var/solr7" ]; then
+    _if_fix_solr_permissions
   fi
   _if_to_do_fix
   _if_hosted_sys
@@ -45,6 +61,7 @@ _if_install_solr_jetty() {
         cp -af ${_bldPth}/docs/SOLR.txt ${_SOLR_VPATH}/README.txt &> /dev/null
         echo ${_SOLR_7_VRN} > ${_SOLR_CTRL}
         cd /var/opt
+        _if_fix_solr_permissions
         _msg "INFO: MultiCore Apache Solr ${_R_SOLR} installed"
       else
         _msg "INFO: MultiCore Apache Solr ${_R_SOLR} not installed"
@@ -97,6 +114,7 @@ _if_install_solr_jetty() {
       tar xzf solr-${_SOLR_7_VRN}.tgz solr-${_SOLR_7_VRN}/bin/install_solr_service.sh --strip-components=2
       bash ./install_solr_service.sh solr-${_SOLR_7_VRN}.tgz -f -i /opt -d /var/${_N_SOLR} -u ${_N_SOLR} -s ${_N_SOLR} -p 9077 &> /dev/null
       echo ${_SOLR_7_VRN} > ${_SOLR_CTRL}
+      _if_fix_solr_permissions
       _msg "INFO: MultiCore Apache Solr ${_R_SOLR} upgrade completed"
     fi
   fi
