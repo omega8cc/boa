@@ -94,6 +94,8 @@ _dehydName="dehydrated"
 _dehydSrcPath="/var/xdrago/conf/${_dehydName}"
 _legacyLeSh="/var/xdrago/conf/letsencrypt.sh"
 
+_DEBUG_MODE=$([ -e "/root/.debug-barracuda-installer.cnf" ] && echo "YES" || echo "NO")
+
 _os_detection_minimal() {
   _APT_UPDATE="apt-get update"
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
@@ -274,15 +276,15 @@ _get_dev_contrib() {
     _attempt_num=1
     _success=0
     while [ ${_attempt_num} -le ${_max_attempts} ]; do
-      _msg "DNLD: Attempt ${_attempt_num} of ${_max_attempts}: Downloading $1..."
+      [ "${_DEBUG_MODE}" = "YES" ] && echo "DNLD: Attempt ${_attempt_num} of ${_max_attempts}: Downloading $1..."
       if curl ${_crlGet} "${_urlDev}/${_tRee}/contrib/$1" -o "$1"; then
         _success=1
         break
       else
-        _msg "DNLD: Attempt ${_attempt_num} failed."
+        [ "${_DEBUG_MODE}" = "YES" ] && echo "DNLD: Attempt ${_attempt_num} failed."
         _attempt_num=$((_attempt_num+1))
         if [ ${_attempt_num} -le ${_max_attempts} ]; then
-          _msg "DNLD: Retrying in 9 seconds..."
+          [ "${_DEBUG_MODE}" = "YES" ] && echo "DNLD: Retrying in 9 seconds..."
           sleep 9
         fi
       fi
@@ -290,7 +292,7 @@ _get_dev_contrib() {
     if [ ${_success} -eq 1 ]; then
       _extract_archive "$1"
     else
-      _msg "OOPS: Failed to download ${_urlDev}/${_tRee}/contrib/$1 after ${_max_attempts} attempts"
+      echo "OOPS: Failed to download ${_urlDev}/${_tRee}/contrib/$1 after ${_max_attempts} attempts"
       return 1  # Exit the function but continue the script
     fi
   fi
@@ -304,15 +306,15 @@ _get_dev_src() {
     _attempt_num=1
     _success=0
     while [ ${_attempt_num} -le ${_max_attempts} ]; do
-      _msg "DNLD: Attempt ${_attempt_num} of ${_max_attempts}: Downloading $1..."
+      [ "${_DEBUG_MODE}" = "YES" ] && echo "DNLD: Attempt ${_attempt_num} of ${_max_attempts}: Downloading $1..."
       if curl ${_crlGet} "${_urlDev}/src/$1" -o "$1"; then
         _success=1
         break
       else
-        _msg "DNLD: Attempt ${_attempt_num} failed."
+        [ "${_DEBUG_MODE}" = "YES" ] && echo "DNLD: Attempt ${_attempt_num} failed."
         _attempt_num=$((_attempt_num+1))
         if [ ${_attempt_num} -le ${_max_attempts} ]; then
-          _msg "DNLD: Retrying in 9 seconds..."
+          [ "${_DEBUG_MODE}" = "YES" ] && echo "DNLD: Retrying in 9 seconds..."
           sleep 9
         fi
       fi
@@ -320,7 +322,7 @@ _get_dev_src() {
     if [ ${_success} -eq 1 ]; then
       _extract_archive "$1"
     else
-      _msg "OOPS: Failed to download ${_urlDev}/src/$1 after ${_max_attempts} attempts"
+      echo "OOPS: Failed to download ${_urlDev}/src/$1 after ${_max_attempts} attempts"
       return 1  # Exit the function but continue the script
     fi
   fi
