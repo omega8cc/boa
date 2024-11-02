@@ -1,0 +1,62 @@
+#!/bin/bash
+
+export HOME=/root
+export SHELL=/bin/bash
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+
+# Script to merge CSF configuration files from /etc/csf and /var/backups/*/csf/
+# It merges csf.ignore, csf.allow, and csf.deny files, removes duplicates, and ignores commented lines.
+# A backup of /etc/csf/ is created before merging.
+
+# Variables
+_FILES=("csf.ignore" "csf.allow" "csf.deny")
+_CONFIG_DIR="/etc/csf"
+_BACKUP_DIR="/var/backups"
+_BACKUP_TIMESTAMP=$(date +"%Y%m%d%H%M%S")
+
+# Create a backup of /etc/csf/
+cp -a "${_CONFIG_DIR}" "${_CONFIG_DIR}_backup_${_BACKUP_TIMESTAMP}"
+
+# Loop through each CSF configuration file
+for _FILE in "${_FILES[@]}"; do
+  _FILE_PATHS=()
+
+  # Check if the file exists in /etc/csf/
+  if [ -f "${_CONFIG_DIR}/${_FILE}" ]; then
+    _FILE_PATHS+=("${_CONFIG_DIR}/${_FILE}")
+  fi
+
+  # Check for files in /var/backups/*/csf/
+  for _BACKUP_SUBDIR in "${_BACKUP_DIR}"/*; do
+    if [ -d "${_BACKUP_SUBDIR}" ]; then
+      if [ -f "${_BACKUP_SUBDIR}/csf/${_FILE}" ]; then
+        _FILE_PATHS+=("${_BACKUP_SUBDIR}/csf/${_FILE}")
+      fi
+    fi
+  done
+
+  # Proceed if any files were found
+  if [ ${#_FILE_PATHS[@]} -eq 0 ]; then
+    echo "No files found for ${_FILE}"
+    continue
+  fi
+
+  # Create a temporary file for merging
+  _TEMP_FILE=$(mktemp)
+
+  # Read each file, ignore commented lines, and append to temporary file
+  for _PATH in "${_FILE_PATHS[@]}"; do
+    grep -v '^\s*#' "${_PATH}" >> "${_TEMP_FILE}"
+  done
+
+  # Remove duplicate entries
+  sort -u "${_TEMP_FILE}" -o "${_TEMP_FILE}"
+
+  # Replace the original file with the merged content
+  mv "${_TEMP_FILE}" "${_CONFIG_DIR}/${_FILE}"
+
+  echo "Merged ${_FILE} successfully."
+done
+
+echo "All files have been merged and duplicates removed."
+exit 0

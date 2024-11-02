@@ -8,11 +8,28 @@ export _bRnh="5.x-${_tRee}"
 # Download and extract from core archive.
 _get_core_ext() {
   if [ ! -z "$1" ]; then
-    curl ${_crlGet} "http://${_USE_MIR}/core/$1" -o "$1"
-    if [ -e "$1" ]; then
+    _max_attempts=10
+    _attempt_num=1
+    _success=0
+    while [ ${_attempt_num} -le ${_max_attempts} ]; do
+      [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Attempt ${_attempt_num} of ${_max_attempts}: Downloading $1..."
+      if curl ${_crlGet} "http://${_USE_MIR}/core/$1" -o "$1"; then
+        _success=1
+        break
+      else
+        [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Attempt ${_attempt_num} failed."
+        _attempt_num=$((_attempt_num+1))
+        if [ ${_attempt_num} -le ${_max_attempts} ]; then
+          [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Retrying in 9 seconds..."
+          sleep 9
+        fi
+      fi
+    done
+    if [ ${_success} -eq 1 ]; then
       _extract_archive "$1"
     else
-      _msg "OOPS: $1 failed download from http://${_USE_MIR}/core/$1"
+      _msg "OOPS: Failed to download http://${_USE_MIR}/core/$1 after ${_max_attempts} attempts"
+      return 1  # Exit the function but continue the script
     fi
   fi
 }

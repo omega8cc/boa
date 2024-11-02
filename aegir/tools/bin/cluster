@@ -57,7 +57,8 @@ _TODAY=${_TODAY//[^0-9]/}
 _X_VERSION="BOA-5.5.0-${_tRee}"
 #
 _barCnf="/root/.barracuda.cnf"
-_crlGet="-L --max-redirs 3 -k -s --retry 3 --retry-delay 5 -A iCab"
+_crlGet="-L --max-redirs 3 -k -s --retry 9 --retry-delay 9 -A iCab"
+_wgetGet="--max-redirect=3 --no-check-certificate -q --tries=9 --wait=9 --user-agent='iCab'"
 _optBin="/opt/local/bin"
 _usrBin="/usr/local/bin"
 _pthLog="/var/xdrago/log"
@@ -404,7 +405,7 @@ _system_check_clean() {
     || [ -e "/data/disk/all" ] \
     || [ -e "/etc/apache2" ] \
     || [ -e "/etc/mysql" ] \
-    || [ -e "/var/lib/mysql" ]; then
+    || [ -e "/var/lib/mysql/mysql" ]; then
     echo "ERROR: Cluster requires minimal, supported OS, with no services installed"
     echo "ERROR: The only acceptable exceptions are: sshd and mail servers"
     echo "ERROR: This script must be run on a bare metal server main OS level"
@@ -1174,7 +1175,7 @@ _install_vps() {
   if [ "${_ver}" != "galera" ]; then
     echo "Installing BOA ${_ver} in vps ${_idn}..."
     rm -f BOA.sh.txt*
-    wget -q -U iCab http://${_USE_MIR}/versions/${_tRee}/boa/BOA.sh.txt
+    wget ${_wgetGet} http://${_USE_MIR}/versions/${_tRee}/boa/BOA.sh.txt
     mv -f BOA.sh.txt /vservers/${_idn}/root/
     vserver ${_idn} exec bash /root/BOA.sh.txt
     vserver ${_idn} exec /opt/local/bin/boa in-${_ver} public ${_hst} ${_eml} o8 mini
@@ -2041,13 +2042,13 @@ _install_host() {
 
   echo "Installing csf/lfd..."
   cd /var/opt
-  wget -q -U iCab http://${_USE_MIR}/dev/src/csf-${_CSF_VRN}.tgz
+  wget ${_wgetGet} http://${_USE_MIR}/dev/src/csf-${_CSF_VRN}.tgz
   tar -xzf csf-${_CSF_VRN}.tgz
   cd csf
   sh install.sh
   cd /etc/csf
   mv -f csf.conf csf.conf-pre
-  wget -q -U iCab http://${_USE_MIR}/cluster/csf.conf
+  wget ${_wgetGet} http://${_USE_MIR}/cluster/csf.conf
   chmod 600 /etc/csf/csf.conf
   sed -i "s/^Port.*/Port 24/g" /etc/ssh/sshd_config
   echo "UseDNS no" >> /etc/ssh/sshd_config
@@ -2118,7 +2119,7 @@ _install_host() {
     _KEYS_SERVER_TEST=FALSE
     until [[ "${_KEYS_SERVER_TEST}" =~ "GnuPG" ]]; do
       rm -f pubkey.txt*
-      wget -q -U iCab http://repo.psand.net/pubkey.txt
+      wget ${_wgetGet} http://repo.psand.net/pubkey.txt
       _KEYS_SERVER_TEST=$(grep GnuPG pubkey.txt 2>&1)
       sleep 2
       if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt "5" ]; then
@@ -2256,7 +2257,7 @@ _upgrade_host() {
     apt-get autoremove -y
     cd /var/opt
     rm -rf util-vserver*
-    wget -q -U iCab http://${_USE_MIR}/dev/src/util-vserver-${_UTIL_VRN}.tar.gz
+    wget ${_wgetGet} http://${_USE_MIR}/dev/src/util-vserver-${_UTIL_VRN}.tar.gz
     tar -xzf util-vserver-${_UTIL_VRN}.tar.gz
     cd util-vserver-${_UTIL_VRN}
     bash ./configure --prefix=/usr
@@ -2273,7 +2274,7 @@ _upgrade_host() {
 
   cd
   cp -af /etc/sysctl.conf /etc/sysctl.conf.thrd.three
-  wget -q -U iCab http://${_USE_MIR}/versions/${_tRee}/boa/aegir/conf/sysctl.conf
+  wget ${_wgetGet} http://${_USE_MIR}/versions/${_tRee}/boa/aegir/conf/sysctl.conf
   cp -af sysctl.conf /etc/sysctl.conf
   echo "kernel.vshelper = /sbin/vshelper" >> /etc/sysctl.conf
   rm -f sysctl.conf*
@@ -2306,7 +2307,7 @@ _upgrade_host() {
   echo "Installing vnstat..."
   cd /var/opt
   rm -rf vnstat*
-  wget -q -U iCab http://${_USE_MIR}/dev/src/vnstat-${_VNSTAT_VRN}.tar.gz
+  wget ${_wgetGet} http://${_USE_MIR}/dev/src/vnstat-${_VNSTAT_VRN}.tar.gz
   tar -xzf vnstat-${_VNSTAT_VRN}.tar.gz
   cd vnstat-${_VNSTAT_VRN}
   bash ./configure --prefix=/usr
@@ -2333,7 +2334,7 @@ _upgrade_host() {
     echo "Installing vserver-autostart..."
     rm -f /usr/local/sbin/vserver-autostart
     cd /usr/local/sbin/
-    wget -q -U iCab http://${_USE_MIR}/cluster/vserver-autostart
+    wget ${_wgetGet} http://${_USE_MIR}/cluster/vserver-autostart
     if [ -e "/usr/local/sbin/vserver-autostart" ]; then
       cd;chmod u+x /usr/local/sbin/vserver-autostart
     else

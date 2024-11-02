@@ -12,7 +12,8 @@ export _NOW=${_NOW//[^0-9-]/}
 
 _barCnf="/root/.barracuda.cnf"
 _barName="BARRACUDA.sh.txt"
-_crlGet="-L --max-redirs 3 -k -s --retry 3 --retry-delay 5 -A iCab"
+_crlGet="-L --max-redirs 3 -k -s --retry 9 --retry-delay 9 -A iCab"
+_wgetGet="--max-redirect=3 --no-check-certificate -q --tries=9 --wait=9 --user-agent='iCab'"
 _aptAllow="--allow-unauthenticated"
 _aptYesUnth="-y ${_aptAllow}"
 _filIncB="barracuda.sh.cnf"
@@ -217,7 +218,7 @@ _system_check_ready() {
   if [ ! -e "/etc/nginx" ] \
     || [ ! -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ] \
     || [ ! -e "/etc/mysql" ] \
-    || [ ! -e "/var/lib/mysql" ]; then
+    || [ ! -e "/var/lib/mysql/mysql" ]; then
     echo "ERROR: Please install complete BOA system before trying"
     echo "ERROR: to install additional Aegir / Octopus instances"
     echo "Bye"
@@ -230,14 +231,16 @@ _system_check_clean() {
     mv -f /etc/mysql /etc/mysql_pre
   fi
   if [ -e "/etc/nginx" ] \
-    || [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ] \
     || [ -e "/etc/apache2" ] \
-    || [ -e "/var/lib/mysql" ]; then
+    || [ -e "/etc/mysql" ] \
+    || [ -e "/var/lib/mysql/mysql" ] \
+    || [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ]; then
+    echo
     echo "ERROR: BOA requires minimal supported OS with no services installed."
     echo
     echo "Please make sure you don't have MySQL nor Apache installed."
     echo "Here's the list of directories which shouldn't exist:"
-    echo "/etc/nginx /etc/apache2 /etc/mysql /var/lib/mysql /var/aegir"
+    echo "/etc/nginx /etc/apache2 /etc/mysql /var/lib/mysql/mysql /var/aegir"
     if [ ! -e "/etc/nginx" ]; then
       echo
       echo "HINT: Try to run: 'apt-get purge mysql-common' and then try again."
@@ -724,7 +727,7 @@ _octopus_install() {
       echo "Preparing to install Octopus in almost silent mode..."
       echo
       echo "NOTE: There will be no progress displayed in this console"
-      echo "but you will receive an _eMal once the installation is complete"
+      echo "but you will receive an email once the installation is complete"
       echo
       sleep ${_n}
       echo "Please watch the progress in another console window with command:"
@@ -927,7 +930,7 @@ _barracuda_install() {
       fi
       echo
       echo "NOTE: There will be no progress displayed in this console"
-      echo "but you will receive an _eMal once the installation is complete"
+      echo "but you will receive an email once the installation is complete"
       echo
       sleep ${_n}
       echo "Please watch the progress in another console window with command:"
@@ -1152,7 +1155,7 @@ _init_setup() {
       echo
       echo "  PLEASE DON'T REBOOT THIS SERVER WHILE THE PROCEDURE IS RUNNING!"
       echo
-      echo "  You should receive an _eMal once the installation is complete"
+      echo "  You should receive an email once the installation is complete"
       echo
       echo "  Bye!"
       echo

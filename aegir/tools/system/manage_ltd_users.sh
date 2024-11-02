@@ -11,7 +11,8 @@ _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
 
 _usrGroup=users
 _WEBG=www-data
-_crlGet="-L --max-redirs 3 -k -s --retry 3 --retry-delay 5 -A iCab"
+_crlGet="-L --max-redirs 3 -k -s --retry 9 --retry-delay 9 -A iCab"
+_wgetGet="--max-redirect=3 --no-check-certificate -q --tries=9 --wait=9 --user-agent='iCab'"
 _aptAllow="--allow-unauthenticated"
 _aptYesUnth="-y ${_aptAllow}"
 

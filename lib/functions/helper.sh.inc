@@ -185,11 +185,28 @@ _extract_archive() {
 # Download and extract archive from dev mirror.
 _get_dev_arch() {
   if [ ! -z "$1" ]; then
-    curl ${_crlGet} "${_urlDev}/$1" -o "$1"
-    if [ -e "$1" ]; then
+    _max_attempts=10
+    _attempt_num=1
+    _success=0
+    while [ ${_attempt_num} -le ${_max_attempts} ]; do
+      [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Attempt ${_attempt_num} of ${_max_attempts}: Downloading $1..."
+      if curl ${_crlGet} "${_urlDev}/$1" -o "$1"; then
+        _success=1
+        break
+      else
+        [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Attempt ${_attempt_num} failed."
+        _attempt_num=$((_attempt_num+1))
+        if [ ${_attempt_num} -le ${_max_attempts} ]; then
+          [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Retrying in 9 seconds..."
+          sleep 9
+        fi
+      fi
+    done
+    if [ ${_success} -eq 1 ]; then
       _extract_archive "$1"
     else
-      _msg "OOPS: $1 failed download from ${_urlDev}/$1"
+      _msg "OOPS: Failed to download ${_urlDev}/$1 after ${_max_attempts} attempts"
+      return 1  # Exit the function but continue the script
     fi
   fi
 }
@@ -198,11 +215,28 @@ _get_dev_arch() {
 # Download and extract from dev/version mirror.
 _get_dev_ext() {
   if [ ! -z "$1" ]; then
-    curl ${_crlGet} "${_urlDev}/${_tRee}/$1" -o "$1"
-    if [ -e "$1" ]; then
+    _max_attempts=10
+    _attempt_num=1
+    _success=0
+    while [ ${_attempt_num} -le ${_max_attempts} ]; do
+      [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Attempt ${_attempt_num} of ${_max_attempts}: Downloading $1..."
+      if curl ${_crlGet} "${_urlDev}/${_tRee}/$1" -o "$1"; then
+        _success=1
+        break
+      else
+        [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Attempt ${_attempt_num} failed."
+        _attempt_num=$((_attempt_num+1))
+        if [ ${_attempt_num} -le ${_max_attempts} ]; then
+          [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Retrying in 9 seconds..."
+          sleep 9
+        fi
+      fi
+    done
+    if [ ${_success} -eq 1 ]; then
       _extract_archive "$1"
     else
-      _msg "OOPS: $1 failed download from ${_urlDev}/${_tRee}/$1"
+      _msg "OOPS: Failed to download ${_urlDev}/${_tRee}/$1 after ${_max_attempts} attempts"
+      return 1  # Exit the function but continue the script
     fi
   fi
 }
@@ -211,11 +245,28 @@ _get_dev_ext() {
 # Download and extract from dev/static.
 _get_dev_stc() {
   if [ ! -z "$1" ]; then
-    curl ${_crlGet} "${_urlDev}/${_tRee}/static/$1" -o "$1"
-    if [ -e "$1" ]; then
+    _max_attempts=10
+    _attempt_num=1
+    _success=0
+    while [ ${_attempt_num} -le ${_max_attempts} ]; do
+      [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Attempt ${_attempt_num} of ${_max_attempts}: Downloading $1..."
+      if curl ${_crlGet} "${_urlDev}/${_tRee}/static/$1" -o "$1"; then
+        _success=1
+        break
+      else
+        [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Attempt ${_attempt_num} failed."
+        _attempt_num=$((_attempt_num+1))
+        if [ ${_attempt_num} -le ${_max_attempts} ]; then
+          [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Retrying in 9 seconds..."
+          sleep 9
+        fi
+      fi
+    done
+    if [ ${_success} -eq 1 ]; then
       _extract_archive "$1"
     else
-      _msg "OOPS: $1 failed download from ${_urlDev}/${_tRee}/static/$1"
+      _msg "OOPS: Failed to download ${_urlDev}/${_tRee}/static/$1 after ${_max_attempts} attempts"
+      return 1  # Exit the function but continue the script
     fi
   fi
 }
@@ -224,11 +275,28 @@ _get_dev_stc() {
 # Download and extract from dev/contrib mirror.
 _get_dev_contrib() {
   if [ ! -z "$1" ]; then
-    curl ${_crlGet} "${_urlDev}/${_tRee}/contrib/$1" -o "$1"
-    if [ -e "$1" ]; then
+    _max_attempts=10
+    _attempt_num=1
+    _success=0
+    while [ ${_attempt_num} -le ${_max_attempts} ]; do
+      [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Attempt ${_attempt_num} of ${_max_attempts}: Downloading $1..."
+      if curl ${_crlGet} "${_urlDev}/${_tRee}/contrib/$1" -o "$1"; then
+        _success=1
+        break
+      else
+        [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Attempt ${_attempt_num} failed."
+        _attempt_num=$((_attempt_num+1))
+        if [ ${_attempt_num} -le ${_max_attempts} ]; then
+          [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Retrying in 9 seconds..."
+          sleep 9
+        fi
+      fi
+    done
+    if [ ${_success} -eq 1 ]; then
       _extract_archive "$1"
     else
-      _msg "OOPS: $1 failed download from ${_urlDev}/${_tRee}/contrib/$1"
+      _msg "OOPS: Failed to download ${_urlDev}/${_tRee}/contrib/$1 after ${_max_attempts} attempts"
+      return 1  # Exit the function but continue the script
     fi
   fi
 }
@@ -237,11 +305,58 @@ _get_dev_contrib() {
 # Download and extract archive from dev/src mirror.
 _get_dev_src() {
   if [ ! -z "$1" ]; then
-    curl ${_crlGet} "${_urlDev}/src/$1" -o "$1"
-    if [ -e "$1" ]; then
+    _max_attempts=10
+    _attempt_num=1
+    _success=0
+    while [ ${_attempt_num} -le ${_max_attempts} ]; do
+      [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Attempt ${_attempt_num} of ${_max_attempts}: Downloading $1..."
+      if curl ${_crlGet} "${_urlDev}/src/$1" -o "$1"; then
+        _success=1
+        break
+      else
+        [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Attempt ${_attempt_num} failed."
+        _attempt_num=$((_attempt_num+1))
+        if [ ${_attempt_num} -le ${_max_attempts} ]; then
+          [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Retrying in 9 seconds..."
+          sleep 9
+        fi
+      fi
+    done
+    if [ ${_success} -eq 1 ]; then
       _extract_archive "$1"
     else
-      _msg "OOPS: $1 failed download from ${_urlDev}/src/$1"
+      _msg "OOPS: Failed to download ${_urlDev}/src/$1 after ${_max_attempts} attempts"
+      return 1  # Exit the function but continue the script
+    fi
+  fi
+}
+
+#
+# Download with wget and extract archive from dev/src mirror.
+_get_dev_src_wget() {
+  if [ ! -z "$1" ]; then
+    _max_attempts=10
+    _attempt_num=1
+    _success=0
+    while [ ${_attempt_num} -le ${_max_attempts} ]; do
+      [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Attempt ${_attempt_num} of ${_max_attempts}: Downloading $1..."
+      if wget ${_wgetGet} "${_urlDev}/src/$1" -O "$1"; then
+        _success=1
+        break
+      else
+        [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Attempt ${_attempt_num} failed."
+        _attempt_num=$((_attempt_num+1))
+        if [ ${_attempt_num} -le ${_max_attempts} ]; then
+          [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Retrying in 9 seconds..."
+          sleep 9
+        fi
+      fi
+    done
+    if [ ${_success} -eq 1 ]; then
+      _extract_archive "$1"
+    else
+      _msg "OOPS: Failed to download ${_urlDev}/src/$1 after ${_max_attempts} attempts"
+      return 1  # Exit the function but continue the script
     fi
   fi
 }
