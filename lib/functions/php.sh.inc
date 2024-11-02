@@ -1916,9 +1916,9 @@ _newrelic_update() {
       _st_runner "apt-get install newrelic-php5 ${_nrmUpArg}" 2> /dev/null
       # cd /var/opt
       # rm -rf /opt/newrelic*
-      # wget -q -U iCab ${_urlDev}/newrelic-php5-common_${_NEW_RELIC_VRN}_all.deb
-      # wget -q -U iCab ${_urlDev}/newrelic-daemon_${_NEW_RELIC_VRN}_all.deb
-      # wget -q -U iCab ${_urlDev}/newrelic-php5_${_NEW_RELIC_VRN}_all.deb
+      # wget ${_wgetGet} ${_urlDev}/newrelic-php5-common_${_NEW_RELIC_VRN}_all.deb
+      # wget ${_wgetGet} ${_urlDev}/newrelic-daemon_${_NEW_RELIC_VRN}_all.deb
+      # wget ${_wgetGet} ${_urlDev}/newrelic-php5_${_NEW_RELIC_VRN}_all.deb
       # dpkg -i /var/opt/newrelic-php5-common_${_NEW_RELIC_VRN}_all.deb &> /dev/null
       # dpkg -i /var/opt/newrelic-daemon_${_NEW_RELIC_VRN}_amd64.deb &> /dev/null
       # dpkg -i /var/opt/newrelic-php5_${_NEW_RELIC_VRN}_amd64.deb &> /dev/null
@@ -2092,9 +2092,9 @@ _if_install_php_newrelic() {
       _st_runner "apt-get install newrelic-php5 ${_nrmUpArg}" 2> /dev/null
       # cd /var/opt
       # rm -rf /opt/newrelic*
-      # wget -q -U iCab ${_urlDev}/newrelic-php5-common_${_NEW_RELIC_VRN}_all.deb
-      # wget -q -U iCab ${_urlDev}/newrelic-daemon_${_NEW_RELIC_VRN}_all.deb
-      # wget -q -U iCab ${_urlDev}/newrelic-php5_${_NEW_RELIC_VRN}_all.deb
+      # wget ${_wgetGet} ${_urlDev}/newrelic-php5-common_${_NEW_RELIC_VRN}_all.deb
+      # wget ${_wgetGet} ${_urlDev}/newrelic-daemon_${_NEW_RELIC_VRN}_all.deb
+      # wget ${_wgetGet} ${_urlDev}/newrelic-php5_${_NEW_RELIC_VRN}_all.deb
       # dpkg -i /var/opt/newrelic-php5-common_${_NEW_RELIC_VRN}_all.deb &> /dev/null
       # dpkg -i /var/opt/newrelic-daemon_${_NEW_RELIC_VRN}_amd64.deb &> /dev/null
       # dpkg -i /var/opt/newrelic-php5_${_NEW_RELIC_VRN}_amd64.deb &> /dev/null

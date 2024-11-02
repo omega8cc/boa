@@ -66,7 +66,8 @@ _HST=${_HST//[^a-zA-Z0-9-.]/}
 _HST=$(echo -n ${_HST} | tr A-Z a-z 2>&1)
 _HST_DASH=$(echo -n ${_HST} | tr . - 2>&1)
 
-_crlGet="-L --max-redirs 3 -k -s --retry 3 --retry-delay 5 -A iCab"
+_crlGet="-L --max-redirs 3 -k -s --retry 9 --retry-delay 9 -A iCab"
+_wgetGet="--max-redirect=3 --no-check-certificate -q --tries=9 --wait=9 --user-agent='iCab'"
 _aptAllow="--allow-unauthenticated"
 _aptYesUnth="-y ${_aptAllow}"
 
@@ -214,7 +215,7 @@ _install() {
       || [ ! -x "${_DCY_PTN}" ]; then
       cd /var/opt
       rm -rf Python*
-      wget -q -U iCab ${_urlDev}/src/Python-${_PTN_VRN}.tgz
+      wget ${_wgetGet} ${_urlDev}/src/Python-${_PTN_VRN}.tgz
       tar -xzf Python-${_PTN_VRN}.tgz
       cd Python-${_PTN_VRN}
       if [ -d "/usr/local/ssl3" ]; then

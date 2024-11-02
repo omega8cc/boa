@@ -343,7 +343,7 @@ _if_install_hhvm() {
           until [[ "${_KEYS_SERVER_TEST}" =~ "GnuPG" ]]; do
             rm -f /var/opt/hhvm.gpg.key*
             cd /var/opt
-            wget -q -U iCab http://dl.hhvm.com/conf/hhvm.gpg.key
+            wget ${_wgetGet} "http://dl.hhvm.com/conf/hhvm.gpg.key"
             _KEYS_SERVER_TEST=$(grep GnuPG /var/opt/hhvm.gpg.key 2>&1)
             sleep 2
           done
@@ -383,7 +383,7 @@ _if_install_webmin() {
         _KEYS_SERVER_TEST=FALSE
         until [[ "${_KEYS_SERVER_TEST}" =~ "GnuPG" ]]; do
           rm -f jcameron-key.gpg*
-          wget -q -U iCab ${_urlDev}/jcameron-key.gpg
+          wget ${_wgetGet} "${_urlDev}/jcameron-key.gpg"
           _KEYS_SERVER_TEST=$(grep GnuPG jcameron-key.gpg 2>&1)
           sleep 2
         done

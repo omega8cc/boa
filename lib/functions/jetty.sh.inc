@@ -155,7 +155,7 @@ _if_install_solr_jetty() {
           rm -f tika-app*
           _TIKA_V="1.8 1.9 1.10 1.11 1.12 1.13 1.20"
           for e in ${_TIKA_V}; do
-            wget -q -U iCab ${_urlDev}/tika-app-${e}.jar
+            wget ${_wgetGet} ${_urlDev}/tika-app-${e}.jar
           done
         fi
         for _Dir in `find /opt/solr4/core{0,1,2,3,4,5,6,7,8,9}/ \
@@ -303,7 +303,7 @@ _if_install_solr_jetty() {
       rm -f tika-app*
       _TIKA_V="1.8 1.9 1.10 1.11 1.12 1.13 1.20"
       for e in ${_TIKA_V}; do
-        wget -q -U iCab ${_urlDev}/tika-app-${e}.jar
+        wget ${_wgetGet} ${_urlDev}/tika-app-${e}.jar
       done
       cd /var/opt
       _get_dev_arch "slf4j-${_SLF4J_VRN}.tar.gz"
@@ -362,7 +362,7 @@ _if_install_solr_jetty() {
           rm -f tika-app*
           _TIKA_V="1.8 1.9 1.10 1.11 1.12 1.13 1.20"
           for e in ${_TIKA_V}; do
-            wget -q -U iCab ${_urlDev}/tika-app-${e}.jar
+            wget ${_wgetGet} ${_urlDev}/tika-app-${e}.jar
           done
         fi
         for _Dir in `find /opt/solr3/core{0,1,2,3,4,5,6,7,8,9}/ \
@@ -441,7 +441,7 @@ _if_install_solr_jetty() {
       rm -f tika-app*
       _TIKA_V="1.8 1.9 1.10 1.11 1.12 1.13 1.20"
       for e in ${_TIKA_V}; do
-        wget -q -U iCab ${_urlDev}/tika-app-${e}.jar
+        wget ${_wgetGet} ${_urlDev}/tika-app-${e}.jar
       done
       cd /var/opt
       chown -R jetty8:jetty8 /opt/jetty8
@@ -491,7 +491,7 @@ _if_install_solr_jetty() {
           rm -f tika-app*
           _TIKA_V="1.8 1.9 1.10 1.11 1.12 1.13 1.20"
           for e in ${_TIKA_V}; do
-            wget -q -U iCab ${_urlDev}/tika-app-${e}.jar
+            wget ${_wgetGet} ${_urlDev}/tika-app-${e}.jar
           done
         fi
         for _Dir in `find /opt/solr1/core{0,1,2,3,4,5,6,7,8,9}/ \
@@ -602,7 +602,7 @@ _if_install_solr_jetty() {
       rm -f tika-app*
       _TIKA_V="1.8 1.9 1.10 1.11 1.12 1.13 1.20"
       for e in ${_TIKA_V}; do
-        wget -q -U iCab ${_urlDev}/tika-app-${e}.jar
+        wget ${_wgetGet} ${_urlDev}/tika-app-${e}.jar
       done
       cd /var/opt
       chown -R jetty7:jetty7 /opt/jetty7

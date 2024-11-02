@@ -788,6 +788,23 @@ _prep_for_install_db_sql() {
   if [ -x "/usr/sbin/aa-teardown" ]; then
     _mrun "aa-teardown" 2> /dev/null
   fi
+
+  # Create the mysql group if it doesn't exist
+  if ! getent group mysql > /dev/null; then
+    groupadd mysql
+  fi
+
+  # Create the mysql user if it doesn't exist
+  if ! id -u mysql > /dev/null 2>&1; then
+    useradd -r -g mysql -d /var/lib/mysql -s /bin/false mysql
+  fi
+
+  # Create the directory if it doesn't exist
+  [ ! -e "/var/lib/mysql" ] && mkdir -p /var/lib/mysql
+
+  # Set ownership to mysql:mysql
+  [ -e "/var/lib/mysql" ] && chown mysql:mysql /var/lib/mysql
+
   _SQL_SCR=APT
   if [ "${_OS_CODE}" = "daedalus" ]; then
     _SQL_OS_CODE=bookworm
