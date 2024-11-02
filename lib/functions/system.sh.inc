@@ -80,8 +80,7 @@ _if_reinstall_curl_src() {
       mkdir -p /var/opt
       rm -rf /var/opt/curl*
       cd /var/opt
-      wget -q -U iCab http://files.aegir.cc/dev/src/curl-${_CURL_VRN}.tar.gz &> /dev/null
-      tar -xzf curl-${_CURL_VRN}.tar.gz &> /dev/null
+      _get_dev_src_wget "curl-${_CURL_VRN}.tar.gz"
       if [ -e "/root/.install.modern.openssl.cnf" ] \
         && [ -x "/usr/local/ssl3/bin/openssl" ]; then
         _SSL_BINARY=/usr/local/ssl3/bin/openssl
@@ -3921,12 +3920,7 @@ _ssl_install_src() {
   if [ ! -e "/var/opt/openssl-${_OPENSSL_BUILD_VRN}" ]; then
     cd /var/opt
     rm -rf openssl*
-    wget -q -U iCab ${_urlDev}/src/openssl-${_OPENSSL_BUILD_VRN}.tar.gz
-    if [ -e "openssl-${_OPENSSL_BUILD_VRN}.tar.gz" ]; then
-      _extract_archive "openssl-${_OPENSSL_BUILD_VRN}.tar.gz"
-    else
-      _msg "OOPS: failed download from ${_urlDev}/src/openssl-${_OPENSSL_BUILD_VRN}.tar.gz"
-    fi
+    _get_dev_src_wget "openssl-${_OPENSSL_BUILD_VRN}.tar.gz"
   fi
   if [ -e "/var/opt/openssl-${_OPENSSL_BUILD_VRN}" ]; then
     cd /var/opt/openssl-${_OPENSSL_BUILD_VRN}
@@ -4327,12 +4321,7 @@ _curl_install_src() {
       _mrun "apt-get build-dep curl -y" 2> /dev/null
       cd /var/opt
       rm -rf curl*
-      wget -q -U iCab ${_urlDev}/src/curl-${_CURL_VRN}.tar.gz
-      if [ ! -e "curl-${_CURL_VRN}.tar.gz" ]; then
-        _msg "OOPS: failed download from ${_urlDev}/src/curl-${_CURL_VRN}.tar.gz"
-      else
-        _extract_archive "curl-${_CURL_VRN}.tar.gz"
-      fi
+      _get_dev_src_wget "curl-${_CURL_VRN}.tar.gz"
       if [ -e "/var/opt/curl-${_CURL_VRN}" ]; then
         _msg "INFO: Building cURL ${_CURL_VRN} from sources..."
         _msg "WAIT: This may take a while, please wait..."
@@ -6656,7 +6645,7 @@ _webmin_apt_update() {
       _KEYS_SERVER_TEST=FALSE
       until [[ "${_KEYS_SERVER_TEST}" =~ "GnuPG" ]]; do
         rm -f jcameron-key.gpg*
-        wget -q -U iCab ${_urlDev}/jcameron-key.gpg
+        wget ${_wgetGet} "${_urlDev}/jcameron-key.gpg"
         _KEYS_SERVER_TEST=$(grep GnuPG jcameron-key.gpg 2>&1)
         sleep 2
       done

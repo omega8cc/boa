@@ -57,7 +57,8 @@ if [[ "${_SSL_ITD}" =~ "3.3." ]] \
   || [[ "${_SSL_ITD}" =~ "1.0." ]]; then
   _NEW_SSL=YES
 fi
-_crlGet="-L --max-redirs 3 -k -s --retry 3 --retry-delay 5 -A iCab"
+_crlGet="-L --max-redirs 3 -k -s --retry 9 --retry-delay 9 -A iCab"
+_wgetGet="--max-redirect=3 --no-check-certificate -q --tries=9 --wait=9 --user-agent='iCab'"
 _aptAllow="--allow-unauthenticated"
 _aptYesUnth="-y ${_aptAllow}"
 _cGet="config-get user.settings"

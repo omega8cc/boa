@@ -7,6 +7,7 @@ export _tRee=dev
 
 _aptAllow="--allow-unauthenticated"
 _aptYesUnth="-y ${_aptAllow}"
+_wgetGet="--max-redirect=3 --no-check-certificate -q --tries=9 --wait=9 --user-agent='iCab'"
 
 _check_root() {
   if [ `whoami` = "root" ]; then
@@ -134,7 +135,7 @@ _if_reinstall_curl_src() {
       mkdir -p /var/opt
       rm -rf /var/opt/curl*
       cd /var/opt
-      wget -q -U iCab http://files.aegir.cc/dev/src/curl-${_CURL_VRN}.tar.gz &> /dev/null
+      wget ${_wgetGet} http://files.aegir.cc/dev/src/curl-${_CURL_VRN}.tar.gz &> /dev/null
       tar -xzf curl-${_CURL_VRN}.tar.gz &> /dev/null
       if [ -e "/root/.install.modern.openssl.cnf" ] \
         && [ -x "/usr/local/ssl3/bin/openssl" ]; then
