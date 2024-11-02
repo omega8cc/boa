@@ -46,7 +46,7 @@
 ###  Reboot the server to make sure there are
 ###  no issues with boot process.
 ###
-###    $ reboot
+###    $ shutdown -r now
 ###
 ###  If reboot worked and there are no issues,
 ###  you are ready for the automated magic...
@@ -426,7 +426,8 @@ if [ -e "/root/.run-to-daedalus.cnf" ] \
       touch /root/.run-auto-major-os-reboot-daedalus-one.cnf
       update-grub >> "${_logAds}"
       _faster_reboot
-      reboot
+      shutdown -r now
+      wait
       exit 0
     fi
   fi
@@ -459,7 +460,8 @@ if [ -e "/root/.run-to-daedalus.cnf" ] \
       touch /root/.run-auto-major-os-reboot-daedalus-two.cnf
       update-grub >> "${_logAds}"
       _faster_reboot
-      reboot
+      shutdown -r now
+      wait
       exit 0
     fi
   fi
@@ -488,7 +490,8 @@ if [ -e "/root/.run-to-daedalus.cnf" ] \
       touch /root/.run-auto-major-os-reboot-daedalus-two.cnf
       update-grub >> "${_logAds}"
       _faster_reboot
-      reboot
+      shutdown -r now
+      wait
       exit 0
     fi
   fi

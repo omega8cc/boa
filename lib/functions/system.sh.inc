@@ -6620,7 +6620,7 @@ _if_major_os_upgrade() {
     touch /root/.run_post_major_os_upgrade.info
     echo " "
     _msg "RLLY: No errors? ${_MSG_LOC} migration worked :)"
-    _msg "STEP: Please reboot this server now"
+    _msg "STEP: Please restart this server now with 'boa reboot' command"
     _msg "STEP: Once the system is up, run 'barracuda up-${_tRee}' command again"
     echo " "
     _msg "Bye"

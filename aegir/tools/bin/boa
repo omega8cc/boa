@@ -2500,7 +2500,8 @@ case "$1" in
   ;;
   reboot)     service clean-boa-env stop
               wait
-              reboot
+              shutdown -r now
+              wait
               exit 0
   ;;
   cleanup)    _cmNd="$1"
