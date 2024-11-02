@@ -349,6 +349,13 @@ _if_running_as_root_barracuda() {
     if dmidecode -s system-manufacturer | grep -i 'Amazon EC2' &> /dev/null; then
       _VMFAMILY="AWS"
     fi
+    if dmidecode -s system-manufacturer | grep -i 'Linode' &> /dev/null; then
+      if  [ ! -e "/var/aegir/drush" ] \
+        || [ ! -e "/data/u" ] \
+        || [ ! -e "/var/xdrago" ]; then
+        touch /run/cloud_vhost.pid
+      fi
+    fi
     _VM_TEST=$(uname -a 2>&1)
     if [[ "${_VM_TEST}" =~ "-beng" ]]; then
       _VMFAMILY="VS"
