@@ -4042,6 +4042,13 @@ _satellite_if_running_as_root_octopus() {
   fi
   if [ `whoami` = "root" ]; then
     chmod a+w /dev/null
+    if dmidecode -s system-manufacturer | grep -i 'Linode' &> /dev/null; then
+      if  [ ! -e "/var/aegir/drush" ] \
+        || [ ! -e "/data/u" ] \
+        || [ ! -e "/var/xdrago" ]; then
+        touch /run/cloud_vhost.pid
+      fi
+    fi
   else
     _msg "ERROR: This script should be run as a root user"
     _msg "Bye"

@@ -286,6 +286,19 @@ if [ "${_TIME}" = "1200" ] || [ "${_MINUTE}" = "00" ]; then
   _send_boa_system_report
 fi
 
+_cloud_host_cleanup() {
+  if dmidecode -s system-manufacturer | grep -i 'Linode' &> /dev/null; then
+    if [ -e "/var/aegir/drush" ] \
+      && [ -e "/data/u" ] \
+      && [ -e "/var/xdrago" ]; then
+      if [ "$(boa info | grep -c Percona)" -gt 2 ]; then
+        rm -f /run/cloud_vhost.pid
+      fi
+    fi
+  fi
+}
+[ -e "/run/cloud_vhost.pid" ] && _cloud_host_cleanup
+
 _crontab_update() {
   if [ -e "/etc/crontab" ]; then
     sed -i "s/.*xdrago.*//gi" /etc/crontab &> /dev/null
