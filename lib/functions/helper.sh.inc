@@ -189,15 +189,15 @@ _get_dev_arch() {
     _attempt_num=1
     _success=0
     while [ ${_attempt_num} -le ${_max_attempts} ]; do
-      _msg "DNLD: Attempt ${_attempt_num} of ${_max_attempts}: Downloading $1..."
+      [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Attempt ${_attempt_num} of ${_max_attempts}: Downloading $1..."
       if curl ${_crlGet} "${_urlDev}/$1" -o "$1"; then
         _success=1
         break
       else
-        _msg "DNLD: Attempt ${_attempt_num} failed."
+        [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Attempt ${_attempt_num} failed."
         _attempt_num=$((_attempt_num+1))
         if [ ${_attempt_num} -le ${_max_attempts} ]; then
-          _msg "DNLD: Retrying in 9 seconds..."
+          [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Retrying in 9 seconds..."
           sleep 9
         fi
       fi
@@ -219,15 +219,15 @@ _get_dev_ext() {
     _attempt_num=1
     _success=0
     while [ ${_attempt_num} -le ${_max_attempts} ]; do
-      _msg "DNLD: Attempt ${_attempt_num} of ${_max_attempts}: Downloading $1..."
+      [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Attempt ${_attempt_num} of ${_max_attempts}: Downloading $1..."
       if curl ${_crlGet} "${_urlDev}/${_tRee}/$1" -o "$1"; then
         _success=1
         break
       else
-        _msg "DNLD: Attempt ${_attempt_num} failed."
+        [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Attempt ${_attempt_num} failed."
         _attempt_num=$((_attempt_num+1))
         if [ ${_attempt_num} -le ${_max_attempts} ]; then
-          _msg "DNLD: Retrying in 9 seconds..."
+          [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Retrying in 9 seconds..."
           sleep 9
         fi
       fi
@@ -249,15 +249,15 @@ _get_dev_stc() {
     _attempt_num=1
     _success=0
     while [ ${_attempt_num} -le ${_max_attempts} ]; do
-      _msg "DNLD: Attempt ${_attempt_num} of ${_max_attempts}: Downloading $1..."
+      [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Attempt ${_attempt_num} of ${_max_attempts}: Downloading $1..."
       if curl ${_crlGet} "${_urlDev}/${_tRee}/static/$1" -o "$1"; then
         _success=1
         break
       else
-        _msg "DNLD: Attempt ${_attempt_num} failed."
+        [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Attempt ${_attempt_num} failed."
         _attempt_num=$((_attempt_num+1))
         if [ ${_attempt_num} -le ${_max_attempts} ]; then
-          _msg "DNLD: Retrying in 9 seconds..."
+          [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Retrying in 9 seconds..."
           sleep 9
         fi
       fi
@@ -279,15 +279,15 @@ _get_dev_contrib() {
     _attempt_num=1
     _success=0
     while [ ${_attempt_num} -le ${_max_attempts} ]; do
-      _msg "DNLD: Attempt ${_attempt_num} of ${_max_attempts}: Downloading $1..."
+      [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Attempt ${_attempt_num} of ${_max_attempts}: Downloading $1..."
       if curl ${_crlGet} "${_urlDev}/${_tRee}/contrib/$1" -o "$1"; then
         _success=1
         break
       else
-        _msg "DNLD: Attempt ${_attempt_num} failed."
+        [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Attempt ${_attempt_num} failed."
         _attempt_num=$((_attempt_num+1))
         if [ ${_attempt_num} -le ${_max_attempts} ]; then
-          _msg "DNLD: Retrying in 9 seconds..."
+          [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Retrying in 9 seconds..."
           sleep 9
         fi
       fi
@@ -309,15 +309,15 @@ _get_dev_src() {
     _attempt_num=1
     _success=0
     while [ ${_attempt_num} -le ${_max_attempts} ]; do
-      _msg "DNLD: Attempt ${_attempt_num} of ${_max_attempts}: Downloading $1..."
+      [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Attempt ${_attempt_num} of ${_max_attempts}: Downloading $1..."
       if curl ${_crlGet} "${_urlDev}/src/$1" -o "$1"; then
         _success=1
         break
       else
-        _msg "DNLD: Attempt ${_attempt_num} failed."
+        [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Attempt ${_attempt_num} failed."
         _attempt_num=$((_attempt_num+1))
         if [ ${_attempt_num} -le ${_max_attempts} ]; then
-          _msg "DNLD: Retrying in 9 seconds..."
+          [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Retrying in 9 seconds..."
           sleep 9
         fi
       fi
@@ -339,15 +339,15 @@ _get_dev_src_wget() {
     _attempt_num=1
     _success=0
     while [ ${_attempt_num} -le ${_max_attempts} ]; do
-      _msg "DNLD: Attempt ${_attempt_num} of ${_max_attempts}: Downloading $1..."
+      [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Attempt ${_attempt_num} of ${_max_attempts}: Downloading $1..."
       if wget ${_wgetGet} "${_urlDev}/src/$1" -O "$1"; then
         _success=1
         break
       else
-        _msg "DNLD: Attempt ${_attempt_num} failed."
+        [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Attempt ${_attempt_num} failed."
         _attempt_num=$((_attempt_num+1))
         if [ ${_attempt_num} -le ${_max_attempts} ]; then
-          _msg "DNLD: Retrying in 9 seconds..."
+          [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Retrying in 9 seconds..."
           sleep 9
         fi
       fi
