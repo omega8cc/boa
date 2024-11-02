@@ -291,7 +291,7 @@ _cloud_host_cleanup() {
     if [ -e "/var/aegir/drush" ] \
       && [ -e "/data/u" ] \
       && [ -e "/var/xdrago" ]; then
-      if [ "$(boa info | grep -c Percona)" -gt 2 ]; then
+      if [ "$(boa info | grep -c Percona)" -ge 2 ]; then
         rm -f /run/cloud_vhost.pid
       fi
     fi
