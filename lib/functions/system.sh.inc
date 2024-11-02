@@ -8167,6 +8167,10 @@ _sshd_armour() {
   ### Also: https://github.com/stribika/stribika.github.io/wiki/Secure-Secure-Shell
   ###
   if [ -e "/etc/ssh/sshd_config" ]; then
+    if [ -e "/etc/ssh/ssh_config" ]; then
+      grep -q '^[^#]*GSSAPIAuthentication' /etc/ssh/ssh_config && sed -i '/^[^#]*GSSAPIAuthentication/s/^/#/' /etc/ssh/ssh_config
+      _mrun "service ssh reload" 2> /dev/null
+    fi
     if [ "${_SSH_ARMOUR}" = "NO" ] \
       || [ -z "${_SSH_ARMOUR}" ]; then
       if [ -e "/etc/ssh/.vanilla.sshd_config" ]; then
