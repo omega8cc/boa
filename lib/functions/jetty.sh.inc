@@ -17,7 +17,7 @@ _if_install_solr_jetty() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _if_install_solr_jetty"
   fi
-  if [ -e "/var/solr7" ] && [ -L "/var/solr7" ]; then
+  if [ -e "/var/solr7/data" ] && [ -L "/var/solr7" ]; then
     _if_fix_solr_permissions
   fi
   _if_to_do_fix
