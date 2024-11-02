@@ -349,6 +349,13 @@ _if_running_as_root_barracuda() {
     if dmidecode -s system-manufacturer | grep -i 'Amazon EC2' &> /dev/null; then
       _VMFAMILY="AWS"
     fi
+    if dmidecode -s system-manufacturer | grep -i 'Linode' &> /dev/null; then
+      if  [ ! -e "/var/aegir/drush" ] \
+        || [ ! -e "/data/u" ] \
+        || [ ! -e "/var/xdrago" ]; then
+        touch /run/cloud_vhost.pid
+      fi
+    fi
     _VM_TEST=$(uname -a 2>&1)
     if [[ "${_VM_TEST}" =~ "-beng" ]]; then
       _VMFAMILY="VS"
@@ -6620,7 +6627,7 @@ _if_major_os_upgrade() {
     touch /root/.run_post_major_os_upgrade.info
     echo " "
     _msg "RLLY: No errors? ${_MSG_LOC} migration worked :)"
-    _msg "STEP: Please reboot this server now"
+    _msg "STEP: Please restart this server now with 'boa reboot' command"
     _msg "STEP: Once the system is up, run 'barracuda up-${_tRee}' command again"
     echo " "
     _msg "Bye"
@@ -8167,6 +8174,10 @@ _sshd_armour() {
   ### Also: https://github.com/stribika/stribika.github.io/wiki/Secure-Secure-Shell
   ###
   if [ -e "/etc/ssh/sshd_config" ]; then
+    if [ -e "/etc/ssh/ssh_config" ]; then
+      grep -q '^[^#]*GSSAPIAuthentication' /etc/ssh/ssh_config && sed -i '/^[^#]*GSSAPIAuthentication/s/^/#/' /etc/ssh/ssh_config
+      _mrun "service ssh reload" 2> /dev/null
+    fi
     if [ "${_SSH_ARMOUR}" = "NO" ] \
       || [ -z "${_SSH_ARMOUR}" ]; then
       if [ -e "/etc/ssh/.vanilla.sshd_config" ]; then

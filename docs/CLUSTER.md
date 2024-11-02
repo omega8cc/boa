@@ -51,7 +51,7 @@ $ chmod 700 /usr/local/bin/cluster
 
 ```sh
 $ cluster in-host server.example.com
-$ reboot
+$ shutdown -r now
 $ cluster up-host upgrade
 $ cluster in-vps v1 v1.example.com public.ip.address jessie head my@email
 ```
@@ -83,7 +83,7 @@ _CLUSTER_OS=jessie  ### [O] Debian version: jessie
 
 ```sh
 $ cluster in-host server.example.com
-$ reboot
+$ shutdown -r now
 $ cluster up-host upgrade
 $ cluster in-all head
 $ cluster in-oct em@il o2 mini head

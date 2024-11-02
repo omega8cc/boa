@@ -498,7 +498,8 @@ _init_prepare() {
     _msg "Time for reboot and next upgrade cycle..." >> "${_logInt}"
     echo " " >> "${_logInt}"
     rm -f /run/autoinit.pid
-    reboot
+    shutdown -r now
+    wait
     exit 0
   else
     if [ ! -x "/usr/bin/aptitude" ] || [ ! -x "/usr/bin/cc" ]; then
@@ -539,7 +540,8 @@ _init_prepare() {
       _msg "Time for reboot and next upgrade cycle..." >> "${_logInt}"
       echo " " >> "${_logInt}"
       rm -f /run/autoinit.pid
-      reboot
+      shutdown -r now
+      wait
       exit 0
     fi
   fi
@@ -614,7 +616,8 @@ _init_offsystemd() {
   echo " " >> "${_logInt}"
   touch /root/.run-offsystemd-devuan-init.cnf
   rm -f /run/autoinit.pid
-  reboot
+  shutdown -r now
+  wait
   exit 0
 }
 
@@ -725,7 +728,8 @@ _init_cycle() {
     echo " " >> "${_logInt}"
     touch /root/.run-cycle-devuan-init.cnf
     rm -f /run/autoinit.pid
-    reboot
+    shutdown -r now
+    wait
     exit 0
   else
     if [ "${_OS_CODE}" = "daedalus" ]; then
@@ -742,7 +746,8 @@ _init_cycle() {
     touch /root/.run-cycle-devuan-init.cnf
     touch /root/.run-cycle-${_OS_CODE}-init.cnf
     rm -f /run/autoinit.pid
-    reboot
+    shutdown -r now
+    wait
     exit 0
   fi
 }
