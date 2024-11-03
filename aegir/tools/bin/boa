@@ -1985,6 +1985,14 @@ _display_info() {
       | cut -d"_" -f2 \
       | awk '{ print $1}' 2>&1)
     _SSH=$(ssh -V 2>&1)
+    _NRC=$(newrelic-daemon --version 2>&1 \
+      | tr -d "\n" \
+      | cut -d" " -f5 \
+      | awk '{ print $1}' \
+      | cut -d"-" -f1 \
+      | awk '{ print $1}' 2>&1)
+    [ -e "/opt/site24x7/monagent/version.txt" ] && _MON=$(cat /opt/site24x7/monagent/version.txt 2>&1)
+    [ -n "${_MON}" ] && _MON=$(echo -n ${_MON} | tr -d "\n" 2>&1)
     [ "${_mOde}" = "clear" ] && clear
     echo
     _thiSys="$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)/$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1) $(uname -m 2>&1)"
@@ -2106,6 +2114,8 @@ _display_info() {
       [ ! -z "${_SUO}" ] && echo "  _SUO ${_SUO}"
       [ ! -z "${_UMY}" ] && echo "  _UMY ${_UMY}"
       [ ! -z "${_XTR}" ] && echo "  _XTR ${_XTR}"
+      [ ! -z "${_NRC}" ] && echo "  _NRC ${_NRC}"
+      [ ! -z "${_MON}" ] && echo "  _MON ${_MON}"
       [ ! -z "${_AUT}" ] && echo "  _AUT ${_AUT}"
 
       # Get the currently used GRUB config affecting networking
