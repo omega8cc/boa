@@ -45,17 +45,40 @@ fi
 
 echo -e "\nStarting performance tests...\n"
 
-### CPU Performance Test
-echo "Running CPU performance test with sysbench..."
-_CPU_TEST=$(sysbench cpu --threads=$(nproc) --time=30 run 2>/dev/null)
-_CPU_EVENTS=$(echo "${_CPU_TEST}" | awk '/events per second:/ {print $4}')
-_CPU_LATENCY=$(echo "${_CPU_TEST}" | awk '/avg:/ {print $2}')
+### CPU Performance Test - Multi-threaded
+echo "Running CPU performance test (multi-threaded) with sysbench..."
+_CPU_TEST_MT=$(sysbench cpu --threads=$(nproc) --time=30 run 2>/dev/null)
+_CPU_EVENTS_MT=$(echo "${_CPU_TEST_MT}" | awk '/events per second:/ {print $4}')
+_CPU_LATENCY_MT=$(echo "${_CPU_TEST_MT}" | awk '/avg:/ {print $2}')
+
+### CPU Performance Test - Single-threaded
+echo "Running CPU performance test (single-threaded) with sysbench..."
+_CPU_TEST_ST=$(sysbench cpu --threads=1 --time=30 run 2>/dev/null)
+_CPU_EVENTS_ST=$(echo "${_CPU_TEST_ST}" | awk '/events per second:/ {print $4}')
+_CPU_LATENCY_ST=$(echo "${_CPU_TEST_ST}" | awk '/avg:/ {print $2}')
 
 ### Memory Performance Test
 echo "Running Memory performance test with sysbench..."
 _MEM_TEST=$(sysbench memory --threads=$(nproc) --time=30 run 2>/dev/null)
 _MEM_TRANSFER_SPEED=$(echo "${_MEM_TEST}" | awk '/transferred/ {gsub("[()]","",$(NF-1)); print $(NF-1)" "$(NF)}')
 _MEM_LATENCY=$(echo "${_MEM_TEST}" | awk '/avg:/ {print $2}')
+
+### PHP Performance Test
+echo "Running PHP performance test..."
+_PHP_TEST_SCRIPT="/tmp/phpbench.php"
+cat << 'EOF' > "${_PHP_TEST_SCRIPT}"
+<?php
+$start = microtime(true);
+for ($i = 0; $i < 10000000; $i++) {
+  $a = md5($i);
+}
+$end = microtime(true);
+echo ($end - $start);
+?>
+EOF
+
+_PHP_TEST_TIME=$(php "${_PHP_TEST_SCRIPT}")
+rm "${_PHP_TEST_SCRIPT}"
 
 ### Disk I/O Performance Test with fio
 
@@ -113,13 +136,20 @@ done
 ### Display Results
 echo -e "\n======= Performance Test Summary ======="
 
-echo -e "\nCPU Performance:"
-echo "  - Events per Second: ${_CPU_EVENTS}"
-echo "  - Average Latency: ${_CPU_LATENCY} ms"
+echo -e "\nCPU Performance (Multi-threaded):"
+echo "  - Events per Second: ${_CPU_EVENTS_MT}"
+echo "  - Average Latency: ${_CPU_LATENCY_MT} ms"
+
+echo -e "\nCPU Performance (Single-threaded):"
+echo "  - Events per Second: ${_CPU_EVENTS_ST}"
+echo "  - Average Latency: ${_CPU_LATENCY_ST} ms"
 
 echo -e "\nMemory Performance:"
 echo "  - Transfer Speed: ${_MEM_TRANSFER_SPEED}"
 echo "  - Average Latency: ${_MEM_LATENCY} ms"
+
+echo -e "\nPHP Performance:"
+echo "  - Time Taken for Script Execution: ${_PHP_TEST_TIME} seconds"
 
 for _MOUNT_POINT in "${_EXT4_MOUNTS[@]}"; do
   echo -e "\nDisk I/O Performance on ${_MOUNT_POINT}:"
