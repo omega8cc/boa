@@ -418,6 +418,7 @@ EOFMYSQL
           --threads=4 \
           --less-locking \
           --long-query-guard=900 \
+          --clear \
           --verbose=1
         echo "INFO: site ${_Dom} db export on ${_oct} complete"
       elif [ "${_cmd}" = "proxy" ]; then
