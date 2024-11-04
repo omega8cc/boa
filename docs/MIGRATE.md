@@ -80,7 +80,9 @@ grep site_readonly /data/conf/global/global-extra.inc
 ```sh
 rm -f /data/disk/o1/src/*.sql
 rm -f /data/disk/o1/log/*.pid
+xboa transfer shared target-ip
 xboa create o1 target-ip
+xboa pretransfer o1 target-ip
 ```
 
 ## On the Target Host
@@ -95,8 +97,8 @@ chmod 644 /data/all/cpuinfo
 
 ```sh
 xboa export o1 target-ip
-xboa transfer shared target-ip
 xboa transfer o1 target-ip
+xboa transfer shared target-ip
 ```
 
 ## On the Target Host

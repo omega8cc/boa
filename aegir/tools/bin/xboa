@@ -944,7 +944,7 @@ _migrate_init() {
       exit 1
     else
       echo "INFO: ${_cmd} for ${_oct} to ${_tgt} ${_dst} start"
-      if [ "${_cmd}" = "transfer" ]; then
+      if [ "${_cmd}" = "transfer" ] || [ "${_cmd}" = "pretransfer" ]; then
         if [ ! -z "${_dst}" ]; then
           _DST=/data/disk/${_dst}
         else
@@ -1322,6 +1322,13 @@ case "$1" in
             _check_root
             _migrate_init
   ;;
+  pretransfer) _cmd="$1"
+            _oct="$2"
+            _tgt="$3"
+            _dst="$4"
+            _check_root
+            _migrate_init
+  ;;
   transfer) _cmd="$1"
             _oct="$2"
             _tgt="$3"
@@ -1353,7 +1360,7 @@ case "$1" in
   ;;
   *)        echo
             echo "Usage: xboa {pre-mig} {fqdn} (source+target vms)"
-            echo "Usage: xboa {export|create|transfer|proxy} {o1|shared} {target-ip} {o2}"
+            echo "Usage: xboa {export|create|pretransfer|transfer|proxy} {o1|shared} {target-ip} {o2}"
             echo "Usage: xboa {import} {o1} {target-ip} (target vms)"
             echo "Usage: xboa {post-mig} {fqdn} (source+target vms)"
             echo
