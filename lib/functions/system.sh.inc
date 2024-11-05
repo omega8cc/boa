@@ -2983,17 +2983,15 @@ _if_install_wkhtmltox() {
         cd /var/opt
         rm -rf wkhtmltox*
         mkdir -p /var/opt/wkhtmltox
+        _mrun "${_INSTAPP} xfonts-75dpi xfonts-base" 2> /dev/null
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _mrun "${_INSTAPP} xfonts-75dpi xfonts-base" 2> /dev/null
           _get_dev_src "wkhtmltox/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_WKHTML_SYS_RV}_amd64.deb.gz"
-          _mrun "apt-get install -f -y" 2> /dev/null
           gdebi -n "/var/opt/wkhtmltox/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_WKHTML_SYS_RV}_amd64.deb"
         else
-          _mrun "${_INSTAPP} xfonts-75dpi xfonts-base" 2> /dev/null
           _get_dev_src "wkhtmltox/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_WKHTML_SYS_RV}_amd64.deb.gz" 2> /dev/null
-          _mrun "apt-get install -f -y" 2> /dev/null
           gdebi -n "/var/opt/wkhtmltox/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_WKHTML_SYS_RV}_amd64.deb" 2> /dev/null
         fi
+        _mrun "apt-get install -f -y" 2> /dev/null
       fi
       if [ -x "/usr/local/bin/wkhtmltopdf" ]; then
         if [ ! -e "/usr/bin/wkhtmltopdf-0.12.4" ]; then
