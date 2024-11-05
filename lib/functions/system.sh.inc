@@ -7213,7 +7213,8 @@ _php_libs_fix() {
     || [ ! -e "/usr/lib/libicuio.so" ] \
     || [ ! -e "/usr/lib/liblber.so" ] \
     || [ ! -e "/var/xdrago/log/._php_libs_fix_${_OS_CODE}_${_LIB_NOW}.pid" ] \
-    || [ ! -e "/usr/include/gmp.h" ]; then
+    || [ ! -e "/usr/include/gmp.h" ] \
+    || [ ! -e "/usr/include/lzf.h" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: Fix for PHP libs in ${_OS_DIST}/${_OS_CODE}"
     fi
@@ -7310,7 +7311,11 @@ _php_libs_fix() {
       fi
       if [ ! -e "/usr/include/gmp.h" ] \
         && [ -e "/usr/include/x86_64-linux-gnu/gmp.h" ]; then
-        ln -sfn /usr/include/x86_64-linux-gnu/gmp.h  /usr/include/gmp.h
+        ln -sfn /usr/include/x86_64-linux-gnu/gmp.h /usr/include/gmp.h
+      fi
+      if [ ! -e "/usr/include/lzf.h" ] \
+        && [ -e "/usr/include/liblzf/lzf.h" ]; then
+        ln -sfn /usr/include/liblzf/lzf.h /usr/include/lzf.h
       fi
       if [ ! -e "/usr/lib/x86_64-linux-gnu/librtmp.so.0" ] \
         && [ -e "/usr/lib/x86_64-linux-gnu/librtmp.so.1" ]; then

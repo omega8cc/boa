@@ -548,7 +548,7 @@ _if_install_ruby() {
         rm -rf ruby*
         _get_dev_src "ruby-${_RUBY_VRN}.tar.gz"
         cd /var/opt/ruby-${_RUBY_VRN}
-        _mrun "./configure" 2> /dev/null
+        _mrun "bash ./configure" 2> /dev/null
         _mrun "make -j $(nproc)" 2> /dev/null
         _mrun "make install" 2> /dev/null
         ldconfig 2> /dev/null
