@@ -2899,7 +2899,7 @@ _if_install_wkhtmltox() {
   fi
   ###--------------------###
   _apt_clean_update
-  _mrun "${_INSTAPP} gdebi-core fonts-thai-tlwg" 2> /dev/null
+  _mrun "${_INSTAPP} gdebi-core fonts-thai-tlwg wkhtmltopdf" 2> /dev/null
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   _X86_64_TEST=$(uname -m 2>&1)
   _WOX_IS=OLD
