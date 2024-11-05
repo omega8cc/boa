@@ -2990,9 +2990,9 @@ _if_install_wkhtmltox() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: Installing wkhtmltox tools v.${_WKHTMLTOX_VRN}.${_WKHTML_SYS_RV}..."
     fi
-    mkdir -p /var/opt
-    cd /var/opt
-    rm -rf /var/opt/wkhtmltox*
+    mkdir -p /var/opt/wkhtmltox
+    cd /var/opt/wkhtmltox
+    rm -rf /var/opt/wkhtmltox/*
     _mrun "${_INSTAPP} xfonts-75dpi xfonts-base" 2> /dev/null
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _get_dev_src "wkhtmltox/wkhtmltox_${_WKHTMLTOX_VRN}.${_WKHTML_SYS_RV}_amd64.deb.gz"
