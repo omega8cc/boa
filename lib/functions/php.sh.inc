@@ -725,20 +725,17 @@ _install_php_extensions() {
   _get_dev_src "phpredis-${_USE_PHPREDIS}.tar.gz"
   cd /var/opt/phpredis
   _mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-  if [ -e "/usr/include/lzf.h" ] && [ -e "/lib/x86_64-linux-gnu/liblzf.so" ]; then
+  if [ -e "/var/opt/phpredis/liblzf/lzf.h" ] && [ -e "/lib/x86_64-linux-gnu/liblzf.so" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: _PHPREDIS_BUILD is ${_PHPREDIS_BUILD}"
     fi
-    _mrun "LDFLAGS=-L/lib/x86_64-linux-gnu \
-      LIBS=\"$LIBS -llzf\" \
-      bash ./configure ${_PHPREDIS_BUILD} --with-php-config=${_T_PHP_CFG}" 2> /dev/null
   else
     _PHPREDIS_BUILD="--enable-redis-igbinary"
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: _PHPREDIS_BUILD is ${_PHPREDIS_BUILD}"
     fi
-    _mrun "bash ./configure ${_PHPREDIS_BUILD} --with-php-config=${_T_PHP_CFG}" 2> /dev/null
   fi
+  _mrun "bash ./configure ${_PHPREDIS_BUILD} --with-php-config=${_T_PHP_CFG}" 2> /dev/null
   _mrun "make -j $(nproc) --quiet" 2> /dev/null
   _mrun "make --quiet install" 2> /dev/null
   ldconfig 2> /dev/null
@@ -1117,20 +1114,17 @@ _php_extensions_update() {
     _get_dev_src "phpredis-${_USE_PHPREDIS}.tar.gz"
     cd /var/opt/phpredis
     _mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-    if [ -e "/usr/include/lzf.h" ] && [ -e "/lib/x86_64-linux-gnu/liblzf.so" ]; then
+    if [ -e "/var/opt/phpredis/liblzf/lzf.h" ] && [ -e "/lib/x86_64-linux-gnu/liblzf.so" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: _PHPREDIS_BUILD is ${_PHPREDIS_BUILD}"
       fi
-      _mrun "LDFLAGS=-L/lib/x86_64-linux-gnu \
-        LIBS=\"$LIBS -llzf\" \
-        bash ./configure ${_PHPREDIS_BUILD} --with-php-config=${_T_PHP_CFG}" 2> /dev/null
     else
       _PHPREDIS_BUILD="--enable-redis-igbinary"
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: _PHPREDIS_BUILD is ${_PHPREDIS_BUILD}"
       fi
-      _mrun "bash ./configure ${_PHPREDIS_BUILD} --with-php-config=${_T_PHP_CFG}" 2> /dev/null
     fi
+    _mrun "bash ./configure ${_PHPREDIS_BUILD} --with-php-config=${_T_PHP_CFG}" 2> /dev/null
     _mrun "make -j $(nproc) --quiet" 2> /dev/null
     _mrun "make --quiet install" 2> /dev/null
     ldconfig 2> /dev/null
