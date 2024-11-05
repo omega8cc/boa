@@ -706,7 +706,7 @@ _install_php_extensions() {
   _USE_PHPREDIS=
   _PHPREDIS_BUILD=
   if [ "$1" = "56" ]; then
-    _USE_PHPREDIS="${_PHPREDIS_THREE_VRN}"
+    _USE_PHPREDIS="${_PHPREDIS_FOUR_VRN}"
     _PHPREDIS_BUILD="--enable-redis-igbinary --enable-redis-lzf"
   elif [ "$1" = "70" ] || [ "$1" = "71" ]; then
     _USE_PHPREDIS="${_PHPREDIS_FIVE_VRN}"
@@ -1093,7 +1093,7 @@ _php_extensions_update() {
   _USE_PHPREDIS=
   _PHPREDIS_BUILD=
   if [ "$1" = "56" ]; then
-    _USE_PHPREDIS="${_PHPREDIS_THREE_VRN}"
+    _USE_PHPREDIS="${_PHPREDIS_FOUR_VRN}"
     _PHPREDIS_BUILD="--enable-redis-igbinary --enable-redis-lzf"
   elif [ "$1" = "70" ] || [ "$1" = "71" ]; then
     _USE_PHPREDIS="${_PHPREDIS_FIVE_VRN}"
