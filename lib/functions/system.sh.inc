@@ -2899,7 +2899,7 @@ _if_install_wkhtmltox() {
   fi
   ###--------------------###
   _apt_clean_update
-  _mrun "${_INSTAPP} gdebi-core fonts-thai-tlwg" 2> /dev/null
+  _mrun "${_INSTAPP} gdebi-core fonts-thai-tlwg wkhtmltopdf" 2> /dev/null
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   _X86_64_TEST=$(uname -m 2>&1)
   _WOX_IS=OLD
@@ -2910,7 +2910,7 @@ _if_install_wkhtmltox() {
   if [ "${_OS_CODE}" = "jessie" ]; then
     _WOX_ITD=$(wkhtmltopdf --version 2>&1)
   fi
-  if [[ "${_WOX_ITD}" =~ "0.12.6" ]]; then
+  if [[ "${_WOX_ITD}" =~ "0.12.6.1" ]]; then
     if [ "${_OS_CODE}" = "daedalus" ] \
       || [ "${_OS_CODE}" = "chimaera" ] \
       || [ "${_OS_CODE}" = "beowulf" ] \
