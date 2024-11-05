@@ -2990,15 +2990,15 @@ _if_install_wkhtmltox() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: Installing wkhtmltox tools v.${_WKHTMLTOX_VRN}.${_WKHTML_SYS_RV}..."
     fi
-    mkdir -p /var/opt/wkhtmltox
-    cd /var/opt/wkhtmltox
-    rm -rf /var/opt/wkhtmltox/*
+    mkdir -p /var/opt/
+    cd /var/opt/
+    rm -rf /var/opt/wkhtmltox*
     _mrun "${_INSTAPP} xfonts-75dpi xfonts-base" 2> /dev/null
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      _get_dev_src "wkhtmltox/wkhtmltox_${_WKHTMLTOX_VRN}.${_WKHTML_SYS_RV}_amd64.deb.gz"
+      _get_dev_src "wkhtmltox_${_WKHTMLTOX_VRN}.${_WKHTML_SYS_RV}_amd64.deb.gz"
       gdebi -n "/var/opt/wkhtmltox/wkhtmltox_${_WKHTMLTOX_VRN}.${_WKHTML_SYS_RV}_amd64.deb"
     else
-      _get_dev_src "wkhtmltox/wkhtmltox_${_WKHTMLTOX_VRN}.${_WKHTML_SYS_RV}_amd64.deb.gz" 2> /dev/null
+      _get_dev_src "wkhtmltox_${_WKHTMLTOX_VRN}.${_WKHTML_SYS_RV}_amd64.deb.gz" 2> /dev/null
       gdebi -n "/var/opt/wkhtmltox/wkhtmltox_${_WKHTMLTOX_VRN}.${_WKHTML_SYS_RV}_amd64.deb" 2> /dev/null
     fi
     _mrun "apt-get install -f -y" 2> /dev/null
