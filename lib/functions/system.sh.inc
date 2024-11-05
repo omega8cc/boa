@@ -2911,15 +2911,19 @@ _if_install_wkhtmltox() {
     _WOX_ITD=$(wkhtmltopdf --version 2>&1)
   fi
   if [[ "${_WOX_ITD}" =~ "0.12.6" ]]; then
-    if [ "${_OS_CODE}" = "chimaera" ] \
+    if [ "${_OS_CODE}" = "daedalus" ] \
+      || [ "${_OS_CODE}" = "chimaera" ] \
       || [ "${_OS_CODE}" = "beowulf" ] \
       || [ "${_OS_CODE}" = "bullseye" ] \
       || [ "${_OS_CODE}" = "buster" ] \
       || [ "${_OS_CODE}" = "stretch" ]; then
       _WOX_IS=NEW
-      if [ "${_OS_CODE}" = "chimaera" ] \
+      if [ "${_OS_CODE}" = "daedalus" ] \
+        || [ "${_OS_CODE}" = "bookworm" ]; then
+        _WKHTMLTOX_VRN="12.6.1-3"
+      elif [ "${_OS_CODE}" = "chimaera" ] \
         || [ "${_OS_CODE}" = "bullseye" ]; then
-        _WKHTMLTOX_VRN="12.6.1-2"
+        _WKHTMLTOX_VRN="12.6.1-3"
       else
         _WKHTMLTOX_VRN="12.6-1"
       fi
@@ -2931,7 +2935,8 @@ _if_install_wkhtmltox() {
       _WKHTMLTOX_VRN="12.5-1"
     fi
   fi
-  if [ "${_OS_CODE}" = "chimaera" ] \
+  if [ "${_OS_CODE}" = "daedalus" ] \
+    || [ "${_OS_CODE}" = "chimaera" ] \
     || [ "${_OS_CODE}" = "beowulf" ] \
     || [ "${_OS_CODE}" = "bullseye" ] \
     || [ "${_OS_CODE}" = "buster" ] \
@@ -2966,9 +2971,7 @@ _if_install_wkhtmltox() {
       elif [ "${_OS_CODE}" = "chimaera" ]; then
         _WKHTML_SYS_RV="bullseye"
       elif [ "${_OS_CODE}" = "daedalus" ]; then
-        _WKHTML_SYS_RV="none"
-      elif [ "${_OS_CODE}" = "bookworm" ]; then
-        _WKHTML_SYS_RV="none"
+        _WKHTML_SYS_RV="bookworm"
       else
         _WKHTML_SYS_RV="${_OS_CODE}"
       fi
