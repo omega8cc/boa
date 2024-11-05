@@ -1109,7 +1109,18 @@ _php_extensions_update() {
     _get_dev_src "phpredis-${_USE_PHPREDIS}.tar.gz"
     cd /var/opt/phpredis
     _mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-    _mrun "bash ./configure ${_PHPREDIS_BUILD} --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+    if [ -e "/usr/include/liblzf/lzf.h" ]; then
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        _msg "INFO: _PHPREDIS_BUILD is ${_PHPREDIS_BUILD}"
+      fi
+      _mrun "CFLAGS="-I/usr/include/liblzf" CPPFLAGS="-I/usr/include/liblzf" ./configure ${_PHPREDIS_BUILD} --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+    else
+      _PHPREDIS_BUILD="--enable-redis-igbinary"
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        _msg "INFO: _PHPREDIS_BUILD is ${_PHPREDIS_BUILD}"
+      fi
+      _mrun "./configure ${_PHPREDIS_BUILD} --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+    fi
     _mrun "make -j $(nproc) --quiet" 2> /dev/null
     _mrun "make --quiet install" 2> /dev/null
     ldconfig 2> /dev/null
