@@ -1,0 +1,164 @@
+#!/bin/bash
+
+export HOME=/root
+export SHELL=/bin/bash
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+
+_check_root() {
+  if [ `whoami` != "root" ]; then
+    echo "ERROR: This script should be run as a root user"
+    exit 1
+  fi
+}
+_check_root
+
+# Function to check if a package is installed
+_check_and_install_package() {
+  if ! dpkg -l | grep -qw "$1"; then
+    echo "Installing from packages $1..."
+    apt-get install -y "$1" > /dev/null
+  fi
+}
+
+# Update package list silently
+apt-get update -qq
+
+# List of required packages
+_REQUIRED_PKG=("fio" "jq")
+
+# Install required packages silently
+for _pkg in "${_REQUIRED_PKG[@]}"; do
+  _check_and_install_package "$_pkg"
+done
+
+# Check if sysbench is installed
+if ! command -v sysbench &> /dev/null; then
+  echo "Compiling sysbench from source without MySQL support..."
+  git clone https://github.com/akopytov/sysbench.git
+  cd sysbench || exit
+  ./autogen.sh
+  ./configure --without-mysql
+  make -j$(nproc)
+  make install
+  cd ..
+fi
+
+echo -e "\nStarting performance tests...\n"
+
+### CPU Performance Test - Multi-threaded
+echo "Running CPU performance test (multi-threaded) with sysbench..."
+_CPU_TEST_MT=$(sysbench cpu --threads=$(nproc) --time=30 run 2>/dev/null)
+_CPU_EVENTS_MT=$(echo "${_CPU_TEST_MT}" | awk '/events per second:/ {print $4}')
+_CPU_LATENCY_MT=$(echo "${_CPU_TEST_MT}" | awk '/avg:/ {print $2}')
+
+### CPU Performance Test - Single-threaded
+echo "Running CPU performance test (single-threaded) with sysbench..."
+_CPU_TEST_ST=$(sysbench cpu --threads=1 --time=30 run 2>/dev/null)
+_CPU_EVENTS_ST=$(echo "${_CPU_TEST_ST}" | awk '/events per second:/ {print $4}')
+_CPU_LATENCY_ST=$(echo "${_CPU_TEST_ST}" | awk '/avg:/ {print $2}')
+
+### Memory Performance Test
+echo "Running Memory performance test with sysbench..."
+_MEM_TEST=$(sysbench memory --threads=$(nproc) --time=30 run 2>/dev/null)
+_MEM_TRANSFER_SPEED=$(echo "${_MEM_TEST}" | awk '/transferred/ {gsub("[()]","",$(NF-1)); print $(NF-1)" "$(NF)}')
+_MEM_LATENCY=$(echo "${_MEM_TEST}" | awk '/avg:/ {print $2}')
+
+### PHP Performance Test
+echo "Running PHP performance test..."
+_PHP_TEST_SCRIPT="/tmp/phpbench.php"
+cat << 'EOF' > "${_PHP_TEST_SCRIPT}"
+<?php
+$start = microtime(true);
+for ($i = 0; $i < 10000000; $i++) {
+  $a = md5($i);
+}
+$end = microtime(true);
+echo ($end - $start);
+?>
+EOF
+
+_PHP_TEST_TIME=$(php "${_PHP_TEST_SCRIPT}")
+rm "${_PHP_TEST_SCRIPT}"
+
+### Disk I/O Performance Test with fio
+
+# Function to run fio test on a given directory
+_run_fio_test() {
+  local _test_dir="$1"
+  local _mount_point="$2"
+  local _output_file="$3"
+
+  mkdir -p "${_test_dir}"
+  cd "${_test_dir}" || exit
+
+  fio --name=randreadwrite --directory="${_test_dir}" --ioengine=libaio --iodepth=64 --rw=randrw \
+    --bs=4k --direct=1 --size=1G --numjobs=4 --runtime=60 --group_reporting --output-format=json > "${_output_file}" 2>/dev/null
+
+  cd - > /dev/null
+  rm -rf "${_test_dir}"
+}
+
+echo "Detecting mounted ext4 filesystems..."
+# Get a list of mounted ext4 filesystems
+_EXT4_MOUNTS=($(df -hT -t ext4 | awk 'NR>1 {print $7}'))
+
+# Declare arrays to store results
+declare -A _FIO_IOPS_READ
+declare -A _FIO_IOPS_WRITE
+declare -A _FIO_BW_READ
+declare -A _FIO_BW_WRITE
+declare -A _FIO_LATENCY_READ
+declare -A _FIO_LATENCY_WRITE
+
+# Run fio test on each ext4 filesystem
+for _MOUNT_POINT in "${_EXT4_MOUNTS[@]}"; do
+  echo "Running Disk I/O performance test on ${_MOUNT_POINT}..."
+  # Replace slashes with underscores for directory names
+  _SAFE_MOUNT_POINT=$(echo "${_MOUNT_POINT}" | sed 's#/#_#g')
+  _TEST_DIR="${_MOUNT_POINT}/fio_test_${_SAFE_MOUNT_POINT}"
+  _OUTPUT_FILE="/tmp/fio_output_${_SAFE_MOUNT_POINT}.json"
+
+  _run_fio_test "${_TEST_DIR}" "${_MOUNT_POINT}" "${_OUTPUT_FILE}"
+
+  # Parse fio output using jq
+  _FIO_RESULT=$(cat "${_OUTPUT_FILE}")
+  _FIO_IOPS_READ["${_MOUNT_POINT}"]=$(echo "${_FIO_RESULT}" | jq '.jobs[0].read.iops')
+  _FIO_IOPS_WRITE["${_MOUNT_POINT}"]=$(echo "${_FIO_RESULT}" | jq '.jobs[0].write.iops')
+  _FIO_BW_READ["${_MOUNT_POINT}"]=$(echo "${_FIO_RESULT}" | jq '.jobs[0].read.bw' | awk '{printf "%.2f MB/s", $1/1024}')
+  _FIO_BW_WRITE["${_MOUNT_POINT}"]=$(echo "${_FIO_RESULT}" | jq '.jobs[0].write.bw' | awk '{printf "%.2f MB/s", $1/1024}')
+  _FIO_LATENCY_READ["${_MOUNT_POINT}"]=$(echo "${_FIO_RESULT}" | jq '.jobs[0].read.clat.mean' | awk '{printf "%.2f ms", $1/1000}')
+  _FIO_LATENCY_WRITE["${_MOUNT_POINT}"]=$(echo "${_FIO_RESULT}" | jq '.jobs[0].write.clat.mean' | awk '{printf "%.2f ms", $1/1000}')
+
+  # Clean up fio output file
+  rm "${_OUTPUT_FILE}"
+done
+
+### Display Results
+echo -e "\n======= Performance Test Summary ======="
+
+echo -e "\nCPU Performance (Multi-threaded):"
+echo "  - Events per Second: ${_CPU_EVENTS_MT}"
+echo "  - Average Latency: ${_CPU_LATENCY_MT} ms"
+
+echo -e "\nCPU Performance (Single-threaded):"
+echo "  - Events per Second: ${_CPU_EVENTS_ST}"
+echo "  - Average Latency: ${_CPU_LATENCY_ST} ms"
+
+echo -e "\nMemory Performance:"
+echo "  - Transfer Speed: ${_MEM_TRANSFER_SPEED}"
+echo "  - Average Latency: ${_MEM_LATENCY} ms"
+
+echo -e "\nPHP Performance:"
+echo "  - Time Taken for Script Execution: ${_PHP_TEST_TIME} seconds"
+
+for _MOUNT_POINT in "${_EXT4_MOUNTS[@]}"; do
+  echo -e "\nDisk I/O Performance on ${_MOUNT_POINT}:"
+  echo "  - Read IOPS: ${_FIO_IOPS_READ["${_MOUNT_POINT}"]}"
+  echo "  - Write IOPS: ${_FIO_IOPS_WRITE["${_MOUNT_POINT}"]}"
+  echo "  - Read Bandwidth: ${_FIO_BW_READ["${_MOUNT_POINT}"]}"
+  echo "  - Write Bandwidth: ${_FIO_BW_WRITE["${_MOUNT_POINT}"]}"
+  echo "  - Average Read Latency: ${_FIO_LATENCY_READ["${_MOUNT_POINT}"]}"
+  echo "  - Average Write Latency: ${_FIO_LATENCY_WRITE["${_MOUNT_POINT}"]}"
+done
+
+echo -e "\nPerformance tests completed."

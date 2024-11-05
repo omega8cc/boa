@@ -20,9 +20,9 @@ Please read this email thoroughly. It contains important information required to
 1. LOGGING INTO YOUR AEGIR CONTROL PANEL
 ----------------------------------------
 
-To access your control panel, use the one-time login link you will receive in a separate email.
+To access your control panel, visit this URL: https://aegir.url.name
 
-If the one-time link no longer works, use the initial username and password sent in another email, or reset your password using your email address as your username at: https://aegir.url.name/user/password
+If your account has been migrated, use the previous username and password you have already used before, or reset your password using your email address as your username at: https://aegir.url.name/user/password
 
 Please double-check your spam folder to ensure all emails are delivered.
 
@@ -37,8 +37,6 @@ To create a new site:
 2. After adding a site, click the Home icon on the site's node in Aegir to access the admin area.
 
 If the Home icon no longer links to the one-time login page, run the "Reset password" task on the site's node, and once complete, click the Home icon again.
-
-A standard one-time login link will also be sent to your email address.
 
 For more details on site import and platform management, refer to:
 - Import Your Sites to Aegir: https://omega8.cc/import-your-sites-to-aegir-in-8-easy-steps-109

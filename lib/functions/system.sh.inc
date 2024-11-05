@@ -2892,127 +2892,24 @@ _php_install_deps() {
 }
 
 #
-# Install wkhtmltopdf and wkhtmltoimage.
-_if_install_wkhtmltox() {
+# Fix wkhtmltopdf and wkhtmltoimage symlinks.
+_fix_wkhtml() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "PROC: _if_install_wkhtmltox"
+    _msg "PROC: _fix_wkhtml"
   fi
-  ###--------------------###
-  _apt_clean_update
-  _mrun "${_INSTAPP} fonts-thai-tlwg" 2> /dev/null
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
-  _X86_64_TEST=$(uname -m 2>&1)
-  _WOX_IS=OLD
-  _WOX_ITD=$(wkhtmltopdf --version 2>&1 \
-    | tr -d "\n" \
-    | cut -d" " -f2 \
-    | awk '{ print $1}')
-  if [ "${_OS_CODE}" = "jessie" ]; then
-    _WOX_ITD=$(wkhtmltopdf --version 2>&1)
+  if [ -x "/usr/local/bin/wkhtmltopdf" ] \
+    && [ -L "/usr/bin/wkhtmltopdf" ]; then
+    rm -f /usr/bin/wkhtmltopdf
+    cp -af /usr/local/bin/wkhtmltopdf /usr/bin/wkhtmltopdf
+    chgrp root /usr/bin/wkhtmltopdf &> /dev/null
+    chmod 755 /usr/bin/wkhtmltopdf &> /dev/null
   fi
-  if [[ "${_WOX_ITD}" =~ "0.12.6" ]]; then
-    if [ "${_OS_CODE}" = "chimaera" ] \
-      || [ "${_OS_CODE}" = "beowulf" ] \
-      || [ "${_OS_CODE}" = "bullseye" ] \
-      || [ "${_OS_CODE}" = "buster" ] \
-      || [ "${_OS_CODE}" = "stretch" ]; then
-      _WOX_IS=NEW
-      if [ "${_OS_CODE}" = "chimaera" ] \
-        || [ "${_OS_CODE}" = "bullseye" ]; then
-        _WKHTMLTOX_VRN="12.6.1-2"
-      else
-        _WKHTMLTOX_VRN="12.6-1"
-      fi
-    fi
-  fi
-  if [[ "${_WOX_ITD}" =~ "0.12.5" ]]; then
-    if [ "${_OS_CODE}" = "jessie" ]; then
-      _WOX_IS=NEW
-      _WKHTMLTOX_VRN="12.5-1"
-    fi
-  fi
-  if [ "${_OS_CODE}" = "chimaera" ] \
-    || [ "${_OS_CODE}" = "beowulf" ] \
-    || [ "${_OS_CODE}" = "bullseye" ] \
-    || [ "${_OS_CODE}" = "buster" ] \
-    || [ "${_OS_CODE}" = "stretch" ] \
-    || [ "${_OS_CODE}" = "jessie" ]; then
-    if [ "${_WOX_IS}" = "OLD" ] \
-      || [ ! -x "/usr/local/bin/wkhtmltopdf" ] \
-      || [ ! -x "/usr/local/bin/wkhtmltoimage" ] \
-      || [ ! -f "/usr/bin/wkhtmltopdf" ] \
-      || [ ! -f "/usr/bin/wkhtmltoimage" ] \
-      || [ -L "/usr/bin/wkhtmltopdf" ] \
-      || [ -L "/usr/bin/wkhtmltoimage" ] \
-      || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        _msg "INFO: Installing wkhtmltox tools v.0.${_WKHTMLTOX_VRN}..."
-      fi
-      _apt_clean_update
-      _mrun "${_INSTAPP} xfonts-75dpi xfonts-base" 2> /dev/null
-      _mrun "${_INSTAPP} wkhtmltopdf" 2> /dev/null
-    fi
-  else
-    if [ "${_WOX_IS}" = "OLD" ] \
-      || [ ! -x "/usr/local/bin/wkhtmltopdf" ] \
-      || [ ! -x "/usr/local/bin/wkhtmltoimage" ] \
-      || [ ! -f "/usr/bin/wkhtmltopdf" ] \
-      || [ ! -f "/usr/bin/wkhtmltoimage" ] \
-      || [ -L "/usr/bin/wkhtmltopdf" ] \
-      || [ -L "/usr/bin/wkhtmltoimage" ] \
-      || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
-      if [ "${_OS_CODE}" = "beowulf" ]; then
-        _WKHTML_SYS_RV="buster"
-      elif [ "${_OS_CODE}" = "chimaera" ]; then
-        _WKHTML_SYS_RV="bullseye"
-      elif [ "${_OS_CODE}" = "daedalus" ]; then
-        _WKHTML_SYS_RV="none"
-      elif [ "${_OS_CODE}" = "bookworm" ]; then
-        _WKHTML_SYS_RV="none"
-      else
-        _WKHTML_SYS_RV="${_OS_CODE}"
-      fi
-      if [ "${_WKHTML_SYS_RV}" != "none" ] && [ "${_X86_64_TEST}" = "x86_64" ]; then
-        SYSTEM_ARCH="x86_64"
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "INFO: Installing wkhtmltox tools v.0.${_WKHTMLTOX_VRN}..."
-        fi
-        cd /var/opt
-        rm -rf wkhtmltox*
-        mkdir -p /var/opt/wkhtmltox
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _mrun "${_INSTAPP} xfonts-75dpi xfonts-base" 2> /dev/null
-          _get_dev_src "wkhtmltox/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_WKHTML_SYS_RV}_amd64.deb.gz"
-          dpkg -i "/var/opt/wkhtmltox/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_WKHTML_SYS_RV}_amd64.deb"
-          _mrun "apt-get install -f -y" 2> /dev/null
-        else
-          _mrun "${_INSTAPP} xfonts-75dpi xfonts-base" 2> /dev/null
-          _get_dev_src "wkhtmltox/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_WKHTML_SYS_RV}_amd64.deb.gz" 2> /dev/null
-          dpkg -i "/var/opt/wkhtmltox/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_WKHTML_SYS_RV}_amd64.deb" 2> /dev/null
-          _mrun "apt-get install -f -y" 2> /dev/null
-        fi
-      fi
-      if [ -x "/usr/local/bin/wkhtmltopdf" ]; then
-        if [ ! -e "/usr/bin/wkhtmltopdf-0.12.4" ]; then
-          mv -f /usr/bin/wkhtmltopdf /usr/bin/wkhtmltopdf-0.12.4 &> /dev/null
-        fi
-        rm -f /usr/bin/wkhtmltopdf
-        cp -af /usr/local/bin/wkhtmltopdf /usr/bin/wkhtmltopdf
-      fi
-      if [ -x "/usr/local/bin/wkhtmltoimage" ]; then
-        if [ ! -e "/usr/bin/wkhtmltoimage-0.12.4" ]; then
-          mv -f /usr/bin/wkhtmltoimage /usr/bin/wkhtmltoimage-0.12.4 &> /dev/null
-        fi
-        rm -f /usr/bin/wkhtmltoimage
-        cp -af /usr/local/bin/wkhtmltoimage /usr/bin/wkhtmltoimage
-      fi
-      if [ -x "/usr/local/bin/wkhtmltoimage" ] \
-        && [ -x "/usr/local/bin/wkhtmltopdf" ]; then
-        touch ${_pthLog}/wkhtmltox-${_WKHTMLTOX_VRN}-fix.log
-        _msg "INFO: The wkhtmltox tools v.0.${_WKHTMLTOX_VRN} installation complete"
-      fi
-      cd /var/opt
-    fi
+  if [ -x "/usr/local/bin/wkhtmltoimage" ] \
+    && [ -L "/usr/bin/wkhtmltoimage" ]; then
+    rm -f /usr/bin/wkhtmltoimage
+    cp -af /usr/local/bin/wkhtmltoimage /usr/bin/wkhtmltoimage
+    chgrp root /usr/bin/wkhtmltoimage &> /dev/null
+    chmod 755 /usr/bin/wkhtmltoimage &> /dev/null
   fi
   if [ ! -x "/usr/local/bin/wkhtmltopdf" ] \
     && [ -x "/usr/bin/wkhtmltopdf" ]; then
@@ -3027,6 +2924,91 @@ _if_install_wkhtmltox() {
     cp -af /usr/bin/wkhtmltoimage /usr/local/bin/wkhtmltoimage
     chgrp root /usr/local/bin/wkhtmltoimage &> /dev/null
     chmod 755 /usr/local/bin/wkhtmltoimage &> /dev/null
+  fi
+}
+
+#
+# Install wkhtmltopdf and wkhtmltoimage.
+_if_install_wkhtmltox() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _if_install_wkhtmltox"
+  fi
+  ###--------------------###
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  _isWkhtmltox=$(which wkhtmltopdf 2>&1)
+  if [ -z "${_isWkhtmltox}" ] \
+    || [ ! -e "${_isWkhtmltox}" ] \
+    || [ ! -x "/usr/local/bin/wkhtmltopdf" ] \
+    || [ ! -x "/usr/local/bin/wkhtmltoimage" ] \
+    || [ ! -f "/usr/bin/wkhtmltopdf" ] \
+    || [ ! -f "/usr/bin/wkhtmltoimage" ] \
+    || [ -L "/usr/bin/wkhtmltopdf" ] \
+    || [ -L "/usr/bin/wkhtmltoimage" ] \
+    || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: Installing wkhtmltopdf from ${_OS_CODE} packages..."
+    fi
+    _apt_clean_update
+    _mrun "${_INSTAPP} gdebi-core xfonts-75dpi xfonts-base fonts-thai-tlwg wkhtmltopdf" 2> /dev/null
+  fi
+  _WOX_ITD=$(wkhtmltopdf --version 2>&1 \
+    | tr -d "\n" \
+    | cut -d" " -f2 \
+    | awk '{ print $1}')
+  if [ "${_OS_CODE}" = "jessie" ]; then
+    _WOX_ITD=$(wkhtmltopdf --version 2>&1)
+  fi
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "INFO: Installed wkhtmltopdf version ${_WOX_ITD}"
+  fi
+
+  if [ "${_OS_CODE}" = "daedalus" ] \
+    || [ "${_OS_CODE}" = "bookworm" ] \
+    || [ "${_OS_CODE}" = "chimaera" ] \
+    || [ "${_OS_CODE}" = "bullseye" ]; then
+    _WKHTMLTOX_VRN="0.12.6.1-3"
+    _WKHTMLTOPDF_VRN="0.12.6.1"
+  elif [ "${_OS_CODE}" = "jessie" ]; then
+    _WKHTMLTOX_VRN="0.12.5-1"
+    _WKHTMLTOPDF_VRN="0.12.5"
+  else
+    _WKHTMLTOX_VRN="0.12.6-1"
+    _WKHTMLTOPDF_VRN="0.12.6"
+  fi
+
+  if [ "${_OS_CODE}" = "beowulf" ]; then
+    _WKHTML_SYS_RV="buster"
+  elif [ "${_OS_CODE}" = "chimaera" ]; then
+    _WKHTML_SYS_RV="bullseye"
+  elif [ "${_OS_CODE}" = "daedalus" ]; then
+    _WKHTML_SYS_RV="bookworm"
+  else
+    _WKHTML_SYS_RV="${_OS_CODE}"
+  fi
+
+  if [ "${_WOX_ITD}" != "${_WKHTMLTOPDF_VRN}" ]; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: Installing wkhtmltox tools v.${_WKHTMLTOX_VRN}.${_WKHTML_SYS_RV}..."
+    fi
+    mkdir -p /var/opt/
+    cd /var/opt/
+    rm -rf /var/opt/wkhtmltox*
+    _mrun "${_INSTAPP} xfonts-75dpi xfonts-base" 2> /dev/null
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _get_dev_src "wkhtmltox_${_WKHTMLTOX_VRN}.${_WKHTML_SYS_RV}_amd64.deb.gz"
+      gdebi -n "/var/opt/wkhtmltox_${_WKHTMLTOX_VRN}.${_WKHTML_SYS_RV}_amd64.deb"
+    else
+      _get_dev_src "wkhtmltox_${_WKHTMLTOX_VRN}.${_WKHTML_SYS_RV}_amd64.deb.gz" 2> /dev/null
+      gdebi -n "/var/opt/wkhtmltox_${_WKHTMLTOX_VRN}.${_WKHTML_SYS_RV}_amd64.deb" 2> /dev/null
+    fi
+    _mrun "apt-get install -f -y" 2> /dev/null
+    if [ -x "/usr/local/bin/wkhtmltoimage" ] \
+      && [ -x "/usr/local/bin/wkhtmltopdf" ]; then
+      touch ${_pthLog}/wkhtmltox-${_WKHTMLTOX_VRN}-fix.log
+      _msg "INFO: The wkhtmltox tools v.${_WKHTMLTOX_VRN} installation complete"
+    fi
+    cd /var/opt
+    _fix_wkhtml
   fi
 }
 
@@ -3843,6 +3825,35 @@ _ssl_apt_locks_update() {
     echo "zlib1g hold" | dpkg --set-selections &> /dev/null
     echo "zlib1g-dev hold" | dpkg --set-selections &> /dev/null
   fi
+}
+
+#
+# Sync OpenSSL paths.
+_ssl_paths_sync() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _ssl_paths_sync"
+  fi
+
+  _SSL_MODERN_BINARY="/usr/local/ssl3/bin/openssl"
+  _SSL_MODERN_PATH="/usr/local/ssl3"
+  _SSL_MODERN_LIB_PATH="${_SSL_MODERN_PATH}/lib64"
+
+  _SSL_LEGACY_BINARY="/usr/local/ssl/bin/openssl"
+  _SSL_LEGACYL_PATH="/usr/local/ssl"
+  _SSL_LEGACY_LIB_PATH="${_SSL_LEGACYL_PATH}/lib"
+
+  sed -i "s/.*ssl.*//g" /etc/ld.so.conf.d/libc.conf
+
+  if [ -e "${_SSL_MODERN_LIB_PATH}" ]; then
+    echo "${_SSL_MODERN_LIB_PATH}" >> /etc/ld.so.conf.d/libc.conf
+  fi
+
+  if [ -e "${_SSL_LEGACY_LIB_PATH}" ]; then
+    echo "${_SSL_LEGACY_LIB_PATH}" >> /etc/ld.so.conf.d/libc.conf
+  fi
+
+  sed -i "/^$/d" /etc/ld.so.conf.d/libc.conf &> /dev/null
+  ldconfig 2> /dev/null
 }
 
 #
@@ -5322,49 +5333,37 @@ _run_aptitude_deps_install() {
   _apt_clean_update
   _mrun "apt-get remove percona-xtrabackup-24 -y --purge --auto-remove -qq" 2> /dev/null
   _mrun "apt-get autoremove -y" 2> /dev/null
-  _mrun "${_INSTAPP} build-essential libsasl2-modules" 2> /dev/null
-  _mrun "${_INSTAPP} time vim cvs makepasswd" 2> /dev/null
-  _mrun "${_INSTAPP} man-db dnsutils sudo symlinks iptables" 2> /dev/null
-  _mrun "${_INSTAPP} autoconf automake autotools-dev m4 bc" 2> /dev/null
+  _mrun "${_INSTAPP} time vim cvs makepasswd man-db dnsutils sudo symlinks iptables" 2> /dev/null
+  _mrun "${_INSTAPP} build-essential libsasl2-modules autoconf automake autotools-dev m4 bc" 2> /dev/null
   if [ ! -x "/usr/local/bin/curl" ]; then
     _mrun "apt-get build-dep curl -y" 2> /dev/null
     _mrun "${_INSTAPP} curl" 2> /dev/null
   fi
   _mrun "apt-get remove libssl1.0-dev -y --purge --auto-remove -qq" 2> /dev/null
-  _mrun "${_INSTAPP} libssl-dev" 2> /dev/null
-  _mrun "${_INSTAPP} libc-client2007e libc-client2007e-dev" 2> /dev/null
-  _mrun "${_INSTAPP} mcrypt libc-client-dev" 2> /dev/null
+  _mrun "${_INSTAPP} libssl-dev libc-client2007e libc-client2007e-dev mcrypt libc-client-dev" 2> /dev/null
   if [ "${_OS_DIST}" = "Devuan" ]; then
     _mrun "${_INSTAPP} apticron aptitude apt-listchanges" 2> /dev/null
   else
     _mrun "${_INSTAPP} apticron aptitude" 2> /dev/null
     _mrun "dpkg --remove --force-remove-reinstreq apt-listchanges" 2> /dev/null
   fi
-  _mrun "${_INSTAPP} sysstat telnet cron gnupg2 gnupg" 2> /dev/null
-  _mrun "${_INSTAPP} unzip unrtf wdiff pwgen flex re2c" 2> /dev/null
-  _mrun "${_INSTAPP} rsync strace ntpdate python-dev" 2> /dev/null
-  _mrun "${_INSTAPP} mc whois zlib1g zlib1g-dev librsync-dev" 2> /dev/null
-  _mrun "${_INSTAPP} sqlite3 libsqlite3-dev s4cmd" 2> /dev/null
-  _mrun "${_INSTAPP} ssh ssl-cert libpam-umask shtool" 2> /dev/null
-  _mrun "${_INSTAPP} xml-core xml2 xpdf libtool rrdtool" 2> /dev/null
-  _mrun "${_INSTAPP} ncurses-dev ncurses-term sipcalc" 2> /dev/null
+  _mrun "${_INSTAPP} sysstat telnet cron gnupg2 gnupg unzip unrtf wdiff pwgen flex re2c" 2> /dev/null
+  _mrun "${_INSTAPP} rsync strace ntpdate python-dev mc whois zlib1g zlib1g-dev librsync-dev" 2> /dev/null
+  _mrun "${_INSTAPP} sqlite3 libsqlite3-dev s4cmd xml-core xml2 xpdf libtool rrdtool gdebi-core" 2> /dev/null
+  _mrun "${_INSTAPP} ssh ssl-cert libpam-umask shtool ncurses-dev ncurses-term sipcalc" 2> /dev/null
   _OS_LIST="daedalus chimaera bullseye bookworm"
   for e in ${_OS_LIST}; do
     if [ "${e}" = "${_OS_CODE}" ]; then
       _mrun "${_INSTAPP} ncal" 2> /dev/null
     fi
   done
-  _mrun "${_INSTAPP} netcat libzip-dev libwww-perl" 2> /dev/null
-  _mrun "${_INSTAPP} libfontconfig1 libfreetype6 libfreetype6-dev" 2> /dev/null
-  _mrun "${_INSTAPP} libfribidi0 libgeoip-dev libgeoip1 libgmp3-dev" 2> /dev/null
-  _mrun "${_INSTAPP} libonig-dev libpq5 libxml2-dev libxpm4" 2> /dev/null
-  _mrun "${_INSTAPP} libxslt-dev libxslt1-dev libxslt1.1 subversion" 2> /dev/null
-  _mrun "${_INSTAPP} libaprutil1 libapr1 ldap-utils ipset" 2> /dev/null
-  _mrun "${_INSTAPP} pdftk patchutils p7zip-full fontconfig-config" 2> /dev/null
-  _mrun "${_INSTAPP} bison catdoc cython3 geoip-database gettext" 2> /dev/null
+  _mrun "${_INSTAPP} libfontconfig1 libxrender1 libxcb1 libxcb1-dev libx11-6 libfreetype6 libfreetype6-dev" 2> /dev/null
+  _mrun "${_INSTAPP} libfribidi0 libgeoip-dev libgeoip1 libgmp3-dev libjpeg62-turbo libjpeg62-turbo-dev" 2> /dev/null
+  _mrun "${_INSTAPP} netcat libzip-dev libwww-perl libonig-dev libpq5 libxml2-dev libxpm4 xfonts-base xfonts-75dpi" 2> /dev/null
+  _mrun "${_INSTAPP} libxslt-dev libxslt1-dev libxslt1.1 subversion libaprutil1 libapr1 ldap-utils ipset" 2> /dev/null
+  _mrun "${_INSTAPP} pdftk patchutils p7zip-full fontconfig-config bison catdoc cython3 geoip-database gettext" 2> /dev/null
+  _mrun "${_INSTAPP} python3-full python3-dev python3-debian python3-magic ghostscript htop lemon lftp nano" 2> /dev/null
   _mrun "${_INSTAPP} clamav clamav-base clamav-daemon clamdscan" 2> /dev/null
-  _mrun "${_INSTAPP} ghostscript htop lemon lftp nano" 2> /dev/null
-  _mrun "${_INSTAPP} python3-full python3-dev python3-debian python3-magic" 2> /dev/null
   if [ -e "/root/.dont.use.fancy.bash.login.cnf" ] \
     && [ -e "/usr/bin/screenfetch" ]; then
     _mrun "apt-get remove toilet -y --purge --auto-remove -qq" 2> /dev/null
@@ -5783,6 +5782,7 @@ _if_post_major_os_upgrade() {
       _SSL_FORCE_REINSTALL=YES
       _if_reinstall_curl_src
       _if_ssl_install_src
+      _ssl_paths_sync
       _ssl_crypto_lib_fix
       _curl_install_src
       _sshd_install_src
@@ -6464,6 +6464,7 @@ _if_major_os_upgrade() {
       _php_libs_fix
       _if_reinstall_curl_src
       _if_ssl_install_src
+      _ssl_paths_sync
       _ssl_crypto_lib_fix
       _curl_install_src
       _sshd_install_src
@@ -7182,7 +7183,8 @@ _php_libs_fix() {
     || [ ! -e "/usr/lib/libicuio.so" ] \
     || [ ! -e "/usr/lib/liblber.so" ] \
     || [ ! -e "/var/xdrago/log/._php_libs_fix_${_OS_CODE}_${_LIB_NOW}.pid" ] \
-    || [ ! -e "/usr/include/gmp.h" ]; then
+    || [ ! -e "/usr/include/gmp.h" ] \
+    || [ ! -e "/usr/include/lzf.h" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: Fix for PHP libs in ${_OS_DIST}/${_OS_CODE}"
     fi
@@ -7279,7 +7281,11 @@ _php_libs_fix() {
       fi
       if [ ! -e "/usr/include/gmp.h" ] \
         && [ -e "/usr/include/x86_64-linux-gnu/gmp.h" ]; then
-        ln -sfn /usr/include/x86_64-linux-gnu/gmp.h  /usr/include/gmp.h
+        ln -sfn /usr/include/x86_64-linux-gnu/gmp.h /usr/include/gmp.h
+      fi
+      if [ ! -e "/usr/include/lzf.h" ] \
+        && [ -e "/usr/include/liblzf/lzf.h" ]; then
+        ln -sfn /usr/include/liblzf/lzf.h /usr/include/lzf.h
       fi
       if [ ! -e "/usr/lib/x86_64-linux-gnu/librtmp.so.0" ] \
         && [ -e "/usr/lib/x86_64-linux-gnu/librtmp.so.1" ]; then
