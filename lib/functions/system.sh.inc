@@ -3846,6 +3846,35 @@ _ssl_apt_locks_update() {
 }
 
 #
+# Sync OpenSSL paths.
+_ssl_paths_sync() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _ssl_paths_sync"
+  fi
+
+  _SSL_MODERN_BINARY="/usr/local/ssl3/bin/openssl"
+  _SSL_MODERN_PATH="/usr/local/ssl3"
+  _SSL_MODERN_LIB_PATH="${_SSL_MODERN_PATH}/lib64"
+
+  _SSL_LEGACY_BINARY="/usr/local/ssl/bin/openssl"
+  _SSL_LEGACYL_PATH="/usr/local/ssl"
+  _SSL_LEGACY_LIB_PATH="${_SSL_LEGACYL_PATH}/lib"
+
+  sed -i "s/.*ssl.*//g" /etc/ld.so.conf.d/libc.conf
+
+  if [ -e "${_SSL_MODERN_LIB_PATH}" ]; then
+    echo "${_SSL_MODERN_LIB_PATH}" >> /etc/ld.so.conf.d/libc.conf
+  fi
+
+  if [ -e "${_SSL_LEGACY_LIB_PATH}" ]; then
+    echo "${_SSL_LEGACY_LIB_PATH}" >> /etc/ld.so.conf.d/libc.conf
+  fi
+
+  sed -i "/^$/d" /etc/ld.so.conf.d/libc.conf &> /dev/null
+  ldconfig 2> /dev/null
+}
+
+#
 # Update OpenSSL paths.
 _ssl_paths_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -5783,6 +5812,7 @@ _if_post_major_os_upgrade() {
       _SSL_FORCE_REINSTALL=YES
       _if_reinstall_curl_src
       _if_ssl_install_src
+      _ssl_paths_sync
       _ssl_crypto_lib_fix
       _curl_install_src
       _sshd_install_src
@@ -6464,6 +6494,7 @@ _if_major_os_upgrade() {
       _php_libs_fix
       _if_reinstall_curl_src
       _if_ssl_install_src
+      _ssl_paths_sync
       _ssl_crypto_lib_fix
       _curl_install_src
       _sshd_install_src
