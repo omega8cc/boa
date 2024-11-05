@@ -2910,7 +2910,7 @@ _if_install_wkhtmltox() {
   if [ "${_OS_CODE}" = "jessie" ]; then
     _WOX_ITD=$(wkhtmltopdf --version 2>&1)
   fi
-  if [[ "${_WOX_ITD}" =~ "0.12.6" ]]; then
+  if [[ "${_WOX_ITD}" =~ "0.12.6.1" ]]; then
     if [ "${_OS_CODE}" = "daedalus" ] \
       || [ "${_OS_CODE}" = "chimaera" ] \
       || [ "${_OS_CODE}" = "beowulf" ] \
