@@ -116,17 +116,30 @@ _if_fix_locked_sshd() {
 }
 
 _if_fix_dhcp() {
+  # Determine the correct log file
   if [ -e "/var/log/daemon.log" ]; then
     _DHCP_LOG="/var/log/daemon.log"
   else
     _DHCP_LOG="/var/log/syslog"
   fi
+
+  # Check if the log file exists
   if [ -e "${_DHCP_LOG}" ]; then
-    if [ `tail --lines=3 ${_DHCP_LOG} \
-      | grep --count "dhclient.*Failed"` -gt "0" ]; then
+    # Count the number of DHCP failure entries in the last 3 lines
+    count=$(tail -n 3 "${_DHCP_LOG}" | grep -c "dhclient:.*Failed")
+
+    # Debugging: Log the count value
+    [ "$count" -gt 0 ] && echo "DHCP failure count: $count" >> "${_pthOml}"
+
+    # Proceed only if there is at least one failure
+    if [ "$count" -gt 0 ]; then
+      # Clear existing DHCP entries in csf.allow
       sed -i "s/.*DHCP.*//g" /etc/csf/csf.allow
       wait
+      # Remove any empty lines
       sed -i "/^$/d" /etc/csf/csf.allow
+
+      # Extract unique IPs from DHCP requests and add them to csf.allow
       grep DHCPREQUEST "${_DHCP_LOG}" | awk '{print $12}' | sort -u | while read -r _IP; do
         if [[ ${_IP} =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
           IFS='.' read -r oct1 oct2 oct3 oct4 <<< "${_IP}"
@@ -135,11 +148,15 @@ _if_fix_dhcp() {
           fi
         fi
       done
+
+      # Reload the firewall
       csf -q &> /dev/null
-      _thisErrLog="$(date 2>&1) DHCP error detected, firewall updated"
-      echo ${_thisErrLog} >> ${_pthOml}
+
+      # Log the error and send an email report
+      _thisErrLog="$(date) DHCP error detected, firewall updated"
+      echo "${_thisErrLog}" >> "${_pthOml}"
       _incident_email_report "DHCP error detected, firewall updated"
-      echo >> ${_pthOml}
+      echo >> "${_pthOml}"
     fi
   fi
 }
