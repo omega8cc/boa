@@ -2911,6 +2911,18 @@ _fix_wkhtml() {
     chgrp root /usr/bin/wkhtmltoimage &> /dev/null
     chmod 755 /usr/bin/wkhtmltoimage &> /dev/null
   fi
+  if [ -x "/usr/local/bin/wkhtmltopdf" ] \
+    && [ ! -e "/usr/bin/wkhtmltopdf" ]; then
+    cp -af /usr/local/bin/wkhtmltopdf /usr/bin/wkhtmltopdf
+    chgrp root /usr/bin/wkhtmltopdf &> /dev/null
+    chmod 755 /usr/bin/wkhtmltopdf &> /dev/null
+  fi
+  if [ -x "/usr/local/bin/wkhtmltoimage" ] \
+    && [ ! -e "/usr/bin/wkhtmltoimage" ]; then
+    cp -af /usr/local/bin/wkhtmltoimage /usr/bin/wkhtmltoimage
+    chgrp root /usr/bin/wkhtmltoimage &> /dev/null
+    chmod 755 /usr/bin/wkhtmltoimage &> /dev/null
+  fi
   if [ ! -x "/usr/local/bin/wkhtmltopdf" ] \
     && [ -x "/usr/bin/wkhtmltopdf" ]; then
     rm -f /usr/local/bin/wkhtmltopdf
