@@ -1602,7 +1602,7 @@ _php_if_versions_cleanup_cnf() {
   if [ ! -d "/data/u" ]; then
     _AUTO_PHP_CLEANUP=NO
   fi
-  if [ -e "/var/aegir/host_master/000/placeholder_dont_remove.txt" ] \
+  if [ -e "/var/aegir/drush/vendor" ] \
     && [ "${_AUTO_PHP_CLEANUP}" = "YES" ]; then
     ### Make sure that _PHP_SINGLE_INSTALL takes precedence
     if [ ! -z "${_PHP_SINGLE_INSTALL}" ]; then
