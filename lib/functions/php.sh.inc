@@ -342,7 +342,8 @@ _fix_php_ini_tet_all() {
           cd /var/opt
           _get_dev_src "TET-${_TET_VRN}.tar.gz"
         fi
-        if [ -e "/var/opt/TET-${_TET_VRN}/bind/php/php-${e}0-nts" ]; then
+        if [ -e "${_TET_BASE}-${_P_API}" ] \
+          && [ -e "/var/opt/TET-${_TET_VRN}/bind/php/php-${e}0-nts" ]; then
           cd /var/opt/TET-${_TET_VRN}/bind/php/php-${e}0-nts/
           cp -a php_tet.so ${_TET_SO}
         fi
