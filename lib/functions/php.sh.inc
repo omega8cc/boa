@@ -2358,9 +2358,11 @@ _check_php_rebuild() {
     if [ ! -e "/var/xdrago/log" ] && [ -e "/var/xdrago_wait/log" ]; then
       rm -f /var/xdrago_wait/log/*.log
       rm -f /var/xdrago_wait/log/._php_libs_fix_*.pid
+      rm -f /var/xdrago_wait/log/re-installed-php*
     else
       rm -f /var/xdrago/log/*.log
       rm -f /var/xdrago/log/._php_libs_fix_*.pid
+      rm -f /var/xdrago/log/re-installed-php*
     fi
     if [ "${_DO_FIX}" = "YES" ] || [ "${_STATUS}" != "UPGRADE" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -2374,7 +2376,6 @@ _check_php_rebuild() {
         fi
         _install_php_multi "$1"
         _PHP_ALREADY_REBUILT=$1
-        _PHP_FORCE_REINSTALL=NO
       fi
     fi
   fi
