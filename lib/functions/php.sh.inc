@@ -2376,7 +2376,6 @@ _check_php_rebuild() {
         fi
         _install_php_multi "$1"
         _PHP_ALREADY_REBUILT=$1
-        _PHP_FORCE_REINSTALL=NO
       fi
     fi
   fi
