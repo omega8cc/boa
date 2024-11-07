@@ -1700,6 +1700,12 @@ _old_apt_keys_cleanup() {
   fi
 }
 
+_if_force_php_rebuild() {
+  if [[ "${_ARGS}" =~ (php-rebuild|php-reinstall) ]]; then
+    echo "_PHP_FORCE_REINSTALL=YES" >> ${_barCnf}
+  fi
+}
+
 _proceed() {
   _check_root_keys_pwd
   _check_root
@@ -1710,6 +1716,7 @@ _proceed() {
   _os_detection_minimal
   _check_dns_curl
   _check_php_cli
+  _if_force_php_rebuild
   _old_apt_keys_cleanup &> /dev/null
   _check_etc_apt_preferences
   if [ "${_tRee}" = "dev" ]; then
