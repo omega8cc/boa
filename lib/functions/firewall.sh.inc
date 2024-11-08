@@ -307,11 +307,8 @@ _csf_lfd_install_upgrade() {
         kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
         killall sleep &> /dev/null
         rm -f /etc/csf/csf.error
-        _mrun "csf -x" &> /dev/null
+        _mrun "csf -r" &> /dev/null
         wait
-        _mrun "csf -e" &> /dev/null
-        wait
-        _mrun "csf -q" &> /dev/null
         _mrun "service lfd start" 2> /dev/null
         wait
         ### Linux kernel TCP SACK CVEs mitigation
