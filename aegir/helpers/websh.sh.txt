@@ -199,12 +199,16 @@ extract_composer_command() {
   local command_prefix=""
   local command_args=""
 
+  # Define regex patterns
+  local regex_set_m='^set[[:space:]]+-m[[:space:]]*;[[:space:]]*composer[[:space:]]+(.*)'
+  local regex_composer='^composer[[:space:]]+(.*)'
+
   # Check if the command starts with 'set -m; composer'
-  if [[ "$args" =~ ^set[[:space:]]+-m[[:space:]]*\;[[:space:]]*composer[[:space:]]+(.*) ]]; then
+  if [[ "$args" =~ $regex_set_m ]]; then
     command_prefix='set -m; composer'
     command_args="${BASH_REMATCH[1]}"
   # Check if the command starts with 'composer'
-  elif [[ "$args" =~ ^composer[[:space:]]+(.*) ]]; then
+  elif [[ "$args" =~ $regex_composer ]]; then
     command_prefix='composer'
     command_args="${BASH_REMATCH[1]}"
   else
@@ -230,15 +234,10 @@ if [[ "${_ARGS}" =~ "composer " ]]; then
 
   ### echo "command_prefix is '${command_prefix}'"
   ### echo "command_args is '${command_args}'"
+  ### echo "_C_ARR is ${_C_ARR[@]}"
 
   # Convert command_args into an array, preserving spaces within arguments
   IFS=' ' read -r -a _C_ARR <<< "$command_args"
-
-  ### echo "_C_ARR is ${_C_ARR[@]}"
-
-  # Continue with your logic to send the command via the correct PHP version
-  # Example placeholder:
-  # /path/to/correct/php ${command_prefix} "${_C_ARR[@]}"
 fi
 
 _INTERNAL=NO
