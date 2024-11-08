@@ -4,17 +4,22 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 
 _DEST_DRUSH="/opt/tools/drush/8/drush/drush.php"
 
+# Capture all arguments
 _ALL="$@"
-### echo _ALL is ${_ALL}
+### echo "_ALL is ${_ALL}"
 
+# Capture environment variables
 _ENV=$(env 2>&1)
-### echo _ENV is ${_ENV}
+### echo "_ENV is ${_ENV}"
 
+# Determine _ARGS based on the first argument
 if [ "${1}" = "-c" ]; then
   _ARGS="${2}"
 else
   _ARGS="${1}"
 fi
+
+### echo "_ARGS is ${_ARGS}"
 
 if [[ "${_ARGS}" =~ "--php=" ]]; then
   PHP_FWD=YES
@@ -33,7 +38,7 @@ if [[ "${_ARGS}" =~ "'" ]] && [[ "${_ARGS}" =~ "drush" ]]; then
   ### echo _ARGS CLEAN is ${_ARGS}
 fi
 
-if [[ ! "${_ARGS}" =~ "composer" ]] \
+if [[ ! "${_ARGS}" =~ "composer " ]] \
   && [[ ! "${_ARGS}" =~ "mysql" ]] \
   && [[ ! "${_ARGS}" =~ "sudo" ]]; then
   _ARR=
@@ -188,23 +193,51 @@ if [[ ! "${_ARGS}" =~ "composer" ]] \
   fi
 fi
 
-_C_ARR=
-if [[ "${_ARGS}" =~ "composer " ]]; then
-  if [[ "${_ARGS}" =~ "set -m" ]]; then
-    _C_RM=`echo -n ${_ARGS}  | grep -o "set -m\; composer"`
+# Function to extract the composer command and its arguments
+extract_composer_command() {
+  local args="$1"
+  local command_prefix=""
+  local command_args=""
+
+  # Define regex patterns
+  local regex_set_m='^set[[:space:]]+-m[[:space:]]*;[[:space:]]*composer[[:space:]]+(.*)'
+  local regex_composer='^composer[[:space:]]+(.*)'
+
+  # Check if the command starts with 'set -m; composer'
+  if [[ "$args" =~ $regex_set_m ]]; then
+    command_prefix='set -m; composer'
+    command_args="${BASH_REMATCH[1]}"
+  # Check if the command starts with 'composer'
+  elif [[ "$args" =~ $regex_composer ]]; then
+    command_prefix='composer'
+    command_args="${BASH_REMATCH[1]}"
   else
-    _C_RM=`echo -n ${_ARGS}  | grep -o "composer"`
+    command_prefix=''
+    command_args="$args"
   fi
-  ### echo _C_RM is ${_C_RM}
-  _CLR=`echo ${_ARGS}  | sed "s/\${_C_RM}//g"`
-  _C_ARR=() # the buffer array for filtered parameters
-  for arg in "${_CLR}"; do
-    case ${_C_RM} in
-      $arg\ * | *\ $arg | *\ $arg\ *) ;;
-      *) _C_ARR+=("$arg") ;;
-    esac
-  done
-  ### echo _C_ARR is ${_C_ARR}
+
+  # Return the extracted values separated by ::
+  echo "${command_prefix}::${command_args}"
+}
+
+# Initialize variables for command prefix and arguments
+command_prefix=""
+command_args=""
+_C_ARR=()
+
+# Check if _ARGS contains "composer " and process accordingly
+if [[ "${_ARGS}" =~ "composer " ]]; then
+  # Extract the composer command and arguments
+  extracted=$(extract_composer_command "${_ARGS}")
+  command_prefix="${extracted%%::*}"
+  command_args="${extracted##*::}"
+
+  ### echo "command_prefix is '${command_prefix}'"
+  ### echo "command_args is '${command_args}'"
+  ### echo "_C_ARR is ${_C_ARR[@]}"
+
+  # Convert command_args into an array, preserving spaces within arguments
+  IFS=' ' read -r -a _C_ARR <<< "$command_args"
 fi
 
 _INTERNAL=NO
@@ -899,12 +932,16 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           ### echo EXD 3-NO-PHP_FWD ${DRUSH_PHP} ${_DEST_DRUSH} ${_OCTO_SYS_ARR}
           exec /bin/dash -c "${DRUSH_PHP} ${_DEST_DRUSH} ${_OCTO_SYS_ARR}"
           exit 0
-        elif [ ! -z "${_C_ARR}" ]; then
-          ### echo EXC 1 DRUSH_PHP is ${DRUSH_PHP}
-          ### echo EXC 1 _C_ARR is ${_C_ARR}
-          ### echo EXC 1 _F_ARR is "$@"
-          ### echo EXC 1 ${DRUSH_PHP} /usr/local/bin/composer ${_C_ARR}
-          exec /bin/dash -c "${DRUSH_PHP} /usr/local/bin/composer ${_C_ARR}"
+        elif [ ${#_C_ARR[@]} -ne 0 ]; then
+          ### echo "EXC 1 DRUSH_PHP is ${DRUSH_PHP}"
+          ### echo "EXC 1 _C_ARR is ${_C_ARR[@]}"
+          ### echo "EXC 1 _F_ARR is \"$@\""
+          composer_command="${DRUSH_PHP} /usr/local/bin/composer"
+          for arg in "${_C_ARR[@]}"; do
+            composer_command+=" \"${arg}\""
+          done
+          ### echo "EXC 1 composer_command is ${composer_command}"
+          exec /bin/dash -c "${composer_command}"
           exit 0
         else
           ### echo EXH 1 _F_ARR is "$@"
