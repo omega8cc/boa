@@ -77,12 +77,12 @@ _find_fast_mirror_early() {
   fi
   _ffMirr=$(which ffmirror 2>&1)
   if [ -x "${_ffMirr}" ]; then
-    _ffList="/var/backups/boa-mirrors-2024-01.txt"
+    _ffList="/var/backups/boa-mirrors-2025-02.txt"
     mkdir -p /var/backups
     if [ ! -e "${_ffList}" ]; then
-      echo "de.files.aegir.cc"  > ${_ffList}
-      echo "ny.files.aegir.cc" >> ${_ffList}
-      echo "sg.files.aegir.cc" >> ${_ffList}
+      echo "eu.files.aegir.cc"  > ${_ffList}
+      echo "us.files.aegir.cc" >> ${_ffList}
+      echo "ao.files.aegir.cc" >> ${_ffList}
     fi
     if [ -e "${_ffList}" ]; then
       _BROKEN_FFMIRR_TEST=$(grep "stuff" ${_ffMirr} 2>&1)
