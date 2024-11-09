@@ -1632,6 +1632,19 @@ _update_agents() {
     fi
   fi
 
+  if [ -e "/var/xdrago/monitor/check" ] \
+    && [ -e "/var/aegir/drush" ] \
+    && [ ! -x "/etc/cron.hourly/systemtime" ] \
+    && [ ! -e "${_pthLog}/systemtime.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
+    curl ${_crlGet} "${_urlHmr}/helpers/systemtime" -o /etc/cron.hourly/systemtime
+    if [ -e "/etc/cron.hourly/systemtime" ]; then
+      chmod 755 /etc/cron.hourly/systemtime
+      chown root:root /etc/cron.hourly/systemtime
+      service cron restart
+      touch ${_pthLog}/systemtime.ctrl.f95.${_tRee}.${_xSrl}.pid
+    fi
+  fi
+
   _Dir="/data/all/000/modules"
   _REDIS_T_VERSION=8.x-1.8.2
   if [ -e "/var/xdrago/manage_solr_config.sh" ]; then
