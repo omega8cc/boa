@@ -2925,7 +2925,7 @@ _update_boa_tools() {
     touch ${_pthLog}/updateFx07.ctrl.${_tRee}.${_xSrl}.pid
   fi
   mkdir -p ${_optBin}
-  rm -f ${_usrBin}/{autoinit*,barracuda*,boa*,fancynow*,killer*,octopus*}
+  rm -f ${_usrBin}/{autoinit*,barracuda*,boa*,fancynow*,killer*,octopus*,smtpgmailsetup*}
   if [ ! -d "/data/u" ]; then
     ln -s ${_optBin}/autoinit  ${_usrBin}/autoinit
     ln -s ${_optBin}/barracuda ${_usrBin}/barracuda
@@ -2933,6 +2933,7 @@ _update_boa_tools() {
     ln -s ${_optBin}/fancynow  ${_usrBin}/fancynow
     ln -s ${_optBin}/killer    ${_usrBin}/killer
     ln -s ${_optBin}/octopus   ${_usrBin}/octopus
+    ln -s ${_optBin}/octopus   ${_usrBin}/smtpgmailsetup
   fi
   _boaBins="autobeowulf \
            autochimaera \
@@ -2953,6 +2954,7 @@ _update_boa_tools() {
            octopus \
            perftest \
            randpass \
+           smtpgmailsetup \
            sqlclean \
            sqlmagic \
            syncpass \
@@ -3003,6 +3005,7 @@ _update_boa_tools() {
   echo "### ${_TODAY} ###" >> ${_optBin}/mergecsf
   echo "### ${_TODAY} ###" >> ${_optBin}/octopus
   echo "### ${_TODAY} ###" >> ${_optBin}/perftest
+  echo "### ${_TODAY} ###" >> ${_optBin}/smtpgmailsetup
   echo "### ${_TODAY} ###" >> ${_optBin}/sqlclean
   echo "### ${_TODAY} ###" >> ${_optBin}/vhostcheck
   [ -e "/root/.backboa.autoupdate" ] && rm -f /root/.backboa.autoupdate
@@ -3025,7 +3028,7 @@ _update_boa_tools() {
   fi
   chmod 700 ${_optBin}/{autoinit,autodaedalus,autochimaera,autobeowulf,autoupboa,backboa,duobackboa,mergecsf}
   chmod 700 ${_optBin}/{barracuda,boa,ffmirror,killer,mycnfup,octopus,syncpass,xboa,weblogx,sqlclean,perftest}
-  chmod 700 ${_optBin}/{fancynow,codebasecheck,vhostcheck,memorytuner,mysqltuner5,mysqltuner8}
+  chmod 700 ${_optBin}/{fancynow,codebasecheck,vhostcheck,memorytuner,mysqltuner5,mysqltuner8,smtpgmailsetup}
   chmod 755 ${_optBin}/{randpass,sqlmagic,thinkdifferent}
 }
 
@@ -3195,14 +3198,14 @@ _if_update_boa_key_tools_only() {
     fi
   fi
   _BOA_TOOLS_UPDATE=NO
-  if [ -e "${_pthLog}" ] && [ ! -e "${_pthLog}/updateBOAtoolsCB.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+  if [ -e "${_pthLog}" ] && [ ! -e "${_pthLog}/updateBOAtoolsCC.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     _BOA_TOOLS_UPDATE=YES
   fi
   [ ! -e "/var/aegir/drush" ] && _BOA_TOOLS_UPDATE=YES
   if [ "${_BOA_TOOLS_UPDATE}" = "YES" ]; then
     _update_boa_tools
     [ -e "${_pthLog}" ] && rm -f ${_pthLog}/updateBOAtools*.pid
-    [ -e "${_pthLog}" ] && touch ${_pthLog}/updateBOAtoolsCB.ctrl.${_tRee}.${_xSrl}.pid
+    [ -e "${_pthLog}" ] && touch ${_pthLog}/updateBOAtoolsCC.ctrl.${_tRee}.${_xSrl}.pid
     if [ "${1}" = "verbose" ] || [ -z "${1}" ]; then
       echo
       echo "BOA Meta Installers setup completed"
@@ -3350,14 +3353,14 @@ _boa_setup() {
     apt-get install lsb-release ${_aptYesUnth}
   fi
   _BOA_TOOLS_UPDATE=NO
-  if [ -e "${_pthLog}" ] && [ ! -e "${_pthLog}/updateBOAtoolsCB.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+  if [ -e "${_pthLog}" ] && [ ! -e "${_pthLog}/updateBOAtoolsCC.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     _BOA_TOOLS_UPDATE=YES
   fi
   [ ! -e "/var/aegir/drush" ] && _BOA_TOOLS_UPDATE=YES
   if [ "${_BOA_TOOLS_UPDATE}" = "YES" ]; then
     _update_boa_tools
     [ -e "${_pthLog}" ] && rm -f ${_pthLog}/updateBOAtools*.pid
-    [ -e "${_pthLog}" ] && touch ${_pthLog}/updateBOAtoolsCB.ctrl.${_tRee}.${_xSrl}.pid
+    [ -e "${_pthLog}" ] && touch ${_pthLog}/updateBOAtoolsCC.ctrl.${_tRee}.${_xSrl}.pid
     echo
     echo "BOA Meta Installers setup completed"
     echo "Please check INSTALL.md and UPGRADE.md at https://github.com/omega8cc/boa"

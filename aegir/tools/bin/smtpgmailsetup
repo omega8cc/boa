@@ -1,0 +1,154 @@
+#!/bin/bash
+
+# Postfix Gmail SMTP with content filter setup script (idempotent, with backups)
+
+# Ensure the script runs as root
+if [ "$(id -u)" -ne 0 ]; then
+  echo "Please run this script as root."
+  exit 1
+fi
+
+# Check for required arguments
+if [ "$#" -lt 3 ]; then
+  echo "Usage: $0 <gmail_user> <gmail_app_password> <comma-separated-keywords>"
+  echo "Example: $0 your-email@example.com your-app-password 'Account Migration,Important Notice'"
+  exit 1
+fi
+
+# Arguments
+_GMAIL_USER="$1"
+_GMAIL_APP_PASSWORD="$2"
+_KEYWORDS="$3"
+
+# Constants
+_GMAIL_SMTP="smtp.gmail.com:587"
+_FILTER_SCRIPT="/opt/local/bin/email-filter.sh"
+_POSTFIX_CONFIG="/etc/postfix/main.cf"
+_POSTFIX_MASTER_CONFIG="/etc/postfix/master.cf"
+_SASL_PASSWD="/etc/postfix/sasl_passwd"
+_BACKUP_DIR="/etc/postfix/backups"
+_TEMP_DIR="/opt/tmp/postfix-filter"
+_DATE_SUFFIX=$(date +"%Y%m%d%H%M%S")
+
+# Function to create a backup of a file
+_backup_file() {
+  local _file="$1"
+  if [ -f "${_file}" ]; then
+    cp -p "${_file}" "${_BACKUP_DIR}/$(basename "${_file}").${_DATE_SUFFIX}"
+    echo "Backup created for ${_file} at ${_BACKUP_DIR}/$(basename "${_file}").${_DATE_SUFFIX}"
+  fi
+}
+
+# Step 1: Backup current configurations
+echo "Creating backups of Postfix configuration files..."
+mkdir -p "${_BACKUP_DIR}"
+_backup_file "${_POSTFIX_CONFIG}"
+_backup_file "${_POSTFIX_MASTER_CONFIG}"
+_backup_file "${_SASL_PASSWD}"
+
+# Step 2: Check if Gmail credentials are already configured
+if grep -q "${_GMAIL_USER}:${_GMAIL_APP_PASSWORD}" "${_SASL_PASSWD}" 2>/dev/null; then
+  echo "Gmail credentials are already configured and up to date."
+else
+  echo "Updating Gmail credentials..."
+  cat <<EOF > "${_SASL_PASSWD}"
+[${_GMAIL_SMTP}] ${_GMAIL_USER}:${_GMAIL_APP_PASSWORD}
+EOF
+  chmod 600 "${_SASL_PASSWD}"
+  postmap "${_SASL_PASSWD}"
+  echo "Gmail credentials updated."
+fi
+
+# Step 3: Update Postfix main configuration
+echo "Checking Postfix main configuration..."
+if ! grep -q "relayhost = \[${_GMAIL_SMTP}\]" "${_POSTFIX_CONFIG}"; then
+  echo "Updating Postfix main configuration..."
+  cat <<EOF >> "${_POSTFIX_CONFIG}"
+
+# Gmail SMTP Relay configuration
+relayhost = [${_GMAIL_SMTP}]
+smtp_sasl_auth_enable = yes
+smtp_sasl_password_maps = hash:${_SASL_PASSWD}
+smtp_sasl_security_options = noanonymous
+smtp_tls_security_level = encrypt
+smtp_tls_CAfile = /etc/ssl/certs/ca-certificates.crt
+smtp_use_tls = yes
+
+# Enable content filter
+content_filter = email-filter:dummy
+EOF
+else
+  echo "Postfix main configuration is already up to date."
+fi
+
+# Step 4: Create or update the email filter script
+echo "Creating or updating the email filter script..."
+mkdir -p "$(dirname "${_FILTER_SCRIPT}")"
+mkdir -p "${_TEMP_DIR}"
+cat <<EOF > "${_FILTER_SCRIPT}"
+#!/bin/bash
+# Custom email filter for Postfix to route Gmail-specific emails
+
+# Temporary directory for processing
+_TEMP_DIR="${_TEMP_DIR}"
+
+# Save incoming email to a temporary file
+_EMAIL="\${_TEMP_DIR}/email-\$\$.eml"
+cat > "\${_EMAIL}"
+
+# Extract the subject line
+_SUBJECT=\$(grep -i "^Subject:" "\${_EMAIL}" | cut -d':' -f2- | xargs)
+
+# Define keywords for matching
+_KEYWORDS=(${_KEYWORDS//,/ })
+
+# Check if the subject contains any of the keywords
+_MATCH=0
+for _KEYWORD in "\${_KEYWORDS[@]}"; do
+  if echo "\${_SUBJECT}" | grep -iq "\${_KEYWORD}"; then
+    _MATCH=1
+    break
+  fi
+done
+
+# Route based on match
+if [ "\${_MATCH}" -eq 1 ]; then
+  # Route via Gmail SMTP
+  /usr/sbin/sendmail -Am -i -f "\${_SENDER}" -S "${_GMAIL_SMTP}" -au"${_GMAIL_USER}" -ap"${_GMAIL_APP_PASSWORD}" "\${_RECIPIENT}" < "\${_EMAIL}"
+else
+  # Default routing
+  /usr/sbin/sendmail "\$@" < "\${_EMAIL}"
+fi
+
+# Clean up
+rm -f "\${_EMAIL}"
+exit 0
+EOF
+
+chmod +x "${_FILTER_SCRIPT}"
+echo "Email filter script created or updated at ${_FILTER_SCRIPT}."
+
+# Step 5: Update Postfix master configuration
+echo "Checking Postfix master configuration..."
+if ! grep -q "email-filter" "${_POSTFIX_MASTER_CONFIG}"; then
+  echo "Updating Postfix master configuration..."
+  cat <<EOF >> "${_POSTFIX_MASTER_CONFIG}"
+
+# Custom email filter
+email-filter unix - n n - - pipe
+  flags=Rq user=postfix argv=${_FILTER_SCRIPT} -f \${sender} -- \${recipient}
+EOF
+else
+  echo "Postfix master configuration is already up to date."
+fi
+
+# Step 6: Restart Postfix using Sysvinit
+echo "Restarting Postfix using Sysvinit..."
+/etc/init.d/postfix restart
+
+# Step 7: Final status
+echo "Postfix Gmail filter setup complete!"
+echo "Gmail user: ${_GMAIL_USER}"
+echo "Keywords for routing: ${_KEYWORDS}"
+echo "Test it by sending an email:"
+echo "  echo 'Subject: Any of the keywords test' | sendmail recipient@example.com"
