@@ -393,6 +393,20 @@ _sql_conf_update() {
     if [ "${_CUSTOM_CONFIG_SQL}" = "YES" ]; then
       _DO_NOTHING=YES
     else
+      # Determine the Percona version (assuming _DB_V is set to the version number, e.g., "5.7" or "8.0")
+      if [ "${_DB_V}" = "5.7" ]; then
+        # Disable performance_schema for Percona 5.7
+        sed -i -E \
+          -e "s/^#?\s*performance_schema\s*=.*/performance_schema=OFF/" \
+          -e "s/^(\s*)performance_schema_.*=.*/\1#&/" \
+          /etc/mysql/my.cnf &> /dev/null
+      else
+        # Enable performance_schema for Percona 8.0
+        sed -i -E \
+          -e "s/^#?\s*performance_schema\s*=.*/performance_schema=ON/" \
+          -e "s/^(\s*)#\s*(performance_schema_.*=.*)/\1\2/" \
+          /etc/mysql/my.cnf &> /dev/null
+      fi
       _INNODB_LOG_FILE_SIZE=${_INNODB_LOG_FILE_SIZE//[^0-9]/}
       if [ ! -z "${_INNODB_LOG_FILE_SIZE}" ]; then
         if [ "${_INNODB_LOG_FILE_SIZE}" -ge "50" ]; then

@@ -1416,6 +1416,7 @@ innodb_autoinc_lock_mode=2
 ### Recommended for Galera
 #
 innodb_flush_log_at_trx_commit=0
+performance_schema=OFF
 binlog_row_image=minimal
 wsrep_slave_threads=${_CPU_MX}
 wsrep_log_conflicts=ON
@@ -1483,6 +1484,7 @@ transaction-isolation   = READ-COMMITTED
 transaction-read-only   = OFF
 skip-external-locking
 skip-name-resolve
+performance_schema      = OFF
 connect_timeout         = 60
 join_buffer_size        = 4M
 key_buffer_size         = 1024M
