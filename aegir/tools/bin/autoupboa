@@ -583,11 +583,11 @@ if [ -e "/var/aegir/drush" ]; then
 
     _AUTO_PHP="php-min"
     _AUTO_VER="${_tRee}"
-    _AUTO_UP_WEEKLY=
-    _AUTO_UP_MONTH=
-    _AUTO_UP_DAY=
-    _AUTO_UP_HOUR=3
-    _AUTO_UP_MINUTE=10
+    _AUTO_UP_WEEKLY=7
+    _AUTO_UP_MONTH=11
+    _AUTO_UP_DAY=11
+    _AUTO_UP_HOUR=23
+    _AUTO_UP_MINUTE=58
     _AUTO_OCT_UP_HOUR=4
     _AUTO_OCT_UP_MINUTE=10
 
@@ -644,14 +644,14 @@ if [ -e "/var/aegir/drush" ]; then
   fi
 
   if [ -e "/root/.dev.server.cnf" ]; then
-    if [ ! -e "/var/xdrago/log/.etc_crontab_update_dev_ctrl_f005.${_tRee}.${_xSrl}.pid" ]; then
+    if [ ! -e "/var/xdrago/log/.etc_crontab_update_dev_ctrl_f006.${_tRee}.${_xSrl}.pid" ]; then
       rm -f /var/xdrago/log/.*etc_crontab_update_dev_ctrl*
       _crontab_cleanup
       service cron restart
-      touch /var/xdrago/log/.etc_crontab_update_dev_ctrl_f005.${_tRee}.${_xSrl}.pid
+      touch /var/xdrago/log/.etc_crontab_update_dev_ctrl_f006.${_tRee}.${_xSrl}.pid
     fi
   else
-    if [ ! -e "/var/xdrago/log/.etc_crontab_update_prod_ctrl_f005.${_tRee}.${_xSrl}.pid" ]; then
+    if [ ! -e "/var/xdrago/log/.etc_crontab_update_prod_ctrl_f006.${_tRee}.${_xSrl}.pid" ]; then
       rm -f /var/xdrago/log/.*etc_crontab_update_prod_ctrl*
       if [ ! -z "${_AUTO_UP_MONTH}" ] \
         && [ ! -z "${_AUTO_UP_DAY}" ]; then
@@ -660,7 +660,7 @@ if [ -e "/var/aegir/drush" ]; then
         _crontab_cleanup
       fi
       service cron restart
-      touch /var/xdrago/log/.etc_crontab_update_prod_ctrl_f005.${_tRee}.${_xSrl}.pid
+      touch /var/xdrago/log/.etc_crontab_update_prod_ctrl_f006.${_tRee}.${_xSrl}.pid
     fi
   fi
 
