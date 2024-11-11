@@ -296,10 +296,10 @@ _innodb_log_file_size_update() {
           echo "DEBUG1: _INNODB_LOG_FILE_SIZE_MB is ${_INNODB_LOG_FILE_SIZE_MB}"
           echo "DEBUG1: _INNODB_REDO_LOG_CAPACITY_MB is ${_INNODB_REDO_LOG_CAPACITY_MB}"
         fi
-        sed -i "s/.*innodb_redo_log_capacity.*/#innodb_redo_log_capacity    = ${_INNODB_REDO_LOG_CAPACITY_MB}/g" /etc/mysql/my.cnf
-        wait
-        sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
-        wait
+        sed -i \
+          -e "s/.*innodb_redo_log_capacity.*/#innodb_redo_log_capacity    = ${_INNODB_REDO_LOG_CAPACITY_MB}/g" \
+          -e "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" \
+          /etc/mysql/my.cnf &> /dev/null
         echo "innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}" > /root/.my.innodb_log_file_size.txt
       fi
     fi
@@ -312,10 +312,10 @@ _innodb_log_file_size_update() {
           echo "DEBUG2: _INNODB_LOG_FILE_SIZE_MB is ${_INNODB_LOG_FILE_SIZE_MB}"
           echo "DEBUG2: _INNODB_REDO_LOG_CAPACITY_MB is ${_INNODB_REDO_LOG_CAPACITY_MB}"
         fi
-        sed -i "s/.*innodb_redo_log_capacity.*/innodb_redo_log_capacity    = ${_INNODB_REDO_LOG_CAPACITY_MB}/g" /etc/mysql/my.cnf
-        wait
-        sed -i "s/.*innodb_log_file_size.*/#innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
-        wait
+        sed -i \
+          -e "s/.*innodb_redo_log_capacity.*/innodb_redo_log_capacity    = ${_INNODB_REDO_LOG_CAPACITY_MB}/g" \
+          -e "s/.*innodb_log_file_size.*/#innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" \
+          /etc/mysql/my.cnf &> /dev/null
         echo "innodb_redo_log_capacity    = ${_INNODB_REDO_LOG_CAPACITY_MB}" > /root/.my.innodb_redo_log_capacity.txt
       fi
     fi
@@ -341,10 +341,10 @@ _innodb_log_file_size_update() {
             echo "DEBUG3: _INNODB_REDO_LOG_CAPACITY_MB is ${_INNODB_REDO_LOG_CAPACITY_MB}"
             echo "DEBUG3: _INNODB_LOG_FILE_SIZE_MB is ${_INNODB_LOG_FILE_SIZE_MB}"
           fi
-          sed -i "s/.*innodb_redo_log_capacity.*/#innodb_redo_log_capacity    = ${_INNODB_REDO_LOG_CAPACITY_MB}/g" /etc/mysql/my.cnf
-          wait
-          sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
-          wait
+          sed -i \
+            -e "s/.*innodb_redo_log_capacity.*/#innodb_redo_log_capacity    = ${_INNODB_REDO_LOG_CAPACITY_MB}/g" \
+            -e "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" \
+            /etc/mysql/my.cnf &> /dev/null
           echo "innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}" > /root/.my.innodb_log_file_size.txt
         fi
       fi
@@ -357,10 +357,10 @@ _innodb_log_file_size_update() {
             echo "DEBUG4: _INNODB_REDO_LOG_CAPACITY_MB is ${_INNODB_REDO_LOG_CAPACITY_MB}"
             echo "DEBUG4: _INNODB_LOG_FILE_SIZE_MB is ${_INNODB_LOG_FILE_SIZE_MB}"
           fi
-          sed -i "s/.*innodb_redo_log_capacity.*/innodb_redo_log_capacity    = ${_INNODB_REDO_LOG_CAPACITY_MB}/g" /etc/mysql/my.cnf
-          wait
-          sed -i "s/.*innodb_log_file_size.*/#innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
-          wait
+          sed -i \
+            -e "s/.*innodb_redo_log_capacity.*/innodb_redo_log_capacity    = ${_INNODB_REDO_LOG_CAPACITY_MB}/g" \
+            -e "s/.*innodb_log_file_size.*/#innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" \
+            /etc/mysql/my.cnf &> /dev/null
           echo "innodb_redo_log_capacity    = ${_INNODB_REDO_LOG_CAPACITY_MB}" > /root/.my.innodb_redo_log_capacity.txt
         fi
       fi
@@ -383,12 +383,9 @@ _sql_conf_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _sql_conf_update"
   fi
-  sed -i "s/.*innodb_force_recovery/#innodb_force_recovery/g" /etc/mysql/my.cnf &> /dev/null
-    wait
-  sed -i "s/.*innodb_corrupt_table_action/#innodb_corrupt_table_action/g" /etc/mysql/my.cnf &> /dev/null
-    wait
-  sed -i "s/^thread_concurrency.*//g" /etc/mysql/my.cnf &> /dev/null
-    wait
+  sed -i -e "s/.*innodb_force_recovery/#innodb_force_recovery/g" \
+    -e "s/.*innodb_corrupt_table_action/#innodb_corrupt_table_action/g" \
+    -e "s/^thread_concurrency.*//g" /etc/mysql/my.cnf &> /dev/null
   _if_hosted_sys
   _check_mysql_version
   if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ] \
@@ -396,6 +393,20 @@ _sql_conf_update() {
     if [ "${_CUSTOM_CONFIG_SQL}" = "YES" ]; then
       _DO_NOTHING=YES
     else
+      # Determine the Percona version (assuming _DB_V is set to the version number, e.g., "5.7" or "8.0")
+      if [ "${_DB_V}" = "5.7" ]; then
+        # Disable performance_schema for Percona 5.7
+        sed -i -E \
+          -e "s/^#?\s*performance_schema\s*=.*/performance_schema=OFF/" \
+          -e "s/^(\s*)performance_schema_.*=.*/\1#&/" \
+          /etc/mysql/my.cnf &> /dev/null
+      else
+        # Enable performance_schema for Percona 8.0
+        sed -i -E \
+          -e "s/^#?\s*performance_schema\s*=.*/performance_schema=ON/" \
+          -e "s/^(\s*)#\s*(performance_schema_.*=.*)/\1\2/" \
+          /etc/mysql/my.cnf &> /dev/null
+      fi
       _INNODB_LOG_FILE_SIZE=${_INNODB_LOG_FILE_SIZE//[^0-9]/}
       if [ ! -z "${_INNODB_LOG_FILE_SIZE}" ]; then
         if [ "${_INNODB_LOG_FILE_SIZE}" -ge "50" ]; then
@@ -421,53 +432,41 @@ _sql_conf_update() {
           fi
         fi
       fi
-      sed -i "s/.*slow_query_log/#slow_query_log/g"           /etc/mysql/my.cnf &> /dev/null
-        wait
-      sed -i "s/.*long_query_time/#long_query_time/g"         /etc/mysql/my.cnf &> /dev/null
-        wait
-      sed -i "s/.*slow_query_log_file/#slow_query_log_file/g" /etc/mysql/my.cnf &> /dev/null
-        wait
+      sed -i \
+        -e "s/.*slow_query_log/#slow_query_log/g" \
+        -e "s/.*long_query_time/#long_query_time/g" \
+        -e "s/.*slow_query_log_file/#slow_query_log_file/g" \
+        /etc/mysql/my.cnf &> /dev/null
       if [ ! -e "/etc/mysql/skip-name-resolve.txt" ]; then
-        sed -i "s/.*skip-name-resolve/#skip-name-resolve/g"   /etc/mysql/my.cnf &> /dev/null
-          wait
+        sed -i "s/.*skip-name-resolve/#skip-name-resolve/g" /etc/mysql/my.cnf &> /dev/null
       fi
     fi
   fi
   mv -f /etc/mysql/my.cnf-pre* ${_vBs}/dragon/t/ &> /dev/null
-  sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf &> /dev/null
-    wait
-  sed -i "s/.*language/#language/g" /etc/mysql/my.cnf &> /dev/null
-    wait
-  sed -i "s/.*innodb_lazy_drop_table.*//g" /etc/mysql/my.cnf &> /dev/null
-    wait
+  sed -i \
+    -e "s/.*default-table-type/#default-table-type/g" \
+    -e "s/.*language/#language/g" \
+    -e "s/.*innodb_lazy_drop_table.*//g" \
+    /etc/mysql/my.cnf &> /dev/null
   if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ]; then
     if [ "${_DB_BINARY_LOG}" = "NO" ]; then
+      # Execute the purge_binlogs script quietly
       bash /var/xdrago/purge_binlogs.sh &> /dev/null
-      sed -i "s/.*purge_binlogs.*//g" /var/spool/cron/crontabs/root
-        wait
-      sed -i "/^$/d" /var/spool/cron/crontabs/root
-        wait
-      sed -i "s/^log_bin/#log_bin/g"                   /etc/mysql/my.cnf &> /dev/null
-        wait
-      sed -i "s/^expire_logs_days/#expire_logs_days/g" /etc/mysql/my.cnf &> /dev/null
-        wait
-      sed -i "s/^max_binlog_size/#max_binlog_size/g"   /etc/mysql/my.cnf &> /dev/null
-        wait
-      sed -i "s/^binlog_row_image/#binlog_row_image/g" /etc/mysql/my.cnf &> /dev/null
-        wait
-      sed -i "s/^binlog_format/#binlog_format/g"       /etc/mysql/my.cnf &> /dev/null
-        wait
+      # Remove lines containing 'purge_binlogs' and delete empty lines in cron
+      sed -i -e "/purge_binlogs/d" -e "/^$/d" /var/spool/cron/crontabs/root &> /dev/null
+      # Comment out binary log related settings in MySQL configuration
+      sed -i -e "s/^log_bin/#log_bin/g" \
+        -e "s/^expire_logs_days/#expire_logs_days/g" \
+        -e "s/^max_binlog_size/#max_binlog_size/g" \
+        -e "s/^binlog_row_image/#binlog_row_image/g" \
+        -e "s/^binlog_format/#binlog_format/g" /etc/mysql/my.cnf &> /dev/null
     elif [ "${_DB_BINARY_LOG}" = "YES" ]; then
-      sed -i "s/.*log_bin/log_bin/g"                   /etc/mysql/my.cnf &> /dev/null
-        wait
-      sed -i "s/.*expire_logs_days/expire_logs_days/g" /etc/mysql/my.cnf &> /dev/null
-        wait
-      sed -i "s/.*max_binlog_size/max_binlog_size/g"   /etc/mysql/my.cnf &> /dev/null
-        wait
-      sed -i "s/.*binlog_row_image/binlog_row_image/g" /etc/mysql/my.cnf &> /dev/null
-        wait
-      sed -i "s/.*binlog_format/binlog_format/g"       /etc/mysql/my.cnf &> /dev/null
-        wait
+      # Uncomment binary log related settings in MySQL configuration
+      sed -i -e "s/^#\s*\(log_bin\)/\1/g" \
+        -e "s/^#\s*\(expire_logs_days\)/\1/g" \
+        -e "s/^#\s*\(max_binlog_size\)/\1/g" \
+        -e "s/^#\s*\(binlog_row_image\)/\1/g" \
+        -e "s/^#\s*\(binlog_format\)/\1/g" /etc/mysql/my.cnf &> /dev/null
     fi
     if [ "${_DB_V}" = "5.7" ] || [ "${_DB_SERIES}" = "5.7" ]; then
       if [ -e "/root/.dev.server.cnf" ]; then
@@ -484,10 +483,10 @@ _sql_conf_update() {
           _INNODB_REDO_LOG_CAPACITY_MB="${_INNODB_REDO_LOG_CAPACITY}M"
           if [[ ! "${_INNODB_LOG_FILE_SIZE_TEST}" =~ "= ${_INNODB_LOG_FILE_SIZE_MB}" ]]; then
             if [ "${_INNODB_LOG_FILE_SIZE_SAME}" = "YES" ]; then
-              sed -i "s/.*innodb_redo_log_capacity.*/#innodb_redo_log_capacity    = ${_INNODB_REDO_LOG_CAPACITY_MB}/g" /etc/mysql/my.cnf
-              wait
-              sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
-              wait
+              sed -i \
+                -e "s/.*innodb_redo_log_capacity.*/#innodb_redo_log_capacity    = ${_INNODB_REDO_LOG_CAPACITY_MB}/g" \
+                -e "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" \
+                /etc/mysql/my.cnf &> /dev/null
               echo "innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}" > /root/.my.innodb_log_file_size.txt
             else
               _innodb_log_file_size_update
@@ -511,10 +510,10 @@ _sql_conf_update() {
           _INNODB_REDO_LOG_CAPACITY_TEST=$(grep "innodb_redo_log_capacity" /etc/mysql/my.cnf 2>&1)
           if [[ ! "${_INNODB_REDO_LOG_CAPACITY_TEST}" =~ "= ${_INNODB_REDO_LOG_CAPACITY_MB}" ]]; then
             if [ "${_INNODB_LOG_FILE_SIZE_SAME}" = "YES" ]; then
-              sed -i "s/.*innodb_redo_log_capacity.*/innodb_redo_log_capacity    = ${_INNODB_REDO_LOG_CAPACITY_MB}/g" /etc/mysql/my.cnf
-              wait
-              sed -i "s/.*innodb_log_file_size.*/#innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
-              wait
+              sed -i \
+                -e "s/.*innodb_redo_log_capacity.*/innodb_redo_log_capacity    = ${_INNODB_REDO_LOG_CAPACITY_MB}/g" \
+                -e "s/.*innodb_log_file_size.*/#innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" \
+                /etc/mysql/my.cnf &> /dev/null
               echo "innodb_redo_log_capacity    = ${_INNODB_REDO_LOG_CAPACITY_MB}" > /root/.my.innodb_redo_log_capacity.txt
             else
               _innodb_log_file_size_update
@@ -645,15 +644,13 @@ _tune_sql_memory_limits() {
         _USE_MYISAM_MEM="${_USE_SQL}"
       fi
       _USE_MYISAM_MEM="${_USE_MYISAM_MEM}M"
-        sed -i "s/^key_buffer_size.*/key_buffer_size         = ${_USE_MYISAM_MEM}/g"  /etc/mysql/my.cnf &> /dev/null
-        wait
+      sed -i "s/^key_buffer_size.*/key_buffer_size         = ${_USE_MYISAM_MEM}/g"  /etc/mysql/my.cnf &> /dev/null
     else
       _USE_MYISAM_MEM="${_USE_SQL}M"
       if [ "${_MYSQLTUNER_TEST_RESULT}" = "FAIL" ]; then
         _msg "NOTE: _USE_MYISAM_MEM is ${_USE_MYISAM_MEM} because _REC_MYISAM_MEM was empty!"
       fi
-        sed -i "s/^key_buffer_size.*/key_buffer_size         = ${_USE_MYISAM_MEM}/g"  /etc/mysql/my.cnf &> /dev/null
-        wait
+      sed -i "s/^key_buffer_size.*/key_buffer_size         = ${_USE_MYISAM_MEM}/g"  /etc/mysql/my.cnf &> /dev/null
     fi
     ###--------------------###
     if [ ! -z "${_REC_INNODB_MEM}" ] \
@@ -681,9 +678,7 @@ _tune_sql_memory_limits() {
       fi
       if [ -e "/etc/mysql/my.cnf" ]; then
         sed -i "s/^innodb_buffer_pool_instances.*/innodb_buffer_pool_instances = ${_INNODB_BPI}/g" /etc/mysql/my.cnf &> /dev/null
-          wait
         sed -i "s/^innodb_page_cleaners.*/innodb_page_cleaners = ${_INNODB_BPI}/g" /etc/mysql/my.cnf &> /dev/null
-          wait
       fi
       _INNODB_LOG_FILE_SIZE=$(echo "scale=0; ${_USE_INNODB_MEM}/4/40*40" | bc 2>&1)
       _DB_COUNT=$(ls /var/lib/mysql/ | wc -l 2>&1)
@@ -712,7 +707,6 @@ _tune_sql_memory_limits() {
       if [ -e "/etc/mysql/my.cnf" ]; then
         sed -i "s/^innodb_buffer_pool_size.*/innodb_buffer_pool_size = ${_USE_INNODB_MEM}/g"  /etc/mysql/my.cnf &> /dev/null
       fi
-        wait
     else
       _USE_INNODB_MEM="${_USE_SQL}M"
       _INNODB_LOG_FILE_SIZE=$(echo "scale=0; ${_USE_SQL}/4/40*40" | bc 2>&1)
@@ -742,7 +736,6 @@ _tune_sql_memory_limits() {
       if [ -e "/etc/mysql/my.cnf" ]; then
         sed -i "s/^innodb_buffer_pool_size.*/innodb_buffer_pool_size = ${_USE_INNODB_MEM}/g"  /etc/mysql/my.cnf &> /dev/null
       fi
-        wait
     fi
   else
     _THIS_USE_MEM="${_USE_SQL}M"
@@ -776,7 +769,6 @@ _tune_sql_memory_limits() {
     fi
     if [ -e "/etc/mysql/my.cnf" ]; then
       sed -i "s/= 181/= ${_USE_SQL}/g"  /etc/mysql/my.cnf &> /dev/null
-      wait
     fi
   fi
 }
@@ -878,7 +870,6 @@ _prep_for_install_db_sql() {
     if [ "${_SQL_FORCE_REINSTALL}" = "YES" ] \
       || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
       sed -i "s/.*innodb_force_recovery.*/innodb_force_recovery = 3/g" /etc/mysql/my.cnf &> /dev/null
-      wait
     fi
   fi
 
@@ -1254,9 +1245,7 @@ _db_server_install() {
       _apt_clean_update
       if [ -e "/etc/mysql/my.cnf" ]; then
         sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf &> /dev/null
-          wait
         sed -i "s/.*language/#language/g" /etc/mysql/my.cnf &> /dev/null
-          wait
       fi
       rm -f /var/lib/mysql/debian-*.flag &> /dev/null
       rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
@@ -1265,13 +1254,10 @@ _db_server_install() {
       _db_server_apt_cleanup
       if [ -e "/etc/mysql/my.cnf" ]; then
         sed -i "s/.*innodb_lazy_drop_table.*//g" /etc/mysql/my.cnf &> /dev/null
-          wait
       fi
       if [ -e "/etc/mysql/my.cnf" ]; then
         sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf &> /dev/null
-          wait
         sed -i "s/.*language/#language/g" /etc/mysql/my.cnf &> /dev/null
-          wait
       fi
       _CUSTOM_CONFIG_SQL=NO
       _mrun "sleep 8"

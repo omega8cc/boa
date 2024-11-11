@@ -20,6 +20,11 @@ transaction-isolation   = READ-COMMITTED
 transaction-read-only   = OFF
 skip-external-locking
 skip-name-resolve
+#performance_schema      = OFF
+#performance_schema_instrument = 'wait/%=ON'
+#performance_schema_consumer_events_waits_current=OFF
+#performance_schema_consumer_events_waits_history=OFF
+#performance_schema_consumer_events_waits_history_long=OFF
 #symbolic-links          = 0
 connect_timeout         = 60
 join_buffer_size        = 1M
