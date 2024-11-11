@@ -61,16 +61,46 @@ if [[ ! "${_ARGS}" =~ "composer " ]] \
     done
     ### echo _ARR is ${_ARR}
   elif [[ "${_ARGS}" =~ "vendor/drush/drush/drush" ]]; then
-    _ARR="${_ARGS}"
+    if [[ "${_ARGS}" =~ "set -m" ]]; then
+      _R_M=`echo -n ${_ARGS}  | grep -o "set -m\; .*vendor/drush/drush/drush"`
+    else
+      _R_M=`echo -n ${_ARGS} | sed 's|vendor/drush/drush/drush.*||'`
+    fi
+    ### echo _R_M is ${_R_M}
+    _R_M=${_R_M//\//\\\/}
+    ### echo _R_M is ${_R_M}
+    _CLR=`echo ${_ARGS}  | sed "s/\${_R_M}//g"`
+    _ARR=() # the buffer array for filtered parameters
+    for arg in "${_CLR}"; do
+      case ${_R_M} in
+        $arg\ * | *\ $arg | *\ $arg\ *) ;;
+        *) _ARR+=("$arg") ;;
+      esac
+    done
     ### echo _ARR is ${_ARR}
   elif [[ "${_ARGS}" =~ "/vendor/bin/drush" ]]; then
-    _ARR="${_ARGS}"
+    if [[ "${_ARGS}" =~ "set -m" ]]; then
+      _R_M=`echo -n ${_ARGS}  | grep -o "set -m\; .*/vendor/bin/drush"`
+    else
+      _R_M=`echo -n ${_ARGS} | sed 's|/vendor/bin/drush.*||'`
+    fi
+    ### echo _R_M is ${_R_M}
+    _R_M=${_R_M//\//\\\/}
+    ### echo _R_M is ${_R_M}
+    _CLR=`echo ${_ARGS}  | sed "s/\${_R_M}//g"`
+    _ARR=() # the buffer array for filtered parameters
+    for arg in "${_CLR}"; do
+      case ${_R_M} in
+        $arg\ * | *\ $arg | *\ $arg\ *) ;;
+        *) _ARR+=("$arg") ;;
+      esac
+    done
     ### echo _ARR is ${_ARR}
   elif [[ "${_ARGS}" =~ "vendor/bin/drush " ]]; then
     if [[ "${_ARGS}" =~ "set -m" ]]; then
-      _R_M=`echo -n ${_ARGS}  | grep -o "set -m\; vendor/bin/drush"`
+      _R_M=`echo -n ${_ARGS}  | grep -o "set -m\; .*vendor/bin/drush"`
     else
-      _R_M=`echo -n ${_ARGS}  | grep -o "vendor/bin/drush"`
+      _R_M=`echo -n ${_ARGS} | sed 's|vendor/bin/drush.*||'`
     fi
     ### echo _R_M is ${_R_M}
     _R_M=${_R_M//\//\\\/}
@@ -452,13 +482,13 @@ if [ "${_LTD_GID}" = "www-data users" ] \
         _PWD=$(pwd 2>&1)
         _DEST_DRUSH="/opt/tools/drush/8/drush/drush.php"
         if [[ "${_ARGS}" =~ "vendor/bin/drush " ]]; then
-          _DEST_DRUSH="vendor/bin/drush"
+          _DEST_DRUSH="${_R_M}/vendor/drush/drush/drush.php"
         fi
         if [[ "${_ARGS}" =~ "vendor/drush/drush/drush " ]]; then
-          _DEST_DRUSH=
+          _DEST_DRUSH="${_R_M}/vendor/drush/drush/drush.php"
         fi
         if [[ "${_ARGS}" =~ "/vendor/bin/drush " ]]; then
-          _DEST_DRUSH=
+          _DEST_DRUSH="${_R_M}/vendor/drush/drush/drush.php"
         fi
         if [[ "${_ARGS}" =~ "vendor/drush/drush/drush.php " ]]; then
           _DEST_DRUSH="vendor/drush/drush/drush.php"
@@ -513,13 +543,13 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           || [[ "${_ARGS}" =~ "drush8 " ]]; then
           _DEST_DRUSH="/opt/tools/drush/8/drush/drush.php"
           if [[ "${_ARGS}" =~ "vendor/bin/drush " ]]; then
-            _DEST_DRUSH="vendor/bin/drush"
+            _DEST_DRUSH="${_R_M}/vendor/drush/drush/drush.php"
           fi
           if [[ "${_ARGS}" =~ "vendor/drush/drush/drush " ]]; then
-            _DEST_DRUSH=
+            _DEST_DRUSH="${_R_M}/vendor/drush/drush/drush.php"
           fi
           if [[ "${_ARGS}" =~ "/vendor/bin/drush " ]]; then
-            _DEST_DRUSH=
+            _DEST_DRUSH="${_R_M}/vendor/drush/drush/drush.php"
           fi
           if [[ "${_ARGS}" =~ "vendor/drush/drush/drush.php " ]]; then
             _DEST_DRUSH="vendor/drush/drush/drush.php"
@@ -909,6 +939,8 @@ if [ "${_LTD_GID}" = "www-data users" ] \
       || [ "$0" = "/bin/websh" ]; then
       if [ -x "/bin/dash" ]; then
         if [ ! -z "${_ARR}" ] && [ -z "${_OCTO_SYS_ARR}" ]; then
+          _DEST_DRUSH=${_DEST_DRUSH//\\/}
+          _ARR=`echo -n ${_ARR} | sed 's|/vendor/bin/drush||'`
           ### echo EXD 1 DRUSH_PHP is ${DRUSH_PHP}
           ### echo EXD 1 PHP_INI is ${PHP_INI}
           ### echo EXD 1 _DEST_DRUSH is ${_DEST_DRUSH}
@@ -917,6 +949,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           exec /bin/dash -c "${DRUSH_PHP} ${_DEST_DRUSH} ${_ARR}"
           exit 0
         elif [ ! -z "${PHP_FWD}" ] && [ ! -z "${_OCTO_SYS_ARR}" ]; then
+          _DEST_DRUSH=${_DEST_DRUSH//\\/}
           ### echo EXD 3-PHP_FWD DRUSH_PHP is ${DRUSH_PHP}
           ### echo EXD 3-PHP_FWD PHP_INI is ${PHP_INI}
           ### echo EXD 3-PHP_FWD _DEST_DRUSH is ${_DEST_DRUSH}
@@ -925,6 +958,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           exec /bin/dash -c "${DRUSH_PHP} ${_DEST_DRUSH} ${_OCTO_SYS_ARR}"
           exit 0
         elif [ -z "${PHP_FWD}" ] && [ ! -z "${_OCTO_SYS_ARR}" ]; then
+          _DEST_DRUSH=${_DEST_DRUSH//\\/}
           ### echo EXD 3-NO-PHP_FWD DRUSH_PHP is ${DRUSH_PHP}
           ### echo EXD 3-NO-PHP_FWD PHP_INI is ${PHP_INI}
           ### echo EXD 3-NO-PHP_FWD _DEST_DRUSH is ${_DEST_DRUSH}
