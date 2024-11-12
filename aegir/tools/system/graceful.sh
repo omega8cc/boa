@@ -12,9 +12,22 @@ _check_root() {
     exit 1
   else
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
-    # Sanitize and set default value for _B_NICE
-    _B_NICE="${_B_NICE//[^0-9]/}"
-    : "${_B_NICE:=10}"
+    # Sanitize to allow only digits and minus sign
+    export _B_NICE=${_B_NICE//[^0-9-]/}
+
+    # Validate and set default if necessary
+    if ! [[ "$_B_NICE" =~ ^-?[0-9]+$ ]]; then
+      _B_NICE=0
+    fi
+
+    # Clamp the value within -20 to 19
+    if (( _B_NICE < -20 )); then
+      _B_NICE=-20
+    elif (( _B_NICE > 19 )); then
+      _B_NICE=19
+    fi
+
+    renice ${_B_NICE} -p $$ &> /dev/null
     chmod a+w /dev/null
   fi
 }
@@ -130,14 +143,9 @@ _graceful_action() {
     echo rotate > /var/log/newrelic/newrelic-daemon.log
   fi
 
-  # Adjust process priorities
-  echo "Adjusting process priorities..."
-  ionice -c2 -n2 -p $$
-  renice "${_B_NICE}" -p $$ &> /dev/null
-
   # Reload nginx service
   echo "Reloading nginx service..."
-  service nginx reload
+  nice -n -5 service nginx reload
 
   # Restart Solr and Jetty servers if not under high traffic
   if [ ! -e "/root/.giant_traffic.cnf" ] && [ ! -e "/root/.high_traffic.cnf" ]; then
@@ -146,7 +154,7 @@ _graceful_action() {
     sleep 60
     if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
       echo "Restarting Solr 7..."
-      service solr7 restart
+      nice -n 0 service solr7 restart
     fi
     echo "Stopping any running Jetty processes..."
     pkill -9 -f jetty &> /dev/null
@@ -167,11 +175,11 @@ _graceful_action() {
     touch /run/speed_cleanup.pid
     echo " " >> /var/log/nginx/speed_cleanup.log
     sed -i "s/levels=2:2:2/levels=2:2/g" /var/aegir/config/server_master/nginx.conf
-    service nginx reload &> /dev/null
+    nice -n -5 service nginx reload &> /dev/null
     echo "speed_purge start $(date)" >> /var/log/nginx/speed_cleanup.log
-    nice -n19 ionice -c2 -n7 find /var/lib/nginx/speed/ -mtime +1 -exec rm -rf {} \; &> /dev/null
+    nice -n 9 ionice -c2 -n7 find /var/lib/nginx/speed/ -mtime +1 -exec rm -rf {} \; &> /dev/null
     echo "speed_purge complete $(date)" >> /var/log/nginx/speed_cleanup.log
-    service nginx reload &> /dev/null
+    nice -n -5 service nginx reload &> /dev/null
     rm -f /run/speed_cleanup.pid
   fi
 

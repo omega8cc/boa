@@ -12,8 +12,22 @@ _wgetGet="--max-redirect=3 --no-check-certificate -q --tries=9 --wait=9 --user-a
 _check_root() {
   if [ `whoami` = "root" ]; then
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
-    export _B_NICE=${_B_NICE//[^0-9]/}
-    : "${_B_NICE:=10}"
+    # Sanitize to allow only digits and minus sign
+    export _B_NICE=${_B_NICE//[^0-9-]/}
+
+    # Validate and set default if necessary
+    if ! [[ "$_B_NICE" =~ ^-?[0-9]+$ ]]; then
+      _B_NICE=-5
+    fi
+
+    # Clamp the value within -20 to 19
+    if (( _B_NICE < -20 )); then
+      _B_NICE=-20
+    elif (( _B_NICE > 19 )); then
+      _B_NICE=19
+    fi
+
+    renice ${_B_NICE} -p $$ &> /dev/null
     chmod a+w /dev/null
   else
     echo "ERROR: This script should be run as a root user"
@@ -242,17 +256,18 @@ if [ -d "/data/u" ]; then
   wait
 fi
 
-renice ${_B_NICE} -p $$ &> /dev/null
-
 _if_fix_locked_sshd() {
   _SSH_LOG="/var/log/auth.log"
   if [ `tail --lines=100 ${_SSH_LOG} \
     | grep --count "error: Bind to port 22"` -gt "0" ]; then
     kill -9 $(ps aux | grep '[s]tartups' | awk '{print $2}')
-    service ssh start
+    nice -n -9 service ssh start
   fi
 }
 _if_fix_locked_sshd
+
+setprio &> /dev/null
+
 touch /var/xdrago/log/clear.done.pid
 exit 0
 ###EOF2024###

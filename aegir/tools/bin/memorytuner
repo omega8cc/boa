@@ -248,15 +248,15 @@ declare -A _service_estimated_mem_mb=(
   ["java"]=100
 )
 
-# Ensure _TOTAL_MEM_MB is set by default to 85% of available RAM
+# Ensure _TOTAL_MEM_MB is set by default to 75% of available RAM
 _MAX_MEM_MB="${_TOTAL_MEM_MB}"
-_TOTAL_MEM_MB=$(echo "(${_TOTAL_MEM_MB} * 85) / 100" | bc)
+_TOTAL_MEM_MB=$(echo "(${_TOTAL_MEM_MB} * 75) / 100" | bc)
 
 # Threshold for uptime (e.g., 1 hour = 3600 seconds)
 _UPTIME_THRESHOLD=3600
 
 # Initialize total memory usage of other services
-_TOTAL_OTHER_SERVICES_MEM_MB=0
+_TOTAL_OTHER_SERVICES_MEM_MB=500
 
 # Array to store debugging information
 declare -A _service_mem_usage_mb
@@ -316,8 +316,8 @@ fi
 # Calculate max memory for MySQL
 _MAX_MEM_FOR_MYSQL_MB=$(echo "${_TOTAL_MEM_MB} - ${_TOTAL_OTHER_SERVICES_MEM_MB}" | bc)
 
-# Ensure _AVA_MEM_FOR_MYSQL_MB is set by default to 85% of _MAX_MEM_FOR_MYSQL_MB
-_AVA_MEM_FOR_MYSQL_MB=$(echo "(${_MAX_MEM_FOR_MYSQL_MB} * 85) / 100" | bc)
+# Ensure _AVA_MEM_FOR_MYSQL_MB is set by default to 75% of _MAX_MEM_FOR_MYSQL_MB
+_AVA_MEM_FOR_MYSQL_MB=$(echo "(${_MAX_MEM_FOR_MYSQL_MB} * 75) / 100" | bc)
 
 echo "Max raw RAM available: ${_MAX_MEM_MB} MB"
 echo "Memory safely available for all services: ${_TOTAL_MEM_MB} MB"
@@ -338,17 +338,17 @@ fi
 # Get MySQL uptime
 _MYSQL_UPTIME_SECONDS=$(_get_mysql_uptime)
 
-# Run MySQLTuner-perl only if uptime >= 24 hours (86400 seconds)
-if [ "${_NUMBER_OF_DATABASES}" -lt 100 ] && [ "${_MYSQL_UPTIME_SECONDS}" -ge 86400 ]; then
+# Run MySQLTuner-perl only if uptime >= 1 hour (3600 seconds)
+if [ "${_NUMBER_OF_DATABASES}" -lt 300 ] && [ "${_MYSQL_UPTIME_SECONDS}" -ge 3600 ]; then
   echo "Running MySQLTuner-perl to gather recommendations..."
   _parse_mysqltuner_recommendations
 else
   echo "Skipping MySQLTuner-perl."
-  if [ "${_NUMBER_OF_DATABASES}" -ge 100 ]; then
-    echo "Reason: Number of databases is ${_NUMBER_OF_DATABASES} (>=100)."
+  if [ "${_NUMBER_OF_DATABASES}" -ge 300 ]; then
+    echo "Reason: Number of databases is ${_NUMBER_OF_DATABASES} (>=300)."
   fi
-  if [ "${_MYSQL_UPTIME_SECONDS}" -lt 86400 ]; then
-    echo "Reason: MySQL uptime is less than 24 hours."
+  if [ "${_MYSQL_UPTIME_SECONDS}" -lt 3600 ]; then
+    echo "Reason: MySQL uptime is less than 1 hour."
   fi
   _REC_INNODB_BUFFER_POOL_SIZE_MB=0
   _REC_KEY_BUFFER_SIZE_MB=0
