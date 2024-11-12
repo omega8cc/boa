@@ -44,8 +44,8 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-export _tRee=lts
-export _xSrl=550ltsT01
+export _tRee=dev
+export _xSrl=550devT01
 
 ###
 ### Avoid too many questions
@@ -1084,13 +1084,13 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/clear.sh.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/clear.sh.ctrl.f94.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/clear.sh /var/xdrago/clear.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/clear.sh" -o /var/xdrago/clear.sh
     if [ -e "/var/xdrago/clear.sh" ]; then
       chmod 700 /var/xdrago/clear.sh
       chown root:root /var/xdrago/clear.sh
-      touch ${_pthLog}/clear.sh.ctrl.f95.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/clear.sh.ctrl.f94.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/clear.sh.old /var/xdrago/clear.sh
     fi
@@ -1620,13 +1620,13 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/websh.ctrl.f94.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/websh.ctrl.f93.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /bin/websh /var/xdrago/websh.sh.old
     curl ${_crlGet} "${_urlHmr}/helpers/websh.sh.txt" -o /bin/websh
     if [ -e "/bin/websh" ]; then
       chmod 755 /bin/websh
       chown root:root /bin/websh
-      touch ${_pthLog}/websh.ctrl.f94.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/websh.ctrl.f93.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/websh.sh.old /bin/websh
     fi
@@ -2925,7 +2925,7 @@ _update_boa_tools() {
     touch ${_pthLog}/updateFx07.ctrl.${_tRee}.${_xSrl}.pid
   fi
   mkdir -p ${_optBin}
-  rm -f ${_usrBin}/{autoinit*,barracuda*,boa*,fancynow*,killer*,octopus*,smtpgapps*}
+  rm -f ${_usrBin}/{autoinit*,barracuda*,boa*,fancynow*,killer*,octopus*,smtpgapps*,setprio*}
   if [ ! -d "/data/u" ]; then
     ln -s ${_optBin}/autoinit  ${_usrBin}/autoinit
     ln -s ${_optBin}/barracuda ${_usrBin}/barracuda
@@ -2933,6 +2933,7 @@ _update_boa_tools() {
     ln -s ${_optBin}/fancynow  ${_usrBin}/fancynow
     ln -s ${_optBin}/killer    ${_usrBin}/killer
     ln -s ${_optBin}/octopus   ${_usrBin}/octopus
+    ln -s ${_optBin}/octopus   ${_usrBin}/setprio
     ln -s ${_optBin}/octopus   ${_usrBin}/smtpgapps
   fi
   _boaBins="autobeowulf \
@@ -2954,6 +2955,7 @@ _update_boa_tools() {
            octopus \
            perftest \
            randpass \
+           setprio \
            smtpgapps \
            sqlclean \
            sqlmagic \
@@ -3005,6 +3007,7 @@ _update_boa_tools() {
   echo "### ${_TODAY} ###" >> ${_optBin}/mergecsf
   echo "### ${_TODAY} ###" >> ${_optBin}/octopus
   echo "### ${_TODAY} ###" >> ${_optBin}/perftest
+  echo "### ${_TODAY} ###" >> ${_optBin}/setprio
   echo "### ${_TODAY} ###" >> ${_optBin}/smtpgapps
   echo "### ${_TODAY} ###" >> ${_optBin}/sqlclean
   echo "### ${_TODAY} ###" >> ${_optBin}/vhostcheck
@@ -3028,7 +3031,7 @@ _update_boa_tools() {
   fi
   chmod 700 ${_optBin}/{autoinit,autodaedalus,autochimaera,autobeowulf,autoupboa,backboa,duobackboa,mergecsf}
   chmod 700 ${_optBin}/{barracuda,boa,ffmirror,killer,mycnfup,octopus,syncpass,xboa,weblogx,sqlclean,perftest}
-  chmod 700 ${_optBin}/{fancynow,codebasecheck,vhostcheck,memorytuner,mysqltuner5,mysqltuner8,smtpgapps}
+  chmod 700 ${_optBin}/{fancynow,codebasecheck,vhostcheck,memorytuner,mysqltuner5,mysqltuner8,smtpgapps,setprio}
   chmod 755 ${_optBin}/{randpass,sqlmagic,thinkdifferent}
 }
 
@@ -3198,14 +3201,14 @@ _if_update_boa_key_tools_only() {
     fi
   fi
   _BOA_TOOLS_UPDATE=NO
-  if [ -e "${_pthLog}" ] && [ ! -e "${_pthLog}/updateBOAtoolsCC.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+  if [ -e "${_pthLog}" ] && [ ! -e "${_pthLog}/updateBOAtoolsCF.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     _BOA_TOOLS_UPDATE=YES
   fi
   [ ! -e "/var/aegir/drush" ] && _BOA_TOOLS_UPDATE=YES
   if [ "${_BOA_TOOLS_UPDATE}" = "YES" ]; then
     _update_boa_tools
     [ -e "${_pthLog}" ] && rm -f ${_pthLog}/updateBOAtools*.pid
-    [ -e "${_pthLog}" ] && touch ${_pthLog}/updateBOAtoolsCC.ctrl.${_tRee}.${_xSrl}.pid
+    [ -e "${_pthLog}" ] && touch ${_pthLog}/updateBOAtoolsCF.ctrl.${_tRee}.${_xSrl}.pid
     if [ "${1}" = "verbose" ] || [ -z "${1}" ]; then
       echo
       echo "BOA Meta Installers setup completed"
@@ -3353,14 +3356,14 @@ _boa_setup() {
     apt-get install lsb-release ${_aptYesUnth}
   fi
   _BOA_TOOLS_UPDATE=NO
-  if [ -e "${_pthLog}" ] && [ ! -e "${_pthLog}/updateBOAtoolsCC.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+  if [ -e "${_pthLog}" ] && [ ! -e "${_pthLog}/updateBOAtoolsCF.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     _BOA_TOOLS_UPDATE=YES
   fi
   [ ! -e "/var/aegir/drush" ] && _BOA_TOOLS_UPDATE=YES
   if [ "${_BOA_TOOLS_UPDATE}" = "YES" ]; then
     _update_boa_tools
     [ -e "${_pthLog}" ] && rm -f ${_pthLog}/updateBOAtools*.pid
-    [ -e "${_pthLog}" ] && touch ${_pthLog}/updateBOAtoolsCC.ctrl.${_tRee}.${_xSrl}.pid
+    [ -e "${_pthLog}" ] && touch ${_pthLog}/updateBOAtoolsCF.ctrl.${_tRee}.${_xSrl}.pid
     echo
     echo "BOA Meta Installers setup completed"
     echo "Please check INSTALL.md and UPGRADE.md at https://github.com/omega8cc/boa"

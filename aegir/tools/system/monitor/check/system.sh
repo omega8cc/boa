@@ -106,7 +106,7 @@ _if_fix_locked_sshd() {
   if [ `tail --lines=100 ${_SSH_LOG} \
     | grep --count "error: Bind to port 22"` -gt "0" ]; then
     kill -9 $(ps aux | grep '[s]tartups' | awk '{print $2}') &> /dev/null
-    service ssh start
+    nice -n -9 service ssh start
     wait
     _thisErrLog="$(date 2>&1) SSHD BIND error detected, service restarted"
     echo ${_thisErrLog} >> ${_pthOml}

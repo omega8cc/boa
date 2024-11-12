@@ -63,9 +63,23 @@ fi
 echo "INFO: Starting dbs backup on `date`"
 
 [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
-export _B_NICE=${_B_NICE//[^0-9]/}
-: "${_B_NICE:=10}"
 
+    # Sanitize to allow only digits and minus sign
+    export _B_NICE=${_B_NICE//[^0-9-]/}
+
+    # Validate and set default if necessary
+    if ! [[ "$_B_NICE" =~ ^-?[0-9]+$ ]]; then
+      _B_NICE=9
+    fi
+
+    # Clamp the value within -20 to 19
+    if (( _B_NICE < -20 )); then
+      _B_NICE=-20
+    elif (( _B_NICE > 19 )); then
+      _B_NICE=19
+    fi
+
+    renice ${_B_NICE} -p $$ &> /dev/null
 
 _SQL_CACHE_EXC_DEF="cache_bootstrap cache_discovery cache_config"
 

@@ -18,7 +18,6 @@ if (( $(pgrep -fc 'second.sh') > 2 )); then
 fi
 
 # Set default values
-: "${_B_NICE:=10}"
 : "${_CPU_SPIDER_RATIO:=2.1}"
 : "${_CPU_MAX_RATIO:=4.1}"
 : "${_CPU_CRIT_RATIO:=6.1}"
@@ -29,12 +28,28 @@ if [ -e "/root/.barracuda.cnf" ]; then
   source /root/.barracuda.cnf
 fi
 
+    # Sanitize to allow only digits and minus sign
+    export _B_NICE=${_B_NICE//[^0-9-]/}
+
+    # Validate and set default if necessary
+    if ! [[ "$_B_NICE" =~ ^-?[0-9]+$ ]]; then
+      _B_NICE=-5
+    fi
+
+    # Clamp the value within -20 to 19
+    if (( _B_NICE < -20 )); then
+      _B_NICE=-20
+    elif (( _B_NICE > 19 )); then
+      _B_NICE=19
+    fi
+
+    renice ${_B_NICE} -p $$ &> /dev/null
+
 # Sanitize numeric variables (allow digits and decimal point)
 _sanitize_number() {
   echo "$1" | sed 's/[^0-9.]//g'
 }
 
-_B_NICE="$(_sanitize_number "${_B_NICE}")"
 _CPU_SPIDER_RATIO="$(_sanitize_number "${_CPU_SPIDER_RATIO}")"
 _CPU_MAX_RATIO="$(_sanitize_number "${_CPU_MAX_RATIO}")"
 _CPU_CRIT_RATIO="$(_sanitize_number "${_CPU_CRIT_RATIO}")"

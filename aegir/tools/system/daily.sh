@@ -3,8 +3,8 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-export _tRee=lts
-export _xSrl=550ltsT01
+export _tRee=dev
+export _xSrl=550devT01
 
 _check_root() {
   if [ `whoami` = "root" ]; then
