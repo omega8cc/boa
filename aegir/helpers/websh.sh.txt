@@ -226,9 +226,9 @@ fi
 _C_ARR=
 if [[ "${_ARGS}" =~ "composer " ]]; then
   if [[ "${_ARGS}" =~ "set -m" ]]; then
-    _C_RM=`echo -n ${_ARGS}  | grep -o "set -m\; composer"`
+    _C_RM=`echo -n ${_ARGS}  | grep -o "set -m\; composer "`
   else
-    _C_RM=`echo -n ${_ARGS}  | grep -o "composer"`
+    _C_RM=`echo -n ${_ARGS}  | grep -o "composer "`
   fi
   ### echo _C_RM is ${_C_RM}
   _CLR=`echo ${_ARGS}  | sed "s/\${_C_RM}//g"`
