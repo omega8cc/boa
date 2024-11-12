@@ -265,6 +265,9 @@ _if_fix_locked_sshd() {
   fi
 }
 _if_fix_locked_sshd
+
+setprio &> /dev/null
+
 touch /var/xdrago/log/clear.done.pid
 exit 0
 ###EOF2024###
