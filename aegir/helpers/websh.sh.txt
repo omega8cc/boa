@@ -424,6 +424,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
   || [[ "${HOME}" =~ (^)"/var/aegir" ]] \
   || [[ "${HOME}" =~ (^)"/data/disk/" ]] \
   || [[ "${_LTD_GID}" =~ "lshellg"($) ]] \
+  || [[ "${_LTD_GID}" =~ "ltd-shell-more"($) ]] \
   || [[ "${_LTD_GID}" =~ "lshellg rvm"($) ]] \
   || [[ "${_LTD_GID}" =~ "ltd-shell"($) ]] \
   || [[ "${_LTD_GID}" =~ "ltd-shell rvm"($) ]] \
@@ -834,6 +835,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
     fi
   fi
   if [[ "${_LTD_GID}" =~ "lshellg"($) ]] \
+    || [[ "${_LTD_GID}" =~ "ltd-shell-more"($) ]] \
     || [[ "${_LTD_GID}" =~ "lshellg rvm"($) ]] \
     || [[ "${_LTD_GID}" =~ "ltd-shell"($) ]] \
     || [[ "${_LTD_GID}" =~ "rvm ltd-shell"($) ]] \

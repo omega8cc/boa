@@ -7931,6 +7931,7 @@ _lshell_install_upgrade() {
     fi
     rm -f /etc/logrotate.d/lshell
     addgroup --system lshellg &> /dev/null
+    addgroup --system ltd-shell-more &> /dev/null
     mkdir -p /var/log/lsh
     chown :lshellg /var/log/lsh
     chmod 770 /var/log/lsh &> /dev/null
