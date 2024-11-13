@@ -2266,7 +2266,7 @@ _fix_node_in_lshell_access() {
       _ALLOW_NODE=NO
       sed -i \
         -e "s/, 'node', 'npm', 'npx',/,/gi" \
-        -e "s/, 'scp', 'find',/,/gi" \
+        -e "s/, 'scp',/,/gi" \
         /etc/lshell.conf /var/xdrago/conf/lshell.conf
     fi
   fi

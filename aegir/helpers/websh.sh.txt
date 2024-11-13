@@ -38,7 +38,7 @@ if [[ "${_ARGS}" =~ "'" ]] && [[ "${_ARGS}" =~ "drush" ]]; then
   ### echo _ARGS CLEAN is ${_ARGS}
 fi
 
-if [[ ! "${_ARGS}" =~ "composer" ]] \
+if [[ ! "${_ARGS}" =~ "composer " ]] \
   && [[ ! "${_ARGS}" =~ "mysql" ]] \
   && [[ ! "${_ARGS}" =~ "sudo" ]]; then
   _ARR=
