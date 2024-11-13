@@ -1,0 +1,69 @@
+#!/bin/bash
+
+export HOME=/root
+export SHELL=/bin/bash
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+
+# Configuration
+_SERVER_IPV4_FILE="/root/.found_correct_ipv4.cnf"
+_SERVER_IPV4=$(cat "${_SERVER_IPV4_FILE}" | tr -d '[:space:]')
+_VHOSTS_DIR="/data/disk/*/config/server_master/nginx/vhost.d"
+_ACCESS_LOG="/var/log/nginx/access.log"
+_REPORT_FILE="/root/dns_check_report.txt"
+
+# Ensure the report file is empty
+> "${_REPORT_FILE}"
+
+# Function to clean domain names (remove trailing semicolons)
+_clean_domain() {
+  echo "$1" | sed 's/;$//'
+}
+
+# Function to check if a domain resolves to the server's IP or Cloudflare
+_check_dns() {
+  local _domain=$1
+  local _resolved_ips
+  _resolved_ips=$(dig +short "$(_clean_domain "${_domain}")" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$')
+
+  # Match resolved IPs with server IP
+  for _ip in ${_resolved_ips}; do
+    if [[ "${_ip}" == "${_SERVER_IPV4}" ]]; then
+      return 0
+    fi
+  done
+
+  # If no direct match, use curl to verify via access log
+  if curl -sI "https://${_domain}" &> /dev/null; then
+    if grep -q "$(_clean_domain "${_domain}")" "${_ACCESS_LOG}"; then
+      return 0
+    fi
+  fi
+
+  return 1
+}
+
+# Scan vhost files
+echo "Scanning vhosts in ${_VHOSTS_DIR}..."
+for _vhost in $(find ${_VHOSTS_DIR} -type f -name "*.com"); do
+  # Extract unique server_name entries
+  _domains=$(grep -E '^\s*server_name' "${_vhost}" | awk '{$1=""; print}' | tr -s ' ' '\n' | sort -u)
+
+  for _domain in ${_domains}; do
+    # Clean and skip empty or invalid domains
+    _cleaned_domain=$(_clean_domain "${_domain}")
+    [[ -z "${_cleaned_domain}" ]] && continue
+
+    echo "Checking domain: ${_cleaned_domain}..."
+    if ! _check_dns "${_cleaned_domain}"; then
+      echo "Unverified: ${_cleaned_domain} (vhost: ${_vhost})" >> "${_REPORT_FILE}"
+    fi
+  done
+done
+
+# Generate report
+if [[ -s "${_REPORT_FILE}" ]]; then
+  echo "Report of unverified domains:"
+  cat "${_REPORT_FILE}"
+else
+  echo "All domains verified successfully!"
+fi

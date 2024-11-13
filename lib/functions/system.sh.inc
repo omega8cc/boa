@@ -7832,26 +7832,31 @@ _fix_node_in_lshell_access() {
       _ALLOW_NODE=YES
     else
       _ALLOW_NODE=NO
-      sed -i "s/, 'node',/,/g" /etc/lshell.conf
-      wait
-      sed -i "s/, 'node',/,/g" /var/xdrago/conf/lshell.conf
-      wait
-      sed -i "s/, 'npm',/,/g" /etc/lshell.conf
-      wait
-      sed -i "s/, 'npm',/,/g" /var/xdrago/conf/lshell.conf
-      wait
-      sed -i "s/, 'npx',/,/g" /etc/lshell.conf
-      wait
-      sed -i "s/, 'npx',/,/g" /var/xdrago/conf/lshell.conf
-      wait
-      sed -i "s/, 'find',/,/g" /etc/lshell.conf
-      wait
-      sed -i "s/, 'find',/,/g" /var/xdrago/conf/lshell.conf
-      wait
-      sed -i "s/, 'scp',/,/g" /etc/lshell.conf
-      wait
-      sed -i "s/, 'scp',/,/g" /var/xdrago/conf/lshell.conf
-      wait
+      sed -i \
+        -e "s/, 'node', 'npm', 'npx',/,/gi" \
+        -e "s/, 'scp', 'find',/,/gi" \
+        /etc/lshell.conf /var/xdrago/conf/lshell.conf
+    fi
+  fi
+}
+
+_fix_php_in_lshell_access() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _fix_php_in_lshell_access"
+  fi
+  if [ "${_STATUS}" = "UPGRADE" ] && [ -e "/etc/lshell.conf" ]; then
+    _PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
+    _PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
+    if [[ "${_PrTestPhantom}" =~ "PHANTOM" ]] \
+      || [[ "${_PrTestCluster}" =~ "CLUSTER" ]] \
+      || [ -e "/root/.allow.php.lshell.cnf" ]; then
+      _ALLOW_PHP=YES
+    else
+      _ALLOW_PHP=NO
+      sed -i \
+        -e "s/, 'php.*':.*php',/,/gi" \
+        -e "s/, '\/opt\/php.*',/,/gi" \
+        /etc/lshell.conf /var/xdrago/conf/lshell.conf
     fi
   fi
 }
@@ -7939,6 +7944,7 @@ _lshell_install_upgrade() {
       _st_runner "bash /var/xdrago/manage_ltd_users.sh" &> /dev/null
     fi
     _fix_node_in_lshell_access
+    _fix_php_in_lshell_access
   fi
   if [ -f "/usr/local/bin/lshell" ]; then
     chown root:users /usr/local/bin/lshell
