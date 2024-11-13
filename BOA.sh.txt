@@ -2174,7 +2174,8 @@ _fix_node_in_lshell_access() {
       _ALLOW_NODE=YES
     else
       _ALLOW_NODE=NO
-      sed -i -E "s/, '?(node|npm|npx|find|scp)'?,/,/g" /etc/lshell.conf /var/xdrago/conf/lshell.conf
+      sed -i -e "s/, 'find', 'node', 'npm', 'npx', 'scp',/,/gi" \
+        /etc/lshell.conf /var/xdrago/conf/lshell.conf
     fi
     touch ${_pthLog}/node.lshell-fix-scp.ctrl.${_tRee}.${_xSrl}.pid
   fi
@@ -2191,7 +2192,10 @@ _fix_php_in_lshell_access() {
       _ALLOW_PHP=YES
     else
       _ALLOW_PHP=NO
-      sed -i -E "s#,\s*'(php83|php82|php81|php74|php56|/opt/php83/bin/php|/opt/php82/bin/php|/opt/php81/bin/php|/opt/php74/bin/php|/opt/php56/bin/php)',#,/g" /etc/lshell.conf /var/xdrago/conf/lshell.conf
+      sed -i \
+        -e "s/, 'php.*':.*php',/,/gi" \
+        -e "s/, '\/opt\/php.*',/,/gi" \
+        /etc/lshell.conf /var/xdrago/conf/lshell.conf
     fi
     touch ${_pthLog}/php.lshell-fix-scp.ctrl.${_tRee}.${_xSrl}.pid
   fi
