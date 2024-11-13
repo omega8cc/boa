@@ -949,6 +949,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           exec /bin/dash -c "${DRUSH_PHP} /usr/local/bin/composer ${_C_ARR}"
           exit 0
         else
+          echo "shell wrapper.."
           ### echo EXH 1 _F_ARR is "$@"
           ### echo EXH 1 /bin/dash "$@"
           exec /bin/dash "$@"
