@@ -7945,7 +7945,7 @@ _lshell_install_upgrade() {
       _st_runner "bash /var/xdrago/manage_ltd_users.sh" &> /dev/null
     fi
     _fix_node_in_lshell_access
-    _fix_php_in_lshell_access
+    # _fix_php_in_lshell_access
   fi
   if [ -f "/usr/local/bin/lshell" ]; then
     chown root:users /usr/local/bin/lshell

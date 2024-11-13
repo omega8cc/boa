@@ -3621,7 +3621,7 @@ if [ `whoami` = "root" ]; then
     _if_fix_python_src_for_duplicity
     _if_fix_lshell
     _fix_node_in_lshell_access
-    _fix_php_in_lshell_access
+    # _fix_php_in_lshell_access
     _fix_authorized_keys
     _fix_tcp
     _fix_aio
