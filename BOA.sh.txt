@@ -2199,6 +2199,23 @@ _fix_node_in_lshell_access() {
   fi
 }
 
+_fix_php_in_lshell_access() {
+  if [ ! -e "${_pthLog}/php.lshell-fix-scp.ctrl.${_tRee}.${_xSrl}.pid" ] \
+    && [ -e "/etc/lshell.conf" ]; then
+    _PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
+    _PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
+    if [[ "${_PrTestPhantom}" =~ "PHANTOM" ]] \
+      || [[ "${_PrTestCluster}" =~ "CLUSTER" ]] \
+      || [ -e "/root/.allow.php.lshell.cnf" ]; then
+      _ALLOW_PHP=YES
+    else
+      _ALLOW_PHP=NO
+      sed -i -E "s/, 'php(83|82|81|74|56)'(?:':'\/opt\/php\1\/bin\/php')?,/,/g" /var/xdrago/conf/lshell.conf /etc/lshell.conf
+    fi
+    touch ${_pthLog}/php.lshell-fix-scp.ctrl.${_tRee}.${_xSrl}.pid
+  fi
+}
+
 _fix_python_src() {
   _PYTHON_VRN=3.12.5
   _DCY_PTN="/usr/local/bin/python3"
@@ -3614,6 +3631,7 @@ if [ `whoami` = "root" ]; then
     _if_fix_python_src_for_duplicity
     _if_fix_lshell
     _fix_node_in_lshell_access
+    _fix_php_in_lshell_access
     _fix_authorized_keys
     _fix_tcp
     _fix_aio

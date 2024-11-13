@@ -7852,6 +7852,21 @@ _fix_node_in_lshell_access() {
       wait
       sed -i "s/, 'scp',/,/g" /var/xdrago/conf/lshell.conf
       wait
+
+_fix_php_in_lshell_access() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _fix_php_in_lshell_access"
+  fi
+  if [ "${_STATUS}" = "UPGRADE" ] && [ -e "/etc/lshell.conf" ]; then
+    _PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
+    _PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
+    if [[ "${_PrTestPhantom}" =~ "PHANTOM" ]] \
+      || [[ "${_PrTestCluster}" =~ "CLUSTER" ]] \
+      || [ -e "/root/.allow.php.lshell.cnf" ]; then
+      _ALLOW_PHP=YES
+    else
+      _ALLOW_PHP=NO
+      sed -i -E "s/, 'php(83|82|81|74|56)'(?:':'\/opt\/php\1\/bin\/php')?,/,/g" /var/xdrago/conf/lshell.conf /etc/lshell.conf
     fi
   fi
 }
@@ -7939,6 +7954,7 @@ _lshell_install_upgrade() {
       _st_runner "bash /var/xdrago/manage_ltd_users.sh" &> /dev/null
     fi
     _fix_node_in_lshell_access
+    _fix_php_in_lshell_access
   fi
   if [ -f "/usr/local/bin/lshell" ]; then
     chown root:users /usr/local/bin/lshell

@@ -2284,6 +2284,24 @@ _fix_node_in_lshell_access() {
       wait
       sed -i "s/, 'scp',/,/g" /var/xdrago/conf/lshell.conf
       wait
+
+#
+# Restrict php if needed.
+_fix_php_in_lshell_access() {
+  _pthLog="/var/xdrago/log"
+  if [ ! -e "${_pthLog}" ] && [ -e "/var/xdrago_wait/log" ]; then
+    _pthLog="/var/xdrago_wait/log"
+  fi
+  if [ -e "/etc/lshell.conf" ]; then
+    _PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
+    _PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
+    if [[ "${_PrTestPhantom}" =~ "PHANTOM" ]] \
+      || [[ "${_PrTestCluster}" =~ "CLUSTER" ]] \
+      || [ -e "/root/.allow.php.lshell.cnf" ]; then
+      _ALLOW_PHP=YES
+    else
+      _ALLOW_PHP=NO
+      sed -i -E "s/, 'php(83|82|81|74|56)'(?:':'\/opt\/php\1\/bin\/php')?,/,/g" /var/xdrago/conf/lshell.conf /etc/lshell.conf
     fi
   fi
 }
@@ -2354,6 +2372,10 @@ else
   if [ ! -e "${_pthLog}/node.manage.lshell.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     _fix_node_in_lshell_access
     touch ${_pthLog}/node.manage.lshell.ctrl.${_tRee}.${_xSrl}.pid
+  fi
+  if [ ! -e "${_pthLog}/php.manage.lshell.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+    _fix_php_in_lshell_access
+    touch ${_pthLog}/php.manage.lshell.ctrl.${_tRee}.${_xSrl}.pid
   fi
   cat /var/xdrago/conf/lshell.conf > ${_THIS_LTD_CONF}
   _find_correct_ip
