@@ -7834,7 +7834,7 @@ _fix_node_in_lshell_access() {
       _ALLOW_NODE=NO
       sed -i \
         -e "s/, 'node', 'npm', 'npx',/,/gi" \
-        -e "s/, 'scp', 'find',/,/gi" \
+        -e "s/, 'scp',/,/gi" \
         /etc/lshell.conf /var/xdrago/conf/lshell.conf
     fi
   fi
@@ -7931,6 +7931,7 @@ _lshell_install_upgrade() {
     fi
     rm -f /etc/logrotate.d/lshell
     addgroup --system lshellg &> /dev/null
+    addgroup --system ltd-shell-more &> /dev/null
     mkdir -p /var/log/lsh
     chown :lshellg /var/log/lsh
     chmod 770 /var/log/lsh &> /dev/null
@@ -7944,7 +7945,7 @@ _lshell_install_upgrade() {
       _st_runner "bash /var/xdrago/manage_ltd_users.sh" &> /dev/null
     fi
     _fix_node_in_lshell_access
-    _fix_php_in_lshell_access
+    # _fix_php_in_lshell_access
   fi
   if [ -f "/usr/local/bin/lshell" ]; then
     chown root:users /usr/local/bin/lshell
