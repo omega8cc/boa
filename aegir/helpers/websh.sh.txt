@@ -949,8 +949,19 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           exec /bin/dash -c "${DRUSH_PHP} /usr/local/bin/composer ${_C_ARR}"
           exit 0
         else
-          if [[ "${HOME}" =~ (^)"/home/" ]] && [[ "${_ALL}" =~ "&&" ]]; then
-            echo "shell wrapper.."
+          if [[ "${HOME}" =~ (^)"/home/" ]] || [[ "${HOME}" =~ (^)"/data/" ]]; then
+            if [[ "${_ALL}" =~ (bower|bundle|bzip2|bzr|cat|cd|chmod|clear|compass|cp|curl|diff|drush|env|exit|find|gem|grep|grunt|guard|gulp|gunzip|gzip|help|history|ll|lpath|ls|lsudo|mkdir|mv) ]]; then
+              _SILENT_WRAPPER=YES
+            elif [[ "${_ALL}" =~ (mysql|mydumper|myloader|nano|node|npm|npx|openssl|passwd|patch|ping|pwd|rm|rmdir|rsync|s4cmd|sass|scp|scss|sed|sqlmagic|ssh|svn|tar|touch|true|unzip|vi) ]]; then
+              _SILENT_WRAPPER=YES
+            elif [[ "${_ALL}" =~ (php83|php82|php81|php74|php56) ]]; then
+              _SILENT_WRAPPER=YES
+            elif [[ "${_ALL}" =~ git\ clone ]]; then
+              _SILENT_WRAPPER=YES
+            else
+              _SILENT_WRAPPER=NO
+              echo "shell wrapper.."
+            fi
           fi
           ### echo EXH 1 _F_ARR is "$@"
           ### echo EXH 1 /bin/dash "$@"
