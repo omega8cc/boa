@@ -956,7 +956,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
               _SILENT_WRAPPER=YES
             elif [[ "${_ALL}" =~ (php83|php82|php81|php74|php56) ]]; then
               _SILENT_WRAPPER=YES
-            elif [[ "${_ALL}" =~ git\ clone ]]; then
+            elif [[ "${_ALL}" =~ git\ clone ]] || [[ "${_ALL}" =~ git\ describe ]] || [[ "${_ALL}" =~ git\ config ]]; then
               _SILENT_WRAPPER=YES
             else
               _SILENT_WRAPPER=NO
