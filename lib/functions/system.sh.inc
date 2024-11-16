@@ -974,7 +974,9 @@ _tune_memory_limits() {
     wait
     sed -i "s/^SOLR_JAVA_MEM=.*/SOLR_JAVA_MEM=\"-Xms64m ${_USE_SOLR}\"/g" /etc/default/solr7.in.sh
     wait
-    sed -i "s/^#SOLR_STOP_WAIT=.*/SOLR_STOP_WAIT=\"10\"/g" /etc/default/solr7.in.sh &> /dev/null
+    sed -i "s/^#SOLR_STOP_WAIT=.*/SOLR_STOP_WAIT=\"8\"/g" /etc/default/solr7.in.sh &> /dev/null
+    wait
+    sed -i "s/^#SOLR_WAIT_FOR_ZK=.*/SOLR_WAIT_FOR_ZK=\"8\"/g" /etc/default/solr7.in.sh &> /dev/null
     wait
   fi
   _tune_web_server_config
