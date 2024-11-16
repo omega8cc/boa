@@ -961,7 +961,7 @@ _tune_memory_limits() {
     sed -i "s/^JAVA_OPTIONS.*/JAVA_OPTIONS=\"-Xms64m ${_USE_JETTY} -Djava.awt.headless=true -Dsolr.solr.home=\/opt\/solr1 \$JAVA_OPTIONS\" # Options/g" /etc/default/jetty7
   fi
 
-  _USE_SOLR_MEM=$(( _RAM / 8 ))
+  _USE_SOLR_MEM=$(( _RAM / 6 ))
   _USE_SOLR="-Xmx${_USE_SOLR_MEM}m"
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "TUNE: _USE_SOLR_MEM is ${_USE_SOLR_MEM}"
