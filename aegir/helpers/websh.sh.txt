@@ -950,13 +950,23 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           exit 0
         else
           if [[ "${HOME}" =~ (^)"/home/" ]] || [[ "${HOME}" =~ (^)"/data/" ]]; then
-            if [[ "${_ALL}" =~ (bower|bundle|bzip2|bzr|cat|cd|chmod|clear|compass|cp|curl|diff|drush|env|exit|find|gem|grep|grunt|guard|gulp|gunzip|gzip|help|history|ll|lpath|ls|lsudo|mkdir|mv) ]]; then
+            if [[ "${_ALL}" =~ (bower|bundle|bzip2|bzr|cat|cd|chmod|clear|compass|cp|curl|cvs) ]]; then
               _SILENT_WRAPPER=YES
-            elif [[ "${_ALL}" =~ (mysql|mydumper|myloader|nano|node|npm|npx|openssl|passwd|patch|ping|pwd|rm|rmdir|rsync|s4cmd|sass|scp|scss|sed|sqlmagic|ssh|svn|tar|touch|true|unzip|vi) ]]; then
+            elif [[ "${_ALL}" =~ (diff|drush|du|echo|env|exit|find|gem|grep|grunt|guard|gulp) ]]; then
+              _SILENT_WRAPPER=YES
+            elif [[ "${_ALL}" =~ (gunzip|gzip|help|history|ll|lpath|ls|lsudo|mc|mkdir|mv) ]]; then
+              _SILENT_WRAPPER=YES
+            elif [[ "${_ALL}" =~ (mydumper|myloader|mysql|nano|node|npm|npx|openssl|passwd) ]]; then
+              _SILENT_WRAPPER=YES
+            elif [[ "${_ALL}" =~ (patch|ping|pwd|rm|rmdir|rsync|s4cmd|sass|scp|scss|sed) ]]; then
+              _SILENT_WRAPPER=YES
+            elif [[ "${_ALL}" =~ (sqlmagic|ssh|svn|tar|touch|true|unzip|vi|wget) ]]; then
               _SILENT_WRAPPER=YES
             elif [[ "${_ALL}" =~ (php83|php82|php81|php74|php56) ]]; then
               _SILENT_WRAPPER=YES
-            elif [[ "${_ALL}" =~ git\ clone ]] || [[ "${_ALL}" =~ git\ describe ]] || [[ "${_ALL}" =~ git\ config ]]; then
+            elif [[ "${_ALL}" =~ git\ clone ]] \
+              || [[ "${_ALL}" =~ git\ describe ]] \
+              || [[ "${_ALL}" =~ git\ config ]]; then
               _SILENT_WRAPPER=YES
             else
               _SILENT_WRAPPER=NO
