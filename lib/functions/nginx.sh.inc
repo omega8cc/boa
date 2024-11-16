@@ -564,9 +564,10 @@ _nginx_initd_check() {
   fi
   _X_INIT_TEST=
   if [ -e "/etc/init.d/nginx" ]; then
-    _X_INIT_TEST=$(cat /etc/init.d/nginx | grep ULIMIT 2>&1)
+    _X_INIT_TEST_A=$(cat /etc/init.d/nginx | grep ULIMIT 2>&1)
+    _X_INIT_TEST_B=$(cat /etc/init.d/nginx | grep Giedymin 2>&1)
   fi
-  if [[ "${_X_INIT_TEST}" =~ "ULIMIT" ]]; then
+  if [[ "${_X_INIT_TEST_A}" =~ ULIMIT ]] && [[ "${_X_INIT_TEST_B}" =~ Giedymin ]]; then
     chmod 755 /etc/init.d/nginx &> /dev/null
     _mrun "update-rc.d nginx defaults" 2> /dev/null
   else
