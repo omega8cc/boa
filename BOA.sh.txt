@@ -1620,13 +1620,13 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/websh.ctrl.f87.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/websh.ctrl.f86.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /bin/websh /var/xdrago/websh.sh.old
     curl ${_crlGet} "${_urlHmr}/helpers/websh.sh.txt" -o /bin/websh
     if [ -e "/bin/websh" ]; then
       chmod 755 /bin/websh
       chown root:root /bin/websh
-      touch ${_pthLog}/websh.ctrl.f87.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/websh.ctrl.f86.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/websh.sh.old /bin/websh
     fi
@@ -2290,9 +2290,8 @@ _if_fix_lshell() {
     [ ! -d "/usr/local/etc" ] && mkdir -p /usr/local/etc
     ln -sfn /etc/lshell.conf /usr/local/etc/lshell.conf
   fi
-  _LSHELL_VRN=0.10
+  _LSHELL_VRN=0.10.7.1
   _PATH_LSHELL="${_usrBin}/lshell"
-  _LSHELL_CHK_VRN=0.10
   _LSHELL_FORCE_REINSTALL=NO
   _isLshell=$(which lshell 2>&1)
   _LSHELL_ITD=$(${_isLshell} --version 2>&1 \
@@ -2301,7 +2300,6 @@ _if_fix_lshell() {
     | awk '{ print $1}' 2>&1)
   if [ -z "${_isLshell}" ] \
     || [ -z "${_PATH_LSHELL}" ] \
-    || [ "${_LSHELL_ITD}" != "${_LSHELL_CHK_VRN}" ] \
     || [[ "${_LSHELL_ITD}" =~ "Traceback" ]] \
     || [[ "${_LSHELL_ITD}" =~ "bad interpreter" ]] \
     || [[ "${_LSHELL_ITD}" =~ "ImportError" ]]; then
