@@ -210,10 +210,7 @@ _fix_php_ini_newrelic_all() {
       _NEWRELIC_KEY=$(grep license_key /etc/newrelic/newrelic.cfg 2>&1)
       _NEWRELIC_KEY=$(echo -n ${_NEWRELIC_KEY} | tr -d "\n" 2>&1)
     fi
-    _PHP_V="83 82 81 80 74 73 72 71 70"
-    if [ "${_DB_SERIES}" = "5.7" ]; then
-      _PHP_V="83 82 81 80 74 73 72 71 70"
-    fi
+    _PHP_V="83 82 81 80 74 73 72"
     for e in ${_PHP_V}; do
       _THIS_FILE=/opt/php${e}/etc/php${e}.ini
       _fix_php_ini_newrelic ${e}
