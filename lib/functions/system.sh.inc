@@ -1603,8 +1603,9 @@ _php_if_versions_cleanup_cnf() {
   else
     _AUTO_PHP_CLEANUP=NO
   fi
-  if [ ! -d "/data/u" ]; then
+  if [ ! -e "/data/u" ]; then
     _AUTO_PHP_CLEANUP=NO
+    _msg "OOPS: No /data/u so AUTO_PHP_CLEANUP=NO"
   fi
   if [ -e "/var/aegir/drush/vendor" ] \
     && [ "${_AUTO_PHP_CLEANUP}" = "YES" ]; then
