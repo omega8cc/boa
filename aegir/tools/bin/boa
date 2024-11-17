@@ -47,7 +47,7 @@ _clean_pid_exit() {
   echo "REASON ${e} on $(date 2>&1)" >> /root/.boa.exit.exceptions.log
   [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
   [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
-  service cron start
+  service cron start &> /dev/null
   exit 1
 }
 
@@ -63,16 +63,16 @@ _os_detection_minimal() {
 }
 
 _apt_clean_update() {
-  #apt-get clean -qq
-  #rm -rf /var/lib/apt/lists/*
-  ${_APT_UPDATE} -qq
+  #apt-get clean -qq 2> /dev/null
+  #rm -rf /var/lib/apt/lists/* &> /dev/null
+  ${_APT_UPDATE} -qq 2> /dev/null
 }
 
 _check_manufacturer_compatibility() {
   # Install dmidecode of not present
-  if ! command -v dmidecode; then
-    /usr/bin/apt-get update
-    ${_INITINS} dmidecode
+  if ! command -v dmidecode &> /dev/null; then
+    /usr/bin/apt-get update &> /dev/null
+    ${_INITINS} dmidecode &> /dev/null
   fi
   # Check if dmidecode is available
   _DMI_TEST=$(which dmidecode 2>&1)
@@ -82,7 +82,7 @@ _check_manufacturer_compatibility() {
     _HOST_INFO="Unknown, dmidecode not available"
   fi
   # Check for Amazon EC2 in the system manufacturer field
-  if dmidecode -s system-manufacturer | grep -i 'Amazon EC2'; then
+  if dmidecode -s system-manufacturer | grep -i 'Amazon EC2' &> /dev/null; then
     _VMFAMILY="AWS"
     echo "Not supported environment detected: ${_HOST_INFO}"
     echo "Please check https://bit.ly/boa-caveats"
@@ -150,14 +150,14 @@ _not_supported_virt() {
 }
 
 _check_virt() {
-  _VIRT_TOOL=$(which virt-what)
+  _VIRT_TOOL=$(which virt-what 2> /dev/null)
   if [ -x "${_VIRT_TOOL}" ]; then
-    _VIRT_TEST=$(virt-what)
+    _VIRT_TEST=$(virt-what 2> /dev/null)
     _VIRT_TEST=$(echo -n ${_VIRT_TEST} | fmt -su -w 2500 2>&1)
     if [ ! -e "/root/.allow.any.virt.cnf" ]; then
       if [ -e "/proc/self/status" ]; then
-        _VS_GUEST_TEST=$(grep -E "VxID:[[:space:]]*[0-9]{2,}$" /proc/self/status)
-        _VS_HOST_TEST=$(grep -E "VxID:[[:space:]]*0$" /proc/self/status)
+        _VS_GUEST_TEST=$(grep -E "VxID:[[:space:]]*[0-9]{2,}$" /proc/self/status 2> /dev/null)
+        _VS_HOST_TEST=$(grep -E "VxID:[[:space:]]*0$" /proc/self/status 2> /dev/null)
       fi
       if [ ! -z "${_VS_HOST_TEST}" ] || [ ! -z "${_VS_GUEST_TEST}" ]; then
         if [ -z "${_VS_HOST_TEST}" ] && [ ! -z "${_VS_GUEST_TEST}" ]; then
@@ -510,7 +510,7 @@ _fix_dns_settings() {
       cp -a ${_vBs}/resolv.conf.tmp ${_vBs}/resolv.conf.vanilla
     fi
   fi
-  sed -i "/^$/d" ${_vBs}/resolv.conf.vanilla
+  sed -i "/^$/d" ${_vBs}/resolv.conf.vanilla &> /dev/null
   if [ -e "${_vBs}/resolv.conf.vanilla" ]; then
     if [ "${_USE_DEFAULT_DNS}" != "YES" ]; then
       rm -f /etc/resolv.conf
@@ -543,7 +543,7 @@ _check_dns_settings() {
       || [ ! -e "${_vBs}/resolv.conf.vanilla" ]; then
       _fix_dns_settings
       if [ -e "/etc/init.d/postfix" ]; then
-        service postfix restart
+        service postfix restart &> /dev/null
       fi
     fi
   fi
@@ -1319,19 +1319,19 @@ _init_setup() {
       echo "Invoking hosting-dispatch/hosting-tasks to complete the installation"
       sleep 3
       echo "Please wait, it will take about 30 seconds..."
-      su -s /bin/bash ${_usEr} -c "drush @hm hosting-dispatch" 
+      su -s /bin/bash ${_usEr} -c "drush @hm hosting-dispatch"  &> /dev/null
       echo "1/5"
       sleep 5
-      su -s /bin/bash ${_usEr} -c "drush @hm hosting-tasks --force"
+      su -s /bin/bash ${_usEr} -c "drush @hm hosting-tasks --force" &> /dev/null
       echo "2/5"
       sleep 5
-      su -s /bin/bash ${_usEr} -c "drush @hm hosting-tasks --force"
+      su -s /bin/bash ${_usEr} -c "drush @hm hosting-tasks --force" &> /dev/null
       echo "3/5"
       sleep 5
-      su -s /bin/bash ${_usEr} -c "drush @hm hosting-tasks --force"
+      su -s /bin/bash ${_usEr} -c "drush @hm hosting-tasks --force" &> /dev/null
       echo "4/5"
       sleep 5
-      su -s /bin/bash ${_usEr} -c "drush @hm hosting-tasks --force"
+      su -s /bin/bash ${_usEr} -c "drush @hm hosting-tasks --force" &> /dev/null
       echo "5/5"
       sleep 3
       echo "The post-installation upgrade is now being invoked..."
@@ -1374,8 +1374,8 @@ _find_fast_mirror_early() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     _apt_clean_update
-    apt-get install netcat ${_aptYesUnth}
-    apt-get install netcat-traditional ${_aptYesUnth}
+    apt-get install netcat ${_aptYesUnth} 2> /dev/null
+    apt-get install netcat-traditional ${_aptYesUnth} 2> /dev/null
     wait
   fi
   _ffMirr=$(which ffmirror 2>&1)
@@ -1419,14 +1419,14 @@ _if_reinstall_curl() {
         && [ -e "/etc/apt/apt.conf.d" ]; then
         echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
       fi
-      echo "curl install" | dpkg --set-selections
+      echo "curl install" | dpkg --set-selections 2> /dev/null
       _apt_clean_update
-      apt-get remove libssl1.0-dev -y --purge --auto-remove -qq
-      apt-get autoremove -y
-      apt-get install libssl-dev ${_aptYesUnth} -qq
-      apt-get install libc-client2007e libc-client2007e-dev ${_aptYesUnth} -qq
-      apt-get build-dep curl ${_aptYesUnth}
-      apt-get install curl --reinstall ${_aptYesUnth} -qq
+      apt-get remove libssl1.0-dev -y --purge --auto-remove -qq 2> /dev/null
+      apt-get autoremove -y 2> /dev/null
+      apt-get install libssl-dev ${_aptYesUnth} -qq 2> /dev/null
+      apt-get install libc-client2007e libc-client2007e-dev ${_aptYesUnth} -qq 2> /dev/null
+      apt-get build-dep curl ${_aptYesUnth} 2> /dev/null
+      apt-get install curl --reinstall ${_aptYesUnth} -qq 2> /dev/null
     fi
     _isCurl=$(curl --version 2>&1)
     if [[ ! "${_isCurl}" =~ "OpenSSL" ]] || [ -z "${_isCurl}" ]; then
@@ -1453,7 +1453,7 @@ _check_dns_curl() {
   fi
   if [ -x "/usr/sbin/unbound-control" ] \
     && [ -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
-    unbound-control reload
+    unbound-control reload &> /dev/null
   fi
   _find_fast_mirror_early
   _if_reinstall_curl
@@ -1461,7 +1461,7 @@ _check_dns_curl() {
     --max-redirs 10 \
     --retry 3 \
     --retry-delay 10 \
-    -I "http://${_USE_MIR}")
+    -I "http://${_USE_MIR}" 2> /dev/null)
   if [[ ! "${_CURL_TEST}" =~ "200 OK" ]]; then
     if [[ "${_CURL_TEST}" =~ "unknown option was passed in to libcurl" ]]; then
       echo "ERROR: cURL libs are out of sync! Re-installing again.."
@@ -1527,37 +1527,37 @@ _csf_check_fix() {
     echo "iptables -t raw -A OUTPUT -p tcp --dport 21 -j CT --helper ftp" >> /etc/csf/csfpost.sh
     chmod 700 /etc/csf/csfpost.sh
     sed -i "s/.*aegir.*//g" /etc/csf/csf.allow
-    csf -a 172.104.235.123 eu.files.aegir.cc 
-    csf -a 172.234.21.219  us.files.aegir.cc 
-    csf -a 172.236.156.92  ao.files.aegir.cc 
-    service lfd stop
+    csf -a 172.104.235.123 eu.files.aegir.cc  &> /dev/null
+    csf -a 172.234.21.219  us.files.aegir.cc  &> /dev/null
+    csf -a 172.236.156.92  ao.files.aegir.cc  &> /dev/null
+    service lfd stop &> /dev/null
     wait
-    kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}')
-    killall sleep
+    kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
+    killall sleep &> /dev/null
     rm -f /etc/csf/csf.error
-    csf -x 
+    csf -x  &> /dev/null
     wait
-    service clean-boa-env start
+    service clean-boa-env start &> /dev/null
     wait
     _if_fix_iptables_symlinks
-    csf -uf
+    csf -uf &> /dev/null
     wait
     _NFTABLES_TEST=$(iptables -V 2>&1)
     if [[ "${_NFTABLES_TEST}" =~ "nf_tables" ]]; then
       if [ -e "/usr/sbin/iptables-legacy" ]; then
-        update-alternatives --set iptables /usr/sbin/iptables-legacy
+        update-alternatives --set iptables /usr/sbin/iptables-legacy &> /dev/null
       fi
       if [ -e "/usr/sbin/ip6tables-legacy" ]; then
-        update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy
+        update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy &> /dev/null
       fi
       if [ -e "/usr/sbin/arptables-legacy" ]; then
-        update-alternatives --set arptables /usr/sbin/arptables-legacy
+        update-alternatives --set arptables /usr/sbin/arptables-legacy &> /dev/null
       fi
       if [ -e "/usr/sbin/ebtables-legacy" ]; then
-        update-alternatives --set ebtables /usr/sbin/ebtables-legacy
+        update-alternatives --set ebtables /usr/sbin/ebtables-legacy &> /dev/null
       fi
     fi
-    csf -e 
+    csf -e  &> /dev/null
     wait
     sed -i "s/.*DHCP.*//g" /etc/csf/csf.allow
     wait
@@ -1575,7 +1575,7 @@ _csf_check_fix() {
         fi
       fi
     done
-    service lfd start
+    service lfd start &> /dev/null
     wait
     ### Linux kernel TCP SACK CVEs mitigation
     ### CVE-2019-11477 SACK Panic
@@ -1584,9 +1584,9 @@ _csf_check_fix() {
     if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
       _SACK_TEST=$(ip6tables --list | grep tcpmss 2>&1)
       if [[ ! "${_SACK_TEST}" =~ "tcpmss" ]]; then
-        sysctl net.ipv4.tcp_mtu_probing=0
-        iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP
-        ip6tables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP
+        sysctl net.ipv4.tcp_mtu_probing=0 &> /dev/null
+        iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
+        ip6tables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
       fi
     fi
   fi
@@ -1626,7 +1626,7 @@ _check_root() {
   _DF_TEST=$(df -kTh / -l \
     | grep '/' \
     | sed 's/\%//g' \
-    | awk '{print $6}')
+    | awk '{print $6}' 2> /dev/null)
   _DF_TEST=${_DF_TEST//[^0-9]/}
   if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt "90" ]; then
     echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
@@ -1638,7 +1638,7 @@ _check_root() {
     echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
   fi
   if [ -x "/opt/local/bin/killer" ]; then
-    sed -i "s/.*killer.*//gi" /etc/crontab
+    sed -i "s/.*killer.*//gi" /etc/crontab &> /dev/null
     echo "*/1 *   * * *   root    bash /opt/local/bin/killer" >> /etc/crontab
   fi
   if [ "${_VMFAMILY}" = "VS" ]; then
@@ -1657,11 +1657,11 @@ _check_root() {
       echo -e 'Package: makedev\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/makedev
       _apt_clean_update
     fi
-    apt-get remove fuse -y --purge --auto-remove -qq
-    apt-get remove udev -y --purge --auto-remove -qq
-    apt-get remove makedev -y --purge --auto-remove -qq
+    apt-get remove fuse -y --purge --auto-remove -qq 2> /dev/null
+    apt-get remove udev -y --purge --auto-remove -qq 2> /dev/null
+    apt-get remove makedev -y --purge --auto-remove -qq 2> /dev/null
     if [ -e "/sbin/hdparm" ]; then
-      apt-get remove hdparm -y --purge --auto-remove -qq
+      apt-get remove hdparm -y --purge --auto-remove -qq 2> /dev/null
     fi
     _REMOVE_LINKS="buagent \
                    checkroot.sh \
@@ -1696,7 +1696,7 @@ _check_root() {
                    vnstat"
     for _link in ${_REMOVE_LINKS}; do
       if [ -e "/etc/init.d/${_link}" ]; then
-        update-rc.d -f ${_link} remove
+        update-rc.d -f ${_link} remove &> /dev/null
         mv -f /etc/init.d/${_link} /var/backups/init.d.${_link}
       fi
     done
@@ -1705,21 +1705,21 @@ _check_root() {
         sed -rn -e 's/^(# Default-Stop:).*$/\1 0 1 6/' -e '/^### BEGIN INIT INFO/,/^### END INIT INFO/p' /etc/init.d/${s} > /etc/insserv/overrides/${s}
       fi
     done
-    /sbin/insserv -v -d
+    /sbin/insserv -v -d &> /dev/null
   fi
 }
 
 _display_version() {
   if [ `whoami` = "root" ]; then
     _HOST_INFO=$(dmidecode -s system-manufacturer 2>&1)
-    _VIRT_TOOL=$(which virt-what)
+    _VIRT_TOOL=$(which virt-what 2> /dev/null)
     if [ -x "${_VIRT_TOOL}" ]; then
-      _VIRT_TEST=$(virt-what)
+      _VIRT_TEST=$(virt-what 2> /dev/null)
       _VIRT_TEST=$(echo -n ${_VIRT_TEST} | fmt -su -w 2500 2>&1)
       if [ ! -e "/root/.allow.any.virt.cnf" ]; then
         if [ -e "/proc/self/status" ]; then
-          _VS_GUEST_TEST=$(grep -E "VxID:[[:space:]]*[0-9]{2,}$" /proc/self/status)
-          _VS_HOST_TEST=$(grep -E "VxID:[[:space:]]*0$" /proc/self/status)
+          _VS_GUEST_TEST=$(grep -E "VxID:[[:space:]]*[0-9]{2,}$" /proc/self/status 2> /dev/null)
+          _VS_HOST_TEST=$(grep -E "VxID:[[:space:]]*0$" /proc/self/status 2> /dev/null)
         fi
         if [ ! -z "${_VS_HOST_TEST}" ] || [ ! -z "${_VS_GUEST_TEST}" ]; then
           if [ -z "${_VS_HOST_TEST}" ] && [ ! -z "${_VS_GUEST_TEST}" ]; then
@@ -1883,7 +1883,7 @@ _display_info() {
     _DF_TEST=$(df -kTh / -l \
       | grep '/' \
       | sed 's/\%//g' \
-      | awk '{print $6}')
+      | awk '{print $6}' 2> /dev/null)
     _DF_TEST=${_DF_TEST//[^0-9]/}
     if [ -x "/usr/sbin/nginx" ]; then
       _NGX=$(/usr/sbin/nginx -v 2>&1 \
@@ -2368,13 +2368,13 @@ _octopus_cleanup() {
             echo "${_usEr}.web:/home/${_usEr}.web" >> ${_zombie_dir}.purge.list
           fi
         done
-        kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}')
+        kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
         IFS=$'\12'
           for p in $(cat ${_zombie_dir}.purge.list | grep "${_usEr}" 2>&1);do
             _usr_name=`echo $p | cut -d':' -f1 | awk '{ print $1}'`
             _usr_home=`echo $p | cut -d':' -f2 | awk '{ print $1}'`
             echo disabling chattr for ${_usr_name} in ${_usr_home}..
-            chattr -i -R ${_usr_home}/
+            chattr -i -R ${_usr_home}/ &> /dev/null
             if [ -d "${_usr_home}/.drush/" ]; then
               chattr -i ${_usr_home}/.drush/
             fi
@@ -2389,7 +2389,7 @@ _octopus_cleanup() {
             fi
             deluser \
               --remove-home \
-              --backup-to /var/backups/zombie/purged/${_usEr}/home/ ${_usr_name}
+              --backup-to /var/backups/zombie/purged/${_usEr}/home/ ${_usr_name} &> /dev/null
           done;
         echo
         echo "Cleanup complete"

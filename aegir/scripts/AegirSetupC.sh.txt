@@ -235,8 +235,8 @@ export _D7_CORE_DIR="/data/all/000/core/${_DRUPAL7}"
 export _pthDst="${_ROOT}/distro/${_THIS_CORE}"
 
 mkdir -p ${_pthDst}
-chmod 0711 ${_ROOT}/distro
-chmod 0711 ${_pthDst}
+chmod 0711 ${_ROOT}/distro &> /dev/null
+chmod 0711 ${_pthDst} &> /dev/null
 
 ###---###
 export _ALLOW_ALL=YES
@@ -327,7 +327,7 @@ _save_verify_this_platform() {
       if [ -d "${_THIS_HM}" ] && [ -e "${_THIS_HM}/make_platform.php" ]; then
         cd ${_THIS_HM}
         [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: ${_DRUSHCMD} php-script make_platform '${4}' ${6} ${_make_p}"
-        ${_DRUSHCMD} php-script make_platform "${4}" ${6} ${_make_p}
+        ${_DRUSHCMD} php-script make_platform "${4}" ${6} ${_make_p} &> /dev/null
       fi
     fi
   elif [ -d "${_make_u}" ]; then
@@ -335,7 +335,7 @@ _save_verify_this_platform() {
       if [ -d "${_THIS_HM}" ] && [ -e "${_THIS_HM}/make_platform.php" ]; then
         cd ${_THIS_HM}
         [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: ${_DRUSHCMD} php-script make_platform '${4}' ${6} ${_make_u}"
-        ${_DRUSHCMD} php-script make_platform "${4}" ${6} ${_make_u}
+        ${_DRUSHCMD} php-script make_platform "${4}" ${6} ${_make_u} &> /dev/null
       fi
     fi
   elif [ -d "${_make_x}" ]; then
@@ -343,7 +343,7 @@ _save_verify_this_platform() {
       if [ -d "${_THIS_HM}" ] && [ -e "${_THIS_HM}/make_platform.php" ]; then
         cd ${_THIS_HM}
         [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: ${_DRUSHCMD} php-script make_platform '${4}' ${6} ${_make_x}"
-        ${_DRUSHCMD} php-script make_platform "${4}" ${6} ${_make_x}
+        ${_DRUSHCMD} php-script make_platform "${4}" ${6} ${_make_x} &> /dev/null
       fi
     fi
   fi
@@ -457,7 +457,7 @@ _fix_dirs_files() {
   echo empty > ./sites/all/modules/EMPTY.txt
   echo empty > ./sites/all/libraries/EMPTY.txt
   echo empty > ./sites/all/themes/EMPTY.txt
-  chmod 0755 ./profiles
+  chmod 0755 ./profiles &> /dev/null
   chmod 0755 ./sites
   chmod 0755 ./sites/all
   chmod 02775 ./sites/all/{modules,libraries,themes}
@@ -555,13 +555,13 @@ _create_distro_d7_symlinks() {
 # Rename D7 profiles.
 _rename_drupal7_profiles() {
   for _Files in `find ./profiles -type f`; do
-    sed -i "s/name = Minimal/name = Vanilla Minimal/g"   ${_Files}
+    sed -i "s/name = Minimal/name = Vanilla Minimal/g"   ${_Files} &> /dev/null
     wait
-    sed -i "s/name = Standard/name = Vanilla Standard/g" ${_Files}
+    sed -i "s/name = Standard/name = Vanilla Standard/g" ${_Files} &> /dev/null
     wait
-    sed -i "s/name = Testing/name = Vanilla Testing/g"   ${_Files}
+    sed -i "s/name = Testing/name = Vanilla Testing/g"   ${_Files} &> /dev/null
     wait
-    sed -i "s/hidden = TRUE//g"                          ${_Files}
+    sed -i "s/hidden = TRUE//g"                          ${_Files} &> /dev/null
     wait
   done
 }
@@ -570,11 +570,11 @@ _rename_drupal7_profiles() {
 # Rename D9 profiles.
 _rename_drupal9_profiles() {
   for _Files in `find ./core/profiles -type f`; do
-    sed -i "s/name: Minimal/name: Vanilla Minimal/g"   ${_Files}
+    sed -i "s/name: Minimal/name: Vanilla Minimal/g"   ${_Files} &> /dev/null
     wait
-    sed -i "s/name: Standard/name: Vanilla Standard/g" ${_Files}
+    sed -i "s/name: Standard/name: Vanilla Standard/g" ${_Files} &> /dev/null
     wait
-    sed -i "s/name: Testing/name: Vanilla Testing/g"   ${_Files}
+    sed -i "s/name: Testing/name: Vanilla Testing/g"   ${_Files} &> /dev/null
     wait
   done
 }
@@ -589,17 +589,17 @@ _prepare_drupal6_core() {
     cd /data/all/000/core
     [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _get_core_ext '${_DRUPAL6}.tar.gz'"
     _get_core_ext "${_DRUPAL6}.tar.gz"
-    find ${_D6_CORE_DIR} -type d -exec chmod 0755 {} \;
-    find ${_D6_CORE_DIR} -type f -exec chmod 0644 {} \;
+    find ${_D6_CORE_DIR} -type d -exec chmod 0755 {} \; &> /dev/null
+    find ${_D6_CORE_DIR} -type f -exec chmod 0644 {} \; &> /dev/null
     cd ${_D6_CORE_DIR}/
     _fix_dirs_files
-    patch -p0 < ${_pthPch}/taxonomy-6.26.patch
+    patch -p0 < ${_pthPch}/taxonomy-6.26.patch &> /dev/null
     rm -f ${_D6_CORE_DIR}/modules/taxonomy/taxonomy.module.orig
     rm -f modules/o_contrib
     ln -s ${_CORE}/o_contrib modules/o_contrib
     ln -s ${_CORE}/o_contrib/js/js.php js.php
     cp -af ${_CORE}/o_contrib/image/image.imagemagick.inc includes/
-    cp -af ${_CORE}/o_contrib/boost/stats/boost_stats.php ./
+    cp -af ${_CORE}/o_contrib/boost/stats/boost_stats.php ./ &> /dev/null
     rm -rf ${_D6_CORE_DIR}/scripts
     cd ${_D6_CORE_DIR}/themes
     _get_dev_contrib "rubik-6.x-3.0-beta5.tar.gz"
@@ -619,12 +619,12 @@ _prepare_drupal7_core() {
     cd /data/all/000/core
     [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _get_core_ext '${_DRUPAL7}.tar.gz'"
     _get_core_ext "${_DRUPAL7}.tar.gz"
-    find ${_D7_CORE_DIR} -type d -exec chmod 0755 {} \;
-    find ${_D7_CORE_DIR} -type f -exec chmod 0644 {} \;
+    find ${_D7_CORE_DIR} -type d -exec chmod 0755 {} \; &> /dev/null
+    find ${_D7_CORE_DIR} -type f -exec chmod 0644 {} \; &> /dev/null
     cd ${_D7_CORE_DIR}/
     _fix_dirs_files
     _rename_drupal7_profiles
-    patch -p0 < ${_pthPch}/taxonomy-7.12.patch
+    patch -p0 < ${_pthPch}/taxonomy-7.12.patch &> /dev/null
     rm -f ${_D7_CORE_DIR}/modules/taxonomy/taxonomy.module.orig
     rm -f modules/o_contrib_seven
     ln -s ${_CORE}/o_contrib_seven modules/o_contrib_seven
@@ -657,7 +657,7 @@ _nocore_d6_dist_clean() {
     cp -af ${_D6_CORE_DIR}/profiles ${_SHRD_PLPATH}/
   fi
   sed -i "s/'dblog'/'robotstxt', 'path_alias_cache'/g" \
-    ${_SHRD_PRPATH}/${_REAL_PRNAME}.profile
+    ${_SHRD_PRPATH}/${_REAL_PRNAME}.profile &> /dev/null
 }
 
 #
@@ -694,7 +694,7 @@ _nocore_d7_dist_clean() {
 # Enable D6 admin.
 _enable_drupal6_admin() {
   sed -i "s/'path_alias_cache'/'path_alias_cache', 'admin'/g" \
-    ${_SHRD_PRPATH}/${_REAL_PRNAME}.profile
+    ${_SHRD_PRPATH}/${_REAL_PRNAME}.profile &> /dev/null
 }
 
 #
@@ -1234,10 +1234,10 @@ _ubercart6_install() {
             _get_dev_contrib "webform-6.x-3.23.tar.gz"
             ### https://drupal.org/node/1167276#comment-5138248
             cd ${_SHRD_PRPATH}/modules/${_VIRT_PRNAME}
-            patch -p1 < ${_pthPch}/${_VIRT_PRNAME}-1167276-reroll.patch
+            patch -p1 < ${_pthPch}/${_VIRT_PRNAME}-1167276-reroll.patch &> /dev/null
             cd ${_SHRD_PRPATH}/modules/imagecache
             # https://drupal.org/node/1243258#comment-4850634
-            patch -p1 < ${_pthPch}/imagecache-1243258-5.patch
+            patch -p1 < ${_pthPch}/imagecache-1243258-5.patch &> /dev/null
             cd ${_SHRD_PRPATH}/themes
             _get_dev_contrib "fusion-6.x-1.x-dev.tar.gz"
             _get_dev_contrib "acquia_prosper-6.x-1.1.tar.gz"
@@ -1309,7 +1309,7 @@ _ubercart7_install() {
               rm -rf ${_SHRD_PLPATH}/profiles/standard
               rm -rf ${_SHRD_PLPATH}/profiles/testing
               sed -i "s/version = VERSION/version = \"${_SMALLCORE7_V}\"/g" \
-                ${_SHRD_PLPATH}/profiles/minimal/minimal.info
+                ${_SHRD_PLPATH}/profiles/minimal/minimal.info &> /dev/null
               mkdir -p ${_SHRD_PRPATH}/libraries
               cd ${_SHRD_PRPATH}/libraries
               _get_dev_contrib "colorbox-1.5.13.zip"
@@ -1331,10 +1331,10 @@ _ubercart7_install() {
               cd ${_SHRD_PRPATH}/modules/views
               # https://drupal.org/node/1766338#comment-6445882
               patch -p1 < \
-                ${_pthPch}/views-revert-broken-filter-or-groups-1766338-7.patch
+                ${_pthPch}/views-revert-broken-filter-or-groups-1766338-7.patch &> /dev/null
               # https://drupal.org/node/2037469
               patch -p1 < \
-                ${_pthPch}/views-exposed-sorts-2037469-1.patch
+                ${_pthPch}/views-exposed-sorts-2037469-1.patch &> /dev/null
             else
               [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _get_distro_ext '${_SHRD_PLNAME}.tar.gz'"
               _get_distro_ext "${_SHRD_PLNAME}.tar.gz"

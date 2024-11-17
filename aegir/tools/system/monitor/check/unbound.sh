@@ -32,7 +32,7 @@ _check_root
       _B_NICE=19
     fi
 
-    renice ${_B_NICE} -p $$
+    renice ${_B_NICE} -p $$ &> /dev/null
 
 export _INCIDENT_EMAIL_REPORT=${_INCIDENT_EMAIL_REPORT//[^A-Z]/}
 : "${_INCIDENT_EMAIL_REPORT:=YES}"
@@ -56,11 +56,11 @@ _unbound_check_fix() {
     mkdir -p /etc/resolvconf/run/interface
     echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.unbound
     [ -e "/etc/resolvconf/update.d/unbound" ] && chmod -x /etc/resolvconf/update.d/unbound
-    resolvconf -u
-    killall -9 unbound
-    service unbound restart
+    resolvconf -u &> /dev/null
+    killall -9 unbound &> /dev/null
+    service unbound restart &> /dev/null
     wait
-    unbound-control reload
+    unbound-control reload &> /dev/null
   fi
   if [ -e "/etc/resolv.conf" ]; then
     _RESOLV_LOC=$(grep "nameserver 127.0.0.1" /etc/resolv.conf 2>&1)
@@ -71,10 +71,10 @@ _unbound_check_fix() {
       && [[ "${_RESOLV_EGT}" =~ "nameserver 8.8.8.8" ]]; then
       _THIS_DNS_TEST=$(host files.aegir.cc 127.0.0.1 -w 3 2>&1)
       if [[ "${_THIS_DNS_TEST}" =~ "no servers could be reached" ]]; then
-        service unbound stop
+        service unbound stop &> /dev/null
         sleep 1
-        killall -9 unbound
-        renice ${_B_NICE} -p $$
+        killall -9 unbound &> /dev/null
+        renice ${_B_NICE} -p $$ &> /dev/null
         perl /var/xdrago/proc_num_ctrl.pl &
       fi
     else
@@ -88,15 +88,15 @@ _unbound_check_fix() {
       echo "nameserver 8.8.8.8" >> /etc/resolv.conf
       echo "nameserver 8.8.4.4" >> /etc/resolv.conf
       [ -e "/etc/resolvconf/update.d/unbound" ] && chmod -x /etc/resolvconf/update.d/unbound
-      killall -9 unbound
-      service unbound restart
+      killall -9 unbound &> /dev/null
+      service unbound restart &> /dev/null
       wait
-      unbound-control reload
+      unbound-control reload &> /dev/null
     fi
   fi
   if [ `ps aux | grep -v "grep" | grep --count "/usr/sbin/unbound"` -gt "1" ]; then
-    kill -9 $(ps aux | grep '[u]sr/sbin/unbound' | awk '{print $2}')
-    service unbound start
+    kill -9 $(ps aux | grep '[u]sr/sbin/unbound' | awk '{print $2}') &> /dev/null
+    service unbound start &> /dev/null
     wait
     echo "$(date 2>&1) Too many Unbound processes killed" >> ${_pthOml}
     _incident_email_report "Too many Unbound processes"

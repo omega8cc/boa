@@ -10,7 +10,7 @@ _csf_flood_guard() {
   if [ ! -e "/run/boa_run.pid" ] && [ ${_thisCountCsf} -gt "4" ]; then
     echo "$(date 2>&1) Too many ${_thisCountCsf} csf processes killed" >> \
       /var/log/csf-count.kill.log
-    kill -9 $(ps aux | grep '[c]sf' | awk '{print $2}')
+    kill -9 $(ps aux | grep '[c]sf' | awk '{print $2}') &> /dev/null
     csf -tf
     wait
     csf -df
@@ -24,13 +24,13 @@ _csf_flood_guard() {
     wait
     csf -df
     wait
-    kill -9 $(ps aux | grep '[f]ire.sh' | awk '{print $2}')
+    kill -9 $(ps aux | grep '[f]ire.sh' | awk '{print $2}') &> /dev/null
   elif [ ! -e "/run/boa_run.pid" ] && [ ${_thisCountFire} -gt "7" ]; then
     echo "$(date 2>&1) Too many ${_thisCountFire} fire.sh processes killed" >> \
       /var/log/fire-count.kill.log
     csf -tf
     wait
-    kill -9 $(ps aux | grep '[f]ire.sh' | awk '{print $2}')
+    kill -9 $(ps aux | grep '[f]ire.sh' | awk '{print $2}') &> /dev/null
   fi
 }
 [ ! -e "/run/water.pid" ] && _csf_flood_guard

@@ -33,7 +33,7 @@ _check_dns() {
   done
 
   # If no direct match, use curl to verify via access log
-  if curl -sI "https://${_domain}"; then
+  if curl -sI "https://${_domain}" &> /dev/null; then
     if grep -q "$(_clean_domain "${_domain}")" "${_ACCESS_LOG}"; then
       return 0
     fi

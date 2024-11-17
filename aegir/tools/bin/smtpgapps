@@ -31,7 +31,7 @@ _os_detection_minimal() {
 }
 
 _apt_clean_update() {
-  ${_APT_UPDATE} -qq
+  ${_APT_UPDATE} -qq &> /dev/null
 }
 
 _usage() {
@@ -118,7 +118,7 @@ if _is_installed "msmtp"; then
 else
   _msg "Installing msmtp and necessary packages..."
   _apt_clean_update
-  apt-get install msmtp ca-certificates -y
+  apt-get install msmtp ca-certificates -y &> /dev/null
   _msg "'msmtp' installed successfully."
 fi
 

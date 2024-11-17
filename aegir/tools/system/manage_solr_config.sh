@@ -82,8 +82,8 @@ _write_solr_config() {
     echo "To learn more please make sure to check the module docs at:"   >> ${2}
     echo                                                                 >> ${2}
     echo "https://drupal.org/project/${1}"                               >> ${2}
-    chown ${_HM_U}:users ${2}
-    chmod 440 ${2}
+    chown ${_HM_U}:users ${2} &> /dev/null
+    chmod 440 ${2} &> /dev/null
   fi
 }
 
@@ -92,7 +92,7 @@ _reload_core_cnf() {
   # ${2} is solr core name
   # Example: _reload_core_cnf 9077 ${SolrCoreID}
   # Example: _reload_core_cnf 8099 ${SolrCoreID}
-  curl "http://127.0.0.1:${1}/solr/admin/cores?action=RELOAD&core=${2}"
+  curl "http://127.0.0.1:${1}/solr/admin/cores?action=RELOAD&core=${2}" &> /dev/null
   echo "Reloaded Solr core ${2} cnf on port ${1}"
   wait
 }
@@ -270,11 +270,11 @@ _add_solr() {
         wait
         sed -i "s/.*<core name=\"core0\" instan_ceDir=\"core0\" \/>.*/<core name=\"core0\" instan_ceDir=\"core0\" \/>\n<core name=\"${SolrCoreID}\" instan_ceDir=\"${SolrCoreID}\" \/>\n/g" ${_SOLR_BASE}/solr.xml
         wait
-        sed -i "/^$/d" ${_SOLR_BASE}/solr.xml
+        sed -i "/^$/d" ${_SOLR_BASE}/solr.xml &> /dev/null
         wait
         if [[ "${_SOLR_BASE}" =~ "/opt/solr4" ]]; then
-          kill -9 $(ps aux | grep '[j]etty9' | awk '{print $2}')
-          service jetty9 start
+          kill -9 $(ps aux | grep '[j]etty9' | awk '{print $2}') &> /dev/null
+          service jetty9 start &> /dev/null
         fi
       fi
       echo "New Solr with ${1} for ${2} added"
@@ -314,13 +314,13 @@ _delete_solr() {
       wait
       sed -i "s/.*name=\"${OldSolrCoreID}\".*//g"     ${_SOLR_BASE}/solr.xml
       wait
-      sed -i "/^$/d" ${_SOLR_BASE}/solr.xml
+      sed -i "/^$/d" ${_SOLR_BASE}/solr.xml &> /dev/null
       wait
       rm -rf ${1}
       rm -f ${_Dir}/solr.php
       if [[ "${_SOLR_BASE}" =~ "/opt/solr4" ]]; then
-        kill -9 $(ps aux | grep '[j]etty9' | awk '{print $2}')
-        service jetty9 start
+        kill -9 $(ps aux | grep '[j]etty9' | awk '{print $2}') &> /dev/null
+        service jetty9 start &> /dev/null
       fi
     fi
     echo "Deleted Solr core in ${1}"
@@ -343,9 +343,9 @@ _check_solr() {
 _setup_solr() {
   if [ -e "/data/conf/default.boa_site_control.ini" ] \
     && [ ! -e "${_DIR_CTRL_F}" ]; then
-    cp -af /data/conf/default.boa_site_control.ini ${_DIR_CTRL_F}
-    chown ${_HM_U}:users ${_DIR_CTRL_F}
-    chmod 0664 ${_DIR_CTRL_F}
+    cp -af /data/conf/default.boa_site_control.ini ${_DIR_CTRL_F} &> /dev/null
+    chown ${_HM_U}:users ${_DIR_CTRL_F} &> /dev/null
+    chmod 0664 ${_DIR_CTRL_F} &> /dev/null
   fi
   ###
   ### Support for solr_integration_module directive
@@ -517,7 +517,7 @@ _count_cpu() {
     _CPU_NR=1
   fi
   echo ${_CPU_NR} > /data/all/cpuinfo
-  chmod 644 /data/all/cpuinfo
+  chmod 644 /data/all/cpuinfo &> /dev/null
 }
 
 _get_load() {
@@ -601,7 +601,7 @@ _fix_solr7_cnf() {
     if [ "${_IF_RESTART_SOLR}" = "YES" ] \
       || [ ! -e "${rStart}" ]; then
       echo "Restarting Solr 7..."
-      #kill -9 $(ps aux | grep '[s]olr' | awk '{print $2}')
+      #kill -9 $(ps aux | grep '[s]olr' | awk '{print $2}') &> /dev/null
       service solr7 restart
       touch ${rStart}
     fi
@@ -677,6 +677,6 @@ _start_up() {
 _NOW=$(date +%y%m%d-%H%M%S 2>&1)
 _NOW=${_NOW//[^0-9-]/}
 mkdir -p /var/backups/solr/log
-find /var/backups/solr/*/* -mtime +0 -type f -exec rm -rf {} \;
+find /var/backups/solr/*/* -mtime +0 -type f -exec rm -rf {} \; &> /dev/null
 _start_up >/var/backups/solr/log/solr-${_NOW}.log 2>&1
 exit 0

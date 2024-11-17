@@ -116,7 +116,7 @@ _provision_backend_dbpass_generate() {
   fi
 
   echo "${_ESC_PASS}" > ${_L_SYS}
-  chown aegir:aegir ${_L_SYS}
+  chown aegir:aegir ${_L_SYS} &> /dev/null
   chmod 0600 ${_L_SYS}
 
   if [ "${_THIS_DB_HOST}" = "localhost" ] \
@@ -153,7 +153,7 @@ _provision_backend_dbpass_generate() {
   else
     _THIS_DB_PORT=3306
   fi
-  mysqladmin -u root flush-privileges
+  mysqladmin -u root flush-privileges &> /dev/null
 
   if [ "${_STATUS}" = "INIT" ]; then
     [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL7 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
@@ -204,11 +204,11 @@ SAVE MYSQL QUERY RULES TO DISK;
 PROXYSQL
       fi
       _C_SQL="mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp --database=mysql -e"
-      ${_C_SQL} "DROP USER '${_ADBU}'@'${_AEGIR_HOST}';"
-      ${_C_SQL} "DROP USER '${_ADBU}'@'${_RESOLVEIP}';"
-      ${_C_SQL} "DROP USER '${_ADBU}'@'localhost';"
-      ${_C_SQL} "DROP USER '${_ADBU}'@'127.0.0.1';"
-      ${_C_SQL} "DROP USER '${_ADBU}'@'%';"
+      ${_C_SQL} "DROP USER '${_ADBU}'@'${_AEGIR_HOST}';" &> /dev/null
+      ${_C_SQL} "DROP USER '${_ADBU}'@'${_RESOLVEIP}';" &> /dev/null
+      ${_C_SQL} "DROP USER '${_ADBU}'@'localhost';" &> /dev/null
+      ${_C_SQL} "DROP USER '${_ADBU}'@'127.0.0.1';" &> /dev/null
+      ${_C_SQL} "DROP USER '${_ADBU}'@'%';" &> /dev/null
       mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -u root mysql<<EOFMYSQL
 CREATE USER IF NOT EXISTS '${_ADBU}'@'localhost';
 CREATE USER IF NOT EXISTS '${_ADBU}'@'%';
@@ -255,7 +255,7 @@ ALTER USER '${_ADBU}'@'localhost' IDENTIFIED BY '${_ESC_PASS}';
 ALTER USER '${_ADBU}'@'%' IDENTIFIED BY '${_ESC_PASS}';
 EOFMYSQL
   fi
-  mysqladmin -u root flush-privileges
+  mysqladmin -u root flush-privileges &> /dev/null
 }
 
 #
@@ -280,12 +280,12 @@ _provision_backend_dbpass_sync() {
   fi
   _ADBU=aegir_root
   _L_SYS="/var/aegir/backups/system/.${_ADBU}.pass.txt"
-  mv -f ${_L_SYS} ${_L_SYS}-pre-${_xSrl}-${_X_VERSION}-${_NOW}
+  mv -f ${_L_SYS} ${_L_SYS}-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
   _provision_backend_dbpass_generate
   if [ ! -z "${_ESC_PASS}" ] && [ ! -z "${_ENC_PASS}" ]; then
     su -s /bin/bash - aegir -c "drush8 @hostmaster \
       sqlq \"UPDATE hosting_db_server SET db_passwd='${_ESC_PASS}' \
-      WHERE db_user='${_ADBU}'\""
+      WHERE db_user='${_ADBU}'\"" &> /dev/null
     wait
     _SQL_CONNECT=localhost
     if [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
@@ -313,11 +313,11 @@ SAVE MYSQL QUERY RULES TO DISK;
 PROXYSQL
     fi
     _C_SQL="mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp --database=mysql -e"
-    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';"
-    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';"
-    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'localhost';"
-    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'127.0.0.1';"
-    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'%';"
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';" &> /dev/null
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';" &> /dev/null
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'localhost';" &> /dev/null
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'127.0.0.1';" &> /dev/null
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'%';" &> /dev/null
     mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -u root mysql<<EOFMYSQL
 CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'localhost';
 CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'%';
@@ -327,34 +327,34 @@ ALTER USER '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_PASS}';
 ALTER USER '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_ESC_PASS}';
 EOFMYSQL
     sed -i "s/mysql:\/\/${_ADBU}:.*/mysql:\/\/${_ADBU}:${_ENC_PASS}@${_SQL_CONNECT}',/g" \
-      /var/aegir/.drush/server_*.alias.drushrc.php
+      /var/aegir/.drush/server_*.alias.drushrc.php &> /dev/null
     wait
   fi
-  mysqladmin -u root flush-privileges
-  su -s /bin/bash - aegir -c "drush8 cc drush"
+  mysqladmin -u root flush-privileges &> /dev/null
+  su -s /bin/bash - aegir -c "drush8 cc drush" &> /dev/null
   wait
   rm -rf /var/aegir/.tmp/cache
   if [ -e "/var/aegir/.drush/server_localhost.alias.drushrc.php" ]; then
     su -s /bin/bash aegir -c "drush8 @hostmaster hosting-task @server_localhost \
-      verify --force"
+      verify --force" &> /dev/null
   else
     su -s /bin/bash aegir -c "drush8 @hostmaster hosting-task @server_master \
-      verify --force"
+      verify --force" &> /dev/null
   fi
   wait
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "INFO: Running hosting-dispatch/hosting-tasks..."
   fi
-  su -s /bin/bash - aegir -c "drush8 @hostmaster hosting-dispatch"
+  su -s /bin/bash - aegir -c "drush8 @hostmaster hosting-dispatch" &> /dev/null
   wait
   sleep 5
-  su -s /bin/bash - aegir -c "drush8 @hostmaster hosting-tasks --force"
+  su -s /bin/bash - aegir -c "drush8 @hostmaster hosting-tasks --force" &> /dev/null
   wait
   sleep 5
-  su -s /bin/bash - aegir -c "drush8 @hostmaster hosting-tasks --force"
+  su -s /bin/bash - aegir -c "drush8 @hostmaster hosting-tasks --force" &> /dev/null
   wait
   sleep 5
-  su -s /bin/bash - aegir -c "drush8 @hostmaster hosting-tasks --force"
+  su -s /bin/bash - aegir -c "drush8 @hostmaster hosting-tasks --force" &> /dev/null
   wait
 }
 
@@ -419,11 +419,11 @@ SAVE MYSQL QUERY RULES TO DISK;
 PROXYSQL
     fi
     _C_SQL="mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp --database=mysql -e"
-    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';"
-    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';"
-    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'localhost';"
-    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'127.0.0.1';"
-    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'%';"
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';" &> /dev/null
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';" &> /dev/null
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'localhost';" &> /dev/null
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'127.0.0.1';" &> /dev/null
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'%';" &> /dev/null
     mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -u root mysql<<EOFMYSQL
 CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'localhost';
 CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'%';
@@ -433,7 +433,7 @@ ALTER USER '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_THIS_HM_DBPD}';
 ALTER USER '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_THIS_HM_DBPD}';
 EOFMYSQL
   fi
-  mysqladmin -u root flush-privileges
+  mysqladmin -u root flush-privileges &> /dev/null
 }
 
 #
@@ -455,19 +455,19 @@ _master_download_for_local_build() {
     _get_core_ext "${_DRUPAL7}.tar.gz"
     mv -f ${_mL}/${_DRUPAL7} ${_mL}/drupal
     ### Aegir Core
-      ${_gCb} 5.x-${_tRee} ${_gitHub}/hostmaster.git   
-      ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting.git      
-      ${_gCb} 5.x-${_tRee} ${_gitHub}/eldir.git        
+      ${_gCb} 5.x-${_tRee} ${_gitHub}/hostmaster.git    &> /dev/null
+      ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting.git       &> /dev/null
+      ${_gCb} 5.x-${_tRee} ${_gitHub}/eldir.git         &> /dev/null
     ### Aegir Golden + BOA Settings
-      ${_gCb} 5.x-${_tRee} ${_gitHub}/aegir_objects.git                 
-      ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_civicrm.git               
-      ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_custom_settings.git       
-      ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_deploy.git                
-      ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_git.git                   
-      ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_le.git                    
-      ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_remote_import.git         
-      ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_site_backup_manager.git   
-      ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_tasks_extra.git           
+      ${_gCb} 5.x-${_tRee} ${_gitHub}/aegir_objects.git                  &> /dev/null
+      ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_civicrm.git                &> /dev/null
+      ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_custom_settings.git        &> /dev/null
+      ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_deploy.git                 &> /dev/null
+      ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_git.git                    &> /dev/null
+      ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_le.git                     &> /dev/null
+      ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_remote_import.git          &> /dev/null
+      ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_site_backup_manager.git    &> /dev/null
+      ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_tasks_extra.git            &> /dev/null
       rm -rf */.git
     ### Aegir Drupal Contrib
     _get_dev_stc "admin_menu-7.x-3.0-rc7.tar.gz"
@@ -492,8 +492,8 @@ _master_download_for_local_build() {
     _get_dev_stc "strongarm-7.x-2.0.tar.gz"
     _get_dev_stc "userprotect-7.x-1.3.tar.gz"
   fi
-  find ${_mL} -type d -exec chmod 0755 {} \;
-  find ${_mL} -type f -exec chmod 0644 {} \;
+  find ${_mL} -type d -exec chmod 0755 {} \; &> /dev/null
+  find ${_mL} -type f -exec chmod 0644 {} \; &> /dev/null
   chown -R root:root ${_mL}
 }
 
@@ -511,7 +511,7 @@ _aegir_master_upgrade() {
     if [ -x "/usr/bin/mysql_upgrade" ]; then
       _check_mysql_version
       if [ "${_DB_V}" = "5.7" ]; then
-        _mrun "mysql_upgrade -u root --force"
+        _mrun "mysql_upgrade -u root --force" &> /dev/null
       fi
     fi
     if [ -e "/var/aegir/use_proxysql.txt" ]; then
@@ -540,15 +540,15 @@ _aegir_master_upgrade() {
       rm -rf /var/aegir/.drush/{provision,drush_make}
       mkdir -p /var/aegir/.drush/{sys,xts,usr}
       ${_gCb} ${_BRANCH_PRN} ${_gitHub}/provision.git \
-        /var/aegir/.drush/sys/provision
+        /var/aegir/.drush/sys/provision &> /dev/null
       sed -i "s/files.aegir.cc/${_USE_MIR}/g" \
-        /var/aegir/.drush/sys/provision/aegir.make
+        /var/aegir/.drush/sys/provision/aegir.make &> /dev/null
       rm -rf /var/aegir/drush
       cd /var/aegir
       _get_dev_ext "drush-${_DRUSH_VERSION}.tar.gz"
       cd /var/aegir/drush/
-      find /var/aegir/drush -type d -exec chmod 0755 {} \;
-      find /var/aegir/drush -type f -exec chmod 0644 {} \;
+      find /var/aegir/drush -type d -exec chmod 0755 {} \; &> /dev/null
+      find /var/aegir/drush -type f -exec chmod 0644 {} \; &> /dev/null
       chmod 755 /var/aegir/drush/drush
       chmod 755 /var/aegir/drush/drush.complete.sh
       chmod 755 /var/aegir/drush/drush.launcher
@@ -606,7 +606,7 @@ _aegir_master_upgrade() {
     echo "_xSrl=\"${_xSrl}\""                           >> ${_vBs}/${_filIncB}
     echo "_X_VERSION=\"${_X_VERSION}\""                 >> ${_vBs}/${_filIncB}
 
-    mysqladmin -u root flush-hosts
+    mysqladmin -u root flush-hosts &> /dev/null
     _RST=$(syncpass fix aegir 2>&1)
     _find_correct_ip
     _USE_RESOLVEIP="${_LOC_IP}"
@@ -632,11 +632,11 @@ _aegir_master_upgrade() {
     fi
     if [ ! -L "${_mtrInc}/global.inc" ] && [ -e "${_mtrInc}/global.inc" ]; then
       mv -f ${_mtrInc}/global.inc \
-        ${_mtrInc}/global.inc-pre-${_xSrl}-${_X_VERSION}-${_NOW}
+        ${_mtrInc}/global.inc-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
     fi
     mkdir -p /data/conf
     cp -af ${_locCnf}/global/global.inc /data/conf/global.inc
-    sed -i "s/3600/${_SPEED_VALID_MAX}/g" /data/conf/global.inc
+    sed -i "s/3600/${_SPEED_VALID_MAX}/g" /data/conf/global.inc &> /dev/null
     if [ -e "${_mtrInc}" ] && [ ! -L "${_mtrInc}/global.inc" ] \
       && [ -e "/data/conf/global.inc" ]; then
       ln -sfn /data/conf/global.inc ${_mtrInc}/global.inc
@@ -655,15 +655,15 @@ _aegir_master_upgrade() {
         rm -f ${_mtrNgx}/pre.d/custom_nginx.conf
       fi
     fi
-    find /var/aegir/host_master/*/profiles/* -type d -exec chmod 0755 {} \;
-    find /var/aegir/host_master/*/profiles/* -type f -exec chmod 0644 {} \;
-    find /var/aegir/*/profiles/* -type d -exec chmod 0755 {} \;
-    find /var/aegir/*/profiles/* -type f -exec chmod 0644 {} \;
-    chown -R aegir:aegir /var/aegir/.drush
-    find /var/aegir/.drush -type d -exec chmod 0755 {} \;
-    find /var/aegir/.drush -type f -exec chmod 0644 {} \;
-    chmod 0440 /var/aegir/.drush/*.php
-    chmod 0711 /var/aegir/.drush
+    find /var/aegir/host_master/*/profiles/* -type d -exec chmod 0755 {} \; &> /dev/null
+    find /var/aegir/host_master/*/profiles/* -type f -exec chmod 0644 {} \; &> /dev/null
+    find /var/aegir/*/profiles/* -type d -exec chmod 0755 {} \; &> /dev/null
+    find /var/aegir/*/profiles/* -type f -exec chmod 0644 {} \; &> /dev/null
+    chown -R aegir:aegir /var/aegir/.drush &> /dev/null
+    find /var/aegir/.drush -type d -exec chmod 0755 {} \; &> /dev/null
+    find /var/aegir/.drush -type f -exec chmod 0644 {} \; &> /dev/null
+    chmod 0440 /var/aegir/.drush/*.php &> /dev/null
+    chmod 0711 /var/aegir/.drush &> /dev/null
     _msg "INFO: Aegir Master Instance upgrade completed"
   else
     _msg "INFO: Aegir Master Instance not upgraded this time"
@@ -690,18 +690,18 @@ _php_cli_cron_update() {
   if [ -e "/var/spool/cron/crontabs/aegir" ]; then
     if [ "${_PHP_CLI_VERSION}" = "8.3" ] && [ -x "/opt/php83/bin/php" ]; then
       sed -i "s/^PATH=.*/PATH=\/opt\/php83\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
-        /var/spool/cron/crontabs/aegir
+        /var/spool/cron/crontabs/aegir &> /dev/null
     elif [ "${_PHP_CLI_VERSION}" = "8.2" ] && [ -x "/opt/php82/bin/php" ]; then
       sed -i "s/^PATH=.*/PATH=\/opt\/php82\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
-        /var/spool/cron/crontabs/aegir
+        /var/spool/cron/crontabs/aegir &> /dev/null
     elif [ "${_PHP_CLI_VERSION}" = "8.1" ] && [ -x "/opt/php81/bin/php" ]; then
       sed -i "s/^PATH=.*/PATH=\/opt\/php81\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
-        /var/spool/cron/crontabs/aegir
+        /var/spool/cron/crontabs/aegir &> /dev/null
     elif [ "${_PHP_CLI_VERSION}" = "7.4" ] && [ -x "/opt/php74/bin/php" ]; then
       sed -i "s/^PATH=.*/PATH=\/opt\/php74\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
-        /var/spool/cron/crontabs/aegir
+        /var/spool/cron/crontabs/aegir &> /dev/null
     fi
-    chown aegir:crontab /var/spool/cron/crontabs/aegir
+    chown aegir:crontab /var/spool/cron/crontabs/aegir &> /dev/null
     chmod 600 /var/spool/cron/crontabs/aegir
   fi
 }
@@ -730,11 +730,11 @@ _aegir_master_install_upgrade() {
 
   ###--------------------###
     _msg "INFO: Installing Aegir Master Instance..."
-    adduser --system --group --home /var/aegir aegir
+    adduser --system --group --home /var/aegir aegir &> /dev/null
     usermod -aG www-data aegir
     usermod -aG users aegir
     echo "aegir ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
-    ln -sfn /var/aegir/config/nginx.conf /etc/nginx/conf.d/aegir.conf
+    ln -sfn /var/aegir/config/nginx.conf /etc/nginx/conf.d/aegir.conf &> /dev/null
     _nginx_conf_update
 
     if [ "${_THIS_DB_HOST}" = "localhost" ] \
@@ -974,27 +974,27 @@ EOFMYSQL
       if [ -e "${_THIS_HM_ROOT}/sites/all" ] \
         && [ ! -e "${_THIS_HM_ROOT}/sites/all/libraries" ]; then
         mkdir -p \
-          ${_THIS_HM_ROOT}/sites/all/{modules,themes,libraries}
+          ${_THIS_HM_ROOT}/sites/all/{modules,themes,libraries} &> /dev/null
       fi
     fi
     _U_HD="/var/aegir/.drush"
     chattr +i ${_U_HD}/php.ini
-    su -s /bin/bash - aegir -c "drush8 cc drush"
+    su -s /bin/bash - aegir -c "drush8 cc drush" &> /dev/null
     wait
     rm -rf /var/aegir/.tmp/cache
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: Running hosting-dispatch/hosting-tasks..."
     fi
-    su -s /bin/bash - aegir -c "drush8 @hostmaster hosting-dispatch"
+    su -s /bin/bash - aegir -c "drush8 @hostmaster hosting-dispatch" &> /dev/null
     wait
     sleep 5
-    su -s /bin/bash - aegir -c "drush8 @hostmaster hosting-tasks --force"
+    su -s /bin/bash - aegir -c "drush8 @hostmaster hosting-tasks --force" &> /dev/null
     wait
     sleep 5
-    su -s /bin/bash - aegir -c "drush8 @hostmaster hosting-tasks --force"
+    su -s /bin/bash - aegir -c "drush8 @hostmaster hosting-tasks --force" &> /dev/null
     wait
     sleep 5
-    su -s /bin/bash - aegir -c "drush8 @hostmaster hosting-tasks --force"
+    su -s /bin/bash - aegir -c "drush8 @hostmaster hosting-tasks --force" &> /dev/null
     wait
     if [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ]; then
       _THIS_HM_ROOT=$(cat /var/aegir/.drush/hostmaster.alias.drushrc.php \
@@ -1005,10 +1005,10 @@ EOFMYSQL
       if [ -e "${_THIS_HM_ROOT}/sites/all" ] \
         && [ ! -e "${_THIS_HM_ROOT}/sites/all/libraries" ]; then
         mkdir -p \
-          ${_THIS_HM_ROOT}/sites/all/{modules,themes,libraries}
+          ${_THIS_HM_ROOT}/sites/all/{modules,themes,libraries} &> /dev/null
       fi
     fi
-    chown -R aegir:aegir ${_THIS_HM_ROOT}/sites/all
+    chown -R aegir:aegir ${_THIS_HM_ROOT}/sites/all &> /dev/null
 
   ###--------------------###
     if [ -e "${_mtrInc}/nginx_vhost_common.conf" ]; then
@@ -1025,11 +1025,11 @@ EOFMYSQL
   ###--------------------###
     if [ ! -L "${_mtrInc}/global.inc" ] && [ -e "${_mtrInc}/global.inc" ]; then
       mv -f ${_mtrInc}/global.inc \
-        ${_mtrInc}/global.inc-pre-${_xSrl}-${_X_VERSION}-${_NOW}
+        ${_mtrInc}/global.inc-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
     fi
     mkdir -p /data/conf
     cp -af ${_locCnf}/global/global.inc /data/conf/global.inc
-    sed -i "s/3600/${_SPEED_VALID_MAX}/g" /data/conf/global.inc
+    sed -i "s/3600/${_SPEED_VALID_MAX}/g" /data/conf/global.inc &> /dev/null
     if [ -e "${_mtrInc}" ] \
       && [ ! -L "${_mtrInc}/global.inc" ] \
       && [ -e "/data/conf/global.inc" ]; then
@@ -1037,26 +1037,26 @@ EOFMYSQL
     fi
     _redis_password_update
     _force_advanced_nginx_config
-    chmod 0711 ${_mtrInc}
-    chmod 0711 /var/aegir/config
-    find /var/aegir/host_master/*/profiles/* -type d -exec chmod 0755 {} \;
-    find /var/aegir/host_master/*/profiles/* -type f -exec chmod 0644 {} \;
-    find /var/aegir/*/profiles/* -type d -exec chmod 0755 {} \;
-    find /var/aegir/*/profiles/* -type f -exec chmod 0644 {} \;
-    chown -R aegir:aegir /var/aegir/.drush
-    find /var/aegir/.drush -type d -exec chmod 0755 {} \;
-    find /var/aegir/.drush -type f -exec chmod 0644 {} \;
-    chmod 0440 /var/aegir/.drush/*.php
-    chmod 0711 /var/aegir/.drush
+    chmod 0711 ${_mtrInc} &> /dev/null
+    chmod 0711 /var/aegir/config &> /dev/null
+    find /var/aegir/host_master/*/profiles/* -type d -exec chmod 0755 {} \; &> /dev/null
+    find /var/aegir/host_master/*/profiles/* -type f -exec chmod 0644 {} \; &> /dev/null
+    find /var/aegir/*/profiles/* -type d -exec chmod 0755 {} \; &> /dev/null
+    find /var/aegir/*/profiles/* -type f -exec chmod 0644 {} \; &> /dev/null
+    chown -R aegir:aegir /var/aegir/.drush &> /dev/null
+    find /var/aegir/.drush -type d -exec chmod 0755 {} \; &> /dev/null
+    find /var/aegir/.drush -type f -exec chmod 0644 {} \; &> /dev/null
+    chmod 0440 /var/aegir/.drush/*.php &> /dev/null
+    chmod 0711 /var/aegir/.drush &> /dev/null
     cd /var/aegir
     rm -f /etc/nginx/sites-available/default
     rm -f /etc/nginx/sites-enabled/default
     rm -f /etc/nginx/modules-enabled/*
     if [ -e "${_locCnf}/nginx/nginx.conf" ]; then
-      mv -f /etc/nginx/nginx.conf /etc/nginx/nginx.conf-old
+      mv -f /etc/nginx/nginx.conf /etc/nginx/nginx.conf-old &> /dev/null
       cp -af ${_locCnf}/nginx/nginx.conf /etc/nginx/nginx.conf
     fi
-    _mrun "service nginx reload"
+    _mrun "service nginx reload" 2> /dev/null
     _msg "INFO: Aegir Master Instance installed"
   else
     if [ "${_tRee}" = "lts" ]; then
@@ -1116,7 +1116,7 @@ _if_upgrade_only_aegir_master() {
       _aegir_master_upgrade
       _php_cli_cron_update
       _mrun "sleep 8"
-      _mrun "service nginx reload"
+      _mrun "service nginx reload" 2> /dev/null
       _finale
       exit 0
     fi
@@ -1129,7 +1129,7 @@ _aegir_master_display_login_link() {
   fi
   if [ "${_STATUS}" = "INIT" ]; then
     if [ "${_EASY_SETUP}" != "LOCAL" ]; then
-      _mrun "bash /usr/sbin/apticron"
+      _mrun "bash /usr/sbin/apticron" &> /dev/null
     fi
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _DO_NOTHING=YES
@@ -1187,7 +1187,7 @@ _php_cli_local_ini_update() {
     || [ ! -e "${_U_HD}/.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     mkdir -p ${_U_TP}
     touch ${_U_TP}
-    find ${_U_TP}/ -mtime +0 -exec rm -rf {} \;
+    find ${_U_TP}/ -mtime +0 -exec rm -rf {} \; &> /dev/null
     chmod 02755 ${_U_TP}
     mkdir -p ${_U_HD}
     rm -f ${_U_HD}/.ctrl.php*

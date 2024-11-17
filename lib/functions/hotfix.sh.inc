@@ -20,13 +20,13 @@ _fix_core_dgd() {
       for _Core in `find /data/all/000/core/drupal-7* \
         -maxdepth 0 -mindepth 0 | sort`; do
         cd ${_Core}
-        patch -p1 < ${_saPatch}
+        patch -p1 < ${_saPatch} &> /dev/null
       done
     elif [ -d "/data/disk/all/000/core" ]; then
       for _Core in `find /data/disk/all/000/core/drupal-7* \
         -maxdepth 0 -mindepth 0 | sort`; do
         cd ${_Core}
-        patch -p1 < ${_saPatch}
+        patch -p1 < ${_saPatch} &> /dev/null
       done
     fi
     touch ${_pthLog}/${_saCoreN}-fixed-d7.log
@@ -42,10 +42,10 @@ _fix_core_dgd() {
         -maxdepth 0 -mindepth 0 | sort`; do
         _Core=$(echo ${_File} \
           | sed 's/\/includes.*//g' \
-          | awk '{print $1}')
+          | awk '{print $1}' 2> /dev/null)
         if [ -d "${_Core}" ] && [ ! -e "${_Core}/core" ]; then
           cd ${_Core}
-          patch -p1 < ${_saPatch}
+          patch -p1 < ${_saPatch} &> /dev/null
         fi
       done
       touch ${_pthLog}/legacy-${_saCoreN}-fixed-d7.log
@@ -55,10 +55,10 @@ _fix_core_dgd() {
         -maxdepth 0 -mindepth 0 | sort`; do
         _Core=$(echo ${_File} \
           | sed 's/\/includes.*//g' \
-          | awk '{print $1}')
+          | awk '{print $1}' 2> /dev/null)
         if [ -d "${_Core}" ] && [ ! -e "${_Core}/core" ]; then
           cd ${_Core}
-          patch -p1 < ${_saPatch}
+          patch -p1 < ${_saPatch} &> /dev/null
         fi
       done
       touch ${_pthLog}/legacy-${_saCoreN}-fixed-d7eee.log
@@ -75,12 +75,12 @@ _fix_core_dgd() {
         -maxdepth 0 -mindepth 0 | sort`; do
         _Core=$(echo ${_File} \
           | sed 's/\/includes.*//g' \
-          | awk '{print $1}')
+          | awk '{print $1}' 2> /dev/null)
         if [ -d "${_Core}" ] \
           && [ ! -e "${_Core}/core" ] \
           && [ ! -e "${_Core}/profiles/${_saCoreS}-fix.info" ]; then
           cd ${_Core}
-          patch -p1 < ${_saPatch}
+          patch -p1 < ${_saPatch} &> /dev/null
           echo fixed > ${_Core}/profiles/${_saCoreS}-fix.info
         fi
       done
@@ -88,12 +88,12 @@ _fix_core_dgd() {
         -maxdepth 0 -mindepth 0 | sort`; do
         _Core=$(echo ${_File} \
           | sed 's/\/includes.*//g' \
-          | awk '{print $1}')
+          | awk '{print $1}' 2> /dev/null)
         if [ -d "${_Core}" ] \
           && [ ! -e "${_Core}/core" ] \
           && [ ! -e "${_Core}/profiles/${_saCoreS}-fix.info" ]; then
           cd ${_Core}
-          patch -p1 < ${_saPatch}
+          patch -p1 < ${_saPatch} &> /dev/null
           echo fixed > ${_Core}/profiles/${_saCoreS}-fix.info
         fi
       done
@@ -101,12 +101,12 @@ _fix_core_dgd() {
         -maxdepth 0 -mindepth 0 | sort`; do
         _Core=$(echo ${_File} \
           | sed 's/\/includes.*//g' \
-          | awk '{print $1}')
+          | awk '{print $1}' 2> /dev/null)
         if [ -d "${_Core}" ] \
           && [ ! -e "${_Core}/core" ] \
           && [ ! -e "${_Core}/profiles/${_saCoreS}-fix.info" ]; then
           cd ${_Core}
-          patch -p1 < ${_saPatch}
+          patch -p1 < ${_saPatch} &> /dev/null
           echo fixed > ${_Core}/profiles/${_saCoreS}-fix.info
         fi
       done
@@ -114,12 +114,12 @@ _fix_core_dgd() {
         -maxdepth 0 -mindepth 0 | sort`; do
         _Core=$(echo ${_File} \
           | sed 's/\/includes.*//g' \
-          | awk '{print $1}')
+          | awk '{print $1}' 2> /dev/null)
         if [ -d "${_Core}" ] \
           && [ ! -e "${_Core}/core" ] \
           && [ ! -e "${_Core}/profiles/${_saCoreS}-fix.info" ]; then
           cd ${_Core}
-          patch -p1 < ${_saPatch}
+          patch -p1 < ${_saPatch} &> /dev/null
           echo fixed > ${_Core}/profiles/${_saCoreS}-fix.info
         fi
       done
@@ -127,12 +127,12 @@ _fix_core_dgd() {
         -maxdepth 0 -mindepth 0 | sort`; do
         _Core=$(echo ${_File} \
           | sed 's/\/includes.*//g' \
-          | awk '{print $1}')
+          | awk '{print $1}' 2> /dev/null)
         if [ -d "${_Core}" ] \
           && [ ! -e "${_Core}/core" ] \
           && [ ! -e "${_Core}/profiles/${_saCoreS}-fix.info" ]; then
           cd ${_Core}
-          patch -p1 < ${_saPatch}
+          patch -p1 < ${_saPatch} &> /dev/null
           echo fixed > ${_Core}/profiles/${_saCoreS}-fix.info
         fi
       done
@@ -154,7 +154,7 @@ _fix_cnf_postfix() {
       _DO_NOTHING=YES
     else
       sed -i "s/^inet_protocols.*/inet_protocols = ipv4/g" \
-        /etc/postfix/main.cf
+        /etc/postfix/main.cf &> /dev/null
       _RELOAD_POSTFIX=YES
     fi
   else
@@ -162,6 +162,6 @@ _fix_cnf_postfix() {
     _RELOAD_POSTFIX=YES
   fi
   if [ "${_RELOAD_POSTFIX}" = "YES" ]; then
-    postfix reload
+    postfix reload &> /dev/null
   fi
 }

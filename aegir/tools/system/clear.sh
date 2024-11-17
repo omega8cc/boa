@@ -27,7 +27,7 @@ _check_root() {
       _B_NICE=19
     fi
 
-    renice ${_B_NICE} -p $$
+    renice ${_B_NICE} -p $$ &> /dev/null
     chmod a+w /dev/null
   else
     echo "ERROR: This script should be run as a root user"
@@ -49,27 +49,27 @@ _os_detection_minimal() {
 _os_detection_minimal
 
 _apt_clean_update() {
-  #apt-get clean -qq
-  #rm -rf /var/lib/apt/lists/*
-  ${_APT_UPDATE} -qq
+  #apt-get clean -qq 2> /dev/null
+  #rm -rf /var/lib/apt/lists/* &> /dev/null
+  ${_APT_UPDATE} -qq 2> /dev/null
 }
 
 rm -f /run/clear_m.pid
 
 _FIVE_MINUTES=$(date --date '5 minutes ago' +"%Y-%m-%d %H:%M:%S")
-find /run/solr_jetty.pid -mtime +0 -type f -not -newermt "${_FIVE_MINUTES}" -exec rm -rf {} \;
-find /run/fmp_wait.pid -mtime +0 -type f -not -newermt "${_FIVE_MINUTES}" -exec rm -rf {} \;
-find /run/restarting_fmp_wait.pid  -mtime +0 -type f -not -newermt "${_FIVE_MINUTES}" -exec rm -rf {} \;
+find /run/solr_jetty.pid -mtime +0 -type f -not -newermt "${_FIVE_MINUTES}" -exec rm -rf {} \; &> /dev/null
+find /run/fmp_wait.pid -mtime +0 -type f -not -newermt "${_FIVE_MINUTES}" -exec rm -rf {} \; &> /dev/null
+find /run/restarting_fmp_wait.pid  -mtime +0 -type f -not -newermt "${_FIVE_MINUTES}" -exec rm -rf {} \; &> /dev/null
 
 _ONE_HOUR=$(date --date '1 hour ago' +"%Y-%m-%d %H:%M:%S")
-find /run/mysql_restart_running.pid -mtime +0 -type f -not -newermt "${_ONE_HOUR}" -exec rm -rf {} \;
-find /run/boa_wait.pid -mtime +0 -type f -not -newermt "${_ONE_HOUR}" -exec rm -rf {} \;
-find /run/manage*users.pid  -mtime +0 -type f -not -newermt "${_ONE_HOUR}" -exec rm -rf {} \;
+find /run/mysql_restart_running.pid -mtime +0 -type f -not -newermt "${_ONE_HOUR}" -exec rm -rf {} \; &> /dev/null
+find /run/boa_wait.pid -mtime +0 -type f -not -newermt "${_ONE_HOUR}" -exec rm -rf {} \; &> /dev/null
+find /run/manage*users.pid  -mtime +0 -type f -not -newermt "${_ONE_HOUR}" -exec rm -rf {} \; &> /dev/null
 
 _THR_HOURS=$(date --date '3 hours ago' +"%Y-%m-%d %H:%M:%S")
-find /run/boa_run.pid -mtime +0 -type f -not -newermt "${_THR_HOURS}" -exec rm -rf {} \;
-find /run/*_backup.pid -mtime +0 -type f -not -newermt "${_THR_HOURS}" -exec rm -rf {} \;
-find /run/daily-fix.pid -mtime +0 -type f -not -newermt "${_THR_HOURS}" -exec rm -rf {} \;
+find /run/boa_run.pid -mtime +0 -type f -not -newermt "${_THR_HOURS}" -exec rm -rf {} \; &> /dev/null
+find /run/*_backup.pid -mtime +0 -type f -not -newermt "${_THR_HOURS}" -exec rm -rf {} \; &> /dev/null
+find /run/daily-fix.pid -mtime +0 -type f -not -newermt "${_THR_HOURS}" -exec rm -rf {} \; &> /dev/null
 
 if [ -e "/root/.proxy.cnf" ]; then
   exit 0
@@ -85,8 +85,8 @@ _find_fast_mirror_early() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     _apt_clean_update
-    apt-get install netcat ${_aptYesUnth}
-    apt-get install netcat-traditional ${_aptYesUnth}
+    apt-get install netcat ${_aptYesUnth} 2> /dev/null
+    apt-get install netcat-traditional ${_aptYesUnth} 2> /dev/null
     wait
   fi
   _ffMirr=$(which ffmirror 2>&1)
@@ -119,9 +119,9 @@ _find_fast_mirror_early() {
 
 _if_reinstall_curl_src() {
   _CURL_VRN=8.10.1
-  if ! command -v lsb_release; then
-    apt-get update -qq
-    apt-get install lsb-release ${_aptYesUnth} -qq
+  if ! command -v lsb_release &> /dev/null; then
+    apt-get update -qq &> /dev/null
+    apt-get install lsb-release ${_aptYesUnth} -qq &> /dev/null
   fi
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   [ "${_OS_CODE}" = "wheezy" ] && _CURL_VRN=7.50.1
@@ -134,23 +134,23 @@ _if_reinstall_curl_src() {
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
-    echo "curl install" | dpkg --set-selections
+    echo "curl install" | dpkg --set-selections 2> /dev/null
     _apt_clean_update
-    apt-get remove libssl1.0-dev -y --purge --auto-remove -qq
-    apt-get autoremove -y
-    apt-get install libssl-dev ${_aptYesUnth} -qq
-    apt-get install libc-client2007e libc-client2007e-dev ${_aptYesUnth} -qq
-    apt-get build-dep curl -y
+    apt-get remove libssl1.0-dev -y --purge --auto-remove -qq 2> /dev/null
+    apt-get autoremove -y 2> /dev/null
+    apt-get install libssl-dev ${_aptYesUnth} -qq 2> /dev/null
+    apt-get install libc-client2007e libc-client2007e-dev ${_aptYesUnth} -qq 2> /dev/null
+    apt-get build-dep curl -y 2> /dev/null
     if [ ! -e "/var/aegir/drush" ]; then
-      apt-get install curl --reinstall ${_aptYesUnth} -qq
+      apt-get install curl --reinstall ${_aptYesUnth} -qq 2> /dev/null
     fi
     if [ -e "/var/aegir/drush" ]; then
       echo "INFO: Installing curl from sources..."
       mkdir -p /var/opt
       rm -rf /var/opt/curl*
       cd /var/opt
-      wget ${_wgetGet} http://files.aegir.cc/dev/src/curl-${_CURL_VRN}.tar.gz
-      tar -xzf curl-${_CURL_VRN}.tar.gz
+      wget ${_wgetGet} http://files.aegir.cc/dev/src/curl-${_CURL_VRN}.tar.gz &> /dev/null
+      tar -xzf curl-${_CURL_VRN}.tar.gz &> /dev/null
       if [ -e "/root/.install.modern.openssl.cnf" ] \
         && [ -x "/usr/local/ssl3/bin/openssl" ]; then
         _SSL_BINARY=/usr/local/ssl3/bin/openssl
@@ -172,10 +172,10 @@ _if_reinstall_curl_src() {
         LIBS="-ldl -lpthread" PKG_CONFIG_PATH="${_PKG_CONFIG_PATH}" ./configure \
           --with-openssl \
           --with-zlib=/usr \
-          --prefix=/usr/local
-        make -j $(nproc) --quiet
-        make --quiet install
-        ldconfig
+          --prefix=/usr/local &> /dev/null
+        make -j $(nproc) --quiet &> /dev/null
+        make --quiet install &> /dev/null
+        ldconfig 2> /dev/null
       fi
     fi
     if [ -f "/usr/local/bin/curl" ]; then
@@ -196,7 +196,7 @@ _check_dns_curl() {
     --max-redirs 10 \
     --retry 3 \
     --retry-delay 10 \
-    -I "http://${_USE_MIR}")
+    -I "http://${_USE_MIR}" 2> /dev/null)
   if [[ ! "${_CURL_TEST}" =~ "200 OK" ]]; then
     if [[ "${_CURL_TEST}" =~ "unknown option was passed in to libcurl" ]]; then
       echo "ERROR: cURL libs are out of sync! Re-installing again.."
@@ -252,7 +252,7 @@ if [ -d "/data/u" ]; then
   fi
   _crlHead="-I -k -s --retry 3 --retry-delay 3"
   _urlBpth="http://${_USE_MIR}/versions/${_tRee}/boa/aegir/tools/bin"
-  curl ${_crlHead} -A "${_chckHst} ${_chckIps} ${_checkVn} ${_chckSts}" "${_urlBpth}/thinkdifferent"
+  curl ${_crlHead} -A "${_chckHst} ${_chckIps} ${_checkVn} ${_chckSts}" "${_urlBpth}/thinkdifferent" &> /dev/null
   wait
 fi
 
@@ -266,7 +266,7 @@ _if_fix_locked_sshd() {
 }
 _if_fix_locked_sshd
 
-setprio
+setprio &> /dev/null
 
 touch /var/xdrago/log/clear.done.pid
 exit 0

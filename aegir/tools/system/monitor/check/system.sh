@@ -37,9 +37,9 @@ _wkhtmltopdf_php_cli_oom_kill() {
   touch /run/boa_run.pid
   echo "$(date 2>&1) OOM $1 wkhtmltopdf/php-cli detected" >> ${_pthOml}
   sleep 3
-  kill -9 $(ps aux | grep '[w]khtmltopdf' | awk '{print $2}')
+  kill -9 $(ps aux | grep '[w]khtmltopdf' | awk '{print $2}') &> /dev/null
   echo "$(date 2>&1) OOM wkhtmltopdf killed" >> ${_pthOml}
-  killall -9 sleep
+  killall -9 sleep &> /dev/null
   killall -9 php
   echo "$(date 2>&1) OOM php-cli killed" >> ${_pthOml}
   echo "$(date 2>&1) OOM wkhtmltopdf/php-cli incident response completed" >> ${_pthOml}
@@ -52,21 +52,21 @@ _wkhtmltopdf_php_cli_oom_kill() {
 _oom_critical_restart() {
   touch /run/boa_run.pid
   echo "$(date 2>&1) OOM $1 detected" >> ${_pthOml}
-  kill -9 $(ps aux | grep '[w]khtmltopdf' | awk '{print $2}')
+  kill -9 $(ps aux | grep '[w]khtmltopdf' | awk '{print $2}') &> /dev/null
   echo "$(date 2>&1) OOM wkhtmltopdf killed" >> ${_pthOml}
-  killall -9 sleep
+  killall -9 sleep &> /dev/null
   killall -9 php
   echo "$(date 2>&1) OOM php-cli killed" >> ${_pthOml}
   mv -f /var/log/nginx/error.log /var/log/nginx/`date +%y%m%d-%H%M`-error.log
-  kill -9 $(ps aux | grep '[n]ginx' | awk '{print $2}')
+  kill -9 $(ps aux | grep '[n]ginx' | awk '{print $2}') &> /dev/null
   echo "$(date 2>&1) OOM nginx killed" >> ${_pthOml}
-  kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}')
+  kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}') &> /dev/null
   echo "$(date 2>&1) OOM php-fpm killed" >> ${_pthOml}
-  kill -9 $(ps aux | grep '[j]ava' | awk '{print $2}')
+  kill -9 $(ps aux | grep '[j]ava' | awk '{print $2}') &> /dev/null
   echo "$(date 2>&1) OOM solr/jetty killed" >> ${_pthOml}
-  kill -9 $(ps aux | grep '[n]ewrelic-daemon' | awk '{print $2}')
+  kill -9 $(ps aux | grep '[n]ewrelic-daemon' | awk '{print $2}') &> /dev/null
   echo "$(date 2>&1) OOM newrelic-daemon killed" >> ${_pthOml}
-  kill -9 $(ps aux | grep '[r]edis-server' | awk '{print $2}')
+  kill -9 $(ps aux | grep '[r]edis-server' | awk '{print $2}') &> /dev/null
   echo "$(date 2>&1) OOM redis-server killed" >> ${_pthOml}
   bash /var/xdrago/move_sql.sh
   wait
@@ -105,7 +105,7 @@ _if_fix_locked_sshd() {
   _SSH_LOG="/var/log/auth.log"
   if [ `tail --lines=100 ${_SSH_LOG} \
     | grep --count "error: Bind to port 22"` -gt "0" ]; then
-    kill -9 $(ps aux | grep '[s]tartups' | awk '{print $2}')
+    kill -9 $(ps aux | grep '[s]tartups' | awk '{print $2}') &> /dev/null
     nice -n -9 service ssh start
     wait
     _thisErrLog="$(date 2>&1) SSHD BIND error detected, service restarted"
@@ -150,7 +150,7 @@ _if_fix_dhcp() {
       done
 
       # Reload the firewall
-      csf -q
+      csf -q &> /dev/null
 
       # Log the error and send an email report
       _thisErrLog="$(date) DHCP error detected, firewall updated"
@@ -165,8 +165,8 @@ _cron_duplicate_instances_detection() {
   if [ `ps aux | grep -v "grep" | grep --count "/usr/sbin/cron"` -gt "1" ]; then
     _thisErrLog="$(date 2>&1) Too many Cron instances running killed"
     echo ${_thisErrLog} >> /var/xdrago/log/cron-count.kill.log
-    killall -9 cron
-    service cron start
+    killall -9 cron &> /dev/null
+    service cron start &> /dev/null
     _thisErrLog="$(date 2>&1) Too many Cron instances, service restarted"
     echo ${_thisErrLog} >> ${_pthOml}
     _incident_email_report "Too many Cron instances, service restarted"
@@ -179,7 +179,7 @@ _syslog_giant_log_detection() {
     _SYSLOG_SIZE_TEST=$(du -s -h /var/log/syslog)
     if [[ "${_SYSLOG_SIZE_TEST}" =~ "G" ]]; then
       echo ${_SYSLOG_SIZE_TEST} too big
-      bash /etc/cron.daily/logrotate
+      bash /etc/cron.daily/logrotate &> /dev/null
       wait
       _thisErrLog="$(date 2>&1) Syslog ${_SYSLOG_SIZE_TEST} too big, logrotate forced"
       echo ${_thisErrLog} >> ${_pthOml}
@@ -193,7 +193,7 @@ _gpg_too_many_instances_detection() {
   if [ `ps aux | grep -v "grep" | grep --count "gpg-agent"` -gt "5" ]; then
     _thisErrLog="$(date 2>&1) Too many gpg-agent processes killed"
     echo ${_thisErrLog} >> /var/xdrago/log/gpg-agent-count.kill.log
-    kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}')
+    kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
     _thisErrLog="$(date 2>&1) Too many gpg-agent processes killed"
     echo ${_thisErrLog} >> ${_pthOml}
     _incident_email_report "Too many gpg-agent processes killed"
@@ -205,7 +205,7 @@ _dirmngr_too_many_instances_detection() {
   if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt "5" ]; then
     _thisErrLog="$(date 2>&1) Too many dirmngr processes killed"
     echo ${_thisErrLog} >> /var/xdrago/log/dirmngr-count.kill.log
-    kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}')
+    kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
     _thisErrLog="$(date 2>&1) Too many dirmngr processes killed"
     echo ${_thisErrLog} >> ${_pthOml}
     _incident_email_report "Too many dirmngr processes killed"

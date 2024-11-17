@@ -32,7 +32,7 @@ for _pkg in "${_REQUIRED_PKG[@]}"; do
 done
 
 # Check if sysbench is installed
-if ! command -v sysbench; then
+if ! command -v sysbench &> /dev/null; then
   echo "Compiling sysbench from source without MySQL support..."
   git clone https://github.com/akopytov/sysbench.git
   cd sysbench || exit

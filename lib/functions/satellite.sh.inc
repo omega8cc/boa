@@ -158,7 +158,7 @@ _satellite_web_user_update() {
     fi
     if [ -d "/home/${_WEB}/" ] && [ ! -e "/home/${_WEB}/.lock" ]; then
       if [ -d "/home/${_WEB}/" ]; then
-        chattr -i -R /home/${_WEB}/
+        chattr -i -R /home/${_WEB}/ &> /dev/null
       fi
       if [ -d "/home/${_WEB}/.drush/" ]; then
         chattr -i /home/${_WEB}/.drush/
@@ -279,15 +279,15 @@ _satellite_remove_web_user() {
     _debug_proc
   fi
   if [ -d "/home/${_WEB}/" ] || [ "$1" = "clean" ]; then
-    chattr -i -R /home/${_WEB}/
+    chattr -i -R /home/${_WEB}/ &> /dev/null
     if [ -d "/home/${_WEB}/.drush/" ]; then
       chattr -i /home/${_WEB}/.drush/
     fi
     mkdir -p ${_vBs}/zombie/deleted
-    kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}')
-    deluser --remove-home --backup-to ${_vBs}/zombie/deleted ${_WEB}
+    kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
+    deluser --remove-home --backup-to ${_vBs}/zombie/deleted ${_WEB} &> /dev/null
     if [ -d "/home/${_WEB}/" ]; then
-      rm -rf /home/${_WEB}/
+      rm -rf /home/${_WEB}/ &> /dev/null
     fi
   fi
 }
@@ -312,7 +312,7 @@ _satellite_create_web_user() {
       _msg "DEBUG: ARG1 is $1 in _satellite_create_web_user C"
     fi
     _satellite_remove_web_user "clean"
-    adduser --force-badname --system --ingroup www-data --home /home/${_WEB} ${_WEB}
+    adduser --force-badname --system --ingroup www-data --home /home/${_WEB} ${_WEB} &> /dev/null
     _satellite_web_user_update "$1"
   fi
 }
@@ -435,46 +435,46 @@ _satellite_tune_fpm_config() {
       fi
       ### create or update special system user if needed
       sed -i "s/.ftp/.web/g" \
-        /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf
+        /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
       wait
       sed -i "s/\/data\/disk\/foo\/.tmp/\/home\/foo.web\/.tmp/g" \
-        /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf
+        /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
       wait
       sed -i "s/foo/${_USER}/g" \
-        /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf
+        /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
       wait
       sed -i "s/THISPOOL/${_USER}/g" \
-        /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf
+        /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
       wait
       if [ ! -z "${_PHP_FPM_DENY}" ]; then
         sed -i "s/passthru,/${_PHP_FPM_DENY},/g" \
-          /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf
+          /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
         wait
       fi
     fi
     _PHP_TO="${_PHP_FPM_TIMEOUT}s"
     sed -i "s/180s/${_PHP_TO}/g" \
-      /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf
+      /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
     wait
     if [ ! -z "${_CHILD_MAX_FPM}" ] && [ "${_CHILD_MAX_FPM}" -ge "8" ]; then
       sed -i "s/pm.max_children =.*/pm.max_children = ${_CHILD_MAX_FPM}/g" \
-        /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf
+        /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
       wait
     else
       sed -i "s/pm.max_children =.*/pm.max_children = 8/g" \
-        /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf
+        /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
       wait
     fi
     if [ ! -d "${_ROOT}/tmp" ]; then
       mkdir -p ${_ROOT}/tmp
-      chown ${_USER}:users ${_ROOT}/tmp
+      chown ${_USER}:users ${_ROOT}/tmp &> /dev/null
     fi
     if [ ! -z "${_PHP_OLD_SV}" ] \
       && [ -e "/etc/init.d/php${_PHP_OLD_SV}-fpm" ]; then
-      _mrun "service php${_PHP_OLD_SV}-fpm reload"
+      _mrun "service php${_PHP_OLD_SV}-fpm reload" 2> /dev/null
     fi
     if [ -e "/etc/init.d/php${_PHP_SV}-fpm" ]; then
-      _mrun "service php${_PHP_SV}-fpm reload"
+      _mrun "service php${_PHP_SV}-fpm reload" 2> /dev/null
     fi
   fi
 }
@@ -535,7 +535,7 @@ _enable_chattr() {
   if [ ! -z "${_isTest}" ] && [ -d "/home/$1/" ]; then
     if [ -d "/home/$1/platforms/" ]; then
       chattr +i /home/$1/platforms/
-      chattr +i /home/$1/platforms/*
+      chattr +i /home/$1/platforms/* &> /dev/null
     fi
     if [ -d "/home/$1/.drush/" ]; then
       chattr +i /home/$1/.drush/
@@ -564,7 +564,7 @@ _disable_chattr() {
   if [ ! -z "${_isTest}" ] && [ -d "/home/$1/" ]; then
     if [ -d "/home/$1/platforms/" ]; then
       chattr -i /home/$1/platforms/
-      chattr -i /home/$1/platforms/*
+      chattr -i /home/$1/platforms/* &> /dev/null
     fi
     if [ -d "/home/$1/.drush/" ]; then
       chattr -i /home/$1/.drush/
@@ -768,7 +768,7 @@ _satellite_cnf() {
           fi
         fi
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${_PHP_FPM_VERSION}/g" \
-          ${_octCnf}
+          ${_octCnf} &> /dev/null
         wait
         echo ${_PHP_FPM_VERSION} > ${_ROOT}/log/fpm.txt
         echo ${_PHP_FPM_VERSION} > ${_ROOT}/static/control/fpm.info
@@ -858,7 +858,7 @@ _satellite_cnf() {
           fi
         fi
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${_PHP_CLI_VERSION}/g" \
-          ${_octCnf}
+          ${_octCnf} &> /dev/null
         wait
         echo ${_PHP_CLI_VERSION} > ${_ROOT}/log/cli.txt
         echo ${_PHP_CLI_VERSION} > ${_ROOT}/static/control/cli.info
@@ -868,33 +868,33 @@ _satellite_cnf() {
 
     _O_CONTRIB_UP_TEST=$(grep _O_CONTRIB_UP ${_octCnf} 2>&1)
     if [[ "${_O_CONTRIB_UP_TEST}" =~ "_O_CONTRIB_UP" ]]; then
-      sed -i "s/^_O_CONTRIB_UP.*//g" ${_octCnf}
+      sed -i "s/^_O_CONTRIB_UP.*//g" ${_octCnf} &> /dev/null
       wait
-      sed -i "/^$/d" ${_octCnf}
+      sed -i "/^$/d" ${_octCnf} &> /dev/null
       wait
     fi
 
     _ALLOW_UNSUPPORTED_TEST=$(grep _ALLOW_UNSUPPORTED ${_octCnf} 2>&1)
     if [[ "${_ALLOW_UNSUPPORTED_TEST}" =~ "_ALLOW_UNSUPPORTED" ]]; then
-      sed -i "s/^_ALLOW_UNSUPPORTED.*//g" ${_octCnf}
+      sed -i "s/^_ALLOW_UNSUPPORTED.*//g" ${_octCnf} &> /dev/null
       wait
-      sed -i "/^$/d" ${_octCnf}
+      sed -i "/^$/d" ${_octCnf} &> /dev/null
       wait
     fi
 
     _USE_STOCK_TEST=$(grep _USE_STOCK ${_octCnf} 2>&1)
     if [[ "${_USE_STOCK_TEST}" =~ "_USE_STOCK" ]]; then
-      sed -i "s/^_USE_STOCK.*//g" ${_octCnf}
+      sed -i "s/^_USE_STOCK.*//g" ${_octCnf} &> /dev/null
       wait
-      sed -i "/^$/d" ${_octCnf}
+      sed -i "/^$/d" ${_octCnf} &> /dev/null
       wait
     fi
 
     _HTTP_WILDCARD_TEST=$(grep _HTTP_WILDCARD ${_octCnf} 2>&1)
     if [[ "${_HTTP_WILDCARD_TEST}" =~ "_HTTP_WILDCARD" ]]; then
-      sed -i "s/^_HTTP_WILDCARD.*//g" ${_octCnf}
+      sed -i "s/^_HTTP_WILDCARD.*//g" ${_octCnf} &> /dev/null
       wait
-      sed -i "/^$/d" ${_octCnf}
+      sed -i "/^$/d" ${_octCnf} &> /dev/null
       wait
     fi
 
@@ -1169,24 +1169,24 @@ _satellite_sub_satellite_force_advanced_nginx_config() {
       _PHP_SV=74
     fi
     if [ -e "/opt/php${_PHP_SV}/etc/php${_PHP_SV}-fpm.conf" ]; then
-      sed -i "s/set.*user_socket.*/set \$user_socket \"${_USER}\";/g" ${_octTpl}/Inc/vhost_include.tpl.php
-      sed -i "s/set.*user_socket.*/set \$user_socket \"${_USER}\";/g" ${_octTpl}/subdir.tpl.php           
-      sed -i "s/set.*user_socket.*/set \$user_socket \"${_USER}\";/g" ${_octInc}/nginx_vhost_common.conf  
+      sed -i "s/set.*user_socket.*/set \$user_socket \"${_USER}\";/g" ${_octTpl}/Inc/vhost_include.tpl.php &> /dev/null
+      sed -i "s/set.*user_socket.*/set \$user_socket \"${_USER}\";/g" ${_octTpl}/subdir.tpl.php            &> /dev/null
+      sed -i "s/set.*user_socket.*/set \$user_socket \"${_USER}\";/g" ${_octInc}/nginx_vhost_common.conf   &> /dev/null
     fi
     if [ ! -z "${_CUSTOM_COLLATION_SQL}" ]; then
       _SITES_COLLATION_SQL=${_CUSTOM_COLLATION_SQL}
     fi
     if [ ! -z "${_SITES_COLLATION_SQL}" ]; then
-      sed -i "s/utf8mb4_unicode_ci/${_SITES_COLLATION_SQL}/g" ${_octSetTpl}/provision_drupal_settings_10.tpl.php
-      sed -i "s/utf8mb4_unicode_ci/${_SITES_COLLATION_SQL}/g" ${_octSetTpl}/provision_drupal_settings_9.tpl.php
-      sed -i "s/utf8mb4_unicode_ci/${_SITES_COLLATION_SQL}/g" ${_octSetTpl}/provision_drupal_settings_8.tpl.php
-      sed -i "s/utf8mb4_unicode_ci/${_SITES_COLLATION_SQL}/g" ${_octSetTpl}/provision_drupal_settings_7.tpl.php
-      sed -i "s/utf8mb4_unicode_ci/${_SITES_COLLATION_SQL}/g" ${_octSetTpl}/provision_drupal_settings_6.tpl.php
-      sed -i "s/utf8mb4_general_ci/${_SITES_COLLATION_SQL}/g" ${_octSetTpl}/provision_drupal_settings_10.tpl.php
-      sed -i "s/utf8mb4_general_ci/${_SITES_COLLATION_SQL}/g" ${_octSetTpl}/provision_drupal_settings_9.tpl.php
-      sed -i "s/utf8mb4_general_ci/${_SITES_COLLATION_SQL}/g" ${_octSetTpl}/provision_drupal_settings_8.tpl.php
-      sed -i "s/utf8mb4_general_ci/${_SITES_COLLATION_SQL}/g" ${_octSetTpl}/provision_drupal_settings_7.tpl.php
-      sed -i "s/utf8mb4_general_ci/${_SITES_COLLATION_SQL}/g" ${_octSetTpl}/provision_drupal_settings_6.tpl.php
+      sed -i "s/utf8mb4_unicode_ci/${_SITES_COLLATION_SQL}/g" ${_octSetTpl}/provision_drupal_settings_10.tpl.php &> /dev/null
+      sed -i "s/utf8mb4_unicode_ci/${_SITES_COLLATION_SQL}/g" ${_octSetTpl}/provision_drupal_settings_9.tpl.php &> /dev/null
+      sed -i "s/utf8mb4_unicode_ci/${_SITES_COLLATION_SQL}/g" ${_octSetTpl}/provision_drupal_settings_8.tpl.php &> /dev/null
+      sed -i "s/utf8mb4_unicode_ci/${_SITES_COLLATION_SQL}/g" ${_octSetTpl}/provision_drupal_settings_7.tpl.php &> /dev/null
+      sed -i "s/utf8mb4_unicode_ci/${_SITES_COLLATION_SQL}/g" ${_octSetTpl}/provision_drupal_settings_6.tpl.php &> /dev/null
+      sed -i "s/utf8mb4_general_ci/${_SITES_COLLATION_SQL}/g" ${_octSetTpl}/provision_drupal_settings_10.tpl.php &> /dev/null
+      sed -i "s/utf8mb4_general_ci/${_SITES_COLLATION_SQL}/g" ${_octSetTpl}/provision_drupal_settings_9.tpl.php &> /dev/null
+      sed -i "s/utf8mb4_general_ci/${_SITES_COLLATION_SQL}/g" ${_octSetTpl}/provision_drupal_settings_8.tpl.php &> /dev/null
+      sed -i "s/utf8mb4_general_ci/${_SITES_COLLATION_SQL}/g" ${_octSetTpl}/provision_drupal_settings_7.tpl.php &> /dev/null
+      sed -i "s/utf8mb4_general_ci/${_SITES_COLLATION_SQL}/g" ${_octSetTpl}/provision_drupal_settings_6.tpl.php &> /dev/null
     fi
     _CRON_IP=${_THISHTIP//[^0-9.]/}
     if [ ! -e "/root/.local.IP.list" ]; then
@@ -1255,7 +1255,7 @@ _satellite_child_b_update_ini_php_cli() {
     || [ ! -e "${_U_HD}/.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     mkdir -p ${_U_TP}
     touch ${_U_TP}
-    find ${_U_TP}/ -mtime +0 -exec rm -rf {} \;
+    find ${_U_TP}/ -mtime +0 -exec rm -rf {} \; &> /dev/null
     chmod 02755 ${_U_TP}
     mkdir -p ${_U_HD}/{sys,xts,usr}
     rm -f ${_U_HD}/.ctrl.php*
@@ -1325,25 +1325,25 @@ _satellite_child_b_update_php_cli() {
   fi
   _DRUSH_FILE="${_ROOT}/tools/drush/drush.php"
   if [ "${_PHP_CLI_VERSION}" = "8.3" ] && [ -x "/opt/php83/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php83\/bin\/php/g"  ${_DRUSH_FILE}
+    sed -i "s/^#\!\/.*/#\!\/opt\/php83\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
   elif [ "${_PHP_CLI_VERSION}" = "8.2" ] && [ -x "/opt/php82/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php82\/bin\/php/g"  ${_DRUSH_FILE}
+    sed -i "s/^#\!\/.*/#\!\/opt\/php82\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
   elif [ "${_PHP_CLI_VERSION}" = "8.1" ] && [ -x "/opt/php81/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php81\/bin\/php/g"  ${_DRUSH_FILE}
+    sed -i "s/^#\!\/.*/#\!\/opt\/php81\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
   elif [ "${_PHP_CLI_VERSION}" = "8.0" ] && [ -x "/opt/php80/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php80\/bin\/php/g"  ${_DRUSH_FILE}
+    sed -i "s/^#\!\/.*/#\!\/opt\/php80\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
   elif [ "${_PHP_CLI_VERSION}" = "7.4" ] && [ -x "/opt/php74/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php74\/bin\/php/g"  ${_DRUSH_FILE}
+    sed -i "s/^#\!\/.*/#\!\/opt\/php74\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
   elif [ "${_PHP_CLI_VERSION}" = "7.3" ] && [ -x "/opt/php73/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php73\/bin\/php/g"  ${_DRUSH_FILE}
+    sed -i "s/^#\!\/.*/#\!\/opt\/php73\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
   elif [ "${_PHP_CLI_VERSION}" = "7.2" ] && [ -x "/opt/php72/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php72\/bin\/php/g"  ${_DRUSH_FILE}
+    sed -i "s/^#\!\/.*/#\!\/opt\/php72\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
   elif [ "${_PHP_CLI_VERSION}" = "7.1" ] && [ -x "/opt/php71/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php71\/bin\/php/g"  ${_DRUSH_FILE}
+    sed -i "s/^#\!\/.*/#\!\/opt\/php71\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
   elif [ "${_PHP_CLI_VERSION}" = "7.0" ] && [ -x "/opt/php70/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php70\/bin\/php/g"  ${_DRUSH_FILE}
+    sed -i "s/^#\!\/.*/#\!\/opt\/php70\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
   elif [ "${_PHP_CLI_VERSION}" = "5.6" ] && [ -x "/opt/php56/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php56\/bin\/php/g"  ${_DRUSH_FILE}
+    sed -i "s/^#\!\/.*/#\!\/opt\/php56\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
   else
     _msg "${_STATUS} B: FATAL ERROR: _PHP_CLI_VERSION is not set correctly"
     _msg "${_STATUS} B: FATAL ERROR: Aborting AegirSetupB installer NOW!"
@@ -1367,13 +1367,13 @@ _satellite_create_shared_dirs() {
   if [ ! -d "${_CORE}" ]; then
     mkdir -p ${_CORE}
   fi
-  chown -R ${_USER}:${_USRG} /data/conf     
-  chown -R ${_USER}:${_USRG} /opt/tmp       
-  chown ${_USER}:${_USRG} ${_D}             
-  chown ${_USER}:${_USRG} ${_D}/000         
-  chown ${_USER}:${_USRG} ${_D}/000/core    
-  chown ${_USER}:${_USRG} ${_CORE}          
-  chmod 777 ${_CORE} ${_D} /data /data/disk /data/conf
+  chown -R ${_USER}:${_USRG} /data/conf      &> /dev/null
+  chown -R ${_USER}:${_USRG} /opt/tmp        &> /dev/null
+  chown ${_USER}:${_USRG} ${_D}              &> /dev/null
+  chown ${_USER}:${_USRG} ${_D}/000          &> /dev/null
+  chown ${_USER}:${_USRG} ${_D}/000/core     &> /dev/null
+  chown ${_USER}:${_USRG} ${_CORE}           &> /dev/null
+  chmod 777 ${_CORE} ${_D} /data /data/disk /data/conf &> /dev/null
 }
 
 #
@@ -1473,8 +1473,8 @@ _satellite_o_contrib_update_global() {
         ln -sfn ${_D}/000/modules/redis_edge ${i}/o_contrib/redis_edge
       fi
       touch ${i}/o_contrib/update-${_xSrl}-${_X_VERSION}.info
-      find ${i}/o_contrib -type d -exec chmod 0755 {} \;
-      find ${i}/o_contrib -type f -exec chmod 0644 {} \;
+      find ${i}/o_contrib -type d -exec chmod 0755 {} \; &> /dev/null
+      find ${i}/o_contrib -type f -exec chmod 0644 {} \; &> /dev/null
     fi
     if [ -d "${_D}/$i" ]; then
       for p in `find ${i}/ -maxdepth 1 -mindepth 1 -type d | sort`; do
@@ -1610,8 +1610,8 @@ _satellite_o_contrib_seven_update_global() {
         && [ ! -L "${i}/o_contrib_seven/redis_edge" ]; then
         ln -sfn ${_D}/000/modules/redis_edge ${i}/o_contrib_seven/redis_edge
       fi
-      find ${i}/o_contrib_seven -type d -exec chmod 0755 {} \;
-      find ${i}/o_contrib_seven -type f -exec chmod 0644 {} \;
+      find ${i}/o_contrib_seven -type d -exec chmod 0755 {} \; &> /dev/null
+      find ${i}/o_contrib_seven -type f -exec chmod 0644 {} \; &> /dev/null
       touch ${i}/o_contrib_seven/update-${_xSrl}-${_X_VERSION}.info
     fi
   done
@@ -1663,8 +1663,8 @@ _satellite_o_contrib_eight_update_global() {
         && [ ! -L "${i}/o_contrib_eight/redis_compr" ]; then
         ln -sfn ${_D}/000/modules/redis_compr ${i}/o_contrib_eight/redis_compr
       fi
-      find ${i}/o_contrib_eight -type d -exec chmod 0755 {} \;
-      find ${i}/o_contrib_eight -type f -exec chmod 0644 {} \;
+      find ${i}/o_contrib_eight -type d -exec chmod 0755 {} \; &> /dev/null
+      find ${i}/o_contrib_eight -type f -exec chmod 0644 {} \; &> /dev/null
       touch ${i}/o_contrib_eight/update-${_xSrl}-${_X_VERSION}.info
     fi
   done
@@ -1711,8 +1711,8 @@ _satellite_o_contrib_nine_update_global() {
         && [ ! -L "${i}/o_contrib_nine/redis_compr" ]; then
         ln -sfn ${_D}/000/modules/redis_compr ${i}/o_contrib_nine/redis_compr
       fi
-      find ${i}/o_contrib_nine -type d -exec chmod 0755 {} \;
-      find ${i}/o_contrib_nine -type f -exec chmod 0644 {} \;
+      find ${i}/o_contrib_nine -type d -exec chmod 0755 {} \; &> /dev/null
+      find ${i}/o_contrib_nine -type f -exec chmod 0644 {} \; &> /dev/null
       touch ${i}/o_contrib_nine/update-${_xSrl}-${_X_VERSION}.info
     fi
   done
@@ -1758,8 +1758,8 @@ _satellite_o_contrib_ten_update_global() {
         && [ ! -L "${i}/o_contrib_ten/redis_nine_ten" ]; then
         ln -sfn ${_D}/000/modules/redis_nine_ten ${i}/o_contrib_ten/redis_nine_ten
       fi
-      find ${i}/o_contrib_ten -type d -exec chmod 0755 {} \;
-      find ${i}/o_contrib_ten -type f -exec chmod 0644 {} \;
+      find ${i}/o_contrib_ten -type d -exec chmod 0755 {} \; &> /dev/null
+      find ${i}/o_contrib_ten -type f -exec chmod 0644 {} \; &> /dev/null
       touch ${i}/o_contrib_ten/update-${_xSrl}-${_X_VERSION}.info
     fi
   done
@@ -1787,8 +1787,8 @@ _satellite_download_o_contrib_ten() {
     _get_dev_contrib "redis_nine_ten-${_REDIS_T_VERSION}.tar.gz"
     echo update > ${_D}/000/modules/redis_nine_ten/ver-${_REDIS_T_VERSION}.${_xSrl}.info
   fi
-  find ${_D}/000/modules -type d -exec chmod 0755 {} \;
-  find ${_D}/000/modules -type f -exec chmod 0644 {} \;
+  find ${_D}/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
+  find ${_D}/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
 }
 
 
@@ -1819,8 +1819,8 @@ _satellite_download_o_contrib_nine() {
     _get_dev_contrib "redis_compr-${_REDIS_C_VERSION}.tar.gz"
     echo update > ${_D}/000/modules/redis_compr/ver-${_REDIS_C_VERSION}.${_xSrl}.info
   fi
-  find ${_D}/000/modules -type d -exec chmod 0755 {} \;
-  find ${_D}/000/modules -type f -exec chmod 0644 {} \;
+  find ${_D}/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
+  find ${_D}/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
 }
 
 
@@ -1851,8 +1851,8 @@ _satellite_download_o_contrib_eight() {
     _get_dev_contrib "redis_compr-${_REDIS_C_VERSION}.tar.gz"
     echo update > ${_D}/000/modules/redis_compr/ver-${_REDIS_C_VERSION}.${_xSrl}.info
   fi
-  find ${_D}/000/modules -type d -exec chmod 0755 {} \;
-  find ${_D}/000/modules -type f -exec chmod 0644 {} \;
+  find ${_D}/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
+  find ${_D}/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
 }
 
 
@@ -1914,8 +1914,8 @@ _satellite_download_o_contrib_seven() {
   rm -rf nginx_accel_redirect*
   rm -rf purge*
   rm -rf expire*
-  find ./ -type d -exec chmod 0755 {} \;
-  find ./ -type f -exec chmod 0644 {} \;
+  find ./ -type d -exec chmod 0755 {} \; &> /dev/null
+  find ./ -type f -exec chmod 0644 {} \; &> /dev/null
   touch ctrl-${_xSrl}-${_X_VERSION}
   if [ -L "./redis" ]; then
     rm -f redis
@@ -1933,8 +1933,8 @@ _satellite_download_o_contrib_seven() {
     _get_dev_contrib "redis_edge-${_REDIS_L_VERSION}.tar.gz"
     echo update > ${_D}/000/modules/redis_edge/ver-${_REDIS_L_VERSION}.${_xSrl}.info
   fi
-  find ${_D}/000/modules -type d -exec chmod 0755 {} \;
-  find ${_D}/000/modules -type f -exec chmod 0644 {} \;
+  find ${_D}/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
+  find ${_D}/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
 }
 
 #
@@ -1980,8 +1980,8 @@ _satellite_download_o_contrib_six() {
   rm -rf nginx_accel_redirect*
   rm -rf purge*
   rm -rf expire*
-  find ./ -type d -exec chmod 0755 {} \;
-  find ./ -type f -exec chmod 0644 {} \;
+  find ./ -type d -exec chmod 0755 {} \; &> /dev/null
+  find ./ -type f -exec chmod 0644 {} \; &> /dev/null
   touch ctrl-${_xSrl}-${_X_VERSION}
   if [ -L "./redis" ]; then
     rm -f redis
@@ -2009,8 +2009,8 @@ _satellite_download_o_contrib_six() {
     _get_dev_contrib "redis_edge-${_REDIS_L_VERSION}.tar.gz"
     echo update > ${_D}/000/modules/redis_edge/ver-${_REDIS_L_VERSION}.${_xSrl}.info
   fi
-  find ${_D}/000/modules -type d -exec chmod 0755 {} \;
-  find ${_D}/000/modules -type f -exec chmod 0644 {} \;
+  find ${_D}/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
+  find ${_D}/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
 }
 
 #
@@ -2110,8 +2110,8 @@ _satellite_check_fix_o_contrib() {
     _get_dev_contrib "redis_nine_ten-${_REDIS_T_VERSION}.tar.gz"
     echo update > ${_D}/000/modules/redis_nine_ten/ver-${_REDIS_T_VERSION}.${_xSrl}.info
   fi
-  find ${_D}/000/modules -type d -exec chmod 0755 {} \;
-  find ${_D}/000/modules -type f -exec chmod 0644 {} \;
+  find ${_D}/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
+  find ${_D}/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
 }
 
 #
@@ -2210,18 +2210,18 @@ _satellite_add_user_dirs() {
   mkdir -p /data/u
   mkdir -p /data/disk
   mkdir -p /data/conf
-  chown root:root /data
-  chown root:root /data/disk
+  chown root:root /data &> /dev/null
+  chown root:root /data/disk &> /dev/null
   if [ ! -d "${_ROOT}" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "${_STATUS} A: Adding user..."
     fi
-    find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -rf {} \;
-    adduser --system --home ${_ROOT} --ingroup ${_USRG} ${_USER}
-    adduser ${_USER} ${_WEBG}
+    find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -rf {} \; &> /dev/null
+    adduser --system --home ${_ROOT} --ingroup ${_USRG} ${_USER} &> /dev/null
+    adduser ${_USER} ${_WEBG} &> /dev/null
   fi
-  chown -R ${_USER}:${_USRG} /opt/tmp
-  chown -R ${_USER}:${_USRG} /data/conf
+  chown -R ${_USER}:${_USRG} /opt/tmp &> /dev/null
+  chown -R ${_USER}:${_USRG} /data/conf &> /dev/null
 }
 
 _satellite_prepare_child_scripts() {
@@ -2233,8 +2233,8 @@ _satellite_prepare_child_scripts() {
   cd ${_ROOT}
   _AegirSetupB="${_bldPth}/aegir/scripts/AegirSetupB.sh.txt"
   _AegirSetupC="${_bldPth}/aegir/scripts/AegirSetupC.sh.txt"
-  chown ${_USER}:${_USRG} ${_AegirSetupB}
-  chown ${_USER}:${_USRG} ${_AegirSetupC}
+  chown ${_USER}:${_USRG} ${_AegirSetupB} &> /dev/null
+  chown ${_USER}:${_USRG} ${_AegirSetupC} &> /dev/null
 }
 
 #
@@ -2366,9 +2366,9 @@ _provision_backend_dbpass_generate() {
   if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
     _SQL_CONNECT=127.0.0.1
     _THIS_DB_PORT=6033
-    mysqladmin -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
+    mysqladmin -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges &> /dev/null
   else
-    mysqladmin -u root flush-privileges
+    mysqladmin -u root flush-privileges &> /dev/null
   fi
 
   if [ "${_THIS_DB_HOST}" = "localhost" ] \
@@ -2443,11 +2443,11 @@ SAVE MYSQL QUERY RULES TO DISK;
 PROXYSQL
         fi
         _C_SQL="mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp --database=mysql -e"
-        ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';"
-        ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';"
-        ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'localhost';"
-        ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'127.0.0.1';"
-        ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'%';"
+        ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';" &> /dev/null
+        ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';" &> /dev/null
+        ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'localhost';" &> /dev/null
+        ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'127.0.0.1';" &> /dev/null
+        ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'%';" &> /dev/null
         mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -u root mysql<<EOFMYSQL
 CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'localhost';
 CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'%';
@@ -2462,9 +2462,9 @@ EOFMYSQL
   if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
     _SQL_CONNECT=127.0.0.1
     _THIS_DB_PORT=6033
-    mysqladmin -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
+    mysqladmin -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges &> /dev/null
   else
-    mysqladmin -u root flush-privileges
+    mysqladmin -u root flush-privileges &> /dev/null
   fi
 }
 
@@ -2490,14 +2490,14 @@ _provision_backend_dbpass_sync() {
     _THIS_DB_PORT=3306
   fi
   _L_SYS="${_ROOT}/.${_USER}.pass.txt"
-  mv -f ${_L_SYS} ${_L_SYS}-pre-${_xSrl}-${_X_VERSION}-${_NOW}
+  mv -f ${_L_SYS} ${_L_SYS}-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
   _L_SYS_PHP="${_ROOT}/.${_USER}.pass.php"
-  mv -f ${_L_SYS_PHP} ${_L_SYS_PHP}-pre-${_xSrl}-${_X_VERSION}-${_NOW}
+  mv -f ${_L_SYS_PHP} ${_L_SYS_PHP}-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
   _provision_backend_dbpass_generate
   if [ ! -z "${_ESC_PASS}" ] || [ ! -z "${_ENC_PASS}" ]; then
     su -s /bin/bash - ${_USER} -c "${_DRUSHCMD} @hostmaster \
       sqlq \"UPDATE hosting_db_server SET db_passwd='${_ESC_PASS}' \
-      WHERE db_user='${_USER}'\""
+      WHERE db_user='${_USER}'\"" &> /dev/null
     wait
     _ESC="*.*"
     _USE_DB_USER="${_USER}"
@@ -2522,11 +2522,11 @@ SAVE MYSQL QUERY RULES TO DISK;
 PROXYSQL
     fi
     _C_SQL="mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp --database=mysql -e"
-    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';"
-    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';"
-    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'localhost';"
-    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'127.0.0.1';"
-    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'%';"
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';" &> /dev/null
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';" &> /dev/null
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'localhost';" &> /dev/null
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'127.0.0.1';" &> /dev/null
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'%';" &> /dev/null
     mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -u root mysql<<EOFMYSQL
 CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'localhost';
 CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'%';
@@ -2537,7 +2537,7 @@ ALTER USER '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_ESC_PASS}';
 EOFMYSQL
     sed -i \
       "s/mysql:\/\/${_USER}:.*/mysql:\/\/${_USER}:${_ENC_PASS}@${_SQL_CONNECT}',/g" \
-      ${_ROOT}/.drush/server_*.alias.drushrc.php
+      ${_ROOT}/.drush/server_*.alias.drushrc.php &> /dev/null
     wait
   else
     _msg "CRIT: _ESC_PASS empty or not generated"
@@ -2545,34 +2545,34 @@ EOFMYSQL
   if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
     _SQL_CONNECT=127.0.0.1
     _THIS_DB_PORT=6033
-    mysqladmin -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
+    mysqladmin -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges &> /dev/null
   else
-    mysqladmin -u root flush-privileges
+    mysqladmin -u root flush-privileges &> /dev/null
   fi
-  su -s /bin/bash ${_USER} -c "${_DRUSHCMD} cc drush"
+  su -s /bin/bash ${_USER} -c "${_DRUSHCMD} cc drush" &> /dev/null
   wait
   rm -rf ${_ROOT}/.tmp/cache
   if [ -e "${_ROOT}/.drush/server_localhost.alias.drushrc.php" ]; then
     su -s /bin/bash ${_USER} -c "${_DRUSHCMD} @hostmaster \
-      hosting-task @server_localhost verify --force"
+      hosting-task @server_localhost verify --force" &> /dev/null
   else
     su -s /bin/bash ${_USER} -c "${_DRUSHCMD} @hostmaster \
-      hosting-task @server_master verify --force"
+      hosting-task @server_master verify --force" &> /dev/null
   fi
   wait
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "${_STATUS} A: Running hosting-dispatch/hosting-tasks..."
   fi
-  su -s /bin/bash ${_USER} -c "${_DRUSHCMD} @hostmaster hosting-dispatch"
+  su -s /bin/bash ${_USER} -c "${_DRUSHCMD} @hostmaster hosting-dispatch" &> /dev/null
   wait
   sleep 5
-  su -s /bin/bash ${_USER} -c "${_DRUSHCMD} @hostmaster hosting-tasks --force"
+  su -s /bin/bash ${_USER} -c "${_DRUSHCMD} @hostmaster hosting-tasks --force" &> /dev/null
   wait
   sleep 5
-  su -s /bin/bash ${_USER} -c "${_DRUSHCMD} @hostmaster hosting-tasks --force"
+  su -s /bin/bash ${_USER} -c "${_DRUSHCMD} @hostmaster hosting-tasks --force" &> /dev/null
   wait
   sleep 5
-  su -s /bin/bash ${_USER} -c "${_DRUSHCMD} @hostmaster hosting-tasks --force"
+  su -s /bin/bash ${_USER} -c "${_DRUSHCMD} @hostmaster hosting-tasks --force" &> /dev/null
   wait
 }
 
@@ -2635,11 +2635,11 @@ SAVE MYSQL QUERY RULES TO DISK;
 PROXYSQL
     fi
     _C_SQL="mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp --database=mysql -e"
-    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';"
-    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';"
-    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'localhost';"
-    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'127.0.0.1';"
-    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'%';"
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';" &> /dev/null
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';" &> /dev/null
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'localhost';" &> /dev/null
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'127.0.0.1';" &> /dev/null
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'%';" &> /dev/null
     mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -u root mysql<<EOFMYSQL
 CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'localhost';
 CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'%';
@@ -2652,9 +2652,9 @@ EOFMYSQL
   if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
     _SQL_CONNECT=127.0.0.1
     _THIS_DB_PORT=6033
-    mysqladmin -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
+    mysqladmin -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges &> /dev/null
   else
-    mysqladmin -u root flush-privileges
+    mysqladmin -u root flush-privileges &> /dev/null
   fi
 }
 
@@ -2678,9 +2678,9 @@ _satellite_run_pre_install() {
     if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
       _SQL_CONNECT=127.0.0.1
       _THIS_DB_PORT=6033
-      mysqladmin -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-hosts
+      mysqladmin -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-hosts &> /dev/null
     else
-      mysqladmin -u root flush-hosts
+      mysqladmin -u root flush-hosts &> /dev/null
     fi
     _provision_backend_dbpass_generate
     echo "${_USER} ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
@@ -2705,9 +2705,9 @@ _satellite_run_pre_install() {
     if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
       _SQL_CONNECT=127.0.0.1
       _THIS_DB_PORT=6033
-      mysqladmin -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-hosts
+      mysqladmin -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-hosts &> /dev/null
     else
-      mysqladmin -u root flush-hosts
+      mysqladmin -u root flush-hosts &> /dev/null
     fi
     _RST=$(syncpass fix ${_USER} 2>&1)
     _provision_backend_dbpass_sync
@@ -2735,19 +2735,19 @@ _satellite_download_for_local_build() {
     _get_core_ext "${_DRUPAL7}.tar.gz"
     mv -f ${_mL}/${_DRUPAL7} ${_mL}/drupal
     ### Aegir Core
-      ${_gCb} 5.x-${_tRee} ${_gitHub}/hostmaster.git   
-      ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting.git      
-      ${_gCb} 5.x-${_tRee} ${_gitHub}/eldir.git        
+      ${_gCb} 5.x-${_tRee} ${_gitHub}/hostmaster.git    &> /dev/null
+      ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting.git       &> /dev/null
+      ${_gCb} 5.x-${_tRee} ${_gitHub}/eldir.git         &> /dev/null
     ### Aegir Golden + BOA Settings
-      ${_gCb} 5.x-${_tRee} ${_gitHub}/aegir_objects.git                 
-      ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_civicrm.git               
-      ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_custom_settings.git       
-      ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_deploy.git                
-      ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_git.git                   
-      ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_le.git                    
-      ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_remote_import.git         
-      ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_site_backup_manager.git   
-      ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_tasks_extra.git           
+      ${_gCb} 5.x-${_tRee} ${_gitHub}/aegir_objects.git                  &> /dev/null
+      ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_civicrm.git                &> /dev/null
+      ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_custom_settings.git        &> /dev/null
+      ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_deploy.git                 &> /dev/null
+      ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_git.git                    &> /dev/null
+      ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_le.git                     &> /dev/null
+      ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_remote_import.git          &> /dev/null
+      ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_site_backup_manager.git    &> /dev/null
+      ${_gCb} 5.x-${_tRee} ${_gitHub}/hosting_tasks_extra.git            &> /dev/null
       rm -rf */.git
     ### Aegir Drupal Contrib
     _get_dev_stc "admin_menu-7.x-3.0-rc7.tar.gz"
@@ -2772,8 +2772,8 @@ _satellite_download_for_local_build() {
     _get_dev_stc "strongarm-7.x-2.0.tar.gz"
     _get_dev_stc "userprotect-7.x-1.3.tar.gz"
   fi
-  find ${_mL} -type d -exec chmod 0755 {} \;
-  find ${_mL} -type f -exec chmod 0644 {} \;
+  find ${_mL} -type d -exec chmod 0755 {} \; &> /dev/null
+  find ${_mL} -type f -exec chmod 0644 {} \; &> /dev/null
   chown -R root:root ${_mL}
 }
 
@@ -2791,8 +2791,8 @@ _satellite_run_child_b() {
       _msg "${_STATUS} A: Switching user and running AegirSetupB..."
     fi
     rm -f /opt/tmp/testecho*
-    chown root:${_USRG} /data/u
-    chmod 0771 /data/u
+    chown root:${_USRG} /data/u &> /dev/null
+    chmod 0771 /data/u &> /dev/null
     su -s /bin/bash - ${_USER} -c "/bin/bash ${_AegirSetupB} ${_USER}"
     wait
     if [ -e "/opt/tmp/status-AegirSetupB-FAIL" ]; then
@@ -2803,8 +2803,8 @@ _satellite_run_child_b() {
     fi
     _U_HD="${_ROOT}/.drush"
     chattr +i ${_U_HD}/php.ini
-    chmod 0700 /data/u
-    chown root:root /data/u
+    chmod 0700 /data/u &> /dev/null
+    chown root:root /data/u &> /dev/null
     _msg "${_STATUS} A: Aegir Satellite Instance installed"
   else
     if [ "${_PLATFORMS_ONLY}" = "YES" ]; then
@@ -2815,9 +2815,9 @@ _satellite_run_child_b() {
         rm -rf ${_ROOT}/.drush/provision
         rm -rf ${_ROOT}/.drush/sys/provision
         ${_gCb} ${_BRANCH_PRN} ${_gitHub}/provision.git \
-          ${_ROOT}/.drush/sys/provision
+          ${_ROOT}/.drush/sys/provision &> /dev/null
         sed -i "s/files.aegir.cc/${_USE_MIR}/g" \
-          ${_ROOT}/.drush/sys/provision/aegir.make
+          ${_ROOT}/.drush/sys/provision/aegir.make &> /dev/null
         wait
       fi
       rm -rf ${_ROOT}/.drush/drush_make
@@ -2847,8 +2847,8 @@ _satellite_run_child_b() {
       chown -R ${_USER} ${_THIS_HM_ROOT}
       chown -R ${_USER}:${_WEBG} ${_THIS_HM_SITE}/files
       chmod -R 02775 ${_THIS_HM_SITE}/files
-      chown root:${_USRG} /data/u
-      chmod 0771 /data/u
+      chown root:${_USRG} /data/u &> /dev/null
+      chmod 0771 /data/u &> /dev/null
       su -s /bin/bash - ${_USER} -c "/bin/bash ${_AegirSetupB} ${_USER}"
       wait
       if [ -e "/opt/tmp/status-AegirSetupB-FAIL" ]; then
@@ -2862,20 +2862,20 @@ _satellite_run_child_b() {
         chmod 700 ${_ROOT}/backups/system/old_hostmaster
         chmod 700 ${_ROOT}/backups/system
         mv -f ${_ROOT}/backups/*host8* \
-          ${_ROOT}/backups/system/old_hostmaster/
+          ${_ROOT}/backups/system/old_hostmaster/ &> /dev/null
         mv -f ${_ROOT}/backups/*o8.io* \
-          ${_ROOT}/backups/system/old_hostmaster/
+          ${_ROOT}/backups/system/old_hostmaster/ &> /dev/null
         mv -f ${_ROOT}/backups/*boa.io* \
-          ${_ROOT}/backups/system/old_hostmaster/
+          ${_ROOT}/backups/system/old_hostmaster/ &> /dev/null
         mv -f ${_ROOT}/backups/*aegir.cc* \
-          ${_ROOT}/backups/system/old_hostmaster/
-        chmod 600 ${_ROOT}/backups/system/old_hostmaster/*
+          ${_ROOT}/backups/system/old_hostmaster/ &> /dev/null
+        chmod 600 ${_ROOT}/backups/system/old_hostmaster/* &> /dev/null
         _hostmaster_frontend_dbpass_sync
       fi
-      su -s /bin/bash - ${_USER} -c "drush8 @hm rr"
+      su -s /bin/bash - ${_USER} -c "drush8 @hm rr" &> /dev/null
       wait
-      chmod 0700 /data/u
-      chown root:root /data/u
+      chmod 0700 /data/u &> /dev/null
+      chown root:root /data/u &> /dev/null
       _msg "${_STATUS} A: Aegir Satellite Instance upgrade completed"
     fi
   fi
@@ -2925,7 +2925,7 @@ _satellite_run_post_install() {
     rm -rf ${_HM_ROOT}/scripts
     rm -f ${_HM_ROOT}/themes/README.txt
     rm -f ${_HM_ROOT}/*.txt
-    _mrun "service nginx reload"
+    _mrun "service nginx reload" 2> /dev/null
     cd ${_HM_ROOT}
     cp -af /opt/tmp/boa/aegir/conf/tpl/robots.txt ./
     cd ${_ROOT}
@@ -2939,31 +2939,31 @@ _satellite_set_permissions_for_all() {
     _msg "PROC: _satellite_set_permissions_for_all"
     _debug_proc
   fi
-  chmod 0755 ${_HM_ROOT}
-  find ${_ROOT}/config/server_master -type d -exec chmod 0700 {} \;
-  find ${_ROOT}/config/server_master -type f -exec chmod 0600 {} \;
-  chmod 0711 ${_ROOT}/config
-  chmod 0711 ${_ROOT}/config/includes
-  chmod 0750 ${_ROOT}/backups
-  chmod 0750 ${_ROOT}/clients
-  find ${_ROOT}/aegir/distro/*/profiles/* -type d -exec chmod 0755 {} \;
-  find ${_ROOT}/aegir/distro/*/profiles/* -type f -exec chmod 0644 {} \;
-  find ${_ROOT}/aegir/distro/*/sites/all/* -type d -exec chmod 0755 {} \;
-  find ${_ROOT}/aegir/distro/*/sites/all/* -type f -exec chmod 0644 {} \;
-  chown -R ${_USER}:${_USRG} ${_ROOT}/.drush
-  find ${_ROOT}/.drush -type d -exec chmod 0710 {} \;
-  find ${_ROOT}/.drush/usr -type d -exec chmod 0750 {} \;
-  find ${_ROOT}/.drush -type f -exec chmod 0640 {} \;
-  chmod 0440 ${_ROOT}/.drush/*.php
+  chmod 0755 ${_HM_ROOT} &> /dev/null
+  find ${_ROOT}/config/server_master -type d -exec chmod 0700 {} \; &> /dev/null
+  find ${_ROOT}/config/server_master -type f -exec chmod 0600 {} \; &> /dev/null
+  chmod 0711 ${_ROOT}/config &> /dev/null
+  chmod 0711 ${_ROOT}/config/includes &> /dev/null
+  chmod 0750 ${_ROOT}/backups &> /dev/null
+  chmod 0750 ${_ROOT}/clients &> /dev/null
+  find ${_ROOT}/aegir/distro/*/profiles/* -type d -exec chmod 0755 {} \; &> /dev/null
+  find ${_ROOT}/aegir/distro/*/profiles/* -type f -exec chmod 0644 {} \; &> /dev/null
+  find ${_ROOT}/aegir/distro/*/sites/all/* -type d -exec chmod 0755 {} \; &> /dev/null
+  find ${_ROOT}/aegir/distro/*/sites/all/* -type f -exec chmod 0644 {} \; &> /dev/null
+  chown -R ${_USER}:${_USRG} ${_ROOT}/.drush &> /dev/null
+  find ${_ROOT}/.drush -type d -exec chmod 0710 {} \; &> /dev/null
+  find ${_ROOT}/.drush/usr -type d -exec chmod 0750 {} \; &> /dev/null
+  find ${_ROOT}/.drush -type f -exec chmod 0640 {} \; &> /dev/null
+  chmod 0440 ${_ROOT}/.drush/*.php &> /dev/null
   if [ ! -e "${_ROOT}/.drush/hm.alias.drushrc.php" ]; then
     cp -a ${_ROOT}/.drush/hostmaster.alias.drushrc.php ${_ROOT}/.drush/hm.alias.drushrc.php
     sed -i "s/\['hostmaster'\]/['hm']/g" ${_ROOT}/.drush/hm.alias.drushrc.php
   fi
-  chmod 0400 ${_ROOT}/.drush/server_*.php
-  chmod 0400 ${_ROOT}/.drush/platform_*.php
-  chmod 0400 ${_ROOT}/.drush/hostmaster*.php
-  chmod 0400 ${_ROOT}/.drush/hm.alias.drushrc.php
-  chmod 0710 ${_ROOT}/.drush
+  chmod 0400 ${_ROOT}/.drush/server_*.php &> /dev/null
+  chmod 0400 ${_ROOT}/.drush/platform_*.php &> /dev/null
+  chmod 0400 ${_ROOT}/.drush/hostmaster*.php &> /dev/null
+  chmod 0400 ${_ROOT}/.drush/hm.alias.drushrc.php &> /dev/null
+  chmod 0710 ${_ROOT}/.drush &> /dev/null
 }
 
 #
@@ -3036,11 +3036,11 @@ _satellite_run_child_c() {
       _msg "${_STATUS} A: Cleaning up various dot files, please wait..."
     fi
     cd ${_CORE}
-    find . -name .svn -exec rm -rf {} \;
-    find . -name .bzr -exec rm -rf {} \;
-    find . -name .git -exec rm -rf {} \;
-    find . -name .DS_Store -exec rm -rf {} \;
-    find . -name "._*" -type f | xargs rm -rf
+    find . -name .svn -exec rm -rf {} \; &> /dev/null
+    find . -name .bzr -exec rm -rf {} \; &> /dev/null
+    find . -name .git -exec rm -rf {} \; &> /dev/null
+    find . -name .DS_Store -exec rm -rf {} \; &> /dev/null
+    find . -name "._*" -type f | xargs rm -rf &> /dev/null
     touch ${_CORE}/dot-files-ctrl-${_xSrl}-${_X_VERSION}
   fi
 }
@@ -3061,8 +3061,8 @@ _satellite_if_legacy_permissions_fix() {
       if [[ "${_PLATF}" =~ "aegir" ]]; then
         _FOUND_HM=YES
       else
-        chown -R ${_USER}:www-data ${_PLATF}/sites/*/files
-        chmod -R 02775 ${_PLATF}/sites/*/files
+        chown -R ${_USER}:www-data ${_PLATF}/sites/*/files &> /dev/null
+        chmod -R 02775 ${_PLATF}/sites/*/files &> /dev/null
       fi
     done
   fi
@@ -3098,9 +3098,9 @@ _satellite_if_add_ftps_lshell_access() {
       _msg "${_STATUS} A: Adding ftps/lshell user"
     fi
     # add user
-    find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -rf {} \;
-    useradd -d /home/${_USERFTP} -s ${_PATH_LSHELL} -m -N -r ${_USERFTP}
-    adduser ${_USERFTP} ${_WEBG}
+    find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -rf {} \; &> /dev/null
+    useradd -d /home/${_USERFTP} -s ${_PATH_LSHELL} -m -N -r ${_USERFTP} &> /dev/null
+    adduser ${_USERFTP} ${_WEBG} &> /dev/null
     # Make sure new file which contains password is private
     cd ${_ROOT}/log
     touch ${_ROOT}/log/pass.txt
@@ -3146,11 +3146,11 @@ _satellite_if_add_ftps_lshell_access() {
     ph=$(mkpasswd -m sha-512 "${_ESC_LUPASS}" $(openssl rand -base64 16 \
       | tr -d '+=' | head -c 16))
     # Set the password
-    usermod -p $ph ${_USERFTP}
-    passwd -w 7 -x 90 ${_USERFTP}
+    usermod -p $ph ${_USERFTP} &> /dev/null
+    passwd -w 7 -x 90 ${_USERFTP} &> /dev/null
   fi
   usermod -aG lshellg ${_USERFTP}
-  chsh -s ${_PATH_LSHELL} ${_USERFTP}
+  chsh -s ${_PATH_LSHELL} ${_USERFTP} &> /dev/null
   echo >> /etc/lshell.conf
   echo "[${_USERFTP}]" >> /etc/lshell.conf
   echo "path : ['/opt/user/gems/${_USERFTP}', \
@@ -3305,11 +3305,11 @@ _satellite_if_add_update_user_symlinks() {
     fi
     ln -sfn ${_ROOT}/clients ${_USER_HD}/clients
   fi
-  rm -rf ${_ROOT}/clients/admin
-  rm -rf ${_ROOT}/clients/omega8ccgmailcom
-  rm -rf ${_ROOT}/clients/nocomega8cc
-  rm -rf ${_ROOT}/clients/*/backups
-  symlinks -dr ${_ROOT}/clients
+  rm -rf ${_ROOT}/clients/admin &> /dev/null
+  rm -rf ${_ROOT}/clients/omega8ccgmailcom &> /dev/null
+  rm -rf ${_ROOT}/clients/nocomega8cc &> /dev/null
+  rm -rf ${_ROOT}/clients/*/backups &> /dev/null
+  symlinks -dr ${_ROOT}/clients &> /dev/null
 }
 
 _satellite_if_add_update_user_dot_dirs() {
@@ -3323,7 +3323,7 @@ _satellite_if_add_update_user_dot_dirs() {
   if [ ! -d "${_USER_TMP}" ]; then
     mkdir -p ${_USER_TMP}
     touch ${_USER_TMP}
-    find ${_USER_TMP}/ -mtime +0 -exec rm -rf {} \;
+    find ${_USER_TMP}/ -mtime +0 -exec rm -rf {} \; &> /dev/null
     chown -R ${_USERFTP}:${_USRG} ${_USER_TMP}
     chmod 755 ${_USER_TMP}
   fi
@@ -3336,7 +3336,7 @@ _satellite_if_add_update_user_dot_dirs() {
     chown -R ${_USERFTP}:${_USRG} ${_USER_SSH}
     chmod 700 ${_USER_SSH}
   fi
-  chmod 600 ${_USER_SSH}/id_{r,d}sa
+  chmod 600 ${_USER_SSH}/id_{r,d}sa &> /dev/null
 
   ###---### Create .bazaar dir and conf file if not exist.
   #
@@ -3372,7 +3372,7 @@ _satellite_if_read_create_pass_txt() {
     if [ -e "${_ROOT}/pass.txt" ]; then
       _PASWD=$(cat ${_ROOT}/pass.txt 2>&1)
       _PASWD=$(echo -n ${_PASWD} | tr -d "\n" 2>&1)
-      mv -f ${_ROOT}/pass.txt ${_ROOT}/log/pass.txt
+      mv -f ${_ROOT}/pass.txt ${_ROOT}/log/pass.txt &> /dev/null
     elif [ -e "${_ROOT}/log/pass.txt" ]; then
       _PASWD=$(cat ${_ROOT}/log/pass.txt 2>&1)
       _PASWD=$(echo -n ${_PASWD} | tr -d "\n" 2>&1)
@@ -3419,7 +3419,7 @@ _satellite_if_read_create_pass_txt() {
       echo "${_ESC_LUPASS}" > ${_ROOT}/log/pass.txt
       ph=$(mkpasswd -m sha-512 "${_ESC_LUPASS}" $(openssl rand -base64 16 \
         | tr -d '+=' | head -c 16))
-      usermod -p $ph ${_USERFTP}
+      usermod -p $ph ${_USERFTP} &> /dev/null
       _PASWD=$(cat ${_ROOT}/log/pass.txt 2>&1)
       _PASWD=$(echo -n ${_PASWD} | tr -d "\n" 2>&1)
     fi
@@ -3450,8 +3450,8 @@ _satellite_if_add_update_user_platforms_symlinks() {
       if [ "${_RevisionTest}" -lt "${_LOW_NR}" ] \
         && [ ! -z "${_RevisionTest}" ]; then
         if [ -d "/home/${_HM_U}.ftp/platforms" ]; then
-          chattr -i /home/${_HM_U}.ftp/platforms
-          chattr -i /home/${_HM_U}.ftp/platforms/*
+          chattr -i /home/${_HM_U}.ftp/platforms &> /dev/null
+          chattr -i /home/${_HM_U}.ftp/platforms/* &> /dev/null
         fi
         _NOW=$(date +%y%m%d-%H%M%S 2>&1)
         [ ! -e "/var/backups/ghost/${_HM_U}/${_NOW}" ] && mkdir -p /var/backups/ghost/${_HM_U}/${_NOW}
@@ -3471,7 +3471,7 @@ _satellite_if_add_update_user_platforms_symlinks() {
         [ "${_DEBUG_MODE}" = "YES" ] && echo "_RevisionTest is ${_RevisionTest}"
         _NOW=$(date +%y%m%d-%H%M%S 2>&1)
         mkdir -p ${_usEr}/undo/dist/${_NOW}
-        mv -f ${i} ${_usEr}/undo/dist/${_NOW}/
+        mv -f ${i} ${_usEr}/undo/dist/${_NOW}/ &> /dev/null
         [ "${_DEBUG_MODE}" = "YES" ] && echo "GHOST revision ${i} detected and moved to ${_usEr}/undo/dist/${_NOW}/"
       fi
     fi
@@ -3481,15 +3481,15 @@ _satellite_if_add_update_user_platforms_symlinks() {
     if [ -e "${i}" ]; then
       _distTrNr=$(echo ${i} \
         | cut -d'/' -f6 \
-        | awk '{ print $1}')
+        | awk '{ print $1}' 2> /dev/null)
       if [ -d "/home/${_HM_U}.ftp/platforms" ]; then
-        chattr -i /home/${_HM_U}.ftp/platforms
-        chattr -i /home/${_HM_U}.ftp/platforms/*
+        chattr -i /home/${_HM_U}.ftp/platforms &> /dev/null
+        chattr -i /home/${_HM_U}.ftp/platforms/* &> /dev/null
       fi
       if [ ! -e "${i}/keys" ]; then
         mkdir -p ${i}/keys
-        chown ${_HM_U}.ftp:${_WEBG} ${i}/keys
-        chmod 02775 ${i}/keys
+        chown ${_HM_U}.ftp:${_WEBG} ${i}/keys &> /dev/null
+        chmod 02775 ${i}/keys &> /dev/null
       fi
       if [ ! -e "/home/${_HM_U}.ftp/platforms/${_distTrNr}" ]; then
         mkdir -p /home/${_HM_U}.ftp/platforms/${_distTrNr}
@@ -3509,7 +3509,7 @@ _satellite_if_add_update_user_platforms_symlinks() {
         | grep "/sites$" 2>&1`; do
         _CodebaseName=$(echo ${_Codebase} \
           | cut -d'/' -f7 \
-          | awk '{ print $1}')
+          | awk '{ print $1}' 2> /dev/null)
         ln -sfn ${_Codebase} /home/${_HM_U}.ftp/platforms/${_distTrNr}/${_CodebaseName}
         [ "${_DEBUG_MODE}" = "YES" ] && echo "Fixed ${_CodebaseName} in ${_distTrNr} symlink to ${_Codebase} for ${_HM_U}.ftp"
       done
@@ -3528,8 +3528,8 @@ _satellite_if_add_update_backend_user_dirs_files_clean() {
     mkdir -p ${_ROOT}/static
     ln -sfn ${_ROOT}/static /home/${_USERFTP}/static
   fi
-  chown ${_USER}:${_USRG} ${_ROOT}/static
-  chmod 02775 ${_ROOT}/static
+  chown ${_USER}:${_USRG} ${_ROOT}/static &> /dev/null
+  chmod 02775 ${_ROOT}/static &> /dev/null
   echo empty > ${_ROOT}/static/EMPTY.txt
 
   ###---### Create ~/.tmp dir if not exists.
@@ -3544,29 +3544,29 @@ _satellite_if_add_update_backend_user_dirs_files_clean() {
   ###---### Create .ssh dir and keys if not exist, plus some known_hosts for system user.
   #
   if [ ! -e "${_ROOT}/.ssh/id_rsa.pub" ]; then
-    su -s /bin/bash - ${_USER} -c "ssh-keygen -b 4096 -t rsa -N \"\" -f ~/.ssh/id_rsa"
+    su -s /bin/bash - ${_USER} -c "ssh-keygen -b 4096 -t rsa -N \"\" -f ~/.ssh/id_rsa" &> /dev/null
     wait
-    su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H ${_USER}.beanstalkapp.com >> ~/.ssh/known_hosts"
+    su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H ${_USER}.beanstalkapp.com >> ~/.ssh/known_hosts" &> /dev/null
     wait
-    su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H ${_USER}.unfuddle.com >> ~/.ssh/known_hosts"
+    su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H ${_USER}.unfuddle.com >> ~/.ssh/known_hosts" &> /dev/null
     wait
-    su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H beanstalkapp.com >> ~/.ssh/known_hosts"
+    su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H beanstalkapp.com >> ~/.ssh/known_hosts" &> /dev/null
     wait
-    su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H bitbucket.org >> ~/.ssh/known_hosts"
+    su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H bitbucket.org >> ~/.ssh/known_hosts" &> /dev/null
     wait
-    su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H codebasehq.com >> ~/.ssh/known_hosts"
+    su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H codebasehq.com >> ~/.ssh/known_hosts" &> /dev/null
     wait
-    su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H drupal.org >> ~/.ssh/known_hosts"
+    su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H drupal.org >> ~/.ssh/known_hosts" &> /dev/null
     wait
-    su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H git.drupal.org >> ~/.ssh/known_hosts"
+    su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H git.drupal.org >> ~/.ssh/known_hosts" &> /dev/null
     wait
-    su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H github.com >> ~/.ssh/known_hosts"
+    su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H github.com >> ~/.ssh/known_hosts" &> /dev/null
     wait
-    su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H gitlab.org >> ~/.ssh/known_hosts"
+    su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H gitlab.org >> ~/.ssh/known_hosts" &> /dev/null
     wait
-    su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H gitlab.com >> ~/.ssh/known_hosts"
+    su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H gitlab.com >> ~/.ssh/known_hosts" &> /dev/null
     wait
-    su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H unfuddle.com >> ~/.ssh/known_hosts"
+    su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H unfuddle.com >> ~/.ssh/known_hosts" &> /dev/null
     wait
     cp -af ${_ROOT}/.ssh/id_rsa.pub ${_ROOT}/static/${_USER}.id_rsa.pub
     chmod 644 ${_ROOT}/static/${_USER}.id_rsa.pub
@@ -3595,7 +3595,7 @@ _satellite_if_add_update_backend_user_dirs_files_clean() {
   else
     if [ ! -d "${_QR}/keys" ]; then
       mkdir -p ${_QR}/keys
-      chown ${_USERFTP}:${_WEBG} ${_QR}/keys
+      chown ${_USERFTP}:${_WEBG} ${_QR}/keys &> /dev/null
       chmod 02775 ${_QR}/keys
     fi
     if [ -d "${_QR}/keys" ]; then
@@ -3603,11 +3603,11 @@ _satellite_if_add_update_backend_user_dirs_files_clean() {
         ln -sfn ${_QR}/keys ${_QH}/keys
       fi
     fi
-    rm -f ${_QR}/*/robots.txt
+    rm -f ${_QR}/*/robots.txt &> /dev/null
     if [ ! -e "${_CORE}/javascript_aggregator.out.txt" ] \
       && [ -e "${_CORE}" ]; then
       sed -i "s/, 'javascript_aggregator'//g" \
-        ${_CORE}/*/profiles/*/*.profile
+        ${_CORE}/*/profiles/*/*.profile &> /dev/null
       wait
       touch ${_CORE}/javascript_aggregator.out.txt
     fi
@@ -3616,9 +3616,9 @@ _satellite_if_add_update_backend_user_dirs_files_clean() {
   ###---### Remove not used cache module.
   #
   if [ ! -e "${_D}/000/old_cache.out2.txt" ] && [ -e "${_D}/000" ]; then
-    sed -i "s/, 'cache'//g" ${_D}/*/*/profiles/*/*.profile
+    sed -i "s/, 'cache'//g" ${_D}/*/*/profiles/*/*.profile &> /dev/null
     wait
-    sed -i "s/'cache', //g" ${_D}/*/*/profiles/*/*.profile
+    sed -i "s/'cache', //g" ${_D}/*/*/profiles/*/*.profile &> /dev/null
     wait
     rm -rf ${_D}/*/o_contrib/cache
     touch ${_D}/000/old_cache.out2.txt
@@ -3883,8 +3883,8 @@ _satellite_make() {
   cp -af ${_bldPth}/aegir/scripts/run-xdrago /var/xdrago/run-${_USER}
   sed -i "s/EDIT_USER/${_USER}/g" /var/xdrago/run-${_USER}
   wait
-  chmod 700 /var/xdrago/run-${_USER}
-  chmod 700 ${_bldPth}/aegir/scripts/*
+  chmod 700 /var/xdrago/run-${_USER} &> /dev/null
+  chmod 700 ${_bldPth}/aegir/scripts/* &> /dev/null
 
   ###
   _AegirSetupA="${_bldPth}/aegir/scripts/AegirSetupA.sh.txt"
@@ -3936,7 +3936,7 @@ _satellite_make() {
     && [ -e "/home/${_USER}.ftp/clients" ]; then
     if [ -e "/var/xdrago/conf/control-readme.txt" ]; then
       cp -af /var/xdrago/conf/control-readme.txt \
-        ${_ROOT}/static/control/README.txt
+        ${_ROOT}/static/control/README.txt &> /dev/null
       chmod 0644 ${_ROOT}/static/control/README.txt
     fi
     rm -f ${_ROOT}/static/control/.ctrl.*
@@ -3962,7 +3962,7 @@ _satellite_make() {
       _satellite_tune_fpm_config
     fi
     _satellite_force_advanced_nginx_config
-    _mrun "service nginx reload"
+    _mrun "service nginx reload" 2> /dev/null
   fi
 }
 
@@ -4042,7 +4042,7 @@ _satellite_if_running_as_root_octopus() {
   fi
   if [ `whoami` = "root" ]; then
     chmod a+w /dev/null
-    if dmidecode -s system-manufacturer | grep -i 'Linode'; then
+    if dmidecode -s system-manufacturer | grep -i 'Linode' &> /dev/null; then
       if  [ ! -e "/var/aegir/drush" ] \
         || [ ! -e "/data/u" ] \
         || [ ! -e "/var/xdrago" ]; then
@@ -4118,7 +4118,7 @@ _satellite_detect_vm_family() {
     _VMFAMILY="XEN"
   fi
   # Check for Amazon EC2 in the system manufacturer field
-  if dmidecode -s system-manufacturer | grep -i 'Amazon EC2'; then
+  if dmidecode -s system-manufacturer | grep -i 'Amazon EC2' &> /dev/null; then
     _VMFAMILY="AWS"
   fi
   if [ "${_VMFAMILY}" = "AWS" ]; then
@@ -4679,7 +4679,7 @@ _satellite_letsencrypt_vhost_sync() {
     _msg "${_STATUS} A: Reloading Nginx..."
     service nginx reload
   else
-    _mrun "service nginx reload"
+    _mrun "service nginx reload" 2> /dev/null
   fi
 }
 
@@ -4704,7 +4704,7 @@ _satellite_letsencrypt_vhost_setup() {
         _msg "${_STATUS} A: Reloading Nginx..."
         service nginx reload
       else
-        _mrun "service nginx reload"
+        _mrun "service nginx reload" 2> /dev/null
       fi
     fi
   fi
@@ -4732,7 +4732,7 @@ _satellite_letsencrypt_vhost_setup() {
             bash /opt/local/bin/xboa ssl-gen
             wait
           else
-            _mrun "bash /opt/local/bin/xboa ssl-gen"
+            _mrun "bash /opt/local/bin/xboa ssl-gen" &> /dev/null
             wait
           fi
           if [ -e "${_Ssl}" ]; then
@@ -4749,7 +4749,7 @@ _satellite_letsencrypt_vhost_setup() {
           bash /opt/local/bin/xboa ssl-gen
           wait
         else
-          _mrun "bash /opt/local/bin/xboa ssl-gen"
+          _mrun "bash /opt/local/bin/xboa ssl-gen" &> /dev/null
           wait
         fi
         if [ -e "${_Ssl}" ]; then
@@ -4799,89 +4799,89 @@ _satellite_batch_cleanup() {
   fi
   _msg "Final post-${_L_ST} cleaning, one moment..."
   cd /
-  chmod 711 bin boot data dev emul etc home lib lib64 lib32 media mnt
-  chmod 711 opt sbin selinux srv sys usr var share run
-  chmod 700 root
+  chmod 711 bin boot data dev emul etc home lib lib64 lib32 media mnt &> /dev/null
+  chmod 711 opt sbin selinux srv sys usr var share run &> /dev/null
+  chmod 700 root &> /dev/null
   if [ -e "${_D}" ]; then
     if [ ! -f "${_D}/permissions-fix-${_xSrl}-${_X_VERSION}-${_TODAY}.info" ]; then
-      find ${_D}/000 -type d -exec chmod 0755 {} \;
-      find ${_D}/000 -type f -exec chmod 0644 {} \;
-      _mrun "chmod 755 ${_D}/*/*/profiles"
-      _mrun "chmod 02775 ${_D}/*/*/sites/all/{modules,libraries,themes}"
-      _mrun "chmod 02775 ${_D}/000/core/*/sites/all/{modules,libraries,themes}"
-      _mrun "chown -R root:root ${_D}"
-      _mrun "chown -R root:users ${_D}/*/*/sites"
+      find ${_D}/000 -type d -exec chmod 0755 {} \; &> /dev/null
+      find ${_D}/000 -type f -exec chmod 0644 {} \; &> /dev/null
+      _mrun "chmod 755 ${_D}/*/*/profiles" &> /dev/null
+      _mrun "chmod 02775 ${_D}/*/*/sites/all/{modules,libraries,themes}" &> /dev/null
+      _mrun "chmod 02775 ${_D}/000/core/*/sites/all/{modules,libraries,themes}" &> /dev/null
+      _mrun "chown -R root:root ${_D}" &> /dev/null
+      _mrun "chown -R root:users ${_D}/*/*/sites" &> /dev/null
       echo fixed > ${_D}/permissions-fix-${_xSrl}-${_X_VERSION}-${_TODAY}.info
     fi
-    chown root:root ${_D}
-    chown root:root ${_CORE}
-    _mrun "chown -R root:root /data/conf"
-    _mrun "chown -R root:root ${_CORE}/o_contrib"
-    _mrun "chown -R root:root ${_CORE}/o_contrib_seven"
-    _mrun "chown -R root:root ${_D}/000"
-    find /data/conf -type d -exec chmod 0755 {} \;
-    find /data/conf -type f -exec chmod 0644 {} \;
-    chown root:root /opt/tmp
-    chmod 0711 /data ${_D}/* /data/disk /data/conf
-    chmod 644 /data/all/cpuinfo
-    chmod 0755 ${_D} ${_D}/000
+    chown root:root ${_D} &> /dev/null
+    chown root:root ${_CORE} &> /dev/null
+    _mrun "chown -R root:root /data/conf" &> /dev/null
+    _mrun "chown -R root:root ${_CORE}/o_contrib" &> /dev/null
+    _mrun "chown -R root:root ${_CORE}/o_contrib_seven" &> /dev/null
+    _mrun "chown -R root:root ${_D}/000" &> /dev/null
+    find /data/conf -type d -exec chmod 0755 {} \; &> /dev/null
+    find /data/conf -type f -exec chmod 0644 {} \; &> /dev/null
+    chown root:root /opt/tmp &> /dev/null
+    chmod 0711 /data ${_D}/* /data/disk /data/conf &> /dev/null
+    chmod 644 /data/all/cpuinfo &> /dev/null
+    chmod 0755 ${_D} ${_D}/000 &> /dev/null
   elif [ -e "/data/disk/all" ]; then
     if [ ! -f "/data/disk/all/permissions-fix-${_xSrl}-${_X_VERSION}-${_TODAY}.info" ]; then
-      find /data/disk/all/000 -type d -exec chmod 0755 {} \;
-      find /data/disk/all/000 -type f -exec chmod 0644 {} \;
-      _mrun "chmod 755 /data/disk/all/*/*/profiles"
-      _mrun "chmod 02775 /data/disk/all/*/*/sites/all/{modules,libraries,themes}"
-      _mrun "chmod 02775 /data/disk/all/000/core/*/sites/all/{modules,libraries,themes}"
-      _mrun "chown -R root:root /data/disk/all"
-      _mrun "chown -R root:users /data/disk/all/*/*/sites"
+      find /data/disk/all/000 -type d -exec chmod 0755 {} \; &> /dev/null
+      find /data/disk/all/000 -type f -exec chmod 0644 {} \; &> /dev/null
+      _mrun "chmod 755 /data/disk/all/*/*/profiles" &> /dev/null
+      _mrun "chmod 02775 /data/disk/all/*/*/sites/all/{modules,libraries,themes}" &> /dev/null
+      _mrun "chmod 02775 /data/disk/all/000/core/*/sites/all/{modules,libraries,themes}" &> /dev/null
+      _mrun "chown -R root:root /data/disk/all" &> /dev/null
+      _mrun "chown -R root:users /data/disk/all/*/*/sites" &> /dev/null
       echo fixed > /data/disk/all/permissions-fix-${_xSrl}-${_X_VERSION}-${_TODAY}.info
     fi
-    chown root:root /data/disk/all
-    chown root:root ${_CORE}
-    _mrun "chown -R root:root /data/conf"
-    _mrun "chown -R root:root ${_CORE}/o_contrib"
-    _mrun "chown -R root:root ${_CORE}/o_contrib_seven"
-    _mrun "chown -R root:root /data/disk/all/000"
-    find /data/conf -type d -exec chmod 0755 {} \;
-    find /data/conf -type f -exec chmod 0644 {} \;
-    chown root:root /opt/tmp
-    chmod 0711 /data /data/disk/all/* /data/disk /data/conf
-    chmod 644 /data/disk/all/cpuinfo
-    chmod 0755 /data/disk/all /data/disk/all/000
+    chown root:root /data/disk/all &> /dev/null
+    chown root:root ${_CORE} &> /dev/null
+    _mrun "chown -R root:root /data/conf" &> /dev/null
+    _mrun "chown -R root:root ${_CORE}/o_contrib" &> /dev/null
+    _mrun "chown -R root:root ${_CORE}/o_contrib_seven" &> /dev/null
+    _mrun "chown -R root:root /data/disk/all/000" &> /dev/null
+    find /data/conf -type d -exec chmod 0755 {} \; &> /dev/null
+    find /data/conf -type f -exec chmod 0644 {} \; &> /dev/null
+    chown root:root /opt/tmp &> /dev/null
+    chmod 0711 /data /data/disk/all/* /data/disk /data/conf &> /dev/null
+    chmod 644 /data/disk/all/cpuinfo &> /dev/null
+    chmod 0755 /data/disk/all /data/disk/all/000 &> /dev/null
   fi
-  chmod 0700 /data/u
-  chown root:root /data/u
-  rm -f /data/u/*host8*
-  rm -f /data/u/*o8.io*
-  rm -f /data/u/*boa.io*
-  rm -f /data/u/*aegir.cc*
-  mv -f ${_ROOT}/backups/drupalgeddon-pre* ${_ROOT}/backups/system/
-  mv -f ${_ROOT}/backups/drush_make-pre* ${_ROOT}/backups/system/
-  mv -f ${_ROOT}/backups/drush-pre* ${_ROOT}/backups/system/
-  mv -f ${_ROOT}/backups/make_local-pre* ${_ROOT}/backups/system/
-  mv -f ${_ROOT}/backups/provision_boost-pre* ${_ROOT}/backups/system/
-  mv -f ${_ROOT}/backups/provision_cdn-pre* ${_ROOT}/backups/system/
-  mv -f ${_ROOT}/backups/provision_civicrm-pre* ${_ROOT}/backups/system/
-  mv -f ${_ROOT}/backups/provision_platform_git-pre* ${_ROOT}/backups/system/
-  mv -f ${_ROOT}/backups/provision_site_backup-pre* ${_ROOT}/backups/system/
-  mv -f ${_ROOT}/backups/provision_tasks_extra-pre* ${_ROOT}/backups/system/
-  mv -f ${_ROOT}/backups/provision-pre* ${_ROOT}/backups/system/
-  mv -f ${_ROOT}/backups/registry_rebuild-pre* ${_ROOT}/backups/system/
-  mv -f ${_ROOT}/backups/safe_cache_form_clear-pre* ${_ROOT}/backups/system/
-  mv -f ${_ROOT}/backups/mydropwizard-pre* ${_ROOT}/backups/system/
+  chmod 0700 /data/u &> /dev/null
+  chown root:root /data/u &> /dev/null
+  rm -f /data/u/*host8* &> /dev/null
+  rm -f /data/u/*o8.io* &> /dev/null
+  rm -f /data/u/*boa.io* &> /dev/null
+  rm -f /data/u/*aegir.cc* &> /dev/null
+  mv -f ${_ROOT}/backups/drupalgeddon-pre* ${_ROOT}/backups/system/ &> /dev/null
+  mv -f ${_ROOT}/backups/drush_make-pre* ${_ROOT}/backups/system/ &> /dev/null
+  mv -f ${_ROOT}/backups/drush-pre* ${_ROOT}/backups/system/ &> /dev/null
+  mv -f ${_ROOT}/backups/make_local-pre* ${_ROOT}/backups/system/ &> /dev/null
+  mv -f ${_ROOT}/backups/provision_boost-pre* ${_ROOT}/backups/system/ &> /dev/null
+  mv -f ${_ROOT}/backups/provision_cdn-pre* ${_ROOT}/backups/system/ &> /dev/null
+  mv -f ${_ROOT}/backups/provision_civicrm-pre* ${_ROOT}/backups/system/ &> /dev/null
+  mv -f ${_ROOT}/backups/provision_platform_git-pre* ${_ROOT}/backups/system/ &> /dev/null
+  mv -f ${_ROOT}/backups/provision_site_backup-pre* ${_ROOT}/backups/system/ &> /dev/null
+  mv -f ${_ROOT}/backups/provision_tasks_extra-pre* ${_ROOT}/backups/system/ &> /dev/null
+  mv -f ${_ROOT}/backups/provision-pre* ${_ROOT}/backups/system/ &> /dev/null
+  mv -f ${_ROOT}/backups/registry_rebuild-pre* ${_ROOT}/backups/system/ &> /dev/null
+  mv -f ${_ROOT}/backups/safe_cache_form_clear-pre* ${_ROOT}/backups/system/ &> /dev/null
+  mv -f ${_ROOT}/backups/mydropwizard-pre* ${_ROOT}/backups/system/ &> /dev/null
   mkdir -p /data/conf/arch
-  mv -f /data/conf/global.inc-pre* /data/conf/arch/
-  mv -f /data/conf/global/*inc-pre* /data/conf/arch/
-  mv -f /data/conf/global.inc-before* /data/conf/arch/
-  mv -f /data/conf/global.inc-missing* /data/conf/arch/
-  find ${_ROOT}/static/*/module* -maxdepth 0 -mindepth 0 -type d -exec chmod 775 {} \;
-  find ${_ROOT}/static/*/*/module* -maxdepth 0 -mindepth 0 -type d -exec chmod 775 {} \;
-  find ${_ROOT}/static/*/*/*/module* -maxdepth 0 -mindepth 0 -type d -exec chmod 775 {} \;
-  find ${_ROOT}/static/*/*/*/*/module* -maxdepth 0 -mindepth 0 -type d -exec chmod 775 {} \;
+  mv -f /data/conf/global.inc-pre* /data/conf/arch/ &> /dev/null
+  mv -f /data/conf/global/*inc-pre* /data/conf/arch/ &> /dev/null
+  mv -f /data/conf/global.inc-before* /data/conf/arch/ &> /dev/null
+  mv -f /data/conf/global.inc-missing* /data/conf/arch/ &> /dev/null
+  find ${_ROOT}/static/*/module* -maxdepth 0 -mindepth 0 -type d -exec chmod 775 {} \; &> /dev/null
+  find ${_ROOT}/static/*/*/module* -maxdepth 0 -mindepth 0 -type d -exec chmod 775 {} \; &> /dev/null
+  find ${_ROOT}/static/*/*/*/module* -maxdepth 0 -mindepth 0 -type d -exec chmod 775 {} \; &> /dev/null
+  find ${_ROOT}/static/*/*/*/*/module* -maxdepth 0 -mindepth 0 -type d -exec chmod 775 {} \; &> /dev/null
   if [ -d "${_CORE}/${_DRUPAL7}" ]; then
     mkdir -p /var/backups/trash
     rm -rf /var/backups/trash/*
-    mv -f ${_CORE}/${_DRUPAL7} /var/backups/trash/
+    mv -f ${_CORE}/${_DRUPAL7} /var/backups/trash/ &> /dev/null
   fi
 }
 
@@ -4928,7 +4928,7 @@ _satellite_display_url_finalize() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "${_STATUS} A: Starting the cron now"
     fi
-    _mrun "service cron start"
+    _mrun "service cron start" 2> /dev/null
   fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "${_STATUS} A: All done!"
@@ -4953,7 +4953,7 @@ _satellite_child_b_prepare_dirs_permissions() {
   #_DRUSH_HOSTING_TASKS_CMD="/usr/bin/drush @hostmaster hosting-tasks --force"
   _DRUSH_HOSTING_DISPATCH_CMD="${_T_CLI}/php ${_ROOT}/tools/drush/drush.php @hostmaster hosting-dispatch"
   touch ${_ROOT}/aegir.sh
-  chmod 0700 ${_ROOT}/aegir.sh
+  chmod 0700 ${_ROOT}/aegir.sh &> /dev/null
   echo -e \
     "#!/bin/bash\n\nPATH=.:${_T_CLI}:/usr/sbin:/usr/bin:/sbin:/bin\n \
      \n${_DRUSH_HOSTING_DISPATCH_CMD} \
@@ -4965,12 +4965,12 @@ _satellite_child_b_prepare_dirs_permissions() {
   mkdir -p ${_ROOT}/src/${_DISTRO}
   mkdir -p ${_ROOT}/src/{modules,themes}
   mkdir -p ${_ROOT}/{tools,log,u,backups,platforms,clients}
-  chmod 0700 ${_ROOT}/{log,src,u}
-  chmod 0700 ${_ROOT}/src/${_DISTRO}
-  chmod 0700 ${_ROOT}/src/{modules,themes}
-  chmod 0711 ${_ROOT}/{aegir,aegir/distro,distro,platforms,tools}
-  chmod 0711 ${_ROOT}/distro/${_DISTRO}
-  chmod 0750 ${_ROOT}/{backups,clients}
+  chmod 0700 ${_ROOT}/{log,src,u} &> /dev/null
+  chmod 0700 ${_ROOT}/src/${_DISTRO} &> /dev/null
+  chmod 0700 ${_ROOT}/src/{modules,themes} &> /dev/null
+  chmod 0711 ${_ROOT}/{aegir,aegir/distro,distro,platforms,tools} &> /dev/null
+  chmod 0711 ${_ROOT}/distro/${_DISTRO} &> /dev/null
+  chmod 0750 ${_ROOT}/{backups,clients} &> /dev/null
 
   if [ "${_STATUS}" = "UPGRADE" ]; then
     #_msg "${_STATUS} B: UPGRADE in progress..."
@@ -5013,14 +5013,14 @@ _satellite_child_b_install_drush() {
     if [ -d "${_ROOT}/aegir/config" ]; then
       if [ ! -d "${_ROOT}/config" ]; then
         cd ${_ROOT}/aegir
-        mv -f config ${_ROOT}/config
+        mv -f config ${_ROOT}/config &> /dev/null
         ln -sfn ${_ROOT}/config ${_ROOT}/aegir/config
       fi
     fi
     if [ -d "${_ROOT}/tools/drush" ]; then
       cd ${_ROOT}/tools
       mv -f drush \
-        ${_ROOT}/backups/system/drush-pre-${_DISTRO}-${_NOW}
+        ${_ROOT}/backups/system/drush-pre-${_DISTRO}-${_NOW} &> /dev/null
     fi
   fi
   cd ${_ROOT}/tools
@@ -5029,8 +5029,8 @@ _satellite_child_b_install_drush() {
   fi
   _get_dev_ext "drush-${_DRUSH_VERSION}.tar.gz"
   cd ${_ROOT}/tools/drush/
-  find ${_ROOT}/tools/drush -type d -exec chmod 0755 {} \;
-  find ${_ROOT}/tools/drush -type f -exec chmod 0644 {} \;
+  find ${_ROOT}/tools/drush -type d -exec chmod 0755 {} \; &> /dev/null
+  find ${_ROOT}/tools/drush -type f -exec chmod 0644 {} \; &> /dev/null
   chmod 755 ${_ROOT}/tools/drush/drush
   chmod 755 ${_ROOT}/tools/drush/drush.complete.sh
   chmod 755 ${_ROOT}/tools/drush/drush.launcher
@@ -5051,7 +5051,7 @@ _satellite_child_b_drush_xts_cleanup() {
   if [ "${_STATUS}" = "UPGRADE" ]; then
     mkdir -p ${_ROOT}/backups/system
     chmod 700 ${_ROOT}/backups/system
-    mv -f ${_ROOT}/backups/drush-pre* ${_ROOT}/backups/system/
+    mv -f ${_ROOT}/backups/drush-pre* ${_ROOT}/backups/system/ &> /dev/null
     _B_EXT="provision clean_missing_modules drupalgeddon drush_ecl make_local \
       provision_boost provision_cdn provision_civicrm provision_platform_git \
       provision_site_backup provision_tasks_extra remote_import mydropwizard \
@@ -5060,23 +5060,23 @@ _satellite_child_b_drush_xts_cleanup() {
     for e in ${_B_EXT}; do
       if [ -e "${_ROOT}/.drush/$e" ]; then
         mv -f ${_ROOT}/.drush/$e \
-          ${_ROOT}/backups/system/$e-pre-${_DISTRO}-${_NOW}
-        mv -f ${_ROOT}/backups/$e-pre* ${_ROOT}/backups/system/
+          ${_ROOT}/backups/system/$e-pre-${_DISTRO}-${_NOW} &> /dev/null
+        mv -f ${_ROOT}/backups/$e-pre* ${_ROOT}/backups/system/ &> /dev/null
       fi
       if [ -e "${_ROOT}/.drush/xts/$e" ]; then
         mv -f ${_ROOT}/.drush/xts/$e \
-          ${_ROOT}/backups/system/$e-pre-${_DISTRO}-${_NOW}
-        mv -f ${_ROOT}/backups/$e-pre* ${_ROOT}/backups/system/
+          ${_ROOT}/backups/system/$e-pre-${_DISTRO}-${_NOW} &> /dev/null
+        mv -f ${_ROOT}/backups/$e-pre* ${_ROOT}/backups/system/ &> /dev/null
       fi
       if [ -e "${_ROOT}/.drush/usr/$e" ]; then
         mv -f ${_ROOT}/.drush/usr/$e \
-          ${_ROOT}/backups/system/$e-pre-${_DISTRO}-${_NOW}
-        mv -f ${_ROOT}/backups/$e-pre* ${_ROOT}/backups/system/
+          ${_ROOT}/backups/system/$e-pre-${_DISTRO}-${_NOW} &> /dev/null
+        mv -f ${_ROOT}/backups/$e-pre* ${_ROOT}/backups/system/ &> /dev/null
       fi
       if [ -e "${_ROOT}/.drush/sys/$e" ]; then
         mv -f ${_ROOT}/.drush/sys/$e \
-          ${_ROOT}/backups/system/$e-pre-${_DISTRO}-${_NOW}
-        mv -f ${_ROOT}/backups/$e-pre* ${_ROOT}/backups/system/
+          ${_ROOT}/backups/system/$e-pre-${_DISTRO}-${_NOW} &> /dev/null
+        mv -f ${_ROOT}/backups/$e-pre* ${_ROOT}/backups/system/ &> /dev/null
       fi
     done
   fi
@@ -5101,19 +5101,19 @@ _satellite_child_b_drush_xts_install() {
     mkdir -p ${_ROOT}/.drush/{sys,xts,usr}
     _rD="${_ROOT}/.drush"
     ${_gCb} ${_BRANCH_PRN} ${_gitHub}/provision.git \
-      ${_rD}/sys/provision
+      ${_rD}/sys/provision &> /dev/null
     ${_gCb} 7.x-1.x-dev ${_gitHub}/drupalgeddon.git \
-      ${_rD}/usr/drupalgeddon
+      ${_rD}/usr/drupalgeddon &> /dev/null
     ${_gCb} 7.x-1.x ${_gitHub}/drush_ecl.git \
-      ${_rD}/usr/drush_ecl
+      ${_rD}/usr/drush_ecl &> /dev/null
     ${_gCb} 7.x-1.x ${_gitHub}/security_review.git \
-      ${_rD}/xts/security_review
+      ${_rD}/xts/security_review &> /dev/null
     ${_gCb} 7.x-2.x ${_gitHub}/provision_boost.git \
-      ${_rD}/xts/provision_boost
+      ${_rD}/xts/provision_boost &> /dev/null
     ${_gCb} 7.x-2.x ${_gitHub}/registry_rebuild.git \
-      ${_rD}/usr/registry_rebuild
+      ${_rD}/usr/registry_rebuild &> /dev/null
     ${_gCb} 7.x-1.x ${_gitHub}/safe_cache_form_clear.git \
-      ${_rD}/usr/safe_cache_form_clear
+      ${_rD}/usr/safe_cache_form_clear &> /dev/null
     rm -rf ${_rD}/*/.git
     rm -rf ${_rD}/*/*/.git
     cd ${_rD}/usr
@@ -5138,7 +5138,7 @@ _satellite_child_b_drush_xts_install() {
     cd ${_ROOT}/.drush
   fi
   sed -i "s/files.aegir.cc/${_USE_MIR}/g" \
-    ${_ROOT}/.drush/sys/provision/aegir.make
+    ${_ROOT}/.drush/sys/provision/aegir.make &> /dev/null
   wait
 }
 
@@ -5147,7 +5147,7 @@ _satellite_child_b_drush_test() {
     _msg "PROC: _satellite_child_b_drush_test"
     _debug_proc
   fi
-  drush8 cc drush
+  drush8 cc drush &> /dev/null
   rm -rf ${_ROOT}/.tmp/cache
   if ${_DRUSHCMD} help | grep "^ provision-install" > /dev/null ; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -5243,33 +5243,33 @@ _satellite_child_b_aegir_build() {
     cd ${_HM_ROOT}
     mkdir -p sites/all/{modules,themes,libraries}
     mkdir -p sites/${_DOMAIN}/files/{tmp,js,css}
-    chmod 02775 -R sites/${_DOMAIN}/files
-    chgrp -R ${_WEBG} sites/${_DOMAIN}/files
+    chmod 02775 -R sites/${_DOMAIN}/files &> /dev/null
+    chgrp -R ${_WEBG} sites/${_DOMAIN}/files &> /dev/null
     rm -f ${_ROOT}/u/${_DOMAIN}
     ln -sfn ${_HM_ROOT} ${_ROOT}/u/${_DOMAIN}
-    rm -f /data/u/${_DOMAIN}
+    rm -f /data/u/${_DOMAIN} &> /dev/null
     ln -sfn ${_HM_ROOT} /data/u/${_DOMAIN}
-    ${_DRUSHCMD} cc drush
+    ${_DRUSHCMD} cc drush &> /dev/null
     rm -rf ${_ROOT}/.tmp/cache
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "${_STATUS} B: Running hosting-dispatch/hosting-tasks..."
     fi
-    ${_DRUSHCMD} @hostmaster hosting-dispatch
+    ${_DRUSHCMD} @hostmaster hosting-dispatch &> /dev/null
     wait
     sleep 5
-    ${_DRUSHCMD} @hostmaster hosting-tasks --force
+    ${_DRUSHCMD} @hostmaster hosting-tasks --force &> /dev/null
     wait
     sleep 5
-    ${_DRUSHCMD} @hostmaster hosting-tasks --force
+    ${_DRUSHCMD} @hostmaster hosting-tasks --force &> /dev/null
     wait
     sleep 5
-    ${_DRUSHCMD} @hostmaster hosting-tasks --force
+    ${_DRUSHCMD} @hostmaster hosting-tasks --force &> /dev/null
     wait
   else
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "${_STATUS} B: Testing previous install..."
     fi
-    ${_DRUSHCMD} cc drush
+    ${_DRUSHCMD} cc drush &> /dev/null
     rm -rf ${_ROOT}/.tmp/cache
 
     ### Pre-Fix for migrated/merged instances
@@ -5292,7 +5292,7 @@ _satellite_child_b_aegir_build() {
       fi
     fi
 
-    ${_DRUSHCMD} cc drush
+    ${_DRUSHCMD} cc drush &> /dev/null
     rm -rf ${_ROOT}/.tmp/cache
     if [ -d "${_HM_ROOT}/modules/o_contrib" ] \
       && [ ! -L "${_HM_ROOT}/modules/o_contrib" ]; then
@@ -5367,7 +5367,7 @@ _satellite_child_b_aegir_build() {
     _msg "${_STATUS} B: Hostmaster STATUS: Upgrade in progress..."
     ### security_review breaks the upgrade if active
     mv -f ${_ROOT}/.drush/xts/security_review/security_review.drush.inc \
-      ${_ROOT}/.drush/xts/security_review/foo.txt 
+      ${_ROOT}/.drush/xts/security_review/foo.txt  &> /dev/null
     export DEBIAN_FRONTEND=noninteractive
     export APT_LISTCHANGES_FRONTEND=none
     if [ -z "${TERM+x}" ]; then
@@ -5386,8 +5386,8 @@ _satellite_child_b_aegir_build() {
       cd ${_PREV_HM_ROOT}/profiles/hostmaster/modules/contrib
       _get_dev_stc "entity-7.x-1.11.tar.gz"
       ${_DRUSHCMD} @hostmaster en entity -y
-      ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM hosting_service WHERE service LIKE 'http'"
-      ${_DRUSHCMD} @hostmaster sqlq "INSERT INTO hosting_service (nid, vid, service, type, restart_cmd, port, available) VALUES ('2', '2', 'http', 'nginx_ssl', 'sudo /etc/init.d/nginx reload', '80', '1')"
+      ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM hosting_service WHERE service LIKE 'http'" &> /dev/null
+      ${_DRUSHCMD} @hostmaster sqlq "INSERT INTO hosting_service (nid, vid, service, type, restart_cmd, port, available) VALUES ('2', '2', 'http', 'nginx_ssl', 'sudo /etc/init.d/nginx reload', '80', '1')" &> /dev/null
       ${_DRUSHCMD} @hostmaster hosting-task @server_master verify --force
       ${_DRUSHCMD} @hostmaster hosting-dispatch
       wait
@@ -5412,11 +5412,11 @@ _satellite_child_b_aegir_build() {
         ${_DRUSHCMD} @hostmaster en ctools -y
         ${_DRUSHCMD} @hostmaster registry-rebuild
       else
-        ${_DRUSHCMD} @hostmaster dis aegir_custom_settings -y
-        ${_DRUSHCMD} @hostmaster pm-uninstall aegir_custom_settings -y
-        ${_DRUSHCMD} @hostmaster dis hosting_advanced_cron -y
-        ${_DRUSHCMD} @hostmaster en ctools -y
-        ${_DRUSHCMD} @hostmaster registry-rebuild
+        ${_DRUSHCMD} @hostmaster dis aegir_custom_settings -y &> /dev/null
+        ${_DRUSHCMD} @hostmaster pm-uninstall aegir_custom_settings -y &> /dev/null
+        ${_DRUSHCMD} @hostmaster dis hosting_advanced_cron -y &> /dev/null
+        ${_DRUSHCMD} @hostmaster en ctools -y &> /dev/null
+        ${_DRUSHCMD} @hostmaster registry-rebuild &> /dev/null
       fi
     else
       if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -5424,24 +5424,24 @@ _satellite_child_b_aegir_build() {
         ${_DRUSHCMD} @hostmaster pm-uninstall hosting_custom_settings -y
         ${_DRUSHCMD} @hostmaster registry-rebuild
       else
-        ${_DRUSHCMD} @hostmaster dis hosting_custom_settings -y
-        ${_DRUSHCMD} @hostmaster pm-uninstall hosting_custom_settings -y
-        ${_DRUSHCMD} @hostmaster registry-rebuild
+        ${_DRUSHCMD} @hostmaster dis hosting_custom_settings -y &> /dev/null
+        ${_DRUSHCMD} @hostmaster pm-uninstall hosting_custom_settings -y &> /dev/null
+        ${_DRUSHCMD} @hostmaster registry-rebuild &> /dev/null
       fi
     fi
 
     cd ${_PREV_HM_ROOT}
-    ${_DRUSHCMD} cc drush
+    ${_DRUSHCMD} cc drush &> /dev/null
     rm -rf ${_ROOT}/.tmp/cache
 
-    ${_DRUSHCMD} @hostmaster sqlc < ${_bldPth}/aegir/helpers/hosting_cron.sql
+    ${_DRUSHCMD} @hostmaster sqlc < ${_bldPth}/aegir/helpers/hosting_cron.sql &> /dev/null
     ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM hosting_task_log \
-      WHERE timestamp < UNIX_TIMESTAMP(DATE_SUB(NOW(), INTERVAL 3 MONTH))"
-    ${_DRUSHCMD} @hostmaster sqlq "OPTIMIZE TABLE hosting_task_log"
+      WHERE timestamp < UNIX_TIMESTAMP(DATE_SUB(NOW(), INTERVAL 3 MONTH))" &> /dev/null
+    ${_DRUSHCMD} @hostmaster sqlq "OPTIMIZE TABLE hosting_task_log" &> /dev/null
     ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM hosting_task \
-      WHERE task_type='delete' AND task_status='-1'"
+      WHERE task_type='delete' AND task_status='-1'" &> /dev/null
     ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM hosting_task \
-      WHERE task_type='delete' AND task_status='0' AND executed='0'"
+      WHERE task_type='delete' AND task_status='0' AND executed='0'" &> /dev/null
 
     ### Fix for migrated/merged instances
     if [ -e "${_ROOT}/log/imported.pid" ] \
@@ -5450,73 +5450,73 @@ _satellite_child_b_aegir_build() {
         _msg "${_STATUS} B: Hostmaster STATUS: Fix for migrated/merged instance 1/2 start"
         _USE_AEGIR_HOST=$(uname -n 2>&1)
         ${_DRUSHCMD} @hostmaster sqlq "REPLACE INTO hosting_context (nid, name) \
-          VALUES ('4', 'server_localhost'), ('2', 'server_master')"
+          VALUES ('4', 'server_localhost'), ('2', 'server_master')" &> /dev/null
         ${_DRUSHCMD} @hostmaster sqlq "REPLACE INTO hosting_package (vid, nid, \
           package_type, short_name, old_short_name, description) VALUES ('6', \
-          '6', 'platform', 'drupal', '', '')"
+          '6', 'platform', 'drupal', '', '')" &> /dev/null
         ${_DRUSHCMD} @hostmaster sqlq "REPLACE INTO node_revisions (nid, vid, \
           uid, title, body, teaser, log, timestamp, format) VALUES ('6', '6', \
-          '1', 'drupal', '', '', '', '1412168340', '0')"
+          '1', 'drupal', '', '', '', '1412168340', '0')" &> /dev/null
         ${_DRUSHCMD} @hostmaster sqlq "REPLACE INTO node (nid, vid, type, \
           language, title, uid, status, created, changed, comment, promote, \
           moderate, sticky, tnid, translate) VALUES ('6', '6', 'package', '', \
           'drupal', '1', '1', '1412168321', '1412168340', '0', '0', '0', '0', \
-          '0', '0')"
+          '0', '0')" &> /dev/null
         ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM hosting_package \
-          WHERE nid='2' AND short_name='drupal'"
+          WHERE nid='2' AND short_name='drupal'" &> /dev/null
         ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM hosting_package \
-          WHERE nid='4' AND short_name='drupal'"
+          WHERE nid='4' AND short_name='drupal'" &> /dev/null
         ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM node \
-          WHERE nid='8' AND type='site'"
+          WHERE nid='8' AND type='site'" &> /dev/null
         ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM node_revisions \
-          WHERE nid='8'"
+          WHERE nid='8'" &> /dev/null
         ${_DRUSHCMD} @hostmaster sqlq "UPDATE node \
-          SET type='server' WHERE nid='2'"
+          SET type='server' WHERE nid='2'" &> /dev/null
         ${_DRUSHCMD} @hostmaster sqlq "UPDATE node \
-          SET type='server' WHERE nid='4'"
+          SET type='server' WHERE nid='4'" &> /dev/null
         ${_DRUSHCMD} @hostmaster sqlq "UPDATE node \
-          SET title='${_USE_AEGIR_HOST}' WHERE nid='2'"
+          SET title='${_USE_AEGIR_HOST}' WHERE nid='2'" &> /dev/null
         ${_DRUSHCMD} @hostmaster sqlq "UPDATE node \
-          SET title='localhost' WHERE nid='4'"
+          SET title='localhost' WHERE nid='4'" &> /dev/null
         ${_DRUSHCMD} @hostmaster sqlq "UPDATE node_revision \
-          SET title='${_USE_AEGIR_HOST}' WHERE nid='2'"
+          SET title='${_USE_AEGIR_HOST}' WHERE nid='2'" &> /dev/null
         ${_DRUSHCMD} @hostmaster sqlq "UPDATE node_revision \
-          SET title='localhost' WHERE nid='4'"
+          SET title='localhost' WHERE nid='4'" &> /dev/null
         ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_site \
-          SET db_server='4' WHERE db_server='2'"
+          SET db_server='4' WHERE db_server='2'" &> /dev/null
         ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
-          SET web_server='2' WHERE web_server='0'"
+          SET web_server='2' WHERE web_server='0'" &> /dev/null
         ${_DRUSHCMD} @hostmaster sqlq "UPDATE users_roles \
-          SET rid='7' WHERE rid='5'"
-        ${_DRUSHCMD} cc drush
+          SET rid='7' WHERE rid='5'" &> /dev/null
+        ${_DRUSHCMD} cc drush &> /dev/null
         rm -rf ${_ROOT}/.tmp/cache
         ${_DRUSHCMD} @hostmaster hosting-task @server_localhost \
-          verify --force
-        ${_DRUSHCMD} @hostmaster hosting-dispatch
+          verify --force &> /dev/null
+        ${_DRUSHCMD} @hostmaster hosting-dispatch &> /dev/null
         wait
         sleep 5
-        ${_DRUSHCMD} @hostmaster hosting-tasks --force
+        ${_DRUSHCMD} @hostmaster hosting-tasks --force &> /dev/null
         wait
         sleep 5
-        ${_DRUSHCMD} @hostmaster hosting-tasks --force
+        ${_DRUSHCMD} @hostmaster hosting-tasks --force &> /dev/null
         wait
         sleep 5
-        ${_DRUSHCMD} @hostmaster hosting-tasks --force
+        ${_DRUSHCMD} @hostmaster hosting-tasks --force &> /dev/null
         wait
         _msg "${_STATUS} B: Hostmaster STATUS: Fix for migrated/merged instance 1/2 complete"
       fi
       ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_site \
-        SET client='1' WHERE profile='7'"
+        SET client='1' WHERE profile='7'" &> /dev/null
       ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_site \
-        SET client='1' WHERE profile='9'"
+        SET client='1' WHERE profile='9'" &> /dev/null
       ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_site \
-        SET client='1' WHERE client='0'"
+        SET client='1' WHERE client='0'" &> /dev/null
       ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
-        SET web_server='2' WHERE web_server='0'"
+        SET web_server='2' WHERE web_server='0'" &> /dev/null
       ${_DRUSHCMD} @hostmaster sqlq "UPDATE node \
-        SET uid='1' WHERE uid='0'"
+        SET uid='1' WHERE uid='0'" &> /dev/null
       ${_DRUSHCMD} @hostmaster sqlq "UPDATE node_revision \
-        SET uid='1' WHERE uid='0'"
+        SET uid='1' WHERE uid='0'" &> /dev/null
       _HM_NID=$(${_DRUSHCMD} @hostmaster sqlq "SELECT site.nid \
         FROM hosting_site site JOIN hosting_package_instance pkgi \
         ON pkgi.rid=site.nid JOIN hosting_package pkg \
@@ -5527,12 +5527,12 @@ _satellite_child_b_aegir_build() {
         if [ -e "${_ROOT}/aegir/distro/001/sites/${_DOMAIN}/drushrc.php" ]; then
           _HM_PLF=$(${_DRUSHCMD} @hostmaster sqlq "SELECT platform FROM hosting_site WHERE nid='${_HM_NID}'" 2>&1)
           _HM_PLF=${_HM_PLF//[^0-9]/}
-          ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_context SET name='platform_hostmaster' WHERE nid='${_HM_PLF}'"
+          ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_context SET name='platform_hostmaster' WHERE nid='${_HM_PLF}'" &> /dev/null
         fi
-        ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_context SET name='hostmaster' WHERE nid='${_HM_NID}'"        
-        ${_DRUSHCMD} @hostmaster sqlq "UPDATE node SET title='${_DOMAIN}' WHERE nid='${_HM_NID}'"                  
-        ${_DRUSHCMD} @hostmaster sqlq "UPDATE node_revision SET title='${_DOMAIN}' WHERE nid='${_HM_NID}'"         
-        ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_site_alias SET alias='www.${_DOMAIN}' WHERE nid='${_HM_NID}'"
+        ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_context SET name='hostmaster' WHERE nid='${_HM_NID}'"         &> /dev/null
+        ${_DRUSHCMD} @hostmaster sqlq "UPDATE node SET title='${_DOMAIN}' WHERE nid='${_HM_NID}'"                   &> /dev/null
+        ${_DRUSHCMD} @hostmaster sqlq "UPDATE node_revision SET title='${_DOMAIN}' WHERE nid='${_HM_NID}'"          &> /dev/null
+        ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_site_alias SET alias='www.${_DOMAIN}' WHERE nid='${_HM_NID}'" &> /dev/null
       else
         _msg "${_STATUS} B: Hostmaster STATUS: Fix 1/2 hosting_context ${_HM_NID} empty!"
       fi
@@ -5540,29 +5540,29 @@ _satellite_child_b_aegir_build() {
         && [ ! -e "${_ROOT}/log/hmpathfix.pid" ]; then
         ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
           SET publish_path='${_ROOT}/aegir/distro/001' \
-          WHERE publish_path LIKE '%/aegir/distro/%'"
+          WHERE publish_path LIKE '%/aegir/distro/%'" &> /dev/null
         touch ${_ROOT}/log/hmpathfix.pid
       fi
     fi
     ### Fix for old migrated/merged instances
 
-    ${_DRUSHCMD} cc drush
+    ${_DRUSHCMD} cc drush &> /dev/null
     rm -rf ${_ROOT}/.tmp/cache
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       ${_DRUSHCMD} hostmaster-migrate ${_DOMAIN} ${_HM_ROOT} -y -d
       ${_DRUSHCMD} @hostmaster registry-rebuild
     else
-      ${_DRUSHCMD} hostmaster-migrate ${_DOMAIN} ${_HM_ROOT} -y
-      ${_DRUSHCMD} @hostmaster registry-rebuild
+      ${_DRUSHCMD} hostmaster-migrate ${_DOMAIN} ${_HM_ROOT} -y &> /dev/null
+      ${_DRUSHCMD} @hostmaster registry-rebuild &> /dev/null
     fi
     cd ${_HM_ROOT}
     mkdir -p sites/all/{modules,themes,libraries}
     export DEBIAN_FRONTEND=text
     mv -f ${_ROOT}/.drush/xts/security_review/foo.txt \
-      ${_ROOT}/.drush/xts/security_review/security_review.drush.inc 
+      ${_ROOT}/.drush/xts/security_review/security_review.drush.inc  &> /dev/null
     rm -f ${_ROOT}/u/${_DOMAIN}
     ln -sfn ${_HM_ROOT} ${_ROOT}/u/${_DOMAIN}
-    rm -f /data/u/${_DOMAIN}
+    rm -f /data/u/${_DOMAIN} &> /dev/null
     ln -sfn ${_HM_ROOT} /data/u/${_DOMAIN}
     rm -rf ${_HM_ROOT}/profiles/{default,standard,minimal,testing}
 
@@ -5572,22 +5572,22 @@ _satellite_child_b_aegir_build() {
       if [ ! -e "${_ROOT}/log/post-merge-fix.pid" ]; then
         _msg "${_STATUS} B: Hostmaster STATUS: Fix for migrated/merged instance 2/2 start"
         ${_DRUSHCMD} @hostmaster sqlq "UPDATE users_roles \
-          SET rid='7' WHERE rid='5'"
+          SET rid='7' WHERE rid='5'" &> /dev/null
         echo FIXED > ${_ROOT}/log/post-merge-fix.pid
         _msg "${_STATUS} B: Hostmaster STATUS: Fix for migrated/merged instance 2/2 complete"
       fi
       ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_site \
-        SET client='1' WHERE profile='7'"
+        SET client='1' WHERE profile='7'" &> /dev/null
       ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_site \
-        SET client='1' WHERE profile='9'"
+        SET client='1' WHERE profile='9'" &> /dev/null
       ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_site \
-        SET client='1' WHERE client='0'"
+        SET client='1' WHERE client='0'" &> /dev/null
       ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
-        SET web_server='2' WHERE web_server='0'"
+        SET web_server='2' WHERE web_server='0'" &> /dev/null
       ${_DRUSHCMD} @hostmaster sqlq "UPDATE node \
-        SET uid='1' WHERE uid='0'"
+        SET uid='1' WHERE uid='0'" &> /dev/null
       ${_DRUSHCMD} @hostmaster sqlq "UPDATE node_revision \
-        SET uid='1' WHERE uid='0'"
+        SET uid='1' WHERE uid='0'" &> /dev/null
       _HM_NID=$(${_DRUSHCMD} @hostmaster sqlq "SELECT site.nid \
         FROM hosting_site site JOIN hosting_package_instance pkgi \
         ON pkgi.rid=site.nid JOIN hosting_package pkg \
@@ -5598,12 +5598,12 @@ _satellite_child_b_aegir_build() {
         if [ -e "${_ROOT}/aegir/distro/001/sites/${_DOMAIN}/drushrc.php" ]; then
           _HM_PLF=$(${_DRUSHCMD} @hostmaster sqlq "SELECT platform FROM hosting_site WHERE nid='${_HM_NID}'" 2>&1)
           _HM_PLF=${_HM_PLF//[^0-9]/}
-          ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_context SET name='platform_hostmaster' WHERE nid='${_HM_PLF}'"
+          ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_context SET name='platform_hostmaster' WHERE nid='${_HM_PLF}'" &> /dev/null
         fi
-        ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_context SET name='hostmaster' WHERE nid='${_HM_NID}'"        
-        ${_DRUSHCMD} @hostmaster sqlq "UPDATE node SET title='${_DOMAIN}' WHERE nid='${_HM_NID}'"                  
-        ${_DRUSHCMD} @hostmaster sqlq "UPDATE node_revision SET title='${_DOMAIN}' WHERE nid='${_HM_NID}'"         
-        ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_site_alias SET alias='www.${_DOMAIN}' WHERE nid='${_HM_NID}'"
+        ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_context SET name='hostmaster' WHERE nid='${_HM_NID}'"         &> /dev/null
+        ${_DRUSHCMD} @hostmaster sqlq "UPDATE node SET title='${_DOMAIN}' WHERE nid='${_HM_NID}'"                   &> /dev/null
+        ${_DRUSHCMD} @hostmaster sqlq "UPDATE node_revision SET title='${_DOMAIN}' WHERE nid='${_HM_NID}'"          &> /dev/null
+        ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_site_alias SET alias='www.${_DOMAIN}' WHERE nid='${_HM_NID}'" &> /dev/null
       else
         _msg "${_STATUS} B: Hostmaster STATUS: Fix 2/2 hosting_context ${_HM_NID} empty!"
       fi
@@ -5611,7 +5611,7 @@ _satellite_child_b_aegir_build() {
         && [ ! -e "${_ROOT}/log/hmpathfix.pid" ]; then
         ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
           SET publish_path='${_ROOT}/aegir/distro/001' \
-          WHERE publish_path LIKE '%/aegir/distro/%'"
+          WHERE publish_path LIKE '%/aegir/distro/%'" &> /dev/null
         touch ${_ROOT}/log/hmpathfix.pid
       fi
     fi
@@ -5641,7 +5641,7 @@ _satellite_child_b_aegir_health_check() {
       sudo /etc/init.d/nginx reload
       wait
     else
-      sudo /etc/init.d/nginx reload
+      sudo /etc/init.d/nginx reload &> /dev/null
       wait
     fi
   else
@@ -5786,77 +5786,77 @@ _satellite_child_b_aegir_ui_enhance() {
       _VMFAMILY="XEN"
     fi
     cd ${_HM_ROOT}/sites/${_DOMAIN}
-    ${_DRUSHCMD} cc drush
+    ${_DRUSHCMD} cc drush &> /dev/null
     rm -rf ${_ROOT}/.tmp/cache
-    ${_DRUSHCMD} @hostmaster en aegir_objects -y
-    ${_DRUSHCMD} @hostmaster en fix_ownership -y
-    ${_DRUSHCMD} @hostmaster en _fix_permissions -y
-    ${_DRUSHCMD} @hostmaster en hosting_civicrm -y
-    ${_DRUSHCMD} @hostmaster en hosting_civicrm_cron -y
-    ${_DRUSHCMD} @hostmaster en hosting_client -y
-    ${_DRUSHCMD} @hostmaster en hosting_cron -y
-    ${_DRUSHCMD} @hostmaster en hosting_deploy -y
-    ${_DRUSHCMD} @hostmaster en hosting_platform_composer -y
-    ${_DRUSHCMD} @hostmaster en hosting_platform_composer_git -y
-    ${_DRUSHCMD} @hostmaster en hosting_platform_git -y
-    ${_DRUSHCMD} @hostmaster en hosting_tasks_extra -y
-    ${_DRUSHCMD} @hostmaster en hosting_site_backup_manager -y
-    ${_DRUSHCMD} @hostmaster en hosting_http_basic_auth -y
-    ${_DRUSHCMD} @hostmaster en libraries -y
-    ${_DRUSHCMD} @hostmaster en overlay -y
-    ${_DRUSHCMD} @hostmaster en overlay_paths -y
-    ${_DRUSHCMD} @hostmaster en revision_deletion -y
-    ${_DRUSHCMD} @hostmaster en timeago -y
-    ${_DRUSHCMD} @hostmaster en userprotect -y
-    ${_DRUSHCMD} @hostmaster ${_vSet} client 1
-    ${_DRUSHCMD} @hostmaster ${_vSet} clone 1
-    ${_DRUSHCMD} @hostmaster ${_vSet} hosting_admin_client 1
-    ${_DRUSHCMD} @hostmaster ${_vSet} hosting_client_register_user 1
-    ${_DRUSHCMD} @hostmaster ${_vSet} hosting_client_send_welcome 0
-    ${_DRUSHCMD} @hostmaster ${_vSet} hosting_feature_client 1
+    ${_DRUSHCMD} @hostmaster en aegir_objects -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster en fix_ownership -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster en _fix_permissions -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster en hosting_civicrm -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster en hosting_civicrm_cron -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster en hosting_client -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster en hosting_cron -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster en hosting_deploy -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster en hosting_platform_composer -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster en hosting_platform_composer_git -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster en hosting_platform_git -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster en hosting_tasks_extra -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster en hosting_site_backup_manager -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster en hosting_http_basic_auth -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster en libraries -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster en overlay -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster en overlay_paths -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster en revision_deletion -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster en timeago -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster en userprotect -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster ${_vSet} client 1 &> /dev/null
+    ${_DRUSHCMD} @hostmaster ${_vSet} clone 1 &> /dev/null
+    ${_DRUSHCMD} @hostmaster ${_vSet} hosting_admin_client 1 &> /dev/null
+    ${_DRUSHCMD} @hostmaster ${_vSet} hosting_client_register_user 1 &> /dev/null
+    ${_DRUSHCMD} @hostmaster ${_vSet} hosting_client_send_welcome 0 &> /dev/null
+    ${_DRUSHCMD} @hostmaster ${_vSet} hosting_feature_client 1 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${_vSet} \
-      hosting_cron_default_interval 3600
+      hosting_cron_default_interval 3600 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${_vSet} \
-      hosting_queue_cron_frequency 1
+      hosting_queue_cron_frequency 1 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${_vSet} \
-      hosting_civicrm_cron_queue_frequency 60
+      hosting_civicrm_cron_queue_frequency 60 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${_vSet} \
-      hosting_queue_task_gc_frequency 300
+      hosting_queue_task_gc_frequency 300 &> /dev/null
     if [ -e "${_ROOT}/log/hosting_cron_use_backend.txt" ]; then
       ${_DRUSHCMD} @hostmaster ${_vSet} \
-        hosting_cron_use_backend 1
+        hosting_cron_use_backend 1 &> /dev/null
     else
       ${_DRUSHCMD} @hostmaster ${_vSet} \
-        hosting_cron_use_backend 0
+        hosting_cron_use_backend 0 &> /dev/null
     fi
     ${_DRUSHCMD} @hostmaster ${_vSet} \
-      hosting_ignore_default_profiles 0
+      hosting_ignore_default_profiles 0 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${_vSet} \
-      hosting_queue_tasks_frequency 1
+      hosting_queue_tasks_frequency 1 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${_vSet} \
-      hosting_queue_tasks_items 1
+      hosting_queue_tasks_items 1 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${_vSet} \
-      hosting_delete_force 0
+      hosting_delete_force 0 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${_vSet} \
-      hosting_alias_automatic_no_www 1
+      hosting_alias_automatic_no_www 1 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${_vSet} \
-      hosting_alias_automatic_www 1
+      hosting_alias_automatic_www 1 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${_vSet} \
-      hosting_upload_platform_path "${_ROOT}/static"
+      hosting_upload_platform_path "${_ROOT}/static" &> /dev/null
     ${_DRUSHCMD} @hostmaster ${_vSet} \
-      hosting_upload_upload_path "sites/${_DOMAIN}/files/deployment"
+      hosting_upload_upload_path "sites/${_DOMAIN}/files/deployment" &> /dev/null
     ${_DRUSHCMD} @hostmaster ${_vSet} \
-      hosting_platform_base_path "${_ROOT}/static/"
+      hosting_platform_base_path "${_ROOT}/static/" &> /dev/null
     ${_DRUSHCMD} @hostmaster ${_vSet} \
-      aegir_backup_export_path "${_ROOT}/backup-exports"
+      aegir_backup_export_path "${_ROOT}/backup-exports" &> /dev/null
     ${_DRUSHCMD} @hostmaster ${_vSet} \
-      hosting_default_profile "standard"
+      hosting_default_profile "standard" &> /dev/null
     ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM menu_links \
-      WHERE link_path='hosting/platforms'"
+      WHERE link_path='hosting/platforms'" &> /dev/null
     ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM menu_links \
-      WHERE link_path='hosting/sites'"
+      WHERE link_path='hosting/sites'" &> /dev/null
 
-    ${_DRUSHCMD} @hostmaster vdel -y --exact hosting_task_logs_types_display
+    ${_DRUSHCMD} @hostmaster vdel -y --exact hosting_task_logs_types_display &> /dev/null
 
     ${_DRUSHCMD} @hostmaster ev 'variable_set("hosting_task_logs_types_display", array(
       "error" => "error",
@@ -5872,68 +5872,68 @@ _satellite_child_b_aegir_ui_enhance() {
       "command" => "command",
       "debug" => "none",
       "debugnotify" => "none",
-      "queue" => "queue"))'
+      "queue" => "queue"))' &> /dev/null
 
     if [ "${_LOCAL_STATUS}" = "INIT" ]; then
       pBy="Octopus System powered by Barracuda"
-      ${_DRUSHCMD} @hostmaster ${_vSet} site_name "${pBy}"
-      ${_DRUSHCMD} @hostmaster ${_vSet} site_mail "${_MY_EMAIL}"
+      ${_DRUSHCMD} @hostmaster ${_vSet} site_name "${pBy}" &> /dev/null
+      ${_DRUSHCMD} @hostmaster ${_vSet} site_mail "${_MY_EMAIL}" &> /dev/null
       cp -af /opt/tmp/boa/aegir/helpers/make_home.php.txt ./
-      mv -f make_home.php.txt make_home.php
-      ${_DRUSHCMD} php-script make_home
+      mv -f make_home.php.txt make_home.php &> /dev/null
+      ${_DRUSHCMD} php-script make_home &> /dev/null
       rm -f make_home.php
       ${_DRUSHCMD} @hostmaster sqlq "UPDATE field_data_body \
-        SET body_format='full_html' WHERE bundle='book' AND entity_type='node'"
+        SET body_format='full_html' WHERE bundle='book' AND entity_type='node'" &> /dev/null
       cp -af /opt/tmp/boa/aegir/helpers/make_client.php.txt ./
-      mv -f make_client.php.txt make_client.php
+      mv -f make_client.php.txt make_client.php &> /dev/null
       if [ "${_THIS_DB_HOST}" = "localhost" ] \
         || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
         || [ "${_THIS_DB_HOST}" = "PROXYSQL" ]; then
         ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
-          SET status=-1 WHERE nid=7"
+          SET status=-1 WHERE nid=7" &> /dev/null
       else
         ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
-          SET status=-1 WHERE nid=5"
+          SET status=-1 WHERE nid=5" &> /dev/null
       fi
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         ${_DRUSHCMD} php-script make_client ${_CLIENT_EMAIL}
       else
-        ${_DRUSHCMD} php-script make_client ${_CLIENT_EMAIL}
+        ${_DRUSHCMD} php-script make_client ${_CLIENT_EMAIL} &> /dev/null
       fi
       ### rm -f make_client.php
     else
       ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
-        SET status=-2 WHERE publish_path LIKE '%/aegir/distro/%'"
+        SET status=-2 WHERE publish_path LIKE '%/aegir/distro/%'" &> /dev/null
       _THIS_HM_PLR=$(cat ${_ROOT}/.drush/hostmaster.alias.drushrc.php \
           | grep "root'" \
           | cut -d: -f2 \
           | awk '{ print $3}' \
           | sed "s/[\,']//g" 2>&1)
       ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
-        SET status=1 WHERE publish_path LIKE '${_THIS_HM_PLR}'"
+        SET status=1 WHERE publish_path LIKE '${_THIS_HM_PLR}'" &> /dev/null
       _CHECK_HOST=$(uname -n 2>&1)
       _if_hosted_sys
       if [ "${_hostedSys}" = "YES" ]; then
         pBy="Octopus System powered by Barracuda"
-        ${_DRUSHCMD} @hostmaster ${_vSet} site_name "${pBy}"
+        ${_DRUSHCMD} @hostmaster ${_vSet} site_name "${pBy}" &> /dev/null
         cp -af /opt/tmp/boa/aegir/helpers/make_home.php.txt ./
-        mv -f make_home.php.txt make_home.php
-        ${_DRUSHCMD} php-script make_home
+        mv -f make_home.php.txt make_home.php &> /dev/null
+        ${_DRUSHCMD} php-script make_home &> /dev/null
         rm -f make_home.php
       fi
       ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM field_data_body \
-        WHERE body_format IS NULL"
+        WHERE body_format IS NULL" &> /dev/null
       ${_DRUSHCMD} @hostmaster sqlq "UPDATE field_data_body \
-        SET body_format='full_html' WHERE bundle='book' AND entity_type='node'"
+        SET body_format='full_html' WHERE bundle='book' AND entity_type='node'" &> /dev/null
     fi
 
     ${_DRUSHCMD} @hostmaster sqlq "UPDATE menu_links \
-      SET hidden=1 WHERE plid='0' AND menu_name LIKE 'user-menu'"
+      SET hidden=1 WHERE plid='0' AND menu_name LIKE 'user-menu'" &> /dev/null
 
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter_format" 
-      ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter_formats"
-      ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter"        
+      ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter_format"  &> /dev/null
+      ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter_formats" &> /dev/null
+      ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter"         &> /dev/null
       ${_DRUSHCMD} @hostmaster en hosting_le -y
       ${_DRUSHCMD} @hostmaster en hosting_le_vhost -y
       ${_DRUSHCMD} @hostmaster en hosting_custom_settings -y
@@ -5941,15 +5941,15 @@ _satellite_child_b_aegir_ui_enhance() {
       ${_DRUSHCMD} @hostmaster cache-clear all
       ${_DRUSHCMD} @hostmaster updb -y
     else
-      ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter_format" 
-      ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter_formats"
-      ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter"        
-      ${_DRUSHCMD} @hostmaster en hosting_le -y              
-      ${_DRUSHCMD} @hostmaster en hosting_le_vhost -y        
-      ${_DRUSHCMD} @hostmaster en hosting_custom_settings -y 
-      ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y 
-      ${_DRUSHCMD} @hostmaster cache-clear all               
-      ${_DRUSHCMD} @hostmaster updb -y                       
+      ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter_format"  &> /dev/null
+      ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter_formats" &> /dev/null
+      ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter"         &> /dev/null
+      ${_DRUSHCMD} @hostmaster en hosting_le -y               &> /dev/null
+      ${_DRUSHCMD} @hostmaster en hosting_le_vhost -y         &> /dev/null
+      ${_DRUSHCMD} @hostmaster en hosting_custom_settings -y  &> /dev/null
+      ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y  &> /dev/null
+      ${_DRUSHCMD} @hostmaster cache-clear all                &> /dev/null
+      ${_DRUSHCMD} @hostmaster updb -y                        &> /dev/null
     fi
 
     if [ "${_LOCAL_STATUS}" = "INIT" ]; then
@@ -5968,24 +5968,24 @@ _satellite_child_b_aegir_ui_enhance() {
           ('2', '0', '0', '0', '1', '1', '1', '0', 'user', '1');"
       else
         ${_DRUSHCMD} @hostmaster \
-          urol "admin" --mail=${_CLIENT_EMAIL}
+          urol "admin" --mail=${_CLIENT_EMAIL} &> /dev/null
         ${_DRUSHCMD} @hostmaster \
-          urol "aegir account manager" --mail=${_CLIENT_EMAIL}
+          urol "aegir account manager" --mail=${_CLIENT_EMAIL} &> /dev/null
         ${_DRUSHCMD} @hostmaster \
-          urol "aegir client" --mail=${_CLIENT_EMAIL}
+          urol "aegir client" --mail=${_CLIENT_EMAIL} &> /dev/null
         ${_DRUSHCMD} @hostmaster sqlq "REPLACE INTO userprotect \
           (uid, up_name, up_mail, up_pass, up_status, up_roles, up_cancel, up_edit, up_type, up_openid) VALUES \
           ('0', '0', '0', '0', '0', '0', '1', '1', 'user', '1'),\
           ('1', '0', '0', '0', '0', '0', '0', '0', 'admin', '0'),\
           ('1', '1', '1', '1', '1', '1', '1', '1', 'user', '1'),\
-          ('2', '0', '0', '0', '1', '1', '1', '0', 'user', '1');"
+          ('2', '0', '0', '0', '1', '1', '1', '0', 'user', '1');" &> /dev/null
       fi
     fi
 
     if [ ! -e "${_ROOT}/log/hosting_le_enable.txt" ]; then
-      ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_service SET type='nginx_ssl' WHERE service='http'"
+      ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_service SET type='nginx_ssl' WHERE service='http'" &> /dev/null
       wait
-      ${_DRUSHCMD} @hostmaster hosting-task @server_master verify --force
+      ${_DRUSHCMD} @hostmaster hosting-task @server_master verify --force &> /dev/null
       wait
       mkdir -p ${_ROOT}/log
       touch ${_ROOT}/log/hosting_le_enable.txt
@@ -6047,9 +6047,9 @@ _satellite_child_b_redis_enable_finalize() {
     ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y
     ${_DRUSHCMD} @hostmaster cache-clear all
   else
-    ${_DRUSHCMD} @hostmaster en hosting_custom_settings -y
-    ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y
-    ${_DRUSHCMD} @hostmaster cache-clear all
+    ${_DRUSHCMD} @hostmaster en hosting_custom_settings -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster cache-clear all &> /dev/null
   fi
   touch /opt/tmp/status-AegirSetupB-OK
 }

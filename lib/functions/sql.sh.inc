@@ -14,7 +14,7 @@ _check_mysql_version() {
     _DB_V=5.7
   fi
   if [ -x "/usr/sbin/aa-teardown" ]; then
-    _mrun "aa-teardown"
+    _mrun "aa-teardown" 2> /dev/null
   fi
 }
 
@@ -47,18 +47,18 @@ _if_sql_keyring_apt_update() {
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: Retrieving ${_PERCONA_KEYS_SIG} key..."
       fi
-      apt-key del ${_PERCONA_KEYS_SIG}
+      apt-key del ${_PERCONA_KEYS_SIG} &> /dev/null
       if [ ! -e "/etc/apt/keyrings/percona.gpg" ]; then
         curl -fsSL ${_urlDev}/percona-key.gpg | ${_GPG} --dearmor -o /etc/apt/keyrings/percona.gpg
       fi
       chmod 644 /etc/apt/keyrings/percona.gpg
       if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt "5" ]; then
-        kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}')
+        kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
         echo "$(date 2>&1) Too many dirmngr processes killed" >> \
           /var/xdrago/log/dirmngr-count.kill.log
       fi
       if [ `ps aux | grep -v "grep" | grep --count "gpg-agent"` -gt "5" ]; then
-        kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}')
+        kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
         echo "$(date 2>&1) Too many gpg-agent processes killed" >> \
           /var/xdrago/log/gpg-agent-count.kill.log
       fi
@@ -260,7 +260,7 @@ _sql_strict_upgrade_path() {
     _SQL_UPGRADE=YES
   fi
   if [ "${_SQL_UPGRADE}" = "YES" ]; then
-    mysql -u root -e "SET GLOBAL innodb_fast_shutdown = 0;"
+    mysql -u root -e "SET GLOBAL innodb_fast_shutdown = 0;" &> /dev/null
   fi
 }
 
@@ -278,15 +278,15 @@ _innodb_log_file_size_update() {
   fi
   _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
   _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
-  mysql -u root -e "SET GLOBAL innodb_fast_shutdown = 0;"
-  _mrun "bash /var/xdrago/move_sql.sh stop"
+  mysql -u root -e "SET GLOBAL innodb_fast_shutdown = 0;" &> /dev/null
+  _mrun "bash /var/xdrago/move_sql.sh stop" &> /dev/null
   wait
   _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
   if [ -z "${_IS_MYSQLD_RUNNING}" ]; then
     mkdir -p ${_vBs}/old-sql-ib-log-${_NOW}
     _mrun "sleep 1"
-    mv -f /var/lib/mysql/ib_logfile0 ${_vBs}/old-sql-ib-log-${_NOW}/
-    mv -f /var/lib/mysql/ib_logfile1 ${_vBs}/old-sql-ib-log-${_NOW}/
+    mv -f /var/lib/mysql/ib_logfile0 ${_vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
+    mv -f /var/lib/mysql/ib_logfile1 ${_vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
     if [ "${_DB_V}" = "5.7" ] || [ "${_DB_SERIES}" = "5.7" ]; then
       if [ "${_SQL_UPGRADE}" = "NO" ]; then
         if [ -e "/root/.dev.server.cnf" ]; then
@@ -299,7 +299,7 @@ _innodb_log_file_size_update() {
         sed -i \
           -e "s/.*innodb_redo_log_capacity.*/#innodb_redo_log_capacity    = ${_INNODB_REDO_LOG_CAPACITY_MB}/g" \
           -e "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" \
-          /etc/mysql/my.cnf
+          /etc/mysql/my.cnf &> /dev/null
         echo "innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}" > /root/.my.innodb_log_file_size.txt
       fi
     fi
@@ -315,23 +315,23 @@ _innodb_log_file_size_update() {
         sed -i \
           -e "s/.*innodb_redo_log_capacity.*/innodb_redo_log_capacity    = ${_INNODB_REDO_LOG_CAPACITY_MB}/g" \
           -e "s/.*innodb_log_file_size.*/#innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" \
-          /etc/mysql/my.cnf
+          /etc/mysql/my.cnf &> /dev/null
         echo "innodb_redo_log_capacity    = ${_INNODB_REDO_LOG_CAPACITY_MB}" > /root/.my.innodb_redo_log_capacity.txt
       fi
     fi
-    _mrun "bash /var/xdrago/move_sql.sh start"
+    _mrun "bash /var/xdrago/move_sql.sh start" &> /dev/null
     wait
   else
     _msg "INFO: Waiting 180s for ${_DB_SERVER} clean shutdown..."
-    _mrun "bash /var/xdrago/move_sql.sh stop"
+    _mrun "bash /var/xdrago/move_sql.sh stop" &> /dev/null
     wait
     _mrun "sleep 180"
     _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
     if [ -z "${_IS_MYSQLD_RUNNING}" ]; then
       mkdir -p ${_vBs}/old-sql-ib-log-${_NOW}
       _mrun "sleep 1"
-      mv -f /var/lib/mysql/ib_logfile0 ${_vBs}/old-sql-ib-log-${_NOW}/
-      mv -f /var/lib/mysql/ib_logfile1 ${_vBs}/old-sql-ib-log-${_NOW}/
+      mv -f /var/lib/mysql/ib_logfile0 ${_vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
+      mv -f /var/lib/mysql/ib_logfile1 ${_vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
       if [ "${_DB_V}" = "5.7" ] || [ "${_DB_SERIES}" = "5.7" ]; then
         if [ "${_SQL_UPGRADE}" = "NO" ]; then
           if [ -e "/root/.dev.server.cnf" ]; then
@@ -344,7 +344,7 @@ _innodb_log_file_size_update() {
           sed -i \
             -e "s/.*innodb_redo_log_capacity.*/#innodb_redo_log_capacity    = ${_INNODB_REDO_LOG_CAPACITY_MB}/g" \
             -e "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" \
-            /etc/mysql/my.cnf
+            /etc/mysql/my.cnf &> /dev/null
           echo "innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}" > /root/.my.innodb_log_file_size.txt
         fi
       fi
@@ -360,11 +360,11 @@ _innodb_log_file_size_update() {
           sed -i \
             -e "s/.*innodb_redo_log_capacity.*/innodb_redo_log_capacity    = ${_INNODB_REDO_LOG_CAPACITY_MB}/g" \
             -e "s/.*innodb_log_file_size.*/#innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" \
-            /etc/mysql/my.cnf
+            /etc/mysql/my.cnf &> /dev/null
           echo "innodb_redo_log_capacity    = ${_INNODB_REDO_LOG_CAPACITY_MB}" > /root/.my.innodb_redo_log_capacity.txt
         fi
       fi
-      _mrun "bash /var/xdrago/move_sql.sh start"
+      _mrun "bash /var/xdrago/move_sql.sh start" &> /dev/null
       wait
     else
       if [ "${_DB_V}" != "5.7" ] || [ "${_SQL_UPGRADE}" = "YES" ]; then
@@ -385,7 +385,7 @@ _sql_conf_update() {
   fi
   sed -i -e "s/.*innodb_force_recovery/#innodb_force_recovery/g" \
     -e "s/.*innodb_corrupt_table_action/#innodb_corrupt_table_action/g" \
-    -e "s/^thread_concurrency.*//g" /etc/mysql/my.cnf
+    -e "s/^thread_concurrency.*//g" /etc/mysql/my.cnf &> /dev/null
   _if_hosted_sys
   _check_mysql_version
   if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ] \
@@ -399,13 +399,13 @@ _sql_conf_update() {
         sed -i -E \
           -e "s/^#?\s*performance_schema\s*=.*/performance_schema=OFF/" \
           -e "s/^(\s*)performance_schema_.*=.*/\1#&/" \
-          /etc/mysql/my.cnf
+          /etc/mysql/my.cnf &> /dev/null
       else
         # Enable performance_schema for Percona 8.0
         sed -i -E \
           -e "s/^#?\s*performance_schema\s*=.*/performance_schema=ON/" \
           -e "s/^(\s*)#\s*(performance_schema_.*=.*)/\1\2/" \
-          /etc/mysql/my.cnf
+          /etc/mysql/my.cnf &> /dev/null
       fi
       _INNODB_LOG_FILE_SIZE=${_INNODB_LOG_FILE_SIZE//[^0-9]/}
       if [ ! -z "${_INNODB_LOG_FILE_SIZE}" ]; then
@@ -436,37 +436,37 @@ _sql_conf_update() {
         -e "s/.*slow_query_log/#slow_query_log/g" \
         -e "s/.*long_query_time/#long_query_time/g" \
         -e "s/.*slow_query_log_file/#slow_query_log_file/g" \
-        /etc/mysql/my.cnf
+        /etc/mysql/my.cnf &> /dev/null
       if [ ! -e "/etc/mysql/skip-name-resolve.txt" ]; then
-        sed -i "s/.*skip-name-resolve/#skip-name-resolve/g" /etc/mysql/my.cnf
+        sed -i "s/.*skip-name-resolve/#skip-name-resolve/g" /etc/mysql/my.cnf &> /dev/null
       fi
     fi
   fi
-  mv -f /etc/mysql/my.cnf-pre* ${_vBs}/dragon/t/
+  mv -f /etc/mysql/my.cnf-pre* ${_vBs}/dragon/t/ &> /dev/null
   sed -i \
     -e "s/.*default-table-type/#default-table-type/g" \
     -e "s/.*language/#language/g" \
     -e "s/.*innodb_lazy_drop_table.*//g" \
-    /etc/mysql/my.cnf
+    /etc/mysql/my.cnf &> /dev/null
   if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ]; then
     if [ "${_DB_BINARY_LOG}" = "NO" ]; then
       # Execute the purge_binlogs script quietly
-      bash /var/xdrago/purge_binlogs.sh
+      bash /var/xdrago/purge_binlogs.sh &> /dev/null
       # Remove lines containing 'purge_binlogs' and delete empty lines in cron
-      sed -i -e "/purge_binlogs/d" -e "/^$/d" /var/spool/cron/crontabs/root
+      sed -i -e "/purge_binlogs/d" -e "/^$/d" /var/spool/cron/crontabs/root &> /dev/null
       # Comment out binary log related settings in MySQL configuration
       sed -i -e "s/^log_bin/#log_bin/g" \
         -e "s/^expire_logs_days/#expire_logs_days/g" \
         -e "s/^max_binlog_size/#max_binlog_size/g" \
         -e "s/^binlog_row_image/#binlog_row_image/g" \
-        -e "s/^binlog_format/#binlog_format/g" /etc/mysql/my.cnf
+        -e "s/^binlog_format/#binlog_format/g" /etc/mysql/my.cnf &> /dev/null
     elif [ "${_DB_BINARY_LOG}" = "YES" ]; then
       # Uncomment binary log related settings in MySQL configuration
       sed -i -e "s/^#\s*\(log_bin\)/\1/g" \
         -e "s/^#\s*\(expire_logs_days\)/\1/g" \
         -e "s/^#\s*\(max_binlog_size\)/\1/g" \
         -e "s/^#\s*\(binlog_row_image\)/\1/g" \
-        -e "s/^#\s*\(binlog_format\)/\1/g" /etc/mysql/my.cnf
+        -e "s/^#\s*\(binlog_format\)/\1/g" /etc/mysql/my.cnf &> /dev/null
     fi
     if [ "${_DB_V}" = "5.7" ] || [ "${_DB_SERIES}" = "5.7" ]; then
       if [ -e "/root/.dev.server.cnf" ]; then
@@ -486,7 +486,7 @@ _sql_conf_update() {
               sed -i \
                 -e "s/.*innodb_redo_log_capacity.*/#innodb_redo_log_capacity    = ${_INNODB_REDO_LOG_CAPACITY_MB}/g" \
                 -e "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" \
-                /etc/mysql/my.cnf
+                /etc/mysql/my.cnf &> /dev/null
               echo "innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}" > /root/.my.innodb_log_file_size.txt
             else
               _innodb_log_file_size_update
@@ -513,7 +513,7 @@ _sql_conf_update() {
               sed -i \
                 -e "s/.*innodb_redo_log_capacity.*/innodb_redo_log_capacity    = ${_INNODB_REDO_LOG_CAPACITY_MB}/g" \
                 -e "s/.*innodb_log_file_size.*/#innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" \
-                /etc/mysql/my.cnf
+                /etc/mysql/my.cnf &> /dev/null
               echo "innodb_redo_log_capacity    = ${_INNODB_REDO_LOG_CAPACITY_MB}" > /root/.my.innodb_redo_log_capacity.txt
             else
               _innodb_log_file_size_update
@@ -532,7 +532,7 @@ _check_mysqld_running() {
     _msg "PROC: _check_mysqld_running"
   fi
   if [ -x "/usr/sbin/aa-teardown" ]; then
-    _mrun "aa-teardown"
+    _mrun "aa-teardown" 2> /dev/null
   fi
   while [ -z "${_IS_MYSQLD_RUNNING}" ] \
     || [ ! -e "/run/mysqld/mysqld.sock" ]; do
@@ -644,13 +644,13 @@ _tune_sql_memory_limits() {
         _USE_MYISAM_MEM="${_USE_SQL}"
       fi
       _USE_MYISAM_MEM="${_USE_MYISAM_MEM}M"
-      sed -i "s/^key_buffer_size.*/key_buffer_size         = ${_USE_MYISAM_MEM}/g"  /etc/mysql/my.cnf
+      sed -i "s/^key_buffer_size.*/key_buffer_size         = ${_USE_MYISAM_MEM}/g"  /etc/mysql/my.cnf &> /dev/null
     else
       _USE_MYISAM_MEM="${_USE_SQL}M"
       if [ "${_MYSQLTUNER_TEST_RESULT}" = "FAIL" ]; then
         _msg "NOTE: _USE_MYISAM_MEM is ${_USE_MYISAM_MEM} because _REC_MYISAM_MEM was empty!"
       fi
-      sed -i "s/^key_buffer_size.*/key_buffer_size         = ${_USE_MYISAM_MEM}/g"  /etc/mysql/my.cnf
+      sed -i "s/^key_buffer_size.*/key_buffer_size         = ${_USE_MYISAM_MEM}/g"  /etc/mysql/my.cnf &> /dev/null
     fi
     ###--------------------###
     if [ ! -z "${_REC_INNODB_MEM}" ] \
@@ -677,8 +677,8 @@ _tune_sql_memory_limits() {
         _INNODB_BPI="1"
       fi
       if [ -e "/etc/mysql/my.cnf" ]; then
-        sed -i "s/^innodb_buffer_pool_instances.*/innodb_buffer_pool_instances = ${_INNODB_BPI}/g" /etc/mysql/my.cnf
-        sed -i "s/^innodb_page_cleaners.*/innodb_page_cleaners = ${_INNODB_BPI}/g" /etc/mysql/my.cnf
+        sed -i "s/^innodb_buffer_pool_instances.*/innodb_buffer_pool_instances = ${_INNODB_BPI}/g" /etc/mysql/my.cnf &> /dev/null
+        sed -i "s/^innodb_page_cleaners.*/innodb_page_cleaners = ${_INNODB_BPI}/g" /etc/mysql/my.cnf &> /dev/null
       fi
       _INNODB_LOG_FILE_SIZE=$(echo "scale=0; ${_USE_INNODB_MEM}/4/40*40" | bc 2>&1)
       _DB_COUNT=$(ls /var/lib/mysql/ | wc -l 2>&1)
@@ -705,7 +705,7 @@ _tune_sql_memory_limits() {
       fi
       _USE_INNODB_MEM="${_USE_INNODB_MEM}M"
       if [ -e "/etc/mysql/my.cnf" ]; then
-        sed -i "s/^innodb_buffer_pool_size.*/innodb_buffer_pool_size = ${_USE_INNODB_MEM}/g"  /etc/mysql/my.cnf
+        sed -i "s/^innodb_buffer_pool_size.*/innodb_buffer_pool_size = ${_USE_INNODB_MEM}/g"  /etc/mysql/my.cnf &> /dev/null
       fi
     else
       _USE_INNODB_MEM="${_USE_SQL}M"
@@ -734,7 +734,7 @@ _tune_sql_memory_limits() {
       fi
       _msg "NOTE: _USE_INNODB_MEM is ${_USE_INNODB_MEM} because _REC_INNODB_MEM was empty!"
       if [ -e "/etc/mysql/my.cnf" ]; then
-        sed -i "s/^innodb_buffer_pool_size.*/innodb_buffer_pool_size = ${_USE_INNODB_MEM}/g"  /etc/mysql/my.cnf
+        sed -i "s/^innodb_buffer_pool_size.*/innodb_buffer_pool_size = ${_USE_INNODB_MEM}/g"  /etc/mysql/my.cnf &> /dev/null
       fi
     fi
   else
@@ -768,7 +768,7 @@ _tune_sql_memory_limits() {
       _INNODB_LOG_FILE_SIZE=64
     fi
     if [ -e "/etc/mysql/my.cnf" ]; then
-      sed -i "s/= 181/= ${_USE_SQL}/g"  /etc/mysql/my.cnf
+      sed -i "s/= 181/= ${_USE_SQL}/g"  /etc/mysql/my.cnf &> /dev/null
     fi
   fi
 }
@@ -778,7 +778,7 @@ _prep_for_install_db_sql() {
     _msg "PROC: _prep_for_install_db_sql"
   fi
   if [ -x "/usr/sbin/aa-teardown" ]; then
-    _mrun "aa-teardown"
+    _mrun "aa-teardown" 2> /dev/null
   fi
 
   # Create the mysql group if it doesn't exist
@@ -849,7 +849,7 @@ _prep_for_install_db_sql() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "INFO: Installing software-properties-common dirmngr..."
   fi
-  _st_runner "${_INSTAPP} software-properties-common dirmngr"
+  _st_runner "${_INSTAPP} software-properties-common dirmngr" 2> /dev/null
 
   _msg "INFO: Installing ${_DB_SERVER} ${_DBS_VRN} in ${_OS_DIST}/${_OS_CODE}"
 
@@ -860,7 +860,7 @@ _prep_for_install_db_sql() {
   _sql_strict_upgrade_path
 
   if [ -e "/usr/bin/mytop" ]; then
-    _mrun "apt-get remove mytop -y --purge --auto-remove -qq"
+    _mrun "apt-get remove mytop -y --purge --auto-remove -qq" 2> /dev/null
     rm -f /usr/bin/mytop
   fi
 
@@ -869,7 +869,7 @@ _prep_for_install_db_sql() {
   if [ "${_DB_SERIES}" = "${_DB_V}" ]; then
     if [ "${_SQL_FORCE_REINSTALL}" = "YES" ] \
       || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
-      sed -i "s/.*innodb_force_recovery.*/innodb_force_recovery = 3/g" /etc/mysql/my.cnf
+      sed -i "s/.*innodb_force_recovery.*/innodb_force_recovery = 3/g" /etc/mysql/my.cnf &> /dev/null
     fi
   fi
 
@@ -878,12 +878,12 @@ _prep_for_install_db_sql() {
       || [ "${_ALL_FORCE_REINSTALL}" = "YES" ]; then
       mkdir -p ${_vBs}/old-sql-ib-log-${_NOW}
       _mrun "sleep 1"
-      mv -f /var/lib/mysql/ib_logfile0 ${_vBs}/old-sql-ib-log-${_NOW}/
-      mv -f /var/lib/mysql/ib_logfile1 ${_vBs}/old-sql-ib-log-${_NOW}/
-      mv -f /var/lib/mysql/aria_log.00000001 ${_vBs}/old-sql-ib-log-${_NOW}/
-      mv -f /var/lib/mysql/aria_log_control ${_vBs}/old-sql-ib-log-${_NOW}/
-      sed -i "s/.*innodb-defragment.*/innodb_force_recovery = 3/g" /etc/mysql/my.cnf
-      sed -i "s/^thread_concurrency.*//g" /etc/mysql/my.cnf
+      mv -f /var/lib/mysql/ib_logfile0 ${_vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
+      mv -f /var/lib/mysql/ib_logfile1 ${_vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
+      mv -f /var/lib/mysql/aria_log.00000001 ${_vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
+      mv -f /var/lib/mysql/aria_log_control ${_vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
+      sed -i "s/.*innodb-defragment.*/innodb_force_recovery = 3/g" /etc/mysql/my.cnf &> /dev/null
+      sed -i "s/^thread_concurrency.*//g" /etc/mysql/my.cnf &> /dev/null
     fi
   fi
 
@@ -912,19 +912,19 @@ _install_with_aptitude_sql() {
   fi
   _prep_for_install_db_sql
   if [ "${_SQL_SCR}" = "APT" ]; then
-    _st_runner "${_INSTAPP} ${_SQLDEB}"
-    _st_runner "${_INSTAPP} ${_SQLADD}"
-    _st_runner "${_INSTAPP} ${_SQLXTR}"
-    _st_runner "${_INSTAPP} ${_SQLDEB}"
+    _st_runner "${_INSTAPP} ${_SQLDEB}" 2> /dev/null
+    _st_runner "${_INSTAPP} ${_SQLADD}" 2> /dev/null
+    _st_runner "${_INSTAPP} ${_SQLXTR}" 2> /dev/null
+    _st_runner "${_INSTAPP} ${_SQLDEB}" 2> /dev/null
   elif [ "${_SQL_SCR}" = "GIT" ]; then
     ### TBD -- only for testing
-    _st_runner "${_INSTAPP} ${_SQLXTR}"
+    _st_runner "${_INSTAPP} ${_SQLXTR}" 2> /dev/null
   fi
   if [ -x "/usr/sbin/aa-teardown" ]; then
-    _mrun "aa-teardown"
+    _mrun "aa-teardown" 2> /dev/null
   fi
   if [ -e "/usr/bin/mytop" ]; then
-    _mrun "apt-get remove mytop -y -qq"
+    _mrun "apt-get remove mytop -y -qq" 2> /dev/null
     rm -f /usr/bin/mytop
   fi
   _MYTOP_REINSTALL=NO
@@ -939,24 +939,24 @@ _install_with_aptitude_sql() {
       _msg "INFO: Building MyTop from sources..."
       _check_mysql_version
       _apt_clean_update
-      _mrun "${_INSTAPP} libperl-dev"
-      _mrun "${_INSTAPP} cpanminus"
+      _mrun "${_INSTAPP} libperl-dev" 2> /dev/null
+      _mrun "${_INSTAPP} cpanminus" 2> /dev/null
       if [ "${_DB_V}" != "5.7" ] || [ "${_SQL_UPGRADE}" = "YES" ]; then
-        _mrun "cpanm DBD::mysql"
-        _mrun "cpanm DBI"
-        _mrun "cpanm Term::ReadKey"
+        _mrun "cpanm DBD::mysql" 2> /dev/null
+        _mrun "cpanm DBI" 2> /dev/null
+        _mrun "cpanm Term::ReadKey" 2> /dev/null
       else
-        _mrun "cpanm DBD::mysql@4.050"
-        _mrun "cpanm Term::ReadKey"
+        _mrun "cpanm DBD::mysql@4.050" 2> /dev/null
+        _mrun "cpanm Term::ReadKey" 2> /dev/null
       fi
       cd /var/opt
       rm -rf git*
       _get_dev_src "mytop-1.6.tar.gz"
       cd /var/opt/mytop-1.6
-      _mrun "perl Makefile.PL"
-      _mrun "make -j $(nproc) --quiet"
-      _mrun "make --quiet install"
-      ldconfig
+      _mrun "perl Makefile.PL" 2> /dev/null
+      _mrun "make -j $(nproc) --quiet" 2> /dev/null
+      _mrun "make --quiet install" 2> /dev/null
+      ldconfig 2> /dev/null
     fi
   fi
   if [ "${_DB_SERVER}" = "Percona" ] \
@@ -964,17 +964,17 @@ _install_with_aptitude_sql() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: Running ${_DB_SERVER} tables fix, check and upgrade..."
     fi
-    rm -f /var/lib/mysql/mysql_upgrade_info
+    rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
     _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
     _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
-    _mrun "mysqlcheck -u root -A --auto-repair --silent"
+    _mrun "mysqlcheck -u root -A --auto-repair --silent" &> /dev/null
     _check_mysql_version
     if [ "${_DB_V}" = "5.7" ]; then
-      _mrun "mysql_upgrade -u root --force"
-      mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN default_role;"
-      mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN is_role;"
-      mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN max_statement_time;"
-      _mrun "mysql_upgrade -u root --force"
+      _mrun "mysql_upgrade -u root --force" &> /dev/null
+      mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN default_role;" &> /dev/null
+      mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN is_role;" &> /dev/null
+      mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN max_statement_time;" &> /dev/null
+      _mrun "mysql_upgrade -u root --force" &> /dev/null
     fi
   fi
   usermod -aG users mysql
@@ -988,10 +988,10 @@ _forced_mysql_root_password_update() {
   fi
   _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
   _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
-  mv -f /root/.my.cnf-pre-* ${_vBs}/
-  mv -f /root/.my.pass.txt-pre-* ${_vBs}/
+  mv -f /root/.my.cnf-pre-* ${_vBs}/ &> /dev/null
+  mv -f /root/.my.pass.txt-pre-* ${_vBs}/ &> /dev/null
   touch /root/.my.pass.txt
-  chmod 0600 /root/.my.pass.txt
+  chmod 0600 /root/.my.pass.txt &> /dev/null
   _ESC_PASS=""
   _LEN_PASS=0
   _ESC="*.*"
@@ -1142,8 +1142,8 @@ _forced_mysql_root_password_update() {
       mysql -u root -e "ALTER USER 'root'@'::1' IDENTIFIED WITH caching_sha2_password BY '${_ESC_PASS}';"
       mysql -u root -e "ALTER USER 'root'@'${_MY_OWNIP}' IDENTIFIED WITH caching_sha2_password BY '${_ESC_PASS}';"
     fi
-    mysqladmin -u root flush-privileges
-    mysqladmin -u root flush-hosts
+    mysqladmin -u root flush-privileges &> /dev/null
+    mysqladmin -u root flush-hosts &> /dev/null
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "DAFT: ${_DB_SERVER} _ESC_PASS ${_ESC_PASS}"
       mysql -u root -e "SHOW GRANTS FOR 'root'@'localhost';"
@@ -1224,7 +1224,7 @@ _db_server_install() {
         chmod +x /bin/systemctl
         [ -e "${_locCnf}/var/mysql" ] && cp -af ${_locCnf}/var/mysql /etc/init.d/mysql
         chmod 755 /etc/init.d/mysql
-        _mrun "update-rc.d mysql defaults"
+        _mrun "update-rc.d mysql defaults" 2> /dev/null
       fi
       _sql_conf_update
       if [ ! -e "/root/.proxy.cnf" ]; then
@@ -1233,31 +1233,31 @@ _db_server_install() {
           if [ "${_DEBUG_MODE}" = "YES" ]; then
             _msg "INFO: Running ${_DB_SERVER} system tables check..."
           fi
-          rm -f /var/lib/mysql/mysql_upgrade_info
+          rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
           if [ -x "/usr/bin/mysql_upgrade" ]; then
             _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
             _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
-            _mrun "mysql_upgrade -u root --force"
+            _mrun "mysql_upgrade -u root --force" &> /dev/null
           fi
         fi
       fi
-      _st_runner "apt-get autoclean -y"
+      _st_runner "apt-get autoclean -y" &> /dev/null
       _apt_clean_update
       if [ -e "/etc/mysql/my.cnf" ]; then
-        sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf
-        sed -i "s/.*language/#language/g" /etc/mysql/my.cnf
+        sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf &> /dev/null
+        sed -i "s/.*language/#language/g" /etc/mysql/my.cnf &> /dev/null
       fi
-      rm -f /var/lib/mysql/debian-*.flag
-      rm -f /var/lib/mysql/mysql_upgrade_info
+      rm -f /var/lib/mysql/debian-*.flag &> /dev/null
+      rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
       _db_server_apt_cleanup
       _install_with_aptitude_sql
       _db_server_apt_cleanup
       if [ -e "/etc/mysql/my.cnf" ]; then
-        sed -i "s/.*innodb_lazy_drop_table.*//g" /etc/mysql/my.cnf
+        sed -i "s/.*innodb_lazy_drop_table.*//g" /etc/mysql/my.cnf &> /dev/null
       fi
       if [ -e "/etc/mysql/my.cnf" ]; then
-        sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf
-        sed -i "s/.*language/#language/g" /etc/mysql/my.cnf
+        sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf &> /dev/null
+        sed -i "s/.*language/#language/g" /etc/mysql/my.cnf &> /dev/null
       fi
       _CUSTOM_CONFIG_SQL=NO
       _mrun "sleep 8"
@@ -1268,12 +1268,12 @@ _db_server_install() {
           if [ "${_DEBUG_MODE}" = "YES" ]; then
             _msg "INFO: Running ${_DB_SERVER} system tables (1) upgrade..."
           fi
-          rm -f /var/lib/mysql/mysql_upgrade_info
+          rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
           if [ -x "/usr/bin/mysql_upgrade" ]; then
             _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
             _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
-            _mrun "mysql_upgrade -u root --force"
-            _mrun "mysql_upgrade -u root --force"
+            _mrun "mysql_upgrade -u root --force" &> /dev/null
+            _mrun "mysql_upgrade -u root --force" &> /dev/null
           fi
         fi
       fi
@@ -1326,8 +1326,8 @@ _db_server_install() {
           if [ "${_DEBUG_MODE}" = "YES" ]; then
             _msg "INFO: Restarting ${_DB_SERVER} server..."
           fi
-          mysql -u root -e "INSTALL SONAME 'ha_archive';"
-          _mrun "bash /var/xdrago/move_sql.sh"
+          mysql -u root -e "INSTALL SONAME 'ha_archive';" &> /dev/null
+          _mrun "bash /var/xdrago/move_sql.sh" &> /dev/null
           wait
           _msg "INFO: ${_DB_SERVER} server restart completed"
           _myRstrd=YES
@@ -1354,17 +1354,17 @@ _db_server_install() {
               echo _CHECK_REPAIR 2 ${_CHECK_REPAIR}
             fi
           fi
-          mysql -u root -e "SET GLOBAL innodb_flush_log_at_trx_commit=2;"
-          mysql -u root -e "SET GLOBAL innodb_flush_log_at_timeout=5;"
-          mysql -u root -e "SET GLOBAL innodb_stats_on_metadata=0;"
+          mysql -u root -e "SET GLOBAL innodb_flush_log_at_trx_commit=2;" &> /dev/null
+          mysql -u root -e "SET GLOBAL innodb_flush_log_at_timeout=5;" &> /dev/null
+          mysql -u root -e "SET GLOBAL innodb_stats_on_metadata=0;" &> /dev/null
           rm -f /etc/mysql/conf.d/mysqldump.cnf
         fi
       fi
       [ -e "/bin/systemctl" ] && rm /bin/systemctl
       if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
-        _mrun "csf -e"
+        _mrun "csf -e" &> /dev/null
         wait
-        _mrun "service lfd start"
+        _mrun "service lfd start" 2> /dev/null
         wait
         ### Linux kernel TCP SACK CVEs mitigation
         ### CVE-2019-11477 SACK Panic
@@ -1373,9 +1373,9 @@ _db_server_install() {
         if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
           _SACK_TEST=$(ip6tables --list | grep tcpmss 2>&1)
           if [[ ! "${_SACK_TEST}" =~ "tcpmss" ]]; then
-            sysctl net.ipv4.tcp_mtu_probing=0
-            iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP
-            ip6tables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP
+            sysctl net.ipv4.tcp_mtu_probing=0 &> /dev/null
+            iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
+            ip6tables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
           fi
         fi
       fi
@@ -1401,7 +1401,7 @@ _init_sql_root_credentials() {
       fi
     fi
     touch /root/.my.pass.txt
-    chmod 0600 /root/.my.pass.txt
+    chmod 0600 /root/.my.pass.txt &> /dev/null
     if [ "${_THIS_DB_HOST}" = "localhost" ] \
       || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
       || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
@@ -1608,16 +1608,16 @@ _sql_root_credentials_update() {
           || [ "${_THIS_DB_HOST}" = "PROXYSQL" ]; then
           echo "skip-name-resolve" > /etc/mysql/skip-name-resolve.txt
         else
-          sed -i "s/.*skip-name-resolve/#skip-name-resolve/g" /etc/mysql/my.cnf
+          sed -i "s/.*skip-name-resolve/#skip-name-resolve/g" /etc/mysql/my.cnf &> /dev/null
         fi
         mysqladmin -u root flush-privileges
         mysqladmin -u root flush-hosts
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "INFO: Restarting ${_DB_SERVER} server..."
         fi
-        _mrun "bash /var/xdrago/move_sql.sh"
+        _mrun "bash /var/xdrago/move_sql.sh" &> /dev/null
         wait
-        mysql -u root -e "INSTALL SONAME 'ha_archive';"
+        mysql -u root -e "INSTALL SONAME 'ha_archive';" &> /dev/null
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "INFO: ${_DB_SERVER} setup completed"
           _msg "INFO: You can now log in as root by typing just 'mysql'"

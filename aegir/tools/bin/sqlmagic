@@ -66,13 +66,13 @@ _sqlmagic_convert() {
         | xargs -I '{}' echo "ALTER TABLE {} ENGINE=MYISAM;" > \
         ${HOME}/static/to_myisam_alter_table.sql
       sed -i "s/.*TABLE_NAME.*//g; s/ *$//g; /^$/d" \
-        ${HOME}/static/to_myisam_alter_table.sql
+        ${HOME}/static/to_myisam_alter_table.sql &> /dev/null
       wait
       perl -p -i -e \
         's/(ALTER TABLE \
         (cache_[a-z_]+|cache|sessions|users|watchdog|accesslog) \
         ENGINE=)MYISAM/\1INNODB/g' \
-        ${HOME}/static/to_myisam_alter_table.sql
+        ${HOME}/static/to_myisam_alter_table.sql &> /dev/null
       wait
       if [ -s "${HOME}/static/to_myisam_alter_table.sql" ]; then
         drush ${_aliAs} sqlc < ${HOME}/static/to_myisam_alter_table.sql
@@ -102,7 +102,7 @@ _sqlmagic_convert() {
         | xargs -I '{}' echo "ALTER TABLE {} ENGINE=INNODB;" > \
         ${HOME}/static/to_innodb_alter_table.sql
       sed -i "s/.*TABLE_NAME.*//g; s/ *$//g; /^$/d" \
-        ${HOME}/static/to_innodb_alter_table.sql
+        ${HOME}/static/to_innodb_alter_table.sql &> /dev/null
       wait
       if [ -s "${HOME}/static/to_innodb_alter_table.sql" ]; then
         drush ${_aliAs} sqlc < ${HOME}/static/to_innodb_alter_table.sql

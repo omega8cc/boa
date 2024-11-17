@@ -51,7 +51,7 @@ _clean_pid_exit() {
   [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
   [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
   [ -e "/tmp/aegir_backup_mode.txt" ] && rm -f /tmp/aegir_backup_mode.txt
-  service cron start
+  service cron start &> /dev/null
   exit 1
 }
 
@@ -67,9 +67,9 @@ _os_detection_minimal() {
 }
 
 _apt_clean_update() {
-  #apt-get clean -qq
-  #rm -rf /var/lib/apt/lists/*
-  ${_APT_UPDATE} -qq
+  #apt-get clean -qq 2> /dev/null
+  #rm -rf /var/lib/apt/lists/* &> /dev/null
+  ${_APT_UPDATE} -qq 2> /dev/null
 }
 
 _if_hosted_sys() {
@@ -161,7 +161,7 @@ _fix_dns_settings() {
       cp -a ${_vBs}/resolv.conf.tmp ${_vBs}/resolv.conf.vanilla
     fi
   fi
-  sed -i "/^$/d" ${_vBs}/resolv.conf.vanilla
+  sed -i "/^$/d" ${_vBs}/resolv.conf.vanilla &> /dev/null
   if [ -e "${_vBs}/resolv.conf.vanilla" ]; then
     if [ "${_USE_DEFAULT_DNS}" != "YES" ]; then
       rm -f /etc/resolv.conf
@@ -194,7 +194,7 @@ _check_dns_settings() {
       || [ ! -e "${_vBs}/resolv.conf.vanilla" ]; then
       _fix_dns_settings
       if [ -e "/etc/init.d/postfix" ]; then
-        service postfix restart
+        service postfix restart &> /dev/null
       fi
     fi
   fi
@@ -268,18 +268,18 @@ _php_cli_local_ini_update() {
   _U_HD="${_usEr}/.drush"
   _U_TP="${_usEr}/.tmp"
   _U_II="${_U_HD}/php.ini"
-  chattr -i -R ${_U_HD}/
+  chattr -i -R ${_U_HD}/ &> /dev/null
   if [ ! -e "${_U_II}" ] \
     || [ ! -d "${_U_TP}" ]; then
     mkdir -p ${_U_TP}
     touch ${_U_TP}
-    find ${_U_TP}/ -mtime +0 -exec rm -rf {} \;
+    find ${_U_TP}/ -mtime +0 -exec rm -rf {} \; &> /dev/null
     mkdir -p ${_U_HD}
     chown ${_USER}:${_usrGroup} ${_U_TP}
     chown ${_USER}:${_usrGroup} ${_U_HD}
     chmod 755 ${_U_TP}
     chmod 755 ${_U_HD}
-    chattr -i ${_U_II}
+    chattr -i ${_U_II} &> /dev/null
     rm -f ${_U_HD}/.ctrl.php*
     rm -f ${_U_II}
     cp -af /opt/php74/lib/php.ini ${_U_II}
@@ -318,7 +318,7 @@ _php_cli_drush_update() {
   _usrGroup=users
   _DRUSH_FILE="${_usEr}/tools/drush/drush.php"
   if [ -x "/opt/php74/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php74\/bin\/php/g" ${_DRUSH_FILE}
+    sed -i "s/^#\!\/.*/#\!\/opt\/php74\/bin\/php/g" ${_DRUSH_FILE} &> /dev/null
     _T_CLI=/opt/php74/bin
   fi
   if [ -x "${_T_CLI}/php" ]; then
@@ -333,8 +333,8 @@ _php_cli_drush_update() {
        \n${_DRUSH_HOSTING_DISPATCH_CMD} \
        \ntouch ${_usEr}/${_USER}-task.done" \
       | fmt -su -w 2500 | tee -a ${_usEr}/aegir.sh >/dev/null 2>&1
-    chown ${_USER}:${_usrGroup} ${_usEr}/aegir.sh
-    chmod 0700 ${_usEr}/aegir.sh
+    chown ${_USER}:${_usrGroup} ${_usEr}/aegir.sh &> /dev/null
+    chmod 0700 ${_usEr}/aegir.sh &> /dev/null
   fi
 }
 
@@ -412,7 +412,7 @@ _satellite_check_strict_php_cli() {
         echo ${_useCli} > ${_usEr}/static/control/cli.info
         chown -R ${_octUsr}.ftp:users ${_usEr}/static/control
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${_useCli}/g" \
-          /root/.${_octUsr}.octopus.cnf
+          /root/.${_octUsr}.octopus.cnf &> /dev/null
         echo "INFO: Your PHP-CLI has been switched to ${_useCli}"
         echo
       fi
@@ -605,7 +605,7 @@ _up_one() {
           rm -rf ${_usEr}/.drush/{provision,drush_make}
           mkdir -p ${_usEr}/.drush/{sys,xts,usr}
           ${_gCb} ${_bRnh} ${_gitHub}/provision.git \
-            ${_usEr}/.drush/sys/provision
+            ${_usEr}/.drush/sys/provision &> /dev/null
           chown -R ${_octUsr}:users ${_usEr}/.drush/sys
           _up_mode
         fi
@@ -869,8 +869,8 @@ _find_fast_mirror_early() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     _apt_clean_update
-    apt-get install netcat ${_aptYesUnth}
-    apt-get install netcat-traditional ${_aptYesUnth}
+    apt-get install netcat ${_aptYesUnth} 2> /dev/null
+    apt-get install netcat-traditional ${_aptYesUnth} 2> /dev/null
     wait
   fi
   _ffMirr=$(which ffmirror 2>&1)
@@ -903,9 +903,9 @@ _find_fast_mirror_early() {
 
 _if_reinstall_curl() {
   _CURL_VRN=8.10.1
-  if ! command -v lsb_release; then
-    apt-get update -qq
-    apt-get install lsb-release ${_aptYesUnth} -qq
+  if ! command -v lsb_release &> /dev/null; then
+    apt-get update -qq &> /dev/null
+    apt-get install lsb-release ${_aptYesUnth} -qq &> /dev/null
   fi
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   [ "${_OS_CODE}" = "jessie" ] && _CURL_VRN=7.71.1
@@ -917,23 +917,23 @@ _if_reinstall_curl() {
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
-    echo "curl install" | dpkg --set-selections
+    echo "curl install" | dpkg --set-selections 2> /dev/null
     _apt_clean_update
-    apt-get remove libssl1.0-dev -y --purge --auto-remove -qq
-    apt-get autoremove -y
-    apt-get install libssl-dev ${_aptYesUnth} -qq
-    apt-get install libc-client2007e libc-client2007e-dev ${_aptYesUnth}-qq
-    apt-get build-dep curl ${_aptYesUnth}
+    apt-get remove libssl1.0-dev -y --purge --auto-remove -qq 2> /dev/null
+    apt-get autoremove -y 2> /dev/null
+    apt-get install libssl-dev ${_aptYesUnth} -qq 2> /dev/null
+    apt-get install libc-client2007e libc-client2007e-dev ${_aptYesUnth}-qq 2> /dev/null
+    apt-get build-dep curl ${_aptYesUnth} 2> /dev/null
     if [ ! -e "/var/aegir/drush" ]; then
-      apt-get install curl --reinstall ${_aptYesUnth} -qq
+      apt-get install curl --reinstall ${_aptYesUnth} -qq 2> /dev/null
     fi
     if [ -e "/var/aegir/drush" ]; then
       echo "INFO: Installing curl from sources..."
       mkdir -p /var/opt
       rm -rf /var/opt/curl*
       cd /var/opt
-      wget ${_wgetGet} http://files.aegir.cc/dev/src/curl-${_CURL_VRN}.tar.gz
-      tar -xzf curl-${_CURL_VRN}.tar.gz
+      wget ${_wgetGet} http://files.aegir.cc/dev/src/curl-${_CURL_VRN}.tar.gz &> /dev/null
+      tar -xzf curl-${_CURL_VRN}.tar.gz &> /dev/null
       if [ -e "/root/.install.modern.openssl.cnf" ] \
         && [ -x "/usr/local/ssl3/bin/openssl" ]; then
         _SSL_BINARY=/usr/local/ssl3/bin/openssl
@@ -955,10 +955,10 @@ _if_reinstall_curl() {
         LIBS="-ldl -lpthread" PKG_CONFIG_PATH="${_PKG_CONFIG_PATH}" ./configure \
           --with-openssl \
           --with-zlib=/usr \
-          --prefix=/usr/local
-        make -j $(nproc) --quiet
-        make --quiet install
-        ldconfig
+          --prefix=/usr/local &> /dev/null
+        make -j $(nproc) --quiet &> /dev/null
+        make --quiet install &> /dev/null
+        ldconfig 2> /dev/null
       fi
     fi
     if [ -f "/usr/local/bin/curl" ]; then
@@ -990,7 +990,7 @@ _check_dns_curl() {
   fi
   if [ -x "/usr/sbin/unbound-control" ] \
     && [ -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
-    unbound-control reload
+    unbound-control reload &> /dev/null
   fi
   _find_fast_mirror_early
   _if_reinstall_curl
@@ -998,7 +998,7 @@ _check_dns_curl() {
     --max-redirs 10 \
     --retry 3 \
     --retry-delay 10 \
-    -I "http://${_USE_MIR}")
+    -I "http://${_USE_MIR}" 2> /dev/null)
   if [[ ! "${_CURL_TEST}" =~ "200 OK" ]]; then
     if [[ "${_CURL_TEST}" =~ "unknown option was passed in to libcurl" ]]; then
       echo "ERROR: cURL libs are out of sync! Re-installing again.."
@@ -1111,7 +1111,7 @@ _check_root() {
       _B_NICE=19
     fi
 
-    renice ${_B_NICE} -p $$
+    renice ${_B_NICE} -p $$ &> /dev/null
     ionice -c2 -n7 -p $$
   else
     echo "ERROR: This script should be run as a root user"
@@ -1120,7 +1120,7 @@ _check_root() {
   _DF_TEST=$(df -kTh / -l \
     | grep '/' \
     | sed 's/\%//g' \
-    | awk '{print $6}')
+    | awk '{print $6}' 2> /dev/null)
   _DF_TEST=${_DF_TEST//[^0-9]/}
   if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt "90" ]; then
     echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"

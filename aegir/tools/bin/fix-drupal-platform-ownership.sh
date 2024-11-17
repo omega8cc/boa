@@ -55,7 +55,7 @@ if [ -z "${drupal_root}" ] \
 fi
 
 if [ -z "${script_user}" ] \
-  || [[ $(id -un "${script_user}") != "${script_user}" ]]; then
+  || [[ $(id -un "${script_user}" 2> /dev/null) != "${script_user}" ]]; then
     printf "Error: Please provide a valid user.\n"
     exit 1
 fi
@@ -111,6 +111,6 @@ chown ${script_user}:users \
 
 ### known exceptions
 chown -R ${script_user}:www-data \
-  ${drupal_root}/sites/all/libraries/tcpdf/cache
+  ${drupal_root}/sites/all/libraries/tcpdf/cache &> /dev/null
 
 echo "Done setting proper ownership of platform files and directories."

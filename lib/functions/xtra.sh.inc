@@ -42,8 +42,8 @@ _if_install_bzr() {
         _usePyth=python2
       fi
       _mrun "${_usePyth} setup.py --quiet install build_ext -\
-        -allow-python-fallback"
-      _mrun "make -j $(nproc) --quiet"
+        -allow-python-fallback" 2> /dev/null
+      _mrun "make -j $(nproc) --quiet" 2> /dev/null
       touch ${_pthLog}/bzr-${_BZR_VRN}.log
       mkdir -p /root/.bazaar
       echo ignore_missing_extensions=True > /root/.bazaar/bazaar.conf
@@ -67,12 +67,12 @@ _if_install_adminer() {
         true
         _msg "INFO: Installing Adminer Manager..."
         cd /var/www
-        rm -rf /var/www/adminer
+        rm -rf /var/www/adminer &> /dev/null
         _get_dev_ext "adminer-${_ADMINER_VRN}.tar.gz"
         cd /var/www/adminer
         mv -f adminer-${_ADMINER_VRN}-mysql.php index.php
-        _validate_public_ip
-        _validate_xtras_ip
+        _validate_public_ip &> /dev/null
+        _validate_xtras_ip &> /dev/null
         cp -af ${_locCnf}/nginx/nginx_sql_adminer.conf ${_ADMINER_VHOST}
         sed -i "s/127.0.0.1:80/${_XTRAS_THISHTIP}:80/g"               ${_ADMINER_VHOST}
         wait
@@ -97,8 +97,8 @@ _if_install_adminer() {
       _msg "NOTE: _PHP_CN not set for Adminer Manager"
       chown -R www-data:www-data /var/www/adminer
     fi
-    find /var/www/adminer -type d -exec chmod 0755 {} \;
-    find /var/www/adminer -type f -exec chmod 0644 {} \;
+    find /var/www/adminer -type d -exec chmod 0755 {} \; &> /dev/null
+    find /var/www/adminer -type f -exec chmod 0644 {} \; &> /dev/null
     chmod 0440 /var/www/adminer/index.php
   fi
 }
@@ -117,10 +117,10 @@ _if_install_chive() {
         true
         _msg "INFO: Installing Chive Manager..."
         cd /var/www
-        rm -rf /var/www/chive
+        rm -rf /var/www/chive &> /dev/null
         _get_dev_arch "chive_${_CHIVE_VRN}.tar.gz"
-        _validate_public_ip
-        _validate_xtras_ip
+        _validate_public_ip &> /dev/null
+        _validate_xtras_ip &> /dev/null
         cp -af ${_locCnf}/nginx/nginx_sql_chive.conf ${_CHIVE_VHOST}
         sed -i "s/127.0.0.1:80/${_XTRAS_THISHTIP}:80/g"    ${_CHIVE_VHOST}
         wait
@@ -145,8 +145,8 @@ _if_install_chive() {
       _msg "NOTE: _PHP_CN not set for Chive Manager"
       chown -R www-data:www-data /var/www/chive
     fi
-    find /var/www/chive -type d -exec chmod 0775 {} \;
-    find /var/www/chive -type f -exec chmod 0664 {} \;
+    find /var/www/chive -type d -exec chmod 0775 {} \; &> /dev/null
+    find /var/www/chive -type f -exec chmod 0664 {} \; &> /dev/null
   fi
 }
 
@@ -166,8 +166,8 @@ _if_install_sqlbuddy() {
         rm -rf /var/www/sqlbuddy
         cd /var/www
         _get_dev_arch "sqlbuddy_1_3_3.tar.gz"
-        _validate_public_ip
-        _validate_xtras_ip
+        _validate_public_ip &> /dev/null
+        _validate_xtras_ip &> /dev/null
         cp -af ${_locCnf}/nginx/nginx_sql_buddy.conf ${_SQLBUDDY_VHOST}
         sed -i "s/127.0.0.1:80/${_XTRAS_THISHTIP}:80/g"   ${_SQLBUDDY_VHOST}
         wait
@@ -192,8 +192,8 @@ _if_install_sqlbuddy() {
       _msg "NOTE: _PHP_CN not set for SQL Buddy Manager"
       chown -R www-data:www-data /var/www/sqlbuddy
     fi
-    find /var/www/sqlbuddy -type d -exec chmod 0775 {} \;
-    find /var/www/sqlbuddy -type f -exec chmod 0664 {} \;
+    find /var/www/sqlbuddy -type d -exec chmod 0775 {} \; &> /dev/null
+    find /var/www/sqlbuddy -type f -exec chmod 0664 {} \; &> /dev/null
   fi
 }
 
@@ -211,7 +211,7 @@ _fix_collectd_rrd_syslog_flood() {
       echo "        FSType \"rootfs\""   >> ${_COLLECTD_CNF}
       echo "        IgnoreSelected true" >> ${_COLLECTD_CNF}
       echo "</Plugin>"                   >> ${_COLLECTD_CNF}
-      _mrun "service collectd restart"
+      _mrun "service collectd restart" 2> /dev/null
     fi
   fi
 }
@@ -234,7 +234,7 @@ _fix_collectd_nginx() {
       echo "</Plugin>"                                     >> ${_COLLECTD_CNF}
       sed -i "s/^#LoadPlugin nginx/LoadPlugin nginx/g"        ${_COLLECTD_CNF}
       wait
-      _mrun "service collectd restart"
+      _mrun "service collectd restart" 2> /dev/null
     fi
   fi
 }
@@ -253,19 +253,19 @@ _if_install_collectd() {
         if _prompt_yes_no "Do you want to install Collectd Graph Panel?" ; then
           true
           _msg "INFO: Installing Collectd Graph Panel..."
-          _st_runner "${_INSTAPP} collectd"
+          _st_runner "${_INSTAPP} collectd" 2> /dev/null
           rm -rf /var/www/cgp
           cd /var/www
           _get_dev_arch "cgp-${_CGP_VRN}.tar.gz"
           if [ -e "/var/www/cgp-${_CGP_VRN}" ]; then
-            mv -f cgp-${_CGP_VRN} cgp
+            mv -f cgp-${_CGP_VRN} cgp &> /dev/null
           fi
           sed -i "s/>uncategorized</>Barracuda Server</g" /var/www/cgp/index.php
           wait
           sed -i "s/'uncategorized'/'Barracuda Server'/g" /var/www/cgp/index.php
           wait
-          _validate_public_ip
-          _validate_xtras_ip
+          _validate_public_ip &> /dev/null
+          _validate_xtras_ip &> /dev/null
           cp -af ${_locCnf}/nginx/nginx_sql_cgp.conf ${_CGP_VHOST}
           sed -i "s/127.0.0.1:80/${_XTRAS_THISHTIP}:80/g"    ${_CGP_VHOST}
           wait
@@ -273,7 +273,7 @@ _if_install_collectd() {
           wait
           sed -i "s/cgp_name/cgp.${_THIS_FRONT}/g"           ${_CGP_VHOST}
           wait
-          _mrun "update-rc.d collectd defaults"
+          _mrun "update-rc.d collectd defaults" 2> /dev/null
           touch ${_pthLog}/cgp-${_CGP_VRN}.sync-new-ip-access.log
           _msg "INFO: Collectd Graph Panel installed"
         else
@@ -287,7 +287,7 @@ _if_install_collectd() {
     && [ ! -e "/boot/grub/grub.cfg" ] \
     && [ ! -e "/boot/grub/menu.lst" ]; then
     rm -f ${_mtrNgx}/vhost.d/cgp*
-    _mrun "apt-get remove collectd -y --purge --auto-remove -qq"
+    _mrun "apt-get remove collectd -y --purge --auto-remove -qq" 2> /dev/null
     rm -rf /var/www/cgp
   fi
   if [ -d "/var/www/cgp" ]; then
@@ -300,8 +300,8 @@ _if_install_collectd() {
       _msg "NOTE: _PHP_CN not set for Collectd Graph Panel"
       chown -R www-data:www-data /var/www/cgp
     fi
-    find /var/www/cgp -type d -exec chmod 0775 {} \;
-    find /var/www/cgp -type f -exec chmod 0664 {} \;
+    find /var/www/cgp -type d -exec chmod 0775 {} \; &> /dev/null
+    find /var/www/cgp -type f -exec chmod 0664 {} \; &> /dev/null
     _fix_collectd_rrd_syslog_flood
     _fix_collectd_nginx
   fi
@@ -347,9 +347,9 @@ _if_install_hhvm() {
             _KEYS_SERVER_TEST=$(grep GnuPG /var/opt/hhvm.gpg.key 2>&1)
             sleep 2
           done
-          cat /var/opt/hhvm.gpg.key | ${_GPG} --import
+          cat /var/opt/hhvm.gpg.key | ${_GPG} --import &> /dev/null
           _apt_clean_update
-          _st_runner "apt-get install hhvm ${_aptYesUnth}"
+          _st_runner "apt-get install hhvm ${_aptYesUnth}" 2> /dev/null
           _msg "INFO: HHVM Engine installed"
         else
           _msg "INFO: HHVM Engine installation skipped"
@@ -387,14 +387,14 @@ _if_install_webmin() {
           _KEYS_SERVER_TEST=$(grep GnuPG jcameron-key.gpg 2>&1)
           sleep 2
         done
-        cat jcameron-key.gpg | ${_GPG} --import
+        cat jcameron-key.gpg | ${_GPG} --import &> /dev/null
         rm -f jcameron-key.gpg*
         touch ${_pthLog}/webmin_update_apt_src.log
         _apt_clean_update
         _st_runner "${_INSTAPP} webmin \
                              libxml-simple-perl \
-                             libcrypt-ssleay-perl"
-        _mrun "update-rc.d webmin defaults"
+                             libcrypt-ssleay-perl" 2> /dev/null
+        _mrun "update-rc.d webmin defaults" 2> /dev/null
         _msg "INFO: Webmin Control Panel installed"
       else
         _msg "INFO: Webmin Control Panel installation skipped"
@@ -418,18 +418,18 @@ _if_install_bind() {
           _find_correct_ip
           _THISHTIP="${_LOC_IP}"
         fi
-        _st_runner "${_INSTAPP} bind9"
+        _st_runner "${_INSTAPP} bind9" 2> /dev/null
         cp -af /etc/bind/named.conf.options \
           ${_vBs}/named.conf.options.pre-${_xSrl}-${_X_VERSION}-${_NOW}
         cp -af ${_locCnf}/var/named.conf.options /etc/bind/named.conf.options
-        sed -i "s/127.0.1.1/${_THISHTIP}/g" /etc/bind/named.conf.options
-        _mrun "service bind9 restart"
+        sed -i "s/127.0.1.1/${_THISHTIP}/g" /etc/bind/named.conf.options &> /dev/null
+        _mrun "service bind9 restart" 2> /dev/null
         if [ ! -e "/etc/init.d/bind" ]; then
           ln -sfn /etc/init.d/bind9 /etc/init.d/bind
         fi
-        sed -i "s/.*bind.*//g" /etc/sudoers
+        sed -i "s/.*bind.*//g" /etc/sudoers &> /dev/null
         wait
-        sed -i "/^$/d" /etc/sudoers
+        sed -i "/^$/d" /etc/sudoers &> /dev/null
         wait
         _msg "INFO: Bind9 DNS Server installed"
       else
@@ -474,7 +474,7 @@ _if_install_node() {
         else
           curl -sL https://deb.nodesource.com/setup_22.x | sudo -E bash -
         fi
-        _mrun "${_INSTAPP} nodejs"
+        _mrun "${_INSTAPP} nodejs" 2> /dev/null
       fi
       [ ! -d "/opt/user/npm" ] && mkdir -p /opt/user/npm
       chown root:root /opt/user/npm
@@ -483,7 +483,7 @@ _if_install_node() {
   else
     _isNode=$(which node 2>&1)
     if [ -x "${_isNode}" ]; then
-      _mrun "apt-get remove nodejs -y --purge --auto-remove -qq"
+      _mrun "apt-get remove nodejs -y --purge --auto-remove -qq" 2> /dev/null
     fi
   fi
 }
@@ -548,10 +548,10 @@ _if_install_ruby() {
         rm -rf ruby*
         _get_dev_src "ruby-${_RUBY_VRN}.tar.gz"
         cd /var/opt/ruby-${_RUBY_VRN}
-        _mrun "bash ./configure"
-        _mrun "make -j $(nproc)"
-        _mrun "make install"
-        ldconfig
+        _mrun "bash ./configure" 2> /dev/null
+        _mrun "make -j $(nproc)" 2> /dev/null
+        _mrun "make install" 2> /dev/null
+        ldconfig 2> /dev/null
         _isRuby=$(which ruby 2>&1)
         if [ -x "${_isRuby}" ]; then
           _RUBY_V=$(${_isRuby} --version \
@@ -615,9 +615,9 @@ _if_install_ffmpeg() {
           echo "deb http://www.deb-multimedia.org buster-backports main" >> /etc/apt/sources.list.d/ffmpeg.list
         fi
         _apt_clean_update
-        _st_runner "apt-get install deb-multimedia-keyring ${_aptYesUnth}"
+        _st_runner "apt-get install deb-multimedia-keyring ${_aptYesUnth}" 2> /dev/null
         _apt_clean_update
-        _st_runner "${_INSTAPP} ffmpeg"
+        _st_runner "${_INSTAPP} ffmpeg" 2> /dev/null
         _msg "INFO: FFmpeg installed"
       else
         _msg "INFO: FFmpeg installation skipped"

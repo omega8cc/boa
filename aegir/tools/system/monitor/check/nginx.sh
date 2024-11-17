@@ -33,7 +33,7 @@ _check_root
       _B_NICE=19
     fi
 
-    renice ${_B_NICE} -p $$
+    renice ${_B_NICE} -p $$ &> /dev/null
 
 export _INCIDENT_EMAIL_REPORT=${_INCIDENT_EMAIL_REPORT//[^A-Z]/}
 : "${_INCIDENT_EMAIL_REPORT:=YES}"

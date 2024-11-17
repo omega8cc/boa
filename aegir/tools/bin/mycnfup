@@ -67,9 +67,9 @@ _os_detection_minimal() {
 }
 
 _apt_clean_update() {
-  #apt-get clean -qq
-  #rm -rf /var/lib/apt/lists/*
-  ${_APT_UPDATE} -qq
+  #apt-get clean -qq 2> /dev/null
+  #rm -rf /var/lib/apt/lists/* &> /dev/null
+  ${_APT_UPDATE} -qq 2> /dev/null
 }
 
 _count_cpu() {
@@ -94,7 +94,7 @@ _count_cpu() {
 }
 
 _locales_check_fix() {
-  ${_INITINS} locales
+  ${_INITINS} locales &> /dev/null
   if [ -e "/etc/ssh/sshd_config" ]; then
     _SSH_LC_TEST=$(grep "^AcceptEnv LANG LC_" /etc/ssh/sshd_config 2>&1)
     if [[ "${_SSH_LC_TEST}" =~ "AcceptEnv LANG LC_" ]]; then
@@ -144,9 +144,9 @@ EOF
         echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
       fi
       sed -i "/^$/d" /etc/locale.gen
-      locale-gen
+      locale-gen &> /dev/null
     else
-      locale-gen en_US.UTF-8
+      locale-gen en_US.UTF-8 &> /dev/null
     fi
     # Explicitly enforce all locale settings
     update-locale \
@@ -163,7 +163,7 @@ EOF
       LC_TELEPHONE=en_US.UTF-8 \
       LC_MEASUREMENT=en_US.UTF-8 \
       LC_IDENTIFICATION=en_US.UTF-8 \
-      LC_ALL=
+      LC_ALL= &> /dev/null
     # Define all locale settings on the fly to prevent unnecessary
     # warnings during installation of packages.
     export LANG=en_US.UTF-8
@@ -187,9 +187,9 @@ EOF
         echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
       fi
       sed -i "/^$/d" /etc/locale.gen
-      locale-gen
+      locale-gen &> /dev/null
     else
-      locale-gen en_US.UTF-8
+      locale-gen en_US.UTF-8 &> /dev/null
     fi
     # Explicitly enforce locale settings required for consistency
     update-locale \
@@ -197,7 +197,7 @@ EOF
       LC_CTYPE=en_US.UTF-8 \
       LC_COLLATE=POSIX \
       LC_NUMERIC=POSIX \
-      LC_ALL=
+      LC_ALL= &> /dev/null
     # Define locale settings required for consistency also on the fly
     if [ "${_STATUS}" != "INIT" ]; then
       # On initial install it usually causes a warning:
@@ -242,19 +242,19 @@ _remove_systemd() {
     if [ -e "/usr/share/sysvinit/inittab" ]; then
       cp -af /usr/share/sysvinit/inittab /etc/inittab
     fi
-    apt-get remove systemd -y --purge --auto-remove --allow-remove-essential -qq
-    apt-get remove libnss-systemd -y --purge --auto-remove --allow-remove-essential -qq
-    apt-get remove systemd-sysv -y --purge --auto-remove --allow-remove-essential -qq
+    apt-get remove systemd -y --purge --auto-remove --allow-remove-essential -qq 2> /dev/null
+    apt-get remove libnss-systemd -y --purge --auto-remove --allow-remove-essential -qq 2> /dev/null
+    apt-get remove systemd-sysv -y --purge --auto-remove --allow-remove-essential -qq 2> /dev/null
     if [ ! -e "/etc/apt/preferences.d/offsystemd" ]; then
       rm -f /etc/apt/preferences.d/systemd
       echo -e 'Package: systemd\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/offsystemd
       echo -e '\n\nPackage: *systemd*\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/offsystemd
       _apt_clean_update
     fi
-    apt-get autoremove --purge -y -qq
-    apt-get autoclean -y -qq
-    echo "sysvinit-core hold" | dpkg --set-selections
-    echo "sysvinit-utils hold" | dpkg --set-selections
+    apt-get autoremove --purge -y -qq 2> /dev/null
+    apt-get autoclean -y -qq 2> /dev/null
+    echo "sysvinit-core hold" | dpkg --set-selections &> /dev/null
+    echo "sysvinit-utils hold" | dpkg --set-selections &> /dev/null
   fi
 }
 
@@ -285,7 +285,7 @@ _check_root() {
       _B_NICE=19
     fi
 
-    renice ${_B_NICE} -p $$
+    renice ${_B_NICE} -p $$ &> /dev/null
 
     chmod a+w /dev/null
     if [ ! -e "/dev/fd" ]; then
@@ -306,12 +306,12 @@ _check_root() {
       _VMFAMILY="VS"
     fi
     # Check if dmidecode is available
-    if ! command -v dmidecode; then
+    if ! command -v dmidecode &> /dev/null; then
       _apt_clean_update
-      ${_INITINS} dmidecode
+      ${_INITINS} dmidecode &> /dev/null
     fi
     # Check for Amazon EC2 in the system manufacturer field
-    if dmidecode -s system-manufacturer | grep -i 'Amazon EC2'; then
+    if dmidecode -s system-manufacturer | grep -i 'Amazon EC2' &> /dev/null; then
       _VMFAMILY="AWS"
     fi
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
@@ -334,12 +334,12 @@ _check_root() {
       echo "DPkg::Pre-Install-Pkgs {\"/usr/sbin/dpkg-preconfigure --apt\";};" >> /opt/apt/apt.conf.noi.nrml
       echo "Dir::Etc::SourceList \"/etc/apt/sources.list\";" >> /opt/apt/apt.conf.noi.nrml
     fi
-    _LSB_TEST=$(which lsb_release)
+    _LSB_TEST=$(which lsb_release 2> /dev/null)
     if [ ! -x "${_LSB_TEST}" ]; then
       _apt_clean_update
       ${_INSTAPP} lsb-release
     fi
-    _LSB_TEST=$(which lsb_release)
+    _LSB_TEST=$(which lsb_release 2> /dev/null)
     if [ -x "${_LSB_TEST}" ]; then
       if [ "${_OS_DIST}" != "Debian" ]; then
         echo "ERROR: Not supported OS detected: ${_OS_DIST}/${_OS_CODE}"
@@ -401,12 +401,12 @@ _check_root() {
         echo -e 'Package: makedev\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/makedev
         _apt_clean_update
       fi
-      apt-get remove fuse -y --purge --auto-remove -qq
-      apt-get remove udev -y --purge --auto-remove -qq
-      apt-get remove makedev -y --purge --auto-remove -qq
+      apt-get remove fuse -y --purge --auto-remove -qq 2> /dev/null
+      apt-get remove udev -y --purge --auto-remove -qq 2> /dev/null
+      apt-get remove makedev -y --purge --auto-remove -qq 2> /dev/null
       _PTMX=OK
       if [ -e "/sbin/hdparm" ]; then
-        apt-get remove hdparm -y --purge --auto-remove -qq
+        apt-get remove hdparm -y --purge --auto-remove -qq 2> /dev/null
       fi
       _REMOVE_LINKS="buagent \
                      checkroot.sh \
@@ -441,7 +441,7 @@ _check_root() {
                      vnstat"
       for _link in ${_REMOVE_LINKS}; do
         if [ -e "/etc/init.d/${_link}" ]; then
-          update-rc.d -f ${_link} remove
+          update-rc.d -f ${_link} remove &> /dev/null
           mv -f /etc/init.d/${_link} /var/backups/init.d.${_link}
         fi
       done
@@ -450,7 +450,7 @@ _check_root() {
           sed -rn -e 's/^(# Default-Stop:).*$/\1 0 1 6/' -e '/^### BEGIN INIT INFO/,/^### END INIT INFO/p' /etc/init.d/${s} > /etc/insserv/overrides/${s}
         fi
       done
-      /sbin/insserv -v -d
+      /sbin/insserv -v -d &> /dev/null
     fi
   else
     echo "ERROR: This script should be run as a root user"
@@ -459,7 +459,7 @@ _check_root() {
   _DF_TEST=$(df -kTh / -l \
     | grep '/' \
     | sed 's/\%//g' \
-    | awk '{print $6}')
+    | awk '{print $6}' 2> /dev/null)
   _DF_TEST=${_DF_TEST//[^0-9]/}
   if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt "90" ]; then
     echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
@@ -484,8 +484,8 @@ _find_fast_mirror_early() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     _apt_clean_update
-    ${_INSTAPP} netcat
-    ${_INSTAPP} netcat-traditional
+    ${_INSTAPP} netcat &> /dev/null
+    ${_INSTAPP} netcat-traditional &> /dev/null
     wait
   fi
   _ffMirr=$(which ffmirror 2>&1)
@@ -550,11 +550,11 @@ _sysctl_update() {
     if [ -e "/boot/grub/grub.cfg" ] || [ -e "/boot/grub/menu.lst" ]; then
       #echo never > /sys/kernel/mm/transparent_hugepage/enabled
       if [ -e "/etc/sysctl.conf" ]; then
-        sysctl -p /etc/sysctl.conf
+        sysctl -p /etc/sysctl.conf &> /dev/null
       fi
     else
       if [ -e "/etc/sysctl.conf" ]; then
-        sysctl -p /etc/sysctl.conf
+        sysctl -p /etc/sysctl.conf &> /dev/null
       fi
     fi
     touch /var/backups/sysctl.conf-${_xSrl}.log
@@ -635,8 +635,8 @@ _start_sql() {
   fi
 
   echo "Starting MySQLD again..."
-  renice ${_B_NICE} -p $$
-  update-rc.d -f mysql remove
+  renice ${_B_NICE} -p $$ &> /dev/null
+  update-rc.d -f mysql remove &> /dev/null
   if [ "$1" = "init" ]; then
     _MASTER_START=YES
     sed -i "s/^safe_to_bootstrap.*/safe_to_bootstrap: 1/g"  /var/lib/mysql/grastate.dat
@@ -680,18 +680,18 @@ _stop_sql() {
     elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 5.7." ]]; then
       _DB_V=5.7
     fi
-    mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;"
-    mysql -u root -e "SET GLOBAL innodb_change_buffering = 'none';"
-    mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;"
-    mysql -u root -e "SET GLOBAL innodb_io_capacity = 2000;"
-    mysql -u root -e "SET GLOBAL innodb_io_capacity_max = 4000;"
+    mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
+    mysql -u root -e "SET GLOBAL innodb_change_buffering = 'none';" &> /dev/null
+    mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null
+    mysql -u root -e "SET GLOBAL innodb_io_capacity = 2000;" &> /dev/null
+    mysql -u root -e "SET GLOBAL innodb_io_capacity_max = 4000;" &> /dev/null
     if [ "${_DB_V}" = "5.7" ]; then
-      mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_pct = 100;"
-      mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_now = ON;"
+      mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_pct = 100;" &> /dev/null
+      mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_now = ON;" &> /dev/null
     fi
-    mysql -u root -e "SET GLOBAL innodb_fast_shutdown = 1;"
+    mysql -u root -e "SET GLOBAL innodb_fast_shutdown = 1;" &> /dev/null
     echo "Stopping MySQLD now..."
-    update-rc.d -f mysql remove
+    update-rc.d -f mysql remove &> /dev/null
     service mysql stop
   else
     echo "MySQLD already stopped?"
@@ -860,14 +860,14 @@ _innodb_log_file_size_update() {
   _check_mysql_version
   echo "running ${_tVr} `hostname` _innodb_log_file_size_update procedure..."
   echo "INFO: InnoDB log file will be set to ${_INNODB_LOG_FILE_SIZE_MB}..."
-  mysql -u root -e "SET GLOBAL innodb_fast_shutdown = 0;"
+  mysql -u root -e "SET GLOBAL innodb_fast_shutdown = 0;" &> /dev/null
   _stop_sql "chain"
   _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
   if [ -z "${_IS_MYSQLD_RUNNING}" ]; then
     mkdir -p ${_vBs}/old-sql-ib-log-${_NOW}
     sleep 1
-    mv -f /var/lib/mysql/ib_logfile0 ${_vBs}/old-sql-ib-log-${_NOW}/
-    mv -f /var/lib/mysql/ib_logfile1 ${_vBs}/old-sql-ib-log-${_NOW}/
+    mv -f /var/lib/mysql/ib_logfile0 ${_vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
+    mv -f /var/lib/mysql/ib_logfile1 ${_vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
     if [ "${_DB_V}" = "5.7" ]; then
       sed -i "s/.*innodb_redo_log_capacity.*/#innodb_redo_log_capacity    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
       wait
@@ -891,8 +891,8 @@ _innodb_log_file_size_update() {
     if [ -z "${_IS_MYSQLD_RUNNING}" ]; then
       mkdir -p ${_vBs}/old-sql-ib-log-${_NOW}
       _mrun "sleep 1"
-      mv -f /var/lib/mysql/ib_logfile0 ${_vBs}/old-sql-ib-log-${_NOW}/
-      mv -f /var/lib/mysql/ib_logfile1 ${_vBs}/old-sql-ib-log-${_NOW}/
+      mv -f /var/lib/mysql/ib_logfile0 ${_vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
+      mv -f /var/lib/mysql/ib_logfile1 ${_vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
       if [ "${_DB_V}" = "5.7" ]; then
         sed -i "s/.*innodb_redo_log_capacity.*/#innodb_redo_log_capacity    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
         wait
@@ -950,7 +950,7 @@ _sql_conf_update() {
       wait
     fi
   fi
-  mv -f /etc/mysql/my.cnf-pre* ${_vBs}/dragon/t/
+  mv -f /etc/mysql/my.cnf-pre* ${_vBs}/dragon/t/ &> /dev/null
   sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf
   wait
   sed -i "s/.*language/#language/g" /etc/mysql/my.cnf
@@ -1369,23 +1369,23 @@ _db_head_to_stretch_first() {
         echo -e '\n\nPackage: *systemd*\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/offsystemd
       fi
   	  _apt_clean_update
-      echo "curl install"           | dpkg --set-selections
-      echo "git install"            | dpkg --set-selections
-      echo "git-core install"       | dpkg --set-selections
-      echo "git-man install"        | dpkg --set-selections
-      echo "libssl-dev install"     | dpkg --set-selections
-      echo "nginx install"          | dpkg --set-selections
-      echo "nginx-common install"   | dpkg --set-selections
-      echo "openssh-client install" | dpkg --set-selections
-      echo "openssh-server install" | dpkg --set-selections
-      echo "openssh-sftp-server install" | dpkg --set-selections
-      echo "openssl install"        | dpkg --set-selections
-      echo "ssh install"            | dpkg --set-selections
-      echo "sysvinit-core install"  | dpkg --set-selections
-      echo "sysvinit-utils install" | dpkg --set-selections
-      echo "zlib1g install"         | dpkg --set-selections
-      echo "zlib1g-dev install"     | dpkg --set-selections
-      echo "zlibc install"          | dpkg --set-selections
+      echo "curl install"           | dpkg --set-selections &> /dev/null
+      echo "git install"            | dpkg --set-selections &> /dev/null
+      echo "git-core install"       | dpkg --set-selections &> /dev/null
+      echo "git-man install"        | dpkg --set-selections &> /dev/null
+      echo "libssl-dev install"     | dpkg --set-selections &> /dev/null
+      echo "nginx install"          | dpkg --set-selections &> /dev/null
+      echo "nginx-common install"   | dpkg --set-selections &> /dev/null
+      echo "openssh-client install" | dpkg --set-selections &> /dev/null
+      echo "openssh-server install" | dpkg --set-selections &> /dev/null
+      echo "openssh-sftp-server install" | dpkg --set-selections &> /dev/null
+      echo "openssl install"        | dpkg --set-selections &> /dev/null
+      echo "ssh install"            | dpkg --set-selections &> /dev/null
+      echo "sysvinit-core install"  | dpkg --set-selections &> /dev/null
+      echo "sysvinit-utils install" | dpkg --set-selections &> /dev/null
+      echo "zlib1g install"         | dpkg --set-selections &> /dev/null
+      echo "zlib1g-dev install"     | dpkg --set-selections &> /dev/null
+      echo "zlibc install"          | dpkg --set-selections &> /dev/null
   	  apt-get upgrade ${_nrmUpArg}
   	  apt-get install lsb-release ${_nrmUpArg}
       ### Check if we can continue
@@ -1470,11 +1470,11 @@ _db_head_to_stretch_second() {
         if [ -e "/usr/share/sysvinit/inittab" ]; then
           cp -af /usr/share/sysvinit/inittab /etc/inittab
         fi
-        apt-get remove systemd -y --purge --auto-remove --allow-remove-essential -qq
-        apt-get remove libnss-systemd -y --purge --auto-remove --allow-remove-essential -qq
-        apt-get remove systemd-sysv -y --purge --auto-remove --allow-remove-essential -qq
-        apt-get autoremove --purge -y -qq
-        apt-get autoclean -y -qq
+        apt-get remove systemd -y --purge --auto-remove --allow-remove-essential -qq 2> /dev/null
+        apt-get remove libnss-systemd -y --purge --auto-remove --allow-remove-essential -qq 2> /dev/null
+        apt-get remove systemd-sysv -y --purge --auto-remove --allow-remove-essential -qq 2> /dev/null
+        apt-get autoremove --purge -y -qq 2> /dev/null
+        apt-get autoclean -y -qq 2> /dev/null
         if [ ! -e "/etc/apt/preferences.d/offsystemd" ]; then
           rm -f /etc/apt/preferences.d/systemd
           echo -e 'Package: systemd\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/offsystemd

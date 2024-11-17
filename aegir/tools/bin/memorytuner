@@ -140,7 +140,7 @@ _get_number_of_databases() {
 _parse_mysqltuner_recommendations() {
   if [[ "${_MYSQL_VERSION}" =~ ^8\. ]]; then
     # Use mysqltuner8 for Percona 8.x
-    if ! command -v mysqltuner8; then
+    if ! command -v mysqltuner8 &> /dev/null; then
       echo "mysqltuner8 is not installed. Please install it before running this script."
       exit 1
     fi
@@ -150,7 +150,7 @@ _parse_mysqltuner_recommendations() {
     local _mysqltuner_pid=$!
   elif [[ "${_MYSQL_VERSION}" =~ ^5\.7 ]]; then
     # Use mysqltuner5 for Percona 5.7
-    if ! command -v mysqltuner5; then
+    if ! command -v mysqltuner5 &> /dev/null; then
       echo "mysqltuner5 is not installed. Please install it before running this script."
       exit 1
     fi

@@ -27,7 +27,7 @@ _check_root() {
       _B_NICE=19
     fi
 
-    renice ${_B_NICE} -p $$
+    renice ${_B_NICE} -p $$ &> /dev/null
     chmod a+w /dev/null
   fi
 }
@@ -55,36 +55,36 @@ _graceful_action() {
 
   # Clean up postfix queue to get rid of bounced emails
   echo "Cleaning up postfix queue..."
-  postsuper -d ALL
+  postsuper -d ALL &> /dev/null
 
   # Restart syslog service
   echo "Restarting syslog service..."
   if [ -e "/etc/init.d/rsyslog" ]; then
-    pkill -9 rsyslogd
-    service rsyslog start
+    pkill -9 rsyslogd &> /dev/null
+    service rsyslog start &> /dev/null
   elif [ -e "/etc/init.d/sysklogd" ]; then
-    pkill -9 sysklogd
-    service sysklogd start
+    pkill -9 sysklogd &> /dev/null
+    service sysklogd start &> /dev/null
   elif [ -e "/etc/init.d/inetutils-syslogd" ]; then
-    pkill -9 syslogd
-    service inetutils-syslogd start
+    pkill -9 syslogd &> /dev/null
+    service inetutils-syslogd start &> /dev/null
   fi
 
   # Clean up old log files
   echo "Cleaning up old log files..."
   rm -f /var/backups/.auth.IP.list*
-  find /var/xdrago/log/*.pid -mtime +3  -type f -exec rm -rf {} \;
-  find /var/xdrago/log/*.log -mtime +30 -type f -exec rm -rf {} \;
-  find /var/xdrago/log/*.txt -mtime +30 -type f -exec rm -rf {} \;
-  find /var/xdrago/log/last* -mtime +30 -type f -exec rm -rf {} \;
-  find /var/xdrago/log/wait* -mtime +30 -type f -exec rm -rf {} \;
-  find /var/xdrago/log/lshe* -mtime +30 -type f -exec rm -rf {} \;
-  find /var/xdrago/log/ngin* -mtime +30 -type f -exec rm -rf {} \;
-  find /var/xdrago/log/grac* -mtime +30 -type f -exec rm -rf {} \;
-  find /var/xdrago/log/purg* -mtime +30 -type f -exec rm -rf {} \;
-  find /var/xdrago/log/clea* -mtime +30 -type f -exec rm -rf {} \;
-  find /var/xdrago/log/proc* -mtime +30 -type f -exec rm -rf {} \;
-  find /var/xdrago/log/redi* -mtime +30 -type f -exec rm -rf {} \;
+  find /var/xdrago/log/*.pid -mtime +3  -type f -exec rm -rf {} \; &> /dev/null
+  find /var/xdrago/log/*.log -mtime +30 -type f -exec rm -rf {} \; &> /dev/null
+  find /var/xdrago/log/*.txt -mtime +30 -type f -exec rm -rf {} \; &> /dev/null
+  find /var/xdrago/log/last* -mtime +30 -type f -exec rm -rf {} \; &> /dev/null
+  find /var/xdrago/log/wait* -mtime +30 -type f -exec rm -rf {} \; &> /dev/null
+  find /var/xdrago/log/lshe* -mtime +30 -type f -exec rm -rf {} \; &> /dev/null
+  find /var/xdrago/log/ngin* -mtime +30 -type f -exec rm -rf {} \; &> /dev/null
+  find /var/xdrago/log/grac* -mtime +30 -type f -exec rm -rf {} \; &> /dev/null
+  find /var/xdrago/log/purg* -mtime +30 -type f -exec rm -rf {} \; &> /dev/null
+  find /var/xdrago/log/clea* -mtime +30 -type f -exec rm -rf {} \; &> /dev/null
+  find /var/xdrago/log/proc* -mtime +30 -type f -exec rm -rf {} \; &> /dev/null
+  find /var/xdrago/log/redi* -mtime +30 -type f -exec rm -rf {} \; &> /dev/null
 
   # Swap management
   if [ -d "/dev/disk" ]; then
@@ -157,7 +157,7 @@ _graceful_action() {
       nice -n 0 service solr7 restart
     fi
     echo "Stopping any running Jetty processes..."
-    pkill -9 -f jetty
+    pkill -9 -f jetty &> /dev/null
     rm -rf /tmp/{drush*,pear,jetty*}
     rm -f /var/log/jetty{7,8,9}/*
     echo "Starting Jetty services..."
@@ -175,11 +175,11 @@ _graceful_action() {
     touch /run/speed_cleanup.pid
     echo " " >> /var/log/nginx/speed_cleanup.log
     sed -i "s/levels=2:2:2/levels=2:2/g" /var/aegir/config/server_master/nginx.conf
-    nice -n -5 service nginx reload
+    nice -n -5 service nginx reload &> /dev/null
     echo "speed_purge start $(date)" >> /var/log/nginx/speed_cleanup.log
-    nice -n 9 ionice -c2 -n7 find /var/lib/nginx/speed/ -mtime +1 -exec rm -rf {} \;
+    nice -n 9 ionice -c2 -n7 find /var/lib/nginx/speed/ -mtime +1 -exec rm -rf {} \; &> /dev/null
     echo "speed_purge complete $(date)" >> /var/log/nginx/speed_cleanup.log
-    nice -n -5 service nginx reload
+    nice -n -5 service nginx reload &> /dev/null
     rm -f /run/speed_cleanup.pid
   fi
 

@@ -568,7 +568,7 @@ fi
 # Load Logged-In IPs
 # ==============================
 
-if command -v who; then
+if command -v who &> /dev/null; then
   while IFS= read -r _logged_ip; do
     # Validate IP format using the existing function
     if _validate_ip "${_logged_ip}"; then

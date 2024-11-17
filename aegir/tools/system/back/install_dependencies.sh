@@ -26,7 +26,7 @@ _check_root() {
   _DF_TEST=$(df -kTh / -l \
     | grep '/' \
     | sed 's/\%//g' \
-    | awk '{print $6}')
+    | awk '{print $6}' 2> /dev/null)
   _DF_TEST=${_DF_TEST//[^0-9]/}
   if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt "90" ]; then
     echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
@@ -73,7 +73,7 @@ _os_detection_minimal() {
 _os_detection_minimal
 
 _apt_clean_update() {
-  ${_APT_UPDATE} -qq
+  ${_APT_UPDATE} -qq 2> /dev/null
 }
 
 _python_install_src() {
@@ -222,7 +222,7 @@ _if_install_other_dependencies() {
   echo "Checking and installing other dependencies..."
 
     _apt_clean_update
-    _mrun "${_INSTAPP} python3-pip"
+    _mrun "${_INSTAPP} python3-pip" 2> /dev/null
     if [ -x "/usr/bin/pip3" ]; then
       _usePip=/usr/bin/pip3
     elif [ -x "/usr/local/bin/pip3" ]; then
@@ -231,17 +231,17 @@ _if_install_other_dependencies() {
     _PIP_TEST=$(${_usePip} --version 2>&1)
     if [[ "${_PIP_TEST}" =~ "python 3.11" ]] \
       || [[ "${_PIP_TEST}" =~ "python 3.12" ]]; then
-      _mrun "${_usePip} install --upgrade pip --root-user-action ignore"
+      _mrun "${_usePip} install --upgrade pip --root-user-action ignore" 2> /dev/null
     else
-      _mrun "${_usePip} install --upgrade pip"
+      _mrun "${_usePip} install --upgrade pip" 2> /dev/null
     fi
 
     _PIP_TEST=$(${_usePip} --version 2>&1)
     if [[ "${_PIP_TEST}" =~ "python 3.11" ]] \
       || [[ "${_PIP_TEST}" =~ "python 3.12" ]]; then
-      _mrun "${_usePip} install . --break-system-packages --root-user-action ignore"
+      _mrun "${_usePip} install . --break-system-packages --root-user-action ignore" 2> /dev/null
     else
-      _mrun "${_usePip} install . "
+      _mrun "${_usePip} install . " 2> /dev/null
     fi
 
     _PTN_TEST=$(${_DCY_PTN} --version 2>&1)
@@ -262,43 +262,43 @@ _if_install_other_dependencies() {
   _apt_clean_update
 
   # Install Duplicity
-  if ! command -v duplicity; then
+  if ! command -v duplicity &> /dev/null; then
     echo "Installing Duplicity..."
     sudo apt-get install -y duplicity
   fi
 
   # Install Python pip
-  if ! command -v pip; then
+  if ! command -v pip &> /dev/null; then
     echo "Installing pip..."
     sudo apt-get install -y python3-pip
   fi
 
   # Install boto3 for S3-compatible services
-  if ! python3 -c "import boto3"; then
+  if ! python3 -c "import boto3" &> /dev/null; then
     echo "Installing boto3..."
     pip install boto3
   fi
 
   # Install google-cloud-storage for Google Cloud Storage
-  if ! python3 -c "import google.cloud.storage"; then
+  if ! python3 -c "import google.cloud.storage" &> /dev/null; then
     echo "Installing google-cloud-storage..."
     pip install google-cloud-storage
   fi
 
   # Install b2sdk for Backblaze B2
-  if ! python3 -c "import b2sdk"; then
+  if ! python3 -c "import b2sdk" &> /dev/null; then
     echo "Installing b2sdk..."
     pip install b2sdk
   fi
 
   # Install azure-storage-blob for Azure Blob Storage
-  if ! python3 -c "import azure.storage.blob"; then
+  if ! python3 -c "import azure.storage.blob" &> /dev/null; then
     echo "Installing azure-storage-blob..."
     pip install azure-storage-blob
   fi
 
   # Install ibm-cos-sdk for IBM Cloud Object Storage
-  if ! python3 -c "import ibm_boto3"; then
+  if ! python3 -c "import ibm_boto3" &> /dev/null; then
     echo "Installing ibm-cos-sdk..."
     pip install ibm-cos-sdk
   fi

@@ -32,7 +32,7 @@ _check_root
       _B_NICE=19
     fi
 
-    renice ${_B_NICE} -p $$
+    renice ${_B_NICE} -p $$ &> /dev/null
 
 export _INCIDENT_EMAIL_REPORT=${_INCIDENT_EMAIL_REPORT//[^A-Z]/}
 : "${_INCIDENT_EMAIL_REPORT:=YES}"
@@ -58,8 +58,8 @@ _fpm_forced_restart() {
   _NOW=${_NOW//[^0-9-]/}
   mkdir -p /var/backups/php-logs/${_NOW}/
   mv -f /var/log/php/* /var/backups/php-logs/${_NOW}/
-  kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}')
-  renice ${_B_NICE} -p $$
+  kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}') &> /dev/null
+  renice ${_B_NICE} -p $$ &> /dev/null
   _PHP_V="83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
@@ -121,7 +121,7 @@ _fpm_sockets_healing() {
 }
 
 _fpm_fastcgi_temp() {
-  _FASTCGI_SIZE_TEST=$(du -s -h /usr/fastcgi_temp/*/*/* | grep G)
+  _FASTCGI_SIZE_TEST=$(du -s -h /usr/fastcgi_temp/*/*/* | grep G 2> /dev/null)
   if [[ "${_FASTCGI_SIZE_TEST}" =~ "G" ]]; then
     rm -f /usr/fastcgi_temp/*/*/*
     killall -9 nginx

@@ -687,12 +687,12 @@ _apt_clean_update() {
   if [ -e "/root/.dev.server.cnf" ]; then
     echo "PROC: _apt_clean_update in octopus"
   fi
-  #apt-get clean -qq
-  #rm -rf /var/lib/apt/lists/*
+  #apt-get clean -qq 2> /dev/null
+  #rm -rf /var/lib/apt/lists/* &> /dev/null
   if [ -e "/root/.dev.server.cnf" ]; then
-    ${_APT_UPDATE} -qq
+    ${_APT_UPDATE} -qq 2> /dev/null
   else
-    ${_APT_UPDATE} -qq
+    ${_APT_UPDATE} -qq &> /dev/null
   fi
 }
 
@@ -706,7 +706,7 @@ _find_fast_mirror_cnf() {
   fi
   if [ -x "/usr/sbin/unbound-control" ] \
     && [ -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
-    unbound-control reload
+    unbound-control reload &> /dev/null
   fi
   _isNetc=$(which netcat 2>&1)
   if [ ! -x "${_isNetc}" ] || [ -z "${_isNetc}" ]; then
@@ -715,8 +715,8 @@ _find_fast_mirror_cnf() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     _apt_clean_update
-    apt-get install netcat ${_aptYesUnth}
-    apt-get install netcat-traditional ${_aptYesUnth}
+    apt-get install netcat ${_aptYesUnth} 2> /dev/null
+    apt-get install netcat-traditional ${_aptYesUnth} 2> /dev/null
     wait
   fi
   _ffMirr=$(which ffmirror 2>&1)
@@ -879,17 +879,17 @@ _download_helpers_libs() {
       if [ ! -x "/usr/local/bin/git" ]; then
         _apt_clean_update
         if [ -e "/root/.dev.server.cnf" ]; then
-          apt-get install libcurl4 ${_aptYesUnth} -qq
-          apt-get install libcurl4-openssl-dev ${_aptYesUnth} -qq
-          apt-get install libcurl4-gnutls-dev ${_aptYesUnth} -qq
-          apt-get remove git-core -y --purge --auto-remove -qq
-          apt-get remove git -y --purge --auto-remove -qq
+          apt-get install libcurl4 ${_aptYesUnth} -qq 2> /dev/null
+          apt-get install libcurl4-openssl-dev ${_aptYesUnth} -qq 2> /dev/null
+          apt-get install libcurl4-gnutls-dev ${_aptYesUnth} -qq 2> /dev/null
+          apt-get remove git-core -y --purge --auto-remove -qq 2> /dev/null
+          apt-get remove git -y --purge --auto-remove -qq 2> /dev/null
         else
-          apt-get install libcurl4 ${_aptYesUnth} -qq
-          apt-get install libcurl4-openssl-dev ${_aptYesUnth} -qq
-          apt-get install libcurl4-gnutls-dev ${_aptYesUnth} -qq
-          apt-get remove git-core -y --purge --auto-remove -qq
-          apt-get remove git -y --purge --auto-remove -qq
+          apt-get install libcurl4 ${_aptYesUnth} -qq &> /dev/null
+          apt-get install libcurl4-openssl-dev ${_aptYesUnth} -qq &> /dev/null
+          apt-get install libcurl4-gnutls-dev ${_aptYesUnth} -qq &> /dev/null
+          apt-get remove git-core -y --purge --auto-remove -qq &> /dev/null
+          apt-get remove git -y --purge --auto-remove -qq &> /dev/null
         fi
       fi
       mkdir -p /var/opt
@@ -898,17 +898,17 @@ _download_helpers_libs() {
       _get_dev_src_pre "git-${_GIT_VRN}.tar.gz"
       cd /var/opt/git-${_GIT_VRN}
       if [ -e "/root/.dev.server.cnf" ]; then
-        make configure
-        bash ./configure --without-tcltk
-        make all -j $(nproc)
-        make install
+        make configure 2> /dev/null
+        bash ./configure --without-tcltk 2> /dev/null
+        make all -j $(nproc) 2> /dev/null
+        make install 2> /dev/null
       else
-        make configure
-        bash ./configure --without-tcltk
-        make all -j $(nproc)
-        make install
+        make configure &> /dev/null
+        bash ./configure --without-tcltk &> /dev/null
+        make all -j $(nproc) &> /dev/null
+        make install &> /dev/null
       fi
-      ldconfig
+      ldconfig 2> /dev/null
       if [ -x "/usr/local/bin/git" ]; then
         if [ -e "/usr/bin/git" ] && [ ! -L "/usr/bin/git" ]; then
           mv -f /usr/bin/git /usr/bin/git-old
@@ -916,9 +916,9 @@ _download_helpers_libs() {
         ln -sfn /usr/local/bin/git /usr/bin/git
       fi
       cd /var/opt
-      echo "git hold" | dpkg --set-selections
-      echo "git-core hold" | dpkg --set-selections
-      echo "git-man hold" | dpkg --set-selections
+      echo "git hold" | dpkg --set-selections &> /dev/null
+      echo "git-core hold" | dpkg --set-selections &> /dev/null
+      echo "git-man hold" | dpkg --set-selections &> /dev/null
     fi
     _isGit=$(which git 2>&1)
     _gCb="${_isGit} clone --branch"
@@ -930,22 +930,22 @@ _download_helpers_libs() {
         echo "ERROR: ${_isGit} is probably broken"
       fi
     else
-      ${_gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git ${_bldPth}
+      ${_gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git ${_bldPth} &> /dev/null
     fi
   else
     _apt_clean_update
     if [ -e "/root/.dev.server.cnf" ]; then
-#       apt-get install libcurl4 ${_aptYesUnth} -qq
-#       apt-get install libcurl4-openssl-dev ${_aptYesUnth} -qq
-#       apt-get install libcurl4-gnutls-dev ${_aptYesUnth} -qq
-      apt-get install git-core ${_aptYesUnth} -qq
-      apt-get install git ${_aptYesUnth} -qq
+#       apt-get install libcurl4 ${_aptYesUnth} -qq 2> /dev/null
+#       apt-get install libcurl4-openssl-dev ${_aptYesUnth} -qq 2> /dev/null
+#       apt-get install libcurl4-gnutls-dev ${_aptYesUnth} -qq 2> /dev/null
+      apt-get install git-core ${_aptYesUnth} -qq 2> /dev/null
+      apt-get install git ${_aptYesUnth} -qq 2> /dev/null
     else
-#       apt-get install libcurl4 ${_aptYesUnth} -qq
-#       apt-get install libcurl4-openssl-dev ${_aptYesUnth} -qq
-#       apt-get install libcurl4-gnutls-dev ${_aptYesUnth} -qq
-      apt-get install git-core ${_aptYesUnth} -qq
-      apt-get install git ${_aptYesUnth} -qq
+#       apt-get install libcurl4 ${_aptYesUnth} -qq &> /dev/null
+#       apt-get install libcurl4-openssl-dev ${_aptYesUnth} -qq &> /dev/null
+#       apt-get install libcurl4-gnutls-dev ${_aptYesUnth} -qq &> /dev/null
+      apt-get install git-core ${_aptYesUnth} -qq &> /dev/null
+      apt-get install git ${_aptYesUnth} -qq &> /dev/null
     fi
     _isGit=$(which git 2>&1)
     _gCb="${_isGit} clone --branch"
@@ -957,7 +957,7 @@ _download_helpers_libs() {
         echo "ERROR: ${_isGit} is probably broken"
       fi
     else
-      ${_gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git ${_bldPth}
+      ${_gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git ${_bldPth} &> /dev/null
     fi
   fi
   #
@@ -996,13 +996,13 @@ _download_helpers_libs() {
   # Get spinner
   rm -f spinner*
   cp -af ${_bldPth}/aegir/helpers/spinner ./
-  chmod +x spinner
+  chmod +x spinner &> /dev/null
   #
   # Get axelerator
   if [ ! -e "/usr/bin/aptitude-fast" ]; then
-    git clone ${_gitHub}/apt-fast.git /opt/tmp/apt-fast
-    cp -af /opt/tmp/apt-fast/apt-fast /usr/bin/aptitude-fast
-    chmod +x /usr/bin/aptitude-fast
+    git clone ${_gitHub}/apt-fast.git /opt/tmp/apt-fast &> /dev/null
+    cp -af /opt/tmp/apt-fast/apt-fast /usr/bin/aptitude-fast &> /dev/null
+    chmod +x /usr/bin/aptitude-fast &> /dev/null
     cd /opt/tmp
   fi
 }

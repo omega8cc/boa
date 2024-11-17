@@ -27,7 +27,7 @@ _check_root() {
   _DF_TEST=$(df -kTh / -l \
     | grep '/' \
     | sed 's/\%//g' \
-    | awk '{print $6}')
+    | awk '{print $6}' 2> /dev/null)
   _DF_TEST=${_DF_TEST//[^0-9]/}
   if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt "90" ]; then
     echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
@@ -64,9 +64,9 @@ _os_detection_minimal() {
 _os_detection_minimal
 
 _apt_clean_update() {
-  #apt-get clean -qq
-  #rm -rf /var/lib/apt/lists/*
-  ${_APT_UPDATE} -qq
+  #apt-get clean -qq 2> /dev/null
+  #rm -rf /var/lib/apt/lists/* &> /dev/null
+  ${_APT_UPDATE} -qq 2> /dev/null
 }
 
 _find_fast_mirror_early() {
@@ -77,8 +77,8 @@ _find_fast_mirror_early() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     _apt_clean_update
-    apt-get install netcat ${_aptYesUnth}
-    apt-get install netcat-traditional ${_aptYesUnth}
+    apt-get install netcat ${_aptYesUnth} 2> /dev/null
+    apt-get install netcat-traditional ${_aptYesUnth} 2> /dev/null
     wait
   fi
   _ffMirr=$(which ffmirror 2>&1)
@@ -118,13 +118,13 @@ _fetch_geoip() {
 # For GeoIP2 City database:
 #   wget -q -U iCab \
 #     wget -N http://geolite.maxmind.com/download/geoip/database/GeoLite2-City.mmdb.gz
-#   gunzip GeoLite2-City.mmdb.gz
+#   gunzip GeoLite2-City.mmdb.gz &> /dev/null
 #   cp -af GeoLite2-City.mmdb /usr/share/GeoIP/
 
 # For GeoIP2 Country database:
 #   wget -q -U iCab \
 #     wget -N http://geolite.maxmind.com/download/geoip/database/GeoLite2-Country.mmdb.gz
-#   gunzip GeoLite2-Country.mmdb.gz
+#   gunzip GeoLite2-Country.mmdb.gz &> /dev/null
 #   cp -af GeoLite2-Country.mmdb /usr/share/GeoIP/
 
   chmod 644 /usr/share/GeoIP/*

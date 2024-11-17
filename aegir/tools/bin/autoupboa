@@ -116,11 +116,11 @@ _crontab_check_clean_race() {
   if [ -e "/etc/csf/csf.deny" ] \
     && [ -x "/usr/sbin/csf" ] \
     && [[ "${_CSF_CRON_TEST}" =~ "water" ]]; then
-    sed -i "s/.*fire.*//g" /etc/crontab
+    sed -i "s/.*fire.*//g" /etc/crontab &> /dev/null
     wait
-    sed -i "s/.*water.*//g" /etc/crontab
+    sed -i "s/.*water.*//g" /etc/crontab &> /dev/null
     wait
-    sed -i "/^$/d" /etc/crontab
+    sed -i "/^$/d" /etc/crontab &> /dev/null
     wait
   fi
 }
@@ -162,51 +162,51 @@ _if_disable_not_used_services() {
   if [ ! -e "/root/.allow.clamav.cnf" ] || [ -e "/root/.deny.clamav.cnf" ]; then
     if [ -e "/etc/init.d/clamav-daemon" ]; then
       _clearSwap=YES
-      update-rc.d -f clamav-daemon remove
+      update-rc.d -f clamav-daemon remove &> /dev/null
       mv -f /etc/init.d/clamav-daemon /var/backups/
     fi
     if [ -e "/etc/init.d/clamav-freshclam" ]; then
       _clearSwap=YES
-      update-rc.d -f clamav-freshclam remove
+      update-rc.d -f clamav-freshclam remove &> /dev/null
       mv -f /etc/init.d/clamav-freshclam /var/backups/
     fi
-    kill -9 $(ps aux | grep '[c]lamd' | awk '{print $2}')
-    kill -9 $(ps aux | grep '[f]reshclam' | awk '{print $2}')
+    kill -9 $(ps aux | grep '[c]lamd' | awk '{print $2}') &> /dev/null
+    kill -9 $(ps aux | grep '[f]reshclam' | awk '{print $2}') &> /dev/null
     rm -f /run/clamav/*
   fi
 
   if [ -e "/root/.deny.java.cnf" ]; then
     if [ -e "/etc/init.d/solr7" ]; then
       _clearSwap=YES
-      update-rc.d -f solr7 remove
+      update-rc.d -f solr7 remove &> /dev/null
       mv -f /etc/init.d/solr7 /var/backups/
     fi
     if [ -e "/etc/init.d/jetty9" ]; then
       _clearSwap=YES
-      update-rc.d -f jetty9 remove
+      update-rc.d -f jetty9 remove &> /dev/null
       mv -f /etc/init.d/jetty9 /var/backups/
     fi
-    kill -9 $(ps aux | grep '[a]vahi-daemon' | awk '{print $2}')
-    kill -9 $(ps aux | grep '[j]ava' | awk '{print $2}')
+    kill -9 $(ps aux | grep '[a]vahi-daemon' | awk '{print $2}') &> /dev/null
+    kill -9 $(ps aux | grep '[j]ava' | awk '{print $2}') &> /dev/null
   fi
 
   if [ -e "/root/.deny.jetty9.cnf" ]; then
     if [ -e "/etc/init.d/jetty9" ]; then
       _clearSwap=YES
-      update-rc.d -f jetty9 remove
+      update-rc.d -f jetty9 remove &> /dev/null
       mv -f /etc/init.d/jetty9 /var/backups/
-      kill -9 $(ps aux | grep '[a]vahi-daemon' | awk '{print $2}')
-      kill -9 $(ps aux | grep '[j]ava' | awk '{print $2}')
+      kill -9 $(ps aux | grep '[a]vahi-daemon' | awk '{print $2}') &> /dev/null
+      kill -9 $(ps aux | grep '[j]ava' | awk '{print $2}') &> /dev/null
     fi
   fi
 
   if [ -e "/root/.deny.solr7.cnf" ]; then
     if [ -e "/etc/init.d/solr7" ]; then
       _clearSwap=YES
-      update-rc.d -f solr7 remove
+      update-rc.d -f solr7 remove &> /dev/null
       mv -f /etc/init.d/solr7 /var/backups/
-      kill -9 $(ps aux | grep '[a]vahi-daemon' | awk '{print $2}')
-      kill -9 $(ps aux | grep '[j]ava' | awk '{print $2}')
+      kill -9 $(ps aux | grep '[a]vahi-daemon' | awk '{print $2}') &> /dev/null
+      kill -9 $(ps aux | grep '[j]ava' | awk '{print $2}') &> /dev/null
     fi
   fi
 
@@ -230,9 +230,9 @@ _os_detection_minimal() {
 _os_detection_minimal
 
 _apt_clean_update() {
-  #apt-get clean -qq
-  #rm -rf /var/lib/apt/lists/*
-  ${_APT_UPDATE} -qq
+  #apt-get clean -qq 2> /dev/null
+  #rm -rf /var/lib/apt/lists/* &> /dev/null
+  ${_APT_UPDATE} -qq 2> /dev/null
 }
 
 _system_hostname_check_fix() {
@@ -310,7 +310,7 @@ if [ "${_TIME}" = "1200" ] || [ "${_MINUTE}" = "00" ]; then
 fi
 
 _cloud_host_cleanup() {
-  if dmidecode -s system-manufacturer | grep -i 'Linode'; then
+  if dmidecode -s system-manufacturer | grep -i 'Linode' &> /dev/null; then
     if [ -e "/var/aegir/drush" ] \
       && [ -e "/data/u" ] \
       && [ -e "/var/xdrago" ]; then
@@ -324,13 +324,13 @@ _cloud_host_cleanup() {
 
 _crontab_update() {
   if [ -e "/etc/crontab" ]; then
-    sed -i "s/.*xdrago.*//gi" /etc/crontab
+    sed -i "s/.*xdrago.*//gi" /etc/crontab &> /dev/null
     wait
-    sed -i "s/.*arracuda.*//gi" /etc/crontab
+    sed -i "s/.*arracuda.*//gi" /etc/crontab &> /dev/null
     wait
-    sed -i "s/.*ctopus.*//gi" /etc/crontab
+    sed -i "s/.*ctopus.*//gi" /etc/crontab &> /dev/null
     wait
-    sed -i "s/.*du.*sql.*//gi" /etc/crontab
+    sed -i "s/.*du.*sql.*//gi" /etc/crontab &> /dev/null
     wait
     if [ "${_ADD_XTRA}" = "YES" ]; then
       echo "*/19 *  * * *   root    bash /var/xdrago/clear.sh >/dev/null 2>&1" >> /etc/crontab
@@ -340,7 +340,7 @@ _crontab_update() {
       echo "01 *    * * *   root    rm -f /var/xdrago/monitor/log/ssh.log >/dev/null 2>&1" >> /etc/crontab
       echo "01 *    * * *   root    rm -f /var/xdrago/monitor/log/ftp.log >/dev/null 2>&1" >> /etc/crontab
     fi
-    sed -i "/^$/d" /etc/crontab
+    sed -i "/^$/d" /etc/crontab &> /dev/null
     wait
 
     if [ "${_AUTO_PHP}" = "php-all" ]; then
@@ -383,13 +383,13 @@ _crontab_update() {
 
 _crontab_cleanup() {
   if [ -e "/etc/crontab" ]; then
-    sed -i "s/.*xdrago.*//gi" /etc/crontab
+    sed -i "s/.*xdrago.*//gi" /etc/crontab &> /dev/null
     wait
-    sed -i "s/.*arracuda.*//gi" /etc/crontab
+    sed -i "s/.*arracuda.*//gi" /etc/crontab &> /dev/null
     wait
-    sed -i "s/.*ctopus.*//gi" /etc/crontab
+    sed -i "s/.*ctopus.*//gi" /etc/crontab &> /dev/null
     wait
-    sed -i "s/.*du.*sql.*//gi" /etc/crontab
+    sed -i "s/.*du.*sql.*//gi" /etc/crontab &> /dev/null
     wait
     if [ "${_ADD_XTRA}" = "YES" ]; then
       echo "*/19 *  * * *   root    bash /var/xdrago/clear.sh >/dev/null 2>&1" >> /etc/crontab
@@ -399,7 +399,7 @@ _crontab_cleanup() {
       echo "01 *    * * *   root    rm -f /var/xdrago/monitor/log/ssh.log >/dev/null 2>&1" >> /etc/crontab
       echo "01 *    * * *   root    rm -f /var/xdrago/monitor/log/ftp.log >/dev/null 2>&1" >> /etc/crontab
     fi
-    sed -i "/^$/d" /etc/crontab
+    sed -i "/^$/d" /etc/crontab &> /dev/null
     wait
     echo Cron Cleanup Completed
   fi
@@ -595,9 +595,9 @@ if [ -e "/var/aegir/drush" ]; then
             echo _CHECK_REPAIR 2 ${_CHECK_REPAIR}
           fi
         fi
-        mysql -u root -e "SET GLOBAL innodb_flush_log_at_trx_commit=2;"
-        mysql -u root -e "SET GLOBAL innodb_flush_log_at_timeout=5;"
-        mysql -u root -e "SET GLOBAL innodb_stats_on_metadata=0;"
+        mysql -u root -e "SET GLOBAL innodb_flush_log_at_trx_commit=2;" &> /dev/null
+        mysql -u root -e "SET GLOBAL innodb_flush_log_at_timeout=5;" &> /dev/null
+        mysql -u root -e "SET GLOBAL innodb_stats_on_metadata=0;" &> /dev/null
       fi
       sed -i "s/^_USE_MYSQLTUNER=.*/_USE_MYSQLTUNER=NO/g"  ${_barCnf}
       rm -f /etc/mysql/conf.d/mysqldump.cnf
@@ -635,12 +635,12 @@ if [ -e "/var/aegir/drush" ]; then
       [ -e "/root/.pause_tasks_maint.cnf" ] && rm -f /root/.pause_tasks_maint.cnf
       [ -e "/root/.restrict_this_vm.cnf" ] && rm -f /root/.restrict_this_vm.cnf
       if [ `ps aux | grep -v "grep" | grep --count "gpg-agent"` -gt "5" ]; then
-        kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}')
+        kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
         echo "$(date 2>&1) Too many gpg-agent processes killed" >> \
           /var/xdrago/log/gpg-agent-count.kill.log
       fi
       if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt "5" ]; then
-        kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}')
+        kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
         echo "$(date 2>&1) Too many dirmngr processes killed" >> \
           /var/xdrago/log/dirmngr-count.kill.log
       fi
@@ -742,16 +742,16 @@ if [ -e "/var/aegir/drush" ]; then
   _NFTABLES_TEST=$(iptables -V 2>&1)
   if [[ "${_NFTABLES_TEST}" =~ "nf_tables" ]]; then
     if [ -e "/usr/sbin/iptables-legacy" ]; then
-      update-alternatives --set iptables /usr/sbin/iptables-legacy
+      update-alternatives --set iptables /usr/sbin/iptables-legacy &> /dev/null
     fi
     if [ -e "/usr/sbin/ip6tables-legacy" ]; then
-      update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy
+      update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy &> /dev/null
     fi
     if [ -e "/usr/sbin/arptables-legacy" ]; then
-      update-alternatives --set arptables /usr/sbin/arptables-legacy
+      update-alternatives --set arptables /usr/sbin/arptables-legacy &> /dev/null
     fi
     if [ -e "/usr/sbin/ebtables-legacy" ]; then
-      update-alternatives --set ebtables /usr/sbin/ebtables-legacy
+      update-alternatives --set ebtables /usr/sbin/ebtables-legacy &> /dev/null
     fi
     touch /var/xdrago/log/.nf_tables_ctrl.${_tRee}.${_xSrl}.pid
   fi
@@ -777,7 +777,7 @@ if [ -e "/var/aegir/drush" ]; then
   _IS_MOVESQL_RUNNING=$(ps aux | grep '[m]ove_sql.sh' | awk '{print $2}' 2>&1)
   if [ ! -z "${_IS_MOVESQL_RUNNING}" ]; then
     if [ `ps aux | grep -v "grep" | grep --count "move_sql.sh"` -gt "2" ]; then
-      kill -9 $(ps aux | grep '[m]ove_sql.sh' | awk '{print $2}')
+      kill -9 $(ps aux | grep '[m]ove_sql.sh' | awk '{print $2}') &> /dev/null
       rm -f /run/mysql_restart_running.pid
       rm -f /run/boa_wait.pid
       rm -f /var/xdrago/log/.move_sql_ctrl*
@@ -788,7 +788,7 @@ if [ -e "/var/aegir/drush" ]; then
   _IS_SQLCLEANUP_RUNNING=$(ps aux | grep '[m]ysql_cleanup.sh' | awk '{print $2}' 2>&1)
   if [ ! -z "${_IS_SQLCLEANUP_RUNNING}" ]; then
     if [ `ps aux | grep -v "grep" | grep --count "mysql_cleanup.sh"` -gt "2" ]; then
-      kill -9 $(ps aux | grep '[m]ysql_cleanup.sh' | awk '{print $2}')
+      kill -9 $(ps aux | grep '[m]ysql_cleanup.sh' | awk '{print $2}') &> /dev/null
       rm -f /run/mysql_backup_running.pid
       rm -f /var/xdrago/log/.sqlcleanup_ctrl*
       touch /var/xdrago/log/.sqlcleanup_ctrl.${_tRee}.${_xSrl}.pid
@@ -798,7 +798,7 @@ if [ -e "/var/aegir/drush" ]; then
   _IS_SOLRSTART_RUNNING=$(ps aux | grep '[s]olr start' | awk '{print $2}' 2>&1)
   if [ ! -z "${_IS_SOLRSTART_RUNNING}" ]; then
     if [ `ps aux | grep -v "grep" | grep --count "solr start"` -gt "2" ]; then
-      kill -9 $(ps aux | grep '[s]olr start' | awk '{print $2}')
+      kill -9 $(ps aux | grep '[s]olr start' | awk '{print $2}') &> /dev/null
       touch /var/xdrago/log/.solr_start_ctrl.${_tRee}.${_xSrl}.pid
     fi
   fi
@@ -806,7 +806,7 @@ if [ -e "/var/aegir/drush" ]; then
   _IS_PROCTRL_RUNNING=$(ps aux | grep '[p]roc_num_ctrl.cgi' | awk '{print $2}' 2>&1)
   if [ ! -z "${_IS_PROCTRL_RUNNING}" ]; then
     if [ `ps aux | grep -v "grep" | grep --count "proc_num_ctrl.pl"` -gt "1" ]; then
-      kill -9 $(ps aux | grep '[p]roc_num_ctrl.cgi' | awk '{print $2}')
+      kill -9 $(ps aux | grep '[p]roc_num_ctrl.cgi' | awk '{print $2}') &> /dev/null
       touch /var/xdrago/log/.proc_num_ctrl.${_tRee}.${_xSrl}.pid
     fi
   fi
@@ -818,10 +818,10 @@ if [ -e "/var/aegir/drush" ]; then
   _IS_SQLBACKUP_RUNNING=$(ps aux | grep '[m]ysql_backup.sh' | awk '{print $2}' 2>&1)
   if [ ! -z "${_IS_SQLBACKUP_RUNNING}" ]; then
     if [ `ps aux | grep -v "grep" | grep --count "mysql_backup.sh"` -gt "2" ]; then
-      kill -9 $(ps aux | grep '[m]ysql_backup.sh' | awk '{print $2}')
-      kill -9 $(ps aux | grep '[m]ydumper' | awk '{print $2}')
-      kill -9 $(ps aux | grep '[u]sage.sh' | awk '{print $2}')
-      kill -9 $(ps aux | grep '[r]unner.sh' | awk '{print $2}')
+      kill -9 $(ps aux | grep '[m]ysql_backup.sh' | awk '{print $2}') &> /dev/null
+      kill -9 $(ps aux | grep '[m]ydumper' | awk '{print $2}') &> /dev/null
+      kill -9 $(ps aux | grep '[u]sage.sh' | awk '{print $2}') &> /dev/null
+      kill -9 $(ps aux | grep '[r]unner.sh' | awk '{print $2}') &> /dev/null
       rm -f /run/boa_sql_backup.pid
       rm -f /run/mysql_backup_running.pid
       rm -f /run/boa_wait.pid

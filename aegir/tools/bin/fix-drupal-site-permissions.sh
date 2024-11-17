@@ -52,25 +52,25 @@ printf "Setting correct permissions on key files and directories inside "${site_
 if [ -e "${site_path}/aegir.services.yml" ]; then
   rm -f ${site_path}/aegir.services.yml
 fi
-find ${site_path}/*.php -type f -exec chmod 0440 {} \;
-chmod 0640 ${site_path}/civicrm.settings.php
+find ${site_path}/*.php -type f -exec chmod 0440 {} \; &> /dev/null
+chmod 0640 ${site_path}/civicrm.settings.php &> /dev/null
 ### modules,themes,libraries - site level
 find ${site_path}/{modules,themes,libraries} -type d -exec \
-  chmod 02775 {} \;
+  chmod 02775 {} \; &> /dev/null
 find ${site_path}/{modules,themes,libraries} -type f -exec \
-  chmod 0664 {} \;
+  chmod 0664 {} \; &> /dev/null
 
 if [ ! -e "${site_path}/files/permissions-fixed-${_TODAY}.pid" ]; then
   ### ctrl pid
   rm -f ${site_path}/files/permissions-fixed*.pid
   touch ${site_path}/files/permissions-fixed-${_TODAY}.pid
   ### files - site level
-  find ${site_path}/files/ -type d -exec chmod 02775 {} \;
-  find ${site_path}/files/ -type f -exec chmod 0664 {} \;
-  chmod 02775 ${site_path}/files
+  find ${site_path}/files/ -type d -exec chmod 02775 {} \; &> /dev/null
+  find ${site_path}/files/ -type f -exec chmod 0664 {} \; &> /dev/null
+  chmod 02775 ${site_path}/files &> /dev/null
   ### private - site level
-  find ${site_path}/private/ -type d -exec chmod 02775 {} \;
-  find ${site_path}/private/ -type f -exec chmod 0664 {} \;
+  find ${site_path}/private/ -type d -exec chmod 02775 {} \; &> /dev/null
+  find ${site_path}/private/ -type f -exec chmod 0664 {} \; &> /dev/null
   ### known exceptions
   chmod 0644 ${site_path}/files/.htaccess
 fi

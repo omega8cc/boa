@@ -61,7 +61,7 @@ echo "INFO: Starting dbs cleanup on `date`"
       _B_NICE=19
     fi
 
-    renice ${_B_NICE} -p $$
+    renice ${_B_NICE} -p $$ &> /dev/null
 
 _SQL_CACHE_EXC_DEF="cache_bootstrap cache_discovery cache_config"
 
@@ -177,34 +177,34 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
       if [ -e "/var/lib/mysql/${_DB}/queue.ibd" ]; then
         _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/queue.ibd | grep "G" 2>&1)
         if [[ "${_IS_GB}" =~ "queue" ]]; then
-          _truncate_queue_tables
+          _truncate_queue_tables &> /dev/null
           echo "INFO: Truncated giant queue in ${_DB}"
         fi
       fi
       if [ -e "/var/lib/mysql/${_DB}/batch.ibd" ]; then
         _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/batch.ibd | grep "G" 2>&1)
         if [[ "${_IS_GB}" =~ "batch" ]]; then
-          _truncate_batch_tables
+          _truncate_batch_tables &> /dev/null
           echo "INFO: Truncated giant batch in ${_DB}"
         fi
       fi
       if [ -e "/var/lib/mysql/${_DB}/watchdog.ibd" ]; then
         _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/watchdog.ibd | grep "G" 2>&1)
         if [[ "${_IS_GB}" =~ "watchdog" ]]; then
-          _truncate_watchdog_tables
+          _truncate_watchdog_tables &> /dev/null
           echo "INFO: Truncated giant watchdog in ${_DB}"
         fi
       fi
       if [ -e "/var/lib/mysql/${_DB}/accesslog.ibd" ]; then
         _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/accesslog.ibd | grep "G" 2>&1)
         if [[ "${_IS_GB}" =~ "accesslog" ]]; then
-          _truncate_accesslog_tables
+          _truncate_accesslog_tables &> /dev/null
           echo "INFO: Truncated giant accesslog in ${_DB}"
         fi
       fi
-      _truncate_views_data_export
+      _truncate_views_data_export &> /dev/null
       echo "INFO: Truncated not used views_data_export in ${_DB}"
-      _truncate_cache_tables
+      _truncate_cache_tables &> /dev/null
       echo "INFO: All cache tables in ${_DB} truncated"
     fi
     _remove_locks ${_DB}
