@@ -748,7 +748,7 @@ _tune_memory_limits() {
       _USE_SQL=$(( _RAM / 8 ))
     fi
   else
-    _USE_SQL=$(( _RAM / 6 ))
+    _USE_SQL=$(( _RAM / 8 ))
   fi
   if [ "${_USE_SQL}" -lt "64" ]; then
     _USE_SQL=64
