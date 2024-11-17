@@ -945,7 +945,7 @@ _tune_memory_limits() {
     _msg "TUNE: _MAX_REDIS is ${_MAX_REDIS}"
   fi
 
-  _USE_JETTY_MEM=$(( _RAM / 6 ))
+  _USE_JETTY_MEM=$(( _RAM / 8 ))
   _USE_JETTY="-Xmx${_USE_JETTY_MEM}m"
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "TUNE: _USE_JETTY_MEM is ${_USE_JETTY_MEM}"
