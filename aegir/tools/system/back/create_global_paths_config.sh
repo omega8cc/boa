@@ -1,5 +1,9 @@
 #!/bin/bash
 
+export HOME=/root
+export SHELL=/bin/bash
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+
 # Function to create the global paths configuration file
 create_global_paths_config() {
   # Define the global backup source and include/exclude variables

@@ -2203,86 +2203,6 @@ _fix_php_in_lshell_access() {
   fi
 }
 
-_fix_python_src() {
-  _PYTHON_VRN=3.12.5
-  _DCY_PTN="/usr/local/bin/python3"
-  if [ -x "${_DCY_PTN}" ]; then
-    _PYTHON_TEST=$(${_DCY_PTN} --version 2>&1)
-  fi
-  if [[ ! "${_PYTHON_TEST}" =~ "Python ${_PYTHON_VRN}" ]] \
-    || [ ! -x "${_DCY_PTN}" ]; then
-    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
-      && [ -e "/etc/apt/apt.conf.d" ]; then
-      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
-    fi
-    _apt_clean_update
-    apt-get install ${_aptYesUnth} \
-        intltool \
-        libffi-dev \
-        par2 \
-        python3-pip \
-        python3-venv \
-        python3 \
-        rclone \
-        rdiff \
-        tzdata
-    cd /var/opt
-    rm -rf Python*
-    _get_dev_src "Python-${_PYTHON_VRN}.tgz"
-    tar -xzf Python-${_PYTHON_VRN}.tgz
-    cd Python-${_PYTHON_VRN}
-    if [ -d "/usr/local/ssl3" ]; then
-      bash ./configure --with-openssl=/usr/local/ssl3
-    else
-      bash ./configure --with-openssl=/usr/local/ssl
-    fi
-    make -j $(nproc) --quiet
-    make install --quiet
-    cd
-    _apt_clean_update
-    apt-get install python3-pip ${_aptYesUnth}
-    if [ -x "/usr/local/bin/pip3" ]; then
-      _usePip=/usr/local/bin/pip3
-    elif [ -x "/usr/bin/pip3" ]; then
-      _usePip=/usr/bin/pip3
-    fi
-    _PIP_TEST=$(${_usePip} --version 2>&1)
-    if [[ "${_PIP_TEST}" =~ "python 3.11" ]] \
-      || [[ "${_PIP_TEST}" =~ "python 3.12" ]]; then
-      ${_usePip} install --upgrade pip --root-user-action ignore
-    else
-      ${_usePip} install --upgrade pip
-    fi
-  fi
-}
-
-_if_fix_python_src_for_duplicity() {
-  _PYTHON_FIX=NO
-  _PYTHON_VRN=3.12.5
-  _DCY_PTN="/usr/local/bin/python3"
-  if [ -x "${_DCY_PTN}" ]; then
-    _PYTHON_TEST=$(${_DCY_PTN} --version 2>&1)
-  fi
-  if [[ ! "${_PYTHON_TEST}" =~ "Python ${_PYTHON_VRN}" ]] \
-    || [ ! -x "${_DCY_PTN}" ]; then
-    _PYTHON_FIX=YES
-  fi
-  _DUPLICITY_CHK_VRN=3.0.2
-  _isDuplicity=$(which duplicity 2>&1)
-  if [ -x "${_isDuplicity}" ]; then
-    _DUPLICITY_ITD=$(${_isDuplicity} --version 2>&1 \
-      | tr -d "\n" \
-      | cut -d" " -f2 \
-      | awk '{ print $1}' 2>&1)
-    if [ "${_DUPLICITY_ITD}" != "${_DUPLICITY_CHK_VRN}" ]; then
-      _PYTHON_FIX=YES
-    fi
-  fi
-  if [ "${_PYTHON_FIX}" = "YES" ]; then
-    _fix_python_src
-  fi
-}
-
 _if_fix_lshell() {
   if [ ! -e "/usr/local/etc/lshell.conf" ] \
     && [ ! -L "/usr/local/etc/lshell.conf" ] \
@@ -3616,7 +3536,6 @@ if [ `whoami` = "root" ]; then
     && [ -e "/var/log/barracuda_log.txt" ]; then
     _fix_ping_perms
     _fix_fpm_process_max
-    _if_fix_python_src_for_duplicity
     _if_fix_lshell
     _fix_node_in_lshell_access
     # _fix_php_in_lshell_access

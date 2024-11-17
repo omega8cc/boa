@@ -1,5 +1,9 @@
 #!/bin/bash
 
+export HOME=/root
+export SHELL=/bin/bash
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+
 # Function to create a user's paths configuration file
 create_user_paths_config() {
   local user=$1

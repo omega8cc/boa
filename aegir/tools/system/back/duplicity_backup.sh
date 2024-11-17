@@ -1,5 +1,9 @@
 #!/bin/bash
 
+export HOME=/root
+export SHELL=/bin/bash
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+
 # Ensure using the correct Python version
 PYTHON_BIN="python3.12"
 
