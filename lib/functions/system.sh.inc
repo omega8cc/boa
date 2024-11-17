@@ -1603,12 +1603,28 @@ _php_if_versions_cleanup_cnf() {
   else
     _AUTO_PHP_CLEANUP=NO
   fi
-  if [ ! -e "/data/u" ]; then
+  if [ "${_STATUS}" != "UPGRADE" ]; then
     _AUTO_PHP_CLEANUP=NO
-    _msg "OOPS: No /data/u so AUTO_PHP_CLEANUP=NO"
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: _AUTO_PHP_CLEANUP is disabled during ${_STATUS}"
+    fi
+  else
+    if [ ! -e "/data/u" ]; then
+      _AUTO_PHP_CLEANUP=NO
+      _msg "INFO: Since no /data/u thus _AUTO_PHP_CLEANUP=NO during ${_STATUS}"
+      sleep 3
+      _msg "HINT: the cleanup will not work until you install Octopus instance"
+    fi
+    if [ ! -e "/var/aegir/drush/vendor" ]; then
+      _AUTO_PHP_CLEANUP=NO
+      _msg "ALRT: Your Aegir Master Instance looks broken!"
+      sleep 8
+      _msg "HINT: Please run full upgrade with 'barracuda up-lts' command"
+      sleep 3
+      _msg "ALSO: Since no /var/aegir/drush/vendor thus _AUTO_PHP_CLEANUP=NO"
+    fi
   fi
-  if [ -e "/var/aegir/drush/vendor" ] \
-    && [ "${_AUTO_PHP_CLEANUP}" = "YES" ]; then
+  if [ "${_AUTO_PHP_CLEANUP}" = "YES" ]; then
     ### Make sure that _PHP_SINGLE_INSTALL takes precedence
     if [ ! -z "${_PHP_SINGLE_INSTALL}" ]; then
       if [ "${_PHP_SINGLE_INSTALL}" = "8.3" ] \
