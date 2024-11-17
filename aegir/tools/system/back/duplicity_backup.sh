@@ -1,348 +1,219 @@
 #!/bin/bash
 
+# Environment setup
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
 # Ensure using the correct Python version
-PYTHON_BIN="python3.12"
+_PYTHON_BIN="python3.12"
 
 # Function to create PID file
-create_pid_file() {
-  local pidfile=$1
-  if [ -e "$pidfile" ]; then
-    echo "Process already running with PID file $pidfile"
+_create_pid_file() {
+  local _pidfile=$1
+  if [ -e "${_pidfile}" ]; then
+    echo "Process already running with PID file ${_pidfile}"
     exit 1
   else
-    echo $$ > "$pidfile"
+    echo $$ > "${_pidfile}"
   fi
 }
 
 # Function to remove PID file
-remove_pid_file() {
-  local pidfile=$1
-  rm -f "$pidfile"
+_remove_pid_file() {
+  local _pidfile=$1
+  rm -f "${_pidfile}"
 }
 
 # Function to load credentials from a file
-load_credentials() {
-  local service=$1
-  local user=$2
-  local creds_path="/data/disk/$user/static/control/backups_credentials/$service.txt"
-  if [ -f "$creds_path" ]; then
-    source "$creds_path"
+_load_credentials() {
+  local _service=$1
+  local _user=$2
+  local _creds_path="/data/disk/${_user}/static/control/backups_credentials/${_service}.txt"
+  if [ -f "${_creds_path}" ]; then
+    source "${_creds_path}"
   else
-    echo "Credentials file $creds_path not found."
+    echo "Credentials file ${_creds_path} not found."
     exit 1
   fi
 }
 
 # Function to load paths and other settings from a file
-load_paths() {
-  local user=$1
-  local paths_path="/data/disk/$user/remote_backups/paths.txt"
-  if [ -f "$paths_path" ]; then
-    source "$paths_path"
+_load_paths() {
+  local _user=$1
+  local _paths_path="/data/disk/${_user}/remote_backups/paths.txt"
+  if [ -f "${_paths_path}" ]; then
+    source "${_paths_path}"
   else
-    echo "Paths configuration file $paths_path not found."
+    echo "Paths configuration file ${_paths_path} not found."
     exit 1
   fi
 }
 
 # Function to construct BUCKET_NAME
-construct_bucket_name() {
-  local service_abbr=$1
-  local user=$2
-  local hostname=$(hostname -s)
-  BUCKET_NAME="${hostname}-${service_abbr}-${user}"
+_construct_bucket_name() {
+  local _service_abbr=$1
+  local _user=$2
+  local _hostname=$(hostname -s)
+  BUCKET_NAME="${_hostname}-${_service_abbr}-${_user}"
 }
 
 # Function to perform backup
-backup() {
-  $PYTHON_BIN -m duplicity \
-    --full-if-older-than $FULL_BACKUP_FREQUENCY \
+_backup() {
+  ${_PYTHON_BIN} -m duplicity \
+    --full-if-older-than "${FULL_BACKUP_FREQUENCY}" \
     --volsize 50 \
     --allow-source-mismatch \
+    --follow-links \
     --asynchronous-upload \
     ${EXCLUDE} \
     ${USER_EXCLUDE} \
     ${INCLUDE} \
     ${USER_INCLUDE} \
     --exclude '**' \
-    ${SOURCE} \
-    $BACKUP_TARGET
+    "${SOURCE}" \
+    "${BACKUP_TARGET}"
 }
 
 # Function to clean up old backups
-cleanup() {
-  $PYTHON_BIN -m duplicity remove-older-than $KEEP_WITHIN --force $BACKUP_TARGET
-  $PYTHON_BIN -m duplicity remove-all-but-n-full $KEEP_FULL_BACKUPS --force $BACKUP_TARGET
+_cleanup() {
+  ${_PYTHON_BIN} -m duplicity remove-older-than "${KEEP_WITHIN}" --force "${BACKUP_TARGET}"
+  ${_PYTHON_BIN} -m duplicity remove-all-but-n-full "${KEEP_FULL_BACKUPS}" --force "${BACKUP_TARGET}"
 }
 
 # Function to restore backup
-restore() {
-  local restore_target=$1
-  local restore_path=$2
-  local restore_time=$3
-  restore_command="$PYTHON_BIN -m duplicity restore --allow-source-mismatch"
+_restore() {
+  local _restore_target=$1
+  local _restore_path=$2
+  local _restore_time=$3
+  local _restore_command="${_PYTHON_BIN} -m duplicity restore --allow-source-mismatch"
 
-  if [ -n "$restore_time" ]; then
-    restore_command="$restore_command --time $restore_time"
+  # Ensure _RESTORE_TARGET exists
+  if [ ! -d "${_restore_target}" ]; then
+    echo "Creating restore target directory: ${_restore_target}"
+    mkdir -p "${_restore_target}"
   fi
 
-  restore_command="$restore_command $BACKUP_TARGET"
-
-  if [ -n "$restore_path" ]; then
-    restore_command="$restore_command $restore_path"
+  if [ -n "${_restore_time}" ]; then
+    _restore_command="${_restore_command} --time ${_restore_time}"
   fi
 
-  restore_command="$restore_command $restore_target"
+  _restore_command="${_restore_command} ${BACKUP_TARGET}"
 
-  eval $restore_command
+  if [ -n "${_restore_path}" ]; then
+    _restore_command="${_restore_command} ${_restore_path}"
+  fi
+
+  _restore_command="${_restore_command} ${_restore_target}"
+
+  eval "${_restore_command}"
 }
 
-# Function to set AWS S3 as backup target
-set_aws_s3_target() {
-  local user=$1
-  load_credentials "aws" $user
-  construct_bucket_name "aws" $user
-  BACKUP_TARGET="s3://${AWS_REGION}.amazonaws.com/$BUCKET_NAME"
-}
+# Function to set backup target based on service
+_set_backup_target() {
+  local _service=$1
+  local _user=$2
 
-# Function to set AWS S3 Express One Zone as backup target
-set_aws_s3_one_zone_target() {
-  local user=$1
-  load_credentials "aws_one_zone" $user
-  construct_bucket_name "aws_one_zone" $user
-  BACKUP_TARGET="s3://${AWS_REGION}.amazonaws.com/$BUCKET_NAME"
-}
-
-# Function to set AWS S3 Standard-IA as backup target
-set_aws_s3_standard_ia_target() {
-  local user=$1
-  load_credentials "aws_standard_ia" $user
-  construct_bucket_name "aws_standard_ia" $user
-  BACKUP_TARGET="s3://${AWS_REGION}.amazonaws.com/$BUCKET_NAME"
-}
-
-# Function to set Google Cloud Storage as backup target
-set_gcs_target() {
-  local user=$1
-  load_credentials "gcs" $user
-  construct_bucket_name "gcs" $user
-  BACKUP_TARGET="gs://$BUCKET_NAME"
-}
-
-# Function to set Backblaze B2 as backup target
-set_b2_target() {
-  local user=$1
-  load_credentials "b2" $user
-  construct_bucket_name "b2" $user
-  BACKUP_TARGET="b2://$B2_ACCOUNT_ID:$B2_APPLICATION_KEY@$BUCKET_NAME"
-}
-
-# Function to set Azure Blob Storage as backup target
-set_azure_target() {
-  local user=$1
-  load_credentials "azure" $user
-  construct_bucket_name "azure" $user
-  BACKUP_TARGET="azure://$AZURE_STORAGE_ACCOUNT@$BUCKET_NAME"
-}
-
-# Function to set UpCloud Object Storage as backup target
-set_upcloud_target() {
-  local user=$1
-  load_credentials "upcloud" $user
-  construct_bucket_name "upcloud" $user
-  BACKUP_TARGET="s3://$UPCLOUD_USERNAME:$UPCLOUD_PASSWORD@$REGION/$BUCKET_NAME"
-}
-
-# Function to set IBM Cloud Object Storage as backup target
-set_ibm_target() {
-  local user=$1
-  load_credentials "ibm" $user
-  construct_bucket_name "ibm" $user
-  BACKUP_TARGET="ibmcos://$IBM_API_KEY_ID:$IBM_SERVICE_INSTANCE_ID@$IBM_REGION/$BUCKET_NAME"
-}
-
-# Function to set Wasabi Hot Cloud Storage as backup target
-set_wasabi_target() {
-  local user=$1
-  load_credentials "wasabi" $user
-  construct_bucket_name "wasabi" $user
-  BACKUP_TARGET="s3://$WASABI_ACCESS_KEY:$WASABI_SECRET_KEY@$WASABI_REGION/$BUCKET_NAME"
-}
-
-# Function to set DigitalOcean Spaces as backup target
-set_do_spaces_target() {
-  local user=$1
-  load_credentials "do_spaces" $user
-  construct_bucket_name "do_spaces" $user
-  BACKUP_TARGET="s3://$DO_SPACES_KEY:$DO_SPACES_SECRET@$DO_SPACES_REGION/$BUCKET_NAME"
-}
-
-# Function to set Linode Object Storage by Akamai as backup target
-set_linode_target() {
-  local user=$1
-  load_credentials "linode" $user
-  construct_bucket_name "linode" $user
-  BACKUP_TARGET="s3://$LINODE_ACCESS_KEY:$LINODE_SECRET_KEY@$LINODE_REGION/$BUCKET_NAME"
+  case "${_service}" in
+    aws)
+      _load_credentials "aws" "${_user}"
+      _construct_bucket_name "aws" "${_user}"
+      BACKUP_TARGET="s3://${AWS_REGION}.amazonaws.com/${BUCKET_NAME}"
+      ;;
+    aws_one_zone)
+      _load_credentials "aws_one_zone" "${_user}"
+      _construct_bucket_name "aws_one_zone" "${_user}"
+      BACKUP_TARGET="s3://${AWS_REGION}.amazonaws.com/${BUCKET_NAME}"
+      ;;
+    aws_standard_ia)
+      _load_credentials "aws_standard_ia" "${_user}"
+      _construct_bucket_name "aws_standard_ia" "${_user}"
+      BACKUP_TARGET="s3://${AWS_REGION}.amazonaws.com/${BUCKET_NAME}"
+      ;;
+    gcs)
+      _load_credentials "gcs" "${_user}"
+      _construct_bucket_name "gcs" "${_user}"
+      BACKUP_TARGET="gs://${BUCKET_NAME}"
+      ;;
+    b2)
+      _load_credentials "b2" "${_user}"
+      _construct_bucket_name "b2" "${_user}"
+      BACKUP_TARGET="b2://${B2_ACCOUNT_ID}:${B2_APPLICATION_KEY}@${BUCKET_NAME}"
+      ;;
+    azure)
+      _load_credentials "azure" "${_user}"
+      _construct_bucket_name "azure" "${_user}"
+      BACKUP_TARGET="azure://${AZURE_STORAGE_ACCOUNT}@${BUCKET_NAME}"
+      ;;
+    upcloud)
+      _load_credentials "upcloud" "${_user}"
+      _construct_bucket_name "upcloud" "${_user}"
+      BACKUP_TARGET="s3://${UPCLOUD_USERNAME}:${UPCLOUD_PASSWORD}@${REGION}/${BUCKET_NAME}"
+      ;;
+    ibm)
+      _load_credentials "ibm" "${_user}"
+      _construct_bucket_name "ibm" "${_user}"
+      BACKUP_TARGET="ibmcos://${IBM_API_KEY_ID}:${IBM_SERVICE_INSTANCE_ID}@${IBM_REGION}/${BUCKET_NAME}"
+      ;;
+    wasabi)
+      _load_credentials "wasabi" "${_user}"
+      _construct_bucket_name "wasabi" "${_user}"
+      BACKUP_TARGET="s3://${WASABI_ACCESS_KEY}:${WASABI_SECRET_KEY}@${WASABI_REGION}/${BUCKET_NAME}"
+      ;;
+    do_spaces)
+      _load_credentials "do_spaces" "${_user}"
+      _construct_bucket_name "do_spaces" "${_user}"
+      BACKUP_TARGET="s3://${DO_SPACES_KEY}:${DO_SPACES_SECRET}@${DO_SPACES_REGION}/${BUCKET_NAME}"
+      ;;
+    linode)
+      _load_credentials "linode" "${_user}"
+      _construct_bucket_name "linode" "${_user}"
+      BACKUP_TARGET="s3://${LINODE_ACCESS_KEY}:${LINODE_SECRET_KEY}@${LINODE_REGION}/${BUCKET_NAME}"
+      ;;
+    *)
+      echo "Error: Unknown service ${_service}"
+      exit 1
+      ;;
+  esac
 }
 
 # Main script
 if [ "$#" -lt 3 ]; then
-  echo "Usage: $0 {backup|cleanup|restore} {aws|aws_one_zone|aws_standard_ia|gcs|b2|azure|upcloud|ibm|wasabi|do_spaces|linode} USER [RESTORE_TARGET] [RESTORE_PATH] [RESTORE_TIME]"
+  echo "Usage: $0 {backup|cleanup|restore} <SERVICE> <USER> [RESTORE_TARGET] [RESTORE_PATH] [RESTORE_TIME]"
   exit 1
 fi
 
-ACTION=$1
-SERVICE=$2
-USER=$3
-RESTORE_TARGET="${4:-/data/disk/$USER/static/backups/}"
-RESTORE_PATH="${5:-}"
-RESTORE_TIME="${6:-}"
-PIDFILE="/var/run/duplicity_${SERVICE}_${USER}.pid"
+_ACTION=$1
+_SERVICE=$2
+_USER=$3
+_RESTORE_TARGET="${4:-/data/disk/${_USER}/static/backups/}"
+_RESTORE_PATH="${5:-}"
+_RESTORE_TIME="${6:-}"
+_PIDFILE="/var/run/duplicity_${_SERVICE}_${_USER}.pid"
 
-create_pid_file "$PIDFILE"
+_create_pid_file "${_PIDFILE}"
 
 # Load paths configuration
-load_paths $USER
+_load_paths "${_USER}"
 
-case $ACTION in
+case "${_ACTION}" in
   backup)
-    case $SERVICE in
-      aws)
-        set_aws_s3_target $USER
-        ;;
-      aws_one_zone)
-        set_aws_s3_one_zone_target $USER
-        ;;
-      aws_standard_ia)
-        set_aws_s3_standard_ia_target $USER
-        ;;
-      gcs)
-        set_gcs_target $USER
-        ;;
-      b2)
-        set_b2_target $USER
-        ;;
-      azure)
-        set_azure_target $USER
-        ;;
-      upcloud)
-        set_upcloud_target $USER
-        ;;
-      ibm)
-        set_ibm_target $USER
-        ;;
-      wasabi)
-        set_wasabi_target $USER
-        ;;
-      do_spaces)
-        set_do_spaces_target $USER
-        ;;
-      linode)
-        set_linode_target $USER
-        ;;
-      *)
-        echo "Usage: $0 backup {aws|aws_one_zone|aws_standard_ia|gcs|b2|azure|upcloud|ibm|wasabi|do_spaces|linode} USER"
-        remove_pid_file "$PIDFILE"
-        exit 1
-        ;;
-    esac
-    backup
+    _set_backup_target "${_SERVICE}" "${_USER}"
+    _backup
     ;;
   cleanup)
-    case $SERVICE in
-      aws)
-        set_aws_s3_target $USER
-        ;;
-      aws_one_zone)
-        set_aws_s3_one_zone_target $USER
-        ;;
-      aws_standard_ia)
-        set_aws_s3_standard_ia_target $USER
-        ;;
-      gcs)
-        set_gcs_target $USER
-        ;;
-      b2)
-        set_b2_target $USER
-        ;;
-      azure)
-        set_azure_target $USER
-        ;;
-      upcloud)
-        set_upcloud_target $USER
-        ;;
-      ibm)
-        set_ibm_target $USER
-        ;;
-      wasabi)
-        set_wasabi_target $USER
-        ;;
-      do_spaces)
-        set_do_spaces_target $USER
-        ;;
-      linode)
-        set_linode_target $USER
-        ;;
-      *)
-        echo "Usage: $0 cleanup {aws|aws_one_zone|aws_standard_ia|gcs|b2|azure|upcloud|ibm|wasabi|do_spaces|linode} USER"
-        remove_pid_file "$PIDFILE"
-        exit 1
-        ;;
-    esac
-    cleanup
+    _set_backup_target "${_SERVICE}" "${_USER}"
+    _cleanup
     ;;
   restore)
-    case $SERVICE in
-      aws)
-        set_aws_s3_target $USER
-        ;;
-      aws_one_zone)
-        set_aws_s3_one_zone_target $USER
-        ;;
-      aws_standard_ia)
-        set_aws_s3_standard_ia_target $USER
-        ;;
-      gcs)
-        set_gcs_target $USER
-        ;;
-      b2)
-        set_b2_target $USER
-        ;;
-      azure)
-        set_azure_target $USER
-        ;;
-      upcloud)
-        set_upcloud_target $USER
-        ;;
-      ibm)
-        set_ibm_target $USER
-        ;;
-      wasabi)
-        set_wasabi_target $USER
-        ;;
-      do_spaces)
-        set_do_spaces_target $USER
-        ;;
-      linode)
-        set_linode_target $USER
-        ;;
-      *)
-        echo "Usage: $0 restore {aws|aws_one_zone|aws_standard_ia|gcs|b2|azure|upcloud|ibm|wasabi|do_spaces|linode} USER [RESTORE_TARGET] [RESTORE_PATH] [RESTORE_TIME]"
-        remove_pid_file "$PIDFILE"
-        exit 1
-        ;;
-    esac
-    restore $RESTORE_TARGET $RESTORE_PATH $RESTORE_TIME
+    _set_backup_target "${_SERVICE}" "${_USER}"
+    _restore "${_RESTORE_TARGET}" "${_RESTORE_PATH}" "${_RESTORE_TIME}"
     ;;
   *)
-    echo "Usage: $0 {backup|cleanup|restore} {aws|aws_one_zone|aws_standard_ia|gcs|b2|azure|upcloud|ibm|wasabi|do_spaces|linode} USER [RESTORE_TARGET] [RESTORE_PATH] [RESTORE_TIME]"
-    remove_pid_file "$PIDFILE"
+    echo "Error: Invalid action ${_ACTION}"
+    _remove_pid_file "${_PIDFILE}"
     exit 1
     ;;
 esac
 
-remove_pid_file "$PIDFILE"
+_remove_pid_file "${_PIDFILE}"
