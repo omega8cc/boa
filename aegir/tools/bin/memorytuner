@@ -146,7 +146,7 @@ _parse_mysqltuner_recommendations() {
     fi
     echo "Running mysqltuner8..."
     local _tempfile=$(mktemp)
-    mysqltuner8 --nogood --nocolor --nographics --buffers --silent > "${_tempfile}" &
+    mysqltuner8 --nogood --nocolor --buffers --silent > "${_tempfile}" &
     local _mysqltuner_pid=$!
   elif [[ "${_MYSQL_VERSION}" =~ ^5\.7 ]]; then
     # Use mysqltuner5 for Percona 5.7
@@ -156,7 +156,7 @@ _parse_mysqltuner_recommendations() {
     fi
     echo "Running mysqltuner5..."
     local _tempfile=$(mktemp)
-    mysqltuner5 --nogood --nocolor --nographics --buffers --silent > "${_tempfile}" &
+    mysqltuner5 --nogood --nocolor --buffers --silent > "${_tempfile}" &
     local _mysqltuner_pid=$!
   else
     echo "Unsupported MySQL version: ${_MYSQL_VERSION}"

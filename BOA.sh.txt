@@ -1620,13 +1620,13 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/websh.ctrl.f87.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/websh.ctrl.f86.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /bin/websh /var/xdrago/websh.sh.old
     curl ${_crlGet} "${_urlHmr}/helpers/websh.sh.txt" -o /bin/websh
     if [ -e "/bin/websh" ]; then
       chmod 755 /bin/websh
       chown root:root /bin/websh
-      touch ${_pthLog}/websh.ctrl.f87.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/websh.ctrl.f86.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/websh.sh.old /bin/websh
     fi
@@ -2203,86 +2203,6 @@ _fix_php_in_lshell_access() {
   fi
 }
 
-_fix_python_src() {
-  _PYTHON_VRN=3.12.5
-  _DCY_PTN="/usr/local/bin/python3"
-  if [ -x "${_DCY_PTN}" ]; then
-    _PYTHON_TEST=$(${_DCY_PTN} --version 2>&1)
-  fi
-  if [[ ! "${_PYTHON_TEST}" =~ "Python ${_PYTHON_VRN}" ]] \
-    || [ ! -x "${_DCY_PTN}" ]; then
-    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
-      && [ -e "/etc/apt/apt.conf.d" ]; then
-      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
-    fi
-    _apt_clean_update
-    apt-get install ${_aptYesUnth} \
-        intltool \
-        libffi-dev \
-        par2 \
-        python3-pip \
-        python3-venv \
-        python3 \
-        rclone \
-        rdiff \
-        tzdata
-    cd /var/opt
-    rm -rf Python*
-    _get_dev_src "Python-${_PYTHON_VRN}.tgz"
-    tar -xzf Python-${_PYTHON_VRN}.tgz
-    cd Python-${_PYTHON_VRN}
-    if [ -d "/usr/local/ssl3" ]; then
-      bash ./configure --with-openssl=/usr/local/ssl3
-    else
-      bash ./configure --with-openssl=/usr/local/ssl
-    fi
-    make -j $(nproc) --quiet
-    make install --quiet
-    cd
-    _apt_clean_update
-    apt-get install python3-pip ${_aptYesUnth}
-    if [ -x "/usr/local/bin/pip3" ]; then
-      _usePip=/usr/local/bin/pip3
-    elif [ -x "/usr/bin/pip3" ]; then
-      _usePip=/usr/bin/pip3
-    fi
-    _PIP_TEST=$(${_usePip} --version 2>&1)
-    if [[ "${_PIP_TEST}" =~ "python 3.11" ]] \
-      || [[ "${_PIP_TEST}" =~ "python 3.12" ]]; then
-      ${_usePip} install --upgrade pip --root-user-action ignore
-    else
-      ${_usePip} install --upgrade pip
-    fi
-  fi
-}
-
-_if_fix_python_src_for_duplicity() {
-  _PYTHON_FIX=NO
-  _PYTHON_VRN=3.12.5
-  _DCY_PTN="/usr/local/bin/python3"
-  if [ -x "${_DCY_PTN}" ]; then
-    _PYTHON_TEST=$(${_DCY_PTN} --version 2>&1)
-  fi
-  if [[ ! "${_PYTHON_TEST}" =~ "Python ${_PYTHON_VRN}" ]] \
-    || [ ! -x "${_DCY_PTN}" ]; then
-    _PYTHON_FIX=YES
-  fi
-  _DUPLICITY_CHK_VRN=3.0.2
-  _isDuplicity=$(which duplicity 2>&1)
-  if [ -x "${_isDuplicity}" ]; then
-    _DUPLICITY_ITD=$(${_isDuplicity} --version 2>&1 \
-      | tr -d "\n" \
-      | cut -d" " -f2 \
-      | awk '{ print $1}' 2>&1)
-    if [ "${_DUPLICITY_ITD}" != "${_DUPLICITY_CHK_VRN}" ]; then
-      _PYTHON_FIX=YES
-    fi
-  fi
-  if [ "${_PYTHON_FIX}" = "YES" ]; then
-    _fix_python_src
-  fi
-}
-
 _if_fix_lshell() {
   if [ ! -e "/usr/local/etc/lshell.conf" ] \
     && [ ! -L "/usr/local/etc/lshell.conf" ] \
@@ -2290,9 +2210,8 @@ _if_fix_lshell() {
     [ ! -d "/usr/local/etc" ] && mkdir -p /usr/local/etc
     ln -sfn /etc/lshell.conf /usr/local/etc/lshell.conf
   fi
-  _LSHELL_VRN=0.10
+  _LSHELL_VRN=0.10.7.1
   _PATH_LSHELL="${_usrBin}/lshell"
-  _LSHELL_CHK_VRN=0.10
   _LSHELL_FORCE_REINSTALL=NO
   _isLshell=$(which lshell 2>&1)
   _LSHELL_ITD=$(${_isLshell} --version 2>&1 \
@@ -2301,7 +2220,6 @@ _if_fix_lshell() {
     | awk '{ print $1}' 2>&1)
   if [ -z "${_isLshell}" ] \
     || [ -z "${_PATH_LSHELL}" ] \
-    || [ "${_LSHELL_ITD}" != "${_LSHELL_CHK_VRN}" ] \
     || [[ "${_LSHELL_ITD}" =~ "Traceback" ]] \
     || [[ "${_LSHELL_ITD}" =~ "bad interpreter" ]] \
     || [[ "${_LSHELL_ITD}" =~ "ImportError" ]]; then
@@ -3208,14 +3126,14 @@ _if_update_boa_key_tools_only() {
     fi
   fi
   _BOA_TOOLS_UPDATE=NO
-  if [ -e "${_pthLog}" ] && [ ! -e "${_pthLog}/updateBOAtoolsCI.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+  if [ -e "${_pthLog}" ] && [ ! -e "${_pthLog}/updateBOAtoolsCK.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     _BOA_TOOLS_UPDATE=YES
   fi
   [ ! -e "/var/aegir/drush" ] && _BOA_TOOLS_UPDATE=YES
   if [ "${_BOA_TOOLS_UPDATE}" = "YES" ]; then
     _update_boa_tools
     [ -e "${_pthLog}" ] && rm -f ${_pthLog}/updateBOAtools*.pid
-    [ -e "${_pthLog}" ] && touch ${_pthLog}/updateBOAtoolsCI.ctrl.${_tRee}.${_xSrl}.pid
+    [ -e "${_pthLog}" ] && touch ${_pthLog}/updateBOAtoolsCK.ctrl.${_tRee}.${_xSrl}.pid
     if [ "${1}" = "verbose" ] || [ -z "${1}" ]; then
       echo
       echo "BOA Meta Installers setup completed"
@@ -3363,14 +3281,14 @@ _boa_setup() {
     apt-get install lsb-release ${_aptYesUnth}
   fi
   _BOA_TOOLS_UPDATE=NO
-  if [ -e "${_pthLog}" ] && [ ! -e "${_pthLog}/updateBOAtoolsCI.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+  if [ -e "${_pthLog}" ] && [ ! -e "${_pthLog}/updateBOAtoolsCK.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     _BOA_TOOLS_UPDATE=YES
   fi
   [ ! -e "/var/aegir/drush" ] && _BOA_TOOLS_UPDATE=YES
   if [ "${_BOA_TOOLS_UPDATE}" = "YES" ]; then
     _update_boa_tools
     [ -e "${_pthLog}" ] && rm -f ${_pthLog}/updateBOAtools*.pid
-    [ -e "${_pthLog}" ] && touch ${_pthLog}/updateBOAtoolsCI.ctrl.${_tRee}.${_xSrl}.pid
+    [ -e "${_pthLog}" ] && touch ${_pthLog}/updateBOAtoolsCK.ctrl.${_tRee}.${_xSrl}.pid
     echo
     echo "BOA Meta Installers setup completed"
     echo "Please check INSTALL.md and UPGRADE.md at https://github.com/omega8cc/boa"
@@ -3618,7 +3536,6 @@ if [ `whoami` = "root" ]; then
     && [ -e "/var/log/barracuda_log.txt" ]; then
     _fix_ping_perms
     _fix_fpm_process_max
-    _if_fix_python_src_for_duplicity
     _if_fix_lshell
     _fix_node_in_lshell_access
     # _fix_php_in_lshell_access

@@ -748,7 +748,7 @@ _tune_memory_limits() {
       _USE_SQL=$(( _RAM / 8 ))
     fi
   else
-    _USE_SQL=$(( _RAM / 8 ))
+    _USE_SQL=$(( _RAM / 6 ))
   fi
   if [ "${_USE_SQL}" -lt "64" ]; then
     _USE_SQL=64
@@ -937,7 +937,7 @@ _tune_memory_limits() {
     fi
   fi
 
-  _MAX_MEM_REDIS=$(( _RAM / 8 ))
+  _MAX_MEM_REDIS=$(( _RAM / 6 ))
   _MAX_REDIS="${_MAX_MEM_REDIS}MB"
   sed -i "s/^maxmemory .*/maxmemory ${_MAX_REDIS}/g" /etc/redis/redis.conf &> /dev/null
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -945,7 +945,7 @@ _tune_memory_limits() {
     _msg "TUNE: _MAX_REDIS is ${_MAX_REDIS}"
   fi
 
-  _USE_JETTY_MEM=$(( _RAM / 8 ))
+  _USE_JETTY_MEM=$(( _RAM / 6 ))
   _USE_JETTY="-Xmx${_USE_JETTY_MEM}m"
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "TUNE: _USE_JETTY_MEM is ${_USE_JETTY_MEM}"
@@ -961,7 +961,7 @@ _tune_memory_limits() {
     sed -i "s/^JAVA_OPTIONS.*/JAVA_OPTIONS=\"-Xms64m ${_USE_JETTY} -Djava.awt.headless=true -Dsolr.solr.home=\/opt\/solr1 \$JAVA_OPTIONS\" # Options/g" /etc/default/jetty7
   fi
 
-  _USE_SOLR_MEM=$(( _RAM / 8 ))
+  _USE_SOLR_MEM=$(( _RAM / 6 ))
   _USE_SOLR="-Xmx${_USE_SOLR_MEM}m"
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "TUNE: _USE_SOLR_MEM is ${_USE_SOLR_MEM}"
@@ -973,6 +973,10 @@ _tune_memory_limits() {
     sed -i "s/^#SOLR_JAVA_MEM/SOLR_JAVA_MEM/g" /etc/default/solr7.in.sh &> /dev/null
     wait
     sed -i "s/^SOLR_JAVA_MEM=.*/SOLR_JAVA_MEM=\"-Xms64m ${_USE_SOLR}\"/g" /etc/default/solr7.in.sh
+    wait
+    sed -i "s/^#SOLR_STOP_WAIT=.*/SOLR_STOP_WAIT=\"8\"/g" /etc/default/solr7.in.sh &> /dev/null
+    wait
+    sed -i "s/^#SOLR_WAIT_FOR_ZK=.*/SOLR_WAIT_FOR_ZK=\"8\"/g" /etc/default/solr7.in.sh &> /dev/null
     wait
   fi
   _tune_web_server_config
@@ -1599,8 +1603,9 @@ _php_if_versions_cleanup_cnf() {
   else
     _AUTO_PHP_CLEANUP=NO
   fi
-  if [ ! -d "/data/u" ]; then
+  if [ ! -e "/data/u" ]; then
     _AUTO_PHP_CLEANUP=NO
+    _msg "OOPS: No /data/u so AUTO_PHP_CLEANUP=NO"
   fi
   if [ -e "/var/aegir/drush/vendor" ] \
     && [ "${_AUTO_PHP_CLEANUP}" = "YES" ]; then
@@ -7866,7 +7871,7 @@ _lshell_install_upgrade() {
     _msg "PROC: _lshell_install_upgrade"
   fi
   _PATH_LSHELL="/usr/local/bin/lshell"
-  _LSHELL_CHK_VRN=0.10
+  _LSHELL_CHK_VRN=0.10.7
   _LSHELL_FORCE_REINSTALL=NO
   _isLshell=$(which lshell 2>&1)
   _LSHELL_ITD=$(${_isLshell} --version 2>&1 \
