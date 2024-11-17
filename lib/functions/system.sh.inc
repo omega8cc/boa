@@ -5732,20 +5732,23 @@ _if_post_major_os_upgrade() {
 
     ### Update base-files on daedalus if needed
     if [ -e "/root/.top-daedalus.cnf" ]; then
-      if cat /etc/os-release | grep -i 'daedalus' &> /dev/null; then
+      # Initialize the update flag to NO
+      _needsBaseFilesUpdate=NO
+      # Check if /etc/os-release mentions 'daedalus'
+      if grep -i 'daedalus' /etc/os-release &> /dev/null; then
         _msg "The /etc/os-release already mentions daedalus"
-        _needsBaseFilesUpdate=NO
       else
         _msg "The /etc/os-release doesn't mention daedalus yet"
         _needsBaseFilesUpdate=YES
       fi
+      # Check if apt policy for base-files mentions 'daedalus'
       if apt policy base-files | grep -i 'daedalus' &> /dev/null; then
         _msg "The apt policy base-files already mentions daedalus"
-        _needsBaseFilesUpdate=NO
       else
         _msg "The apt policy base-files doesn't mention daedalus yet"
         _needsBaseFilesUpdate=YES
       fi
+      # If any of the above checks require an update, perform the upgrade
       if [ "${_needsBaseFilesUpdate}" = "YES" ]; then
         _msg "Upgrade to base-files=12.4+deb12u7devuan1 is forced"
         _mrun "${_INITINS} base-files=12.4+deb12u7devuan1 --allow-downgrades" 2> /dev/null
