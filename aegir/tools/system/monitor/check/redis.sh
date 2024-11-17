@@ -32,7 +32,7 @@ _check_root
       _B_NICE=19
     fi
 
-    renice ${_B_NICE} -p $$ &> /dev/null
+    renice ${_B_NICE} -p $$
 
 export _INCIDENT_EMAIL_REPORT=${_INCIDENT_EMAIL_REPORT//[^A-Z]/}
 : "${_INCIDENT_EMAIL_REPORT:=YES}"
@@ -55,7 +55,7 @@ _fpm_reload() {
   _NOW=${_NOW//[^0-9-]/}
   mkdir -p /var/backups/php-logs/${_NOW}/
   mv -f /var/log/php/* /var/backups/php-logs/${_NOW}/
-  renice ${_B_NICE} -p $$ &> /dev/null
+  renice ${_B_NICE} -p $$
   _PHP_V="83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
@@ -69,11 +69,11 @@ _redis_restart() {
   touch /run/boa_run.pid
   sleep 3
   echo "$(date 2>&1) $1 incident detected" >> ${_pthOml}
-  service redis-server stop &> /dev/null
+  service redis-server stop
   wait
-  killall -9 redis-server &> /dev/null
+  killall -9 redis-server
   rm -f /var/lib/redis/*
-  service redis-server start &> /dev/null
+  service redis-server start
   wait
   echo "$(date 2>&1) $1 incident redis-server restarted" >> ${_pthOml}
   if [[ "${1}" =~ "REFUSED" ]] || [[ "${1}" =~ "SLOW" ]]; then

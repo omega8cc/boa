@@ -19,7 +19,7 @@ _check_root() {
   _DF_TEST=$(df -kTh / -l \
     | grep '/' \
     | sed 's/\%//g' \
-    | awk '{print $6}' 2> /dev/null)
+    | awk '{print $6}')
   _DF_TEST=${_DF_TEST//[^0-9]/}
   if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt "90" ]; then
     echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
@@ -113,7 +113,7 @@ _run_action() {
   if [ "${_buildTest}" = "0" ] \
     || [ -z "${_buildTest}" ] \
     || [ ! -e "${_ceDir}" ]; then
-    su -s /bin/bash - ${_H_USER} -c "drush8 cc drush" &> /dev/null
+    su -s /bin/bash - ${_H_USER} -c "drush8 cc drush"
     wait
     su -s /bin/bash - ${_H_USER} -c "bash /data/disk/${_H_USER}/aegir.sh"
     wait

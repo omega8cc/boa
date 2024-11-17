@@ -105,9 +105,9 @@ _check_mysql_version() {
 }
 
 _apt_clean_update() {
-  #apt-get clean -qq 2> /dev/null
-  #rm -rf /var/lib/apt/lists/* &> /dev/null
-  ${_APT_UPDATE} -qq 2> /dev/null
+  #apt-get clean -qq
+  #rm -rf /var/lib/apt/lists/*
+  ${_APT_UPDATE} -qq
 }
 
 _check_root() {
@@ -124,12 +124,12 @@ _check_root() {
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
-    _LSB_TEST=$(which lsb_release 2> /dev/null)
+    _LSB_TEST=$(which lsb_release)
     if [ ! -x "${_LSB_TEST}" ]; then
       _apt_clean_update
       apt-get install lsb-release ${_aptYesUnth}
     fi
-    _LSB_TEST=$(which lsb_release 2> /dev/null)
+    _LSB_TEST=$(which lsb_release)
     if [ -x "${_LSB_TEST}" ]; then
       if [ "${_OS_DIST}" = "Devuan" ] || [ "${_OS_DIST}" = "Debian" ]; then
         _SUPPORTED_OS=YES
@@ -417,7 +417,7 @@ _system_check_clean() {
 #
 # Fix locales.
 _locales_check_fix() {
-  ${_INITINS} locales &> /dev/null
+  ${_INITINS} locales
   if [ -e "/etc/ssh/sshd_config" ]; then
     _SSH_LC_TEST=$(grep "^AcceptEnv LANG LC_" /etc/ssh/sshd_config 2>&1)
     if [[ "${_SSH_LC_TEST}" =~ "AcceptEnv LANG LC_" ]]; then
@@ -466,8 +466,8 @@ EOF
       echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
     fi
     sed -i "/^$/d" /etc/locale.gen
-    locale-gen &> /dev/null
-    locale-gen en_US.UTF-8 &> /dev/null
+    locale-gen
+    locale-gen en_US.UTF-8
     # Explicitly enforce all locale settings
     update-locale \
       LANG=en_US.UTF-8 \
@@ -483,7 +483,7 @@ EOF
       LC_TELEPHONE=en_US.UTF-8 \
       LC_MEASUREMENT=en_US.UTF-8 \
       LC_IDENTIFICATION=en_US.UTF-8 \
-      LC_ALL= &> /dev/null
+      LC_ALL=
     # Define all locale settings on the fly to prevent unnecessary
     # warnings during installation of packages.
     export LANG=en_US.UTF-8
@@ -506,15 +506,15 @@ EOF
       echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
     fi
     sed -i "/^$/d" /etc/locale.gen
-    locale-gen &> /dev/null
-    locale-gen en_US.UTF-8 &> /dev/null
+    locale-gen
+    locale-gen en_US.UTF-8
     # Explicitly enforce locale settings required for consistency
     update-locale \
       LANG=en_US.UTF-8 \
       LC_CTYPE=en_US.UTF-8 \
       LC_COLLATE=POSIX \
       LC_NUMERIC=POSIX \
-      LC_ALL= &> /dev/null
+      LC_ALL=
     # Define locale settings required for consistency also on the fly
     if [ "${_STATUS}" != "INIT" ]; then
       # On initial install it usually causes a warning:
@@ -639,8 +639,8 @@ _find_fast_mirror_early() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     _apt_clean_update
-    apt-get install netcat ${_aptYesUnth} 2> /dev/null
-    apt-get install netcat-traditional ${_aptYesUnth} 2> /dev/null
+    apt-get install netcat ${_aptYesUnth}
+    apt-get install netcat-traditional ${_aptYesUnth}
     wait
   fi
   _ffMirr=$(which ffmirror 2>&1)
@@ -736,8 +736,8 @@ _if_firewall_update() {
     cd
     service lfd stop
     wait
-    kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
-    killall sleep &> /dev/null
+    kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}')
+    killall sleep
     rm -f /etc/csf/csf.error
     csf -q
     service lfd start
@@ -749,9 +749,9 @@ _if_firewall_update() {
     if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
       _SACK_TEST=$(ip6tables --list | grep tcpmss 2>&1)
       if [[ ! "${_SACK_TEST}" =~ "tcpmss" ]]; then
-        sysctl net.ipv4.tcp_mtu_probing=0 &> /dev/null
-        iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
-        ip6tables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
+        sysctl net.ipv4.tcp_mtu_probing=0
+        iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP
+        ip6tables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP
       fi
     fi
   fi
@@ -1222,7 +1222,7 @@ _install_vps() {
         sed -rn -e 's/^(# Default-Stop:).*$/\1 0 1 6/' -e '/^### BEGIN INIT INFO/,/^### END INIT INFO/p' /etc/init.d/${s} > /etc/insserv/overrides/${s}
       fi
     done
-    /sbin/insserv -v -d &> /dev/null
+    /sbin/insserv -v -d
   fi
 
   echo "Stopping vps ${_idn}..."
@@ -1633,8 +1633,8 @@ _install_db_cluster() {
   fi
   service lfd stop
   wait
-  kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
-  killall sleep &> /dev/null
+  kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}')
+  killall sleep
   rm -f /etc/csf/csf.error
   csf -q
   service lfd start
@@ -1646,9 +1646,9 @@ _install_db_cluster() {
   if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
     _SACK_TEST=$(ip6tables --list | grep tcpmss 2>&1)
     if [[ ! "${_SACK_TEST}" =~ "tcpmss" ]]; then
-      sysctl net.ipv4.tcp_mtu_probing=0 &> /dev/null
-      iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
-      ip6tables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
+      sysctl net.ipv4.tcp_mtu_probing=0
+      iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP
+      ip6tables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP
     fi
   fi
 
@@ -1690,7 +1690,7 @@ _install_db_cluster() {
         || [ -e "/vservers/${_idn}/etc/apt/trusted.gpg.d/percona-keyring.gpg~" ]; then
         rm -f /vservers/${_idn}/etc/apt/trusted.gpg.d/percona*
       fi
-      vserver ${_idn} exec apt-key del ${_PERCONA_KEYS_SIG} &> /dev/null
+      vserver ${_idn} exec apt-key del ${_PERCONA_KEYS_SIG}
       if [ ! -e "/vservers/${_idn}/etc/apt/keyrings/percona.gpg" ]; then
         curl -fsSL ${_urlDev}/percona-key.gpg | ${_GPG} --dearmor -o /vservers/${_idn}/etc/apt/keyrings/percona.gpg
       fi
@@ -1916,7 +1916,7 @@ _upgrade_db_cluster() {
         || [ -e "/vservers/${_idn}/etc/apt/trusted.gpg.d/percona-keyring.gpg~" ]; then
         rm -f /vservers/${_idn}/etc/apt/trusted.gpg.d/percona*
       fi
-      vserver ${_idn} exec apt-key del ${_PERCONA_KEYS_SIG} &> /dev/null
+      vserver ${_idn} exec apt-key del ${_PERCONA_KEYS_SIG}
       if [ ! -e "/vservers/${_idn}/etc/apt/keyrings/percona.gpg" ]; then
         curl -fsSL ${_urlDev}/percona-key.gpg | ${_GPG} --dearmor -o /vservers/${_idn}/etc/apt/keyrings/percona.gpg
       fi
@@ -2125,12 +2125,12 @@ _install_host() {
       _KEYS_SERVER_TEST=$(grep GnuPG pubkey.txt 2>&1)
       sleep 2
       if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt "5" ]; then
-        kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
+        kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}')
         echo "$(date 2>&1) Too many dirmngr processes killed" >> \
           /var/xdrago/log/dirmngr-count.kill.log
       fi
     done
-    cat pubkey.txt | ${_GPG} --import &> /dev/null
+    cat pubkey.txt | ${_GPG} --import
     rm -f pubkey.txt*
     _apt_clean_update
     ${_INSTAPP} build-essential
@@ -2163,8 +2163,8 @@ _install_host() {
         echo -e '\n\nPackage: *systemd*\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/offsystemd
         _apt_clean_update
       fi
-      echo "sysvinit-core hold" | dpkg --set-selections &> /dev/null
-      echo "sysvinit-utils hold" | dpkg --set-selections &> /dev/null
+      echo "sysvinit-core hold" | dpkg --set-selections
+      echo "sysvinit-utils hold" | dpkg --set-selections
     fi
     echo
     echo "NOTE: Please reboot and then run 'cluster up-host'"
@@ -2224,13 +2224,13 @@ _upgrade_host() {
         _apt_clean_update
       fi
     fi
-    apt-get remove systemd -y --purge --auto-remove --allow-remove-essential -qq 2> /dev/null
-    apt-get remove libnss-systemd -y --purge --auto-remove --allow-remove-essential -qq 2> /dev/null
-    apt-get remove systemd-sysv -y --purge --auto-remove --allow-remove-essential -qq 2> /dev/null
-    apt-get autoremove --purge -y -qq 2> /dev/null
-    apt-get autoclean -y -qq 2> /dev/null
-    echo "sysvinit-core hold" | dpkg --set-selections &> /dev/null
-    echo "sysvinit-utils hold" | dpkg --set-selections &> /dev/null
+    apt-get remove systemd -y --purge --auto-remove --allow-remove-essential -qq
+    apt-get remove libnss-systemd -y --purge --auto-remove --allow-remove-essential -qq
+    apt-get remove systemd-sysv -y --purge --auto-remove --allow-remove-essential -qq
+    apt-get autoremove --purge -y -qq
+    apt-get autoclean -y -qq
+    echo "sysvinit-core hold" | dpkg --set-selections
+    echo "sysvinit-utils hold" | dpkg --set-selections
   fi
 
   if [ "${_thisMode}" = "UPGRADE" ]; then

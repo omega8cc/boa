@@ -207,7 +207,7 @@ _clean_pid_exit() {
   echo "REASON ${e} on $(date 2>&1)" >> /root/.bond.sh.exit.exceptions.log
   [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
   [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
-  service cron start &> /dev/null
+  service cron start
   exit 1
 }
 
@@ -229,7 +229,7 @@ _check_root() {
       _B_NICE=19
     fi
 
-    renice ${_B_NICE} -p $$ &> /dev/null
+    renice ${_B_NICE} -p $$
     ionice -c2 -n7 -p $$
   else
     echo "ERROR: This script should be run as a root user"
@@ -251,9 +251,9 @@ _os_detection_minimal() {
 _os_detection_minimal
 
 _apt_clean_update() {
-  #apt-get clean -qq 2> /dev/null
-  #rm -rf /var/lib/apt/lists/* &> /dev/null
-  _mrun "${_APT_UPDATE} -qq" 2> /dev/null
+  #apt-get clean -qq
+  #rm -rf /var/lib/apt/lists/*
+  _mrun "${_APT_UPDATE} -qq"
 }
 
 _if_hosted_sys() {
@@ -394,8 +394,8 @@ _find_fast_mirror_early() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     _apt_clean_update
-    apt-get install netcat ${_aptYesUnth} 2> /dev/null
-    apt-get install netcat-traditional ${_aptYesUnth} 2> /dev/null
+    apt-get install netcat ${_aptYesUnth}
+    apt-get install netcat-traditional ${_aptYesUnth}
     wait
   fi
   _ffMirr=$(which ffmirror 2>&1)
@@ -449,7 +449,7 @@ _fix_php_ini_ioncube() {
   if [ -e "${_THIS_FILE}" ] && [ "${_PHP_IONCUBE}" = "NO" ]; then
     _IONCUBE_INI_TEST=$(grep "ioncube_loader" ${_THIS_FILE} 2>&1)
     if [[ "${_IONCUBE_INI_TEST}" =~ "ioncube_loader" ]]; then
-      sed -i "s/.*ioncube_loader.*//g" ${_THIS_FILE} &> /dev/null
+      sed -i "s/.*ioncube_loader.*//g" ${_THIS_FILE}
       wait
     fi
   fi
@@ -460,7 +460,7 @@ _remove_php_ini_jsmin() {
   if [ -e "${_THIS_FILE}" ]; then
     _JSMIN_INI_TEST=$(grep "^extension=jsmin.so" ${_THIS_FILE} 2>&1)
     if [[ "${_JSMIN_INI_TEST}" =~ "extension=jsmin.so" ]]; then
-      sed -i "s/.*jsmin.*//g" ${_THIS_FILE} &> /dev/null
+      sed -i "s/.*jsmin.*//g" ${_THIS_FILE}
       wait
     fi
   fi
@@ -471,7 +471,7 @@ _remove_php_ini_suhosin() {
   if [ -e "${_THIS_FILE}" ]; then
     _SUHOSIN_INI_TEST=$(grep "^extension=suhosin.so" ${_THIS_FILE} 2>&1)
     if [[ "${_SUHOSIN_INI_TEST}" =~ "extension=suhosin.so" ]]; then
-      sed -i "s/.*suhosin.*//g" ${_THIS_FILE} &> /dev/null
+      sed -i "s/.*suhosin.*//g" ${_THIS_FILE}
       wait
     fi
   fi
@@ -590,9 +590,9 @@ _fix_php_ini_newrelic() {
     else
       echo "newrelic.framework.drupal.modules = 1" >> ${_THIS_FILE}
     fi
-    sed -i "/REPLACE_WITH_REAL_KEY//g" ${_THIS_FILE} &> /dev/null
+    sed -i "/REPLACE_WITH_REAL_KEY//g" ${_THIS_FILE}
     wait
-    sed -i "s/license_key=//g" ${_THIS_FILE} &> /dev/null
+    sed -i "s/license_key=//g" ${_THIS_FILE}
     wait
   fi
 }
@@ -806,7 +806,7 @@ _php_conf_update() {
   _PHP_V="83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     if [ ! -e "/var/www/www${e}" ]; then
-      adduser --system --group --home /var/www/www${e} www${e} &> /dev/null
+      adduser --system --group --home /var/www/www${e} www${e}
       usermod -aG www-data www${e}
     fi
     if [ ! -e "/opt/php${e}/etc/php${e}.ini" ] \
@@ -893,26 +893,26 @@ _php_conf_update() {
 #
 _restore_default_php() {
   _msg "INFO: Restoring default PHP configuration"
-  cp -af ${_locCnf}/php/php83-cli.ini /opt/php83/lib/php.ini &> /dev/null
-  cp -af ${_locCnf}/php/php83.ini /opt/php83/etc/php83.ini   &> /dev/null
-  cp -af ${_locCnf}/php/php82-cli.ini /opt/php82/lib/php.ini &> /dev/null
-  cp -af ${_locCnf}/php/php82.ini /opt/php82/etc/php82.ini   &> /dev/null
-  cp -af ${_locCnf}/php/php81-cli.ini /opt/php81/lib/php.ini &> /dev/null
-  cp -af ${_locCnf}/php/php81.ini /opt/php81/etc/php81.ini   &> /dev/null
-  cp -af ${_locCnf}/php/php80-cli.ini /opt/php80/lib/php.ini &> /dev/null
-  cp -af ${_locCnf}/php/php80.ini /opt/php80/etc/php80.ini   &> /dev/null
-  cp -af ${_locCnf}/php/php74-cli.ini /opt/php74/lib/php.ini &> /dev/null
-  cp -af ${_locCnf}/php/php74.ini /opt/php74/etc/php74.ini   &> /dev/null
-  cp -af ${_locCnf}/php/php73-cli.ini /opt/php73/lib/php.ini &> /dev/null
-  cp -af ${_locCnf}/php/php73.ini /opt/php73/etc/php73.ini   &> /dev/null
-  cp -af ${_locCnf}/php/php72-cli.ini /opt/php72/lib/php.ini &> /dev/null
-  cp -af ${_locCnf}/php/php72.ini /opt/php72/etc/php72.ini   &> /dev/null
-  cp -af ${_locCnf}/php/php71-cli.ini /opt/php71/lib/php.ini &> /dev/null
-  cp -af ${_locCnf}/php/php71.ini /opt/php71/etc/php71.ini   &> /dev/null
-  cp -af ${_locCnf}/php/php70-cli.ini /opt/php70/lib/php.ini &> /dev/null
-  cp -af ${_locCnf}/php/php70.ini /opt/php70/etc/php70.ini   &> /dev/null
-  cp -af ${_locCnf}/php/php56-cli.ini /opt/php56/lib/php.ini &> /dev/null
-  cp -af ${_locCnf}/php/php56.ini /opt/php56/etc/php56.ini   &> /dev/null
+  cp -af ${_locCnf}/php/php83-cli.ini /opt/php83/lib/php.ini
+  cp -af ${_locCnf}/php/php83.ini /opt/php83/etc/php83.ini
+  cp -af ${_locCnf}/php/php82-cli.ini /opt/php82/lib/php.ini
+  cp -af ${_locCnf}/php/php82.ini /opt/php82/etc/php82.ini
+  cp -af ${_locCnf}/php/php81-cli.ini /opt/php81/lib/php.ini
+  cp -af ${_locCnf}/php/php81.ini /opt/php81/etc/php81.ini
+  cp -af ${_locCnf}/php/php80-cli.ini /opt/php80/lib/php.ini
+  cp -af ${_locCnf}/php/php80.ini /opt/php80/etc/php80.ini
+  cp -af ${_locCnf}/php/php74-cli.ini /opt/php74/lib/php.ini
+  cp -af ${_locCnf}/php/php74.ini /opt/php74/etc/php74.ini
+  cp -af ${_locCnf}/php/php73-cli.ini /opt/php73/lib/php.ini
+  cp -af ${_locCnf}/php/php73.ini /opt/php73/etc/php73.ini
+  cp -af ${_locCnf}/php/php72-cli.ini /opt/php72/lib/php.ini
+  cp -af ${_locCnf}/php/php72.ini /opt/php72/etc/php72.ini
+  cp -af ${_locCnf}/php/php71-cli.ini /opt/php71/lib/php.ini
+  cp -af ${_locCnf}/php/php71.ini /opt/php71/etc/php71.ini
+  cp -af ${_locCnf}/php/php70-cli.ini /opt/php70/lib/php.ini
+  cp -af ${_locCnf}/php/php70.ini /opt/php70/etc/php70.ini
+  cp -af ${_locCnf}/php/php56-cli.ini /opt/php56/lib/php.ini
+  cp -af ${_locCnf}/php/php56.ini /opt/php56/etc/php56.ini
 }
 #
 _tune_php() {
@@ -921,28 +921,28 @@ _tune_php() {
     _TUNE_PHP_FPM_TIMEOUT=60
   fi
   # PHP-FPM pools
-  sed -i "s/180s/${_TUNE_PHP_FPM_TIMEOUT}s/g" /opt/php*/etc/pool.d/*.conf                                           &> /dev/null
+  sed -i "s/180s/${_TUNE_PHP_FPM_TIMEOUT}s/g" /opt/php*/etc/pool.d/*.conf
   wait
-  sed -i "s/180s/${_TUNE_PHP_FPM_TIMEOUT}s/g" /opt/php*/etc/php*-fpm.conf                                           &> /dev/null
+  sed -i "s/180s/${_TUNE_PHP_FPM_TIMEOUT}s/g" /opt/php*/etc/php*-fpm.conf
   wait
-  sed -i "s/180/${_TUNE_PHP_FPM_TIMEOUT}/g" /opt/etc/fpm/fpm-pool-common.conf                                       &> /dev/null
+  sed -i "s/180/${_TUNE_PHP_FPM_TIMEOUT}/g" /opt/etc/fpm/fpm-pool-common.conf
   wait
   # PHP-FPM INI
-  sed -i "s/^default_socket_timeout =.*/default_socket_timeout = ${_TUNE_PHP_FPM_TIMEOUT}/g" /opt/php*/etc/php*.ini &> /dev/null
+  sed -i "s/^default_socket_timeout =.*/default_socket_timeout = ${_TUNE_PHP_FPM_TIMEOUT}/g" /opt/php*/etc/php*.ini
   wait
-  sed -i "s/^max_execution_time =.*/max_execution_time = ${_TUNE_PHP_FPM_TIMEOUT}/g" /opt/php*/etc/php*.ini         &> /dev/null
+  sed -i "s/^max_execution_time =.*/max_execution_time = ${_TUNE_PHP_FPM_TIMEOUT}/g" /opt/php*/etc/php*.ini
   wait
-  sed -i "s/^max_input_time =.*/max_input_time = ${_TUNE_PHP_FPM_TIMEOUT}/g" /opt/php*/etc/php*.ini                 &> /dev/null
+  sed -i "s/^max_input_time =.*/max_input_time = ${_TUNE_PHP_FPM_TIMEOUT}/g" /opt/php*/etc/php*.ini
   wait
   # PHP-CLI INI
-  sed -i "s/^max_execution_time =.*/max_execution_time = ${_TUNE_PHP_CLI_TIMEOUT}/g" /opt/php*/lib/php.ini          &> /dev/null
+  sed -i "s/^max_execution_time =.*/max_execution_time = ${_TUNE_PHP_CLI_TIMEOUT}/g" /opt/php*/lib/php.ini
   wait
-  sed -i "s/^max_input_time =.*/max_input_time = ${_TUNE_PHP_CLI_TIMEOUT}/g" /opt/php*/lib/php.ini                  &> /dev/null
+  sed -i "s/^max_input_time =.*/max_input_time = ${_TUNE_PHP_CLI_TIMEOUT}/g" /opt/php*/lib/php.ini
   wait
-  sed -i "s/^default_socket_timeout =.*/default_socket_timeout = ${_TUNE_PHP_CLI_TIMEOUT}/g" /opt/php*/lib/php.ini  &> /dev/null
+  sed -i "s/^default_socket_timeout =.*/default_socket_timeout = ${_TUNE_PHP_CLI_TIMEOUT}/g" /opt/php*/lib/php.ini
   wait
   # Redis config should sync with PHP-CLI
-  sed -i "s/^timeout .*/timeout ${_TUNE_PHP_CLI_TIMEOUT}/g" /etc/redis/redis.conf                                   &> /dev/null
+  sed -i "s/^timeout .*/timeout ${_TUNE_PHP_CLI_TIMEOUT}/g" /etc/redis/redis.conf
   wait
 }
 #
@@ -966,39 +966,39 @@ _innodb_log_file_size_update() {
   if [ ! -z "${_IS_MYSQLD_RUNNING}" ] && [ "${_DB_V}" = "5.7" ]; then
     _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
     _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
-    mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
-    mysql -u root -e "SET GLOBAL innodb_change_buffering = 'none';" &> /dev/null
-    mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null
-    mysql -u root -e "SET GLOBAL innodb_io_capacity = 2000;" &> /dev/null
-    mysql -u root -e "SET GLOBAL innodb_io_capacity_max = 4000;" &> /dev/null
+    mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;"
+    mysql -u root -e "SET GLOBAL innodb_change_buffering = 'none';"
+    mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;"
+    mysql -u root -e "SET GLOBAL innodb_io_capacity = 2000;"
+    mysql -u root -e "SET GLOBAL innodb_io_capacity_max = 4000;"
     if [ "${_DB_V}" = "5.7" ]; then
-      mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_pct = 100;" &> /dev/null
-      mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_now = ON;" &> /dev/null
+      mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_pct = 100;"
+      mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_now = ON;"
     fi
-    mysql -u root -e "SET GLOBAL innodb_fast_shutdown = 0;" &> /dev/null
+    mysql -u root -e "SET GLOBAL innodb_fast_shutdown = 0;"
   fi
-  _mrun "service mysql stop" 2> /dev/null
+  _mrun "service mysql stop"
   echo "Waiting 15 seconds..."
   _mrun "sleep 15"
   if [ ! -e "/run/mysqld/mysqld.sock" ] \
     && [ ! -e "/run/mysqld/mysqld.pid" ]; then
     mkdir -p ${_vBs}/old-sql-ib-log-${_NOW}
     _mrun "sleep 5"
-    mv -f /var/lib/mysql/ib_logfile0 ${_vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
-    mv -f /var/lib/mysql/ib_logfile1 ${_vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
+    mv -f /var/lib/mysql/ib_logfile0 ${_vBs}/old-sql-ib-log-${_NOW}/
+    mv -f /var/lib/mysql/ib_logfile1 ${_vBs}/old-sql-ib-log-${_NOW}/
     sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
     wait
     echo "Waiting 15 seconds..."
     _mrun "sleep 15"
   fi
   if [ ! -e "/run/mysqld/mysqld.sock" ]; then
-    service mysql start &> /dev/null
+    service mysql start
   fi
 }
 #
 _restore_default_sql() {
   _msg "INFO: Restoring default SQL configuration"
-  sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" /etc/mysql/debian-start &> /dev/null
+  sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" /etc/mysql/debian-start
   wait
   _if_hosted_sys
   if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ] \
@@ -1007,7 +1007,7 @@ _restore_default_sql() {
       _DO_NOTHING=YES
     else
       cp -af /etc/mysql/my.cnf \
-        /var/backups/dragon/t/my.cnf-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
+        /var/backups/dragon/t/my.cnf-pre-${_xSrl}-${_X_VERSION}-${_NOW}
       cp -af ${_locCnf}/var/my.cnf.txt /etc/mysql/my.cnf
       _INNODB_LOG_FILE_SIZE=${_INNODB_LOG_FILE_SIZE//[^0-9]/}
       if [ ! -z "${_INNODB_LOG_FILE_SIZE}" ]; then
@@ -1034,19 +1034,19 @@ _restore_default_sql() {
       fi
     fi
   fi
-  mv -f /etc/mysql/my.cnf-pre* /var/backups/dragon/t/ &> /dev/null
-  sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf &> /dev/null
+  mv -f /etc/mysql/my.cnf-pre* /var/backups/dragon/t/
+  sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf
   wait
-  sed -i "s/.*language/#language/g" /etc/mysql/my.cnf &> /dev/null
+  sed -i "s/.*language/#language/g" /etc/mysql/my.cnf
   wait
-  sed -i "s/.*innodb_lazy_drop_table.*//g" /etc/mysql/my.cnf &> /dev/null
+  sed -i "s/.*innodb_lazy_drop_table.*//g" /etc/mysql/my.cnf
   wait
   if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ]; then
     if [ "${_DB_BINARY_LOG}" = "NO" ]; then
       sed -i "s/.*purge_binlogs.*//g" /var/spool/cron/crontabs/root
       wait
       sed -i "/^$/d" /var/spool/cron/crontabs/root
-      bash /var/xdrago/purge_binlogs.sh &> /dev/null
+      bash /var/xdrago/purge_binlogs.sh
       wait
       sed -i "s/^log_bin/#log_bin/g"                   /etc/mysql/my.cnf
       wait
@@ -1079,7 +1079,7 @@ _restore_default_sql() {
         else
           if [ "${_INNODB_LOG_FILE_SIZE_SAME}" = "YES" ]; then
             sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" \
-              /etc/mysql/my.cnf &> /dev/null
+              /etc/mysql/my.cnf
             wait
           else
             _innodb_log_file_size_update
@@ -1092,9 +1092,9 @@ _restore_default_sql() {
 #
 _tune_sql() {
   _msg "INFO: Tuning SQL configuration"
-  sed -i "s/9999/${_TUNE_SQL_TIMEOUT}/g" /etc/mysql/my.cnf     &> /dev/null
+  sed -i "s/9999/${_TUNE_SQL_TIMEOUT}/g" /etc/mysql/my.cnf
   wait
-  sed -i "s/9999/${_TUNE_SQL_TIMEOUT}/g" /var/xdrago/minute.sh &> /dev/null
+  sed -i "s/9999/${_TUNE_SQL_TIMEOUT}/g" /var/xdrago/minute.sh
   wait
 }
 #
@@ -1104,11 +1104,11 @@ _restore_default_nginx() {
   cp -af ${_bldPth}/aegir/tools/system/monitor/check/scan_nginx.pl ./
   if [ -d "${_TUNE_HOSTMASTER}" ]; then
     for _Files in `find ${_TUNE_HOSTMASTER}/config/server_master/nginx/vhost.d -type f`; do
-      sed -i "s/#limit_conn /limit_conn /g" ${_Files} &> /dev/null
+      sed -i "s/#limit_conn /limit_conn /g" ${_Files}
       wait
     done
   fi
-  su -s /bin/bash - aegir -c "drush8 @server_master provision-verify" &> /dev/null
+  su -s /bin/bash - aegir -c "drush8 @server_master provision-verify"
   wait
   _mrun "sleep 8"
 }
@@ -1117,18 +1117,18 @@ _tune_nginx() {
   _msg "INFO: Tuning Nginx configuration"
   sed -i "s/default_critnumber =.*/default_critnumber = ${_TUNE_NGINX_FIREWALL};/g" /var/xdrago/monitor/check/scan_nginx.pl
   wait
-  sed -i "s/60/${_TUNE_NGINX_TIMEOUT}/g" /var/aegir/config/server_master/nginx.conf    &> /dev/null
+  sed -i "s/60/${_TUNE_NGINX_TIMEOUT}/g" /var/aegir/config/server_master/nginx.conf
   wait
-  sed -i "s/300/${_TUNE_NGINX_TIMEOUT}/g" /var/aegir/config/server_master/nginx.conf   &> /dev/null
+  sed -i "s/300/${_TUNE_NGINX_TIMEOUT}/g" /var/aegir/config/server_master/nginx.conf
   wait
-  sed -i "s/180/${_TUNE_NGINX_TIMEOUT}/g" /var/aegir/config/server_master/nginx.conf   &> /dev/null
+  sed -i "s/180/${_TUNE_NGINX_TIMEOUT}/g" /var/aegir/config/server_master/nginx.conf
   wait
   if [ "${_TUNE_NGINX_CONNECT}" = "OFF" ]; then
-    sed -i "s/limit_conn /#limit_conn /g" /var/aegir/config/server_master/nginx.conf &> /dev/null
+    sed -i "s/limit_conn /#limit_conn /g" /var/aegir/config/server_master/nginx.conf
     wait
     if [ -d "${_TUNE_HOSTMASTER}" ]; then
       for _Files in `find ${_TUNE_HOSTMASTER}/config/server_master/nginx/vhost.d -type f`; do
-        sed -i "s/limit_conn /#limit_conn /g" ${_Files} &> /dev/null
+        sed -i "s/limit_conn /#limit_conn /g" ${_Files}
         wait
       done
     fi
@@ -1140,15 +1140,15 @@ _restart_services() {
   _PHP_V="83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     if [ -e "/etc/init.d/php${e}-fpm" ]; then
-      service php${e}-fpm reload &> /dev/null
+      service php${e}-fpm reload
     fi
   done
-  bash /var/xdrago/move_sql.sh &> /dev/null
+  bash /var/xdrago/move_sql.sh
   wait
-  service nginx reload &> /dev/null
-  service redis-server reload &> /dev/null
+  service nginx reload
+  service redis-server reload
   if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
-    _mrun "csf -q" &> /dev/null
+    _mrun "csf -q"
     ### Linux kernel TCP SACK CVEs mitigation
     ### CVE-2019-11477 SACK Panic
     ### CVE-2019-11478 SACK Slowness
@@ -1156,9 +1156,9 @@ _restart_services() {
     if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
       _SACK_TEST=$(ip6tables --list | grep tcpmss 2>&1)
       if [[ ! "${_SACK_TEST}" =~ "tcpmss" ]]; then
-        sysctl net.ipv4.tcp_mtu_probing=0 &> /dev/null
-        iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
-        ip6tables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
+        sysctl net.ipv4.tcp_mtu_probing=0
+        iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP
+        ip6tables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP
       fi
     fi
   fi
@@ -1183,30 +1183,30 @@ _tune_web_server_config() {
   _PHP_V="83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     sed -i "s/pm.max_children =.*/pm.max_children = ${_CHILD_MAX_FPM}/g" \
-      /opt/php${e}/etc/pool.d/www${e}.conf &> /dev/null
+      /opt/php${e}/etc/pool.d/www${e}.conf
     wait
     if [ ! -z "${_PHP_FPM_DENY}" ]; then
       sed -i "s/passthru,/${_PHP_FPM_DENY},/g" \
-        /opt/php${e}/etc/pool.d/www${e}.conf &> /dev/null
+        /opt/php${e}/etc/pool.d/www${e}.conf
       wait
     fi
   done
   # PHP-FPM INI
-  sed -i "s/^default_socket_timeout =.*/default_socket_timeout = 180/g" /opt/php*/etc/php*.ini &> /dev/null
+  sed -i "s/^default_socket_timeout =.*/default_socket_timeout = 180/g" /opt/php*/etc/php*.ini
   wait
-  sed -i "s/^max_execution_time =.*/max_execution_time = 180/g" /opt/php*/etc/php*.ini         &> /dev/null
+  sed -i "s/^max_execution_time =.*/max_execution_time = 180/g" /opt/php*/etc/php*.ini
   wait
-  sed -i "s/^max_input_time =.*/max_input_time = 180/g" /opt/php*/etc/php*.ini                 &> /dev/null
+  sed -i "s/^max_input_time =.*/max_input_time = 180/g" /opt/php*/etc/php*.ini
   wait
   # PHP-CLI INI
-  sed -i "s/^default_socket_timeout =.*/default_socket_timeout = 3600/g" /opt/php*/lib/php.ini &> /dev/null
+  sed -i "s/^default_socket_timeout =.*/default_socket_timeout = 3600/g" /opt/php*/lib/php.ini
   wait
-  sed -i "s/^max_execution_time =.*/max_execution_time = 3600/g" /opt/php*/lib/php.ini         &> /dev/null
+  sed -i "s/^max_execution_time =.*/max_execution_time = 3600/g" /opt/php*/lib/php.ini
   wait
-  sed -i "s/^max_input_time =.*/max_input_time = 3600/g" /opt/php*/lib/php.ini                 &> /dev/null
+  sed -i "s/^max_input_time =.*/max_input_time = 3600/g" /opt/php*/lib/php.ini
   wait
   # Redis config should sync with PHP-CLI
-  sed -i "s/^timeout .*/timeout 3600/g" /etc/redis/redis.conf                                  &> /dev/null
+  sed -i "s/^timeout .*/timeout 3600/g" /etc/redis/redis.conf
   wait
 }
 #
@@ -1217,7 +1217,7 @@ _check_mysqld_running() {
     _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
     _msg "INFO: Waiting for MySQLD availability before _tune_sql_memory_limits..."
     sleep 5
-    service mysql start &> /dev/null
+    service mysql start
   done
 }
 #
@@ -1351,7 +1351,7 @@ _tune_memory_limits() {
     _VMFAMILY="VS"
   fi
   # Check for Amazon EC2 in the system manufacturer field
-  if dmidecode -s system-manufacturer | grep -i 'Amazon EC2' &> /dev/null; then
+  if dmidecode -s system-manufacturer | grep -i 'Amazon EC2'; then
     _VMFAMILY="AWS"
   fi
   _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)
@@ -1487,16 +1487,16 @@ _tune_memory_limits() {
         else
           _L_NGX_WRKS=${_NGINX_WORKERS}
         fi
-        sed -i "s/64000/128000/g"  /opt/php83/etc/php83.ini &> /dev/null
-        sed -i "s/64000/128000/g"  /opt/php82/etc/php82.ini &> /dev/null
-        sed -i "s/64000/128000/g"  /opt/php81/etc/php81.ini &> /dev/null
-        sed -i "s/64000/128000/g"  /opt/php80/etc/php80.ini &> /dev/null
-        sed -i "s/64000/128000/g"  /opt/php74/etc/php74.ini &> /dev/null
-        sed -i "s/64000/128000/g"  /opt/php73/etc/php73.ini &> /dev/null
-        sed -i "s/64000/128000/g"  /opt/php72/etc/php72.ini &> /dev/null
-        sed -i "s/64000/128000/g"  /opt/php71/etc/php71.ini &> /dev/null
-        sed -i "s/64000/128000/g"  /opt/php70/etc/php70.ini &> /dev/null
-        sed -i "s/64000/128000/g"  /opt/php56/etc/php56.ini &> /dev/null
+        sed -i "s/64000/128000/g"  /opt/php83/etc/php83.ini
+        sed -i "s/64000/128000/g"  /opt/php82/etc/php82.ini
+        sed -i "s/64000/128000/g"  /opt/php81/etc/php81.ini
+        sed -i "s/64000/128000/g"  /opt/php80/etc/php80.ini
+        sed -i "s/64000/128000/g"  /opt/php74/etc/php74.ini
+        sed -i "s/64000/128000/g"  /opt/php73/etc/php73.ini
+        sed -i "s/64000/128000/g"  /opt/php72/etc/php72.ini
+        sed -i "s/64000/128000/g"  /opt/php71/etc/php71.ini
+        sed -i "s/64000/128000/g"  /opt/php70/etc/php70.ini
+        sed -i "s/64000/128000/g"  /opt/php56/etc/php56.ini
       else
         _USE_PHP=2048
         _USE_OPC=2048
@@ -1577,68 +1577,68 @@ _tune_memory_limits() {
   cp -af ${_locCnf}/hhvm/hhvm_intercept.php /data/conf/hhvm_intercept.php
   chmod 644 /data/conf/hhvm_intercept.php
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ]; then
-    sed -i "s/395/${_USE_FPM}/g" /opt/etc/fpm/fpm-pool-common.conf &> /dev/null
+    sed -i "s/395/${_USE_FPM}/g" /opt/etc/fpm/fpm-pool-common.conf
     wait
   fi
   if [ -e "/opt/php83/etc/php83.ini" ]; then
-    sed -i "s/395/${_USE_FPM}/g" /opt/php83/etc/php83.ini &> /dev/null
+    sed -i "s/395/${_USE_FPM}/g" /opt/php83/etc/php83.ini
     wait
-    sed -i "s/181/${_USE_OPC}/g" /opt/php83/etc/php83.ini &> /dev/null
-    sed -i "s/395/${_USE_CLI}/g" /opt/php83/lib/php.ini   &> /dev/null
+    sed -i "s/181/${_USE_OPC}/g" /opt/php83/etc/php83.ini
+    sed -i "s/395/${_USE_CLI}/g" /opt/php83/lib/php.ini
   fi
   if [ -e "/opt/php82/etc/php82.ini" ]; then
-    sed -i "s/395/${_USE_FPM}/g" /opt/php82/etc/php82.ini &> /dev/null
+    sed -i "s/395/${_USE_FPM}/g" /opt/php82/etc/php82.ini
     wait
-    sed -i "s/181/${_USE_OPC}/g" /opt/php82/etc/php82.ini &> /dev/null
-    sed -i "s/395/${_USE_CLI}/g" /opt/php82/lib/php.ini   &> /dev/null
+    sed -i "s/181/${_USE_OPC}/g" /opt/php82/etc/php82.ini
+    sed -i "s/395/${_USE_CLI}/g" /opt/php82/lib/php.ini
   fi
   if [ -e "/opt/php81/etc/php81.ini" ]; then
-    sed -i "s/395/${_USE_FPM}/g" /opt/php81/etc/php81.ini &> /dev/null
+    sed -i "s/395/${_USE_FPM}/g" /opt/php81/etc/php81.ini
     wait
-    sed -i "s/181/${_USE_OPC}/g" /opt/php81/etc/php81.ini &> /dev/null
-    sed -i "s/395/${_USE_CLI}/g" /opt/php81/lib/php.ini   &> /dev/null
+    sed -i "s/181/${_USE_OPC}/g" /opt/php81/etc/php81.ini
+    sed -i "s/395/${_USE_CLI}/g" /opt/php81/lib/php.ini
   fi
   if [ -e "/opt/php80/etc/php80.ini" ]; then
-    sed -i "s/395/${_USE_FPM}/g" /opt/php80/etc/php80.ini &> /dev/null
+    sed -i "s/395/${_USE_FPM}/g" /opt/php80/etc/php80.ini
     wait
-    sed -i "s/181/${_USE_OPC}/g" /opt/php80/etc/php80.ini &> /dev/null
-    sed -i "s/395/${_USE_CLI}/g" /opt/php80/lib/php.ini   &> /dev/null
+    sed -i "s/181/${_USE_OPC}/g" /opt/php80/etc/php80.ini
+    sed -i "s/395/${_USE_CLI}/g" /opt/php80/lib/php.ini
   fi
   if [ -e "/opt/php74/etc/php74.ini" ]; then
-    sed -i "s/395/${_USE_FPM}/g" /opt/php74/etc/php74.ini &> /dev/null
+    sed -i "s/395/${_USE_FPM}/g" /opt/php74/etc/php74.ini
     wait
-    sed -i "s/181/${_USE_OPC}/g" /opt/php74/etc/php74.ini &> /dev/null
-    sed -i "s/395/${_USE_CLI}/g" /opt/php74/lib/php.ini   &> /dev/null
+    sed -i "s/181/${_USE_OPC}/g" /opt/php74/etc/php74.ini
+    sed -i "s/395/${_USE_CLI}/g" /opt/php74/lib/php.ini
   fi
   if [ -e "/opt/php73/etc/php73.ini" ]; then
-    sed -i "s/395/${_USE_FPM}/g" /opt/php73/etc/php73.ini &> /dev/null
+    sed -i "s/395/${_USE_FPM}/g" /opt/php73/etc/php73.ini
     wait
-    sed -i "s/181/${_USE_OPC}/g" /opt/php73/etc/php73.ini &> /dev/null
-    sed -i "s/395/${_USE_CLI}/g" /opt/php73/lib/php.ini   &> /dev/null
+    sed -i "s/181/${_USE_OPC}/g" /opt/php73/etc/php73.ini
+    sed -i "s/395/${_USE_CLI}/g" /opt/php73/lib/php.ini
   fi
   if [ -e "/opt/php72/etc/php72.ini" ]; then
-    sed -i "s/395/${_USE_FPM}/g" /opt/php72/etc/php72.ini &> /dev/null
+    sed -i "s/395/${_USE_FPM}/g" /opt/php72/etc/php72.ini
     wait
-    sed -i "s/181/${_USE_OPC}/g" /opt/php72/etc/php72.ini &> /dev/null
-    sed -i "s/395/${_USE_CLI}/g" /opt/php72/lib/php.ini   &> /dev/null
+    sed -i "s/181/${_USE_OPC}/g" /opt/php72/etc/php72.ini
+    sed -i "s/395/${_USE_CLI}/g" /opt/php72/lib/php.ini
   fi
   if [ -e "/opt/php71/etc/php71.ini" ]; then
-    sed -i "s/395/${_USE_FPM}/g" /opt/php71/etc/php71.ini &> /dev/null
+    sed -i "s/395/${_USE_FPM}/g" /opt/php71/etc/php71.ini
     wait
-    sed -i "s/181/${_USE_OPC}/g" /opt/php71/etc/php71.ini &> /dev/null
-    sed -i "s/395/${_USE_CLI}/g" /opt/php71/lib/php.ini   &> /dev/null
+    sed -i "s/181/${_USE_OPC}/g" /opt/php71/etc/php71.ini
+    sed -i "s/395/${_USE_CLI}/g" /opt/php71/lib/php.ini
   fi
   if [ -e "/opt/php70/etc/php70.ini" ]; then
-    sed -i "s/395/${_USE_FPM}/g" /opt/php70/etc/php70.ini &> /dev/null
+    sed -i "s/395/${_USE_FPM}/g" /opt/php70/etc/php70.ini
     wait
-    sed -i "s/181/${_USE_OPC}/g" /opt/php70/etc/php70.ini &> /dev/null
-    sed -i "s/395/${_USE_CLI}/g" /opt/php70/lib/php.ini   &> /dev/null
+    sed -i "s/181/${_USE_OPC}/g" /opt/php70/etc/php70.ini
+    sed -i "s/395/${_USE_CLI}/g" /opt/php70/lib/php.ini
   fi
   if [ -e "/opt/php56/etc/php56.ini" ]; then
-    sed -i "s/395/${_USE_FPM}/g" /opt/php56/etc/php56.ini &> /dev/null
+    sed -i "s/395/${_USE_FPM}/g" /opt/php56/etc/php56.ini
     wait
-    sed -i "s/181/${_USE_OPC}/g" /opt/php56/etc/php56.ini &> /dev/null
-    sed -i "s/395/${_USE_CLI}/g" /opt/php56/lib/php.ini   &> /dev/null
+    sed -i "s/181/${_USE_OPC}/g" /opt/php56/etc/php56.ini
+    sed -i "s/395/${_USE_CLI}/g" /opt/php56/lib/php.ini
   fi
   if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ]; then
     _tune_sql_memory_limits
@@ -1675,7 +1675,7 @@ _tune_memory_limits() {
   fi
   _MAX_MEM_REDIS="${_MAX_MEM_REDIS}MB"
   sed -i "s/^maxmemory .*/maxmemory ${_MAX_MEM_REDIS}/g" \
-    /etc/redis/redis.conf &> /dev/null
+    /etc/redis/redis.conf
   wait
   if [ -e "/etc/default/jetty9" ] && [ -e "/opt/solr4" ]; then
     sed -i "s/^JAVA_OPTIONS.*/JAVA_OPTIONS=\"-Xms64m ${_USE_JETTY} -Djava.awt.headless=true -Dsolr.solr.home=\/opt\/solr4 \$JAVA_OPTIONS\" # Options/g" /etc/default/jetty9
@@ -1797,11 +1797,11 @@ rm -f /run/aegir_upgrade.pid
 rm -f /opt/tmp/testecho*
 _SRCDIR="/opt/tmp/files"
 mkdir -p ${_SRCDIR}
-chmod -R 777 /opt/tmp &> /dev/null
+chmod -R 777 /opt/tmp
 cd /opt/tmp
 rm -rf /opt/tmp/boa
 if [ "${_AEGIR_VERSION}" != "static" ]; then
-  ${_gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git &> /dev/null
+  ${_gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git
 else
   curl ${_crlGet} "${_urlDev}/${_AEGIR_VERSION}/boa.tar.gz" | tar -xzf -
   _BOA_REPO_NAME="boa"
@@ -1811,7 +1811,7 @@ fi
 cd ${_SRCDIR}
 rm -f spinner*
 cp -af ${_bldPth}/aegir/helpers/spinner ./
-chmod +x spinner &> /dev/null
+chmod +x spinner
 #
 # Create tmp stuff
 _LOG=/var/backups/bond-${_NOW}.log
@@ -1844,7 +1844,7 @@ if _prompt_yes_no "${_tPrmt}?" ; then
   true
   if [ ! -e "/root/.upstart.cnf" ]; then
     _msg "INFO: We will stop cron and then wait 30 seconds..."
-    service cron stop &> /dev/null
+    service cron stop
     _mrun "sleep 30"
   fi
   _msg "INFO: Tuning in progress, please wait..."
@@ -1862,7 +1862,7 @@ if _prompt_yes_no "${_tPrmt}?" ; then
 else
   if [ ! -e "/root/.upstart.cnf" ]; then
     _msg "INFO: We will stop cron and then wait 30 seconds..."
-    service cron stop &> /dev/null
+    service cron stop
     _mrun "sleep 30"
   fi
   [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
@@ -1878,7 +1878,7 @@ rm -rf /var/opt/*
 rm -rf /opt/tmp/*
 [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
 if [ ! -e "/root/.upstart.cnf" ]; then
-  service cron start &> /dev/null
+  service cron start
 fi
 if [ "${_DEBUG_MODE}" = "YES" ]; then
   _msg "INFO: Cron started again"

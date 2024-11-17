@@ -126,7 +126,7 @@ if [ -e "${drupal_root}/core" ]; then
 fi
 
 ### Known exceptions
-chmod -R 775 ${drupal_root}/sites/all/libraries/tcpdf/cache &> /dev/null
+chmod -R 775 ${drupal_root}/sites/all/libraries/tcpdf/cache
 chmod 0644 ${drupal_root}/.htaccess
 
 echo "Done setting proper permissions on platform files and directories."

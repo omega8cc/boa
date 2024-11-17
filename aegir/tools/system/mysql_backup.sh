@@ -16,7 +16,7 @@ _check_root() {
   _DF_TEST=$(df -kTh / -l \
     | grep '/' \
     | sed 's/\%//g' \
-    | awk '{print $6}' 2> /dev/null)
+    | awk '{print $6}')
   _DF_TEST=${_DF_TEST//[^0-9]/}
   if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt "90" ]; then
     echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
@@ -79,7 +79,7 @@ echo "INFO: Starting dbs backup on `date`"
       _B_NICE=19
     fi
 
-    renice ${_B_NICE} -p $$ &> /dev/null
+    renice ${_B_NICE} -p $$
 
 _SQL_CACHE_EXC_DEF="cache_bootstrap cache_discovery cache_config"
 
@@ -263,7 +263,7 @@ _compress_backup() {
       if [ -e "${DbPath}/metadata" ]; then
         DbName=$(echo ${DbPath} | cut -d'/' -f7 | awk '{ print $1}' 2>&1)
         cd ${_SAVELOCATION}
-        tar cvfj ${DbName}-${_DATE}.tar.bz2 ${DbName} &> /dev/null
+        tar cvfj ${DbName}-${_DATE}.tar.bz2 ${DbName}
         rm -f -r ${DbName}
       fi
     done
@@ -298,16 +298,16 @@ _check_mysql_version() {
     _DB_V=5.7
   fi
   if [ ! -z "${_DB_V}" ]; then
-    mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
-    mysql -u root -e "SET GLOBAL innodb_change_buffering = 'none';" &> /dev/null
-    mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null
-    mysql -u root -e "SET GLOBAL innodb_io_capacity = 2000;" &> /dev/null
-    mysql -u root -e "SET GLOBAL innodb_io_capacity_max = 4000;" &> /dev/null
+    mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;"
+    mysql -u root -e "SET GLOBAL innodb_change_buffering = 'none';"
+    mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;"
+    mysql -u root -e "SET GLOBAL innodb_io_capacity = 2000;"
+    mysql -u root -e "SET GLOBAL innodb_io_capacity_max = 4000;"
     if [ "${_DB_V}" = "5.7" ]; then
-      mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_pct = 100;" &> /dev/null
-      mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_now = ON;" &> /dev/null
+      mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_pct = 100;"
+      mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_now = ON;"
     fi
-    mysql -u root -e "SET GLOBAL innodb_fast_shutdown = 1;" &> /dev/null
+    mysql -u root -e "SET GLOBAL innodb_fast_shutdown = 1;"
   fi
 }
 
@@ -361,40 +361,40 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
       if [ -e "/var/lib/mysql/${_DB}/queue.ibd" ]; then
         _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/queue.ibd | grep "G" 2>&1)
         if [[ "${_IS_GB}" =~ "queue" ]]; then
-          _truncate_queue_tables &> /dev/null
+          _truncate_queue_tables
           echo "INFO: Truncated giant queue in ${_DB}"
         fi
       fi
       if [ -e "/var/lib/mysql/${_DB}/batch.ibd" ]; then
         _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/batch.ibd | grep "G" 2>&1)
         if [[ "${_IS_GB}" =~ "batch" ]]; then
-          _truncate_batch_tables &> /dev/null
+          _truncate_batch_tables
           echo "INFO: Truncated giant batch in ${_DB}"
         fi
       fi
       if [ -e "/var/lib/mysql/${_DB}/watchdog.ibd" ]; then
         _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/watchdog.ibd | grep "G" 2>&1)
         if [[ "${_IS_GB}" =~ "watchdog" ]]; then
-          _truncate_watchdog_tables &> /dev/null
+          _truncate_watchdog_tables
           echo "INFO: Truncated giant watchdog in ${_DB}"
         fi
       fi
       if [ -e "/var/lib/mysql/${_DB}/accesslog.ibd" ]; then
         _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/accesslog.ibd | grep "G" 2>&1)
         if [[ "${_IS_GB}" =~ "accesslog" ]]; then
-          _truncate_accesslog_tables &> /dev/null
+          _truncate_accesslog_tables
           echo "INFO: Truncated giant accesslog in ${_DB}"
         fi
       fi
-      _truncate_views_data_export &> /dev/null
+      _truncate_views_data_export
       echo "INFO: Truncated not used views_data_export in ${_DB}"
       _CACHE_CLEANUP=NONE
       if [ "${_DOW}" = "6" ] && [ -e "/root/.my.batch_innodb.cnf" ]; then
-        _repair_this_database &> /dev/null
+        _repair_this_database
         echo "INFO: Repair task for ${_DB} completed"
-        _truncate_cache_tables &> /dev/null
+        _truncate_cache_tables
         echo "INFO: All cache tables in ${_DB} truncated"
-        _convert_to_innodb &> /dev/null
+        _convert_to_innodb
         echo "INFO: InnoDB conversion task for ${_DB} completed"
         _CACHE_CLEANUP=DONE
       fi
@@ -402,23 +402,23 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
         && [ "${_DOW}" = "7" ] \
         && [ "${_DOM}" -ge "24" ] \
         && [ "${_DOM}" -lt "31" ]; then
-        _repair_this_database &> /dev/null
+        _repair_this_database
         echo "INFO: Repair task for ${_DB} completed"
-        _truncate_cache_tables &> /dev/null
+        _truncate_cache_tables
         echo "INFO: All cache tables in ${_DB} truncated"
-        _optimize_this_database &> /dev/null
+        _optimize_this_database
         echo "INFO: Optimize task for ${_DB} completed"
         _CACHE_CLEANUP=DONE
       fi
       if [ "${_CACHE_CLEANUP}" != "DONE" ]; then
-        _truncate_cache_tables &> /dev/null
+        _truncate_cache_tables
         echo "INFO: All cache tables in ${_DB} truncated"
       fi
     fi
     if [ "${_MYQUICK_USE}" = "YES" ]; then
-      _backup_this_database_with_mydumper &> /dev/null
+      _backup_this_database_with_mydumper
     else
-      _backup_this_database_with_mysqldump &> /dev/null
+      _backup_this_database_with_mysqldump
     fi
     _remove_locks ${_DB}
     echo "INFO: Backup completed for ${_DB}"
@@ -454,7 +454,7 @@ if [ "${_VMFAMILY}" = "VS" ]; then
   sleep ${_n}
 fi
 echo "INFO: Starting dbs backup compress on `date`"
-_compress_backup &> /dev/null
+_compress_backup
 echo "INFO: Completing dbs backup compress on `date`"
 
 echo "INFO: Starting dbs backup cleanup on `date`"

@@ -45,7 +45,7 @@ _second_flood_guard() {
   if [ ${_thisCountSec} -gt "4" ]; then
     echo "$(date 2>&1) Too many ${_thisCountSec} second.sh processes killed" >> \
       /var/log/sec-count.kill.log
-    kill -9 $(ps aux | grep '[s]econd.sh' | awk '{print $2}') &> /dev/null
+    kill -9 $(ps aux | grep '[s]econd.sh' | awk '{print $2}')
   fi
 }
 [ ! -e "/run/boa_run.pid" ] && _second_flood_guard

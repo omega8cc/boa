@@ -417,15 +417,15 @@ _mode_detection() {
     fi
     _ZOMBIE_HOME="${_vBs}/zombie/${_X_VERSION}-${_NOW}"
     mkdir -p ${_ZOMBIE_HOME}
-    mv -f /etc/nginx/conf.d/* ${_ZOMBIE_HOME}/ &> /dev/null
-    mv -f /var/aegir ${_ZOMBIE_HOME}/ &> /dev/null
-    mv -f /var/xdrago ${_ZOMBIE_HOME}/ &> /dev/null
-    mv -f /root/.my.cnf ${_ZOMBIE_HOME}/ &> /dev/null
-    mv -f /root/.my.pass.txt ${_ZOMBIE_HOME}/ &> /dev/null
-    cp -af /etc/sudoers ${_ZOMBIE_HOME}/ &> /dev/null
-    sed -i "s/^aegir.*//g" /etc/sudoers &> /dev/null
-    kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
-    deluser aegir &> /dev/null
+    mv -f /etc/nginx/conf.d/* ${_ZOMBIE_HOME}/
+    mv -f /var/aegir ${_ZOMBIE_HOME}/
+    mv -f /var/xdrago ${_ZOMBIE_HOME}/
+    mv -f /root/.my.cnf ${_ZOMBIE_HOME}/
+    mv -f /root/.my.pass.txt ${_ZOMBIE_HOME}/
+    cp -af /etc/sudoers ${_ZOMBIE_HOME}/
+    sed -i "s/^aegir.*//g" /etc/sudoers
+    kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}')
+    deluser aegir
     rm -f /usr/bin/drush
     if [ ! -z "${_EASY_SETUP}" ] && [[ ! "${_EASY_SETUP}" =~ "NO" ]]; then
       if [ "${_EASY_SETUP}" != "LOCAL" ]; then
@@ -456,14 +456,14 @@ _mode_detection() {
       _SSH_PORT=22
       _MY_HOSTN="${_EASY_HOSTNAME}"
       _MY_FRONT="master.${_EASY_HOSTNAME}"
-      _validate_public_ip &> /dev/null
+      _validate_public_ip
       _MY_OWNIP="${_THISHTIP}"
     fi
     _barracuda_cnf
   fi
   [ -e "/root/.use.curl.from.packages.cnf" ] && chattr -i /root/.use.curl.from.packages.cnf
   [ -e "/root/.use.curl.from.packages.cnf" ] && rm -f /root/.use.curl.from.packages.cnf
-  kill -9 $(ps aux | grep '[s]ystemd-udevd' | awk '{print $2}') &> /dev/null
+  kill -9 $(ps aux | grep '[s]ystemd-udevd' | awk '{print $2}')
   if [ "${_AEGIR_VERSION}" != "static" ]; then
     _USE_AEGIR_VER=SRC
   else
@@ -509,9 +509,9 @@ _mode_detection() {
   _SRCDIR="/opt/tmp/files"
   rm -rf /var/opt/*
   mkdir -p ${_SRCDIR}
-  chmod -R 777 /opt/tmp &> /dev/null
-  find /opt/tmp/boa -type d -exec chmod 0755 {} \; &> /dev/null
-  find /opt/tmp/boa -type f -exec chmod 0644 {} \; &> /dev/null
+  chmod -R 777 /opt/tmp
+  find /opt/tmp/boa -type d -exec chmod 0755 {} \;
+  find /opt/tmp/boa -type f -exec chmod 0644 {} \;
   rm -f /run/aegir_upgrade.pid
   if [ "${_STATUS}" != "UPGRADE" ]; then
     _STRICT_BIN_PERMISSIONS=NO
@@ -564,14 +564,14 @@ _virt_detection() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _virt_detection"
   fi
-  _VIRT_TOOL=$(which virt-what 2> /dev/null)
+  _VIRT_TOOL=$(which virt-what)
   if [ -x "${_VIRT_TOOL}" ]; then
-    _VIRT_TEST=$(virt-what 2> /dev/null)
+    _VIRT_TEST=$(virt-what)
     _VIRT_TEST=$(echo -n ${_VIRT_TEST} | fmt -su -w 2500 2>&1)
     if [ ! -e "/root/.allow.any.virt.cnf" ]; then
       if [ -e "/proc/self/status" ]; then
-        _VS_GUEST_TEST=$(grep -E "VxID:[[:space:]]*[0-9]{2,}$" /proc/self/status 2> /dev/null)
-        _VS_HOST_TEST=$(grep -E "VxID:[[:space:]]*0$" /proc/self/status 2> /dev/null)
+        _VS_GUEST_TEST=$(grep -E "VxID:[[:space:]]*[0-9]{2,}$" /proc/self/status)
+        _VS_HOST_TEST=$(grep -E "VxID:[[:space:]]*0$" /proc/self/status)
       fi
       if [ ! -z "${_VS_HOST_TEST}" ] || [ ! -z "${_VS_GUEST_TEST}" ]; then
         if [ -z "${_VS_HOST_TEST}" ] && [ ! -z "${_VS_GUEST_TEST}" ]; then
@@ -654,15 +654,15 @@ _os_detection_minimal() {
 }
 
 _apt_clean_update() {
-  #apt-get clean -qq 2> /dev/null
-  #rm -rf /var/lib/apt/lists/* &> /dev/null
-  _mrun "${_APT_UPDATE} -qq" 2> /dev/null
+  #apt-get clean -qq
+  #rm -rf /var/lib/apt/lists/*
+  _mrun "${_APT_UPDATE} -qq"
 }
 
 _apt_clean_update_no_releaseinfo_change() {
-  #apt-get clean -qq 2> /dev/null
-  #rm -rf /var/lib/apt/lists/* &> /dev/null
-  _mrun "apt-get update -qq" 2> /dev/null
+  #apt-get clean -qq
+  #rm -rf /var/lib/apt/lists/*
+  _mrun "apt-get update -qq"
 }
 
 _os_detection() {
@@ -839,11 +839,11 @@ _check_prepare_dirs_permissions() {
   fi
   rm -rf /var/opt/*
   mkdir -p /var/log/php
-  chmod 777 /var/log/php* &> /dev/null
+  chmod 777 /var/log/php*
   mkdir -p ${_vBs}/dragon/{x,z,t}
   if [ -e "/etc/init.d/buagent" ]; then
     mv -f /etc/init.d/buagent \
-      ${_vBs}/buagent-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
+      ${_vBs}/buagent-pre-${_xSrl}-${_X_VERSION}-${_NOW}
   fi
 }
 
@@ -856,9 +856,9 @@ _avatars_check_fix() {
       mkdir -p /var/www/nginx-default/profiles/commons
       cp -af ${_bldPth}/aegir/var/commons/images \
         /var/www/nginx-default/profiles/commons/
-      chown -R www-data:www-data /var/www/nginx-default/profiles &> /dev/null
-      find /var/www/nginx-default/profiles -type d -exec chmod 0755 {} \; &> /dev/null
-      find /var/www/nginx-default/profiles -type f -exec chmod 0644 {} \; &> /dev/null
+      chown -R www-data:www-data /var/www/nginx-default/profiles
+      find /var/www/nginx-default/profiles -type d -exec chmod 0755 {} \;
+      find /var/www/nginx-default/profiles -type f -exec chmod 0644 {} \;
     fi
   fi
 }
@@ -955,11 +955,11 @@ _turn_off_apparmor_in_octopus() {
       _msg "ARMR: Turning off AppArmor temporarily..."
     fi
     rm -rf /var/cache/apparmor/*
-    _mrun "apparmor_parser -r /etc/apparmor.d/*" 2> /dev/null
-    _mrun "aa-complain /etc/apparmor.d/*" 2> /dev/null
-    _mrun "service apparmor stop" 2> /dev/null
-    _mrun "aa-teardown" 2> /dev/null
-    _mrun "service auditd stop" 2> /dev/null
+    _mrun "apparmor_parser -r /etc/apparmor.d/*"
+    _mrun "aa-complain /etc/apparmor.d/*"
+    _mrun "service apparmor stop"
+    _mrun "aa-teardown"
+    _mrun "service auditd stop"
     touch /root/.turn_off_apparmor_in_octopus.cnf
   fi
 }

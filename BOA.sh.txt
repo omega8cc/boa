@@ -108,7 +108,7 @@ _os_detection_minimal() {
 }
 
 _apt_clean_update() {
-  ${_APT_UPDATE} -qq &> /dev/null
+  ${_APT_UPDATE} -qq
 }
 
 _CHECK_HOST=$(uname -n 2>&1)
@@ -169,7 +169,7 @@ _fix_dns_settings() {
       cp -a ${_vBs}/resolv.conf.tmp ${_vBs}/resolv.conf.vanilla
     fi
   fi
-  sed -i "/^$/d" ${_vBs}/resolv.conf.vanilla &> /dev/null
+  sed -i "/^$/d" ${_vBs}/resolv.conf.vanilla
   if [ -e "${_vBs}/resolv.conf.vanilla" ]; then
     if [ "${_USE_DEFAULT_DNS}" != "YES" ]; then
       rm -f /etc/resolv.conf
@@ -202,7 +202,7 @@ _check_dns_settings() {
       || [ ! -e "${_vBs}/resolv.conf.vanilla" ]; then
       _fix_dns_settings
       if [ -e "/etc/init.d/postfix" ]; then
-        service postfix restart &> /dev/null
+        service postfix restart
       fi
     fi
   fi
@@ -216,8 +216,8 @@ _find_fast_mirror_early() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     _apt_clean_update
-    apt-get install netcat ${_aptYesUnth} &> /dev/null
-    apt-get install netcat-traditional ${_aptYesUnth} &> /dev/null
+    apt-get install netcat ${_aptYesUnth}
+    apt-get install netcat-traditional ${_aptYesUnth}
   fi
   _ffMirr=$(which ffmirror 2>&1)
   if [ -x "${_ffMirr}" ]; then
@@ -334,7 +334,7 @@ _if_clean_boa_env() {
     if [ -e "/etc/init.d/clean-boa-env" ]; then
       chmod 700 /etc/init.d/clean-boa-env
       chown root:root /etc/init.d/clean-boa-env
-      update-rc.d clean-boa-env defaults &> /dev/null
+      update-rc.d clean-boa-env defaults
     fi
   fi
 }
@@ -343,8 +343,8 @@ _locales_check_fix_early() {
   _isLoc=$(which locale 2>&1)
   if [ ! -x "${_isLoc}" ] || [ -z "${_isLoc}" ]; then
     _INITINS="/usr/bin/apt-get ${_aptAllow} -y install"
-    apt-get update -qq &> /dev/null
-    ${_INITINS} locales locales-all &> /dev/null
+    apt-get update -qq
+    ${_INITINS} locales locales-all
   fi
   _LOC_TEST=$(locale 2>&1)
   if [[ "${_LOC_TEST}" =~ LANG=.*UTF-8 ]]; then
@@ -359,8 +359,8 @@ _locales_check_fix_early() {
       echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
     fi
     sed -i "/^$/d" /etc/locale.gen
-    locale-gen &> /dev/null
-    locale-gen en_US.UTF-8 &> /dev/null
+    locale-gen
+    locale-gen en_US.UTF-8
     # Explicitly enforce all locale settings
     update-locale \
       LANG=en_US.UTF-8 \
@@ -376,42 +376,42 @@ _locales_check_fix_early() {
       LC_TELEPHONE=en_US.UTF-8 \
       LC_MEASUREMENT=en_US.UTF-8 \
       LC_IDENTIFICATION=en_US.UTF-8 \
-      LC_ALL= &> /dev/null
+      LC_ALL=
     # Define all locale settings on the fly to prevent unnecessary
     # warnings during installation of packages.
-    export LANG=en_US.UTF-8 &> /dev/null
-    export LC_CTYPE=en_US.UTF-8 &> /dev/null
-    export LC_COLLATE=POSIX &> /dev/null
-    export LC_NUMERIC=POSIX &> /dev/null
-    export LC_TIME=en_US.UTF-8 &> /dev/null
-    export LC_MONETARY=en_US.UTF-8 &> /dev/null
-    export LC_MESSAGES=en_US.UTF-8 &> /dev/null
-    export LC_PAPER=en_US.UTF-8 &> /dev/null
-    export LC_NAME=en_US.UTF-8 &> /dev/null
-    export LC_ADDRESS=en_US.UTF-8 &> /dev/null
-    export LC_TELEPHONE=en_US.UTF-8 &> /dev/null
-    export LC_MEASUREMENT=en_US.UTF-8 &> /dev/null
-    export LC_IDENTIFICATION=en_US.UTF-8 &> /dev/null
-    export LC_ALL= &> /dev/null
+    export LANG=en_US.UTF-8
+    export LC_CTYPE=en_US.UTF-8
+    export LC_COLLATE=POSIX
+    export LC_NUMERIC=POSIX
+    export LC_TIME=en_US.UTF-8
+    export LC_MONETARY=en_US.UTF-8
+    export LC_MESSAGES=en_US.UTF-8
+    export LC_PAPER=en_US.UTF-8
+    export LC_NAME=en_US.UTF-8
+    export LC_ADDRESS=en_US.UTF-8
+    export LC_TELEPHONE=en_US.UTF-8
+    export LC_MEASUREMENT=en_US.UTF-8
+    export LC_IDENTIFICATION=en_US.UTF-8
+    export LC_ALL=
   else
     _LOCALE_GEN_TEST=$(grep -v "^#" /etc/locale.gen 2>&1)
     if [[ ! "${_LOCALE_GEN_TEST}" =~ "en_US.UTF-8 UTF-8" ]]; then
       echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
     fi
     sed -i "/^$/d" /etc/locale.gen
-    locale-gen &> /dev/null
-    locale-gen en_US.UTF-8 &> /dev/null
+    locale-gen
+    locale-gen en_US.UTF-8
     # Explicitly enforce locale settings required for consistency
     update-locale \
       LANG=en_US.UTF-8 \
       LC_CTYPE=en_US.UTF-8 \
       LC_COLLATE=POSIX \
       LC_NUMERIC=POSIX \
-      LC_ALL= &> /dev/null
+      LC_ALL=
     # Define locale settings required for consistency also on the fly
-    export LC_COLLATE=POSIX &> /dev/null
-    export LC_NUMERIC=POSIX &> /dev/null
-    export LC_ALL= &> /dev/null
+    export LC_COLLATE=POSIX
+    export LC_NUMERIC=POSIX
+    export LC_ALL=
   fi
   _LOCALES_BASHRC_TEST=$(grep LC_COLLATE /root/.bashrc 2>&1)
   if [[ ! "${_LOCALES_BASHRC_TEST}" =~ "LC_COLLATE" ]]; then
@@ -1192,13 +1192,13 @@ _update_agents() {
     _PHP_V="83 82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
       if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
-        service php${e}-fpm reload &> /dev/null
+        service php${e}-fpm reload
       fi
     done
     _PHP_V="55 54 53"
     for e in ${_PHP_V}; do
       if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
-        service php${e}-fpm force-quit &> /dev/null
+        service php${e}-fpm force-quit
       fi
     done
     touch ${_pthLog}/fast_shutdown.ctrl.${_tRee}.${_xSrl}.pid
@@ -1344,8 +1344,8 @@ _update_agents() {
     && [ -e "/var/xdrago" ] \
     && [ ! -e "${_pthLog}/policymap-hf-06.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     IsCurlBin=$(which curl 2>&1)
-    chmod 755 ${IsCurlBin} &> /dev/null
-    chgrp root ${IsCurlBin} &> /dev/null
+    chmod 755 ${IsCurlBin}
+    chgrp root ${IsCurlBin}
     cp -af /etc/ImageMagick-6/policy.xml /var/xdrago/conf/etc-ImageMagick-6-policy.xml.hf-06.old
     rm -f /var/xdrago/conf/etc-ImageMagick-6-policy.xml
     curl ${_crlGet} "${_urlHmr}/conf/etc/etc-ImageMagick-6-policy.xml" \
@@ -1358,7 +1358,7 @@ _update_agents() {
       _PHP_V="83 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
-          service php${e}-fpm reload &> /dev/null
+          service php${e}-fpm reload
         fi
       done
     else
@@ -1395,7 +1395,7 @@ _update_agents() {
     && [ -d "/data/u" ] \
     && [ ! -e "${_pthLog}/fpm-cli.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     _usrGroup=users
-    [ -e "/var/backups/off-run/" ] && cp -a /var/backups/off-run/run* /var/xdrago/ &> /dev/null
+    [ -e "/var/backups/off-run/" ] && cp -a /var/backups/off-run/run* /var/xdrago/
     for _pthSysUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
       _tUsr=
       _tUsr=$(echo ${_pthSysUsr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
@@ -1473,7 +1473,7 @@ _update_agents() {
             chmod 755 ${_dscUsr}/static/control
             if [ -e "/var/xdrago/conf/control-readme.txt" ]; then
               cp -af /var/xdrago/conf/control-readme.txt \
-                ${_dscUsr}/static/control/README.txt &> /dev/null
+                ${_dscUsr}/static/control/README.txt
               chmod 0644 ${_dscUsr}/static/control/README.txt
             fi
             chown -R ${_tUsr}.ftp:${_usrGroup} ${_dscUsr}/static/control
@@ -1654,8 +1654,8 @@ _update_agents() {
       rm -rf ${_Dir}/redis_nine_ten
       _get_dev_contrib "redis_nine_ten-${_REDIS_T_VERSION}.tar.gz"
       echo update > ${_Dir}/redis_nine_ten/ver-${_REDIS_T_VERSION}.${_xSrl}.info
-      find ${_Dir} -type d -exec chmod 0755 {} \; &> /dev/null
-      find ${_Dir} -type f -exec chmod 0644 {} \; &> /dev/null
+      find ${_Dir} -type d -exec chmod 0755 {} \;
+      find ${_Dir} -type f -exec chmod 0644 {} \;
       touch ${_pthLog}/redis_nine_ten.ctrl.${_xSrl}.log
     fi
   fi
@@ -1669,8 +1669,8 @@ _update_agents() {
       rm -rf ${_Dir}/redis_compr
       _get_dev_contrib "redis_compr-${_REDIS_C_VERSION}.tar.gz"
       echo update > ${_Dir}/redis_compr/ver-${_REDIS_C_VERSION}.${_xSrl}.info
-      find ${_Dir} -type d -exec chmod 0755 {} \; &> /dev/null
-      find ${_Dir} -type f -exec chmod 0644 {} \; &> /dev/null
+      find ${_Dir} -type d -exec chmod 0755 {} \;
+      find ${_Dir} -type f -exec chmod 0644 {} \;
       touch ${_pthLog}/redis_compr.ctrl.${_xSrl}.log
     fi
   fi
@@ -1684,8 +1684,8 @@ _update_agents() {
       rm -rf ${_Dir}/redis_edge
       _get_dev_contrib "redis_edge-${_REDIS_L_VERSION}.tar.gz"
       echo update > ${_Dir}/redis_edge/ver-${_REDIS_L_VERSION}.${_xSrl}.info
-      find ${_Dir} -type d -exec chmod 0755 {} \; &> /dev/null
-      find ${_Dir} -type f -exec chmod 0644 {} \; &> /dev/null
+      find ${_Dir} -type d -exec chmod 0755 {} \;
+      find ${_Dir} -type f -exec chmod 0644 {} \;
       touch ${_pthLog}/redis_edge.ctrl.${_xSrl}.log
     fi
   fi
@@ -1699,8 +1699,8 @@ _update_agents() {
       rm -rf ${_Dir}/redis_eight
       _get_dev_contrib "redis_eight-${_REDIS_N_VERSION}.tar.gz"
       echo update > ${_Dir}/redis_eight/ver-${_REDIS_N_VERSION}.${_xSrl}.info
-      find ${_Dir} -type d -exec chmod 0755 {} \; &> /dev/null
-      find ${_Dir} -type f -exec chmod 0644 {} \; &> /dev/null
+      find ${_Dir} -type d -exec chmod 0755 {} \;
+      find ${_Dir} -type f -exec chmod 0644 {} \;
       touch ${_pthLog}/redis_eight.ctrl.${_xSrl}.log
     fi
   fi
@@ -1761,10 +1761,10 @@ _fix_core_dgd() {
         -maxdepth 0 -mindepth 0 | sort`; do
         _Core=$(echo ${_File} \
           | sed 's/\/includes.*//g' \
-          | awk '{print $1}' 2> /dev/null)
+          | awk '{print $1}')
         if [ -d "${_Core}" ] && [ ! -e "${_Core}/core" ]; then
           cd ${_Core}
-          patch -p1 < ${_saPatch} &> /dev/null
+          patch -p1 < ${_saPatch}
         fi
       done
       touch ${_pthLog}/hostmaster-octopus-${_saCoreN}-fixed-d7.log
@@ -1782,10 +1782,10 @@ _fix_core_dgd() {
         -maxdepth 0 -mindepth 0 | sort`; do
         _Core=$(echo ${_File} \
           | sed 's/\/includes.*//g' \
-          | awk '{print $1}' 2> /dev/null)
+          | awk '{print $1}')
         if [ -d "${_Core}" ] && [ ! -e "${_Core}/core" ]; then
           cd ${_Core}
-          patch -p1 < ${_saPatch} &> /dev/null
+          patch -p1 < ${_saPatch}
         fi
       done
 
@@ -1793,10 +1793,10 @@ _fix_core_dgd() {
         -maxdepth 0 -mindepth 0 | sort`; do
         _Core=$(echo ${_File} \
           | sed 's/\/includes.*//g' \
-          | awk '{print $1}' 2> /dev/null)
+          | awk '{print $1}')
         if [ -d "${_Core}" ] && [ ! -e "${_Core}/core" ]; then
           cd ${_Core}
-          patch -p1 < ${_saPatch} &> /dev/null
+          patch -p1 < ${_saPatch}
         fi
       done
 
@@ -1814,13 +1814,13 @@ _fix_core_dgd() {
       for _Core in `find /data/all/000/core/drupal-7* \
         -maxdepth 0 -mindepth 0 | sort`; do
         cd ${_Core}
-        patch -p1 < ${_saPatch} &> /dev/null
+        patch -p1 < ${_saPatch}
       done
     elif [ -d "/data/disk/all/000/core" ]; then
       for _Core in `find /data/disk/all/000/core/drupal-7* \
         -maxdepth 0 -mindepth 0 | sort`; do
         cd ${_Core}
-        patch -p1 < ${_saPatch} &> /dev/null
+        patch -p1 < ${_saPatch}
       done
     fi
     touch ${_pthLog}/${_saCoreN}-fixed-d7.log
@@ -1837,10 +1837,10 @@ _fix_core_dgd() {
         -maxdepth 0 -mindepth 0 | sort`; do
         _Core=$(echo ${_File} \
           | sed 's/\/includes.*//g' \
-          | awk '{print $1}' 2> /dev/null)
+          | awk '{print $1}')
         if [ -d "${_Core}" ] && [ ! -e "${_Core}/core" ]; then
           cd ${_Core}
-          patch -p1 < ${_saPatch} &> /dev/null
+          patch -p1 < ${_saPatch}
         fi
       done
       touch ${_pthLog}/legacy-${_saCoreN}-fixed-d7.log
@@ -1850,10 +1850,10 @@ _fix_core_dgd() {
         -maxdepth 0 -mindepth 0 | sort`; do
         _Core=$(echo ${_File} \
           | sed 's/\/includes.*//g' \
-          | awk '{print $1}' 2> /dev/null)
+          | awk '{print $1}')
         if [ -d "${_Core}" ] && [ ! -e "${_Core}/core" ]; then
           cd ${_Core}
-          patch -p1 < ${_saPatch} &> /dev/null
+          patch -p1 < ${_saPatch}
         fi
       done
       touch ${_pthLog}/legacy-${_saCoreN}-fixed-d7eee.log
@@ -1871,12 +1871,12 @@ _fix_core_dgd() {
         -maxdepth 0 -mindepth 0 | sort`; do
         _Core=$(echo ${_File} \
           | sed 's/\/includes.*//g' \
-          | awk '{print $1}' 2> /dev/null)
+          | awk '{print $1}')
         if [ -d "${_Core}" ] \
           && [ ! -e "${_Core}/core" ] \
           && [ ! -e "${_Core}/profiles/${_saCoreS}-fix.info" ]; then
           cd ${_Core}
-          patch -p1 < ${_saPatch} &> /dev/null
+          patch -p1 < ${_saPatch}
           echo fixed > ${_Core}/profiles/${_saCoreS}-fix.info
         fi
       done
@@ -1884,12 +1884,12 @@ _fix_core_dgd() {
         -maxdepth 0 -mindepth 0 | sort`; do
         _Core=$(echo ${_File} \
           | sed 's/\/includes.*//g' \
-          | awk '{print $1}' 2> /dev/null)
+          | awk '{print $1}')
         if [ -d "${_Core}" ] \
           && [ ! -e "${_Core}/core" ] \
           && [ ! -e "${_Core}/profiles/${_saCoreS}-fix.info" ]; then
           cd ${_Core}
-          patch -p1 < ${_saPatch} &> /dev/null
+          patch -p1 < ${_saPatch}
           echo fixed > ${_Core}/profiles/${_saCoreS}-fix.info
         fi
       done
@@ -1897,12 +1897,12 @@ _fix_core_dgd() {
         -maxdepth 0 -mindepth 0 | sort`; do
         _Core=$(echo ${_File} \
           | sed 's/\/includes.*//g' \
-          | awk '{print $1}' 2> /dev/null)
+          | awk '{print $1}')
         if [ -d "${_Core}" ] \
           && [ ! -e "${_Core}/core" ] \
           && [ ! -e "${_Core}/profiles/${_saCoreS}-fix.info" ]; then
           cd ${_Core}
-          patch -p1 < ${_saPatch} &> /dev/null
+          patch -p1 < ${_saPatch}
           echo fixed > ${_Core}/profiles/${_saCoreS}-fix.info
         fi
       done
@@ -1910,12 +1910,12 @@ _fix_core_dgd() {
         -maxdepth 0 -mindepth 0 | sort`; do
         _Core=$(echo ${_File} \
           | sed 's/\/includes.*//g' \
-          | awk '{print $1}' 2> /dev/null)
+          | awk '{print $1}')
         if [ -d "${_Core}" ] \
           && [ ! -e "${_Core}/core" ] \
           && [ ! -e "${_Core}/profiles/${_saCoreS}-fix.info" ]; then
           cd ${_Core}
-          patch -p1 < ${_saPatch} &> /dev/null
+          patch -p1 < ${_saPatch}
           echo fixed > ${_Core}/profiles/${_saCoreS}-fix.info
         fi
       done
@@ -1923,12 +1923,12 @@ _fix_core_dgd() {
         -maxdepth 0 -mindepth 0 | sort`; do
         _Core=$(echo ${_File} \
           | sed 's/\/includes.*//g' \
-          | awk '{print $1}' 2> /dev/null)
+          | awk '{print $1}')
         if [ -d "${_Core}" ] \
           && [ ! -e "${_Core}/core" ] \
           && [ ! -e "${_Core}/profiles/${_saCoreS}-fix.info" ]; then
           cd ${_Core}
-          patch -p1 < ${_saPatch} &> /dev/null
+          patch -p1 < ${_saPatch}
           echo fixed > ${_Core}/profiles/${_saCoreS}-fix.info
         fi
       done
@@ -1947,12 +1947,12 @@ _fix_core_dgd() {
         -maxdepth 0 -mindepth 0 | sort`; do
         _Core=$(echo ${_File} \
           | sed 's/\/core.*//g' \
-          | awk '{print $1}' 2> /dev/null)
+          | awk '{print $1}')
         if [ -d "${_Core}" ] \
           && [ -e "${_Core}/core" ] \
           && [ ! -e "${_Core}/profiles/${_saQCoreS}-fix.info" ]; then
           cd ${_Core}
-          patch -p1 < ${_saQPatch} &> /dev/null
+          patch -p1 < ${_saQPatch}
           echo fixed > ${_Core}/profiles/${_saQCoreS}-fix.info
         fi
       done
@@ -1960,12 +1960,12 @@ _fix_core_dgd() {
         -maxdepth 0 -mindepth 0 | sort`; do
         _Core=$(echo ${_File} \
           | sed 's/\/core.*//g' \
-          | awk '{print $1}' 2> /dev/null)
+          | awk '{print $1}')
         if [ -d "${_Core}" ] \
           && [ -e "${_Core}/core" ] \
           && [ ! -e "${_Core}/profiles/${_saQCoreS}-fix.info" ]; then
           cd ${_Core}
-          patch -p1 < ${_saQPatch} &> /dev/null
+          patch -p1 < ${_saQPatch}
           echo fixed > ${_Core}/profiles/${_saQCoreS}-fix.info
         fi
       done
@@ -1973,12 +1973,12 @@ _fix_core_dgd() {
         -maxdepth 0 -mindepth 0 | sort`; do
         _Core=$(echo ${_File} \
           | sed 's/\/core.*//g' \
-          | awk '{print $1}' 2> /dev/null)
+          | awk '{print $1}')
         if [ -d "${_Core}" ] \
           && [ -e "${_Core}/core" ] \
           && [ ! -e "${_Core}/profiles/${_saQCoreS}-fix.info" ]; then
           cd ${_Core}
-          patch -p1 < ${_saQPatch} &> /dev/null
+          patch -p1 < ${_saQPatch}
           echo fixed > ${_Core}/profiles/${_saQCoreS}-fix.info
         fi
       done
@@ -1986,12 +1986,12 @@ _fix_core_dgd() {
         -maxdepth 0 -mindepth 0 | sort`; do
         _Core=$(echo ${_File} \
           | sed 's/\/core.*//g' \
-          | awk '{print $1}' 2> /dev/null)
+          | awk '{print $1}')
         if [ -d "${_Core}" ] \
           && [ -e "${_Core}/core" ] \
           && [ ! -e "${_Core}/profiles/${_saQCoreS}-fix.info" ]; then
           cd ${_Core}
-          patch -p1 < ${_saQPatch} &> /dev/null
+          patch -p1 < ${_saQPatch}
           echo fixed > ${_Core}/profiles/${_saQCoreS}-fix.info
         fi
       done
@@ -1999,12 +1999,12 @@ _fix_core_dgd() {
         -maxdepth 0 -mindepth 0 | sort`; do
         _Core=$(echo ${_File} \
           | sed 's/\/core.*//g' \
-          | awk '{print $1}' 2> /dev/null)
+          | awk '{print $1}')
         if [ -d "${_Core}" ] \
           && [ -e "${_Core}/core" ] \
           && [ ! -e "${_Core}/profiles/${_saQCoreS}-fix.info" ]; then
           cd ${_Core}
-          patch -p1 < ${_saQPatch} &> /dev/null
+          patch -p1 < ${_saQPatch}
           echo fixed > ${_Core}/profiles/${_saQCoreS}-fix.info
         fi
       done
@@ -2022,13 +2022,13 @@ _fix_core_dgd() {
       for _Core in `find /data/all/000/core/pressflow-6* \
         -maxdepth 0 -mindepth 0 | sort`; do
         cd ${_Core}
-        patch -p1 < ${_saXPatch} &> /dev/null
+        patch -p1 < ${_saXPatch}
       done
     elif [ -d "/data/disk/all/000/core" ]; then
       for _Core in `find /data/disk/all/000/core/pressflow-6* \
         -maxdepth 0 -mindepth 0 | sort`; do
         cd ${_Core}
-        patch -p1 < ${_saXPatch} &> /dev/null
+        patch -p1 < ${_saXPatch}
       done
     fi
     touch ${_pthLog}/${_saXCoreN}-finally-fixed-d6.log
@@ -2045,10 +2045,10 @@ _fix_core_dgd() {
         -maxdepth 0 -mindepth 0 | sort`; do
         _Core=$(echo ${_File} \
           | sed 's/\/includes.*//g' \
-          | awk '{print $1}' 2> /dev/null)
+          | awk '{print $1}')
         if [ -d "${_Core}" ] && [ ! -e "${_Core}/core" ]; then
           cd ${_Core}
-          patch -p1 < ${_saXPatch} &> /dev/null
+          patch -p1 < ${_saXPatch}
         fi
       done
       touch ${_pthLog}/legacy-${_saXCoreN}-finally-fixed-d6.log
@@ -2058,10 +2058,10 @@ _fix_core_dgd() {
         -maxdepth 0 -mindepth 0 | sort`; do
         _Core=$(echo ${_File} \
           | sed 's/\/includes.*//g' \
-          | awk '{print $1}' 2> /dev/null)
+          | awk '{print $1}')
         if [ -d "${_Core}" ] && [ ! -e "${_Core}/core" ]; then
           cd ${_Core}
-          patch -p1 < ${_saXPatch} &> /dev/null
+          patch -p1 < ${_saXPatch}
         fi
       done
       touch ${_pthLog}/legacy-${_saXCoreN}-finally-fixed-d6eee.log
@@ -2079,12 +2079,12 @@ _fix_core_dgd() {
         -maxdepth 0 -mindepth 0 | sort`; do
         _Core=$(echo ${_File} \
           | sed 's/\/includes.*//g' \
-          | awk '{print $1}' 2> /dev/null)
+          | awk '{print $1}')
         if [ -d "${_Core}" ] \
           && [ ! -e "${_Core}/core" ] \
           && [ ! -e "${_Core}/profiles/${_saXCoreS}-fix-finally.info" ]; then
           cd ${_Core}
-          patch -p1 < ${_saXPatch} &> /dev/null
+          patch -p1 < ${_saXPatch}
           echo fixed > ${_Core}/profiles/${_saXCoreS}-fix-finally.info
         fi
       done
@@ -2092,12 +2092,12 @@ _fix_core_dgd() {
         -maxdepth 0 -mindepth 0 | sort`; do
         _Core=$(echo ${_File} \
           | sed 's/\/includes.*//g' \
-          | awk '{print $1}' 2> /dev/null)
+          | awk '{print $1}')
         if [ -d "${_Core}" ] \
           && [ ! -e "${_Core}/core" ] \
           && [ ! -e "${_Core}/profiles/${_saXCoreS}-fix-finally.info" ]; then
           cd ${_Core}
-          patch -p1 < ${_saXPatch} &> /dev/null
+          patch -p1 < ${_saXPatch}
           echo fixed > ${_Core}/profiles/${_saXCoreS}-fix-finally.info
         fi
       done
@@ -2105,12 +2105,12 @@ _fix_core_dgd() {
         -maxdepth 0 -mindepth 0 | sort`; do
         _Core=$(echo ${_File} \
           | sed 's/\/includes.*//g' \
-          | awk '{print $1}' 2> /dev/null)
+          | awk '{print $1}')
         if [ -d "${_Core}" ] \
           && [ ! -e "${_Core}/core" ] \
           && [ ! -e "${_Core}/profiles/${_saXCoreS}-fix-finally.info" ]; then
           cd ${_Core}
-          patch -p1 < ${_saXPatch} &> /dev/null
+          patch -p1 < ${_saXPatch}
           echo fixed > ${_Core}/profiles/${_saXCoreS}-fix-finally.info
         fi
       done
@@ -2118,12 +2118,12 @@ _fix_core_dgd() {
         -maxdepth 0 -mindepth 0 | sort`; do
         _Core=$(echo ${_File} \
           | sed 's/\/includes.*//g' \
-          | awk '{print $1}' 2> /dev/null)
+          | awk '{print $1}')
         if [ -d "${_Core}" ] \
           && [ ! -e "${_Core}/core" ] \
           && [ ! -e "${_Core}/profiles/${_saXCoreS}-fix-finally.info" ]; then
           cd ${_Core}
-          patch -p1 < ${_saXPatch} &> /dev/null
+          patch -p1 < ${_saXPatch}
           echo fixed > ${_Core}/profiles/${_saXCoreS}-fix-finally.info
         fi
       done
@@ -2131,12 +2131,12 @@ _fix_core_dgd() {
         -maxdepth 0 -mindepth 0 | sort`; do
         _Core=$(echo ${_File} \
           | sed 's/\/includes.*//g' \
-          | awk '{print $1}' 2> /dev/null)
+          | awk '{print $1}')
         if [ -d "${_Core}" ] \
           && [ ! -e "${_Core}/core" ] \
           && [ ! -e "${_Core}/profiles/${_saXCoreS}-fix-finally.info" ]; then
           cd ${_Core}
-          patch -p1 < ${_saXPatch} &> /dev/null
+          patch -p1 < ${_saXPatch}
           echo fixed > ${_Core}/profiles/${_saXCoreS}-fix-finally.info
         fi
       done
@@ -2245,9 +2245,9 @@ _if_fix_lshell() {
     rm -rf lshell*
     _get_dev_src "lshell-${_LSHELL_VRN}.tar.gz"
     for _Files in `find /var/opt/lshell-${_LSHELL_VRN} -type f`; do
-      sed -i "s/kicked/logged/g" ${_Files} &> /dev/null
+      sed -i "s/kicked/logged/g" ${_Files}
       wait
-      sed -i "s/Kicked/Logged/g" ${_Files} &> /dev/null
+      sed -i "s/Kicked/Logged/g" ${_Files}
       wait
     done
     rm -rf /usr/local/lib/python*/site-packages/lshell*
@@ -2262,11 +2262,11 @@ _if_fix_lshell() {
     fi
     [ -f "/etc/lshell.conf-bak-${_LSHELL_VRN}" ] && cp -af /etc/lshell.conf-bak-${_LSHELL_VRN} /etc/lshell.conf
     rm -f /etc/logrotate.d/lshell
-    addgroup --system lshellg &> /dev/null
-    addgroup --system ltd-shell-more &> /dev/null
+    addgroup --system lshellg
+    addgroup --system ltd-shell-more
     mkdir -p /var/log/lsh
     chown :lshellg /var/log/lsh
-    chmod 770 /var/log/lsh &> /dev/null
+    chmod 770 /var/log/lsh
     who | awk '$1 !~ /root/{ cmd="pkill -KILL -u " $1; system(cmd) }'
     touch ${_pthLog}/lshell-fix-build-${_LSHELL_VRN}.log
   fi
@@ -2274,7 +2274,7 @@ _if_fix_lshell() {
     chown root:users ${_usrBin}/lshell
     chmod 750 ${_usrBin}/lshell
     if [ ! -L "/usr/bin/lshell" ]; then
-      ln -sfn ${_usrBin}/lshell /usr/bin/lshell &> /dev/null
+      ln -sfn ${_usrBin}/lshell /usr/bin/lshell
     fi
   fi
 }
@@ -2332,16 +2332,16 @@ _fix_log4j() {
       echo "LOG4J_FORMAT_MSG_NO_LOOKUPS=true" >> /etc/default/solr7.in.sh
     fi
     if [[ ! "${_RESULT_LOG4J}" =~ "LOG4J" ]] || [ ! -z "${_DO_SOLR_RESTART}" ]; then
-      #kill -9 $(ps aux | grep '[s]olr' | awk '{print $2}') &> /dev/null
-      service solr7 restart &> /dev/null
+      #kill -9 $(ps aux | grep '[s]olr' | awk '{print $2}')
+      service solr7 restart
     fi
   fi
 }
 
 _fix_authorized_keys() {
   if [ ! -e "${_pthLog}/_fix_authorized_keys.ctrl.${_tRee}.${_xSrl}.pid" ]; then
-    chmod 0600 /home/*/.ssh/authorized_keys &> /dev/null
-    chmod 0700 /home/*/.ssh &> /dev/null
+    chmod 0600 /home/*/.ssh/authorized_keys
+    chmod 0700 /home/*/.ssh
     touch ${_pthLog}/_fix_authorized_keys.ctrl.${_tRee}.${_xSrl}.pid
   fi
 }
@@ -2414,8 +2414,8 @@ _fix_wkhtml_perms() {
     if [ -x "${_WKHTML_ITEM}" ]; then
       _PERM_TEST=$(ls -la ${_WKHTML_ITEM} | grep rwxr-xr-x 2>&1)
       if [ -z "${_PERM_TEST}" ]; then
-        chgrp root ${_WKHTML_ITEM} &> /dev/null
-        chmod 755 ${_WKHTML_ITEM} &> /dev/null
+        chgrp root ${_WKHTML_ITEM}
+        chmod 755 ${_WKHTML_ITEM}
       fi
     fi
   done
@@ -2426,41 +2426,41 @@ _fix_wkhtml() {
     && [ -L "/usr/bin/wkhtmltopdf" ]; then
     rm -f /usr/bin/wkhtmltopdf
     cp -af /usr/local/bin/wkhtmltopdf /usr/bin/wkhtmltopdf
-    chgrp root /usr/bin/wkhtmltopdf &> /dev/null
-    chmod 755 /usr/bin/wkhtmltopdf &> /dev/null
+    chgrp root /usr/bin/wkhtmltopdf
+    chmod 755 /usr/bin/wkhtmltopdf
   fi
   if [ -x "/usr/local/bin/wkhtmltoimage" ] \
     && [ -L "/usr/bin/wkhtmltoimage" ]; then
     rm -f /usr/bin/wkhtmltoimage
     cp -af /usr/local/bin/wkhtmltoimage /usr/bin/wkhtmltoimage
-    chgrp root /usr/bin/wkhtmltoimage &> /dev/null
-    chmod 755 /usr/bin/wkhtmltoimage &> /dev/null
+    chgrp root /usr/bin/wkhtmltoimage
+    chmod 755 /usr/bin/wkhtmltoimage
   fi
   if [ -x "/usr/local/bin/wkhtmltopdf" ] \
     && [ ! -e "/usr/bin/wkhtmltopdf" ]; then
     cp -af /usr/local/bin/wkhtmltopdf /usr/bin/wkhtmltopdf
-    chgrp root /usr/bin/wkhtmltopdf &> /dev/null
-    chmod 755 /usr/bin/wkhtmltopdf &> /dev/null
+    chgrp root /usr/bin/wkhtmltopdf
+    chmod 755 /usr/bin/wkhtmltopdf
   fi
   if [ -x "/usr/local/bin/wkhtmltoimage" ] \
     && [ ! -e "/usr/bin/wkhtmltoimage" ]; then
     cp -af /usr/local/bin/wkhtmltoimage /usr/bin/wkhtmltoimage
-    chgrp root /usr/bin/wkhtmltoimage &> /dev/null
-    chmod 755 /usr/bin/wkhtmltoimage &> /dev/null
+    chgrp root /usr/bin/wkhtmltoimage
+    chmod 755 /usr/bin/wkhtmltoimage
   fi
   if [ ! -x "/usr/local/bin/wkhtmltopdf" ] \
     && [ -x "/usr/bin/wkhtmltopdf" ]; then
     rm -f /usr/local/bin/wkhtmltopdf
     cp -af /usr/bin/wkhtmltopdf /usr/local/bin/wkhtmltopdf
-    chgrp root /usr/local/bin/wkhtmltopdf &> /dev/null
-    chmod 755 /usr/local/bin/wkhtmltopdf &> /dev/null
+    chgrp root /usr/local/bin/wkhtmltopdf
+    chmod 755 /usr/local/bin/wkhtmltopdf
   fi
   if [ ! -x "/usr/local/bin/wkhtmltoimage" ] \
     && [ -x "/usr/bin/wkhtmltoimage" ]; then
     rm -f /usr/local/bin/wkhtmltoimage
     cp -af /usr/bin/wkhtmltoimage /usr/local/bin/wkhtmltoimage
-    chgrp root /usr/local/bin/wkhtmltoimage &> /dev/null
-    chmod 755 /usr/local/bin/wkhtmltoimage &> /dev/null
+    chgrp root /usr/local/bin/wkhtmltoimage
+    chmod 755 /usr/local/bin/wkhtmltoimage
   fi
 }
 
@@ -2488,7 +2488,7 @@ _fix_pure_ftpd() {
     _PAM_AUTH=$(grep "^PAMAuthentication" /usr/local/etc/pure-ftpd.conf 2>&1)
     if [ ! -z "${_PAM_AUTH}" ]; then
       sed -i "s/^PAMAuthentication/# PAMAuthentication/g" /usr/local/etc/pure-ftpd.conf
-      killall -9 pure-ftpd &> /dev/null
+      killall -9 pure-ftpd
     fi
   fi
 }
@@ -2651,9 +2651,9 @@ _check_and_move() {
 _if_reinstall_curl() {
   _CURL_VRN=8.10.1
   _CURL_INSTALL_REQUIRED=NO
-  if ! command -v lsb_release &> /dev/null; then
-    apt-get update -qq &> /dev/null
-    apt-get install lsb-release ${_aptYesUnth} -qq &> /dev/null
+  if ! command -v lsb_release; then
+    apt-get update -qq
+    apt-get install lsb-release ${_aptYesUnth} -qq
   fi
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   [ "${_OS_CODE}" = "wheezy" ] && _CURL_VRN=7.50.1
@@ -2699,13 +2699,13 @@ _if_reinstall_curl() {
 
   if [ "${_ifAnySymlinksCleaned}" = "YES" ] \
     || [ "${_ifAnyFilesCleaned}" = "YES" ]; then
-    ldconfig 2> /dev/null
+    ldconfig
     _CURL_INSTALL_REQUIRED=YES
     _bkLibcurlPre="/var/backups/legacy-libcurl-pre-${_CURL_VRN}-${_NOW}"
     mkdir -p ${_bkLibcurlPre}
-    mv -f /usr/lib/x86_64-linux-gnu/libcurl.so* ${_bkLibcurlPre}/ &> /dev/null
-    mv -f /usr/lib/x86_64-linux-gnu/libcurl.la ${_bkLibcurlPre}/ &> /dev/null
-    mv -f /usr/lib/x86_64-linux-gnu/libcurl.a ${_bkLibcurlPre}/ &> /dev/null
+    mv -f /usr/lib/x86_64-linux-gnu/libcurl.so* ${_bkLibcurlPre}/
+    mv -f /usr/lib/x86_64-linux-gnu/libcurl.la ${_bkLibcurlPre}/
+    mv -f /usr/lib/x86_64-linux-gnu/libcurl.a ${_bkLibcurlPre}/
   fi
 
   _isCurl=$(curl --version 2>&1)
@@ -2722,23 +2722,23 @@ _if_reinstall_curl() {
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
-    echo "curl install" | dpkg --set-selections 2> /dev/null
+    echo "curl install" | dpkg --set-selections
     _apt_clean_update
-    apt-get remove libssl1.0-dev -y --purge --auto-remove -qq 2> /dev/null
-    apt-get autoremove -y 2> /dev/null
-    apt-get install libssl-dev ${_aptYesUnth} -qq 2> /dev/null
-    apt-get install libc-client2007e libc-client2007e-dev ${_aptYesUnth}-qq 2> /dev/null
-    apt-get build-dep curl ${_aptYesUnth} 2> /dev/null
+    apt-get remove libssl1.0-dev -y --purge --auto-remove -qq
+    apt-get autoremove -y
+    apt-get install libssl-dev ${_aptYesUnth} -qq
+    apt-get install libc-client2007e libc-client2007e-dev ${_aptYesUnth}-qq
+    apt-get build-dep curl ${_aptYesUnth}
     if [ ! -e "/var/aegir/drush" ]; then
-      apt-get install curl --reinstall ${_aptYesUnth} -qq 2> /dev/null
+      apt-get install curl --reinstall ${_aptYesUnth} -qq
     fi
     if [ -e "/var/aegir/drush" ]; then
       echo "INFO: Installing curl from sources..."
       mkdir -p /var/opt
       rm -rf /var/opt/curl*
       cd /var/opt
-      wget ${_wgetGet} http://files.aegir.cc/dev/src/curl-${_CURL_VRN}.tar.gz &> /dev/null
-      tar -xzf curl-${_CURL_VRN}.tar.gz &> /dev/null
+      wget ${_wgetGet} http://files.aegir.cc/dev/src/curl-${_CURL_VRN}.tar.gz
+      tar -xzf curl-${_CURL_VRN}.tar.gz
       if [ -e "/root/.install.modern.openssl.cnf" ] \
         && [ -x "/usr/local/ssl3/bin/openssl" ]; then
         _SSL_BINARY=/usr/local/ssl3/bin/openssl
@@ -2760,10 +2760,10 @@ _if_reinstall_curl() {
         LIBS="-ldl -lpthread" PKG_CONFIG_PATH="${_PKG_CONFIG_PATH}" ./configure \
           --with-openssl \
           --with-zlib=/usr \
-          --prefix=/usr/local &> /dev/null
-        make -j $(nproc) --quiet &> /dev/null
-        make --quiet install &> /dev/null
-        ldconfig 2> /dev/null
+          --prefix=/usr/local
+        make -j $(nproc) --quiet
+        make --quiet install
+        ldconfig
       fi
     fi
     if [ -x "/usr/local/bin/curl" ] && [ -e "/var/aegir/drush" ]; then
@@ -2776,7 +2776,7 @@ _if_reinstall_curl() {
         echo "ERRR: Please install cURL and debug manually"
       else
         echo "GOOD: /usr/local/bin/curl works"
-        echo "curl hold" | dpkg --set-selections &> /dev/null
+        echo "curl hold" | dpkg --set-selections
         if [ -x "/usr/local/bin/curl" ]; then
           if [ -x "/usr/bin/curl" ] && [ ! -L "/usr/bin/curl" ]; then
             mv -f /usr/bin/curl /usr/bin/old-curl-$(date +%y%m%d-%H%M%S 2>&1)
@@ -2784,7 +2784,7 @@ _if_reinstall_curl() {
           ln -sfn /usr/local/bin/curl /usr/bin/curl
         fi
         if [ ! -e "${_SSL_PATH}/certs/ca-certificates.crt" ]; then
-          cp -af /etc/ssl/certs/* ${_SSL_PATH}/certs/ &> /dev/null
+          cp -af /etc/ssl/certs/* ${_SSL_PATH}/certs/
         fi
         if [ -e "/usr/local/lib/libcurl.so.4.8.0" ]; then
           ln -sfn /usr/local/lib/libcurl.so.4.8.0 /usr/lib/libcurl.so
@@ -2802,15 +2802,15 @@ _if_reinstall_curl() {
           ln -sfn /usr/local/lib/libcurl.la /usr/lib/x86_64-linux-gnu/libcurl.la
           ln -sfn /usr/local/lib/libcurl.la /usr/lib/libcurl.la
         fi
-        ldconfig 2> /dev/null
+        ldconfig
         if [ -e "/usr/local/include/curl/curl.h" ] \
           && [ -e "/usr/local/include/curl/easy.h" ] \
           && [ -d "/usr/include/x86_64-linux-gnu/curl" ] \
           && [ ! -L "/usr/include/x86_64-linux-gnu/curl" ]; then
           _apt_clean_update
-          apt-get remove libcurl4-openssl-dev -y --purge --auto-remove -qq 2> /dev/null
+          apt-get remove libcurl4-openssl-dev -y --purge --auto-remove -qq
           ln -sfn /usr/local/include/curl /usr/include/x86_64-linux-gnu/curl
-          ldconfig 2> /dev/null
+          ldconfig
         fi
       fi
     fi
@@ -2984,7 +2984,7 @@ _if_update_boa_key_tools_only() {
   fi
   if [ -x "/usr/sbin/unbound-control" ] \
     && [ -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
-    unbound-control reload &> /dev/null
+    unbound-control reload
   fi
 
   _if_reinstall_curl
@@ -2993,7 +2993,7 @@ _if_update_boa_key_tools_only() {
     --max-redirs 10 \
     --retry 3 \
     --retry-delay 10 \
-    -I "http://${_USE_MIR}" 2> /dev/null)
+    -I "http://${_USE_MIR}")
   if [[ ! "${_CURL_TEST}" =~ "200 OK" ]]; then
     if [[ "${_CURL_TEST}" =~ "unknown option was passed in to libcurl" ]]; then
       echo "ERROR: cURL libs are out of sync! Re-installing.."
@@ -3004,16 +3004,16 @@ _if_update_boa_key_tools_only() {
   else
     _urlHmr="http://${_USE_MIR}/versions/${_tRee}/boa/aegir"
   fi
-  _LSB_TEST=$(which lsb_release 2> /dev/null)
+  _LSB_TEST=$(which lsb_release)
   if [ ! -x "${_LSB_TEST}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     _apt_clean_update
-    apt-get install lsb-release ${_aptYesUnth} &> /dev/null
+    apt-get install lsb-release ${_aptYesUnth}
   fi
-  _IPSET_TEST=$(which ipset 2> /dev/null)
+  _IPSET_TEST=$(which ipset)
   if [ ! -x "${_IPSET_TEST}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
@@ -3026,7 +3026,7 @@ _if_update_boa_key_tools_only() {
     if [ -L "/usr/sbin/ipset" ]; then
       rm -f /usr/sbin/ipset
     fi
-    apt-get install ipset ${_aptYesUnth} &> /dev/null
+    apt-get install ipset ${_aptYesUnth}
   fi
   if [ -x "/sbin/ipset" ] && [ ! -e "/usr/sbin/ipset" ]; then
     ln -s /sbin/ipset /usr/sbin/ipset
@@ -3041,9 +3041,9 @@ _if_update_boa_key_tools_only() {
     echo "iptables -t raw -A PREROUTING -p tcp --dport 21 -j CT --helper ftp" >> /etc/csf/csfpost.sh
     echo "iptables -t raw -A OUTPUT -p tcp --dport 21 -j CT --helper ftp" >> /etc/csf/csfpost.sh
     chmod 700 /etc/csf/csfpost.sh
-    _CSF_TEST=$(which csf 2> /dev/null)
+    _CSF_TEST=$(which csf)
     if [ -x "${_CSF_TEST}" ]; then
-      service clean-boa-env start &> /dev/null
+      service clean-boa-env start
       wait
       _if_fix_iptables_symlinks
       csf -uf
@@ -3051,16 +3051,16 @@ _if_update_boa_key_tools_only() {
       _NFTABLES_TEST=$(iptables -V 2>&1)
       if [[ "${_NFTABLES_TEST}" =~ "nf_tables" ]]; then
         if [ -e "/usr/sbin/iptables-legacy" ]; then
-          update-alternatives --set iptables /usr/sbin/iptables-legacy &> /dev/null
+          update-alternatives --set iptables /usr/sbin/iptables-legacy
         fi
         if [ -e "/usr/sbin/ip6tables-legacy" ]; then
-          update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy &> /dev/null
+          update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy
         fi
         if [ -e "/usr/sbin/arptables-legacy" ]; then
-          update-alternatives --set arptables /usr/sbin/arptables-legacy &> /dev/null
+          update-alternatives --set arptables /usr/sbin/arptables-legacy
         fi
         if [ -e "/usr/sbin/ebtables-legacy" ]; then
-          update-alternatives --set ebtables /usr/sbin/ebtables-legacy &> /dev/null
+          update-alternatives --set ebtables /usr/sbin/ebtables-legacy
         fi
       fi
       sed -i "s/.*DHCP.*//g" /etc/csf/csf.allow
@@ -3087,9 +3087,9 @@ _if_update_boa_key_tools_only() {
       if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
         _SACK_TEST=$(ip6tables --list | grep tcpmss 2>&1)
         if [[ ! "${_SACK_TEST}" =~ "tcpmss" ]]; then
-          sysctl net.ipv4.tcp_mtu_probing=0 &> /dev/null
-          iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
-          ip6tables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
+          sysctl net.ipv4.tcp_mtu_probing=0
+          iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP
+          ip6tables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP
         fi
       fi
     fi
@@ -3099,7 +3099,7 @@ _if_update_boa_key_tools_only() {
     echo _CC_SRC_TEST 1 is "${_CC_SRC_TEST}"
     if [[ ! ${_CC_SRC_TEST} =~ CC_SRC\ =\ \"2\" ]]; then
       echo _CC_SRC_TEST 2 is "${_CC_SRC_TEST}"
-      service clean-boa-env start &> /dev/null
+      service clean-boa-env start
       wait
       _if_fix_iptables_symlinks
       csf -uf
@@ -3107,16 +3107,16 @@ _if_update_boa_key_tools_only() {
       _NFTABLES_TEST=$(iptables -V 2>&1)
       if [[ "${_NFTABLES_TEST}" =~ "nf_tables" ]]; then
         if [ -e "/usr/sbin/iptables-legacy" ]; then
-          update-alternatives --set iptables /usr/sbin/iptables-legacy &> /dev/null
+          update-alternatives --set iptables /usr/sbin/iptables-legacy
         fi
         if [ -e "/usr/sbin/ip6tables-legacy" ]; then
-          update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy &> /dev/null
+          update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy
         fi
         if [ -e "/usr/sbin/arptables-legacy" ]; then
-          update-alternatives --set arptables /usr/sbin/arptables-legacy &> /dev/null
+          update-alternatives --set arptables /usr/sbin/arptables-legacy
         fi
         if [ -e "/usr/sbin/ebtables-legacy" ]; then
-          update-alternatives --set ebtables /usr/sbin/ebtables-legacy &> /dev/null
+          update-alternatives --set ebtables /usr/sbin/ebtables-legacy
         fi
       fi
       sed -i "s/^CC_SRC .*/CC_SRC = \"2\"/g" /etc/csf/csf.conf
@@ -3188,7 +3188,7 @@ _boa_setup() {
     [ -e "/run/unbound" ] && chown -R unbound:unbound /run/unbound
     if [ -x "/usr/sbin/unbound-control" ] \
       && [ -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
-      unbound-control reload &> /dev/null
+      unbound-control reload
     fi
   fi
 
@@ -3225,21 +3225,21 @@ _boa_setup() {
   _apt_clean_update
 
   if [ ! -e "/var/aegir/drush" ] && [ ! -e "/var/xdrago/manage_solr_config.sh" ]; then
-#     apt-get remove unscd -y --purge --auto-remove -qq &> /dev/null
-#     apt-get remove dbus -y --purge --auto-remove -qq &> /dev/null
+#     apt-get remove unscd -y --purge --auto-remove -qq
+#     apt-get remove dbus -y --purge --auto-remove -qq
 #     if [ -e "/usr/share/dbus-1" ]; then
 #       rm -f /usr/share/dbus-1/*/*freedesktop*
 #     fi
-    userdel -r debian &> /dev/null
-    sed -i "s/^#startup_message off/startup_message off/g" /etc/screenrc &> /dev/null
+    userdel -r debian
+    sed -i "s/^#startup_message off/startup_message off/g" /etc/screenrc
   fi
 
   _isScreen=$(screen --version 2>&1)
   if [[ ! "${_isScreen}" =~ "GNU" ]] || [ -z "${_isScreen}" ]; then
-    apt-get install screen -y &> /dev/null
-    apt-get install net-tools -y &> /dev/null
-    apt-get install hostname -y &> /dev/null
-    apt-get install ntpdate -y &> /dev/null
+    apt-get install screen -y
+    apt-get install net-tools -y
+    apt-get install hostname -y
+    apt-get install ntpdate -y
   fi
 
   _if_reinstall_curl
@@ -3248,7 +3248,7 @@ _boa_setup() {
     --max-redirs 10 \
     --retry 3 \
     --retry-delay 10 \
-    -I "http://${_USE_MIR}" 2> /dev/null)
+    -I "http://${_USE_MIR}")
   if [[ ! "${_CURL_TEST}" =~ "200 OK" ]]; then
     if [[ "${_CURL_TEST}" =~ "unknown option was passed in to libcurl" ]]; then
       echo "ERROR: cURL libs are out of sync! Re-installing.."
@@ -3262,7 +3262,7 @@ _boa_setup() {
 
   _if_clean_boa_env
 
-  _VIRT_TEST=$(which virt-what 2> /dev/null)
+  _VIRT_TEST=$(which virt-what)
   if [ ! -x "${_VIRT_TEST}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
@@ -3271,7 +3271,7 @@ _boa_setup() {
     _apt_clean_update
     apt-get install virt-what ${_aptYesUnth}
   fi
-  _LSB_TEST=$(which lsb_release 2> /dev/null)
+  _LSB_TEST=$(which lsb_release)
   if [ ! -x "${_LSB_TEST}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
@@ -3354,11 +3354,11 @@ _sysctl_update() {
     if [ -e "/boot/grub/grub.cfg" ] || [ -e "/boot/grub/menu.lst" ]; then
       #echo never > /sys/kernel/mm/transparent_hugepage/enabled
       if [ -e "/etc/sysctl.conf" ]; then
-        sysctl -p /etc/sysctl.conf &> /dev/null
+        sysctl -p /etc/sysctl.conf
       fi
     else
       if [ -e "/etc/sysctl.conf" ]; then
-        sysctl -p /etc/sysctl.conf &> /dev/null
+        sysctl -p /etc/sysctl.conf
       fi
     fi
     if [ -e "/etc/default/nginx" ]; then
@@ -3367,8 +3367,8 @@ _sysctl_update() {
         sed -i "s/^ULIMIT=.*//gi" /etc/default/nginx
         wait
         echo ULIMIT=\"-n 524288\" >> /etc/default/nginx
-        ulimit -n 524288 &> /dev/null
-        service nginx restart &> /dev/null
+        ulimit -n 524288
+        service nginx restart
       fi
     fi
     if [ -e "/etc/security/limits.d" ] \
@@ -3385,13 +3385,13 @@ _sysctl_update() {
       echo "solr7 hard nofile 524288" >> /etc/security/limits.d/solr7.conf
       echo "@www-data soft nofile 65535" > /etc/security/limits.d/www.conf
       echo "@www-data hard nofile 524288" >> /etc/security/limits.d/www.conf
-      service redis-server restart &> /dev/null
-      service nginx restart &> /dev/null
-      service sshd restart &> /dev/null
+      service redis-server restart
+      service nginx restart
+      service sshd restart
       _PHP_V="83 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
-          service php${e}-fpm reload &> /dev/null
+          service php${e}-fpm reload
         fi
       done
     fi
@@ -3418,9 +3418,9 @@ if [ `whoami` = "root" ]; then
   if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
     _SACK_TEST=$(ip6tables --list | grep tcpmss 2>&1)
     if [[ ! "${_SACK_TEST}" =~ "tcpmss" ]]; then
-      sysctl net.ipv4.tcp_mtu_probing=0 &> /dev/null
-      iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
-      ip6tables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
+      sysctl net.ipv4.tcp_mtu_probing=0
+      iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP
+      ip6tables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP
     fi
   fi
   ### More aggressive mitigation affecting network performance
@@ -3433,7 +3433,7 @@ if [ `whoami` = "root" ]; then
   # fi
 
   ### Block known attackers IPs
-  _CSF_TEST=$(which csf 2> /dev/null)
+  _CSF_TEST=$(which csf)
   if [ -x "${_CSF_TEST}" ]; then
     _IP_BLOCK="185.206.225.30 185.253.97.238"
     for _IP in ${_IP_BLOCK}; do
@@ -3451,7 +3451,7 @@ if [ `whoami` = "root" ]; then
   if [ -e "/etc/modprobe.d" ] \
     && [ ! -e "/etc/modprobe.d/blacklist-n_hdlc.conf" ]; then
     echo "install n_hdlc /bin/true" > /etc/modprobe.d/blacklist-n_hdlc.conf
-    rmmod n_hdlc &> /dev/null
+    rmmod n_hdlc
   fi
 
   ### Linux kernel CVE-2017-6074 hotfix
@@ -3462,25 +3462,25 @@ if [ `whoami` = "root" ]; then
     echo "install dccp_ipv4 /bin/true" >> /etc/modprobe.d/blacklist-dccp-all.conf
     echo "install dccp_ipv6 /bin/true" >> /etc/modprobe.d/blacklist-dccp-all.conf
     echo "install dccp_probe /bin/true" >> /etc/modprobe.d/blacklist-dccp-all.conf
-    rmmod dccp &> /dev/null
-    rmmod dccp_diag &> /dev/null
-    rmmod dccp_ipv4 &> /dev/null
-    rmmod dccp_ipv6 &> /dev/null
-    rmmod dccp_probe &> /dev/null
+    rmmod dccp
+    rmmod dccp_diag
+    rmmod dccp_ipv4
+    rmmod dccp_ipv6
+    rmmod dccp_probe
   fi
 
   if [ -x "/usr/sbin/unbound" ] \
     && [ ! -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
     mkdir -p /etc/resolvconf/run/interface
     echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.unbound
-    resolvconf -u &> /dev/null
+    resolvconf -u
     [ -e "/etc/resolvconf/update.d/unbound" ] && chmod -x /etc/resolvconf/update.d/unbound
     [ ! -e "/run/unbound" ] && mkdir -p /run/unbound
     [ -e "/run/unbound" ] && chown -R unbound:unbound /run/unbound
-    killall -9 unbound &> /dev/null
-    service unbound restart &> /dev/null
+    killall -9 unbound
+    service unbound restart
     wait
-    unbound-control reload &> /dev/null
+    unbound-control reload
   fi
 
   if [ ! -e "/data/all/cpuinfo" ]; then
@@ -3579,7 +3579,7 @@ if [ `whoami` = "root" ]; then
     chmod 710 /etc/ssl/private
   fi
   if [ ! -e "/root/.upstart.cnf" ]; then
-    service cron reload &> /dev/null
+    service cron reload
   fi
   if [ "${_SCREEN_INIT}" = "YES" ]; then
     clear
@@ -3597,7 +3597,7 @@ if [ `whoami` = "root" ]; then
     echo "Enjoy!"
     echo
     if [ -x "/usr/sbin/aa-teardown" ]; then
-      aa-teardown &> /dev/null
+      aa-teardown
     fi
     sleep 8
   else

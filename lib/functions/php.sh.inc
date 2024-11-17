@@ -7,7 +7,7 @@ _fix_php_ini_ioncube() {
   if [ -e "${_THIS_FILE}" ] && [ "${_PHP_IONCUBE}" = "NO" ]; then
     _IONCUBE_INI_TEST=$(grep "ioncube_loader" ${_THIS_FILE} 2>&1)
     if [[ "${_IONCUBE_INI_TEST}" =~ "ioncube_loader" ]]; then
-      sed -i "s/.*ioncube_loader.*//g" ${_THIS_FILE} &> /dev/null
+      sed -i "s/.*ioncube_loader.*//g" ${_THIS_FILE}
       wait
     fi
   fi
@@ -22,7 +22,7 @@ _remove_php_ini_jsmin() {
   if [ -e "${_THIS_FILE}" ]; then
     _JSMIN_INI_TEST=$(grep "^extension=jsmin.so" ${_THIS_FILE} 2>&1)
     if [[ "${_JSMIN_INI_TEST}" =~ "extension=jsmin.so" ]]; then
-      sed -i "s/.*jsmin.*//g" ${_THIS_FILE} &> /dev/null
+      sed -i "s/.*jsmin.*//g" ${_THIS_FILE}
       wait
     fi
   fi
@@ -37,7 +37,7 @@ _remove_php_ini_suhosin() {
   if [ -e "${_THIS_FILE}" ]; then
     _SUHOSIN_INI_TEST=$(grep "^extension=suhosin.so" ${_THIS_FILE} 2>&1)
     if [[ "${_SUHOSIN_INI_TEST}" =~ "extension=suhosin.so" ]]; then
-      sed -i "s/.*suhosin.*//g" ${_THIS_FILE} &> /dev/null
+      sed -i "s/.*suhosin.*//g" ${_THIS_FILE}
       wait
     fi
   fi
@@ -192,9 +192,9 @@ _fix_php_ini_newrelic() {
     else
       echo "newrelic.framework.drupal.modules = 1" >> ${_THIS_FILE}
     fi
-    sed -i "/REPLACE_WITH_REAL_KEY//g" ${_THIS_FILE} &> /dev/null
+    sed -i "/REPLACE_WITH_REAL_KEY//g" ${_THIS_FILE}
     wait
-    sed -i "s/license_key=//g" ${_THIS_FILE} &> /dev/null
+    sed -i "s/license_key=//g" ${_THIS_FILE}
     wait
   fi
 }
@@ -470,7 +470,7 @@ _php_conf_update() {
   fi
   for e in ${_PHP_V}; do
     if [ ! -e "/var/www/www${e}" ]; then
-      adduser --system --group --home /var/www/www${e} www${e} &> /dev/null
+      adduser --system --group --home /var/www/www${e} www${e}
       usermod -aG www-data www${e}
     fi
     if [ ! -e "/opt/php${e}/etc/php${e}.ini" ] \
@@ -612,35 +612,35 @@ _tune_web_server_config() {
   for e in ${_PHP_V}; do
     if [ ! -z "${_CHILD_MAX_FPM}" ] && [ "${_CHILD_MAX_FPM}" -ge "8" ]; then
       sed -i "s/pm.max_children =.*/pm.max_children = ${_CHILD_MAX_FPM}/g" \
-         /opt/php${e}/etc/pool.d/www${e}.conf &> /dev/null
+         /opt/php${e}/etc/pool.d/www${e}.conf
       wait
     else
       sed -i "s/pm.max_children =.*/pm.max_children = 8/g" \
-         /opt/php${e}/etc/pool.d/www${e}.conf &> /dev/null
+         /opt/php${e}/etc/pool.d/www${e}.conf
       wait
     fi
     if [ ! -z "${_PHP_FPM_DENY}" ]; then
       sed -i "s/passthru,/${_PHP_FPM_DENY},/g" \
-        /opt/php${e}/etc/pool.d/www${e}.conf &> /dev/null
+        /opt/php${e}/etc/pool.d/www${e}.conf
       wait
     fi
   done
   # PHP-FPM INI
-  sed -i "s/^default_socket_timeout =.*/default_socket_timeout = 180/g" /opt/php*/etc/php*.ini &> /dev/null
+  sed -i "s/^default_socket_timeout =.*/default_socket_timeout = 180/g" /opt/php*/etc/php*.ini
   wait
-  sed -i "s/^max_execution_time =.*/max_execution_time = 180/g" /opt/php*/etc/php*.ini         &> /dev/null
+  sed -i "s/^max_execution_time =.*/max_execution_time = 180/g" /opt/php*/etc/php*.ini        
   wait
-  sed -i "s/^max_input_time =.*/max_input_time = 180/g" /opt/php*/etc/php*.ini                 &> /dev/null
+  sed -i "s/^max_input_time =.*/max_input_time = 180/g" /opt/php*/etc/php*.ini                
   wait
   # PHP-CLI INI
-  sed -i "s/^default_socket_timeout =.*/default_socket_timeout = 3600/g" /opt/php*/lib/php.ini &> /dev/null
+  sed -i "s/^default_socket_timeout =.*/default_socket_timeout = 3600/g" /opt/php*/lib/php.ini
   wait
-  sed -i "s/^max_execution_time =.*/max_execution_time = 3600/g" /opt/php*/lib/php.ini         &> /dev/null
+  sed -i "s/^max_execution_time =.*/max_execution_time = 3600/g" /opt/php*/lib/php.ini        
   wait
-  sed -i "s/^max_input_time =.*/max_input_time = 3600/g" /opt/php*/lib/php.ini                 &> /dev/null
+  sed -i "s/^max_input_time =.*/max_input_time = 3600/g" /opt/php*/lib/php.ini                
   wait
   # Redis config should sync with PHP-CLI
-  sed -i "s/^timeout .*/timeout 3600/g" /etc/redis/redis.conf                                  &> /dev/null
+  sed -i "s/^timeout .*/timeout 3600/g" /etc/redis/redis.conf                                 
   wait
 }
 
@@ -667,7 +667,7 @@ _if_install_php_ioncube() {
       rm -rf ioncube_loaders*
       _get_dev_arch "ioncube_loaders_lin_x86-64_${_IONCUBE_VRN}.tar.gz"
       rm -f /usr/local/ioncube/*
-      cp -af /var/opt/ioncube/* /usr/local/ioncube/ &> /dev/null
+      cp -af /var/opt/ioncube/* /usr/local/ioncube/
       touch ${_pthLog}/ioncube-update-${_IONCUBE_VRN}.log
     fi
   fi
@@ -689,11 +689,11 @@ _install_php_extensions() {
     rm -rf apcu*
     _get_dev_src "apcu-${_PHP_APCU}.tgz"
     cd /var/opt/apcu-${_PHP_APCU}
-    _mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-    _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-    _mrun "make -j $(nproc) --quiet" 2> /dev/null
-    _mrun "make --quiet install" 2> /dev/null
-    ldconfig 2> /dev/null
+    _mrun "${_T_PHP_PTH}/phpize"
+    _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
+    _mrun "make -j $(nproc) --quiet"
+    _mrun "make --quiet install"
+    ldconfig
     if [ ! -e "${_THIS_PHP_EXT_DIR}/apcu.so" ]; then
       _msg "WARN: Installing APCu for PHP ${_T_PHP_VRN} failed!"
     else
@@ -717,12 +717,12 @@ _install_php_extensions() {
     _PHPREDIS_BUILD="--enable-redis-igbinary --enable-redis-lzf"
   fi
   _msg "INFO: Installing PhpRedis ${_USE_PHPREDIS} for PHP ${_T_PHP_VRN}..."
-  ldconfig 2> /dev/null
+  ldconfig
   cd /var/opt
   rm -rf phpredis*
   _get_dev_src "phpredis-${_USE_PHPREDIS}.tar.gz"
   cd /var/opt/phpredis
-  _mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
+  _mrun "${_T_PHP_PTH}/phpize"
   if [ -e "/var/opt/phpredis/liblzf/lzf.h" ] && [ -e "/lib/x86_64-linux-gnu/liblzf.so" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: _PHPREDIS_BUILD is ${_PHPREDIS_BUILD}"
@@ -733,10 +733,10 @@ _install_php_extensions() {
       _msg "INFO: _PHPREDIS_BUILD is ${_PHPREDIS_BUILD}"
     fi
   fi
-  _mrun "bash ./configure ${_PHPREDIS_BUILD} --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-  _mrun "make -j $(nproc) --quiet" 2> /dev/null
-  _mrun "make --quiet install" 2> /dev/null
-  ldconfig 2> /dev/null
+  _mrun "bash ./configure ${_PHPREDIS_BUILD} --with-php-config=${_T_PHP_CFG}"
+  _mrun "make -j $(nproc) --quiet"
+  _mrun "make --quiet install"
+  ldconfig
   if [ ! -e "${_THIS_PHP_EXT_DIR}/redis.so" ]; then
     _msg "WARN: Installing PhpRedis for PHP ${_T_PHP_VRN} failed!"
   else
@@ -753,11 +753,11 @@ _install_php_extensions() {
   rm -rf igbinary*
   _get_dev_src "igbinary-${_USE_IGBINARY}.tgz"
   cd /var/opt/igbinary-${_USE_IGBINARY}
-  _mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-  _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-  _mrun "make -j $(nproc) --quiet" 2> /dev/null
-  _mrun "make --quiet install" 2> /dev/null
-  ldconfig 2> /dev/null
+  _mrun "${_T_PHP_PTH}/phpize"
+  _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
+  _mrun "make -j $(nproc) --quiet"
+  _mrun "make --quiet install"
+  ldconfig
   if [ ! -e "${_THIS_PHP_EXT_DIR}/igbinary.so" ]; then
     _msg "WARN: Installing igbinary for PHP ${_T_PHP_VRN} failed!"
   else
@@ -770,11 +770,11 @@ _install_php_extensions() {
     rm -rf mcrypt*
     _get_dev_src "mcrypt-${_PHP_MCRYPT}.tgz"
     cd /var/opt/mcrypt-${_PHP_MCRYPT}
-    _mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-    _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-    _mrun "make -j $(nproc) --quiet" 2> /dev/null
-    _mrun "make --quiet install" 2> /dev/null
-    ldconfig 2> /dev/null
+    _mrun "${_T_PHP_PTH}/phpize"
+    _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
+    _mrun "make -j $(nproc) --quiet"
+    _mrun "make --quiet install"
+    ldconfig
     if [ ! -e "${_THIS_PHP_EXT_DIR}/mcrypt.so" ]; then
       _msg "WARN: Installing MCRYPT for PHP ${_T_PHP_VRN} failed!"
     else
@@ -788,11 +788,11 @@ _install_php_extensions() {
     rm -rf uploadprogress*
     _get_dev_src "uploadprogress-${_UPROGRESS_LEGACY_VRN}.tgz"
     cd /var/opt/uploadprogress-${_UPROGRESS_LEGACY_VRN}
-    _mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-    _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-    _mrun "make -j $(nproc) --quiet" 2> /dev/null
-    _mrun "make --quiet install" 2> /dev/null
-    ldconfig 2> /dev/null
+    _mrun "${_T_PHP_PTH}/phpize"
+    _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
+    _mrun "make -j $(nproc) --quiet"
+    _mrun "make --quiet install"
+    ldconfig
     if [ ! -e "${_THIS_PHP_EXT_DIR}/uploadprogress.so" ]; then
       _msg "WARN: Installing UploadProgress for PHP ${_T_PHP_VRN} failed!"
     else
@@ -810,11 +810,11 @@ _install_php_extensions() {
     rm -rf uploadprogress*
     _get_dev_src "uploadprogress-${_UPROGRESS_EIGHT_VRN}.tgz"
     cd /var/opt/uploadprogress-${_UPROGRESS_EIGHT_VRN}
-    _mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-    _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-    _mrun "make -j $(nproc) --quiet" 2> /dev/null
-    _mrun "make --quiet install" 2> /dev/null
-    ldconfig 2> /dev/null
+    _mrun "${_T_PHP_PTH}/phpize"
+    _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
+    _mrun "make -j $(nproc) --quiet"
+    _mrun "make --quiet install"
+    ldconfig
     if [ ! -e "${_THIS_PHP_EXT_DIR}/uploadprogress.so" ]; then
       _msg "WARN: Installing UploadProgress for PHP ${_T_PHP_VRN} failed!"
     else
@@ -826,11 +826,11 @@ _install_php_extensions() {
     rm -rf uploadprogress*
     _get_dev_src "uploadprogress-${_UPROGRESS_SEVEN_VRN}.tar.gz"
     cd /var/opt/uploadprogress-${_UPROGRESS_SEVEN_VRN}
-    _mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-    _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-    _mrun "make -j $(nproc) --quiet" 2> /dev/null
-    _mrun "make --quiet install" 2> /dev/null
-    ldconfig 2> /dev/null
+    _mrun "${_T_PHP_PTH}/phpize"
+    _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
+    _mrun "make -j $(nproc) --quiet"
+    _mrun "make --quiet install"
+    ldconfig
     if [ ! -e "${_THIS_PHP_EXT_DIR}/uploadprogress.so" ]; then
       _msg "WARN: Installing UploadProgress for PHP ${_T_PHP_VRN} failed!"
     else
@@ -849,11 +849,11 @@ _install_php_extensions() {
     _get_dev_src "pecl-jsmin-${_JSMIN_PHP_MODERN_VRN}.tar.gz"
     cd /var/opt/pecl-jsmin-${_JSMIN_PHP_MODERN_VRN}
   fi
-  _mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-  _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-  _mrun "make -j $(nproc) --quiet" 2> /dev/null
-  _mrun "make --quiet install" 2> /dev/null
-  ldconfig 2> /dev/null
+  _mrun "${_T_PHP_PTH}/phpize"
+  _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
+  _mrun "make -j $(nproc) --quiet"
+  _mrun "make --quiet install"
+  ldconfig
   if [ ! -e "${_THIS_PHP_EXT_DIR}/jsmin.so" ]; then
     _msg "WARN: Installing JSMin for PHP ${_T_PHP_VRN} failed!"
   else
@@ -871,11 +871,11 @@ _install_php_extensions() {
     rm -rf twig*
     _get_dev_src "twig-${_TWIGC_VRN}.tar.gz"
     cd /var/opt/twig-${_TWIGC_VRN}/ext/twig
-    _mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-    _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-    _mrun "make -j $(nproc) --quiet" 2> /dev/null
-    _mrun "make --quiet install" 2> /dev/null
-    ldconfig 2> /dev/null
+    _mrun "${_T_PHP_PTH}/phpize"
+    _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
+    _mrun "make -j $(nproc) --quiet"
+    _mrun "make --quiet install"
+    ldconfig
     if [ ! -e "${_THIS_PHP_EXT_DIR}/twig.so" ]; then
       _msg "WARN: Installing Twig C for PHP ${_T_PHP_VRN} failed!"
     else
@@ -888,7 +888,7 @@ _install_php_extensions() {
       _msg "INFO: Building GEOS extension ${_GEOS_VRN} for PHP ${_T_PHP_VRN} from sources..."
       if [ ! -e "${_pthLog}/geos-${_xSrl}-${_X_VERSION}.log" ]; then
         _apt_clean_update
-        _st_runner "${_INSTAPP} libgeos-dev libgeos-c1" 2> /dev/null
+        _st_runner "${_INSTAPP} libgeos-dev libgeos-c1"
         touch ${_pthLog}/geos-${_xSrl}-${_X_VERSION}.log
       fi
       cd /var/opt
@@ -899,14 +899,14 @@ _install_php_extensions() {
       for e in ${_PHP_V}; do
         if [ "$1" = "${e}" ]; then
           find . -type f -print0 \
-            | xargs -0 sed -i 's/\/usr\/local/\/opt\/php${e}/g' &> /dev/null
+            | xargs -0 sed -i 's/\/usr\/local/\/opt\/php${e}/g'
           wait
         fi
       done
-      _mrun "bash ./configure --enable-php" 2> /dev/null
-      _mrun "make -j $(nproc) --quiet" 2> /dev/null
-      _mrun "make --quiet install" 2> /dev/null
-      ldconfig 2> /dev/null
+      _mrun "bash ./configure --enable-php"
+      _mrun "make -j $(nproc) --quiet"
+      _mrun "make --quiet install"
+      ldconfig
       touch ${_pthLog}/php-geos-${_GEOS_VRN}-${_T_PHP_VRN}.log
     fi
   fi
@@ -918,11 +918,11 @@ _install_php_extensions() {
       rm -rf mongo*
       _get_dev_src "mongo-${_MONGO_VRN}.tgz"
       cd /var/opt/mongo-${_MONGO_VRN}
-      _mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-      _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-      _mrun "make -j $(nproc) --quiet" 2> /dev/null
-      _mrun "make --quiet install" 2> /dev/null
-      ldconfig 2> /dev/null
+      _mrun "${_T_PHP_PTH}/phpize"
+      _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
+      _mrun "make -j $(nproc) --quiet"
+      _mrun "make --quiet install"
+      ldconfig
       if [ ! -e "${_THIS_PHP_EXT_DIR}/mongo.so" ]; then
         _msg "WARN: Installing MongoDB driver for PHP ${_T_PHP_VRN} failed!"
       else
@@ -934,11 +934,11 @@ _install_php_extensions() {
       rm -rf mongodb*
       _get_dev_src "mongodb-${_MONGODB_VRN}.tgz"
       cd /var/opt/mongodb-${_MONGODB_VRN}
-      _mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-      _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-      _mrun "make -j $(nproc) --quiet" 2> /dev/null
-      _mrun "make --quiet install" 2> /dev/null
-      ldconfig 2> /dev/null
+      _mrun "${_T_PHP_PTH}/phpize"
+      _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
+      _mrun "make -j $(nproc) --quiet"
+      _mrun "make --quiet install"
+      ldconfig
       if [ ! -e "${_THIS_PHP_EXT_DIR}/mongo.so" ]; then
         _msg "WARN: Installing MongoDB driver for PHP ${_T_PHP_VRN} failed!"
       else
@@ -958,18 +958,18 @@ _install_php_extensions() {
   fi
   if [ ! -e "${_pthLog}/libmagickwand-dev-${_IMAGICK_VRN}-rebuild.log" ]; then
     _apt_clean_update
-    _mrun "${_INSTAPP} libmagickwand-dev" 2> /dev/null
+    _mrun "${_INSTAPP} libmagickwand-dev"
     touch ${_pthLog}/libmagickwand-dev-${_IMAGICK_VRN}-rebuild.log
   fi
   cd /var/opt
   rm -rf imagick*
   _get_dev_src "imagick-${_IMAGICK_VRN}.tgz"
   cd /var/opt/imagick-${_IMAGICK_VRN}
-  _mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-  _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-  _mrun "make -j $(nproc) --quiet" 2> /dev/null
-  _mrun "make --quiet install" 2> /dev/null
-  ldconfig 2> /dev/null
+  _mrun "${_T_PHP_PTH}/phpize"
+  _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
+  _mrun "make -j $(nproc) --quiet"
+  _mrun "make --quiet install"
+  ldconfig
   if [ ! -e "${_THIS_PHP_EXT_DIR}/imagick.so" ]; then
     _msg "WARN: Installing Imagick for PHP ${_T_PHP_VRN} failed!"
   else
@@ -982,11 +982,11 @@ _install_php_extensions() {
     rm -rf mailparse*
     _get_dev_src "mailparse-${_MAILPARSE_VRN}.tgz"
     cd /var/opt/mailparse-${_MAILPARSE_VRN}
-    _mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-    _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-    _mrun "make -j $(nproc) --quiet" 2> /dev/null
-    _mrun "make --quiet install" 2> /dev/null
-    ldconfig 2> /dev/null
+    _mrun "${_T_PHP_PTH}/phpize"
+    _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
+    _mrun "make -j $(nproc) --quiet"
+    _mrun "make --quiet install"
+    ldconfig
     if [ ! -e "${_THIS_PHP_EXT_DIR}/mailparse.so" ]; then
       _msg "WARN: Installing MailParse for PHP ${_T_PHP_VRN} failed!"
     else
@@ -1001,11 +1001,11 @@ _install_php_extensions() {
     rm -rf yaml*
     _get_dev_src "yaml-${_LIB_YAML_VRN}.tar.gz"
     cd /var/opt/yaml-${_LIB_YAML_VRN}
-    _mrun "sh ./bootstrap" 2> /dev/null
-    _mrun "bash ./configure --prefix=/usr" 2> /dev/null
-    _mrun "make -j $(nproc) --quiet" 2> /dev/null
-    _mrun "make --quiet install" 2> /dev/null
-    ldconfig 2> /dev/null
+    _mrun "sh ./bootstrap"
+    _mrun "bash ./configure --prefix=/usr"
+    _mrun "make -j $(nproc) --quiet"
+    _mrun "make --quiet install"
+    ldconfig
     touch ${_pthLog}/f_libyaml-${_LIB_YAML_VRN}.log
     rm -f ${_pthLog}/yaml*.log
     rm -f ${_pthLog}/f_yaml*.log
@@ -1015,12 +1015,12 @@ _install_php_extensions() {
         || [ -e "/usr/lib/x86_64-linux-gnu/libyaml-0.so.2.0.4" ]; then
         mkdir -p /var/backups/libyaml
         mkdir -p /usr/lib/x86_64-linux-gnu
-        cp -af /usr/lib/x86_64-linux-gnu/libyaml* /var/backups/libyaml/ &> /dev/null
+        cp -af /usr/lib/x86_64-linux-gnu/libyaml* /var/backups/libyaml/
         if [ -e "/usr/lib/libyaml-0.so.2.0.9" ]; then
           rm -f /usr/lib/x86_64-linux-gnu/libyaml*
           rm -f /usr/lib/libyaml-0.so.2.0.4
         fi
-        cp -af /usr/lib/libyaml* /usr/lib/x86_64-linux-gnu/ &> /dev/null
+        cp -af /usr/lib/libyaml* /usr/lib/x86_64-linux-gnu/
       fi
     fi
   fi
@@ -1039,11 +1039,11 @@ _install_php_extensions() {
     _get_dev_src "yaml-${_YAML_PHP_MODERN_VRN}.tgz"
     cd /var/opt/yaml-${_YAML_PHP_MODERN_VRN}
   fi
-  _mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-  _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-  _mrun "make -j $(nproc) --quiet" 2> /dev/null
-  _mrun "make --quiet install" 2> /dev/null
-  ldconfig 2> /dev/null
+  _mrun "${_T_PHP_PTH}/phpize"
+  _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
+  _mrun "make -j $(nproc) --quiet"
+  _mrun "make --quiet install"
+  ldconfig
   if [ ! -e "${_THIS_PHP_EXT_DIR}/yaml.so" ]; then
     _msg "WARN: Installing YAML for PHP ${_T_PHP_VRN} failed!"
   else
@@ -1075,11 +1075,11 @@ _php_extensions_update() {
       rm -rf apcu*
       _get_dev_src "apcu-${_PHP_APCU}.tgz"
       cd /var/opt/apcu-${_PHP_APCU}
-      _mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-      _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-      _mrun "make -j $(nproc) --quiet" 2> /dev/null
-      _mrun "make --quiet install" 2> /dev/null
-      ldconfig 2> /dev/null
+      _mrun "${_T_PHP_PTH}/phpize"
+      _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
+      _mrun "make -j $(nproc) --quiet"
+      _mrun "make --quiet install"
+      ldconfig
       if [ ! -e "${_THIS_PHP_EXT_DIR}/apcu.so" ]; then
         _msg "WARN: Installing APCu for PHP ${_T_PHP_VRN} failed!"
       else
@@ -1106,12 +1106,12 @@ _php_extensions_update() {
   if [ ! -e "${_THIS_PHP_EXT_DIR}/redis.so" ] \
     || [ ! -e "${_pthLog}/phpredis-update-${_USE_PHPREDIS}-${_T_PHP_VRN}.log" ]; then
     _msg "INFO: Installing PhpRedis ${_USE_PHPREDIS} upgrade for PHP ${_T_PHP_VRN}..."
-    ldconfig 2> /dev/null
+    ldconfig
     cd /var/opt
     rm -rf phpredis*
     _get_dev_src "phpredis-${_USE_PHPREDIS}.tar.gz"
     cd /var/opt/phpredis
-    _mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
+    _mrun "${_T_PHP_PTH}/phpize"
     if [ -e "/var/opt/phpredis/liblzf/lzf.h" ] && [ -e "/lib/x86_64-linux-gnu/liblzf.so" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: _PHPREDIS_BUILD is ${_PHPREDIS_BUILD}"
@@ -1122,10 +1122,10 @@ _php_extensions_update() {
         _msg "INFO: _PHPREDIS_BUILD is ${_PHPREDIS_BUILD}"
       fi
     fi
-    _mrun "bash ./configure ${_PHPREDIS_BUILD} --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-    _mrun "make -j $(nproc) --quiet" 2> /dev/null
-    _mrun "make --quiet install" 2> /dev/null
-    ldconfig 2> /dev/null
+    _mrun "bash ./configure ${_PHPREDIS_BUILD} --with-php-config=${_T_PHP_CFG}"
+    _mrun "make -j $(nproc) --quiet"
+    _mrun "make --quiet install"
+    ldconfig
     if [ ! -e "${_THIS_PHP_EXT_DIR}/redis.so" ]; then
       _msg "WARN: Installing PhpRedis for PHP ${_T_PHP_VRN} failed!"
     else
@@ -1145,11 +1145,11 @@ _php_extensions_update() {
     rm -rf igbinary*
     _get_dev_src "igbinary-${_USE_IGBINARY}.tgz"
     cd /var/opt/igbinary-${_USE_IGBINARY}
-    _mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-    _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-    _mrun "make -j $(nproc) --quiet" 2> /dev/null
-    _mrun "make --quiet install" 2> /dev/null
-    ldconfig 2> /dev/null
+    _mrun "${_T_PHP_PTH}/phpize"
+    _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
+    _mrun "make -j $(nproc) --quiet"
+    _mrun "make --quiet install"
+    ldconfig
     if [ ! -e "${_THIS_PHP_EXT_DIR}/igbinary.so" ]; then
       _msg "WARN: Installing Igbinary for PHP ${_T_PHP_VRN} failed!"
     else
@@ -1165,11 +1165,11 @@ _php_extensions_update() {
       rm -rf mcrypt*
       _get_dev_src "mcrypt-${_PHP_MCRYPT}.tgz"
       cd /var/opt/mcrypt-${_PHP_MCRYPT}
-      _mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-      _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-      _mrun "make -j $(nproc) --quiet" 2> /dev/null
-      _mrun "make --quiet install" 2> /dev/null
-      ldconfig 2> /dev/null
+      _mrun "${_T_PHP_PTH}/phpize"
+      _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
+      _mrun "make -j $(nproc) --quiet"
+      _mrun "make --quiet install"
+      ldconfig
       if [ ! -e "${_THIS_PHP_EXT_DIR}/mcrypt.so" ]; then
         _msg "WARN: Installing MCRYPT for PHP ${_T_PHP_VRN} failed!"
       else
@@ -1186,11 +1186,11 @@ _php_extensions_update() {
       rm -rf uploadprogress*
       _get_dev_src "uploadprogress-${_UPROGRESS_LEGACY_VRN}.tgz"
       cd /var/opt/uploadprogress-${_UPROGRESS_LEGACY_VRN}
-      _mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-      _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-      _mrun "make -j $(nproc) --quiet" 2> /dev/null
-      _mrun "make --quiet install" 2> /dev/null
-      ldconfig 2> /dev/null
+      _mrun "${_T_PHP_PTH}/phpize"
+      _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
+      _mrun "make -j $(nproc) --quiet"
+      _mrun "make --quiet install"
+      ldconfig
       if [ ! -e "${_THIS_PHP_EXT_DIR}/uploadprogress.so" ]; then
         _msg "WARN: Installing UploadProgress for PHP ${_T_PHP_VRN} failed!"
       else
@@ -1211,11 +1211,11 @@ _php_extensions_update() {
       rm -rf uploadprogress*
       _get_dev_src "uploadprogress-${_UPROGRESS_EIGHT_VRN}.tgz"
       cd /var/opt/uploadprogress-${_UPROGRESS_EIGHT_VRN}
-      _mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-      _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-      _mrun "make -j $(nproc) --quiet" 2> /dev/null
-      _mrun "make --quiet install" 2> /dev/null
-      ldconfig 2> /dev/null
+      _mrun "${_T_PHP_PTH}/phpize"
+      _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
+      _mrun "make -j $(nproc) --quiet"
+      _mrun "make --quiet install"
+      ldconfig
       if [ ! -e "${_THIS_PHP_EXT_DIR}/uploadprogress.so" ]; then
         _msg "WARN: Installing UploadProgress for PHP ${_T_PHP_VRN} failed!"
       else
@@ -1230,11 +1230,11 @@ _php_extensions_update() {
       rm -rf uploadprogress*
       _get_dev_src "uploadprogress-${_UPROGRESS_SEVEN_VRN}.tar.gz"
       cd /var/opt/uploadprogress-${_UPROGRESS_SEVEN_VRN}
-      _mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-      _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-      _mrun "make -j $(nproc) --quiet" 2> /dev/null
-      _mrun "make --quiet install" 2> /dev/null
-      ldconfig 2> /dev/null
+      _mrun "${_T_PHP_PTH}/phpize"
+      _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
+      _mrun "make -j $(nproc) --quiet"
+      _mrun "make --quiet install"
+      ldconfig
       if [ ! -e "${_THIS_PHP_EXT_DIR}/uploadprogress.so" ]; then
         _msg "WARN: Installing UploadProgress for PHP ${_T_PHP_VRN} failed!"
       else
@@ -1251,11 +1251,11 @@ _php_extensions_update() {
       rm -rf pecl-jsmin*
       _get_dev_src "pecl-jsmin-${_JSMIN_PHP_LEGACY_VRN}.tar.gz"
       cd /var/opt/pecl-jsmin-${_JSMIN_PHP_LEGACY_VRN}
-      _mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-      _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-      _mrun "make -j $(nproc) --quiet" 2> /dev/null
-      _mrun "make --quiet install" 2> /dev/null
-      ldconfig 2> /dev/null
+      _mrun "${_T_PHP_PTH}/phpize"
+      _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
+      _mrun "make -j $(nproc) --quiet"
+      _mrun "make --quiet install"
+      ldconfig
       if [ ! -e "${_THIS_PHP_EXT_DIR}/jsmin.so" ]; then
         _msg "WARN: Installing JSMin for PHP ${_T_PHP_VRN} failed!"
       else
@@ -1270,11 +1270,11 @@ _php_extensions_update() {
       rm -rf pecl-jsmin*
       _get_dev_src "pecl-jsmin-${_JSMIN_PHP_MODERN_VRN}.tar.gz"
       cd /var/opt/pecl-jsmin-${_JSMIN_PHP_MODERN_VRN}
-      _mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-      _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-      _mrun "make -j $(nproc) --quiet" 2> /dev/null
-      _mrun "make --quiet install" 2> /dev/null
-      ldconfig 2> /dev/null
+      _mrun "${_T_PHP_PTH}/phpize"
+      _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
+      _mrun "make -j $(nproc) --quiet"
+      _mrun "make --quiet install"
+      ldconfig
       if [ ! -e "${_THIS_PHP_EXT_DIR}/jsmin.so" ]; then
         _msg "WARN: Installing JSMin for PHP ${_T_PHP_VRN} failed!"
       else
@@ -1291,11 +1291,11 @@ _php_extensions_update() {
       rm -rf twig*
       _get_dev_src "twig-${_TWIGC_VRN}.tar.gz"
       cd /var/opt/twig-${_TWIGC_VRN}/ext/twig
-      _mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-      _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-      _mrun "make -j $(nproc) --quiet" 2> /dev/null
-      _mrun "make --quiet install" 2> /dev/null
-      ldconfig 2> /dev/null
+      _mrun "${_T_PHP_PTH}/phpize"
+      _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
+      _mrun "make -j $(nproc) --quiet"
+      _mrun "make --quiet install"
+      ldconfig
       if [ ! -e "${_THIS_PHP_EXT_DIR}/twig.so" ]; then
         _msg "WARN: Installing Twig C for PHP ${_T_PHP_VRN} failed!"
       else
@@ -1310,7 +1310,7 @@ _php_extensions_update() {
       _msg "INFO: Building GEOS ${_GEOS_VRN} upgrade for PHP ${_T_PHP_VRN} from sources..."
       if [ ! -e "${_pthLog}/geos-${_xSrl}-${_X_VERSION}.log" ]; then
         _apt_clean_update
-        _st_runner "${_INSTAPP} libgeos-dev libgeos-c1" 2> /dev/null
+        _st_runner "${_INSTAPP} libgeos-dev libgeos-c1"
         touch ${_pthLog}/geos-${_xSrl}-${_X_VERSION}.log
       fi
       cd /var/opt
@@ -1321,14 +1321,14 @@ _php_extensions_update() {
       for e in ${_PHP_V}; do
         if [ "$1" = "${e}" ]; then
           find . -type f -print0 \
-            | xargs -0 sed -i 's/\/usr\/local/\/opt\/php${e}/g' &> /dev/null
+            | xargs -0 sed -i 's/\/usr\/local/\/opt\/php${e}/g'
           wait
         fi
       done
-      _mrun "bash ./configure --enable-php" 2> /dev/null
-      _mrun "make -j $(nproc) --quiet" 2> /dev/null
-      _mrun "make --quiet install" 2> /dev/null
-      ldconfig 2> /dev/null
+      _mrun "bash ./configure --enable-php"
+      _mrun "make -j $(nproc) --quiet"
+      _mrun "make --quiet install"
+      ldconfig
       touch ${_pthLog}/php-geos-${_GEOS_VRN}-${_T_PHP_VRN}.log
     fi
   fi
@@ -1341,11 +1341,11 @@ _php_extensions_update() {
       rm -rf mongo*
       _get_dev_src "mongo-${_MONGO_VRN}.tgz"
       cd /var/opt/mongo-${_MONGO_VRN}
-      _mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-      _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-      _mrun "make -j $(nproc) --quiet" 2> /dev/null
-      _mrun "make --quiet install" 2> /dev/null
-      ldconfig 2> /dev/null
+      _mrun "${_T_PHP_PTH}/phpize"
+      _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
+      _mrun "make -j $(nproc) --quiet"
+      _mrun "make --quiet install"
+      ldconfig
       if [ ! -e "${_THIS_PHP_EXT_DIR}/mongo.so" ]; then
         _msg "WARN: Installing MongoDB driver for PHP ${_T_PHP_VRN} failed!"
       else
@@ -1361,11 +1361,11 @@ _php_extensions_update() {
       rm -rf mongodb*
       _get_dev_src "mongodb-${_MONGODB_VRN}.tgz"
       cd /var/opt/mongodb-${_MONGODB_VRN}
-      _mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-      _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-      _mrun "make -j $(nproc) --quiet" 2> /dev/null
-      _mrun "make --quiet install" 2> /dev/null
-      ldconfig 2> /dev/null
+      _mrun "${_T_PHP_PTH}/phpize"
+      _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
+      _mrun "make -j $(nproc) --quiet"
+      _mrun "make --quiet install"
+      ldconfig
       if [ ! -e "${_THIS_PHP_EXT_DIR}/mongo.so" ]; then
         _msg "WARN: Installing MongoDB driver for PHP ${_T_PHP_VRN} failed!"
       else
@@ -1387,18 +1387,18 @@ _php_extensions_update() {
     fi
     if [ ! -e "${_pthLog}/libmagickwand-dev-${_IMAGICK_VRN}-rebuild.log" ]; then
       _apt_clean_update
-      _mrun "${_INSTAPP} libmagickwand-dev" 2> /dev/null
+      _mrun "${_INSTAPP} libmagickwand-dev"
       touch ${_pthLog}/libmagickwand-dev-${_IMAGICK_VRN}-rebuild.log
     fi
     cd /var/opt
     rm -rf imagick*
     _get_dev_src "imagick-${_IMAGICK_VRN}.tgz"
     cd /var/opt/imagick-${_IMAGICK_VRN}
-    _mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-    _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-    _mrun "make -j $(nproc) --quiet" 2> /dev/null
-    _mrun "make --quiet install" 2> /dev/null
-    ldconfig 2> /dev/null
+    _mrun "${_T_PHP_PTH}/phpize"
+    _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
+    _mrun "make -j $(nproc) --quiet"
+    _mrun "make --quiet install"
+    ldconfig
     if [ ! -e "${_THIS_PHP_EXT_DIR}/imagick.so" ]; then
       _msg "WARN: Installing Imagick for PHP ${_T_PHP_VRN} failed!"
     else
@@ -1414,11 +1414,11 @@ _php_extensions_update() {
       rm -rf mailparse*
       _get_dev_src "mailparse-${_MAILPARSE_VRN}.tgz"
       cd /var/opt/mailparse-${_MAILPARSE_VRN}
-      _mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-      _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-      _mrun "make -j $(nproc) --quiet" 2> /dev/null
-      _mrun "make --quiet install" 2> /dev/null
-      ldconfig 2> /dev/null
+      _mrun "${_T_PHP_PTH}/phpize"
+      _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
+      _mrun "make -j $(nproc) --quiet"
+      _mrun "make --quiet install"
+      ldconfig
       if [ ! -e "${_THIS_PHP_EXT_DIR}/mailparse.so" ]; then
         _msg "WARN: Installing MailParse for PHP ${_T_PHP_VRN} failed!"
       else
@@ -1434,11 +1434,11 @@ _php_extensions_update() {
     rm -rf yaml*
     _get_dev_src "yaml-${_LIB_YAML_VRN}.tar.gz"
     cd /var/opt/yaml-${_LIB_YAML_VRN}
-    _mrun "sh ./bootstrap" 2> /dev/null
-    _mrun "bash ./configure --prefix=/usr" 2> /dev/null
-    _mrun "make -j $(nproc) --quiet" 2> /dev/null
-    _mrun "make --quiet install" 2> /dev/null
-    ldconfig 2> /dev/null
+    _mrun "sh ./bootstrap"
+    _mrun "bash ./configure --prefix=/usr"
+    _mrun "make -j $(nproc) --quiet"
+    _mrun "make --quiet install"
+    ldconfig
     touch ${_pthLog}/f_libyaml-${_LIB_YAML_VRN}.log
     rm -f ${_pthLog}/yaml*.log
     rm -f ${_pthLog}/f_yaml*.log
@@ -1447,7 +1447,7 @@ _php_extensions_update() {
       if [ ! -e "/usr/lib/x86_64-linux-gnu/libyaml-0.so.2.0.9" ] \
         || [ -e "/usr/lib/x86_64-linux-gnu/libyaml-0.so.2.0.4" ]; then
         mkdir -p /var/backups/libyaml
-        cp -af /usr/lib/x86_64-linux-gnu/libyaml* /var/backups/libyaml/ &> /dev/null
+        cp -af /usr/lib/x86_64-linux-gnu/libyaml* /var/backups/libyaml/
         if [ -e "/usr/lib/libyaml-0.so.2.0.9" ]; then
           rm -f /usr/lib/x86_64-linux-gnu/libyaml*
           rm -f /usr/lib/libyaml-0.so.2.0.4
@@ -1464,11 +1464,11 @@ _php_extensions_update() {
       rm -rf yaml*
       _get_dev_src "yaml-${_YAML_PHP_LEGACY_VRN}.tgz"
       cd /var/opt/yaml-${_YAML_PHP_LEGACY_VRN}
-      _mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-      _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-      _mrun "make -j $(nproc) --quiet" 2> /dev/null
-      _mrun "make --quiet install" 2> /dev/null
-      ldconfig 2> /dev/null
+      _mrun "${_T_PHP_PTH}/phpize"
+      _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
+      _mrun "make -j $(nproc) --quiet"
+      _mrun "make --quiet install"
+      ldconfig
       if [ ! -e "${_THIS_PHP_EXT_DIR}/yaml.so" ]; then
         _msg "WARN: Installing YAML for PHP ${_T_PHP_VRN} failed!"
       else
@@ -1483,11 +1483,11 @@ _php_extensions_update() {
       rm -rf yaml*
       _get_dev_src "yaml-${_YAML_PHP_SEVENO_VRN}.tgz"
       cd /var/opt/yaml-${_YAML_PHP_SEVENO_VRN}
-      _mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-      _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-      _mrun "make -j $(nproc) --quiet" 2> /dev/null
-      _mrun "make --quiet install" 2> /dev/null
-      ldconfig 2> /dev/null
+      _mrun "${_T_PHP_PTH}/phpize"
+      _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
+      _mrun "make -j $(nproc) --quiet"
+      _mrun "make --quiet install"
+      ldconfig
       if [ ! -e "${_THIS_PHP_EXT_DIR}/yaml.so" ]; then
         _msg "WARN: Installing YAML for PHP ${_T_PHP_VRN} failed!"
       else
@@ -1502,11 +1502,11 @@ _php_extensions_update() {
       rm -rf yaml*
       _get_dev_src "yaml-${_YAML_PHP_MODERN_VRN}.tgz"
       cd /var/opt/yaml-${_YAML_PHP_MODERN_VRN}
-      _mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-      _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-      _mrun "make -j $(nproc) --quiet" 2> /dev/null
-      _mrun "make --quiet install" 2> /dev/null
-      ldconfig 2> /dev/null
+      _mrun "${_T_PHP_PTH}/phpize"
+      _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
+      _mrun "make -j $(nproc) --quiet"
+      _mrun "make --quiet install"
+      ldconfig
       if [ ! -e "${_THIS_PHP_EXT_DIR}/yaml.so" ]; then
         _msg "WARN: Installing YAML for PHP ${_T_PHP_VRN} failed!"
       else
@@ -1528,24 +1528,24 @@ _install_php_multi() {
   ###--------------------###
   _msg "INFO: Building PHP ${_PHP_VERSION} from sources..."
   _apt_clean_update
-  _mrun "${_INSTAPP} libonig-dev" 2> /dev/null
+  _mrun "${_INSTAPP} libonig-dev"
   if [[ "${_PHP_EXTRA_CONF}" =~ "--with-tidy" ]] \
     && [ ! -e "${_pthLog}/libtidy-${_LIB_TIDY_VRN}.log" ]; then
     if [ -e "/usr/lib/libtidy.so" ]; then
-      _mrun "apt-get remove libtidy-dev -y --purge --auto-remove -qq" 2> /dev/null
-      _mrun "apt-get remove libtidy-0.99-0 -y --purge --auto-remove -qq" 2> /dev/null
-      _mrun "apt-get remove tidy -y --purge --auto-remove -qq" 2> /dev/null
+      _mrun "apt-get remove libtidy-dev -y --purge --auto-remove -qq"
+      _mrun "apt-get remove libtidy-0.99-0 -y --purge --auto-remove -qq"
+      _mrun "apt-get remove tidy -y --purge --auto-remove -qq"
     fi
     cd /var/opt
     rm -rf tidy*
     _apt_clean_update
-    _mrun "${_INSTAPP} cmake" 2> /dev/null
+    _mrun "${_INSTAPP} cmake"
     _get_dev_src "tidy-html5-${_LIB_TIDY_VRN}.tar.gz"
     cd tidy-html5-${_LIB_TIDY_VRN}/build/cmake
-    _mrun "cmake ../.. -DCMAKE_INSTALL_PREFIX=/usr/" 2> /dev/null
-    _mrun "make -j $(nproc) --quiet" 2> /dev/null
-    _mrun "make --quiet install" 2> /dev/null
-    ldconfig 2> /dev/null
+    _mrun "cmake ../.. -DCMAKE_INSTALL_PREFIX=/usr/"
+    _mrun "make -j $(nproc) --quiet"
+    _mrun "make --quiet install"
+    ldconfig
     if [ -e "/usr/lib/libtidy.so" ]; then
       cd /usr/lib
       ln -sfn libtidy.so.${_LIB_TIDY_VRN} libtidy-0.99.so.0
@@ -1559,12 +1559,12 @@ _install_php_multi() {
   cd /var/opt/php-${_PHP_VERSION}
   if [ "${_OS_CODE}" = "stretch" ] \
     || [ "${_OS_CODE}" = "jessie" ]; then
-    _mrun "sh ./buildconf --force" 2> /dev/null
+    _mrun "sh ./buildconf --force"
     #_patchFile="disable_SSLv2_for_openssl_1_0_0.patch"
     #patch -p1 < ${_bldPth}/aegir/patches/${_patchFile}
   fi
   ### cd sapi/fpm/fpm
-  ### patch -p1 < ${_bldPth}/aegir/patches/fpm_main.c.patch &> /dev/null
+  ### patch -p1 < ${_bldPth}/aegir/patches/fpm_main.c.patch
   ### cd /var/opt/php-${_PHP_VERSION}
   _msg "INFO: Building PHP ${_PHP_VERSION} part 2/3"
   if [ "$1" = "56" ] \
@@ -1656,7 +1656,7 @@ _install_php_multi() {
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         patch -p1 < ${_bldPth}/aegir/patches/${_patchFile}
       else
-        patch -p1 < ${_bldPth}/aegir/patches/${_patchFile} &> /dev/null
+        patch -p1 < ${_bldPth}/aegir/patches/${_patchFile}
       fi
     fi
   fi
@@ -1671,7 +1671,7 @@ _install_php_multi() {
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         patch -p1 < ${_bldPth}/aegir/patches/${_patchFile}
       else
-        patch -p1 < ${_bldPth}/aegir/patches/${_patchFile} &> /dev/null
+        patch -p1 < ${_bldPth}/aegir/patches/${_patchFile}
       fi
     fi
     if [ "$1" != "81" ] && [ "$1" != "82" ] && [ "$1" != "83" ]; then
@@ -1679,7 +1679,7 @@ _install_php_multi() {
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         patch -p1 < ${_bldPth}/aegir/patches/${_patchFile}
       else
-        patch -p1 < ${_bldPth}/aegir/patches/${_patchFile} &> /dev/null
+        patch -p1 < ${_bldPth}/aegir/patches/${_patchFile}
       fi
     fi
   fi
@@ -1720,20 +1720,20 @@ _install_php_multi() {
                 --with-xsl \
                 --with-zlib \
                 --with-bz2 \
-                ${_PHP_EXTRA} &> /dev/null
+                ${_PHP_EXTRA}
   if [ -e "/var/opt/php-${_PHP_VERSION}/Makefile" ]; then
     _msg "INFO: Building PHP ${_PHP_VERSION} part 3/3"
     _msg "WAIT: This may take a while, please wait..."
     sed -i "s/^EXTRA_LIBS = \-lcrypt/EXTRA_LIBS = \-llber \-lcrypt/g" /var/opt/php-${_PHP_VERSION}/Makefile
-    _mrun "make -j $(nproc)" 2> /dev/null
-    _mrun "make install" 2> /dev/null
-    ldconfig 2> /dev/null
+    _mrun "make -j $(nproc)"
+    _mrun "make install"
+    ldconfig
   else
     _msg "WARN: No Makefile, configure for PHP ${_PHP_VERSION} failed"
     _msg "INFO: Waiting 60 seconds before trying again..."
     sleep 60
     _msg "INFO: Building PHP ${_PHP_VERSION} part 2/3 (again)"
-    _mrun "make clean" 2> /dev/null
+    _mrun "make clean"
     LIBS="-ldl -lpthread" PKG_CONFIG_PATH="${_PKG_CONFIG_PATH}" ./configure \
                 --prefix=/opt/php$1 \
                 --enable-fpm \
@@ -1752,14 +1752,14 @@ _install_php_multi() {
                 --with-pear \
                 --with-xsl \
                 --with-zlib \
-                ${_PHP_EXTRA} 2> /dev/null
+                ${_PHP_EXTRA}
     if [ -f "/var/opt/php-${_PHP_VERSION}/Makefile" ]; then
       sed -i "s/^EXTRA_LIBS = \-lcrypt/EXTRA_LIBS = \-llber \-lcrypt/g" /var/opt/php-${_PHP_VERSION}/Makefile
       _msg "INFO: Building PHP ${_PHP_VERSION} part 3/3 (again)"
       _msg "WAIT: This may take a while, please wait..."
-      _mrun "make -j $(nproc)" 2> /dev/null
-      _mrun "make install" 2> /dev/null
-      ldconfig 2> /dev/null
+      _mrun "make -j $(nproc)"
+      _mrun "make install"
+      ldconfig
     else
       _msg "ALRT: No Makefile, building PHP ${_PHP_VERSION} failed again!"
       _msg "INFO: Waiting 3 minutes for your input or ctrl-c..."
@@ -1818,7 +1818,7 @@ _install_php_multi() {
     if [ -e "/root/.run_post_major_os_upgrade.info" ]; then
       touch ${_pthLog}/re-installed-php${1}-on-post_major_os_upgrade.info
     fi
-    _mrun "update-rc.d php$1-fpm defaults" 2> /dev/null
+    _mrun "update-rc.d php$1-fpm defaults"
   else
     _msg "WARN: Building PHP ${_PHP_VERSION} failed!"
   fi
@@ -1905,7 +1905,7 @@ _newrelic_update() {
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "INFO: Retrieving ${_NEWRELIC_KEYS_SIG} key..."
         fi
-        apt-key del ${_NEWRELIC_KEYS_SIG} &> /dev/null
+        apt-key del ${_NEWRELIC_KEYS_SIG}
         if [ ! -e "/etc/apt/keyrings/newrelic.gpg" ]; then
           curl -fsSL ${_urlDev}/newrelic-key-${_NEWRELIC_KEYS_SIG}.gpg | ${_GPG} --dearmor -o /etc/apt/keyrings/newrelic.gpg
         fi
@@ -1915,10 +1915,10 @@ _newrelic_update() {
       _mrun "${_RMAPP} newrelic-php5 \
         newrelic-php5-common \
         newrelic-daemon \
-        newrelic-sysmond" 2> /dev/null
+        newrelic-sysmond"
       mkdir -p ${_vBs}/nr
       mv -f /etc/newrelic \
-        ${_vBs}/nr/etc-newrelic-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
+        ${_vBs}/nr/etc-newrelic-pre-${_xSrl}-${_X_VERSION}-${_NOW}
       _pthNrx="lib/php/extensions/no-debug-non-zts"
       _PHP_EXT_DIR_83="/opt/php83/${_pthNrx}-${_PHP83_API}"
       _PHP_EXT_DIR_82="/opt/php82/${_pthNrx}-${_PHP82_API}"
@@ -1935,22 +1935,22 @@ _newrelic_update() {
         echo "deb http://apt.newrelic.com/debian/ newrelic non-free" >> ${_nrList}
       fi
       _apt_clean_update
-      _st_runner "apt-get install newrelic-php5-common ${_nrmUpArg}" 2> /dev/null
-      _st_runner "apt-get install newrelic-daemon ${_nrmUpArg}" 2> /dev/null
-      _st_runner "apt-get install newrelic-php5 ${_nrmUpArg}" 2> /dev/null
+      _st_runner "apt-get install newrelic-php5-common ${_nrmUpArg}"
+      _st_runner "apt-get install newrelic-daemon ${_nrmUpArg}"
+      _st_runner "apt-get install newrelic-php5 ${_nrmUpArg}"
       # cd /var/opt
       # rm -rf /opt/newrelic*
       # wget ${_wgetGet} ${_urlDev}/newrelic-php5-common_${_NEW_RELIC_VRN}_all.deb
       # wget ${_wgetGet} ${_urlDev}/newrelic-daemon_${_NEW_RELIC_VRN}_all.deb
       # wget ${_wgetGet} ${_urlDev}/newrelic-php5_${_NEW_RELIC_VRN}_all.deb
-      # dpkg -i /var/opt/newrelic-php5-common_${_NEW_RELIC_VRN}_all.deb &> /dev/null
-      # dpkg -i /var/opt/newrelic-daemon_${_NEW_RELIC_VRN}_amd64.deb &> /dev/null
-      # dpkg -i /var/opt/newrelic-php5_${_NEW_RELIC_VRN}_amd64.deb &> /dev/null
+      # dpkg -i /var/opt/newrelic-php5-common_${_NEW_RELIC_VRN}_all.deb
+      # dpkg -i /var/opt/newrelic-daemon_${_NEW_RELIC_VRN}_amd64.deb
+      # dpkg -i /var/opt/newrelic-php5_${_NEW_RELIC_VRN}_amd64.deb
       NR_PHPLIST="/opt/php70/bin:/opt/php71/bin:/opt/php72/bin:/opt/php73/bin:/opt/php74/bin:/opt/php80/bin:/opt/php81/bin:/opt/php82/bin:/opt/php83/bin"
       NR_SILENT="silent"
       export NR_INSTALL_PHPLIST="${NR_PHPLIST}"
       export NR_INSTALL_SILENT="${NR_SILENT}"
-      newrelic-install install &> /dev/null
+      newrelic-install install
       _X86_64_TEST=$(uname -m 2>&1)
       if [ "${_X86_64_TEST}" = "x86_64" ]; then
         _SYSTEM_ARCH="x64"
@@ -2006,11 +2006,11 @@ _newrelic_update() {
           /etc/newrelic/newrelic.cfg
       else
         sed -i "s/REPLACE_WITH_REAL_KEY/${_NEWRELIC_KEY}/g" \
-          /etc/newrelic/newrelic.cfg &> /dev/null
+          /etc/newrelic/newrelic.cfg
         wait
       fi
       sed -i "s/REPLACE_WITH_REAL_KEY/${_NEWRELIC_KEY}/g" \
-        /etc/newrelic/nrsysmond.cfg &> /dev/null
+        /etc/newrelic/nrsysmond.cfg
       wait
     fi
   fi
@@ -2098,7 +2098,7 @@ _if_install_php_newrelic() {
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "INFO: Retrieving ${_NEWRELIC_KEYS_SIG} key..."
         fi
-        apt-key del ${_NEWRELIC_KEYS_SIG} &> /dev/null
+        apt-key del ${_NEWRELIC_KEYS_SIG}
         if [ ! -e "/etc/apt/keyrings/newrelic.gpg" ]; then
           curl -fsSL ${_urlDev}/newrelic-key-${_NEWRELIC_KEYS_SIG}.gpg | ${_GPG} --dearmor -o /etc/apt/keyrings/newrelic.gpg
         fi
@@ -2111,24 +2111,24 @@ _if_install_php_newrelic() {
         echo "deb http://apt.newrelic.com/debian/ newrelic non-free" >> ${_nrList}
       fi
       _apt_clean_update
-      _st_runner "apt-get install newrelic-php5-common ${_nrmUpArg}" 2> /dev/null
-      _st_runner "apt-get install newrelic-daemon ${_nrmUpArg}" 2> /dev/null
-      _st_runner "apt-get install newrelic-php5 ${_nrmUpArg}" 2> /dev/null
+      _st_runner "apt-get install newrelic-php5-common ${_nrmUpArg}"
+      _st_runner "apt-get install newrelic-daemon ${_nrmUpArg}"
+      _st_runner "apt-get install newrelic-php5 ${_nrmUpArg}"
       # cd /var/opt
       # rm -rf /opt/newrelic*
       # wget ${_wgetGet} ${_urlDev}/newrelic-php5-common_${_NEW_RELIC_VRN}_all.deb
       # wget ${_wgetGet} ${_urlDev}/newrelic-daemon_${_NEW_RELIC_VRN}_all.deb
       # wget ${_wgetGet} ${_urlDev}/newrelic-php5_${_NEW_RELIC_VRN}_all.deb
-      # dpkg -i /var/opt/newrelic-php5-common_${_NEW_RELIC_VRN}_all.deb &> /dev/null
-      # dpkg -i /var/opt/newrelic-daemon_${_NEW_RELIC_VRN}_amd64.deb &> /dev/null
-      # dpkg -i /var/opt/newrelic-php5_${_NEW_RELIC_VRN}_amd64.deb &> /dev/null
+      # dpkg -i /var/opt/newrelic-php5-common_${_NEW_RELIC_VRN}_all.deb
+      # dpkg -i /var/opt/newrelic-daemon_${_NEW_RELIC_VRN}_amd64.deb
+      # dpkg -i /var/opt/newrelic-php5_${_NEW_RELIC_VRN}_amd64.deb
       if [ "${_MULTI_NR}" = "YES" ]; then
         _msg "INFO: Installing latest version of New Relic Apps Monitor..."
         NR_PHPLIST="/opt/php70/bin:/opt/php71/bin:/opt/php72/bin:/opt/php73/bin:/opt/php74/bin:/opt/php80/bin:/opt/php81/bin:/opt/php82/bin:/opt/php83/bin"
         NR_SILENT="silent"
         export NR_INSTALL_PHPLIST="${NR_PHPLIST}"
         export NR_INSTALL_SILENT="${NR_SILENT}"
-        newrelic-install install &> /dev/null
+        newrelic-install install
         _X86_64_TEST=$(uname -m 2>&1)
         if [ "${_X86_64_TEST}" = "x86_64" ]; then
           _SYSTEM_ARCH="x64"
@@ -2184,11 +2184,11 @@ _if_install_php_newrelic() {
             /etc/newrelic/newrelic.cfg
         else
           sed -i "s/REPLACE_WITH_REAL_KEY/${_NEWRELIC_KEY}/g" \
-            /etc/newrelic/newrelic.cfg &> /dev/null
+            /etc/newrelic/newrelic.cfg
           wait
         fi
         sed -i "s/REPLACE_WITH_REAL_KEY/${_NEWRELIC_KEY}/g" \
-          /etc/newrelic/nrsysmond.cfg &> /dev/null
+          /etc/newrelic/nrsysmond.cfg
         wait
       fi
     fi
@@ -2512,8 +2512,8 @@ _php_not_used_enable_again() {
       if [ -e "${_vBs}/initd-php${_re}-fpm" ]; then
         mv -f ${_vBs}/initd-php${_re}-fpm /etc/init.d/php${_re}-fpm
         chmod 755 /etc/init.d/php${_re}-fpm
-        _mrun "update-rc.d php${_re}-fpm defaults" 2> /dev/null
-        _mrun "service php${_re}-fpm start" 2> /dev/null
+        _mrun "update-rc.d php${_re}-fpm defaults"
+        _mrun "service php${_re}-fpm start"
         _msg "INFO: ${_vBs}/initd-php${_re}-fpm moved to /etc/init.d/php${_re}-fpm"
       fi
     fi
@@ -2540,8 +2540,8 @@ _php_not_used_disable() {
       _re="${e}"
       _re=${_re//[^0-9]/}
       if [ -e "/etc/init.d/php${_re}-fpm" ]; then
-        _mrun "service php${_re}-fpm force-quit" 2> /dev/null
-        _mrun "update-rc.d -f php${_re}-fpm _remove" 2> /dev/null
+        _mrun "service php${_re}-fpm force-quit"
+        _mrun "update-rc.d -f php${_re}-fpm _remove"
         rm -f ${_vBs}/initd-php${_re}-fpm
         mv -f /etc/init.d/php${_re}-fpm ${_vBs}/initd-php${_re}-fpm
         _msg "INFO: /etc/init.d/php${_re}-fpm moved to ${_vBs}/initd-php${_re}-fpm"
@@ -2566,8 +2566,8 @@ _php_deprecated_cleanup() {
   _PHP_V="55 54 53"
   for e in ${_PHP_V}; do
     if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
-      _mrun "service php${e}-fpm force-quit" 2> /dev/null
-      _mrun "update-rc.d -f php${e}-fpm remove" 2> /dev/null
+      _mrun "service php${e}-fpm force-quit"
+      _mrun "update-rc.d -f php${e}-fpm remove"
       mv -f /etc/init.d/php${e}-fpm ${_vBs}/initd-php${e}-fpm
       _msg "INFO: /etc/init.d/php${e}-fpm moved to ${_vBs}/initd-php${e}-fpm"
     fi
@@ -2590,8 +2590,8 @@ _php_single_initd_cleanup() {
       _PHP_V="82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
-          _mrun "service php${e}-fpm force-quit" 2> /dev/null
-          _mrun "update-rc.d -f php${e}-fpm remove" 2> /dev/null
+          _mrun "service php${e}-fpm force-quit"
+          _mrun "update-rc.d -f php${e}-fpm remove"
           mv -f /etc/init.d/php${e}-fpm ${_vBs}/initd-php${e}-fpm
           _FPM_INITD_CLEANUP=YES
         fi
@@ -2603,8 +2603,8 @@ _php_single_initd_cleanup() {
       _PHP_V="83 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
-          _mrun "service php${e}-fpm force-quit" 2> /dev/null
-          _mrun "update-rc.d -f php${e}-fpm remove" 2> /dev/null
+          _mrun "service php${e}-fpm force-quit"
+          _mrun "update-rc.d -f php${e}-fpm remove"
           mv -f /etc/init.d/php${e}-fpm ${_vBs}/initd-php${e}-fpm
           _FPM_INITD_CLEANUP=YES
         fi
@@ -2616,8 +2616,8 @@ _php_single_initd_cleanup() {
       _PHP_V="83 82 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
-          _mrun "service php${e}-fpm force-quit" 2> /dev/null
-          _mrun "update-rc.d -f php${e}-fpm remove" 2> /dev/null
+          _mrun "service php${e}-fpm force-quit"
+          _mrun "update-rc.d -f php${e}-fpm remove"
           mv -f /etc/init.d/php${e}-fpm ${_vBs}/initd-php${e}-fpm
           _FPM_INITD_CLEANUP=YES
         fi
@@ -2629,8 +2629,8 @@ _php_single_initd_cleanup() {
       _PHP_V="83 82 81 80 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
-          _mrun "service php${e}-fpm force-quit" 2> /dev/null
-          _mrun "update-rc.d -f php${e}-fpm remove" 2> /dev/null
+          _mrun "service php${e}-fpm force-quit"
+          _mrun "update-rc.d -f php${e}-fpm remove"
           mv -f /etc/init.d/php${e}-fpm ${_vBs}/initd-php${e}-fpm
           _FPM_INITD_CLEANUP=YES
         fi
@@ -2640,7 +2640,7 @@ _php_single_initd_cleanup() {
       done
     fi
     if [ "${_FPM_INITD_CLEANUP}" = "YES" ]; then
-      killall php-fpm &> /dev/null
+      killall php-fpm
     fi
     rm -f /opt/local/bin/php
   fi
@@ -2775,7 +2775,7 @@ _php_upgrade_all() {
         _check_php_rebuild "${e}"
       fi
       _php_multi_update "${e}"
-      _mrun "service php${e}-fpm reload" 2> /dev/null
+      _mrun "service php${e}-fpm reload"
       _PHP_VERSION=""
       _T_PHP_VRN=""
       _T_PHP_PTH=""
@@ -2805,7 +2805,7 @@ _php_install_upgrade() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: Checking if PHP upgrade is available"
     fi
-    _mrun "apt-get remove php5-sasl php5-suhosin -y --purge --auto-remove -qq" 2> /dev/null
+    _mrun "apt-get remove php5-sasl php5-suhosin -y --purge --auto-remove -qq"
   fi
   if [[ "${_PHP_MULTI_INSTALL}" =~ "5.6" ]] \
     && [ ! -x "/opt/php56/bin/php" ]; then
@@ -3006,22 +3006,22 @@ _php_check_if_rebuild() {
   if [[ "${_PHP_EXTRA_CONF}" =~ "--with-tidy" ]] \
     && [ ! -e "${_pthLog}/libtidy-${_LIB_TIDY_VRN}.log" ]; then
     _apt_clean_update
-    _mrun "${_INSTAPP} libonig-dev" 2> /dev/null
+    _mrun "${_INSTAPP} libonig-dev"
     if [ -e "/usr/lib/libtidy.so" ]; then
-      _mrun "apt-get remove libtidy-dev -y --purge --auto-remove -qq" 2> /dev/null
-      _mrun "apt-get remove libtidy-0.99-0 -y --purge --auto-remove -qq" 2> /dev/null
-      _mrun "apt-get remove tidy -y --purge --auto-remove -qq" 2> /dev/null
+      _mrun "apt-get remove libtidy-dev -y --purge --auto-remove -qq"
+      _mrun "apt-get remove libtidy-0.99-0 -y --purge --auto-remove -qq"
+      _mrun "apt-get remove tidy -y --purge --auto-remove -qq"
     fi
     cd /var/opt
     rm -rf tidy*
     _apt_clean_update
-    _mrun "${_INSTAPP} cmake" 2> /dev/null
+    _mrun "${_INSTAPP} cmake"
     _get_dev_src "tidy-html5-${_LIB_TIDY_VRN}.tar.gz"
     cd tidy-html5-${_LIB_TIDY_VRN}/build/cmake
-    _mrun "cmake ../.. -DCMAKE_INSTALL_PREFIX=/usr/" 2> /dev/null
-    _mrun "make -j $(nproc) --quiet" 2> /dev/null
-    _mrun "make --quiet install" 2> /dev/null
-    ldconfig 2> /dev/null
+    _mrun "cmake ../.. -DCMAKE_INSTALL_PREFIX=/usr/"
+    _mrun "make -j $(nproc) --quiet"
+    _mrun "make --quiet install"
+    ldconfig
     if [ -e "/usr/lib/libtidy.so" ]; then
       cd /usr/lib
       ln -sfn libtidy.so.${_LIB_TIDY_VRN} libtidy-0.99.so.0
@@ -3085,7 +3085,7 @@ _composer_install_upgrade() {
     fi
   else
     if [ -x "/usr/local/bin/composer" ]; then
-      /usr/local/bin/composer self-update --2 &> /dev/null
+      /usr/local/bin/composer self-update --2
     fi
     if [ ! -x "/usr/local/bin/composer" ] || [ ! -L "/usr/bin/composer" ]; then
       rm -f /usr/local/bin/composer
@@ -3094,7 +3094,7 @@ _composer_install_upgrade() {
       mkdir -p /var/opt
       cd /var/opt
       rm -f /var/opt/composer.phar
-      curl -sS https://getcomposer.org/installer | php &> /dev/null
+      curl -sS https://getcomposer.org/installer | php
       mv -f composer.phar /usr/local/bin/composer
       ln -sfn /usr/local/bin/composer /usr/bin/composer
     fi

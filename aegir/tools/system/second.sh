@@ -43,7 +43,7 @@ fi
       _B_NICE=19
     fi
 
-    renice ${_B_NICE} -p $$ &> /dev/null
+    renice ${_B_NICE} -p $$
 
 # Sanitize numeric variables (allow digits and decimal point)
 _sanitize_number() {
@@ -116,7 +116,7 @@ _terminate_processes() {
   local _threshold="$2"
   local _load_period="$3"
   if [ ! -e "/run/boa_run.pid" ]; then
-    killall -9 php drush.php wget curl &> /dev/null
+    killall -9 php drush.php wget curl
     local _log_message
     _log_message="$(date) System Load ${_current_load}% (${_load_period}) - PHP/Wget/cURL terminated"
     echo "${_log_message}" >> "${_pthOml}"
@@ -133,7 +133,7 @@ _nginx_high_load_on() {
   local _threshold="$2"
   local _load_period="$3"
   mv -f /data/conf/nginx_high_load_off.conf /data/conf/nginx_high_load.conf
-  service nginx reload &> /dev/null
+  service nginx reload
   local _log_message
   _log_message="$(date) nginx_high_load_on ${_load_period} Load: ${_current_load}%"
   echo "${_log_message}" >> "${_pthOml}"
@@ -146,7 +146,7 @@ _nginx_high_load_on() {
 # Function to disable nginx high load configuration
 _nginx_high_load_off() {
   mv -f /data/conf/nginx_high_load.conf /data/conf/nginx_high_load_off.conf
-  service nginx reload &> /dev/null
+  service nginx reload
   local _log_message
   _log_message="$(date) nginx_high_load_off Load: ${_O_LOAD}%"
   echo "${_log_message}" >> "${_pthOml}"
@@ -159,7 +159,7 @@ _nginx_high_load_off() {
 # Function to control processes
 _proc_control() {
   echo "Running process control..."
-  renice "${_B_NICE}" -p $$ &> /dev/null
+  renice "${_B_NICE}" -p $$
   perl /var/xdrago/proc_num_ctrl.pl &
   touch /var/xdrago/log/proc_num_ctrl.done.pid
   echo "Process control done."

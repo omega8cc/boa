@@ -207,7 +207,7 @@ if (-f "$ftpdbind" && -f "$ftpdconf") {
 if ($mysqlsumar > 0 ) {
   $mysqlrootpass=`cat /root/.my.pass.txt`;
   chomp($mysqlrootpass);
- `mysqladmin -u root flush-hosts &> /dev/null`;
+ `mysqladmin -u root flush-hosts`;
   print "\n MySQL hosts flushed...\n";
 }
 if ($dhcpcdlives) {

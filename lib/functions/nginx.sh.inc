@@ -8,11 +8,11 @@ _nginx_conf_update() {
     && [ -d "/var/aegir" ]; then
     if [ -e "${_locCnf}/nginx/nginx.conf" ] \
       && [ -e "/etc/nginx/nginx.conf" ]; then
-      mv -f /etc/nginx/nginx.conf-* ${_vBs}/dragon/t/ &> /dev/null
-      mv -f /etc/nginx/mime.types-pre-* ${_vBs}/dragon/t/ &> /dev/null
-      mv -f /etc/nginx/fastcgi_params-pre-* ${_vBs}/dragon/t/ &> /dev/null
-      mv -f /etc/nginx/nginx.conf ${_vBs}/dragon/t/nginx.conf-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
-      mv -f /etc/nginx/fastcgi_params ${_vBs}/dragon/t/fastcgi_params-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
+      mv -f /etc/nginx/nginx.conf-* ${_vBs}/dragon/t/
+      mv -f /etc/nginx/mime.types-pre-* ${_vBs}/dragon/t/
+      mv -f /etc/nginx/fastcgi_params-pre-* ${_vBs}/dragon/t/
+      mv -f /etc/nginx/nginx.conf ${_vBs}/dragon/t/nginx.conf-pre-${_xSrl}-${_X_VERSION}-${_NOW}
+      mv -f /etc/nginx/fastcgi_params ${_vBs}/dragon/t/fastcgi_params-pre-${_xSrl}-${_X_VERSION}-${_NOW}
       cp -af ${_locCnf}/nginx/nginx.conf /etc/nginx/nginx.conf
       cp -af ${_locCnf}/nginx/fastcgi_params.txt /etc/nginx/fastcgi_params
       touch ${_pthLog}/nginx-config-params-fixed-${_xSrl}-${_X_VERSION}.log
@@ -30,31 +30,31 @@ _sub_force_advanced_nginx_config() {
     _msg "PROC: _sub_force_advanced_nginx_config"
   fi
   if [ -e "/opt/php${_PHP_SV}/etc/php${_PHP_SV}-fpm.conf" ]; then
-    sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"             ${_mtrInc}/nginx_compact_include.conf &> /dev/null
+    sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"             ${_mtrInc}/nginx_compact_include.conf
 
-    sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"             ${_mtrInc}/nginx_vhost_common.conf &> /dev/null
+    sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"             ${_mtrInc}/nginx_vhost_common.conf
     wait
-    sed -i "s/data.*post.d/var\/aegir\/config\/includes/g"                         ${_mtrInc}/nginx_vhost_common.conf &> /dev/null
+    sed -i "s/data.*post.d/var\/aegir\/config\/includes/g"                         ${_mtrInc}/nginx_vhost_common.conf
     wait
-    sed -i "s/unix:.*fpm.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"        ${_mtrInc}/nginx_vhost_common.conf &> /dev/null
+    sed -i "s/unix:.*fpm.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"        ${_mtrInc}/nginx_vhost_common.conf
     wait
-    sed -i "s/set.*user_socket.*/set \$user_socket \"${_PHP_CN}\";/g"              ${_mtrInc}/nginx_vhost_common.conf &> /dev/null
+    sed -i "s/set.*user_socket.*/set \$user_socket \"${_PHP_CN}\";/g"              ${_mtrInc}/nginx_vhost_common.conf
 
-    sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"             ${_mtrTpl}/subdir.tpl.php &> /dev/null
+    sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"             ${_mtrTpl}/subdir.tpl.php
     wait
-    sed -i "s/data.*post.d/var\/aegir\/config\/includes/g"                         ${_mtrTpl}/subdir.tpl.php &> /dev/null
+    sed -i "s/data.*post.d/var\/aegir\/config\/includes/g"                         ${_mtrTpl}/subdir.tpl.php
     wait
-    sed -i "s/unix:.*fpm.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"        ${_mtrTpl}/subdir.tpl.php &> /dev/null
+    sed -i "s/unix:.*fpm.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"        ${_mtrTpl}/subdir.tpl.php
     wait
-    sed -i "s/set.*user_socket.*/set \$user_socket \"${_PHP_CN}\";/g"              ${_mtrTpl}/subdir.tpl.php &> /dev/null
+    sed -i "s/set.*user_socket.*/set \$user_socket \"${_PHP_CN}\";/g"              ${_mtrTpl}/subdir.tpl.php
 
-    sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"             ${_mtrTpl}/Inc/vhost_include.tpl.php &> /dev/null
+    sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"             ${_mtrTpl}/Inc/vhost_include.tpl.php
     wait
-    sed -i "s/data.*post.d/var\/aegir\/config\/includes/g"                         ${_mtrTpl}/Inc/vhost_include.tpl.php &> /dev/null
+    sed -i "s/data.*post.d/var\/aegir\/config\/includes/g"                         ${_mtrTpl}/Inc/vhost_include.tpl.php
     wait
-    sed -i "s/unix:.*fpm.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"        ${_mtrTpl}/Inc/vhost_include.tpl.php &> /dev/null
+    sed -i "s/unix:.*fpm.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"        ${_mtrTpl}/Inc/vhost_include.tpl.php
     wait
-    sed -i "s/set.*user_socket.*/set \$user_socket \"${_PHP_CN}\";/g"              ${_mtrTpl}/Inc/vhost_include.tpl.php &> /dev/null
+    sed -i "s/set.*user_socket.*/set \$user_socket \"${_PHP_CN}\";/g"              ${_mtrTpl}/Inc/vhost_include.tpl.php
   fi
 }
 
@@ -68,26 +68,26 @@ _force_advanced_nginx_config() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: Generating DH parameters, 2048 bit..."
     fi
-    _mrun "openssl dhparam -out /etc/ssl/private/nginx-wild-ssl.dhp 2048" 2> /dev/null
+    _mrun "openssl dhparam -out /etc/ssl/private/nginx-wild-ssl.dhp 2048"
     wait
   fi
   cp -af ${_locCnf}/nginx/nginx_compact_include.conf ${_mtrInc}/nginx_compact_include.conf
-  _validate_local_ip &> /dev/null
+  _validate_local_ip
   _sub_force_advanced_nginx_config
-  sed -i "s/ 90;/ 180;/g" ${_mtrNgx}/pre.d/*.conf &> /dev/null
+  sed -i "s/ 90;/ 180;/g" ${_mtrNgx}/pre.d/*.conf
   wait
   if [ "${_NGINX_SPDY}" = "YES" ]; then
-    sed -i "s/:443;/:443 ssl;/g" ${_mtrNgx}/pre.d/*.conf &> /dev/null
+    sed -i "s/:443;/:443 ssl;/g" ${_mtrNgx}/pre.d/*.conf
     wait
-    sed -i "s/:443;/:443 ssl;/g" ${_mtrNgx}/vhost.d/* &> /dev/null
+    sed -i "s/:443;/:443 ssl;/g" ${_mtrNgx}/vhost.d/*
     wait
-    sed -i "s/:443 ssl spdy;/:443 ssl;/g" ${_mtrNgx}/pre.d/*.conf &> /dev/null
+    sed -i "s/:443 ssl spdy;/:443 ssl;/g" ${_mtrNgx}/pre.d/*.conf
     wait
-    sed -i "s/:443 ssl spdy;/:443 ssl;/g" ${_mtrNgx}/vhost.d/* &> /dev/null
+    sed -i "s/:443 ssl spdy;/:443 ssl;/g" ${_mtrNgx}/vhost.d/*
     wait
-    sed -i "s/:443 ssl http2;/:443 ssl;/g" ${_mtrNgx}/pre.d/*.conf &> /dev/null
+    sed -i "s/:443 ssl http2;/:443 ssl;/g" ${_mtrNgx}/pre.d/*.conf
     wait
-    sed -i "s/:443 ssl http2;/:443 ssl;/g" ${_mtrNgx}/vhost.d/* &> /dev/null
+    sed -i "s/:443 ssl http2;/:443 ssl;/g" ${_mtrNgx}/vhost.d/*
     wait
   fi
   if [ -e "/root/.install.modern.openssl.cnf" ] \
@@ -167,16 +167,16 @@ _force_advanced_nginx_config() {
   fi
   if [ "${_ALLOW_NGINX_FORWARD_SECRECY}" = "YES" ]; then
     sed -i "s/ssl_protocols .*/ssl_protocols                ${_SSL_PROTOCOLS}/g" \
-      ${_mtrNgx}/pre.d/*.conf &> /dev/null
+      ${_mtrNgx}/pre.d/*.conf
     wait
     sed -i "s/ssl_protocols .*/ssl_protocols                ${_SSL_PROTOCOLS}/g" \
-      ${_mtrNgx}/vhost.d/* &> /dev/null
+      ${_mtrNgx}/vhost.d/*
     wait
     sed -i "s/ssl_ciphers .*/ssl_ciphers                  ${_SSL_CIPHERS}/g" \
-      ${_mtrNgx}/pre.d/*.conf &> /dev/null
+      ${_mtrNgx}/pre.d/*.conf
     wait
     sed -i "s/ssl_ciphers .*/ssl_ciphers                  ${_SSL_CIPHERS}/g" \
-      ${_mtrNgx}/vhost.d/* &> /dev/null
+      ${_mtrNgx}/vhost.d/*
     wait
   fi
   if [ -e "${_mtrInc}/nginx_vhost_common.conf" ]; then
@@ -191,10 +191,10 @@ _force_advanced_nginx_config() {
   if [ ! -e "/data/conf/nginx_high_load_off.conf" ]; then
     mkdir -p /data/conf
     cp -af ${_locCnf}/nginx/nginx_high_load_off.conf /data/conf/nginx_high_load_off.conf
-    chmod 644 /data/conf/nginx_high_load_off.conf &> /dev/null
+    chmod 644 /data/conf/nginx_high_load_off.conf
   fi
   if [ -e "/root/.giant_traffic.cnf" ]; then
-    sed -i "s/access_log .*/access_log             /var/log/nginx/access.log main buffer=32k;/g" ${_mtrNgx}.conf &> /dev/null
+    sed -i "s/access_log .*/access_log             /var/log/nginx/access.log main buffer=32k;/g" ${_mtrNgx}.conf
     wait
   fi
 }
@@ -213,7 +213,7 @@ _detect_cdorked_malware() {
       chattr -ai /usr/sbin/nginx
       cd ${_vBs}
       rm -rf /var/opt/foo_bar*
-      gcc -o /var/opt/foo_bar ${_bldPth}/aegir/helpers/dump_cdorked_config.c &> /dev/null
+      gcc -o /var/opt/foo_bar ${_bldPth}/aegir/helpers/dump_cdorked_config.c
       _C_DORKED_TEST=$(/var/opt/foo_bar 2>&1)
       if [[ "${_C_DORKED_TEST}" =~ "No shared memory matching Cdorked signature" ]]; then
         _DO_NOTHING=YES
@@ -260,7 +260,7 @@ _nginx_clean_legacy_config() {
       wait
     fi
   fi
-  _mrun "service nginx reload" 2> /dev/null
+  _mrun "service nginx reload"
 }
 
 #
@@ -416,7 +416,7 @@ _nginx_install_upgrade() {
     cd /var/opt; rm -rf nginx*
     _get_dev_src "nginx-${_NGINX_VRN}.tar.gz"
     sed -i "s/nginx/${_CUSTOM_NAME}/g" \
-      /var/opt/nginx-${_NGINX_VRN}/src/core/nginx.h &> /dev/null
+      /var/opt/nginx-${_NGINX_VRN}/src/core/nginx.h
     wait
     if [ ! -z "${_NGINX_EXTRA_CONF}" ]; then
       _NGINX_EXTRA="${_NGINX_EXTRA_CONF}"
@@ -507,12 +507,12 @@ _nginx_install_upgrade() {
       --without-mail_pop3_module \
       --without-mail_smtp_module \
       --with-openssl=/var/opt/openssl-${_OPENSSL_NEW_VRN} \
-      --with-debug ${_NGINX_EXTRA}" 2> /dev/null
-    _mrun "make -j $(nproc)" 2> /dev/null
-    _mrun "make install" 2> /dev/null
-    ldconfig 2> /dev/null
+      --with-debug ${_NGINX_EXTRA}"
+    _mrun "make -j $(nproc)"
+    _mrun "make install"
+    ldconfig
     _nginx_clean_legacy_config
-    _mrun "service nginx quietupgrade" 2> /dev/null
+    _mrun "service nginx quietupgrade"
     _NGINX_INSTALL_REQUIRED=NO
   fi
   if [ ! -L "/usr/bin/nginx" ]; then
@@ -568,15 +568,15 @@ _nginx_initd_check() {
     _X_INIT_TEST_B=$(cat /etc/init.d/nginx | grep Giedymin 2>&1)
   fi
   if [[ "${_X_INIT_TEST_A}" =~ ULIMIT ]] && [[ "${_X_INIT_TEST_B}" =~ Giedymin ]]; then
-    chmod 755 /etc/init.d/nginx &> /dev/null
-    _mrun "update-rc.d nginx defaults" 2> /dev/null
+    chmod 755 /etc/init.d/nginx
+    _mrun "update-rc.d nginx defaults"
   else
     mv -f /etc/init.d/nginx \
-      ${_vBs}/nginx-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
+      ${_vBs}/nginx-pre-${_xSrl}-${_X_VERSION}-${_NOW}
     cp -af ${_locCnf}/nginx/nginx /etc/init.d/nginx
-    chmod 755 /etc/init.d/nginx &> /dev/null
-    _mrun "update-rc.d nginx defaults" 2> /dev/null
-    _mrun "service nginx start" 2> /dev/null
+    chmod 755 /etc/init.d/nginx
+    _mrun "update-rc.d nginx defaults"
+    _mrun "service nginx start"
   fi
 }
 
@@ -586,13 +586,13 @@ _nginx_mime_check_fix() {
   fi
   if [ -e "${_locCnf}/nginx/mime.types" ]; then
     mv -f /etc/nginx/mime.types \
-      /etc/nginx/mime.types-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
+      /etc/nginx/mime.types-pre-${_xSrl}-${_X_VERSION}-${_NOW}
     cp -af ${_locCnf}/nginx/mime.types /etc/nginx/mime.types
     if [ ! -L "/var/www/nginx-default/index.html" ] \
       && [ ! -L "/var/www/nginx-default/under_construction.jpg" ]; then
       mkdir -p /var/www/nginx-default
       mv -f /var/www/nginx-default/index.html \
-        /var/www/nginx-default/index.html-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
+        /var/www/nginx-default/index.html-pre-${_xSrl}-${_X_VERSION}-${_NOW}
       cp -af ${_locCnf}/tpl/uc.html /var/www/nginx-default/index.html
       cp -af ${_locCnf}/tpl/under_construction.jpg \
         /var/www/nginx-default/under_construction.jpg
@@ -601,7 +601,7 @@ _nginx_mime_check_fix() {
     rm -f /etc/nginx/sites-enabled/default
     rm -f /etc/nginx/modules-enabled/*
     if [ ! -e "/run/aegir_upgrade.pid" ]; then
-      _mrun "service nginx reload" 2> /dev/null
+      _mrun "service nginx reload"
     fi
   fi
 }
@@ -613,16 +613,16 @@ _nginx_wildcard_ssl_install() {
   _WILD_SSL_VHOST="${_mtrNgx}/pre.d/nginx_wild_ssl.conf"
   if [ ! -e "${_WILD_SSL_VHOST}" ]; then
     _msg "INFO: Installing default SSL Wildcard Nginx Proxy..."
-    _validate_public_ip &> /dev/null
-    _validate_xtras_ip &> /dev/null
+    _validate_public_ip
+    _validate_xtras_ip
     openssl req -x509 -nodes -sha256 -days 7300 \
       -subj "/C=US/ST=New York/O=Aegir/OU=Cloud/L=New York/CN=*.${_THISHOST}" \
       -newkey rsa:2048 \
       -keyout /etc/ssl/private/nginx-wild-ssl.key \
-      -out /etc/ssl/private/nginx-wild-ssl.crt -batch 2> /dev/null
+      -out /etc/ssl/private/nginx-wild-ssl.crt -batch
     cp -af ${_locCnf}/nginx/nginx_wild_ssl.conf ${_WILD_SSL_VHOST}
-    sed -i "s/127.0.0.1:80/localhost:80/g" ${_WILD_SSL_VHOST} &> /dev/null
-    sed -i "s/127.0.0.1:443/${_XTRAS_THISHTIP}:443/g" ${_WILD_SSL_VHOST} &> /dev/null
+    sed -i "s/127.0.0.1:80/localhost:80/g" ${_WILD_SSL_VHOST}
+    sed -i "s/127.0.0.1:443/${_XTRAS_THISHTIP}:443/g" ${_WILD_SSL_VHOST}
     mkdir -p /data/conf
     if [ -e "${_locCnf}/global/global.inc" ]; then
       cp -af ${_locCnf}/global/global.inc /data/conf/global.inc
@@ -632,9 +632,9 @@ _nginx_wildcard_ssl_install() {
       && [ -e "/data/conf/global.inc" ]; then
       ln -sfn /data/conf/global.inc ${_mtrInc}/global.inc
     fi
-    sed -i "s/3600/${_SPEED_VALID_MAX}/g" /data/conf/global.inc &> /dev/null
+    sed -i "s/3600/${_SPEED_VALID_MAX}/g" /data/conf/global.inc
     _redis_password_update
-    _mrun "service nginx quietupgrade" 2> /dev/null
+    _mrun "service nginx quietupgrade"
   else
     _WILD_SSL_PROXY_UP=NO
     _HTTP3_TEST=$(grep http3 ${_WILD_SSL_VHOST} 2>&1)
@@ -652,8 +652,8 @@ _nginx_wildcard_ssl_install() {
       _WILD_SSL_PROXY_UP=YES
     fi
     if [ "${_WILD_SSL_PROXY_UP}" = "YES" ]; then
-      _validate_public_ip &> /dev/null
-      _validate_xtras_ip &> /dev/null
+      _validate_public_ip
+      _validate_xtras_ip
       cp -af ${_locCnf}/nginx/nginx_wild_ssl.conf ${_WILD_SSL_VHOST}
       sed -i "s/127.0.0.1:80/localhost:80/g" ${_WILD_SSL_VHOST}
       wait
@@ -667,7 +667,7 @@ _nginx_config_update_fix() {
     _msg "PROC: _nginx_config_update_fix"
   fi
   if [ "${_STATUS}" = "INIT" ]; then
-    _mrun "service cron start" 2> /dev/null
+    _mrun "service cron start"
     if [ "${_EASY_SETUP}" = "NO" ]; then
       echo " "
       _msg "Now waiting 2 minutes before restarting Nginx..."
@@ -675,34 +675,34 @@ _nginx_config_update_fix() {
     fi
     _force_advanced_nginx_config
     _mrun "sleep 8"
-    _mrun "service nginx restart" 2> /dev/null
+    _mrun "service nginx restart"
   else
     if [ -e "/var/aegir/config" ]; then
-      sed -i "s/.*ssl .*on;//g" /var/aegir/config/server_*/nginx/vhost.d/* &> /dev/null
+      sed -i "s/.*ssl .*on;//g" /var/aegir/config/server_*/nginx/vhost.d/*
       wait
-      sed -i "s/.*ssl .*on;//g" /var/aegir/config/server_*/nginx/vhost.d/adminer.* &> /dev/null
+      sed -i "s/.*ssl .*on;//g" /var/aegir/config/server_*/nginx/vhost.d/adminer.*
       wait
-      sed -i "s/.*ssl .*on;//g" /var/aegir/config/server_*/nginx/vhost.d/cgp.* &> /dev/null
+      sed -i "s/.*ssl .*on;//g" /var/aegir/config/server_*/nginx/vhost.d/cgp.*
       wait
-      sed -i "s/.*ssl .*on;//g" /var/aegir/config/server_*/nginx/vhost.d/chive.* &> /dev/null
+      sed -i "s/.*ssl .*on;//g" /var/aegir/config/server_*/nginx/vhost.d/chive.*
       wait
-      sed -i "s/.*ssl .*on;//g" /var/aegir/config/server_*/nginx/vhost.d/sqlbuddy.* &> /dev/null
+      sed -i "s/.*ssl .*on;//g" /var/aegir/config/server_*/nginx/vhost.d/sqlbuddy.*
       wait
-      sed -i "s/.*listen .*\*:80;/  listen                       \*:80;/g" /var/aegir/config/server_*/nginx/vhost.d/* &> /dev/null
+      sed -i "s/.*listen .*\*:80;/  listen                       \*:80;/g" /var/aegir/config/server_*/nginx/vhost.d/*
       wait
-      sed -i "s/.*listen .*\*:443/  listen                       \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/adminer.* &> /dev/null
+      sed -i "s/.*listen .*\*:443/  listen                       \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/adminer.*
       wait
-      sed -i "s/.*listen .*\*:443/  listen                       \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/cgp.* &> /dev/null
+      sed -i "s/.*listen .*\*:443/  listen                       \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/cgp.*
       wait
-      sed -i "s/.*listen .*\*:443/  listen                       \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/chive.* &> /dev/null
+      sed -i "s/.*listen .*\*:443/  listen                       \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/chive.*
       wait
-      sed -i "s/.*listen .*\*:443/  listen                       \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/sqlbuddy.* &> /dev/null
+      sed -i "s/.*listen .*\*:443/  listen                       \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/sqlbuddy.*
       wait
-      sed -i "s/SSLv3 TLSv1;/TLSv1.2 TLSv1.3;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
+      sed -i "s/SSLv3 TLSv1;/TLSv1.2 TLSv1.3;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf
       wait
-      sed -i "s/SSLv3 TLSv1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
+      sed -i "s/SSLv3 TLSv1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf
       wait
-      sed -i "s/TLSv1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
+      sed -i "s/TLSv1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf
       wait
       if [ -d "/data/u" ]; then
         sed -i "s/TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g" /data/disk/*/config/server_*/nginx/vhost.d/*
@@ -711,68 +711,68 @@ _nginx_config_update_fix() {
       sed -i "s/TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf
       sed -i "s/TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g" /var/aegir/config/server_*/nginx/vhost.d/*
       wait
-      sed -i "s/.*ssl .*on;//g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
+      sed -i "s/.*ssl .*on;//g" /var/aegir/config/server_*/nginx/pre.d/*.conf
       wait
-      sed -i "s/.*gzip_vary .*//g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
+      sed -i "s/.*gzip_vary .*//g" /var/aegir/config/server_*/nginx/pre.d/*.conf
       wait
-      sed -i "s/.*gzip_vary .*//g" /var/aegir/config/server_*/nginx/vhost.d/* &> /dev/null
+      sed -i "s/.*gzip_vary .*//g" /var/aegir/config/server_*/nginx/vhost.d/*
       wait
-      sed -i "s/.*proxy_buffer_size .*//g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
+      sed -i "s/.*proxy_buffer_size .*//g" /var/aegir/config/server_*/nginx/pre.d/*.conf
       wait
-      sed -i "s/.*proxy_buffer_size .*//g" /var/aegir/config/server_*/nginx/vhost.d/* &> /dev/null
+      sed -i "s/.*proxy_buffer_size .*//g" /var/aegir/config/server_*/nginx/vhost.d/*
       wait
-      sed -i "s/.*proxy_buffers .*//g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
+      sed -i "s/.*proxy_buffers .*//g" /var/aegir/config/server_*/nginx/pre.d/*.conf
       wait
-      sed -i "s/.*proxy_buffers .*//g" /var/aegir/config/server_*/nginx/vhost.d/* &> /dev/null
+      sed -i "s/.*proxy_buffers .*//g" /var/aegir/config/server_*/nginx/vhost.d/*
       wait
-      sed -i "s/.*proxy_busy_buffers_size .*//g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
+      sed -i "s/.*proxy_busy_buffers_size .*//g" /var/aegir/config/server_*/nginx/pre.d/*.conf
       wait
-      sed -i "s/.*proxy_busy_buffers_size .*//g" /var/aegir/config/server_*/nginx/vhost.d/* &> /dev/null
+      sed -i "s/.*proxy_busy_buffers_size .*//g" /var/aegir/config/server_*/nginx/vhost.d/*
       wait
-      sed -i "s/.*proxy_temp_file_write_size .*//g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
+      sed -i "s/.*proxy_temp_file_write_size .*//g" /var/aegir/config/server_*/nginx/pre.d/*.conf
       wait
-      sed -i "s/.*proxy_temp_file_write_size .*//g" /var/aegir/config/server_*/nginx/vhost.d/* &> /dev/null
+      sed -i "s/.*proxy_temp_file_write_size .*//g" /var/aegir/config/server_*/nginx/vhost.d/*
       wait
-      sed -i "s/.*proxy_buffering .*//g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
+      sed -i "s/.*proxy_buffering .*//g" /var/aegir/config/server_*/nginx/pre.d/*.conf
       wait
-      sed -i "s/.*proxy_buffering .*//g" /var/aegir/config/server_*/nginx/vhost.d/* &> /dev/null
-      wait
-      sed -i "s/proxy_redirect .*/proxy_redirect             off;\n    gzip_vary                  off;\n    proxy_buffering            off;/g" \
-        /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
+      sed -i "s/.*proxy_buffering .*//g" /var/aegir/config/server_*/nginx/vhost.d/*
       wait
       sed -i "s/proxy_redirect .*/proxy_redirect             off;\n    gzip_vary                  off;\n    proxy_buffering            off;/g" \
-        /var/aegir/config/server_*/nginx/vhost.d/* &> /dev/null
+        /var/aegir/config/server_*/nginx/pre.d/*.conf
       wait
-      sed -i "s/.*ssl_stapling .*//g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf &> /dev/null
+      sed -i "s/proxy_redirect .*/proxy_redirect             off;\n    gzip_vary                  off;\n    proxy_buffering            off;/g" \
+        /var/aegir/config/server_*/nginx/vhost.d/*
       wait
-      sed -i "s/.*ssl_stapling_verify .*//g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf &> /dev/null
+      sed -i "s/.*ssl_stapling .*//g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf
       wait
-      sed -i "s/.*resolver .*//g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf &> /dev/null
+      sed -i "s/.*ssl_stapling_verify .*//g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf
       wait
-      sed -i "s/.*resolver_timeout .*//g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf &> /dev/null
+      sed -i "s/.*resolver .*//g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf
+      wait
+      sed -i "s/.*resolver_timeout .*//g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf
       wait
       sed -i "s/ssl_prefer_server_ciphers .*/ssl_prefer_server_ciphers on;\n  ssl_stapling on;\n  ssl_stapling_verify on;\n  resolver 1.1.1.1 1.0.0.1 valid=300s;\n  resolver_timeout 5s;/g" \
-        /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf &> /dev/null
+        /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf
       wait
-      sed -i "s/ *$//g; /^$/d" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
+      sed -i "s/ *$//g; /^$/d" /var/aegir/config/server_*/nginx/pre.d/*.conf
       wait
-      sed -i "s/ *$//g; /^$/d" /var/aegir/config/server_*/nginx/vhost.d/* &> /dev/null
+      sed -i "s/ *$//g; /^$/d" /var/aegir/config/server_*/nginx/vhost.d/*
       wait
-      sed -i "s/add_header Vary .*//g" /var/aegir/config/server_*/nginx.conf &> /dev/null
+      sed -i "s/add_header Vary .*//g" /var/aegir/config/server_*/nginx.conf
       wait
     fi
     if [ "${_NGINX_SPDY}" = "YES" ]; then
-      sed -i "s/:443;/:443 ssl;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
+      sed -i "s/:443;/:443 ssl;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf
       wait
-      sed -i "s/:443;/:443 ssl;/g" /var/aegir/config/server_*/nginx/vhost.d/* &> /dev/null
+      sed -i "s/:443;/:443 ssl;/g" /var/aegir/config/server_*/nginx/vhost.d/*
       wait
-      sed -i "s/:443 ssl spdy;/:443 ssl;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
+      sed -i "s/:443 ssl spdy;/:443 ssl;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf
       wait
-      sed -i "s/:443 ssl spdy;/:443 ssl;/g" /var/aegir/config/server_*/nginx/vhost.d/* &> /dev/null
+      sed -i "s/:443 ssl spdy;/:443 ssl;/g" /var/aegir/config/server_*/nginx/vhost.d/*
       wait
-      sed -i "s/:443 ssl http2;/:443 ssl;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
+      sed -i "s/:443 ssl http2;/:443 ssl;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf
       wait
-      sed -i "s/:443 ssl http2;/:443 ssl;/g" /var/aegir/config/server_*/nginx/vhost.d/* &> /dev/null
+      sed -i "s/:443 ssl http2;/:443 ssl;/g" /var/aegir/config/server_*/nginx/vhost.d/*
       wait
     fi
     if [ -e "/root/.install.modern.openssl.cnf" ] \
@@ -849,16 +849,16 @@ _nginx_config_update_fix() {
     fi
     if [ "${_ALLOW_NGINX_FORWARD_SECRECY}" = "YES" ]; then
       sed -i "s/ssl_protocols .*/ssl_protocols                ${_SSL_PROTOCOLS}/g" \
-        /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
+        /var/aegir/config/server_*/nginx/pre.d/*.conf
       wait
       sed -i "s/ssl_protocols .*/ssl_protocols                ${_SSL_PROTOCOLS}/g" \
-        /var/aegir/config/server_*/nginx/vhost.d/* &> /dev/null
+        /var/aegir/config/server_*/nginx/vhost.d/*
       wait
       sed -i "s/ssl_ciphers .*/ssl_ciphers                  ${_SSL_CIPHERS}/g" \
-        /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
+        /var/aegir/config/server_*/nginx/pre.d/*.conf
       wait
       sed -i "s/ssl_ciphers .*/ssl_ciphers                  ${_SSL_CIPHERS}/g" \
-        /var/aegir/config/server_*/nginx/vhost.d/* &> /dev/null
+        /var/aegir/config/server_*/nginx/vhost.d/*
       wait
     fi
 
@@ -869,27 +869,27 @@ _nginx_config_update_fix() {
     ###
     if [ -e "/var/aegir" ]; then
       sed -i "s/.*listen.*127.0.0.1:80;.*//g" \
-        /var/aegir/config/server_*/nginx.conf &> /dev/null
+        /var/aegir/config/server_*/nginx.conf
       wait
       sed -i "s/listen .*\*:80;/listen        \*:80;/g" \
-        /var/aegir/config/server_*/nginx.conf &> /dev/null
+        /var/aegir/config/server_*/nginx.conf
       wait
     fi
     if [ -d "/data/u" ]; then
       sed -i "s/.*listen.*127.0.0.1:80;.*//g" \
-        /data/disk/*/config/server_*/nginx.conf &> /dev/null
+        /data/disk/*/config/server_*/nginx.conf
       wait
       sed -i "s/listen .*\*:80;/listen        \*:80;/g" \
-        /data/disk/*/config/server_*/nginx.conf &> /dev/null
+        /data/disk/*/config/server_*/nginx.conf
       wait
       sed -i "s/.*listen .*\*:80;/  listen        \*:80;/g" \
-        /data/disk/*/config/server_*/nginx/vhost.d/* &> /dev/null
+        /data/disk/*/config/server_*/nginx/vhost.d/*
       wait
       sed -i "s/.*listen .*\*:443/  listen        \*:443/g" \
-        /data/disk/*/config/server_*/nginx/vhost.d/* &> /dev/null
+        /data/disk/*/config/server_*/nginx/vhost.d/*
       wait
       sed -i "s/.*ssl .*on;//g" \
-        /data/disk/*/config/server_*/nginx/vhost.d/* &> /dev/null
+        /data/disk/*/config/server_*/nginx/vhost.d/*
       wait
       sed -i "s/TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g" /data/disk/*/config/server_*/nginx/vhost.d/*
       sed -i "s/TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g" /var/aegir/config/server_*/nginx.conf
@@ -903,23 +903,23 @@ _nginx_config_update_fix() {
         _pthPrN="provision/http/Provision/Config/Nginx"
         if [ -e "${_OCT}/.drush/sys/drush_make" ]; then
           sed -i "s/\!empty.*';/'*';/g" \
-            ${_OCT}/.drush/sys/${_pNx}/server.tpl.php &> /dev/null
+            ${_OCT}/.drush/sys/${_pNx}/server.tpl.php
           wait
           sed -i "s/\!empty.*';/'*';/g" \
-            ${_OCT}/.drush/sys/${_pNx}/vhost.tpl.php &> /dev/null
+            ${_OCT}/.drush/sys/${_pNx}/vhost.tpl.php
           wait
           sed -i "s/\!empty.*';/'*';/g" \
-            ${_OCT}/.drush/sys/${_pNx}/vhost_disabled.tpl.php &> /dev/null
+            ${_OCT}/.drush/sys/${_pNx}/vhost_disabled.tpl.php
           wait
         elif [ -e "${_OCT}/.drush/drush_make" ]; then
           sed -i "s/\!empty.*';/'*';/g" \
-            ${_OCT}/.drush/${_pNx}/server.tpl.php &> /dev/null
+            ${_OCT}/.drush/${_pNx}/server.tpl.php
           wait
           sed -i "s/\!empty.*';/'*';/g" \
-            ${_OCT}/.drush/${_pNx}/vhost.tpl.php &> /dev/null
+            ${_OCT}/.drush/${_pNx}/vhost.tpl.php
           wait
           sed -i "s/\!empty.*';/'*';/g" \
-            ${_OCT}/.drush/${_pNx}/vhost_disabled.tpl.php &> /dev/null
+            ${_OCT}/.drush/${_pNx}/vhost_disabled.tpl.php
           wait
         fi
       done
@@ -933,33 +933,33 @@ _nginx_config_update_fix() {
       for _File in $(find /data/disk/*/config/includes/ -type f -exec grep -l will_expire_in {} +); do
         rm -f "$File"
       done
-      for Vght in `ls /data/disk/*/log/CANCELLED 2> /dev/null \
+      for Vght in `ls /data/disk/*/log/CANCELLED \
         | cut -d"/" -f4 \
         | awk '{ print $1}'`; do
         rm -f /data/disk/$Vght/config/server_*/nginx/vhost.d/*
       done
       _wildPth="/data/disk/*/.drush/sys/provision/http/Provision/Service/http/*.conf"
-      sed -i "s/OctopusMicroNoCacheID/NoCacheID/g" ${_wildPth} &> /dev/null
+      sed -i "s/OctopusMicroNoCacheID/NoCacheID/g" ${_wildPth}
       wait
-      sed -i "s/OctopusNCookie/AegirCookie/g"      ${_wildPth} &> /dev/null
+      sed -i "s/OctopusNCookie/AegirCookie/g"      ${_wildPth}
       wait
-      sed -i "s/OctopusNoCacheID/NoCacheID/g"      ${_wildPth} &> /dev/null
+      sed -i "s/OctopusNoCacheID/NoCacheID/g"      ${_wildPth}
       wait
     fi
     if [ -e "/var/aegir" ]; then
       _wildPth="/var/aegir/.drush/sys/provision/http/Provision/Service/http/*.conf"
-      sed -i "s/OctopusMicroNoCacheID/NoCacheID/g" ${_wildPth} &> /dev/null
+      sed -i "s/OctopusMicroNoCacheID/NoCacheID/g" ${_wildPth}
       wait
-      sed -i "s/OctopusNCookie/AegirCookie/g"      ${_wildPth} &> /dev/null
+      sed -i "s/OctopusNCookie/AegirCookie/g"      ${_wildPth}
       wait
-      sed -i "s/OctopusNoCacheID/NoCacheID/g"      ${_wildPth} &> /dev/null
+      sed -i "s/OctopusNoCacheID/NoCacheID/g"      ${_wildPth}
       wait
-      sed -i "s/60/180/g" /var/aegir/config/server_*/nginx.conf  &> /dev/null
+      sed -i "s/60/180/g" /var/aegir/config/server_*/nginx.conf 
       wait
-      sed -i "s/300/180/g" /var/aegir/config/server_*/nginx.conf &> /dev/null
+      sed -i "s/300/180/g" /var/aegir/config/server_*/nginx.conf
       wait
     fi
-    _validate_public_ip &> /dev/null
+    _validate_public_ip
     _CRON_IP=${_THISHTIP//[^0-9.]/}
     if [ ! -e "/root/.local.IP.list" ]; then
       rm -f /root/.tmp.IP.list*
@@ -983,6 +983,6 @@ _nginx_config_update_fix() {
       && [ -e "/root/.local.IP.list" ]; then
       _master_fix_multi_ip_cron_access
     fi
-    _mrun "service nginx reload" 2> /dev/null
+    _mrun "service nginx reload"
   fi
 }

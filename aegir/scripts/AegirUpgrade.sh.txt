@@ -149,43 +149,43 @@ _php_cli_drush_update() {
   if [ "${_PHP_CLI_VERSION}" = "8.3" ] \
     && [ -x "/opt/php83/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php83\/bin\/php/g" \
-      ${_DRUSH_FILE} &> /dev/null
+      ${_DRUSH_FILE}
   elif [ "${_PHP_CLI_VERSION}" = "8.2" ] \
     && [ -x "/opt/php82/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php82\/bin\/php/g" \
-      ${_DRUSH_FILE} &> /dev/null
+      ${_DRUSH_FILE}
   elif [ "${_PHP_CLI_VERSION}" = "8.1" ] \
     && [ -x "/opt/php81/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php81\/bin\/php/g" \
-      ${_DRUSH_FILE} &> /dev/null
+      ${_DRUSH_FILE}
   elif [ "${_PHP_CLI_VERSION}" = "8.0" ] \
     && [ -x "/opt/php80/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php80\/bin\/php/g" \
-      ${_DRUSH_FILE} &> /dev/null
+      ${_DRUSH_FILE}
   elif [ "${_PHP_CLI_VERSION}" = "7.4" ] \
     && [ -x "/opt/php74/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php74\/bin\/php/g" \
-      ${_DRUSH_FILE} &> /dev/null
+      ${_DRUSH_FILE}
   elif [ "${_PHP_CLI_VERSION}" = "7.3" ] \
     && [ -x "/opt/php73/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php73\/bin\/php/g" \
-      ${_DRUSH_FILE} &> /dev/null
+      ${_DRUSH_FILE}
   elif [ "${_PHP_CLI_VERSION}" = "7.2" ] \
     && [ -x "/opt/php72/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php72\/bin\/php/g" \
-      ${_DRUSH_FILE} &> /dev/null
+      ${_DRUSH_FILE}
   elif [ "${_PHP_CLI_VERSION}" = "7.1" ] \
     && [ -x "/opt/php71/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php71\/bin\/php/g" \
-      ${_DRUSH_FILE} &> /dev/null
+      ${_DRUSH_FILE}
   elif [ "${_PHP_CLI_VERSION}" = "7.0" ] \
     && [ -x "/opt/php70/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php70\/bin\/php/g" \
-      ${_DRUSH_FILE} &> /dev/null
+      ${_DRUSH_FILE}
   elif [ "${_PHP_CLI_VERSION}" = "5.6" ] \
     && [ -x "/opt/php56/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php56\/bin\/php/g" \
-      ${_DRUSH_FILE} &> /dev/null
+      ${_DRUSH_FILE}
   else
     _msg "FATAL ERROR: _PHP_CLI_VERSION must be set to one of supported versions"
     _msg "FATAL ERROR: Aborting AegirUpgrade installer NOW!"
@@ -201,7 +201,7 @@ _hostmaster_mv_up() {
   fi
   mkdir -p ${_ROOT}/backups/system
   chmod 700 ${_ROOT}/backups/system
-  mv -f ${_ROOT}/backups/drush-pre* ${_ROOT}/backups/system/ &> /dev/null
+  mv -f ${_ROOT}/backups/drush-pre* ${_ROOT}/backups/system/
   _D_EXT="provision clean_missing_modules drupalgeddon drush_ecl make_local \
     provision_boost provision_cdn provision_civicrm provision_site_backup \
     provision_tasks_extra registry_rebuild remote_import \
@@ -209,23 +209,23 @@ _hostmaster_mv_up() {
   for e in ${_D_EXT}; do
     if [ -e "${_ROOT}/.drush/$e" ]; then
       mv -f ${_ROOT}/.drush/$e \
-        ${_ROOT}/backups/system/$e-pre-${_DISTRO}-${_NOW} &> /dev/null
-      mv -f ${_ROOT}/backups/$e-pre* ${_ROOT}/backups/system/ &> /dev/null
+        ${_ROOT}/backups/system/$e-pre-${_DISTRO}-${_NOW}
+      mv -f ${_ROOT}/backups/$e-pre* ${_ROOT}/backups/system/
     fi
     if [ -e "${_ROOT}/.drush/xts/$e" ]; then
       mv -f ${_ROOT}/.drush/xts/$e \
-        ${_ROOT}/backups/system/$e-pre-${_DISTRO}-${_NOW} &> /dev/null
-      mv -f ${_ROOT}/backups/$e-pre* ${_ROOT}/backups/system/ &> /dev/null
+        ${_ROOT}/backups/system/$e-pre-${_DISTRO}-${_NOW}
+      mv -f ${_ROOT}/backups/$e-pre* ${_ROOT}/backups/system/
     fi
     if [ -e "${_ROOT}/.drush/usr/$e" ]; then
       mv -f ${_ROOT}/.drush/usr/$e \
-        ${_ROOT}/backups/system/$e-pre-${_DISTRO}-${_NOW} &> /dev/null
-      mv -f ${_ROOT}/backups/$e-pre* ${_ROOT}/backups/system/ &> /dev/null
+        ${_ROOT}/backups/system/$e-pre-${_DISTRO}-${_NOW}
+      mv -f ${_ROOT}/backups/$e-pre* ${_ROOT}/backups/system/
     fi
     if [ -e "${_ROOT}/.drush/sys/$e" ]; then
       mv -f ${_ROOT}/.drush/sys/$e \
-        ${_ROOT}/backups/system/$e-pre-${_DISTRO}-${_NOW} &> /dev/null
-      mv -f ${_ROOT}/backups/$e-pre* ${_ROOT}/backups/system/ &> /dev/null
+        ${_ROOT}/backups/system/$e-pre-${_DISTRO}-${_NOW}
+      mv -f ${_ROOT}/backups/$e-pre* ${_ROOT}/backups/system/
     fi
   done
 }
@@ -237,11 +237,11 @@ _hostmaster_dr_up() {
   mkdir -p ${_ROOT}/backups/system
   chmod 700 ${_ROOT}/backups/system
   cd ${_ROOT}
-  mv -f drush ${_ROOT}/backups/system/drush-pre-${_DISTRO}-${_NOW} &> /dev/null
+  mv -f drush ${_ROOT}/backups/system/drush-pre-${_DISTRO}-${_NOW}
   _get_dev_ext "drush-${_DRUSH_VERSION}.tar.gz"
   cd ${_ROOT}/drush/
-  find ${_ROOT}/drush -type d -exec chmod 0755 {} \; &> /dev/null
-  find ${_ROOT}/drush -type f -exec chmod 0644 {} \; &> /dev/null
+  find ${_ROOT}/drush -type d -exec chmod 0755 {} \;
+  find ${_ROOT}/drush -type f -exec chmod 0644 {} \;
   chmod 755 ${_ROOT}/drush/drush
   chmod 755 ${_ROOT}/drush/drush.complete.sh
   chmod 755 ${_ROOT}/drush/drush.launcher
@@ -275,19 +275,19 @@ _hostmaster_go_up() {
     mkdir -p ${_ROOT}/.drush/{sys,xts,usr}
     _rD="${_ROOT}/.drush"
     ${_gCb} ${_BRANCH_PRN} ${_gitHub}/provision.git \
-      ${_rD}/sys/provision &> /dev/null
+      ${_rD}/sys/provision
     ${_gCb} 7.x-1.x-dev ${_gitHub}/drupalgeddon.git \
-      ${_rD}/usr/drupalgeddon &> /dev/null
+      ${_rD}/usr/drupalgeddon
     ${_gCb} 7.x-1.x ${_gitHub}/drush_ecl.git \
-      ${_rD}/usr/drush_ecl &> /dev/null
+      ${_rD}/usr/drush_ecl
     ${_gCb} 7.x-1.x ${_gitHub}/security_review.git \
-      ${_rD}/xts/security_review &> /dev/null
+      ${_rD}/xts/security_review
     ${_gCb} 7.x-2.x ${_gitHub}/provision_boost.git \
-      ${_rD}/xts/provision_boost &> /dev/null
+      ${_rD}/xts/provision_boost
     ${_gCb} 7.x-2.x ${_gitHub}/registry_rebuild.git \
-      ${_rD}/usr/registry_rebuild &> /dev/null
+      ${_rD}/usr/registry_rebuild
     ${_gCb} 7.x-1.x ${_gitHub}/safe_cache_form_clear.git \
-      ${_rD}/usr/safe_cache_form_clear &> /dev/null
+      ${_rD}/usr/safe_cache_form_clear
     rm -rf ${_rD}/*/.git
     rm -rf ${_rD}/*/*/.git
     cd ${_rD}/usr
@@ -313,7 +313,7 @@ _hostmaster_go_up() {
   rm -rf ${_ROOT}/.drush/*/.git
   rm -rf ${_ROOT}/.drush/*/*/.git
   sed -i "s/files.aegir.cc/${_USE_MIR}/g" \
-    ${_ROOT}/.drush/sys/provision/aegir.make &> /dev/null
+    ${_ROOT}/.drush/sys/provision/aegir.make
   cd ${_PREV_HM_ROOT}
 }
 #
@@ -334,7 +334,7 @@ _hostmaster_mi_up() {
   _msg "INFO: Running hostmaster-migrate, please wait..."
   ### security_review breaks the upgrade if active
   mv -f ${_ROOT}/.drush/xts/security_review/security_review.drush.inc \
-    ${_ROOT}/.drush/xts/security_review/foo.txt  &> /dev/null
+    ${_ROOT}/.drush/xts/security_review/foo.txt 
   export DEBIAN_FRONTEND=noninteractive
   export APT_LISTCHANGES_FRONTEND=none
   if [ -z "${TERM+x}" ]; then
@@ -409,11 +409,11 @@ _hostmaster_mi_up() {
       ${_DRUSHCMD} @hostmaster en ctools -y
       ${_DRUSHCMD} @hostmaster registry-rebuild
     else
-      ${_DRUSHCMD} @hostmaster dis aegir_custom_settings -y &> /dev/null
-      ${_DRUSHCMD} @hostmaster pm-uninstall aegir_custom_settings -y &> /dev/null
-      ${_DRUSHCMD} @hostmaster dis hosting_advanced_cron -y &> /dev/null
-      ${_DRUSHCMD} @hostmaster en ctools -y &> /dev/null
-      ${_DRUSHCMD} @hostmaster registry-rebuild &> /dev/null
+      ${_DRUSHCMD} @hostmaster dis aegir_custom_settings -y
+      ${_DRUSHCMD} @hostmaster pm-uninstall aegir_custom_settings -y
+      ${_DRUSHCMD} @hostmaster dis hosting_advanced_cron -y
+      ${_DRUSHCMD} @hostmaster en ctools -y
+      ${_DRUSHCMD} @hostmaster registry-rebuild
     fi
   else
     if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -421,25 +421,25 @@ _hostmaster_mi_up() {
       ${_DRUSHCMD} @hostmaster pm-uninstall hosting_custom_settings -y
       ${_DRUSHCMD} @hostmaster registry-rebuild
     else
-      ${_DRUSHCMD} @hostmaster dis hosting_custom_settings -y &> /dev/null
-      ${_DRUSHCMD} @hostmaster pm-uninstall hosting_custom_settings -y &> /dev/null
-      ${_DRUSHCMD} @hostmaster registry-rebuild &> /dev/null
+      ${_DRUSHCMD} @hostmaster dis hosting_custom_settings -y
+      ${_DRUSHCMD} @hostmaster pm-uninstall hosting_custom_settings -y
+      ${_DRUSHCMD} @hostmaster registry-rebuild
     fi
   fi
-  ${_DRUSHCMD} cc drush &> /dev/null
+  ${_DRUSHCMD} cc drush
   rm -rf ${_ROOT}/.tmp/cache
-  ${_DRUSHCMD} @hostmaster sqlc < ${_bldPth}/aegir/helpers/hosting_cron.sql &> /dev/null
+  ${_DRUSHCMD} @hostmaster sqlc < ${_bldPth}/aegir/helpers/hosting_cron.sql
   ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM hosting_task_log \
-    WHERE timestamp < UNIX_TIMESTAMP(DATE_SUB(NOW(), INTERVAL 3 MONTH))" &> /dev/null
-  ${_DRUSHCMD} @hostmaster sqlq "OPTIMIZE TABLE hosting_task_log" &> /dev/null
+    WHERE timestamp < UNIX_TIMESTAMP(DATE_SUB(NOW(), INTERVAL 3 MONTH))"
+  ${_DRUSHCMD} @hostmaster sqlq "OPTIMIZE TABLE hosting_task_log"
   ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM hosting_task \
-    WHERE task_type='delete' AND task_status='-1'" &> /dev/null
+    WHERE task_type='delete' AND task_status='-1'"
   ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM hosting_task \
-    WHERE task_type='delete' AND task_status='0' AND executed='0'" &> /dev/null
+    WHERE task_type='delete' AND task_status='0' AND executed='0'"
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     ${_DRUSHCMD} hostmaster-migrate ${_DOMAIN} ${_HM_ROOT} -y -d
   else
-    ${_DRUSHCMD} hostmaster-migrate ${_DOMAIN} ${_HM_ROOT} -y &> /dev/null
+    ${_DRUSHCMD} hostmaster-migrate ${_DOMAIN} ${_HM_ROOT} -y
   fi
   if [ -e "${_ROOT}/.drush/hostmaster.alias.drushrc.php" ]; then
     _THIS_HM_ROOT=$(cat ${_ROOT}/.drush/hostmaster.alias.drushrc.php \
@@ -450,7 +450,7 @@ _hostmaster_mi_up() {
     if [ -e "${_THIS_HM_ROOT}/sites/all" ] \
       && [ ! -e "${_THIS_HM_ROOT}/sites/all/libraries" ]; then
       mkdir -p \
-        ${_THIS_HM_ROOT}/sites/all/{modules,themes,libraries} &> /dev/null
+        ${_THIS_HM_ROOT}/sites/all/{modules,themes,libraries}
     fi
   fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -459,26 +459,26 @@ _hostmaster_mi_up() {
     ${_DRUSHCMD} @hostmaster cache-clear all
     ${_DRUSHCMD} @hostmaster updb -y
   else
-    ${_DRUSHCMD} @hostmaster registry-rebuild &> /dev/null
-    ${_DRUSHCMD} @hostmaster en hosting_cron -y &> /dev/null
-    ${_DRUSHCMD} @hostmaster cache-clear all &> /dev/null
-    ${_DRUSHCMD} @hostmaster updb -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster registry-rebuild
+    ${_DRUSHCMD} @hostmaster en hosting_cron -y
+    ${_DRUSHCMD} @hostmaster cache-clear all
+    ${_DRUSHCMD} @hostmaster updb -y
   fi
   export DEBIAN_FRONTEND=text
   mv -f ${_ROOT}/.drush/xts/security_review/foo.txt \
-    ${_ROOT}/.drush/xts/security_review/security_review.drush.inc &> /dev/null
+    ${_ROOT}/.drush/xts/security_review/security_review.drush.inc
   mkdir -p ${_ROOT}/backups/system/old_hostmaster
   chmod 700 ${_ROOT}/backups/system/old_hostmaster
   chmod 700 ${_ROOT}/backups/system
   mv -f ${_ROOT}/backups/*host8* \
-    ${_ROOT}/backups/system/old_hostmaster/ &> /dev/null
+    ${_ROOT}/backups/system/old_hostmaster/
   mv -f ${_ROOT}/backups/*o8.io* \
-    ${_ROOT}/backups/system/old_hostmaster/ &> /dev/null
+    ${_ROOT}/backups/system/old_hostmaster/
   mv -f ${_ROOT}/backups/*boa.io* \
-    ${_ROOT}/backups/system/old_hostmaster/ &> /dev/null
+    ${_ROOT}/backups/system/old_hostmaster/
   mv -f ${_ROOT}/backups/*aegir.cc* \
-    ${_ROOT}/backups/system/old_hostmaster/ &> /dev/null
-  chmod 600 ${_ROOT}/backups/system/old_hostmaster/* &> /dev/null
+    ${_ROOT}/backups/system/old_hostmaster/
+  chmod 600 ${_ROOT}/backups/system/old_hostmaster/*
 }
 
 ###--------------------###
@@ -524,7 +524,7 @@ if [ -d "${_ROOT}/host_master/000" ]; then
     _msg "INFO: OPS, zombie found, moving it to backups..."
     sleep 1
     mv -f ${_PREV_HM_ROOT_TEST} \
-      ${_ROOT}/backups/system/empty-hm-${_LASTNUM}-${_NOW} &> /dev/null
+      ${_ROOT}/backups/system/empty-hm-${_LASTNUM}-${_NOW}
     cd ${_ROOT}/host_master
     _list=([0-9]*)
     _last=${_list[@]: -1}
@@ -549,7 +549,7 @@ if [ -d "${_ROOT}/host_master/000" ]; then
       _msg "INFO: OPS, another zombie found, moving it to backups..."
       sleep 1
       mv -f ${_PREV_HM_ROOT_TEST} \
-        ${_ROOT}/backups/system/empty-hm-${_LASTNUM}-${_NOW}-sec &> /dev/null
+        ${_ROOT}/backups/system/empty-hm-${_LASTNUM}-${_NOW}-sec
       cd ${_ROOT}/host_master
       _list=([0-9]*)
       _last=${_list[@]: -1}
@@ -583,7 +583,7 @@ if [ -d "${_HM_ROOT}" ]; then
 fi
 
 mkdir -p ${_ROOT}/host_master
-chmod 711 ${_ROOT}/host_master &> /dev/null
+chmod 711 ${_ROOT}/host_master
 if [ ! -d "/var/aegir/.drush/sys/provision/http" ]; then
   _msg "FATAL ERROR: Required directory does not exist:"
   _msg "FATAL ERROR: /var/aegir/.drush/sys/provision/http"

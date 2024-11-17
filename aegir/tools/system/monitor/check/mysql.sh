@@ -32,7 +32,7 @@ _check_root
       _B_NICE=19
     fi
 
-    renice ${_B_NICE} -p $$ &> /dev/null
+    renice ${_B_NICE} -p $$
 
 export _SQL_MAX_TTL=${_SQL_MAX_TTL//[^0-9]/}
 : "${_SQL_MAX_TTL:=3600}"
@@ -57,9 +57,9 @@ _incident_email_report() {
 }
 
 _redis_cold_restart() {
-  killall -9 redis-server &> /dev/null
+  killall -9 redis-server
   rm -f /var/lib/redis/*
-  service redis-server start &> /dev/null
+  service redis-server start
   wait
 }
 
@@ -67,7 +67,7 @@ _sql_restart() {
   touch /run/boa_run.pid
   sleep 3
   echo "$(date 2>&1) $1 incident detected" >> ${_pthOml}
-  killall sleep &> /dev/null
+  killall sleep
   killall php
   bash /var/xdrago/move_sql.sh
   wait

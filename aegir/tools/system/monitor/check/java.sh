@@ -32,7 +32,7 @@ _check_root
       _B_NICE=19
     fi
 
-    renice ${_B_NICE} -p $$ &> /dev/null
+    renice ${_B_NICE} -p $$
 
 export _INCIDENT_EMAIL_REPORT=${_INCIDENT_EMAIL_REPORT//[^A-Z]/}
 : "${_INCIDENT_EMAIL_REPORT:=YES}"
@@ -53,9 +53,9 @@ _incident_email_report() {
 _jetty_restart() {
   touch /run/boa_wait.pid
   sleep 3
-  kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}') &> /dev/null
+  kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}')
   rm -f /var/log/jetty{7,8,9}/*
-  renice ${_B_NICE} -p $$ &> /dev/null
+  renice ${_B_NICE} -p $$
   if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
     service jetty9 start
     wait

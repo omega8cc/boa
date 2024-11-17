@@ -147,34 +147,34 @@ case "$1" in
     _REBOOT_TWO_TEST=$(ls -la /root/.run-auto-major-os-reboot*-two.cnf 2>&1)
     if [[ "${_REBOOT_ONE_TEST}" =~ "No such file" ]] \
       && [[ "${_REBOOT_TWO_TEST}" =~ "No such file" ]]; then
-      service cron stop &> /dev/null
-      killall cron &> /dev/null
-      kill -9 $(ps aux | grep '[s]econd.sh' | awk '{print $2}') &> /dev/null
-      kill -9 $(ps aux | grep '[r]unner.sh' | awk '{print $2}') &> /dev/null
-      kill -9 $(ps aux | grep '[m]inute.sh' | awk '{print $2}') &> /dev/null
+      service cron stop
+      killall cron
+      kill -9 $(ps aux | grep '[s]econd.sh' | awk '{print $2}')
+      kill -9 $(ps aux | grep '[r]unner.sh' | awk '{print $2}')
+      kill -9 $(ps aux | grep '[m]inute.sh' | awk '{print $2}')
       echo "Cron has been stopped"
       echo "Now waiting 60 seconds for any running tasks to complete"
       sleep 55
       if [ -e "/etc/init.d/clamav-daemon" ]; then
-        update-rc.d -f clamav-daemon remove &> /dev/null
+        update-rc.d -f clamav-daemon remove
       fi
       if [ -e "/etc/init.d/clamav-freshclam" ]; then
-        update-rc.d -f clamav-freshclam remove &> /dev/null
+        update-rc.d -f clamav-freshclam remove
       fi
-      kill -9 $(ps aux | grep '[a]vahi-daemon' | awk '{print $2}') &> /dev/null
-      kill -9 $(ps aux | grep '[c]lamd' | awk '{print $2}') &> /dev/null
-      kill -9 $(ps aux | grep '[f]reshclam' | awk '{print $2}') &> /dev/null
-      kill -9 $(ps aux | grep '[j]ava' | awk '{print $2}') &> /dev/null
+      kill -9 $(ps aux | grep '[a]vahi-daemon' | awk '{print $2}')
+      kill -9 $(ps aux | grep '[c]lamd' | awk '{print $2}')
+      kill -9 $(ps aux | grep '[f]reshclam' | awk '{print $2}')
+      kill -9 $(ps aux | grep '[j]ava' | awk '{print $2}')
       rm -f /run/clamav/*
       echo "Java/Solr/Clamav have been stopped"
       sleep 5
-      service nginx stop &> /dev/null
-      killall nginx &> /dev/null
-      killall php &> /dev/null
-      kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}') &> /dev/null
+      service nginx stop
+      killall nginx
+      killall php
+      kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}')
       echo "Nginx, PHP-CLI and PHP-FPM have been stopped"
-      csf -df &> /dev/null
-      csf -tf &> /dev/null
+      csf -df
+      csf -tf
       echo "Firewall has been purged"
       if [ -e "/root/.my.pass.txt" ]; then
         _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
@@ -195,18 +195,18 @@ case "$1" in
           elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 5.7." ]]; then
             _DB_V=5.7
           fi
-          mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
-          mysql -u root -e "SET GLOBAL innodb_change_buffering = 'none';" &> /dev/null
-          mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null
-          mysql -u root -e "SET GLOBAL innodb_io_capacity = 2000;" &> /dev/null
-          mysql -u root -e "SET GLOBAL innodb_io_capacity_max = 4000;" &> /dev/null
+          mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;"
+          mysql -u root -e "SET GLOBAL innodb_change_buffering = 'none';"
+          mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;"
+          mysql -u root -e "SET GLOBAL innodb_io_capacity = 2000;"
+          mysql -u root -e "SET GLOBAL innodb_io_capacity_max = 4000;"
           if [ "${_DB_V}" = "5.7" ]; then
-            mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_pct = 100;" &> /dev/null
-            mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_now = ON;" &> /dev/null
+            mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_pct = 100;"
+            mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_now = ON;"
           fi
-          mysql -u root -e "SET GLOBAL innodb_fast_shutdown = 1;" &> /dev/null
+          mysql -u root -e "SET GLOBAL innodb_fast_shutdown = 1;"
           echo "Stopping MySQLD now..."
-          service mysql stop &> /dev/null
+          service mysql stop
           wait
           echo "MySQLD stopped"
         else

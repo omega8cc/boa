@@ -36,7 +36,7 @@ _sanitize_number() {
 
 _fix_clear_cache() {
   if [ -e "${_Plr}/profiles/hostmaster" ]; then
-    su -s /bin/bash - ${_THIS_U} -c "drush8 @hostmaster cache-clear all" &> /dev/null
+    su -s /bin/bash - ${_THIS_U} -c "drush8 @hostmaster cache-clear all"
     wait
   fi
 }
@@ -718,18 +718,18 @@ _usage_action() {
         if [ ! -e "${_usEr}/log/skip-force-cleanup.txt" ]; then
           cd ${_usEr}
           echo "Remove various tmp/dot files breaking du command"
-          find . -name "exclude.tag" -type f | xargs rm -rf &> /dev/null
-          find . -name ".DS_Store" -type f | xargs rm -rf &> /dev/null
-          find . -name "*~" -type f | xargs rm -rf &> /dev/null
-          find . -name "*#" -type f | xargs rm -rf &> /dev/null
-          find . -name ".#*" -type f | xargs rm -rf &> /dev/null
-          find . -name "*--" -type f | xargs rm -rf &> /dev/null
-          find . -name "._*" -type f | xargs rm -rf &> /dev/null
-          find . -name "*~" -type l | xargs rm -rf &> /dev/null
-          find . -name "*#" -type l | xargs rm -rf &> /dev/null
-          find . -name ".#*" -type l | xargs rm -rf &> /dev/null
-          find . -name "*--" -type l | xargs rm -rf &> /dev/null
-          find . -name "._*" -type l | xargs rm -rf &> /dev/null
+          find . -name "exclude.tag" -type f | xargs rm -rf
+          find . -name ".DS_Store" -type f | xargs rm -rf
+          find . -name "*~" -type f | xargs rm -rf
+          find . -name "*#" -type f | xargs rm -rf
+          find . -name ".#*" -type f | xargs rm -rf
+          find . -name "*--" -type f | xargs rm -rf
+          find . -name "._*" -type f | xargs rm -rf
+          find . -name "*~" -type l | xargs rm -rf
+          find . -name "*#" -type l | xargs rm -rf
+          find . -name ".#*" -type l | xargs rm -rf
+          find . -name "*--" -type l | xargs rm -rf
+          find . -name "._*" -type l | xargs rm -rf
         fi
         echo Counting User ${_usEr}
         _DOW=$(date +%u 2>&1)
@@ -785,7 +785,7 @@ _usage_action() {
               | <strong>${_CLIENT_CORES}</strong> \
               ${_CLIENT_OPTION} ${_ENGINE_NR} \
               | CLI <strong>${_CLIENT_CLI}</strong> \
-              | FPM <strong>${_CLIENT_FPM}</strong>'" &> /dev/null
+              | FPM <strong>${_CLIENT_FPM}</strong>'"
             wait
             if [ ! -e "${_usEr}/log/CANCELLED" ] \
               && [ "${_DEV_EXC}" = "NO" ] \
@@ -822,22 +822,22 @@ _usage_action() {
               _IS_SF=$(grep "site_footer" ${_PgTpl} 2>&1)
               if [[ ! "${_IS_SF}" =~ "site_footer" ]]; then
                 cd ${_TmDir}
-                patch -p1 < ${_TplPatch} &> /dev/null
+                patch -p1 < ${_TplPatch}
                 cd
               fi
             fi
             su -s /bin/bash - ${_THIS_U} \
-              -c "drush8 @hostmaster cache-clear all" &> /dev/null
+              -c "drush8 @hostmaster cache-clear all"
             wait
           fi
         else
           if [ -e "${_THIS_HM_SITE}" ]; then
             su -s /bin/bash - ${_THIS_U} \
               -c "drush8 @hostmaster variable-set \
-              --always-set site_footer ''" &> /dev/null
+              --always-set site_footer ''"
             wait
             su -s /bin/bash - ${_THIS_U} \
-              -c "drush8 @hostmaster cache-clear all" &> /dev/null
+              -c "drush8 @hostmaster cache-clear all"
             wait
           fi
         fi

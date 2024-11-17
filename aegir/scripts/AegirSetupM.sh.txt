@@ -125,19 +125,19 @@ _php_cli_drush_update() {
   if [ "${_PHP_CLI_VERSION}" = "8.3" ] \
     && [ -x "/opt/php83/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php83\/bin\/php/g" \
-      ${_DRUSH_FILE} &> /dev/null
+      ${_DRUSH_FILE}
   elif [ "${_PHP_CLI_VERSION}" = "8.2" ] \
     && [ -x "/opt/php82/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php82\/bin\/php/g" \
-      ${_DRUSH_FILE} &> /dev/null
+      ${_DRUSH_FILE}
   elif [ "${_PHP_CLI_VERSION}" = "8.1" ] \
     && [ -x "/opt/php81/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php81\/bin\/php/g" \
-      ${_DRUSH_FILE} &> /dev/null
+      ${_DRUSH_FILE}
   elif [ "${_PHP_CLI_VERSION}" = "7.4" ] \
     && [ -x "/opt/php74/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php74\/bin\/php/g" \
-      ${_DRUSH_FILE} &> /dev/null
+      ${_DRUSH_FILE}
   else
     _msg "FATAL ERROR: _PHP_CLI_VERSION must be set to one of supported values"
     _msg "FATAL ERROR: Aborting AegirSetupM installer NOW!"
@@ -162,8 +162,8 @@ fi
 cd ${_ROOT}
 _get_dev_ext "drush-${_DRUSH_VERSION}.tar.gz"
 cd ${_ROOT}/drush/
-find ${_ROOT}/drush -type d -exec chmod 0755 {} \; &> /dev/null
-find ${_ROOT}/drush -type f -exec chmod 0644 {} \; &> /dev/null
+find ${_ROOT}/drush -type d -exec chmod 0755 {} \;
+find ${_ROOT}/drush -type f -exec chmod 0644 {} \;
 chmod 755 ${_ROOT}/drush/drush
 chmod 755 ${_ROOT}/drush/drush.complete.sh
 chmod 755 ${_ROOT}/drush/drush.launcher
@@ -193,19 +193,19 @@ if [ "${_AEGIR_VERSION}" != "static" ]; then
   mkdir -p ${_ROOT}/.drush/{sys,xts,usr}
   _rD="${_ROOT}/.drush"
   ${_gCb} ${_BRANCH_PRN} ${_gitHub}/provision.git \
-    ${_rD}/sys/provision &> /dev/null
+    ${_rD}/sys/provision
   ${_gCb} 7.x-1.x-dev ${_gitHub}/drupalgeddon.git \
-    ${_rD}/usr/drupalgeddon &> /dev/null
+    ${_rD}/usr/drupalgeddon
   ${_gCb} 7.x-1.x ${_gitHub}/drush_ecl.git \
-    ${_rD}/usr/drush_ecl &> /dev/null
+    ${_rD}/usr/drush_ecl
   ${_gCb} 7.x-1.x ${_gitHub}/security_review.git \
-    ${_rD}/xts/security_review &> /dev/null
+    ${_rD}/xts/security_review
   ${_gCb} 7.x-2.x ${_gitHub}/provision_boost.git \
-    ${_rD}/xts/provision_boost &> /dev/null
+    ${_rD}/xts/provision_boost
   ${_gCb} 7.x-2.x ${_gitHub}/registry_rebuild.git \
-    ${_rD}/usr/registry_rebuild &> /dev/null
+    ${_rD}/usr/registry_rebuild
   ${_gCb} 7.x-1.x ${_gitHub}/safe_cache_form_clear.git \
-    ${_rD}/usr/safe_cache_form_clear &> /dev/null
+    ${_rD}/usr/safe_cache_form_clear
   rm -rf ${_rD}/*/.git
   rm -rf ${_rD}/*/*/.git
   cd ${_rD}/usr
@@ -241,7 +241,7 @@ else
 fi
 
 sed -i "s/files.aegir.cc/${_USE_MIR}/g" \
-  ${_ROOT}/.drush/sys/provision/aegir.make &> /dev/null
+  ${_ROOT}/.drush/sys/provision/aegir.make
 wait
 
 if [ "${_DEBUG_MODE}" = "YES" ]; then

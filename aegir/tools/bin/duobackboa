@@ -32,7 +32,7 @@ _check_root() {
   _DF_TEST=$(df -kTh / -l \
     | grep '/' \
     | sed 's/\%//g' \
-    | awk '{print $6}' 2> /dev/null)
+    | awk '{print $6}')
   _DF_TEST=${_DF_TEST//[^0-9]/}
   if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt "90" ]; then
     echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
@@ -109,9 +109,9 @@ _os_detection_minimal() {
 _os_detection_minimal
 
 _apt_clean_update() {
-  #apt-get clean -qq 2> /dev/null
-  #rm -rf /var/lib/apt/lists/* &> /dev/null
-  ${_APT_UPDATE} -qq 2> /dev/null
+  #apt-get clean -qq
+  #rm -rf /var/lib/apt/lists/*
+  ${_APT_UPDATE} -qq
 }
 
 _if_hosted_sys() {

@@ -113,7 +113,7 @@ _check_root() {
   _DF_TEST=$(df -kTh / -l \
     | grep '/' \
     | sed 's/\%//g' \
-    | awk '{print $6}' 2> /dev/null)
+    | awk '{print $6}')
   _DF_TEST=${_DF_TEST//[^0-9]/}
   if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt "90" ]; then
     echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
@@ -138,9 +138,9 @@ _msg() {
 
 _check_manufacturer_compatibility() {
   # Install dmidecode of not present
-  if ! command -v dmidecode &> /dev/null; then
-    /usr/bin/apt-get update --allow-insecure-repositories &> /dev/null
-    ${_INITINS} dmidecode &> /dev/null
+  if ! command -v dmidecode; then
+    /usr/bin/apt-get update --allow-insecure-repositories
+    ${_INITINS} dmidecode
   fi
   # Check if dmidecode is available
   _DMI_TEST=$(which dmidecode 2>&1)
@@ -150,7 +150,7 @@ _check_manufacturer_compatibility() {
     _HOST_INFO="Unknown, dmidecode not available"
   fi
   # Check for Amazon EC2 in the system manufacturer field
-  if dmidecode -s system-manufacturer | grep -i 'Amazon EC2' &> /dev/null; then
+  if dmidecode -s system-manufacturer | grep -i 'Amazon EC2'; then
     _VMFAMILY="AWS"
     _msg "Not supported environment detected: ${_HOST_INFO}" >> "${_logAds}"
     _msg "Please check https://bit.ly/boa-caveats" >> "${_logAds}"
@@ -199,33 +199,33 @@ _check_mysql_compatibility
 ###
 _faster_reboot() {
   _msg "Faster reboot prepare..." >> "${_logAds}"
-  service cron stop &> /dev/null
-  killall cron &> /dev/null
-  kill -9 $(ps aux | grep '[s]econd.sh' | awk '{print $2}') &> /dev/null
-  kill -9 $(ps aux | grep '[m]inute.sh' | awk '{print $2}') &> /dev/null
-  kill -9 $(ps aux | grep '[r]unner.sh' | awk '{print $2}') &> /dev/null
+  service cron stop
+  killall cron
+  kill -9 $(ps aux | grep '[s]econd.sh' | awk '{print $2}')
+  kill -9 $(ps aux | grep '[m]inute.sh' | awk '{print $2}')
+  kill -9 $(ps aux | grep '[r]unner.sh' | awk '{print $2}')
   _msg "Cron has been stopped" >> "${_logAds}"
   _msg "Now waiting 60 seconds for any running tasks to complete" >> "${_logAds}"
   sleep 55
   if [ -e "/etc/init.d/clamav-daemon" ]; then
-    update-rc.d -f clamav-daemon remove &> /dev/null
+    update-rc.d -f clamav-daemon remove
   fi
   if [ -e "/etc/init.d/clamav-freshclam" ]; then
-    update-rc.d -f clamav-freshclam remove &> /dev/null
+    update-rc.d -f clamav-freshclam remove
   fi
-  kill -9 $(ps aux | grep '[a]vahi-daemon' | awk '{print $2}') &> /dev/null
-  kill -9 $(ps aux | grep '[c]lamd' | awk '{print $2}') &> /dev/null
-  kill -9 $(ps aux | grep '[f]reshclam' | awk '{print $2}') &> /dev/null
-  kill -9 $(ps aux | grep '[j]ava' | awk '{print $2}') &> /dev/null
+  kill -9 $(ps aux | grep '[a]vahi-daemon' | awk '{print $2}')
+  kill -9 $(ps aux | grep '[c]lamd' | awk '{print $2}')
+  kill -9 $(ps aux | grep '[f]reshclam' | awk '{print $2}')
+  kill -9 $(ps aux | grep '[j]ava' | awk '{print $2}')
   rm -f /run/clamav/*
   _msg "Java/Solr/Clamav have been stopped" >> "${_logAds}"
-  service nginx stop &> /dev/null
-  killall nginx &> /dev/null
-  killall php &> /dev/null
-  kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}') &> /dev/null
+  service nginx stop
+  killall nginx
+  killall php
+  kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}')
   _msg "Nginx, PHP-CLI and PHP-FPM have been stopped" >> "${_logAds}"
-  csf -df &> /dev/null
-  csf -tf &> /dev/null
+  csf -df
+  csf -tf
   _msg "Firewall has been purged" >> "${_logAds}"
   if [ -e "/root/.my.pass.txt" ]; then
     _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
@@ -233,18 +233,18 @@ _faster_reboot() {
     _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
     if [ ! -z "${_IS_MYSQLD_RUNNING}" ] && [ ! -z "${_SQL_PSWD}" ]; then
       _msg "Preparing MySQLD for quick shutdown..." >> "${_logAds}"
-      mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
-      mysql -u root -e "SET GLOBAL innodb_change_buffering = 'none';" &> /dev/null
-      mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null
-      mysql -u root -e "SET GLOBAL innodb_io_capacity = 2000;" &> /dev/null
-      mysql -u root -e "SET GLOBAL innodb_io_capacity_max = 4000;" &> /dev/null
+      mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;"
+      mysql -u root -e "SET GLOBAL innodb_change_buffering = 'none';"
+      mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;"
+      mysql -u root -e "SET GLOBAL innodb_io_capacity = 2000;"
+      mysql -u root -e "SET GLOBAL innodb_io_capacity_max = 4000;"
       if [ "${_DB_V}" = "5.7" ]; then
-        mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_pct = 100;" &> /dev/null
-        mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_now = ON;" &> /dev/null
+        mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_pct = 100;"
+        mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_now = ON;"
       fi
-      mysql -u root -e "SET GLOBAL innodb_fast_shutdown = 1;" &> /dev/null
+      mysql -u root -e "SET GLOBAL innodb_fast_shutdown = 1;"
       _msg "Stopping MySQLD now..." >> "${_logAds}"
-      service mysql stop &> /dev/null
+      service mysql stop
       wait
       _msg "MySQLD stopped" >> "${_logAds}"
     else
@@ -295,7 +295,7 @@ _check_os_compatibility() {
 _check_os_compatibility
 
 if [ -x "/opt/local/bin/killer" ]; then
-  sed -i "s/.*killer.*//gi" /etc/crontab &> /dev/null
+  sed -i "s/.*killer.*//gi" /etc/crontab
   echo "*/1 *   * * *   root    bash /opt/local/bin/killer" >> /etc/crontab
 fi
 
@@ -304,11 +304,11 @@ _if_remove_cloud_utils() {
   if [[ ! "${_INITD_TEST}" =~ "No such file" ]] \
     || [ -e "/etc/cloud/cloud.cfg.d" ]; then
     _msg "Removing problematic cloud-utils detected on this system" >> "${_logAds}"
-    /usr/bin/apt-get update --allow-insecure-repositories 2> /dev/null
-    /usr/bin/apt-get remove cloud-utils cloud-init -y --purge --auto-remove -qq 2> /dev/null
-    /usr/bin/apt-get remove cloud-image-utils cloud-guest-utils -y --purge --auto-remove -qq 2> /dev/null
-    /usr/bin/apt-get autoremove --purge -y 2> /dev/null
-    /usr/bin/apt-get autoclean -y 2> /dev/null
+    /usr/bin/apt-get update --allow-insecure-repositories
+    /usr/bin/apt-get remove cloud-utils cloud-init -y --purge --auto-remove -qq
+    /usr/bin/apt-get remove cloud-image-utils cloud-guest-utils -y --purge --auto-remove -qq
+    /usr/bin/apt-get autoremove --purge -y
+    /usr/bin/apt-get autoclean -y
     if [ -e "/etc/cloud/cloud.cfg.d" ]; then
       mv -f /etc/cloud /var/backups/
     fi
@@ -330,7 +330,7 @@ _if_clean_boa_env() {
     if [ -e "/etc/init.d/clean-boa-env" ]; then
       chmod 700 /etc/init.d/clean-boa-env
       chown root:root /etc/init.d/clean-boa-env
-      update-rc.d clean-boa-env defaults &> /dev/null
+      update-rc.d clean-boa-env defaults
       touch /root/.run-auto-update-clean-boa-env.cnf
     else
       if [ -e "/var/backups/clean-boa-env-bak" ]; then
@@ -359,7 +359,7 @@ _if_fix_dhcp() {
       else
         for _IP in `grep DHCPREQUEST ${_DHCP_LOG} | cut -d ' ' -f13 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
       fi
-      csf -q &> /dev/null
+      csf -q
     fi
   fi
 }

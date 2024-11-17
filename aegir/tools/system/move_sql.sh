@@ -25,7 +25,7 @@ fi
       _B_NICE=19
     fi
 
-    renice ${_B_NICE} -p $$ &> /dev/null
+    renice ${_B_NICE} -p $$
 
 _create_locks() {
   echo "Creating locks..."
@@ -64,8 +64,8 @@ _start_sql() {
   fi
 
   echo "Starting MySQLD again..."
-  renice ${_B_NICE} -p $$ &> /dev/null
-  service mysql start &> /dev/null
+  renice ${_B_NICE} -p $$
+  service mysql start
   while [ -z "${_IS_MYSQLD_RUNNING}" ] \
     || [ ! -e "/run/mysqld/mysqld.sock" ]; do
     _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
@@ -84,20 +84,20 @@ _stop_sql() {
   _create_locks
 
   echo "Stopping Nginx now..."
-  service nginx stop &> /dev/null
+  service nginx stop
   until [ -z "${_IS_NGINX_RUNNING}" ]; do
     _IS_NGINX_RUNNING=$(ps aux | grep '[n]ginx' | awk '{print $2}' 2>&1)
     echo "Waiting for Nginx graceful shutdown..."
     sleep 1
   done
-  killall nginx &> /dev/null
+  killall nginx
   echo "Nginx stopped"
 
   echo "Stopping all PHP-FPM instances now..."
   _PHP_V="83 82 81 80 74 73 72 71 70 56 55 54 53"
   for e in ${_PHP_V}; do
     if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
-      service php${e}-fpm force-quit &> /dev/null
+      service php${e}-fpm force-quit
     fi
   done
   until [ -z "${_IS_FPM_RUNNING}" ]; do
@@ -105,7 +105,7 @@ _stop_sql() {
     echo "Waiting for PHP-FPM graceful shutdown..."
     sleep 1
   done
-  kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}') &> /dev/null
+  kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}')
   echo "PHP-FPM stopped"
 
   _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
@@ -127,19 +127,19 @@ _stop_sql() {
       echo "Preparing MySQLD for quick shutdown..."
       _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
       _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
-      mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
-      mysql -u root -e "SET GLOBAL innodb_change_buffering = 'none';" &> /dev/null
-      mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null
-      mysql -u root -e "SET GLOBAL innodb_io_capacity = 2000;" &> /dev/null
-      mysql -u root -e "SET GLOBAL innodb_io_capacity_max = 4000;" &> /dev/null
+      mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;"
+      mysql -u root -e "SET GLOBAL innodb_change_buffering = 'none';"
+      mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;"
+      mysql -u root -e "SET GLOBAL innodb_io_capacity = 2000;"
+      mysql -u root -e "SET GLOBAL innodb_io_capacity_max = 4000;"
       if [ "${_DB_V}" = "5.7" ]; then
-        mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_pct = 100;" &> /dev/null
-        mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_now = ON;" &> /dev/null
+        mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_pct = 100;"
+        mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_now = ON;"
       fi
     fi
-    mysql -u root -e "SET GLOBAL innodb_fast_shutdown = 1;" &> /dev/null
+    mysql -u root -e "SET GLOBAL innodb_fast_shutdown = 1;"
     echo "Stopping MySQLD now..."
-    service mysql stop &> /dev/null
+    service mysql stop
   else
     echo "MySQLD already stopped?"
     echo "Nothing to do. Bye!"

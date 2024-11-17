@@ -1371,9 +1371,9 @@ walk_chain() {
     # PEM
     if grep -q "BEGIN CERTIFICATE" "${tmpcert_raw}"; then mv "${tmpcert_raw}" "${tmpcert}"
     # DER
-    elif "${OPENSSL}" x509 -in "${tmpcert_raw}" -inform DER -out "${tmpcert}" -outform PEM 2> /dev/null > /dev/null; then :
+    elif "${OPENSSL}" x509 -in "${tmpcert_raw}" -inform DER -out "${tmpcert}" -outform PEM > /dev/null; then :
     # PKCS7
-    elif "${OPENSSL}" pkcs7 -in "${tmpcert_raw}" -inform DER -out "${tmpcert}" -outform PEM -print_certs 2> /dev/null > /dev/null; then :
+    elif "${OPENSSL}" pkcs7 -in "${tmpcert_raw}" -inform DER -out "${tmpcert}" -outform PEM -print_certs > /dev/null; then :
     # Unknown certificate type
     else _exiterr "Unknown certificate type in chain"
     fi

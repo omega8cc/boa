@@ -384,9 +384,9 @@ _local_ip_rg() {
       | tr -d "\s"`; do
       if [ ! -z "${_IP}" ]; then
         echo removing ${_IP} from d/t firewall rules
-        csf -ar ${_IP} &> /dev/null
-        csf -dr ${_IP} &> /dev/null
-        csf -tr ${_IP} &> /dev/null
+        csf -ar ${_IP}
+        csf -dr ${_IP}
+        csf -tr ${_IP}
       fi
       if [ ! -e "/root/.local.IP.csf.listed" ] && [ ! -z "${_IP}" ]; then
         echo removing ${_IP} from csf.ignore
@@ -593,8 +593,8 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
       | sort \
       | uniq \
       | tr -d "\s"`; do
-      csf -dr ${_IP} &> /dev/null
-      csf -tr ${_IP} &> /dev/null
+      csf -dr ${_IP}
+      csf -tr ${_IP}
     done
   fi
 
@@ -660,8 +660,8 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
     wait
   fi
 
-  kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
-  killall sleep &> /dev/null
+  kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}')
+  killall sleep
   rm -f /etc/csf/csf.error
   service lfd restart
   wait
@@ -677,9 +677,9 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
   if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
     _SACK_TEST=$(ip6tables --list | grep tcpmss 2>&1)
     if [[ ! "${_SACK_TEST}" =~ "tcpmss" ]]; then
-      sysctl net.ipv4.tcp_mtu_probing=0 &> /dev/null
-      iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
-      ip6tables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
+      sysctl net.ipv4.tcp_mtu_probing=0
+      iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP
+      ip6tables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP
     fi
   fi
 
@@ -699,8 +699,8 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
   rm -f /var/xdrago/monitor/log/web.log
   rm -f /var/xdrago/monitor/log/ftp.log
 
-  kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
-  killall sleep &> /dev/null
+  kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}')
+  killall sleep
   rm -f /etc/csf/csf.error
   service lfd restart
   wait
@@ -737,9 +737,9 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
   if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
     _SACK_TEST=$(ip6tables --list | grep tcpmss 2>&1)
     if [[ ! "${_SACK_TEST}" =~ "tcpmss" ]]; then
-      sysctl net.ipv4.tcp_mtu_probing=0 &> /dev/null
-      iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
-      ip6tables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
+      sysctl net.ipv4.tcp_mtu_probing=0
+      iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP
+      ip6tables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP
     fi
   fi
   rm -f /run/water.pid

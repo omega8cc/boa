@@ -46,9 +46,9 @@ _os_detection_minimal() {
 _os_detection_minimal
 
 _apt_clean_update() {
-  #apt-get clean -qq 2> /dev/null
-  #rm -rf /var/lib/apt/lists/* &> /dev/null
-  ${_APT_UPDATE} -qq 2> /dev/null
+  #apt-get clean -qq
+  #rm -rf /var/lib/apt/lists/*
+  ${_APT_UPDATE} -qq
 }
 
 _if_hosted_sys() {
@@ -89,8 +89,8 @@ _find_fast_mirror_early() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     _apt_clean_update
-    apt-get install netcat ${_aptYesUnth} 2> /dev/null
-    apt-get install netcat-traditional ${_aptYesUnth} 2> /dev/null
+    apt-get install netcat ${_aptYesUnth}
+    apt-get install netcat-traditional ${_aptYesUnth}
     wait
   fi
   _ffMirr=$(which ffmirror 2>&1)
@@ -136,7 +136,7 @@ _add_ltd_group_if_not_exists() {
   if [[ "${_LTD_EXISTS}" =~ "ltd-shell" ]]; then
     _DO_NOTHING=YES
   else
-    addgroup --system ltd-shell &> /dev/null
+    addgroup --system ltd-shell
   fi
 }
 #
@@ -164,7 +164,7 @@ _enable_chattr() {
       mkdir -p ${_U_HD}/usr
       mkdir -p ${_U_TP}
       touch ${_U_TP}
-      find ${_U_TP}/ -mtime +0 -exec rm -rf {} \; &> /dev/null
+      find ${_U_TP}/ -mtime +0 -exec rm -rf {} \;
       chown $1:${_usrGroup} ${_U_TP}
       chown $1:${_usrGroup} ${_U_HD}
       chmod 02755 ${_U_TP}
@@ -330,7 +330,7 @@ _enable_chattr() {
     fi
 
     _UQ="$1"
-    chage -M 99999 ${_UQ} &> /dev/null
+    chage -M 99999 ${_UQ}
     _UPDATE_GEMS=NO
     ###
     ### Cleanup of no longer used/allowed Ruby Gems and NPM access leftovers
@@ -422,7 +422,7 @@ _enable_chattr() {
       fi
     fi
     rm -f /home/${_UQ}/{.profile,.bash_logout,.bash_profile,.bashrc,.z_login,.zshrc}
-    chage -M 90 ${_UQ} &> /dev/null
+    chage -M 90 ${_UQ}
 
     if [ "$1" != "${_USER}.ftp" ]; then
       if [ -d "/home/$1/" ]; then
@@ -431,7 +431,7 @@ _enable_chattr() {
     else
       if [ -d "/home/$1/platforms/" ]; then
         chattr +i /home/$1/platforms/
-        chattr +i /home/$1/platforms/* &> /dev/null
+        chattr +i /home/$1/platforms/*
       fi
     fi
     if [ -d "/home/$1/.drush/" ]; then
@@ -461,7 +461,7 @@ _disable_chattr() {
     else
       if [ -d "/home/$1/platforms/" ]; then
         chattr -i /home/$1/platforms/
-        chattr -i /home/$1/platforms/* &> /dev/null
+        chattr -i /home/$1/platforms/*
       fi
     fi
     if [ -d "/home/$1/.drush/" ]; then
@@ -497,12 +497,12 @@ _kill_zombies() {
         if [ ! -L "${_SEC_SYM}" ] || [ ! -e "${_SEC_DIR}" ] \
           || [ ! -e "/home/${_usrParent}.ftp/users/${_Existing}" ]; then
           mkdir -p /var/backups/zombie/deleted/${_NOW}
-          kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
+          kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}')
           _disable_chattr ${_Existing}
           rm -rf /home/${_Existing}/.gnupg
           deluser \
             --remove-home \
-            --backup-to /var/backups/zombie/deleted/${_NOW} ${_Existing} &> /dev/null
+            --backup-to /var/backups/zombie/deleted/${_NOW} ${_Existing}
           rm -f /home/${_usrParent}.ftp/users/${_Existing}
           echo Zombie from etc.passwd ${_Existing} killed
           echo
@@ -566,8 +566,8 @@ _fix_dot_dirs() {
       chown -R ${_usrLtd}:${_usrGroup} ${_usrSsh}
       chmod 700 ${_usrSsh}
     fi
-    chmod 600 ${_usrSsh}/id_{r,d}sa &> /dev/null
-    chmod 600 ${_usrSsh}/known_hosts &> /dev/null
+    chmod 600 ${_usrSsh}/id_{r,d}sa
+    chmod 600 ${_usrSsh}/known_hosts
     _usrBzr="/home/${_usrLtd}/.bazaar"
     if [ -x "/usr/local/bin/bzr" ]; then
       if [ ! -z "${_usrLtd}" ] && [ ! -e "${_usrBzr}/bazaar.conf" ]; then
@@ -644,7 +644,7 @@ _ok_create_user() {
     _TMP="/var/tmp"
     if [ ! -L "${_SEC_SYM}" ]; then
       mkdir -p /var/backups/zombie/deleted/${_NOW}
-      mv -f ${_usrLtdRoot} /var/backups/zombie/deleted/${_NOW}/ &> /dev/null
+      mv -f ${_usrLtdRoot} /var/backups/zombie/deleted/${_NOW}/
     fi
     if [ ! -d "${_usrLtdRoot}" ]; then
       if [ -e "/usr/bin/mysecureshell" ] && [ -e "/etc/ssh/sftp_config" ]; then
@@ -758,7 +758,7 @@ _add_user_if_not_exists() {
         chown ${_usrLtd}:${_usrGroup} ${_usrTmp}
         chmod 02755 ${_usrTmp}
       fi
-      find ${_usrTmp} -mtime +0 -exec rm -rf {} \; &> /dev/null
+      find ${_usrTmp} -mtime +0 -exec rm -rf {} \;
       _ok_update_user
       _enable_chattr ${_usrLtd}
     fi
@@ -832,7 +832,7 @@ _php_cli_local_ini_update() {
     || [ ! -e "${_U_HD}/.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     mkdir -p ${_U_TP}
     touch ${_U_TP}
-    find ${_U_TP}/ -mtime +0 -exec rm -rf {} \; &> /dev/null
+    find ${_U_TP}/ -mtime +0 -exec rm -rf {} \;
     mkdir -p ${_U_HD}
     chown ${_USER}:${_usrGroup} ${_U_TP}
     chown ${_USER}:${_usrGroup} ${_U_HD}
@@ -928,34 +928,34 @@ _php_cli_drush_update() {
     _DRUSH_FILE="${_dscUsr}/tools/drush/drush.php"
   fi
   if [ "${_T_CLI_VRN}" = "8.3" ] && [ -x "/opt/php83/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php83\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
+    sed -i "s/^#\!\/.*/#\!\/opt\/php83\/bin\/php/g"  ${_DRUSH_FILE}
     _T_CLI=/opt/php83/bin
   elif [ "${_T_CLI_VRN}" = "8.2" ] && [ -x "/opt/php82/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php82\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
+    sed -i "s/^#\!\/.*/#\!\/opt\/php82\/bin\/php/g"  ${_DRUSH_FILE}
     _T_CLI=/opt/php82/bin
   elif [ "${_T_CLI_VRN}" = "8.1" ] && [ -x "/opt/php81/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php81\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
+    sed -i "s/^#\!\/.*/#\!\/opt\/php81\/bin\/php/g"  ${_DRUSH_FILE}
     _T_CLI=/opt/php81/bin
   elif [ "${_T_CLI_VRN}" = "8.0" ] && [ -x "/opt/php80/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php80\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
+    sed -i "s/^#\!\/.*/#\!\/opt\/php80\/bin\/php/g"  ${_DRUSH_FILE}
     _T_CLI=/opt/php80/bin
   elif [ "${_T_CLI_VRN}" = "7.4" ] && [ -x "/opt/php74/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php74\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
+    sed -i "s/^#\!\/.*/#\!\/opt\/php74\/bin\/php/g"  ${_DRUSH_FILE}
     _T_CLI=/opt/php74/bin
   elif [ "${_T_CLI_VRN}" = "7.3" ] && [ -x "/opt/php73/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php73\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
+    sed -i "s/^#\!\/.*/#\!\/opt\/php73\/bin\/php/g"  ${_DRUSH_FILE}
     _T_CLI=/opt/php73/bin
   elif [ "${_T_CLI_VRN}" = "7.2" ] && [ -x "/opt/php72/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php72\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
+    sed -i "s/^#\!\/.*/#\!\/opt\/php72\/bin\/php/g"  ${_DRUSH_FILE}
     _T_CLI=/opt/php72/bin
   elif [ "${_T_CLI_VRN}" = "7.1" ] && [ -x "/opt/php71/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php71\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
+    sed -i "s/^#\!\/.*/#\!\/opt\/php71\/bin\/php/g"  ${_DRUSH_FILE}
     _T_CLI=/opt/php71/bin
   elif [ "${_T_CLI_VRN}" = "7.0" ] && [ -x "/opt/php70/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php70\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
+    sed -i "s/^#\!\/.*/#\!\/opt\/php70\/bin\/php/g"  ${_DRUSH_FILE}
     _T_CLI=/opt/php70/bin
   elif [ "${_T_CLI_VRN}" = "5.6" ] && [ -x "/opt/php56/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php56\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
+    sed -i "s/^#\!\/.*/#\!\/opt\/php56\/bin\/php/g"  ${_DRUSH_FILE}
     _T_CLI=/opt/php56/bin
   else
     _T_CLI=/foo/bar
@@ -971,8 +971,8 @@ _php_cli_drush_update() {
       \n${_DRUSH_HOSTING_DISPATCH_CMD} \
       \ntouch ${_dscUsr}/${_USER}-task.done" \
       | fmt -su -w 2500 | tee -a ${_dscUsr}/aegir.sh >/dev/null 2>&1
-    chown ${_USER}:${_usrGroup} ${_dscUsr}/aegir.sh &> /dev/null
-    chmod 0700 ${_dscUsr}/aegir.sh &> /dev/null
+    chown ${_USER}:${_usrGroup} ${_dscUsr}/aegir.sh
+    chmod 0700 ${_dscUsr}/aegir.sh
   fi
   echo OK > ${_dscUsr}/static/control/.ctrl.cli.${_xSrl}.pid
 }
@@ -1101,7 +1101,7 @@ _disable_newrelic() {
       sed -i "s/^php_admin_value\[newrelic.enabled\].*/php_admin_value\[newrelic.enabled\] = \"false\"/g" ${_THIS_POOL_TPL}
       wait
       if [ "$3" = "1" ] && [ -e "/etc/init.d/php$1-fpm" ]; then
-        service php$1-fpm reload &> /dev/null
+        service php$1-fpm reload
       fi
     fi
   fi
@@ -1134,7 +1134,7 @@ _enable_newrelic() {
           echo "php_admin_value[newrelic.enabled] = \"true\"" >> ${_THIS_POOL_TPL}
         fi
         if [ "$3" = "1" ] && [ -e "/etc/init.d/php$1-fpm" ]; then
-          service php$1-fpm reload &> /dev/null
+          service php$1-fpm reload
         fi
       fi
     fi
@@ -1309,12 +1309,12 @@ _satellite_remove_web_user() {
       if [ -d "/home/${_WEB}/.drush/" ]; then
         chattr -i /home/${_WEB}/.drush/
       fi
-      kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
+      kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}')
       deluser \
         --remove-home \
-        --backup-to /var/backups/zombie/deleted ${_WEB} &> /dev/null
+        --backup-to /var/backups/zombie/deleted ${_WEB}
       if [ -d "/home/${_WEB}/" ]; then
-        rm -rf /home/${_WEB}/ &> /dev/null
+        rm -rf /home/${_WEB}/
       fi
     fi
   fi
@@ -1332,7 +1332,7 @@ _satellite_create_web_user() {
       _satellite_web_user_update "$1"
     elif [ -z "${_T_ID_EXISTS}" ] || [ ! -e "${_T_II}" ]; then
       _satellite_remove_web_user "clean"
-      adduser --force-badname --system --ingroup www-data --home /home/${_WEB} ${_WEB} &> /dev/null
+      adduser --force-badname --system --ingroup www-data --home /home/${_WEB} ${_WEB}
       _satellite_web_user_update "$1"
     fi
   fi
@@ -1440,7 +1440,7 @@ _site_socket_inc_gen() {
       rm -rf ${_preFpm}
       cp -af ${_mltFpm} ${_preFpm}
       ### reload nginx
-      service nginx reload &> /dev/null
+      service nginx reload
     fi
   else
     if [ -f "${_mltNgx}" ]; then
@@ -1463,11 +1463,11 @@ _switch_php() {
     || [ -e "${_dscUsr}/static/control/hhvm.info" ]; then
     echo "Custom FPM, HHVM or CLI settings for ${_USER} exist, running _switch_php checks"
     if [ ! -e "${_dscUsr}/log/un-chattr-ctrl.info" ]; then
-      chattr -i ${_dscUsr}/static/control/fpm.info &> /dev/null
-      chattr -i ${_dscUsr}/static/control/cli.info &> /dev/null
-      chattr -i ${_dscUsr}/log/fpm.txt &> /dev/null
-      chattr -i ${_dscUsr}/log/cli.txt &> /dev/null
-      chattr -i ${_dscUsr}/config/server_master/nginx/post.d/fpm_include_default.inc &> /dev/null
+      chattr -i ${_dscUsr}/static/control/fpm.info
+      chattr -i ${_dscUsr}/static/control/cli.info
+      chattr -i ${_dscUsr}/log/fpm.txt
+      chattr -i ${_dscUsr}/log/cli.txt
+      chattr -i ${_dscUsr}/config/server_master/nginx/post.d/fpm_include_default.inc
       touch ${_dscUsr}/log/un-chattr-ctrl.info
     fi
     if [ ! -e "${_dscUsr}/static/control/.single-fpm.${_xSrl}.pid" ]; then
@@ -1577,7 +1577,7 @@ _switch_php() {
           if [ -x "${_T_CLI}/php" ]; then
             _php_cli_local_ini_update
             sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${_T_CLI_VRN}/g" \
-              /root/.${_USER}.octopus.cnf &> /dev/null
+              /root/.${_USER}.octopus.cnf
             wait
             echo ${_T_CLI_VRN} > ${_dscUsr}/log/cli.txt
             echo ${_T_CLI_VRN} > ${_dscUsr}/static/control/cli.info
@@ -1597,26 +1597,26 @@ _switch_php() {
           _satellite_create_web_user "hhvm"
           ### configure custom hhvm server init.d script
           cp -af /var/xdrago/conf/hhvm/init.d/hhvm.foo /etc/init.d/hhvm.${_USER}
-          sed -i "s/foo/${_USER}/g" /etc/init.d/hhvm.${_USER} &> /dev/null
+          sed -i "s/foo/${_USER}/g" /etc/init.d/hhvm.${_USER}
           wait
-          sed -i "s/.ftp/.web/g" /etc/init.d/hhvm.${_USER} &> /dev/null
+          sed -i "s/.ftp/.web/g" /etc/init.d/hhvm.${_USER}
           wait
           chmod 755 /etc/init.d/hhvm.${_USER}
           chown root:root /etc/init.d/hhvm.${_USER}
-          update-rc.d hhvm.${_USER} defaults &> /dev/null
+          update-rc.d hhvm.${_USER} defaults
           ### configure custom hhvm server ini file
           mkdir -p /opt/hhvm
           cp -af /var/xdrago/conf/hhvm/server.foo.ini /opt/hhvm/server.${_USER}.ini
-          sed -i "s/foo/${_USER}/g" /opt/hhvm/server.${_USER}.ini &> /dev/null
+          sed -i "s/foo/${_USER}/g" /opt/hhvm/server.${_USER}.ini
           wait
-          sed -i "s/.ftp/.web/g" /opt/hhvm/server.${_USER}.ini &> /dev/null
+          sed -i "s/.ftp/.web/g" /opt/hhvm/server.${_USER}.ini
           wait
           chmod 755 /opt/hhvm/server.${_USER}.ini
           chown root:root /opt/hhvm/server.${_USER}.ini
           mkdir -p /var/log/hhvm/${_USER}
           chown ${_WEB}:${_WEBG} /var/log/hhvm/${_USER}
           ### start custom hhvm server
-          service hhvm.${_USER} start &> /dev/null
+          service hhvm.${_USER} start
           ### remove fpm control file to avoid confusion
           rm -f ${_dscUsr}/static/control/fpm.info
           ### update nginx configuration
@@ -1627,7 +1627,7 @@ _switch_php() {
             ${_dscUsr}/.drush/sys/provision/http/Provision/Config/Nginx/Inc/vhost_include.tpl.php
           wait
           ### reload nginx
-          service nginx reload &> /dev/null
+          service nginx reload
         fi
       fi
     else
@@ -1636,8 +1636,8 @@ _switch_php() {
         || [ -e "/run/hhvm/${_USER}" ]  ; then
         ### disable no longer used custom hhvm server instance
         if [ -e "/etc/init.d/hhvm.${_USER}" ]; then
-          service hhvm.${_USER} stop &> /dev/null
-          update-rc.d -f hhvm.${_USER} remove &> /dev/null
+          service hhvm.${_USER} stop
+          update-rc.d -f hhvm.${_USER} remove
           rm -f /etc/init.d/hhvm.${_USER}
         fi
         ### delete special system user no longer needed
@@ -1654,7 +1654,7 @@ _switch_php() {
           ${_dscUsr}/.drush/sys/provision/http/Provision/Config/Nginx/Inc/vhost_include.tpl.php
         wait
         ### reload nginx
-        service nginx reload &> /dev/null
+        service nginx reload
         ### create dummy control file to enable PHP-FPM again
         echo 7.4 > ${_dscUsr}/static/control/fpm.info
         chown ${_USER}.ftp:${_usrGroup} ${_dscUsr}/static/control/fpm.info
@@ -1678,7 +1678,7 @@ _switch_php() {
         if [ -e "${_dscUsr}/config/server_master/nginx/post.d/fpm_include_default.inc" ]; then
           rm -f ${_dscUsr}/config/server_master/nginx/post.d/fpm_include_*
           rm -f ${_dscUsr}/static/control/.multi-fpm*.pid
-          service nginx reload &> /dev/null
+          service nginx reload
         fi
       fi
       _T_FPM_VRN=$(cat ${_dscUsr}/static/control/fpm.info 2>&1)
@@ -1810,7 +1810,7 @@ _switch_php() {
           && [ "${_NEW_FPM_SETUP}" = "YES" ]; then
           _satellite_tune_fpm_workers
           sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${_T_FPM_VRN}/g" \
-            /root/.${_USER}.octopus.cnf &> /dev/null
+            /root/.${_USER}.octopus.cnf
           wait
           echo ${_T_FPM_VRN} > ${_dscUsr}/log/fpm.txt
           if [ "${_PHP_FPM_MULTI}" = "NO" ]; then
@@ -1904,42 +1904,42 @@ _switch_php() {
                   /opt/php${m}/etc/pool.d/${_POOL}.conf
               fi
               sed -i "s/.ftp/.web/g" \
-                /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
+                /opt/php${m}/etc/pool.d/${_POOL}.conf
               wait
               sed -i "s/\/data\/disk\/foo\/.tmp/\/home\/foo.web\/.tmp/g" \
-                /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
+                /opt/php${m}/etc/pool.d/${_POOL}.conf
               wait
               sed -i "s/foo.web/${_WEB}/g" \
-                /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
+                /opt/php${m}/etc/pool.d/${_POOL}.conf
               wait
               sed -i "s/THISPOOL/${_POOL}/g" \
-                /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
+                /opt/php${m}/etc/pool.d/${_POOL}.conf
               wait
               sed -i "s/foo/${_USER}/g" \
-                /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
+                /opt/php${m}/etc/pool.d/${_POOL}.conf
               wait
               if [ ! -z "${_PHP_FPM_DENY}" ]; then
                 sed -i "s/passthru,/${_PHP_FPM_DENY},/g" \
-                  /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
+                  /opt/php${m}/etc/pool.d/${_POOL}.conf
                 wait
               fi
               if [ ! -z "${_PHP_FPM_TIMEOUT}" ] && [ "${_PHP_FPM_TIMEOUT}" -ge "60" ]; then
                 _PHP_TO="${_PHP_FPM_TIMEOUT}s"
-                sed -i "s/180s/${_PHP_TO}/g" /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
+                sed -i "s/180s/${_PHP_TO}/g" /opt/php${m}/etc/pool.d/${_POOL}.conf
                 wait
               fi
               if [ ! -z "${_CHILD_MAX_FPM}" ] && [ "${_CHILD_MAX_FPM}" -ge "2" ]; then
                 sed -i "s/pm.max_children =.*/pm.max_children = ${_CHILD_MAX_FPM}/g" \
-                  /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
+                  /opt/php${m}/etc/pool.d/${_POOL}.conf
                 wait
               fi
               _switch_newrelic ${m} ${_POOL} 0
               _nrCheck=YES
               if [ -e "/etc/init.d/php${_PHP_OLD_SV}-fpm" ]; then
-                service php${_PHP_OLD_SV}-fpm reload &> /dev/null
+                service php${_PHP_OLD_SV}-fpm reload
               fi
               if [ -e "/etc/init.d/php${m}-fpm" ]; then
-                service php${m}-fpm reload &> /dev/null
+                service php${m}-fpm reload
               fi
             fi
           done
@@ -2030,7 +2030,7 @@ _manage_site_drush_alias_mirror() {
           rm -f ${_pthAliasCopy}
           echo "ZOMBIE ${_SiteDir} detected"
           echo "Moving GHOST ${_SiteName}.alias.drushrc.php to ${_pthParen_tUsr}/undo/"
-          mv -f ${_pthParen_tUsr}/.drush/${_SiteName}.alias.drushrc.php ${_pthParen_tUsr}/undo/ &> /dev/null
+          mv -f ${_pthParen_tUsr}/.drush/${_SiteName}.alias.drushrc.php ${_pthParen_tUsr}/undo/
           echo
         fi
       fi
@@ -2039,24 +2039,24 @@ _manage_site_drush_alias_mirror() {
   if [ -x "/usr/bin/drush10" ]; then
     if [ "${_isAliasUpdate}" = "YES" ] \
       || [ ! -e "/home/${_USER}.ftp/.drush/sites/.checksums" ]; then
-      chage -M 99999 ${_USER}.ftp &> /dev/null
+      chage -M 99999 ${_USER}.ftp
       su -s /bin/bash - ${_USER}.ftp -c "rm -f ~/.drush/sites/*.yml"
       wait
       su -s /bin/bash - ${_USER}.ftp -c "rm -f ~/.drush/sites/.checksums/*.md5"
       wait
-      su -s /bin/bash - ${_USER}.ftp -c "drush10 core:init --yes" &> /dev/null
+      su -s /bin/bash - ${_USER}.ftp -c "drush10 core:init --yes"
       wait
-      su -s /bin/bash - ${_USER}.ftp -c "drush10 site:alias-convert ~/.drush/sites --yes" &> /dev/null
+      su -s /bin/bash - ${_USER}.ftp -c "drush10 site:alias-convert ~/.drush/sites --yes"
       wait
-      chage -M 90 ${_USER}.ftp &> /dev/null
+      chage -M 90 ${_USER}.ftp
       ### Update Drush yml sites aliases also for Aegir system user
       su -s /bin/bash - ${_USER} -c "rm -f ~/.drush/sites/*.yml"
       wait
       su -s /bin/bash - ${_USER} -c "rm -f ~/.drush/sites/.checksums/*.md5"
       wait
-      su -s /bin/bash - ${_USER} -c "drush10 core:init --yes" &> /dev/null
+      su -s /bin/bash - ${_USER} -c "drush10 core:init --yes"
       wait
-      su -s /bin/bash - ${_USER} -c "drush10 site:alias-convert ~/.drush/sites --yes" &> /dev/null
+      su -s /bin/bash - ${_USER} -c "drush10 site:alias-convert ~/.drush/sites --yes"
       wait
     fi
   fi
@@ -2085,35 +2085,35 @@ _manage_user() {
         [ -e "${_dscUsr}/log/post-merge-fix.pid" ] && mv -f ${_dscUsr}/log/post-merge-fix.pid ${_dscUsr}/src/
       fi
       if [ ! -e "${_dscUsr}/rector.php" ]; then
-        rm -f ${_dscUsr}/*.php* &> /dev/null
-        rm -f ${_dscUsr}/composer.lock &> /dev/null
-        rm -f ${_dscUsr}/composer.json &> /dev/null
-        rm -f -r ${_dscUsr}/vendor &> /dev/null
-        rm -f -r ${_dscUsr}/static/vendor &> /dev/null
-        rm -f -r ${_dscUsr}/.cache/composer &> /dev/null
-        rm -f -r ${_dscUsr}/.config/composer &> /dev/null
-        rm -f -r ${_dscUsr}/.composer &> /dev/null
+        rm -f ${_dscUsr}/*.php*
+        rm -f ${_dscUsr}/composer.lock
+        rm -f ${_dscUsr}/composer.json
+        rm -f -r ${_dscUsr}/vendor
+        rm -f -r ${_dscUsr}/static/vendor
+        rm -f -r ${_dscUsr}/.cache/composer
+        rm -f -r ${_dscUsr}/.config/composer
+        rm -f -r ${_dscUsr}/.composer
       fi
-      chmod 0440 ${_dscUsr}/.drush/*.php &> /dev/null
-      chmod 0400 ${_dscUsr}/.drush/drushrc.php &> /dev/null
-      chmod 0400 ${_dscUsr}/.drush/hm.alias.drushrc.php &> /dev/null
-      chmod 0400 ${_dscUsr}/.drush/hostmaster*.php &> /dev/null
-      chmod 0400 ${_dscUsr}/.drush/platform_*.php &> /dev/null
-      chmod 0400 ${_dscUsr}/.drush/server_*.php &> /dev/null
-      chmod 0710 ${_dscUsr}/.drush &> /dev/null
+      chmod 0440 ${_dscUsr}/.drush/*.php
+      chmod 0400 ${_dscUsr}/.drush/drushrc.php
+      chmod 0400 ${_dscUsr}/.drush/hm.alias.drushrc.php
+      chmod 0400 ${_dscUsr}/.drush/hostmaster*.php
+      chmod 0400 ${_dscUsr}/.drush/platform_*.php
+      chmod 0400 ${_dscUsr}/.drush/server_*.php
+      chmod 0710 ${_dscUsr}/.drush
       find ${_dscUsr}/config/server_master \
-        -type d -exec chmod 0700 {} \; &> /dev/null
+        -type d -exec chmod 0700 {} \;
       find ${_dscUsr}/config/server_master \
-        -type f -exec chmod 0600 {} \; &> /dev/null
-      chmod +rx ${_dscUsr}/config{,/server_master{,/nginx{,/passwords.d}}} &> /dev/null
-      chmod +r ${_dscUsr}/config/server_master/nginx/passwords.d/* &> /dev/null
+        -type f -exec chmod 0600 {} \;
+      chmod +rx ${_dscUsr}/config{,/server_master{,/nginx{,/passwords.d}}}
+      chmod +r ${_dscUsr}/config/server_master/nginx/passwords.d/*
       if [ ! -e "${_dscUsr}/.tmp/.ctrl.${_tRee}.${_xSrl}.pid" ]; then
         rm -rf ${_dscUsr}/.drush/cache
         mkdir -p ${_dscUsr}/.tmp
         touch ${_dscUsr}/.tmp
-        find ${_dscUsr}/.tmp/ -mtime +0 -exec rm -rf {} \; &> /dev/null
-        chown ${_USER}:${_usrGroup} ${_dscUsr}/.tmp &> /dev/null
-        chmod 02755 ${_dscUsr}/.tmp &> /dev/null
+        find ${_dscUsr}/.tmp/ -mtime +0 -exec rm -rf {} \;
+        chown ${_USER}:${_usrGroup} ${_dscUsr}/.tmp
+        chmod 02755 ${_dscUsr}/.tmp
         echo OK > ${_dscUsr}/.tmp/.ctrl.${_tRee}.${_xSrl}.pid
       fi
       if [ ! -e "${_dscUsr}/static/control/.ctrl.${_tRee}.${_xSrl}.pid" ] \
@@ -2122,7 +2122,7 @@ _manage_user() {
         chmod 755 ${_dscUsr}/static/control
         if [ -e "/var/xdrago/conf/control-readme.txt" ]; then
           cp -af /var/xdrago/conf/control-readme.txt \
-            ${_dscUsr}/static/control/README.txt &> /dev/null
+            ${_dscUsr}/static/control/README.txt
           chmod 0644 ${_dscUsr}/static/control/README.txt
         fi
         chown -R ${_USER}.ftp:${_usrGroup} ${_dscUsr}/static/control
@@ -2151,7 +2151,7 @@ _manage_user() {
       _nrCheck=
       _switch_php
       ### reload nginx
-      ### service nginx reload &> /dev/null
+      ### service nginx reload
       if [ -z ${_nrCheck} ]; then
         if [ -z ${_PHP_SV} ]; then
           _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
@@ -2177,14 +2177,14 @@ _manage_user() {
       _site_socket_inc_gen
       if [ -e "${_pthParen_tUsr}/clients" ] && [ ! -z ${_USER} ]; then
         echo Managing Users for ${_pthParen_tUsr} Instance
-        rm -rf ${_pthParen_tUsr}/clients/admin &> /dev/null
-        rm -rf ${_pthParen_tUsr}/clients/omega8ccgmailcom &> /dev/null
-        rm -rf ${_pthParen_tUsr}/clients/nocomega8cc &> /dev/null
-        rm -rf ${_pthParen_tUsr}/clients/*/backups &> /dev/null
-        symlinks -dr ${_pthParen_tUsr}/clients &> /dev/null
+        rm -rf ${_pthParen_tUsr}/clients/admin
+        rm -rf ${_pthParen_tUsr}/clients/omega8ccgmailcom
+        rm -rf ${_pthParen_tUsr}/clients/nocomega8cc
+        rm -rf ${_pthParen_tUsr}/clients/*/backups
+        symlinks -dr ${_pthParen_tUsr}/clients
         if [ -d "/home/${_USER}.ftp" ]; then
           _disable_chattr ${_USER}.ftp
-          symlinks -dr /home/${_USER}.ftp &> /dev/null
+          symlinks -dr /home/${_USER}.ftp
           echo >> ${_THIS_LTD_CONF}
           echo "[${_USER}.ftp]" >> ${_THIS_LTD_CONF}
           echo "path : ['/opt/user/npm/${_USER}.ftp', \
@@ -2211,8 +2211,8 @@ _manage_user() {
             rm -rf /home/${_USER}.ftp/.drush/cache
             rm -rf /home/${_USER}.ftp/.tmp
             mkdir -p /home/${_USER}.ftp/.tmp
-            chown ${_USER}.ftp:${_usrGroup} /home/${_USER}.ftp/.tmp &> /dev/null
-            chmod 700 /home/${_USER}.ftp/.tmp &> /dev/null
+            chown ${_USER}.ftp:${_usrGroup} /home/${_USER}.ftp/.tmp
+            chmod 700 /home/${_USER}.ftp/.tmp
             echo OK > /home/${_USER}.ftp/.tmp/.ctrl.${_tRee}.${_xSrl}.pid
           fi
           _enable_chattr ${_USER}.ftp
@@ -2307,14 +2307,14 @@ if [ ! -e "/home/.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     if [[ "${_homedir}" = **/home/** ]]; then
       if [ -d "${_homedir}" ]; then
         chattr -i ${_homedir}
-        chown ${_uid}:${_gid} ${_homedir} &> /dev/null
+        chown ${_uid}:${_gid} ${_homedir}
         if [ -d "${_homedir}/.ssh" ]; then
           chattr -i ${_homedir}/.ssh
-          chown -R ${_uid}:${_gid} ${_homedir}/.ssh &> /dev/null
+          chown -R ${_uid}:${_gid} ${_homedir}/.ssh
         fi
         if [ -d "${_homedir}/.tmp" ]; then
           chattr -i ${_homedir}/.tmp
-          chown -R ${_uid}:${_gid} ${_homedir}/.tmp &> /dev/null
+          chown -R ${_uid}:${_gid} ${_homedir}/.tmp
         fi
         if [ -d "${_homedir}/.drush" ]; then
           chattr +i ${_homedir}/.drush/usr
@@ -2358,7 +2358,7 @@ else
   touch /run/manage_ltd_users.pid
   _count_cpu
   _find_fast_mirror_early
-  find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -rf {} \; &> /dev/null
+  find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -rf {} \;
   if [ ! -e "${_pthLog}/node.manage.lshell.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     _fix_node_in_lshell_access
     touch ${_pthLog}/node.manage.lshell.ctrl.${_tRee}.${_xSrl}.pid
@@ -2441,20 +2441,20 @@ else
   fi
   rm -f ${_TMP}/*.txt
   if [ ! -e "/root/.home.no.wildcard.chmod.cnf" ]; then
-    chmod 700 /home/* &> /dev/null
+    chmod 700 /home/*
   fi
   chmod 0600 /var/log/lsh/*
-  chmod 0440 /var/aegir/.drush/*.php &> /dev/null
-  chmod 0400 /var/aegir/.drush/drushrc.php &> /dev/null
-  chmod 0400 /var/aegir/.drush/hm.alias.drushrc.php &> /dev/null
-  chmod 0400 /var/aegir/.drush/hostmaster*.php &> /dev/null
-  chmod 0400 /var/aegir/.drush/platform_*.php &> /dev/null
-  chmod 0400 /var/aegir/.drush/server_*.php &> /dev/null
-  chmod 0710 /var/aegir/.drush &> /dev/null
+  chmod 0440 /var/aegir/.drush/*.php
+  chmod 0400 /var/aegir/.drush/drushrc.php
+  chmod 0400 /var/aegir/.drush/hm.alias.drushrc.php
+  chmod 0400 /var/aegir/.drush/hostmaster*.php
+  chmod 0400 /var/aegir/.drush/platform_*.php
+  chmod 0400 /var/aegir/.drush/server_*.php
+  chmod 0710 /var/aegir/.drush
   find /var/aegir/config/server_master \
-    -type d -exec chmod 0700 {} \; &> /dev/null
+    -type d -exec chmod 0700 {} \;
   find /var/aegir/config/server_master \
-    -type f -exec chmod 0600 {} \; &> /dev/null
+    -type f -exec chmod 0600 {} \;
   sleep 5
   [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
   exit 0
