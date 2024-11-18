@@ -150,7 +150,7 @@ _set_backup_target() {
         _s3_options="${_s3_options} --s3-use-ia"
       fi
 
-      _BACKUP_TARGET="boto3+s3://${_BUCKET} ${_s3_options}"
+      _BACKUP_TARGET="boto3+s3://${_BUCKET_NAME} ${_s3_options}"
       ;;
     gcs)
       _load_credentials "gcs" "${_user}"
