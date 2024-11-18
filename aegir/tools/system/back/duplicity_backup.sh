@@ -137,20 +137,20 @@ _set_backup_target() {
   local _user=$2
 
   case "${_service}" in
-    aws)
-      _load_credentials "aws" "${_user}"
-      _construct_bucket_name "aws" "${_user}"
-      _BACKUP_TARGET="s3://${AWS_REGION}.amazonaws.com/${_BUCKET_NAME}"
-      ;;
-    aws_one_zone)
-      _load_credentials "aws_one_zone" "${_user}"
-      _construct_bucket_name "aws_one_zone" "${_user}"
-      _BACKUP_TARGET="s3://${AWS_REGION}.amazonaws.com/${_BUCKET_NAME}"
-      ;;
-    aws_standard_ia)
-      _load_credentials "aws_standard_ia" "${_user}"
-      _construct_bucket_name "aws_standard_ia" "${_user}"
-      _BACKUP_TARGET="s3://${AWS_REGION}.amazonaws.com/${_BUCKET_NAME}"
+    aws|aws_one_zone|aws_standard_ia)
+      _load_credentials "${_service}" "${_user}"
+      _construct_bucket_name "${_service}" "${_user}"
+
+      # Define S3-specific options
+      local _s3_endpoint="https://s3.dualstack.${AWS_REGION}.amazonaws.com"
+      local _s3_options="--s3-endpoint-url ${_s3_endpoint} --s3-region-name ${AWS_REGION}"
+
+      # Use intelligent-tiering options for specific services
+      if [ "${_service}" = "aws_standard_ia" ] || [ "${_service}" = "aws_one_zone" ]; then
+        _s3_options="${_s3_options} --s3-use-ia"
+      fi
+
+      _BACKUP_TARGET="boto3+s3://${_BUCKET} ${_s3_options}"
       ;;
     gcs)
       _load_credentials "gcs" "${_user}"
