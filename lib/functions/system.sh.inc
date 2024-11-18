@@ -2877,6 +2877,7 @@ _php_install_deps() {
   _apt_clean_update
   _mrun "${_INSTAPP} cmake" 2> /dev/null
   _mrun "${_INSTAPP} lbzip2" 2> /dev/null
+  _mrun "${_INSTAPP} zstd" 2> /dev/null
   if [ ! -e "/usr/local/include/curl/curl.h" ] \
     && [ ! -e "/usr/local/include/curl/easy.h" ]; then
     _mrun "${_INSTAPP} libcurl4-openssl-dev" 2> /dev/null

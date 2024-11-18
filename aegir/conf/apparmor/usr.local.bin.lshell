@@ -150,6 +150,7 @@
   /usr/bin/unzip mrix,
   /usr/bin/wget mrix,
   /usr/bin/which.debianutils mrix,
+  /usr/bin/zstd mrix,
   /usr/lib/node_modules/npm/bin/** mrix,
   /usr/local/bin/composer mrix,
   /usr/local/bin/curl mrix,
