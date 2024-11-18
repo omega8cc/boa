@@ -112,9 +112,9 @@ EOF
   # Create the final paths configuration file
   local _global_paths_file="${_global_config_dir}/paths.txt"
   cat << EOF > "${_global_paths_file}"
-SOURCE="/etc /var/aegir /var/www /home /data"
-INCLUDE="--include-filelist ${_merged_include_file}"
-EXCLUDE="--exclude-filelist ${_merged_exclude_file}"
+_SOURCE="/etc /var/aegir /var/www /home /data"
+_INCLUDE="--include-filelist ${_merged_include_file}"
+_EXCLUDE="--exclude-filelist ${_merged_exclude_file}"
 EOF
 
   echo "Global paths configuration created or updated at ${_global_paths_file}"

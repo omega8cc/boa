@@ -109,9 +109,9 @@ EOF
   # Create the final paths configuration file
   local _user_config_file="${_user_config_dir}/paths.txt"
   cat << EOF > "${_user_config_file}"
-SOURCE="/data/disk/${_user}"
-INCLUDE="--include-filelist ${_merged_include_file} --include-regexp-filelist ${_user_config_dir}/.backboa.${_user}.include_regexp.merged"
-EXCLUDE="--exclude-filelist ${_merged_exclude_file} --exclude-regexp-filelist ${_user_config_dir}/.backboa.${_user}.exclude_regexp.merged"
+_SOURCE="/data/disk/${_user}"
+_INCLUDE="--include-filelist ${_merged_include_file} --include-regexp-filelist ${_user_config_dir}/.backboa.${_user}.include_regexp.merged"
+_EXCLUDE="--exclude-filelist ${_merged_exclude_file} --exclude-regexp-filelist ${_user_config_dir}/.backboa.${_user}.exclude_regexp.merged"
 EOF
 
   echo "Paths configuration for ${_user} created or updated at ${_user_config_file}"
