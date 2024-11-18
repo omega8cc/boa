@@ -268,7 +268,7 @@ _compress_backup() {
       if [ -e "${DbPath}/metadata" ]; then
         DbName=$(echo ${DbPath} | cut -d'/' -f7 | awk '{ print $1}' 2>&1)
         cd ${_SAVELOCATION}
-        tar cvfj ${DbName}-${_DATE}.tar.bz2 ${DbName} &> /dev/null
+        tar -I zstd -cf ${DbName}-${_DATE}.tar.zst ${DbName} &> /dev/null
         rm -f -r ${DbName}
       fi
     done
