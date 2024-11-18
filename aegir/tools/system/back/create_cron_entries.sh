@@ -100,7 +100,7 @@ _generate_backup_schedule() {
   for _user_dir in /data/disk/*; do
     if [ -d "${_user_dir}" ]; then
       _user=$(basename "${_user_dir}")
-      _USER_CRED_DIR="/data/disk/${_user}/static/control/backups_credentials"
+      _USER_CRED_DIR="/data/disk/${_user}/static/control/remote_backups/credentials"
       _USER_CONFIG_DIR="/data/disk/${_user}/remote_backups"
       for _service in aws aws_one_zone aws_standard_ia gcs b2 azure upcloud ibm wasabi do_spaces linode; do
         if [ -f "${_USER_CRED_DIR}/${_service}.txt" ] && ! grep -q "your_" "${_USER_CRED_DIR}/${_service}.txt"; then
