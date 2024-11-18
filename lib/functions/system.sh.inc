@@ -5366,37 +5366,49 @@ _run_aptitude_deps_install() {
   _apt_clean_update
   _mrun "apt-get remove percona-xtrabackup-24 -y --purge --auto-remove -qq" 2> /dev/null
   _mrun "apt-get autoremove -y" 2> /dev/null
-  _mrun "${_INSTAPP} time vim cvs makepasswd man-db dnsutils sudo symlinks iptables" 2> /dev/null
-  _mrun "${_INSTAPP} build-essential libsasl2-modules autoconf automake autotools-dev m4 bc" 2> /dev/null
+  _mrun "${_INSTAPP} build-essential libsasl2-modules" 2> /dev/null
+  _mrun "${_INSTAPP} time vim cvs makepasswd" 2> /dev/null
+  _mrun "${_INSTAPP} man-db dnsutils sudo symlinks iptables" 2> /dev/null
+  _mrun "${_INSTAPP} autoconf automake autotools-dev m4 bc" 2> /dev/null
   if [ ! -x "/usr/local/bin/curl" ]; then
     _mrun "apt-get build-dep curl -y" 2> /dev/null
     _mrun "${_INSTAPP} curl" 2> /dev/null
   fi
   _mrun "apt-get remove libssl1.0-dev -y --purge --auto-remove -qq" 2> /dev/null
-  _mrun "${_INSTAPP} libssl-dev libc-client2007e libc-client2007e-dev mcrypt libc-client-dev" 2> /dev/null
+  _mrun "${_INSTAPP} libssl-dev" 2> /dev/null
+  _mrun "${_INSTAPP} libc-client2007e libc-client2007e-dev" 2> /dev/null
+  _mrun "${_INSTAPP} mcrypt libc-client-dev" 2> /dev/null
   if [ "${_OS_DIST}" = "Devuan" ]; then
     _mrun "${_INSTAPP} apticron aptitude apt-listchanges" 2> /dev/null
   else
     _mrun "${_INSTAPP} apticron aptitude" 2> /dev/null
     _mrun "dpkg --remove --force-remove-reinstreq apt-listchanges" 2> /dev/null
   fi
-  _mrun "${_INSTAPP} sysstat telnet cron gnupg2 gnupg unzip unrtf wdiff pwgen flex re2c" 2> /dev/null
-  _mrun "${_INSTAPP} rsync strace ntpdate python-dev mc whois zlib1g zlib1g-dev librsync-dev" 2> /dev/null
-  _mrun "${_INSTAPP} sqlite3 libsqlite3-dev s4cmd xml-core xml2 xpdf libtool rrdtool gdebi-core" 2> /dev/null
-  _mrun "${_INSTAPP} ssh ssl-cert libpam-umask shtool ncurses-dev ncurses-term sipcalc" 2> /dev/null
+  _mrun "${_INSTAPP} sysstat telnet cron gnupg2 gnupg" 2> /dev/null
+  _mrun "${_INSTAPP} unzip unrtf wdiff pwgen flex re2c" 2> /dev/null
+  _mrun "${_INSTAPP} rsync strace ntpdate python-dev" 2> /dev/null
+  _mrun "${_INSTAPP} mc whois zlib1g zlib1g-dev librsync-dev" 2> /dev/null
+  _mrun "${_INSTAPP} sqlite3 libsqlite3-dev s4cmd" 2> /dev/null
+  _mrun "${_INSTAPP} ssh ssl-cert libpam-umask shtool" 2> /dev/null
+  _mrun "${_INSTAPP} xml-core xml2 xpdf libtool rrdtool" 2> /dev/null
+  _mrun "${_INSTAPP} ncurses-dev ncurses-term sipcalc" 2> /dev/null
   _OS_LIST="daedalus chimaera bullseye bookworm"
   for e in ${_OS_LIST}; do
     if [ "${e}" = "${_OS_CODE}" ]; then
       _mrun "${_INSTAPP} ncal" 2> /dev/null
     fi
   done
-  _mrun "${_INSTAPP} libfontconfig1 libxrender1 libxcb1 libxcb1-dev libx11-6 libfreetype6 libfreetype6-dev" 2> /dev/null
-  _mrun "${_INSTAPP} libfribidi0 libgeoip-dev libgeoip1 libgmp3-dev libjpeg62-turbo libjpeg62-turbo-dev" 2> /dev/null
-  _mrun "${_INSTAPP} netcat libzip-dev libwww-perl libonig-dev libpq5 libxml2-dev libxpm4 xfonts-base xfonts-75dpi" 2> /dev/null
-  _mrun "${_INSTAPP} libxslt-dev libxslt1-dev libxslt1.1 subversion libaprutil1 libapr1 ldap-utils ipset" 2> /dev/null
-  _mrun "${_INSTAPP} pdftk patchutils p7zip-full fontconfig-config bison catdoc cython3 geoip-database gettext" 2> /dev/null
-  _mrun "${_INSTAPP} python3-full python3-dev python3-debian python3-magic ghostscript htop lemon lftp nano" 2> /dev/null
+  _mrun "${_INSTAPP} netcat libzip-dev libwww-perl" 2> /dev/null
+  _mrun "${_INSTAPP} libfontconfig1 libfreetype6 libfreetype6-dev" 2> /dev/null
+  _mrun "${_INSTAPP} libfribidi0 libgeoip-dev libgeoip1 libgmp3-dev" 2> /dev/null
+  _mrun "${_INSTAPP} libonig-dev libpq5 libxml2-dev libxpm4" 2> /dev/null
+  _mrun "${_INSTAPP} libxslt-dev libxslt1-dev libxslt1.1 subversion" 2> /dev/null
+  _mrun "${_INSTAPP} libaprutil1 libapr1 ldap-utils ipset" 2> /dev/null
+  _mrun "${_INSTAPP} pdftk patchutils p7zip-full fontconfig-config" 2> /dev/null
+  _mrun "${_INSTAPP} bison catdoc cython3 geoip-database gettext" 2> /dev/null
   _mrun "${_INSTAPP} clamav clamav-base clamav-daemon clamdscan" 2> /dev/null
+  _mrun "${_INSTAPP} ghostscript htop lemon lftp nano" 2> /dev/null
+  _mrun "${_INSTAPP} python3-full python3-dev python3-debian python3-magic" 2> /dev/null
   if [ -e "/root/.dont.use.fancy.bash.login.cnf" ] \
     && [ -e "/usr/bin/screenfetch" ]; then
     _mrun "apt-get remove toilet -y --purge --auto-remove -qq" 2> /dev/null
