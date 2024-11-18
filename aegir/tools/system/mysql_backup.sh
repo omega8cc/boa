@@ -272,7 +272,7 @@ _compress_backup() {
     chmod 700 /data/disk/arch
     echo "INFO: Permissions fixed"
   else
-    bzip2 ${_SAVELOCATION}/*.sql
+    gzip ${_SAVELOCATION}/*.sql
     chmod 600 ${_BACKUPDIR}/*/*
     chmod 700 ${_BACKUPDIR}/*
     chmod 700 ${_BACKUPDIR}
