@@ -1015,7 +1015,7 @@ _forced_mysql_root_password_update() {
   if [ "${_STRONG_PASSWORDS}" = "YES" ] \
     || [ "${_PWD_CHARS}" -gt "32" ]; then
     if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
-      _ESC_PASS="$(openssl rand -base64 64 2>&1)"
+      _ESC_PASS="$(openssl rand -base64 64 | tr -d '\n')"
     else
       _RANDPASS_TEST=$(randpass -V 2>&1)
       if [[ "${_RANDPASS_TEST}" =~ "alnum" ]]; then
@@ -1428,7 +1428,7 @@ _init_sql_root_credentials() {
       if [ "${_STRONG_PASSWORDS}" = "YES" ] \
         || [ "${_PWD_CHARS}" -gt "32" ]; then
         if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
-          _ESC_PASS="$(openssl rand -base64 64 2>&1)"
+          _ESC_PASS="$(openssl rand -base64 64 | tr -d '\n')"
         else
           _RANDPASS_TEST=$(randpass -V 2>&1)
           if [[ "${_RANDPASS_TEST}" =~ "alnum" ]]; then
