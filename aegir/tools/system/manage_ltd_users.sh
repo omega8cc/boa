@@ -772,6 +772,7 @@ for _Domain in `find ${_Client}/ -maxdepth 1 -mindepth 1 -type l | sort`; do
   _rawDom=$(echo ${_Domain} | cut -d'/' -f7 | awk '{ print $1}' 2>&1)
   _STATIC_FILES="${_pthParen_tUsr}/static/files/${_rawDom}.files"
   _STATIC_PRIVATE="${_pthParen_tUsr}/static/files/${_rawDom}.private"
+  _NEW_STATIC_FILES="${_pthParen_tUsr}/static/files/${_rawDom}/"
   _PATH_DOM=$(readlink -n ${_Domain} 2>&1)
   _PATH_DOM=$(echo -n ${_PATH_DOM} | tr -d "\n" 2>&1)
   _RUBY_PATH="/opt/user/gems/${_usrLtd}"
