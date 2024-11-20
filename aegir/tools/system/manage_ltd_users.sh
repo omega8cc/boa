@@ -2205,8 +2205,8 @@ _manage_user() {
           symlinks -dr /home/${_USER}.ftp &> /dev/null
           echo >> ${_THIS_LTD_CONF}
           echo "[${_USER}.ftp]" >> ${_THIS_LTD_CONF}
-          echo "path : ['/opt/user/npm/${_USER}.ftp', \
-                        '/opt/user/gems/${_USER}.ftp', \
+          echo "path : ['/opt/user/gems/${_USER}.ftp', \
+                        '/opt/user/npm/${_USER}.ftp', \
                         '${_dscUsr}/distro', \
                         '${_dscUsr}/static', \
                         '${_dscUsr}/backups', \
