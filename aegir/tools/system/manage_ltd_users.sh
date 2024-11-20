@@ -339,7 +339,7 @@ _enable_chattr() {
     [ -e "/home/${_UQ}/.gem" ] && rm -rf /home/${_UQ}/.gem*
     [ -e "/home/${_UQ}/.npm" ] && rm -rf /home/${_UQ}/.npm*
     [ -e "/home/${_UQ}/.mkshrc" ] && rm -rf /home/${_UQ}/.mkshrc
-    if [ "$1" = "${_USER}.ftp" ]; then
+    if [ "${_UQ}" = "${_USER}.ftp" ]; then
       [ ! -d "/home/${_UQ}/.composer" ] && su -s /bin/bash - ${_UQ} -c "mkdir ~/.composer"
     else
       [ -d "/home/${_UQ}/.composer" ] && rm -rf /home/${_UQ}/.composer
@@ -393,7 +393,7 @@ _enable_chattr() {
       ### NOTE: It will be restricted to the main SSH account only
       ###
       if [ -e "/root/.allow.node.lshell.cnf" ] \
-        && [ "$1" = "${_USER}.ftp" ] \
+        && [ "${_UQ}" = "${_USER}.ftp" ] \
         && [ -x "/usr/bin/node" ] \
         && [ -e "/home/${_UQ}/static/control" ]; then
         if [ ! -e "/opt/user/npm/${_UQ}/.npm-packages/bin" ] \
