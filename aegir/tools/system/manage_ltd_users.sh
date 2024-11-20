@@ -355,7 +355,8 @@ _enable_chattr() {
         || [ ! -e "${_dscUsr}/log/.gems.build.rb.${_UQ}.${_xSrl}.txt" ]; then
         _UPDATE_GEMS=YES
       fi
-      if [ ! -e "/opt/user/npm/${_UQ}/.npm-packages/bin" ] \
+      if [ "${_UQ}" = "${_USER}.ftp" ] \
+        && [ ! -e "/opt/user/npm/${_UQ}/.npm-packages/bin" ] \
         && [ -e "/root/.allow.node.lshell.cnf" ]; then
         _UPDATE_GEMS=YES
       fi
@@ -776,7 +777,6 @@ for _Domain in `find ${_Client}/ -maxdepth 1 -mindepth 1 -type l | sort`; do
   _PATH_DOM=$(readlink -n ${_Domain} 2>&1)
   _PATH_DOM=$(echo -n ${_PATH_DOM} | tr -d "\n" 2>&1)
   _RUBY_PATH="/opt/user/gems/${_usrLtd}"
-  _NPM_PATH="/opt/user/npm/${_usrLtd}"
   _mntPoint=$(find /mnt -mindepth 1 -maxdepth 1 -type d | grep "\." | head -n1) &&
   _MNT_STATIC_FILES="${_mntPoint}/files/${_USER}/static/files/${_rawDom}/"
   _ALLD_DIR="${_ALLD_DIR}, \
@@ -785,8 +785,7 @@ for _Domain in `find ${_Client}/ -maxdepth 1 -mindepth 1 -type l | sort`; do
     '${_STATIC_PRIVATE}', \
     '${_NEW_STATIC_FILES}', \
     '${_MNT_STATIC_FILES}', \
-    '${_RUBY_PATH}', \
-    '${_NPM_PATH}'"
+    '${_RUBY_PATH}'"
   if [ -e "${_PATH_DOM}" ]; then
     _ALLD_NUM=$(( _ALLD_NUM += 1 ))
   fi
