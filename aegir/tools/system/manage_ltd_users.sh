@@ -2203,10 +2203,15 @@ _manage_user() {
         if [ -d "/home/${_USER}.ftp" ]; then
           _disable_chattr ${_USER}.ftp
           symlinks -dr /home/${_USER}.ftp &> /dev/null
+          _mntPoint=$(find /mnt -mindepth 1 -maxdepth 1 -type d | grep "\." | head -n1) &&
+          _MNT_STATIC_FILES="${_mntPoint}/files/${_USER}/static/files"
+          echo "_mntPoint is == ${_mntPoint} == at _manage_user"
+          echo "_MNT_STATIC_FILES is == ${_MNT_STATIC_FILES} == at _manage_user"
           echo >> ${_THIS_LTD_CONF}
           echo "[${_USER}.ftp]" >> ${_THIS_LTD_CONF}
           echo "path : ['/opt/user/gems/${_USER}.ftp', \
                         '/opt/user/npm/${_USER}.ftp', \
+                        '${_MNT_STATIC_FILES}', \
                         '${_dscUsr}/distro', \
                         '${_dscUsr}/static', \
                         '${_dscUsr}/backups', \
