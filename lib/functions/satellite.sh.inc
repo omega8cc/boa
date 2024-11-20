@@ -3151,10 +3151,13 @@ _satellite_if_add_ftps_lshell_access() {
   fi
   usermod -aG lshellg ${_USERFTP}
   chsh -s ${_PATH_LSHELL} ${_USERFTP} &> /dev/null
+  _mntPoint=$(find /mnt -mindepth 1 -maxdepth 1 -type d | grep "\." | head -n1) &&
+  _MNT_STATIC_FILES="${_mntPoint}/files/${_USER}/static/files"
   echo >> /etc/lshell.conf
   echo "[${_USERFTP}]" >> /etc/lshell.conf
   echo "path : ['/opt/user/gems/${_USERFTP}', \
     '/opt/user/npm/${_USERFTP}', \
+    '${_MNT_STATIC_FILES}', \
     '${_ROOT}/distro', \
     '${_ROOT}/static', \
     '${_ROOT}/backups', \
