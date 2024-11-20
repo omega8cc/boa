@@ -777,7 +777,16 @@ for _Domain in `find ${_Client}/ -maxdepth 1 -mindepth 1 -type l | sort`; do
   _PATH_DOM=$(echo -n ${_PATH_DOM} | tr -d "\n" 2>&1)
   _RUBY_PATH="/opt/user/gems/${_usrLtd}"
   _NPM_PATH="/opt/user/npm/${_usrLtd}"
-  _ALLD_DIR="${_ALLD_DIR}, '${_PATH_DOM}', '${_STATIC_FILES}', '${_STATIC_PRIVATE}', '${_RUBY_PATH}', '${_NPM_PATH}'"
+  _mntPoint=$(find /mnt -mindepth 1 -maxdepth 1 -type d | grep "\." | head -n1) &&
+  _MNT_STATIC_FILES="${_mntPoint}/files/${_USER}/static/files/${_rawDom}/"
+  _ALLD_DIR="${_ALLD_DIR}, \
+    '${_PATH_DOM}', \
+    '${_STATIC_FILES}', \
+    '${_STATIC_PRIVATE}', \
+    '${_NEW_STATIC_FILES}', \
+    '${_MNT_STATIC_FILES}', \
+    '${_RUBY_PATH}', \
+    '${_NPM_PATH}'"
   if [ -e "${_PATH_DOM}" ]; then
     _ALLD_NUM=$(( _ALLD_NUM += 1 ))
   fi
