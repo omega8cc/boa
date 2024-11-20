@@ -3324,7 +3324,7 @@ _count_cpu() {
 
 _sysctl_update() {
   if [ ! -e "/root/.no.sysctl.update.cnf" ] \
-    && [ ! -e "/var/backups/sysctl.conf.up-hf01-${_xSrl}.log" ]; then
+    && [ ! -e "/var/backups/.sysctl.conf.mod-disable-ipv6-${_xSrl}.log" ]; then
     mkdir -p /var/backups
     cd /var/backups
     rm -f /var/backups/sysctl.conf
@@ -3395,7 +3395,7 @@ _sysctl_update() {
         fi
       done
     fi
-    touch /var/backups/sysctl.conf.up-hf01-${_xSrl}.log
+    touch /var/backups/.sysctl.conf.mod-disable-ipv6-${_xSrl}.log
   fi
 }
 
