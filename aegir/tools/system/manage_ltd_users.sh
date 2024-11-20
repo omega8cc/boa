@@ -779,6 +779,15 @@ for _Domain in `find ${_Client}/ -maxdepth 1 -mindepth 1 -type l | sort`; do
   _RUBY_PATH="/opt/user/gems/${_usrLtd}"
   _mntPoint=$(find /mnt -mindepth 1 -maxdepth 1 -type d | grep "\." | head -n1) &&
   _MNT_STATIC_FILES="${_mntPoint}/files/${_USER}/static/files/${_rawDom}/"
+  echo "_ALLD_DIR is == ${_ALLD_DIR} == at _manage_sec_access_paths"
+  echo "_rawDom is == ${_rawDom} == at _manage_sec_access_paths"
+  echo "_STATIC_FILES is == ${_STATIC_FILES} == at _manage_sec_access_paths"
+  echo "_STATIC_PRIVATE is == ${_STATIC_PRIVATE} == at _manage_sec_access_paths"
+  echo "_NEW_STATIC_FILES is == ${_NEW_STATIC_FILES} == at _manage_sec_access_paths"
+  echo "_PATH_DOM is == ${_PATH_DOM} == at _manage_sec_access_paths"
+  echo "_RUBY_PATH is == ${_RUBY_PATH} == at _manage_sec_access_paths"
+  echo "_mntPoint is == ${_mntPoint} == at _manage_sec_access_paths"
+  echo "_MNT_STATIC_FILES is == ${_MNT_STATIC_FILES} == at _manage_sec_access_paths"
   _ALLD_DIR="${_ALLD_DIR}, \
     '${_PATH_DOM}', \
     '${_STATIC_FILES}', \
