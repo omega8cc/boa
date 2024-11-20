@@ -3156,13 +3156,13 @@ _satellite_if_add_ftps_lshell_access() {
   echo >> /etc/lshell.conf
   echo "[${_USERFTP}]" >> /etc/lshell.conf
   echo "path : ['/opt/user/gems/${_USERFTP}', \
-    '/opt/user/npm/${_USERFTP}', \
-    '${_MNT_STATIC_FILES}', \
-    '${_ROOT}/distro', \
-    '${_ROOT}/static', \
-    '${_ROOT}/backups', \
-    '${_ROOT}/clients']" \
-    | fmt -su -w 2500 >> /etc/lshell.conf
+                '/opt/user/npm/${_USERFTP}', \
+                '${_MNT_STATIC_FILES}', \
+                '${_ROOT}/distro', \
+                '${_ROOT}/static', \
+                '${_ROOT}/backups', \
+                '${_ROOT}/clients']" \
+                | fmt -su -w 2500 >> /etc/lshell.conf
 }
 
 _satellite_if_add_update_user_symlinks() {
