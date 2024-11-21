@@ -112,7 +112,7 @@ EOF
   # Create the final paths configuration file
   local _global_paths_file="${_global_config_dir}/paths.txt"
   cat << EOF > "${_global_paths_file}"
-_SOURCE="/etc /var/aegir /var/www /home /data"
+_SOURCE="/data /home /etc /var/aegir /var/www /var/solr7 /opt/solr4 /var/xdrago"
 _INCLUDE="--include-filelist ${_merged_include_file}"
 _EXCLUDE="--exclude-filelist ${_merged_exclude_file}"
 EOF
