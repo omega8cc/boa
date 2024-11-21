@@ -25,12 +25,22 @@ _create_user_paths_config() {
   if [ ! -f "${_include_file}" ]; then
     cat << EOF > "${_include_file}"
 --include  /home/${_user}.ftp
+--include  /data/disk/${_user}/static
+--include  /data/disk/${_user}/distro
+--include  /data/disk/${_user}/platforms
 EOF
   fi
 
   if [ ! -f "${_exclude_file}" ]; then
     cat << EOF > "${_exclude_file}"
 --exclude '**'
+--exclude /data/disk/${_user}/aegir
+--exclude /data/disk/${_user}/backup-exports
+--exclude /data/disk/${_user}/backups
+--exclude /data/disk/${_user}/log
+--exclude /data/disk/${_user}/src
+--exclude /data/disk/${_user}/tools
+--exclude /data/disk/${_user}/undo
 EOF
   fi
 
@@ -40,7 +50,7 @@ EOF
 
   if [ ! -f "${_exclude_regexp_file}" ]; then
     cat << EOF > "${_exclude_regexp_file}"
---exclude-regexp '^/data/disk/.*/backups/'
+--exclude-regexp '^/data/disk/${_user}/.*pass.*'
 EOF
   fi
 
