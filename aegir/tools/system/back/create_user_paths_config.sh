@@ -15,6 +15,8 @@ _create_user_paths_config() {
   local _exclude_regexp_file="${_user_config_dir}/.backboa.${_user}.exclude_regexp"
   local _merged_include_file="${_user_config_dir}/.backboa.${_user}.include.merged"
   local _merged_exclude_file="${_user_config_dir}/.backboa.${_user}.exclude.merged"
+  local _include_ctrl_file="${_user_config_dir}/.backboa.${_user}.f95.include.ctrl"
+  local _exclude_ctrl_file="${_user_config_dir}/.backboa.${_user}.f95.exclude.ctrl"
 
   # Ensure user configuration directory exists and is owned by root
   mkdir -p "${_user_config_dir}"
@@ -22,16 +24,17 @@ _create_user_paths_config() {
   chmod 700 "${_user_config_dir}"
 
   # Create default include/exclude files if they don't exist
-  if [ ! -f "${_include_file}" ]; then
+  if [ ! -f "${_include_ctrl_file}" ]; then
     cat << EOF > "${_include_file}"
---include  /home/${_user}.ftp
---include  /data/disk/${_user}/static
 --include  /data/disk/${_user}/distro
 --include  /data/disk/${_user}/platforms
+--include  /data/disk/${_user}/static
+--include  /home/${_user}.ftp
 EOF
+    touch "${_include_ctrl_file}"
   fi
 
-  if [ ! -f "${_exclude_file}" ]; then
+  if [ ! -f "${_exclude_ctrl_file}" ]; then
     cat << EOF > "${_exclude_file}"
 --exclude '**'
 --exclude /data/disk/${_user}/aegir
@@ -42,10 +45,11 @@ EOF
 --exclude /data/disk/${_user}/tools
 --exclude /data/disk/${_user}/undo
 EOF
+    touch "${_exclude_ctrl_file}"
   fi
 
   if [ ! -f "${_include_regexp_file}" ]; then
-    echo "# No default include-regexp rules" > "${_include_regexp_file}"
+    echo "# No default include-regexp rules"
   fi
 
   if [ ! -f "${_exclude_regexp_file}" ]; then
@@ -77,8 +81,8 @@ EOF
         exit 1
       fi
 
-      # Check for paths outside of /data/disk/${_user}/
-      _invalid_lines=$(grep -E "^--(include|exclude) " "${_file}" | grep -v "^/data/disk/${_user}/" || true)
+      # Check for paths outside of /data/disk/${_user}/static/
+      _invalid_lines=$(grep -E "^--(include|exclude) " "${_file}" | grep -v "^/data/disk/${_user}/static/" || true)
       if [ -n "${_invalid_lines}" ]; then
         echo "Error: Unauthorized paths in ${_file}:"
         echo "${_invalid_lines}"
@@ -119,7 +123,7 @@ EOF
   # Create the final paths configuration file
   local _user_config_file="${_user_config_dir}/paths.txt"
   cat << EOF > "${_user_config_file}"
-_SOURCE="/data/disk/${_user}"
+_SOURCE="/data/disk/${_user}/static"
 _INCLUDE="--include-filelist ${_merged_include_file} --include-regexp-filelist ${_user_config_dir}/.backboa.${_user}.include_regexp.merged"
 _EXCLUDE="--exclude-filelist ${_merged_exclude_file} --exclude-regexp-filelist ${_user_config_dir}/.backboa.${_user}.exclude_regexp.merged"
 EOF
