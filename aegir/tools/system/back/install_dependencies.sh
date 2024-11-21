@@ -163,7 +163,7 @@ _python_install_src() {
     rclone \
     rdiff \
     tzdata
-  _PTN_TEST=$(${_DCY_PTN} --version 2>&1)
+  _PTN_TEST=$(python3 --version 2>&1)
   if [[ ! "${_PTN_TEST}" =~ "Python ${_PTN_VRN}" ]] \
     || [ ! -x "${_DCY_PTN}" ]; then
     cd /var/opt
@@ -176,7 +176,7 @@ _python_install_src() {
     make install --quiet
     cd
   fi
-  _PTN_TEST=$(${_DCY_PTN} --version 2>&1)
+  _PTN_TEST=$(/usr/local/bin/python3.12 --version 2>&1)
   if [[ "${_PTN_TEST}" =~ "Python ${_PTN_VRN}" ]]; then
     echo "Python ${_PTN_VRN} installed"
     _DCY_PTN="/usr/local/bin/python3.12"
