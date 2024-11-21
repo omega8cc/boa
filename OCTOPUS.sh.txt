@@ -69,7 +69,7 @@ export _SMALLCORE10_2_V=10.2.10
 export _SMALLCORE10_3_V=10.3.6
 export _SMALLCORE10_4_V=10.4.x-dev
 export _SMALLCORE6_V=6.60.1
-export _SMALLCORE7_V=7.101.1
+export _SMALLCORE7_V=7.102.1
 export _SMALLCORE9_V=9.5.11
 
 ###
