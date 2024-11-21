@@ -60,11 +60,11 @@ EOF
   fi
 
   if [ ! -f "${_include_regexp_file}" ]; then
-    echo "# No default include-regexp rules" > "${_include_regexp_file}"
+    echo "# No default include-regexp rules"
   fi
 
   if [ ! -f "${_exclude_regexp_file}" ]; then
-    echo "# No default exclude-regexp rules" > "${_exclude_regexp_file}"
+    echo "# No default exclude-regexp rules"
   fi
 
   # Function to validate configuration files
