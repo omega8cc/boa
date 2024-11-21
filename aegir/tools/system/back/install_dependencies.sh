@@ -5,7 +5,7 @@ export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
 _PTN_VRN=3.12.5
-_DCY_VRN=3.0.2
+_DCY_VRN=3.0.3.1
 _DCY_CMD="/usr/local/bin/duplicity"
 
 _crlGet="-L --max-redirs 3 -k -s --retry 9 --retry-delay 9 -A iCab"
@@ -137,7 +137,7 @@ _install_duplicity() {
   pipx install duplicity --include-deps --force
 
   _DCY_TEST=$(${_DCY_CMD} --version 2>&1)
-  if [[ "${_DCY_TEST}" =~ "duplicity ${_DCY_VRN}" ]]; then
+  if [[ "${_DCY_TEST}" =~ "duplicity 3." ]]; then
     echo "Duplicity ${_DCY_VRN} installation complete!"
     exit 0
   else
