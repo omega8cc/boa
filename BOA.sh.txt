@@ -700,7 +700,7 @@ _update_agents() {
 
   if [ -d "/var/xdrago/backup/run" ] \
     && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/create_global_paths_config.sh.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/create_global_paths_config.sh.ctrl.f94.${_tRee}.${_xSrl}.pid" ]; then
     if [ -e "/var/xdrago/backup/run" ]; then
       mv -f /var/xdrago/backup/run/create_global_paths_config.sh /var/xdrago/backup/run/create_global_paths_config.sh.old
     fi
@@ -708,7 +708,7 @@ _update_agents() {
     if [ -e "/var/xdrago/backup/run/create_global_paths_config.sh" ]; then
       chmod 700 /var/xdrago/backup/run/create_global_paths_config.sh
       chown root:root /var/xdrago/backup/run/create_global_paths_config.sh
-      touch ${_pthLog}/create_global_paths_config.sh.ctrl.f95.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/create_global_paths_config.sh.ctrl.f94.${_tRee}.${_xSrl}.pid
     else
       if [ -e "/var/xdrago/backup/run/create_global_paths_config.sh.old" ]; then
         mv -f /var/xdrago/backup/run/create_global_paths_config.sh.old /var/xdrago/backup/run/create_global_paths_config.sh
