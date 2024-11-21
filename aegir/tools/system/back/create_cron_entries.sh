@@ -76,7 +76,7 @@ _create_cron_entries() {
 
 # Function to validate the cron file
 _validate_cron_file() {
-  if ! crontab -u root -l 2>/dev/null | grep -q -E "^[^#]*${_WRAPPER_SCRIPT}"; then
+  if ! grep -q -E "^[^#]*${_WRAPPER_SCRIPT}" "${_CRON_FILE}"; then
     echo "Error: Cron file validation failed. Please check the file at ${_CRON_FILE}."
     exit 1
   fi
