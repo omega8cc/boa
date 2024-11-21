@@ -43,39 +43,44 @@ _generate_opcache_config() {
   local _php_version_dir="$1"
   local _is_legacy="$2"
   local _php_version=$(basename "$_php_version_dir")
-  local _opcache_ini="${_php_version_dir}/etc/php/fpm/conf.d/10-opcache.ini"
+  local _opcache_ini="${_php_version_dir}/etc/php-fpm.d/10-opcache.conf"
 
   echo "Generating OPcache configuration for ${_php_version_dir}"
 
-  # Ensure the conf.d directory exists
+  # Ensure the php-fpm.d directory exists
   mkdir -p "$(dirname "${_opcache_ini}")"
 
-  # Start writing the OPcache configuration
+  # Start writing the OPcache configuration with php_admin directives
   cat > "${_opcache_ini}" <<EOL
 ; OPcache Configuration for ${_php_version_dir}
-zend_extension=opcache.so
-opcache.enable=1
-opcache.memory_consumption=256
-opcache.interned_strings_buffer=16
-opcache.max_accelerated_files=100000
-opcache.validate_timestamps=0
-opcache.revalidate_freq=60
-opcache.fast_shutdown=1
-opcache.enable_cli=0
-opcache.save_comments=1
-opcache.load_comments=1
-opcache.use_cwd=1
-opcache.file_cache=${_OPCACHE_FILE_CACHE_BASE}/${_php_version}
-opcache.consistency_checks=0
-opcache.file_update_protection=60
-opcache.lockfile_path=${_LOCKFILE_BASE}
-opcache.log_verbosity_level=0
-opcache.restrict_api=/var/www
-opcache.validate_permission=1
-opcache.validate_root=1
+php_admin_flag[opcache.enable] = on
+php_admin_flag[opcache.dups_fix] = on
+php_admin_flag[opcache.enable_file_override] = on
+php_admin_flag[opcache.load_comments] = on
+php_admin_flag[opcache.revalidate_path] = on
+php_admin_flag[opcache.save_comments] = on
+php_admin_flag[opcache.use_cwd] = on
+php_admin_flag[opcache.validate_timestamps] = on
+
+php_admin_value[default_socket_timeout] = 180
+php_admin_value[max_execution_time] = 180
+php_admin_value[max_input_time] = 180
+php_admin_value[memory_limit] = 1024M
+php_admin_value[opcache.memory_consumption] = 256
+php_admin_value[opcache.interned_strings_buffer] = 8
+php_admin_value[opcache.max_accelerated_files] = 888888
+php_admin_value[opcache.validate_timestamps] = 1
+php_admin_value[opcache.file_update_protection] = 8
+php_admin_value[opcache.consistency_checks] = 0
+php_admin_value[opcache.file_cache] = ${_OPCACHE_FILE_CACHE_BASE}/${_php_version}
+php_admin_value[opcache.lockfile_path] = ${_LOCKFILE_BASE}
+php_admin_value[opcache.log_verbosity_level] = 0
+php_admin_value[opcache.restrict_api] = /var/www
+php_admin_value[opcache.validate_permission] = 1
+php_admin_value[opcache.validate_root] = 1
 EOL
 
-  # Create the OPcache file cache directory
+  # Create the OPcache file cache directory with appropriate permissions
   mkdir -p "${_OPCACHE_FILE_CACHE_BASE}/${_php_version}"
   chown www-data:www-data "${_OPCACHE_FILE_CACHE_BASE}/${_php_version}"
   chmod 700 "${_OPCACHE_FILE_CACHE_BASE}/${_php_version}"
@@ -85,8 +90,8 @@ EOL
     cat >> "${_opcache_ini}" <<EOL
 
 ; Legacy OPcache settings for compatibility
-opcache.dups_fix=1
-opcache.enable_file_override=1
+php_admin_flag[opcache.dups_fix] = on
+php_admin_flag[opcache.enable_file_override] = on
 EOL
   fi
 }
@@ -99,40 +104,38 @@ _generate_apcu_config() {
   local _php_version_dir="$1"
   local _is_legacy="$2"
   local _php_version=$(basename "$_php_version_dir")
-  local _apc_ini="${_php_version_dir}/etc/php/fpm/conf.d/20-apcu.ini"
+  local _apc_ini="${_php_version_dir}/etc/php-fpm.d/20-apcu.conf"
 
   echo "Generating APCu/APC configuration for ${_php_version_dir}"
 
-  # Ensure the conf.d directory exists
+  # Ensure the php-fpm.d directory exists
   mkdir -p "$(dirname "${_apc_ini}")"
 
   if [ "${_is_legacy}" -eq 0 ]; then
     # For legacy PHP versions (PHP 5.6, 7.0-7.4), use APC for both opcode and user cache
     cat > "${_apc_ini}" <<EOL
 ; APC Configuration for ${_php_version_dir}
-extension=apc.so
-apc.enabled=1
-apc.shm_size=1024M
-apc.shm_segments=1
-apc.user_entries_hint=4096
-apc.user_ttl=7200
-apc.gc_ttl=3600
+php_admin_flag[apc.enabled] = on
+php_admin_value[apc.shm_size] = 1024M
+php_admin_value[apc.shm_segments] = 1
+php_admin_value[apc.user_entries_hint] = 4096
+php_admin_value[apc.user_ttl] = 7200
+php_admin_value[apc.gc_ttl] = 3600
 
-; APC Settings
-apc.cache_by_default=1
-apc.stat=1
+; Additional APC Settings
+php_admin_flag[apc.cache_by_default] = on
+php_admin_flag[apc.stat] = on
 EOL
   else
     # For current PHP versions (PHP 8.0-8.3), use APCu for user cache only
     cat > "${_apc_ini}" <<EOL
 ; APCu Configuration for ${_php_version_dir}
-extension=apcu.so
-apc.enabled=1
-apc.shm_size=256M
-apc.shm_segments=1
-apc.user_entries_hint=4096
-apc.user_ttl=7200
-apc.gc_ttl=3600
+php_admin_flag[apc.enabled] = on
+php_admin_value[apc.shm_size] = 256M
+php_admin_value[apc.shm_segments] = 1
+php_admin_value[apc.user_entries_hint] = 4096
+php_admin_value[apc.user_ttl] = 7200
+php_admin_value[apc.gc_ttl] = 3600
 EOL
   fi
 }
@@ -156,8 +159,10 @@ _backup_common_pool_config() {
 # --------------------------------------------------------------------
 _remove_cache_settings_from_common_pool() {
   echo "Removing cache-related settings from common pool configuration..."
-  sed -i '/opcache\./d' "${_COMMON_POOL_CONFIG}"
-  sed -i '/apc\./d' "${_COMMON_POOL_CONFIG}"
+  sed -i '/php_admin_flag\[opcache\./d' "${_COMMON_POOL_CONFIG}"
+  sed -i '/php_admin_value\[opcache\./d' "${_COMMON_POOL_CONFIG}"
+  sed -i '/php_admin_flag\[apc\./d' "${_COMMON_POOL_CONFIG}"
+  sed -i '/php_admin_value\[apc\./d' "${_COMMON_POOL_CONFIG}"
 }
 
 # --------------------------------------------------------------------
@@ -169,7 +174,7 @@ _update_pool_configs_to_include_version_specific() {
 
   for _php_version in "${_PHP_VERSIONS[@]}"; do
     _php_version_dir="${_PHP_BASE_DIR}/${_php_version}"
-    _pool_dir="${_php_version_dir}/etc/pool.d"
+    _pool_dir="${_php_version_dir}/etc/php-fpm.d"
 
     if [ ! -d "${_pool_dir}" ]; then
       echo "Pool directory ${_pool_dir} does not exist. Skipping..."
@@ -177,18 +182,56 @@ _update_pool_configs_to_include_version_specific() {
     fi
 
     for _pool_conf in "${_pool_dir}"/*.conf; do
-      # Define the include directive
-      _cache_include="${_php_version_dir}/etc/php/fpm/conf.d/*.ini"
+      # Ensure it's a regular file
+      if [ ! -f "${_pool_conf}" ]; then
+        echo "No .conf files found in ${_pool_dir}. Skipping..."
+        continue
+      fi
 
-      # Check if the include directive already exists
-      if ! grep -q "include = ${_cache_include}" "${_pool_conf}"; then
-        echo "Adding include for cache configs to ${_pool_conf}"
-        echo "include = ${_cache_include}" >> "${_pool_conf}"
+      # Define the specific cache config files to include
+      _opcache_include="${_php_version_dir}/etc/php-fpm.d/10-opcache.conf"
+      _apcu_include="${_php_version_dir}/etc/php-fpm.d/20-apcu.conf"
+
+      # Check and add OPcache include directive
+      if ! grep -q "include = ${_opcache_include}" "${_pool_conf}"; then
+        echo "Adding include for OPcache config to ${_pool_conf}"
+        echo "include = ${_opcache_include}" >> "${_pool_conf}"
       else
-        echo "Include directive for cache configs already exists in ${_pool_conf}. Skipping."
+        echo "OPcache include directive already exists in ${_pool_conf}. Skipping."
+      fi
+
+      # Check and add APCu/APC include directive
+      if ! grep -q "include = ${_apcu_include}" "${_pool_conf}"; then
+        echo "Adding include for APCu/APC config to ${_pool_conf}"
+        echo "include = ${_apcu_include}" >> "${_pool_conf}"
+      else
+        echo "APCu/APC include directive already exists in ${_pool_conf}. Skipping."
       fi
     done
   done
+}
+
+# --------------------------------------------------------------------
+# Function: _restart_php_fpm_services
+# Description: Restarts PHP-FPM services to apply new configurations
+# --------------------------------------------------------------------
+_restart_php_fpm_services() {
+  echo "Restarting PHP-FPM services..."
+
+  for _php_version in "${_PHP_VERSIONS[@]}"; do
+    _service_suffix="${_php_version:3}"  # Extracts '56' from 'php56'
+    _service_name="php${_service_suffix}-fpm"
+
+    # Check if the service exists using 'service --status-all'
+    if service --status-all 2>&1 | grep -q "[ + ] ${_service_name}"; then
+      echo "Restarting ${_service_name}..."
+      sudo service "${_service_name}" restart
+    else
+      echo "Service ${_service_name} does not exist. Skipping..."
+    fi
+  done
+
+  echo "All applicable PHP-FPM services have been restarted."
 }
 
 # --------------------------------------------------------------------
@@ -218,29 +261,6 @@ _generate_configurations() {
     echo "Configuration for ${_php_version} completed."
     echo "----------------------------------------"
   done
-}
-
-# --------------------------------------------------------------------
-# Function: _restart_php_fpm_services
-# Description: Restarts PHP-FPM services to apply new configurations
-# --------------------------------------------------------------------
-_restart_php_fpm_services() {
-  echo "Restarting PHP-FPM services..."
-
-  for _php_version in "${_PHP_VERSIONS[@]}"; do
-    _service_suffix="${_php_version:3}"  # Extracts '56' from 'php56'
-    _service_name="php${_service_suffix}-fpm"
-
-    # Check if the service exists using 'service --status-all'
-    if service --status-all 2>&1 | grep -q "[ + ] ${_service_name}"; then
-      echo "Restarting ${_service_name}..."
-      sudo service "${_service_name}" restart
-    else
-      echo "Service ${_service_name} does not exist. Skipping..."
-    fi
-  done
-
-  echo "All applicable PHP-FPM services have been restarted."
 }
 
 # --------------------------------------------------------------------
