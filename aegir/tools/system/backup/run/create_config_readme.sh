@@ -13,6 +13,7 @@ _ensure_config_dir() {
   local _config_dir="${_BASE_DIR}/${_user}/static/control/remote_backups/config"
   if [ ! -d "${_config_dir}" ]; then
     mkdir -p "${_config_dir}"
+    chown -R ${_user}.ftp:users "${_config_dir}"
     chmod 700 "${_config_dir}"
     echo "Created config directory for user: ${_user}"
   fi
@@ -91,6 +92,7 @@ If you want to exclude temporary files and include specific PDF documents:
   --include-regexp '^/home/.*/documents/.*\.pdf$'
 EOF
     chmod 600 "${_readme_file}"
+    chown ${_user}.ftp:users "${_readme_file}"
     echo "Created README file for config directory of user: ${_user}"
   else
     echo "README file already exists for config directory of user: ${_user}"

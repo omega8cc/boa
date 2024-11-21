@@ -13,6 +13,7 @@ _ensure_readme_dir() {
   local _credentials_dir="${_BASE_DIR}/${_user}/static/control/remote_backups/credentials"
   if [ ! -d "${_credentials_dir}" ]; then
     mkdir -p "${_credentials_dir}"
+    chown -R ${_user}.ftp:users "${_credentials_dir}"
     chmod 700 "${_credentials_dir}"
     echo "Created credentials directory for user: ${_user}"
   fi
@@ -122,6 +123,7 @@ Linode Object Storage
 - Users are responsible for managing these credentials files securely.
 EOF
     chmod 600 "${_readme_file}"
+    chown ${_user}.ftp:users "${_readme_file}"
     echo "Created README file for user: ${_user}"
   else
     echo "README file already exists for user: ${_user}"
