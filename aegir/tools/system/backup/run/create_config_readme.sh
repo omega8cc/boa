@@ -11,10 +11,12 @@ _BASE_DIR="/data/disk"
 _ensure_config_dir() {
   local _user=$1
   local _config_dir="${_BASE_DIR}/${_user}/static/control/remote_backups/config"
-  if [ ! -d "${_config_dir}" ]; then
+  local _dir_ctrl_file="${_BASE_DIR}/${_user}/log/.backboa.${_user}.f95.config.dir.ctrl"
+  if [ ! -d "${_config_dir}" ] || [ ! -e "${_dir_ctrl_file}" ]; then
     mkdir -p "${_config_dir}"
     chown -R ${_user}.ftp:users "${_config_dir}"
     chmod 700 "${_config_dir}"
+    touch "${_dir_ctrl_file}"
     echo "Created config directory for user: ${_user}"
   fi
 }
@@ -24,10 +26,11 @@ _create_config_readme_file() {
   local _user=$1
   local _config_dir="${_BASE_DIR}/${_user}/static/control/remote_backups/config"
   local _readme_file="${_config_dir}/README.txt"
+  local _readme_ctrl_file="${_BASE_DIR}/${_user}/log/.backboa.${_user}.f95.config.readme.ctrl"
 
   _ensure_config_dir "${_user}"
 
-  if [ ! -f "${_readme_file}" ]; then
+  if [ ! -f "${_readme_ctrl_file}" ]; then
     cat << EOF > "${_readme_file}"
 Backup Configuration README
 
@@ -65,13 +68,13 @@ Usage Instructions:
 3. include_regexp.txt
    Use regular expressions to specify patterns for directories or files to include in the backup.
    Example:
-   --include-regexp '^/data/disk/.*/important_files/'
+   --include-regexp '^/data/disk/${_user}/static/.*/important_files/'
    --include-regexp '^/home/.*/documents/.*\.pdf$'
 
 4. exclude_regexp.txt
    Use regular expressions to specify patterns for directories or files to exclude from the backup.
    Example:
-   --exclude-regexp '^/data/disk/.*/cache/'
+   --exclude-regexp '^/data/disk/${_user}/static/trash/'
    --exclude-regexp '^.*\.tmp$'
 
 Security:
@@ -82,6 +85,8 @@ Security:
 Notes:
 - Directives in these files will be merged with default system directives during backup operations.
 - Patterns defined in exclude_regexp.txt will take precedence over those in include_regexp.txt.
+- You can only define paths in the /data/disk/${_user}/static/ directory tree.
+- Paths for platforms without direct access in /data/disk/${_user}/distro are included by default.
 - Invalid entries may cause the backup process to fail.
 
 Example:
@@ -94,8 +99,9 @@ EOF
     chmod 600 "${_readme_file}"
     chown ${_user}.ftp:users "${_readme_file}"
     echo "Created README file for config directory of user: ${_user}"
+    touch "${_readme_ctrl_file}"
   else
-    echo "README file already exists for config directory of user: ${_user}"
+    echo "README file already updated for config directory of user: ${_user}"
   fi
 }
 

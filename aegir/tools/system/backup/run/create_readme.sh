@@ -11,10 +11,12 @@ _BASE_DIR="/data/disk"
 _ensure_readme_dir() {
   local _user=$1
   local _credentials_dir="${_BASE_DIR}/${_user}/static/control/remote_backups/credentials"
-  if [ ! -d "${_credentials_dir}" ]; then
+  local _dir_ctrl_file="${_BASE_DIR}/${_user}/log/.backboa.${_user}.f95.credentials.dir.ctrl"
+  if [ ! -d "${_credentials_dir}" ] || [ ! -e "${_dir_ctrl_file}" ]; then
     mkdir -p "${_credentials_dir}"
     chown -R ${_user}.ftp:users "${_credentials_dir}"
     chmod 700 "${_credentials_dir}"
+    touch "${_dir_ctrl_file}"
     echo "Created credentials directory for user: ${_user}"
   fi
 }
@@ -24,10 +26,11 @@ _create_readme_file() {
   local _user=$1
   local _credentials_dir="${_BASE_DIR}/${_user}/static/control/remote_backups/credentials"
   local _readme_file="${_credentials_dir}/README.txt"
+  local _readme_ctrl_file="${_BASE_DIR}/${_user}/log/.backboa.${_user}.f95.credentials.readme.ctrl"
 
   _ensure_readme_dir "${_user}"
 
-  if [ ! -f "${_readme_file}" ]; then
+  if [ ! -f "${_readme_ctrl_file}" ]; then
     cat << EOF > "${_readme_file}"
 # Backup Credentials README
 
@@ -125,8 +128,9 @@ EOF
     chmod 600 "${_readme_file}"
     chown ${_user}.ftp:users "${_readme_file}"
     echo "Created README file for user: ${_user}"
+    touch "${_readme_ctrl_file}"
   else
-    echo "README file already exists for user: ${_user}"
+    echo "README file already updated for user: ${_user}"
   fi
 }
 
