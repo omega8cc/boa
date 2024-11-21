@@ -668,7 +668,7 @@ _update_agents() {
     if [ -e "/var/xdrago/backup/run" ]; then
       mv -f /var/xdrago/backup/run/install_dependencies.sh /var/xdrago/backup/run/install_dependencies.sh.old
     fi
-    curl ${_crlGet} "${_urlHmr}/tools/system/back/install_dependencies.sh" -o /var/xdrago/backup/run/install_dependencies.sh
+    curl ${_crlGet} "${_urlHmr}/tools/system/backup/run/install_dependencies.sh" -o /var/xdrago/backup/run/install_dependencies.sh
     if [ -e "/var/xdrago/backup/run/install_dependencies.sh" ]; then
       chmod 700 /var/xdrago/backup/run/install_dependencies.sh
       chown root:root /var/xdrago/backup/run/install_dependencies.sh
@@ -686,7 +686,7 @@ _update_agents() {
     if [ -e "/var/xdrago/backup/run" ]; then
       mv -f /var/xdrago/backup/run/create_credentials_templates.sh /var/xdrago/backup/run/create_credentials_templates.sh.old
     fi
-    curl ${_crlGet} "${_urlHmr}/tools/system/back/create_credentials_templates.sh" -o /var/xdrago/backup/run/create_credentials_templates.sh
+    curl ${_crlGet} "${_urlHmr}/tools/system/backup/run/create_credentials_templates.sh" -o /var/xdrago/backup/run/create_credentials_templates.sh
     if [ -e "/var/xdrago/backup/run/create_credentials_templates.sh" ]; then
       chmod 700 /var/xdrago/backup/run/create_credentials_templates.sh
       chown root:root /var/xdrago/backup/run/create_credentials_templates.sh
@@ -704,7 +704,7 @@ _update_agents() {
     if [ -e "/var/xdrago/backup/run" ]; then
       mv -f /var/xdrago/backup/run/create_global_paths_config.sh /var/xdrago/backup/run/create_global_paths_config.sh.old
     fi
-    curl ${_crlGet} "${_urlHmr}/tools/system/back/create_global_paths_config.sh" -o /var/xdrago/backup/run/create_global_paths_config.sh
+    curl ${_crlGet} "${_urlHmr}/tools/system/backup/run/create_global_paths_config.sh" -o /var/xdrago/backup/run/create_global_paths_config.sh
     if [ -e "/var/xdrago/backup/run/create_global_paths_config.sh" ]; then
       chmod 700 /var/xdrago/backup/run/create_global_paths_config.sh
       chown root:root /var/xdrago/backup/run/create_global_paths_config.sh
@@ -722,7 +722,7 @@ _update_agents() {
     if [ -e "/var/xdrago/backup/run" ]; then
       mv -f /var/xdrago/backup/run/create_user_paths_config.sh /var/xdrago/backup/run/create_user_paths_config.sh.old
     fi
-    curl ${_crlGet} "${_urlHmr}/tools/system/back/create_user_paths_config.sh" -o /var/xdrago/backup/run/create_user_paths_config.sh
+    curl ${_crlGet} "${_urlHmr}/tools/system/backup/run/create_user_paths_config.sh" -o /var/xdrago/backup/run/create_user_paths_config.sh
     if [ -e "/var/xdrago/backup/run/create_user_paths_config.sh" ]; then
       chmod 700 /var/xdrago/backup/run/create_user_paths_config.sh
       chown root:root /var/xdrago/backup/run/create_user_paths_config.sh
@@ -740,7 +740,7 @@ _update_agents() {
     if [ -e "/var/xdrago/backup/run" ]; then
       mv -f /var/xdrago/backup/run/create_cron_entries.sh /var/xdrago/backup/run/create_cron_entries.sh.old
     fi
-    curl ${_crlGet} "${_urlHmr}/tools/system/back/create_cron_entries.sh" -o /var/xdrago/backup/run/create_cron_entries.sh
+    curl ${_crlGet} "${_urlHmr}/tools/system/backup/run/create_cron_entries.sh" -o /var/xdrago/backup/run/create_cron_entries.sh
     if [ -e "/var/xdrago/backup/run/create_cron_entries.sh" ]; then
       chmod 700 /var/xdrago/backup/run/create_cron_entries.sh
       chown root:root /var/xdrago/backup/run/create_cron_entries.sh
@@ -758,7 +758,7 @@ _update_agents() {
     if [ -e "/var/xdrago/backup/run" ]; then
       mv -f /var/xdrago/backup/run/create_readme.sh /var/xdrago/backup/run/create_readme.sh.old
     fi
-    curl ${_crlGet} "${_urlHmr}/tools/system/back/create_readme.sh" -o /var/xdrago/backup/run/create_readme.sh
+    curl ${_crlGet} "${_urlHmr}/tools/system/backup/run/create_readme.sh" -o /var/xdrago/backup/run/create_readme.sh
     if [ -e "/var/xdrago/backup/run/create_readme.sh" ]; then
       chmod 700 /var/xdrago/backup/run/create_readme.sh
       chown root:root /var/xdrago/backup/run/create_readme.sh
@@ -776,7 +776,7 @@ _update_agents() {
     if [ -e "/var/xdrago/backup/run" ]; then
       mv -f /var/xdrago/backup/run/create_config_readme.sh /var/xdrago/backup/run/create_config_readme.sh.old
     fi
-    curl ${_crlGet} "${_urlHmr}/tools/system/back/create_config_readme.sh" -o /var/xdrago/backup/run/create_config_readme.sh
+    curl ${_crlGet} "${_urlHmr}/tools/system/backup/run/create_config_readme.sh" -o /var/xdrago/backup/run/create_config_readme.sh
     if [ -e "/var/xdrago/backup/run/create_config_readme.sh" ]; then
       chmod 700 /var/xdrago/backup/run/create_config_readme.sh
       chown root:root /var/xdrago/backup/run/create_config_readme.sh
