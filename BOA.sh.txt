@@ -664,7 +664,7 @@ _update_agents() {
 
   if [ -d "/var/xdrago/backup/run" ] \
     && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/install_dependencies.sh.ctrl.f94.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/install_dependencies.sh.ctrl.f93.${_tRee}.${_xSrl}.pid" ]; then
     if [ -e "/var/xdrago/backup/run" ]; then
       mv -f /var/xdrago/backup/run/install_dependencies.sh /var/xdrago/backup/run/install_dependencies.sh.old
     fi
@@ -672,7 +672,7 @@ _update_agents() {
     if [ -e "/var/xdrago/backup/run/install_dependencies.sh" ]; then
       chmod 700 /var/xdrago/backup/run/install_dependencies.sh
       chown root:root /var/xdrago/backup/run/install_dependencies.sh
-      touch ${_pthLog}/install_dependencies.sh.ctrl.f94.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/install_dependencies.sh.ctrl.f93.${_tRee}.${_xSrl}.pid
     else
       if [ -e "/var/xdrago/backup/run/install_dependencies.sh.old" ]; then
         mv -f /var/xdrago/backup/run/install_dependencies.sh.old /var/xdrago/backup/run/install_dependencies.sh
