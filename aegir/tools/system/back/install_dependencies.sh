@@ -7,11 +7,15 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 _PTN_VRN=3.12.5
 _DCY_VRN=3.0.2
 _DCY_CMD="/usr/local/bin/duplicity"
-_LOGPTH="/var/xdrago/log"
+
 _crlGet="-L --max-redirs 3 -k -s --retry 9 --retry-delay 9 -A iCab"
 _wgetGet="--max-redirect=3 --no-check-certificate -q --tries=9 --wait=9 --user-agent='iCab'"
 _aptAllow="--allow-unauthenticated"
 _aptYesUnth="-y ${_aptAllow}"
+
+_apt_clean_update() {
+  ${_APT_UPDATE} -qq 2> /dev/null
+}
 
 _check_root() {
   if [ `whoami` = "root" ]; then
@@ -19,6 +23,7 @@ _check_root() {
     renice 9 -p $$
     chmod a+w /dev/null
     [ -e "/root/.gnupg" ] && chmod 700 /root/.gnupg
+    [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
   else
     echo "ERROR: This script should be run as a root user"
     exit 1
@@ -34,31 +39,14 @@ _check_root() {
     exit 1
   fi
 }
-_check_root
 
-if [ -e "/root/.pause_heavy_tasks_maint.cnf" ]; then
-  exit 0
-fi
-
-# New OpenSSL 3.x version is required
-if [ ! -x "/usr/local/ssl3/bin/openssl" ]; then
-  echo "New OpenSSL 3.x version is required"
-  exit 1
-fi
-
-_if_hosted_sys() {
-  _CHECK_HOST=$(uname -n 2>&1)
-  if [ -e "/root/.host8.cnf" ] \
-    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
-    _hostedSys=YES
-  else
-    _hostedSys=NO
+_check_openssl() {
+  # New OpenSSL 3.x version is required
+  if [ ! -x "/usr/local/ssl3/bin/openssl" ]; then
+    echo "New OpenSSL 3.x version is required"
+    exit 1
   fi
 }
-_if_hosted_sys
-
-
-[ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
 
 _os_detection_minimal() {
   _APT_UPDATE="apt-get update"
@@ -70,112 +58,6 @@ _os_detection_minimal() {
     fi
   done
 }
-_os_detection_minimal
-
-_apt_clean_update() {
-  ${_APT_UPDATE} -qq 2> /dev/null
-}
-
-_python_install_src() {
-  _apt_clean_update
-  apt-get install ${_aptYesUnth} \
-    intltool \
-    libffi-dev \
-    par2 \
-    python3-pip \
-    python3-venv \
-    python3 \
-    rclone \
-    rdiff \
-    tzdata
-  _PTN_TEST=$(${_DCY_PTN} --version 2>&1)
-  if [[ ! "${_PTN_TEST}" =~ "Python ${_PTN_VRN}" ]] \
-    || [ ! -x "${_DCY_PTN}" ]; then
-    cd /var/opt
-    rm -rf Python*
-    wget ${_wgetGet} ${_urlDev}/src/Python-${_PTN_VRN}.tgz
-    tar -xzf Python-${_PTN_VRN}.tgz
-    cd Python-${_PTN_VRN}
-    bash ./configure --with-openssl=/usr/local/ssl3
-    make -j $(nproc) --quiet
-    make install --quiet
-    cd
-  fi
-  _PTN_TEST=$(${_DCY_PTN} --version 2>&1)
-  if [[ "${_PTN_TEST}" =~ "Python ${_PTN_VRN}" ]]; then
-    echo "Python ${_PTN_VRN} installed"
-  else
-    echo "Python ${_PTN_VRN} installation failed with ${_PTN_TEST}"
-    exit 1
-  fi
-}
-
-_if_python_install_src() {
-  if [ -x "/usr/bin/python3" ]; then
-    _DCY_PTN="/usr/bin/python3"
-    _PYTHON_TEST=$(${_DCY_PTN} --version 2>&1)
-  elif [ -x "/usr/local/bin/python3" ]; then
-    _DCY_PTN="/usr/local/bin/python3"
-    _PYTHON_TEST=$(${_DCY_PTN} --version 2>&1)
-  else
-    _PYTHON_TEST=$(python3 --version 2>&1)
-  fi
-  if [[ ! "${_PYTHON_TEST}" =~ Python\ 3\.(11|12) ]]; then
-    echo "Python ${_PTN_VRN} installation is required to support Duplicity ${_DCY_VRN}"
-    _DCY_PTN="/usr/local/bin/python3"
-    _python_install_src
-  fi
-}
-
-
-_vars_adjust() {
-  if [ -x "/usr/bin/python3" ]; then
-    _DCY_PTN="/usr/bin/python3"
-    _PYTHON_TEST=$(${_DCY_PTN} --version 2>&1)
-    [[ "${_PYTHON_TEST}" =~ "Python 3.12" ]] && export PYTHONPATH="/usr/lib/python3.12/site-packages"
-    [[ "${_PYTHON_TEST}" =~ "Python 3.11" ]] && export PYTHONPATH="/usr/lib/python3.11/site-packages"
-  elif [ -x "/usr/local/bin/python3" ]; then
-    _DCY_PTN="/usr/local/bin/python3"
-    _PYTHON_TEST=$(${_DCY_PTN} --version 2>&1)
-    [[ "${_PYTHON_TEST}" =~ "Python 3.12" ]] && export PYTHONPATH="/usr/local/lib/python3.12/site-packages"
-    [[ "${_PYTHON_TEST}" =~ "Python 3.11" ]] && export PYTHONPATH="/usr/local/lib/python3.11/site-packages"
-  fi
-}
-
-    _PTN_TEST=$(${_DCY_PTN} --version 2>&1)
-    if [[ "${_PTN_TEST}" =~ "Python ${_PTN_VRN}" ]]; then
-      python3 -m pip install pipx --break-system-packages --root-user-action ignore
-      pip3 install --upgrade pip --root-user-action ignore
-      export PIPX_BIN_DIR=/usr/local/bin
-      export PIPX_HOME=/opt/pipx/venvs
-      pipx install duplicity --include-deps --force
-      pipx install awscli --include-deps --force
-      pipx install boto3 --include-deps --force
-    else
-      echo "Python ${_PTN_VRN} installation failed with ${_PTN_TEST}"
-      exit 1
-    fi
-
-if [ "$1" != "help" ]; then
-  # Check the Python version to ensure we're using the correct one
-  echo "Checking expected Python ${_PTN_VRN} version..."
-  ${_DCY_PTN} --version
-  # Check the Duplicity version to ensure we're using the correct one
-  echo "Checking expected Duplicity ${_DCY_VRN} version..."
-  ${_DCY_CMD} --version
-fi
-
-
-
-
-_check_vps() {
-  _BENG_VS=NO
-  _VM_TEST=$(uname -a 2>&1)
-  if [[ "${_VM_TEST}" =~ "-beng" ]]; then
-    _BENG_VS=YES
-  fi
-}
-_check_vps
 
 _find_fast_mirror_early() {
   _isNetc=$(which netcat 2>&1)
@@ -218,183 +100,134 @@ _find_fast_mirror_early() {
 }
 
 # Function to install other dependencies
-_if_install_other_dependencies() {
+_install_other_dependencies() {
   echo "Checking and installing other dependencies..."
 
-    _apt_clean_update
-    _mrun "${_INSTAPP} python3-pip" 2> /dev/null
-    if [ -x "/usr/bin/pip3" ]; then
-      _usePip=/usr/bin/pip3
-    elif [ -x "/usr/local/bin/pip3" ]; then
-      _usePip=/usr/local/bin/pip3
-    fi
-    _PIP_TEST=$(${_usePip} --version 2>&1)
-    if [[ "${_PIP_TEST}" =~ "python 3.11" ]] \
-      || [[ "${_PIP_TEST}" =~ "python 3.12" ]]; then
-      _mrun "${_usePip} install --upgrade pip --root-user-action ignore" 2> /dev/null
-    else
-      _mrun "${_usePip} install --upgrade pip" 2> /dev/null
-    fi
+  echo "Installing boto3 for S3-compatible services..."
+  pipx install boto3 --include-deps --force
 
-    _PIP_TEST=$(${_usePip} --version 2>&1)
-    if [[ "${_PIP_TEST}" =~ "python 3.11" ]] \
-      || [[ "${_PIP_TEST}" =~ "python 3.12" ]]; then
-      _mrun "${_usePip} install . --break-system-packages --root-user-action ignore" 2> /dev/null
-    else
-      _mrun "${_usePip} install . " 2> /dev/null
-    fi
+  echo "Installing awscli for S3-compatible services..."
+  pipx install awscli --include-deps --force
 
-    _PTN_TEST=$(${_DCY_PTN} --version 2>&1)
-    if [[ "${_PTN_TEST}" =~ "Python ${_PTN_VRN}" ]]; then
-      python3 -m pip install pipx --break-system-packages --root-user-action ignore
-      pip3 install --upgrade pip --root-user-action ignore
-      export PIPX_BIN_DIR=/usr/local/bin
-      export PIPX_HOME=/opt/pipx/venvs
-      pipx install duplicity --include-deps --force
-      pipx install awscli --include-deps --force
-      pipx install boto3 --include-deps --force
-    else
-      echo "Python ${_PTN_VRN} installation failed with ${_PTN_TEST}"
-      exit 1
-    fi
+  echo "Installing azure-storage-blob for Azure Blob Storage..."
+  pipx install azure-storage-blob --include-deps --force
 
-  # Update package list
-  _apt_clean_update
+  echo "Installing b2sdk for Backblaze B2..."
+  pipx install b2sdk --include-deps --force
 
-  # Install Duplicity
-  if ! command -v duplicity &> /dev/null; then
-    echo "Installing Duplicity..."
-    sudo apt-get install -y duplicity
-  fi
+  echo "Installing google-cloud-storage for Google Cloud Storage..."
+  pipx install google-cloud-storage --include-deps --force
 
-  # Install Python pip
-  if ! command -v pip &> /dev/null; then
-    echo "Installing pip..."
-    sudo apt-get install -y python3-pip
-  fi
-
-  # Install boto3 for S3-compatible services
-  if ! python3 -c "import boto3" &> /dev/null; then
-    echo "Installing boto3..."
-    pip install boto3
-  fi
-
-  # Install google-cloud-storage for Google Cloud Storage
-  if ! python3 -c "import google.cloud.storage" &> /dev/null; then
-    echo "Installing google-cloud-storage..."
-    pip install google-cloud-storage
-  fi
-
-  # Install b2sdk for Backblaze B2
-  if ! python3 -c "import b2sdk" &> /dev/null; then
-    echo "Installing b2sdk..."
-    pip install b2sdk
-  fi
-
-  # Install azure-storage-blob for Azure Blob Storage
-  if ! python3 -c "import azure.storage.blob" &> /dev/null; then
-    echo "Installing azure-storage-blob..."
-    pip install azure-storage-blob
-  fi
-
-  # Install ibm-cos-sdk for IBM Cloud Object Storage
-  if ! python3 -c "import ibm_boto3" &> /dev/null; then
-    echo "Installing ibm-cos-sdk..."
-    pip install ibm-cos-sdk
-  fi
+  echo "Installing ibm-cos-sdk for IBM Cloud Object Storage..."
+  pipx install ibm-cos-sdk --include-deps --force
 
   echo "All dependencies are installed."
 }
 
-_install() {
-  if [ ! -d "${_LOGPTH}" ]; then
-    mkdir -p ${_LOGPTH}
-  fi
-  [ -e "/root/.gnupg" ] && chmod 700 /root/.gnupg
-  _DUPLICITY_ITD=$(duplicity --version 2>&1 \
-    | tr -d "\n" \
-    | cut -d" " -f2 \
-    | awk '{ print $1}' 2>&1)
-  if [ "${_DUPLICITY_ITD}" = "${_DCY_VRN}" ] \
-    && [ -L "/usr/local/bin/jp.py" ] \
-    && [ -L "/usr/local/bin/duplicity" ] \
-    && [ -L "/usr/local/bin/aws" ]; then
-    echo "Latest duplicity version ${_DCY_VRN} already installed"
-    _if_install_other_dependencies
+_install_duplicity() {
+  pip3 install --upgrade pip --root-user-action ignore
+  echo "Installing pipx..."
+
+  ${_DCY_PTN} -m pip install pipx --break-system-packages --root-user-action ignore
+
+  export PIPX_BIN_DIR=/usr/local/bin
+  export PIPX_HOME=/opt/pipx/venvs
+
+  echo "Installing Duplicity ${_DCY_VRN}..."
+  pipx install duplicity --include-deps --force
+
+  _DCY_TEST=$(${_DCY_CMD} --version 2>&1)
+  if [[ "${_DCY_TEST}" =~ "duplicity ${_DCY_VRN}" ]]; then
+    echo "Duplicity ${_DCY_VRN} installation complete!"
+    exit 0
   else
-    echo "Installing duplicity dependencies..."
+    echo "Duplicity ${_DCY_VRN} installation failed with ${_DCY_TEST}"
+    exit 1
+  fi
+}
+
+_python_install_src() {
+  if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
+    && [ -e "/etc/apt/apt.conf.d" ]; then
+    echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
+  fi
+  _find_fast_mirror_early
+  _apt_clean_update
+  apt-get install ${_aptYesUnth} \
+    intltool \
+    libffi-dev \
+    par2 \
+    python3-pip \
+    python3-venv \
+    python3 \
+    rclone \
+    rdiff \
+    tzdata
+  _PTN_TEST=$(${_DCY_PTN} --version 2>&1)
+  if [[ ! "${_PTN_TEST}" =~ "Python ${_PTN_VRN}" ]] \
+    || [ ! -x "${_DCY_PTN}" ]; then
+    cd /var/opt
+    rm -rf Python*
+    wget ${_wgetGet} ${_urlDev}/src/Python-${_PTN_VRN}.tgz
+    tar -xzf Python-${_PTN_VRN}.tgz
+    cd Python-${_PTN_VRN}
+    bash ./configure --with-openssl=/usr/local/ssl3
+    make -j $(nproc) --quiet
+    make install --quiet
     cd
-    _find_fast_mirror_early
-    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
-      && [ -e "/etc/apt/apt.conf.d" ]; then
-      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
+  fi
+  _PTN_TEST=$(${_DCY_PTN} --version 2>&1)
+  if [[ "${_PTN_TEST}" =~ "Python ${_PTN_VRN}" ]]; then
+    echo "Python ${_PTN_VRN} installed"
+    _DCY_PTN="/usr/local/bin/python3.12"
+    export PYTHONPATH="/usr/local/lib/python3.12/site-packages"
+  else
+    echo "Python ${_PTN_VRN} installation failed with ${_PTN_TEST}"
+    exit 1
+  fi
+
+  echo "Locating pip3..."
+  if [ -x "/usr/local/bin/pip3" ]; then
+    _usePip=/usr/local/bin/pip3
+  elif [ -x "/usr/bin/pip3" ]; then
+    _usePip=/usr/bin/pip3
+  fi
+  echo "_usePip is ${_usePip}"
+
+  echo "Installing pip..."
+  _PIP_TEST=$(${_usePip} --version 2>&1)
+  if [[ "${_PIP_TEST}" =~ "python 3.11" ]] \
+    || [[ "${_PIP_TEST}" =~ "python 3.12" ]]; then
+    ${_usePip} install --upgrade pip --root-user-action ignore
+  else
+    ${_usePip} install --upgrade pip
+  fi
+
+  _install_duplicity
+  _install_other_dependencies
+}
+
+_if_python_install_src() {
+  _PYTHON_INSTALL=NO
+  [ -e "/root/.gnupg" ] && chmod 700 /root/.gnupg
+  _PYTHON_TEST=$(python3 --version 2>&1)
+  if [[ ! "${_PYTHON_TEST}" =~ Python\ 3\.12 ]]; then
+    echo "Python ${_PTN_VRN} installation is required to support Duplicity ${_DCY_VRN}"
+    _python_install_src
+  else
+    if ! ${_DCY_PTN} -c "import boto3" &> /dev/null; then
+      _PYTHON_INSTALL=YES
     fi
-    _apt_clean_update
-    aptitude purge duplicity -y
-    rm -f /usr/local/bin/duplicity
-    rm -f /usr/local/bin/jp.py
-    rm -f /usr/local/bin/aws*
-    apt-get install ${_aptYesUnth} \
-        intltool \
-        libffi-dev \
-        par2 \
-        python3-pip \
-        python3-venv \
-        python3 \
-        rclone \
-        rdiff \
-        tzdata
-    _PTN_TEST=$(${_DCY_PTN} --version 2>&1)
-    if [[ ! "${_PTN_TEST}" =~ "Python ${_PTN_VRN}" ]] \
-      || [ ! -x "${_DCY_PTN}" ]; then
-      cd /var/opt
-      rm -rf Python*
-      wget ${_wgetGet} ${_urlDev}/src/Python-${_PTN_VRN}.tgz
-      tar -xzf Python-${_PTN_VRN}.tgz
-      cd Python-${_PTN_VRN}
-      if [ -d "/usr/local/ssl3" ]; then
-        bash ./configure --with-openssl=/usr/local/ssl3
-      else
-        bash ./configure --with-openssl=/usr/local/ssl
-      fi
-      make -j $(nproc) --quiet
-      make install --quiet
-      cd
+    if ! ${_DCY_PTN} -c "import b2sdk" &> /dev/null; then
+      _PYTHON_INSTALL=YES
     fi
-    _PTN_TEST=$(${_DCY_PTN} --version 2>&1)
-    if [[ "${_PTN_TEST}" =~ "Python ${_PTN_VRN}" ]]; then
-      python3 -m pip install pipx --break-system-packages --root-user-action ignore
-      pip3 install --upgrade pip --root-user-action ignore
-      export PIPX_BIN_DIR=/usr/local/bin
-      export PIPX_HOME=/opt/pipx/venvs
-      pipx install duplicity --include-deps --force
-      pipx install awscli --include-deps --force
-      pipx install boto3 --include-deps --force
-    else
-      echo "Python ${_PTN_VRN} installation failed with ${_PTN_TEST}"
-      exit 1
-    fi
-    _DCY_TEST=$(${_DCY_CMD} --version 2>&1)
-    if [[ "${_DCY_TEST}" =~ "duplicity ${_DCY_VRN}" ]]; then
-      echo "Installation complete!"
-    else
-      echo "Installation failed with ${_DCY_TEST}"
-      exit 1
+    if [ "${_PYTHON_INSTALL}" = "YES" ]; then
+      _python_install_src
     fi
   fi
 }
 
-_check_aws() {
-  if [ ! -x "/usr/local/bin/aws" ]; then
-    echo "Upgrade to add multiback tools required..."
-    install
-  fi
-}
-
-if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ]; then
-  echo "The duplicity backup is already running!"
-  echo "Active duplicity process detected..."
-  exit 1
-fi
-
-exit 0
+_check_root
+_check_openssl
+_os_detection_minimal
+_if_python_install_src
