@@ -93,10 +93,10 @@ EOF
   }
 
   # Validate and merge include/exclude files
-  _validate_config "${_include_file}"
-  _validate_config "${_exclude_file}"
-  _validate_config "${_include_regexp_file}" "regexp"
-  _validate_config "${_exclude_regexp_file}" "regexp"
+  [ -e "${_include_file}" ] && _validate_config "${_include_file}"
+  [ -e "${_exclude_file}" ] && _validate_config "${_exclude_file}"
+  [ -e "${_include_regexp_file}" ] && _validate_config "${_include_regexp_file}" "regexp"
+  [ -e "${_exclude_regexp_file}" ] && _validate_config "${_exclude_regexp_file}" "regexp"
 
   cat "${_include_file}" > "${_merged_include_file}"
   cat "${_exclude_file}" > "${_merged_exclude_file}"
