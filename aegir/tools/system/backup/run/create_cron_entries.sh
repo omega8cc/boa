@@ -16,67 +16,92 @@ _generate_wrapper_script() {
   cat << 'EOF' > "${_WRAPPER_SCRIPT}"
 #!/bin/bash
 
-# Initialize variables
-_PIDFILE="/var/run/backup_runner.pid"
-_LOGFILE="/var/log/backup_runtime.log"
-_SCHEDULE_FILE="/var/xdrago/backup/backup_schedule.txt"
-_START_TIME=$(date +%s)
+# Environment setup
+export HOME=/root
+export SHELL=/bin/bash
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
-# Function to clean up on exit
+# File paths
+_BACKUP_CONFIG="/var/xdrago/backup/backup_schedule.txt"
+_PID_DIR="/var/run"
+
+# Function to create PID file
+_create_pid_file() {
+  local _pidfile=$1
+  if [ -e "${_pidfile}" ]; then
+    echo "Process already running with PID file ${_pidfile}"
+    exit 1
+  else
+    echo $$ > "${_pidfile}"
+  fi
+}
+
+# Function to remove PID file
+_remove_pid_file() {
+  local _pidfile=$1
+  rm -f "${_pidfile}"
+}
+
+# Function to handle cleanup on exit
 _cleanup_on_exit() {
-  [ -f "${_PIDFILE}" ] && rm -f "${_PIDFILE}"
+  _remove_pid_file "${_CURRENT_PIDFILE}"
 }
 trap _cleanup_on_exit EXIT
 
-# Function to run a single backup
-_run_backup() {
-  local _service=$1
-  local _user=$2
-  local _config_dir=$3
+# Read backup services and users from the configuration file
+if [ ! -f "${_BACKUP_CONFIG}" ]; then
+  echo "Error: Backup schedule file ${_BACKUP_CONFIG} not found."
+  exit 1
+fi
 
-  # Check for existing PID file
-  if [ -f "${_PIDFILE}" ]; then
-    echo "Backup process already running. Exiting..."
-    exit 1
+# Start processing each line from the configuration file
+while IFS= read -r _line || [ -n "${_line}" ]; do
+  # Skip empty lines and comments
+  if [[ "${_line}" =~ ^\s*# ]] || [[ -z "${_line}" ]]; then
+    continue
   fi
 
-  # Create PID file
-  echo $$ > "${_PIDFILE}"
+  # Parse service and user
+  _service=$(echo "${_line}" | cut -d' ' -f1)
+  _user=$(echo "${_line}" | cut -d' ' -f2)
 
-  # Validate paths file
+  # Ensure both service and user are defined
+  if [ -z "${_service}" ] || [ -z "${_user}" ]; then
+    echo "Error: Invalid line in configuration file: ${_line}"
+    continue
+  fi
+
+  echo "Starting backup for ${_service} (${_user})..."
+
+  # Set up PID file
+  _CURRENT_PIDFILE="${_PID_DIR}/duplicity_${_service}_${_user}.pid"
+  _create_pid_file "${_CURRENT_PIDFILE}"
+
+  # Determine paths configuration
   if [ "${_user}" = "global_user" ]; then
-    local _paths_file="/var/xdrago/backup/paths.txt"
+    _paths_file="/var/xdrago/backup/paths.txt"
   else
-    local _paths_file="${_config_dir}/paths.txt"
+    _paths_file="/data/disk/${_user}/remote_backups/paths.txt"
   fi
 
   if [ ! -f "${_paths_file}" ]; then
     echo "Paths configuration file ${_paths_file} not found."
-    return 1
+    _remove_pid_file "${_CURRENT_PIDFILE}"
+    continue
   fi
 
-  # Run the backup
-  echo "Starting backup for ${_service} (${_user})..."
-  multiback backup "${_service}" "${_user}" "${_paths_file}"
+  # Load paths configuration
+  source "${_paths_file}"
+
+  # Perform backup
+  multiback backup "${_service}" "${_user}"
 
   echo "Backup for ${_service} (${_user}) completed."
-}
 
-# Sequentially run backups
-while IFS= read -r _entry; do
-  # Ignore lines starting with # or empty lines
-  [[ "${_entry}" =~ ^#.*$ || -z "${_entry}" ]] && continue
+  # Remove PID file
+  _remove_pid_file "${_CURRENT_PIDFILE}"
 
-  _service=$(echo "${_entry}" | cut -d' ' -f1)
-  _user=$(echo "${_entry}" | cut -d' ' -f2)
-  _config_dir=$(echo "${_entry}" | cut -d' ' -f3)
-  _run_backup "${_service}" "${_user}" "${_config_dir}"
-done < "${_SCHEDULE_FILE}"
-
-# Log total _run_backup runtime
-_END_TIME=$(date +%s)
-_RUNTIME=$((_END_TIME - _START_TIME))
-echo "Total _run_backup runtime: ${_RUNTIME} seconds" >> "${_LOGFILE}"
+done < "${_BACKUP_CONFIG}"
 EOF
 
   chmod +x "${_WRAPPER_SCRIPT}"
@@ -105,14 +130,13 @@ _validate_cron_file() {
 
 # Function to generate the backup schedule
 _generate_backup_schedule() {
-  echo "# Backup schedule (service user config_dir)" > "${_SCHEDULE_FILE}"
+  echo "# Backup schedule (service user)" > "${_SCHEDULE_FILE}"
 
   # Add global backups
   _GLOBAL_CRED_DIR="/var/xdrago/backup/credentials"
-  _GLOBAL_CONFIG_DIR="/var/xdrago/backup"
   for _service in aws aws_one_zone aws_standard_ia gcs b2 azure upcloud ibm wasabi do_spaces linode; do
     if [ -f "${_GLOBAL_CRED_DIR}/${_service}.txt" ] && ! grep -q "your_" "${_GLOBAL_CRED_DIR}/${_service}.txt"; then
-      echo "${_service} global_user ${_GLOBAL_CONFIG_DIR}" >> "${_SCHEDULE_FILE}"
+      echo "${_service} global_user" >> "${_SCHEDULE_FILE}"
     fi
   done
 
@@ -121,10 +145,9 @@ _generate_backup_schedule() {
     if [ -d "${_user_dir}" ]; then
       _user=$(basename "${_user_dir}")
       _USER_CRED_DIR="/data/disk/${_user}/static/control/remote_backups/credentials"
-      _USER_CONFIG_DIR="/data/disk/${_user}/remote_backups"
       for _service in aws aws_one_zone aws_standard_ia gcs b2 azure upcloud ibm wasabi do_spaces linode; do
         if [ -f "${_USER_CRED_DIR}/${_service}.txt" ] && ! grep -q "your_" "${_USER_CRED_DIR}/${_service}.txt"; then
-          echo "${_service} ${_user} ${_USER_CONFIG_DIR}" >> "${_SCHEDULE_FILE}"
+          echo "${_service} ${_user}" >> "${_SCHEDULE_FILE}"
         fi
       done
     fi
