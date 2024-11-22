@@ -50,6 +50,10 @@ _create_pid_file() {
 
   # Write the current PID to the file
   echo "${_current_pid}" > "${_pidfile}"
+  if [ $? -ne 0 ]; then
+    echo "Failed to create PID file: ${_pidfile}"
+    exit 1
+  fi
 }
 
 # Function to remove a PID file
@@ -87,14 +91,14 @@ if [ ! -f "${_SCHEDULE_FILE}" ]; then
   exit 1
 fi
 
-# Start processing each line from the configuration file
+# Process each line in the backup configuration file
 while IFS= read -r _line || [ -n "${_line}" ]; do
   # Skip empty lines and comments
   if [[ "${_line}" =~ ^\s*# ]] || [[ -z "${_line}" ]]; then
     continue
   fi
 
-  # Parse service and user
+  # Parse the service and user
   _service=$(echo "${_line}" | cut -d' ' -f1)
   _user=$(echo "${_line}" | cut -d' ' -f2)
 
@@ -107,7 +111,7 @@ while IFS= read -r _line || [ -n "${_line}" ]; do
   echo "Starting backup for ${_service} (${_user})..."
 
   # Define the PID file path
-  _CURRENT_PIDFILE="${_PID_DIR}/duplicity_${_service}_${_user}_script.pid"
+  _CURRENT_PIDFILE="${_PID_DIR}/duplicity_${_service}_${_user}.pid"
 
   # Create the PID file
   _create_pid_file "${_CURRENT_PIDFILE}"
@@ -166,10 +170,10 @@ while IFS= read -r _line || [ -n "${_line}" ]; do
   export _EXCLUDE
 
   # Perform the backup
-  if multiback backup "${_service}" "${_user}" "${_paths_file}"; then
-    echo "Backup for ${_service} (${_user}) "${_paths_file}" completed successfully."
+  if multiback backup "${_service}" "${_user}"; then
+    echo "Backup for ${_service} (${_user})" completed successfully."
   else
-    echo "Backup for ${_service} (${_user}) "${_paths_file}" failed."
+    echo "Backup for ${_service} (${_user}) failed."
   fi
 
   # Return to the original directory
