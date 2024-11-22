@@ -27,6 +27,8 @@ _create_config_readme_file() {
   local _config_dir="${_BASE_DIR}/${_user}/static/control/remote_backups/config"
   local _readme_file="${_config_dir}/README.txt"
   local _readme_ctrl_file="${_BASE_DIR}/${_user}/log/.backboa.${_user}.f95.config.readme.ctrl"
+  local _user_static_dir="/data/disk/${_user}/static"
+  local _user_ftp_dir="/home/${_user}.ftp"
 
   _ensure_config_dir "${_user}"
 
@@ -36,6 +38,10 @@ Backup Configuration README
 
 This directory contains configuration files for customizing backup behavior.
 Users can define include and exclude directives for their backups.
+
+Allowed paths for backups are restricted to:
+- ${_user_static_dir}
+- ${_user_ftp_dir}
 
 Available Configuration Files:
 
@@ -56,26 +62,26 @@ Usage Instructions:
 1. include.txt
    List full paths to the directories or files you want to include in the backup.
    Example:
-   --include /path/to/important_directory
-   --include /path/to/another_file
+   --include ${_user_static_dir}/documents
+   --include ${_user_ftp_dir}/documents
 
 2. exclude.txt
    List full paths to the directories or files you want to exclude from the backup.
    Example:
-   --exclude /path/to/cache
-   --exclude /path/to/temp
+   --exclude ${_user_static_dir}/cache
+   --exclude ${_user_ftp_dir}/temp
 
 3. include_regexp.txt
    Use regular expressions to specify patterns for directories or files to include in the backup.
    Example:
-   --include-regexp '^/data/disk/${_user}/static/.*/important_files/'
-   --include-regexp '^/home/.*/documents/.*\.pdf$'
+   --include-regexp '^${_user_ftp_dir}/documents/.*\.pdf$'
+   --include-regexp '^${_user_static_dir}/project_data/.*'
 
 4. exclude_regexp.txt
    Use regular expressions to specify patterns for directories or files to exclude from the backup.
    Example:
-   --exclude-regexp '^/data/disk/${_user}/static/trash/'
-   --exclude-regexp '^.*\.tmp$'
+   --exclude-regexp '^${_user_static_dir}/trash/.*'
+   --exclude-regexp '^${_user_ftp_dir}/temp_files/.*'
 
 Security:
 - Ensure these files are restricted to the user only:
@@ -89,12 +95,18 @@ Notes:
 - Paths for platforms without direct access in /data/disk/${_user}/distro are included by default.
 - Invalid entries may cause the backup process to fail.
 
-Example:
-If you want to exclude temporary files and include specific PDF documents:
+Example Configuration:
+
+If you want to exclude temporary files:
 - Add the following to exclude_regexp.txt:
-  --exclude-regexp '^.*\.tmp$'
+  --exclude-regexp '^${_user_static_dir}/temp/.*'
+  --exclude-regexp '^${_user_ftp_dir}/temp/.*'
+
+If you want to include specific documents:
 - Add the following to include_regexp.txt:
-  --include-regexp '^/home/.*/documents/.*\.pdf$'
+  --include-regexp '^${_user_ftp_dir}/documents/.*\.pdf$'
+  --include-regexp '^${_user_static_dir}/important_data/.*'
+
 EOF
     chmod 600 "${_readme_file}"
     chown ${_user}.ftp:users "${_readme_file}"
