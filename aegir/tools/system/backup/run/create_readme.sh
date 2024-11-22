@@ -140,7 +140,7 @@ _main() {
     if [ -d "${_user_dir}" ]; then
       local _user
       _user=$(basename "${_user_dir}")
-      _create_readme_file "${_user}"
+      [ "${_user}" != "arch" ] && _create_readme_file "${_user}"
     fi
   done
 }
