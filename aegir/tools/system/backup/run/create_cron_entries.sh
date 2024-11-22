@@ -38,7 +38,7 @@ _run_backup() {
 
   # Run the backup
   echo "Starting backup for ${_service} (${_user})..."
-  /path/to/duplicity_backup.sh backup "${_service}" "${_user}" "${_config_dir}/paths.txt"
+  multiback backup "${_service}" "${_user}" "${_config_dir}/paths.txt"
 
   # Remove PID file
   rm -f "${_PIDFILE}"
