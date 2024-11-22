@@ -207,7 +207,7 @@ fi
 _ACTION=$1
 _SERVICE=$2
 _USER=$3
-_RESTORE_TARGET="${4:-/data/disk/${_USER}/static/backups/}"
+_RESTORE_TARGET="${4:-/var/backups/}"
 _RESTORE_PATH="${5:-}"
 _RESTORE_TIME="${6:-}"
 _PIDFILE="/var/run/duplicity_${_SERVICE}_${_USER}.pid"
