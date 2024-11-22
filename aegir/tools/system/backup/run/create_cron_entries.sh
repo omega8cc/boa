@@ -169,7 +169,7 @@ while IFS= read -r _line || [ -n "${_line}" ]; do
 
   # Perform the backup
   if multiback backup "${_service}" "${_user}"; then
-    echo "Backup for ${_service} (${_user})" completed successfully."
+    echo "Backup for ${_service} (${_user}) completed successfully."
   else
     echo "Backup for ${_service} (${_user}) failed."
   fi
