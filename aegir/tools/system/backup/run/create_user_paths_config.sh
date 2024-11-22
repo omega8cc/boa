@@ -15,8 +15,8 @@ _create_user_paths_config() {
   local _exclude_regexp_file="${_user_config_dir}/.backboa.${_user}.exclude_regexp"
   local _merged_include_file="${_user_config_dir}/.backboa.${_user}.include.merged"
   local _merged_exclude_file="${_user_config_dir}/.backboa.${_user}.exclude.merged"
-  local _include_ctrl_file="${_user_config_dir}/.backboa.${_user}.f95.include.ctrl"
-  local _exclude_ctrl_file="${_user_config_dir}/.backboa.${_user}.f95.exclude.ctrl"
+  local _include_ctrl_file="${_user_config_dir}/.backboa.${_user}.f94.include.ctrl"
+  local _exclude_ctrl_file="${_user_config_dir}/.backboa.${_user}.f94.exclude.ctrl"
 
   # Ensure user configuration directory exists and is owned by root
   mkdir -p "${_user_config_dir}"
@@ -81,8 +81,8 @@ EOF
         exit 1
       fi
 
-      # Check for paths outside of /data/disk/${_user}/static/
-      _invalid_lines=$(grep -E "^--(include|exclude) " "${_file}" | grep -v "^/data/disk/${_user}/static/" || true)
+      # Check for paths outside allowed directories
+      _invalid_lines=$(grep -E "^--(include|exclude) " "${_file}" | grep -vE "^--(include|exclude) (/(data/disk/${_user}/static|/home/${_user}.ftp))" || true)
       if [ -n "${_invalid_lines}" ]; then
         echo "Error: Unauthorized paths in ${_file}:"
         echo "${_invalid_lines}"
