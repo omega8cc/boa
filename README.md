@@ -105,6 +105,8 @@ Check out the details in [ROADMAP](https://github.com/omega8cc/boa/tree/5.x-dev/
 - INI configuration per platform: [docs/ini/platform/INI.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/ini/platform/INI.md)
 - Configuration Templates: [docs/cnf/barracuda.cnf](https://github.com/omega8cc/boa/tree/5.x-dev/docs/cnf/barracuda.cnf), [docs/cnf/octopus.cnf](https://github.com/omega8cc/boa/tree/5.x-dev/docs/cnf/octopus.cnf)
 - System Control Files Index: [docs/ctrl/system.ctrl](https://github.com/omega8cc/boa/tree/5.x-dev/docs/ctrl/system.ctrl)
+- New Backups for BOA SysAdmin [docs/BACKUPROOT.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUPROOT.md)
+- New Backups for Octopus Lshell User [docs/BACKUPUSER.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUPUSER.md)
 
 ## Additional Documentation
 
