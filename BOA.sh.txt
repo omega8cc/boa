@@ -665,7 +665,7 @@ _update_agents() {
   if [ -d "/var/xdrago/backup/run" ] \
     && [ -d "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/install_dependencies.sh.ctrl.f93.${_tRee}.${_xSrl}.pid" ]; then
-    if [ -e "/var/xdrago/backup/run" ]; then
+    if [ -e "/var/xdrago/backup/run/install_dependencies.sh" ]; then
       mv -f /var/xdrago/backup/run/install_dependencies.sh /var/xdrago/backup/run/install_dependencies.sh.old
     fi
     curl ${_crlGet} "${_urlHmr}/tools/system/backup/run/install_dependencies.sh" -o /var/xdrago/backup/run/install_dependencies.sh
@@ -683,7 +683,7 @@ _update_agents() {
   if [ -d "/var/xdrago/backup/run" ] \
     && [ -d "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/create_credentials_templates.sh.ctrl.f93.${_tRee}.${_xSrl}.pid" ]; then
-    if [ -e "/var/xdrago/backup/run" ]; then
+    if [ -e "/var/xdrago/backup/run/create_credentials_templates.sh" ]; then
       mv -f /var/xdrago/backup/run/create_credentials_templates.sh /var/xdrago/backup/run/create_credentials_templates.sh.old
     fi
     curl ${_crlGet} "${_urlHmr}/tools/system/backup/run/create_credentials_templates.sh" -o /var/xdrago/backup/run/create_credentials_templates.sh
@@ -701,7 +701,7 @@ _update_agents() {
   if [ -d "/var/xdrago/backup/run" ] \
     && [ -d "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/create_global_paths_config.sh.ctrl.f91.${_tRee}.${_xSrl}.pid" ]; then
-    if [ -e "/var/xdrago/backup/run" ]; then
+    if [ -e "/var/xdrago/backup/run/create_global_paths_config.sh" ]; then
       mv -f /var/xdrago/backup/run/create_global_paths_config.sh /var/xdrago/backup/run/create_global_paths_config.sh.old
     fi
     curl ${_crlGet} "${_urlHmr}/tools/system/backup/run/create_global_paths_config.sh" -o /var/xdrago/backup/run/create_global_paths_config.sh
@@ -719,7 +719,7 @@ _update_agents() {
   if [ -d "/var/xdrago/backup/run" ] \
     && [ -d "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/create_user_paths_config.sh.ctrl.f89.${_tRee}.${_xSrl}.pid" ]; then
-    if [ -e "/var/xdrago/backup/run" ]; then
+    if [ -e "/var/xdrago/backup/run/create_user_paths_config.sh" ]; then
       mv -f /var/xdrago/backup/run/create_user_paths_config.sh /var/xdrago/backup/run/create_user_paths_config.sh.old
     fi
     curl ${_crlGet} "${_urlHmr}/tools/system/backup/run/create_user_paths_config.sh" -o /var/xdrago/backup/run/create_user_paths_config.sh
@@ -737,7 +737,7 @@ _update_agents() {
   if [ -d "/var/xdrago/backup/run" ] \
     && [ -d "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/create_cron_entries.sh.ctrl.f88.${_tRee}.${_xSrl}.pid" ]; then
-    if [ -e "/var/xdrago/backup/run" ]; then
+    if [ -e "/var/xdrago/backup/run/create_cron_entries.sh" ]; then
       mv -f /var/xdrago/backup/run/create_cron_entries.sh /var/xdrago/backup/run/create_cron_entries.sh.old
     fi
     curl ${_crlGet} "${_urlHmr}/tools/system/backup/run/create_cron_entries.sh" -o /var/xdrago/backup/run/create_cron_entries.sh
@@ -755,7 +755,7 @@ _update_agents() {
   if [ -d "/var/xdrago/backup/run" ] \
     && [ -d "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/create_readme.sh.ctrl.f92.${_tRee}.${_xSrl}.pid" ]; then
-    if [ -e "/var/xdrago/backup/run" ]; then
+    if [ -e "/var/xdrago/backup/run/create_readme.sh" ]; then
       mv -f /var/xdrago/backup/run/create_readme.sh /var/xdrago/backup/run/create_readme.sh.old
     fi
     curl ${_crlGet} "${_urlHmr}/tools/system/backup/run/create_readme.sh" -o /var/xdrago/backup/run/create_readme.sh
@@ -773,7 +773,7 @@ _update_agents() {
   if [ -d "/var/xdrago/backup/run" ] \
     && [ -d "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/create_config_readme.sh.ctrl.f91.${_tRee}.${_xSrl}.pid" ]; then
-    if [ -e "/var/xdrago/backup/run" ]; then
+    if [ -e "/var/xdrago/backup/run/create_config_readme.sh" ]; then
       mv -f /var/xdrago/backup/run/create_config_readme.sh /var/xdrago/backup/run/create_config_readme.sh.old
     fi
     curl ${_crlGet} "${_urlHmr}/tools/system/backup/run/create_config_readme.sh" -o /var/xdrago/backup/run/create_config_readme.sh
