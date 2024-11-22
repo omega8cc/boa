@@ -49,7 +49,7 @@ EOF
   fi
 
   if [ ! -f "${_include_regexp_file}" ]; then
-    echo "# No default include-regexp rules"
+    echo "# No default include-regexp rules for ${_user}"
   fi
 
   if [ ! -f "${_exclude_regexp_file}" ]; then
