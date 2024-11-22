@@ -150,9 +150,11 @@ _main() {
     if [ -d "${_user_dir}" ]; then
       local _user
       _user=$(basename "${_user_dir}")
-      [ "${_user}" != "arch" ] && local _user_credentials_dir="${_USER_BASE_DIR}/${_user}/static/control/remote_backups/credentials"
-      [ "${_user}" != "arch" ] && _ensure_directory "${_user_credentials_dir}"
-      [ "${_user}" != "arch" ] && _create_credentials_templates "${_user_credentials_dir}"
+      if [ "${_user}" != "arch" ] && [ "${_user}" != "global_user" ]; then
+        local _user_credentials_dir="${_USER_BASE_DIR}/${_user}/static/control/remote_backups/credentials"
+        _ensure_directory "${_user_credentials_dir}"
+        _create_credentials_templates "${_user_credentials_dir}"
+      fi
     fi
   done
 }

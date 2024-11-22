@@ -133,6 +133,8 @@ EOF
 for _user_dir in /data/disk/*; do
   if [ -d "${_user_dir}" ]; then
     _user=$(basename "${_user_dir}")
-    [ "${_user}" != "arch" ] && _create_user_paths_config "${_user}"
+    if [ "${_user}" != "arch" ] && [ "${_user}" != "global_user" ]; then
+      _create_user_paths_config "${_user}"
+    fi
   fi
 done

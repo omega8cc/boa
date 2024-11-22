@@ -123,7 +123,9 @@ _main() {
     if [ -d "${_user_dir}" ]; then
       local _user
       _user=$(basename "${_user_dir}")
-      [ "${_user}" != "arch" ] && _create_config_readme_file "${_user}"
+      if [ "${_user}" != "arch" ] && [ "${_user}" != "global_user" ]; then
+        _create_config_readme_file "${_user}"
+      fi
     fi
   done
 }
