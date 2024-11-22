@@ -682,7 +682,7 @@ _update_agents() {
 
   if [ -d "/var/xdrago/backup/run" ] \
     && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/create_credentials_templates.sh.ctrl.f94.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/create_credentials_templates.sh.ctrl.f93.${_tRee}.${_xSrl}.pid" ]; then
     if [ -e "/var/xdrago/backup/run" ]; then
       mv -f /var/xdrago/backup/run/create_credentials_templates.sh /var/xdrago/backup/run/create_credentials_templates.sh.old
     fi
@@ -690,7 +690,7 @@ _update_agents() {
     if [ -e "/var/xdrago/backup/run/create_credentials_templates.sh" ]; then
       chmod 700 /var/xdrago/backup/run/create_credentials_templates.sh
       chown root:root /var/xdrago/backup/run/create_credentials_templates.sh
-      touch ${_pthLog}/create_credentials_templates.sh.ctrl.f94.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/create_credentials_templates.sh.ctrl.f93.${_tRee}.${_xSrl}.pid
     else
       if [ -e "/var/xdrago/backup/run/create_credentials_templates.sh.old" ]; then
         mv -f /var/xdrago/backup/run/create_credentials_templates.sh.old /var/xdrago/backup/run/create_credentials_templates.sh
