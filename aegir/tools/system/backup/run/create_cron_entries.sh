@@ -54,10 +54,10 @@ while read -r _entry; do
   _run_backup "${_service}" "${_user}" "${_config_dir}"
 done < "${_SCHEDULE_FILE}"
 
-# Log total runtime
+# Log total _run_backup runtime
 _END_TIME=$(date +%s)
 _RUNTIME=$((_END_TIME - _START_TIME))
-echo "Total runtime: ${_RUNTIME} seconds" >> "${_LOGFILE}"
+echo "Total _run_backup runtime: ${_RUNTIME} seconds" >> "${_LOGFILE}"
 EOF
 
   chmod +x "${_WRAPPER_SCRIPT}"
