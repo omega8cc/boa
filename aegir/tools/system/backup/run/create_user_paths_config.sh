@@ -53,9 +53,7 @@ EOF
   fi
 
   if [ ! -f "${_exclude_regexp_file}" ]; then
-    cat << EOF > "${_exclude_regexp_file}"
---exclude-regexp '^/data/disk/${_user}/.*pass.*'
-EOF
+    echo "# No default exclude-regexp rules for ${_user}"
   fi
 
   # Validate user-space config files (inside config/)
