@@ -166,10 +166,10 @@ while IFS= read -r _line || [ -n "${_line}" ]; do
   export _EXCLUDE
 
   # Perform the backup
-  if multiback backup "${_service}" "${_user}"; then
-    echo "Backup for ${_service} (${_user}) completed successfully."
+  if multiback backup "${_service}" "${_user}" "${_paths_file}"; then
+    echo "Backup for ${_service} (${_user}) "${_paths_file}" completed successfully."
   else
-    echo "Backup for ${_service} (${_user}) failed."
+    echo "Backup for ${_service} (${_user}) "${_paths_file}" failed."
   fi
 
   # Return to the original directory
