@@ -27,21 +27,58 @@ _usage() {
   exit 1
 }
 
-# Function to create PID file
+# Function to create a PID file
 _create_pid_file() {
   _pidfile=$1
-  if [ -e "${_pidfile}" ]; then
-    echo "Process already running with PID file ${_pidfile}"
+  _current_pid=$BASHPID  # Use BASHPID for unique PID in subshells
+
+  if [ -f "${_pidfile}" ]; then
+    _old_pid=$(cat "${_pidfile}")
+
+    # Check if the process ID in the PID file is still active
+    if [ -n "${_old_pid}" ] && kill -0 "${_old_pid}" 2>/dev/null; then
+      echo "Process already running with PID ${_old_pid} (from ${_pidfile})"
+      exit 1
+    else
+      echo "Stale PID file detected: ${_pidfile}. Removing it."
+      rm -f "${_pidfile}"
+    fi
+  fi
+
+  # Write the current PID to the file
+  echo "${_current_pid}" > "${_pidfile}"
+  if [ $? -ne 0 ]; then
+    echo "Failed to create PID file: ${_pidfile}"
     exit 1
-  else
-    echo $$ > "${_pidfile}"
   fi
 }
 
-# Function to remove PID file
+# Function to remove a PID file
 _remove_pid_file() {
   _pidfile=$1
-  rm -f "${_pidfile}"
+  if [ -f "${_pidfile}" ]; then
+    rm -f "${_pidfile}" || {
+      echo "Warning: Failed to remove PID file: ${_pidfile}"
+    }
+  fi
+}
+
+# Function to handle cleanup on exit
+_cleanup_on_exit() {
+  _remove_pid_file "${_PIDFILE:-}"
+}
+trap _cleanup_on_exit EXIT
+
+# Function to remove stale multiback PID file
+_remove_stale_multiback_pid() {
+  _multiback_pidfile="/var/run/duplicity_${_service}_${_user}.pid"
+  if [ -f "${_multiback_pidfile}" ]; then
+    _old_pid=$(cat "${_multiback_pidfile}")
+    if [ -n "${_old_pid}" ] && ! kill -0 "${_old_pid}" 2>/dev/null; then
+      echo "Stale multiback PID file detected: ${_multiback_pidfile}. Removing it."
+      rm -f "${_multiback_pidfile}"
+    fi
+  fi
 }
 
 # Function to load credentials from a file
@@ -209,7 +246,11 @@ _RESTORE_PATH="${5:-}"
 _RESTORE_TIME="${6:-}"
 _PIDFILE="/var/run/duplicity_${_SERVICE}_${_USER}.pid"
 
+# Create the PID file
 _create_pid_file "${_PIDFILE}"
+
+# Remove stale multiback PID file if necessary
+_remove_stale_multiback_pid
 
 # Load paths configuration
 _load_paths "${_USER}"
