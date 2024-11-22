@@ -82,7 +82,7 @@ _construct_bucket_name() {
 
 # Function to perform backup
 _backup() {
-  ${_PYTHON_BIN} -m duplicity \
+  duplicity \
     --full-if-older-than "${FULL_BACKUP_FREQUENCY}" \
     --volsize 50 \
     --allow-source-mismatch \
@@ -99,8 +99,8 @@ _backup() {
 
 # Function to clean up old backups
 _cleanup() {
-  ${_PYTHON_BIN} -m duplicity remove-older-than "${KEEP_WITHIN}" --force "${_BACKUP_TARGET}"
-  ${_PYTHON_BIN} -m duplicity remove-all-but-n-full "${KEEP_FULL_BACKUPS}" --force "${_BACKUP_TARGET}"
+  duplicity remove-older-than "${KEEP_WITHIN}" --force "${_BACKUP_TARGET}"
+  duplicity remove-all-but-n-full "${KEEP_FULL_BACKUPS}" --force "${_BACKUP_TARGET}"
 }
 
 # Function to restore backup
@@ -108,7 +108,7 @@ _restore() {
   local _restore_target=$1
   local _restore_path=$2
   local _restore_time=$3
-  local _restore_command="${_PYTHON_BIN} -m duplicity restore --allow-source-mismatch"
+  local _restore_command="duplicity restore --allow-source-mismatch"
 
   # Ensure _RESTORE_TARGET exists
   if [ ! -d "${_restore_target}" ]; then
