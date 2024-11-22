@@ -81,22 +81,22 @@ _remove_stale_multiback_pid() {
   fi
 }
 
-# Check if the backup configuration file exists
+# Read backup services and users from the configuration file
 if [ ! -f "${_BACKUP_CONFIG}" ]; then
   echo "Error: Backup schedule file ${_BACKUP_CONFIG} not found."
   exit 1
 fi
 
-# Process each line in the backup configuration file
+# Start processing each line from the configuration file
 while IFS= read -r _line || [ -n "${_line}" ]; do
   # Skip empty lines and comments
   if [[ "${_line}" =~ ^\s*# ]] || [[ -z "${_line}" ]]; then
     continue
   fi
 
-  # Parse the service and user
-  _service=$(echo "${_line}" | awk '{print $1}')
-  _user=$(echo "${_line}" | awk '{print $2}')
+  # Parse service and user
+  _service=$(echo "${_line}" | cut -d' ' -f1)
+  _user=$(echo "${_line}" | cut -d' ' -f2)
 
   # Ensure both service and user are defined
   if [ -z "${_service}" ] || [ -z "${_user}" ]; then
