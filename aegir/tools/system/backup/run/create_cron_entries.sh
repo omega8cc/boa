@@ -158,7 +158,7 @@ while IFS= read -r _line || [ -n "${_line}" ]; do
   fi
 
   # Load the paths configuration
-  source "${_paths_file}"
+  [ -f "${_paths_file}" ] && source "${_paths_file}"
 
   # Export variables so multiback can use them
   export _SOURCE
