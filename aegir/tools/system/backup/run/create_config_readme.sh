@@ -11,7 +11,7 @@ _BASE_DIR="/data/disk"
 _ensure_config_dir() {
   local _user=$1
   local _config_dir="${_BASE_DIR}/${_user}/static/control/remote_backups/config"
-  local _dir_ctrl_file="${_BASE_DIR}/${_user}/log/.backboa.${_user}.f95.config.dir.ctrl"
+  local _dir_ctrl_file="${_BASE_DIR}/${_user}/log/.backboa.${_user}.f93.config.dir.ctrl"
   if [ ! -d "${_config_dir}" ] || [ ! -e "${_dir_ctrl_file}" ]; then
     mkdir -p "${_config_dir}"
     chown -R ${_user}.ftp:users "${_config_dir}"
@@ -26,7 +26,7 @@ _create_config_readme_file() {
   local _user=$1
   local _config_dir="${_BASE_DIR}/${_user}/static/control/remote_backups/config"
   local _readme_file="${_config_dir}/README.txt"
-  local _readme_ctrl_file="${_BASE_DIR}/${_user}/log/.backboa.${_user}.f95.config.readme.ctrl"
+  local _readme_ctrl_file="${_BASE_DIR}/${_user}/log/.backboa.${_user}.f93.config.readme.ctrl"
   local _user_static_dir="/data/disk/${_user}/static"
   local _user_ftp_dir="/home/${_user}.ftp"
 

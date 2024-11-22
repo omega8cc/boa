@@ -11,7 +11,7 @@ _BASE_DIR="/data/disk"
 _ensure_readme_dir() {
   local _user=$1
   local _credentials_dir="${_BASE_DIR}/${_user}/static/control/remote_backups/credentials"
-  local _dir_ctrl_file="${_BASE_DIR}/${_user}/log/.backboa.${_user}.f95.credentials.dir.ctrl"
+  local _dir_ctrl_file="${_BASE_DIR}/${_user}/log/.backboa.${_user}.f93.credentials.dir.ctrl"
   if [ ! -d "${_credentials_dir}" ] || [ ! -e "${_dir_ctrl_file}" ]; then
     mkdir -p "${_credentials_dir}"
     chown -R ${_user}.ftp:users "${_credentials_dir}"
@@ -26,7 +26,7 @@ _create_readme_file() {
   local _user=$1
   local _credentials_dir="${_BASE_DIR}/${_user}/static/control/remote_backups/credentials"
   local _readme_file="${_credentials_dir}/README.txt"
-  local _readme_ctrl_file="${_BASE_DIR}/${_user}/log/.backboa.${_user}.f95.credentials.readme.ctrl"
+  local _readme_ctrl_file="${_BASE_DIR}/${_user}/log/.backboa.${_user}.f93.credentials.readme.ctrl"
 
   _ensure_readme_dir "${_user}"
 
