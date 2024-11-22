@@ -131,6 +131,7 @@
   /bin/touch mrix,
   /bin/true mrix,
   /data/disk/*/tools/drush/drush.php mrix,
+  /opt/local/bin/restoreback mrix,
   /opt/local/bin/sqlmagic mrix,
   /opt/php*/bin/php mrix,
   /usr/bin/diff mrix,
