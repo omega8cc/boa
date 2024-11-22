@@ -25,7 +25,7 @@ export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
 # File paths
-_BACKUP_CONFIG="/var/xdrago/backup/backup_schedule.txt"
+_SCHEDULE_FILE="/var/xdrago/backup/backup_schedule.txt"
 _PID_DIR="/var/run"
 _LOGFILE="/var/log/backup_runtime.log"
 
@@ -82,8 +82,8 @@ _remove_stale_multiback_pid() {
 }
 
 # Read backup services and users from the configuration file
-if [ ! -f "${_BACKUP_CONFIG}" ]; then
-  echo "Error: Backup schedule file ${_BACKUP_CONFIG} not found."
+if [ ! -f "${_SCHEDULE_FILE}" ]; then
+  echo "Error: Backup schedule file ${_SCHEDULE_FILE} not found."
   exit 1
 fi
 
@@ -178,7 +178,7 @@ while IFS= read -r _line || [ -n "${_line}" ]; do
   # Remove the PID file
   _remove_pid_file "${_CURRENT_PIDFILE}"
 
-done < "${_BACKUP_CONFIG}"
+done < "${_SCHEDULE_FILE}"
 EOF
 
   chmod +x "${_WRAPPER_SCRIPT}"
