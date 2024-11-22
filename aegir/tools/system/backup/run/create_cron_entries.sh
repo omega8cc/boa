@@ -22,6 +22,12 @@ _LOGFILE="/var/log/backup_runtime.log"
 _SCHEDULE_FILE="/var/xdrago/backup/backup_schedule.txt"
 _START_TIME=$(date +%s)
 
+# Function to clean up on exit
+_cleanup_on_exit() {
+  [ -f "${_PIDFILE}" ] && rm -f "${_PIDFILE}"
+}
+trap _cleanup_on_exit EXIT
+
 # Function to run a single backup
 _run_backup() {
   local _service=$1
@@ -37,17 +43,30 @@ _run_backup() {
   # Create PID file
   echo $$ > "${_PIDFILE}"
 
+  # Validate paths file
+  if [ "${_user}" = "global_user" ]; then
+    local _paths_file="/var/xdrago/backup/paths.txt"
+  else
+    local _paths_file="${_config_dir}/paths.txt"
+  fi
+
+  if [ ! -f "${_paths_file}" ]; then
+    echo "Paths configuration file ${_paths_file} not found."
+    return 1
+  fi
+
   # Run the backup
   echo "Starting backup for ${_service} (${_user})..."
-  multiback backup "${_service}" "${_user}" "${_config_dir}/paths.txt"
+  multiback backup "${_service}" "${_user}" "${_paths_file}"
 
-  # Remove PID file
-  rm -f "${_PIDFILE}"
   echo "Backup for ${_service} (${_user}) completed."
 }
 
 # Sequentially run backups
-while read -r _entry; do
+while IFS= read -r _entry; do
+  # Ignore lines starting with # or empty lines
+  [[ "${_entry}" =~ ^#.*$ || -z "${_entry}" ]] && continue
+
   _service=$(echo "${_entry}" | cut -d' ' -f1)
   _user=$(echo "${_entry}" | cut -d' ' -f2)
   _config_dir=$(echo "${_entry}" | cut -d' ' -f3)

@@ -736,7 +736,7 @@ _update_agents() {
 
   if [ -d "/var/xdrago/backup/run" ] \
     && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/create_cron_entries.sh.ctrl.f92.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/create_cron_entries.sh.ctrl.f91.${_tRee}.${_xSrl}.pid" ]; then
     if [ -e "/var/xdrago/backup/run" ]; then
       mv -f /var/xdrago/backup/run/create_cron_entries.sh /var/xdrago/backup/run/create_cron_entries.sh.old
     fi
@@ -744,7 +744,7 @@ _update_agents() {
     if [ -e "/var/xdrago/backup/run/create_cron_entries.sh" ]; then
       chmod 700 /var/xdrago/backup/run/create_cron_entries.sh
       chown root:root /var/xdrago/backup/run/create_cron_entries.sh
-      touch ${_pthLog}/create_cron_entries.sh.ctrl.f92.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/create_cron_entries.sh.ctrl.f91.${_tRee}.${_xSrl}.pid
     else
       if [ -e "/var/xdrago/backup/run/create_cron_entries.sh.old" ]; then
         mv -f /var/xdrago/backup/run/create_cron_entries.sh.old /var/xdrago/backup/run/create_cron_entries.sh
