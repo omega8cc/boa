@@ -19,6 +19,7 @@ _generate_wrapper_script() {
 # Initialize variables
 _PIDFILE="/var/run/backup_runner.pid"
 _LOGFILE="/var/log/backup_runtime.log"
+_SCHEDULE_FILE="/var/xdrago/backup/backup_schedule.txt"
 _START_TIME=$(date +%s)
 
 # Function to run a single backup
