@@ -2975,13 +2975,14 @@ _update_boa_tools() {
     touch ${_pthLog}/updateFx07.ctrl.${_tRee}.${_xSrl}.pid
   fi
   mkdir -p ${_optBin}
-  rm -f ${_usrBin}/{autoinit*,barracuda*,boa*,fancynow*,killer*,octopus*,smtpgapps*,setprio*}
+  rm -f ${_usrBin}/{autoinit*,barracuda*,boa*,fancynow*,killer*,octopus*,smtpgapps*,setprio*,multiback*}
   if [ ! -d "/data/u" ]; then
     ln -s ${_optBin}/autoinit  ${_usrBin}/autoinit
     ln -s ${_optBin}/barracuda ${_usrBin}/barracuda
     ln -s ${_optBin}/boa       ${_usrBin}/boa
     ln -s ${_optBin}/fancynow  ${_usrBin}/fancynow
     ln -s ${_optBin}/killer    ${_usrBin}/killer
+    ln -s ${_optBin}/multiback ${_usrBin}/multiback
     ln -s ${_optBin}/octopus   ${_usrBin}/octopus
     ln -s ${_optBin}/octopus   ${_usrBin}/setprio
     ln -s ${_optBin}/octopus   ${_usrBin}/smtpgapps
@@ -3000,6 +3001,7 @@ _update_boa_tools() {
            killer \
            memorytuner \
            mergecsf \
+           multiback \
            mycnfup \
            mysqltuner5 \
            mysqltuner8 \
@@ -3058,6 +3060,7 @@ _update_boa_tools() {
   echo "### ${_TODAY} ###" >> ${_optBin}/killer
   echo "### ${_TODAY} ###" >> ${_optBin}/memorytuner
   echo "### ${_TODAY} ###" >> ${_optBin}/mergecsf
+  echo "### ${_TODAY} ###" >> ${_optBin}/multiback
   echo "### ${_TODAY} ###" >> ${_optBin}/octopus
   echo "### ${_TODAY} ###" >> ${_optBin}/perftest
   echo "### ${_TODAY} ###" >> ${_optBin}/setprio
@@ -3085,7 +3088,7 @@ _update_boa_tools() {
   fi
   chmod 700 ${_optBin}/{autoinit,autodaedalus,autochimaera,autobeowulf,autoupboa,backboa,duobackboa,mergecsf,verifyvhostsdns}
   chmod 700 ${_optBin}/{barracuda,boa,ffmirror,killer,mycnfup,octopus,syncpass,xboa,weblogx,sqlclean,perftest,dcysetup}
-  chmod 700 ${_optBin}/{fancynow,codebasecheck,vhostcheck,memorytuner,mysqltuner5,mysqltuner8,smtpgapps,setprio}
+  chmod 700 ${_optBin}/{fancynow,codebasecheck,vhostcheck,memorytuner,mysqltuner5,mysqltuner8,smtpgapps,setprio,multiback}
   chmod 755 ${_optBin}/{randpass,sqlmagic,thinkdifferent}
 }
 
