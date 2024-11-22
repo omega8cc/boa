@@ -16,8 +16,8 @@ _generate_wrapper_script() {
   cat << 'EOF' > "${_WRAPPER_SCRIPT}"
 #!/bin/bash
 
-# Enable strict error handling
-set -euo pipefail
+# Enable strict error handling for debugging only
+# set -euo pipefail
 
 # Environment setup
 export HOME=/root
