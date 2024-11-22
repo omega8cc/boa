@@ -12,7 +12,7 @@ _USER_BASE_DIR="/data/disk"
 
 # Function to ensure a directory exists
 _ensure_directory() {
-  local _dir=$1
+  _dir=$1
   if [ ! -d "${_dir}" ]; then
     mkdir -p "${_dir}"
     chmod 700 "${_dir}"
@@ -22,10 +22,10 @@ _ensure_directory() {
 
 # Function to create credentials template files
 _create_credentials_templates() {
-  local _target_dir=$1
+  _target_dir=$1
 
   # List of supported services
-  local _services=(
+  _services=(
     "aws"
     "aws_one_zone"
     "aws_standard_ia"
@@ -40,7 +40,7 @@ _create_credentials_templates() {
   )
 
   for _service in "${_services[@]}"; do
-    local _template_file="${_target_dir}/${_service}.txt"
+    _template_file="${_target_dir}/${_service}.txt"
     if [ ! -f "${_template_file}" ]; then
       case "${_service}" in
         aws|aws_one_zone|aws_standard_ia)
@@ -148,10 +148,9 @@ _main() {
   # Iterate over user directories and create templates for each user
   for _user_dir in "${_USER_BASE_DIR}"/*; do
     if [ -d "${_user_dir}" ]; then
-      local _user
       _user=$(basename "${_user_dir}")
       if [ "${_user}" != "arch" ] && [ "${_user}" != "global_user" ]; then
-        local _user_credentials_dir="${_USER_BASE_DIR}/${_user}/static/control/remote_backups/credentials"
+        _user_credentials_dir="${_USER_BASE_DIR}/${_user}/static/control/remote_backups/credentials"
         _ensure_directory "${_user_credentials_dir}"
         _create_credentials_templates "${_user_credentials_dir}"
       fi

@@ -72,15 +72,15 @@ _check_sql_access
 
 # Function to get total system memory in MB
 _get_total_mem_mb() {
-  local _mem_kb
+  _mem_kb
   _mem_kb=$(grep MemTotal /proc/meminfo | awk '{print $2}')
   echo $((_mem_kb / 1024))
 }
 
 # Function to get memory usage of a process or group of processes in MB
 _get_mem_usage_mb() {
-  local _process_name=$1
-  local _mem_usage_kb
+  _process_name=$1
+  _mem_usage_kb
   _mem_usage_kb=$(ps -eo rss,args | grep -w "${_process_name}" | grep -v grep | awk '{sum+=$1} END {print sum}')
   _mem_usage_kb=${_mem_usage_kb:-0}
   echo "scale=2; ${_mem_usage_kb} / 1024" | bc
@@ -121,7 +121,6 @@ _get_service_uptime() {
 
 # Function to get MySQL server uptime in seconds
 _get_mysql_uptime() {
-  local _uptime
   _uptime=$(mysql -Nse "SHOW GLOBAL STATUS LIKE 'Uptime';" | awk '{print $2}')
   echo "${_uptime}"
 }
@@ -145,9 +144,9 @@ _parse_mysqltuner_recommendations() {
       exit 1
     fi
     echo "Running mysqltuner8..."
-    local _tempfile=$(mktemp)
+    _tempfile=$(mktemp)
     mysqltuner8 --nogood --nocolor --buffers --silent > "${_tempfile}" &
-    local _mysqltuner_pid=$!
+    _mysqltuner_pid=$!
   elif [[ "${_MYSQL_VERSION}" =~ ^5\.7 ]]; then
     # Use mysqltuner5 for Percona 5.7
     if ! command -v mysqltuner5 &> /dev/null; then
@@ -155,9 +154,9 @@ _parse_mysqltuner_recommendations() {
       exit 1
     fi
     echo "Running mysqltuner5..."
-    local _tempfile=$(mktemp)
+    _tempfile=$(mktemp)
     mysqltuner5 --nogood --nocolor --buffers --silent > "${_tempfile}" &
-    local _mysqltuner_pid=$!
+    _mysqltuner_pid=$!
   else
     echo "Unsupported MySQL version: ${_MYSQL_VERSION}"
     exit 1
@@ -171,7 +170,7 @@ _parse_mysqltuner_recommendations() {
   done
   echo " Done."
 
-  local _mysqltuner_output=$(cat "${_tempfile}")
+  _mysqltuner_output=$(cat "${_tempfile}")
   rm "${_tempfile}"
 
   # Parse key recommendations
@@ -474,11 +473,11 @@ _NEEDS_RESTART=0
 
 # Function to update MySQL configuration settings
 _update_setting() {
-  local _setting_name=$1
-  local _new_value=$2
-  local _current_value=$3
-  local _requires_restart=$4
-  local _is_memory_size=$5  # New parameter indicating if setting is a memory size
+  _setting_name=$1
+  _new_value=$2
+  _current_value=$3
+  _requires_restart=$4
+  _is_memory_size=$5  # New parameter indicating if setting is a memory size
 
   # Ensure _new_value is valid
   if [ -z "${_new_value}" ] || ! [[ "${_new_value}" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then

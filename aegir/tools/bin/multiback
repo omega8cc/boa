@@ -29,7 +29,7 @@ _usage() {
 
 # Function to create PID file
 _create_pid_file() {
-  local _pidfile=$1
+  _pidfile=$1
   if [ -e "${_pidfile}" ]; then
     echo "Process already running with PID file ${_pidfile}"
     exit 1
@@ -40,15 +40,15 @@ _create_pid_file() {
 
 # Function to remove PID file
 _remove_pid_file() {
-  local _pidfile=$1
+  _pidfile=$1
   rm -f "${_pidfile}"
 }
 
 # Function to load credentials from a file
 _load_credentials() {
-  local _service=$1
-  local _user=$2
-  local _creds_path="/data/disk/${_user}/static/control/remote_backups/credentials/${_service}.txt"
+  _service=$1
+  _user=$2
+  _creds_path="/data/disk/${_user}/static/control/remote_backups/credentials/${_service}.txt"
   if [ -f "${_creds_path}" ]; then
     source "${_creds_path}"
   else
@@ -59,8 +59,8 @@ _load_credentials() {
 
 # Function to load paths and other settings from a file
 _load_paths() {
-  local _user=$1
-  local _paths_path="/data/disk/${_user}/remote_backups/paths.txt"
+  _user=$1
+  _paths_path="/data/disk/${_user}/remote_backups/paths.txt"
   if [ -f "${_paths_path}" ]; then
     source "${_paths_path}"
   else
@@ -71,9 +71,9 @@ _load_paths() {
 
 # Function to construct _BUCKET_NAME
 _construct_bucket_name() {
-  local _service_abbr=$1
-  local _user=$2
-  local _hostname=$(hostname -s)
+  _service_abbr=$1
+  _user=$2
+  _hostname=$(hostname -s)
   _BUCKET_NAME="${_hostname}-${_service_abbr}-${_user}"
 }
 
@@ -102,10 +102,10 @@ _cleanup() {
 
 # Function to restore backup
 _restore() {
-  local _restore_target=$1
-  local _restore_path=$2
-  local _restore_time=$3
-  local _restore_command="duplicity restore --allow-source-mismatch"
+  _restore_target=$1
+  _restore_path=$2
+  _restore_time=$3
+  _restore_command="duplicity restore --allow-source-mismatch"
 
   # Ensure _RESTORE_TARGET exists
   if [ ! -d "${_restore_target}" ]; then
@@ -130,8 +130,8 @@ _restore() {
 
 # Function to set backup target based on service
 _set_backup_target() {
-  local _service=$1
-  local _user=$2
+  _service=$1
+  _user=$2
 
   case "${_service}" in
     aws|aws_one_zone|aws_standard_ia)
@@ -139,8 +139,8 @@ _set_backup_target() {
       _construct_bucket_name "${_service}" "${_user}"
 
       # Define S3-specific options
-      local _s3_endpoint="https://s3.dualstack.${AWS_REGION}.amazonaws.com"
-      local _s3_options="--s3-endpoint-url ${_s3_endpoint} --s3-region-name ${AWS_REGION}"
+      _s3_endpoint="https://s3.dualstack.${AWS_REGION}.amazonaws.com"
+      _s3_options="--s3-endpoint-url ${_s3_endpoint} --s3-region-name ${AWS_REGION}"
 
       # Use intelligent-tiering options for specific services
       if [ "${_service}" = "aws_standard_ia" ] || [ "${_service}" = "aws_one_zone" ]; then

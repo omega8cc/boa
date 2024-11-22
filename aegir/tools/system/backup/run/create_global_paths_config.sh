@@ -6,13 +6,13 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 
 # Function to create or update global paths configuration
 _create_global_paths_config() {
-  local _global_config_dir="/var/xdrago/backup"
-  local _include_file="${_global_config_dir}/.backboa.include"
-  local _exclude_file="${_global_config_dir}/.backboa.exclude"
-  local _include_regexp_file="${_global_config_dir}/.backboa.include_regexp"
-  local _exclude_regexp_file="${_global_config_dir}/.backboa.exclude_regexp"
-  local _merged_include_file="${_global_config_dir}/.backboa.include.merged"
-  local _merged_exclude_file="${_global_config_dir}/.backboa.exclude.merged"
+  _global_config_dir="/var/xdrago/backup"
+  _include_file="${_global_config_dir}/.backboa.include"
+  _exclude_file="${_global_config_dir}/.backboa.exclude"
+  _include_regexp_file="${_global_config_dir}/.backboa.include_regexp"
+  _exclude_regexp_file="${_global_config_dir}/.backboa.exclude_regexp"
+  _merged_include_file="${_global_config_dir}/.backboa.include.merged"
+  _merged_exclude_file="${_global_config_dir}/.backboa.exclude.merged"
 
   # Ensure global configuration directory exists and is owned by root
   mkdir -p "${_global_config_dir}"
@@ -21,8 +21,8 @@ _create_global_paths_config() {
 
   # Function to append unique entries from source to target file
   _append_unique_entries() {
-    local _source_file=$1
-    local _target_file=$2
+    _source_file=$1
+    _target_file=$2
     if [ -f "${_source_file}" ]; then
       grep -v -F -x -f "${_target_file}" "${_source_file}" >> "${_target_file}"
     fi
@@ -69,12 +69,11 @@ EOF
 
   # Function to validate configuration files
   _validate_config() {
-    local _file=$1
-    local _type=$2
+    _file=$1
+    _type=$2
 
     # Check for invalid entries
     if [ "${_type}" = "regexp" ]; then
-      local _invalid_lines
       _invalid_lines=$(grep -Ev "^--(include-regexp|exclude-regexp)" "${_file}" || true)
       if [ -n "${_invalid_lines}" ]; then
         echo "Error: Invalid entries in ${_file}:"
@@ -82,7 +81,6 @@ EOF
         exit 1
       fi
     else
-      local _invalid_lines
       _invalid_lines=$(grep -Ev "^--(include|exclude)" "${_file}" || true)
       if [ -n "${_invalid_lines}" ]; then
         echo "Error: Invalid entries in ${_file}:"
@@ -110,7 +108,7 @@ EOF
   fi
 
   # Create the final paths configuration file
-  local _global_paths_file="${_global_config_dir}/paths.txt"
+  _global_paths_file="${_global_config_dir}/paths.txt"
   cat << EOF > "${_global_paths_file}"
 _SOURCE="/data /home /etc /var/aegir /var/www /var/solr7 /opt/solr4 /var/xdrago"
 _INCLUDE="--include-filelist ${_merged_include_file}"

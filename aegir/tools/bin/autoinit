@@ -380,7 +380,7 @@ _ifnames_grub_check_sync() {
 
     # Function to append option to _ADD_GRUB_CMD
     _append_grub_cmd_option() {
-      local _option="$1"
+      _option="$1"
       if [[ -z "${_ADD_GRUB_CMD}" ]]; then
         _ADD_GRUB_CMD="${_option}"
       else

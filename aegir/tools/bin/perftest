@@ -84,9 +84,9 @@ rm "${_PHP_TEST_SCRIPT}"
 
 # Function to run fio test on a given directory
 _run_fio_test() {
-  local _test_dir="$1"
-  local _mount_point="$2"
-  local _output_file="$3"
+  _test_dir="$1"
+  _mount_point="$2"
+  _output_file="$3"
 
   mkdir -p "${_test_dir}"
   cd "${_test_dir}" || exit

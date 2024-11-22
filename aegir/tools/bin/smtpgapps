@@ -72,7 +72,7 @@ _is_installed() {
 
 # Function to validate email address format
 _validate_email() {
-  local _EMAIL_REGEX="^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$"
+  _EMAIL_REGEX="^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$"
   if [[ ! "${_GMAIL_USER}" =~ ${_EMAIL_REGEX} ]]; then
     echo
     _msg "Error: Invalid email address format."
@@ -82,7 +82,7 @@ _validate_email() {
 
 # Function to validate password format
 _validate_password() {
-  local _PASS_REGEX="^[a-z]{16}$"
+  _PASS_REGEX="^[a-z]{16}$"
   if [[ ! "${_GMAIL_PASS}" =~ ${_PASS_REGEX} ]]; then
     echo
     _msg "Error: Password must be exactly 16 lowercase letters (a-z)."

@@ -6,17 +6,17 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 
 # Function to create or update a user's paths configuration file
 _create_user_paths_config() {
-  local _user=$1
-  local _user_config_dir="/data/disk/${_user}/remote_backups"
-  local _user_control_dir="/data/disk/${_user}/static/control/remote_backups/config"
-  local _include_file="${_user_config_dir}/.backboa.${_user}.include"
-  local _exclude_file="${_user_config_dir}/.backboa.${_user}.exclude"
-  local _include_regexp_file="${_user_config_dir}/.backboa.${_user}.include_regexp"
-  local _exclude_regexp_file="${_user_config_dir}/.backboa.${_user}.exclude_regexp"
-  local _merged_include_file="${_user_config_dir}/.backboa.${_user}.include.merged"
-  local _merged_exclude_file="${_user_config_dir}/.backboa.${_user}.exclude.merged"
-  local _include_ctrl_file="${_user_config_dir}/.backboa.${_user}.f93.include.ctrl"
-  local _exclude_ctrl_file="${_user_config_dir}/.backboa.${_user}.f93.exclude.ctrl"
+  _user=$1
+  _user_config_dir="/data/disk/${_user}/remote_backups"
+  _user_control_dir="/data/disk/${_user}/static/control/remote_backups/config"
+  _include_file="${_user_config_dir}/.backboa.${_user}.include"
+  _exclude_file="${_user_config_dir}/.backboa.${_user}.exclude"
+  _include_regexp_file="${_user_config_dir}/.backboa.${_user}.include_regexp"
+  _exclude_regexp_file="${_user_config_dir}/.backboa.${_user}.exclude_regexp"
+  _merged_include_file="${_user_config_dir}/.backboa.${_user}.include.merged"
+  _merged_exclude_file="${_user_config_dir}/.backboa.${_user}.exclude.merged"
+  _include_ctrl_file="${_user_config_dir}/.backboa.${_user}.f93.include.ctrl"
+  _exclude_ctrl_file="${_user_config_dir}/.backboa.${_user}.f93.exclude.ctrl"
 
   # Ensure user configuration directory exists and is owned by root
   mkdir -p "${_user_config_dir}"
@@ -58,12 +58,12 @@ EOF
 
   # Validate user-space config files (inside config/)
   _validate_user_config() {
-    local _file=$1
-    local _type=$2
+    _file=$1
+    _type=$2
 
     # Check for invalid entries in config files
     if [ "${_type}" = "regexp" ]; then
-      local _invalid_lines
+      _invalid_lines
       _invalid_lines=$(grep -Ev "^--(include-regexp|exclude-regexp)" "${_file}" || true)
       if [ -n "${_invalid_lines}" ]; then
         echo "Error: Invalid entries in ${_file}:"
@@ -71,7 +71,6 @@ EOF
         exit 1
       fi
     else
-      local _invalid_lines
       _invalid_lines=$(grep -Ev "^--(include|exclude)" "${_file}" || true)
       if [ -n "${_invalid_lines}" ]; then
         echo "Error: Invalid entries in ${_file}:"
@@ -119,7 +118,7 @@ EOF
   fi
 
   # Create the final paths configuration file
-  local _user_config_file="${_user_config_dir}/paths.txt"
+  _user_config_file="${_user_config_dir}/paths.txt"
   cat << EOF > "${_user_config_file}"
 _SOURCE="/data/disk/${_user}/static"
 _INCLUDE="--include-filelist ${_merged_include_file} --include-regexp-filelist ${_user_config_dir}/.backboa.${_user}.include_regexp.merged"

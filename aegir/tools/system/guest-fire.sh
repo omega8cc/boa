@@ -65,17 +65,17 @@ fi
 
 # Function for logging in verbose mode
 _verbose_log() {
-  local _reason="${1}"
-  local _message="${2}"
-  local _timestamp
-  local _log_file
+  _reason="${1}"
+  _message="${2}"
+  _timestamp
+  _log_file
 
   # Define log file paths
-  local _csf_dry_log="/var/log/csf_dry_debug.log"
-  local _csf_fail_log="/var/log/csf_fail_debug.log"
-  local _csf_deny_log="/var/log/csf_deny_debug.log"
-  local _csf_denied_log="/var/log/csf_denied_debug.log"
-  local _csf_allow_log="/var/log/csf_allow_debug.log"
+  _csf_dry_log="/var/log/csf_dry_debug.log"
+  _csf_fail_log="/var/log/csf_fail_debug.log"
+  _csf_deny_log="/var/log/csf_deny_debug.log"
+  _csf_denied_log="/var/log/csf_denied_debug.log"
+  _csf_allow_log="/var/log/csf_allow_debug.log"
 
   # Check if logging is enabled
   if [[ -e "/root/.debug.monitor.log.cnf" || "${_NGINX_DOS_LOG}" =~ ^(NORMAL|VERBOSE)$ ]]; then

@@ -9,9 +9,9 @@ _BASE_DIR="/data/disk"
 
 # Function to ensure the config directory exists
 _ensure_config_dir() {
-  local _user=$1
-  local _config_dir="${_BASE_DIR}/${_user}/static/control/remote_backups/config"
-  local _dir_ctrl_file="${_BASE_DIR}/${_user}/log/.backboa.${_user}.f93.config.dir.ctrl"
+  _user=$1
+  _config_dir="${_BASE_DIR}/${_user}/static/control/remote_backups/config"
+  _dir_ctrl_file="${_BASE_DIR}/${_user}/log/.backboa.${_user}.f93.config.dir.ctrl"
   if [ ! -d "${_config_dir}" ] || [ ! -e "${_dir_ctrl_file}" ]; then
     mkdir -p "${_config_dir}"
     chown -R ${_user}.ftp:users "${_config_dir}"
@@ -23,12 +23,12 @@ _ensure_config_dir() {
 
 # Function to create a README file in the config directory
 _create_config_readme_file() {
-  local _user=$1
-  local _config_dir="${_BASE_DIR}/${_user}/static/control/remote_backups/config"
-  local _readme_file="${_config_dir}/README.txt"
-  local _readme_ctrl_file="${_BASE_DIR}/${_user}/log/.backboa.${_user}.f93.config.readme.ctrl"
-  local _user_static_dir="/data/disk/${_user}/static"
-  local _user_ftp_dir="/home/${_user}.ftp"
+  _user=$1
+  _config_dir="${_BASE_DIR}/${_user}/static/control/remote_backups/config"
+  _readme_file="${_config_dir}/README.txt"
+  _readme_ctrl_file="${_BASE_DIR}/${_user}/log/.backboa.${_user}.f93.config.readme.ctrl"
+  _user_static_dir="/data/disk/${_user}/static"
+  _user_ftp_dir="/home/${_user}.ftp"
 
   _ensure_config_dir "${_user}"
 
@@ -121,7 +121,6 @@ EOF
 _main() {
   for _user_dir in "${_BASE_DIR}"/*; do
     if [ -d "${_user_dir}" ]; then
-      local _user
       _user=$(basename "${_user_dir}")
       if [ "${_user}" != "arch" ] && [ "${_user}" != "global_user" ]; then
         _create_config_readme_file "${_user}"

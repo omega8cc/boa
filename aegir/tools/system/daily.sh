@@ -2846,7 +2846,7 @@ _cleanup_weblogx() {
 _incident_email_report() {
   if [ -e "/root/.barracuda.cnf" ]; then
     source /root/.barracuda.cnf
-    local _thisEmail="${_MY_EMAIL}"
+    _thisEmail="${_MY_EMAIL}"
     export _INCIDENT_EMAIL_REPORT=${_INCIDENT_EMAIL_REPORT//[^A-Z]/}
     : "${_INCIDENT_EMAIL_REPORT:=YES}"
   fi

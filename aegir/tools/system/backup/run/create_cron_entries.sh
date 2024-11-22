@@ -31,11 +31,10 @@ _LOGFILE="/var/log/backup_runtime.log"
 
 # Function to create a PID file
 _create_pid_file() {
-  local _pidfile=$1
-  local _current_pid=$BASHPID  # Use BASHPID for unique PID in subshells
+  _pidfile=$1
+  _current_pid=$BASHPID  # Use BASHPID for unique PID in subshells
 
   if [ -f "${_pidfile}" ]; then
-    local _old_pid
     _old_pid=$(cat "${_pidfile}")
 
     # Check if the process ID in the PID file is still active
@@ -58,7 +57,7 @@ _create_pid_file() {
 
 # Function to remove a PID file
 _remove_pid_file() {
-  local _pidfile=$1
+  _pidfile=$1
   if [ -f "${_pidfile}" ]; then
     rm -f "${_pidfile}" || {
       echo "Warning: Failed to remove PID file: ${_pidfile}"
@@ -74,9 +73,8 @@ trap _cleanup_on_exit EXIT
 
 # Function to remove stale multiback PID file
 _remove_stale_multiback_pid() {
-  local _multiback_pidfile="/var/run/duplicity_${_service}_${_user}.pid"
+  _multiback_pidfile="/var/run/duplicity_${_service}_${_user}.pid"
   if [ -f "${_multiback_pidfile}" ]; then
-    local _old_pid
     _old_pid=$(cat "${_multiback_pidfile}")
     if [ -n "${_old_pid}" ] && ! kill -0 "${_old_pid}" 2>/dev/null; then
       echo "Stale multiback PID file detected: ${_multiback_pidfile}. Removing it."

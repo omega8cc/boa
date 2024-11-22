@@ -9,9 +9,9 @@ _BASE_DIR="/data/disk"
 
 # Function to ensure the README directory exists
 _ensure_readme_dir() {
-  local _user=$1
-  local _credentials_dir="${_BASE_DIR}/${_user}/static/control/remote_backups/credentials"
-  local _dir_ctrl_file="${_BASE_DIR}/${_user}/log/.backboa.${_user}.f93.credentials.dir.ctrl"
+  _user=$1
+  _credentials_dir="${_BASE_DIR}/${_user}/static/control/remote_backups/credentials"
+  _dir_ctrl_file="${_BASE_DIR}/${_user}/log/.backboa.${_user}.f93.credentials.dir.ctrl"
   if [ ! -d "${_credentials_dir}" ] || [ ! -e "${_dir_ctrl_file}" ]; then
     mkdir -p "${_credentials_dir}"
     chown -R ${_user}.ftp:users "${_credentials_dir}"
@@ -23,10 +23,10 @@ _ensure_readme_dir() {
 
 # Function to create a README file for a specific user
 _create_readme_file() {
-  local _user=$1
-  local _credentials_dir="${_BASE_DIR}/${_user}/static/control/remote_backups/credentials"
-  local _readme_file="${_credentials_dir}/README.txt"
-  local _readme_ctrl_file="${_BASE_DIR}/${_user}/log/.backboa.${_user}.f93.credentials.readme.ctrl"
+  _user=$1
+  _credentials_dir="${_BASE_DIR}/${_user}/static/control/remote_backups/credentials"
+  _readme_file="${_credentials_dir}/README.txt"
+  _readme_ctrl_file="${_BASE_DIR}/${_user}/log/.backboa.${_user}.f93.credentials.readme.ctrl"
 
   _ensure_readme_dir "${_user}"
 
@@ -138,7 +138,6 @@ EOF
 _main() {
   for _user_dir in "${_BASE_DIR}"/*; do
     if [ -d "${_user_dir}" ]; then
-      local _user
       _user=$(basename "${_user_dir}")
       if [ "${_user}" != "arch" ] && [ "${_user}" != "global_user" ]; then
         _create_readme_file "${_user}"

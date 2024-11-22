@@ -23,7 +23,7 @@ _PHP_VERSIONS=("php56" "php70" "php71" "php72" "php73" "php74" "php80" "php81" "
 # Description: Determines if a PHP version is legacy (PHP 5.6, 7.0-7.4)
 # --------------------------------------------------------------------
 _is_legacy_version() {
-  local _version="$1"
+  _version="$1"
   case "$_version" in
     php5*) return 0 ;;          # PHP 5.x are legacy
     php7.[0-4]*) return 0 ;;      # PHP 7.0-7.4 are legacy
@@ -40,10 +40,10 @@ _is_legacy_version() {
 # Description: Creates the OPcache configuration file for a given PHP version
 # --------------------------------------------------------------------
 _generate_opcache_config() {
-  local _php_version_dir="$1"
-  local _is_legacy="$2"
-  local _php_version=$(basename "$_php_version_dir")
-  local _opcache_ini="${_php_version_dir}/etc/php-fpm.d/10-opcache.conf"
+  _php_version_dir="$1"
+  _is_legacy="$2"
+  _php_version=$(basename "$_php_version_dir")
+  _opcache_ini="${_php_version_dir}/etc/php-fpm.d/10-opcache.conf"
 
   echo "Generating OPcache configuration for ${_php_version_dir}"
 
@@ -101,10 +101,10 @@ EOL
 # Description: Creates the APCu or APC configuration file for a given PHP version
 # --------------------------------------------------------------------
 _generate_apcu_config() {
-  local _php_version_dir="$1"
-  local _is_legacy="$2"
-  local _php_version=$(basename "$_php_version_dir")
-  local _apc_ini="${_php_version_dir}/etc/php-fpm.d/20-apcu.conf"
+  _php_version_dir="$1"
+  _is_legacy="$2"
+  _php_version=$(basename "$_php_version_dir")
+  _apc_ini="${_php_version_dir}/etc/php-fpm.d/20-apcu.conf"
 
   echo "Generating APCu/APC configuration for ${_php_version_dir}"
 

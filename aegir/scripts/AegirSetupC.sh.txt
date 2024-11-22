@@ -313,14 +313,14 @@ _save_verify_this_platform() {
   # _save_verify_this_platform 'OCS' '2.2.1' '10.3.6' 'openculturas-2.2.1-10.3.6' 'contrib/' 'openculturas' '/web'
   # make_platform 'ezcontent-2.2.15-10.3.6' ezcontent /data/disk/o8/distro/001/ezcontent-2.2.15-10.3.6/web
   # make_platform 'commerce_base-2.40-10.1.8' commerce_base /data/disk/o8/distro/001/commerce_base-2.40-10.1.8/web
-  local _make_p="${_pthDst}/${params[profile_name]}-${params[version]}-${params[core_version]}${params[web_dir]}"
+  _make_p="${_pthDst}/${params[profile_name]}-${params[version]}-${params[core_version]}${params[web_dir]}"
 
   # _save_verify_this_platform 'UC7' '3.13' '7.102.1' 'ubercart-3.13-7.102.1' '/' 'minimal' ''
-  local _make_u="${_pthDst}/ubercart-${params[version]}-${params[core_version]}${params[web_dir]}"
+  _make_u="${_pthDst}/ubercart-${params[version]}-${params[core_version]}${params[web_dir]}"
 
   # _save_verify_this_platform 'DX3' '10.3.6' '10.3.6' 'drupal-10.3.6-dev' '/' 'standard' '/web'
   # /data/disk/o8/distro/001/drupal-10.3.6-prod
-  local _make_x="${_pthDst}/${params[version]}${params[web_dir]}"
+  _make_x="${_pthDst}/${params[version]}${params[web_dir]}"
 
   if [ -d "${_make_p}" ]; then
     if [ ! -e "${_make_p}/${_drhSrc}" ]; then
@@ -1284,12 +1284,12 @@ _ubercart7_install() {
   fi
 
   # /data/disk/o8/distro/001/ubercart-3.13-7.102.1
-  local _REAL_PRNAME="${params[profile_name]}"
-  local _VIRT_PRNAME="ubercart"
-  local _SHRD_PLNAME="${_VIRT_PRNAME}-${params[version]}-${params[core_version]}"
-  local _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
-  local _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
-  local _OCTO_PLPATH="${_pthDst}/${_SHRD_PLNAME}"
+  _REAL_PRNAME="${params[profile_name]}"
+  _VIRT_PRNAME="ubercart"
+  _SHRD_PLNAME="${_VIRT_PRNAME}-${params[version]}-${params[core_version]}"
+  _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
+  _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
+  _OCTO_PLPATH="${_pthDst}/${_SHRD_PLNAME}"
   if [ "${_ALLOW_ALL}" = "YES" ]; then
     if [[ "${_PLATFORMS_LIST}" =~ ALL ]] \
       || [[ "${_PLATFORMS_LIST}" =~ ${params[dist]} ]]; then
