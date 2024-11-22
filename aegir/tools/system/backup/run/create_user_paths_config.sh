@@ -88,33 +88,34 @@ EOF
     fi
   }
 
+  # Merge system-level files if they exist
+  [ -f "${_include_file}" ] && cat "${_include_file}" > "${_merged_include_file}"
   # Merge user-space files if they exist and are valid
   if [ -f "${_user_control_dir}/include.txt" ]; then
     _validate_user_config "${_user_control_dir}/include.txt"
-    cat "${_include_file}" "${_user_control_dir}/include.txt" > "${_merged_include_file}"
-  else
-    cp "${_include_file}" "${_merged_include_file}"
+    cat "${_user_control_dir}/include.txt" >> "${_merged_include_file}"
   fi
 
+  # Merge system-level files if they exist
+  [ -f "${_exclude_file}" ] && cat "${_exclude_file}" > "${_merged_exclude_file}"
+  # Merge user-space files if they exist and are valid
   if [ -f "${_user_control_dir}/exclude.txt" ]; then
     _validate_user_config "${_user_control_dir}/exclude.txt"
-    cat "${_exclude_file}" "${_user_control_dir}/exclude.txt" > "${_merged_exclude_file}"
-  else
-    cp "${_exclude_file}" "${_merged_exclude_file}"
+    cat "${_user_control_dir}/exclude.txt" >> "${_merged_exclude_file}"
   fi
 
+  # Merge system-level files if they exist
+  [ -f "${_include_regexp_file}" ] && cat "${_include_regexp_file}" > "${_user_config_dir}/.backboa.${_user}.include_regexp.merged"
   if [ -f "${_user_control_dir}/include_regexp.txt" ]; then
     _validate_user_config "${_user_control_dir}/include_regexp.txt" "regexp"
-    cat "${_include_regexp_file}" "${_user_control_dir}/include_regexp.txt" > "${_user_config_dir}/.backboa.${_user}.include_regexp.merged"
-  else
-    cp "${_include_regexp_file}" "${_user_config_dir}/.backboa.${_user}.include_regexp.merged"
+    cat "${_user_control_dir}/include_regexp.txt" >> "${_user_config_dir}/.backboa.${_user}.include_regexp.merged"
   fi
 
+  # Merge system-level files if they exist
+  [ -f "${_exclude_regexp_file}" ] && cat "${_exclude_regexp_file}" > "${_user_config_dir}/.backboa.${_user}.exclude_regexp.merged"
   if [ -f "${_user_control_dir}/exclude_regexp.txt" ]; then
     _validate_user_config "${_user_control_dir}/exclude_regexp.txt" "regexp"
-    cat "${_exclude_regexp_file}" "${_user_control_dir}/exclude_regexp.txt" > "${_user_config_dir}/.backboa.${_user}.exclude_regexp.merged"
-  else
-    cp "${_exclude_regexp_file}" "${_user_config_dir}/.backboa.${_user}.exclude_regexp.merged"
+    cat "${_user_control_dir}/exclude_regexp.txt" >> "${_user_config_dir}/.backboa.${_user}.exclude_regexp.merged"
   fi
 
   # Create the final paths configuration file
