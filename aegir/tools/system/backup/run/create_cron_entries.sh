@@ -16,6 +16,9 @@ _generate_wrapper_script() {
   cat << 'EOF' > "${_WRAPPER_SCRIPT}"
 #!/bin/bash
 
+# Enable strict error handling
+set -euo pipefail
+
 # Environment setup
 export HOME=/root
 export SHELL=/bin/bash
@@ -24,46 +27,76 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 # File paths
 _BACKUP_CONFIG="/var/xdrago/backup/backup_schedule.txt"
 _PID_DIR="/var/run"
+_LOGFILE="/var/log/backup_runtime.log"
 
-# Function to create PID file
+# Function to create a PID file
 _create_pid_file() {
   local _pidfile=$1
-  if [ -e "${_pidfile}" ]; then
-    echo "Process already running with PID file ${_pidfile}"
-    exit 1
-  else
-    echo $$ > "${_pidfile}"
+  local _current_pid=$BASHPID  # Use BASHPID for unique PID in subshells
+
+  if [ -f "${_pidfile}" ]; then
+    local _old_pid
+    _old_pid=$(cat "${_pidfile}")
+
+    # Check if the process ID in the PID file is still active
+    if [ -n "${_old_pid}" ] && kill -0 "${_old_pid}" 2>/dev/null; then
+      echo "Process already running with PID ${_old_pid} (from ${_pidfile})"
+      exit 1
+    else
+      echo "Stale PID file detected: ${_pidfile}. Removing it."
+      rm -f "${_pidfile}"
+    fi
   fi
+
+  # Write the current PID to the file
+  echo "${_current_pid}" > "${_pidfile}"
 }
 
-# Function to remove PID file
+# Function to remove a PID file
 _remove_pid_file() {
   local _pidfile=$1
-  rm -f "${_pidfile}"
+  if [ -f "${_pidfile}" ]; then
+    rm -f "${_pidfile}" || {
+      echo "Warning: Failed to remove PID file: ${_pidfile}"
+    }
+  fi
 }
 
 # Function to handle cleanup on exit
 _cleanup_on_exit() {
-  _remove_pid_file "${_CURRENT_PIDFILE}"
+  _remove_pid_file "${_CURRENT_PIDFILE:-}"
 }
 trap _cleanup_on_exit EXIT
 
-# Read backup services and users from the configuration file
+# Function to remove stale multiback PID file
+_remove_stale_multiback_pid() {
+  local _multiback_pidfile="/var/run/duplicity_${_service}_${_user}.pid"
+  if [ -f "${_multiback_pidfile}" ]; then
+    local _old_pid
+    _old_pid=$(cat "${_multiback_pidfile}")
+    if [ -n "${_old_pid}" ] && ! kill -0 "${_old_pid}" 2>/dev/null; then
+      echo "Stale multiback PID file detected: ${_multiback_pidfile}. Removing it."
+      rm -f "${_multiback_pidfile}"
+    fi
+  fi
+}
+
+# Check if the backup configuration file exists
 if [ ! -f "${_BACKUP_CONFIG}" ]; then
   echo "Error: Backup schedule file ${_BACKUP_CONFIG} not found."
   exit 1
 fi
 
-# Start processing each line from the configuration file
+# Process each line in the backup configuration file
 while IFS= read -r _line || [ -n "${_line}" ]; do
   # Skip empty lines and comments
   if [[ "${_line}" =~ ^\s*# ]] || [[ -z "${_line}" ]]; then
     continue
   fi
 
-  # Parse service and user
-  _service=$(echo "${_line}" | cut -d' ' -f1)
-  _user=$(echo "${_line}" | cut -d' ' -f2)
+  # Parse the service and user
+  _service=$(echo "${_line}" | awk '{print $1}')
+  _user=$(echo "${_line}" | awk '{print $2}')
 
   # Ensure both service and user are defined
   if [ -z "${_service}" ] || [ -z "${_user}" ]; then
@@ -73,32 +106,76 @@ while IFS= read -r _line || [ -n "${_line}" ]; do
 
   echo "Starting backup for ${_service} (${_user})..."
 
-  # Set up PID file
-  _CURRENT_PIDFILE="${_PID_DIR}/duplicity_${_service}_${_user}.pid"
+  # Define the PID file path
+  _CURRENT_PIDFILE="${_PID_DIR}/duplicity_${_service}_${_user}_script.pid"
+
+  # Create the PID file
   _create_pid_file "${_CURRENT_PIDFILE}"
 
-  # Determine paths configuration
+  # Remove stale multiback PID file if necessary
+  _remove_stale_multiback_pid
+
+  # Determine the paths configuration file
   if [ "${_user}" = "global_user" ]; then
     _paths_file="/var/xdrago/backup/paths.txt"
+    _credentials_file="/var/xdrago/backup/credentials/${_service}.txt"
+
+    # Check if paths.txt exists
+    if [ ! -f "${_paths_file}" ]; then
+      echo "Error: Paths configuration file ${_paths_file} not found."
+      _remove_pid_file "${_CURRENT_PIDFILE}"
+      continue
+    fi
+
+    # Check if credentials file exists
+    if [ ! -f "${_credentials_file}" ]; then
+      echo "Error: Credentials file ${_credentials_file} not found."
+      _remove_pid_file "${_CURRENT_PIDFILE}"
+      continue
+    fi
+
+    # Change to the directory where paths.txt and credentials are located
+    cd /var/xdrago/backup
+
   else
     _paths_file="/data/disk/${_user}/remote_backups/paths.txt"
+    _credentials_file="/data/disk/${_user}/static/control/remote_backups/credentials/${_service}.txt"
+
+    if [ ! -f "${_paths_file}" ]; then
+      echo "Error: Paths configuration file ${_paths_file} not found."
+      _remove_pid_file "${_CURRENT_PIDFILE}"
+      continue
+    fi
+
+    if [ ! -f "${_credentials_file}" ]; then
+      echo "Error: Credentials file ${_credentials_file} not found."
+      _remove_pid_file "${_CURRENT_PIDFILE}"
+      continue
+    fi
+
+    # Change to the directory where paths.txt and credentials are located
+    cd "/data/disk/${_user}/remote_backups"
   fi
 
-  if [ ! -f "${_paths_file}" ]; then
-    echo "Paths configuration file ${_paths_file} not found."
-    _remove_pid_file "${_CURRENT_PIDFILE}"
-    continue
-  fi
-
-  # Load paths configuration
+  # Load the paths configuration
   source "${_paths_file}"
 
-  # Perform backup
-  multiback backup "${_service}" "${_user}"
+  # Export variables so multiback can use them
+  export _SOURCE
+  export _INCLUDE
+  export _EXCLUDE
 
-  echo "Backup for ${_service} (${_user}) completed."
+  # Perform the backup
+  if multiback backup "${_service}" "${_user}"; then
+    echo "Backup for ${_service} (${_user}) completed successfully."
+  else
+    echo "Backup for ${_service} (${_user}) failed."
+  fi
 
-  # Remove PID file
+  # Return to the original directory
+  cd -
+
+  # Remove the PID file
   _remove_pid_file "${_CURRENT_PIDFILE}"
 
 done < "${_BACKUP_CONFIG}"
