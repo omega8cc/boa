@@ -31,42 +31,12 @@ _LOGFILE="/var/log/backup_runtime.log"
 
 # Function to create a PID file
 _create_pid_file() {
-  local _pidfile="$1"
-  local _current_pid="$$"  # Use $$ for the current shell's PID
-
-  # Ensure _pidfile is not empty
-  if [ -z "${_pidfile}" ]; then
-    echo "Error: PID file path is empty."
+  pidfile="$1"
+  if [ -f "$pidfile" ]; then
+    echo "Process already running (PID file exists at $pidfile)"
     exit 1
   fi
-
-  # Check if PID file exists and is a regular file
-  if [ -f "${_pidfile}" ]; then
-    local _old_pid
-    _old_pid=$(cat "${_pidfile}" 2>/dev/null)
-
-    # Check if _old_pid is a valid number
-    if [[ "${_old_pid}" =~ ^[0-9]+$ ]]; then
-      # Check if the process with _old_pid is running
-      if kill -0 "${_old_pid}" 2>/dev/null; then
-        echo "Process already running with PID ${_old_pid} (from ${_pidfile})"
-        exit 1
-      else
-        echo "Stale PID file detected: ${_pidfile}. Removing it."
-        rm -f "${_pidfile}"
-      fi
-    else
-      echo "Invalid PID found in ${_pidfile}: '${_old_pid}'. Removing PID file."
-      rm -f "${_pidfile}"
-    fi
-  fi
-
-  # Write the current PID to the PID file
-  echo "${_current_pid}" > "${_pidfile}"
-  if [ $? -ne 0 ]; then
-    echo "Failed to create PID file: ${_pidfile}"
-    exit 1
-  fi
+  echo "$$" > "$pidfile" || { echo "Failed to create PID file: $pidfile"; exit 1; }
 }
 
 # Function to remove a PID file
@@ -78,12 +48,6 @@ _remove_pid_file() {
     }
   fi
 }
-
-# Function to handle cleanup on exit
-_cleanup_on_exit() {
-  _remove_pid_file "${_CURRENT_PIDFILE:-}"
-}
-trap _cleanup_on_exit EXIT
 
 # Function to remove stale multiback PID file
 _remove_stale_multiback_pid() {
@@ -127,6 +91,7 @@ while IFS= read -r _line || [ -n "${_line}" ]; do
 
   # Create the PID file
   _create_pid_file "${_CURRENT_PIDFILE}"
+  trap "rm -f ${_PIDFILE}; exit" EXIT
 
   # Remove stale multiback PID file if necessary
   _remove_stale_multiback_pid
