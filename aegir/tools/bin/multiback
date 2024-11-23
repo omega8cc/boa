@@ -226,10 +226,10 @@ _PIDFILE="/var/run/duplicity_${_SERVICE}_${_USER}.pid"
 
 # Create the PID file
 _create_pid_file "${_PIDFILE}"
-trap "rm -f ${_PIDFILE}; exit" EXIT
+#trap "rm -f ${_PIDFILE}; exit" EXIT
 
 # Remove stale multiback PID file if necessary
-_remove_stale_multiback_pid
+#_remove_stale_multiback_pid
 
 # Load paths configuration
 _load_paths "${_USER}"
