@@ -91,10 +91,10 @@ while IFS= read -r _line || [ -n "${_line}" ]; do
 
   # Create the PID file
   _create_pid_file "${_CURRENT_PIDFILE}"
-  #trap "rm -f ${_PIDFILE}; exit" EXIT
+  trap "rm -f ${_PIDFILE}; exit" EXIT
 
   # Remove stale multiback PID file if necessary
-  #_remove_stale_multiback_pid
+  _remove_stale_multiback_pid
 
   # Determine the paths configuration file
   if [ "${_user}" = "global_user" ]; then
