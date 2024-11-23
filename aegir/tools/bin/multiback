@@ -97,8 +97,8 @@ _backup() {
   duplicity \
     --full-if-older-than "${FULL_BACKUP_FREQUENCY}" \
     --volsize 50 \
+    --concurrency 4 \
     --allow-source-mismatch \
-    --asynchronous-upload \
     --follow-links \
     ${_EXCLUDE} \
     ${_USER_EXCLUDE} \
