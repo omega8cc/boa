@@ -87,7 +87,7 @@ while IFS= read -r _line || [ -n "${_line}" ]; do
   echo "Starting backup for ${_service} (${_user})..."
 
   # Define the PID file path
-  _CURRENT_PIDFILE="${_PID_DIR}/duplicity_${_service}_${_user}.pid"
+  local _CURRENT_PIDFILE="${_PID_DIR}/duplicity_${_service}_${_user}.pid"
 
   # Create the PID file
   _create_pid_file "${_CURRENT_PIDFILE}"
