@@ -54,7 +54,6 @@ EOF
 
   if [ ! -f "${_exclude_file}" ]; then
     cat << EOF > "${_exclude_file}"
---exclude '**'
 --exclude /root/.cache
 EOF
   fi
