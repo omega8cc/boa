@@ -5,7 +5,7 @@ export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
 # Default interval in minutes between backup cycles
-_BACKUP_INTERVAL=60
+_BACKUP_INTERVAL=360
 _WRAPPER_SCRIPT="/var/xdrago/backup/run/sequential_backups.sh"
 _SCHEDULE_FILE="/var/xdrago/backup/backup_schedule.txt"
 _CRON_FILE="/etc/cron.d/duplicity_backup"
