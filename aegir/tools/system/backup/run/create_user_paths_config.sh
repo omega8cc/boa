@@ -4,19 +4,73 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
+# Log file for escape attempts and validation issues
+_LOG_FILE="/var/log/backup_validation_issues.log"
+
+# Function to log unauthorized access attempts
+_log_validation_issue() {
+  local _user=$1
+  local _file=$2
+  local _details=$3
+
+  echo "[$(date)] Validation issue detected for user '${_user}' in file '${_file}': ${_details}" >> "${_LOG_FILE}"
+
+  # Alert the admin
+  echo "Alert: Validation issue detected for user '${_user}' in file '${_file}'. Check ${_LOG_FILE} for details." | mail -s "Backup Validation Alert for ${_user}" admin@example.com
+}
+
+# Function to validate and merge configuration files
+_validate_and_merge_paths() {
+  local _file=$1
+  local _user=$2
+  local _allowed_prefixes="^/(data/disk/${_user}/static|/home/${_user}.ftp)"
+  local _output_file=$3
+  local _invalid_paths_found=false
+
+  # Ensure output file exists and is empty
+  > "${_output_file}"
+
+  while IFS= read -r _line; do
+    # Skip empty lines and comments
+    if [[ "${_line}" =~ ^\s*(#|$) ]]; then
+      echo "${_line}" >> "${_output_file}"
+      continue
+    fi
+
+    # Validate directives
+    if [[ "${_line}" =~ ^--(include|exclude|include-regexp|exclude-regexp) ]]; then
+      if echo "${_line}" | grep -Eq "^--(include|exclude|include-regexp|exclude-regexp) ${_allowed_prefixes}"; then
+        echo "${_line}" >> "${_output_file}"
+      else
+        _log_validation_issue "${_user}" "${_file}" "Invalid path: ${_line}"
+        _invalid_paths_found=true
+      fi
+    else
+      _log_validation_issue "${_user}" "${_file}" "Invalid directive: ${_line}"
+      _invalid_paths_found=true
+    fi
+  done < "${_file}"
+
+  # If invalid paths were found, alert and skip merging
+  if [ "${_invalid_paths_found}" = true ]; then
+    echo "Skipping invalid file '${_file}' for user '${_user}'."
+    > "${_output_file}" # Clear output to avoid invalid entries
+  fi
+}
+
 # Function to create or update a user's paths configuration file
 _create_user_paths_config() {
-  _user=$1
-  _user_config_dir="/data/disk/${_user}/remote_backups"
-  _user_control_dir="/data/disk/${_user}/static/control/remote_backups/config"
-  _include_file="${_user_config_dir}/.backboa.${_user}.include"
-  _exclude_file="${_user_config_dir}/.backboa.${_user}.exclude"
-  _include_regexp_file="${_user_config_dir}/.backboa.${_user}.include_regexp"
-  _exclude_regexp_file="${_user_config_dir}/.backboa.${_user}.exclude_regexp"
-  _merged_include_file="${_user_config_dir}/.backboa.${_user}.include.merged"
-  _merged_exclude_file="${_user_config_dir}/.backboa.${_user}.exclude.merged"
-  _include_ctrl_file="${_user_config_dir}/.backboa.${_user}.f93.include.ctrl"
-  _exclude_ctrl_file="${_user_config_dir}/.backboa.${_user}.f93.exclude.ctrl"
+  local _user=$1
+  local _user_config_dir="/data/disk/${_user}/remote_backups"
+  local _user_control_dir="/data/disk/${_user}/static/control/remote_backups/config"
+  local _include_file="${_user_config_dir}/.backboa.${_user}.include"
+  local _exclude_file="${_user_config_dir}/.backboa.${_user}.exclude"
+  local _include_regexp_file="${_user_config_dir}/.backboa.${_user}.include_regexp"
+  local _exclude_regexp_file="${_user_config_dir}/.backboa.${_user}.exclude_regexp"
+  local _merged_include_file="${_user_config_dir}/.backboa.${_user}.include.merged"
+  local _merged_exclude_file="${_user_config_dir}/.backboa.${_user}.exclude.merged"
+  local _include_ctrl_file="${_user_config_dir}/.backboa.${_user}.f93.include.ctrl"
+  local _exclude_ctrl_file="${_user_config_dir}/.backboa.${_user}.f93.exclude.ctrl"
 
   # Ensure user configuration directory exists and is owned by root
   mkdir -p "${_user_config_dir}"
@@ -49,84 +103,50 @@ EOF
   fi
 
   if [ ! -f "${_include_regexp_file}" ]; then
-    echo "# No default include-regexp rules for ${_user}"
+    echo "# No default include-regexp rules for ${_user}" > "${_include_regexp_file}"
   fi
 
   if [ ! -f "${_exclude_regexp_file}" ]; then
-    echo "# No default exclude-regexp rules for ${_user}"
+    echo "# No default exclude-regexp rules for ${_user}" > "${_exclude_regexp_file}"
   fi
 
-  # Validate user-space config files (inside config/)
-  _validate_user_config() {
-    _file=$1
-    _type=$2
-
-    # Check for invalid entries in config files
-    if [ "${_type}" = "regexp" ]; then
-      _invalid_lines
-      _invalid_lines=$(grep -Ev "^--(include-regexp|exclude-regexp)" "${_file}" || true)
-      if [ -n "${_invalid_lines}" ]; then
-        echo "Error: Invalid entries in ${_file}:"
-        echo "${_invalid_lines}"
-        exit 1
-      fi
-    else
-      _invalid_lines=$(grep -Ev "^--(include|exclude)" "${_file}" || true)
-      if [ -n "${_invalid_lines}" ]; then
-        echo "Error: Invalid entries in ${_file}:"
-        echo "${_invalid_lines}"
-        exit 1
-      fi
-
-      # Check for paths outside allowed directories
-      _invalid_lines=$(grep -E "^--(include|exclude) " "${_file}" | grep -vE "^--(include|exclude) (/(data/disk/${_user}/static|/home/${_user}.ftp))" || true)
-      if [ -n "${_invalid_lines}" ]; then
-        echo "Error: Unauthorized paths in ${_file}:"
-        echo "${_invalid_lines}"
-        exit 1
-      fi
-    fi
-  }
-
-  # Merge system-level files if they exist
-  [ -f "${_include_file}" ] && cat "${_include_file}" > "${_merged_include_file}"
-  # Merge user-space files if they exist and are valid
+  # Validate and merge system and user-space include files
+  _validate_and_merge_paths "${_include_file}" "${_user}" "${_merged_include_file}"
   if [ -f "${_user_control_dir}/include.txt" ]; then
-    _validate_user_config "${_user_control_dir}/include.txt"
-    cat "${_user_control_dir}/include.txt" >> "${_merged_include_file}"
+    _validate_and_merge_paths "${_user_control_dir}/include.txt" "${_user}" "${_merged_include_file}"
   fi
 
-  # Merge system-level files if they exist
-  [ -f "${_exclude_file}" ] && cat "${_exclude_file}" > "${_merged_exclude_file}"
-  # Merge user-space files if they exist and are valid
+  # Validate and merge system and user-space exclude files
+  _validate_and_merge_paths "${_exclude_file}" "${_user}" "${_merged_exclude_file}"
   if [ -f "${_user_control_dir}/exclude.txt" ]; then
-    _validate_user_config "${_user_control_dir}/exclude.txt"
-    cat "${_user_control_dir}/exclude.txt" >> "${_merged_exclude_file}"
+    _validate_and_merge_paths "${_user_control_dir}/exclude.txt" "${_user}" "${_merged_exclude_file}"
   fi
 
-  # Merge system-level files if they exist
-  [ -f "${_include_regexp_file}" ] && cat "${_include_regexp_file}" > "${_user_config_dir}/.backboa.${_user}.include_regexp.merged"
+  # Validate and merge regexp include files
+  if [ -f "${_include_regexp_file}" ]; then
+    _validate_and_merge_paths "${_include_regexp_file}" "${_user}" "${_user_config_dir}/.backboa.${_user}.include_regexp.merged"
+  fi
   if [ -f "${_user_control_dir}/include_regexp.txt" ]; then
-    _validate_user_config "${_user_control_dir}/include_regexp.txt" "regexp"
-    cat "${_user_control_dir}/include_regexp.txt" >> "${_user_config_dir}/.backboa.${_user}.include_regexp.merged"
+    _validate_and_merge_paths "${_user_control_dir}/include_regexp.txt" "${_user}" "${_user_config_dir}/.backboa.${_user}.include_regexp.merged"
   fi
 
-  # Merge system-level files if they exist
-  [ -f "${_exclude_regexp_file}" ] && cat "${_exclude_regexp_file}" > "${_user_config_dir}/.backboa.${_user}.exclude_regexp.merged"
+  # Validate and merge regexp exclude files
+  if [ -f "${_exclude_regexp_file}" ]; then
+    _validate_and_merge_paths "${_exclude_regexp_file}" "${_user}" "${_user_config_dir}/.backboa.${_user}.exclude_regexp.merged"
+  fi
   if [ -f "${_user_control_dir}/exclude_regexp.txt" ]; then
-    _validate_user_config "${_user_control_dir}/exclude_regexp.txt" "regexp"
-    cat "${_user_control_dir}/exclude_regexp.txt" >> "${_user_config_dir}/.backboa.${_user}.exclude_regexp.merged"
+    _validate_and_merge_paths "${_user_control_dir}/exclude_regexp.txt" "${_user}" "${_user_config_dir}/.backboa.${_user}.exclude_regexp.merged"
   fi
 
   # Create the final paths configuration file
-  _user_config_file="${_user_config_dir}/paths.txt"
+  local _user_config_file="${_user_config_dir}/paths.txt"
   cat << EOF > "${_user_config_file}"
 _SOURCE="/data/disk/${_user}/static"
 _USER_INCLUDE="--include-filelist ${_merged_include_file} --include-regexp-filelist ${_user_config_dir}/.backboa.${_user}.include_regexp.merged"
 _USER_EXCLUDE="--exclude-filelist ${_merged_exclude_file} --exclude-regexp-filelist ${_user_config_dir}/.backboa.${_user}.exclude_regexp.merged"
 EOF
 
-  echo "Paths configuration for ${_user} created or updated at ${_user_config_file}"
+  echo "Paths configuration for '${_user}' created or updated at '${_user_config_file}'."
 }
 
 # Generate paths configuration for each user
