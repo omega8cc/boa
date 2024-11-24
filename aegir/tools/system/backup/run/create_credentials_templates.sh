@@ -48,36 +48,32 @@ _create_credentials_templates() {
 export AWS_ACCESS_KEY_ID="your_aws_access_key"
 export AWS_SECRET_ACCESS_KEY="your_aws_secret_key"
 export AWS_REGION="your_aws_region"  # E.g., "us-east-1"
-export KEEP_WITHIN="1M"
-export FULL_BACKUP_FREQUENCY="1M"
-export KEEP_FULL_BACKUPS="2"
+export KEEP_WITHIN="3M"
+export FULL_BACKUP_FREQUENCY="7D"
 EOF
           ;;
         gcs)
           cat << EOF > "${_template_file}"
 export GCS_PROJECT_ID="your_gcs_project_id"
 export GCS_SERVICE_ACCOUNT_KEY="your_gcs_service_account_key"
-export KEEP_WITHIN="1M"
-export FULL_BACKUP_FREQUENCY="1M"
-export KEEP_FULL_BACKUPS="2"
+export KEEP_WITHIN="3M"
+export FULL_BACKUP_FREQUENCY="7D"
 EOF
           ;;
         b2)
           cat << EOF > "${_template_file}"
 export B2_ACCOUNT_ID="your_b2_account_id"
 export B2_APPLICATION_KEY="your_b2_application_key"
-export KEEP_WITHIN="1M"
-export FULL_BACKUP_FREQUENCY="1M"
-export KEEP_FULL_BACKUPS="2"
+export KEEP_WITHIN="3M"
+export FULL_BACKUP_FREQUENCY="7D"
 EOF
           ;;
         azure)
           cat << EOF > "${_template_file}"
 export AZURE_STORAGE_ACCOUNT="your_azure_storage_account"
 export AZURE_STORAGE_KEY="your_azure_storage_key"
-export KEEP_WITHIN="1M"
-export FULL_BACKUP_FREQUENCY="1M"
-export KEEP_FULL_BACKUPS="2"
+export KEEP_WITHIN="3M"
+export FULL_BACKUP_FREQUENCY="7D"
 EOF
           ;;
         upcloud)
@@ -85,9 +81,8 @@ EOF
 export UPCLOUD_USERNAME="your_upcloud_username"
 export UPCLOUD_PASSWORD="your_upcloud_password"
 export REGION="your_upcloud_region"  # E.g., "fi-hel1"
-export KEEP_WITHIN="1M"
-export FULL_BACKUP_FREQUENCY="1M"
-export KEEP_FULL_BACKUPS="2"
+export KEEP_WITHIN="3M"
+export FULL_BACKUP_FREQUENCY="7D"
 EOF
           ;;
         ibm)
@@ -95,9 +90,8 @@ EOF
 export IBM_API_KEY_ID="your_ibm_api_key_id"
 export IBM_SERVICE_INSTANCE_ID="your_ibm_service_instance_id"
 export IBM_REGION="your_ibm_region"
-export KEEP_WITHIN="1M"
-export FULL_BACKUP_FREQUENCY="1M"
-export KEEP_FULL_BACKUPS="2"
+export KEEP_WITHIN="3M"
+export FULL_BACKUP_FREQUENCY="7D"
 EOF
           ;;
         wasabi)
@@ -105,9 +99,8 @@ EOF
 export WASABI_ACCESS_KEY="your_wasabi_access_key"
 export WASABI_SECRET_KEY="your_wasabi_secret_key"
 export WASABI_REGION="your_wasabi_region"  # E.g., "us-east-1"
-export KEEP_WITHIN="1M"
-export FULL_BACKUP_FREQUENCY="1M"
-export KEEP_FULL_BACKUPS="2"
+export KEEP_WITHIN="3M"
+export FULL_BACKUP_FREQUENCY="7D"
 EOF
           ;;
         do_spaces)
@@ -115,9 +108,8 @@ EOF
 export DO_SPACES_KEY="your_do_spaces_key"
 export DO_SPACES_SECRET="your_do_spaces_secret"
 export DO_SPACES_REGION="your_do_spaces_region"  # E.g., "nyc3"
-export KEEP_WITHIN="1M"
-export FULL_BACKUP_FREQUENCY="1M"
-export KEEP_FULL_BACKUPS="2"
+export KEEP_WITHIN="3M"
+export FULL_BACKUP_FREQUENCY="7D"
 EOF
           ;;
         linode)
@@ -125,9 +117,8 @@ EOF
 export LINODE_ACCESS_KEY="your_linode_access_key"
 export LINODE_SECRET_KEY="your_linode_secret_key"
 export LINODE_REGION="your_linode_region"  # E.g., "us-east-1"
-export KEEP_WITHIN="1M"
-export FULL_BACKUP_FREQUENCY="1M"
-export KEEP_FULL_BACKUPS="2"
+export KEEP_WITHIN="3M"
+export FULL_BACKUP_FREQUENCY="7D"
 EOF
           ;;
       esac
