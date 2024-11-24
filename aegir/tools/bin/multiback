@@ -106,6 +106,78 @@ _remove_stale_multiback_pid() {
   fi
 }
 
+# Log file for credential validation issues
+_LOG_FILE="/var/log/backup_credential_issues.log"
+
+# Temporary directory for validated credentials
+_TMP_CRED_DIR="/var/tmp/backup_cred_validation"
+mkdir -p "${_TMP_CRED_DIR}"
+chmod 700 "${_TMP_CRED_DIR}"
+
+# Function to log validation issues
+_log_credential_issue() {
+  local _service=$1
+  local _file=$2
+  local _details=$3
+
+  echo "[$(date)] Validation issue detected for service '${_service}' in file '${_file}': ${_details}" >> "${_LOG_FILE}"
+
+  # Alert the admin
+  echo "Alert: Validation issue detected for service '${_service}' in file '${_file}'. Check ${_LOG_FILE} for details." | mail -s "Backup Credential Alert for ${_service}" admin@example.com
+}
+
+# Function to validate credentials file format and content
+_validate_and_sanitize_credentials() {
+  local _cred_file=$1
+  local _service=$2
+  local _sanitized_file="${_TMP_CRED_DIR}/${_service}_filtered.txt"
+
+  # Ensure the sanitized file exists and is empty
+  > "${_sanitized_file}"
+
+  while IFS= read -r _line; do
+    # Skip empty lines and comments
+    if [[ "${_line}" =~ ^\s*(#|$) ]]; then
+      echo "${_line}" >> "${_sanitized_file}"
+      continue
+    fi
+
+    # Validate variable assignments
+    if [[ "${_line}" =~ ^[a-zA-Z_][a-zA-Z0-9_]*= ]]; then
+      # Check for forbidden characters and commands
+      if echo "${_line}" | grep -q -E '[$`(){};&|<>]'; then
+        _log_credential_issue "${_service}" "${_cred_file}" "Forbidden characters or commands: ${_line}"
+        continue
+      fi
+      echo "${_line}" >> "${_sanitized_file}"
+    else
+      _log_credential_issue "${_service}" "${_cred_file}" "Invalid syntax: ${_line}"
+    fi
+  done < "${_cred_file}"
+
+  # Return the sanitized file path
+  echo "${_sanitized_file}"
+}
+
+# Function to load and validate credentials from a file
+_load_credentials() {
+  local _service=$1
+  local _user=$2
+  local _cred_file="/data/disk/${_user}/static/control/remote_backups/credentials/${_service}.txt"
+
+  if [ ! -f "${_cred_file}" ]; then
+    echo "Error: Credentials file '${_cred_file}' not found."
+    exit 1
+  fi
+
+  # Validate and sanitize credentials file
+  local _sanitized_file
+  _sanitized_file=$(_validate_and_sanitize_credentials "${_cred_file}" "${_service}")
+
+  # Source the sanitized file
+  source "${_sanitized_file}"
+}
+
 # Function to load credentials from a file
 _load_credentials() {
   _service=$1
