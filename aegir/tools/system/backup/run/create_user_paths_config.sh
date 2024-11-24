@@ -122,8 +122,8 @@ EOF
   _user_config_file="${_user_config_dir}/paths.txt"
   cat << EOF > "${_user_config_file}"
 _SOURCE="/data/disk/${_user}/static"
-_INCLUDE="--include-filelist ${_merged_include_file} --include-regexp-filelist ${_user_config_dir}/.backboa.${_user}.include_regexp.merged"
-_EXCLUDE="--exclude-filelist ${_merged_exclude_file} --exclude-regexp-filelist ${_user_config_dir}/.backboa.${_user}.exclude_regexp.merged"
+_USER_INCLUDE="--include-filelist ${_merged_include_file} --include-regexp-filelist ${_user_config_dir}/.backboa.${_user}.include_regexp.merged"
+_USER_EXCLUDE="--exclude-filelist ${_merged_exclude_file} --exclude-regexp-filelist ${_user_config_dir}/.backboa.${_user}.exclude_regexp.merged"
 EOF
 
   echo "Paths configuration for ${_user} created or updated at ${_user_config_file}"
