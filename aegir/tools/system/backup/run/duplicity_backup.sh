@@ -139,27 +139,119 @@ _construct_bucket_name() {
   _BUCKET_NAME="back-to-${_user}-${_hostname}-${_service_abbr}"
 }
 
-# Function to perform backup
-_backup() {
-  duplicity \
-    --full-if-older-than "${FULL_BACKUP_FREQUENCY}" \
-    --volsize 50 \
-    --concurrency 4 \
+# Function to generate duplicity-compatible include directives
+_generate_include_directives() {
+  local _source=$1
+  local _include=""
+  for _cdir in ${_source}; do
+    _include="${_include} --include ${_cdir}"
+  done
+  echo "${_include}"
+}
+
+# Function to prepare backup directives
+_backup_prepare() {
+  if [ -e "/root/.cache/duplicity" ]; then
+    _CacheTest=$(find /root/.cache/duplicity/* \
+      -maxdepth 1 \
+      -mindepth 1 \
+      -type f \
+      | sort 2>&1)
+    if [[ "${_CacheTest}" =~ "No such file or directory" ]] \
+      || [ -z "${_CacheTest}" ]; then
+      _DO_CLEANUP=NO
+    else
+      _DO_CLEANUP=YES
+    fi
+  fi
+  # Generate include directives dynamically
+  _INCLUDE=$(_generate_include_directives "${_SOURCE}")
+}
+
+_monthly_cleanup() {
+  if [ -e "${_LOGPTH}/${_BUCKET_NAME}.randomize.cleanup.log" ]; then
+    _RCL=$(cat ${_LOGPTH}/${_BUCKET_NAME}.randomize.cleanup.log 2>&1)
+    _RCL=$(echo -n ${_RCL} | tr -d "\n" 2>&1)
+    _RCL=${_RCL//[^1-5]/}
+  else
+    _RCL=$((RANDOM%5+1))
+    _RCL=${_RCL//[^1-5]/}
+    echo ${_RCL} > ${_LOGPTH}/${_BUCKET_NAME}.randomize.cleanup.log
+  fi
+  if [ -e "${_LOGPTH}/${_BUCKET_NAME}.archive.log" ] \
+    && [ ! -e "/root/.skip_duplicity_monthly_cleanup.cnf" ] \
+    && [ "${_DOM}" = "${_RCL}" ] \
+    && [ "${_DO_CLEANUP}" = "YES" ]; then
+    if [ -e "/root/.randomize_duplicity_full_backup_day.cnf" ]; then
+      _n=$((RANDOM%300+8))
+      echo "Waiting $n seconds on `date` before running cleanup --force" > ${_LOGFILE}
+      sleep ${_n}
+    fi
+    echo "Running cleanup --force on `date`" >> ${_LOGFILE}
+    echo "Command is ${_DCY_MN_CMD} cleanup --force ${_NAME} ${_TARGET}"
+    ${_DCY_MN_CMD} cleanup --force ${_NAME} ${_TARGET}
+    rm -f ${_LOGPTH}/${_BUCKET_NAME}.randomize.full.log
+    rm -f ${_LOGPTH}/${_BUCKET_NAME}.randomize.cleanup.log
+  fi
+}
+
+# Function to set backup mode
+_set_mode() {
+  if [ "${_DOW}" = "${_RDW}" ] && [ "${_AWS_FLC}" = "7D" ]; then
+    if [ ! -e "/root/.randomize_duplicity_full_backup_day.cnf" ]; then
+      _MODE="full"
+      _AWS_FLC="1M"
+    fi
+  else
+    if [ -e "${_LOGPTH}/${_BUCKET_NAME}.archive.log" ] \
+      && [ "${_DO_CLEANUP}" = "YES" ]; then
+      _MODE="incremental"
+    else
+      _MODE="full"
+    fi
+  fi
+}
+
+# Function to construct backup command
+_set_cmd() {
+  if [ -z "${FULL_BACKUP_FREQUENCY}" ] && [ -n "${_AWS_FLC}" ]; then
+    FULL_BACKUP_FREQUENCY="${_AWS_FLC}"
+  fi
+  _DCY_UP_CMD="/usr/local/bin/duplicity ${_MODE} \
+    -v ${_AWS_VLV} \
     --allow-source-mismatch \
+    --concurrency 4 \
     --follow-links \
-    ${_EXCLUDE} \
-    ${_USER_EXCLUDE} \
-    ${_INCLUDE} \
-    ${_USER_INCLUDE} \
-    --exclude '**' \
-    "${_SOURCE}" \
-    "${_BACKUP_TARGET}"
+    --full-if-older-than ${FULL_BACKUP_FREQUENCY} \
+    --volsize 300"
+}
+
+# Function to perform backup
+_run_backup() {
+  echo "Running ${_MODE} backup on `date`" >> ${_LOGFILE}
+  ${_DCY_UP_CMD} \
+  ${_EXCLUDE} \
+  ${_USER_EXCLUDE} \
+  ${_INCLUDE} \
+  ${_USER_INCLUDE} \
+  --exclude '**' \
+  / \
+  "${_BACKUP_TARGET}"
+}
+
+# Function to prepare backup
+_backup() {
+  _backup_prepare
+  _monthly_cleanup
+  _randomize_full
+  _set_mode
+  _set_cmd
+  _run_backup
 }
 
 # Function to clean up old backups
 _cleanup() {
   duplicity remove-older-than "${KEEP_WITHIN}" --force "${_BACKUP_TARGET}"
-  duplicity remove-all-but-n-full "${KEEP_FULL_BACKUPS}" --force "${_BACKUP_TARGET}"
 }
 
 # Function to restore backup
@@ -262,6 +354,20 @@ _set_backup_target() {
 if [ "$#" -lt 3 ]; then
   _usage
 fi
+
+_LOGPTH="/var/xdrago/log"
+_LOGFILE="${_LOGPTH}/${_BUCKET_NAME}.log"
+_NOW=$(date +%y%m%d-%H%M%S 2>&1)
+_NOW=${_NOW//[^0-9-]/}
+_DOW=$(date +%u 2>&1)
+_DOW=${_DOW//[^1-7]/}
+_DOM=$(date +%e 2>&1)
+_DOM=${_DOM//[^0-9]/}
+_HST=$(uname -n 2>&1)
+_HST=${_HST//[^a-zA-Z0-9-.]/}
+_HST=$(echo -n ${_HST} | tr A-Z a-z 2>&1)
+_HST_DASH=$(echo -n ${_HST} | tr . - 2>&1)
+
 
 _ACTION=$1
 _SERVICE=$2
