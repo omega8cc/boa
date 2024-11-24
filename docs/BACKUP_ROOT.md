@@ -1,7 +1,10 @@
 
 # **System Administrator Guide: Managing Global Backups**
 
-This guide explains the global backup system, its configuration, supported services, and best practices. It covers only the aspects managed by the system administrator (root access), including global backups, vendor selection, and service-specific details. [**User-specific backups are documented separately**](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUPUSER.md)
+This guide explains the global backup system, its configuration, supported services, and best practices. It covers only the aspects managed by the system administrator (root access), including global backups, vendor selection, and service-specific details.
+
+[**User-specific backups are documented separately**](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_USER.md)
+[**Backups Retention Policy Configuration is documented separately**](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_RETENTION.md)
 
 ---
 
@@ -173,9 +176,8 @@ Credentials for global backups are stored in `/var/xdrago/backup/credentials/`. 
 export AWS_ACCESS_KEY_ID="your_aws_access_key"
 export AWS_SECRET_ACCESS_KEY="your_aws_secret_key"
 export AWS_REGION="your_aws_region"  # Example: "us-east-1"
-export KEEP_WITHIN="1M"  # Retain backups for 1 month
-export FULL_BACKUP_FREQUENCY="1M"  # Create a full backup every month
-export KEEP_FULL_BACKUPS="2"  # Keep 2 full backups
+export KEEP_WITHIN="3M"  # Retain backups from the last 3 months
+export FULL_BACKUP_FREQUENCY="7D"  # Create a full backup every 7 days
 ```
 
 ### **Permissions**
@@ -188,7 +190,7 @@ chmod 600 /var/xdrago/backup/credentials/*.txt
 
 ## **Restoring Global Backups**
 
-Restoring global backups follows the same logic as [user backups](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUPUSER.md), except administrators manage the entire system. Use the `multiback` command for global restores:
+Restoring global backups follows the same logic as [user backups](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_USER.md), except administrators manage the entire system. Use the `multiback` command for global restores:
 
 ```bash
 multiback restore <SERVICE> <RESTORE_TARGET> <RESTORE_PATH> [RESTORE_TIME]
@@ -254,6 +256,6 @@ multiback restore <SERVICE> <RESTORE_TARGET> <RESTORE_PATH> [RESTORE_TIME]
 
 The global backup system ensures system-wide data protection and disaster recovery capabilities. By using the configuration and management tools provided, administrators can manage backups efficiently while keeping costs under control.
 
-For user-specific backups, refer to the separate [**User Backup Guide**](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUPUSER.md)
+For user-specific backups, refer to the separate [**User Backup Guide**](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_USER.md)
 
 For assistance, contact BOA developers team.

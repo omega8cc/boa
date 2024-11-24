@@ -3,6 +3,8 @@
 
 This guide explains the backup system, including how it works, how to configure it for your needs, and how to restore your data. The document also covers the supported storage services and key distinctions in path handling.
 
+[**Backups Retention Policy Configuration is documented separately**](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_RETENTION.md)
+
 ---
 
 ## **How the Backup System Works**
@@ -157,15 +159,13 @@ Each credential file corresponds to a specific cloud storage service and must fo
 export AWS_ACCESS_KEY_ID="your_aws_access_key"
 export AWS_SECRET_ACCESS_KEY="your_aws_secret_key"
 export AWS_REGION="your_aws_region"  # Example: "us-east-1"
-export KEEP_WITHIN="1M"  # Keep backups for 1 month
-export FULL_BACKUP_FREQUENCY="1M"  # Full backup every 1 month
-export KEEP_FULL_BACKUPS="2"  # Keep 2 full backups
+export KEEP_WITHIN="3M"  # Retain backups from the last 3 months
+export FULL_BACKUP_FREQUENCY="7D"  # Create a full backup every 7 days
 ```
 
 ### **Key Variables**
 - **`KEEP_WITHIN`**: Specifies how long backups are retained (e.g., `1M` for 1 month).
 - **`FULL_BACKUP_FREQUENCY`**: Specifies how often full backups are created.
-- **`KEEP_FULL_BACKUPS`**: Specifies the number of full backups to retain.
 
 ### **Permissions**
 Make sure your credential files are secured:
