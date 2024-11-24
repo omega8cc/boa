@@ -5,6 +5,53 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
+_check_root() {
+  if [ `whoami` = "root" ]; then
+    ionice -c2 -n7 -p $$
+    renice 9 -p $$
+    chmod a+w /dev/null
+    [ -e "/root/.gnupg" ] && chmod 700 /root/.gnupg
+  else
+    echo "ERROR: This script should be run as a root user"
+    exit 1
+  fi
+  _DF_TEST=$(df -kTh / -l \
+    | grep '/' \
+    | sed 's/\%//g' \
+    | awk '{print $6}' 2> /dev/null)
+  _DF_TEST=${_DF_TEST//[^0-9]/}
+  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt "90" ]; then
+    echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
+    echo "ERROR: We can not proceed until it is below 90/100"
+    exit 1
+  fi
+  [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
+  export _INCIDENT_EMAIL_REPORT=${_INCIDENT_EMAIL_REPORT//[^A-Z]/}
+  : "${_INCIDENT_EMAIL_REPORT:=YES}"
+  _AWS_VLV=${_AWS_VLV//[^a-z]/}
+  if [ -z "${_AWS_VLV}" ]; then
+    _AWS_VLV="warning"
+  fi
+  _DCY_MN_CMD="/usr/local/bin/duplicity -v ${_AWS_VLV} --concurrency 4"
+}
+_check_root
+
+if [ -e "/root/.pause_heavy_tasks_maint.cnf" ]; then
+  exit 0
+fi
+
+# New OpenSSL 3.x version is required
+if [ ! -x "/usr/local/ssl3/bin/openssl" ]; then
+  echo "New OpenSSL 3.x version is required"
+  exit 1
+fi
+
+if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ]; then
+  echo "The duplicity backup is already running!"
+  echo "Active duplicity process detected..."
+  exit 1
+fi
+
 # Function to display usage information
 _usage() {
   echo "Usage: $0 {backup|cleanup|restore} <SERVICE> <USER> [RESTORE_TARGET] [RESTORE_PATH] [RESTORE_TIME]"
