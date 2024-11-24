@@ -74,19 +74,20 @@ _usage() {
   exit 1
 }
 
-# Function to create a PID file
+# Function to create PID file
 _create_pid_file() {
-  pidfile="$1"
-  if [ -f "$pidfile" ]; then
-    echo "Process already running (PID file exists at $pidfile)"
+  local _pidfile=$1
+  if [ -e "${_pidfile}" ]; then
+    echo "Process already running with PID file ${_pidfile}"
     exit 1
+  else
+    echo $$ > "${_pidfile}"
   fi
-  echo "$$" > "$pidfile" || { echo "Failed to create PID file: $pidfile"; exit 1; }
 }
 
-# Function to remove a PID file
+# Function to remove PID file
 _remove_pid_file() {
-  _pidfile=$1
+  local _pidfile=$1
   if [ -f "${_pidfile}" ]; then
     rm -f "${_pidfile}" || {
       echo "Warning: Failed to remove PID file: ${_pidfile}"
