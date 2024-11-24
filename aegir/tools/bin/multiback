@@ -88,8 +88,8 @@ _load_paths() {
 _construct_bucket_name() {
   _service_abbr=$1
   _user=$2
-  _hostname=$(hostname -s)
-  _BUCKET_NAME="${_hostname}-${_service_abbr}-${_user}"
+  _hostname=$(hostname -f)
+  _BUCKET_NAME="back-to-${_user}-${_hostname}-${_service_abbr}"
 }
 
 # Function to perform backup

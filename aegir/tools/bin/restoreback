@@ -46,8 +46,9 @@ _load_paths() {
 # Function to construct _BUCKET_NAME
 _construct_bucket_name() {
   _service_abbr=$1
-  _hostname=$(hostname -s)
+  _hostname=$(hostname -f)
   _BUCKET_NAME="${_hostname}-${_service_abbr}-${_USER}"
+  _BUCKET_NAME="back-to-${_user}-${_hostname}-${_service_abbr}"
 }
 
 # Function to restore backup
