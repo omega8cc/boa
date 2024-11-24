@@ -194,8 +194,8 @@ _load_credentials() {
 
 # Function to load paths and other settings from a file
 _load_paths() {
-  _user=$1
-  _paths_path="/data/disk/${_user}/remote_backups/paths.txt"
+  local _user=$1
+  local _paths_path="/data/disk/${_user}/remote_backups/paths.txt"
   if [ -f "${_paths_path}" ]; then
     source "${_paths_path}"
   else
@@ -206,8 +206,8 @@ _load_paths() {
 
 # Function to construct _BUCKET_NAME
 _construct_bucket_name() {
-  _service_abbr=$1
-  _user=$2
+  local _service_abbr=$1
+  local _user=$2
   _hostname=$(hostname -f)
   _BUCKET_NAME="back-to-${_user}-${_hostname}-${_service_abbr}"
 }
