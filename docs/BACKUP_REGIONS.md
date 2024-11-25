@@ -10,13 +10,9 @@ This document outlines the supported regions and configuration guidelines for th
 
 ---
 
-### Configuration Overview
+## General Bucket Behavior
 
-#### Root Configuration (`multiback`)
-For system-wide backups managed by `multiback`, ensure that your configuration includes the necessary credentials in `/var/xdrago/backup/credentials/` directory. More details in New Backups for BOA SysAdmin [docs/BACKUP_ROOT.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_ROOT.md)
-
-#### User Configuration (`mybackup`)
-Regular users should place their backup configurations in the `~/static/control/remote_backups/credentials/` directory. The `mybackup` script automatically uses these credentials to restore backups for the current user. More details in New Backups for Octopus Lshell User [docs/BACKUP_USER.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_USER.md)
+Most providers allow **automatic bucket creation** if sufficient credentials and permissions are provided. However, some providers (e.g., **UpCloud**) require **manual bucket creation** before the first backup. Below is a detailed breakdown for each provider.
 
 ---
 
@@ -26,7 +22,10 @@ The following regions are supported across various storage services:
 
 ---
 
-#### **Amazon Web Services (AWS S3)**
+#### **Amazon Web Services (aws, aws-one-zone, aws-standard-ia)**
+
+- **Bucket Creation:** Supported but unreliable for automatic creation due to propagation delays between AWS regions. Manual bucket creation is recommended.
+- **Supported Regions:**
 
 | Region Name                  | Region Code       |
 |------------------------------|-------------------|
@@ -62,132 +61,243 @@ The following regions are supported across various storage services:
 | AWS GovCloud (US-East)       | `us-gov-east-1`   |
 | AWS GovCloud (US-West)       | `us-gov-west-1`   |
 
+For more details, refer to the [AWS Regional Endpoints documentation](https://docs.aws.amazon.com/general/latest/gr/rande.html#s3_region).
+
 ---
 
 #### **Backblaze B2 (b2)**
 
-| Region Name  | Region Code |
-|--------------|-------------|
-| Global       | `global`    |
+- **Bucket Creation:** Automatic bucket creation is supported with proper credentials.
+- **Supported Regions:**
+
+| Data Center Location    | Region Code  |
+|-------------------------|--------------|
+| Amsterdam, Netherlands  | `eu-central` |
+| Reston, Virginia        | `us-east`    |
+| Sacramento, California  | `us-west`    |
+| Stockton, California    | `us-west`    |
+| Phoenix, Arizona        | `us-west`    |
+
+Backblaze currently has data centers in Sacramento, California; Stockton, California; Phoenix, Arizona; Reston, Virginia; and Amsterdam, Netherlands.
+
+Accounts that use the US-West region store data in both the Sacramento and Phoenix data centers.
+
+Accounts that use the EU-Central region store data in the Amsterdam data center. If you are in the European Union or in or near Europe, then the transfer rate for Backblaze Computer Backup and Backblaze B2 should have less latency. As a result, you can get better transfer rates and more bandwidth per thread.
+
+Accounts that use the US-East region store data in the Reston, Virginia data center. This is the newest Backblaze data center. The data center is operated by Coresight, a well-known and respected data center operator. This data center is the core of the Backblaze eastern region joining the western region (US West) and the central European region (EU Central).
+
+When you create a Backblaze B2 account, you choose whether that account’s data is stored in the US East region, the US West region, or the EU Central region. The choice that you make during account creation dictates where all of that account’s data is stored. After you create your Backblaze B2 account, you cannot change your selected region.
+
+This means that you need separate accounts per region, if needed and the region codes in the table above are for informational purposes only.
+
+More details available at the [Backblaze B2 Regions documentation](https://www.backblaze.com/docs/cloud-storage-data-regions).
 
 ---
 
-#### **Google Cloud Storage (GCS)**
+#### **Google Cloud Storage (gcs)**
 
-| Region Name                   | Region Code     |
-|-------------------------------|-----------------|
-| Americas (Iowa)               | `us-central1`   |
-| Americas (South Carolina)     | `us-east1`      |
-| Americas (Northern Virginia)  | `us-east4`      |
-| Americas (Oregon)             | `us-west1`      |
-| Americas (Los Angeles)        | `us-west2`      |
-| Americas (Salt Lake City)     | `us-west3`      |
-| Americas (Las Vegas)          | `us-west4`      |
-| Asia Pacific (Tokyo)          | `asia-northeast1` |
-| Asia Pacific (Osaka)          | `asia-northeast2` |
-| Asia Pacific (Seoul)          | `asia-northeast3` |
-| Asia Pacific (Mumbai)         | `asia-south1`   |
-| Asia Pacific (Delhi)          | `asia-south2`   |
-| Asia Pacific (Singapore)      | `asia-southeast1` |
-| Asia Pacific (Jakarta)        | `asia-southeast2` |
-| Europe (Frankfurt)            | `europe-central2` |
-| Europe (Belgium)              | `europe-west1`  |
-| Europe (London)               | `europe-west2`  |
-| Europe (Frankfurt)            | `europe-west3`  |
-| Europe (Netherlands)          | `europe-west4`  |
-| Europe (Finland)              | `europe-north1` |
-| South America (São Paulo)     | `southamerica-east1` |
+- **Bucket Creation:** Supported automatically if proper permissions are configured.
+- **Supported Regions:** (not all are listed here)
+
+| Data Center Location                 | Region Code     |
+|--------------------------------------|-----------------|
+| Iowa (US Central)                    | `us-central1`   |
+| South Carolina (US East)             | `us-east1`      |
+| Northern Virginia (US East)          | `us-east4`      |
+| Oregon (US West)                     | `us-west1`      |
+| Los Angeles (US West)                | `us-west2`      |
+| Salt Lake City (US West)             | `us-west3`      |
+| Las Vegas (US West)                  | `us-west4`      |
+| Montreal (Canada)                    | `northamerica-northeast1` |
+| São Paulo (South America)            | `southamerica-east1`      |
+| Santiago (South America)             | `southamerica-west1`      |
+| Finland (Europe)                     | `europe-north1`           |
+| Belgium (Europe)                     | `europe-west1`            |
+| London (Europe)                      | `europe-west2`            |
+| Frankfurt (Europe)                   | `europe-west3`            |
+| Netherlands (Europe)                 | `europe-west4`            |
+| Zurich (Europe)                      | `europe-west6`            |
+| Warsaw (Europe)                      | `europe-central2`         |
+| Sydney (Australia)                   | `australia-southeast1`    |
+| Jakarta (Indonesia)                  | `asia-southeast2`         |
+| Singapore                            | `asia-southeast1`         |
+| Taiwan                               | `asia-east1`              |
+| Hong Kong                            | `asia-east2`              |
+| Tokyo                                | `asia-northeast1`         |
+| Osaka                                | `asia-northeast2`         |
+| Seoul                                | `asia-northeast3`         |
+| Mumbai                               | `asia-south1`             |
+| Delhi                                | `asia-south2`             |
+
+For complete list please refer to the [Google Cloud Storage Locations documentation](https://cloud.google.com/storage/docs/locations).
 
 ---
 
 #### **Microsoft Azure Blob Storage (azure)**
 
-| Region Name                    | Region Code        |
-|--------------------------------|--------------------|
-| East US                        | `eastus`          |
-| East US 2                      | `eastus2`         |
-| Central US                     | `centralus`       |
-| North Central US               | `northcentralus`  |
-| South Central US               | `southcentralus`  |
-| West US                        | `westus`          |
-| West US 2                      | `westus2`         |
-| Canada Central                 | `canadacentral`   |
-| Canada East                    | `canadaeast`      |
-| North Europe                   | `northeurope`     |
-| West Europe                    | `westeurope`      |
-| UK South                       | `uksouth`         |
-| UK West                        | `ukwest`          |
-| France Central                 | `francecentral`   |
-| France South                   | `francesouth`     |
-| Germany Central                | `germanycentral`  |
-| Germany North                  | `germanynorth`    |
-| Australia East                 | `australiaeast`   |
-| Australia Southeast            | `australiasoutheast` |
-| Japan East                     | `japaneast`       |
-| Japan West                     | `japanwest`       |
+- **Bucket Creation:** Supported automatically with appropriate contributor access.
+- **Supported Regions:** (not all are listed here)
+
+| Region Name                          | Region Code     |
+|--------------------------------------|-----------------|
+| East US                              | `eastus`        |
+| East US 2                            | `eastus2`       |
+| Central US                           | `centralus`     |
+| North Central US                     | `northcentralus`|
+| South Central US                     | `southcentralus`|
+| West US                              | `westus`        |
+| West US 2                            | `westus2`       |
+| West US 3                            | `westus3`       |
+| Canada Central                       | `canadacentral` |
+| Canada East                          | `canadaeast`    |
+| Brazil South                         | `brazilsouth`   |
+| Brazil Southeast                     | `brazilsoutheast`|
+| Europe North                         | `northeurope`   |
+| Europe West                          | `westeurope`    |
+| France Central                       | `francecentral` |
+| France South                         | `francesouth`   |
+| Germany North                        | `germanynorth`  |
+| Germany West Central                 | `germanywestcentral`|
+| Switzerland North                    | `switzerlandnorth`|
+| Switzerland West                     | `switzerlandwest`|
+| UK South                             | `uksouth`       |
+| UK West                              | `ukwest`        |
+| Australia East                       | `australiaeast` |
+| Australia Southeast                  | `australiasoutheast`|
+| Australia Central                    | `australiacentral`|
+
+For detailed regions, refer to [Azure Blob Storage Regions](https://azure.microsoft.com/en-us/global-infrastructure/geographies/).
 
 ---
 
-#### **UpCloud Object Storage**
+#### **UpCloud Object Storage (upcloud)**
 
-| Region Name         | Region Code   |
-|---------------------|---------------|
-| Amsterdam           | `ams`         |
-| Frankfurt           | `fra`         |
-| Helsinki            | `hel`         |
-| London              | `lon`         |
-| San Jose            | `sjc`         |
-| Singapore           | `sin`         |
-| Sydney              | `syd`         |
+- **Bucket Creation:** **Manual only**—requires creating the bucket in the UpCloud control panel before use.
+- **Supported Regions:**
+
+| Data Center Location       | Region Code   |
+|----------------------------|---------------|
+| Sydney, Australia          | `au-syd1`     |
+| Frankfurt, Germany         | `de-fra1`     |
+| Madrid, Spain              | `es-mad1`     |
+| Helsinki, Finland          | `fi-hel1`     |
+| Helsinki, Finland          | `fi-hel2`     |
+| Amsterdam, Netherlands     | `nl-ams1`     |
+| Warsaw, Poland             | `pl-waw1`     |
+| London, United Kingdom     | `uk-lon1`     |
+| Stockholm, Sweden          | `se-sto1`     |
+| Singapore                  | `sg-sin1`     |
+| Chicago, United States     | `us-chi1`     |
+| New York City, United States | `us-nyc1`   |
+| San Jose, United States    | `us-sjo1`     |
+
+For more detailed information, please refer to UpCloud's official documentation on [data center locations](https://upcloud.com/docs/products/block-storage/availability).
 
 ---
 
 #### **IBM Cloud Object Storage (ibm)**
 
-| Region Name                   | Region Code     |
-|-------------------------------|-----------------|
-| Dallas (US South)             | `us-south`      |
-| Washington DC (US East)       | `us-east`       |
-| Frankfurt (Germany)           | `eu-de`         |
-| London (United Kingdom)       | `eu-gb`         |
-| Sydney (Australia)            | `au-syd`        |
-| Tokyo (Japan)                 | `jp-tok`        |
+- **Bucket Creation:** Must be **manually created** before use.
+- **Supported Regions:** (not all are listed here)
+
+| Region Name             | Region Code  |
+|-------------------------|--------------|
+| US Cross Region         | `us`         |
+| US South (Dallas)       | `us-south`   |
+| US East (Washington DC) | `us-east`    |
+| EU Cross Region         | `eu`         |
+| EU Central (Frankfurt)  | `eu-de`      |
+| EU North (Oslo)         | `eu-north`   |
+| EU West (Milan)         | `eu-it`      |
+| Asia Pacific Cross Region | `ap`       |
+| Asia Pacific North (Tokyo) | `jp-tok`  |
+| Asia Pacific South (Sydney) | `au-syd` |
+
+For more details, refer to the [IBM Cloud Regions documentation](https://cloud.ibm.com/docs/cloud-object-storage?topic=cloud-object-storage-endpoints).
 
 ---
 
-#### **Wasabi**
+#### **Wasabi Hot Cloud Storage (wasabi)**
 
-| Region Name        | Region Code |
-|--------------------|-------------|
-| US East 1          | `us-east-1` |
-| US West 1          | `us-west-1` |
-| EU Central 1       | `eu-central-1` |
-| Asia Pacific North 1 | `ap-northeast-1` |
+- **Bucket Creation:** Supported automatically.
+- **Supported Regions:**
 
----
+| Data Center Location     | Region Code     |
+|--------------------------|-----------------|
+| Virginia, USA            | `us-east-1`     |
+| Virginia, USA            | `us-east-2`     |
+| Oregon, USA              | `us-west-1`     |
+| Plano, Texas, USA        | `us-central-1`  |
+| Toronto, Canada          | `ca-central-1`  |
+| London, England          | `eu-west-1`     |
+| Paris, France            | `eu-west-2`     |
+| Amsterdam, Netherlands   | `eu-central-1`  |
+| Frankfurt, Germany       | `eu-central-2`  |
+| Milan, Italy             | `eu-south-1`    |
+| Tokyo, Japan             | `ap-northeast-1`|
+| Osaka, Japan             | `ap-northeast-2`|
+| Singapore                | `ap-southeast-1`|
+| Sydney, Australia        | `ap-southeast-2`|
 
-#### **DigitalOcean Spaces (do_spaces)**
-
-| Region Name  | Region Code |
-|--------------|-------------|
-| New York 3   | `nyc3`      |
-| Amsterdam 3  | `ams3`      |
-| Singapore 1  | `sgp1`      |
-
----
-
-#### **Linode Object Storage**
-
-| Region Name         | Region Code  |
-|---------------------|--------------|
-| Newark              | `us-east`    |
-| Dallas              | `us-central` |
-| Fremont             | `us-west`    |
-| Frankfurt           | `eu-central` |
+For more, refer to [Wasabi Regions](https://wasabi.com/company/storage-regions).
 
 ---
 
-### Bucket Creation Behavior
+#### **DigitalOcean Spaces (do-spaces)**
+
+- **Bucket Creation:** **Automatic** if credentials have write permissions.
+- **Supported Regions:**
+
+| Data Center Location       | Region Code |
+|----------------------------|-------------|
+| New York City, United States | `nyc3`    |
+| San Francisco, United States | `sfo2`    |
+| San Francisco, United States | `sfo3`    |
+| Amsterdam, Netherlands     | `ams3`      |
+| Singapore                  | `sgp1`      |
+| London, United Kingdom     | `lon1`      |
+| Frankfurt, Germany         | `fra1`      |
+| Toronto, Canada            | `tor1`      |
+| Bangalore, India           | `blr1`      |
+| Sydney, Australia          | `syd1`      |
+
+For the most current and detailed information, please refer to DigitalOcean's [Regional Availability documentation](https://docs.digitalocean.com/platform/regional-availability/).
+
+Refer to [DigitalOcean Spaces Regions documentation](https://docs.digitalocean.com/platform/regional-availability/) for details.
+
+---
+
+#### **Akamai Object Storage (linode)**
+
+- **Bucket Creation:** Must be **manually created** before use.
+- **Supported Regions:**
+
+| Data Center Location       | Region Code      |
+|----------------------------|------------------|
+| Amsterdam, Netherlands     | `nl-ams-1`       |
+| Atlanta, GA, USA           | `us-southeast-1` |
+| Chennai, India             | `in-maa-1`       |
+| Chicago, IL, USA           | `us-ord-1`       |
+| Frankfurt, Germany         | `eu-central-1`   |
+| Jakarta, Indonesia         | `id-cgk-1`       |
+| Los Angeles, CA, USA       | `us-lax-1`       |
+| Madrid, Spain              | `es-mad-1`       |
+| Miami, FL, USA             | `us-mia-1`       |
+| Milan, Italy               | `it-mil-1`       |
+| Newark, NJ, USA            | `us-east-1`      |
+| Osaka, Japan               | `jp-osa-1`       |
+| Paris, France              | `fr-par-1`       |
+| São Paulo, Brazil          | `br-gru-1`       |
+| Seattle, WA, USA           | `us-sea-1`       |
+| Singapore                  | `ap-south-1`     |
+| Stockholm, Sweden          | `se-sto-1`       |
+| Washington, DC, USA        | `us-iad-1`       |
+
+For more detailed information, please refer to Akamai's official [Object Storage documentation](https://techdocs.akamai.com/cloud-computing/docs/object-storage).
+
+---
+
+### Bucket Naming Convention
 
 #### Root (`multiback`) Behavior:
 - Ensure buckets are created for each service and region used.
@@ -195,16 +305,38 @@ The following regions are supported across various storage services:
 
 #### User (`mybackup`) Behavior:
 - Buckets are associated with the Octopus system user running the command.
-- User-specific bucket names follow the convention: `back-to-USER-HOSTNAME-REGIONCODE`.
+- User-specific bucket names follow the convention: `back-to-USER-HOSTNAME-PROVIDER`.
 - The `USER` is your Aegir system user as visible in the `/data/disk/USER/static` path.
 - The `HOSTNAME` is your system hostname, but with dots replaced by hyphens.
-- The `REGIONCODE` is the symbol of the region from the vendors tables above.
+- The `PROVIDER` is the short name of the vendor, with underscores replaced by hyphens:
+
+  aws -------------- Amazon S3 (Standard)
+  aws-one-zone ----- Amazon S3 (One Zone)
+  aws-standard-ia -- Amazon S3 (Standard-IA)
+  azure ------------ Azure Blob Storage
+  b2 --------------- Backblaze B2
+  do-spaces -------- DigitalOcean Spaces
+  gcs -------------- Google Cloud Storage
+  ibm -------------- IBM Cloud Object Storage
+  linode ----------- Linode Object Storage by Akamai
+  upcloud ---------- UpCloud Object Storage
+  wasabi ----------- Wasabi Hot Cloud Storage
 
 How to determine correct `HOSTNAME` and `USER` to be used as your Bucket name?
 
 It's easy to find because your Aegir URL is actually `USER`.`HOSTNAME` -- For example in `o123.fr8.eu.aegir.cc` the `o123` is `USER` and `fr8.eu.aegir.cc` is a `HOSTNAME`
 
 However, when used in the bucket name, it becomes `back-to-USER-HOSTNAME-REGIONCODE`, so in this example: `back-to-o1-fr8-eu-aegir-cc-eu-central-1`
+
+---
+
+### Configuration Overview
+
+#### Root Configuration (`multiback`)
+For system-wide backups managed by `multiback`, ensure that your configuration includes the necessary credentials in `/var/xdrago/backup/credentials/` directory. More details in New Backups for BOA SysAdmin [docs/BACKUP_ROOT.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_ROOT.md)
+
+#### User Configuration (`mybackup`)
+Regular users should place their backup configurations in the `~/static/control/remote_backups/credentials/` directory. The `mybackup` script automatically uses these credentials to restore backups for the current user. More details in New Backups for Octopus Lshell User [docs/BACKUP_USER.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_USER.md)
 
 ---
 

@@ -32,17 +32,17 @@ The system supports backups to the following storage services. Each service requ
 ```
 
 ### **Supported Services**
-- **Amazon S3**
 - **Amazon S3 One Zone**
 - **Amazon S3 Standard-IA**
-- **Google Cloud Storage**
+- **Amazon S3**
 - **Backblaze B2**
+- **DigitalOcean Spaces**
+- **Google Cloud Storage**
+- **IBM Cloud Object Storage**
+- **Linode Object Storage by Akamai**
 - **Microsoft Azure Blob Storage**
 - **UpCloud Object Storage**
-- **IBM Cloud Object Storage**
 - **Wasabi Hot Cloud Storage**
-- **DigitalOcean Spaces**
-- **Linode Object Storage by Akamai**
 
 Refer to the **Managing Credentials** section for details on how to create and secure credential files for these services.
 

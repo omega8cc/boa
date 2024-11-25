@@ -99,7 +99,7 @@ DigitalOcean Spaces
   export KEEP_WITHIN="3M"
   export FULL_BACKUP_FREQUENCY="7D"
 
-Linode Object Storage
+Linode Object Storage by Akamai
   File: linode.txt
   export LINODE_ACCESS_KEY="your_linode_access_key"
   export LINODE_SECRET_KEY="your_linode_secret_key"
