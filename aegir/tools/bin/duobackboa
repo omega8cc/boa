@@ -22,7 +22,7 @@ _CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
 _check_root() {
   if [ `whoami` = "root" ]; then
     ionice -c2 -n7 -p $$
-    renice 19 -p $$
+    renice 9 -p $$
     chmod a+w /dev/null
     [ -e "/root/.gnupg" ] && chmod 700 /root/.gnupg
   else
