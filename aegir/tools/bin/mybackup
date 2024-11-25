@@ -1,0 +1,234 @@
+#!/bin/bash
+
+# Environment setup
+export SHELL=/bin/bash
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+
+# Base directory for user commands
+_BASE_DIR="/data/disk"
+_RUN_SUBDIR="static/run"
+_CMD_FILE="command.txt"
+
+# Function to display usage information
+_usage() {
+  echo "Usage: $0 restore <SERVICE> [RESTORE_TARGET] [RESTORE_PATH] [RESTORE_TIME]"
+  echo
+  echo "Example command:"
+  echo "  Restore:"
+  echo "  $0 restore aws ~/static/restores static/projects 1D"
+  echo "  $0 restore b2 ~/static/restores static/another-project 2W"
+  echo
+  echo "Supported services:"
+  echo "  aws, aws_one_zone, aws_standard_ia, gcs, b2, azure, upcloud, ibm, wasabi, do_spaces, linode"
+  echo
+  echo "NOTE: [RESTORE_PATH] must be an absolute path (no leading slash) of the file or directory to restore"
+  echo
+  exit 1
+}
+
+# Function to create PID file
+_create_pid_file() {
+  local _pidfile=$1
+  if [ -e "${_pidfile}" ]; then
+    echo "Process already running with PID file ${_pidfile}"
+    exit 1
+  else
+    echo $$ > "${_pidfile}"
+  fi
+}
+
+# Function to remove PID file
+_remove_pid_file() {
+  local _pidfile=$1
+  rm -f "${_pidfile}"
+}
+
+# Function to load credentials from a file
+_load_credentials() {
+  local _service=$1
+  local _creds_path="/data/disk/${_user}/static/control/remote_backups/credentials/${_service}.txt"
+  if [ -f "${_creds_path}" ]; then
+    source "${_creds_path}"
+  else
+    echo "Credentials file ${_creds_path} not found."
+    exit 1
+  fi
+}
+
+# Function to load paths and other settings from a file
+_load_paths() {
+  local _paths_path="/data/disk/${_user}/remote_backups/paths.txt"
+  if [ -f "${_paths_path}" ]; then
+    source "${_paths_path}"
+  else
+    echo "Paths configuration file ${_paths_path} not found."
+    exit 1
+  fi
+}
+
+# Function to construct _BUCKET_NAME
+_construct_bucket_name() {
+  local _service_abbr=$1
+  local _user=$2
+  _hostname=$(hostname -f 2>/dev/null || uname -n)
+  _hst_dash=$(echo -n ${_hostname} | tr . - 2>&1)
+  _BUCKET_NAME="back-to-${_user}-${_hst_dash}-${_service_abbr}"
+}
+
+# Function to restore backup
+_restore() {
+  local _restore_target=$1
+  local _restore_path=$2
+  local _restore_time=$3
+  local _restore_command="duplicity restore --allow-source-mismatch"
+
+  # Ensure _RESTORE_TARGET exists
+  if [ -n "${_restore_target}" ] && [ ! -d "${_restore_target}" ]; then
+    echo "Creating restore target directory: ${_restore_target}"
+    mkdir -p "${_restore_target}"
+  fi
+
+  if [ -n "${_restore_time}" ]; then
+    _restore_command="${_restore_command} --time ${_restore_time}"
+  fi
+
+  _restore_command="${_restore_command} ${_BACKUP_TARGET}"
+
+  if [ -n "${_restore_path}" ]; then
+    _restore_command="${_restore_command} ${_restore_path}"
+  fi
+
+  _restore_command="${_restore_command} ${_restore_target}"
+
+  eval "${_restore_command}"
+}
+
+# Function to set backup target based on service
+_set_backup_target() {
+  local _service=$1
+  local _user=$2
+
+  case "${_service}" in
+    aws|aws_one_zone|aws_standard_ia)
+      _load_credentials "${_service}" "${_user}"
+      _construct_bucket_name "${_service}" "${_user}"
+
+      # Define S3-specific options
+      local _s3_endpoint="https://s3.dualstack.${AWS_REGION}.amazonaws.com"
+      local _s3_options="--s3-endpoint-url ${_s3_endpoint} --s3-region-name ${AWS_REGION}"
+
+      # Use intelligent-tiering options for specific services
+      if [ "${_service}" = "aws_standard_ia" ] || [ "${_service}" = "aws_one_zone" ]; then
+        local _s3_options="${_s3_options} --s3-use-ia"
+      fi
+
+      _BACKUP_TARGET="boto3+s3://${_BUCKET_NAME} ${_s3_options}"
+      ;;
+    gcs)
+      _load_credentials "gcs" "${_user}"
+      _construct_bucket_name "gcs" "${_user}"
+      _BACKUP_TARGET="gs://${_BUCKET_NAME}"
+      ;;
+    b2)
+      _load_credentials "b2" "${_user}"
+      _construct_bucket_name "b2" "${_user}"
+      _BACKUP_TARGET="b2://${B2_ACCOUNT_ID}:${B2_APPLICATION_KEY}@${_BUCKET_NAME}"
+      ;;
+    azure)
+      _load_credentials "azure" "${_user}"
+      _construct_bucket_name "azure" "${_user}"
+      _BACKUP_TARGET="azure://${AZURE_STORAGE_ACCOUNT}@${_BUCKET_NAME}"
+      ;;
+    upcloud)
+      _load_credentials "upcloud" "${_user}"
+      _construct_bucket_name "upcloud" "${_user}"
+      _BACKUP_TARGET="s3://${UPCLOUD_USERNAME}:${UPCLOUD_PASSWORD}@${REGION}/${_BUCKET_NAME}"
+      ;;
+    ibm)
+      _load_credentials "ibm" "${_user}"
+      _construct_bucket_name "ibm" "${_user}"
+      _BACKUP_TARGET="ibmcos://${IBM_API_KEY_ID}:${IBM_SERVICE_INSTANCE_ID}@${IBM_REGION}/${_BUCKET_NAME}"
+      ;;
+    wasabi)
+      _load_credentials "wasabi" "${_user}"
+      _construct_bucket_name "wasabi" "${_user}"
+      _BACKUP_TARGET="s3://${WASABI_ACCESS_KEY}:${WASABI_SECRET_KEY}@${WASABI_REGION}/${_BUCKET_NAME}"
+      ;;
+    do_spaces)
+      _load_credentials "do_spaces" "${_user}"
+      _construct_bucket_name "do_spaces" "${_user}"
+      _BACKUP_TARGET="s3://${DO_SPACES_KEY}:${DO_SPACES_SECRET}@${DO_SPACES_REGION}/${_BUCKET_NAME}"
+      ;;
+    linode)
+      _load_credentials "linode" "${_user}"
+      _construct_bucket_name "linode" "${_user}"
+      _BACKUP_TARGET="s3://${LINODE_ACCESS_KEY}:${LINODE_SECRET_KEY}@${LINODE_REGION}/${_BUCKET_NAME}"
+      ;;
+    *)
+      echo "Error: Unknown service ${_service}"
+      exit 1
+      ;;
+  esac
+}
+
+# Main script
+if [[ "$#" -eq 0 ]]; then
+  # Process queued commands for all users
+  for _user_dir in "${_BASE_DIR}"/*; do
+    if [[ -d "${_user_dir}" ]]; then
+      _user=$(basename "${_user_dir}")
+      _user_run_dir="${_user_dir}/${_RUN_SUBDIR}"
+      _user_cmd_file="${_user_run_dir}/${_CMD_FILE}"
+
+      if [[ -f "${_user_cmd_file}" ]]; then
+        _command=$(cat "${_user_cmd_file}")
+        echo "Executing command for user ${_user}: ${_command}"
+
+        # Execute the command as the user
+        sudo -u "${_user}" "$0" ${_command}
+
+        # Clean up the command file
+        rm -f "${_user_cmd_file}"
+      fi
+    fi
+  done
+  exit 0
+fi
+
+# Extract the current user
+_user=$(whoami | sed 's/\.ftp$//')
+
+if [[ $(whoami) == *.ftp ]]; then
+  # If invoked as USER.ftp, queue the command
+  _user_run_dir="/data/disk/${_user}/static/run"
+  mkdir -p "${_user_run_dir}"
+  echo "$@" > "${_user_run_dir}/${_CMD_FILE}"
+  echo "Command queued for user ${_user}. It will be executed by the system."
+  exit 0
+fi
+
+_ACTION=$1
+_SERVICE=$2
+_RESTORE_TARGET="${3:-/data/disk/${_user}/static/restores/}"
+_RESTORE_PATH="${4:-}"
+_RESTORE_TIME="${5:-}"
+_PIDFILE="/data/disk/${_user}/log/mybackup_${_service}_${_user}.pid"
+_LOGPTH="/data/disk/${_user}/log"
+_LOGFILE="${_LOGPTH}/mybackup_${_service}_${_user}.log"
+
+_create_pid_file "${_PIDFILE}"
+
+# Load paths configuration
+_load_paths
+
+case "${_ACTION}" in
+  restore)
+    _set_backup_target "${_SERVICE}" "${_user}"
+    _restore "${_RESTORE_TARGET}" "${_RESTORE_PATH}" "${_RESTORE_TIME}"
+    ;;
+  *)
+    _usage
+    ;;
+esac
+
+_remove_pid_file "${_PIDFILE}"
