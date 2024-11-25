@@ -6,7 +6,7 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 export _tRee=dev
 export _xSrl=550devT01
 
-_CHECK_HOST=$(uname -n 2>&1)
+_CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
 _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
 
 _usrGroup=users

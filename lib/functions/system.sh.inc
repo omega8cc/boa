@@ -1581,7 +1581,7 @@ _php_legacy_versions_cleanup_cnf() {
     rm -f /etc/init.d/php55-fpm
   fi
 
-  _CHECK_HOST=$(uname -n 2>&1)
+  _CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
   _VMFAMILY=XEN
   _VM_TEST=$(uname -a 2>&1)
   if [[ "${_VM_TEST}" =~ "-beng" ]]; then
@@ -1889,7 +1889,7 @@ _barracuda_cnf() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _barracuda_cnf"
   fi
-  _CHECK_HOST=$(uname -n 2>&1)
+  _CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
   _VMFAMILY=XEN
   _VM_TEST=$(uname -a 2>&1)
   if [[ "${_VM_TEST}" =~ "-beng" ]]; then
@@ -2005,7 +2005,7 @@ _barracuda_cnf() {
     echo "_AEGIR_UPGRADE_ONLY=${_AEGIR_UPGRADE_ONLY}"         >> ${_barCnf}
     echo "_SYSTEM_UP_ONLY=${_SYSTEM_UP_ONLY}"                 >> ${_barCnf}
     echo "###"                                                >> ${_barCnf}
-    _CHECK_HOST=$(uname -n 2>&1)
+    _CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
     ### Force HTTP/2 or SPDY plus PFS on supported systems
     sed -i "s/^_NGINX_SPDY=.*/_NGINX_SPDY=YES/g"                 ${_barCnf}
     wait
@@ -2336,7 +2336,7 @@ _barracuda_cnf() {
     fi
 
     sleep 1
-    _CHECK_HOST=$(uname -n 2>&1)
+    _CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
     ### Force HTTP/2 or SPDY plus PFS on supported systems
     sed -i "s/^_NGINX_SPDY=.*/_NGINX_SPDY=YES/g"                 ${_barCnf}
     wait
@@ -2463,7 +2463,7 @@ _barracuda_cnf() {
       fi
     fi
 
-    _CHECK_HOST=$(uname -n 2>&1)
+    _CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
     if [[ "${_MY_EMAIL}" =~ "omega8.cc" ]]; then
       _if_hosted_sys
       if [ "${_hostedSys}" != "YES" ]; then

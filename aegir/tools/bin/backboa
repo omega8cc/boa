@@ -17,7 +17,7 @@ export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 export _tRee=dev
 
-_CHECK_HOST=$(uname -n 2>&1)
+_CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
 
 _check_root() {
   if [ `whoami` = "root" ]; then
@@ -61,7 +61,7 @@ _DOW=$(date +%u 2>&1)
 _DOW=${_DOW//[^1-7]/}
 _DOM=$(date +%e 2>&1)
 _DOM=${_DOM//[^0-9]/}
-_HST=$(uname -n 2>&1)
+_HST="$(hostname -f 2>/dev/null || uname -n)"
 _HST=${_HST//[^a-zA-Z0-9-.]/}
 _HST=$(echo -n ${_HST} | tr A-Z a-z 2>&1)
 _HST_DASH=$(echo -n ${_HST} | tr . - 2>&1)

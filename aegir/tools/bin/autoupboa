@@ -9,7 +9,7 @@ export _xSrl=550devT01
 _barCnf="/root/.barracuda.cnf"
 
 # Define default values
-_CHECK_HOST=$(uname -n 2>&1)
+_CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
 _DEFAULT_CPU_CRIT_RATIO="6.1"
 _DEFAULT_CPU_MAX_RATIO="4.1"
 _DEFAULT_CPU_TASK_RATIO="3.1"

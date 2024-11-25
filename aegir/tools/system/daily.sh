@@ -3051,7 +3051,7 @@ _NOW=$(date +%y%m%d-%H%M%S 2>&1)
 _NOW=${_NOW//[^0-9-]/}
 _DOW=$(date +%u 2>&1)
 _DOW=${_DOW//[^1-7]/}
-_CHECK_HOST=$(uname -n 2>&1)
+_CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
 #
 if [ -e "/root/.force.sites.verify.cnf" ]; then
   _FORCE_SITES_VERIFY=YES

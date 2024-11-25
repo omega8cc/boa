@@ -19,7 +19,7 @@ fi
 
 ###-------------SYSTEM-----------------###
 
-_CHECK_HOST=$(uname -n 2>&1)
+_CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
 
 _if_hosted_sys() {
   if [ -e "/root/.host8.cnf" ] \
@@ -857,7 +857,7 @@ echo "INFO: Starting usage monitoring on `date`"
 _NOW=$(date +%y%m%d-%H%M%S 2>&1)
 _NOW=${_NOW//[^0-9-]/}
 _DATE=$(date 2>&1)
-_CHECK_HOST=$(uname -n 2>&1)
+_CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
 mkdir -p /var/xdrago/log/usage
 if [ "${1}" = "verbose" ] || [ -z "${1}" ]; then
   _THIS_MODE="verbose"

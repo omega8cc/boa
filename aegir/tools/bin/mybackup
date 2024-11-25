@@ -70,7 +70,7 @@ _load_paths() {
 _construct_bucket_name() {
   local _service_abbr=$1
   local _user=$2
-  _hostname=$(hostname -f 2>/dev/null || uname -n)
+  _hostname="$(hostname -f 2>/dev/null || uname -n)"
   _hst_dash=$(echo -n ${_hostname} | tr . - 2>&1)
   _BUCKET_NAME="back-to-${_user}-${_hst_dash}-${_service_abbr}"
 }

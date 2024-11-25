@@ -25,7 +25,7 @@ _pthIncB="lib/settings/${_filIncB}"
 _pthIncO="lib/settings/${_filIncO}"
 _vBs="/var/backups"
 
-_CHECK_HOST=$(uname -n 2>&1)
+_CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
 _LOG_DIR="${_vBs}/reports/up/$(basename "$0")/${_TODAY}"
 _VMFAMILY=XEN
 _VM_TEST=$(uname -a 2>&1)

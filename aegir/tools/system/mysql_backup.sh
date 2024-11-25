@@ -91,7 +91,7 @@ else
 fi
 
 _BACKUPDIR=/data/disk/arch/sql
-_CHECK_HOST=$(uname -n 2>&1)
+_CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
 _DATE=$(date +%y%m%d-%H%M%S 2>&1)
 _DOW=$(date +%u 2>&1)
 _DOW=${_DOW//[^1-7]/}
