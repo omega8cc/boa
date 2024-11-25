@@ -3084,15 +3084,6 @@ _update_boa_tools() {
     rm -f ${_optBin}/{backboa,duobackboa,multiback,mybackup}
     curl ${_crlGet} "${_urlHmr}/${_tBn}/backboa"      -o ${_optBin}/backboa
     curl ${_crlGet} "${_urlHmr}/${_tBn}/duobackboa"   -o ${_optBin}/duobackboa
-    if [ ! -e "${_pthLog}/duplicity.ctrl.${_tRee}.${_xSrl}.pid" ] \
-      && [ -x "/usr/local/bin/duplicity" ] \
-      && [ -e "/root/.cache/duplicity" ] \
-      && [ -e "/var/aegir/drush" ] \
-      && [ -e "/var/xdrago" ]; then
-#       backboa install
-      touch ${_pthLog}/duplicity.ctrl.${_tRee}.${_xSrl}.pid
-      touch /root/.backboa.autoupdate
-    fi
     curl ${_crlGet} "${_urlHmr}/${_tBn}/multiback"    -o ${_optBin}/multiback
     curl ${_crlGet} "${_urlHmr}/${_tBn}/mybackup"     -o ${_optBin}/mybackup
     chmod 700 ${_optBin}/{backboa,duobackboa,multiback}
