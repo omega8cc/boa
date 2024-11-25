@@ -45,8 +45,8 @@ fi
 _incident_email_report() {
   if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_EMAIL_REPORT}" = "YES" ]; then
     _hName=$(cat /etc/hostname 2>&1)
-    echo "Sending Incident Report Email on $(date 2>&1)" >> ${_pthOml}
-    s-nail -s "Incident Report: ${1} on ${_hName} at $(date 2>&1)" ${_MY_EMAIL} < ${_pthOml}
+    echo "Sending Incident Report Email on $(date)" >> ${_pthOml}
+    s-nail -s "Incident Report: ${1} on ${_hName} at $(date)" ${_MY_EMAIL} < ${_pthOml}
   fi
 }
 
@@ -62,24 +62,24 @@ _fpm_reload() {
       service php${e}-fpm reload
     fi
   done
-  echo "$(date 2>&1) $1 incident PHP-FPM reloaded" >> ${_pthOml}
+  echo "$(date) $1 incident PHP-FPM reloaded" >> ${_pthOml}
 }
 
 _redis_restart() {
   touch /run/boa_run.pid
   sleep 3
-  echo "$(date 2>&1) $1 incident detected" >> ${_pthOml}
+  echo "$(date) $1 incident detected" >> ${_pthOml}
   service redis-server stop &> /dev/null
   wait
   killall -9 redis-server &> /dev/null
   rm -f /var/lib/redis/*
   service redis-server start &> /dev/null
   wait
-  echo "$(date 2>&1) $1 incident redis-server restarted" >> ${_pthOml}
+  echo "$(date) $1 incident redis-server restarted" >> ${_pthOml}
   if [[ "${1}" =~ "REFUSED" ]] || [[ "${1}" =~ "SLOW" ]]; then
     _fpm_reload "$1"
   fi
-  echo "$(date 2>&1) $1 incident response completed" >> ${_pthOml}
+  echo "$(date) $1 incident response completed" >> ${_pthOml}
   _incident_email_report "$1"
   echo >> ${_pthOml}
   [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
@@ -89,7 +89,7 @@ _redis_restart() {
 _redis_bind_check_fix() {
   if [ `tail --lines=8 /var/log/redis/redis-server.log \
     | grep --count "Address already in use"` -gt "0" ]; then
-    _thisErrLog="$(date 2>&1) RedisException BIND detected, service will be restarted"
+    _thisErrLog="$(date) RedisException BIND detected, service will be restarted"
     echo ${_thisErrLog} >> ${_pthOml}
     _redis_restart "Redis BIND"
   fi
@@ -98,7 +98,7 @@ _redis_bind_check_fix() {
 _redis_connection_check_fix() {
   if [ `tail --lines=500 /var/log/php/error_log_* \
     | grep --count "RedisException: Connection refused"` -gt "19" ]; then
-    _thisErrLog="$(date 2>&1) RedisException Connection refused detected, service will be restarted"
+    _thisErrLog="$(date) RedisException Connection refused detected, service will be restarted"
     echo ${_thisErrLog} >> ${_pthOml}
     _redis_restart "Redis REFUSED"
   fi
@@ -107,7 +107,7 @@ _redis_connection_check_fix() {
 _redis_slow_check_fix() {
   if [ `tail --lines=500 /var/log/php/fpm-*-slow.log \
     | grep --count "PhpRedis.php"` -gt "19" ]; then
-    _thisErrLog="$(date 2>&1) Slow PhpRedis detected, service will be restarted"
+    _thisErrLog="$(date) Slow PhpRedis detected, service will be restarted"
     echo ${_thisErrLog} >> ${_pthOml}
     _redis_restart "Redis SLOW"
   fi
@@ -124,7 +124,7 @@ _if_redis_restart() {
     || [ -e "/root/.allow.redis.restart.cnf" ]; then
     if [ "${ReTest}" -ge "1" ]; then
       rm -f /data/disk/*/static/control/run-redis-restart.pid
-      _thisErrLog="$(date 2>&1) Redis Server Restart Requested"
+      _thisErrLog="$(date) Redis Server Restart Requested"
       echo ${_thisErrLog} >> ${_pthOml}
       _redis_restart "Redis Server Restart Requested"
     fi

@@ -56,9 +56,9 @@ _C_SQL="mysql --user=root --password=${_SQL_PSWD} --host=${_SQL_HOST} --port=${_
 
 echo "SQL --host=${_SQL_HOST} --port=${_SQL_PORT}"
 _n=$((RANDOM%600+8))
-echo "INFO: Waiting ${_n} seconds on `date` before running backup..."
+echo "INFO: Waiting ${_n} seconds on $(date) before running backup..."
 sleep ${_n}
-echo "INFO: Starting backup on `date`"
+echo "INFO: Starting backup on $(date)"
 
 [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
 
@@ -415,15 +415,15 @@ for _DB in `${_C_SQL} -e "show databases" -s | uniq | sort`; do
   fi
 done
 
-echo "INFO: Completing all dbs backups on `date`"
+echo "INFO: Completing all dbs backups on $(date)"
 rm -f /run/boa_sql_cluster_backup.pid
 touch /var/xdrago/log/last-run-cluster-backup
 
-echo "INFO: Starting dbs backup compress on `date`"
+echo "INFO: Starting dbs backup compress on $(date)"
 _compress_backup &> /dev/null
-echo "INFO: Completing dbs backup compress on `date`"
+echo "INFO: Completing dbs backup compress on $(date)"
 
-echo "INFO: Starting dbs backup cleanup on `date`"
+echo "INFO: Starting dbs backup cleanup on $(date)"
 _DB_BACKUPS_TTL=${_DB_BACKUPS_TTL//[^0-9]/}
 if [ -z "${_DB_BACKUPS_TTL}" ]; then
   _DB_BACKUPS_TTL="30"

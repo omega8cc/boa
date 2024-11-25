@@ -47,7 +47,7 @@ _sanitize_number() {
 }
 
 _clean_pid_exit() {
-  echo "REASON ${e} on $(date 2>&1)" >> /root/.octopus.exit.exceptions.log
+  echo "REASON ${e} on $(date)" >> /root/.octopus.exit.exceptions.log
   [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
   [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
   [ -e "/tmp/aegir_backup_mode.txt" ] && rm -f /tmp/aegir_backup_mode.txt

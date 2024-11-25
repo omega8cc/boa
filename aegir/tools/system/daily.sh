@@ -2852,8 +2852,8 @@ _incident_email_report() {
   fi
   if [ -n "${_thisEmail}" ] && [ "${_INCIDENT_EMAIL_REPORT}" = "YES" ]; then
     _hName=$(cat /etc/hostname 2>&1)
-    echo "Sending Incident Report Email on $(date 2>&1)" >> ${_thisLog}
-    s-nail -s "Incident Report during daily.sh: ${1} on ${_hName} at $(date 2>&1)" ${_thisEmail} < ${_thisLog}
+    echo "Sending Incident Report Email on $(date)" >> ${_thisLog}
+    s-nail -s "Incident Report during daily.sh: ${1} on ${_hName} at $(date)" ${_thisEmail} < ${_thisLog}
   fi
 }
 

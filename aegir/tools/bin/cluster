@@ -71,7 +71,7 @@ _tBn="tools/bin"
 ###-------------SYSTEM-----------------###
 
 _clean_pid_exit() {
-  echo "REASON ${e} on $(date 2>&1)" >> /root/.cluster.exit.exceptions.log
+  echo "REASON ${e} on $(date)" >> /root/.cluster.exit.exceptions.log
   rm -f /run/cluster_run.pid
   service cron start
   exit 1
@@ -2126,7 +2126,7 @@ _install_host() {
       sleep 2
       if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt "5" ]; then
         kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
-        echo "$(date 2>&1) Too many dirmngr processes killed" >> \
+        echo "$(date) Too many dirmngr processes killed" >> \
           /var/xdrago/log/dirmngr-count.kill.log
       fi
     done

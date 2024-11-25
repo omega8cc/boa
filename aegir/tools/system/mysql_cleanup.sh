@@ -42,7 +42,7 @@ if [ ! -z "${_ALL_DBS_NR}" ] && [ "${_ALL_DBS_NR}" -gt 100 ]; then
   exit 0
 fi
 
-echo "INFO: Starting dbs cleanup on `date`"
+echo "INFO: Starting dbs cleanup on $(date)"
 
 [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
 
@@ -213,7 +213,7 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
   fi
 done
 
-echo "INFO: Completing all dbs cleanup on `date`"
+echo "INFO: Completing all dbs cleanup on $(date)"
 touch /var/xdrago/log/last-run-db-cleanup
 rm -f /run/mysql_backup_running.pid
 

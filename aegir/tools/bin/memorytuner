@@ -12,7 +12,7 @@ fi
 
 # Function to register failures
 _clean_pid_exit() {
-  echo "REASON ${e} on $(date 2>&1)" >> /root/.memorytuner.exit.exceptions.log
+  echo "REASON ${e} on $(date)" >> /root/.memorytuner.exit.exceptions.log
   exit 1
 }
 

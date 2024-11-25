@@ -8,7 +8,7 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 _csf_flood_guard() {
   _thisCountCsf=`ps aux | grep -v "grep" | grep -v "null" | grep --count "/csf"`
   if [ ! -e "/run/boa_run.pid" ] && [ ${_thisCountCsf} -gt "4" ]; then
-    echo "$(date 2>&1) Too many ${_thisCountCsf} csf processes killed" >> \
+    echo "$(date) Too many ${_thisCountCsf} csf processes killed" >> \
       /var/log/csf-count.kill.log
     kill -9 $(ps aux | grep '[c]sf' | awk '{print $2}') &> /dev/null
     csf -tf
@@ -18,7 +18,7 @@ _csf_flood_guard() {
   fi
   _thisCountFire=`ps aux | grep -v "grep" | grep -v "null" | grep --count "fire.sh"`
   if [ ! -e "/run/boa_run.pid" ] && [ ${_thisCountFire} -gt "9" ]; then
-    echo "$(date 2>&1) Too many ${_thisCountFire} fire.sh processes killed and rules purged" >> \
+    echo "$(date) Too many ${_thisCountFire} fire.sh processes killed and rules purged" >> \
       /var/log/fire-purge.kill.log
     csf -tf
     wait
@@ -26,7 +26,7 @@ _csf_flood_guard() {
     wait
     kill -9 $(ps aux | grep '[f]ire.sh' | awk '{print $2}') &> /dev/null
   elif [ ! -e "/run/boa_run.pid" ] && [ ${_thisCountFire} -gt "7" ]; then
-    echo "$(date 2>&1) Too many ${_thisCountFire} fire.sh processes killed" >> \
+    echo "$(date) Too many ${_thisCountFire} fire.sh processes killed" >> \
       /var/log/fire-count.kill.log
     csf -tf
     wait

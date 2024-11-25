@@ -853,10 +853,10 @@ _usage_action() {
 }
 
 ###--------------------###
-echo "INFO: Starting usage monitoring on `date`"
+echo "INFO: Starting usage monitoring on $(date)"
 _NOW=$(date +%y%m%d-%H%M%S 2>&1)
 _NOW=${_NOW//[^0-9-]/}
-_DATE=$(date 2>&1)
+_DATE=$(date)
 _CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
 mkdir -p /var/xdrago/log/usage
 if [ "${1}" = "verbose" ] || [ -z "${1}" ]; then
@@ -867,6 +867,6 @@ elif [ "${1}" = "silent" ]; then
   rm -f /var/xdrago/log/usage/usage-latest-silent.log
 fi
 _usage_action >/var/xdrago/log/usage/usage-${_NOW}.log 2>&1
-echo "INFO: Completing usage monitoring on `date`"
+echo "INFO: Completing usage monitoring on $(date)"
 exit 0
 ###EOF2024###
