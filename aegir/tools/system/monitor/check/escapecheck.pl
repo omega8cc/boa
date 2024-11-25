@@ -10,7 +10,7 @@ use File::Spec;
 
 $| = 1;
 $status="CLEAN";
-$server=`uname -n 2>&1`;
+$server=`uname -n`;
 chomp($server);
 $date_is=`date +%Y-%m-%d`;
 chomp($date_is);

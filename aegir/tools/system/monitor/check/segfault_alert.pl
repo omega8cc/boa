@@ -17,7 +17,7 @@ if (!-e "/data/u/") {
 }
 $| = 1;
 $this_filename = "segfault_alert";
-$s=`uname -n 2>&1`;
+$s=`uname -n`;
 chomp($s);
 &makeactions;
 print " CONTROL 1 done_______________________\n ...\n";
