@@ -5385,7 +5385,7 @@ _run_aptitude_deps_install() {
     _mrun "dpkg --remove --force-remove-reinstreq apt-listchanges" 2> /dev/null
   fi
   _mrun "${_INSTAPP} sysstat telnet cron gnupg2 gnupg" 2> /dev/null
-  _mrun "${_INSTAPP} unzip unrtf wdiff pwgen flex re2c" 2> /dev/null
+  _mrun "${_INSTAPP} zip unzip unrtf wdiff pwgen flex re2c" 2> /dev/null
   _mrun "${_INSTAPP} rsync strace ntpdate python-dev" 2> /dev/null
   _mrun "${_INSTAPP} mc whois zlib1g zlib1g-dev librsync-dev" 2> /dev/null
   _mrun "${_INSTAPP} sqlite3 libsqlite3-dev s4cmd" 2> /dev/null
