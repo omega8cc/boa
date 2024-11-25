@@ -3,8 +3,10 @@
 
 This guide explains the global backup system, its configuration, supported services, and best practices. It covers only the aspects managed by the system administrator (root access), including global backups, vendor selection, and service-specific details.
 
-[**User-specific backups are documented separately**](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_USER.md)
-[**Backups Retention Policy Configuration is documented separately**](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_RETENTION.md)
+- New Backups for BOA SysAdmin (this document) [docs/BACKUP_ROOT.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_ROOT.md)
+- New Backups for Octopus Lshell User [docs/BACKUP_USER.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_USER.md)
+- New Backups Retention Policy Configuration [docs/BACKUP_RETENTION.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_RETENTION.md)
+- Supported Regions and Bucket Creation Guidelines [docs/BACKUP_REGIONS.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_REGIONS.md)
 
 ---
 

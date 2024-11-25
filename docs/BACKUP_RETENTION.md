@@ -2,6 +2,11 @@
 
 The backup system is designed to reliably manage **live backups** while optimizing storage usage. This document explains the retention policies and settings, focusing entirely on managing **active backups** without disruptions.
 
+- New Backups for BOA SysAdmin [docs/BACKUP_ROOT.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_ROOT.md)
+- New Backups for Octopus Lshell User [docs/BACKUP_USER.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_USER.md)
+- New Backups Retention Policy Configuration (this document) [docs/BACKUP_RETENTION.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_RETENTION.md)
+- Supported Regions and Bucket Creation Guidelines [docs/BACKUP_REGIONS.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_REGIONS.md)
+
 ---
 
 #### Retention Policies Overview
