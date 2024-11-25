@@ -32,7 +32,6 @@ _check_root() {
   if [ -z "${_AWS_VLV}" ]; then
     _AWS_VLV="warning"
   fi
-  _DCY_MN_CMD="/usr/local/bin/duplicity -v ${_AWS_VLV} --concurrency 4"
 }
 _check_root
 
@@ -71,6 +70,9 @@ _usage() {
   echo
   echo "Supported services:"
   echo "  aws, aws_one_zone, aws_standard_ia, gcs, b2, azure, upcloud, ibm, wasabi, do_spaces, linode"
+  echo
+  echo "NOTE: [RESTORE_PATH] must be an absolute path (no leading slash) of the file or directory to restore"
+  echo
   exit 1
 }
 
@@ -107,63 +109,72 @@ _remove_stale_multiback_pid() {
   fi
 }
 
-# Log file for credential validation issues
-_LOG_FILE="/var/log/backup_credential_issues.log"
-
-# Temporary directory for validated credentials
-_TMP_CRED_DIR="/var/tmp/backup_cred_validation"
-mkdir -p "${_TMP_CRED_DIR}"
-chmod 700 "${_TMP_CRED_DIR}"
-
 # Function to log validation issues
-_log_credential_issue() {
-  local _service=$1
+_log_issue() {
+  local _type=$1
   local _file=$2
-  local _details=$3
-
-  echo "[$(date)] Validation issue detected for service '${_service}' in file '${_file}': ${_details}" >> "${_LOG_FILE}"
-
-  # Alert the admin
-  echo "Alert: Validation issue detected for service '${_service}' in file '${_file}'. Check ${_LOG_FILE} for details." | mail -s "Backup Credential Alert for ${_service}" admin@example.com
+  local _message=$3
+  echo "[$(date)] Validation issue type: [${_type}] in file: [${_file}] with error: ${_message}" >> "${_LOG_FILE}"
+  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_EMAIL_REPORT}" = "YES" ]; then
+    # Alert the admin
+    echo "Sending Backup Validation Alert to ${_MY_EMAIL} on $(date)" >> ${_LOGFILE}
+    s-nail -s "Backup Validation Alert for [$(hostname)] on $(date)" ${_MY_EMAIL} < ${_LOGFILE}
+  fi
 }
 
-# Function to validate credentials file format and content
-_validate_and_sanitize_credentials() {
-  local _cred_file=$1
-  local _service=$2
-  local _sanitized_file="${_TMP_CRED_DIR}/${_service}_filtered.txt"
+# Function to escape values
+_escape_value() {
+  printf '%q' "$1"
+}
 
-  # Ensure the sanitized file exists and is empty
-  > "${_sanitized_file}"
+# Function to sanitize and validate credentials file
+_validate_credentials() {
+  local _cred_file="$1"
+  local _service="$2"
+  local _line_number=0
 
-  while IFS= read -r _line; do
-    # Skip empty lines and comments
-    if [[ "${_line}" =~ ^\s*(#|$) ]]; then
-      echo "${_line}" >> "${_sanitized_file}"
+  while IFS= read -r _line || [ -n "${_line}" ]; do
+    _line_number=$(( _line_number + 1 ))
+    # Trim leading and trailing whitespace
+    _line="${_line#"${_line%%[![:space:]]*}"}"
+    _line="${_line%"${_line##*[![:space:]]}"}"
+
+    # Skip comments and empty lines
+    if [[ -z "${_line}" || "${_line}" == \#* ]]; then
       continue
     fi
 
-    # Validate variable assignments
-    if [[ "${_line}" =~ ^[a-zA-Z_][a-zA-Z0-9_]*= ]]; then
-      # Check for forbidden characters and commands
-      if echo "${_line}" | grep -q -E '[$`(){};&|<>]'; then
-        _log_credential_issue "${_service}" "${_cred_file}" "Forbidden characters or commands: ${_line}"
+    # Remove 'export ' prefix if present
+    _line="${_line#export }"
+
+    # Validate the variable assignment
+    if [[ "${_line}" =~ ^([A-Za-z_][A-Za-z0-9_]*)=(\".*\"|'.*'|[^[:space:]]+)$ ]]; then
+      local _varname="${BASH_REMATCH[1]}"
+      local _value="${BASH_REMATCH[2]}"
+
+      # Remove surrounding quotes if present
+      if [[ "${_value}" =~ ^\".*\"$ || "${_value}" =~ ^\'.*\'$ ]]; then
+        _value="${_value:1:-1}"
+      fi
+
+      # Check for forbidden characters in value
+      if echo "${_value}" | grep -q -E '[$`(){};&|<>]'; then
+        _log_issue "credentials" "${_cred_file}" "Forbidden characters in value at line ${_line_number}: ${_line}"
         continue
       fi
-      echo "${_line}" >> "${_sanitized_file}"
+
+      # Safely export the variable
+      export "${_varname}"="$(_escape_value "${_value}")"
     else
-      _log_credential_issue "${_service}" "${_cred_file}" "Invalid syntax: ${_line}"
+      _log_issue "credentials" "${_cred_file}" "Invalid syntax at line ${_line_number}: ${_line}"
     fi
   done < "${_cred_file}"
-
-  # Return the sanitized file path
-  echo "${_sanitized_file}"
 }
 
-# Function to load and validate credentials from a file
+# Function to load credentials
 _load_credentials() {
-  local _service=$1
-  local _user=$2
+  local _service="$1"
+  local _user="$2"
   local _cred_file="/data/disk/${_user}/static/control/remote_backups/credentials/${_service}.txt"
 
   if [ ! -f "${_cred_file}" ]; then
@@ -171,36 +182,109 @@ _load_credentials() {
     exit 1
   fi
 
-  # Validate and sanitize credentials file
-  local _sanitized_file
-  _sanitized_file=$(_validate_and_sanitize_credentials "${_cred_file}" "${_service}")
-
-  # Source the sanitized file
-  source "${_sanitized_file}"
+  _validate_credentials "${_cred_file}" "${_service}"
 }
 
-# Function to load credentials from a file
-_load_credentials() {
-  _service=$1
-  _user=$2
-  _creds_path="/data/disk/${_user}/static/control/remote_backups/credentials/${_service}.txt"
-  if [ -f "${_creds_path}" ]; then
-    source "${_creds_path}"
-  else
-    echo "Credentials file ${_creds_path} not found."
+# Function to validate paths configuration
+_validate_paths() {
+  local _file="$1"
+  local _user="$2"
+  local _line_number=0
+  local _allowed_base_paths=("/data/disk/${_user}/static" "/data/disk/${_user}/distro" "/home/${_user}.ftp")
+  _PATHS_ARRAY=()
+
+  while IFS= read -r _line || [ -n "${_line}" ]; do
+    _line_number=$(( _line_number + 1 ))
+    # Trim leading and trailing whitespace
+    _line="${_line#"${_line%%[![:space:]]*}"}"
+    _line="${_line%"${_line##*[![:space:]]}"}"
+
+    # Skip comments and empty lines
+    if [[ -z "${_line}" || "${_line}" == \#* ]]; then
+      continue
+    fi
+
+    # Validate the path option and extract the path
+    if [[ "${_line}" =~ ^--(include|exclude|include-regexp|exclude-regexp)[[:space:]]+(.+)$ ]]; then
+      local _option="${BASH_REMATCH[1]}"
+      local _path="${BASH_REMATCH[2]}"
+
+      # Check for forbidden characters
+      if echo "${_path}" | grep -q -E '[$`(){};&|<>]'; then
+        _log_issue "paths" "${_file}" "Forbidden characters at line ${_line_number}: ${_line}"
+        continue
+      fi
+
+      # For regular paths
+      if [[ "${_option}" == "include" || "${_option}" == "exclude" ]]; then
+        # Check if the path starts with allowed base paths
+        local _is_valid_path=false
+        for _base_path in "${_allowed_base_paths[@]}"; do
+          if [[ "${_path}" == "${_base_path}"* ]]; then
+            _is_valid_path=true
+            break
+          fi
+        done
+        if ! ${_is_valid_path}; then
+          _log_issue "paths" "${_file}" "Unauthorized path at line ${_line_number}: ${_line}"
+          continue
+        fi
+      fi
+
+      # For regex paths
+      if [[ "${_option}" == "include-regexp" || "${_option}" == "exclude-regexp" ]]; then
+        # Ensure the regex starts with '^' followed by an allowed base path
+        local _is_valid_regex=false
+        for _base_path in "${_allowed_base_paths[@]}"; do
+          # Escape slashes in base path for regex comparison
+          local _escaped_base_path="${_base_path//\//\\/}"
+          if [[ "${_path}" =~ ^\^${_escaped_base_path}.* ]]; then
+            _is_valid_regex=true
+            break
+          fi
+        done
+        if ! ${_is_valid_regex}; then
+          _log_issue "paths" "${_file}" "Unauthorized regex pattern at line ${_line_number}: ${_line}"
+          continue
+        fi
+      fi
+
+      # Add the validated option and path to the array
+      _PATHS_ARRAY+=("${_line}")
+    else
+      _log_issue "paths" "${_file}" "Invalid syntax at line ${_line_number}: ${_line}"
+    fi
+  done < "${_file}"
+}
+
+# Function to load paths configuration
+_load_paths() {
+  local _user="$1"
+  local _paths_file="/data/disk/${_user}/remote_backups/paths.txt"
+
+  if [ ! -f "${_paths_file}" ]; then
+    echo "Error: Paths configuration file '${_paths_file}' not found."
+    exit 1
+  fi
+
+  _validate_paths "${_paths_file}" "${_user}"
+
+  if [ "${#_PATHS_ARRAY[@]}" -eq 0 ]; then
+    echo "Error: No valid paths found in '${_paths_file}'. Check ${_LOG_FILE} for details."
     exit 1
   fi
 }
 
-# Function to load paths and other settings from a file
-_load_paths() {
-  local _user=$1
-  local _paths_path="/data/disk/${_user}/remote_backups/paths.txt"
-  if [ -f "${_paths_path}" ]; then
-    source "${_paths_path}"
-  else
-    echo "Paths configuration file ${_paths_path} not found."
-    exit 1
+# Function to validate duration format and fallback to default
+_validate_or_default_duration() {
+  local _value=$1
+  local _var_name=$2
+  local _default=$3
+
+  # Supported formats: number followed by D (days), W (weeks), M (months), Y (years)
+  if [[ ! "${_value}" =~ ^[0-9]+[DWMY]$ ]]; then
+    echo "Warning: Invalid value '${_value}' for ${_var_name}. Using default '${_default}'."
+    eval "${_var_name}='${_default}'"
   fi
 }
 
@@ -208,8 +292,10 @@ _load_paths() {
 _construct_bucket_name() {
   local _service_abbr=$1
   local _user=$2
-  _hostname=$(hostname -f)
-  _BUCKET_NAME="back-to-${_user}-${_hostname}-${_service_abbr}"
+  _hostname="$(hostname -f 2>/dev/null || uname -n)"
+  _hst_dash=$(echo -n ${_hostname} | tr . - 2>&1)
+  _BUCKET_NAME="back-to-${_user}-${_hst_dash}-${_service_abbr}"
+  _NAME="${_user}-${_service_abbr}"
 }
 
 # Function to generate duplicity-compatible include directives
@@ -224,8 +310,8 @@ _generate_include_directives() {
 
 # Function to prepare backup directives
 _backup_prepare() {
-  if [ -e "/root/.cache/duplicity" ]; then
-    _CacheTest=$(find /root/.cache/duplicity/* \
+  if [ -e "/root/.cache/duplicity/${_NAME}" ]; then
+    _CacheTest=$(find /root/.cache/duplicity/${_NAME}/* \
       -maxdepth 1 \
       -mindepth 1 \
       -type f \
@@ -257,23 +343,41 @@ _monthly_cleanup() {
     && [ "${_DO_CLEANUP}" = "YES" ]; then
     if [ -e "/root/.randomize_duplicity_full_backup_day.cnf" ]; then
       _n=$((RANDOM%300+8))
-      echo "Waiting $n seconds on `date` before running cleanup --force" > ${_LOGFILE}
+      echo "Waiting $n seconds on $(date) before running cleanup --force" >> ${_LOGFILE}
       sleep ${_n}
     fi
-    echo "Running cleanup --force on `date`" >> ${_LOGFILE}
-    echo "Command is ${_DCY_MN_CMD} cleanup --force ${_NAME} ${_TARGET}"
-    ${_DCY_MN_CMD} cleanup --force ${_NAME} ${_TARGET}
+    echo "Running cleanup --force ${_BACKUP_TARGET} on $(date)" >> ${_LOGFILE}
+    echo "Command is ${_DCY_MN_CMD} cleanup --force ${_BACKUP_TARGET}"
+    ${_DCY_MN_CMD} cleanup --force ${_BACKUP_TARGET}
     rm -f ${_LOGPTH}/${_BUCKET_NAME}.randomize.full.log
     rm -f ${_LOGPTH}/${_BUCKET_NAME}.randomize.cleanup.log
   fi
 }
 
+_randomize_full() {
+  if [ -e "/root/.randomize_duplicity_full_backup_day.cnf" ]; then
+    if [ -e "${_LOGPTH}/${_BUCKET_NAME}.randomize.full.log" ]; then
+      _RDW=$(cat ${_LOGPTH}/${_BUCKET_NAME}.randomize.full.log 2>&1)
+      _RDW=$(echo -n ${_RDW} | tr -d "\n" 2>&1)
+      _RDW=${_RDW//[^1-7]/}
+      _MODE="incremental"
+    else
+      _RDW=$((RANDOM%7+1))
+      _RDW=${_RDW//[^1-7]/}
+      _MODE="full"
+      echo ${_RDW} > ${_LOGPTH}/${_BUCKET_NAME}.randomize.full.log
+    fi
+  else
+    _RDW=7
+  fi
+}
+
 # Function to set backup mode
 _set_mode() {
-  if [ "${_DOW}" = "${_RDW}" ] && [ "${_AWS_FLC}" = "7D" ]; then
+  if [ "${_DOW}" = "${_RDW}" ] && [ "${FULL_BACKUP_FREQUENCY}" = "7D" ]; then
     if [ ! -e "/root/.randomize_duplicity_full_backup_day.cnf" ]; then
       _MODE="full"
-      _AWS_FLC="1M"
+      FULL_BACKUP_FREQUENCY="1M"
     fi
   else
     if [ -e "${_LOGPTH}/${_BUCKET_NAME}.archive.log" ] \
@@ -287,21 +391,38 @@ _set_mode() {
 
 # Function to construct backup command
 _set_cmd() {
+  if [ -z "${KEEP_WITHIN}" ] && [ -n "${_AWS_TTL}" ]; then
+    KEEP_WITHIN="${_AWS_TTL}"
+  fi
   if [ -z "${FULL_BACKUP_FREQUENCY}" ] && [ -n "${_AWS_FLC}" ]; then
     FULL_BACKUP_FREQUENCY="${_AWS_FLC}"
   fi
+
+  # Validate or set default for KEEP_WITHIN
+  _validate_or_default_duration "${KEEP_WITHIN}" "KEEP_WITHIN" "${_DEFAULT_KEEP_WITHIN}"
+
+  # Validate or set default for FULL_BACKUP_FREQUENCY
+  _validate_or_default_duration "${FULL_BACKUP_FREQUENCY}" "FULL_BACKUP_FREQUENCY" "${_DEFAULT_FULL_BACKUP_FREQUENCY}"
+
   _DCY_UP_CMD="/usr/local/bin/duplicity ${_MODE} \
     -v ${_AWS_VLV} \
+    --name=${_NAME} \
     --allow-source-mismatch \
     --concurrency 4 \
     --follow-links \
     --full-if-older-than ${FULL_BACKUP_FREQUENCY} \
     --volsize 300"
+
+  _DCY_MN_CMD="/usr/local/bin/duplicity \
+    -v ${_AWS_VLV} \
+    --name=${_NAME} \
+    --allow-source-mismatch \
+    --concurrency 4"
 }
 
 # Function to perform backup
 _run_backup() {
-  echo "Running ${_MODE} backup on `date`" >> ${_LOGFILE}
+  echo "Running ${_MODE} backup for ${_BACKUP_TARGET} on $(date)" >> ${_LOGFILE}
   ${_DCY_UP_CMD} \
   ${_EXCLUDE} \
   ${_USER_EXCLUDE} \
@@ -309,7 +430,19 @@ _run_backup() {
   ${_USER_INCLUDE} \
   --exclude '**' \
   / \
-  "${_BACKUP_TARGET}"
+  "${_BACKUP_TARGET}" >> ${_LOGFILE}
+}
+
+_remove_older_than() {
+  echo "Running remove-older-than ${KEEP_WITHIN} for ${_BACKUP_TARGET} on $(date)" >> ${_LOGFILE}
+  echo "Command is ${_DCY_MN_CMD} remove-older-than ${KEEP_WITHIN} --force ${_BACKUP_TARGET}"
+  ${_DCY_MN_CMD} remove-older-than ${KEEP_WITHIN} --force ${_BACKUP_TARGET} >> ${_LOGFILE}
+}
+
+_collection_status() {
+  echo "Running collection-status for ${_BACKUP_TARGET} on $(date)" >> ${_LOGFILE}
+  echo "Command is ${_DCY_MN_CMD} collection-status ${_BACKUP_TARGET}"
+  ${_DCY_MN_CMD} collection-status ${_BACKUP_TARGET} >> ${_LOGFILE}
 }
 
 # Function to prepare backup
@@ -320,45 +453,127 @@ _backup() {
   _set_mode
   _set_cmd
   _run_backup
+  if [ -e "${_LOGPTH}/${_BUCKET_NAME}.archive.log" ] \
+    && [ "${_DOW}" = "${_RDW}" ] \
+    && [ "${_DO_CLEANUP}" = "YES" ]; then
+    _remove_older_than
+    _collection_status
+  fi
+  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_EMAIL_REPORT}" = "YES" ]; then
+    echo "Sending email report on $(date)" >> ${_LOGFILE}
+    s-nail -s "Daily backup: ${_MODE} ${_HST} $(date)" ${_MY_EMAIL} < ${_LOGFILE}
+  fi
+  cat ${_LOGFILE} >> ${_LOGPTH}/${_BUCKET_NAME}.archive.log
+  rm -f ${_LOGFILE}
 }
 
 # Function to clean up old backups
 _cleanup() {
-  duplicity remove-older-than "${KEEP_WITHIN}" --force "${_BACKUP_TARGET}"
+  _set_cmd
+  ${_DCY_MN_CMD} remove-older-than "${KEEP_WITHIN}" --force "${_BACKUP_TARGET}"
 }
+
+### Legacy procedure for reference
+#
+#   Note: Be careful while restoring not to prepend a slash to the path!
+#
+# $ backboa restore file [time] destination
+#
+#   Restoring a single file to tmp/
+#   $ backboa restore data/disk/o1/backups/foo.tar.gz tmp/foo.tar.gz
+#
+#   Restoring an older version of a directory to tmp/ - interval or full date
+#   $ backboa restore data/disk/o1/backups 7D8h8s tmp/backups
+#   $ backboa restore data/disk/o1/backups 2014/11/11 tmp/backups
+#
+# _restore() {
+#   if [ $# = 2 ]; then
+#     echo "Command is ${_DCY_MN_CMD} restore --file-to-restore $1 ${_BACKUP_TARGET} $2"
+#     ${_DCY_MN_CMD} restore --file-to-restore $1 ${_BACKUP_TARGET} $2
+#   else
+#     echo "Command is ${_DCY_MN_CMD} restore --file-to-restore $1 --time $2 ${_BACKUP_TARGET} $3"
+#     ${_DCY_MN_CMD} restore --file-to-restore $1 --time $2 ${_BACKUP_TARGET} $3
+#   fi
+# }
+#
+### Legacy procedure for reference
+
+### Duplicity man page https://duplicity.gitlab.io/devel/duplicity.1.html#name
+#
+#   duplicity [backup|full|incremental] [options] source_directory target_url
+#   duplicity verify [options] [--compare-data] [--path-to-restore <relpath>] [--time time] source_url target_directory
+#   duplicity collection-status [options] [--file-changed <relpath>] [--show-changes-in-set <index>] [--jsonstat]] target_url
+#   duplicity list-current-files [options] [--time time] target_url
+#   duplicity [restore] [options] [--path-to-restore <relpath>] [--time time] source_url target_directory
+#   duplicity remove-older-than <time> [options] [--force] target_url
+#   duplicity remove-all-but-n-full <count> [options] [--force] target_url
+#   duplicity remove-all-inc-of-but-n-full <count> [options] [--force] target_url
+#   duplicity cleanup [options] [--force] target_url
+#
+#   Duplicity enters restore mode because the URL comes before the local directory.
+#   If we wanted to restore just the file "Mail/article" in /home/me as it was three days ago into /home/me/restored_file:
+#
+#   duplicity -t 3D --path-to-restore Mail/article sftp://uid@other.host/some_dir /home/me/restored_file
+#
+#   duplicity [restore] [options] [--path-to-restore <relpath>] [--time time] source_url target_directory
+#
+### Duplicity man page
+
+### Restore Command in mybackup for reference
+#
+#   mybackup restore <SERVICE> [RESTORE_TARGET] [RESTORE_PATH] [RESTORE_TIME]
+#   mybackup restore aws ~/static/restores data/disk/your_username/static/projects 7D
+#
+# - <SERVICE>: The cloud storage service used for your backups (e.g., aws, b2, wasabi).
+# - [RESTORE_TARGET] (optional): The directory where restored files will be placed. Defaults to ~/static/restores/.
+# - [RESTORE_PATH] (optional): The absolute path (no leading slash) of the file or directory to restore.
+# - [RESTORE_TIME] (optional): The point in time for the restore, specified in human-readable formats like:
+#   - 1D (1 day ago)
+#   - 7D (7 days ago)
+#   - 1M (1 month ago)
+#
+### Restore Command in mybackup for reference
 
 # Function to restore backup
 _restore() {
-  _restore_target=$1
-  _restore_path=$2
-  _restore_time=$3
-  _restore_command="duplicity restore --allow-source-mismatch"
+  local _restore_target=$1
+  local _restore_path=$2
+  local _restore_time=$3
+  local _restore_command="${_DCY_MN_CMD} restore"
 
   # Ensure _RESTORE_TARGET exists
-  if [ ! -d "${_restore_target}" ]; then
-    echo "Creating restore target directory: ${_restore_target}"
-    mkdir -p "${_restore_target}"
+  if [ -n "${_restore_target}" ]; then
+    if [ ! -d "${_restore_target}" ]; then
+      echo "Creating restore target directory: ${_restore_target}"
+      mkdir -p "${_restore_target}"
+    fi
+  else
+    _restore_target="/data/disk/${_user}/static/restores"
+    if [ ! -d "${_restore_target}" ]; then
+      echo "Creating restore target directory: ${_restore_target}"
+      mkdir -p "${_restore_target}"
+    fi
   fi
-
   if [ -n "${_restore_time}" ]; then
     _restore_command="${_restore_command} --time ${_restore_time}"
   fi
-
   _restore_command="${_restore_command} ${_BACKUP_TARGET}"
-
   if [ -n "${_restore_path}" ]; then
-    _restore_command="${_restore_command} ${_restore_path}"
+    _restore_command="${_restore_command} --path-to-restore ${_restore_path}"
   fi
-
   _restore_command="${_restore_command} ${_restore_target}"
 
+  echo "Command is ${_restore_command}"
+  # ${_DCY_MN_CMD} restore --time ${_restore_time} ${_BACKUP_TARGET} --path-to-restore ${_restore_path} ${_restore_target}
+
+  # su -s /bin/bash ${_user} -c "eval \"${_restore_command}\"" &> /dev/null
   eval "${_restore_command}"
 }
 
 # Function to set backup target based on service
 _set_backup_target() {
-  _service=$1
-  _user=$2
+  local _service=$1
+  local _user=$2
 
   case "${_service}" in
     aws|aws_one_zone|aws_standard_ia)
@@ -366,12 +581,12 @@ _set_backup_target() {
       _construct_bucket_name "${_service}" "${_user}"
 
       # Define S3-specific options
-      _s3_endpoint="https://s3.dualstack.${AWS_REGION}.amazonaws.com"
-      _s3_options="--s3-endpoint-url ${_s3_endpoint} --s3-region-name ${AWS_REGION}"
+      local _s3_endpoint="https://s3.dualstack.${AWS_REGION}.amazonaws.com"
+      local _s3_options="--s3-endpoint-url ${_s3_endpoint} --s3-region-name ${AWS_REGION}"
 
       # Use intelligent-tiering options for specific services
       if [ "${_service}" = "aws_standard_ia" ] || [ "${_service}" = "aws_one_zone" ]; then
-        _s3_options="${_s3_options} --s3-use-ia"
+        local _s3_options="${_s3_options} --s3-use-ia"
       fi
 
       _BACKUP_TARGET="boto3+s3://${_BUCKET_NAME} ${_s3_options}"
@@ -436,11 +651,10 @@ _DOW=$(date +%u 2>&1)
 _DOW=${_DOW//[^1-7]/}
 _DOM=$(date +%e 2>&1)
 _DOM=${_DOM//[^0-9]/}
-_HST=$(uname -n 2>&1)
+_HST="$(hostname -f 2>/dev/null || uname -n)"
 _HST=${_HST//[^a-zA-Z0-9-.]/}
 _HST=$(echo -n ${_HST} | tr A-Z a-z 2>&1)
 _HST_DASH=$(echo -n ${_HST} | tr . - 2>&1)
-
 
 _ACTION=$1
 _SERVICE=$2
@@ -449,6 +663,15 @@ _RESTORE_TARGET="${4:-/var/backups/}"
 _RESTORE_PATH="${5:-}"
 _RESTORE_TIME="${6:-}"
 _PIDFILE="/var/run/duplicity_${_SERVICE}_${_USER}.pid"
+# Default values
+_DEFAULT_KEEP_WITHIN="3M"            # Default: 3 month
+_DEFAULT_FULL_BACKUP_FREQUENCY="7D"  # Default: 7 days
+
+# Log file for validation issues
+_LOG_FILE="/var/log/backup_validation_issues.log"
+_TMP_DIR="/var/tmp/backup_sanitization"
+mkdir -p "${_TMP_DIR}"
+chmod 700 "${_TMP_DIR}"
 
 # Create the PID file
 _create_pid_file "${_PIDFILE}"
