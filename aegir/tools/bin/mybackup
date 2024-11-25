@@ -40,28 +40,175 @@ _create_pid_file() {
 # Function to remove PID file
 _remove_pid_file() {
   local _pidfile=$1
-  rm -f "${_pidfile}"
-}
-
-# Function to load credentials from a file
-_load_credentials() {
-  local _service=$1
-  local _creds_path="/data/disk/${_user}/static/control/remote_backups/credentials/${_service}.txt"
-  if [ -f "${_creds_path}" ]; then
-    source "${_creds_path}"
-  else
-    echo "Credentials file ${_creds_path} not found."
-    exit 1
+  if [ -f "${_pidfile}" ]; then
+    rm -f "${_pidfile}" || {
+      echo "Warning: Failed to remove PID file: ${_pidfile}"
+    }
   fi
 }
 
-# Function to load paths and other settings from a file
+# Function to log validation issues
+_log_issue() {
+  local _type=$1
+  local _file=$2
+  local _message=$3
+  echo "[$(date)] Validation issue type: [${_type}] in file: [${_file}] with error: ${_message}" >> "${_LOG_FILE}"
+  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_EMAIL_REPORT}" = "YES" ]; then
+    # Alert the admin
+    echo "Sending Backup Validation Alert to ${_MY_EMAIL} on $(date)" >> ${_LOGFILE}
+    s-nail -s "Backup Validation Alert for [$(hostname)] on $(date)" ${_MY_EMAIL} < ${_LOGFILE}
+  fi
+}
+
+# Function to escape values
+_escape_value() {
+  printf '%q' "$1"
+}
+
+# Function to sanitize and validate credentials file
+_validate_credentials() {
+  local _cred_file="$1"
+  local _service="$2"
+  local _line_number=0
+
+  while IFS= read -r _line || [ -n "${_line}" ]; do
+    _line_number=$(( _line_number + 1 ))
+    # Trim leading and trailing whitespace
+    _line="${_line#"${_line%%[![:space:]]*}"}"
+    _line="${_line%"${_line##*[![:space:]]}"}"
+
+    # Skip comments and empty lines
+    if [[ -z "${_line}" || "${_line}" == \#* ]]; then
+      continue
+    fi
+
+    # Remove 'export ' prefix if present
+    _line="${_line#export }"
+
+    # Validate the variable assignment
+    if [[ "${_line}" =~ ^([A-Za-z_][A-Za-z0-9_]*)=(\".*\"|'.*'|[^[:space:]]+)$ ]]; then
+      local _varname="${BASH_REMATCH[1]}"
+      local _value="${BASH_REMATCH[2]}"
+
+      # Remove surrounding quotes if present
+      if [[ "${_value}" =~ ^\".*\"$ || "${_value}" =~ ^\'.*\'$ ]]; then
+        _value="${_value:1:-1}"
+      fi
+
+      # Check for forbidden characters in value
+      if echo "${_value}" | grep -q -E '[$`(){};&|<>]'; then
+        _log_issue "credentials" "${_cred_file}" "Forbidden characters in value at line ${_line_number}: ${_line}"
+        continue
+      fi
+
+      # Safely export the variable
+      export "${_varname}"="$(_escape_value "${_value}")"
+    else
+      _log_issue "credentials" "${_cred_file}" "Invalid syntax at line ${_line_number}: ${_line}"
+    fi
+  done < "${_cred_file}"
+}
+
+# Function to load credentials
+_load_credentials() {
+  local _service="$1"
+  local _user="$2"
+  local _cred_file="/data/disk/${_user}/static/control/remote_backups/credentials/${_service}.txt"
+
+  if [ ! -f "${_cred_file}" ]; then
+    echo "Error: Credentials file '${_cred_file}' not found."
+    exit 1
+  fi
+
+  _validate_credentials "${_cred_file}" "${_service}"
+}
+
+# Function to validate paths configuration
+_validate_paths() {
+  local _file="$1"
+  local _user="$2"
+  local _line_number=0
+  local _allowed_base_paths=("/data/disk/${_user}/static" "/data/disk/${_user}/distro" "/home/${_user}.ftp")
+  _PATHS_ARRAY=()
+
+  while IFS= read -r _line || [ -n "${_line}" ]; do
+    _line_number=$(( _line_number + 1 ))
+    # Trim leading and trailing whitespace
+    _line="${_line#"${_line%%[![:space:]]*}"}"
+    _line="${_line%"${_line##*[![:space:]]}"}"
+
+    # Skip comments and empty lines
+    if [[ -z "${_line}" || "${_line}" == \#* ]]; then
+      continue
+    fi
+
+    # Validate the path option and extract the path
+    if [[ "${_line}" =~ ^--(include|exclude|include-regexp|exclude-regexp)[[:space:]]+(.+)$ ]]; then
+      local _option="${BASH_REMATCH[1]}"
+      local _path="${BASH_REMATCH[2]}"
+
+      # Check for forbidden characters
+      if echo "${_path}" | grep -q -E '[$`(){};&|<>]'; then
+        _log_issue "paths" "${_file}" "Forbidden characters at line ${_line_number}: ${_line}"
+        continue
+      fi
+
+      # For regular paths
+      if [[ "${_option}" == "include" || "${_option}" == "exclude" ]]; then
+        # Check if the path starts with allowed base paths
+        local _is_valid_path=false
+        for _base_path in "${_allowed_base_paths[@]}"; do
+          if [[ "${_path}" == "${_base_path}"* ]]; then
+            _is_valid_path=true
+            break
+          fi
+        done
+        if ! ${_is_valid_path}; then
+          _log_issue "paths" "${_file}" "Unauthorized path at line ${_line_number}: ${_line}"
+          continue
+        fi
+      fi
+
+      # For regex paths
+      if [[ "${_option}" == "include-regexp" || "${_option}" == "exclude-regexp" ]]; then
+        # Ensure the regex starts with '^' followed by an allowed base path
+        local _is_valid_regex=false
+        for _base_path in "${_allowed_base_paths[@]}"; do
+          # Escape slashes in base path for regex comparison
+          local _escaped_base_path="${_base_path//\//\\/}"
+          if [[ "${_path}" =~ ^\^${_escaped_base_path}.* ]]; then
+            _is_valid_regex=true
+            break
+          fi
+        done
+        if ! ${_is_valid_regex}; then
+          _log_issue "paths" "${_file}" "Unauthorized regex pattern at line ${_line_number}: ${_line}"
+          continue
+        fi
+      fi
+
+      # Add the validated option and path to the array
+      _PATHS_ARRAY+=("${_line}")
+    else
+      _log_issue "paths" "${_file}" "Invalid syntax at line ${_line_number}: ${_line}"
+    fi
+  done < "${_file}"
+}
+
+# Function to load paths configuration
 _load_paths() {
-  local _paths_path="/data/disk/${_user}/remote_backups/paths.txt"
-  if [ -f "${_paths_path}" ]; then
-    source "${_paths_path}"
-  else
-    echo "Paths configuration file ${_paths_path} not found."
+  local _user="$1"
+  local _paths_file="/data/disk/${_user}/remote_backups/paths.txt"
+
+  if [ ! -f "${_paths_file}" ]; then
+    echo "Error: Paths configuration file '${_paths_file}' not found."
+    exit 1
+  fi
+
+  _validate_paths "${_paths_file}" "${_user}"
+
+  if [ "${#_PATHS_ARRAY[@]}" -eq 0 ]; then
+    echo "Error: No valid paths found in '${_paths_file}'. Check ${_LOG_FILE} for details."
     exit 1
   fi
 }
@@ -73,6 +220,7 @@ _construct_bucket_name() {
   _hostname="$(hostname -f 2>/dev/null || uname -n)"
   _hst_dash=$(echo -n ${_hostname} | tr . - 2>&1)
   _BUCKET_NAME="back-to-${_user}-${_hst_dash}-${_service_abbr}"
+  _NAME="${_user}-${_service_abbr}"
 }
 
 # Function to restore backup
@@ -80,26 +228,34 @@ _restore() {
   local _restore_target=$1
   local _restore_path=$2
   local _restore_time=$3
-  local _restore_command="duplicity restore --allow-source-mismatch"
+  local _restore_command="${_DCY_MN_CMD} restore"
 
   # Ensure _RESTORE_TARGET exists
-  if [ -n "${_restore_target}" ] && [ ! -d "${_restore_target}" ]; then
-    echo "Creating restore target directory: ${_restore_target}"
-    mkdir -p "${_restore_target}"
+  if [ -n "${_restore_target}" ]; then
+    if [ ! -d "${_restore_target}" ]; then
+      echo "Creating restore target directory: ${_restore_target}"
+      mkdir -p "${_restore_target}"
+    fi
+  else
+    _restore_target="/data/disk/${_user}/static/restores"
+    if [ ! -d "${_restore_target}" ]; then
+      echo "Creating restore target directory: ${_restore_target}"
+      mkdir -p "${_restore_target}"
+    fi
   fi
-
   if [ -n "${_restore_time}" ]; then
     _restore_command="${_restore_command} --time ${_restore_time}"
   fi
-
   _restore_command="${_restore_command} ${_BACKUP_TARGET}"
-
   if [ -n "${_restore_path}" ]; then
-    _restore_command="${_restore_command} ${_restore_path}"
+    _restore_command="${_restore_command} --path-to-restore ${_restore_path}"
   fi
-
   _restore_command="${_restore_command} ${_restore_target}"
 
+  echo "Command is ${_restore_command}"
+  # ${_DCY_MN_CMD} restore --time ${_restore_time} ${_BACKUP_TARGET} --path-to-restore ${_restore_path} ${_restore_target}
+
+  # su -s /bin/bash ${_user} -c "eval \"${_restore_command}\"" &> /dev/null
   eval "${_restore_command}"
 }
 
@@ -171,8 +327,11 @@ _set_backup_target() {
   esac
 }
 
+# Check if run as root
+_run_as_user=$(whoami)
+
 # Main script
-if [[ "$#" -eq 0 ]]; then
+if [[ "$#" -eq 0 ]] && [ "${_run_as_user}" = "root" ]; then
   # Process queued commands for all users
   for _user_dir in "${_BASE_DIR}"/*; do
     if [[ -d "${_user_dir}" ]]; then
@@ -186,9 +345,11 @@ if [[ "$#" -eq 0 ]]; then
 
         # Execute the command as the user
         sudo -u "${_user}" "$0" ${_command}
+        wait
 
         # Clean up the command file
         rm -f "${_user_cmd_file}"
+        sleep 60
       fi
     fi
   done
@@ -207,6 +368,9 @@ if [[ $(whoami) == *.ftp ]]; then
   exit 0
 fi
 
+[ -e "/data/disk/${_user}/log/email.txt" ] && _userEmail="$(cat /data/disk/${_user}/log/email.txt)"
+[ -n "${_userEmail}" ] && _userEmail=$(echo -n ${_userEmail} | tr -d "\n" 2>&1)
+
 _ACTION=$1
 _SERVICE=$2
 _RESTORE_TARGET="${3:-/data/disk/${_user}/static/restores/}"
@@ -216,10 +380,15 @@ _PIDFILE="/data/disk/${_user}/log/mybackup_${_service}_${_user}.pid"
 _LOGPTH="/data/disk/${_user}/log"
 _LOGFILE="${_LOGPTH}/mybackup_${_service}_${_user}.log"
 
+_DCY_MN_CMD="/usr/local/bin/duplicity \
+    --name=${_NAME} \
+    --allow-source-mismatch \
+    --concurrency 4"
+
 _create_pid_file "${_PIDFILE}"
 
 # Load paths configuration
-_load_paths
+_load_paths "${_user}"
 
 case "${_ACTION}" in
   restore)
