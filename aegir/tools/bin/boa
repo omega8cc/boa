@@ -2034,8 +2034,8 @@ _display_info() {
       echo "Ready for BOA ${_crlBoav} on ${_thiSys}"
     fi
 
-    [ "${_mOde}" = "report" ] && echo "Host uptime `uptime`"
     [ "${_mOde}" = "report" ] && echo "Host $(hostname -f 2>/dev/null || uname -n) check on $(date)"
+    [ "${_mOde}" = "report" ] && echo "Host uptime $(uptime)"
     [ ! -z "${_HOST_INFO}" ] && echo "  HOST ${_HOST_INFO}"
     [ ! -z "${_VIRT_IS}" ] && echo "  VPS ${_VIRT_IS}"
     [ -z "${_VIRT_IS}" ] && echo "  VPS unknown / not a virtual machine"
