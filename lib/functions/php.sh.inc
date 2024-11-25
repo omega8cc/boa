@@ -3103,6 +3103,16 @@ _composer_install_upgrade() {
       | tr -d "\n" \
       | cut -d" " -f35 \
       | awk '{ print $1}' 2>&1)
+    if [ "${_COMPOSER_IS}" != "${_COMPOSER_VRN}" ]; then
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        _msg "INFO: Installed Composer ${_COMPOSER_IS}, update required"
+      fi
+      composer self-update ${_COMPOSER_VRN} &> /dev/null
+    fi
+    _COMPOSER_IS=$(composer --no-interaction --version 2>&1 \
+      | tr -d "\n" \
+      | cut -d" " -f35 \
+      | awk '{ print $1}' 2>&1)
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: Installed Composer ${_COMPOSER_IS}"
     fi
