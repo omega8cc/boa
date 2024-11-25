@@ -1339,7 +1339,7 @@ _tune_sql_memory_limits() {
 # Tune memory limits for PHP, Nginx and Percona.
 _tune_memory_limits() {
   _msg "INFO: Default Memory Tuning"
-  _VM_TEST=$(uname -a 2>&1)
+  _VM_TEST="$(uname -a)"
   if [ -e "/proc/bean_counters" ]; then
     _VMFAMILY="VZ"
   elif [ -e "/root/.tg.cnf" ]; then

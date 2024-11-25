@@ -101,7 +101,7 @@ if [ -e "/root/.my.optimize.cnf" ]; then
 else
   _OPTIM=NO
 fi
-_VM_TEST=$(uname -a 2>&1)
+_VM_TEST="$(uname -a)"
 if [[ "${_VM_TEST}" =~ "-beng" ]]; then
   _VMFAMILY="VS"
 else

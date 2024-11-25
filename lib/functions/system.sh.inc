@@ -356,7 +356,7 @@ _if_running_as_root_barracuda() {
         touch /run/cloud_vhost.pid
       fi
     fi
-    _VM_TEST=$(uname -a 2>&1)
+    _VM_TEST="$(uname -a)"
     if [[ "${_VM_TEST}" =~ "-beng" ]]; then
       _VMFAMILY="VS"
       touch /run/cloud_vhost.pid
@@ -419,7 +419,7 @@ _kill_nash() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _kill_nash"
   fi
-  _VM_TEST=$(uname -a 2>&1)
+  _VM_TEST="$(uname -a)"
   if [[ "${_VM_TEST}" =~ "-beng" ]]; then
     _DO_NOTHING=YES
   else
@@ -669,7 +669,7 @@ _tune_memory_limits() {
     _msg "TUNE: _MXC_SQL is ${_MXC_SQL}"
   fi
 
-  _VM_TEST=$(uname -a 2>&1)
+  _VM_TEST="$(uname -a)"
   if [ -e "/proc/bean_counters" ]; then
     _VMFAMILY="VZ"
   elif [ -e "/root/.tg.cnf" ]; then
@@ -1583,7 +1583,7 @@ _php_legacy_versions_cleanup_cnf() {
 
   _CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
   _VMFAMILY=XEN
-  _VM_TEST=$(uname -a 2>&1)
+  _VM_TEST="$(uname -a)"
   if [[ "${_VM_TEST}" =~ "-beng" ]]; then
     _VMFAMILY="VS"
   fi
@@ -1891,7 +1891,7 @@ _barracuda_cnf() {
   fi
   _CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
   _VMFAMILY=XEN
-  _VM_TEST=$(uname -a 2>&1)
+  _VM_TEST="$(uname -a)"
   if [[ "${_VM_TEST}" =~ "-beng" ]]; then
     _VMFAMILY="VS"
   fi
@@ -6560,7 +6560,7 @@ _if_major_os_upgrade() {
     # fi
     ###
     ### Time for init scripts cleanup for VM running beng kernel.
-    _VM_TEST=$(uname -a 2>&1)
+    _VM_TEST="$(uname -a)"
     if [[ "${_VM_TEST}" =~ "-beng" ]]; then
       _PTMX=OK
       _REMOVE_LINKS="buagent \

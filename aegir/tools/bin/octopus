@@ -28,7 +28,7 @@ _vBs="/var/backups"
 _CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
 _LOG_DIR="${_vBs}/reports/up/$(basename "$0")/${_TODAY}"
 _VMFAMILY=XEN
-_VM_TEST=$(uname -a 2>&1)
+_VM_TEST="$(uname -a)"
 if [[ "${_VM_TEST}" =~ "-beng" ]]; then
   _VMFAMILY="VS"
 fi

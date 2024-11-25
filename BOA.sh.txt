@@ -3283,8 +3283,8 @@ _if_update_boa_key_tools_only() {
 _boa_setup() {
   _BENG_VS=NO
   _VMFAMILY=NO
-  _VM_TEST=$(uname -a 2>&1)
   _CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
+  _VM_TEST="$(uname -a)"
   if [[ "${_VM_TEST}" =~ "-beng" ]]; then
     _BENG_VS=YES
   fi
