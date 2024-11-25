@@ -2403,6 +2403,19 @@ _fix_java_symlinks() {
   fi
 }
 
+_fix_composer_version() {
+  _COMPOSER_VRN=2.8.2
+  if [ -x "/usr/local/bin/composer" ]; then
+    _COMPOSER_IS=$(composer --no-interaction --version 2>&1 \
+      | tr -d "\n" \
+      | cut -d" " -f35 \
+      | awk '{ print $1}' 2>&1)
+    if [ "${_COMPOSER_IS}" != "${_COMPOSER_VRN}" ]; then
+      composer self-update ${_COMPOSER_VRN} &> /dev/null
+    fi
+  fi
+}
+
 _fix_wkhtml_perms() {
 
   _WKHTML_ARRAY="/usr/local/bin/wkhtmltopdf \
@@ -3546,6 +3559,7 @@ if [ `whoami` = "root" ]; then
     _fix_aio
     _fix_console_print
     _fix_java_symlinks
+    _fix_composer_version
     _fix_wkhtml
     _fix_wkhtml_perms
     _fix_eldir
