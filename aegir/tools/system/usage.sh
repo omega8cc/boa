@@ -312,7 +312,9 @@ _usage_count() {
           | sed "s/[\,';]//g" 2>&1)
         #echo Dat is ${_Dat}
         if [ ! -z "${_Dat}" ] && [ -e "${_Dir}" ]; then
-          if [ -L "${_Dir}/files" ] || [ -L "${_Dir}/private" ]; then
+          if [ -L "${_Dir}/files" ] \
+            || [ -L "${_Dir}/private" ] \
+            || [ -L "${_usEr}/static/files" ]; then
             _DirSize=$(du -L -s ${_Dir} 2>&1)
           else
             _DirSize=$(du -s ${_Dir} 2>&1)
@@ -755,7 +757,9 @@ _usage_action() {
             fi
           done
         fi
-        if [ -L "${_usEr}" ]; then
+        if [ -L "${_usEr}/backups" ] \
+          || [ -L "${_usEr}/src" ] \
+          || [ -L "${_usEr}/static/files" ]; then
           _HomSiz=$(du -D -s ${_usEr} 2>&1)
         else
           _HomSiz=$(du -s ${_usEr} 2>&1)
