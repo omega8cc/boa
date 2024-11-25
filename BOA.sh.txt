@@ -2996,7 +2996,7 @@ _update_boa_tools() {
            octopus \
            perftest \
            randpass \
-           restoreback \
+           mybackup \
            setprio \
            smtpgapps \
            sqlclean \
@@ -3050,10 +3050,10 @@ _update_boa_tools() {
   echo "### ${_TODAY} ###" >> ${_optBin}/memorytuner
   echo "### ${_TODAY} ###" >> ${_optBin}/mergecsf
   echo "### ${_TODAY} ###" >> ${_optBin}/multiback
+  echo "### ${_TODAY} ###" >> ${_optBin}/mybackup
   echo "### ${_TODAY} ###" >> ${_optBin}/octopus
   echo "### ${_TODAY} ###" >> ${_optBin}/perftest
   echo "### ${_TODAY} ###" >> ${_optBin}/setprio
-  echo "### ${_TODAY} ###" >> ${_optBin}/restoreback
   echo "### ${_TODAY} ###" >> ${_optBin}/smtpgapps
   echo "### ${_TODAY} ###" >> ${_optBin}/sqlclean
   echo "### ${_TODAY} ###" >> ${_optBin}/verifyvhostsdns
@@ -3068,8 +3068,8 @@ _update_boa_tools() {
     ln -s ${_optBin}/octopus     ${_usrBin}/octopus
   fi
 
-  if [ -e "/data/u" ] && [ -e "${_optBin}/restoreback" ] && [ ! -e "${_usrBin}/restoreback" ]; then
-    ln -s ${_optBin}/restoreback ${_usrBin}/restoreback
+  if [ -e "/data/u" ] && [ -e "${_optBin}/mybackup" ] && [ ! -e "${_usrBin}/mybackup" ]; then
+    ln -s ${_optBin}/mybackup ${_usrBin}/mybackup
   fi
 
   [ -e "/root/.backboa.autoupdate" ] && rm -f /root/.backboa.autoupdate
@@ -3093,7 +3093,7 @@ _update_boa_tools() {
   chmod 700 ${_optBin}/{autoinit,autodaedalus,autochimaera,autobeowulf,autoupboa,backboa,duobackboa,mergecsf,verifyvhostsdns}
   chmod 700 ${_optBin}/{barracuda,boa,ffmirror,killer,mycnfup,octopus,syncpass,xboa,weblogx,sqlclean,perftest,dcysetup}
   chmod 700 ${_optBin}/{fancynow,codebasecheck,vhostcheck,memorytuner,mysqltuner5,mysqltuner8,smtpgapps,setprio,multiback}
-  chmod 755 ${_optBin}/{randpass,sqlmagic,thinkdifferent,restoreback}
+  chmod 755 ${_optBin}/{randpass,sqlmagic,thinkdifferent,mybackup}
 }
 
 _if_update_boa_key_tools_only() {
