@@ -4,6 +4,69 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 
 _DEST_DRUSH="/opt/tools/drush/8/drush/drush.php"
 
+_forward_to_shell() {
+  # Path to the underlying shell (dash in this case)
+  _shell="/bin/dash"
+  # Name under which the shell should think it was invoked
+  _shell_name="sh"
+  # Arrays to hold options and positional parameters
+  _options=()
+  _positional=()
+  # Variables to hold command strings or script files
+  _command=""
+  _script=""
+
+  # Parse the options and arguments
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --)
+        # End of options
+        shift
+        _positional+=("$@")
+        break
+        ;;
+      -c)
+        # Command option
+        if [[ -n "$2" ]]; then
+          _options+=("-c" "$2")
+          shift 2
+          _positional+=("$@")
+          break
+        else
+          echo "sh: option requires an argument -- 'c'" >&2
+          exit 1
+        fi
+        ;;
+      -i|-l|-s)
+        # Other common options
+        _options+=("$1")
+        shift
+        ;;
+      -*)
+        # Unrecognized options
+        _options+=("$1")
+        shift
+        ;;
+      *)
+        # First non-option argument is the script file
+        _script="$1"
+        shift
+        _positional+=("$@")
+        break
+        ;;
+    esac
+  done
+
+  # Prepare to execute the underlying shell
+  if [[ -n "${_script}" ]]; then
+    # Execute a script file
+    exec -a "${_shell_name}" "${_shell}" "${_options[@]}" "${_script}" "${_positional[@]}"
+  else
+    # Execute commands or start an interactive shell
+    exec -a "${_shell_name}" "${_shell}" "${_options[@]}" "${_positional[@]}"
+  fi
+}
+
 # Capture all arguments
 _ALL="$@"
 ### echo "_ALL is ${_ALL}"
@@ -951,20 +1014,20 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           exit 0
         else
           ### echo EXH 1 _F_ARR is "$@"
-          ### echo EXH 1 /bin/dash "$@"
-          exec /bin/dash "$@"
+          ### echo EXH 1 _forward_to_shell "$@"
+          _forward_to_shell "$@"
           exit 0
         fi
       else
         ### echo EXH 3 _F_ARR is "$@"
-        ### echo EXH 3 /bin/bash "$@"
-        exec /bin/bash "$@"
+        ### echo EXH 3 _forward_to_shell "$@"
+        _forward_to_shell "$@"
         exit 0
       fi
     else
       ### echo EXO 1 _F_ARR is "$@"
-      ### echo EXO 1 $0 "$@"
-      exec $0 "$@"
+      ### echo EXO 1 _forward_to_shell "$@"
+      _forward_to_shell "$@"
       exit 0
     fi
   else
@@ -999,19 +1062,19 @@ else
     || [ "$0" = "/bin/websh" ]; then
     if [ -x "/bin/dash" ]; then
       ### echo EXH 4 _F_ARR is "$@"
-      ### echo EXH 4 /bin/dash "$@"
-      exec /bin/dash "$@"
+      ### echo EXH 4 _forward_to_shell "$@"
+      _forward_to_shell "$@"
       exit 0
     else
       ### echo EXH 6 _F_ARR is "$@"
-      ### echo EXH 6 /bin/bash "$@"
-      exec /bin/bash "$@"
+      ### echo EXH 6 _forward_to_shell "$@"
+      _forward_to_shell "$@"
       exit 0
     fi
   else
     ### echo EXO 2 _F_ARR is "$@"
-    ### echo EXO 2 $0 "$@"
-    exec $0 "$@"
+    ### echo EXO 2 _forward_to_shell "$@"
+    _forward_to_shell "$@"
     exit 0
   fi
   exit 0
