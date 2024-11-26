@@ -295,8 +295,8 @@ _construct_bucket_name() {
   _service_dash=$(echo -n ${_service_abbr} | tr _ - 2>&1)
   _hostname="$(hostname -f 2>/dev/null || uname -n)"
   _hst_dash=$(echo -n ${_hostname} | tr . - 2>&1)
-  _BUCKET_NAME="back-to-${_user}-${_hst_dash}-${_service_dash}"
-  _NAME="${_user}-${_service_dash}"
+  export _BUCKET_NAME="back-to-${_user}-${_hst_dash}-${_service_dash}"
+  export _NAME="${_user}-${_service_dash}"
 }
 
 # Function to generate duplicity-compatible include directives
