@@ -67,6 +67,7 @@ fi
 
 alias df='df -kTh'
 alias wget='wget --no-check-certificate'
+alias make='make SHELL=/bin/bash'
 
 function xtitle() {
   case "$TERM" in
