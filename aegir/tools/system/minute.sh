@@ -36,9 +36,6 @@ bash /var/xdrago/monitor/check/mysql.sh &
 bash /var/xdrago/monitor/check/unbound.sh &
 bash /var/xdrago/monitor/check/system.sh &
 bash /var/xdrago/monitor/check/java.sh &
-perl /var/xdrago/monitor/check/hackcheck.pl &
-perl /var/xdrago/monitor/check/hackftp.pl &
-perl /var/xdrago/monitor/check/escapecheck.pl &
 
 _second_flood_guard() {
   _thisCountSec=`ps aux | grep -v "grep" | grep -v "null" | grep --count "/second.sh"`

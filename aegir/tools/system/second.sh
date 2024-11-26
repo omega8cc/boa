@@ -262,6 +262,9 @@ _load_control() {
 for _iteration in {1..12}; do
   echo "----------------------------"
   echo "Iteration ${_iteration}:"
+  perl /var/xdrago/monitor/check/hackcheck.pl &
+  perl /var/xdrago/monitor/check/hackftp.pl &
+  perl /var/xdrago/monitor/check/escapecheck.pl &
   _load_control
   sleep 5
 done
