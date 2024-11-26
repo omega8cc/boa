@@ -911,6 +911,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
     fi
     if [ "$0" = "/bin/sh" ] \
       || [ "$0" = "/usr/bin/sh" ] \
+      || [ "$0" = "/opt/local/bin/websh" ] \
       || [ "$0" = "/bin/websh" ]; then
       if [ -x "/bin/dash" ]; then
         if [ ! -z "${_ARR}" ] && [ -z "${_OCTO_SYS_ARR}" ]; then
@@ -1018,6 +1019,7 @@ else
   fi
   if [ "$0" = "/bin/sh" ] \
     || [ "$0" = "/usr/bin/sh" ] \
+    || [ "$0" = "/opt/local/bin/websh" ] \
     || [ "$0" = "/bin/websh" ]; then
     if [ -x "/bin/dash" ]; then
       ### echo EXH 4 _F_ARR is "$@"
