@@ -193,7 +193,7 @@ _generate_backup_schedule() {
 
   # Add global backups
   _GLOBAL_CRED_DIR="/var/xdrago/backup/credentials"
-  for _service in aws aws_one_zone aws_standard_ia gcs b2 azure upcloud ibm wasabi do_spaces linode; do
+  for _service in aws aws_one_zone aws_standard_ia azure b2 cloudflare do_spaces gcs ibm linode upcloud wasabi; do
     if [ -f "${_GLOBAL_CRED_DIR}/${_service}.txt" ] && ! grep -q "your_" "${_GLOBAL_CRED_DIR}/${_service}.txt"; then
       echo "${_service} global_user" >> "${_SCHEDULE_FILE}"
     fi
@@ -204,7 +204,7 @@ _generate_backup_schedule() {
     if [ -d "${_user_dir}" ]; then
       _user=$(basename "${_user_dir}")
       _USER_CRED_DIR="/data/disk/${_user}/static/control/remote_backups/credentials"
-      for _service in aws aws_one_zone aws_standard_ia gcs b2 azure upcloud ibm wasabi do_spaces linode; do
+      for _service in aws aws_one_zone aws_standard_ia azure b2 cloudflare do_spaces gcs ibm linode upcloud wasabi; do
         if [ -f "${_USER_CRED_DIR}/${_service}.txt" ] && ! grep -q "your_" "${_USER_CRED_DIR}/${_service}.txt"; then
           echo "${_service} ${_user}" >> "${_SCHEDULE_FILE}"
         fi

@@ -68,6 +68,15 @@ export KEEP_WITHIN="3M"
 export FULL_BACKUP_FREQUENCY="7D"
 EOF
           ;;
+        cloudflare)
+          cat << EOF > "${_template_file}"
+export R2_ACCOUNT_ID="your_account_id"
+export R2_ACCESS_KEY_ID="your_access_key_id"
+export R2_SECRET_ACCESS_KEY="your_secret_access_key"
+export KEEP_WITHIN="3M"
+export FULL_BACKUP_FREQUENCY="7D"
+EOF
+          ;;
         azure)
           cat << EOF > "${_template_file}"
 export AZURE_STORAGE_ACCOUNT="your_azure_storage_account"

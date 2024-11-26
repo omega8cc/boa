@@ -60,6 +60,14 @@ Backblaze B2
   export KEEP_WITHIN="3M"
   export FULL_BACKUP_FREQUENCY="7D"
 
+Cloudflare R2 Object Storage
+  File: cloudflare.txt
+  export R2_ACCOUNT_ID="your_account_id"
+  export R2_ACCESS_KEY_ID="your_access_key_id"
+  export R2_SECRET_ACCESS_KEY="your_secret_access_key"
+  export KEEP_WITHIN="3M"
+  export FULL_BACKUP_FREQUENCY="7D"
+
 Azure Blob Storage
   File: azure.txt
   export AZURE_STORAGE_ACCOUNT="your_azure_storage_account"

@@ -19,7 +19,7 @@ _usage() {
   echo "  $0 restore b2 ~/static/restores static/another-project 2W"
   echo
   echo "Supported services:"
-  echo "  aws, aws_one_zone, aws_standard_ia, gcs, b2, azure, upcloud, ibm, wasabi, do_spaces, linode"
+  echo "  aws, aws_one_zone, aws_standard_ia, azure, b2, cloudflare, do_spaces, gcs, ibm, linode, upcloud, wasabi"
   echo
   echo "NOTE: [RESTORE_PATH] must be an absolute path (no leading slash) of the file or directory to restore"
   echo
@@ -220,8 +220,8 @@ _construct_bucket_name() {
   _service_dash=$(echo -n ${_service_abbr} | tr _ - 2>&1)
   _hostname="$(hostname -f 2>/dev/null || uname -n)"
   _hst_dash=$(echo -n ${_hostname} | tr . - 2>&1)
-  _BUCKET_NAME="back-to-${_user}-${_hst_dash}-${_service_dash}"
-  _NAME="${_user}-${_service_dash}"
+  export _BUCKET_NAME="back-to-${_user}-${_hst_dash}-${_service_dash}"
+  export _NAME="${_user}-${_service_dash}"
 }
 
 # Function to restore backup
@@ -290,6 +290,16 @@ _set_backup_target() {
       _load_credentials "b2" "${_user}"
       _construct_bucket_name "b2" "${_user}"
       _BACKUP_TARGET="b2://${B2_ACCOUNT_ID}:${B2_APPLICATION_KEY}@${_BUCKET_NAME}"
+      ;;
+    cloudflare)
+      _load_credentials "cloudflare" "${_user}"
+      _construct_bucket_name "cloudflare" "${_user}"
+
+      # Custom endpoint for Cloudflare R2
+      local _r2_endpoint="https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
+
+      # Configure the S3 backup target
+      _BACKUP_TARGET="boto3+s3://${R2_ACCESS_KEY_ID}:${R2_SECRET_ACCESS_KEY}@${_r2_endpoint}/${_BUCKET_NAME}"
       ;;
     azure)
       _load_credentials "azure" "${_user}"

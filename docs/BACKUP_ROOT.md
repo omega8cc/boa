@@ -101,33 +101,36 @@ The system supports multiple storage providers. Credentials for these providers 
 
 ### **Technical Comparison Table**
 
-| **Service**           | **Storage Class**        | **Redundancy**       | **Regions Available**                   | **Encryption**           | **Interface**          |
-|------------------------|--------------------------|----------------------|-----------------------------------------|--------------------------|-------------------------|
-| **Amazon S3**          | Standard, One Zone, IA  | Multi-AZ / Single AZ | Global                                  | Server-side + Client-side | S3 (boto3)             |
-| **Backblaze B2**       | Hot                     | Multi-region         | US/Europe                               | Client-side only          | B2 Native              |
-| **DigitalOcean Spaces** | Hot                   | Multi-region         | US, Europe                              | Client-side only          | S3 (boto3)             |
-| **Google Cloud Storage** | Standard, Nearline     | Multi-region / Single | Global                                  | Server-side + Client-side | Native                 |
-| **IBM Cloud**          | Standard, Archive       | Multi-region         | Global                                  | Server-side + Client-side | S3 (boto3)             |
-| **Linode Object Storage** | Hot                 | Multi-region         | US, Europe                              | Client-side only          | S3 (boto3)             |
-| **Microsoft Azure**    | Hot, Cool, Archive      | Multi-region         | Global                                  | Server-side + Client-side | Blob Storage (Azure)   |
-| **UpCloud Object Storage** | Hot                | Multi-region         | Europe / US                             | Client-side only          | S3 (boto3)             |
-| **Wasabi**             | Hot                     | Multi-region         | Global (US, Europe, APAC)               | Client-side only          | S3 (boto3)             |
+| **Service**                | **Storage Class**        | **Redundancy**        | **Regions Available**      | **Encryption**            | **Interface**          |
+|----------------------------|--------------------------|-----------------------|----------------------------|---------------------------|------------------------|
+| **Amazon S3**              | Standard, One Zone, IA   | Multi-AZ / Single AZ  | Global (US, Europe, APAC)  | Server-side + Client-side | S3 (boto3)             |
+| **Backblaze B2**           | Hot                      | Multi-region          | US, Europe                 | Client-side only          | B2 Native              |
+| **Cloudflare R2**          | Hot                      | Multi-region          | Global (US, Europe, APAC)  | Minimal                   | S3 (boto3)             |
+| **DigitalOcean Spaces**    | Hot                      | Multi-region          | US, Europe                 | Client-side only          | S3 (boto3)             |
+| **Google Cloud Storage**   | Standard, Nearline       | Multi-region / Single | Global (US, Europe, APAC)  | Server-side + Client-side | Native                 |
+| **IBM Cloud**              | Standard, Archive        | Multi-region          | Global (US, Europe, APAC)  | Server-side + Client-side | S3 (boto3)             |
+| **Linode Object Storage**  | Hot                      | Multi-region          | US, Europe                 | Client-side only          | S3 (boto3)             |
+| **Microsoft Azure**        | Hot, Cool, Archive       | Multi-region          | Global (US, Europe, APAC)  | Server-side + Client-side | Blob Storage (Azure)   |
+| **UpCloud Object Storage** | Hot                      | Multi-region          | Global (US, Europe, APAC)  | Client-side only          | S3 (boto3)             |
+| **Wasabi**                 | Hot                      | Multi-region          | Global (US, Europe, APAC)  | Client-side only          | S3 (boto3)             |
+
 
 ---
 
 ### **Pricing Comparison Table**
 
-| **Service**           | **Storage Cost (per GB)** | **Egress Cost (per GB)** | **Free Tier**       | **Notes**                                             |
-|------------------------|---------------------------|---------------------------|---------------------|------------------------------------------------------|
-| **Amazon S3**          | $0.023 (Standard)         | $0.09                     | 5 GB (12 months)    | Wide region availability, multiple classes           |
-| **Backblaze B2**       | $0.005                   | $0.01                     | 10 GB               | Cost-effective, ideal for archival storage           |
-| **DigitalOcean Spaces** | $0.01                  | $0.01                     | 250 GB for 2 months | Free bandwidth up to the first 1 TB                  |
-| **Google Cloud**        | $0.02 (Nearline)         | $0.12                     | 5 GB (12 months)    | Excellent for hybrid backups                         |
-| **IBM Cloud**          | $0.02                   | $0.09                     | Lite plan (25 GB)   | Supports advanced archival options                   |
-| **Linode Object Storage** | $0.005                | $0.01                     | None                | Affordable and Akamai-backed                         |
-| **Microsoft Azure**    | $0.018 (Cool)            | $0.085                    | $200 for 12 months  | Flexible tiering                                     |
-| **UpCloud Object Storage** | $0.01               | $0.07                     | None                | Reliable S3-compatible storage                       |
-| **Wasabi**             | $0.0059                 | Free                      | None                | Unlimited egress, good for high traffic              |
+| **Service**                | **Storage Cost (per GB)** | **Egress Cost (per GB)**  | **Free Tier**       | **Notes**                                            |
+|----------------------------|---------------------------|---------------------------|---------------------|------------------------------------------------------|
+| **Amazon S3**              | $0.0230 (Standard)        | $0.090                    | 5 GB (12 months)    | Wide region availability, multiple classes           |
+| **Backblaze B2**           | $0.0050                   | $0.010                    | 10 GB               | Cost-effective, ideal for archival storage           |
+| **Cloudflare R2**          | $0.0150                   | $0.015                    | Free                | 10 GB Storage, includes free 1 TB egress             |
+| **DigitalOcean Spaces**    | $0.0100                   | $0.010                    | 250 GB for 2 months | Free bandwidth up to the first 1 TB                  |
+| **Google Cloud**           | $0.0200 (Nearline)        | $0.120                    | 5 GB (12 months)    | Excellent for hybrid backups                         |
+| **IBM Cloud**              | $0.0200                   | $0.090                    | Lite plan (25 GB)   | Supports advanced archival options                   |
+| **Linode Object Storage**  | $0.0050                   | $0.010                    | None                | Affordable and Akamai-backed                         |
+| **Microsoft Azure**        | $0.0180 (Cool)            | $0.085                    | $200 for 12 months  | Flexible tiering                                     |
+| **UpCloud Object Storage** | $0.0100                   | $0.070                    | None                | Reliable S3-compatible storage                       |
+| **Wasabi**                 | $0.0059                   | Free                      | None                | Unlimited egress, good for high traffic              |
 
 ---
 
