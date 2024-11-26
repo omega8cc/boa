@@ -922,7 +922,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           ### echo EXD 1 _DEST_DRUSH is ${_DEST_DRUSH}
           ### echo EXD 1 _ARR is ${_ARR}
           ### echo EXD 1 ${DRUSH_PHP} ${_DEST_DRUSH} ${_ARR}
-          exec /bin/dash -c "${DRUSH_PHP} ${_DEST_DRUSH} ${_ARR}"
+          exec /bin/bash -c "${DRUSH_PHP} ${_DEST_DRUSH} ${_ARR}"
           exit 0
         elif [ ! -z "${PHP_FWD}" ] && [ ! -z "${_OCTO_SYS_ARR}" ]; then
           _DEST_DRUSH=${_DEST_DRUSH//\\/}
@@ -931,7 +931,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           ### echo EXD 3-PHP_FWD _DEST_DRUSH is ${_DEST_DRUSH}
           ### echo EXD 3-PHP_FWD _OCTO_SYS_ARR is ${_OCTO_SYS_ARR}
           ### echo EXD 3-PHP_FWD ${DRUSH_PHP} ${_DEST_DRUSH} ${_OCTO_SYS_ARR}
-          exec /bin/dash -c "${DRUSH_PHP} ${_DEST_DRUSH} ${_OCTO_SYS_ARR}"
+          exec /bin/bash -c "${DRUSH_PHP} ${_DEST_DRUSH} ${_OCTO_SYS_ARR}"
           exit 0
         elif [ -z "${PHP_FWD}" ] && [ ! -z "${_OCTO_SYS_ARR}" ]; then
           _DEST_DRUSH=${_DEST_DRUSH//\\/}
@@ -940,14 +940,14 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           ### echo EXD 3-NO-PHP_FWD _DEST_DRUSH is ${_DEST_DRUSH}
           ### echo EXD 3-NO-PHP_FWD _OCTO_SYS_ARR is ${_OCTO_SYS_ARR}
           ### echo EXD 3-NO-PHP_FWD ${DRUSH_PHP} ${_DEST_DRUSH} ${_OCTO_SYS_ARR}
-          exec /bin/dash -c "${DRUSH_PHP} ${_DEST_DRUSH} ${_OCTO_SYS_ARR}"
+          exec /bin/bash -c "${DRUSH_PHP} ${_DEST_DRUSH} ${_OCTO_SYS_ARR}"
           exit 0
         elif [ ! -z "${_C_ARR}" ]; then
           ### echo EXC 1 DRUSH_PHP is ${DRUSH_PHP}
           ### echo EXC 1 _C_ARR is ${_C_ARR}
           ### echo EXC 1 _F_ARR is "$@"
           ### echo EXC 1 ${DRUSH_PHP} /usr/local/bin/composer ${_C_ARR}
-          exec /bin/dash -c "${DRUSH_PHP} /usr/local/bin/composer ${_C_ARR}"
+          exec /bin/bash -c "${DRUSH_PHP} /usr/local/bin/composer ${_C_ARR}"
           exit 0
         else
           ### echo EXH 1 _F_ARR is "$@"
