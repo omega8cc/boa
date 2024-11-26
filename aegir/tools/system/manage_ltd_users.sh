@@ -2421,12 +2421,13 @@ else
   if [ -L "/bin/sh" ] && [ ! -e "/run/octopus_install_run.pid" ]; then
     _WEB_SH=$(readlink -n /bin/sh 2>&1)
     _WEB_SH=$(echo -n ${_WEB_SH} | tr -d "\n" 2>&1)
-    if [ -x "/bin/websh" ]; then
-      if [ "${_WEB_SH}" != "/bin/websh" ]; then
-        ln -sfn /bin/websh /bin/sh
+    if [ -x "/opt/local/bin/websh" ]; then
+      if [ "${_WEB_SH}" != "/opt/local/bin/websh" ]; then
+        ln -sfn /opt/local/bin/websh /bin/sh
         if [ -e "/usr/bin/sh" ]; then
-          ln -sfn /bin/websh /usr/bin/sh
+          ln -sfn /opt/local/bin/websh /usr/bin/sh
         fi
+        [ -x "/bin/websh" ] && [ ! -L "/bin/websh" ] && ln -sfn /opt/local/bin/websh /bin/websh
       fi
     else
       if [ -x "/bin/dash" ]; then
@@ -2458,8 +2459,8 @@ else
           fi
         fi
       fi
-      curl -s -A iCab "${_urlHmr}/helpers/websh.sh.txt" -o /bin/websh
-      chmod 755 /bin/websh
+      curl -s -A iCab "${_urlHmr}/helpers/websh.sh.txt" -o /opt/local/bin/websh
+      chmod 755 /opt/local/bin/websh
     fi
   fi
   rm -f ${_TMP}/*.txt

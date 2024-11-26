@@ -4566,7 +4566,7 @@ _switch_to_dash() {
             _SHELL_TEST=$(grep -I -o "\#\!.*/bin/sh" $f 2>&1)
             if [[ "${_SHELL_TEST}" =~ "/bin/sh" ]] \
               && [ "$f" != "/etc/init.d/clean-boa-env" ] \
-              && [ "$f" != "/bin/websh" ]; then
+              && [ "$f" != "/opt/local/bin/websh" ]; then
               sed -i "s/\/bin\/sh/\/bin\/dash/g" $f &> /dev/null
               wait
             fi
@@ -4574,7 +4574,7 @@ _switch_to_dash() {
             _SHELL_TEST=$(grep -I -o "\#\!.*/usr/bin/sh" $f 2>&1)
             if [[ "${_SHELL_TEST}" =~ "/bin/sh" ]] \
               && [ "$f" != "/etc/init.d/clean-boa-env" ] \
-              && [ "$f" != "/bin/websh" ]; then
+              && [ "$f" != "/opt/local/bin/websh" ]; then
               sed -i "s/\/usr\/bin\/sh/\/bin\/dash/g" $f &> /dev/null
               wait
             fi
@@ -4644,7 +4644,7 @@ _switch_to_bash() {
             _SHELL_TEST=$(grep -I -o "\#\!.*/bin/sh" $f 2>&1)
             if [[ "${_SHELL_TEST}" =~ "/bin/sh" ]] \
               && [ "$f" != "/etc/init.d/clean-boa-env" ] \
-              && [ "$f" != "/bin/websh" ]; then
+              && [ "$f" != "/opt/local/bin/websh" ]; then
               sed -i "s/\/bin\/sh/\/bin\/bash/g" $f &> /dev/null
               wait
             fi
@@ -4652,7 +4652,7 @@ _switch_to_bash() {
             _SHELL_TEST=$(grep -I -o "\#\!.*/usr/bin/sh" $f 2>&1)
             if [[ "${_SHELL_TEST}" =~ "/bin/sh" ]] \
               && [ "$f" != "/etc/init.d/clean-boa-env" ] \
-              && [ "$f" != "/bin/websh" ]; then
+              && [ "$f" != "/opt/local/bin/websh" ]; then
               sed -i "s/\/usr\/bin\/sh/\/bin\/bash/g" $f &> /dev/null
               wait
             fi
@@ -4887,9 +4887,9 @@ _strict_bin_permissions() {
     fi
   fi
 
-  cp -af ${_bldPth}/aegir/helpers/websh.sh.txt /bin/websh
-  chmod 755 /bin/websh
-  chown root:root /bin/websh
+  cp -af ${_bldPth}/aegir/helpers/websh.sh.txt /opt/local/bin/websh
+  chmod 755 /opt/local/bin/websh
+  chown root:root /opt/local/bin/websh
   chown root:root /etc/passwd*
   chmod 644 /etc/passwd*
   chown root:shadow /etc/shadow*
