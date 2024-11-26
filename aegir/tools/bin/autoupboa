@@ -8,6 +8,16 @@ export _xSrl=550devT01
 
 _barCnf="/root/.barracuda.cnf"
 
+_turn_off_apparmor() {
+  rm -rf /var/cache/apparmor/*
+  apparmor_parser -r /etc/apparmor.d/* 2> /dev/null
+  aa-complain /etc/apparmor.d/* 2> /dev/null
+  service apparmor stop 2> /dev/null
+  aa-teardown 2> /dev/null
+  service auditd stop 2> /dev/null
+}
+[ ! -e "/root/.keep_apparmor_on.cnf" ] && _turn_off_apparmor
+
 # Define default values
 _CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
 _DEFAULT_CPU_CRIT_RATIO="6.1"
