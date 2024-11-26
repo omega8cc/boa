@@ -102,7 +102,7 @@
 
   # Allow execution of necessary binaries
   /bin/dash mrix,
-  /bin/websh mrix,
+  /opt/local/bin/websh mrix,
   /usr/bin/mysecureshell mrix,
   /usr/bin/python* mrix,
   /usr/local/bin/lshell mrix,

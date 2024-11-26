@@ -1747,15 +1747,29 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/websh.ctrl.f85.${_tRee}.${_xSrl}.pid" ]; then
-    mv -f /bin/websh /var/xdrago/websh.sh.old
-    curl ${_crlGet} "${_urlHmr}/helpers/websh.sh.txt" -o /bin/websh
-    if [ -e "/bin/websh" ]; then
-      chmod 755 /bin/websh
-      chown root:root /bin/websh
-      touch ${_pthLog}/websh.ctrl.f85.${_tRee}.${_xSrl}.pid
+    && [ ! -e "${_pthLog}/websh.ctrl.f84.${_tRee}.${_xSrl}.pid" ]; then
+    mv -f /opt/local/bin/websh /var/xdrago/websh.sh.old
+    curl ${_crlGet} "${_urlHmr}/helpers/websh.sh.txt" -o /opt/local/bin/websh
+    if [ -e "/opt/local/bin/websh" ] \
+      && grep -i '_forward_to_shell' /opt/local/bin/websh &> /dev/null; then
+      chmod 755 /opt/local/bin/websh
+      chown root:root /opt/local/bin/websh
+      [ -x "/bin/websh" ] && [ ! -L "/bin/websh" ] && ln -sfn /opt/local/bin/websh /bin/websh
+      touch ${_pthLog}/websh.ctrl.f84.${_tRee}.${_xSrl}.pid
     else
-      mv -f /var/xdrago/websh.sh.old /bin/websh
+      mv -f /var/xdrago/websh.sh.old /opt/local/bin/websh
+    fi
+    _WEB_SH=$(readlink -n /bin/sh 2>&1)
+    _WEB_SH=$(echo -n ${_WEB_SH} | tr -d "\n" 2>&1)
+    if [ -x "/opt/local/bin/websh" ] \
+      && grep -i '_forward_to_shell' /opt/local/bin/websh &> /dev/null; then
+      if [ "${_WEB_SH}" != "/opt/local/bin/websh" ]; then
+        ln -sfn /opt/local/bin/websh /bin/sh
+        if [ -e "/usr/bin/sh" ]; then
+          ln -sfn /opt/local/bin/websh /usr/bin/sh
+        fi
+        [ -x "/bin/websh" ] && [ ! -L "/bin/websh" ] && ln -sfn /opt/local/bin/websh /bin/websh
+      fi
     fi
   fi
 
@@ -3017,6 +3031,7 @@ _update_boa_tools() {
            verifyvhostsdns \
            vhostcheck \
            weblogx \
+           websh \
            xboa"
   for _cbn in ${_boaBins}; do
     if [ -e "${_optBin}/${_cbn}" ]; then
@@ -3069,12 +3084,13 @@ _update_boa_tools() {
   echo "### ${_TODAY} ###" >> ${_optBin}/vhostcheck
 
   if [ ! -e "/data/u" ] && [ -e "${_optBin}/killer" ] && [ ! -e "${_usrBin}/killer" ]; then
-    rm -f ${_usrBin}/{autoinit*,barracuda*,boa*,killer*,octopus*}
+    rm -f ${_usrBin}/{autoinit*,barracuda*,boa*,killer*,octopus*,websh*}
     ln -s ${_optBin}/autoinit    ${_usrBin}/autoinit
     ln -s ${_optBin}/barracuda   ${_usrBin}/barracuda
     ln -s ${_optBin}/boa         ${_usrBin}/boa
     ln -s ${_optBin}/killer      ${_usrBin}/killer
     ln -s ${_optBin}/octopus     ${_usrBin}/octopus
+    ln -s ${_optBin}/websh       ${_usrBin}/websh
   fi
 
   [ -e "/root/.backboa.autoupdate" ] && rm -f /root/.backboa.autoupdate
@@ -3097,7 +3113,7 @@ _update_boa_tools() {
   chmod 700 ${_optBin}/{autoinit,autodaedalus,autochimaera,autobeowulf,autoupboa,backboa,duobackboa,mergecsf,verifyvhostsdns}
   chmod 700 ${_optBin}/{barracuda,boa,ffmirror,killer,mycnfup,octopus,syncpass,xboa,weblogx,sqlclean,perftest,dcysetup}
   chmod 700 ${_optBin}/{fancynow,codebasecheck,vhostcheck,memorytuner,mysqltuner5,mysqltuner8,smtpgapps,setprio}
-  chmod 755 ${_optBin}/{randpass,sqlmagic,thinkdifferent}
+  chmod 755 ${_optBin}/{randpass,sqlmagic,thinkdifferent,websh}
 }
 
 _if_update_boa_key_tools_only() {
