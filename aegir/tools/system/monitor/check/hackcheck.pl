@@ -34,7 +34,7 @@ sub makeactions
   }
   local(@MYARR)=`tail --lines=9999 /var/log/auth.log 2>&1`;
   local($sumar) = 0;
-  local($maxnumber) = 4;
+  local($maxnumber) = 0;
   foreach $line (@MYARR) {
     $line =~ s/[^a-zA-Z0-9\:\s\t\/\-\@\_\(\)\*\[\]\.\,]//g;
     if ($line =~ /(Failed password for root)/i) {
