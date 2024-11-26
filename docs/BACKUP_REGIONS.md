@@ -22,6 +22,86 @@ The following regions are supported across various storage services:
 
 ---
 
+#### **Wasabi Hot Cloud Storage (wasabi)**
+
+- **Bucket Creation:** Supported automatically.
+- **Supported Regions:**
+
+| Data Center Location     | Region Code     |
+|--------------------------|-----------------|
+| Virginia, USA            | `us-east-1`     |
+| Virginia, USA            | `us-east-2`     |
+| Oregon, USA              | `us-west-1`     |
+| Plano, Texas, USA        | `us-central-1`  |
+| Toronto, Canada          | `ca-central-1`  |
+| London, England          | `eu-west-1`     |
+| Paris, France            | `eu-west-2`     |
+| Amsterdam, Netherlands   | `eu-central-1`  |
+| Frankfurt, Germany       | `eu-central-2`  |
+| Milan, Italy             | `eu-south-1`    |
+| Tokyo, Japan             | `ap-northeast-1`|
+| Osaka, Japan             | `ap-northeast-2`|
+| Singapore                | `ap-southeast-1`|
+| Sydney, Australia        | `ap-southeast-2`|
+
+For more, refer to [Wasabi Regions](https://wasabi.com/company/storage-regions).
+
+---
+
+#### **Backblaze B2 (b2)**
+
+- **Bucket Creation:** Automatic bucket creation is supported with proper credentials.
+- **Supported Regions:**
+
+| Data Center Location    | Region Code  |
+|-------------------------|--------------|
+| Amsterdam, Netherlands  | `eu-central` |
+| Reston, Virginia        | `us-east`    |
+| Sacramento, California  | `us-west`    |
+| Stockton, California    | `us-west`    |
+| Phoenix, Arizona        | `us-west`    |
+
+Backblaze currently has data centers in Sacramento, California; Stockton, California; Phoenix, Arizona; Reston, Virginia; and Amsterdam, Netherlands.
+
+Accounts that use the US-West region store data in both the Sacramento and Phoenix data centers.
+
+Accounts that use the EU-Central region store data in the Amsterdam data center. If you are in the European Union or in or near Europe, then the transfer rate for Backblaze Computer Backup and Backblaze B2 should have less latency. As a result, you can get better transfer rates and more bandwidth per thread.
+
+Accounts that use the US-East region store data in the Reston, Virginia data center. This is the newest Backblaze data center. The data center is operated by Coresight, a well-known and respected data center operator. This data center is the core of the Backblaze eastern region joining the western region (US West) and the central European region (EU Central).
+
+When you create a Backblaze B2 account, you choose whether that account’s data is stored in the US East region, the US West region, or the EU Central region. The choice that you make during account creation dictates where all of that account’s data is stored. After you create your Backblaze B2 account, you cannot change your selected region.
+
+This means that you need separate accounts per region, if needed and the region codes in the table above are for informational purposes only.
+
+More details available at the [Backblaze B2 Regions documentation](https://www.backblaze.com/docs/cloud-storage-data-regions).
+
+
+---
+
+#### **DigitalOcean Spaces (do-spaces)**
+
+- **Bucket Creation:** **Automatic** if credentials have write permissions.
+- **Supported Regions:**
+
+| Data Center Location       | Region Code |
+|----------------------------|-------------|
+| New York City, United States | `nyc3`    |
+| San Francisco, United States | `sfo2`    |
+| San Francisco, United States | `sfo3`    |
+| Amsterdam, Netherlands     | `ams3`      |
+| Singapore                  | `sgp1`      |
+| London, United Kingdom     | `lon1`      |
+| Frankfurt, Germany         | `fra1`      |
+| Toronto, Canada            | `tor1`      |
+| Bangalore, India           | `blr1`      |
+| Sydney, Australia          | `syd1`      |
+
+For the most current and detailed information, please refer to DigitalOcean's [Regional Availability documentation](https://docs.digitalocean.com/platform/regional-availability/).
+
+Refer to [DigitalOcean Spaces Regions documentation](https://docs.digitalocean.com/platform/regional-availability/) for details.
+
+---
+
 #### **Amazon Web Services (aws, aws-one-zone, aws-standard-ia)**
 
 - **Bucket Creation:** Supported but unreliable for automatic creation due to propagation delays between AWS regions. Manual bucket creation is recommended.
@@ -62,35 +142,6 @@ The following regions are supported across various storage services:
 | AWS GovCloud (US-West)       | `us-gov-west-1`   |
 
 For more details, refer to the [AWS Regional Endpoints documentation](https://docs.aws.amazon.com/general/latest/gr/rande.html#s3_region).
-
----
-
-#### **Backblaze B2 (b2)**
-
-- **Bucket Creation:** Automatic bucket creation is supported with proper credentials.
-- **Supported Regions:**
-
-| Data Center Location    | Region Code  |
-|-------------------------|--------------|
-| Amsterdam, Netherlands  | `eu-central` |
-| Reston, Virginia        | `us-east`    |
-| Sacramento, California  | `us-west`    |
-| Stockton, California    | `us-west`    |
-| Phoenix, Arizona        | `us-west`    |
-
-Backblaze currently has data centers in Sacramento, California; Stockton, California; Phoenix, Arizona; Reston, Virginia; and Amsterdam, Netherlands.
-
-Accounts that use the US-West region store data in both the Sacramento and Phoenix data centers.
-
-Accounts that use the EU-Central region store data in the Amsterdam data center. If you are in the European Union or in or near Europe, then the transfer rate for Backblaze Computer Backup and Backblaze B2 should have less latency. As a result, you can get better transfer rates and more bandwidth per thread.
-
-Accounts that use the US-East region store data in the Reston, Virginia data center. This is the newest Backblaze data center. The data center is operated by Coresight, a well-known and respected data center operator. This data center is the core of the Backblaze eastern region joining the western region (US West) and the central European region (EU Central).
-
-When you create a Backblaze B2 account, you choose whether that account’s data is stored in the US East region, the US West region, or the EU Central region. The choice that you make during account creation dictates where all of that account’s data is stored. After you create your Backblaze B2 account, you cannot change your selected region.
-
-This means that you need separate accounts per region, if needed and the region codes in the table above are for informational purposes only.
-
-More details available at the [Backblaze B2 Regions documentation](https://www.backblaze.com/docs/cloud-storage-data-regions).
 
 ---
 
@@ -170,31 +221,6 @@ For detailed regions, refer to [Azure Blob Storage Regions](https://azure.micros
 
 ---
 
-#### **UpCloud Object Storage (upcloud)**
-
-- **Bucket Creation:** **Manual only**—requires creating the bucket in the UpCloud control panel before use.
-- **Supported Regions:**
-
-| Data Center Location       | Region Code   |
-|----------------------------|---------------|
-| Sydney, Australia          | `au-syd1`     |
-| Frankfurt, Germany         | `de-fra1`     |
-| Madrid, Spain              | `es-mad1`     |
-| Helsinki, Finland          | `fi-hel1`     |
-| Helsinki, Finland          | `fi-hel2`     |
-| Amsterdam, Netherlands     | `nl-ams1`     |
-| Warsaw, Poland             | `pl-waw1`     |
-| London, United Kingdom     | `uk-lon1`     |
-| Stockholm, Sweden          | `se-sto1`     |
-| Singapore                  | `sg-sin1`     |
-| Chicago, United States     | `us-chi1`     |
-| New York City, United States | `us-nyc1`   |
-| San Jose, United States    | `us-sjo1`     |
-
-For more detailed information, please refer to UpCloud's official documentation on [data center locations](https://upcloud.com/docs/products/block-storage/availability).
-
----
-
 #### **IBM Cloud Object Storage (ibm)**
 
 - **Bucket Creation:** Must be **manually created** before use.
@@ -215,55 +241,6 @@ For more detailed information, please refer to UpCloud's official documentation 
 
 For more details, refer to the [IBM Cloud Regions documentation](https://cloud.ibm.com/docs/cloud-object-storage?topic=cloud-object-storage-endpoints).
 
----
-
-#### **Wasabi Hot Cloud Storage (wasabi)**
-
-- **Bucket Creation:** Supported automatically.
-- **Supported Regions:**
-
-| Data Center Location     | Region Code     |
-|--------------------------|-----------------|
-| Virginia, USA            | `us-east-1`     |
-| Virginia, USA            | `us-east-2`     |
-| Oregon, USA              | `us-west-1`     |
-| Plano, Texas, USA        | `us-central-1`  |
-| Toronto, Canada          | `ca-central-1`  |
-| London, England          | `eu-west-1`     |
-| Paris, France            | `eu-west-2`     |
-| Amsterdam, Netherlands   | `eu-central-1`  |
-| Frankfurt, Germany       | `eu-central-2`  |
-| Milan, Italy             | `eu-south-1`    |
-| Tokyo, Japan             | `ap-northeast-1`|
-| Osaka, Japan             | `ap-northeast-2`|
-| Singapore                | `ap-southeast-1`|
-| Sydney, Australia        | `ap-southeast-2`|
-
-For more, refer to [Wasabi Regions](https://wasabi.com/company/storage-regions).
-
----
-
-#### **DigitalOcean Spaces (do-spaces)**
-
-- **Bucket Creation:** **Automatic** if credentials have write permissions.
-- **Supported Regions:**
-
-| Data Center Location       | Region Code |
-|----------------------------|-------------|
-| New York City, United States | `nyc3`    |
-| San Francisco, United States | `sfo2`    |
-| San Francisco, United States | `sfo3`    |
-| Amsterdam, Netherlands     | `ams3`      |
-| Singapore                  | `sgp1`      |
-| London, United Kingdom     | `lon1`      |
-| Frankfurt, Germany         | `fra1`      |
-| Toronto, Canada            | `tor1`      |
-| Bangalore, India           | `blr1`      |
-| Sydney, Australia          | `syd1`      |
-
-For the most current and detailed information, please refer to DigitalOcean's [Regional Availability documentation](https://docs.digitalocean.com/platform/regional-availability/).
-
-Refer to [DigitalOcean Spaces Regions documentation](https://docs.digitalocean.com/platform/regional-availability/) for details.
 
 ---
 
@@ -294,6 +271,31 @@ Refer to [DigitalOcean Spaces Regions documentation](https://docs.digitalocean.c
 | Washington, DC, USA        | `us-iad-1`       |
 
 For more detailed information, please refer to Akamai's official [Object Storage documentation](https://techdocs.akamai.com/cloud-computing/docs/object-storage).
+
+---
+
+#### **UpCloud Object Storage (upcloud)**
+
+- **Bucket Creation:** **Manual only**—requires creating the bucket in the UpCloud control panel before use.
+- **Supported Regions:**
+
+| Data Center Location       | Region Code   |
+|----------------------------|---------------|
+| Sydney, Australia          | `au-syd1`     |
+| Frankfurt, Germany         | `de-fra1`     |
+| Madrid, Spain              | `es-mad1`     |
+| Helsinki, Finland          | `fi-hel1`     |
+| Helsinki, Finland          | `fi-hel2`     |
+| Amsterdam, Netherlands     | `nl-ams1`     |
+| Warsaw, Poland             | `pl-waw1`     |
+| London, United Kingdom     | `uk-lon1`     |
+| Stockholm, Sweden          | `se-sto1`     |
+| Singapore                  | `sg-sin1`     |
+| Chicago, United States     | `us-chi1`     |
+| New York City, United States | `us-nyc1`   |
+| San Jose, United States    | `us-sjo1`     |
+
+For more detailed information, please refer to UpCloud's official documentation on [data center locations](https://upcloud.com/docs/products/block-storage/availability).
 
 ---
 
