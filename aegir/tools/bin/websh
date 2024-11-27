@@ -6,7 +6,7 @@ _DEST_DRUSH="/opt/tools/drush/8/drush/drush.php"
 
 _forward_to_shell() {
   # Path to the underlying shell (dash in this case)
-  _shell="/bin/dash"
+  _shell="/bin/bash"
   # Name under which the shell should think it was invoked
   _shell_name="sh"
   # Arrays to hold options and positional parameters
@@ -103,6 +103,7 @@ fi
 
 if [[ ! "${_ARGS}" =~ "composer" ]] \
   && [[ ! "${_ARGS}" =~ "git" ]] \
+  && [[ ! "${_ARGS}" =~ "cd " ]] \
   && [[ ! "${_ARGS}" =~ "mysql" ]] \
   && [[ ! "${_ARGS}" =~ "sudo" ]]; then
   _ARR=
@@ -288,7 +289,7 @@ if [[ ! "${_ARGS}" =~ "composer" ]] \
 fi
 
 _C_ARR=
-if [[ "${_ARGS}" =~ "composer " ]]; then
+if [[ "${_ARGS}" =~ "composer " ]] && [[ ! "${_ARGS}" =~ "git remote add composer" ]]; then
   if [[ "${_ARGS}" =~ "set -m" ]]; then
     _C_RM=`echo -n ${_ARGS}  | grep -o "set -m\; composer "`
   else
