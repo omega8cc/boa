@@ -7820,9 +7820,11 @@ _pam_umask_check_fix() {
     chown www-data:www-data /var/www/.profile &> /dev/null
     chown www-data:www-data /var/www/nginx-default &> /dev/null
   fi
-  _SFTP_UMASK_TEST=$(grep "sftp-server -u 0002" /etc/ssh/sshd_config 2>&1)
-  if [[ ! "${_SFTP_UMASK_TEST}" =~ "sftp-server -u 0002" ]]; then
-    sed -e '/Subsystem\ssftp/s:server$:server -u 0002:' -i /etc/ssh/sshd_config
+  _SFTP_UMASK_TEST=$(grep "internal-sftp -u 0002" /etc/ssh/sshd_config 2>&1)
+  if [[ ! "${_SFTP_UMASK_TEST}" =~ "internal-sftp -u 0002" ]]; then
+    sed -i "s/^Subsystem.*//g" /etc/ssh/sshd_config
+    echo "Subsystem sftp internal-sftp -u 0002" >> /etc/ssh/sshd_config
+    sed -i "/^$/d" /etc/ssh/sshd_config
     _mrun "service ssh restart" 2> /dev/null
   fi
 }
@@ -8484,6 +8486,8 @@ _initd_update() {
     wait
     sed -i "s/^TCPKeepAlive.*//g" /etc/ssh/sshd_config &> /dev/null
     wait
+    sed -i "s/^Subsystem.*//g" /etc/ssh/sshd_config
+    wait
     echo >> /etc/ssh/sshd_config
     echo "IgnoreUserKnownHosts no" >> /etc/ssh/sshd_config
     if [ -e "/root/.ssh.auth.keys.only.cnf" ]; then
@@ -8497,6 +8501,7 @@ _initd_update() {
     echo "ClientAliveInterval 300" >> /etc/ssh/sshd_config
     echo "ClientAliveCountMax 10000" >> /etc/ssh/sshd_config
     echo "TCPKeepAlive yes" >> /etc/ssh/sshd_config
+    echo "Subsystem sftp internal-sftp -u 0002" >> /etc/ssh/sshd_config
     sed -i "/^$/d" /etc/ssh/sshd_config
     wait
     _mrun "service ssh reload" 2> /dev/null
