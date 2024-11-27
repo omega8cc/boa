@@ -2421,7 +2421,8 @@ else
   if [ -L "/bin/sh" ] && [ ! -e "/run/octopus_install_run.pid" ]; then
     _WEB_SH=$(readlink -n /bin/sh 2>&1)
     _WEB_SH=$(echo -n ${_WEB_SH} | tr -d "\n" 2>&1)
-    if [ -x "/opt/local/bin/websh" ]; then
+    if [ -x "/opt/local/bin/websh" ] \
+      && grep -i '_forward_to_shell' /opt/local/bin/websh &> /dev/null; then
       if [ "${_WEB_SH}" != "/opt/local/bin/websh" ]; then
         ln -sfn /opt/local/bin/websh /bin/sh
         if [ -e "/usr/bin/sh" ]; then
