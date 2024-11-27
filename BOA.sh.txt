@@ -507,9 +507,9 @@ _update_agents() {
       [ -e "/root/.hr.monitor.cnf" ] && rm -f /root/.hr.monitor.cnf
       [ -e "/root/.slow.cron.cnf" ] && rm -f /root/.slow.cron.cnf
       [ -e "/root/.tg.cnf" ] && rm -f /root/.tg.cnf
-      mysql -u root -e "SET GLOBAL max_connect_errors = 80;"
-      mysql -u root -e "SET GLOBAL max_connections = 100;"
-      mysql -u root -e "SET GLOBAL max_user_connections = 80;"
+      mysql -u root -e "SET GLOBAL max_connect_errors = 555;"
+      mysql -u root -e "SET GLOBAL max_connections = 111;"
+      mysql -u root -e "SET GLOBAL max_user_connections = 111;"
       mysql -u root -e "SET GLOBAL group_concat_max_len = 10000;"
     fi
     if [ "${InTest}" -ge "9" ] && [ "${InTest}" -le "50" ]; then
@@ -517,9 +517,9 @@ _update_agents() {
       [ -e "/root/.hr.monitor.cnf" ] && rm -f /root/.hr.monitor.cnf
       [ -e "/root/.slow.cron.cnf" ] && rm -f /root/.slow.cron.cnf
       [ -e "/root/.tg.cnf" ] && rm -f /root/.tg.cnf
-      mysql -u root -e "SET GLOBAL max_connect_errors = 80;"
-      mysql -u root -e "SET GLOBAL max_connections = 200;"
-      mysql -u root -e "SET GLOBAL max_user_connections = 80;"
+      mysql -u root -e "SET GLOBAL max_connect_errors = 777;"
+      mysql -u root -e "SET GLOBAL max_connections = 555;"
+      mysql -u root -e "SET GLOBAL max_user_connections = 111;"
       mysql -u root -e "SET GLOBAL group_concat_max_len = 10000;"
     fi
     if [ "${InTest}" -gt "50" ]; then
@@ -527,9 +527,9 @@ _update_agents() {
       [ ! -e "/root/.tg.cnf" ] && echo ${InTest} > /root/.tg.cnf
       [ ! -e "/root/.hr.monitor.cnf" ] && echo ${InTest} > /root/.hr.monitor.cnf
       [ ! -e "/root/.slow.cron.cnf" ] && echo ${InTest} > /root/.slow.cron.cnf
-      mysql -u root -e "SET GLOBAL max_connect_errors = 80;"
-      mysql -u root -e "SET GLOBAL max_connections = 200;"
-      mysql -u root -e "SET GLOBAL max_user_connections = 80;"
+      mysql -u root -e "SET GLOBAL max_connect_errors = 999;"
+      mysql -u root -e "SET GLOBAL max_connections = 777;"
+      mysql -u root -e "SET GLOBAL max_user_connections = 111;"
       mysql -u root -e "SET GLOBAL group_concat_max_len = 10000;"
     fi
     if [[ "${_PrTestPower}" =~ "POWER" ]]; then
@@ -537,9 +537,9 @@ _update_agents() {
       [ ! -e "/root/.fast.cron.cnf" ] && echo ${InTest} > /root/.fast.cron.cnf
       [ -e "/root/.hr.monitor.cnf" ] && rm -f /root/.hr.monitor.cnf
       [ -e "/root/.slow.cron.cnf" ] && rm -f /root/.slow.cron.cnf
-      mysql -u root -e "SET GLOBAL max_connect_errors = 150;"
-      mysql -u root -e "SET GLOBAL max_connections = 200;"
-      mysql -u root -e "SET GLOBAL max_user_connections = 150;"
+      mysql -u root -e "SET GLOBAL max_connect_errors = 555;"
+      mysql -u root -e "SET GLOBAL max_connections = 333;"
+      mysql -u root -e "SET GLOBAL max_user_connections = 111;"
       mysql -u root -e "SET GLOBAL group_concat_max_len = 10000;"
     fi
     if [[ "${_PrTestPhantom}" =~ "PHANTOM" ]]; then
@@ -547,9 +547,9 @@ _update_agents() {
       [ ! -e "/root/.fast.cron.cnf" ] && echo ${InTest} > /root/.fast.cron.cnf
       [ -e "/root/.hr.monitor.cnf" ] && rm -f /root/.hr.monitor.cnf
       [ -e "/root/.slow.cron.cnf" ] && rm -f /root/.slow.cron.cnf
-      mysql -u root -e "SET GLOBAL max_connect_errors = 150;"
-      mysql -u root -e "SET GLOBAL max_connections = 200;"
-      mysql -u root -e "SET GLOBAL max_user_connections = 150;"
+      mysql -u root -e "SET GLOBAL max_connect_errors = 777;"
+      mysql -u root -e "SET GLOBAL max_connections = 555;"
+      mysql -u root -e "SET GLOBAL max_user_connections = 333;"
       mysql -u root -e "SET GLOBAL group_concat_max_len = 10000;"
     fi
     if [[ "${_PrTestCluster}" =~ "CLUSTER" ]]; then
@@ -557,9 +557,9 @@ _update_agents() {
       [ ! -e "/root/.fast.cron.cnf" ] && echo ${InTest} > /root/.fast.cron.cnf
       [ -e "/root/.hr.monitor.cnf" ] && rm -f /root/.hr.monitor.cnf
       [ -e "/root/.slow.cron.cnf" ] && rm -f /root/.slow.cron.cnf
-      mysql -u root -e "SET GLOBAL max_connect_errors = 150;"
-      mysql -u root -e "SET GLOBAL max_connections = 200;"
-      mysql -u root -e "SET GLOBAL max_user_connections = 150;"
+      mysql -u root -e "SET GLOBAL max_connect_errors = 999;"
+      mysql -u root -e "SET GLOBAL max_connections = 777;"
+      mysql -u root -e "SET GLOBAL max_user_connections = 555;"
       mysql -u root -e "SET GLOBAL group_concat_max_len = 10000;"
     fi
     mysql -u root -e "SET GLOBAL optimizer_switch='derived_merge=off';"
