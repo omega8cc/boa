@@ -608,7 +608,6 @@ _update_agents() {
 
   if [ -e "/var/aegir/drush" ]; then
 
-    [ ! -e "/var/xdrago/backup/run" ] && mkdir -p /var/xdrago/backup/run
     [ ! -e "/var/xdrago/monitor/check" ] && mkdir -p /var/xdrago/monitor/check
     [ ! -e "/var/xdrago/monitor/log" ] && mkdir -p /var/xdrago/monitor/log
 
@@ -660,132 +659,6 @@ _update_agents() {
 
     [ -e "/var/xdrago/monitor/hackcheck.archive.log" ] && rm -f /var/xdrago/monitor/.scan_nginx_arch*
     [ -e "/var/xdrago/monitor/hackcheck.archive.log" ] && mv -f /var/xdrago/monitor/*.log /var/xdrago/monitor/log/
-  fi
-
-  if [ -d "/var/xdrago/backup/run" ] \
-    && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/install_dependencies.sh.ctrl.f93.${_tRee}.${_xSrl}.pid" ]; then
-    if [ -e "/var/xdrago/backup/run/install_dependencies.sh" ]; then
-      mv -f /var/xdrago/backup/run/install_dependencies.sh /var/xdrago/backup/run/install_dependencies.sh.old
-    fi
-    curl ${_crlGet} "${_urlHmr}/tools/system/backup/run/install_dependencies.sh" -o /var/xdrago/backup/run/install_dependencies.sh
-    if [ -e "/var/xdrago/backup/run/install_dependencies.sh" ]; then
-      chmod 700 /var/xdrago/backup/run/install_dependencies.sh
-      chown root:root /var/xdrago/backup/run/install_dependencies.sh
-      touch ${_pthLog}/install_dependencies.sh.ctrl.f93.${_tRee}.${_xSrl}.pid
-    else
-      if [ -e "/var/xdrago/backup/run/install_dependencies.sh.old" ]; then
-        mv -f /var/xdrago/backup/run/install_dependencies.sh.old /var/xdrago/backup/run/install_dependencies.sh
-      fi
-    fi
-  fi
-
-  if [ -d "/var/xdrago/backup/run" ] \
-    && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/create_credentials_templates.sh.ctrl.f93.${_tRee}.${_xSrl}.pid" ]; then
-    if [ -e "/var/xdrago/backup/run/create_credentials_templates.sh" ]; then
-      mv -f /var/xdrago/backup/run/create_credentials_templates.sh /var/xdrago/backup/run/create_credentials_templates.sh.old
-    fi
-    curl ${_crlGet} "${_urlHmr}/tools/system/backup/run/create_credentials_templates.sh" -o /var/xdrago/backup/run/create_credentials_templates.sh
-    if [ -e "/var/xdrago/backup/run/create_credentials_templates.sh" ]; then
-      chmod 700 /var/xdrago/backup/run/create_credentials_templates.sh
-      chown root:root /var/xdrago/backup/run/create_credentials_templates.sh
-      touch ${_pthLog}/create_credentials_templates.sh.ctrl.f93.${_tRee}.${_xSrl}.pid
-    else
-      if [ -e "/var/xdrago/backup/run/create_credentials_templates.sh.old" ]; then
-        mv -f /var/xdrago/backup/run/create_credentials_templates.sh.old /var/xdrago/backup/run/create_credentials_templates.sh
-      fi
-    fi
-  fi
-
-  if [ -d "/var/xdrago/backup/run" ] \
-    && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/create_global_paths_config.sh.ctrl.f91.${_tRee}.${_xSrl}.pid" ]; then
-    if [ -e "/var/xdrago/backup/run/create_global_paths_config.sh" ]; then
-      mv -f /var/xdrago/backup/run/create_global_paths_config.sh /var/xdrago/backup/run/create_global_paths_config.sh.old
-    fi
-    curl ${_crlGet} "${_urlHmr}/tools/system/backup/run/create_global_paths_config.sh" -o /var/xdrago/backup/run/create_global_paths_config.sh
-    if [ -e "/var/xdrago/backup/run/create_global_paths_config.sh" ]; then
-      chmod 700 /var/xdrago/backup/run/create_global_paths_config.sh
-      chown root:root /var/xdrago/backup/run/create_global_paths_config.sh
-      touch ${_pthLog}/create_global_paths_config.sh.ctrl.f91.${_tRee}.${_xSrl}.pid
-    else
-      if [ -e "/var/xdrago/backup/run/create_global_paths_config.sh.old" ]; then
-        mv -f /var/xdrago/backup/run/create_global_paths_config.sh.old /var/xdrago/backup/run/create_global_paths_config.sh
-      fi
-    fi
-  fi
-
-  if [ -d "/var/xdrago/backup/run" ] \
-    && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/create_user_paths_config.sh.ctrl.f89.${_tRee}.${_xSrl}.pid" ]; then
-    if [ -e "/var/xdrago/backup/run/create_user_paths_config.sh" ]; then
-      mv -f /var/xdrago/backup/run/create_user_paths_config.sh /var/xdrago/backup/run/create_user_paths_config.sh.old
-    fi
-    curl ${_crlGet} "${_urlHmr}/tools/system/backup/run/create_user_paths_config.sh" -o /var/xdrago/backup/run/create_user_paths_config.sh
-    if [ -e "/var/xdrago/backup/run/create_user_paths_config.sh" ]; then
-      chmod 700 /var/xdrago/backup/run/create_user_paths_config.sh
-      chown root:root /var/xdrago/backup/run/create_user_paths_config.sh
-      touch ${_pthLog}/create_user_paths_config.sh.ctrl.f89.${_tRee}.${_xSrl}.pid
-    else
-      if [ -e "/var/xdrago/backup/run/create_user_paths_config.sh.old" ]; then
-        mv -f /var/xdrago/backup/run/create_user_paths_config.sh.old /var/xdrago/backup/run/create_user_paths_config.sh
-      fi
-    fi
-  fi
-
-  if [ -d "/var/xdrago/backup/run" ] \
-    && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/create_cron_entries.sh.ctrl.f88.${_tRee}.${_xSrl}.pid" ]; then
-    if [ -e "/var/xdrago/backup/run/create_cron_entries.sh" ]; then
-      mv -f /var/xdrago/backup/run/create_cron_entries.sh /var/xdrago/backup/run/create_cron_entries.sh.old
-    fi
-    curl ${_crlGet} "${_urlHmr}/tools/system/backup/run/create_cron_entries.sh" -o /var/xdrago/backup/run/create_cron_entries.sh
-    if [ -e "/var/xdrago/backup/run/create_cron_entries.sh" ]; then
-      chmod 700 /var/xdrago/backup/run/create_cron_entries.sh
-      chown root:root /var/xdrago/backup/run/create_cron_entries.sh
-      touch ${_pthLog}/create_cron_entries.sh.ctrl.f88.${_tRee}.${_xSrl}.pid
-    else
-      if [ -e "/var/xdrago/backup/run/create_cron_entries.sh.old" ]; then
-        mv -f /var/xdrago/backup/run/create_cron_entries.sh.old /var/xdrago/backup/run/create_cron_entries.sh
-      fi
-    fi
-  fi
-
-  if [ -d "/var/xdrago/backup/run" ] \
-    && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/create_readme.sh.ctrl.f92.${_tRee}.${_xSrl}.pid" ]; then
-    if [ -e "/var/xdrago/backup/run/create_readme.sh" ]; then
-      mv -f /var/xdrago/backup/run/create_readme.sh /var/xdrago/backup/run/create_readme.sh.old
-    fi
-    curl ${_crlGet} "${_urlHmr}/tools/system/backup/run/create_readme.sh" -o /var/xdrago/backup/run/create_readme.sh
-    if [ -e "/var/xdrago/backup/run/create_readme.sh" ]; then
-      chmod 700 /var/xdrago/backup/run/create_readme.sh
-      chown root:root /var/xdrago/backup/run/create_readme.sh
-      touch ${_pthLog}/create_readme.sh.ctrl.f92.${_tRee}.${_xSrl}.pid
-    else
-      if [ -e "/var/xdrago/backup/run/create_readme.sh.old" ]; then
-        mv -f /var/xdrago/backup/run/create_readme.sh.old /var/xdrago/backup/run/create_readme.sh
-      fi
-    fi
-  fi
-
-  if [ -d "/var/xdrago/backup/run" ] \
-    && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/create_config_readme.sh.ctrl.f91.${_tRee}.${_xSrl}.pid" ]; then
-    if [ -e "/var/xdrago/backup/run/create_config_readme.sh" ]; then
-      mv -f /var/xdrago/backup/run/create_config_readme.sh /var/xdrago/backup/run/create_config_readme.sh.old
-    fi
-    curl ${_crlGet} "${_urlHmr}/tools/system/backup/run/create_config_readme.sh" -o /var/xdrago/backup/run/create_config_readme.sh
-    if [ -e "/var/xdrago/backup/run/create_config_readme.sh" ]; then
-      chmod 700 /var/xdrago/backup/run/create_config_readme.sh
-      chown root:root /var/xdrago/backup/run/create_config_readme.sh
-      touch ${_pthLog}/create_config_readme.sh.ctrl.f91.${_tRee}.${_xSrl}.pid
-    else
-      if [ -e "/var/xdrago/backup/run/create_config_readme.sh.old" ]; then
-        mv -f /var/xdrago/backup/run/create_config_readme.sh.old /var/xdrago/backup/run/create_config_readme.sh
-      fi
-    fi
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
@@ -2351,8 +2224,9 @@ _if_fix_lshell() {
     [ ! -d "/usr/local/etc" ] && mkdir -p /usr/local/etc
     ln -sfn /etc/lshell.conf /usr/local/etc/lshell.conf
   fi
-  _LSHELL_VRN=0.10.7.1
+  _LSHELL_VRN=0.10
   _PATH_LSHELL="${_usrBin}/lshell"
+  _LSHELL_CHK_VRN=0.10
   _LSHELL_FORCE_REINSTALL=NO
   _isLshell=$(which lshell 2>&1)
   _LSHELL_ITD=$(${_isLshell} --version 2>&1 \
@@ -2361,6 +2235,7 @@ _if_fix_lshell() {
     | awk '{ print $1}' 2>&1)
   if [ -z "${_isLshell}" ] \
     || [ -z "${_PATH_LSHELL}" ] \
+    || [ "${_LSHELL_ITD}" != "${_LSHELL_CHK_VRN}" ] \
     || [[ "${_LSHELL_ITD}" =~ "Traceback" ]] \
     || [[ "${_LSHELL_ITD}" =~ "bad interpreter" ]] \
     || [[ "${_LSHELL_ITD}" =~ "ImportError" ]]; then
@@ -3010,7 +2885,6 @@ _update_boa_tools() {
            barracuda \
            boa \
            codebasecheck \
-           dcysetup \
            fancynow \
            ffmirror \
            killer \
@@ -3070,7 +2944,6 @@ _update_boa_tools() {
   echo "### ${_TODAY} ###" >> ${_optBin}/barracuda
   echo "### ${_TODAY} ###" >> ${_optBin}/boa
   echo "### ${_TODAY} ###" >> ${_optBin}/codebasecheck
-  echo "### ${_TODAY} ###" >> ${_optBin}/dcysetup
   echo "### ${_TODAY} ###" >> ${_optBin}/fancynow
   echo "### ${_TODAY} ###" >> ${_optBin}/killer
   echo "### ${_TODAY} ###" >> ${_optBin}/memorytuner
@@ -3097,21 +2970,22 @@ _update_boa_tools() {
   if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ]; then
     echo "The duplicity backup is running!"
   else
-    rm -f ${_optBin}/{backboa,duobackboa,multiback,mybackup}
+    rm -f ${_optBin}/{backboa,duobackboa}
     curl ${_crlGet} "${_urlHmr}/${_tBn}/backboa"      -o ${_optBin}/backboa
     curl ${_crlGet} "${_urlHmr}/${_tBn}/duobackboa"   -o ${_optBin}/duobackboa
-    curl ${_crlGet} "${_urlHmr}/${_tBn}/multiback"    -o ${_optBin}/multiback
-    curl ${_crlGet} "${_urlHmr}/${_tBn}/mybackup"     -o ${_optBin}/mybackup
-    chmod 700 ${_optBin}/{backboa,duobackboa,multiback}
-    chmod 755 ${_optBin}/{mybackup}
+    chmod 700 ${_optBin}/{backboa,duobackboa}
+    if [ ! -e "${_pthLog}/duplicity.ctrl.${_tRee}.${_xSrl}.pid" ] \
+      && [ -x "/usr/local/bin/duplicity" ] \
+      && [ -e "/root/.cache/duplicity" ] \
+      && [ -e "/var/aegir/drush" ] \
+      && [ -e "/var/xdrago" ]; then
+#       backboa install
+      touch ${_pthLog}/duplicity.ctrl.${_tRee}.${_xSrl}.pid
+      touch /root/.backboa.autoupdate
   fi
-
-  if [ -e "/data/u" ] && [ -e "${_optBin}/mybackup" ] && [ ! -e "${_usrBin}/mybackup" ]; then
-    ln -s ${_optBin}/mybackup ${_usrBin}/mybackup
   fi
-
   chmod 700 ${_optBin}/{autoinit,autodaedalus,autochimaera,autobeowulf,autoupboa,backboa,duobackboa,mergecsf,verifyvhostsdns}
-  chmod 700 ${_optBin}/{barracuda,boa,ffmirror,killer,mycnfup,octopus,syncpass,xboa,weblogx,sqlclean,perftest,dcysetup}
+  chmod 700 ${_optBin}/{barracuda,boa,ffmirror,killer,mycnfup,octopus,syncpass,xboa,weblogx,sqlclean,perftest}
   chmod 700 ${_optBin}/{fancynow,codebasecheck,vhostcheck,memorytuner,mysqltuner5,mysqltuner8,smtpgapps,setprio}
   chmod 755 ${_optBin}/{randpass,sqlmagic,thinkdifferent,websh}
 }
