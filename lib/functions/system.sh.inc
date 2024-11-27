@@ -8489,6 +8489,8 @@ _initd_update() {
     wait
     sed -i "s/^PermitEmptyPasswords.*//g" /etc/ssh/sshd_config &> /dev/null
     wait
+    sed -i "s/^KbdInteractiveAuthentication.*//g" /etc/ssh/sshd_config &> /dev/null
+    wait
     sed -i "s/^Subsystem.*//g" /etc/ssh/sshd_config
     wait
     echo >> /etc/ssh/sshd_config
@@ -8505,6 +8507,7 @@ _initd_update() {
     echo "ClientAliveCountMax 10000" >> /etc/ssh/sshd_config
     echo "TCPKeepAlive yes" >> /etc/ssh/sshd_config
     echo "PermitEmptyPasswords no" >> /etc/ssh/sshd_config
+    echo "KbdInteractiveAuthentication no" >> /etc/ssh/sshd_config
     echo "Subsystem sftp internal-sftp -u 0002" >> /etc/ssh/sshd_config
     sed -i "/^$/d" /etc/ssh/sshd_config
     wait
