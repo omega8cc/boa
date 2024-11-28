@@ -75,7 +75,6 @@ This means that you need separate accounts per region, if needed and the region 
 
 More details available at the [Backblaze B2 Regions documentation](https://www.backblaze.com/docs/cloud-storage-data-regions).
 
-
 ---
 
 #### **DigitalOcean Spaces (do-spaces)**
@@ -104,7 +103,7 @@ Refer to [DigitalOcean Spaces Regions documentation](https://docs.digitalocean.c
 
 #### **Amazon Web Services (aws, aws-one-zone, aws-standard-ia)**
 
-- **Bucket Creation:** Supported but unreliable for automatic creation due to propagation delays between AWS regions. Manual bucket creation is recommended.
+- **Bucket Creation:** Supported but unreliable for automatic creation due to propagation delays between AWS regions. Manual bucket creation is recommended -- see Required Bucket Naming Convention below.
 - **Supported Regions:**
 
 | Region Name                  | Region Code       |
@@ -221,9 +220,33 @@ For detailed regions, refer to [Azure Blob Storage Regions](https://azure.micros
 
 ---
 
+#### **Cloudflare R2 Object Storage (cloudflare)**
+
+- **Bucket Creation:** Must be **manually created** before use -- see Required Bucket Naming Convention below.
+- **Supported Regions:**
+
+| Region Name            | Location Hints  |
+|------------------------|-----------------|
+| Western North America  | `wnam`          |
+| Eastern North America  | `enam`          |
+| Western Europe         | `weur`          |
+| Eastern Europe         | `eeur`          |
+| Asia-Pacific           | `apac`          |
+| Oceania                | `oc`            |
+
+When you create a new bucket, the data location is set to Automatic by default. Currently, this option chooses a bucket location in the closest available region to the create bucket request based on the location of the caller.
+
+Location Hints are optional parameters you can provide during bucket creation to indicate the primary geographical location you expect data will be accessed from.
+
+Using Location Hints can be a good choice when you expect the majority of access to data in a bucket to come from a different location than where the create bucket request originates. Keep in mind Location Hints are a best effort and not a guarantee, and they should only be used as a way to optimize performance by placing regularly updated content closer to users.
+
+More details available at the [Cloudflare R2 Object Storage documentation](https://developers.cloudflare.com/r2/reference/data-location/#location-hints).
+
+---
+
 #### **IBM Cloud Object Storage (ibm)**
 
-- **Bucket Creation:** Must be **manually created** before use.
+- **Bucket Creation:** Must be **manually created** before use -- see Required Bucket Naming Convention below.
 - **Supported Regions:** (not all are listed here)
 
 | Region Name             | Region Code  |
@@ -246,7 +269,7 @@ For more details, refer to the [IBM Cloud Regions documentation](https://cloud.i
 
 #### **Akamai Object Storage (linode)**
 
-- **Bucket Creation:** Must be **manually created** before use.
+- **Bucket Creation:** Must be **manually created** before use -- see Required Bucket Naming Convention below.
 - **Supported Regions:**
 
 | Data Center Location       | Region Code      |
@@ -276,7 +299,7 @@ For more detailed information, please refer to Akamai's official [Object Storage
 
 #### **UpCloud Object Storage (upcloud)**
 
-- **Bucket Creation:** **Manual only**—requires creating the bucket in the UpCloud control panel before use.
+- **Bucket Creation:** Must be **manually created** before use -- see Required Bucket Naming Convention below.
 - **Supported Regions:**
 
 | Data Center Location       | Region Code   |
@@ -299,7 +322,7 @@ For more detailed information, please refer to UpCloud's official documentation 
 
 ---
 
-### Bucket Naming Convention
+### Required Bucket Naming Convention
 
 #### Root (`multiback`) Behavior:
 - Ensure buckets are created for each service and region used.
@@ -318,6 +341,7 @@ For more detailed information, please refer to UpCloud's official documentation 
   aws-standard-ia -- Amazon S3 (Standard-IA)
   azure ------------ Azure Blob Storage
   b2 --------------- Backblaze B2
+  cloudflare ------- Cloudflare R2 Object Storage
   do-spaces -------- DigitalOcean Spaces
   gcs -------------- Google Cloud Storage
   ibm -------------- IBM Cloud Object Storage
@@ -330,7 +354,7 @@ How to determine correct `HOSTNAME` and `USER` to be used as your Bucket name?
 
 It's easy to find because your Aegir URL is actually `USER`.`HOSTNAME` -- For example in `o123.fr8.eu.aegir.cc` the `o123` is `USER` and `fr8.eu.aegir.cc` is a `HOSTNAME`
 
-However, when used in the bucket name, it becomes `back-to-USER-HOSTNAME-REGIONCODE`, so in this example: `back-to-o1-fr8-eu-aegir-cc-eu-central-1`
+However, when used in the bucket name, it becomes `back-to-USER-HOSTNAME-PROVIDER`, so in this example: `back-to-o123-fr8-eu-aegir-cc-wasabi`
 
 ---
 
