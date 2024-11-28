@@ -2124,6 +2124,69 @@ _barracuda_cnf() {
     sed -i "s/_SPEED_VALID_MAX=300/_SPEED_VALID_MAX=3600/g" ${_barCnf}
     wait
 
+    _CUSTOM_COLLATION_SQL=$(grep _CUSTOM_COLLATION_SQL ${_barCnf} 2>&1)
+    if [[ "${_CUSTOM_COLLATION_SQL}" =~ "_CUSTOM_COLLATION_SQL" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo "_CUSTOM_COLLATION_SQL=${_CUSTOM_COLLATION_SQL}" >> ${_barCnf}
+    fi
+
+    _SQL_LOW_MAX_TTL_TEST=$(grep _SQL_LOW_MAX_TTL ${_barCnf} 2>&1)
+    if [[ "${_SQL_LOW_MAX_TTL_TEST}" =~ "_SQL_LOW_MAX_TTL" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo "_SQL_LOW_MAX_TTL=${_SQL_LOW_MAX_TTL}" >> ${_barCnf}
+    fi
+
+    _SQL_MAX_TTL_TEST=$(grep _SQL_MAX_TTL ${_barCnf} 2>&1)
+    if [[ "${_SQL_MAX_TTL_TEST}" =~ "_SQL_MAX_TTL" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo "_SQL_MAX_TTL=${_SQL_MAX_TTL}" >> ${_barCnf}
+    fi
+
+    _CPU_TASK_RATIO_TEST=$(grep _CPU_TASK_RATIO ${_barCnf} 2>&1)
+    if [[ "${_CPU_TASK_RATIO_TEST}" =~ "_CPU_TASK_RATIO" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo "_CPU_TASK_RATIO=${_CPU_TASK_RATIO}" >> ${_barCnf}
+    fi
+
+    _INCIDENT_REPORT_TEST=$(grep _INCIDENT_REPORT ${_barCnf} 2>&1)
+    if [[ "${_INCIDENT_REPORT_TEST}" =~ "_INCIDENT_REPORT" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo "_INCIDENT_REPORT=${_INCIDENT_REPORT}" >> ${_barCnf}
+    fi
+
+    _ENABLE_GOACCESS_TEST=$(grep _ENABLE_GOACCESS ${_barCnf} 2>&1)
+    if [[ "${_ENABLE_GOACCESS_TEST}" =~ "_ENABLE_GOACCESS" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo "_ENABLE_GOACCESS=${_ENABLE_GOACCESS}" >> ${_barCnf}
+    fi
+
+    _NGINX_DOS_DIV_INC_NR_TEST=$(grep _NGINX_DOS_DIV_INC_NR ${_barCnf} 2>&1)
+    if [[ "${_NGINX_DOS_DIV_INC_NR_TEST}" =~ "_NGINX_DOS_DIV_INC_NR" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo "_NGINX_DOS_DIV_INC_NR=${_NGINX_DOS_DIV_INC_NR}" >> ${_barCnf}
+    fi
+
+    _NGINX_DOS_IGNORE_TEST=$(grep _NGINX_DOS_IGNORE ${_barCnf} 2>&1)
+    if [[ "${_NGINX_DOS_IGNORE_TEST}" =~ "_NGINX_DOS_IGNORE" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo "_NGINX_DOS_IGNORE=${_NGINX_DOS_IGNORE}" >> ${_barCnf}
+    fi
+
+    _NGINX_DOS_INC_MIN_TEST=$(grep _NGINX_DOS_INC_MIN ${_barCnf} 2>&1)
+    if [[ "${_NGINX_DOS_INC_MIN_TEST}" =~ "_NGINX_DOS_INC_MIN" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo "_NGINX_DOS_INC_MIN=${_NGINX_DOS_INC_MIN}" >> ${_barCnf}
+    fi
+
     _NGINX_WORKERS_TEST=$(grep _NGINX_WORKERS ${_barCnf} 2>&1)
     if [[ "${_NGINX_WORKERS_TEST}" =~ "_NGINX_WORKERS" ]]; then
       _DO_NOTHING=YES
