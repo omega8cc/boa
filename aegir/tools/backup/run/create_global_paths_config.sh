@@ -6,7 +6,7 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 
 # Function to create or update global paths configuration
 _create_global_paths_config() {
-  _global_config_dir="/var/xdrago/backup"
+  _global_config_dir="/root/.remote_backups/paths"
   _include_file="${_global_config_dir}/.backboa.include"
   _exclude_file="${_global_config_dir}/.backboa.exclude"
   _include_regexp_file="${_global_config_dir}/.backboa.include_regexp"
@@ -107,7 +107,7 @@ EOF
   fi
 
   # Create the final paths configuration file
-  _global_paths_file="${_global_config_dir}/paths.txt"
+  _global_paths_file="${_global_config_dir}/paths/paths.txt"
   cat << EOF > "${_global_paths_file}"
 _SOURCE="/data /home /etc /var/aegir /var/www /var/solr7 /opt/solr4 /var/xdrago"
 _INCLUDE="--include-filelist ${_merged_include_file}"
@@ -116,6 +116,38 @@ EOF
 
   echo "Global paths configuration created or updated at ${_global_paths_file}"
 }
+
+#### Generate Passphrase and Store in .secret.txt per user
+_generate_secret_file() {
+  local _user_dir=$1
+  local _secret_file="${_user_dir}/remote_backups/.secret.txt"
+
+  if [ ! -f "${_secret_file}" ]; then
+    mkdir -p "$(dirname "${_secret_file}")"
+    openssl rand -base64 32 > "${_secret_file}"
+    chmod 600 "${_secret_file}"
+    chown "${USER}:${USER}" "${_secret_file}"
+    chattr +i "${_secret_file}"
+    echo "Secret file created at ${_secret_file} and made immutable."
+  else
+    echo "Secret file already exists at ${_secret_file}."
+  fi
+}
+
+#### Global Secret for Root
+_generate_global_secret_file() {
+  local _secret_file="/root/.remote_backups/.secret.txt"
+
+  if [ ! -f "${_secret_file}" ]; then
+    openssl rand -base64 32 > "${_secret_file}"
+    chmod 600 "${_secret_file}"
+    chattr +i "${_secret_file}"
+    echo "Global secret file created at ${_secret_file} and made immutable."
+  else
+    echo "Global secret file already exists at ${_secret_file}."
+  fi
+}
+
 
 # Main execution
 _create_global_paths_config

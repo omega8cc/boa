@@ -6,10 +6,22 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 
 # Default interval in minutes between backup cycles
 _BACKUP_INTERVAL=360
-_WRAPPER_SCRIPT="/var/xdrago/backup/run/sequential_backups.sh"
-_SCHEDULE_FILE="/var/xdrago/backup/backup_schedule.txt"
+_WRAPPER_DIR="/root/.remote_backups/run"
+_WRAPPER_SCRIPT="${_WRAPPER_DIR}/sequential_backups.sh"
+_SCHEDULE_DIR="/root/.remote_backups/schedule"
+_SCHEDULE_FILE="${_SCHEDULE_DIR}/backup_schedule.txt"
 _CRON_FILE="/etc/cron.d/duplicity_backup"
 _LOGFILE="/var/log/backup_runtime.log"
+
+# Ensure global run directory exists and is owned by root
+mkdir -p "${_WRAPPER_DIR}"
+chown root:root "${_WRAPPER_DIR}"
+chmod 700 "${_WRAPPER_DIR}"
+
+# Ensure global schedule directory exists and is owned by root
+mkdir -p "${_SCHEDULE_DIR}"
+chown root:root "${_SCHEDULE_DIR}"
+chmod 700 "${_SCHEDULE_DIR}"
 
 # Function to generate the wrapper script
 _generate_wrapper_script() {
@@ -25,7 +37,7 @@ export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
 # File paths
-_SCHEDULE_FILE="/var/xdrago/backup/backup_schedule.txt"
+_SCHEDULE_FILE="/root/.remote_backups/schedule/backup_schedule.txt"
 _PID_DIR="/var/run"
 _LOGFILE="/var/log/backup_runtime.log"
 
@@ -99,8 +111,8 @@ while IFS= read -r _line || [ -n "${_line}" ]; do
 
   # Determine the paths configuration file
   if [ "${_user}" = "global_user" ]; then
-    _paths_file="/var/xdrago/backup/paths.txt"
-    _credentials_file="/var/xdrago/backup/credentials/${_service}.txt"
+    _paths_file="/root/.remote_backups/paths/paths.txt"
+    _credentials_file="/root/.remote_backups/credentials/${_service}.txt"
 
     # Check if paths.txt exists
     if [ ! -f "${_paths_file}" ]; then
@@ -117,10 +129,10 @@ while IFS= read -r _line || [ -n "${_line}" ]; do
     fi
 
     # Change to the directory where paths.txt and credentials are located
-    cd /var/xdrago/backup
+    cd /root/.remote_backups
 
   else
-    _paths_file="/data/disk/${_user}/remote_backups/paths.txt"
+    _paths_file="/data/disk/${_user}/remote_backups/paths/paths.txt"
     _credentials_file="/data/disk/${_user}/static/control/remote_backups/credentials/${_service}.txt"
 
     if [ ! -f "${_paths_file}" ]; then
@@ -192,7 +204,7 @@ _generate_backup_schedule() {
   echo "# Backup schedule (service user)" > "${_SCHEDULE_FILE}"
 
   # Add global backups
-  _GLOBAL_CRED_DIR="/var/xdrago/backup/credentials"
+  _GLOBAL_CRED_DIR="/root/.remote_backups/credentials"
   for _service in aws aws_one_zone aws_standard_ia azure b2 cloudflare do_spaces gcs ibm linode wasabi; do
     if [ -f "${_GLOBAL_CRED_DIR}/${_service}.txt" ] && ! grep -q "your_" "${_GLOBAL_CRED_DIR}/${_service}.txt"; then
       echo "${_service} global_user" >> "${_SCHEDULE_FILE}"

@@ -28,7 +28,7 @@ The backup system includes an installer script to simplify setup and management.
 
 ### **Installer Script: `dcysetup`**
 
-The `dcysetup` script is located in `/var/xdrago/backup/run/` and provides the following options:
+The `dcysetup` script is located in `/opt/local/bin/dcysetup` and provides the following options:
 
 ```bash
 dcysetup <command>
@@ -86,7 +86,7 @@ dcysetup <command>
 
 ## **Supported Storage Services**
 
-The system supports multiple storage providers. Credentials for these providers are stored in `/var/xdrago/backup/credentials/`.
+The system supports multiple storage providers. Credentials for these providers are stored in `/root/.remote_backups/credentials/`.
 
 ### **Supported Services**
 - **Amazon S3** (Standard, One Zone, Standard-IA)
@@ -136,7 +136,7 @@ The system supports multiple storage providers. Credentials for these providers 
 The global backup configuration files are stored in:
 
 ```bash
-/var/xdrago/backup/config/
+/root/.remote_backups/config/
 ```
 
 ### **Configuration Files**
@@ -171,7 +171,7 @@ The global backup configuration files are stored in:
 
 ## **Managing Credentials**
 
-Credentials for global backups are stored in `/var/xdrago/backup/credentials/`. Each file corresponds to a specific storage service.
+Credentials for global backups are stored in `/root/.remote_backups/credentials/`. Each file corresponds to a specific storage service.
 
 ### **AWS Example (`aws.txt`)**
 ```bash
@@ -185,7 +185,7 @@ export FULL_BACKUP_FREQUENCY="7D"    # Create a full backup every 7 days
 ### **Permissions**
 Ensure all credentials are secured:
 ```bash
-chmod 600 /var/xdrago/backup/credentials/*.txt
+chmod 600 /root/.remote_backups/credentials/*.txt
 ```
 
 ---

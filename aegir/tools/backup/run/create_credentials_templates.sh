@@ -5,7 +5,7 @@ export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
 # Global credentials directory
-_GLOBAL_CREDENTIALS_DIR="/var/xdrago/backup/credentials"
+_GLOBAL_CREDENTIALS_DIR="/root/.remote_backups/credentials"
 
 # Base directory for user-specific credentials
 _USER_BASE_DIR="/data/disk"

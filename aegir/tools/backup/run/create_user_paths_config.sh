@@ -61,7 +61,7 @@ _validate_and_merge_paths() {
 # Function to create or update a user's paths configuration file
 _create_user_paths_config() {
   local _user=$1
-  local _user_config_dir="/data/disk/${_user}/remote_backups"
+  local _user_config_dir="/data/disk/${_user}/remote_backups/paths"
   local _user_control_dir="/data/disk/${_user}/static/control/remote_backups/config"
   local _include_file="${_user_config_dir}/.backboa.${_user}.include"
   local _exclude_file="${_user_config_dir}/.backboa.${_user}.exclude"
@@ -139,7 +139,7 @@ EOF
   fi
 
   # Create the final paths configuration file
-  local _user_config_file="${_user_config_dir}/paths.txt"
+  local _user_config_file="${_user_config_dir}/paths/paths.txt"
   cat << EOF > "${_user_config_file}"
 _SOURCE="/data/disk/${_user}/static"
 _USER_INCLUDE="--include-filelist ${_merged_include_file} --include-regexp-filelist ${_user_config_dir}/.backboa.${_user}.include_regexp.merged"

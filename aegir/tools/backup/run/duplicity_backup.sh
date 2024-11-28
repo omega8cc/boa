@@ -176,6 +176,14 @@ _load_credentials() {
   local _service="$1"
   local _user="$2"
   local _cred_file="/data/disk/${_user}/static/control/remote_backups/credentials/${_service}.txt"
+  local _secret_file="/data/disk/${_user}/remote_backups/.secret.txt"
+
+  if [ -f "${_secret_file}" ]; then
+    export PASSPHRASE=$(cat "${_secret_file}")
+  else
+    echo "Secret file ${_secret_file} not found. Unable to proceed."
+    exit 1
+  fi
 
   if [ ! -f "${_cred_file}" ]; then
     echo "Error: Credentials file '${_cred_file}' not found."
@@ -260,7 +268,7 @@ _validate_paths() {
 # Function to load paths configuration
 _load_paths() {
   local _user="$1"
-  local _paths_file="/data/disk/${_user}/remote_backups/paths.txt"
+  local _paths_file="/data/disk/${_user}/remote_backups/paths/paths.txt"
 
   if [ ! -f "${_paths_file}" ]; then
     echo "Error: Paths configuration file '${_paths_file}' not found."

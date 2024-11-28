@@ -5,7 +5,7 @@ export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
 # Directory where all scripts are located
-_SCRIPT_DIR="/var/xdrago/backup/run"
+_SCRIPT_DIR="/root/.remote_backups/run"
 
 # Define paths to individual scripts
 _INSTALL_DEPENDENCIES_SCRIPT="${_SCRIPT_DIR}/install_dependencies.sh"

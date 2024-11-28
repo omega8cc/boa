@@ -608,7 +608,10 @@ _update_agents() {
 
   if [ -e "/var/aegir/drush" ]; then
 
-    [ ! -e "/var/xdrago/backup/run" ] && mkdir -p /var/xdrago/backup/run
+    _pthCtrl="/root/.remote_backups/ctrl"
+
+    [ ! -e "${_pthCtrl}" ] && mkdir -p ${_pthCtrl}
+    [ ! -e "/root/.remote_backups/run" ] && mkdir -p /root/.remote_backups/run
     [ ! -e "/var/xdrago/monitor/check" ] && mkdir -p /var/xdrago/monitor/check
     [ ! -e "/var/xdrago/monitor/log" ] && mkdir -p /var/xdrago/monitor/log
 
@@ -662,128 +665,128 @@ _update_agents() {
     [ -e "/var/xdrago/monitor/hackcheck.archive.log" ] && mv -f /var/xdrago/monitor/*.log /var/xdrago/monitor/log/
   fi
 
-  if [ -d "/var/xdrago/backup/run" ] \
+  if [ -d "/root/.remote_backups/run" ] \
     && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/install_dependencies.sh.ctrl.f93.${_tRee}.${_xSrl}.pid" ]; then
-    if [ -e "/var/xdrago/backup/run/install_dependencies.sh" ]; then
-      mv -f /var/xdrago/backup/run/install_dependencies.sh /var/xdrago/backup/run/install_dependencies.sh.old
+    && [ ! -e "${_pthCtrl}/install_dependencies.sh.ctrl.f93.${_tRee}.${_xSrl}.pid" ]; then
+    if [ -e "/root/.remote_backups/run/install_dependencies.sh" ]; then
+      mv -f /root/.remote_backups/run/install_dependencies.sh /root/.remote_backups/run/install_dependencies.sh.old
     fi
-    curl ${_crlGet} "${_urlHmr}/tools/system/backup/run/install_dependencies.sh" -o /var/xdrago/backup/run/install_dependencies.sh
-    if [ -e "/var/xdrago/backup/run/install_dependencies.sh" ]; then
-      chmod 700 /var/xdrago/backup/run/install_dependencies.sh
-      chown root:root /var/xdrago/backup/run/install_dependencies.sh
-      touch ${_pthLog}/install_dependencies.sh.ctrl.f93.${_tRee}.${_xSrl}.pid
+    curl ${_crlGet} "${_urlHmr}/tools/backup/run/install_dependencies.sh" -o /root/.remote_backups/run/install_dependencies.sh
+    if [ -e "/root/.remote_backups/run/install_dependencies.sh" ]; then
+      chmod 700 /root/.remote_backups/run/install_dependencies.sh
+      chown root:root /root/.remote_backups/run/install_dependencies.sh
+      touch ${_pthCtrl}/install_dependencies.sh.ctrl.f93.${_tRee}.${_xSrl}.pid
     else
-      if [ -e "/var/xdrago/backup/run/install_dependencies.sh.old" ]; then
-        mv -f /var/xdrago/backup/run/install_dependencies.sh.old /var/xdrago/backup/run/install_dependencies.sh
+      if [ -e "/root/.remote_backups/run/install_dependencies.sh.old" ]; then
+        mv -f /root/.remote_backups/run/install_dependencies.sh.old /root/.remote_backups/run/install_dependencies.sh
       fi
     fi
   fi
 
-  if [ -d "/var/xdrago/backup/run" ] \
+  if [ -d "/root/.remote_backups/run" ] \
     && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/create_credentials_templates.sh.ctrl.f93.${_tRee}.${_xSrl}.pid" ]; then
-    if [ -e "/var/xdrago/backup/run/create_credentials_templates.sh" ]; then
-      mv -f /var/xdrago/backup/run/create_credentials_templates.sh /var/xdrago/backup/run/create_credentials_templates.sh.old
+    && [ ! -e "${_pthCtrl}/create_credentials_templates.sh.ctrl.f93.${_tRee}.${_xSrl}.pid" ]; then
+    if [ -e "/root/.remote_backups/run/create_credentials_templates.sh" ]; then
+      mv -f /root/.remote_backups/run/create_credentials_templates.sh /root/.remote_backups/run/create_credentials_templates.sh.old
     fi
-    curl ${_crlGet} "${_urlHmr}/tools/system/backup/run/create_credentials_templates.sh" -o /var/xdrago/backup/run/create_credentials_templates.sh
-    if [ -e "/var/xdrago/backup/run/create_credentials_templates.sh" ]; then
-      chmod 700 /var/xdrago/backup/run/create_credentials_templates.sh
-      chown root:root /var/xdrago/backup/run/create_credentials_templates.sh
-      touch ${_pthLog}/create_credentials_templates.sh.ctrl.f93.${_tRee}.${_xSrl}.pid
+    curl ${_crlGet} "${_urlHmr}/tools/backup/run/create_credentials_templates.sh" -o /root/.remote_backups/run/create_credentials_templates.sh
+    if [ -e "/root/.remote_backups/run/create_credentials_templates.sh" ]; then
+      chmod 700 /root/.remote_backups/run/create_credentials_templates.sh
+      chown root:root /root/.remote_backups/run/create_credentials_templates.sh
+      touch ${_pthCtrl}/create_credentials_templates.sh.ctrl.f93.${_tRee}.${_xSrl}.pid
     else
-      if [ -e "/var/xdrago/backup/run/create_credentials_templates.sh.old" ]; then
-        mv -f /var/xdrago/backup/run/create_credentials_templates.sh.old /var/xdrago/backup/run/create_credentials_templates.sh
+      if [ -e "/root/.remote_backups/run/create_credentials_templates.sh.old" ]; then
+        mv -f /root/.remote_backups/run/create_credentials_templates.sh.old /root/.remote_backups/run/create_credentials_templates.sh
       fi
     fi
   fi
 
-  if [ -d "/var/xdrago/backup/run" ] \
+  if [ -d "/root/.remote_backups/run" ] \
     && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/create_global_paths_config.sh.ctrl.f91.${_tRee}.${_xSrl}.pid" ]; then
-    if [ -e "/var/xdrago/backup/run/create_global_paths_config.sh" ]; then
-      mv -f /var/xdrago/backup/run/create_global_paths_config.sh /var/xdrago/backup/run/create_global_paths_config.sh.old
+    && [ ! -e "${_pthCtrl}/create_global_paths_config.sh.ctrl.f91.${_tRee}.${_xSrl}.pid" ]; then
+    if [ -e "/root/.remote_backups/run/create_global_paths_config.sh" ]; then
+      mv -f /root/.remote_backups/run/create_global_paths_config.sh /root/.remote_backups/run/create_global_paths_config.sh.old
     fi
-    curl ${_crlGet} "${_urlHmr}/tools/system/backup/run/create_global_paths_config.sh" -o /var/xdrago/backup/run/create_global_paths_config.sh
-    if [ -e "/var/xdrago/backup/run/create_global_paths_config.sh" ]; then
-      chmod 700 /var/xdrago/backup/run/create_global_paths_config.sh
-      chown root:root /var/xdrago/backup/run/create_global_paths_config.sh
-      touch ${_pthLog}/create_global_paths_config.sh.ctrl.f91.${_tRee}.${_xSrl}.pid
+    curl ${_crlGet} "${_urlHmr}/tools/backup/run/create_global_paths_config.sh" -o /root/.remote_backups/run/create_global_paths_config.sh
+    if [ -e "/root/.remote_backups/run/create_global_paths_config.sh" ]; then
+      chmod 700 /root/.remote_backups/run/create_global_paths_config.sh
+      chown root:root /root/.remote_backups/run/create_global_paths_config.sh
+      touch ${_pthCtrl}/create_global_paths_config.sh.ctrl.f91.${_tRee}.${_xSrl}.pid
     else
-      if [ -e "/var/xdrago/backup/run/create_global_paths_config.sh.old" ]; then
-        mv -f /var/xdrago/backup/run/create_global_paths_config.sh.old /var/xdrago/backup/run/create_global_paths_config.sh
+      if [ -e "/root/.remote_backups/run/create_global_paths_config.sh.old" ]; then
+        mv -f /root/.remote_backups/run/create_global_paths_config.sh.old /root/.remote_backups/run/create_global_paths_config.sh
       fi
     fi
   fi
 
-  if [ -d "/var/xdrago/backup/run" ] \
+  if [ -d "/root/.remote_backups/run" ] \
     && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/create_user_paths_config.sh.ctrl.f89.${_tRee}.${_xSrl}.pid" ]; then
-    if [ -e "/var/xdrago/backup/run/create_user_paths_config.sh" ]; then
-      mv -f /var/xdrago/backup/run/create_user_paths_config.sh /var/xdrago/backup/run/create_user_paths_config.sh.old
+    && [ ! -e "${_pthCtrl}/create_user_paths_config.sh.ctrl.f89.${_tRee}.${_xSrl}.pid" ]; then
+    if [ -e "/root/.remote_backups/run/create_user_paths_config.sh" ]; then
+      mv -f /root/.remote_backups/run/create_user_paths_config.sh /root/.remote_backups/run/create_user_paths_config.sh.old
     fi
-    curl ${_crlGet} "${_urlHmr}/tools/system/backup/run/create_user_paths_config.sh" -o /var/xdrago/backup/run/create_user_paths_config.sh
-    if [ -e "/var/xdrago/backup/run/create_user_paths_config.sh" ]; then
-      chmod 700 /var/xdrago/backup/run/create_user_paths_config.sh
-      chown root:root /var/xdrago/backup/run/create_user_paths_config.sh
-      touch ${_pthLog}/create_user_paths_config.sh.ctrl.f89.${_tRee}.${_xSrl}.pid
+    curl ${_crlGet} "${_urlHmr}/tools/backup/run/create_user_paths_config.sh" -o /root/.remote_backups/run/create_user_paths_config.sh
+    if [ -e "/root/.remote_backups/run/create_user_paths_config.sh" ]; then
+      chmod 700 /root/.remote_backups/run/create_user_paths_config.sh
+      chown root:root /root/.remote_backups/run/create_user_paths_config.sh
+      touch ${_pthCtrl}/create_user_paths_config.sh.ctrl.f89.${_tRee}.${_xSrl}.pid
     else
-      if [ -e "/var/xdrago/backup/run/create_user_paths_config.sh.old" ]; then
-        mv -f /var/xdrago/backup/run/create_user_paths_config.sh.old /var/xdrago/backup/run/create_user_paths_config.sh
+      if [ -e "/root/.remote_backups/run/create_user_paths_config.sh.old" ]; then
+        mv -f /root/.remote_backups/run/create_user_paths_config.sh.old /root/.remote_backups/run/create_user_paths_config.sh
       fi
     fi
   fi
 
-  if [ -d "/var/xdrago/backup/run" ] \
+  if [ -d "/root/.remote_backups/run" ] \
     && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/create_cron_entries.sh.ctrl.f88.${_tRee}.${_xSrl}.pid" ]; then
-    if [ -e "/var/xdrago/backup/run/create_cron_entries.sh" ]; then
-      mv -f /var/xdrago/backup/run/create_cron_entries.sh /var/xdrago/backup/run/create_cron_entries.sh.old
+    && [ ! -e "${_pthCtrl}/create_cron_entries.sh.ctrl.f88.${_tRee}.${_xSrl}.pid" ]; then
+    if [ -e "/root/.remote_backups/run/create_cron_entries.sh" ]; then
+      mv -f /root/.remote_backups/run/create_cron_entries.sh /root/.remote_backups/run/create_cron_entries.sh.old
     fi
-    curl ${_crlGet} "${_urlHmr}/tools/system/backup/run/create_cron_entries.sh" -o /var/xdrago/backup/run/create_cron_entries.sh
-    if [ -e "/var/xdrago/backup/run/create_cron_entries.sh" ]; then
-      chmod 700 /var/xdrago/backup/run/create_cron_entries.sh
-      chown root:root /var/xdrago/backup/run/create_cron_entries.sh
-      touch ${_pthLog}/create_cron_entries.sh.ctrl.f88.${_tRee}.${_xSrl}.pid
+    curl ${_crlGet} "${_urlHmr}/tools/backup/run/create_cron_entries.sh" -o /root/.remote_backups/run/create_cron_entries.sh
+    if [ -e "/root/.remote_backups/run/create_cron_entries.sh" ]; then
+      chmod 700 /root/.remote_backups/run/create_cron_entries.sh
+      chown root:root /root/.remote_backups/run/create_cron_entries.sh
+      touch ${_pthCtrl}/create_cron_entries.sh.ctrl.f88.${_tRee}.${_xSrl}.pid
     else
-      if [ -e "/var/xdrago/backup/run/create_cron_entries.sh.old" ]; then
-        mv -f /var/xdrago/backup/run/create_cron_entries.sh.old /var/xdrago/backup/run/create_cron_entries.sh
+      if [ -e "/root/.remote_backups/run/create_cron_entries.sh.old" ]; then
+        mv -f /root/.remote_backups/run/create_cron_entries.sh.old /root/.remote_backups/run/create_cron_entries.sh
       fi
     fi
   fi
 
-  if [ -d "/var/xdrago/backup/run" ] \
+  if [ -d "/root/.remote_backups/run" ] \
     && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/create_readme.sh.ctrl.f92.${_tRee}.${_xSrl}.pid" ]; then
-    if [ -e "/var/xdrago/backup/run/create_readme.sh" ]; then
-      mv -f /var/xdrago/backup/run/create_readme.sh /var/xdrago/backup/run/create_readme.sh.old
+    && [ ! -e "${_pthCtrl}/create_readme.sh.ctrl.f92.${_tRee}.${_xSrl}.pid" ]; then
+    if [ -e "/root/.remote_backups/run/create_readme.sh" ]; then
+      mv -f /root/.remote_backups/run/create_readme.sh /root/.remote_backups/run/create_readme.sh.old
     fi
-    curl ${_crlGet} "${_urlHmr}/tools/system/backup/run/create_readme.sh" -o /var/xdrago/backup/run/create_readme.sh
-    if [ -e "/var/xdrago/backup/run/create_readme.sh" ]; then
-      chmod 700 /var/xdrago/backup/run/create_readme.sh
-      chown root:root /var/xdrago/backup/run/create_readme.sh
-      touch ${_pthLog}/create_readme.sh.ctrl.f92.${_tRee}.${_xSrl}.pid
+    curl ${_crlGet} "${_urlHmr}/tools/backup/run/create_readme.sh" -o /root/.remote_backups/run/create_readme.sh
+    if [ -e "/root/.remote_backups/run/create_readme.sh" ]; then
+      chmod 700 /root/.remote_backups/run/create_readme.sh
+      chown root:root /root/.remote_backups/run/create_readme.sh
+      touch ${_pthCtrl}/create_readme.sh.ctrl.f92.${_tRee}.${_xSrl}.pid
     else
-      if [ -e "/var/xdrago/backup/run/create_readme.sh.old" ]; then
-        mv -f /var/xdrago/backup/run/create_readme.sh.old /var/xdrago/backup/run/create_readme.sh
+      if [ -e "/root/.remote_backups/run/create_readme.sh.old" ]; then
+        mv -f /root/.remote_backups/run/create_readme.sh.old /root/.remote_backups/run/create_readme.sh
       fi
     fi
   fi
 
-  if [ -d "/var/xdrago/backup/run" ] \
+  if [ -d "/root/.remote_backups/run" ] \
     && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/create_config_readme.sh.ctrl.f91.${_tRee}.${_xSrl}.pid" ]; then
-    if [ -e "/var/xdrago/backup/run/create_config_readme.sh" ]; then
-      mv -f /var/xdrago/backup/run/create_config_readme.sh /var/xdrago/backup/run/create_config_readme.sh.old
+    && [ ! -e "${_pthCtrl}/create_config_readme.sh.ctrl.f91.${_tRee}.${_xSrl}.pid" ]; then
+    if [ -e "/root/.remote_backups/run/create_config_readme.sh" ]; then
+      mv -f /root/.remote_backups/run/create_config_readme.sh /root/.remote_backups/run/create_config_readme.sh.old
     fi
-    curl ${_crlGet} "${_urlHmr}/tools/system/backup/run/create_config_readme.sh" -o /var/xdrago/backup/run/create_config_readme.sh
-    if [ -e "/var/xdrago/backup/run/create_config_readme.sh" ]; then
-      chmod 700 /var/xdrago/backup/run/create_config_readme.sh
-      chown root:root /var/xdrago/backup/run/create_config_readme.sh
-      touch ${_pthLog}/create_config_readme.sh.ctrl.f91.${_tRee}.${_xSrl}.pid
+    curl ${_crlGet} "${_urlHmr}/tools/backup/run/create_config_readme.sh" -o /root/.remote_backups/run/create_config_readme.sh
+    if [ -e "/root/.remote_backups/run/create_config_readme.sh" ]; then
+      chmod 700 /root/.remote_backups/run/create_config_readme.sh
+      chown root:root /root/.remote_backups/run/create_config_readme.sh
+      touch ${_pthCtrl}/create_config_readme.sh.ctrl.f91.${_tRee}.${_xSrl}.pid
     else
-      if [ -e "/var/xdrago/backup/run/create_config_readme.sh.old" ]; then
-        mv -f /var/xdrago/backup/run/create_config_readme.sh.old /var/xdrago/backup/run/create_config_readme.sh
+      if [ -e "/root/.remote_backups/run/create_config_readme.sh.old" ]; then
+        mv -f /root/.remote_backups/run/create_config_readme.sh.old /root/.remote_backups/run/create_config_readme.sh
       fi
     fi
   fi

@@ -300,7 +300,7 @@ For more detailed information, please refer to Akamai's official [Object Storage
 
 #### Root (`multiback`) Behavior:
 - Ensure buckets are created for each service and region used.
-- Use `/var/xdrago/backup/credentials/` to store credentials.
+- Use `/root/.remote_backups/credentials/` to store credentials.
 
 #### User (`mybackup`) Behavior:
 - Buckets are associated with the Octopus system user running the command.
@@ -334,7 +334,7 @@ However, when used in the bucket name, it becomes `back-to-USER-HOSTNAME-PROVIDE
 ### Configuration Overview
 
 #### Root Configuration (`multiback`)
-For system-wide backups managed by `multiback`, ensure that your configuration includes the necessary credentials in `/var/xdrago/backup/credentials/` directory. More details in New Backups for BOA SysAdmin [docs/BACKUP_ROOT.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_ROOT.md)
+For system-wide backups managed by `multiback`, ensure that your configuration includes the necessary credentials in `/root/.remote_backups/credentials/` directory. More details in New Backups for BOA SysAdmin [docs/BACKUP_ROOT.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_ROOT.md)
 
 #### User Configuration (`mybackup`)
 Regular users should place their backup configurations in the `~/static/control/remote_backups/credentials/` directory. The `mybackup` script automatically uses these credentials to restore backups for the current user. More details in New Backups for Octopus Lshell User [docs/BACKUP_USER.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_USER.md)
