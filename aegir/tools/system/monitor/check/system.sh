@@ -17,8 +17,8 @@ _check_root() {
 }
 _check_root
 
-export _INCIDENT_EMAIL_REPORT=${_INCIDENT_EMAIL_REPORT//[^A-Z]/}
-: "${_INCIDENT_EMAIL_REPORT:=YES}"
+export _INCIDENT_REPORT=${_INCIDENT_REPORT//[^A-Z]/}
+: "${_INCIDENT_REPORT:=YES}"
 
 if (( $(pgrep -fc 'system.sh') > 2 )); then
   echo "Too many system.sh running $(date)" >> /var/xdrago/log/too.many.log
@@ -26,7 +26,7 @@ if (( $(pgrep -fc 'system.sh') > 2 )); then
 fi
 
 _incident_email_report() {
-  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_EMAIL_REPORT}" = "YES" ]; then
+  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "YES" ]; then
     _hName=$(cat /etc/hostname 2>&1)
     echo "Sending Incident Report Email on $(date)" >> ${_pthOml}
     s-nail -s "Incident Report: ${1} on ${_hName} at $(date)" ${_MY_EMAIL} < ${_pthOml}

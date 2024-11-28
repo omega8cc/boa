@@ -26,8 +26,8 @@ _check_root() {
     exit 1
   fi
   [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
-  export _INCIDENT_EMAIL_REPORT=${_INCIDENT_EMAIL_REPORT//[^A-Z]/}
-  : "${_INCIDENT_EMAIL_REPORT:=YES}"
+  export _INCIDENT_REPORT=${_INCIDENT_REPORT//[^A-Z]/}
+  : "${_INCIDENT_REPORT:=YES}"
   _AWS_VLV=${_AWS_VLV//[^a-z]/}
   if [ -z "${_AWS_VLV}" ]; then
     _AWS_VLV="warning"
@@ -115,7 +115,7 @@ _log_issue() {
   local _file=$2
   local _message=$3
   echo "[$(date)] Validation issue type: [${_type}] in file: [${_file}] with error: ${_message}" >> "${_LOG_FILE}"
-  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_EMAIL_REPORT}" = "YES" ]; then
+  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "YES" ]; then
     # Alert the admin
     echo "Sending Backup Validation Alert to ${_MY_EMAIL} on $(date)" >> ${_LOGFILE}
     s-nail -s "Backup Validation Alert for [$(hostname)] on $(date)" ${_MY_EMAIL} < ${_LOGFILE}
@@ -460,7 +460,7 @@ _backup() {
     _remove_older_than
     _collection_status
   fi
-  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_EMAIL_REPORT}" = "YES" ]; then
+  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "YES" ]; then
     echo "Sending email report on $(date)" >> ${_LOGFILE}
     s-nail -s "Daily backup: ${_MODE} ${_HST} $(date)" ${_MY_EMAIL} < ${_LOGFILE}
   fi

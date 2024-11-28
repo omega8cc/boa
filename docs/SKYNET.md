@@ -4,7 +4,7 @@ The `_SKYNET_MODE=ON` setting (enabled by default) is essential for maintaining 
 
 **We always have SKYNET enabled on all production servers**, which should give you confidence in its safety and reliability for production environments.
 
-While SKYNET does not send notifications for all of its actions, it logs activities in `/var/xdrago/log/` and `/var/xdrago/monitor/log/`. It also sends incident notifications for its system monitoring features, unless you disable this by setting `_INCIDENT_EMAIL_REPORT=NO` in the `/root/.barracuda.cnf` file.
+While SKYNET does not send notifications for all of its actions, it logs activities in `/var/xdrago/log/` and `/var/xdrago/monitor/log/`. It also sends incident notifications for its system monitoring features, unless you disable this by setting `_INCIDENT_REPORT=NO` in the `/root/.barracuda.cnf` file.
 
 BOA is **designed to self-maintain** and even [**self-upgrade**](https://github.com/omega8cc/boa/tree/5.x-dev/docs/SELFUPGRADE.md), provided that the optional cron entries are configured. It is built with the expectation that you are using a supported system and are not making changes beyond managing the hosted Ægir sites. When used as intended, BOA operates flawlessly.
 

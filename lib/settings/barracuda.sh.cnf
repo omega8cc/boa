@@ -1121,7 +1121,7 @@ _SPEED_VALID_MAX=3600
 ### e-mail reports on various incidents
 ### detected and handled by auto-healing.
 ###
-_INCIDENT_EMAIL_REPORT=YES
+_INCIDENT_REPORT=YES
 
 ###
 ### Max TTL for mysql process per user (seconds)

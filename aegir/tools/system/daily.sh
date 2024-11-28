@@ -2847,10 +2847,10 @@ _incident_email_report() {
   if [ -e "/root/.barracuda.cnf" ]; then
     source /root/.barracuda.cnf
     _thisEmail="${_MY_EMAIL}"
-    export _INCIDENT_EMAIL_REPORT=${_INCIDENT_EMAIL_REPORT//[^A-Z]/}
-    : "${_INCIDENT_EMAIL_REPORT:=YES}"
+    export _INCIDENT_REPORT=${_INCIDENT_REPORT//[^A-Z]/}
+    : "${_INCIDENT_REPORT:=YES}"
   fi
-  if [ -n "${_thisEmail}" ] && [ "${_INCIDENT_EMAIL_REPORT}" = "YES" ]; then
+  if [ -n "${_thisEmail}" ] && [ "${_INCIDENT_REPORT}" = "YES" ]; then
     _hName=$(cat /etc/hostname 2>&1)
     echo "Sending Incident Report Email on $(date)" >> ${_thisLog}
     s-nail -s "Incident Report during daily.sh: ${1} on ${_hName} at $(date)" ${_thisEmail} < ${_thisLog}
