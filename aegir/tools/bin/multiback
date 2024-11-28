@@ -592,10 +592,10 @@ _set_backup_target() {
 
       _BACKUP_TARGET="boto3+s3://${_BUCKET_NAME} ${_s3_options}"
       ;;
-    gcs)
-      _load_credentials "gcs" "${_user}"
-      _construct_bucket_name "gcs" "${_user}"
-      _BACKUP_TARGET="gs://${_BUCKET_NAME}"
+    azure)
+      _load_credentials "azure" "${_user}"
+      _construct_bucket_name "azure" "${_user}"
+      _BACKUP_TARGET="azure://${AZURE_STORAGE_ACCOUNT}@${_BUCKET_NAME}"
       ;;
     b2)
       _load_credentials "b2" "${_user}"
@@ -612,35 +612,35 @@ _set_backup_target() {
       # Configure the S3 backup target
       _BACKUP_TARGET="boto3+s3://${R2_ACCESS_KEY_ID}:${R2_SECRET_ACCESS_KEY}@${_r2_endpoint}/${_BUCKET_NAME}"
       ;;
-    azure)
-      _load_credentials "azure" "${_user}"
-      _construct_bucket_name "azure" "${_user}"
-      _BACKUP_TARGET="azure://${AZURE_STORAGE_ACCOUNT}@${_BUCKET_NAME}"
+    do_spaces)
+      _load_credentials "do_spaces" "${_user}"
+      _construct_bucket_name "do_spaces" "${_user}"
+      _BACKUP_TARGET="s3://${DO_SPACES_KEY}:${DO_SPACES_SECRET}@${DO_SPACES_REGION}/${_BUCKET_NAME}"
       ;;
-    upcloud)
-      _load_credentials "upcloud" "${_user}"
-      _construct_bucket_name "upcloud" "${_user}"
-      _BACKUP_TARGET="s3://${UPCLOUD_USERNAME}:${UPCLOUD_PASSWORD}@${REGION}/${_BUCKET_NAME}"
+    gcs)
+      _load_credentials "gcs" "${_user}"
+      _construct_bucket_name "gcs" "${_user}"
+      _BACKUP_TARGET="gs://${_BUCKET_NAME}"
       ;;
     ibm)
       _load_credentials "ibm" "${_user}"
       _construct_bucket_name "ibm" "${_user}"
       _BACKUP_TARGET="ibmcos://${IBM_API_KEY_ID}:${IBM_SERVICE_INSTANCE_ID}@${IBM_REGION}/${_BUCKET_NAME}"
       ;;
-    wasabi)
-      _load_credentials "wasabi" "${_user}"
-      _construct_bucket_name "wasabi" "${_user}"
-      _BACKUP_TARGET="s3://${WASABI_ACCESS_KEY}:${WASABI_SECRET_KEY}@${WASABI_REGION}/${_BUCKET_NAME}"
-      ;;
-    do_spaces)
-      _load_credentials "do_spaces" "${_user}"
-      _construct_bucket_name "do_spaces" "${_user}"
-      _BACKUP_TARGET="s3://${DO_SPACES_KEY}:${DO_SPACES_SECRET}@${DO_SPACES_REGION}/${_BUCKET_NAME}"
-      ;;
     linode)
       _load_credentials "linode" "${_user}"
       _construct_bucket_name "linode" "${_user}"
       _BACKUP_TARGET="s3://${LINODE_ACCESS_KEY}:${LINODE_SECRET_KEY}@${LINODE_REGION}/${_BUCKET_NAME}"
+      ;;
+    upcloud)
+      _load_credentials "upcloud" "${_user}"
+      _construct_bucket_name "upcloud" "${_user}"
+      _BACKUP_TARGET="s3://${UPCLOUD_USERNAME}:${UPCLOUD_PASSWORD}@${REGION}/${_BUCKET_NAME}"
+      ;;
+    wasabi)
+      _load_credentials "wasabi" "${_user}"
+      _construct_bucket_name "wasabi" "${_user}"
+      _BACKUP_TARGET="s3://${WASABI_ACCESS_KEY}:${WASABI_SECRET_KEY}@${WASABI_REGION}/${_BUCKET_NAME}"
       ;;
     *)
       echo "Error: Unknown service ${_service}"

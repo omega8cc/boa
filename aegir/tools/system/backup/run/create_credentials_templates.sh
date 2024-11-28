@@ -26,17 +26,18 @@ _create_credentials_templates() {
 
   # List of supported services
   _services=(
-    "aws"
     "aws_one_zone"
     "aws_standard_ia"
-    "gcs"
-    "b2"
+    "aws"
     "azure"
-    "upcloud"
-    "ibm"
-    "wasabi"
+    "b2"
+    "cloudflare"
     "do_spaces"
+    "gcs"
+    "ibm"
     "linode"
+    "upcloud"
+    "wasabi"
   )
 
   for _service in "${_services[@]}"; do
@@ -52,10 +53,10 @@ export KEEP_WITHIN="3M"
 export FULL_BACKUP_FREQUENCY="7D"
 EOF
           ;;
-        gcs)
+        azure)
           cat << EOF > "${_template_file}"
-export GCS_PROJECT_ID="your_gcs_project_id"
-export GCS_SERVICE_ACCOUNT_KEY="your_gcs_service_account_key"
+export AZURE_STORAGE_ACCOUNT="your_azure_storage_account"
+export AZURE_STORAGE_KEY="your_azure_storage_key"
 export KEEP_WITHIN="3M"
 export FULL_BACKUP_FREQUENCY="7D"
 EOF
@@ -77,19 +78,19 @@ export KEEP_WITHIN="3M"
 export FULL_BACKUP_FREQUENCY="7D"
 EOF
           ;;
-        azure)
+        do_spaces)
           cat << EOF > "${_template_file}"
-export AZURE_STORAGE_ACCOUNT="your_azure_storage_account"
-export AZURE_STORAGE_KEY="your_azure_storage_key"
+export DO_SPACES_KEY="your_do_spaces_key"
+export DO_SPACES_SECRET="your_do_spaces_secret"
+export DO_SPACES_REGION="your_do_spaces_region"  # E.g., "nyc3"
 export KEEP_WITHIN="3M"
 export FULL_BACKUP_FREQUENCY="7D"
 EOF
           ;;
-        upcloud)
+        gcs)
           cat << EOF > "${_template_file}"
-export UPCLOUD_USERNAME="your_upcloud_username"
-export UPCLOUD_PASSWORD="your_upcloud_password"
-export REGION="your_upcloud_region"  # E.g., "fi-hel1"
+export GCS_PROJECT_ID="your_gcs_project_id"
+export GCS_SERVICE_ACCOUNT_KEY="your_gcs_service_account_key"
 export KEEP_WITHIN="3M"
 export FULL_BACKUP_FREQUENCY="7D"
 EOF
@@ -103,29 +104,29 @@ export KEEP_WITHIN="3M"
 export FULL_BACKUP_FREQUENCY="7D"
 EOF
           ;;
-        wasabi)
-          cat << EOF > "${_template_file}"
-export WASABI_ACCESS_KEY="your_wasabi_access_key"
-export WASABI_SECRET_KEY="your_wasabi_secret_key"
-export WASABI_REGION="your_wasabi_region"  # E.g., "us-east-1"
-export KEEP_WITHIN="3M"
-export FULL_BACKUP_FREQUENCY="7D"
-EOF
-          ;;
-        do_spaces)
-          cat << EOF > "${_template_file}"
-export DO_SPACES_KEY="your_do_spaces_key"
-export DO_SPACES_SECRET="your_do_spaces_secret"
-export DO_SPACES_REGION="your_do_spaces_region"  # E.g., "nyc3"
-export KEEP_WITHIN="3M"
-export FULL_BACKUP_FREQUENCY="7D"
-EOF
-          ;;
         linode)
           cat << EOF > "${_template_file}"
 export LINODE_ACCESS_KEY="your_linode_access_key"
 export LINODE_SECRET_KEY="your_linode_secret_key"
 export LINODE_REGION="your_linode_region"  # E.g., "us-east-1"
+export KEEP_WITHIN="3M"
+export FULL_BACKUP_FREQUENCY="7D"
+EOF
+          ;;
+        upcloud)
+          cat << EOF > "${_template_file}"
+export UPCLOUD_USERNAME="your_upcloud_username"
+export UPCLOUD_PASSWORD="your_upcloud_password"
+export REGION="your_upcloud_region"  # E.g., "fi-hel1"
+export KEEP_WITHIN="3M"
+export FULL_BACKUP_FREQUENCY="7D"
+EOF
+          ;;
+        wasabi)
+          cat << EOF > "${_template_file}"
+export WASABI_ACCESS_KEY="your_wasabi_access_key"
+export WASABI_SECRET_KEY="your_wasabi_secret_key"
+export WASABI_REGION="your_wasabi_region"  # E.g., "us-east-1"
 export KEEP_WITHIN="3M"
 export FULL_BACKUP_FREQUENCY="7D"
 EOF
