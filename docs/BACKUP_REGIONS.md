@@ -312,6 +312,7 @@ For more detailed information, please refer to UpCloud's official documentation 
 - The `HOSTNAME` is your system hostname, but with dots replaced by hyphens.
 - The `PROVIDER` is the short name of the vendor, with underscores replaced by hyphens:
 
+```sh
   aws -------------- Amazon S3 (Standard)
   aws-one-zone ----- Amazon S3 (One Zone)
   aws-standard-ia -- Amazon S3 (Standard-IA)
@@ -323,6 +324,7 @@ For more detailed information, please refer to UpCloud's official documentation 
   linode ----------- Linode Object Storage by Akamai
   upcloud ---------- UpCloud Object Storage
   wasabi ----------- Wasabi Hot Cloud Storage
+```
 
 How to determine correct `HOSTNAME` and `USER` to be used as your Bucket name?
 
