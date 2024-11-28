@@ -1912,6 +1912,12 @@ _barracuda_cnf() {
     echo "###"                                                 > ${_barCnf}
     echo "### Configuration created on ${_NOW}"               >> ${_barCnf}
     echo "###"                                                >> ${_barCnf}
+
+    echo "### NOTE: the group of settings displayed below will *not* be overridden" >> ${_barCnf}
+    echo "### on upgrade by the Barracuda script nor by this configuration file." >> ${_barCnf}
+    echo "### They can be defined only on initial Barracuda install." >> ${_barCnf}
+    echo "###" >> ${_barCnf}
+
     echo "_LOCAL_NETWORK_HN=\"${_LOCAL_NETWORK_HN}\""         >> ${_barCnf}
     echo "_LOCAL_NETWORK_IP=\"${_LOCAL_NETWORK_IP}\""         >> ${_barCnf}
     echo "_MY_FRONT=\"${_MY_FRONT}\""                         >> ${_barCnf}
@@ -1921,45 +1927,56 @@ _barracuda_cnf() {
     echo "_SMTP_RELAY_TEST=${_SMTP_RELAY_TEST}"               >> ${_barCnf}
     echo "_THIS_DB_HOST=${_THIS_DB_HOST}"                     >> ${_barCnf}
 
+    echo "###" >> ${_barCnf}
+    echo "### NOTE: the group of settings displayed below" >> ${_barCnf}
+    echo "### will *override* all listed settings in the Barracuda script," >> ${_barCnf}
+    echo "### both on initial install and upgrade." >> ${_barCnf}
+    echo "###" >> ${_barCnf}
+
     echo "###"                                                >> ${_barCnf}
-    echo "_AUTOPILOT=${_AUTOPILOT}"                           >> ${_barCnf}
-    echo "_DEBUG_MODE=${_DEBUG_MODE}"                         >> ${_barCnf}
-    echo "_MY_EMAIL=\"${_MY_EMAIL}\""                         >> ${_barCnf}
     echo "_XTRAS_LIST=\"${_XTRAS_LIST}\""                     >> ${_barCnf}
 
     echo "###"                                                >> ${_barCnf}
-    echo "_MODULES_FIX=${_MODULES_FIX}"                       >> ${_barCnf}
-    echo "_MODULES_SKIP=\"${_MODULES_SKIP}\""                 >> ${_barCnf}
-    echo "_PERMISSIONS_FIX=${_PERMISSIONS_FIX}"               >> ${_barCnf}
+    echo "_AUTOPILOT=${_AUTOPILOT}"                           >> ${_barCnf}
+    echo "_DEBUG_MODE=${_DEBUG_MODE}"                         >> ${_barCnf}
+    echo "_INCIDENT_REPORT=\"${_INCIDENT_REPORT}\""           >> ${_barCnf}
+    echo "_MY_EMAIL=\"${_MY_EMAIL}\""                         >> ${_barCnf}
 
     echo "###"                                                >> ${_barCnf}
     echo "_CPU_CRIT_RATIO=${_CPU_CRIT_RATIO}"                 >> ${_barCnf}
     echo "_CPU_MAX_RATIO=${_CPU_MAX_RATIO}"                   >> ${_barCnf}
     echo "_CPU_SPIDER_RATIO=${_CPU_SPIDER_RATIO}"             >> ${_barCnf}
+    echo "_CPU_TASK_RATIO=${_CPU_TASK_RATIO}"                 >> ${_barCnf}
 
     echo "###"                                                >> ${_barCnf}
+    echo "_CUSTOM_COLLATION_SQL=${_CUSTOM_COLLATION_SQL}"     >> ${_barCnf}
     echo "_DB_BINARY_LOG=${_DB_BINARY_LOG}"                   >> ${_barCnf}
     echo "_DB_SERIES=${_DB_SERIES}"                           >> ${_barCnf}
     echo "_DB_SERVER=${_DB_SERVER}"                           >> ${_barCnf}
+    echo "_SQL_LOW_MAX_TTL=${_SQL_LOW_MAX_TTL}"               >> ${_barCnf}
+    echo "_SQL_MAX_TTL=${_SQL_MAX_TTL}"                       >> ${_barCnf}
     echo "_USE_MYSQLTUNER=${_USE_MYSQLTUNER}"                 >> ${_barCnf}
 
     echo "###"                                                >> ${_barCnf}
     echo "_DNS_SETUP_TEST=${_DNS_SETUP_TEST}"                 >> ${_barCnf}
     echo "_EXTRA_PACKAGES=${_EXTRA_PACKAGES}"                 >> ${_barCnf}
     echo "_FORCE_GIT_MIRROR=\"${_FORCE_GIT_MIRROR}\""         >> ${_barCnf}
-    echo "_LOCAL_DEVUAN_MIRROR=${_LOCAL_DEVUAN_MIRROR}"       >> ${_barCnf}
     echo "_LOCAL_DEBIAN_MIRROR=${_LOCAL_DEBIAN_MIRROR}"       >> ${_barCnf}
+    echo "_LOCAL_DEVUAN_MIRROR=${_LOCAL_DEVUAN_MIRROR}"       >> ${_barCnf}
     echo "_NEWRELIC_KEY=${_NEWRELIC_KEY}"                     >> ${_barCnf}
 
     echo "###"                                                >> ${_barCnf}
+    echo "_ENABLE_GOACCESS=${_ENABLE_GOACCESS}"               >> ${_barCnf}
     echo "_MAGICK_FROM_SOURCES=${_MAGICK_FROM_SOURCES}"       >> ${_barCnf}
 
     echo "###"                                                >> ${_barCnf}
-    echo "_NGINX_DOS_LINES=${_NGINX_DOS_LINES}"               >> ${_barCnf}
-    echo "_NGINX_DOS_LIMIT=${_NGINX_DOS_LIMIT}"               >> ${_barCnf}
-    echo "_NGINX_DOS_MODE=${_NGINX_DOS_MODE}"                 >> ${_barCnf}
-    echo "_NGINX_DOS_LOG=${_NGINX_DOS_LOG}"                   >> ${_barCnf}
+    echo "_NGINX_DOS_DIV_INC_NR=\"${_NGINX_DOS_DIV_INC_NR}\"" >> ${_barCnf}
     echo "_NGINX_DOS_IGNORE=\"${_NGINX_DOS_IGNORE}\""         >> ${_barCnf}
+    echo "_NGINX_DOS_INC_MIN=\"${_NGINX_DOS_INC_MIN}\""       >> ${_barCnf}
+    echo "_NGINX_DOS_LIMIT=${_NGINX_DOS_LIMIT}"               >> ${_barCnf}
+    echo "_NGINX_DOS_LINES=${_NGINX_DOS_LINES}"               >> ${_barCnf}
+    echo "_NGINX_DOS_LOG=${_NGINX_DOS_LOG}"                   >> ${_barCnf}
+    echo "_NGINX_DOS_MODE=${_NGINX_DOS_MODE}"                 >> ${_barCnf}
     echo "_NGINX_DOS_STOP=\"${_NGINX_DOS_STOP}\""             >> ${_barCnf}
 
     echo "###"                                                >> ${_barCnf}
@@ -1977,8 +1994,8 @@ _barracuda_cnf() {
     echo "_PHP_FPM_DENY=\"${_PHP_FPM_DENY}\""                 >> ${_barCnf}
     echo "_PHP_FPM_VERSION=${_PHP_FPM_VERSION}"               >> ${_barCnf}
     echo "_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}"               >> ${_barCnf}
-    echo "_PHP_IONCUBE=${_PHP_IONCUBE}"                       >> ${_barCnf}
     echo "_PHP_GEOS=${_PHP_GEOS}"                             >> ${_barCnf}
+    echo "_PHP_IONCUBE=${_PHP_IONCUBE}"                       >> ${_barCnf}
     echo "_PHP_MONGODB=${_PHP_MONGODB}"                       >> ${_barCnf}
     echo "_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\""       >> ${_barCnf}
     echo "_PHP_SINGLE_INSTALL=${_PHP_SINGLE_INSTALL}"         >> ${_barCnf}
@@ -2004,6 +2021,16 @@ _barracuda_cnf() {
     echo "_AEGIR_UPGRADE_ONLY=${_AEGIR_UPGRADE_ONLY}"         >> ${_barCnf}
     echo "_SYSTEM_UP_ONLY=${_SYSTEM_UP_ONLY}"                 >> ${_barCnf}
     echo "###"                                                >> ${_barCnf}
+
+    echo "###"                                                >> ${_barCnf}
+    echo "_MODULES_FIX=${_MODULES_FIX}"                       >> ${_barCnf}
+    echo "_MODULES_SKIP=\"${_MODULES_SKIP}\""                 >> ${_barCnf}
+    echo "_PERMISSIONS_FIX=${_PERMISSIONS_FIX}"               >> ${_barCnf}
+
+    echo "###"                                                >> ${_barCnf}
+    echo "### Barracuda"                                      >> ${_barCnf}
+    echo "###"                                                >> ${_barCnf}
+
     _CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
     ### Force HTTP/2 or SPDY plus PFS on supported systems
     sed -i "s/^_NGINX_SPDY=.*/_NGINX_SPDY=YES/g"                 ${_barCnf}
@@ -2021,23 +2048,23 @@ _barracuda_cnf() {
     _devM="deb.devuan.org"
     _debM="deb.debian.org"
 
-    sed -i "s/^_LOCAL_DEVUAN_.*/_LOCAL_DEVUAN_MIRROR=${_devM}/g"  ${_barCnf}
+    sed -i "s/^_LOCAL_DEVUAN_.*/_LOCAL_DEVUAN_MIRROR=${_devM}/g" ${_barCnf}
     wait
-    sed -i "s/^_LOCAL_DEBIAN_.*/_LOCAL_DEBIAN_MIRROR=${_debM}/g"  ${_barCnf}
+    sed -i "s/^_LOCAL_DEBIAN_.*/_LOCAL_DEBIAN_MIRROR=${_debM}/g" ${_barCnf}
     wait
-    sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"      ${_barCnf}
+    sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"     ${_barCnf}
     wait
-    sed -i "s/^_STRICT_BIN_.*/_STRICT_BIN_PERMISSIONS=YES/g"      ${_barCnf}
+    sed -i "s/^_STRICT_BIN_.*/_STRICT_BIN_PERMISSIONS=YES/g"     ${_barCnf}
     wait
-    sed -i "s/^_STRONG_PASS.*/_STRONG_PASSWORDS=YES/g"            ${_barCnf}
+    sed -i "s/^_STRONG_PASS.*/_STRONG_PASSWORDS=YES/g"           ${_barCnf}
     wait
-    sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g"        ${_barCnf}
+    sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g"       ${_barCnf}
     wait
     sed -i "s/^_FORCE_GIT_.*/_FORCE_GIT_MIRROR=\"\"/g" /root/.*.octopus.cnf &> /dev/null
     wait
     sed -i "s/^_STRONG_PASS.*/_STRONG_PASSWORDS=YES/g" /root/.*.octopus.cnf &> /dev/null
     wait
-    sed -i "s/^_REDIS_LISTEN.*/_REDIS_LISTEN_MODE=SOCKET/g"       ${_barCnf}
+    sed -i "s/^_REDIS_LISTEN.*/_REDIS_LISTEN_MODE=SOCKET/g"      ${_barCnf}
     wait
     if [ "${_OS_CODE}" = "stretch" ] || [ "${_OS_CODE}" = "jessie" ]; then
       if [ -x "/opt/php74/bin/php" ]; then
