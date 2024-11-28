@@ -50,7 +50,7 @@ For more, refer to [Wasabi Regions](https://wasabi.com/company/storage-regions).
 
 #### **Backblaze B2 (b2)**
 
-- **Bucket Creation:** Automatic bucket creation is supported with proper credentials.
+- **Bucket Creation:** Automatic with proper credentials.
 - **Supported Regions:**
 
 | Data Center Location    | Region Code  |
@@ -80,7 +80,7 @@ More details available at the [Backblaze B2 Regions documentation](https://www.b
 
 #### **DigitalOcean Spaces (do-spaces)**
 
-- **Bucket Creation:** **Automatic** if credentials have write permissions.
+- **Bucket Creation:** Automatic if credentials have write permissions.
 - **Supported Regions:**
 
 | Data Center Location       | Region Code |
@@ -147,7 +147,7 @@ For more details, refer to the [AWS Regional Endpoints documentation](https://do
 
 #### **Google Cloud Storage (gcs)**
 
-- **Bucket Creation:** Supported automatically if proper permissions are configured.
+- **Bucket Creation:** Automatic if credentials have write permissions.
 - **Supported Regions:** (not all are listed here)
 
 | Data Center Location                 | Region Code     |
@@ -345,6 +345,4 @@ Regular users should place their backup configurations in the `~/static/control/
 This document includes the complete regions list per service and ensures you have the required configurations for `multiback` and `mybackup` scripts. For further details, refer to the README files generated during installation or contact your system administrator.
 
 The README files for non-root users are available in `~/static/control/remote_backups/credentials/README.txt` and `~/static/control/remote_backups/config/README.txt`
-
-
 
