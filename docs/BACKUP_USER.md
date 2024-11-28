@@ -41,7 +41,6 @@ The system supports backups to the following storage services. Each service requ
 - **IBM Cloud Object Storage**
 - **Linode Object Storage by Akamai**
 - **Microsoft Azure Blob Storage**
-- **UpCloud Object Storage**
 - **Wasabi Hot Cloud Storage**
 
 Refer to the **Managing Credentials** section for details on how to create and secure credential files for these services.

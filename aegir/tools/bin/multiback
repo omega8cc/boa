@@ -69,7 +69,7 @@ _usage() {
   echo "  $0 restore b2 jane /restore/target /another/path 2W"
   echo
   echo "Supported services:"
-  echo "  aws, aws_one_zone, aws_standard_ia, azure, b2, cloudflare, do_spaces, gcs, ibm, linode, upcloud, wasabi"
+  echo "  aws, aws_one_zone, aws_standard_ia, azure, b2, cloudflare, do_spaces, gcs, ibm, linode, wasabi"
   echo
   echo "NOTE: [RESTORE_PATH] must be an absolute path (no leading slash) of the file or directory to restore"
   echo
@@ -631,11 +631,6 @@ _set_backup_target() {
       _load_credentials "linode" "${_user}"
       _construct_bucket_name "linode" "${_user}"
       _BACKUP_TARGET="s3://${LINODE_ACCESS_KEY}:${LINODE_SECRET_KEY}@${LINODE_REGION}/${_BUCKET_NAME}"
-      ;;
-    upcloud)
-      _load_credentials "upcloud" "${_user}"
-      _construct_bucket_name "upcloud" "${_user}"
-      _BACKUP_TARGET="s3://${UPCLOUD_USERNAME}:${UPCLOUD_PASSWORD}@${REGION}/${_BUCKET_NAME}"
       ;;
     wasabi)
       _load_credentials "wasabi" "${_user}"

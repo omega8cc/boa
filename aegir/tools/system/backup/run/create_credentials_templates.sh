@@ -36,7 +36,6 @@ _create_credentials_templates() {
     "gcs"
     "ibm"
     "linode"
-    "upcloud"
     "wasabi"
   )
 
@@ -109,15 +108,6 @@ EOF
 export LINODE_ACCESS_KEY="your_linode_access_key"
 export LINODE_SECRET_KEY="your_linode_secret_key"
 export LINODE_REGION="your_linode_region"  # E.g., "us-east-1"
-export KEEP_WITHIN="3M"
-export FULL_BACKUP_FREQUENCY="7D"
-EOF
-          ;;
-        upcloud)
-          cat << EOF > "${_template_file}"
-export UPCLOUD_USERNAME="your_upcloud_username"
-export UPCLOUD_PASSWORD="your_upcloud_password"
-export REGION="your_upcloud_region"  # E.g., "fi-hel1"
 export KEEP_WITHIN="3M"
 export FULL_BACKUP_FREQUENCY="7D"
 EOF

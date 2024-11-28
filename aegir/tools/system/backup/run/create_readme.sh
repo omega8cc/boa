@@ -75,14 +75,6 @@ Azure Blob Storage
   export KEEP_WITHIN="3M"
   export FULL_BACKUP_FREQUENCY="7D"
 
-UpCloud Object Storage
-  File: upcloud.txt
-  export UPCLOUD_USERNAME="your_upcloud_username"
-  export UPCLOUD_PASSWORD="your_upcloud_password"
-  export REGION="your_upcloud_region"  # E.g., "fi-hel1"
-  export KEEP_WITHIN="3M"
-  export FULL_BACKUP_FREQUENCY="7D"
-
 IBM Cloud Object Storage
   File: ibm.txt
   export IBM_API_KEY_ID="your_ibm_api_key_id"

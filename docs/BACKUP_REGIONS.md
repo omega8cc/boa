@@ -12,7 +12,7 @@ This document outlines the supported regions and configuration guidelines for th
 
 ## General Bucket Behavior
 
-Most providers allow **automatic bucket creation** if sufficient credentials and permissions are provided. However, some providers (e.g., **UpCloud**) require **manual bucket creation** before the first backup. Below is a detailed breakdown for each provider.
+Most providers allow **automatic bucket creation** if sufficient credentials and permissions are provided. However, some providers (e.g., **Linode**) require **manual bucket creation** before the first backup. Below is a detailed breakdown for each provider.
 
 ---
 
@@ -264,7 +264,6 @@ More details available at the [Cloudflare R2 Object Storage documentation](https
 
 For more details, refer to the [IBM Cloud Regions documentation](https://cloud.ibm.com/docs/cloud-object-storage?topic=cloud-object-storage-endpoints).
 
-
 ---
 
 #### **Akamai Object Storage (linode)**
@@ -297,31 +296,6 @@ For more detailed information, please refer to Akamai's official [Object Storage
 
 ---
 
-#### **UpCloud Object Storage (upcloud)**
-
-- **Bucket Creation:** Must be **manually created** before use -- see Required Bucket Naming Convention below.
-- **Supported Regions:**
-
-| Data Center Location       | Region Code   |
-|----------------------------|---------------|
-| Sydney, Australia          | `au-syd1`     |
-| Frankfurt, Germany         | `de-fra1`     |
-| Madrid, Spain              | `es-mad1`     |
-| Helsinki, Finland          | `fi-hel1`     |
-| Helsinki, Finland          | `fi-hel2`     |
-| Amsterdam, Netherlands     | `nl-ams1`     |
-| Warsaw, Poland             | `pl-waw1`     |
-| London, United Kingdom     | `uk-lon1`     |
-| Stockholm, Sweden          | `se-sto1`     |
-| Singapore                  | `sg-sin1`     |
-| Chicago, United States     | `us-chi1`     |
-| New York City, United States | `us-nyc1`   |
-| San Jose, United States    | `us-sjo1`     |
-
-For more detailed information, please refer to UpCloud's official documentation on [data center locations](https://upcloud.com/docs/products/block-storage/availability).
-
----
-
 ### Required Bucket Naming Convention
 
 #### Root (`multiback`) Behavior:
@@ -346,7 +320,6 @@ For more detailed information, please refer to UpCloud's official documentation 
   gcs -------------- Google Cloud Storage
   ibm -------------- IBM Cloud Object Storage
   linode ----------- Linode Object Storage by Akamai
-  upcloud ---------- UpCloud Object Storage
   wasabi ----------- Wasabi Hot Cloud Storage
 ```
 
