@@ -804,11 +804,15 @@ _barracuda_install() {
     elif [ "${_kiNd}" = "public" ] && [ ! -z "${_fQdn}" ]; then
       sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=PUBLIC/g"        ${_vBs}/${_filIncB}
       wait
+      _fQdn="${_fQdn//[^a-zA-Z0-9-.]/}"
+      _fQdn="$(echo -n ${_fQdn} | tr A-Z a-z 2>&1)"
       sed -i "s/^_EASY_HOSTNAME.*/_EASY_HOSTNAME=${_fQdn}/g" ${_vBs}/${_filIncB}
       wait
     else
       sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=PUBLIC/g"        ${_vBs}/${_filIncB}
       wait
+      _fQdn="${_fQdn//[^a-zA-Z0-9-.]/}"
+      _fQdn="$(echo -n ${_fQdn} | tr A-Z a-z 2>&1)"
       sed -i "s/^_EASY_HOSTNAME.*/_EASY_HOSTNAME=${_fQdn}/g" ${_vBs}/${_filIncB}
       wait
     fi
@@ -1226,6 +1230,8 @@ _init_setup() {
     if [ -e "/root/.dev.server.cnf" ]; then
       echo MODD _tRee is ${_tRee}
       echo MODD _kiNd is ${_kiNd}
+      _fQdn="${_fQdn//[^a-zA-Z0-9-.]/}"
+      _fQdn="$(echo -n ${_fQdn} | tr A-Z a-z 2>&1)"
       echo MODD _fQdn is ${_fQdn}
       echo MODD _eMal is ${_eMal}
       echo MODD _usEr is ${_usEr}
