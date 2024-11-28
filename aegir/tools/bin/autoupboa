@@ -336,9 +336,9 @@ _crontab_update() {
       echo "*/19 *  * * *   root    bash /var/xdrago/clear.sh >/dev/null 2>&1" >> /etc/crontab
     fi
     if [ -e "/etc/csf" ]; then
-      echo "01 *    * * *   root    rm -f /var/xdrago/monitor/log/web.log >/dev/null 2>&1" >> /etc/crontab
-      echo "01 *    * * *   root    rm -f /var/xdrago/monitor/log/ssh.log >/dev/null 2>&1" >> /etc/crontab
-      echo "01 *    * * *   root    rm -f /var/xdrago/monitor/log/ftp.log >/dev/null 2>&1" >> /etc/crontab
+      echo "*/15 *  * * *   root    rm -f /var/xdrago/monitor/log/web.log >/dev/null 2>&1" >> /etc/crontab
+      echo "*/15 *  * * *   root    rm -f /var/xdrago/monitor/log/ssh.log >/dev/null 2>&1" >> /etc/crontab
+      echo "*/15 *  * * *   root    rm -f /var/xdrago/monitor/log/ftp.log >/dev/null 2>&1" >> /etc/crontab
     fi
     sed -i "/^$/d" /etc/crontab &> /dev/null
     wait
@@ -395,9 +395,9 @@ _crontab_cleanup() {
       echo "*/19 *  * * *   root    bash /var/xdrago/clear.sh >/dev/null 2>&1" >> /etc/crontab
     fi
     if [ -e "/etc/csf" ]; then
-      echo "01 *    * * *   root    rm -f /var/xdrago/monitor/log/web.log >/dev/null 2>&1" >> /etc/crontab
-      echo "01 *    * * *   root    rm -f /var/xdrago/monitor/log/ssh.log >/dev/null 2>&1" >> /etc/crontab
-      echo "01 *    * * *   root    rm -f /var/xdrago/monitor/log/ftp.log >/dev/null 2>&1" >> /etc/crontab
+      echo "*/15 *  * * *   root    rm -f /var/xdrago/monitor/log/web.log >/dev/null 2>&1" >> /etc/crontab
+      echo "*/15 *  * * *   root    rm -f /var/xdrago/monitor/log/ssh.log >/dev/null 2>&1" >> /etc/crontab
+      echo "*/15 *  * * *   root    rm -f /var/xdrago/monitor/log/ftp.log >/dev/null 2>&1" >> /etc/crontab
     fi
     sed -i "/^$/d" /etc/crontab &> /dev/null
     wait
@@ -667,14 +667,14 @@ if [ -e "/var/aegir/drush" ]; then
   fi
 
   if [ -e "/root/.dev.server.cnf" ]; then
-    if [ ! -e "/var/xdrago/log/.etc_crontab_update_dev_ctrl_f007.${_tRee}.${_xSrl}.pid" ]; then
+    if [ ! -e "/var/xdrago/log/.etc_crontab_update_dev_ctrl_f008.${_tRee}.${_xSrl}.pid" ]; then
       rm -f /var/xdrago/log/.*etc_crontab_update_dev_ctrl*
       _crontab_cleanup
       service cron restart
-      touch /var/xdrago/log/.etc_crontab_update_dev_ctrl_f007.${_tRee}.${_xSrl}.pid
+      touch /var/xdrago/log/.etc_crontab_update_dev_ctrl_f008.${_tRee}.${_xSrl}.pid
     fi
   else
-    if [ ! -e "/var/xdrago/log/.etc_crontab_update_prod_ctrl_f007.${_tRee}.${_xSrl}.pid" ]; then
+    if [ ! -e "/var/xdrago/log/.etc_crontab_update_prod_ctrl_f008.${_tRee}.${_xSrl}.pid" ]; then
       rm -f /var/xdrago/log/.*etc_crontab_update_prod_ctrl*
       if [ ! -z "${_AUTO_UP_MONTH}" ] \
         && [ ! -z "${_AUTO_UP_DAY}" ]; then
@@ -683,7 +683,7 @@ if [ -e "/var/aegir/drush" ]; then
         _crontab_cleanup
       fi
       service cron restart
-      touch /var/xdrago/log/.etc_crontab_update_prod_ctrl_f007.${_tRee}.${_xSrl}.pid
+      touch /var/xdrago/log/.etc_crontab_update_prod_ctrl_f008.${_tRee}.${_xSrl}.pid
     fi
   fi
 
