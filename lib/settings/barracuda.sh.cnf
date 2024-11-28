@@ -201,16 +201,6 @@ _NEWRELIC_KEY=""
 
 
 ###----------------------------------------###
-### SCOUT APP INSTALL                      ###
-###----------------------------------------###
-###
-### Enter your Scout App license key to get
-### it installed and enabled automatically.
-###
-_SCOUT_KEY=""
-
-
-###----------------------------------------###
 ### AUTOPILOT MODE                         ###
 ###----------------------------------------###
 ###

@@ -508,8 +508,6 @@ _check_report() {
   wait
   sed -i "s/^_NEWRELIC_KEY.*//g" ${_UP_LOG}
   wait
-  sed -i "s/^_SCOUT_KEY.*//g"    ${_UP_LOG}
-  wait
   sed -i "/^$/d"                 ${_UP_LOG}
   wait
   _SEND_ALERT=NO

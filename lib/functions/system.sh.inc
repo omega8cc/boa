@@ -1950,7 +1950,6 @@ _barracuda_cnf() {
     echo "_LOCAL_DEVUAN_MIRROR=${_LOCAL_DEVUAN_MIRROR}"       >> ${_barCnf}
     echo "_LOCAL_DEBIAN_MIRROR=${_LOCAL_DEBIAN_MIRROR}"       >> ${_barCnf}
     echo "_NEWRELIC_KEY=${_NEWRELIC_KEY}"                     >> ${_barCnf}
-    echo "_SCOUT_KEY=${_SCOUT_KEY}"                           >> ${_barCnf}
 
     echo "###"                                                >> ${_barCnf}
     echo "_MAGICK_FROM_SOURCES=${_MAGICK_FROM_SOURCES}"       >> ${_barCnf}
@@ -2199,11 +2198,6 @@ _barracuda_cnf() {
           wait
         fi
       fi
-    fi
-
-    _SCOUT_KEY_TEST=$(grep _SCOUT_KEY ${_barCnf} 2>&1)
-    if [[ ! "${_SCOUT_KEY_TEST}" =~ "_SCOUT_KEY" ]]; then
-      echo "_SCOUT_KEY=${_SCOUT_KEY}" >> ${_barCnf}
     fi
 
     _EXTRA_PACKAGES_TEST=$(grep _EXTRA_PACKAGES ${_barCnf} 2>&1)

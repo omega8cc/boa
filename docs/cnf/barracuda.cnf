@@ -50,7 +50,6 @@ _FORCE_GIT_MIRROR="" #---------- Allows to use different mirror (deprecated)
 _LOCAL_DEVUAN_MIRROR= #--------- Allows to force non-default Devuan mirror
 _LOCAL_DEBIAN_MIRROR= #--------- Allows to force non-default Debian mirror
 _NEWRELIC_KEY= #---------------- Installs New Relic when license key is set
-_SCOUT_KEY= #------------------- Installs Scout App when license key is set
 ###
 _ENABLE_GOACCESS=NO #----------- Generate statistics with GoAccess when YES
 ###
