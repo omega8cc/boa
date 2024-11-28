@@ -111,8 +111,17 @@ while IFS= read -r _line || [ -n "${_line}" ]; do
 
   # Determine the paths configuration file
   if [ "${_user}" = "global_user" ]; then
-    _paths_file="/root/.remote_backups/paths/paths.txt"
-    _credentials_file="/root/.remote_backups/credentials/${_service}.txt"
+    local _paths_file="/root/.remote_backups/paths/paths.txt"
+    local _credentials_file="/root/.remote_backups/credentials/${_service}.txt"
+    local _secret_file="/root/.remote_backups/.secret.txt"
+
+    if [ -f "${_secret_file}" ]; then
+      export PASSPHRASE=$(cat "${_secret_file}")
+    else
+      echo "Secret file ${_secret_file} not found."
+      _remove_pid_file "${_CURRENT_PIDFILE}"
+      continue
+    fi
 
     # Check if paths.txt exists
     if [ ! -f "${_paths_file}" ]; then
@@ -131,9 +140,18 @@ while IFS= read -r _line || [ -n "${_line}" ]; do
     # Change to the directory where paths.txt and credentials are located
     cd /root/.remote_backups
 
-  else
-    _paths_file="/data/disk/${_user}/remote_backups/paths/paths.txt"
-    _credentials_file="/data/disk/${_user}/static/control/remote_backups/credentials/${_service}.txt"
+  elif [ "${_user}" != "arch" ] && [ "${_user}" != "global_user" ]; then
+    local _paths_file="/data/disk/${_user}/remote_backups/paths/paths.txt"
+    local _credentials_file="/data/disk/${_user}/static/control/remote_backups/credentials/${_service}.txt"
+    local _secret_file="/data/disk/${_user}/remote_backups/.secret.txt"
+
+    if [ -f "${_secret_file}" ]; then
+      export PASSPHRASE=$(cat "${_secret_file}")
+    else
+      echo "Secret file ${_secret_file} not found."
+      _remove_pid_file "${_CURRENT_PIDFILE}"
+      continue
+    fi
 
     if [ ! -f "${_paths_file}" ]; then
       echo "Error: Paths configuration file ${_paths_file} not found."
@@ -165,6 +183,12 @@ while IFS= read -r _line || [ -n "${_line}" ]; do
   else
     echo "Backup for ${_service} (${_user}) failed."
   fi
+
+  # Wipe out exported variables to clean up env after running the backup
+  export PASSPHRASE=
+  export _SOURCE=
+  export _INCLUDE=
+  export _EXCLUDE=
 
   # Return to the original directory
   cd -

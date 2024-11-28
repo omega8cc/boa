@@ -118,7 +118,7 @@ EOF
 }
 
 #### Generate Passphrase and Store in .secret.txt per user
-_generate_secret_file() {
+_generate_user_secret_file() {
   local _user_dir=$1
   local _secret_file="${_user_dir}/remote_backups/.secret.txt"
 
@@ -134,7 +134,7 @@ _generate_secret_file() {
   fi
 }
 
-#### Global Secret for Root
+#### Generate Passphrase for Root
 _generate_global_secret_file() {
   local _secret_file="/root/.remote_backups/.secret.txt"
 

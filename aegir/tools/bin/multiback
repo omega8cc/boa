@@ -274,13 +274,11 @@ _validate_paths() {
 # Function to load paths configuration
 _load_paths() {
   local _user="$1"
-
-  local _paths_file="/data/disk/${_user}/remote_backups/paths/paths.txt"
-
-  if [ "${_user}" = "global_user" ]; then
+  if [ "${_user}" != "arch" ] && [ "${_user}" != "global_user" ]; then
     local _paths_file="/data/disk/${_user}/remote_backups/paths/paths.txt"
-    local _cred_file="/root/.remote_backups/credentials/${_service}.txt"
-    local _secret_file="/root/.remote_backups/.secret.txt"
+  fi
+  if [ "${_user}" = "global_user" ]; then
+    local _paths_file="/root/.remote_backups/paths/paths.txt"
   fi
 
   if [ ! -f "${_paths_file}" ]; then
@@ -729,5 +727,13 @@ case "${_ACTION}" in
     _usage
     ;;
 esac
+
+# Wipe out any exported variables to clean up env after running the backup
+export PASSPHRASE=
+export _SOURCE=
+export _INCLUDE=
+export _EXCLUDE=
+export _NAME=
+export _BUCKET_NAME=
 
 _remove_pid_file "${_PIDFILE}"
