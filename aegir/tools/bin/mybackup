@@ -6,7 +6,7 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 
 # Base directory for user commands
 _BASE_DIR="/data/disk"
-_RUN_SUBDIR="static/run"
+_RUN_SUBDIR="static/control/.run"
 _CMD_FILE="command.txt"
 
 # Function to display usage information
@@ -245,6 +245,17 @@ _construct_bucket_name() {
   export _NAME="${_user}-${_service_dash}"
 }
 
+# Function to notify user about completed restore
+_send_restore_confirmation_email() {
+  local _recipient=$1
+  local _subject=$1
+
+  if [ -n "${_recipient}" ]; then
+    echo "Sending email report on $(date)" >> ${_LOGFILE}
+    s-nail -s "Daily backup: ${_MODE} ${_HST} $(date)" ${_MY_EMAIL} < ${_LOGFILE}
+  fi
+}
+
 # Function to restore backup
 _restore() {
   local _restore_target=$1
@@ -277,8 +288,12 @@ _restore() {
   echo "Command is ${_restore_command}"
   # ${_DCY_MN_CMD} restore --time ${_restore_time} ${_BACKUP_TARGET} --path-to-restore ${_restore_path} ${_restore_target}
 
-  # su -s /bin/bash ${_user} -c "eval \"${_restore_command}\"" &> /dev/null
-  eval "${_restore_command}"
+  echo "MyBackup Restore for [${_user}] on [$(date)]" >> ${_LOGFILE}
+  eval "${_restore_command}" >> ${_LOGFILE}
+  if [ -n "${_userEmail}" ]; then
+    local _subject="MyBackup Restore Notification [${_user}] on [$(date)]"
+    _send_restore_confirmation_email "${_userEmail}" "${_subject}"
+  fi
 }
 
 # Function to set backup target based on service
@@ -354,11 +369,67 @@ _set_backup_target() {
   esac
 }
 
+# Function to validate restore command
+_validate_restore_command() {
+  local _command=$1
+
+  # Split the command into parts
+  local _action=$(echo "${_command}" | awk '{print $1}')
+  local _service=$(echo "${_command}" | awk '{print $2}')
+  local _restore_target=$(echo "${_command}" | awk '{print $3}')
+  local _restore_path=$(echo "${_command}" | awk '{print $4}')
+  local _restore_time=$(echo "${_command}" | awk '{print $5}')
+
+  # Ensure the command starts with "restore"
+  if [[ "${_action}" != "restore" ]]; then
+    echo "Error: Invalid command action '${_action}'. Only 'restore' is allowed."
+    return 1
+  fi
+
+  # Validate service
+  case "${_service}" in
+    aws|aws_one_zone|aws_standard_ia|azure|b2|cloudflare|do_spaces|gcs|ibm|linode|wasabi)
+      # Valid services
+      ;;
+    *)
+      echo "Error: Invalid service '${_service}'."
+      return 1
+      ;;
+  esac
+
+  # Validate restore target (optional, must be a directory within user's allowed path)
+  if [[ -n "${_restore_target}" && ! "${_restore_target}" =~ ^/data/disk/${_user}/ ]]; then
+    echo "Error: Restore target '${_restore_target}' is outside allowed directories."
+    return 1
+  fi
+
+  # Validate restore path (optional, no leading slash)
+  if [[ -n "${_restore_path}" && "${_restore_path}" =~ ^/ ]]; then
+    echo "Error: Restore path '${_restore_path}' must not have a leading slash."
+    return 1
+  fi
+
+  # Validate restore time (optional, must match supported formats: 1D, 7D, 2W, etc.)
+  if [[ -n "${_restore_time}" && ! "${_restore_time}" =~ ^[0-9]+[DWMY]$ ]]; then
+    echo "Error: Invalid restore time format '${_restore_time}'. Supported formats: 1D, 7D, 2W, etc."
+    return 1
+  fi
+
+  # Command is valid
+  return 0
+}
+
 # Check if run as root
 _run_as_user=$(whoami)
 
 # Main script
 if [[ "$#" -eq 0 ]] && [ "${_run_as_user}" = "root" ]; then
+
+  if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ]; then
+    echo "[$(date)] Active duplicity process detected, will try again later..." >> /var/log/mybackup_waiting_queue.log
+    exit 1
+  fi
+
   # Process queued commands for all users
   for _user_dir in "${_BASE_DIR}"/*; do
     if [[ -d "${_user_dir}" ]]; then
@@ -368,15 +439,25 @@ if [[ "$#" -eq 0 ]] && [ "${_run_as_user}" = "root" ]; then
 
       if [[ -f "${_user_cmd_file}" ]]; then
         _command=$(cat "${_user_cmd_file}")
-        echo "Executing command for user ${_user}: ${_command}"
+        echo "Validating command for user ${_user}: ${_command}"
 
-        # Execute the command as the user
-        sudo -u "${_user}" "$0" ${_command}
-        wait
+        # Validate the command
+        if _validate_restore_command "${_command}"; then
+          echo "Command validated successfully. Executing for user ${_user}."
+          sudo -u "${_user}" "$0" ${_command}
+          wait
 
-        # Clean up the command file
-        rm -f "${_user_cmd_file}"
-        sleep 60
+          # Clean up the command file
+          echo "[$(date)] Command was run for user ${_user}: ${_command}" >> /var/log/mybackup_commands_history.log
+          echo "[$(date)] Command was run for user ${_user}: ${_command}" >> /data/disk/${_user}/log/mybackup_commands_history.log
+          rm -f "${_user_cmd_file}"
+          sleep 60
+        else
+          echo "Error: Invalid command for user ${_user}. Skipping."
+          # Optionally log invalid commands for audit
+          echo "[$(date)] Invalid command for user ${_user}: ${_command}" >> /var/log/mybackup_invalid_commands.log
+          echo "[$(date)] Invalid command for user ${_user}: ${_command}" >> /data/disk/${_user}/log/mybackup_invalid_commands.log
+        fi
       fi
     fi
   done
@@ -387,14 +468,24 @@ fi
 _user=$(whoami | sed 's/\.ftp$//')
 
 if [[ $(whoami) == *.ftp ]]; then
+  _user_run_dir="/data/disk/${_user}/static/control/.run"
+  [ ! -e "${_user_run_dir}" ] && mkdir -p "${_user_run_dir}"
+  # Validate the command
+  if ! _validate_restore_command "$@"; then
+    echo "Error: Invalid command. The command has not been queued."
+    # Optionally log invalid commands
+    echo "[$(date)] Invalid command attempted by $(whoami): $@" >> ${_user_run_dir}/mybackup_invalid_commands.log
+    echo "[$(date)] Invalid command attempted by $(whoami): $@" >> /data/disk/${_user}/log/mybackup_invalid_commands.log
+    exit 1
+  fi
+
   # If invoked as USER.ftp, queue the command
-  _user_run_dir="/data/disk/${_user}/static/run"
-  mkdir -p "${_user_run_dir}"
   echo "$@" > "${_user_run_dir}/${_CMD_FILE}"
   echo "Command queued for user ${_user}. It will be executed by the system."
   exit 0
 fi
 
+_userEmail=""
 [ -e "/data/disk/${_user}/log/email.txt" ] && _userEmail="$(cat /data/disk/${_user}/log/email.txt)"
 [ -n "${_userEmail}" ] && _userEmail=$(echo -n ${_userEmail} | tr -d "\n" 2>&1)
 
