@@ -258,8 +258,7 @@ _check_aws() {
 }
 
 if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ]; then
-  echo "The duplicity backup is already running!"
-  echo "Active duplicity process detected..."
+  echo "[$(date)] Active duplicity process detected, will try again later..." >> /var/log/mybackup_waiting_queue.log
   exit 1
 fi
 
