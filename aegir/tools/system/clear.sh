@@ -268,6 +268,12 @@ _if_fix_locked_sshd
 
 setprio &> /dev/null
 
+if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ]; then
+  echo "[$(date)] Active duplicity process detected, will try again later..." >> /var/log/mybackup_waiting_queue.log
+else
+  [ -x "/usr/local/bin/mybackup" ] && nohup /usr/local/bin/mybackup > /dev/null 2>&1 &
+fi
+
 touch /var/xdrago/log/clear.done.pid
 exit 0
 ###EOF2024###
