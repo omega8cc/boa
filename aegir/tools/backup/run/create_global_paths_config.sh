@@ -117,23 +117,6 @@ EOF
   echo "Global paths configuration created or updated at ${_global_paths_file}"
 }
 
-#### Generate Passphrase and Store in .secret.txt per user
-_generate_user_secret_file() {
-  local _user_dir=$1
-  local _secret_file="${_user_dir}/remote_backups/.secret.txt"
-
-  if [ ! -f "${_secret_file}" ]; then
-    mkdir -p "$(dirname "${_secret_file}")"
-    openssl rand -base64 32 > "${_secret_file}"
-    chmod 600 "${_secret_file}"
-    chown "${USER}:${USER}" "${_secret_file}"
-    chattr +i "${_secret_file}"
-    echo "Secret file created at ${_secret_file} and made immutable."
-  else
-    echo "Secret file already exists at ${_secret_file}."
-  fi
-}
-
 #### Generate Passphrase for Root
 _generate_global_secret_file() {
   local _secret_file="/root/.remote_backups/.secret.txt"
@@ -148,6 +131,8 @@ _generate_global_secret_file() {
   fi
 }
 
-
 # Main execution
 _create_global_paths_config
+_generate_global_secret_file
+
+exit 0
