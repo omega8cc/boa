@@ -3019,12 +3019,14 @@ _update_boa_tools() {
            killer \
            memorytuner \
            mergecsf \
+           multiback \
            mycnfup \
            mysqltuner5 \
            mysqltuner8 \
            octopus \
            perftest \
            randpass \
+           mybackup \
            setprio \
            smtpgapps \
            sqlclean \
@@ -3078,6 +3080,8 @@ _update_boa_tools() {
   echo "### ${_TODAY} ###" >> ${_optBin}/killer
   echo "### ${_TODAY} ###" >> ${_optBin}/memorytuner
   echo "### ${_TODAY} ###" >> ${_optBin}/mergecsf
+  echo "### ${_TODAY} ###" >> ${_optBin}/multiback
+  echo "### ${_TODAY} ###" >> ${_optBin}/mybackup
   echo "### ${_TODAY} ###" >> ${_optBin}/octopus
   echo "### ${_TODAY} ###" >> ${_optBin}/perftest
   echo "### ${_TODAY} ###" >> ${_optBin}/setprio
@@ -3096,27 +3100,24 @@ _update_boa_tools() {
     ln -s ${_optBin}/websh       ${_usrBin}/websh
   fi
 
-  [ -e "/root/.backboa.autoupdate" ] && rm -f /root/.backboa.autoupdate
-  if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ]; then
-    echo "The duplicity backup is running!"
-  else
-    rm -f ${_optBin}/{backboa,duobackboa,multiback,mybackup}
-    curl ${_crlGet} "${_urlHmr}/${_tBn}/backboa"      -o ${_optBin}/backboa
-    curl ${_crlGet} "${_urlHmr}/${_tBn}/duobackboa"   -o ${_optBin}/duobackboa
-    curl ${_crlGet} "${_urlHmr}/${_tBn}/multiback"    -o ${_optBin}/multiback
-    curl ${_crlGet} "${_urlHmr}/${_tBn}/mybackup"     -o ${_optBin}/mybackup
-    chmod 700 ${_optBin}/{backboa,duobackboa,multiback}
-    chmod 755 ${_optBin}/{mybackup}
-  fi
-
   if [ -e "/data/u" ] && [ -e "${_optBin}/mybackup" ] && [ ! -e "${_usrBin}/mybackup" ]; then
     ln -s ${_optBin}/mybackup ${_usrBin}/mybackup
   fi
 
+  [ -e "/root/.backboa.autoupdate" ] && rm -f /root/.backboa.autoupdate
+  if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ]; then
+    echo "The duplicity backup is running!"
+  else
+    rm -f ${_optBin}/{backboa,duobackboa}
+    curl ${_crlGet} "${_urlHmr}/${_tBn}/backboa"      -o ${_optBin}/backboa
+    curl ${_crlGet} "${_urlHmr}/${_tBn}/duobackboa"   -o ${_optBin}/duobackboa
+    chmod 700 ${_optBin}/{backboa,duobackboa}
+  fi
+
   chmod 700 ${_optBin}/{autoinit,autodaedalus,autochimaera,autobeowulf,autoupboa,backboa,duobackboa,mergecsf,verifyvhostsdns}
   chmod 700 ${_optBin}/{barracuda,boa,ffmirror,killer,mycnfup,octopus,syncpass,xboa,weblogx,sqlclean,perftest,dcysetup}
-  chmod 700 ${_optBin}/{fancynow,codebasecheck,vhostcheck,memorytuner,mysqltuner5,mysqltuner8,smtpgapps,setprio}
-  chmod 755 ${_optBin}/{randpass,sqlmagic,thinkdifferent,websh}
+  chmod 700 ${_optBin}/{fancynow,codebasecheck,vhostcheck,memorytuner,mysqltuner5,mysqltuner8,smtpgapps,setprio,multiback}
+  chmod 755 ${_optBin}/{randpass,sqlmagic,thinkdifferent,websh,mybackup}
 }
 
 _if_update_boa_key_tools_only() {
@@ -3285,14 +3286,14 @@ _if_update_boa_key_tools_only() {
     fi
   fi
   _BOA_TOOLS_UPDATE=NO
-  if [ -e "${_pthLog}" ] && [ ! -e "${_pthLog}/updateBOAtoolsCV.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+  if [ -e "${_pthLog}" ] && [ ! -e "${_pthLog}/updateBOAtoolsCW.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     _BOA_TOOLS_UPDATE=YES
   fi
   [ ! -e "/var/aegir/drush" ] && _BOA_TOOLS_UPDATE=YES
   if [ "${_BOA_TOOLS_UPDATE}" = "YES" ]; then
     _update_boa_tools
     [ -e "${_pthLog}" ] && rm -f ${_pthLog}/updateBOAtools*.pid
-    [ -e "${_pthLog}" ] && touch ${_pthLog}/updateBOAtoolsCV.ctrl.${_tRee}.${_xSrl}.pid
+    [ -e "${_pthLog}" ] && touch ${_pthLog}/updateBOAtoolsCW.ctrl.${_tRee}.${_xSrl}.pid
     if [ "${1}" = "verbose" ] || [ -z "${1}" ]; then
       echo
       echo "BOA Meta Installers setup completed"
@@ -3440,14 +3441,14 @@ _boa_setup() {
     apt-get install lsb-release ${_aptYesUnth}
   fi
   _BOA_TOOLS_UPDATE=NO
-  if [ -e "${_pthLog}" ] && [ ! -e "${_pthLog}/updateBOAtoolsCV.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+  if [ -e "${_pthLog}" ] && [ ! -e "${_pthLog}/updateBOAtoolsCW.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     _BOA_TOOLS_UPDATE=YES
   fi
   [ ! -e "/var/aegir/drush" ] && _BOA_TOOLS_UPDATE=YES
   if [ "${_BOA_TOOLS_UPDATE}" = "YES" ]; then
     _update_boa_tools
     [ -e "${_pthLog}" ] && rm -f ${_pthLog}/updateBOAtools*.pid
-    [ -e "${_pthLog}" ] && touch ${_pthLog}/updateBOAtoolsCV.ctrl.${_tRee}.${_xSrl}.pid
+    [ -e "${_pthLog}" ] && touch ${_pthLog}/updateBOAtoolsCW.ctrl.${_tRee}.${_xSrl}.pid
     echo
     echo "BOA Meta Installers setup completed"
     echo "Please check INSTALL.md and UPGRADE.md at https://github.com/omega8cc/boa"
