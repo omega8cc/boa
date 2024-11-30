@@ -100,7 +100,6 @@ EOF
 
   if [ ! -f "${_exclude_ctrl_file}" ]; then
     cat << EOF > "${_exclude_file}"
---exclude '**'
 --exclude /data/disk/${_user}/aegir
 --exclude /data/disk/${_user}/backup-exports
 --exclude /data/disk/${_user}/backups
