@@ -3100,8 +3100,16 @@ _update_boa_tools() {
     ln -s ${_optBin}/websh       ${_usrBin}/websh
   fi
 
-  if [ -e "/data/u" ] && [ -e "${_optBin}/mybackup" ] && [ ! -e "${_usrBin}/mybackup" ]; then
-    ln -s ${_optBin}/mybackup ${_usrBin}/mybackup
+  if [ -e "/data/u" ]; then
+    if [ ! -e "${_usrBin}/dcysetup" ] && [ -e "${_optBin}/dcysetup" ]; then
+      ln -s ${_optBin}/dcysetup ${_usrBin}/dcysetup
+    fi
+    if [ ! -e "${_usrBin}/multiback" ] && [ -e "${_optBin}/multiback" ]; then
+      ln -s ${_optBin}/multiback ${_usrBin}/multiback
+    fi
+    if [ ! -e "${_usrBin}/mybackup" ] && [ -e "${_optBin}/mybackup" ]; then
+      ln -s ${_optBin}/mybackup ${_usrBin}/mybackup
+    fi
   fi
 
   [ -e "/root/.backboa.autoupdate" ] && rm -f /root/.backboa.autoupdate
