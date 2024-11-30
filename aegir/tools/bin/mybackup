@@ -114,11 +114,11 @@ _validate_credentials() {
 _load_credentials() {
   local _service="$1"
   local _user="$2"
-  if [ "${_user}" != "arch" ] && [ "${_user}" != "global_user" ]; then
+  if [ "${_user}" != "arch" ] && [ "${_user}" != "globalcatchall" ]; then
     local _cred_file="/data/disk/${_user}/static/control/remote_backups/credentials/${_service}.txt"
     local _secret_file="/data/disk/${_user}/remote_backups/.secret.txt"
   fi
-  if [ "${_user}" = "global_user" ]; then
+  if [ "${_user}" = "globalcatchall" ]; then
     local _cred_file="/root/.remote_backups/credentials/${_service}.txt"
     local _secret_file="/root/.remote_backups/.secret.txt"
   fi
@@ -213,10 +213,10 @@ _validate_paths() {
 # Function to load paths configuration
 _load_paths() {
   local _user="$1"
-  if [ "${_user}" != "arch" ] && [ "${_user}" != "global_user" ]; then
+  if [ "${_user}" != "arch" ] && [ "${_user}" != "globalcatchall" ]; then
     local _paths_file="/data/disk/${_user}/remote_backups/paths/paths.txt"
   fi
-  if [ "${_user}" = "global_user" ]; then
+  if [ "${_user}" = "globalcatchall" ]; then
     local _paths_file="/root/.remote_backups/paths/paths.txt"
   fi
 
@@ -225,7 +225,7 @@ _load_paths() {
     exit 1
   fi
 
-  if [ "${_user}" != "arch" ] && [ "${_user}" != "global_user" ]; then
+  if [ "${_user}" != "arch" ] && [ "${_user}" != "globalcatchall" ]; then
     _validate_paths "${_paths_file}" "${_user}"
   fi
 

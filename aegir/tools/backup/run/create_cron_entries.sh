@@ -110,7 +110,7 @@ while IFS= read -r _line || [ -n "${_line}" ]; do
   _remove_stale_multiback_pid
 
   # Determine the paths configuration file
-  if [ "${_user}" = "global_user" ]; then
+  if [ "${_user}" = "globalcatchall" ]; then
     local _paths_file="/root/.remote_backups/paths/paths.txt"
     local _credentials_file="/root/.remote_backups/credentials/${_service}.txt"
     local _secret_file="/root/.remote_backups/.secret.txt"
@@ -140,7 +140,7 @@ while IFS= read -r _line || [ -n "${_line}" ]; do
     # Change to the directory where paths.txt and credentials are located
     cd /root/.remote_backups
 
-  elif [ "${_user}" != "arch" ] && [ "${_user}" != "global_user" ]; then
+  elif [ "${_user}" != "arch" ] && [ "${_user}" != "globalcatchall" ]; then
     local _paths_file="/data/disk/${_user}/remote_backups/paths/paths.txt"
     local _credentials_file="/data/disk/${_user}/static/control/remote_backups/credentials/${_service}.txt"
     local _secret_file="/data/disk/${_user}/remote_backups/.secret.txt"
@@ -231,7 +231,7 @@ _generate_backup_schedule() {
   _GLOBAL_CRED_DIR="/root/.remote_backups/credentials"
   for _service in aws aws_one_zone aws_standard_ia azure b2 cloudflare do_spaces gcs ibm linode wasabi; do
     if [ -f "${_GLOBAL_CRED_DIR}/${_service}.txt" ] && ! grep -q "your_" "${_GLOBAL_CRED_DIR}/${_service}.txt"; then
-      echo "${_service} global_user" >> "${_SCHEDULE_FILE}"
+      echo "${_service} globalcatchall" >> "${_SCHEDULE_FILE}"
     fi
   done
 

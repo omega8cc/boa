@@ -131,7 +131,7 @@ _main() {
   for _user_dir in "${_BASE_DIR}"/*; do
     if [ -d "${_user_dir}" ]; then
       _user=$(basename "${_user_dir}")
-      if [ "${_user}" != "arch" ] && [ "${_user}" != "global_user" ]; then
+      if [ "${_user}" != "arch" ] && [ "${_user}" != "globalcatchall" ]; then
         _create_readme_file "${_user}"
       fi
     fi
