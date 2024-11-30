@@ -4,7 +4,62 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+export _tRee=dev
 
+# Function to verify BOA keys
+_verify_boa_keys() {
+  if [ "${_tRee}" = "pro" ] || [ "${_tRee}" = "dev" ]; then
+    _allw=NO
+    _crlGet="-L --max-redirs 3 -k -s --retry 9 --retry-delay 9 -A iCab"
+    _urlEnc="http://files.aegir.cc/enc/2024"
+    _hName="$(hostname -f 2>/dev/null || uname -n)"
+    _hName=$(echo -n ${_hName} | tr -d "\n" 2>&1)
+    _encName=$(echo ${_hName} \
+      | openssl md5 \
+      | awk '{ print $2}' \
+      | tr -d "\n" 2>&1)
+    if [[ "${_hName}" =~ ".aegir.cc"($) ]] \
+      || [[ "${_hName}" =~ ".o8.io"($) ]] \
+      || [[ "${_hName}" =~ ".boa.io"($) ]]; then
+      _allw=YES
+    fi
+    mkdir -p /var/opt
+    rm -f /var/opt/_encN*
+    curl ${_crlGet} "${_urlEnc}/${_encName}" -o /var/opt/_encN.${_encName}.tmp
+    wait
+    echo "${_hName}.${_encName}" > /var/opt/_encN_local.${_encName}.tmp
+    wait
+    if [ -e "/var/opt/_encN.${_encName}.tmp" ] && [ -e "/var/opt/_encN_local.${_encName}.tmp" ]; then
+      _diffTestIf=$(diff -w -B /var/opt/_encN.${_encName}.tmp /var/opt/_encN_local.${_encName}.tmp 2>&1)
+      if [ ! -z "${_diffTestIf}" ] && [ "${_allw}" = "NO" ]; then
+        echo
+        echo "Your system requires valid license to use this function"
+        echo "Please visit https://omega8.cc/licenses to purchase your own"
+        echo
+        if [ -e "/var/aegir/drush/vendor" ] && [ ! -e "/var/aegir/key/barracuda_key.txt" ]; then
+          mkdir -p /var/aegir/key
+          cat /var/opt/_encN_local.${_encName}.tmp > /var/aegir/key/barracuda_key.txt
+        fi
+        rm -f /var/opt/_encN*
+        exit 0
+      else
+        if [ -e "/var/aegir/drush/vendor" ] && [ ! -e "/var/aegir/key/barracuda_key.txt" ]; then
+          mkdir -p /var/aegir/key
+          cat /var/opt/_encN_local.${_encName}.tmp > /var/aegir/key/barracuda_key.txt
+        fi
+      fi
+    else
+      echo
+      echo "Your system requires valid license to use this BOA feature"
+      echo "Unfortunately it was not possible to verify your system status"
+      echo "Please contact our support but visit https://omega8.cc/licenses first"
+      echo
+      exit 0
+    fi
+  fi
+}
+
+# Function to verify root access
 _check_root() {
   if [ $(whoami) = "root" ]; then
     ionice -c2 -n7 -p $$
@@ -34,6 +89,7 @@ _check_root() {
   fi
 }
 _check_root
+_verify_boa_keys
 
 if [ -e "/root/.pause_heavy_tasks_maint.cnf" ]; then
   exit 0
@@ -113,7 +169,7 @@ _log_issue() {
   local _type=$1
   local _file=$2
   local _message=$3
-  echo "[$(date)] Validation issue type: [${_type}] in file: [${_file}] with error: ${_message}" >> "${_LOG_FILE}"
+  echo "[$(date)] Validation issue type: [${_type}] in file: [${_file}] with error: ${_message}" >> "${_VALIDATION_LOG_FILE}"
   if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "YES" ]; then
     # Alert the admin
     echo "Sending Backup Validation Alert to ${_MY_EMAIL} on $(date)" >> ${_LOGFILE}
@@ -290,7 +346,7 @@ _load_paths() {
   fi
 
   if [ "${#_PATHS_ARRAY[@]}" -eq 0 ]; then
-    echo "Error: No valid paths found in '${_paths_file}'. Check ${_LOG_FILE} for details."
+    echo "Error: No valid paths found in '${_paths_file}'. Check ${_VALIDATION_LOG_FILE} for details."
     exit 1
   fi
 }
@@ -694,10 +750,10 @@ _DEFAULT_KEEP_WITHIN="3M"            # Default: 3 month
 _DEFAULT_FULL_BACKUP_FREQUENCY="7D"  # Default: 7 days
 
 # Log file for validation issues
-_LOG_FILE="/var/log/backup_validation_issues.log"
-_TMP_DIR="/var/tmp/backup_sanitization"
-mkdir -p "${_TMP_DIR}"
-chmod 700 "${_TMP_DIR}"
+_VALIDATION_LOG_FILE="/var/log/backup_validation_issues.log"
+_SANITIZATION_TMP_DIR="/var/tmp/backup_sanitization"
+mkdir -p "${_SANITIZATION_TMP_DIR}"
+chmod 700 "${_SANITIZATION_TMP_DIR}"
 
 # Create the PID file
 _create_pid_file "${_PIDFILE}"
