@@ -3020,13 +3020,13 @@ _update_boa_tools() {
            memorytuner \
            mergecsf \
            multiback \
+           mybackup \
            mycnfup \
            mysqltuner5 \
            mysqltuner8 \
            octopus \
            perftest \
            randpass \
-           mybackup \
            setprio \
            smtpgapps \
            sqlclean \
