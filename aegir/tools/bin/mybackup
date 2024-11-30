@@ -471,6 +471,8 @@ _user=$(whoami | sed 's/\.ftp$//')
 if [[ $(whoami) == *.ftp ]]; then
   _user_run_dir="/data/disk/${_user}/static/control/.run"
   [ ! -e "${_user_run_dir}" ] && mkdir -p "${_user_run_dir}"
+  # Check if there is any task queued already
+  [ -e "${_user_run_dir}/${_CMD_FILE}" ] && echo "Previous task is still in the queue. Please try again later."
   # Validate the command
   if ! _validate_restore_command "$@"; then
     echo "Error: Invalid command. The command has not been queued."
