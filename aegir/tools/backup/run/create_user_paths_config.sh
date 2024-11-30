@@ -5,18 +5,28 @@ export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
 # Log file for escape attempts and validation issues
-_LOG_FILE="/var/log/backup_validation_issues.log"
+_VALIDATION_LOG_FILE="/var/log/backup_validation_issues.log"
 
-# Function to log unauthorized access attempts
-_log_validation_issue() {
-  local _user=$1
+_check_root() {
+  if [ $(whoami) = "root" ]; then
+    [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
+    export _INCIDENT_REPORT=${_INCIDENT_REPORT//[^A-Z]/}
+    : "${_INCIDENT_REPORT:=YES}"
+  fi
+}
+_check_root
+
+# Function to log validation issues
+_log_issue() {
+  local _type=$1
   local _file=$2
-  local _details=$3
-
-  echo "[$(date)] Validation issue detected for user '${_user}' in file '${_file}': ${_details}" >> "${_LOG_FILE}"
-
-  # Alert the admin
-  echo "Alert: Validation issue detected for user '${_user}' in file '${_file}'. Check ${_LOG_FILE} for details." | mail -s "Backup Validation Alert for ${_user}" admin@example.com
+  local _message=$3
+  echo "[$(date)] Validation issue: [${_type}] in file: [${_file}] with error: ${_message}" >> "${_VALIDATION_LOG_FILE}"
+  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "YES" ]; then
+    # Alert the admin
+    echo "Sending Backup Validation Alert to ${_MY_EMAIL} on $(date)" >> ${_VALIDATION_LOG_FILE}
+    s-nail -s "Backup Validation Alert for [$(hostname)] on $(date)" ${_MY_EMAIL} < ${_VALIDATION_LOG_FILE}
+  fi
 }
 
 # Function to validate and merge configuration files
@@ -42,11 +52,11 @@ _validate_and_merge_paths() {
       if echo "${_line}" | grep -Eq "^--(include|exclude|include-regexp|exclude-regexp) ${_allowed_prefixes}"; then
         echo "${_line}" >> "${_output_file}"
       else
-        _log_validation_issue "${_user}" "${_file}" "Invalid path: ${_line}"
+        _log_issue "${_user}" "${_file}" "Invalid path: ${_line}"
         _invalid_paths_found=true
       fi
     else
-      _log_validation_issue "${_user}" "${_file}" "Invalid directive: ${_line}"
+      _log_issue "${_user}" "${_file}" "Invalid directive: ${_line}"
       _invalid_paths_found=true
     fi
   done < "${_file}"
