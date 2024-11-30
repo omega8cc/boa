@@ -89,6 +89,17 @@ _check_root() {
 }
 _check_root
 _verify_boa_keys
+
+if [ -e "/root/.pause_heavy_tasks_maint.cnf" ]; then
+  exit 0
+fi
+
+# New OpenSSL 3.x version is required
+if [ ! -x "/usr/local/ssl3/bin/openssl" ]; then
+  echo "New OpenSSL 3.x version is required"
+  exit 1
+fi
+
 # Directory where all scripts are located
 _SCRIPT_DIR="/root/.remote_backups/run"
 
