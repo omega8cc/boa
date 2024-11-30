@@ -56,6 +56,36 @@ _verify_boa_keys() {
   fi
 }
 
+# Function to verify root access
+_check_root() {
+  if [ $(whoami) = "root" ]; then
+    ionice -c2 -n7 -p $$
+    renice 9 -p $$
+    chmod a+w /dev/null
+    [ -e "/root/.gnupg" ] && chmod 700 /root/.gnupg
+  else
+    echo "ERROR: This script should be run as a root user"
+    exit 1
+  fi
+  _DF_TEST=$(df -kTh / -l \
+    | grep '/' \
+    | sed 's/\%//g' \
+    | awk '{print $6}' 2> /dev/null)
+  _DF_TEST=${_DF_TEST//[^0-9]/}
+  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt "90" ]; then
+    echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
+    echo "ERROR: We can not proceed until it is below 90/100"
+    exit 1
+  fi
+  [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
+  export _INCIDENT_REPORT=${_INCIDENT_REPORT//[^A-Z]/}
+  : "${_INCIDENT_REPORT:=YES}"
+  _AWS_VLV=${_AWS_VLV//[^a-z]/}
+  if [ -z "${_AWS_VLV}" ]; then
+    _AWS_VLV="warning"
+  fi
+}
+_check_root
 _verify_boa_keys
 # Directory where all scripts are located
 _SCRIPT_DIR="/root/.remote_backups/run"
