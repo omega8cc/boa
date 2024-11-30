@@ -476,7 +476,6 @@ if [[ $(whoami) == *.ftp ]]; then
     echo "Error: Invalid command. The command has not been queued."
     # Optionally log invalid commands
     echo "[$(date)] Invalid command attempted by $(whoami): $@" >> ${_user_run_dir}/mybackup_invalid_commands.log
-    echo "[$(date)] Invalid command attempted by $(whoami): $@" >> /data/disk/${_user}/log/mybackup_invalid_commands.log
     exit 1
   fi
 
