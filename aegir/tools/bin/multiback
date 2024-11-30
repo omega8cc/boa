@@ -4,6 +4,58 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+# Function to verify BOA keys
+_verify_boa_keys() {
+  if [ "${_tRee}" = "pro" ] || [ "${_tRee}" = "dev" ]; then
+    _allw=NO
+    _crlGet="-L --max-redirs 3 -k -s --retry 9 --retry-delay 9 -A iCab"
+    _urlEnc="http://files.aegir.cc/enc/2024"
+    _hName="$(hostname -f 2>/dev/null || uname -n)"
+    _hName=$(echo -n ${_hName} | tr -d "\n" 2>&1)
+    _encName=$(echo ${_hName} \
+      | openssl md5 \
+      | awk '{ print $2}' \
+      | tr -d "\n" 2>&1)
+    if [[ "${_hName}" =~ ".aegir.cc"($) ]] \
+      || [[ "${_hName}" =~ ".o8.io"($) ]] \
+      || [[ "${_hName}" =~ ".boa.io"($) ]]; then
+      _allw=YES
+    fi
+    mkdir -p /var/opt
+    rm -f /var/opt/_encN*
+    curl ${_crlGet} "${_urlEnc}/${_encName}" -o /var/opt/_encN.${_encName}.tmp
+    wait
+    echo "${_hName}.${_encName}" > /var/opt/_encN_local.${_encName}.tmp
+    wait
+    if [ -e "/var/opt/_encN.${_encName}.tmp" ] && [ -e "/var/opt/_encN_local.${_encName}.tmp" ]; then
+      _diffTestIf=$(diff -w -B /var/opt/_encN.${_encName}.tmp /var/opt/_encN_local.${_encName}.tmp 2>&1)
+      if [ ! -z "${_diffTestIf}" ] && [ "${_allw}" = "NO" ]; then
+        echo
+        echo "Your system requires valid license to use this function"
+        echo "Please visit https://omega8.cc/licenses to purchase your own"
+        echo
+        if [ -e "/var/aegir/drush/vendor" ] && [ ! -e "/var/aegir/key/barracuda_key.txt" ]; then
+          mkdir -p /var/aegir/key
+          cat /var/opt/_encN_local.${_encName}.tmp > /var/aegir/key/barracuda_key.txt
+        fi
+        rm -f /var/opt/_encN*
+        exit 0
+      else
+        if [ -e "/var/aegir/drush/vendor" ] && [ ! -e "/var/aegir/key/barracuda_key.txt" ]; then
+          mkdir -p /var/aegir/key
+          cat /var/opt/_encN_local.${_encName}.tmp > /var/aegir/key/barracuda_key.txt
+        fi
+      fi
+    else
+      echo
+      echo "Your system requires valid license to use this BOA feature"
+      echo "Unfortunately it was not possible to verify your system status"
+      echo "Please contact our support but visit https://omega8.cc/licenses first"
+      echo
+      exit 0
+    fi
+  fi
+}
 
 _check_root() {
   if [ $(whoami) = "root" ]; then
@@ -34,6 +86,7 @@ _check_root() {
   fi
 }
 _check_root
+_verify_boa_keys
 
 if [ -e "/root/.pause_heavy_tasks_maint.cnf" ]; then
   exit 0
