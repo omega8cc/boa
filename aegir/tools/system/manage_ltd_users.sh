@@ -2387,7 +2387,7 @@ else
     touch ${_pthLog}/node.manage.lshell.ctrl.${_tRee}.${_xSrl}.pid
   fi
   if [ ! -e "${_pthLog}/php.manage.lshell.ctrl.${_tRee}.${_xSrl}.pid" ]; then
-    _fix_php_in_lshell_access
+    # _fix_php_in_lshell_access
     touch ${_pthLog}/php.manage.lshell.ctrl.${_tRee}.${_xSrl}.pid
   fi
   cat /var/xdrago/conf/lshell.conf > ${_THIS_LTD_CONF}
