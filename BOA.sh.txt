@@ -2356,7 +2356,7 @@ _if_fix_lshell() {
   fi
   _LSHELL_VRN=0.10.9.1
   _PATH_LSHELL="${_usrBin}/lshell"
-  _LSHELL_CHK_VRN=0.10
+  _LSHELL_CHK_VRN=0.10.9
   _LSHELL_FORCE_REINSTALL=NO
   _isLshell=$(which lshell 2>&1)
   _LSHELL_ITD=$(${_isLshell} --version 2>&1 \
