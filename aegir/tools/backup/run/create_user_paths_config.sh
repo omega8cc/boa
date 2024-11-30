@@ -23,7 +23,7 @@ _log_validation_issue() {
 _validate_and_merge_paths() {
   local _file=$1
   local _user=$2
-  local _allowed_prefixes="^/(data/disk/${_user}/static|/home/${_user}.ftp)"
+  local _allowed_prefixes="^/(data/disk/${_user}/static|^/home/${_user}.ftp)"
   local _output_file=$3
   local _invalid_paths_found=false
 
