@@ -105,6 +105,7 @@ EOF
 --exclude /data/disk/${_user}/backups
 --exclude /data/disk/${_user}/log
 --exclude /data/disk/${_user}/src
+--exclude /data/disk/${_user}/static/restores
 --exclude /data/disk/${_user}/tools
 --exclude /data/disk/${_user}/undo
 EOF
