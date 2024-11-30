@@ -3560,7 +3560,7 @@ _sysctl_update() {
 }
 
 ###--------------------###
-if [ `whoami` = "root" ]; then
+if [ $(whoami) = "root" ]; then
 
   [ ! -e "/var/aegir/drush" ] && _locales_check_fix_early
   _os_detection_minimal

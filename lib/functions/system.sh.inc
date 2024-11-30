@@ -331,7 +331,7 @@ _if_running_as_root_barracuda() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _if_running_as_root_barracuda"
   fi
-  if [ `whoami` = "root" ]; then
+  if [ $(whoami) = "root" ]; then
     chmod a+w /dev/null
     rm -rf /tmp/drush_make_tmp*
     rm -rf /tmp/make_tmp*

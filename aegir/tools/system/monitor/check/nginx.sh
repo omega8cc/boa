@@ -8,7 +8,7 @@ _pthOml="/var/xdrago/log/nginx.incident.log"
 _monPath="/var/xdrago/monitor/check"
 
 _check_root() {
-  if [ `whoami` = "root" ]; then
+  if [ $(whoami) = "root" ]; then
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
     chmod a+w /dev/null
   else

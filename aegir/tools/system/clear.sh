@@ -10,7 +10,7 @@ _aptYesUnth="-y ${_aptAllow}"
 _wgetGet="--max-redirect=3 --no-check-certificate -q --tries=9 --wait=9 --user-agent='iCab'"
 
 _check_root() {
-  if [ `whoami` = "root" ]; then
+  if [ $(whoami) = "root" ]; then
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
     # Sanitize to allow only digits and minus sign
     export _B_NICE=${_B_NICE//[^0-9-]/}

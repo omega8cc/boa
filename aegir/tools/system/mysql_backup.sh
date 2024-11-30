@@ -5,7 +5,7 @@ export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
 _check_root() {
-  if [ `whoami` = "root" ]; then
+  if [ $(whoami) = "root" ]; then
     ionice -c2 -n7 -p $$
     renice 19 -p $$
     chmod a+w /dev/null

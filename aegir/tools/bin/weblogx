@@ -15,7 +15,7 @@ _sPmrs="https://raw.githubusercontent.com/matomo-org/referrer-spam-blacklist/mas
 [ -e "/root/.goaccess.use.github.txt" ] && rm -f /root/.goaccess.use.github.txt
 
 _check_root() {
-  if [ `whoami` = "root" ]; then
+  if [ $(whoami) = "root" ]; then
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
     ionice -c2 -n7 -p $$
     renice 19 -p $$

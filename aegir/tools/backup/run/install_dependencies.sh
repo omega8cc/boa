@@ -18,7 +18,7 @@ _apt_clean_update() {
 }
 
 _check_root() {
-  if [ `whoami` = "root" ]; then
+  if [ $(whoami) = "root" ]; then
     ionice -c2 -n7 -p $$
     renice 9 -p $$
     chmod a+w /dev/null

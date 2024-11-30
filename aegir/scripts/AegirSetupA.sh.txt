@@ -183,7 +183,7 @@ fi
 ###
 ### User check
 ###
-if [ `whoami` = "root" ]; then
+if [ $(whoami) = "root" ]; then
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "${_STATUS} A: Aegir automated install script part A"
   fi

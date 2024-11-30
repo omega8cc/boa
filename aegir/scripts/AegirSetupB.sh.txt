@@ -178,7 +178,7 @@ fi
 ###
 ### User check
 ###
-if [ `whoami` = "root" ]; then
+if [ $(whoami) = "root" ]; then
   _msg "${_STATUS} B: FATAL ERROR: This script should be run as a non-root user"
   _msg "${_STATUS} B: FATAL ERROR: Aborting AegirSetupB installer NOW!"
   touch /opt/tmp/status-AegirSetupB-FAIL

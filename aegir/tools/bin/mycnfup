@@ -260,7 +260,7 @@ _remove_systemd() {
 
 _check_root() {
   echo "running ${_tVr} $(hostname -f 2>/dev/null || uname -n) _check_root procedure..."
-  if [ `whoami` = "root" ]; then
+  if [ $(whoami) = "root" ]; then
     _locales_check_fix
     _os_detection_minimal
     _remove_systemd

@@ -111,7 +111,7 @@ _apt_clean_update() {
 }
 
 _check_root() {
-  if [ `whoami` = "root" ]; then
+  if [ $(whoami) = "root" ]; then
     chmod a+w /dev/null
     if [ ! -e "/dev/fd" ]; then
       if [ -e "/proc/self/fd" ]; then

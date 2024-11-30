@@ -1599,7 +1599,7 @@ _csf_check_fix() {
 }
 
 _check_root() {
-  if [ `whoami` = "root" ]; then
+  if [ $(whoami) = "root" ]; then
     [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
     if [ "${_cmNd}" = "in-octopus" ] || [ "${_cmNd}" = "in-oct" ]; then
       _system_check_ready
@@ -1716,7 +1716,7 @@ _check_root() {
 }
 
 _display_version() {
-  if [ `whoami` = "root" ]; then
+  if [ $(whoami) = "root" ]; then
     _HOST_INFO=$(dmidecode -s system-manufacturer 2>&1)
     _VIRT_TOOL=$(which virt-what 2> /dev/null)
     if [ -x "${_VIRT_TOOL}" ]; then
@@ -1869,7 +1869,7 @@ _check_system_ram() {
 }
 
 _display_info() {
-  if [ `whoami` = "root" ]; then
+  if [ $(whoami) = "root" ]; then
     _HOST_INFO=$(dmidecode -s system-manufacturer 2>&1)
     _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)
     _CPU_INFO=${_CPU_INFO//[^0-9]/}
@@ -2308,7 +2308,7 @@ _display_info() {
 }
 
 _octopus_cleanup() {
-  if [ `whoami` = "root" ]; then
+  if [ $(whoami) = "root" ]; then
     if [ "${_aCtn}" = "detect" ]; then
       echo
       echo "Accounts marked for cleanup or active"
