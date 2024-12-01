@@ -5,6 +5,13 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 _DEST_DRUSH="/opt/tools/drush/8/drush/drush.php"
 
 _forward_to_shell() {
+  if [[ "${_ARGS}" =~ "sudo_noexec.so" ]] && [[ "${_LTD_GID}" =~ "ltd-shell-more"($) ]]; then
+    ### echo FWD 0 DIRECT
+    _R_M=`echo -n ${_ARGS} | sed 's|LD_PRELOAD.*.so||'`
+    ### echo _R_M is ${_R_M}
+    exec /bin/dash -c "${_R_M}"
+    exit 0
+  fi
   # Path to the underlying shell (dash in this case)
   _shell="/bin/bash"
   # Name under which the shell should think it was invoked
@@ -830,6 +837,9 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           _IN_PATH=NO
         fi
       fi
+      if [[ "${_LTD_GID}" =~ "ltd-shell-more"($) ]]; then
+        _IN_PATH=YES
+      fi
     fi
   else
     if [[ "${_ARGS}" =~ "drush @" ]] \
@@ -897,6 +907,9 @@ if [ "${_LTD_GID}" = "www-data users" ] \
       else
         _IN_PATH=NO
       fi
+    fi
+    if [[ "${_LTD_GID}" =~ "ltd-shell-more"($) ]]; then
+      _IN_PATH=YES
     fi
   fi
   if [[ "${_LTD_GID}" =~ "lshellg"($) ]] \
