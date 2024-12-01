@@ -841,9 +841,6 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           _IN_PATH=NO
         fi
       fi
-      if [[ "${_LTD_GID}" =~ "ltd-shell-more"($) ]]; then
-        _IN_PATH=YES
-      fi
     fi
   else
     if [[ "${_ARGS}" =~ "drush @" ]] \
@@ -911,9 +908,6 @@ if [ "${_LTD_GID}" = "www-data users" ] \
       else
         _IN_PATH=NO
       fi
-    fi
-    if [[ "${_LTD_GID}" =~ "ltd-shell-more"($) ]]; then
-      _IN_PATH=YES
     fi
   fi
   if [[ "${_LTD_GID}" =~ "lshellg"($) ]] \
