@@ -69,10 +69,12 @@ _forward_to_shell() {
     # Execute a script file
     ### echo FWD 1 PARSED
     exec -a "${_shell_name}" "${_shell}" "${_options[@]}" "${_script}" "${_positional[@]}"
+    exit 0
   else
     # Execute commands or start an interactive shell
     ### echo FWD 2 PARSED
     exec -a "${_shell_name}" "${_shell}" "${_options[@]}" "${_positional[@]}"
+    exit 0
   fi
 }
 
