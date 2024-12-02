@@ -1918,19 +1918,25 @@ _cleanup_ghost_vhosts() {
     fi
     if [ -e "${_usEr}/config/server_master/nginx/vhost.d/${_Dom}" ]; then
       local _thisVhost="${_usEr}/config/server_master/nginx/vhost.d/${_Dom}"
-      # Check if either "ssl http2" or "ssl_stapling" exists in the vhost file
       if grep -q -e "ssl http2" -e "ssl_stapling" "${_thisVhost}"; then
-          echo "FIXING vhost for ${_Dom}"
-          sed -i \
-              -e 's/:443 ssl http2;/:443 ssl;/' \
-              -e '/http2 on/d' \
-              -e '/ssl_stapling/d' \
-              -e '/ssl_stapling_verify/d' \
-              -e '/resolver/d' \
-              -e '/resolver_timeout/d' \
-              -e $'s/ssl_prefer_server_ciphers .*/ssl_prefer_server_ciphers on;\\n  http2 on;/g' \
-              -e '/:443 ssl;/ a\  http2 on;' \
-              "${_thisVhost}"
+        echo "FIXING vhost for ${_Dom}"
+        # Remove 'http2' from 'listen' directives with varying spaces
+        sed -i -E 's/(listen\s+[^;]*\s+ssl)\s+http2;$/\1;/' "${_thisVhost}"
+        # Remove existing 'http2 on;' lines with varying spaces
+        sed -i -E '/^\s*http2\s+on;/d' "${_thisVhost}"
+        # Remove unwanted directives with varying spaces
+        sed -i -E \
+          -e '/^\s*ssl_stapling\b/d' \
+          -e '/^\s*ssl_stapling_verify\b/d' \
+          -e '/^\s*resolver\b/d' \
+          -e '/^\s*resolver_timeout\b/d' \
+          "${_thisVhost}"
+        # Update 'ssl_prefer_server_ciphers' directive, handling spaces
+        sed -i -E 's/^\s*ssl_prefer_server_ciphers\s+.*$/ssl_prefer_server_ciphers on;/' "${_thisVhost}"
+        # Add 'http2 on;' after 'ssl_prefer_server_ciphers on;', only if not already present
+        if ! grep -q -E '^\s*http2\s+on;$' "${_thisVhost}"; then
+          sed -i '/ssl_prefer_server_ciphers on;/ a\  http2 on;' "${_thisVhost}"
+        fi
       fi
       _Plx=$(cat ${_usEr}/config/server_master/nginx/vhost.d/${_Dom} \
         | grep "root " \
@@ -3330,6 +3336,8 @@ else
       sed -i "s/.*resolver .*//g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf &> /dev/null
       wait
       sed -i "s/.*resolver_timeout .*//g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf &> /dev/null
+      wait
+      sed -i "s/.*http2.*on;//g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf &> /dev/null
       wait
       sed -i "s/ssl_prefer_server_ciphers .*/ssl_prefer_server_ciphers on;\n  http2 on;/g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf &> /dev/null
       wait
