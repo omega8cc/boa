@@ -188,7 +188,7 @@ _BACKEND_ITEMS_LIST=
 ### * Every 6 minutes update for all meta-installers and related tools
 ### * Hourly check for D7 core vulnerability and patching if detected
 ### * Hourly update for key BOA tools, monitors and self-healing agents
-### * Hourly check if your DNS resolver works as expected and repair if not
+### * Hourly check if your DNS #resolver works as expected and repair if not
 ###
 ### While it is a very convenient to have all this work done for you, and we
 ### believe that it should be still enabled by default, we should make it
