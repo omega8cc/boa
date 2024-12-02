@@ -4615,6 +4615,7 @@ _switch_to_dash() {
                   /etc/network/if-up.d \
                   /etc/resolvconf/update.d \
                   /etc/webmin \
+                  /lib/apparmor \
                   /opt/php56/bin \
                   /opt/php70/bin \
                   /opt/php71/bin \
@@ -4697,6 +4698,7 @@ _switch_to_bash() {
                   /etc/network/if-up.d \
                   /etc/resolvconf/update.d \
                   /etc/webmin \
+                  /lib/apparmor \
                   /opt/php56/bin \
                   /opt/php70/bin \
                   /opt/php71/bin \
