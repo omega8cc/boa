@@ -9,6 +9,16 @@ export _xSrl=550devT01
 _barCnf="/root/.barracuda.cnf"
 
 _turn_off_apparmor() {
+  # Fix shell
+  sed -i "s/\/usr\/bin\/sh/\/bin\/bash/g" /lib/apparmor/apparmor.systemd
+  sed -i "s/\/bin\/sh/\/bin\/bash/g" /lib/apparmor/apparmor.systemd
+  # Fix shell
+  sed -i "s/\/usr\/bin\/sh/\/bin\/bash/g" /lib/apparmor/rc.apparmor.functions
+  sed -i "s/\/bin\/sh/\/bin\/bash/g" /lib/apparmor/rc.apparmor.functions
+  # Fix shell
+  sed -i "s/\/usr\/bin\/sh/\/bin\/bash/g" /lib/apparmor/profile-load
+  sed -i "s/\/bin\/sh/\/bin\/bash/g" /lib/apparmor/profile-load
+  # Disable Apparmor
   rm -rf /var/cache/apparmor/*
   apparmor_parser -r /etc/apparmor.d/* 2> /dev/null
   aa-complain /etc/apparmor.d/* 2> /dev/null
