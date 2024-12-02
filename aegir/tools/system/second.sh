@@ -21,7 +21,7 @@ fi
 : "${_CPU_SPIDER_RATIO:=2.1}"
 : "${_CPU_MAX_RATIO:=4.1}"
 : "${_CPU_CRIT_RATIO:=6.1}"
-: "${_INCIDENT_EMAIL_REPORT:=YES}"
+: "${_INCIDENT_REPORT:=YES}"
 
 # Source configuration file to override defaults
 if [ -e "/root/.barracuda.cnf" ]; then
@@ -55,12 +55,12 @@ _CPU_MAX_RATIO="$(_sanitize_number "${_CPU_MAX_RATIO}")"
 _CPU_CRIT_RATIO="$(_sanitize_number "${_CPU_CRIT_RATIO}")"
 
 # Sanitize email report variable
-_INCIDENT_EMAIL_REPORT="${_INCIDENT_EMAIL_REPORT^^}"
-case "${_INCIDENT_EMAIL_REPORT}" in
+_INCIDENT_REPORT="${_INCIDENT_REPORT^^}"
+case "${_INCIDENT_REPORT}" in
   "YES"|"NO"|"VERBOSE")
     ;;
   *)
-    _INCIDENT_EMAIL_REPORT="YES"
+    _INCIDENT_REPORT="YES"
     ;;
 esac
 
@@ -77,9 +77,9 @@ _incident_email_report() {
   if [ -n "${_MY_EMAIL}" ]; then
     local _send_email=false
 
-    if [ "${_INCIDENT_EMAIL_REPORT}" = "VERBOSE" ]; then
+    if [ "${_INCIDENT_REPORT}" = "VERBOSE" ]; then
       _send_email=true
-    elif [ "${_INCIDENT_EMAIL_REPORT}" = "YES" ]; then
+    elif [ "${_INCIDENT_REPORT}" = "YES" ]; then
       if [ "${_incident_level}" = "ALERT" ]; then
         _send_email=true
       fi

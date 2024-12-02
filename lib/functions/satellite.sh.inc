@@ -591,7 +591,7 @@ _satellite_cnf() {
   if [ ! -e "${_octCnf}" ]; then
     if [[ "${_MY_EMAIL}" =~ "omega8.cc" ]] \
       || [[ "${_CLIENT_EMAIL}" =~ "omega8.cc" ]]; then
-      _CHECK_HOST=$(uname -n 2>&1)
+      _CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
       _if_hosted_sys
       if [ "${_hostedSys}" != "YES" ]; then
         _msg "EXIT: You must enter **your** valid email address"
@@ -678,7 +678,7 @@ _satellite_cnf() {
     else
       echo "_PHP_CLI_VERSION=${_PHP_CLI_VERSION}" >> ${_octCnf}
     fi
-    _CHECK_HOST=$(uname -n 2>&1)
+    _CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
     _if_hosted_sys
     if [ "${_hostedSys}" = "YES" ]; then
       _LD_DOM=YES
@@ -2344,7 +2344,7 @@ _provision_backend_dbpass_generate() {
     || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
     || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
     || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
-    _USE_AEGIR_HOST=$(uname -n 2>&1)
+    _USE_AEGIR_HOST="$(hostname -f 2>/dev/null || uname -n)"
     _SQL_CONNECT=localhost
     if [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
       || [ "${_THIS_DB_HOST}" = "PROXYSQL" ]; then
@@ -2352,12 +2352,12 @@ _provision_backend_dbpass_generate() {
     fi
     _USE_DB_USER="${_USER}"
   else
-    _USE_AEGIR_HOST=$(uname -n 2>&1)
+    _USE_AEGIR_HOST="$(hostname -f 2>/dev/null || uname -n)"
     _SQL_CONNECT="${_THIS_DB_HOST}"
     _USE_DB_USER=aegir_root
   fi
   if [ "${_THIS_DB_HOST}" = "${_MY_OWNIP}" ]; then
-    _USE_AEGIR_HOST=$(uname -n 2>&1)
+    _USE_AEGIR_HOST="$(hostname -f 2>/dev/null || uname -n)"
     _SQL_CONNECT=localhost
   fi
   _find_correct_ip
@@ -2501,7 +2501,7 @@ _provision_backend_dbpass_sync() {
     wait
     _ESC="*.*"
     _USE_DB_USER="${_USER}"
-    _USE_AEGIR_HOST="$(uname -n 2>&1)"
+    _USE_AEGIR_HOST="$(hostname -f 2>/dev/null || uname -n)"
     _find_correct_ip
     _USE_RESOLVEIP="${_LOC_IP}"
     [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL16 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
@@ -2614,7 +2614,7 @@ _hostmaster_frontend_dbpass_sync() {
     && [ ! -z "${_THIS_HM_DBPD}" ]; then
     _ESC="*.*"
     _USE_DB_USER="${_THIS_HM_DBUR}"
-    _USE_AEGIR_HOST="$(uname -n 2>&1)"
+    _USE_AEGIR_HOST="$(hostname -f 2>/dev/null || uname -n)"
     _find_correct_ip
     _USE_RESOLVEIP="${_LOC_IP}"
     [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL17 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
@@ -3695,7 +3695,7 @@ _satellite_send_welcome_email() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "${_STATUS} A: Sending setup email on init..."
     fi
-    TIME=$(date 2>&1)
+    TIME=$(date)
     _Q="Your Aegir Install on ${TIME} [${_USER}]"
     echo ${TIME} > ${_ROOT}/log/date-init.txt
     if [ -e "${_ROOT}/log/setupmail.txt" ] \
@@ -3712,7 +3712,7 @@ _satellite_send_welcome_email() {
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "${_STATUS} A: Resending setup email on upgrade..."
       fi
-      TIME=$(date 2>&1)
+      TIME=$(date)
       _Q="[${_X_VERSION}] Aegir Upgrade [${_USER}]"
       echo ${TIME} > ${_ROOT}/log/date-upgrade-${_THIS_CORE}.txt
       if [ -e "${_ROOT}/log/upgrademail.txt" ]; then
@@ -4043,7 +4043,7 @@ _satellite_if_running_as_root_octopus() {
     _msg "PROC: _satellite_if_running_as_root_octopus"
     _debug_proc
   fi
-  if [ `whoami` = "root" ]; then
+  if [ $(whoami) = "root" ]; then
     chmod a+w /dev/null
     if dmidecode -s system-manufacturer | grep -i 'Linode' &> /dev/null; then
       if  [ ! -e "/var/aegir/drush" ] \
@@ -4081,7 +4081,7 @@ _satellite_if_localhost_mode_magic() {
     _msg "PROC: _satellite_if_localhost_mode_magic"
     _debug_proc
   fi
-  _THIS_HOST=$(uname -n 2>&1)
+  _THIS_HOST="$(hostname -f 2>/dev/null || uname -n)"
   if [ "${_THIS_HOST}" = "aegir.local" ] && [ ! -d "${_ROOT}" ]; then
     _DEBUG_MODE=NO
     _DNS_SETUP_TEST=NO
@@ -4114,7 +4114,7 @@ _satellite_detect_vm_family() {
     _msg "PROC: _satellite_detect_vm_family"
     _debug_proc
   fi
-  _VM_TEST=$(uname -a 2>&1)
+  _VM_TEST="$(uname -a)"
   if [[ "${_VM_TEST}" =~ "-beng" ]]; then
     _VMFAMILY="VS"
   else
@@ -4285,7 +4285,7 @@ _satellite_if_init_or_upgrade() {
         _msg "ALERT! _USER is e-m-p-t-y, exit now"
         _clean_pid_exit _satellite_if_init_or_upgrade_b
       fi
-      _CHECK_HOST=$(uname -n 2>&1)
+      _CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
       _if_hosted_sys
       if [ "${_hostedSys}" = "YES" ]; then
         if [ -e "${_ROOT}/log/amazing_upgrade.txt" ] \
@@ -4333,7 +4333,7 @@ _satellite_if_init_or_upgrade() {
         _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
       fi
       if [[ "${_CLIENT_EMAIL}" =~ "omega8.cc" ]]; then
-        _CHECK_HOST=$(uname -n 2>&1)
+        _CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
         _if_hosted_sys
         if [ "${_hostedSys}" != "YES" ]; then
           _msg "EXIT: You must enter your valid email address in the"
@@ -4401,7 +4401,7 @@ _satellite_if_init_or_upgrade() {
       fi
     fi
   else
-    _msg "New Octopus Setup on $(uname -n 2>&1) in progress..."
+    _msg "New Octopus Setup on $(hostname -f 2>/dev/null || uname -n) in progress..."
     #
     # Check for last all nr
     if [ -d "/data/all" ]; then
@@ -5182,7 +5182,7 @@ _satellite_child_b_aegir_build() {
       || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
       || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
       if [ "${_THIS_DB_HOST}" = "FQDN" ]; then
-        _THIS_DB_HOST=$(uname -n 2>&1)
+        _THIS_DB_HOST="$(hostname -f 2>/dev/null || uname -n)"
       elif [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
         || [ "${_THIS_DB_HOST}" = "PROXYSQL" ]; then
         _SQL_CONNECT=127.0.0.1
@@ -5190,15 +5190,15 @@ _satellite_child_b_aegir_build() {
       else
         _THIS_DB_HOST=localhost
       fi
-      _USE_AEGIR_HOST=$(uname -n 2>&1)
+      _USE_AEGIR_HOST="$(hostname -f 2>/dev/null || uname -n)"
       _USE_DB_USER="${_USER}"
     else
-      _USE_AEGIR_HOST=$(uname -n 2>&1)
+      _USE_AEGIR_HOST="$(hostname -f 2>/dev/null || uname -n)"
       _USE_DB_USER=aegir_root
     fi
     if [ "${_THIS_DB_HOST}" = "${_MY_OWNIP}" ]; then
-      _USE_AEGIR_HOST=$(uname -n 2>&1)
-      _THIS_DB_HOST=$(uname -n 2>&1)
+      _USE_AEGIR_HOST="$(hostname -f 2>/dev/null || uname -n)"
+      _THIS_DB_HOST="$(hostname -f 2>/dev/null || uname -n)"
     fi
     _L_SYS_PHP="${_ROOT}/.${_USER}.pass.php"
     echo "<?php" > ${_L_SYS_PHP}
@@ -5451,7 +5451,7 @@ _satellite_child_b_aegir_build() {
       || [ -e "${_ROOT}/log/exported.pid" ]; then
       if [ ! -e "${_ROOT}/log/post-merge-fix.pid" ]; then
         _msg "${_STATUS} B: Hostmaster STATUS: Fix for migrated/merged instance 1/2 start"
-        _USE_AEGIR_HOST=$(uname -n 2>&1)
+        _USE_AEGIR_HOST="$(hostname -f 2>/dev/null || uname -n)"
         ${_DRUSHCMD} @hostmaster sqlq "REPLACE INTO hosting_context (nid, name) \
           VALUES ('4', 'server_localhost'), ('2', 'server_master')" &> /dev/null
         ${_DRUSHCMD} @hostmaster sqlq "REPLACE INTO hosting_package (vid, nid, \
@@ -5782,7 +5782,7 @@ _satellite_child_b_aegir_ui_enhance() {
   mkdir -p ${_HM_ROOT}/profiles/hostmaster/modules/{aegir,contrib}
   cd ${_HM_ROOT}/sites/${_DOMAIN}
   if [ -e "${_HM_ROOT}/sites/${_DOMAIN}/settings.php" ]; then
-    _VM_TEST=$(uname -a 2>&1)
+    _VM_TEST="$(uname -a)"
     if [[ "${_VM_TEST}" =~ "-beng" ]]; then
       _VMFAMILY="VS"
     else
@@ -5914,7 +5914,7 @@ _satellite_child_b_aegir_ui_enhance() {
           | sed "s/[\,']//g" 2>&1)
       ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
         SET status=1 WHERE publish_path LIKE '${_THIS_HM_PLR}'" &> /dev/null
-      _CHECK_HOST=$(uname -n 2>&1)
+      _CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
       _if_hosted_sys
       if [ "${_hostedSys}" = "YES" ]; then
         pBy="Octopus System powered by Barracuda"

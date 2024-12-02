@@ -4,7 +4,7 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 
 _DEST_DRUSH="/opt/tools/drush/8/drush/drush.php"
 
-_forward_to_shell() {
+_forward_to_dash() {
   if [[ "${_ARGS}" =~ "sudo_noexec.so" ]] && [[ "${_LTD_GID}" =~ "ltd-shell-more"($) ]]; then
     ### echo FWD 0 DIRECT
     _R_M=`echo -n ${_ARGS} | sed 's|LD_PRELOAD.*.so||'`
@@ -1030,8 +1030,8 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           exec /bin/dash -c "${DRUSH_PHP} /usr/local/bin/composer ${_C_ARR}"
           exit 0
         else
-          ### echo EXH 1 _forward_to_shell "$@"
-          _forward_to_shell "$@"
+          ### echo EXH 1 _forward_to_dash "$@"
+          _forward_to_dash "$@"
           exit 0
         fi
       else

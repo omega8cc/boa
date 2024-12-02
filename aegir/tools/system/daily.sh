@@ -7,7 +7,7 @@ export _tRee=pro
 export _xSrl=550proT01
 
 _check_root() {
-  if [ `whoami` = "root" ]; then
+  if [ $(whoami) = "root" ]; then
     ionice -c2 -n7 -p $$
     renice 19 -p $$
     chmod a+w /dev/null
@@ -1917,6 +1917,27 @@ _cleanup_ghost_vhosts() {
       echo "GHOST vhost for ${_Dom} detected and moved to ${_usEr}/undo/"
     fi
     if [ -e "${_usEr}/config/server_master/nginx/vhost.d/${_Dom}" ]; then
+      local _thisVhost="${_usEr}/config/server_master/nginx/vhost.d/${_Dom}"
+      if grep -q -e "ssl http2" -e "ssl_stapling" "${_thisVhost}"; then
+        echo "FIXING vhost for ${_Dom}"
+        # Remove 'http2' from 'listen' directives with varying spaces
+        sed -i -E 's/(listen\s+[^;]*\s+ssl)\s+http2;$/\1;/' "${_thisVhost}"
+        # Remove existing 'http2 on;' lines with varying spaces
+        sed -i -E '/^\s*http2\s+on;/d' "${_thisVhost}"
+        # Remove unwanted directives with varying spaces
+        sed -i -E \
+          -e '/^\s*ssl_stapling\b/d' \
+          -e '/^\s*ssl_stapling_verify\b/d' \
+          -e '/^\s*resolver\b/d' \
+          -e '/^\s*resolver_timeout\b/d' \
+          "${_thisVhost}"
+        # Update 'ssl_prefer_server_ciphers' directive, handling spaces
+        sed -i -E 's/^\s*ssl_prefer_server_ciphers\s+.*$/ssl_prefer_server_ciphers on;/' "${_thisVhost}"
+        # Add 'http2 on;' after 'ssl_prefer_server_ciphers on;', only if not already present
+        if ! grep -q -E '^\s*http2\s+on;$' "${_thisVhost}"; then
+          sed -i '/ssl_prefer_server_ciphers on;/ a\  http2 on;' "${_thisVhost}"
+        fi
+      fi
       _Plx=$(cat ${_usEr}/config/server_master/nginx/vhost.d/${_Dom} \
         | grep "root " \
         | cut -d: -f2 \
@@ -2846,14 +2867,14 @@ _cleanup_weblogx() {
 _incident_email_report() {
   if [ -e "/root/.barracuda.cnf" ]; then
     source /root/.barracuda.cnf
-    local _thisEmail="${_MY_EMAIL}"
-    export _INCIDENT_EMAIL_REPORT=${_INCIDENT_EMAIL_REPORT//[^A-Z]/}
-    : "${_INCIDENT_EMAIL_REPORT:=YES}"
+    _thisEmail="${_MY_EMAIL}"
+    export _INCIDENT_REPORT=${_INCIDENT_REPORT//[^A-Z]/}
+    : "${_INCIDENT_REPORT:=YES}"
   fi
-  if [ -n "${_thisEmail}" ] && [ "${_INCIDENT_EMAIL_REPORT}" = "YES" ]; then
+  if [ -n "${_thisEmail}" ] && [ "${_INCIDENT_REPORT}" = "YES" ]; then
     _hName=$(cat /etc/hostname 2>&1)
-    echo "Sending Incident Report Email on $(date 2>&1)" >> ${_thisLog}
-    s-nail -s "Incident Report during daily.sh: ${1} on ${_hName} at $(date 2>&1)" ${_thisEmail} < ${_thisLog}
+    echo "Sending Incident Report Email on $(date)" >> ${_thisLog}
+    s-nail -s "Incident Report during daily.sh: ${1} on ${_hName} at $(date)" ${_thisEmail} < ${_thisLog}
   fi
 }
 
@@ -3051,7 +3072,7 @@ _NOW=$(date +%y%m%d-%H%M%S 2>&1)
 _NOW=${_NOW//[^0-9-]/}
 _DOW=$(date +%u 2>&1)
 _DOW=${_DOW//[^1-7]/}
-_CHECK_HOST=$(uname -n 2>&1)
+_CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
 #
 if [ -e "/root/.force.sites.verify.cnf" ]; then
   _FORCE_SITES_VERIFY=YES
@@ -3308,18 +3329,19 @@ else
       fi
     done
     if [ -e "/var/aegir/config" ]; then
-      sed -i "s/.*ssl_stapling .*//g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf               &> /dev/null
+      sed -i "s/.*ssl_stapling .*//g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf &> /dev/null
       wait
-      sed -i "s/.*ssl_stapling_verify .*//g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf        &> /dev/null
+      sed -i "s/.*ssl_stapling_verify .*//g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf &> /dev/null
       wait
-      sed -i "s/.*resolver .*//g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf                   &> /dev/null
+      sed -i "s/.*resolver .*//g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf &> /dev/null
       wait
-      sed -i "s/.*resolver_timeout .*//g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf           &> /dev/null
+      sed -i "s/.*resolver_timeout .*//g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf &> /dev/null
       wait
-      sed -i "s/ssl_prefer_server_ciphers .*/ssl_prefer_server_ciphers on;\n  ssl_stapling on;\n  ssl_stapling_verify on;\n  resolver 1.1.1.1 1.0.0.1 valid=300s;\n  resolver_timeout 5s;/g" \
-        /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf &> /dev/null
+      sed -i "s/.*http2.*on;//g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf &> /dev/null
       wait
-      sed -i "s/ *$//g; /^$/d" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf                      &> /dev/null
+      sed -i "s/ssl_prefer_server_ciphers .*/ssl_prefer_server_ciphers on;\n  http2 on;/g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf &> /dev/null
+      wait
+      sed -i "s/ *$//g; /^$/d" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf &> /dev/null
       wait
     fi
     if [ -d "/data/u" ]; then

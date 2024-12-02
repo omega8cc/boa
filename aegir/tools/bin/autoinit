@@ -89,7 +89,7 @@ _dstUpArg="-fuy -q ${_aptAllow} --config-file /opt/apt/apt.conf.noi.dist"
 _nrmUpArg="-fuy -q ${_aptAllow} --config-file /opt/apt/apt.conf.noi.nrml"
 
 _check_root() {
-  if [ `whoami` = "root" ]; then
+  if [ $(whoami) = "root" ]; then
     [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
   else
     echo "ERROR: This script should be run as a root user"
@@ -380,7 +380,7 @@ _ifnames_grub_check_sync() {
 
     # Function to append option to _ADD_GRUB_CMD
     _append_grub_cmd_option() {
-      local _option="$1"
+      _option="$1"
       if [[ -z "${_ADD_GRUB_CMD}" ]]; then
         _ADD_GRUB_CMD="${_option}"
       else

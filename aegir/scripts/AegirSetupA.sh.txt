@@ -118,7 +118,7 @@ done
 ### Local variables
 ###
 if [ "${_THIS_DB_HOST}" = "FQDN" ]; then
-  _THIS_DB_HOST=$(uname -n 2>&1)
+  _THIS_DB_HOST="$(hostname -f 2>/dev/null || uname -n)"
 fi
 _DIST_INSTALL=NO
 _STATUS=INIT
@@ -183,7 +183,7 @@ fi
 ###
 ### User check
 ###
-if [ `whoami` = "root" ]; then
+if [ $(whoami) = "root" ]; then
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "${_STATUS} A: Aegir automated install script part A"
   fi

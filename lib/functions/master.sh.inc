@@ -124,7 +124,7 @@ _provision_backend_dbpass_generate() {
     || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
     || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
     if [ "${_THIS_DB_HOST}" = "FQDN" ]; then
-      _THIS_DB_HOST=$(uname -n 2>&1)
+      _THIS_DB_HOST="$(hostname -f 2>/dev/null || uname -n)"
       _SQL_CONNECT=localhost
     elif [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
       || [ "${_THIS_DB_HOST}" = "PROXYSQL" ]; then
@@ -133,16 +133,16 @@ _provision_backend_dbpass_generate() {
       _THIS_DB_HOST=localhost
       _SQL_CONNECT=localhost
     fi
-    _AEGIR_HOST=$(uname -n 2>&1)
+    _AEGIR_HOST="$(hostname -f 2>/dev/null || uname -n)"
   else
-    _AEGIR_HOST=$(uname -n 2>&1)
+    _AEGIR_HOST="$(hostname -f 2>/dev/null || uname -n)"
     ### _SQL_CONNECT="${_THIS_DB_HOST}"
     ### Master Instance will use local DB server
     _SQL_CONNECT=localhost
   fi
 
   if [ "${_THIS_DB_HOST}" = "${_MY_OWNIP}" ]; then
-    _AEGIR_HOST=$(uname -n 2>&1)
+    _AEGIR_HOST="$(hostname -f 2>/dev/null || uname -n)"
     _SQL_CONNECT=localhost
   fi
 
@@ -226,7 +226,7 @@ EOFMYSQL
     || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
     _EXTRA_GRANTS=NO
   else
-    _LOCAL_HOST=$(uname -n 2>&1)
+    _LOCAL_HOST="$(hostname -f 2>/dev/null || uname -n)"
     _find_correct_ip
     _LOCAL_IP="${_LOC_IP}"
     [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL9 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
@@ -294,7 +294,7 @@ _provision_backend_dbpass_sync() {
     fi
     _ESC="*.*"
     _USE_DB_USER="${_ADBU}"
-    _USE_AEGIR_HOST="$(uname -n 2>&1)"
+    _USE_AEGIR_HOST="$(hostname -f 2>/dev/null || uname -n)"
     [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL10 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
     if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
       _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>&1)
@@ -400,7 +400,7 @@ _hostmaster_frontend_dbpass_sync() {
     fi
     _ESC="*.*"
     _USE_DB_USER="${_THIS_HM_DBUR}"
-    _USE_AEGIR_HOST="$(uname -n 2>&1)"
+    _USE_AEGIR_HOST="$(hostname -f 2>/dev/null || uname -n)"
     [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL11 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
     if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
       _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>&1)
@@ -742,7 +742,7 @@ _aegir_master_install_upgrade() {
       || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
       || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
       if [ "${_THIS_DB_HOST}" = "FQDN" ]; then
-        _THIS_DB_HOST=$(uname -n 2>&1)
+        _THIS_DB_HOST="$(hostname -f 2>/dev/null || uname -n)"
         _SQL_CONNECT=localhost
       elif [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
         || [ "${_THIS_DB_HOST}" = "PROXYSQL" ]; then
@@ -751,15 +751,15 @@ _aegir_master_install_upgrade() {
         _THIS_DB_HOST=localhost
         _SQL_CONNECT=localhost
       fi
-      _AEGIR_HOST=$(uname -n 2>&1)
+      _AEGIR_HOST="$(hostname -f 2>/dev/null || uname -n)"
     else
-      _AEGIR_HOST=$(uname -n 2>&1)
+      _AEGIR_HOST="$(hostname -f 2>/dev/null || uname -n)"
       ### _SQL_CONNECT="${_THIS_DB_HOST}"
       ### Master Instance will use local DB server
       _SQL_CONNECT=localhost
     fi
     if [ "${_THIS_DB_HOST}" = "${_MY_OWNIP}" ]; then
-      _AEGIR_HOST=$(uname -n 2>&1)
+      _AEGIR_HOST="$(hostname -f 2>/dev/null || uname -n)"
       _SQL_CONNECT=localhost
     fi
 
@@ -883,7 +883,7 @@ EOFMYSQL
       || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
       _EXTRA_GRANTS=NO
     else
-      _LOCAL_HOST=$(uname -n 2>&1)
+      _LOCAL_HOST="$(hostname -f 2>/dev/null || uname -n)"
       _find_correct_ip
       _LOCAL_IP="${_LOC_IP}"
       [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL13 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"

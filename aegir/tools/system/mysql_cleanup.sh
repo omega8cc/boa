@@ -5,7 +5,7 @@ export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
 _check_root() {
-  if [ `whoami` = "root" ]; then
+  if [ $(whoami) = "root" ]; then
     ionice -c2 -n7 -p $$
     renice 19 -p $$
     chmod a+w /dev/null
@@ -42,7 +42,7 @@ if [ ! -z "${_ALL_DBS_NR}" ] && [ "${_ALL_DBS_NR}" -gt 100 ]; then
   exit 0
 fi
 
-echo "INFO: Starting dbs cleanup on `date`"
+echo "INFO: Starting dbs cleanup on $(date)"
 
 [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
 
@@ -213,7 +213,7 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
   fi
 done
 
-echo "INFO: Completing all dbs cleanup on `date`"
+echo "INFO: Completing all dbs cleanup on $(date)"
 touch /var/xdrago/log/last-run-db-cleanup
 rm -f /run/mysql_backup_running.pid
 

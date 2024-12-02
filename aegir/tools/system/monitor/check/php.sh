@@ -7,7 +7,7 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 _pthOml="/var/xdrago/log/php.incident.log"
 
 _check_root() {
-  if [ `whoami` = "root" ]; then
+  if [ $(whoami) = "root" ]; then
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
     chmod a+w /dev/null
   else
@@ -34,8 +34,8 @@ _check_root
 
     renice ${_B_NICE} -p $$ &> /dev/null
 
-export _INCIDENT_EMAIL_REPORT=${_INCIDENT_EMAIL_REPORT//[^A-Z]/}
-: "${_INCIDENT_EMAIL_REPORT:=YES}"
+export _INCIDENT_REPORT=${_INCIDENT_REPORT//[^A-Z]/}
+: "${_INCIDENT_REPORT:=YES}"
 
 if (( $(pgrep -fc 'php.sh') > 2 )); then
   echo "Too many php.sh running $(date)" >> /var/xdrago/log/too.many.log
@@ -43,10 +43,10 @@ if (( $(pgrep -fc 'php.sh') > 2 )); then
 fi
 
 _incident_email_report() {
-  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_EMAIL_REPORT}" = "YES" ]; then
+  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "YES" ]; then
     _hName=$(cat /etc/hostname 2>&1)
-    echo "Sending Incident Report Email on $(date 2>&1)" >> ${_pthOml}
-    s-nail -s "Incident Report: ${1} on ${_hName} at $(date 2>&1)" ${_MY_EMAIL} < ${_pthOml}
+    echo "Sending Incident Report Email on $(date)" >> ${_pthOml}
+    s-nail -s "Incident Report: ${1} on ${_hName} at $(date)" ${_MY_EMAIL} < ${_pthOml}
   fi
 }
 
@@ -76,7 +76,7 @@ _fpm_forced_restart() {
 
 _fpm_duplicate_instances_detection() {
   if [ `ps aux | grep -v "grep" | grep --count "php-fpm: master process"` -gt "10" ]; then
-    _thisErrLog="$(date 2>&1) Too many PHP-FPM master processes killed"
+    _thisErrLog="$(date) Too many PHP-FPM master processes killed"
     echo ${_thisErrLog} >> ${_pthOml}
     _fpm_forced_restart "Too many PHP-FPM master"
   fi
@@ -85,7 +85,7 @@ _fpm_duplicate_instances_detection() {
 _fpm_giant_log_detection() {
   _PHPLOG_SIZE_TEST=$(du -s -h /var/log/php 2>&1)
   if [[ "${_PHPLOG_SIZE_TEST}" =~ "G" ]]; then
-    _thisErrLog="$(date 2>&1) Too big PHP error logs deleted: ${_PHPLOG_SIZE_TEST}"
+    _thisErrLog="$(date) Too big PHP error logs deleted: ${_PHPLOG_SIZE_TEST}"
     echo ${_thisErrLog} >> ${_pthOml}
     _fpm_forced_restart "Too big PHP error logs"
   fi
@@ -95,7 +95,7 @@ _fpm_listen_conflict_detection() {
   if [ -e "/var/log/php" ]; then
     if [ `tail --lines=500 /var/log/php/php*-fpm-error.log \
       | grep --count "already listen on"` -gt "0" ]; then
-      _thisErrLog="$(date 2>&1) FPM instances conflict detected, service will be restarted"
+      _thisErrLog="$(date) FPM instances conflict detected, service will be restarted"
       echo ${_thisErrLog} >> ${_pthOml}
       _fpm_forced_restart "FPM instances conflict"
     fi
@@ -105,7 +105,7 @@ _fpm_listen_conflict_detection() {
 _fpm_proc_max_detection() {
   if [ `tail --lines=500 /var/log/php/php*-fpm-error.log \
     | grep --count "process.max"` -gt "0" ]; then
-    _thisErrLog="$(date 2>&1) Too many running FPM childs detected, service will be restarted"
+    _thisErrLog="$(date) Too many running FPM childs detected, service will be restarted"
     echo ${_thisErrLog} >> ${_pthOml}
     _fpm_forced_restart "Too many running FPM childs"
   fi
@@ -114,7 +114,7 @@ _fpm_proc_max_detection() {
 _fpm_sockets_healing() {
   if [ `tail --lines=500 /var/log/php/php*-fpm-error.log \
     | grep --count "Address already in use"` -gt "0" ]; then
-    _thisErrLog="$(date 2>&1) FPM Sockets conflict detected, service will be restarted"
+    _thisErrLog="$(date) FPM Sockets conflict detected, service will be restarted"
     echo ${_thisErrLog} >> ${_pthOml}
     _fpm_forced_restart "FPM Sockets conflict"
   fi
@@ -126,9 +126,9 @@ _fpm_fastcgi_temp() {
     rm -f /usr/fastcgi_temp/*/*/*
     killall -9 nginx
     killall -9 php-fpm
-    _thisErrLog="$(date 2>&1) PHP fastcgi_temp too big, cleanup forced"
+    _thisErrLog="$(date) PHP fastcgi_temp too big, cleanup forced"
     echo ${_thisErrLog} >> ${_pthOml}
-    echo "$(date 2>&1) ${_FASTCGI_SIZE_TEST}" >> ${_pthOml}
+    echo "$(date) ${_FASTCGI_SIZE_TEST}" >> ${_pthOml}
     _incident_email_report "PHP fastcgi_temp too big, cleanup forced"
     echo >> ${_pthOml}
   fi

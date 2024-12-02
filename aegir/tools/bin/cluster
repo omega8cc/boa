@@ -71,7 +71,7 @@ _tBn="tools/bin"
 ###-------------SYSTEM-----------------###
 
 _clean_pid_exit() {
-  echo "REASON ${e} on $(date 2>&1)" >> /root/.cluster.exit.exceptions.log
+  echo "REASON ${e} on $(date)" >> /root/.cluster.exit.exceptions.log
   rm -f /run/cluster_run.pid
   service cron start
   exit 1
@@ -111,7 +111,7 @@ _apt_clean_update() {
 }
 
 _check_root() {
-  if [ `whoami` = "root" ]; then
+  if [ $(whoami) = "root" ]; then
     chmod a+w /dev/null
     if [ ! -e "/dev/fd" ]; then
       if [ -e "/proc/self/fd" ]; then
@@ -240,7 +240,7 @@ _ifnames_grub_check_sync() {
 
     # Function to append option to _ADD_GRUB_CMD
     _append_grub_cmd_option() {
-      local _option="$1"
+      _option="$1"
       if [[ -z "${_ADD_GRUB_CMD}" ]]; then
         _ADD_GRUB_CMD="${_option}"
       else
@@ -674,7 +674,7 @@ _find_fast_mirror_early
 
 _if_firewall_update() {
   if [ -e "/etc/csf" ]; then
-    echo "Running Firewall Update on `hostname`..."
+    echo "Running Firewall Update on $(hostname -f 2>/dev/null || uname -n)..."
     _NOW=`date +%y%m%d-%H%M`
     _WFC="/var/backups/wfc/${_NOW}"
     mkdir -p ${_WFC}
@@ -2126,7 +2126,7 @@ _install_host() {
       sleep 2
       if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt "5" ]; then
         kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
-        echo "$(date 2>&1) Too many dirmngr processes killed" >> \
+        echo "$(date) Too many dirmngr processes killed" >> \
           /var/xdrago/log/dirmngr-count.kill.log
       fi
     done

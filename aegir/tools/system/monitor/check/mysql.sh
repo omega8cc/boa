@@ -7,7 +7,7 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 _pthOml="/var/xdrago/log/mysql.incident.log"
 
 _check_root() {
-  if [ `whoami` = "root" ]; then
+  if [ $(whoami) = "root" ]; then
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
     chmod a+w /dev/null
   else
@@ -40,8 +40,8 @@ export _SQL_MAX_TTL=${_SQL_MAX_TTL//[^0-9]/}
 export _SQL_LOW_MAX_TTL=${_SQL_LOW_MAX_TTL//[^0-9]/}
 : "${_SQL_LOW_MAX_TTL:=60}"
 
-export _INCIDENT_EMAIL_REPORT=${_INCIDENT_EMAIL_REPORT//[^A-Z]/}
-: "${_INCIDENT_EMAIL_REPORT:=YES}"
+export _INCIDENT_REPORT=${_INCIDENT_REPORT//[^A-Z]/}
+: "${_INCIDENT_REPORT:=YES}"
 
 if (( $(pgrep -fc 'mysql.sh') > 2 )); then
   echo "Too many mysql.sh running $(date)" >> /var/xdrago/log/too.many.log
@@ -49,10 +49,10 @@ if (( $(pgrep -fc 'mysql.sh') > 2 )); then
 fi
 
 _incident_email_report() {
-  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_EMAIL_REPORT}" = "YES" ]; then
+  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "YES" ]; then
     _hName=$(cat /etc/hostname 2>&1)
-    echo "Sending Incident Report Email on $(date 2>&1)" >> ${_pthOml}
-    s-nail -s "Incident Report: ${1} on ${_hName} at $(date 2>&1)" ${_MY_EMAIL} < ${_pthOml}
+    echo "Sending Incident Report Email on $(date)" >> ${_pthOml}
+    s-nail -s "Incident Report: ${1} on ${_hName} at $(date)" ${_MY_EMAIL} < ${_pthOml}
   fi
 }
 
@@ -66,15 +66,15 @@ _redis_cold_restart() {
 _sql_restart() {
   touch /run/boa_run.pid
   sleep 3
-  echo "$(date 2>&1) $1 incident detected" >> ${_pthOml}
+  echo "$(date) $1 incident detected" >> ${_pthOml}
   killall sleep &> /dev/null
   killall php
   bash /var/xdrago/move_sql.sh
   wait
-  echo "$(date 2>&1) $1 incident Percona MySQL server restarted" >> ${_pthOml}
+  echo "$(date) $1 incident Percona MySQL server restarted" >> ${_pthOml}
   _redis_cold_restart
-  echo "$(date 2>&1) $1 incident Redis server restarted" >> ${_pthOml}
-  echo "$(date 2>&1) $1 incident response completed" >> ${_pthOml}
+  echo "$(date) $1 incident Redis server restarted" >> ${_pthOml}
+  echo "$(date) $1 incident response completed" >> ${_pthOml}
   _incident_email_report "$1"
   echo >> ${_pthOml}
   [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid

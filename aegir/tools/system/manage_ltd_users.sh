@@ -3,8 +3,8 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-export _tRee=pro
-export _xSrl=550proT01
+export _tRee=dev
+export _xSrl=550devT01
 
 _CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
 _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
@@ -2422,7 +2422,7 @@ else
     _WEB_SH=$(readlink -n /bin/sh 2>&1)
     _WEB_SH=$(echo -n ${_WEB_SH} | tr -d "\n" 2>&1)
     if [ -x "/opt/local/bin/websh" ] \
-      && grep -i '_forward_to_shell' /opt/local/bin/websh &> /dev/null; then
+      && grep -i '_forward_to_dash' /opt/local/bin/websh &> /dev/null; then
       if [ "${_WEB_SH}" != "/opt/local/bin/websh" ]; then
         ln -sfn /opt/local/bin/websh /bin/sh
         if [ -e "/usr/bin/sh" ]; then

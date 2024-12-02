@@ -81,7 +81,7 @@ done
 ### Local settings
 ###
 if [ "${_THIS_DB_HOST}" = "FQDN" ]; then
-  _THIS_DB_HOST=$(uname -n 2>&1)
+  _THIS_DB_HOST="$(hostname -f 2>/dev/null || uname -n)"
 fi
 if [ "${_PHP_CLI_VERSION}" = "8.3" ] \
   && [ -x "/opt/php83/bin/php" ]; then
@@ -149,7 +149,7 @@ _php_cli_drush_update() {
 
 ###--------------------###
 
-if [ `whoami` = "root" ]; then
+if [ $(whoami) = "root" ]; then
   _msg "FATAL ERROR: This script should be run as a non-root user"
   _msg "FATAL ERROR: Aborting AegirSetupM installer NOW!"
   touch /opt/tmp/status-AegirSetupM-FAIL
