@@ -1035,13 +1035,15 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           exit 0
         fi
       else
-        ### echo EXH 3 exec /bin/bash -c "$@"
-        exec /bin/bash -c "$@"
+        ### echo EXH 3 _F_ARR is "$@"
+        ### echo EXH 3 /bin/bash "$@"
+        exec /bin/bash "$@"
         exit 0
       fi
     else
-      ### echo EXO 1 exec /bin/bash -c "$@"
-      exec /bin/bash -c "$@"
+      ### echo EXO 1 _F_ARR is "$@"
+      ### echo EXO 1 $0 "$@"
+      exec $0 "$@"
       exit 0
     fi
   else
@@ -1075,17 +1077,20 @@ else
     || [ "$0" = "/opt/local/bin/websh" ] \
     || [ "$0" = "/bin/websh" ]; then
     if [ -x "/bin/dash" ]; then
-      ### echo EXH 4 exec /bin/dash -c "$@"
-      exec /bin/dash -c "$@"
+      ### echo EXH 4 _F_ARR is "$@"
+      ### echo EXH 4 /bin/dash "$@"
+      exec /bin/dash "$@"
       exit 0
     else
-      ### echo EXH 6 exec /bin/bash -c "$@"
-      exec /bin/bash -c "$@"
+      ### echo EXH 6 _F_ARR is "$@"
+      ### echo EXH 6 /bin/bash "$@"
+      exec /bin/bash "$@"
       exit 0
     fi
   else
-    ### echo EXO 2 exec /bin/bash -c "$@"
-    exec /bin/bash -c "$@"
+    ### echo EXO 2 _F_ARR is "$@"
+    ### echo EXO 2 $0 "$@"
+    exec $0 "$@"
     exit 0
   fi
   exit 0
