@@ -266,7 +266,7 @@ _if_fix_locked_sshd() {
 }
 _if_fix_locked_sshd
 
-setprio &> /dev/null
+#setprio &> /dev/null
 
 if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ]; then
   echo "[$(date)] Active duplicity process detected, will try again later..." >> /var/log/mybackup_waiting_queue.log
