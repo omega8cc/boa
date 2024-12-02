@@ -6,7 +6,7 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 export _tRee=pro
 export _xSrl=550proT01
 
-_CHECK_HOST=$(uname -n 2>&1)
+_CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
 _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
 
 _usrGroup=users
@@ -2386,10 +2386,10 @@ else
     _fix_node_in_lshell_access
     touch ${_pthLog}/node.manage.lshell.ctrl.${_tRee}.${_xSrl}.pid
   fi
-#   if [ ! -e "${_pthLog}/php.manage.lshell.ctrl.${_tRee}.${_xSrl}.pid" ]; then
-#     _fix_php_in_lshell_access
-#     touch ${_pthLog}/php.manage.lshell.ctrl.${_tRee}.${_xSrl}.pid
-#   fi
+  if [ ! -e "${_pthLog}/php.manage.lshell.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+    # _fix_php_in_lshell_access
+    touch ${_pthLog}/php.manage.lshell.ctrl.${_tRee}.${_xSrl}.pid
+  fi
   cat /var/xdrago/conf/lshell.conf > ${_THIS_LTD_CONF}
   _find_correct_ip
   sed -i "s/1.1.1.1/${_LOC_IP}/g" ${_THIS_LTD_CONF}
