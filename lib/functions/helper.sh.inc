@@ -970,9 +970,7 @@ _switch_to_dash_in_octopus() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _switch_to_dash_in_octopus"
   fi
-  if [ -x "/opt/local/bin/websh" ] \
-    && [ -L "/bin/sh" ] \
-    && grep -i '_forward_to_shell' /opt/local/bin/websh &> /dev/null; then
+  if [ -L "/bin/sh" ]; then
     _WEB_SH=`readlink -n /bin/sh`
     _WEB_SH=`echo -n ${_WEB_SH} | tr -d "\n"`
     if [ -x "/bin/dash" ] || [ -x "/usr/bin/dash" ]; then
