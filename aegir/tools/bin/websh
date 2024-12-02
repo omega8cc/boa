@@ -4,6 +4,80 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 
 _DEST_DRUSH="/opt/tools/drush/8/drush/drush.php"
 
+_forward_to_shell() {
+  if [[ "${_ARGS}" =~ "sudo_noexec.so" ]] && [[ "${_LTD_GID}" =~ "ltd-shell-more"($) ]]; then
+    ### echo FWD 0 DIRECT
+    _R_M=`echo -n ${_ARGS} | sed 's|LD_PRELOAD.*.so||'`
+    ### echo _R_M is ${_R_M}
+    exec /bin/dash -c "${_R_M}"
+    exit 0
+  fi
+  # Path to the underlying shell (dash in this case)
+  _shell="/bin/dash"
+  # Name under which the shell should think it was invoked
+  _shell_name="sh"
+  # Arrays to hold options and positional parameters
+  _options=()
+  _positional=()
+  # Variables to hold command strings or script files
+  _command=""
+  _script=""
+
+  # Parse the options and arguments
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --)
+        # End of options
+        shift
+        _positional+=("$@")
+        break
+        ;;
+      -c)
+        # Command option
+        if [[ -n "$2" ]]; then
+          _options+=("-c" "$2")
+          shift 2
+          _positional+=("$@")
+          break
+        else
+          echo "sh: option requires an argument -- 'c'" >&2
+          exit 1
+        fi
+        ;;
+      -i|-l|-s)
+        # Other common options
+        _options+=("$1")
+        shift
+        ;;
+      -*)
+        # Unrecognized options
+        _options+=("$1")
+        shift
+        ;;
+      *)
+        # First non-option argument is the script file
+        _script="$1"
+        shift
+        _positional+=("$@")
+        break
+        ;;
+    esac
+  done
+
+  # Prepare to execute the underlying shell
+  if [[ -n "${_script}" ]]; then
+    # Execute a script file
+    ### echo FWD 1 PARSED
+    exec -a "${_shell_name}" "${_shell}" "${_options[@]}" "${_script}" "${_positional[@]}"
+    exit 0
+  else
+    # Execute commands or start an interactive shell
+    ### echo FWD 2 PARSED
+    exec -a "${_shell_name}" "${_shell}" "${_options[@]}" "${_positional[@]}"
+    exit 0
+  fi
+}
+
 # Capture all arguments
 _ALL="$@"
 ### echo "_ALL is ${_ALL}"
@@ -40,6 +114,7 @@ fi
 
 if [[ ! "${_ARGS}" =~ "composer" ]] \
   && [[ ! "${_ARGS}" =~ "git" ]] \
+  && [[ ! "${_ARGS}" =~ "cd " ]] \
   && [[ ! "${_ARGS}" =~ "mysql" ]] \
   && [[ ! "${_ARGS}" =~ "sudo" ]]; then
   _ARR=
@@ -225,7 +300,7 @@ if [[ ! "${_ARGS}" =~ "composer" ]] \
 fi
 
 _C_ARR=
-if [[ "${_ARGS}" =~ "composer " ]]; then
+if [[ "${_ARGS}" =~ "composer " ]] && [[ ! "${_ARGS}" =~ "git remote add composer" ]]; then
   if [[ "${_ARGS}" =~ "set -m" ]]; then
     _C_RM=`echo -n ${_ARGS}  | grep -o "set -m\; composer "`
   else
@@ -863,6 +938,11 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           || [[ "${_ARGS}" =~ "java" ]] \
           || [[ "${_ARGS}" =~ "logger " ]] \
           || [[ "${_ARGS}" =~ "php " ]] \
+          || [[ "${_ARGS}" =~ "php56 " ]] \
+          || [[ "${_ARGS}" =~ "php74 " ]] \
+          || [[ "${_ARGS}" =~ "php81 " ]] \
+          || [[ "${_ARGS}" =~ "php82 " ]] \
+          || [[ "${_ARGS}" =~ "php83 " ]] \
           || [[ "${_ARGS}" =~ "unzip " ]] \
           || [[ "${_ARGS}" =~ "rename " ]] \
           || [[ "${_ARGS}" =~ "rrdtool " ]] \
@@ -911,6 +991,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
     fi
     if [ "$0" = "/bin/sh" ] \
       || [ "$0" = "/usr/bin/sh" ] \
+      || [ "$0" = "/opt/local/bin/websh" ] \
       || [ "$0" = "/bin/websh" ]; then
       if [ -x "/bin/dash" ]; then
         if [ ! -z "${_ARR}" ] && [ -z "${_OCTO_SYS_ARR}" ]; then
@@ -949,33 +1030,8 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           exec /bin/dash -c "${DRUSH_PHP} /usr/local/bin/composer ${_C_ARR}"
           exit 0
         else
-          if [[ "${HOME}" =~ (^)"/home/" ]] || [[ "${HOME}" =~ (^)"/data/" ]]; then
-            if [[ "${_ALL}" =~ (bower|bundle|bzip2|bzr|cat|cd|chmod|clear|compass|cp|curl|cvs) ]]; then
-              _SILENT_WRAPPER=YES
-            elif [[ "${_ALL}" =~ (diff|drush|du|echo|env|exit|find|gem|grep|grunt|guard|gulp) ]]; then
-              _SILENT_WRAPPER=YES
-            elif [[ "${_ALL}" =~ (gunzip|gzip|help|history|ll|lpath|ls|lsudo|mc|mkdir|mv) ]]; then
-              _SILENT_WRAPPER=YES
-            elif [[ "${_ALL}" =~ (mydumper|myloader|mysql|nano|node|npm|npx|openssl|passwd) ]]; then
-              _SILENT_WRAPPER=YES
-            elif [[ "${_ALL}" =~ (patch|ping|pwd|rm|rmdir|rsync|s4cmd|sass|scp|scss|sed) ]]; then
-              _SILENT_WRAPPER=YES
-            elif [[ "${_ALL}" =~ (sqlmagic|ssh|svn|tar|touch|true|unzip|vi|wget) ]]; then
-              _SILENT_WRAPPER=YES
-            elif [[ "${_ALL}" =~ (php83|php82|php81|php74|php56) ]]; then
-              _SILENT_WRAPPER=YES
-            elif [[ "${_ALL}" =~ git\ clone ]] \
-              || [[ "${_ALL}" =~ git\ describe ]] \
-              || [[ "${_ALL}" =~ git\ config ]]; then
-              _SILENT_WRAPPER=YES
-            else
-              _SILENT_WRAPPER=NO
-              echo "shell wrapper.."
-            fi
-          fi
-          ### echo EXH 1 _F_ARR is "$@"
-          ### echo EXH 1 /bin/dash "$@"
-          exec /bin/dash "$@"
+          ### echo EXH 1 _forward_to_shell "$@"
+          _forward_to_shell "$@"
           exit 0
         fi
       else
@@ -1018,6 +1074,7 @@ else
   fi
   if [ "$0" = "/bin/sh" ] \
     || [ "$0" = "/usr/bin/sh" ] \
+    || [ "$0" = "/opt/local/bin/websh" ] \
     || [ "$0" = "/bin/websh" ]; then
     if [ -x "/bin/dash" ]; then
       ### echo EXH 4 _F_ARR is "$@"
