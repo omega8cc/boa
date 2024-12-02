@@ -965,10 +965,10 @@ _turn_off_apparmor_in_octopus() {
 }
 
 #
-# Switch to bash while running octopus.
-_switch_to_bash_in_octopus() {
+# Switch to dash while running octopus.
+_switch_to_dash_in_octopus() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "PROC: _switch_to_bash_in_octopus"
+    _msg "PROC: _switch_to_dash_in_octopus"
   fi
   if [ -x "/opt/local/bin/websh" ] \
     && [ -L "/bin/sh" ] \
