@@ -339,6 +339,63 @@ _if_clean_boa_env() {
   fi
 }
 
+###
+### Function to verify BOA keys
+###
+_verify_boa_keys() {
+  if [ -e "/root/.dev.server.cnf" ]; then
+    echo "PROC: _verify_boa_keys in BOA.sh.txt"
+  fi
+  if [ "${_tRee}" = "pro" ] || [ "${_tRee}" = "dev" ]; then
+    _allw=NO
+    _urlEnc="http://${_USE_MIR}/enc/2024"
+    _hName="$(hostname -f 2>/dev/null || uname -n)"
+    _hName=$(echo -n ${_hName} | tr -d "\n" 2>&1)
+    _encName=$(echo ${_hName} \
+      | openssl md5 \
+      | awk '{ print $2}' \
+      | tr -d "\n" 2>&1)
+    if [[ "${_hName}" =~ ".aegir.cc"($) ]] \
+      || [[ "${_hName}" =~ ".o8.io"($) ]] \
+      || [[ "${_hName}" =~ ".boa.io"($) ]]; then
+      _allw=YES
+    fi
+    mkdir -p /var/opt
+    rm -f /var/opt/_encN*
+    curl ${_crlGet} "${_urlEnc}/${_encName}" -o /var/opt/_encN.${_encName}.tmp
+    wait
+    echo "${_hName}.${_encName}" > /var/opt/_encN_local.${_encName}.tmp
+    wait
+    if [ -e "/var/opt/_encN.${_encName}.tmp" ] && [ -e "/var/opt/_encN_local.${_encName}.tmp" ]; then
+      _diffTestIf=$(diff -w -B /var/opt/_encN.${_encName}.tmp /var/opt/_encN_local.${_encName}.tmp 2>&1)
+      if [ ! -z "${_diffTestIf}" ] && [ "${_allw}" = "NO" ]; then
+        echo
+        echo "Your system requires valid license for upgrade to ${_rLsn}-${_tRee}"
+        echo "Please visit https://omega8.cc/licenses to purchase your own"
+        echo
+        if [ -e "/var/aegir/drush/vendor" ] && [ ! -e "/var/aegir/key/barracuda_key.txt" ]; then
+          mkdir -p /var/aegir/key
+          cat /var/opt/_encN_local.${_encName}.tmp > /var/aegir/key/barracuda_key.txt
+        fi
+        rm -f /var/opt/_encN*
+        _clean_pid_exit _verify_boa_keys_a
+      else
+        if [ -e "/var/aegir/drush/vendor" ] && [ ! -e "/var/aegir/key/barracuda_key.txt" ]; then
+          mkdir -p /var/aegir/key
+          cat /var/opt/_encN_local.${_encName}.tmp > /var/aegir/key/barracuda_key.txt
+        fi
+      fi
+    else
+      echo
+      echo "Your system requires valid license to use this BOA version (${_tRee})"
+      echo "Unfortunately it was not possible to verify your system status"
+      echo "Please contact our support but visit https://omega8.cc/licenses first"
+      echo
+      exit 0
+    fi
+  fi
+}
+
 _locales_check_fix_early() {
   _isLoc=$(which locale 2>&1)
   if [ ! -x "${_isLoc}" ] || [ -z "${_isLoc}" ]; then
@@ -609,9 +666,13 @@ _update_agents() {
   if [ -e "/var/aegir/drush" ]; then
 
     _pthCtrl="/root/.remote_backups/ctrl"
+    if [ "${_tRee}" = "pro" ] || [ "${_tRee}" = "dev" ]; then
+      [ ! -e "${_pthCtrl}" ] && mkdir -p ${_pthCtrl}
+      [ ! -e "/root/.remote_backups/run" ] && mkdir -p /root/.remote_backups/run
+    else
+      rm -rf /root/.remote_backups
+    fi
 
-    [ ! -e "${_pthCtrl}" ] && mkdir -p ${_pthCtrl}
-    [ ! -e "/root/.remote_backups/run" ] && mkdir -p /root/.remote_backups/run
     [ ! -e "/var/xdrago/monitor/check" ] && mkdir -p /var/xdrago/monitor/check
     [ ! -e "/var/xdrago/monitor/log" ] && mkdir -p /var/xdrago/monitor/log
 
@@ -3575,6 +3636,9 @@ if [ $(whoami) = "root" ]; then
   [ ! -e "/var/aegir/drush" ] && _locales_check_fix_early
   _os_detection_minimal
   _find_fast_mirror_early
+  if command -v curl &> /dev/null; then
+    _verify_boa_keys
+  fi
 
   ### CVE-2021-44228 Log4j 2 Vulnerability
   ### CVE-2021-45046 Log4j 2 Vulnerability
