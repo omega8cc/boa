@@ -4,7 +4,7 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-export _tRee=dev
+export _tRee=pro
 
 # Function to verify BOA keys
 _verify_boa_keys() {
