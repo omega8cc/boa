@@ -5,8 +5,15 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 _DEST_DRUSH="/opt/tools/drush/8/drush/drush.php"
 
 _forward_to_shell() {
+  if [[ "${_ARGS}" =~ "sudo_noexec.so" ]] && [[ "${_LTD_GID}" =~ "ltd-shell-more"($) ]]; then
+    ### echo FWD 0 DIRECT
+    _R_M=`echo -n ${_ARGS} | sed 's|LD_PRELOAD.*.so||'`
+    ### echo _R_M is ${_R_M}
+    exec /bin/dash -c "${_R_M}"
+    exit 0
+  fi
   # Path to the underlying shell (dash in this case)
-  _shell="/bin/bash"
+  _shell="/bin/dash"
   # Name under which the shell should think it was invoked
   _shell_name="sh"
   # Arrays to hold options and positional parameters
@@ -60,10 +67,14 @@ _forward_to_shell() {
   # Prepare to execute the underlying shell
   if [[ -n "${_script}" ]]; then
     # Execute a script file
+    ### echo FWD 1 PARSED
     exec -a "${_shell_name}" "${_shell}" "${_options[@]}" "${_script}" "${_positional[@]}"
+    exit 0
   else
     # Execute commands or start an interactive shell
+    ### echo FWD 2 PARSED
     exec -a "${_shell_name}" "${_shell}" "${_options[@]}" "${_positional[@]}"
+    exit 0
   fi
 }
 
@@ -927,6 +938,11 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           || [[ "${_ARGS}" =~ "java" ]] \
           || [[ "${_ARGS}" =~ "logger " ]] \
           || [[ "${_ARGS}" =~ "php " ]] \
+          || [[ "${_ARGS}" =~ "php56 " ]] \
+          || [[ "${_ARGS}" =~ "php74 " ]] \
+          || [[ "${_ARGS}" =~ "php81 " ]] \
+          || [[ "${_ARGS}" =~ "php82 " ]] \
+          || [[ "${_ARGS}" =~ "php83 " ]] \
           || [[ "${_ARGS}" =~ "unzip " ]] \
           || [[ "${_ARGS}" =~ "rename " ]] \
           || [[ "${_ARGS}" =~ "rrdtool " ]] \
@@ -986,7 +1002,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           ### echo EXD 1 _DEST_DRUSH is ${_DEST_DRUSH}
           ### echo EXD 1 _ARR is ${_ARR}
           ### echo EXD 1 ${DRUSH_PHP} ${_DEST_DRUSH} ${_ARR}
-          exec /bin/bash -c "${DRUSH_PHP} ${_DEST_DRUSH} ${_ARR}"
+          exec /bin/dash -c "${DRUSH_PHP} ${_DEST_DRUSH} ${_ARR}"
           exit 0
         elif [ ! -z "${PHP_FWD}" ] && [ ! -z "${_OCTO_SYS_ARR}" ]; then
           _DEST_DRUSH=${_DEST_DRUSH//\\/}
@@ -995,7 +1011,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           ### echo EXD 3-PHP_FWD _DEST_DRUSH is ${_DEST_DRUSH}
           ### echo EXD 3-PHP_FWD _OCTO_SYS_ARR is ${_OCTO_SYS_ARR}
           ### echo EXD 3-PHP_FWD ${DRUSH_PHP} ${_DEST_DRUSH} ${_OCTO_SYS_ARR}
-          exec /bin/bash -c "${DRUSH_PHP} ${_DEST_DRUSH} ${_OCTO_SYS_ARR}"
+          exec /bin/dash -c "${DRUSH_PHP} ${_DEST_DRUSH} ${_OCTO_SYS_ARR}"
           exit 0
         elif [ -z "${PHP_FWD}" ] && [ ! -z "${_OCTO_SYS_ARR}" ]; then
           _DEST_DRUSH=${_DEST_DRUSH//\\/}
@@ -1004,31 +1020,28 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           ### echo EXD 3-NO-PHP_FWD _DEST_DRUSH is ${_DEST_DRUSH}
           ### echo EXD 3-NO-PHP_FWD _OCTO_SYS_ARR is ${_OCTO_SYS_ARR}
           ### echo EXD 3-NO-PHP_FWD ${DRUSH_PHP} ${_DEST_DRUSH} ${_OCTO_SYS_ARR}
-          exec /bin/bash -c "${DRUSH_PHP} ${_DEST_DRUSH} ${_OCTO_SYS_ARR}"
+          exec /bin/dash -c "${DRUSH_PHP} ${_DEST_DRUSH} ${_OCTO_SYS_ARR}"
           exit 0
         elif [ ! -z "${_C_ARR}" ]; then
           ### echo EXC 1 DRUSH_PHP is ${DRUSH_PHP}
           ### echo EXC 1 _C_ARR is ${_C_ARR}
           ### echo EXC 1 _F_ARR is "$@"
           ### echo EXC 1 ${DRUSH_PHP} /usr/local/bin/composer ${_C_ARR}
-          exec /bin/bash -c "${DRUSH_PHP} /usr/local/bin/composer ${_C_ARR}"
+          exec /bin/dash -c "${DRUSH_PHP} /usr/local/bin/composer ${_C_ARR}"
           exit 0
         else
-          ### echo EXH 1 _F_ARR is "$@"
           ### echo EXH 1 _forward_to_shell "$@"
           _forward_to_shell "$@"
           exit 0
         fi
       else
-        ### echo EXH 3 _F_ARR is "$@"
-        ### echo EXH 3 _forward_to_shell "$@"
-        _forward_to_shell "$@"
+        ### echo EXH 3 exec /bin/bash -c "$@"
+        exec /bin/bash -c "$@"
         exit 0
       fi
     else
-      ### echo EXO 1 _F_ARR is "$@"
-      ### echo EXO 1 _forward_to_shell "$@"
-      _forward_to_shell "$@"
+      ### echo EXO 1 exec /bin/bash -c "$@"
+      exec /bin/bash -c "$@"
       exit 0
     fi
   else
@@ -1062,20 +1075,17 @@ else
     || [ "$0" = "/opt/local/bin/websh" ] \
     || [ "$0" = "/bin/websh" ]; then
     if [ -x "/bin/dash" ]; then
-      ### echo EXH 4 _F_ARR is "$@"
-      ### echo EXH 4 _forward_to_shell "$@"
-      _forward_to_shell "$@"
+      ### echo EXH 4 exec /bin/dash -c "$@"
+      exec /bin/dash -c "$@"
       exit 0
     else
-      ### echo EXH 6 _F_ARR is "$@"
-      ### echo EXH 6 _forward_to_shell "$@"
-      _forward_to_shell "$@"
+      ### echo EXH 6 exec /bin/bash -c "$@"
+      exec /bin/bash -c "$@"
       exit 0
     fi
   else
-    ### echo EXO 2 _F_ARR is "$@"
-    ### echo EXO 2 _forward_to_shell "$@"
-    _forward_to_shell "$@"
+    ### echo EXO 2 exec /bin/bash -c "$@"
+    exec /bin/bash -c "$@"
     exit 0
   fi
   exit 0
