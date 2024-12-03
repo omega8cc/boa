@@ -295,6 +295,17 @@ _if_launch_boa_install() {
   fi
 }
 
+_uninstall_apparmor_utils() {
+  [ ! -e "/root/.disable.apparmor.cnf" ] && touch /root/.disable.apparmor.cnf
+  [ ! -e "/root/.deny.apparmor.cnf" ] && touch /root/.deny.apparmor.cnf
+  if [ -e "/etc/apparmor.d" ]; then
+    /usr/bin/apt-get remove apparmor-profiles apparmor-notify -y --purge --auto-remove -qq >> "${_logSlt}"
+    /usr/bin/apt-get remove apparmor apparmor-utils -y --purge --auto-remove -qq >> "${_logSlt}"
+    /usr/bin/apt-get autoremove --purge -y >> "${_logSlt}"
+    /usr/bin/apt-get autoclean -y >> "${_logSlt}"
+  fi
+}
+
 _disable_apparmor_utils() {
   if [ -e "/etc/apparmor.d" ] && [ -e "/var/cache/apparmor" ]; then
     rm -rf /var/cache/apparmor/* >> "${_logSlt}"
@@ -309,14 +320,6 @@ _disable_apparmor_utils() {
   fi
   if [ -x "/usr/sbin/aa-teardown" ]; then
     aa-teardown >> "${_logSlt}"
-  fi
-  [ ! -e "/root/.disable.apparmor.cnf" ] && touch /root/.disable.apparmor.cnf
-  if [ -e "/etc/apparmor.d" ]; then
-    /usr/bin/apt-get remove apparmor-profiles apparmor-notify -y --purge --auto-remove -qq >> "${_logSlt}"
-    /usr/bin/apt-get remove apparmor apparmor-utils -y --purge --auto-remove -qq >> "${_logSlt}"
-    /usr/bin/apt-get autoremove --purge -y >> "${_logSlt}"
-    /usr/bin/apt-get autoclean -y >> "${_logSlt}"
-    mv -f /etc/apparmor.d /var/backups/
   fi
 }
 
@@ -543,6 +546,7 @@ _init_prepare() {
         echo "*/1 *   * * *   root    bash /opt/local/bin/killer" >> /etc/crontab
       fi
       _disable_apparmor_utils
+      _uninstall_apparmor_utils
       touch ${_initFile}
       _msg "Time for reboot and next upgrade cycle..." >> "${_logInt}"
       echo " " >> "${_logInt}"
@@ -611,6 +615,8 @@ _init_offsystemd() {
       ${_INITINS} base-files=12.4+deb12u7devuan1 --allow-downgrades >> "${_logSlt}"
     fi
   fi
+  _disable_apparmor_utils
+  _uninstall_apparmor_utils
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   _msg "Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
@@ -731,6 +737,8 @@ _init_cycle() {
       fi
     fi
   fi
+  _disable_apparmor_utils
+  _uninstall_apparmor_utils
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   if [ "${_OLD_SYS}" = "Debian" ]; then
