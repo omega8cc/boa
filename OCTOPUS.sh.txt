@@ -235,7 +235,11 @@ sleep 3
 ###
 ### Turn Off AppArmor while running octopus
 ###
-_turn_off_apparmor_in_octopus
+if [ -e "/etc/init.d/apparmor" ]; then
+  if [ "${_OS_CODE}" != "stretch" ] && [ "${_OS_CODE}" != "jessie" ]; then
+    _turn_off_apparmor_in_octopus
+  fi
+fi
 
 
 ###

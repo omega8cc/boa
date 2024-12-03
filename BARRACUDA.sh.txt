@@ -287,8 +287,10 @@ _if_long_generate_on_major_os_upgrade
 if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "UPGRADE" ]; then
   if [ -e "/root/.deny.apparmor.cnf" ] || [ -e "/root/.disable.apparmor.cnf" ]; then
     rm -f /root/.allow.apparmor.cnf
-    _disable_apparmor_utils
-    _uninstall_apparmor_utils
+    if [ "${_OS_CODE}" != "stretch" ] && [ "${_OS_CODE}" != "jessie" ]; then
+      _disable_apparmor_utils
+      _uninstall_apparmor_utils
+    fi
   fi
 fi
 
@@ -325,10 +327,11 @@ _check_prepare_dirs_permissions
 ###
 ### Turn Off AppArmor temporarily while running barracuda
 ###
-if [ "${_OS_CODE}" = "stretch" ] || [ "${_OS_CODE}" = "jessie" ]; then
+if [ -e "/etc/init.d/apparmor" ]; then
+  if [ "${_OS_CODE}" != "stretch" ] && [ "${_OS_CODE}" != "jessie" ]; then
+    _turn_off_apparmor_temporarily
+  fi
   [ ! -e "/root/.turn_off_apparmor_in_octopus.cnf" ] && touch /root/.turn_off_apparmor_in_octopus.cnf
-else
-  _turn_off_apparmor_temporarily
 fi
 
 
@@ -565,20 +568,20 @@ _rsyslog_config_update
 ### Install or uninstall AppArmor after barracuda install and upgrade
 ###
 if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "UPGRADE" ]; then
-  [ ! -e "/root/.allow.apparmor.cnf" ] && touch /root/.allow.apparmor.cnf
-  [ -e "/root/.disable.apparmor.cnf" ] && rm -f /root/.allow.apparmor.cnf
-  [ -e "/root/.deny.apparmor.cnf" ] && rm -f /root/.allow.apparmor.cnf
-  if [ ! -e "/root/.deny.apparmor.cnf" ] \
-    && [ ! -e "/root/.disable.apparmor.cnf" ] \
-    && [ ! -e "/root/.run-to-daedalus.cnf" ] \
-    && [ ! -e "/root/.run-to-chimaera.cnf" ] \
-    && [ ! -e "/root/.run-to-beowulf.cnf" ]; then
+  if [ -e "/root/.deny.apparmor.cnf" ] \
+    || [ -e "/root/.run-to-daedalus.cnf" ] \
+    || [ -e "/root/.run-to-chimaera.cnf" ] \
+    || [ -e "/root/.run-to-beowulf.cnf" ] \
+    || [ -e "/root/.disable.apparmor.cnf" ]; then
+    rm -f /root/.allow.apparmor.cnf
+    if [ "${_OS_CODE}" != "stretch" ] && [ "${_OS_CODE}" != "jessie" ]; then
+      _disable_apparmor_utils
+      _uninstall_apparmor_utils
+    fi
+  else
     if [ "${_OS_CODE}" != "stretch" ] && [ "${_OS_CODE}" != "jessie" ]; then
       _if_install_apparmor
     fi
-  else
-    _disable_apparmor_utils
-    _uninstall_apparmor_utils
   fi
 fi
 
