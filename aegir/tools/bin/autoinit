@@ -299,10 +299,10 @@ _uninstall_apparmor_utils() {
   [ ! -e "/root/.disable.apparmor.cnf" ] && touch /root/.disable.apparmor.cnf
   [ ! -e "/root/.deny.apparmor.cnf" ] && touch /root/.deny.apparmor.cnf
   if [ -e "/etc/apparmor.d" ]; then
-    /usr/bin/apt-get remove apparmor-profiles apparmor-notify -y --purge --auto-remove -qq >> "${_logSlt}"
-    /usr/bin/apt-get remove apparmor apparmor-utils -y --purge --auto-remove -qq >> "${_logSlt}"
-    /usr/bin/apt-get autoremove --purge -y >> "${_logSlt}"
-    /usr/bin/apt-get autoclean -y >> "${_logSlt}"
+    /usr/bin/apt-get remove apparmor -y -qq >> "${_logSlt}"
+    /usr/bin/apt-get remove apparmor-notify -y -qq >> "${_logSlt}"
+    /usr/bin/apt-get remove apparmor-profiles -y -qq >> "${_logSlt}"
+    /usr/bin/apt-get remove apparmor-utils -y -qq >> "${_logSlt}"
   fi
 }
 
@@ -401,6 +401,9 @@ _ifnames_grub_check_sync() {
     # Always add memhp_default_state=online
     _append_grub_cmd_option "memhp_default_state=online"
 
+    # Always add apparmor=0
+    _append_grub_cmd_option "apparmor=0"
+
     if [[ "${_USE_IFNAMES}" == "CLASSIC" ]]; then
       # Always set net.ifnames=0 and biosdevname=0
       _append_grub_cmd_option "net.ifnames=0"
@@ -411,7 +414,7 @@ _ifnames_grub_check_sync() {
       _append_grub_cmd_option "biosdevname=1"
     fi
 
-    if [ -e "/root/.auto.config.ifnames.grub.cnf" ] && [ ! -e "/root/.ignore.ifnames.cnf" ]; then
+    if [ ! -e "/root/.ignore.ifnames.cnf" ]; then
       _NEW_GRUB=LIVE
     else
       _NEW_GRUB=DEMO
@@ -420,9 +423,10 @@ _ifnames_grub_check_sync() {
     if [[ -n "${_ADD_GRUB_CMD}" ]]; then
       # Backup the GRUB file
       cp "${_GRUB_FILE}" "${_GRUB_FILE}.bak"
+      [ -e "/etc/default/grub.d/apparmor.cfg" ] && mv -f /etc/default/grub.d/apparmor.cfg /var/backups/
 
       # Remove existing options from GRUB_CMDLINE_LINUX
-      _NEW_GRUB_CMDLINE_LINUX=$(echo "${_GRUB_CMDLINE_LINUX}" | sed -E "s/(net.ifnames=[01]|biosdevname=[01]|memhp_default_state=online)//g")
+      _NEW_GRUB_CMDLINE_LINUX=$(echo "${_GRUB_CMDLINE_LINUX}" | sed -E "s/(net.ifnames=[01]|biosdevname=[01]|apparmor=[01]|security=apparmor|memhp_default_state=online)//g")
 
       # Clean up extra spaces and trailing spaces before the closing quote
       _NEW_GRUB_CMDLINE_LINUX=$(echo "${_NEW_GRUB_CMDLINE_LINUX}" | tr -s ' ' | sed -E 's/\s*"$/"/')
