@@ -526,7 +526,7 @@ _init_prepare() {
       _msg "We need to install some tools early..." >> "${_logInt}"
       /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
       if [ "${_VMFAMILY}" != "AWS" ]; then
-        /usr/bin/apt-get remove chrony -y --purge --auto-remove -qq >> "${_logSlt}"
+        /usr/bin/apt-get remove chrony -y -qq >> "${_logSlt}"
         _INITD_TEST=$(ls -la /etc/init.d/*cloud* 2>&1)
         if [[ ! "${_INITD_TEST}" =~ "No such file" ]] \
           || [ -e "/etc/cloud/cloud.cfg.d" ]; then
@@ -714,8 +714,6 @@ _init_cycle() {
       /usr/bin/apt-get dist-upgrade ${_dstUpArg} >> "${_logSlt}"
       /usr/bin/apt-get dist-upgrade ${_dstUpArg} >> "${_logSlt}"
       [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
-      /usr/bin/apt-get autoremove --purge -y -qq >> "${_logSlt}"
-      /usr/bin/apt-get autoclean -y -qq >> "${_logSlt}"
       if [ -e "/root/.top-daedalus.cnf" ]; then
         if cat /etc/os-release | grep -i 'daedalus' &> /dev/null; then
           _msg "The /etc/os-release already mentions daedalus" >> "${_logInt}"
