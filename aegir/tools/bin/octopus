@@ -1211,7 +1211,7 @@ _up_proceed() {
   elif [ "${_cmNd}" = "up-lts" ]; then
     _tRee=lts
   elif [ "${_cmNd}" = "help" ] || [ "${_cmNd}" = "info" ]; then
-    _tRee=pro
+    _tRee=lts
   else
     echo
     echo "Sorry, you are trying not supported command.."

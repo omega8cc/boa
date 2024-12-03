@@ -1,5 +1,5 @@
 
-export _tRee=pro
+export _tRee=lts
 
 #
 # Fix DNS settings.

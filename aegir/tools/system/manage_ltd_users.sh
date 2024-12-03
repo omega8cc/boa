@@ -3,8 +3,8 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-export _tRee=pro
-export _xSrl=550proT02
+export _tRee=lts
+export _xSrl=550ltsT01
 
 _CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
 _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)

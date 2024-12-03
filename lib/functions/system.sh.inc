@@ -1,5 +1,5 @@
 
-export _tRee=pro
+export _tRee=lts
 
 _if_fix_iptables_symlinks() {
   ###

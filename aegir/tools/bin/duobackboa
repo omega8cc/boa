@@ -15,7 +15,7 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-export _tRee=pro
+export _tRee=lts
 
 _CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
 
