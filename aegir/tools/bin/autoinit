@@ -311,6 +311,13 @@ _disable_apparmor_utils() {
     aa-teardown >> "${_logSlt}"
   fi
   [ ! -e "/root/.disable.apparmor.cnf" ] && touch /root/.disable.apparmor.cnf
+  if [ -e "/etc/apparmor.d" ]; then
+    /usr/bin/apt-get remove apparmor-profiles apparmor-notify -y --purge --auto-remove -qq >> "${_logSlt}"
+    /usr/bin/apt-get remove apparmor apparmor-utils -y --purge --auto-remove -qq >> "${_logSlt}"
+    /usr/bin/apt-get autoremove --purge -y >> "${_logSlt}"
+    /usr/bin/apt-get autoclean -y >> "${_logSlt}"
+    mv -f /etc/apparmor.d /var/backups/
+  fi
 }
 
 _install_apparmor_utils() {
@@ -535,7 +542,7 @@ _init_prepare() {
         sed -i "s/.*killer.*//gi" /etc/crontab &> /dev/null
         echo "*/1 *   * * *   root    bash /opt/local/bin/killer" >> /etc/crontab
       fi
-      _install_apparmor_utils
+      _disable_apparmor_utils
       touch ${_initFile}
       _msg "Time for reboot and next upgrade cycle..." >> "${_logInt}"
       echo " " >> "${_logInt}"
