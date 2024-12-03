@@ -552,7 +552,7 @@ _check_all() {
   _check_root_direct
   _check_root_keys_pwd
   _check_no_systemd
-  _ifnames_grub_check_sync
+  [ -e "/root/.ifnames.check.cnf" ] && _ifnames_grub_check_sync
   _os_detection_minimal
   _system_check_clean
   _locales_check_fix

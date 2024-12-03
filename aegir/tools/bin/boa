@@ -1177,7 +1177,7 @@ _init_setup() {
   if [ "${_cmNd}" = "in-lts" ] \
     || [ "${_cmNd}" = "in-dev" ]; then
     _check_no_systemd
-    _ifnames_grub_check_sync
+    [ -e "/root/.ifnames.check.cnf" ] && _ifnames_grub_check_sync
   fi
 
   if [ "${_cmNd}" = "in-lts" ] \
