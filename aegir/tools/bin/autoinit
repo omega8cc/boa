@@ -526,19 +526,16 @@ _init_prepare() {
         _INITD_TEST=$(ls -la /etc/init.d/*cloud* 2>&1)
         if [[ ! "${_INITD_TEST}" =~ "No such file" ]] \
           || [ -e "/etc/cloud/cloud.cfg.d" ]; then
-          /usr/bin/apt-get remove cloud-utils cloud-init -y --purge --auto-remove -qq >> "${_logSlt}"
-          /usr/bin/apt-get remove cloud-image-utils cloud-guest-utils -y --purge --auto-remove -qq >> "${_logSlt}"
-          /usr/bin/apt-get autoremove --purge -y >> "${_logSlt}"
-          /usr/bin/apt-get autoclean -y >> "${_logSlt}"
-          if [ -e "/etc/cloud/cloud.cfg.d" ]; then
-            mv -f /etc/cloud /var/backups/
-          fi
+          /usr/bin/apt-get remove cloud-utils -y -qq >> "${_logSlt}"
+          /usr/bin/apt-get remove cloud-init -y -qq >> "${_logSlt}"
+          /usr/bin/apt-get remove cloud-image-utils -y -qq >> "${_logSlt}"
         fi
       fi
       ${_INITINS} cron >> "${_logSlt}"
       ${_INITINS} locales-all aptitude >> "${_logSlt}"
       ${_INITINS} build-essential curl git >> "${_logSlt}"
       ${_INITINS} libgd-dev libmagickwand-dev >> "${_logSlt}"
+      ${_INITINS} cloud-guest-utils gdisk >> "${_logSlt}"
       sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
       echo "*/1 *   * * *   root    bash /opt/local/bin/autoinit" >> /etc/crontab
       if [ -x "/opt/local/bin/killer" ]; then
