@@ -501,7 +501,6 @@ if [ -e "/root/.run-to-chimaera.cnf" ] \
   echo " " >> "${_logAch}"
   touch /root/.auto-upgraded-to-chimaera.cnf
   _msg "Launching the final post-second-reboot barracuda up-${_tRee} system" >> "${_logAch}"
-  [ ! -e "/root/.allow.apparmor.cnf" ] && touch /root/.allow.apparmor.cnf
   [ ! -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && touch /root/.force.rebuild.src.on.auto.now.cnf
   /opt/local/bin/barracuda up-${_tRee} system noscreen >> "${_logAch}"
   wait
