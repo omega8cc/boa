@@ -44,7 +44,7 @@ if [ -z "${TERM+x}" ]; then
 fi
 
 _clean_pid_exit() {
-  echo "REASON ${e} on $(date)" >> /root/.boa.exit.exceptions.log
+  echo "REASON ${1} on $(date)" >> /root/.boa.exit.exceptions.log
   [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
   [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
   service cron start &> /dev/null
@@ -816,6 +816,8 @@ _barracuda_install() {
       sed -i "s/^_EASY_HOSTNAME.*/_EASY_HOSTNAME=${_fQdn}/g" ${_vBs}/${_filIncB}
       wait
     fi
+
+    [ ! -z "${_fQdn}" ] && export _EASY_HOSTNAME=${_fQdn}
 
     if [ -n "${_eXtr}" ] \
       && [ -e "${_vBs}/${_filIncB}" ] \
