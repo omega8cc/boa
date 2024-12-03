@@ -447,22 +447,6 @@ _ifnames_grub_check_sync() {
         _msg "GRUB: Update in the LIVE MODE" >> "${_logInt}"
         sed -i "s|^GRUB_CMDLINE_LINUX=.*|${_NEW_GRUB_CMDLINE_LINUX}|" "${_GRUB_FILE}"
         _msg "GRUB_CMDLINE_LINUX has been updated with ${_UPDATED_CMDLINE}" >> "${_logInt}"
-      elif [[ "${_NEW_GRUB}" == "DEMO" ]]; then
-        # Demo info
-        _msg "GRUB: Update in the DEMO MODE" >> "${_logInt}"
-        _msg "GRUB_CMDLINE_LINUX would be updated with ${_UPDATED_CMDLINE}" >> "${_logInt}"
-        echo " " >> "${_logInt}"
-        _msg "GRUB: Update in the LIVE MODE needs presence of control file:" >> "${_logInt}"
-        _msg "GRUB   /root/.auto.config.ifnames.grub.cnf" >> "${_logInt}"
-        echo " " >> "${_logInt}"
-        _msg "GRUB: Ensure that the file /root/.ignore.ifnames.cnf does not exist." >> "${_logInt}"
-        _msg "GRUB: This requirement serves as a double-check to confirm" >> "${_logInt}"
-        _msg "GRUB: that you are aware of and agree to auto-update GRUB configuration." >> "${_logInt}"
-        _msg "GRUB: Incorrect GRUB settings can render your virtual machine unbootable" >> "${_logInt}"
-        _msg "GRUB: necessitating a rescue operation using a CD-ROM or ISO image." >> "${_logInt}"
-        _msg "GRUB: For this reason, running BOA directly on physical hardware (bare metal) is not supported" >> "${_logInt}"
-        echo " " >> "${_logInt}"
-        _msg "GRUB: NEVER USE LIVE MODE IF YOU ARE NOT SURE IF YOU NEED IT" >> "${_logInt}"
       fi
       echo " " >> "${_logInt}"
       touch /root/.ifnames.grub.check.sync.done.cnf
