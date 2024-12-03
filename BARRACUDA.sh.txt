@@ -467,6 +467,12 @@ fi
 
 
 ###
+### Install or upgrade csf/lfd monitoring
+###
+_csf_lfd_install_upgrade
+
+
+###
 ### Install Percona server
 ###
 _db_server_install
@@ -550,12 +556,6 @@ if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "UPGRADE" ]; then
     _sftp_ftps_modern_fix
   fi
 fi
-
-
-###
-### Install or upgrade csf/lfd monitoring
-###
-_csf_lfd_install_upgrade
 
 
 ###
