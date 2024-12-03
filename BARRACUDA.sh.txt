@@ -576,6 +576,9 @@ if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "UPGRADE" ]; then
     if [ "${_OS_CODE}" != "stretch" ] && [ "${_OS_CODE}" != "jessie" ]; then
       _if_install_apparmor
     fi
+  else
+    _disable_apparmor_utils
+    _uninstall_apparmor_utils
   fi
 fi
 
