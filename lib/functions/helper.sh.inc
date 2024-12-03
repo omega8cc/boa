@@ -971,8 +971,7 @@ _switch_to_dash_in_octopus() {
     _msg "PROC: _switch_to_dash_in_octopus"
   fi
   if [ -L "/bin/sh" ]; then
-    _WEB_SH=`readlink -n /bin/sh`
-    _WEB_SH=`echo -n ${_WEB_SH} | tr -d "\n"`
+    _WEB_SH=$(readlink -n /bin/sh)
     if [ -x "/bin/dash" ] || [ -x "/usr/bin/dash" ]; then
       if [ "${_WEB_SH}" != "/bin/dash" ]; then
         if [ -x "/usr/bin/dash" ] && [ ! -L "/usr/bin/dash" ]; then

@@ -4613,7 +4613,7 @@ _satellite_letsencrypt_crt_key_copy() {
   fi
   if [ -e "${_crtPath}" ]; then
     if [ -L "${_crtPath}" ]; then
-      _crtPathR=$(readlink -n ${_crtPath} 2>&1)
+      _crtPathR=$(readlink -n ${_crtPath})
       _crtPathR=$(echo -n ${_crtPathR} | tr -d "\n" 2>&1)
       if [ -f "${_leCrtPath}/${_crtPathR}" ]; then
         rm -f /etc/ssl/private/${_DOMAIN}.crt
@@ -4627,7 +4627,7 @@ _satellite_letsencrypt_crt_key_copy() {
   _keyPath="${_leCrtPath}/privkey.pem"
   if [ -e "${_keyPath}" ]; then
     if [ -L "${_keyPath}" ]; then
-      _keyPathR=$(readlink -n ${_keyPath} 2>&1)
+      _keyPathR=$(readlink -n ${_keyPath})
       _keyPathR=$(echo -n ${_keyPathR} | tr -d "\n" 2>&1)
       if [ -f "${_leCrtPath}/${_keyPathR}" ]; then
         rm -f /etc/ssl/private/${_DOMAIN}.key

@@ -774,8 +774,7 @@ for _Domain in `find ${_Client}/ -maxdepth 1 -mindepth 1 -type l | sort`; do
   _STATIC_FILES="${_pthParen_tUsr}/static/files/${_rawDom}.files/"
   _STATIC_PRIVATE="${_pthParen_tUsr}/static/files/${_rawDom}.private/"
   _NEW_STATIC_FILES="${_pthParen_tUsr}/static/files/${_rawDom}/"
-  _PATH_DOM=$(readlink -n ${_Domain} 2>&1)
-  _PATH_DOM=$(echo -n ${_PATH_DOM} | tr -d "\n" 2>&1)
+  _PATH_DOM=$(readlink -n ${_Domain})
   _RUBY_PATH="/opt/user/gems/${_usrLtd}"
   _mntPoint=$(find /mnt -mindepth 1 -maxdepth 1 -type d | grep "\." | head -n1) &&
   _MNT_STATIC_FILES="${_mntPoint}/files/${_USER}/static/files/${_rawDom}/"
@@ -2419,7 +2418,7 @@ else
     fi
   fi
   if [ -L "/bin/sh" ] && [ ! -e "/run/octopus_install_run.pid" ]; then
-    _WEB_SH=$(readlink -n /bin/sh 2>&1)
+    _WEB_SH=$(readlink -n /bin/sh)
     _WEB_SH=$(echo -n ${_WEB_SH} | tr -d "\n" 2>&1)
     if [ -x "/opt/local/bin/websh" ] \
       && grep -i '_forward_to_dash' /opt/local/bin/websh &> /dev/null; then

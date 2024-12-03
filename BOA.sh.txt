@@ -145,7 +145,7 @@ _fix_dns_settings() {
   rm -f ${_vBs}/resolv.conf.tmp
   if [ -e "/etc/resolv.conf" ]; then
     if [ -L "/etc/resolv.conf" ]; then
-      _rslvT=`readlink -n /etc/resolv.conf`
+      _rslvT=$(readlink -n /etc/resolv.conf)
       if [ ! -e "${_rslvT}" ]; then
         rm -f /etc/resolv.conf
       fi
@@ -1079,8 +1079,7 @@ _update_agents() {
     && [ ! -e "${_pthLog}/drush8-symlink.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     if [ -x "/opt/tools/drush/8/drush/drush.php" ] \
       && [ -L "/usr/bin/drush8" ]; then
-      _DRUSH_SYMLINK=$(readlink -n /usr/bin/drush8 2>&1)
-      _DRUSH_SYMLINK=$(echo -n ${_DRUSH_SYMLINK} | tr -d "\n" 2>&1)
+      _DRUSH_SYMLINK=$(readlink -n /usr/bin/drush8)
       if [ "${_DRUSH_SYMLINK}" != "/opt/tools/drush/8/drush/drush.php" ]; then
         rm -f /usr/bin/drush8
         rm -f /usr/bin/drush
@@ -1823,7 +1822,7 @@ _update_agents() {
     else
       mv -f /var/xdrago/websh.sh.old /opt/local/bin/websh
     fi
-    _WEB_SH=$(readlink -n /bin/sh 2>&1)
+    _WEB_SH=$(readlink -n /bin/sh)
     _WEB_SH=$(echo -n ${_WEB_SH} | tr -d "\n" 2>&1)
     if [ -x "/opt/local/bin/websh" ] \
       && grep -i '_forward_to_dash' /opt/local/bin/websh &> /dev/null; then
