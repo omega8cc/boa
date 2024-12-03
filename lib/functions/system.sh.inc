@@ -5230,6 +5230,34 @@ _if_install_apparmor() {
   fi
 }
 
+_uninstall_apparmor_utils() {
+  [ ! -e "/root/.disable.apparmor.cnf" ] && touch /root/.disable.apparmor.cnf
+  [ ! -e "/root/.deny.apparmor.cnf" ] && touch /root/.deny.apparmor.cnf
+  if [ -e "/etc/apparmor.d" ]; then
+    _mrun "apt-get remove apparmor-profiles apparmor-notify -y --purge --auto-remove -qq" 2> /dev/null
+    _mrun "apt-get remove apparmor apparmor-utils -y --purge --auto-remove -qq" 2> /dev/null
+    _mrun "apt-get autoremove --purge -y" 2> /dev/null
+    _mrun "apt-get autoclean -y" 2> /dev/null
+  fi
+}
+
+_disable_apparmor_utils() {
+  if [ -e "/etc/apparmor.d" ] && [ -e "/var/cache/apparmor" ]; then
+    rm -rf /var/cache/apparmor/* 2> /dev/null
+    _mrun "apparmor_parser -r /etc/apparmor.d/*" 2> /dev/null
+    _mrun "aa-complain /etc/apparmor.d/*" 2> /dev/null
+  fi
+  if [ -x "/etc/init.d/apparmor" ]; then
+    _mrun "service apparmor stop" 2> /dev/null
+    _mrun "update-rc.d -f apparmor remove" 2> /dev/null
+    _mrun "service auditd stop" 2> /dev/null
+    _mrun "update-rc.d -f auditd remove" 2> /dev/null
+  fi
+  if [ -x "/usr/sbin/aa-teardown" ]; then
+    _mrun "aa-teardown" 2> /dev/null
+  fi
+}
+
 #
 # Final cleanup.
 _finale() {

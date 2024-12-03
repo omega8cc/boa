@@ -282,6 +282,18 @@ _if_long_generate_on_major_os_upgrade
 
 
 ###
+### Uninstall AppArmor before barracuda install and upgrade
+###
+if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "UPGRADE" ]; then
+  if [ -e "/root/.deny.apparmor.cnf" ] || [ -e "/root/.disable.apparmor.cnf" ]; then
+    rm -f /root/.allow.apparmor.cnf
+    _disable_apparmor_utils
+    _uninstall_apparmor_utils
+  fi
+fi
+
+
+###
 ### Quick php-idle ON/OFF procedure only
 ###
 _if_php_idle_on_off
