@@ -44,8 +44,8 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-export _tRee=lts
-export _xSrl=550ltsT01
+export _tRee=pro
+export _xSrl=550proT02
 
 ###
 ### Avoid too many questions
@@ -111,7 +111,7 @@ _apt_clean_update() {
   ${_APT_UPDATE} -qq &> /dev/null
 }
 
-_CHECK_HOST=$(uname -n 2>&1)
+_CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
 _if_hosted_sys() {
   if [ -e "/root/.host8.cnf" ] \
     || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
@@ -339,6 +339,63 @@ _if_clean_boa_env() {
   fi
 }
 
+###
+### Function to verify BOA keys
+###
+_verify_boa_keys() {
+  if [ -e "/root/.dev.server.cnf" ]; then
+    echo "PROC: _verify_boa_keys in BOA.sh.txt"
+  fi
+  if [ "${_tRee}" = "pro" ] || [ "${_tRee}" = "dev" ]; then
+    _allw=NO
+    _urlEnc="http://${_USE_MIR}/enc/2024"
+    _hName="$(hostname -f 2>/dev/null || uname -n)"
+    _hName=$(echo -n ${_hName} | tr -d "\n" 2>&1)
+    _encName=$(echo ${_hName} \
+      | openssl md5 \
+      | awk '{ print $2}' \
+      | tr -d "\n" 2>&1)
+    if [[ "${_hName}" =~ ".aegir.cc"($) ]] \
+      || [[ "${_hName}" =~ ".o8.io"($) ]] \
+      || [[ "${_hName}" =~ ".boa.io"($) ]]; then
+      _allw=YES
+    fi
+    mkdir -p /var/opt
+    rm -f /var/opt/_encN*
+    curl ${_crlGet} "${_urlEnc}/${_encName}" -o /var/opt/_encN.${_encName}.tmp
+    wait
+    echo "${_hName}.${_encName}" > /var/opt/_encN_local.${_encName}.tmp
+    wait
+    if [ -e "/var/opt/_encN.${_encName}.tmp" ] && [ -e "/var/opt/_encN_local.${_encName}.tmp" ]; then
+      _diffTestIf=$(diff -w -B /var/opt/_encN.${_encName}.tmp /var/opt/_encN_local.${_encName}.tmp 2>&1)
+      if [ ! -z "${_diffTestIf}" ] && [ "${_allw}" = "NO" ]; then
+        echo
+        echo "Your system requires valid license for upgrade to ${_rLsn}-${_tRee}"
+        echo "Please visit https://omega8.cc/licenses to purchase your own"
+        echo
+        if [ -e "/var/aegir/drush/vendor" ] && [ ! -e "/var/aegir/key/barracuda_key.txt" ]; then
+          mkdir -p /var/aegir/key
+          cat /var/opt/_encN_local.${_encName}.tmp > /var/aegir/key/barracuda_key.txt
+        fi
+        rm -f /var/opt/_encN*
+        _clean_pid_exit _verify_boa_keys_a
+      else
+        if [ -e "/var/aegir/drush/vendor" ] && [ ! -e "/var/aegir/key/barracuda_key.txt" ]; then
+          mkdir -p /var/aegir/key
+          cat /var/opt/_encN_local.${_encName}.tmp > /var/aegir/key/barracuda_key.txt
+        fi
+      fi
+    else
+      echo
+      echo "Your system requires valid license to use this BOA version (${_tRee})"
+      echo "Unfortunately it was not possible to verify your system status"
+      echo "Please contact our support but visit https://omega8.cc/licenses first"
+      echo
+      exit 0
+    fi
+  fi
+}
+
 _locales_check_fix_early() {
   _isLoc=$(which locale 2>&1)
   if [ ! -x "${_isLoc}" ] || [ -z "${_isLoc}" ]; then
@@ -507,9 +564,9 @@ _update_agents() {
       [ -e "/root/.hr.monitor.cnf" ] && rm -f /root/.hr.monitor.cnf
       [ -e "/root/.slow.cron.cnf" ] && rm -f /root/.slow.cron.cnf
       [ -e "/root/.tg.cnf" ] && rm -f /root/.tg.cnf
-      mysql -u root -e "SET GLOBAL max_connect_errors = 80;"
-      mysql -u root -e "SET GLOBAL max_connections = 100;"
-      mysql -u root -e "SET GLOBAL max_user_connections = 80;"
+      mysql -u root -e "SET GLOBAL max_connect_errors = 555;"
+      mysql -u root -e "SET GLOBAL max_connections = 111;"
+      mysql -u root -e "SET GLOBAL max_user_connections = 111;"
       mysql -u root -e "SET GLOBAL group_concat_max_len = 10000;"
     fi
     if [ "${InTest}" -ge "9" ] && [ "${InTest}" -le "50" ]; then
@@ -517,9 +574,9 @@ _update_agents() {
       [ -e "/root/.hr.monitor.cnf" ] && rm -f /root/.hr.monitor.cnf
       [ -e "/root/.slow.cron.cnf" ] && rm -f /root/.slow.cron.cnf
       [ -e "/root/.tg.cnf" ] && rm -f /root/.tg.cnf
-      mysql -u root -e "SET GLOBAL max_connect_errors = 80;"
-      mysql -u root -e "SET GLOBAL max_connections = 200;"
-      mysql -u root -e "SET GLOBAL max_user_connections = 80;"
+      mysql -u root -e "SET GLOBAL max_connect_errors = 777;"
+      mysql -u root -e "SET GLOBAL max_connections = 555;"
+      mysql -u root -e "SET GLOBAL max_user_connections = 111;"
       mysql -u root -e "SET GLOBAL group_concat_max_len = 10000;"
     fi
     if [ "${InTest}" -gt "50" ]; then
@@ -527,9 +584,9 @@ _update_agents() {
       [ ! -e "/root/.tg.cnf" ] && echo ${InTest} > /root/.tg.cnf
       [ ! -e "/root/.hr.monitor.cnf" ] && echo ${InTest} > /root/.hr.monitor.cnf
       [ ! -e "/root/.slow.cron.cnf" ] && echo ${InTest} > /root/.slow.cron.cnf
-      mysql -u root -e "SET GLOBAL max_connect_errors = 80;"
-      mysql -u root -e "SET GLOBAL max_connections = 200;"
-      mysql -u root -e "SET GLOBAL max_user_connections = 80;"
+      mysql -u root -e "SET GLOBAL max_connect_errors = 999;"
+      mysql -u root -e "SET GLOBAL max_connections = 777;"
+      mysql -u root -e "SET GLOBAL max_user_connections = 111;"
       mysql -u root -e "SET GLOBAL group_concat_max_len = 10000;"
     fi
     if [[ "${_PrTestPower}" =~ "POWER" ]]; then
@@ -537,9 +594,9 @@ _update_agents() {
       [ ! -e "/root/.fast.cron.cnf" ] && echo ${InTest} > /root/.fast.cron.cnf
       [ -e "/root/.hr.monitor.cnf" ] && rm -f /root/.hr.monitor.cnf
       [ -e "/root/.slow.cron.cnf" ] && rm -f /root/.slow.cron.cnf
-      mysql -u root -e "SET GLOBAL max_connect_errors = 150;"
-      mysql -u root -e "SET GLOBAL max_connections = 200;"
-      mysql -u root -e "SET GLOBAL max_user_connections = 150;"
+      mysql -u root -e "SET GLOBAL max_connect_errors = 555;"
+      mysql -u root -e "SET GLOBAL max_connections = 333;"
+      mysql -u root -e "SET GLOBAL max_user_connections = 111;"
       mysql -u root -e "SET GLOBAL group_concat_max_len = 10000;"
     fi
     if [[ "${_PrTestPhantom}" =~ "PHANTOM" ]]; then
@@ -547,9 +604,9 @@ _update_agents() {
       [ ! -e "/root/.fast.cron.cnf" ] && echo ${InTest} > /root/.fast.cron.cnf
       [ -e "/root/.hr.monitor.cnf" ] && rm -f /root/.hr.monitor.cnf
       [ -e "/root/.slow.cron.cnf" ] && rm -f /root/.slow.cron.cnf
-      mysql -u root -e "SET GLOBAL max_connect_errors = 150;"
-      mysql -u root -e "SET GLOBAL max_connections = 200;"
-      mysql -u root -e "SET GLOBAL max_user_connections = 150;"
+      mysql -u root -e "SET GLOBAL max_connect_errors = 777;"
+      mysql -u root -e "SET GLOBAL max_connections = 555;"
+      mysql -u root -e "SET GLOBAL max_user_connections = 333;"
       mysql -u root -e "SET GLOBAL group_concat_max_len = 10000;"
     fi
     if [[ "${_PrTestCluster}" =~ "CLUSTER" ]]; then
@@ -557,9 +614,9 @@ _update_agents() {
       [ ! -e "/root/.fast.cron.cnf" ] && echo ${InTest} > /root/.fast.cron.cnf
       [ -e "/root/.hr.monitor.cnf" ] && rm -f /root/.hr.monitor.cnf
       [ -e "/root/.slow.cron.cnf" ] && rm -f /root/.slow.cron.cnf
-      mysql -u root -e "SET GLOBAL max_connect_errors = 150;"
-      mysql -u root -e "SET GLOBAL max_connections = 200;"
-      mysql -u root -e "SET GLOBAL max_user_connections = 150;"
+      mysql -u root -e "SET GLOBAL max_connect_errors = 999;"
+      mysql -u root -e "SET GLOBAL max_connections = 777;"
+      mysql -u root -e "SET GLOBAL max_user_connections = 555;"
       mysql -u root -e "SET GLOBAL group_concat_max_len = 10000;"
     fi
     mysql -u root -e "SET GLOBAL optimizer_switch='derived_merge=off';"
@@ -607,6 +664,14 @@ _update_agents() {
 
 
   if [ -e "/var/aegir/drush" ]; then
+
+    _pthCtrl="/root/.remote_backups/ctrl"
+    if [ "${_tRee}" = "pro" ] || [ "${_tRee}" = "dev" ]; then
+      [ ! -e "${_pthCtrl}" ] && mkdir -p ${_pthCtrl}
+      [ ! -e "/root/.remote_backups/run" ] && mkdir -p /root/.remote_backups/run
+    else
+      rm -rf /root/.remote_backups
+    fi
 
     [ ! -e "/var/xdrago/monitor/check" ] && mkdir -p /var/xdrago/monitor/check
     [ ! -e "/var/xdrago/monitor/log" ] && mkdir -p /var/xdrago/monitor/log
@@ -659,6 +724,132 @@ _update_agents() {
 
     [ -e "/var/xdrago/monitor/hackcheck.archive.log" ] && rm -f /var/xdrago/monitor/.scan_nginx_arch*
     [ -e "/var/xdrago/monitor/hackcheck.archive.log" ] && mv -f /var/xdrago/monitor/*.log /var/xdrago/monitor/log/
+  fi
+
+  if [ -d "/root/.remote_backups/run" ] \
+    && [ -d "/var/aegir/drush" ] \
+    && [ ! -e "${_pthCtrl}/install_dependencies.sh.ctrl.f93.${_tRee}.${_xSrl}.pid" ]; then
+    if [ -e "/root/.remote_backups/run/install_dependencies.sh" ]; then
+      mv -f /root/.remote_backups/run/install_dependencies.sh /root/.remote_backups/run/install_dependencies.sh.old
+    fi
+    curl ${_crlGet} "${_urlHmr}/tools/backup/run/install_dependencies.sh" -o /root/.remote_backups/run/install_dependencies.sh
+    if [ -e "/root/.remote_backups/run/install_dependencies.sh" ]; then
+      chmod 700 /root/.remote_backups/run/install_dependencies.sh
+      chown root:root /root/.remote_backups/run/install_dependencies.sh
+      touch ${_pthCtrl}/install_dependencies.sh.ctrl.f93.${_tRee}.${_xSrl}.pid
+    else
+      if [ -e "/root/.remote_backups/run/install_dependencies.sh.old" ]; then
+        mv -f /root/.remote_backups/run/install_dependencies.sh.old /root/.remote_backups/run/install_dependencies.sh
+      fi
+    fi
+  fi
+
+  if [ -d "/root/.remote_backups/run" ] \
+    && [ -d "/var/aegir/drush" ] \
+    && [ ! -e "${_pthCtrl}/create_credentials_templates.sh.ctrl.f93.${_tRee}.${_xSrl}.pid" ]; then
+    if [ -e "/root/.remote_backups/run/create_credentials_templates.sh" ]; then
+      mv -f /root/.remote_backups/run/create_credentials_templates.sh /root/.remote_backups/run/create_credentials_templates.sh.old
+    fi
+    curl ${_crlGet} "${_urlHmr}/tools/backup/run/create_credentials_templates.sh" -o /root/.remote_backups/run/create_credentials_templates.sh
+    if [ -e "/root/.remote_backups/run/create_credentials_templates.sh" ]; then
+      chmod 700 /root/.remote_backups/run/create_credentials_templates.sh
+      chown root:root /root/.remote_backups/run/create_credentials_templates.sh
+      touch ${_pthCtrl}/create_credentials_templates.sh.ctrl.f93.${_tRee}.${_xSrl}.pid
+    else
+      if [ -e "/root/.remote_backups/run/create_credentials_templates.sh.old" ]; then
+        mv -f /root/.remote_backups/run/create_credentials_templates.sh.old /root/.remote_backups/run/create_credentials_templates.sh
+      fi
+    fi
+  fi
+
+  if [ -d "/root/.remote_backups/run" ] \
+    && [ -d "/var/aegir/drush" ] \
+    && [ ! -e "${_pthCtrl}/create_global_paths_config.sh.ctrl.f91.${_tRee}.${_xSrl}.pid" ]; then
+    if [ -e "/root/.remote_backups/run/create_global_paths_config.sh" ]; then
+      mv -f /root/.remote_backups/run/create_global_paths_config.sh /root/.remote_backups/run/create_global_paths_config.sh.old
+    fi
+    curl ${_crlGet} "${_urlHmr}/tools/backup/run/create_global_paths_config.sh" -o /root/.remote_backups/run/create_global_paths_config.sh
+    if [ -e "/root/.remote_backups/run/create_global_paths_config.sh" ]; then
+      chmod 700 /root/.remote_backups/run/create_global_paths_config.sh
+      chown root:root /root/.remote_backups/run/create_global_paths_config.sh
+      touch ${_pthCtrl}/create_global_paths_config.sh.ctrl.f91.${_tRee}.${_xSrl}.pid
+    else
+      if [ -e "/root/.remote_backups/run/create_global_paths_config.sh.old" ]; then
+        mv -f /root/.remote_backups/run/create_global_paths_config.sh.old /root/.remote_backups/run/create_global_paths_config.sh
+      fi
+    fi
+  fi
+
+  if [ -d "/root/.remote_backups/run" ] \
+    && [ -d "/var/aegir/drush" ] \
+    && [ ! -e "${_pthCtrl}/create_user_paths_config.sh.ctrl.f89.${_tRee}.${_xSrl}.pid" ]; then
+    if [ -e "/root/.remote_backups/run/create_user_paths_config.sh" ]; then
+      mv -f /root/.remote_backups/run/create_user_paths_config.sh /root/.remote_backups/run/create_user_paths_config.sh.old
+    fi
+    curl ${_crlGet} "${_urlHmr}/tools/backup/run/create_user_paths_config.sh" -o /root/.remote_backups/run/create_user_paths_config.sh
+    if [ -e "/root/.remote_backups/run/create_user_paths_config.sh" ]; then
+      chmod 700 /root/.remote_backups/run/create_user_paths_config.sh
+      chown root:root /root/.remote_backups/run/create_user_paths_config.sh
+      touch ${_pthCtrl}/create_user_paths_config.sh.ctrl.f89.${_tRee}.${_xSrl}.pid
+    else
+      if [ -e "/root/.remote_backups/run/create_user_paths_config.sh.old" ]; then
+        mv -f /root/.remote_backups/run/create_user_paths_config.sh.old /root/.remote_backups/run/create_user_paths_config.sh
+      fi
+    fi
+  fi
+
+  if [ -d "/root/.remote_backups/run" ] \
+    && [ -d "/var/aegir/drush" ] \
+    && [ ! -e "${_pthCtrl}/create_cron_entries.sh.ctrl.f88.${_tRee}.${_xSrl}.pid" ]; then
+    if [ -e "/root/.remote_backups/run/create_cron_entries.sh" ]; then
+      mv -f /root/.remote_backups/run/create_cron_entries.sh /root/.remote_backups/run/create_cron_entries.sh.old
+    fi
+    curl ${_crlGet} "${_urlHmr}/tools/backup/run/create_cron_entries.sh" -o /root/.remote_backups/run/create_cron_entries.sh
+    if [ -e "/root/.remote_backups/run/create_cron_entries.sh" ]; then
+      chmod 700 /root/.remote_backups/run/create_cron_entries.sh
+      chown root:root /root/.remote_backups/run/create_cron_entries.sh
+      touch ${_pthCtrl}/create_cron_entries.sh.ctrl.f88.${_tRee}.${_xSrl}.pid
+    else
+      if [ -e "/root/.remote_backups/run/create_cron_entries.sh.old" ]; then
+        mv -f /root/.remote_backups/run/create_cron_entries.sh.old /root/.remote_backups/run/create_cron_entries.sh
+      fi
+    fi
+  fi
+
+  if [ -d "/root/.remote_backups/run" ] \
+    && [ -d "/var/aegir/drush" ] \
+    && [ ! -e "${_pthCtrl}/create_readme.sh.ctrl.f92.${_tRee}.${_xSrl}.pid" ]; then
+    if [ -e "/root/.remote_backups/run/create_readme.sh" ]; then
+      mv -f /root/.remote_backups/run/create_readme.sh /root/.remote_backups/run/create_readme.sh.old
+    fi
+    curl ${_crlGet} "${_urlHmr}/tools/backup/run/create_readme.sh" -o /root/.remote_backups/run/create_readme.sh
+    if [ -e "/root/.remote_backups/run/create_readme.sh" ]; then
+      chmod 700 /root/.remote_backups/run/create_readme.sh
+      chown root:root /root/.remote_backups/run/create_readme.sh
+      touch ${_pthCtrl}/create_readme.sh.ctrl.f92.${_tRee}.${_xSrl}.pid
+    else
+      if [ -e "/root/.remote_backups/run/create_readme.sh.old" ]; then
+        mv -f /root/.remote_backups/run/create_readme.sh.old /root/.remote_backups/run/create_readme.sh
+      fi
+    fi
+  fi
+
+  if [ -d "/root/.remote_backups/run" ] \
+    && [ -d "/var/aegir/drush" ] \
+    && [ ! -e "${_pthCtrl}/create_config_readme.sh.ctrl.f91.${_tRee}.${_xSrl}.pid" ]; then
+    if [ -e "/root/.remote_backups/run/create_config_readme.sh" ]; then
+      mv -f /root/.remote_backups/run/create_config_readme.sh /root/.remote_backups/run/create_config_readme.sh.old
+    fi
+    curl ${_crlGet} "${_urlHmr}/tools/backup/run/create_config_readme.sh" -o /root/.remote_backups/run/create_config_readme.sh
+    if [ -e "/root/.remote_backups/run/create_config_readme.sh" ]; then
+      chmod 700 /root/.remote_backups/run/create_config_readme.sh
+      chown root:root /root/.remote_backups/run/create_config_readme.sh
+      touch ${_pthCtrl}/create_config_readme.sh.ctrl.f91.${_tRee}.${_xSrl}.pid
+    else
+      if [ -e "/root/.remote_backups/run/create_config_readme.sh.old" ]; then
+        mv -f /root/.remote_backups/run/create_config_readme.sh.old /root/.remote_backups/run/create_config_readme.sh
+      fi
+    fi
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
@@ -902,13 +1093,13 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/clean-boa-env.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/clean-boa-env.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /etc/init.d/clean-boa-env /var/xdrago/clean-boa-env.old
     curl ${_crlGet} "${_urlHmr}/conf/var/clean-boa-env" -o /etc/init.d/clean-boa-env
     if [ -e "/etc/init.d/clean-boa-env" ]; then
       chmod 700 /etc/init.d/clean-boa-env
       chown root:root /etc/init.d/clean-boa-env
-      touch ${_pthLog}/clean-boa-env.ctrl.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/clean-boa-env.ctrl.f99.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/clean-boa-env.old /etc/init.d/clean-boa-env
     fi
@@ -1084,13 +1275,13 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/clear.sh.ctrl.f94.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/clear.sh.ctrl.f93.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/clear.sh /var/xdrago/clear.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/clear.sh" -o /var/xdrago/clear.sh
     if [ -e "/var/xdrago/clear.sh" ]; then
       chmod 700 /var/xdrago/clear.sh
       chown root:root /var/xdrago/clear.sh
-      touch ${_pthLog}/clear.sh.ctrl.f94.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/clear.sh.ctrl.f93.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/clear.sh.old /var/xdrago/clear.sh
     fi
@@ -1098,13 +1289,13 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/daily.sh.ctrl.f90.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/daily.sh.ctrl.f89.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/daily.sh /var/xdrago/daily.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/daily.sh" -o /var/xdrago/daily.sh
     if [ -e "/var/xdrago/daily.sh" ]; then
       chmod 700 /var/xdrago/daily.sh
       chown root:root /var/xdrago/daily.sh
-      touch ${_pthLog}/daily.sh.ctrl.f90.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/daily.sh.ctrl.f89.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/daily.sh.old /var/xdrago/daily.sh
     fi
@@ -1126,13 +1317,13 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/usage.sh.ctrl.f94.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/usage.sh.ctrl.f93.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/usage.sh /var/xdrago/usage.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/usage.sh" -o /var/xdrago/usage.sh
     if [ -e "/var/xdrago/usage.sh" ]; then
       chmod 700 /var/xdrago/usage.sh
       chown root:root /var/xdrago/usage.sh
-      touch ${_pthLog}/usage.sh.ctrl.f94.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/usage.sh.ctrl.f93.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/usage.sh.old /var/xdrago/usage.sh
     fi
@@ -1140,14 +1331,14 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/manage_ltd_users.sh.ctrl.f91.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/manage_ltd_users.sh.ctrl.f87.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/manage_ltd_users.sh /var/xdrago/manage_ltd_users.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/manage_ltd_users.sh" \
       -o /var/xdrago/manage_ltd_users.sh
     if [ -e "/var/xdrago/manage_ltd_users.sh" ]; then
       chmod 700 /var/xdrago/manage_ltd_users.sh
       chown root:root /var/xdrago/manage_ltd_users.sh
-      touch ${_pthLog}/manage_ltd_users.sh.ctrl.f91.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/manage_ltd_users.sh.ctrl.f87.${_tRee}.${_xSrl}.pid
       [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
     else
       mv -f /var/xdrago/manage_ltd_users.sh.old /var/xdrago/manage_ltd_users.sh
@@ -1292,7 +1483,7 @@ _update_agents() {
   if [ -x "/opt/tools/drush/8/drush/drush.php" ] \
     && [ -e "/var/xdrago" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/lshell.ctrl.f93.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/lshell.ctrl.f92.${_tRee}.${_xSrl}.pid" ]; then
     if [ -z "${_CUSTOM_CONFIG_LSHELL}" ] \
       || [ "${_CUSTOM_CONFIG_LSHELL}" = "NO" ]; then
       mv -f /var/xdrago/conf/lshell.conf /var/xdrago/conf/lshell.conf.old
@@ -1301,7 +1492,7 @@ _update_agents() {
       if [ -e "/var/xdrago/conf/lshell.conf" ]; then
         chmod 644 /var/xdrago/conf/lshell.conf
         chown root:root /var/xdrago/conf/lshell.conf
-        touch ${_pthLog}/lshell.ctrl.f93.${_tRee}.${_xSrl}.pid
+        touch ${_pthLog}/lshell.ctrl.f92.${_tRee}.${_xSrl}.pid
       else
         mv -f /var/xdrago/conf/lshell.conf.old /var/xdrago/conf/lshell.conf
       fi
@@ -1620,15 +1811,29 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/websh.ctrl.f86.${_tRee}.${_xSrl}.pid" ]; then
-    mv -f /bin/websh /var/xdrago/websh.sh.old
-    curl ${_crlGet} "${_urlHmr}/helpers/websh.sh.txt" -o /bin/websh
-    if [ -e "/bin/websh" ]; then
-      chmod 755 /bin/websh
-      chown root:root /bin/websh
-      touch ${_pthLog}/websh.ctrl.f86.${_tRee}.${_xSrl}.pid
+    && [ ! -e "${_pthLog}/websh.ctrl.f77.${_tRee}.${_xSrl}.pid" ]; then
+    mv -f /opt/local/bin/websh /var/xdrago/websh.sh.old
+    curl ${_crlGet} "${_urlHmr}/helpers/websh.sh.txt" -o /opt/local/bin/websh
+    if [ -e "/opt/local/bin/websh" ] \
+      && grep -i '_forward_to_dash' /opt/local/bin/websh &> /dev/null; then
+      chmod 755 /opt/local/bin/websh
+      chown root:root /opt/local/bin/websh
+      [ -x "/bin/websh" ] && [ ! -L "/bin/websh" ] && ln -sfn /opt/local/bin/websh /bin/websh
+      touch ${_pthLog}/websh.ctrl.f77.${_tRee}.${_xSrl}.pid
     else
-      mv -f /var/xdrago/websh.sh.old /bin/websh
+      mv -f /var/xdrago/websh.sh.old /opt/local/bin/websh
+    fi
+    _WEB_SH=$(readlink -n /bin/sh 2>&1)
+    _WEB_SH=$(echo -n ${_WEB_SH} | tr -d "\n" 2>&1)
+    if [ -x "/opt/local/bin/websh" ] \
+      && grep -i '_forward_to_dash' /opt/local/bin/websh &> /dev/null; then
+      if [ "${_WEB_SH}" != "/opt/local/bin/websh" ]; then
+        ln -sfn /opt/local/bin/websh /bin/sh
+        if [ -e "/usr/bin/sh" ]; then
+          ln -sfn /opt/local/bin/websh /usr/bin/sh
+        fi
+        [ -x "/bin/websh" ] && [ ! -L "/bin/websh" ] && ln -sfn /opt/local/bin/websh /bin/websh
+      fi
     fi
   fi
 
@@ -2210,9 +2415,9 @@ _if_fix_lshell() {
     [ ! -d "/usr/local/etc" ] && mkdir -p /usr/local/etc
     ln -sfn /etc/lshell.conf /usr/local/etc/lshell.conf
   fi
-  _LSHELL_VRN=0.10
+  _LSHELL_VRN=0.10.9.1
   _PATH_LSHELL="${_usrBin}/lshell"
-  _LSHELL_CHK_VRN=0.10
+  _LSHELL_CHK_VRN=0.10.9
   _LSHELL_FORCE_REINSTALL=NO
   _isLshell=$(which lshell 2>&1)
   _LSHELL_ITD=$(${_isLshell} --version 2>&1 \
@@ -2844,7 +3049,7 @@ _if_boa_key_tools_update_allowed() {
 
 _update_boa_tools() {
   mkdir -p ${_usrBin}
-  if [ -e "${_pthLog}" ] && [ ! -e "${_pthLog}/updateFx07.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+  if [ -e "${_pthLog}" ] && [ ! -e "${_pthLog}/updateFx08.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     _fxPp="fix-drupal-platform-permissions.sh"
     _fxSp="fix-drupal-site-permissions.sh"
     _fxPo="fix-drupal-platform-ownership.sh"
@@ -2860,20 +3065,9 @@ _update_boa_tools() {
     chmod 700 ${_usrBin}/${_fxPo}
     chmod 700 ${_usrBin}/${_fxSo}
     chmod 700 ${_usrBin}/${_fxLo}
-    touch ${_pthLog}/updateFx07.ctrl.${_tRee}.${_xSrl}.pid
+    touch ${_pthLog}/updateFx08.ctrl.${_tRee}.${_xSrl}.pid
   fi
   mkdir -p ${_optBin}
-  rm -f ${_usrBin}/{autoinit*,barracuda*,boa*,fancynow*,killer*,octopus*,smtpgapps*,setprio*}
-  if [ ! -d "/data/u" ]; then
-    ln -s ${_optBin}/autoinit  ${_usrBin}/autoinit
-    ln -s ${_optBin}/barracuda ${_usrBin}/barracuda
-    ln -s ${_optBin}/boa       ${_usrBin}/boa
-    ln -s ${_optBin}/fancynow  ${_usrBin}/fancynow
-    ln -s ${_optBin}/killer    ${_usrBin}/killer
-    ln -s ${_optBin}/octopus   ${_usrBin}/octopus
-    ln -s ${_optBin}/octopus   ${_usrBin}/setprio
-    ln -s ${_optBin}/octopus   ${_usrBin}/smtpgapps
-  fi
   _boaBins="autobeowulf \
            autochimaera \
            autodaedalus \
@@ -2882,11 +3076,14 @@ _update_boa_tools() {
            barracuda \
            boa \
            codebasecheck \
+           dcysetup \
            fancynow \
            ffmirror \
            killer \
            memorytuner \
            mergecsf \
+           multiback \
+           mybackup \
            mycnfup \
            mysqltuner5 \
            mysqltuner8 \
@@ -2902,6 +3099,7 @@ _update_boa_tools() {
            verifyvhostsdns \
            vhostcheck \
            weblogx \
+           websh \
            xboa"
   for _cbn in ${_boaBins}; do
     if [ -e "${_optBin}/${_cbn}" ]; then
@@ -2940,10 +3138,13 @@ _update_boa_tools() {
   echo "### ${_TODAY} ###" >> ${_optBin}/barracuda
   echo "### ${_TODAY} ###" >> ${_optBin}/boa
   echo "### ${_TODAY} ###" >> ${_optBin}/codebasecheck
+  echo "### ${_TODAY} ###" >> ${_optBin}/dcysetup
   echo "### ${_TODAY} ###" >> ${_optBin}/fancynow
   echo "### ${_TODAY} ###" >> ${_optBin}/killer
   echo "### ${_TODAY} ###" >> ${_optBin}/memorytuner
   echo "### ${_TODAY} ###" >> ${_optBin}/mergecsf
+  echo "### ${_TODAY} ###" >> ${_optBin}/multiback
+  echo "### ${_TODAY} ###" >> ${_optBin}/mybackup
   echo "### ${_TODAY} ###" >> ${_optBin}/octopus
   echo "### ${_TODAY} ###" >> ${_optBin}/perftest
   echo "### ${_TODAY} ###" >> ${_optBin}/setprio
@@ -2951,6 +3152,29 @@ _update_boa_tools() {
   echo "### ${_TODAY} ###" >> ${_optBin}/sqlclean
   echo "### ${_TODAY} ###" >> ${_optBin}/verifyvhostsdns
   echo "### ${_TODAY} ###" >> ${_optBin}/vhostcheck
+
+  if [ ! -e "/data/u" ] && [ -e "${_optBin}/killer" ] && [ ! -e "${_usrBin}/websh" ]; then
+    rm -f ${_usrBin}/{autoinit*,barracuda*,boa*,killer*,octopus*,websh*}
+    ln -s ${_optBin}/autoinit    ${_usrBin}/autoinit
+    ln -s ${_optBin}/barracuda   ${_usrBin}/barracuda
+    ln -s ${_optBin}/boa         ${_usrBin}/boa
+    ln -s ${_optBin}/killer      ${_usrBin}/killer
+    ln -s ${_optBin}/octopus     ${_usrBin}/octopus
+    ln -s ${_optBin}/websh       ${_usrBin}/websh
+  fi
+
+  if [ -e "/data/u" ]; then
+    if [ ! -e "${_usrBin}/dcysetup" ] && [ -e "${_optBin}/dcysetup" ]; then
+      ln -s ${_optBin}/dcysetup ${_usrBin}/dcysetup
+    fi
+    if [ ! -e "${_usrBin}/multiback" ] && [ -e "${_optBin}/multiback" ]; then
+      ln -s ${_optBin}/multiback ${_usrBin}/multiback
+    fi
+    if [ ! -e "${_usrBin}/mybackup" ] && [ -e "${_optBin}/mybackup" ]; then
+      ln -s ${_optBin}/mybackup ${_usrBin}/mybackup
+    fi
+  fi
+
   [ -e "/root/.backboa.autoupdate" ] && rm -f /root/.backboa.autoupdate
   if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ]; then
     echo "The duplicity backup is running!"
@@ -2959,20 +3183,12 @@ _update_boa_tools() {
     curl ${_crlGet} "${_urlHmr}/${_tBn}/backboa"      -o ${_optBin}/backboa
     curl ${_crlGet} "${_urlHmr}/${_tBn}/duobackboa"   -o ${_optBin}/duobackboa
     chmod 700 ${_optBin}/{backboa,duobackboa}
-    if [ ! -e "${_pthLog}/duplicity.ctrl.${_tRee}.${_xSrl}.pid" ] \
-      && [ -x "/usr/local/bin/duplicity" ] \
-      && [ -e "/root/.cache/duplicity" ] \
-      && [ -e "/var/aegir/drush" ] \
-      && [ -e "/var/xdrago" ]; then
-#       backboa install
-      touch ${_pthLog}/duplicity.ctrl.${_tRee}.${_xSrl}.pid
-      touch /root/.backboa.autoupdate
-    fi
   fi
+
   chmod 700 ${_optBin}/{autoinit,autodaedalus,autochimaera,autobeowulf,autoupboa,backboa,duobackboa,mergecsf,verifyvhostsdns}
-  chmod 700 ${_optBin}/{barracuda,boa,ffmirror,killer,mycnfup,octopus,syncpass,xboa,weblogx,sqlclean,perftest}
-  chmod 700 ${_optBin}/{fancynow,codebasecheck,vhostcheck,memorytuner,mysqltuner5,mysqltuner8,smtpgapps,setprio}
-  chmod 755 ${_optBin}/{randpass,sqlmagic,thinkdifferent}
+  chmod 700 ${_optBin}/{barracuda,boa,ffmirror,killer,mycnfup,octopus,syncpass,xboa,weblogx,sqlclean,perftest,dcysetup}
+  chmod 700 ${_optBin}/{fancynow,codebasecheck,vhostcheck,memorytuner,mysqltuner5,mysqltuner8,smtpgapps,setprio,multiback}
+  chmod 755 ${_optBin}/{randpass,sqlmagic,thinkdifferent,websh,mybackup}
 }
 
 _if_update_boa_key_tools_only() {
@@ -3141,14 +3357,14 @@ _if_update_boa_key_tools_only() {
     fi
   fi
   _BOA_TOOLS_UPDATE=NO
-  if [ -e "${_pthLog}" ] && [ ! -e "${_pthLog}/updateBOAtoolsCM.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+  if [ -e "${_pthLog}" ] && [ ! -e "${_pthLog}/updateBOAtoolsDC.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     _BOA_TOOLS_UPDATE=YES
   fi
   [ ! -e "/var/aegir/drush" ] && _BOA_TOOLS_UPDATE=YES
   if [ "${_BOA_TOOLS_UPDATE}" = "YES" ]; then
     _update_boa_tools
     [ -e "${_pthLog}" ] && rm -f ${_pthLog}/updateBOAtools*.pid
-    [ -e "${_pthLog}" ] && touch ${_pthLog}/updateBOAtoolsCM.ctrl.${_tRee}.${_xSrl}.pid
+    [ -e "${_pthLog}" ] && touch ${_pthLog}/updateBOAtoolsDC.ctrl.${_tRee}.${_xSrl}.pid
     if [ "${1}" = "verbose" ] || [ -z "${1}" ]; then
       echo
       echo "BOA Meta Installers setup completed"
@@ -3162,8 +3378,8 @@ _if_update_boa_key_tools_only() {
 _boa_setup() {
   _BENG_VS=NO
   _VMFAMILY=NO
-  _CHECK_HOST=$(uname -n 2>&1)
-  _VM_TEST=$(uname -a 2>&1)
+  _CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
+  _VM_TEST="$(uname -a)"
   if [[ "${_VM_TEST}" =~ "-beng" ]]; then
     _BENG_VS=YES
   fi
@@ -3296,14 +3512,14 @@ _boa_setup() {
     apt-get install lsb-release ${_aptYesUnth}
   fi
   _BOA_TOOLS_UPDATE=NO
-  if [ -e "${_pthLog}" ] && [ ! -e "${_pthLog}/updateBOAtoolsCM.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+  if [ -e "${_pthLog}" ] && [ ! -e "${_pthLog}/updateBOAtoolsDC.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     _BOA_TOOLS_UPDATE=YES
   fi
   [ ! -e "/var/aegir/drush" ] && _BOA_TOOLS_UPDATE=YES
   if [ "${_BOA_TOOLS_UPDATE}" = "YES" ]; then
     _update_boa_tools
     [ -e "${_pthLog}" ] && rm -f ${_pthLog}/updateBOAtools*.pid
-    [ -e "${_pthLog}" ] && touch ${_pthLog}/updateBOAtoolsCM.ctrl.${_tRee}.${_xSrl}.pid
+    [ -e "${_pthLog}" ] && touch ${_pthLog}/updateBOAtoolsDC.ctrl.${_tRee}.${_xSrl}.pid
     echo
     echo "BOA Meta Installers setup completed"
     echo "Please check INSTALL.md and UPGRADE.md at https://github.com/omega8cc/boa"
@@ -3415,11 +3631,14 @@ _sysctl_update() {
 }
 
 ###--------------------###
-if [ `whoami` = "root" ]; then
+if [ $(whoami) = "root" ]; then
 
   [ ! -e "/var/aegir/drush" ] && _locales_check_fix_early
   _os_detection_minimal
   _find_fast_mirror_early
+  if command -v curl &> /dev/null; then
+    _verify_boa_keys
+  fi
 
   ### CVE-2021-44228 Log4j 2 Vulnerability
   ### CVE-2021-45046 Log4j 2 Vulnerability

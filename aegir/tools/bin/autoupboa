@@ -3,13 +3,33 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-export _tRee=lts
-export _xSrl=550ltsT01
+export _tRee=pro
+export _xSrl=550proT02
 
 _barCnf="/root/.barracuda.cnf"
 
+_turn_off_apparmor() {
+  # Fix shell
+  sed -i "s/\/usr\/bin\/sh/\/bin\/bash/g" /lib/apparmor/apparmor.systemd
+  sed -i "s/\/bin\/sh/\/bin\/bash/g" /lib/apparmor/apparmor.systemd
+  # Fix shell
+  sed -i "s/\/usr\/bin\/sh/\/bin\/bash/g" /lib/apparmor/rc.apparmor.functions
+  sed -i "s/\/bin\/sh/\/bin\/bash/g" /lib/apparmor/rc.apparmor.functions
+  # Fix shell
+  sed -i "s/\/usr\/bin\/sh/\/bin\/bash/g" /lib/apparmor/profile-load
+  sed -i "s/\/bin\/sh/\/bin\/bash/g" /lib/apparmor/profile-load
+  # Disable Apparmor
+  rm -rf /var/cache/apparmor/*
+  apparmor_parser -r /etc/apparmor.d/* 2> /dev/null
+  aa-complain /etc/apparmor.d/* 2> /dev/null
+  service apparmor stop 2> /dev/null
+  aa-teardown 2> /dev/null
+  service auditd stop 2> /dev/null
+}
+[ ! -e "/root/.keep_apparmor_on.cnf" ] && _turn_off_apparmor
+
 # Define default values
-_CHECK_HOST=$(uname -n 2>&1)
+_CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
 _DEFAULT_CPU_CRIT_RATIO="6.1"
 _DEFAULT_CPU_MAX_RATIO="4.1"
 _DEFAULT_CPU_TASK_RATIO="3.1"
@@ -31,9 +51,9 @@ _DEFAULT_NGINX_DOS_STOP="foobar"
 
 # Function to update or add variables in the configuration file
 _update_conf_variable() {
-  local _var_name="$1"
-  local _default_value="$2"
-  local _conf_file="$3"
+  _var_name="$1"
+  _default_value="$2"
+  _conf_file="$3"
 
   if grep -qE "^#?${_var_name}=" "${_conf_file}"; then
     # Variable exists, uncomment and update value
@@ -69,8 +89,8 @@ _is_empty_file() {
 
 # Check for empty .dhp files and attempt to replace or regenerate them
 _process_dhp_files() {
-  local _dhp_files=("${_SSL_DIR}"/*.dhp)
-  local _non_empty_dhp=""
+  _dhp_files=("${_SSL_DIR}"/*.dhp)
+  _non_empty_dhp=""
   # Find the first non-empty .dhp file
   for _dhp_file in "${_dhp_files[@]}"; do
     if ! _is_empty_file "${_dhp_file}"; then
@@ -636,12 +656,12 @@ if [ -e "/var/aegir/drush" ]; then
       [ -e "/root/.restrict_this_vm.cnf" ] && rm -f /root/.restrict_this_vm.cnf
       if [ `ps aux | grep -v "grep" | grep --count "gpg-agent"` -gt "5" ]; then
         kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
-        echo "$(date 2>&1) Too many gpg-agent processes killed" >> \
+        echo "$(date) Too many gpg-agent processes killed" >> \
           /var/xdrago/log/gpg-agent-count.kill.log
       fi
       if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt "5" ]; then
         kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
-        echo "$(date 2>&1) Too many dirmngr processes killed" >> \
+        echo "$(date) Too many dirmngr processes killed" >> \
           /var/xdrago/log/dirmngr-count.kill.log
       fi
     fi

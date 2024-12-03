@@ -92,7 +92,7 @@ _get_current_ionice() {
 # Function to set priorities
 _set_priorities() {
   local _pid=$1
-  local _service=$2
+  _service=$2
   local _renice_val=$3
   local _ionice_class=$4
   local _ionice_priority=$5
@@ -134,7 +134,7 @@ _set_priorities() {
 
 # Function to set priorities for MySQL processes using a more robust method
 _set_mysql_priorities() {
-  local _service="mysqld"
+  _service="mysqld"
   local _renice_val="-5"
   local _ionice_class="2"
   local _ionice_priority="4"

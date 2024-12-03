@@ -24,11 +24,11 @@ _pthIncB="lib/settings/${_filIncB}"
 _pthIncO="lib/settings/${_filIncO}"
 _vBs="/var/backups"
 
-_CHECK_HOST=$(uname -n 2>&1)
+_CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
 _LOG_DIR="${_vBs}/reports/up/$(basename "$0")/${_TODAY}"
 _UP_LOG="${_LOG_DIR}/$(basename "$0")-up-${_NOW}.log"
 _VMFAMILY=XEN
-_VM_TEST=$(uname -a 2>&1)
+_VM_TEST="$(uname -a)"
 if [[ "${_VM_TEST}" =~ "-beng" ]]; then
   _VMFAMILY="VS"
 fi
@@ -44,7 +44,7 @@ if [ -z "${TERM+x}" ]; then
 fi
 
 _clean_pid_exit() {
-  echo "REASON ${e} on $(date 2>&1)" >> /root/.barracuda.exit.exceptions.log
+  echo "REASON ${e} on $(date)" >> /root/.barracuda.exit.exceptions.log
   [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
   [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
   [ -e "/tmp/aegir_backup_mode.txt" ] && rm -f /tmp/aegir_backup_mode.txt
@@ -97,7 +97,7 @@ _ifnames_grub_check_sync() {
 
     # Function to append option to _ADD_GRUB_CMD
     _append_grub_cmd_option() {
-      local _option="$1"
+      _option="$1"
       if [[ -z "${_ADD_GRUB_CMD}" ]]; then
         _ADD_GRUB_CMD="${_option}"
       else
@@ -507,8 +507,6 @@ _check_report() {
   sed -i "s/^_AWS_.*//g"         ${_UP_LOG}
   wait
   sed -i "s/^_NEWRELIC_KEY.*//g" ${_UP_LOG}
-  wait
-  sed -i "s/^_SCOUT_KEY.*//g"    ${_UP_LOG}
   wait
   sed -i "/^$/d"                 ${_UP_LOG}
   wait
@@ -1521,7 +1519,7 @@ _csf_check_fix() {
 }
 
 _check_root() {
-  if [ `whoami` = "root" ]; then
+  if [ $(whoami) = "root" ]; then
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
 
     # Sanitize to allow only digits and minus sign
@@ -1875,7 +1873,7 @@ _set_tree_vars() {
       || [ "${_cmNd}" = "help" ] \
       || [ "${_cmNd}" = "info" ] \
       || [ "${_cmNd}" = "up-distro" ]; then
-      _tRee=lts
+      _tRee=pro
     else
       echo
       echo "Sorry, you are trying not supported command.."

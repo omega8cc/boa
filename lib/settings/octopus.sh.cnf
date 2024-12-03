@@ -657,8 +657,8 @@ _BOA_REPO_GIT_URL="${_gitHub}"
 _aptAllow="--allow-unauthenticated"
 _aptYesUnth="-y ${_aptAllow}"
 
-export _tRee=lts
-export _xSrl=550ltsT01
+export _tRee=pro
+export _xSrl=550proT02
 
 
 ###
@@ -749,21 +749,21 @@ _find_fast_mirror_cnf() {
 
 
 ###
-### Verify upgrade keys
+### Function to verify BOA keys
 ###
-_verify_upgrade_keys() {
+_verify_boa_keys() {
   if [ -e "/root/.dev.server.cnf" ]; then
-    echo "PROC: _verify_upgrade_keys in octopus"
+    echo "PROC: _verify_boa_keys in octopus"
   fi
   if [ "${_tRee}" = "pro" ] || [ "${_tRee}" = "dev" ]; then
     _allw=NO
     _urlEnc="http://${_USE_MIR}/enc/2024"
-    _hName=$(cat /etc/hostname 2>&1)
+    _hName="$(hostname -f 2>/dev/null || uname -n)"
     _hName=$(echo -n ${_hName} | tr -d "\n" 2>&1)
     _encName=$(echo ${_hName} \
-              | openssl md5 \
-              | awk '{ print $2}' \
-              | tr -d "\n" 2>&1)
+      | openssl md5 \
+      | awk '{ print $2}' \
+      | tr -d "\n" 2>&1)
     if [[ "${_hName}" =~ ".aegir.cc"($) ]] \
       || [[ "${_hName}" =~ ".o8.io"($) ]] \
       || [[ "${_hName}" =~ ".boa.io"($) ]]; then
@@ -775,10 +775,8 @@ _verify_upgrade_keys() {
     wait
     echo "${_hName}.${_encName}" > /var/opt/_encN_local.${_encName}.tmp
     wait
-    if [ -e "/var/opt/_encN.${_encName}.tmp" ] \
-      && [ -e "/var/opt/_encN_local.${_encName}.tmp" ]; then
-      _diffTestIf=$(diff -w -B /var/opt/_encN.${_encName}.tmp \
-        /var/opt/_encN_local.${_encName}.tmp 2>&1)
+    if [ -e "/var/opt/_encN.${_encName}.tmp" ] && [ -e "/var/opt/_encN_local.${_encName}.tmp" ]; then
+      _diffTestIf=$(diff -w -B /var/opt/_encN.${_encName}.tmp /var/opt/_encN_local.${_encName}.tmp 2>&1)
       if [ ! -z "${_diffTestIf}" ] && [ "${_allw}" = "NO" ]; then
         echo
         echo "Your system requires valid license for upgrade to ${_rLsn}-${_tRee}"
@@ -789,13 +787,20 @@ _verify_upgrade_keys() {
           cat /var/opt/_encN_local.${_encName}.tmp > /var/aegir/key/barracuda_key.txt
         fi
         rm -f /var/opt/_encN*
-        _clean_pid_exit _verify_upgrade_keys_a
+        _clean_pid_exit _verify_boa_keys_a
       else
         if [ -e "/var/aegir/drush/vendor" ] && [ ! -e "/var/aegir/key/barracuda_key.txt" ]; then
           mkdir -p /var/aegir/key
           cat /var/opt/_encN_local.${_encName}.tmp > /var/aegir/key/barracuda_key.txt
         fi
       fi
+    else
+      echo
+      echo "Your system requires valid license to use this BOA version (${_tRee})"
+      echo "Unfortunately it was not possible to verify your system status"
+      echo "Please contact our support but visit https://omega8.cc/licenses first"
+      echo
+      exit 0
     fi
   fi
 }
@@ -855,7 +860,7 @@ _download_helpers_libs() {
     echo "PROC: _download_helpers_libs in octopus"
   fi
   _find_fast_mirror_cnf
-  _verify_upgrade_keys
+  _verify_boa_keys
   mkdir -p /opt/tmp
   cd /opt/tmp
   rm -rf /opt/tmp/boa

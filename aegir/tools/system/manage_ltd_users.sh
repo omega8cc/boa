@@ -3,10 +3,10 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-export _tRee=lts
-export _xSrl=550ltsT01
+export _tRee=pro
+export _xSrl=550proT02
 
-_CHECK_HOST=$(uname -n 2>&1)
+_CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
 _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
 
 _usrGroup=users
@@ -2386,10 +2386,10 @@ else
     _fix_node_in_lshell_access
     touch ${_pthLog}/node.manage.lshell.ctrl.${_tRee}.${_xSrl}.pid
   fi
-#   if [ ! -e "${_pthLog}/php.manage.lshell.ctrl.${_tRee}.${_xSrl}.pid" ]; then
-#     _fix_php_in_lshell_access
-#     touch ${_pthLog}/php.manage.lshell.ctrl.${_tRee}.${_xSrl}.pid
-#   fi
+  if [ ! -e "${_pthLog}/php.manage.lshell.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+    # _fix_php_in_lshell_access
+    touch ${_pthLog}/php.manage.lshell.ctrl.${_tRee}.${_xSrl}.pid
+  fi
   cat /var/xdrago/conf/lshell.conf > ${_THIS_LTD_CONF}
   _find_correct_ip
   sed -i "s/1.1.1.1/${_LOC_IP}/g" ${_THIS_LTD_CONF}
@@ -2421,12 +2421,14 @@ else
   if [ -L "/bin/sh" ] && [ ! -e "/run/octopus_install_run.pid" ]; then
     _WEB_SH=$(readlink -n /bin/sh 2>&1)
     _WEB_SH=$(echo -n ${_WEB_SH} | tr -d "\n" 2>&1)
-    if [ -x "/bin/websh" ]; then
-      if [ "${_WEB_SH}" != "/bin/websh" ]; then
-        ln -sfn /bin/websh /bin/sh
+    if [ -x "/opt/local/bin/websh" ] \
+      && grep -i '_forward_to_dash' /opt/local/bin/websh &> /dev/null; then
+      if [ "${_WEB_SH}" != "/opt/local/bin/websh" ]; then
+        ln -sfn /opt/local/bin/websh /bin/sh
         if [ -e "/usr/bin/sh" ]; then
-          ln -sfn /bin/websh /usr/bin/sh
+          ln -sfn /opt/local/bin/websh /usr/bin/sh
         fi
+        [ -x "/bin/websh" ] && [ ! -L "/bin/websh" ] && ln -sfn /opt/local/bin/websh /bin/websh
       fi
     else
       if [ -x "/bin/dash" ]; then
@@ -2458,8 +2460,8 @@ else
           fi
         fi
       fi
-      curl -s -A iCab "${_urlHmr}/helpers/websh.sh.txt" -o /bin/websh
-      chmod 755 /bin/websh
+      curl -s -A iCab "${_urlHmr}/helpers/websh.sh.txt" -o /opt/local/bin/websh
+      chmod 755 /opt/local/bin/websh
     fi
   fi
   rm -f ${_TMP}/*.txt

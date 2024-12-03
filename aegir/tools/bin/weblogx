@@ -3,7 +3,7 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-export _tRee=lts
+export _tRee=pro
 
 _aptAllow="--allow-unauthenticated"
 _aptYesUnth="-y ${_aptAllow}"
@@ -15,7 +15,7 @@ _sPmrs="https://raw.githubusercontent.com/matomo-org/referrer-spam-blacklist/mas
 [ -e "/root/.goaccess.use.github.txt" ] && rm -f /root/.goaccess.use.github.txt
 
 _check_root() {
-  if [ `whoami` = "root" ]; then
+  if [ $(whoami) = "root" ]; then
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
     ionice -c2 -n7 -p $$
     renice 19 -p $$

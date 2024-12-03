@@ -5,7 +5,7 @@ export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
 _check_root() {
-  if [ `whoami` = "root" ]; then
+  if [ $(whoami) = "root" ]; then
     ionice -c2 -n7 -p $$
     renice 19 -p $$
     chmod a+w /dev/null
@@ -39,12 +39,12 @@ if [ ! -z "${_IS_SQLBACKUP_RUNNING}" ]; then
   exit 0
 fi
 
-echo "INFO: Starting silent usage report on `date`"
+echo "INFO: Starting silent usage report on $(date)"
 bash /var/xdrago/usage.sh silent
 wait
-echo "INFO: Completing silent usage report on `date`"
+echo "INFO: Completing silent usage report on $(date)"
 
-_VM_TEST=$(uname -a 2>&1)
+_VM_TEST="$(uname -a)"
 if [[ "${_VM_TEST}" =~ "-beng" ]]; then
   _VMFAMILY="VS"
 else
@@ -53,14 +53,14 @@ fi
 
 if [ "${_VMFAMILY}" = "VS" ]; then
   _n=$((RANDOM%600+8))
-  echo "INFO: Waiting ${_n} seconds 1/2 on `date` before running backup..."
+  echo "INFO: Waiting ${_n} seconds 1/2 on $(date) before running backup..."
   sleep ${_n}
   _n=$((RANDOM%300+8))
-  echo "INFO: Waiting ${_n} seconds 2/2 on `date` before running backup..."
+  echo "INFO: Waiting ${_n} seconds 2/2 on $(date) before running backup..."
   sleep ${_n}
 fi
 
-echo "INFO: Starting dbs backup on `date`"
+echo "INFO: Starting dbs backup on $(date)"
 
 [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
 
@@ -91,7 +91,7 @@ else
 fi
 
 _BACKUPDIR=/data/disk/arch/sql
-_CHECK_HOST=$(uname -n 2>&1)
+_CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
 _DATE=$(date +%y%m%d-%H%M%S 2>&1)
 _DOW=$(date +%u 2>&1)
 _DOW=${_DOW//[^1-7]/}
@@ -263,7 +263,7 @@ _compress_backup() {
       if [ -e "${DbPath}/metadata" ]; then
         DbName=$(echo ${DbPath} | cut -d'/' -f7 | awk '{ print $1}' 2>&1)
         cd ${_SAVELOCATION}
-        tar cvfj ${DbName}-${_DATE}.tar.bz2 ${DbName} &> /dev/null
+        tar -c -p -I zstd -f ${DbName}-${_DATE}.tar.zst ${DbName} &> /dev/null
         rm -f -r ${DbName}
       fi
     done
@@ -272,7 +272,7 @@ _compress_backup() {
     chmod 700 /data/disk/arch
     echo "INFO: Permissions fixed"
   else
-    bzip2 ${_SAVELOCATION}/*.sql
+    gzip ${_SAVELOCATION}/*.sql
     chmod 600 ${_BACKUPDIR}/*/*
     chmod 700 ${_BACKUPDIR}/*
     chmod 700 ${_BACKUPDIR}
@@ -426,9 +426,9 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
   fi
 done
 
-echo "INFO: Running all dbs usage report on `date`"
+echo "INFO: Running all dbs usage report on $(date)"
 du -s /var/lib/mysql/* > /root/.du.local.sql
-echo "INFO: Completing all dbs usage report on `date`"
+echo "INFO: Completing all dbs usage report on $(date)"
 
 if [ "${_OPTIM}" = "YES" ] \
   && [ "${_DOW}" = "7" ] \
@@ -438,26 +438,26 @@ if [ "${_OPTIM}" = "YES" ] \
   && [ ! -e "/run/boa_run.pid" ]; then
   _check_running
   _check_mysql_version
-  echo "INFO: Running db server restart on `date`"
+  echo "INFO: Running db server restart on $(date)"
   bash /var/xdrago/move_sql.sh
   wait
-  echo "INFO: Completing db server restart on `date`"
+  echo "INFO: Completing db server restart on $(date)"
 fi
 
-echo "INFO: Completing all dbs backups on `date`"
+echo "INFO: Completing all dbs backups on $(date)"
 rm -f /run/boa_sql_backup.pid
 touch /var/xdrago/log/last-run-backup
 
 if [ "${_VMFAMILY}" = "VS" ]; then
   _n=$((RANDOM%300+8))
-  echo "INFO: Waiting ${_n} seconds on `date` before running compress..."
+  echo "INFO: Waiting ${_n} seconds on $(date) before running compress..."
   sleep ${_n}
 fi
-echo "INFO: Starting dbs backup compress on `date`"
+echo "INFO: Starting dbs backup compress on $(date)"
 _compress_backup &> /dev/null
-echo "INFO: Completing dbs backup compress on `date`"
+echo "INFO: Completing dbs backup compress on $(date)"
 
-echo "INFO: Starting dbs backup cleanup on `date`"
+echo "INFO: Starting dbs backup cleanup on $(date)"
 _DB_BACKUPS_TTL=${_DB_BACKUPS_TTL//[^0-9]/}
 if [ -z "${_DB_BACKUPS_TTL}" ]; then
   _DB_BACKUPS_TTL="7"
@@ -465,10 +465,10 @@ fi
 find ${_BACKUPDIR} -mtime +${_DB_BACKUPS_TTL} -type d -exec rm -rf {} \;
 echo "INFO: Backups older than ${_DB_BACKUPS_TTL} days deleted"
 
-echo "INFO: Starting verbose usage report on `date`"
+echo "INFO: Starting verbose usage report on $(date)"
 bash /var/xdrago/usage.sh verbose
 wait
-echo "INFO: Completing verbose usage report on `date`"
+echo "INFO: Completing verbose usage report on $(date)"
 
 echo "INFO: ALL TASKS COMPLETED, BYE!"
 exit 0

@@ -15,14 +15,14 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-export _tRee=lts
+export _tRee=pro
 
-_CHECK_HOST=$(uname -n 2>&1)
+_CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
 
 _check_root() {
-  if [ `whoami` = "root" ]; then
+  if [ $(whoami) = "root" ]; then
     ionice -c2 -n7 -p $$
-    renice 19 -p $$
+    renice 9 -p $$
     chmod a+w /dev/null
     [ -e "/root/.gnupg" ] && chmod 700 /root/.gnupg
   else
@@ -53,7 +53,7 @@ if [ ! -x "/usr/local/ssl3/bin/openssl" ]; then
 fi
 
 _PTN_VRN=3.12.5
-_DCY_VRN=3.0.2
+_DCY_VRN=3.0.3.1
 _LOGPTH="/var/xdrago/log"
 _NOW=$(date +%y%m%d-%H%M%S 2>&1)
 _NOW=${_NOW//[^0-9-]/}
@@ -61,7 +61,7 @@ _DOW=$(date +%u 2>&1)
 _DOW=${_DOW//[^1-7]/}
 _DOM=$(date +%e 2>&1)
 _DOM=${_DOM//[^0-9]/}
-_HST=$(uname -n 2>&1)
+_HST="$(hostname -f 2>/dev/null || uname -n)"
 _HST=${_HST//[^a-zA-Z0-9-.]/}
 _HST=$(echo -n ${_HST} | tr A-Z a-z 2>&1)
 _HST_DASH=$(echo -n ${_HST} | tr . - 2>&1)
@@ -73,8 +73,8 @@ _aptYesUnth="-y ${_aptAllow}"
 
 [ -e "/root/.duobackboa.cnf" ] && source /root/.duobackboa.cnf
 
-export _INCIDENT_EMAIL_REPORT=${_INCIDENT_EMAIL_REPORT//[^A-Z]/}
-: "${_INCIDENT_EMAIL_REPORT:=YES}"
+export _INCIDENT_REPORT=${_INCIDENT_REPORT//[^A-Z]/}
+: "${_INCIDENT_REPORT:=YES}"
 
 _AWS_VLV=${_AWS_VLV//[^a-z]/}
 if [ -z "${_AWS_VLV}" ]; then
@@ -126,7 +126,7 @@ _if_hosted_sys
 
 _check_vps() {
   _BENG_VS=NO
-  _VM_TEST=$(uname -a 2>&1)
+  _VM_TEST="$(uname -a)"
   if [[ "${_VM_TEST}" =~ "-beng" ]]; then
     _BENG_VS=YES
   fi
@@ -258,8 +258,7 @@ _check_aws() {
 }
 
 if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ]; then
-  echo "The duplicity backup is already running!"
-  echo "Active duplicity process detected..."
+  echo "[$(date)] Active duplicity process detected, will try again later..." >> /var/log/mybackup_waiting_queue.log
   exit 1
 fi
 
@@ -409,10 +408,10 @@ export AWS_SECRET_ACCESS_KEY="${_AWS_SEC}"
 export PASSPHRASE="${_AWS_PWD}"
 
 _SOURCE="/etc /var/aegir /var/www /home /data"
-_BUCKET="daily-remote-${_HST_DASH}"
-_BUCKET_DOT="daily.remote.${_HST}"
-_TARGET="boto3+s3://${_BUCKET}"
-_LOGFILE="${_LOGPTH}/${_BUCKET}.log"
+_BUCKET_NAME="daily-remote-${_HST_DASH}"
+_BUCKET_NAME_DOT="daily.remote.${_HST}"
+_TARGET="boto3+s3://${_BUCKET_NAME}"
+_LOGFILE="${_LOGPTH}/${_BUCKET_NAME}.log"
 _NAME="--name=daily-remote"
 
 _DCY_MN_CMD="/usr/local/bin/duplicity -v ${_AWS_VLV} \
@@ -420,19 +419,19 @@ _DCY_MN_CMD="/usr/local/bin/duplicity -v ${_AWS_VLV} \
   --s3-endpoint-url https://s3.dualstack.${_AWS_REG}.amazonaws.com \
   --s3-region-name ${_AWS_REG}"
 
-if [ -e "${_LOGPTH}/${_BUCKET_DOT}.archive.log" ]; then
-  cat ${_LOGPTH}/${_BUCKET_DOT}.archive.log >> ${_LOGPTH}/${_BUCKET}.archive.log
-  mv ${_LOGPTH}/${_BUCKET_DOT}.archive.log /var/backups/${_BUCKET_DOT}.archive.log
-  cat ${_LOGPTH}/${_BUCKET_DOT}.randomize.cleanup.log >> ${_LOGPTH}/${_BUCKET}.randomize.cleanup.log
-  mv ${_LOGPTH}/${_BUCKET_DOT}.randomize.cleanup.log /var/backups/${_BUCKET_DOT}.randomize.cleanup.log
+if [ -e "${_LOGPTH}/${_BUCKET_NAME_DOT}.archive.log" ]; then
+  cat ${_LOGPTH}/${_BUCKET_NAME_DOT}.archive.log >> ${_LOGPTH}/${_BUCKET_NAME}.archive.log
+  mv ${_LOGPTH}/${_BUCKET_NAME_DOT}.archive.log /var/backups/${_BUCKET_NAME_DOT}.archive.log
+  cat ${_LOGPTH}/${_BUCKET_NAME_DOT}.randomize.cleanup.log >> ${_LOGPTH}/${_BUCKET_NAME}.randomize.cleanup.log
+  mv ${_LOGPTH}/${_BUCKET_NAME_DOT}.randomize.cleanup.log /var/backups/${_BUCKET_NAME_DOT}.randomize.cleanup.log
   #apt-get clean -qq
   #rm -rf /var/lib/apt/lists/*
   if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
     && [ -e "/etc/apt/apt.conf.d" ]; then
     echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
   fi
-  aws s3 mb s3://${_BUCKET} --region ${_AWS_REG}
-  aws s3 sync s3://${_BUCKET_DOT} s3://${_BUCKET}
+  aws s3 mb s3://${_BUCKET_NAME} --region ${_AWS_REG}
+  aws s3 sync s3://${_BUCKET_NAME_DOT} s3://${_BUCKET_NAME}
 fi
 
 _backup_prepare() {
@@ -457,36 +456,36 @@ _backup_prepare() {
 }
 
 _monthly_cleanup() {
-  if [ -e "${_LOGPTH}/${_BUCKET}.randomize.cleanup.log" ]; then
-    _RCL=$(cat ${_LOGPTH}/${_BUCKET}.randomize.cleanup.log 2>&1)
+  if [ -e "${_LOGPTH}/${_BUCKET_NAME}.randomize.cleanup.log" ]; then
+    _RCL=$(cat ${_LOGPTH}/${_BUCKET_NAME}.randomize.cleanup.log 2>&1)
     _RCL=$(echo -n ${_RCL} | tr -d "\n" 2>&1)
     _RCL=${_RCL//[^1-5]/}
   else
     _RCL=$((RANDOM%5+1))
     _RCL=${_RCL//[^1-5]/}
-    echo ${_RCL} > ${_LOGPTH}/${_BUCKET}.randomize.cleanup.log
+    echo ${_RCL} > ${_LOGPTH}/${_BUCKET_NAME}.randomize.cleanup.log
   fi
-  if [ -e "${_LOGPTH}/${_BUCKET}.archive.log" ] \
+  if [ -e "${_LOGPTH}/${_BUCKET_NAME}.archive.log" ] \
     && [ ! -e "/root/.skip_duplicity_monthly_cleanup.cnf" ] \
     && [ "${_DOM}" = "${_RCL}" ] \
     && [ "${_DO_CLEANUP}" = "YES" ]; then
     if [ -e "/root/.randomize_duplicity_full_backup_day.cnf" ]; then
       _n=$((RANDOM%300+8))
-      echo "Waiting $n seconds on `date` before running cleanup --force" > ${_LOGFILE}
+      echo "Waiting $n seconds on $(date) before running cleanup --force" > ${_LOGFILE}
       sleep ${_n}
     fi
-    echo "Running cleanup --force on `date`" >> ${_LOGFILE}
+    echo "Running cleanup --force on $(date)" >> ${_LOGFILE}
     echo "Command is ${_DCY_MN_CMD} cleanup --force ${_NAME} ${_TARGET}"
     ${_DCY_MN_CMD} cleanup --force ${_NAME} ${_TARGET}
-    rm -f ${_LOGPTH}/${_BUCKET}.randomize.full.log
-    rm -f ${_LOGPTH}/${_BUCKET}.randomize.cleanup.log
+    rm -f ${_LOGPTH}/${_BUCKET_NAME}.randomize.full.log
+    rm -f ${_LOGPTH}/${_BUCKET_NAME}.randomize.cleanup.log
   fi
 }
 
 _randomize_full() {
   if [ -e "/root/.randomize_duplicity_full_backup_day.cnf" ]; then
-    if [ -e "${_LOGPTH}/${_BUCKET}.randomize.full.log" ]; then
-      _RDW=$(cat ${_LOGPTH}/${_BUCKET}.randomize.full.log 2>&1)
+    if [ -e "${_LOGPTH}/${_BUCKET_NAME}.randomize.full.log" ]; then
+      _RDW=$(cat ${_LOGPTH}/${_BUCKET_NAME}.randomize.full.log 2>&1)
       _RDW=$(echo -n ${_RDW} | tr -d "\n" 2>&1)
       _RDW=${_RDW//[^1-7]/}
       _MODE="incremental"
@@ -494,7 +493,7 @@ _randomize_full() {
       _RDW=$((RANDOM%7+1))
       _RDW=${_RDW//[^1-7]/}
       _MODE="full"
-      echo ${_RDW} > ${_LOGPTH}/${_BUCKET}.randomize.full.log
+      echo ${_RDW} > ${_LOGPTH}/${_BUCKET_NAME}.randomize.full.log
     fi
   else
     _RDW=6
@@ -508,7 +507,7 @@ _set_mode() {
       _AWS_FLC="1M"
     fi
   else
-    if [ -e "${_LOGPTH}/${_BUCKET}.archive.log" ] \
+    if [ -e "${_LOGPTH}/${_BUCKET_NAME}.archive.log" ] \
       && [ "${_DO_CLEANUP}" = "YES" ]; then
       _MODE="incremental"
     else
@@ -532,15 +531,15 @@ _run_backup() {
   if [ -e "/root/.randomize_duplicity_full_backup_day.cnf" ]; then
     if [ ! -e "/root/tmp/home/" ]; then
       _n=$((RANDOM%300+8))
-      echo "Waiting $n seconds on `date` before running restore home 7D tmp/home" >> ${_LOGFILE}
+      echo "Waiting $n seconds on $(date) before running restore home 7D tmp/home" >> ${_LOGFILE}
       sleep ${_n}
       restore home 7D tmp/home >> ${_LOGFILE}
     fi
     _n=$((RANDOM%300+8))
-    echo "Waiting $n seconds on `date` before running ${_MODE} backup" >> ${_LOGFILE}
+    echo "Waiting $n seconds on $(date) before running ${_MODE} backup" >> ${_LOGFILE}
     sleep ${_n}
   fi
-  echo "Running ${_MODE} backup on `date`" >> ${_LOGFILE}
+  echo "Running ${_MODE} backup on $(date)" >> ${_LOGFILE}
   echo "Command is ${_DCY_UP_CMD} \
     ${_NAME} \
     ${_EXCLUDE} \
@@ -560,10 +559,10 @@ _run_backup() {
 _remove_older_than() {
   if [ -e "/root/.randomize_duplicity_full_backup_day.cnf" ]; then
     _n=$((RANDOM%300+8))
-    echo "Waiting $n seconds on `date` before running remove-older-than ${_AWS_TTL}" >> ${_LOGFILE}
+    echo "Waiting $n seconds on $(date) before running remove-older-than ${_AWS_TTL}" >> ${_LOGFILE}
     sleep ${_n}
   fi
-  echo "Running remove-older-than on `date`" >> ${_LOGFILE}
+  echo "Running remove-older-than on $(date)" >> ${_LOGFILE}
   echo "Command is ${_DCY_MN_CMD} remove-older-than ${_AWS_TTL} --force ${_NAME} ${_TARGET}"
   ${_DCY_MN_CMD} remove-older-than ${_AWS_TTL} --force ${_NAME} ${_TARGET} >> ${_LOGFILE}
 }
@@ -571,10 +570,10 @@ _remove_older_than() {
 _collection_status() {
   if [ -e "/root/.randomize_duplicity_full_backup_day.cnf" ]; then
     _n=$((RANDOM%300+8))
-    echo "Waiting $n seconds on `date` before running collection-status" >> ${_LOGFILE}
+    echo "Waiting $n seconds on $(date) before running collection-status" >> ${_LOGFILE}
     sleep ${_n}
   fi
-  echo "Running collection-status on `date`" >> ${_LOGFILE}
+  echo "Running collection-status on $(date)" >> ${_LOGFILE}
   echo "Command is ${_DCY_MN_CMD} collection-status ${_NAME} ${_TARGET}"
   ${_DCY_MN_CMD} collection-status ${_NAME} ${_TARGET} >> ${_LOGFILE}
 }
@@ -586,24 +585,24 @@ _backup() {
   _set_mode
   _set_cmd
   _run_backup
-  if [ -e "${_LOGPTH}/${_BUCKET}.archive.log" ] \
+  if [ -e "${_LOGPTH}/${_BUCKET_NAME}.archive.log" ] \
     && [ "${_DOW}" = "${_RDW}" ] \
     && [ "${_DO_CLEANUP}" = "YES" ]; then
     _remove_older_than
     _collection_status
   fi
-  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_EMAIL_REPORT}" = "YES" ]; then
-    echo "Sending email report on `date`" >> ${_LOGFILE}
-    s-nail -s "Daily backup: ${_MODE} ${_HST} $(date 2>&1)" ${_MY_EMAIL} < ${_LOGFILE}
+  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "YES" ]; then
+    echo "Sending email report on $(date)" >> ${_LOGFILE}
+    s-nail -s "Daily backup: ${_MODE} ${_HST} $(date)" ${_MY_EMAIL} < ${_LOGFILE}
   fi
-  cat ${_LOGFILE} >> ${_LOGPTH}/${_BUCKET}.archive.log
+  cat ${_LOGFILE} >> ${_LOGPTH}/${_BUCKET_NAME}.archive.log
   rm -f ${_LOGFILE}
 }
 
 _conn_test() {
   if [ $# = 1 ]; then
-    _BUCKET="daily-remote-$1"
-    _TARGET="boto3+s3://${_BUCKET}"
+    _BUCKET_NAME="daily-remote-$1"
+    _TARGET="boto3+s3://${_BUCKET_NAME}"
   fi
   echo "Running AWS connection test, please wait..."
   echo "Command is ${_DCY_MN_CMD} cleanup --dry-run --timeout 5 ${_NAME} ${_TARGET}"
@@ -613,7 +612,7 @@ _conn_test() {
     || [[ "${_ConnTest}" =~ "IllegalLocationConstraintException" ]]; then
     echo
     echo "  Sorry, I can't connect to ${_TARGET}"
-    echo "  Please check if the bucket has expected name: ${_BUCKET}"
+    echo "  Please check if the bucket has expected name: ${_BUCKET_NAME}"
     echo "  This bucket must already exist in the ${_AWS_REG} AWS region"
     echo "  http://docs.aws.amazon.com/general/latest/gr/rande.html#s3_region"
     echo "  Bye"
@@ -654,14 +653,14 @@ _restore() {
 _retrieve() {
   if [ $# = 3 ]; then
     _HST_DASH=$(echo -n $3 | tr . - 2>&1)
-    _BUCKET="daily-remote-${_HST_DASH}"
-    _TARGET="boto3+s3://${_BUCKET}"
+    _BUCKET_NAME="daily-remote-${_HST_DASH}"
+    _TARGET="boto3+s3://${_BUCKET_NAME}"
     echo "Command is ${_DCY_MN_CMD} restore --file-to-restore $1 ${_NAME} ${_TARGET} $2"
     ${_DCY_MN_CMD} restore --file-to-restore $1 ${_NAME} ${_TARGET} $2
   elif [ $# = 4 ]; then
     _HST_DASH=$(echo -n $4 | tr . - 2>&1)
-    _BUCKET="daily-remote-${_HST_DASH}"
-    _TARGET="boto3+s3://${_BUCKET}"
+    _BUCKET_NAME="daily-remote-${_HST_DASH}"
+    _TARGET="boto3+s3://${_BUCKET_NAME}"
     echo "Command is ${_DCY_MN_CMD} restore --file-to-restore $1 --time $2 ${_NAME} ${_TARGET} $3"
     ${_DCY_MN_CMD} restore --file-to-restore $1 --time $2 ${_NAME} ${_TARGET} $3
   fi

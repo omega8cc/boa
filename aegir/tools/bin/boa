@@ -23,12 +23,12 @@ _pthIncB="lib/settings/${_filIncB}"
 _pthIncO="lib/settings/${_filIncO}"
 _vBs="/var/backups"
 
-_CHECK_HOST=$(uname -n 2>&1)
+_CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
 _LOG_DIR="${_vBs}/reports/in/$(basename "$0")/${_TODAY}"
 _IN_BARRACUDA_LOG="${_LOG_DIR}/$(basename "$0")-in-barracuda-${_NOW}.log"
 _IN_OCTOPUS_LOG="${_LOG_DIR}/$(basename "$0")-in-octopus-${_NOW}.log"
 _VMFAMILY=XEN
-_VM_TEST=$(uname -a 2>&1)
+_VM_TEST="$(uname -a)"
 if [[ "${_VM_TEST}" =~ "-beng" ]]; then
   _VMFAMILY="VS"
 fi
@@ -44,7 +44,7 @@ if [ -z "${TERM+x}" ]; then
 fi
 
 _clean_pid_exit() {
-  echo "REASON ${e} on $(date 2>&1)" >> /root/.boa.exit.exceptions.log
+  echo "REASON ${e} on $(date)" >> /root/.boa.exit.exceptions.log
   [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
   [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
   service cron start &> /dev/null
@@ -281,7 +281,7 @@ _ifnames_grub_check_sync() {
 
     # Function to append option to _ADD_GRUB_CMD
     _append_grub_cmd_option() {
-      local _option="$1"
+      _option="$1"
       if [[ -z "${_ADD_GRUB_CMD}" ]]; then
         _ADD_GRUB_CMD="${_option}"
       else
@@ -804,11 +804,15 @@ _barracuda_install() {
     elif [ "${_kiNd}" = "public" ] && [ ! -z "${_fQdn}" ]; then
       sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=PUBLIC/g"        ${_vBs}/${_filIncB}
       wait
+      _fQdn="${_fQdn//[^a-zA-Z0-9-.]/}"
+      _fQdn="$(echo -n ${_fQdn} | tr A-Z a-z 2>&1)"
       sed -i "s/^_EASY_HOSTNAME.*/_EASY_HOSTNAME=${_fQdn}/g" ${_vBs}/${_filIncB}
       wait
     else
       sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=PUBLIC/g"        ${_vBs}/${_filIncB}
       wait
+      _fQdn="${_fQdn//[^a-zA-Z0-9-.]/}"
+      _fQdn="$(echo -n ${_fQdn} | tr A-Z a-z 2>&1)"
       sed -i "s/^_EASY_HOSTNAME.*/_EASY_HOSTNAME=${_fQdn}/g" ${_vBs}/${_filIncB}
       wait
     fi
@@ -1226,6 +1230,8 @@ _init_setup() {
     if [ -e "/root/.dev.server.cnf" ]; then
       echo MODD _tRee is ${_tRee}
       echo MODD _kiNd is ${_kiNd}
+      _fQdn="${_fQdn//[^a-zA-Z0-9-.]/}"
+      _fQdn="$(echo -n ${_fQdn} | tr A-Z a-z 2>&1)"
       echo MODD _fQdn is ${_fQdn}
       echo MODD _eMal is ${_eMal}
       echo MODD _usEr is ${_usEr}
@@ -1593,7 +1599,7 @@ _csf_check_fix() {
 }
 
 _check_root() {
-  if [ `whoami` = "root" ]; then
+  if [ $(whoami) = "root" ]; then
     [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
     if [ "${_cmNd}" = "in-octopus" ] || [ "${_cmNd}" = "in-oct" ]; then
       _system_check_ready
@@ -1710,7 +1716,7 @@ _check_root() {
 }
 
 _display_version() {
-  if [ `whoami` = "root" ]; then
+  if [ $(whoami) = "root" ]; then
     _HOST_INFO=$(dmidecode -s system-manufacturer 2>&1)
     _VIRT_TOOL=$(which virt-what 2> /dev/null)
     if [ -x "${_VIRT_TOOL}" ]; then
@@ -1863,7 +1869,7 @@ _check_system_ram() {
 }
 
 _display_info() {
-  if [ `whoami` = "root" ]; then
+  if [ $(whoami) = "root" ]; then
     _HOST_INFO=$(dmidecode -s system-manufacturer 2>&1)
     _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)
     _CPU_INFO=${_CPU_INFO//[^0-9]/}
@@ -2034,8 +2040,8 @@ _display_info() {
       echo "Ready for BOA ${_crlBoav} on ${_thiSys}"
     fi
 
-    [ "${_mOde}" = "report" ] && echo "Host `hostname` check on `date`"
-    [ "${_mOde}" = "report" ] && echo "Host uptime `uptime`"
+    [ "${_mOde}" = "report" ] && echo "Host $(hostname -f 2>/dev/null || uname -n) check on $(date)"
+    [ "${_mOde}" = "report" ] && echo "Host uptime $(uptime)"
     [ ! -z "${_HOST_INFO}" ] && echo "  HOST ${_HOST_INFO}"
     [ ! -z "${_VIRT_IS}" ] && echo "  VPS ${_VIRT_IS}"
     [ -z "${_VIRT_IS}" ] && echo "  VPS unknown / not a virtual machine"
@@ -2302,7 +2308,7 @@ _display_info() {
 }
 
 _octopus_cleanup() {
-  if [ `whoami` = "root" ]; then
+  if [ $(whoami) = "root" ]; then
     if [ "${_aCtn}" = "detect" ]; then
       echo
       echo "Accounts marked for cleanup or active"

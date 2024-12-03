@@ -30,7 +30,7 @@ _guest_proc_monitor() {
 _guest_guard() {
 if [ ! -e "/run/fire.pid" ] && [ ! -e "/run/water.pid" ]; then
   touch /run/fire.pid
-  echo start `date`
+  echo start $(date)
   for i in `dir -d /vservers/*`; do
     if [ -e "${i}/var/xdrago/monitor/log/ssh.log" ] && [ -e "/usr/var/run${i}" ]; then
       for _IP in `cat ${i}/var/xdrago/monitor/log/ssh.log | cut -d '#' -f1 | sort`; do
@@ -95,9 +95,9 @@ if [ ! -e "/run/fire.pid" ] && [ ! -e "/run/water.pid" ]; then
         fi
       done
     fi
-    echo Completed for $i `date`
+    echo Completed for $i $(date)
   done
-  echo fin `date`
+  echo fin $(date)
   rm -f /run/fire.pid
 fi
 }

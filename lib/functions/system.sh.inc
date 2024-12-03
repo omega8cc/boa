@@ -1,5 +1,5 @@
 
-export _tRee=lts
+export _tRee=pro
 
 _if_fix_iptables_symlinks() {
   ###
@@ -331,7 +331,7 @@ _if_running_as_root_barracuda() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _if_running_as_root_barracuda"
   fi
-  if [ `whoami` = "root" ]; then
+  if [ $(whoami) = "root" ]; then
     chmod a+w /dev/null
     rm -rf /tmp/drush_make_tmp*
     rm -rf /tmp/make_tmp*
@@ -356,7 +356,7 @@ _if_running_as_root_barracuda() {
         touch /run/cloud_vhost.pid
       fi
     fi
-    _VM_TEST=$(uname -a 2>&1)
+    _VM_TEST="$(uname -a)"
     if [[ "${_VM_TEST}" =~ "-beng" ]]; then
       _VMFAMILY="VS"
       touch /run/cloud_vhost.pid
@@ -419,7 +419,7 @@ _kill_nash() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _kill_nash"
   fi
-  _VM_TEST=$(uname -a 2>&1)
+  _VM_TEST="$(uname -a)"
   if [[ "${_VM_TEST}" =~ "-beng" ]]; then
     _DO_NOTHING=YES
   else
@@ -669,7 +669,7 @@ _tune_memory_limits() {
     _msg "TUNE: _MXC_SQL is ${_MXC_SQL}"
   fi
 
-  _VM_TEST=$(uname -a 2>&1)
+  _VM_TEST="$(uname -a)"
   if [ -e "/proc/bean_counters" ]; then
     _VMFAMILY="VZ"
   elif [ -e "/root/.tg.cnf" ]; then
@@ -1581,9 +1581,9 @@ _php_legacy_versions_cleanup_cnf() {
     rm -f /etc/init.d/php55-fpm
   fi
 
-  _CHECK_HOST=$(uname -n 2>&1)
+  _CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
   _VMFAMILY=XEN
-  _VM_TEST=$(uname -a 2>&1)
+  _VM_TEST="$(uname -a)"
   if [[ "${_VM_TEST}" =~ "-beng" ]]; then
     _VMFAMILY="VS"
   fi
@@ -1889,9 +1889,9 @@ _barracuda_cnf() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _barracuda_cnf"
   fi
-  _CHECK_HOST=$(uname -n 2>&1)
+  _CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
   _VMFAMILY=XEN
-  _VM_TEST=$(uname -a 2>&1)
+  _VM_TEST="$(uname -a)"
   if [[ "${_VM_TEST}" =~ "-beng" ]]; then
     _VMFAMILY="VS"
   fi
@@ -1912,6 +1912,12 @@ _barracuda_cnf() {
     echo "###"                                                 > ${_barCnf}
     echo "### Configuration created on ${_NOW}"               >> ${_barCnf}
     echo "###"                                                >> ${_barCnf}
+
+    echo "### NOTE: the group of settings displayed below will *not* be overridden" >> ${_barCnf}
+    echo "### on upgrade by the Barracuda script nor by this configuration file." >> ${_barCnf}
+    echo "### They can be defined only on initial Barracuda install." >> ${_barCnf}
+    echo "###" >> ${_barCnf}
+
     echo "_LOCAL_NETWORK_HN=\"${_LOCAL_NETWORK_HN}\""         >> ${_barCnf}
     echo "_LOCAL_NETWORK_IP=\"${_LOCAL_NETWORK_IP}\""         >> ${_barCnf}
     echo "_MY_FRONT=\"${_MY_FRONT}\""                         >> ${_barCnf}
@@ -1921,46 +1927,56 @@ _barracuda_cnf() {
     echo "_SMTP_RELAY_TEST=${_SMTP_RELAY_TEST}"               >> ${_barCnf}
     echo "_THIS_DB_HOST=${_THIS_DB_HOST}"                     >> ${_barCnf}
 
+    echo "###" >> ${_barCnf}
+    echo "### NOTE: the group of settings displayed below" >> ${_barCnf}
+    echo "### will *override* all listed settings in the Barracuda script," >> ${_barCnf}
+    echo "### both on initial install and upgrade." >> ${_barCnf}
+    echo "###" >> ${_barCnf}
+
     echo "###"                                                >> ${_barCnf}
-    echo "_AUTOPILOT=${_AUTOPILOT}"                           >> ${_barCnf}
-    echo "_DEBUG_MODE=${_DEBUG_MODE}"                         >> ${_barCnf}
-    echo "_MY_EMAIL=\"${_MY_EMAIL}\""                         >> ${_barCnf}
     echo "_XTRAS_LIST=\"${_XTRAS_LIST}\""                     >> ${_barCnf}
 
     echo "###"                                                >> ${_barCnf}
-    echo "_MODULES_FIX=${_MODULES_FIX}"                       >> ${_barCnf}
-    echo "_MODULES_SKIP=\"${_MODULES_SKIP}\""                 >> ${_barCnf}
-    echo "_PERMISSIONS_FIX=${_PERMISSIONS_FIX}"               >> ${_barCnf}
+    echo "_AUTOPILOT=${_AUTOPILOT}"                           >> ${_barCnf}
+    echo "_DEBUG_MODE=${_DEBUG_MODE}"                         >> ${_barCnf}
+    echo "_INCIDENT_REPORT=\"${_INCIDENT_REPORT}\""           >> ${_barCnf}
+    echo "_MY_EMAIL=\"${_MY_EMAIL}\""                         >> ${_barCnf}
 
     echo "###"                                                >> ${_barCnf}
     echo "_CPU_CRIT_RATIO=${_CPU_CRIT_RATIO}"                 >> ${_barCnf}
     echo "_CPU_MAX_RATIO=${_CPU_MAX_RATIO}"                   >> ${_barCnf}
     echo "_CPU_SPIDER_RATIO=${_CPU_SPIDER_RATIO}"             >> ${_barCnf}
+    echo "_CPU_TASK_RATIO=${_CPU_TASK_RATIO}"                 >> ${_barCnf}
 
     echo "###"                                                >> ${_barCnf}
+    echo "_CUSTOM_COLLATION_SQL=${_CUSTOM_COLLATION_SQL}"     >> ${_barCnf}
     echo "_DB_BINARY_LOG=${_DB_BINARY_LOG}"                   >> ${_barCnf}
     echo "_DB_SERIES=${_DB_SERIES}"                           >> ${_barCnf}
     echo "_DB_SERVER=${_DB_SERVER}"                           >> ${_barCnf}
+    echo "_SQL_LOW_MAX_TTL=${_SQL_LOW_MAX_TTL}"               >> ${_barCnf}
+    echo "_SQL_MAX_TTL=${_SQL_MAX_TTL}"                       >> ${_barCnf}
     echo "_USE_MYSQLTUNER=${_USE_MYSQLTUNER}"                 >> ${_barCnf}
 
     echo "###"                                                >> ${_barCnf}
     echo "_DNS_SETUP_TEST=${_DNS_SETUP_TEST}"                 >> ${_barCnf}
     echo "_EXTRA_PACKAGES=${_EXTRA_PACKAGES}"                 >> ${_barCnf}
     echo "_FORCE_GIT_MIRROR=\"${_FORCE_GIT_MIRROR}\""         >> ${_barCnf}
-    echo "_LOCAL_DEVUAN_MIRROR=${_LOCAL_DEVUAN_MIRROR}"       >> ${_barCnf}
     echo "_LOCAL_DEBIAN_MIRROR=${_LOCAL_DEBIAN_MIRROR}"       >> ${_barCnf}
+    echo "_LOCAL_DEVUAN_MIRROR=${_LOCAL_DEVUAN_MIRROR}"       >> ${_barCnf}
     echo "_NEWRELIC_KEY=${_NEWRELIC_KEY}"                     >> ${_barCnf}
-    echo "_SCOUT_KEY=${_SCOUT_KEY}"                           >> ${_barCnf}
 
     echo "###"                                                >> ${_barCnf}
+    echo "_ENABLE_GOACCESS=${_ENABLE_GOACCESS}"               >> ${_barCnf}
     echo "_MAGICK_FROM_SOURCES=${_MAGICK_FROM_SOURCES}"       >> ${_barCnf}
 
     echo "###"                                                >> ${_barCnf}
-    echo "_NGINX_DOS_LINES=${_NGINX_DOS_LINES}"               >> ${_barCnf}
-    echo "_NGINX_DOS_LIMIT=${_NGINX_DOS_LIMIT}"               >> ${_barCnf}
-    echo "_NGINX_DOS_MODE=${_NGINX_DOS_MODE}"                 >> ${_barCnf}
-    echo "_NGINX_DOS_LOG=${_NGINX_DOS_LOG}"                   >> ${_barCnf}
+    echo "_NGINX_DOS_DIV_INC_NR=\"${_NGINX_DOS_DIV_INC_NR}\"" >> ${_barCnf}
     echo "_NGINX_DOS_IGNORE=\"${_NGINX_DOS_IGNORE}\""         >> ${_barCnf}
+    echo "_NGINX_DOS_INC_MIN=\"${_NGINX_DOS_INC_MIN}\""       >> ${_barCnf}
+    echo "_NGINX_DOS_LIMIT=${_NGINX_DOS_LIMIT}"               >> ${_barCnf}
+    echo "_NGINX_DOS_LINES=${_NGINX_DOS_LINES}"               >> ${_barCnf}
+    echo "_NGINX_DOS_LOG=${_NGINX_DOS_LOG}"                   >> ${_barCnf}
+    echo "_NGINX_DOS_MODE=${_NGINX_DOS_MODE}"                 >> ${_barCnf}
     echo "_NGINX_DOS_STOP=\"${_NGINX_DOS_STOP}\""             >> ${_barCnf}
 
     echo "###"                                                >> ${_barCnf}
@@ -1978,8 +1994,8 @@ _barracuda_cnf() {
     echo "_PHP_FPM_DENY=\"${_PHP_FPM_DENY}\""                 >> ${_barCnf}
     echo "_PHP_FPM_VERSION=${_PHP_FPM_VERSION}"               >> ${_barCnf}
     echo "_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}"               >> ${_barCnf}
-    echo "_PHP_IONCUBE=${_PHP_IONCUBE}"                       >> ${_barCnf}
     echo "_PHP_GEOS=${_PHP_GEOS}"                             >> ${_barCnf}
+    echo "_PHP_IONCUBE=${_PHP_IONCUBE}"                       >> ${_barCnf}
     echo "_PHP_MONGODB=${_PHP_MONGODB}"                       >> ${_barCnf}
     echo "_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\""       >> ${_barCnf}
     echo "_PHP_SINGLE_INSTALL=${_PHP_SINGLE_INSTALL}"         >> ${_barCnf}
@@ -2005,7 +2021,17 @@ _barracuda_cnf() {
     echo "_AEGIR_UPGRADE_ONLY=${_AEGIR_UPGRADE_ONLY}"         >> ${_barCnf}
     echo "_SYSTEM_UP_ONLY=${_SYSTEM_UP_ONLY}"                 >> ${_barCnf}
     echo "###"                                                >> ${_barCnf}
-    _CHECK_HOST=$(uname -n 2>&1)
+
+    echo "###"                                                >> ${_barCnf}
+    echo "_MODULES_FIX=${_MODULES_FIX}"                       >> ${_barCnf}
+    echo "_MODULES_SKIP=\"${_MODULES_SKIP}\""                 >> ${_barCnf}
+    echo "_PERMISSIONS_FIX=${_PERMISSIONS_FIX}"               >> ${_barCnf}
+
+    echo "###"                                                >> ${_barCnf}
+    echo "### Barracuda"                                      >> ${_barCnf}
+    echo "###"                                                >> ${_barCnf}
+
+    _CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
     ### Force HTTP/2 or SPDY plus PFS on supported systems
     sed -i "s/^_NGINX_SPDY=.*/_NGINX_SPDY=YES/g"                 ${_barCnf}
     wait
@@ -2022,23 +2048,23 @@ _barracuda_cnf() {
     _devM="deb.devuan.org"
     _debM="deb.debian.org"
 
-    sed -i "s/^_LOCAL_DEVUAN_.*/_LOCAL_DEVUAN_MIRROR=${_devM}/g"  ${_barCnf}
+    sed -i "s/^_LOCAL_DEVUAN_.*/_LOCAL_DEVUAN_MIRROR=${_devM}/g" ${_barCnf}
     wait
-    sed -i "s/^_LOCAL_DEBIAN_.*/_LOCAL_DEBIAN_MIRROR=${_debM}/g"  ${_barCnf}
+    sed -i "s/^_LOCAL_DEBIAN_.*/_LOCAL_DEBIAN_MIRROR=${_debM}/g" ${_barCnf}
     wait
-    sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"      ${_barCnf}
+    sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"     ${_barCnf}
     wait
-    sed -i "s/^_STRICT_BIN_.*/_STRICT_BIN_PERMISSIONS=YES/g"      ${_barCnf}
+    sed -i "s/^_STRICT_BIN_.*/_STRICT_BIN_PERMISSIONS=YES/g"     ${_barCnf}
     wait
-    sed -i "s/^_STRONG_PASS.*/_STRONG_PASSWORDS=YES/g"            ${_barCnf}
+    sed -i "s/^_STRONG_PASS.*/_STRONG_PASSWORDS=YES/g"           ${_barCnf}
     wait
-    sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g"        ${_barCnf}
+    sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g"       ${_barCnf}
     wait
     sed -i "s/^_FORCE_GIT_.*/_FORCE_GIT_MIRROR=\"\"/g" /root/.*.octopus.cnf &> /dev/null
     wait
     sed -i "s/^_STRONG_PASS.*/_STRONG_PASSWORDS=YES/g" /root/.*.octopus.cnf &> /dev/null
     wait
-    sed -i "s/^_REDIS_LISTEN.*/_REDIS_LISTEN_MODE=SOCKET/g"       ${_barCnf}
+    sed -i "s/^_REDIS_LISTEN.*/_REDIS_LISTEN_MODE=SOCKET/g"      ${_barCnf}
     wait
     if [ "${_OS_CODE}" = "stretch" ] || [ "${_OS_CODE}" = "jessie" ]; then
       if [ -x "/opt/php74/bin/php" ]; then
@@ -2097,6 +2123,69 @@ _barracuda_cnf() {
     fi
     sed -i "s/_SPEED_VALID_MAX=300/_SPEED_VALID_MAX=3600/g" ${_barCnf}
     wait
+
+    _CUSTOM_COLLATION_SQL=$(grep _CUSTOM_COLLATION_SQL ${_barCnf} 2>&1)
+    if [[ "${_CUSTOM_COLLATION_SQL}" =~ "_CUSTOM_COLLATION_SQL" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo "_CUSTOM_COLLATION_SQL=${_CUSTOM_COLLATION_SQL}" >> ${_barCnf}
+    fi
+
+    _SQL_LOW_MAX_TTL_TEST=$(grep _SQL_LOW_MAX_TTL ${_barCnf} 2>&1)
+    if [[ "${_SQL_LOW_MAX_TTL_TEST}" =~ "_SQL_LOW_MAX_TTL" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo "_SQL_LOW_MAX_TTL=${_SQL_LOW_MAX_TTL}" >> ${_barCnf}
+    fi
+
+    _SQL_MAX_TTL_TEST=$(grep _SQL_MAX_TTL ${_barCnf} 2>&1)
+    if [[ "${_SQL_MAX_TTL_TEST}" =~ "_SQL_MAX_TTL" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo "_SQL_MAX_TTL=${_SQL_MAX_TTL}" >> ${_barCnf}
+    fi
+
+    _CPU_TASK_RATIO_TEST=$(grep _CPU_TASK_RATIO ${_barCnf} 2>&1)
+    if [[ "${_CPU_TASK_RATIO_TEST}" =~ "_CPU_TASK_RATIO" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo "_CPU_TASK_RATIO=${_CPU_TASK_RATIO}" >> ${_barCnf}
+    fi
+
+    _INCIDENT_REPORT_TEST=$(grep _INCIDENT_REPORT ${_barCnf} 2>&1)
+    if [[ "${_INCIDENT_REPORT_TEST}" =~ "_INCIDENT_REPORT" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo "_INCIDENT_REPORT=${_INCIDENT_REPORT}" >> ${_barCnf}
+    fi
+
+    _ENABLE_GOACCESS_TEST=$(grep _ENABLE_GOACCESS ${_barCnf} 2>&1)
+    if [[ "${_ENABLE_GOACCESS_TEST}" =~ "_ENABLE_GOACCESS" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo "_ENABLE_GOACCESS=${_ENABLE_GOACCESS}" >> ${_barCnf}
+    fi
+
+    _NGINX_DOS_DIV_INC_NR_TEST=$(grep _NGINX_DOS_DIV_INC_NR ${_barCnf} 2>&1)
+    if [[ "${_NGINX_DOS_DIV_INC_NR_TEST}" =~ "_NGINX_DOS_DIV_INC_NR" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo "_NGINX_DOS_DIV_INC_NR=${_NGINX_DOS_DIV_INC_NR}" >> ${_barCnf}
+    fi
+
+    _NGINX_DOS_IGNORE_TEST=$(grep _NGINX_DOS_IGNORE ${_barCnf} 2>&1)
+    if [[ "${_NGINX_DOS_IGNORE_TEST}" =~ "_NGINX_DOS_IGNORE" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo "_NGINX_DOS_IGNORE=${_NGINX_DOS_IGNORE}" >> ${_barCnf}
+    fi
+
+    _NGINX_DOS_INC_MIN_TEST=$(grep _NGINX_DOS_INC_MIN ${_barCnf} 2>&1)
+    if [[ "${_NGINX_DOS_INC_MIN_TEST}" =~ "_NGINX_DOS_INC_MIN" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo "_NGINX_DOS_INC_MIN=${_NGINX_DOS_INC_MIN}" >> ${_barCnf}
+    fi
 
     _NGINX_WORKERS_TEST=$(grep _NGINX_WORKERS ${_barCnf} 2>&1)
     if [[ "${_NGINX_WORKERS_TEST}" =~ "_NGINX_WORKERS" ]]; then
@@ -2199,11 +2288,6 @@ _barracuda_cnf() {
           wait
         fi
       fi
-    fi
-
-    _SCOUT_KEY_TEST=$(grep _SCOUT_KEY ${_barCnf} 2>&1)
-    if [[ ! "${_SCOUT_KEY_TEST}" =~ "_SCOUT_KEY" ]]; then
-      echo "_SCOUT_KEY=${_SCOUT_KEY}" >> ${_barCnf}
     fi
 
     _EXTRA_PACKAGES_TEST=$(grep _EXTRA_PACKAGES ${_barCnf} 2>&1)
@@ -2336,7 +2420,7 @@ _barracuda_cnf() {
     fi
 
     sleep 1
-    _CHECK_HOST=$(uname -n 2>&1)
+    _CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
     ### Force HTTP/2 or SPDY plus PFS on supported systems
     sed -i "s/^_NGINX_SPDY=.*/_NGINX_SPDY=YES/g"                 ${_barCnf}
     wait
@@ -2463,7 +2547,7 @@ _barracuda_cnf() {
       fi
     fi
 
-    _CHECK_HOST=$(uname -n 2>&1)
+    _CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
     if [[ "${_MY_EMAIL}" =~ "omega8.cc" ]]; then
       _if_hosted_sys
       if [ "${_hostedSys}" != "YES" ]; then
@@ -2877,6 +2961,7 @@ _php_install_deps() {
   _apt_clean_update
   _mrun "${_INSTAPP} cmake" 2> /dev/null
   _mrun "${_INSTAPP} lbzip2" 2> /dev/null
+  _mrun "${_INSTAPP} zstd" 2> /dev/null
   if [ ! -e "/usr/local/include/curl/curl.h" ] \
     && [ ! -e "/usr/local/include/curl/easy.h" ]; then
     _mrun "${_INSTAPP} libcurl4-openssl-dev" 2> /dev/null
@@ -4530,6 +4615,7 @@ _switch_to_dash() {
                   /etc/network/if-up.d \
                   /etc/resolvconf/update.d \
                   /etc/webmin \
+                  /lib/apparmor \
                   /opt/php56/bin \
                   /opt/php70/bin \
                   /opt/php71/bin \
@@ -4566,7 +4652,9 @@ _switch_to_dash() {
             _SHELL_TEST=$(grep -I -o "\#\!.*/bin/sh" $f 2>&1)
             if [[ "${_SHELL_TEST}" =~ "/bin/sh" ]] \
               && [ "$f" != "/etc/init.d/clean-boa-env" ] \
-              && [ "$f" != "/bin/websh" ]; then
+              && [ "$f" != "/bin/websh" ] \
+              && [ "$f" != "/usr/bin/websh" ] \
+              && [ "$f" != "/opt/local/bin/websh" ]; then
               sed -i "s/\/bin\/sh/\/bin\/dash/g" $f &> /dev/null
               wait
             fi
@@ -4574,7 +4662,9 @@ _switch_to_dash() {
             _SHELL_TEST=$(grep -I -o "\#\!.*/usr/bin/sh" $f 2>&1)
             if [[ "${_SHELL_TEST}" =~ "/bin/sh" ]] \
               && [ "$f" != "/etc/init.d/clean-boa-env" ] \
-              && [ "$f" != "/bin/websh" ]; then
+              && [ "$f" != "/bin/websh" ] \
+              && [ "$f" != "/usr/bin/websh" ] \
+              && [ "$f" != "/opt/local/bin/websh" ]; then
               sed -i "s/\/usr\/bin\/sh/\/bin\/dash/g" $f &> /dev/null
               wait
             fi
@@ -4608,6 +4698,7 @@ _switch_to_bash() {
                   /etc/network/if-up.d \
                   /etc/resolvconf/update.d \
                   /etc/webmin \
+                  /lib/apparmor \
                   /opt/php56/bin \
                   /opt/php70/bin \
                   /opt/php71/bin \
@@ -4644,7 +4735,9 @@ _switch_to_bash() {
             _SHELL_TEST=$(grep -I -o "\#\!.*/bin/sh" $f 2>&1)
             if [[ "${_SHELL_TEST}" =~ "/bin/sh" ]] \
               && [ "$f" != "/etc/init.d/clean-boa-env" ] \
-              && [ "$f" != "/bin/websh" ]; then
+              && [ "$f" != "/bin/websh" ] \
+              && [ "$f" != "/usr/bin/websh" ] \
+              && [ "$f" != "/opt/local/bin/websh" ]; then
               sed -i "s/\/bin\/sh/\/bin\/bash/g" $f &> /dev/null
               wait
             fi
@@ -4652,7 +4745,9 @@ _switch_to_bash() {
             _SHELL_TEST=$(grep -I -o "\#\!.*/usr/bin/sh" $f 2>&1)
             if [[ "${_SHELL_TEST}" =~ "/bin/sh" ]] \
               && [ "$f" != "/etc/init.d/clean-boa-env" ] \
-              && [ "$f" != "/bin/websh" ]; then
+              && [ "$f" != "/bin/websh" ] \
+              && [ "$f" != "/usr/bin/websh" ] \
+              && [ "$f" != "/opt/local/bin/websh" ]; then
               sed -i "s/\/usr\/bin\/sh/\/bin\/bash/g" $f &> /dev/null
               wait
             fi
@@ -4887,9 +4982,9 @@ _strict_bin_permissions() {
     fi
   fi
 
-  cp -af ${_bldPth}/aegir/helpers/websh.sh.txt /bin/websh
-  chmod 755 /bin/websh
-  chown root:root /bin/websh
+  cp -af ${_bldPth}/aegir/helpers/websh.sh.txt /opt/local/bin/websh
+  chmod 755 /opt/local/bin/websh
+  chown root:root /opt/local/bin/websh
   chown root:root /etc/passwd*
   chmod 644 /etc/passwd*
   chown root:shadow /etc/shadow*
@@ -6559,7 +6654,7 @@ _if_major_os_upgrade() {
     # fi
     ###
     ### Time for init scripts cleanup for VM running beng kernel.
-    _VM_TEST=$(uname -a 2>&1)
+    _VM_TEST="$(uname -a)"
     if [[ "${_VM_TEST}" =~ "-beng" ]]; then
       _PTMX=OK
       _REMOVE_LINKS="buagent \
@@ -7820,9 +7915,11 @@ _pam_umask_check_fix() {
     chown www-data:www-data /var/www/.profile &> /dev/null
     chown www-data:www-data /var/www/nginx-default &> /dev/null
   fi
-  _SFTP_UMASK_TEST=$(grep "sftp-server -u 0002" /etc/ssh/sshd_config 2>&1)
-  if [[ ! "${_SFTP_UMASK_TEST}" =~ "sftp-server -u 0002" ]]; then
-    sed -e '/Subsystem\ssftp/s:server$:server -u 0002:' -i /etc/ssh/sshd_config
+  _SFTP_UMASK_TEST=$(grep "internal-sftp -u 0002" /etc/ssh/sshd_config 2>&1)
+  if [[ ! "${_SFTP_UMASK_TEST}" =~ "internal-sftp -u 0002" ]]; then
+    sed -i "s/^Subsystem.*//g" /etc/ssh/sshd_config
+    echo "Subsystem sftp internal-sftp -u 0002" >> /etc/ssh/sshd_config
+    sed -i "/^$/d" /etc/ssh/sshd_config
     _mrun "service ssh restart" 2> /dev/null
   fi
 }
@@ -7902,7 +7999,7 @@ _lshell_install_upgrade() {
     _msg "PROC: _lshell_install_upgrade"
   fi
   _PATH_LSHELL="/usr/local/bin/lshell"
-  _LSHELL_CHK_VRN=0.10
+  _LSHELL_CHK_VRN=0.10.9
   _LSHELL_FORCE_REINSTALL=NO
   _isLshell=$(which lshell 2>&1)
   _LSHELL_ITD=$(${_isLshell} --version 2>&1 \
@@ -8484,6 +8581,12 @@ _initd_update() {
     wait
     sed -i "s/^TCPKeepAlive.*//g" /etc/ssh/sshd_config &> /dev/null
     wait
+    sed -i "s/^PermitEmptyPasswords.*//g" /etc/ssh/sshd_config &> /dev/null
+    wait
+    sed -i "s/^KbdInteractiveAuthentication.*//g" /etc/ssh/sshd_config &> /dev/null
+    wait
+    sed -i "s/^Subsystem.*//g" /etc/ssh/sshd_config
+    wait
     echo >> /etc/ssh/sshd_config
     echo "IgnoreUserKnownHosts no" >> /etc/ssh/sshd_config
     if [ -e "/root/.ssh.auth.keys.only.cnf" ]; then
@@ -8497,6 +8600,9 @@ _initd_update() {
     echo "ClientAliveInterval 300" >> /etc/ssh/sshd_config
     echo "ClientAliveCountMax 10000" >> /etc/ssh/sshd_config
     echo "TCPKeepAlive yes" >> /etc/ssh/sshd_config
+    echo "PermitEmptyPasswords no" >> /etc/ssh/sshd_config
+    echo "KbdInteractiveAuthentication no" >> /etc/ssh/sshd_config
+    echo "Subsystem sftp internal-sftp -u 0002" >> /etc/ssh/sshd_config
     sed -i "/^$/d" /etc/ssh/sshd_config
     wait
     _mrun "service ssh reload" 2> /dev/null

@@ -114,7 +114,7 @@
   /bin/stty mrix,
   /bin/tar mrix,
   /bin/touch mrix,
-  /bin/websh mrix,
+  /opt/local/bin/websh mrix,
   /data/disk/*/**/vendor/bin/drush mrix,
   /data/disk/*/**/vendor/drush/drush/drush.php mrix,
   /etc/init.d/nginx mrix,

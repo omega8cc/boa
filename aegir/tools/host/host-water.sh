@@ -586,7 +586,7 @@ if [ -e "/vservers" ] \
   && [ -e "/etc/csf/csf.deny" ] \
   && [ -x "/usr/sbin/csf" ]; then
   if [ -e "/root/.local.IP.list" ]; then
-    echo local dr/tr start `date`
+    echo local dr/tr start $(date)
     for _IP in `cat /root/.local.IP.list \
       | cut -d '#' -f1 \
       | sort \
@@ -641,7 +641,7 @@ if [ -e "/vservers" ] \
     fi
   fi
 
-  echo local start `date`
+  echo local start $(date)
   _local_ip_rg
 
   _HA=var/xdrago/monitor/log/hackcheck.archive.log
@@ -651,7 +651,7 @@ if [ -e "/vservers" ] \
   _FA=var/xdrago/monitor/log/hackftp.archive.log
   _FX=var/xdrago/monitor/log/hackftp.archive.x3.log
 
-  echo guard start `date`
+  echo guard start $(date)
   _guard_stats
 
   rm -f /vservers/*/var/xdrago/monitor/log/ssh.log
@@ -695,7 +695,7 @@ if [ -e "/vservers" ] \
     fi
   fi
   rm -f /run/water.pid
-  echo guard fin `date`
+  echo guard fin $(date)
 fi
 ntpdate pool.ntp.org > /dev/null 2>&1 &
 _IF_CDP=$(ps aux | grep '[c]dp_io' | awk '{print $2}')

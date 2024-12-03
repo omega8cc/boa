@@ -1,5 +1,5 @@
 
-export _tRee=lts
+export _tRee=pro
 
 #
 # Fix DNS settings.
@@ -725,7 +725,7 @@ _check_ip_hostname() {
         _find_correct_ip
         _THEFRDIP="${_LOC_IP}"
         if [ "${_THEFRDIP}" = "${_THISHTIP}" ]; then
-          _TESTHOST=$(uname -n 2>&1)
+          _TESTHOST="$(hostname -f 2>/dev/null || uname -n)"
           _LOC_DOM="${_TESTHOST}"
           _find_correct_ip
           _TESTRDIP="${_LOC_IP}"
@@ -744,11 +744,11 @@ _check_ip_hostname() {
     else
       _find_correct_ip
       _THISHTIP="${_LOC_IP}"
-      _FQDNPROB=$(uname -n 2>&1)
+      _FQDNPROB="$(hostname -f 2>/dev/null || uname -n)"
       _FQDNTEST="FALSE"
-      _THISHOST=$(uname -n 2>&1)
+      _THISHOST="$(hostname -f 2>/dev/null || uname -n)"
       if [ ! -z "${_FQDNPROB}" ]; then
-        _THISHOST=$(uname -n 2>&1)
+        _THISHOST="$(hostname -f 2>/dev/null || uname -n)"
         _THISHOST=${_THISHOST//[^a-zA-Z0-9-.]/}
         _THISHOST=$(echo -n ${_THISHOST} | tr A-Z a-z 2>&1)
         _LOC_DOM="${_THISHOST}"

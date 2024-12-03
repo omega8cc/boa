@@ -1,5 +1,5 @@
 
-export _tRee=lts
+export _tRee=pro
 
 _if_hosted_sys() {
   if [ -e "/root/.host8.cnf" ] \
@@ -733,7 +733,7 @@ _os_detection() {
   fi
   echo " "
   _thiSys="$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)/$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1) $(uname -m 2>&1)"
-  _thiSys="$(uname -n 2>&1) ${_thiSys} PHP ${_PHP_FPM_VERSION}"
+  _thiSys="$(hostname -f 2>/dev/null || uname -n) ${_thiSys} PHP ${_PHP_FPM_VERSION}"
   _msg "Aegir on ${_thiSys}"
   echo " "
 }
@@ -918,7 +918,7 @@ _barracuda_log_update() {
       | awk '{ print $1}' \
       | sed "s/[\,']//g" 2>&1)
   fi
-  _BARRACUDA_VERSION_INFO="$(date 2>&1) / \
+  _BARRACUDA_VERSION_INFO="$(date) / \
     $(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1).$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1) \
     $(uname -m 2>&1) ${_VIRT_IS} / \
     Aegir ${_AEGIR_VERSION} / \
@@ -965,12 +965,12 @@ _turn_off_apparmor_in_octopus() {
 }
 
 #
-# Switch to bash while running octopus.
-_switch_to_bash_in_octopus() {
+# Switch to dash while running octopus.
+_switch_to_dash_in_octopus() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "PROC: _switch_to_bash_in_octopus"
+    _msg "PROC: _switch_to_dash_in_octopus"
   fi
-  if [ -x "/bin/websh" ] && [ -L "/bin/sh" ]; then
+  if [ -L "/bin/sh" ]; then
     _WEB_SH=`readlink -n /bin/sh`
     _WEB_SH=`echo -n ${_WEB_SH} | tr -d "\n"`
     if [ -x "/bin/dash" ] || [ -x "/usr/bin/dash" ]; then

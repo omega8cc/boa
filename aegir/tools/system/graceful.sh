@@ -38,7 +38,7 @@ _check_root
 [ -e "/root/.pause_heavy_tasks_maint.cnf" ] && exit 0
 
 # Get the hostname
-_CHECK_HOST="$(uname -n 2>&1)"
+_CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
 
 # Function to determine if the system is hosted
 _if_hosted_sys() {
