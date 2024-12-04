@@ -1061,8 +1061,7 @@ EOFMYSQL
   else
     if [ "${_tRee}" = "lts" ]; then
       _SERIES_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
-      if [[ "${_SERIES_TEST}" =~ "Barracuda ${_rLsn}-pro" ]] \
-        || [ -e "/var/aegir/key/barracuda_key.txt" ]; then
+      if [[ "${_SERIES_TEST}" =~ "Barracuda ${_rLsn}-pro" ]]; then
         _msg "ERROR: Your system has been already upgraded to ${_rLsn}-pro"
         _msg "You can not downgrade back to previous/older/lts BOA version"
         _msg "Please use 'barracuda up-pro system' to upgrade this server"
