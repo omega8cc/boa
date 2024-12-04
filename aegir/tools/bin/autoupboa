@@ -26,7 +26,7 @@ _turn_off_apparmor() {
   aa-teardown 2> /dev/null
   service auditd stop 2> /dev/null
 }
-[ ! -e "/root/.keep_apparmor_on.cnf" ] && _turn_off_apparmor
+[ ! -e "/root/.keep_apparmor_on.cnf" ] && [ -e "/lib/apparmor/apparmor.systemd" ] && _turn_off_apparmor
 
 # Define default values
 _CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"

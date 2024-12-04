@@ -44,7 +44,7 @@ if [ -z "${TERM+x}" ]; then
 fi
 
 _clean_pid_exit() {
-  echo "REASON ${e} on $(date)" >> /root/.boa.exit.exceptions.log
+  echo "REASON ${1} on $(date)" >> /root/.boa.exit.exceptions.log
   [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
   [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
   service cron start &> /dev/null
@@ -230,8 +230,10 @@ _system_check_clean() {
   if [ -e "/etc/mysql" ]; then
     mv -f /etc/mysql /etc/mysql_pre
   fi
+  if [ -e "/etc/apache2" ]; then
+    mv -f /etc/apache2 /etc/apache2_pre
+  fi
   if [ -e "/etc/nginx" ] \
-    || [ -e "/etc/apache2" ] \
     || [ -e "/etc/mysql" ] \
     || [ -e "/var/lib/mysql/mysql" ] \
     || [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ]; then
@@ -240,7 +242,7 @@ _system_check_clean() {
     echo
     echo "Please make sure you don't have MySQL nor Apache installed."
     echo "Here's the list of directories which shouldn't exist:"
-    echo "/etc/nginx /etc/apache2 /etc/mysql /var/lib/mysql/mysql /var/aegir"
+    echo "/etc/nginx /etc/mysql /var/lib/mysql/mysql /var/aegir"
     if [ ! -e "/etc/nginx" ]; then
       echo
       echo "HINT: Try to run: 'apt-get purge mysql-common' and then try again."
@@ -816,6 +818,8 @@ _barracuda_install() {
       sed -i "s/^_EASY_HOSTNAME.*/_EASY_HOSTNAME=${_fQdn}/g" ${_vBs}/${_filIncB}
       wait
     fi
+
+    [ ! -z "${_fQdn}" ] && export _EASY_HOSTNAME=${_fQdn}
 
     if [ -n "${_eXtr}" ] \
       && [ -e "${_vBs}/${_filIncB}" ] \
