@@ -1,5 +1,5 @@
 ###
-### Stable BOA-5.5.0-pro - Full Edition
+### Stable BOA-5.5.0-lts - Full Edition
 ### Date: Sat 26 Oct 2024 09:49:51 AM PDT in Santa Clara
 ###
 
