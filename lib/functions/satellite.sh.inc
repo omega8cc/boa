@@ -4251,8 +4251,7 @@ _satellite_check_octopus_vs_barracuda_ver() {
   if [ -e "${_ROOT}/log/octopus_log.txt" ] \
     && [ "${_tRee}" = "lts" ]; then
     _SERIES_TEST=$(cat ${_ROOT}/log/octopus_log.txt 2>&1)
-    if [[ "${_SERIES_TEST}" =~ "Octopus ${_rLsn}-pro" ]] \
-      || [ -e "${_ROOT}/tools/key/octopus_key.txt" ]; then
+    if [[ "${_SERIES_TEST}" =~ "Octopus ${_rLsn}-pro" ]]; then
       _msg "ERROR: Your Octopus has been already upgraded to ${_rLsn}-pro"
       _msg "You can not downgrade back to previous/older/lts BOA version"
       _msg "Please use 'octopus up-pro ${_USER} force' to upgrade"
