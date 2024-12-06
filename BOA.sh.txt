@@ -1582,6 +1582,20 @@ _update_agents() {
     fi
   fi
 
+  if [ -d "/data/u" ] \
+    && [ ! -e "${_pthLog}/hosting.cron.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+    for _pthSysUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
+      _tUsr=
+      _tUsr=$(echo ${_pthSysUsr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
+      if [ -n "${_tUsr}" ] && [ "${_tUsr}" != "arch" ]; then
+        if [ ! -e "${_pthSysUsr}/log/hosting_cron_use_backend.txt" ]; then
+          echo ON > ${_pthSysUsr}/log/hosting_cron_use_backend.txt
+        fi
+      fi
+    done
+    touch ${_pthLog}/hosting.cron.ctrl.${_tRee}.${_xSrl}.pid
+  fi
+
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -d "/data/u" ] \
     && [ ! -e "${_pthLog}/fpm-cli.ctrl.${_tRee}.${_xSrl}.pid" ]; then
