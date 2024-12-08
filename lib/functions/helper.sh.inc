@@ -3,7 +3,7 @@ export _tRee=dev
 
 _if_hosted_sys() {
   if [ -e "/root/.host8.cnf" ] \
-    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
+    || [[ "${_hName}" =~ ".aegir.cc"($) ]]; then
     _hostedSys=YES
   else
     _hostedSys=NO
@@ -733,7 +733,7 @@ _os_detection() {
   fi
   echo " "
   _thiSys="$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)/$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1) $(uname -m 2>&1)"
-  _thiSys="$(hostname -f 2>/dev/null || uname -n) ${_thiSys} PHP ${_PHP_FPM_VERSION}"
+  _thiSys="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null) ${_thiSys} PHP ${_PHP_FPM_VERSION}"
   _msg "Aegir on ${_thiSys}"
   echo " "
 }

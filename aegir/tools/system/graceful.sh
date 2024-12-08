@@ -30,6 +30,8 @@ _check_root() {
     renice ${_B_NICE} -p $$ &> /dev/null
     chmod a+w /dev/null
   fi
+  # Get the hostname
+  _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
 }
 _check_root
 
@@ -37,12 +39,10 @@ _check_root
 [ -e "/root/.proxy.cnf" ] && exit 0
 [ -e "/root/.pause_heavy_tasks_maint.cnf" ] && exit 0
 
-# Get the hostname
-_CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
 
 # Function to determine if the system is hosted
 _if_hosted_sys() {
-  if [ -e "/root/.host8.cnf" ] || [[ "${_CHECK_HOST}" =~ \.aegir\.cc$ ]]; then
+  if [ -e "/root/.host8.cnf" ] || [[ "${_hName}" =~ \.aegir\.cc$ ]]; then
     _HOSTED_SYS="YES"
   else
     _HOSTED_SYS="NO"

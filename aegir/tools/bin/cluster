@@ -674,7 +674,7 @@ _find_fast_mirror_early
 
 _if_firewall_update() {
   if [ -e "/etc/csf" ]; then
-    echo "Running Firewall Update on $(hostname -f 2>/dev/null || uname -n)..."
+    echo "Running Firewall Update on $(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)..."
     _NOW=`date +%y%m%d-%H%M`
     _WFC="/var/backups/wfc/${_NOW}"
     mkdir -p ${_WFC}

@@ -1,5 +1,6 @@
 
 export _tRee=dev
+export _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
 
 _if_fix_iptables_symlinks() {
   ###
@@ -1581,7 +1582,6 @@ _php_legacy_versions_cleanup_cnf() {
     rm -f /etc/init.d/php55-fpm
   fi
 
-  _CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
   _VMFAMILY=XEN
   _VM_TEST="$(uname -a)"
   if [[ "${_VM_TEST}" =~ "-beng" ]]; then
@@ -1889,7 +1889,6 @@ _barracuda_cnf() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _barracuda_cnf"
   fi
-  _CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
   _VMFAMILY=XEN
   _VM_TEST="$(uname -a)"
   if [[ "${_VM_TEST}" =~ "-beng" ]]; then
@@ -2031,7 +2030,6 @@ _barracuda_cnf() {
     echo "### Barracuda"                                      >> ${_barCnf}
     echo "###"                                                >> ${_barCnf}
 
-    _CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
     ### Force HTTP/2 or SPDY plus PFS on supported systems
     sed -i "s/^_NGINX_SPDY=.*/_NGINX_SPDY=YES/g"                 ${_barCnf}
     wait
@@ -2420,7 +2418,6 @@ _barracuda_cnf() {
     fi
 
     sleep 1
-    _CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
     ### Force HTTP/2 or SPDY plus PFS on supported systems
     sed -i "s/^_NGINX_SPDY=.*/_NGINX_SPDY=YES/g"                 ${_barCnf}
     wait
@@ -2547,7 +2544,6 @@ _barracuda_cnf() {
       fi
     fi
 
-    _CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
     if [[ "${_MY_EMAIL}" =~ "omega8.cc" ]]; then
       _if_hosted_sys
       if [ "${_hostedSys}" != "YES" ]; then
@@ -5278,7 +5274,7 @@ _finale() {
       # _fix_core_dgd
     fi
   fi
-  if [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
+  if [[ "${_hName}" =~ ".aegir.cc"($) ]]; then
     _MTD_VR="BOA-5.5.0-omm"
   elif [ -e "/root/.host8.cnf" ]; then
     _MTD_VR="BOA-5.5.0-aln"

@@ -112,10 +112,10 @@ _apt_clean_update() {
   ${_APT_UPDATE} -qq &> /dev/null
 }
 
-_CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
 _if_hosted_sys() {
+  _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
   if [ -e "/root/.host8.cnf" ] \
-    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
+    || [[ "${_hName}" =~ ".aegir.cc"($) ]]; then
     _hostedSys=YES
   else
     _hostedSys=NO
@@ -350,8 +350,6 @@ _verify_boa_keys() {
   if [ "${_tRee}" = "pro" ] || [ "${_tRee}" = "dev" ]; then
     _allw=NO
     _urlEnc="http://${_USE_MIR}/enc/2024"
-    _hName="$(hostname -f 2>/dev/null || uname -n)"
-    _hName=$(echo -n ${_hName} | tr -d "\n" 2>&1)
     _encName=$(echo ${_hName} \
       | openssl md5 \
       | awk '{ print $2}' \
@@ -3393,7 +3391,6 @@ _if_update_boa_key_tools_only() {
 _boa_setup() {
   _BENG_VS=NO
   _VMFAMILY=NO
-  _CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
   _VM_TEST="$(uname -a)"
   if [[ "${_VM_TEST}" =~ "-beng" ]]; then
     _BENG_VS=YES
