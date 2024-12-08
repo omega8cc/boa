@@ -127,7 +127,7 @@ _do_syncpass() {
         wait
         _ESC="*.*"
         _USE_DB_USER="aegir_root"
-        _USE_AEGIR_HOST="$(hostname -f 2>/dev/null || uname -n)"
+        _USE_AEGIR_HOST="${_hName}"
         _USE_RESOLVEIP="${_LOC_IP}"
         [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL1 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
         if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
@@ -196,7 +196,7 @@ EOFMYSQL
           wait
           _ESC="*.*"
           _USE_DB_USER="${_uname}"
-          _USE_AEGIR_HOST="$(hostname -f 2>/dev/null || uname -n)"
+          _USE_AEGIR_HOST="${_hName}"
           _USE_RESOLVEIP="${_LOC_IP}"
           [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL2 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
           if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
@@ -294,6 +294,7 @@ _check_root() {
     echo "ERROR: This script should be run as a root user"
     exit 1
   fi
+  _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
 }
 
 case "$1" in

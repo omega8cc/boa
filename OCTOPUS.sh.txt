@@ -133,7 +133,7 @@ export _F_TIME=$(date)
 ### Instance specific variables
 ###
 export _WEB="${_USER}.web"
-export _DOMAIN="${_USER}.$(hostname -f 2>/dev/null || uname -n)"
+export _DOMAIN="${_USER}.$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
 export _ROOT="/data/disk/${_USER}"
 export _THIS_DB_PORT=3306
 export _octCnf="/root/.${_USER}.octopus.cnf"

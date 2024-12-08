@@ -23,7 +23,6 @@ _pthIncB="lib/settings/${_filIncB}"
 _pthIncO="lib/settings/${_filIncO}"
 _vBs="/var/backups"
 
-_CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
 _LOG_DIR="${_vBs}/reports/in/$(basename "$0")/${_TODAY}"
 _IN_BARRACUDA_LOG="${_LOG_DIR}/$(basename "$0")-in-barracuda-${_NOW}.log"
 _IN_OCTOPUS_LOG="${_LOG_DIR}/$(basename "$0")-in-octopus-${_NOW}.log"
@@ -106,7 +105,7 @@ _check_no_systemd() {
 
 _if_hosted_sys() {
   if [ -e "/root/.host8.cnf" ] \
-    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
+    || [[ "${_hName}" =~ ".aegir.cc"($) ]]; then
     _hostedSys=YES
   else
     _hostedSys=NO
@@ -600,8 +599,8 @@ _send_report() {
   fi
   if [ ! -z "${_MY_EMAIL}" ]; then
     _repSub="Successful ${_RS} installation"
-    _repSub="REPORT: ${_repSub} on ${_CHECK_HOST}"
     _repSub=$(echo -n ${_repSub} | fmt -su -w 2500 2>&1)
+    _repSub="REPORT: ${_repSub} on ${_hName}"
     _if_extended_report
     cat ${_THIS_LOG} | s-nail -s "${_repSub} at ${_NOW}" ${_MY_EMAIL}
     echo "${_repSub} sent to ${_MY_EMAIL}"
@@ -1604,6 +1603,7 @@ _csf_check_fix() {
 
 _check_root() {
   if [ $(whoami) = "root" ]; then
+    _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
     [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
     if [ "${_cmNd}" = "in-octopus" ] || [ "${_cmNd}" = "in-oct" ]; then
       _system_check_ready
@@ -2044,7 +2044,7 @@ _display_info() {
       echo "Ready for BOA ${_crlBoav} on ${_thiSys}"
     fi
 
-    [ "${_mOde}" = "report" ] && echo "Host $(hostname -f 2>/dev/null || uname -n) check on $(date)"
+    [ "${_mOde}" = "report" ] && echo "Host ${_hName} check on $(date)"
     [ "${_mOde}" = "report" ] && echo "Host uptime $(uptime)"
     [ ! -z "${_HOST_INFO}" ] && echo "  HOST ${_HOST_INFO}"
     [ ! -z "${_VIRT_IS}" ] && echo "  VPS ${_VIRT_IS}"

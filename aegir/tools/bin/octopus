@@ -25,7 +25,6 @@ _pthIncB="lib/settings/${_filIncB}"
 _pthIncO="lib/settings/${_filIncO}"
 _vBs="/var/backups"
 
-_CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
 _LOG_DIR="${_vBs}/reports/up/$(basename "$0")/${_TODAY}"
 _VMFAMILY=XEN
 _VM_TEST="$(uname -a)"
@@ -74,7 +73,7 @@ _apt_clean_update() {
 
 _if_hosted_sys() {
   if [ -e "/root/.host8.cnf" ] \
-    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
+    || [[ "${_hName}" =~ ".aegir.cc"($) ]]; then
     _hostedSys=YES
   else
     _hostedSys=NO
@@ -209,8 +208,8 @@ _send_report() {
     fi
     if [ ! -z "${_MY_EMAIL}" ]; then
       _repSub="Successful Octopus upgrade for ${_octUsr}"
-      _repSub="REPORT: ${_repSub} on ${_CHECK_HOST}"
       _repSub=$(echo -n ${_repSub} | fmt -su -w 2500 2>&1)
+      _repSub="REPORT: ${_repSub} on ${_hName}"
       cat ${_UP_LOG} | s-nail -s "${_repSub} at ${_NOW}" ${_MY_EMAIL}
       echo "${_repSub} sent to ${_MY_EMAIL}"
     fi
@@ -225,8 +224,8 @@ _send_alert() {
       _MY_EMAIL="$(basename "$0")@omega8.cc"
     fi
     if [ ! -z "${_MY_EMAIL}" ]; then
-      _repSub="ALERT: Failed Octopus upgrade for ${_octUsr} on ${_CHECK_HOST}"
       _repSub=$(echo -n ${_repSub} | fmt -su -w 2500 2>&1)
+      _repSub="ALERT: Failed Octopus upgrade for ${_octUsr} on ${_hName}"
       cat ${_UP_LOG} | s-nail -s "${_repSub} at ${_NOW}" ${_MY_EMAIL}
       echo "${_repSub} sent to ${_MY_EMAIL}"
     fi
@@ -1127,6 +1126,7 @@ _check_root() {
     echo "ERROR: We can not proceed until it is below 90/100"
     _clean_pid_exit _check_root_b
   fi
+  _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
 }
 
 _check_no_systemd() {

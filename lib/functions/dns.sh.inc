@@ -857,8 +857,7 @@ EOF
       _clean_pid_exit _check_ip_hostname_d
     fi
   elif [ "${_STATUS}" = "UPGRADE" ]; then
-    _THISHOST=$(cat /etc/hostname 2>&1)
-    _THISHOST=$(echo -n ${_THISHOST} | tr -d "\n" 2>&1)
+    _THISHOST="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
     _THISHOST=${_THISHOST//[^a-zA-Z0-9-.]/}
     _THISHOST=$(echo -n ${_THISHOST} | tr A-Z a-z 2>&1)
     if [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ]; then

@@ -118,7 +118,7 @@ done
 ### Local variables
 ###
 if [ "${_THIS_DB_HOST}" = "FQDN" ]; then
-  export _THIS_DB_HOST="$(hostname -f 2>/dev/null || uname -n)"
+  export _THIS_DB_HOST="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
 fi
 export _USE_AEGIR_VER=SRC
 export _T_BUILD=SRC
