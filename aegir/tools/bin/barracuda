@@ -321,7 +321,7 @@ _fix_dns_settings() {
   rm -f ${_vBs}/resolv.conf.tmp
   if [ -e "/etc/resolv.conf" ]; then
     if [ -L "/etc/resolv.conf" ]; then
-      _rslvT=`readlink -n /etc/resolv.conf`
+      _rslvT="$(readlink -n /etc/resolv.conf)"
       if [ ! -e "${_rslvT}" ]; then
         rm -f /etc/resolv.conf
       fi
@@ -575,7 +575,7 @@ _check_report() {
 }
 
 _check_php_cli() {
-  _PHP_CHECK=$(readlink -n /usr/bin/php 2>&1)
+  _PHP_CHECK="$(readlink -n /usr/bin/php)"
   if [ ! -x "${_PHP_CHECK}" ]; then
     if [ "${_PHP_CLI_VERSION}" = "8.1" ]; then
       _PHP_CLI_PATH="/opt/php81/bin/php"

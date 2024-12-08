@@ -146,7 +146,7 @@ _fix_dns_settings() {
   rm -f ${_vBs}/resolv.conf.tmp
   if [ -e "/etc/resolv.conf" ]; then
     if [ -L "/etc/resolv.conf" ]; then
-      _rslvT=`readlink -n /etc/resolv.conf`
+      _rslvT="$(readlink -n /etc/resolv.conf)"
       if [ ! -e "${_rslvT}" ]; then
         rm -f /etc/resolv.conf
       fi
@@ -1879,8 +1879,7 @@ _update_agents() {
     else
       mv -f /var/xdrago/websh.sh.old /opt/local/bin/websh
     fi
-    _WEB_SH=$(readlink -n /bin/sh 2>&1)
-    _WEB_SH=$(echo -n ${_WEB_SH} | tr -d "\n" 2>&1)
+    _WEB_SH="$(readlink -n /bin/sh)"
     if [ -x "/opt/local/bin/websh" ] \
       && grep -i '_forward_to_dash' /opt/local/bin/websh &> /dev/null; then
       if [ "${_WEB_SH}" != "/opt/local/bin/websh" ]; then

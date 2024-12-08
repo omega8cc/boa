@@ -136,7 +136,7 @@ _fix_dns_settings() {
   rm -f ${_vBs}/resolv.conf.tmp
   if [ -e "/etc/resolv.conf" ]; then
     if [ -L "/etc/resolv.conf" ]; then
-      _rslvT=`readlink -n /etc/resolv.conf`
+      _rslvT="$(readlink -n /etc/resolv.conf)"
       if [ ! -e "${_rslvT}" ]; then
         rm -f /etc/resolv.conf
       fi
