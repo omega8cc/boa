@@ -493,8 +493,7 @@ _kill_zombies() {
       if [ ! -z "${_usrParentTest}" ]; then
         _PAR_DIR="/data/disk/${_usrParent}/clients"
         _SEC_SYM="/home/${_Existing}/sites"
-        _SEC_DIR=$(readlink -n ${_SEC_SYM} 2>&1)
-        _SEC_DIR=$(echo -n ${_SEC_DIR} | tr -d "\n" 2>&1)
+        _SEC_DIR="$(readlink -n "${_SEC_SYM}")"
         if [ ! -L "${_SEC_SYM}" ] || [ ! -e "${_SEC_DIR}" ] \
           || [ ! -e "/home/${_usrParent}.ftp/users/${_Existing}" ]; then
           mkdir -p /var/backups/zombie/deleted/${_NOW}
@@ -589,8 +588,7 @@ _fix_dot_dirs() {
 _manage_sec_user_drush_aliases() {
   if [ -e "${_Client}" ]; then
     if [ -L "${_usrLtdRoot}/sites" ]; then
-      _symTgt=$(readlink -n ${_usrLtdRoot}/sites 2>&1)
-      _symTgt=$(echo -n ${_symTgt} | tr -d "\n" 2>&1)
+      _symTgt="$(readlink -n "${_usrLtdRoot}/sites")"
     else
       rm -f ${_usrLtdRoot}/sites
     fi
@@ -774,8 +772,7 @@ for _Domain in `find ${_Client}/ -maxdepth 1 -mindepth 1 -type l | sort`; do
   _STATIC_FILES="${_pthParen_tUsr}/static/files/${_rawDom}.files/"
   _STATIC_PRIVATE="${_pthParen_tUsr}/static/files/${_rawDom}.private/"
   _NEW_STATIC_FILES="${_pthParen_tUsr}/static/files/${_rawDom}/"
-  _PATH_DOM=$(readlink -n ${_Domain} 2>&1)
-  _PATH_DOM=$(echo -n ${_PATH_DOM} | tr -d "\n" 2>&1)
+  _PATH_DOM="$(readlink -n "${_Domain}")"
   _RUBY_PATH="/opt/user/gems/${_usrLtd}"
   _mntPoint=$(find /mnt -mindepth 1 -maxdepth 1 -type d | grep "\." | head -n1) &&
   _MNT_STATIC_FILES="${_mntPoint}/files/${_USER}/static/files/${_rawDom}/"
@@ -2419,8 +2416,7 @@ else
     fi
   fi
   if [ -L "/bin/sh" ] && [ ! -e "/run/octopus_install_run.pid" ]; then
-    _WEB_SH=$(readlink -n /bin/sh 2>&1)
-    _WEB_SH=$(echo -n ${_WEB_SH} | tr -d "\n" 2>&1)
+    _WEB_SH="$(readlink -n /bin/sh)"
     if [ -x "/opt/local/bin/websh" ] \
       && grep -i '_forward_to_dash' /opt/local/bin/websh &> /dev/null; then
       if [ "${_WEB_SH}" != "/opt/local/bin/websh" ]; then
