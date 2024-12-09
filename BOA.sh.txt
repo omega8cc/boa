@@ -1582,9 +1582,10 @@ _update_agents() {
   fi
 
   if [ -d "/data/u" ] \
-    && [ ! -e "${_pthLog}/hosting.cron.queue.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
-    _hQueueF="hosting_cron_queue-reliability.patch"
+    && [ ! -e "${_pthLog}/hosting.cron.queue.ctrl.f98.${_tRee}.${_xSrl}.pid" ]; then
+    _hQueueF="hosting_cron.module"
     _hQueueP="/var/xdrago/conf/${_hQueueF}"
+    _find_correct_ip
     if [ ! -e "${_hQueueP}" ]; then
       curl ${_crlGet} "${_urlHmr}/patches/${_hQueueF}" -o ${_hQueueP}
     fi
@@ -1602,17 +1603,24 @@ _update_agents() {
           | sed "s/[\,']//g" 2>&1)
         _hmDir="${_hmPlr}/profiles/hostmaster/modules/aegir/hosting"
         _hmQmd="${_hmDir}/cron/hosting_cron.module"
+        if [ -e "${_hmDir}/cron/hosting_cron.module.orig" ]; then
+          rm -f ${_hmDir}/cron/hosting_cron.module.orig
+        fi
+        if [ -e "${_hmDir}/cron/hosting_cron.module.rej" ]; then
+          rm -f ${_hmDir}/cron/hosting_cron.module.rej
+        fi
         if [ -e "${_hmQmd}" ] && [ -e "${_hQueueP}" ]; then
-          _isPatched=$(grep "url_own" ${_hmQmd} 2>&1)
+          _isPatched=$(grep "url_own" "${_hmQmd}")
           if [[ ! "${_isPatched}" =~ "url_own" ]]; then
-            cd ${_hmDir}
-            patch -p1 < ${_hQueueP} &> /dev/null
-            cd
+            cp -a ${_hQueueP} ${_hmDir}/cron/
+            if [ -e "${_hmDir}/cron/${_hQueueF}" ]; then
+              sed -i "s/127.0.0.1/${_LOC_IP}/g" "${_hmDir}/cron/${_hQueueF}"
+            fi
           fi
         fi
       fi
     done
-    touch ${_pthLog}/hosting.cron.queue.ctrl.f99.${_tRee}.${_xSrl}.pid
+    touch ${_pthLog}/hosting.cron.queue.ctrl.f98.${_tRee}.${_xSrl}.pid
   fi
 
   if [ -d "/data/u" ] \
