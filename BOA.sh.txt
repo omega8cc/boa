@@ -348,6 +348,7 @@ _verify_boa_keys() {
     echo "PROC: _verify_boa_keys in BOA.sh.txt"
   fi
   if [ "${_tRee}" = "pro" ] || [ "${_tRee}" = "dev" ]; then
+    _if_hosted_sys
     _allw=NO
     _urlEnc="http://${_USE_MIR}/enc/2024"
     _encName=$(echo ${_hName} \
