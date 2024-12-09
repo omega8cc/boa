@@ -1,0 +1,478 @@
+<?php
+/**
+ * @file
+ * Allow the hosting system to cron all the installed sites on a schedule.
+ */
+
+// Define the default cron interval, if not specified
+// in hosting_cron_default_interval variable.
+define('ADV_CRON_DEFAULT', 3600);
+
+// Define the interval interpreted as cron turned off.
+define('ADV_CRON_TURNED_OFF', 0);
+
+// Define the max number of sites to run cron in parallel.
+define('ADV_CRON_MAX_PLL', 5);
+
+/**
+ * Implements hook_hosting_queues().
+ *
+ * @todo: In Hosting 4.x change the type to HOSTING_QUEUE_TYPE_SPREAD.
+ */
+function hosting_cron_hosting_queues() {
+  $items['cron'] = array(
+    'type' => HOSTING_QUEUE_TYPE_BATCH,
+    'name' => t('Advanced Cron queue'),
+    'description' => t('Run advanced cron on hosted sites.'),
+    'total_items' => hosting_cron_hosting_site_count(),
+    'frequency' => strtotime("1 min", 0),
+    'min_threads' => 6,
+    'max_threads' => 12,
+    'threshold' => 100,
+    'singular' => t('site'),
+    'plural' => t('sites'),
+  );
+  return $items;
+}
+
+function hosting_cron_hosting_site_count() {
+  $sql = "SELECT count(n.nid) FROM {node} n
+    LEFT JOIN {hosting_site} hs ON n.nid = hs.nid
+    LEFT JOIN {hosting_cron} hac ON n.nid = hac.nid
+    WHERE n.type = :site AND hs.status = :status
+    AND ((hac.cron_interval IS NOT NULL AND hac.cron_interval > 0)
+    OR (hac.cron_interval IS NULL AND :cron_interval > 0))";
+  $result = db_query($sql, array(':site' => 'site', ':status' => HOSTING_SITE_ENABLED, ':cron_interval' => variable_get('hosting_cron_default_interval', ADV_CRON_DEFAULT)))->fetchField();
+  return $result;
+}
+
+/**
+ * Implements hook_permission().
+ */
+function hosting_cron_permission() {
+  return array(
+    'configure site cron interval' => array(
+      'title' => t('configure site cron interval'),
+    ),
+  );
+}
+
+/**
+ * Queue callback (hosting_<QUEUE_NAME>_queue) for the advanced cron queue.
+ *
+ * This function is called by hosting_run_queue() whenever the "Advanced Cron"
+ * queue is run.
+ */
+function hosting_cron_queue($count = ADV_CRON_MAX_PLL) {
+  if (is_readable($_SERVER['HOME'] . '/static/control/cron-proxy.info')) {
+    $use_proxy_mode = TRUE;
+  }
+  else {
+    $use_proxy_mode = FALSE;
+  }
+  // Get a list of sites for which to run cron.
+  $sites = hosting_cron_get_sites($count);
+  foreach ($sites as $site) {
+    $site_name = hosting_context_name($site->nid);
+    $this_name = ltrim($site_name, '@');
+    $this_host = '-H "Host: ' . $this_name . '"';
+    $this_cuid = '.cron.' . md5($this_name . '.' . $site->nid) . '.pid';
+    $profile = node_load($site->profile);
+    $platform = node_load($site->platform);
+    if ($profile->short_name == 'hostmaster') {
+      provision_backend_invoke($site_name, "cron");
+    }
+    elseif (variable_get('hosting_cron_use_backend', TRUE)) {
+      provision_backend_invoke($site_name, "elysia-cron");
+      sleep(3);
+      provision_backend_invoke($site_name, "cron");
+    }
+    else {
+      if (is_readable($_SERVER['HOME'] . '/.tmp')) {
+        $this_tmp = $_SERVER['HOME'] . '/.tmp/';
+      }
+      else {
+        $this_tmp = '/tmp/';
+      }
+      $result = db_query("SELECT p.publish_path FROM {hosting_platform} p LEFT JOIN {hosting_site} s ON p.nid=s.platform WHERE platform = :platform", array(':platform' => $platform->nid));
+      foreach ($result as $row) {
+        $this_platform_root = $row->publish_path;
+      }
+      if (is_readable($this_platform_root . '/core') ||
+          is_readable($this_platform_root . '/docroot/core') ||
+          is_readable($this_platform_root . '/html/core') ||
+          is_readable($this_platform_root . '/web/core')) {
+        $url_own = 'https://' . $this_name . '/cron/';
+        $url = 'https://127.0.0.1/cron/';
+        // Optionally add the cron_key query string key if the site has one.
+        if (!empty($site->cron_key)) {
+          $url_own .= rawurlencode($site->cron_key);
+          $url .= rawurlencode($site->cron_key);
+        }
+      }
+      else {
+        $url_own = 'https://' . $this_name . '/cron.php';
+        $url = 'https://127.0.0.1/cron.php';
+        // Optionally add the cron_key query string key if the site has one.
+        if (!empty($site->cron_key)) {
+          $url_own .= '?cron_key=' . rawurlencode($site->cron_key);
+          $url .= '?cron_key=' . rawurlencode($site->cron_key);
+        }
+      }
+      // Prepare the log file and command.
+      $this_clog = $this_tmp . $this_cuid . '.log';
+      // Add a date-stamped entry to the log.
+      $date = date("Y-m-d H:i:s");
+      if (!empty($use_proxy_mode)) {
+        $date = date("Y-m-d H:i:s");
+        file_put_contents($this_clog, "\n$date cURL command via IP request\n", FILE_APPEND);
+        file_put_contents($this_clog, "$date KEY $this_host KEY $url\n", FILE_APPEND);
+        $second_cmd = 'curl -L --max-redirs 5 -k -s --retry 3 --retry-delay 5 --max-time 600 -A iCabProXy ' . $this_host . ' ' . $url;
+        $second_output = [];
+        $second_return_var = 0;
+        exec($second_cmd, $second_output, $second_return_var);
+        // Append curl response to the log.
+        if (!empty($second_response)) {
+          file_put_contents($this_clog, "$date First IP Response:\n" . implode("\n", $second_output) . "\n", FILE_APPEND);
+        } else {
+          file_put_contents($this_clog, "$date First IP request returned empty OK response.\n", FILE_APPEND);
+        }
+      }
+      else {
+        file_put_contents($this_clog, "\n$date cURL command via DOMAIN request\n", FILE_APPEND);
+        file_put_contents($this_clog, "$date KEY $url_own\n", FILE_APPEND);
+        $cmd = 'curl -L --max-redirs 5 -k -s --retry 3 --retry-delay 5 --max-time 600 -A iCabProXy ' . $url_own;
+        $output = [];
+        $return_var = 0;
+        exec($cmd, $output, $return_var);
+        $response = implode("\n", $output);
+        if (!empty($response)) {
+          $date = date("Y-m-d H:i:s");
+          file_put_contents($this_clog, "$date NON-EMPTY-RESPONSE FOLLOWS\n", FILE_APPEND);
+          file_put_contents($this_clog, $response . "\n", FILE_APPEND);
+          file_put_contents($this_clog, "$date Another cURL command, this time via IP request\n", FILE_APPEND);
+          file_put_contents($this_clog, "$date KEY $this_host KEY $url\n", FILE_APPEND);
+          $second_cmd = 'curl -L --max-redirs 5 -k -s --retry 3 --retry-delay 5 --max-time 600 -A iCabProXy ' . $this_host . ' ' . $url;
+          $second_output = [];
+          $second_return_var = 0;
+          exec($second_cmd, $second_output, $second_return_var);
+          if (!empty($second_response)) {
+            file_put_contents($this_clog, "$date Second IP Response:\n" . implode("\n", $second_output) . "\n", FILE_APPEND);
+          } else {
+            file_put_contents($this_clog, "$date Second IP request returned empty OK response.\n", FILE_APPEND);
+          }
+        }
+        else {
+          $date = date("Y-m-d H:i:s");
+          file_put_contents($this_clog, "$date First DOMAIN request returned empty OK response.\n", FILE_APPEND);
+        }
+      }
+    }
+    db_update('hosting_site')
+      ->fields(array(
+        'last_cron' => REQUEST_TIME,
+      ))
+      ->condition('nid', $site->nid)
+      ->execute();
+    // A small trick to avoid high load when still too many crons are started at once.
+    unset($site_name, $this_name, $this_host, $this_cuid, $this_clog, $profile, $platform, $this_tmp, $this_platform_root, $url);
+    sleep(3);
+  }
+}
+
+/**
+ * Implements hook_node_load().
+ */
+function hosting_cron_node_load($nodes, $types) {
+  foreach ($nodes as $nid => &$node) {
+    if ($node->type == 'site') {
+
+      $this_cron_interval = db_query("SELECT cron_interval FROM {hosting_cron} WHERE nid = :nid", array(':nid' => $node->nid))->fetchField();
+      if ($this_cron_interval) {
+        $this_cron_interval = array('cron_interval' => $this_cron_interval);
+      }
+
+      if (isset($node->cron_interval) && $node->cron_interval > -1) {
+        $cron_interval_ok = TRUE;
+      }
+      else {
+        if (isset($this_cron_interval) && $this_cron_interval > -1) {
+          $node->cron_interval = $this_cron_interval;
+        }
+      }
+
+      return $this_cron_interval;
+    }
+  }
+}
+
+/**
+ * Implements hook_node_view().
+ */
+function hosting_cron_node_view($node, $view_mode, $langcode) {
+  if ($node->type == 'site') {
+    if ($view_mode != 'teaser') {
+      $this_cron_interval = db_query("SELECT cron_interval FROM {hosting_cron} WHERE nid = :nid", array(':nid' => $node->nid))->fetchField();
+      if (!$node->cron_interval && $this_cron_interval) {
+        $node->cron_interval = $this_cron_interval;
+      }
+      $cron_text = $this_cron_interval == ADV_CRON_TURNED_OFF ? t('Disabled') : t('Every !interval', array('!interval' => format_interval($this_cron_interval)));
+      $cron_text .= '<br />' . t('(Last run: !interval)', array('!interval' => hosting_format_interval($node->last_cron)));
+      $node->content['info']['last_cron'] = array(
+        '#type' => 'item',
+        '#title' => t('Cron'),
+        '#weight' => 20,
+        '#markup' => $cron_text,
+      );
+    }
+  }
+}
+
+/**
+ * Implements hook_node_delete().
+ */
+function hosting_cron_node_delete($node) {
+  if ($node->type == "site") {
+    db_delete('hosting_cron')
+      ->condition('nid', $node->nid)
+      ->execute();
+  }
+}
+
+/**
+ * Implements hook_node_update().
+ */
+function hosting_cron_node_update($node) {
+  if ($node->type == "site") {
+    $use_cron_interval = ADV_CRON_TURNED_OFF;
+    $this_cron_interval = db_query("SELECT cron_interval FROM {hosting_cron} WHERE nid = :nid", array(':nid' => $node->nid))->fetchField();
+
+    if ($node->cron_interval > -1) {
+      $use_cron_interval = $node->cron_interval;
+    }
+    else {
+      if ($this_cron_interval > -1) {
+        $use_cron_interval = $this_cron_interval;
+      }
+    }
+
+    if ($node->nid == 10) {
+      if ($node->cron_interval == ADV_CRON_TURNED_OFF) {
+        db_update('hosting_cron')
+          ->fields(array('cron_interval' => '3600'))
+          ->condition('nid', '10')
+          ->execute();
+      }
+    }
+
+    if ($this_cron_interval > -1) {
+      $cron_interval_ok = TRUE;
+    }
+    else {
+      db_insert('hosting_cron')
+        ->fields(array(
+          'nid' => $node->nid,
+          'cron_interval' => $use_cron_interval,
+        ))
+        ->execute();
+    }
+
+    if ($use_cron_interval == ADV_CRON_TURNED_OFF) {
+      db_update('hosting_cron')
+        ->fields(array(
+          'cron_interval' => ADV_CRON_TURNED_OFF,
+        ))
+        ->condition('nid', $node->nid)
+        ->execute();
+    }
+    elseif ($use_cron_interval > ADV_CRON_TURNED_OFF) {
+      db_update('hosting_cron')
+        ->fields(array(
+          'cron_interval' => $use_cron_interval,
+        ))
+        ->condition('nid', $node->nid)
+        ->execute();
+    }
+    else {
+      db_insert('hosting_cron')
+        ->fields(array(
+          'nid' => $node->nid,
+          'cron_interval' => ADV_CRON_TURNED_OFF,
+        ))
+        ->execute();
+    }
+  }
+}
+
+/**
+ * Implements hook_node_insert().
+ */
+function hosting_cron_node_insert($node) {
+  if ($node->type == 'site') {
+    $use_cron_interval = ADV_CRON_TURNED_OFF;
+    $this_cron_interval = db_query("SELECT cron_interval FROM {hosting_cron} WHERE nid = :nid", array(':nid' => $node->nid))->fetchField();
+
+    if (isset($node->cron_interval) && $node->cron_interval > -1) {
+      $use_cron_interval = $node->cron_interval;
+    }
+    else {
+      if ($this_cron_interval > -1) {
+        $use_cron_interval = $this_cron_interval;
+      }
+    }
+
+    if ($node->nid == 10) {
+      $use_cron_interval = '3600';
+    }
+
+    if ($use_cron_interval == ADV_CRON_TURNED_OFF) {
+      db_insert('hosting_cron')
+        ->fields(array(
+          'nid' => $node->nid,
+          'cron_interval' => ADV_CRON_TURNED_OFF,
+        ))
+        ->execute();
+    }
+    elseif ($use_cron_interval > ADV_CRON_TURNED_OFF) {
+      db_insert('hosting_cron')
+        ->fields(array(
+          'nid' => $node->nid,
+          'cron_interval' => $use_cron_interval,
+        ))
+        ->execute();
+    }
+    else {
+      db_insert('hosting_cron')
+        ->fields(array(
+          'nid' => $node->nid,
+          'cron_interval' => ADV_CRON_TURNED_OFF,
+        ))
+        ->execute();
+    }
+  }
+}
+
+/**
+ * Retrieves a list of sites for which to run cron.
+ */
+function hosting_cron_get_sites($count) {
+  $result = db_query('SELECT n.nid, hs.last_cron, hac.cron_interval FROM {node} n LEFT JOIN {hosting_site} hs ON n.nid = hs.nid LEFT JOIN {hosting_cron} hac ON n.nid = hac.nid WHERE n.type = :site AND hs.status = :status ORDER BY hs.last_cron ASC, n.nid ASC', array(':site' => 'site', ':status' => HOSTING_SITE_ENABLED));
+  $counter = 0;
+  foreach ($result as $site) {
+    if ($counter <= $count && $counter <= ADV_CRON_MAX_PLL) {
+      //
+      // Run cron if it has never ran before for this site,
+      // but only if it has been enabled for this site.
+      //
+      // This shouldn't happen for any newly cloned site,
+      // no matter if the cron is enabled on the source site or not,
+      // to avoid running cron on the cloned copy without any prior control.
+      //
+      // Note that we can't use hosting_cron_default_interval here
+      // if $site->cron_interval is empty / not set yet, so we have to ignore
+      // the first cron run attempt by using ADV_CRON_TURNED_OFF by default
+      // instead of hosting_cron_default_interval if we can't read
+      // $site->cron_interval or it is empty for some reason. This means, however,
+      // that we must store cron_interval also for sites using default value,
+      // or the cron would never run on newly created/cloned site.
+      //
+      if (!$site->last_cron) {
+        $this_cron_interval = db_query("SELECT cron_interval FROM {hosting_cron} WHERE nid = :nid", array(':nid' => $site->nid))->fetchField();
+        if ($this_cron_interval != ADV_CRON_TURNED_OFF) {
+          $sites[$site->nid] = node_load($site->nid);
+          $counter++;
+        }
+      }
+      else {
+        //
+        // Determine the cron interval. If not specified for this site,
+        // use the default hosting_cron_default_interval or
+        // ADV_CRON_DEFAULT.
+        //
+        $this_cron_interval = db_query("SELECT cron_interval FROM {hosting_cron} WHERE nid = :nid", array(':nid' => $site->nid))->fetchField();
+        //
+        // Run cron if it has already ran before for this site,
+        // and the cron is enabled on this site, but cron interval
+        // since last cron run has been exceeded.
+        //
+        if ($this_cron_interval != ADV_CRON_TURNED_OFF) {
+          if ($site->last_cron + $this_cron_interval < time()) {
+            $sites[$site->nid] = node_load($site->nid);
+            $counter++;
+          }
+        }
+      }
+    }
+  }
+  return $sites;
+}
+
+/**
+ * Implements hook_form_<FORM_ID>_alter().
+ */
+function hosting_cron_form_hosting_settings_alter(&$form, $form_state) {
+  $options = hosting_cron_interval_options();
+  unset($options[0]);
+  $form['hosting_cron_default_interval'] = array(
+    '#type' => 'select',
+    '#title' => t('Default cron interval'),
+    '#options' => $options,
+    '#description' => t('The cron interval to use for all sites unless overridden on the site node itself.'),
+    '#default_value' => variable_get('hosting_cron_default_interval', ADV_CRON_DEFAULT),
+  );
+  $form['hosting_cron_use_backend'] = array(
+    '#type' => 'radios',
+    '#title' => t('Cron method'),
+    '#description' => t('For running cron on a site. You can use the drush cron implementation or a traditional wget method.'),
+    '#options' => array('Wget', 'Drush'),
+    '#default_value' => variable_get('hosting_cron_use_backend', TRUE),
+  );
+  // Add some weight to the buttons to push them to the bottom of the form.
+  $form['buttons']['#weight'] = 1000;
+}
+
+/**
+ * Implements hook_form_<FORM_ID>_alter().
+ *
+ * Alter the node form for a site to the cron interval setting.
+ */
+function hosting_cron_form_site_node_form_alter(&$form, $form_state) {
+  if (user_access('configure site cron interval')) {
+    if (!empty($form['#node']) && isset($form['#node']->nid)) {
+      if (empty($form['#node']->cron_interval)) {
+        $default_value = ADV_CRON_TURNED_OFF;
+      }
+      else {
+        $default_value = $form['#node']->cron_interval;
+      }
+    }
+    else {
+      $default_value = variable_get('hosting_cron_default_interval', ADV_CRON_DEFAULT);
+    }
+    $form['cron_interval'] = array(
+      '#type' => 'select',
+      '#title' => t('Cron interval'),
+      '#options' => hosting_cron_interval_options(),
+      '#description' => t('Cron will be automatically run for this site at the interval defined here.'),
+      '#default_value' => $default_value,
+      '#weight' => 3,
+    );
+    return $form;
+  }
+}
+
+/**
+ * Returns an array of options for the cron interval.
+ *
+ * @return
+ *   An associative array with the interval in seconds as key, and a
+ *   human-readable interval as value.
+ */
+function hosting_cron_interval_options() {
+  $options = array(
+    ADV_CRON_TURNED_OFF => t('Disabled'),
+    ADV_CRON_DEFAULT => t('1h (default)'),
+  );
+  $options += drupal_map_assoc(array(60, 180, 300, 600, 900, 1800, 3600, 10800, 21600, 43200, 86400, 604800), 'format_interval');
+  return $options;
+}
