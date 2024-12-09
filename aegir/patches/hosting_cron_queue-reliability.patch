@@ -1,0 +1,113 @@
+From dc226392e0480bb4ea6fe98ff2f65bbf1fd89e65 Mon Sep 17 00:00:00 2001
+From: BOA Dev Team <boa@omega8.cc>
+Date: Mon, 9 Dec 2024 02:45:37 +0100
+Subject: [PATCH] Improve hosting_cron_queue reliability
+
+---
+ cron/hosting_cron.module | 61 ++++++++++++++++++++++++++++++++++++----
+ 1 file changed, 56 insertions(+), 5 deletions(-)
+
+diff --git a/cron/hosting_cron.module b/cron/hosting_cron.module
+index 122e5378..ec5347d9 100644
+--- a/cron/hosting_cron.module
++++ b/cron/hosting_cron.module
+@@ -64,6 +64,12 @@ function hosting_cron_permission() {
+  * queue is run.
+  */
+ function hosting_cron_queue($count = ADV_CRON_MAX_PLL) {
++  if (is_readable($_SERVER['HOME'] . '/static/control/cron-proxy.info')) {
++    $use_proxy_mode = TRUE;
++  }
++  else {
++    $use_proxy_mode = FALSE;
++  }
+   // Get a list of sites for which to run cron.
+   $sites = hosting_cron_get_sites($count);
+   foreach ($sites as $site) {
+@@ -96,26 +102,70 @@ function hosting_cron_queue($count = ADV_CRON_MAX_PLL) {
+           is_readable($this_platform_root . '/docroot/core') ||
+           is_readable($this_platform_root . '/html/core') ||
+           is_readable($this_platform_root . '/web/core')) {
++        $url_own = 'https://' . $this_name . '/cron/';
+         $url = 'https://127.0.0.1/cron/';
+         // Optionally add the cron_key query string key if the site has one.
+         if (!empty($site->cron_key)) {
++          $url_own .= rawurlencode($site->cron_key);
+           $url .= rawurlencode($site->cron_key);
+         }
+       }
+       else {
++        $url_own = 'https://' . $this_name . '/cron.php';
+         $url = 'https://127.0.0.1/cron.php';
+         // Optionally add the cron_key query string key if the site has one.
+         if (!empty($site->cron_key)) {
++          $url_own .= '?cron_key=' . rawurlencode($site->cron_key);
+           $url .= '?cron_key=' . rawurlencode($site->cron_key);
+         }
+       }
+-      if (is_readable($this_tmp . $this_cuid)) {
+-        system('touch ' . $this_tmp . '.busy' . $this_cuid);
++      // Prepare the log file and command.
++      $this_clog = $this_tmp . $this_cuid . '.log';
++      // Add a date-stamped entry to the log.
++      $date = date("Y-m-d H:i:s");
++      if (!empty($use_proxy_mode)) {
++        $date = date("Y-m-d H:i:s");
++        file_put_contents($this_clog, "\n$date cURL command via IP request\n", FILE_APPEND);
++        file_put_contents($this_clog, "$date KEY $this_host KEY $url\n", FILE_APPEND);
++        $second_cmd = 'curl -L --max-redirs 5 -k -s --retry 3 --retry-delay 5 --max-time 600 -A iCabProXy ' . $this_host . ' ' . $url;
++        $second_output = [];
++        $second_return_var = 0;
++        exec($second_cmd, $second_output, $second_return_var);
++        // Append curl response to the log.
++        if (!empty($second_response)) {
++          file_put_contents($this_clog, "$date First IP Response:\n" . implode("\n", $second_output) . "\n", FILE_APPEND);
++        } else {
++          file_put_contents($this_clog, "$date First IP request returned empty OK response.\n", FILE_APPEND);
++        }
+       }
+       else {
+-        system('touch ' . $this_tmp . $this_cuid);
+-        system('curl -L --max-redirs 5 -k -s --retry 1 --retry-delay 10 --max-time 300 -A iCabProXy ' . $this_host . ' ' . $url . ' > /dev/null');
+-        system('rm -f ' . $this_tmp . $this_cuid);
++        file_put_contents($this_clog, "\n$date cURL command via DOMAIN request\n", FILE_APPEND);
++        file_put_contents($this_clog, "$date KEY $url_own\n", FILE_APPEND);
++        $cmd = 'curl -L --max-redirs 5 -k -s --retry 3 --retry-delay 5 --max-time 600 -A iCabProXy ' . $url_own;
++        $output = [];
++        $return_var = 0;
++        exec($cmd, $output, $return_var);
++        $response = implode("\n", $output);
++        if (!empty($response)) {
++          $date = date("Y-m-d H:i:s");
++          file_put_contents($this_clog, "$date NON-EMPTY-RESPONSE FOLLOWS\n", FILE_APPEND);
++          file_put_contents($this_clog, $response . "\n", FILE_APPEND);
++          file_put_contents($this_clog, "$date Another cURL command, this time via IP request\n", FILE_APPEND);
++          file_put_contents($this_clog, "$date KEY $this_host KEY $url\n", FILE_APPEND);
++          $second_cmd = 'curl -L --max-redirs 5 -k -s --retry 3 --retry-delay 5 --max-time 600 -A iCabProXy ' . $this_host . ' ' . $url;
++          $second_output = [];
++          $second_return_var = 0;
++          exec($second_cmd, $second_output, $second_return_var);
++          if (!empty($second_response)) {
++            file_put_contents($this_clog, "$date Second IP Response:\n" . implode("\n", $second_output) . "\n", FILE_APPEND);
++          } else {
++            file_put_contents($this_clog, "$date Second IP request returned empty OK response.\n", FILE_APPEND);
++          }
++        }
++        else {
++          $date = date("Y-m-d H:i:s");
++          file_put_contents($this_clog, "$date First DOMAIN request returned empty OK response.\n", FILE_APPEND);
++        }
+       }
+     }
+     db_update('hosting_site')
+@@ -125,6 +175,7 @@ function hosting_cron_queue($count = ADV_CRON_MAX_PLL) {
+       ->condition('nid', $site->nid)
+       ->execute();
+     // A small trick to avoid high load when still too many crons are started at once.
++    unset($site_name, $this_name, $this_host, $this_cuid, $this_clog, $profile, $platform, $this_tmp, $this_platform_root, $url);
+     sleep(3);
+   }
+ }
+--
+2.45.1
+
