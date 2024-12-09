@@ -1584,6 +1584,40 @@ _update_agents() {
   fi
 
   if [ -d "/data/u" ] \
+    && [ ! -e "${_pthLog}/hosting.cron.queue.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
+    _hQueueF="hosting_cron_queue-reliability.patch"
+    _hQueueP="/var/xdrago/conf/${_hQueueF}"
+    if [ ! -e "${_hQueueP}" ] \
+      curl ${_crlGet} "${_urlHmr}/patches/${_hQueueF}" -o ${_hQueueP}
+    fi
+    for _pthSysUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
+      _tUsr=
+      _tUsr=$(echo ${_pthSysUsr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
+      if [ -n "${_tUsr}" ] && [ "${_tUsr}" != "arch" ]; then
+        if [ -e "${_pthSysUsr}/log/hosting_cron_use_backend.txt" ]; then
+          rm -f ${_pthSysUsr}/log/hosting_cron_use_backend.txt
+        fi
+        _hmPlr=$(cat ${_pthSysUsr}/.drush/hostmaster.alias.drushrc.php \
+          | grep "root'" \
+          | cut -d: -f2 \
+          | awk '{ print $3}' \
+          | sed "s/[\,']//g" 2>&1)
+        _hmDir="${_hmPlr}/profiles/hostmaster/modules/aegir/hosting"
+        _hmQmd="${_hmDir}/cron/hosting_cron.module"
+        if [ -e "${_hmQmd}" ] && [ -e "${_hQueueP}" ]; then
+          _isPatched=$(grep "url_own" ${_hmQmd} 2>&1)
+          if [[ ! "${_isPatched}" =~ "url_own" ]]; then
+            cd ${_hmDir}
+            patch -p1 < ${_hQueueP} &> /dev/null
+            cd
+          fi
+        fi
+      fi
+    done
+    touch ${_pthLog}/hosting.cron.queue.ctrl.f99.${_tRee}.${_xSrl}.pid
+  fi
+
+  if [ -d "/data/u" ] \
     && [ ! -e "${_pthLog}/hosting.cron.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
     for _pthSysUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
       _tUsr=
