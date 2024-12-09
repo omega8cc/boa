@@ -190,7 +190,7 @@ _get_dev_arch() {
     _success=0
     while [ ${_attempt_num} -le ${_max_attempts} ]; do
       [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Attempt ${_attempt_num} of ${_max_attempts}: Downloading $1..."
-      if curl "${_crlGet}" "${_urlDev}/$1" -o "$1"; then
+      if curl ${_crlGet} "${_urlDev}/$1" -o "$1"; then
         _success=1
         break
       else
@@ -220,7 +220,7 @@ _get_dev_ext() {
     _success=0
     while [ ${_attempt_num} -le ${_max_attempts} ]; do
       [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Attempt ${_attempt_num} of ${_max_attempts}: Downloading $1..."
-      if curl "${_crlGet}" "${_urlDev}/${_tRee}/$1" -o "$1"; then
+      if curl ${_crlGet} "${_urlDev}/${_tRee}/$1" -o "$1"; then
         _success=1
         break
       else
@@ -250,7 +250,7 @@ _get_dev_stc() {
     _success=0
     while [ ${_attempt_num} -le ${_max_attempts} ]; do
       [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Attempt ${_attempt_num} of ${_max_attempts}: Downloading $1..."
-      if curl "${_crlGet}" "${_urlDev}/${_tRee}/static/$1" -o "$1"; then
+      if curl ${_crlGet} "${_urlDev}/${_tRee}/static/$1" -o "$1"; then
         _success=1
         break
       else
@@ -280,7 +280,7 @@ _get_dev_contrib() {
     _success=0
     while [ ${_attempt_num} -le ${_max_attempts} ]; do
       [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Attempt ${_attempt_num} of ${_max_attempts}: Downloading $1..."
-      if curl "${_crlGet}" "${_urlDev}/${_tRee}/contrib/$1" -o "$1"; then
+      if curl ${_crlGet} "${_urlDev}/${_tRee}/contrib/$1" -o "$1"; then
         _success=1
         break
       else
@@ -310,7 +310,7 @@ _get_dev_src() {
     _success=0
     while [ ${_attempt_num} -le ${_max_attempts} ]; do
       [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Attempt ${_attempt_num} of ${_max_attempts}: Downloading $1..."
-      if curl "${_crlGet}" "${_urlDev}/src/$1" -o "$1"; then
+      if curl ${_crlGet} "${_urlDev}/src/$1" -o "$1"; then
         _success=1
         break
       else

@@ -590,9 +590,9 @@ _tune_sql_memory_limits() {
     _msg "WAIT: This may take a while, please wait..."
     _MYSQLTUNER_TEST_RESULT=OK
     rm -f /var/opt/mysqltuner*
-    curl "${_crlGet}" "${_urlDev}/mysqltuner.pl.${_MYSQLTUNER_VRN}" -o ${_pthTun}
+    curl ${_crlGet} "${_urlDev}/mysqltuner.pl.${_MYSQLTUNER_VRN}" -o ${_pthTun}
     if [ ! -e "${_pthTun}" ]; then
-      curl "${_crlGet}" "${_urlDev}/mysqltuner.pl" -o ${_pthTun}
+      curl ${_crlGet} "${_urlDev}/mysqltuner.pl" -o ${_pthTun}
     fi
     if [ -e "${_pthTun}" ]; then
       perl ${_pthTun} > ${_outTun} 2>&1

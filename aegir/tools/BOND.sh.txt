@@ -430,9 +430,9 @@ _find_correct_ip() {
   if [ -e "/root/.found_correct_ipv4.cnf" ]; then
     _LOC_IP=$(cat /root/.found_correct_ipv4.cnf 2>/dev/null | tr -d '\n')
   else
-    _LOC_IP=$(curl "${_crlGet}" https://api.ipify.org | sed 's/[^0-9\.]//g')
+    _LOC_IP=$(curl ${_crlGet} https://api.ipify.org | sed 's/[^0-9\.]//g')
     if [ -z "${_LOC_IP}" ]; then
-      _LOC_IP=$(curl "${_crlGet}" http://ipv4.icanhazip.com | sed 's/[^0-9\.]//g')
+      _LOC_IP=$(curl ${_crlGet} http://ipv4.icanhazip.com | sed 's/[^0-9\.]//g')
     fi
     if [ ! -z "${_LOC_IP}" ]; then
       echo ${_LOC_IP} > /root/.found_correct_ipv4.cnf
@@ -1227,9 +1227,9 @@ _tune_sql_memory_limits() {
     _msg "WAIT: This may take a while, please wait..."
     _MYSQLTUNER_TEST_RESULT=OK
     rm -f /var/opt/mysqltuner*
-    curl "${_crlGet}" "${_urlDev}/mysqltuner.pl.${_MYSQLTUNER_VRN}" -o ${_pthTun}
+    curl ${_crlGet} "${_urlDev}/mysqltuner.pl.${_MYSQLTUNER_VRN}" -o ${_pthTun}
     if [ ! -e "${_pthTun}" ]; then
-      curl "${_crlGet}" "${_urlDev}/mysqltuner.pl" -o ${_pthTun}
+      curl ${_crlGet} "${_urlDev}/mysqltuner.pl" -o ${_pthTun}
     fi
     if [ -e "${_pthTun}" ]; then
       perl ${_pthTun} > ${_outTun} 2>&1
@@ -1797,7 +1797,7 @@ rm -rf /opt/tmp/boa
 if [ "${_AEGIR_VERSION}" != "static" ]; then
   ${_gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git &> /dev/null
 else
-  curl "${_crlGet}" "${_urlDev}/${_AEGIR_VERSION}/boa.tar.gz" | tar -xzf -
+  curl ${_crlGet} "${_urlDev}/${_AEGIR_VERSION}/boa.tar.gz" | tar -xzf -
   _BOA_REPO_NAME="boa"
 fi
 #

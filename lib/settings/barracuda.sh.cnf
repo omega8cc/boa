@@ -1278,7 +1278,7 @@ _verify_boa_keys() {
     fi
     mkdir -p /var/opt
     rm -f /var/opt/_encN*
-    curl "${_crlGet}" "${_urlEnc}/${_encName}" -o /var/opt/_encN.${_encName}.tmp
+    curl ${_crlGet} "${_urlEnc}/${_encName}" -o /var/opt/_encN.${_encName}.tmp
     wait
     echo "${_hName}.${_encName}" > /var/opt/_encN_local.${_encName}.tmp
     wait
@@ -1349,7 +1349,7 @@ _get_dev_src_pre() {
     echo "PROC: _get_dev_src_pre in barracuda"
   fi
   if [ ! -z "$1" ]; then
-    curl "${_crlGet}" "${_urlDev}/src/$1" -o "$1"
+    curl ${_crlGet} "${_urlDev}/src/$1" -o "$1"
     if [ -e "$1" ]; then
       _extract_archive_pre "$1"
     else

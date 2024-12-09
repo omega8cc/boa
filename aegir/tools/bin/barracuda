@@ -1752,8 +1752,8 @@ _proceed() {
     _check_sql_access
   fi
 
-  curl "${_crlGet}" "${_rgUrl}/${_barName}" -o ${_vBs}/${_barName}
-  curl "${_crlGet}" "${_rgUrl}/${_pthIncB}" -o ${_vBs}/${_filIncB}
+  curl ${_crlGet} "${_rgUrl}/${_barName}" -o ${_vBs}/${_barName}
+  curl ${_crlGet} "${_rgUrl}/${_pthIncB}" -o ${_vBs}/${_filIncB}
 
   _up_action
   _up_finish

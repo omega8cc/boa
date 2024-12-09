@@ -683,10 +683,10 @@ _if_firewall_update() {
     cp -af /opt/fire.sh      ${_WFC}/fire.sh-pre
     cp -af /etc/csf/csf.conf ${_WFC}/csf.conf-pre
     cd ${_WFC}
-    curl "${_crlGet}" "${_urlHmr}/conf/var/sysctl.conf"      -o sysctl.conf
-    curl "${_crlGet}" "${_urlHmr}/tools/host/host-water.sh"  -o host-water.sh
-    curl "${_crlGet}" "${_urlHmr}/tools/host/host-fire.sh"   -o host-fire.sh
-    curl "${_crlGet}" "http://${_USE_MIR}/cluster/csf.conf" -o csf.conf
+    curl ${_crlGet} "${_urlHmr}/conf/var/sysctl.conf"      -o sysctl.conf
+    curl ${_crlGet} "${_urlHmr}/tools/host/host-water.sh"  -o host-water.sh
+    curl ${_crlGet} "${_urlHmr}/tools/host/host-fire.sh"   -o host-fire.sh
+    curl ${_crlGet} "http://${_USE_MIR}/cluster/csf.conf" -o csf.conf
     cp -af ${_WFC}/sysctl.conf   /etc/sysctl.conf
     cp -af ${_WFC}/host-water.sh /opt/water.sh
     cp -af ${_WFC}/host-fire.sh  /opt/fire.sh
@@ -1048,14 +1048,14 @@ Dir::Etc::SourceList "/etc/apt/sources.list";
       _tURL="${_urlHmr}/${_tBn}/proxysql_galera_checker"
       echo PGC download URL is ${_tURL}
       curl -I ${_tURL}
-      curl "${_crlGet}" "${_tURL}" -o ${_pGc}
+      curl ${_crlGet} "${_tURL}" -o ${_pGc}
       if [ ! -e "${_pGc}" ]; then
-        curl "${_crlGet}" "${_tURL}" -o ${_pGc}
+        curl ${_crlGet} "${_tURL}" -o ${_pGc}
       else
         _PAV_TEST=$(grep PROXYSQL_ADMIN_VERSION ${_pGc} 2>&1)
         if [[ ! "${_PAV_TEST}" =~ "PROXYSQL_ADMIN_VERSION" ]]; then
           rm -f ${_pGc}
-          curl "${_crlGet}" "${_tURL}" -o ${_pGc}
+          curl ${_crlGet} "${_tURL}" -o ${_pGc}
         fi
       fi
       chmod 755 ${_pGc}
@@ -1886,14 +1886,14 @@ _upgrade_db_cluster() {
       rm -f /vservers/${_idn}${_optBin}/boa
     fi
     mkdir -p /vservers/${_idn}/${_optBin}
-    curl "${_crlGet}" "${_urlHmr}/${_tBn}/boa" -o /vservers/${_idn}${_optBin}/boa
+    curl ${_crlGet} "${_urlHmr}/${_tBn}/boa" -o /vservers/${_idn}${_optBin}/boa
     ssh ${_NOSTRICT} root@${IP} "chmod 700 ${_optBin}/boa"
 
     if [ -e "/vservers/${_idn}${_optBin}/mycnfup" ]; then
       rm -f /vservers/${_idn}${_optBin}/mycnfup
     fi
     mkdir -p /vservers/${_idn}/${_optBin}
-    curl "${_crlGet}" "${_urlHmr}/${_tBn}/mycnfup" -o /vservers/${_idn}${_optBin}/mycnfup
+    curl ${_crlGet} "${_urlHmr}/${_tBn}/mycnfup" -o /vservers/${_idn}${_optBin}/mycnfup
     ssh ${_NOSTRICT} root@${IP} "chmod 700 ${_optBin}/mycnfup"
     if [ -e "/vservers/${_idn}${_optBin}/mycnfup" ]; then
       echo "Running mycnfup check on ${_idn}/${IP}..."
@@ -2395,7 +2395,7 @@ _check_heads() {
       rm -f ${i}${_optBin}/boa
     fi
     mkdir -p ${i}${_optBin}
-    curl "${_crlGet}" "${_urlHmr}/${_tBn}/boa" -o ${i}${_optBin}/boa
+    curl ${_crlGet} "${_urlHmr}/${_tBn}/boa" -o ${i}${_optBin}/boa
     chmod 700 ${i}${_optBin}/boa
     ls -la ${i}${_optBin}/boa
     if [[ ${_THIS_VM} =~ v168q ]]; then
@@ -2424,7 +2424,7 @@ _restart_db_cluster() {
       ssh ${_NOSTRICT} root@${IP} "bash ${_optBin}/mycnfup stop"
     else
       mkdir -p /vservers/${_idn}/${_optBin}
-      curl "${_crlGet}" "${_urlHmr}/${_tBn}/mycnfup" -o /vservers/${_idn}${_optBin}/mycnfup
+      curl ${_crlGet} "${_urlHmr}/${_tBn}/mycnfup" -o /vservers/${_idn}${_optBin}/mycnfup
       ssh ${_NOSTRICT} root@${IP} "chmod 700 ${_optBin}/mycnfup"
       echo "Running mycnfup stop on ${_idn}/${IP}..."
       ssh ${_NOSTRICT} root@${IP} "bash ${_optBin}/mycnfup stop"

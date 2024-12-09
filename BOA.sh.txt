@@ -127,9 +127,9 @@ _find_correct_ip() {
   if [ -e "/root/.found_correct_ipv4.cnf" ]; then
     _LOC_IP=$(cat /root/.found_correct_ipv4.cnf 2>/dev/null | tr -d '\n')
   else
-    _LOC_IP=$(curl "${_crlGet}" https://api.ipify.org | sed 's/[^0-9\.]//g')
+    _LOC_IP=$(curl ${_crlGet} https://api.ipify.org | sed 's/[^0-9\.]//g')
     if [ -z "${_LOC_IP}" ]; then
-      _LOC_IP=$(curl "${_crlGet}" http://ipv4.icanhazip.com | sed 's/[^0-9\.]//g')
+      _LOC_IP=$(curl ${_crlGet} http://ipv4.icanhazip.com | sed 's/[^0-9\.]//g')
     fi
     if [ ! -z "${_LOC_IP}" ]; then
       echo ${_LOC_IP} > /root/.found_correct_ipv4.cnf
@@ -274,7 +274,7 @@ _get_dev_contrib() {
     _success=0
     while [ ${_attempt_num} -le ${_max_attempts} ]; do
       [ "${_DEBUG_MODE}" = "YES" ] && echo "DNLD: Attempt ${_attempt_num} of ${_max_attempts}: Downloading $1..."
-      if curl "${_crlGet}" "${_urlDev}/${_tRee}/contrib/$1" -o "$1"; then
+      if curl ${_crlGet} "${_urlDev}/${_tRee}/contrib/$1" -o "$1"; then
         _success=1
         break
       else
@@ -304,7 +304,7 @@ _get_dev_src() {
     _success=0
     while [ ${_attempt_num} -le ${_max_attempts} ]; do
       [ "${_DEBUG_MODE}" = "YES" ] && echo "DNLD: Attempt ${_attempt_num} of ${_max_attempts}: Downloading $1..."
-      if curl "${_crlGet}" "${_urlDev}/src/$1" -o "$1"; then
+      if curl ${_crlGet} "${_urlDev}/src/$1" -o "$1"; then
         _success=1
         break
       else
@@ -327,7 +327,7 @@ _get_dev_src() {
 
 _if_clean_boa_env() {
   if [ ! -x "/etc/init.d/clean-boa-env" ]; then
-    curl "${_crlGet}" "${_urlHmr}/conf/var/clean-boa-env" -o /etc/init.d/clean-boa-env
+    curl ${_crlGet} "${_urlHmr}/conf/var/clean-boa-env" -o /etc/init.d/clean-boa-env
     if [ -e "/etc/init.d/clean-boa-env" ]; then
       chmod 700 /etc/init.d/clean-boa-env
       chown root:root /etc/init.d/clean-boa-env
@@ -357,7 +357,7 @@ _verify_boa_keys() {
     fi
     mkdir -p /var/opt
     rm -f /var/opt/_encN*
-    curl "${_crlGet}" "${_urlEnc}/${_encName}" -o /var/opt/_encN.${_encName}.tmp
+    curl ${_crlGet} "${_urlEnc}/${_encName}" -o /var/opt/_encN.${_encName}.tmp
     wait
     echo "${_hName}.${_encName}" > /var/opt/_encN_local.${_encName}.tmp
     wait
@@ -725,7 +725,7 @@ _update_agents() {
     if [ -e "/root/.remote_backups/run/install_dependencies.sh" ]; then
       mv -f /root/.remote_backups/run/install_dependencies.sh /root/.remote_backups/run/install_dependencies.sh.old
     fi
-    curl "${_crlGet}" "${_urlHmr}/tools/backup/run/install_dependencies.sh" -o /root/.remote_backups/run/install_dependencies.sh
+    curl ${_crlGet} "${_urlHmr}/tools/backup/run/install_dependencies.sh" -o /root/.remote_backups/run/install_dependencies.sh
     if [ -e "/root/.remote_backups/run/install_dependencies.sh" ]; then
       chmod 700 /root/.remote_backups/run/install_dependencies.sh
       chown root:root /root/.remote_backups/run/install_dependencies.sh
@@ -743,7 +743,7 @@ _update_agents() {
     if [ -e "/root/.remote_backups/run/create_credentials_templates.sh" ]; then
       mv -f /root/.remote_backups/run/create_credentials_templates.sh /root/.remote_backups/run/create_credentials_templates.sh.old
     fi
-    curl "${_crlGet}" "${_urlHmr}/tools/backup/run/create_credentials_templates.sh" -o /root/.remote_backups/run/create_credentials_templates.sh
+    curl ${_crlGet} "${_urlHmr}/tools/backup/run/create_credentials_templates.sh" -o /root/.remote_backups/run/create_credentials_templates.sh
     if [ -e "/root/.remote_backups/run/create_credentials_templates.sh" ]; then
       chmod 700 /root/.remote_backups/run/create_credentials_templates.sh
       chown root:root /root/.remote_backups/run/create_credentials_templates.sh
@@ -761,7 +761,7 @@ _update_agents() {
     if [ -e "/root/.remote_backups/run/create_global_paths_config.sh" ]; then
       mv -f /root/.remote_backups/run/create_global_paths_config.sh /root/.remote_backups/run/create_global_paths_config.sh.old
     fi
-    curl "${_crlGet}" "${_urlHmr}/tools/backup/run/create_global_paths_config.sh" -o /root/.remote_backups/run/create_global_paths_config.sh
+    curl ${_crlGet} "${_urlHmr}/tools/backup/run/create_global_paths_config.sh" -o /root/.remote_backups/run/create_global_paths_config.sh
     if [ -e "/root/.remote_backups/run/create_global_paths_config.sh" ]; then
       chmod 700 /root/.remote_backups/run/create_global_paths_config.sh
       chown root:root /root/.remote_backups/run/create_global_paths_config.sh
@@ -779,7 +779,7 @@ _update_agents() {
     if [ -e "/root/.remote_backups/run/create_user_paths_config.sh" ]; then
       mv -f /root/.remote_backups/run/create_user_paths_config.sh /root/.remote_backups/run/create_user_paths_config.sh.old
     fi
-    curl "${_crlGet}" "${_urlHmr}/tools/backup/run/create_user_paths_config.sh" -o /root/.remote_backups/run/create_user_paths_config.sh
+    curl ${_crlGet} "${_urlHmr}/tools/backup/run/create_user_paths_config.sh" -o /root/.remote_backups/run/create_user_paths_config.sh
     if [ -e "/root/.remote_backups/run/create_user_paths_config.sh" ]; then
       chmod 700 /root/.remote_backups/run/create_user_paths_config.sh
       chown root:root /root/.remote_backups/run/create_user_paths_config.sh
@@ -797,7 +797,7 @@ _update_agents() {
     if [ -e "/root/.remote_backups/run/create_cron_entries.sh" ]; then
       mv -f /root/.remote_backups/run/create_cron_entries.sh /root/.remote_backups/run/create_cron_entries.sh.old
     fi
-    curl "${_crlGet}" "${_urlHmr}/tools/backup/run/create_cron_entries.sh" -o /root/.remote_backups/run/create_cron_entries.sh
+    curl ${_crlGet} "${_urlHmr}/tools/backup/run/create_cron_entries.sh" -o /root/.remote_backups/run/create_cron_entries.sh
     if [ -e "/root/.remote_backups/run/create_cron_entries.sh" ]; then
       chmod 700 /root/.remote_backups/run/create_cron_entries.sh
       chown root:root /root/.remote_backups/run/create_cron_entries.sh
@@ -815,7 +815,7 @@ _update_agents() {
     if [ -e "/root/.remote_backups/run/create_readme.sh" ]; then
       mv -f /root/.remote_backups/run/create_readme.sh /root/.remote_backups/run/create_readme.sh.old
     fi
-    curl "${_crlGet}" "${_urlHmr}/tools/backup/run/create_readme.sh" -o /root/.remote_backups/run/create_readme.sh
+    curl ${_crlGet} "${_urlHmr}/tools/backup/run/create_readme.sh" -o /root/.remote_backups/run/create_readme.sh
     if [ -e "/root/.remote_backups/run/create_readme.sh" ]; then
       chmod 700 /root/.remote_backups/run/create_readme.sh
       chown root:root /root/.remote_backups/run/create_readme.sh
@@ -833,7 +833,7 @@ _update_agents() {
     if [ -e "/root/.remote_backups/run/create_config_readme.sh" ]; then
       mv -f /root/.remote_backups/run/create_config_readme.sh /root/.remote_backups/run/create_config_readme.sh.old
     fi
-    curl "${_crlGet}" "${_urlHmr}/tools/backup/run/create_config_readme.sh" -o /root/.remote_backups/run/create_config_readme.sh
+    curl ${_crlGet} "${_urlHmr}/tools/backup/run/create_config_readme.sh" -o /root/.remote_backups/run/create_config_readme.sh
     if [ -e "/root/.remote_backups/run/create_config_readme.sh" ]; then
       chmod 700 /root/.remote_backups/run/create_config_readme.sh
       chown root:root /root/.remote_backups/run/create_config_readme.sh
@@ -849,7 +849,7 @@ _update_agents() {
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/scan_nginx.sh.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/scan_nginx.sh /var/xdrago/monitor/check/scan_nginx.sh.old
-    curl "${_crlGet}" "${_urlHmr}/tools/system/monitor/check/scan_nginx.sh" -o /var/xdrago/monitor/check/scan_nginx.sh
+    curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/scan_nginx.sh" -o /var/xdrago/monitor/check/scan_nginx.sh
     if [ -e "/var/xdrago/monitor/check/scan_nginx.sh" ]; then
       chmod 700 /var/xdrago/monitor/check/scan_nginx.sh
       chown root:root /var/xdrago/monitor/check/scan_nginx.sh
@@ -863,7 +863,7 @@ _update_agents() {
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/java.sh.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/java.sh /var/xdrago/monitor/check/java.sh.old
-    curl "${_crlGet}" "${_urlHmr}/tools/system/monitor/check/java.sh" -o /var/xdrago/monitor/check/java.sh
+    curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/java.sh" -o /var/xdrago/monitor/check/java.sh
     if [ -e "/var/xdrago/monitor/check/java.sh" ]; then
       chmod 700 /var/xdrago/monitor/check/java.sh
       chown root:root /var/xdrago/monitor/check/java.sh
@@ -877,7 +877,7 @@ _update_agents() {
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/mysql.sh.ctrl.f94.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/mysql.sh /var/xdrago/monitor/check/mysql.sh.old
-    curl "${_crlGet}" "${_urlHmr}/tools/system/monitor/check/mysql.sh" -o /var/xdrago/monitor/check/mysql.sh
+    curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/mysql.sh" -o /var/xdrago/monitor/check/mysql.sh
     if [ -e "/var/xdrago/monitor/check/mysql.sh" ]; then
       if [ -e "/root/.debug.cnf" ] && [ ! -e "/root/.default.cnf" ]; then
         _DO_NOTHING=YES
@@ -904,7 +904,7 @@ _update_agents() {
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/nginx.sh.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/nginx.sh /var/xdrago/monitor/check/nginx.sh.old
-    curl "${_crlGet}" "${_urlHmr}/tools/system/monitor/check/nginx.sh" -o /var/xdrago/monitor/check/nginx.sh
+    curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/nginx.sh" -o /var/xdrago/monitor/check/nginx.sh
     if [ -e "/var/xdrago/monitor/check/nginx.sh" ]; then
       chmod 700 /var/xdrago/monitor/check/nginx.sh
       chown root:root /var/xdrago/monitor/check/nginx.sh
@@ -918,7 +918,7 @@ _update_agents() {
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/php.sh.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/php.sh /var/xdrago/monitor/check/php.sh.old
-    curl "${_crlGet}" "${_urlHmr}/tools/system/monitor/check/php.sh" -o /var/xdrago/monitor/check/php.sh
+    curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/php.sh" -o /var/xdrago/monitor/check/php.sh
     if [ -e "/var/xdrago/monitor/check/php.sh" ]; then
       chmod 700 /var/xdrago/monitor/check/php.sh
       chown root:root /var/xdrago/monitor/check/php.sh
@@ -932,7 +932,7 @@ _update_agents() {
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/redis.sh.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/redis.sh /var/xdrago/monitor/check/redis.sh.old
-    curl "${_crlGet}" "${_urlHmr}/tools/system/monitor/check/redis.sh" -o /var/xdrago/monitor/check/redis.sh
+    curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/redis.sh" -o /var/xdrago/monitor/check/redis.sh
     if [ -e "/var/xdrago/monitor/check/redis.sh" ]; then
       chmod 700 /var/xdrago/monitor/check/redis.sh
       chown root:root /var/xdrago/monitor/check/redis.sh
@@ -946,7 +946,7 @@ _update_agents() {
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/system.sh.ctrl.f93.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/system.sh /var/xdrago/monitor/check/system.sh.old
-    curl "${_crlGet}" "${_urlHmr}/tools/system/monitor/check/system.sh" -o /var/xdrago/monitor/check/system.sh
+    curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/system.sh" -o /var/xdrago/monitor/check/system.sh
     if [ -e "/var/xdrago/monitor/check/system.sh" ]; then
       chmod 700 /var/xdrago/monitor/check/system.sh
       chown root:root /var/xdrago/monitor/check/system.sh
@@ -960,7 +960,7 @@ _update_agents() {
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/unbound.sh.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/unbound.sh /var/xdrago/monitor/check/unbound.sh.old
-    curl "${_crlGet}" "${_urlHmr}/tools/system/monitor/check/unbound.sh" -o /var/xdrago/monitor/check/unbound.sh
+    curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/unbound.sh" -o /var/xdrago/monitor/check/unbound.sh
     if [ -e "/var/xdrago/monitor/check/unbound.sh" ]; then
       chmod 700 /var/xdrago/monitor/check/unbound.sh
       chown root:root /var/xdrago/monitor/check/unbound.sh
@@ -974,7 +974,7 @@ _update_agents() {
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/escapecheck.pl.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/escapecheck.pl /var/xdrago/monitor/check/escapecheck.pl.old
-    curl "${_crlGet}" "${_urlHmr}/tools/system/monitor/check/escapecheck.pl" -o /var/xdrago/monitor/check/escapecheck.pl
+    curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/escapecheck.pl" -o /var/xdrago/monitor/check/escapecheck.pl
     if [ -e "/var/xdrago/monitor/check/escapecheck.pl" ]; then
       chmod 700 /var/xdrago/monitor/check/escapecheck.pl
       chown root:root /var/xdrago/monitor/check/escapecheck.pl
@@ -988,7 +988,7 @@ _update_agents() {
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/hackcheck.pl.ctrl.f94.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/hackcheck.pl /var/xdrago/monitor/check/hackcheck.pl.old
-    curl "${_crlGet}" "${_urlHmr}/tools/system/monitor/check/hackcheck.pl" -o /var/xdrago/monitor/check/hackcheck.pl
+    curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/hackcheck.pl" -o /var/xdrago/monitor/check/hackcheck.pl
     if [ -e "/var/xdrago/monitor/check/hackcheck.pl" ]; then
       chmod 700 /var/xdrago/monitor/check/hackcheck.pl
       chown root:root /var/xdrago/monitor/check/hackcheck.pl
@@ -1002,7 +1002,7 @@ _update_agents() {
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/hackftp.pl.ctrl.f94.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/hackftp.pl /var/xdrago/monitor/check/hackftp.pl.old
-    curl "${_crlGet}" "${_urlHmr}/tools/system/monitor/check/hackftp.pl" -o /var/xdrago/monitor/check/hackftp.pl
+    curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/hackftp.pl" -o /var/xdrago/monitor/check/hackftp.pl
     if [ -e "/var/xdrago/monitor/check/hackftp.pl" ]; then
       chmod 700 /var/xdrago/monitor/check/hackftp.pl
       chown root:root /var/xdrago/monitor/check/hackftp.pl
@@ -1016,7 +1016,7 @@ _update_agents() {
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/locked_java.pl.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/locked_java.pl /var/xdrago/monitor/check/locked_java.pl.old
-    curl "${_crlGet}" "${_urlHmr}/tools/system/monitor/check/locked_java.pl" -o /var/xdrago/monitor/check/locked_java.pl
+    curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/locked_java.pl" -o /var/xdrago/monitor/check/locked_java.pl
     if [ -e "/var/xdrago/monitor/check/locked_java.pl" ]; then
       chmod 700 /var/xdrago/monitor/check/locked_java.pl
       chown root:root /var/xdrago/monitor/check/locked_java.pl
@@ -1030,7 +1030,7 @@ _update_agents() {
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/locked_nginx.pl.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/locked_nginx.pl /var/xdrago/monitor/check/locked_nginx.pl.old
-    curl "${_crlGet}" "${_urlHmr}/tools/system/monitor/check/locked_nginx.pl" -o /var/xdrago/monitor/check/locked_nginx.pl
+    curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/locked_nginx.pl" -o /var/xdrago/monitor/check/locked_nginx.pl
     if [ -e "/var/xdrago/monitor/check/locked_nginx.pl" ]; then
       chmod 700 /var/xdrago/monitor/check/locked_nginx.pl
       chown root:root /var/xdrago/monitor/check/locked_nginx.pl
@@ -1044,7 +1044,7 @@ _update_agents() {
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/segfault_alert.pl.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/segfault_alert.pl /var/xdrago/monitor/check/segfault_alert.pl.old
-    curl "${_crlGet}" "${_urlHmr}/tools/system/monitor/check/segfault_alert.pl" -o /var/xdrago/monitor/check/segfault_alert.pl
+    curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/segfault_alert.pl" -o /var/xdrago/monitor/check/segfault_alert.pl
     if [ -e "/var/xdrago/monitor/check/segfault_alert.pl" ]; then
       chmod 700 /var/xdrago/monitor/check/segfault_alert.pl
       chown root:root /var/xdrago/monitor/check/segfault_alert.pl
@@ -1058,7 +1058,7 @@ _update_agents() {
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/sqlcheck.pl.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/sqlcheck.pl /var/xdrago/monitor/check/sqlcheck.pl.old
-    curl "${_crlGet}" "${_urlHmr}/tools/system/monitor/check/sqlcheck.pl" -o /var/xdrago/monitor/check/sqlcheck.pl
+    curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/sqlcheck.pl" -o /var/xdrago/monitor/check/sqlcheck.pl
     if [ -e "/var/xdrago/monitor/check/sqlcheck.pl" ]; then
       chmod 700 /var/xdrago/monitor/check/sqlcheck.pl
       chown root:root /var/xdrago/monitor/check/sqlcheck.pl
@@ -1087,7 +1087,7 @@ _update_agents() {
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/clean-boa-env.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /etc/init.d/clean-boa-env /var/xdrago/clean-boa-env.old
-    curl "${_crlGet}" "${_urlHmr}/conf/var/clean-boa-env" -o /etc/init.d/clean-boa-env
+    curl ${_crlGet} "${_urlHmr}/conf/var/clean-boa-env" -o /etc/init.d/clean-boa-env
     if [ -e "/etc/init.d/clean-boa-env" ]; then
       chmod 700 /etc/init.d/clean-boa-env
       chown root:root /etc/init.d/clean-boa-env
@@ -1101,7 +1101,7 @@ _update_agents() {
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/mysql_backup.sh.ctrl.f95.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/mysql_backup.sh /var/xdrago/mysql_backup.sh.old
-    curl "${_crlGet}" "${_urlHmr}/tools/system/mysql_backup.sh" -o /var/xdrago/mysql_backup.sh
+    curl ${_crlGet} "${_urlHmr}/tools/system/mysql_backup.sh" -o /var/xdrago/mysql_backup.sh
     if [ -e "/var/xdrago/mysql_backup.sh" ]; then
       chmod 700 /var/xdrago/mysql_backup.sh
       chown root:root /var/xdrago/mysql_backup.sh
@@ -1115,7 +1115,7 @@ _update_agents() {
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/unbound-helper.ctrl.f95.${_xSrl}.pid" ]; then
     mv -f /usr/libexec/unbound-helper /usr/libexec/unbound-helper.old
-    curl "${_crlGet}" "${_urlHmr}/conf/dns/unbound-helper" -o /usr/libexec/unbound-helper
+    curl ${_crlGet} "${_urlHmr}/conf/dns/unbound-helper" -o /usr/libexec/unbound-helper
     if [ -e "/usr/libexec/unbound-helper" ]; then
       chmod 755 /usr/libexec/unbound-helper
       chown root:root /usr/libexec/unbound-helper
@@ -1129,7 +1129,7 @@ _update_agents() {
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/mysql_cleanup.sh.ctrl.f95.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/mysql_cleanup.sh /var/xdrago/mysql_cleanup.sh.old
-    curl "${_crlGet}" "${_urlHmr}/tools/system/mysql_cleanup.sh" -o /var/xdrago/mysql_cleanup.sh
+    curl ${_crlGet} "${_urlHmr}/tools/system/mysql_cleanup.sh" -o /var/xdrago/mysql_cleanup.sh
     if [ -e "/var/xdrago/mysql_cleanup.sh" ]; then
       chmod 700 /var/xdrago/mysql_cleanup.sh
       chown root:root /var/xdrago/mysql_cleanup.sh
@@ -1143,7 +1143,7 @@ _update_agents() {
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/mysql_cluster_backup.sh.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/mysql_cluster_backup.sh /var/xdrago/mysql_cluster_backup.sh.old
-    curl "${_crlGet}" "${_urlHmr}/tools/system/mysql_cluster_backup.sh" -o /var/xdrago/mysql_cluster_backup.sh
+    curl ${_crlGet} "${_urlHmr}/tools/system/mysql_cluster_backup.sh" -o /var/xdrago/mysql_cluster_backup.sh
     if [ -e "/var/xdrago/mysql_cluster_backup.sh" ]; then
       chmod 700 /var/xdrago/mysql_cluster_backup.sh
       chown root:root /var/xdrago/mysql_cluster_backup.sh
@@ -1157,7 +1157,7 @@ _update_agents() {
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/runner.sh.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/runner.sh /var/xdrago/runner.sh.old
-    curl "${_crlGet}" "${_urlHmr}/tools/system/runner.sh" -o /var/xdrago/runner.sh
+    curl ${_crlGet} "${_urlHmr}/tools/system/runner.sh" -o /var/xdrago/runner.sh
     if [ -e "/var/xdrago/runner.sh" ]; then
       chmod 700 /var/xdrago/runner.sh
       chown root:root /var/xdrago/runner.sh
@@ -1171,7 +1171,7 @@ _update_agents() {
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/minute.sh.ctrl.f94.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/minute.sh /var/xdrago/minute.sh.old
-    curl "${_crlGet}" "${_urlHmr}/tools/system/minute.sh" -o /var/xdrago/minute.sh
+    curl ${_crlGet} "${_urlHmr}/tools/system/minute.sh" -o /var/xdrago/minute.sh
     if [ -e "/var/xdrago/minute.sh" ]; then
       chmod 700 /var/xdrago/minute.sh
       chown root:root /var/xdrago/minute.sh
@@ -1185,7 +1185,7 @@ _update_agents() {
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/second.sh.ctrl.f94.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/second.sh /var/xdrago/second.sh.old
-    curl "${_crlGet}" "${_urlHmr}/tools/system/second.sh" -o /var/xdrago/second.sh
+    curl ${_crlGet} "${_urlHmr}/tools/system/second.sh" -o /var/xdrago/second.sh
     if [ -e "/var/xdrago/second.sh" ]; then
       chmod 700 /var/xdrago/second.sh
       chown root:root /var/xdrago/second.sh
@@ -1199,7 +1199,7 @@ _update_agents() {
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/ip_access.sh.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/ip_access.sh /var/xdrago/ip_access.sh.old
-    curl "${_crlGet}" "${_urlHmr}/tools/system/ip_access.sh" -o /var/xdrago/ip_access.sh
+    curl ${_crlGet} "${_urlHmr}/tools/system/ip_access.sh" -o /var/xdrago/ip_access.sh
     if [ -e "/var/xdrago/ip_access.sh" ]; then
       chmod 700 /var/xdrago/ip_access.sh
       chown root:root /var/xdrago/ip_access.sh
@@ -1213,7 +1213,7 @@ _update_agents() {
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/move_sql.sh.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/move_sql.sh /var/xdrago/move_sql.sh.old
-    curl "${_crlGet}" "${_urlHmr}/tools/system/move_sql.sh" -o /var/xdrago/move_sql.sh
+    curl ${_crlGet} "${_urlHmr}/tools/system/move_sql.sh" -o /var/xdrago/move_sql.sh
     if [ -e "/var/xdrago/move_sql.sh" ]; then
       chmod 700 /var/xdrago/move_sql.sh
       chown root:root /var/xdrago/move_sql.sh
@@ -1227,7 +1227,7 @@ _update_agents() {
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/mysql_repair.sh.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/mysql_repair.sh /var/xdrago/mysql_repair.sh.old
-    curl "${_crlGet}" "${_urlHmr}/tools/system/mysql_repair.sh" -o /var/xdrago/mysql_repair.sh
+    curl ${_crlGet} "${_urlHmr}/tools/system/mysql_repair.sh" -o /var/xdrago/mysql_repair.sh
     if [ -e "/var/xdrago/mysql_repair.sh" ]; then
       chmod 700 /var/xdrago/mysql_repair.sh
       chown root:root /var/xdrago/mysql_repair.sh
@@ -1241,7 +1241,7 @@ _update_agents() {
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/purge_binlogs.sh.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/purge_binlogs.sh /var/xdrago/purge_binlogs.sh.old
-    curl "${_crlGet}" "${_urlHmr}/tools/system/purge_binlogs.sh" -o /var/xdrago/purge_binlogs.sh
+    curl ${_crlGet} "${_urlHmr}/tools/system/purge_binlogs.sh" -o /var/xdrago/purge_binlogs.sh
     if [ -e "/var/xdrago/purge_binlogs.sh" ]; then
       chmod 700 /var/xdrago/purge_binlogs.sh
       chown root:root /var/xdrago/purge_binlogs.sh
@@ -1255,7 +1255,7 @@ _update_agents() {
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/checksql.pl.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/checksql.pl /var/xdrago/checksql.pl.old
-    curl "${_crlGet}" "${_urlHmr}/tools/system/checksql.pl" -o /var/xdrago/checksql.pl
+    curl ${_crlGet} "${_urlHmr}/tools/system/checksql.pl" -o /var/xdrago/checksql.pl
     if [ -e "/var/xdrago/checksql.pl" ]; then
       chmod 700 /var/xdrago/checksql.pl
       chown root:root /var/xdrago/checksql.pl
@@ -1269,7 +1269,7 @@ _update_agents() {
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/clear.sh.ctrl.f93.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/clear.sh /var/xdrago/clear.sh.old
-    curl "${_crlGet}" "${_urlHmr}/tools/system/clear.sh" -o /var/xdrago/clear.sh
+    curl ${_crlGet} "${_urlHmr}/tools/system/clear.sh" -o /var/xdrago/clear.sh
     if [ -e "/var/xdrago/clear.sh" ]; then
       chmod 700 /var/xdrago/clear.sh
       chown root:root /var/xdrago/clear.sh
@@ -1283,7 +1283,7 @@ _update_agents() {
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/daily.sh.ctrl.f89.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/daily.sh /var/xdrago/daily.sh.old
-    curl "${_crlGet}" "${_urlHmr}/tools/system/daily.sh" -o /var/xdrago/daily.sh
+    curl ${_crlGet} "${_urlHmr}/tools/system/daily.sh" -o /var/xdrago/daily.sh
     if [ -e "/var/xdrago/daily.sh" ]; then
       chmod 700 /var/xdrago/daily.sh
       chown root:root /var/xdrago/daily.sh
@@ -1297,7 +1297,7 @@ _update_agents() {
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/graceful.sh.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/graceful.sh /var/xdrago/graceful.sh.old
-    curl "${_crlGet}" "${_urlHmr}/tools/system/graceful.sh" -o /var/xdrago/graceful.sh
+    curl ${_crlGet} "${_urlHmr}/tools/system/graceful.sh" -o /var/xdrago/graceful.sh
     if [ -e "/var/xdrago/graceful.sh" ]; then
       chmod 700 /var/xdrago/graceful.sh
       chown root:root /var/xdrago/graceful.sh
@@ -1311,7 +1311,7 @@ _update_agents() {
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/usage.sh.ctrl.f93.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/usage.sh /var/xdrago/usage.sh.old
-    curl "${_crlGet}" "${_urlHmr}/tools/system/usage.sh" -o /var/xdrago/usage.sh
+    curl ${_crlGet} "${_urlHmr}/tools/system/usage.sh" -o /var/xdrago/usage.sh
     if [ -e "/var/xdrago/usage.sh" ]; then
       chmod 700 /var/xdrago/usage.sh
       chown root:root /var/xdrago/usage.sh
@@ -1325,7 +1325,7 @@ _update_agents() {
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/manage_ltd_users.sh.ctrl.f87.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/manage_ltd_users.sh /var/xdrago/manage_ltd_users.sh.old
-    curl "${_crlGet}" "${_urlHmr}/tools/system/manage_ltd_users.sh" \
+    curl ${_crlGet} "${_urlHmr}/tools/system/manage_ltd_users.sh" \
       -o /var/xdrago/manage_ltd_users.sh
     if [ -e "/var/xdrago/manage_ltd_users.sh" ]; then
       chmod 700 /var/xdrago/manage_ltd_users.sh
@@ -1341,7 +1341,7 @@ _update_agents() {
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/manage_solr_config.sh.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/manage_solr_config.sh /var/xdrago/manage_solr_config.sh.old
-    curl "${_crlGet}" "${_urlHmr}/tools/system/manage_solr_config.sh" \
+    curl ${_crlGet} "${_urlHmr}/tools/system/manage_solr_config.sh" \
       -o /var/xdrago/manage_solr_config.sh
     if [ -e "/var/xdrago/manage_solr_config.sh" ]; then
       chmod 700 /var/xdrago/manage_solr_config.sh
@@ -1357,7 +1357,7 @@ _update_agents() {
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/proc_num_ctrl.pl.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/proc_num_ctrl.pl /var/xdrago/proc_num_ctrl.pl.old
-    curl "${_crlGet}" "${_urlHmr}/tools/system/proc_num_ctrl.pl" \
+    curl ${_crlGet} "${_urlHmr}/tools/system/proc_num_ctrl.pl" \
       -o /var/xdrago/proc_num_ctrl.pl
     if [ -e "/var/xdrago/proc_num_ctrl.pl" ]; then
       chmod 700 /var/xdrago/proc_num_ctrl.pl
@@ -1393,7 +1393,7 @@ _update_agents() {
     && [ -e "/etc/csf/csf.deny" ] \
     && [ ! -e "${_pthLog}/guest-fire.sh.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/guest-fire.sh /var/xdrago/guest-fire.sh.old
-    curl "${_crlGet}" "${_urlHmr}/tools/system/guest-fire.sh" \
+    curl ${_crlGet} "${_urlHmr}/tools/system/guest-fire.sh" \
       -o /var/xdrago/guest-fire.sh
     if [ -e "/var/xdrago/guest-fire.sh" ]; then
       chmod 700 /var/xdrago/guest-fire.sh
@@ -1411,7 +1411,7 @@ _update_agents() {
     && [ -e "/etc/csf/csf.deny" ] \
     && [ ! -e "${_pthLog}/guest-water.sh.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/guest-water.sh /var/xdrago/guest-water.sh.old
-    curl "${_crlGet}" "${_urlHmr}/tools/system/guest-water.sh" \
+    curl ${_crlGet} "${_urlHmr}/tools/system/guest-water.sh" \
       -o /var/xdrago/guest-water.sh
     if [ -e "/var/xdrago/guest-water.sh" ]; then
       chmod 700 /var/xdrago/guest-water.sh
@@ -1427,7 +1427,7 @@ _update_agents() {
     && [ ! -e "${_pthLog}/scan_nginx.pl.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
     [ ! -d "/var/xdrago/monitor/log" ] && mkdir -p /var/xdrago/monitor/log
     mv -f /var/xdrago/monitor/check/scan_nginx.pl /var/xdrago/monitor/check/scan_nginx.pl.old
-    curl "${_crlGet}" "${_urlHmr}/tools/system/monitor/check/scan_nginx.pl" \
+    curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/scan_nginx.pl" \
       -o /var/xdrago/monitor/check/scan_nginx.pl
     if [ -e "/var/xdrago/monitor/check/scan_nginx.pl" ]; then
       sed -i "s/default_critnumber =.*/default_critnumber = 399;/g" /var/xdrago/monitor/check/scan_nginx.pl
@@ -1478,7 +1478,7 @@ _update_agents() {
     if [ -z "${_CUSTOM_CONFIG_LSHELL}" ] \
       || [ "${_CUSTOM_CONFIG_LSHELL}" = "NO" ]; then
       mv -f /var/xdrago/conf/lshell.conf /var/xdrago/conf/lshell.conf.old
-      curl "${_crlGet}" "${_urlHmr}/tools/system/conf/lshell.conf" \
+      curl ${_crlGet} "${_urlHmr}/tools/system/conf/lshell.conf" \
         -o /var/xdrago/conf/lshell.conf
       if [ -e "/var/xdrago/conf/lshell.conf" ]; then
         chmod 644 /var/xdrago/conf/lshell.conf
@@ -1495,7 +1495,7 @@ _update_agents() {
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/multi.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/conf/fpm-pool-foo-multi.conf /var/xdrago/conf/fpm-pool-foo-multi.conf.old
-    curl "${_crlGet}" "${_urlHmr}/conf/php/fpm-pool-foo-multi.conf" \
+    curl ${_crlGet} "${_urlHmr}/conf/php/fpm-pool-foo-multi.conf" \
       -o /var/xdrago/conf/fpm-pool-foo-multi.conf
     if [ -e "/var/xdrago/conf/fpm-pool-foo-multi.conf" ]; then
       chmod 644 /var/xdrago/conf/fpm-pool-foo-multi.conf
@@ -1511,7 +1511,7 @@ _update_agents() {
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/single.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/conf/fpm-pool-foo.conf /var/xdrago/conf/fpm-pool-foo.conf.old
-    curl "${_crlGet}" "${_urlHmr}/conf/php/fpm-pool-foo.conf" \
+    curl ${_crlGet} "${_urlHmr}/conf/php/fpm-pool-foo.conf" \
       -o /var/xdrago/conf/fpm-pool-foo.conf
     if [ -e "/var/xdrago/conf/fpm-pool-foo.conf" ]; then
       chmod 644 /var/xdrago/conf/fpm-pool-foo.conf
@@ -1530,7 +1530,7 @@ _update_agents() {
     chgrp root ${IsCurlBin} &> /dev/null
     cp -af /etc/ImageMagick-6/policy.xml /var/xdrago/conf/etc-ImageMagick-6-policy.xml.hf-06.old
     rm -f /var/xdrago/conf/etc-ImageMagick-6-policy.xml
-    curl "${_crlGet}" "${_urlHmr}/conf/etc/etc-ImageMagick-6-policy.xml" \
+    curl ${_crlGet} "${_urlHmr}/conf/etc/etc-ImageMagick-6-policy.xml" \
       -o /var/xdrago/conf/etc-ImageMagick-6-policy.xml
     if [ -e "/var/xdrago/conf/etc-ImageMagick-6-policy.xml" ]; then
       cp -af /var/xdrago/conf/etc-ImageMagick-6-policy.xml /etc/ImageMagick-6/policy.xml
@@ -1563,7 +1563,7 @@ _update_agents() {
     && [ -e "/var/xdrago/conf/control-readme.txt" ] \
     && [ ! -e "${_pthLog}/control-readme.txt.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/conf/control-readme.txt /var/xdrago/conf/control-readme.txt.old
-    curl "${_crlGet}" "${_urlHmr}/tools/system/conf/control-readme.txt" -o /var/xdrago/conf/control-readme.txt
+    curl ${_crlGet} "${_urlHmr}/tools/system/conf/control-readme.txt" -o /var/xdrago/conf/control-readme.txt
     if [ -e "/var/xdrago/conf/control-readme.txt" ]; then
       chmod 644 /var/xdrago/conf/control-readme.txt
       chown root:root /var/xdrago/conf/control-readme.txt
@@ -1580,7 +1580,7 @@ _update_agents() {
     _find_correct_ip
     [ -e "${_hQueueP}" ] && _isPatchedTpl=$(grep "url_own" "${_hQueueP}")
     if [ ! -e "${_hQueueP}" ] || [[ ! "${_isPatchedTpl}" =~ "url_own" ]]; then
-      curl "${_crlGet}" "${_urlHmr}/patches/${_hQueueF}" -o ${_hQueueP}
+      curl ${_crlGet} "${_urlHmr}/patches/${_hQueueF}" -o ${_hQueueP}
     fi
     for _pthSysUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
       _tUsr=
@@ -1861,7 +1861,7 @@ _update_agents() {
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/websh.ctrl.f77.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /opt/local/bin/websh /var/xdrago/websh.sh.old
-    curl "${_crlGet}" "${_urlHmr}/helpers/websh.sh.txt" -o /opt/local/bin/websh
+    curl ${_crlGet} "${_urlHmr}/helpers/websh.sh.txt" -o /opt/local/bin/websh
     if [ -e "/opt/local/bin/websh" ] \
       && grep -i '_forward_to_dash' /opt/local/bin/websh &> /dev/null; then
       chmod 755 /opt/local/bin/websh
@@ -1888,7 +1888,7 @@ _update_agents() {
     && [ -e "/var/aegir/drush" ] \
     && [ ! -x "/etc/cron.hourly/systemtime" ] \
     && [ ! -e "${_pthLog}/systemtime.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
-    curl "${_crlGet}" "${_urlHmr}/helpers/systemtime" -o /etc/cron.hourly/systemtime
+    curl ${_crlGet} "${_urlHmr}/helpers/systemtime" -o /etc/cron.hourly/systemtime
     if [ -e "/etc/cron.hourly/systemtime" ]; then
       chmod 755 /etc/cron.hourly/systemtime
       chown root:root /etc/cron.hourly/systemtime
@@ -1983,7 +1983,7 @@ _fix_core_dgd() {
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${_saQPatch}" ]; then
     mkdir -p /var/xdrago/conf
-    curl "${_crlGet}" "${_urlHmr}/patches/8-core/${_saQCoreS}.patch" -o ${_saQPatch}
+    curl ${_crlGet} "${_urlHmr}/patches/8-core/${_saQCoreS}.patch" -o ${_saQPatch}
   fi
 
   # SA-CORE D7 patch
@@ -1991,7 +1991,7 @@ _fix_core_dgd() {
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${_saPatch}" ]; then
     mkdir -p /var/xdrago/conf
-    curl "${_crlGet}" "${_urlHmr}/patches/7-core/${_saCoreS}.patch" -o ${_saPatch}
+    curl ${_crlGet} "${_urlHmr}/patches/7-core/${_saCoreS}.patch" -o ${_saPatch}
   fi
 
   # SA-CORE D6 patch
@@ -1999,7 +1999,7 @@ _fix_core_dgd() {
   #   && [ -e "/var/aegir/drush" ] \
 	#   && [ ! -e "${_saXPatch}" ]; then
 	#   mkdir -p /var/xdrago/conf
-	#   curl "${_crlGet}" "${_urlHmr}/patches/6-core/${_saXCoreS}.patch" -o ${_saXPatch}
+	#   curl ${_crlGet} "${_urlHmr}/patches/6-core/${_saXCoreS}.patch" -o ${_saXPatch}
   # fi
 
   # SA-CORE for Octopus hostmaster platforms
@@ -2736,7 +2736,7 @@ _fix_eldir() {
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${_eldirP}" ]; then
     mkdir -p /var/xdrago/conf
-    curl "${_crlGet}" "${_urlHmr}/patches/${_eldirF}" -o ${_eldirP}
+    curl ${_crlGet} "${_urlHmr}/patches/${_eldirF}" -o ${_eldirP}
   fi
 }
 
@@ -2744,7 +2744,7 @@ _fix_drupal_core_ten() {
   if [ -e "/var/xdrago" ]; then
     if [ ! -e "${_dctpP}" ] || [ ! -e "${_dctrP}" ]; then
       mkdir -p /data/conf/patches
-      curl "${_crlGet}" "${_urlHmr}/patches/${_dctrF}" -o ${_dctrP}
+      curl ${_crlGet} "${_urlHmr}/patches/${_dctrF}" -o ${_dctrP}
       cp -af ${_dctrP} ${_dctpP}
     fi
   fi
@@ -2779,11 +2779,11 @@ _fix_hosting_le() {
       rm -f ${_dehydSrcPath}.ctrl.${_tRee}.${_xSrl}.pid
       rm -f ${_hoLeIncFull}.ctrl.${_tRee}.${_xSrl}.pid
       rm -f ${_provLeIncFull}.ctrl.${_tRee}.${_xSrl}.pid
-      curl "${_crlGet}" "${_urlHmr}/helpers/${_dehydName}" -o ${_dehydSrcPath}.ctrl.${_tRee}.${_xSrl}.pid
+      curl ${_crlGet} "${_urlHmr}/helpers/${_dehydName}" -o ${_dehydSrcPath}.ctrl.${_tRee}.${_xSrl}.pid
       cp -af ${_dehydSrcPath}.ctrl.${_tRee}.${_xSrl}.pid ${_dehydSrcPath}
-      curl "${_crlGet}" "${_urlHmr}/patches/${_hoLeInc}" -o ${_hoLeIncFull}.ctrl.${_tRee}.${_xSrl}.pid
+      curl ${_crlGet} "${_urlHmr}/patches/${_hoLeInc}" -o ${_hoLeIncFull}.ctrl.${_tRee}.${_xSrl}.pid
       cp -af ${_hoLeIncFull}.ctrl.${_tRee}.${_xSrl}.pid ${_hoLeIncFull}
-      curl "${_crlGet}" "${_urlHmr}/patches/${_provLeInc}" -o ${_provLeIncFull}.ctrl.${_tRee}.${_xSrl}.pid
+      curl ${_crlGet} "${_urlHmr}/patches/${_provLeInc}" -o ${_provLeIncFull}.ctrl.${_tRee}.${_xSrl}.pid
       cp -af ${_provLeIncFull}.ctrl.${_tRee}.${_xSrl}.pid ${_provLeIncFull}
     fi
   fi
@@ -3102,11 +3102,11 @@ _update_boa_tools() {
     _fxPo="fix-drupal-platform-ownership.sh"
     _fxSo="fix-drupal-site-ownership.sh"
     _fxLo="lock-local-drush-permissions.sh"
-    curl "${_crlGet}" "${_urlHmr}/${_tBn}/${_fxPp}" -o ${_usrBin}/${_fxPp}
-    curl "${_crlGet}" "${_urlHmr}/${_tBn}/${_fxSp}" -o ${_usrBin}/${_fxSp}
-    curl "${_crlGet}" "${_urlHmr}/${_tBn}/${_fxPo}" -o ${_usrBin}/${_fxPo}
-    curl "${_crlGet}" "${_urlHmr}/${_tBn}/${_fxSo}" -o ${_usrBin}/${_fxSo}
-    curl "${_crlGet}" "${_urlHmr}/${_tBn}/${_fxLo}" -o ${_usrBin}/${_fxLo}
+    curl ${_crlGet} "${_urlHmr}/${_tBn}/${_fxPp}" -o ${_usrBin}/${_fxPp}
+    curl ${_crlGet} "${_urlHmr}/${_tBn}/${_fxSp}" -o ${_usrBin}/${_fxSp}
+    curl ${_crlGet} "${_urlHmr}/${_tBn}/${_fxPo}" -o ${_usrBin}/${_fxPo}
+    curl ${_crlGet} "${_urlHmr}/${_tBn}/${_fxSo}" -o ${_usrBin}/${_fxSo}
+    curl ${_crlGet} "${_urlHmr}/${_tBn}/${_fxLo}" -o ${_usrBin}/${_fxLo}
     chmod 700 ${_usrBin}/${_fxPp}
     chmod 700 ${_usrBin}/${_fxSp}
     chmod 700 ${_usrBin}/${_fxPo}
@@ -3159,9 +3159,9 @@ _update_boa_tools() {
         else
           rm -f ${_optBin}/${_cbn}.new
           if [ "${_cbn}" = "mysqltuner5" ] || [ "${_cbn}" = "mysqltuner8" ]; then
-            curl "${_crlGet}" "${_urlHmr}/helpers/${_cbn}" -o ${_optBin}/${_cbn}.new
+            curl ${_crlGet} "${_urlHmr}/helpers/${_cbn}" -o ${_optBin}/${_cbn}.new
           else
-            curl "${_crlGet}" "${_urlHmr}/${_tBn}/${_cbn}" -o ${_optBin}/${_cbn}.new
+            curl ${_crlGet} "${_urlHmr}/${_tBn}/${_cbn}" -o ${_optBin}/${_cbn}.new
           fi
           mv -f ${_optBin}/${_cbn} ${_optBin}/${_cbn}.prev
           mv -f ${_optBin}/${_cbn}.new ${_optBin}/${_cbn}
@@ -3175,9 +3175,9 @@ _update_boa_tools() {
       fi
     else
       if [ "${_cbn}" = "mysqltuner5" ] || [ "${_cbn}" = "mysqltuner8" ]; then
-        curl "${_crlGet}" "${_urlHmr}/helpers/${_cbn}" -o ${_optBin}/${_cbn}
+        curl ${_crlGet} "${_urlHmr}/helpers/${_cbn}" -o ${_optBin}/${_cbn}
       else
-        curl "${_crlGet}" "${_urlHmr}/${_tBn}/${_cbn}" -o ${_optBin}/${_cbn}
+        curl ${_crlGet} "${_urlHmr}/${_tBn}/${_cbn}" -o ${_optBin}/${_cbn}
       fi
     fi
   done
@@ -3227,8 +3227,8 @@ _update_boa_tools() {
     echo "The duplicity backup is running!"
   else
     rm -f ${_optBin}/{backboa,duobackboa}
-    curl "${_crlGet}" "${_urlHmr}/${_tBn}/backboa"      -o ${_optBin}/backboa
-    curl "${_crlGet}" "${_urlHmr}/${_tBn}/duobackboa"   -o ${_optBin}/duobackboa
+    curl ${_crlGet} "${_urlHmr}/${_tBn}/backboa"      -o ${_optBin}/backboa
+    curl ${_crlGet} "${_urlHmr}/${_tBn}/duobackboa"   -o ${_optBin}/duobackboa
     chmod 700 ${_optBin}/{backboa,duobackboa}
   fi
 
@@ -3600,7 +3600,7 @@ _sysctl_update() {
     mkdir -p /var/backups
     cd /var/backups
     rm -f /var/backups/sysctl.conf
-    curl "${_crlGet}" "${_urlHmr}/conf/var/sysctl.conf" -o sysctl.conf
+    curl ${_crlGet} "${_urlHmr}/conf/var/sysctl.conf" -o sysctl.conf
     if [ -e "/var/backups/sysctl.conf" ]; then
       cp -af /var/backups/sysctl.conf /etc/sysctl.conf
     fi

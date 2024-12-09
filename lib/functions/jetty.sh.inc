@@ -51,7 +51,7 @@ _if_install_solr_jetty() {
         true
         _msg "INFO: Installing MultiCore Apache Solr ${_R_SOLR}..."
         cd /var/opt
-        curl "${_crlGet}" "${_urlDev}/solr-${_SOLR_7_VRN}.tgz" -o "solr-${_SOLR_7_VRN}.tgz"
+        curl ${_crlGet} "${_urlDev}/solr-${_SOLR_7_VRN}.tgz" -o "solr-${_SOLR_7_VRN}.tgz"
         rm -rf solr-${_SOLR_7_VRN}
         adduser --system --group --shell /bin/bash --home /var/${_N_SOLR} ${_N_SOLR} &> /dev/null
         usermod -aG users ${_N_SOLR}
@@ -108,7 +108,7 @@ _if_install_solr_jetty() {
     if [ ! -e "${_SOLR_CTRL}" ]; then
       _msg "INFO: Upgrading MultiCore Apache Solr ${_R_SOLR}..."
       cd /var/opt
-      curl "${_crlGet}" "${_urlDev}/solr-${_SOLR_7_VRN}.tgz" -o "solr-${_SOLR_7_VRN}.tgz"
+      curl ${_crlGet} "${_urlDev}/solr-${_SOLR_7_VRN}.tgz" -o "solr-${_SOLR_7_VRN}.tgz"
       rm -rf solr-${_SOLR_7_VRN}
       tar xzf solr-${_SOLR_7_VRN}.tgz solr-${_SOLR_7_VRN}/bin/install_solr_service.sh --strip-components=2
       bash ./install_solr_service.sh solr-${_SOLR_7_VRN}.tgz -f -i /opt -d /var/${_N_SOLR} -u ${_N_SOLR} -s ${_N_SOLR} -p 9077 &> /dev/null

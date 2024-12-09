@@ -992,7 +992,7 @@ _find_server_city() {
     else
       if [ -e "/root/.found_correct_ipv4.cnf" ]; then
         _LOC_IP=$(cat /root/.found_correct_ipv4.cnf 2>/dev/null | tr -d '\n')
-        _LOC_CITY=$(curl "${_crlGet}" ipinfo.io/${_LOC_IP}/city 2>/dev/null | tr -d '\n')
+        _LOC_CITY=$(curl ${_crlGet} ipinfo.io/${_LOC_IP}/city 2>/dev/null | tr -d '\n')
       fi
       if [ ! -z "${_LOC_CITY}" ]; then
         _LOC_CITY=$(echo "${_LOC_CITY}" | tr ' ' '+' 2>&1)

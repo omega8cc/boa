@@ -157,7 +157,7 @@ _install_goaccess() {
   else
     echo "Downloading from ${_urlDev}/src/goaccess-${_GOACCESS_VRN}.tar.gz"
     curl -I ${_urlDev}/src/goaccess-${_GOACCESS_VRN}.tar.gz
-    curl "${_crlGet}" "${_urlDev}/src/goaccess-${_GOACCESS_VRN}.tar.gz" | tar -xzf -
+    curl ${_crlGet} "${_urlDev}/src/goaccess-${_GOACCESS_VRN}.tar.gz" | tar -xzf -
     cd /var/opt/goaccess-${_GOACCESS_VRN}
   fi
   bash ./configure --prefix=/usr --enable-utf8 --enable-geoip=legacy --with-getline
@@ -215,8 +215,8 @@ _if_install() {
       echo 'exclude-ip 127.0.0.1' >> /root/.goaccessrc
       echo 'ignore-crawlers true' >> /root/.goaccessrc
       if [ ! -e "/usr/etc/goaccess/spammers.txt" ]; then
-        ### curl "${_crlGet}" "${_sPmrs}" -o /usr/etc/goaccess/spammers.txt
-        curl "${_crlGet}" "${_urlDev}/src/spammers.txt" -o /usr/etc/goaccess/spammers.txt
+        ### curl ${_crlGet} "${_sPmrs}" -o /usr/etc/goaccess/spammers.txt
+        curl ${_crlGet} "${_urlDev}/src/spammers.txt" -o /usr/etc/goaccess/spammers.txt
       fi
       if [ -e "/usr/etc/goaccess/spammers.txt" ]; then
         echo 'ignore-referrer /usr/etc/goaccess/spammers.txt' >> /root/.goaccessrc
