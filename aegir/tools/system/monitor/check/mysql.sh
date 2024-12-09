@@ -74,8 +74,8 @@ _sql_busy_detection() {
     _SQL_LOG="/var/log/syslog"
   fi
   if [ -e "${_SQL_LOG}" ]; then
-    if [ `tail --lines=30 ${_SQL_LOG} \
-      | grep --count "Too many connections"` -gt "10" ]; then
+    if [ `tail --lines=1111 ${_SQL_LOG} \
+      | grep --count "Too many connections"` -gt "999" ]; then
       _sql_restart "BUSY MySQL"
     fi
   fi
