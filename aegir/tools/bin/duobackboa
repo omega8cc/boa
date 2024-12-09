@@ -53,16 +53,16 @@ fi
 _PTN_VRN=3.12.5
 _DCY_VRN=3.0.3.1
 _LOGPTH="/var/xdrago/log"
-_NOW=$(date +%y%m%d-%H%M%S 2>&1)
+_NOW=$(date +%y%m%d-%H%M%S)
 _NOW=${_NOW//[^0-9-]/}
-_DOW=$(date +%u 2>&1)
+_DOW=$(date +%u)
 _DOW=${_DOW//[^1-7]/}
-_DOM=$(date +%e 2>&1)
+_DOM=$(date +%e)
 _DOM=${_DOM//[^0-9]/}
-_HST="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
+_HST=$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)
 _HST=${_HST//[^a-zA-Z0-9-.]/}
-_HST=$(echo -n ${_HST} | tr A-Z a-z 2>&1)
-_HST_DASH=$(echo -n ${_HST} | tr . - 2>&1)
+_HST=$(echo -n "${_HST}" | tr A-Z a-z)
+_HST_DASH=$(echo -n "${_HST}" | tr . -)
 
 _crlGet="-L --max-redirs 3 -k -s --retry 9 --retry-delay 9 -A iCab"
 _wgetGet="--max-redirect=3 --no-check-certificate -q --tries=9 --wait=9 --user-agent='iCab'"
@@ -96,7 +96,7 @@ fi
 
 _os_detection_minimal() {
   _APT_UPDATE="apt-get update"
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
   for e in ${_OS_LIST}; do
     if [ "${e}" = "${_OS_CODE}" ]; then
@@ -114,7 +114,7 @@ _apt_clean_update() {
 
 _check_vps() {
   _BENG_VS=NO
-  _VM_TEST="$(uname -a)"
+  _VM_TEST=$(uname -a)
   if [[ "${_VM_TEST}" =~ "-beng" ]]; then
     _BENG_VS=YES
   fi
@@ -122,7 +122,7 @@ _check_vps() {
 _check_vps
 
 _find_fast_mirror_early() {
-  _isNetc=$(which netcat 2>&1)
+  _isNetc=$(which netcat)
   if [ ! -x "${_isNetc}" ] || [ -z "${_isNetc}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
@@ -133,7 +133,7 @@ _find_fast_mirror_early() {
     apt-get install netcat-traditional ${_aptYesUnth}
     wait
   fi
-  _ffMirr=$(which ffmirror 2>&1)
+  _ffMirr=$(which ffmirror)
   if [ -x "${_ffMirr}" ]; then
     _ffList="/var/backups/boa-mirrors-2024-12.txt"
     mkdir -p /var/backups
@@ -143,9 +143,9 @@ _find_fast_mirror_early() {
       echo "ao.files.aegir.cc" >> ${_ffList}
     fi
     if [ -e "${_ffList}" ]; then
-      _BROKEN_FFMIRR_TEST=$(grep "stuff" ${_ffMirr} 2>&1)
+      _BROKEN_FFMIRR_TEST=$(grep "stuff" "${_ffMirr}")
       if [[ "${_BROKEN_FFMIRR_TEST}" =~ "stuff" ]]; then
-        _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
+        _CHECK_MIRROR=$(bash "${_ffMirr}" < "${_ffList}")
         _USE_MIR="${_CHECK_MIRROR}"
         [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.aegir.cc"
       else
@@ -169,7 +169,7 @@ _install() {
   _DUPLICITY_ITD=$(duplicity --version 2>&1 \
     | tr -d "\n" \
     | cut -d" " -f2 \
-    | awk '{ print $1}' 2>&1)
+    | awk '{ print $1}')
   if [ "${_DUPLICITY_ITD}" = "${_DCY_VRN}" ] \
     && [ -L "/usr/local/bin/jp.py" ] \
     && [ -L "/usr/local/bin/duplicity" ] \
@@ -198,7 +198,7 @@ _install() {
         rclone \
         rdiff \
         tzdata
-    _PTN_TEST=$(${_DCY_PTN} --version 2>&1)
+    _PTN_TEST=$("${_DCY_PTN}" --version)
     if [[ ! "${_PTN_TEST}" =~ "Python ${_PTN_VRN}" ]] \
       || [ ! -x "${_DCY_PTN}" ]; then
       cd /var/opt
@@ -215,7 +215,7 @@ _install() {
       make install --quiet
       cd
     fi
-    _PTN_TEST=$(${_DCY_PTN} --version 2>&1)
+    _PTN_TEST=$("${_DCY_PTN}" --version)
     if [[ "${_PTN_TEST}" =~ "Python ${_PTN_VRN}" ]]; then
       python3 -m pip install pipx --break-system-packages --root-user-action ignore
       pip3 install --upgrade pip --root-user-action ignore
@@ -228,7 +228,7 @@ _install() {
       echo "Python ${_PTN_VRN} installation failed with ${_PTN_TEST}"
       exit 1
     fi
-    _DCY_TEST=$(${_DCY_CMD} --version 2>&1)
+    _DCY_TEST=$("${_DCY_CMD}" --version)
     if [[ "${_DCY_TEST}" =~ "duplicity ${_DCY_VRN}" ]]; then
       echo "Installation complete!"
     else
@@ -428,7 +428,7 @@ _backup_prepare() {
       -maxdepth 1 \
       -mindepth 1 \
       -type f \
-      | sort 2>&1)
+      | sort)
     if [[ "${_CacheTest}" =~ "No such file or directory" ]] \
       || [ -z "${_CacheTest}" ]; then
       _DO_CLEANUP=NO
@@ -440,13 +440,12 @@ _backup_prepare() {
 
 _monthly_cleanup() {
   if [ -e "${_LOGPTH}/${_BUCKET_NAME}.randomize.cleanup.log" ]; then
-    _RCL=$(cat ${_LOGPTH}/${_BUCKET_NAME}.randomize.cleanup.log 2>&1)
-    _RCL=$(echo -n ${_RCL} | tr -d "\n" 2>&1)
+    _RCL=$(cat ${_LOGPTH}/${_BUCKET_NAME}.randomize.cleanup.log 2>/dev/null | tr -d '\n')
     _RCL=${_RCL//[^1-5]/}
   else
     _RCL=$((RANDOM%5+1))
     _RCL=${_RCL//[^1-5]/}
-    echo ${_RCL} > ${_LOGPTH}/${_BUCKET_NAME}.randomize.cleanup.log
+    echo "${_RCL}" > "${_LOGPTH}/${_BUCKET_NAME}.randomize.cleanup.log"
   fi
   if [ -e "${_LOGPTH}/${_BUCKET_NAME}.archive.log" ] \
     && [ ! -e "/root/.skip_duplicity_monthly_cleanup.cnf" ] \
@@ -468,15 +467,14 @@ _monthly_cleanup() {
 _randomize_full() {
   if [ -e "/root/.randomize_duplicity_full_backup_day.cnf" ]; then
     if [ -e "${_LOGPTH}/${_BUCKET_NAME}.randomize.full.log" ]; then
-      _RDW=$(cat ${_LOGPTH}/${_BUCKET_NAME}.randomize.full.log 2>&1)
-      _RDW=$(echo -n ${_RDW} | tr -d "\n" 2>&1)
+      _RDW=$(cat ${_LOGPTH}/${_BUCKET_NAME}.randomize.full.log 2>/dev/null | tr -d '\n')
       _RDW=${_RDW//[^1-7]/}
       _MODE="incremental"
     else
       _RDW=$((RANDOM%7+1))
       _RDW=${_RDW//[^1-7]/}
       _MODE="full"
-      echo ${_RDW} > ${_LOGPTH}/${_BUCKET_NAME}.randomize.full.log
+      echo "${_RDW}" > "${_LOGPTH}/${_BUCKET_NAME}.randomize.full.log"
     fi
   else
     _RDW=6
@@ -589,7 +587,7 @@ _conn_test() {
   fi
   echo "Running AWS connection test, please wait..."
   echo "Command is ${_DCY_MN_CMD} cleanup --dry-run --timeout 5 ${_NAME} ${_TARGET}"
-  _ConnTest=$(${_DCY_MN_CMD} cleanup --dry-run --timeout 5 ${_NAME} ${_TARGET} 2>&1)
+  _ConnTest=$(${_DCY_MN_CMD} cleanup --dry-run --timeout 5 ${_NAME} ${_TARGET})
   ### echo _ConnTest is STR ${_ConnTest} END
   if [[ "${_ConnTest}" =~ "No connection to backend" ]] \
     || [[ "${_ConnTest}" =~ "IllegalLocationConstraintException" ]]; then
@@ -635,13 +633,13 @@ _restore() {
 
 _retrieve() {
   if [ $# = 3 ]; then
-    _HST_DASH=$(echo -n $3 | tr . - 2>&1)
+    _HST_DASH=$(echo -n $3 | tr . -)
     _BUCKET_NAME="daily-remote-${_HST_DASH}"
     _TARGET="boto3+s3://${_BUCKET_NAME}"
     echo "Command is ${_DCY_MN_CMD} restore --file-to-restore $1 ${_NAME} ${_TARGET} $2"
     ${_DCY_MN_CMD} restore --file-to-restore $1 ${_NAME} ${_TARGET} $2
   elif [ $# = 4 ]; then
-    _HST_DASH=$(echo -n $4 | tr . - 2>&1)
+    _HST_DASH=$(echo -n $4 | tr . -)
     _BUCKET_NAME="daily-remote-${_HST_DASH}"
     _TARGET="boto3+s3://${_BUCKET_NAME}"
     echo "Command is ${_DCY_MN_CMD} restore --file-to-restore $1 --time $2 ${_NAME} ${_TARGET} $3"

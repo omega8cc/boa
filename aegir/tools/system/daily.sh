@@ -25,7 +25,7 @@ _check_root() {
     echo "ERROR: We can not proceed until it is below 90/100"
     exit 1
   fi
-  _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
+  _hName=$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)
 }
 _check_root
 
@@ -38,7 +38,7 @@ if [ -e "/root/.pause_heavy_tasks_maint.cnf" ]; then
 fi
 
 _WEBG=www-data
-_OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+_OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
 
 if [ -e "/root/.install.modern.openssl.cnf" ] \
   && [ -x "/usr/local/ssl3/bin/openssl" ]; then
@@ -75,7 +75,7 @@ _sanitize_number() {
 
 _os_detection_minimal() {
   _APT_UPDATE="apt-get update"
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
   for e in ${_OS_LIST}; do
     if [ "${e}" = "${_OS_CODE}" ]; then
@@ -101,7 +101,7 @@ _if_hosted_sys() {
 }
 
 _find_fast_mirror_early() {
-  _isNetc=$(which netcat 2>&1)
+  _isNetc=$(which netcat)
   if [ ! -x "${_isNetc}" ] || [ -z "${_isNetc}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
@@ -112,7 +112,7 @@ _find_fast_mirror_early() {
     apt-get install netcat-traditional ${_aptYesUnth} 2> /dev/null
     wait
   fi
-  _ffMirr=$(which ffmirror 2>&1)
+  _ffMirr=$(which ffmirror)
   if [ -x "${_ffMirr}" ]; then
     _ffList="/var/backups/boa-mirrors-2024-12.txt"
     mkdir -p /var/backups
@@ -122,9 +122,9 @@ _find_fast_mirror_early() {
       echo "ao.files.aegir.cc" >> ${_ffList}
     fi
     if [ -e "${_ffList}" ]; then
-      _BROKEN_FFMIRR_TEST=$(grep "stuff" ${_ffMirr} 2>&1)
+      _BROKEN_FFMIRR_TEST=$(grep "stuff" "${_ffMirr}")
       if [[ "${_BROKEN_FFMIRR_TEST}" =~ "stuff" ]]; then
-        _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
+        _CHECK_MIRROR=$(bash "${_ffMirr}" < "${_ffList}")
         _USE_MIR="${_CHECK_MIRROR}"
         [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.aegir.cc"
       else
@@ -198,7 +198,7 @@ _disable_chattr() {
 
 _run_drush8_cmd() {
   if [ -e "/root/.debug_daily.info" ]; then
-    _nOw=$(date +%y%m%d-%H%M%S 2>&1)
+    _nOw=$(date +%y%m%d-%H%M%S)
     echo "${_nOw} ${_HM_U} running drush8 @${_Dom} $1"
   fi
   if [ -x "/opt/php74/bin/php" ]; then
@@ -211,7 +211,7 @@ _run_drush8_cmd() {
 
 _run_drush8_hmr_cmd() {
   if [ -e "/root/.debug_daily.info" ]; then
-    _nOw=$(date +%y%m%d-%H%M%S 2>&1)
+    _nOw=$(date +%y%m%d-%H%M%S)
     echo "${_nOw} ${_HM_U} running drush8 @hostmaster $1"
   fi
   su -s /bin/bash - ${_HM_U} -c "drush8 @hostmaster $1" &> /dev/null
@@ -220,7 +220,7 @@ _run_drush8_hmr_cmd() {
 
 _run_drush8_hmr_master_cmd() {
   if [ -e "/root/.debug_daily.info" ]; then
-    _nOw=$(date +%y%m%d-%H%M%S 2>&1)
+    _nOw=$(date +%y%m%d-%H%M%S)
     echo "${_nOw} aegir running drush8 @hostmaster $1"
   fi
   su -s /bin/bash - aegir -c "drush8 @hostmaster $1" &> /dev/null
@@ -229,7 +229,7 @@ _run_drush8_hmr_master_cmd() {
 
 _run_drush8_nosilent_cmd() {
   if [ -e "/root/.debug_daily.info" ]; then
-    _nOw=$(date +%y%m%d-%H%M%S 2>&1)
+    _nOw=$(date +%y%m%d-%H%M%S)
     echo "${_nOw} ${_HM_U} running drush8 @${_Dom} $1"
   fi
   if [ -x "/opt/php74/bin/php" ]; then
@@ -290,7 +290,7 @@ _check_if_required_with_drush8() {
       | cut -d: -f2 \
       | awk '{ print $1}' \
       | sed "s/['\"]//g" \
-      | tr -d "\n" 2>&1)
+      | tr -d '\n')
     _Profile=${_Profile//[^a-z_]/}
     echo "_Profile is == ${_Profile} =="
     if [ ! -z "${_Profile}" ]; then
@@ -475,7 +475,7 @@ _fix_user_register_protection_with_vSet() {
       | cut -d: -f2 \
       | awk '{ print $1}' \
       | sed "s/['\"]//g" \
-      | tr -d "\n" 2>&1)
+      | tr -d '\n')
     _Prm=${_Prm//[^0-2]/}
     echo "_Prm user_register for ${_Dom} is ${_Prm}"
     if [ "${_ENABLE_STRICT_USER_REGISTER_PROTECTION}" = "YES" ]; then
@@ -1015,7 +1015,7 @@ _fix_modules() {
         | cut -d: -f2 \
         | awk '{ print $1}' \
         | sed "s/['\"]//g" \
-        | tr -d "\n" 2>&1)
+        | tr -d '\n')
       _Pri=${_Pri//[^a-z]/}
       if [ "${_Pri}" = "private" ] || [ "${_Pri}" = "public" ]; then
         echo _Pri file_default_scheme for ${_Dom} is ${_Pri}
@@ -1515,11 +1515,11 @@ _if_site_db_conversion() {
     fi
     if [ "${_SQL_CONVERT}" = "myisam" ] \
       || [ "${_SQL_CONVERT}" = "innodb" ]; then
-      _TIMP=$(date +%y%m%d-%H%M%S 2>&1)
+      _TIMP=$(date +%y%m%d-%H%M%S)
       echo "${_TIMP} sql conversion to-${_SQL_CONVERT} \
         for ${_Dom} started"
       _sql_convert
-      _TIMP=$(date +%y%m%d-%H%M%S 2>&1)
+      _TIMP=$(date +%y%m%d-%H%M%S)
       echo "${_TIMP} sql conversion to-${_SQL_CONVERT} \
         for ${_Dom} completed"
     fi
@@ -2042,7 +2042,7 @@ _if_le_hm_ssl_old() {
 
   # Check if the path is a symlink
   if [ -L "${_filePath}" ]; then
-    _target_file="$(readlink -f "${_filePath}")"
+    _target_file=$(readlink -f "${_filePath}")
     # Get the file's modification time in seconds since epoch
     _file_mod_time=$(stat -c %Y "${_target_file}")
   else
@@ -2085,7 +2085,7 @@ _if_le_hm_ssl_crt_key_copy() {
   fi
   if [ -e "${_crtPath}" ]; then
     if [ -L "${_crtPath}" ]; then
-      _crtPathR="$(readlink -n "${_crtPath}")"
+      _crtPathR=$(readlink -n "${_crtPath}")
       if [ -f "${_leCrtPath}/${_crtPathR}" ]; then
         rm -f /etc/ssl/private/${_hmFront}.crt
         cp -a ${_leCrtPath}/${_crtPathR} /etc/ssl/private/${_hmFront}.crt
@@ -2098,7 +2098,7 @@ _if_le_hm_ssl_crt_key_copy() {
   _keyPath="${_leCrtPath}/privkey.pem"
   if [ -e "${_keyPath}" ]; then
     if [ -L "${_keyPath}" ]; then
-      _keyPathR="$(readlink -n "${_keyPath}")"
+      _keyPathR=$(readlink -n "${_keyPath}")
       if [ -f "${_leCrtPath}/${_keyPathR}" ]; then
         rm -f /etc/ssl/private/${_hmFront}.key
         cp -a ${_leCrtPath}/${_keyPathR} /etc/ssl/private/${_hmFront}.key
@@ -2114,12 +2114,10 @@ _le_hm_ssl_check_update() {
   _leCrtPath=
   _exeLe="${_usEr}/tools/le/dehydrated"
   if [ -e "${_usEr}/log/domain.txt" ]; then
-    _hmFront=$(cat ${_usEr}/log/domain.txt 2>&1)
-    _hmFront=$(echo -n ${_hmFront} | tr -d "\n" 2>&1)
+    _hmFront=$(cat ${_usEr}/log/domain.txt 2>/dev/null | tr -d '\n')
   fi
   if [ -e "${_usEr}/log/extra_domain.txt" ]; then
-    _hmFrontExtra=$(cat ${_usEr}/log/extra_domain.txt 2>&1)
-    _hmFrontExtra=$(echo -n ${_hmFrontExtra} | tr -d "\n" 2>&1)
+    _hmFrontExtra=$(cat ${_usEr}/log/extra_domain.txt 2>/dev/null | tr -d '\n')
   fi
   if [ -z "${_hmFront}" ]; then
     if [ -e "${_usEr}/.drush/hostmaster.alias.drushrc.php" ]; then
@@ -2136,7 +2134,7 @@ _le_hm_ssl_check_update() {
   if [ -x "${_exeLe}" ] \
     && [ ! -z "${_hmFront}" ] \
     && [ -e "${_leCrtPath}/fullchain.pem" ]; then
-    _DOM=$(date +%e 2>&1)
+    _DOM=$(date +%e)
     _DOM=${_DOM//[^0-9]/}
     _RDM=$((RANDOM%25+6))
     if [ "${_DOM}" = "${_RDM}" ] || [ -e "${_usEr}/static/control/force-ssl-certs-rebuild.info" ]; then
@@ -2218,7 +2216,7 @@ _le_ssl_check_update() {
             fi
           fi
         done
-		_DOM=$(date +%e 2>&1)
+		_DOM=$(date +%e)
 		_DOM=${_DOM//[^0-9]/}
 		_RDM=$((RANDOM%25+6))
 		if [ "${_DOM}" = "${_RDM}" ] || [ -e "${_usEr}/static/control/force-ssl-certs-rebuild.info" ]; then
@@ -2291,7 +2289,7 @@ _daily_process() {
   _cleanup_ghost_drushrc
   for _Site in `find ${_usEr}/config/server_master/nginx/vhost.d \
     -maxdepth 1 -mindepth 1 -type f | sort`; do
-    _MOMENT=$(date +%y%m%d-%H%M%S 2>&1)
+    _MOMENT=$(date +%y%m%d-%H%M%S)
     echo ${_MOMENT} Start Counting Site ${_Site}
     _Dom=$(echo ${_Site} | cut -d'/' -f9 | awk '{ print $1}' 2>&1)
     _Dan=
@@ -2334,11 +2332,11 @@ _daily_process() {
           _PlrID=$(echo ${_Plr} \
             | openssl md5 \
             | awk '{ print $2}' \
-            | tr -d "\n" 2>&1)
+            | tr -d '\n')
         else
           _PlrID=$(echo ${_Plr} \
             | openssl md5 \
-            | tr -d "\n" 2>&1)
+            | tr -d '\n')
         fi
         _codeBaseCheckInfo="${_usEr}/log/ctrl/plr.${_PlrID}.codebasecheck-${_NOW}.info"
         if [ -x "/opt/local/bin/codebasecheck" ] && [ ! -f "${_codeBaseCheckInfo}" ]; then
@@ -2451,7 +2449,7 @@ _daily_process() {
           _fix_permissions
         fi
       fi
-      _MOMENT=$(date +%y%m%d-%H%M%S 2>&1)
+      _MOMENT=$(date +%y%m%d-%H%M%S)
       echo ${_MOMENT} End Counting Site ${_Site}
     fi
   done
@@ -2681,14 +2679,14 @@ _purge_cruft_machine() {
     if [ -e "${i}" ]; then
       _RevisionTest=$(ls ${i} \
         | wc -l \
-        | tr -d "\n" 2>&1)
+        | tr -d '\n')
       if [ "${_RevisionTest}" -lt "${_LOW_NR}" ] \
         && [ ! -z "${_RevisionTest}" ]; then
         if [ -d "/home/${_HM_U}.ftp/platforms" ]; then
           chattr -i /home/${_HM_U}.ftp/platforms
           chattr -i /home/${_HM_U}.ftp/platforms/* &> /dev/null
         fi
-        _NOW=$(date +%y%m%d-%H%M%S 2>&1)
+        _NOW=$(date +%y%m%d-%H%M%S)
         [ ! -e "/var/backups/ghost/${_HM_U}/${_NOW}" ] && mkdir -p /var/backups/ghost/${_HM_U}/${_NOW}
         echo "Moving ${i} to /var/backups/ghost/${_HM_U}/${_NOW}"
         mv -f ${i} /var/backups/ghost/${_HM_U}/${_NOW}/
@@ -2704,7 +2702,7 @@ _purge_cruft_machine() {
       _RevisionTest=$(ls ${i} | wc -l 2>&1)
       if [ "${_RevisionTest}" -lt "2" ] && [ ! -z "${_RevisionTest}" ]; then
         echo "_RevisionTest is ${_RevisionTest}"
-        _NOW=$(date +%y%m%d-%H%M%S 2>&1)
+        _NOW=$(date +%y%m%d-%H%M%S)
         mkdir -p ${_usEr}/undo/dist/${_NOW}
         mv -f ${i} ${_usEr}/undo/dist/${_NOW}/ &> /dev/null
         echo "GHOST revision ${i} detected and moved to ${_usEr}/undo/dist/${_NOW}/"
@@ -2733,7 +2731,7 @@ _purge_cruft_machine() {
         ln -sfn ${i}/keys /home/${_HM_U}.ftp/platforms/${_distTrNr}/keys
       fi
       if [ -e "/home/${_HM_U}.ftp/platforms/data" ]; then
-        _NOW=$(date +%y%m%d-%H%M%S 2>&1)
+        _NOW=$(date +%y%m%d-%H%M%S)
         [ ! -e "/var/backups/ghost/${_HM_U}/${_NOW}" ] && mkdir -p /var/backups/ghost/${_HM_U}/${_NOW}
         mv -f /home/${_HM_U}.ftp/platforms/data /var/backups/ghost/${_HM_U}/${_NOW}/platforms_data
       fi
@@ -2784,7 +2782,7 @@ _load_control() {
   [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
   : "${_CPU_TASK_RATIO:=3.1}"
   [ -e "/root/.force.sites.verify.cnf" ] && _CPU_TASK_RATIO=3.9
-  _CPU_TASK_RATIO="$(_sanitize_number "${_CPU_TASK_RATIO}")"
+  _CPU_TASK_RATIO=$(_sanitize_number "${_CPU_TASK_RATIO}")
   _O_LOAD_MAX=$(echo "${_CPU_TASK_RATIO} * 100" | bc -l)
   _get_load
 }
@@ -2947,7 +2945,7 @@ _daily_action() {
           _MY_EMAIL=${_MY_EMAIL//\\\@/\@}
           if [ -e "${_usEr}/log/email.txt" ]; then
             _F_CLIENT_EMAIL=$(cat ${_usEr}/log/email.txt 2>&1)
-            _F_CLIENT_EMAIL=$(echo -n ${_F_CLIENT_EMAIL} | tr -d "\n" 2>&1)
+            _F_CLIENT_EMAIL=$(echo -n ${_F_CLIENT_EMAIL} | tr -d '\n')
             _F_CLIENT_EMAIL=${_F_CLIENT_EMAIL//\\\@/\@}
           fi
           if [ ! -z "${_F_CLIENT_EMAIL}" ]; then
@@ -3066,9 +3064,9 @@ while [ -e "/run/boa_wait.pid" ]; do
   sleep 5
 done
 #
-_NOW=$(date +%y%m%d-%H%M%S 2>&1)
+_NOW=$(date +%y%m%d-%H%M%S)
 _NOW=${_NOW//[^0-9-]/}
-_DOW=$(date +%u 2>&1)
+_DOW=$(date +%u)
 _DOW=${_DOW//[^1-7]/}
 #
 if [ -e "/root/.force.sites.verify.cnf" ]; then
@@ -3173,7 +3171,7 @@ else
 fi
 if [ -e "/opt/tmp/barracuda-release.txt" ]; then
   _X_VERSION=$(cat /opt/tmp/barracuda-release.txt 2>&1)
-  _VERSIONS_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
+  _VERSIONS_TEST=$(cat /var/log/barracuda_log.txt)
   if [ ! -z "${_X_VERSION}" ]; then
     _MY_EMAIL=${_MY_EMAIL//\\\@/\@}
     if [[ "${_MY_EMAIL}" =~ "omega8.cc" ]]; then

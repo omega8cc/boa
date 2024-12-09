@@ -1,6 +1,6 @@
 
 export _tRee=dev
-export _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
+export _hName=$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)
 
 _if_fix_iptables_symlinks() {
   ###
@@ -55,11 +55,11 @@ _if_reinstall_curl_src() {
     apt-get update -qq &> /dev/null
     apt-get install lsb-release ${_aptYesUnth} -qq &> /dev/null
   fi
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   [ "${_OS_CODE}" = "wheezy" ] && _CURL_VRN=7.50.1
   [ "${_OS_CODE}" = "jessie" ] && _CURL_VRN=7.71.1
   [ "${_OS_CODE}" = "stretch" ] && _CURL_VRN=8.2.1
-  _isCurl=$(curl --version 2>&1)
+  _isCurl=$(curl --version)
   if [[ ! "${_isCurl}" =~ "OpenSSL" ]] || [ -z "${_isCurl}" ]; then
     _msg "OOPS: cURL is broken! Re-installing.."
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
@@ -157,8 +157,8 @@ _define_loc_osr() {
   _apt_clean_update_no_releaseinfo_change
   _mrun "apt-get upgrade ${_nrmUpArg}" 2> /dev/null
   _mrun "apt-get install lsb-release ${_nrmUpArg}" 2> /dev/null
-  _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _define_loc_osr"
   fi
@@ -357,7 +357,7 @@ _if_running_as_root_barracuda() {
         touch /run/cloud_vhost.pid
       fi
     fi
-    _VM_TEST="$(uname -a)"
+    _VM_TEST=$(uname -a)
     if [[ "${_VM_TEST}" =~ "-beng" ]]; then
       _VMFAMILY="VS"
       touch /run/cloud_vhost.pid
@@ -420,7 +420,7 @@ _kill_nash() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _kill_nash"
   fi
-  _VM_TEST="$(uname -a)"
+  _VM_TEST=$(uname -a)
   if [[ "${_VM_TEST}" =~ "-beng" ]]; then
     _DO_NOTHING=YES
   else
@@ -670,7 +670,7 @@ _tune_memory_limits() {
     _msg "TUNE: _MXC_SQL is ${_MXC_SQL}"
   fi
 
-  _VM_TEST="$(uname -a)"
+  _VM_TEST=$(uname -a)
   if [ -e "/proc/bean_counters" ]; then
     _VMFAMILY="VZ"
   elif [ -e "/root/.tg.cnf" ]; then
@@ -988,13 +988,11 @@ _tune_memory_limits() {
 _find_server_city() {
   if [ ! -e "/root/.dont.use.fancy.bash.login.cnf" ]; then
     if [ -e "/root/.found_correct_city.cnf" ]; then
-      _LOC_CITY=$(cat /root/.found_correct_city.cnf 2>&1)
-      _LOC_CITY=$(echo -n ${_LOC_CITY} | tr -d "\n" 2>&1)
+      _LOC_CITY=$(cat /root/.found_correct_city.cnf 2>/dev/null | tr -d '\n')
     else
       if [ -e "/root/.found_correct_ipv4.cnf" ]; then
-        _LOC_IP=$(cat /root/.found_correct_ipv4.cnf 2>&1)
-        _LOC_CITY=$(curl ${_crlGet} ipinfo.io/${_LOC_IP}/city 2>&1)
-        _LOC_CITY=$(echo -n ${_LOC_CITY} | tr -d "\n" 2>&1)
+        _LOC_IP=$(cat /root/.found_correct_ipv4.cnf 2>/dev/null | tr -d '\n')
+        _LOC_CITY=$(curl "${_crlGet}" ipinfo.io/${_LOC_IP}/city 2>/dev/null | tr -d '\n')
       fi
       if [ ! -z "${_LOC_CITY}" ]; then
         _LOC_CITY=$(echo "${_LOC_CITY}" | tr ' ' '+' 2>&1)
@@ -1021,7 +1019,7 @@ _locales_check_fix() {
       echo "AcceptEnv LANG LC_*" >> /etc/ssh/sshd_config
     fi
   fi
-  _LOC_TEST=$(locale 2>&1)
+  _LOC_TEST=$(locale)
   if [[ "${_LOC_TEST}" =~ LANG=.*UTF-8 ]]; then
     _LOCALE_TEST=OK
   fi
@@ -1055,7 +1053,7 @@ _locales_check_fix() {
 EOF
     sleep 5
     if [ "${_OS_DIST}" = "Debian" ] || [ "${_OS_DIST}" = "Devuan" ]; then
-      _LOCALE_GEN_TEST=$(grep -v "^#" /etc/locale.gen 2>&1)
+      _LOCALE_GEN_TEST=$(grep -v "^#" /etc/locale.gen)
       if [[ ! "${_LOCALE_GEN_TEST}" =~ "en_US.UTF-8 UTF-8" ]]; then
         echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
       fi
@@ -1113,7 +1111,7 @@ EOF
       _set_xterm
     fi
     if [ "${_OS_DIST}" = "Debian" ] || [ "${_OS_DIST}" = "Devuan" ]; then
-      _LOCALE_GEN_TEST=$(grep -v "^#" /etc/locale.gen 2>&1)
+      _LOCALE_GEN_TEST=$(grep -v "^#" /etc/locale.gen)
       if [[ ! "${_LOCALE_GEN_TEST}" =~ "en_US.UTF-8 UTF-8" ]]; then
         echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
       fi
@@ -1139,7 +1137,7 @@ EOF
     export LC_NUMERIC=POSIX &> /dev/null
     export LC_ALL= &> /dev/null
   fi
-  _LOCALES_BASHRC_TEST=$(grep LC_COLLATE /root/.bashrc 2>&1)
+  _LOCALES_BASHRC_TEST=$(grep LC_COLLATE /root/.bashrc)
   if [[ ! "${_LOCALES_BASHRC_TEST}" =~ "LC_COLLATE" ]]; then
     printf "\n" >> /root/.bashrc
     echo "export LANG=en_US.UTF-8" >> /root/.bashrc
@@ -1583,7 +1581,7 @@ _php_legacy_versions_cleanup_cnf() {
   fi
 
   _VMFAMILY=XEN
-  _VM_TEST="$(uname -a)"
+  _VM_TEST=$(uname -a)
   if [[ "${_VM_TEST}" =~ "-beng" ]]; then
     _VMFAMILY="VS"
   fi
@@ -1890,7 +1888,7 @@ _barracuda_cnf() {
     _msg "PROC: _barracuda_cnf"
   fi
   _VMFAMILY=XEN
-  _VM_TEST="$(uname -a)"
+  _VM_TEST=$(uname -a)
   if [[ "${_VM_TEST}" =~ "-beng" ]]; then
     _VMFAMILY="VS"
   fi
@@ -2279,8 +2277,7 @@ _barracuda_cnf() {
         echo "_NEWRELIC_KEY=${_NEWRELIC_KEY}" >> ${_barCnf}
       else
         if [ -e "/etc/newrelic/newrelic.cfg" ]; then
-          _NEWRELIC_KEY=$(grep license_key /etc/newrelic/newrelic.cfg 2>&1)
-          _NEWRELIC_KEY=$(echo -n ${_NEWRELIC_KEY} | tr -d "\n" 2>&1)
+          _NEWRELIC_KEY=$(grep license_key /etc/newrelic/newrelic.cfg 2>/dev/null | tr -d '\n')
           echo "_NEWRELIC_KEY=${_NEWRELIC_KEY}" >> ${_barCnf}
           sed -i "s/license_key=//g" ${_barCnf}
           wait
@@ -2835,7 +2832,7 @@ _install_icu_modern() {
   if [ ! -e "${_pthLog}" ] && [ -e "/var/xdrago_wait/log" ]; then
     _pthLog="/var/xdrago_wait/log"
   fi
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   if [ -e "${_pthLog}" ]; then
     _pthIcuLog="${_pthLog}/icu-update-${_ICU_MODERN_VRN}-for-${_OS_CODE}.log"
     _pthIcuLcy="${_pthLog}/icu-update-${_ICU_MODERN_VRN}.log"
@@ -2871,7 +2868,7 @@ _install_icu_modern() {
     if [ -e "/usr/local/lib/icu" ]; then
       touch ${_pthIcuLog}
     fi
-    _X86_64_TEST=$(uname -m 2>&1)
+    _X86_64_TEST=$(uname -m)
     if [ "${_X86_64_TEST}" = "x86_64" ]; then
       if [ -e "/usr/local/lib/icu" ]; then
         if [ -d "/usr/lib/x86_64-linux-gnu/icu" ]; then
@@ -2896,7 +2893,7 @@ _install_icu_jessie() {
   if [ ! -e "${_pthLog}" ] && [ -e "/var/xdrago_wait/log" ]; then
     _pthLog="/var/xdrago_wait/log"
   fi
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   if [ -e "${_pthLog}" ]; then
     _pthIcuLog="${_pthLog}/icu-update-${_ICU_LEGACY_VRN}-for-${_OS_CODE}.log"
     _pthIcuLcy="${_pthLog}/icu-update-${_ICU_LEGACY_VRN}.log"
@@ -2932,7 +2929,7 @@ _install_icu_jessie() {
     if [ -e "/usr/local/lib/icu" ]; then
       touch ${_pthIcuLog}
     fi
-    _X86_64_TEST=$(uname -m 2>&1)
+    _X86_64_TEST=$(uname -m)
     if [ "${_X86_64_TEST}" = "x86_64" ]; then
       if [ -e "/usr/local/lib/icu" ]; then
         if [ -d "/usr/lib/x86_64-linux-gnu/icu" ]; then
@@ -3048,7 +3045,7 @@ _if_install_wkhtmltox() {
     _msg "PROC: _if_install_wkhtmltox"
   fi
   ###--------------------###
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   _isWkhtmltox=$(which wkhtmltopdf 2>&1)
   if [ -z "${_isWkhtmltox}" ] \
     || [ ! -e "${_isWkhtmltox}" ] \
@@ -3431,11 +3428,11 @@ _sources_list_update() {
           _msg "INFO: Now looking for the best/fastest ${_OS_DIST} mirror"
           _msg "INFO: This may take a while, please wait..."
           _hlpPth="/opt/tmp/boa/aegir/helpers"
-          _ffMirr=$(which ffmirror 2>&1)
-          _ffList="${_hlpPth}/apt-list-debian.txt"
+          _ffMirr=$(which ffmirror)
+          _ffList=${_hlpPth}/apt-list-debian.txt"
           if [ -e "${_ffMirr}" ] && [ -e "${_ffList}" ]; then
-            _MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
-            _MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
+            _MIRROR=$(bash "${_ffMirr}" < "${_ffList}")
+            _MIRROR=$(bash "${_ffMirr}" < "${_ffList}")
             echo " "
             _askThis="Enter your own mirror to use or press enter"
             _askThis="${_askThis} to use the fastest found mirror"
@@ -4290,7 +4287,7 @@ _curl_install_src() {
     apt-get update -qq &> /dev/null
     apt-get install lsb-release ${_aptYesUnth} -qq &> /dev/null
   fi
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   [ "${_OS_CODE}" = "wheezy" ] && _CURL_VRN=7.50.1
   [ "${_OS_CODE}" = "jessie" ] && _CURL_VRN=7.71.1
   [ "${_OS_CODE}" = "stretch" ] && _CURL_VRN=8.2.1
@@ -4360,7 +4357,7 @@ _curl_install_src() {
     fi
   fi
 
-  _BROKEN_CURL_TEST=$(curl --version 2>&1)
+  _BROKEN_CURL_TEST=$(curl --version)
   if [[ "${_BROKEN_CURL_TEST}" =~ "libcurl.so.4" ]]; then
     _CURL_INSTALL_REQUIRED=YES
   fi
@@ -4430,7 +4427,7 @@ _curl_install_src() {
       fi
       [ -e "/root/.sorted.multi.php.cnf" ] && rm -f /root/.sorted.multi.php.cnf
       if [ -e "/usr/local/bin/curl" ]; then
-        mv -f /usr/local/bin/curl /usr/local/bin/curl-src-off-$(date +%y%m%d-%H%M%S 2>&1)
+        mv -f /usr/local/bin/curl /usr/local/bin/curl-src-off-$(date +%y%m%d-%H%M%S)
       fi
       if [[ "${_CURL_GET_DPKG}" =~ "hold" ]]; then
         echo "curl install" | dpkg --set-selections &> /dev/null
@@ -4486,7 +4483,7 @@ _curl_install_src() {
           _mrun "make install" 2> /dev/null
           ldconfig 2> /dev/null
           if [ -x "/usr/local/bin/curl" ]; then
-            mv -f /usr/bin/curl /usr/bin/old-curl-$(date +%y%m%d-%H%M%S 2>&1)
+            mv -f /usr/bin/curl /usr/bin/old-curl-$(date +%y%m%d-%H%M%S)
             ln -sfn /usr/local/bin/curl /usr/bin/curl
           fi
           if [ ! -e "${_SSL_PATH}/certs/ca-certificates.crt" ]; then
@@ -4995,8 +4992,7 @@ _turn_off_apparmor_temporarily() {
   fi
   _isAppArmOn=N
   if [ -e "/sys/module/apparmor/parameters/enabled" ]; then
-    _isAppArmOn=$(cat /sys/module/apparmor/parameters/enabled 2>&1)
-    _isAppArmOn=$(echo -n ${_isAppArmOn} | tr -d "\n" 2>&1)
+    _isAppArmOn=$(cat /sys/module/apparmor/parameters/enabled 2>/dev/null | tr -d '\n')
   fi
   if [ "${_isAppArmOn}" = "Y" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -5217,8 +5213,7 @@ _if_install_apparmor() {
   fi
   _isAppArmOn=N
   if [ -e "/sys/module/apparmor/parameters/enabled" ]; then
-    _isAppArmOn=$(cat /sys/module/apparmor/parameters/enabled 2>&1)
-    _isAppArmOn=$(echo -n ${_isAppArmOn} | tr -d "\n" 2>&1)
+    _isAppArmOn=$(cat /sys/module/apparmor/parameters/enabled 2>/dev/null | tr -d '\n')
   fi
   if [ "${_isAppArmOn}" = "Y" ]; then
     _sync_apparmor_profiles
@@ -5263,7 +5258,7 @@ _finale() {
   _msg "Final post-${_L_ST} cleaning, one moment..."
   _barracuda_cnf_cleanup
   if [ -e "/var/log/barracuda_log.txt" ]; then
-    _T_SERIES_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
+    _T_SERIES_TEST=$(cat /var/log/barracuda_log.txt)
     if [[ "${_T_SERIES_TEST}" =~ "BOA-4." ]] \
       || [[ "${_T_SERIES_TEST}" =~ "BOA-3." ]] \
       || [[ "${_T_SERIES_TEST}" =~ "BOA-2.4." ]] \
@@ -5284,11 +5279,11 @@ _finale() {
   mv -f /etc/motd ${_vBs}/dragon/t/motd-pre-${_xSrl}-${_MTD_VR}-${_NOW} &> /dev/null
   mv -f /etc/motd-pre-* ${_vBs}/dragon/t/ &> /dev/null
   echo > /etc/motd
-  echo " Skynet Agent v.${_MTD_VR} on $(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)/$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1) \
+  echo " Skynet Agent v.${_MTD_VR} on $(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)/$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2) \
     welcomes you aboard" | fmt -su -w 2500 >> /etc/motd
   echo >> /etc/motd
   echo > /etc/motd.tail
-  echo " Skynet Agent v.${_MTD_VR} on $(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)/$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1) \
+  echo " Skynet Agent v.${_MTD_VR} on $(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)/$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2) \
     welcomes you aboard" | fmt -su -w 2500 >> /etc/motd.tail
   echo >> /etc/motd.tail
   apt-get autoclean -y &> /dev/null
@@ -5380,7 +5375,7 @@ _finale() {
     _if_fix_iptables_symlinks
     csf -uf &> /dev/null
     wait
-    _NFTABLES_TEST=$(iptables -V 2>&1)
+    _NFTABLES_TEST=$(iptables -V)
     if [[ "${_NFTABLES_TEST}" =~ "nf_tables" ]]; then
       if [ -e "/usr/sbin/iptables-legacy" ]; then
         update-alternatives --set iptables /usr/sbin/iptables-legacy &> /dev/null
@@ -5421,7 +5416,7 @@ _finale() {
     ### CVE-2019-11478 SACK Slowness
     ### CVE-2019-11479 Excess Resource Consumption Due to Low MSS Values
     if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
-      _SACK_TEST=$(ip6tables --list | grep tcpmss 2>&1)
+      _SACK_TEST=$(ip6tables --list | grep tcpmss)
       if [[ ! "${_SACK_TEST}" =~ "tcpmss" ]]; then
         sysctl net.ipv4.tcp_mtu_probing=0 &> /dev/null
         iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
@@ -6038,7 +6033,7 @@ _if_major_os_upgrade() {
     echo
     _mrun "sleep 5"
     _tPrmt="Are you sure you want to proceed?"
-    _tPrmt=$(echo -n ${_tPrmt} | fmt -su -w 2500 2>&1)
+    _tPrmt=$(echo -n "${_tPrmt}" | fmt -su -w 2500)
     if _prompt_yes_no "${_tPrmt}?" ; then
       true
       echo
@@ -6594,7 +6589,7 @@ _if_major_os_upgrade() {
       && [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
       touch /root/.rebuild_src_on_auto_before_reboot.info
       rm -f /var/xdrago_wait/log/*.log
-      _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+      _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
       _PURGE_MODE=OFF
       _NGX_FORCE_REINSTALL=YES
       _PHP_FORCE_REINSTALL=YES
@@ -6650,7 +6645,7 @@ _if_major_os_upgrade() {
     # fi
     ###
     ### Time for init scripts cleanup for VM running beng kernel.
-    _VM_TEST="$(uname -a)"
+    _VM_TEST=$(uname -a)
     if [[ "${_VM_TEST}" =~ "-beng" ]]; then
       _PTMX=OK
       _REMOVE_LINKS="buagent \
@@ -6702,7 +6697,7 @@ _if_major_os_upgrade() {
     ###
     ### For extra debugging only.
     if [ -e "/root/.debug.cnf" ]; then
-      _PTS_TEST=$(cat /proc/mounts | grep devpts 2>&1)
+      _PTS_TEST=$(cat /proc/mounts | grep devpts)
       if [[ ! "${_PTS_TEST}" =~ "devpts" ]] && [ ! -e "/dev/pts/ptmx" ]; then
         _PTS=FIX
       else
@@ -7327,7 +7322,7 @@ _php_libs_fix() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: Fix for PHP libs in ${_OS_DIST}/${_OS_CODE}"
     fi
-    _X86_64_TEST=$(uname -m 2>&1)
+    _X86_64_TEST=$(uname -m)
     if [ "${_X86_64_TEST}" = "x86_64" ]; then
       if [ -e "/usr/local/lib/icu" ]; then
         if [ -e "/usr/lib/x86_64-linux-gnu/icu" ] \
@@ -8026,7 +8021,7 @@ _lshell_install_upgrade() {
     elif [ -x "/usr/local/bin/pip3" ]; then
       _usePip=/usr/local/bin/pip3
     fi
-    _PIP_TEST=$(${_usePip} --version 2>&1)
+    _PIP_TEST=$("${_usePip}" --version)
     if [[ "${_PIP_TEST}" =~ "python 3.11" ]] \
       || [[ "${_PIP_TEST}" =~ "python 3.12" ]]; then
       _mrun "${_usePip} install --upgrade pip --root-user-action ignore" 2> /dev/null
@@ -8045,7 +8040,7 @@ _lshell_install_upgrade() {
     rm -rf /usr/local/lib/python*/site-packages/lshell*
     rm -rf /usr/local/lib/python*/dist-packages/lshell*
     cd /var/opt/lshell-${_LSHELL_VRN}
-    _PIP_TEST=$(${_usePip} --version 2>&1)
+    _PIP_TEST=$("${_usePip}" --version)
     if [[ "${_PIP_TEST}" =~ "python 3.11" ]] \
       || [[ "${_PIP_TEST}" =~ "python 3.12" ]]; then
       _mrun "${_usePip} install . --break-system-packages --root-user-action ignore" 2> /dev/null
@@ -8651,7 +8646,7 @@ _initd_update() {
         fi
       done
       _mrun "service nginx quietupgrade" 2> /dev/null
-      _DB_SERVER_TEST=$(mysql -V 2>&1)
+      _DB_SERVER_TEST=$(mysql -V)
       if [[ "${_DB_SERVER_TEST}" =~ "Distrib ${_DB_SERIES}." ]]; then
         _check_mysql_version
         if [ "${_DB_V}" = "5.7" ]; then
@@ -8660,8 +8655,7 @@ _initd_update() {
           fi
           rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
           if [ -x "/usr/bin/mysql_upgrade" ]; then
-            _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
-            _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+            _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
             _mrun "mysql_upgrade -u root --force" &> /dev/null
             _mrun "mysql_upgrade -u root --force" &> /dev/null
           fi
@@ -8690,7 +8684,7 @@ _initd_update() {
           fi
         else
           _myCnfUpdate=YES
-          # _diffMyTest=$(echo -n ${_diffMyTest} | fmt -su -w 2500 2>&1)
+          # _diffMyTest=$(echo -n ${_diffMyTest} | fmt -su -w 2500)
           _msg "INFO: ${_DB_SERVER} diff1 ${_diffMyTest}"
         fi
         if [[ "${_diffMyTest}" =~ "innodb_buffer_pool_size" ]]; then
@@ -8703,7 +8697,7 @@ _initd_update() {
         fi
       fi
       if [ "${_UP_SQL}" = "YES" ]; then
-        _myVnTest=$(mysql -V 2>&1)
+        _myVnTest=$(mysql -V)
         if [[ "${_myVnTest}" =~ "${_DBS_VRN}" ]]; then
           if [ "${_DEBUG_MODE}" = "YES" ]; then
             _msg "INFO: ${_DB_SERVER} ${_DBS_VRN} already up to date"
@@ -8717,10 +8711,8 @@ _initd_update() {
       if [ ! -e "/root/.run-to-daedalus.cnf" ] \
         && [ ! -e "/root/.run-to-chimaera.cnf" ] \
         && [ ! -e "/root/.run-to-beowulf.cnf" ]; then
-        _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
-        _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
-        _myUptime=$(mysqladmin -u root version | grep -i uptime 2>&1)
-        _myUptime=$(echo -n ${_myUptime} | fmt -su -w 2500 2>&1)
+        _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
+        _myUptime=$(mysqladmin -u root version | grep -i uptime | fmt -su -w 2500)
         _msg "INFO: ${_DB_SERVER} ${_myUptime}"
         if [ "${_myRstrd}" = "YES" ]; then
           _myCnfUpdate=NO
@@ -8739,7 +8731,7 @@ _initd_update() {
         if [ "${_DB_V}" = "5.7" ] || [ "${_DB_SERIES}" = "5.7" ]; then
           _CHECK_EXISTS=$(mysql -u root -e "SELECT EXISTS(SELECT 1 FROM mysql.user WHERE user = 'drandom_2test')" | grep "0" 2>&1)
           if [[ "${_CHECK_EXISTS}" =~ "0" ]]; then
-            _CHECK_REPAIR=$(mysql -u root -e "CREATE USER IF NOT EXISTS 'drandom_2test'@'localhost';" 2>&1)
+            _CHECK_REPAIR=$(mysql -u root -e "CREATE USER IF NOT EXISTS 'drandom_2test'@'localhost';")
             if [ "${_DEBUG_MODE}" = "YES" ]; then
               echo _CHECK_REPAIR 1 ${_CHECK_REPAIR}
             fi
@@ -8751,7 +8743,7 @@ _initd_update() {
               mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN max_statement_time;"
               mysql_upgrade -u root --force
             fi
-            _CHECK_REPAIR=$(mysql -u root -e "CREATE USER IF NOT EXISTS 'drandom_2test'@'localhost';" 2>&1)
+            _CHECK_REPAIR=$(mysql -u root -e "CREATE USER IF NOT EXISTS 'drandom_2test'@'localhost';")
             if [ "${_DEBUG_MODE}" = "YES" ]; then
               echo _CHECK_REPAIR 2 ${_CHECK_REPAIR}
             fi

@@ -7,7 +7,7 @@ _DEST_DRUSH="/opt/tools/drush/8/drush/drush.php"
 _forward_to_dash() {
   if [[ "${_ARGS}" =~ "sudo_noexec.so" ]] && [[ "${_LTD_GID}" =~ "ltd-shell-more"($) ]]; then
     ### echo FWD 0 DIRECT
-    _R_M=`echo -n ${_ARGS} | sed 's|LD_PRELOAD.*.so||'`
+    _R_M=$(echo -n ${_ARGS} | sed 's|LD_PRELOAD.*.so||')
     ### echo _R_M is ${_R_M}
     exec /bin/dash -c "${_R_M}"
     exit 0
@@ -83,7 +83,7 @@ _ALL="$@"
 ### echo "_ALL is ${_ALL}"
 
 # Capture environment variables
-_ENV=$(env 2>&1)
+_ENV=$(env)
 ### echo "_ENV is ${_ENV}"
 
 # Determine _ARGS based on the first argument
@@ -102,13 +102,13 @@ else
 fi
 
 if [[ "${_ARGS}" =~ "true COLUMNS=" ]]; then
-  _R_M=`echo -n "${_ARGS}" | grep -o "true COLUMNS=[0-9]\+ "`
-  _ARGS=`echo ${_ARGS} | sed "s/\${_R_M}//g"`
+  _R_M=$(echo -n "${_ARGS}" | grep -o "true COLUMNS=[0-9]\+ ")
+  _ARGS=$(echo ${_ARGS} | sed "s/\${_R_M}//g")
 fi
 
 if [[ "${_ARGS}" =~ "'" ]] && [[ "${_ARGS}" =~ "drush" ]]; then
   ### echo _ARGS RAW is ${_ARGS}
-  _ARGS=$(echo -n ${_ARGS} | tr -d "'" 2>&1)
+  _ARGS=$(echo -n ${_ARGS} | tr -d "'")
   ### echo _ARGS CLEAN is ${_ARGS}
 fi
 
@@ -120,14 +120,14 @@ if [[ ! "${_ARGS}" =~ "composer" ]] \
   _ARR=
   if [[ "${_ARGS}" =~ "vendor/drush/drush/drush.php " ]]; then
     if [[ "${_ARGS}" =~ "set -m" ]]; then
-      _R_M=`echo -n ${_ARGS}  | grep -o "set -m\; vendor/drush/drush/drush.php"`
+      _R_M=$(echo -n ${_ARGS}  | grep -o "set -m\; vendor/drush/drush/drush.php")
     else
-      _R_M=`echo -n ${_ARGS}  | grep -o "vendor/drush/drush/drush.php"`
+      _R_M=$(echo -n ${_ARGS}  | grep -o "vendor/drush/drush/drush.php")
     fi
     ### echo _R_M is ${_R_M}
     _R_M=${_R_M//\//\\\/}
     ### echo _R_M is ${_R_M}
-    _CLR=`echo ${_ARGS}  | sed "s/\${_R_M}//g"`
+    _CLR=$(echo ${_ARGS}  | sed "s/\${_R_M}//g")
     _ARR=() # the buffer array for filtered parameters
     for arg in "${_CLR}"; do
       case ${_R_M} in
@@ -138,14 +138,14 @@ if [[ ! "${_ARGS}" =~ "composer" ]] \
     ### echo _ARR is ${_ARR}
   elif [[ "${_ARGS}" =~ "vendor/drush/drush/drush" ]]; then
     if [[ "${_ARGS}" =~ "set -m" ]]; then
-      _R_M=`echo -n ${_ARGS}  | grep -o "set -m\; .*vendor/drush/drush/drush"`
+      _R_M=$(echo -n ${_ARGS}  | grep -o "set -m\; .*vendor/drush/drush/drush")
     else
-      _R_M=`echo -n ${_ARGS} | sed 's|vendor/drush/drush/drush.*||'`
+      _R_M=$(echo -n ${_ARGS} | sed 's|vendor/drush/drush/drush.*||')
     fi
     ### echo _R_M is ${_R_M}
     _R_M=${_R_M//\//\\\/}
     ### echo _R_M is ${_R_M}
-    _CLR=`echo ${_ARGS}  | sed "s/\${_R_M}//g"`
+    _CLR=$(echo ${_ARGS}  | sed "s/\${_R_M}//g")
     _ARR=() # the buffer array for filtered parameters
     for arg in "${_CLR}"; do
       case ${_R_M} in
@@ -156,14 +156,14 @@ if [[ ! "${_ARGS}" =~ "composer" ]] \
     ### echo _ARR is ${_ARR}
   elif [[ "${_ARGS}" =~ "/vendor/bin/drush" ]]; then
     if [[ "${_ARGS}" =~ "set -m" ]]; then
-      _R_M=`echo -n ${_ARGS}  | grep -o "set -m\; .*/vendor/bin/drush"`
+      _R_M=$(echo -n ${_ARGS}  | grep -o "set -m\; .*/vendor/bin/drush")
     else
-      _R_M=`echo -n ${_ARGS} | sed 's|/vendor/bin/drush.*||'`
+      _R_M=$(echo -n ${_ARGS} | sed 's|/vendor/bin/drush.*||')
     fi
     ### echo _R_M is ${_R_M}
     _R_M=${_R_M//\//\\\/}
     ### echo _R_M is ${_R_M}
-    _CLR=`echo ${_ARGS}  | sed "s/\${_R_M}//g"`
+    _CLR=$(echo ${_ARGS}  | sed "s/\${_R_M}//g")
     _ARR=() # the buffer array for filtered parameters
     for arg in "${_CLR}"; do
       case ${_R_M} in
@@ -174,14 +174,14 @@ if [[ ! "${_ARGS}" =~ "composer" ]] \
     ### echo _ARR is ${_ARR}
   elif [[ "${_ARGS}" =~ "vendor/bin/drush " ]]; then
     if [[ "${_ARGS}" =~ "set -m" ]]; then
-      _R_M=`echo -n ${_ARGS}  | grep -o "set -m\; .*vendor/bin/drush"`
+      _R_M=$(echo -n ${_ARGS}  | grep -o "set -m\; .*vendor/bin/drush")
     else
-      _R_M=`echo -n ${_ARGS} | sed 's|vendor/bin/drush.*||'`
+      _R_M=$(echo -n ${_ARGS} | sed 's|vendor/bin/drush.*||')
     fi
     ### echo _R_M is ${_R_M}
     _R_M=${_R_M//\//\\\/}
     ### echo _R_M is ${_R_M}
-    _CLR=`echo ${_ARGS}  | sed "s/\${_R_M}//g"`
+    _CLR=$(echo ${_ARGS}  | sed "s/\${_R_M}//g")
     _ARR=() # the buffer array for filtered parameters
     for arg in "${_CLR}"; do
       case ${_R_M} in
@@ -192,12 +192,12 @@ if [[ ! "${_ARGS}" =~ "composer" ]] \
     ### echo _ARR is ${_ARR}
   elif [[ "${_ARGS}" =~ "drush " ]]; then
     if [[ "${_ARGS}" =~ "set -m" ]]; then
-      _R_M=`echo -n ${_ARGS}  | grep -o "set -m\; drush"`
+      _R_M=$(echo -n ${_ARGS}  | grep -o "set -m\; drush")
     else
-      _R_M=`echo -n ${_ARGS}  | grep -o "drush"`
+      _R_M=$(echo -n ${_ARGS}  | grep -o "drush")
     fi
     ### echo _R_M is ${_R_M}
-    _CLR=`echo ${_ARGS}  | sed "s/\${_R_M}//g"`
+    _CLR=$(echo ${_ARGS}  | sed "s/\${_R_M}//g")
     _ARR=() # the buffer array for filtered parameters
     for arg in "${_CLR}"; do
       case ${_R_M} in
@@ -208,12 +208,12 @@ if [[ ! "${_ARGS}" =~ "composer" ]] \
     ### echo _ARR is ${_ARR}
   elif [[ "${_ARGS}" =~ "drush8 " ]]; then
     if [[ "${_ARGS}" =~ "set -m" ]]; then
-      _R_M=`echo -n ${_ARGS}  | grep -o "set -m\; drush8"`
+      _R_M=$(echo -n ${_ARGS}  | grep -o "set -m\; drush8")
     else
-      _R_M=`echo -n ${_ARGS}  | grep -o "drush8"`
+      _R_M=$(echo -n ${_ARGS}  | grep -o "drush8")
     fi
     ### echo _R_M is ${_R_M}
-    _CLR=`echo ${_ARGS}  | sed "s/\${_R_M}//g"`
+    _CLR=$(echo ${_ARGS}  | sed "s/\${_R_M}//g")
     _ARR=() # the buffer array for filtered parameters
     for arg in "${_CLR}"; do
       case ${_R_M} in
@@ -224,12 +224,12 @@ if [[ ! "${_ARGS}" =~ "composer" ]] \
     ### echo _ARR is ${_ARR}
   elif [[ "${_ARGS}" =~ "drush10 " ]]; then
     if [[ "${_ARGS}" =~ "set -m" ]]; then
-      _R_M=`echo -n ${_ARGS}  | grep -o "set -m\; drush10"`
+      _R_M=$(echo -n ${_ARGS}  | grep -o "set -m\; drush10")
     else
-      _R_M=`echo -n ${_ARGS}  | grep -o "drush10"`
+      _R_M=$(echo -n ${_ARGS}  | grep -o "drush10")
     fi
     ### echo _R_M is ${_R_M}
-    _CLR=`echo ${_ARGS}  | sed "s/\${_R_M}//g"`
+    _CLR=$(echo ${_ARGS}  | sed "s/\${_R_M}//g")
     _ARR=() # the buffer array for filtered parameters
     for arg in "${_CLR}"; do
       case ${_R_M} in
@@ -240,12 +240,12 @@ if [[ ! "${_ARGS}" =~ "composer" ]] \
     ### echo _ARR is ${_ARR}
   elif [[ "${_ARGS}" =~ "drush11 " ]]; then
     if [[ "${_ARGS}" =~ "set -m" ]]; then
-      _R_M=`echo -n ${_ARGS}  | grep -o "set -m\; drush11"`
+      _R_M=$(echo -n ${_ARGS}  | grep -o "set -m\; drush11")
     else
-      _R_M=`echo -n ${_ARGS}  | grep -o "drush11"`
+      _R_M=$(echo -n ${_ARGS}  | grep -o "drush11")
     fi
     ### echo _R_M is ${_R_M}
-    _CLR=`echo ${_ARGS}  | sed "s/\${_R_M}//g"`
+    _CLR=$(echo ${_ARGS}  | sed "s/\${_R_M}//g")
     _ARR=() # the buffer array for filtered parameters
     for arg in "${_CLR}"; do
       case ${_R_M} in
@@ -255,11 +255,11 @@ if [[ ! "${_ARGS}" =~ "composer" ]] \
     done
     ### echo _ARR is ${_ARR}
   elif [[ "${_ARGS}" =~ "php /opt/tools/" ]]; then
-    _R_M=`echo -n ${_ARGS} | grep -o "php /opt/tools/drush/.*/drush/drush.php"`
+    _R_M=$(echo -n ${_ARGS} | grep -o "php /opt/tools/drush/.*/drush/drush.php")
     ### echo _R_M is ${_R_M}
     _R_M=${_R_M//\//\\\/}
     ### echo _R_M is ${_R_M}
-    _CLR=`echo ${_ARGS} | sed "s/\${_R_M}//g"`
+    _CLR=$(echo ${_ARGS} | sed "s/\${_R_M}//g")
     _ARR=() # the buffer array for filtered parameters
     for arg in "${_CLR}"; do
       case ${_R_M} in
@@ -269,11 +269,11 @@ if [[ ! "${_ARGS}" =~ "composer" ]] \
     done
     ### echo _ARR is ${_ARR}
   elif [[ "${_ARGS}" =~ "php /data/disk/" ]]; then
-    _R_M=`echo -n ${_ARGS} | grep -o "php /data/disk/.*/tools/drush/drush.php"`
+    _R_M=$(echo -n ${_ARGS} | grep -o "php /data/disk/.*/tools/drush/drush.php")
     ### echo _R_M is ${_R_M}
     _R_M=${_R_M//\//\\\/}
     ### echo _R_M is ${_R_M}
-    _CLR=`echo ${_ARGS} | sed "s/\${_R_M}//g"`
+    _CLR=$(echo ${_ARGS} | sed "s/\${_R_M}//g")
     _ARR=() # the buffer array for filtered parameters
     for arg in "${_CLR}"; do
       case ${_R_M} in
@@ -283,11 +283,11 @@ if [[ ! "${_ARGS}" =~ "composer" ]] \
     done
     ### echo _ARR is ${_ARR}
   elif [[ "${_ARGS}" =~ php\ /mnt/.*/data/disk/ ]]; then
-    _R_M=`echo -n ${_ARGS} | grep -o "php /mnt/.*/data/disk/.*/tools/drush/drush.php"`
+    _R_M=$(echo -n ${_ARGS} | grep -o "php /mnt/.*/data/disk/.*/tools/drush/drush.php")
     ### echo _R_M is ${_R_M}
     _R_M=${_R_M//\//\\\/}
     ### echo _R_M is ${_R_M}
-    _CLR=`echo ${_ARGS} | sed "s/\${_R_M}//g"`
+    _CLR=$(echo ${_ARGS} | sed "s/\${_R_M}//g")
     _ARR=() # the buffer array for filtered parameters
     for arg in "${_CLR}"; do
       case ${_R_M} in
@@ -302,12 +302,12 @@ fi
 _C_ARR=
 if [[ "${_ARGS}" =~ "composer " ]] && [[ ! "${_ARGS}" =~ "git remote add composer" ]]; then
   if [[ "${_ARGS}" =~ "set -m" ]]; then
-    _C_RM=`echo -n ${_ARGS}  | grep -o "set -m\; composer "`
+    _C_RM=$(echo -n ${_ARGS}  | grep -o "set -m\; composer ")
   else
-    _C_RM=`echo -n ${_ARGS}  | grep -o "composer "`
+    _C_RM=$(echo -n ${_ARGS}  | grep -o "composer ")
   fi
   ### echo _C_RM is ${_C_RM}
-  _CLR=`echo ${_ARGS}  | sed "s/\${_C_RM}//g"`
+  _CLR=$(echo ${_ARGS}  | sed "s/\${_C_RM}//g")
   _C_ARR=() # the buffer array for filtered parameters
   for arg in "${_CLR}"; do
     case ${_C_RM} in
@@ -319,10 +319,10 @@ if [[ "${_ARGS}" =~ "composer " ]] && [[ ! "${_ARGS}" =~ "git remote add compose
 fi
 
 _INTERNAL=NO
-_LTD_GID=$(id -nG ${USER} 2>&1)
-_LTD_UID=$(id -nu ${USER} 2>&1)
+_LTD_GID=$(id -nG ${USER})
+_LTD_UID=$(id -nu ${USER})
 if [ -z "${USER}" ]; then
-  USER=$(id -nu ${USER} 2>&1)
+  USER=$(id -nu ${USER})
   _LTD_QQQ=YES
 fi
 _X_USR=".*"
@@ -355,8 +355,8 @@ if [[ "${_ARR}" =~ " aliases" ]] || [[ "${_ARR}" =~ " sa" ]]; then
 fi
 
 if [[ "${_ARR}" =~ "-c " ]]; then
-  _R_M=`echo -n "${_ARR}" | grep -o "\-c "`
-  _ARR=`echo ${_ARR} | sed "s/\${_R_M}//g"`
+  _R_M=$(echo -n "${_ARR}" | grep -o "\-c ")
+  _ARR=$(echo ${_ARR} | sed "s/\${_R_M}//g")
 fi
 
 if [[ "${HOME}" =~ (^)"/data/disk/" ]] \
@@ -365,11 +365,11 @@ if [[ "${HOME}" =~ (^)"/data/disk/" ]] \
   _OCTO_SYS="${USER}"
   _OCTO_SYS_ARR=
   if [[ "${_ARGS}" =~ "tools/drush/drush.php" ]]; then
-    _R_M=`echo -n ${_ARGS} | grep -o "php /data/disk/.*/tools/drush/drush.php"`
+    _R_M=$(echo -n ${_ARGS} | grep -o "php /data/disk/.*/tools/drush/drush.php")
     ### echo _R_M is ${_R_M}
     _R_M=${_R_M//\//\\\/}
     ### echo _R_M is ${_R_M}
-    _CLR=`echo ${_ARGS} | sed "s/\${_R_M}//g"`
+    _CLR=$(echo ${_ARGS} | sed "s/\${_R_M}//g")
     _OCTO_SYS_ARR=() # the buffer array for filtered parameters
     for arg in "${_CLR}"; do
       case ${_R_M} in
@@ -443,12 +443,12 @@ export USER=${USER}
 check_php_cli_version() {
   ### echo CHK start check_php_cli_version
   if [ "${HOME}" = "/var/aegir" ]; then
-    _PHP_CLI=$(grep "/opt/php" /var/aegir/drush/drush.php 2>&1)
+    _PHP_CLI=$(grep "/opt/php" /var/aegir/drush/drush.php)
   elif [[ "${HOME}" =~ "/data/disk/" ]]; then
-    _PHP_CLI=$(grep "/opt/php" /data/disk/${_Y_USR}/tools/drush/drush.php 2>&1)
+    _PHP_CLI=$(grep "/opt/php" /data/disk/${_Y_USR}/tools/drush/drush.php)
   else
     if [ -f "/data/disk/${_Y_USR}/tools/drush/drush.php" ]; then
-      _PHP_CLI=$(grep "/opt/php" /data/disk/${_Y_USR}/tools/drush/drush.php 2>&1)
+      _PHP_CLI=$(grep "/opt/php" /data/disk/${_Y_USR}/tools/drush/drush.php)
     fi
   fi
   ### echo CHK 1 _PHP_CLI is ${_PHP_CLI}
@@ -528,7 +528,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
         || [[ "${_ARGS}" =~ "drush10 " ]] \
         || [[ "${_ARGS}" =~ "drush11 " ]] \
         || [[ "${_ARGS}" =~ "vendor/drush/drush/drush.php " ]]; then
-        _PWD=$(pwd 2>&1)
+        _PWD=$(pwd)
         _DEST_DRUSH="/opt/tools/drush/8/drush/drush.php"
         if [[ "${_ARGS}" =~ "vendor/bin/drush " ]]; then
           _DEST_DRUSH="${_R_M}/vendor/drush/drush/drush.php"
@@ -832,10 +832,10 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           _IN_PATH=NO
         fi
       else
-        _WHICH_TEST=$(which $2 2>&1)
         if [[ "${_WHICH_TEST}" =~ (^)"/usr/" ]] \
           || [[ "${_WHICH_TEST}" =~ (^)"/bin/" ]] \
           || [[ "${_WHICH_TEST}" =~ (^)"/opt/" ]]; then
+        _WHICH_TEST=$(which "${2}")
           _IN_PATH=YES
         else
           _IN_PATH=NO
@@ -900,10 +900,10 @@ if [ "${_LTD_GID}" = "www-data users" ] \
         _IN_PATH=NO
       fi
     else
-      _WHICH_TEST=$(which ${1} 2>&1)
       if [[ "${_WHICH_TEST}" =~ (^)"/usr/" ]] \
         || [[ "${_WHICH_TEST}" =~ (^)"/bin/" ]] \
         || [[ "${_WHICH_TEST}" =~ (^)"/opt/" ]]; then
+      _WHICH_TEST=$(which "${1}")
         _IN_PATH=YES
       else
         _IN_PATH=NO
@@ -996,7 +996,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
       if [ -x "/bin/dash" ]; then
         if [ ! -z "${_ARR}" ] && [ -z "${_OCTO_SYS_ARR}" ]; then
           _DEST_DRUSH=${_DEST_DRUSH//\\/}
-          _ARR=`echo -n ${_ARR} | sed 's|/vendor/bin/drush||'`
+          _ARR=$(echo -n ${_ARR} | sed 's|/vendor/bin/drush||')
           ### echo EXD 1 DRUSH_PHP is ${DRUSH_PHP}
           ### echo EXD 1 PHP_INI is ${PHP_INI}
           ### echo EXD 1 _DEST_DRUSH is ${_DEST_DRUSH}

@@ -190,7 +190,7 @@ _validate_paths() {
         local _is_valid_regex=false
         for _base_path in "${_allowed_base_paths[@]}"; do
           # Escape slashes in base path for regex comparison
-          local _escaped_base_path="${_base_path//\//\\/}"
+          local _escaped_base_path=${_base_path//\//\\/}
           if [[ "${_path}" =~ ^\^${_escaped_base_path}.* ]]; then
             _is_valid_regex=true
             break
@@ -239,8 +239,8 @@ _load_paths() {
 _construct_bucket_name() {
   local _service_abbr=$1
   local _user=$2
-  _service_dash=$(echo -n ${_service_abbr} | tr _ - 2>&1)
-  _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
+  _service_dash=$(echo -n ${_service_abbr} | tr _ -)
+  _hName=$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)
   _hst_dash=$(echo -n ${_hName} | tr . -)
   export _BUCKET_NAME="back-to-${_user}-${_hst_dash}-${_service_dash}"
   export _NAME="${_user}-${_service_dash}"
@@ -488,14 +488,14 @@ if [[ $(whoami) == *.ftp ]]; then
 fi
 
 _userEmail=""
-[ -e "/data/disk/${_user}/log/email.txt" ] && _userEmail="$(cat /data/disk/${_user}/log/email.txt)"
-[ -n "${_userEmail}" ] && _userEmail=$(echo -n ${_userEmail} | tr -d "\n" 2>&1)
+[ -e "/data/disk/${_user}/log/email.txt" ] && _userEmail=$(cat /data/disk/${_user}/log/email.txt)
+[ -n "${_userEmail}" ] && _userEmail=$(echo -n ${_userEmail} | tr -d '\n')
 
-_ACTION=$1
-_SERVICE=$2
-_RESTORE_TARGET="${3:-/data/disk/${_user}/static/restores/}"
-_RESTORE_PATH="${4:-}"
-_RESTORE_TIME="${5:-}"
+_ACTION="$1"
+_SERVICE="$2"
+_RESTORE_TARGET=${3:-/data/disk/${_user}/static/restores/}
+_RESTORE_PATH=${4:-}
+_RESTORE_TIME=${5:-}
 _PIDFILE="/data/disk/${_user}/log/mybackup_${_service}_${_user}.pid"
 _LOGPTH="/data/disk/${_user}/log"
 _LOGFILE="${_LOGPTH}/mybackup_${_service}_${_user}.log"

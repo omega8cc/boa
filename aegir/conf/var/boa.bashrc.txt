@@ -78,7 +78,7 @@ function xtitle() {
   esac
 }
 
-_L_HOST="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
+_L_HOST=$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)
 alias top='xtitle $_L_HOST System Monitor && top'
 alias htop='xtitle $_L_HOST System Monitor && htop'
 alias mytop='xtitle $_L_HOST SQL Monitor && mytop'

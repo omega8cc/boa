@@ -1,8 +1,8 @@
 
 _check_mysql_version() {
-  _DBS_TEST=$(which mysql 2>&1)
+  _DBS_TEST=$(which mysql)
   if [ ! -z "${_DBS_TEST}" ]; then
-    _DB_SERVER_TEST=$(mysql -V 2>&1)
+    _DB_SERVER_TEST=$(mysql -V)
   fi
   if [[ "${_DB_SERVER_TEST}" =~ "Ver 8.4." ]]; then
     _DB_V=8.4
@@ -211,8 +211,8 @@ _sql_strict_upgrade_path() {
     _msg "PROC: _sql_strict_upgrade_path"
   fi
   _SQL_UPGRADE=NO
-  _DB_SERVER_TEST=$(mysql -V 2>&1)
-  _DBS_TEST=$(which mysql 2>&1)
+  _DB_SERVER_TEST=$(mysql -V)
+  _DBS_TEST=$(which mysql)
   if [ ! -z "${_DBS_TEST}" ]; then
     _NOW_DB_V=$(mysql -V 2>&1 \
       | tr -d "\n" \
@@ -276,12 +276,11 @@ _innodb_log_file_size_update() {
   else
     _msg "INFO: InnoDB log file will be set to ${_INNODB_LOG_FILE_SIZE_MB}..."
   fi
-  _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
-  _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+  _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
   mysql -u root -e "SET GLOBAL innodb_fast_shutdown = 0;" &> /dev/null
   _mrun "bash /var/xdrago/move_sql.sh stop" &> /dev/null
   wait
-  _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
+  _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}')
   if [ -z "${_IS_MYSQLD_RUNNING}" ]; then
     mkdir -p ${_vBs}/old-sql-ib-log-${_NOW}
     _mrun "sleep 1"
@@ -326,7 +325,7 @@ _innodb_log_file_size_update() {
     _mrun "bash /var/xdrago/move_sql.sh stop" &> /dev/null
     wait
     _mrun "sleep 180"
-    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
+    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}')
     if [ -z "${_IS_MYSQLD_RUNNING}" ]; then
       mkdir -p ${_vBs}/old-sql-ib-log-${_NOW}
       _mrun "sleep 1"
@@ -536,7 +535,7 @@ _check_mysqld_running() {
   fi
   while [ -z "${_IS_MYSQLD_RUNNING}" ] \
     || [ ! -e "/run/mysqld/mysqld.sock" ]; do
-    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
+    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}')
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: Waiting for MySQLD availability before _tune_sql_memory_limits..."
     fi
@@ -591,9 +590,9 @@ _tune_sql_memory_limits() {
     _msg "WAIT: This may take a while, please wait..."
     _MYSQLTUNER_TEST_RESULT=OK
     rm -f /var/opt/mysqltuner*
-    curl ${_crlGet} "${_urlDev}/mysqltuner.pl.${_MYSQLTUNER_VRN}" -o ${_pthTun}
+    curl "${_crlGet}" "${_urlDev}/mysqltuner.pl.${_MYSQLTUNER_VRN}" -o ${_pthTun}
     if [ ! -e "${_pthTun}" ]; then
-      curl ${_crlGet} "${_urlDev}/mysqltuner.pl" -o ${_pthTun}
+      curl "${_crlGet}" "${_urlDev}/mysqltuner.pl" -o ${_pthTun}
     fi
     if [ -e "${_pthTun}" ]; then
       perl ${_pthTun} > ${_outTun} 2>&1
@@ -810,7 +809,7 @@ _prep_for_install_db_sql() {
   if [ "${_SQL_OS_CODE}" = "foobar" ]; then
     _SQL_SCR=GIT
   fi
-  _DBS_TEST=$(which mysql 2>&1)
+  _DBS_TEST=$(which mysql)
   if [ ! -z "${_DBS_TEST}" ]; then
     _NOW_DB_V=$(mysql -V 2>&1 \
       | tr -d "\n" \
@@ -965,8 +964,7 @@ _install_with_aptitude_sql() {
       _msg "INFO: Running ${_DB_SERVER} tables fix, check and upgrade..."
     fi
     rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
-    _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
-    _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+    _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
     _mrun "mysqlcheck -u root -A --auto-repair --silent" &> /dev/null
     _check_mysql_version
     if [ "${_DB_V}" = "5.7" ]; then
@@ -986,8 +984,7 @@ _forced_mysql_root_password_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _forced_mysql_root_password_update"
   fi
-  _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
-  _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+  _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
   mv -f /root/.my.cnf-pre-* ${_vBs}/ &> /dev/null
   mv -f /root/.my.pass.txt-pre-* ${_vBs}/ &> /dev/null
   touch /root/.my.pass.txt
@@ -1015,29 +1012,26 @@ _forced_mysql_root_password_update() {
   if [ "${_STRONG_PASSWORDS}" = "YES" ] \
     || [ "${_PWD_CHARS}" -gt "32" ]; then
     if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
-      _ESC_PASS="$(openssl rand -base64 64 | tr -d '\n')"
+      _ESC_PASS=$(openssl rand -base64 64 | tr -d '\n')
     else
-      _RANDPASS_TEST=$(randpass -V 2>&1)
+      _RANDPASS_TEST=$(randpass -V)
       if [[ "${_RANDPASS_TEST}" =~ "alnum" ]]; then
-        _ESC_PASS=$(randpass "${_PWD_CHARS}" alnum 2>&1)
+        _ESC_PASS=$(randpass "${_PWD_CHARS}" alnum)
       else
-        _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
-        _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
-        _ESC_PASS=$(_sanitize_string "${_ESC_PASS}" 2>&1)
+        _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' | tr -d '\n')
+        _ESC_PASS=$(_sanitize_string "${_ESC_PASS}")
       fi
     fi
-    _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
     _LEN_PASS=$(echo ${#_ESC_PASS} 2>&1)
   fi
   if [ -z "${_ESC_PASS}" ] || [ "${_LEN_PASS}" -lt "9" ]; then
-    _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
-    _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
-    _ESC_PASS=$(_sanitize_string "${_ESC_PASS}" 2>&1)
+    _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' | tr -d '\n')
+    _ESC_PASS=$(_sanitize_string "${_ESC_PASS}")
   fi
   if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
     _ROOT_SQL_PASWD=$(cat /root/.my.cluster_root_pwd.txt 2>&1)
-    _ROOT_SQL_PASWD=$(echo -n ${_ROOT_SQL_PASWD} | tr -d "\n" 2>&1)
-    _ESC_PASS="${_ROOT_SQL_PASWD}"
+    _ROOT_SQL_PASWD=$(echo -n ${_ROOT_SQL_PASWD} | tr -d '\n')
+    _ESC_PASS=${_ROOT_SQL_PASWD}"
   fi
   _check_mysql_version
   if [ ! -z "${_DB_V}" ] && [ ! -z "${_ESC_PASS}" ]; then
@@ -1125,8 +1119,7 @@ _forced_mysql_root_password_update() {
     echo "db=mysql" > /root/.mytop
     chmod 0600 /root/.mytop
     echo "${_ESC_PASS}" > /root/.my.pass.txt
-    _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
-    _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+    _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
     mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'127.0.0.1';"
     mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'::1';"
     mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'${_MY_OWNIP}';"
@@ -1235,8 +1228,7 @@ _db_server_install() {
           fi
           rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
           if [ -x "/usr/bin/mysql_upgrade" ]; then
-            _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
-            _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+            _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
             _mrun "mysql_upgrade -u root --force" &> /dev/null
           fi
         fi
@@ -1261,7 +1253,7 @@ _db_server_install() {
       fi
       _CUSTOM_CONFIG_SQL=NO
       _mrun "sleep 8"
-      _DB_SERVER_TEST=$(mysql -V 2>&1)
+      _DB_SERVER_TEST=$(mysql -V)
       if [[ "${_DB_SERVER_TEST}" =~ "Distrib ${_DB_SERIES}." ]]; then
         _check_mysql_version
         if [ "${_DB_V}" = "5.7" ]; then
@@ -1270,8 +1262,7 @@ _db_server_install() {
           fi
           rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
           if [ -x "/usr/bin/mysql_upgrade" ]; then
-            _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
-            _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+            _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
             _mrun "mysql_upgrade -u root --force" &> /dev/null
             _mrun "mysql_upgrade -u root --force" &> /dev/null
           fi
@@ -1302,7 +1293,7 @@ _db_server_install() {
           fi
         else
           _myCnfUpdate=YES
-          # _diffMyTest=$(echo -n ${_diffMyTest} | fmt -su -w 2500 2>&1)
+          # _diffMyTest=$(echo -n ${_diffMyTest} | fmt -su -w 2500)
           _msg "INFO: ${_DB_SERVER} diff1 ${_diffMyTest}"
         fi
         if [[ "${_diffMyTest}" =~ "innodb_buffer_pool_size" ]]; then
@@ -1317,10 +1308,8 @@ _db_server_install() {
       if [ ! -e "/root/.run-to-daedalus.cnf" ] \
         && [ ! -e "/root/.run-to-chimaera.cnf" ] \
         && [ ! -e "/root/.run-to-beowulf.cnf" ]; then
-        _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
-        _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
-        _myUptime=$(mysqladmin -u root version | grep -i uptime 2>&1)
-        _myUptime=$(echo -n ${_myUptime} | fmt -su -w 2500 2>&1)
+        _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
+        _myUptime=$(mysqladmin -u root version | grep -i uptime | fmt -su -w 2500)
         _msg "INFO: ${_DB_SERVER} ${_myUptime}"
         if [ "${_myCnfUpdate}" = "YES" ]; then
           if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -1336,7 +1325,7 @@ _db_server_install() {
         if [ "${_DB_V}" = "5.7" ] || [ "${_DB_SERIES}" = "5.7" ]; then
           _CHECK_EXISTS=$(mysql -u root -e "SELECT EXISTS(SELECT 1 FROM mysql.user WHERE user = 'drandom_2test')" | grep "0" 2>&1)
           if [[ "${_CHECK_EXISTS}" =~ "0" ]]; then
-            _CHECK_REPAIR=$(mysql -u root -e "CREATE USER IF NOT EXISTS 'drandom_2test'@'localhost';" 2>&1)
+            _CHECK_REPAIR=$(mysql -u root -e "CREATE USER IF NOT EXISTS 'drandom_2test'@'localhost';")
             if [ "${_DEBUG_MODE}" = "YES" ]; then
               echo _CHECK_REPAIR 1 ${_CHECK_REPAIR}
             fi
@@ -1349,7 +1338,7 @@ _db_server_install() {
               mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN max_statement_time;"
               mysql_upgrade -u root --force
             fi
-            _CHECK_REPAIR=$(mysql -u root -e "CREATE USER IF NOT EXISTS 'drandom_2test'@'localhost';" 2>&1)
+            _CHECK_REPAIR=$(mysql -u root -e "CREATE USER IF NOT EXISTS 'drandom_2test'@'localhost';")
             if [ "${_DEBUG_MODE}" = "YES" ]; then
               echo _CHECK_REPAIR 2 ${_CHECK_REPAIR}
             fi
@@ -1371,7 +1360,7 @@ _db_server_install() {
         ### CVE-2019-11478 SACK Slowness
         ### CVE-2019-11479 Excess Resource Consumption Due to Low MSS Values
         if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
-          _SACK_TEST=$(ip6tables --list | grep tcpmss 2>&1)
+          _SACK_TEST=$(ip6tables --list | grep tcpmss)
           if [[ ! "${_SACK_TEST}" =~ "tcpmss" ]]; then
             sysctl net.ipv4.tcp_mtu_probing=0 &> /dev/null
             iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
@@ -1428,24 +1417,21 @@ _init_sql_root_credentials() {
       if [ "${_STRONG_PASSWORDS}" = "YES" ] \
         || [ "${_PWD_CHARS}" -gt "32" ]; then
         if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
-          _ESC_PASS="$(openssl rand -base64 64 | tr -d '\n')"
+          _ESC_PASS=$(openssl rand -base64 64 | tr -d '\n')
         else
-          _RANDPASS_TEST=$(randpass -V 2>&1)
+          _RANDPASS_TEST=$(randpass -V)
           if [[ "${_RANDPASS_TEST}" =~ "alnum" ]]; then
-            _ESC_PASS=$(randpass "${_PWD_CHARS}" alnum 2>&1)
+            _ESC_PASS=$(randpass "${_PWD_CHARS}" alnum)
           else
-            _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
-            _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
-            _ESC_PASS=$(_sanitize_string "${_ESC_PASS}" 2>&1)
+            _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' | tr -d '\n')
+            _ESC_PASS=$(_sanitize_string "${_ESC_PASS}")
           fi
         fi
-        _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
         _LEN_PASS=$(echo ${#_ESC_PASS} 2>&1)
       fi
       if [ -z "${_ESC_PASS}" ] || [ "${_LEN_PASS}" -lt "9" ]; then
-        _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
-        _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
-        _ESC_PASS=$(_sanitize_string "${_ESC_PASS}" 2>&1)
+        _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' | tr -d '\n')
+        _ESC_PASS=$(_sanitize_string "${_ESC_PASS}")
       fi
     else
       _ESC_PASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
@@ -1499,11 +1485,11 @@ _sql_root_credentials_update() {
       _check_mysql_version
       myUsrTbl="mysql.user"
       if [ -z "${_ESC_PASS}" ]; then
-        _PXSWD=$(cat /root/.my.pass.txt 2>&1)
+        _PXSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
       else
         _PXSWD="${_ESC_PASS}"
       fi
-      _PASWD=$(echo -n ${_PXSWD} | tr -d "\n" 2>&1)
+      _PASWD=$(echo -n ${_PXSWD} | tr -d '\n')
       _ESC="*.*"
       if [ -z "${_PASWD}" ]; then
         _msg "CRIT: PASWD for ${_DB_SERVER} is empty!"

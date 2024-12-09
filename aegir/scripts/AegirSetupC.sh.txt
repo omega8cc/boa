@@ -118,7 +118,7 @@ done
 ### Local variables
 ###
 if [ "${_THIS_DB_HOST}" = "FQDN" ]; then
-  export _THIS_DB_HOST="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
+  export _THIS_DB_HOST=$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)
 fi
 export _USE_AEGIR_VER=SRC
 export _T_BUILD=SRC
@@ -264,7 +264,7 @@ _prepare_for_save_verify_platforms() {
       _THIS_HM=$(cat ${_ROOT}/.drush/hostmaster.alias.drushrc.php \
         | grep 'site_path' \
         | cut -d: -f2 \
-        | awk '{ print $3}' 2>&1)
+        | awk '{ print $3}')
       _THIS_HM=$(echo ${_THIS_HM} | sed "s/[\,']//g" 2>&1)
     else
       _THIS_HM="${_HM_ROOT}/sites/${_DOMAIN}"
@@ -379,7 +379,7 @@ _get_core_ext() {
     _success=0
     while [ ${_attempt_num} -le ${_max_attempts} ]; do
       [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Attempt ${_attempt_num} of ${_max_attempts}: Downloading $1..."
-      if curl ${_crlGet} "http://${_USE_MIR}/core/$1" -o "$1"; then
+      if curl "${_crlGet}" "http://${_USE_MIR}/core/$1" -o "$1"; then
         _success=1
         break
       else
@@ -409,7 +409,7 @@ _get_distro_ext() {
     _success=0
     while [ ${_attempt_num} -le ${_max_attempts} ]; do
       [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Attempt ${_attempt_num} of ${_max_attempts}: Downloading $1..."
-      if curl ${_crlGet} "http://${_USE_MIR}/distro/$1" -o "$1"; then
+      if curl "${_crlGet}" "http://${_USE_MIR}/distro/$1" -o "$1"; then
         _success=1
         break
       else

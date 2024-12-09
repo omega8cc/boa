@@ -15,7 +15,7 @@ _verify_boa_keys() {
     _encName=$(echo ${_hName} \
       | openssl md5 \
       | awk '{ print $2}' \
-      | tr -d "\n" 2>&1)
+      | tr -d '\n')
     if [[ "${_hName}" =~ ".aegir.cc"($) ]] \
       || [[ "${_hName}" =~ ".o8.io"($) ]] \
       || [[ "${_hName}" =~ ".boa.io"($) ]]; then
@@ -23,12 +23,12 @@ _verify_boa_keys() {
     fi
     mkdir -p /var/opt
     rm -f /var/opt/_encN*
-    curl ${_crlGet} "${_urlEnc}/${_encName}" -o /var/opt/_encN.${_encName}.tmp
+    curl "${_crlGet}" "${_urlEnc}/${_encName}" -o /var/opt/_encN.${_encName}.tmp
     wait
     echo "${_hName}.${_encName}" > /var/opt/_encN_local.${_encName}.tmp
     wait
     if [ -e "/var/opt/_encN.${_encName}.tmp" ] && [ -e "/var/opt/_encN_local.${_encName}.tmp" ]; then
-      _diffTestIf=$(diff -w -B /var/opt/_encN.${_encName}.tmp /var/opt/_encN_local.${_encName}.tmp 2>&1)
+      _diffTestIf=$(diff -w -B /var/opt/_encN.${_encName}.tmp /var/opt/_encN_local.${_encName}.tmp)
       if [ ! -z "${_diffTestIf}" ] && [ "${_allw}" = "NO" ]; then
         echo
         echo "Your system requires valid license to use this function"
@@ -85,7 +85,7 @@ _check_root() {
   if [ -z "${_AWS_VLV}" ]; then
     _AWS_VLV="warning"
   fi
-  _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
+  _hName=$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)
 }
 _check_root
 _verify_boa_keys
@@ -305,7 +305,7 @@ _validate_paths() {
         local _is_valid_regex=false
         for _base_path in "${_allowed_base_paths[@]}"; do
           # Escape slashes in base path for regex comparison
-          local _escaped_base_path="${_base_path//\//\\/}"
+          local _escaped_base_path=${_base_path//\//\\/}
           if [[ "${_path}" =~ ^\^${_escaped_base_path}.* ]]; then
             _is_valid_regex=true
             break
@@ -367,7 +367,7 @@ _validate_or_default_duration() {
 _construct_bucket_name() {
   local _service_abbr=$1
   local _user=$2
-  _service_dash=$(echo -n ${_service_abbr} | tr _ - 2>&1)
+  _service_dash=$(echo -n ${_service_abbr} | tr _ -)
   _hst_dash=$(echo -n ${_hName} | tr . -)
   export _BUCKET_NAME="back-to-${_user}-${_hst_dash}-${_service_dash}"
   export _NAME="${_user}-${_service_dash}"
@@ -390,7 +390,7 @@ _backup_prepare() {
       -maxdepth 1 \
       -mindepth 1 \
       -type f \
-      | sort 2>&1)
+      | sort)
     if [[ "${_CacheTest}" =~ "No such file or directory" ]] \
       || [ -z "${_CacheTest}" ]; then
       _DO_CLEANUP=NO
@@ -404,13 +404,12 @@ _backup_prepare() {
 
 _monthly_cleanup() {
   if [ -e "${_LOGPTH}/${_BUCKET_NAME}.randomize.cleanup.log" ]; then
-    _RCL=$(cat ${_LOGPTH}/${_BUCKET_NAME}.randomize.cleanup.log 2>&1)
-    _RCL=$(echo -n ${_RCL} | tr -d "\n" 2>&1)
+    _RCL=$(cat ${_LOGPTH}/${_BUCKET_NAME}.randomize.cleanup.log 2>/dev/null | tr -d '\n')
     _RCL=${_RCL//[^1-5]/}
   else
     _RCL=$((RANDOM%5+1))
     _RCL=${_RCL//[^1-5]/}
-    echo ${_RCL} > ${_LOGPTH}/${_BUCKET_NAME}.randomize.cleanup.log
+    echo "${_RCL}" > "${_LOGPTH}/${_BUCKET_NAME}.randomize.cleanup.log"
   fi
   if [ -e "${_LOGPTH}/${_BUCKET_NAME}.archive.log" ] \
     && [ ! -e "/root/.skip_duplicity_monthly_cleanup.cnf" ] \
@@ -432,15 +431,14 @@ _monthly_cleanup() {
 _randomize_full() {
   if [ -e "/root/.randomize_duplicity_full_backup_day.cnf" ]; then
     if [ -e "${_LOGPTH}/${_BUCKET_NAME}.randomize.full.log" ]; then
-      _RDW=$(cat ${_LOGPTH}/${_BUCKET_NAME}.randomize.full.log 2>&1)
-      _RDW=$(echo -n ${_RDW} | tr -d "\n" 2>&1)
+      _RDW=$(cat ${_LOGPTH}/${_BUCKET_NAME}.randomize.full.log 2>/dev/null | tr -d '\n')
       _RDW=${_RDW//[^1-7]/}
       _MODE="incremental"
     else
       _RDW=$((RANDOM%7+1))
       _RDW=${_RDW//[^1-7]/}
       _MODE="full"
-      echo ${_RDW} > ${_LOGPTH}/${_BUCKET_NAME}.randomize.full.log
+      echo "${_RDW}" > "${_LOGPTH}/${_BUCKET_NAME}.randomize.full.log"
     fi
   else
     _RDW=7
@@ -725,22 +723,22 @@ fi
 
 _LOGPTH="/var/xdrago/log"
 _LOGFILE="${_LOGPTH}/${_BUCKET_NAME}.log"
-_NOW=$(date +%y%m%d-%H%M%S 2>&1)
+_NOW=$(date +%y%m%d-%H%M%S)
 _NOW=${_NOW//[^0-9-]/}
-_DOW=$(date +%u 2>&1)
+_DOW=$(date +%u)
 _DOW=${_DOW//[^1-7]/}
-_DOM=$(date +%e 2>&1)
+_DOM=$(date +%e)
 _DOM=${_DOM//[^0-9]/}
-_HST=$(echo -n ${_HST} | tr A-Z a-z 2>&1)
-_HST_DASH=$(echo -n ${_HST} | tr . - 2>&1)
 _HST=${_hName//[^a-zA-Z0-9-.]/}
-
-_ACTION=$1
-_SERVICE=$2
-_USER=$3
+_ACTION="$1"
+_SERVICE="$2"
+_USER="$3"
 _RESTORE_TARGET="${4:-/var/backups/}"
 _RESTORE_PATH="${5:-}"
 _RESTORE_TIME="${6:-}"
+_HST=$(echo -n ${_HST} | tr A-Z a-z)
+_HST_DASH=$(echo -n ${_HST} | tr . -)
+
 _PIDFILE="/var/run/duplicity_${_SERVICE}_${_USER}.pid"
 # Default values
 _DEFAULT_KEEP_WITHIN="3M"            # Default: 3 month

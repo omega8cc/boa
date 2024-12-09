@@ -19,8 +19,8 @@ _INSTALL_DIST="/usr/bin/apt-get ${_dstUpArg} install"
 _INSTALL_NRML="/usr/bin/apt-get ${_nrmUpArg} install"
 _INITINS="/usr/bin/apt-get ${_aptAllow} -y install"
 _aptYesUnth="-y ${_aptAllow}"
-_OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
-_OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+_OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
+_OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
 _aptLiSys="/etc/apt/sources.list"
 
 if [ -e "/var/aegir/drush" ]; then
@@ -52,7 +52,7 @@ if [ -z "${TERM+x}" ]; then
   export TERM=vt100
 fi
 
-_TODAY=$(date +%y%m%d 2>&1)
+_TODAY=$(date +%y%m%d)
 _TODAY=${_TODAY//[^0-9]/}
 _X_VERSION="BOA-5.5.0-${_tRee}"
 #
@@ -79,7 +79,7 @@ _clean_pid_exit() {
 
 _os_detection_minimal() {
   _APT_UPDATE="apt-get update"
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
   for e in ${_OS_LIST}; do
     if [ "${e}" = "${_OS_CODE}" ]; then
@@ -89,9 +89,9 @@ _os_detection_minimal() {
 }
 
 _check_mysql_version() {
-  _DBS_TEST=$(which mysql 2>&1)
+  _DBS_TEST=$(which mysql)
   if [ ! -z "${_DBS_TEST}" ]; then
-    _DB_SERVER_TEST=$(mysql -V 2>&1)
+    _DB_SERVER_TEST=$(mysql -V)
   fi
   if [[ "${_DB_SERVER_TEST}" =~ "Ver 8.4." ]]; then
     _DB_V=8.4
@@ -213,7 +213,7 @@ _check_no_systemd() {
 }
 
 _ifnames_grub_check_sync() {
-  _IS_IFACE=$(ip a 2>&1)
+  _IS_IFACE=$(ip a)
   _ADD_GRUB_CMD=""
   _GRUB_FILE="/etc/default/grub"
 
@@ -320,8 +320,8 @@ _ifnames_grub_check_sync() {
 _check_root_direct() {
   _U_TEST=DENY
   [ "${SUDO_USER}" ] && _U_TEST_SDO=${SUDO_USER} || _U_TEST_SDO=`whoami`
-  _U_TEST_WHO=$(who am i | awk '{print $1}' 2>&1)
-  _U_TEST_LNE=$(logname 2>&1)
+  _U_TEST_WHO=$(who am i | awk '{print $1}')
+  _U_TEST_LNE=$(logname)
   if [ "${_U_TEST_SDO}" = "root" ] || [ "${_U_TEST_LNE}" = "root" ]; then
     if [ -z "${_U_TEST_WHO}" ]; then
       _U_TEST=ALLOW
@@ -351,7 +351,7 @@ _check_root_direct() {
 _check_root_keys_pwd() {
   # Check if root's password is locked
   _ROOT_PWD_LOCKED="NO"
-  _S_TEST=$(grep 'root:\*:' /etc/shadow 2>&1)
+  _S_TEST=$(grep 'root:\*:' /etc/shadow)
   if [[ "${_S_TEST}" =~ root:\*: ]]; then
     _ROOT_PWD_LOCKED="YES"
   fi
@@ -428,7 +428,7 @@ _locales_check_fix() {
       echo "AcceptEnv LANG LC_*" >> /etc/ssh/sshd_config
     fi
   fi
-  _LOC_TEST=$(locale 2>&1)
+  _LOC_TEST=$(locale)
   if [[ "${_LOC_TEST}" =~ LANG=.*UTF-8 ]]; then
     _LOCALE_TEST=OK
   fi
@@ -461,7 +461,7 @@ _locales_check_fix() {
 
 EOF
     sleep 5
-    _LOCALE_GEN_TEST=$(grep -v "^#" /etc/locale.gen 2>&1)
+    _LOCALE_GEN_TEST=$(grep -v "^#" /etc/locale.gen)
     if [[ ! "${_LOCALE_GEN_TEST}" =~ "en_US.UTF-8 UTF-8" ]]; then
       echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
     fi
@@ -501,7 +501,7 @@ EOF
     export LC_IDENTIFICATION=en_US.UTF-8
     export LC_ALL=
   else
-    _LOCALE_GEN_TEST=$(grep -v "^#" /etc/locale.gen 2>&1)
+    _LOCALE_GEN_TEST=$(grep -v "^#" /etc/locale.gen)
     if [[ ! "${_LOCALE_GEN_TEST}" =~ "en_US.UTF-8 UTF-8" ]]; then
       echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
     fi
@@ -526,7 +526,7 @@ EOF
     export LC_NUMERIC=POSIX
     export LC_ALL=
   fi
-  _LOCALES_BASHRC_TEST=$(grep LC_COLLATE /root/.bashrc 2>&1)
+  _LOCALES_BASHRC_TEST=$(grep LC_COLLATE /root/.bashrc)
   if [[ ! "${_LOCALES_BASHRC_TEST}" =~ "LC_COLLATE" ]]; then
     printf "\n" >> /root/.bashrc
     echo "export LANG=en_US.UTF-8" >> /root/.bashrc
@@ -563,16 +563,16 @@ _check_config_cluster() {
     source /root/.cluster.cnf
   fi
 
-  _CLUSTER_PREFIX="${_CLUSTER_PREFIX//[^a-z0-9]/}"
-  _CLUSTER_PREFIX="$(echo -n ${_CLUSTER_PREFIX} | tr A-Z a-z 2>&1)"
-  _CLUSTER_SUFFIX="${_CLUSTER_SUFFIX//[^a-z0-9-.]/}"
-  _CLUSTER_SUFFIX="$(echo -n ${_CLUSTER_SUFFIX} | tr A-Z a-z 2>&1)"
-  _WEB_FQDN="${_WEB_FQDN//[^a-zA-Z0-9-.]/}"
-  _WEB_FQDN="$(echo -n ${_WEB_FQDN} | tr A-Z a-z 2>&1)"
-  _WEB_NODE_IP="${_WEB_NODE_IP//[^0-9.]/}"
-  _DB_NODE_IP[0]="${_DB_NODE_IP[0]//[^0-9.]/}"
-  _DB_NODE_IP[1]="${_DB_NODE_IP[1]//[^0-9.]/}"
-  _DB_NODE_IP[2]="${_DB_NODE_IP[2]//[^0-9.]/}"
+  _CLUSTER_PREFIX=${_CLUSTER_PREFIX//[^a-z0-9]/}
+  _CLUSTER_PREFIX=$(echo -n ${_CLUSTER_PREFIX} | tr A-Z a-z)
+  _CLUSTER_SUFFIX=${_CLUSTER_SUFFIX//[^a-z0-9-.]/}
+  _CLUSTER_SUFFIX=$(echo -n ${_CLUSTER_SUFFIX} | tr A-Z a-z)
+  _WEB_FQDN=${_WEB_FQDN//[^a-zA-Z0-9-.]/}
+  _WEB_FQDN=$(echo -n ${_WEB_FQDN} | tr A-Z a-z)
+  _WEB_NODE_IP=${_WEB_NODE_IP//[^0-9.]/}
+  _DB_NODE_IP[0]=${_DB_NODE_IP[0]//[^0-9.]/}
+  _DB_NODE_IP[1]=${_DB_NODE_IP[1]//[^0-9.]/}
+  _DB_NODE_IP[2]=${_DB_NODE_IP[2]//[^0-9.]/}
 
   if [ -z "${_CLUSTER_PREFIX}" ]; then
     _CLUSTER_PREFIX="c1r"
@@ -632,7 +632,7 @@ _check_config_cluster() {
 }
 
 _find_fast_mirror_early() {
-  _isNetc=$(which netcat 2>&1)
+  _isNetc=$(which netcat)
   if [ ! -x "${_isNetc}" ] || [ -z "${_isNetc}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
@@ -643,7 +643,7 @@ _find_fast_mirror_early() {
     apt-get install netcat-traditional ${_aptYesUnth} 2> /dev/null
     wait
   fi
-  _ffMirr=$(which ffmirror 2>&1)
+  _ffMirr=$(which ffmirror)
   if [ -x "${_ffMirr}" ]; then
     _ffList="/var/backups/boa-mirrors-2024-12.txt"
     mkdir -p /var/backups
@@ -653,9 +653,9 @@ _find_fast_mirror_early() {
       echo "ao.files.aegir.cc" >> ${_ffList}
     fi
     if [ -e "${_ffList}" ]; then
-      _BROKEN_FFMIRR_TEST=$(grep "stuff" ${_ffMirr} 2>&1)
+      _BROKEN_FFMIRR_TEST=$(grep "stuff" "${_ffMirr}")
       if [[ "${_BROKEN_FFMIRR_TEST}" =~ "stuff" ]]; then
-        _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
+        _CHECK_MIRROR=$(bash "${_ffMirr}" < "${_ffList}")
         _USE_MIR="${_CHECK_MIRROR}"
         [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.aegir.cc"
       else
@@ -683,10 +683,10 @@ _if_firewall_update() {
     cp -af /opt/fire.sh      ${_WFC}/fire.sh-pre
     cp -af /etc/csf/csf.conf ${_WFC}/csf.conf-pre
     cd ${_WFC}
-    curl ${_crlGet} "${_urlHmr}/conf/var/sysctl.conf"      -o sysctl.conf
-    curl ${_crlGet} "${_urlHmr}/tools/host/host-water.sh"  -o host-water.sh
-    curl ${_crlGet} "${_urlHmr}/tools/host/host-fire.sh"   -o host-fire.sh
-    curl ${_crlGet} "http://${_USE_MIR}/cluster/csf.conf" -o csf.conf
+    curl "${_crlGet}" "${_urlHmr}/conf/var/sysctl.conf"      -o sysctl.conf
+    curl "${_crlGet}" "${_urlHmr}/tools/host/host-water.sh"  -o host-water.sh
+    curl "${_crlGet}" "${_urlHmr}/tools/host/host-fire.sh"   -o host-fire.sh
+    curl "${_crlGet}" "http://${_USE_MIR}/cluster/csf.conf" -o csf.conf
     cp -af ${_WFC}/sysctl.conf   /etc/sysctl.conf
     cp -af ${_WFC}/host-water.sh /opt/water.sh
     cp -af ${_WFC}/host-fire.sh  /opt/fire.sh
@@ -747,7 +747,7 @@ _if_firewall_update() {
     ### CVE-2019-11478 SACK Slowness
     ### CVE-2019-11479 Excess Resource Consumption Due to Low MSS Values
     if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
-      _SACK_TEST=$(ip6tables --list | grep tcpmss 2>&1)
+      _SACK_TEST=$(ip6tables --list | grep tcpmss)
       if [[ ! "${_SACK_TEST}" =~ "tcpmss" ]]; then
         sysctl net.ipv4.tcp_mtu_probing=0 &> /dev/null
         iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
@@ -763,24 +763,24 @@ _install_proxysql() {
     _vidn="${_CLUSTER_PREFIX}db0"
     if [ -e "/vservers/${_vidn}/root/.my.cluster_root_pwd.txt" ]; then
       _ROOT_SQL_PASWD=$(cat /vservers/${_vidn}/root/.my.cluster_root_pwd.txt 2>&1)
-      _ROOT_SQL_PASWD=$(echo -n ${_ROOT_SQL_PASWD} | tr -d "\n" 2>&1)
       _E_ROOT_SQL_PASWD="${_ROOT_SQL_PASWD//\//\\\/}"
+      _ROOT_SQL_PASWD=$(echo -n ${_ROOT_SQL_PASWD} | tr -d '\n')
     fi
   fi
 
-  _PROXYSQL_PASSWORD="$(openssl rand -base64 64 | tr -d '\n')"
-  _MONITOR_PASSWORD="$(openssl rand -base64 64 | tr -d '\n')"
-  _CLUSTER_APP_PASSWORD="$(openssl rand -base64 64 | tr -d '\n')"
+  _pxSqlPass=$(openssl rand -base64 64 | tr -d '\n')
+  _MONITOR_PASSWORD=$(openssl rand -base64 64 | tr -d '\n')
+  _CLUSTER_APP_PASSWORD=$(openssl rand -base64 64 | tr -d '\n')
 
-  _E_PROXYSQL_PASSWORD="${_PROXYSQL_PASSWORD//\//\\\/}"
-  _E_MONITOR_PASSWORD="${_MONITOR_PASSWORD//\//\\\/}"
-  _E_CLUSTER_APP_PASSWORD="${_CLUSTER_APP_PASSWORD//\//\\\/}"
+  _E_pxSqlPass=${_pxSqlPass//\//\\\/}
+  _E_MONITOR_PASSWORD=${_MONITOR_PASSWORD//\//\\\/}
+  _E_CLUSTER_APP_PASSWORD=${_CLUSTER_APP_PASSWORD//\//\\\/}
 
-  _pxyCtx="mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032"
+  _pxyCtx="mysql -uadmin -p${_pxSqlPass} -h127.0.0.1 -P6032"
   _pXcnf="/vservers/${_idn}/etc/proxysql-admin.cnf"
 
   echo "Installing ProxySQL on the web cluster node..."
-  if [ ! -z "${_E_PROXYSQL_PASSWORD}" ] && [ ! -z "${_E_ROOT_SQL_PASWD}" ]; then
+  if [ ! -z "${_E_pxSqlPass}" ] && [ ! -z "${_E_ROOT_SQL_PASWD}" ]; then
 
     if [ "${_cmd}" = "in-pxy" ] \
       && [ -e "/vservers/${_idn}/usr/bin/proxysql" ] \
@@ -816,10 +816,10 @@ _install_proxysql() {
     fi
 
     echo "${_ROOT_SQL_PASWD}" > /vservers/${_idn}/root/.my.cluster_root_pwd.txt
-    echo "${_PROXYSQL_PASSWORD}" > /vservers/${_idn}/root/.my.proxysql_adm_pwd.txt
+    echo "${_pxSqlPass}" > /vservers/${_idn}/root/.my.proxysql_adm_pwd.txt
     echo "${_DB_NODE_IP[1]}" > /vservers/${_idn}/root/.my.cluster_write_node.txt
     echo "<?php" > /vservers/${_idn}/opt/tools/drush/proxysql_adm_pwd.inc
-    echo "\$prxy_adm_paswd = \"${_PROXYSQL_PASSWORD}\";" >> /vservers/${_idn}/opt/tools/drush/proxysql_adm_pwd.inc
+    echo "\$prxy_adm_paswd = \"${_pxSqlPass}\";" >> /vservers/${_idn}/opt/tools/drush/proxysql_adm_pwd.inc
     echo "\$writer_node_ip = \"${_DB_NODE_IP[1]}\";"     >> /vservers/${_idn}/opt/tools/drush/proxysql_adm_pwd.inc
     echo "ProxySQL" > /vservers/${_idn}/data/conf/clstr.cnf
     mkdir -p /vservers/${_idn}/opt/tmp
@@ -850,11 +850,11 @@ Dir::Etc::SourceList "/etc/apt/sources.list";
     vserver ${_idn} exec service proxysql stop
     wait
 
-    sed -i "s/admin:admin/admin:${_E_PROXYSQL_PASSWORD}/g" /vservers/${_idn}/etc/proxysql.cnf
+    sed -i "s/admin:admin/admin:${_E_pxSqlPass}/g" /vservers/${_idn}/etc/proxysql.cnf
     wait
     sed -i "s/localhost/127.0.0.1/g" /vservers/${_idn}/etc/proxysql.cnf
 
-    sed -i "s/PROXYSQL_PASSWORD=.*/PROXYSQL_PASSWORD=\"${_E_PROXYSQL_PASSWORD}\"/g" ${_pXcnf}
+    sed -i "s/PROXYSQL_PASSWORD=.*/PROXYSQL_PASSWORD=\"${_E_pxSqlPass}\"/g" ${_pXcnf}
     wait
     sed -i "s/PROXYSQL_HOSTNAME=.*/PROXYSQL_HOSTNAME=\"127.0.0.1\"/g" ${_pXcnf}
     wait
@@ -1048,14 +1048,14 @@ Dir::Etc::SourceList "/etc/apt/sources.list";
       _tURL="${_urlHmr}/${_tBn}/proxysql_galera_checker"
       echo PGC download URL is ${_tURL}
       curl -I ${_tURL}
-      curl ${_crlGet} "${_tURL}" -o ${_pGc}
+      curl "${_crlGet}" "${_tURL}" -o ${_pGc}
       if [ ! -e "${_pGc}" ]; then
-        curl ${_crlGet} "${_tURL}" -o ${_pGc}
+        curl "${_crlGet}" "${_tURL}" -o ${_pGc}
       else
         _PAV_TEST=$(grep PROXYSQL_ADMIN_VERSION ${_pGc} 2>&1)
         if [[ ! "${_PAV_TEST}" =~ "PROXYSQL_ADMIN_VERSION" ]]; then
           rm -f ${_pGc}
-          curl ${_crlGet} "${_tURL}" -o ${_pGc}
+          curl "${_crlGet}" "${_tURL}" -o ${_pGc}
         fi
       fi
       chmod 755 ${_pGc}
@@ -1081,7 +1081,7 @@ Dir::Etc::SourceList "/etc/apt/sources.list";
       echo "OOPS: ProxySQL will not work!"
     fi
   else
-    echo "Can't install ProxySQL because _E_PROXYSQL_PASSWORD or _E_ROOT_SQL_PASWD is empty"
+    echo "Can't install ProxySQL because _E_pxSqlPass or _E_ROOT_SQL_PASWD is empty"
   fi
 
   if [ "${_CLUSTER_XCHECK}" = "YES" ]; then
@@ -1101,7 +1101,7 @@ Dir::Etc::SourceList "/etc/apt/sources.list";
       echo "Adding custom runtime_scheduler entry in ProxySQL..."
       _rplSchdrA="DELETE FROM scheduler where id=10;"
       # _rplSchdrB="DELETE FROM scheduler where id=11;"
-      _rplSchdrC="INSERT INTO scheduler (id,active,interval_ms,filename,arg1) VALUES (10,1,2000,'/var/lib/proxysql/galera_check.pl','-u=admin -p=${_PROXYSQL_PASSWORD} -h=127.0.0.1 -H=10:W,11:R -P=6032 --execution_time=1 --retry_down=2 --retry_up=1 --main_segment=1 --debug=0 --active_failover --log=/var/log/proxysql/galera_check.log');"
+      _rplSchdrC="INSERT INTO scheduler (id,active,interval_ms,filename,arg1) VALUES (10,1,2000,'/var/lib/proxysql/galera_check.pl','-u=admin -p=${_pxSqlPass} -h=127.0.0.1 -H=10:W,11:R -P=6032 --execution_time=1 --retry_down=2 --retry_up=1 --main_segment=1 --debug=0 --active_failover --log=/var/log/proxysql/galera_check.log');"
       _rplSchdrD="LOAD SCHEDULER TO RUNTIME;"
       _rplSchdrE="SAVE SCHEDULER TO DISK;"
         ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "${_pxyCtx} -e \"${_rplSchdrA}\""
@@ -1294,8 +1294,8 @@ _install_vps() {
       _vidn="${_CLUSTER_PREFIX}db0"
       if [ -e "/vservers/${_vidn}/root/.my.cluster_root_pwd.txt" ]; then
         _ROOT_SQL_PASWD=$(cat /vservers/${_vidn}/root/.my.cluster_root_pwd.txt 2>&1)
-        _ROOT_SQL_PASWD=$(echo -n ${_ROOT_SQL_PASWD} | tr -d "\n" 2>&1)
-        _E_ROOT_SQL_PASWD="${_ROOT_SQL_PASWD//\//\\\/}"
+        _ROOT_SQL_PASWD=$(echo -n ${_ROOT_SQL_PASWD} | tr -d '\n')
+        _E_ROOT_SQL_PASWD=${_ROOT_SQL_PASWD//\//\\\/}
       fi
     fi
     if [ ! -z "${_ROOT_SQL_PASWD}" ]; then
@@ -1610,18 +1610,18 @@ _install_db_cluster() {
   fi
 
   _CLUSTER_NAME="${_CLUSTER_PREFIX}_galera"
-  _MAINT_USER_PWD="$(openssl rand -base64 64 | tr -d '\n')"
-  _ROOT_SQL_PASWD="$(openssl rand -base64 64 | tr -d '\n')"
-  _E_MAINT_USER_PWD="${_MAINT_USER_PWD//\//\\\/}"
-  _E_ROOT_SQL_PASWD="${_ROOT_SQL_PASWD//\//\\\/}"
+  _MAINT_USER_PWD=$(openssl rand -base64 64 | tr -d '\n')
+  _ROOT_SQL_PASWD=$(openssl rand -base64 64 | tr -d '\n')
+  _E_MAINT_USER_PWD=${_MAINT_USER_PWD//\//\\\/}
+  _E_ROOT_SQL_PASWD=${_ROOT_SQL_PASWD//\//\\\/}
   _CLUSTER_STRING="gcomm://"$(IFS=, ; echo "${_DB_NODE_IP[*]}")
   _inc="0"
 
   _percList="/etc/apt/sources.list.d/percona-release.list"
   _DB_SRC="repo.percona.com"
-  _percNodot="${_DB_SERIES//./}"
   _percRepo="${_DB_SRC}/ps-${_percNodot}/apt"
   _percTools="${_DB_SRC}/tools/apt"
+  _percNodot=${_DB_SERIES//./}
 
   for IP in "${_DB_NODE_IP[@]}"; do
     echo "${IP} # Cluster Galera Node" >> /etc/csf/csf.allow
@@ -1644,7 +1644,7 @@ _install_db_cluster() {
   ### CVE-2019-11478 SACK Slowness
   ### CVE-2019-11479 Excess Resource Consumption Due to Low MSS Values
   if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
-    _SACK_TEST=$(ip6tables --list | grep tcpmss 2>&1)
+    _SACK_TEST=$(ip6tables --list | grep tcpmss)
     if [[ ! "${_SACK_TEST}" =~ "tcpmss" ]]; then
       sysctl net.ipv4.tcp_mtu_probing=0 &> /dev/null
       iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
@@ -1886,14 +1886,14 @@ _upgrade_db_cluster() {
       rm -f /vservers/${_idn}${_optBin}/boa
     fi
     mkdir -p /vservers/${_idn}/${_optBin}
-    curl ${_crlGet} "${_urlHmr}/${_tBn}/boa" -o /vservers/${_idn}${_optBin}/boa
+    curl "${_crlGet}" "${_urlHmr}/${_tBn}/boa" -o /vservers/${_idn}${_optBin}/boa
     ssh ${_NOSTRICT} root@${IP} "chmod 700 ${_optBin}/boa"
 
     if [ -e "/vservers/${_idn}${_optBin}/mycnfup" ]; then
       rm -f /vservers/${_idn}${_optBin}/mycnfup
     fi
     mkdir -p /vservers/${_idn}/${_optBin}
-    curl ${_crlGet} "${_urlHmr}/${_tBn}/mycnfup" -o /vservers/${_idn}${_optBin}/mycnfup
+    curl "${_crlGet}" "${_urlHmr}/${_tBn}/mycnfup" -o /vservers/${_idn}${_optBin}/mycnfup
     ssh ${_NOSTRICT} root@${IP} "chmod 700 ${_optBin}/mycnfup"
     if [ -e "/vservers/${_idn}${_optBin}/mycnfup" ]; then
       echo "Running mycnfup check on ${_idn}/${IP}..."
@@ -2395,7 +2395,7 @@ _check_heads() {
       rm -f ${i}${_optBin}/boa
     fi
     mkdir -p ${i}${_optBin}
-    curl ${_crlGet} "${_urlHmr}/${_tBn}/boa" -o ${i}${_optBin}/boa
+    curl "${_crlGet}" "${_urlHmr}/${_tBn}/boa" -o ${i}${_optBin}/boa
     chmod 700 ${i}${_optBin}/boa
     ls -la ${i}${_optBin}/boa
     if [[ ${_THIS_VM} =~ v168q ]]; then
@@ -2404,7 +2404,7 @@ _check_heads() {
       if [ -e "/usr/run/vservers/${_THIS_VM}" ] \
         && [ -e "${i}/run/crond.pid" ]; then
         _VS_HOSTNAME=`vserver ${_VS_NAME} exec hostname 2>&1`
-        _VS_OS=`vserver ${_VS_NAME} exec lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1`
+        _VS_OS=`vserver ${_VS_NAME} exec lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2`
         echo "The ${_VS_HOSTNAME} ${_VS_NAME} VM is running ${_VS_OS}"
         vserver ${_VS_NAME} exec ${_optBin}/boa info ${_mod} ${_ext}
       fi
@@ -2424,7 +2424,7 @@ _restart_db_cluster() {
       ssh ${_NOSTRICT} root@${IP} "bash ${_optBin}/mycnfup stop"
     else
       mkdir -p /vservers/${_idn}/${_optBin}
-      curl ${_crlGet} "${_urlHmr}/${_tBn}/mycnfup" -o /vservers/${_idn}${_optBin}/mycnfup
+      curl "${_crlGet}" "${_urlHmr}/${_tBn}/mycnfup" -o /vservers/${_idn}${_optBin}/mycnfup
       ssh ${_NOSTRICT} root@${IP} "chmod 700 ${_optBin}/mycnfup"
       echo "Running mycnfup stop on ${_idn}/${IP}..."
       ssh ${_NOSTRICT} root@${IP} "bash ${_optBin}/mycnfup stop"

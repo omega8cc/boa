@@ -11,11 +11,11 @@ _verify_boa_keys() {
     _allw=NO
     _crlGet="-L --max-redirs 3 -k -s --retry 9 --retry-delay 9 -A iCab"
     _urlEnc="http://files.aegir.cc/enc/2024"
-    _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
+    _hName=$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)
     _encName=$(echo ${_hName} \
       | openssl md5 \
       | awk '{ print $2}' \
-      | tr -d "\n" 2>&1)
+      | tr -d '\n')
     if [[ "${_hName}" =~ ".aegir.cc"($) ]] \
       || [[ "${_hName}" =~ ".o8.io"($) ]] \
       || [[ "${_hName}" =~ ".boa.io"($) ]]; then
@@ -23,7 +23,7 @@ _verify_boa_keys() {
     fi
     mkdir -p /var/opt
     rm -f /var/opt/_encN*
-    curl ${_crlGet} "${_urlEnc}/${_encName}" -o /var/opt/_encN.${_encName}.tmp
+    curl "${_crlGet}" "${_urlEnc}/${_encName}" -o /var/opt/_encN.${_encName}.tmp
     wait
     echo "${_hName}.${_encName}" > /var/opt/_encN_local.${_encName}.tmp
     wait

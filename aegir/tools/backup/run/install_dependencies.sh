@@ -50,7 +50,7 @@ _check_openssl() {
 
 _os_detection_minimal() {
   _APT_UPDATE="apt-get update"
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
   for e in ${_OS_LIST}; do
     if [ "${e}" = "${_OS_CODE}" ]; then
@@ -60,7 +60,7 @@ _os_detection_minimal() {
 }
 
 _find_fast_mirror_early() {
-  _isNetc=$(which netcat 2>&1)
+  _isNetc=$(which netcat)
   if [ ! -x "${_isNetc}" ] || [ -z "${_isNetc}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
@@ -71,7 +71,7 @@ _find_fast_mirror_early() {
     apt-get install netcat-traditional ${_aptYesUnth}
     wait
   fi
-  _ffMirr=$(which ffmirror 2>&1)
+  _ffMirr=$(which ffmirror)
   if [ -x "${_ffMirr}" ]; then
     _ffList="/var/backups/boa-mirrors-2024-12.txt"
     mkdir -p /var/backups
@@ -81,9 +81,9 @@ _find_fast_mirror_early() {
       echo "ao.files.aegir.cc" >> ${_ffList}
     fi
     if [ -e "${_ffList}" ]; then
-      _BROKEN_FFMIRR_TEST=$(grep "stuff" ${_ffMirr} 2>&1)
+      _BROKEN_FFMIRR_TEST=$(grep "stuff" "${_ffMirr}")
       if [[ "${_BROKEN_FFMIRR_TEST}" =~ "stuff" ]]; then
-        _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
+        _CHECK_MIRROR=$(bash "${_ffMirr}" < "${_ffList}")
         _USE_MIR="${_CHECK_MIRROR}"
         [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.aegir.cc"
       else
@@ -136,7 +136,7 @@ _install_duplicity() {
   echo "Installing Duplicity ${_DCY_VRN}..."
   pipx install duplicity --include-deps --force
 
-  _DCY_TEST=$(${_DCY_CMD} --version 2>&1)
+  _DCY_TEST=$("${_DCY_CMD}" --version)
   if [[ "${_DCY_TEST}" =~ "duplicity 3." ]]; then
     echo "Duplicity ${_DCY_VRN} installation complete!"
     exit 0
@@ -163,7 +163,7 @@ _python_install_src() {
     rclone \
     rdiff \
     tzdata
-  _PTN_TEST=$(python3 --version 2>&1)
+  _PTN_TEST=$(python3 --version)
   if [[ ! "${_PTN_TEST}" =~ "Python ${_PTN_VRN}" ]] \
     || [ ! -x "${_DCY_PTN}" ]; then
     cd /var/opt
@@ -176,7 +176,7 @@ _python_install_src() {
     make install --quiet
     cd
   fi
-  _PTN_TEST=$(/usr/local/bin/python3.12 --version 2>&1)
+  _PTN_TEST=$("/usr/local/bin/python3.12" --version)
   if [[ "${_PTN_TEST}" =~ "Python ${_PTN_VRN}" ]]; then
     echo "Python ${_PTN_VRN} installed"
     _DCY_PTN="/usr/local/bin/python3.12"
@@ -195,7 +195,7 @@ _python_install_src() {
   echo "_usePip is ${_usePip}"
 
   echo "Installing pip..."
-  _PIP_TEST=$(${_usePip} --version 2>&1)
+  _PIP_TEST=$("${_usePip}" --version)
   if [[ "${_PIP_TEST}" =~ "python 3.11" ]] \
     || [[ "${_PIP_TEST}" =~ "python 3.12" ]]; then
     ${_usePip} install --upgrade pip --root-user-action ignore
@@ -210,7 +210,7 @@ _python_install_src() {
 _if_python_install_src() {
   _PYTHON_INSTALL=NO
   [ -e "/root/.gnupg" ] && chmod 700 /root/.gnupg
-  _PYTHON_TEST=$(python3 --version 2>&1)
+  _PYTHON_TEST=$(python3 --version)
   if [[ ! "${_PYTHON_TEST}" =~ Python\ 3\.12 ]]; then
     echo "Python ${_PTN_VRN} installation is required to support Duplicity ${_DCY_VRN}"
     _python_install_src

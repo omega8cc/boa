@@ -3,7 +3,8 @@ export _tRee=dev
 export _rLsn="BOA-5.5.0"
 export _rlsE="${_rLsn}-${_tRee}"
 export _bRnh="5.x-${_tRee}"
-_hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
+_hName=$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)
+_pxSqlPass=$(cat /root/.my.proxysql_adm_pwd.txt 2>/dev/null | tr -d '\n')
 
 #
 # Download and extract from core archive.
@@ -14,7 +15,7 @@ _get_core_ext() {
     _success=0
     while [ ${_attempt_num} -le ${_max_attempts} ]; do
       [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Attempt ${_attempt_num} of ${_max_attempts}: Downloading $1..."
-      if curl ${_crlGet} "http://${_USE_MIR}/core/$1" -o "$1"; then
+      if curl "${_crlGet}" "http://${_USE_MIR}/core/$1" -o "$1"; then
         _success=1
         break
       else
@@ -81,14 +82,11 @@ _find_correct_ip() {
     _debug_proc
   fi
   if [ -e "/root/.found_correct_ipv4.cnf" ]; then
-    _LOC_IP=$(cat /root/.found_correct_ipv4.cnf 2>&1)
-    _LOC_IP=$(echo -n ${_LOC_IP} | tr -d "\n" 2>&1)
+    _LOC_IP=$(cat /root/.found_correct_ipv4.cnf 2>/dev/null | tr -d '\n')
   else
-    _LOC_IP=$(curl ${_crlGet} https://api.ipify.org \
-      | sed 's/[^0-9\.]//g' 2>&1)
+    _LOC_IP=$(curl "${_crlGet}" https://api.ipify.org | sed 's/[^0-9\.]//g')
     if [ -z "${_LOC_IP}" ]; then
-      _LOC_IP=$(curl ${_crlGet} http://ipv4.icanhazip.com \
-        | sed 's/[^0-9\.]//g' 2>&1)
+      _LOC_IP=$(curl "${_crlGet}" http://ipv4.icanhazip.com | sed 's/[^0-9\.]//g')
     fi
     if [ ! -z "${_LOC_IP}" ]; then
       echo ${_LOC_IP} > /root/.found_correct_ipv4.cnf
@@ -373,8 +371,7 @@ _satellite_tune_fpm_config() {
 
   if [ ! -z "${_CLIENT_CORES}" ] && [ "${_CLIENT_CORES}" -ge "1" ]; then
     if [ -e "${_ROOT}/log/cores.txt" ]; then
-      _CLIENT_CORES=$(cat ${_ROOT}/log/cores.txt 2>&1)
-      _CLIENT_CORES=$(echo -n ${_CLIENT_CORES} | tr -d "\n" 2>&1)
+      _CLIENT_CORES=$(cat ${_ROOT}/log/cores.txt 2>/dev/null | tr -d '\n')
     fi
     _CLIENT_CORES=${_CLIENT_CORES//[^0-9]/}
     if [ ! -z "${_CLIENT_CORES}" ] && [ "${_CLIENT_CORES}" -ge "1" ]; then
@@ -688,7 +685,7 @@ _satellite_cnf() {
     if [ ! -e "${_ROOT}/static/control/fpm.info" ]; then
       if [ -e "${_ROOT}/log/fpm.txt" ]; then
         _PHP_FPM_VERSION=$(cat ${_ROOT}/log/fpm.txt 2>&1)
-        _PHP_FPM_VERSION=$(echo -n ${_PHP_FPM_VERSION} | tr -d "\n" 2>&1)
+        _PHP_FPM_VERSION=$(echo -n ${_PHP_FPM_VERSION} | tr -d '\n')
       else
         _PHP_FPM_VERSION=8.3
       fi
@@ -698,7 +695,7 @@ _satellite_cnf() {
 
     if [ -e "${_ROOT}/static/control/fpm.info" ]; then
       _PHP_FPM_VERSION=$(cat ${_ROOT}/static/control/fpm.info 2>&1)
-      _PHP_FPM_VERSION=$(echo -n ${_PHP_FPM_VERSION} | tr -d "\n" 2>&1)
+      _PHP_FPM_VERSION=$(echo -n ${_PHP_FPM_VERSION} | tr -d '\n')
       if [ "${_PHP_FPM_VERSION}" = "8.3" ] \
         || [ "${_PHP_FPM_VERSION}" = "8.2" ] \
         || [ "${_PHP_FPM_VERSION}" = "8.1" ] \
@@ -778,7 +775,7 @@ _satellite_cnf() {
     if [ ! -e "${_ROOT}/static/control/cli.info" ]; then
       if [ -e "${_ROOT}/log/cli.txt" ]; then
         _PHP_CLI_VERSION=$(cat ${_ROOT}/log/cli.txt 2>&1)
-        _PHP_CLI_VERSION=$(echo -n ${_PHP_CLI_VERSION} | tr -d "\n" 2>&1)
+        _PHP_CLI_VERSION=$(echo -n ${_PHP_CLI_VERSION} | tr -d '\n')
       else
         _PHP_CLI_VERSION=8.3
       fi
@@ -788,7 +785,7 @@ _satellite_cnf() {
 
     if [ -e "${_ROOT}/static/control/cli.info" ]; then
       _PHP_CLI_VERSION=$(cat ${_ROOT}/static/control/cli.info 2>&1)
-      _PHP_CLI_VERSION=$(echo -n ${_PHP_CLI_VERSION} | tr -d "\n" 2>&1)
+      _PHP_CLI_VERSION=$(echo -n ${_PHP_CLI_VERSION} | tr -d '\n')
       if [ "${_PHP_CLI_VERSION}" = "8.3" ] \
         || [ "${_PHP_CLI_VERSION}" = "8.2" ] \
         || [ "${_PHP_CLI_VERSION}" = "8.1" ] \
@@ -950,8 +947,7 @@ _satellite_cnf() {
     fi
     _PRE_PLATFORMS_LIST="${_PLATFORMS_LIST}"
     if [ -e "${_ROOT}/static/control/platforms.info" ]; then
-      _PLATFORMS_LIST=$(cat ${_ROOT}/static/control/platforms.info 2>&1)
-      _PLATFORMS_LIST=$(echo -n ${_PLATFORMS_LIST} | tr -d "\n" 2>&1)
+      _PLATFORMS_LIST=$(cat ${_ROOT}/static/control/platforms.info 2>/dev/null | tr -d '\n')
       _PLATFORMS_LIST=${_PLATFORMS_LIST//[^ 0-9A-Z]/}
       _msg "NOTE! Custom Platforms List: ${_PLATFORMS_LIST}"
       if [ -z "${_PLATFORMS_LIST}" ]; then
@@ -1869,13 +1865,13 @@ _satellite_download_o_contrib_seven() {
   _get_dev_contrib "admin-7.x-2.0-beta3.tar.gz"
   _get_dev_contrib "adminer_bundle-7.x-1.2.tar.gz"
   # _get_dev_contrib "adminer-7.x-1.2.tar.gz"
-  # curl ${_crlGet} "https://github.com/vrana/adminer/releases/download/v${_ADMINER_VRN}/adminer-${_ADMINER_VRN}-mysql.php" -o "${_CORE}/${i}/o_contrib_seven/adminer/adminer/adminer-${_ADMINER_VRN}-mysql.php"
-  # curl ${_crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/designs/nette/adminer.css" -o "${_CORE}/${i}/o_contrib_seven/adminer/adminer/styles/adminer.css"
-  # curl ${_crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/plugin.php" -o "${_CORE}/${i}/o_contrib_seven/adminer/adminer/plugins/plugin.php"
-  # curl ${_crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/enum-option.php" -o "${_CORE}/${i}/o_contrib_seven/adminer/adminer/plugins/enum-option.php"
-  # curl ${_crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/edit-textarea.php" -o "${_CORE}/${i}/o_contrib_seven/adminer/adminer/plugins/edit-textarea.php"
-  # curl ${_crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/version-noverify.php" -o "${_CORE}/${i}/o_contrib_seven/adminer/adminer/plugins/version-noverify.php"
-  # curl ${_crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/frames.php" -o "${_CORE}/${i}/o_contrib_seven/adminer/adminer/plugins/frames.php"
+  # curl "${_crlGet}" "https://github.com/vrana/adminer/releases/download/v${_ADMINER_VRN}/adminer-${_ADMINER_VRN}-mysql.php" -o "${_CORE}/${i}/o_contrib_seven/adminer/adminer/adminer-${_ADMINER_VRN}-mysql.php"
+  # curl "${_crlGet}" "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/designs/nette/adminer.css" -o "${_CORE}/${i}/o_contrib_seven/adminer/adminer/styles/adminer.css"
+  # curl "${_crlGet}" "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/plugin.php" -o "${_CORE}/${i}/o_contrib_seven/adminer/adminer/plugins/plugin.php"
+  # curl "${_crlGet}" "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/enum-option.php" -o "${_CORE}/${i}/o_contrib_seven/adminer/adminer/plugins/enum-option.php"
+  # curl "${_crlGet}" "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/edit-textarea.php" -o "${_CORE}/${i}/o_contrib_seven/adminer/adminer/plugins/edit-textarea.php"
+  # curl "${_crlGet}" "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/version-noverify.php" -o "${_CORE}/${i}/o_contrib_seven/adminer/adminer/plugins/version-noverify.php"
+  # curl "${_crlGet}" "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/frames.php" -o "${_CORE}/${i}/o_contrib_seven/adminer/adminer/plugins/frames.php"
   _get_dev_contrib "advagg-7.x-2.36.tar.gz"
   _get_dev_contrib "autoslave-7.x-1.x-dev.tar.gz"
   _get_dev_contrib "blockcache_alter-7.x-1.1.tar.gz"
@@ -2243,8 +2239,7 @@ _provision_backend_dbpass_generate() {
     _msg "PROC: _provision_backend_dbpass_generate"
     _debug_proc
   fi
-  _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
-  _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+  _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
   if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
     _SQL_CONNECT=127.0.0.1
     _THIS_DB_PORT=6033
@@ -2276,27 +2271,25 @@ _provision_backend_dbpass_generate() {
       || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
       || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
       if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
-        _ESC_PASS="$(openssl rand -base64 64 | tr -d '\n')"
+        _ESC_PASS=$(openssl rand -base64 64 | tr -d '\n')
       else
-        _RANDPASS_TEST=$(randpass -V 2>&1)
+        _RANDPASS_TEST=$(randpass -V)
         if [[ "${_RANDPASS_TEST}" =~ "alnum" ]]; then
-          _ESC_PASS=$(randpass "${_PWD_CHARS}" alnum 2>&1)
+          _ESC_PASS=$(randpass "${_PWD_CHARS}" alnum)
         else
-          _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
-          _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
-          _ESC_PASS=$(_sanitize_string "${_ESC_PASS}" 2>&1)
+          _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' | tr -d '\n')
+          _ESC_PASS=$(_sanitize_string "${_ESC_PASS}")
         fi
       fi
     else
       if [ -e "/root/.my.pass.txt" ]; then
-        _ESC_PASS=$(cat /root/.my.pass.txt 2>&1)
+        _ESC_PASS=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
       else
         _ESC_PASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
       fi
     fi
     _isPythonTwo=$(which python2 2>&1)
     _isPythonThree=$(which python3 2>&1)
-    _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
     if [ -x "${_isPythonThree}" ]; then
       _ENC_PASS=$(python3 -c "import urllib.parse; print(urllib.parse.quote('''${_ESC_PASS}'''))")
     elif [ -x "${_isPythonTwo}" ]; then
@@ -2309,12 +2302,11 @@ _provision_backend_dbpass_generate() {
       || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
       || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
       || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
-      _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
-      _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
-      _ESC_PASS=$(_sanitize_string "${_ESC_PASS}" 2>&1)
+      _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' | tr -d '\n')
+      _ESC_PASS=$(_sanitize_string "${_ESC_PASS}")
     else
       if [ -e "/root/.my.pass.txt" ]; then
-        _ESC_PASS=$(cat /root/.my.pass.txt 2>&1)
+        _ESC_PASS=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
       else
         _ESC_PASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
       fi
@@ -2377,9 +2369,7 @@ _provision_backend_dbpass_generate() {
     if [ "${_STATUS}" = "INIT" ]; then
       [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL14 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
       if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
-        _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>&1)
-        _PROXYSQL_PASSWORD=$(echo -n ${_PROXYSQL_PASSWORD} | tr -d "\n" 2>&1)
-        mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
+        mysql -uadmin -p${_pxSqlPass} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
 DELETE FROM mysql_users WHERE username='${_USE_DB_USER}';
 DELETE FROM mysql_query_rules WHERE username='${_USE_DB_USER}';
 INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_USE_DB_USER}','${_ESC_PASS}','10');
@@ -2396,15 +2386,15 @@ PROXYSQL
       ###
       # if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
       #   _ROOT_SQL_PASWD=$(cat /root/.my.cluster_root_pwd.txt 2>&1)
-      #   _ROOT_SQL_PASWD=$(echo -n ${_ROOT_SQL_PASWD} | tr -d "\n" 2>&1)
+      #   _ROOT_SQL_PASWD=$(echo -n ${_ROOT_SQL_PASWD} | tr -d '\n')
       # elif [ -e "/root/.my.pass.txt" ]; then
       #   _ROOT_SQL_PASWD=$(cat /root/.my.pass.tx 2>&1)
-      #   _ROOT_SQL_PASWD=$(echo -n ${_ROOT_SQL_PASWD} | tr -d "\n" 2>&1)
+      #   _ROOT_SQL_PASWD=$(echo -n ${_ROOT_SQL_PASWD} | tr -d '\n')
       # fi
       # if [ -e "/root/.my.cluster_write_node.txt" ]; then
       #   _CL_WR_NODE=$(cat /root/.my.cluster_write_node.txt 2>&1)
-      #   _CL_WR_NODE=$(echo -n ${_CL_WR_NODE} | tr -d "\n" 2>&1)
-      #   _SQL_CONNECT="${_CL_WR_NODE}"
+      #   _CL_WR_NODE=$(echo -n ${_CL_WR_NODE} | tr -d '\n')
+      #   _SQL_CONNECT=${_CL_WR_NODE}"
       #   _THIS_DB_PORT="3306"
       # fi
       ### -p${_ROOT_SQL_PASWD}
@@ -2426,9 +2416,7 @@ EOFMYSQL
         || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
         [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL15 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
         if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
-          _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>&1)
-          _PROXYSQL_PASSWORD=$(echo -n ${_PROXYSQL_PASSWORD} | tr -d "\n" 2>&1)
-          mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
+          mysql -uadmin -p${_pxSqlPass} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
 DELETE FROM mysql_users WHERE username='${_USE_DB_USER}';
 DELETE FROM mysql_query_rules WHERE username='${_USE_DB_USER}';
 INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_USE_DB_USER}','${_ESC_PASS}','10');
@@ -2474,8 +2462,7 @@ _provision_backend_dbpass_sync() {
     _msg "PROC: _provision_backend_dbpass_sync"
     _debug_proc
   fi
-  _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
-  _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+  _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
   _find_correct_ip
   _USE_RESOLVEIP="${_LOC_IP}"
   _RESOLVEIP="${_LOC_IP}"
@@ -2505,9 +2492,7 @@ _provision_backend_dbpass_sync() {
     _USE_RESOLVEIP="${_LOC_IP}"
     [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL16 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
     if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
-      _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>&1)
-      _PROXYSQL_PASSWORD=$(echo -n ${_PROXYSQL_PASSWORD} | tr -d "\n" 2>&1)
-      mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
+      mysql -uadmin -p${_pxSqlPass} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
 DELETE FROM mysql_users WHERE username='${_USE_DB_USER}';
 DELETE FROM mysql_query_rules WHERE username='${_USE_DB_USER}';
 INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_USE_DB_USER}','${_ESC_PASS}','10');
@@ -2585,8 +2570,7 @@ _hostmaster_frontend_dbpass_sync() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "${_STATUS} A: Syncing hostmaster frontend db_passwd..."
   fi
-  _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
-  _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+  _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
   if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
     _SQL_CONNECT=127.0.0.1
     _THIS_DB_PORT=6033
@@ -2618,9 +2602,7 @@ _hostmaster_frontend_dbpass_sync() {
     _USE_RESOLVEIP="${_LOC_IP}"
     [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL17 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
     if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
-      _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>&1)
-      _PROXYSQL_PASSWORD=$(echo -n ${_PROXYSQL_PASSWORD} | tr -d "\n" 2>&1)
-      mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
+      mysql -uadmin -p${_pxSqlPass} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
 DELETE FROM mysql_users WHERE username='${_USE_DB_USER}';
 DELETE FROM mysql_query_rules WHERE username='${_USE_DB_USER}';
 INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_USE_DB_USER}','${_THIS_HM_DBPD}','10');
@@ -2662,8 +2644,7 @@ _satellite_run_pre_install() {
     _msg "PROC: _satellite_run_pre_install"
     _debug_proc
   fi
-  _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
-  _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+  _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
   _find_correct_ip
   _USE_RESOLVEIP="${_LOC_IP}"
   _RESOLVEIP="${_LOC_IP}"
@@ -3124,21 +3105,18 @@ _satellite_if_add_ftps_lshell_access() {
       fi
     fi
     if [ "${_STRONG_PASSWORDS}" = "YES" ] || [ "${_PWD_CHARS}" -gt "32" ]; then
-      _RANDPASS_TEST=$(randpass -V 2>&1)
+      _RANDPASS_TEST=$(randpass -V)
       if [[ "${_RANDPASS_TEST}" =~ "alnum" ]]; then
-        _ESC_LUPASS=$(randpass "${_PWD_CHARS}" alnum 2>&1)
+        _ESC_LUPASS=$(randpass "${_PWD_CHARS}" alnum)
       else
-        _ESC_LUPASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
-        _ESC_LUPASS=$(echo -n "${_ESC_LUPASS}" | tr -d "\n" 2>&1)
-        _ESC_LUPASS=$(_sanitize_string "${_ESC_LUPASS}" 2>&1)
+        _ESC_LUPASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' | tr -d '\n')
+        _ESC_LUPASS=$(_sanitize_string "${_ESC_LUPASS}")
       fi
-      _ESC_LUPASS=$(echo -n "${_ESC_LUPASS}" | tr -d "\n" 2>&1)
       _LEN_LUPASS=$(echo ${#_ESC_LUPASS} 2>&1)
     fi
     if [ -z "${_ESC_LUPASS}" ] || [ "${_LEN_LUPASS}" -lt "9" ]; then
-      _ESC_LUPASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
-      _ESC_LUPASS=$(echo -n "${_ESC_LUPASS}" | tr -d "\n" 2>&1)
-      _ESC_LUPASS=$(_sanitize_string "${_ESC_LUPASS}" 2>&1)
+      _ESC_LUPASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' | tr -d '\n')
+      _ESC_LUPASS=$(_sanitize_string "${_ESC_LUPASS}")
     fi
     echo "${_ESC_LUPASS}" > ${_ROOT}/log/pass.txt
     # get the password hash
@@ -3372,12 +3350,10 @@ _satellite_if_read_create_pass_txt() {
     _DO_NOTHING=YES
   else
     if [ -e "${_ROOT}/pass.txt" ]; then
-      _PASWD=$(cat ${_ROOT}/pass.txt 2>&1)
-      _PASWD=$(echo -n ${_PASWD} | tr -d "\n" 2>&1)
+      _PASWD=$(cat ${_ROOT}/pass.txt 2>/dev/null | tr -d '\n')
       mv -f ${_ROOT}/pass.txt ${_ROOT}/log/pass.txt &> /dev/null
     elif [ -e "${_ROOT}/log/pass.txt" ]; then
-      _PASWD=$(cat ${_ROOT}/log/pass.txt 2>&1)
-      _PASWD=$(echo -n ${_PASWD} | tr -d "\n" 2>&1)
+      _PASWD=$(cat ${_ROOT}/log/pass.txt 2>/dev/null | tr -d '\n')
       rm -f ${_ROOT}/pass.txt
     else
       cd ${_ROOT}/log
@@ -3402,28 +3378,24 @@ _satellite_if_read_create_pass_txt() {
         fi
       fi
       if [ "${_STRONG_PASSWORDS}" = "YES" ] || [ "${_PWD_CHARS}" -gt "32" ]; then
-        _RANDPASS_TEST=$(randpass -V 2>&1)
+        _RANDPASS_TEST=$(randpass -V)
         if [[ "${_RANDPASS_TEST}" =~ "alnum" ]]; then
-          _ESC_LUPASS=$(randpass "${_PWD_CHARS}" alnum 2>&1)
+          _ESC_LUPASS=$(randpass "${_PWD_CHARS}" alnum)
         else
-          _ESC_LUPASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
-          _ESC_LUPASS=$(echo -n "${_ESC_LUPASS}" | tr -d "\n" 2>&1)
-          _ESC_LUPASS=$(_sanitize_string "${_ESC_LUPASS}" 2>&1)
+          _ESC_LUPASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' | tr -d '\n')
+          _ESC_LUPASS=$(_sanitize_string "${_ESC_LUPASS}")
         fi
-        _ESC_LUPASS=$(echo -n "${_ESC_LUPASS}" | tr -d "\n" 2>&1)
         _LEN_LUPASS=$(echo ${#_ESC_LUPASS} 2>&1)
       fi
       if [ -z "${_ESC_LUPASS}" ] || [ "${_LEN_LUPASS}" -lt "9" ]; then
-        _ESC_LUPASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
-        _ESC_LUPASS=$(echo -n "${_ESC_LUPASS}" | tr -d "\n" 2>&1)
-        _ESC_LUPASS=$(_sanitize_string "${_ESC_LUPASS}" 2>&1)
+        _ESC_LUPASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' | tr -d '\n')
+        _ESC_LUPASS=$(_sanitize_string "${_ESC_LUPASS}")
       fi
       echo "${_ESC_LUPASS}" > ${_ROOT}/log/pass.txt
       ph=$(mkpasswd -m sha-512 "${_ESC_LUPASS}" $(openssl rand -base64 16 \
         | tr -d '+=' | head -c 16))
       usermod -p $ph ${_USERFTP} &> /dev/null
-      _PASWD=$(cat ${_ROOT}/log/pass.txt 2>&1)
-      _PASWD=$(echo -n ${_PASWD} | tr -d "\n" 2>&1)
+      _PASWD=$(cat ${_ROOT}/log/pass.txt 2>/dev/null | tr -d '\n')
     fi
   fi
 }
@@ -3448,14 +3420,14 @@ _satellite_if_add_update_user_platforms_symlinks() {
     if [ -e "${i}" ]; then
       _RevisionTest=$(ls ${i} \
         | wc -l \
-        | tr -d "\n" 2>&1)
+        | tr -d '\n')
       if [ "${_RevisionTest}" -lt "${_LOW_NR}" ] \
         && [ ! -z "${_RevisionTest}" ]; then
         if [ -d "/home/${_HM_U}.ftp/platforms" ]; then
           chattr -i /home/${_HM_U}.ftp/platforms &> /dev/null
           chattr -i /home/${_HM_U}.ftp/platforms/* &> /dev/null
         fi
-        _NOW=$(date +%y%m%d-%H%M%S 2>&1)
+        _NOW=$(date +%y%m%d-%H%M%S)
         [ ! -e "/var/backups/ghost/${_HM_U}/${_NOW}" ] && mkdir -p /var/backups/ghost/${_HM_U}/${_NOW}
         [ "${_DEBUG_MODE}" = "YES" ] && echo "Moving ${i} to /var/backups/ghost/${_HM_U}/${_NOW}"
         mv -f ${i} /var/backups/ghost/${_HM_U}/${_NOW}/
@@ -3471,7 +3443,7 @@ _satellite_if_add_update_user_platforms_symlinks() {
       _RevisionTest=$(ls ${i} | wc -l 2>&1)
       if [ "${_RevisionTest}" -lt "2" ] && [ ! -z "${_RevisionTest}" ]; then
         [ "${_DEBUG_MODE}" = "YES" ] && echo "_RevisionTest is ${_RevisionTest}"
-        _NOW=$(date +%y%m%d-%H%M%S 2>&1)
+        _NOW=$(date +%y%m%d-%H%M%S)
         mkdir -p ${_usEr}/undo/dist/${_NOW}
         mv -f ${i} ${_usEr}/undo/dist/${_NOW}/ &> /dev/null
         [ "${_DEBUG_MODE}" = "YES" ] && echo "GHOST revision ${i} detected and moved to ${_usEr}/undo/dist/${_NOW}/"
@@ -3500,7 +3472,7 @@ _satellite_if_add_update_user_platforms_symlinks() {
         ln -sfn ${i}/keys /home/${_HM_U}.ftp/platforms/${_distTrNr}/keys
       fi
       if [ -e "/home/${_HM_U}.ftp/platforms/data" ]; then
-        _NOW=$(date +%y%m%d-%H%M%S 2>&1)
+        _NOW=$(date +%y%m%d-%H%M%S)
         [ ! -e "/var/backups/ghost/${_HM_U}/${_NOW}" ] && mkdir -p /var/backups/ghost/${_HM_U}/${_NOW}
         mv -f /home/${_HM_U}.ftp/platforms/data /var/backups/ghost/${_HM_U}/${_NOW}/platforms_data
       fi
@@ -3740,8 +3712,8 @@ _satellite_make() {
     _msg "PROC: _satellite_make"
     _debug_proc
   fi
-  export _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
-  export _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  export _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
+  export _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   if [ -d "/data/all/000" ]; then
     if [ ! -e "/data/all/000/core-v-${_SMALLCORE6_V}.txt" ] \
       || [ ! -e "/data/all/000/core-v-${_SMALLCORE7_V}.txt" ]; then
@@ -4112,7 +4084,7 @@ _satellite_detect_vm_family() {
     _msg "PROC: _satellite_detect_vm_family"
     _debug_proc
   fi
-  _VM_TEST="$(uname -a)"
+  _VM_TEST=$(uname -a)
   if [[ "${_VM_TEST}" =~ "-beng" ]]; then
     _VMFAMILY="VS"
   else
@@ -4142,9 +4114,8 @@ _satellite_check_php_compatibility() {
     _debug_proc
   fi
   if [ -e "${_ROOT}/static/control/fpm.info" ]; then
-    _T_FPM_VRN=$(cat ${_ROOT}/static/control/fpm.info 2>&1)
+    _T_FPM_VRN=$(cat ${_ROOT}/static/control/fpm.info 2>/dev/null | tr -d '\n')
     _T_FPM_VRN=${_T_FPM_VRN//[^0-9.]/}
-    _T_FPM_VRN=$(echo -n ${_T_FPM_VRN} | tr -d "\n" 2>&1)
     if [ "${_T_FPM_VRN}" = "8.3" ] \
       || [ "${_T_FPM_VRN}" = "8.2" ] \
       || [ "${_T_FPM_VRN}" = "8.1" ] \
@@ -4163,9 +4134,8 @@ _satellite_check_php_compatibility() {
     _PHP_FPM_LEGACY_FREE=YES
   fi
   if [ -e "${_ROOT}/static/control/cli.info" ]; then
-    _T_CLI_VRN=$(cat ${_ROOT}/static/control/cli.info 2>&1)
+    _T_CLI_VRN=$(cat ${_ROOT}/static/control/cli.info 2>/dev/null | tr -d '\n')
     _T_CLI_VRN=${_T_CLI_VRN//[^0-9.]/}
-    _T_CLI_VRN=$(echo -n ${_T_CLI_VRN} | tr -d "\n" 2>&1)
     if [ "${_T_CLI_VRN}" = "8.3" ] \
       || [ "${_T_CLI_VRN}" = "8.2" ] \
       || [ "${_T_CLI_VRN}" = "8.1" ] \
@@ -4212,7 +4182,7 @@ _satellite_check_octopus_vs_barracuda_ver() {
     _msg "Bye"
     _clean_pid_exit _satellite_check_octopus_vs_barracuda_ver_a
   else
-    _VERSIONS_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
+    _VERSIONS_TEST=$(cat /var/log/barracuda_log.txt)
     if [[ "${_VERSIONS_TEST}" =~ "${_X_VERSION}" ]]; then
       _VERSIONS_TEST_RESULT=OK
     else
@@ -4271,8 +4241,7 @@ _satellite_if_init_or_upgrade() {
     _msg "Octopus Satellite Instance Upgrade in progress..."
     if [ -d "${_ROOT}/distro" ]; then
       if [ -e "${_ROOT}/log/domain.txt" ]; then
-        _DOMAIN=$(cat ${_ROOT}/log/domain.txt 2>&1)
-        _DOMAIN=$(echo -n ${_DOMAIN} | tr -d "\n" 2>&1)
+        _DOMAIN=$(cat ${_ROOT}/log/domain.txt 2>/dev/null | tr -d '\n')
       fi
       if [ -z "${_DOMAIN}" ]; then
         _msg "ALERT! _DOMAIN is e-m-p-t-y, exit now"
@@ -4302,20 +4271,16 @@ _satellite_if_init_or_upgrade() {
         fi
       fi
       if [ -e "${_ROOT}/log/option.txt" ]; then
-        _CLIENT_OPTION=$(cat ${_ROOT}/log/option.txt 2>&1)
-        _CLIENT_OPTION=$(echo -n ${_CLIENT_OPTION} | tr -d "\n" 2>&1)
+        _CLIENT_OPTION=$(cat ${_ROOT}/log/option.txt 2>/dev/null | tr -d '\n')
       fi
       if [ -e "${_ROOT}/log/cores.txt" ]; then
-        _CLIENT_CORES=$(cat ${_ROOT}/log/cores.txt 2>&1)
-        _CLIENT_CORES=$(echo -n ${_CLIENT_CORES} | tr -d "\n" 2>&1)
+        _CLIENT_CORES=$(cat ${_ROOT}/log/cores.txt 2>/dev/null | tr -d '\n')
       fi
       if [ -e "${_ROOT}/log/subscr.txt" ]; then
-        _CLIENT_SUBSCR=$(cat ${_ROOT}/log/subscr.txt 2>&1)
-        _CLIENT_SUBSCR=$(echo -n ${_CLIENT_SUBSCR} | tr -d "\n" 2>&1)
+        _CLIENT_SUBSCR=$(cat ${_ROOT}/log/subscr.txt 2>/dev/null | tr -d '\n')
       fi
       if [ -e "${_ROOT}/log/email.txt" ]; then
-        _CLIENT_EMAIL=$(cat ${_ROOT}/log/email.txt 2>&1)
-        _CLIENT_EMAIL=$(echo -n ${_CLIENT_EMAIL} | tr -d "\n" 2>&1)
+        _CLIENT_EMAIL=$(cat ${_ROOT}/log/email.txt 2>/dev/null | tr -d '\n')
         if [[ "${_CLIENT_EMAIL}" =~ "@" ]]; then
           _DO_NOTHING=YES
         else
@@ -4391,8 +4356,7 @@ _satellite_if_init_or_upgrade() {
     #
     elif [ ! -d "${_ROOT}/distro" ]; then
       if [ -e "${_ROOT}/log/domain.txt" ]; then
-        _DOMAIN=$(cat ${_ROOT}/log/domain.txt 2>&1)
-        _DOMAIN=$(echo -n ${_DOMAIN} | tr -d "\n" 2>&1)
+        _DOMAIN=$(cat ${_ROOT}/log/domain.txt 2>/dev/null | tr -d '\n')
       fi
     fi
   else
@@ -4541,7 +4505,7 @@ EOF
 EOF
     else
       echo " "
-      _thiSys="$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)/$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1) $(uname -m 2>&1)"
+      _thiSys=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)/$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2) $(uname -m)
       _msg "This Octopus System is ${_thiSys}"
       _msg "This Octopus PHP FPM/CLI version is ${_PHP_FPM_VERSION}/${_PHP_CLI_VERSION}"
       _msg "This Octopus URL address is ${_DOMAIN}"
@@ -4608,8 +4572,7 @@ _satellite_letsencrypt_crt_key_copy() {
   fi
   if [ -e "${_crtPath}" ]; then
     if [ -L "${_crtPath}" ]; then
-      _crtPathR=$(readlink -n ${_crtPath} 2>&1)
-      _crtPathR=$(echo -n ${_crtPathR} | tr -d "\n" 2>&1)
+      _crtPathR=$(readlink -n "${_crtPath}")
       if [ -f "${_leCrtPath}/${_crtPathR}" ]; then
         rm -f /etc/ssl/private/${_DOMAIN}.crt
         cp -a ${_leCrtPath}/${_crtPathR} /etc/ssl/private/${_DOMAIN}.crt
@@ -4622,8 +4585,7 @@ _satellite_letsencrypt_crt_key_copy() {
   _keyPath="${_leCrtPath}/privkey.pem"
   if [ -e "${_keyPath}" ]; then
     if [ -L "${_keyPath}" ]; then
-      _keyPathR=$(readlink -n ${_keyPath} 2>&1)
-      _keyPathR=$(echo -n ${_keyPathR} | tr -d "\n" 2>&1)
+      _keyPathR=$(readlink -n "${_keyPath}")
       if [ -f "${_leCrtPath}/${_keyPathR}" ]; then
         rm -f /etc/ssl/private/${_DOMAIN}.key
         cp -a ${_leCrtPath}/${_keyPathR} /etc/ssl/private/${_DOMAIN}.key
@@ -4775,7 +4737,7 @@ _satellite_log_update() {
     echo ${_F_TIME} > ${_ROOT}/log/date-upgrade-${_THIS_CORE}.txt
   fi
   _OCTOPUS_VERSION_INFO="${_F_TIME} / \
-    ${_OS_DIST}.${_OS_CODE} $(uname -m 2>&1) \
+    ${_OS_DIST}.${_OS_CODE} $(uname -m) \
     / Aegir ${_AEGIR_VERSION} / Octopus ${_X_VERSION} \
     / FPM ${_PHP_FPM_VERSION} / CLI ${_PHP_CLI_VERSION}"
   echo "${_OCTOPUS_VERSION_INFO}" | fmt -su -w 2500 >> \
@@ -4975,16 +4937,14 @@ _satellite_child_b_prepare_dirs_permissions() {
     if [ -d "${_ROOT}/distro" ]; then
      #_msg "${_STATUS} B: UPGRADE v.2 in progress..."
      if [ -e "${_ROOT}/log/domain.txt" ]; then
-      _DOMAIN=$(cat ${_ROOT}/log/domain.txt 2>&1)
-      _DOMAIN=$(echo -n ${_DOMAIN} | tr -d "\n" 2>&1)
+      _DOMAIN=$(cat ${_ROOT}/log/domain.txt 2>/dev/null | tr -d '\n')
      fi
      #_msg "${_STATUS} B: _DOMAIN is ${_DOMAIN}"
     elif [ ! -d "${_ROOT}/distro" ]; then
      #_msg "${_STATUS} B: UPGRADE v.1 in progress..."
      #_msg "${_STATUS} B: _DISTRO is ${_DISTRO}"
      if [ -e "${_ROOT}/log/domain.txt" ]; then
-      _DOMAIN=$(cat ${_ROOT}/log/domain.txt 2>&1)
-      _DOMAIN=$(echo -n ${_DOMAIN} | tr -d "\n" 2>&1)
+      _DOMAIN=$(cat ${_ROOT}/log/domain.txt2>/dev/null | tr -d '\n')
      fi
      #_msg "${_STATUS} B: _DOMAIN is ${_DOMAIN}"
     fi
@@ -5666,7 +5626,7 @@ _satellite_child_b_letsencrypt() {
   mkdir -p ${_ROOT}/backups/system
   chmod 700 ${_ROOT}/backups/system
   rm -f ${_ROOT}/backups/system/letsencrypt*
-  curl ${_crlGet} "${_urlHmr}/helpers/dehydrated" -o ${_pthLe}
+  curl "${_crlGet}" "${_urlHmr}/helpers/dehydrated" -o ${_pthLe}
   if [ ! -e "${_leRoot}" ]; then
     _leSetup="YES"
   fi
@@ -5777,7 +5737,7 @@ _satellite_child_b_aegir_ui_enhance() {
   mkdir -p ${_HM_ROOT}/profiles/hostmaster/modules/{aegir,contrib}
   cd ${_HM_ROOT}/sites/${_DOMAIN}
   if [ -e "${_HM_ROOT}/sites/${_DOMAIN}/settings.php" ]; then
-    _VM_TEST="$(uname -a)"
+    _VM_TEST=$(uname -a)
     if [[ "${_VM_TEST}" =~ "-beng" ]]; then
       _VMFAMILY="VS"
     else

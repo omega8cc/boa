@@ -60,7 +60,7 @@ if [ -z "${script_user}" ] \
     exit 1
 fi
 
-_TODAY=$(date +%y%m%d 2>&1)
+_TODAY=$(date +%y%m%d)
 _TODAY=${_TODAY//[^0-9]/}
 
 ### Fix ownership only once daily, unless it's Drupal 8 or newer

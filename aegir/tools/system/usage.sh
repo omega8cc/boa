@@ -63,20 +63,17 @@ _read_account_data() {
   _CLIENT_OPTION=
   _DSK_CLU_LIMIT=1
   if [ -e "/data/disk/${_THIS_U}/log/email.txt" ]; then
-    _CLIENT_EMAIL=$(cat /data/disk/${_THIS_U}/log/email.txt 2>&1)
-    _CLIENT_EMAIL=$(echo -n ${_CLIENT_EMAIL} | tr -d "\n" 2>&1)
+    _CLIENT_EMAIL=$(cat /data/disk/${_THIS_U}/log/email.txt 2>/dev/null | tr -d '\n')
     _check_account_exceptions
   fi
   if [ -e "/root/.debug.email.txt" ]; then
     _CLIENT_EMAIL="omega8cc@gmail.com"
   fi
   if [ -e "/data/disk/${_THIS_U}/log/cores.txt" ]; then
-    _CLIENT_CORES=$(cat /data/disk/${_THIS_U}/log/cores.txt 2>&1)
-    _CLIENT_CORES=$(echo -n ${_CLIENT_CORES} | tr -d "\n" 2>&1)
+    _CLIENT_CORES=$(cat /data/disk/${_THIS_U}/log/cores.txt 2>/dev/null | tr -d '\n')
   fi
   if [ -e "/data/disk/${_THIS_U}/log/diskspace.txt" ]; then
-    _DSK_CLU_LIMIT=$(cat /data/disk/${_THIS_U}/log/diskspace.txt 2>&1)
-    _DSK_CLU_LIMIT=$(echo -n ${_DSK_CLU_LIMIT} | tr -d "\n" 2>&1)
+    _DSK_CLU_LIMIT=$(cat /data/disk/${_THIS_U}/log/diskspace.txt 2>/dev/null | tr -d '\n')
   fi
   if [ "${_CLIENT_CORES}" -gt "1" ]; then
     _ENGINE_NR="Engines"
@@ -84,29 +81,24 @@ _read_account_data() {
     _ENGINE_NR="Engine"
   fi
   if [ -e "/data/disk/${_THIS_U}/log/option.txt" ]; then
-    _CLIENT_OPTION=$(cat /data/disk/${_THIS_U}/log/option.txt 2>&1)
-    _CLIENT_OPTION=$(echo -n ${_CLIENT_OPTION} | tr -d "\n" 2>&1)
+    _CLIENT_OPTION=$(cat /data/disk/${_THIS_U}/log/option.txt 2>/dev/null | tr -d '\n')
   fi
   if [ -e "/data/disk/${_THIS_U}/log/extra.txt" ]; then
     mv -f /data/disk/${_THIS_U}/log/extra.txt /data/disk/${_THIS_U}/log/extra_edge.txt
   fi
   if [ -e "/data/disk/${_THIS_U}/log/extra_edge.txt" ]; then
-    _EXTRA_ENGINE=$(cat /data/disk/${_THIS_U}/log/extra_edge.txt 2>&1)
-    _EXTRA_ENGINE=$(echo -n ${_EXTRA_ENGINE} | tr -d "\n" 2>&1)
-    _ENGINE_NR="${_ENGINE_NR} + ${_EXTRA_ENGINE} x EDGE"
+    _EXTRA_ENGINE=$(cat /data/disk/${_THIS_U}/log/extra_edge.txt 2>/dev/null | tr -d '\n')
+    _ENGINE_NR=${_ENGINE_NR} + ${_EXTRA_ENGINE} x EDGE"
   fi
   if [ -e "/data/disk/${_THIS_U}/log/extra_power.txt" ]; then
-    _EXTRA_ENGINE=$(cat /data/disk/${_THIS_U}/log/extra_power.txt 2>&1)
-    _EXTRA_ENGINE=$(echo -n ${_EXTRA_ENGINE} | tr -d "\n" 2>&1)
-    _ENGINE_NR="${_ENGINE_NR} + ${_EXTRA_ENGINE} x POWER"
+    _EXTRA_ENGINE=$(cat /data/disk/${_THIS_U}/log/extra_power.txt 2>/dev/null | tr -d '\n')
+    _ENGINE_NR=${_ENGINE_NR} + ${_EXTRA_ENGINE} x POWER"
   fi
   if [ -e "/data/disk/${_THIS_U}/static/control/cli.info" ]; then
-    _CLIENT_CLI=$(cat /data/disk/${_THIS_U}/static/control/cli.info 2>&1)
-    _CLIENT_CLI=$(echo -n ${_CLIENT_CLI} | tr -d "\n" 2>&1)
+    _CLIENT_CLI=$(cat /data/disk/${_THIS_U}/static/control/cli.info 2>/dev/null | tr -d '\n')
   fi
   if [ -e "/data/disk/${_THIS_U}/static/control/fpm.info" ]; then
-    _CLIENT_FPM=$(cat /data/disk/${_THIS_U}/static/control/fpm.info 2>&1)
-    _CLIENT_FPM=$(echo -n ${_CLIENT_FPM} | tr -d "\n" 2>&1)
+    _CLIENT_FPM=$(cat /data/disk/${_THIS_U}/static/control/fpm.info 2>/dev/null | tr -d '\n')
   fi
 }
 
@@ -159,8 +151,7 @@ _detect_deprecated_php() {
   if [ -e "${_usEr}/static/control/fpm.info" ] \
     && [ ! -e "${_usEr}/log/proxied.pid" ] \
     && [ ! -e "${_usEr}/log/CANCELLED" ]; then
-    _PHP_FPM_VERSION=$(cat ${_usEr}/static/control/fpm.info 2>&1)
-    _PHP_FPM_VERSION=$(echo -n ${_PHP_FPM_VERSION} | tr -d "\n" 2>&1)
+    _PHP_FPM_VERSION=$(cat ${_usEr}/static/control/fpm.info 2>/dev/null | tr -d '\n')
     if [ "${_PHP_FPM_VERSION}" = "5.5" ] \
       || [ "${_PHP_FPM_VERSION}" = "5.4" ] \
       || [ "${_PHP_FPM_VERSION}" = "5.3" ] \
@@ -732,7 +723,7 @@ _usage_action() {
           find . -name "._*" -type l | xargs rm -rf &> /dev/null
         fi
         echo Counting User ${_usEr}
-        _DOW=$(date +%u 2>&1)
+        _DOW=$(date +%u)
         _DOW=${_DOW//[^1-7]/}
         if [ "${_DOW}" = "2" ]; then
           _detect_deprecated_php
@@ -856,10 +847,10 @@ _usage_action() {
 
 ###--------------------###
 echo "INFO: Starting usage monitoring on $(date)"
-_NOW=$(date +%y%m%d-%H%M%S 2>&1)
+_NOW=$(date +%y%m%d-%H%M%S)
 _NOW=${_NOW//[^0-9-]/}
 _DATE=$(date)
-_hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
+_hName=$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)
 mkdir -p /var/xdrago/log/usage
 if [ "${1}" = "verbose" ] || [ -z "${1}" ]; then
   _THIS_MODE="verbose"

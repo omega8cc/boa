@@ -31,7 +31,7 @@ _check_root() {
     chmod a+w /dev/null
   fi
   # Get the hostname
-  _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
+  _hName=$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)
 }
 _check_root
 
@@ -88,7 +88,7 @@ _graceful_action() {
 
   # Swap management
   if [ -d "/dev/disk" ]; then
-    _IF_CDP="$(pgrep -f cdp_io)"
+    _IF_CDP=$(pgrep -f cdp_io)
     if [ -z "${_IF_CDP}" ] && [ ! -e "/root/.no.swap.clear.cnf" ]; then
       echo "Resetting swap..."
       swapoff -a
@@ -169,7 +169,7 @@ _graceful_action() {
   fi
 
   # Speed cleanup
-  _IF_BCP="$(pgrep -f duplicity)"
+  _IF_BCP=$(pgrep -f duplicity)
   if [ -z "${_IF_BCP}" ] && [ ! -e "/run/speed_cleanup.pid" ] && [ ! -e "/root/.giant_traffic.cnf" ]; then
     echo "Performing speed cleanup..."
     touch /run/speed_cleanup.pid

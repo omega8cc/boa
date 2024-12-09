@@ -30,14 +30,13 @@ _check_root
 [ ! -e "/root/.my.cluster_write_node.txt" ] && exit 0
 [ ! -e "/root/.my.cluster_root_pwd.txt" ] && exit 0
 
-_IS_SQLBACKUP_RUNNING=$(ps aux | grep '[m]ysql_backup.sh' | awk '{print $2}' 2>&1)
+_IS_SQLBACKUP_RUNNING=$(ps aux | grep '[m]ysql_backup.sh' | awk '{print $2}')
 if [ ! -z "${_IS_SQLBACKUP_RUNNING}" ]; then
   exit 0
 fi
 
 if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
-  _SQL_PSWD=$(cat /root/.my.cluster_root_pwd.txt 2>&1)
-  _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+  _SQL_PSWD=$(cat /root/.my.cluster_root_pwd.txt 2>/dev/null | tr -d '\n')
 fi
 
 if [ -e "/root/.my.cluster_backup_proxysql.txt" ]; then
@@ -46,8 +45,7 @@ if [ -e "/root/.my.cluster_backup_proxysql.txt" ]; then
 else
   _SQL_PORT="3306"
   if [ -e "/root/.my.cluster_write_node.txt" ]; then
-    _SQL_HOST=$(cat /root/.my.cluster_write_node.txt 2>&1)
-    _SQL_HOST=$(echo -n ${_SQL_HOST} | tr -d "\n" 2>&1)
+    _SQL_HOST=$(cat /root/.my.cluster_write_node.txt 2>/dev/null | tr -d '\n')
   fi
   [ -z ${_SQL_HOST} ] && _SQL_HOST="127.0.0.1" && _SQL_PORT="3306"
 fi
@@ -89,11 +87,11 @@ else
 fi
 
 _BACKUPDIR=/data/disk/arch/cluster
-_DATE=$(date +%y%m%d-%H%M%S 2>&1)
-_DOW=$(date +%u 2>&1)
-_hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
+_hName=$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)
+_DATE=$(date +%y%m%d-%H%M%S)
+_DOW=$(date +%u)
 _DOW=${_DOW//[^1-7]/}
-_DOM=$(date +%e 2>&1)
+_DOM=$(date +%e)
 _DOM=${_DOM//[^0-9]/}
 _SAVELOCATION=${_BACKUPDIR}/${_hName}-${_DATE}
 if [ -e "/root/.my.optimize.cnf" ]; then
@@ -101,7 +99,7 @@ if [ -e "/root/.my.optimize.cnf" ]; then
 else
   _OPTIM=NO
 fi
-_VM_TEST="$(uname -a)"
+_VM_TEST=$(uname -a)
 if [[ "${_VM_TEST}" =~ "-beng" ]]; then
   _VMFAMILY="VS"
 else
@@ -289,9 +287,9 @@ _compress_backup() {
 [ ! -a ${_SAVELOCATION} ] && mkdir -p ${_SAVELOCATION};
 
 _check_mysql_version() {
-  _DBS_TEST=$(which mysql 2>&1)
+  _DBS_TEST=$(which mysql)
   if [ ! -z "${_DBS_TEST}" ]; then
-    _DB_SERVER_TEST=$(mysql -V 2>&1)
+    _DB_SERVER_TEST=$(mysql -V)
   fi
   if [[ "${_DB_SERVER_TEST}" =~ "Ver 8.4." ]]; then
     _DB_V=8.4

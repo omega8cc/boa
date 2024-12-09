@@ -147,9 +147,8 @@ _BRANCH_BOA="5.x-${_tRee}"
 _X_VERSION="BOA-5.5.0-${_tRee}"
 _MYSQLTUNER_VRN=1.9.4
 
-_NOW=$(date +%y%m%d-%H%M%S 2>&1)
+_NOW=$(date +%y%m%d-%H%M%S)
 _NOW=${_NOW//[^0-9-]/}
-_RAM=$(free -mt | grep Mem: | awk '{ print $2 }' 2>&1)
 _SPINNER=NO
 if [ -n "${STY+x}" ]; then
   _SPINNER=NO
@@ -234,13 +233,14 @@ _check_root() {
     echo "ERROR: This script should be run as a root user"
     _clean_pid_exit _check_root_a
   fi
-  _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
+  _RAM=$(free -mt | grep Mem: | awk '{ print $2 }' 2>&1)
+  _hName=$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)
 }
 _check_root
 
 _os_detection_minimal() {
   _APT_UPDATE="apt-get update"
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
   for e in ${_OS_LIST}; do
     if [ "${e}" = "${_OS_CODE}" ]; then
@@ -268,7 +268,7 @@ _if_hosted_sys() {
 _check_sql_running() {
   while [ -z "${_IS_MYSQLD_RUNNING}" ] \
     || [ ! -e "/run/mysqld/mysqld.sock" ]; do
-    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
+    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}')
     echo "INFO: Waiting for MySQLD availability..."
     sleep 3
   done
@@ -277,9 +277,8 @@ _check_sql_running
 
 _check_sql_access() {
   if [ -e "/root/.my.pass.txt" ] && [ -e "/root/.my.cnf" ]; then
-    _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
-    _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
-    _IS_SYNC_SQL_PSWD=$(grep "${_SQL_PSWD}" /root/.my.cnf 2>&1)
+    _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
+    _IS_SYNC_SQL_PSWD=$(grep "${_SQL_PSWD}" /root/.my.cnf)
   else
     echo "ALERT: /root/.my.cnf or /root/.my.pass.txt not found."
     echo "ALERT: Please fix this before trying again, giving up."
@@ -296,7 +295,7 @@ _check_sql_access() {
     echo " "
     _clean_pid_exit _check_sql_access_b
   else
-    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
+    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}')
     if [ -z "${_IS_MYSQLD_RUNNING}" ]; then
       echo "ALERT: SQL server on this system is not running at all."
       echo "ALERT: Please fix this before trying again, giving up."
@@ -304,7 +303,7 @@ _check_sql_access() {
       echo " "
       _clean_pid_exit _check_sql_access_c
     else
-      _MYSQL_CONN_TEST=$(mysql -u root -e "status" 2>&1)
+      _MYSQL_CONN_TEST=$(mysql -u root -e "status")
       if [ -z "${_MYSQL_CONN_TEST}" ] \
         || [[ "${_MYSQL_CONN_TEST}" =~ "Access denied" ]]; then
         echo "ALERT: SQL password in /root/.my.cnf does not work."
@@ -387,7 +386,7 @@ _count_cpu() {
 #
 # Find the fastest mirror.
 _find_fast_mirror_early() {
-  _isNetc=$(which netcat 2>&1)
+  _isNetc=$(which netcat)
   if [ ! -x "${_isNetc}" ] || [ -z "${_isNetc}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
@@ -398,7 +397,7 @@ _find_fast_mirror_early() {
     apt-get install netcat-traditional ${_aptYesUnth} 2> /dev/null
     wait
   fi
-  _ffMirr=$(which ffmirror 2>&1)
+  _ffMirr=$(which ffmirror)
   if [ -x "${_ffMirr}" ]; then
     _ffList="/var/backups/boa-mirrors-2024-12.txt"
     mkdir -p /var/backups
@@ -408,9 +407,9 @@ _find_fast_mirror_early() {
       echo "ao.files.aegir.cc" >> ${_ffList}
     fi
     if [ -e "${_ffList}" ]; then
-      _BROKEN_FFMIRR_TEST=$(grep "stuff" ${_ffMirr} 2>&1)
+      _BROKEN_FFMIRR_TEST=$(grep "stuff" "${_ffMirr}")
       if [[ "${_BROKEN_FFMIRR_TEST}" =~ "stuff" ]]; then
-        _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
+        _CHECK_MIRROR=$(bash "${_ffMirr}" < "${_ffList}")
         _USE_MIR="${_CHECK_MIRROR}"
         [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.aegir.cc"
       else
@@ -429,14 +428,11 @@ _find_fast_mirror_early() {
 # Find correct IP.
 _find_correct_ip() {
   if [ -e "/root/.found_correct_ipv4.cnf" ]; then
-    _LOC_IP=$(cat /root/.found_correct_ipv4.cnf 2>&1)
-    _LOC_IP=$(echo -n ${_LOC_IP} | tr -d "\n" 2>&1)
+    _LOC_IP=$(cat /root/.found_correct_ipv4.cnf 2>/dev/null | tr -d '\n')
   else
-    _LOC_IP=$(curl ${_crlGet} https://api.ipify.org \
-      | sed 's/[^0-9\.]//g' 2>&1)
+    _LOC_IP=$(curl "${_crlGet}" https://api.ipify.org | sed 's/[^0-9\.]//g')
     if [ -z "${_LOC_IP}" ]; then
-      _LOC_IP=$(curl ${_crlGet} http://ipv4.icanhazip.com \
-        | sed 's/[^0-9\.]//g' 2>&1)
+      _LOC_IP=$(curl "${_crlGet}" http://ipv4.icanhazip.com | sed 's/[^0-9\.]//g')
     fi
     if [ ! -z "${_LOC_IP}" ]; then
       echo ${_LOC_IP} > /root/.found_correct_ipv4.cnf
@@ -601,8 +597,7 @@ _fix_php_ini_newrelic() {
 _fix_php_ini_newrelic_all() {
   if [ -e "/etc/newrelic/newrelic.cfg" ]; then
     if [ -z "${_NEWRELIC_KEY}" ]; then
-      _NEWRELIC_KEY=$(grep license_key /etc/newrelic/newrelic.cfg 2>&1)
-      _NEWRELIC_KEY=$(echo -n ${_NEWRELIC_KEY} | tr -d "\n" 2>&1)
+      _NEWRELIC_KEY=$(grep license_key /etc/newrelic/newrelic.cfg 2>/dev/null | tr -d '\n')
     fi
     _PHP_V="83 82 81 80 74 73 72 71 70"
     for e in ${_PHP_V}; do
@@ -949,9 +944,9 @@ _tune_php() {
 # Update innodb_log_file_size.
 _innodb_log_file_size_update() {
   _msg "INFO: InnoDB log file will be set to ${_INNODB_LOG_FILE_SIZE_MB}..."
-  _DBS_TEST=$(which mysql 2>&1)
+  _DBS_TEST=$(which mysql)
   if [ ! -z "${_DBS_TEST}" ]; then
-    _DB_SERVER_TEST=$(mysql -V 2>&1)
+    _DB_SERVER_TEST=$(mysql -V)
   fi
   if [[ "${_DB_SERVER_TEST}" =~ "Ver 8.4." ]]; then
     _DB_V=8.4
@@ -962,10 +957,9 @@ _innodb_log_file_size_update() {
   elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 5.7." ]]; then
     _DB_V=5.7
   fi
-  _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
+  _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}')
   if [ ! -z "${_IS_MYSQLD_RUNNING}" ] && [ "${_DB_V}" = "5.7" ]; then
-    _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
-    _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+    _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
     mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
     mysql -u root -e "SET GLOBAL innodb_change_buffering = 'none';" &> /dev/null
     mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null
@@ -1154,7 +1148,7 @@ _restart_services() {
     ### CVE-2019-11478 SACK Slowness
     ### CVE-2019-11479 Excess Resource Consumption Due to Low MSS Values
     if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
-      _SACK_TEST=$(ip6tables --list | grep tcpmss 2>&1)
+      _SACK_TEST=$(ip6tables --list | grep tcpmss)
       if [[ ! "${_SACK_TEST}" =~ "tcpmss" ]]; then
         sysctl net.ipv4.tcp_mtu_probing=0 &> /dev/null
         iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
@@ -1214,7 +1208,7 @@ _tune_web_server_config() {
 _check_mysqld_running() {
   while [ -z "${_IS_MYSQLD_RUNNING}" ] \
     || [ ! -e "/run/mysqld/mysqld.sock" ]; do
-    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
+    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}')
     _msg "INFO: Waiting for MySQLD availability before _tune_sql_memory_limits..."
     sleep 5
     service mysql start &> /dev/null
@@ -1233,9 +1227,9 @@ _tune_sql_memory_limits() {
     _msg "WAIT: This may take a while, please wait..."
     _MYSQLTUNER_TEST_RESULT=OK
     rm -f /var/opt/mysqltuner*
-    curl ${_crlGet} "${_urlDev}/mysqltuner.pl.${_MYSQLTUNER_VRN}" -o ${_pthTun}
+    curl "${_crlGet}" "${_urlDev}/mysqltuner.pl.${_MYSQLTUNER_VRN}" -o ${_pthTun}
     if [ ! -e "${_pthTun}" ]; then
-      curl ${_crlGet} "${_urlDev}/mysqltuner.pl" -o ${_pthTun}
+      curl "${_crlGet}" "${_urlDev}/mysqltuner.pl" -o ${_pthTun}
     fi
     if [ -e "${_pthTun}" ]; then
       perl ${_pthTun} > ${_outTun} 2>&1
@@ -1339,7 +1333,7 @@ _tune_sql_memory_limits() {
 # Tune memory limits for PHP, Nginx and Percona.
 _tune_memory_limits() {
   _msg "INFO: Default Memory Tuning"
-  _VM_TEST="$(uname -a)"
+  _VM_TEST=$(uname -a)
   if [ -e "/proc/bean_counters" ]; then
     _VMFAMILY="VZ"
   elif [ -e "/root/.tg.cnf" ]; then
@@ -1782,7 +1776,7 @@ if [ ! -f "/var/log/barracuda_log.txt" ]; then
   _msg "Bye"
   _clean_pid_exit version_a
 else
-  _VERSIONS_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
+  _VERSIONS_TEST=$(cat /var/log/barracuda_log.txt)
   if [[ "${_VERSIONS_TEST}" =~ "${_X_VERSION}" ]]; then
     _VERSIONS_TEST_RESULT=OK
   else
@@ -1803,7 +1797,7 @@ rm -rf /opt/tmp/boa
 if [ "${_AEGIR_VERSION}" != "static" ]; then
   ${_gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git &> /dev/null
 else
-  curl ${_crlGet} "${_urlDev}/${_AEGIR_VERSION}/boa.tar.gz" | tar -xzf -
+  curl "${_crlGet}" "${_urlDev}/${_AEGIR_VERSION}/boa.tar.gz" | tar -xzf -
   _BOA_REPO_NAME="boa"
 fi
 #
@@ -1839,7 +1833,7 @@ EOF
 fi
 _tPrmt="Are you ready to tune your system"
 _tPrmt="${_tPrmt} with values shown above"
-_tPrmt=$(echo -n ${_tPrmt} | fmt -su -w 2500 2>&1)
+_tPrmt=$(echo -n "${_tPrmt}" | fmt -su -w 2500)
 if _prompt_yes_no "${_tPrmt}?" ; then
   true
   if [ ! -e "/root/.upstart.cnf" ]; then

@@ -55,7 +55,7 @@ _start_sql() {
   _check_running
   _create_locks
 
-  _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
+  _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}')
   if [ ! -z "${_IS_MYSQLD_RUNNING}" ]; then
     echo "MySQLD already running?"
     echo "Nothing to do. Bye!"
@@ -68,7 +68,7 @@ _start_sql() {
   service mysql start &> /dev/null
   while [ -z "${_IS_MYSQLD_RUNNING}" ] \
     || [ ! -e "/run/mysqld/mysqld.sock" ]; do
-    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
+    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}')
     echo "Waiting for MySQLD graceful start..."
     sleep 3
   done
@@ -108,11 +108,11 @@ _stop_sql() {
   kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}') &> /dev/null
   echo "PHP-FPM stopped"
 
-  _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
+  _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}')
   if [ ! -z "${_IS_MYSQLD_RUNNING}" ]; then
-    _DBS_TEST=$(which mysql 2>&1)
+    _DBS_TEST=$(which mysql)
     if [ ! -z "${_DBS_TEST}" ]; then
-      _DB_SERVER_TEST=$(mysql -V 2>&1)
+      _DB_SERVER_TEST=$(mysql -V)
     fi
     if [[ "${_DB_SERVER_TEST}" =~ "Ver 8.4." ]]; then
       _DB_V=8.4
@@ -125,8 +125,7 @@ _stop_sql() {
     fi
     if [ ! -z "${_DB_V}" ]; then
       echo "Preparing MySQLD for quick shutdown..."
-      _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
-      _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+      _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
       mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
       mysql -u root -e "SET GLOBAL innodb_change_buffering = 'none';" &> /dev/null
       mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null
@@ -148,7 +147,7 @@ _stop_sql() {
   fi
 
   until [ -z "${_IS_MYSQLD_RUNNING}" ]; do
-    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
+    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}')
     echo "Waiting for MySQLD graceful shutdown..."
     sleep 3
   done

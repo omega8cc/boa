@@ -61,7 +61,7 @@ if [ -e "${site_path}/libraries/ownership-fixed.pid" ]; then
   rm -f ${site_path}/libraries/ownership-fixed.pid
 fi
 
-_TODAY=$(date +%y%m%d 2>&1)
+_TODAY=$(date +%y%m%d)
 _TODAY=${_TODAY//[^0-9]/}
 
 if [ -e "${site_path}/../sites/default/default.services.yml" ]; then
