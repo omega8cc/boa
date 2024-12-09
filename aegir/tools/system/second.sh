@@ -65,7 +65,7 @@ case "${_INCIDENT_REPORT}" in
 esac
 
 # Get CPU count
-_CPU_COUNT="$(nproc)"
+_CPU_COUNT=$(nproc)
 [ -z "${_CPU_COUNT}" ] && _CPU_COUNT=1
 
 # Function to send incident email report
@@ -86,10 +86,9 @@ _incident_email_report() {
     fi
 
     if [ "${_send_email}" = true ]; then
-      local _hostname
-      _hostname="$(cat /etc/hostname)"
+      _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
       echo "Sending Incident Report Email on $(date)" >> "${_pthOml}"
-      s-nail -s "Incident Report on ${_hostname}: ${_subject}" "${_MY_EMAIL}" < "${_pthOml}"
+      s-nail -s "Incident Report on ${_hName}: ${_subject}" "${_MY_EMAIL}" < "${_pthOml}"
     fi
   fi
 }

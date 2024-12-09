@@ -30,6 +30,8 @@ _check_root() {
     renice ${_B_NICE} -p $$ &> /dev/null
     chmod a+w /dev/null
   fi
+  # Get the hostname
+  _hName=$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)
 }
 _check_root
 
@@ -37,12 +39,10 @@ _check_root
 [ -e "/root/.proxy.cnf" ] && exit 0
 [ -e "/root/.pause_heavy_tasks_maint.cnf" ] && exit 0
 
-# Get the hostname
-_CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
 
 # Function to determine if the system is hosted
 _if_hosted_sys() {
-  if [ -e "/root/.host8.cnf" ] || [[ "${_CHECK_HOST}" =~ \.aegir\.cc$ ]]; then
+  if [ -e "/root/.host8.cnf" ] || [[ "${_hName}" =~ \.aegir\.cc$ ]]; then
     _HOSTED_SYS="YES"
   else
     _HOSTED_SYS="NO"
@@ -88,7 +88,7 @@ _graceful_action() {
 
   # Swap management
   if [ -d "/dev/disk" ]; then
-    _IF_CDP="$(pgrep -f cdp_io)"
+    _IF_CDP=$(pgrep -f cdp_io)
     if [ -z "${_IF_CDP}" ] && [ ! -e "/root/.no.swap.clear.cnf" ]; then
       echo "Resetting swap..."
       swapoff -a
@@ -169,7 +169,7 @@ _graceful_action() {
   fi
 
   # Speed cleanup
-  _IF_BCP="$(pgrep -f duplicity)"
+  _IF_BCP=$(pgrep -f duplicity)
   if [ -z "${_IF_BCP}" ] && [ ! -e "/run/speed_cleanup.pid" ] && [ ! -e "/root/.giant_traffic.cnf" ]; then
     echo "Performing speed cleanup..."
     touch /run/speed_cleanup.pid

@@ -44,14 +44,14 @@ fi
 
 _incident_email_report() {
   if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "YES" ]; then
-    _hName=$(cat /etc/hostname 2>&1)
+    _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
     echo "Sending Incident Report Email on $(date)" >> ${_pthOml}
     s-nail -s "Incident Report: ${1} on ${_hName} at $(date)" ${_MY_EMAIL} < ${_pthOml}
   fi
 }
 
 _fpm_reload() {
-  _NOW=$(date +%y%m%d-%H%M%S 2>&1)
+  _NOW=$(date +%y%m%d-%H%M%S)
   _NOW=${_NOW//[^0-9-]/}
   mkdir -p /var/backups/php-logs/${_NOW}/
   mv -f /var/log/php/* /var/backups/php-logs/${_NOW}/

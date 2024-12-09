@@ -53,7 +53,7 @@ export _USER="${_USER}"
 ### Drush and Redis Variables
 ###
 
-export _DRUSH_VERSION=8.4.12.9
+export _DRUSH_VERSION=8.5.0.1
 export _REDIS_C_VERSION=com-19-04-2021
 export _REDIS_L_VERSION=7.x-3.19.1
 export _REDIS_N_VERSION=com-19-04-2021
@@ -133,7 +133,7 @@ export _F_TIME=$(date)
 ### Instance specific variables
 ###
 export _WEB="${_USER}.web"
-export _DOMAIN="${_USER}.$(hostname -f 2>/dev/null || uname -n)"
+export _DOMAIN="${_USER}.$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
 export _ROOT="/data/disk/${_USER}"
 export _THIS_DB_PORT=3306
 export _octCnf="/root/.${_USER}.octopus.cnf"

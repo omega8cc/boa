@@ -44,7 +44,7 @@ bash /var/xdrago/usage.sh silent
 wait
 echo "INFO: Completing silent usage report on $(date)"
 
-_VM_TEST="$(uname -a)"
+_VM_TEST=$(uname -a)
 if [[ "${_VM_TEST}" =~ "-beng" ]]; then
   _VMFAMILY="VS"
 else
@@ -91,13 +91,13 @@ else
 fi
 
 _BACKUPDIR=/data/disk/arch/sql
-_CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
-_DATE=$(date +%y%m%d-%H%M%S 2>&1)
-_DOW=$(date +%u 2>&1)
+_hName=$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)
+_DATE=$(date +%y%m%d-%H%M%S)
+_DOW=$(date +%u)
 _DOW=${_DOW//[^1-7]/}
-_DOM=$(date +%e 2>&1)
+_DOM=$(date +%e)
 _DOM=${_DOM//[^0-9]/}
-_SAVELOCATION=${_BACKUPDIR}/${_CHECK_HOST}-${_DATE}
+_SAVELOCATION=${_BACKUPDIR}/${_hName}-${_DATE}
 if [ -e "/root/.my.optimize.cnf" ]; then
   _OPTIM=YES
 else
@@ -105,8 +105,7 @@ else
 fi
 touch /run/boa_sql_backup.pid
 
-_SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
-_SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+_SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
 
 _create_locks() {
   echo "INFO: Creating locks for $1"
@@ -121,7 +120,7 @@ _remove_locks() {
 _check_running() {
   while [ -z "${_IS_MYSQLD_RUNNING}" ] \
     || [ ! -e "/run/mysqld/mysqld.sock" ]; do
-    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
+    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}')
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       echo "INFO: Waiting for MySQLD availability..."
     fi
@@ -284,9 +283,9 @@ _compress_backup() {
 [ ! -a ${_SAVELOCATION} ] && mkdir -p ${_SAVELOCATION};
 
 _check_mysql_version() {
-  _DBS_TEST=$(which mysql 2>&1)
+  _DBS_TEST=$(which mysql)
   if [ ! -z "${_DBS_TEST}" ]; then
-    _DB_SERVER_TEST=$(mysql -V 2>&1)
+    _DB_SERVER_TEST=$(mysql -V)
   fi
   if [[ "${_DB_SERVER_TEST}" =~ "Ver 8.4." ]]; then
     _DB_V=8.4

@@ -207,8 +207,7 @@ _fix_php_ini_newrelic_all() {
   fi
   if [ -e "/etc/newrelic/newrelic.cfg" ]; then
     if [ -z "${_NEWRELIC_KEY}" ]; then
-      _NEWRELIC_KEY=$(grep license_key /etc/newrelic/newrelic.cfg 2>&1)
-      _NEWRELIC_KEY=$(echo -n ${_NEWRELIC_KEY} | tr -d "\n" 2>&1)
+      _NEWRELIC_KEY=$(grep license_key /etc/newrelic/newrelic.cfg 2>/dev/null | tr -d '\n')
     fi
     _PHP_V="83 82 81 80 74 73 72"
     for e in ${_PHP_V}; do
@@ -651,7 +650,7 @@ _if_install_php_ioncube() {
     _msg "PROC: _if_install_php_ioncube"
   fi
   ###--------------------###
-  _X86_64_TEST=$(uname -m 2>&1)
+  _X86_64_TEST=$(uname -m)
   if [ "${_X86_64_TEST}" = "x86_64" ]; then
     _SYSTEM_ARCH="x64"
   else
@@ -1009,7 +1008,7 @@ _install_php_extensions() {
     touch ${_pthLog}/f_libyaml-${_LIB_YAML_VRN}.log
     rm -f ${_pthLog}/yaml*.log
     rm -f ${_pthLog}/f_yaml*.log
-    _X86_64_TEST=$(uname -m 2>&1)
+    _X86_64_TEST=$(uname -m)
     if [ "${_X86_64_TEST}" = "x86_64" ]; then
       if [ ! -e "/usr/lib/x86_64-linux-gnu/libyaml-0.so.2.0.9" ] \
         || [ -e "/usr/lib/x86_64-linux-gnu/libyaml-0.so.2.0.4" ]; then
@@ -1442,7 +1441,7 @@ _php_extensions_update() {
     touch ${_pthLog}/f_libyaml-${_LIB_YAML_VRN}.log
     rm -f ${_pthLog}/yaml*.log
     rm -f ${_pthLog}/f_yaml*.log
-    _X86_64_TEST=$(uname -m 2>&1)
+    _X86_64_TEST=$(uname -m)
     if [ "${_X86_64_TEST}" = "x86_64" ]; then
       if [ ! -e "/usr/lib/x86_64-linux-gnu/libyaml-0.so.2.0.9" ] \
         || [ -e "/usr/lib/x86_64-linux-gnu/libyaml-0.so.2.0.4" ]; then
@@ -1696,7 +1695,7 @@ _install_php_multi() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       echo "${_PHP_EXTRA}" | fmt -su -w 2500 > /var/backups/php_extra_${_PHP_VERSION}.txt
       _DISPLAY_PHP_EXTRA=$(cat /var/backups/php_extra_${_PHP_VERSION}.txt 2>&1)
-      _DISPLAY_PHP_EXTRA=$(echo -n ${_DISPLAY_PHP_EXTRA} | tr -d "\n" 2>&1)
+      _DISPLAY_PHP_EXTRA=$(echo -n ${_DISPLAY_PHP_EXTRA} | tr -d '\n')
       _msg "INFO: This PHP ${_PHP_VERSION} is built with:"
       _msg "INFO: ${_DISPLAY_PHP_EXTRA}"
     fi
@@ -1871,7 +1870,7 @@ _newrelic_update() {
     _msg "PROC: _newrelic_update"
   fi
   ###--------------------###
-  _X86_64_TEST=$(uname -m 2>&1)
+  _X86_64_TEST=$(uname -m)
   if [ "${_X86_64_TEST}" = "x86_64" ]; then
     _SYSTEM_ARCH="x64"
   else
@@ -1951,7 +1950,7 @@ _newrelic_update() {
       export NR_INSTALL_PHPLIST="${NR_PHPLIST}"
       export NR_INSTALL_SILENT="${NR_SILENT}"
       newrelic-install install &> /dev/null
-      _X86_64_TEST=$(uname -m 2>&1)
+      _X86_64_TEST=$(uname -m)
       if [ "${_X86_64_TEST}" = "x86_64" ]; then
         _SYSTEM_ARCH="x64"
       else
@@ -2023,7 +2022,7 @@ _if_install_php_newrelic() {
     _msg "PROC: _if_install_php_newrelic"
   fi
   ###--------------------###
-  _X86_64_TEST=$(uname -m 2>&1)
+  _X86_64_TEST=$(uname -m)
   if [ "${_X86_64_TEST}" = "x86_64" ]; then
     _SYSTEM_ARCH="x64"
   else
@@ -2129,7 +2128,7 @@ _if_install_php_newrelic() {
         export NR_INSTALL_PHPLIST="${NR_PHPLIST}"
         export NR_INSTALL_SILENT="${NR_SILENT}"
         newrelic-install install &> /dev/null
-        _X86_64_TEST=$(uname -m 2>&1)
+        _X86_64_TEST=$(uname -m)
         if [ "${_X86_64_TEST}" = "x86_64" ]; then
           _SYSTEM_ARCH="x64"
         else

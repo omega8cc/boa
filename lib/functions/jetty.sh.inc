@@ -46,7 +46,7 @@ _if_install_solr_jetty() {
       echo " "
       _tPrmt="Do you want to install MultiCore Apache Solr ${_R_SOLR}"
       _tPrmt="${_tPrmt} with Jetty ${_R_JETTY}"
-      _tPrmt=$(echo -n ${_tPrmt} | fmt -su -w 2500 2>&1)
+      _tPrmt=$(echo -n "${_tPrmt}" | fmt -su -w 2500)
       if _prompt_yes_no "${_tPrmt}?" ; then
         true
         _msg "INFO: Installing MultiCore Apache Solr ${_R_SOLR}..."
@@ -139,7 +139,7 @@ _if_install_solr_jetty() {
       echo " "
       _tPrmt="Do you want to install MultiCore Apache Solr"
       _tPrmt="${_tPrmt} with Jetty ${_R_JETTY}"
-      _tPrmt=$(echo -n ${_tPrmt} | fmt -su -w 2500 2>&1)
+      _tPrmt=$(echo -n "${_tPrmt}" | fmt -su -w 2500)
       if _prompt_yes_no "${_tPrmt}?" ; then
         true
         _msg "INFO: Installing MultiCore Apache Solr with Jetty ${_R_JETTY}..."
@@ -348,7 +348,7 @@ _if_install_solr_jetty() {
       echo " "
       _tPrmt="Do you want to install MultiCore Apache Solr 3"
       _tPrmt="${_tPrmt} with Jetty 8"
-      _tPrmt=$(echo -n ${_tPrmt} | fmt -su -w 2500 2>&1)
+      _tPrmt=$(echo -n "${_tPrmt}" | fmt -su -w 2500)
       if _prompt_yes_no "${_tPrmt}?" ; then
         true
         _msg "INFO: Installing MultiCore Apache Solr 3 with Jetty 8..."
@@ -477,7 +477,7 @@ _if_install_solr_jetty() {
       echo " "
       _tPrmt="Do you want to install MultiCore Apache Solr 1"
       _tPrmt="${_tPrmt} with Jetty 7"
-      _tPrmt=$(echo -n ${_tPrmt} | fmt -su -w 2500 2>&1)
+      _tPrmt=$(echo -n "${_tPrmt}" | fmt -su -w 2500)
       if _prompt_yes_no "${_tPrmt}?" ; then
         true
         _msg "INFO: Installing MultiCore Apache Solr 1 with Jetty 7..."

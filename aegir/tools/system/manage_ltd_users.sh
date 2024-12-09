@@ -6,8 +6,8 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 export _tRee=dev
 export _xSrl=550devT01
 
-_CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
-_OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+_hName=$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)
+_OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
 
 _usrGroup=users
 _WEBG=www-data
@@ -35,7 +35,7 @@ fi
 
 _os_detection_minimal() {
   _APT_UPDATE="apt-get update"
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
   for e in ${_OS_LIST}; do
     if [ "${e}" = "${_OS_CODE}" ]; then
@@ -53,7 +53,7 @@ _apt_clean_update() {
 
 _if_hosted_sys() {
   if [ -e "/root/.host8.cnf" ] \
-    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
+    || [[ "${_hName}" =~ ".aegir.cc"($) ]]; then
     _hostedSys=YES
   else
     _hostedSys=NO
@@ -82,7 +82,7 @@ _count_cpu() {
 }
 
 _find_fast_mirror_early() {
-  _isNetc=$(which netcat 2>&1)
+  _isNetc=$(which netcat)
   if [ ! -x "${_isNetc}" ] || [ -z "${_isNetc}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
@@ -93,7 +93,7 @@ _find_fast_mirror_early() {
     apt-get install netcat-traditional ${_aptYesUnth} 2> /dev/null
     wait
   fi
-  _ffMirr=$(which ffmirror 2>&1)
+  _ffMirr=$(which ffmirror)
   if [ -x "${_ffMirr}" ]; then
     _ffList="/var/backups/boa-mirrors-2024-12.txt"
     mkdir -p /var/backups
@@ -103,9 +103,9 @@ _find_fast_mirror_early() {
       echo "ao.files.aegir.cc" >> ${_ffList}
     fi
     if [ -e "${_ffList}" ]; then
-      _BROKEN_FFMIRR_TEST=$(grep "stuff" ${_ffMirr} 2>&1)
+      _BROKEN_FFMIRR_TEST=$(grep "stuff" "${_ffMirr}")
       if [[ "${_BROKEN_FFMIRR_TEST}" =~ "stuff" ]]; then
-        _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
+        _CHECK_MIRROR=$(bash "${_ffMirr}" < "${_ffList}")
         _USE_MIR="${_CHECK_MIRROR}"
         [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.aegir.cc"
       else
@@ -493,8 +493,7 @@ _kill_zombies() {
       if [ ! -z "${_usrParentTest}" ]; then
         _PAR_DIR="/data/disk/${_usrParent}/clients"
         _SEC_SYM="/home/${_Existing}/sites"
-        _SEC_DIR=$(readlink -n ${_SEC_SYM} 2>&1)
-        _SEC_DIR=$(echo -n ${_SEC_DIR} | tr -d "\n" 2>&1)
+        _SEC_DIR=$(readlink -n "${_SEC_SYM}")
         if [ ! -L "${_SEC_SYM}" ] || [ ! -e "${_SEC_DIR}" ] \
           || [ ! -e "/home/${_usrParent}.ftp/users/${_Existing}" ]; then
           mkdir -p /var/backups/zombie/deleted/${_NOW}
@@ -589,8 +588,7 @@ _fix_dot_dirs() {
 _manage_sec_user_drush_aliases() {
   if [ -e "${_Client}" ]; then
     if [ -L "${_usrLtdRoot}/sites" ]; then
-      _symTgt=$(readlink -n ${_usrLtdRoot}/sites 2>&1)
-      _symTgt=$(echo -n ${_symTgt} | tr -d "\n" 2>&1)
+      _symTgt=$(readlink -n "${_usrLtdRoot}/sites")
     else
       rm -f ${_usrLtdRoot}/sites
     fi
@@ -674,24 +672,20 @@ _ok_create_user() {
         fi
       fi
       if [ "${_STRONG_PASSWORDS}" = "YES" ] || [ "${_PWD_CHARS}" -gt "32" ]; then
-        _RANDPASS_TEST=$(randpass -V 2>&1)
+        _RANDPASS_TEST=$(randpass -V)
         if [[ "${_RANDPASS_TEST}" =~ "alnum" ]]; then
-          _ESC_LUPASS=$(randpass "${_PWD_CHARS}" alnum 2>&1)
+          _ESC_LUPASS=$(randpass "${_PWD_CHARS}" alnum 2>/dev/null | tr -d '\n')
         else
-          _ESC_LUPASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
-          _ESC_LUPASS=$(echo -n "${_ESC_LUPASS}" | tr -d "\n" 2>&1)
           _ESC_LUPASS=$(_sanitize_string "${_ESC_LUPASS}" 2>&1)
+          _ESC_LUPASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' | tr -d '\n')
         fi
-        _ESC_LUPASS=$(echo -n "${_ESC_LUPASS}" | tr -d "\n" 2>&1)
         _LEN_LUPASS=$(echo ${#_ESC_LUPASS} 2>&1)
       fi
       if [ -z "${_ESC_LUPASS}" ] || [ "${_LEN_LUPASS}" -lt "9" ]; then
-        _ESC_LUPASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
-        _ESC_LUPASS=$(echo -n "${_ESC_LUPASS}" | tr -d "\n" 2>&1)
-        _ESC_LUPASS=$(_sanitize_string "${_ESC_LUPASS}" 2>&1)
+        _ESC_LUPASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' | tr -d '\n')
+        _ESC_LUPASS=$(_sanitize_string "${_ESC_LUPASS}")
       fi
-      ph=$(mkpasswd -m sha-512 "${_ESC_LUPASS}" \
-        $(openssl rand -base64 16 | tr -d '+=' | head -c 16) 2>&1)
+      ph=$(mkpasswd -m sha-512 "${_ESC_LUPASS}" $(openssl rand -base64 16 | tr -d '+=' | head -c 16))
       usermod -p $ph ${_usrLtd}
       passwd -w 7 -x 90 ${_usrLtd}
       usermod -aG lshellg ${_usrLtd}
@@ -774,7 +768,7 @@ for _Domain in `find ${_Client}/ -maxdepth 1 -mindepth 1 -type l | sort`; do
   _STATIC_FILES="${_pthParen_tUsr}/static/files/${_rawDom}.files/"
   _STATIC_PRIVATE="${_pthParen_tUsr}/static/files/${_rawDom}.private/"
   _NEW_STATIC_FILES="${_pthParen_tUsr}/static/files/${_rawDom}/"
-  _PATH_DOM=$(readlink -n ${_Domain})
+  _PATH_DOM="$(readlink -n "${_Domain}")"
   _RUBY_PATH="/opt/user/gems/${_usrLtd}"
   _mntPoint=$(find /mnt -mindepth 1 -maxdepth 1 -type d | grep "\." | head -n1) &&
   _MNT_STATIC_FILES="${_mntPoint}/files/${_USER}/static/files/${_rawDom}/"
@@ -1083,8 +1077,7 @@ _satellite_tune_fpm_workers() {
 
   if [ ! -z "${_CLIENT_CORES}" ] && [ "${_CLIENT_CORES}" -ge "1" ]; then
     if [ -e "${_dscUsr}/log/cores.txt" ]; then
-      _CLIENT_CORES=$(cat ${_dscUsr}/log/cores.txt 2>&1)
-      _CLIENT_CORES=$(echo -n ${_CLIENT_CORES} | tr -d "\n" 2>&1)
+      _CLIENT_CORES=$(cat ${_dscUsr}/log/cores.txt 2>/dev/null | tr -d '\n')
     fi
     _CLIENT_CORES=${_CLIENT_CORES//[^0-9]/}
     if [ ! -z "${_CLIENT_CORES}" ] && [ "${_CLIENT_CORES}" -ge "1" ]; then
@@ -1126,9 +1119,8 @@ _disable_newrelic() {
 #
 # Enable New Relic per Octopus instance.
 _enable_newrelic() {
-  _LOC_NEW_RELIC_KEY=$(cat ${_dscUsr}/static/control/newrelic.info 2>&1)
+  _LOC_NEW_RELIC_KEY=$(cat ${_dscUsr}/static/control/newrelic.info 2>/dev/null | tr -d '\n')
   _LOC_NEW_RELIC_KEY=${_LOC_NEW_RELIC_KEY//[^0-9a-zA-Z]/}
-  _LOC_NEW_RELIC_KEY=$(echo -n ${_LOC_NEW_RELIC_KEY} | tr -d "\n" 2>&1)
   if [ -z "${_LOC_NEW_RELIC_KEY}" ]; then
     _disable_newrelic $1 $2 $3
   else
@@ -1362,19 +1354,15 @@ _site_socket_inc_gen() {
   _preFpm="${_dscUsr}/static/control/.prev-multi-fpm.info"
   _mltNgx="${_dscUsr}/static/control/.multi-nginx-fpm.pid"
   _fpmPth="${_dscUsr}/config/server_master/nginx/post.d"
-
-  _hmFront=$(cat ${_dscUsr}/log/domain.txt 2>&1)
-  _hmFront=$(echo -n ${_hmFront} | tr -d "\n" 2>&1)
   _hmstAls="${_dscUsr}/.drush/${_hmFront}.alias.drushrc.php"
-
-  _hmstCli=$(cat ${_dscUsr}/log/cli.txt 2>&1)
-  _hmstCli=$(echo -n ${_hmstCli} | tr -d "\n" 2>&1)
+  _hmFront=$(cat ${_dscUsr}/log/domain.txt 2>/dev/null | tr -d '\n')
+  _hmstCli=$(cat ${_dscUsr}/log/cli.txt 2>/dev/null | tr -d '\n')
 
   if [ ! -e "${_hmstAls}" ]; then
     ln -s ${_dscUsr}/.drush/hostmaster.alias.drushrc.php ${_hmstAls}
   fi
 
-  _PLACEHOLDER_TEST=$(grep "place.holder.dont.remove" ${_mltFpm} 2>&1)
+  _PLACEHOLDER_TEST=$(grep "place.holder.dont.remove" ${_mltFpm})
 
   if [ ! -e "${_dscUsr}/log/no-lock-aegir-fpm.txt" ] \
     || [[ ! "${_PLACEHOLDER_TEST}" =~ "place.holder.dont.remove" ]]; then
@@ -1438,11 +1426,11 @@ _site_socket_inc_gen() {
         _SITE_NAME=`echo $p | cut -d' ' -f1 | awk '{ print $1}'`
         _SITE_NAME=${_SITE_NAME//[^a-zA-Z0-9-.]/}
         _SITE_NAME=$(echo -n ${_SITE_NAME} | tr A-Z a-z 2>&1)
-        _SITE_NAME=$(echo -n ${_SITE_NAME} | tr -d "\n" 2>&1)
+        _SITE_NAME=$(echo -n ${_SITE_NAME} | tr -d '\n')
         _SITE_SOCKET=`echo $p | cut -d' ' -f2 | awk '{ print $1}'`
         _SITE_SOCKET=${_SITE_SOCKET//[^0-9]/}
-        _SITE_SOCKET=$(echo -n ${_SITE_SOCKET} | tr -d "\n" 2>&1)
         _SOCKET_L_NAME="${_USER}.${_SITE_SOCKET}"
+        _SITE_SOCKET=$(echo -n ${_SITE_SOCKET} | tr -d '\n')
         if [ ! -z "${_SITE_NAME}" ] \
           && [ ! -z "${_SITE_SOCKET}" ] \
           && [ -e "${_dscUsr}/.drush/${_SITE_NAME}.alias.drushrc.php" ] \
@@ -1493,9 +1481,8 @@ _switch_php() {
       _FORCE_FPM_SETUP=YES
     fi
     if [ -e "${_dscUsr}/static/control/cli.info" ]; then
-      _T_CLI_VRN=$(cat ${_dscUsr}/static/control/cli.info 2>&1)
+      _T_CLI_VRN=$(cat ${_dscUsr}/static/control/cli.info 2>/dev/null | tr -d '\n')
       _T_CLI_VRN=${_T_CLI_VRN//[^0-9.]/}
-      _T_CLI_VRN=$(echo -n ${_T_CLI_VRN} | tr -d "\n" 2>&1)
       if [ "${_T_CLI_VRN}" = "83" ]; then
         _T_CLI_VRN=8.3
       elif [ "${_T_CLI_VRN}" = "82" ]; then
@@ -1700,7 +1687,7 @@ _switch_php() {
       fi
       _T_FPM_VRN=$(cat ${_dscUsr}/static/control/fpm.info 2>&1)
       _T_FPM_VRN=${_T_FPM_VRN//[^0-9.]/}
-      _T_FPM_VRN=$(echo -n ${_T_FPM_VRN} | tr -d "\n" 2>&1)
+      _T_FPM_VRN=$(echo -n ${_T_FPM_VRN} | tr -d '\n')
       if [ "${_T_FPM_VRN}" = "83" ]; then
         _T_FPM_VRN=8.3
       elif [ "${_T_FPM_VRN}" = "82" ]; then
@@ -2255,14 +2242,11 @@ _manage_user() {
 # Find correct IP.
 _find_correct_ip() {
   if [ -e "/root/.found_correct_ipv4.cnf" ]; then
-    _LOC_IP=$(cat /root/.found_correct_ipv4.cnf 2>&1)
-    _LOC_IP=$(echo -n ${_LOC_IP} | tr -d "\n" 2>&1)
+    _LOC_IP=$(cat /root/.found_correct_ipv4.cnf 2>/dev/null | tr -d '\n')
   else
-    _LOC_IP=$(curl ${_crlGet} https://api.ipify.org \
-      | sed 's/[^0-9\.]//g' 2>&1)
+    _LOC_IP=$(curl ${_crlGet} https://api.ipify.org | sed 's/[^0-9\.]//g')
     if [ -z "${_LOC_IP}" ]; then
-      _LOC_IP=$(curl ${_crlGet} http://ipv4.icanhazip.com \
-        | sed 's/[^0-9\.]//g' 2>&1)
+      _LOC_IP=$(curl ${_crlGet} http://ipv4.icanhazip.com | sed 's/[^0-9\.]//g')
     fi
     if [ ! -z "${_LOC_IP}" ]; then
       echo ${_LOC_IP} > /root/.found_correct_ipv4.cnf
@@ -2358,7 +2342,7 @@ if [ ! -L "/usr/bin/MySecureShell" ] && [ -x "/usr/bin/mysecureshell" ]; then
   ln -sfn /usr/bin/mysecureshell /usr/bin/MySecureShell
 fi
 
-_NOW=$(date +%y%m%d-%H%M%S 2>&1)
+_NOW=$(date +%y%m%d-%H%M%S)
 _NOW=${_NOW//[^0-9-]/}
 mkdir -p /var/backups/ltd/{conf,log,old}
 mkdir -p /var/backups/zombie/deleted
@@ -2419,7 +2403,6 @@ else
   fi
   if [ -L "/bin/sh" ] && [ ! -e "/run/octopus_install_run.pid" ]; then
     _WEB_SH=$(readlink -n /bin/sh)
-    _WEB_SH=$(echo -n ${_WEB_SH} | tr -d "\n" 2>&1)
     if [ -x "/opt/local/bin/websh" ] \
       && grep -i '_forward_to_dash' /opt/local/bin/websh &> /dev/null; then
       if [ "${_WEB_SH}" != "/opt/local/bin/websh" ]; then

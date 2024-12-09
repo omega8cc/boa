@@ -40,7 +40,7 @@ if [ -z "${site_path}" ] || [ ! -f "${site_path}/settings.php" ]; then
   exit 1
 fi
 
-_TODAY=$(date +%y%m%d 2>&1)
+_TODAY=$(date +%y%m%d)
 _TODAY=${_TODAY//[^0-9]/}
 
 if [ -e "${site_path}/libraries/permissions-fixed.pid" ]; then

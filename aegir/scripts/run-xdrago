@@ -38,7 +38,7 @@ _run_cleanup() {
   _clCtr="/data/disk/${_H_USER}/static/control/clear-drush-cache.info"
   _exCtr="/data/disk/${_H_USER}/backups/tmp_expim/metadata"
   if [ -e "${_tpDir}" ]; then
-    _buildTest=$(ls ${_tpDir} | grep "_tmp_" | wc -l | tr -d "\n" 2>&1)
+    _buildTest=$(ls ${_tpDir} | grep '_tmp_' | wc -l | tr -d '\n')
     _buildTest=${_buildTest//[^0-9]/}
   fi
   if [ -e "${_clCtr}" ]; then
@@ -72,22 +72,19 @@ _if_sftp_password_update() {
     _sftpUser="${_H_USER}.ftp"
     rm -f ${_upCtr}
     _PWD_CHARS=64
-    _RANDPASS_TEST=$(randpass -V 2>&1)
+    _RANDPASS_TEST=$(randpass -V)
     if [[ "${_RANDPASS_TEST}" =~ "alnum" ]]; then
-      _ESC_PASS=$(randpass "${_PWD_CHARS}" alnum 2>&1)
+      _ESC_PASS=$(randpass "${_PWD_CHARS}" alnum 2>/dev/null | tr -d '\n')
     else
-      _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
-      _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
-      _ESC_PASS=$(_sanitize_string "${_ESC_PASS}" 2>&1)
+      _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' | tr -d '\n')
+      _ESC_PASS=$(_sanitize_string "${_ESC_PASS}")
     fi
-    _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
-    _LEN_PASS=$(echo ${#_ESC_PASS} 2>&1)
+    _LEN_PASS=$(echo "${#_ESC_PASS}")
     if [ -z "${_ESC_PASS}" ] || [ "${_LEN_PASS}" -lt "9" ]; then
-      _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
-      _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
-      _ESC_PASS=$(_sanitize_string "${_ESC_PASS}" 2>&1)
+      _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' | tr -d '\n')
+      _ESC_PASS=$(_sanitize_string "${_ESC_PASS}")
     fi
-    _LEN_PASS=$(echo ${#_ESC_PASS} 2>&1)
+    _LEN_PASS=$(echo "${#_ESC_PASS}")
     if [ ! -z "${_ESC_PASS}" ] && [ "${_LEN_PASS}" -gt "9" ]; then
       chage -I -1 -m 0 -M 99999 -E -1 ${_sftpUser}
       echo "${_sftpUser}:${_ESC_PASS}" | chpasswd

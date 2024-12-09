@@ -3,6 +3,8 @@ export _tRee=dev
 export _rLsn="BOA-5.5.0"
 export _rlsE="${_rLsn}-${_tRee}"
 export _bRnh="5.x-${_tRee}"
+_hName=$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)
+_pxSqlPass=$(cat /root/.my.proxysql_adm_pwd.txt 2>/dev/null | tr -d '\n')
 
 #
 # Download and extract from core archive.
@@ -40,8 +42,7 @@ _provision_backend_dbpass_generate() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _provision_backend_dbpass_generate"
   fi
-  _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
-  _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+  _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
   _ESC_PASS=""
   _LEN_PASS=0
   if [ "${_STRONG_PASSWORDS}" = "YES" ]; then
@@ -68,27 +69,25 @@ _provision_backend_dbpass_generate() {
       || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
       || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
       if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
-        _ESC_PASS="$(openssl rand -base64 64 | tr -d '\n')"
+        _ESC_PASS=$(openssl rand -base64 64 | tr -d '\n')
       else
-        _RANDPASS_TEST=$(randpass -V 2>&1)
+        _RANDPASS_TEST=$(randpass -V)
         if [[ "${_RANDPASS_TEST}" =~ "alnum" ]]; then
-          _ESC_PASS=$(randpass "${_PWD_CHARS}" alnum 2>&1)
+          _ESC_PASS=$(randpass "${_PWD_CHARS}" alnum)
         else
-          _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
-          _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
-          _ESC_PASS=$(_sanitize_string "${_ESC_PASS}" 2>&1)
+          _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' | tr -d '\n')
+          _ESC_PASS=$(_sanitize_string "${_ESC_PASS}")
         fi
       fi
     else
       if [ -e "/root/.my.pass.txt" ]; then
-        _ESC_PASS=$(cat /root/.my.pass.txt 2>&1)
+        _ESC_PASS=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
       else
         _ESC_PASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
       fi
     fi
     _isPythonTwo=$(which python2 2>&1)
     _isPythonThree=$(which python3 2>&1)
-    _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
     if [ -x "${_isPythonThree}" ]; then
       _ENC_PASS=$(python3 -c "import urllib.parse; print(urllib.parse.quote('''${_ESC_PASS}'''))")
     elif [ -x "${_isPythonTwo}" ]; then
@@ -102,12 +101,11 @@ _provision_backend_dbpass_generate() {
       || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
       || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
       || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
-      _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
-      _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
-      _ESC_PASS=$(_sanitize_string "${_ESC_PASS}" 2>&1)
+      _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' | tr -d '\n')
+      _ESC_PASS=$(_sanitize_string "${_ESC_PASS}")
     else
       if [ -e "/root/.my.pass.txt" ]; then
-        _ESC_PASS=$(cat /root/.my.pass.txt 2>&1)
+        _ESC_PASS=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
       else
         _ESC_PASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
       fi
@@ -124,7 +122,7 @@ _provision_backend_dbpass_generate() {
     || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
     || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
     if [ "${_THIS_DB_HOST}" = "FQDN" ]; then
-      _THIS_DB_HOST="$(hostname -f 2>/dev/null || uname -n)"
+      _THIS_DB_HOST="${_hName}"
       _SQL_CONNECT=localhost
     elif [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
       || [ "${_THIS_DB_HOST}" = "PROXYSQL" ]; then
@@ -133,16 +131,16 @@ _provision_backend_dbpass_generate() {
       _THIS_DB_HOST=localhost
       _SQL_CONNECT=localhost
     fi
-    _AEGIR_HOST="$(hostname -f 2>/dev/null || uname -n)"
+    _AEGIR_HOST="${_hName}"
   else
-    _AEGIR_HOST="$(hostname -f 2>/dev/null || uname -n)"
+    _AEGIR_HOST="${_hName}"
     ### _SQL_CONNECT="${_THIS_DB_HOST}"
     ### Master Instance will use local DB server
     _SQL_CONNECT=localhost
   fi
 
   if [ "${_THIS_DB_HOST}" = "${_MY_OWNIP}" ]; then
-    _AEGIR_HOST="$(hostname -f 2>/dev/null || uname -n)"
+    _AEGIR_HOST="${_hName}"
     _SQL_CONNECT=localhost
   fi
 
@@ -158,9 +156,7 @@ _provision_backend_dbpass_generate() {
   if [ "${_STATUS}" = "INIT" ]; then
     [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL7 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
     if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
-      _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>&1)
-      _PROXYSQL_PASSWORD=$(echo -n ${_PROXYSQL_PASSWORD} | tr -d "\n" 2>&1)
-      mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
+      mysql -uadmin -p${_pxSqlPass} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
 DELETE FROM mysql_users WHERE username='${_ADBU}';
 DELETE FROM mysql_query_rules WHERE username='${_ADBU}';
 INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_ADBU}','${_ESC_PASS}','10');
@@ -188,9 +184,7 @@ EOFMYSQL
       || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
       [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL8 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
       if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
-        _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>&1)
-        _PROXYSQL_PASSWORD=$(echo -n ${_PROXYSQL_PASSWORD} | tr -d "\n" 2>&1)
-        mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
+        mysql -uadmin -p${_pxSqlPass} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
 DELETE FROM mysql_users WHERE username='${_ADBU}';
 DELETE FROM mysql_query_rules WHERE username='${_ADBU}';
 INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_ADBU}','${_ESC_PASS}','10');
@@ -226,14 +220,12 @@ EOFMYSQL
     || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
     _EXTRA_GRANTS=NO
   else
-    _LOCAL_HOST="$(hostname -f 2>/dev/null || uname -n)"
+    _LOCAL_HOST="${_hName}"
     _find_correct_ip
     _LOCAL_IP="${_LOC_IP}"
     [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL9 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
     if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
-      _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>&1)
-      _PROXYSQL_PASSWORD=$(echo -n ${_PROXYSQL_PASSWORD} | tr -d "\n" 2>&1)
-      mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
+      mysql -uadmin -p${_pxSqlPass} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
 DELETE FROM mysql_users WHERE username='${_ADBU}';
 DELETE FROM mysql_query_rules WHERE username='${_ADBU}';
 INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_ADBU}','${_ESC_PASS}','10');
@@ -264,8 +256,7 @@ _provision_backend_dbpass_sync() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _provision_backend_dbpass_sync"
   fi
-  _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
-  _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+  _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
   _find_correct_ip
   _USE_RESOLVEIP="${_LOC_IP}"
   _RESOLVEIP="${_LOC_IP}"
@@ -294,12 +285,10 @@ _provision_backend_dbpass_sync() {
     fi
     _ESC="*.*"
     _USE_DB_USER="${_ADBU}"
-    _USE_AEGIR_HOST="$(hostname -f 2>/dev/null || uname -n)"
+    _USE_AEGIR_HOST="${_hName}"
     [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL10 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
     if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
-      _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>&1)
-      _PROXYSQL_PASSWORD=$(echo -n ${_PROXYSQL_PASSWORD} | tr -d "\n" 2>&1)
-      mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
+      mysql -uadmin -p${_pxSqlPass} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
 DELETE FROM mysql_users WHERE username='${_USE_DB_USER}';
 DELETE FROM mysql_query_rules WHERE username='${_USE_DB_USER}';
 INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_USE_DB_USER}','${_ESC_PASS}','10');
@@ -367,8 +356,7 @@ _hostmaster_frontend_dbpass_sync() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "INFO: Syncing hostmaster frontend db_passwd..."
   fi
-  _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
-  _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+  _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
   if [ -e "/var/aegir/use_proxysql.txt" ]; then
     _SQL_CONNECT=127.0.0.1
     _THIS_DB_PORT=6033
@@ -400,12 +388,10 @@ _hostmaster_frontend_dbpass_sync() {
     fi
     _ESC="*.*"
     _USE_DB_USER="${_THIS_HM_DBUR}"
-    _USE_AEGIR_HOST="$(hostname -f 2>/dev/null || uname -n)"
+    _USE_AEGIR_HOST="${_hName}"
     [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL11 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
     if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
-      _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>&1)
-      _PROXYSQL_PASSWORD=$(echo -n ${_PROXYSQL_PASSWORD} | tr -d "\n" 2>&1)
-      mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
+      mysql -uadmin -p${_pxSqlPass} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
 DELETE FROM mysql_users WHERE username='${_USE_DB_USER}';
 DELETE FROM mysql_query_rules WHERE username='${_USE_DB_USER}';
 INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_USE_DB_USER}','${_THIS_HM_DBPD}','10');
@@ -503,8 +489,7 @@ _aegir_master_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _aegir_master_upgrade"
   fi
-  _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
-  _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+  _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
   if _prompt_yes_no "Do you want to upgrade Aegir Master Instance?" ; then
     true
     _msg "INFO: Running Aegir Master Instance upgrade"
@@ -710,8 +695,7 @@ _aegir_master_install_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _aegir_master_install_upgrade"
   fi
-  _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
-  _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+  _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
 
   if [ "${_STATUS}" = "INIT" ]; then
 
@@ -742,7 +726,7 @@ _aegir_master_install_upgrade() {
       || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
       || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
       if [ "${_THIS_DB_HOST}" = "FQDN" ]; then
-        _THIS_DB_HOST="$(hostname -f 2>/dev/null || uname -n)"
+        _THIS_DB_HOST="${_hName}"
         _SQL_CONNECT=localhost
       elif [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
         || [ "${_THIS_DB_HOST}" = "PROXYSQL" ]; then
@@ -751,15 +735,15 @@ _aegir_master_install_upgrade() {
         _THIS_DB_HOST=localhost
         _SQL_CONNECT=localhost
       fi
-      _AEGIR_HOST="$(hostname -f 2>/dev/null || uname -n)"
+      _AEGIR_HOST="${_hName}"
     else
-      _AEGIR_HOST="$(hostname -f 2>/dev/null || uname -n)"
+      _AEGIR_HOST="${_hName}"
       ### _SQL_CONNECT="${_THIS_DB_HOST}"
       ### Master Instance will use local DB server
       _SQL_CONNECT=localhost
     fi
     if [ "${_THIS_DB_HOST}" = "${_MY_OWNIP}" ]; then
-      _AEGIR_HOST="$(hostname -f 2>/dev/null || uname -n)"
+      _AEGIR_HOST="${_hName}"
       _SQL_CONNECT=localhost
     fi
 
@@ -811,25 +795,23 @@ _aegir_master_install_upgrade() {
         || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
         || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
         if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
-          _ESC_PASS="$(openssl rand -base64 64 | tr -d '\n')"
+          _ESC_PASS=$(openssl rand -base64 64 | tr -d '\n')
         else
-          _RANDPASS_TEST=$(randpass -V 2>&1)
+          _RANDPASS_TEST=$(randpass -V)
           if [[ "${_RANDPASS_TEST}" =~ "alnum" ]]; then
-            _ESC_PASS=$(randpass "${_PWD_CHARS}" alnum 2>&1)
+            _ESC_PASS=$(randpass "${_PWD_CHARS}" alnum)
           else
-            _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
-            _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
-            _ESC_PASS=$(_sanitize_string "${_ESC_PASS}" 2>&1)
+            _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' | tr -d '\n')
+            _ESC_PASS=$(_sanitize_string "${_ESC_PASS}")
           fi
         fi
       else
         if [ -e "/root/.my.pass.txt" ]; then
-          _ESC_PASS=$(cat /root/.my.pass.txt 2>&1)
+          _ESC_PASS=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
         else
           _ESC_PASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
         fi
       fi
-      _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
       _LEN_PASS=$(echo ${#_ESC_PASS} 2>&1)
     fi
 
@@ -838,12 +820,11 @@ _aegir_master_install_upgrade() {
         || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
         || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
         || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
-        _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
-        _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
-        _ESC_PASS=$(_sanitize_string "${_ESC_PASS}" 2>&1)
+        _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' | tr -d '\n')
+        _ESC_PASS=$(_sanitize_string "${_ESC_PASS}")
       else
         if [ -e "/root/.my.pass.txt" ]; then
-          _ESC_PASS=$(cat /root/.my.pass.txt 2>&1)
+          _ESC_PASS=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
         else
           _ESC_PASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
         fi
@@ -853,9 +834,7 @@ _aegir_master_install_upgrade() {
     _ESC="*.*"
     [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL12 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
     if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
-      _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>&1)
-      _PROXYSQL_PASSWORD=$(echo -n ${_PROXYSQL_PASSWORD} | tr -d "\n" 2>&1)
-      mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
+      mysql -uadmin -p${_pxSqlPass} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
 DELETE FROM mysql_users WHERE username='${_AEGIR_DB_USER}';
 DELETE FROM mysql_query_rules WHERE username='${_AEGIR_DB_USER}';
 INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_AEGIR_DB_USER}','${_ESC_PASS}','10');
@@ -883,14 +862,12 @@ EOFMYSQL
       || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
       _EXTRA_GRANTS=NO
     else
-      _LOCAL_HOST="$(hostname -f 2>/dev/null || uname -n)"
+      _LOCAL_HOST="${_hName}"
       _find_correct_ip
       _LOCAL_IP="${_LOC_IP}"
       [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL13 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
       if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
-        _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>&1)
-        _PROXYSQL_PASSWORD=$(echo -n ${_PROXYSQL_PASSWORD} | tr -d "\n" 2>&1)
-        mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
+        mysql -uadmin -p${_pxSqlPass} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
 DELETE FROM mysql_users WHERE username='${_AEGIR_DB_USER}';
 DELETE FROM mysql_query_rules WHERE username='${_AEGIR_DB_USER}';
 INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_AEGIR_DB_USER}','${_ESC_PASS}','10');
@@ -1060,7 +1037,7 @@ EOFMYSQL
     _msg "INFO: Aegir Master Instance installed"
   else
     if [ "${_tRee}" = "lts" ]; then
-      _SERIES_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
+      _SERIES_TEST=$(cat /var/log/barracuda_log.txt)
       if [[ "${_SERIES_TEST}" =~ "Barracuda ${_rLsn}-pro" ]]; then
         _msg "ERROR: Your system has been already upgraded to ${_rLsn}-pro"
         _msg "You can not downgrade back to previous/older/lts BOA version"

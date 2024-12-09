@@ -9,7 +9,7 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 _whitelist_ip_pingdom() {
   if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
     echo removing pingdom ips from csf.allow
-    _NOW=$(date +%y%m%d-%H%M%S 2>&1)
+    _NOW=$(date +%y%m%d-%H%M%S)
     cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-pingdom-${_NOW}
     sed -i "s/.*pingdom.*//g" /etc/csf/csf.allow
     wait
@@ -45,7 +45,7 @@ _whitelist_ip_pingdom() {
 _whitelist_ip_cloudflare() {
   if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
     echo removing cloudflare ips from csf.allow
-    _NOW=$(date +%y%m%d-%H%M%S 2>&1)
+    _NOW=$(date +%y%m%d-%H%M%S)
     cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-cloudflare-${_NOW}
     sed -i "s/.*cloudflare.*//g" /etc/csf/csf.allow
     wait
@@ -80,7 +80,7 @@ _whitelist_ip_cloudflare() {
 _whitelist_ip_imperva() {
   if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
     echo removing imperva ips from csf.allow
-    _NOW=$(date +%y%m%d-%H%M%S 2>&1)
+    _NOW=$(date +%y%m%d-%H%M%S)
     cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-imperva-${_NOW}
     sed -i "s/.*imperva.*//g" /etc/csf/csf.allow
     wait
@@ -115,7 +115,7 @@ _whitelist_ip_imperva() {
 _whitelist_ip_googlebot() {
   if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
     echo removing googlebot ips from csf.allow
-    _NOW=$(date +%y%m%d-%H%M%S 2>&1)
+    _NOW=$(date +%y%m%d-%H%M%S)
     cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-googlebot-${_NOW}
     sed -i "s/.*googlebot.*//g" /etc/csf/csf.allow
     wait
@@ -148,7 +148,7 @@ _whitelist_ip_googlebot() {
 _whitelist_ip_microsoft() {
   if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
     echo removing microsoft ips from csf.allow
-    _NOW=$(date +%y%m%d-%H%M%S 2>&1)
+    _NOW=$(date +%y%m%d-%H%M%S)
     cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-microsoft-${_NOW}
     sed -i "s/.*microsoft.*//g" /etc/csf/csf.allow
     wait
@@ -183,7 +183,7 @@ _whitelist_ip_microsoft() {
 _whitelist_ip_sucuri() {
   if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
     echo removing sucuri ips from csf.allow
-    _NOW=$(date +%y%m%d-%H%M%S 2>&1)
+    _NOW=$(date +%y%m%d-%H%M%S)
     cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-sucuri-${_NOW}
     sed -i "s/.*sucuri.*//g" /etc/csf/csf.allow
     wait
@@ -214,7 +214,7 @@ _whitelist_ip_sucuri() {
 _whitelist_ip_authzero() {
   if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
     echo removing authzero ips from csf.allow
-    _NOW=$(date +%y%m%d-%H%M%S 2>&1)
+    _NOW=$(date +%y%m%d-%H%M%S)
     cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-authzero-${_NOW}
     sed -i "s/.*authzero.*//g" /etc/csf/csf.allow
     wait
@@ -287,7 +287,7 @@ _whitelist_ip_site24x7_extra() {
 _whitelist_ip_site24x7() {
   if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
     echo removing site24x7 ips from csf.allow
-    _NOW=$(date +%y%m%d-%H%M%S 2>&1)
+    _NOW=$(date +%y%m%d-%H%M%S)
     cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-site24x7-${_NOW}
     sed -i "s/.*site24x7.*//g" /etc/csf/csf.allow
     wait
@@ -393,7 +393,7 @@ _local_ip_rg() {
         sed -i "s/^${_IP} .*//g" /etc/csf/csf.ignore
         wait
         echo removing ${_IP} from csf.allow
-        _NOW=$(date +%y%m%d-%H%M%S 2>&1)
+        _NOW=$(date +%y%m%d-%H%M%S)
         cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-local-${_NOW}
         sed -i "s/^${_IP} .*//g" /etc/csf/csf.allow
         wait
@@ -561,7 +561,7 @@ _whitelist_ip_dns() {
   csf -tr 1.0.0.1
   csf -dr 1.1.1.1
   csf -dr 1.0.0.1
-  _NOW=$(date +%y%m%d-%H%M%S 2>&1)
+  _NOW=$(date +%y%m%d-%H%M%S)
   cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-dns-${_NOW}
   sed -i "s/.*1.1.1.1.*//g"  /etc/csf/csf.allow
   wait
@@ -603,7 +603,7 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
   echo Waiting $n seconds...
   sleep ${_n}
 
-  _NOW=$(date +%y%m%d-%H%M%S 2>&1)
+  _NOW=$(date +%y%m%d-%H%M%S)
   _NOW=${_NOW//[^0-9-]/}
   _useCnfUpdate=NO
   _vBs="/var/backups"
@@ -641,7 +641,7 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
       _useCnfUpdate=YES
       echo "YES $(date) diff0 empty" >> ${_vBs}/dragon/t/csf.log
     else
-      _diffCnfTest=$(echo -n ${_diffCnfTest} | fmt -su -w 2500 2>&1)
+      _diffCnfTest=$(echo -n "${_diffCnfTest}" | fmt -su -w 2500)
       echo "NO $(date) diff1 ${_diffCnfTest}" >> ${_vBs}/dragon/t/csf.log
     fi
     if [[ "${_diffCnfTest}" =~ "No such file or directory" ]]; then
@@ -675,7 +675,7 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
   ### CVE-2019-11478 SACK Slowness
   ### CVE-2019-11479 Excess Resource Consumption Due to Low MSS Values
   if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
-    _SACK_TEST=$(ip6tables --list | grep tcpmss 2>&1)
+    _SACK_TEST=$(ip6tables --list | grep tcpmss)
     if [[ ! "${_SACK_TEST}" =~ "tcpmss" ]]; then
       sysctl net.ipv4.tcp_mtu_probing=0 &> /dev/null
       iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
@@ -704,11 +704,11 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
   rm -f /etc/csf/csf.error
   service lfd restart
   wait
-  _NOW=$(date +%y%m%d-%H%M%S 2>&1)
+  _NOW=$(date +%y%m%d-%H%M%S)
   cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-dhcp-${_NOW}
   sed -i "s/.*DHCP.*//g" /etc/csf/csf.allow
   wait
-  _NOW=$(date +%y%m%d-%H%M%S 2>&1)
+  _NOW=$(date +%y%m%d-%H%M%S)
   cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-clear-${_NOW}
   sed -i "/^$/d" /etc/csf/csf.allow
   wait
@@ -735,7 +735,7 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
   ### CVE-2019-11478 SACK Slowness
   ### CVE-2019-11479 Excess Resource Consumption Due to Low MSS Values
   if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
-    _SACK_TEST=$(ip6tables --list | grep tcpmss 2>&1)
+    _SACK_TEST=$(ip6tables --list | grep tcpmss)
     if [[ ! "${_SACK_TEST}" =~ "tcpmss" ]]; then
       sysctl net.ipv4.tcp_mtu_probing=0 &> /dev/null
       iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null

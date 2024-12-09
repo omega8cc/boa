@@ -30,9 +30,8 @@ _check_sql_running
 # Function to check if MySQL server access credentials for root are working
 _check_sql_access() {
   if [ -e "/root/.my.pass.txt" ] && [ -e "/root/.my.cnf" ]; then
-    _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
-    _SQL_PSWD=$(echo -n "${_SQL_PSWD}" | tr -d "\n" 2>&1)
-    _IS_SYNC_SQL_PSWD=$(grep "password=${_SQL_PSWD}" /root/.my.cnf 2>&1)
+    _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
+    _IS_SYNC_SQL_PSWD=$(grep "password=${_SQL_PSWD}" /root/.my.cnf)
   else
     echo "ALERT: /root/.my.cnf or /root/.my.pass.txt not found."
     echo "ALERT: Please fix this before trying again, giving up."
@@ -56,7 +55,7 @@ _check_sql_access() {
       echo " "
       _clean_pid_exit _check_sql_access_c
     else
-      _MYSQL_CONN_TEST=$(mysql -u root -e "status" 2>&1)
+      _MYSQL_CONN_TEST=$(mysql -u root -e "status")
       if [ -z "${_MYSQL_CONN_TEST}" ] \
         || [[ "${_MYSQL_CONN_TEST}" =~ "Access denied" ]]; then
         echo "ALERT: SQL password in /root/.my.cnf does not work."

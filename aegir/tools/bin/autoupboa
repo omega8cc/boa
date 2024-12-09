@@ -29,7 +29,7 @@ _turn_off_apparmor() {
 [ ! -e "/root/.keep_apparmor_on.cnf" ] && [ -e "/lib/apparmor/apparmor.systemd" ] && _turn_off_apparmor
 
 # Define default values
-_CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
+_hName=$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)
 _DEFAULT_CPU_CRIT_RATIO="6.1"
 _DEFAULT_CPU_MAX_RATIO="4.1"
 _DEFAULT_CPU_TASK_RATIO="3.1"
@@ -132,7 +132,7 @@ _process_dhp_files
 _scan_nginx_errors
 
 _crontab_check_clean_race() {
-  _CSF_CRON_TEST=$(grep water /etc/crontab 2>&1)
+  _CSF_CRON_TEST=$(grep water /etc/crontab)
   if [ -e "/etc/csf/csf.deny" ] \
     && [ -x "/usr/sbin/csf" ] \
     && [[ "${_CSF_CRON_TEST}" =~ "water" ]]; then
@@ -239,7 +239,7 @@ _if_disable_not_used_services
 
 _os_detection_minimal() {
   _APT_UPDATE="apt-get update"
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
   for e in ${_OS_LIST}; do
     if [ "${e}" = "${_OS_CODE}" ]; then
@@ -259,13 +259,13 @@ _system_hostname_check_fix() {
   if [ -e "${_barCnf}" ]; then
     source ${_barCnf}
     if [ ! -z "${_MY_HOSTN}" ]; then
-      _diffHostTest=$(diff -w -B /etc/hostname /etc/mailname 2>&1)
+      _diffHostTest=$(diff -w -B /etc/hostname /etc/mailname)
       if [ -z "${_diffHostTest}" ]; then
         _hostUpdate=""
         echo "INFO: hostname/mailname diff empty -- nothing to update"
       else
         _hostUpdate=YES
-        _diffHostTest=$(echo -n ${_diffHostTest} | fmt -su -w 2500 2>&1)
+        _diffHostTest=$(echo -n "${_diffHostTest}" | fmt -su -w 2500)
         echo "INFO: hostname/mailname diff ${_diffHostTest}"
       fi
       if [ "${_hostUpdate}" = "YES" ]; then
@@ -281,21 +281,21 @@ _system_hostname_check_fix
 rm -f /run/clear_m.pid
 
 _ADD_XTRA=YES
-_CRON_TEST=$(grep "clear.xsh" /var/spool/cron/crontabs/root 2>&1)
+_CRON_TEST=$(grep "clear.xsh" /var/spool/cron/crontabs/root)
 if [[ "${_CRON_TEST}" =~ "clear.xsh" ]]; then
   _ADD_XTRA=NO
 fi
 
-_TIME=$(date +%H%M 2>&1)
+_TIME=$(date +%H%M)
 _TIME=${_TIME//[^0-9-]/}
-_MINUTE=$(date +%M 2>&1)
+_MINUTE=$(date +%M)
 _MINUTE=${_MINUTE//[^0-9-]/}
-_NOW=$(date +%y%m%d-%H%M%S 2>&1)
+_NOW=$(date +%y%m%d-%H%M%S)
 _NOW=${_NOW//[^0-9-]/}
 
 _if_hosted_sys() {
   if [ -e "/root/.host8.cnf" ] \
-    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
+    || [[ "${_hName}" =~ ".aegir.cc"($) ]]; then
     _hostedSys=YES
   else
     _hostedSys=NO
@@ -306,7 +306,7 @@ _send_boa_system_report() {
   if [ -e "${_barCnf}" ]; then
     _RCPT_EMAIL=
     _BCC_EMAIL=
-    _repBodFile=/var/backups/hosted-boa-status.txt
+    _repBodFile="/var/backups/hosted-boa-status.txt"
     _if_hosted_sys
     if [ "${_hostedSys}" = "YES" ]; then
       _RCPT_EMAIL="systems@omega8.cc"
@@ -315,8 +315,8 @@ _send_boa_system_report() {
     if [ ! -z "${_RCPT_EMAIL}" ] \
       && [ ! -z "${_BCC_EMAIL}" ] \
       && [ -e "/root/.run.example.report.cnf" ]; then
-      _repSub="BOA Status on ${_CHECK_HOST}"
-      _repSub=$(echo -n ${_repSub} | fmt -su -w 2500 2>&1)
+      _repSub="BOA Status on ${_hName}"
+      _repSub=$(echo -n "${_repSub}" | fmt -su -w 2500)
       boa info report both > ${_repBodFile}
       cat ${_repBodFile} | s-nail -b ${_BCC_EMAIL} -s "${_repSub} at ${_NOW}" ${_RCPT_EMAIL}
       rm -f ${_repBodFile}
@@ -429,15 +429,15 @@ _crontab_cleanup() {
 [ -e "/root/.use.curl.from.packages.cnf" ] && rm -f /root/.use.curl.from.packages.cnf
 
 if [ -e "/var/xdrago/log" ]; then
-  _BROKEN_UPDATE_TEST=$(grep "Under Construction" /var/xdrago/*.sh 2>&1)
+  _BROKEN_UPDATE_TEST=$(grep "Under Construction" /var/xdrago/*.sh)
   if [ ! -z "${_BROKEN_UPDATE_TEST}" ]; then
     rm -f /var/xdrago/log/*.pid
   fi
-  _BROKEN_UPDATE_TEST=$(grep "Under Construction" /var/xdrago/monitor/check/* 2>&1)
+  _BROKEN_UPDATE_TEST=$(grep "Under Construction" /var/xdrago/monitor/check/*)
   if [ ! -z "${_BROKEN_UPDATE_TEST}" ]; then
     rm -f /var/xdrago/log/*.pid
   fi
-  _BROKEN_UPDATE_TEST=$(grep "404 Not Found" /var/xdrago/monitor/check/* 2>&1)
+  _BROKEN_UPDATE_TEST=$(grep "404 Not Found" /var/xdrago/monitor/check/*)
   if [ ! -z "${_BROKEN_UPDATE_TEST}" ]; then
     rm -f /var/xdrago/log/*.pid
   fi
@@ -503,7 +503,7 @@ if [ -e "/var/aegir/drush" ]; then
     if [ -e "/etc/apticron/apticron.conf" ]; then
       sed -i "s/^# be something like.*/# be something like ${_MY_EMAIL}/g" \
         /etc/apticron/apticron.conf
-      _APTICRON_TEST=$(grep "omega8" /etc/apticron/apticron.conf 2>&1)
+      _APTICRON_TEST=$(grep "omega8" /etc/apticron/apticron.conf)
       if [[ "${_APTICRON_TEST}" =~ "omega8" ]]; then
         _AUTO_UP=YES
       fi
@@ -522,7 +522,7 @@ if [ -e "/var/aegir/drush" ]; then
   fi
   _if_hosted_sys
   if [ "${_hostedSys}" = "YES" ]; then
-	if [[ "${_CHECK_HOST}" =~ ^(lcy1.ao.|lcy15.uk.) ]]; then
+	if [[ "${_hName}" =~ ^(lcy1.ao.|lcy15.uk.) ]]; then
 	  _DONT_TOUCH=OK
 	  rm -f /etc/csf/csf.conf-pre*
 	else
@@ -576,9 +576,9 @@ if [ -e "/var/aegir/drush" ]; then
     fi
 
     if [ ! -e "/var/xdrago/log/.custom_percona_forced.${_xSrl}.pid" ]; then
-      _DBS_TEST=$(which mysql 2>&1)
+      _DBS_TEST=$(which mysql)
       if [ ! -z "${_DBS_TEST}" ]; then
-        _DB_SERVER_TEST=$(mysql -V 2>&1)
+        _DB_SERVER_TEST=$(mysql -V)
       fi
       _DB_V=
       if [[ "${_DB_SERVER_TEST}" =~ "Ver 8.4." ]]; then
@@ -594,11 +594,10 @@ if [ -e "/var/aegir/drush" ]; then
         sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g"  ${_barCnf}
         sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g"  ${_barCnf}
       elif [ ! -z "${_DB_V}" ] && [ "${_DB_V}" = "5.7" ]; then
-        _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
-        _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
-        _CHECK_EXISTS=$(mysql -u root -e "SELECT EXISTS(SELECT 1 FROM mysql.user WHERE user = 'drandom_2test')" | grep "0" 2>&1)
+        _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
+        _CHECK_EXISTS=$(mysql -u root -e "SELECT EXISTS(SELECT 1 FROM mysql.user WHERE user = 'drandom_2test') | grep "0")
         if [[ "${_CHECK_EXISTS}" =~ "0" ]]; then
-          _CHECK_REPAIR=$(mysql -u root -e "CREATE USER IF NOT EXISTS 'drandom_2test'@'localhost';" 2>&1)
+          _CHECK_REPAIR=$(mysql -u root -e "CREATE USER IF NOT EXISTS 'drandom_2test'@'localhost';")
           if [ "${_DEBUG_MODE}" = "YES" ]; then
             echo _CHECK_REPAIR 1 ${_CHECK_REPAIR}
           fi
@@ -610,7 +609,7 @@ if [ -e "/var/aegir/drush" ]; then
             mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN max_statement_time;"
             mysql_upgrade -u root --force
           fi
-          _CHECK_REPAIR=$(mysql -u root -e "CREATE USER IF NOT EXISTS 'drandom_2test'@'localhost';" 2>&1)
+          _CHECK_REPAIR=$(mysql -u root -e "CREATE USER IF NOT EXISTS 'drandom_2test'@'localhost';")
           if [ "${_DEBUG_MODE}" = "YES" ]; then
             echo _CHECK_REPAIR 2 ${_CHECK_REPAIR}
           fi
@@ -759,7 +758,7 @@ if [ -e "/var/aegir/drush" ]; then
   ### Fix for iptables paths backward compatibility
   ###
 
-  _NFTABLES_TEST=$(iptables -V 2>&1)
+  _NFTABLES_TEST=$(iptables -V)
   if [[ "${_NFTABLES_TEST}" =~ "nf_tables" ]]; then
     if [ -e "/usr/sbin/iptables-legacy" ]; then
       update-alternatives --set iptables /usr/sbin/iptables-legacy &> /dev/null
@@ -794,7 +793,7 @@ if [ -e "/var/aegir/drush" ]; then
     touch /var/xdrago/log/.curl_ctrl.${_tRee}.${_xSrl}.pid
   fi
 
-  _IS_MOVESQL_RUNNING=$(ps aux | grep '[m]ove_sql.sh' | awk '{print $2}' 2>&1)
+  _IS_MOVESQL_RUNNING=$(ps aux | grep '[m]ove_sql.sh' | awk '{print $2}')
   if [ ! -z "${_IS_MOVESQL_RUNNING}" ]; then
     if [ `ps aux | grep -v "grep" | grep --count "move_sql.sh"` -gt "2" ]; then
       kill -9 $(ps aux | grep '[m]ove_sql.sh' | awk '{print $2}') &> /dev/null
@@ -805,7 +804,7 @@ if [ -e "/var/aegir/drush" ]; then
     fi
   fi
 
-  _IS_SQLCLEANUP_RUNNING=$(ps aux | grep '[m]ysql_cleanup.sh' | awk '{print $2}' 2>&1)
+  _IS_SQLCLEANUP_RUNNING=$(ps aux | grep '[m]ysql_cleanup.sh' | awk '{print $2}')
   if [ ! -z "${_IS_SQLCLEANUP_RUNNING}" ]; then
     if [ `ps aux | grep -v "grep" | grep --count "mysql_cleanup.sh"` -gt "2" ]; then
       kill -9 $(ps aux | grep '[m]ysql_cleanup.sh' | awk '{print $2}') &> /dev/null
@@ -815,7 +814,7 @@ if [ -e "/var/aegir/drush" ]; then
     fi
   fi
 
-  _IS_SOLRSTART_RUNNING=$(ps aux | grep '[s]olr start' | awk '{print $2}' 2>&1)
+  _IS_SOLRSTART_RUNNING=$(ps aux | grep '[s]olr start' | awk '{print $2}')
   if [ ! -z "${_IS_SOLRSTART_RUNNING}" ]; then
     if [ `ps aux | grep -v "grep" | grep --count "solr start"` -gt "2" ]; then
       kill -9 $(ps aux | grep '[s]olr start' | awk '{print $2}') &> /dev/null
@@ -823,7 +822,7 @@ if [ -e "/var/aegir/drush" ]; then
     fi
   fi
 
-  _IS_PROCTRL_RUNNING=$(ps aux | grep '[p]roc_num_ctrl.cgi' | awk '{print $2}' 2>&1)
+  _IS_PROCTRL_RUNNING=$(ps aux | grep '[p]roc_num_ctrl.cgi' | awk '{print $2}')
   if [ ! -z "${_IS_PROCTRL_RUNNING}" ]; then
     if [ `ps aux | grep -v "grep" | grep --count "proc_num_ctrl.pl"` -gt "1" ]; then
       kill -9 $(ps aux | grep '[p]roc_num_ctrl.cgi' | awk '{print $2}') &> /dev/null
@@ -835,7 +834,7 @@ if [ -e "/var/aegir/drush" ]; then
   rm -f /run/solr-jetty.pid
   rm -f /run/fmp_wait.pid
 
-  _IS_SQLBACKUP_RUNNING=$(ps aux | grep '[m]ysql_backup.sh' | awk '{print $2}' 2>&1)
+  _IS_SQLBACKUP_RUNNING=$(ps aux | grep '[m]ysql_backup.sh' | awk '{print $2}')
   if [ ! -z "${_IS_SQLBACKUP_RUNNING}" ]; then
     if [ `ps aux | grep -v "grep" | grep --count "mysql_backup.sh"` -gt "2" ]; then
       kill -9 $(ps aux | grep '[m]ysql_backup.sh' | awk '{print $2}') &> /dev/null

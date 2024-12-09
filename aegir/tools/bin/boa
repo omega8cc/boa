@@ -4,10 +4,10 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
-_TODAY=$(date +%y%m%d 2>&1)
+_TODAY=$(date +%y%m%d)
 export _TODAY=${_TODAY//[^0-9]/}
 
-_NOW=$(date +%y%m%d-%H%M%S 2>&1)
+_NOW=$(date +%y%m%d-%H%M%S)
 export _NOW=${_NOW//[^0-9-]/}
 
 _barCnf="/root/.barracuda.cnf"
@@ -23,12 +23,11 @@ _pthIncB="lib/settings/${_filIncB}"
 _pthIncO="lib/settings/${_filIncO}"
 _vBs="/var/backups"
 
-_CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
 _LOG_DIR="${_vBs}/reports/in/$(basename "$0")/${_TODAY}"
 _IN_BARRACUDA_LOG="${_LOG_DIR}/$(basename "$0")-in-barracuda-${_NOW}.log"
 _IN_OCTOPUS_LOG="${_LOG_DIR}/$(basename "$0")-in-octopus-${_NOW}.log"
 _VMFAMILY=XEN
-_VM_TEST="$(uname -a)"
+_VM_TEST=$(uname -a)
 if [[ "${_VM_TEST}" =~ "-beng" ]]; then
   _VMFAMILY="VS"
 fi
@@ -53,7 +52,7 @@ _clean_pid_exit() {
 
 _os_detection_minimal() {
   _APT_UPDATE="apt-get update"
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
   for e in ${_OS_LIST}; do
     if [ "${e}" = "${_OS_CODE}" ]; then
@@ -75,9 +74,9 @@ _check_manufacturer_compatibility() {
     ${_INITINS} dmidecode &> /dev/null
   fi
   # Check if dmidecode is available
-  _DMI_TEST=$(which dmidecode 2>&1)
+  _DMI_TEST=$(which dmidecode)
   if [ -x "${_DMI_TEST}" ]; then
-    _HOST_INFO=$(dmidecode -s system-manufacturer 2>&1)
+    _HOST_INFO=$(dmidecode -s system-manufacturer)
   else
     _HOST_INFO="Unknown, dmidecode not available"
   fi
@@ -106,7 +105,7 @@ _check_no_systemd() {
 
 _if_hosted_sys() {
   if [ -e "/root/.host8.cnf" ] \
-    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
+    || [[ "${_hName}" =~ ".aegir.cc"($) ]]; then
     _hostedSys=YES
   else
     _hostedSys=NO
@@ -153,7 +152,7 @@ _check_virt() {
   _VIRT_TOOL=$(which virt-what 2> /dev/null)
   if [ -x "${_VIRT_TOOL}" ]; then
     _VIRT_TEST=$(virt-what 2> /dev/null)
-    _VIRT_TEST=$(echo -n ${_VIRT_TEST} | fmt -su -w 2500 2>&1)
+    _VIRT_TEST=$(echo -n ${_VIRT_TEST} | fmt -su -w 2500)
     if [ ! -e "/root/.allow.any.virt.cnf" ]; then
       if [ -e "/proc/self/status" ]; then
         _VS_GUEST_TEST=$(grep -E "VxID:[[:space:]]*[0-9]{2,}$" /proc/self/status 2> /dev/null)
@@ -256,7 +255,7 @@ _system_check_clean() {
 }
 
 _ifnames_grub_check_sync() {
-  _IS_IFACE=$(ip a 2>&1)
+  _IS_IFACE=$(ip a)
   _ADD_GRUB_CMD=""
   _GRUB_FILE="/etc/default/grub"
 
@@ -363,8 +362,8 @@ _ifnames_grub_check_sync() {
 _check_root_direct() {
   _U_TEST=DENY
   [ "${SUDO_USER}" ] && _U_TEST_SDO=${SUDO_USER} || _U_TEST_SDO=`whoami`
-  _U_TEST_WHO=$(who am i | awk '{print $1}' 2>&1)
-  _U_TEST_LNE=$(logname 2>&1)
+  _U_TEST_WHO=$(who am i | awk '{print $1}')
+  _U_TEST_LNE=$(logname)
   if [ "${_U_TEST_SDO}" = "root" ] || [ "${_U_TEST_LNE}" = "root" ]; then
     if [ -z "${_U_TEST_WHO}" ]; then
       _U_TEST=ALLOW
@@ -394,7 +393,7 @@ _check_root_direct() {
 _check_root_keys_pwd() {
   # Check if root's password is locked
   _ROOT_PWD_LOCKED="NO"
-  _S_TEST=$(grep 'root:\*:' /etc/shadow 2>&1)
+  _S_TEST=$(grep 'root:\*:' /etc/shadow)
   if [[ "${_S_TEST}" =~ root:\*: ]]; then
     _ROOT_PWD_LOCKED="YES"
   fi
@@ -445,7 +444,7 @@ _check_root_keys_pwd() {
 
 _satellite_check_id() {
   _USER=$1
-  _ID_EXISTS=$(getent passwd ${_USER} 2>&1)
+  _ID_EXISTS=$(getent passwd "${_USER}")
   if [ -z "${_ID_EXISTS}" ]; then
     _DO_NOTHING=YES
   elif [[ "${_ID_EXISTS}" =~ "${_USER}" ]]; then
@@ -534,7 +533,7 @@ _check_dns_settings() {
   if [ -e "/root/.use.local.nameservers.cnf" ]; then
     _USE_PROVIDER_DNS=YES
   else
-    _REMOTE_DNS_TEST=$(host files.aegir.cc 1.1.1.1 -w 10 2>&1)
+    _REMOTE_DNS_TEST=$(host files.aegir.cc 1.1.1.1 -w 10)
   fi
   if [[ "${_REMOTE_DNS_TEST}" =~ "no servers could be reached" ]] \
     || [[ "${_REMOTE_DNS_TEST}" =~ "Host files.aegir.cc not found" ]] \
@@ -600,8 +599,8 @@ _send_report() {
   fi
   if [ ! -z "${_MY_EMAIL}" ]; then
     _repSub="Successful ${_RS} installation"
-    _repSub="REPORT: ${_repSub} on ${_CHECK_HOST}"
-    _repSub=$(echo -n ${_repSub} | fmt -su -w 2500 2>&1)
+    _repSub="REPORT: ${_repSub} on ${_hName}"
+    _repSub=$(echo -n "${_repSub}" | fmt -su -w 2500)
     _if_extended_report
     cat ${_THIS_LOG} | s-nail -s "${_repSub} at ${_NOW}" ${_MY_EMAIL}
     echo "${_repSub} sent to ${_MY_EMAIL}"
@@ -614,7 +613,7 @@ _octopus_install() {
       _usEr="o1"
     else
       _usEr=${_usEr//[^a-zA-Z0-9-.]/}
-      _usEr=$(echo -n ${_usEr} | tr A-Z a-z 2>&1)
+      _usEr=$(echo -n "${_usEr}" | tr A-Z a-z)
     fi
     if [ "${_cmNd}" = "in-octopus" ] || [ "${_cmNd}" = "in-oct" ]; then
       _if_hosted_sys
@@ -1235,7 +1234,7 @@ _init_setup() {
       echo MODD _tRee is ${_tRee}
       echo MODD _kiNd is ${_kiNd}
       _fQdn="${_fQdn//[^a-zA-Z0-9-.]/}"
-      _fQdn="$(echo -n ${_fQdn} | tr A-Z a-z 2>&1)"
+      _fQdn=$(echo -n ${_fQdn} | tr A-Z a-z)
       echo MODD _fQdn is ${_fQdn}
       echo MODD _eMal is ${_eMal}
       echo MODD _usEr is ${_usEr}
@@ -1377,7 +1376,7 @@ _init_setup() {
 }
 
 _find_fast_mirror_early() {
-  _isNetc=$(which netcat 2>&1)
+  _isNetc=$(which netcat)
   if [ ! -x "${_isNetc}" ] || [ -z "${_isNetc}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
@@ -1388,7 +1387,7 @@ _find_fast_mirror_early() {
     apt-get install netcat-traditional ${_aptYesUnth} 2> /dev/null
     wait
   fi
-  _ffMirr=$(which ffmirror 2>&1)
+  _ffMirr=$(which ffmirror)
   if [ -x "${_ffMirr}" ]; then
     _ffList="/var/backups/boa-mirrors-2024-12.txt"
     mkdir -p /var/backups
@@ -1398,9 +1397,9 @@ _find_fast_mirror_early() {
       echo "ao.files.aegir.cc" >> ${_ffList}
     fi
     if [ -e "${_ffList}" ]; then
-      _BROKEN_FFMIRR_TEST=$(grep "stuff" ${_ffMirr} 2>&1)
+      _BROKEN_FFMIRR_TEST=$(grep "stuff" "${_ffMirr}")
       if [[ "${_BROKEN_FFMIRR_TEST}" =~ "stuff" ]]; then
-        _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
+        _CHECK_MIRROR=$(bash "${_ffMirr}" < "${_ffList}")
         _USE_MIR="${_CHECK_MIRROR}"
         [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.aegir.cc"
       else
@@ -1417,7 +1416,7 @@ _find_fast_mirror_early() {
 }
 
 _if_reinstall_curl() {
-  _isCurl=$(curl --version 2>&1)
+  _isCurl=$(curl --version)
   if [[ ! "${_isCurl}" =~ "OpenSSL" ]] \
     || [[ "${_isCurl}" =~ "libcurl.so.4" ]] \
     || [ -z "${_isCurl}" ]; then
@@ -1438,7 +1437,7 @@ _if_reinstall_curl() {
       apt-get build-dep curl ${_aptYesUnth} 2> /dev/null
       apt-get install curl --reinstall ${_aptYesUnth} -qq 2> /dev/null
     fi
-    _isCurl=$(curl --version 2>&1)
+    _isCurl=$(curl --version)
     if [[ ! "${_isCurl}" =~ "OpenSSL" ]] || [ -z "${_isCurl}" ]; then
       echo "ERRR: curl is still broken, please install it and debug manually"
       _clean_pid_exit
@@ -1552,7 +1551,7 @@ _csf_check_fix() {
     _if_fix_iptables_symlinks
     csf -uf &> /dev/null
     wait
-    _NFTABLES_TEST=$(iptables -V 2>&1)
+    _NFTABLES_TEST=$(iptables -V)
     if [[ "${_NFTABLES_TEST}" =~ "nf_tables" ]]; then
       if [ -e "/usr/sbin/iptables-legacy" ]; then
         update-alternatives --set iptables /usr/sbin/iptables-legacy &> /dev/null
@@ -1592,7 +1591,7 @@ _csf_check_fix() {
     ### CVE-2019-11478 SACK Slowness
     ### CVE-2019-11479 Excess Resource Consumption Due to Low MSS Values
     if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
-      _SACK_TEST=$(ip6tables --list | grep tcpmss 2>&1)
+      _SACK_TEST=$(ip6tables --list | grep tcpmss)
       if [[ ! "${_SACK_TEST}" =~ "tcpmss" ]]; then
         sysctl net.ipv4.tcp_mtu_probing=0 &> /dev/null
         iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
@@ -1604,6 +1603,7 @@ _csf_check_fix() {
 
 _check_root() {
   if [ $(whoami) = "root" ]; then
+    _hName=$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)
     [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
     if [ "${_cmNd}" = "in-octopus" ] || [ "${_cmNd}" = "in-oct" ]; then
       _system_check_ready
@@ -1721,11 +1721,11 @@ _check_root() {
 
 _display_version() {
   if [ $(whoami) = "root" ]; then
-    _HOST_INFO=$(dmidecode -s system-manufacturer 2>&1)
+    _HOST_INFO=$(dmidecode -s system-manufacturer)
     _VIRT_TOOL=$(which virt-what 2> /dev/null)
     if [ -x "${_VIRT_TOOL}" ]; then
       _VIRT_TEST=$(virt-what 2> /dev/null)
-      _VIRT_TEST=$(echo -n ${_VIRT_TEST} | fmt -su -w 2500 2>&1)
+      _VIRT_TEST=$(echo -n "${_VIRT_TEST}" | fmt -su -w 2500)
       if [ ! -e "/root/.allow.any.virt.cnf" ]; then
         if [ -e "/proc/self/status" ]; then
           _VS_GUEST_TEST=$(grep -E "VxID:[[:space:]]*[0-9]{2,}$" /proc/self/status 2> /dev/null)
@@ -1789,7 +1789,7 @@ _display_version() {
         _VIRT_IS="${_VIRT_TEST} not supported"
       fi
     fi
-    _thiSys="$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)/$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1) $(uname -m 2>&1)"
+    _thiSys=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)/$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2) $(uname -m)
     if [ -e "/var/log/barracuda_log.txt" ]; then
       _crlBoav=`tail --lines=1 /var/log/barracuda_log.txt \
         | cut -d '/' -f4 \
@@ -1874,7 +1874,7 @@ _check_system_ram() {
 
 _display_info() {
   if [ $(whoami) = "root" ]; then
-    _HOST_INFO=$(dmidecode -s system-manufacturer 2>&1)
+    _HOST_INFO=$(dmidecode -s system-manufacturer)
     _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)
     _CPU_INFO=${_CPU_INFO//[^0-9]/}
     _NPROC_TEST=$(which nproc 2>&1)
@@ -2002,10 +2002,10 @@ _display_info() {
       | cut -d"-" -f1 \
       | awk '{ print $1}' 2>&1)
     [ -e "/opt/site24x7/monagent/version.txt" ] && _MON=$(cat /opt/site24x7/monagent/version.txt 2>&1)
-    [ -n "${_MON}" ] && _MON=$(echo -n ${_MON} | tr -d "\n" 2>&1)
+    [ -n "${_MON}" ] && _MON=$(echo -n ${_MON} | tr -d '\n')
     [ "${_mOde}" = "clear" ] && clear
     echo
-    _thiSys="$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)/$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1) $(uname -m 2>&1)"
+    _thiSys=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)/$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2) $(uname -m)
     if [ -e "/var/log/barracuda_log.txt" ]; then
       _AUT=$(grep _AUTOPILOT ${_barCnf} 2>&1)
       _BIL=$(grep _BACKEND_ITEMS_LIST ${_barCnf} 2>&1)
@@ -2044,7 +2044,7 @@ _display_info() {
       echo "Ready for BOA ${_crlBoav} on ${_thiSys}"
     fi
 
-    [ "${_mOde}" = "report" ] && echo "Host $(hostname -f 2>/dev/null || uname -n) check on $(date)"
+    [ "${_mOde}" = "report" ] && echo "Host ${_hName} check on $(date)"
     [ "${_mOde}" = "report" ] && echo "Host uptime $(uptime)"
     [ ! -z "${_HOST_INFO}" ] && echo "  HOST ${_HOST_INFO}"
     [ ! -z "${_VIRT_IS}" ] && echo "  VPS ${_VIRT_IS}"

@@ -9,6 +9,7 @@ export _xSrl=550devT01
 _WEBG=www-data
 _THIS_DB_PORT=3306
 _ieni="--ignore-errors"
+_pxSqlPass=$(cat /root/.my.proxysql_adm_pwd.txt 2>/dev/null | tr -d '\n')
 
 ###
 ### Avoid too many questions
@@ -258,9 +259,7 @@ _migrate_sites() {
             fi
             [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL3 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
             if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
-              _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>&1)
-              _PROXYSQL_PASSWORD=$(echo -n ${_PROXYSQL_PASSWORD} | tr -d "\n" 2>&1)
-              mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
+              mysql -uadmin -p${_pxSqlPass} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
 DELETE FROM mysql_users WHERE username='${_DBN}';
 DELETE FROM mysql_query_rules WHERE username='${_DBN}';
 INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_DBN}','${_DBP}','10');
@@ -1051,7 +1050,7 @@ _post_mig() {
     echo Exit now
     exit 1
   else
-    echo Running _post_mig inside vms $(hostname -f 2>/dev/null || uname -n)
+    echo Running _post_mig inside vms ${_hName}
     if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
       #kill -9 $(ps aux | grep '[s]olr' | awk '{print $2}') &> /dev/null
       service solr7 restart
@@ -1095,7 +1094,7 @@ _pre_mig() {
     echo Exit now
     exit 1
   else
-    echo Running _pre_mig inside vms $(hostname -f 2>/dev/null || uname -n)
+    echo Running _pre_mig inside vms ${_hName}
     if [ -e "/var/xdrago/runner.sh" ]; then
       mv -f /var/xdrago/runner.sh /var/xdrago/.runner.sh.off
       kill -9 $(ps aux | grep '[r]unner' | awk '{print $2}') &> /dev/null
@@ -1116,8 +1115,8 @@ _pre_mig() {
       mv -f /var/xdrago/manage_ltd_users.sh /var/xdrago/.manage_ltd_users.sh.off
       kill -9 $(ps aux | grep '[m]anage_ltd_users' | awk '{print $2}') &> /dev/null
     fi
-    if [ $(hostname -f 2>/dev/null || uname -n) = "${_hst}" ]; then
-      echo Preparing source $(hostname -f 2>/dev/null || uname -n) for outgoing migration...
+    if [ ${_hName} = "${_hst}" ]; then
+      echo Preparing source ${_hName} for outgoing migration...
       if [ ! -e "/root/.ssh/id_rsa.pub" ]; then
         echo Create id_rsa.pub...
         ssh-keygen -b 4096 -t rsa -N "" -f ~/.ssh/id_rsa &> /dev/null
@@ -1126,10 +1125,10 @@ _pre_mig() {
         mkdir -p /var/www/nginx-default
         cp -af /root/.ssh/id_rsa.pub /var/www/nginx-default/auth_undefined_keys.txt
       else
-        echo Ops.. /root/.ssh/id_rsa.pub does not exist in $(hostname -f 2>/dev/null || uname -n)
+        echo Ops.. /root/.ssh/id_rsa.pub does not exist in ${_hName}
       fi
     else
-      echo Preparing target $(hostname -f 2>/dev/null || uname -n) for incoming migration...
+      echo Preparing target ${_hName} for incoming migration...
       echo Add remote id_rsa.pub to authorized_keys here...
       mkdir -p /root/.ssh
       rm -f /root/.ssh/auth_undefined_keys.txt*
@@ -1140,7 +1139,7 @@ _pre_mig() {
         cat /root/.ssh/auth_undefined_keys.txt >> /root/.ssh/authorized_keys
         chmod 600 /root/.ssh/authorized_keys
       else
-        echo Ops.. /root/.ssh/auth_undefined_keys.txt does not exist in $(hostname -f 2>/dev/null || uname -n)
+        echo Ops.. /root/.ssh/auth_undefined_keys.txt does not exist in ${_hName}
       fi
     fi
   fi
@@ -1165,8 +1164,7 @@ _sub_ssl_gen() {
       if [ "${_target_ip}" = "${_dedicated_ip}" ]; then
         _dedicated_ip="*"
         if [ -e "/data/disk/${_oct_uid}/log/extra_domain.txt" ]; then
-          _hmFrontExtra=$(cat /data/disk/${_oct_uid}/log/extra_domain.txt 2>&1)
-          _hmFrontExtra=$(echo -n ${_hmFrontExtra} | tr -d "\n" 2>&1)
+          _hmFrontExtra=$(cat /data/disk/${_oct_uid}/log/extra_domain.txt 2>/dev/null | tr -d '\n')
         fi
         if [ ! -z "${_hmFrontExtra}" ]; then
           _dedicated_sn="${_domain_name} ${_hmFrontExtra} www.${_domain_name}"
@@ -1282,8 +1280,7 @@ _check_root() {
         _SQL_CONNECT=localhost
       fi
     fi
-    _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
-    _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+    _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
   else
     echo "ERROR: This script should be run as a root user"
     exit 1
@@ -1298,6 +1295,7 @@ _check_root() {
     echo "ERROR: We can not proceed until it is below 90/100"
     exit 1
   fi
+  _hName=$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)
 }
 
 case "$1" in

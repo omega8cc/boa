@@ -72,8 +72,7 @@ else
   _SQL_CACHE_EXC="${_SQL_CACHE_EXC_DEF}"
 fi
 
-_SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
-_SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+_SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
 
 _create_locks() {
   echo "INFO: Creating locks for $1"
@@ -88,7 +87,7 @@ _remove_locks() {
 _check_running() {
   while [ -z "${_IS_MYSQLD_RUNNING}" ] \
     || [ ! -e "/run/mysqld/mysqld.sock" ]; do
-    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
+    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}')
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       echo "INFO: Waiting for MySQLD availability..."
     fi

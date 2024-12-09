@@ -38,7 +38,7 @@ _check_root
 
 _os_detection_minimal() {
   _APT_UPDATE="apt-get update"
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
   for e in ${_OS_LIST}; do
     if [ "${e}" = "${_OS_CODE}" ]; then
@@ -78,7 +78,7 @@ fi
 #
 # Find the fastest mirror.
 _find_fast_mirror_early() {
-  _isNetc=$(which netcat 2>&1)
+  _isNetc=$(which netcat)
   if [ ! -x "${_isNetc}" ] || [ -z "${_isNetc}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
@@ -89,7 +89,7 @@ _find_fast_mirror_early() {
     apt-get install netcat-traditional ${_aptYesUnth} 2> /dev/null
     wait
   fi
-  _ffMirr=$(which ffmirror 2>&1)
+  _ffMirr=$(which ffmirror)
   if [ -x "${_ffMirr}" ]; then
     _ffList="/var/backups/boa-mirrors-2024-12.txt"
     mkdir -p /var/backups
@@ -99,9 +99,9 @@ _find_fast_mirror_early() {
       echo "ao.files.aegir.cc" >> ${_ffList}
     fi
     if [ -e "${_ffList}" ]; then
-      _BROKEN_FFMIRR_TEST=$(grep "stuff" ${_ffMirr} 2>&1)
+      _BROKEN_FFMIRR_TEST=$(grep "stuff" "${_ffMirr}")
       if [[ "${_BROKEN_FFMIRR_TEST}" =~ "stuff" ]]; then
-        _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
+        _CHECK_MIRROR=$(bash "${_ffMirr}" < "${_ffList}")
         _USE_MIR="${_CHECK_MIRROR}"
         [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.aegir.cc"
       else
@@ -123,11 +123,11 @@ _if_reinstall_curl_src() {
     apt-get update -qq &> /dev/null
     apt-get install lsb-release ${_aptYesUnth} -qq &> /dev/null
   fi
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   [ "${_OS_CODE}" = "wheezy" ] && _CURL_VRN=7.50.1
   [ "${_OS_CODE}" = "jessie" ] && _CURL_VRN=7.71.1
   [ "${_OS_CODE}" = "stretch" ] && _CURL_VRN=8.2.1
-  _isCurl=$(curl --version 2>&1)
+  _isCurl=$(curl --version)
   if [[ ! "${_isCurl}" =~ "OpenSSL" ]] || [ -z "${_isCurl}" ]; then
     echo "OOPS: cURL is broken! Re-installing.."
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
@@ -242,10 +242,10 @@ if [ -d "/data/u" ]; then
   _chckSts="SST ${_ALL_SITES_NR} ${_chckSts}"
   _chckHst=$(hostname 2>&1)
   _chckIps=$(hostname -I 2>&1)
-  _checkVn=$(/opt/local/bin/boa version | tr -d "\n" 2>&1)
+  _checkVn=$(/opt/local/bin/boa version | tr -d '\n')
   if [[ "${_checkVn}" =~ "===" ]] || [ -z "${_checkVn}" ]; then
     if [ -e "/var/log/barracuda_log.txt" ]; then
-      _checkVn=$(tail --lines=1 /var/log/barracuda_log.txt | tr -d "\n" 2>&1)
+      _checkVn=$(tail --lines=1 /var/log/barracuda_log.txt | tr -d '\n')
     else
       _checkVn="whereis barracuda_log.txt"
     fi
