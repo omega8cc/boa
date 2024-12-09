@@ -1584,7 +1584,7 @@ _update_agents() {
   fi
 
   if [ -d "/data/u" ] \
-    && [ ! -e "${_pthLog}/hosting.cron.queue.ctrl.f98.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/hosting.cron.queue.ctrl.f97.${_tRee}.${_xSrl}.pid" ]; then
     _hQueueF="hosting_cron.module"
     _hQueueP="/var/xdrago/conf/${_hQueueF}"
     _find_correct_ip
@@ -1622,7 +1622,7 @@ _update_agents() {
         fi
       fi
     done
-    touch ${_pthLog}/hosting.cron.queue.ctrl.f98.${_tRee}.${_xSrl}.pid
+    touch ${_pthLog}/hosting.cron.queue.ctrl.f97.${_tRee}.${_xSrl}.pid
   fi
 
   if [ -d "/data/u" ] \
