@@ -1586,7 +1586,7 @@ _update_agents() {
     && [ ! -e "${_pthLog}/hosting.cron.queue.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
     _hQueueF="hosting_cron_queue-reliability.patch"
     _hQueueP="/var/xdrago/conf/${_hQueueF}"
-    if [ ! -e "${_hQueueP}" ] \
+    if [ ! -e "${_hQueueP}" ]; then
       curl ${_crlGet} "${_urlHmr}/patches/${_hQueueF}" -o ${_hQueueP}
     fi
     for _pthSysUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
