@@ -826,7 +826,9 @@ _barracuda_install() {
       && [ -e "${_vBs}/${_filIncB}" ] \
       && [ -e "${_vBs}/${_filIncO}" ]; then
       if [ -n "${_eXtr}" ]; then
-        if [ "${_eXtr}" = "php-83" ] || [ "${_eXtr}" = "php-8.3" ]; then
+        if [ "${_eXtr}" = "php-84" ] || [ "${_eXtr}" = "php-8.4" ]; then
+          _pI=8.4
+        elif [ "${_eXtr}" = "php-83" ] || [ "${_eXtr}" = "php-8.3" ]; then
           _pI=8.3
         elif [ "${_eXtr}" = "php-82" ] || [ "${_eXtr}" = "php-8.2" ]; then
           _pI=8.2
@@ -854,9 +856,9 @@ _barracuda_install() {
         || [ "${_eXtr}" = "php-max" ]; then
         sed -i "s/^_PHP_SINGLE_.*/_PHP_SINGLE_INSTALL=/g"    ${_vBs}/${_filIncB}
         if [ "${_eXtr}" = "php-max" ]; then
-          _pA="5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2 8.3"
+          _pA="5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2 8.3 8.4"
         else
-          _pA="7.4 8.1 8.2 8.3"
+          _pA="7.4 8.1 8.2 8.3 8.4"
         fi
         _pI=8.3
         sed -i "s/^_PHP_M.*/_PHP_MULTI_INSTALL=\"${_pA}\"/g" ${_vBs}/${_filIncB}
@@ -2478,9 +2480,9 @@ _if_display_help() {
 
     {extra}
       license <------ valid new relic license key
-      php-8.3 <------ enable single-PHP mode (8.1 or 8.2 or 8.3 or 7.4)
-      php-min <------ install PHP 8.1, 8.2, 8.3, 7.4, use 8.3 by default (php-all)
-      php-max <------ install PHP 8.1, 8.2, 8.3, 8.0, 7.4, 7.3, 7.2, 7.1, 7.0, 5.6
+      php-8.3 <------ enable single-PHP mode (8.1 or 8.2 or 8.3 or 8.4 or 7.4)
+      php-min <------ install PHP 8.1, 8.2, 8.3, 8.4, 7.4, use 8.3 by default (php-all)
+      php-max <------ install PHP 8.0, 8.1, 8.2, 8.3, 8.4, 7.4, 7.3, 7.2, 7.1, 7.0, 5.6
       nodns <-------- disable DNS/SMTP checks on the fly
       percona-8.0 <-- specify Percona version to use (5.7, 8.0, 8.3, 8.4)
 

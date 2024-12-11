@@ -4176,7 +4176,8 @@ _satellite_check_php_compatibility() {
     _T_FPM_VRN=$(cat ${_ROOT}/static/control/fpm.info 2>&1)
     _T_FPM_VRN=${_T_FPM_VRN//[^0-9.]/}
     _T_FPM_VRN=$(echo -n ${_T_FPM_VRN} | tr -d "\n" 2>&1)
-    if [ "${_T_FPM_VRN}" = "8.3" ] \
+    if [ "${_T_FPM_VRN}" = "8.4" ] \
+      || [ "${_T_FPM_VRN}" = "8.3" ] \
       || [ "${_T_FPM_VRN}" = "8.2" ] \
       || [ "${_T_FPM_VRN}" = "8.1" ] \
       || [ "${_T_FPM_VRN}" = "8.0" ] \
@@ -4197,7 +4198,8 @@ _satellite_check_php_compatibility() {
     _T_CLI_VRN=$(cat ${_ROOT}/static/control/cli.info 2>&1)
     _T_CLI_VRN=${_T_CLI_VRN//[^0-9.]/}
     _T_CLI_VRN=$(echo -n ${_T_CLI_VRN} | tr -d "\n" 2>&1)
-    if [ "${_T_CLI_VRN}" = "8.3" ] \
+    if [ "${_T_CLI_VRN}" = "8.4" ] \
+      || [ "${_T_CLI_VRN}" = "8.3" ] \
       || [ "${_T_CLI_VRN}" = "8.2" ] \
       || [ "${_T_CLI_VRN}" = "8.1" ] \
       || [ "${_T_CLI_VRN}" = "8.0" ] \

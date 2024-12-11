@@ -27,7 +27,7 @@ _is_legacy_version() {
   case "$_version" in
     php5*) return 0 ;;          # PHP 5.x are legacy
     php7.[0-4]*) return 0 ;;      # PHP 7.0-7.4 are legacy
-    php8.[0-3]*) return 1 ;;      # PHP 8.0-8.3 are current
+    php8.[0-4]*) return 1 ;;      # PHP 8.0-8.4 are current
     *)
       echo "Unknown PHP version: $_version" >&2
       return 1
@@ -127,7 +127,7 @@ php_admin_flag[apc.cache_by_default] = on
 php_admin_flag[apc.stat] = on
 EOL
   else
-    # For current PHP versions (PHP 8.0-8.3), use APCu for user cache only
+    # For current PHP versions (PHP 8.0-8.4), use APCu for user cache only
     cat > "${_apc_ini}" <<EOL
 ; APCu Configuration for ${_php_version_dir}
 php_admin_flag[apc.enabled] = on

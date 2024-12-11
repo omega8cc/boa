@@ -2518,7 +2518,7 @@ _php_not_used_enable_again() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _php_not_used_enable_again"
   fi
-  _PHP_V="5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2 8.3"
+  _PHP_V="5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2 8.3 8.4"
   for e in ${_PHP_V}; do
     _re=
     if [ ! -e "/opt/php${_re}/bin/php" ]; then
@@ -2548,7 +2548,7 @@ _php_not_used_disable() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _php_not_used_disable"
   fi
-  _PHP_V="5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2 8.3"
+  _PHP_V="5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2 8.3 8.4"
   _PHP_A="${_PHP_MULTI_OPTIM}"
   for e in ${_PHP_V}; do
     _re=

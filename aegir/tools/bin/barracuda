@@ -649,7 +649,9 @@ _mysql_downgrade_protection() {
 _up_action() {
   if [ -e "${_vBs}/${_barName}" ] && [ -e "${_barCnf}" ]; then
     if [ ! -z "${_rKey}" ]; then
-      if [ "${_rKey}" = "php-83" ] || [ "${_rKey}" = "php-8.3" ]; then
+      if [ "${_rKey}" = "php-84" ] || [ "${_rKey}" = "php-8.4" ]; then
+        _phpS="8.4"
+      elif [ "${_rKey}" = "php-83" ] || [ "${_rKey}" = "php-8.3" ]; then
         _phpS="8.3"
       elif [ "${_rKey}" = "php-82" ] || [ "${_rKey}" = "php-8.2" ]; then
         _phpS="8.2"
@@ -699,7 +701,8 @@ _up_action() {
 
     fi
     ### Make sure that _PHP_SINGLE_INSTALL is set in ${_barCnf}
-    if [ "${_phpS}" = "8.3" ] \
+    if [ "${_phpS}" = "8.4" ] \
+      || [ "${_phpS}" = "8.3" ] \
       || [ "${_phpS}" = "8.2" ] \
       || [ "${_phpS}" = "8.1" ] \
       || [ "${_phpS}" = "7.4" ]; then
@@ -713,7 +716,8 @@ _up_action() {
     fi
     ### Make sure that _PHP_SINGLE_INSTALL takes precedence
     if [ ! -z "${_phpS}" ]; then
-      if [ "${_phpS}" = "8.3" ] \
+      if [ "${_phpS}" = "8.4" ] \
+        || [ "${_phpS}" = "8.3" ] \
         || [ "${_phpS}" = "8.2" ] \
         || [ "${_phpS}" = "8.1" ] \
         || [ "${_phpS}" = "7.4" ]; then
@@ -771,9 +775,9 @@ _up_action() {
         fi
       elif [ "${_phpS}" = "MIN" ] || [ "${_phpS}" = "MAX" ]; then
         if [ "${_phpS}" = "MAX" ]; then
-          _phpM="5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2 8.3"
+          _phpM="5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2 8.3 8.4"
         else
-          _phpM="7.4 8.1 8.2 8.3"
+          _phpM="7.4 8.1 8.2 8.3 8.4"
         fi
         _phpS="8.3"
 
@@ -1835,9 +1839,9 @@ _if_display_help() {
 
     {options}
       newrelickey <-- activate New Relic integration with valid license key
-      php-8.3 <------ enable single-PHP mode (8.1 or 8.2 or 8.3 or 7.4)
-      php-min <------ install PHP 8.1, 8.2, 8.3, 7.4, use 8.3 by default (php-all)
-      php-max <------ install PHP 8.1, 8.2, 8.3, 8.0, 7.4, 7.3, 7.2, 7.1, 7.0, 5.6
+      php-8.3 <------ enable single-PHP mode (8.1 or 8.2 or 8.3 or 8.4 or 7.4)
+      php-min <------ install PHP 8.1, 8.2, 8.3, 8.4, 7.4, use 8.3 by default (php-all)
+      php-max <------ install PHP 8.0, 8.1, 8.2, 8.3, 8.4, 7.4, 7.3, 7.2, 7.1, 7.0, 5.6
       nodns <-------- disable DNS/SMTP checks on the fly
       percona-8.0 <-- specify Percona version to use (5.7, 8.0, 8.3, 8.4)
 

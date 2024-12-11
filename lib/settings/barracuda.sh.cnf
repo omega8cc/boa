@@ -59,13 +59,13 @@ _EASY_HOSTNAME="wildcard-enabled-hostname"
 ### and _PHP_CLI_VERSION.
 ###
 ### Available options:
-### 8.3, 8.2, 8.1, 8.0
+### 8.4, 8.3, 8.2, 8.1, 8.0
 ### 7.4, 7.3, 7.2, 7.1, 7.0
 ### 5.6
 ###
 ### NOTE: 8.3 is required
 ###
-### Example: _PHP_MULTI_INSTALL="7.4 8.1 8.2 8.3"
+### Example: _PHP_MULTI_INSTALL="7.4 8.2 8.3"
 ###
 ### Note that removing any version from this
 ### list once it is already installed, will
@@ -76,7 +76,7 @@ _EASY_HOSTNAME="wildcard-enabled-hostname"
 ### which are used to define version to be
 ### used by Master or Satellite Instance.
 ###
-_PHP_MULTI_INSTALL="7.4 8.1 8.2 8.3"
+_PHP_MULTI_INSTALL="7.4 8.1 8.2 8.3 8.4"
 
 
 ###----------------------------------------###
@@ -91,7 +91,7 @@ _PHP_MULTI_INSTALL="7.4 8.1 8.2 8.3"
 ### _PHP_MULTI_INSTALL
 ###
 ### Available options:
-### 8.3, 8.2, 8.1, 7.4
+### 8.4, 8.3, 8.2, 8.1, 7.4
 ###
 ### Example: _PHP_SINGLE_INSTALL=8.3
 ###
@@ -107,7 +107,7 @@ _PHP_SINGLE_INSTALL=
 ### install and upgrade.
 ###
 ### Available options (if installed):
-### 8.3, 8.2, 8.1, 8.0
+### 8.4, 8.3, 8.2, 8.1, 8.0
 ### 7.4, 7.3, 7.2, 7.1, 7.0
 ### 5.6
 ###
@@ -127,7 +127,7 @@ _PHP_FPM_VERSION=8.3
 ### install and upgrade.
 ###
 ### Available options (if installed):
-### 8.3, 8.2, 8.1, 8.0
+### 8.4, 8.3, 8.2, 8.1, 8.0
 ### 7.4, 7.3, 7.2, 7.1, 7.0
 ### 5.6
 ###

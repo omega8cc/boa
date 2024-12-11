@@ -1628,7 +1628,8 @@ _php_if_versions_cleanup_cnf() {
   if [ "${_AUTO_PHP_CLEANUP}" = "YES" ]; then
     ### Make sure that _PHP_SINGLE_INSTALL takes precedence
     if [ ! -z "${_PHP_SINGLE_INSTALL}" ]; then
-      if [ "${_PHP_SINGLE_INSTALL}" = "8.3" ] \
+      if [ "${_PHP_SINGLE_INSTALL}" = "8.4" ] \
+        || [ "${_PHP_SINGLE_INSTALL}" = "8.3" ] \
         || [ "${_PHP_SINGLE_INSTALL}" = "8.2" ] \
         || [ "${_PHP_SINGLE_INSTALL}" = "8.1" ] \
         || [ "${_PHP_SINGLE_INSTALL}" = "7.4" ]; then
@@ -1785,6 +1786,18 @@ _php_if_versions_cleanup_cnf() {
         || [[ "${_is_PHP_FPM_eight_three}" =~ "8.3" ]] \
         || [[ "${_is_PHP_CLI_eight_three}" =~ "8.3" ]]; then
         _is_PHP_eight_three=8.3
+        _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_eight_three}"
+      fi
+
+      ### Add PHP 8.4 if used
+      _is_PHP_multi_eight_three=$(grep "8\.4" /data/disk/*/static/control/multi-fpm.info 4>&1)
+      _is_PHP_FPM_eight_three=$(grep "8\.4" /data/disk/*/static/control/fpm.info 4>&1)
+      _is_PHP_CLI_eight_three=$(grep "8\.4" /data/disk/*/static/control/cli.info 4>&1)
+      _is_PHP_eight_three=
+      if [[ "${_is_PHP_multi_eight_three}" =~ "8.4" ]] \
+        || [[ "${_is_PHP_FPM_eight_three}" =~ "8.4" ]] \
+        || [[ "${_is_PHP_CLI_eight_three}" =~ "8.4" ]]; then
+        _is_PHP_eight_three=8.4
         _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_eight_three}"
       fi
 
@@ -2556,7 +2569,8 @@ _barracuda_cnf() {
 
     ### Make sure that _PHP_SINGLE_INSTALL takes precedence
     if [ ! -z "${_PHP_SINGLE_INSTALL}" ]; then
-      if [ "${_PHP_SINGLE_INSTALL}" = "8.3" ] \
+      if [ "${_PHP_SINGLE_INSTALL}" = "8.4" ] \
+        || [ "${_PHP_SINGLE_INSTALL}" = "8.3" ] \
         || [ "${_PHP_SINGLE_INSTALL}" = "8.2" ] \
         || [ "${_PHP_SINGLE_INSTALL}" = "8.1" ] \
         || [ "${_PHP_SINGLE_INSTALL}" = "7.4" ]; then

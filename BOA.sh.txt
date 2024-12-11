@@ -1683,7 +1683,7 @@ _update_agents() {
           else
             sed -i "s/args.*q=/args ~* \"foobaroff=/g" ${_ngxCnf}
           fi
-          for _version in 81 82 83 74; do
+          for _version in 81 82 83 84 74; do
             if [ -x "/opt/php${_version}/bin/php" ]; then
               if [ "${_version}" = "74" ]; then
                 _useCli="7.4"

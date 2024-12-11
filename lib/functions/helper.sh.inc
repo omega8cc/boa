@@ -742,7 +742,8 @@ _check_boa_php_compatibility() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _check_boa_php_compatibility"
   fi
-  if [[ "${_PHP_MULTI_INSTALL}" =~ "8.3" ]] \
+  if [[ "${_PHP_MULTI_INSTALL}" =~ "8.4" ]] \
+    || [[ "${_PHP_MULTI_INSTALL}" =~ "8.3" ]] \
     || [[ "${_PHP_MULTI_INSTALL}" =~ "8.2" ]] \
     || [[ "${_PHP_MULTI_INSTALL}" =~ "8.1" ]] \
     || [[ "${_PHP_MULTI_INSTALL}" =~ "7.4" ]]; then
