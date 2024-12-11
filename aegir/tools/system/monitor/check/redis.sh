@@ -56,7 +56,7 @@ _fpm_reload() {
   mkdir -p /var/backups/php-logs/${_NOW}/
   mv -f /var/log/php/* /var/backups/php-logs/${_NOW}/
   renice ${_B_NICE} -p $$ &> /dev/null
-  _PHP_V="83 82 81 80 74 73 72 71 70 56"
+  _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
       service php${e}-fpm reload

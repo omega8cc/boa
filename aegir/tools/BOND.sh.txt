@@ -174,6 +174,8 @@ _PHP82_API=20220829
 _PHP82_VRN=8.2.26
 _PHP83_API=20230831
 _PHP83_VRN=8.3.14
+_PHP84_API=20240924
+_PHP84_VRN=8.4.1
 
 ###
 ### Helper variables
@@ -634,10 +636,11 @@ _fix_php_ini_opcache() {
 #
 # Fix all FMP php.ini files to add Zend OPcache
 _fix_php_ini_opcache_all() {
-  _PHP_V="83 82 81 80 74 73 72 71 70 56"
+  _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     _P_API=
     case "${e}" in
+      84) _P_API="${_PHP84_API}" ;;
       83) _P_API="${_PHP83_API}" ;;
       82) _P_API="${_PHP82_API}" ;;
       81) _P_API="${_PHP81_API}" ;;
@@ -673,10 +676,11 @@ _fix_php_ini_tet() {
 # Fix all php.ini files to add php_tet.so
 _fix_php_ini_tet_all() {
   if [ "${_PHP_TET}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "TET" ]]; then
-    _PHP_V="83 82 81 80 74 73 72 71 70 56"
+    _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
       _P_API=
       case "${e}" in
+        84) _P_API="${_PHP84_API}" ;;
         83) _P_API="${_PHP83_API}" ;;
         82) _P_API="${_PHP82_API}" ;;
         81) _P_API="${_PHP81_API}" ;;
@@ -803,7 +807,7 @@ _php_conf_update() {
   wait
   sed -i "s/mode =.*/mode = 0660/g" /opt/etc/fpm/fpm-pool-common.conf
   wait
-  _PHP_V="83 82 81 80 74 73 72 71 70 56"
+  _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     if [ ! -e "/var/www/www${e}" ]; then
       adduser --system --group --home /var/www/www${e} www${e} &> /dev/null
@@ -893,6 +897,8 @@ _php_conf_update() {
 #
 _restore_default_php() {
   _msg "INFO: Restoring default PHP configuration"
+  cp -af ${_locCnf}/php/php84-cli.ini /opt/php84/lib/php.ini &> /dev/null
+  cp -af ${_locCnf}/php/php84.ini /opt/php84/etc/php84.ini   &> /dev/null
   cp -af ${_locCnf}/php/php83-cli.ini /opt/php83/lib/php.ini &> /dev/null
   cp -af ${_locCnf}/php/php83.ini /opt/php83/etc/php83.ini   &> /dev/null
   cp -af ${_locCnf}/php/php82-cli.ini /opt/php82/lib/php.ini &> /dev/null
@@ -1137,7 +1143,7 @@ _tune_nginx() {
 #
 _restart_services() {
   _msg "INFO: Reloading services"
-  _PHP_V="83 82 81 80 74 73 72 71 70 56"
+  _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     if [ -e "/etc/init.d/php${e}-fpm" ]; then
       service php${e}-fpm reload &> /dev/null
@@ -1180,7 +1186,7 @@ _tune_web_server_config() {
       _CHILD_MAX_FPM="${_PHP_FPM_WORKERS}"
     fi
   fi
-  _PHP_V="83 82 81 80 74 73 72 71 70 56"
+  _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     sed -i "s/pm.max_children =.*/pm.max_children = ${_CHILD_MAX_FPM}/g" \
       /opt/php${e}/etc/pool.d/www${e}.conf &> /dev/null
@@ -1487,6 +1493,7 @@ _tune_memory_limits() {
         else
           _L_NGX_WRKS=${_NGINX_WORKERS}
         fi
+        sed -i "s/64000/128000/g"  /opt/php84/etc/php84.ini &> /dev/null
         sed -i "s/64000/128000/g"  /opt/php83/etc/php83.ini &> /dev/null
         sed -i "s/64000/128000/g"  /opt/php82/etc/php82.ini &> /dev/null
         sed -i "s/64000/128000/g"  /opt/php81/etc/php81.ini &> /dev/null
@@ -1579,6 +1586,12 @@ _tune_memory_limits() {
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ]; then
     sed -i "s/395/${_USE_FPM}/g" /opt/etc/fpm/fpm-pool-common.conf &> /dev/null
     wait
+  fi
+  if [ -e "/opt/php84/etc/php84.ini" ]; then
+    sed -i "s/395/${_USE_FPM}/g" /opt/php84/etc/php84.ini &> /dev/null
+    wait
+    sed -i "s/181/${_USE_OPC}/g" /opt/php84/etc/php84.ini &> /dev/null
+    sed -i "s/395/${_USE_CLI}/g" /opt/php84/lib/php.ini   &> /dev/null
   fi
   if [ -e "/opt/php83/etc/php83.ini" ]; then
     sed -i "s/395/${_USE_FPM}/g" /opt/php83/etc/php83.ini &> /dev/null

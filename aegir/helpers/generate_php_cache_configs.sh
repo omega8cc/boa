@@ -16,7 +16,7 @@ _PHP_BASE_DIR="/opt"
 _OPCACHE_FILE_CACHE_BASE="/var/www/phpcache"
 _LOCKFILE_BASE="/var/tmp/fpm"
 _COMMON_POOL_CONFIG="/opt/etc/fpm/fpm-pool-common.conf"
-_PHP_VERSIONS=("php56" "php70" "php71" "php72" "php73" "php74" "php80" "php81" "php82" "php83")
+_PHP_VERSIONS=("php56" "php70" "php71" "php72" "php73" "php74" "php80" "php81" "php82" "php83" "php84")
 
 # --------------------------------------------------------------------
 # Function: _is_legacy_version

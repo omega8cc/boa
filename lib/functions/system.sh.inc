@@ -805,6 +805,7 @@ _tune_memory_limits() {
         else
           _L_NGX_WRKS=${_NGINX_WORKERS}
         fi
+        sed -i "s/64000/128000/g"  /opt/php84/etc/php84.ini &> /dev/null
         sed -i "s/64000/128000/g"  /opt/php83/etc/php83.ini &> /dev/null
         sed -i "s/64000/128000/g"  /opt/php82/etc/php82.ini &> /dev/null
         sed -i "s/64000/128000/g"  /opt/php81/etc/php81.ini &> /dev/null
@@ -891,7 +892,7 @@ _tune_memory_limits() {
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ]; then
     sed -i "s/395/${_USE_FPM}/g" /opt/etc/fpm/fpm-pool-common.conf &> /dev/null
   fi
-  _PHP_V="83 82 81 80 74 73 72 71 70 56"
+  _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     if [ -e "/opt/php${e}/etc/php${e}.ini" ]; then
       sed -i "s/395/${_USE_FPM}/g" /opt/php${e}/etc/php${e}.ini &> /dev/null
@@ -2680,7 +2681,7 @@ _run_apt_get_dist_upgrade() {
   ### Reload key services if needed early
   _mrun "service redis-server reload" 2> /dev/null
   _mrun "service nginx reload" 2> /dev/null
-  _PHP_V="83 82 81 80 74 73 72 71 70 56"
+  _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
       _mrun "service php${e}-fpm reload" 2> /dev/null
@@ -4622,6 +4623,7 @@ _switch_to_dash() {
                   /opt/php81/bin \
                   /opt/php82/bin \
                   /opt/php83/bin \
+                  /opt/php84/bin \
                   /sbin \
                   /usr/bin \
                   /usr/lib/ConsoleKit/run-session.d \
@@ -4705,6 +4707,7 @@ _switch_to_bash() {
                   /opt/php81/bin \
                   /opt/php82/bin \
                   /opt/php83/bin \
+                  /opt/php84/bin \
                   /sbin \
                   /usr/bin \
                   /usr/lib/ConsoleKit/run-session.d \
@@ -4773,6 +4776,7 @@ _strict_bin_permissions() {
               /opt/php81/bin \
               /opt/php82/bin \
               /opt/php83/bin \
+              /opt/php84/bin \
               /sbin \
               /usr/bin \
               /usr/local/bin \
@@ -5879,7 +5883,7 @@ _if_post_major_os_upgrade() {
     ### Reload key services if needed early
     _mrun "service redis-server reload" 2> /dev/null
     _mrun "service nginx reload" 2> /dev/null
-    _PHP_V="83 82 81 80 74 73 72 71 70 56"
+    _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
       if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
         _mrun "service php${e}-fpm reload" 2> /dev/null
@@ -5969,6 +5973,10 @@ _if_post_major_os_upgrade() {
       if [ -x "/opt/php83/bin/php" ]; then
         _PHP_VERSION="${_PHP83_VRN}"
         _install_php_multi "83"
+      fi
+      if [ -x "/opt/php84/bin/php" ]; then
+        _PHP_VERSION="${_PHP84_VRN}"
+        _install_php_multi "84"
       fi
       _PHP_VERSION=""
       _T_PHP_VRN=""
@@ -6563,7 +6571,7 @@ _if_major_os_upgrade() {
     ### Reload key services if needed early
     _mrun "service redis-server reload" 2> /dev/null
     _mrun "service nginx reload" 2> /dev/null
-    _PHP_V="83 82 81 80 74 73 72 71 70 56"
+    _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
       if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
         _mrun "service php${e}-fpm reload" 2> /dev/null
@@ -8540,7 +8548,7 @@ _initd_update() {
       _mrun "service redis-server reload" 2> /dev/null
       _mrun "update-rc.d -f php5-fpm remove" 2> /dev/null
       _mrun "update-rc.d cron defaults" 2> /dev/null
-      _PHP_V="83 82 81 80 74 73 72 71 70 56"
+      _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
           _mrun "update-rc.d php${e}-fpm defaults" 2> /dev/null
@@ -8639,7 +8647,7 @@ _initd_update() {
       fi
       _mrun "update-rc.d -f php5-fpm remove" 2> /dev/null
       _mrun "service redis-server reload" 2> /dev/null
-      _PHP_V="83 82 81 80 74 73 72 71 70 56"
+      _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
           _mrun "update-rc.d php${e}-fpm defaults" 2> /dev/null
@@ -8833,7 +8841,7 @@ _sysctl_update() {
       _mrun "service redis-server restart" 2> /dev/null
       _mrun "service nginx restart" 2> /dev/null
       _mrun "service sshd restart" 2> /dev/null
-      _PHP_V="83 82 81 80 74 73 72 71 70 56"
+      _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
           _mrun "service php${e}-fpm reload" 2> /dev/null

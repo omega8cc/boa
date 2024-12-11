@@ -583,6 +583,8 @@ _check_php_cli() {
       _PHP_CLI_PATH="/opt/php82/bin/php"
     elif [ "${_PHP_CLI_VERSION}" = "8.3" ]; then
       _PHP_CLI_PATH="/opt/php83/bin/php"
+    elif [ "${_PHP_CLI_VERSION}" = "8.4" ]; then
+      _PHP_CLI_PATH="/opt/php84/bin/php"
     elif [ "${_PHP_CLI_VERSION}" = "7.4" ]; then
       _PHP_CLI_PATH="/opt/php74/bin/php"
     else
@@ -597,6 +599,8 @@ _check_php_cli() {
         _USE_PHP_CLI_PATH="/opt/php82/bin/php"
       elif  [ -x "/opt/php83/bin/php" ]; then
         _USE_PHP_CLI_PATH="/opt/php83/bin/php"
+      elif  [ -x "/opt/php84/bin/php" ]; then
+        _USE_PHP_CLI_PATH="/opt/php84/bin/php"
       elif  [ -x "/opt/php74/bin/php" ]; then
         _USE_PHP_CLI_PATH="/opt/php74/bin/php"
       fi
