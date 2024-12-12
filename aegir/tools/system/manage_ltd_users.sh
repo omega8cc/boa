@@ -1465,6 +1465,7 @@ _site_socket_inc_gen() {
         _SOCKET_L_NAME="${_USER}.${_SITE_SOCKET}"
         if [ ! -z "${_SITE_NAME}" ] \
           && [ ! -z "${_SITE_SOCKET}" ] \
+          && [ -x "/opt/php${_SITE_SOCKET}/bin/php" ] \
           && [ -e "${_dscUsr}/.drush/${_SITE_NAME}.alias.drushrc.php" ] \
           && [ -e "/run/${_SOCKET_L_NAME}.fpm.socket" ]; then
           _fpmInc="${_fpmPth}/fpm_include_site_${_SITE_NAME}.inc"
@@ -1887,7 +1888,9 @@ _switch_php() {
             && [ -d "${_dscUsr}/tools/le" ]; then
             _PHP_M_V="84 83 82 81 80 74 73 72 71 70 56"
             _D_POOL="${_USER}.${_PHP_SV}"
-            if [ ! -e "${_FMP_D_INC}" ]; then
+            if [ ! -e "${_FMP_D_INC}" ] \
+              && [ -e "/run/${_D_POOL}.fpm.socket" ] \
+              && [ -x "/opt/php${_PHP_SV}/bin/php" ] ; then
               echo "set \$user_socket \"${_D_POOL}\";" > ${_FMP_D_INC}
               touch ${_dscUsr}/static/control/.multi-fpm.${_xSrl}.pid
             else
@@ -1895,9 +1898,12 @@ _switch_php() {
               if [[ "${_CHECK_FMP_D}" =~ "${_D_POOL}" ]]; then
                 echo "${_D_POOL} already set in ${_FMP_D_INC}"
               else
-                echo "${_D_POOL} must be updated in ${_FMP_D_INC}"
-                echo "set \$user_socket \"${_D_POOL}\";" > ${_FMP_D_INC}
-                touch ${_dscUsr}/static/control/.multi-fpm.${_xSrl}.pid
+                if [ -e "/run/${_D_POOL}.fpm.socket" ] \
+                  && [ -x "/opt/php${_PHP_SV}/bin/php" ] ; then
+                  echo "${_D_POOL} must be updated in ${_FMP_D_INC}"
+                  echo "set \$user_socket \"${_D_POOL}\";" > ${_FMP_D_INC}
+                  touch ${_dscUsr}/static/control/.multi-fpm.${_xSrl}.pid
+                fi
               fi
             fi
           else
