@@ -767,7 +767,7 @@ _install_php_extensions() {
     touch ${_pthLog}/igbinary-${_USE_IGBINARY}-${_T_PHP_VRN}.log
   fi
   ###--------------------###
-  if [ "$1" != "56" ] && [ "$1" != "70" ] && [ "$1" != "71" ]; then
+  if [ "$1" != "56" ] && [ "$1" != "70" ] && [ "$1" != "71" ] && [ "$1" != "84" ]; then
     _msg "INFO: Installing MCRYPT ${_PHP_MCRYPT} for PHP ${_T_PHP_VRN}..."
     cd /var/opt
     rm -rf mcrypt*
@@ -1161,7 +1161,7 @@ _php_extensions_update() {
     fi
   fi
   ###--------------------###
-  if [ "$1" != "56" ] && [ "$1" != "70" ] && [ "$1" != "71" ]; then
+  if [ "$1" != "56" ] && [ "$1" != "70" ] && [ "$1" != "71" ] && [ "$1" != "84" ]; then
     if [ ! -e "${_THIS_PHP_EXT_DIR}/mcrypt.so" ] \
       || [ ! -e "${_pthLog}/mcrypt-${_PHP_MCRYPT}-${_T_PHP_VRN}.log" ]; then
       _msg "INFO: Installing MCRYPT ${_PHP_MCRYPT} upgrade for PHP ${_T_PHP_VRN}..."
