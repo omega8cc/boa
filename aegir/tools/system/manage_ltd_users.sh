@@ -1616,22 +1616,26 @@ _switch_php() {
           if [ -x "/opt/php74/bin/php" ]; then
             _T_CLI_VRN=7.4
           fi
+        else
+          _T_CLI_VRN=
         fi
-        if [ "${_T_CLI_VRN}" != "${_PHP_CLI_VERSION}" ] \
-          || [ ! -e "${_dscUsr}/static/control/.ctrl.cli.${_xSrl}.pid" ]; then
-          _PHP_CLI_UPDATE=YES
-          _DRUSH_FILES="drush.php drush"
-          for _df in ${_DRUSH_FILES}; do
-            _php_cli_drush_update "${_df}"
-          done
-          if [ -x "${_T_CLI}/php" ]; then
-            _php_cli_local_ini_update
-            sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${_T_CLI_VRN}/g" \
-              /root/.${_USER}.octopus.cnf &> /dev/null
-            wait
-            echo ${_T_CLI_VRN} > ${_dscUsr}/log/cli.txt
-            echo ${_T_CLI_VRN} > ${_dscUsr}/static/control/cli.info
-            chown ${_USER}.ftp:${_usrGroup} ${_dscUsr}/static/control/cli.info
+        if [ -n "${_T_CLI_VRN}" ]; then
+          if [ "${_T_CLI_VRN}" != "${_PHP_CLI_VERSION}" ] \
+            || [ ! -e "${_dscUsr}/static/control/.ctrl.cli.${_xSrl}.pid" ]; then
+            _PHP_CLI_UPDATE=YES
+            _DRUSH_FILES="drush.php drush"
+            for _df in ${_DRUSH_FILES}; do
+              _php_cli_drush_update "${_df}"
+            done
+            if [ -x "${_T_CLI}/php" ]; then
+              _php_cli_local_ini_update
+              sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${_T_CLI_VRN}/g" \
+                /root/.${_USER}.octopus.cnf &> /dev/null
+              wait
+              echo ${_T_CLI_VRN} > ${_dscUsr}/log/cli.txt
+              echo ${_T_CLI_VRN} > ${_dscUsr}/static/control/cli.info
+              chown ${_USER}.ftp:${_usrGroup} ${_dscUsr}/static/control/cli.info
+            fi
           fi
         fi
       fi
@@ -1833,10 +1837,14 @@ _switch_php() {
           if [ -x "/opt/php74/bin/php" ]; then
             _T_FPM_VRN=7.4
           fi
+        else
+          _T_FPM_VRN=
         fi
         if [ "${_T_FPM_VRN}" != "${_PHP_FPM_VERSION}" ] \
           || [ "${_FORCE_FPM_SETUP}" = "YES" ]; then
-          _NEW_FPM_SETUP=YES
+          if [ -n "${_T_FPM_VRN}" ]; then
+            _NEW_FPM_SETUP=YES
+          fi
         fi
         ### update fpm_include_default.inc if needed
         _PHP_SV=${_T_FPM_VRN//[^0-9]/}
