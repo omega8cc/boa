@@ -531,7 +531,7 @@ _mode_detection() {
     || [ "${_PHP_SV}" = "54" ] \
     || [ "${_PHP_SV}" = "53" ] \
     || [ "${_PHP_SV}" = "52" ]; then
-    _PHP_SV=74
+    _PHP_SV=83
   fi
   _PHP_CN="www${_PHP_SV}"
 }

@@ -396,7 +396,7 @@ _satellite_tune_fpm_config() {
 
   _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
   if [ -z "${_PHP_SV}" ]; then
-    _PHP_SV=74
+    _PHP_SV=83
   fi
   _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
   _PHP_OLD_SV=
@@ -1193,7 +1193,7 @@ _satellite_sub_satellite_force_advanced_nginx_config() {
   if [ -d "${_octInc}" ]; then
     _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
     if [ -z "${_PHP_SV}" ]; then
-      _PHP_SV=74
+      _PHP_SV=83
     fi
     if [ -e "/opt/php${_PHP_SV}/etc/php${_PHP_SV}-fpm.conf" ]; then
       sed -i "s/set.*user_socket.*/set \$user_socket \"${_USER}\";/g" ${_octTpl}/Inc/vhost_include.tpl.php &> /dev/null

@@ -1767,7 +1767,9 @@ _switch_php() {
         || [ "${_T_FPM_VRN}" = "5.6" ]; then
         if [ "${_T_FPM_VRN}" = "8.4" ] \
           && [ ! -x "/opt/php84/bin/php" ]; then
-          if [ -x "/opt/php82/bin/php" ]; then
+          if [ -x "/opt/php83/bin/php" ]; then
+            _T_FPM_VRN=8.3
+          elif [ -x "/opt/php82/bin/php" ]; then
             _T_FPM_VRN=8.2
           elif [ -x "/opt/php81/bin/php" ]; then
             _T_FPM_VRN=8.1
@@ -1795,13 +1797,13 @@ _switch_php() {
           fi
         elif [ "${_T_FPM_VRN}" = "8.0" ] \
           && [ ! -x "/opt/php80/bin/php" ]; then
-          if [ -x "/opt/php81/bin/php" ]; then
-            _T_FPM_VRN=8.1
+          if [ -x "/opt/php83/bin/php" ]; then
+            _T_FPM_VRN=8.3
           fi
         elif [ "${_T_FPM_VRN}" = "7.4" ] \
           && [ ! -x "/opt/php74/bin/php" ]; then
-          if [ -x "/opt/php81/bin/php" ]; then
-            _T_FPM_VRN=8.1
+          if [ -x "/opt/php83/bin/php" ]; then
+            _T_FPM_VRN=8.3
           fi
         elif [ "${_T_FPM_VRN}" = "7.3" ] \
           && [ ! -x "/opt/php73/bin/php" ]; then
@@ -1836,7 +1838,7 @@ _switch_php() {
         ### update fpm_include_default.inc if needed
         _PHP_SV=${_T_FPM_VRN//[^0-9]/}
         if [ -z "${_PHP_SV}" ]; then
-          _PHP_SV=74
+          _PHP_SV=83
         fi
         _FMP_D_INC="${_dscUsr}/config/server_master/nginx/post.d/fpm_include_default.inc"
         if [ "${_PHP_FPM_MULTI}" = "YES" ] \
@@ -1877,7 +1879,7 @@ _switch_php() {
           _PHP_OLD_SV=${_PHP_FPM_VERSION//[^0-9]/}
           _PHP_SV=${_T_FPM_VRN//[^0-9]/}
           if [ -z "${_PHP_SV}" ]; then
-            _PHP_SV=74
+            _PHP_SV=83
           fi
           ### create or update special system user if needed
           _FMP_D_INC="${_dscUsr}/config/server_master/nginx/post.d/fpm_include_default.inc"
@@ -2213,7 +2215,7 @@ _manage_user() {
         if [ -z ${_PHP_SV} ]; then
           _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
           if [ -z "${_PHP_SV}" ]; then
-            _PHP_SV=74
+            _PHP_SV=83
           fi
         fi
         if [ -f "${_dscUsr}/static/control/multi-fpm.info" ]; then
