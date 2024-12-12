@@ -713,7 +713,9 @@ _satellite_cnf() {
         || [ "${_PHP_FPM_VERSION}" = "5.6" ]; then
         if [ "${_PHP_FPM_VERSION}" = "8.4" ] \
           && [ ! -x "/opt/php84/bin/php" ]; then
-          if [ -x "/opt/php82/bin/php" ]; then
+          if [ -x "/opt/php83/bin/php" ]; then
+            _PHP_FPM_VERSION=8.3
+          elif [ -x "/opt/php82/bin/php" ]; then
             _PHP_FPM_VERSION=8.2
           elif [ -x "/opt/php81/bin/php" ]; then
             _PHP_FPM_VERSION=8.1
@@ -811,7 +813,9 @@ _satellite_cnf() {
         || [ "${_PHP_CLI_VERSION}" = "5.6" ]; then
         if [ "${_PHP_CLI_VERSION}" = "8.4" ] \
           && [ ! -x "/opt/php84/bin/php" ]; then
-          if [ -x "/opt/php82/bin/php" ]; then
+          if [ -x "/opt/php83/bin/php" ]; then
+            _PHP_CLI_VERSION=8.3
+          elif [ -x "/opt/php82/bin/php" ]; then
             _PHP_CLI_VERSION=8.2
           elif [ -x "/opt/php81/bin/php" ]; then
             _PHP_CLI_VERSION=8.1
@@ -998,9 +1002,9 @@ _satellite_cnf() {
     elif [ "${_PHP_FPM_VERSION}" = "8.3" ] \
       || [ "${_PHP_CLI_VERSION}" = "8.3" ]; then
       if [ ! -x "/opt/php83/bin/php" ]; then
-        if [ -x "/opt/php81/bin/php" ]; then
-          _PHP_FPM_VERSION=8.1
-          _PHP_CLI_VERSION=8.1
+        if [ -x "/opt/php82/bin/php" ]; then
+          _PHP_FPM_VERSION=8.2
+          _PHP_CLI_VERSION=8.2
         else
           _PHP_FPM_VERSION=
           _PHP_CLI_VERSION=
@@ -1009,9 +1013,9 @@ _satellite_cnf() {
     elif [ "${_PHP_FPM_VERSION}" = "8.2" ] \
       || [ "${_PHP_CLI_VERSION}" = "8.2" ]; then
       if [ ! -x "/opt/php82/bin/php" ]; then
-        if [ -x "/opt/php81/bin/php" ]; then
-          _PHP_FPM_VERSION=8.1
-          _PHP_CLI_VERSION=8.1
+        if [ -x "/opt/php83/bin/php" ]; then
+          _PHP_FPM_VERSION=8.3
+          _PHP_CLI_VERSION=8.3
         else
           _PHP_FPM_VERSION=
           _PHP_CLI_VERSION=
@@ -1020,9 +1024,9 @@ _satellite_cnf() {
     elif [ "${_PHP_FPM_VERSION}" = "8.1" ] \
       || [ "${_PHP_CLI_VERSION}" = "8.1" ]; then
       if [ ! -x "/opt/php81/bin/php" ]; then
-        if [ -x "/opt/php82/bin/php" ]; then
-          _PHP_FPM_VERSION=8.2
-          _PHP_CLI_VERSION=8.2
+        if [ -x "/opt/php83/bin/php" ]; then
+          _PHP_FPM_VERSION=8.3
+          _PHP_CLI_VERSION=8.3
         else
           _PHP_FPM_VERSION=
           _PHP_CLI_VERSION=
