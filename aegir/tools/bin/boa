@@ -746,14 +746,14 @@ _octopus_install() {
 
     if [ "${_cmNd}" = "in-octopus" ] \
       || [ "${_cmNd}" = "in-oct" ]; then
-      if [ -x "/opt/php84/bin/php" ]; then
-        _USE_PHP=8.4
-      elif [ -x "/opt/php83/bin/php" ]; then
+      if [ -x "/opt/php83/bin/php" ]; then
         _USE_PHP=8.3
       elif [ -x "/opt/php82/bin/php" ]; then
         _USE_PHP=8.2
       elif [ -x "/opt/php81/bin/php" ]; then
         _USE_PHP=8.1
+      elif [ -x "/opt/php84/bin/php" ]; then
+        _USE_PHP=8.4
       elif [ -x "/opt/php74/bin/php" ]; then
         _USE_PHP=7.4
       fi
