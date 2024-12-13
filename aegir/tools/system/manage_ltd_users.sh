@@ -789,18 +789,25 @@ for _Domain in `find ${_Client}/ -maxdepth 1 -mindepth 1 -type l | sort`; do
   echo "_NEW_STATIC_FILES is == ${_NEW_STATIC_FILES} == at _manage_sec_access_paths"
   echo "_PATH_DOM is == ${_PATH_DOM} == at _manage_sec_access_paths"
   echo "_RUBY_PATH is == ${_RUBY_PATH} == at _manage_sec_access_paths"
-  echo "_mntPoint is == ${_mntPoint} == at _manage_sec_access_paths"
-  echo "_MNT_STATIC_FILES is == ${_MNT_STATIC_FILES} == at _manage_sec_access_paths"
-  _ALLD_DIR="${_ALLD_DIR}, \
+  [ -n "${_mntPoint}" ] echo "_mntPoint is == ${_mntPoint} == at _manage_sec_access_paths"
+  [ -n "${_mntPoint}" ] echo "_MNT_STATIC_FILES is == ${_MNT_STATIC_FILES} == at _manage_sec_access_paths"
+  [ -n "${_mntPoint}" ] _ALLD_DIR="${_ALLD_DIR}, \
     '${_PATH_DOM}', \
     '${_STATIC_FILES}', \
     '${_STATIC_PRIVATE}', \
     '${_NEW_STATIC_FILES}', \
     '${_MNT_STATIC_FILES}', \
     '${_RUBY_PATH}'"
+  [ -z "${_mntPoint}" ] _ALLD_DIR="${_ALLD_DIR}, \
+    '${_PATH_DOM}', \
+    '${_STATIC_FILES}', \
+    '${_STATIC_PRIVATE}', \
+    '${_NEW_STATIC_FILES}', \
+    '${_RUBY_PATH}'"
   if [ -e "${_PATH_DOM}" ]; then
     _ALLD_NUM=$(( _ALLD_NUM += 1 ))
   fi
+  [ -n "${_ALLD_DIR}" ] echo "Final _ALLD_DIR for ${_rawDom} is == ${_ALLD_DIR} == at _manage_sec_access_paths"
   echo Done for ${_Domain} at ${_Client}
 done
 }
@@ -2144,6 +2151,8 @@ _manage_user() {
       && [ -e "${_pthParen_tUsr}/log/fpm.txt" ] \
       && [ ! -e "${_pthParen_tUsr}/log/proxied.pid" ] \
       && [ ! -e "${_pthParen_tUsr}/log/CANCELLED" ]; then
+      _MNT_STATIC_FILES=""
+      _mntPoint=""
       _USER=""
       _USER=$(echo ${_pthParen_tUsr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
       echo "_USER is == ${_USER} == at _manage_user"
@@ -2262,13 +2271,20 @@ _manage_user() {
           symlinks -dr /home/${_USER}.ftp &> /dev/null
           _mntPoint=$(find /mnt -mindepth 1 -maxdepth 1 -type d | grep "\." | head -n1) &&
           _MNT_STATIC_FILES="${_mntPoint}/files/${_USER}/static/files"
-          echo "_mntPoint is == ${_mntPoint} == at _manage_user"
-          echo "_MNT_STATIC_FILES is == ${_MNT_STATIC_FILES} == at _manage_user"
+          [ -n "${_mntPoint}" ] && echo "_mntPoint is == ${_mntPoint} == at _manage_user"
+          [ -n "${_mntPoint}" ] && echo "_MNT_STATIC_FILES is == ${_MNT_STATIC_FILES} == at _manage_user"
           echo >> ${_THIS_LTD_CONF}
           echo "[${_USER}.ftp]" >> ${_THIS_LTD_CONF}
-          echo "path : ['/opt/user/gems/${_USER}.ftp', \
+          [ -n "${_mntPoint}" ] && echo "path : ['/opt/user/gems/${_USER}.ftp', \
                         '/opt/user/npm/${_USER}.ftp', \
                         '${_MNT_STATIC_FILES}', \
+                        '${_dscUsr}/distro', \
+                        '${_dscUsr}/static', \
+                        '${_dscUsr}/backups', \
+                        '${_dscUsr}/clients']" \
+                        | fmt -su -w 2500 >> ${_THIS_LTD_CONF}
+          [ -z "${_mntPoint}" ] && echo "path : ['/opt/user/gems/${_USER}.ftp', \
+                        '/opt/user/npm/${_USER}.ftp', \
                         '${_dscUsr}/distro', \
                         '${_dscUsr}/static', \
                         '${_dscUsr}/backups', \
