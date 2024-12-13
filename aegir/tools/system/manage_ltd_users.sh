@@ -607,17 +607,22 @@ _manage_sec_user_drush_aliases() {
   if [ ! -e "${_usrLtdRoot}/.drush" ]; then
     mkdir -p ${_usrLtdRoot}/.drush
   fi
-  for _Alias in `find ${_usrLtdRoot}/.drush/*.alias.drushrc.php \
-    -maxdepth 1 -type f | sort`; do
-    _AliasName=$(echo "${_Alias}" | cut -d'/' -f5 | awk '{ print $1}' 2>&1)
-    _AliasName=$(echo "${_AliasName}" \
-      | sed "s/.alias.drushrc.php//g" \
-      | awk '{ print $1}' 2>&1)
-    if [ ! -z "${_AliasName}" ] \
-      && [ ! -e "${_usrLtdRoot}/sites/${_AliasName}" ]; then
-      rm -f ${_usrLtdRoot}/.drush/${_AliasName}.alias.drushrc.php
-    fi
-  done
+
+  _ALS_TEST=$(ls -la ${_usrLtdRoot}/.drush/*.alias.drushrc.php 2>&1)
+  if [[ ! "${_ALS_TEST}" =~ "No such file" ]]; then
+    for _Alias in `find ${_usrLtdRoot}/.drush/*.alias.drushrc.php \
+      -maxdepth 1 -type f | sort`; do
+      _AliasName=$(echo "${_Alias}" | cut -d'/' -f5 | awk '{ print $1}' 2>&1)
+      _AliasName=$(echo "${_AliasName}" \
+        | sed "s/.alias.drushrc.php//g" \
+        | awk '{ print $1}' 2>&1)
+      if [ ! -z "${_AliasName}" ] \
+        && [ ! -e "${_usrLtdRoot}/sites/${_AliasName}" ]; then
+        rm -f ${_usrLtdRoot}/.drush/${_AliasName}.alias.drushrc.php
+      fi
+    done
+  fi
+
   for _Symlink in `find ${_usrLtdRoot}/sites/ \
     -maxdepth 1 -mindepth 1 | sort`; do
     _SiteName=$(echo ${_Symlink}  \
@@ -1011,7 +1016,8 @@ _php_cli_drush_update() {
     chown ${_USER}:${_usrGroup} ${_dscUsr}/aegir.sh &> /dev/null
     chmod 0700 ${_dscUsr}/aegir.sh &> /dev/null
   fi
-  echo OK > ${_dscUsr}/static/control/.ctrl.cli.${_xSrl}.pid
+  rm -f ${_dscUsr}/static/control/.ctrl.cli.*.pid
+  echo "${_T_CLI_VRN}" > ${_dscUsr}/static/control/.ctrl.cli.${_T_CLI_VRN}.${_xSrl}.pid
 }
 
 #
@@ -1485,6 +1491,7 @@ _site_socket_inc_gen() {
     fi
   fi
 }
+
 #
 # Switch PHP Version.
 _switch_php() {
@@ -1492,8 +1499,8 @@ _switch_php() {
   _FORCE_FPM_SETUP=NO
   _NEW_FPM_SETUP=NO
   _T_CLI_VRN=""
-  if [ -e "${_dscUsr}/static/control/fpm.info" ] \
-    || [ -e "${_dscUsr}/static/control/cli.info" ]; then
+
+  if [ -e "${_dscUsr}/static/control/fpm.info" ] || [ -e "${_dscUsr}/static/control/cli.info" ]; then
     echo "Custom FPM and CLI settings for ${_USER} exist, running _switch_php checks"
     if [ ! -e "${_dscUsr}/log/un-chattr-ctrl.info" ]; then
       chattr -i ${_dscUsr}/static/control/fpm.info &> /dev/null
@@ -1503,146 +1510,94 @@ _switch_php() {
       chattr -i ${_dscUsr}/config/server_master/nginx/post.d/fpm_include_default.inc &> /dev/null
       touch ${_dscUsr}/log/un-chattr-ctrl.info
     fi
+
     if [ ! -e "${_dscUsr}/static/control/.single-fpm.${_xSrl}.pid" ]; then
       rm -f ${_dscUsr}/static/control/.single-fpm*.pid
       echo OK > ${_dscUsr}/static/control/.single-fpm.${_xSrl}.pid
       _FORCE_FPM_SETUP=YES
     fi
+
+    # Convert shorthand versions (e.g. "83" to "8.3")
+    fix_version_format() {
+      case "$1" in
+        84) echo "8.4";;
+        83) echo "8.3";;
+        82) echo "8.2";;
+        81) echo "8.1";;
+        80) echo "8.0";;
+        74) echo "7.4";;
+        73) echo "7.3";;
+        72) echo "7.2";;
+        71) echo "7.1";;
+        70) echo "7.0";;
+        56) echo "5.6";;
+        *) echo "$1";;
+      esac
+    }
+
+    # Helper function to check if a given PHP version is available
+    check_version() {
+      [ -x "/opt/php${1//./}/bin/php" ]
+    }
+
+    # --- CLI portion ---
     if [ -e "${_dscUsr}/static/control/cli.info" ]; then
-      _T_CLI_VRN=$(cat ${_dscUsr}/static/control/cli.info 2>&1)
-      _T_CLI_VRN=${_T_CLI_VRN//[^0-9.]/}
-      _T_CLI_VRN=$(echo -n ${_T_CLI_VRN} | tr -d "\n" 2>&1)
-      if [ "${_T_CLI_VRN}" = "84" ]; then
-        _T_CLI_VRN=8.4
-      elif [ "${_T_CLI_VRN}" = "83" ]; then
-        _T_CLI_VRN=8.3
-      elif [ "${_T_CLI_VRN}" = "82" ]; then
-        _T_CLI_VRN=8.2
-      elif [ "${_T_CLI_VRN}" = "81" ]; then
-        _T_CLI_VRN=8.1
-      elif [ "${_T_CLI_VRN}" = "80" ]; then
-        _T_CLI_VRN=8.0
-      elif [ "${_T_CLI_VRN}" = "74" ]; then
-        _T_CLI_VRN=7.4
-      elif [ "${_T_CLI_VRN}" = "73" ]; then
-        _T_CLI_VRN=7.3
-      elif [ "${_T_CLI_VRN}" = "72" ]; then
-        _T_CLI_VRN=7.2
-      elif [ "${_T_CLI_VRN}" = "71" ]; then
-        _T_CLI_VRN=7.1
-      elif [ "${_T_CLI_VRN}" = "70" ]; then
-        _T_CLI_VRN=7.0
-      elif [ "${_T_CLI_VRN}" = "56" ]; then
-        _T_CLI_VRN=5.6
+      # Extract numeric version from file
+      _T_CLI_VRN="$(tr -d '\n' < "${_dscUsr}/static/control/cli.info" | tr -cd '0-9.')"
+
+      # Convert shorthand versions (e.g. "83" to "8.3")
+      _T_CLI_VRN="$(fix_version_format "${_T_CLI_VRN}")"
+
+      # Define fallback chains for PHP versions
+      declare -A fallback=(
+        ["8.4"]="8.3 8.2 8.1"
+        ["8.3"]="8.2 8.1"
+        ["8.2"]="8.1 8.3"
+        ["8.1"]="8.2 8.3"
+        ["8.0"]="8.1"
+        ["7.4"]="8.1"
+        ["7.3"]="7.4"
+        ["7.2"]="7.4"
+        ["7.1"]="7.4"
+        ["7.0"]="7.4"
+        ["5.6"]="7.4"
+      )
+
+      # Attempt fallback if the chosen version doesn't exist
+      if [ -n "${_T_CLI_VRN}" ] && ! check_version "${_T_CLI_VRN}"; then
+        for fbv in ${fallback["$_T_CLI_VRN"]}; do
+          if check_version "${fbv}"; then
+            _T_CLI_VRN="${fbv}"
+            break
+          fi
+        done
       fi
-      if [ "${_T_CLI_VRN}" = "8.4" ] \
-        || [ "${_T_CLI_VRN}" = "8.3" ] \
-        || [ "${_T_CLI_VRN}" = "8.2" ] \
-        || [ "${_T_CLI_VRN}" = "8.1" ] \
-        || [ "${_T_CLI_VRN}" = "8.0" ] \
-        || [ "${_T_CLI_VRN}" = "7.4" ] \
-        || [ "${_T_CLI_VRN}" = "7.3" ] \
-        || [ "${_T_CLI_VRN}" = "7.2" ] \
-        || [ "${_T_CLI_VRN}" = "7.1" ] \
-        || [ "${_T_CLI_VRN}" = "7.0" ] \
-        || [ "${_T_CLI_VRN}" = "5.6" ]; then
-        if [ "${_T_CLI_VRN}" = "8.4" ] \
-          && [ ! -x "/opt/php84/bin/php" ]; then
-          if [ -x "/opt/php83/bin/php" ]; then
-            _T_CLI_VRN=8.3
-          elif [ -x "/opt/php82/bin/php" ]; then
-            _T_CLI_VRN=8.2
-          elif [ -x "/opt/php81/bin/php" ]; then
-            _T_CLI_VRN=8.1
+
+      if [ -z "${_T_CLI_VRN}" ]; then
+        echo "_T_CLI_VRN ELSE is EMPTY"
+      else
+        echo "_T_CLI_VRN is ${_T_CLI_VRN}"
+        if [ "${_T_CLI_VRN}" != "${_PHP_CLI_VERSION}" ] || [ ! -e "${_dscUsr}/static/control/.ctrl.cli.${_T_CLI_VRN}.${_xSrl}.pid" ]; then
+          _PHP_CLI_UPDATE=YES
+          _DRUSH_FILES="drush.php drush"
+          for _df in ${_DRUSH_FILES}; do
+            _php_cli_drush_update "${_df}"
+          done
+          if [ -x "${_T_CLI}/php" ]; then
+            _php_cli_local_ini_update
+            sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${_T_CLI_VRN}/g" /root/.${_USER}.octopus.cnf &> /dev/null
+            echo "${_T_CLI_VRN}" > "${_dscUsr}/log/cli.txt"
+            echo "${_T_CLI_VRN}" > "${_dscUsr}/static/control/cli.info"
+            chown "${_USER}.ftp:${_usrGroup}" "${_dscUsr}/static/control/cli.info"
           fi
-        elif [ "${_T_CLI_VRN}" = "8.3" ] \
-          && [ ! -x "/opt/php83/bin/php" ]; then
-          if [ -x "/opt/php82/bin/php" ]; then
-            _T_CLI_VRN=8.2
-          elif [ -x "/opt/php81/bin/php" ]; then
-            _T_CLI_VRN=8.1
-          fi
-        elif [ "${_T_CLI_VRN}" = "8.2" ] \
-          && [ ! -x "/opt/php82/bin/php" ]; then
-          if [ -x "/opt/php81/bin/php" ]; then
-            _T_CLI_VRN=8.1
-          elif [ -x "/opt/php83/bin/php" ]; then
-            _T_CLI_VRN=8.3
-          fi
-        elif [ "${_T_CLI_VRN}" = "8.1" ] \
-          && [ ! -x "/opt/php81/bin/php" ]; then
-          if [ -x "/opt/php82/bin/php" ]; then
-            _T_CLI_VRN=8.2
-          elif [ -x "/opt/php83/bin/php" ]; then
-            _T_CLI_VRN=8.3
-          fi
-        elif [ "${_T_CLI_VRN}" = "8.0" ] \
-          && [ ! -x "/opt/php80/bin/php" ]; then
-          if [ -x "/opt/php81/bin/php" ]; then
-            _T_CLI_VRN=8.1
-          fi
-        elif [ "${_T_CLI_VRN}" = "7.4" ] \
-          && [ ! -x "/opt/php74/bin/php" ]; then
-          if [ -x "/opt/php81/bin/php" ]; then
-            _T_CLI_VRN=8.1
-          fi
-        elif [ "${_T_CLI_VRN}" = "7.3" ] \
-          && [ ! -x "/opt/php73/bin/php" ]; then
-          if [ -x "/opt/php74/bin/php" ]; then
-            _T_CLI_VRN=7.4
-          fi
-        elif [ "${_T_CLI_VRN}" = "7.2" ] \
-          && [ ! -x "/opt/php72/bin/php" ]; then
-          if [ -x "/opt/php74/bin/php" ]; then
-            _T_CLI_VRN=7.4
-          fi
-        elif [ "${_T_CLI_VRN}" = "7.1" ] \
-          && [ ! -x "/opt/php71/bin/php" ]; then
-          if [ -x "/opt/php74/bin/php" ]; then
-            _T_CLI_VRN=7.4
-          fi
-        elif [ "${_T_CLI_VRN}" = "7.0" ] \
-          && [ ! -x "/opt/php70/bin/php" ]; then
-          if [ -x "/opt/php74/bin/php" ]; then
-            _T_CLI_VRN=7.4
-          fi
-        elif [ "${_T_CLI_VRN}" = "5.6" ] \
-          && [ ! -x "/opt/php56/bin/php" ]; then
-          if [ -x "/opt/php74/bin/php" ]; then
-            _T_CLI_VRN=7.4
-          fi
-        else
-          _T_CLI_VRN=
-        fi
-        if [ -n "${_T_CLI_VRN}" ]; then
-          if [ "${_T_CLI_VRN}" != "${_PHP_CLI_VERSION}" ] \
-            || [ ! -e "${_dscUsr}/static/control/.ctrl.cli.${_xSrl}.pid" ]; then
-            _PHP_CLI_UPDATE=YES
-            _DRUSH_FILES="drush.php drush"
-            for _df in ${_DRUSH_FILES}; do
-              _php_cli_drush_update "${_df}"
-            done
-            if [ -x "${_T_CLI}/php" ]; then
-              _php_cli_local_ini_update
-              sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${_T_CLI_VRN}/g" \
-                /root/.${_USER}.octopus.cnf &> /dev/null
-              wait
-              echo ${_T_CLI_VRN} > ${_dscUsr}/log/cli.txt
-              echo ${_T_CLI_VRN} > ${_dscUsr}/static/control/cli.info
-              chown ${_USER}.ftp:${_usrGroup} ${_dscUsr}/static/control/cli.info
-            fi
-          fi
-        fi
-      fi
         fi
       fi
     fi
 
-    if [ -e "${_dscUsr}/static/control/fpm.info" ] \
-      && [ -e "/var/xdrago/conf/fpm-pool-foo-multi.conf" ]; then
+    # --- FPM portion ---
+    if [ -e "${_dscUsr}/static/control/fpm.info" ] && [ -e "/var/xdrago/conf/fpm-pool-foo-multi.conf" ]; then
       _PHP_FPM_MULTI=NO
-      if [ -f "${_dscUsr}/static/control/multi-fpm.info" ] \
-        && [ -d "${_dscUsr}/tools/le" ]; then
+      if [ -f "${_dscUsr}/static/control/multi-fpm.info" ] && [ -d "${_dscUsr}/tools/le" ]; then
         _PHP_FPM_MULTI=YES
         if [ ! -e "${_dscUsr}/static/control/.multi-fpm.${_xSrl}.pid" ]; then
           rm -f ${_dscUsr}/static/control/.multi-fpm*.pid
@@ -1656,140 +1611,100 @@ _switch_php() {
           service nginx reload &> /dev/null
         fi
       fi
-      _T_FPM_VRN=$(cat ${_dscUsr}/static/control/fpm.info 2>&1)
-      _T_FPM_VRN=${_T_FPM_VRN//[^0-9.]/}
-      _T_FPM_VRN=$(echo -n ${_T_FPM_VRN} | tr -d "\n" 2>&1)
-      if [ "${_T_FPM_VRN}" = "84" ]; then
-        _T_FPM_VRN=8.4
-      elif [ "${_T_FPM_VRN}" = "83" ]; then
-        _T_FPM_VRN=8.3
-      elif [ "${_T_FPM_VRN}" = "82" ]; then
-        _T_FPM_VRN=8.2
-      elif [ "${_T_FPM_VRN}" = "81" ]; then
-        _T_FPM_VRN=8.1
-      elif [ "${_T_FPM_VRN}" = "80" ]; then
-        _T_FPM_VRN=8.0
-      elif [ "${_T_FPM_VRN}" = "74" ]; then
-        _T_FPM_VRN=7.4
-      elif [ "${_T_FPM_VRN}" = "73" ]; then
-        _T_FPM_VRN=7.3
-      elif [ "${_T_FPM_VRN}" = "72" ]; then
-        _T_FPM_VRN=7.2
-      elif [ "${_T_FPM_VRN}" = "71" ]; then
-        _T_FPM_VRN=7.1
-      elif [ "${_T_FPM_VRN}" = "70" ]; then
-        _T_FPM_VRN=7.0
-      elif [ "${_T_FPM_VRN}" = "56" ]; then
-        _T_FPM_VRN=5.6
+
+      # Read and sanitize the FPM version
+      _T_FPM_VRN=$(tr -d '\n' < ${_dscUsr}/static/control/fpm.info | tr -cd '0-9.')
+
+      # Convert shorthand versions (e.g. "83" to "8.3")
+      _T_FPM_VRN="$(fix_version_format "${_T_FPM_VRN}")"
+
+      # Define fallback chains for PHP-FPM versions (same as CLI)
+      declare -A fpm_fallback=(
+        ["8.4"]="8.3 8.2 8.1"
+        ["8.3"]="8.2 8.1"
+        ["8.2"]="8.1 8.3"
+        ["8.1"]="8.2 8.3"
+        ["8.0"]="8.3"
+        ["7.4"]="8.3"
+        ["7.3"]="7.4"
+        ["7.2"]="7.4"
+        ["7.1"]="7.4"
+        ["7.0"]="7.4"
+        ["5.6"]="7.4"
+      )
+
+      # Attempt fallback if the chosen version doesn't exist
+      if [ -n "${_T_FPM_VRN}" ] && ! check_version "${_T_FPM_VRN}"; then
+        for fbv in ${fpm_fallback["$_T_FPM_VRN"]}; do
+          if check_version "${fbv}"; then
+            _T_FPM_VRN="${fbv}"
+            break
+          else
+            # If fallback not found, reset _T_FPM_VRN
+            _T_FPM_VRN=""
+          fi
+        done
       fi
-      if [ "${_T_FPM_VRN}" = "8.4" ] \
-        || [ "${_T_FPM_VRN}" = "8.3" ] \
-        || [ "${_T_FPM_VRN}" = "8.2" ] \
-        || [ "${_T_FPM_VRN}" = "8.1" ] \
-        || [ "${_T_FPM_VRN}" = "8.0" ] \
-        || [ "${_T_FPM_VRN}" = "7.4" ] \
-        || [ "${_T_FPM_VRN}" = "7.3" ] \
-        || [ "${_T_FPM_VRN}" = "7.2" ] \
-        || [ "${_T_FPM_VRN}" = "7.1" ] \
-        || [ "${_T_FPM_VRN}" = "7.0" ] \
-        || [ "${_T_FPM_VRN}" = "5.6" ]; then
-        if [ "${_T_FPM_VRN}" = "8.4" ] \
-          && [ ! -x "/opt/php84/bin/php" ]; then
-          if [ -x "/opt/php83/bin/php" ]; then
-            _T_FPM_VRN=8.3
-          elif [ -x "/opt/php82/bin/php" ]; then
-            _T_FPM_VRN=8.2
-          elif [ -x "/opt/php81/bin/php" ]; then
-            _T_FPM_VRN=8.1
-          fi
-        elif [ "${_T_FPM_VRN}" = "8.3" ] \
-          && [ ! -x "/opt/php83/bin/php" ]; then
-          if [ -x "/opt/php82/bin/php" ]; then
-            _T_FPM_VRN=8.2
-          elif [ -x "/opt/php81/bin/php" ]; then
-            _T_FPM_VRN=8.1
-          fi
-        elif [ "${_T_FPM_VRN}" = "8.2" ] \
-          && [ ! -x "/opt/php82/bin/php" ]; then
-          if [ -x "/opt/php81/bin/php" ]; then
-            _T_FPM_VRN=8.1
-          elif [ -x "/opt/php83/bin/php" ]; then
-            _T_FPM_VRN=8.3
-          fi
-        elif [ "${_T_FPM_VRN}" = "8.1" ] \
-          && [ ! -x "/opt/php81/bin/php" ]; then
-          if [ -x "/opt/php82/bin/php" ]; then
-            _T_FPM_VRN=8.2
-          elif [ -x "/opt/php83/bin/php" ]; then
-            _T_FPM_VRN=8.3
-          fi
-        elif [ "${_T_FPM_VRN}" = "8.0" ] \
-          && [ ! -x "/opt/php80/bin/php" ]; then
-          if [ -x "/opt/php83/bin/php" ]; then
-            _T_FPM_VRN=8.3
-          fi
-        elif [ "${_T_FPM_VRN}" = "7.4" ] \
-          && [ ! -x "/opt/php74/bin/php" ]; then
-          if [ -x "/opt/php83/bin/php" ]; then
-            _T_FPM_VRN=8.3
-          fi
-        elif [ "${_T_FPM_VRN}" = "7.3" ] \
-          && [ ! -x "/opt/php73/bin/php" ]; then
-          if [ -x "/opt/php74/bin/php" ]; then
-            _T_FPM_VRN=7.4
-          fi
-        elif [ "${_T_FPM_VRN}" = "7.2" ] \
-          && [ ! -x "/opt/php72/bin/php" ]; then
-          if [ -x "/opt/php74/bin/php" ]; then
-            _T_FPM_VRN=7.4
-          fi
-        elif [ "${_T_FPM_VRN}" = "7.1" ] \
-          && [ ! -x "/opt/php71/bin/php" ]; then
-          if [ -x "/opt/php74/bin/php" ]; then
-            _T_FPM_VRN=7.4
-          fi
-        elif [ "${_T_FPM_VRN}" = "7.0" ] \
-          && [ ! -x "/opt/php70/bin/php" ]; then
-          if [ -x "/opt/php74/bin/php" ]; then
-            _T_FPM_VRN=7.4
-          fi
-        elif [ "${_T_FPM_VRN}" = "5.6" ] \
-          && [ ! -x "/opt/php56/bin/php" ]; then
-          if [ -x "/opt/php74/bin/php" ]; then
-            _T_FPM_VRN=7.4
-          fi
+
+      if [ "${_T_FPM_VRN}" != "${_PHP_FPM_VERSION}" ] || [ "${_FORCE_FPM_SETUP}" = "YES" ]; then
+        if [ -n "${_T_FPM_VRN}" ]; then
+          _NEW_FPM_SETUP=YES
+        fi
+      fi
+
+      ### Update fpm_include_default.inc if needed
+      _PHP_SV=${_T_FPM_VRN//[^0-9]/}
+      [ -z "${_PHP_SV}" ] && _PHP_SV=83
+      _FMP_D_INC="${_dscUsr}/config/server_master/nginx/post.d/fpm_include_default.inc"
+
+      if [ "${_PHP_FPM_MULTI}" = "YES" ] && [ -d "${_dscUsr}/tools/le" ]; then
+        _PHP_M_V="84 83 82 81 80 74 73 72 71 70 56"
+        _D_POOL="${_USER}.${_PHP_SV}"
+        if [ ! -e "${_FMP_D_INC}" ]; then
+          echo "set \$user_socket \"${_D_POOL}\";" > ${_FMP_D_INC}
+          touch ${_dscUsr}/static/control/.multi-fpm.${_xSrl}.pid
+          _NEW_FPM_SETUP=YES
         else
-          _T_FPM_VRN=
-        fi
-        if [ "${_T_FPM_VRN}" != "${_PHP_FPM_VERSION}" ] \
-          || [ "${_FORCE_FPM_SETUP}" = "YES" ]; then
-          if [ -n "${_T_FPM_VRN}" ]; then
-            _NEW_FPM_SETUP=YES
-          fi
-        fi
-        ### update fpm_include_default.inc if needed
-        _PHP_SV=${_T_FPM_VRN//[^0-9]/}
-        if [ -z "${_PHP_SV}" ]; then
-          _PHP_SV=83
-        fi
-        _FMP_D_INC="${_dscUsr}/config/server_master/nginx/post.d/fpm_include_default.inc"
-        if [ "${_PHP_FPM_MULTI}" = "YES" ] \
-          && [ -d "${_dscUsr}/tools/le" ]; then
-          _PHP_M_V="84 83 82 81 80 74 73 72 71 70 56"
-          _D_POOL="${_USER}.${_PHP_SV}"
-          if [ ! -e "${_FMP_D_INC}" ]; then
+          _CHECK_FMP_D=$(grep "${_D_POOL}" ${_FMP_D_INC} 2>&1)
+          if [[ ! "${_CHECK_FMP_D}" =~ "${_D_POOL}" ]]; then
+            echo "${_D_POOL} must be updated in ${_FMP_D_INC}"
             echo "set \$user_socket \"${_D_POOL}\";" > ${_FMP_D_INC}
             touch ${_dscUsr}/static/control/.multi-fpm.${_xSrl}.pid
             _NEW_FPM_SETUP=YES
+          fi
+        fi
+      else
+        _PHP_M_V="${_PHP_SV}"
+        rm -f ${_dscUsr}/static/control/.multi-fpm*.pid
+        rm -f ${_FMP_D_INC}
+      fi
+
+      if [ -n "${_T_FPM_VRN}" ] && [ "${_NEW_FPM_SETUP}" = "YES" ]; then
+        _satellite_tune_fpm_workers
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${_T_FPM_VRN}/g" /root/.${_USER}.octopus.cnf &> /dev/null
+        echo "${_T_FPM_VRN}" > ${_dscUsr}/log/fpm.txt
+        if [ "${_PHP_FPM_MULTI}" = "NO" ]; then
+          echo "${_T_FPM_VRN}" > ${_dscUsr}/static/control/fpm.info
+        fi
+        chown ${_USER}.ftp:${_usrGroup} ${_dscUsr}/static/control/fpm.info
+
+        _PHP_OLD_SV=${_PHP_FPM_VERSION//[^0-9]/}
+        _PHP_SV=${_T_FPM_VRN//[^0-9]/}
+        [ -z "${_PHP_SV}" ] && _PHP_SV=83
+
+        # Update or create special system user if needed
+        if [ "${_PHP_FPM_MULTI}" = "YES" ] && [ -d "${_dscUsr}/tools/le" ]; then
+          _PHP_M_V="84 83 82 81 80 74 73 72 71 70 56"
+          _D_POOL="${_USER}.${_PHP_SV}"
+          if [ ! -e "${_FMP_D_INC}" ] && [ -e "/run/${_D_POOL}.fpm.socket" ] && [ -x "/opt/php${_PHP_SV}/bin/php" ]; then
+            echo "set \$user_socket \"${_D_POOL}\";" > ${_FMP_D_INC}
+            touch ${_dscUsr}/static/control/.multi-fpm.${_xSrl}.pid
           else
             _CHECK_FMP_D=$(grep "${_D_POOL}" ${_FMP_D_INC} 2>&1)
-            if [[ "${_CHECK_FMP_D}" =~ "${_D_POOL}" ]]; then
-              echo "${_D_POOL} already set in ${_FMP_D_INC}"
-            else
+            if [[ ! "${_CHECK_FMP_D}" =~ "${_D_POOL}" ]] && [ -e "/run/${_D_POOL}.fpm.socket" ] && [ -x "/opt/php${_PHP_SV}/bin/php" ]; then
               echo "${_D_POOL} must be updated in ${_FMP_D_INC}"
               echo "set \$user_socket \"${_D_POOL}\";" > ${_FMP_D_INC}
               touch ${_dscUsr}/static/control/.multi-fpm.${_xSrl}.pid
-              _NEW_FPM_SETUP=YES
             fi
           fi
         else
@@ -1797,165 +1712,98 @@ _switch_php() {
           rm -f ${_dscUsr}/static/control/.multi-fpm*.pid
           rm -f ${_FMP_D_INC}
         fi
-        if [ ! -z "${_T_FPM_VRN}" ] \
-          && [ "${_NEW_FPM_SETUP}" = "YES" ]; then
-          _satellite_tune_fpm_workers
-          sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${_T_FPM_VRN}/g" \
-            /root/.${_USER}.octopus.cnf &> /dev/null
-          wait
-          echo ${_T_FPM_VRN} > ${_dscUsr}/log/fpm.txt
-          if [ "${_PHP_FPM_MULTI}" = "NO" ]; then
-            echo ${_T_FPM_VRN} > ${_dscUsr}/static/control/fpm.info
-          fi
-          chown ${_USER}.ftp:${_usrGroup} ${_dscUsr}/static/control/fpm.info
-          _PHP_OLD_SV=${_PHP_FPM_VERSION//[^0-9]/}
-          _PHP_SV=${_T_FPM_VRN//[^0-9]/}
-          if [ -z "${_PHP_SV}" ]; then
-            _PHP_SV=83
-          fi
-          ### create or update special system user if needed
-          _FMP_D_INC="${_dscUsr}/config/server_master/nginx/post.d/fpm_include_default.inc"
-          if [ "${_PHP_FPM_MULTI}" = "YES" ] \
-            && [ -d "${_dscUsr}/tools/le" ]; then
-            _PHP_M_V="84 83 82 81 80 74 73 72 71 70 56"
-            _D_POOL="${_USER}.${_PHP_SV}"
-            if [ ! -e "${_FMP_D_INC}" ] \
-              && [ -e "/run/${_D_POOL}.fpm.socket" ] \
-              && [ -x "/opt/php${_PHP_SV}/bin/php" ] ; then
-              echo "set \$user_socket \"${_D_POOL}\";" > ${_FMP_D_INC}
-              touch ${_dscUsr}/static/control/.multi-fpm.${_xSrl}.pid
+
+        # Update/create web users
+        for m in ${_PHP_M_V}; do
+          if [ -x "/opt/php${m}/bin/php" ]; then
+            if [ "${_PHP_FPM_MULTI}" = "YES" ] && [ -d "${_dscUsr}/tools/le" ]; then
+              _WEB="${_USER}.${m}.web"
+              _POOL="${_USER}.${m}"
             else
-              _CHECK_FMP_D=$(grep "${_D_POOL}" ${_FMP_D_INC} 2>&1)
-              if [[ "${_CHECK_FMP_D}" =~ "${_D_POOL}" ]]; then
-                echo "${_D_POOL} already set in ${_FMP_D_INC}"
-              else
-                if [ -e "/run/${_D_POOL}.fpm.socket" ] \
-                  && [ -x "/opt/php${_PHP_SV}/bin/php" ] ; then
-                  echo "${_D_POOL} must be updated in ${_FMP_D_INC}"
-                  echo "set \$user_socket \"${_D_POOL}\";" > ${_FMP_D_INC}
-                  touch ${_dscUsr}/static/control/.multi-fpm.${_xSrl}.pid
-                fi
-              fi
+              _WEB="${_USER}.web"
+              _POOL="${_USER}"
             fi
-          else
-            _PHP_M_V="${_PHP_SV}"
-            rm -f ${_dscUsr}/static/control/.multi-fpm*.pid
-            rm -f ${_FMP_D_INC}
-          fi
-          for m in ${_PHP_M_V}; do
-            if [ -x "/opt/php${m}/bin/php" ]; then
-              if [ "${_PHP_FPM_MULTI}" = "YES" ] \
-                && [ -d "${_dscUsr}/tools/le" ]; then
-                _WEB="${_USER}.${m}.web"
-                _POOL="${_USER}.${m}"
-              else
-                _WEB="${_USER}.web"
-                _POOL="${_USER}"
-              fi
-              if [ -e "/home/${_WEB}/.drush/php.ini" ]; then
-                _OLD_PHP_IN_USE=$(grep "/lib/php" /home/${_WEB}/.drush/php.ini 2>&1)
-                _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
-                for e in ${_PHP_V}; do
-                  if [[ "${_OLD_PHP_IN_USE}" =~ "php${e}" ]]; then
-                    if [ "${e}" != "${m}" ] \
-                      || [ ! -e "/home/${_WEB}/.drush/.ctrl.php${m}.${_xSrl}.pid" ]; then
-                      echo _OLD_PHP_IN_USE is ${_OLD_PHP_IN_USE} for ${_WEB} update
-                      echo _NEW_PHP_TO_USE is ${m} for ${_WEB} update
-                      _satellite_web_user_update "${m}"
-                    fi
+            if [ -e "/home/${_WEB}/.drush/php.ini" ]; then
+              _OLD_PHP_IN_USE=$(grep "/lib/php" /home/${_WEB}/.drush/php.ini 2>&1)
+              _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
+              for e in ${_PHP_V}; do
+                if [[ "${_OLD_PHP_IN_USE}" =~ "php${e}" ]]; then
+                  if [ "${e}" != "${m}" ] || [ ! -e "/home/${_WEB}/.drush/.ctrl.php${m}.${_xSrl}.pid" ]; then
+                    echo "_OLD_PHP_IN_USE is ${_OLD_PHP_IN_USE} for ${_WEB}, updating to ${m}"
+                    _satellite_web_user_update "${m}"
                   fi
-                done
-              else
-                echo _NEW_PHP_TO_USE is ${m} for ${_WEB} create
-                _satellite_create_web_user "${m}"
-              fi
+                fi
+              done
+            else
+              echo "_NEW_PHP_TO_USE is ${m} for ${_WEB}, creating"
+              _satellite_create_web_user "${m}"
             fi
-          done
-          ### create or update special system user if needed
-          if [ "${_PHP_FPM_MULTI}" = "YES" ] \
-            && [ -d "${_dscUsr}/tools/le" ]; then
-            _PHP_M_V="84 83 82 81 80 74 73 72 71 70 56"
-            rm -f /opt/php*/etc/pool.d/${_USER}.conf
-          else
-            _PHP_M_V="${_PHP_SV}"
-            rm -f /opt/php*/etc/pool.d/${_USER}.*.conf
-            rm -f /opt/php*/etc/pool.d/${_USER}.conf
           fi
-          for m in ${_PHP_M_V}; do
-            if [ -x "/opt/php${m}/bin/php" ]; then
-              if [ "${_PHP_FPM_MULTI}" = "YES" ] \
-                && [ -d "${_dscUsr}/tools/le" ]; then
-                _WEB="${_USER}.${m}.web"
-                _POOL="${_USER}.${m}"
-              else
-                _WEB="${_USER}.web"
-                _POOL="${_USER}"
-              fi
-              if [ "${_PHP_FPM_MULTI}" = "YES" ] \
-                && [ -d "${_dscUsr}/tools/le" ]; then
-                cp -af /var/xdrago/conf/fpm-pool-foo-multi.conf \
-                  /opt/php${m}/etc/pool.d/${_POOL}.conf
-              else
-                cp -af /var/xdrago/conf/fpm-pool-foo.conf \
-                  /opt/php${m}/etc/pool.d/${_POOL}.conf
-              fi
-              sed -i "s/.ftp/.web/g" \
-                /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
-              wait
-              sed -i "s/\/data\/disk\/foo\/.tmp/\/home\/foo.web\/.tmp/g" \
-                /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
-              wait
-              sed -i "s/foo.web/${_WEB}/g" \
-                /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
-              wait
-              sed -i "s/THISPOOL/${_POOL}/g" \
-                /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
-              wait
-              sed -i "s/foo/${_USER}/g" \
-                /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
-              wait
-              if [ ! -z "${_PHP_FPM_DENY}" ]; then
-                sed -i "s/passthru,/${_PHP_FPM_DENY},/g" \
-                  /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
-                wait
-              fi
-              if [ ! -z "${_PHP_FPM_TIMEOUT}" ] && [ "${_PHP_FPM_TIMEOUT}" -ge "60" ]; then
-                _PHP_TO="${_PHP_FPM_TIMEOUT}s"
-                sed -i "s/180s/${_PHP_TO}/g" /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
-                wait
-              fi
-              if [ ! -z "${_CHILD_MAX_FPM}" ] && [ "${_CHILD_MAX_FPM}" -ge "2" ]; then
-                sed -i "s/pm.max_children =.*/pm.max_children = ${_CHILD_MAX_FPM}/g" \
-                  /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
-                wait
-              fi
-              _switch_newrelic ${m} ${_POOL} 0
-              _nrCheck=YES
-              if [ -e "/etc/init.d/php${_PHP_OLD_SV}-fpm" ]; then
-                service php${_PHP_OLD_SV}-fpm reload &> /dev/null
-              fi
-              if [ -e "/etc/init.d/php${m}-fpm" ]; then
-                service php${m}-fpm reload &> /dev/null
-              fi
-            fi
-          done
+        done
+
+        # Cleanup old pool files and set up new pools
+        if [ "${_PHP_FPM_MULTI}" = "YES" ] && [ -d "${_dscUsr}/tools/le" ]; then
+          _PHP_M_V="84 83 82 81 80 74 73 72 71 70 56"
+          rm -f /opt/php*/etc/pool.d/${_USER}.conf
+        else
+          _PHP_M_V="${_PHP_SV}"
+          rm -f /opt/php*/etc/pool.d/${_USER}.*.conf
+          rm -f /opt/php*/etc/pool.d/${_USER}.conf
         fi
+
+        for m in ${_PHP_M_V}; do
+          if [ -x "/opt/php${m}/bin/php" ]; then
+            if [ "${_PHP_FPM_MULTI}" = "YES" ] && [ -d "${_dscUsr}/tools/le" ]; then
+              _WEB="${_USER}.${m}.web"
+              _POOL="${_USER}.${m}"
+              cp -af /var/xdrago/conf/fpm-pool-foo-multi.conf /opt/php${m}/etc/pool.d/${_POOL}.conf
+            else
+              _WEB="${_USER}.web"
+              _POOL="${_USER}"
+              cp -af /var/xdrago/conf/fpm-pool-foo.conf /opt/php${m}/etc/pool.d/${_POOL}.conf
+            fi
+            sed -i "s/.ftp/.web/g" /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
+            sed -i "s/\/data\/disk\/foo\/.tmp/\/home\/foo.web\/.tmp/g" /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
+            sed -i "s/foo.web/${_WEB}/g" /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
+            sed -i "s/THISPOOL/${_POOL}/g" /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
+            sed -i "s/foo/${_USER}/g" /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
+
+            [ -n "${_PHP_FPM_DENY}" ] && sed -i "s/passthru,/${_PHP_FPM_DENY},/g" /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
+
+            if [ -n "${_PHP_FPM_TIMEOUT}" ] && [ "${_PHP_FPM_TIMEOUT}" -ge "60" ]; then
+              _PHP_TO="${_PHP_FPM_TIMEOUT}s"
+              sed -i "s/180s/${_PHP_TO}/g" /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
+            fi
+
+            if [ -n "${_CHILD_MAX_FPM}" ] && [ "${_CHILD_MAX_FPM}" -ge "2" ]; then
+              sed -i "s/pm.max_children =.*/pm.max_children = ${_CHILD_MAX_FPM}/g" /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
+            fi
+
+            _switch_newrelic ${m} ${_POOL} 0
+            [ -e "/etc/init.d/php${_PHP_OLD_SV}-fpm" ] && service php${_PHP_OLD_SV}-fpm reload &> /dev/null
+            [ -e "/etc/init.d/php${m}-fpm" ] && service php${m}-fpm reload &> /dev/null
+          fi
+        done
       fi
     fi
   fi
 }
+
 #
 # Manage mirroring of drush aliases.
 _manage_site_drush_alias_mirror() {
 
-  for _Alias in `find /home/${_USER}.ftp/.drush/*.alias.drushrc.php \
-    -maxdepth 1 -type f | sort`; do
-    _AliasFile=$(echo "${_Alias}" | cut -d'/' -f5 | awk '{ print $1}' 2>&1)
-    if [ ! -e "${_pthParen_tUsr}/.drush/${_AliasFile}" ] \
-      && [ ! -z "${_AliasFile}" ]; then
-      rm -f /home/${_USER}.ftp/.drush/${_AliasFile}
-    fi
-  done
+  _ALS_TEST=$(ls -la /home/${_USER}.ftp/.drush/*.alias.drushrc.php 2>&1)
+  if [[ ! "${_ALS_TEST}" =~ "No such file" ]]; then
+    for _Alias in `find /home/${_USER}.ftp/.drush/*.alias.drushrc.php \
+      -maxdepth 1 -type f | sort`; do
+      _AliasFile=$(echo "${_Alias}" | cut -d'/' -f5 | awk '{ print $1}' 2>&1)
+      if [ ! -e "${_pthParen_tUsr}/.drush/${_AliasFile}" ] \
+        && [ ! -z "${_AliasFile}" ]; then
+        rm -f /home/${_USER}.ftp/.drush/${_AliasFile}
+     fi
+    done
+  fi
 
   if [ -e "/home/${_USER}.ftp/.drush/hm.alias.drushrc.php" ]; then
     rm -f /home/${_USER}.ftp/.drush/hm.alias.drushrc.php
@@ -2206,7 +2054,7 @@ _manage_user() {
                         | fmt -su -w 2500 >> ${_THIS_LTD_CONF}
           _manage_site_drush_alias_mirror
           _manage_sec
-          if [ -d "/home/${_USER}.ftp/clients" ]; then
+          if [ -d "/home/${_USER}.ftp/users" ]; then
             chown -R ${_USER}.ftp:${_usrGroup} /home/${_USER}.ftp/users
             chmod 700 /home/${_USER}.ftp/users
             chmod 600 /home/${_USER}.ftp/users/*
