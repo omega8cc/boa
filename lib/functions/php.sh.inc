@@ -140,6 +140,21 @@ _fix_php_ini_mcrypt() {
 }
 
 #
+# Fix php.ini files to remove mcrypt.so
+_remove_php_ini_mcrypt() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _remove_php_ini_mcrypt $1"
+  fi
+  if [ -e "${_THIS_FILE}" ]; then
+    _JSMIN_INI_TEST=$(grep "^extension=mcrypt.so" ${_THIS_FILE} 2>&1)
+    if [[ "${_JSMIN_INI_TEST}" =~ "extension=mcrypt.so" ]]; then
+      sed -i "s/.*mcrypt.*//g" ${_THIS_FILE} &> /dev/null
+      wait
+    fi
+  fi
+}
+
+#
 # Fix php.ini files to add apcu.so
 _fix_php_ini_apcu() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -507,6 +522,9 @@ _php_conf_update() {
     if [ "${e}" = "80" ] || [ "${e}" = "81" ] || [ "${e}" = "82" ] || [ "${e}" = "83" ] || [ "${e}" = "84" ]; then
       _remove_php_ini_jsmin ${e}
     fi
+    if [ "${e}" = "84" ]; then
+      _remove_php_ini_mcrypt ${e}
+    fi
     _fix_php_ini_igbinary ${e}
     _fix_php_ini_redis ${e}
     _fix_php_ini_ioncube ${e}
@@ -529,6 +547,9 @@ _php_conf_update() {
     fi
     if [ "${e}" = "80" ] || [ "${e}" = "81" ] || [ "${e}" = "82" ] || [ "${e}" = "83" ] || [ "${e}" = "84" ]; then
       _remove_php_ini_jsmin ${e}
+    fi
+    if [ "${e}" = "84" ]; then
+      _remove_php_ini_mcrypt ${e}
     fi
     _fix_php_ini_igbinary ${e}
     _fix_php_ini_redis ${e}
