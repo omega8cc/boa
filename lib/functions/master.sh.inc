@@ -486,6 +486,7 @@ _master_download_for_local_build() {
     _get_dev_stc "views_bulk_operations-7.x-3.7.tar.gz"
     _get_dev_stc "views-7.x-3.29.tar.gz"
     ### BOA Drupal Contrib
+    _get_dev_stc "d7security_client-7.x-1.3.tar.gz"
     _get_dev_stc "features_extra-7.x-1.0.tar.gz"
     _get_dev_stc "features-7.x-2.15.tar.gz"
     _get_dev_stc "idna_convert-7.x-1.0.tar.gz"
