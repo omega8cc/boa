@@ -837,6 +837,8 @@ for _Client in `find ${_pthParen_tUsr}/clients/ -maxdepth 1 -mindepth 1 -type d 
       fi
     fi
   fi
+  _usrLtd=
+  _ALLD_DIR=
 done
 }
 #
