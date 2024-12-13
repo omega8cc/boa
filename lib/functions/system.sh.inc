@@ -886,9 +886,6 @@ _tune_memory_limits() {
   fi
   cp -af ${_locCnf}/php/fpm-pool-foo-multi.conf /var/xdrago/conf/
   cp -af ${_locCnf}/php/fpm-pool-foo.conf /var/xdrago/conf/
-  cp -af ${_locCnf}/hhvm /var/xdrago/conf/
-  cp -af ${_locCnf}/hhvm/hhvm_intercept.php /data/conf/hhvm_intercept.php
-  chmod 644 /data/conf/hhvm_intercept.php
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ]; then
     sed -i "s/395/${_USE_FPM}/g" /opt/etc/fpm/fpm-pool-common.conf &> /dev/null
   fi
@@ -4896,7 +4893,6 @@ _strict_bin_permissions() {
                   gpgv1 \
                   gpgv2 \
                   gs \
-                  hhvm \
                   id \
                   java \
                   java6 \

@@ -1217,14 +1217,7 @@ _satellite_web_user_update() {
       _isTest="$1"
       _isTest=${_isTest//[^a-z0-9]/}
       if [ ! -z "${_isTest}" ]; then
-        if [ "$1" = "hhvm" ]; then
-          if [ -e "/opt/php56/etc/php56.ini" ] \
-            && [ -x "/opt/php56/bin/php" ]; then
-            _T_PV=56
-          fi
-        else
-          _T_PV=$1
-        fi
+        _T_PV=$1
       fi
       if [ ! -z "${_T_PV}" ] && [ -e "/opt/php${_T_PV}/etc/php${_T_PV}.ini" ]; then
         cp -af /opt/php${_T_PV}/etc/php${_T_PV}.ini ${_T_II}
@@ -1313,12 +1306,6 @@ _satellite_web_user_update() {
         wait
         sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_T_II}
         wait
-        if [ "$1" = "hhvm" ]; then
-          sed -i "s/.*ioncube.*//g" ${_T_II}
-          wait
-          sed -i "s/.*opcache.*//g" ${_T_II}
-          wait
-        fi
         rm -f ${_T_HD}/.ctrl.php*
         echo > ${_T_HD}/.ctrl.php${_T_PV}.${_xSrl}.pid
       fi
@@ -1506,9 +1493,8 @@ _switch_php() {
   _NEW_FPM_SETUP=NO
   _T_CLI_VRN=""
   if [ -e "${_dscUsr}/static/control/fpm.info" ] \
-    || [ -e "${_dscUsr}/static/control/cli.info" ] \
-    || [ -e "${_dscUsr}/static/control/hhvm.info" ]; then
-    echo "Custom FPM, HHVM or CLI settings for ${_USER} exist, running _switch_php checks"
+    || [ -e "${_dscUsr}/static/control/cli.info" ]; then
+    echo "Custom FPM and CLI settings for ${_USER} exist, running _switch_php checks"
     if [ ! -e "${_dscUsr}/log/un-chattr-ctrl.info" ]; then
       chattr -i ${_dscUsr}/static/control/fpm.info &> /dev/null
       chattr -i ${_dscUsr}/static/control/cli.info &> /dev/null
@@ -1648,85 +1634,11 @@ _switch_php() {
           fi
         fi
       fi
-    fi
-    if [ -e "${_dscUsr}/static/control/hhvm.info" ]; then
-      if [ -x "/usr/bin/hhvm" ] \
-        && [ -e "/var/xdrago/conf/hhvm/init.d/hhvm.foo" ] \
-        && [ -e "/var/xdrago/conf/hhvm/server.foo.ini" ]; then
-        if [ ! -e "/opt/hhvm/server.${_USER}.ini" ] \
-          || [ ! -e "/etc/init.d/hhvm.${_USER}" ] \
-          || [ ! -e "/run/hhvm/${_USER}" ]  ; then
-          ### create or update special system user if needed
-          _satellite_create_web_user "hhvm"
-          ### configure custom hhvm server init.d script
-          cp -af /var/xdrago/conf/hhvm/init.d/hhvm.foo /etc/init.d/hhvm.${_USER}
-          sed -i "s/foo/${_USER}/g" /etc/init.d/hhvm.${_USER} &> /dev/null
-          wait
-          sed -i "s/.ftp/.web/g" /etc/init.d/hhvm.${_USER} &> /dev/null
-          wait
-          chmod 755 /etc/init.d/hhvm.${_USER}
-          chown root:root /etc/init.d/hhvm.${_USER}
-          update-rc.d hhvm.${_USER} defaults &> /dev/null
-          ### configure custom hhvm server ini file
-          mkdir -p /opt/hhvm
-          cp -af /var/xdrago/conf/hhvm/server.foo.ini /opt/hhvm/server.${_USER}.ini
-          sed -i "s/foo/${_USER}/g" /opt/hhvm/server.${_USER}.ini &> /dev/null
-          wait
-          sed -i "s/.ftp/.web/g" /opt/hhvm/server.${_USER}.ini &> /dev/null
-          wait
-          chmod 755 /opt/hhvm/server.${_USER}.ini
-          chown root:root /opt/hhvm/server.${_USER}.ini
-          mkdir -p /var/log/hhvm/${_USER}
-          chown ${_WEB}:${_WEBG} /var/log/hhvm/${_USER}
-          ### start custom hhvm server
-          service hhvm.${_USER} start &> /dev/null
-          ### remove fpm control file to avoid confusion
-          rm -f ${_dscUsr}/static/control/fpm.info
-          ### update nginx configuration
-          sed -i "s/unix:.*fpm.socket;/unix:\/var\/run\/hhvm\/${_USER}\/hhvm.socket;/g" \
-            ${_dscUsr}/config/includes/nginx_vhost_common.conf
-          wait
-          sed -i "s/unix:.*fpm.socket;/unix:\/var\/run\/hhvm\/${_USER}\/hhvm.socket;/g" \
-            ${_dscUsr}/.drush/sys/provision/http/Provision/Config/Nginx/Inc/vhost_include.tpl.php
-          wait
-          ### reload nginx
-          service nginx reload &> /dev/null
         fi
       fi
-    else
-      if [ -e "/opt/hhvm/server.${_USER}.ini" ] \
-        || [ -e "/etc/init.d/hhvm.${_USER}" ] \
-        || [ -e "/run/hhvm/${_USER}" ]  ; then
-        ### disable no longer used custom hhvm server instance
-        if [ -e "/etc/init.d/hhvm.${_USER}" ]; then
-          service hhvm.${_USER} stop &> /dev/null
-          update-rc.d -f hhvm.${_USER} remove &> /dev/null
-          rm -f /etc/init.d/hhvm.${_USER}
-        fi
-        ### delete special system user no longer needed
-        _satellite_remove_web_user "hhvm"
-        ### delete leftovers
-        rm -f /opt/hhvm/server.${_USER}.ini
-        rm -rf /run/hhvm/${_USER}
-        rm -rf /var/log/hhvm/${_USER}
-        ### update nginx configuration
-        sed -i "s/\/var\/run\/hhvm\/${_USER}\/hhvm.socket;/\/var\/run\/\$user_socket.fpm.socket;/g" \
-          ${_dscUsr}/config/includes/nginx_vhost_common.conf
-        wait
-        sed -i "s/\/var\/run\/hhvm\/${_USER}\/hhvm.socket;/\/var\/run\/\$user_socket.fpm.socket;/g" \
-          ${_dscUsr}/.drush/sys/provision/http/Provision/Config/Nginx/Inc/vhost_include.tpl.php
-        wait
-        ### reload nginx
-        service nginx reload &> /dev/null
-        ### create dummy control file to enable PHP-FPM again
-        echo 7.4 > ${_dscUsr}/static/control/fpm.info
-        chown ${_USER}.ftp:${_usrGroup} ${_dscUsr}/static/control/fpm.info
-        _FORCE_FPM_SETUP=YES
-      fi
     fi
-    sleep 5
-    if [ ! -e "${_dscUsr}/static/control/hhvm.info" ] \
-      && [ -e "${_dscUsr}/static/control/fpm.info" ] \
+
+    if [ -e "${_dscUsr}/static/control/fpm.info" ] \
       && [ -e "/var/xdrago/conf/fpm-pool-foo-multi.conf" ]; then
       _PHP_FPM_MULTI=NO
       if [ -f "${_dscUsr}/static/control/multi-fpm.info" ] \

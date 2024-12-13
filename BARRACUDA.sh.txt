@@ -529,7 +529,6 @@ if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "UPGRADE" ]; then
     _if_install_chive
     _if_install_sqlbuddy
     _if_install_collectd
-    _if_install_hhvm
     _if_install_webmin
     _if_install_bind
     _if_install_ruby

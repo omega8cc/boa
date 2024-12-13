@@ -176,17 +176,9 @@ _satellite_web_user_update() {
       _isTest="$1"
       _isTest=${_isTest//[^a-z0-9]/}
       if [ ! -z "${_isTest}" ]; then
-        if [ "$1" = "hhvm" ]; then
-          if [ -e "/opt/php56/etc/php56.ini" ]; then
-            _T_PV=56
-          elif [ -e "/opt/php55/etc/php55.ini" ]; then
-            _T_PV=55
-          fi
-        else
-          _T_PV=$1
-          if [ "${_DEBUG_MODE}" = "YES" ]; then
-            _msg "DEBUG: _T_PV is ${_T_PV} in _satellite_web_user_update C"
-          fi
+        _T_PV=$1
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "DEBUG: _T_PV is ${_T_PV} in _satellite_web_user_update C"
         fi
       fi
       if [ ! -z "${_T_PV}" ] && [ -e "/opt/php${_T_PV}/etc/php${_T_PV}.ini" ]; then
