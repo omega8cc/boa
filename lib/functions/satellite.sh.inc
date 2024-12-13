@@ -1911,6 +1911,7 @@ _satellite_download_o_contrib_seven() {
   _get_dev_contrib "cdn-7.x-2.10.tar.gz"
   _get_dev_contrib "config_perms-7.x-2.2.tar.gz"
   _get_dev_contrib "css_emimage-7.x-1.3.tar.gz"
+  _get_dev_contrib "d7security_client-7.x-1.3.tar.gz"
   _get_dev_contrib "display_cache-7.x-1.3.tar.gz"
   _get_dev_contrib "entity_print-7.x-1.5.tar.gz"
   _get_dev_contrib "entitycache-7.x-1.7.tar.gz"
@@ -2079,7 +2080,7 @@ _satellite_check_fix_o_contrib() {
     fi
   fi
   if [ -e "${_CORE}/o_contrib_seven" ]; then
-    if [ ! -d "${_CORE}/o_contrib_seven/robotstxt" ] \
+    if [ ! -d "${_CORE}/o_contrib_seven/d7security_client" ] \
       || [ "${_O_CONTRIB_FORCED_UP}" = "YES" ]; then
       _msg "${_STATUS} A: Running o_contrib_seven forced upgrade..."
       cd ${_CORE}/o_contrib_seven
