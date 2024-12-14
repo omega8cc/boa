@@ -986,11 +986,10 @@ _tune_memory_limits() {
 _find_server_city() {
   if [ ! -e "/root/.dont.use.fancy.bash.login.cnf" ]; then
     if [ -e "/root/.found_correct_city.cnf" ]; then
-      _LOC_CITY=$(cat /root/.found_correct_city.cnf 2>&1)
-      _LOC_CITY=$(echo -n ${_LOC_CITY} | tr -d "\n" 2>&1)
+      _LOC_CITY=$(cat /root/.found_correct_city.cnf 2>/dev/null | tr -d '\n')
     else
       if [ -e "/root/.found_correct_ipv4.cnf" ]; then
-        _LOC_IP=$(cat /root/.found_correct_ipv4.cnf 2>&1)
+        _LOC_IP=$(cat /root/.found_correct_ipv4.cnf 2>/dev/null | tr -d '\n')
         _LOC_CITY=$(curl ${_crlGet} ipinfo.io/${_LOC_IP}/city 2>&1)
         _LOC_CITY=$(echo -n ${_LOC_CITY} | tr -d "\n" 2>&1)
       fi
