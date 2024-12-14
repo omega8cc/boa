@@ -363,8 +363,7 @@ _satellite_tune_fpm_config() {
 
   if [ ! -z "${_CLIENT_CORES}" ] && [ "${_CLIENT_CORES}" -ge "1" ]; then
     if [ -e "${_ROOT}/log/cores.txt" ]; then
-      _CLIENT_CORES=$(cat ${_ROOT}/log/cores.txt 2>&1)
-      _CLIENT_CORES=$(echo -n ${_CLIENT_CORES} | tr -d "\n" 2>&1)
+      _CLIENT_CORES=$(cat ${_ROOT}/log/cores.txt 2>/dev/null | tr -d '\n')
     fi
     _CLIENT_CORES=${_CLIENT_CORES//[^0-9]/}
     if [ ! -z "${_CLIENT_CORES}" ] && [ "${_CLIENT_CORES}" -ge "1" ]; then
@@ -4295,8 +4294,7 @@ _satellite_if_init_or_upgrade() {
     _msg "Octopus Satellite Instance Upgrade in progress..."
     if [ -d "${_ROOT}/distro" ]; then
       if [ -e "${_ROOT}/log/domain.txt" ]; then
-        _DOMAIN=$(cat ${_ROOT}/log/domain.txt 2>&1)
-        _DOMAIN=$(echo -n ${_DOMAIN} | tr -d "\n" 2>&1)
+        _DOMAIN=$(cat ${_ROOT}/log/domain.txt 2>/dev/null | tr -d '\n')
       fi
       if [ -z "${_DOMAIN}" ]; then
         _msg "ALERT! _DOMAIN is e-m-p-t-y, exit now"
@@ -4326,20 +4324,16 @@ _satellite_if_init_or_upgrade() {
         fi
       fi
       if [ -e "${_ROOT}/log/option.txt" ]; then
-        _CLIENT_OPTION=$(cat ${_ROOT}/log/option.txt 2>&1)
-        _CLIENT_OPTION=$(echo -n ${_CLIENT_OPTION} | tr -d "\n" 2>&1)
+        _CLIENT_OPTION=$(cat ${_ROOT}/log/option.txt 2>/dev/null | tr -d '\n')
       fi
       if [ -e "${_ROOT}/log/cores.txt" ]; then
-        _CLIENT_CORES=$(cat ${_ROOT}/log/cores.txt 2>&1)
-        _CLIENT_CORES=$(echo -n ${_CLIENT_CORES} | tr -d "\n" 2>&1)
+        _CLIENT_CORES=$(cat ${_ROOT}/log/cores.txt 2>/dev/null | tr -d '\n')
       fi
       if [ -e "${_ROOT}/log/subscr.txt" ]; then
-        _CLIENT_SUBSCR=$(cat ${_ROOT}/log/subscr.txt 2>&1)
-        _CLIENT_SUBSCR=$(echo -n ${_CLIENT_SUBSCR} | tr -d "\n" 2>&1)
+        _CLIENT_SUBSCR=$(cat ${_ROOT}/log/subscr.txt 2>/dev/null | tr -d '\n')
       fi
       if [ -e "${_ROOT}/log/email.txt" ]; then
-        _CLIENT_EMAIL=$(cat ${_ROOT}/log/email.txt 2>&1)
-        _CLIENT_EMAIL=$(echo -n ${_CLIENT_EMAIL} | tr -d "\n" 2>&1)
+        _CLIENT_EMAIL=$(cat ${_ROOT}/log/email.txt 2>/dev/null | tr -d '\n')
         if [[ "${_CLIENT_EMAIL}" =~ "@" ]]; then
           _DO_NOTHING=YES
         else

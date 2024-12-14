@@ -2289,8 +2289,7 @@ _barracuda_cnf() {
         echo "_NEWRELIC_KEY=${_NEWRELIC_KEY}" >> ${_barCnf}
       else
         if [ -e "/etc/newrelic/newrelic.cfg" ]; then
-          _NEWRELIC_KEY=$(grep license_key /etc/newrelic/newrelic.cfg 2>&1)
-          _NEWRELIC_KEY=$(echo -n ${_NEWRELIC_KEY} | tr -d "\n" 2>&1)
+          _NEWRELIC_KEY=$(grep license_key /etc/newrelic/newrelic.cfg 2>/dev/null | tr -d '\n')
           echo "_NEWRELIC_KEY=${_NEWRELIC_KEY}" >> ${_barCnf}
           sed -i "s/license_key=//g" ${_barCnf}
           wait
