@@ -81,7 +81,7 @@ _provision_backend_dbpass_generate() {
       fi
     else
       if [ -e "/root/.my.pass.txt" ]; then
-        _ESC_PASS=$(cat /root/.my.pass.txt 2>&1)
+        _ESC_PASS=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
       else
         _ESC_PASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
       fi
@@ -107,7 +107,7 @@ _provision_backend_dbpass_generate() {
       _ESC_PASS=$(_sanitize_string "${_ESC_PASS}" 2>&1)
     else
       if [ -e "/root/.my.pass.txt" ]; then
-        _ESC_PASS=$(cat /root/.my.pass.txt 2>&1)
+        _ESC_PASS=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
       else
         _ESC_PASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
       fi
@@ -828,7 +828,7 @@ _aegir_master_install_upgrade() {
         fi
       else
         if [ -e "/root/.my.pass.txt" ]; then
-          _ESC_PASS=$(cat /root/.my.pass.txt 2>&1)
+          _ESC_PASS=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
         else
           _ESC_PASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
         fi
@@ -847,7 +847,7 @@ _aegir_master_install_upgrade() {
         _ESC_PASS=$(_sanitize_string "${_ESC_PASS}" 2>&1)
       else
         if [ -e "/root/.my.pass.txt" ]; then
-          _ESC_PASS=$(cat /root/.my.pass.txt 2>&1)
+          _ESC_PASS=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
         else
           _ESC_PASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
         fi
