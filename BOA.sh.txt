@@ -46,6 +46,7 @@ export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 export _tRee=pro
 export _xSrl=550proT02
+export _rLsn="BOA-5.5.0"
 
 ###
 ### Avoid too many questions
@@ -370,7 +371,7 @@ _verify_boa_keys() {
       _diffTestIf=$(diff -w -B /var/opt/_encN.${_encName}.tmp /var/opt/_encN_local.${_encName}.tmp 2>&1)
       if [ ! -z "${_diffTestIf}" ] && [ "${_allw}" = "NO" ]; then
         echo
-        echo "Your system requires valid license for upgrade to ${_rLsn}-${_tRee}"
+        echo "Your system requires valid license for access to ${_rLsn}-${_tRee}"
         echo "Please visit https://omega8.cc/licenses to purchase your own"
         echo
         if [ -e "/var/aegir/drush/vendor" ] && [ ! -e "/var/aegir/key/barracuda_key.txt" ]; then
@@ -378,7 +379,7 @@ _verify_boa_keys() {
           cat /var/opt/_encN_local.${_encName}.tmp > /var/aegir/key/barracuda_key.txt
         fi
         rm -f /var/opt/_encN*
-        _clean_pid_exit _verify_boa_keys_a
+        exit 0
       else
         if [ -e "/var/aegir/drush/vendor" ] && [ ! -e "/var/aegir/key/barracuda_key.txt" ]; then
           mkdir -p /var/aegir/key
@@ -3414,14 +3415,14 @@ _if_update_boa_key_tools_only() {
     fi
   fi
   _BOA_TOOLS_UPDATE=NO
-  if [ -e "${_pthLog}" ] && [ ! -e "${_pthLog}/updateBOAtoolsDC.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+  if [ -e "${_pthLog}" ] && [ ! -e "${_pthLog}/updateBOAtoolsDD.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     _BOA_TOOLS_UPDATE=YES
   fi
   [ ! -e "/var/aegir/drush" ] && _BOA_TOOLS_UPDATE=YES
   if [ "${_BOA_TOOLS_UPDATE}" = "YES" ]; then
     _update_boa_tools
     [ -e "${_pthLog}" ] && rm -f ${_pthLog}/updateBOAtools*.pid
-    [ -e "${_pthLog}" ] && touch ${_pthLog}/updateBOAtoolsDC.ctrl.${_tRee}.${_xSrl}.pid
+    [ -e "${_pthLog}" ] && touch ${_pthLog}/updateBOAtoolsDD.ctrl.${_tRee}.${_xSrl}.pid
     if [ "${1}" = "verbose" ] || [ -z "${1}" ]; then
       echo
       echo "BOA Meta Installers setup completed"
@@ -3569,14 +3570,14 @@ _boa_setup() {
     apt-get install lsb-release ${_aptYesUnth}
   fi
   _BOA_TOOLS_UPDATE=NO
-  if [ -e "${_pthLog}" ] && [ ! -e "${_pthLog}/updateBOAtoolsDC.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+  if [ -e "${_pthLog}" ] && [ ! -e "${_pthLog}/updateBOAtoolsDD.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     _BOA_TOOLS_UPDATE=YES
   fi
   [ ! -e "/var/aegir/drush" ] && _BOA_TOOLS_UPDATE=YES
   if [ "${_BOA_TOOLS_UPDATE}" = "YES" ]; then
     _update_boa_tools
     [ -e "${_pthLog}" ] && rm -f ${_pthLog}/updateBOAtools*.pid
-    [ -e "${_pthLog}" ] && touch ${_pthLog}/updateBOAtoolsDC.ctrl.${_tRee}.${_xSrl}.pid
+    [ -e "${_pthLog}" ] && touch ${_pthLog}/updateBOAtoolsDD.ctrl.${_tRee}.${_xSrl}.pid
     echo
     echo "BOA Meta Installers setup completed"
     echo "Please check INSTALL.md and UPGRADE.md at https://github.com/omega8cc/boa"

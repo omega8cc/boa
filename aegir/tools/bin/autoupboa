@@ -26,10 +26,10 @@ _turn_off_apparmor() {
   aa-teardown 2> /dev/null
   service auditd stop 2> /dev/null
 }
-[ ! -e "/root/.keep_apparmor_on.cnf" ] && _turn_off_apparmor
+[ ! -e "/root/.keep_apparmor_on.cnf" ] && [ -e "/lib/apparmor/apparmor.systemd" ] && _turn_off_apparmor
 
 # Define default values
-_CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
+_hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
 _DEFAULT_CPU_CRIT_RATIO="6.1"
 _DEFAULT_CPU_MAX_RATIO="4.1"
 _DEFAULT_CPU_TASK_RATIO="3.1"
@@ -295,7 +295,7 @@ _NOW=${_NOW//[^0-9-]/}
 
 _if_hosted_sys() {
   if [ -e "/root/.host8.cnf" ] \
-    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
+    || [[ "${_hName}" =~ ".aegir.cc"($) ]]; then
     _hostedSys=YES
   else
     _hostedSys=NO
@@ -315,7 +315,7 @@ _send_boa_system_report() {
     if [ ! -z "${_RCPT_EMAIL}" ] \
       && [ ! -z "${_BCC_EMAIL}" ] \
       && [ -e "/root/.run.example.report.cnf" ]; then
-      _repSub="BOA Status on ${_CHECK_HOST}"
+      _repSub="BOA Status on ${_hName}"
       _repSub=$(echo -n ${_repSub} | fmt -su -w 2500 2>&1)
       boa info report both > ${_repBodFile}
       cat ${_repBodFile} | s-nail -b ${_BCC_EMAIL} -s "${_repSub} at ${_NOW}" ${_RCPT_EMAIL}
@@ -522,7 +522,10 @@ if [ -e "/var/aegir/drush" ]; then
   fi
   _if_hosted_sys
   if [ "${_hostedSys}" = "YES" ]; then
-	if [[ "${_CHECK_HOST}" =~ ^(lcy1.ao.|lcy15.uk.) ]]; then
+
+    [ ! -e "/root/.turn.off.auto.update.cnf" ] && touch /root/.turn.off.auto.update.cnf
+
+	if [[ "${_hName}" =~ ^(lcy1.ao.|lcy15.uk.) ]]; then
 	  _DONT_TOUCH=OK
 	  rm -f /etc/csf/csf.conf-pre*
 	else
@@ -627,8 +630,8 @@ if [ -e "/var/aegir/drush" ]; then
     _AUTO_PHP="php-min"
     _AUTO_VER="${_tRee}"
     _AUTO_UP_WEEKLY=7
-    _AUTO_UP_MONTH=11
-    _AUTO_UP_DAY=12
+    _AUTO_UP_MONTH=7
+    _AUTO_UP_DAY=7
     _AUTO_UP_HOUR=3
     _AUTO_UP_MINUTE=10
     _AUTO_OCT_UP_HOUR=4
@@ -680,21 +683,21 @@ if [ -e "/var/aegir/drush" ]; then
     _AUTO_UP_MONTH=
     _AUTO_UP_DAY=
   fi
-  if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
+  if [ -e "/root/.my.cluster_root_pwd.txt" ] || [ -e "/root/.turn.off.auto.update.cnf" ]; then
     _AUTO_UP_WEEKLY=
     _AUTO_UP_MONTH=
     _AUTO_UP_DAY=
   fi
 
   if [ -e "/root/.dev.server.cnf" ]; then
-    if [ ! -e "/var/xdrago/log/.etc_crontab_update_dev_ctrl_f008.${_tRee}.${_xSrl}.pid" ]; then
+    if [ ! -e "/var/xdrago/log/.etc_crontab_update_dev_ctrl_f009.${_tRee}.${_xSrl}.pid" ]; then
       rm -f /var/xdrago/log/.*etc_crontab_update_dev_ctrl*
       _crontab_cleanup
       service cron restart
-      touch /var/xdrago/log/.etc_crontab_update_dev_ctrl_f008.${_tRee}.${_xSrl}.pid
+      touch /var/xdrago/log/.etc_crontab_update_dev_ctrl_f009.${_tRee}.${_xSrl}.pid
     fi
   else
-    if [ ! -e "/var/xdrago/log/.etc_crontab_update_prod_ctrl_f008.${_tRee}.${_xSrl}.pid" ]; then
+    if [ ! -e "/var/xdrago/log/.etc_crontab_update_prod_ctrl_f009.${_tRee}.${_xSrl}.pid" ]; then
       rm -f /var/xdrago/log/.*etc_crontab_update_prod_ctrl*
       if [ ! -z "${_AUTO_UP_MONTH}" ] \
         && [ ! -z "${_AUTO_UP_DAY}" ]; then
@@ -703,7 +706,7 @@ if [ -e "/var/aegir/drush" ]; then
         _crontab_cleanup
       fi
       service cron restart
-      touch /var/xdrago/log/.etc_crontab_update_prod_ctrl_f008.${_tRee}.${_xSrl}.pid
+      touch /var/xdrago/log/.etc_crontab_update_prod_ctrl_f009.${_tRee}.${_xSrl}.pid
     fi
   fi
 
