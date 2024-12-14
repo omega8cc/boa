@@ -1282,8 +1282,7 @@ _check_root() {
         _SQL_CONNECT=localhost
       fi
     fi
-    _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
-    _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+    _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
   else
     echo "ERROR: This script should be run as a root user"
     exit 1

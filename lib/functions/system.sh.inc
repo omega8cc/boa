@@ -5008,8 +5008,7 @@ _turn_off_apparmor_temporarily() {
   fi
   _isAppArmOn=N
   if [ -e "/sys/module/apparmor/parameters/enabled" ]; then
-    _isAppArmOn=$(cat /sys/module/apparmor/parameters/enabled 2>&1)
-    _isAppArmOn=$(echo -n ${_isAppArmOn} | tr -d "\n" 2>&1)
+    _isAppArmOn="$(cat /sys/module/apparmor/parameters/enabled 2>/dev/null | tr -d '\n')"
   fi
   if [ "${_isAppArmOn}" = "Y" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -5230,8 +5229,7 @@ _if_install_apparmor() {
   fi
   _isAppArmOn=N
   if [ -e "/sys/module/apparmor/parameters/enabled" ]; then
-    _isAppArmOn=$(cat /sys/module/apparmor/parameters/enabled 2>&1)
-    _isAppArmOn=$(echo -n ${_isAppArmOn} | tr -d "\n" 2>&1)
+    _isAppArmOn="$(cat /sys/module/apparmor/parameters/enabled 2>/dev/null | tr -d '\n')"
   fi
   if [ "${_isAppArmOn}" = "Y" ]; then
     _sync_apparmor_profiles
@@ -8677,8 +8675,7 @@ _initd_update() {
           fi
           rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
           if [ -x "/usr/bin/mysql_upgrade" ]; then
-            _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
-            _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+            _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
             _mrun "mysql_upgrade -u root --force" &> /dev/null
             _mrun "mysql_upgrade -u root --force" &> /dev/null
           fi
@@ -8734,8 +8731,7 @@ _initd_update() {
       if [ ! -e "/root/.run-to-daedalus.cnf" ] \
         && [ ! -e "/root/.run-to-chimaera.cnf" ] \
         && [ ! -e "/root/.run-to-beowulf.cnf" ]; then
-        _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
-        _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+        _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
         _myUptime=$(mysqladmin -u root version | grep -i uptime 2>&1)
         _myUptime=$(echo -n ${_myUptime} | fmt -su -w 2500 2>&1)
         _msg "INFO: ${_DB_SERVER} ${_myUptime}"

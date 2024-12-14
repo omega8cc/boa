@@ -125,8 +125,7 @@ _stop_sql() {
     fi
     if [ ! -z "${_DB_V}" ]; then
       echo "Preparing MySQLD for quick shutdown..."
-      _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
-      _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+      _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
       mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
       mysql -u root -e "SET GLOBAL innodb_change_buffering = 'none';" &> /dev/null
       mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null

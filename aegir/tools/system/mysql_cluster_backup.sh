@@ -36,8 +36,7 @@ if [ ! -z "${_IS_SQLBACKUP_RUNNING}" ]; then
 fi
 
 if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
-  _SQL_PSWD=$(cat /root/.my.cluster_root_pwd.txt 2>&1)
-  _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+  _SQL_PSWD=$(cat /root/.my.cluster_root_pwd.txt 2>/dev/null | tr -d '\n')
 fi
 
 if [ -e "/root/.my.cluster_backup_proxysql.txt" ]; then
