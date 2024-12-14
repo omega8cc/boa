@@ -627,8 +627,8 @@ if [ -e "/var/aegir/drush" ]; then
     _AUTO_PHP="php-min"
     _AUTO_VER="${_tRee}"
     _AUTO_UP_WEEKLY=7
-    _AUTO_UP_MONTH=11
-    _AUTO_UP_DAY=12
+    _AUTO_UP_MONTH=7
+    _AUTO_UP_DAY=7
     _AUTO_UP_HOUR=3
     _AUTO_UP_MINUTE=10
     _AUTO_OCT_UP_HOUR=4
