@@ -315,8 +315,8 @@ _send_boa_system_report() {
     if [ ! -z "${_RCPT_EMAIL}" ] \
       && [ ! -z "${_BCC_EMAIL}" ] \
       && [ -e "/root/.run.example.report.cnf" ]; then
-      _repSub=$(echo -n ${_repSub} | fmt -su -w 2500 2>&1)
       _repSub="BOA Status on ${_hName}"
+      _repSub=$(echo -n ${_repSub} | fmt -su -w 2500 2>&1)
       boa info report both > ${_repBodFile}
       cat ${_repBodFile} | s-nail -b ${_BCC_EMAIL} -s "${_repSub} at ${_NOW}" ${_RCPT_EMAIL}
       rm -f ${_repBodFile}
