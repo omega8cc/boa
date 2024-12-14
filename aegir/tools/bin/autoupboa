@@ -522,6 +522,9 @@ if [ -e "/var/aegir/drush" ]; then
   fi
   _if_hosted_sys
   if [ "${_hostedSys}" = "YES" ]; then
+
+    [ ! -e "/root/.turn.off.auto.update.cnf" ] && touch /root/.turn.off.auto.update.cnf
+
 	if [[ "${_hName}" =~ ^(lcy1.ao.|lcy15.uk.) ]]; then
 	  _DONT_TOUCH=OK
 	  rm -f /etc/csf/csf.conf-pre*
