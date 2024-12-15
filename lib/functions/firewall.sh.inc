@@ -231,10 +231,14 @@ _add_ip_if_missing() {
   local _IP="$1"
   local _FILE="$2"
   if grep -q "^${_IP}$" "${_FILE}"; then
-    _msg "IP (${_IP}) is already listed in ${_FILE}."
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: Gateway IP (${_IP}) is already listed in ${_FILE}."
+    fi
     _alreadyListed=TRUE
   else
-    _msg "Adding IP (${_IP}) to ${_FILE}..."
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: Adding Gateway IP (${_IP}) to ${_FILE}..."
+    fi
     echo "${_IP}" >> "${_FILE}"
   fi
 }
