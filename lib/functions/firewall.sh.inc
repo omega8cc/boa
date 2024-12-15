@@ -223,6 +223,49 @@ _csf_install() {
   fi
 }
 
+# Function to add an IP to a CSF file if not already present
+_add_ip_if_missing() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _add_ip_if_missing"
+  fi
+  local _IP="$1"
+  local _FILE="$2"
+  if grep -q "^${_IP}$" "${_FILE}"; then
+    _msg "IP (${_IP}) is already listed in ${_FILE}."
+    _alreadyListed=TRUE
+  else
+    _msg "Adding IP (${_IP}) to ${_FILE}..."
+    echo "${_IP}" >> "${_FILE}"
+  fi
+}
+
+# Function to add an Gateway IP to allowed and ignored by CSF/LDF
+_csf_lfd_gateway_allow() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _csf_lfd_gateway_allow"
+  fi
+  # Detect the gateway IP from the default route
+  _GATEWAY_IP=$(ip route show default 2>/dev/null | awk '/default/ {print $3}')
+  # Ensure we got a valid gateway IP
+  if [[ -z "${_GATEWAY_IP}" ]]; then
+    _msg "Error: Could not detect a default gateway IP."
+  else
+    _CSF_ALLOW_FILE="/etc/csf/csf.allow"
+    _CSF_IGNORE_FILE="/etc/csf/csf.ignore"
+    # Add the gateway IP to csf.allow
+    _alreadyListed=FALSE
+    _add_ip_if_missing "${_GATEWAY_IP}" "${_CSF_ALLOW_FILE}"
+    [ "${_alreadyListed}" = "FALSE" ] && _msg "The gateway IP (${_GATEWAY_IP}) is now allowed by CSF/LFD."
+    # Add the gateway IP to csf.ignore
+    _alreadyListed=FALSE
+    _add_ip_if_missing "${_GATEWAY_IP}" "${_CSF_IGNORE_FILE}"
+    [ "${_alreadyListed}" = "FALSE" ] && _msg "The gateway IP (${_GATEWAY_IP}) is now ignored by CSF/LFD."
+    # Reload CSF to apply changes
+    _msg "Reloading CSF..."
+    _mrun "csf -r" 2> /dev/null
+  fi
+}
+
 _csf_lfd_install_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _csf_lfd_install_upgrade"
@@ -254,6 +297,7 @@ _csf_lfd_install_upgrade() {
           true
           _CSF_MODE=install
           _csf_install
+          _csf_lfd_gateway_allow
         else
           _msg "INFO: csf/lfd firewall installation skipped"
         fi
@@ -291,6 +335,7 @@ _csf_lfd_install_upgrade() {
       else
         _CSF_MODE=upgrade
         _csf_install
+        _csf_lfd_gateway_allow
       fi
       sed -i "s/^AUTO_UPDATES .*/AUTO_UPDATES = \"0\"/g" /etc/csf/csf.conf &> /dev/null
       wait
