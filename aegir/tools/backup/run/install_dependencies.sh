@@ -221,7 +221,7 @@ _if_python_install_src() {
   _PYTHON_INSTALL=NO
   [ -e "/root/.gnupg" ] && chmod 700 /root/.gnupg
   _PYTHON_TEST=$(python3 --version 2>&1)
-  if [[ ! "${_PYTHON_TEST}" =~ Python\ 3\.12 ]]; then
+  if [[ ! "${_PYTHON_TEST}" =~ Python\ 3\.13 ]]; then
     echo "Python ${_PTN_VRN} installation is required to support Duplicity ${_DCY_VRN}"
     _python_install_src
   else
