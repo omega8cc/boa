@@ -3917,6 +3917,20 @@ _ssl_paths_update() {
 }
 
 #
+# Fix OpenSSL symlinks.
+_ssl_fix_symlinks() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _ssl_fix_symlinks"
+  fi
+  # Determine which OpenSSL version to use based on _OS_CODE
+  if [ "${_OS_CODE}" != "stretch" ] && [ "${_OS_CODE}" != "jessie" ]; then
+    _sslSymlink="/usr/bin/openssl"
+    _sslBinary="/usr/local/ssl3/bin/openssl"
+    [ ! -L "${_sslSymlink}" ] && [ -x "${_sslBinary}" ] && _ssl_paths_update "${_sslBinary}"
+  fi
+}
+
+#
 # Install OpenSSL from sources.
 _ssl_install_src() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
