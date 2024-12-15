@@ -532,7 +532,7 @@ _sftp_ftps_modern_fix() {
   fi
   if [ ! -e "${_pthLog}/fixed-sftp-idle.log" ]; then
     sed -i "s/IdleTimeOut.*/IdleTimeOut            15m/g" /etc/ssh/sftp_config &> /dev/null
-    _mrun "service ssh reload" 2> /dev/null
+    _mrun "service ssh restart" 2> /dev/null
     touch ${_pthLog}/fixed-sftp-idle.log
   fi
 }
@@ -3661,7 +3661,9 @@ _sshd_install_src() {
       rm -f ${_OLD_SYSCONFDIR}/ssh*
       rm -f ${_OLD_SYSCONFDIR}/moduli*
     fi
-    _mrun "service ssh restart" 2> /dev/null
+    killall -9 sshd-session &> /dev/null
+    kill -9 $(ps aux | grep '[s]tartups' | awk '{print $2}') &> /dev/null
+    _mrun "service ssh start" 2> /dev/null
   fi
   _SSH_FORCE_REINSTALL=NO
 }
@@ -8344,7 +8346,7 @@ _sshd_armour() {
   if [ -e "/etc/ssh/sshd_config" ]; then
     if [ -e "/etc/ssh/ssh_config" ]; then
       grep -q '^[^#]*GSSAPIAuthentication' /etc/ssh/ssh_config && sed -i '/^[^#]*GSSAPIAuthentication/s/^/#/' /etc/ssh/ssh_config
-      _mrun "service ssh reload" 2> /dev/null
+      _mrun "service ssh restart" 2> /dev/null
     fi
     if [ "${_SSH_ARMOUR}" = "NO" ] \
       || [ -z "${_SSH_ARMOUR}" ]; then
@@ -8483,7 +8485,7 @@ _sshd_armour() {
         echo "  MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-512,hmac-sha2-256,umac-128@openssh.com" >> /etc/ssh/ssh_config
       fi
     fi
-    _mrun "service ssh reload" 2> /dev/null
+    _mrun "service ssh restart" 2> /dev/null
   fi
 }
 
@@ -8518,7 +8520,7 @@ _initd_update() {
       echo >> /etc/ssh/sshd_config
       echo "UsePAM no" >> /etc/ssh/sshd_config
     fi
-    _mrun "service ssh reload" 2> /dev/null
+    _mrun "service ssh restart" 2> /dev/null
     _tune_memory_limits
     if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -8615,7 +8617,7 @@ _initd_update() {
     echo "Subsystem sftp internal-sftp -u 0002" >> /etc/ssh/sshd_config
     sed -i "/^$/d" /etc/ssh/sshd_config
     wait
-    _mrun "service ssh reload" 2> /dev/null
+    _mrun "service ssh restart" 2> /dev/null
     _fix_on_upgrade
     _tune_memory_limits
     if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then

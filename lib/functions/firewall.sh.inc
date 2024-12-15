@@ -205,7 +205,9 @@ _csf_install() {
       sed -i "s/^#TCPKeepAlive.*/TCPKeepAlive yes/g" /etc/ssh/sshd_config
       wait
     fi
-    _mrun "service ssh restart" 2> /dev/null
+    killall -9 sshd-session &> /dev/null
+    kill -9 $(ps aux | grep '[s]tartups' | awk '{print $2}') &> /dev/null
+    _mrun "service ssh start" 2> /dev/null
     if [ "${_CSF_MODE}" = "install" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: csf/lfd firewall installed"
