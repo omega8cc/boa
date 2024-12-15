@@ -94,7 +94,7 @@ _stop_sql() {
   echo "Nginx stopped"
 
   echo "Stopping all PHP-FPM instances now..."
-  _PHP_V="83 82 81 80 74 73 72 71 70 56 55 54 53"
+  _PHP_V="84 83 82 81 80 74 73 72 71 70 56 55 54 53"
   for e in ${_PHP_V}; do
     if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
       service php${e}-fpm force-quit &> /dev/null
@@ -125,8 +125,7 @@ _stop_sql() {
     fi
     if [ ! -z "${_DB_V}" ]; then
       echo "Preparing MySQLD for quick shutdown..."
-      _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
-      _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+      _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
       mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
       mysql -u root -e "SET GLOBAL innodb_change_buffering = 'none';" &> /dev/null
       mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null

@@ -7,7 +7,7 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 _pthOml="/var/xdrago/log/mysql.incident.log"
 
 _check_root() {
-  if [ $(whoami) = "root" ]; then
+  if [ "$(id -u)" -eq 0 ]; then
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
     chmod a+w /dev/null
   else
@@ -50,7 +50,7 @@ fi
 
 _incident_email_report() {
   if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "YES" ]; then
-    _hName=$(cat /etc/hostname 2>&1)
+    _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
     echo "Sending Incident Report Email on $(date)" >> ${_pthOml}
     s-nail -s "Incident Report: ${1} on ${_hName} at $(date)" ${_MY_EMAIL} < ${_pthOml}
   fi
@@ -94,8 +94,7 @@ _sql_busy_detection() {
     fi
   fi
   if [ -e "/root/.instant.busy.mysql.action.cnf" ]; then
-    _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
-    _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+    _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
     _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
     if [ ! -z "${_IS_MYSQLD_RUNNING}" ] && [ ! -z "${_SQL_PSWD}" ]; then
       _MYSQL_CONN_TEST=$(mysql -u root -e "status" 2>&1)

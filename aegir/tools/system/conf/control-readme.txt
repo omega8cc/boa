@@ -108,6 +108,7 @@
 ###
 ### Supported values for single PHP-FPM mode which can be written in this file:
 ###
+### 8.4
 ### 8.3
 ### 8.2
 ### 8.1
@@ -166,6 +167,7 @@
 ###
 ### Supported values which can be written in this file:
 ###
+### 8.4
 ### 8.3
 ### 8.2
 ### 8.1

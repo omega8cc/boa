@@ -19,11 +19,9 @@ fi
 
 ###-------------SYSTEM-----------------###
 
-_CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
-
 _if_hosted_sys() {
   if [ -e "/root/.host8.cnf" ] \
-    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
+    || [[ "${_hName}" =~ ".aegir.cc"($) ]]; then
     _hostedSys=YES
   else
     _hostedSys=NO
@@ -135,11 +133,11 @@ and there are no exceptions possible to avoid it.
 
 This means that all Aegir instances still running PHP $1
 will stop working if not switched to one of currently
-supported versions: 8.1, 8.2, 8.3
+supported versions: 8.1, 8.2, 8.3, 8.4
 
 To switch PHP-FPM version on command line, please type:
 
-  echo 8.1 > ~/static/control/fpm.info
+  echo 8.2 > ~/static/control/fpm.info
 
 You can find more details at: https://learn.omega8.cc/node/330
 
@@ -861,7 +859,7 @@ echo "INFO: Starting usage monitoring on $(date)"
 _NOW=$(date +%y%m%d-%H%M%S 2>&1)
 _NOW=${_NOW//[^0-9-]/}
 _DATE=$(date)
-_CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
+_hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
 mkdir -p /var/xdrago/log/usage
 if [ "${1}" = "verbose" ] || [ -z "${1}" ]; then
   _THIS_MODE="verbose"

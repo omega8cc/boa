@@ -7,7 +7,7 @@ export _tRee=pro
 export _xSrl=550proT02
 
 _check_root() {
-  if [ $(whoami) = "root" ]; then
+  if [ "$(id -u)" -eq 0 ]; then
     ionice -c2 -n7 -p $$
     renice 19 -p $$
     chmod a+w /dev/null
@@ -25,6 +25,7 @@ _check_root() {
     echo "ERROR: We can not proceed until it is below 90/100"
     exit 1
   fi
+  _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
 }
 _check_root
 
@@ -92,7 +93,7 @@ _apt_clean_update() {
 
 _if_hosted_sys() {
   if [ -e "/root/.host8.cnf" ] \
-    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
+    || [[ "${_hName}" =~ ".aegir.cc"($) ]]; then
     _hostedSys=YES
   else
     _hostedSys=NO
@@ -631,7 +632,7 @@ _send_shutdown_notice() {
   _MAILX_TEST=$(s-nail -V 2>&1)
   if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
   cat <<EOF | s-nail -b ${_BCC_EMAIL} \
-    -s "ALERT! Shutdown of Hacked ${_Dom} Site on ${_CHECK_HOST}" \
+    -s "ALERT! Shutdown of Hacked ${_Dom} Site on ${_hName}" \
     ${_ALRT_EMAIL}
 Hello,
 
@@ -655,7 +656,7 @@ The platform root directory for this site is:
 
 The system hostname is:
 
-  ${_CHECK_HOST}
+  ${_hName}
 
 To learn more on what happened, how it was possible and
 how to survive #Drupageddon, please read:
@@ -691,7 +692,7 @@ _send_hacked_alert() {
   _MAILX_TEST=$(s-nail -V 2>&1)
   if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
   cat <<EOF | s-nail -b ${_BCC_EMAIL} \
-    -s "URGENT: The ${_Dom} site on ${_CHECK_HOST} has been HACKED!" \
+    -s "URGENT: The ${_Dom} site on ${_hName} has been HACKED!" \
     ${_ALRT_EMAIL}
 Hello,
 
@@ -707,7 +708,7 @@ The platform root directory for this site is:
 
 The system hostname is:
 
-  ${_CHECK_HOST}
+  ${_hName}
 
 To learn more on what happened, how it was possible and
 how to survive #Drupageddon, please read:
@@ -763,7 +764,7 @@ _send_core_alert() {
   _MAILX_TEST=$(s-nail -V 2>&1)
   if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
   cat <<EOF | s-nail -b ${_BCC_EMAIL} \
-    -s "URGENT: The ${_Dom} site on ${_CHECK_HOST} runs on not secure Drupal core!" \
+    -s "URGENT: The ${_Dom} site on ${_hName} runs on not secure Drupal core!" \
     ${_ALRT_EMAIL}
 Hello,
 
@@ -781,7 +782,7 @@ The platform root directory for this site is:
 
 The system hostname is:
 
-  ${_CHECK_HOST}
+  ${_hName}
 
 Does it mean that your site is vulnerable to Drupageddon attack, recently
 made famous again by Panama Papers leak?
@@ -2041,7 +2042,7 @@ _if_le_hm_ssl_old() {
 
   # Check if the path is a symlink
   if [ -L "${_filePath}" ]; then
-    _target_file=$(readlink -f "${_filePath}")
+    _target_file="$(readlink -f "${_filePath}")"
     # Get the file's modification time in seconds since epoch
     _file_mod_time=$(stat -c %Y "${_target_file}")
   else
@@ -2084,8 +2085,7 @@ _if_le_hm_ssl_crt_key_copy() {
   fi
   if [ -e "${_crtPath}" ]; then
     if [ -L "${_crtPath}" ]; then
-      _crtPathR=$(readlink -n ${_crtPath} 2>&1)
-      _crtPathR=$(echo -n ${_crtPathR} | tr -d "\n" 2>&1)
+      _crtPathR="$(readlink -n "${_crtPath}")"
       if [ -f "${_leCrtPath}/${_crtPathR}" ]; then
         rm -f /etc/ssl/private/${_hmFront}.crt
         cp -a ${_leCrtPath}/${_crtPathR} /etc/ssl/private/${_hmFront}.crt
@@ -2098,8 +2098,7 @@ _if_le_hm_ssl_crt_key_copy() {
   _keyPath="${_leCrtPath}/privkey.pem"
   if [ -e "${_keyPath}" ]; then
     if [ -L "${_keyPath}" ]; then
-      _keyPathR=$(readlink -n ${_keyPath} 2>&1)
-      _keyPathR=$(echo -n ${_keyPathR} | tr -d "\n" 2>&1)
+      _keyPathR="$(readlink -n "${_keyPath}")"
       if [ -f "${_leCrtPath}/${_keyPathR}" ]; then
         rm -f /etc/ssl/private/${_hmFront}.key
         cp -a ${_leCrtPath}/${_keyPathR} /etc/ssl/private/${_hmFront}.key
@@ -2518,7 +2517,7 @@ _delete_this_platform() {
 _check_old_empty_platforms() {
   _if_hosted_sys
   if [ "${_hostedSys}" = "YES" ]; then
-    if [[ "${_CHECK_HOST}" =~ "demo.aegir.cc" ]] \
+    if [[ "${_hName}" =~ "demo.aegir.cc" ]] \
       || [ -e "${_usEr}/static/control/platforms.info" ]; then
       _DO_NOTHING=YES
     else
@@ -2872,7 +2871,6 @@ _incident_email_report() {
     : "${_INCIDENT_REPORT:=YES}"
   fi
   if [ -n "${_thisEmail}" ] && [ "${_INCIDENT_REPORT}" = "YES" ]; then
-    _hName=$(cat /etc/hostname 2>&1)
     echo "Sending Incident Report Email on $(date)" >> ${_thisLog}
     s-nail -s "Incident Report during daily.sh: ${1} on ${_hName} at $(date)" ${_thisEmail} < ${_thisLog}
   fi
@@ -3072,7 +3070,6 @@ _NOW=$(date +%y%m%d-%H%M%S 2>&1)
 _NOW=${_NOW//[^0-9-]/}
 _DOW=$(date +%u 2>&1)
 _DOW=${_DOW//[^1-7]/}
-_CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
 #
 if [ -e "/root/.force.sites.verify.cnf" ]; then
   _FORCE_SITES_VERIFY=YES

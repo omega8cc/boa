@@ -106,7 +106,7 @@ _OS_CODE=check
 #
 
 _check_root() {
-  if [ $(whoami) = "root" ]; then
+  if [ "$(id -u)" -eq 0 ]; then
     [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
   else
     echo "ERROR: This script should be run as a root user"
@@ -230,8 +230,7 @@ _faster_reboot() {
   csf -tf &> /dev/null
   _msg "Firewall has been purged" >> "${_logAbf}"
   if [ -e "/root/.my.pass.txt" ]; then
-    _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
-    _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+    _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
     _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
     if [ ! -z "${_IS_MYSQLD_RUNNING}" ] && [ ! -z "${_SQL_PSWD}" ]; then
       _msg "Preparing MySQLD for quick shutdown..." >> "${_logAbf}"
