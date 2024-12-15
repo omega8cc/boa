@@ -205,7 +205,7 @@ _csf_install() {
       sed -i "s/^#TCPKeepAlive.*/TCPKeepAlive yes/g" /etc/ssh/sshd_config
       wait
     fi
-    killall -9 sshd-session &> /dev/null
+    # killall -9 sshd-session &> /dev/null
     kill -9 $(ps aux | grep '[s]tartups' | awk '{print $2}') &> /dev/null
     _mrun "service ssh start" 2> /dev/null
     if [ "${_CSF_MODE}" = "install" ]; then
@@ -231,10 +231,14 @@ _add_ip_if_missing() {
   local _IP="$1"
   local _FILE="$2"
   if grep -q "^${_IP}$" "${_FILE}"; then
-    _msg "IP (${_IP}) is already listed in ${_FILE}."
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: Gateway IP (${_IP}) is already listed in ${_FILE}."
+    fi
     _alreadyListed=TRUE
   else
-    _msg "Adding IP (${_IP}) to ${_FILE}..."
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: Adding Gateway IP (${_IP}) to ${_FILE}..."
+    fi
     echo "${_IP}" >> "${_FILE}"
   fi
 }

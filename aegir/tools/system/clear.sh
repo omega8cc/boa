@@ -260,7 +260,7 @@ _if_fix_locked_sshd() {
   _SSH_LOG="/var/log/auth.log"
   if [ `tail --lines=30 ${_SSH_LOG} \
     | grep --count "error: Bind to port 22"` -gt "0" ]; then
-    killall -9 sshd-session
+    # killall -9 sshd-session
     kill -9 $(ps aux | grep '[s]tartups' | awk '{print $2}')
     service ssh start
   fi

@@ -3661,7 +3661,7 @@ _sshd_install_src() {
       rm -f ${_OLD_SYSCONFDIR}/ssh*
       rm -f ${_OLD_SYSCONFDIR}/moduli*
     fi
-    killall -9 sshd-session &> /dev/null
+    # killall -9 sshd-session &> /dev/null
     kill -9 $(ps aux | grep '[s]tartups' | awk '{print $2}') &> /dev/null
     _mrun "service ssh start" 2> /dev/null
   fi
