@@ -3989,16 +3989,10 @@ _ssl_paths_update() {
     _msg "PROC: _ssl_paths_update"
   fi
 
-  if [ -x "${_SSL_MODERN_BINARY}" ]; then
-    _LINK_TO="${_SSL_MODERN_BINARY}"
-  elif [ -x "${_SSL_LEGACY_BINARY}" ]; then
-    _LINK_TO="${_SSL_LEGACY_BINARY}"
-  else
-    _LINK_TO=
-  fi
+  _LINK_TO="${1}"
 
-  if [ -n "${_LINK_TO}" ]; then
-    if [ -e "/usr/bin/openssl" ]; then
+  if [ -x "${_LINK_TO}" ]; then
+    if [ -f "/usr/bin/openssl" ]; then
       cp -af /usr/bin/openssl /usr/bin/old-openssl-$(date +%y%m%d-%H%M%S 2>&1)
     fi
     ln -sfn ${_LINK_TO} /usr/bin/openssl
