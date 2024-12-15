@@ -50,7 +50,7 @@ if [ ! -x "/usr/local/ssl3/bin/openssl" ]; then
   exit 1
 fi
 
-_PTN_VRN=3.12.5
+_PTN_VRN=3.13.1
 _DCY_VRN=3.0.3.1
 _LOGPTH="/var/xdrago/log"
 _NOW=$(date +%y%m%d-%H%M%S 2>&1)
@@ -80,7 +80,7 @@ if [ -z "${_AWS_VLV}" ]; then
 fi
 
 # Set extra environment variables
-export PYTHONPATH="/usr/local/lib/python3.12/site-packages"
+export PYTHONPATH="/usr/local/lib/python3.13/site-packages"
 
 _DCY_PTN="/usr/local/bin/python3"
 _DCY_CMD="/usr/local/bin/duplicity -v ${_AWS_VLV}"

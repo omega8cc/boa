@@ -30,6 +30,9 @@ _if_install_bzr() {
       if [ -e "/usr/local/lib/python3.12/dist-packages/bzrlib" ]; then
         rm -rf /usr/local/lib/python3.12/dist-packages/bzrlib
       fi
+      if [ -e "/usr/local/lib/python3.13/dist-packages/bzrlib" ]; then
+        rm -rf /usr/local/lib/python3.13/dist-packages/bzrlib
+      fi
       cd /var/opt
       rm -rf bzr*
       _get_dev_src "bzr-${_BZR_VRN}.tar.gz"
