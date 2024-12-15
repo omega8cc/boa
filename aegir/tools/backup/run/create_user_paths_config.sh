@@ -8,7 +8,7 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 _VALIDATION_LOG_FILE="/var/log/backup_validation_issues.log"
 
 _check_root() {
-  if [ $(whoami) = "root" ]; then
+  if [ "$(id -u)" -eq 0 ]; then
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
     export _INCIDENT_REPORT=${_INCIDENT_REPORT//[^A-Z]/}
     : "${_INCIDENT_REPORT:=YES}"

@@ -24,7 +24,6 @@ _pthIncB="lib/settings/${_filIncB}"
 _pthIncO="lib/settings/${_filIncO}"
 _vBs="/var/backups"
 
-_CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
 _LOG_DIR="${_vBs}/reports/up/$(basename "$0")/${_TODAY}"
 _UP_LOG="${_LOG_DIR}/$(basename "$0")-up-${_NOW}.log"
 _VMFAMILY=XEN
@@ -176,7 +175,7 @@ _ifnames_grub_check_sync() {
 
 _check_root_direct() {
   _U_TEST=DENY
-  [ "${SUDO_USER}" ] && _U_TEST_SDO=${SUDO_USER} || _U_TEST_SDO=`whoami`
+  [ "${SUDO_USER}" ] && _U_TEST_SDO=${SUDO_USER} || _U_TEST_SDO=$(whoami)
   _U_TEST_WHO=$(who am i | awk '{print $1}' 2>&1)
   _U_TEST_LNE=$(logname 2>&1)
   if [ "${_U_TEST_SDO}" = "root" ] || [ "${_U_TEST_LNE}" = "root" ]; then
@@ -268,8 +267,7 @@ _check_sql_running() {
 
 _check_sql_access() {
   if [ -e "/root/.my.pass.txt" ] && [ -e "/root/.my.cnf" ]; then
-    _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
-    _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+    _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
     _IS_SYNC_SQL_PSWD=$(grep "${_SQL_PSWD}" /root/.my.cnf 2>&1)
   else
     echo "ALERT: /root/.my.cnf or /root/.my.pass.txt not found."
@@ -310,7 +308,7 @@ _check_sql_access() {
 
 _if_hosted_sys() {
   if [ -e "/root/.host8.cnf" ] \
-    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
+    || [[ "${_hName}" =~ ".aegir.cc"($) ]]; then
     _hostedSys=YES
   else
     _hostedSys=NO
@@ -322,7 +320,7 @@ _fix_dns_settings() {
   rm -f ${_vBs}/resolv.conf.tmp
   if [ -e "/etc/resolv.conf" ]; then
     if [ -L "/etc/resolv.conf" ]; then
-      _rslvT=`readlink -n /etc/resolv.conf`
+      _rslvT="$(readlink -n /etc/resolv.conf)"
       if [ ! -e "${_rslvT}" ]; then
         rm -f /etc/resolv.conf
       fi
@@ -477,8 +475,8 @@ _send_report() {
     fi
     if [ ! -z "${_MY_EMAIL}" ]; then
       _repSub="Successful Barracuda upgrade"
-      _repSub="REPORT: ${_repSub} on ${_CHECK_HOST}"
       _repSub=$(echo -n ${_repSub} | fmt -su -w 2500 2>&1)
+      _repSub="REPORT: ${_repSub} on ${_hName}"
       _if_extended_report
       cat ${_UP_LOG} | s-nail -s "${_repSub} at ${_NOW}" ${_MY_EMAIL}
       echo "${_repSub} sent to ${_MY_EMAIL}"
@@ -494,8 +492,8 @@ _send_alert() {
       _MY_EMAIL="$(basename "$0")@omega8.cc"
     fi
     if [ ! -z "${_MY_EMAIL}" ]; then
-      _repSub="${_ALERT_MSG} on ${_CHECK_HOST}"
       _repSub=$(echo -n ${_repSub} | fmt -su -w 2500 2>&1)
+      _repSub="${_ALERT_MSG} on ${_hName}"
       _if_extended_report
       cat ${_UP_LOG} | s-nail -s "${_repSub} at ${_NOW}" ${_MY_EMAIL}
       echo "${_repSub} sent to ${_MY_EMAIL}"
@@ -576,7 +574,7 @@ _check_report() {
 }
 
 _check_php_cli() {
-  _PHP_CHECK=$(readlink -n /usr/bin/php 2>&1)
+  _PHP_CHECK="$(readlink -n /usr/bin/php)"
   if [ ! -x "${_PHP_CHECK}" ]; then
     if [ "${_PHP_CLI_VERSION}" = "8.1" ]; then
       _PHP_CLI_PATH="/opt/php81/bin/php"
@@ -584,6 +582,8 @@ _check_php_cli() {
       _PHP_CLI_PATH="/opt/php82/bin/php"
     elif [ "${_PHP_CLI_VERSION}" = "8.3" ]; then
       _PHP_CLI_PATH="/opt/php83/bin/php"
+    elif [ "${_PHP_CLI_VERSION}" = "8.4" ]; then
+      _PHP_CLI_PATH="/opt/php84/bin/php"
     elif [ "${_PHP_CLI_VERSION}" = "7.4" ]; then
       _PHP_CLI_PATH="/opt/php74/bin/php"
     else
@@ -598,6 +598,8 @@ _check_php_cli() {
         _USE_PHP_CLI_PATH="/opt/php82/bin/php"
       elif  [ -x "/opt/php83/bin/php" ]; then
         _USE_PHP_CLI_PATH="/opt/php83/bin/php"
+      elif  [ -x "/opt/php84/bin/php" ]; then
+        _USE_PHP_CLI_PATH="/opt/php84/bin/php"
       elif  [ -x "/opt/php74/bin/php" ]; then
         _USE_PHP_CLI_PATH="/opt/php74/bin/php"
       fi
@@ -646,7 +648,9 @@ _mysql_downgrade_protection() {
 _up_action() {
   if [ -e "${_vBs}/${_barName}" ] && [ -e "${_barCnf}" ]; then
     if [ ! -z "${_rKey}" ]; then
-      if [ "${_rKey}" = "php-83" ] || [ "${_rKey}" = "php-8.3" ]; then
+      if [ "${_rKey}" = "php-84" ] || [ "${_rKey}" = "php-8.4" ]; then
+        _phpS="8.4"
+      elif [ "${_rKey}" = "php-83" ] || [ "${_rKey}" = "php-8.3" ]; then
         _phpS="8.3"
       elif [ "${_rKey}" = "php-82" ] || [ "${_rKey}" = "php-8.2" ]; then
         _phpS="8.2"
@@ -696,7 +700,8 @@ _up_action() {
 
     fi
     ### Make sure that _PHP_SINGLE_INSTALL is set in ${_barCnf}
-    if [ "${_phpS}" = "8.3" ] \
+    if [ "${_phpS}" = "8.4" ] \
+      || [ "${_phpS}" = "8.3" ] \
       || [ "${_phpS}" = "8.2" ] \
       || [ "${_phpS}" = "8.1" ] \
       || [ "${_phpS}" = "7.4" ]; then
@@ -710,7 +715,8 @@ _up_action() {
     fi
     ### Make sure that _PHP_SINGLE_INSTALL takes precedence
     if [ ! -z "${_phpS}" ]; then
-      if [ "${_phpS}" = "8.3" ] \
+      if [ "${_phpS}" = "8.4" ] \
+        || [ "${_phpS}" = "8.3" ] \
         || [ "${_phpS}" = "8.2" ] \
         || [ "${_phpS}" = "8.1" ] \
         || [ "${_phpS}" = "7.4" ]; then
@@ -768,9 +774,9 @@ _up_action() {
         fi
       elif [ "${_phpS}" = "MIN" ] || [ "${_phpS}" = "MAX" ]; then
         if [ "${_phpS}" = "MAX" ]; then
-          _phpM="5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2 8.3"
+          _phpM="5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2 8.3 8.4"
         else
-          _phpM="7.4 8.1 8.2 8.3"
+          _phpM="7.4 8.1 8.2 8.3 8.4"
         fi
         _phpS="8.3"
 
@@ -1519,8 +1525,9 @@ _csf_check_fix() {
 }
 
 _check_root() {
-  if [ $(whoami) = "root" ]; then
+  if [ "$(id -u)" -eq 0 ]; then
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
+    _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
 
     # Sanitize to allow only digits and minus sign
     export _B_NICE=${_B_NICE//[^0-9-]/}
@@ -1831,9 +1838,9 @@ _if_display_help() {
 
     {options}
       newrelickey <-- activate New Relic integration with valid license key
-      php-8.3 <------ enable single-PHP mode (8.1 or 8.2 or 8.3 or 7.4)
-      php-min <------ install PHP 8.1, 8.2, 8.3, 7.4, use 8.3 by default (php-all)
-      php-max <------ install PHP 8.1, 8.2, 8.3, 8.0, 7.4, 7.3, 7.2, 7.1, 7.0, 5.6
+      php-8.3 <------ enable single-PHP mode (8.1 or 8.2 or 8.3 or 8.4 or 7.4)
+      php-min <------ install PHP 8.1, 8.2, 8.3, 8.4, 7.4, use 8.3 by default (php-all)
+      php-max <------ install PHP 8.0, 8.1, 8.2, 8.3, 8.4, 7.4, 7.3, 7.2, 7.1, 7.0, 5.6
       nodns <-------- disable DNS/SMTP checks on the fly
       percona-8.0 <-- specify Percona version to use (5.7, 8.0, 8.3, 8.4)
 

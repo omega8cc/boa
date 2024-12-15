@@ -47,7 +47,7 @@ _DB_SRC=repo.percona.com
 ###
 _DRUSH_ELEVEN_VRN=11.6.0.9
 _DRUSH_TEN_VRN=10.6.2.9
-_DRUSH_EIGHT_VRN=8.4.12.9
+_DRUSH_EIGHT_VRN=8.5.0.1
 _DRUSH_EIGHT_TEST_VRN=8.4.12-force
 ###
 ###
@@ -59,7 +59,7 @@ _ICU_MODERN_VRN=73-1
 _IMAGE_MAGICK_VRN=7.1.1-7
 _IMAGICK_OLD_VRN=3.1.2
 _IMAGICK_VRN=3.7.0
-_IONCUBE_VRN=13.3.1
+_IONCUBE_VRN=14.0.0
 _JETTY_7_VRN=7.6.17.v20150415
 _JETTY_8_VRN=8.1.17.v20150415
 _JETTY_9_VRN=9.2.16.v20160414
@@ -70,7 +70,7 @@ _LIB_YAML_VRN=0.2.5
 _LOGJ4_VRN=1.2.17
 _LSHELL_VRN=0.10
 _MAILPARSE_VRN=2.1.6
-_NEW_RELIC_VRN=11.3.0.16
+_NEW_RELIC_VRN=11.4.0.17
 _NODE_VRN=v22.5.0
 _MONGO_VRN=1.6.14
 _MONGODB_VRN=1.2.5
@@ -82,7 +82,7 @@ _NGINX_VRN=1.27.3
 _OPENSSH_VRN=9.9p1
 _OPENSSL_LEGACY_VRN=1.0.2u
 _OPENSSL_EOL_VRN=1.1.1w
-_OPENSSL_MODERN_VRN=3.3.2
+_OPENSSL_MODERN_VRN=3.4.0
 _PDNSD_VRN=1.2.9a
 _PERCONA_5_7_VRN=5.7
 _PERCONA_8_0_VRN=8.0
@@ -108,10 +108,12 @@ _PHP82_API=20220829
 _PHP82_VRN=8.2.26
 _PHP83_API=20230831
 _PHP83_VRN=8.3.14
-_PHP_APCU=5.1.23
+_PHP84_API=20240924
+_PHP84_VRN=8.4.1
+_PHP_APCU=5.1.24
 _PHP_IGBINARY_THREE=3.2.15
 _PHP_IGBINARY_TWO=2.0.8
-_PHP_MCRYPT=1.0.6
+_PHP_MCRYPT=1.0.7
 _PHPREDIS_SIX_NEW_VRN=6.1.0
 _PHPREDIS_SIX_VRN=6.0.2
 _PHPREDIS_FIVE_VRN=5.3.7
@@ -130,7 +132,7 @@ _SOLR_3_VRN=3.6.2
 _SOLR_4_VRN=4.9.1
 _SOLR_7_VRN=7.7.3
 _TWIGC_VRN=1.24.0
-_UNBOUND_VRN=1.21.1
+_UNBOUND_VRN=1.22.0
 _UPROGRESS_LEGACY_VRN=1.0.3.1
 _UPROGRESS_SEVEN_VRN=2.0.1.6
 _UPROGRESS_EIGHT_VRN=2.0.2
@@ -442,6 +444,12 @@ fi
 
 
 ###
+### Install or upgrade csf/lfd monitoring
+###
+_csf_lfd_install_upgrade
+
+
+###
 ### DNS cache server
 ###
 if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "UPGRADE" ]; then
@@ -527,7 +535,6 @@ if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "UPGRADE" ]; then
     _if_install_chive
     _if_install_sqlbuddy
     _if_install_collectd
-    _if_install_hhvm
     _if_install_webmin
     _if_install_bind
     _if_install_ruby
@@ -535,12 +542,6 @@ if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "UPGRADE" ]; then
     _sftp_ftps_modern_fix
   fi
 fi
-
-
-###
-### Install or upgrade csf/lfd monitoring
-###
-_csf_lfd_install_upgrade
 
 
 ###

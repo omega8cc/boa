@@ -3,6 +3,7 @@ export _tRee=dev
 export _rLsn="BOA-5.5.0"
 export _rlsE="${_rLsn}-${_tRee}"
 export _bRnh="5.x-${_tRee}"
+_hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
 
 #
 # Download and extract from core archive.
@@ -80,14 +81,11 @@ _find_correct_ip() {
     _debug_proc
   fi
   if [ -e "/root/.found_correct_ipv4.cnf" ]; then
-    _LOC_IP=$(cat /root/.found_correct_ipv4.cnf 2>&1)
-    _LOC_IP=$(echo -n ${_LOC_IP} | tr -d "\n" 2>&1)
+    _LOC_IP=$(cat /root/.found_correct_ipv4.cnf 2>/dev/null | tr -d '\n')
   else
-    _LOC_IP=$(curl ${_crlGet} https://api.ipify.org \
-      | sed 's/[^0-9\.]//g' 2>&1)
+    _LOC_IP=$(curl ${_crlGet} https://api.ipify.org | sed 's/[^0-9\.]//g')
     if [ -z "${_LOC_IP}" ]; then
-      _LOC_IP=$(curl ${_crlGet} http://ipv4.icanhazip.com \
-        | sed 's/[^0-9\.]//g' 2>&1)
+      _LOC_IP=$(curl ${_crlGet} http://ipv4.icanhazip.com | sed 's/[^0-9\.]//g')
     fi
     if [ ! -z "${_LOC_IP}" ]; then
       echo ${_LOC_IP} > /root/.found_correct_ipv4.cnf
@@ -175,17 +173,9 @@ _satellite_web_user_update() {
       _isTest="$1"
       _isTest=${_isTest//[^a-z0-9]/}
       if [ ! -z "${_isTest}" ]; then
-        if [ "$1" = "hhvm" ]; then
-          if [ -e "/opt/php56/etc/php56.ini" ]; then
-            _T_PV=56
-          elif [ -e "/opt/php55/etc/php55.ini" ]; then
-            _T_PV=55
-          fi
-        else
-          _T_PV=$1
-          if [ "${_DEBUG_MODE}" = "YES" ]; then
-            _msg "DEBUG: _T_PV is ${_T_PV} in _satellite_web_user_update C"
-          fi
+        _T_PV=$1
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "DEBUG: _T_PV is ${_T_PV} in _satellite_web_user_update C"
         fi
       fi
       if [ ! -z "${_T_PV}" ] && [ -e "/opt/php${_T_PV}/etc/php${_T_PV}.ini" ]; then
@@ -194,7 +184,7 @@ _satellite_web_user_update() {
           _msg "DEBUG: _T_PV is ${_T_PV} in _satellite_web_user_update D"
         fi
       else
-        _PHP_V="83 82 81 80 74 73 72 71 70 56"
+        _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
         for e in ${_PHP_V}; do
           if [ -e "/opt/php${e}/etc/php${e}.ini" ]; then
             cp -af /opt/php${e}/etc/php${e}.ini ${_T_II}
@@ -219,6 +209,7 @@ _satellite_web_user_update() {
           /opt/php81:     \
           /opt/php82:     \
           /opt/php83:     \
+          /opt/php84:     \
           /opt/tika:      \
           /opt/tika7:     \
           /opt/tika8:     \
@@ -372,8 +363,7 @@ _satellite_tune_fpm_config() {
 
   if [ ! -z "${_CLIENT_CORES}" ] && [ "${_CLIENT_CORES}" -ge "1" ]; then
     if [ -e "${_ROOT}/log/cores.txt" ]; then
-      _CLIENT_CORES=$(cat ${_ROOT}/log/cores.txt 2>&1)
-      _CLIENT_CORES=$(echo -n ${_CLIENT_CORES} | tr -d "\n" 2>&1)
+      _CLIENT_CORES=$(cat ${_ROOT}/log/cores.txt 2>/dev/null | tr -d '\n')
     fi
     _CLIENT_CORES=${_CLIENT_CORES//[^0-9]/}
     if [ ! -z "${_CLIENT_CORES}" ] && [ "${_CLIENT_CORES}" -ge "1" ]; then
@@ -394,9 +384,9 @@ _satellite_tune_fpm_config() {
 
   _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
   if [ -z "${_PHP_SV}" ]; then
-    _PHP_SV=74
+    _PHP_SV=83
   fi
-  _PHP_V="83 82 81 80 74 73 72 71 70 56"
+  _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
   _PHP_OLD_SV=
   for e in ${_PHP_V}; do
     if [ -e "/opt/php${e}/etc/pool.d/${_USER}.conf" ]; then
@@ -418,7 +408,7 @@ _satellite_tune_fpm_config() {
       ### create or update special system user if needed
       if [ -e "/home/${_WEB}/.drush/php.ini" ]; then
         _OLD_PHP_IN_USE=$(grep "/lib/php" /home/${_WEB}/.drush/php.ini 2>&1)
-        _PHP_V="83 82 81 80 74 73 72 71 70 56"
+        _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
         for e in ${_PHP_V}; do
           if [[ "${_OLD_PHP_IN_USE}" =~ "php${e}" ]]; then
             if [ "${e}" != "${_PHP_SV}" ] \
@@ -591,7 +581,6 @@ _satellite_cnf() {
   if [ ! -e "${_octCnf}" ]; then
     if [[ "${_MY_EMAIL}" =~ "omega8.cc" ]] \
       || [[ "${_CLIENT_EMAIL}" =~ "omega8.cc" ]]; then
-      _CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
       _if_hosted_sys
       if [ "${_hostedSys}" != "YES" ]; then
         _msg "EXIT: You must enter **your** valid email address"
@@ -678,7 +667,6 @@ _satellite_cnf() {
     else
       echo "_PHP_CLI_VERSION=${_PHP_CLI_VERSION}" >> ${_octCnf}
     fi
-    _CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
     _if_hosted_sys
     if [ "${_hostedSys}" = "YES" ]; then
       _LD_DOM=YES
@@ -700,7 +688,8 @@ _satellite_cnf() {
     if [ -e "${_ROOT}/static/control/fpm.info" ]; then
       _PHP_FPM_VERSION=$(cat ${_ROOT}/static/control/fpm.info 2>&1)
       _PHP_FPM_VERSION=$(echo -n ${_PHP_FPM_VERSION} | tr -d "\n" 2>&1)
-      if [ "${_PHP_FPM_VERSION}" = "8.3" ] \
+      if [ "${_PHP_FPM_VERSION}" = "8.4" ] \
+        || [ "${_PHP_FPM_VERSION}" = "8.3" ] \
         || [ "${_PHP_FPM_VERSION}" = "8.2" ] \
         || [ "${_PHP_FPM_VERSION}" = "8.1" ] \
         || [ "${_PHP_FPM_VERSION}" = "8.0" ] \
@@ -710,7 +699,16 @@ _satellite_cnf() {
         || [ "${_PHP_FPM_VERSION}" = "7.1" ] \
         || [ "${_PHP_FPM_VERSION}" = "7.0" ] \
         || [ "${_PHP_FPM_VERSION}" = "5.6" ]; then
-        if [ "${_PHP_FPM_VERSION}" = "8.3" ] \
+        if [ "${_PHP_FPM_VERSION}" = "8.4" ] \
+          && [ ! -x "/opt/php84/bin/php" ]; then
+          if [ -x "/opt/php83/bin/php" ]; then
+            _PHP_FPM_VERSION=8.3
+          elif [ -x "/opt/php82/bin/php" ]; then
+            _PHP_FPM_VERSION=8.2
+          elif [ -x "/opt/php81/bin/php" ]; then
+            _PHP_FPM_VERSION=8.1
+          fi
+        elif [ "${_PHP_FPM_VERSION}" = "8.3" ] \
           && [ ! -x "/opt/php83/bin/php" ]; then
           if [ -x "/opt/php82/bin/php" ]; then
             _PHP_FPM_VERSION=8.2
@@ -790,7 +788,8 @@ _satellite_cnf() {
     if [ -e "${_ROOT}/static/control/cli.info" ]; then
       _PHP_CLI_VERSION=$(cat ${_ROOT}/static/control/cli.info 2>&1)
       _PHP_CLI_VERSION=$(echo -n ${_PHP_CLI_VERSION} | tr -d "\n" 2>&1)
-      if [ "${_PHP_CLI_VERSION}" = "8.3" ] \
+      if [ "${_PHP_CLI_VERSION}" = "8.4" ] \
+        || [ "${_PHP_CLI_VERSION}" = "8.3" ] \
         || [ "${_PHP_CLI_VERSION}" = "8.2" ] \
         || [ "${_PHP_CLI_VERSION}" = "8.1" ] \
         || [ "${_PHP_CLI_VERSION}" = "8.0" ] \
@@ -800,7 +799,16 @@ _satellite_cnf() {
         || [ "${_PHP_CLI_VERSION}" = "7.1" ] \
         || [ "${_PHP_CLI_VERSION}" = "7.0" ] \
         || [ "${_PHP_CLI_VERSION}" = "5.6" ]; then
-        if [ "${_PHP_CLI_VERSION}" = "8.3" ] \
+        if [ "${_PHP_CLI_VERSION}" = "8.4" ] \
+          && [ ! -x "/opt/php84/bin/php" ]; then
+          if [ -x "/opt/php83/bin/php" ]; then
+            _PHP_CLI_VERSION=8.3
+          elif [ -x "/opt/php82/bin/php" ]; then
+            _PHP_CLI_VERSION=8.2
+          elif [ -x "/opt/php81/bin/php" ]; then
+            _PHP_CLI_VERSION=8.1
+          fi
+        elif [ "${_PHP_CLI_VERSION}" = "8.3" ] \
           && [ ! -x "/opt/php83/bin/php" ]; then
           if [ -x "/opt/php82/bin/php" ]; then
             _PHP_CLI_VERSION=8.2
@@ -968,12 +976,23 @@ _satellite_cnf() {
         _clean_pid_exit _satellite_cnf_b
       fi
     fi
-    if [ "${_PHP_FPM_VERSION}" = "8.3" ] \
+    if [ "${_PHP_FPM_VERSION}" = "8.4" ] \
+      || [ "${_PHP_CLI_VERSION}" = "8.4" ]; then
+      if [ ! -x "/opt/php84/bin/php" ]; then
+        if [ -x "/opt/php83/bin/php" ]; then
+          _PHP_FPM_VERSION=8.3
+          _PHP_CLI_VERSION=8.3
+        else
+          _PHP_FPM_VERSION=
+          _PHP_CLI_VERSION=
+        fi
+      fi
+    elif [ "${_PHP_FPM_VERSION}" = "8.3" ] \
       || [ "${_PHP_CLI_VERSION}" = "8.3" ]; then
       if [ ! -x "/opt/php83/bin/php" ]; then
-        if [ -x "/opt/php81/bin/php" ]; then
-          _PHP_FPM_VERSION=8.1
-          _PHP_CLI_VERSION=8.1
+        if [ -x "/opt/php82/bin/php" ]; then
+          _PHP_FPM_VERSION=8.2
+          _PHP_CLI_VERSION=8.2
         else
           _PHP_FPM_VERSION=
           _PHP_CLI_VERSION=
@@ -982,9 +1001,9 @@ _satellite_cnf() {
     elif [ "${_PHP_FPM_VERSION}" = "8.2" ] \
       || [ "${_PHP_CLI_VERSION}" = "8.2" ]; then
       if [ ! -x "/opt/php82/bin/php" ]; then
-        if [ -x "/opt/php81/bin/php" ]; then
-          _PHP_FPM_VERSION=8.1
-          _PHP_CLI_VERSION=8.1
+        if [ -x "/opt/php83/bin/php" ]; then
+          _PHP_FPM_VERSION=8.3
+          _PHP_CLI_VERSION=8.3
         else
           _PHP_FPM_VERSION=
           _PHP_CLI_VERSION=
@@ -993,9 +1012,9 @@ _satellite_cnf() {
     elif [ "${_PHP_FPM_VERSION}" = "8.1" ] \
       || [ "${_PHP_CLI_VERSION}" = "8.1" ]; then
       if [ ! -x "/opt/php81/bin/php" ]; then
-        if [ -x "/opt/php82/bin/php" ]; then
-          _PHP_FPM_VERSION=8.2
-          _PHP_CLI_VERSION=8.2
+        if [ -x "/opt/php83/bin/php" ]; then
+          _PHP_FPM_VERSION=8.3
+          _PHP_CLI_VERSION=8.3
         else
           _PHP_FPM_VERSION=
           _PHP_CLI_VERSION=
@@ -1166,7 +1185,7 @@ _satellite_sub_satellite_force_advanced_nginx_config() {
   if [ -d "${_octInc}" ]; then
     _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
     if [ -z "${_PHP_SV}" ]; then
-      _PHP_SV=74
+      _PHP_SV=83
     fi
     if [ -e "/opt/php${_PHP_SV}/etc/php${_PHP_SV}-fpm.conf" ]; then
       sed -i "s/set.*user_socket.*/set \$user_socket \"${_USER}\";/g" ${_octTpl}/Inc/vhost_include.tpl.php &> /dev/null
@@ -1242,7 +1261,7 @@ _satellite_child_b_update_ini_php_cli() {
   _U_II="${_U_HD}/php.ini"
   _PHP_CLI_UPDATE=NO
   _CHECK_USE_PHP_CLI=$(grep "/opt/php" ${_DRUSH_FILE} 2>&1)
-  _PHP_V="83 82 81 80 74 73 72 71 70 56"
+  _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     if [[ "${_CHECK_USE_PHP_CLI}" =~ "php${e}" ]] \
       && [ ! -e "${_U_HD}/.ctrl.php${e}.${_xSrl}.pid" ]; then
@@ -1260,7 +1279,7 @@ _satellite_child_b_update_ini_php_cli() {
     mkdir -p ${_U_HD}/{sys,xts,usr}
     rm -f ${_U_HD}/.ctrl.php*
     rm -f ${_U_II}
-    _PHP_V="83 82 81 80 74 73 72 71 70 56"
+    _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
       if [[ "${_CHECK_USE_PHP_CLI}" =~ "php${e}" ]]; then
         if [ -e "/opt/php${e}/lib/php.ini" ]; then
@@ -1284,6 +1303,7 @@ _satellite_child_b_update_ini_php_cli() {
         /opt/php81:          \
         /opt/php82:          \
         /opt/php83:          \
+        /opt/php84:          \
         /opt/tika:           \
         /opt/tika7:          \
         /opt/tika8:          \
@@ -1324,7 +1344,9 @@ _satellite_child_b_update_php_cli() {
     _debug_proc
   fi
   _DRUSH_FILE="${_ROOT}/tools/drush/drush.php"
-  if [ "${_PHP_CLI_VERSION}" = "8.3" ] && [ -x "/opt/php83/bin/php" ]; then
+  if [ "${_PHP_CLI_VERSION}" = "8.4" ] && [ -x "/opt/php84/bin/php" ]; then
+    sed -i "s/^#\!\/.*/#\!\/opt\/php84\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
+  elif [ "${_PHP_CLI_VERSION}" = "8.3" ] && [ -x "/opt/php83/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php83\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
   elif [ "${_PHP_CLI_VERSION}" = "8.2" ] && [ -x "/opt/php82/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php82\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
@@ -1885,6 +1907,7 @@ _satellite_download_o_contrib_seven() {
   _get_dev_contrib "cdn-7.x-2.10.tar.gz"
   _get_dev_contrib "config_perms-7.x-2.2.tar.gz"
   _get_dev_contrib "css_emimage-7.x-1.3.tar.gz"
+  _get_dev_contrib "d7security_client-7.x-1.3.tar.gz"
   _get_dev_contrib "display_cache-7.x-1.3.tar.gz"
   _get_dev_contrib "entity_print-7.x-1.5.tar.gz"
   _get_dev_contrib "entitycache-7.x-1.7.tar.gz"
@@ -2053,7 +2076,7 @@ _satellite_check_fix_o_contrib() {
     fi
   fi
   if [ -e "${_CORE}/o_contrib_seven" ]; then
-    if [ ! -d "${_CORE}/o_contrib_seven/robotstxt" ] \
+    if [ ! -d "${_CORE}/o_contrib_seven/d7security_client" ] \
       || [ "${_O_CONTRIB_FORCED_UP}" = "YES" ]; then
       _msg "${_STATUS} A: Running o_contrib_seven forced upgrade..."
       cd ${_CORE}/o_contrib_seven
@@ -2244,8 +2267,7 @@ _provision_backend_dbpass_generate() {
     _msg "PROC: _provision_backend_dbpass_generate"
     _debug_proc
   fi
-  _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
-  _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+  _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
   if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
     _SQL_CONNECT=127.0.0.1
     _THIS_DB_PORT=6033
@@ -2290,7 +2312,7 @@ _provision_backend_dbpass_generate() {
       fi
     else
       if [ -e "/root/.my.pass.txt" ]; then
-        _ESC_PASS=$(cat /root/.my.pass.txt 2>&1)
+        _ESC_PASS=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
       else
         _ESC_PASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
       fi
@@ -2315,7 +2337,7 @@ _provision_backend_dbpass_generate() {
       _ESC_PASS=$(_sanitize_string "${_ESC_PASS}" 2>&1)
     else
       if [ -e "/root/.my.pass.txt" ]; then
-        _ESC_PASS=$(cat /root/.my.pass.txt 2>&1)
+        _ESC_PASS=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
       else
         _ESC_PASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
       fi
@@ -2344,7 +2366,7 @@ _provision_backend_dbpass_generate() {
     || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
     || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
     || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
-    _USE_AEGIR_HOST="$(hostname -f 2>/dev/null || uname -n)"
+    _USE_AEGIR_HOST="${_hName}"
     _SQL_CONNECT=localhost
     if [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
       || [ "${_THIS_DB_HOST}" = "PROXYSQL" ]; then
@@ -2352,12 +2374,12 @@ _provision_backend_dbpass_generate() {
     fi
     _USE_DB_USER="${_USER}"
   else
-    _USE_AEGIR_HOST="$(hostname -f 2>/dev/null || uname -n)"
+    _USE_AEGIR_HOST="${_hName}"
     _SQL_CONNECT="${_THIS_DB_HOST}"
     _USE_DB_USER=aegir_root
   fi
   if [ "${_THIS_DB_HOST}" = "${_MY_OWNIP}" ]; then
-    _USE_AEGIR_HOST="$(hostname -f 2>/dev/null || uname -n)"
+    _USE_AEGIR_HOST="${_hName}"
     _SQL_CONNECT=localhost
   fi
   _find_correct_ip
@@ -2378,8 +2400,7 @@ _provision_backend_dbpass_generate() {
     if [ "${_STATUS}" = "INIT" ]; then
       [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL14 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
       if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
-        _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>&1)
-        _PROXYSQL_PASSWORD=$(echo -n ${_PROXYSQL_PASSWORD} | tr -d "\n" 2>&1)
+        _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>/dev/null | tr -d '\n')
         mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
 DELETE FROM mysql_users WHERE username='${_USE_DB_USER}';
 DELETE FROM mysql_query_rules WHERE username='${_USE_DB_USER}';
@@ -2427,8 +2448,7 @@ EOFMYSQL
         || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
         [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL15 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
         if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
-          _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>&1)
-          _PROXYSQL_PASSWORD=$(echo -n ${_PROXYSQL_PASSWORD} | tr -d "\n" 2>&1)
+          _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>/dev/null | tr -d '\n')
           mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
 DELETE FROM mysql_users WHERE username='${_USE_DB_USER}';
 DELETE FROM mysql_query_rules WHERE username='${_USE_DB_USER}';
@@ -2475,8 +2495,7 @@ _provision_backend_dbpass_sync() {
     _msg "PROC: _provision_backend_dbpass_sync"
     _debug_proc
   fi
-  _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
-  _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+  _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
   _find_correct_ip
   _USE_RESOLVEIP="${_LOC_IP}"
   _RESOLVEIP="${_LOC_IP}"
@@ -2501,13 +2520,12 @@ _provision_backend_dbpass_sync() {
     wait
     _ESC="*.*"
     _USE_DB_USER="${_USER}"
-    _USE_AEGIR_HOST="$(hostname -f 2>/dev/null || uname -n)"
+    _USE_AEGIR_HOST="${_hName}"
     _find_correct_ip
     _USE_RESOLVEIP="${_LOC_IP}"
     [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL16 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
     if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
-      _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>&1)
-      _PROXYSQL_PASSWORD=$(echo -n ${_PROXYSQL_PASSWORD} | tr -d "\n" 2>&1)
+      _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>/dev/null | tr -d '\n')
       mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
 DELETE FROM mysql_users WHERE username='${_USE_DB_USER}';
 DELETE FROM mysql_query_rules WHERE username='${_USE_DB_USER}';
@@ -2586,8 +2604,7 @@ _hostmaster_frontend_dbpass_sync() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "${_STATUS} A: Syncing hostmaster frontend db_passwd..."
   fi
-  _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
-  _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+  _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
   if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
     _SQL_CONNECT=127.0.0.1
     _THIS_DB_PORT=6033
@@ -2614,13 +2631,12 @@ _hostmaster_frontend_dbpass_sync() {
     && [ ! -z "${_THIS_HM_DBPD}" ]; then
     _ESC="*.*"
     _USE_DB_USER="${_THIS_HM_DBUR}"
-    _USE_AEGIR_HOST="$(hostname -f 2>/dev/null || uname -n)"
+    _USE_AEGIR_HOST="${_hName}"
     _find_correct_ip
     _USE_RESOLVEIP="${_LOC_IP}"
     [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL17 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
     if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
-      _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>&1)
-      _PROXYSQL_PASSWORD=$(echo -n ${_PROXYSQL_PASSWORD} | tr -d "\n" 2>&1)
+      _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>/dev/null | tr -d '\n')
       mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
 DELETE FROM mysql_users WHERE username='${_USE_DB_USER}';
 DELETE FROM mysql_query_rules WHERE username='${_USE_DB_USER}';
@@ -2663,8 +2679,7 @@ _satellite_run_pre_install() {
     _msg "PROC: _satellite_run_pre_install"
     _debug_proc
   fi
-  _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
-  _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+  _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
   _find_correct_ip
   _USE_RESOLVEIP="${_LOC_IP}"
   _RESOLVEIP="${_LOC_IP}"
@@ -2764,7 +2779,12 @@ _satellite_download_for_local_build() {
     _get_dev_stc "timeago-7.x-2.3.tar.gz"
     _get_dev_stc "views_bulk_operations-7.x-3.7.tar.gz"
     _get_dev_stc "views-7.x-3.29.tar.gz"
+    ### Aegir Third Party Libraries
+    _get_dev_stc "qrcodejs.tar.gz"
+    _get_dev_stc "timeagojs.tar.gz"
+    _get_dev_stc "vuejs.tar.gz"
     ### BOA Drupal Contrib
+    _get_dev_stc "d7security_client-7.x-1.3.tar.gz"
     _get_dev_stc "features_extra-7.x-1.0.tar.gz"
     _get_dev_stc "features-7.x-2.15.tar.gz"
     _get_dev_stc "idna_convert-7.x-1.0.tar.gz"
@@ -3855,8 +3875,7 @@ _satellite_make() {
   echo "export _xSrl=\"${_xSrl}\""                           >> ${_writeTo}
   echo "export _X_VERSION=\"${_X_VERSION}\""                 >> ${_writeTo}
 
-  _THISHOST=$(cat /etc/hostname 2>&1)
-  _THISHOST=$(echo -n ${_THISHOST} | tr -d "\n" 2>&1)
+  _THISHOST="${_hName}"
   if [ -e "/usr/bin/sipcalc" ]; then
     if [ -z "${_THISHTIP}" ]; then
       _LOC_DOM="${_THISHOST}"
@@ -4043,13 +4062,13 @@ _satellite_if_running_as_root_octopus() {
     _msg "PROC: _satellite_if_running_as_root_octopus"
     _debug_proc
   fi
-  if [ $(whoami) = "root" ]; then
+  if [ "$(id -u)" -eq 0 ]; then
     chmod a+w /dev/null
     if dmidecode -s system-manufacturer | grep -i 'Linode' &> /dev/null; then
       if  [ ! -e "/var/aegir/drush" ] \
         || [ ! -e "/data/u" ] \
         || [ ! -e "/var/xdrago" ]; then
-        touch /run/cloud_vhost.pid
+        [ ! -e "/run/linode_vm_postinstall.pid" ] && touch /run/linode_vm.pid
       fi
     fi
   else
@@ -4081,7 +4100,7 @@ _satellite_if_localhost_mode_magic() {
     _msg "PROC: _satellite_if_localhost_mode_magic"
     _debug_proc
   fi
-  _THIS_HOST="$(hostname -f 2>/dev/null || uname -n)"
+  _THIS_HOST="${_hName}"
   if [ "${_THIS_HOST}" = "aegir.local" ] && [ ! -d "${_ROOT}" ]; then
     _DEBUG_MODE=NO
     _DNS_SETUP_TEST=NO
@@ -4147,7 +4166,8 @@ _satellite_check_php_compatibility() {
     _T_FPM_VRN=$(cat ${_ROOT}/static/control/fpm.info 2>&1)
     _T_FPM_VRN=${_T_FPM_VRN//[^0-9.]/}
     _T_FPM_VRN=$(echo -n ${_T_FPM_VRN} | tr -d "\n" 2>&1)
-    if [ "${_T_FPM_VRN}" = "8.3" ] \
+    if [ "${_T_FPM_VRN}" = "8.4" ] \
+      || [ "${_T_FPM_VRN}" = "8.3" ] \
       || [ "${_T_FPM_VRN}" = "8.2" ] \
       || [ "${_T_FPM_VRN}" = "8.1" ] \
       || [ "${_T_FPM_VRN}" = "8.0" ] \
@@ -4168,7 +4188,8 @@ _satellite_check_php_compatibility() {
     _T_CLI_VRN=$(cat ${_ROOT}/static/control/cli.info 2>&1)
     _T_CLI_VRN=${_T_CLI_VRN//[^0-9.]/}
     _T_CLI_VRN=$(echo -n ${_T_CLI_VRN} | tr -d "\n" 2>&1)
-    if [ "${_T_CLI_VRN}" = "8.3" ] \
+    if [ "${_T_CLI_VRN}" = "8.4" ] \
+      || [ "${_T_CLI_VRN}" = "8.3" ] \
       || [ "${_T_CLI_VRN}" = "8.2" ] \
       || [ "${_T_CLI_VRN}" = "8.1" ] \
       || [ "${_T_CLI_VRN}" = "8.0" ] \
@@ -4273,8 +4294,7 @@ _satellite_if_init_or_upgrade() {
     _msg "Octopus Satellite Instance Upgrade in progress..."
     if [ -d "${_ROOT}/distro" ]; then
       if [ -e "${_ROOT}/log/domain.txt" ]; then
-        _DOMAIN=$(cat ${_ROOT}/log/domain.txt 2>&1)
-        _DOMAIN=$(echo -n ${_DOMAIN} | tr -d "\n" 2>&1)
+        _DOMAIN=$(cat ${_ROOT}/log/domain.txt 2>/dev/null | tr -d '\n')
       fi
       if [ -z "${_DOMAIN}" ]; then
         _msg "ALERT! _DOMAIN is e-m-p-t-y, exit now"
@@ -4284,7 +4304,6 @@ _satellite_if_init_or_upgrade() {
         _msg "ALERT! _USER is e-m-p-t-y, exit now"
         _clean_pid_exit _satellite_if_init_or_upgrade_b
       fi
-      _CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
       _if_hosted_sys
       if [ "${_hostedSys}" = "YES" ]; then
         if [ -e "${_ROOT}/log/amazing_upgrade.txt" ] \
@@ -4305,20 +4324,16 @@ _satellite_if_init_or_upgrade() {
         fi
       fi
       if [ -e "${_ROOT}/log/option.txt" ]; then
-        _CLIENT_OPTION=$(cat ${_ROOT}/log/option.txt 2>&1)
-        _CLIENT_OPTION=$(echo -n ${_CLIENT_OPTION} | tr -d "\n" 2>&1)
+        _CLIENT_OPTION=$(cat ${_ROOT}/log/option.txt 2>/dev/null | tr -d '\n')
       fi
       if [ -e "${_ROOT}/log/cores.txt" ]; then
-        _CLIENT_CORES=$(cat ${_ROOT}/log/cores.txt 2>&1)
-        _CLIENT_CORES=$(echo -n ${_CLIENT_CORES} | tr -d "\n" 2>&1)
+        _CLIENT_CORES=$(cat ${_ROOT}/log/cores.txt 2>/dev/null | tr -d '\n')
       fi
       if [ -e "${_ROOT}/log/subscr.txt" ]; then
-        _CLIENT_SUBSCR=$(cat ${_ROOT}/log/subscr.txt 2>&1)
-        _CLIENT_SUBSCR=$(echo -n ${_CLIENT_SUBSCR} | tr -d "\n" 2>&1)
+        _CLIENT_SUBSCR=$(cat ${_ROOT}/log/subscr.txt 2>/dev/null | tr -d '\n')
       fi
       if [ -e "${_ROOT}/log/email.txt" ]; then
-        _CLIENT_EMAIL=$(cat ${_ROOT}/log/email.txt 2>&1)
-        _CLIENT_EMAIL=$(echo -n ${_CLIENT_EMAIL} | tr -d "\n" 2>&1)
+        _CLIENT_EMAIL=$(cat ${_ROOT}/log/email.txt 2>/dev/null | tr -d '\n')
         if [[ "${_CLIENT_EMAIL}" =~ "@" ]]; then
           _DO_NOTHING=YES
         else
@@ -4332,7 +4347,6 @@ _satellite_if_init_or_upgrade() {
         _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
       fi
       if [[ "${_CLIENT_EMAIL}" =~ "omega8.cc" ]]; then
-        _CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
         _if_hosted_sys
         if [ "${_hostedSys}" != "YES" ]; then
           _msg "EXIT: You must enter your valid email address in the"
@@ -4400,7 +4414,7 @@ _satellite_if_init_or_upgrade() {
       fi
     fi
   else
-    _msg "New Octopus Setup on $(hostname -f 2>/dev/null || uname -n) in progress..."
+    _msg "New Octopus Setup on ${_hName} in progress..."
     #
     # Check for last all nr
     if [ -d "/data/all" ]; then
@@ -5181,7 +5195,7 @@ _satellite_child_b_aegir_build() {
       || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
       || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
       if [ "${_THIS_DB_HOST}" = "FQDN" ]; then
-        _THIS_DB_HOST="$(hostname -f 2>/dev/null || uname -n)"
+        _THIS_DB_HOST="${_hName}"
       elif [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
         || [ "${_THIS_DB_HOST}" = "PROXYSQL" ]; then
         _SQL_CONNECT=127.0.0.1
@@ -5189,15 +5203,15 @@ _satellite_child_b_aegir_build() {
       else
         _THIS_DB_HOST=localhost
       fi
-      _USE_AEGIR_HOST="$(hostname -f 2>/dev/null || uname -n)"
+      _USE_AEGIR_HOST="${_hName}"
       _USE_DB_USER="${_USER}"
     else
-      _USE_AEGIR_HOST="$(hostname -f 2>/dev/null || uname -n)"
+      _USE_AEGIR_HOST="${_hName}"
       _USE_DB_USER=aegir_root
     fi
     if [ "${_THIS_DB_HOST}" = "${_MY_OWNIP}" ]; then
-      _USE_AEGIR_HOST="$(hostname -f 2>/dev/null || uname -n)"
-      _THIS_DB_HOST="$(hostname -f 2>/dev/null || uname -n)"
+      _USE_AEGIR_HOST="${_hName}"
+      _THIS_DB_HOST="${_hName}"
     fi
     _L_SYS_PHP="${_ROOT}/.${_USER}.pass.php"
     echo "<?php" > ${_L_SYS_PHP}
@@ -5450,7 +5464,7 @@ _satellite_child_b_aegir_build() {
       || [ -e "${_ROOT}/log/exported.pid" ]; then
       if [ ! -e "${_ROOT}/log/post-merge-fix.pid" ]; then
         _msg "${_STATUS} B: Hostmaster STATUS: Fix for migrated/merged instance 1/2 start"
-        _USE_AEGIR_HOST="$(hostname -f 2>/dev/null || uname -n)"
+        _USE_AEGIR_HOST="${_hName}"
         ${_DRUSHCMD} @hostmaster sqlq "REPLACE INTO hosting_context (nid, name) \
           VALUES ('4', 'server_localhost'), ('2', 'server_master')" &> /dev/null
         ${_DRUSHCMD} @hostmaster sqlq "REPLACE INTO hosting_package (vid, nid, \
@@ -5913,7 +5927,6 @@ _satellite_child_b_aegir_ui_enhance() {
           | sed "s/[\,']//g" 2>&1)
       ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
         SET status=1 WHERE publish_path LIKE '${_THIS_HM_PLR}'" &> /dev/null
-      _CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
       _if_hosted_sys
       if [ "${_hostedSys}" = "YES" ]; then
         pBy="Octopus System powered by Barracuda"

@@ -5,6 +5,7 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 export _tRee=dev
+_hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
 
 # Function to verify BOA keys
 _verify_boa_keys() {
@@ -12,8 +13,6 @@ _verify_boa_keys() {
     _allw=NO
     _crlGet="-L --max-redirs 3 -k -s --retry 9 --retry-delay 9 -A iCab"
     _urlEnc="http://files.aegir.cc/enc/2024"
-    _hName="$(hostname -f 2>/dev/null || uname -n)"
-    _hName=$(echo -n ${_hName} | tr -d "\n" 2>&1)
     _encName=$(echo ${_hName} \
       | openssl md5 \
       | awk '{ print $2}' \
@@ -61,7 +60,7 @@ _verify_boa_keys() {
 
 # Function to verify root access
 _check_root() {
-  if [ $(whoami) = "root" ]; then
+  if [ "$(id -u)" -eq 0 ]; then
     ionice -c2 -n7 -p $$
     renice 9 -p $$
     chmod a+w /dev/null
@@ -369,8 +368,7 @@ _construct_bucket_name() {
   local _service_abbr=$1
   local _user=$2
   _service_dash=$(echo -n ${_service_abbr} | tr _ - 2>&1)
-  _hostname="$(hostname -f 2>/dev/null || uname -n)"
-  _hst_dash=$(echo -n ${_hostname} | tr . - 2>&1)
+  _hst_dash=$(echo -n ${_hName} | tr . -)
   export _BUCKET_NAME="back-to-${_user}-${_hst_dash}-${_service_dash}"
   export _NAME="${_user}-${_service_dash}"
 }
@@ -733,10 +731,10 @@ _DOW=$(date +%u 2>&1)
 _DOW=${_DOW//[^1-7]/}
 _DOM=$(date +%e 2>&1)
 _DOM=${_DOM//[^0-9]/}
-_HST="$(hostname -f 2>/dev/null || uname -n)"
 _HST=${_HST//[^a-zA-Z0-9-.]/}
 _HST=$(echo -n ${_HST} | tr A-Z a-z 2>&1)
 _HST_DASH=$(echo -n ${_HST} | tr . - 2>&1)
+_HST=${_hName//[^a-zA-Z0-9-.]/}
 
 _ACTION=$1
 _SERVICE=$2

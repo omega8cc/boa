@@ -11,7 +11,7 @@ _fix_dns_settings() {
   rm -f ${_vBs}/resolv.conf.tmp
   if [ -e "/etc/resolv.conf" ]; then
     if [ -L "/etc/resolv.conf" ]; then
-      _rslvT=`readlink -n /etc/resolv.conf`
+      _rslvT="$(readlink -n /etc/resolv.conf)"
       if [ ! -e "${_rslvT}" ]; then
         rm -f /etc/resolv.conf
       fi
@@ -165,14 +165,11 @@ _find_correct_ip() {
     _msg "PROC: _find_correct_ip"
   fi
   if [ -e "/root/.found_correct_ipv4.cnf" ]; then
-    _LOC_IP=$(cat /root/.found_correct_ipv4.cnf 2>&1)
-    _LOC_IP=$(echo -n ${_LOC_IP} | tr -d "\n" 2>&1)
+    _LOC_IP=$(cat /root/.found_correct_ipv4.cnf 2>/dev/null | tr -d '\n')
   else
-    _LOC_IP=$(curl ${_crlGet} https://api.ipify.org \
-      | sed 's/[^0-9\.]//g' 2>&1)
+    _LOC_IP=$(curl ${_crlGet} https://api.ipify.org | sed 's/[^0-9\.]//g')
     if [ -z "${_LOC_IP}" ]; then
-      _LOC_IP=$(curl ${_crlGet} http://ipv4.icanhazip.com \
-        | sed 's/[^0-9\.]//g' 2>&1)
+      _LOC_IP=$(curl ${_crlGet} http://ipv4.icanhazip.com | sed 's/[^0-9\.]//g')
     fi
     if [ ! -z "${_LOC_IP}" ]; then
       echo ${_LOC_IP} > /root/.found_correct_ipv4.cnf
@@ -857,8 +854,7 @@ EOF
       _clean_pid_exit _check_ip_hostname_d
     fi
   elif [ "${_STATUS}" = "UPGRADE" ]; then
-    _THISHOST=$(cat /etc/hostname 2>&1)
-    _THISHOST=$(echo -n ${_THISHOST} | tr -d "\n" 2>&1)
+    _THISHOST="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
     _THISHOST=${_THISHOST//[^a-zA-Z0-9-.]/}
     _THISHOST=$(echo -n ${_THISHOST} | tr A-Z a-z 2>&1)
     if [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ]; then
