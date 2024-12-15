@@ -147,6 +147,7 @@ _install_duplicity() {
 }
 
 _python_install_src() {
+  service cron stop && ln -sfn /bin/dash /usr/bin/sh
   if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
     && [ -e "/etc/apt/apt.conf.d" ]; then
     echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
@@ -215,6 +216,7 @@ _python_install_src() {
 
   _install_duplicity
   _install_other_dependencies
+  service cron start
 }
 
 _if_python_install_src() {
