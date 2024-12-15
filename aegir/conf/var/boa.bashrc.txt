@@ -32,9 +32,9 @@ esac
 
 # workaround for immediate refresh in screen session
 if [ -n "$STY" ]; then
-    alias mc='TERM=dumb mc'
+  alias mc='TERM=dumb mc'
 else
-    alias mc='mc'
+  alias mc='mc'
 fi
 
 if [ -x /usr/bin/dircolors ]; then
