@@ -4175,7 +4175,17 @@ _if_ssl_install_src() {
 
   # Check if modern version needs upgrading
   if [ "${_OS_CODE}" != "stretch" ] && [ "${_OS_CODE}" != "jessie" ]; then
-    if [ ! -x "${_SSL_MODERN_BINARY}" ] || [ "${_SSL_MODERN_ITD}" != "${_OPENSSL_NEW_VRN}" ]; then
+    _sslSymlink="/usr/bin/openssl"
+    _sslMacros="/usr/local/ssl3/include/openssl/macros.h"
+    if grep -i 'OPENSSL_NO_DEPRECATED_3_1' ${_sslMacros} &> /dev/null; then
+      _sslIncludes=YES
+    else
+      _sslIncludes=NO
+    fi
+    if [ ! -x "${_SSL_MODERN_BINARY}" ] \
+      || [ "${_sslIncludes}" != "YES" ] \
+      || [ "${_SSL_MODERN_ITD}" != "${_OPENSSL_NEW_VRN}" ] \
+      || [ ! -L "${_sslSymlink}" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: Modern OpenSSL (${_SSL_MODERN_ITD}), upgrade to (${_OPENSSL_NEW_VRN}) required"
       fi
