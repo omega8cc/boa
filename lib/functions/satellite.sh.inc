@@ -4068,7 +4068,7 @@ _satellite_if_running_as_root_octopus() {
       if  [ ! -e "/var/aegir/drush" ] \
         || [ ! -e "/data/u" ] \
         || [ ! -e "/var/xdrago" ]; then
-        touch /run/cloud_vhost.pid
+        touch /run/linode_vm.pid
       fi
     fi
   else

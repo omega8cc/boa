@@ -335,12 +335,12 @@ _cloud_host_cleanup() {
       && [ -e "/data/u" ] \
       && [ -e "/var/xdrago" ]; then
       if [ "$(boa info | grep -c Percona)" -ge 2 ]; then
-        rm -f /run/cloud_vhost.pid
+        rm -f /run/linode_vm.pid
       fi
     fi
   fi
 }
-[ -e "/run/cloud_vhost.pid" ] && _cloud_host_cleanup
+[ -e "/run/linode_vm.pid" ] && _cloud_host_cleanup
 
 _crontab_update() {
   if [ -e "/etc/crontab" ]; then
