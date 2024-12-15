@@ -3981,16 +3981,10 @@ _ssl_paths_update() {
     _msg "PROC: _ssl_paths_update"
   fi
 
-  if [ -x "${_SSL_MODERN_BINARY}" ]; then
-    _LINK_TO="${_SSL_MODERN_BINARY}"
-  elif [ -x "${_SSL_LEGACY_BINARY}" ]; then
-    _LINK_TO="${_SSL_LEGACY_BINARY}"
-  else
-    _LINK_TO=
-  fi
+  _LINK_TO="${1}"
 
-  if [ -n "${_LINK_TO}" ]; then
-    if [ -e "/usr/bin/openssl" ]; then
+  if [ -x "${_LINK_TO}" ]; then
+    if [ -f "/usr/bin/openssl" ]; then
       cp -af /usr/bin/openssl /usr/bin/old-openssl-$(date +%y%m%d-%H%M%S 2>&1)
     fi
     ln -sfn ${_LINK_TO} /usr/bin/openssl
@@ -4019,6 +4013,20 @@ _ssl_paths_update() {
   fi
   sed -i "/^$/d" /etc/ld.so.conf.d/libc.conf &> /dev/null
   ldconfig 2> /dev/null
+}
+
+#
+# Fix OpenSSL symlinks.
+_ssl_fix_symlinks() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _ssl_fix_symlinks"
+  fi
+  # Determine which OpenSSL version to use based on _OS_CODE
+  if [ "${_OS_CODE}" != "stretch" ] && [ "${_OS_CODE}" != "jessie" ]; then
+    _sslSymlink="/usr/bin/openssl"
+    _sslBinary="/usr/local/ssl3/bin/openssl"
+    [ ! -L "${_sslSymlink}" ] && [ -x "${_sslBinary}" ] && _ssl_paths_update "${_sslBinary}"
+  fi
 }
 
 #
@@ -4159,7 +4167,17 @@ _if_ssl_install_src() {
 
   # Check if modern version needs upgrading
   if [ "${_OS_CODE}" != "stretch" ] && [ "${_OS_CODE}" != "jessie" ]; then
-    if [ ! -x "${_SSL_MODERN_BINARY}" ] || [ "${_SSL_MODERN_ITD}" != "${_OPENSSL_NEW_VRN}" ]; then
+    _sslSymlink="/usr/bin/openssl"
+    _sslMacros="/usr/local/ssl3/include/openssl/macros.h"
+    if grep -i 'OPENSSL_NO_DEPRECATED_3_1' ${_sslMacros} &> /dev/null; then
+      _sslIncludes=YES
+    else
+      _sslIncludes=NO
+    fi
+    if [ ! -x "${_SSL_MODERN_BINARY}" ] \
+      || [ "${_sslIncludes}" != "YES" ] \
+      || [ "${_SSL_MODERN_ITD}" != "${_OPENSSL_NEW_VRN}" ] \
+      || [ ! -L "${_sslSymlink}" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: Modern OpenSSL (${_SSL_MODERN_ITD}), upgrade to (${_OPENSSL_NEW_VRN}) required"
       fi
