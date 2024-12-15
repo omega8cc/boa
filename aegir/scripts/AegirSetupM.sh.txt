@@ -156,7 +156,7 @@ _php_cli_drush_update() {
 
 ###--------------------###
 
-if [ $(whoami) = "root" ]; then
+if [ "$(id -u)" -eq 0 ]; then
   _msg "FATAL ERROR: This script should be run as a non-root user"
   _msg "FATAL ERROR: Aborting AegirSetupM installer NOW!"
   touch /opt/tmp/status-AegirSetupM-FAIL

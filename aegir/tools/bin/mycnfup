@@ -260,7 +260,7 @@ _remove_systemd() {
 
 _check_root() {
   echo "running ${_tVr} _check_root procedure..."
-  if [ $(whoami) = "root" ]; then
+  if [ "$(id -u)" -eq 0 ]; then
     _locales_check_fix
     _os_detection_minimal
     _remove_systemd

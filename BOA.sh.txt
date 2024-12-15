@@ -3682,7 +3682,7 @@ _sysctl_update() {
 }
 
 ###--------------------###
-if [ $(whoami) = "root" ]; then
+if [ "$(id -u)" -eq 0 ]; then
 
   [ ! -e "/var/aegir/drush" ] && _locales_check_fix_early
   _os_detection_minimal

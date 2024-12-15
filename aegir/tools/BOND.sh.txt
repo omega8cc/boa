@@ -213,7 +213,7 @@ _clean_pid_exit() {
 }
 
 _check_root() {
-  if [ $(whoami) = "root" ]; then
+  if [ "$(id -u)" -eq 0 ]; then
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
     # Sanitize to allow only digits and minus sign
     export _B_NICE=${_B_NICE//[^0-9-]/}
@@ -1769,7 +1769,7 @@ if [ "${_AEGIR_VERSION}" != "static" ]; then
 fi
 #
 #
-if [ $(whoami) = "root" ]; then
+if [ "$(id -u)" -eq 0 ]; then
   chmod a+w /dev/null
   _msg "INFO: This script is ran as a root user"
   _count_cpu

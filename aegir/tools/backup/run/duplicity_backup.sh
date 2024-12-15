@@ -60,7 +60,7 @@ _verify_boa_keys() {
 
 # Function to verify root access
 _check_root() {
-  if [ $(whoami) = "root" ]; then
+  if [ "$(id -u)" -eq 0 ]; then
     ionice -c2 -n7 -p $$
     renice 9 -p $$
     chmod a+w /dev/null

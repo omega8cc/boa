@@ -111,7 +111,7 @@ _apt_clean_update() {
 }
 
 _check_root() {
-  if [ $(whoami) = "root" ]; then
+  if [ "$(id -u)" -eq 0 ]; then
     chmod a+w /dev/null
     if [ ! -e "/dev/fd" ]; then
       if [ -e "/proc/self/fd" ]; then
@@ -319,7 +319,7 @@ _ifnames_grub_check_sync() {
 
 _check_root_direct() {
   _U_TEST=DENY
-  [ "${SUDO_USER}" ] && _U_TEST_SDO=${SUDO_USER} || _U_TEST_SDO=`whoami`
+  [ "${SUDO_USER}" ] && _U_TEST_SDO=${SUDO_USER} || _U_TEST_SDO=$(whoami)
   _U_TEST_WHO=$(who am i | awk '{print $1}' 2>&1)
   _U_TEST_LNE=$(logname 2>&1)
   if [ "${_U_TEST_SDO}" = "root" ] || [ "${_U_TEST_LNE}" = "root" ]; then

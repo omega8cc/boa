@@ -361,7 +361,7 @@ _ifnames_grub_check_sync() {
 
 _check_root_direct() {
   _U_TEST=DENY
-  [ "${SUDO_USER}" ] && _U_TEST_SDO=${SUDO_USER} || _U_TEST_SDO=`whoami`
+  [ "${SUDO_USER}" ] && _U_TEST_SDO=${SUDO_USER} || _U_TEST_SDO=$(whoami)
   _U_TEST_WHO=$(who am i | awk '{print $1}' 2>&1)
   _U_TEST_LNE=$(logname 2>&1)
   if [ "${_U_TEST_SDO}" = "root" ] || [ "${_U_TEST_LNE}" = "root" ]; then
@@ -1606,7 +1606,7 @@ _csf_check_fix() {
 }
 
 _check_root() {
-  if [ $(whoami) = "root" ]; then
+  if [ "$(id -u)" -eq 0 ]; then
     _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
     [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
     if [ "${_cmNd}" = "in-octopus" ] || [ "${_cmNd}" = "in-oct" ]; then
@@ -1724,7 +1724,7 @@ _check_root() {
 }
 
 _display_version() {
-  if [ $(whoami) = "root" ]; then
+  if [ "$(id -u)" -eq 0 ]; then
     _HOST_INFO=$(dmidecode -s system-manufacturer 2>&1)
     _VIRT_TOOL=$(which virt-what 2> /dev/null)
     if [ -x "${_VIRT_TOOL}" ]; then
@@ -1877,7 +1877,7 @@ _check_system_ram() {
 }
 
 _display_info() {
-  if [ $(whoami) = "root" ]; then
+  if [ "$(id -u)" -eq 0 ]; then
     _HOST_INFO=$(dmidecode -s system-manufacturer 2>&1)
     _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)
     _CPU_INFO=${_CPU_INFO//[^0-9]/}
@@ -2318,7 +2318,7 @@ _display_info() {
 }
 
 _octopus_cleanup() {
-  if [ $(whoami) = "root" ]; then
+  if [ "$(id -u)" -eq 0 ]; then
     if [ "${_aCtn}" = "detect" ]; then
       echo
       echo "Accounts marked for cleanup or active"

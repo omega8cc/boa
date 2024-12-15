@@ -4062,7 +4062,7 @@ _satellite_if_running_as_root_octopus() {
     _msg "PROC: _satellite_if_running_as_root_octopus"
     _debug_proc
   fi
-  if [ $(whoami) = "root" ]; then
+  if [ "$(id -u)" -eq 0 ]; then
     chmod a+w /dev/null
     if dmidecode -s system-manufacturer | grep -i 'Linode' &> /dev/null; then
       if  [ ! -e "/var/aegir/drush" ] \
