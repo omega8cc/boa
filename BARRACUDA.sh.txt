@@ -444,6 +444,12 @@ fi
 
 
 ###
+### Install or upgrade csf/lfd monitoring
+###
+_csf_lfd_install_upgrade
+
+
+###
 ### DNS cache server
 ###
 if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "UPGRADE" ]; then
@@ -536,12 +542,6 @@ if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "UPGRADE" ]; then
     _sftp_ftps_modern_fix
   fi
 fi
-
-
-###
-### Install or upgrade csf/lfd monitoring
-###
-_csf_lfd_install_upgrade
 
 
 ###
