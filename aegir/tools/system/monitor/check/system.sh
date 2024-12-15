@@ -103,11 +103,11 @@ _system_oom_detection() {
 
 _if_fix_locked_sshd() {
   _SSH_LOG="/var/log/auth.log"
-  if [ `tail --lines=100 ${_SSH_LOG} \
+  if [ `tail --lines=10 ${_SSH_LOG} \
     | grep --count "error: Bind to port 22"` -gt "0" ]; then
+    kill -9 sshd &> /dev/null
     kill -9 $(ps aux | grep '[s]tartups' | awk '{print $2}') &> /dev/null
-    nice -n -9 service ssh start
-    wait
+    service ssh start
     _thisErrLog="$(date) SSHD BIND error detected, service restarted"
     echo ${_thisErrLog} >> ${_pthOml}
     _incident_email_report "SSHD BIND error detected, service restarted"
