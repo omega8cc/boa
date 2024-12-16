@@ -252,18 +252,18 @@ _csf_lfd_gateway_allow() {
   _GATEWAY_IP=$(ip route show default 2>/dev/null | awk '/default/ {print $3}')
   # Ensure we got a valid gateway IP
   if [[ -z "${_GATEWAY_IP}" ]]; then
-    _msg "Error: Could not detect a default gateway IP."
+    _msg "WARN: Could not detect a default Gateway IP."
   else
     _CSF_ALLOW_FILE="/etc/csf/csf.allow"
     _CSF_IGNORE_FILE="/etc/csf/csf.ignore"
     # Add the gateway IP to csf.allow
     _alreadyListed=FALSE
     _add_ip_if_missing "${_GATEWAY_IP}" "${_CSF_ALLOW_FILE}"
-    [ "${_alreadyListed}" = "FALSE" ] && _msg "The gateway IP (${_GATEWAY_IP}) is now allowed by CSF/LFD."
+    [ "${_alreadyListed}" = "FALSE" ] && _msg "INFO: The Gateway IP (${_GATEWAY_IP}) is now allowed by CSF/LFD."
     # Add the gateway IP to csf.ignore
     _alreadyListed=FALSE
     _add_ip_if_missing "${_GATEWAY_IP}" "${_CSF_IGNORE_FILE}"
-    [ "${_alreadyListed}" = "FALSE" ] && _msg "The gateway IP (${_GATEWAY_IP}) is now ignored by CSF/LFD."
+    [ "${_alreadyListed}" = "FALSE" ] && _msg "INFO: The Gateway IP (${_GATEWAY_IP}) is now ignored by CSF/LFD."
     # Reload CSF to apply changes
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: Reloading CSF..."
