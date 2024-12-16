@@ -724,7 +724,7 @@ _update_agents() {
 
   if [ -d "/root/.remote_backups/run" ] \
     && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthCtrl}/install_dependencies.sh.ctrl.f89.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthCtrl}/install_dependencies.sh.ctrl.f88.${_tRee}.${_xSrl}.pid" ]; then
     if [ -e "/root/.remote_backups/run/install_dependencies.sh" ]; then
       mv -f /root/.remote_backups/run/install_dependencies.sh /root/.remote_backups/run/install_dependencies.sh.old
     fi
@@ -732,7 +732,7 @@ _update_agents() {
     if [ -e "/root/.remote_backups/run/install_dependencies.sh" ]; then
       chmod 700 /root/.remote_backups/run/install_dependencies.sh
       chown root:root /root/.remote_backups/run/install_dependencies.sh
-      touch ${_pthCtrl}/install_dependencies.sh.ctrl.f89.${_tRee}.${_xSrl}.pid
+      touch ${_pthCtrl}/install_dependencies.sh.ctrl.f88.${_tRee}.${_xSrl}.pid
     else
       if [ -e "/root/.remote_backups/run/install_dependencies.sh.old" ]; then
         mv -f /root/.remote_backups/run/install_dependencies.sh.old /root/.remote_backups/run/install_dependencies.sh
