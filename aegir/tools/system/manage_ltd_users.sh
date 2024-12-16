@@ -784,7 +784,6 @@ for _Domain in `find ${_Client}/ -maxdepth 1 -mindepth 1 -type l | sort`; do
   _STATIC_PRIVATE="${_pthParen_tUsr}/static/files/${_rawDom}.private/"
   _NEW_STATIC_FILES="${_pthParen_tUsr}/static/files/${_rawDom}/"
   _PATH_DOM="$(readlink -n "${_Domain}")"
-  _RUBY_PATH="/opt/user/gems/${_usrLtd}"
   _mntPoint=$(find /mnt -mindepth 1 -maxdepth 1 -type d | grep "\." | head -n1) &&
   _MNT_STATIC_FILES="${_mntPoint}/files/${_USER}/static/files/${_rawDom}/"
   echo "_ALLD_DIR is == ${_ALLD_DIR} == at _manage_sec_access_paths"
@@ -794,25 +793,14 @@ for _Domain in `find ${_Client}/ -maxdepth 1 -mindepth 1 -type l | sort`; do
   echo "_NEW_STATIC_FILES is == ${_NEW_STATIC_FILES} == at _manage_sec_access_paths"
   echo "_PATH_DOM is == ${_PATH_DOM} == at _manage_sec_access_paths"
   echo "_RUBY_PATH is == ${_RUBY_PATH} == at _manage_sec_access_paths"
-  [ -n "${_mntPoint}" ] echo "_mntPoint is == ${_mntPoint} == at _manage_sec_access_paths"
-  [ -n "${_mntPoint}" ] echo "_MNT_STATIC_FILES is == ${_MNT_STATIC_FILES} == at _manage_sec_access_paths"
-  [ -n "${_mntPoint}" ] _ALLD_DIR="${_ALLD_DIR}, \
-    '${_PATH_DOM}', \
-    '${_STATIC_FILES}', \
-    '${_STATIC_PRIVATE}', \
-    '${_NEW_STATIC_FILES}', \
-    '${_MNT_STATIC_FILES}', \
-    '${_RUBY_PATH}'"
-  [ -z "${_mntPoint}" ] _ALLD_DIR="${_ALLD_DIR}, \
-    '${_PATH_DOM}', \
-    '${_STATIC_FILES}', \
-    '${_STATIC_PRIVATE}', \
-    '${_NEW_STATIC_FILES}', \
-    '${_RUBY_PATH}'"
+  [ -n "${_mntPoint}" ] && echo "_mntPoint is == ${_mntPoint} == at _manage_sec_access_paths"
+  [ -n "${_mntPoint}" ] && echo "_MNT_STATIC_FILES is == ${_MNT_STATIC_FILES} == at _manage_sec_access_paths"
+  [ -n "${_mntPoint}" ] && _ALLD_DIR="${_ALLD_DIR}, '${_PATH_DOM}', '${_STATIC_FILES}', '${_STATIC_PRIVATE}', '${_NEW_STATIC_FILES}', '${_MNT_STATIC_FILES}'"
+  [ -z "${_mntPoint}" ] && _ALLD_DIR="${_ALLD_DIR}, '${_PATH_DOM}', '${_STATIC_FILES}', '${_STATIC_PRIVATE}', '${_NEW_STATIC_FILES}'"
   if [ -e "${_PATH_DOM}" ]; then
     _ALLD_NUM=$(( _ALLD_NUM += 1 ))
   fi
-  [ -n "${_ALLD_DIR}" ] echo "Final _ALLD_DIR for ${_rawDom} is == ${_ALLD_DIR} == at _manage_sec_access_paths"
+  [ -n "${_ALLD_DIR}" ] && echo "Final _ALLD_DIR for ${_rawDom} is == ${_ALLD_DIR} == at _manage_sec_access_paths"
   echo Done for ${_Domain} at ${_Client}
 done
 }
@@ -828,7 +816,7 @@ for _Client in `find ${_pthParen_tUsr}/clients/ -maxdepth 1 -mindepth 1 -type d 
     echo "_usrLtd is == ${_usrLtd} == at _manage_sec"
     _ALLD_NUM="0"
     _ALLD_CTL="1"
-    _ALLD_DIR="'${_Client}'"
+    _ALLD_DIR="'${_Client}', '/opt/user/gems/${_usrLtd}'"
     cd ${_Client}
     _manage_sec_access_paths
     #_ALLD_DIR="${_ALLD_DIR}, '/home/${_usrLtd}'"
