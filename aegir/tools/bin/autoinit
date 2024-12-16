@@ -89,7 +89,7 @@ _dstUpArg="-fuy -q ${_aptAllow} --config-file /opt/apt/apt.conf.noi.dist"
 _nrmUpArg="-fuy -q ${_aptAllow} --config-file /opt/apt/apt.conf.noi.nrml"
 
 _check_root() {
-  if [ $(whoami) = "root" ]; then
+  if [ "$(id -u)" -eq 0 ]; then
     [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
   else
     echo "ERROR: This script should be run as a root user"
@@ -344,8 +344,7 @@ _install_apparmor_utils() {
   fi
   _isAppArmOn=N
   if [ -e "/sys/module/apparmor/parameters/enabled" ]; then
-    _isAppArmOn=$(cat /sys/module/apparmor/parameters/enabled 2>&1)
-    _isAppArmOn=$(echo -n ${_isAppArmOn} | tr -d "\n" 2>&1)
+    _isAppArmOn="$(cat /sys/module/apparmor/parameters/enabled 2>/dev/null | tr -d '\n')"
   fi
   if [ "${_isAppArmOn}" = "Y" ]; then
     _disable_apparmor_utils
@@ -514,15 +513,20 @@ _init_prepare() {
       if [ "${_VMFAMILY}" != "AWS" ]; then
         /usr/bin/apt-get remove chrony -y --purge --auto-remove -qq >> "${_logSlt}"
         _INITD_TEST=$(ls -la /etc/init.d/*cloud* 2>&1)
+        _aptAkamaiLst="/etc/apt/sources.list.d/akamai-linux-team.list"
+        _aptCloudInit="/etc/apt/preferences.d/99linode-cloudinit"
+        _etcCloudCfgd="/etc/cloud/cloud.cfg.d"
         if [[ ! "${_INITD_TEST}" =~ "No such file" ]] \
-          || [ -e "/etc/cloud/cloud.cfg.d" ]; then
+          || [ -e "${_aptAkamaiLst}" ] \
+          || [ -e "${_aptCloudInit}" ] \
+          || [ -e "${_etcCloudCfgd}" ]; then
           /usr/bin/apt-get remove cloud-utils cloud-init -y --purge --auto-remove -qq >> "${_logSlt}"
           /usr/bin/apt-get remove cloud-image-utils cloud-guest-utils -y --purge --auto-remove -qq >> "${_logSlt}"
           /usr/bin/apt-get autoremove --purge -y >> "${_logSlt}"
           /usr/bin/apt-get autoclean -y >> "${_logSlt}"
-          if [ -e "/etc/cloud/cloud.cfg.d" ]; then
-            mv -f /etc/cloud /var/backups/
-          fi
+          [ -e "${_etcCloudCfgd}" ] && mv -f /etc/cloud /var/backups/
+          [ -e "${_aptAkamaiLst}" ] && mv -f ${_aptAkamaiLst} /var/backups/
+          [ -e "${_aptCloudInit}" ] && mv -f ${_aptCloudInit} /var/backups/
         fi
       fi
       ${_INITINS} cron >> "${_logSlt}"

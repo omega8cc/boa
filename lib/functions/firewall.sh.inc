@@ -205,7 +205,9 @@ _csf_install() {
       sed -i "s/^#TCPKeepAlive.*/TCPKeepAlive yes/g" /etc/ssh/sshd_config
       wait
     fi
-    _mrun "service ssh restart" 2> /dev/null
+    # killall -9 sshd-session &> /dev/null
+    kill -9 $(ps aux | grep '[s]tartups' | awk '{print $2}') &> /dev/null
+    _mrun "service ssh start" 2> /dev/null
     if [ "${_CSF_MODE}" = "install" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: csf/lfd firewall installed"
@@ -218,6 +220,55 @@ _csf_install() {
     touch ${_pthLog}/csf_${_X_VERSION}.log
   else
     _msg "TEST: csf/lfd firewall can not be installed on this system"
+  fi
+}
+
+# Function to add an IP to a CSF file if not already present
+_add_ip_if_missing() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _add_ip_if_missing"
+  fi
+  local _IP="$1"
+  local _FILE="$2"
+  if grep -q "^${_IP}$" "${_FILE}"; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: Gateway IP (${_IP}) is already listed in ${_FILE}."
+    fi
+    _alreadyListed=TRUE
+  else
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: Adding Gateway IP (${_IP}) to ${_FILE}..."
+    fi
+    echo "${_IP}" >> "${_FILE}"
+  fi
+}
+
+# Function to add an Gateway IP to allowed and ignored by CSF/LDF
+_csf_lfd_gateway_allow() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _csf_lfd_gateway_allow"
+  fi
+  # Detect the gateway IP from the default route
+  _GATEWAY_IP=$(ip route show default 2>/dev/null | awk '/default/ {print $3}')
+  # Ensure we got a valid gateway IP
+  if [[ -z "${_GATEWAY_IP}" ]]; then
+    _msg "WARN: Could not detect a default Gateway IP."
+  else
+    _CSF_ALLOW_FILE="/etc/csf/csf.allow"
+    _CSF_IGNORE_FILE="/etc/csf/csf.ignore"
+    # Add the gateway IP to csf.allow
+    _alreadyListed=FALSE
+    _add_ip_if_missing "${_GATEWAY_IP}" "${_CSF_ALLOW_FILE}"
+    [ "${_alreadyListed}" = "FALSE" ] && _msg "INFO: The Gateway IP (${_GATEWAY_IP}) is now allowed by CSF/LFD."
+    # Add the gateway IP to csf.ignore
+    _alreadyListed=FALSE
+    _add_ip_if_missing "${_GATEWAY_IP}" "${_CSF_IGNORE_FILE}"
+    [ "${_alreadyListed}" = "FALSE" ] && _msg "INFO: The Gateway IP (${_GATEWAY_IP}) is now ignored by CSF/LFD."
+    # Reload CSF to apply changes
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: Reloading CSF..."
+    fi
+    _mrun "csf -r" 2> /dev/null
   fi
 }
 
@@ -245,13 +296,14 @@ _csf_lfd_install_upgrade() {
   if [[ "${_XTRAS_LIST}" =~ "ALL" ]] \
     || [[ "${_XTRAS_LIST}" =~ "CSF" ]] \
     || [ "${_CSF_CLSTR}" = "YES" ]; then
-    if [ ! -e "/run/cloud_vhost.pid" ]; then
+    if [ ! -e "/run/cloud_vhost.pid" ] && [ ! -e "/run/linode_vm.pid" ]; then
       if [ ! -e "/usr/sbin/csf" ]; then
         echo " "
         if _prompt_yes_no "Do you want to install csf/lfd firewall?" ; then
           true
           _CSF_MODE=install
           _csf_install
+          _csf_lfd_gateway_allow
         else
           _msg "INFO: csf/lfd firewall installation skipped"
         fi
@@ -289,6 +341,7 @@ _csf_lfd_install_upgrade() {
       else
         _CSF_MODE=upgrade
         _csf_install
+        _csf_lfd_gateway_allow
       fi
       sed -i "s/^AUTO_UPDATES .*/AUTO_UPDATES = \"0\"/g" /etc/csf/csf.conf &> /dev/null
       wait

@@ -5,7 +5,7 @@ export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
 _check_root() {
-  if [ $(whoami) = "root" ]; then
+  if [ "$(id -u)" -eq 0 ]; then
     ionice -c2 -n7 -p $$
     renice 19 -p $$
     chmod a+w /dev/null
@@ -36,8 +36,7 @@ if [ ! -z "${_IS_SQLBACKUP_RUNNING}" ]; then
 fi
 
 if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
-  _SQL_PSWD=$(cat /root/.my.cluster_root_pwd.txt 2>&1)
-  _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+  _SQL_PSWD=$(cat /root/.my.cluster_root_pwd.txt 2>/dev/null | tr -d '\n')
 fi
 
 if [ -e "/root/.my.cluster_backup_proxysql.txt" ]; then
@@ -89,13 +88,13 @@ else
 fi
 
 _BACKUPDIR=/data/disk/arch/cluster
-_CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
 _DATE=$(date +%y%m%d-%H%M%S 2>&1)
 _DOW=$(date +%u 2>&1)
+_hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
 _DOW=${_DOW//[^1-7]/}
 _DOM=$(date +%e 2>&1)
 _DOM=${_DOM//[^0-9]/}
-_SAVELOCATION=${_BACKUPDIR}/${_CHECK_HOST}-${_DATE}
+_SAVELOCATION=${_BACKUPDIR}/${_hName}-${_DATE}
 if [ -e "/root/.my.optimize.cnf" ]; then
   _OPTIM=YES
 else

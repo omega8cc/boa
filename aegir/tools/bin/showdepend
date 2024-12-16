@@ -1,0 +1,15 @@
+#!/bin/bash
+
+# Check if a package name is provided as an argument
+if [ -z "$1" ]; then
+  echo "Usage: $0 <package-name>"
+  exit 1
+fi
+
+# Store the package name
+PACKAGE=$1
+
+# Find installed packages that depend on the given package
+apt-get update 2>/dev/null
+dpkg-query -W -f='${Package} ${Depends}\n' | grep -w "$PACKAGE" | awk '{print $1}'
+

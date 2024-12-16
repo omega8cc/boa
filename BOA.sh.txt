@@ -112,10 +112,10 @@ _apt_clean_update() {
   ${_APT_UPDATE} -qq &> /dev/null
 }
 
-_CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
 _if_hosted_sys() {
+  _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
   if [ -e "/root/.host8.cnf" ] \
-    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
+    || [[ "${_hName}" =~ ".aegir.cc"($) ]]; then
     _hostedSys=YES
   else
     _hostedSys=NO
@@ -126,14 +126,11 @@ _if_hosted_sys() {
 # Find correct IP.
 _find_correct_ip() {
   if [ -e "/root/.found_correct_ipv4.cnf" ]; then
-    _LOC_IP=$(cat /root/.found_correct_ipv4.cnf 2>&1)
-    _LOC_IP=$(echo -n ${_LOC_IP} | tr -d "\n" 2>&1)
+    _LOC_IP=$(cat /root/.found_correct_ipv4.cnf 2>/dev/null | tr -d '\n')
   else
-    _LOC_IP=$(curl ${_crlGet} https://api.ipify.org \
-      | sed 's/[^0-9\.]//g' 2>&1)
+    _LOC_IP=$(curl ${_crlGet} https://api.ipify.org | sed 's/[^0-9\.]//g')
     if [ -z "${_LOC_IP}" ]; then
-      _LOC_IP=$(curl ${_crlGet} http://ipv4.icanhazip.com \
-        | sed 's/[^0-9\.]//g' 2>&1)
+      _LOC_IP=$(curl ${_crlGet} http://ipv4.icanhazip.com | sed 's/[^0-9\.]//g')
     fi
     if [ ! -z "${_LOC_IP}" ]; then
       echo ${_LOC_IP} > /root/.found_correct_ipv4.cnf
@@ -146,7 +143,7 @@ _fix_dns_settings() {
   rm -f ${_vBs}/resolv.conf.tmp
   if [ -e "/etc/resolv.conf" ]; then
     if [ -L "/etc/resolv.conf" ]; then
-      _rslvT=`readlink -n /etc/resolv.conf`
+      _rslvT="$(readlink -n /etc/resolv.conf)"
       if [ ! -e "${_rslvT}" ]; then
         rm -f /etc/resolv.conf
       fi
@@ -348,10 +345,9 @@ _verify_boa_keys() {
     echo "PROC: _verify_boa_keys in BOA.sh.txt"
   fi
   if [ "${_tRee}" = "pro" ] || [ "${_tRee}" = "dev" ]; then
+    _if_hosted_sys
     _allw=NO
     _urlEnc="http://${_USE_MIR}/enc/2024"
-    _hName="$(hostname -f 2>/dev/null || uname -n)"
-    _hName=$(echo -n ${_hName} | tr -d "\n" 2>&1)
     _encName=$(echo ${_hName} \
       | openssl md5 \
       | awk '{ print $2}' \
@@ -555,8 +551,7 @@ _update_agents() {
     _PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
     _PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
     InTest=$(ls /data/disk/*/static/control/cli.info | wc -l 2>&1)
-    _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
-    _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+    _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
     if [ "${InTest}" -lt "9" ] \
       && [[ ! "${_PrTestPower}" =~ "POWER" ]] \
       && [[ ! "${_PrTestPhantom}" =~ "PHANTOM" ]] \
@@ -729,7 +724,7 @@ _update_agents() {
 
   if [ -d "/root/.remote_backups/run" ] \
     && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthCtrl}/install_dependencies.sh.ctrl.f93.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthCtrl}/install_dependencies.sh.ctrl.f91.${_tRee}.${_xSrl}.pid" ]; then
     if [ -e "/root/.remote_backups/run/install_dependencies.sh" ]; then
       mv -f /root/.remote_backups/run/install_dependencies.sh /root/.remote_backups/run/install_dependencies.sh.old
     fi
@@ -737,7 +732,7 @@ _update_agents() {
     if [ -e "/root/.remote_backups/run/install_dependencies.sh" ]; then
       chmod 700 /root/.remote_backups/run/install_dependencies.sh
       chown root:root /root/.remote_backups/run/install_dependencies.sh
-      touch ${_pthCtrl}/install_dependencies.sh.ctrl.f93.${_tRee}.${_xSrl}.pid
+      touch ${_pthCtrl}/install_dependencies.sh.ctrl.f91.${_tRee}.${_xSrl}.pid
     else
       if [ -e "/root/.remote_backups/run/install_dependencies.sh.old" ]; then
         mv -f /root/.remote_backups/run/install_dependencies.sh.old /root/.remote_backups/run/install_dependencies.sh
@@ -1332,14 +1327,14 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/manage_ltd_users.sh.ctrl.f87.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/manage_ltd_users.sh.ctrl.f83.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/manage_ltd_users.sh /var/xdrago/manage_ltd_users.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/manage_ltd_users.sh" \
       -o /var/xdrago/manage_ltd_users.sh
     if [ -e "/var/xdrago/manage_ltd_users.sh" ]; then
       chmod 700 /var/xdrago/manage_ltd_users.sh
       chown root:root /var/xdrago/manage_ltd_users.sh
-      touch ${_pthLog}/manage_ltd_users.sh.ctrl.f87.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/manage_ltd_users.sh.ctrl.f83.${_tRee}.${_xSrl}.pid
       [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
     else
       mv -f /var/xdrago/manage_ltd_users.sh.old /var/xdrago/manage_ltd_users.sh
@@ -1381,7 +1376,7 @@ _update_agents() {
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/fast_shutdown.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     sed -i "s/.*opcache.fast_shutdown.*//g" /opt/etc/fpm/fpm-pool-common.conf
-    _PHP_V="83 82 81 80 74 73 72 71 70 56"
+    _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
       if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
         service php${e}-fpm reload &> /dev/null
@@ -1547,7 +1542,7 @@ _update_agents() {
       chmod 644 /etc/ImageMagick-6/policy.xml
       chown root:root /etc/ImageMagick-6/policy.xml
       touch ${_pthLog}/policymap-hf-06.ctrl.${_tRee}.${_xSrl}.pid
-      _PHP_V="83 82 81 80 74 73 72 71 70 56"
+      _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
           service php${e}-fpm reload &> /dev/null
@@ -1684,7 +1679,7 @@ _update_agents() {
           else
             sed -i "s/args.*q=/args ~* \"foobaroff=/g" ${_ngxCnf}
           fi
-          for _version in 81 82 83 74; do
+          for _version in 81 82 83 84 74; do
             if [ -x "/opt/php${_version}/bin/php" ]; then
               if [ "${_version}" = "74" ]; then
                 _useCli="7.4"
@@ -1881,8 +1876,7 @@ _update_agents() {
     else
       mv -f /var/xdrago/websh.sh.old /opt/local/bin/websh
     fi
-    _WEB_SH=$(readlink -n /bin/sh 2>&1)
-    _WEB_SH=$(echo -n ${_WEB_SH} | tr -d "\n" 2>&1)
+    _WEB_SH="$(readlink -n /bin/sh)"
     if [ -x "/opt/local/bin/websh" ] \
       && grep -i '_forward_to_dash' /opt/local/bin/websh &> /dev/null; then
       if [ "${_WEB_SH}" != "/opt/local/bin/websh" ]; then
@@ -2501,7 +2495,8 @@ _if_fix_lshell() {
     fi
     _PIP_TEST=$(${_usePip} --version 2>&1)
     if [[ "${_PIP_TEST}" =~ "python 3.11" ]] \
-      || [[ "${_PIP_TEST}" =~ "python 3.12" ]]; then
+      || [[ "${_PIP_TEST}" =~ "python 3.12" ]] \
+      || [[ "${_PIP_TEST}" =~ "python 3.13" ]]; then
       ${_usePip} install --upgrade pip --root-user-action ignore
     else
       ${_usePip} install --upgrade pip
@@ -2520,7 +2515,8 @@ _if_fix_lshell() {
     cd /var/opt/lshell-${_LSHELL_VRN}
     _PIP_TEST=$(${_usePip} --version 2>&1)
     if [[ "${_PIP_TEST}" =~ "python 3.11" ]] \
-      || [[ "${_PIP_TEST}" =~ "python 3.12" ]]; then
+      || [[ "${_PIP_TEST}" =~ "python 3.12" ]] \
+      || [[ "${_PIP_TEST}" =~ "python 3.13" ]]; then
       ${_usePip} install . --break-system-packages --root-user-action ignore
     else
       ${_usePip} install .
@@ -2927,7 +2923,7 @@ _check_and_move() {
 }
 
 _if_reinstall_curl() {
-  _CURL_VRN=8.10.1
+  _CURL_VRN=8.11.1
   _CURL_INSTALL_REQUIRED=NO
   if ! command -v lsb_release &> /dev/null; then
     apt-get update -qq &> /dev/null
@@ -3436,7 +3432,6 @@ _if_update_boa_key_tools_only() {
 _boa_setup() {
   _BENG_VS=NO
   _VMFAMILY=NO
-  _CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
   _VM_TEST="$(uname -a)"
   if [[ "${_VM_TEST}" =~ "-beng" ]]; then
     _BENG_VS=YES
@@ -3677,7 +3672,7 @@ _sysctl_update() {
       service redis-server restart &> /dev/null
       service nginx restart &> /dev/null
       service sshd restart &> /dev/null
-      _PHP_V="83 82 81 80 74 73 72 71 70 56"
+      _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
           service php${e}-fpm reload &> /dev/null
@@ -3689,7 +3684,7 @@ _sysctl_update() {
 }
 
 ###--------------------###
-if [ $(whoami) = "root" ]; then
+if [ "$(id -u)" -eq 0 ]; then
 
   [ ! -e "/var/aegir/drush" ] && _locales_check_fix_early
   _os_detection_minimal

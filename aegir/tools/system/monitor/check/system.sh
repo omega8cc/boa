@@ -7,7 +7,7 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 _pthOml="/var/xdrago/log/system.incident.log"
 
 _check_root() {
-  if [ $(whoami) = "root" ]; then
+  if [ "$(id -u)" -eq 0 ]; then
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
     chmod a+w /dev/null
   else
@@ -27,7 +27,7 @@ fi
 
 _incident_email_report() {
   if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "YES" ]; then
-    _hName=$(cat /etc/hostname 2>&1)
+    _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
     echo "Sending Incident Report Email on $(date)" >> ${_pthOml}
     s-nail -s "Incident Report: ${1} on ${_hName} at $(date)" ${_MY_EMAIL} < ${_pthOml}
   fi
@@ -103,11 +103,11 @@ _system_oom_detection() {
 
 _if_fix_locked_sshd() {
   _SSH_LOG="/var/log/auth.log"
-  if [ `tail --lines=100 ${_SSH_LOG} \
+  if [ `tail --lines=10 ${_SSH_LOG} \
     | grep --count "error: Bind to port 22"` -gt "0" ]; then
+    kill -9 sshd &> /dev/null
     kill -9 $(ps aux | grep '[s]tartups' | awk '{print $2}') &> /dev/null
-    nice -n -9 service ssh start
-    wait
+    service ssh start
     _thisErrLog="$(date) SSHD BIND error detected, service restarted"
     echo ${_thisErrLog} >> ${_pthOml}
     _incident_email_report "SSHD BIND error detected, service restarted"

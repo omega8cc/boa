@@ -7,7 +7,7 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 ###-------------SYSTEM-----------------###
 
 _check_root() {
-  if [ "$(whoami)" = "root" ]; then
+  if [ "$(id -u)" -eq 0 ]; then
     chmod a+w /dev/null
   else
     echo "ERROR: This script should be run as a root user"

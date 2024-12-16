@@ -329,18 +329,37 @@ if [ "${_TIME}" = "1200" ] || [ "${_MINUTE}" = "00" ]; then
   _send_boa_system_report
 fi
 
-_cloud_host_cleanup() {
-  if dmidecode -s system-manufacturer | grep -i 'Linode' &> /dev/null; then
-    if [ -e "/var/aegir/drush" ] \
-      && [ -e "/data/u" ] \
-      && [ -e "/var/xdrago" ]; then
-      if [ "$(boa info | grep -c Percona)" -ge 2 ]; then
-        rm -f /run/cloud_vhost.pid
+_linode_vm_postinstall() {
+  _protectedRun=FALSE
+  _optBin="/opt/local/bin"
+  _boaBins="autoinit barracuda boa octopus"
+  for _cbn in ${_boaBins}; do
+    if [ -e "${_optBin}/${_cbn}" ]; then
+      if [ `ps aux | grep -v "grep" | grep --count "/${_cbn}"` -gt "0" ]; then
+        echo "The ${_cbn} is running!"
+        _protectedRun=TRUE
+      fi
+    fi
+  done
+  [ -e "/run/octopus_install_run.pid" ] && _protectedRun=TRUE
+  [ -e "/run/boa_run.pid" ] && _protectedRun=TRUE
+  [ -e "/run/boa_wait.pid" ] && _protectedRun=TRUE
+  if [ "${_protectedRun}" = "FALSE" ]; then
+    if dmidecode -s system-manufacturer | grep -i 'Linode' &> /dev/null; then
+      if [ -e "/var/aegir/drush" ] \
+        && [ -e "/data/u" ] \
+        && [ -e "/var/xdrago" ]; then
+        if [ "$(boa info | grep -c Percona)" -ge 2 ]; then
+          touch /run/linode_vm_postinstall.pid
+          chattr +i /run/linode_vm_postinstall.pid
+          rm -f /run/linode_vm.pid
+          nohup /opt/local/bin/barracuda up-${_tRee} system noscreen > /dev/null 2>&1 &
+        fi
       fi
     fi
   fi
 }
-[ -e "/run/cloud_vhost.pid" ] && _cloud_host_cleanup
+[ -e "/run/linode_vm.pid" ] && [ ! -e "/run/linode_vm_postinstall.pid" ] && _linode_vm_postinstall
 
 _crontab_update() {
   if [ -e "/etc/crontab" ]; then
@@ -597,8 +616,7 @@ if [ -e "/var/aegir/drush" ]; then
         sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g"  ${_barCnf}
         sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g"  ${_barCnf}
       elif [ ! -z "${_DB_V}" ] && [ "${_DB_V}" = "5.7" ]; then
-        _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
-        _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+        _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
         _CHECK_EXISTS=$(mysql -u root -e "SELECT EXISTS(SELECT 1 FROM mysql.user WHERE user = 'drandom_2test')" | grep "0" 2>&1)
         if [[ "${_CHECK_EXISTS}" =~ "0" ]]; then
           _CHECK_REPAIR=$(mysql -u root -e "CREATE USER IF NOT EXISTS 'drandom_2test'@'localhost';" 2>&1)

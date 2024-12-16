@@ -4,8 +4,8 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
-_PTN_VRN=3.12.5
-_DCY_VRN=3.0.3.1
+_PTN_VRN=3.13.1
+_DCY_VRN=3.0.3.2
 _DCY_CMD="/usr/local/bin/duplicity"
 
 _crlGet="-L --max-redirs 3 -k -s --retry 9 --retry-delay 9 -A iCab"
@@ -18,7 +18,7 @@ _apt_clean_update() {
 }
 
 _check_root() {
-  if [ $(whoami) = "root" ]; then
+  if [ "$(id -u)" -eq 0 ]; then
     ionice -c2 -n7 -p $$
     renice 9 -p $$
     chmod a+w /dev/null
@@ -139,14 +139,17 @@ _install_duplicity() {
   _DCY_TEST=$(${_DCY_CMD} --version 2>&1)
   if [[ "${_DCY_TEST}" =~ "duplicity 3." ]]; then
     echo "Duplicity ${_DCY_VRN} installation complete!"
+    service cron start
     exit 0
   else
     echo "Duplicity ${_DCY_VRN} installation failed with ${_DCY_TEST}"
+    service cron start
     exit 1
   fi
 }
 
 _python_install_src() {
+  service cron stop && ln -sfn /bin/dash /usr/bin/sh
   if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
     && [ -e "/etc/apt/apt.conf.d" ]; then
     echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
@@ -155,14 +158,23 @@ _python_install_src() {
   _apt_clean_update
   apt-get install ${_aptYesUnth} \
     intltool \
+    libdb-dev \
     libffi-dev \
+    libgdbm-compat-dev \
+    libgdbm-dev \
+    liblzma-dev \
+    libncursesw5-dev \
+    libreadline-dev \
     par2 \
+    python3 \
     python3-pip \
     python3-venv \
-    python3 \
     rclone \
     rdiff \
-    tzdata
+    tk-dev \
+    tzdata \
+    uuid-dev
+
   _PTN_TEST=$(python3 --version 2>&1)
   if [[ ! "${_PTN_TEST}" =~ "Python ${_PTN_VRN}" ]] \
     || [ ! -x "${_DCY_PTN}" ]; then
@@ -176,13 +188,14 @@ _python_install_src() {
     make install --quiet
     cd
   fi
-  _PTN_TEST=$(/usr/local/bin/python3.12 --version 2>&1)
+  _PTN_TEST=$(/usr/local/bin/python3.13 --version 2>&1)
   if [[ "${_PTN_TEST}" =~ "Python ${_PTN_VRN}" ]]; then
     echo "Python ${_PTN_VRN} installed"
-    _DCY_PTN="/usr/local/bin/python3.12"
-    export PYTHONPATH="/usr/local/lib/python3.12/site-packages"
+    _DCY_PTN="/usr/local/bin/python3.13"
+    export PYTHONPATH="/usr/local/lib/python3.13/site-packages"
   else
     echo "Python ${_PTN_VRN} installation failed with ${_PTN_TEST}"
+    service cron start
     exit 1
   fi
 
@@ -197,7 +210,8 @@ _python_install_src() {
   echo "Installing pip..."
   _PIP_TEST=$(${_usePip} --version 2>&1)
   if [[ "${_PIP_TEST}" =~ "python 3.11" ]] \
-    || [[ "${_PIP_TEST}" =~ "python 3.12" ]]; then
+    || [[ "${_PIP_TEST}" =~ "python 3.12" ]] \
+    || [[ "${_PIP_TEST}" =~ "python 3.13" ]]; then
     ${_usePip} install --upgrade pip --root-user-action ignore
   else
     ${_usePip} install --upgrade pip
@@ -211,7 +225,7 @@ _if_python_install_src() {
   _PYTHON_INSTALL=NO
   [ -e "/root/.gnupg" ] && chmod 700 /root/.gnupg
   _PYTHON_TEST=$(python3 --version 2>&1)
-  if [[ ! "${_PYTHON_TEST}" =~ Python\ 3\.12 ]]; then
+  if [[ ! "${_PYTHON_TEST}" =~ Python\ 3\.13 ]]; then
     echo "Python ${_PTN_VRN} installation is required to support Duplicity ${_DCY_VRN}"
     _python_install_src
   else
@@ -231,3 +245,4 @@ _check_root
 _check_openssl
 _os_detection_minimal
 _if_python_install_src
+

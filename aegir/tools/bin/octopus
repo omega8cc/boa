@@ -25,7 +25,6 @@ _pthIncB="lib/settings/${_filIncB}"
 _pthIncO="lib/settings/${_filIncO}"
 _vBs="/var/backups"
 
-_CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
 _LOG_DIR="${_vBs}/reports/up/$(basename "$0")/${_TODAY}"
 _VMFAMILY=XEN
 _VM_TEST="$(uname -a)"
@@ -74,7 +73,7 @@ _apt_clean_update() {
 
 _if_hosted_sys() {
   if [ -e "/root/.host8.cnf" ] \
-    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
+    || [[ "${_hName}" =~ ".aegir.cc"($) ]]; then
     _hostedSys=YES
   else
     _hostedSys=NO
@@ -92,8 +91,7 @@ _check_sql_running() {
 
 _check_sql_access() {
   if [ -e "/root/.my.pass.txt" ] && [ -e "/root/.my.cnf" ]; then
-    _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
-    _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+    _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
     _IS_SYNC_SQL_PSWD=$(grep "${_SQL_PSWD}" /root/.my.cnf 2>&1)
   else
     echo "ALERT: /root/.my.cnf or /root/.my.pass.txt not found."
@@ -137,7 +135,7 @@ _fix_dns_settings() {
   rm -f ${_vBs}/resolv.conf.tmp
   if [ -e "/etc/resolv.conf" ]; then
     if [ -L "/etc/resolv.conf" ]; then
-      _rslvT=`readlink -n /etc/resolv.conf`
+      _rslvT="$(readlink -n /etc/resolv.conf)"
       if [ ! -e "${_rslvT}" ]; then
         rm -f /etc/resolv.conf
       fi
@@ -209,7 +207,7 @@ _send_report() {
     fi
     if [ ! -z "${_MY_EMAIL}" ]; then
       _repSub="Successful Octopus upgrade for ${_octUsr}"
-      _repSub="REPORT: ${_repSub} on ${_CHECK_HOST}"
+      _repSub="REPORT: ${_repSub} on ${_hName}"
       _repSub=$(echo -n ${_repSub} | fmt -su -w 2500 2>&1)
       cat ${_UP_LOG} | s-nail -s "${_repSub} at ${_NOW}" ${_MY_EMAIL}
       echo "${_repSub} sent to ${_MY_EMAIL}"
@@ -225,7 +223,7 @@ _send_alert() {
       _MY_EMAIL="$(basename "$0")@omega8.cc"
     fi
     if [ ! -z "${_MY_EMAIL}" ]; then
-      _repSub="ALERT: Failed Octopus upgrade for ${_octUsr} on ${_CHECK_HOST}"
+      _repSub="ALERT: Failed Octopus upgrade for ${_octUsr} on ${_hName}"
       _repSub=$(echo -n ${_repSub} | fmt -su -w 2500 2>&1)
       cat ${_UP_LOG} | s-nail -s "${_repSub} at ${_NOW}" ${_MY_EMAIL}
       echo "${_repSub} sent to ${_MY_EMAIL}"
@@ -389,7 +387,7 @@ _up_mode() {
 _satellite_check_strict_php_cli() {
   _PHP_CLI=$(grep "/opt/php" ${_usEr}/tools/drush/drush.php 2>&1)
   if [ "${_OS_CODE}" != "stretch" ] && [ "${_OS_CODE}" != "jessie" ]; then
-    if [[ ! "${_PHP_CLI}" =~ php8[1-3] ]] && [[ ! "${_PHP_CLI}" =~ php74 ]]; then
+    if [[ ! "${_PHP_CLI}" =~ php8[1-4] ]] && [[ ! "${_PHP_CLI}" =~ php74 ]]; then
       echo
       echo "NOTE: This Aegir version requires at least PHP 7.4 during upgrade."
       echo "NOTE: It will be reconfigured on the fly now, but you can change it"
@@ -397,7 +395,7 @@ _satellite_check_strict_php_cli() {
       echo
       _php_cli_drush_update
       _php_cli_local_ini_update
-      for _version in 81 82 83 74; do
+      for _version in 81 82 83 84 74; do
         if [ -x "/opt/php${_version}/bin/php" ]; then
           if [ "${_version}" = "74" ]; then
             _useCli="7.4"
@@ -481,7 +479,8 @@ _satellite_check_supported_php_cli() {
           _T_CLI_VRN=$(cat ${_usEr}/static/control/cli.info 2>&1)
           _T_CLI_VRN=${_T_CLI_VRN//[^0-9.]/}
           _T_CLI_VRN=$(echo -n ${_T_CLI_VRN} | tr -d "\n" 2>&1)
-          if [ "${_T_CLI_VRN}" = "8.3" ] \
+          if [ "${_T_CLI_VRN}" = "8.4" ] \
+            || [ "${_T_CLI_VRN}" = "8.3" ] \
             || [ "${_T_CLI_VRN}" = "8.2" ] \
             || [ "${_T_CLI_VRN}" = "8.1" ] \
             || [ "${_T_CLI_VRN}" = "7.4" ]; then
@@ -492,7 +491,7 @@ _satellite_check_supported_php_cli() {
         else
           _PHP_CLI_LEGACY_FREE=YES
         fi
-        for _version in 81 82 83 74; do
+        for _version in 81 82 83 84 74; do
           if [ -x "/opt/php${_version}/bin/php" ]; then
             if [ "${_version}" = "74" ]; then
               _useCli="7.4"
@@ -902,7 +901,7 @@ _find_fast_mirror_early() {
 }
 
 _if_reinstall_curl() {
-  _CURL_VRN=8.10.1
+  _CURL_VRN=8.11.1
   if ! command -v lsb_release &> /dev/null; then
     apt-get update -qq &> /dev/null
     apt-get install lsb-release ${_aptYesUnth} -qq &> /dev/null
@@ -1012,7 +1011,7 @@ _check_dns_curl() {
 
 _check_root_direct() {
   _U_TEST=DENY
-  [ "${SUDO_USER}" ] && _U_TEST_SDO=${SUDO_USER} || _U_TEST_SDO=`whoami`
+  [ "${SUDO_USER}" ] && _U_TEST_SDO=${SUDO_USER} || _U_TEST_SDO=$(whoami)
   _U_TEST_WHO=$(who am i | awk '{print $1}' 2>&1)
   _U_TEST_LNE=$(logname 2>&1)
   if [ "${_U_TEST_SDO}" = "root" ] || [ "${_U_TEST_LNE}" = "root" ]; then
@@ -1094,7 +1093,7 @@ _check_root_keys_pwd() {
 }
 
 _check_root() {
-  if [ $(whoami) = "root" ]; then
+  if [ "$(id -u)" -eq 0 ]; then
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
     # Sanitize to allow only digits and minus sign
     export _B_NICE=${_B_NICE//[^0-9-]/}
@@ -1127,6 +1126,7 @@ _check_root() {
     echo "ERROR: We can not proceed until it is below 90/100"
     _clean_pid_exit _check_root_b
   fi
+  _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
 }
 
 _check_no_systemd() {

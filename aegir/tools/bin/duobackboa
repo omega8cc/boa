@@ -17,10 +17,8 @@ export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 export _tRee=pro
 
-_CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
-
 _check_root() {
-  if [ $(whoami) = "root" ]; then
+  if [ "$(id -u)" -eq 0 ]; then
     ionice -c2 -n7 -p $$
     renice 9 -p $$
     chmod a+w /dev/null
@@ -52,8 +50,8 @@ if [ ! -x "/usr/local/ssl3/bin/openssl" ]; then
   exit 1
 fi
 
-_PTN_VRN=3.12.5
-_DCY_VRN=3.0.3.1
+_PTN_VRN=3.13.1
+_DCY_VRN=3.0.3.2
 _LOGPTH="/var/xdrago/log"
 _NOW=$(date +%y%m%d-%H%M%S 2>&1)
 _NOW=${_NOW//[^0-9-]/}
@@ -61,7 +59,7 @@ _DOW=$(date +%u 2>&1)
 _DOW=${_DOW//[^1-7]/}
 _DOM=$(date +%e 2>&1)
 _DOM=${_DOM//[^0-9]/}
-_HST="$(hostname -f 2>/dev/null || uname -n)"
+_HST="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
 _HST=${_HST//[^a-zA-Z0-9-.]/}
 _HST=$(echo -n ${_HST} | tr A-Z a-z 2>&1)
 _HST_DASH=$(echo -n ${_HST} | tr . - 2>&1)
@@ -82,7 +80,7 @@ if [ -z "${_AWS_VLV}" ]; then
 fi
 
 # Set extra environment variables
-export PYTHONPATH="/usr/local/lib/python3.12/site-packages"
+export PYTHONPATH="/usr/local/lib/python3.13/site-packages"
 
 _DCY_PTN="/usr/local/bin/python3"
 _DCY_CMD="/usr/local/bin/duplicity -v ${_AWS_VLV}"
@@ -113,16 +111,6 @@ _apt_clean_update() {
   #rm -rf /var/lib/apt/lists/* &> /dev/null
   ${_APT_UPDATE} -qq 2> /dev/null
 }
-
-_if_hosted_sys() {
-  if [ -e "/root/.host8.cnf" ] \
-    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
-    _hostedSys=YES
-  else
-    _hostedSys=NO
-  fi
-}
-_if_hosted_sys
 
 _check_vps() {
   _BENG_VS=NO
@@ -380,11 +368,6 @@ fi
 _AWS_FLC=${_AWS_FLC//[^A-Z0-9]/}
 if [ -z "${_AWS_FLC}" ]; then
   _AWS_FLC="7D"
-fi
-
-if [ "${_hostedSys}" = "YES" ] \
-  && [ -e "/var/xdrago" ]; then
-  _AWS_FLC="14D"
 fi
 
 if [ ! -z "${_AWS_EXB}" ] && [ "${_AWS_EXB}" = "NO" ]; then

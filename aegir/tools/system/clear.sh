@@ -10,7 +10,7 @@ _aptYesUnth="-y ${_aptAllow}"
 _wgetGet="--max-redirect=3 --no-check-certificate -q --tries=9 --wait=9 --user-agent='iCab'"
 
 _check_root() {
-  if [ $(whoami) = "root" ]; then
+  if [ "$(id -u)" -eq 0 ]; then
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
     # Sanitize to allow only digits and minus sign
     export _B_NICE=${_B_NICE//[^0-9-]/}
@@ -118,7 +118,7 @@ _find_fast_mirror_early() {
 }
 
 _if_reinstall_curl_src() {
-  _CURL_VRN=8.10.1
+  _CURL_VRN=8.11.1
   if ! command -v lsb_release &> /dev/null; then
     apt-get update -qq &> /dev/null
     apt-get install lsb-release ${_aptYesUnth} -qq &> /dev/null
@@ -258,10 +258,11 @@ fi
 
 _if_fix_locked_sshd() {
   _SSH_LOG="/var/log/auth.log"
-  if [ `tail --lines=100 ${_SSH_LOG} \
+  if [ `tail --lines=30 ${_SSH_LOG} \
     | grep --count "error: Bind to port 22"` -gt "0" ]; then
+    # killall -9 sshd-session
     kill -9 $(ps aux | grep '[s]tartups' | awk '{print $2}')
-    nice -n -9 service ssh start
+    service ssh start
   fi
 }
 _if_fix_locked_sshd
