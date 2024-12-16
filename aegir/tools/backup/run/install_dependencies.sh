@@ -187,10 +187,10 @@ _python_install_src() {
     make install --quiet
     cd
   fi
-  _PTN_TEST=$(/usr/local/bin/python3.13 --version 2>&1)
+  _PTN_TEST=$(/usr/local/bin/python3.12 --version 2>&1)
   if [[ "${_PTN_TEST}" =~ "Python ${_PTN_VRN}" ]]; then
     echo "Python ${_PTN_VRN} installed"
-    _DCY_PTN="/usr/local/bin/python3.13"
+    _DCY_PTN="/usr/local/bin/python3.12"
     export PYTHONPATH="/usr/local/lib/python3.12/site-packages"
   else
     echo "Python ${_PTN_VRN} installation failed with ${_PTN_TEST}"
