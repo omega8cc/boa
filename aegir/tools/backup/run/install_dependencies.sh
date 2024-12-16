@@ -143,13 +143,11 @@ _install_duplicity() {
     echo "Duplicity installation complete!"
   else
     echo "Duplicity installation failed with ${_DCY_TEST}"
-    service cron start
     exit 1
   fi
 }
 
 _python_install_src() {
-  service cron stop && ln -sfn /bin/dash /usr/bin/sh
   if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
     && [ -e "/etc/apt/apt.conf.d" ]; then
     echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
@@ -195,7 +193,6 @@ _python_install_src() {
     export PYTHONPATH="/usr/local/lib/python3.12/site-packages"
   else
     echo "Python ${_PTN_VRN} installation failed with ${_PTN_TEST}"
-    service cron start
     exit 1
   fi
 
