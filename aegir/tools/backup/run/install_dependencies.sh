@@ -134,13 +134,12 @@ _install_duplicity() {
   export PIPX_HOME=/opt/pipx/venvs
 
   echo "Installing Duplicity ${_DCY_VRN}..."
-  pipx install duplicity --include-deps --force
+  pipx install --force --spec duplicity==${_DCY_VRN} duplicity --include-deps
+  pipx upgrade --spec duplicity==${_DCY_VRN} duplicity --include-deps --force
 
   _DCY_TEST=$(${_DCY_CMD} --version 2>&1)
-  if [[ "${_DCY_TEST}" =~ "duplicity 3." ]]; then
+  if [[ "${_DCY_TEST}" =~ "duplicity ${_DCY_VRN}" ]]; then
     echo "Duplicity ${_DCY_VRN} installation complete!"
-    service cron start
-    exit 0
   else
     echo "Duplicity ${_DCY_VRN} installation failed with ${_DCY_TEST}"
     service cron start
