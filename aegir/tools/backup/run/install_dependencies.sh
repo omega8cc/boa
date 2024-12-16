@@ -4,7 +4,7 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
-_PTN_VRN=3.13.1
+_PTN_VRN=3.12.8
 _DCY_VRN=3.0.3.2
 _DCY_CMD="/usr/local/bin/duplicity"
 
@@ -133,23 +133,31 @@ _install_duplicity() {
   export PIPX_BIN_DIR=/usr/local/bin
   export PIPX_HOME=/opt/pipx/venvs
 
+  if [ -x "${_DCY_CMD}" ]; then
+    _DCY_TEST=$(${_DCY_CMD} --version 2>&1)
+    if [[ "${_DCY_TEST}" =~ "duplicity ${_DCY_VRN}" ]]; then
+      echo "Already Installed ${_DCY_TEST}"
+      if [ ! -e "/root/.force.duplicity.reinstall.cnf" ]; then
+        exit 1
+      fi
+    fi
+  fi
+
   echo "Installing Duplicity ${_DCY_VRN}..."
   pipx install duplicity --include-deps --force
 
   _DCY_TEST=$(${_DCY_CMD} --version 2>&1)
+  echo "Just Installed ${_DCY_TEST}"
+
   if [[ "${_DCY_TEST}" =~ "duplicity 3." ]]; then
-    echo "Duplicity ${_DCY_VRN} installation complete!"
-    service cron start
-    exit 0
+    echo "Duplicity installation complete!"
   else
-    echo "Duplicity ${_DCY_VRN} installation failed with ${_DCY_TEST}"
-    service cron start
+    echo "Duplicity installation failed with ${_DCY_TEST}"
     exit 1
   fi
 }
 
 _python_install_src() {
-  service cron stop && ln -sfn /bin/dash /usr/bin/sh
   if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
     && [ -e "/etc/apt/apt.conf.d" ]; then
     echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
@@ -188,14 +196,13 @@ _python_install_src() {
     make install --quiet
     cd
   fi
-  _PTN_TEST=$(/usr/local/bin/python3.13 --version 2>&1)
+  _PTN_TEST=$(/usr/local/bin/python3.12 --version 2>&1)
   if [[ "${_PTN_TEST}" =~ "Python ${_PTN_VRN}" ]]; then
     echo "Python ${_PTN_VRN} installed"
-    _DCY_PTN="/usr/local/bin/python3.13"
-    export PYTHONPATH="/usr/local/lib/python3.13/site-packages"
+    _DCY_PTN="/usr/local/bin/python3.12"
+    export PYTHONPATH="/usr/local/lib/python3.12/site-packages"
   else
     echo "Python ${_PTN_VRN} installation failed with ${_PTN_TEST}"
-    service cron start
     exit 1
   fi
 
@@ -210,8 +217,7 @@ _python_install_src() {
   echo "Installing pip..."
   _PIP_TEST=$(${_usePip} --version 2>&1)
   if [[ "${_PIP_TEST}" =~ "python 3.11" ]] \
-    || [[ "${_PIP_TEST}" =~ "python 3.12" ]] \
-    || [[ "${_PIP_TEST}" =~ "python 3.13" ]]; then
+    || [[ "${_PIP_TEST}" =~ "python 3.12" ]]; then
     ${_usePip} install --upgrade pip --root-user-action ignore
   else
     ${_usePip} install --upgrade pip
@@ -225,7 +231,7 @@ _if_python_install_src() {
   _PYTHON_INSTALL=NO
   [ -e "/root/.gnupg" ] && chmod 700 /root/.gnupg
   _PYTHON_TEST=$(python3 --version 2>&1)
-  if [[ ! "${_PYTHON_TEST}" =~ Python\ 3\.13 ]]; then
+  if [[ ! "${_PYTHON_TEST}" =~ "Python ${_PTN_VRN}" ]]; then
     echo "Python ${_PTN_VRN} installation is required to support Duplicity ${_DCY_VRN}"
     _python_install_src
   else
