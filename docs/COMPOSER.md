@@ -6,7 +6,7 @@ The only documentation source for anything Ægir on BOA related is available at:
 - [Omega8.cc Documentation](https://learn.omega8.cc)
 - [BOA GitHub Issues](https://github.com/omega8cc/boa/issues?utf8=✓&q=is%3Aissue+composer)
 
-**IMPORTANT:** You must switch your `~/static/control/cli.info` to PHP version 8.1 or newer (BOA hosted on Omega8.cc comes with 8.3, 8.2, 8.1, etc.), because D10 based distros require at least PHP 8.1. This also means that to run the sites installed after switching `cli.info` to 8.1 or newer, you will also need to either switch your `~/static/control/fpm.info` to 8.1 or newer, or more probably, to not break any existing sites not compatible with PHP 8.1+, you will need to list these old sites names in `~/static/control/multi-fpm.info`.
+**IMPORTANT:** You must switch your `~/static/control/cli.info` to PHP version 8.1 or newer (BOA hosted on Omega8.cc comes with 8.4, 8.3, 8.2, 8.1, etc.), because D10 based distros require at least PHP 8.1. This also means that to run the sites installed after switching `cli.info` to 8.1 or newer, you will also need to either switch your `~/static/control/fpm.info` to 8.1 or newer, or more probably, to not break any existing sites not compatible with PHP 8.1+, you will need to list these old sites names in `~/static/control/multi-fpm.info`.
 
 For more information, please check:
 - [How To Quickly Switch PHP to Newer Version](https://learn.omega8.cc/how-to-quickly-switch-php-to-newer-version-330)

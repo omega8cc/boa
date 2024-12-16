@@ -49,8 +49,7 @@ _forced_redis_password_update() {
     _msg "INFO: Managing password for remote Redis server"
     if [ -e "/root/.redis.pass.txt" ] \
       && [ -e "${_pthLog}/remote-redis-passwd.log" ]; then
-      _ESC_RPASS=$(cat /root/.redis.pass.txt 2>&1)
-      _ESC_RPASS=$(echo -n "${_ESC_RPASS}" | tr -d "\n" 2>&1)
+      _ESC_RPASS=$(cat /root/.redis.pass.txt 2>/dev/null | tr -d '\n')
       _ESC_RPASS=$(_sanitize_string "${_ESC_RPASS}" 2>&1)
     else
       _ESC_RPASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
@@ -206,46 +205,45 @@ _redis_password_update() {
   fi
   if [ -e "/root/.redis.pass.txt" ] && [ -e "/etc/redis/redis.conf" ]; then
     if [ -z "${_ESC_RPASS}" ]; then
-      RPASS=$(cat /root/.redis.pass.txt 2>&1)
-      RPASS=$(echo -n ${RPASS} | tr -d "\n" 2>&1)
+      _RPASS=$(cat /root/.redis.pass.txt 2>/dev/null | tr -d '\n')
     else
-      RPASS="${_ESC_RPASS}"
+      _RPASS="${_ESC_RPASS}"
     fi
     if [ -e "/data/conf/global/global-if-redis.inc" ]; then
-      _REDIS_PWD_TEST=$(grep "'${RPASS}'" /data/conf/global/global-if-redis.inc 2>&1)
-      if [[ "${_REDIS_PWD_TEST}" =~ "'${RPASS}'" ]]; then
+      _REDIS_PWD_TEST=$(grep "'${_RPASS}'" /data/conf/global/global-if-redis.inc 2>&1)
+      if [[ "${_REDIS_PWD_TEST}" =~ "'${_RPASS}'" ]]; then
         _DO_NOTHING=YES
       else
-        if [ ! -z "${RPASS}" ]; then
+        if [ ! -z "${_RPASS}" ]; then
           mkdir -p /data/conf
           cp -af ${_locCnf}/global/global-if-redis.inc /data/conf/global/global-if-redis.inc
-          sed -i "s/isfoobared/${RPASS}/g" /data/conf/global/global-if-redis.inc &> /dev/null
+          sed -i "s/isfoobared/${_RPASS}/g" /data/conf/global/global-if-redis.inc &> /dev/null
           wait
         fi
       fi
     fi
     if [ -e "/data/conf/global/global-redis.inc" ]; then
-      _REDIS_PWD_TEST=$(grep "'${RPASS}'" /data/conf/global/global-redis.inc 2>&1)
-      if [[ "${_REDIS_PWD_TEST}" =~ "'${RPASS}'" ]]; then
+      _REDIS_PWD_TEST=$(grep "'${_RPASS}'" /data/conf/global/global-redis.inc 2>&1)
+      if [[ "${_REDIS_PWD_TEST}" =~ "'${_RPASS}'" ]]; then
         _DO_NOTHING=YES
       else
-        if [ ! -z "${RPASS}" ]; then
+        if [ ! -z "${_RPASS}" ]; then
           mkdir -p /data/conf
           cp -af ${_locCnf}/global/global-redis.inc /data/conf/global/global-redis.inc
-          sed -i "s/isfoobared/${RPASS}/g" /data/conf/global/global-redis.inc &> /dev/null
+          sed -i "s/isfoobared/${_RPASS}/g" /data/conf/global/global-redis.inc &> /dev/null
           wait
         fi
       fi
     fi
     if [ -e "/data/conf/global.inc" ]; then
-      _REDIS_PWD_TEST=$(grep "'${RPASS}'" /data/conf/global.inc 2>&1)
-      if [[ "${_REDIS_PWD_TEST}" =~ "'${RPASS}'" ]]; then
+      _REDIS_PWD_TEST=$(grep "'${_RPASS}'" /data/conf/global.inc 2>&1)
+      if [[ "${_REDIS_PWD_TEST}" =~ "'${_RPASS}'" ]]; then
         _DO_NOTHING=YES
       else
-        if [ ! -z "${RPASS}" ]; then
+        if [ ! -z "${_RPASS}" ]; then
           mkdir -p /data/conf
           cp -af ${_locCnf}/global/global.inc /data/conf/global.inc
-          sed -i "s/isfoobared/${RPASS}/g" /data/conf/global.inc &> /dev/null
+          sed -i "s/isfoobared/${_RPASS}/g" /data/conf/global.inc &> /dev/null
           wait
         fi
       fi

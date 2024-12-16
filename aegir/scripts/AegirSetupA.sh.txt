@@ -118,7 +118,7 @@ done
 ### Local variables
 ###
 if [ "${_THIS_DB_HOST}" = "FQDN" ]; then
-  _THIS_DB_HOST="$(hostname -f 2>/dev/null || uname -n)"
+  _THIS_DB_HOST="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
 fi
 _DIST_INSTALL=NO
 _STATUS=INIT
@@ -129,7 +129,10 @@ _DISTRO_ROOT="${_ROOT}/distro/${_DISTRO}"
 _D="/data/all"
 _SRCDIR="/opt/tmp/files"
 _LOG="/var/backups/octopus-${_USER}-${_NOW}.log"
-if [ "${_PHP_CLI_VERSION}" = "8.3" ] \
+if [ "${_PHP_CLI_VERSION}" = "8.4" ] \
+  && [ -x "/opt/php84/bin/php" ]; then
+  _T_CLI=/opt/php84/bin
+elif [ "${_PHP_CLI_VERSION}" = "8.3" ] \
   && [ -x "/opt/php83/bin/php" ]; then
   _T_CLI=/opt/php83/bin
 elif [ "${_PHP_CLI_VERSION}" = "8.2" ] \
@@ -183,7 +186,7 @@ fi
 ###
 ### User check
 ###
-if [ $(whoami) = "root" ]; then
+if [ "$(id -u)" -eq 0 ]; then
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "${_STATUS} A: Aegir automated install script part A"
   fi

@@ -118,7 +118,7 @@ done
 ### Local variables
 ###
 if [ "${_THIS_DB_HOST}" = "FQDN" ]; then
-  export _THIS_DB_HOST="$(hostname -f 2>/dev/null || uname -n)"
+  export _THIS_DB_HOST="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
 fi
 export _USE_AEGIR_VER=SRC
 export _T_BUILD=SRC
@@ -135,7 +135,10 @@ export _D="/data/all"
 export _SRCDIR="/opt/tmp/files"
 export _LOG="/var/backups/octopus-${_USER}-${_NOW}.log"
 
-if [ "${_PHP_CLI_VERSION}" = "8.3" ] \
+if [ "${_PHP_CLI_VERSION}" = "8.4" ] \
+  && [ -x "/opt/php84/bin/php" ]; then
+  _T_CLI=/opt/php84/bin
+elif [ "${_PHP_CLI_VERSION}" = "8.3" ] \
   && [ -x "/opt/php83/bin/php" ]; then
   _T_CLI=/opt/php83/bin
 elif [ "${_PHP_CLI_VERSION}" = "8.2" ] \
@@ -194,7 +197,7 @@ fi
 if [ "${_DEBUG_MODE}" = "YES" ]; then
   _msg "${_STATUS} C: Aegir automated install script part C"
 fi
-if [ $(whoami) = "root" ]; then
+if [ "$(id -u)" -eq 0 ]; then
   _msg "${_STATUS} C: FATAL ERROR: This script should be run as a non-root user"
   _msg "${_STATUS} C: FATAL ERROR: Aborting AegirSetupC installer NOW!"
   touch /opt/tmp/status-AegirSetupC-FAIL

@@ -5,7 +5,7 @@ export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
 _check_root() {
-  if [ $(whoami) = "root" ]; then
+  if [ "$(id -u)" -eq 0 ]; then
     ionice -c2 -n7 -p $$
     renice 19 -p $$
     chmod a+w /dev/null
@@ -91,13 +91,13 @@ else
 fi
 
 _BACKUPDIR=/data/disk/arch/sql
-_CHECK_HOST="$(hostname -f 2>/dev/null || uname -n)"
 _DATE=$(date +%y%m%d-%H%M%S 2>&1)
 _DOW=$(date +%u 2>&1)
+_hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
 _DOW=${_DOW//[^1-7]/}
 _DOM=$(date +%e 2>&1)
 _DOM=${_DOM//[^0-9]/}
-_SAVELOCATION=${_BACKUPDIR}/${_CHECK_HOST}-${_DATE}
+_SAVELOCATION=${_BACKUPDIR}/${_hName}-${_DATE}
 if [ -e "/root/.my.optimize.cnf" ]; then
   _OPTIM=YES
 else
@@ -105,8 +105,7 @@ else
 fi
 touch /run/boa_sql_backup.pid
 
-_SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
-_SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+_SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
 
 _create_locks() {
   echo "INFO: Creating locks for $1"

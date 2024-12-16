@@ -53,6 +53,7 @@ foreach $COMMAND (sort keys %li_cnt) {
   if ($COMMAND =~ /proxysql/) {$pxydlives = "YES"; $pxydsumar = $li_cnt{$COMMAND};}
 }
 foreach $X (sort keys %li_cnt) {
+  if ($X =~ /php84/) {$php84lives = "YES";}
   if ($X =~ /php83/) {$php83lives = "YES";}
   if ($X =~ /php82/) {$php82lives = "YES";}
   if ($X =~ /php81/) {$php81lives = "YES";}
@@ -81,6 +82,7 @@ print "\n $buagentsumar Backup procs\t\tGLOBAL" if ($buagentlives);
 print "\n $collectdsumar Collectd\t\tGLOBAL" if ($collectdlives);
 print "\n $dhcpcdsumar dhcpcd procs\t\tGLOBAL" if ($dhcpcdlives);
 print "\n $fpmsumar FPM procs\t\tGLOBAL" if ($fpmlives);
+print "\n 1 FPM84 procs\t\tGLOBAL" if ($php84lives);
 print "\n 1 FPM83 procs\t\tGLOBAL" if ($php83lives);
 print "\n 1 FPM82 procs\t\tGLOBAL" if ($php82lives);
 print "\n 1 FPM81 procs\t\tGLOBAL" if ($php81lives);
@@ -164,12 +166,13 @@ if (!$nginxsumar && -f "/etc/init.d/nginx") {
   `echo "$timedate KILL START $nginxsumar" >> /var/xdrago/log/nginx.kill-start.log`;
 }
 
-if ($fpmsumar > 10 ) {
+if ($fpmsumar > 11 ) {
   $timedate=`date +%y%m%d-%H%M%S`;
   chomp($timedate);
   system("killall -9 php-fpm");
   `echo "$timedate KILL FPM $fpmsumar" >> /var/xdrago/log/fpm.kill-all.log`;
 }
+system("service php84-fpm start") if ((!$php84lives || !$fpmsumar || !-f "/run/php84-fpm.pid") && -f "/etc/init.d/php84-fpm");
 system("service php83-fpm start") if ((!$php83lives || !$fpmsumar || !-f "/run/php83-fpm.pid") && -f "/etc/init.d/php83-fpm");
 system("service php82-fpm start") if ((!$php82lives || !$fpmsumar || !-f "/run/php82-fpm.pid") && -f "/etc/init.d/php82-fpm");
 system("service php81-fpm start") if ((!$php81lives || !$fpmsumar || !-f "/run/php81-fpm.pid") && -f "/etc/init.d/php81-fpm");

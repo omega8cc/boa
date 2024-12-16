@@ -65,6 +65,7 @@ Contrib [S]upported and [B]undled:
  cdn ------------------------ [D6,D7] ------ [S] [B]
  config_perms --------------- [D6,D7] ------ [S] [B]
  css_emimage ---------------- [D6,D7] ------ [S] [B]
+ d7security_client ---------- [D7] --------- [S] [B]
  dbtuner -------------------- [D6] --------- [S] [B]
  display_cache -------------- [D7] --------- [S] [B]
  entity_print --------------- [D7] --------- [S] [B]

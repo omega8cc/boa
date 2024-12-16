@@ -8,7 +8,7 @@ _pthOml="/var/xdrago/log/oom.incident.log"
 _oldOml="/var/xdrago/log/oom.incident.old.log"
 
 _check_root() {
-  if [ $(whoami) = "root" ]; then
+  if [ "$(id -u)" -eq 0 ]; then
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
     chmod a+w /dev/null
   else

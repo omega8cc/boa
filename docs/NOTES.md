@@ -14,7 +14,6 @@
 
 ### Xtras Which Need to be Listed Explicitly:
 
-- **HVM**: HHVM Engine—once installed, use `~/static/control/hhvm.info` to enable per Octopus instance. (deprecated)
 - **BDD**: SQL Buddy DB Manager (deprecated)
 - **BND**: Bind9 DNS Server (deprecated)
 - **BZR**: Bazaar
