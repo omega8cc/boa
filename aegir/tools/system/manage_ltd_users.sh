@@ -800,7 +800,6 @@ for _Domain in `find ${_Client}/ -maxdepth 1 -mindepth 1 -type l | sort`; do
   if [ -e "${_PATH_DOM}" ]; then
     _ALLD_NUM=$(( _ALLD_NUM += 1 ))
   fi
-  [ -n "${_ALLD_DIR}" ] && echo "Final _ALLD_DIR for ${_rawDom} is == ${_ALLD_DIR} == at _manage_sec_access_paths"
   echo Done for ${_Domain} at ${_Client}
 done
 }
