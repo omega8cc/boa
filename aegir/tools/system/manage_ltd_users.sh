@@ -792,7 +792,6 @@ for _Domain in `find ${_Client}/ -maxdepth 1 -mindepth 1 -type l | sort`; do
   echo "_STATIC_PRIVATE is == ${_STATIC_PRIVATE} == at _manage_sec_access_paths"
   echo "_NEW_STATIC_FILES is == ${_NEW_STATIC_FILES} == at _manage_sec_access_paths"
   echo "_PATH_DOM is == ${_PATH_DOM} == at _manage_sec_access_paths"
-  echo "_RUBY_PATH is == ${_RUBY_PATH} == at _manage_sec_access_paths"
   [ -n "${_mntPoint}" ] && echo "_mntPoint is == ${_mntPoint} == at _manage_sec_access_paths"
   [ -n "${_mntPoint}" ] && echo "_MNT_STATIC_FILES is == ${_MNT_STATIC_FILES} == at _manage_sec_access_paths"
   [ -n "${_mntPoint}" ] && _ALLD_DIR="${_ALLD_DIR}, '${_PATH_DOM}', '${_STATIC_FILES}', '${_STATIC_PRIVATE}', '${_NEW_STATIC_FILES}', '${_MNT_STATIC_FILES}'"
