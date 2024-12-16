@@ -4177,9 +4177,16 @@ _if_ssl_install_src() {
   if [ "${_OS_CODE}" != "stretch" ] && [ "${_OS_CODE}" != "jessie" ]; then
     _sslSymlink="/usr/bin/openssl"
     _sslMacros="/usr/local/ssl3/include/openssl/macros.h"
+    _sslIncludesA=NO
+    _sslIncludesB=NO
+    _sslIncludes=YES
     if grep -i 'OPENSSL_NO_DEPRECATED_3_1' ${_sslMacros} &> /dev/null; then
-      _sslIncludes=YES
-    else
+      _sslIncludesA=YES
+    fi
+    if grep -i '2019-2024' ${_sslMacros} &> /dev/null; then
+      _sslIncludesB=YES
+    fi
+    if [ "${_sslIncludesA}" = "NO" ] || [ "${_sslIncludesB}" = "NO" ]; then
       _sslIncludes=NO
     fi
     if [ ! -x "${_SSL_MODERN_BINARY}" ] \

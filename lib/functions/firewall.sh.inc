@@ -265,7 +265,9 @@ _csf_lfd_gateway_allow() {
     _add_ip_if_missing "${_GATEWAY_IP}" "${_CSF_IGNORE_FILE}"
     [ "${_alreadyListed}" = "FALSE" ] && _msg "The gateway IP (${_GATEWAY_IP}) is now ignored by CSF/LFD."
     # Reload CSF to apply changes
-    _msg "Reloading CSF..."
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: Reloading CSF..."
+    fi
     _mrun "csf -r" 2> /dev/null
   fi
 }
