@@ -599,8 +599,8 @@ _send_report() {
   fi
   if [ ! -z "${_MY_EMAIL}" ]; then
     _repSub="Successful ${_RS} installation"
-    _repSub=$(echo -n ${_repSub} | fmt -su -w 2500 2>&1)
     _repSub="REPORT: ${_repSub} on ${_hName}"
+    _repSub=$(echo -n ${_repSub} | fmt -su -w 2500 2>&1)
     _if_extended_report
     cat ${_THIS_LOG} | s-nail -s "${_repSub} at ${_NOW}" ${_MY_EMAIL}
     echo "${_repSub} sent to ${_MY_EMAIL}"
