@@ -139,9 +139,11 @@ _install_duplicity() {
   _DCY_TEST=$(${_DCY_CMD} --version 2>&1)
   if [[ "${_DCY_TEST}" =~ "duplicity 3." ]]; then
     echo "Duplicity ${_DCY_VRN} installation complete!"
+    service cron start
     exit 0
   else
     echo "Duplicity ${_DCY_VRN} installation failed with ${_DCY_TEST}"
+    service cron start
     exit 1
   fi
 }
@@ -193,6 +195,7 @@ _python_install_src() {
     export PYTHONPATH="/usr/local/lib/python3.13/site-packages"
   else
     echo "Python ${_PTN_VRN} installation failed with ${_PTN_TEST}"
+    service cron start
     exit 1
   fi
 
@@ -216,7 +219,6 @@ _python_install_src() {
 
   _install_duplicity
   _install_other_dependencies
-  service cron start
 }
 
 _if_python_install_src() {
@@ -243,3 +245,4 @@ _check_root
 _check_openssl
 _os_detection_minimal
 _if_python_install_src
+
