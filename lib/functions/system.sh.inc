@@ -1,5 +1,5 @@
 
-export _tRee=dev
+export _tRee=pro
 export _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
 
 _if_fix_iptables_symlinks() {
