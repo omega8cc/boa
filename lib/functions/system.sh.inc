@@ -4180,7 +4180,7 @@ _if_ssl_install_src() {
     _sslIncludesA=NO
     _sslIncludesB=NO
     _sslIncludes=YES
-    if grep -i 'OPENSSL_NO_DEPRECATED_3_1' ${_sslMacros} &> /dev/null; then
+    if grep -i 'OPENSSL_NO_DEPRECATED_3_4' ${_sslMacros} &> /dev/null; then
       _sslIncludesA=YES
     fi
     if grep -i '2019-2024' ${_sslMacros} &> /dev/null; then
