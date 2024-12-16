@@ -154,7 +154,7 @@ EOF
   fi
 
   # Create the final paths configuration file
-  local _user_config_file="${_user_config_dir}/paths/paths.txt"
+  local _user_config_file="${_user_config_dir}/paths.txt"
   cat << EOF > "${_user_config_file}"
 _SOURCE="/data/disk/${_user}/static"
 _USER_INCLUDE="--include-filelist ${_merged_include_file} --include-regexp-filelist ${_user_config_dir}/.backboa.${_user}.include_regexp.merged"
