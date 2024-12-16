@@ -133,6 +133,16 @@ _install_duplicity() {
   export PIPX_BIN_DIR=/usr/local/bin
   export PIPX_HOME=/opt/pipx/venvs
 
+  if [ -x "${_DCY_CMD}" ]; then
+    _DCY_TEST=$(${_DCY_CMD} --version 2>&1)
+    if [[ "${_DCY_TEST}" =~ "duplicity ${_DCY_VRN}" ]]; then
+      echo "Already Installed ${_DCY_TEST}"
+      if [ ! -e "/root/.force.duplicity.reinstall.cnf" ]; then
+        exit 1
+      fi
+    fi
+  fi
+
   echo "Installing Duplicity ${_DCY_VRN}..."
   pipx install duplicity --include-deps --force
 
