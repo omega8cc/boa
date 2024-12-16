@@ -35,6 +35,7 @@ _validate_and_merge_paths() {
   local _user=$2
   local _allowed_prefixes="^/(data/disk/${_user}/static|^/home/${_user}.ftp)"
   local _output_file=$3
+  local _if_validate=$4
   local _invalid_paths_found=false
 
   # Ensure output file exists and is empty
@@ -47,17 +48,21 @@ _validate_and_merge_paths() {
       continue
     fi
 
-    # Validate directives
-    if [[ "${_line}" =~ ^--(include|exclude|include-regexp|exclude-regexp) ]]; then
-      if echo "${_line}" | grep -Eq "^--(include|exclude|include-regexp|exclude-regexp) ${_allowed_prefixes}"; then
-        echo "${_line}" >> "${_output_file}"
+    if [ "${_if_validate}" = "YES" ]; then
+      # Validate directives
+      if [[ "${_line}" =~ ^--(include|exclude|include-regexp|exclude-regexp) ]]; then
+        if echo "${_line}" | grep -Eq "^--(include|exclude|include-regexp|exclude-regexp) ${_allowed_prefixes}"; then
+          echo "${_line}" >> "${_output_file}"
+        else
+          _log_issue "${_user}" "${_file}" "Invalid path: ${_line}"
+          _invalid_paths_found=true
+        fi
       else
-        _log_issue "${_user}" "${_file}" "Invalid path: ${_line}"
+        _log_issue "${_user}" "${_file}" "Invalid directive: ${_line}"
         _invalid_paths_found=true
       fi
-    else
-      _log_issue "${_user}" "${_file}" "Invalid directive: ${_line}"
-      _invalid_paths_found=true
+    elif [ "${_if_validate}" = "NO" ]; then
+      echo "${_line}" >> "${_output_file}"
     fi
   done < "${_file}"
 
@@ -121,31 +126,31 @@ EOF
   fi
 
   # Validate and merge system and user-space include files
-  _validate_and_merge_paths "${_include_file}" "${_user}" "${_merged_include_file}"
+  _validate_and_merge_paths "${_include_file}" "${_user}" "${_merged_include_file}" NO
   if [ -f "${_user_control_dir}/include.txt" ]; then
-    _validate_and_merge_paths "${_user_control_dir}/include.txt" "${_user}" "${_merged_include_file}"
+    _validate_and_merge_paths "${_user_control_dir}/include.txt" "${_user}" "${_merged_include_file}" YES
   fi
 
   # Validate and merge system and user-space exclude files
-  _validate_and_merge_paths "${_exclude_file}" "${_user}" "${_merged_exclude_file}"
+  _validate_and_merge_paths "${_exclude_file}" "${_user}" "${_merged_exclude_file}" NO
   if [ -f "${_user_control_dir}/exclude.txt" ]; then
-    _validate_and_merge_paths "${_user_control_dir}/exclude.txt" "${_user}" "${_merged_exclude_file}"
+    _validate_and_merge_paths "${_user_control_dir}/exclude.txt" "${_user}" "${_merged_exclude_file}" YES
   fi
 
   # Validate and merge regexp include files
   if [ -f "${_include_regexp_file}" ]; then
-    _validate_and_merge_paths "${_include_regexp_file}" "${_user}" "${_user_config_dir}/.backboa.${_user}.include_regexp.merged"
+    _validate_and_merge_paths "${_include_regexp_file}" "${_user}" "${_user_config_dir}/.backboa.${_user}.include_regexp.merged" NO
   fi
   if [ -f "${_user_control_dir}/include_regexp.txt" ]; then
-    _validate_and_merge_paths "${_user_control_dir}/include_regexp.txt" "${_user}" "${_user_config_dir}/.backboa.${_user}.include_regexp.merged"
+    _validate_and_merge_paths "${_user_control_dir}/include_regexp.txt" "${_user}" "${_user_config_dir}/.backboa.${_user}.include_regexp.merged" YES
   fi
 
   # Validate and merge regexp exclude files
   if [ -f "${_exclude_regexp_file}" ]; then
-    _validate_and_merge_paths "${_exclude_regexp_file}" "${_user}" "${_user_config_dir}/.backboa.${_user}.exclude_regexp.merged"
+    _validate_and_merge_paths "${_exclude_regexp_file}" "${_user}" "${_user_config_dir}/.backboa.${_user}.exclude_regexp.merged" NO
   fi
   if [ -f "${_user_control_dir}/exclude_regexp.txt" ]; then
-    _validate_and_merge_paths "${_user_control_dir}/exclude_regexp.txt" "${_user}" "${_user_config_dir}/.backboa.${_user}.exclude_regexp.merged"
+    _validate_and_merge_paths "${_user_control_dir}/exclude_regexp.txt" "${_user}" "${_user_config_dir}/.backboa.${_user}.exclude_regexp.merged" YES
   fi
 
   # Create the final paths configuration file
