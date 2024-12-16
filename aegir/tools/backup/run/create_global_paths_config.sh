@@ -107,7 +107,7 @@ EOF
   fi
 
   # Create the final paths configuration file
-  _global_paths_file="${_global_config_dir}/paths/paths.txt"
+  _global_paths_file="${_global_config_dir}/paths.txt"
   cat << EOF > "${_global_paths_file}"
 _SOURCE="/data /home /etc /var/aegir /var/www /var/solr7 /opt/solr4 /var/xdrago"
 _INCLUDE="--include-filelist ${_merged_include_file}"
