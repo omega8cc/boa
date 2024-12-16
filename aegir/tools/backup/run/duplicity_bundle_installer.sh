@@ -3,6 +3,101 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+export _tRee=dev
+
+# Function to verify BOA keys
+_verify_boa_keys() {
+  if [ "${_tRee}" = "pro" ] || [ "${_tRee}" = "dev" ]; then
+    _allw=NO
+    _crlGet="-L --max-redirs 3 -k -s --retry 9 --retry-delay 9 -A iCab"
+    _urlEnc="http://files.aegir.cc/enc/2024"
+    _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
+    _encName=$(echo ${_hName} \
+      | openssl md5 \
+      | awk '{ print $2}' \
+      | tr -d "\n" 2>&1)
+    if [[ "${_hName}" =~ ".aegir.cc"($) ]] \
+      || [[ "${_hName}" =~ ".o8.io"($) ]] \
+      || [[ "${_hName}" =~ ".boa.io"($) ]]; then
+      _allw=YES
+    fi
+    mkdir -p /var/opt
+    rm -f /var/opt/_encN*
+    curl ${_crlGet} "${_urlEnc}/${_encName}" -o /var/opt/_encN.${_encName}.tmp
+    wait
+    echo "${_hName}.${_encName}" > /var/opt/_encN_local.${_encName}.tmp
+    wait
+    if [ -e "/var/opt/_encN.${_encName}.tmp" ] && [ -e "/var/opt/_encN_local.${_encName}.tmp" ]; then
+      _diffTestIf=$(diff -w -B /var/opt/_encN.${_encName}.tmp /var/opt/_encN_local.${_encName}.tmp 2>&1)
+      if [ ! -z "${_diffTestIf}" ] && [ "${_allw}" = "NO" ]; then
+        echo
+        echo "Your system requires valid license to use this function"
+        echo "Please visit https://omega8.cc/licenses to purchase your own"
+        echo
+        if [ -e "/var/aegir/drush/vendor" ] && [ ! -e "/var/aegir/key/barracuda_key.txt" ]; then
+          mkdir -p /var/aegir/key
+          cat /var/opt/_encN_local.${_encName}.tmp > /var/aegir/key/barracuda_key.txt
+        fi
+        rm -f /var/opt/_encN*
+        exit 0
+      else
+        if [ -e "/var/aegir/drush/vendor" ] && [ ! -e "/var/aegir/key/barracuda_key.txt" ]; then
+          mkdir -p /var/aegir/key
+          cat /var/opt/_encN_local.${_encName}.tmp > /var/aegir/key/barracuda_key.txt
+        fi
+      fi
+    else
+      echo
+      echo "Your system requires valid license to use this BOA feature"
+      echo "Unfortunately it was not possible to verify your system status"
+      echo "Please contact our support but visit https://omega8.cc/licenses first"
+      echo
+      exit 0
+    fi
+  fi
+}
+
+# Function to verify root access
+_check_root() {
+  if [ "$(id -u)" -eq 0 ]; then
+    ionice -c2 -n7 -p $$
+    renice 9 -p $$
+    chmod a+w /dev/null
+    [ -e "/root/.gnupg" ] && chmod 700 /root/.gnupg
+  else
+    echo "ERROR: This script should be run as a root user"
+    exit 1
+  fi
+  _DF_TEST=$(df -kTh / -l \
+    | grep '/' \
+    | sed 's/\%//g' \
+    | awk '{print $6}' 2> /dev/null)
+  _DF_TEST=${_DF_TEST//[^0-9]/}
+  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt "90" ]; then
+    echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
+    echo "ERROR: We can not proceed until it is below 90/100"
+    exit 1
+  fi
+  [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
+  export _INCIDENT_REPORT=${_INCIDENT_REPORT//[^A-Z]/}
+  : "${_INCIDENT_REPORT:=YES}"
+  _AWS_VLV=${_AWS_VLV//[^a-z]/}
+  if [ -z "${_AWS_VLV}" ]; then
+    _AWS_VLV="warning"
+  fi
+}
+_check_root
+_verify_boa_keys
+
+if [ -e "/root/.pause_heavy_tasks_maint.cnf" ]; then
+  exit 0
+fi
+
+# New OpenSSL 3.x version is required
+if [ ! -x "/usr/local/ssl3/bin/openssl" ]; then
+  echo "New OpenSSL 3.x version is required"
+  exit 1
+fi
 
 # Directory where all scripts are located
 _SCRIPT_DIR="/root/.remote_backups/run"
@@ -46,12 +141,14 @@ _check_scripts() {
 # Function to install dependencies
 _install_dependencies() {
   echo "Installing dependencies..."
+  service cron stop && ln -sfn /bin/dash /usr/bin/sh
   bash "${_INSTALL_DEPENDENCIES_SCRIPT}"
   if [ $? -ne 0 ]; then
     echo "Error: Failed to install dependencies."
     exit 1
   fi
   echo "Dependencies installed successfully."
+  service cron start
 }
 
 # Function to perform setup (initial configuration)

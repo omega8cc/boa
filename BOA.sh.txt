@@ -47,6 +47,7 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 export _tRee=pro
 export _xSrl=550proT02
 export _rLsn="BOA-5.5.0"
+export _bTs=DE01
 
 ###
 ### Avoid too many questions
@@ -724,7 +725,7 @@ _update_agents() {
 
   if [ -d "/root/.remote_backups/run" ] \
     && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthCtrl}/install_dependencies.sh.ctrl.f89.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthCtrl}/install_dependencies.sh.ctrl.f88.${_tRee}.${_xSrl}.pid" ]; then
     if [ -e "/root/.remote_backups/run/install_dependencies.sh" ]; then
       mv -f /root/.remote_backups/run/install_dependencies.sh /root/.remote_backups/run/install_dependencies.sh.old
     fi
@@ -732,7 +733,7 @@ _update_agents() {
     if [ -e "/root/.remote_backups/run/install_dependencies.sh" ]; then
       chmod 700 /root/.remote_backups/run/install_dependencies.sh
       chown root:root /root/.remote_backups/run/install_dependencies.sh
-      touch ${_pthCtrl}/install_dependencies.sh.ctrl.f89.${_tRee}.${_xSrl}.pid
+      touch ${_pthCtrl}/install_dependencies.sh.ctrl.f88.${_tRee}.${_xSrl}.pid
     else
       if [ -e "/root/.remote_backups/run/install_dependencies.sh.old" ]; then
         mv -f /root/.remote_backups/run/install_dependencies.sh.old /root/.remote_backups/run/install_dependencies.sh
@@ -3409,14 +3410,14 @@ _if_update_boa_key_tools_only() {
     fi
   fi
   _BOA_TOOLS_UPDATE=NO
-  if [ -e "${_pthLog}" ] && [ ! -e "${_pthLog}/updateBOAtoolsDD.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+  if [ -e "${_pthLog}" ] && [ ! -e "${_pthLog}/updateBOAtools.${_bTs}.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     _BOA_TOOLS_UPDATE=YES
   fi
   [ ! -e "/var/aegir/drush" ] && _BOA_TOOLS_UPDATE=YES
   if [ "${_BOA_TOOLS_UPDATE}" = "YES" ]; then
     _update_boa_tools
     [ -e "${_pthLog}" ] && rm -f ${_pthLog}/updateBOAtools*.pid
-    [ -e "${_pthLog}" ] && touch ${_pthLog}/updateBOAtoolsDD.ctrl.${_tRee}.${_xSrl}.pid
+    [ -e "${_pthLog}" ] && touch ${_pthLog}/updateBOAtools.${_bTs}.ctrl.${_tRee}.${_xSrl}.pid
     if [ "${1}" = "verbose" ] || [ -z "${1}" ]; then
       echo
       echo "BOA Meta Installers setup completed"
@@ -3563,14 +3564,14 @@ _boa_setup() {
     apt-get install lsb-release ${_aptYesUnth}
   fi
   _BOA_TOOLS_UPDATE=NO
-  if [ -e "${_pthLog}" ] && [ ! -e "${_pthLog}/updateBOAtoolsDD.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+  if [ -e "${_pthLog}" ] && [ ! -e "${_pthLog}/updateBOAtools.${_bTs}.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     _BOA_TOOLS_UPDATE=YES
   fi
   [ ! -e "/var/aegir/drush" ] && _BOA_TOOLS_UPDATE=YES
   if [ "${_BOA_TOOLS_UPDATE}" = "YES" ]; then
     _update_boa_tools
     [ -e "${_pthLog}" ] && rm -f ${_pthLog}/updateBOAtools*.pid
-    [ -e "${_pthLog}" ] && touch ${_pthLog}/updateBOAtoolsDD.ctrl.${_tRee}.${_xSrl}.pid
+    [ -e "${_pthLog}" ] && touch ${_pthLog}/updateBOAtools.${_bTs}.ctrl.${_tRee}.${_xSrl}.pid
     echo
     echo "BOA Meta Installers setup completed"
     echo "Please check INSTALL.md and UPGRADE.md at https://github.com/omega8cc/boa"
