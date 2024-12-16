@@ -475,8 +475,8 @@ _send_report() {
     fi
     if [ ! -z "${_MY_EMAIL}" ]; then
       _repSub="Successful Barracuda upgrade"
-      _repSub=$(echo -n ${_repSub} | fmt -su -w 2500 2>&1)
       _repSub="REPORT: ${_repSub} on ${_hName}"
+      _repSub=$(echo -n ${_repSub} | fmt -su -w 2500 2>&1)
       _if_extended_report
       cat ${_UP_LOG} | s-nail -s "${_repSub} at ${_NOW}" ${_MY_EMAIL}
       echo "${_repSub} sent to ${_MY_EMAIL}"
@@ -492,8 +492,8 @@ _send_alert() {
       _MY_EMAIL="$(basename "$0")@omega8.cc"
     fi
     if [ ! -z "${_MY_EMAIL}" ]; then
-      _repSub=$(echo -n ${_repSub} | fmt -su -w 2500 2>&1)
       _repSub="${_ALERT_MSG} on ${_hName}"
+      _repSub=$(echo -n ${_repSub} | fmt -su -w 2500 2>&1)
       _if_extended_report
       cat ${_UP_LOG} | s-nail -s "${_repSub} at ${_NOW}" ${_MY_EMAIL}
       echo "${_repSub} sent to ${_MY_EMAIL}"
