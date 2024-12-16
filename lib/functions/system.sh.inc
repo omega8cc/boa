@@ -8069,8 +8069,7 @@ _lshell_install_upgrade() {
     fi
     _PIP_TEST=$(${_usePip} --version 2>&1)
     if [[ "${_PIP_TEST}" =~ "python 3.11" ]] \
-      || [[ "${_PIP_TEST}" =~ "python 3.12" ]] \
-      || [[ "${_PIP_TEST}" =~ "python 3.13" ]]; then
+      || [[ "${_PIP_TEST}" =~ "python 3.12" ]]; then
       _mrun "${_usePip} install --upgrade pip --root-user-action ignore" 2> /dev/null
     else
       _mrun "${_usePip} install --upgrade pip" 2> /dev/null
@@ -8089,8 +8088,7 @@ _lshell_install_upgrade() {
     cd /var/opt/lshell-${_LSHELL_VRN}
     _PIP_TEST=$(${_usePip} --version 2>&1)
     if [[ "${_PIP_TEST}" =~ "python 3.11" ]] \
-      || [[ "${_PIP_TEST}" =~ "python 3.12" ]] \
-      || [[ "${_PIP_TEST}" =~ "python 3.13" ]]; then
+      || [[ "${_PIP_TEST}" =~ "python 3.12" ]]; then
       _mrun "${_usePip} install . --break-system-packages --root-user-action ignore" 2> /dev/null
     else
       _mrun "${_usePip} install . " 2> /dev/null

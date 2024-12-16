@@ -4,7 +4,7 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
-_PTN_VRN=3.13.1
+_PTN_VRN=3.12.8
 _DCY_VRN=3.0.3.2
 _DCY_CMD="/usr/local/bin/duplicity"
 
@@ -191,7 +191,7 @@ _python_install_src() {
   if [[ "${_PTN_TEST}" =~ "Python ${_PTN_VRN}" ]]; then
     echo "Python ${_PTN_VRN} installed"
     _DCY_PTN="/usr/local/bin/python3.13"
-    export PYTHONPATH="/usr/local/lib/python3.13/site-packages"
+    export PYTHONPATH="/usr/local/lib/python3.12/site-packages"
   else
     echo "Python ${_PTN_VRN} installation failed with ${_PTN_TEST}"
     service cron start
