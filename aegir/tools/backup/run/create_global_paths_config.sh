@@ -58,12 +58,17 @@ EOF
 EOF
   fi
 
-  if [ ! -f "${_include_regexp_file}" ]; then
-    echo "# No default include-regexp rules for root"
+  if [ ! -f "${_exclude_regexp_file}" ]; then
+    cat << EOF > "${_exclude_regexp_file}"
+--exclude-regexp '^/data/disk/.*/backup-exports/'
+--exclude-regexp '^/data/disk/.*/backups/'
+--exclude-regexp '^/data/disk/.*/src/'
+--exclude-regexp '^/data/disk/.*/static/restores/'
+EOF
   fi
 
-  if [ ! -f "${_exclude_regexp_file}" ]; then
-    echo "# No default exclude-regexp rules for root"
+  if [ ! -f "${_include_regexp_file}" ]; then
+    echo "# No default include-regexp rules for root"
   fi
 
   # Function to validate configuration files
