@@ -2258,7 +2258,7 @@ _le_ssl_check_update() {
               cd ${_usEr}/tools/le
               git clone https://github.com/omega8cc/letsencrypt-cloudflare-hook hooks/cloudflare-py 2> /dev/null
               chmod 755 ${_usEr}/tools/le/hooks/cloudflare-py/hook.py
-              pip3 install -r hooks/cloudflare/requirements.txt 2> /dev/null
+              pip3 install -r hooks/cloudflare-py/requirements.txt 2> /dev/null
             fi
             if [ -e "${_usEr}/static/control/cloudflare-dns-ssl-py.info" ]; then
               _thisHook="${_usEr}/tools/le/hooks/cloudflare-py/hook.py"
