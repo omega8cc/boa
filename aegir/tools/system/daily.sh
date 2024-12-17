@@ -2320,6 +2320,12 @@ _daily_process() {
     echo ${_MOMENT} Start Counting Site ${_Site}
     _Dom=$(echo ${_Site} | cut -d'/' -f9 | awk '{ print $1}' 2>&1)
     _Dan=
+    _Plx=
+    _Plr=
+    _Dir=
+    _codeBaseCheckDir=
+    _codeBaseCheckFile=
+    _codeBaseCheckCtrl=
     if [ -e "${_usEr}/config/server_master/nginx/vhost.d/${_Dom}" ]; then
       _Plx=$(cat ${_usEr}/config/server_master/nginx/vhost.d/${_Dom} \
         | grep "root " \
@@ -2365,11 +2371,16 @@ _daily_process() {
             | openssl md5 \
             | tr -d "\n" 2>&1)
         fi
-        _codeBaseCheckInfo="${_usEr}/log/ctrl/plr.${_PlrID}.codebasecheck-${_NOW}.info"
-        if [ -x "/opt/local/bin/codebasecheck" ] && [ ! -f "${_codeBaseCheckInfo}" ]; then
-          codebasecheck ${_Plr}
+        _codeBaseCheckDir="${_usEr}/log/ctrl"
+        _codeBaseCheckFile="plr.${_PlrID}.codebasecheck-${_NOW}.info"
+        _codeBaseCheckCtrl="${_codeBaseCheckDir}/${_codeBaseCheckFile}"
+        [ ! -e "${_codeBaseCheckDir}" ] && mkdir "${_codeBaseCheckDir}"
+        if [ -x "/opt/local/bin/codebasecheck" ] \
+          && [ -e "${_codeBaseCheckDir}" ] \
+          && [ ! -e "${_codeBaseCheckCtrl}" ]; then
+          codebasecheck "${_Plr}"
           wait
-          touch ${_codeBaseCheckInfo}
+          touch "${_codeBaseCheckCtrl}"
         fi
         _fix_platform_control_files
         _fix_o_contrib_symlink
