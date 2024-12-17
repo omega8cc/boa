@@ -2236,17 +2236,27 @@ _le_ssl_check_update() {
         if [ -e "${_usEr}/static/control/wildcard-enable-${_Dom}.info" ]; then
           _Dom=$(echo ${_Dom} | sed 's/^www.//g' 2>&1)
           echo "--domain *.${_Dom}"
-          if [ ! -e "${_usEr}/tools/le/hooks/cloudflare/hook.py" ]; then
-            mkdir -p ${_usEr}/tools/le/hooks
-            cd ${_usEr}/tools/le
-            git clone https://github.com/kappataumu/letsencrypt-cloudflare-hook hooks/cloudflare
-            pip install -r hooks/cloudflare/requirements.txt
-          fi
-          if [ -e "${_usEr}/tools/le/hooks/cloudflare/hook.py" ]; then
-            if [ -e "${_usEr}/tools/le/config" ]; then
-              _dhArgs="--alias ${_Dom} --domain *.${_Dom} --domain ${_Dom} ${_usEaliases}"
-              _dhArgs=" ${_dhArgs} --challenge dns-01 --hook '${_usEr}/tools/le/hooks/cloudflare/hook.py'"
+          if [ -e "${_usEr}/static/control/cloudflare-dns-ssl.info" ]; then
+            chattr +i ${_usEr}/static/control/cloudflare-dns-ssl.info
+            if [ ! -e "${_usEr}/tools/le/hooks/cloudflare-py/hook.py" ]; then
+              apt install python3-pip python-is-python3
+              mkdir -p ${_usEr}/tools/le/hooks
+              cd ${_usEr}/tools/le
+              git clone https://github.com/omega8cc/letsencrypt-cloudflare-hook hooks/cloudflare-py
+              pip3 install -r hooks/cloudflare/requirements.txt
             fi
+            if [ -e "${_usEr}/tools/le/hooks/cloudflare-py/hook.py" ]; then
+              export CF_DNS_SERVERS='8.8.8.8 8.8.4.4'
+              export CF_SETTLE_TIME='30'
+              export CF_DEBUG='true'
+              if [ -e "${_usEr}/tools/le/config" ]; then
+                chattr +i ${_usEr}/tools/le/config
+                _dhArgs="--alias ${_Dom} --domain *.${_Dom} --domain ${_Dom} ${_usEaliases}"
+                _dhArgs=" ${_dhArgs} --challenge dns-01 --hook '${_usEr}/tools/le/hooks/cloudflare-py/hook.py'"
+              fi
+            fi
+          else
+            _dhArgs="--alias ${_Dom} --domain *.${_Dom} --domain ${_Dom} ${_usEaliases}"
           fi
         fi
         echo "_leParams is ${_leParams}"
