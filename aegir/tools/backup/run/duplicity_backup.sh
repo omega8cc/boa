@@ -5,7 +5,6 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 export _tRee=dev
-_hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
 
 # Function to verify BOA keys
 _verify_boa_keys() {
@@ -86,6 +85,7 @@ _check_root() {
   if [ -z "${_AWS_VLV}" ]; then
     _AWS_VLV="warning"
   fi
+  _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
 }
 _check_root
 _verify_boa_keys
@@ -259,7 +259,12 @@ _validate_paths() {
   local _user="$2"
   local _line_number=0
   local _allowed_base_paths=("/data/disk/${_user}/static" "/data/disk/${_user}/distro" "/home/${_user}.ftp")
+  local _allowed_root_paths=("/root" "/data" "/home" "/etc" "/var" "/opt")
   _PATHS_ARRAY=()
+
+  if [ "${_user}" = "globalcatchall" ]; then
+    _allowed_base_paths="${_allowed_root_paths}"
+  fi
 
   while IFS= read -r _line || [ -n "${_line}" ]; do
     _line_number=$(( _line_number + 1 ))
@@ -340,7 +345,7 @@ _load_paths() {
     exit 1
   fi
 
-  if [ "${_user}" != "arch" ] && [ "${_user}" != "globalcatchall" ]; then
+  if [ "${_user}" != "arch" ]; then
     _validate_paths "${_paths_file}" "${_user}"
   fi
 
@@ -731,10 +736,9 @@ _DOW=$(date +%u 2>&1)
 _DOW=${_DOW//[^1-7]/}
 _DOM=$(date +%e 2>&1)
 _DOM=${_DOM//[^0-9]/}
-_HST=${_HST//[^a-zA-Z0-9-.]/}
+_HST=${_hName//[^a-zA-Z0-9-.]/}
 _HST=$(echo -n ${_HST} | tr A-Z a-z 2>&1)
 _HST_DASH=$(echo -n ${_HST} | tr . - 2>&1)
-_HST=${_hName//[^a-zA-Z0-9-.]/}
 
 _ACTION=$1
 _SERVICE=$2
