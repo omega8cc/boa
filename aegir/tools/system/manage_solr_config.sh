@@ -442,9 +442,9 @@ _proceed_solr() {
     && [ "${_Dan}" != "hostmaster" ]; then
     CoreID="${_Dan}.${_HM_U}"
     CoreHS=$(echo ${CoreID} \
-            | openssl md5 \
-            | awk '{ print $2}' \
-            | tr -d "\n" 2>&1)
+      | openssl md5 \
+      | awk '{ print $2}' \
+      | tr -d "\n" 2>&1)
     #SolrCoreID="${_HM_U}-${_Dan}-${CoreHS}"
     LegacySolrCoreID="${_HM_U}.${_Dan}"
     OldSolrCoreID="solr.${_HM_U}.${_Dan}"
