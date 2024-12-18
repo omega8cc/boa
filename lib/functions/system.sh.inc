@@ -7952,10 +7952,10 @@ _pam_umask_check_fix() {
     chown www-data:www-data /var/www/.profile &> /dev/null
     chown www-data:www-data /var/www/nginx-default &> /dev/null
   fi
-  _SFTP_UMASK_TEST=$(grep "internal-sftp -u 0002" /etc/ssh/sshd_config 2>&1)
-  if [[ ! "${_SFTP_UMASK_TEST}" =~ "internal-sftp -u 0002" ]]; then
+  _SFTP_UMASK_TEST=$(grep "sftp-server -u 0002" /etc/ssh/sshd_config 2>&1)
+  if [[ ! "${_SFTP_UMASK_TEST}" =~ "sftp-server -u 0002" ]]; then
     sed -i "s/^Subsystem.*//g" /etc/ssh/sshd_config
-    echo "Subsystem sftp internal-sftp -u 0002" >> /etc/ssh/sshd_config
+    echo "Subsystem sftp /usr/lib/openssh/sftp-server -u 0002" >> /etc/ssh/sshd_config
     sed -i "/^$/d" /etc/ssh/sshd_config
     _mrun "service ssh restart" 2> /dev/null
   fi
@@ -8639,7 +8639,7 @@ _initd_update() {
     echo "TCPKeepAlive yes" >> /etc/ssh/sshd_config
     echo "PermitEmptyPasswords no" >> /etc/ssh/sshd_config
     echo "KbdInteractiveAuthentication no" >> /etc/ssh/sshd_config
-    echo "Subsystem sftp internal-sftp -u 0002" >> /etc/ssh/sshd_config
+    echo "Subsystem sftp /usr/lib/openssh/sftp-server -u 0002" >> /etc/ssh/sshd_config
     sed -i "/^$/d" /etc/ssh/sshd_config
     wait
     _mrun "service ssh restart" 2> /dev/null

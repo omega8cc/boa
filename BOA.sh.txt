@@ -2674,6 +2674,18 @@ _fix_composer_version() {
   fi
 }
 
+_fix_sftp_server() {
+  if [ -e "/etc/ssh/sshd_config" ]; then
+    _SFTP_UMASK_TEST=$(grep "sftp-server -u 0002" /etc/ssh/sshd_config 2>&1)
+    if [[ ! "${_SFTP_UMASK_TEST}" =~ "sftp-server -u 0002" ]]; then
+      sed -i "s/^Subsystem.*//g" /etc/ssh/sshd_config
+      echo "Subsystem sftp /usr/lib/openssh/sftp-server -u 0002" >> /etc/ssh/sshd_config
+      sed -i "/^$/d" /etc/ssh/sshd_config
+      service ssh restart 2> /dev/null
+    fi
+  fi
+}
+
 _fix_wkhtml_perms() {
 
   _WKHTML_ARRAY="/usr/local/bin/wkhtmltopdf \
@@ -3820,6 +3832,7 @@ if [ "$(id -u)" -eq 0 ]; then
   fi
   if [ "${_BOA_KEY_TOOLS_UPDATE_ALLOWED}" = "YES" ] \
     && [ -e "/var/log/barracuda_log.txt" ]; then
+    _fix_sftp_server
     _fix_ping_perms
     _fix_fpm_process_max
     _if_fix_lshell
