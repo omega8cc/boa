@@ -144,7 +144,12 @@ _validate_paths() {
   local _user="$2"
   local _line_number=0
   local _allowed_base_paths=("/data/disk/${_user}/static" "/data/disk/${_user}/distro" "/home/${_user}.ftp")
+  local _allowed_root_paths=("/root" "/data" "/home" "/etc" "/var" "/opt")
   _PATHS_ARRAY=()
+
+  if [ "${_user}" = "globalcatchall" ]; then
+    _allowed_base_paths="${_allowed_root_paths}"
+  fi
 
   while IFS= read -r _line || [ -n "${_line}" ]; do
     _line_number=$(( _line_number + 1 ))
@@ -225,7 +230,7 @@ _load_paths() {
     exit 1
   fi
 
-  if [ "${_user}" != "arch" ] && [ "${_user}" != "globalcatchall" ]; then
+  if [ "${_user}" != "arch" ]; then
     _validate_paths "${_paths_file}" "${_user}"
   fi
 
