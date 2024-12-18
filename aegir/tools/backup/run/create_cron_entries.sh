@@ -111,9 +111,9 @@ while IFS= read -r _line || [ -n "${_line}" ]; do
 
   # Determine the paths configuration file
   if [ "${_user}" = "globalcatchall" ]; then
-    local _paths_file="/root/.remote_backups/paths/paths.txt"
-    local _credentials_file="/root/.remote_backups/credentials/${_service}.txt"
-    local _secret_file="/root/.remote_backups/.secret.txt"
+    _paths_file="/root/.remote_backups/paths/paths.txt"
+    _credentials_file="/root/.remote_backups/credentials/${_service}.txt"
+    _secret_file="/root/.remote_backups/.secret.txt"
 
     if [ -f "${_secret_file}" ]; then
       export PASSPHRASE=$(cat "${_secret_file}")
@@ -141,9 +141,9 @@ while IFS= read -r _line || [ -n "${_line}" ]; do
     cd /root/.remote_backups
 
   elif [ "${_user}" != "arch" ] && [ "${_user}" != "globalcatchall" ]; then
-    local _paths_file="/data/disk/${_user}/remote_backups/paths/paths.txt"
-    local _credentials_file="/data/disk/${_user}/static/control/remote_backups/credentials/${_service}.txt"
-    local _secret_file="/data/disk/${_user}/remote_backups/.secret.txt"
+    _paths_file="/data/disk/${_user}/remote_backups/paths/paths.txt"
+    _credentials_file="/data/disk/${_user}/static/control/remote_backups/credentials/${_service}.txt"
+    _secret_file="/data/disk/${_user}/remote_backups/.secret.txt"
 
     if [ -f "${_secret_file}" ]; then
       export PASSPHRASE=$(cat "${_secret_file}")
