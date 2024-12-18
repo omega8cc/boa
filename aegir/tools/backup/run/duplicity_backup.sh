@@ -592,7 +592,7 @@ _set_backup_target() {
 
       # Use intelligent-tiering options for specific services
       if [ "${_service}" = "aws_standard_ia" ] || [ "${_service}" = "aws_one_zone" ]; then
-        _s3_options="${_s3_options} --s3-use-ia"
+        local _s3_options="${_s3_options} --s3-use-ia"
       fi
 
       _BACKUP_TARGET="boto3+s3://${_BUCKET_NAME} ${_s3_options}"
@@ -605,7 +605,7 @@ _set_backup_target() {
     b2)
       _load_credentials "b2" "${_user}"
       _construct_bucket_name "b2" "${_user}"
-      _BACKUP_TARGET="b2://${B2_ACCOUNT_ID}@${_BUCKET_NAME}"
+      _BACKUP_TARGET="b2://${B2_ACCOUNT_ID}:${B2_APPLICATION_KEY}@${_BUCKET_NAME}"
       ;;
     cloudflare)
       _load_credentials "cloudflare" "${_user}"
@@ -614,13 +614,13 @@ _set_backup_target() {
       # Custom endpoint for Cloudflare R2
       local _r2_endpoint="https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
 
-      # Configure the S3 backup target without credentials
-      _BACKUP_TARGET="boto3+s3://${_r2_endpoint}/${_BUCKET_NAME}"
+      # Configure the S3 backup target
+      _BACKUP_TARGET="boto3+s3://${R2_ACCESS_KEY_ID}:${R2_SECRET_ACCESS_KEY}@${_r2_endpoint}/${_BUCKET_NAME}"
       ;;
     do_spaces)
       _load_credentials "do_spaces" "${_user}"
       _construct_bucket_name "do_spaces" "${_user}"
-      _BACKUP_TARGET="s3://${DO_SPACES_REGION}/${_BUCKET_NAME}"
+      _BACKUP_TARGET="s3://${DO_SPACES_KEY}:${DO_SPACES_SECRET}@${DO_SPACES_REGION}/${_BUCKET_NAME}"
       ;;
     gcs)
       _load_credentials "gcs" "${_user}"
@@ -630,17 +630,17 @@ _set_backup_target() {
     ibm)
       _load_credentials "ibm" "${_user}"
       _construct_bucket_name "ibm" "${_user}"
-      _BACKUP_TARGET="ibmcos://${IBM_REGION}/${_BUCKET_NAME}"
+      _BACKUP_TARGET="ibmcos://${IBM_API_KEY_ID}:${IBM_SERVICE_INSTANCE_ID}@${IBM_REGION}/${_BUCKET_NAME}"
       ;;
     linode)
       _load_credentials "linode" "${_user}"
       _construct_bucket_name "linode" "${_user}"
-      _BACKUP_TARGET="s3://${LINODE_REGION}/${_BUCKET_NAME}"
+      _BACKUP_TARGET="s3://${LINODE_ACCESS_KEY}:${LINODE_SECRET_KEY}@${LINODE_REGION}/${_BUCKET_NAME}"
       ;;
     wasabi)
       _load_credentials "wasabi" "${_user}"
       _construct_bucket_name "wasabi" "${_user}"
-      _BACKUP_TARGET="s3://${WASABI_REGION}/${_BUCKET_NAME}"
+      _BACKUP_TARGET="s3://${WASABI_ACCESS_KEY}:${WASABI_SECRET_KEY}@${WASABI_REGION}/${_BUCKET_NAME}"
       ;;
     *)
       echo "Error: Unknown service ${_service}"
