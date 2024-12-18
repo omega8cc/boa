@@ -736,9 +736,9 @@ _DOW=$(date +%u 2>&1)
 _DOW=${_DOW//[^1-7]/}
 _DOM=$(date +%e 2>&1)
 _DOM=${_DOM//[^0-9]/}
+_HST=${_hName//[^a-zA-Z0-9-.]/}
 _HST=$(echo -n ${_HST} | tr A-Z a-z 2>&1)
 _HST_DASH=$(echo -n ${_HST} | tr . - 2>&1)
-_HST=${_hName//[^a-zA-Z0-9-.]/}
 
 _ACTION=$1
 _SERVICE=$2
