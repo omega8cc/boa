@@ -83,7 +83,7 @@ KbdInteractiveAuthentication no
 # Allow client to pass locale environment variables
 AcceptEnv LANG LC_*
 # override default of no subsystems
-Subsystem sftp internal-sftp -u 0002
+Subsystem sftp /usr/lib/openssh/sftp-server -u 0002
 # Example of overriding settings on a per-user basis
 #Match User anoncvs
 #	X11Forwarding no
