@@ -4,7 +4,7 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 export _tRee=pro
-export _xSrl=550proT02
+export _xSrl=550proT03
 
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
@@ -38,26 +38,6 @@ if [ -e "/root/.pause_heavy_tasks_maint.cnf" ]; then
 fi
 
 _WEBG=www-data
-_OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
-
-if [ -e "/root/.install.modern.openssl.cnf" ] \
-  && [ -x "/usr/local/ssl3/bin/openssl" ]; then
-  _SSL_BINARY=/usr/local/ssl3/bin/openssl
-else
-  _SSL_BINARY=/usr/local/ssl/bin/openssl
-fi
-_SSL_ITD=$(${_SSL_BINARY} version 2>&1 \
-  | tr -d "\n" \
-  | cut -d" " -f2 \
-  | awk '{ print $1}')
-if [[ "${_SSL_ITD}" =~ "3.3." ]] \
-  || [[ "${_SSL_ITD}" =~ "3.2." ]] \
-  || [[ "${_SSL_ITD}" =~ "3.1." ]] \
-  || [[ "${_SSL_ITD}" =~ "3.0." ]] \
-  || [[ "${_SSL_ITD}" =~ "1.1." ]] \
-  || [[ "${_SSL_ITD}" =~ "1.0." ]]; then
-  _NEW_SSL=YES
-fi
 _crlGet="-L --max-redirs 3 -k -s --retry 9 --retry-delay 9 -A iCab"
 _wgetGet="--max-redirect=3 --no-check-certificate -q --tries=9 --wait=9 --user-agent='iCab'"
 _aptAllow="--allow-unauthenticated"
@@ -2236,17 +2216,42 @@ _le_ssl_check_update() {
         if [ -e "${_usEr}/static/control/wildcard-enable-${_Dom}.info" ]; then
           _Dom=$(echo ${_Dom} | sed 's/^www.//g' 2>&1)
           echo "--domain *.${_Dom}"
-          if [ ! -e "${_usEr}/tools/le/hooks/cloudflare/hook.py" ]; then
-            mkdir -p ${_usEr}/tools/le/hooks
-            cd ${_usEr}/tools/le
-            git clone https://github.com/kappataumu/letsencrypt-cloudflare-hook hooks/cloudflare
-            pip install -r hooks/cloudflare/requirements.txt
-          fi
-          if [ -e "${_usEr}/tools/le/hooks/cloudflare/hook.py" ]; then
-            if [ -e "${_usEr}/tools/le/config" ]; then
-              _dhArgs="--alias ${_Dom} --domain *.${_Dom} --domain ${_Dom} ${_usEaliases}"
-              _dhArgs=" ${_dhArgs} --challenge dns-01 --hook '${_usEr}/tools/le/hooks/cloudflare/hook.py'"
+          if [ -e "${_usEr}/static/control/cloudflare-dns-ssl-py.info" ] \
+            || [ -e "${_usEr}/static/control/cloudflare-dns-ssl-sh.info" ]; then
+            [ -e "${_usEr}/static/control/cloudflare-dns-ssl-py.info" ] && chattr +i ${_usEr}/static/control/cloudflare-dns-ssl-py.info
+            [ -e "${_usEr}/static/control/cloudflare-dns-ssl-sh.info" ] && chattr +i ${_usEr}/static/control/cloudflare-dns-ssl-sh.info
+            export CF_DNS_SERVERS='8.8.8.8 8.8.4.4'
+            export CF_SETTLE_TIME='30'
+            export CF_DEBUG='true'
+            if [ ! -e "${_usEr}/tools/le/hooks/cloudflare-sh/cf-hook.sh" ]; then
+              _apt_clean_update
+              apt-get install gawk jq publicsuffix ldnsutils ${_aptYesUnth} 2> /dev/null
+              mkdir -p ${_usEr}/tools/le/hooks
+              cd ${_usEr}/tools/le
+              git clone https://github.com/omega8cc/dehydrated-hook-cloudflare hooks/cloudflare-sh 2> /dev/null
+              chmod 755 ${_usEr}/tools/le/hooks/cloudflare-sh/cf-hook.sh
             fi
+            if [ ! -e "${_usEr}/tools/le/hooks/cloudflare-py/hook.py" ]; then
+              _apt_clean_update
+              apt-get install python3-pip python-is-python3 ${_aptYesUnth} 2> /dev/null
+              mkdir -p ${_usEr}/tools/le/hooks
+              cd ${_usEr}/tools/le
+              git clone https://github.com/omega8cc/letsencrypt-cloudflare-hook hooks/cloudflare-py 2> /dev/null
+              chmod 755 ${_usEr}/tools/le/hooks/cloudflare-py/hook.py
+              pip3 install -r hooks/cloudflare-py/requirements.txt 2> /dev/null
+            fi
+            if [ -e "${_usEr}/static/control/cloudflare-dns-ssl-py.info" ]; then
+              _thisHook="${_usEr}/tools/le/hooks/cloudflare-py/hook.py"
+            elif [ -e "${_usEr}/static/control/cloudflare-dns-ssl-sh.info" ]; then
+              _thisHook="${_usEr}/tools/le/hooks/cloudflare-sh/cf-hook.sh"
+            fi
+            if [ -e "${_thisHook}" ] && [ -e "${_usEr}/tools/le/config" ]; then
+              chattr +i ${_usEr}/tools/le/config
+              _dhArgs="--alias ${_Dom} --domain *.${_Dom} --domain ${_Dom} ${_usEaliases}"
+              _dhArgs=" ${_dhArgs} --challenge dns-01 --hook '${_thisHook}'"
+            fi
+          else
+            _dhArgs="--alias ${_Dom} --domain *.${_Dom} --domain ${_Dom} ${_usEaliases}"
           fi
         fi
         echo "_leParams is ${_leParams}"
@@ -2295,6 +2300,12 @@ _daily_process() {
     echo ${_MOMENT} Start Counting Site ${_Site}
     _Dom=$(echo ${_Site} | cut -d'/' -f9 | awk '{ print $1}' 2>&1)
     _Dan=
+    _Plx=
+    _Plr=
+    _Dir=
+    _codeBaseCheckDir=
+    _codeBaseCheckFile=
+    _codeBaseCheckCtrl=
     if [ -e "${_usEr}/config/server_master/nginx/vhost.d/${_Dom}" ]; then
       _Plx=$(cat ${_usEr}/config/server_master/nginx/vhost.d/${_Dom} \
         | grep "root " \
@@ -2330,21 +2341,20 @@ _daily_process() {
         | sed "s/[\,']//g" 2>&1)
       _PLR_CTRL_F="${_Plr}/sites/all/modules/boa_platform_control.ini"
       if [ -e "${_Plr}" ]; then
-        if [ "${_NEW_SSL}" = "YES" ]; then
-          _PlrID=$(echo ${_Plr} \
-            | openssl md5 \
-            | awk '{ print $2}' \
-            | tr -d "\n" 2>&1)
-        else
-          _PlrID=$(echo ${_Plr} \
-            | openssl md5 \
-            | tr -d "\n" 2>&1)
-        fi
-        _codeBaseCheckInfo="${_usEr}/log/ctrl/plr.${_PlrID}.codebasecheck-${_NOW}.info"
-        if [ -x "/opt/local/bin/codebasecheck" ] && [ ! -f "${_codeBaseCheckInfo}" ]; then
-          codebasecheck ${_Plr}
+        _PlrID=$(echo ${_Plr} \
+          | openssl md5 \
+          | awk '{ print $2}' \
+          | tr -d "\n" 2>&1)
+        _codeBaseCheckDir="${_usEr}/log/ctrl"
+        _codeBaseCheckFile="plr.${_PlrID}.codebasecheck-${_NOW}.info"
+        _codeBaseCheckCtrl="${_codeBaseCheckDir}/${_codeBaseCheckFile}"
+        [ ! -e "${_codeBaseCheckDir}" ] && mkdir "${_codeBaseCheckDir}"
+        if [ -x "/opt/local/bin/codebasecheck" ] \
+          && [ -e "${_codeBaseCheckDir}" ] \
+          && [ ! -e "${_codeBaseCheckCtrl}" ]; then
+          codebasecheck "${_Plr}"
           wait
-          touch ${_codeBaseCheckInfo}
+          touch "${_codeBaseCheckCtrl}"
         fi
         _fix_platform_control_files
         _fix_o_contrib_symlink
