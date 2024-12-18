@@ -407,7 +407,7 @@ _set_cmd() {
     --name=${_NAME} \
     --allow-source-mismatch \
     --concurrency 4 \
-    --follow-links \
+    --copy-links \
     --full-if-older-than ${FULL_BACKUP_FREQUENCY} \
     --volsize 300"
 
