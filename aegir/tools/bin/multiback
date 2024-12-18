@@ -253,83 +253,6 @@ _load_credentials() {
   _validate_credentials "${_cred_file}" "${_service}"
 }
 
-# Function to validate paths configuration
-_validate_paths() {
-  local _file="$1"
-  local _user="$2"
-  local _line_number=0
-  local _allowed_base_paths=("/data/disk/${_user}/static" "/data/disk/${_user}/distro" "/home/${_user}.ftp")
-  local _allowed_root_paths=("/root" "/data" "/home" "/etc" "/var" "/opt")
-  _PATHS_ARRAY=()
-
-  if [ "${_user}" = "globalcatchall" ]; then
-    _allowed_base_paths="${_allowed_root_paths}"
-  fi
-
-  while IFS= read -r _line || [ -n "${_line}" ]; do
-    _line_number=$(( _line_number + 1 ))
-    # Trim leading and trailing whitespace
-    _line="${_line#"${_line%%[![:space:]]*}"}"
-    _line="${_line%"${_line##*[![:space:]]}"}"
-
-    # Skip comments and empty lines
-    if [[ -z "${_line}" || "${_line}" == \#* ]]; then
-      continue
-    fi
-
-    # Validate the path option and extract the path
-    if [[ "${_line}" =~ ^--(include|exclude|include-regexp|exclude-regexp)[[:space:]]+(.+)$ ]]; then
-      local _option="${BASH_REMATCH[1]}"
-      local _path="${BASH_REMATCH[2]}"
-
-      # Check for forbidden characters
-      if echo "${_path}" | grep -q -E '[$`(){};&|<>]'; then
-        _log_issue "paths" "${_file}" "Forbidden characters at line ${_line_number}: ${_line}"
-        continue
-      fi
-
-      # For regular paths
-      if [[ "${_option}" == "include" || "${_option}" == "exclude" ]]; then
-        # Check if the path starts with allowed base paths
-        local _is_valid_path=false
-        for _base_path in "${_allowed_base_paths[@]}"; do
-          if [[ "${_path}" == "${_base_path}"* ]]; then
-            _is_valid_path=true
-            break
-          fi
-        done
-        if ! ${_is_valid_path}; then
-          _log_issue "paths" "${_file}" "Unauthorized path at line ${_line_number}: ${_line}"
-          continue
-        fi
-      fi
-
-      # For regex paths
-      if [[ "${_option}" == "include-regexp" || "${_option}" == "exclude-regexp" ]]; then
-        # Ensure the regex starts with '^' followed by an allowed base path
-        local _is_valid_regex=false
-        for _base_path in "${_allowed_base_paths[@]}"; do
-          # Escape slashes in base path for regex comparison
-          local _escaped_base_path="${_base_path//\//\\/}"
-          if [[ "${_path}" =~ ^\^${_escaped_base_path}.* ]]; then
-            _is_valid_regex=true
-            break
-          fi
-        done
-        if ! ${_is_valid_regex}; then
-          _log_issue "paths" "${_file}" "Unauthorized regex pattern at line ${_line_number}: ${_line}"
-          continue
-        fi
-      fi
-
-      # Add the validated option and path to the array
-      _PATHS_ARRAY+=("${_line}")
-    else
-      _log_issue "paths" "${_file}" "Invalid syntax at line ${_line_number}: ${_line}"
-    fi
-  done < "${_file}"
-}
-
 # Function to load paths configuration
 _load_paths() {
   local _user="$1"
@@ -346,12 +269,7 @@ _load_paths() {
   fi
 
   if [ "${_user}" != "arch" ]; then
-    _validate_paths "${_paths_file}" "${_user}"
-  fi
-
-  if [ "${#_PATHS_ARRAY[@]}" -eq 0 ]; then
-    echo "Error: No valid paths found in '${_paths_file}'. Check ${_VALIDATION_LOG_FILE} for details."
-    exit 1
+    source "${_paths_file}"
   fi
 }
 
