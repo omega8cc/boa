@@ -420,12 +420,20 @@ _set_cmd() {
 
 # Function to perform backup
 _run_backup() {
+  if [ -n "${_USER_INCLUDE}" ] && [ -n "${_INCLUDE}" ]; then
+    _BATCH_INCLUDE="${_INCLUDE} ${_USER_INCLUDE}"
+  else
+    _BATCH_INCLUDE="${_INCLUDE}"
+  fi
+  if [ -n "${_USER_EXCLUDE}" ] && [ -n "${_EXCLUDE}" ]; then
+    _BATCH_EXCLUDE="${_EXCLUDE} ${_USER_EXCLUDE}"
+  else
+    _BATCH_EXCLUDE="${_EXCLUDE}"
+  fi
   echo "Running ${_MODE} backup for ${_BACKUP_TARGET} on $(date)" >> ${_LOGFILE}
   ${_DCY_UP_CMD} \
-  ${_EXCLUDE} \
-  ${_USER_EXCLUDE} \
-  ${_INCLUDE} \
-  ${_USER_INCLUDE} \
+  ${_BATCH_EXCLUDE} \
+  ${_BATCH_INCLUDE} \
   --exclude '**' \
   / \
   "${_BACKUP_TARGET}" >> ${_LOGFILE}
