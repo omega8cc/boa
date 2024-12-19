@@ -28,6 +28,17 @@ _create_global_paths_config() {
     fi
   }
 
+  # Function to add backslash at end of each line except the last
+  _add_backslashes() {
+    local file="$1"
+    if [ -f "${file}" ]; then
+      # Remove existing trailing backslashes to avoid duplication
+      sed -i 's/[[:space:]]*\\$//' "${file}"
+      # Append a backslash to all lines except the last one
+      sed -i '$!s/$/ \\\\/' "${file}"
+    fi
+  }
+
   # Migrate legacy include/exclude files if present and merge unique entries
   if [ -f "/root/.backboa.include" ]; then
     if [ ! -f "${_include_file}" ]; then
@@ -110,6 +121,10 @@ EOF
   if [ -s "${_exclude_regexp_file}" ]; then
     cat "${_exclude_regexp_file}" >> "${_merged_exclude_file}"
   fi
+
+  # Finalize by adding a backslash at end of each line except the last
+  _add_backslashes "${_merged_include_file}"
+  _add_backslashes "${_merged_exclude_file}"
 
   # Create the final paths configuration file
   _global_paths_file="${_global_config_dir}/paths.txt"

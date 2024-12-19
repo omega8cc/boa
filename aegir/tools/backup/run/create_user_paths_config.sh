@@ -86,6 +86,8 @@ _create_user_paths_config() {
   local _merged_exclude_file="${_user_config_dir}/.backboa.${_user}.exclude.merged"
   local _include_ctrl_file="${_user_config_dir}/.backboa.${_user}.f93.include.ctrl"
   local _exclude_ctrl_file="${_user_config_dir}/.backboa.${_user}.f93.exclude.ctrl"
+  local _merged_regexp_include_file="${_user_config_dir}/.backboa.${_user}.include_regexp.merged"
+  local _merged_regexp_exclude_file="${_user_config_dir}/.backboa.${_user}.exclude_regexp.merged"
 
   # Ensure user configuration directory exists and is owned by root
   mkdir -p "${_user_config_dir}"
@@ -139,26 +141,43 @@ EOF
 
   # Validate and merge regexp include files
   if [ -f "${_include_regexp_file}" ]; then
-    _validate_and_merge_paths "${_include_regexp_file}" "${_user}" "${_user_config_dir}/.backboa.${_user}.include_regexp.merged" NO
+    _validate_and_merge_paths "${_include_regexp_file}" "${_user}" "${_merged_regexp_include_file}" NO
   fi
   if [ -f "${_user_control_dir}/include_regexp.txt" ]; then
-    _validate_and_merge_paths "${_user_control_dir}/include_regexp.txt" "${_user}" "${_user_config_dir}/.backboa.${_user}.include_regexp.merged" YES
+    _validate_and_merge_paths "${_user_control_dir}/include_regexp.txt" "${_user}" "${_merged_regexp_include_file}" YES
   fi
 
   # Validate and merge regexp exclude files
   if [ -f "${_exclude_regexp_file}" ]; then
-    _validate_and_merge_paths "${_exclude_regexp_file}" "${_user}" "${_user_config_dir}/.backboa.${_user}.exclude_regexp.merged" NO
+    _validate_and_merge_paths "${_exclude_regexp_file}" "${_user}" "${_merged_regexp_exclude_file}" NO
   fi
   if [ -f "${_user_control_dir}/exclude_regexp.txt" ]; then
-    _validate_and_merge_paths "${_user_control_dir}/exclude_regexp.txt" "${_user}" "${_user_config_dir}/.backboa.${_user}.exclude_regexp.merged" YES
+    _validate_and_merge_paths "${_user_control_dir}/exclude_regexp.txt" "${_user}" "${_merged_regexp_exclude_file}" YES
   fi
+
+  # Function to add backslash at end of each line except the last
+  _add_backslashes() {
+    local file="$1"
+    if [ -f "${file}" ]; then
+      # Remove existing trailing backslashes to avoid duplication
+      sed -i 's/[[:space:]]*\\$//' "${file}"
+      # Append a backslash to all lines except the last one
+      sed -i '$!s/$/ \\\\/' "${file}"
+    fi
+  }
+
+  # Finalize by adding a backslash at the end of each line except the last
+  _add_backslashes "${_merged_include_file}"
+  _add_backslashes "${_merged_exclude_file}"
+  _add_backslashes "${_merged_regexp_include_file}"
+  _add_backslashes "${_merged_regexp_exclude_file}"
 
   # Create the final paths configuration file
   local _user_config_file="${_user_config_dir}/paths.txt"
   cat << EOF > "${_user_config_file}"
 _SOURCE="/data/disk/${_user}/static"
-_USER_INCLUDE="--include-filelist ${_merged_include_file} --include-regexp-filelist ${_user_config_dir}/.backboa.${_user}.include_regexp.merged"
-_USER_EXCLUDE="--exclude-filelist ${_merged_exclude_file} --exclude-regexp-filelist ${_user_config_dir}/.backboa.${_user}.exclude_regexp.merged"
+_USER_INCLUDE="--include-filelist ${_merged_include_file} --include-regexp-filelist ${_merged_regexp_include_file}"
+_USER_EXCLUDE="--exclude-filelist ${_merged_exclude_file} --exclude-regexp-filelist ${_merged_regexp_exclude_file}"
 EOF
 
   echo "Paths configuration for '${_user}' created or updated at '${_user_config_file}'."
