@@ -374,7 +374,7 @@ _monthly_cleanup() {
       echo "Waiting $n seconds on $(date) before running cleanup --force" >> ${_LOGFILE}
       sleep ${_n}
     fi
-    echo "Running cleanup --force ${_BACKUP_TARGET} on $(date)" >> ${_LOGFILE}
+    echo "Running cleanup for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
     echo "Command is ${_DCY_MN_CMD} cleanup --force ${_BACKUP_TARGET}"
     ${_DCY_MN_CMD} cleanup --force ${_BACKUP_TARGET}
     rm -f ${_LOGPTH}/${_BUCKET_NAME}.randomize.full.log
@@ -484,13 +484,13 @@ _run_backup() {
 }
 
 _remove_older_than() {
-  echo "Running remove-older-than ${KEEP_WITHIN} for ${_BACKUP_TARGET} on $(date)" >> ${_LOGFILE}
+  echo "Running remove-older-than ${KEEP_WITHIN} for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
   echo "Command is ${_DCY_MN_CMD} remove-older-than ${KEEP_WITHIN} --force ${_BACKUP_TARGET}"
   ${_DCY_MN_CMD} remove-older-than ${KEEP_WITHIN} --force ${_BACKUP_TARGET} >> ${_LOGFILE}
 }
 
 _collection_status() {
-  echo "Running collection-status for ${_BACKUP_TARGET} on $(date)" >> ${_LOGFILE}
+  echo "Running collection-status for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
   echo "Command is ${_DCY_MN_CMD} collection-status ${_BACKUP_TARGET}"
   ${_DCY_MN_CMD} collection-status ${_BACKUP_TARGET} >> ${_LOGFILE}
 }
