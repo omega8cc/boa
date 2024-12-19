@@ -350,7 +350,9 @@ _backup_prepare() {
     fi
   fi
   # Generate include directives dynamically
-  export _INCLUDE=$(_generate_include_directives "${_SOURCE}")
+  export _SRC_INCLUDE=$(_generate_include_directives "${_SOURCE}")
+  export _LST_INCLUDE="${_INCLUDE}"
+  export _INCLUDE="${_SRC_INCLUDE} ${_LST_INCLUDE}"
   _print_env "multiback_backup_prepare"
 }
 
