@@ -5,6 +5,19 @@ export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 export _tRee=dev
 
+# Function to print env for debugging
+_print_env() {
+  if [ "$(id -u)" -eq 0 ] && [ -e "/root/.dev.server.cnf" ]; then
+    _ENV=$(env 2>&1)
+    echo
+    echo "_ENV in $1 start"
+    echo "${_ENV}"
+    echo "_ENV in $1 end"
+    echo
+    _ENV=
+  fi
+}
+
 # Base directory for user commands
 _BASE_DIR="/data/disk"
 _RUN_SUBDIR="static/control/.run"
@@ -61,6 +74,11 @@ _log_issue() {
   fi
 }
 
+# Helper function to URL-encode
+_url_encode() {
+  python3 -c "import urllib.parse, sys; print(urllib.parse.quote(sys.argv[1]))" "$1"
+}
+
 # Function to escape values
 _escape_value() {
   printf '%q' "$1"
@@ -103,11 +121,13 @@ _validate_credentials() {
       fi
 
       # Safely export the variable
+      _value="$(_url_encode "${_value}")"
       export "${_varname}"="$(_escape_value "${_value}")"
     else
       _log_issue "credentials" "${_cred_file}" "Invalid syntax at line ${_line_number}: ${_line}"
     fi
   done < "${_cred_file}"
+  _print_env "mybackup_validate_credentials"
 }
 
 # Function to load credentials
@@ -136,93 +156,17 @@ _load_credentials() {
   fi
 
   _validate_credentials "${_cred_file}" "${_service}"
-}
-
-# Function to validate paths configuration
-_validate_paths() {
-  local _file="$1"
-  local _user="$2"
-  local _line_number=0
-  local _allowed_base_paths=("/data/disk/${_user}/static" "/data/disk/${_user}/distro" "/home/${_user}.ftp")
-  local _allowed_root_paths=("/root" "/data" "/home" "/etc" "/var" "/opt")
-  _PATHS_ARRAY=()
-
-  if [ "${_user}" = "globalcatchall" ]; then
-    _allowed_base_paths="${_allowed_root_paths}"
-  fi
-
-  while IFS= read -r _line || [ -n "${_line}" ]; do
-    _line_number=$(( _line_number + 1 ))
-    # Trim leading and trailing whitespace
-    _line="${_line#"${_line%%[![:space:]]*}"}"
-    _line="${_line%"${_line##*[![:space:]]}"}"
-
-    # Skip comments and empty lines
-    if [[ -z "${_line}" || "${_line}" == \#* ]]; then
-      continue
-    fi
-
-    # Validate the path option and extract the path
-    if [[ "${_line}" =~ ^--(include|exclude|include-regexp|exclude-regexp)[[:space:]]+(.+)$ ]]; then
-      local _option="${BASH_REMATCH[1]}"
-      local _path="${BASH_REMATCH[2]}"
-
-      # Check for forbidden characters
-      if echo "${_path}" | grep -q -E '[$`(){};&|<>]'; then
-        _log_issue "paths" "${_file}" "Forbidden characters at line ${_line_number}: ${_line}"
-        continue
-      fi
-
-      # For regular paths
-      if [[ "${_option}" == "include" || "${_option}" == "exclude" ]]; then
-        # Check if the path starts with allowed base paths
-        local _is_valid_path=false
-        for _base_path in "${_allowed_base_paths[@]}"; do
-          if [[ "${_path}" == "${_base_path}"* ]]; then
-            _is_valid_path=true
-            break
-          fi
-        done
-        if ! ${_is_valid_path}; then
-          _log_issue "paths" "${_file}" "Unauthorized path at line ${_line_number}: ${_line}"
-          continue
-        fi
-      fi
-
-      # For regex paths
-      if [[ "${_option}" == "include-regexp" || "${_option}" == "exclude-regexp" ]]; then
-        # Ensure the regex starts with '^' followed by an allowed base path
-        local _is_valid_regex=false
-        for _base_path in "${_allowed_base_paths[@]}"; do
-          # Escape slashes in base path for regex comparison
-          local _escaped_base_path="${_base_path//\//\\/}"
-          if [[ "${_path}" =~ ^\^${_escaped_base_path}.* ]]; then
-            _is_valid_regex=true
-            break
-          fi
-        done
-        if ! ${_is_valid_regex}; then
-          _log_issue "paths" "${_file}" "Unauthorized regex pattern at line ${_line_number}: ${_line}"
-          continue
-        fi
-      fi
-
-      # Add the validated option and path to the array
-      _PATHS_ARRAY+=("${_line}")
-    else
-      _log_issue "paths" "${_file}" "Invalid syntax at line ${_line_number}: ${_line}"
-    fi
-  done < "${_file}"
+  _print_env "mybackup_load_credentials"
 }
 
 # Function to load paths configuration
 _load_paths() {
   local _user="$1"
   if [ "${_user}" != "arch" ] && [ "${_user}" != "globalcatchall" ]; then
-    local _paths_file="/data/disk/${_user}/remote_backups/paths/paths.txt"
+    export _paths_file="/data/disk/${_user}/remote_backups/paths/paths.txt"
   fi
   if [ "${_user}" = "globalcatchall" ]; then
-    local _paths_file="/root/.remote_backups/paths/paths.txt"
+    export _paths_file="/root/.remote_backups/paths/paths.txt"
   fi
 
   if [ ! -f "${_paths_file}" ]; then
@@ -231,13 +175,9 @@ _load_paths() {
   fi
 
   if [ "${_user}" != "arch" ]; then
-    _validate_paths "${_paths_file}" "${_user}"
+    source "${_paths_file}"
   fi
-
-  if [ "${#_PATHS_ARRAY[@]}" -eq 0 ]; then
-    echo "Error: No valid paths found in '${_paths_file}'. Check ${_LOG_FILE} for details."
-    exit 1
-  fi
+  _print_env "mybackup_load_paths"
 }
 
 # Function to construct _BUCKET_NAME
@@ -422,11 +362,12 @@ _validate_restore_command() {
   fi
 
   # Command is valid
+  _print_env "mybackup_validate_restore_command"
   return 0
 }
 
 # Check if run as root
-_run_as_user=$(whoami)
+export _run_as_user=$(whoami)
 
 # Main script
 if [[ "$#" -eq 0 ]] && [ "${_run_as_user}" = "root" ]; then
@@ -439,12 +380,12 @@ if [[ "$#" -eq 0 ]] && [ "${_run_as_user}" = "root" ]; then
   # Process queued commands for all users
   for _user_dir in "${_BASE_DIR}"/*; do
     if [[ -d "${_user_dir}" ]]; then
-      _user=$(basename "${_user_dir}")
-      _user_run_dir="${_user_dir}/${_RUN_SUBDIR}"
-      _user_cmd_file="${_user_run_dir}/${_CMD_FILE}"
+      export _user=$(basename "${_user_dir}")
+      export _user_run_dir="${_user_dir}/${_RUN_SUBDIR}"
+      export _user_cmd_file="${_user_run_dir}/${_CMD_FILE}"
 
       if [[ -f "${_user_cmd_file}" ]]; then
-        _command=$(cat "${_user_cmd_file}")
+        export _command=$(cat "${_user_cmd_file}")
         echo "Validating command for user ${_user}: ${_command}"
 
         # Validate the command
@@ -466,12 +407,16 @@ if [[ "$#" -eq 0 ]] && [ "${_run_as_user}" = "root" ]; then
         fi
       fi
     fi
+  _print_env "mybackup_run_as_user"
+  export _user=
+  export _user_run_dir=
+  export _user_cmd_file=
   done
   exit 0
 fi
 
 # Extract the current user
-_user=$(whoami | sed 's/\.ftp$//')
+export _user=$(whoami | sed 's/\.ftp$//')
 
 if [[ $(whoami) == *.ftp ]]; then
   _user_run_dir="/data/disk/${_user}/static/control/.run"
@@ -494,18 +439,18 @@ fi
 
 _userEmail=""
 [ -e "/data/disk/${_user}/log/email.txt" ] && _userEmail="$(cat /data/disk/${_user}/log/email.txt)"
-[ -n "${_userEmail}" ] && _userEmail=$(echo -n ${_userEmail} | tr -d "\n" 2>&1)
+[ -n "${_userEmail}" ] && export _userEmail=$(echo -n ${_userEmail} | tr -d "\n" 2>&1)
 
-_ACTION=$1
-_SERVICE=$2
-_RESTORE_TARGET="${3:-/data/disk/${_user}/static/restores/}"
-_RESTORE_PATH="${4:-}"
-_RESTORE_TIME="${5:-}"
-_PIDFILE="/data/disk/${_user}/log/mybackup_${_service}_${_user}.pid"
-_LOGPTH="/data/disk/${_user}/log"
-_LOGFILE="${_LOGPTH}/mybackup_${_service}_${_user}.log"
+export _ACTION=$1
+export _SERVICE=$2
+export _RESTORE_TARGET="${3:-/data/disk/${_user}/static/restores/}"
+export _RESTORE_PATH="${4:-}"
+export _RESTORE_TIME="${5:-}"
+export _PIDFILE="/data/disk/${_user}/log/mybackup_${_SERVICE}_${_user}.pid"
+export _LOGPTH="/data/disk/${_user}/log"
+export _LOGFILE="${_LOGPTH}/mybackup_${_SERVICE}_${_user}.log"
 
-_DCY_MN_CMD="/usr/local/bin/duplicity \
+export _DCY_MN_CMD="/usr/local/bin/duplicity \
     --name=${_NAME} \
     --allow-source-mismatch \
     --concurrency 4"
@@ -514,6 +459,8 @@ _create_pid_file "${_PIDFILE}"
 
 # Load paths configuration
 _load_paths "${_user}"
+
+_print_env "mybackup_main"
 
 case "${_ACTION}" in
   restore)
@@ -525,12 +472,37 @@ case "${_ACTION}" in
     ;;
 esac
 
-# Wipe out any exported variables to clean up env after running the backup
-export PASSPHRASE=
-export _SOURCE=
-export _INCLUDE=
-export _EXCLUDE=
-export _NAME=
-export _BUCKET_NAME=
-
 _remove_pid_file "${_PIDFILE}"
+
+# Wipe out any exported variables to clean up env after running the backup
+  export FULL_BACKUP_FREQUENCY=
+  export PASSPHRASE=
+  export _ACTION=
+  export _BACKUP_TARGET=
+  export _BUCKET_NAME=
+  export _DCY_MN_CMD=
+  export _DCY_UP_CMD=
+  export _DO_CLEANUP=
+  export _EXCLUDE=
+  export _INCLUDE=
+  export _MODE=
+  export _NAME=
+  export _PIDFILE=
+  export _RDW=
+  export _RESTORE_PATH=
+  export _RESTORE_TARGET=
+  export _RESTORE_TIME=
+  export _SERVICE=
+  export _SOURCE=
+  export _USER=
+  export _USER_EXCLUDE=
+  export _USER_INCLUDE=
+  export _credentials_file=
+  export _paths_file=
+  export _run_as_user=
+  export _secret_file=
+  export _user=
+  export _userEmail=
+
+_print_env "mybackup_exit"
+exit 0
