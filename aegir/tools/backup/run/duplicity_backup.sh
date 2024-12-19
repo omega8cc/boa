@@ -472,7 +472,6 @@ _run_backup() {
     / \
     \"${_BACKUP_TARGET}\" >> ${_LOGFILE}"
 
-  echo "Running ${_MODE} backup for ${_BACKUP_TARGET} on $(date)" >> ${_LOGFILE}
   ${_DCY_UP_CMD} \
   ${_BATCH_EXCLUDE} \
   ${_BATCH_INCLUDE} \
@@ -480,6 +479,7 @@ _run_backup() {
   / \
   "${_BACKUP_TARGET}" >> ${_LOGFILE}
 
+  echo "Running ${_MODE} backup for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
   _print_env "multiback_run_backup"
 }
 
