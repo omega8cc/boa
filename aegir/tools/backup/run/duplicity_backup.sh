@@ -6,8 +6,24 @@ export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 export _tRee=dev
 
+# Function to print env for debugging
+_print_env() {
+  if [ "$(id -u)" -eq 0 ] && [ -e "/root/.dev.server.cnf" ]; then
+    _ENV=$(env 2>&1)
+    echo
+    echo "_ENV in $1 start"
+    echo "${_ENV}"
+    echo "_ENV in $1 end"
+    echo
+    _ENV=
+  fi
+}
+
 # Function to verify BOA keys
 _verify_boa_keys() {
+  if [ -e "/root/.dev.server.cnf" ]; then
+    echo "PROC: _verify_boa_keys in multiback"
+  fi
   if [ "${_tRee}" = "pro" ] || [ "${_tRee}" = "dev" ]; then
     _allw=NO
     _crlGet="-L --max-redirs 3 -k -s --retry 9 --retry-delay 9 -A iCab"
@@ -89,6 +105,7 @@ _check_root() {
 }
 _check_root
 _verify_boa_keys
+_print_env "multiback_init"
 
 if [ -e "/root/.pause_heavy_tasks_maint.cnf" ]; then
   exit 0
@@ -176,6 +193,11 @@ _log_issue() {
   fi
 }
 
+# Helper function to URL-encode
+_url_encode() {
+  python3 -c "import urllib.parse, sys; print(urllib.parse.quote(sys.argv[1]))" "$1"
+}
+
 # Function to escape values
 _escape_value() {
   printf '%q' "$1"
@@ -218,11 +240,13 @@ _validate_credentials() {
       fi
 
       # Safely export the variable
+      _value="$(_url_encode "${_value}")"
       export "${_varname}"="$(_escape_value "${_value}")"
     else
       _log_issue "credentials" "${_cred_file}" "Invalid syntax at line ${_line_number}: ${_line}"
     fi
   done < "${_cred_file}"
+  _print_env "multiback_validate_credentials"
 }
 
 # Function to load credentials
@@ -251,16 +275,17 @@ _load_credentials() {
   fi
 
   _validate_credentials "${_cred_file}" "${_service}"
+  _print_env "multiback_load_credentials"
 }
 
 # Function to load paths configuration
 _load_paths() {
   local _user="$1"
   if [ "${_user}" != "arch" ] && [ "${_user}" != "globalcatchall" ]; then
-    local _paths_file="/data/disk/${_user}/remote_backups/paths/paths.txt"
+    export _paths_file="/data/disk/${_user}/remote_backups/paths/paths.txt"
   fi
   if [ "${_user}" = "globalcatchall" ]; then
-    local _paths_file="/root/.remote_backups/paths/paths.txt"
+    export _paths_file="/root/.remote_backups/paths/paths.txt"
   fi
 
   if [ ! -f "${_paths_file}" ]; then
@@ -271,6 +296,7 @@ _load_paths() {
   if [ "${_user}" != "arch" ]; then
     source "${_paths_file}"
   fi
+  _print_env "multiback_load_paths"
 }
 
 # Function to validate duration format and fallback to default
@@ -283,6 +309,7 @@ _validate_or_default_duration() {
   if [[ ! "${_value}" =~ ^[0-9]+[DWMY]$ ]]; then
     echo "Warning: Invalid value '${_value}' for ${_var_name}. Using default '${_default}'."
     eval "${_var_name}='${_default}'"
+    _print_env "multiback_validate_or_default_duration"
   fi
 }
 
@@ -294,6 +321,8 @@ _construct_bucket_name() {
   _hst_dash=$(echo -n ${_hName} | tr . -)
   export _BUCKET_NAME="back-to-${_user}-${_hst_dash}-${_service_dash}"
   export _NAME="${_user}-${_service_dash}"
+  export _LOGFILE="${_LOGPTH}/${_BUCKET_NAME}.log"
+  _print_env "multiback_construct_bucket_name"
 }
 
 # Function to generate duplicity-compatible include directives
@@ -316,13 +345,14 @@ _backup_prepare() {
       | sort 2>&1)
     if [[ "${_CacheTest}" =~ "No such file or directory" ]] \
       || [ -z "${_CacheTest}" ]; then
-      _DO_CLEANUP=NO
+      export _DO_CLEANUP=NO
     else
-      _DO_CLEANUP=YES
+      export _DO_CLEANUP=YES
     fi
   fi
   # Generate include directives dynamically
-  _INCLUDE=$(_generate_include_directives "${_SOURCE}")
+  export _INCLUDE=$(_generate_include_directives "${_SOURCE}")
+  _print_env "multiback_backup_prepare"
 }
 
 _monthly_cleanup() {
@@ -350,6 +380,7 @@ _monthly_cleanup() {
     rm -f ${_LOGPTH}/${_BUCKET_NAME}.randomize.full.log
     rm -f ${_LOGPTH}/${_BUCKET_NAME}.randomize.cleanup.log
   fi
+  _print_env "multiback_monthly_cleanup"
 }
 
 _randomize_full() {
@@ -357,43 +388,45 @@ _randomize_full() {
     if [ -e "${_LOGPTH}/${_BUCKET_NAME}.randomize.full.log" ]; then
       _RDW=$(cat ${_LOGPTH}/${_BUCKET_NAME}.randomize.full.log 2>&1)
       _RDW=$(echo -n ${_RDW} | tr -d "\n" 2>&1)
-      _RDW=${_RDW//[^1-7]/}
-      _MODE="incremental"
+      export _RDW=${_RDW//[^1-7]/}
+      export _MODE="incremental"
     else
       _RDW=$((RANDOM%7+1))
-      _RDW=${_RDW//[^1-7]/}
-      _MODE="full"
+      export _RDW=${_RDW//[^1-7]/}
+      export _MODE="full"
       echo ${_RDW} > ${_LOGPTH}/${_BUCKET_NAME}.randomize.full.log
     fi
   else
-    _RDW=7
+    export _RDW=7
   fi
+  _print_env "multiback_randomize_full"
 }
 
 # Function to set backup mode
 _set_mode() {
   if [ "${_DOW}" = "${_RDW}" ] && [ "${FULL_BACKUP_FREQUENCY}" = "7D" ]; then
     if [ ! -e "/root/.randomize_duplicity_full_backup_day.cnf" ]; then
-      _MODE="full"
-      FULL_BACKUP_FREQUENCY="1M"
+      export _MODE="full"
+      export FULL_BACKUP_FREQUENCY="1M"
     fi
   else
     if [ -e "${_LOGPTH}/${_BUCKET_NAME}.archive.log" ] \
       && [ "${_DO_CLEANUP}" = "YES" ]; then
-      _MODE="incremental"
+      export _MODE="incremental"
     else
-      _MODE="full"
+      export _MODE="full"
     fi
   fi
+  _print_env "multiback_set_mode"
 }
 
 # Function to construct backup command
 _set_cmd() {
   if [ -z "${KEEP_WITHIN}" ] && [ -n "${_AWS_TTL}" ]; then
-    KEEP_WITHIN="${_AWS_TTL}"
+    export KEEP_WITHIN="${_AWS_TTL}"
   fi
   if [ -z "${FULL_BACKUP_FREQUENCY}" ] && [ -n "${_AWS_FLC}" ]; then
-    FULL_BACKUP_FREQUENCY="${_AWS_FLC}"
+    export FULL_BACKUP_FREQUENCY="${_AWS_FLC}"
   fi
 
   # Validate or set default for KEEP_WITHIN
@@ -402,7 +435,7 @@ _set_cmd() {
   # Validate or set default for FULL_BACKUP_FREQUENCY
   _validate_or_default_duration "${FULL_BACKUP_FREQUENCY}" "FULL_BACKUP_FREQUENCY" "${_DEFAULT_FULL_BACKUP_FREQUENCY}"
 
-  _DCY_UP_CMD="/usr/local/bin/duplicity ${_MODE} \
+  export _DCY_UP_CMD="/usr/local/bin/duplicity ${_MODE} \
     -v ${_AWS_VLV} \
     --name=${_NAME} \
     --allow-source-mismatch \
@@ -411,25 +444,34 @@ _set_cmd() {
     --full-if-older-than ${FULL_BACKUP_FREQUENCY} \
     --volsize 300"
 
-  _DCY_MN_CMD="/usr/local/bin/duplicity \
+  export _DCY_MN_CMD="/usr/local/bin/duplicity \
     -v ${_AWS_VLV} \
     --name=${_NAME} \
     --allow-source-mismatch \
     --concurrency 4"
+
+  _print_env "multiback_set_cmd"
 }
 
 # Function to perform backup
 _run_backup() {
   if [ -n "${_USER_INCLUDE}" ] && [ -n "${_INCLUDE}" ]; then
-    _BATCH_INCLUDE="${_INCLUDE} ${_USER_INCLUDE}"
+    export _BATCH_INCLUDE="${_INCLUDE} ${_USER_INCLUDE}"
   else
-    _BATCH_INCLUDE="${_INCLUDE}"
+    export _BATCH_INCLUDE="${_INCLUDE}"
   fi
   if [ -n "${_USER_EXCLUDE}" ] && [ -n "${_EXCLUDE}" ]; then
-    _BATCH_EXCLUDE="${_EXCLUDE} ${_USER_EXCLUDE}"
+    export _BATCH_EXCLUDE="${_EXCLUDE} ${_USER_EXCLUDE}"
   else
-    _BATCH_EXCLUDE="${_EXCLUDE}"
+    export _BATCH_EXCLUDE="${_EXCLUDE}"
   fi
+  export _FULL_BACK_CMD="${_DCY_UP_CMD} \
+    ${_BATCH_EXCLUDE} \
+    ${_BATCH_INCLUDE} \
+    --exclude '**' \
+    / \
+    \"${_BACKUP_TARGET}\" >> ${_LOGFILE}"
+
   echo "Running ${_MODE} backup for ${_BACKUP_TARGET} on $(date)" >> ${_LOGFILE}
   ${_DCY_UP_CMD} \
   ${_BATCH_EXCLUDE} \
@@ -437,6 +479,8 @@ _run_backup() {
   --exclude '**' \
   / \
   "${_BACKUP_TARGET}" >> ${_LOGFILE}
+
+  _print_env "multiback_run_backup"
 }
 
 _remove_older_than() {
@@ -449,6 +493,13 @@ _collection_status() {
   echo "Running collection-status for ${_BACKUP_TARGET} on $(date)" >> ${_LOGFILE}
   echo "Command is ${_DCY_MN_CMD} collection-status ${_BACKUP_TARGET}"
   ${_DCY_MN_CMD} collection-status ${_BACKUP_TARGET} >> ${_LOGFILE}
+}
+
+# Function to clean up old backups
+_cleanup() {
+  _set_mode
+  _set_cmd
+  _remove_older_than
 }
 
 # Function to prepare backup
@@ -471,13 +522,9 @@ _backup() {
   fi
   cat ${_LOGFILE} >> ${_LOGPTH}/${_BUCKET_NAME}.archive.log
   rm -f ${_LOGFILE}
+  _print_env "multiback_backup"
 }
 
-# Function to clean up old backups
-_cleanup() {
-  _set_cmd
-  ${_DCY_MN_CMD} remove-older-than "${KEEP_WITHIN}" --force "${_BACKUP_TARGET}"
-}
 
 ### Legacy procedure for reference
 #
@@ -542,6 +589,8 @@ _cleanup() {
 
 # Function to restore backup
 _restore() {
+  _set_mode
+  _set_cmd
   local _restore_target=$1
   local _restore_path=$2
   local _restore_time=$3
@@ -574,6 +623,8 @@ _restore() {
 
   # su -s /bin/bash ${_user} -c "eval \"${_restore_command}\"" &> /dev/null
   eval "${_restore_command}"
+
+  _print_env "multiback_restore"
 }
 
 # Function to set backup target based on service
@@ -595,17 +646,17 @@ _set_backup_target() {
         local _s3_options="${_s3_options} --s3-use-ia"
       fi
 
-      _BACKUP_TARGET="boto3+s3://${_BUCKET_NAME} ${_s3_options}"
+      export _BACKUP_TARGET="boto3+s3://${_BUCKET_NAME} ${_s3_options}"
       ;;
     azure)
       _load_credentials "azure" "${_user}"
       _construct_bucket_name "azure" "${_user}"
-      _BACKUP_TARGET="azure://${AZURE_STORAGE_ACCOUNT}@${_BUCKET_NAME}"
+      export _BACKUP_TARGET="azure://${AZURE_STORAGE_ACCOUNT}@${_BUCKET_NAME}"
       ;;
     b2)
       _load_credentials "b2" "${_user}"
       _construct_bucket_name "b2" "${_user}"
-      _BACKUP_TARGET="b2://${B2_ACCOUNT_ID}:${B2_APPLICATION_KEY}@${_BUCKET_NAME}"
+      export _BACKUP_TARGET="b2://${B2_ACCOUNT_ID}:${B2_APPLICATION_KEY}@${_BUCKET_NAME}"
       ;;
     cloudflare)
       _load_credentials "cloudflare" "${_user}"
@@ -615,38 +666,40 @@ _set_backup_target() {
       local _r2_endpoint="https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
 
       # Configure the S3 backup target
-      _BACKUP_TARGET="boto3+s3://${R2_ACCESS_KEY_ID}:${R2_SECRET_ACCESS_KEY}@${_r2_endpoint}/${_BUCKET_NAME}"
+      export _BACKUP_TARGET="boto3+s3://${R2_ACCESS_KEY_ID}:${R2_SECRET_ACCESS_KEY}@${_r2_endpoint}/${_BUCKET_NAME}"
       ;;
     do_spaces)
       _load_credentials "do_spaces" "${_user}"
       _construct_bucket_name "do_spaces" "${_user}"
-      _BACKUP_TARGET="s3://${DO_SPACES_KEY}:${DO_SPACES_SECRET}@${DO_SPACES_REGION}/${_BUCKET_NAME}"
+      export _BACKUP_TARGET="s3://${DO_SPACES_KEY}:${DO_SPACES_SECRET}@${DO_SPACES_REGION}/${_BUCKET_NAME}"
       ;;
     gcs)
       _load_credentials "gcs" "${_user}"
       _construct_bucket_name "gcs" "${_user}"
-      _BACKUP_TARGET="gs://${_BUCKET_NAME}"
+      export _BACKUP_TARGET="gs://${_BUCKET_NAME}"
       ;;
     ibm)
       _load_credentials "ibm" "${_user}"
       _construct_bucket_name "ibm" "${_user}"
-      _BACKUP_TARGET="ibmcos://${IBM_API_KEY_ID}:${IBM_SERVICE_INSTANCE_ID}@${IBM_REGION}/${_BUCKET_NAME}"
+      export _BACKUP_TARGET="ibmcos://${IBM_API_KEY_ID}:${IBM_SERVICE_INSTANCE_ID}@${IBM_REGION}/${_BUCKET_NAME}"
       ;;
     linode)
       _load_credentials "linode" "${_user}"
       _construct_bucket_name "linode" "${_user}"
-      _BACKUP_TARGET="s3://${LINODE_ACCESS_KEY}:${LINODE_SECRET_KEY}@${LINODE_REGION}/${_BUCKET_NAME}"
+      export _BACKUP_TARGET="s3://${LINODE_ACCESS_KEY}:${LINODE_SECRET_KEY}@${LINODE_REGION}/${_BUCKET_NAME}"
       ;;
     wasabi)
       _load_credentials "wasabi" "${_user}"
       _construct_bucket_name "wasabi" "${_user}"
-      _BACKUP_TARGET="s3://${WASABI_ACCESS_KEY}:${WASABI_SECRET_KEY}@${WASABI_REGION}/${_BUCKET_NAME}"
+      export _BACKUP_TARGET="s3://${WASABI_ACCESS_KEY}:${WASABI_SECRET_KEY}@${WASABI_REGION}/${_BUCKET_NAME}"
       ;;
     *)
       echo "Error: Unknown service ${_service}"
       exit 1
       ;;
   esac
+
+  _print_env "multiback_set_backup_target"
 }
 
 # Main script
@@ -654,34 +707,35 @@ if [ "$#" -lt 3 ]; then
   _usage
 fi
 
-_LOGPTH="/var/xdrago/log"
-_LOGFILE="${_LOGPTH}/${_BUCKET_NAME}.log"
+export _LOGPTH="/var/xdrago/log"
 _NOW=$(date +%y%m%d-%H%M%S 2>&1)
-_NOW=${_NOW//[^0-9-]/}
+export _NOW=${_NOW//[^0-9-]/}
 _DOW=$(date +%u 2>&1)
-_DOW=${_DOW//[^1-7]/}
+export _DOW=${_DOW//[^1-7]/}
 _DOM=$(date +%e 2>&1)
-_DOM=${_DOM//[^0-9]/}
+export _DOM=${_DOM//[^0-9]/}
 _HST=${_hName//[^a-zA-Z0-9-.]/}
 _HST=$(echo -n ${_HST} | tr A-Z a-z 2>&1)
-_HST_DASH=$(echo -n ${_HST} | tr . - 2>&1)
+export _HST_DASH=$(echo -n ${_HST} | tr . - 2>&1)
 
-_ACTION=$1
-_SERVICE=$2
-_USER=$3
-_RESTORE_TARGET="${4:-/var/backups/}"
-_RESTORE_PATH="${5:-}"
-_RESTORE_TIME="${6:-}"
-_PIDFILE="/var/run/duplicity_${_SERVICE}_${_USER}.pid"
+export _ACTION=$1
+export _SERVICE=$2
+export _USER=$3
+export _RESTORE_TARGET="${4:-/var/backups/}"
+export _RESTORE_PATH="${5:-}"
+export _RESTORE_TIME="${6:-}"
+export _PIDFILE="/var/run/duplicity_${_SERVICE}_${_USER}.pid"
 # Default values
-_DEFAULT_KEEP_WITHIN="3M"            # Default: 3 month
-_DEFAULT_FULL_BACKUP_FREQUENCY="7D"  # Default: 7 days
+export _DEFAULT_KEEP_WITHIN="3M"            # Default: 3 month
+export _DEFAULT_FULL_BACKUP_FREQUENCY="7D"  # Default: 7 days
 
 # Log file for validation issues
-_VALIDATION_LOG_FILE="/var/log/backup_validation_issues.log"
-_SANITIZATION_TMP_DIR="/var/tmp/backup_sanitization"
+export _VALIDATION_LOG_FILE="/var/log/backup_validation_issues.log"
+export _SANITIZATION_TMP_DIR="/var/tmp/backup_sanitization"
 mkdir -p "${_SANITIZATION_TMP_DIR}"
 chmod 700 "${_SANITIZATION_TMP_DIR}"
+
+_print_env "multiback_main"
 
 # Create the PID file
 _create_pid_file "${_PIDFILE}"
@@ -711,12 +765,34 @@ case "${_ACTION}" in
     ;;
 esac
 
-# Wipe out any exported variables to clean up env after running the backup
-export PASSPHRASE=
-export _SOURCE=
-export _INCLUDE=
-export _EXCLUDE=
-export _NAME=
-export _BUCKET_NAME=
-
 _remove_pid_file "${_PIDFILE}"
+
+# Wipe out any exported variables to clean up env after running the backup
+  export FULL_BACKUP_FREQUENCY=
+  export PASSPHRASE=
+  export _ACTION=
+  export _BACKUP_TARGET=
+  export _BUCKET_NAME=
+  export _DCY_MN_CMD=
+  export _DCY_UP_CMD=
+  export _DO_CLEANUP=
+  export _EXCLUDE=
+  export _INCLUDE=
+  export _MODE=
+  export _NAME=
+  export _PIDFILE=
+  export _RDW=
+  export _RESTORE_PATH=
+  export _RESTORE_TARGET=
+  export _RESTORE_TIME=
+  export _SERVICE=
+  export _SOURCE=
+  export _USER=
+  export _USER_EXCLUDE=
+  export _USER_INCLUDE=
+  export _credentials_file=
+  export _paths_file=
+  export _secret_file=
+
+_print_env "multiback_exit"
+exit 0
