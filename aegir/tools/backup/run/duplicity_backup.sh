@@ -465,21 +465,9 @@ _run_backup() {
   else
     export _BATCH_EXCLUDE="${_EXCLUDE}"
   fi
-  export _FULL_BACK_CMD="${_DCY_UP_CMD} \
-    ${_BATCH_EXCLUDE} \
-    ${_BATCH_INCLUDE} \
-    --exclude '**' \
-    / \
-    \"${_BACKUP_TARGET}\" >> ${_LOGFILE}"
-
-  ${_DCY_UP_CMD} \
-  ${_BATCH_EXCLUDE} \
-  ${_BATCH_INCLUDE} \
-  --exclude '**' \
-  / \
-  "${_BACKUP_TARGET}" >> ${_LOGFILE}
-
+  export _FULL_BACK_CMD="${_DCY_UP_CMD} ${_BATCH_EXCLUDE} ${_BATCH_INCLUDE} --exclude '**' / ${_BACKUP_TARGET}"
   echo "Running ${_MODE} backup for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
+  ${_DCY_UP_CMD} ${_BATCH_EXCLUDE} ${_BATCH_INCLUDE} --exclude '**' / ${_BACKUP_TARGET} >> ${_LOGFILE}
   _print_env "multiback_run_backup"
 }
 
