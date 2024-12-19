@@ -225,12 +225,12 @@ _validate_credentials() {
 
     # Validate the variable assignment
     if [[ "${_line}" =~ ^([A-Za-z_][A-Za-z0-9_]*)=(\".*\"|'.*'|[^[:space:]]+)$ ]]; then
-      local _varname="${BASH_REMATCH[1]}"
-      local _value="${BASH_REMATCH[2]}"
+      export _varname="${BASH_REMATCH[1]}"
+      export _value="${BASH_REMATCH[2]}"
 
       # Remove surrounding quotes if present
       if [[ "${_value}" =~ ^\".*\"$ || "${_value}" =~ ^\'.*\'$ ]]; then
-        _value="${_value:1:-1}"
+        export _value="${_value:1:-1}"
       fi
 
       # Check for forbidden characters in value
@@ -240,8 +240,7 @@ _validate_credentials() {
       fi
 
       # Safely export the variable
-      _value="$(_url_encode "${_value}")"
-      export "${_varname}"="$(_escape_value "${_value}")"
+      export ${_varname}=$(_url_encode "${_value}")
     else
       _log_issue "credentials" "${_cred_file}" "Invalid syntax at line ${_line_number}: ${_line}"
     fi
@@ -781,6 +780,8 @@ _remove_pid_file "${_PIDFILE}"
   export _credentials_file=
   export _paths_file=
   export _secret_file=
+  export _value=
+  export _varname=
 
 _print_env "multiback_exit"
 exit 0
