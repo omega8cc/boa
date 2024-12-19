@@ -195,7 +195,7 @@ _log_issue() {
 
 # Helper function to URL-encode
 _url_encode() {
-  python3 -c "import urllib.parse, sys; print(urllib.parse.quote(sys.argv[1]))" "$1"
+  echo -n '$1' | jq -s -R -r @uri
 }
 
 # Function to escape values
