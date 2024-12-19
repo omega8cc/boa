@@ -193,9 +193,9 @@ _log_issue() {
   fi
 }
 
-# Helper function to URL-encode
+# Helper function to URL-encode using jq
 _url_encode() {
-  echo -n '$1' | jq -s -R -r @uri
+  echo -n "$1" | jq -s -R -r @uri
 }
 
 # Function to escape values

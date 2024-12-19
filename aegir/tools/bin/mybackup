@@ -74,9 +74,9 @@ _log_issue() {
   fi
 }
 
-# Helper function to URL-encode
+# Helper function to URL-encode using jq
 _url_encode() {
-  python3 -c "import urllib.parse, sys; print(urllib.parse.quote(sys.argv[1]))" "$1"
+  echo -n "$1" | jq -s -R -r @uri
 }
 
 # Function to escape values
@@ -121,8 +121,7 @@ _validate_credentials() {
       fi
 
       # Safely export the variable
-      _value="$(_url_encode "${_value}")"
-      export "${_varname}"="$(_escape_value "${_value}")"
+      export ${_varname}=$(_url_encode "${_value}")
     else
       _log_issue "credentials" "${_cred_file}" "Invalid syntax at line ${_line_number}: ${_line}"
     fi
