@@ -186,10 +186,10 @@ EOF
   _add_backslashes "${_merged_all_include_file}"
 
   # Convert the exclude file contents to a single-line variable without backslashes and excessive whitespace
-  local _MERGED_ALL_EXCLUDE=$(xargs < <(sed 's/\\//g' "${_merged_all_exclude_file}") | tr -s ' ' | sed 's/^ *//;s/ *$//')
+  local _MERGED_ALL_EXCLUDE=$(sed 's/\\//g' "${_merged_all_exclude_file}" | tr '\n' ' ' | tr -s ' ' | sed 's/^ *//;s/ *$//')
 
   # Convert the include file contents to a single-line variable without backslashes and excessive whitespace
-  local _MERGED_ALL_INCLUDE=$(xargs < <(sed 's/\\//g' "${_merged_all_include_file}") | tr -s ' ' | sed 's/^ *//;s/ *$//')
+  local _MERGED_ALL_INCLUDE=$(sed 's/\\//g' "${_merged_all_include_file}" | tr '\n' ' ' | tr -s ' ' | sed 's/^ *//;s/ *$//')
 
   # Create the final paths configuration file
   cat << EOF > "${_user_paths_file}"
