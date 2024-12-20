@@ -4,7 +4,7 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
-# Default interval in minutes between backup cycles
+# Configurable in /root/.barracuda.cnf interval in minutes between backup cycles
 _BACKUP_INTERVAL=360
 _WRAPPER_DIR="/root/.remote_backups/run"
 _WRAPPER_SCRIPT="${_WRAPPER_DIR}/sequential_backups.sh"
@@ -12,6 +12,33 @@ _SCHEDULE_DIR="/root/.remote_backups/schedule"
 _SCHEDULE_FILE="${_SCHEDULE_DIR}/backup_schedule.txt"
 _CRON_FILE="/etc/cron.d/duplicity_backup"
 _LOGFILE="/var/log/backup_runtime.log"
+
+# Function to verify root access
+_check_root() {
+  if [ "$(id -u)" -eq 0 ]; then
+    ionice -c2 -n7 -p $$
+    renice 9 -p $$
+    chmod a+w /dev/null
+    [ -e "/root/.gnupg" ] && chmod 700 /root/.gnupg
+  else
+    echo "ERROR: This script should be run as a root user"
+    exit 1
+  fi
+  _DF_TEST=$(df -kTh / -l \
+    | grep '/' \
+    | sed 's/\%//g' \
+    | awk '{print $6}' 2> /dev/null)
+  _DF_TEST=${_DF_TEST//[^0-9]/}
+  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt "90" ]; then
+    echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
+    echo "ERROR: We can not proceed until it is below 90/100"
+    exit 1
+  fi
+  [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
+  export _BACKUP_INTERVAL=${_BACKUP_INTERVAL//[^0-9]/}
+  : "${_BACKUP_INTERVAL:=360}"
+}
+_check_root
 
 # Ensure global run directory exists and is owned by root
 mkdir -p "${_WRAPPER_DIR}"
@@ -80,6 +107,19 @@ if [ ! -f "${_SCHEDULE_FILE}" ]; then
   exit 1
 fi
 
+# Function to print env for debugging
+_print_env() {
+  if [ "$(id -u)" -eq 0 ] && [ -e "/root/.dev.server.cnf" ]; then
+    _ENV=$(env 2>&1)
+    echo
+    echo "_ENV in $1 start"
+    echo "${_ENV}"
+    echo "_ENV in $1 end"
+    echo
+    _ENV=
+  fi
+}
+
 # Process each line in the backup configuration file
 while IFS= read -r _line || [ -n "${_line}" ]; do
   # Skip empty lines and comments
@@ -98,6 +138,7 @@ while IFS= read -r _line || [ -n "${_line}" ]; do
   fi
 
   echo "Starting backup for ${_service} (${_user})..."
+  export _user="${_user}"
 
   # Define the PID file path
   _CURRENT_PIDFILE="${_PID_DIR}/duplicity_${_service}_${_user}_sequential.pid"
@@ -111,13 +152,11 @@ while IFS= read -r _line || [ -n "${_line}" ]; do
 
   # Determine the paths configuration file
   if [ "${_user}" = "globalcatchall" ]; then
-    local _paths_file="/root/.remote_backups/paths/paths.txt"
-    local _credentials_file="/root/.remote_backups/credentials/${_service}.txt"
-    local _secret_file="/root/.remote_backups/.secret.txt"
+    export _paths_file="/root/.remote_backups/paths/paths.txt"
+    export _credentials_file="/root/.remote_backups/credentials/${_service}.txt"
+    export _secret_file="/root/.remote_backups/.secret.txt"
 
-    if [ -f "${_secret_file}" ]; then
-      export PASSPHRASE=$(cat "${_secret_file}")
-    else
+    if [ ! -f "${_secret_file}" ]; then
       echo "Secret file ${_secret_file} not found."
       _remove_pid_file "${_CURRENT_PIDFILE}"
       continue
@@ -139,15 +178,14 @@ while IFS= read -r _line || [ -n "${_line}" ]; do
 
     # Change to the directory where paths.txt and credentials are located
     cd /root/.remote_backups
+    _print_env "sequential_backups_a"
 
   elif [ "${_user}" != "arch" ] && [ "${_user}" != "globalcatchall" ]; then
-    local _paths_file="/data/disk/${_user}/remote_backups/paths/paths.txt"
-    local _credentials_file="/data/disk/${_user}/static/control/remote_backups/credentials/${_service}.txt"
-    local _secret_file="/data/disk/${_user}/remote_backups/.secret.txt"
+    export _paths_file="/data/disk/${_user}/remote_backups/paths/paths.txt"
+    export _credentials_file="/data/disk/${_user}/static/control/remote_backups/credentials/${_service}.txt"
+    export _secret_file="/data/disk/${_user}/remote_backups/.secret.txt"
 
-    if [ -f "${_secret_file}" ]; then
-      export PASSPHRASE=$(cat "${_secret_file}")
-    else
+    if [ ! -f "${_secret_file}" ]; then
       echo "Secret file ${_secret_file} not found."
       _remove_pid_file "${_CURRENT_PIDFILE}"
       continue
@@ -167,15 +205,8 @@ while IFS= read -r _line || [ -n "${_line}" ]; do
 
     # Change to the directory where paths.txt and credentials are located
     cd "/data/disk/${_user}/remote_backups"
+    _print_env "sequential_backups_b"
   fi
-
-  # Load the paths configuration
-  [ -f "${_paths_file}" ] && source "${_paths_file}"
-
-  # Export variables so multiback can use them
-  export _SOURCE
-  export _INCLUDE
-  export _EXCLUDE
 
   # Perform the backup
   if multiback backup "${_service}" "${_user}"; then
@@ -185,13 +216,13 @@ while IFS= read -r _line || [ -n "${_line}" ]; do
   fi
 
   # Wipe out exported variables to clean up env after running the backup
-  export PASSPHRASE=
-  export _SOURCE=
-  export _INCLUDE=
-  export _EXCLUDE=
+  export _paths_file=
+  export _credentials_file=
+  export _secret_file=
 
   # Return to the original directory
   cd -
+  _print_env "sequential_backups_d"
 
   # Remove the PID file
   _remove_pid_file "${_CURRENT_PIDFILE}"

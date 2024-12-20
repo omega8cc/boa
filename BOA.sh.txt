@@ -47,7 +47,7 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 export _tRee=pro
 export _xSrl=550proT03
 export _rLsn="BOA-5.5.0"
-export _bTs=DE01
+export _bTs=DE06
 
 ###
 ### Avoid too many questions
@@ -797,7 +797,7 @@ _update_agents() {
 
   if [ -d "/root/.remote_backups/run" ] \
     && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthCtrl}/create_cron_entries.sh.ctrl.f88.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthCtrl}/create_cron_entries.sh.ctrl.f87.${_tRee}.${_xSrl}.pid" ]; then
     if [ -e "/root/.remote_backups/run/create_cron_entries.sh" ]; then
       mv -f /root/.remote_backups/run/create_cron_entries.sh /root/.remote_backups/run/create_cron_entries.sh.old
     fi
@@ -805,7 +805,7 @@ _update_agents() {
     if [ -e "/root/.remote_backups/run/create_cron_entries.sh" ]; then
       chmod 700 /root/.remote_backups/run/create_cron_entries.sh
       chown root:root /root/.remote_backups/run/create_cron_entries.sh
-      touch ${_pthCtrl}/create_cron_entries.sh.ctrl.f88.${_tRee}.${_xSrl}.pid
+      touch ${_pthCtrl}/create_cron_entries.sh.ctrl.f87.${_tRee}.${_xSrl}.pid
     else
       if [ -e "/root/.remote_backups/run/create_cron_entries.sh.old" ]; then
         mv -f /root/.remote_backups/run/create_cron_entries.sh.old /root/.remote_backups/run/create_cron_entries.sh
@@ -2674,6 +2674,18 @@ _fix_composer_version() {
   fi
 }
 
+_fix_sftp_server() {
+  if [ -e "/etc/ssh/sshd_config" ]; then
+    _SFTP_UMASK_TEST=$(grep "sftp-server -u 0002" /etc/ssh/sshd_config 2>&1)
+    if [[ ! "${_SFTP_UMASK_TEST}" =~ "sftp-server -u 0002" ]]; then
+      sed -i "s/^Subsystem.*//g" /etc/ssh/sshd_config
+      echo "Subsystem sftp /usr/lib/openssh/sftp-server -u 0002" >> /etc/ssh/sshd_config
+      sed -i "/^$/d" /etc/ssh/sshd_config
+      service ssh restart 2> /dev/null
+    fi
+  fi
+}
+
 _fix_wkhtml_perms() {
 
   _WKHTML_ARRAY="/usr/local/bin/wkhtmltopdf \
@@ -3820,6 +3832,7 @@ if [ "$(id -u)" -eq 0 ]; then
   fi
   if [ "${_BOA_KEY_TOOLS_UPDATE_ALLOWED}" = "YES" ] \
     && [ -e "/var/log/barracuda_log.txt" ]; then
+    _fix_sftp_server
     _fix_ping_perms
     _fix_fpm_process_max
     _if_fix_lshell
