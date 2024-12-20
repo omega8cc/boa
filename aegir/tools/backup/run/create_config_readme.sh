@@ -29,6 +29,7 @@ _create_config_readme_file() {
   _readme_ctrl_file="${_BASE_DIR}/${_user}/log/.backboa.${_user}.f93.config.readme.ctrl"
   _user_static_dir="/data/disk/${_user}/static"
   _user_ftp_dir="/home/${_user}.ftp"
+  _user_ftp_dir_regex="/home/${_user}\.ftp"
 
   _ensure_config_dir "${_user}"
 
@@ -74,14 +75,14 @@ Usage Instructions:
 3. include_regexp.txt
    Use regular expressions to specify patterns for directories or files to include in the backup.
    Example:
-   --include-regexp '^${_user_ftp_dir}/documents/.*\.pdf$'
+   --include-regexp '^${_user_ftp_dir_regex}/documents/.*\.pdf$'
    --include-regexp '^${_user_static_dir}/project_data/.*'
 
 4. exclude_regexp.txt
    Use regular expressions to specify patterns for directories or files to exclude from the backup.
    Example:
    --exclude-regexp '^${_user_static_dir}/trash/.*'
-   --exclude-regexp '^${_user_ftp_dir}/temp_files/.*'
+   --exclude-regexp '^${_user_ftp_dir_regex}/temp_files/.*'
 
 Security:
 - Ensure these files are restricted to the user only:
@@ -100,11 +101,11 @@ Example Configuration:
 If you want to exclude temporary files:
 - Add the following to exclude_regexp.txt:
   --exclude-regexp '^${_user_static_dir}/temp/.*'
-  --exclude-regexp '^${_user_ftp_dir}/temp/.*'
+  --exclude-regexp '^${_user_ftp_dir_regex}/temp/.*'
 
 If you want to include specific documents:
 - Add the following to include_regexp.txt:
-  --include-regexp '^${_user_ftp_dir}/documents/.*\.pdf$'
+  --include-regexp '^${_user_ftp_dir_regex}/documents/.*\.pdf$'
   --include-regexp '^${_user_static_dir}/important_data/.*'
 
 EOF
