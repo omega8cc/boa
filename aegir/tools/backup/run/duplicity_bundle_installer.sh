@@ -7,6 +7,9 @@ export _tRee=pro
 
 # Function to verify BOA keys
 _verify_boa_keys() {
+  if [ -e "/root/.dev.server.cnf" ]; then
+    echo "PROC: _verify_boa_keys in duplicity_bundle_installer"
+  fi
   if [ "${_tRee}" = "pro" ] || [ "${_tRee}" = "dev" ]; then
     _allw=NO
     _crlGet="-L --max-redirs 3 -k -s --retry 9 --retry-delay 9 -A iCab"
