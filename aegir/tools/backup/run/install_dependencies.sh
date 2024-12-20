@@ -166,6 +166,7 @@ _python_install_src() {
   _apt_clean_update
   apt-get install ${_aptYesUnth} \
     intltool \
+    jq \
     libdb-dev \
     libffi-dev \
     libgdbm-compat-dev \

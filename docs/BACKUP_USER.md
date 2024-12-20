@@ -118,7 +118,7 @@ You can customize what is included or excluded in your backups by editing config
    - Example:
      ```bash
      --include-regexp '^/data/disk/your_username/static/documents/.*\.pdf$'
-     --include-regexp '^/home/your_username.ftp/images/.*\.(jpg|png)$'
+     --include-regexp '^/home/your_username\.ftp/images/.*\.(jpg|png)$'
      ```
 
 4. **`exclude_regexp.txt`**:
@@ -127,7 +127,7 @@ You can customize what is included or excluded in your backups by editing config
    - Example:
      ```bash
      --exclude-regexp '^/data/disk/your_username/static/cache/.*'
-     --exclude-regexp '^/home/your_username.ftp/tmp/.*'
+     --exclude-regexp '^/home/your_username\.ftp/tmp/.*'
      ```
 
 ---
@@ -287,7 +287,7 @@ mybackup restore <SERVICE> [RESTORE_TARGET] [RESTORE_PATH] [RESTORE_TIME]
 2. **Path Validation and Security**:
    - **Validation of Paths**: The system strictly validates all paths and regex patterns in your configuration files to prevent inclusion of unauthorized directories.
    - **Regex Patterns**:
-     - Must start with `^` and an allowed base path (`/data/disk/your_username/static` or `/home/your_username.ftp`).
+     - Must start with `^` and an allowed base path (`/data/disk/your_username/static` or `/home/your_username\.ftp` (note the requirement to escape the dot in the regex mode).
      - Cannot contain forbidden characters.
 
 3. **Credential Security**:
@@ -319,7 +319,7 @@ If you encounter issues with your backups or restores:
      ```bash
      /var/log/backup_validation_issues.log
      ```
-   - Review this log to see if any lines in your configuration files were rejected.
+   - Ask your host to review this log to see if any lines in your configuration files were rejected.
 
 2. **Common Validation Errors**:
    - **Unauthorized Path**: Attempting to include paths outside your allowed directories.

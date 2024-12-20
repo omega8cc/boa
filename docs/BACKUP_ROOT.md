@@ -145,7 +145,7 @@ The global backup configuration files are stored in:
    - Defines which global directories are included in backups.
    - Example:
      ```bash
-     _SOURCE="/etc /var/www /home /data"
+     _SOURCE="/data /home /etc /var/aegir /mnt /var/www /var/solr7 /opt/solr4 /var/xdrago"
      ```
 
 2. **`include.txt`** and **`exclude.txt`**:
