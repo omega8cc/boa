@@ -350,9 +350,29 @@ _backup_prepare() {
     fi
   fi
   # Generate include directives dynamically
-  export _SRC_INCLUDE=$(_generate_include_directives "${_SOURCE}")
-  export _LST_INCLUDE="${_INCLUDE}"
-  export _INCLUDE="${_SRC_INCLUDE} ${_LST_INCLUDE}"
+  [ -n "${_SOURCE}" ] && _SRC_INCLUDE=$(_generate_include_directives "${_SOURCE}")
+  #
+  [ -n "${_EXCLUDE_PATHS}" ] && _MERGED_ALL_EXCLUDE="${_EXCLUDE_PATHS}"
+  [ -n "${_INCLUDE_PATHS}" ] && _MERGED_ALL_INCLUDE="${_INCLUDE_PATHS}"
+  #
+  [ -n "${_USER_EXCLUDE_PATHS}" ] && _USER_MERGED_ALL_EXCLUDE="${_USER_EXCLUDE_PATHS}"
+  [ -n "${_USER_INCLUDE_PATHS}" ] && _USER_MERGED_ALL_INCLUDE="${_USER_INCLUDE_PATHS}"
+  #
+  [ -s "${_EXCLUDE_LIST}" ] && _LST_EXCLUDE="--exclude-filelist ${_EXCLUDE_LIST}"
+  [ -s "${_INCLUDE_LIST}" ] && _LST_INCLUDE="--include-filelist ${_INCLUDE_LIST}"
+  ###
+  [ -n "${_MERGED_ALL_EXCLUDE}" ] && _BATCH_EXCLUDE="${_MERGED_ALL_EXCLUDE}"
+  [ -n "${_USER_MERGED_ALL_EXCLUDE}" ] && _BATCH_EXCLUDE="${_USER_MERGED_ALL_EXCLUDE}"
+  [ -n "${_LST_EXCLUDE}" ] && _BATCH_EXCLUDE="${_BATCH_EXCLUDE} ${_LST_EXCLUDE}"
+  #
+  [ -n "${_MERGED_ALL_INCLUDE}" ] && _BATCH_INCLUDE="${_MERGED_ALL_INCLUDE}"
+  [ -n "${_USER_MERGED_ALL_INCLUDE}" ] && _BATCH_INCLUDE="${_USER_MERGED_ALL_INCLUDE}"
+  [ -n "${_LST_INCLUDE}" ] && _BATCH_INCLUDE="${_BATCH_INCLUDE} ${_LST_INCLUDE}"
+  [ -n "${_SRC_INCLUDE}" ] && _BATCH_INCLUDE="${_BATCH_INCLUDE} ${_SRC_INCLUDE}"
+  #
+  export _BATCH_EXCLUDE
+  export _BATCH_INCLUDE
+
   _print_env "multiback_backup_prepare"
 }
 
@@ -456,16 +476,6 @@ _set_cmd() {
 
 # Function to perform backup
 _run_backup() {
-  if [ -n "${_USER_INCLUDE}" ] && [ -n "${_INCLUDE}" ]; then
-    export _BATCH_INCLUDE="${_INCLUDE} ${_USER_INCLUDE}"
-  else
-    export _BATCH_INCLUDE="${_INCLUDE}"
-  fi
-  if [ -n "${_USER_EXCLUDE}" ] && [ -n "${_EXCLUDE}" ]; then
-    export _BATCH_EXCLUDE="${_EXCLUDE} ${_USER_EXCLUDE}"
-  else
-    export _BATCH_EXCLUDE="${_EXCLUDE}"
-  fi
   export _FULL_BACK_CMD="${_DCY_UP_CMD} ${_BATCH_EXCLUDE} ${_BATCH_INCLUDE} --exclude '**' / ${_BACKUP_TARGET}"
   echo "Running ${_MODE} backup for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
   ${_DCY_UP_CMD} ${_BATCH_EXCLUDE} ${_BATCH_INCLUDE} --exclude '**' / ${_BACKUP_TARGET} >> ${_LOGFILE}
@@ -765,8 +775,10 @@ _remove_pid_file "${_PIDFILE}"
   export _DCY_MN_CMD=
   export _DCY_UP_CMD=
   export _DO_CLEANUP=
-  export _EXCLUDE=
-  export _INCLUDE=
+  export _EXCLUDE_LIST=
+  export _INCLUDE_LIST=
+  export _LST_EXCLUDE=
+  export _LST_INCLUDE=
   export _MODE=
   export _NAME=
   export _PIDFILE=
@@ -776,9 +788,11 @@ _remove_pid_file "${_PIDFILE}"
   export _RESTORE_TIME=
   export _SERVICE=
   export _SOURCE=
+  export _SRC_INCLUDE=
   export _USER=
-  export _USER_EXCLUDE=
-  export _USER_INCLUDE=
+  export _USER_EXCLUDE_PATHS=
+  export _USER_INCLUDE_PATHS=
+  export _USER_MERGED_ALL=
   export _credentials_file=
   export _paths_file=
   export _secret_file=
