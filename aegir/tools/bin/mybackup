@@ -134,12 +134,12 @@ _load_credentials() {
   local _service="$1"
   local _user="$2"
   if [ "${_user}" != "arch" ] && [ "${_user}" != "globalcatchall" ]; then
-    local _cred_file="/data/disk/${_user}/static/control/remote_backups/credentials/${_service}.txt"
-    local _secret_file="/data/disk/${_user}/remote_backups/.secret.txt"
+    _cred_file="/data/disk/${_user}/static/control/remote_backups/credentials/${_service}.txt"
+    _secret_file="/data/disk/${_user}/remote_backups/.secret.txt"
   fi
   if [ "${_user}" = "globalcatchall" ]; then
-    local _cred_file="/root/.remote_backups/credentials/${_service}.txt"
-    local _secret_file="/root/.remote_backups/.secret.txt"
+    _cred_file="/root/.remote_backups/credentials/${_service}.txt"
+    _secret_file="/root/.remote_backups/.secret.txt"
   fi
 
   if [ -f "${_secret_file}" ]; then
@@ -197,7 +197,7 @@ _send_restore_confirmation_email() {
 
   if [ -n "${_recipient}" ]; then
     echo "Sending email report on $(date)" >> ${_LOGFILE}
-    s-nail -s "Daily backup: ${_MODE} ${_HST} $(date)" ${_MY_EMAIL} < ${_LOGFILE}
+    s-nail -s "${_subject}" "${_MY_EMAIL}" < ${_LOGFILE}
   fi
 }
 
@@ -236,7 +236,7 @@ _restore() {
   echo "MyBackup Restore for [${_user}] on [$(date)]" >> ${_LOGFILE}
   eval "${_restore_command}" >> ${_LOGFILE}
   if [ -n "${_userEmail}" ]; then
-    local _subject="MyBackup Restore Notification [${_user}] on [$(date)]"
+    _subject="MyBackup Restore Notification [${_user}] on [$(date)]"
     _send_restore_confirmation_email "${_userEmail}" "${_subject}"
   fi
 }
@@ -252,12 +252,12 @@ _set_backup_target() {
       _construct_bucket_name "${_service}" "${_user}"
 
       # Define S3-specific options
-      local _s3_endpoint="https://s3.dualstack.${AWS_REGION}.amazonaws.com"
-      local _s3_options="--s3-endpoint-url ${_s3_endpoint} --s3-region-name ${AWS_REGION}"
+      _s3_endpoint="https://s3.dualstack.${AWS_REGION}.amazonaws.com"
+      _s3_options="--s3-endpoint-url ${_s3_endpoint} --s3-region-name ${AWS_REGION}"
 
       # Use intelligent-tiering options for specific services
       if [ "${_service}" = "aws_standard_ia" ] || [ "${_service}" = "aws_one_zone" ]; then
-        local _s3_options="${_s3_options} --s3-use-ia"
+        _s3_options="${_s3_options} --s3-use-ia"
       fi
 
       _BACKUP_TARGET="boto3+s3://${_BUCKET_NAME} ${_s3_options}"
@@ -277,7 +277,7 @@ _set_backup_target() {
       _construct_bucket_name "cloudflare" "${_user}"
 
       # Custom endpoint for Cloudflare R2
-      local _r2_endpoint="https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
+      _r2_endpoint="https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
 
       # Configure the S3 backup target
       _BACKUP_TARGET="boto3+s3://${R2_ACCESS_KEY_ID}:${R2_SECRET_ACCESS_KEY}@${_r2_endpoint}/${_BUCKET_NAME}"
@@ -432,7 +432,9 @@ if [[ $(whoami) == *.ftp ]]; then
 
   # If invoked as USER.ftp, queue the command
   echo "$@" > "${_user_run_dir}/${_CMD_FILE}"
-  echo "Command queued for user ${_user}. It will be executed by the system."
+  echo "Command queued for user ${_user}..."
+  echo "It will be executed by the system shortly..."
+  echo "Bye!"
   exit 0
 fi
 
@@ -474,30 +476,20 @@ esac
 _remove_pid_file "${_PIDFILE}"
 
 # Wipe out any exported variables to clean up env after running the backup
-  export FULL_BACKUP_FREQUENCY=
   export PASSPHRASE=
   export _ACTION=
   export _BACKUP_TARGET=
   export _BUCKET_NAME=
   export _DCY_MN_CMD=
-  export _DCY_UP_CMD=
-  export _DO_CLEANUP=
-  export _EXCLUDE=
-  export _INCLUDE=
-  export _MODE=
   export _NAME=
   export _PIDFILE=
-  export _RDW=
   export _RESTORE_PATH=
   export _RESTORE_TARGET=
   export _RESTORE_TIME=
   export _SERVICE=
-  export _SOURCE=
-  export _USER=
-  export _USER_EXCLUDE=
-  export _USER_INCLUDE=
-  export _credentials_file=
+  export _cred_file=
   export _paths_file=
+  export _r2_endpoint=
   export _run_as_user=
   export _secret_file=
   export _user=
