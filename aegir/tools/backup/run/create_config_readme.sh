@@ -3,6 +3,7 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+export _sPid="f92"
 
 # Base directory for user configurations
 _BASE_DIR="/data/disk"
@@ -11,7 +12,7 @@ _BASE_DIR="/data/disk"
 _ensure_config_dir() {
   _user=$1
   _config_dir="${_BASE_DIR}/${_user}/static/control/remote_backups/config"
-  _dir_ctrl_file="${_BASE_DIR}/${_user}/log/.backboa.${_user}.f93.config.dir.ctrl"
+  _dir_ctrl_file="${_BASE_DIR}/${_user}/log/.backboa.${_user}.${_sPid}.config.dir.ctrl"
   if [ ! -d "${_config_dir}" ] || [ ! -e "${_dir_ctrl_file}" ]; then
     mkdir -p "${_config_dir}"
     chown -R ${_user}.ftp:users "${_config_dir}"
@@ -26,7 +27,7 @@ _create_config_readme_file() {
   _user=$1
   _config_dir="${_BASE_DIR}/${_user}/static/control/remote_backups/config"
   _readme_file="${_config_dir}/README.txt"
-  _readme_ctrl_file="${_BASE_DIR}/${_user}/log/.backboa.${_user}.f93.config.readme.ctrl"
+  _readme_ctrl_file="${_BASE_DIR}/${_user}/log/.backboa.${_user}.${_sPid}.config.readme.ctrl"
   _user_static_dir="/data/disk/${_user}/static"
   _user_ftp_dir="/home/${_user}.ftp"
   _user_ftp_dir_regex="/home/${_user}\.ftp"
