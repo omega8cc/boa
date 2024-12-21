@@ -3,7 +3,7 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-export _sPid="f92"
+export _sPid="f91"
 
 # Function to create or update global paths configuration
 _create_global_paths_config() {
@@ -146,7 +146,7 @@ EOF
 
   # Create the final paths configuration file
   cat << EOF > "${_global_paths_file}"
-_SOURCE="/data /home /etc /var/aegir /mnt /var/www /var/solr7 /opt/solr4 /var/xdrago"
+_SOURCE="/data /etc /home /mnt /opt/solr4 /var/aegir /var/solr7 /var/www /var/xdrago"
 _EXCLUDE_PATHS="${_MERGED_ALL_EXCLUDE}"
 _INCLUDE_PATHS="${_MERGED_ALL_INCLUDE}"
 _EXCLUDE_LIST="${_exclude_list}"
