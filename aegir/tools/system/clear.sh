@@ -269,10 +269,14 @@ _if_fix_locked_sshd
 
 #setprio &> /dev/null
 
-if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ]; then
-  echo "[$(date)] Active duplicity process detected, will try again later..." >> /var/log/mybackup_waiting_queue.log
-else
-  [ -x "/usr/local/bin/mybackup" ] && nohup /usr/local/bin/mybackup > /dev/null 2>&1 &
+if [ -e "/root/.remote_backups/schedule/backup_schedule.txt ]; then
+  if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ]; then
+    echo "[$(date)] Active duplicity process detected, will try again later..." >> /var/log/mybackup_waiting_queue.log
+  else
+    [ -x "/usr/local/bin/dcysetup" ] && bash /usr/local/bin/dcysetup update &> /dev/null
+    wait
+    [ -x "/usr/local/bin/mybackup" ] && nohup /usr/local/bin/mybackup > /dev/null 2>&1 &
+  fi
 fi
 
 touch /var/xdrago/log/clear.done.pid
