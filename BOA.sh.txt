@@ -752,50 +752,6 @@ _update_agents() {
 
   if [ -d "/root/.remote_backups/run" ] \
     && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthCtrl}/multiback.sh.ctrl.f87.${_tRee}.${_xSrl}.pid" ]; then
-    if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ]; then
-      echo "The duplicity backup is running!"
-    else
-      if [ -e "${_optBin}/multiback" ]; then
-        mv -f ${_optBin}/multiback ${_optBin}/multiback.old
-      fi
-      curl ${_crlGet} "${_urlHmr}/tools/backup/run/install_dependencies.sh" -o ${_optBin}/multiback
-      if [ -e "${_optBin}/multiback" ]; then
-        chmod 700 ${_optBin}/multiback
-        chown root:root ${_optBin}/multiback
-        touch ${_pthCtrl}/multiback.sh.ctrl.f87.${_tRee}.${_xSrl}.pid
-      else
-        if [ -e "${_optBin}/multiback.old" ]; then
-          mv -f ${_optBin}/multiback.old ${_optBin}/multiback
-        fi
-      fi
-    fi
-  fi
-
-  if [ -d "/root/.remote_backups/run" ] \
-    && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthCtrl}/multiback.sh.ctrl.f87.${_tRee}.${_xSrl}.pid" ]; then
-    if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ]; then
-      echo "The duplicity backup is running!"
-    else
-      if [ -e "${_optBin}/multiback" ]; then
-        mv -f ${_optBin}/multiback ${_optBin}/multiback.old
-      fi
-      curl ${_crlGet} "${_urlHmr}/tools/backup/run/install_dependencies.sh" -o ${_optBin}/multiback
-      if [ -e "${_optBin}/multiback" ]; then
-        chmod 700 ${_optBin}/multiback
-        chown root:root ${_optBin}/multiback
-        touch ${_pthCtrl}/multiback.sh.ctrl.f87.${_tRee}.${_xSrl}.pid
-      else
-        if [ -e "${_optBin}/multiback.old" ]; then
-          mv -f ${_optBin}/multiback.old ${_optBin}/multiback
-        fi
-      fi
-    fi
-  fi
-
-  if [ -d "/root/.remote_backups/run" ] \
-    && [ -d "/var/aegir/drush" ] \
     && [ ! -e "${_pthCtrl}/install_dependencies.sh.ctrl.f87.${_tRee}.${_xSrl}.pid" ]; then
     if [ -e "/root/.remote_backups/run/install_dependencies.sh" ]; then
       mv -f /root/.remote_backups/run/install_dependencies.sh /root/.remote_backups/run/install_dependencies.sh.old
