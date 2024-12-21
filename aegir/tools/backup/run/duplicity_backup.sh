@@ -427,17 +427,18 @@ _randomize_full() {
 _set_mode() {
   if [ "${_DOW}" = "${_RDW}" ] && [ "${FULL_BACKUP_FREQUENCY}" = "7D" ]; then
     if [ ! -e "/root/.randomize_duplicity_full_backup_day.cnf" ]; then
-      export _MODE="full"
-      export FULL_BACKUP_FREQUENCY="1M"
+      _MODE="full"
+      FULL_BACKUP_FREQUENCY="1M"
     fi
   else
     if [ -e "${_LOGPTH}/${_BUCKET_NAME}.archive.log" ] \
       && [ "${_DO_CLEANUP}" = "YES" ]; then
-      export _MODE="incremental"
+      _MODE="incremental"
     else
-      export _MODE="full"
+      _MODE="full"
     fi
   fi
+  _MODE="backup"
   _print_env "multiback_set_mode"
 }
 
