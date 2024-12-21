@@ -729,6 +729,9 @@ _update_agents() {
     if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ] \
       && [ `ps aux | grep -v "grep" | grep --count "multiback"` -lt "1" ]; then
       kill -9 $(ps aux | grep '[d]uplicity' | awk '{print $2}') &> /dev/null
+      rm -rf /tmp/duplicity*
+      rm -rf /root/.cache/duplicity/*/duplicity-*tempdir
+      rm -f /root/.cache/duplicity/*/lockfile
       echo "$(date) Orphaned duplicity processes killed" >> /var/log/duplicity-cleanup.log
     fi
     if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ]; then
