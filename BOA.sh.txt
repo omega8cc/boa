@@ -737,7 +737,7 @@ _update_agents() {
       if [ -e "${_optBin}/multiback" ]; then
         mv -f ${_optBin}/multiback ${_optBin}/multiback.old
       fi
-      curl ${_crlGet} "${_urlHmr}/tools/backup/run/install_dependencies.sh" -o ${_optBin}/multiback
+      curl ${_crlGet} "${_urlHmr}/tools/bin/multiback" -o ${_optBin}/multiback
       if [ -e "${_optBin}/multiback" ]; then
         chmod 700 ${_optBin}/multiback
         chown root:root ${_optBin}/multiback
