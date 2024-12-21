@@ -725,7 +725,7 @@ _update_agents() {
 
   if [ -e "/root/.remote_backups/schedule/backup_schedule.txt" ] \
     && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthCtrl}/multiback.sh.ctrl.f86.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthCtrl}/multiback.sh.ctrl.f85.${_tRee}.${_xSrl}.pid" ]; then
     if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ] \
       && [ `ps aux | grep -v "grep" | grep --count "multiback"` -lt "1" ]; then
       kill -9 $(ps aux | grep '[d]uplicity' | awk '{print $2}') &> /dev/null
@@ -744,7 +744,7 @@ _update_agents() {
       if [ -e "${_optBin}/multiback" ]; then
         chmod 700 ${_optBin}/multiback
         chown root:root ${_optBin}/multiback
-        touch ${_pthCtrl}/multiback.sh.ctrl.f86.${_tRee}.${_xSrl}.pid
+        touch ${_pthCtrl}/multiback.sh.ctrl.f85.${_tRee}.${_xSrl}.pid
       else
         if [ -e "${_optBin}/multiback.old" ]; then
           mv -f ${_optBin}/multiback.old ${_optBin}/multiback
