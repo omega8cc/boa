@@ -21,7 +21,7 @@ The retention system for live backups relies entirely on **time-based retention*
 2. **Full Backup Frequency (`FULL_BACKUP_FREQUENCY`)**:
    - Defines how often a new full backup is created.
    - Incremental backups are created between full backups to save storage and backup time.
-   - **Example**: `FULL_BACKUP_FREQUENCY="7D"` creates a new full backup every 7 days.
+   - **Example**: `FULL_BACKUP_FREQUENCY="14D"` creates a new full backup every 14 days.
 
 ---
 
@@ -31,7 +31,7 @@ The system is preconfigured with these default settings:
 
 ```bash
 export KEEP_WITHIN="3M"             # Retain backups from the last 3 months
-export FULL_BACKUP_FREQUENCY="7D"   # Create a full backup every 7 days
+export FULL_BACKUP_FREQUENCY="14D"  # Create a full backup every 14 days
 ```
 
 These settings ensure:
@@ -40,7 +40,7 @@ These settings ensure:
    - This timeframe is sufficient for most recovery scenarios.
    - All backups older than 3 months are automatically removed.
 
-2. **A full backup every 7 days**:
+2. **A full backup every 14 days**:
    - Full backups ensure the integrity of the backup chain.
    - Incremental backups store changes between full backups, reducing storage usage.
 
@@ -100,10 +100,10 @@ If needed, you can adjust the retention settings to better fit your needs.
      export KEEP_WITHIN="6M"
      ```
 
-2. **Create Full Backups Bi-Weekly**:
-   - To create a new full backup every 14 days:
+2. **Create Full Backups Weekly**:
+   - To create a new full backup every 7 days:
      ```bash
-     export FULL_BACKUP_FREQUENCY="14D"
+     export FULL_BACKUP_FREQUENCY="7D"
      ```
 
 3. **Shorten Retention Period**:

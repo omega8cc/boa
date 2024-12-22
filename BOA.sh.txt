@@ -47,7 +47,7 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 export _tRee=pro
 export _xSrl=550proT04
 export _rLsn="BOA-5.5.0"
-export _bTs=DE07
+export _bTs=DE08
 
 ###
 ### Avoid too many questions
@@ -723,9 +723,39 @@ _update_agents() {
     [ -e "/var/xdrago/monitor/hackcheck.archive.log" ] && mv -f /var/xdrago/monitor/*.log /var/xdrago/monitor/log/
   fi
 
+  if [ -e "/root/.remote_backups/schedule/backup_schedule.txt" ] \
+    && [ -d "/var/aegir/drush" ] \
+    && [ ! -e "${_pthCtrl}/multiback.sh.ctrl.f85.${_tRee}.${_xSrl}.pid" ]; then
+    if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ] \
+      && [ `ps aux | grep -v "grep" | grep --count "multiback"` -lt "1" ]; then
+      kill -9 $(ps aux | grep '[d]uplicity' | awk '{print $2}') &> /dev/null
+      rm -rf /tmp/duplicity*
+      rm -rf /root/.cache/duplicity/*/duplicity-*tempdir
+      rm -f /root/.cache/duplicity/*/lockfile
+      echo "$(date) Orphaned duplicity processes killed" >> /var/log/duplicity-cleanup.log
+    fi
+    if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ]; then
+      echo "The duplicity backup is running!"
+    else
+      if [ -e "${_optBin}/multiback" ]; then
+        mv -f ${_optBin}/multiback ${_optBin}/multiback.old
+      fi
+      curl ${_crlGet} "${_urlHmr}/tools/bin/multiback" -o ${_optBin}/multiback
+      if [ -e "${_optBin}/multiback" ]; then
+        chmod 700 ${_optBin}/multiback
+        chown root:root ${_optBin}/multiback
+        touch ${_pthCtrl}/multiback.sh.ctrl.f85.${_tRee}.${_xSrl}.pid
+      else
+        if [ -e "${_optBin}/multiback.old" ]; then
+          mv -f ${_optBin}/multiback.old ${_optBin}/multiback
+        fi
+      fi
+    fi
+  fi
+
   if [ -d "/root/.remote_backups/run" ] \
     && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthCtrl}/install_dependencies.sh.ctrl.f87.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthCtrl}/install_dependencies.sh.ctrl.f85.${_tRee}.${_xSrl}.pid" ]; then
     if [ -e "/root/.remote_backups/run/install_dependencies.sh" ]; then
       mv -f /root/.remote_backups/run/install_dependencies.sh /root/.remote_backups/run/install_dependencies.sh.old
     fi
@@ -733,7 +763,7 @@ _update_agents() {
     if [ -e "/root/.remote_backups/run/install_dependencies.sh" ]; then
       chmod 700 /root/.remote_backups/run/install_dependencies.sh
       chown root:root /root/.remote_backups/run/install_dependencies.sh
-      touch ${_pthCtrl}/install_dependencies.sh.ctrl.f87.${_tRee}.${_xSrl}.pid
+      touch ${_pthCtrl}/install_dependencies.sh.ctrl.f85.${_tRee}.${_xSrl}.pid
     else
       if [ -e "/root/.remote_backups/run/install_dependencies.sh.old" ]; then
         mv -f /root/.remote_backups/run/install_dependencies.sh.old /root/.remote_backups/run/install_dependencies.sh
@@ -743,7 +773,7 @@ _update_agents() {
 
   if [ -d "/root/.remote_backups/run" ] \
     && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthCtrl}/create_credentials_templates.sh.ctrl.f93.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthCtrl}/create_credentials_templates.sh.ctrl.f85.${_tRee}.${_xSrl}.pid" ]; then
     if [ -e "/root/.remote_backups/run/create_credentials_templates.sh" ]; then
       mv -f /root/.remote_backups/run/create_credentials_templates.sh /root/.remote_backups/run/create_credentials_templates.sh.old
     fi
@@ -751,7 +781,7 @@ _update_agents() {
     if [ -e "/root/.remote_backups/run/create_credentials_templates.sh" ]; then
       chmod 700 /root/.remote_backups/run/create_credentials_templates.sh
       chown root:root /root/.remote_backups/run/create_credentials_templates.sh
-      touch ${_pthCtrl}/create_credentials_templates.sh.ctrl.f93.${_tRee}.${_xSrl}.pid
+      touch ${_pthCtrl}/create_credentials_templates.sh.ctrl.f85.${_tRee}.${_xSrl}.pid
     else
       if [ -e "/root/.remote_backups/run/create_credentials_templates.sh.old" ]; then
         mv -f /root/.remote_backups/run/create_credentials_templates.sh.old /root/.remote_backups/run/create_credentials_templates.sh
@@ -761,7 +791,7 @@ _update_agents() {
 
   if [ -d "/root/.remote_backups/run" ] \
     && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthCtrl}/create_global_paths_config.sh.ctrl.f91.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthCtrl}/create_global_paths_config.sh.ctrl.f85.${_tRee}.${_xSrl}.pid" ]; then
     if [ -e "/root/.remote_backups/run/create_global_paths_config.sh" ]; then
       mv -f /root/.remote_backups/run/create_global_paths_config.sh /root/.remote_backups/run/create_global_paths_config.sh.old
     fi
@@ -769,7 +799,7 @@ _update_agents() {
     if [ -e "/root/.remote_backups/run/create_global_paths_config.sh" ]; then
       chmod 700 /root/.remote_backups/run/create_global_paths_config.sh
       chown root:root /root/.remote_backups/run/create_global_paths_config.sh
-      touch ${_pthCtrl}/create_global_paths_config.sh.ctrl.f91.${_tRee}.${_xSrl}.pid
+      touch ${_pthCtrl}/create_global_paths_config.sh.ctrl.f85.${_tRee}.${_xSrl}.pid
     else
       if [ -e "/root/.remote_backups/run/create_global_paths_config.sh.old" ]; then
         mv -f /root/.remote_backups/run/create_global_paths_config.sh.old /root/.remote_backups/run/create_global_paths_config.sh
@@ -779,7 +809,8 @@ _update_agents() {
 
   if [ -d "/root/.remote_backups/run" ] \
     && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthCtrl}/create_user_paths_config.sh.ctrl.f87.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthCtrl}/create_user_paths_config.sh.ctrl.f85.${_tRee}.${_xSrl}.pid" ]; then
+    rm -f /.backboa.*.all.*.merged.file
     if [ -e "/root/.remote_backups/run/create_user_paths_config.sh" ]; then
       mv -f /root/.remote_backups/run/create_user_paths_config.sh /root/.remote_backups/run/create_user_paths_config.sh.old
     fi
@@ -787,7 +818,7 @@ _update_agents() {
     if [ -e "/root/.remote_backups/run/create_user_paths_config.sh" ]; then
       chmod 700 /root/.remote_backups/run/create_user_paths_config.sh
       chown root:root /root/.remote_backups/run/create_user_paths_config.sh
-      touch ${_pthCtrl}/create_user_paths_config.sh.ctrl.f87.${_tRee}.${_xSrl}.pid
+      touch ${_pthCtrl}/create_user_paths_config.sh.ctrl.f85.${_tRee}.${_xSrl}.pid
     else
       if [ -e "/root/.remote_backups/run/create_user_paths_config.sh.old" ]; then
         mv -f /root/.remote_backups/run/create_user_paths_config.sh.old /root/.remote_backups/run/create_user_paths_config.sh
@@ -797,7 +828,7 @@ _update_agents() {
 
   if [ -d "/root/.remote_backups/run" ] \
     && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthCtrl}/create_cron_entries.sh.ctrl.f87.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthCtrl}/create_cron_entries.sh.ctrl.f85.${_tRee}.${_xSrl}.pid" ]; then
     if [ -e "/root/.remote_backups/run/create_cron_entries.sh" ]; then
       mv -f /root/.remote_backups/run/create_cron_entries.sh /root/.remote_backups/run/create_cron_entries.sh.old
     fi
@@ -805,7 +836,7 @@ _update_agents() {
     if [ -e "/root/.remote_backups/run/create_cron_entries.sh" ]; then
       chmod 700 /root/.remote_backups/run/create_cron_entries.sh
       chown root:root /root/.remote_backups/run/create_cron_entries.sh
-      touch ${_pthCtrl}/create_cron_entries.sh.ctrl.f87.${_tRee}.${_xSrl}.pid
+      touch ${_pthCtrl}/create_cron_entries.sh.ctrl.f85.${_tRee}.${_xSrl}.pid
     else
       if [ -e "/root/.remote_backups/run/create_cron_entries.sh.old" ]; then
         mv -f /root/.remote_backups/run/create_cron_entries.sh.old /root/.remote_backups/run/create_cron_entries.sh
@@ -815,7 +846,7 @@ _update_agents() {
 
   if [ -d "/root/.remote_backups/run" ] \
     && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthCtrl}/create_readme.sh.ctrl.f92.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthCtrl}/create_readme.sh.ctrl.f85.${_tRee}.${_xSrl}.pid" ]; then
     if [ -e "/root/.remote_backups/run/create_readme.sh" ]; then
       mv -f /root/.remote_backups/run/create_readme.sh /root/.remote_backups/run/create_readme.sh.old
     fi
@@ -823,7 +854,7 @@ _update_agents() {
     if [ -e "/root/.remote_backups/run/create_readme.sh" ]; then
       chmod 700 /root/.remote_backups/run/create_readme.sh
       chown root:root /root/.remote_backups/run/create_readme.sh
-      touch ${_pthCtrl}/create_readme.sh.ctrl.f92.${_tRee}.${_xSrl}.pid
+      touch ${_pthCtrl}/create_readme.sh.ctrl.f85.${_tRee}.${_xSrl}.pid
     else
       if [ -e "/root/.remote_backups/run/create_readme.sh.old" ]; then
         mv -f /root/.remote_backups/run/create_readme.sh.old /root/.remote_backups/run/create_readme.sh
@@ -833,7 +864,7 @@ _update_agents() {
 
   if [ -d "/root/.remote_backups/run" ] \
     && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthCtrl}/create_config_readme.sh.ctrl.f91.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthCtrl}/create_config_readme.sh.ctrl.f85.${_tRee}.${_xSrl}.pid" ]; then
     if [ -e "/root/.remote_backups/run/create_config_readme.sh" ]; then
       mv -f /root/.remote_backups/run/create_config_readme.sh /root/.remote_backups/run/create_config_readme.sh.old
     fi
@@ -841,7 +872,7 @@ _update_agents() {
     if [ -e "/root/.remote_backups/run/create_config_readme.sh" ]; then
       chmod 700 /root/.remote_backups/run/create_config_readme.sh
       chown root:root /root/.remote_backups/run/create_config_readme.sh
-      touch ${_pthCtrl}/create_config_readme.sh.ctrl.f91.${_tRee}.${_xSrl}.pid
+      touch ${_pthCtrl}/create_config_readme.sh.ctrl.f85.${_tRee}.${_xSrl}.pid
     else
       if [ -e "/root/.remote_backups/run/create_config_readme.sh.old" ]; then
         mv -f /root/.remote_backups/run/create_config_readme.sh.old /root/.remote_backups/run/create_config_readme.sh
@@ -1272,13 +1303,13 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/clear.sh.ctrl.f92.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/clear.sh.ctrl.f91.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/clear.sh /var/xdrago/clear.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/clear.sh" -o /var/xdrago/clear.sh
     if [ -e "/var/xdrago/clear.sh" ]; then
       chmod 700 /var/xdrago/clear.sh
       chown root:root /var/xdrago/clear.sh
-      touch ${_pthLog}/clear.sh.ctrl.f92.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/clear.sh.ctrl.f91.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/clear.sh.old /var/xdrago/clear.sh
     fi
@@ -3443,14 +3474,14 @@ _if_update_boa_key_tools_only() {
 _boa_setup() {
   _BENG_VS=NO
   _VMFAMILY=NO
+  _RANDOMIZE=NO
   _VM_TEST="$(uname -a)"
   if [[ "${_VM_TEST}" =~ "-beng" ]]; then
     _BENG_VS=YES
-  fi
-  if [ "${_BENG_VS}" = "YES" ]; then
     _RANDOMIZE=YES
-  else
-    _RANDOMIZE=NO
+  fi
+  if dmidecode -s system-manufacturer | grep -i 'Linode' &> /dev/null; then
+    _RANDOMIZE=YES
   fi
   _if_hosted_sys
   if [ "${_hostedSys}" = "YES" ]; then
