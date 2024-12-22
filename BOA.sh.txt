@@ -725,7 +725,7 @@ _update_agents() {
 
   if [ -e "/root/.remote_backups/schedule/backup_schedule.txt" ] \
     && [ -d "/var/aegir/drush" ]; then
-    if grep -qx "Out of memory: Killed process.*duplicity" /var/log/iptables.log; then
+    if grep -q "Out of memory: Killed process.*duplicity" /var/log/iptables.log; then
      if [ ! -e "/root/.remote_backups/schedule/backup_schedule.txt-off" ]; then
        cp -a /root/.remote_backups/schedule/backup_schedule.txt /root/.remote_backups/schedule/backup_schedule.txt-off
        echo "# Backup schedule (service user) OFF" > /root/.remote_backups/schedule/backup_schedule.txt

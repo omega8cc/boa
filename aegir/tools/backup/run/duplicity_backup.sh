@@ -516,7 +516,7 @@ _repair() {
 
 # Function to check if repair incomplete backup sets is needed
 _check_if_repair() {
-  if grep -qx "found incomplete backup sets" "${_LOGFILE}"; then
+  if grep -q "found incomplete backup sets" "${_LOGFILE}"; then
     _repair_only
   fi
 }
