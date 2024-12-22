@@ -119,8 +119,25 @@ if [ ! -x "/usr/local/ssl3/bin/openssl" ]; then
   exit 1
 fi
 
+# Function to notify about still running backup
+_waiting_notify() {
+  local _templog="/var/backups/multiback_waiting_queue.log"
+  cat /root/.remote_backups/schedule/backup_schedule.txt > ${_templog}
+  ps axf | grep multiback >> ${_templog}
+  ps axf | grep duplicity >> ${_templog}
+  ll /tmp/duplicity-*-tempdir >> ${_templog}
+  tree /root/.cache/duplicity >> ${_templog}
+  ls -laR /root/.cache/duplicity >> ${_templog}
+  grep "Out of memory: Killed process.*duplicity" /var/log/iptables.log >> ${_templog}
+  boa info  >> ${_templog}
+  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "YES" ]; then
+    s-nail -s "Multiback Waiting Report for [${_hName}] on $(date)" ${_MY_EMAIL} < ${_templog}
+  fi
+}
+
 if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ]; then
   echo "[$(date)] Active duplicity process detected, will try again later..." >> /var/log/mybackup_waiting_queue.log
+  _waiting_notify
   exit 1
 fi
 
