@@ -102,6 +102,8 @@ _check_root() {
     _AWS_VLV="warning"
   fi
   _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
+  swapoff -a
+  wait
 }
 _check_root
 _verify_boa_keys
