@@ -119,8 +119,25 @@ if [ ! -x "/usr/local/ssl3/bin/openssl" ]; then
   exit 1
 fi
 
+# Function to notify about still running backup
+_waiting_notify() {
+  local _templog="/var/backups/multiback_waiting_queue.log"
+  cat /root/.remote_backups/schedule/backup_schedule.txt > ${_templog}
+  ps axf | grep multiback >> ${_templog}
+  ps axf | grep duplicity >> ${_templog}
+  ll /tmp/duplicity-*-tempdir >> ${_templog}
+  tree /root/.cache/duplicity >> ${_templog}
+  ls -laR /root/.cache/duplicity >> ${_templog}
+  grep "Out of memory: Killed process.*duplicity" /var/log/iptables.log >> ${_templog}
+  boa info  >> ${_templog}
+  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "YES" ]; then
+    s-nail -s "Multiback Waiting Report for [${_hName}] on $(date)" ${_MY_EMAIL} < ${_templog}
+  fi
+}
+
 if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ]; then
   echo "[$(date)] Active duplicity process detected, will try again later..." >> /var/log/mybackup_waiting_queue.log
+  _waiting_notify
   exit 1
 fi
 
@@ -422,13 +439,15 @@ _randomize_full() {
   else
     _RDW=7
   fi
+  echo "The _RDW has been set to (${_RDW}) in _randomize_full for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
+  echo "The _MODE has been set to (${_MODE}) in _randomize_full for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
   _print_env "multiback_randomize_full"
 }
 
 # Function to set backup mode
 _set_mode() {
   [ -z "${_MODE}" ] && _MODE="backup"
-  if [ "${_DOW}" = "${_RDW}" ] && [ "${FULL_BACKUP_FREQUENCY}" = "7D" ]; then
+  if [ "${_DOW}" = "${_RDW}" ] && [ "${FULL_BACKUP_FREQUENCY}" = "14D" ]; then
     if [ ! -e "/root/.randomize_duplicity_full_backup_day.cnf" ]; then
       _MODE="full"
       FULL_BACKUP_FREQUENCY="1M"
@@ -441,6 +460,10 @@ _set_mode() {
       _MODE="full"
     fi
   fi
+  echo "The _MODE has been set to (${_MODE}) in _set_mode for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
+  echo "The FULL_BACKUP_FREQUENCY has been set to (${FULL_BACKUP_FREQUENCY}) in _set_mode for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
+  _MODE="backup"
+  echo "The _MODE has been re-set to (${_MODE}) in _set_mode for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
   _print_env "multiback_set_mode"
 }
 
@@ -516,7 +539,7 @@ _repair() {
 
 # Function to check if repair incomplete backup sets is needed
 _check_if_repair() {
-  if grep -qx "found incomplete backup sets" "${_LOGFILE}"; then
+  if grep -q "found incomplete backup sets" "${_LOGFILE}"; then
     _repair_only
   fi
 }
@@ -527,6 +550,23 @@ _cleanup() {
   _set_cmd
   _remove_older_than
 }
+
+# Function to check collection-status only
+_status() {
+  _set_mode
+  _set_cmd
+  echo "Command is ${_DCY_MN_CMD} collection-status ${_BACKUP_TARGET}"
+  ${_DCY_MN_CMD} collection-status ${_BACKUP_TARGET}
+}
+
+# Function to list-current-files only
+_list() {
+  _set_mode
+  _set_cmd
+  echo "Command is ${_DCY_MN_CMD} list-current-files ${_BACKUP_TARGET}"
+  ${_DCY_MN_CMD} list-current-files ${_BACKUP_TARGET}
+}
+
 
 # Function to prepare backup
 _backup() {
@@ -784,6 +824,14 @@ case "${_ACTION}" in
   cleanup)
     _set_backup_target "${_SERVICE}" "${_USER}"
     _cleanup
+    ;;
+  list)
+    _set_backup_target "${_SERVICE}" "${_USER}"
+    _list
+    ;;
+  status)
+    _set_backup_target "${_SERVICE}" "${_USER}"
+    _status
     ;;
   repair)
     _set_backup_target "${_SERVICE}" "${_USER}"
