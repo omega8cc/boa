@@ -727,7 +727,7 @@ export _RESTORE_TIME="${6:-}"
 export _PIDFILE="/var/run/duplicity_${_SERVICE}_${_USER}.pid"
 # Default values
 export _DEFAULT_KEEP_WITHIN="3M"            # Default: 3 month
-export _DEFAULT_FULL_BACKUP_FREQUENCY="7D"  # Default: 7 days
+export _DEFAULT_FULL_BACKUP_FREQUENCY="14D" # Default: 14 days
 
 # Log file for validation issues
 export _VALIDATION_LOG_FILE="/var/log/backup_validation_issues.log"
