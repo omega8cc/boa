@@ -495,6 +495,15 @@ _collection_status() {
   ${_DCY_MN_CMD} collection-status ${_BACKUP_TARGET} >> ${_LOGFILE}
 }
 
+# Function to repair incomplete backup sets
+_repair() {
+  _set_mode
+  _set_cmd
+  echo "Command is ${_DCY_MN_CMD} cleanup --force ${_BACKUP_TARGET}"
+  ${_DCY_MN_CMD} cleanup --force ${_BACKUP_TARGET} >> ${_LOGFILE}
+  _collection_status
+}
+
 # Function to clean up old backups
 _cleanup() {
   _set_mode
@@ -755,6 +764,10 @@ case "${_ACTION}" in
   cleanup)
     _set_backup_target "${_SERVICE}" "${_USER}"
     _cleanup
+    ;;
+  repair)
+    _set_backup_target "${_SERVICE}" "${_USER}"
+    _repair
     ;;
   restore)
     _set_backup_target "${_SERVICE}" "${_USER}"
