@@ -77,7 +77,7 @@ _verify_boa_keys() {
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
     ionice -c2 -n7 -p $$
-    renice 9 -p $$
+    renice 19 -p $$
     chmod a+w /dev/null
     [ -e "/root/.gnupg" ] && chmod 700 /root/.gnupg
   else
