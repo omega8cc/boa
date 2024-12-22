@@ -232,7 +232,6 @@ _if_disable_not_used_services() {
 
   if [ "${_clearSwap}" = "YES" ]; then
     swapoff -a
-    swapon -a
   fi
 }
 _if_disable_not_used_services
