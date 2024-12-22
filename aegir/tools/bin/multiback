@@ -534,6 +534,23 @@ _cleanup() {
   _remove_older_than
 }
 
+# Function to check collection-status only
+_status() {
+  _set_mode
+  _set_cmd
+  echo "Command is ${_DCY_MN_CMD} collection-status ${_BACKUP_TARGET}"
+  ${_DCY_MN_CMD} collection-status ${_BACKUP_TARGET}
+}
+
+# Function to list-current-files only
+_list() {
+  _set_mode
+  _set_cmd
+  echo "Command is ${_DCY_MN_CMD} list-current-files ${_BACKUP_TARGET}"
+  ${_DCY_MN_CMD} list-current-files ${_BACKUP_TARGET}
+}
+
+
 # Function to prepare backup
 _backup() {
   _backup_prepare
@@ -790,6 +807,14 @@ case "${_ACTION}" in
   cleanup)
     _set_backup_target "${_SERVICE}" "${_USER}"
     _cleanup
+    ;;
+  list)
+    _set_backup_target "${_SERVICE}" "${_USER}"
+    _list
+    ;;
+  status)
+    _set_backup_target "${_SERVICE}" "${_USER}"
+    _status
     ;;
   repair)
     _set_backup_target "${_SERVICE}" "${_USER}"
