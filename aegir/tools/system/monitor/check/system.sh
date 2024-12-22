@@ -66,6 +66,7 @@ _oom_critical_restart() {
   echo "$(date) OOM solr/jetty killed" >> ${_pthOml}
   kill -9 $(ps aux | grep '[n]ewrelic-daemon' | awk '{print $2}') &> /dev/null
   echo "$(date) OOM newrelic-daemon killed" >> ${_pthOml}
+  rm -f /var/lib/redis/*
   kill -9 $(ps aux | grep '[r]edis-server' | awk '{print $2}') &> /dev/null
   echo "$(date) OOM redis-server killed" >> ${_pthOml}
   bash /var/xdrago/move_sql.sh
