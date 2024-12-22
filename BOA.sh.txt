@@ -724,9 +724,10 @@ _update_agents() {
   fi
 
   if [ -e "/root/.remote_backups/schedule/backup_schedule.txt" ] \
-    && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthCtrl}/multiback.sh.ctrl.f84.${_tRee}.${_xSrl}.pid" ]; then
+    && [ -d "/var/aegir/drush" ]; then
     if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ] \
+      && [ `ps aux | grep -v "grep" | grep --count "dcysetup"` -lt "1" ] \
+      && [ `ps aux | grep -v "grep" | grep --count "mybackup"` -lt "1" ] \
       && [ `ps aux | grep -v "grep" | grep --count "multiback"` -lt "1" ]; then
       kill -9 $(ps aux | grep '[d]uplicity' | awk '{print $2}') &> /dev/null
       rm -rf /tmp/duplicity*
@@ -734,6 +735,11 @@ _update_agents() {
       rm -f /root/.cache/duplicity/*/lockfile
       echo "$(date) Orphaned duplicity processes killed" >> /var/log/duplicity-cleanup.log
     fi
+  fi
+
+  if [ -e "/root/.remote_backups/schedule/backup_schedule.txt" ] \
+    && [ -d "/var/aegir/drush" ] \
+    && [ ! -e "${_pthCtrl}/multiback.sh.ctrl.f84.${_tRee}.${_xSrl}.pid" ]; then
     if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ]; then
       echo "The duplicity backup is running!"
     else
