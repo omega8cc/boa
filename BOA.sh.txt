@@ -3474,14 +3474,14 @@ _if_update_boa_key_tools_only() {
 _boa_setup() {
   _BENG_VS=NO
   _VMFAMILY=NO
+  _RANDOMIZE=NO
   _VM_TEST="$(uname -a)"
   if [[ "${_VM_TEST}" =~ "-beng" ]]; then
     _BENG_VS=YES
-  fi
-  if [ "${_BENG_VS}" = "YES" ]; then
     _RANDOMIZE=YES
-  else
-    _RANDOMIZE=NO
+  fi
+  if dmidecode -s system-manufacturer | grep -i 'Linode' &> /dev/null; then
+    _RANDOMIZE=YES
   fi
   _if_hosted_sys
   if [ "${_hostedSys}" = "YES" ]; then
