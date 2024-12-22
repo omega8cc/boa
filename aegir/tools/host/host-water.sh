@@ -701,7 +701,6 @@ ntpdate pool.ntp.org > /dev/null 2>&1 &
 _IF_CDP=$(ps aux | grep '[c]dp_io' | awk '{print $2}')
 if [ -z "${_IF_CDP}" ] && [ ! -e "/root/.no.swap.clear.cnf" ]; then
   swapoff -a
-  swapon -a
 fi
 exit 0
 ###EOF2024###
