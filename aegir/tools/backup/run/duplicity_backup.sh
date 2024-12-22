@@ -102,6 +102,8 @@ _check_root() {
     _AWS_VLV="warning"
   fi
   _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
+  swapoff -a
+  wait
 }
 _check_root
 _verify_boa_keys
@@ -496,12 +498,27 @@ _collection_status() {
 }
 
 # Function to repair incomplete backup sets
+_repair_only() {
+  echo "Running repair via cleanup --force for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
+  echo "Command is ${_DCY_MN_CMD} cleanup --force ${_BACKUP_TARGET}"
+  ${_DCY_MN_CMD} cleanup --force ${_BACKUP_TARGET} >> ${_LOGFILE}
+}
+
+# Function to repair incomplete backup sets
 _repair() {
   _set_mode
   _set_cmd
+  echo "Running repair via cleanup --force for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
   echo "Command is ${_DCY_MN_CMD} cleanup --force ${_BACKUP_TARGET}"
   ${_DCY_MN_CMD} cleanup --force ${_BACKUP_TARGET} >> ${_LOGFILE}
   _collection_status
+}
+
+# Function to check if repair incomplete backup sets is needed
+_check_if_repair() {
+  if grep -qx "found incomplete backup sets" "${_LOGFILE}"; then
+    _repair_only
+  fi
 }
 
 # Function to clean up old backups
@@ -518,10 +535,13 @@ _backup() {
   _randomize_full
   _set_mode
   _set_cmd
+  [ -e "${_LOGFILE}" ] && _check_if_repair
   _run_backup
+  _check_if_repair
   if [ -e "${_LOGPTH}/${_BUCKET_NAME}.archive.log" ] \
     && [ "${_DOW}" = "${_RDW}" ] \
     && [ "${_DO_CLEANUP}" = "YES" ]; then
+    _repair_only
     _remove_older_than
     _collection_status
   fi

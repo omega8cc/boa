@@ -2282,7 +2282,6 @@ _upgrade_host() {
   rm -f sysctl.conf*
   sysctl -p
   swapoff -a
-  swapon -a
 
   if [ "${_thisMode}" = "UPGRADE" ]; then
     echo "Installing vserver initd scripts..."

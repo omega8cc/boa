@@ -92,7 +92,6 @@ _graceful_action() {
     if [ -z "${_IF_CDP}" ] && [ ! -e "/root/.no.swap.clear.cnf" ]; then
       echo "Resetting swap..."
       swapoff -a
-      swapon -a
     fi
   fi
 
