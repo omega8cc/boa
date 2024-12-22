@@ -3,7 +3,7 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-export _sPid="f91"
+export _sPid="f89"
 
 # Log file for escape attempts and validation issues
 _VALIDATION_LOG_FILE="/var/log/backup_validation_issues.log"
@@ -89,8 +89,8 @@ _create_user_paths_config() {
   local _merged_regexp_exclude_file="${_user_config_dir}/.backboa.${_user}.exclude_regexp.merged.file"
   local _exclude_ctrl_file="${_user_config_dir}/.backboa.${_user}.${_sPid}.exclude.ctrl.file"
   local _include_ctrl_file="${_user_config_dir}/.backboa.${_user}.${_sPid}.include.ctrl.file"
-  local _merged_all_exclude_file="${_global_config_dir}/.backboa.${_user}.all.exclude.merged.file"
-  local _merged_all_include_file="${_global_config_dir}/.backboa.${_user}.all.include.merged.file"
+  local _merged_all_exclude_file="${_user_config_dir}/.backboa.${_user}.all.exclude.merged.file"
+  local _merged_all_include_file="${_user_config_dir}/.backboa.${_user}.all.include.merged.file"
   local _user_paths_file="${_user_config_dir}/paths.txt"
 
   # Ensure user configuration directory exists and is owned by root

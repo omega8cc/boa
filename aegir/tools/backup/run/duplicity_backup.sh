@@ -77,7 +77,7 @@ _verify_boa_keys() {
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
     ionice -c2 -n7 -p $$
-    renice 9 -p $$
+    renice 19 -p $$
     chmod a+w /dev/null
     [ -e "/root/.gnupg" ] && chmod 700 /root/.gnupg
   else
@@ -409,22 +409,23 @@ _randomize_full() {
     if [ -e "${_LOGPTH}/${_BUCKET_NAME}.randomize.full.log" ]; then
       _RDW=$(cat ${_LOGPTH}/${_BUCKET_NAME}.randomize.full.log 2>&1)
       _RDW=$(echo -n ${_RDW} | tr -d "\n" 2>&1)
-      export _RDW=${_RDW//[^1-7]/}
-      export _MODE="incremental"
+      _RDW=${_RDW//[^1-7]/}
+      _MODE="incremental"
     else
       _RDW=$((RANDOM%7+1))
-      export _RDW=${_RDW//[^1-7]/}
-      export _MODE="full"
+      _RDW=${_RDW//[^1-7]/}
+      _MODE="full"
       echo ${_RDW} > ${_LOGPTH}/${_BUCKET_NAME}.randomize.full.log
     fi
   else
-    export _RDW=7
+    _RDW=7
   fi
   _print_env "multiback_randomize_full"
 }
 
 # Function to set backup mode
 _set_mode() {
+  [ -z "${_MODE}" ] && _MODE="backup"
   if [ "${_DOW}" = "${_RDW}" ] && [ "${FULL_BACKUP_FREQUENCY}" = "7D" ]; then
     if [ ! -e "/root/.randomize_duplicity_full_backup_day.cnf" ]; then
       _MODE="full"
@@ -438,7 +439,6 @@ _set_mode() {
       _MODE="full"
     fi
   fi
-  _MODE="backup"
   _print_env "multiback_set_mode"
 }
 
@@ -518,7 +518,7 @@ _backup() {
   fi
   if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "YES" ]; then
     echo "Sending email report on $(date)" >> ${_LOGFILE}
-    s-nail -s "Daily backup: ${_MODE} ${_HST} $(date)" ${_MY_EMAIL} < ${_LOGFILE}
+    s-nail -s "Backup report (${_MODE}) for ${_BUCKET_NAME} on $(date)" ${_MY_EMAIL} < ${_LOGFILE}
   fi
   cat ${_LOGFILE} >> ${_LOGPTH}/${_BUCKET_NAME}.archive.log
   rm -f ${_LOGFILE}
@@ -727,7 +727,7 @@ export _RESTORE_TIME="${6:-}"
 export _PIDFILE="/var/run/duplicity_${_SERVICE}_${_USER}.pid"
 # Default values
 export _DEFAULT_KEEP_WITHIN="3M"            # Default: 3 month
-export _DEFAULT_FULL_BACKUP_FREQUENCY="7D"  # Default: 7 days
+export _DEFAULT_FULL_BACKUP_FREQUENCY="14D" # Default: 14 days
 
 # Log file for validation issues
 export _VALIDATION_LOG_FILE="/var/log/backup_validation_issues.log"
