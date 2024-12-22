@@ -3,7 +3,7 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-export _sPid="f89"
+export _sPid="f88"
 
 # Log file for escape attempts and validation issues
 _VALIDATION_LOG_FILE="/var/log/backup_validation_issues.log"
@@ -126,12 +126,12 @@ EOF
     touch "${_include_ctrl_file}"
   fi
 
-  if [ ! -f "${_exclude_regexp_file}" ]; then
-    echo "# No default exclude-regexp rules for ${_user}" > "${_exclude_regexp_file}"
+  if [ ! -f "${_user_control_dir}/exclude_regexp.txt" ] && [ -f "${_exclude_regexp_file}" ]; then
+    rm -f "${_exclude_regexp_file}"
   fi
 
-  if [ ! -f "${_include_regexp_file}" ]; then
-    echo "# No default include-regexp rules for ${_user}" > "${_include_regexp_file}"
+  if [ ! -f "${_user_control_dir}/include_regexp.txt" ] && [ -f "${_include_regexp_file}" ]; then
+    rm -f "${_include_regexp_file}"
   fi
 
   # Validate and merge system and user-space exclude files
