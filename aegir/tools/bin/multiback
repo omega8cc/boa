@@ -409,22 +409,23 @@ _randomize_full() {
     if [ -e "${_LOGPTH}/${_BUCKET_NAME}.randomize.full.log" ]; then
       _RDW=$(cat ${_LOGPTH}/${_BUCKET_NAME}.randomize.full.log 2>&1)
       _RDW=$(echo -n ${_RDW} | tr -d "\n" 2>&1)
-      export _RDW=${_RDW//[^1-7]/}
-      export _MODE="incremental"
+      _RDW=${_RDW//[^1-7]/}
+      _MODE="incremental"
     else
       _RDW=$((RANDOM%7+1))
-      export _RDW=${_RDW//[^1-7]/}
-      export _MODE="full"
+      _RDW=${_RDW//[^1-7]/}
+      _MODE="full"
       echo ${_RDW} > ${_LOGPTH}/${_BUCKET_NAME}.randomize.full.log
     fi
   else
-    export _RDW=7
+    _RDW=7
   fi
   _print_env "multiback_randomize_full"
 }
 
 # Function to set backup mode
 _set_mode() {
+  [ -z "${_MODE}" ] && _MODE="backup"
   if [ "${_DOW}" = "${_RDW}" ] && [ "${FULL_BACKUP_FREQUENCY}" = "7D" ]; then
     if [ ! -e "/root/.randomize_duplicity_full_backup_day.cnf" ]; then
       _MODE="full"
@@ -438,7 +439,6 @@ _set_mode() {
       _MODE="full"
     fi
   fi
-  _MODE="backup"
   _print_env "multiback_set_mode"
 }
 
