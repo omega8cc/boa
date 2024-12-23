@@ -180,7 +180,7 @@ export AWS_ACCESS_KEY_ID="your_aws_access_key"
 export AWS_SECRET_ACCESS_KEY="your_aws_secret_key"
 export AWS_REGION="your_aws_region"  # Example: "us-east-1"
 export KEEP_WITHIN="3M"              # Retain backups from the last 3 months
-export FULL_BACKUP_FREQUENCY="14D"   # Create a full backup every 14 days
+export FULL_BACKUP_FREQUENCY="28D"   # Create a full backup every 28 days
 ```
 
 ### **Permissions**

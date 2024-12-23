@@ -45,21 +45,21 @@ Amazon S3 (Standard, One Zone, Standard-IA)
   export AWS_SECRET_ACCESS_KEY="your_aws_secret_key"
   export AWS_REGION="your_aws_region"  # E.g., "us-east-1"
   export KEEP_WITHIN="3M"              # Retain backups from the last 3 months
-  export FULL_BACKUP_FREQUENCY="14D"   # Create a full backup every 14 days
+  export FULL_BACKUP_FREQUENCY="28D"   # Create a full backup every 28 days
 
 Google Cloud Storage
   File: gcs.txt
   export GCS_PROJECT_ID="your_gcs_project_id"
   export GCS_SERVICE_ACCOUNT_KEY="your_gcs_service_account_key"
   export KEEP_WITHIN="3M"
-  export FULL_BACKUP_FREQUENCY="14D"
+  export FULL_BACKUP_FREQUENCY="28D"
 
 Backblaze B2
   File: b2.txt
   export B2_ACCOUNT_ID="your_b2_account_id"
   export B2_APPLICATION_KEY="your_b2_application_key"
   export KEEP_WITHIN="3M"
-  export FULL_BACKUP_FREQUENCY="14D"
+  export FULL_BACKUP_FREQUENCY="28D"
 
 Cloudflare R2 Object Storage
   File: cloudflare.txt
@@ -67,14 +67,14 @@ Cloudflare R2 Object Storage
   export R2_ACCESS_KEY_ID="your_access_key_id"
   export R2_SECRET_ACCESS_KEY="your_secret_access_key"
   export KEEP_WITHIN="3M"
-  export FULL_BACKUP_FREQUENCY="14D"
+  export FULL_BACKUP_FREQUENCY="28D"
 
 Azure Blob Storage
   File: azure.txt
   export AZURE_STORAGE_ACCOUNT="your_azure_storage_account"
   export AZURE_STORAGE_KEY="your_azure_storage_key"
   export KEEP_WITHIN="3M"
-  export FULL_BACKUP_FREQUENCY="14D"
+  export FULL_BACKUP_FREQUENCY="28D"
 
 IBM Cloud Object Storage
   File: ibm.txt
@@ -82,7 +82,7 @@ IBM Cloud Object Storage
   export IBM_SERVICE_INSTANCE_ID="your_ibm_service_instance_id"
   export IBM_REGION="your_ibm_region"
   export KEEP_WITHIN="3M"
-  export FULL_BACKUP_FREQUENCY="14D"
+  export FULL_BACKUP_FREQUENCY="28D"
 
 Wasabi Hot Cloud Storage
   File: wasabi.txt
@@ -90,7 +90,7 @@ Wasabi Hot Cloud Storage
   export WASABI_SECRET_KEY="your_wasabi_secret_key"
   export WASABI_REGION="your_wasabi_region"  # E.g., "us-east-1"
   export KEEP_WITHIN="3M"
-  export FULL_BACKUP_FREQUENCY="14D"
+  export FULL_BACKUP_FREQUENCY="28D"
 
 DigitalOcean Spaces
   File: do_spaces.txt
@@ -98,7 +98,7 @@ DigitalOcean Spaces
   export DO_SPACES_SECRET="your_do_spaces_secret"
   export DO_SPACES_REGION="your_do_spaces_region"  # E.g., "nyc3"
   export KEEP_WITHIN="3M"
-  export FULL_BACKUP_FREQUENCY="14D"
+  export FULL_BACKUP_FREQUENCY="28D"
 
 Linode Object Storage by Akamai
   File: linode.txt
@@ -106,7 +106,7 @@ Linode Object Storage by Akamai
   export LINODE_SECRET_KEY="your_linode_secret_key"
   export LINODE_REGION="your_linode_region"  # E.g., "us-east-1"
   export KEEP_WITHIN="3M"
-  export FULL_BACKUP_FREQUENCY="14D"
+  export FULL_BACKUP_FREQUENCY="28D"
 
 ## Security
 - Ensure credentials files are securely managed:
