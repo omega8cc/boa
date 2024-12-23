@@ -734,6 +734,8 @@ fi
 export _LOGPTH="/var/xdrago/log"
 _NOW=$(date +%y%m%d-%H%M%S 2>&1)
 export _NOW=${_NOW//[^0-9-]/}
+_TODAY=$(date +%y%m%d 2>&1)
+export _TODAY=${_TODAY//[^0-9]/}
 _DOW=$(date +%u 2>&1)
 export _DOW=${_DOW//[^1-7]/}
 _DOM=$(date +%e 2>&1)
