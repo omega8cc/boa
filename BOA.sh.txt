@@ -553,7 +553,7 @@ _update_agents() {
     _PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
     InTest=$(ls /data/disk/*/static/control/cli.info | wc -l 2>&1)
     _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
-    if [ "${InTest}" -lt "9" ] \
+    if [ "${InTest}" -lt 9 ] \
       && [[ ! "${_PrTestPower}" =~ "POWER" ]] \
       && [[ ! "${_PrTestPhantom}" =~ "PHANTOM" ]] \
       && [[ ! "${_PrTestCluster}" =~ "CLUSTER" ]]; then
@@ -566,7 +566,7 @@ _update_agents() {
       mysql -u root -e "SET GLOBAL max_user_connections = 111;"
       mysql -u root -e "SET GLOBAL group_concat_max_len = 10000;"
     fi
-    if [ "${InTest}" -ge "9" ] && [ "${InTest}" -le "50" ]; then
+    if [ "${InTest}" -ge 9 ] && [ "${InTest}" -le 50 ]; then
       [ ! -e "/root/.fast.cron.cnf" ] && echo ${InTest} > /root/.fast.cron.cnf
       [ -e "/root/.hr.monitor.cnf" ] && rm -f /root/.hr.monitor.cnf
       [ -e "/root/.slow.cron.cnf" ] && rm -f /root/.slow.cron.cnf
@@ -576,7 +576,7 @@ _update_agents() {
       mysql -u root -e "SET GLOBAL max_user_connections = 111;"
       mysql -u root -e "SET GLOBAL group_concat_max_len = 10000;"
     fi
-    if [ "${InTest}" -gt "50" ]; then
+    if [ "${InTest}" -gt 50 ]; then
       [ -e "/root/.fast.cron.cnf" ] && rm -f /root/.fast.cron.cnf
       [ ! -e "/root/.tg.cnf" ] && echo ${InTest} > /root/.tg.cnf
       [ ! -e "/root/.hr.monitor.cnf" ] && echo ${InTest} > /root/.hr.monitor.cnf
@@ -738,10 +738,10 @@ _update_agents() {
         mv /root/.remote_backups/schedule/backup_schedule.txt-off /root/.remote_backups/schedule/backup_schedule.txt
       fi
     fi
-    if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ] \
-      && [ `ps aux | grep -v "grep" | grep --count "dcysetup"` -lt "1" ] \
-      && [ `ps aux | grep -v "grep" | grep --count "mybackup"` -lt "1" ] \
-      && [ `ps aux | grep -v "grep" | grep --count "multiback"` -lt "1" ]; then
+    if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt 0 ] \
+      && [ `ps aux | grep -v "grep" | grep --count "dcysetup"` -lt 1 ] \
+      && [ `ps aux | grep -v "grep" | grep --count "mybackup"` -lt 1 ] \
+      && [ `ps aux | grep -v "grep" | grep --count "multiback"` -lt 1 ]; then
       kill -9 $(ps aux | grep '[d]uplicity' | awk '{print $2}') &> /dev/null
       rm -rf /tmp/duplicity*
       rm -rf /root/.cache/duplicity/*/duplicity-*tempdir
@@ -753,7 +753,7 @@ _update_agents() {
   if [ -e "/root/.remote_backups/schedule/backup_schedule.txt" ] \
     && [ -d "/var/aegir/drush" ] \
     && [ ! -e "${_pthCtrl}/multiback.sh.ctrl.f76.${_tRee}.${_xSrl}.pid" ]; then
-    if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ]; then
+    if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt 0 ]; then
       echo "The duplicity backup is running!"
     else
       if [ -e "${_optBin}/multiback" ]; then
@@ -3218,11 +3218,11 @@ _update_boa_tools() {
            xboa"
   for _cbn in ${_boaBins}; do
     if [ -e "${_optBin}/${_cbn}" ]; then
-      if [ `ps aux | grep -v "grep" | grep --count "/${_cbn}"` -gt "0" ]; then
+      if [ `ps aux | grep -v "grep" | grep --count "/${_cbn}"` -gt 0 ]; then
         echo "The ${_cbn} is running!"
       else
         if [ "${_cbn}" = "weblogx" ] \
-          && [ `ps aux | grep -v "grep" | grep --count "/daily.sh"` -gt "0" ]; then
+          && [ `ps aux | grep -v "grep" | grep --count "/daily.sh"` -gt 0 ]; then
           echo "The ${_cbn} and daily.sh is running!"
         else
           rm -f ${_optBin}/${_cbn}.new
@@ -3291,7 +3291,7 @@ _update_boa_tools() {
   fi
 
   [ -e "/root/.backboa.autoupdate" ] && rm -f /root/.backboa.autoupdate
-  if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ]; then
+  if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt 0 ]; then
     echo "The duplicity backup is running!"
   else
     rm -f ${_optBin}/{backboa,duobackboa}
@@ -3655,10 +3655,10 @@ _count_cpu() {
   if [ ! -z "${_CPU_NR}" ] \
     && [ ! -z "${_CPU_INFO}" ] \
     && [ "${_CPU_NR}" -gt "${_CPU_INFO}" ] \
-    && [ "${_CPU_INFO}" -gt "0" ]; then
+    && [ "${_CPU_INFO}" -gt 0 ]; then
     _CPU_NR="${_CPU_INFO}"
   fi
-  if [ -z "${_CPU_NR}" ] || [ "${_CPU_NR}" -lt "1" ]; then
+  if [ -z "${_CPU_NR}" ] || [ "${_CPU_NR}" -lt 1 ]; then
     _CPU_NR=1
   fi
   mkdir -p /data/all
@@ -3767,7 +3767,7 @@ _backup_waiting_notify() {
 ###--------------------###
 if [ "$(id -u)" -eq 0 ]; then
 
-  if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ]; then
+  if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt 0 ]; then
     _bLogA="/var/backups/multiback_waiting_queue.log"
     _bLogB="/var/backups/tmp_multiback_waiting_queue.log"
     if [ ! -e "${_bLogA}" ] && [ ! -e "${_bLogB}" ]; then

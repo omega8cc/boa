@@ -89,7 +89,7 @@ _check_root() {
     | sed 's/\%//g' \
     | awk '{print $6}' 2> /dev/null)
   _DF_TEST=${_DF_TEST//[^0-9]/}
-  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt "90" ]; then
+  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt 90 ]; then
     echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
     echo "ERROR: We can not proceed until it is below 90/100"
     exit 1
@@ -143,7 +143,7 @@ _waiting_notify() {
   fi
 }
 
-if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ]; then
+if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt 0 ]; then
   echo "[$(date)] Active duplicity process detected, will try again later..." >> /var/log/mybackup_waiting_queue.log
   _waiting_notify
   exit 1
