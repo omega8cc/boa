@@ -752,7 +752,7 @@ _update_agents() {
 
   if [ -e "/root/.remote_backups/schedule/backup_schedule.txt" ] \
     && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthCtrl}/multiback.sh.ctrl.f77.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthCtrl}/multiback.sh.ctrl.f76.${_tRee}.${_xSrl}.pid" ]; then
     if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ]; then
       echo "The duplicity backup is running!"
     else
@@ -763,7 +763,7 @@ _update_agents() {
       if [ -e "${_optBin}/multiback" ]; then
         chmod 700 ${_optBin}/multiback
         chown root:root ${_optBin}/multiback
-        touch ${_pthCtrl}/multiback.sh.ctrl.f77.${_tRee}.${_xSrl}.pid
+        touch ${_pthCtrl}/multiback.sh.ctrl.f76.${_tRee}.${_xSrl}.pid
       else
         if [ -e "${_optBin}/multiback.old" ]; then
           mv -f ${_optBin}/multiback.old ${_optBin}/multiback
@@ -3754,7 +3754,7 @@ _backup_waiting_notify() {
   cat /root/.remote_backups/schedule/backup_schedule.txt > ${_templog}
   ps axf | grep multiback >> ${_templog}
   ps axf | grep duplicity >> ${_templog}
-  ll /tmp/duplicity-*-tempdir >> ${_templog}
+  ls -la /tmp/duplicity-*-tempdir >> ${_templog}
   tree /root/.cache/duplicity >> ${_templog}
   ls -laR /root/.cache/duplicity >> ${_templog}
   grep "Out of memory: Killed process.*duplicity" /var/log/iptables.log >> ${_templog}
