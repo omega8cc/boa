@@ -403,34 +403,6 @@ _backup_prepare() {
   _print_env "multiback_backup_prepare"
 }
 
-_monthly_cleanup() {
-  if [ -e "${_LOGPTH}/${_BUCKET_NAME}.randomize.cleanup.log" ]; then
-    _RCL=$(cat ${_LOGPTH}/${_BUCKET_NAME}.randomize.cleanup.log 2>&1)
-    _RCL=$(echo -n ${_RCL} | tr -d "\n" 2>&1)
-    _RCL=${_RCL//[^1-5]/}
-  else
-    _RCL=$((RANDOM%5+1))
-    _RCL=${_RCL//[^1-5]/}
-    echo ${_RCL} > ${_LOGPTH}/${_BUCKET_NAME}.randomize.cleanup.log
-  fi
-  if [ -e "${_LOGPTH}/${_BUCKET_NAME}.archive.log" ] \
-    && [ ! -e "/root/.skip_duplicity_monthly_cleanup.cnf" ] \
-    && [ "${_DOM}" = "${_RCL}" ] \
-    && [ "${_DO_CLEANUP}" = "YES" ]; then
-    if [ -e "/root/.randomize_duplicity_full_backup_day.cnf" ]; then
-      _n=$((RANDOM%300+8))
-      echo "Waiting $n seconds on $(date) before running cleanup --force" >> ${_LOGFILE}
-      sleep ${_n}
-    fi
-    echo "Running cleanup for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
-    echo "Command is ${_DCY_MN_CMD} cleanup --force ${_BACKUP_TARGET}"
-    ${_DCY_MN_CMD} cleanup --force ${_BACKUP_TARGET}
-    rm -f ${_LOGPTH}/${_BUCKET_NAME}.randomize.full.log
-    rm -f ${_LOGPTH}/${_BUCKET_NAME}.randomize.cleanup.log
-  fi
-  _print_env "multiback_monthly_cleanup"
-}
-
 _randomize_full() {
   if [ -e "/root/.randomize_duplicity_full_backup_day.cnf" ]; then
     if [ -e "${_LOGPTH}/${_BUCKET_NAME}.randomize.full.log" ]; then
@@ -579,7 +551,6 @@ _list() {
 # Function to prepare backup
 _backup() {
   _backup_prepare
-  _monthly_cleanup
   _randomize_full
   _set_mode
   _set_cmd
