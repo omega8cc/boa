@@ -533,7 +533,6 @@ _run_backup() {
   _print_env "multiback_run_backup"
 }
 
-
 # Function to prepare backup
 _backup() {
   _backup_prepare
