@@ -102,6 +102,14 @@ _check_root() {
     _AWS_VLV="warning"
   fi
   _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
+  _cpuNr="$(cat /data/all/cpuinfo 2>/dev/null | tr -d '\n' || nproc 2>/dev/null)"
+  if [ -n "${_cpuNr}" ]; then
+    [ "${_cpuNr}" -gt 8 ] && _useCpu=4
+    [ "${_cpuNr}" -le 8 ] && _useCpu=2
+    [ "${_cpuNr}" -le 4 ] && _useCpu=1
+  else
+    _useCpu=1
+  fi
   swapoff -a
   wait
 }
@@ -486,7 +494,7 @@ _set_cmd() {
     -v ${_AWS_VLV} \
     --name=${_NAME} \
     --allow-source-mismatch \
-    --concurrency 4 \
+    --concurrency ${_useCpu} \
     --copy-links \
     --full-if-older-than ${FULL_BACKUP_FREQUENCY} \
     --volsize 300"
@@ -495,7 +503,7 @@ _set_cmd() {
     -v ${_AWS_VLV} \
     --name=${_NAME} \
     --allow-source-mismatch \
-    --concurrency 4"
+    --concurrency ${_useCpu}"
 
   _print_env "multiback_set_cmd"
 }
