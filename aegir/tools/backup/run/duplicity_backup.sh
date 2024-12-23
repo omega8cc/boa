@@ -522,6 +522,7 @@ _cleanup() {
   _set_mode
   _set_cmd
   _remove_older_than
+  _collection_status
 }
 
 # Function to perform backup
