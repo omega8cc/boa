@@ -731,6 +731,12 @@ _update_agents() {
        echo "# Backup schedule (service user) OFF" > /root/.remote_backups/schedule/backup_schedule.txt
        chattr +i /root/.remote_backups/schedule/backup_schedule.txt
      fi
+    else
+      if [ -e "/root/.remote_backups/schedule/backup_schedule.txt-off" ]; then
+        chattr -i /root/.remote_backups/schedule/backup_schedule.txt
+        rm -f /root/.remote_backups/schedule/backup_schedule.txt
+        mv /root/.remote_backups/schedule/backup_schedule.txt-off /root/.remote_backups/schedule/backup_schedule.txt
+      fi
     fi
     if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ] \
       && [ `ps aux | grep -v "grep" | grep --count "dcysetup"` -lt "1" ] \
@@ -1330,13 +1336,13 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/daily.sh.ctrl.f85.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/daily.sh.ctrl.f84.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/daily.sh /var/xdrago/daily.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/daily.sh" -o /var/xdrago/daily.sh
     if [ -e "/var/xdrago/daily.sh" ]; then
       chmod 700 /var/xdrago/daily.sh
       chown root:root /var/xdrago/daily.sh
-      touch ${_pthLog}/daily.sh.ctrl.f85.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/daily.sh.ctrl.f84.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/daily.sh.old /var/xdrago/daily.sh
     fi
@@ -3738,8 +3744,36 @@ _sysctl_update() {
   fi
 }
 
+# Function to notify about still running backup
+_backup_waiting_notify() {
+  [ -e "${_barCnf}" ] && source ${_barCnf}
+  _INCIDENT_REPORT=${_INCIDENT_REPORT//[^A-Z]/}
+  : "${_INCIDENT_REPORT:=YES}"
+  _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
+  _templog="${_bLogB}"
+  cat /root/.remote_backups/schedule/backup_schedule.txt > ${_templog}
+  ps axf | grep multiback >> ${_templog}
+  ps axf | grep duplicity >> ${_templog}
+  ll /tmp/duplicity-*-tempdir >> ${_templog}
+  tree /root/.cache/duplicity >> ${_templog}
+  ls -laR /root/.cache/duplicity >> ${_templog}
+  grep "Out of memory: Killed process.*duplicity" /var/log/iptables.log >> ${_templog}
+  boa info  >> ${_templog}
+  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "YES" ]; then
+    s-nail -s "Multiback Waiting Report for [${_hName}] on $(date)" ${_MY_EMAIL} < ${_templog}
+  fi
+}
+
 ###--------------------###
 if [ "$(id -u)" -eq 0 ]; then
+
+  if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ]; then
+    _bLogA="/var/backups/multiback_waiting_queue.log"
+    _bLogB="/var/backups/tmp_multiback_waiting_queue.log"
+    if [ ! -e "${_bLogA}" ] && [ ! -e "${_bLogB}" ]; then
+      _backup_waiting_notify
+    fi
+  fi
 
   [ ! -e "/var/aegir/drush" ] && _locales_check_fix_early
   _os_detection_minimal
