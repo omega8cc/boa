@@ -504,6 +504,18 @@ _check_if_repair() {
   fi
 }
 
+# Function to run weekly cleanup
+_weekly_cleanup() {
+  if [ -e "${_LOGPTH}/${_BUCKET_NAME}.archive.log" ] \
+    && [ ! -e "${_LOGPTH}/${_BUCKET_NAME}.${_TODAY}.cleanup.log" ] \
+    && [ "${_DOW}" = 7 ] \
+    && [ "${_DO_CLEANUP}" = "YES" ]; then
+    _remove_older_than
+    _collection_status
+    touch ${_LOGPTH}/${_BUCKET_NAME}.${_TODAY}.cleanup.log
+  fi
+}
+
 # Function to clean up old backups
 _cleanup() {
   _set_mode
@@ -536,13 +548,7 @@ _backup() {
   [ -e "${_LOGFILE}" ] && _check_if_repair
   _run_backup
   _check_if_repair
-  if [ -e "${_LOGPTH}/${_BUCKET_NAME}.archive.log" ] \
-    && [ "${_DOW}" = "${_RDW}" ] \
-    && [ "${_DO_CLEANUP}" = "YES" ]; then
-    _repair_only
-    _remove_older_than
-    _collection_status
-  fi
+  _weekly_cleanup
   if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "YES" ]; then
     echo "Sending email report on $(date)" >> ${_LOGFILE}
     s-nail -s "Backup report (${_MODE}) for ${_BUCKET_NAME} on $(date)" ${_MY_EMAIL} < ${_LOGFILE}
