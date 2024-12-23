@@ -453,12 +453,20 @@ _set_cmd() {
   _print_env "multiback_set_cmd"
 }
 
-# Function to perform backup
-_run_backup() {
-  export _FULL_BACK_CMD="${_DCY_UP_CMD} ${_BATCH_EXCLUDE} ${_BATCH_INCLUDE} --exclude '**' / ${_BACKUP_TARGET}"
-  echo "Running ${_MODE} backup for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
-  ${_DCY_UP_CMD} ${_BATCH_EXCLUDE} ${_BATCH_INCLUDE} --exclude '**' / ${_BACKUP_TARGET} >> ${_LOGFILE}
-  _print_env "multiback_run_backup"
+# Function to check collection-status only
+_status() {
+  _set_mode
+  _set_cmd
+  echo "Command is ${_DCY_MN_CMD} collection-status ${_BACKUP_TARGET}"
+  ${_DCY_MN_CMD} collection-status ${_BACKUP_TARGET}
+}
+
+# Function to list-current-files only
+_list() {
+  _set_mode
+  _set_cmd
+  echo "Command is ${_DCY_MN_CMD} list-current-files ${_BACKUP_TARGET}"
+  ${_DCY_MN_CMD} list-current-files ${_BACKUP_TARGET}
 }
 
 _remove_older_than() {
@@ -516,20 +524,12 @@ _cleanup() {
   _remove_older_than
 }
 
-# Function to check collection-status only
-_status() {
-  _set_mode
-  _set_cmd
-  echo "Command is ${_DCY_MN_CMD} collection-status ${_BACKUP_TARGET}"
-  ${_DCY_MN_CMD} collection-status ${_BACKUP_TARGET}
-}
-
-# Function to list-current-files only
-_list() {
-  _set_mode
-  _set_cmd
-  echo "Command is ${_DCY_MN_CMD} list-current-files ${_BACKUP_TARGET}"
-  ${_DCY_MN_CMD} list-current-files ${_BACKUP_TARGET}
+# Function to perform backup
+_run_backup() {
+  export _FULL_BACK_CMD="${_DCY_UP_CMD} ${_BATCH_EXCLUDE} ${_BATCH_INCLUDE} --exclude '**' / ${_BACKUP_TARGET}"
+  echo "Running in ${_MODE} mode for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
+  ${_DCY_UP_CMD} ${_BATCH_EXCLUDE} ${_BATCH_INCLUDE} --exclude '**' / ${_BACKUP_TARGET} >> ${_LOGFILE}
+  _print_env "multiback_run_backup"
 }
 
 
