@@ -73,10 +73,10 @@ _count_cpu() {
   if [ ! -z "${_CPU_NR}" ] \
     && [ ! -z "${_CPU_INFO}" ] \
     && [ "${_CPU_NR}" -gt "${_CPU_INFO}" ] \
-    && [ "${_CPU_INFO}" -gt "0" ]; then
+    && [ "${_CPU_INFO}" -gt 0 ]; then
     _CPU_NR="${_CPU_INFO}"
   fi
-  if [ -z "${_CPU_NR}" ] || [ "${_CPU_NR}" -lt "1" ]; then
+  if [ -z "${_CPU_NR}" ] || [ "${_CPU_NR}" -lt 1 ]; then
     _CPU_NR=1
   fi
 }
@@ -673,16 +673,16 @@ _ok_create_user() {
       else
         _STRONG_PASSWORDS=${_STRONG_PASSWORDS//[^0-9]/}
         if [ ! -z "${_STRONG_PASSWORDS}" ] \
-          && [ "${_STRONG_PASSWORDS}" -gt "32" ]; then
+          && [ "${_STRONG_PASSWORDS}" -gt 32 ]; then
           _PWD_CHARS="${_STRONG_PASSWORDS}"
         else
           _PWD_CHARS=32
         fi
-        if [ ! -z "${_PWD_CHARS}" ] && [ "${_PWD_CHARS}" -gt "128" ]; then
+        if [ ! -z "${_PWD_CHARS}" ] && [ "${_PWD_CHARS}" -gt 128 ]; then
           _PWD_CHARS=128
         fi
       fi
-      if [ "${_STRONG_PASSWORDS}" = "YES" ] || [ "${_PWD_CHARS}" -gt "32" ]; then
+      if [ "${_STRONG_PASSWORDS}" = "YES" ] || [ "${_PWD_CHARS}" -gt 32 ]; then
         _RANDPASS_TEST=$(randpass -V 2>&1)
         if [[ "${_RANDPASS_TEST}" =~ "alnum" ]]; then
           _ESC_LUPASS=$(randpass "${_PWD_CHARS}" alnum 2>&1)
@@ -694,7 +694,7 @@ _ok_create_user() {
         _ESC_LUPASS=$(echo -n "${_ESC_LUPASS}" | tr -d "\n" 2>&1)
         _LEN_LUPASS=$(echo ${#_ESC_LUPASS} 2>&1)
       fi
-      if [ -z "${_ESC_LUPASS}" ] || [ "${_LEN_LUPASS}" -lt "9" ]; then
+      if [ -z "${_ESC_LUPASS}" ] || [ "${_LEN_LUPASS}" -lt 9 ]; then
         _ESC_LUPASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
         _ESC_LUPASS=$(echo -n "${_ESC_LUPASS}" | tr -d "\n" 2>&1)
         _ESC_LUPASS=$(_sanitize_string "${_ESC_LUPASS}" 2>&1)
@@ -1093,18 +1093,18 @@ _satellite_tune_fpm_workers() {
     fi
   fi
 
-  if [ ! -z "${_CLIENT_CORES}" ] && [ "${_CLIENT_CORES}" -ge "1" ]; then
+  if [ ! -z "${_CLIENT_CORES}" ] && [ "${_CLIENT_CORES}" -ge 1 ]; then
     if [ -e "${_dscUsr}/log/cores.txt" ]; then
       _CLIENT_CORES=$(cat ${_dscUsr}/log/cores.txt 2>&1)
       _CLIENT_CORES=$(echo -n ${_CLIENT_CORES} | tr -d "\n" 2>&1)
     fi
     _CLIENT_CORES=${_CLIENT_CORES//[^0-9]/}
-    if [ ! -z "${_CLIENT_CORES}" ] && [ "${_CLIENT_CORES}" -ge "1" ]; then
+    if [ ! -z "${_CLIENT_CORES}" ] && [ "${_CLIENT_CORES}" -ge 1 ]; then
       _LIM_FPM=$(( _LIM_FPM *= _CLIENT_CORES ))
     fi
   fi
 
-  if [ "${_LIM_FPM}" -gt "100" ]; then
+  if [ "${_LIM_FPM}" -gt 100 ]; then
     _LIM_FPM=100
   fi
 
@@ -1756,12 +1756,12 @@ _switch_php() {
 
             [ -n "${_PHP_FPM_DENY}" ] && sed -i "s/passthru,/${_PHP_FPM_DENY},/g" /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
 
-            if [ -n "${_PHP_FPM_TIMEOUT}" ] && [ "${_PHP_FPM_TIMEOUT}" -ge "60" ]; then
+            if [ -n "${_PHP_FPM_TIMEOUT}" ] && [ "${_PHP_FPM_TIMEOUT}" -ge 60 ]; then
               _PHP_TO="${_PHP_FPM_TIMEOUT}s"
               sed -i "s/180s/${_PHP_TO}/g" /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
             fi
 
-            if [ -n "${_CHILD_MAX_FPM}" ] && [ "${_CHILD_MAX_FPM}" -ge "2" ]; then
+            if [ -n "${_CHILD_MAX_FPM}" ] && [ "${_CHILD_MAX_FPM}" -ge 2 ]; then
               sed -i "s/pm.max_children =.*/pm.max_children = ${_CHILD_MAX_FPM}/g" /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
             fi
 

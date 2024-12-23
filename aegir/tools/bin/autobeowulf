@@ -117,7 +117,7 @@ _check_root() {
     | sed 's/\%//g' \
     | awk '{print $6}' 2> /dev/null)
   _DF_TEST=${_DF_TEST//[^0-9]/}
-  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt "90" ]; then
+  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt 90 ]; then
     echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
     echo "ERROR: We can not proceed until it is below 90/100"
     exit 1
@@ -358,7 +358,7 @@ _if_fix_dhcp() {
   fi
   if [ -e "${_DHCP_LOG}" ]; then
     if [ `tail --lines=3 ${_DHCP_LOG} \
-      | grep --count "dhclient.*Failed"` -gt "0" ]; then
+      | grep --count "dhclient.*Failed"` -gt 0 ]; then
       sed -i "s/.*DHCP.*//g" /etc/csf/csf.allow
       wait
       sed -i "/^$/d" /etc/csf/csf.allow

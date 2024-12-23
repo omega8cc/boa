@@ -51,18 +51,18 @@ _provision_backend_dbpass_generate() {
   else
     _STRONG_PASSWORDS=${_STRONG_PASSWORDS//[^0-9]/}
     if [ ! -z "${_STRONG_PASSWORDS}" ] \
-      && [ "${_STRONG_PASSWORDS}" -gt "32" ]; then
+      && [ "${_STRONG_PASSWORDS}" -gt 32 ]; then
       _PWD_CHARS="${_STRONG_PASSWORDS}"
     else
       _PWD_CHARS=32
     fi
-    if [ ! -z "${_PWD_CHARS}" ] && [ "${_PWD_CHARS}" -gt "128" ]; then
+    if [ ! -z "${_PWD_CHARS}" ] && [ "${_PWD_CHARS}" -gt 128 ]; then
       _PWD_CHARS=128
     fi
   fi
 
   if [ "${_STRONG_PASSWORDS}" = "YES" ] \
-    || [ "${_PWD_CHARS}" -gt "32" ]; then
+    || [ "${_PWD_CHARS}" -gt 32 ]; then
     if [ "${_THIS_DB_HOST}" = "localhost" ] \
       || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
       || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
@@ -97,7 +97,7 @@ _provision_backend_dbpass_generate() {
     _LEN_PASS=$(echo ${#_ESC_PASS} 2>&1)
   fi
 
-  if [ -z "${_ESC_PASS}" ] || [ "${_LEN_PASS}" -lt "9" ]; then
+  if [ -z "${_ESC_PASS}" ] || [ "${_LEN_PASS}" -lt 9 ]; then
     if [ "${_THIS_DB_HOST}" = "localhost" ] \
       || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
       || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
@@ -794,17 +794,17 @@ _aegir_master_install_upgrade() {
     else
       _STRONG_PASSWORDS=${_STRONG_PASSWORDS//[^0-9]/}
       if [ ! -z "${_STRONG_PASSWORDS}" ] \
-        && [ "${_STRONG_PASSWORDS}" -gt "32" ]; then
+        && [ "${_STRONG_PASSWORDS}" -gt 32 ]; then
         _PWD_CHARS="${_STRONG_PASSWORDS}"
       else
         _PWD_CHARS=32
       fi
-      if [ ! -z "${_PWD_CHARS}" ] && [ "${_PWD_CHARS}" -gt "128" ]; then
+      if [ ! -z "${_PWD_CHARS}" ] && [ "${_PWD_CHARS}" -gt 128 ]; then
         _PWD_CHARS=128
       fi
     fi
 
-    if [ "${_STRONG_PASSWORDS}" = "YES" ] || [ "${_PWD_CHARS}" -gt "32" ]; then
+    if [ "${_STRONG_PASSWORDS}" = "YES" ] || [ "${_PWD_CHARS}" -gt 32 ]; then
       if [ "${_THIS_DB_HOST}" = "localhost" ] \
         || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
         || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
@@ -832,7 +832,7 @@ _aegir_master_install_upgrade() {
       _LEN_PASS=$(echo ${#_ESC_PASS} 2>&1)
     fi
 
-    if [ -z "${_ESC_PASS}" ] || [ "${_LEN_PASS}" -lt "9" ]; then
+    if [ -z "${_ESC_PASS}" ] || [ "${_LEN_PASS}" -lt 9 ]; then
       if [ "${_THIS_DB_HOST}" = "localhost" ] \
         || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
         || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \

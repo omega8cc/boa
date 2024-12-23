@@ -94,7 +94,7 @@ _unbound_check_fix() {
       unbound-control reload &> /dev/null
     fi
   fi
-  if [ `ps aux | grep -v "grep" | grep --count "/usr/sbin/unbound"` -gt "1" ]; then
+  if [ `ps aux | grep -v "grep" | grep --count "/usr/sbin/unbound"` -gt 1 ]; then
     kill -9 $(ps aux | grep '[u]sr/sbin/unbound' | awk '{print $2}') &> /dev/null
     service unbound start &> /dev/null
     wait

@@ -449,7 +449,7 @@ _guard_stats() {
             echo "${_IP} is a local IP address, ignoring ${i}/${_HA}"
           fi
         fi
-        if [ ! -z "${_NR_TEST}" ] && [ "${_NR_TEST}" -ge "24" ]; then
+        if [ ! -z "${_NR_TEST}" ] && [ "${_NR_TEST}" -ge 24 ]; then
           echo ${_IP} ${_NR_TEST}
           _FW_TEST=
           _FF_TEST=
@@ -463,7 +463,7 @@ _guard_stats() {
             fi
           else
             _IP_RV=$(host -s ${_IP} 2>&1)
-            if [ "${_NR_TEST}" -ge "64" ]; then
+            if [ "${_NR_TEST}" -ge 64 ]; then
               echo "Deny ${_IP} permanently ${_NR_TEST} ${_IP_RV}"
               csf -d ${_IP} do not delete Brute force SSH Server ${_NR_TEST} attacks ${_IP_RV}
             else
@@ -491,7 +491,7 @@ _guard_stats() {
             echo "${_IP} is a local IP address, ignoring ${i}/${_WA}"
           fi
         fi
-        if [ ! -z "${_NR_TEST}" ] && [ "${_NR_TEST}" -ge "24" ]; then
+        if [ ! -z "${_NR_TEST}" ] && [ "${_NR_TEST}" -ge 24 ]; then
           echo ${_IP} ${_NR_TEST}
           _FW_TEST=
           _FF_TEST=
@@ -505,7 +505,7 @@ _guard_stats() {
             fi
           else
             _IP_RV=$(host -s ${_IP} 2>&1)
-            if [ "${_NR_TEST}" -ge "64" ]; then
+            if [ "${_NR_TEST}" -ge 64 ]; then
               echo "Deny ${_IP} permanently ${_NR_TEST} ${_IP_RV}"
               csf -d ${_IP} do not delete Brute force Web Server ${_NR_TEST} attacks ${_IP_RV}
             else
@@ -533,7 +533,7 @@ _guard_stats() {
             echo "${_IP} is a local IP address, ignoring ${i}/${_FA}"
           fi
         fi
-        if [ ! -z "${_NR_TEST}" ] && [ "${_NR_TEST}" -ge "24" ]; then
+        if [ ! -z "${_NR_TEST}" ] && [ "${_NR_TEST}" -ge 24 ]; then
           echo ${_IP} ${_NR_TEST}
           _FW_TEST=
           _FF_TEST=
@@ -547,7 +547,7 @@ _guard_stats() {
             fi
           else
             _IP_RV=$(host -s ${_IP} 2>&1)
-            if [ "${_NR_TEST}" -ge "64" ]; then
+            if [ "${_NR_TEST}" -ge 64 ]; then
               echo "Deny ${_IP} permanently ${_NR_TEST} ${_IP_RV}"
               csf -d ${_IP} do not delete Brute force FTP Server ${_NR_TEST} attacks ${_IP_RV}
             else

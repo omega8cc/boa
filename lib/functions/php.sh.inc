@@ -606,7 +606,7 @@ _tune_web_server_config() {
   [ "${_PHP_FPM_WORKERS}" != "AUTO" ] && _PHP_FPM_WORKERS=${_PHP_FPM_WORKERS//[^0-9]/}
   [ ! -z "${_L_PHP_FPM_WORKERS}" ] && _L_PHP_FPM_WORKERS=${_L_PHP_FPM_WORKERS//[^0-9]/}
   [ ! -z "${_L_PHP_FPM_WORKERS}" ] && _LIM_FPM="${_L_PHP_FPM_WORKERS}"
-  if [ "${_LIM_FPM}" -lt "48" ]; then
+  if [ "${_LIM_FPM}" -lt 48 ]; then
     _if_hosted_sys
     if [ "${_hostedSys}" = "YES" ]; then
       _LIM_FPM=48
@@ -614,11 +614,11 @@ _tune_web_server_config() {
   fi
   if [ "${_PHP_FPM_WORKERS}" != "AUTO" ]; then
     _PHP_FPM_WORKERS=${_PHP_FPM_WORKERS//[^0-9]/}
-    if [ ! -z "${_PHP_FPM_WORKERS}" ] && [ "${_PHP_FPM_WORKERS}" -ge "1" ]; then
+    if [ ! -z "${_PHP_FPM_WORKERS}" ] && [ "${_PHP_FPM_WORKERS}" -ge 1 ]; then
       _LIM_FPM="${_PHP_FPM_WORKERS}"
     fi
   fi
-  if [ "${_LIM_FPM}" -gt "100" ]; then
+  if [ "${_LIM_FPM}" -gt 100 ]; then
     _LIM_FPM=100
   fi
   _CHILD_MAX_FPM=$(( _LIM_FPM * 2 ))
@@ -633,7 +633,7 @@ _tune_web_server_config() {
     _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
   fi
   for e in ${_PHP_V}; do
-    if [ ! -z "${_CHILD_MAX_FPM}" ] && [ "${_CHILD_MAX_FPM}" -ge "8" ]; then
+    if [ ! -z "${_CHILD_MAX_FPM}" ] && [ "${_CHILD_MAX_FPM}" -ge 8 ]; then
       sed -i "s/pm.max_children =.*/pm.max_children = ${_CHILD_MAX_FPM}/g" \
          /opt/php${e}/etc/pool.d/www${e}.conf &> /dev/null
       wait

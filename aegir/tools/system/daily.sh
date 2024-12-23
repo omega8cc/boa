@@ -20,7 +20,7 @@ _check_root() {
     | sed 's/\%//g' \
     | awk '{print $6}' 2> /dev/null)
   _DF_TEST=${_DF_TEST//[^0-9]/}
-  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt "90" ]; then
+  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt 90 ]; then
     echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
     echo "ERROR: We can not proceed until it is below 90/100"
     exit 1
@@ -2473,7 +2473,7 @@ _delete_this_empty_hostmaster_platform() {
 }
 
 _check_old_empty_hostmaster_platforms() {
-  if [ "${_DEL_OLD_EMPTY_PLATFORMS}" -gt "0" ] \
+  if [ "${_DEL_OLD_EMPTY_PLATFORMS}" -gt 0 ] \
 	&& [ ! -z "${_DEL_OLD_EMPTY_PLATFORMS}" ]; then
 	_DO_NOTHING=YES
   else
@@ -2485,7 +2485,7 @@ _check_old_empty_hostmaster_platforms() {
 	fi
   fi
   if [ ! -z "${_DEL_OLD_EMPTY_PLATFORMS}" ]; then
-    if [ "${_DEL_OLD_EMPTY_PLATFORMS}" -gt "0" ]; then
+    if [ "${_DEL_OLD_EMPTY_PLATFORMS}" -gt 0 ]; then
       echo "_DEL_OLD_EMPTY_PLATFORMS is set to \
         ${_DEL_OLD_EMPTY_PLATFORMS} days on /var/aegir instance"
       for _Platform in `find /var/aegir/.drush/platform_* -maxdepth 1 -mtime \
@@ -2531,7 +2531,7 @@ _check_old_empty_platforms() {
       || [ -e "${_usEr}/static/control/platforms.info" ]; then
       _DO_NOTHING=YES
     else
-      if [ "${_DEL_OLD_EMPTY_PLATFORMS}" -gt "0" ] \
+      if [ "${_DEL_OLD_EMPTY_PLATFORMS}" -gt 0 ] \
         && [ ! -z "${_DEL_OLD_EMPTY_PLATFORMS}" ]; then
         _DO_NOTHING=YES
       else
@@ -2540,7 +2540,7 @@ _check_old_empty_platforms() {
     fi
   fi
   if [ ! -z "${_DEL_OLD_EMPTY_PLATFORMS}" ]; then
-    if [ "${_DEL_OLD_EMPTY_PLATFORMS}" -gt "0" ]; then
+    if [ "${_DEL_OLD_EMPTY_PLATFORMS}" -gt 0 ]; then
       echo "_DEL_OLD_EMPTY_PLATFORMS is set to \
         ${_DEL_OLD_EMPTY_PLATFORMS} days on ${_HM_U} instance"
       for _Platform in `find ${_usEr}/.drush/platform_* -maxdepth 1 -mtime \
@@ -2578,13 +2578,13 @@ _check_old_empty_platforms() {
 
 _purge_cruft_machine() {
 
-  if [ ! -z "${_DEL_OLD_TMP}" ] && [ "${_DEL_OLD_TMP}" -gt "0" ]; then
+  if [ ! -z "${_DEL_OLD_TMP}" ] && [ "${_DEL_OLD_TMP}" -gt 0 ]; then
     _PURGE_TMP="${_DEL_OLD_TMP}"
   else
     _PURGE_TMP="0"
   fi
 
-  if [ ! -z "${_DEL_OLD_BACKUPS}" ] && [ "${_DEL_OLD_BACKUPS}" -gt "0" ]; then
+  if [ ! -z "${_DEL_OLD_BACKUPS}" ] && [ "${_DEL_OLD_BACKUPS}" -gt 0 ]; then
     _PURGE_BACKUPS="${_DEL_OLD_BACKUPS}"
   else
     _PURGE_BACKUPS="14"
@@ -2712,7 +2712,7 @@ _purge_cruft_machine() {
         mkdir -p ${i}/keys
       fi
       _RevisionTest=$(ls ${i} | wc -l 2>&1)
-      if [ "${_RevisionTest}" -lt "2" ] && [ ! -z "${_RevisionTest}" ]; then
+      if [ "${_RevisionTest}" -lt 2 ] && [ ! -z "${_RevisionTest}" ]; then
         echo "_RevisionTest is ${_RevisionTest}"
         _NOW=$(date +%y%m%d-%H%M%S 2>&1)
         mkdir -p ${_usEr}/undo/dist/${_NOW}
@@ -2775,10 +2775,10 @@ _count_cpu() {
   if [ ! -z "${_CPU_NR}" ] \
     && [ ! -z "${_CPU_INFO}" ] \
     && [ "${_CPU_NR}" -gt "${_CPU_INFO}" ] \
-    && [ "${_CPU_INFO}" -gt "0" ]; then
+    && [ "${_CPU_INFO}" -gt 0 ]; then
     _CPU_NR="${_CPU_INFO}"
   fi
-  if [ -z "${_CPU_NR}" ] || [ "${_CPU_NR}" -lt "1" ]; then
+  if [ -z "${_CPU_NR}" ] || [ "${_CPU_NR}" -lt 1 ]; then
     _CPU_NR=1
   fi
   echo ${_CPU_NR} > /data/all/cpuinfo

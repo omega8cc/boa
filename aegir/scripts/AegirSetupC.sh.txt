@@ -243,7 +243,7 @@ chmod 0711 ${_pthDst} &> /dev/null
 
 ###---###
 export _ALLOW_ALL=YES
-if [ "${_CLIENT_CORES}" -lt "1" ]; then
+if [ "${_CLIENT_CORES}" -lt 1 ]; then
   _ALLOW_ALL=NO
   _D_8_ALLOW=NO
 fi

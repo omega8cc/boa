@@ -18,7 +18,7 @@ _check_root() {
     | sed 's/\%//g' \
     | awk '{print $6}' 2> /dev/null)
   _DF_TEST=${_DF_TEST//[^0-9]/}
-  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt "90" ]; then
+  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt 90 ]; then
     echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
     echo "ERROR: We can not proceed until it is below 90/100"
     exit 1
@@ -388,8 +388,8 @@ for _DB in `${_C_SQL} -e "show databases" -s | uniq | sort`; do
       # fi
       # if [ "${_OPTIM}" = "YES" ] \
       #   && [ "${_DOW}" = "7" ] \
-      #   && [ "${_DOM}" -ge "24" ] \
-      #   && [ "${_DOM}" -lt "31" ]; then
+      #   && [ "${_DOM}" -ge 24 ] \
+      #   && [ "${_DOM}" -lt 31 ]; then
       #   _repair_this_database &> /dev/null
       #   echo "Repair task for ${_DB} completed"
       #   _truncate_cache_tables &> /dev/null

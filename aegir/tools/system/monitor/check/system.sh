@@ -92,10 +92,10 @@ _system_oom_detection() {
   echo _RAM_TOTAL is ${_RAM_TOTAL}
   echo _RAM_PCT_FREE is ${_RAM_PCT_FREE}
   if [ ! -z "${_RAM_PCT_FREE}" ]; then
-    if [ "${_RAM_PCT_FREE}" -le "10" ]; then
+    if [ "${_RAM_PCT_FREE}" -le 10 ]; then
       _oom_critical_restart "RAM ${_RAM_PCT_FREE}/${_RAM_TOTAL}"
-    elif [ "${_RAM_PCT_FREE}" -le "20" ]; then
-      if [ `ps aux | grep -v "grep" | grep --count "wkhtmltopdf"` -gt "2" ]; then
+    elif [ "${_RAM_PCT_FREE}" -le 20 ]; then
+      if [ `ps aux | grep -v "grep" | grep --count "wkhtmltopdf"` -gt 2 ]; then
         _wkhtmltopdf_php_cli_oom_kill "RAM ${_RAM_PCT_FREE}/${_RAM_TOTAL}"
       fi
     fi
@@ -105,7 +105,7 @@ _system_oom_detection() {
 _if_fix_locked_sshd() {
   _SSH_LOG="/var/log/auth.log"
   if [ `tail --lines=10 ${_SSH_LOG} \
-    | grep --count "error: Bind to port 22"` -gt "0" ]; then
+    | grep --count "error: Bind to port 22"` -gt 0 ]; then
     kill -9 sshd &> /dev/null
     kill -9 $(ps aux | grep '[s]tartups' | awk '{print $2}') &> /dev/null
     service ssh start
@@ -163,7 +163,7 @@ _if_fix_dhcp() {
 }
 
 _cron_duplicate_instances_detection() {
-  if [ `ps aux | grep -v "grep" | grep --count "/usr/sbin/cron"` -gt "1" ]; then
+  if [ `ps aux | grep -v "grep" | grep --count "/usr/sbin/cron"` -gt 1 ]; then
     _thisErrLog="$(date) Too many Cron instances running killed"
     echo ${_thisErrLog} >> /var/xdrago/log/cron-count.kill.log
     killall -9 cron &> /dev/null
@@ -191,7 +191,7 @@ _syslog_giant_log_detection() {
 }
 
 _gpg_too_many_instances_detection() {
-  if [ `ps aux | grep -v "grep" | grep --count "gpg-agent"` -gt "5" ]; then
+  if [ `ps aux | grep -v "grep" | grep --count "gpg-agent"` -gt 5 ]; then
     _thisErrLog="$(date) Too many gpg-agent processes killed"
     echo ${_thisErrLog} >> /var/xdrago/log/gpg-agent-count.kill.log
     kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
@@ -203,7 +203,7 @@ _gpg_too_many_instances_detection() {
 }
 
 _dirmngr_too_many_instances_detection() {
-  if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt "5" ]; then
+  if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt 5 ]; then
     _thisErrLog="$(date) Too many dirmngr processes killed"
     echo ${_thisErrLog} >> /var/xdrago/log/dirmngr-count.kill.log
     kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
