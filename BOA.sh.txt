@@ -3738,8 +3738,36 @@ _sysctl_update() {
   fi
 }
 
+# Function to notify about still running backup
+_backup_waiting_notify() {
+  [ -e "${_barCnf}" ] && source ${_barCnf}
+  _INCIDENT_REPORT=${_INCIDENT_REPORT//[^A-Z]/}
+  : "${_INCIDENT_REPORT:=YES}"
+  _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
+  _templog="${_bLogB}"
+  cat /root/.remote_backups/schedule/backup_schedule.txt > ${_templog}
+  ps axf | grep multiback >> ${_templog}
+  ps axf | grep duplicity >> ${_templog}
+  ll /tmp/duplicity-*-tempdir >> ${_templog}
+  tree /root/.cache/duplicity >> ${_templog}
+  ls -laR /root/.cache/duplicity >> ${_templog}
+  grep "Out of memory: Killed process.*duplicity" /var/log/iptables.log >> ${_templog}
+  boa info  >> ${_templog}
+  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "YES" ]; then
+    s-nail -s "Multiback Waiting Report for [${_hName}] on $(date)" ${_MY_EMAIL} < ${_templog}
+  fi
+}
+
 ###--------------------###
 if [ "$(id -u)" -eq 0 ]; then
+
+  if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ]; then
+    _bLogA="/var/backups/multiback_waiting_queue.log"
+    _bLogB="/var/backups/tmp_multiback_waiting_queue.log"
+    if [ ! -e "${_bLogA}" ] && [ ! -e "${_bLogB}" ]; then
+      _backup_waiting_notify
+    fi
+  fi
 
   [ ! -e "/var/aegir/drush" ] && _locales_check_fix_early
   _os_detection_minimal
