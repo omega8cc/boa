@@ -378,10 +378,10 @@ _count_cpu() {
   if [ ! -z "${_CPU_NR}" ] \
     && [ ! -z "${_CPU_INFO}" ] \
     && [ "${_CPU_NR}" -gt "${_CPU_INFO}" ] \
-    && [ "${_CPU_INFO}" -gt "0" ]; then
+    && [ "${_CPU_INFO}" -gt 0 ]; then
     _CPU_NR="${_CPU_INFO}"
   fi
-  if [ -z "${_CPU_NR}" ] || [ "${_CPU_NR}" -lt "1" ]; then
+  if [ -z "${_CPU_NR}" ] || [ "${_CPU_NR}" -lt 1 ]; then
     _CPU_NR=1
   fi
 }
@@ -918,7 +918,7 @@ _restore_default_php() {
 #
 _tune_php() {
   _msg "INFO: Tuning PHP configuration"
-  if [ "${_TUNE_PHP_FPM_TIMEOUT}" -lt "60" ]; then
+  if [ "${_TUNE_PHP_FPM_TIMEOUT}" -lt 60 ]; then
     _TUNE_PHP_FPM_TIMEOUT=60
   fi
   # PHP-FPM pools
@@ -1011,7 +1011,7 @@ _restore_default_sql() {
       cp -af ${_locCnf}/var/my.cnf.txt /etc/mysql/my.cnf
       _INNODB_LOG_FILE_SIZE=${_INNODB_LOG_FILE_SIZE//[^0-9]/}
       if [ ! -z "${_INNODB_LOG_FILE_SIZE}" ]; then
-        if [ "${_INNODB_LOG_FILE_SIZE}" -ge "50" ]; then
+        if [ "${_INNODB_LOG_FILE_SIZE}" -ge 50 ]; then
           _INNODB_LOG_FILE_SIZE_MB="${_INNODB_LOG_FILE_SIZE}M"
           _INNODB_LOG_FILE_SIZE_TEST=$(grep "innodb_log_file_size" \
             /var/backups/dragon/t/my.cnf-pre-${_xSrl}-${_X_VERSION}-${_NOW} 2>&1)
@@ -1071,7 +1071,7 @@ _restore_default_sql() {
       wait
     fi
     if [ ! -z "${_INNODB_LOG_FILE_SIZE}" ]; then
-      if [ "${_INNODB_LOG_FILE_SIZE}" -ge "50" ]; then
+      if [ "${_INNODB_LOG_FILE_SIZE}" -ge 50 ]; then
         _INNODB_LOG_FILE_SIZE_MB="${_INNODB_LOG_FILE_SIZE}M"
         _INNODB_LOG_FILE_SIZE_TEST=$(grep "innodb_log_file_size" /etc/mysql/my.cnf 2>&1)
         if [[ "${_INNODB_LOG_FILE_SIZE_TEST}" =~ "= ${_INNODB_LOG_FILE_SIZE_MB}" ]]; then
@@ -1167,7 +1167,7 @@ _restart_services() {
 # Tune Web Sever configuration.
 _tune_web_server_config() {
   _LIM_FPM="${_L_PHP_FPM_WORKERS}"
-  if [ "${_LIM_FPM}" -lt "48" ]; then
+  if [ "${_LIM_FPM}" -lt 48 ]; then
     _if_hosted_sys
     if [ "${_hostedSys}" = "YES" ]; then
       _LIM_FPM=48
@@ -1176,7 +1176,7 @@ _tune_web_server_config() {
   _CHILD_MAX_FPM=$(( _LIM_FPM * 2 ))
   if [ "${_PHP_FPM_WORKERS}" != "AUTO" ]; then
     _PHP_FPM_WORKERS=${_PHP_FPM_WORKERS//[^0-9]/}
-    if [ ! -z "${_PHP_FPM_WORKERS}" ] && [ "${_PHP_FPM_WORKERS}" -gt "0" ]; then
+    if [ ! -z "${_PHP_FPM_WORKERS}" ] && [ "${_PHP_FPM_WORKERS}" -gt 0 ]; then
       _CHILD_MAX_FPM="${_PHP_FPM_WORKERS}"
     fi
   fi
@@ -1274,7 +1274,7 @@ _tune_sql_memory_limits() {
       else
         _USE_MYISAM_MEM="${_RAW_MYISAM_MEM}"
       fi
-      if [ "${_USE_MYISAM_MEM}" -lt "256" ] || [ -z "${_USE_MYISAM_MEM}" ]; then
+      if [ "${_USE_MYISAM_MEM}" -lt 256 ] || [ -z "${_USE_MYISAM_MEM}" ]; then
         _USE_MYISAM_MEM="${_USE_SQL}"
       fi
       _USE_MYISAM_MEM="${_USE_MYISAM_MEM}M"
@@ -1301,14 +1301,14 @@ _tune_sql_memory_limits() {
       _RAW_INNODB_MEM=$(echo "(${_RAW_INNODB_MEM}+0.5)/1" | bc 2>&1)
       if [ "${_RAW_INNODB_MEM}" -gt "${_USE_SQL}" ] \
         || [ -z "${_USE_INNODB_MEM}" ] \
-        || [ "${_RAW_INNODB_MEM}" -lt "512" ]; then
+        || [ "${_RAW_INNODB_MEM}" -lt 512 ]; then
         _USE_INNODB_MEM="${_USE_SQL}"
       else
         _RAW_INNODB_MEM=$(echo "scale=2; (${_RAW_INNODB_MEM} * 1.1)" | bc 2>&1)
         _USE_INNODB_MEM=$(echo "(${_RAW_INNODB_MEM}+0.5)/1" | bc 2>&1)
       fi
       _INNODB_BPI=$(echo "scale=0; ${_USE_INNODB_MEM}/1024/2" | bc 2>&1)
-      if [ "${_INNODB_BPI}" -lt "1" ] || [ -z "${_INNODB_BPI}" ]; then
+      if [ "${_INNODB_BPI}" -lt 1 ] || [ -z "${_INNODB_BPI}" ]; then
         _INNODB_BPI="1"
       fi
       sed -i "s/^innodb_buffer_pool_instances.*/innodb_buffer_pool_instances = ${_INNODB_BPI}/g" /etc/mysql/my.cnf
@@ -1364,44 +1364,44 @@ _tune_memory_limits() {
   fi
   _CPU_NR=${_CPU_NR//[^0-9]/}
   if [ ! -z "${_CPU_NR}" ] && [ ! -z "${_CPU_INFO}" ] \
-    && [ "${_CPU_NR}" -gt "${_CPU_INFO}" ] && [ "${_CPU_INFO}" -gt "0" ]; then
+    && [ "${_CPU_NR}" -gt "${_CPU_INFO}" ] && [ "${_CPU_INFO}" -gt 0 ]; then
     _CPU_NR="${_CPU_INFO}"
   fi
-  if [ -z "${_CPU_NR}" ] || [ "${_CPU_NR}" -lt "1" ]; then
+  if [ -z "${_CPU_NR}" ] || [ "${_CPU_NR}" -lt 1 ]; then
     _CPU_NR=1
   fi
   _CPU_MX=$(( _CPU_NR * 2 ))
-  if [ "${_CPU_MX}" -lt "4" ]; then
+  if [ "${_CPU_MX}" -lt 4 ]; then
     _CPU_MX=4
   fi
   _CPU_TG=$(( _CPU_NR / 2 ))
-  if [ "${_CPU_TG}" -lt "4" ]; then
+  if [ "${_CPU_TG}" -lt 4 ]; then
     _CPU_TG=4
   fi
   _CPU_VS=$(( _CPU_NR / 12 ))
-  if [ "${_CPU_VS}" -lt "2" ]; then
+  if [ "${_CPU_VS}" -lt 2 ]; then
     _CPU_VS=2
   fi
   _PrTest=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
   if [[ "${_PrTest}" =~ "POWER" ]]; then
-    if [ "${_CPU_VS}" -lt "8" ]; then
+    if [ "${_CPU_VS}" -lt 8 ]; then
       _CPU_VS=8
     fi
   fi
   _PrTest=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
   if [[ "${_PrTest}" =~ "PHANTOM" ]]; then
-    if [ "${_CPU_VS}" -lt "8" ]; then
+    if [ "${_CPU_VS}" -lt 8 ]; then
       _CPU_VS=8
     fi
   fi
   _PrTest=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
   if [[ "${_PrTest}" =~ "CLUSTER" ]]; then
-    if [ "${_CPU_VS}" -lt "8" ]; then
+    if [ "${_CPU_VS}" -lt 8 ]; then
       _CPU_VS=8
     fi
   fi
   _RAM=$(free -mt | grep Mem: | awk '{ print $2 }' 2>&1)
-  if [ "${_RESERVED_RAM}" -gt "0" ]; then
+  if [ "${_RESERVED_RAM}" -gt 0 ]; then
     _RAM=$(( _RAM - _RESERVED_RAM ))
   fi
   _USE=$(( _RAM / 4 ))
@@ -1420,13 +1420,13 @@ _tune_memory_limits() {
   else
     _USE_SQL=$(( _RAM / 8 ))
   fi
-  if [ "${_USE_SQL}" -lt "64" ]; then
+  if [ "${_USE_SQL}" -lt 64 ]; then
     _USE_SQL=64
   fi
   _TMP_SQL="${_USE_SQL}M"
   _SRT_SQL=$(( _USE_SQL * 2 ))
   _SRT_SQL="${_SRT_SQL}K"
-  if [ "${_USE}" -ge "512" ] && [ "${_USE}" -lt "2048" ]; then
+  if [ "${_USE}" -ge 512 ] && [ "${_USE}" -lt 2048 ]; then
     _USE_PHP=1024
     _USE_OPC=1024
     _USE_CLI=2048
@@ -1444,7 +1444,7 @@ _tune_memory_limits() {
     else
       _L_NGX_WRKS=${_NGINX_WORKERS}
     fi
-  elif [ "${_USE}" -ge "2048" ]; then
+  elif [ "${_USE}" -ge 2048 ]; then
     if [ "${_VMFAMILY}" = "XEN" ] || [ "${_VMFAMILY}" = "AWS" ]; then
       _USE_PHP=2048
       _USE_OPC=2048
@@ -1479,7 +1479,7 @@ _tune_memory_limits() {
           _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
         fi
         _MXC_SQL=$(( _L_PHP_FPM_WORKERS * 4 ))
-        if [ "${_MXC_SQL}" -lt "10" ]; then
+        if [ "${_MXC_SQL}" -lt 10 ]; then
           _MXC_SQL=10
         fi
         if [ "${_NGINX_WORKERS}" = "AUTO" ]; then
@@ -1559,11 +1559,11 @@ _tune_memory_limits() {
   if [ "${_VMFAMILY}" = "VZ" ]; then
     _USE_OPC=64
   fi
-  if [ "${_USE_PHP}" -lt "1024" ]; then
+  if [ "${_USE_PHP}" -lt 1024 ]; then
     _USE_PHP=1024
   fi
   _USE_FPM=$(( _USE_PHP / 2 ))
-  if [ "${_USE_FPM}" -lt "1024" ]; then
+  if [ "${_USE_FPM}" -lt 1024 ]; then
     _USE_FPM=1024
   fi
   if [ ! -e "/var/xdrago/conf/fpm-pool-foo-multi.conf" ]; then
@@ -1672,7 +1672,7 @@ _tune_memory_limits() {
     sed -i "s/^join_buffer_size.*/join_buffer_size        = ${_JBF_SQL}/g"        /etc/mysql/my.cnf
     wait
   fi
-  if [ "${_USE_OPC}" -gt "2048" ]; then
+  if [ "${_USE_OPC}" -gt 2048 ]; then
     _MAX_MEM_REDIS=2048
   else
     _MAX_MEM_REDIS="${_USE_OPC}"

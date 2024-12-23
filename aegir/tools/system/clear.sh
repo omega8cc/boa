@@ -224,7 +224,7 @@ for _OCT in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
   _SITES_NR=0
   if [ -e "${_OCT}/config/server_master/nginx/vhost.d" ]; then
     _SITES_NR=$(ls ${_OCT}/config/server_master/nginx/vhost.d | wc -l)
-    if [ "${_SITES_NR}" -gt "0" ]; then
+    if [ "${_SITES_NR}" -gt 0 ]; then
       if [ -z "${_chckSts}" ]; then
         _chckSts="SNR ${_OCT} ${_SITES_NR} "
       else
@@ -259,7 +259,7 @@ fi
 _if_fix_locked_sshd() {
   _SSH_LOG="/var/log/auth.log"
   if [ `tail --lines=30 ${_SSH_LOG} \
-    | grep --count "error: Bind to port 22"` -gt "0" ]; then
+    | grep --count "error: Bind to port 22"` -gt 0 ]; then
     # killall -9 sshd-session
     kill -9 $(ps aux | grep '[s]tartups' | awk '{print $2}')
     service ssh start
@@ -270,7 +270,7 @@ _if_fix_locked_sshd
 #setprio &> /dev/null
 
 if [ -e "/root/.remote_backups/schedule/backup_schedule.txt" ]; then
-  if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ]; then
+  if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt 0 ]; then
     echo "[$(date)] Active duplicity process detected, will try again later..." >> /var/log/mybackup_waiting_queue.log
   else
     [ -x "/usr/local/bin/dcysetup" ] && bash /usr/local/bin/dcysetup update &> /dev/null

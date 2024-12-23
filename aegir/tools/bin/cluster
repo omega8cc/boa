@@ -1378,14 +1378,14 @@ _default_my_cnf_copy() {
   fi
   _CPU_NR=${_CPU_NR//[^0-9]/}
   if [ ! -z "${_CPU_NR}" ] && [ ! -z "${_CPU_INFO}" ] \
-    && [ "${_CPU_NR}" -gt "${_CPU_INFO}" ] && [ "${_CPU_INFO}" -gt "0" ]; then
+    && [ "${_CPU_NR}" -gt "${_CPU_INFO}" ] && [ "${_CPU_INFO}" -gt 0 ]; then
     _CPU_NR="${_CPU_INFO}"
   fi
-  if [ -z "${_CPU_NR}" ] || [ "${_CPU_NR}" -lt "1" ]; then
+  if [ -z "${_CPU_NR}" ] || [ "${_CPU_NR}" -lt 1 ]; then
     _CPU_NR=1
   fi
   _CPU_MX=$(( _CPU_NR * 2 ))
-  if [ "${_CPU_MX}" -lt "64" ]; then
+  if [ "${_CPU_MX}" -lt 64 ]; then
     _CPU_MX=64
   fi
   _CPU_FC=$(( _CPU_MX * 5 ))
@@ -2124,7 +2124,7 @@ _install_host() {
       wget ${_wgetGet} http://repo.psand.net/pubkey.txt
       _KEYS_SERVER_TEST=$(grep GnuPG pubkey.txt 2>&1)
       sleep 2
-      if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt "5" ]; then
+      if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt 5 ]; then
         kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
         echo "$(date) Too many dirmngr processes killed" >> \
           /var/xdrago/log/dirmngr-count.kill.log

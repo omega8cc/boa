@@ -89,7 +89,7 @@ _check_root() {
     | sed 's/\%//g' \
     | awk '{print $6}' 2> /dev/null)
   _DF_TEST=${_DF_TEST//[^0-9]/}
-  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt "90" ]; then
+  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt 90 ]; then
     echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
     echo "ERROR: We can not proceed until it is below 90/100"
     exit 1
@@ -102,6 +102,14 @@ _check_root() {
     _AWS_VLV="warning"
   fi
   _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
+  _cpuNr="$(cat /data/all/cpuinfo 2>/dev/null | tr -d '\n' || nproc 2>/dev/null)"
+  if [ -n "${_cpuNr}" ]; then
+    [ "${_cpuNr}" -gt 8 ] && _useCpu=4
+    [ "${_cpuNr}" -le 8 ] && _useCpu=2
+    [ "${_cpuNr}" -le 4 ] && _useCpu=1
+  else
+    _useCpu=1
+  fi
   swapoff -a
   wait
 }
@@ -135,7 +143,7 @@ _waiting_notify() {
   fi
 }
 
-if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ]; then
+if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt 0 ]; then
   echo "[$(date)] Active duplicity process detected, will try again later..." >> /var/log/mybackup_waiting_queue.log
   _waiting_notify
   exit 1
@@ -486,7 +494,7 @@ _set_cmd() {
     -v ${_AWS_VLV} \
     --name=${_NAME} \
     --allow-source-mismatch \
-    --concurrency 4 \
+    --concurrency ${_useCpu} \
     --copy-links \
     --full-if-older-than ${FULL_BACKUP_FREQUENCY} \
     --volsize 300"
@@ -495,7 +503,7 @@ _set_cmd() {
     -v ${_AWS_VLV} \
     --name=${_NAME} \
     --allow-source-mismatch \
-    --concurrency 4"
+    --concurrency ${_useCpu}"
 
   _print_env "multiback_set_cmd"
 }

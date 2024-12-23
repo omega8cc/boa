@@ -52,12 +52,12 @@ _if_sql_keyring_apt_update() {
         curl -fsSL ${_urlDev}/percona-key.gpg | ${_GPG} --dearmor -o /etc/apt/keyrings/percona.gpg
       fi
       chmod 644 /etc/apt/keyrings/percona.gpg
-      if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt "5" ]; then
+      if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt 5 ]; then
         kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
         echo "$(date) Too many dirmngr processes killed" >> \
           /var/xdrago/log/dirmngr-count.kill.log
       fi
-      if [ `ps aux | grep -v "grep" | grep --count "gpg-agent"` -gt "5" ]; then
+      if [ `ps aux | grep -v "grep" | grep --count "gpg-agent"` -gt 5 ]; then
         kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
         echo "$(date) Too many gpg-agent processes killed" >> \
           /var/xdrago/log/gpg-agent-count.kill.log
@@ -408,7 +408,7 @@ _sql_conf_update() {
       fi
       _INNODB_LOG_FILE_SIZE=${_INNODB_LOG_FILE_SIZE//[^0-9]/}
       if [ ! -z "${_INNODB_LOG_FILE_SIZE}" ]; then
-        if [ "${_INNODB_LOG_FILE_SIZE}" -ge "50" ]; then
+        if [ "${_INNODB_LOG_FILE_SIZE}" -ge 50 ]; then
           _INNODB_LOG_FILE_SIZE_MB="${_INNODB_LOG_FILE_SIZE}M"
           _INNODB_REDO_LOG_CAPACITY=$(( _INNODB_LOG_FILE_SIZE * 2 ))
           _INNODB_REDO_LOG_CAPACITY_MB="${_INNODB_REDO_LOG_CAPACITY}M"
@@ -475,7 +475,7 @@ _sql_conf_update() {
         echo "DEBUG6: _INNODB_LOG_FILE_SIZE is ${_INNODB_LOG_FILE_SIZE}"
       fi
       if [ "${_SQL_UPGRADE}" = "NO" ]; then
-        if [ ! -z "${_INNODB_LOG_FILE_SIZE}" ] && [ "${_INNODB_LOG_FILE_SIZE}" -ge "50" ]; then
+        if [ ! -z "${_INNODB_LOG_FILE_SIZE}" ] && [ "${_INNODB_LOG_FILE_SIZE}" -ge 50 ]; then
           _INNODB_LOG_FILE_SIZE_MB="${_INNODB_LOG_FILE_SIZE}M"
           _INNODB_LOG_FILE_SIZE_TEST=$(grep "innodb_log_file_size" /etc/mysql/my.cnf 2>&1)
           _INNODB_REDO_LOG_CAPACITY=$(( _INNODB_LOG_FILE_SIZE * 2 ))
@@ -502,7 +502,7 @@ _sql_conf_update() {
         echo "DEBUG7: _INNODB_LOG_FILE_SIZE is ${_INNODB_LOG_FILE_SIZE}"
       fi
       if [ ! -z "${_DB_SERIES}" ] && [ "${_DB_SERIES}" != "5.7" ]; then
-        if [ ! -z "${_INNODB_LOG_FILE_SIZE}" ] && [ "${_INNODB_LOG_FILE_SIZE}" -ge "50" ]; then
+        if [ ! -z "${_INNODB_LOG_FILE_SIZE}" ] && [ "${_INNODB_LOG_FILE_SIZE}" -ge 50 ]; then
           _INNODB_LOG_FILE_SIZE_MB="${_INNODB_LOG_FILE_SIZE}M"
           _INNODB_REDO_LOG_CAPACITY=$(( _INNODB_LOG_FILE_SIZE * 2 ))
           _INNODB_REDO_LOG_CAPACITY_MB="${_INNODB_REDO_LOG_CAPACITY}M"
@@ -638,7 +638,7 @@ _tune_sql_memory_limits() {
         _RAW_MYISAM_MEM=$(echo "scale=2; (${_RAW_MYISAM_MEM} * 1.1)" | bc 2>&1)
         _USE_MYISAM_MEM=$(echo "(${_RAW_MYISAM_MEM}+0.5)/1" | bc 2>&1)
       fi
-      if [ "${_USE_MYISAM_MEM}" -lt "256" ] \
+      if [ "${_USE_MYISAM_MEM}" -lt 256 ] \
         || [ -z "${_USE_MYISAM_MEM}" ]; then
         _USE_MYISAM_MEM="${_USE_SQL}"
       fi
@@ -665,14 +665,14 @@ _tune_sql_memory_limits() {
       _RAW_INNODB_MEM=$(echo "(${_RAW_INNODB_MEM}+0.5)/1" | bc 2>&1)
       if [ "${_RAW_INNODB_MEM}" -gt "${_USE_SQL}" ] \
         || [ -z "${_USE_INNODB_MEM}" ] \
-        || [ "${_RAW_INNODB_MEM}" -lt "512" ]; then
+        || [ "${_RAW_INNODB_MEM}" -lt 512 ]; then
         _USE_INNODB_MEM="${_USE_SQL}"
       else
         _RAW_INNODB_MEM=$(echo "scale=2; (${_RAW_INNODB_MEM} * 1.1)" | bc 2>&1)
         _USE_INNODB_MEM=$(echo "(${_RAW_INNODB_MEM}+0.5)/1" | bc 2>&1)
       fi
       _INNODB_BPI=$(echo "scale=0; ${_USE_INNODB_MEM}/1024/2" | bc 2>&1)
-      if [ "${_INNODB_BPI}" -lt "1" ] || [ -z "${_INNODB_BPI}" ]; then
+      if [ "${_INNODB_BPI}" -lt 1 ] || [ -z "${_INNODB_BPI}" ]; then
         _INNODB_BPI="1"
       fi
       if [ -e "/etc/mysql/my.cnf" ]; then
@@ -681,24 +681,24 @@ _tune_sql_memory_limits() {
       fi
       _INNODB_LOG_FILE_SIZE=$(echo "scale=0; ${_USE_INNODB_MEM}/4/40*40" | bc 2>&1)
       _DB_COUNT=$(ls /var/lib/mysql/ | wc -l 2>&1)
-      if [ "${_DB_COUNT}" -gt "3" ]; then
-        if [ "${_INNODB_LOG_FILE_SIZE}" -gt "64" ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -le "256" ]; then
+      if [ "${_DB_COUNT}" -gt 3 ]; then
+        if [ "${_INNODB_LOG_FILE_SIZE}" -gt 64 ] \
+          && [ "${_INNODB_LOG_FILE_SIZE}" -le 256 ]; then
           _INNODB_LOG_FILE_SIZE=256
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -gt "256" ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -le "512" ]; then
+        elif [ "${_INNODB_LOG_FILE_SIZE}" -gt 256 ] \
+          && [ "${_INNODB_LOG_FILE_SIZE}" -le 512 ]; then
           _INNODB_LOG_FILE_SIZE=512
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -gt "512" ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -le "1024" ]; then
+        elif [ "${_INNODB_LOG_FILE_SIZE}" -gt 512 ] \
+          && [ "${_INNODB_LOG_FILE_SIZE}" -le 1024 ]; then
           _INNODB_LOG_FILE_SIZE=1024
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -gt "1024" ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -le "2048" ]; then
+        elif [ "${_INNODB_LOG_FILE_SIZE}" -gt 1024 ] \
+          && [ "${_INNODB_LOG_FILE_SIZE}" -le 2048 ]; then
           _INNODB_LOG_FILE_SIZE=2048
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -gt "2048" ]; then
+        elif [ "${_INNODB_LOG_FILE_SIZE}" -gt 2048 ]; then
           _INNODB_LOG_FILE_SIZE=2048
         fi
       fi
-      if [ "${_INNODB_LOG_FILE_SIZE}" -le "64" ] \
+      if [ "${_INNODB_LOG_FILE_SIZE}" -le 64 ] \
         || [ -z "${_INNODB_LOG_FILE_SIZE}" ]; then
         _INNODB_LOG_FILE_SIZE=64
       fi
@@ -710,24 +710,24 @@ _tune_sql_memory_limits() {
       _USE_INNODB_MEM="${_USE_SQL}M"
       _INNODB_LOG_FILE_SIZE=$(echo "scale=0; ${_USE_SQL}/4/40*40" | bc 2>&1)
       _DB_COUNT=$(ls /var/lib/mysql/ | wc -l 2>&1)
-      if [ "${_DB_COUNT}" -gt "3" ]; then
-        if [ "${_INNODB_LOG_FILE_SIZE}" -gt "64" ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -le "256" ]; then
+      if [ "${_DB_COUNT}" -gt 3 ]; then
+        if [ "${_INNODB_LOG_FILE_SIZE}" -gt 64 ] \
+          && [ "${_INNODB_LOG_FILE_SIZE}" -le 256 ]; then
           _INNODB_LOG_FILE_SIZE=256
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -gt "256" ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -le "512" ]; then
+        elif [ "${_INNODB_LOG_FILE_SIZE}" -gt 256 ] \
+          && [ "${_INNODB_LOG_FILE_SIZE}" -le 512 ]; then
           _INNODB_LOG_FILE_SIZE=512
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -gt "512" ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -le "1024" ]; then
+        elif [ "${_INNODB_LOG_FILE_SIZE}" -gt 512 ] \
+          && [ "${_INNODB_LOG_FILE_SIZE}" -le 1024 ]; then
           _INNODB_LOG_FILE_SIZE=1024
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -gt "1024" ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -le "2048" ]; then
+        elif [ "${_INNODB_LOG_FILE_SIZE}" -gt 1024 ] \
+          && [ "${_INNODB_LOG_FILE_SIZE}" -le 2048 ]; then
           _INNODB_LOG_FILE_SIZE=2048
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -gt "2048" ]; then
+        elif [ "${_INNODB_LOG_FILE_SIZE}" -gt 2048 ]; then
           _INNODB_LOG_FILE_SIZE=2048
         fi
       fi
-      if [ "${_INNODB_LOG_FILE_SIZE}" -le "64" ] \
+      if [ "${_INNODB_LOG_FILE_SIZE}" -le 64 ] \
         || [ -z "${_INNODB_LOG_FILE_SIZE}" ]; then
         _INNODB_LOG_FILE_SIZE=64
       fi
@@ -745,24 +745,24 @@ _tune_sql_memory_limits() {
     fi
     _INNODB_LOG_FILE_SIZE=$(echo "scale=0; ${_USE_SQL}/4/40*40" | bc 2>&1)
     _DB_COUNT=$(ls /var/lib/mysql/ | wc -l 2>&1)
-    if [ "${_DB_COUNT}" -gt "3" ]; then
-      if [ "${_INNODB_LOG_FILE_SIZE}" -gt "64" ] \
-        && [ "${_INNODB_LOG_FILE_SIZE}" -le "256" ]; then
+    if [ "${_DB_COUNT}" -gt 3 ]; then
+      if [ "${_INNODB_LOG_FILE_SIZE}" -gt 64 ] \
+        && [ "${_INNODB_LOG_FILE_SIZE}" -le 256 ]; then
         _INNODB_LOG_FILE_SIZE=256
-      elif [ "${_INNODB_LOG_FILE_SIZE}" -gt "256" ] \
-        && [ "${_INNODB_LOG_FILE_SIZE}" -le "512" ]; then
+      elif [ "${_INNODB_LOG_FILE_SIZE}" -gt 256 ] \
+        && [ "${_INNODB_LOG_FILE_SIZE}" -le 512 ]; then
         _INNODB_LOG_FILE_SIZE=512
-      elif [ "${_INNODB_LOG_FILE_SIZE}" -gt "512" ] \
-        && [ "${_INNODB_LOG_FILE_SIZE}" -le "1024" ]; then
+      elif [ "${_INNODB_LOG_FILE_SIZE}" -gt 512 ] \
+        && [ "${_INNODB_LOG_FILE_SIZE}" -le 1024 ]; then
         _INNODB_LOG_FILE_SIZE=1024
-      elif [ "${_INNODB_LOG_FILE_SIZE}" -gt "1024" ] \
-        && [ "${_INNODB_LOG_FILE_SIZE}" -le "2048" ]; then
+      elif [ "${_INNODB_LOG_FILE_SIZE}" -gt 1024 ] \
+        && [ "${_INNODB_LOG_FILE_SIZE}" -le 2048 ]; then
         _INNODB_LOG_FILE_SIZE=2048
-      elif [ "${_INNODB_LOG_FILE_SIZE}" -gt "2048" ]; then
+      elif [ "${_INNODB_LOG_FILE_SIZE}" -gt 2048 ]; then
         _INNODB_LOG_FILE_SIZE=2048
       fi
     fi
-    if [ "${_INNODB_LOG_FILE_SIZE}" -le "64" ] \
+    if [ "${_INNODB_LOG_FILE_SIZE}" -le 64 ] \
       || [ -z "${_INNODB_LOG_FILE_SIZE}" ]; then
       _INNODB_LOG_FILE_SIZE=64
     fi
@@ -999,18 +999,18 @@ _forced_mysql_root_password_update() {
   else
     _STRONG_PASSWORDS=${_STRONG_PASSWORDS//[^0-9]/}
     if [ ! -z "${_STRONG_PASSWORDS}" ] \
-      && [ "${_STRONG_PASSWORDS}" -gt "32" ]; then
+      && [ "${_STRONG_PASSWORDS}" -gt 32 ]; then
       _PWD_CHARS="${_STRONG_PASSWORDS}"
     else
       _PWD_CHARS=32
     fi
     if [ ! -z "${_PWD_CHARS}" ] \
-      && [ "${_PWD_CHARS}" -gt "128" ]; then
+      && [ "${_PWD_CHARS}" -gt 128 ]; then
       _PWD_CHARS=128
     fi
   fi
   if [ "${_STRONG_PASSWORDS}" = "YES" ] \
-    || [ "${_PWD_CHARS}" -gt "32" ]; then
+    || [ "${_PWD_CHARS}" -gt 32 ]; then
     if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
       _ESC_PASS="$(openssl rand -base64 64 | tr -d '\n')"
     else
@@ -1026,7 +1026,7 @@ _forced_mysql_root_password_update() {
     _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
     _LEN_PASS=$(echo ${#_ESC_PASS} 2>&1)
   fi
-  if [ -z "${_ESC_PASS}" ] || [ "${_LEN_PASS}" -lt "9" ]; then
+  if [ -z "${_ESC_PASS}" ] || [ "${_LEN_PASS}" -lt 9 ]; then
     _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
     _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
     _ESC_PASS=$(_sanitize_string "${_ESC_PASS}" 2>&1)
@@ -1408,18 +1408,18 @@ _init_sql_root_credentials() {
       else
         _STRONG_PASSWORDS=${_STRONG_PASSWORDS//[^0-9]/}
         if [ ! -z "${_STRONG_PASSWORDS}" ] \
-          && [ "${_STRONG_PASSWORDS}" -gt "32" ]; then
+          && [ "${_STRONG_PASSWORDS}" -gt 32 ]; then
           _PWD_CHARS="${_STRONG_PASSWORDS}"
         else
           _PWD_CHARS=32
         fi
         if [ ! -z "${_PWD_CHARS}" ] \
-          && [ "${_PWD_CHARS}" -gt "128" ]; then
+          && [ "${_PWD_CHARS}" -gt 128 ]; then
           _PWD_CHARS=128
         fi
       fi
       if [ "${_STRONG_PASSWORDS}" = "YES" ] \
-        || [ "${_PWD_CHARS}" -gt "32" ]; then
+        || [ "${_PWD_CHARS}" -gt 32 ]; then
         if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
           _ESC_PASS="$(openssl rand -base64 64 | tr -d '\n')"
         else
@@ -1435,7 +1435,7 @@ _init_sql_root_credentials() {
         _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
         _LEN_PASS=$(echo ${#_ESC_PASS} 2>&1)
       fi
-      if [ -z "${_ESC_PASS}" ] || [ "${_LEN_PASS}" -lt "9" ]; then
+      if [ -z "${_ESC_PASS}" ] || [ "${_LEN_PASS}" -lt 9 ]; then
         _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
         _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
         _ESC_PASS=$(_sanitize_string "${_ESC_PASS}" 2>&1)

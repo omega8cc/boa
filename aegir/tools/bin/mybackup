@@ -371,7 +371,7 @@ export _run_as_user=$(whoami)
 # Main script
 if [[ "$#" -eq 0 ]] && [ "${_run_as_user}" = "root" ]; then
 
-  if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ]; then
+  if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt 0 ]; then
     echo "[$(date)] Active duplicity process detected, will try again later..." >> /var/log/mybackup_waiting_queue.log
     exit 1
   fi
