@@ -482,13 +482,6 @@ _collection_status() {
 }
 
 # Function to repair incomplete backup sets
-_repair_only() {
-  echo "Running repair via cleanup --force for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
-  echo "Command is ${_DCY_MN_CMD} cleanup --force ${_BACKUP_TARGET}"
-  ${_DCY_MN_CMD} cleanup --force ${_BACKUP_TARGET} >> ${_LOGFILE}
-}
-
-# Function to repair incomplete backup sets
 _repair() {
   _set_mode
   _set_cmd
@@ -496,6 +489,13 @@ _repair() {
   echo "Command is ${_DCY_MN_CMD} cleanup --force ${_BACKUP_TARGET}"
   ${_DCY_MN_CMD} cleanup --force ${_BACKUP_TARGET} >> ${_LOGFILE}
   _collection_status
+}
+
+# Function to repair incomplete backup sets
+_repair_only() {
+  echo "Running repair via cleanup --force for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
+  echo "Command is ${_DCY_MN_CMD} cleanup --force ${_BACKUP_TARGET}"
+  ${_DCY_MN_CMD} cleanup --force ${_BACKUP_TARGET} >> ${_LOGFILE}
 }
 
 # Function to check if repair incomplete backup sets is needed
@@ -538,7 +538,6 @@ _backup() {
   _backup_prepare
   _set_mode
   _set_cmd
-  [ -e "${_LOGFILE}" ] && _check_if_repair
   _run_backup
   _check_if_repair
   _weekly_cleanup
@@ -550,7 +549,6 @@ _backup() {
   rm -f ${_LOGFILE}
   _print_env "multiback_backup"
 }
-
 
 ### Legacy procedure for reference
 #
