@@ -125,7 +125,7 @@ _waiting_notify() {
   cat /root/.remote_backups/schedule/backup_schedule.txt > ${_templog}
   ps axf | grep multiback >> ${_templog}
   ps axf | grep duplicity >> ${_templog}
-  ll /tmp/duplicity-*-tempdir >> ${_templog}
+  ls -la /tmp/duplicity-*-tempdir >> ${_templog}
   tree /root/.cache/duplicity >> ${_templog}
   ls -laR /root/.cache/duplicity >> ${_templog}
   grep "Out of memory: Killed process.*duplicity" /var/log/iptables.log >> ${_templog}
