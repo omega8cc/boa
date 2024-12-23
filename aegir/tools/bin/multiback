@@ -407,21 +407,14 @@ _backup_prepare() {
 # Function to set backup mode
 _set_mode() {
   [ -z "${_MODE}" ] && _MODE="backup"
-  if [ "${_DOW}" = "${_RDW}" ] && [ "${FULL_BACKUP_FREQUENCY}" = "14D" ]; then
-    if [ ! -e "/root/.randomize_duplicity_full_backup_day.cnf" ]; then
-      _MODE="full"
-      FULL_BACKUP_FREQUENCY="1M"
-    fi
+  if [ -e "${_LOGPTH}/${_BUCKET_NAME}.archive.log" ] \
+    && [ "${_DO_CLEANUP}" = "YES" ]; then
+    _MODE="incremental"
   else
-    if [ -e "${_LOGPTH}/${_BUCKET_NAME}.archive.log" ] \
-      && [ "${_DO_CLEANUP}" = "YES" ]; then
-      _MODE="incremental"
-    else
-      _MODE="full"
-    fi
+    _MODE="full"
   fi
+  echo "The FULL_BACKUP_FREQUENCY is (${FULL_BACKUP_FREQUENCY}) for ${_BUCKET_NAME}" >> ${_LOGFILE}
   echo "The _MODE has been set to (${_MODE}) in _set_mode for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
-  echo "The FULL_BACKUP_FREQUENCY has been set to (${FULL_BACKUP_FREQUENCY}) in _set_mode for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
   _MODE="backup"
   echo "The _MODE has been re-set to (${_MODE}) in _set_mode for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
   _print_env "multiback_set_mode"
