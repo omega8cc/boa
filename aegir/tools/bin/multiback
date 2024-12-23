@@ -403,26 +403,6 @@ _backup_prepare() {
   _print_env "multiback_backup_prepare"
 }
 
-_randomize_full() {
-  if [ -e "/root/.randomize_duplicity_full_backup_day.cnf" ]; then
-    if [ -e "${_LOGPTH}/${_BUCKET_NAME}.randomize.full.log" ]; then
-      _RDW=$(cat ${_LOGPTH}/${_BUCKET_NAME}.randomize.full.log 2>&1)
-      _RDW=$(echo -n ${_RDW} | tr -d "\n" 2>&1)
-      _RDW=${_RDW//[^1-7]/}
-      _MODE="incremental"
-    else
-      _RDW=$((RANDOM%7+1))
-      _RDW=${_RDW//[^1-7]/}
-      _MODE="full"
-      echo ${_RDW} > ${_LOGPTH}/${_BUCKET_NAME}.randomize.full.log
-    fi
-  else
-    _RDW=7
-  fi
-  echo "The _RDW has been set to (${_RDW}) in _randomize_full for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
-  echo "The _MODE has been set to (${_MODE}) in _randomize_full for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
-  _print_env "multiback_randomize_full"
-}
 
 # Function to set backup mode
 _set_mode() {
@@ -551,7 +531,6 @@ _list() {
 # Function to prepare backup
 _backup() {
   _backup_prepare
-  _randomize_full
   _set_mode
   _set_cmd
   [ -e "${_LOGFILE}" ] && _check_if_repair
