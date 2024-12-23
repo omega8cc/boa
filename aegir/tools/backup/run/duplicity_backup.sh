@@ -828,7 +828,6 @@ _remove_pid_file "${_PIDFILE}"
   export _MODE=
   export _NAME=
   export _PIDFILE=
-  export _RDW=
   export _RESTORE_PATH=
   export _RESTORE_TARGET=
   export _RESTORE_TIME=
