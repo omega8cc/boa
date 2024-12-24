@@ -838,7 +838,7 @@ _update_agents() {
 
   if [ -d "/root/.remote_backups/run" ] \
     && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthCtrl}/create_cron_entries.sh.ctrl.f84.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthCtrl}/create_cron_entries.sh.ctrl.f83.${_tRee}.${_xSrl}.pid" ]; then
     if [ -e "/root/.remote_backups/run/create_cron_entries.sh" ]; then
       mv -f /root/.remote_backups/run/create_cron_entries.sh /root/.remote_backups/run/create_cron_entries.sh.old
     fi
@@ -846,7 +846,7 @@ _update_agents() {
     if [ -e "/root/.remote_backups/run/create_cron_entries.sh" ]; then
       chmod 700 /root/.remote_backups/run/create_cron_entries.sh
       chown root:root /root/.remote_backups/run/create_cron_entries.sh
-      touch ${_pthCtrl}/create_cron_entries.sh.ctrl.f84.${_tRee}.${_xSrl}.pid
+      touch ${_pthCtrl}/create_cron_entries.sh.ctrl.f83.${_tRee}.${_xSrl}.pid
     else
       if [ -e "/root/.remote_backups/run/create_cron_entries.sh.old" ]; then
         mv -f /root/.remote_backups/run/create_cron_entries.sh.old /root/.remote_backups/run/create_cron_entries.sh
