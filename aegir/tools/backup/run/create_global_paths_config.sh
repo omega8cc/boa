@@ -3,21 +3,26 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-export _sPid="f87"
+export _sPid="f86"
 
 # Function to create or update global paths configuration
 _create_global_paths_config() {
   _global_config_dir="/root/.remote_backups/paths"
   _exclude_list="${_global_config_dir}/.backboa.exclude.list"
   _include_list="${_global_config_dir}/.backboa.include.list"
-  _exclude_file="${_global_config_dir}/.backboa.exclude.file"
-  _include_file="${_global_config_dir}/.backboa.include.file"
-  _exclude_regexp_file="${_global_config_dir}/.backboa.exclude_regexp.file"
-  _include_regexp_file="${_global_config_dir}/.backboa.include_regexp.file"
-  _merged_exclude_file="${_global_config_dir}/.backboa.exclude.merged.file"
-  _merged_include_file="${_global_config_dir}/.backboa.include.merged.file"
+  _exclude_global_file="${_global_config_dir}/.backboa.exclude.file"
+  _include_global_file="${_global_config_dir}/.backboa.include_global.file"
+  _include_data_file="${_global_config_dir}/.backboa.include_data.file"
+  _exclude_data_regexp_file="${_global_config_dir}/.backboa.exclude_data_regexp.file"
+  _include_global_regexp_file="${_global_config_dir}/.backboa.include_global_regexp.file"
+  _merged_global_exclude_file="${_global_config_dir}/.backboa.global_exclude.merged.file"
+  _merged_data_exclude_file="${_global_config_dir}/.backboa.data_exclude.merged.file"
+  _merged_global_include_file="${_global_config_dir}/.backboa.global_include.merged.file"
+  _merged_data_include_file="${_data_config_dir}/.backboa.data_include.merged.file"
   _global_ctrl_file="${_global_config_dir}/.backboa.${_sPid}.paths.ctrl.file"
-  _global_paths_file="${_global_config_dir}/paths.txt"
+  _global_paths_file="${_global_config_dir}/global_paths.txt"
+  _data_paths_file="${_global_config_dir}/data_paths.txt"
+  _disk_dir="/data/disk"
 
   # Ensure global configuration directory exists and is owned by root
   mkdir -p "${_global_config_dir}"
@@ -62,14 +67,14 @@ _create_global_paths_config() {
   fi
 
   if [ ! -f "${_global_ctrl_file}" ]; then
-    cat << EOF > "${_exclude_file}"
+    cat << EOF > "${_exclude_global_file}"
 --exclude /root/.cache
 EOF
   fi
 
   # Create default exclude/include files if they don't exist
   if [ ! -f "${_global_ctrl_file}" ]; then
-    cat << EOF > "${_include_file}"
+    cat << EOF > "${_include_global_file}"
 --include /root
 --include /var/backups/csf
 --include /var/backups/dragon
@@ -78,7 +83,30 @@ EOF
   fi
 
   if [ ! -f "${_global_ctrl_file}" ]; then
-    cat << EOF > "${_exclude_regexp_file}"
+    # Start writing to the include data file
+    cat << EOF > "${_include_data_file}"
+EOF
+
+    # Iterate over each item in the disk directory
+    for subdir in "${_disk_dir}"/*/; do
+      # Check if it's a directory
+      if [ -d "$subdir" ]; then
+        # Remove the trailing slash for consistency
+        sanitized_subdir="${subdir%/}"
+        # Append the --include line to the include data file
+        echo "--include ${sanitized_subdir}" >> "${_include_data_file}"
+      fi
+    done
+
+    # Append the additional include statements
+    cat << EOF >> "${_include_data_file}"
+--include /data/all
+--include /data/conf
+EOF
+  fi
+
+  if [ ! -f "${_global_ctrl_file}" ]; then
+    cat << EOF > "${_exclude_data_regexp_file}"
 --exclude-regexp '^/data/disk/.*/backup-exports/'
 --exclude-regexp '^/data/disk/.*/backups/'
 --exclude-regexp '^/data/disk/.*/static/restores/'
@@ -89,7 +117,7 @@ EOF
   fi
 
   if [ ! -f "${_global_ctrl_file}" ]; then
-    cat << EOF > "${_include_regexp_file}"
+    cat << EOF > "${_include_global_regexp_file}"
 --include-regexp '^/var/backups/barracuda.*'
 EOF
   fi
@@ -118,42 +146,57 @@ EOF
   }
 
   # Validate and merge exclude/include files
-  [ -e "${_exclude_file}" ] && _validate_config "${_exclude_file}"
-  [ -e "${_include_file}" ] && _validate_config "${_include_file}"
-  [ -e "${_exclude_regexp_file}" ] && _validate_config "${_exclude_regexp_file}" "regexp"
-  [ -e "${_include_regexp_file}" ] && _validate_config "${_include_regexp_file}" "regexp"
+  [ -e "${_exclude_data_regexp_file}" ] && _validate_config "${_exclude_data_regexp_file}" "regexp"
+  [ -e "${_exclude_global_file}" ] && _validate_config "${_exclude_global_file}"
+  [ -e "${_include_data_file}" ] && _validate_config "${_include_data_file}"
+  [ -e "${_include_global_file}" ] && _validate_config "${_include_global_file}"
+  [ -e "${_include_global_regexp_file}" ] && _validate_config "${_include_global_regexp_file}" "regexp"
 
-  cat "${_exclude_file}" > "${_merged_exclude_file}"
-  cat "${_include_file}" > "${_merged_include_file}"
+  [ -e "${_exclude_global_file}" ] && cat "${_exclude_global_file}" > "${_merged_global_exclude_file}"
+  [ -e "${_include_data_file}" ] && cat "${_include_data_file}" > "${_merged_data_include_file}"
+  [ -e "${_include_global_file}" ] && cat "${_include_global_file}" > "${_merged_global_include_file}"
 
   # Merge regexp files into final configurations
-  if [ -s "${_exclude_regexp_file}" ]; then
-    cat "${_exclude_regexp_file}" >> "${_merged_exclude_file}"
+  if [ -s "${_exclude_data_regexp_file}" ]; then
+    cat "${_exclude_data_regexp_file}" >> "${_merged_data_exclude_file}"
   fi
-  if [ -s "${_include_regexp_file}" ]; then
-    cat "${_include_regexp_file}" >> "${_merged_include_file}"
+  if [ -s "${_include_global_regexp_file}" ]; then
+    cat "${_include_global_regexp_file}" >> "${_merged_global_include_file}"
   fi
 
   # Finalize by adding a backslash at the end of each line except the last
-  _add_backslashes "${_merged_exclude_file}"
-  _add_backslashes "${_merged_include_file}"
+  [ -e "${_merged_data_exclude_file}" ] && _add_backslashes "${_merged_data_exclude_file}"
+  [ -e "${_merged_data_include_file}" ] && _add_backslashes "${_merged_data_include_file}"
+  [ -e "${_merged_global_exclude_file}" ] && _add_backslashes "${_merged_global_exclude_file}"
+  [ -e "${_merged_global_include_file}" ] && _add_backslashes "${_merged_global_include_file}"
 
   # Convert the exclude file contents to a single-line variable without backslashes and excessive whitespace
-  _MERGED_ALL_EXCLUDE=$(sed 's/\\//g' "${_merged_exclude_file}" | tr '\n' ' ' | tr -s ' ' | sed 's/^ *//;s/ *$//')
-
-  # Convert the include file contents to a single-line variable without backslashes and excessive whitespace
-  _MERGED_ALL_INCLUDE=$(sed 's/\\//g' "${_merged_include_file}" | tr '\n' ' ' | tr -s ' ' | sed 's/^ *//;s/ *$//')
+  [ -e "${_merged_data_exclude_file}" ] && _MERGED_DATA_EXCLUDE=$(sed 's/\\//g' "${_merged_data_exclude_file}" | tr '\n' ' ' | tr -s ' ' | sed 's/^ *//;s/ *$//')
+  [ -e "${_merged_data_include_file}" ] && _MERGED_DATA_INCLUDE=$(sed 's/\\//g' "${_merged_data_include_file}" | tr '\n' ' ' | tr -s ' ' | sed 's/^ *//;s/ *$//')
+  [ -e "${_merged_global_exclude_file}" ] && _MERGED_GLOBAL_EXCLUDE=$(sed 's/\\//g' "${_merged_global_exclude_file}" | tr '\n' ' ' | tr -s ' ' | sed 's/^ *//;s/ *$//')
+  [ -e "${_merged_global_include_file}" ] && _MERGED_GLOBAL_INCLUDE=$(sed 's/\\//g' "${_merged_global_include_file}" | tr '\n' ' ' | tr -s ' ' | sed 's/^ *//;s/ *$//')
 
   # Create the final paths configuration file
   cat << EOF > "${_global_paths_file}"
-_SOURCE="/data /etc /home /opt/solr4 /var/aegir /var/solr7 /var/www /var/xdrago"
-_EXCLUDE_PATHS="${_MERGED_ALL_EXCLUDE}"
-_INCLUDE_PATHS="${_MERGED_ALL_INCLUDE}"
+_SOURCE="/etc /home /opt/solr4 /var/aegir /var/solr7 /var/www /var/xdrago"
+_EXCLUDE_PATHS="${_MERGED_GLOBAL_EXCLUDE}"
+_INCLUDE_PATHS="${_MERGED_GLOBAL_INCLUDE}"
 _EXCLUDE_LIST="${_exclude_list}"
 _INCLUDE_LIST="${_include_list}"
 EOF
 
   echo "Global paths configuration created or updated at ${_global_paths_file}"
+
+  # Create the final paths configuration file
+  cat << EOF > "${_data_paths_file}"
+_SOURCE=""
+_EXCLUDE_PATHS="${_MERGED_DATA_EXCLUDE}"
+_INCLUDE_PATHS="${_MERGED_DATA_INCLUDE}"
+_EXCLUDE_LIST="${_exclude_list}"
+_INCLUDE_LIST="${_include_list}"
+EOF
+
+  echo "Global paths configuration created or updated at ${_data_paths_file}"
 }
 
 #### Generate Passphrase for Root

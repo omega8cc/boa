@@ -291,11 +291,11 @@ _validate_credentials() {
 _load_credentials() {
   local _service="$1"
   local _user="$2"
-  if [ "${_user}" != "arch" ] && [ "${_user}" != "globalcatchall" ]; then
+  if [ "${_user}" != "arch" ] && [ "${_user}" != "data" ] && [ "${_user}" != "global" ]; then
     local _cred_file="/data/disk/${_user}/static/control/remote_backups/credentials/${_service}.txt"
     local _secret_file="/data/disk/${_user}/remote_backups/.secret.txt"
   fi
-  if [ "${_user}" = "globalcatchall" ]; then
+  if [ "${_user}" = "global" ] || [ "${_user}" = "data" ]; then
     local _cred_file="/root/.remote_backups/credentials/${_service}.txt"
     local _secret_file="/root/.remote_backups/.secret.txt"
   fi
@@ -319,11 +319,10 @@ _load_credentials() {
 # Function to load paths configuration
 _load_paths() {
   local _user="$1"
-  if [ "${_user}" != "arch" ] && [ "${_user}" != "globalcatchall" ]; then
+  if [ "${_user}" != "arch" ] && [ "${_user}" != "data" ] && [ "${_user}" != "global" ]; then
     export _paths_file="/data/disk/${_user}/remote_backups/paths/paths.txt"
-  fi
-  if [ "${_user}" = "globalcatchall" ]; then
-    export _paths_file="/root/.remote_backups/paths/paths.txt"
+  elif [ "${_user}" = "global" ] || [ "${_user}" = "data" ]; then
+    export _paths_file="/root/.remote_backups/paths/${_user}_paths.txt"
   fi
 
   if [ ! -f "${_paths_file}" ]; then
@@ -355,7 +354,7 @@ _validate_or_default_duration() {
 _construct_bucket_name() {
   local _service_abbr=$1
   local _user=$2
-  _service_dash=$(echo -n ${_service_abbr} | tr _ - 2>&1)
+  _service_dash=$(echo -n ${_service_abbr} | tr _ -)
   _hst_dash=$(echo -n ${_hName} | tr . -)
   export _BUCKET_NAME="back-to-${_user}-${_hst_dash}-${_service_dash}"
   export _NAME="${_user}-${_service_dash}"
@@ -426,7 +425,7 @@ _set_mode() {
     [ ! -e "${_LOGPTH}/${_BUCKET_NAME}.${_TODAY}.full.log" ] && export _MODE="full"
   fi
   echo "The _MODE has been set to (${_MODE}) in _set_mode for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
-  if [ "${_hostedSys}" = "YES" ] && [ "${_user}" = "globalcatchall" ]; then
+  if [ "${_hostedSys}" = "YES" ] && [ "${_user}" = "global" ]; then
     if [ "${_DOM}" = 8 ] && [ ! -e "${_LOGPTH}/${_BUCKET_NAME}.${_TODAY}.full.log" ]; then
       _MODE="full"
       echo "The _MODE has been re-set to (${_MODE}) in _set_mode for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
@@ -477,7 +476,7 @@ _set_cmd() {
     --allow-source-mismatch \
     --concurrency ${_useCpu}"
 
-  if [ "${_hostedSys}" = "YES" ] && [ "${_user}" = "globalcatchall" ]; then
+  if [ "${_hostedSys}" = "YES" ] && [ "${_user}" = "global" ]; then
     export _DCY_UP_CMD="${_HST_UP_CMD}"
   fi
 
