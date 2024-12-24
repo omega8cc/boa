@@ -418,17 +418,23 @@ _backup_prepare() {
 
 # Function to set backup mode
 _set_mode() {
+  local _user="${_USER}"
   [ -z "${_MODE}" ] && _MODE="backup"
-  if [ -e "${_LOGPTH}/${_BUCKET_NAME}.archive.log" ] \
-    && [ "${_DO_CLEANUP}" = "YES" ]; then
-    _MODE="incremental"
+  if [ -e "${_LOGPTH}/${_BUCKET_NAME}.archive.log" ] && [ "${_cached}" = "YES" ]; then
+    export _MODE="incremental"
   else
-    _MODE="full"
+    [ ! -e "${_LOGPTH}/${_BUCKET_NAME}.${_TODAY}.full.log" ] && export _MODE="full"
   fi
-  echo "The FULL_BACKUP_FREQUENCY is (${FULL_BACKUP_FREQUENCY}) for ${_BUCKET_NAME}" >> ${_LOGFILE}
   echo "The _MODE has been set to (${_MODE}) in _set_mode for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
-  _MODE="backup"
-  echo "The _MODE has been re-set to (${_MODE}) in _set_mode for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
+  if [ "${_hostedSys}" = "YES" ] && [ "${_user}" = "globalcatchall" ]; then
+    if [ "${_DOM}" = 8 ] && [ ! -e "${_LOGPTH}/${_BUCKET_NAME}.${_TODAY}.full.log" ]; then
+      _MODE="full"
+      echo "The _MODE has been re-set to (${_MODE}) in _set_mode for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
+    fi
+  else
+    echo "The FULL_BACKUP_FREQUENCY is (${FULL_BACKUP_FREQUENCY}) for ${_BUCKET_NAME}" >> ${_LOGFILE}
+  fi
+  export _MODE
   _print_env "multiback_set_mode"
 }
 
