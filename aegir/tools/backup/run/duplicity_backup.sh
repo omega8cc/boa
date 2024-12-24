@@ -512,21 +512,20 @@ _collection_status() {
   ${_DCY_MN_CMD} collection-status ${_BACKUP_TARGET} >> ${_LOGFILE}
 }
 
-# Function to repair incomplete backup sets
-_repair() {
-  _set_mode
-  _set_cmd
-  echo "Running repair via cleanup --force for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
-  echo "Command is ${_DCY_MN_CMD} cleanup --force ${_BACKUP_TARGET}"
-  ${_DCY_MN_CMD} cleanup --force ${_BACKUP_TARGET} >> ${_LOGFILE}
-  _collection_status
-}
-
-# Function to repair incomplete backup sets
+# Function to only repair incomplete backup sets
 _repair_only() {
   echo "Running repair via cleanup --force for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
   echo "Command is ${_DCY_MN_CMD} cleanup --force ${_BACKUP_TARGET}"
   ${_DCY_MN_CMD} cleanup --force ${_BACKUP_TARGET} >> ${_LOGFILE}
+  wait
+}
+
+# Function to repair incomplete backup sets
+_repair() {
+  _set_mode
+  _set_cmd
+  _repair_only
+  _collection_status
 }
 
 # Function to check if repair incomplete backup sets is needed
