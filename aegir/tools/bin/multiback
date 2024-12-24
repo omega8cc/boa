@@ -490,6 +490,7 @@ _status() {
   _set_cmd
   echo "Command is ${_DCY_MN_CMD} collection-status ${_BACKUP_TARGET}"
   ${_DCY_MN_CMD} collection-status ${_BACKUP_TARGET}
+  wait
 }
 
 # Function to list-current-files only
@@ -498,18 +499,21 @@ _list() {
   _set_cmd
   echo "Command is ${_DCY_MN_CMD} list-current-files ${_BACKUP_TARGET}"
   ${_DCY_MN_CMD} list-current-files ${_BACKUP_TARGET}
+  wait
 }
 
 _remove_older_than() {
   echo "Running remove-older-than ${KEEP_WITHIN} for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
   echo "Command is ${_DCY_MN_CMD} remove-older-than ${KEEP_WITHIN} --force ${_BACKUP_TARGET}"
   ${_DCY_MN_CMD} remove-older-than ${KEEP_WITHIN} --force ${_BACKUP_TARGET} >> ${_LOGFILE}
+  wait
 }
 
 _collection_status() {
   echo "Running collection-status for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
   echo "Command is ${_DCY_MN_CMD} collection-status ${_BACKUP_TARGET}"
   ${_DCY_MN_CMD} collection-status ${_BACKUP_TARGET} >> ${_LOGFILE}
+  wait
 }
 
 # Function to only repair incomplete backup sets
