@@ -780,7 +780,7 @@ _create_pid_file "${_PIDFILE}"
 trap "rm -f ${_PIDFILE}; exit" EXIT
 
 # Remove stale multiback PID file if necessary
-_remove_stale_multiback_pid
+_remove_stale_multiback_pid "${_SERVICE}" "${_USER}"
 
 # Load paths configuration
 _load_paths "${_USER}"
