@@ -73,6 +73,15 @@ _verify_boa_keys() {
   fi
 }
 
+_if_hosted_sys() {
+  if [ -e "/root/.host8.cnf" ] \
+    || [[ "${_hName}" =~ ".aegir.cc"($) ]]; then
+    _hostedSys=YES
+  else
+    _hostedSys=NO
+  fi
+}
+
 # Function to verify root access
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
@@ -114,6 +123,7 @@ _check_root() {
   wait
 }
 _check_root
+_if_hosted_sys
 _verify_boa_keys
 _print_env "multiback_init"
 
@@ -197,6 +207,8 @@ _remove_pid_file() {
 
 # Function to remove stale multiback PID file
 _remove_stale_multiback_pid() {
+  local _service=$1
+  local _user=$2
   _multiback_pidfile="/var/run/duplicity_${_service}_${_user}.pid"
   if [ -f "${_multiback_pidfile}" ]; then
     _old_pid=$(cat "${_multiback_pidfile}")
@@ -364,16 +376,16 @@ _generate_include_directives() {
 # Function to prepare backup directives
 _backup_prepare() {
   if [ -e "/root/.cache/duplicity/${_NAME}" ]; then
-    _CacheTest=$(find /root/.cache/duplicity/${_NAME}/* \
+    _CacheTest=$(find /root/.cache/duplicity/${_NAME} \
       -maxdepth 1 \
       -mindepth 1 \
       -type f \
       | sort 2>&1)
     if [[ "${_CacheTest}" =~ "No such file or directory" ]] \
       || [ -z "${_CacheTest}" ]; then
-      export _DO_CLEANUP=NO
+      export _cached=NO
     else
-      export _DO_CLEANUP=YES
+      export _cached=YES
     fi
   fi
   # Generate include directives dynamically
@@ -403,80 +415,32 @@ _backup_prepare() {
   _print_env "multiback_backup_prepare"
 }
 
-_monthly_cleanup() {
-  if [ -e "${_LOGPTH}/${_BUCKET_NAME}.randomize.cleanup.log" ]; then
-    _RCL=$(cat ${_LOGPTH}/${_BUCKET_NAME}.randomize.cleanup.log 2>&1)
-    _RCL=$(echo -n ${_RCL} | tr -d "\n" 2>&1)
-    _RCL=${_RCL//[^1-5]/}
-  else
-    _RCL=$((RANDOM%5+1))
-    _RCL=${_RCL//[^1-5]/}
-    echo ${_RCL} > ${_LOGPTH}/${_BUCKET_NAME}.randomize.cleanup.log
-  fi
-  if [ -e "${_LOGPTH}/${_BUCKET_NAME}.archive.log" ] \
-    && [ ! -e "/root/.skip_duplicity_monthly_cleanup.cnf" ] \
-    && [ "${_DOM}" = "${_RCL}" ] \
-    && [ "${_DO_CLEANUP}" = "YES" ]; then
-    if [ -e "/root/.randomize_duplicity_full_backup_day.cnf" ]; then
-      _n=$((RANDOM%300+8))
-      echo "Waiting $n seconds on $(date) before running cleanup --force" >> ${_LOGFILE}
-      sleep ${_n}
-    fi
-    echo "Running cleanup for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
-    echo "Command is ${_DCY_MN_CMD} cleanup --force ${_BACKUP_TARGET}"
-    ${_DCY_MN_CMD} cleanup --force ${_BACKUP_TARGET}
-    rm -f ${_LOGPTH}/${_BUCKET_NAME}.randomize.full.log
-    rm -f ${_LOGPTH}/${_BUCKET_NAME}.randomize.cleanup.log
-  fi
-  _print_env "multiback_monthly_cleanup"
-}
-
-_randomize_full() {
-  if [ -e "/root/.randomize_duplicity_full_backup_day.cnf" ]; then
-    if [ -e "${_LOGPTH}/${_BUCKET_NAME}.randomize.full.log" ]; then
-      _RDW=$(cat ${_LOGPTH}/${_BUCKET_NAME}.randomize.full.log 2>&1)
-      _RDW=$(echo -n ${_RDW} | tr -d "\n" 2>&1)
-      _RDW=${_RDW//[^1-7]/}
-      _MODE="incremental"
-    else
-      _RDW=$((RANDOM%7+1))
-      _RDW=${_RDW//[^1-7]/}
-      _MODE="full"
-      echo ${_RDW} > ${_LOGPTH}/${_BUCKET_NAME}.randomize.full.log
-    fi
-  else
-    _RDW=7
-  fi
-  echo "The _RDW has been set to (${_RDW}) in _randomize_full for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
-  echo "The _MODE has been set to (${_MODE}) in _randomize_full for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
-  _print_env "multiback_randomize_full"
-}
 
 # Function to set backup mode
 _set_mode() {
+  local _user="${_USER}"
   [ -z "${_MODE}" ] && _MODE="backup"
-  if [ "${_DOW}" = "${_RDW}" ] && [ "${FULL_BACKUP_FREQUENCY}" = "14D" ]; then
-    if [ ! -e "/root/.randomize_duplicity_full_backup_day.cnf" ]; then
-      _MODE="full"
-      FULL_BACKUP_FREQUENCY="1M"
-    fi
+  if [ -e "${_LOGPTH}/${_BUCKET_NAME}.archive.log" ] && [ "${_cached}" = "YES" ]; then
+    export _MODE="incremental"
   else
-    if [ -e "${_LOGPTH}/${_BUCKET_NAME}.archive.log" ] \
-      && [ "${_DO_CLEANUP}" = "YES" ]; then
-      _MODE="incremental"
-    else
-      _MODE="full"
-    fi
+    [ ! -e "${_LOGPTH}/${_BUCKET_NAME}.${_TODAY}.full.log" ] && export _MODE="full"
   fi
   echo "The _MODE has been set to (${_MODE}) in _set_mode for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
-  echo "The FULL_BACKUP_FREQUENCY has been set to (${FULL_BACKUP_FREQUENCY}) in _set_mode for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
-  _MODE="backup"
-  echo "The _MODE has been re-set to (${_MODE}) in _set_mode for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
+  if [ "${_hostedSys}" = "YES" ] && [ "${_user}" = "globalcatchall" ]; then
+    if [ "${_DOM}" = 8 ] && [ ! -e "${_LOGPTH}/${_BUCKET_NAME}.${_TODAY}.full.log" ]; then
+      _MODE="full"
+      echo "The _MODE has been re-set to (${_MODE}) in _set_mode for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
+    fi
+  else
+    echo "The FULL_BACKUP_FREQUENCY is (${FULL_BACKUP_FREQUENCY}) for ${_BUCKET_NAME}" >> ${_LOGFILE}
+  fi
+  export _MODE
   _print_env "multiback_set_mode"
 }
 
 # Function to construct backup command
 _set_cmd() {
+  local _user="${_USER}"
   if [ -z "${KEEP_WITHIN}" ] && [ -n "${_AWS_TTL}" ]; then
     export KEEP_WITHIN="${_AWS_TTL}"
   fi
@@ -489,6 +453,14 @@ _set_cmd() {
 
   # Validate or set default for FULL_BACKUP_FREQUENCY
   _validate_or_default_duration "${FULL_BACKUP_FREQUENCY}" "FULL_BACKUP_FREQUENCY" "${_DEFAULT_FULL_BACKUP_FREQUENCY}"
+
+  export _HST_UP_CMD="/usr/local/bin/duplicity ${_MODE} \
+    -v ${_AWS_VLV} \
+    --name=${_NAME} \
+    --allow-source-mismatch \
+    --concurrency ${_useCpu} \
+    --copy-links \
+    --volsize 300"
 
   export _DCY_UP_CMD="/usr/local/bin/duplicity ${_MODE} \
     -v ${_AWS_VLV} \
@@ -505,43 +477,58 @@ _set_cmd() {
     --allow-source-mismatch \
     --concurrency ${_useCpu}"
 
+  if [ "${_hostedSys}" = "YES" ] && [ "${_user}" = "globalcatchall" ]; then
+    export _DCY_UP_CMD="${_HST_UP_CMD}"
+  fi
+
   _print_env "multiback_set_cmd"
 }
 
-# Function to perform backup
-_run_backup() {
-  export _FULL_BACK_CMD="${_DCY_UP_CMD} ${_BATCH_EXCLUDE} ${_BATCH_INCLUDE} --exclude '**' / ${_BACKUP_TARGET}"
-  echo "Running ${_MODE} backup for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
-  ${_DCY_UP_CMD} ${_BATCH_EXCLUDE} ${_BATCH_INCLUDE} --exclude '**' / ${_BACKUP_TARGET} >> ${_LOGFILE}
-  _print_env "multiback_run_backup"
+# Function to check collection-status only
+_status() {
+  _set_mode
+  _set_cmd
+  echo "Command is ${_DCY_MN_CMD} collection-status ${_BACKUP_TARGET}"
+  ${_DCY_MN_CMD} collection-status ${_BACKUP_TARGET}
+  wait
+}
+
+# Function to list-current-files only
+_list() {
+  _set_mode
+  _set_cmd
+  echo "Command is ${_DCY_MN_CMD} list-current-files ${_BACKUP_TARGET}"
+  ${_DCY_MN_CMD} list-current-files ${_BACKUP_TARGET}
+  wait
 }
 
 _remove_older_than() {
   echo "Running remove-older-than ${KEEP_WITHIN} for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
   echo "Command is ${_DCY_MN_CMD} remove-older-than ${KEEP_WITHIN} --force ${_BACKUP_TARGET}"
   ${_DCY_MN_CMD} remove-older-than ${KEEP_WITHIN} --force ${_BACKUP_TARGET} >> ${_LOGFILE}
+  wait
 }
 
 _collection_status() {
   echo "Running collection-status for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
   echo "Command is ${_DCY_MN_CMD} collection-status ${_BACKUP_TARGET}"
   ${_DCY_MN_CMD} collection-status ${_BACKUP_TARGET} >> ${_LOGFILE}
+  wait
 }
 
-# Function to repair incomplete backup sets
+# Function to only repair incomplete backup sets
 _repair_only() {
   echo "Running repair via cleanup --force for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
   echo "Command is ${_DCY_MN_CMD} cleanup --force ${_BACKUP_TARGET}"
   ${_DCY_MN_CMD} cleanup --force ${_BACKUP_TARGET} >> ${_LOGFILE}
+  wait
 }
 
 # Function to repair incomplete backup sets
 _repair() {
   _set_mode
   _set_cmd
-  echo "Running repair via cleanup --force for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
-  echo "Command is ${_DCY_MN_CMD} cleanup --force ${_BACKUP_TARGET}"
-  ${_DCY_MN_CMD} cleanup --force ${_BACKUP_TARGET} >> ${_LOGFILE}
+  _repair_only
   _collection_status
 }
 
@@ -552,47 +539,44 @@ _check_if_repair() {
   fi
 }
 
+# Function to run weekly cleanup
+_weekly_cleanup() {
+  if [ -e "${_LOGPTH}/${_BUCKET_NAME}.archive.log" ] \
+    && [ ! -e "${_LOGPTH}/${_BUCKET_NAME}.${_TODAY}.cleanup.log" ] \
+    && [ "${_DOW}" = 7 ] \
+    && [ "${_cached}" = "YES" ]; then
+    _remove_older_than
+    _collection_status
+    echo "$(date)" >> ${_LOGPTH}/${_BUCKET_NAME}.${_TODAY}.cleanup.log
+  fi
+}
+
 # Function to clean up old backups
 _cleanup() {
   _set_mode
   _set_cmd
   _remove_older_than
+  _collection_status
 }
 
-# Function to check collection-status only
-_status() {
-  _set_mode
-  _set_cmd
-  echo "Command is ${_DCY_MN_CMD} collection-status ${_BACKUP_TARGET}"
-  ${_DCY_MN_CMD} collection-status ${_BACKUP_TARGET}
+# Function to perform backup
+_run_backup() {
+  export _FULL_BACK_CMD="${_DCY_UP_CMD} ${_BATCH_EXCLUDE} ${_BATCH_INCLUDE} --exclude '**' / ${_BACKUP_TARGET}"
+  echo "Running in ${_MODE} mode for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
+  echo "$(date)" >> ${_LOGPTH}/${_BUCKET_NAME}.${_TODAY}.${_MODE}.log
+  ${_DCY_UP_CMD} ${_BATCH_EXCLUDE} ${_BATCH_INCLUDE} --exclude '**' / ${_BACKUP_TARGET} >> ${_LOGFILE}
+  wait
+  _print_env "multiback_run_backup"
 }
-
-# Function to list-current-files only
-_list() {
-  _set_mode
-  _set_cmd
-  echo "Command is ${_DCY_MN_CMD} list-current-files ${_BACKUP_TARGET}"
-  ${_DCY_MN_CMD} list-current-files ${_BACKUP_TARGET}
-}
-
 
 # Function to prepare backup
 _backup() {
   _backup_prepare
-  _monthly_cleanup
-  _randomize_full
   _set_mode
   _set_cmd
-  [ -e "${_LOGFILE}" ] && _check_if_repair
   _run_backup
   _check_if_repair
-  if [ -e "${_LOGPTH}/${_BUCKET_NAME}.archive.log" ] \
-    && [ "${_DOW}" = "${_RDW}" ] \
-    && [ "${_DO_CLEANUP}" = "YES" ]; then
-    _repair_only
-    _remove_older_than
-    _collection_status
-  fi
+  _weekly_cleanup
   if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "YES" ]; then
     echo "Sending email report on $(date)" >> ${_LOGFILE}
     s-nail -s "Backup report (${_MODE}) for ${_BUCKET_NAME} on $(date)" ${_MY_EMAIL} < ${_LOGFILE}
@@ -601,7 +585,6 @@ _backup() {
   rm -f ${_LOGFILE}
   _print_env "multiback_backup"
 }
-
 
 ### Legacy procedure for reference
 #
@@ -787,6 +770,8 @@ fi
 export _LOGPTH="/var/xdrago/log"
 _NOW=$(date +%y%m%d-%H%M%S 2>&1)
 export _NOW=${_NOW//[^0-9-]/}
+_TODAY=$(date +%y%m%d 2>&1)
+export _TODAY=${_TODAY//[^0-9]/}
 _DOW=$(date +%u 2>&1)
 export _DOW=${_DOW//[^1-7]/}
 _DOM=$(date +%e 2>&1)
@@ -804,7 +789,7 @@ export _RESTORE_TIME="${6:-}"
 export _PIDFILE="/var/run/duplicity_${_SERVICE}_${_USER}.pid"
 # Default values
 export _DEFAULT_KEEP_WITHIN="3M"            # Default: 3 month
-export _DEFAULT_FULL_BACKUP_FREQUENCY="14D" # Default: 14 days
+export _DEFAULT_FULL_BACKUP_FREQUENCY="28D" # Default: 28 days
 
 # Log file for validation issues
 export _VALIDATION_LOG_FILE="/var/log/backup_validation_issues.log"
@@ -819,7 +804,7 @@ _create_pid_file "${_PIDFILE}"
 trap "rm -f ${_PIDFILE}; exit" EXIT
 
 # Remove stale multiback PID file if necessary
-_remove_stale_multiback_pid
+_remove_stale_multiback_pid "${_SERVICE}" "${_USER}"
 
 # Load paths configuration
 _load_paths "${_USER}"
@@ -864,7 +849,6 @@ _remove_pid_file "${_PIDFILE}"
   export _BUCKET_NAME=
   export _DCY_MN_CMD=
   export _DCY_UP_CMD=
-  export _DO_CLEANUP=
   export _EXCLUDE_LIST=
   export _INCLUDE_LIST=
   export _LST_EXCLUDE=
@@ -872,7 +856,6 @@ _remove_pid_file "${_PIDFILE}"
   export _MODE=
   export _NAME=
   export _PIDFILE=
-  export _RDW=
   export _RESTORE_PATH=
   export _RESTORE_TARGET=
   export _RESTORE_TIME=
@@ -883,6 +866,7 @@ _remove_pid_file "${_PIDFILE}"
   export _USER_EXCLUDE_PATHS=
   export _USER_INCLUDE_PATHS=
   export _USER_MERGED_ALL=
+  export _cached=
   export _credentials_file=
   export _paths_file=
   export _secret_file=

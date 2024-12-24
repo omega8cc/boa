@@ -138,6 +138,7 @@ while IFS= read -r _line || [ -n "${_line}" ]; do
   fi
 
   echo "Starting backup for ${_service} (${_user})..."
+  export _service="${_service}"
   export _user="${_user}"
 
   # Define the PID file path
@@ -216,6 +217,8 @@ while IFS= read -r _line || [ -n "${_line}" ]; do
   fi
 
   # Wipe out exported variables to clean up env after running the backup
+  export _service=
+  export _user=
   export _paths_file=
   export _credentials_file=
   export _secret_file=
