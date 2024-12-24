@@ -73,6 +73,15 @@ _verify_boa_keys() {
   fi
 }
 
+_if_hosted_sys() {
+  if [ -e "/root/.host8.cnf" ] \
+    || [[ "${_hName}" =~ ".aegir.cc"($) ]]; then
+    _hostedSys=YES
+  else
+    _hostedSys=NO
+  fi
+}
+
 # Function to verify root access
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
@@ -114,6 +123,7 @@ _check_root() {
   wait
 }
 _check_root
+_if_hosted_sys
 _verify_boa_keys
 _print_env "multiback_init"
 
