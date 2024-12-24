@@ -376,16 +376,16 @@ _generate_include_directives() {
 # Function to prepare backup directives
 _backup_prepare() {
   if [ -e "/root/.cache/duplicity/${_NAME}" ]; then
-    _CacheTest=$(find /root/.cache/duplicity/${_NAME}/* \
+    _CacheTest=$(find /root/.cache/duplicity/${_NAME} \
       -maxdepth 1 \
       -mindepth 1 \
       -type f \
       | sort 2>&1)
     if [[ "${_CacheTest}" =~ "No such file or directory" ]] \
       || [ -z "${_CacheTest}" ]; then
-      export _DO_CLEANUP=NO
+      export _cached=NO
     else
-      export _DO_CLEANUP=YES
+      export _cached=YES
     fi
   fi
   # Generate include directives dynamically
@@ -825,7 +825,6 @@ _remove_pid_file "${_PIDFILE}"
   export _BUCKET_NAME=
   export _DCY_MN_CMD=
   export _DCY_UP_CMD=
-  export _DO_CLEANUP=
   export _EXCLUDE_LIST=
   export _INCLUDE_LIST=
   export _LST_EXCLUDE=
@@ -843,6 +842,7 @@ _remove_pid_file "${_PIDFILE}"
   export _USER_EXCLUDE_PATHS=
   export _USER_INCLUDE_PATHS=
   export _USER_MERGED_ALL=
+  export _cached=
   export _credentials_file=
   export _paths_file=
   export _secret_file=
