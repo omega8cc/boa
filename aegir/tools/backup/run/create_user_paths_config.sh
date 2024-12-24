@@ -126,12 +126,14 @@ EOF
     touch "${_include_ctrl_file}"
   fi
 
-  if [ ! -f "${_user_control_dir}/exclude_regexp.txt" ] && [ -f "${_exclude_regexp_file}" ]; then
-    rm -f "${_exclude_regexp_file}"
+  if [ ! -f "${_user_control_dir}/exclude_regexp.txt" ]; then
+    [ -e "${_exclude_regexp_file}" ] && rm -f "${_exclude_regexp_file}"
+    [ -e "${_merged_regexp_exclude_file}" ] && rm -f "${_merged_regexp_exclude_file}"
   fi
 
-  if [ ! -f "${_user_control_dir}/include_regexp.txt" ] && [ -f "${_include_regexp_file}" ]; then
-    rm -f "${_include_regexp_file}"
+  if [ ! -f "${_user_control_dir}/include_regexp.txt" ]; then
+    [ -e "${_include_regexp_file}" ] && rm -f "${_include_regexp_file}"
+    [ -e "${_merged_regexp_include_file}" ] && rm -f "${_merged_regexp_include_file}"
   fi
 
   # Validate and merge system and user-space exclude files
