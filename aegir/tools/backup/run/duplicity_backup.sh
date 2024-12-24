@@ -440,6 +440,7 @@ _set_mode() {
 
 # Function to construct backup command
 _set_cmd() {
+  local _user="${_USER}"
   if [ -z "${KEEP_WITHIN}" ] && [ -n "${_AWS_TTL}" ]; then
     export KEEP_WITHIN="${_AWS_TTL}"
   fi
@@ -452,6 +453,14 @@ _set_cmd() {
 
   # Validate or set default for FULL_BACKUP_FREQUENCY
   _validate_or_default_duration "${FULL_BACKUP_FREQUENCY}" "FULL_BACKUP_FREQUENCY" "${_DEFAULT_FULL_BACKUP_FREQUENCY}"
+
+  export _HST_UP_CMD="/usr/local/bin/duplicity ${_MODE} \
+    -v ${_AWS_VLV} \
+    --name=${_NAME} \
+    --allow-source-mismatch \
+    --concurrency ${_useCpu} \
+    --copy-links \
+    --volsize 300"
 
   export _DCY_UP_CMD="/usr/local/bin/duplicity ${_MODE} \
     -v ${_AWS_VLV} \
@@ -467,6 +476,10 @@ _set_cmd() {
     --name=${_NAME} \
     --allow-source-mismatch \
     --concurrency ${_useCpu}"
+
+  if [ "${_hostedSys}" = "YES" ] && [ "${_user}" = "globalcatchall" ]; then
+    export _DCY_UP_CMD="${_HST_UP_CMD}"
+  fi
 
   _print_env "multiback_set_cmd"
 }
