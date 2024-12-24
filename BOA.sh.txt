@@ -628,17 +628,8 @@ _update_agents() {
       echo ${InTest} > /root/.high_traffic.cnf
       echo ${InTest} > /root/.no.swap.clear.cnf
     fi
-    if [ "${_RANDOMIZE}" = "YES" ]; then
-      if [ ! -e "/root/.randomize_duplicity_full_backup_day.cnf" ]; then
-        echo ${InTest} > /root/.randomize_duplicity_full_backup_day.cnf
-      fi
-      if [ ! -e "/root/.skip_duplicity_monthly_cleanup.cnf" ]; then
-        echo ${InTest} > /root/.skip_duplicity_monthly_cleanup.cnf
-      fi
-    else
-      [ -e "/root/.randomize_duplicity_full_backup_day.cnf" ] && rm -f /root/.randomize_duplicity_full_backup_day.cnf
-      [ -e "/root/.skip_duplicity_monthly_cleanup.cnf" ] && rm -f /root/.skip_duplicity_monthly_cleanup.cnf
-    fi
+    [ -e "/root/.randomize_duplicity_full_backup_day.cnf" ] && rm -f /root/.randomize_duplicity_full_backup_day.cnf
+    [ -e "/root/.skip_duplicity_monthly_cleanup.cnf" ] && rm -f /root/.skip_duplicity_monthly_cleanup.cnf
     [ -e "/root/.my.batch_innodb.cnf" ] && rm -f /root/.my.batch_innodb.cnf
     [ -e "/root/.batch_innodb.cnf" ] && rm -f /root/.batch_innodb.cnf
     [ -e "/root/.force.drupalgeddon.cnf" ] && rm -f /root/.force.drupalgeddon.cnf
@@ -752,7 +743,7 @@ _update_agents() {
 
   if [ -e "/root/.remote_backups/schedule/backup_schedule.txt" ] \
     && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthCtrl}/multiback.sh.ctrl.f75.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthCtrl}/multiback.sh.ctrl.f74.${_tRee}.${_xSrl}.pid" ]; then
     if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt 0 ]; then
       echo "The duplicity backup is running!"
     else
@@ -763,7 +754,7 @@ _update_agents() {
       if [ -e "${_optBin}/multiback" ]; then
         chmod 700 ${_optBin}/multiback
         chown root:root ${_optBin}/multiback
-        touch ${_pthCtrl}/multiback.sh.ctrl.f75.${_tRee}.${_xSrl}.pid
+        touch ${_pthCtrl}/multiback.sh.ctrl.f74.${_tRee}.${_xSrl}.pid
       else
         if [ -e "${_optBin}/multiback.old" ]; then
           mv -f ${_optBin}/multiback.old ${_optBin}/multiback
@@ -847,7 +838,7 @@ _update_agents() {
 
   if [ -d "/root/.remote_backups/run" ] \
     && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthCtrl}/create_cron_entries.sh.ctrl.f84.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthCtrl}/create_cron_entries.sh.ctrl.f83.${_tRee}.${_xSrl}.pid" ]; then
     if [ -e "/root/.remote_backups/run/create_cron_entries.sh" ]; then
       mv -f /root/.remote_backups/run/create_cron_entries.sh /root/.remote_backups/run/create_cron_entries.sh.old
     fi
@@ -855,7 +846,7 @@ _update_agents() {
     if [ -e "/root/.remote_backups/run/create_cron_entries.sh" ]; then
       chmod 700 /root/.remote_backups/run/create_cron_entries.sh
       chown root:root /root/.remote_backups/run/create_cron_entries.sh
-      touch ${_pthCtrl}/create_cron_entries.sh.ctrl.f84.${_tRee}.${_xSrl}.pid
+      touch ${_pthCtrl}/create_cron_entries.sh.ctrl.f83.${_tRee}.${_xSrl}.pid
     else
       if [ -e "/root/.remote_backups/run/create_cron_entries.sh.old" ]; then
         mv -f /root/.remote_backups/run/create_cron_entries.sh.old /root/.remote_backups/run/create_cron_entries.sh
@@ -3497,9 +3488,6 @@ _boa_setup() {
   _VM_TEST="$(uname -a)"
   if [[ "${_VM_TEST}" =~ "-beng" ]]; then
     _BENG_VS=YES
-    _RANDOMIZE=YES
-  fi
-  if dmidecode -s system-manufacturer | grep -i 'Linode' &> /dev/null; then
     _RANDOMIZE=YES
   fi
   _if_hosted_sys
