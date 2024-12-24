@@ -540,10 +540,10 @@ _weekly_cleanup() {
   if [ -e "${_LOGPTH}/${_BUCKET_NAME}.archive.log" ] \
     && [ ! -e "${_LOGPTH}/${_BUCKET_NAME}.${_TODAY}.cleanup.log" ] \
     && [ "${_DOW}" = 7 ] \
-    && [ "${_DO_CLEANUP}" = "YES" ]; then
+    && [ "${_cached}" = "YES" ]; then
     _remove_older_than
     _collection_status
-    touch ${_LOGPTH}/${_BUCKET_NAME}.${_TODAY}.cleanup.log
+    echo "$(date)" >> ${_LOGPTH}/${_BUCKET_NAME}.${_TODAY}.cleanup.log
   fi
 }
 
