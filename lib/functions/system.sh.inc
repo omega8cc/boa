@@ -318,10 +318,10 @@ _count_cpu() {
   if [ ! -z "${_CPU_NR}" ] \
     && [ ! -z "${_CPU_INFO}" ] \
     && [ "${_CPU_NR}" -gt "${_CPU_INFO}" ] \
-    && [ "${_CPU_INFO}" -gt "0" ]; then
+    && [ "${_CPU_INFO}" -gt 0 ]; then
     _CPU_NR="${_CPU_INFO}"
   fi
-  if [ -z "${_CPU_NR}" ] || [ "${_CPU_NR}" -lt "1" ]; then
+  if [ -z "${_CPU_NR}" ] || [ "${_CPU_NR}" -lt 1 ]; then
     _CPU_NR=1
   fi
 }
@@ -694,15 +694,15 @@ _tune_memory_limits() {
     _msg "TUNE: _VMFAMILY is ${_VMFAMILY}"
   fi
   _CPU_MX=$(( _CPU_NR * 2 ))
-  if [ "${_CPU_MX}" -lt "4" ]; then
+  if [ "${_CPU_MX}" -lt 4 ]; then
     _CPU_MX=4
   fi
   _CPU_TG=$(( _CPU_NR / 2 ))
-  if [ "${_CPU_TG}" -lt "4" ]; then
+  if [ "${_CPU_TG}" -lt 4 ]; then
     _CPU_TG=4
   fi
   _CPU_VS=$(( _CPU_NR / 12 ))
-  if [ "${_CPU_VS}" -lt "2" ]; then
+  if [ "${_CPU_VS}" -lt 2 ]; then
     _CPU_VS=2
   fi
   _PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
@@ -711,7 +711,7 @@ _tune_memory_limits() {
   if [[ "${_PrTestPower}" =~ "POWER" ]] \
     || [[ "${_PrTestPhantom}" =~ "PHANTOM" ]] \
     || [[ "${_PrTestCluster}" =~ "CLUSTER" ]]; then
-    if [ "${_CPU_VS}" -lt "8" ]; then
+    if [ "${_CPU_VS}" -lt 8 ]; then
       _CPU_VS=8
     fi
   fi
@@ -721,7 +721,7 @@ _tune_memory_limits() {
     _msg "TUNE: _PrTestCluster is ${_PrTestCluster}"
   fi
   _RAM=$(free -mt | grep Mem: | awk '{ print $2 }' 2>&1)
-  if [ "${_RESERVED_RAM}" -gt "0" ]; then
+  if [ "${_RESERVED_RAM}" -gt 0 ]; then
     _RAM=$(( _RAM - _RESERVED_RAM ))
   fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -751,7 +751,7 @@ _tune_memory_limits() {
   else
     _USE_SQL=$(( _RAM / 8 ))
   fi
-  if [ "${_USE_SQL}" -lt "64" ]; then
+  if [ "${_USE_SQL}" -lt 64 ]; then
     _USE_SQL=64
   fi
   _TMP_SQL="${_USE_SQL}M"
@@ -762,7 +762,7 @@ _tune_memory_limits() {
     _msg "TUNE: _TMP_SQL is ${_TMP_SQL}"
     _msg "TUNE: _SRT_SQL is ${_SRT_SQL}"
   fi
-  if [ "${_USE}" -ge "512" ] && [ "${_USE}" -lt "2048" ]; then
+  if [ "${_USE}" -ge 512 ] && [ "${_USE}" -lt 2048 ]; then
     _USE_PHP=1024
     _USE_OPC=1024
     _USE_CLI=2048
@@ -774,7 +774,7 @@ _tune_memory_limits() {
     else
       _L_NGX_WRKS=${_NGINX_WORKERS}
     fi
-  elif [ "${_USE}" -ge "2048" ]; then
+  elif [ "${_USE}" -ge 2048 ]; then
     if [ "${_VMFAMILY}" = "XEN" ] || [ "${_VMFAMILY}" = "AWS" ]; then
       _USE_PHP=2048
       _USE_OPC=2048
@@ -797,7 +797,7 @@ _tune_memory_limits() {
         _QCE_SQL=64M
         _RND_SQL=8M
         _JBF_SQL=4M
-        if [ "${_MXC_SQL}" -lt "10" ]; then
+        if [ "${_MXC_SQL}" -lt 10 ]; then
           _MXC_SQL=10
         fi
         if [ "${_NGINX_WORKERS}" = "AUTO" ]; then
@@ -858,11 +858,11 @@ _tune_memory_limits() {
   if [ "${_VMFAMILY}" = "VZ" ]; then
     _USE_OPC=64
   fi
-  if [ "${_USE_PHP}" -lt "1024" ]; then
+  if [ "${_USE_PHP}" -lt 1024 ]; then
     _USE_PHP=1024
   fi
   _USE_FPM=$(( _USE_PHP / 2 ))
-  if [ "${_USE_FPM}" -lt "1024" ]; then
+  if [ "${_USE_FPM}" -lt 1024 ]; then
     _USE_FPM=1024
   fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then

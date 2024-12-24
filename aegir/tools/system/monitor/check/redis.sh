@@ -88,7 +88,7 @@ _redis_restart() {
 
 _redis_bind_check_fix() {
   if [ `tail --lines=8 /var/log/redis/redis-server.log \
-    | grep --count "Address already in use"` -gt "0" ]; then
+    | grep --count "Address already in use"` -gt 0 ]; then
     _thisErrLog="$(date) RedisException BIND detected, service will be restarted"
     echo ${_thisErrLog} >> ${_pthOml}
     _redis_restart "Redis BIND"
@@ -97,7 +97,7 @@ _redis_bind_check_fix() {
 
 _redis_connection_check_fix() {
   if [ `tail --lines=500 /var/log/php/error_log_* \
-    | grep --count "RedisException: Connection refused"` -gt "19" ]; then
+    | grep --count "RedisException: Connection refused"` -gt 19 ]; then
     _thisErrLog="$(date) RedisException Connection refused detected, service will be restarted"
     echo ${_thisErrLog} >> ${_pthOml}
     _redis_restart "Redis REFUSED"
@@ -106,7 +106,7 @@ _redis_connection_check_fix() {
 
 _redis_slow_check_fix() {
   if [ `tail --lines=500 /var/log/php/fpm-*-slow.log \
-    | grep --count "PhpRedis.php"` -gt "19" ]; then
+    | grep --count "PhpRedis.php"` -gt 19 ]; then
     _thisErrLog="$(date) Slow PhpRedis detected, service will be restarted"
     echo ${_thisErrLog} >> ${_pthOml}
     _redis_restart "Redis SLOW"
@@ -122,7 +122,7 @@ _if_redis_restart() {
     || [[ "${_PrTestPhantom}" =~ "PHANTOM" ]] \
     || [[ "${_PrTestCluster}" =~ "CLUSTER" ]] \
     || [ -e "/root/.allow.redis.restart.cnf" ]; then
-    if [ "${ReTest}" -ge "1" ]; then
+    if [ "${ReTest}" -ge 1 ]; then
       rm -f /data/disk/*/static/control/run-redis-restart.pid
       _thisErrLog="$(date) Redis Server Restart Requested"
       echo ${_thisErrLog} >> ${_pthOml}

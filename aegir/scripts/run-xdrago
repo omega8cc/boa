@@ -21,7 +21,7 @@ _check_root() {
     | sed 's/\%//g' \
     | awk '{print $6}' 2> /dev/null)
   _DF_TEST=${_DF_TEST//[^0-9]/}
-  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt "90" ]; then
+  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt 90 ]; then
     echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
     echo "ERROR: We can not proceed until it is below 90/100"
     exit 1
@@ -47,7 +47,7 @@ _run_cleanup() {
       rm -f ${_clCtr}
       _buildTest="0"
     fi
-    if [ -e "${_gtDir}" ] || [ "${_buildTest}" -ge "1" ]; then
+    if [ -e "${_gtDir}" ] || [ "${_buildTest}" -ge 1 ]; then
       rm -rf ${_tpDir}/*
       rm -f ${_clCtr}
       _buildTest="0"
@@ -82,13 +82,13 @@ _if_sftp_password_update() {
     fi
     _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
     _LEN_PASS=$(echo ${#_ESC_PASS} 2>&1)
-    if [ -z "${_ESC_PASS}" ] || [ "${_LEN_PASS}" -lt "9" ]; then
+    if [ -z "${_ESC_PASS}" ] || [ "${_LEN_PASS}" -lt 9 ]; then
       _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
       _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
       _ESC_PASS=$(_sanitize_string "${_ESC_PASS}" 2>&1)
     fi
     _LEN_PASS=$(echo ${#_ESC_PASS} 2>&1)
-    if [ ! -z "${_ESC_PASS}" ] && [ "${_LEN_PASS}" -gt "9" ]; then
+    if [ ! -z "${_ESC_PASS}" ] && [ "${_LEN_PASS}" -gt 9 ]; then
       chage -I -1 -m 0 -M 99999 -E -1 ${_sftpUser}
       echo "${_sftpUser}:${_ESC_PASS}" | chpasswd
       chage -M 90 ${_sftpUser}

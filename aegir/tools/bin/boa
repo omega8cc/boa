@@ -1642,7 +1642,7 @@ _check_root() {
     | sed 's/\%//g' \
     | awk '{print $6}' 2> /dev/null)
   _DF_TEST=${_DF_TEST//[^0-9]/}
-  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt "90" ]; then
+  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt 90 ]; then
     echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
     echo "ERROR: We can not proceed until it is below 90/100"
     _clean_pid_exit _check_root_b
@@ -1891,7 +1891,7 @@ _display_info() {
     if [ ! -z "${_CPU_NR}" ] \
       && [ ! -z "${_CPU_INFO}" ] \
       && [ "${_CPU_NR}" -gt "${_CPU_INFO}" ] \
-      && [ "${_CPU_INFO}" -gt "0" ]; then
+      && [ "${_CPU_INFO}" -gt 0 ]; then
       _CPU_NR="${_CPU_INFO}"
     fi
     _DF_TEST=$(df -kTh / -l \
@@ -2255,7 +2255,7 @@ _display_info() {
             fi
             if [ -e "${_OCT}/config/server_master/nginx/vhost.d" ]; then
               _SITES_NR=$(ls ${_OCT}/config/server_master/nginx/vhost.d | wc -l)
-              if [ "${_SITES_NR}" -gt "0" ]; then
+              if [ "${_SITES_NR}" -gt 0 ]; then
                 echo "  Number of Hosted Sites in ${_OCT} is ${_SITES_NR}"
               else
                 _OCT_NR=$(( _OCT_NR - 1 ))

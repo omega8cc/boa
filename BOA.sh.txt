@@ -553,7 +553,7 @@ _update_agents() {
     _PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
     InTest=$(ls /data/disk/*/static/control/cli.info | wc -l 2>&1)
     _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
-    if [ "${InTest}" -lt "9" ] \
+    if [ "${InTest}" -lt 9 ] \
       && [[ ! "${_PrTestPower}" =~ "POWER" ]] \
       && [[ ! "${_PrTestPhantom}" =~ "PHANTOM" ]] \
       && [[ ! "${_PrTestCluster}" =~ "CLUSTER" ]]; then
@@ -566,7 +566,7 @@ _update_agents() {
       mysql -u root -e "SET GLOBAL max_user_connections = 111;"
       mysql -u root -e "SET GLOBAL group_concat_max_len = 10000;"
     fi
-    if [ "${InTest}" -ge "9" ] && [ "${InTest}" -le "50" ]; then
+    if [ "${InTest}" -ge 9 ] && [ "${InTest}" -le 50 ]; then
       [ ! -e "/root/.fast.cron.cnf" ] && echo ${InTest} > /root/.fast.cron.cnf
       [ -e "/root/.hr.monitor.cnf" ] && rm -f /root/.hr.monitor.cnf
       [ -e "/root/.slow.cron.cnf" ] && rm -f /root/.slow.cron.cnf
@@ -576,7 +576,7 @@ _update_agents() {
       mysql -u root -e "SET GLOBAL max_user_connections = 111;"
       mysql -u root -e "SET GLOBAL group_concat_max_len = 10000;"
     fi
-    if [ "${InTest}" -gt "50" ]; then
+    if [ "${InTest}" -gt 50 ]; then
       [ -e "/root/.fast.cron.cnf" ] && rm -f /root/.fast.cron.cnf
       [ ! -e "/root/.tg.cnf" ] && echo ${InTest} > /root/.tg.cnf
       [ ! -e "/root/.hr.monitor.cnf" ] && echo ${InTest} > /root/.hr.monitor.cnf
@@ -628,17 +628,8 @@ _update_agents() {
       echo ${InTest} > /root/.high_traffic.cnf
       echo ${InTest} > /root/.no.swap.clear.cnf
     fi
-    if [ "${_RANDOMIZE}" = "YES" ]; then
-      if [ ! -e "/root/.randomize_duplicity_full_backup_day.cnf" ]; then
-        echo ${InTest} > /root/.randomize_duplicity_full_backup_day.cnf
-      fi
-      if [ ! -e "/root/.skip_duplicity_monthly_cleanup.cnf" ]; then
-        echo ${InTest} > /root/.skip_duplicity_monthly_cleanup.cnf
-      fi
-    else
-      [ -e "/root/.randomize_duplicity_full_backup_day.cnf" ] && rm -f /root/.randomize_duplicity_full_backup_day.cnf
-      [ -e "/root/.skip_duplicity_monthly_cleanup.cnf" ] && rm -f /root/.skip_duplicity_monthly_cleanup.cnf
-    fi
+    [ -e "/root/.randomize_duplicity_full_backup_day.cnf" ] && rm -f /root/.randomize_duplicity_full_backup_day.cnf
+    [ -e "/root/.skip_duplicity_monthly_cleanup.cnf" ] && rm -f /root/.skip_duplicity_monthly_cleanup.cnf
     [ -e "/root/.my.batch_innodb.cnf" ] && rm -f /root/.my.batch_innodb.cnf
     [ -e "/root/.batch_innodb.cnf" ] && rm -f /root/.batch_innodb.cnf
     [ -e "/root/.force.drupalgeddon.cnf" ] && rm -f /root/.force.drupalgeddon.cnf
@@ -738,10 +729,10 @@ _update_agents() {
         mv /root/.remote_backups/schedule/backup_schedule.txt-off /root/.remote_backups/schedule/backup_schedule.txt
       fi
     fi
-    if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ] \
-      && [ `ps aux | grep -v "grep" | grep --count "dcysetup"` -lt "1" ] \
-      && [ `ps aux | grep -v "grep" | grep --count "mybackup"` -lt "1" ] \
-      && [ `ps aux | grep -v "grep" | grep --count "multiback"` -lt "1" ]; then
+    if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt 0 ] \
+      && [ `ps aux | grep -v "grep" | grep --count "dcysetup"` -lt 1 ] \
+      && [ `ps aux | grep -v "grep" | grep --count "mybackup"` -lt 1 ] \
+      && [ `ps aux | grep -v "grep" | grep --count "multiback"` -lt 1 ]; then
       kill -9 $(ps aux | grep '[d]uplicity' | awk '{print $2}') &> /dev/null
       rm -rf /tmp/duplicity*
       rm -rf /root/.cache/duplicity/*/duplicity-*tempdir
@@ -752,8 +743,8 @@ _update_agents() {
 
   if [ -e "/root/.remote_backups/schedule/backup_schedule.txt" ] \
     && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthCtrl}/multiback.sh.ctrl.f77.${_tRee}.${_xSrl}.pid" ]; then
-    if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ]; then
+    && [ ! -e "${_pthCtrl}/multiback.sh.ctrl.f74.${_tRee}.${_xSrl}.pid" ]; then
+    if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt 0 ]; then
       echo "The duplicity backup is running!"
     else
       if [ -e "${_optBin}/multiback" ]; then
@@ -763,7 +754,7 @@ _update_agents() {
       if [ -e "${_optBin}/multiback" ]; then
         chmod 700 ${_optBin}/multiback
         chown root:root ${_optBin}/multiback
-        touch ${_pthCtrl}/multiback.sh.ctrl.f77.${_tRee}.${_xSrl}.pid
+        touch ${_pthCtrl}/multiback.sh.ctrl.f74.${_tRee}.${_xSrl}.pid
       else
         if [ -e "${_optBin}/multiback.old" ]; then
           mv -f ${_optBin}/multiback.old ${_optBin}/multiback
@@ -847,7 +838,7 @@ _update_agents() {
 
   if [ -d "/root/.remote_backups/run" ] \
     && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthCtrl}/create_cron_entries.sh.ctrl.f84.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthCtrl}/create_cron_entries.sh.ctrl.f83.${_tRee}.${_xSrl}.pid" ]; then
     if [ -e "/root/.remote_backups/run/create_cron_entries.sh" ]; then
       mv -f /root/.remote_backups/run/create_cron_entries.sh /root/.remote_backups/run/create_cron_entries.sh.old
     fi
@@ -855,7 +846,7 @@ _update_agents() {
     if [ -e "/root/.remote_backups/run/create_cron_entries.sh" ]; then
       chmod 700 /root/.remote_backups/run/create_cron_entries.sh
       chown root:root /root/.remote_backups/run/create_cron_entries.sh
-      touch ${_pthCtrl}/create_cron_entries.sh.ctrl.f84.${_tRee}.${_xSrl}.pid
+      touch ${_pthCtrl}/create_cron_entries.sh.ctrl.f83.${_tRee}.${_xSrl}.pid
     else
       if [ -e "/root/.remote_backups/run/create_cron_entries.sh.old" ]; then
         mv -f /root/.remote_backups/run/create_cron_entries.sh.old /root/.remote_backups/run/create_cron_entries.sh
@@ -3218,11 +3209,11 @@ _update_boa_tools() {
            xboa"
   for _cbn in ${_boaBins}; do
     if [ -e "${_optBin}/${_cbn}" ]; then
-      if [ `ps aux | grep -v "grep" | grep --count "/${_cbn}"` -gt "0" ]; then
+      if [ `ps aux | grep -v "grep" | grep --count "/${_cbn}"` -gt 0 ]; then
         echo "The ${_cbn} is running!"
       else
         if [ "${_cbn}" = "weblogx" ] \
-          && [ `ps aux | grep -v "grep" | grep --count "/daily.sh"` -gt "0" ]; then
+          && [ `ps aux | grep -v "grep" | grep --count "/daily.sh"` -gt 0 ]; then
           echo "The ${_cbn} and daily.sh is running!"
         else
           rm -f ${_optBin}/${_cbn}.new
@@ -3291,7 +3282,7 @@ _update_boa_tools() {
   fi
 
   [ -e "/root/.backboa.autoupdate" ] && rm -f /root/.backboa.autoupdate
-  if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ]; then
+  if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt 0 ]; then
     echo "The duplicity backup is running!"
   else
     rm -f ${_optBin}/{backboa,duobackboa}
@@ -3499,9 +3490,6 @@ _boa_setup() {
     _BENG_VS=YES
     _RANDOMIZE=YES
   fi
-  if dmidecode -s system-manufacturer | grep -i 'Linode' &> /dev/null; then
-    _RANDOMIZE=YES
-  fi
   _if_hosted_sys
   if [ "${_hostedSys}" = "YES" ]; then
     _VMFAMILY=HOSTED
@@ -3655,10 +3643,10 @@ _count_cpu() {
   if [ ! -z "${_CPU_NR}" ] \
     && [ ! -z "${_CPU_INFO}" ] \
     && [ "${_CPU_NR}" -gt "${_CPU_INFO}" ] \
-    && [ "${_CPU_INFO}" -gt "0" ]; then
+    && [ "${_CPU_INFO}" -gt 0 ]; then
     _CPU_NR="${_CPU_INFO}"
   fi
-  if [ -z "${_CPU_NR}" ] || [ "${_CPU_NR}" -lt "1" ]; then
+  if [ -z "${_CPU_NR}" ] || [ "${_CPU_NR}" -lt 1 ]; then
     _CPU_NR=1
   fi
   mkdir -p /data/all
@@ -3754,7 +3742,7 @@ _backup_waiting_notify() {
   cat /root/.remote_backups/schedule/backup_schedule.txt > ${_templog}
   ps axf | grep multiback >> ${_templog}
   ps axf | grep duplicity >> ${_templog}
-  ll /tmp/duplicity-*-tempdir >> ${_templog}
+  ls -la /tmp/duplicity-*-tempdir >> ${_templog}
   tree /root/.cache/duplicity >> ${_templog}
   ls -laR /root/.cache/duplicity >> ${_templog}
   grep "Out of memory: Killed process.*duplicity" /var/log/iptables.log >> ${_templog}
@@ -3767,7 +3755,7 @@ _backup_waiting_notify() {
 ###--------------------###
 if [ "$(id -u)" -eq 0 ]; then
 
-  if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ]; then
+  if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt 0 ]; then
     _bLogA="/var/backups/multiback_waiting_queue.log"
     _bLogB="/var/backups/tmp_multiback_waiting_queue.log"
     if [ ! -e "${_bLogA}" ] && [ ! -e "${_bLogB}" ]; then

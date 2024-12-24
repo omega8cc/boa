@@ -32,7 +32,7 @@ _check_root() {
     | sed 's/\%//g' \
     | awk '{print $6}' 2> /dev/null)
   _DF_TEST=${_DF_TEST//[^0-9]/}
-  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt "90" ]; then
+  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt 90 ]; then
     echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
     echo "ERROR: We can not proceed until it is below 90/100"
     exit 1
@@ -245,7 +245,7 @@ _check_aws() {
   fi
 }
 
-if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ]; then
+if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt 0 ]; then
   echo "[$(date)] Active duplicity process detected, will try again later..." >> /var/log/mybackup_waiting_queue.log
   exit 1
 fi
@@ -390,7 +390,7 @@ export AWS_ACCESS_KEY_ID="${_AWS_KEY}"
 export AWS_SECRET_ACCESS_KEY="${_AWS_SEC}"
 export PASSPHRASE="${_AWS_PWD}"
 
-_SOURCE="/data /etc /home /mnt /opt/solr4 /var/aegir /var/solr7 /var/www /var/xdrago"
+_SOURCE="/data /etc /home /opt/solr4 /var/aegir /var/solr7 /var/www /var/xdrago"
 _BUCKET_NAME="daily-remote-${_HST_DASH}"
 _BUCKET_NAME_DOT="daily.remote.${_HST}"
 _TARGET="boto3+s3://${_BUCKET_NAME}"
