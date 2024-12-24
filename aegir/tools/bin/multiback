@@ -207,6 +207,8 @@ _remove_pid_file() {
 
 # Function to remove stale multiback PID file
 _remove_stale_multiback_pid() {
+  local _service=$1
+  local _user=$2
   _multiback_pidfile="/var/run/duplicity_${_service}_${_user}.pid"
   if [ -f "${_multiback_pidfile}" ]; then
     _old_pid=$(cat "${_multiback_pidfile}")
