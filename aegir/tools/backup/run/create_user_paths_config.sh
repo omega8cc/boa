@@ -98,7 +98,7 @@ _create_user_paths_config() {
   chown root:root "${_user_config_dir}"
   chmod 700 "${_user_config_dir}"
 
-  if [ ! -f "${_user_ctrl_file}" ]; then
+  if [ ! -f "${_exclude_ctrl_file}" ]; then
     cat << EOF > "${_exclude_file}"
 --exclude /data/disk/${_user}/aegir
 --exclude /data/disk/${_user}/backup-exports
@@ -112,17 +112,19 @@ _create_user_paths_config() {
 --exclude /data/disk/${_user}/tools
 --exclude /data/disk/${_user}/undo
 EOF
+    rm -f ${_user_config_dir}/.backboa.${_user}.*.exclude.ctrl.file
     touch "${_exclude_ctrl_file}"
   fi
 
   # Create default include/exclude files if they don't exist
-  if [ ! -f "${_user_ctrl_file}" ]; then
+  if [ ! -f "${_include_ctrl_file}" ]; then
     cat << EOF > "${_include_file}"
 --include  /data/disk/${_user}/distro
 --include  /data/disk/${_user}/platforms
 --include  /data/disk/${_user}/static
 --include  /home/${_user}.ftp
 EOF
+    rm -f "${_user_config_dir}/.backboa.${_user}.*.include.ctrl.file"
     touch "${_include_ctrl_file}"
   fi
 
