@@ -79,6 +79,8 @@ _create_user_paths_config() {
   local _user=$1
   local _user_config_dir="/data/disk/${_user}/remote_backups/paths"
   local _user_control_dir="/data/disk/${_user}/static/control/remote_backups/config"
+  local _exclude_list="${_user_config_dir}/.backboa.${_user}.exclude.list"
+  local _include_list="${_user_config_dir}/.backboa.${_user}.include.list"
   local _include_file="${_user_config_dir}/.backboa.${_user}.include.file"
   local _exclude_file="${_user_config_dir}/.backboa.${_user}.exclude.file"
   local _include_regexp_file="${_user_config_dir}/.backboa.${_user}.include_regexp.file"
@@ -97,6 +99,40 @@ _create_user_paths_config() {
   mkdir -p "${_user_config_dir}"
   chown root:root "${_user_config_dir}"
   chmod 700 "${_user_config_dir}"
+
+  # Function to append unique entries from source to target file
+  _append_unique_entries() {
+    _source_file=$1
+    _target_file=$2
+    if [ -f "${_source_file}" ]; then
+      grep -v -F -x -f "${_target_file}" "${_source_file}" >> "${_target_file}"
+    fi
+  }
+
+  # Migrate legacy exclude/include files if present and merge unique entries
+  if [ -f "/root/.backboa.exclude" ]; then
+    if [ ! -f "${_exclude_list}" ]; then
+      cp "/root/.backboa.exclude" "${_exclude_list}"
+    else
+      _append_unique_entries "/root/.backboa.exclude" "${_exclude_list}"
+    fi
+  else
+    cat << EOF > "${_exclude_list}"
+**files/advagg_css/**
+**files/advagg_js/**
+**files/css/**
+**files/js/**
+**private/temp/**
+EOF
+  fi
+
+  if [ -f "/root/.backboa.include" ]; then
+    if [ ! -f "${_include_list}" ]; then
+      cp "/root/.backboa.include" "${_include_list}"
+    else
+      _append_unique_entries "/root/.backboa.include" "${_include_list}"
+    fi
+  fi
 
   if [ ! -f "${_exclude_ctrl_file}" ]; then
     cat << EOF > "${_exclude_file}"
@@ -200,6 +236,8 @@ EOF
 _SOURCE="/data/disk/${_user}/static"
 _USER_EXCLUDE_PATHS="${_MERGED_ALL_EXCLUDE}"
 _USER_INCLUDE_PATHS="${_MERGED_ALL_INCLUDE}"
+_EXCLUDE_LIST="${_exclude_list}"
+_INCLUDE_LIST="${_include_list}"
 EOF
 
   echo "Paths configuration for '${_user}' created or updated at '${_user_paths_file}'."

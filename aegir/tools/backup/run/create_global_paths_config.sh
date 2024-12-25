@@ -56,6 +56,14 @@ _create_global_paths_config() {
     else
       _append_unique_entries "/root/.backboa.exclude" "${_exclude_list}"
     fi
+  else
+    cat << EOF > "${_exclude_list}"
+**files/advagg_css/**
+**files/advagg_js/**
+**files/css/**
+**files/js/**
+**private/temp/**
+EOF
   fi
 
   if [ -f "/root/.backboa.include" ]; then
