@@ -221,5 +221,7 @@ _generate_global_secret_file() {
 # Main execution
 _create_global_paths_config
 _generate_global_secret_file
+rm -f "${_global_config_dir}/.backboa.*.paths.ctrl.file"
+touch ${_global_ctrl_file}
 
 exit 0
