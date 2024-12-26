@@ -390,26 +390,26 @@ _backup_prepare() {
   # Generate include directives dynamically
   [ -n "${_SOURCE}" ] && _SRC_INCLUDE=$(_generate_include_directives "${_SOURCE}")
   #
-  [ -n "${_EXCLUDE_PATHS}" ] && _MERGED_ALL_EXCLUDE="${_EXCLUDE_PATHS}"
   [ -n "${_INCLUDE_PATHS}" ] && _MERGED_ALL_INCLUDE="${_INCLUDE_PATHS}"
+  [ -n "${_EXCLUDE_PATHS}" ] && _MERGED_ALL_EXCLUDE="${_EXCLUDE_PATHS}"
   #
-  [ -n "${_USER_EXCLUDE_PATHS}" ] && _USER_MERGED_ALL_EXCLUDE="${_USER_EXCLUDE_PATHS}"
   [ -n "${_USER_INCLUDE_PATHS}" ] && _USER_MERGED_ALL_INCLUDE="${_USER_INCLUDE_PATHS}"
+  [ -n "${_USER_EXCLUDE_PATHS}" ] && _USER_MERGED_ALL_EXCLUDE="${_USER_EXCLUDE_PATHS}"
   #
-  [ -s "${_EXCLUDE_LIST}" ] && _LST_EXCLUDE="--exclude-filelist ${_EXCLUDE_LIST}"
   [ -s "${_INCLUDE_LIST}" ] && _LST_INCLUDE="--include-filelist ${_INCLUDE_LIST}"
+  [ -s "${_EXCLUDE_LIST}" ] && _LST_EXCLUDE="--exclude-filelist ${_EXCLUDE_LIST}"
   ###
-  [ -n "${_MERGED_ALL_EXCLUDE}" ] && _BATCH_EXCLUDE="${_MERGED_ALL_EXCLUDE}"
-  [ -n "${_USER_MERGED_ALL_EXCLUDE}" ] && _BATCH_EXCLUDE="${_USER_MERGED_ALL_EXCLUDE}"
-  [ -n "${_LST_EXCLUDE}" ] && _BATCH_EXCLUDE="${_BATCH_EXCLUDE} ${_LST_EXCLUDE}"
-  #
   [ -n "${_MERGED_ALL_INCLUDE}" ] && _BATCH_INCLUDE="${_MERGED_ALL_INCLUDE}"
   [ -n "${_USER_MERGED_ALL_INCLUDE}" ] && _BATCH_INCLUDE="${_USER_MERGED_ALL_INCLUDE}"
   [ -n "${_LST_INCLUDE}" ] && _BATCH_INCLUDE="${_BATCH_INCLUDE} ${_LST_INCLUDE}"
   [ -n "${_SRC_INCLUDE}" ] && _BATCH_INCLUDE="${_BATCH_INCLUDE} ${_SRC_INCLUDE}"
   #
-  export _BATCH_EXCLUDE
+  [ -n "${_MERGED_ALL_EXCLUDE}" ] && _BATCH_EXCLUDE="${_MERGED_ALL_EXCLUDE}"
+  [ -n "${_USER_MERGED_ALL_EXCLUDE}" ] && _BATCH_EXCLUDE="${_USER_MERGED_ALL_EXCLUDE}"
+  [ -n "${_LST_EXCLUDE}" ] && _BATCH_EXCLUDE="${_BATCH_EXCLUDE} ${_LST_EXCLUDE}"
+  #
   export _BATCH_INCLUDE
+  export _BATCH_EXCLUDE
 
   _print_env "multiback_backup_prepare"
 }
@@ -560,10 +560,10 @@ _cleanup() {
 
 # Function to perform backup
 _run_backup() {
-  export _FULL_BACK_CMD="${_DCY_UP_CMD} ${_BATCH_EXCLUDE} ${_BATCH_INCLUDE} --exclude '**' / ${_BACKUP_TARGET}"
+  export _FULL_BACK_CMD="${_DCY_UP_CMD} ${_BATCH_INCLUDE} ${_BATCH_EXCLUDE} --exclude '**' / ${_BACKUP_TARGET}"
   echo "Running in ${_MODE} mode for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
   echo "$(date)" >> ${_LOGPTH}/${_BUCKET_NAME}.${_TODAY}.${_MODE}.log
-  ${_DCY_UP_CMD} ${_BATCH_EXCLUDE} ${_BATCH_INCLUDE} --exclude '**' / ${_BACKUP_TARGET} >> ${_LOGFILE}
+  ${_DCY_UP_CMD} ${_BATCH_INCLUDE} ${_BATCH_EXCLUDE} --exclude '**' / ${_BACKUP_TARGET} >> ${_LOGFILE}
   wait
   _print_env "multiback_run_backup"
 }
