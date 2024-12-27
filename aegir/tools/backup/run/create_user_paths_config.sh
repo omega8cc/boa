@@ -251,7 +251,7 @@ _INCLUDE_LIST="${_include_list}"
 _EXCLUDE_LIST="${_exclude_list}"
 EOF
 
-    rm -f "${_user_config_dir}/.backboa.*.paths.ctrl.file"
+    rm -f ${_user_config_dir}/.backboa*paths.ctrl.file
     touch ${_user_ctrl_file}
     echo "Paths configuration for '${_user}' created or updated at '${_user_paths_file}'."
   fi

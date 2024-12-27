@@ -213,7 +213,7 @@ _INCLUDE_LIST="${_include_list}"
 _EXCLUDE_LIST="${_exclude_list}"
 EOF
 
-    rm -f "${_global_config_dir}/.backboa.*.paths.ctrl.file"
+    rm -f ${_global_config_dir}/.backboa*paths.ctrl.file
     touch ${_global_ctrl_file}
     echo "Global paths configuration created or updated at ${_data_paths_file}"
   fi
