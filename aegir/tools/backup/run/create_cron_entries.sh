@@ -152,7 +152,7 @@ while IFS= read -r _line || [ -n "${_line}" ]; do
   _remove_stale_multiback_pid
 
   # Determine the paths configuration file
-  if [ "${_user}" = "global" ] || [ "${_user}" = "data" ]; then
+  if [ "${_user}" = "global" ] || [ "${_user}" = "data" ] || [ "${_user}" = "custom" ]; then
     _paths_file="/root/.remote_backups/paths/${_user}_paths.txt"
     _credentials_file="/root/.remote_backups/credentials/${_service}.txt"
     _secret_file="/root/.remote_backups/.secret.txt"
@@ -181,7 +181,7 @@ while IFS= read -r _line || [ -n "${_line}" ]; do
     cd /root/.remote_backups
     _print_env "sequential_backups_a"
 
-  elif [ "${_user}" != "arch" ] && [ "${_user}" != "data" ] && [ "${_user}" != "global" ]; then
+  elif [ "${_user}" != "arch" ] && [ "${_user}" != "data" ] && [ "${_user}" != "global" ] && [ "${_user}" != "custom" ]; then
     _paths_file="/data/disk/${_user}/remote_backups/paths/paths.txt"
     _credentials_file="/data/disk/${_user}/static/control/remote_backups/credentials/${_service}.txt"
     _secret_file="/data/disk/${_user}/remote_backups/.secret.txt"
@@ -259,11 +259,13 @@ _generate_backup_schedule() {
   echo "# Backup schedule (service user)" > "${_SCHEDULE_FILE}"
 
   # Add global backups
+  _custom_paths_file="/root/.remote_backups/paths/custom_paths.txt"
   _GLOBAL_CRED_DIR="/root/.remote_backups/credentials"
   for _service in aws aws_one_zone aws_standard_ia azure b2 cloudflare do_spaces gcs ibm linode wasabi; do
     if [ -f "${_GLOBAL_CRED_DIR}/${_service}.txt" ] && ! grep -q "your_" "${_GLOBAL_CRED_DIR}/${_service}.txt"; then
       echo "${_service} global" >> "${_SCHEDULE_FILE}"
       echo "${_service} data" >> "${_SCHEDULE_FILE}"
+      [ -s "${_custom_paths_file}" ] && echo "${_service} custom" >> "${_SCHEDULE_FILE}"
     fi
   done
 

@@ -3,13 +3,15 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-export _sPid="f81"
+export _sPid="f80"
 
 # Function to create or update global paths configuration
 _create_global_paths_config() {
   _global_config_dir="/root/.remote_backups/paths"
   _include_list="${_global_config_dir}/.backboa.include.list"
   _exclude_list="${_global_config_dir}/.backboa.exclude.list"
+  _custom_include_list="${_global_config_dir}/.backboa.custom_include.list"
+  _custom_exclude_list="${_global_config_dir}/.backboa.custom_exclude.list"
   _include_global_file="${_global_config_dir}/.backboa.include_global.file"
   _include_data_file="${_global_config_dir}/.backboa.include_data.file"
   _exclude_global_file="${_global_config_dir}/.backboa.exclude.file"
@@ -22,6 +24,7 @@ _create_global_paths_config() {
   _global_ctrl_file="${_global_config_dir}/.backboa.${_sPid}.paths.ctrl.file"
   _global_paths_file="${_global_config_dir}/global_paths.txt"
   _data_paths_file="${_global_config_dir}/data_paths.txt"
+  _custom_paths_file="${_global_config_dir}/custom_paths.txt"
   _disk_dir="/data/disk"
 
   # Ensure global configuration directory exists and is owned by root
@@ -100,6 +103,24 @@ _create_global_paths_config() {
 **files/js/**
 **private/temp/**
 EOF
+    fi
+
+    # _custom_include_list
+    if [ -f "/root/.backboa.custom.include" ]; then
+      if [ ! -f "${_custom_include_list}" ]; then
+        cp "/root/.backboa.custom.include" "${_custom_include_list}"
+      else
+        _append_unique_entries "/root/.backboa.custom.include" "${_custom_include_list}"
+      fi
+    fi
+
+    # _custom_exclude_list
+    if [ -f "/root/.backboa.custom.exclude" ]; then
+      if [ ! -f "${_custom_exclude_list}" ]; then
+        cp "/root/.backboa.custom.exclude" "${_custom_exclude_list}"
+      else
+        _append_unique_entries "/root/.backboa.custom.exclude" "${_custom_exclude_list}"
+      fi
     fi
 
     ### Create default include/exclude files if they don't exist
@@ -213,9 +234,23 @@ _INCLUDE_LIST="${_include_list}"
 _EXCLUDE_LIST="${_exclude_list}"
 EOF
 
+    echo "Global paths configuration created or updated at ${_data_paths_file}"
+
+    [ -s "${_custom_include_list}" ] && cat << EOF > "${_custom_paths_file}"
+_SOURCE=""
+_INCLUDE_PATHS=""
+_EXCLUDE_PATHS=""
+_INCLUDE_LIST="${_custom_include_list}"
+EOF
+
+    [ -s "${_custom_exclude_list}" ] && cat << EOF >> "${_custom_paths_file}"
+_EXCLUDE_LIST="${_custom_exclude_list}"
+EOF
+
+    [ -s "${_custom_paths_file}" ] && echo "Global paths configuration created or updated at ${_custom_paths_file}"
+
     rm -f ${_global_config_dir}/.backboa*paths.ctrl.file
     touch ${_global_ctrl_file}
-    echo "Global paths configuration created or updated at ${_data_paths_file}"
   fi
 }
 
