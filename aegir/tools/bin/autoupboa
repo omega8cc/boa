@@ -180,10 +180,9 @@ _if_disable_not_used_services() {
   _clearSwap=No
 
   if [ "${_tRee}" = "dev" ] && [ -e "/root/.ice.vm.cnf" ]; then
-    if [ -e "/var/xdrago/proc_num_ctrl.pl" ]; then
-      mv -f /var/xdrago/proc_num_ctrl.pl /var/backups/
-    fi
-    [ -e "/run/nginx.pid" ] && service nginx stop && killall -9 pure-ftpd
+    echo > /var/xdrago/move_sql.sh
+    echo > /var/xdrago/proc_num_ctrl.pl
+    [ -e "/run/nginx.pid" ] && service nginx stop && killall -9 pure-ftpd && killall -9 newrelic-daemon
     [ -e "/run/php83-fpm.pid" ] && killall -9 php-fpm
     [ -e "/run/mysqld/mysqld.pid" ] && service mysql stop
     [ -e "/run/redis/redis.pid" ] && service redis-server stop
