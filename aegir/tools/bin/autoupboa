@@ -179,6 +179,22 @@ _bring_all_ram_cpu_online
 _if_disable_not_used_services() {
   _clearSwap=No
 
+  if [ "${_tRee}" = "dev" ] && [ -e "/root/.ice.vm.cnf" ]; then
+    echo > /var/xdrago/move_sql.sh
+    echo > /var/xdrago/proc_num_ctrl.pl
+    echo > /var/xdrago/runner.sh
+    echo > /var/xdrago/monitor/check/nginx.sh
+    echo > /var/xdrago/monitor/check/mysql.sh
+    rm -f /var/spool/cron/crontabs/aegir
+    [ -e "/run/nginx.pid" ] && service nginx stop && killall -9 pure-ftpd && killall -9 newrelic-daemon
+    [ -e "/run/php83-fpm.pid" ] && killall -9 php-fpm
+    [ -e "/run/mysqld/mysqld.pid" ] && service mysql stop
+    [ -e "/run/redis/redis.pid" ] && service redis-server stop
+    [ -e "/root/.deny.clamav.cnf" ] && touch /root/.deny.clamav.cnf
+    [ -e "/root/.deny.java.cnf" ] && touch /root/.deny.java.cnf
+    _clearSwap=YES
+  fi
+
   if [ ! -e "/root/.allow.clamav.cnf" ] || [ -e "/root/.deny.clamav.cnf" ]; then
     if [ -e "/etc/init.d/clamav-daemon" ]; then
       _clearSwap=YES

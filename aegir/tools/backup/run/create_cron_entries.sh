@@ -152,10 +152,10 @@ while IFS= read -r _line || [ -n "${_line}" ]; do
   _remove_stale_multiback_pid
 
   # Determine the paths configuration file
-  if [ "${_user}" = "globalcatchall" ]; then
-    export _paths_file="/root/.remote_backups/paths/paths.txt"
-    export _credentials_file="/root/.remote_backups/credentials/${_service}.txt"
-    export _secret_file="/root/.remote_backups/.secret.txt"
+  if [ "${_user}" = "global" ] || [ "${_user}" = "data" ]; then
+    _paths_file="/root/.remote_backups/paths/${_user}_paths.txt"
+    _credentials_file="/root/.remote_backups/credentials/${_service}.txt"
+    _secret_file="/root/.remote_backups/.secret.txt"
 
     if [ ! -f "${_secret_file}" ]; then
       echo "Secret file ${_secret_file} not found."
@@ -163,7 +163,7 @@ while IFS= read -r _line || [ -n "${_line}" ]; do
       continue
     fi
 
-    # Check if paths.txt exists
+    # Check if _paths_file exists
     if [ ! -f "${_paths_file}" ]; then
       echo "Error: Paths configuration file ${_paths_file} not found."
       _remove_pid_file "${_CURRENT_PIDFILE}"
@@ -177,14 +177,14 @@ while IFS= read -r _line || [ -n "${_line}" ]; do
       continue
     fi
 
-    # Change to the directory where paths.txt and credentials are located
+    # Change to the directory where _paths_file and credentials are located
     cd /root/.remote_backups
     _print_env "sequential_backups_a"
 
-  elif [ "${_user}" != "arch" ] && [ "${_user}" != "globalcatchall" ]; then
-    export _paths_file="/data/disk/${_user}/remote_backups/paths/paths.txt"
-    export _credentials_file="/data/disk/${_user}/static/control/remote_backups/credentials/${_service}.txt"
-    export _secret_file="/data/disk/${_user}/remote_backups/.secret.txt"
+  elif [ "${_user}" != "arch" ] && [ "${_user}" != "data" ] && [ "${_user}" != "global" ]; then
+    _paths_file="/data/disk/${_user}/remote_backups/paths/paths.txt"
+    _credentials_file="/data/disk/${_user}/static/control/remote_backups/credentials/${_service}.txt"
+    _secret_file="/data/disk/${_user}/remote_backups/.secret.txt"
 
     if [ ! -f "${_secret_file}" ]; then
       echo "Secret file ${_secret_file} not found."
@@ -204,7 +204,7 @@ while IFS= read -r _line || [ -n "${_line}" ]; do
       continue
     fi
 
-    # Change to the directory where paths.txt and credentials are located
+    # Change to the directory where _paths_file and credentials are located
     cd "/data/disk/${_user}/remote_backups"
     _print_env "sequential_backups_b"
   fi
@@ -219,9 +219,6 @@ while IFS= read -r _line || [ -n "${_line}" ]; do
   # Wipe out exported variables to clean up env after running the backup
   export _service=
   export _user=
-  export _paths_file=
-  export _credentials_file=
-  export _secret_file=
 
   # Return to the original directory
   cd -
@@ -265,7 +262,8 @@ _generate_backup_schedule() {
   _GLOBAL_CRED_DIR="/root/.remote_backups/credentials"
   for _service in aws aws_one_zone aws_standard_ia azure b2 cloudflare do_spaces gcs ibm linode wasabi; do
     if [ -f "${_GLOBAL_CRED_DIR}/${_service}.txt" ] && ! grep -q "your_" "${_GLOBAL_CRED_DIR}/${_service}.txt"; then
-      echo "${_service} globalcatchall" >> "${_SCHEDULE_FILE}"
+      echo "${_service} global" >> "${_SCHEDULE_FILE}"
+      echo "${_service} data" >> "${_SCHEDULE_FILE}"
     fi
   done
 
