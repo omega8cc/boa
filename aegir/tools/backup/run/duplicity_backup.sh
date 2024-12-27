@@ -227,6 +227,7 @@ _log_issue() {
   echo "[$(date)] Validation issue type: [${_type}] in file: [${_file}] with error: ${_message}" >> "${_VALIDATION_LOG_FILE}"
   if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "YES" ]; then
     # Alert the admin
+    boa info  >> ${_LOGFILE}
     echo "Sending Backup Validation Alert to ${_MY_EMAIL} on $(date)" >> ${_LOGFILE}
     s-nail -s "Backup Validation Alert for [$(hostname)] on $(date)" ${_MY_EMAIL} < ${_LOGFILE}
   fi
@@ -291,11 +292,11 @@ _validate_credentials() {
 _load_credentials() {
   local _service="$1"
   local _user="$2"
-  if [ "${_user}" != "arch" ] && [ "${_user}" != "globalcatchall" ]; then
+  if [ "${_user}" != "arch" ] && [ "${_user}" != "data" ] && [ "${_user}" != "global" ]; then
     local _cred_file="/data/disk/${_user}/static/control/remote_backups/credentials/${_service}.txt"
     local _secret_file="/data/disk/${_user}/remote_backups/.secret.txt"
   fi
-  if [ "${_user}" = "globalcatchall" ]; then
+  if [ "${_user}" = "global" ] || [ "${_user}" = "data" ]; then
     local _cred_file="/root/.remote_backups/credentials/${_service}.txt"
     local _secret_file="/root/.remote_backups/.secret.txt"
   fi
@@ -319,11 +320,10 @@ _load_credentials() {
 # Function to load paths configuration
 _load_paths() {
   local _user="$1"
-  if [ "${_user}" != "arch" ] && [ "${_user}" != "globalcatchall" ]; then
+  if [ "${_user}" != "arch" ] && [ "${_user}" != "data" ] && [ "${_user}" != "global" ]; then
     export _paths_file="/data/disk/${_user}/remote_backups/paths/paths.txt"
-  fi
-  if [ "${_user}" = "globalcatchall" ]; then
-    export _paths_file="/root/.remote_backups/paths/paths.txt"
+  elif [ "${_user}" = "global" ] || [ "${_user}" = "data" ]; then
+    export _paths_file="/root/.remote_backups/paths/${_user}_paths.txt"
   fi
 
   if [ ! -f "${_paths_file}" ]; then
@@ -355,7 +355,7 @@ _validate_or_default_duration() {
 _construct_bucket_name() {
   local _service_abbr=$1
   local _user=$2
-  _service_dash=$(echo -n ${_service_abbr} | tr _ - 2>&1)
+  _service_dash=$(echo -n ${_service_abbr} | tr _ -)
   _hst_dash=$(echo -n ${_hName} | tr . -)
   export _BUCKET_NAME="back-to-${_user}-${_hst_dash}-${_service_dash}"
   export _NAME="${_user}-${_service_dash}"
@@ -391,26 +391,26 @@ _backup_prepare() {
   # Generate include directives dynamically
   [ -n "${_SOURCE}" ] && _SRC_INCLUDE=$(_generate_include_directives "${_SOURCE}")
   #
-  [ -n "${_EXCLUDE_PATHS}" ] && _MERGED_ALL_EXCLUDE="${_EXCLUDE_PATHS}"
   [ -n "${_INCLUDE_PATHS}" ] && _MERGED_ALL_INCLUDE="${_INCLUDE_PATHS}"
+  [ -n "${_EXCLUDE_PATHS}" ] && _MERGED_ALL_EXCLUDE="${_EXCLUDE_PATHS}"
   #
-  [ -n "${_USER_EXCLUDE_PATHS}" ] && _USER_MERGED_ALL_EXCLUDE="${_USER_EXCLUDE_PATHS}"
   [ -n "${_USER_INCLUDE_PATHS}" ] && _USER_MERGED_ALL_INCLUDE="${_USER_INCLUDE_PATHS}"
+  [ -n "${_USER_EXCLUDE_PATHS}" ] && _USER_MERGED_ALL_EXCLUDE="${_USER_EXCLUDE_PATHS}"
   #
-  [ -s "${_EXCLUDE_LIST}" ] && _LST_EXCLUDE="--exclude-filelist ${_EXCLUDE_LIST}"
   [ -s "${_INCLUDE_LIST}" ] && _LST_INCLUDE="--include-filelist ${_INCLUDE_LIST}"
+  [ -s "${_EXCLUDE_LIST}" ] && _LST_EXCLUDE="--exclude-filelist ${_EXCLUDE_LIST}"
   ###
-  [ -n "${_MERGED_ALL_EXCLUDE}" ] && _BATCH_EXCLUDE="${_MERGED_ALL_EXCLUDE}"
-  [ -n "${_USER_MERGED_ALL_EXCLUDE}" ] && _BATCH_EXCLUDE="${_USER_MERGED_ALL_EXCLUDE}"
-  [ -n "${_LST_EXCLUDE}" ] && _BATCH_EXCLUDE="${_BATCH_EXCLUDE} ${_LST_EXCLUDE}"
-  #
   [ -n "${_MERGED_ALL_INCLUDE}" ] && _BATCH_INCLUDE="${_MERGED_ALL_INCLUDE}"
   [ -n "${_USER_MERGED_ALL_INCLUDE}" ] && _BATCH_INCLUDE="${_USER_MERGED_ALL_INCLUDE}"
   [ -n "${_LST_INCLUDE}" ] && _BATCH_INCLUDE="${_BATCH_INCLUDE} ${_LST_INCLUDE}"
   [ -n "${_SRC_INCLUDE}" ] && _BATCH_INCLUDE="${_BATCH_INCLUDE} ${_SRC_INCLUDE}"
   #
-  export _BATCH_EXCLUDE
+  [ -n "${_MERGED_ALL_EXCLUDE}" ] && _BATCH_EXCLUDE="${_MERGED_ALL_EXCLUDE}"
+  [ -n "${_USER_MERGED_ALL_EXCLUDE}" ] && _BATCH_EXCLUDE="${_USER_MERGED_ALL_EXCLUDE}"
+  [ -n "${_LST_EXCLUDE}" ] && _BATCH_EXCLUDE="${_BATCH_EXCLUDE} ${_LST_EXCLUDE}"
+  #
   export _BATCH_INCLUDE
+  export _BATCH_EXCLUDE
 
   _print_env "multiback_backup_prepare"
 }
@@ -426,7 +426,7 @@ _set_mode() {
     [ ! -e "${_LOGPTH}/${_BUCKET_NAME}.${_TODAY}.full.log" ] && export _MODE="full"
   fi
   echo "The _MODE has been set to (${_MODE}) in _set_mode for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
-  if [ "${_hostedSys}" = "YES" ] && [ "${_user}" = "globalcatchall" ]; then
+  if [ "${_hostedSys}" = "YES" ] && [ "${_user}" = "global" ]; then
     if [ "${_DOM}" = 8 ] && [ ! -e "${_LOGPTH}/${_BUCKET_NAME}.${_TODAY}.full.log" ]; then
       _MODE="full"
       echo "The _MODE has been re-set to (${_MODE}) in _set_mode for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
@@ -477,7 +477,7 @@ _set_cmd() {
     --allow-source-mismatch \
     --concurrency ${_useCpu}"
 
-  if [ "${_hostedSys}" = "YES" ] && [ "${_user}" = "globalcatchall" ]; then
+  if [ "${_hostedSys}" = "YES" ] && [ "${_user}" = "global" ]; then
     export _DCY_UP_CMD="${_HST_UP_CMD}"
   fi
 
@@ -561,10 +561,10 @@ _cleanup() {
 
 # Function to perform backup
 _run_backup() {
-  export _FULL_BACK_CMD="${_DCY_UP_CMD} ${_BATCH_EXCLUDE} ${_BATCH_INCLUDE} --exclude '**' / ${_BACKUP_TARGET}"
+  export _FULL_BACK_CMD="${_DCY_UP_CMD} ${_BATCH_INCLUDE} ${_BATCH_EXCLUDE} --exclude '**' / ${_BACKUP_TARGET}"
   echo "Running in ${_MODE} mode for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
   echo "$(date)" >> ${_LOGPTH}/${_BUCKET_NAME}.${_TODAY}.${_MODE}.log
-  ${_DCY_UP_CMD} ${_BATCH_EXCLUDE} ${_BATCH_INCLUDE} --exclude '**' / ${_BACKUP_TARGET} >> ${_LOGFILE}
+  ${_DCY_UP_CMD} ${_BATCH_INCLUDE} ${_BATCH_EXCLUDE} --exclude '**' / ${_BACKUP_TARGET} >> ${_LOGFILE}
   wait
   _print_env "multiback_run_backup"
 }
@@ -578,7 +578,9 @@ _backup() {
   _check_if_repair
   _weekly_cleanup
   if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "YES" ]; then
+    boa info  >> ${_LOGFILE}
     echo "Sending email report on $(date)" >> ${_LOGFILE}
+    echo >> ${_LOGFILE}
     s-nail -s "Backup report (${_MODE}) for ${_BUCKET_NAME} on $(date)" ${_MY_EMAIL} < ${_LOGFILE}
   fi
   cat ${_LOGFILE} >> ${_LOGPTH}/${_BUCKET_NAME}.archive.log

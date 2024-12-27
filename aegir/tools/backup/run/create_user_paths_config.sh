@@ -3,7 +3,7 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-export _sPid="f87"
+export _sPid="f81"
 
 # Log file for escape attempts and validation issues
 _VALIDATION_LOG_FILE="/var/log/backup_validation_issues.log"
@@ -79,6 +79,8 @@ _create_user_paths_config() {
   local _user=$1
   local _user_config_dir="/data/disk/${_user}/remote_backups/paths"
   local _user_control_dir="/data/disk/${_user}/static/control/remote_backups/config"
+  local _include_list="${_user_config_dir}/.backboa.${_user}.include.list"
+  local _exclude_list="${_user_config_dir}/.backboa.${_user}.exclude.list"
   local _include_file="${_user_config_dir}/.backboa.${_user}.include.file"
   local _exclude_file="${_user_config_dir}/.backboa.${_user}.exclude.file"
   local _include_regexp_file="${_user_config_dir}/.backboa.${_user}.include_regexp.file"
@@ -87,10 +89,11 @@ _create_user_paths_config() {
   local _merged_exclude_file="${_user_config_dir}/.backboa.${_user}.exclude.merged.file"
   local _merged_regexp_include_file="${_user_config_dir}/.backboa.${_user}.include_regexp.merged.file"
   local _merged_regexp_exclude_file="${_user_config_dir}/.backboa.${_user}.exclude_regexp.merged.file"
-  local _exclude_ctrl_file="${_user_config_dir}/.backboa.${_user}.${_sPid}.exclude.ctrl.file"
+  local _user_ctrl_file="${_user_config_dir}/.backboa.${_sPid}.paths.ctrl.file"
   local _include_ctrl_file="${_user_config_dir}/.backboa.${_user}.${_sPid}.include.ctrl.file"
-  local _merged_all_exclude_file="${_user_config_dir}/.backboa.${_user}.all.exclude.merged.file"
+  local _exclude_ctrl_file="${_user_config_dir}/.backboa.${_user}.${_sPid}.exclude.ctrl.file"
   local _merged_all_include_file="${_user_config_dir}/.backboa.${_user}.all.include.merged.file"
+  local _merged_all_exclude_file="${_user_config_dir}/.backboa.${_user}.all.exclude.merged.file"
   local _user_paths_file="${_user_config_dir}/paths.txt"
 
   # Ensure user configuration directory exists and is owned by root
@@ -98,69 +101,14 @@ _create_user_paths_config() {
   chown root:root "${_user_config_dir}"
   chmod 700 "${_user_config_dir}"
 
-  if [ ! -f "${_user_ctrl_file}" ]; then
-    cat << EOF > "${_exclude_file}"
---exclude /data/disk/${_user}/aegir
---exclude /data/disk/${_user}/backup-exports
---exclude /data/disk/${_user}/backups
---exclude /data/disk/${_user}/log
---exclude /data/disk/${_user}/src
---exclude /data/disk/${_user}/tmp
---exclude /data/disk/${_user}/.tmp
---exclude /data/disk/${_user}/static/restores
---exclude /data/disk/${_user}/static/trash
---exclude /data/disk/${_user}/tools
---exclude /data/disk/${_user}/undo
-EOF
-    touch "${_exclude_ctrl_file}"
-  fi
-
-  # Create default include/exclude files if they don't exist
-  if [ ! -f "${_user_ctrl_file}" ]; then
-    cat << EOF > "${_include_file}"
---include  /data/disk/${_user}/distro
---include  /data/disk/${_user}/platforms
---include  /data/disk/${_user}/static
---include  /home/${_user}.ftp
-EOF
-    touch "${_include_ctrl_file}"
-  fi
-
-  if [ ! -f "${_user_control_dir}/exclude_regexp.txt" ] && [ -f "${_exclude_regexp_file}" ]; then
-    rm -f "${_exclude_regexp_file}"
-  fi
-
-  if [ ! -f "${_user_control_dir}/include_regexp.txt" ] && [ -f "${_include_regexp_file}" ]; then
-    rm -f "${_include_regexp_file}"
-  fi
-
-  # Validate and merge system and user-space exclude files
-  _validate_and_merge_paths "${_exclude_file}" "${_user}" "${_merged_exclude_file}" NO
-  if [ -f "${_user_control_dir}/exclude.txt" ]; then
-    _validate_and_merge_paths "${_user_control_dir}/exclude.txt" "${_user}" "${_merged_exclude_file}" YES
-  fi
-
-  # Validate and merge system and user-space include files
-  _validate_and_merge_paths "${_include_file}" "${_user}" "${_merged_include_file}" NO
-  if [ -f "${_user_control_dir}/include.txt" ]; then
-    _validate_and_merge_paths "${_user_control_dir}/include.txt" "${_user}" "${_merged_include_file}" YES
-  fi
-
-  # Validate and merge regexp exclude files
-  if [ -f "${_exclude_regexp_file}" ]; then
-    _validate_and_merge_paths "${_exclude_regexp_file}" "${_user}" "${_merged_regexp_exclude_file}" NO
-  fi
-  if [ -f "${_user_control_dir}/exclude_regexp.txt" ]; then
-    _validate_and_merge_paths "${_user_control_dir}/exclude_regexp.txt" "${_user}" "${_merged_regexp_exclude_file}" YES
-  fi
-
-  # Validate and merge regexp include files
-  if [ -f "${_include_regexp_file}" ]; then
-    _validate_and_merge_paths "${_include_regexp_file}" "${_user}" "${_merged_regexp_include_file}" NO
-  fi
-  if [ -f "${_user_control_dir}/include_regexp.txt" ]; then
-    _validate_and_merge_paths "${_user_control_dir}/include_regexp.txt" "${_user}" "${_merged_regexp_include_file}" YES
-  fi
+  # Function to append unique entries from source to target file
+  _append_unique_entries() {
+    _source_file=$1
+    _target_file=$2
+    if [ -f "${_source_file}" ]; then
+      grep -v -F -x -f "${_target_file}" "${_source_file}" >> "${_target_file}"
+    fi
+  }
 
   # Function to add a single backslash at the end of each line except the last
   _add_backslashes() {
@@ -173,39 +121,147 @@ EOF
     fi
   }
 
-  # Merge all exclude path directives into single file
-  cat "${_merged_exclude_file}" > "${_merged_all_exclude_file}"
-  cat "${_merged_regexp_exclude_file}" >> "${_merged_all_exclude_file}"
+  if [ ! -f "${_user_ctrl_file}" ]; then
 
-  # Merge all include path directives into single file
-  cat "${_merged_include_file}" > "${_merged_all_include_file}"
-  cat "${_merged_regexp_include_file}" >> "${_merged_all_include_file}"
+    ### Migrate legacy include/exclude files if present and merge unique entries
 
-  # Finalize by adding a backslash at the end of each line except the last
-  _add_backslashes "${_merged_all_exclude_file}"
-  _add_backslashes "${_merged_all_include_file}"
+    # _include_list
+    if [ -f "/root/.backboa.include" ]; then
+      if [ ! -f "${_include_list}" ]; then
+        cp "/root/.backboa.include" "${_include_list}"
+      else
+        _append_unique_entries "/root/.backboa.include" "${_include_list}"
+      fi
+    fi
 
-  # Convert the exclude file contents to a single-line variable without backslashes and excessive whitespace
-  local _MERGED_ALL_EXCLUDE=$(sed 's/\\//g' "${_merged_all_exclude_file}" | tr '\n' ' ' | tr -s ' ' | sed 's/^ *//;s/ *$//')
+    # _exclude_list
+    if [ -f "/root/.backboa.exclude" ]; then
+      if [ ! -f "${_exclude_list}" ]; then
+        cp "/root/.backboa.exclude" "${_exclude_list}"
+      else
+        _append_unique_entries "/root/.backboa.exclude" "${_exclude_list}"
+      fi
+    else
+      cat << EOF > "${_exclude_list}"
+**files/advagg_css/**
+**files/advagg_js/**
+**files/css/**
+**files/js/**
+**private/temp/**
+EOF
+    fi
 
-  # Convert the include file contents to a single-line variable without backslashes and excessive whitespace
-  local _MERGED_ALL_INCLUDE=$(sed 's/\\//g' "${_merged_all_include_file}" | tr '\n' ' ' | tr -s ' ' | sed 's/^ *//;s/ *$//')
+    ### Create default include/exclude files if they don't exist
 
-  # Create the final paths configuration file
-  cat << EOF > "${_user_paths_file}"
+    # _include_file
+    if [ ! -f "${_include_ctrl_file}" ]; then
+      cat << EOF > "${_include_file}"
+--include /data/disk/${_user}/distro
+--include /data/disk/${_user}/platforms
+--include /data/disk/${_user}/static
+--include /home/${_user}.ftp
+EOF
+      rm -f "${_user_config_dir}/.backboa.${_user}.*.include.ctrl.file"
+      touch "${_include_ctrl_file}"
+    fi
+
+    # _exclude_file
+    if [ ! -f "${_exclude_ctrl_file}" ]; then
+      cat << EOF > "${_exclude_file}"
+--exclude /data/disk/${_user}/aegir
+--exclude /data/disk/${_user}/backup-exports
+--exclude /data/disk/${_user}/backups
+--exclude /data/disk/${_user}/log
+--exclude /data/disk/${_user}/src
+--exclude /data/disk/${_user}/tmp
+--exclude /data/disk/${_user}/.tmp
+--exclude /data/disk/${_user}/static/restores
+--exclude /data/disk/${_user}/static/trash
+--exclude /data/disk/${_user}/tools
+--exclude /data/disk/${_user}/undo
+EOF
+      rm -f ${_user_config_dir}/.backboa.${_user}.*.exclude.ctrl.file
+      touch "${_exclude_ctrl_file}"
+    fi
+
+    # Cleanup for empty or not used include config files
+    if [ ! -f "${_user_control_dir}/include_regexp.txt" ]; then
+      [ -e "${_include_regexp_file}" ] && rm -f "${_include_regexp_file}"
+      [ -e "${_merged_regexp_include_file}" ] && rm -f "${_merged_regexp_include_file}"
+    fi
+
+    # Cleanup for empty or not used exclude config files
+    if [ ! -f "${_user_control_dir}/exclude_regexp.txt" ]; then
+      [ -e "${_exclude_regexp_file}" ] && rm -f "${_exclude_regexp_file}"
+      [ -e "${_merged_regexp_exclude_file}" ] && rm -f "${_merged_regexp_exclude_file}"
+    fi
+
+    # Validate and merge system and user-space include files
+    _validate_and_merge_paths "${_include_file}" "${_user}" "${_merged_include_file}" NO
+    if [ -f "${_user_control_dir}/include.txt" ]; then
+      _validate_and_merge_paths "${_user_control_dir}/include.txt" "${_user}" "${_merged_include_file}" YES
+    fi
+
+    # Validate and merge system and user-space exclude files
+    _validate_and_merge_paths "${_exclude_file}" "${_user}" "${_merged_exclude_file}" NO
+    if [ -f "${_user_control_dir}/exclude.txt" ]; then
+      _validate_and_merge_paths "${_user_control_dir}/exclude.txt" "${_user}" "${_merged_exclude_file}" YES
+    fi
+
+    # Validate and merge regexp include files
+    if [ -f "${_include_regexp_file}" ]; then
+      _validate_and_merge_paths "${_include_regexp_file}" "${_user}" "${_merged_regexp_include_file}" NO
+    fi
+    if [ -f "${_user_control_dir}/include_regexp.txt" ]; then
+      _validate_and_merge_paths "${_user_control_dir}/include_regexp.txt" "${_user}" "${_merged_regexp_include_file}" YES
+    fi
+
+    # Validate and merge regexp exclude files
+    if [ -f "${_exclude_regexp_file}" ]; then
+      _validate_and_merge_paths "${_exclude_regexp_file}" "${_user}" "${_merged_regexp_exclude_file}" NO
+    fi
+    if [ -f "${_user_control_dir}/exclude_regexp.txt" ]; then
+      _validate_and_merge_paths "${_user_control_dir}/exclude_regexp.txt" "${_user}" "${_merged_regexp_exclude_file}" YES
+    fi
+
+    # Merge all include path directives into single file
+    cat "${_merged_include_file}" > "${_merged_all_include_file}"
+    cat "${_merged_regexp_include_file}" >> "${_merged_all_include_file}"
+
+    # Merge all exclude path directives into single file
+    cat "${_merged_exclude_file}" > "${_merged_all_exclude_file}"
+    cat "${_merged_regexp_exclude_file}" >> "${_merged_all_exclude_file}"
+
+    # Finalize by adding a backslash at the end of each line except the last
+    _add_backslashes "${_merged_all_include_file}"
+    _add_backslashes "${_merged_all_exclude_file}"
+
+    # Convert the include file contents to a single-line variable without backslashes and excessive whitespace
+    local _MERGED_ALL_INCLUDE=$(sed 's/\\//g' "${_merged_all_include_file}" | tr '\n' ' ' | tr -s ' ' | sed 's/^ *//;s/ *$//')
+
+    # Convert the exclude file contents to a single-line variable without backslashes and excessive whitespace
+    local _MERGED_ALL_EXCLUDE=$(sed 's/\\//g' "${_merged_all_exclude_file}" | tr '\n' ' ' | tr -s ' ' | sed 's/^ *//;s/ *$//')
+
+    # Create the final paths configuration file
+    cat << EOF > "${_user_paths_file}"
 _SOURCE="/data/disk/${_user}/static"
-_USER_EXCLUDE_PATHS="${_MERGED_ALL_EXCLUDE}"
 _USER_INCLUDE_PATHS="${_MERGED_ALL_INCLUDE}"
+_USER_EXCLUDE_PATHS="${_MERGED_ALL_EXCLUDE}"
+_INCLUDE_LIST="${_include_list}"
+_EXCLUDE_LIST="${_exclude_list}"
 EOF
 
-  echo "Paths configuration for '${_user}' created or updated at '${_user_paths_file}'."
+    rm -f ${_user_config_dir}/.backboa*paths.ctrl.file
+    touch ${_user_ctrl_file}
+    echo "Paths configuration for '${_user}' created or updated at '${_user_paths_file}'."
+  fi
 }
 
 # Generate paths configuration for each user
 for _user_dir in /data/disk/*; do
   if [ -d "${_user_dir}" ]; then
     _user=$(basename "${_user_dir}")
-    if [ "${_user}" != "arch" ] && [ "${_user}" != "globalcatchall" ]; then
+    if [ "${_user}" != "arch" ] && [ "${_user}" != "data" ] && [ "${_user}" != "global" ]; then
       _create_user_paths_config "${_user}"
     fi
   fi
