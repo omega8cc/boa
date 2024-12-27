@@ -580,6 +580,7 @@ _backup() {
   if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "YES" ]; then
     boa info  >> ${_LOGFILE}
     echo "Sending email report on $(date)" >> ${_LOGFILE}
+    echo >> ${_LOGFILE}
     s-nail -s "Backup report (${_MODE}) for ${_BUCKET_NAME} on $(date)" ${_MY_EMAIL} < ${_LOGFILE}
   fi
   cat ${_LOGFILE} >> ${_LOGPTH}/${_BUCKET_NAME}.archive.log
