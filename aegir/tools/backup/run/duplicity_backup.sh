@@ -227,6 +227,7 @@ _log_issue() {
   echo "[$(date)] Validation issue type: [${_type}] in file: [${_file}] with error: ${_message}" >> "${_VALIDATION_LOG_FILE}"
   if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "YES" ]; then
     # Alert the admin
+    boa info  >> ${_LOGFILE}
     echo "Sending Backup Validation Alert to ${_MY_EMAIL} on $(date)" >> ${_LOGFILE}
     s-nail -s "Backup Validation Alert for [$(hostname)] on $(date)" ${_MY_EMAIL} < ${_LOGFILE}
   fi
@@ -577,6 +578,7 @@ _backup() {
   _check_if_repair
   _weekly_cleanup
   if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "YES" ]; then
+    boa info  >> ${_LOGFILE}
     echo "Sending email report on $(date)" >> ${_LOGFILE}
     s-nail -s "Backup report (${_MODE}) for ${_BUCKET_NAME} on $(date)" ${_MY_EMAIL} < ${_LOGFILE}
   fi
