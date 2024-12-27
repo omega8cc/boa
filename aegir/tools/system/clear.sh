@@ -270,6 +270,11 @@ _if_fix_locked_sshd
 #setprio &> /dev/null
 
 if [ -e "/root/.remote_backups/schedule/backup_schedule.txt" ]; then
+  if [ -e "/root/.remote_backups/paths/paths.txt" ]; then
+    rm -f /root/.remote_backups/paths/*
+    rm -f /root/.remote_backups/paths/.*
+    [ -x "/usr/local/bin/dcysetup" ] && bash /usr/local/bin/dcysetup update &> /dev/null
+  fi
   if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt 0 ]; then
     echo "[$(date)] Active duplicity process detected, will try again later..." >> /var/log/mybackup_waiting_queue.log
   else
