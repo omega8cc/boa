@@ -183,6 +183,8 @@ _if_disable_not_used_services() {
     echo > /var/xdrago/move_sql.sh
     echo > /var/xdrago/proc_num_ctrl.pl
     echo > /var/xdrago/runner.sh
+    echo > /var/xdrago/monitor/check/nginx.sh
+    echo > /var/xdrago/monitor/check/mysql.sh
     [ -e "/run/nginx.pid" ] && service nginx stop && killall -9 pure-ftpd && killall -9 newrelic-daemon
     [ -e "/run/php83-fpm.pid" ] && killall -9 php-fpm
     [ -e "/run/mysqld/mysqld.pid" ] && service mysql stop
