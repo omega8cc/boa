@@ -147,7 +147,7 @@ EOF
 
     # _include_global_regexp_file
     cat << EOF > "${_include_global_regexp_file}"
-  --include-regexp '^/var/backups/barracuda.*'
+--include-regexp '^/var/backups/barracuda.*'
 EOF
 
     # _exclude_data_regexp_file
