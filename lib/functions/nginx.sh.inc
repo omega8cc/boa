@@ -932,7 +932,7 @@ _nginx_config_update_fix() {
     ###
     if [ -d "/data/u" ]; then
       for _File in $(find /data/disk/*/config/includes/ -type f -exec grep -l will_expire_in {} +); do
-        rm -f "$File"
+        rm -f "${_File}"
       done
       for Vght in `ls /data/disk/*/log/CANCELLED 2> /dev/null \
         | cut -d"/" -f4 \
