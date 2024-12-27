@@ -89,6 +89,7 @@ _create_user_paths_config() {
   local _merged_exclude_file="${_user_config_dir}/.backboa.${_user}.exclude.merged.file"
   local _merged_regexp_include_file="${_user_config_dir}/.backboa.${_user}.include_regexp.merged.file"
   local _merged_regexp_exclude_file="${_user_config_dir}/.backboa.${_user}.exclude_regexp.merged.file"
+  local _user_ctrl_file="${_user_config_dir}/.backboa.${_sPid}.paths.ctrl.file"
   local _include_ctrl_file="${_user_config_dir}/.backboa.${_user}.${_sPid}.include.ctrl.file"
   local _exclude_ctrl_file="${_user_config_dir}/.backboa.${_user}.${_sPid}.exclude.ctrl.file"
   local _merged_all_include_file="${_user_config_dir}/.backboa.${_user}.all.include.merged.file"
@@ -109,51 +110,64 @@ _create_user_paths_config() {
     fi
   }
 
-  ### Migrate legacy include/exclude files if present and merge unique entries
-
-  # _include_list
-  if [ -f "/root/.backboa.include" ]; then
-    if [ ! -f "${_include_list}" ]; then
-      cp "/root/.backboa.include" "${_include_list}"
-    else
-      _append_unique_entries "/root/.backboa.include" "${_include_list}"
+  # Function to add a single backslash at the end of each line except the last
+  _add_backslashes() {
+    local file="$1"
+    if [ -f "${file}" ]; then
+      # Remove existing trailing backslashes to avoid duplication
+      sed -i 's/[[:space:]]*\\$//' "${file}"
+      # Append a backslash to all lines except the last one
+      sed -i '$!s/$/ \\/' "${file}"
     fi
-  fi
+  }
 
-  # _exclude_list
-  if [ -f "/root/.backboa.exclude" ]; then
-    if [ ! -f "${_exclude_list}" ]; then
-      cp "/root/.backboa.exclude" "${_exclude_list}"
-    else
-      _append_unique_entries "/root/.backboa.exclude" "${_exclude_list}"
+  if [ ! -f "${_user_ctrl_file}" ]; then
+
+    ### Migrate legacy include/exclude files if present and merge unique entries
+
+    # _include_list
+    if [ -f "/root/.backboa.include" ]; then
+      if [ ! -f "${_include_list}" ]; then
+        cp "/root/.backboa.include" "${_include_list}"
+      else
+        _append_unique_entries "/root/.backboa.include" "${_include_list}"
+      fi
     fi
-  else
-    cat << EOF > "${_exclude_list}"
+
+    # _exclude_list
+    if [ -f "/root/.backboa.exclude" ]; then
+      if [ ! -f "${_exclude_list}" ]; then
+        cp "/root/.backboa.exclude" "${_exclude_list}"
+      else
+        _append_unique_entries "/root/.backboa.exclude" "${_exclude_list}"
+      fi
+    else
+      cat << EOF > "${_exclude_list}"
 **files/advagg_css/**
 **files/advagg_js/**
 **files/css/**
 **files/js/**
 **private/temp/**
 EOF
-  fi
+    fi
 
-  ### Create default include/exclude files if they don't exist
+    ### Create default include/exclude files if they don't exist
 
-  # _include_file
-  if [ ! -f "${_include_ctrl_file}" ]; then
-    cat << EOF > "${_include_file}"
---include  /data/disk/${_user}/distro
---include  /data/disk/${_user}/platforms
---include  /data/disk/${_user}/static
---include  /home/${_user}.ftp
+    # _include_file
+    if [ ! -f "${_include_ctrl_file}" ]; then
+      cat << EOF > "${_include_file}"
+--include /data/disk/${_user}/distro
+--include /data/disk/${_user}/platforms
+--include /data/disk/${_user}/static
+--include /home/${_user}.ftp
 EOF
-    rm -f "${_user_config_dir}/.backboa.${_user}.*.include.ctrl.file"
-    touch "${_include_ctrl_file}"
-  fi
+      rm -f "${_user_config_dir}/.backboa.${_user}.*.include.ctrl.file"
+      touch "${_include_ctrl_file}"
+    fi
 
-  # _exclude_file
-  if [ ! -f "${_exclude_ctrl_file}" ]; then
-    cat << EOF > "${_exclude_file}"
+    # _exclude_file
+    if [ ! -f "${_exclude_ctrl_file}" ]; then
+      cat << EOF > "${_exclude_file}"
 --exclude /data/disk/${_user}/aegir
 --exclude /data/disk/${_user}/backup-exports
 --exclude /data/disk/${_user}/backups
@@ -166,79 +180,70 @@ EOF
 --exclude /data/disk/${_user}/tools
 --exclude /data/disk/${_user}/undo
 EOF
-    rm -f ${_user_config_dir}/.backboa.${_user}.*.exclude.ctrl.file
-    touch "${_exclude_ctrl_file}"
-  fi
-
-  if [ ! -f "${_user_control_dir}/include_regexp.txt" ]; then
-    [ -e "${_include_regexp_file}" ] && rm -f "${_include_regexp_file}"
-    [ -e "${_merged_regexp_include_file}" ] && rm -f "${_merged_regexp_include_file}"
-  fi
-
-  if [ ! -f "${_user_control_dir}/exclude_regexp.txt" ]; then
-    [ -e "${_exclude_regexp_file}" ] && rm -f "${_exclude_regexp_file}"
-    [ -e "${_merged_regexp_exclude_file}" ] && rm -f "${_merged_regexp_exclude_file}"
-  fi
-
-  # Validate and merge system and user-space include files
-  _validate_and_merge_paths "${_include_file}" "${_user}" "${_merged_include_file}" NO
-  if [ -f "${_user_control_dir}/include.txt" ]; then
-    _validate_and_merge_paths "${_user_control_dir}/include.txt" "${_user}" "${_merged_include_file}" YES
-  fi
-
-  # Validate and merge system and user-space exclude files
-  _validate_and_merge_paths "${_exclude_file}" "${_user}" "${_merged_exclude_file}" NO
-  if [ -f "${_user_control_dir}/exclude.txt" ]; then
-    _validate_and_merge_paths "${_user_control_dir}/exclude.txt" "${_user}" "${_merged_exclude_file}" YES
-  fi
-
-  # Validate and merge regexp include files
-  if [ -f "${_include_regexp_file}" ]; then
-    _validate_and_merge_paths "${_include_regexp_file}" "${_user}" "${_merged_regexp_include_file}" NO
-  fi
-  if [ -f "${_user_control_dir}/include_regexp.txt" ]; then
-    _validate_and_merge_paths "${_user_control_dir}/include_regexp.txt" "${_user}" "${_merged_regexp_include_file}" YES
-  fi
-
-  # Validate and merge regexp exclude files
-  if [ -f "${_exclude_regexp_file}" ]; then
-    _validate_and_merge_paths "${_exclude_regexp_file}" "${_user}" "${_merged_regexp_exclude_file}" NO
-  fi
-  if [ -f "${_user_control_dir}/exclude_regexp.txt" ]; then
-    _validate_and_merge_paths "${_user_control_dir}/exclude_regexp.txt" "${_user}" "${_merged_regexp_exclude_file}" YES
-  fi
-
-  # Function to add a single backslash at the end of each line except the last
-  _add_backslashes() {
-    local file="$1"
-    if [ -f "${file}" ]; then
-      # Remove existing trailing backslashes to avoid duplication
-      sed -i 's/[[:space:]]*\\$//' "${file}"
-      # Append a backslash to all lines except the last one
-      sed -i '$!s/$/ \\/' "${file}"
+      rm -f ${_user_config_dir}/.backboa.${_user}.*.exclude.ctrl.file
+      touch "${_exclude_ctrl_file}"
     fi
-  }
 
-  # Merge all include path directives into single file
-  cat "${_merged_include_file}" > "${_merged_all_include_file}"
-  cat "${_merged_regexp_include_file}" >> "${_merged_all_include_file}"
+    # Cleanup for empty or not used include config files
+    if [ ! -f "${_user_control_dir}/include_regexp.txt" ]; then
+      [ -e "${_include_regexp_file}" ] && rm -f "${_include_regexp_file}"
+      [ -e "${_merged_regexp_include_file}" ] && rm -f "${_merged_regexp_include_file}"
+    fi
 
-  # Merge all exclude path directives into single file
-  cat "${_merged_exclude_file}" > "${_merged_all_exclude_file}"
-  cat "${_merged_regexp_exclude_file}" >> "${_merged_all_exclude_file}"
+    # Cleanup for empty or not used exclude config files
+    if [ ! -f "${_user_control_dir}/exclude_regexp.txt" ]; then
+      [ -e "${_exclude_regexp_file}" ] && rm -f "${_exclude_regexp_file}"
+      [ -e "${_merged_regexp_exclude_file}" ] && rm -f "${_merged_regexp_exclude_file}"
+    fi
 
-  # Finalize by adding a backslash at the end of each line except the last
-  _add_backslashes "${_merged_all_include_file}"
-  _add_backslashes "${_merged_all_exclude_file}"
+    # Validate and merge system and user-space include files
+    _validate_and_merge_paths "${_include_file}" "${_user}" "${_merged_include_file}" NO
+    if [ -f "${_user_control_dir}/include.txt" ]; then
+      _validate_and_merge_paths "${_user_control_dir}/include.txt" "${_user}" "${_merged_include_file}" YES
+    fi
 
-  # Convert the include file contents to a single-line variable without backslashes and excessive whitespace
-  local _MERGED_ALL_INCLUDE=$(sed 's/\\//g' "${_merged_all_include_file}" | tr '\n' ' ' | tr -s ' ' | sed 's/^ *//;s/ *$//')
+    # Validate and merge system and user-space exclude files
+    _validate_and_merge_paths "${_exclude_file}" "${_user}" "${_merged_exclude_file}" NO
+    if [ -f "${_user_control_dir}/exclude.txt" ]; then
+      _validate_and_merge_paths "${_user_control_dir}/exclude.txt" "${_user}" "${_merged_exclude_file}" YES
+    fi
 
-  # Convert the exclude file contents to a single-line variable without backslashes and excessive whitespace
-  local _MERGED_ALL_EXCLUDE=$(sed 's/\\//g' "${_merged_all_exclude_file}" | tr '\n' ' ' | tr -s ' ' | sed 's/^ *//;s/ *$//')
+    # Validate and merge regexp include files
+    if [ -f "${_include_regexp_file}" ]; then
+      _validate_and_merge_paths "${_include_regexp_file}" "${_user}" "${_merged_regexp_include_file}" NO
+    fi
+    if [ -f "${_user_control_dir}/include_regexp.txt" ]; then
+      _validate_and_merge_paths "${_user_control_dir}/include_regexp.txt" "${_user}" "${_merged_regexp_include_file}" YES
+    fi
 
-  # Create the final paths configuration file
-  cat << EOF > "${_user_paths_file}"
+    # Validate and merge regexp exclude files
+    if [ -f "${_exclude_regexp_file}" ]; then
+      _validate_and_merge_paths "${_exclude_regexp_file}" "${_user}" "${_merged_regexp_exclude_file}" NO
+    fi
+    if [ -f "${_user_control_dir}/exclude_regexp.txt" ]; then
+      _validate_and_merge_paths "${_user_control_dir}/exclude_regexp.txt" "${_user}" "${_merged_regexp_exclude_file}" YES
+    fi
+
+    # Merge all include path directives into single file
+    cat "${_merged_include_file}" > "${_merged_all_include_file}"
+    cat "${_merged_regexp_include_file}" >> "${_merged_all_include_file}"
+
+    # Merge all exclude path directives into single file
+    cat "${_merged_exclude_file}" > "${_merged_all_exclude_file}"
+    cat "${_merged_regexp_exclude_file}" >> "${_merged_all_exclude_file}"
+
+    # Finalize by adding a backslash at the end of each line except the last
+    _add_backslashes "${_merged_all_include_file}"
+    _add_backslashes "${_merged_all_exclude_file}"
+
+    # Convert the include file contents to a single-line variable without backslashes and excessive whitespace
+    local _MERGED_ALL_INCLUDE=$(sed 's/\\//g' "${_merged_all_include_file}" | tr '\n' ' ' | tr -s ' ' | sed 's/^ *//;s/ *$//')
+
+    # Convert the exclude file contents to a single-line variable without backslashes and excessive whitespace
+    local _MERGED_ALL_EXCLUDE=$(sed 's/\\//g' "${_merged_all_exclude_file}" | tr '\n' ' ' | tr -s ' ' | sed 's/^ *//;s/ *$//')
+
+    # Create the final paths configuration file
+    cat << EOF > "${_user_paths_file}"
 _SOURCE="/data/disk/${_user}/static"
 _USER_INCLUDE_PATHS="${_MERGED_ALL_INCLUDE}"
 _USER_EXCLUDE_PATHS="${_MERGED_ALL_EXCLUDE}"
@@ -246,7 +251,10 @@ _INCLUDE_LIST="${_include_list}"
 _EXCLUDE_LIST="${_exclude_list}"
 EOF
 
-  echo "Paths configuration for '${_user}' created or updated at '${_user_paths_file}'."
+    rm -f "${_user_config_dir}/.backboa.*.paths.ctrl.file"
+    touch ${_user_ctrl_file}
+    echo "Paths configuration for '${_user}' created or updated at '${_user_paths_file}'."
+  fi
 }
 
 # Generate paths configuration for each user
