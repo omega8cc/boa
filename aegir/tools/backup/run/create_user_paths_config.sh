@@ -3,7 +3,7 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-export _sPid="f81"
+export _sPid="f80"
 
 # Log file for escape attempts and validation issues
 _VALIDATION_LOG_FILE="/var/log/backup_validation_issues.log"
@@ -261,7 +261,7 @@ EOF
 for _user_dir in /data/disk/*; do
   if [ -d "${_user_dir}" ]; then
     _user=$(basename "${_user_dir}")
-    if [ "${_user}" != "arch" ] && [ "${_user}" != "data" ] && [ "${_user}" != "global" ]; then
+    if [ "${_user}" != "arch" ] && [ "${_user}" != "data" ] && [ "${_user}" != "global" ] && [ "${_user}" != "custom" ]; then
       _create_user_paths_config "${_user}"
     fi
   fi
