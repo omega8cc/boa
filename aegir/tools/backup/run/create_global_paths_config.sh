@@ -186,8 +186,8 @@ EOF
   fi
   if [ -s "${_exclude_data_regexp_file}" ]; then
     _validate_config "${_exclude_data_regexp_file}" "regexp"
-    cat "${_exclude_data_regexp_file}" >> "${_merged_data_exclude_file}"
   fi
+      cat "${_exclude_data_regexp_file}" > "${_merged_data_exclude_file}"
 
   # Finalize by adding a backslash at the end of each line except the last
   [ -e "${_merged_data_include_file}" ] && _add_backslashes "${_merged_data_include_file}"
