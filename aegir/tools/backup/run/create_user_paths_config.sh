@@ -3,7 +3,7 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-export _sPid="f79"
+export _sPid="f78"
 
 # Log file for escape attempts and validation issues
 _VALIDATION_LOG_FILE="/var/log/backup_validation_issues.log"
@@ -182,17 +182,9 @@ EOF
     # _exclude_file
     if [ ! -f "${_exclude_ctrl_file}" ]; then
       cat << EOF > "${_exclude_file}"
---exclude /data/disk/${_user}/aegir
---exclude /data/disk/${_user}/backup-exports
---exclude /data/disk/${_user}/backups
---exclude /data/disk/${_user}/log
---exclude /data/disk/${_user}/src
---exclude /data/disk/${_user}/tmp
---exclude /data/disk/${_user}/.tmp
+--exclude /data/disk/${_user}
 --exclude /data/disk/${_user}/static/restores
 --exclude /data/disk/${_user}/static/trash
---exclude /data/disk/${_user}/tools
---exclude /data/disk/${_user}/undo
 EOF
       rm -f ${_user_config_dir}/.backboa.${_user}.*.exclude.ctrl.file
       touch "${_exclude_ctrl_file}"
