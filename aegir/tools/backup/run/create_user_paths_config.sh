@@ -3,7 +3,7 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-export _sPid="f80"
+export _sPid="f79"
 
 # Log file for escape attempts and validation issues
 _VALIDATION_LOG_FILE="/var/log/backup_validation_issues.log"
@@ -16,6 +16,20 @@ _check_root() {
   fi
 }
 _check_root
+
+# Function to generate passphrase for user level backups
+_generate_user_secret_file() {
+  local _user=$1
+  local _secret_file="/data/disk/${_user}/remote_backups/.secret.txt"
+  if [ ! -s "${_secret_file}" ]; then
+    openssl rand -base64 32 > "${_secret_file}"
+    chmod 600 "${_secret_file}"
+    chattr +i "${_secret_file}"
+    echo "User secret file created at ${_secret_file} and made immutable."
+  else
+    echo "User secret file already exists at ${_secret_file}."
+  fi
+}
 
 # Function to log validation issues
 _log_issue() {
@@ -263,6 +277,7 @@ for _user_dir in /data/disk/*; do
     _user=$(basename "${_user_dir}")
     if [ "${_user}" != "arch" ] && [ "${_user}" != "data" ] && [ "${_user}" != "global" ] && [ "${_user}" != "custom" ]; then
       _create_user_paths_config "${_user}"
+      _generate_user_secret_file "${_user}"
     fi
   fi
 done
