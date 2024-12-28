@@ -425,14 +425,16 @@ _set_mode() {
   else
     [ ! -e "${_LOGPTH}/${_BUCKET_NAME}.${_TODAY}.full.log" ] && export _MODE="full"
   fi
-  echo "The _MODE has been set to (${_MODE}) in _set_mode for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
-  if [ "${_hostedSys}" = "YES" ] && [ "${_user}" = "global" ]; then
-    if [ "${_DOM}" = 8 ] && [ ! -e "${_LOGPTH}/${_BUCKET_NAME}.${_TODAY}.full.log" ]; then
-      _MODE="full"
-      echo "The _MODE has been re-set to (${_MODE}) in _set_mode for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
+  [ -e "/root/.dev.server.cnf" ] && echo "The _MODE has been set to (${_MODE}) in _set_mode for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
+  if [ "${_hostedSys}" = "YES" ]; then
+    if [ "${_user}" = "global" ] || [ "${_user}" = "data" ] || [ "${_user}" = "custom" ]; then
+      if [ "${_DOM}" = 8 ] && [ ! -e "${_LOGPTH}/${_BUCKET_NAME}.${_TODAY}.full.log" ]; then
+        _MODE="full"
+        echo "The _MODE has been re-set to (${_MODE}) in _set_mode for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
+      fi
     fi
   else
-    echo "The FULL_BACKUP_FREQUENCY is (${FULL_BACKUP_FREQUENCY}) for ${_BUCKET_NAME}" >> ${_LOGFILE}
+    [ -e "/root/.dev.server.cnf" ] && echo "The FULL_BACKUP_FREQUENCY is (${FULL_BACKUP_FREQUENCY}) for ${_BUCKET_NAME}" >> ${_LOGFILE}
   fi
   export _MODE
   _print_env "multiback_set_mode"
