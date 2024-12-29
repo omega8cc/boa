@@ -17,11 +17,14 @@ The retention system for live backups relies entirely on **time-based retention*
    - Specifies how long backups are retained.
    - Deletes all backups (full and incremental) older than the specified timeframe.
    - **Example**: `KEEP_WITHIN="3M"` retains all backups created within the last 3 months and deletes older ones.
+   - Only values specified in M (months) or Y (years) are accepted; otherwise will automatically default to 3M.
 
 2. **Full Backup Frequency (`FULL_BACKUP_FREQUENCY`)**:
    - Defines how often a new full backup is created.
    - Incremental backups are created between full backups to save storage and backup time.
    - **Example**: `FULL_BACKUP_FREQUENCY="28D"` creates a new full backup every 28 days.
+   - Only values specified in D (days) are accepted.
+   - The value must be between 7D and 60D; otherwise will automatically default to 28D.
 
 ---
 
