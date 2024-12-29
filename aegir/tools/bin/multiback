@@ -493,8 +493,10 @@ _set_cmd() {
     --allow-source-mismatch \
     --concurrency ${_useCpu}"
 
-  if [ "${_hostedSys}" = "YES" ] && [ "${_user}" = "global" ]; then
-    export _DCY_UP_CMD="${_HST_UP_CMD}"
+  if [ "${_hostedSys}" = "YES" ]; then
+    if [ "${_user}" = "global" ] || [ "${_user}" = "data" ] || [ "${_user}" = "custom" ]; then
+      export _DCY_UP_CMD="${_HST_UP_CMD}"
+    fi
   fi
 
   _print_env "multiback_set_cmd"
