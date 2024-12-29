@@ -15,8 +15,7 @@ _check_root
 # -----------------------------------------------------------------------------
 # 1) Identify which user references which DB by scanning vhosts
 # -----------------------------------------------------------------------------
-_VHOSTS_DIRS=("/var/aegir/config/server_master/nginx/vhost.d" \
-              "/data/disk/*/config/server_master/nginx/vhost.d")
+_VHOSTS_DIRS=("/data/disk/*/config/server_master/nginx/vhost.d")
 
 # We'll store:  db_name -> "vhost1 vhost2 ..."
 declare -A _vhost_db_map
@@ -57,6 +56,7 @@ for _db_name in "${!_vhost_db_map[@]}"; do
   for _vhost_file in ${_vhost_db_map["${_db_name}"]}; do
     _this_user=$(_get_username_from_path "${_vhost_file}")
     if [ -n "${_this_user}" ]; then
+      # Avoid duplicates
       if ! [[ " ${_db_users_map["${_db_name}"]} " =~ " ${_this_user} " ]]; then
         _db_users_map["${_db_name}"]+="${_this_user} "
       fi
@@ -76,24 +76,44 @@ declare -A _touched_users
 
 for _backup_dir in "${_ARCH_SQL_BASE}"/*; do
   [ -d "${_backup_dir}" ] || continue
-  _dir_name=$(basename "${_backup_dir}")  # e.g. "foobar-241104-012115"
 
-  # Extract the date/time portion if your naming scheme is "host-DATESTAMP"
+  echo "_backup_dir is ${_backup_dir}"
+  _dir_name=$(basename "${_backup_dir}")
+  echo "_dir_name is ${_dir_name}"
+
+  # If naming is "hostname-DATESTAMP", e.g. "hostname-241219-011510"
   _datetime="${_dir_name#*-}"
+  echo "_datetime is ${_datetime}"
 
   unset _touched_users
   declare -A _touched_users
 
   for _backup_file in "${_backup_dir}"/*; do
     [ -f "${_backup_file}" ] || continue
-    _base_file=$(basename "${_backup_file}")
 
-    # Peel off up to two extensions. e.g. "dbName.sql.bz2" => "dbName"
+    _base_file=$(basename "${_backup_file}")
+    echo "_base_file is ${_base_file}"
+
+    # Peel off up to two extensions, e.g. "dbName.sql.bz2" => "dbName"
     filename_no_ext="${_base_file}"
     filename_no_ext="${filename_no_ext%.*}"  # remove 1st extension
     filename_no_ext="${filename_no_ext%.*}"  # remove 2nd extension
 
+    # If the base (after removing extensions) ends with -DATETIME,
+    # remove that suffix so you get the "raw" DB name
+    if [[ "${filename_no_ext}" == *"-${_datetime}" ]]; then
+      filename_no_ext="${filename_no_ext%-${_datetime}}"
+    fi
+
     _possible_dbname="${filename_no_ext}"
+
+    if [[ "${_possible_dbname}" == "mysql" || "${_possible_dbname}" == "sys" ]]; then
+      # Debug log (optional)
+      echo "Skipping system DB backup: ${_base_file} (DB: ${_possible_dbname})"
+      continue
+    else
+      echo "_possible_dbname is ${_possible_dbname}"
+    fi
 
     # If this DB is used by any users, copy the file for them
     if [ -n "${_db_users_map["${_possible_dbname}"]}" ]; then
@@ -130,8 +150,8 @@ echo "Backup copying completed."
 # -----------------------------------------------------------------------------
 #
 # If the file exists and contains a number of days (e.g. 7, 14, 21, 60),
-# remove archives older than that many days. Then remove any empty subdirs.
-# By default use 14 days if the file is not present.
+# remove archives older than that many days. Then remove empty subdirs.
+# By default use 14 days if the file is missing or zero-length.
 
 # Collect all involved users (any user found in _db_users_map)
 declare -A _all_involved_users=()
@@ -146,19 +166,26 @@ echo "Performing cleanup of old backups based on dBackupCycle.info..."
 for _user in "${!_all_involved_users[@]}"; do
   _days_to_keep=
   _cycle_file="/data/disk/${_user}/static/control/dBackupCycle.info"
+
+  # Default if user hasn't configured or file is empty
   if [ ! -s "${_cycle_file}" ]; then
     _days_to_keep=14
   fi
+
+  # If file exists or we have a default
   if [ -s "${_cycle_file}" ] || [ -n "${_days_to_keep}" ]; then
+    # If the file is actually non-empty, parse it
     if [ -s "${_cycle_file}" ]; then
       _days_to_keep=$(tr -d '[:space:]' < "${_cycle_file}")
+      # Keep only digits
       _days_to_keep="${_days_to_keep//[^0-9]/}"
     fi
+
     if [[ "${_days_to_keep}" =~ ^[0-9]+$ ]]; then
       echo "User: ${_user}; removing backups older than ${_days_to_keep} days..."
       find "/data/disk/${_user}/static/files/dbackup" \
         -type f -mtime +${_days_to_keep} -exec rm -f {} \;
-      # Remove empty directories too:
+      # Optionally remove empty directories, too:
       find "/data/disk/${_user}/static/files/dbackup" \
         -type d -empty -delete
     else
