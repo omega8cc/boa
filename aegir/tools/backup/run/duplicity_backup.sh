@@ -344,10 +344,24 @@ _validate_or_default_duration() {
   local _default=$3
 
   # Supported formats: number followed by D (days), W (weeks), M (months), Y (years)
-  if [[ ! "${_value}" =~ ^[0-9]+[DWMY]$ ]]; then
+  if [[ ! "${_value}" =~ ^[0-9]+[DWMY]$ ]] || [[ "${_value}" =~ ^[0][DWMY]$ ]]; then
     echo "Warning: Invalid value '${_value}' for ${_var_name}. Using default '${_default}'."
     eval "${_var_name}='${_default}'"
     _print_env "multiback_validate_or_default_duration"
+  fi
+
+  # Enforced min value for KEEP_WITHIN (1M)
+  if [ "${_var_name}" = "KEEP_WITHIN" ] && [[ ! "${_value}" =~ ^[0-9]+[MY]$ ]]; then
+    echo "Warning: Invalid value '${_value}' for ${_var_name}. It must be at least 1M. Using default '${_default}'."
+    eval "${_var_name}='${_default}'"
+    _print_env "multiback_validate_or_default_duration_keep"
+  fi
+
+  # Enforced min and max value for FULL_BACKUP_FREQUENCY (7D to 60D)
+  if [ "${_var_name}" = "FULL_BACKUP_FREQUENCY" ] && [[ ! "${_value}" =~ ^([7-9]|[1-5][0-9]|60)D$ ]]; then
+    echo "Warning: Invalid value '${_value}' for ${_var_name}. It must be between 7D and 60D. Using default '${_default}'."
+    eval "${_var_name}='${_default}'"
+    _print_env "multiback_validate_or_default_duration_freq"
   fi
 }
 
