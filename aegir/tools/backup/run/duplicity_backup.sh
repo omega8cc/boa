@@ -344,10 +344,24 @@ _validate_or_default_duration() {
   local _default=$3
 
   # Supported formats: number followed by D (days), W (weeks), M (months), Y (years)
-  if [[ ! "${_value}" =~ ^[0-9]+[DWMY]$ ]]; then
+  if [[ ! "${_value}" =~ ^[0-9]+[DWMY]$ ]] || [[ "${_value}" =~ ^[0][DWMY]$ ]]; then
     echo "Warning: Invalid value '${_value}' for ${_var_name}. Using default '${_default}'."
     eval "${_var_name}='${_default}'"
     _print_env "multiback_validate_or_default_duration"
+  fi
+
+  # Enforced min value for KEEP_WITHIN (1M)
+  if [ "${_var_name}" = "KEEP_WITHIN" ] && [[ ! "${_value}" =~ ^[0-9]+[MY]$ ]]; then
+    echo "Warning: Invalid value '${_value}' for ${_var_name}. It must be at least 1M. Using default '${_default}'."
+    eval "${_var_name}='${_default}'"
+    _print_env "multiback_validate_or_default_duration_keep"
+  fi
+
+  # Enforced min and max value for FULL_BACKUP_FREQUENCY (7D to 60D)
+  if [ "${_var_name}" = "FULL_BACKUP_FREQUENCY" ] && [[ ! "${_value}" =~ ^([7-9]|[1-5][0-9]|60)D$ ]]; then
+    echo "Warning: Invalid value '${_value}' for ${_var_name}. It must be between 7D and 60D. Using default '${_default}'."
+    eval "${_var_name}='${_default}'"
+    _print_env "multiback_validate_or_default_duration_freq"
   fi
 }
 
@@ -479,8 +493,10 @@ _set_cmd() {
     --allow-source-mismatch \
     --concurrency ${_useCpu}"
 
-  if [ "${_hostedSys}" = "YES" ] && [ "${_user}" = "global" ]; then
-    export _DCY_UP_CMD="${_HST_UP_CMD}"
+  if [ "${_hostedSys}" = "YES" ]; then
+    if [ "${_user}" = "global" ] || [ "${_user}" = "data" ] || [ "${_user}" = "custom" ]; then
+      export _DCY_UP_CMD="${_HST_UP_CMD}"
+    fi
   fi
 
   _print_env "multiback_set_cmd"
@@ -539,6 +555,23 @@ _check_if_repair() {
   if grep -q "found incomplete backup sets" "${_LOGFILE}"; then
     _repair_only
   fi
+}
+
+# Function to wipe the bucket completely
+_wipe() {
+  echo "Running wipe via remove-all-but-n-full 0 --force for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
+  echo "Command is ${_DCY_MN_CMD} remove-all-but-n-full 0 --force ${_BACKUP_TARGET}"
+  ${_DCY_MN_CMD} remove-all-but-n-full 0 --force ${_BACKUP_TARGET} >> ${_LOGFILE}
+  wait
+}
+
+# Function to purge all backup sets
+_purge() {
+  _set_mode
+  _set_cmd
+  _repair_only
+  _wipe
+  _collection_status
 }
 
 # Function to run weekly cleanup
@@ -825,6 +858,10 @@ case "${_ACTION}" in
   list)
     _set_backup_target "${_SERVICE}" "${_USER}"
     _list
+    ;;
+  purge)
+    _set_backup_target "${_SERVICE}" "${_USER}"
+    _purge
     ;;
   status)
     _set_backup_target "${_SERVICE}" "${_USER}"
