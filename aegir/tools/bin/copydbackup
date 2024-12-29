@@ -22,22 +22,38 @@ declare -A _vhost_db_map
 
 for _dir_pattern in "${_VHOSTS_DIRS[@]}"; do
   for _dir in ${_dir_pattern}; do
-    if [ -d "${_dir}" ]; then
-      for _vhost_file in "${_dir}"/*; do
-        if [ -f "${_vhost_file}" ]; then
-          while IFS= read -r _line; do
-            # Lines containing: fastcgi_param db_name DBNAME;
-            if echo "${_line}" | grep -q "fastcgi_param db_name"; then
-              _db_name=$(echo "${_line}" | awk '{print $NF}' | tr -d ';')
-              # Append this vhost file to the db_name’s list (avoid duplicates)
-              if ! [[ " ${_vhost_db_map["${_db_name}"]} " =~ " ${_vhost_file} " ]]; then
-                _vhost_db_map["${_db_name}"]+="${_vhost_file} "
-              fi
-            fi
-          done < "${_vhost_file}"
+    [ -d "${_dir}" ] || continue
+    for _vhost_file in "${_dir}"/*; do
+      [ -f "${_vhost_file}" ] || continue
+
+      # We'll read the file first to see if we should skip it entirely:
+      skip_this_vhost=0
+      while IFS= read -r _line; do
+        # If line references /data/disk/whatever/aegir/distro/ in the docroot, we skip
+        if echo "${_line}" | grep -qE "root\s+/data/disk/.*/aegir/distro/"; then
+          skip_this_vhost=1
+          break
         fi
-      done
-    fi
+      done < "${_vhost_file}"
+
+      # If skip_this_vhost=1, do not parse DB references; move on to next file
+      if [ "${skip_this_vhost}" -eq 1 ]; then
+        # Optionally log this skip:
+        echo "Skipping vhost due to aegir/distro pattern: ${_vhost_file}"
+        continue
+      fi
+
+      # Otherwise, we parse the file again for DB references (or rewind w/ file descriptor)
+      while IFS= read -r _line; do
+        if echo "${_line}" | grep -q "fastcgi_param db_name"; then
+          _db_name=$(echo "${_line}" | awk '{print $NF}' | tr -d ';')
+          # Append vhost file to the db_name’s list if not already included
+          if ! [[ " ${_vhost_db_map["${_db_name}"]} " =~ " ${_vhost_file} " ]]; then
+            _vhost_db_map["${_db_name}"]+="${_vhost_file} "
+          fi
+        fi
+      done < "${_vhost_file}"
+    done
   done
 done
 
@@ -45,13 +61,13 @@ done
 # 2) Build a "db -> user(s)" map from the vhost paths
 # -----------------------------------------------------------------------------
 _get_username_from_path() {
-  # Typical pattern: /data/disk/USER/config/server_master/nginx/vhost.d/example.com.conf
+  # Typical pattern: /data/disk/USER/config/server_master/nginx/vhost.d/example.conf
   # Splitting by '/' => [0:'',1:'data',2:'disk',3:'USERNAME',4:'config',...]
   local _vfile="$1"
   echo "${_vfile}" | cut -d'/' -f4
 }
 
-declare -A _db_users_map
+declare -A _db_users_map  # db_name -> "user1 user2 ..."
 for _db_name in "${!_vhost_db_map[@]}"; do
   for _vhost_file in ${_vhost_db_map["${_db_name}"]}; do
     _this_user=$(_get_username_from_path "${_vhost_file}")
@@ -70,37 +86,26 @@ done
 _ARCH_SQL_BASE="/data/disk/arch/sql"
 echo "Copying relevant DB backups into user spaces..."
 
-# We'll track users who received new files in each subdirectory,
-# then do a single chown -R at the end for each user.
-declare -A _touched_users
-
 for _backup_dir in "${_ARCH_SQL_BASE}"/*; do
   [ -d "${_backup_dir}" ] || continue
-
-  echo "_backup_dir is ${_backup_dir}"
   _dir_name=$(basename "${_backup_dir}")
-  echo "_dir_name is ${_dir_name}"
+  _datetime="${_dir_name#*-}"  # e.g. host-DATESTAMP => just the DATETIME part
 
-  # If naming is "hostname-DATESTAMP", e.g. "hostname-241219-011510"
-  _datetime="${_dir_name#*-}"
-  echo "_datetime is ${_datetime}"
-
-  unset _touched_users
-  declare -A _touched_users
+  # We'll track users who received new files in this directory,
+  # then do a single chown -R for each user at the end.
+  declare -A _touched_users=()
 
   for _backup_file in "${_backup_dir}"/*; do
     [ -f "${_backup_file}" ] || continue
 
     _base_file=$(basename "${_backup_file}")
-    echo "_base_file is ${_base_file}"
 
-    # Peel off up to two extensions, e.g. "dbName.sql.bz2" => "dbName"
+    # Remove up to two extensions => e.g. dbName.sql.bz2 => dbName
     filename_no_ext="${_base_file}"
-    filename_no_ext="${filename_no_ext%.*}"  # remove 1st extension
-    filename_no_ext="${filename_no_ext%.*}"  # remove 2nd extension
+    filename_no_ext="${filename_no_ext%.*}"  # 1st ext
+    filename_no_ext="${filename_no_ext%.*}"  # 2nd ext
 
-    # If the base (after removing extensions) ends with -DATETIME,
-    # remove that suffix so you get the "raw" DB name
+    # If base ends with -DATETIME, remove that suffix => dbName
     if [[ "${filename_no_ext}" == *"-${_datetime}" ]]; then
       filename_no_ext="${filename_no_ext%-${_datetime}}"
     fi
@@ -153,7 +158,7 @@ echo "Backup copying completed."
 # remove archives older than that many days. Then remove empty subdirs.
 # By default use 14 days if the file is missing or zero-length.
 
-# Collect all involved users (any user found in _db_users_map)
+# Gather all users from _db_users_map to do cleanup
 declare -A _all_involved_users=()
 for _db_name in "${!_db_users_map[@]}"; do
   for _usr in ${_db_users_map["${_db_name}"]}; do
@@ -167,14 +172,14 @@ for _user in "${!_all_involved_users[@]}"; do
   _days_to_keep=
   _cycle_file="/data/disk/${_user}/static/control/dBackupCycle.info"
 
-  # Default if user hasn't configured or file is empty
+  # If empty or missing, default to 14 days
   if [ ! -s "${_cycle_file}" ]; then
     _days_to_keep=14
   fi
 
-  # If file exists or we have a default
+  # If user has a file OR we have a default
   if [ -s "${_cycle_file}" ] || [ -n "${_days_to_keep}" ]; then
-    # If the file is actually non-empty, parse it
+    # If the file is non-empty, parse it
     if [ -s "${_cycle_file}" ]; then
       _days_to_keep=$(tr -d '[:space:]' < "${_cycle_file}")
       # Keep only digits
