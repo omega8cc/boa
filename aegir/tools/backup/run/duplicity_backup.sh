@@ -301,14 +301,16 @@ _load_credentials() {
     local _secret_file="/root/.remote_backups/.secret.txt"
   fi
 
-  if [ -f "${_secret_file}" ] && [ "${_user}" != "custom" ]; then
-    export PASSPHRASE=$(cat "${_secret_file}")
-  else
-    echo "Secret file ${_secret_file} not found. Unable to proceed."
-    exit 1
+  if [ "${_user}" != "custom" ]; then
+    if [ -s "${_secret_file}" ]; then
+      export PASSPHRASE=$(cat "${_secret_file}")
+    else
+      echo "Secret file ${_secret_file} not found. Unable to proceed."
+      exit 1
+    fi
   fi
 
-  if [ ! -f "${_cred_file}" ]; then
+  if [ ! -s "${_cred_file}" ]; then
     echo "Error: Credentials file '${_cred_file}' not found."
     exit 1
   fi
