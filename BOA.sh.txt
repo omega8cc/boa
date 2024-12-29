@@ -47,7 +47,7 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 export _tRee=pro
 export _xSrl=550proT04
 export _rLsn="BOA-5.5.0"
-export _bTs=DE09
+export _bTs=DE11
 
 ###
 ### Avoid too many questions
@@ -3182,6 +3182,7 @@ _update_boa_tools() {
            barracuda \
            boa \
            codebasecheck \
+           copydbackup \
            dcysetup \
            fancynow \
            ffmirror \
@@ -3244,6 +3245,7 @@ _update_boa_tools() {
   echo "### ${_TODAY} ###" >> ${_optBin}/barracuda
   echo "### ${_TODAY} ###" >> ${_optBin}/boa
   echo "### ${_TODAY} ###" >> ${_optBin}/codebasecheck
+  echo "### ${_TODAY} ###" >> ${_optBin}/copydbackup
   echo "### ${_TODAY} ###" >> ${_optBin}/dcysetup
   echo "### ${_TODAY} ###" >> ${_optBin}/fancynow
   echo "### ${_TODAY} ###" >> ${_optBin}/killer
@@ -3292,7 +3294,7 @@ _update_boa_tools() {
   fi
 
   chmod 700 ${_optBin}/{autoinit,autodaedalus,autochimaera,autobeowulf,autoupboa,backboa,duobackboa,mergecsf,verifyvhostsdns}
-  chmod 700 ${_optBin}/{barracuda,boa,ffmirror,killer,mycnfup,octopus,syncpass,xboa,weblogx,sqlclean,perftest,dcysetup}
+  chmod 700 ${_optBin}/{barracuda,boa,ffmirror,killer,mycnfup,octopus,syncpass,xboa,weblogx,sqlclean,perftest,dcysetup,copydbackup}
   chmod 700 ${_optBin}/{fancynow,codebasecheck,vhostcheck,memorytuner,mysqltuner5,mysqltuner8,smtpgapps,setprio,multiback}
   chmod 755 ${_optBin}/{randpass,sqlmagic,thinkdifferent,websh,mybackup}
 }
