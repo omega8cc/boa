@@ -557,6 +557,23 @@ _check_if_repair() {
   fi
 }
 
+# Function to wipe the bucket completely
+_wipe() {
+  echo "Running wipe via remove-all-but-n-full 0 --force for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
+  echo "Command is ${_DCY_MN_CMD} remove-all-but-n-full 0 --force ${_BACKUP_TARGET}"
+  ${_DCY_MN_CMD} remove-all-but-n-full 0 --force ${_BACKUP_TARGET} >> ${_LOGFILE}
+  wait
+}
+
+# Function to purge all backup sets
+_purge() {
+  _set_mode
+  _set_cmd
+  _repair_only
+  _wipe
+  _collection_status
+}
+
 # Function to run weekly cleanup
 _weekly_cleanup() {
   if [ -e "${_LOGPTH}/${_BUCKET_NAME}.archive.log" ] \
@@ -841,6 +858,10 @@ case "${_ACTION}" in
   list)
     _set_backup_target "${_SERVICE}" "${_USER}"
     _list
+    ;;
+  purge)
+    _set_backup_target "${_SERVICE}" "${_USER}"
+    _purge
     ;;
   status)
     _set_backup_target "${_SERVICE}" "${_USER}"
