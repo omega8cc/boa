@@ -459,10 +459,16 @@ echo "INFO: Completing dbs backup compress on $(date)"
 echo "INFO: Starting dbs backup cleanup on $(date)"
 _DB_BACKUPS_TTL=${_DB_BACKUPS_TTL//[^0-9]/}
 if [ -z "${_DB_BACKUPS_TTL}" ]; then
-  _DB_BACKUPS_TTL="7"
+  _DB_BACKUPS_TTL="14"
 fi
 find ${_BACKUPDIR} -mtime +${_DB_BACKUPS_TTL} -type d -exec rm -rf {} \;
 echo "INFO: Backups older than ${_DB_BACKUPS_TTL} days deleted"
+
+if [ -x "/opt/local/bin/copydbackup" ]; then
+  echo "INFO: Copying backups to users space"
+  bash /opt/local/bin/copydbackup &> /dev/null
+  wait
+fi
 
 echo "INFO: Starting verbose usage report on $(date)"
 bash /var/xdrago/usage.sh verbose
