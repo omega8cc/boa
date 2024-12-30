@@ -2,6 +2,8 @@
 
 **BOA-5.6.0 PRO** has arrived just in time for the New Year—bringing with it a flurry of exciting enhancements, fresh tools, and a brand-new backup system exclusively for our Pro users! This release marks the fourth in our new branch structure and merges over **750** updates made since our previous version, **BOA-5.5.0**, delivering more power, flexibility, and reliability than ever before.
 
+<img width="769" alt="screenshot 2024-12-30 at 12 47 50" src="https://github.com/user-attachments/assets/080624c5-5dad-48dd-a214-8abcc26f6999" />
+
 ### An All-New Backup Experience
 Undoubtedly the star of this release is our totally revamped backup system. Designed specifically for Pro users, it offers powerful data protection features and allows you to fine-tune how your backups are created, stored, and retained. Plus, it’s ready to work with multiple remote storage options—no fuss, just peace of mind.
 
