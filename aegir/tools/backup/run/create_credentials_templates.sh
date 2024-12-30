@@ -41,6 +41,12 @@ _create_credentials_templates() {
 
   for _service in "${_services[@]}"; do
     _template_file="${_target_dir}/${_service}.txt"
+
+    if [ ! -e "${_user_pid_dir}/.backboa.${_user}.credentials.${_service}.tpl.ctrl" ]; then
+      sed -i "s/FULL_BACKUP_FREQUENCY=.*/FULL_BACKUP_FREQUENCY=\"28D\"/g" ${_template_file}
+      touch ${_user_pid_dir}/.backboa.${_user}.credentials.${_service}.tpl.ctrl
+    fi
+
     if [ ! -f "${_template_file}" ]; then
       case "${_service}" in
         aws|aws_one_zone|aws_standard_ia)
@@ -141,6 +147,7 @@ _main() {
     if [ -d "${_user_dir}" ]; then
       _user=$(basename "${_user_dir}")
       if [ "${_user}" != "arch" ] && [ "${_user}" != "data" ] && [ "${_user}" != "global" ] && [ "${_user}" != "custom" ]; then
+        _user_pid_dir="${_USER_BASE_DIR}/${_user}/log"
         _user_credentials_dir="${_USER_BASE_DIR}/${_user}/static/control/remote_backups/credentials"
         _ensure_directory "${_user_credentials_dir}"
         _create_credentials_templates "${_user_credentials_dir}"
