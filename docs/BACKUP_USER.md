@@ -1,19 +1,85 @@
 # **User Guide: How the Backup System Works and How to Use It**
 
-This guide explains the backup system, including how it works, how to configure it for your needs, and how to restore your data. The document also covers the supported storage services and key distinctions in path handling.
+This guide explains the backup system, including how it works, how to configure it for your needs, and how to restore your data. It also covers the supported storage services, key distinctions in path handling, and the default retention policies for your local database backups.
 
-- New Backups for BOA SysAdmin [docs/BACKUP_ROOT.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_ROOT.md)
-- New Backups for Octopus Lshell User (this document) [docs/BACKUP_USER.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_USER.md)
-- New Backups Retention Policy Configuration [docs/BACKUP_RETENTION.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_RETENTION.md)
-- Supported Regions and Bucket Creation Guidelines [docs/BACKUP_REGIONS.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_REGIONS.md)
+- **New Backups for BOA SysAdmin** [docs/BACKUP_ROOT.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_ROOT.md)
+- **New Backups for Octopus Lshell User (this document)** [docs/BACKUP_USER.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_USER.md)
+- **New Backups Retention Policy Configuration** [docs/BACKUP_RETENTION.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_RETENTION.md)
+- **Supported Regions and Bucket Creation Guidelines** [docs/BACKUP_REGIONS.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_REGIONS.md)
 
 ---
 
-## **How the Backup System Works**
+## **Important Note on Database Backups**
+
+All **active sites databases** are now automatically backed up to the following directory in your account:
+
+```
+/data/disk/your_username/static/files/dbackup/
+```
+
+These local database backups are retained for **14 days** by default. You can modify the retention period (in days) by creating or editing the file:
+
+```
+/data/disk/your_username/static/control/dBackupCycle.info
+```
+
+This file should contain only digits (e.g., `7` for 7 days, `30` for 30 days, etc.). Keep in mind that **these database backup archives count toward your overall file-space usage limit**, according to your subscription plan if you are on hosted BOA.
+
+**Important**: Databases which belong to **disabled sites** are still backed up on the system level, but **will not be added to your archives** in `/data/disk/your_username/static/files/dbackup/`.
+
+---
+
+## **Basic Use (Simple Configuration)**
+
+This section covers a quick-start approach, focusing on minimal setup.
+
+1. **Where DB Backups Are Stored by Default**
+   - Local database backups: `/data/disk/your_username/static/files/dbackup/`
+   - Retained for 14 days by default (modifiable via `/data/disk/your_username/static/control/dBackupCycle.info`).
+   - Local database backups count toward your file-space quota.
+
+2. **Enable or Verify That Backups Are Enabled**
+   - By default, backups for your account are typically enabled. If in doubt, contact support to confirm that scheduled backups are running.
+
+3. **Add Your Preferred Remote Storage Credentials**
+   - To send backups offsite (e.g., AWS S3, Wasabi, Backblaze B2), edit a credential file in:
+     ```
+     /data/disk/your_username/static/control/remote_backups/credentials/
+     ```
+   - Follow the specific format required by each service (see **AWS Example** in the advanced section for reference).
+   - Secure your credentials by running:
+     ```bash
+     chmod 600 /data/disk/your_username/static/control/remote_backups/credentials/*.txt
+     ```
+
+4. **Restore Basics**
+   - For quick restores, you can use:
+     ```bash
+     mybackup restore <SERVICE>
+     ```
+   - This command will restore everything to your `/data/disk/your_username/static/restores/` folder.
+   - If you need to restore just a specific directory or from a certain date, see the **Advanced Use** section below.
+
+5. **Monitor Usage**
+   - Remember that **all backup files** stored locally (`/data/disk/your_username/static/files/dbackup/`) **count toward your usage limit**.
+   - If you’re nearing your quota, consider:
+     - Shortening your retention period in `/data/disk/your_username/static/control/dBackupCycle.info`.
+     - Removing old backups.
+     - Upgrading your plan if you need more space.
+
+That’s it for the basics! If you need more control—like custom includes/excludes, restoring specific directories, or advanced scheduling—read on.
+
+---
+
+## **Advanced Use (Detailed Configuration and Instructions)**
+
+Below is the full, detailed documentation that covers **how the backup system works**, how to **configure** it for more granular scenarios, **how to restore** data with precision, and how to manage and troubleshoot the system.
+
+### **How the Backup System Works**
 
 The backup system automates the process of securely backing up your critical data and allows recovery when needed. It uses a tool called **Duplicity**, which is responsible for encrypting, storing, and managing backups.
 
-### **What is Duplicity?**
+#### **What is Duplicity?**
 Duplicity is software designed for secure and efficient backups. It:
 1. **Encrypts Your Data**: Keeps your backups secure.
 2. **Manages Incremental Backups**: Saves space by only storing changes since the last backup.
@@ -23,7 +89,7 @@ Duplicity ensures your backups are both secure and efficient.
 
 ---
 
-## **Supported Storage Services**
+### **Supported Storage Services**
 
 The system supports backups to the following storage services. Each service requires a properly formatted credential file stored in:
 
@@ -31,7 +97,7 @@ The system supports backups to the following storage services. Each service requ
 ~/static/control/remote_backups/credentials/
 ```
 
-### **Supported Services**
+**Supported Services:**
 - **Amazon S3 One Zone**
 - **Amazon S3 Standard-IA**
 - **Amazon S3**
@@ -47,7 +113,7 @@ Refer to the **Managing Credentials** section for details on how to create and s
 
 ---
 
-## **Key Terms and Concepts**
+### **Key Terms and Concepts**
 
 1. **Backup Root**: The top-level directories included in your backups:
    - `/data/disk/your_username/static/`: Contains your account-specific files, Drupal codebases, and configurations.
@@ -58,7 +124,7 @@ Refer to the **Managing Credentials** section for details on how to create and s
    - **Duplicity ALWAYS requires absolute paths** in configuration files.
 
 3. **Restore Path (No-Leading-Slash Absolute Path)**:
-   - When using the `restore` command, the restore path must be absolute but **without a leading slash**. This is specific to Duplicity’s restore syntax.
+   - When using the `restore` command, the restore path must be absolute but **without a leading slash** (specific to Duplicity’s syntax).
    - Example:
      - Correct: `data/disk/your_username/static/projects`
      - Incorrect: `/data/disk/your_username/static/projects`
@@ -68,15 +134,20 @@ Refer to the **Managing Credentials** section for details on how to create and s
 
 ---
 
-## **Backup Scope and Configuration**
+### **Backup Scope and Configuration**
 
 The system automatically includes the following directories:
 
 1. **Default Inclusion**:
    - Everything in `/data/disk/your_username/static/`.
    - System-managed directories like `/home/your_username.ftp/platforms/`.
+   - Platforms without codebase access in `/data/disk/your_username/distro/`.
 
-2. **Customization**:
+2. **Default Exclusion**:
+   - Everything in `/data/disk/your_username/static/trash/`.
+   - Everything in `/data/disk/your_username/static/restores/`.
+
+3. **Customization**:
    - You can include or exclude additional directories using configuration files located in:
      ```bash
      ~/static/control/remote_backups/config/
@@ -84,7 +155,7 @@ The system automatically includes the following directories:
 
 ---
 
-## **Configuring Your Backups**
+### **Configuring Your Backups**
 
 You can customize what is included or excluded in your backups by editing configuration files stored in:
 
@@ -92,7 +163,7 @@ You can customize what is included or excluded in your backups by editing config
 ~/static/control/remote_backups/config/
 ```
 
-### **Configuration Files**
+#### **Configuration Files**
 
 1. **`include.txt`**:
    - Use this file to include additional absolute paths in the backup.
@@ -132,7 +203,7 @@ You can customize what is included or excluded in your backups by editing config
 
 ---
 
-### **Configuration Rules**
+#### **Configuration Rules**
 
 1. **Absolute Paths Only**:
    - All paths in configuration files (include/exclude) must be absolute paths starting from `/`.
@@ -145,6 +216,7 @@ You can customize what is included or excluded in your backups by editing config
      - `/data/disk/your_username/static/`
      - `/home/your_username.ftp/`
    - Attempts to include paths outside these directories will be rejected.
+   - Platforms without codebase access in `/data/disk/your_username/distro/` are included automatically.
 
 3. **Regex Patterns Must Start with Allowed Base Paths**:
    - Regex patterns must begin with `^` followed by one of your allowed base paths.
@@ -175,7 +247,7 @@ You can customize what is included or excluded in your backups by editing config
 
 ---
 
-## **Managing Credentials**
+### **Managing Credentials**
 
 To enable backups and restores, you must provide valid credentials for your cloud storage service. Credential files are stored in:
 
@@ -185,7 +257,7 @@ To enable backups and restores, you must provide valid credentials for your clou
 
 Each credential file corresponds to a specific cloud storage service and must follow the required format. For example:
 
-### **AWS Example (`aws.txt`)**
+#### **AWS Example (`aws.txt`)**
 ```bash
 export AWS_ACCESS_KEY_ID="your_aws_access_key"
 export AWS_SECRET_ACCESS_KEY="your_aws_secret_key"
@@ -194,27 +266,26 @@ export KEEP_WITHIN="3M"              # Retain backups from the last 3 months
 export FULL_BACKUP_FREQUENCY="28D"   # Create a full backup every 28 days
 ```
 
-### **Key Variables**
+**Key Variables**:
 - **`KEEP_WITHIN`**: Specifies how long backups are retained (e.g., `1M` for 1 month).
 - **`FULL_BACKUP_FREQUENCY`**: Specifies how often full backups are created.
 
-### **Permissions**
-Make sure your credential files are secured:
+**Permissions**:
 ```bash
 chmod 600 ~/static/control/remote_backups/credentials/*.txt
 ```
 
-### **Credential Security Measures**
-- **Avoid Forbidden Characters**: Credential values must not contain forbidden characters (`$`, `` ` ``, `(`, `)`, `{`, `}`, `;`, `&`, `|`, `<`, `>`).
+**Credential Security Measures**:
+- **Avoid Forbidden Characters**: Credential values must not contain `$`, `` ` ``, `(`, `)`, `{`, `}`, `;`, `&`, `|`, `<`, `>`.
 - **Proper Syntax**: Ensure each line is a valid variable assignment in the form `VARIABLE="value"`.
 
 ---
 
-## **Restoring Files**
+### **Restoring Files**
 
 To recover data, use the `mybackup` command. The restore process has specific rules for paths, which differ from configuration file paths.
 
-### **Restore Command**
+#### **Restore Command**
 
 ```bash
 mybackup restore <SERVICE> [RESTORE_TARGET] [RESTORE_PATH] [RESTORE_TIME]
@@ -230,35 +301,35 @@ mybackup restore <SERVICE> [RESTORE_TARGET] [RESTORE_PATH] [RESTORE_TIME]
 
 ---
 
-### **Restore Examples**
+#### **Restore Examples**
 
 1. **Restore All Files to Default Directory**:
-   Restore your entire backup to `~/static/restores/`:
    ```bash
    mybackup restore aws
    ```
+   - Restores the entire backup to `~/static/restores/`.
 
 2. **Restore a Specific Directory**:
-   Restore the `projects` directory:
    ```bash
    mybackup restore aws ~/static/restores data/disk/your_username/static/projects
    ```
+   - Restores the `projects` directory.
 
 3. **Restore FTP Files**:
-   Restore specific files from your FTP home directory:
    ```bash
    mybackup restore aws ~/static/restores home/your_username.ftp/documents
    ```
+   - Restores files from your FTP home directory.
 
 4. **Restore from a Specific Time**:
-   Restore files as they existed 7 days ago:
    ```bash
    mybackup restore aws ~/static/restores data/disk/your_username/static/projects 7D
    ```
+   - Restores files as they were 7 days ago.
 
 ---
 
-### **Key Rules for Restores**
+#### **Key Rules for Restores**
 
 1. **Restore Path Must Be Absolute Without Leading Slash**:
    - Paths must reflect the full directory structure used during backups, but cannot start with `/`.
@@ -276,18 +347,19 @@ mybackup restore <SERVICE> [RESTORE_TARGET] [RESTORE_PATH] [RESTORE_TIME]
 
 ---
 
-## **Security Notes**
+### **Security Notes**
 
 1. **Backup Scope**:
-   - The system restricts backups to:
+   - The system restricts user-configured backups to:
      - `/data/disk/your_username/static/`
      - `/home/your_username.ftp/`
    - Attempts to include files outside these directories will fail.
+   - Platforms without codebase access in `/data/disk/your_username/distro/` are included automatically.
 
 2. **Path Validation and Security**:
-   - **Validation of Paths**: The system strictly validates all paths and regex patterns in your configuration files to prevent inclusion of unauthorized directories.
+   - **Validation of Paths**: Strictly enforced to prevent unauthorized directories from being backed up.
    - **Regex Patterns**:
-     - Must start with `^` and an allowed base path (`/data/disk/your_username/static` or `/home/your_username\.ftp` (note the requirement to escape the dot in the regex mode).
+     - Must start with `^` and an allowed base path.
      - Cannot contain forbidden characters.
 
 3. **Credential Security**:
@@ -298,19 +370,18 @@ mybackup restore <SERVICE> [RESTORE_TARGET] [RESTORE_PATH] [RESTORE_TIME]
    - Ensure credential files contain only valid variable assignments.
 
 4. **Restore Target Permissions**:
-   - Ensure your restore target directory is writable.
+   - Make sure your restore target directory is writable.
 
 5. **Forbidden Characters in Configurations**:
-   - Avoid using forbidden characters in your configuration files:
-     - Forbidden characters: `$`, `` ` ``, `(`, `)`, `{`, `}`, `;`, `&`, `|`, `<`, `>`
-   - Lines containing these characters will be rejected for security reasons.
+   - `$`, `` ` ``, `(`, `)`, `{`, `}`, `;`, `&`, `|`, `<`, `>` are disallowed in paths/credentials.
+   - Lines containing these characters will be rejected.
 
 6. **No Execution of User-Provided Code**:
-   - The backup system does not execute any code from your configuration files. It reads and processes the files securely to prevent code injection or execution of unauthorized commands.
+   - The backup system does not execute user-provided code. It securely parses config files to prevent any code injection.
 
 ---
 
-## **Troubleshooting**
+### **Troubleshooting**
 
 If you encounter issues with your backups or restores:
 
@@ -319,12 +390,12 @@ If you encounter issues with your backups or restores:
      ```bash
      /var/log/backup_validation_issues.log
      ```
-   - Ask your host to review this log to see if any lines in your configuration files were rejected.
+   - Ask your host to review this log if any lines in your config files were rejected.
 
 2. **Common Validation Errors**:
-   - **Unauthorized Path**: Attempting to include paths outside your allowed directories.
-   - **Invalid Syntax**: Incorrect formatting in configuration files.
-   - **Forbidden Characters**: Use of forbidden characters in paths or credential values.
+   - **Unauthorized Path**: Attempting to include paths outside allowed directories.
+   - **Invalid Syntax**: Incorrectly formatted config files.
+   - **Forbidden Characters**: Using `$`, `` ` ``, `(`, `)`, `{`, `}`, `;`, `&`, `|`, `<`, `>`.
 
 3. **Correcting Validation Errors**:
    - Ensure all paths are within `/data/disk/your_username/static/` or `/home/your_username.ftp/`.
@@ -334,10 +405,10 @@ If you encounter issues with your backups or restores:
 
 ---
 
-## **Best Practices**
+### **Best Practices**
 
-1. **Regularly Review Configuration Files**:
    - Keep your include and exclude lists up to date with your backup needs.
+1. **Review Configuration Files Regularly**:
 
 2. **Secure Your Credentials**:
    - Limit access to your credential files and update your credentials if you suspect they have been compromised.
@@ -348,17 +419,17 @@ If you encounter issues with your backups or restores:
 4. **Monitor Backup Logs**:
    - Regularly check the backup logs to identify and address any issues promptly.
 
-5. **Understand Regex Limitations**:
-   - Be cautious when using regex patterns. Ensure they only match the intended files within your allowed directories.
+5. **Use Regex with Caution**:
+   - Ensure patterns match only intended files/directories within allowed paths.
 
 ---
 
-## **Conclusion**
+### **Conclusion**
 
-The backup system ensures the security and recoverability of your critical data. By understanding the distinction between configuration paths (absolute with leading slash) and restore paths (absolute without leading slash), adhering to the validation rules, and managing your credentials properly, you can confidently manage and restore your data as needed.
+By following the **Basic Use** section, you can quickly get your backups running—just add your preferred remote service credentials and rely on the default local database backups stored in `~/static/files/dbackup/`. For more granular control, use the **Advanced Use** section to configure includes, excludes, custom retention, advanced restore options, and more.
 
-For assistance, contact your administrator.
+Remember that **all local backups count toward your storage quota**, so adjust your retention period or remove old backups as needed. If you have questions or run into any issues, please contact your administrator or hosting support.
 
 ---
 
-**Note**: Replace `your_username` with your actual Aegir **system** (not lshell/ftp) username in all the examples above.
+**Note**: Replace `your_username` with your actual Aegir **system** username (not lshell/FTP username) in all examples above.
