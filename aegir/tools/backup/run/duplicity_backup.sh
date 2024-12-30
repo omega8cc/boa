@@ -472,15 +472,8 @@ _set_cmd() {
   # Validate or set default for FULL_BACKUP_FREQUENCY
   _validate_or_default_duration "${FULL_BACKUP_FREQUENCY}" "FULL_BACKUP_FREQUENCY" "${_DEFAULT_FULL_BACKUP_FREQUENCY}"
 
-  export _HST_UP_CMD="/usr/local/bin/duplicity ${_MODE} \
-    -v ${_AWS_VLV} \
-    --name=${_NAME} \
-    --allow-source-mismatch \
-    --concurrency ${_useCpu} \
-    --copy-links \
-    --volsize 300"
-
-  export _DCY_UP_CMD="/usr/local/bin/duplicity ${_MODE} \
+  ### Default backup command with encryption
+  export _DCY_BUP_CMD="/usr/local/bin/duplicity ${_MODE} \
     -v ${_AWS_VLV} \
     --name=${_NAME} \
     --allow-source-mismatch \
@@ -489,15 +482,46 @@ _set_cmd() {
     --full-if-older-than ${FULL_BACKUP_FREQUENCY} \
     --volsize 300"
 
-  export _DCY_MN_CMD="/usr/local/bin/duplicity \
+  ### Default utility command with encryption
+  export _DCY_UTL_CMD="/usr/local/bin/duplicity \
     -v ${_AWS_VLV} \
     --name=${_NAME} \
     --allow-source-mismatch \
     --concurrency ${_useCpu}"
 
+  ### Custom backup command with encryption and enforced own FULL_BACKUP_FREQUENCY
+  export _FBF_BUP_CMD="/usr/local/bin/duplicity ${_MODE} \
+    -v ${_AWS_VLV} \
+    --name=${_NAME} \
+    --allow-source-mismatch \
+    --concurrency ${_useCpu} \
+    --copy-links \
+    --volsize 300"
+
+  ### Custom backup command without encryption and enforced own FULL_BACKUP_FREQUENCY
+  export _NOE_BUP_CMD="/usr/local/bin/duplicity ${_MODE} \
+    -v ${_AWS_VLV} \
+    --name=${_NAME} \
+    --allow-source-mismatch \
+    --concurrency ${_useCpu} \
+    --copy-links \
+    --no-encryption \
+    --volsize 300"
+
+  ### Custom utility command without encryption
+  export _NOE_UTL_CMD="/usr/local/bin/duplicity \
+    -v ${_AWS_VLV} \
+    --name=${_NAME} \
+    --allow-source-mismatch \
+    --no-encryption \
+    --concurrency ${_useCpu}"
+
   if [ "${_hostedSys}" = "YES" ]; then
-    if [ "${_user}" = "global" ] || [ "${_user}" = "data" ] || [ "${_user}" = "custom" ]; then
-      export _DCY_UP_CMD="${_HST_UP_CMD}"
+    if [ "${_user}" = "global" ] || [ "${_user}" = "data" ]; then
+      export _DCY_BUP_CMD="${_FBF_BUP_CMD}"
+    elif [ "${_user}" = "custom" ]; then
+      export _DCY_BUP_CMD="${_NOE_BUP_CMD}"
+      export _DCY_UTL_CMD="${_NOE_UTL_CMD}"
     fi
   fi
 
@@ -508,8 +532,8 @@ _set_cmd() {
 _status() {
   _set_mode
   _set_cmd
-  echo "Command is ${_DCY_MN_CMD} collection-status ${_BACKUP_TARGET}"
-  ${_DCY_MN_CMD} collection-status ${_BACKUP_TARGET}
+  echo "Command is ${_DCY_UTL_CMD} collection-status ${_BACKUP_TARGET}"
+  ${_DCY_UTL_CMD} collection-status ${_BACKUP_TARGET}
   wait
 }
 
@@ -517,30 +541,30 @@ _status() {
 _list() {
   _set_mode
   _set_cmd
-  echo "Command is ${_DCY_MN_CMD} list-current-files ${_BACKUP_TARGET}"
-  ${_DCY_MN_CMD} list-current-files ${_BACKUP_TARGET}
+  echo "Command is ${_DCY_UTL_CMD} list-current-files ${_BACKUP_TARGET}"
+  ${_DCY_UTL_CMD} list-current-files ${_BACKUP_TARGET}
   wait
 }
 
 _remove_older_than() {
   echo "Running remove-older-than ${KEEP_WITHIN} for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
-  echo "Command is ${_DCY_MN_CMD} remove-older-than ${KEEP_WITHIN} --force ${_BACKUP_TARGET}"
-  ${_DCY_MN_CMD} remove-older-than ${KEEP_WITHIN} --force ${_BACKUP_TARGET} >> ${_LOGFILE}
+  echo "Command is ${_DCY_UTL_CMD} remove-older-than ${KEEP_WITHIN} --force ${_BACKUP_TARGET}"
+  ${_DCY_UTL_CMD} remove-older-than ${KEEP_WITHIN} --force ${_BACKUP_TARGET} >> ${_LOGFILE}
   wait
 }
 
 _collection_status() {
   echo "Running collection-status for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
-  echo "Command is ${_DCY_MN_CMD} collection-status ${_BACKUP_TARGET}"
-  ${_DCY_MN_CMD} collection-status ${_BACKUP_TARGET} >> ${_LOGFILE}
+  echo "Command is ${_DCY_UTL_CMD} collection-status ${_BACKUP_TARGET}"
+  ${_DCY_UTL_CMD} collection-status ${_BACKUP_TARGET} >> ${_LOGFILE}
   wait
 }
 
 # Function to only repair incomplete backup sets
 _repair_only() {
   echo "Running repair via cleanup --force for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
-  echo "Command is ${_DCY_MN_CMD} cleanup --force ${_BACKUP_TARGET}"
-  ${_DCY_MN_CMD} cleanup --force ${_BACKUP_TARGET} >> ${_LOGFILE}
+  echo "Command is ${_DCY_UTL_CMD} cleanup --force ${_BACKUP_TARGET}"
+  ${_DCY_UTL_CMD} cleanup --force ${_BACKUP_TARGET} >> ${_LOGFILE}
   wait
 }
 
@@ -562,8 +586,8 @@ _check_if_repair() {
 # Function to wipe the bucket completely
 _wipe() {
   echo "Running wipe via remove-all-but-n-full 0 --force for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
-  echo "Command is ${_DCY_MN_CMD} remove-all-but-n-full 0 --force ${_BACKUP_TARGET}"
-  ${_DCY_MN_CMD} remove-all-but-n-full 0 --force ${_BACKUP_TARGET} >> ${_LOGFILE}
+  echo "Command is ${_DCY_UTL_CMD} remove-all-but-n-full 0 --force ${_BACKUP_TARGET}"
+  ${_DCY_UTL_CMD} remove-all-but-n-full 0 --force ${_BACKUP_TARGET} >> ${_LOGFILE}
   wait
 }
 
@@ -598,10 +622,10 @@ _cleanup() {
 
 # Function to perform backup
 _run_backup() {
-  export _FULL_BACK_CMD="${_DCY_UP_CMD} ${_BATCH_INCLUDE} ${_BATCH_EXCLUDE} --exclude '**' / ${_BACKUP_TARGET}"
+  export _FULL_BACK_CMD="${_DCY_BUP_CMD} ${_BATCH_INCLUDE} ${_BATCH_EXCLUDE} --exclude '**' / ${_BACKUP_TARGET}"
   echo "Running in ${_MODE} mode for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
   echo "$(date)" >> ${_LOGPTH}/${_BUCKET_NAME}.${_TODAY}.${_MODE}.log
-  ${_DCY_UP_CMD} ${_BATCH_INCLUDE} ${_BATCH_EXCLUDE} --exclude '**' / ${_BACKUP_TARGET} >> ${_LOGFILE}
+  ${_DCY_BUP_CMD} ${_BATCH_INCLUDE} ${_BATCH_EXCLUDE} --exclude '**' / ${_BACKUP_TARGET} >> ${_LOGFILE}
   wait
   _print_env "multiback_run_backup"
 }
@@ -640,11 +664,11 @@ _backup() {
 #
 # _restore() {
 #   if [ $# = 2 ]; then
-#     echo "Command is ${_DCY_MN_CMD} restore --file-to-restore $1 ${_BACKUP_TARGET} $2"
-#     ${_DCY_MN_CMD} restore --file-to-restore $1 ${_BACKUP_TARGET} $2
+#     echo "Command is ${_DCY_UTL_CMD} restore --file-to-restore $1 ${_BACKUP_TARGET} $2"
+#     ${_DCY_UTL_CMD} restore --file-to-restore $1 ${_BACKUP_TARGET} $2
 #   else
-#     echo "Command is ${_DCY_MN_CMD} restore --file-to-restore $1 --time $2 ${_BACKUP_TARGET} $3"
-#     ${_DCY_MN_CMD} restore --file-to-restore $1 --time $2 ${_BACKUP_TARGET} $3
+#     echo "Command is ${_DCY_UTL_CMD} restore --file-to-restore $1 --time $2 ${_BACKUP_TARGET} $3"
+#     ${_DCY_UTL_CMD} restore --file-to-restore $1 --time $2 ${_BACKUP_TARGET} $3
 #   fi
 # }
 #
@@ -693,7 +717,7 @@ _restore() {
   local _restore_target=$1
   local _restore_path=$2
   local _restore_time=$3
-  local _restore_command="${_DCY_MN_CMD} restore"
+  local _restore_command="${_DCY_UTL_CMD} restore"
 
   # Ensure _RESTORE_TARGET exists
   if [ -n "${_restore_target}" ]; then
@@ -718,7 +742,7 @@ _restore() {
   _restore_command="${_restore_command} ${_restore_target}"
 
   echo "Command is ${_restore_command}"
-  # ${_DCY_MN_CMD} restore --time ${_restore_time} ${_BACKUP_TARGET} --path-to-restore ${_restore_path} ${_restore_target}
+  # ${_DCY_UTL_CMD} restore --time ${_restore_time} ${_BACKUP_TARGET} --path-to-restore ${_restore_path} ${_restore_target}
 
   # su -s /bin/bash ${_user} -c "eval \"${_restore_command}\"" &> /dev/null
   eval "${_restore_command}"
@@ -890,14 +914,17 @@ _remove_pid_file "${_PIDFILE}"
   export _ACTION=
   export _BACKUP_TARGET=
   export _BUCKET_NAME=
-  export _DCY_MN_CMD=
-  export _DCY_UP_CMD=
+  export _DCY_BUP_CMD=
+  export _DCY_UTL_CMD=
   export _EXCLUDE_LIST=
+  export _FBF_BUP_CMD=
   export _INCLUDE_LIST=
   export _LST_EXCLUDE=
   export _LST_INCLUDE=
   export _MODE=
   export _NAME=
+  export _NOE_BUP_CMD=
+  export _NOE_UTL_CMD=
   export _PIDFILE=
   export _RESTORE_PATH=
   export _RESTORE_TARGET=
