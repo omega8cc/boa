@@ -251,19 +251,39 @@ _validate_credentials() {
 
   while IFS= read -r _line || [ -n "${_line}" ]; do
     _line_number=$(( _line_number + 1 ))
+
     # Trim leading and trailing whitespace
     _line="${_line#"${_line%%[![:space:]]*}"}"
     _line="${_line%"${_line##*[![:space:]]}"}"
 
-    # Skip comments and empty lines
-    if [[ -z "${_line}" || "${_line}" == \#* ]]; then
+    # Skip empty lines immediately
+    if [[ -z "${_line}" ]]; then
+      continue
+    fi
+
+    # Remove full-line comments: lines that *start* with '#'
+    if [[ "${_line}" == \#* ]]; then
+      continue
+    fi
+
+    # Remove anything after (and including) the first '#' for inline comments
+    # (This is a naive approach that does not consider # within quotes)
+    if [[ "${_line}" == *"#"* ]]; then
+      _line="${_line%%#*}"
+      # Re-trim after removing the comment
+      _line="${_line#"${_line%%[![:space:]]*}"}"
+      _line="${_line%"${_line##*[![:space:]]}"}"
+    fi
+
+    # Skip if there's nothing left after stripping inline comment
+    if [[ -z "${_line}" ]]; then
       continue
     fi
 
     # Remove 'export ' prefix if present
     _line="${_line#export }"
 
-    # Validate the variable assignment
+    # Validate the variable assignment (key=value)
     if [[ "${_line}" =~ ^([A-Za-z_][A-Za-z0-9_]*)=(\".*\"|'.*'|[^[:space:]]+)$ ]]; then
       export _varname="${BASH_REMATCH[1]}"
       export _value="${BASH_REMATCH[2]}"
@@ -275,16 +295,19 @@ _validate_credentials() {
 
       # Check for forbidden characters in value
       if echo "${_value}" | grep -q -E '[$`(){};&|<>]'; then
-        _log_issue "credentials" "${_cred_file}" "Forbidden characters in value at line ${_line_number}: ${_line}"
+        _log_issue "credentials" "${_cred_file}" \
+          "Forbidden characters in value at line ${_line_number}: ${_line}"
         continue
       fi
 
-      # Safely export the variable
+      # Safely export the variable (URL-encode if needed)
       export ${_varname}=$(_url_encode "${_value}")
     else
-      _log_issue "credentials" "${_cred_file}" "Invalid syntax at line ${_line_number}: ${_line}"
+      _log_issue "credentials" "${_cred_file}" \
+        "Invalid syntax at line ${_line_number}: ${_line}"
     fi
   done < "${_cred_file}"
+
   _print_env "multiback_validate_credentials"
 }
 
