@@ -839,9 +839,8 @@ EOF
   DevDb Memory Space Used is ${_SkipDt} kB or ${_SkipDtH} MB
 
   Total Disk Space Used is ${_TotSiz} kB or ${_TotSizH} MB
-
-  All Sites Files Disk Space Used is ${_SumDir} kB or ${_SumDirH} MB
-  All Accounts Home and Solr Disk Space Used is ${_HomSiz} kB or ${_HomSizH} MB
+    All Sites Files Disk Space Used is ${_SumDir} kB or ${_SumDirH} MB
+    All Accounts Home and Solr Disk Space Used is ${_HomSiz} kB or ${_HomSizH} MB
 
 EOF
         fi
