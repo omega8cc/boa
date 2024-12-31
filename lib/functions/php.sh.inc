@@ -2395,11 +2395,9 @@ _check_php_rebuild() {
   # Additional conditions for force rebuild or upgrade
   if [ "${_FULL_FORCE_REINSTALL}" = "YES" ] || [ "${_PHP_FORCE_REINSTALL}" = "YES" ]; then
     if [ ! -e "/var/xdrago/log" ] && [ -e "/var/xdrago_wait/log" ]; then
-      rm -f /var/xdrago_wait/log/*.log
       rm -f /var/xdrago_wait/log/._php_libs_fix_*.pid
       rm -f /var/xdrago_wait/log/re-installed-php*
     else
-      rm -f /var/xdrago/log/*.log
       rm -f /var/xdrago/log/._php_libs_fix_*.pid
       rm -f /var/xdrago/log/re-installed-php*
     fi
@@ -3117,10 +3115,8 @@ _php_ioncube_check_if_update() {
       || [ "${_PHP_FORCE_REINSTALL}" = "YES" ] \
       || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
       if [ ! -e "/var/xdrago/log" ] && [ -e "/var/xdrago_wait/log" ]; then
-        rm -f /var/xdrago_wait/log/*.log
         rm -f /var/xdrago_wait/log/._php_libs_fix_*.pid
       else
-        rm -f /var/xdrago/log/*.log
         rm -f /var/xdrago/log/._php_libs_fix_*.pid
       fi
       _if_install_php_ioncube
