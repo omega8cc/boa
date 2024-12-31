@@ -528,7 +528,7 @@ _check_limits() {
     _SQL_MIN_LIMIT=5120
     _DSK_MIN_LIMIT=102400
     _DSK_MAX_LIMIT=107520
-    _SQL_DEV_EXTRA=3
+    _SQL_DEV_EXTRA=2
     _SQL_MAX_LIMIT=$(( _SQL_MIN_LIMIT + 1024 ))
     _DSK_MIN_LIMIT=$(( _DSK_MIN_LIMIT *= _DSK_CLU_LIMIT ))
     _DSK_MAX_LIMIT=$(( _DSK_MAX_LIMIT *= _DSK_CLU_LIMIT ))
@@ -546,7 +546,7 @@ _check_limits() {
   elif [ "${_CLIENT_OPTION}" = "POWER" ]; then
     _SQL_MIN_LIMIT=5120
     _DSK_MIN_LIMIT=102400
-    _SQL_DEV_EXTRA=3
+    _SQL_DEV_EXTRA=2
     _SQL_MAX_LIMIT=$(( _SQL_MIN_LIMIT + 1024 ))
     _DSK_MAX_LIMIT=$(( _DSK_MIN_LIMIT + 2560 ))
   elif [ "${_CLIENT_OPTION}" = "EDGE" ] \
