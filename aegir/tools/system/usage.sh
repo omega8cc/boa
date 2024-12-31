@@ -429,7 +429,7 @@ You are using more resources than allocated in your subscription.
 You have currently ${_CLIENT_CORES} Aegir ${_CLIENT_OPTION} ${_ENGINE_NR}.
 
 Your allowed disk space is ${_DSK_MIN_LIMIT} MB.
-You are currently using ${_HomSizH} MB of disk space.
+You are currently using ${_TotSizH} MB of disk space.
 
 Please reduce your usage by deleting old backups, files,
 and no longer used sites, or purchase enough Aegir Engines
@@ -636,7 +636,7 @@ _check_limits() {
     echo SQL Usage for ${_THIS_U} below limits
     [ "${_THIS_MODE}" = "verbose" ] && echo "  SQL Usage for ${_THIS_U} below limits" >> "${_uLogFil}"
   fi
-  if [ "${_HomSizH}" -gt "${_DSK_MAX_LIMIT}" ]; then
+  if [ "${_TotSizH}" -gt "${_DSK_MAX_LIMIT}" ]; then
     if [ ! -e "${_usEr}/log/CANCELLED" ] \
       && [ ! -e "${_usEr}/log/proxied.pid" ]; then
       if [ "${_THIS_MODE}" = "verbose" ]; then
@@ -820,22 +820,28 @@ EOF
           | awk '{ print $1}' \
           | sed "s/[\/\s+]//g" 2>&1)
         _HomSiz=$(( _HomSiz + _HxmSiz ))
+        _TotSiz=$(( _HomSiz + _SumDir ))
+        _TotSizH=$(echo "scale=0; ${_TotSiz}/1024" | bc 2>&1)
         _HomSizH=$(echo "scale=0; ${_HomSiz}/1024" | bc 2>&1)
         _SumDatH=$(echo "scale=0; ${_SumDat}/1024" | bc 2>&1)
         _SkipDtH=$(echo "scale=0; ${_SkipDt}/1024" | bc 2>&1)
         _SumDirH=$(echo "scale=0; ${_SumDir}/1024" | bc 2>&1)
         echo _HomSiz is ${_HomSiz} kB or ${_HomSizH} MB
         echo _SumDir is ${_SumDir} kB or ${_SumDirH} MB
+        echo _TotSiz is ${_TotSiz} kB or ${_TotSizH} MB
         echo _SumDat is ${_SumDat} kB or ${_SumDatH} MB
         echo _SkipDt is ${_SkipDt} kB or ${_SkipDtH} MB
 
         if [ "${_THIS_MODE}" = "verbose" ]; then
           cat << EOF >> "${_uLogFil}"
 
-  Account Total Disk Space Used is ${_HomSiz} kB or ${_HomSizH} MB
-  All Sites Files Disk Space Used is ${_SumDir} kB or ${_SumDirH} MB
   LiveDb Memory Space Used is ${_SumDat} kB or ${_SumDatH} MB
   DevDb Memory Space Used is ${_SkipDt} kB or ${_SkipDtH} MB
+
+  Total Disk Space Used is ${_TotSiz} kB or ${_TotSizH} MB
+
+  All Sites Files Disk Space Used is ${_SumDir} kB or ${_SumDirH} MB
+  All Accounts Home and Solr Disk Space Used is ${_HomSiz} kB or ${_HomSizH} MB
 
 EOF
         fi
@@ -846,7 +852,7 @@ EOF
           if [ -e "${_THIS_HM_SITE}" ]; then
             su -s /bin/bash - ${_THIS_U} -c "drush8 @hostmaster \
               variable-set --always-set site_footer 'Usage on ${_DATE} \
-              | Files <strong>${_HomSizH}</strong> MB \
+              | Files <strong>${_TotSizH}</strong> MB \
               | LiveDb <strong>${_SumDatH}</strong> MB \
               | DevDb <strong>${_SkipDtH}</strong> MB \
               | <strong>${_CLIENT_CORES}</strong> \
@@ -859,7 +865,7 @@ EOF
               && [ ! -e "${_usEr}/log/proxied.pid" ]; then
               _eMail=${_CLIENT_EMAIL//\\\@/\@}
               _AegirUrl=$(cat ${_usEr}/log/domain.txt 2>&1)
-              if [ "${_HomSizH}" -gt "${_DSK_MAX_LIMIT}" ]; then
+              if [ "${_TotSizH}" -gt "${_DSK_MAX_LIMIT}" ]; then
                 _Files="!x!FilesAll"
               else
                 _Files="FilesAll"
@@ -879,7 +885,7 @@ EOF
               elif [ "${_THIS_MODE}" = "silent" ]; then
                 _LOG_FILE="usage-latest-silent.log"
               fi
-              echo "${_AegirUrl},${_Files}:${_HomSizH},${_DbsL}:${_SumDatH},${_DbsD}:${_SkipDtH},${_eMail},Subs:${_CLIENT_OPTION}:${_CLIENT_CORES},${_THIS_U}" >> /var/xdrago/log/usage/${_LOG_FILE}
+              echo "${_AegirUrl},${_Files}:${_TotSizH},${_DbsL}:${_SumDatH},${_DbsD}:${_SkipDtH},${_eMail},Subs:${_CLIENT_OPTION}:${_CLIENT_CORES},${_THIS_U}" >> /var/xdrago/log/usage/${_LOG_FILE}
             fi
             _TmDir="${_THIS_HM_PLR}/profiles/hostmaster/themes/aegir/eldir"
             _PgTpl="${_TmDir}/page.tpl.php"
