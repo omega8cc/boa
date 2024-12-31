@@ -1847,10 +1847,8 @@ _if_php_idle_on_off() {
   if [ "${_PHP_IDLE}" = "ON" ]; then
     [ -e "/root/.allow-php-multi-install-cleanup.cnf" ] && rm -f /root/.allow-php-multi-install-cleanup.cnf
     if [ ! -e "/var/xdrago/log" ] && [ -e "/var/xdrago_wait/log" ]; then
-      rm -f /var/xdrago_wait/log/*.log
       rm -f /var/xdrago_wait/log/._php_libs_fix_*.pid
     else
-      rm -f /var/xdrago/log/*.log
       rm -f /var/xdrago/log/._php_libs_fix_*.pid
     fi
     touch /root/.proxy.cnf
@@ -5945,10 +5943,8 @@ _if_post_major_os_upgrade() {
       && [ "${_REBUILD_SRC_ON_AUTO_NOW}" = "YES" ]; then
       _msg "INFO: Time for re-installing services built from sources..."
       if [ ! -e "/var/xdrago/log" ] && [ -e "/var/xdrago_wait/log" ]; then
-        rm -f /var/xdrago_wait/log/*.log
         rm -f /var/xdrago_wait/log/._php_libs_fix_*.pid
       else
-        rm -f /var/xdrago/log/*.log
         rm -f /var/xdrago/log/._php_libs_fix_*.pid
       fi
       _PURGE_MODE=OFF

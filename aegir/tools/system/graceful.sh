@@ -71,20 +71,8 @@ _graceful_action() {
   fi
 
   # Clean up old log files
-  echo "Cleaning up old log files..."
-  rm -f /var/backups/.auth.IP.list*
+  echo "Cleaning up old pid files..."
   find /var/xdrago/log/*.pid -mtime +3  -type f -exec rm -rf {} \; &> /dev/null
-  find /var/xdrago/log/*.log -mtime +30 -type f -exec rm -rf {} \; &> /dev/null
-  find /var/xdrago/log/*.txt -mtime +30 -type f -exec rm -rf {} \; &> /dev/null
-  find /var/xdrago/log/last* -mtime +30 -type f -exec rm -rf {} \; &> /dev/null
-  find /var/xdrago/log/wait* -mtime +30 -type f -exec rm -rf {} \; &> /dev/null
-  find /var/xdrago/log/lshe* -mtime +30 -type f -exec rm -rf {} \; &> /dev/null
-  find /var/xdrago/log/ngin* -mtime +30 -type f -exec rm -rf {} \; &> /dev/null
-  find /var/xdrago/log/grac* -mtime +30 -type f -exec rm -rf {} \; &> /dev/null
-  find /var/xdrago/log/purg* -mtime +30 -type f -exec rm -rf {} \; &> /dev/null
-  find /var/xdrago/log/clea* -mtime +30 -type f -exec rm -rf {} \; &> /dev/null
-  find /var/xdrago/log/proc* -mtime +30 -type f -exec rm -rf {} \; &> /dev/null
-  find /var/xdrago/log/redi* -mtime +30 -type f -exec rm -rf {} \; &> /dev/null
 
   # Swap management
   if [ -d "/dev/disk" ]; then
