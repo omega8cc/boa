@@ -714,12 +714,13 @@ _usage_action() {
     _load_control
     if [ -e "${_usEr}/config/server_master/nginx/vhost.d" ]; then
       if (( $(echo "${_O_LOAD} < ${_O_LOAD_MAX}" | bc -l) )); then
-        _SumDir=0
-        _SumDat=0
-        _SkipDt=0
         _HomSiz=0
-        _HxmSiz=0
         _HqmSiz=0
+        _HxmSiz=0
+        _SkipDt=0
+        _SumDat=0
+        _SumDir=0
+        _TotSiz=0
         _THIS_U=$(echo ${_usEr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
         _uLogDir="${_usEr}/static/usage"
         _uLogFil="${_uLogDir}/usage-${_NOW}.log"
@@ -811,7 +812,7 @@ EOF
         if [ -L "${_usEr}/backups" ] \
           || [ -L "${_usEr}/src" ] \
           || [ -L "${_usEr}/static/files" ]; then
-          _HomSiz=$(du -D -s ${_usEr} 2>&1)
+          _HomSiz=$(du -L -s ${_usEr} 2>&1)
         else
           _HomSiz=$(du -s ${_usEr} 2>&1)
         fi
@@ -819,16 +820,16 @@ EOF
           | cut -d'/' -f1 \
           | awk '{ print $1}' \
           | sed "s/[\/\s+]//g" 2>&1)
-        _HomSiz=$(( _HomSiz + _HxmSiz ))
-        _TotSiz=$(( _HomSiz + _SumDir ))
+
+        _TotSiz=$(( _HomSiz + _HxmSiz ))
+
         _TotSizH=$(echo "scale=0; ${_TotSiz}/1024" | bc 2>&1)
-        _HomSizH=$(echo "scale=0; ${_HomSiz}/1024" | bc 2>&1)
+        _SumDirH=$(echo "scale=0; ${_SumDir}/1024" | bc 2>&1)
         _SumDatH=$(echo "scale=0; ${_SumDat}/1024" | bc 2>&1)
         _SkipDtH=$(echo "scale=0; ${_SkipDt}/1024" | bc 2>&1)
-        _SumDirH=$(echo "scale=0; ${_SumDir}/1024" | bc 2>&1)
-        echo _HomSiz is ${_HomSiz} kB or ${_HomSizH} MB
-        echo _SumDir is ${_SumDir} kB or ${_SumDirH} MB
+
         echo _TotSiz is ${_TotSiz} kB or ${_TotSizH} MB
+        echo _SumDir is ${_SumDir} kB or ${_SumDirH} MB
         echo _SumDat is ${_SumDat} kB or ${_SumDatH} MB
         echo _SkipDt is ${_SkipDt} kB or ${_SkipDtH} MB
 
@@ -837,10 +838,7 @@ EOF
 
   LiveDb Memory Space Used is ${_SumDat} kB or ${_SumDatH} MB
   DevDb Memory Space Used is ${_SkipDt} kB or ${_SkipDtH} MB
-
-  Total Disk Space Used is ${_TotSiz} kB or ${_TotSizH} MB
-    All Sites Files Disk Space Used is ${_SumDir} kB or ${_SumDirH} MB
-    All Accounts Home and Solr Disk Space Used is ${_HomSiz} kB or ${_HomSizH} MB
+  Total Disk Space (Files and Solr) Used is ${_TotSiz} kB or ${_TotSizH} MB
 
 EOF
         fi
