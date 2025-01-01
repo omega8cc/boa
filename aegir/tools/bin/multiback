@@ -604,6 +604,21 @@ _check_if_repair() {
   fi
 }
 
+# Function to check if backup worked cleanly or log the errors
+_check_if_worked_cleanly_or_log_err() {
+  if [ "${_user}" = "global" ] || [ "${_user}" = "data" ] || [ "${_user}" = "custom" ]; then
+    local _logs_dir="/root/.remote_backups/logs"
+  else
+    local _logs_dir="/data/disk/${_user}/static/control/remote_backups/logs"
+  fi
+  if grep -q "Backup Statistics" "${_LOGFILE}"; then
+    local _worked_cleanly=OK
+  else
+    [ ! -e "${_logs_dir}" ] && mkdir -p ${_logs_dir}
+    cp -af "${_LOGFILE}" "${_logs_dir}/"
+  fi
+}
+
 # Function to wipe the bucket completely
 _wipe() {
   echo "Running wipe via remove-all-but-n-full 0 --force for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
@@ -659,6 +674,7 @@ _backup() {
   _run_backup
   _check_if_repair
   _weekly_cleanup
+  _check_if_worked_cleanly_or_log_err
   if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "YES" ]; then
     boa info  >> ${_LOGFILE}
     echo "Sending email report on $(date)" >> ${_LOGFILE}
