@@ -613,10 +613,10 @@ _check_if_worked_cleanly_or_log_err() {
   fi
   if grep -q "Backup Statistics" "${_LOGFILE}"; then
     [ ! -e "${_logs_dir}" ] && mkdir -p ${_logs_dir}
-    cp -af "${_LOGFILE}" "${_logs_dir}/OK-${_LOGFILE}"
+    cp -af "${_LOGFILE}" "${_logs_dir}/OK-${_BUCKET_NAME}.log"
   else
     [ ! -e "${_logs_dir}" ] && mkdir -p ${_logs_dir}
-    cp -af "${_LOGFILE}" "${_logs_dir}/ERR-${_LOGFILE}"
+    cp -af "${_LOGFILE}" "${_logs_dir}/ERR-${_BUCKET_NAME}.log"
   fi
 }
 
