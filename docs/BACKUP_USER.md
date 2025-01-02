@@ -156,6 +156,40 @@ The system automatically includes the following directories:
 
 ---
 
+### **Managing Credentials**
+
+To enable backups and restores, you must provide valid credentials for your cloud storage service. Credential files are stored in:
+
+```bash
+~/static/control/remote_backups/credentials/
+```
+
+Each credential file corresponds to a specific cloud storage service and must follow the required format. For example:
+
+#### **AWS Example (`aws.txt`)**
+```bash
+export AWS_ACCESS_KEY_ID="your_aws_access_key"
+export AWS_SECRET_ACCESS_KEY="your_aws_secret_key"
+export AWS_REGION="your_aws_region"  # Example: "us-east-1"
+export KEEP_WITHIN="3M"              # Retain backups from the last 3 months
+export FULL_BACKUP_FREQUENCY="28D"   # Create a full backup every 28 days
+```
+
+**Key Variables**:
+- **`KEEP_WITHIN`**: Specifies how long backups are retained (e.g., `1M` for 1 month).
+- **`FULL_BACKUP_FREQUENCY`**: Specifies how often full backups are created.
+
+**Permissions**:
+```bash
+chmod 600 ~/static/control/remote_backups/credentials/*.txt
+```
+
+**Credential Security Measures**:
+- **Avoid Forbidden Characters**: Credential values must not contain `$`, `` ` ``, `(`, `)`, `{`, `}`, `;`, `&`, `|`, `<`, `>`.
+- **Proper Syntax**: Ensure each line is a valid variable assignment in the form `VARIABLE="value"`.
+
+---
+
 ### **Configuring Your Backups**
 
 You can customize what is included or excluded in your backups by editing configuration files stored in:
@@ -245,40 +279,6 @@ You can customize what is included or excluded in your backups by editing config
 
 6. **Customizing Defaults**:
    - The entire `/data/disk/your_username/static/` directory and `/home/your_username.ftp/` are included by default. Use exclude files to prevent specific paths from being backed up.
-
----
-
-### **Managing Credentials**
-
-To enable backups and restores, you must provide valid credentials for your cloud storage service. Credential files are stored in:
-
-```bash
-~/static/control/remote_backups/credentials/
-```
-
-Each credential file corresponds to a specific cloud storage service and must follow the required format. For example:
-
-#### **AWS Example (`aws.txt`)**
-```bash
-export AWS_ACCESS_KEY_ID="your_aws_access_key"
-export AWS_SECRET_ACCESS_KEY="your_aws_secret_key"
-export AWS_REGION="your_aws_region"  # Example: "us-east-1"
-export KEEP_WITHIN="3M"              # Retain backups from the last 3 months
-export FULL_BACKUP_FREQUENCY="28D"   # Create a full backup every 28 days
-```
-
-**Key Variables**:
-- **`KEEP_WITHIN`**: Specifies how long backups are retained (e.g., `1M` for 1 month).
-- **`FULL_BACKUP_FREQUENCY`**: Specifies how often full backups are created.
-
-**Permissions**:
-```bash
-chmod 600 ~/static/control/remote_backups/credentials/*.txt
-```
-
-**Credential Security Measures**:
-- **Avoid Forbidden Characters**: Credential values must not contain `$`, `` ` ``, `(`, `)`, `{`, `}`, `;`, `&`, `|`, `<`, `>`.
-- **Proper Syntax**: Ensure each line is a valid variable assignment in the form `VARIABLE="value"`.
 
 ---
 
