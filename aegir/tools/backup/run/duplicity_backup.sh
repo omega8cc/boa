@@ -612,10 +612,11 @@ _check_if_worked_cleanly_or_log_err() {
     local _logs_dir="/data/disk/${_user}/static/control/remote_backups/logs"
   fi
   if grep -q "Backup Statistics" "${_LOGFILE}"; then
-    local _worked_cleanly=OK
+    [ ! -e "${_logs_dir}" ] && mkdir -p ${_logs_dir}
+    cp -af "${_LOGFILE}" "${_logs_dir}/OK-${_LOGFILE}"
   else
     [ ! -e "${_logs_dir}" ] && mkdir -p ${_logs_dir}
-    cp -af "${_LOGFILE}" "${_logs_dir}/"
+    cp -af "${_LOGFILE}" "${_logs_dir}/ERR-${_LOGFILE}"
   fi
 }
 
