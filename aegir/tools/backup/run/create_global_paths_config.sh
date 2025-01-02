@@ -3,7 +3,7 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-export _sPid="f79"
+export _sPid="f78"
 
 # Function to create or update global paths configuration
 _create_global_paths_config() {
@@ -18,7 +18,7 @@ _create_global_paths_config() {
   _include_global_regexp_file="${_global_config_dir}/.backboa.include_global_regexp.file"
   _exclude_data_regexp_file="${_global_config_dir}/.backboa.exclude_data_regexp.file"
   _merged_global_include_file="${_global_config_dir}/.backboa.global_include.merged.file"
-  _merged_data_include_file="${_data_config_dir}/.backboa.data_include.merged.file"
+  _merged_data_include_file="${_global_config_dir}/.backboa.data_include.merged.file"
   _merged_global_exclude_file="${_global_config_dir}/.backboa.global_exclude.merged.file"
   _merged_data_exclude_file="${_global_config_dir}/.backboa.data_exclude.merged.file"
   _global_ctrl_file="${_global_config_dir}/.backboa.${_sPid}.paths.ctrl.file"
