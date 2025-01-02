@@ -408,8 +408,8 @@ If you encounter issues with your backups or restores:
 
 ### **Best Practices**
 
-   - Keep your include and exclude lists up to date with your backup needs.
 1. **Review Configuration Files Regularly**:
+   - Keep your include and exclude lists up to date with your backup needs.
 
 2. **Secure Your Credentials**:
    - Limit access to your credential files and update your credentials if you suspect they have been compromised.
