@@ -42,7 +42,7 @@ _create_credentials_templates() {
   for _service in "${_services[@]}"; do
     _template_file="${_target_dir}/${_service}.txt"
 
-    if [ ! -e "${_user_pid_dir}/.backboa.${_user}.credentials.${_service}.tpl.ctrl" ]; then
+    if [ -e "${_user_pid_dir}" ] && [ ! -e "${_user_pid_dir}/.backboa.${_user}.credentials.${_service}.tpl.ctrl" ]; then
       sed -i "s/FULL_BACKUP_FREQUENCY=.*/FULL_BACKUP_FREQUENCY=\"28D\"/g" ${_template_file}
       touch ${_user_pid_dir}/.backboa.${_user}.credentials.${_service}.tpl.ctrl
     fi
