@@ -156,6 +156,37 @@ The system automatically includes the following directories:
 
 ---
 
+### **Required Bucket Naming Convention**
+
+Most providers allow **automatic bucket creation** if sufficient credentials and permissions are provided, so you don't need to figure it out yourself. However, some providers (e.g., **Linode**) require **manual bucket creation** before the first backup and others (e.g., **Amazon S3**) are unreliable for automatic creation due to propagation delays between AWS regions. Manual bucket creation is recommended if you use provider known as not reliable or when manual creation is required -- check all details in the docs Supported Regions and Bucket Creation Guidelines [docs/BACKUP_REGIONS.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_REGIONS.md).
+
+- User-specific bucket names follow the convention: `back-to-USER-HOSTNAME-PROVIDER`.
+- The `USER` is your Aegir system user as visible in the `/data/disk/USER/static` path.
+- The `HOSTNAME` is your system hostname, but with dots replaced by hyphens.
+- The `PROVIDER` is the short name of the vendor, with underscores replaced by hyphens:
+
+```sh
+  aws -------------- Amazon S3 (Standard)
+  aws-one-zone ----- Amazon S3 (One Zone)
+  aws-standard-ia -- Amazon S3 (Standard-IA)
+  azure ------------ Azure Blob Storage
+  b2 --------------- Backblaze B2
+  cloudflare ------- Cloudflare R2 Object Storage
+  do-spaces -------- DigitalOcean Spaces
+  gcs -------------- Google Cloud Storage
+  ibm -------------- IBM Cloud Object Storage
+  linode ----------- Linode Object Storage by Akamai
+  wasabi ----------- Wasabi Hot Cloud Storage
+```
+
+How to determine correct `HOSTNAME` and `USER` to be used as your Bucket name?
+
+It's easy to find because your Aegir URL is actually `USER`.`HOSTNAME` -- For example in `o123.fr8.eu.aegir.cc` the `o123` is `USER` and `fr8.eu.aegir.cc` is a `HOSTNAME`
+
+However, when used in the bucket name, it becomes `back-to-USER-HOSTNAME-PROVIDER`, so in this example: `back-to-o123-fr8-eu-aegir-cc-wasabi`
+
+---
+
 ### **Managing Credentials**
 
 To enable backups and restores, you must provide valid credentials for your cloud storage service. Credential files are stored in:
