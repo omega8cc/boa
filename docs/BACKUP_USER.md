@@ -387,6 +387,10 @@ mybackup restore <SERVICE> [RESTORE_TARGET] [RESTORE_PATH] [RESTORE_TIME]
 If you encounter issues with your backups or restores:
 
 1. **Check Logs**:
+   - Latest backup actions are logged in:
+     ```bash
+     /data/disk/your_username/static/control/remote_backups/logs/
+     ```
    - Validation issues are logged in:
      ```bash
      /var/log/backup_validation_issues.log
