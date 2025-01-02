@@ -12,7 +12,7 @@ This document outlines the supported regions and configuration guidelines for th
 
 ## General Bucket Behavior
 
-Most providers allow **automatic bucket creation** if sufficient credentials and permissions are provided. However, some providers (e.g., **Linode**) require **manual bucket creation** before the first backup. Below is a detailed breakdown for each provider.
+Most providers allow **automatic bucket creation** if sufficient credentials and permissions are provided, so you don't need to figure it out yourself. However, some providers (e.g., **Linode**) require **manual bucket creation** before the first backup and others (e.g., **Amazon S3**) are unreliable for automatic creation due to propagation delays between AWS regions. Manual bucket creation is recommended if you use provider known as not reliable or when manual creation is required. Below is a detailed breakdown for each provider.
 
 ---
 
