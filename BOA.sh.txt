@@ -1797,6 +1797,10 @@ _update_agents() {
       # Move the file if any condition is met
       mv -f "${_file}" /var/backups/off-run/
     fi
+
+    if grep -q "renice 0" "${_file}"; then
+      sed -i "s/renice 0/renice 9/g" "${_file}"
+    fi
   done
 
   if [ -x "/opt/tools/drush/8/drush/drush.php" ] \

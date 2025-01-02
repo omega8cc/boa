@@ -30,11 +30,11 @@ done
 # Define services and their desired priorities
 # Format: "service_name:renice_value:ionice_class:ionice_priority"
 declare -A _services_priorities=(
-  ["nginx"]="-5:2:4"
-  ["redis-server"]="-5:2:4"
+  ["nginx"]="0:2:4"
+  ["redis-server"]="0:2:4"
   ["sshd"]="-5:2:3"
-  ["php-fpm"]="-5:2:4"
-  ["mysqld"]="-5:2:4"  # Handle all MySQL processes
+  ["php-fpm"]="0:2:4"
+  ["mysqld"]="0:2:4"  # Handle all MySQL processes
 )
 
 # Function to get current nice value
@@ -135,7 +135,7 @@ _set_priorities() {
 # Function to set priorities for MySQL processes using a more robust method
 _set_mysql_priorities() {
   _service="mysqld"
-  local _renice_val="-5"
+  local _renice_val="0"
   local _ionice_class="2"
   local _ionice_priority="4"
 
