@@ -723,6 +723,9 @@ _tune_memory_limits() {
   _RAM=$(free -mt | grep Mem: | awk '{ print $2 }' 2>&1)
   if [ "${_RESERVED_RAM}" -gt 0 ]; then
     _RAM=$(( _RAM - _RESERVED_RAM ))
+  else
+    _RESERVED_RAM=$(( _RAM / 4 ))
+    _RAM=$(( _RAM - _RESERVED_RAM ))
   fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "TUNE: _CPU_NR is ${_CPU_NR}"
