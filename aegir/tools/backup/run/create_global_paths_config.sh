@@ -153,7 +153,7 @@ EOF
         # Remove the trailing slash for consistency
         sanitized_subdir="${subdir%/}"
         # Append the --include line to the include data file
-        if [ "${sanitized_subdir}" != "arch" ]; then
+        if [ "${sanitized_subdir}" != "/data/disk/arch" ]; then
           echo "--include ${sanitized_subdir}" >> "${_include_data_file}"
         fi
       fi
