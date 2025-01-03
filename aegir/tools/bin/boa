@@ -2329,7 +2329,7 @@ _octopus_cleanup() {
         if [ -d "${_Usr}/config/server_master/nginx/vhost.d" ] \
           && [ -e "${_Usr}/log/cores.txt" ] \
           && [ -e "${_Usr}/log/CANCELLED" ]; then
-          _sIze=$(du -s -h ${_Usr} | cut -d' ' -f1 | awk '{ print $1}' 2>&1)
+          _sIze=$(du -s -h ${_Usr} | cut -d' ' -f1 | awk '{ print $1}' 2>/dev/null)
           echo "CANCELLED ${_Usr} ${_sIze}"
           _iUsr=$(echo ${_Usr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
           echo "CANCELLED ${_iUsr}" >> /root/.cleanup.detect.txt

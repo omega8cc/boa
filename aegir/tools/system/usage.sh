@@ -313,9 +313,9 @@ _usage_count() {
           if [ -L "${_Dir}/files" ] \
             || [ -L "${_Dir}/private" ] \
             || [ -L "${_usEr}/static/files" ]; then
-            _DirSize=$(du -L -s ${_Dir} 2>&1)
+            _DirSize=$(du -L -s ${_Dir} 2>/dev/null)
           else
-            _DirSize=$(du -s ${_Dir} 2>&1)
+            _DirSize=$(du -s ${_Dir} 2>/dev/null)
           fi
           _DirSize=$(echo "${_DirSize}" \
             | cut -d'/' -f1 \
@@ -331,7 +331,7 @@ _usage_count() {
           elif [ -e "/root/.du.local.sql" ]; then
             _DatSize=$(grep "/var/lib/mysql/${_Dat}$" /root/.du.local.sql 2>&1)
           elif [ -e "/var/lib/mysql/${_Dat}" ]; then
-            _DatSize=$(du -s /var/lib/mysql/${_Dat} 2>&1)
+            _DatSize=$(du -s /var/lib/mysql/${_Dat} 2>/dev/null)
           fi
           _DatSize=$(echo "${_DatSize}" \
             | cut -d'/' -f1 \
@@ -697,7 +697,7 @@ _load_control() {
 
 _sub_count_usr_home() {
   if [ -e "$1" ]; then
-    _HqmSiz=$(du -s $1 2>&1)
+    _HqmSiz=$(du -s $1 2>/dev/null)
     _HqmSiz=$(echo "${_HqmSiz}" \
       | cut -d'/' -f1 \
       | awk '{ print $1}' \
@@ -812,9 +812,9 @@ EOF
         if [ -L "${_usEr}/backups" ] \
           || [ -L "${_usEr}/src" ] \
           || [ -L "${_usEr}/static/files" ]; then
-          _HomSiz=$(du -L -s ${_usEr} 2>&1)
+          _HomSiz=$(du -L -s ${_usEr} 2>/dev/null)
         else
-          _HomSiz=$(du -s ${_usEr} 2>&1)
+          _HomSiz=$(du -s ${_usEr} 2>/dev/null)
         fi
         _HomSiz=$(echo "${_HomSiz}" \
           | cut -d'/' -f1 \

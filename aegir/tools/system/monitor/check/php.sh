@@ -83,7 +83,7 @@ _fpm_duplicate_instances_detection() {
 }
 
 _fpm_giant_log_detection() {
-  _PHPLOG_SIZE_TEST=$(du -s -h /var/log/php 2>&1)
+  _PHPLOG_SIZE_TEST=$(du -s -h /var/log/php 2>/dev/null)
   if [[ "${_PHPLOG_SIZE_TEST}" =~ "G" ]]; then
     _thisErrLog="$(date) Too big PHP error logs deleted: ${_PHPLOG_SIZE_TEST}"
     echo ${_thisErrLog} >> ${_pthOml}
@@ -121,7 +121,7 @@ _fpm_sockets_healing() {
 }
 
 _fpm_fastcgi_temp() {
-  _FASTCGI_SIZE_TEST=$(du -s -h /usr/fastcgi_temp/*/*/* | grep G 2> /dev/null)
+  _FASTCGI_SIZE_TEST=$(du -s -h /usr/fastcgi_temp/*/*/* | grep G 2>/dev/null)
   if [[ "${_FASTCGI_SIZE_TEST}" =~ "G" ]]; then
     rm -f /usr/fastcgi_temp/*/*/*
     killall -9 nginx
