@@ -230,21 +230,21 @@ multiback restore <SERVICE> <USER> <RESTORE_TARGET> <RESTORE_PATH> [RESTORE_TIME
 
 1. **Restore All Files per System User to Default Directory**:
    ```bash
-   multiback restore b2 global /var/backups
-   multiback restore b2 data /var/backups
-   multiback restore b2 custom /var/backups
+   multiback restore b2 global /var/backups/restored
+   multiback restore b2 data /var/backups/restored
+   multiback restore b2 custom /var/backups/restored
    ```
 
 2. **Restore a Specific Directory**:
    ```bash
-   multiback restore b2 global /var/backups var/www/example
-   multiback restore b2 data /var/backups data/disk/o1
-   multiback restore b2 custom /var/backups custom/path/foo/bar
+   multiback restore b2 global /var/backups/restored var/www/example
+   multiback restore b2 data /var/backups/restored data/disk/o1
+   multiback restore b2 custom /var/backups/restored custom/path/foo/bar
    ```
 
 3. **Restore from a Specific Time**:
    ```bash
-   multiback restore b2 data /var/backups data/disk/o1/static/platform 7D
+   multiback restore b2 data /var/backups/restored data/disk/o1/static/platform 7D
    ```
 
 ---
@@ -258,7 +258,7 @@ multiback restore <SERVICE> <USER> <RESTORE_TARGET> <RESTORE_PATH> [RESTORE_TIME
      - Incorrect: `/data/disk/o1/static/platform`
 
 2. **Restore Target Directory Can Be Relative or Absolute**:
-   - Default: `/var/backups/`
+   - Default: `/var/backups/restored/`
    - You may specify a custom restore target directory.
 
 3. **Default Behavior**:
