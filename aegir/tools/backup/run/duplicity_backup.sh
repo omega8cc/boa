@@ -525,7 +525,6 @@ _set_cmd() {
     --name=${_NAME} \
     --allow-source-mismatch \
     --concurrency ${_useCpu} \
-    --copy-links \
     --no-encryption \
     --volsize 300"
 
