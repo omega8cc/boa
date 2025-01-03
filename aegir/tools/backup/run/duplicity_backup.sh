@@ -465,7 +465,7 @@ _set_mode() {
   [ -e "/root/.dev.server.cnf" ] && echo "The _MODE has been set to (${_MODE}) in _set_mode for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
   if [ "${_hostedSys}" = "YES" ]; then
     if [ "${_user}" = "global" ] || [ "${_user}" = "data" ] || [ "${_user}" = "custom" ]; then
-      if [ "${_DOM}" = 8 ] && [ ! -e "${_LOGPTH}/${_BUCKET_NAME}.${_TODAY}.full.log" ]; then
+      if [ "${_DOM}" = 1 ] && [ ! -e "${_LOGPTH}/${_BUCKET_NAME}.${_TODAY}.full.log" ]; then
         _MODE="full"
         echo "The _MODE has been re-set to (${_MODE}) in _set_mode for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
       fi
