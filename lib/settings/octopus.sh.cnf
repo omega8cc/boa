@@ -640,6 +640,11 @@ _PHP_FPM_DENY=""
 ###
 ### Example for 256MB: _RESERVED_RAM=256
 ###
+### If not specified, BOA will auto-reserve
+### 1/4 of RAM to make sure that the system
+### doesn't experience frequent OOM incidents
+### when running heavy tasks like backups.
+###
 _RESERVED_RAM=0
 
 ###----------------------------------------###
