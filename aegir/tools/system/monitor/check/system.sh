@@ -177,7 +177,7 @@ _cron_duplicate_instances_detection() {
 
 _syslog_giant_log_detection() {
   if [ -e "/etc/cron.daily/logrotate" ]; then
-    _SYSLOG_SIZE_TEST=$(du -s -h /var/log/syslog)
+    _SYSLOG_SIZE_TEST=$(du -s -h /var/log/syslog 2>/dev/null)
     if [[ "${_SYSLOG_SIZE_TEST}" =~ "G" ]]; then
       echo ${_SYSLOG_SIZE_TEST} too big
       bash /etc/cron.daily/logrotate &> /dev/null
