@@ -252,7 +252,8 @@ _add_solr() {
         && [ -e "/var/solr7/data/solr.xml" ]; then
         if [ -e "${_Plr}/modules/o_contrib_eight" ] \
           || [ -e "${_Plr}/modules/o_contrib_nine" ] \
-          || [ -e "${_Plr}/modules/o_contrib_ten" ]; then
+          || [ -e "${_Plr}/modules/o_contrib_ten" ] \
+          || [ -e "${_Plr}/modules/o_contrib_eleven" ]; then
           su -s /bin/bash - solr7 -c "/opt/solr7/bin/solr create_core -p 9077 -c ${SolrCoreID} -d /data/conf/solr/search_api_solr/8"
           wait
         elif [ -e "${_Plr}/modules/o_contrib_seven" ]; then
