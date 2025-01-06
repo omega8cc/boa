@@ -3,7 +3,7 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-export _sPid="f76"
+export _sPid="f75"
 
 # Function to create or update global paths configuration
 _create_global_paths_config() {
@@ -135,7 +135,6 @@ EOF
 
     # _exclude_global_file
     cat << EOF > "${_exclude_global_file}"
---exclude /data/disk
 --exclude /var/aegir/backups
 EOF
 
