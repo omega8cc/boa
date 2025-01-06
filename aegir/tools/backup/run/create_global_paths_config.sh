@@ -3,7 +3,7 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-export _sPid="f77"
+export _sPid="f76"
 
 # Function to create or update global paths configuration
 _create_global_paths_config() {
@@ -128,7 +128,6 @@ EOF
     # _include_global_file
     cat << EOF > "${_include_global_file}"
 --include /data/disk/arch
---include /root
 --include /var/backups/csf
 --include /var/backups/dragon
 --include /var/backups/reports
@@ -137,7 +136,6 @@ EOF
     # _exclude_global_file
     cat << EOF > "${_exclude_global_file}"
 --exclude /data/disk
---exclude /root/.cache
 --exclude /var/aegir/backups
 EOF
 
@@ -169,16 +167,21 @@ EOF
     # _include_global_regexp_file
     cat << EOF > "${_include_global_regexp_file}"
 --include-regexp '^/var/backups/barracuda.*'
+--include-regexp '^/root/\..*\.cnf$'
 EOF
 
     # _exclude_data_regexp_file
     cat << EOF > "${_exclude_data_regexp_file}"
 --exclude-regexp '^/data/disk/.*/backup-exports/'
 --exclude-regexp '^/data/disk/.*/backups/'
---exclude-regexp '^/data/disk/.*/static/.tmp/'
+--exclude-regexp '^/data/disk/.*/clients/'
+--exclude-regexp '^/data/disk/.*/src/'
+--exclude-regexp '^/data/disk/.*/static/\.tmp/'
 --exclude-regexp '^/data/disk/.*/static/restores/'
 --exclude-regexp '^/data/disk/.*/static/tmp/'
 --exclude-regexp '^/data/disk/.*/static/trash/'
+--exclude-regexp '^/data/disk/.*/u/'
+--exclude-regexp '^/data/disk/.*/undo/'
 --exclude-regexp '^/data/disk/arch/.*'
 --exclude-regexp '^/var/www/.*'
 EOF
