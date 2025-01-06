@@ -743,7 +743,7 @@ _update_agents() {
 
   if [ -e "/root/.remote_backups/schedule/backup_schedule.txt" ] \
     && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthCtrl}/multiback.sh.ctrl.f54.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthCtrl}/multiback.sh.ctrl.f53.${_tRee}.${_xSrl}.pid" ]; then
     if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt 0 ]; then
       echo "The duplicity backup is running!"
     else
@@ -754,7 +754,7 @@ _update_agents() {
       if [ -e "${_optBin}/multiback" ]; then
         chmod 700 ${_optBin}/multiback
         chown root:root ${_optBin}/multiback
-        touch ${_pthCtrl}/multiback.sh.ctrl.f54.${_tRee}.${_xSrl}.pid
+        touch ${_pthCtrl}/multiback.sh.ctrl.f53.${_tRee}.${_xSrl}.pid
       else
         if [ -e "${_optBin}/multiback.old" ]; then
           mv -f ${_optBin}/multiback.old ${_optBin}/multiback
@@ -802,7 +802,7 @@ _update_agents() {
 
   if [ -d "/root/.remote_backups/run" ] \
     && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthCtrl}/create_global_paths_config.sh.ctrl.f62.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthCtrl}/create_global_paths_config.sh.ctrl.f61.${_tRee}.${_xSrl}.pid" ]; then
     if [ -e "/root/.remote_backups/run/create_global_paths_config.sh" ]; then
       mv -f /root/.remote_backups/run/create_global_paths_config.sh /root/.remote_backups/run/create_global_paths_config.sh.old
     fi
@@ -810,7 +810,7 @@ _update_agents() {
     if [ -e "/root/.remote_backups/run/create_global_paths_config.sh" ]; then
       chmod 700 /root/.remote_backups/run/create_global_paths_config.sh
       chown root:root /root/.remote_backups/run/create_global_paths_config.sh
-      touch ${_pthCtrl}/create_global_paths_config.sh.ctrl.f62.${_tRee}.${_xSrl}.pid
+      touch ${_pthCtrl}/create_global_paths_config.sh.ctrl.f61.${_tRee}.${_xSrl}.pid
     else
       if [ -e "/root/.remote_backups/run/create_global_paths_config.sh.old" ]; then
         mv -f /root/.remote_backups/run/create_global_paths_config.sh.old /root/.remote_backups/run/create_global_paths_config.sh
@@ -820,7 +820,7 @@ _update_agents() {
 
   if [ -d "/root/.remote_backups/run" ] \
     && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthCtrl}/create_user_paths_config.sh.ctrl.f62.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthCtrl}/create_user_paths_config.sh.ctrl.f61.${_tRee}.${_xSrl}.pid" ]; then
     rm -f /.backboa*
     if [ -e "/root/.remote_backups/run/create_user_paths_config.sh" ]; then
       mv -f /root/.remote_backups/run/create_user_paths_config.sh /root/.remote_backups/run/create_user_paths_config.sh.old
@@ -829,7 +829,7 @@ _update_agents() {
     if [ -e "/root/.remote_backups/run/create_user_paths_config.sh" ]; then
       chmod 700 /root/.remote_backups/run/create_user_paths_config.sh
       chown root:root /root/.remote_backups/run/create_user_paths_config.sh
-      touch ${_pthCtrl}/create_user_paths_config.sh.ctrl.f62.${_tRee}.${_xSrl}.pid
+      touch ${_pthCtrl}/create_user_paths_config.sh.ctrl.f61.${_tRee}.${_xSrl}.pid
     else
       if [ -e "/root/.remote_backups/run/create_user_paths_config.sh.old" ]; then
         mv -f /root/.remote_backups/run/create_user_paths_config.sh.old /root/.remote_backups/run/create_user_paths_config.sh
