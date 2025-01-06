@@ -3,7 +3,7 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-export _sPid="f77"
+export _sPid="f76"
 
 # Log file for escape attempts and validation issues
 _VALIDATION_LOG_FILE="/var/log/backup_validation_issues.log"
@@ -182,9 +182,13 @@ EOF
     # _exclude_file
     if [ ! -f "${_exclude_ctrl_file}" ]; then
       cat << EOF > "${_exclude_file}"
---exclude /data/disk/${_user}
 --exclude /data/disk/${_user}/static/restores
 --exclude /data/disk/${_user}/static/trash
+--exclude /home/${_user}.ftp/.tmp
+--exclude /home/${_user}.ftp/backups
+--exclude /home/${_user}.ftp/clients
+--exclude /home/${_user}.ftp/platforms
+--exclude /home/${_user}.ftp/static
 EOF
       rm -f ${_user_config_dir}/.backboa.${_user}.*.exclude.ctrl.file
       touch "${_exclude_ctrl_file}"
