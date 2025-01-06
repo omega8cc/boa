@@ -1393,7 +1393,7 @@ _find_fast_mirror_early() {
   fi
   _ffMirr=$(which ffmirror 2>&1)
   if [ -x "${_ffMirr}" ]; then
-    _ffList="/var/backups/boa-mirrors-2024-12.txt"
+    _ffList="/var/backups/boa-mirrors-2025-01.txt"
     mkdir -p /var/backups
     if [ ! -e "${_ffList}" ]; then
       echo "eu.files.aegir.cc"  > ${_ffList}
@@ -1540,9 +1540,9 @@ _csf_check_fix() {
     echo "iptables -t raw -A OUTPUT -p tcp --dport 21 -j CT --helper ftp" >> /etc/csf/csfpost.sh
     chmod 700 /etc/csf/csfpost.sh
     sed -i "s/.*aegir.*//g" /etc/csf/csf.allow
-    csf -a 172.104.235.123 eu.files.aegir.cc  &> /dev/null
-    csf -a 172.234.21.219  us.files.aegir.cc  &> /dev/null
-    csf -a 172.236.156.92  ao.files.aegir.cc  &> /dev/null
+    csf -a 172.235.166.69  eu.files.aegir.cc &> /dev/null
+    csf -a 172.233.219.37  us.files.aegir.cc &> /dev/null
+    csf -a 172.105.168.103 ao.files.aegir.cc &> /dev/null
     service lfd stop &> /dev/null
     wait
     kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
