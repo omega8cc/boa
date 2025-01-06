@@ -782,7 +782,7 @@ even if they are marked as disabled in your Aegir control panel.
 
   _DirSize is the site files usage in kB
   _DatSize is the site database usage in kB
-  The optional =skip= and the end of line identifies DEV/TEST site
+  The optional =skip= at the end of line identifies DEV/TEST site
 
 EOF
         fi
