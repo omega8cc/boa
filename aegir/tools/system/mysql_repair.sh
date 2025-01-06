@@ -45,4 +45,4 @@ _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
 /usr/bin/mysqlcheck -u root -Ao >> $dir/all.o.`date +%y%m%d-%H%M%S`
 [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
 exit 0
-###EOF2024###
+
