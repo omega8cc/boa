@@ -124,17 +124,6 @@ _create_user_paths_config() {
     fi
   }
 
-  # Function to add a single backslash at the end of each line except the last
-  _add_backslashes() {
-    local file="$1"
-    if [ -f "${file}" ]; then
-      # Remove existing trailing backslashes to avoid duplication
-      sed -i 's/[[:space:]]*\\$//' "${file}"
-      # Append a backslash to all lines except the last one
-      sed -i '$!s/$/ \\/' "${file}"
-    fi
-  }
-
   if [ ! -f "${_user_ctrl_file}" ]; then
 
     ### Migrate legacy include/exclude files if present and merge unique entries
@@ -242,15 +231,11 @@ EOF
     cat "${_merged_exclude_file}" > "${_merged_all_exclude_file}"
     cat "${_merged_regexp_exclude_file}" >> "${_merged_all_exclude_file}"
 
-    # Finalize by adding a backslash at the end of each line except the last
-    _add_backslashes "${_merged_all_include_file}"
-    _add_backslashes "${_merged_all_exclude_file}"
+    # Convert the include file contents to a single-line variable without extra backslashes and excessive whitespace
+    local _MERGED_ALL_INCLUDE=$(cat "${_merged_all_include_file}" | tr '\n' ' ' | tr -s ' ' | sed 's/^ *//;s/ *$//')
 
-    # Convert the include file contents to a single-line variable without backslashes and excessive whitespace
-    local _MERGED_ALL_INCLUDE=$(sed 's/\\//g' "${_merged_all_include_file}" | tr '\n' ' ' | tr -s ' ' | sed 's/^ *//;s/ *$//')
-
-    # Convert the exclude file contents to a single-line variable without backslashes and excessive whitespace
-    local _MERGED_ALL_EXCLUDE=$(sed 's/\\//g' "${_merged_all_exclude_file}" | tr '\n' ' ' | tr -s ' ' | sed 's/^ *//;s/ *$//')
+    # Convert the exclude file contents to a single-line variable without extra backslashes and excessive whitespace
+    local _MERGED_ALL_EXCLUDE=$(cat "${_merged_all_exclude_file}" | tr '\n' ' ' | tr -s ' ' | sed 's/^ *//;s/ *$//')
 
     # Create the final paths configuration file
     cat << EOF > "${_user_paths_file}"
