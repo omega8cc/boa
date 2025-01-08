@@ -64,17 +64,6 @@ _create_global_paths_config() {
     fi
   }
 
-  # Function to add a single backslash at the end of each line except the last
-  _add_backslashes() {
-    local file="$1"
-    if [ -f "${file}" ]; then
-      # Remove existing trailing backslashes to avoid duplication
-      sed -i 's/[[:space:]]*\\$//' "${file}"
-      # Append a backslash to all lines except the last one
-      sed -i '$!s/$/ \\/' "${file}"
-    fi
-  }
-
   if [ ! -f "${_global_ctrl_file}" ]; then
 
     ### Migrate legacy include/exclude files if present and merge unique entries
@@ -203,17 +192,11 @@ EOF
       cat "${_exclude_data_regexp_file}" > "${_merged_data_exclude_file}"
     fi
 
-    # Finalize by adding a backslash at the end of each line except the last
-    [ -e "${_merged_data_include_file}" ] && _add_backslashes "${_merged_data_include_file}"
-    [ -e "${_merged_data_exclude_file}" ] && _add_backslashes "${_merged_data_exclude_file}"
-    [ -e "${_merged_global_include_file}" ] && _add_backslashes "${_merged_global_include_file}"
-    [ -e "${_merged_global_exclude_file}" ] && _add_backslashes "${_merged_global_exclude_file}"
-
     # Convert the exclude file contents to a single-line variable without backslashes and excessive whitespace
-    [ -e "${_merged_data_include_file}" ] && _MERGED_DATA_INCLUDE=$(sed 's/\\//g' "${_merged_data_include_file}" | tr '\n' ' ' | tr -s ' ' | sed 's/^ *//;s/ *$//')
-    [ -e "${_merged_data_exclude_file}" ] && _MERGED_DATA_EXCLUDE=$(sed 's/\\//g' "${_merged_data_exclude_file}" | tr '\n' ' ' | tr -s ' ' | sed 's/^ *//;s/ *$//')
-    [ -e "${_merged_global_include_file}" ] && _MERGED_GLOBAL_INCLUDE=$(sed 's/\\//g' "${_merged_global_include_file}" | tr '\n' ' ' | tr -s ' ' | sed 's/^ *//;s/ *$//')
-    [ -e "${_merged_global_exclude_file}" ] && _MERGED_GLOBAL_EXCLUDE=$(sed 's/\\//g' "${_merged_global_exclude_file}" | tr '\n' ' ' | tr -s ' ' | sed 's/^ *//;s/ *$//')
+    [ -e "${_merged_data_include_file}" ] && _MERGED_DATA_INCLUDE=$(cat "${_merged_data_include_file}" | tr '\n' ' ' | tr -s ' ' | sed 's/^ *//;s/ *$//')
+    [ -e "${_merged_data_exclude_file}" ] && _MERGED_DATA_EXCLUDE=$(cat "${_merged_data_exclude_file}" | tr '\n' ' ' | tr -s ' ' | sed 's/^ *//;s/ *$//')
+    [ -e "${_merged_global_include_file}" ] && _MERGED_GLOBAL_INCLUDE=$(cat "${_merged_global_include_file}" | tr '\n' ' ' | tr -s ' ' | sed 's/^ *//;s/ *$//')
+    [ -e "${_merged_global_exclude_file}" ] && _MERGED_GLOBAL_EXCLUDE=$(cat "${_merged_global_exclude_file}" | tr '\n' ' ' | tr -s ' ' | sed 's/^ *//;s/ *$//')
 
     # Create the final paths configuration file
     cat << EOF > "${_global_paths_file}"
