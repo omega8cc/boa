@@ -1899,12 +1899,22 @@ _cleanup_ghost_vhosts() {
     fi
     if [ -e "${_usEr}/config/server_master/nginx/vhost.d/${_Dom}" ]; then
       local _thisVhost="${_usEr}/config/server_master/nginx/vhost.d/${_Dom}"
-      if grep -q -e "ssl http2" -e "ssl_stapling" "${_thisVhost}"; then
+      local _fixHttpReqired=NO
+      if grep -q -e "ssl http2" "${_thisVhost}"; then
+        local _fixHttpReqired=YES
+      elif ! grep -q -E '^\s*http2\s+on;$' "${_thisVhost}"; then
+        local _fixHttpReqired=YES
+      elif grep -q -E '^\s+listen.*443\s+quic;$' "${_thisVhost}"; then
+        local _fixHttpReqired=YES
+      fi
+      if [ "${_fixHttpReqired}" = "YES" ]; then
         echo "FIXING vhost for ${_Dom}"
         # Remove 'http2' from 'listen' directives with varying spaces
         sed -i -E 's/(listen\s+[^;]*\s+ssl)\s+http2;$/\1;/' "${_thisVhost}"
         # Remove existing 'http2 on;' lines with varying spaces
         sed -i -E '/^\s*http2\s+on;/d' "${_thisVhost}"
+        # Remove existing 'quic' lines with varying spaces
+        sed -i -E '/^\s+listen.*443\s+quic;/d' "${_thisVhost}"
         # Remove unwanted directives with varying spaces
         sed -i -E \
           -e '/^\s*ssl_stapling\b/d' \
@@ -1914,9 +1924,18 @@ _cleanup_ghost_vhosts() {
           "${_thisVhost}"
         # Update 'ssl_prefer_server_ciphers' directive, handling spaces
         sed -i -E 's/^\s*ssl_prefer_server_ciphers\s+.*$/ssl_prefer_server_ciphers on;/' "${_thisVhost}"
-        # Add 'http2 on;' after 'ssl_prefer_server_ciphers on;', only if not already present
-        if ! grep -q -E '^\s*http2\s+on;$' "${_thisVhost}"; then
-          sed -i '/ssl_prefer_server_ciphers on;/ a\  http2 on;' "${_thisVhost}"
+        # Update 'http3_hq' directive, handling spaces
+        sed -i -E 's/http3_hq\s+on;$/http3_hq on;/' "${_thisVhost}"
+        if grep -q 'ssl_prefer_server_ciphers' "${_thisVhost}"; then
+          # Add 'http2 on;' after 'ssl_prefer_server_ciphers on;', only if not already present
+          if ! grep -q -E '^\s*http2\s+on;$' "${_thisVhost}"; then
+            sed -i '/ssl_prefer_server_ciphers on;/ a\  http2 on;' "${_thisVhost}"
+          fi
+        elif grep -q -E '^\s*#http3_hq\s+on;$' "${_thisVhost}"; then
+          # Add 'http2 on;' after 'http3_hq on;', only if not already present
+          if ! grep -q -E '^\s*http2\s+on;$' "${_thisVhost}"; then
+            sed -i '/http3_hq on;/ a\  http2 on;' "${_thisVhost}"
+          fi
         fi
       fi
       _Plx=$(cat ${_usEr}/config/server_master/nginx/vhost.d/${_Dom} \
