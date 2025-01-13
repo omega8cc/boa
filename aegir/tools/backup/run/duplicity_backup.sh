@@ -82,6 +82,35 @@ _if_hosted_sys() {
   fi
 }
 
+# Function to calculate RAM usage percentage as an integer
+_calculate_ram_usage_percent() {
+  _total_ram_kb=$1
+  _available_ram_kb=$2
+  used_ram_kb=$((_total_ram_kb - _available_ram_kb))
+
+  # Using integer division to get a whole number percentage
+  echo $(( (used_ram_kb * 100) / _total_ram_kb ))
+}
+
+# Function to check and display system info
+_check_system_ram() {
+  # Get the total and available RAM in KB
+  _total_ram_kb=$(grep MemTotal /proc/meminfo | awk '{print $2}')
+  _available_ram_kb=$(grep MemAvailable /proc/meminfo | awk '{print $2}')
+
+  # Calculate RAM usage percentage
+  _ram_usage_percent=$(_calculate_ram_usage_percent ${_total_ram_kb} ${_available_ram_kb})
+}
+
+# Function to check and optimize RAM and disk caches
+_optimize_ram() {
+  swapoff -a
+  _check_system_ram
+  if [ "${_ram_usage_percent}" -gt 75 ]; then
+    sync && echo 3 | sudo tee /proc/sys/vm/drop_caches
+  fi
+}
+
 # Function to verify root access
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
@@ -119,10 +148,9 @@ _check_root() {
   else
     _useCpu=1
   fi
-  swapoff -a
-  wait
 }
 _check_root
+_optimize_ram
 _if_hosted_sys
 _verify_boa_keys
 _print_env "multiback_init"
