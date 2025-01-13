@@ -92,13 +92,41 @@ _system_oom_detection() {
   echo _RAM_TOTAL is ${_RAM_TOTAL}
   echo _RAM_PCT_FREE is ${_RAM_PCT_FREE}
   if [ ! -z "${_RAM_PCT_FREE}" ]; then
-    if [ "${_RAM_PCT_FREE}" -le 10 ]; then
+    if [ "${_RAM_PCT_FREE}" -le 5 ]; then
       _oom_critical_restart "RAM ${_RAM_PCT_FREE}/${_RAM_TOTAL}"
-    elif [ "${_RAM_PCT_FREE}" -le 20 ]; then
+    elif [ "${_RAM_PCT_FREE}" -le 10 ]; then
       if [ `ps aux | grep -v "grep" | grep --count "wkhtmltopdf"` -gt 2 ]; then
         _wkhtmltopdf_php_cli_oom_kill "RAM ${_RAM_PCT_FREE}/${_RAM_TOTAL}"
       fi
     fi
+  fi
+}
+
+# Function to calculate RAM usage percentage as an integer
+_calculate_ram_usage_percent() {
+  _total_ram_kb=$1
+  _available_ram_kb=$2
+  used_ram_kb=$((_total_ram_kb - _available_ram_kb))
+
+  # Using integer division to get a whole number percentage
+  echo $(( (used_ram_kb * 100) / _total_ram_kb ))
+}
+
+# Function to check and display system info
+_check_system_ram() {
+  # Get the total and available RAM in KB
+  _total_ram_kb=$(grep MemTotal /proc/meminfo | awk '{print $2}')
+  _available_ram_kb=$(grep MemAvailable /proc/meminfo | awk '{print $2}')
+
+  # Calculate RAM usage percentage
+  _ram_usage_percent=$(_calculate_ram_usage_percent ${_total_ram_kb} ${_available_ram_kb})
+}
+
+# Function to check and optimize RAM and disk caches
+_optimize_ram() {
+  _check_system_ram
+  if [ "${_ram_usage_percent}" -gt 75 ]; then
+    sync && echo 3 | sudo tee /proc/sys/vm/drop_caches
   fi
 }
 
@@ -229,6 +257,7 @@ _if_fix_dhcp
 _cron_duplicate_instances_detection
 _syslog_giant_log_detection
 
+[ "${_ALLOW_CTRL}" = "YES" ] && _optimize_ram
 [ "${_ALLOW_CTRL}" = "YES" ] && _system_oom_detection
 [ "${_ALLOW_CTRL}" = "YES" ] && _gpg_too_many_instances_detection
 [ "${_ALLOW_CTRL}" = "YES" ] && _dirmngr_too_many_instances_detection
