@@ -125,7 +125,7 @@ _check_system_ram() {
 # Function to check and optimize RAM and disk caches
 _optimize_ram() {
   _check_system_ram
-  if [ "${_ram_usage_percent}" -gt 75 ]; then
+  if [ "${_ram_usage_percent}" -gt 90 ]; then
     sync && echo 3 | sudo tee /proc/sys/vm/drop_caches
   fi
 }
