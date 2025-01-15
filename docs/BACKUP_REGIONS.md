@@ -60,16 +60,19 @@ For more, refer to [Wasabi Regions](https://wasabi.com/company/storage-regions).
 | Sacramento, California  | `us-west`    |
 | Stockton, California    | `us-west`    |
 | Phoenix, Arizona        | `us-west`    |
+| Toronto, Ontario        | `ca-east`    |
 
-Backblaze currently has data centers in Sacramento, California; Stockton, California; Phoenix, Arizona; Reston, Virginia; and Amsterdam, Netherlands.
+Backblaze currently has data centers in Sacramento, California; Stockton, California; Phoenix, Arizona; Reston, Virginia; Amsterdam, Netherlands and Toronto, Ontario.
 
 Accounts that use the US-West region store data in both the Sacramento and Phoenix data centers.
 
 Accounts that use the EU-Central region store data in the Amsterdam data center. If you are in the European Union or in or near Europe, then the transfer rate for Backblaze Computer Backup and Backblaze B2 should have less latency. As a result, you can get better transfer rates and more bandwidth per thread.
 
-Accounts that use the US-East region store data in the Reston, Virginia data center. This is the newest Backblaze data center. The data center is operated by Coresight, a well-known and respected data center operator. This data center is the core of the Backblaze eastern region joining the western region (US West) and the central European region (EU Central).
+Accounts that use the US-East region store data in the Reston, Virginia data center. The data center is operated by Coresight, a well-known and respected data center operator.
 
-When you create a Backblaze B2 account, you choose whether that account’s data is stored in the US East region, the US West region, or the EU Central region. The choice that you make during account creation dictates where all of that account’s data is stored. After you create your Backblaze B2 account, you cannot change your selected region.
+The newest region, known as CA East, is located in Toronto, Ontario.
+
+When you create a Backblaze B2 account, you choose whether that account’s data is stored in the US East region, the US West region, the EU Central region or the Canada East region. The choice that you make during account creation dictates where all of that account’s data is stored. After you create your Backblaze B2 account, you cannot change your selected region.
 
 This means that you need separate accounts per region, if needed and the region codes in the table above are for informational purposes only.
 
