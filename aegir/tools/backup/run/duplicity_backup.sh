@@ -106,7 +106,7 @@ _check_system_ram() {
 _optimize_ram() {
   swapoff -a
   _check_system_ram
-  if [ "${_ram_usage_percent}" -gt 75 ]; then
+  if [ "${_ram_usage_percent}" -gt 50 ]; then
     sync && echo 3 | sudo tee /proc/sys/vm/drop_caches
   fi
 }
