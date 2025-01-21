@@ -329,7 +329,11 @@ _validate_credentials() {
       fi
 
       # Safely export the variable (URL-encode if needed)
-      export ${_varname}=$(_url_encode "${_value}")
+      if [ "${_service}" = "b2" ]; then
+        export ${_varname}=$(_url_encode "${_value}")
+      else
+        export ${_varname}="${_value}"
+      fi
     else
       _log_issue "credentials" "${_cred_file}" \
         "Invalid syntax at line ${_line_number}: ${_line}"

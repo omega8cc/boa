@@ -743,7 +743,7 @@ _update_agents() {
 
   if [ -e "/root/.remote_backups/schedule/backup_schedule.txt" ] \
     && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthCtrl}/multiback.sh.ctrl.f51.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthCtrl}/multiback.sh.ctrl.f50.${_tRee}.${_xSrl}.pid" ]; then
     if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt 0 ]; then
       echo "The duplicity backup is running!"
     else
@@ -754,10 +754,32 @@ _update_agents() {
       if [ -e "${_optBin}/multiback" ]; then
         chmod 700 ${_optBin}/multiback
         chown root:root ${_optBin}/multiback
-        touch ${_pthCtrl}/multiback.sh.ctrl.f51.${_tRee}.${_xSrl}.pid
+        touch ${_pthCtrl}/multiback.sh.ctrl.f50.${_tRee}.${_xSrl}.pid
       else
         if [ -e "${_optBin}/multiback.old" ]; then
           mv -f ${_optBin}/multiback.old ${_optBin}/multiback
+        fi
+      fi
+    fi
+  fi
+
+  if [ -e "/root/.remote_backups/schedule/backup_schedule.txt" ] \
+    && [ -d "/var/aegir/drush" ] \
+    && [ ! -e "${_pthCtrl}/mybackup.sh.ctrl.f50.${_tRee}.${_xSrl}.pid" ]; then
+    if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt 0 ]; then
+      echo "The duplicity backup is running!"
+    else
+      if [ -e "${_optBin}/mybackup" ]; then
+        mv -f ${_optBin}/mybackup ${_optBin}/mybackup.old
+      fi
+      curl ${_crlGet} "${_urlHmr}/tools/bin/mybackup" -o ${_optBin}/mybackup
+      if [ -e "${_optBin}/mybackup" ]; then
+        chmod 700 ${_optBin}/mybackup
+        chown root:root ${_optBin}/mybackup
+        touch ${_pthCtrl}/mybackup.sh.ctrl.f50.${_tRee}.${_xSrl}.pid
+      else
+        if [ -e "${_optBin}/mybackup.old" ]; then
+          mv -f ${_optBin}/mybackup.old ${_optBin}/mybackup
         fi
       fi
     fi
