@@ -669,7 +669,7 @@ _purge() {
 }
 
 # Function to run weekly cleanup
-_weekly_cleanup() {
+_weekly_cleanup_or_status() {
   if [ -e "${_LOGPTH}/${_BUCKET_NAME}.archive.log" ] \
     && [ ! -e "${_LOGPTH}/${_BUCKET_NAME}.${_TODAY}.cleanup.log" ] \
     && [ "${_DOW}" = 7 ] \
@@ -677,6 +677,8 @@ _weekly_cleanup() {
     _remove_older_than
     _collection_status
     echo "$(date)" >> ${_LOGPTH}/${_BUCKET_NAME}.${_TODAY}.cleanup.log
+  else
+    _collection_status
   fi
 }
 
@@ -705,7 +707,7 @@ _backup() {
   _set_cmd
   _run_backup
   _check_if_repair
-  _weekly_cleanup
+  _weekly_cleanup_or_status
   _check_if_worked_cleanly_or_log_err
   if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "YES" ]; then
     boa info  >> ${_LOGFILE}
