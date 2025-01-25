@@ -587,8 +587,8 @@ _test() {
     _set_cmd
   fi
   echo "Running ${_BUCKET_NAME} connection test, please wait..." >> ${_LOGFILE}
-  echo "Command is ${_DCY_UTL_CMD} collection-status --dry-run --timeout 5 ${_BACKUP_TARGET}"
-  _ConnTest=$(${_DCY_UTL_CMD} collection-status --dry-run --timeout 5 ${_BACKUP_TARGET} 2>&1)
+  echo "Command is ${_DCY_UTL_CMD} cleanup --dry-run --timeout 5 ${_BACKUP_TARGET}"
+  _ConnTest=$(${_DCY_UTL_CMD} cleanup --dry-run --timeout 5 ${_BACKUP_TARGET} 2>&1)
   if [[ "${_ConnTest}" =~ "No connection to backend" ]] \
     || [[ "${_ConnTest}" =~ "does not exist" ]] \
     || [[ "${_ConnTest}" =~ "IllegalLocationConstraintException" ]]; then
@@ -686,18 +686,16 @@ _purge() {
 }
 
 # Function to run weekly cleanup
-_weekly_cleanup_or_status() {
+_weekly_cleanup() {
   if [ -e "${_LOGPTH}/${_BUCKET_NAME}.archive.log" ] \
     && [ ! -e "${_LOGPTH}/${_BUCKET_NAME}.${_TODAY}.cleanup.log" ] \
     && [ "${_DOW}" = 7 ] \
     && [ "${_cached}" = "YES" ]; then
     _test "only"
     _remove_older_than
-    _collection_status
     echo "$(date)" >> ${_LOGPTH}/${_BUCKET_NAME}.${_TODAY}.cleanup.log
   else
     _test "only"
-    _collection_status
   fi
 }
 
@@ -724,7 +722,7 @@ _backup() {
   _set_cmd
   _run_backup
   _check_if_repair
-  _weekly_cleanup_or_status
+  _weekly_cleanup
   _check_if_worked_cleanly_or_log_err
   if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "YES" ]; then
     boa info  >> ${_LOGFILE}
