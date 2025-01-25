@@ -580,10 +580,33 @@ _set_cmd() {
   _print_env "multiback_set_cmd"
 }
 
+_test() {
+  local _mode="$1"
+  if [ "${_mode}" != "only" ]; then
+    _set_mode
+    _set_cmd
+  fi
+  echo "Running ${_BUCKET_NAME} connection test, please wait..." >> ${_LOGFILE}
+  echo "Command is ${_DCY_UTL_CMD} collection-status --dry-run --timeout 5 ${_BACKUP_TARGET}"
+  _ConnTest=$(${_DCY_UTL_CMD} collection-status --dry-run --timeout 5 ${_BACKUP_TARGET} 2>&1)
+  if [[ "${_ConnTest}" =~ "No connection to backend" ]] \
+    || [[ "${_ConnTest}" =~ "does not exist" ]] \
+    || [[ "${_ConnTest}" =~ "IllegalLocationConstraintException" ]]; then
+    echo "Sorry, I can't connect to ${_BACKUP_TARGET}"
+    echo >> ${_LOGFILE}
+    echo "  Sorry, I can't connect to ${_BACKUP_TARGET}" >> ${_LOGFILE}
+    echo "  Please check if the bucket has expected name:" >> ${_LOGFILE}
+    echo "    ${_BUCKET_NAME}" >> ${_LOGFILE}
+    echo "  This bucket must already exist in the specified ${_SERVICE} region" >> ${_LOGFILE}
+    echo >> ${_LOGFILE}
+  else
+    echo "OK, I can connect to ${_BACKUP_TARGET}"
+    echo "OK, I can connect to ${_BACKUP_TARGET}" >> ${_LOGFILE}
+  fi
+}
+
 # Function to check collection-status only
 _status() {
-  _set_mode
-  _set_cmd
   echo "Command is ${_DCY_UTL_CMD} collection-status ${_BACKUP_TARGET}"
   ${_DCY_UTL_CMD} collection-status ${_BACKUP_TARGET}
   wait
@@ -591,8 +614,6 @@ _status() {
 
 # Function to list-current-files only
 _list() {
-  _set_mode
-  _set_cmd
   echo "Command is ${_DCY_UTL_CMD} list-current-files ${_BACKUP_TARGET}"
   ${_DCY_UTL_CMD} list-current-files ${_BACKUP_TARGET}
   wait
@@ -622,8 +643,6 @@ _repair_only() {
 
 # Function to repair incomplete backup sets
 _repair() {
-  _set_mode
-  _set_cmd
   _repair_only
   _collection_status
 }
@@ -661,8 +680,6 @@ _wipe() {
 
 # Function to purge all backup sets
 _purge() {
-  _set_mode
-  _set_cmd
   _repair_only
   _wipe
   _collection_status
@@ -674,18 +691,18 @@ _weekly_cleanup_or_status() {
     && [ ! -e "${_LOGPTH}/${_BUCKET_NAME}.${_TODAY}.cleanup.log" ] \
     && [ "${_DOW}" = 7 ] \
     && [ "${_cached}" = "YES" ]; then
+    _test "only"
     _remove_older_than
     _collection_status
     echo "$(date)" >> ${_LOGPTH}/${_BUCKET_NAME}.${_TODAY}.cleanup.log
   else
+    _test "only"
     _collection_status
   fi
 }
 
 # Function to clean up old backups
 _cleanup() {
-  _set_mode
-  _set_cmd
   _remove_older_than
   _collection_status
 }
@@ -783,8 +800,6 @@ _backup() {
 
 # Function to restore backup
 _restore() {
-  _set_mode
-  _set_cmd
   local _restore_target=$1
   local _restore_path=$2
   local _restore_time=$3
@@ -944,32 +959,42 @@ _remove_stale_multiback_pid "${_SERVICE}" "${_USER}"
 _load_paths "${_USER}"
 
 case "${_ACTION}" in
+  test)
+    _set_backup_target "${_SERVICE}" "${_USER}"
+    _test
+    ;;
   backup)
     _set_backup_target "${_SERVICE}" "${_USER}"
     _backup
     ;;
   cleanup)
     _set_backup_target "${_SERVICE}" "${_USER}"
+    _test
     _cleanup
     ;;
   list)
     _set_backup_target "${_SERVICE}" "${_USER}"
+    _test
     _list
     ;;
   purge)
     _set_backup_target "${_SERVICE}" "${_USER}"
+    _test
     _purge
     ;;
   status)
     _set_backup_target "${_SERVICE}" "${_USER}"
+    _test
     _status
     ;;
   repair)
     _set_backup_target "${_SERVICE}" "${_USER}"
+    _test
     _repair
     ;;
   restore)
     _set_backup_target "${_SERVICE}" "${_USER}"
+    _test
     _restore "${_RESTORE_TARGET}" "${_RESTORE_PATH}" "${_RESTORE_TIME}"
     ;;
   *)
