@@ -586,22 +586,21 @@ _test() {
     _set_mode
     _set_cmd
   fi
-  echo "Running ${_BUCKET_NAME} connection test, please wait..." >> ${_LOGFILE}
-  echo "Command is ${_DCY_UTL_CMD} cleanup --dry-run --timeout 5 ${_BACKUP_TARGET}"
-  _ConnTest=$(${_DCY_UTL_CMD} cleanup --dry-run --timeout 5 ${_BACKUP_TARGET} 2>&1)
+  echo "Running ${_BUCKET_NAME} connection test, please wait..."
+  echo "Command is ${_DCY_UTL_CMD} cleanup --dry-run --timeout 8 ${_BACKUP_TARGET}"
+  _ConnTest=$(${_DCY_UTL_CMD} cleanup --dry-run --timeout 8 ${_BACKUP_TARGET} 2>&1)
   if [[ "${_ConnTest}" =~ "No connection to backend" ]] \
     || [[ "${_ConnTest}" =~ "does not exist" ]] \
     || [[ "${_ConnTest}" =~ "IllegalLocationConstraintException" ]]; then
-    echo "Sorry, I can't connect to ${_BACKUP_TARGET}"
+    echo "Sorry, I can't connect to ${_BUCKET_NAME}"
     echo >> ${_LOGFILE}
-    echo "  Sorry, I can't connect to ${_BACKUP_TARGET}" >> ${_LOGFILE}
-    echo "  Please check if the bucket has expected name:" >> ${_LOGFILE}
-    echo "    ${_BUCKET_NAME}" >> ${_LOGFILE}
-    echo "  This bucket must already exist in the specified ${_SERVICE} region" >> ${_LOGFILE}
+    echo "Sorry, I can't connect to ${_BUCKET_NAME}" >> ${_LOGFILE}
+    echo "Please check if the bucket has expected name:" >> ${_LOGFILE}
+    echo " ${_BUCKET_NAME}" >> ${_LOGFILE}
+    echo "This bucket must exist in the specified ${_SERVICE} region" >> ${_LOGFILE}
     echo >> ${_LOGFILE}
   else
-    echo "OK, I can connect to ${_BACKUP_TARGET}"
-    echo "OK, I can connect to ${_BACKUP_TARGET}" >> ${_LOGFILE}
+    echo "OK, I can connect to ${_BUCKET_NAME}"
   fi
 }
 
