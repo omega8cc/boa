@@ -523,7 +523,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
       _IN_PATH=YES
       _INTERNAL=YES
       if [[ "${_ARGS}" =~ "mysql " ]] \
-        || [[ "${_ARGS}" =~ "drush " ]] \
+        || [[ "${_ARGS}" =~ "drush" ]] \
         || [[ "${_ARGS}" =~ "drush8 " ]] \
         || [[ "${_ARGS}" =~ "drush10 " ]] \
         || [[ "${_ARGS}" =~ "drush11 " ]] \
@@ -590,7 +590,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
             echo
             exit 0
           fi
-        elif [[ "${_ARGS}" =~ "drush " ]] \
+        elif [[ "${_ARGS}" =~ "drush" ]] \
           || [[ "${_ARGS}" =~ "drush8 " ]]; then
           _DEST_DRUSH="/opt/tools/drush/8/drush/drush.php"
           if [[ "${_ARGS}" =~ "vendor/bin/drush " ]]; then
