@@ -633,15 +633,13 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           || [[ "${_ARGS}" =~ "drush8 cc drush" ]] \
           || [[ "${_ARGS}" =~ "drush10 cr drush" ]] \
           || [[ "${_ARGS}" =~ "drush11 cr drush" ]] \
-          || [[ "${_ARGS}" =~ "vendor/drush/drush/drush.php cr drush" ]] \
-          || [[ "${_ARGS}" =~ "vendor/bin/drush cr drush" ]]; then
+          || [[ "${_ARGS}" =~ "vendor/drush/drush/drush.php cr drush" ]]; then
           if [[ "${_PWD}" =~ "/static" ]] \
             || [[ "${_ARGS}" =~ "drush cc drush" ]] \
             || [[ "${_ARGS}" =~ "drush8 cc drush" ]] \
             || [[ "${_ARGS}" =~ "drush10 cr drush" ]] \
             || [[ "${_ARGS}" =~ "drush11 cr drush" ]] \
-            || [[ "${_ARGS}" =~ "vendor/drush/drush/drush.php cr drush" ]] \
-            || [[ "${_ARGS}" =~ "vendor/bin/drush cr drush" ]]; then
+            || [[ "${_ARGS}" =~ "vendor/drush/drush/drush.php cr drush" ]]; then
             _CORRECT=YES
           else
             if [[ "${_ARGS}" =~ "make-generate" ]] \
@@ -745,8 +743,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
                 || [[ "${_ARGS}" =~ "drush8 " ]] \
                 || [[ "${_ARGS}" =~ "drush10 " ]] \
                 || [[ "${_ARGS}" =~ "drush11 " ]] \
-                || [[ "${_ARGS}" =~ "vendor/drush/drush/drush.php " ]] \
-                || [[ "${_ARGS}" =~ "vendor/bin/drush " ]]; then
+                || [[ "${_ARGS}" =~ "vendor/drush/drush/drush.php " ]]; then
                 _CORRECT=YES
               fi
             fi
