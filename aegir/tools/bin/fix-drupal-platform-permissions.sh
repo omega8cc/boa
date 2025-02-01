@@ -85,8 +85,10 @@ fi
 
 if [ -e "${drupal_root}/vendor/bin/drush" ]; then
   chmod 0775 ${drupal_root}/vendor/bin/drush
+  mv -f ${drupal_root}/vendor/bin/drush ${drupal_root}/vendor/bin/.off-drush
 elif [ -e "${drupal_root}/../vendor/bin/drush" ]; then
   chmod 0775 ${drupal_root}/../vendor/bin/drush
+  mv -f ${drupal_root}/../vendor/bin/drush ${drupal_root}/../vendor/bin/.off-drush
 fi
 
 if [ -e "${drupal_root}/vendor/drush/drush/drush.php" ]; then
