@@ -84,19 +84,21 @@ elif [ -e "${drupal_root}/../vendor" ]; then
 fi
 
 if [ -e "${drupal_root}/vendor/bin/drush" ]; then
-  chmod 0775 ${drupal_root}/vendor/bin/drush
   mv -f ${drupal_root}/vendor/bin/drush ${drupal_root}/vendor/bin/.off-drush
 elif [ -e "${drupal_root}/../vendor/bin/drush" ]; then
-  chmod 0775 ${drupal_root}/../vendor/bin/drush
   mv -f ${drupal_root}/../vendor/bin/drush ${drupal_root}/../vendor/bin/.off-drush
+fi
+
+if [ -e "${drupal_root}/vendor/drush/drush/drush" ]; then
+  mv -f ${drupal_root}/vendor/drush/drush/drush ${drupal_root}/vendor/drush/drush/.off-drush
+elif [ -e "${drupal_root}/../vendor/drush/drush/drush" ]; then
+  mv -f ${drupal_root}/../vendor/drush/drush/drush ${drupal_root}/../vendor/drush/drush/.off-drush
 fi
 
 if [ -e "${drupal_root}/vendor/drush/drush/drush.php" ]; then
   chmod 0775 ${drupal_root}/vendor/drush/drush/drush.php
-  chmod 0775 ${drupal_root}/vendor/drush/drush/drush
 elif [ -e "${drupal_root}/../vendor/drush/drush/drush.php" ]; then
   chmod 0775 ${drupal_root}/../vendor/drush/drush/drush.php
-  chmod 0775 ${drupal_root}/../vendor/drush/drush/drush
 fi
 
 [ -d "${drupal_root}" ] && chmod 02775 ${drupal_root}
