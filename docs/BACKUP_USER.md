@@ -95,7 +95,7 @@ Duplicity ensures your backups are both secure and efficient.
 The system supports backups to the following storage services. Each service requires a properly formatted credential file stored in:
 
 ```bash
-~/static/control/remote_backups/credentials/
+/data/disk/your_username/static/control/remote_backups/credentials/
 ```
 
 **Supported Services:**
@@ -131,7 +131,7 @@ Refer to the **Managing Credentials** section for details on how to create and s
      - Incorrect: `/data/disk/your_username/static/projects`
 
 4. **Restore Target**: The directory where restored files will be placed. For this system, the default is:
-   - `~/static/restores/`
+   - `/data/disk/your_username/static/restores/`
 
 ---
 
@@ -151,7 +151,7 @@ The system automatically includes the following directories:
 3. **Customization**:
    - You can include or exclude additional directories using configuration files located in:
      ```bash
-     ~/static/control/remote_backups/config/
+     /data/disk/your_username/static/control/remote_backups/config/
      ```
 
 ---
@@ -192,7 +192,7 @@ However, when used in the bucket name, it becomes `back-to-USER-HOSTNAME-PROVIDE
 To enable backups and restores, you must provide valid credentials for your cloud storage service. Credential files are stored in:
 
 ```bash
-~/static/control/remote_backups/credentials/
+/data/disk/your_username/static/control/remote_backups/credentials/
 ```
 
 Each credential file corresponds to a specific cloud storage service and must follow the required format. For example:
@@ -212,7 +212,7 @@ export FULL_BACKUP_FREQUENCY="28D"   # Create a full backup every 28 days
 
 **Permissions**:
 ```bash
-chmod 600 ~/static/control/remote_backups/credentials/*.txt
+chmod 600 /data/disk/your_username/static/control/remote_backups/credentials/*.txt
 ```
 
 **Credential Security Measures**:
@@ -226,7 +226,7 @@ chmod 600 ~/static/control/remote_backups/credentials/*.txt
 You can customize what is included or excluded in your backups by editing configuration files stored in:
 
 ```bash
-~/static/control/remote_backups/config/
+/data/disk/your_username/static/control/remote_backups/config/
 ```
 
 #### **Configuration Files**
@@ -320,11 +320,10 @@ To recover data, use the `mybackup` command. The restore process has specific ru
 #### **Restore Command**
 
 ```bash
-mybackup restore <SERVICE> [RESTORE_TARGET] [RESTORE_PATH] [RESTORE_TIME]
+mybackup restore <SERVICE> [RESTORE_PATH] [RESTORE_TIME]
 ```
 
 - `<SERVICE>`: The cloud storage service used for your backups (e.g., `aws`, `b2`, `wasabi`).
-- `[RESTORE_TARGET]` (optional): The directory where restored files will be placed. Defaults to `~/static/restores/`.
 - `[RESTORE_PATH]` (optional): The absolute path (no leading slash) of the file or directory to restore.
 - `[RESTORE_TIME]` (optional): The point in time for the restore, specified in human-readable formats like:
   - `1D` (1 day ago)
@@ -339,23 +338,23 @@ mybackup restore <SERVICE> [RESTORE_TARGET] [RESTORE_PATH] [RESTORE_TIME]
    ```bash
    mybackup restore aws
    ```
-   - Restores the entire backup to `~/static/restores/`.
+   - Restores the entire backup to `/data/disk/your_username/static/restores/`.
 
 2. **Restore a Specific Directory**:
    ```bash
-   mybackup restore aws ~/static/restores data/disk/your_username/static/projects
+   mybackup restore aws data/disk/your_username/static/projects
    ```
    - Restores the `projects` directory.
 
 3. **Restore FTP Files**:
    ```bash
-   mybackup restore aws ~/static/restores home/your_username.ftp/documents
+   mybackup restore aws home/your_username.ftp/documents
    ```
    - Restores files from your FTP home directory.
 
 4. **Restore from a Specific Time**:
    ```bash
-   mybackup restore aws ~/static/restores data/disk/your_username/static/projects 7D
+   mybackup restore aws data/disk/your_username/static/projects 7D
    ```
    - Restores files as they were 7 days ago.
 
@@ -369,11 +368,7 @@ mybackup restore <SERVICE> [RESTORE_TARGET] [RESTORE_PATH] [RESTORE_TIME]
      - Correct: `data/disk/your_username/static/projects`
      - Incorrect: `/data/disk/your_username/static/projects`
 
-2. **Restore Target Directory Can Be Relative or Absolute**:
-   - Default: `~/static/restores/`
-   - You may specify a custom restore target directory.
-
-3. **Default Behavior**:
+2. **Default Behavior**:
    - If `[RESTORE_PATH]` is omitted, the entire backup is restored.
    - If `[RESTORE_TIME]` is omitted, the latest backup is restored.
 
@@ -397,7 +392,7 @@ mybackup restore <SERVICE> [RESTORE_TARGET] [RESTORE_PATH] [RESTORE_TIME]
 3. **Credential Security**:
    - Protect your credentials by setting secure permissions:
      ```bash
-     chmod 600 ~/static/control/remote_backups/credentials/*.txt
+     chmod 600 /data/disk/your_username/static/control/remote_backups/credentials/*.txt
      ```
    - Ensure credential files contain only valid variable assignments.
 
@@ -462,7 +457,7 @@ If you encounter issues with your backups or restores:
 
 ### **Conclusion**
 
-By following the **Basic Use** section, you can quickly get your backups running—just add your preferred remote service credentials and rely on the default local database backups stored in `~/static/files/dbackup/`. For more granular control, use the **Advanced Use** section to configure includes, excludes, custom retention, advanced restore options, and more.
+By following the **Basic Use** section, you can quickly get your backups running—just add your preferred remote service credentials and rely on the default local database backups stored in `/data/disk/your_username/static/files/dbackup/`. For more granular control, use the **Advanced Use** section to configure includes, excludes, custom retention, advanced restore options, and more.
 
 Remember that **all local backups count toward your storage quota**, so adjust your retention period or remove old backups as needed. If you have questions or run into any issues, please contact your administrator or hosting support.
 
