@@ -774,7 +774,7 @@ _update_agents() {
       fi
       curl ${_crlGet} "${_urlHmr}/tools/bin/mybackup" -o ${_optBin}/mybackup
       if [ -e "${_optBin}/mybackup" ]; then
-        chmod 700 ${_optBin}/mybackup
+        chmod 755 ${_optBin}/mybackup
         chown root:root ${_optBin}/mybackup
         touch ${_pthCtrl}/mybackup.sh.ctrl.f47.${_tRee}.${_xSrl}.pid
       else
