@@ -373,28 +373,16 @@ if [[ "$#" -eq 0 ]] && [ "${_run_as_user}" = "root" ]; then
       export _user=$(basename "${_user_dir}")
       export _user_run_dir="${_user_dir}/${_RUN_SUBDIR}"
       export _user_cmd_file="${_user_run_dir}/${_CMD_FILE}"
-
       if [[ -f "${_user_cmd_file}" ]]; then
         export _command=$(cat "${_user_cmd_file}")
-        echo "Validating command for user ${_user}: ${_command}"
-
-        # Validate the command
-        if _validate_restore_command "${_command}"; then
-          echo "Command validated successfully. Executing for user ${_user}."
-          sudo -u "${_user}" "$0" ${_command}
-          wait
-
-          # Clean up the command file
-          echo "[$(date)] Command was run for user ${_user}: ${_command}" >> /var/log/mybackup_commands_history.log
-          echo "[$(date)] Command was run for user ${_user}: ${_command}" >> /data/disk/${_user}/log/mybackup_commands_history.log
-          rm -f "${_user_cmd_file}"
-          sleep 60
-        else
-          echo "Error: Invalid command for user ${_user}. Skipping."
-          # Optionally log invalid commands for audit
-          echo "[$(date)] Invalid command for user ${_user}: ${_command}" >> /var/log/mybackup_invalid_commands.log
-          echo "[$(date)] Invalid command for user ${_user}: ${_command}" >> /data/disk/${_user}/log/mybackup_invalid_commands.log
-        fi
+        echo "Executing for user ${_user}."
+        sudo -u "${_user}" "$0" ${_command}
+        wait
+        # Clean up the command file
+        echo "[$(date)] Command was run for user ${_user}: ${_command}" >> /var/log/mybackup_commands_history.log
+        echo "[$(date)] Command was run for user ${_user}: ${_command}" >> /data/disk/${_user}/log/mybackup_commands_history.log
+        rm -f "${_user_cmd_file}"
+        sleep 60
       fi
     fi
   _print_env "mybackup_run_as_user"
