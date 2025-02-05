@@ -320,14 +320,15 @@ _set_backup_target() {
 
 # Function to validate restore command
 _validate_restore_command() {
-  local _command=$1
+  # Store all arguments in an array
+  local args=("$@")
 
-  # Split the command into parts
-  local _action=$(echo "${_command}" | awk '{print $1}')
-  local _service=$(echo "${_command}" | awk '{print $2}')
-  local _restore_target=$(echo "${_command}" | awk '{print $3}')
-  local _restore_path=$(echo "${_command}" | awk '{print $4}')
-  local _restore_time=$(echo "${_command}" | awk '{print $5}')
+  # Now use the array indices to assign variables.
+  # Note: Array indices start at 0.
+  local _action="${args[0]}"
+  local _service="${args[1]}"
+  local _restore_path="${args[2]}"
+  local _restore_time="${args[3]}"
 
   # Ensure the command starts with "restore"
   if [[ "${_action}" != "restore" ]]; then
