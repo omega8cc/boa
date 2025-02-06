@@ -170,6 +170,9 @@ _load_paths() {
   if [ "${_user}" != "arch" ] && [ "${_user}" != "data" ] && [ "${_user}" != "global" ] && [ "${_user}" != "custom" ]; then
     local _paths_file="/data/disk/${_user}/remote_backups/paths/paths.txt"
     chmod 755 /data/disk/${_user}/remote_backups/paths
+    local _user_credentials_dir="/data/disk/${_user}/static/control/remote_backups/credentials"
+    chmod 750 ${_user_credentials_dir}
+    chmod 640 ${_user_credentials_dir}/*.txt
   fi
   if [ "${_user}" = "global" ] || [ "${_user}" = "data" ] || [ "${_user}" = "custom" ]; then
     local _paths_file="/root/.remote_backups/paths/${_user}_paths.txt"
@@ -388,6 +391,9 @@ if [[ "$#" -eq 0 ]] && [ "${_run_as_user}" = "root" ]; then
         echo "[$(date)] Command was run for user ${_user}: ${_command}" >> /var/log/mybackup_commands_history.log
         echo "[$(date)] Command was run for user ${_user}: ${_command}" >> /data/disk/${_user}/log/mybackup_commands_history.log
         rm -f "${_user_cmd_file}"
+        local _user_credentials_dir="/data/disk/${_user}/static/control/remote_backups/credentials"
+        chmod 700 ${_user_credentials_dir}
+        chmod 600 ${_user_credentials_dir}/*.txt
         sleep 60
       fi
     fi
