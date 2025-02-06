@@ -376,9 +376,9 @@ _load_credentials() {
 _load_paths() {
   local _user="$1"
   if [ "${_user}" != "arch" ] && [ "${_user}" != "data" ] && [ "${_user}" != "global" ] && [ "${_user}" != "custom" ]; then
-    export _paths_file="/data/disk/${_user}/remote_backups/paths/paths.txt"
+    local _paths_file="/data/disk/${_user}/remote_backups/paths/paths.txt"
   elif [ "${_user}" = "global" ] || [ "${_user}" = "data" ] || [ "${_user}" = "custom" ]; then
-    export _paths_file="/root/.remote_backups/paths/${_user}_paths.txt"
+    local _paths_file="/root/.remote_backups/paths/${_user}_paths.txt"
   fi
 
   if [ ! -f "${_paths_file}" ]; then

@@ -3,7 +3,7 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-export _sPid="f73"
+export _sPid="f72"
 
 # Log file for escape attempts and validation issues
 _VALIDATION_LOG_FILE="/var/log/backup_validation_issues.log"
@@ -113,7 +113,7 @@ _create_user_paths_config() {
   # Ensure user configuration directory exists and is owned by root
   mkdir -p "${_user_config_dir}"
   chown root:root "${_user_config_dir}"
-  chmod 700 "${_user_config_dir}"
+  chmod 755 "${_user_config_dir}"
 
   # Function to append unique entries from source to target file
   _append_unique_entries() {
