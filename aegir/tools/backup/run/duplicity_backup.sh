@@ -782,11 +782,10 @@ _backup() {
 
 ### Restore Command in mybackup for reference
 #
-#   mybackup restore <SERVICE> [RESTORE_TARGET] [RESTORE_PATH] [RESTORE_TIME]
-#   mybackup restore aws ~/static/restores data/disk/your_username/static/projects 7D
+#   mybackup restore <SERVICE> [RESTORE_PATH] [RESTORE_TIME]
+#   mybackup restore aws data/disk/your_username/static/projects 7D
 #
 # - <SERVICE>: The cloud storage service used for your backups (e.g., aws, b2, wasabi).
-# - [RESTORE_TARGET] (optional): The directory where restored files will be placed. Defaults to ~/static/restores/.
 # - [RESTORE_PATH] (optional): The absolute path (no leading slash) of the file or directory to restore.
 # - [RESTORE_TIME] (optional): The point in time for the restore, specified in human-readable formats like:
 #   - 1D (1 day ago)
