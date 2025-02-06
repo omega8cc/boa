@@ -364,13 +364,11 @@ _validate_restore_command() {
 export _run_as_user=$(whoami)
 
 # Main script
-if [[ "$#" -eq 0 ]] && [ "${_run_as_user}" = "root" ]; then
-
+_main_script() {
   if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt 0 ]; then
     echo "[$(date)] Active duplicity process detected, will try again later..." >> /var/log/mybackup_waiting_queue.log
     exit 1
   fi
-
   # Process queued commands for all users
   for _user_dir in "${_BASE_DIR}"/*; do
     if [[ -d "${_user_dir}" ]]; then
@@ -382,8 +380,9 @@ if [[ "$#" -eq 0 ]] && [ "${_run_as_user}" = "root" ]; then
         echo "Executing backup restore for user ${_user}."
         chmod 755 /data/disk/${_user}/remote_backups/paths
         local _user_credentials_dir="/data/disk/${_user}/static/control/remote_backups/credentials"
-        chmod 750 ${_user_credentials_dir}
-        chmod 640 ${_user_credentials_dir}/*.txt
+        chmod 755 ${_user_credentials_dir}
+        chmod 644 ${_user_credentials_dir}/*.txt
+        chmod 644 /data/disk/${_user}/remote_backups/.secret.txt
         su -s /bin/bash - ${_user} -c "mybackup ${_command}"
         wait
         # Clean up the command file
@@ -392,6 +391,7 @@ if [[ "$#" -eq 0 ]] && [ "${_run_as_user}" = "root" ]; then
         rm -f "${_user_cmd_file}"
         chmod 700 ${_user_credentials_dir}
         chmod 600 ${_user_credentials_dir}/*.txt
+        chmod 600 /data/disk/${_user}/remote_backups/.secret.txt
         sleep 10
       fi
     fi
@@ -401,6 +401,10 @@ if [[ "$#" -eq 0 ]] && [ "${_run_as_user}" = "root" ]; then
   export _user_cmd_file=
   done
   exit 0
+}
+
+if [[ "$#" -eq 0 ]] && [ "${_run_as_user}" = "root" ]; then
+  _main_script
 fi
 
 # Extract the current user
