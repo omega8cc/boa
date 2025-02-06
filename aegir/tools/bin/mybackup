@@ -150,11 +150,13 @@ _load_credentials() {
     export PASSPHRASE=$(cat "${_secret_file}")
   else
     echo "Secret file ${_secret_file} not found. Unable to proceed."
+    _remove_pid_file "${_PIDFILE}"
     exit 1
   fi
 
   if [ ! -f "${_cred_file}" ]; then
     echo "Error: Credentials file '${_cred_file}' not found."
+    _remove_pid_file "${_PIDFILE}"
     exit 1
   fi
 
@@ -176,6 +178,7 @@ _load_paths() {
 
   if [ ! -f "${_paths_file}" ]; then
     echo "Error: Paths configuration file '${_paths_file}' not found."
+    _remove_pid_file "${_PIDFILE}"
     exit 1
   fi
 
@@ -307,6 +310,7 @@ _set_backup_target() {
       ;;
     *)
       echo "Error: Unknown service ${_service}"
+      _remove_pid_file "${_PIDFILE}"
       exit 1
       ;;
   esac
