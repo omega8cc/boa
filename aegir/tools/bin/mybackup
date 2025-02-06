@@ -204,7 +204,7 @@ _send_restore_confirmation_email() {
 
   if [ -n "${_recipient}" ]; then
     echo "Sending email report on $(date)" >> ${_LOGFILE}
-    s-nail -s "${_subject}" "${_MY_EMAIL}" < ${_LOGFILE}
+    s-nail -s "${_subject}" "${_recipient}" < ${_LOGFILE}
   fi
 }
 
@@ -382,6 +382,7 @@ _main_script() {
         local _user_credentials_dir="/data/disk/${_user}/static/control/remote_backups/credentials"
         chmod 755 ${_user_credentials_dir}
         chmod 644 ${_user_credentials_dir}/*.txt
+        chattr -i /data/disk/${_user}/remote_backups/.secret.txt
         chmod 644 /data/disk/${_user}/remote_backups/.secret.txt
         su -s /bin/bash - ${_user} -c "mybackup ${_command}"
         wait
@@ -392,6 +393,7 @@ _main_script() {
         chmod 700 ${_user_credentials_dir}
         chmod 600 ${_user_credentials_dir}/*.txt
         chmod 600 /data/disk/${_user}/remote_backups/.secret.txt
+        chattr +i /data/disk/${_user}/remote_backups/.secret.txt
         sleep 10
       fi
     fi
@@ -409,6 +411,10 @@ fi
 
 # Extract the current user
 export _user=$(whoami | sed 's/\.ftp$//')
+
+_userEmail=""
+[ -e "/data/disk/${_user}/log/email.txt" ] && _userEmail="$(cat /data/disk/${_user}/log/email.txt)"
+[ -n "${_userEmail}" ] && export _userEmail=$(echo -n ${_userEmail} | tr -d "\n" 2>&1)
 
 if [[ $(whoami) == *.ftp ]]; then
   _user_run_dir="/data/disk/${_user}/static/control/.run"
@@ -430,10 +436,6 @@ if [[ $(whoami) == *.ftp ]]; then
   echo "Bye!"
   exit 0
 fi
-
-_userEmail=""
-[ -e "/data/disk/${_user}/log/email.txt" ] && _userEmail="$(cat /data/disk/${_user}/log/email.txt)"
-[ -n "${_userEmail}" ] && export _userEmail=$(echo -n ${_userEmail} | tr -d "\n" 2>&1)
 
 export _ACTION=$1
 export _SERVICE=$2
