@@ -166,10 +166,12 @@ _load_credentials() {
 _load_paths() {
   local _user="$1"
   if [ "${_user}" != "arch" ] && [ "${_user}" != "data" ] && [ "${_user}" != "global" ] && [ "${_user}" != "custom" ]; then
-    export _paths_file="/data/disk/${_user}/remote_backups/paths/paths.txt"
+    local _paths_file="/data/disk/${_user}/remote_backups/paths/paths.txt"
+    chmod 755 /data/disk/${_user}/remote_backups/paths
   fi
   if [ "${_user}" = "global" ] || [ "${_user}" = "data" ] || [ "${_user}" = "custom" ]; then
-    export _global_paths_file="/root/.remote_backups/paths/${_user}_paths.txt"
+    local _paths_file="/root/.remote_backups/paths/${_user}_paths.txt"
+    chmod 755 /root/.remote_backups/paths
   fi
 
   if [ ! -f "${_paths_file}" ]; then
@@ -375,8 +377,8 @@ if [[ "$#" -eq 0 ]] && [ "${_run_as_user}" = "root" ]; then
       export _user_cmd_file="${_user_run_dir}/${_CMD_FILE}"
       if [[ -f "${_user_cmd_file}" ]]; then
         export _command=$(cat "${_user_cmd_file}")
-        echo "Executing for user ${_user}."
-        sudo -u "${_user}" "$0" ${_command}
+        echo "Executing backup restore for user ${_user}."
+        su -s /bin/bash - ${_user} -c "mybackup ${_command}"
         wait
         # Clean up the command file
         echo "[$(date)] Command was run for user ${_user}: ${_command}" >> /var/log/mybackup_commands_history.log
