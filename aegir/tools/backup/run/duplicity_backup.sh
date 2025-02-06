@@ -801,6 +801,16 @@ _restore() {
   local _restore_time=$3
   local _restore_command="${_DCY_UTL_CMD} restore"
 
+  # Remove any trailing slash from _restore_path for proper basename extraction
+  _clean_restore_path="${_restore_path%/}"
+
+  # Extract the last part (basename) of the restore path.
+  _last_part=$(basename "${_clean_restore_path}")
+
+  # Combine _restore_target with the extracted basename.
+  # Also, remove any trailing slash from _restore_target to avoid double slashes.
+  _final_restore_target="${_restore_target%/}/${_last_part}"
+
   # Ensure _RESTORE_TARGET exists
   if [ -n "${_restore_target}" ]; then
     if [ ! -d "${_restore_target}" ]; then
@@ -821,7 +831,7 @@ _restore() {
   if [ -n "${_restore_path}" ]; then
     _restore_command="${_restore_command} --path-to-restore ${_restore_path}"
   fi
-  _restore_command="${_restore_command} ${_restore_target}"
+  _restore_command="${_restore_command} ${_final_restore_target}"
 
   echo "Command is ${_restore_command}"
   # ${_DCY_UTL_CMD} restore --time ${_restore_time} ${_BACKUP_TARGET} --path-to-restore ${_restore_path} ${_restore_target}
