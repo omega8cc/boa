@@ -25,12 +25,12 @@ _CMD_FILE="command.txt"
 
 # Function to display usage information
 _usage() {
-  echo "Usage: $0 restore <SERVICE> [RESTORE_TARGET] [RESTORE_PATH] [RESTORE_TIME]"
+  echo "Usage: $0 restore <SERVICE> [RESTORE_PATH] [RESTORE_TIME]"
   echo
   echo "Example command:"
   echo "  Restore:"
-  echo "  $0 restore aws ~/static/restores static/projects 1D"
-  echo "  $0 restore b2 ~/static/restores static/another-project 2W"
+  echo "  $0 restore aws static/projects 1D"
+  echo "  $0 restore b2 static/another-project 2W"
   echo
   echo "Supported services:"
   echo "  aws, aws_one_zone, aws_standard_ia, azure, b2, cloudflare, do_spaces, gcs, ibm, linode, wasabi"
