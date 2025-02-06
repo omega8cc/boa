@@ -212,7 +212,7 @@ _send_restore_confirmation_email() {
 _restore() {
   local _restore_path=$1
   local _restore_time=$2
-  local _restore_command="${_DCY_MN_CMD} restore"
+  local _restore_command="${_DCY_MN_CMD} restore --no-restore-owner"
   local _restore_target="/data/disk/${_user}/static/restores"
 
   # Ensure _restore_target exists
