@@ -3,7 +3,7 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-export _sPid="f78"
+export _sPid="f71"
 
 # Log file for escape attempts and validation issues
 _VALIDATION_LOG_FILE="/var/log/backup_validation_issues.log"
@@ -113,7 +113,7 @@ _create_user_paths_config() {
   # Ensure user configuration directory exists and is owned by root
   mkdir -p "${_user_config_dir}"
   chown root:root "${_user_config_dir}"
-  chmod 700 "${_user_config_dir}"
+  chmod 755 "${_user_config_dir}"
 
   # Function to append unique entries from source to target file
   _append_unique_entries() {
@@ -121,17 +121,6 @@ _create_user_paths_config() {
     _target_file=$2
     if [ -f "${_source_file}" ]; then
       grep -v -F -x -f "${_target_file}" "${_source_file}" >> "${_target_file}"
-    fi
-  }
-
-  # Function to add a single backslash at the end of each line except the last
-  _add_backslashes() {
-    local file="$1"
-    if [ -f "${file}" ]; then
-      # Remove existing trailing backslashes to avoid duplication
-      sed -i 's/[[:space:]]*\\$//' "${file}"
-      # Append a backslash to all lines except the last one
-      sed -i '$!s/$/ \\/' "${file}"
     fi
   }
 
@@ -182,9 +171,18 @@ EOF
     # _exclude_file
     if [ ! -f "${_exclude_ctrl_file}" ]; then
       cat << EOF > "${_exclude_file}"
---exclude /data/disk/${_user}
+--exclude /data/disk/${_user}/.tmp
+--exclude /data/disk/${_user}/clients
 --exclude /data/disk/${_user}/static/restores
+--exclude /data/disk/${_user}/static/tmp
 --exclude /data/disk/${_user}/static/trash
+--exclude /data/disk/${_user}/u
+--exclude /data/disk/${_user}/undo
+--exclude /home/${_user}.ftp/.tmp
+--exclude /home/${_user}.ftp/backups
+--exclude /home/${_user}.ftp/clients
+--exclude /home/${_user}.ftp/platforms
+--exclude /home/${_user}.ftp/static
 EOF
       rm -f ${_user_config_dir}/.backboa.${_user}.*.exclude.ctrl.file
       touch "${_exclude_ctrl_file}"
@@ -238,15 +236,11 @@ EOF
     cat "${_merged_exclude_file}" > "${_merged_all_exclude_file}"
     cat "${_merged_regexp_exclude_file}" >> "${_merged_all_exclude_file}"
 
-    # Finalize by adding a backslash at the end of each line except the last
-    _add_backslashes "${_merged_all_include_file}"
-    _add_backslashes "${_merged_all_exclude_file}"
+    # Convert the include file contents to a single-line variable without extra backslashes and excessive whitespace
+    local _MERGED_ALL_INCLUDE=$(cat "${_merged_all_include_file}" | tr '\n' ' ' | tr -s ' ' | sed 's/^ *//;s/ *$//')
 
-    # Convert the include file contents to a single-line variable without backslashes and excessive whitespace
-    local _MERGED_ALL_INCLUDE=$(sed 's/\\//g' "${_merged_all_include_file}" | tr '\n' ' ' | tr -s ' ' | sed 's/^ *//;s/ *$//')
-
-    # Convert the exclude file contents to a single-line variable without backslashes and excessive whitespace
-    local _MERGED_ALL_EXCLUDE=$(sed 's/\\//g' "${_merged_all_exclude_file}" | tr '\n' ' ' | tr -s ' ' | sed 's/^ *//;s/ *$//')
+    # Convert the exclude file contents to a single-line variable without extra backslashes and excessive whitespace
+    local _MERGED_ALL_EXCLUDE=$(cat "${_merged_all_exclude_file}" | tr '\n' ' ' | tr -s ' ' | sed 's/^ *//;s/ *$//')
 
     # Create the final paths configuration file
     cat << EOF > "${_user_paths_file}"

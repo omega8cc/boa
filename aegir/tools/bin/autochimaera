@@ -5,7 +5,7 @@
 ###
 ###  Automatic BOA System Major Upgrade Tool
 ###
-###  Copyright (C) 2010-2024 Omega8.cc
+###  Copyright (C) 2010-2025 Omega8.cc
 ###  noc@omega8.cc www.omega8.cc
 ###
 ###  This program is free software. You can
@@ -79,7 +79,7 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 export _tRee=pro
-export _xSrl=550proT04
+export _xSrl=560proT00
 
 _barCnf="/root/.barracuda.cnf"
 _logAch="/root/.autochimaera.log"

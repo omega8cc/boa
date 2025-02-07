@@ -17,7 +17,7 @@ _check_root() {
 
     # Validate and set default if necessary
     if ! [[ "$_B_NICE" =~ ^-?[0-9]+$ ]]; then
-      _B_NICE=-5
+      _B_NICE=0
     fi
 
     # Clamp the value within -20 to 19
@@ -91,12 +91,19 @@ _find_fast_mirror_early() {
   fi
   _ffMirr=$(which ffmirror 2>&1)
   if [ -x "${_ffMirr}" ]; then
-    _ffList="/var/backups/boa-mirrors-2024-12.txt"
+    _ffList="/var/backups/boa-mirrors-2025-01.txt"
     mkdir -p /var/backups
     if [ ! -e "${_ffList}" ]; then
       echo "eu.files.aegir.cc"  > ${_ffList}
       echo "us.files.aegir.cc" >> ${_ffList}
       echo "ao.files.aegir.cc" >> ${_ffList}
+      if [ -e "/etc/csf/csf.allow" ]; then
+        sed -i "s/.*aegir.*//g" /etc/csf/csf.allow
+        csf -a 172.235.166.69  eu.files.aegir.cc &> /dev/null
+        csf -a 172.233.219.37  us.files.aegir.cc &> /dev/null
+        csf -a 172.105.168.103 ao.files.aegir.cc &> /dev/null
+        csf -q &> /dev/null
+      fi
     fi
     if [ -e "${_ffList}" ]; then
       _BROKEN_FFMIRR_TEST=$(grep "stuff" ${_ffMirr} 2>&1)
@@ -286,4 +293,4 @@ fi
 
 touch /var/xdrago/log/clear.done.pid
 exit 0
-###EOF2024###
+

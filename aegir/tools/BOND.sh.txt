@@ -5,7 +5,7 @@
 ###
 ###  Barracuda-Octopus-Nginx-Drupal Tuner
 ###
-###  Copyright (C) 2010-2024 Omega8.cc
+###  Copyright (C) 2010-2025 Omega8.cc
 ###  noc@omega8.cc www.omega8.cc
 ###
 ###  This program is free software. You can
@@ -140,11 +140,11 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 export _tRee=pro
-export _xSrl=550proT04
+export _xSrl=560proT00
 
 _AEGIR_VERSION="${_tRee}"
 _BRANCH_BOA="5.x-${_tRee}"
-_X_VERSION="BOA-5.5.0-${_tRee}"
+_X_VERSION="BOA-5.6.0-${_tRee}"
 _MYSQLTUNER_VRN=1.9.4
 
 _NOW=$(date +%y%m%d-%H%M%S 2>&1)
@@ -171,11 +171,11 @@ _PHP80_VRN=8.0.30
 _PHP81_API=20210902
 _PHP81_VRN=8.1.31
 _PHP82_API=20220829
-_PHP82_VRN=8.2.26
+_PHP82_VRN=8.2.27
 _PHP83_API=20230831
-_PHP83_VRN=8.3.14
+_PHP83_VRN=8.3.15
 _PHP84_API=20240924
-_PHP84_VRN=8.4.1
+_PHP84_VRN=8.4.2
 
 ###
 ### Helper variables
@@ -220,7 +220,7 @@ _check_root() {
 
     # Validate and set default if necessary
     if ! [[ "$_B_NICE" =~ ^-?[0-9]+$ ]]; then
-      _B_NICE=-5
+      _B_NICE=0
     fi
 
     # Clamp the value within -20 to 19
@@ -401,7 +401,7 @@ _find_fast_mirror_early() {
   fi
   _ffMirr=$(which ffmirror 2>&1)
   if [ -x "${_ffMirr}" ]; then
-    _ffList="/var/backups/boa-mirrors-2024-12.txt"
+    _ffList="/var/backups/boa-mirrors-2025-01.txt"
     mkdir -p /var/backups
     if [ ! -e "${_ffList}" ]; then
       echo "eu.files.aegir.cc"  > ${_ffList}
@@ -1403,6 +1403,9 @@ _tune_memory_limits() {
   _RAM=$(free -mt | grep Mem: | awk '{ print $2 }' 2>&1)
   if [ "${_RESERVED_RAM}" -gt 0 ]; then
     _RAM=$(( _RAM - _RESERVED_RAM ))
+  else
+    _RESERVED_RAM=$(( _RAM / 4 ))
+    _RAM=$(( _RAM - _RESERVED_RAM ))
   fi
   _USE=$(( _RAM / 4 ))
   _if_hosted_sys
@@ -1892,7 +1895,7 @@ _msg "BYE!"
 ###----------------------------------------###
 ###
 ###  Barracuda-Octopus-Nginx-Drupal Tuner
-###  Copyright (C) 2010-2024 Omega8.cc
+###  Copyright (C) 2010-2025 Omega8.cc
 ###  noc@omega8.cc www.omega8.cc
 ###
 ###----------------------------------------###

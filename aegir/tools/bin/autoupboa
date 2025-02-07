@@ -4,9 +4,37 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 export _tRee=pro
-export _xSrl=550proT04
+export _xSrl=560proT00
 
 _barCnf="/root/.barracuda.cnf"
+
+# Function to calculate RAM usage percentage as an integer
+_calculate_ram_usage_percent() {
+  _total_ram_kb=$1
+  _available_ram_kb=$2
+  used_ram_kb=$((_total_ram_kb - _available_ram_kb))
+
+  # Using integer division to get a whole number percentage
+  echo $(( (used_ram_kb * 100) / _total_ram_kb ))
+}
+
+# Function to check and display system info
+_check_system_ram() {
+  # Get the total and available RAM in KB
+  _total_ram_kb=$(grep MemTotal /proc/meminfo | awk '{print $2}')
+  _available_ram_kb=$(grep MemAvailable /proc/meminfo | awk '{print $2}')
+
+  # Calculate RAM usage percentage
+  _ram_usage_percent=$(_calculate_ram_usage_percent ${_total_ram_kb} ${_available_ram_kb})
+}
+
+# Function to check and optimize RAM and disk caches
+_optimize_ram() {
+  _check_system_ram
+  if [ "${_ram_usage_percent}" -gt 90 ]; then
+    sync && echo 3 | sudo tee /proc/sys/vm/drop_caches
+  fi
+}
 
 _turn_off_apparmor() {
   # Fix shell
@@ -250,7 +278,7 @@ _if_disable_not_used_services() {
   fi
 
   if [ "${_clearSwap}" = "YES" ]; then
-    swapoff -a
+    _optimize_ram
   fi
 }
 _if_disable_not_used_services
@@ -893,4 +921,4 @@ fi
 
 exit 0
 
-###EOF2024###
+

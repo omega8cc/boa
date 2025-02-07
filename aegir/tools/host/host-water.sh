@@ -698,9 +698,12 @@ if [ -e "/vservers" ] \
   echo guard fin $(date)
 fi
 ntpdate pool.ntp.org > /dev/null 2>&1 &
-_IF_CDP=$(ps aux | grep '[c]dp_io' | awk '{print $2}')
-if [ -z "${_IF_CDP}" ] && [ ! -e "/root/.no.swap.clear.cnf" ]; then
+_IF_BCP="$(pgrep -f duplicity)"
+if [ ! -e "/root/.no.swap.clear.cnf" ]; then
   swapoff -a
+  if [ -z "${_IF_BCP}" ]; then
+    swapon -a
+  fi
 fi
 exit 0
-###EOF2024###
+

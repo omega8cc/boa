@@ -313,9 +313,9 @@ _usage_count() {
           if [ -L "${_Dir}/files" ] \
             || [ -L "${_Dir}/private" ] \
             || [ -L "${_usEr}/static/files" ]; then
-            _DirSize=$(du -L -s ${_Dir} 2>&1)
+            _DirSize=$(du -L -s ${_Dir} 2>/dev/null)
           else
-            _DirSize=$(du -s ${_Dir} 2>&1)
+            _DirSize=$(du -s ${_Dir} 2>/dev/null)
           fi
           _DirSize=$(echo "${_DirSize}" \
             | cut -d'/' -f1 \
@@ -323,25 +323,28 @@ _usage_count() {
             | sed "s/[\/\s+]//g" 2>&1)
           _SumDir=$(( _SumDir + _DirSize ))
           echo "${_THIS_U},${_Dom},_DirSize:${_DirSize}"
+          [ "${_THIS_MODE}" = "verbose" ] && echo "  ${_THIS_U},${_Dom},_DirSize:${_DirSize}" >> "${_uLogFil}"
         fi
         if [ ! -z "${_Dat}" ]; then
           if [ -e "/root/.du.sql" ]; then
-            DatSize=$(grep "/var/lib/mysql/${_Dat}$" /root/.du.sql 2>&1)
+            _DatSize=$(grep "/var/lib/mysql/${_Dat}$" /root/.du.sql 2>&1)
           elif [ -e "/root/.du.local.sql" ]; then
-            DatSize=$(grep "/var/lib/mysql/${_Dat}$" /root/.du.local.sql 2>&1)
+            _DatSize=$(grep "/var/lib/mysql/${_Dat}$" /root/.du.local.sql 2>&1)
           elif [ -e "/var/lib/mysql/${_Dat}" ]; then
-            DatSize=$(du -s /var/lib/mysql/${_Dat} 2>&1)
+            _DatSize=$(du -s /var/lib/mysql/${_Dat} 2>/dev/null)
           fi
-          DatSize=$(echo "${DatSize}" \
+          _DatSize=$(echo "${_DatSize}" \
             | cut -d'/' -f1 \
             | awk '{ print $1}' \
             | sed "s/[\/\s+]//g" 2>&1)
           if [ "${_DEV_URL}" = "YES" ]; then
-            _SkipDt=$(( _SkipDt + DatSize ))
-            echo "${_THIS_U},${_Dom},DatSize:${DatSize}:${_Dat},skip"
+            _SkipDt=$(( _SkipDt + _DatSize ))
+            echo "${_THIS_U},${_Dom},_DatSize:${_DatSize}:${_Dat},skip"
+            [ "${_THIS_MODE}" = "verbose" ] && echo "  ${_THIS_U},${_Dom},_DatSize:${_DatSize}:${_Dat},skip" >> "${_uLogFil}"
           else
-            _SumDat=$(( _SumDat + DatSize ))
-            echo "${_THIS_U},${_Dom},DatSize:${DatSize}:${_Dat}"
+            _SumDat=$(( _SumDat + _DatSize ))
+            echo "${_THIS_U},${_Dom},_DatSize:${_DatSize}:${_Dat}"
+            [ "${_THIS_MODE}" = "verbose" ] && echo "  ${_THIS_U},${_Dom},_DatSize:${_DatSize}:${_Dat}" >> "${_uLogFil}"
           fi
         else
           echo "Database ${_Dat} for ${_Dom} does not exist"
@@ -382,8 +385,9 @@ You can purchase more Aegir Engines easily online:
 
   https://omega8.cc/pricing
 
-Note that we do not count(*) any site identified as temporary dev/test,
-by having in its main name a special keyword with two dots on both sides:
+To qualify as DEV/TEST with separate usage limits as specified
+in your subscription, the site should have in its main name
+a special keyword with ==two dots== on ==both sides== like this:
 
   .dev.
   .devel.
@@ -395,10 +399,8 @@ by having in its main name a special keyword with two dots on both sides:
   .stage.
   .staging.
 
-For example, a site with main name: abc.test.foo.com is by default excluded
-from your allocated resources limits (not counted for billing purposes),
-as long as the total databases space used by such sites is no greater than
-three times (3x) your limit for LIVE sites listed on our order pages.
+For example, a site with main name: abc.test.foo.com is by default
+excluded from your allocated databases limits for LIVE sites.
 
 However, if we discover that anyone is using this method to hide real
 usage via listed keywords in the main site name and adding live domain(s)
@@ -410,6 +412,7 @@ This email has been sent by your Aegir resources usage daily monitor.
 EOF
   fi
   echo "INFO: Notice sent to ${_CLIENT_EMAIL} [${_THIS_U}]: OK"
+  [ "${_THIS_MODE}" = "verbose" ] && echo "INFO: Notice Your DB Usage sent to ${_CLIENT_EMAIL} [${_THIS_U}]: OK" >> "${_uLogFil}"
 }
 
 _send_notice_disk() {
@@ -426,7 +429,7 @@ You are using more resources than allocated in your subscription.
 You have currently ${_CLIENT_CORES} Aegir ${_CLIENT_OPTION} ${_ENGINE_NR}.
 
 Your allowed disk space is ${_DSK_MIN_LIMIT} MB.
-You are currently using ${_HomSizH} MB of disk space.
+You are currently using ${_TotSizH} MB of disk space.
 
 Please reduce your usage by deleting old backups, files,
 and no longer used sites, or purchase enough Aegir Engines
@@ -437,7 +440,7 @@ You can purchase more Aegir Engines easily online:
   https://omega8.cc/buy
 
 Note that unlike with database space limits, for files related disk space
-we count all your sites, including also all dev/tmp sites, if they exist,
+we count all your sites, including also all DEV/TEST sites, if they exist,
 even if they are marked as disabled in your Aegir control panel.
 
 --
@@ -446,6 +449,7 @@ This email has been sent by your Aegir resources usage daily monitor.
 EOF
   fi
   echo "INFO: Notice sent to ${_CLIENT_EMAIL} [${_THIS_U}]: OK"
+  [ "${_THIS_MODE}" = "verbose" ] && echo "INFO: Notice Your Disk Usage sent to ${_CLIENT_EMAIL} [${_THIS_U}]: OK" >> "${_uLogFil}"
 }
 
 
@@ -524,7 +528,7 @@ _check_limits() {
     _SQL_MIN_LIMIT=5120
     _DSK_MIN_LIMIT=102400
     _DSK_MAX_LIMIT=107520
-    _SQL_DEV_EXTRA=3
+    _SQL_DEV_EXTRA=2
     _SQL_MAX_LIMIT=$(( _SQL_MIN_LIMIT + 1024 ))
     _DSK_MIN_LIMIT=$(( _DSK_MIN_LIMIT *= _DSK_CLU_LIMIT ))
     _DSK_MAX_LIMIT=$(( _DSK_MAX_LIMIT *= _DSK_CLU_LIMIT ))
@@ -542,7 +546,7 @@ _check_limits() {
   elif [ "${_CLIENT_OPTION}" = "POWER" ]; then
     _SQL_MIN_LIMIT=5120
     _DSK_MIN_LIMIT=102400
-    _SQL_DEV_EXTRA=3
+    _SQL_DEV_EXTRA=2
     _SQL_MAX_LIMIT=$(( _SQL_MIN_LIMIT + 1024 ))
     _DSK_MAX_LIMIT=$(( _DSK_MIN_LIMIT + 2560 ))
   elif [ "${_CLIENT_OPTION}" = "EDGE" ] \
@@ -602,6 +606,14 @@ _check_limits() {
   echo _SQL_DEV_LIMIT is ${_SQL_DEV_LIMIT}
   echo _DSK_MIN_LIMIT is ${_DSK_MIN_LIMIT}
   echo _DSK_MAX_LIMIT is ${_DSK_MAX_LIMIT}
+
+  if [ "${_THIS_MODE}" = "verbose" ]; then
+    echo "  SQL Usage Limit for Production Sites is ${_SQL_MIN_LIMIT} MB" >> "${_uLogFil}"
+    echo "  SQL Usage Limit for Dev/Test Sites is ${_SQL_DEV_LIMIT} MB" >> "${_uLogFil}"
+    echo "  Disk Usage Limit for Files and Solr is ${_DSK_MIN_LIMIT} MB" >> "${_uLogFil}"
+    echo " " >> "${_uLogFil}"
+  fi
+
   if [ "${_SumDatH}" -gt "${_SQL_MAX_LIMIT}" ]; then
     if [ ! -e "${_usEr}/log/CANCELLED" ] \
       && [ ! -e "${_usEr}/log/proxied.pid" ]; then
@@ -610,6 +622,7 @@ _check_limits() {
       fi
     fi
     echo SQL Usage for ${_THIS_U} above limits
+    [ "${_THIS_MODE}" = "verbose" ] && echo "  SQL Usage for ${_THIS_U} above limits" >> "${_uLogFil}"
   elif [ "${_SkipDtH}" -gt "${_SQL_DEV_LIMIT}" ]; then
     if [ ! -e "${_usEr}/log/CANCELLED" ] \
       && [ ! -e "${_usEr}/log/proxied.pid" ]; then
@@ -618,10 +631,12 @@ _check_limits() {
       fi
     fi
     echo SQL Usage for ${_THIS_U} above limits
+    [ "${_THIS_MODE}" = "verbose" ] && echo "  SQL Usage for ${_THIS_U} above limits" >> "${_uLogFil}"
   else
     echo SQL Usage for ${_THIS_U} below limits
+    [ "${_THIS_MODE}" = "verbose" ] && echo "  SQL Usage for ${_THIS_U} below limits" >> "${_uLogFil}"
   fi
-  if [ "${_HomSizH}" -gt "${_DSK_MAX_LIMIT}" ]; then
+  if [ "${_TotSizH}" -gt "${_DSK_MAX_LIMIT}" ]; then
     if [ ! -e "${_usEr}/log/CANCELLED" ] \
       && [ ! -e "${_usEr}/log/proxied.pid" ]; then
       if [ "${_THIS_MODE}" = "verbose" ]; then
@@ -629,8 +644,10 @@ _check_limits() {
       fi
     fi
     echo Disk Usage for ${_THIS_U} above limits
+    [ "${_THIS_MODE}" = "verbose" ] && echo "  Disk Usage for ${_THIS_U} above limits" >> "${_uLogFil}"
   else
     echo Disk Usage for ${_THIS_U} below limits
+    [ "${_THIS_MODE}" = "verbose" ] && echo "  Disk Usage for ${_THIS_U} below limits" >> "${_uLogFil}"
   fi
   if [ ! -e "${_usEr}/log/GDPRsent.log" ]; then
     if [ ! -e "${_usEr}/log/CANCELLED" ] \
@@ -680,7 +697,7 @@ _load_control() {
 
 _sub_count_usr_home() {
   if [ -e "$1" ]; then
-    _HqmSiz=$(du -s $1 2>&1)
+    _HqmSiz=$(du -s $1 2>/dev/null)
     _HqmSiz=$(echo "${_HqmSiz}" \
       | cut -d'/' -f1 \
       | awk '{ print $1}' \
@@ -697,13 +714,17 @@ _usage_action() {
     _load_control
     if [ -e "${_usEr}/config/server_master/nginx/vhost.d" ]; then
       if (( $(echo "${_O_LOAD} < ${_O_LOAD_MAX}" | bc -l) )); then
-        _SumDir=0
-        _SumDat=0
-        _SkipDt=0
         _HomSiz=0
-        _HxmSiz=0
         _HqmSiz=0
+        _HxmSiz=0
+        _SkipDt=0
+        _SumDat=0
+        _SumDir=0
+        _TotSiz=0
         _THIS_U=$(echo ${_usEr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
+        _uLogDir="${_usEr}/static/usage"
+        _uLogFil="${_uLogDir}/usage-${_NOW}.log"
+        [ ! -e "${_uLogDir}" ] && mkdir -p "${_uLogDir}"
         _THIS_HM_SITE=$(cat ${_usEr}/.drush/hostmaster.alias.drushrc.php \
           | grep "site_path'" \
           | cut -d: -f2 \
@@ -731,7 +752,40 @@ _usage_action() {
           find . -name "*--" -type l | xargs rm -rf &> /dev/null
           find . -name "._*" -type l | xargs rm -rf &> /dev/null
         fi
-        echo Counting User ${_usEr}
+        echo "Counting User ${_usEr}"
+        if [ "${_THIS_MODE}" = "verbose" ]; then
+          cat << EOF > "${_uLogFil}"
+Counting Usage for User ${_usEr} started on $(date)
+
+Detailed usage per site is shown first and usage summary further below.
+
+To qualify as DEV/TEST with separate usage limits as specified
+in your subscription, the site should have in its main name
+a special keyword with ==two dots== on ==both sides== like this:
+
+  .dev.
+  .devel.
+  .temp.
+  .tmp.
+  .temporary.
+  .test.
+  .testing.
+  .stage.
+  .staging.
+
+For example, a site with main name: abc.test.foo.com is by default
+excluded from your allocated databases limits for LIVE sites.
+
+Note that unlike with database space limits, for files related disk space
+we count all your sites, including also all DEV/TEST sites, if they exist,
+even if they are marked as disabled in your Aegir control panel.
+
+  _DirSize is the site files usage in kB
+  _DatSize is the site database usage in kB
+  The optional =skip= at the end of line identifies DEV/TEST site
+
+EOF
+        fi
         _DOW=$(date +%u 2>&1)
         _DOW=${_DOW//[^1-7]/}
         if [ "${_DOW}" = "2" ]; then
@@ -758,30 +812,44 @@ _usage_action() {
         if [ -L "${_usEr}/backups" ] \
           || [ -L "${_usEr}/src" ] \
           || [ -L "${_usEr}/static/files" ]; then
-          _HomSiz=$(du -D -s ${_usEr} 2>&1)
+          _HomSiz=$(du -L -s ${_usEr} 2>/dev/null)
         else
-          _HomSiz=$(du -s ${_usEr} 2>&1)
+          _HomSiz=$(du -s ${_usEr} 2>/dev/null)
         fi
         _HomSiz=$(echo "${_HomSiz}" \
           | cut -d'/' -f1 \
           | awk '{ print $1}' \
           | sed "s/[\/\s+]//g" 2>&1)
-        _HomSiz=$(( _HomSiz + _HxmSiz ))
-        _HomSizH=$(echo "scale=0; ${_HomSiz}/1024" | bc 2>&1)
+
+        _TotSiz=$(( _HomSiz + _HxmSiz ))
+
+        _TotSizH=$(echo "scale=0; ${_TotSiz}/1024" | bc 2>&1)
+        _SumDirH=$(echo "scale=0; ${_SumDir}/1024" | bc 2>&1)
         _SumDatH=$(echo "scale=0; ${_SumDat}/1024" | bc 2>&1)
         _SkipDtH=$(echo "scale=0; ${_SkipDt}/1024" | bc 2>&1)
-        _SumDirH=$(echo "scale=0; ${_SumDir}/1024" | bc 2>&1)
-        echo _HomSiz is ${_HomSiz} or ${_HomSizH} MB
-        echo _SumDir is ${_SumDir} or ${_SumDirH} MB
-        echo _SumDat is ${_SumDat} or ${_SumDatH} MB
-        echo _SkipDt is ${_SkipDt} or ${_SkipDtH} MB
+
+        echo _TotSiz is ${_TotSiz} kB or ${_TotSizH} MB
+        echo _SumDir is ${_SumDir} kB or ${_SumDirH} MB
+        echo _SumDat is ${_SumDat} kB or ${_SumDatH} MB
+        echo _SkipDt is ${_SkipDt} kB or ${_SkipDtH} MB
+
+        if [ "${_THIS_MODE}" = "verbose" ]; then
+          cat << EOF >> "${_uLogFil}"
+
+  LiveDb Memory Space Used is ${_SumDat} kB or ${_SumDatH} MB
+  DevDb Memory Space Used is ${_SkipDt} kB or ${_SkipDtH} MB
+  Total Disk Space (Files and Solr) Used is ${_TotSiz} kB or ${_TotSizH} MB
+
+EOF
+        fi
+
         _if_hosted_sys
         if [ "${_hostedSys}" = "YES" ]; then
           _check_limits
           if [ -e "${_THIS_HM_SITE}" ]; then
             su -s /bin/bash - ${_THIS_U} -c "drush8 @hostmaster \
               variable-set --always-set site_footer 'Usage on ${_DATE} \
-              | Files <strong>${_HomSizH}</strong> MB \
+              | Files <strong>${_TotSizH}</strong> MB \
               | LiveDb <strong>${_SumDatH}</strong> MB \
               | DevDb <strong>${_SkipDtH}</strong> MB \
               | <strong>${_CLIENT_CORES}</strong> \
@@ -794,7 +862,7 @@ _usage_action() {
               && [ ! -e "${_usEr}/log/proxied.pid" ]; then
               _eMail=${_CLIENT_EMAIL//\\\@/\@}
               _AegirUrl=$(cat ${_usEr}/log/domain.txt 2>&1)
-              if [ "${_HomSizH}" -gt "${_DSK_MAX_LIMIT}" ]; then
+              if [ "${_TotSizH}" -gt "${_DSK_MAX_LIMIT}" ]; then
                 _Files="!x!FilesAll"
               else
                 _Files="FilesAll"
@@ -814,7 +882,7 @@ _usage_action() {
               elif [ "${_THIS_MODE}" = "silent" ]; then
                 _LOG_FILE="usage-latest-silent.log"
               fi
-              echo "${_AegirUrl},${_Files}:${_HomSizH},${_DbsL}:${_SumDatH},${_DbsD}:${_SkipDtH},${_eMail},Subs:${_CLIENT_OPTION}:${_CLIENT_CORES},${_THIS_U}" >> /var/xdrago/log/usage/${_LOG_FILE}
+              echo "${_AegirUrl},${_Files}:${_TotSizH},${_DbsL}:${_SumDatH},${_DbsD}:${_SkipDtH},${_eMail},Subs:${_CLIENT_OPTION}:${_CLIENT_CORES},${_THIS_U}" >> /var/xdrago/log/usage/${_LOG_FILE}
             fi
             _TmDir="${_THIS_HM_PLR}/profiles/hostmaster/themes/aegir/eldir"
             _PgTpl="${_TmDir}/page.tpl.php"
@@ -844,6 +912,8 @@ _usage_action() {
           fi
         fi
         echo "Done for ${_usEr}"
+        [ "${_THIS_MODE}" = "verbose" ] && echo " " >> "${_uLogFil}"
+        [ "${_THIS_MODE}" = "verbose" ] && echo "Counting Usage for User ${_usEr} completed on $(date)" >> "${_uLogFil}"
       else
         echo "load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}"
         echo "...we have to wait..."
@@ -871,4 +941,4 @@ fi
 _usage_action >/var/xdrago/log/usage/usage-${_NOW}.log 2>&1
 echo "INFO: Completing usage monitoring on $(date)"
 exit 0
-###EOF2024###
+

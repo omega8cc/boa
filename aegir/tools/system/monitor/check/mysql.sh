@@ -22,7 +22,7 @@ _check_root
 
     # Validate and set default if necessary
     if ! [[ "$_B_NICE" =~ ^-?[0-9]+$ ]]; then
-      _B_NICE=-5
+      _B_NICE=0
     fi
 
     # Clamp the value within -20 to 19
@@ -88,9 +88,12 @@ _sql_busy_detection() {
     _SQL_LOG="/var/log/syslog"
   fi
   if [ -e "${_SQL_LOG}" ]; then
-    if [ `tail --lines=1111 ${_SQL_LOG} \
-      | grep --count "Too many connections"` -gt 999 ]; then
-      _sql_restart "BUSY MySQL"
+    if [ `tail --lines=333 ${_SQL_LOG} \
+      | grep --count "Too many connections"` -gt 111 ]; then
+      _IS_PROVISION_RUNNING=$(ps aux | grep '[p]rovision' | awk '{print $2}' 2>&1)
+      if [ -z "${_IS_PROVISION_RUNNING}" ]; then
+        _sql_restart "BUSY MySQL"
+      fi
     fi
   fi
   if [ -e "/root/.instant.busy.mysql.action.cnf" ]; then
@@ -190,4 +193,4 @@ sleep 15
 
 echo DONE!
 exit 0
-###EOF2024###
+

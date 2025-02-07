@@ -1,12 +1,12 @@
 
-# **System Administrator Guide: Managing Global Backups**
+# System Administrator Guide: Managing Global Backups
 
 This guide explains the global backup system, its configuration, supported services, and best practices. It covers only the aspects managed by the system administrator (root access), including global backups, vendor selection, and service-specific details.
 
-- New Backups for BOA SysAdmin (this document) [docs/BACKUP_ROOT.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_ROOT.md)
-- New Backups for Octopus Lshell User [docs/BACKUP_USER.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_USER.md)
-- New Backups Retention Policy Configuration [docs/BACKUP_RETENTION.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_RETENTION.md)
-- Supported Regions and Bucket Creation Guidelines [docs/BACKUP_REGIONS.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_REGIONS.md)
+- New PRO Backups for BOA SysAdmin (this document) [docs/BACKUP_ROOT.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_ROOT.md)
+- New PRO Backups for Octopus Lshell User [docs/BACKUP_USER.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_USER.md)
+- New PRO Backups Retention Policy Configuration [docs/BACKUP_RETENTION.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_RETENTION.md)
+- New PRO Backups Supported Regions and Bucket Creation Guidelines [docs/BACKUP_REGIONS.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_REGIONS.md)
 
 ---
 
@@ -136,23 +136,50 @@ The system supports multiple storage providers. Credentials for these providers 
 The global backup configuration files are stored in:
 
 ```bash
-/root/.remote_backups/config/
+/root/.remote_backups/
 ```
 
-### **Configuration Files**
+### **Configuration Files Examples**
 
-1. **`paths.txt`**:
+Configuration files which merge all other configuration files per bucket when you run `dcysetup update` command:
+
+1. **`/root/.remote_backups/paths/global_paths.txt`**:
    - Defines which global directories are included in backups.
    - Example:
      ```bash
-     _SOURCE="/data /etc /home /opt/solr4 /var/aegir /var/solr7 /var/www /var/xdrago"
+     _SOURCE="/etc /opt/solr4 /var/aegir /var/solr7 /var/www /var/xdrago"
+     _INCLUDE_PATHS="--include /data/disk/arch --include-regexp '^/var/backups/barracuda.*'"
+     _EXCLUDE_PATHS="--exclude /data/disk --exclude /var/aegir/backups"
+     _INCLUDE_LIST="/root/.remote_backups/paths/.backboa.include.list"
+     _EXCLUDE_LIST="/root/.remote_backups/paths/.backboa.exclude.list"
      ```
 
-2. **`include.txt`** and **`exclude.txt`**:
-   - Used to include or exclude additional absolute paths.
+2. **`/root/.remote_backups/paths/data_paths.txt`**:
+   - Defines which data directories are included in backups.
+   - Example:
+     ```bash
+     _SOURCE=""
+     _INCLUDE_PATHS="--include /data/disk/o1 --include /data/disk/o2"
+     _EXCLUDE_PATHS="--exclude-regexp '^/data/disk/.*/backups/'"
+     _INCLUDE_LIST="/root/.remote_backups/paths/.backboa.include.list"
+     _EXCLUDE_LIST="/root/.remote_backups/paths/.backboa.exclude.list"
+     ```
 
-3. **`include_regexp.txt`** and **`exclude_regexp.txt`**:
-   - Use regex patterns for fine-grained control of include/exclude logic.
+3. **`/root/.remote_backups/paths/.backboa.*`**:
+   - Configuration files with good defaults which are merged per system user bucket and referenced in either `global_paths.txt` or `data_paths.txt` when you run `dcysetup update` command, used to include or exclude additional absolute paths and regex patterns for fine-grained control of include/exclude logic:
+
+     ```bash
+     .backboa.data_exclude.merged.file
+     .backboa.data_include.merged.file
+     .backboa.exclude.file
+     .backboa.exclude.list
+     .backboa.exclude_data_regexp.file
+     .backboa.global_exclude.merged.file
+     .backboa.global_include.merged.file
+     .backboa.include_data.file
+     .backboa.include_global.file
+     .backboa.include_global_regexp.file
+     ```
 
 ---
 
@@ -173,13 +200,12 @@ The global backup configuration files are stored in:
 
 Credentials for global backups are stored in `/root/.remote_backups/credentials/`. Each file corresponds to a specific storage service.
 
-### **AWS Example (`aws.txt`)**
+### **Backblaze B2 (`b2.txt`)**
 ```bash
-export AWS_ACCESS_KEY_ID="your_aws_access_key"
-export AWS_SECRET_ACCESS_KEY="your_aws_secret_key"
-export AWS_REGION="your_aws_region"  # Example: "us-east-1"
-export KEEP_WITHIN="3M"              # Retain backups from the last 3 months
-export FULL_BACKUP_FREQUENCY="28D"   # Create a full backup every 28 days
+export B2_ACCOUNT_ID="your_b2_account_id"
+export B2_APPLICATION_KEY="your_b2_application_key"
+export KEEP_WITHIN="3M"
+export FULL_BACKUP_FREQUENCY="28D"
 ```
 
 ### **Permissions**
@@ -195,26 +221,30 @@ chmod 600 /root/.remote_backups/credentials/*.txt
 Restoring global backups follows the same logic as [user backups](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_USER.md), except administrators manage the entire system. Use the `multiback` command for global restores:
 
 ```bash
-multiback restore <SERVICE> <RESTORE_TARGET> <RESTORE_PATH> [RESTORE_TIME]
+multiback restore <SERVICE> <USER> <RESTORE_TARGET> <RESTORE_PATH> [RESTORE_TIME]
 ```
 
 ---
 
 ### **Restore Examples**
 
-1. **Restore All Global Files to Default Directory**:
+1. **Restore All Files per System User to Default Directory**:
    ```bash
-   multiback restore aws /var/backups
+   multiback restore b2 global /var/backups/restored
+   multiback restore b2 data /var/backups/restored
+   multiback restore b2 custom /var/backups/restored
    ```
 
 2. **Restore a Specific Directory**:
    ```bash
-   multiback restore aws /var/backups var/www/example
+   multiback restore b2 global /var/backups/restored var/www/example
+   multiback restore b2 data /var/backups/restored data/disk/o1
+   multiback restore b2 custom /var/backups/restored custom/path/foo/bar
    ```
 
 3. **Restore from a Specific Time**:
    ```bash
-   multiback restore aws /var/backups data/disk/john/static/platform 7D
+   multiback restore b2 data /var/backups/restored data/disk/o1/static/platform 7D
    ```
 
 ---
@@ -224,11 +254,11 @@ multiback restore <SERVICE> <RESTORE_TARGET> <RESTORE_PATH> [RESTORE_TIME]
 1. **Restore Path Must Be Absolute Without Leading Slash**:
    - Paths must reflect the full directory structure used during backups, but cannot start with `/`.
    - Example:
-     - Correct: `data/disk/john/static/platform`
-     - Incorrect: `/data/disk/john/static/platform`
+     - Correct: `data/disk/o1/static/platform`
+     - Incorrect: `/data/disk/o1/static/platform`
 
 2. **Restore Target Directory Can Be Relative or Absolute**:
-   - Default: `/var/backups/`
+   - Default: `/var/backups/restored/`
    - You may specify a custom restore target directory.
 
 3. **Default Behavior**:

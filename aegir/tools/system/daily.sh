@@ -4,7 +4,7 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 export _tRee=pro
-export _xSrl=550proT04
+export _xSrl=560proT00
 
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
@@ -94,7 +94,7 @@ _find_fast_mirror_early() {
   fi
   _ffMirr=$(which ffmirror 2>&1)
   if [ -x "${_ffMirr}" ]; then
-    _ffList="/var/backups/boa-mirrors-2024-12.txt"
+    _ffList="/var/backups/boa-mirrors-2025-01.txt"
     mkdir -p /var/backups
     if [ ! -e "${_ffList}" ]; then
       echo "eu.files.aegir.cc"  > ${_ffList}
@@ -704,7 +704,7 @@ not secure codebase, even if it was not affected by Drupageddon bug
 directly.
 
 Please be a good web citizen and upgrade to latest Drupal core provided
-by BOA-5.5.0-pro. As a bonus, you will be able to speed up your sites
+by BOA-5.6.0-pro. As a bonus, you will be able to speed up your sites
 considerably by switching PHP-FPM to 8.3
 
 We recommend to follow this upgrade how-to:
@@ -788,7 +788,7 @@ not secure codebase, even if it was not affected by Drupageddon bug
 directly.
 
 Please be a good web citizen and upgrade to latest Drupal core provided
-by BOA-5.5.0-pro. As a bonus, you will be able to speed up your sites
+by BOA-5.6.0-pro. As a bonus, you will be able to speed up your sites
 considerably by switching PHP-FPM to 8.3
 
 We recommend to follow this upgrade how-to:
@@ -1899,12 +1899,22 @@ _cleanup_ghost_vhosts() {
     fi
     if [ -e "${_usEr}/config/server_master/nginx/vhost.d/${_Dom}" ]; then
       local _thisVhost="${_usEr}/config/server_master/nginx/vhost.d/${_Dom}"
-      if grep -q -e "ssl http2" -e "ssl_stapling" "${_thisVhost}"; then
+      local _fixHttpReqired=NO
+      if grep -q -e "ssl http2" "${_thisVhost}"; then
+        local _fixHttpReqired=YES
+      elif ! grep -q -E '^\s*http2\s+on;$' "${_thisVhost}"; then
+        local _fixHttpReqired=YES
+      elif grep -q -E '^\s+listen.*443\s+quic;$' "${_thisVhost}"; then
+        local _fixHttpReqired=YES
+      fi
+      if [ "${_fixHttpReqired}" = "YES" ]; then
         echo "FIXING vhost for ${_Dom}"
         # Remove 'http2' from 'listen' directives with varying spaces
         sed -i -E 's/(listen\s+[^;]*\s+ssl)\s+http2;$/\1;/' "${_thisVhost}"
         # Remove existing 'http2 on;' lines with varying spaces
         sed -i -E '/^\s*http2\s+on;/d' "${_thisVhost}"
+        # Remove existing 'quic' lines with varying spaces
+        sed -i -E '/^\s+listen.*443\s+quic;/d' "${_thisVhost}"
         # Remove unwanted directives with varying spaces
         sed -i -E \
           -e '/^\s*ssl_stapling\b/d' \
@@ -1914,9 +1924,18 @@ _cleanup_ghost_vhosts() {
           "${_thisVhost}"
         # Update 'ssl_prefer_server_ciphers' directive, handling spaces
         sed -i -E 's/^\s*ssl_prefer_server_ciphers\s+.*$/ssl_prefer_server_ciphers on;/' "${_thisVhost}"
-        # Add 'http2 on;' after 'ssl_prefer_server_ciphers on;', only if not already present
-        if ! grep -q -E '^\s*http2\s+on;$' "${_thisVhost}"; then
-          sed -i '/ssl_prefer_server_ciphers on;/ a\  http2 on;' "${_thisVhost}"
+        # Update 'http3_hq' directive, handling spaces
+        sed -i -E 's/http3_hq\s+on;$/http3_hq on;/' "${_thisVhost}"
+        if grep -q 'ssl_prefer_server_ciphers' "${_thisVhost}"; then
+          # Add 'http2 on;' after 'ssl_prefer_server_ciphers on;', only if not already present
+          if ! grep -q -E '^\s*http2\s+on;$' "${_thisVhost}"; then
+            sed -i '/ssl_prefer_server_ciphers on;/ a\  http2 on;' "${_thisVhost}"
+          fi
+        elif grep -q -E '^\s*#http3_hq\s+on;$' "${_thisVhost}"; then
+          # Add 'http2 on;' after 'http3_hq on;', only if not already present
+          if ! grep -q -E '^\s*http2\s+on;$' "${_thisVhost}"; then
+            sed -i '/http3_hq on;/ a\  http2 on;' "${_thisVhost}"
+          fi
         fi
       fi
       _Plx=$(cat ${_usEr}/config/server_master/nginx/vhost.d/${_Dom} \
@@ -3423,4 +3442,4 @@ find /run/*_backup.pid -mtime +1 -exec rm -rf {} \; &> /dev/null
 rm -f /run/daily-fix.pid
 echo "INFO: Daily maintenance complete"
 exit 0
-###EOF2024###
+

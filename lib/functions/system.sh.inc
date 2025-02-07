@@ -723,6 +723,9 @@ _tune_memory_limits() {
   _RAM=$(free -mt | grep Mem: | awk '{ print $2 }' 2>&1)
   if [ "${_RESERVED_RAM}" -gt 0 ]; then
     _RAM=$(( _RAM - _RESERVED_RAM ))
+  else
+    _RESERVED_RAM=$(( _RAM / 4 ))
+    _RAM=$(( _RAM - _RESERVED_RAM ))
   fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "TUNE: _CPU_NR is ${_CPU_NR}"
@@ -1847,10 +1850,8 @@ _if_php_idle_on_off() {
   if [ "${_PHP_IDLE}" = "ON" ]; then
     [ -e "/root/.allow-php-multi-install-cleanup.cnf" ] && rm -f /root/.allow-php-multi-install-cleanup.cnf
     if [ ! -e "/var/xdrago/log" ] && [ -e "/var/xdrago_wait/log" ]; then
-      rm -f /var/xdrago_wait/log/*.log
       rm -f /var/xdrago_wait/log/._php_libs_fix_*.pid
     else
-      rm -f /var/xdrago/log/*.log
       rm -f /var/xdrago/log/._php_libs_fix_*.pid
     fi
     touch /root/.proxy.cnf
@@ -5312,9 +5313,9 @@ _finale() {
     fi
   fi
   if [[ "${_hName}" =~ ".aegir.cc"($) ]]; then
-    _MTD_VR="BOA-5.5.0-omm"
+    _MTD_VR="BOA-5.6.0-omm"
   elif [ -e "/root/.host8.cnf" ]; then
-    _MTD_VR="BOA-5.5.0-aln"
+    _MTD_VR="BOA-5.6.0-aln"
   else
     _MTD_VR="${_X_VERSION}"
   fi
@@ -5945,10 +5946,8 @@ _if_post_major_os_upgrade() {
       && [ "${_REBUILD_SRC_ON_AUTO_NOW}" = "YES" ]; then
       _msg "INFO: Time for re-installing services built from sources..."
       if [ ! -e "/var/xdrago/log" ] && [ -e "/var/xdrago_wait/log" ]; then
-        rm -f /var/xdrago_wait/log/*.log
         rm -f /var/xdrago_wait/log/._php_libs_fix_*.pid
       else
-        rm -f /var/xdrago/log/*.log
         rm -f /var/xdrago/log/._php_libs_fix_*.pid
       fi
       _PURGE_MODE=OFF

@@ -25,12 +25,12 @@ _CMD_FILE="command.txt"
 
 # Function to display usage information
 _usage() {
-  echo "Usage: $0 restore <SERVICE> [RESTORE_TARGET] [RESTORE_PATH] [RESTORE_TIME]"
+  echo "Usage: $0 restore <SERVICE> [RESTORE_PATH] [RESTORE_TIME]"
   echo
   echo "Example command:"
   echo "  Restore:"
-  echo "  $0 restore aws ~/static/restores static/projects 1D"
-  echo "  $0 restore b2 ~/static/restores static/another-project 2W"
+  echo "  $0 restore aws static/projects 1D"
+  echo "  $0 restore b2 static/another-project 2W"
   echo
   echo "Supported services:"
   echo "  aws, aws_one_zone, aws_standard_ia, azure, b2, cloudflare, do_spaces, gcs, ibm, linode, wasabi"
@@ -120,8 +120,12 @@ _validate_credentials() {
         continue
       fi
 
-      # Safely export the variable
-      export ${_varname}=$(_url_encode "${_value}")
+      # Safely export the variable (URL-encode if needed)
+      if [ "${_service}" = "b2" ]; then
+        export ${_varname}=$(_url_encode "${_value}")
+      else
+        export ${_varname}="${_value}"
+      fi
     else
       _log_issue "credentials" "${_cred_file}" "Invalid syntax at line ${_line_number}: ${_line}"
     fi
@@ -146,11 +150,13 @@ _load_credentials() {
     export PASSPHRASE=$(cat "${_secret_file}")
   else
     echo "Secret file ${_secret_file} not found. Unable to proceed."
+    _remove_pid_file "${_PIDFILE}"
     exit 1
   fi
 
   if [ ! -f "${_cred_file}" ]; then
     echo "Error: Credentials file '${_cred_file}' not found."
+    _remove_pid_file "${_PIDFILE}"
     exit 1
   fi
 
@@ -162,14 +168,15 @@ _load_credentials() {
 _load_paths() {
   local _user="$1"
   if [ "${_user}" != "arch" ] && [ "${_user}" != "data" ] && [ "${_user}" != "global" ] && [ "${_user}" != "custom" ]; then
-    export _paths_file="/data/disk/${_user}/remote_backups/paths/paths.txt"
+    local _paths_file="/data/disk/${_user}/remote_backups/paths/paths.txt"
   fi
   if [ "${_user}" = "global" ] || [ "${_user}" = "data" ] || [ "${_user}" = "custom" ]; then
-    export _global_paths_file="/root/.remote_backups/paths/${_user}_paths.txt"
+    local _paths_file="/root/.remote_backups/paths/${_user}_paths.txt"
   fi
 
   if [ ! -f "${_paths_file}" ]; then
     echo "Error: Paths configuration file '${_paths_file}' not found."
+    _remove_pid_file "${_PIDFILE}"
     exit 1
   fi
 
@@ -197,30 +204,34 @@ _send_restore_confirmation_email() {
 
   if [ -n "${_recipient}" ]; then
     echo "Sending email report on $(date)" >> ${_LOGFILE}
-    s-nail -s "${_subject}" "${_MY_EMAIL}" < ${_LOGFILE}
+    s-nail -s "${_subject}" "${_recipient}" < ${_LOGFILE}
   fi
 }
 
 # Function to restore backup
 _restore() {
-  local _restore_target=$1
-  local _restore_path=$2
-  local _restore_time=$3
-  local _restore_command="${_DCY_MN_CMD} restore"
+  local _restore_path=$1
+  local _restore_time=$2
+  local _restore_command="${_DCY_MN_CMD} restore --no-restore-owner"
+  local _restore_target="/data/disk/${_user}/static/restores"
 
-  # Ensure _RESTORE_TARGET exists
-  if [ -n "${_restore_target}" ]; then
-    if [ ! -d "${_restore_target}" ]; then
-      echo "Creating restore target directory: ${_restore_target}"
-      mkdir -p "${_restore_target}"
-    fi
-  else
-    _restore_target="/data/disk/${_user}/static/restores"
-    if [ ! -d "${_restore_target}" ]; then
-      echo "Creating restore target directory: ${_restore_target}"
-      mkdir -p "${_restore_target}"
-    fi
+  # Ensure _restore_target exists
+  if [ ! -d "${_restore_target}" ]; then
+    echo "Creating restore target directory: ${_restore_target}"
+    mkdir -p ${_restore_target}
+    chown ${_user}:users ${_restore_target}
   fi
+
+  # Remove any trailing slash from _restore_path for proper basename extraction
+  _clean_restore_path="${_restore_path%/}"
+
+  # Extract the last part (basename) of the restore path.
+  _last_part=$(basename "${_clean_restore_path}")
+
+  # Combine _restore_target with the extracted basename.
+  # Also, remove any trailing slash from _restore_target to avoid double slashes.
+  _final_restore_target="${_restore_target%/}/${_last_part}"
+
   if [ -n "${_restore_time}" ]; then
     _restore_command="${_restore_command} --time ${_restore_time}"
   fi
@@ -228,10 +239,9 @@ _restore() {
   if [ -n "${_restore_path}" ]; then
     _restore_command="${_restore_command} --path-to-restore ${_restore_path}"
   fi
-  _restore_command="${_restore_command} ${_restore_target}"
+  _restore_command="${_restore_command} ${_final_restore_target}"
 
   echo "Command is ${_restore_command}"
-  # ${_DCY_MN_CMD} restore --time ${_restore_time} ${_BACKUP_TARGET} --path-to-restore ${_restore_path} ${_restore_target}
 
   echo "MyBackup Restore for [${_user}] on [$(date)]" >> ${_LOGFILE}
   eval "${_restore_command}" >> ${_LOGFILE}
@@ -309,6 +319,7 @@ _set_backup_target() {
       ;;
     *)
       echo "Error: Unknown service ${_service}"
+      _remove_pid_file "${_PIDFILE}"
       exit 1
       ;;
   esac
@@ -316,14 +327,15 @@ _set_backup_target() {
 
 # Function to validate restore command
 _validate_restore_command() {
-  local _command=$1
+  # Store all arguments in an array
+  local args=("$@")
 
-  # Split the command into parts
-  local _action=$(echo "${_command}" | awk '{print $1}')
-  local _service=$(echo "${_command}" | awk '{print $2}')
-  local _restore_target=$(echo "${_command}" | awk '{print $3}')
-  local _restore_path=$(echo "${_command}" | awk '{print $4}')
-  local _restore_time=$(echo "${_command}" | awk '{print $5}')
+  # Now use the array indices to assign variables.
+  # Note: Array indices start at 0.
+  local _action="${args[0]}"
+  local _service="${args[1]}"
+  local _restore_path="${args[2]}"
+  local _restore_time="${args[3]}"
 
   # Ensure the command starts with "restore"
   if [[ "${_action}" != "restore" ]]; then
@@ -341,12 +353,6 @@ _validate_restore_command() {
       return 1
       ;;
   esac
-
-  # Validate restore target (optional, must be a directory within user's allowed path)
-  if [[ -n "${_restore_target}" && ! "${_restore_target}" =~ ^/data/disk/${_user}/ ]]; then
-    echo "Error: Restore target '${_restore_target}' is outside allowed directories."
-    return 1
-  fi
 
   # Validate restore path (optional, no leading slash)
   if [[ -n "${_restore_path}" && "${_restore_path}" =~ ^/ ]]; then
@@ -369,41 +375,37 @@ _validate_restore_command() {
 export _run_as_user=$(whoami)
 
 # Main script
-if [[ "$#" -eq 0 ]] && [ "${_run_as_user}" = "root" ]; then
-
+_main_script() {
   if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt 0 ]; then
     echo "[$(date)] Active duplicity process detected, will try again later..." >> /var/log/mybackup_waiting_queue.log
     exit 1
   fi
-
   # Process queued commands for all users
   for _user_dir in "${_BASE_DIR}"/*; do
     if [[ -d "${_user_dir}" ]]; then
       export _user=$(basename "${_user_dir}")
       export _user_run_dir="${_user_dir}/${_RUN_SUBDIR}"
       export _user_cmd_file="${_user_run_dir}/${_CMD_FILE}"
-
       if [[ -f "${_user_cmd_file}" ]]; then
         export _command=$(cat "${_user_cmd_file}")
-        echo "Validating command for user ${_user}: ${_command}"
-
-        # Validate the command
-        if _validate_restore_command "${_command}"; then
-          echo "Command validated successfully. Executing for user ${_user}."
-          sudo -u "${_user}" "$0" ${_command}
-          wait
-
-          # Clean up the command file
-          echo "[$(date)] Command was run for user ${_user}: ${_command}" >> /var/log/mybackup_commands_history.log
-          echo "[$(date)] Command was run for user ${_user}: ${_command}" >> /data/disk/${_user}/log/mybackup_commands_history.log
-          rm -f "${_user_cmd_file}"
-          sleep 60
-        else
-          echo "Error: Invalid command for user ${_user}. Skipping."
-          # Optionally log invalid commands for audit
-          echo "[$(date)] Invalid command for user ${_user}: ${_command}" >> /var/log/mybackup_invalid_commands.log
-          echo "[$(date)] Invalid command for user ${_user}: ${_command}" >> /data/disk/${_user}/log/mybackup_invalid_commands.log
-        fi
+        echo "Executing backup restore for user ${_user}."
+        chmod 755 /data/disk/${_user}/remote_backups/paths
+        local _user_credentials_dir="/data/disk/${_user}/static/control/remote_backups/credentials"
+        chmod 755 ${_user_credentials_dir}
+        chmod 644 ${_user_credentials_dir}/*.txt
+        chattr -i /data/disk/${_user}/remote_backups/.secret.txt
+        chmod 644 /data/disk/${_user}/remote_backups/.secret.txt
+        su -s /bin/bash - ${_user} -c "mybackup ${_command}"
+        wait
+        # Clean up the command file
+        echo "[$(date)] Command was run for user ${_user}: ${_command}" >> /var/log/mybackup_commands_history.log
+        echo "[$(date)] Command was run for user ${_user}: ${_command}" >> /data/disk/${_user}/log/mybackup_commands_history.log
+        rm -f "${_user_cmd_file}"
+        chmod 700 ${_user_credentials_dir}
+        chmod 600 ${_user_credentials_dir}/*.txt
+        chmod 600 /data/disk/${_user}/remote_backups/.secret.txt
+        chattr +i /data/disk/${_user}/remote_backups/.secret.txt
+        sleep 10
       fi
     fi
   _print_env "mybackup_run_as_user"
@@ -412,10 +414,18 @@ if [[ "$#" -eq 0 ]] && [ "${_run_as_user}" = "root" ]; then
   export _user_cmd_file=
   done
   exit 0
+}
+
+if [[ "$#" -eq 0 ]] && [ "${_run_as_user}" = "root" ]; then
+  _main_script
 fi
 
 # Extract the current user
 export _user=$(whoami | sed 's/\.ftp$//')
+
+_userEmail=""
+[ -e "/data/disk/${_user}/log/email.txt" ] && _userEmail="$(cat /data/disk/${_user}/log/email.txt)"
+[ -n "${_userEmail}" ] && export _userEmail=$(echo -n ${_userEmail} | tr -d "\n" 2>&1)
 
 if [[ $(whoami) == *.ftp ]]; then
   _user_run_dir="/data/disk/${_user}/static/control/.run"
@@ -438,15 +448,10 @@ if [[ $(whoami) == *.ftp ]]; then
   exit 0
 fi
 
-_userEmail=""
-[ -e "/data/disk/${_user}/log/email.txt" ] && _userEmail="$(cat /data/disk/${_user}/log/email.txt)"
-[ -n "${_userEmail}" ] && export _userEmail=$(echo -n ${_userEmail} | tr -d "\n" 2>&1)
-
 export _ACTION=$1
 export _SERVICE=$2
-export _RESTORE_TARGET="${3:-/data/disk/${_user}/static/restores/}"
-export _RESTORE_PATH="${4:-}"
-export _RESTORE_TIME="${5:-}"
+export _RESTORE_PATH="${3:-}"
+export _RESTORE_TIME="${4:-}"
 export _PIDFILE="/data/disk/${_user}/log/mybackup_${_SERVICE}_${_user}.pid"
 export _LOGPTH="/data/disk/${_user}/log"
 export _LOGFILE="${_LOGPTH}/mybackup_${_SERVICE}_${_user}.log"
@@ -466,7 +471,7 @@ _print_env "mybackup_main"
 case "${_ACTION}" in
   restore)
     _set_backup_target "${_SERVICE}" "${_user}"
-    _restore "${_RESTORE_TARGET}" "${_RESTORE_PATH}" "${_RESTORE_TIME}"
+    _restore "${_RESTORE_PATH}" "${_RESTORE_TIME}"
     ;;
   *)
     _usage
@@ -484,7 +489,6 @@ _remove_pid_file "${_PIDFILE}"
   export _NAME=
   export _PIDFILE=
   export _RESTORE_PATH=
-  export _RESTORE_TARGET=
   export _RESTORE_TIME=
   export _SERVICE=
   export _cred_file=

@@ -874,7 +874,7 @@ _find_fast_mirror_early() {
   fi
   _ffMirr=$(which ffmirror 2>&1)
   if [ -x "${_ffMirr}" ]; then
-    _ffList="/var/backups/boa-mirrors-2024-12.txt"
+    _ffList="/var/backups/boa-mirrors-2025-01.txt"
     mkdir -p /var/backups
     if [ ! -e "${_ffList}" ]; then
       echo "eu.files.aegir.cc"  > ${_ffList}
@@ -1221,7 +1221,7 @@ _up_proceed() {
   fi
 
   export _tRee="${_tRee}"
-  export _rLsn="BOA-5.5.0"
+  export _rLsn="BOA-5.6.0"
   export _rlsE="${_rLsn}-${_tRee}"
   export _bRnh="5.x-${_tRee}"
   export _rgUrl="http://files.aegir.cc/versions/${_tRee}/boa"

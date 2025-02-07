@@ -3,7 +3,7 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-export _sPid="f79"
+export _sPid="f71"
 
 # Function to create or update global paths configuration
 _create_global_paths_config() {
@@ -18,7 +18,7 @@ _create_global_paths_config() {
   _include_global_regexp_file="${_global_config_dir}/.backboa.include_global_regexp.file"
   _exclude_data_regexp_file="${_global_config_dir}/.backboa.exclude_data_regexp.file"
   _merged_global_include_file="${_global_config_dir}/.backboa.global_include.merged.file"
-  _merged_data_include_file="${_data_config_dir}/.backboa.data_include.merged.file"
+  _merged_data_include_file="${_global_config_dir}/.backboa.data_include.merged.file"
   _merged_global_exclude_file="${_global_config_dir}/.backboa.global_exclude.merged.file"
   _merged_data_exclude_file="${_global_config_dir}/.backboa.data_exclude.merged.file"
   _global_ctrl_file="${_global_config_dir}/.backboa.${_sPid}.paths.ctrl.file"
@@ -61,17 +61,6 @@ _create_global_paths_config() {
     _target_file=$2
     if [ -f "${_source_file}" ]; then
       grep -v -F -x -f "${_target_file}" "${_source_file}" >> "${_target_file}"
-    fi
-  }
-
-  # Function to add a single backslash at the end of each line except the last
-  _add_backslashes() {
-    local file="$1"
-    if [ -f "${file}" ]; then
-      # Remove existing trailing backslashes to avoid duplication
-      sed -i 's/[[:space:]]*\\$//' "${file}"
-      # Append a backslash to all lines except the last one
-      sed -i '$!s/$/ \\/' "${file}"
     fi
   }
 
@@ -128,7 +117,6 @@ EOF
     # _include_global_file
     cat << EOF > "${_include_global_file}"
 --include /data/disk/arch
---include /root
 --include /var/backups/csf
 --include /var/backups/dragon
 --include /var/backups/reports
@@ -136,8 +124,6 @@ EOF
 
     # _exclude_global_file
     cat << EOF > "${_exclude_global_file}"
---exclude /data/disk
---exclude /root/.cache
 --exclude /var/aegir/backups
 EOF
 
@@ -153,7 +139,7 @@ EOF
         # Remove the trailing slash for consistency
         sanitized_subdir="${subdir%/}"
         # Append the --include line to the include data file
-        if [ "${sanitized_subdir}" != "arch" ]; then
+        if [ "${sanitized_subdir}" != "/data/disk/arch" ]; then
           echo "--include ${sanitized_subdir}" >> "${_include_data_file}"
         fi
       fi
@@ -169,17 +155,28 @@ EOF
     # _include_global_regexp_file
     cat << EOF > "${_include_global_regexp_file}"
 --include-regexp '^/var/backups/barracuda.*'
+--include-regexp '^/root/\..*\.cnf$'
 EOF
 
     # _exclude_data_regexp_file
     cat << EOF > "${_exclude_data_regexp_file}"
+--exclude-regexp '^/data/disk/.*/\.tmp/'
 --exclude-regexp '^/data/disk/.*/backup-exports/'
 --exclude-regexp '^/data/disk/.*/backups/'
---exclude-regexp '^/data/disk/.*/static/.tmp/'
+--exclude-regexp '^/data/disk/.*/clients/'
+--exclude-regexp '^/data/disk/.*/src/'
+--exclude-regexp '^/data/disk/.*/static/\.tmp/'
 --exclude-regexp '^/data/disk/.*/static/restores/'
 --exclude-regexp '^/data/disk/.*/static/tmp/'
 --exclude-regexp '^/data/disk/.*/static/trash/'
+--exclude-regexp '^/data/disk/.*/u/'
+--exclude-regexp '^/data/disk/.*/undo/'
 --exclude-regexp '^/data/disk/arch/.*'
+--exclude-regexp '^/home/.*/\.tmp/'
+--exclude-regexp '^/home/.*/backups/'
+--exclude-regexp '^/home/.*/clients/'
+--exclude-regexp '^/home/.*/platforms/'
+--exclude-regexp '^/home/.*/static/'
 --exclude-regexp '^/var/www/.*'
 EOF
 
@@ -202,17 +199,11 @@ EOF
       cat "${_exclude_data_regexp_file}" > "${_merged_data_exclude_file}"
     fi
 
-    # Finalize by adding a backslash at the end of each line except the last
-    [ -e "${_merged_data_include_file}" ] && _add_backslashes "${_merged_data_include_file}"
-    [ -e "${_merged_data_exclude_file}" ] && _add_backslashes "${_merged_data_exclude_file}"
-    [ -e "${_merged_global_include_file}" ] && _add_backslashes "${_merged_global_include_file}"
-    [ -e "${_merged_global_exclude_file}" ] && _add_backslashes "${_merged_global_exclude_file}"
-
     # Convert the exclude file contents to a single-line variable without backslashes and excessive whitespace
-    [ -e "${_merged_data_include_file}" ] && _MERGED_DATA_INCLUDE=$(sed 's/\\//g' "${_merged_data_include_file}" | tr '\n' ' ' | tr -s ' ' | sed 's/^ *//;s/ *$//')
-    [ -e "${_merged_data_exclude_file}" ] && _MERGED_DATA_EXCLUDE=$(sed 's/\\//g' "${_merged_data_exclude_file}" | tr '\n' ' ' | tr -s ' ' | sed 's/^ *//;s/ *$//')
-    [ -e "${_merged_global_include_file}" ] && _MERGED_GLOBAL_INCLUDE=$(sed 's/\\//g' "${_merged_global_include_file}" | tr '\n' ' ' | tr -s ' ' | sed 's/^ *//;s/ *$//')
-    [ -e "${_merged_global_exclude_file}" ] && _MERGED_GLOBAL_EXCLUDE=$(sed 's/\\//g' "${_merged_global_exclude_file}" | tr '\n' ' ' | tr -s ' ' | sed 's/^ *//;s/ *$//')
+    [ -e "${_merged_data_include_file}" ] && _MERGED_DATA_INCLUDE=$(cat "${_merged_data_include_file}" | tr '\n' ' ' | tr -s ' ' | sed 's/^ *//;s/ *$//')
+    [ -e "${_merged_data_exclude_file}" ] && _MERGED_DATA_EXCLUDE=$(cat "${_merged_data_exclude_file}" | tr '\n' ' ' | tr -s ' ' | sed 's/^ *//;s/ *$//')
+    [ -e "${_merged_global_include_file}" ] && _MERGED_GLOBAL_INCLUDE=$(cat "${_merged_global_include_file}" | tr '\n' ' ' | tr -s ' ' | sed 's/^ *//;s/ *$//')
+    [ -e "${_merged_global_exclude_file}" ] && _MERGED_GLOBAL_EXCLUDE=$(cat "${_merged_global_exclude_file}" | tr '\n' ' ' | tr -s ' ' | sed 's/^ *//;s/ *$//')
 
     # Create the final paths configuration file
     cat << EOF > "${_global_paths_file}"

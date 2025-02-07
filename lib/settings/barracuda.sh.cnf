@@ -885,6 +885,11 @@ _STRICT_BIN_PERMISSIONS=YES
 ###
 ### Example for 256MB: _RESERVED_RAM=256
 ###
+### If not specified, BOA will auto-reserve
+### 1/4 of RAM to make sure that the system
+### doesn't experience frequent OOM incidents
+### when running heavy tasks like backups.
+###
 _RESERVED_RAM=0
 
 ###
@@ -1151,7 +1156,7 @@ _BOA_REPO_NAME="boa"
 _BOA_REPO_GIT_URL="${_gitHub}"
 
 export _tRee=pro
-export _xSrl=550proT04
+export _xSrl=560proT00
 
 
 ###
@@ -1229,7 +1234,7 @@ _find_fast_mirror_cnf() {
   fi
   _ffMirr=$(which ffmirror 2>&1)
   if [ -x "${_ffMirr}" ]; then
-    _ffList="/var/backups/boa-mirrors-2024-12.txt"
+    _ffList="/var/backups/boa-mirrors-2025-01.txt"
     mkdir -p /var/backups
     if [ ! -e "${_ffList}" ]; then
       echo "eu.files.aegir.cc"  > ${_ffList}

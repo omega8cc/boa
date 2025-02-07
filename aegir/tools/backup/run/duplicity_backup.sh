@@ -82,6 +82,35 @@ _if_hosted_sys() {
   fi
 }
 
+# Function to calculate RAM usage percentage as an integer
+_calculate_ram_usage_percent() {
+  _total_ram_kb=$1
+  _available_ram_kb=$2
+  used_ram_kb=$((_total_ram_kb - _available_ram_kb))
+
+  # Using integer division to get a whole number percentage
+  echo $(( (used_ram_kb * 100) / _total_ram_kb ))
+}
+
+# Function to check and display system info
+_check_system_ram() {
+  # Get the total and available RAM in KB
+  _total_ram_kb=$(grep MemTotal /proc/meminfo | awk '{print $2}')
+  _available_ram_kb=$(grep MemAvailable /proc/meminfo | awk '{print $2}')
+
+  # Calculate RAM usage percentage
+  _ram_usage_percent=$(_calculate_ram_usage_percent ${_total_ram_kb} ${_available_ram_kb})
+}
+
+# Function to check and optimize RAM and disk caches
+_optimize_ram() {
+  swapoff -a
+  _check_system_ram
+  if [ "${_ram_usage_percent}" -gt 50 ]; then
+    sync && echo 3 | sudo tee /proc/sys/vm/drop_caches
+  fi
+}
+
 # Function to verify root access
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
@@ -119,10 +148,9 @@ _check_root() {
   else
     _useCpu=1
   fi
-  swapoff -a
-  wait
 }
 _check_root
+_optimize_ram
 _if_hosted_sys
 _verify_boa_keys
 _print_env "multiback_init"
@@ -251,19 +279,39 @@ _validate_credentials() {
 
   while IFS= read -r _line || [ -n "${_line}" ]; do
     _line_number=$(( _line_number + 1 ))
+
     # Trim leading and trailing whitespace
     _line="${_line#"${_line%%[![:space:]]*}"}"
     _line="${_line%"${_line##*[![:space:]]}"}"
 
-    # Skip comments and empty lines
-    if [[ -z "${_line}" || "${_line}" == \#* ]]; then
+    # Skip empty lines immediately
+    if [[ -z "${_line}" ]]; then
+      continue
+    fi
+
+    # Remove full-line comments: lines that *start* with '#'
+    if [[ "${_line}" == \#* ]]; then
+      continue
+    fi
+
+    # Remove anything after (and including) the first '#' for inline comments
+    # (This is a naive approach that does not consider # within quotes)
+    if [[ "${_line}" == *"#"* ]]; then
+      _line="${_line%%#*}"
+      # Re-trim after removing the comment
+      _line="${_line#"${_line%%[![:space:]]*}"}"
+      _line="${_line%"${_line##*[![:space:]]}"}"
+    fi
+
+    # Skip if there's nothing left after stripping inline comment
+    if [[ -z "${_line}" ]]; then
       continue
     fi
 
     # Remove 'export ' prefix if present
     _line="${_line#export }"
 
-    # Validate the variable assignment
+    # Validate the variable assignment (key=value)
     if [[ "${_line}" =~ ^([A-Za-z_][A-Za-z0-9_]*)=(\".*\"|'.*'|[^[:space:]]+)$ ]]; then
       export _varname="${BASH_REMATCH[1]}"
       export _value="${BASH_REMATCH[2]}"
@@ -275,16 +323,23 @@ _validate_credentials() {
 
       # Check for forbidden characters in value
       if echo "${_value}" | grep -q -E '[$`(){};&|<>]'; then
-        _log_issue "credentials" "${_cred_file}" "Forbidden characters in value at line ${_line_number}: ${_line}"
+        _log_issue "credentials" "${_cred_file}" \
+          "Forbidden characters in value at line ${_line_number}: ${_line}"
         continue
       fi
 
-      # Safely export the variable
-      export ${_varname}=$(_url_encode "${_value}")
+      # Safely export the variable (URL-encode if needed)
+      if [ "${_service}" = "b2" ]; then
+        export ${_varname}=$(_url_encode "${_value}")
+      else
+        export ${_varname}="${_value}"
+      fi
     else
-      _log_issue "credentials" "${_cred_file}" "Invalid syntax at line ${_line_number}: ${_line}"
+      _log_issue "credentials" "${_cred_file}" \
+        "Invalid syntax at line ${_line_number}: ${_line}"
     fi
   done < "${_cred_file}"
+
   _print_env "multiback_validate_credentials"
 }
 
@@ -301,14 +356,14 @@ _load_credentials() {
     local _secret_file="/root/.remote_backups/.secret.txt"
   fi
 
-  if [ -f "${_secret_file}" ] && [ "${_user}" != "custom" ]; then
+  if [ -s "${_secret_file}" ]; then
     export PASSPHRASE=$(cat "${_secret_file}")
   else
     echo "Secret file ${_secret_file} not found. Unable to proceed."
     exit 1
   fi
 
-  if [ ! -f "${_cred_file}" ]; then
+  if [ ! -s "${_cred_file}" ]; then
     echo "Error: Credentials file '${_cred_file}' not found."
     exit 1
   fi
@@ -321,9 +376,9 @@ _load_credentials() {
 _load_paths() {
   local _user="$1"
   if [ "${_user}" != "arch" ] && [ "${_user}" != "data" ] && [ "${_user}" != "global" ] && [ "${_user}" != "custom" ]; then
-    export _paths_file="/data/disk/${_user}/remote_backups/paths/paths.txt"
+    local _paths_file="/data/disk/${_user}/remote_backups/paths/paths.txt"
   elif [ "${_user}" = "global" ] || [ "${_user}" = "data" ] || [ "${_user}" = "custom" ]; then
-    export _paths_file="/root/.remote_backups/paths/${_user}_paths.txt"
+    local _paths_file="/root/.remote_backups/paths/${_user}_paths.txt"
   fi
 
   if [ ! -f "${_paths_file}" ]; then
@@ -442,7 +497,7 @@ _set_mode() {
   [ -e "/root/.dev.server.cnf" ] && echo "The _MODE has been set to (${_MODE}) in _set_mode for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
   if [ "${_hostedSys}" = "YES" ]; then
     if [ "${_user}" = "global" ] || [ "${_user}" = "data" ] || [ "${_user}" = "custom" ]; then
-      if [ "${_DOM}" = 8 ] && [ ! -e "${_LOGPTH}/${_BUCKET_NAME}.${_TODAY}.full.log" ]; then
+      if [ "${_DOM}" = 1 ] && [ ! -e "${_LOGPTH}/${_BUCKET_NAME}.${_TODAY}.full.log" ]; then
         _MODE="full"
         echo "The _MODE has been re-set to (${_MODE}) in _set_mode for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
       fi
@@ -470,15 +525,8 @@ _set_cmd() {
   # Validate or set default for FULL_BACKUP_FREQUENCY
   _validate_or_default_duration "${FULL_BACKUP_FREQUENCY}" "FULL_BACKUP_FREQUENCY" "${_DEFAULT_FULL_BACKUP_FREQUENCY}"
 
-  export _HST_UP_CMD="/usr/local/bin/duplicity ${_MODE} \
-    -v ${_AWS_VLV} \
-    --name=${_NAME} \
-    --allow-source-mismatch \
-    --concurrency ${_useCpu} \
-    --copy-links \
-    --volsize 300"
-
-  export _DCY_UP_CMD="/usr/local/bin/duplicity ${_MODE} \
+  ### Default backup command with encryption
+  export _DCY_BUP_CMD="/usr/local/bin/duplicity ${_MODE} \
     -v ${_AWS_VLV} \
     --name=${_NAME} \
     --allow-source-mismatch \
@@ -487,65 +535,113 @@ _set_cmd() {
     --full-if-older-than ${FULL_BACKUP_FREQUENCY} \
     --volsize 300"
 
-  export _DCY_MN_CMD="/usr/local/bin/duplicity \
+  ### Default utility command with encryption
+  export _DCY_UTL_CMD="/usr/local/bin/duplicity \
     -v ${_AWS_VLV} \
     --name=${_NAME} \
     --allow-source-mismatch \
     --concurrency ${_useCpu}"
 
+  ### Custom backup command with encryption and enforced own FULL_BACKUP_FREQUENCY
+  export _FBF_BUP_CMD="/usr/local/bin/duplicity ${_MODE} \
+    -v ${_AWS_VLV} \
+    --name=${_NAME} \
+    --allow-source-mismatch \
+    --concurrency ${_useCpu} \
+    --copy-links \
+    --volsize 300"
+
+  ### Custom backup command without encryption and enforced own FULL_BACKUP_FREQUENCY
+  export _NOE_BUP_CMD="/usr/local/bin/duplicity ${_MODE} \
+    -v ${_AWS_VLV} \
+    --name=${_NAME} \
+    --allow-source-mismatch \
+    --concurrency ${_useCpu} \
+    --no-encryption \
+    --volsize 300"
+
+  ### Custom utility command without encryption
+  export _NOE_UTL_CMD="/usr/local/bin/duplicity \
+    -v ${_AWS_VLV} \
+    --name=${_NAME} \
+    --allow-source-mismatch \
+    --no-encryption \
+    --concurrency ${_useCpu}"
+
   if [ "${_hostedSys}" = "YES" ]; then
-    if [ "${_user}" = "global" ] || [ "${_user}" = "data" ] || [ "${_user}" = "custom" ]; then
-      export _DCY_UP_CMD="${_HST_UP_CMD}"
+    if [ "${_user}" = "global" ] || [ "${_user}" = "data" ]; then
+      export _DCY_BUP_CMD="${_FBF_BUP_CMD}"
+    elif [ "${_user}" = "custom" ]; then
+      export _DCY_BUP_CMD="${_NOE_BUP_CMD}"
+      export _DCY_UTL_CMD="${_NOE_UTL_CMD}"
     fi
   fi
 
   _print_env "multiback_set_cmd"
 }
 
+_test() {
+  local _mode="$1"
+  if [ "${_mode}" != "only" ]; then
+    _set_mode
+    _set_cmd
+  fi
+  echo "Running ${_BUCKET_NAME} connection test, please wait..."
+  echo "Command is ${_DCY_UTL_CMD} cleanup --dry-run --timeout 8 ${_BACKUP_TARGET}"
+  _ConnTest=$(${_DCY_UTL_CMD} cleanup --dry-run --timeout 8 ${_BACKUP_TARGET} 2>&1)
+  if [[ "${_ConnTest}" =~ "No connection to backend" ]] \
+    || [[ "${_ConnTest}" =~ "does not exist" ]] \
+    || [[ "${_ConnTest}" =~ "IllegalLocationConstraintException" ]]; then
+    echo "Sorry, I can't connect to ${_BUCKET_NAME}"
+    echo >> ${_LOGFILE}
+    echo "Sorry, I can't connect to ${_BUCKET_NAME}" >> ${_LOGFILE}
+    echo "Please check if the bucket has expected name:" >> ${_LOGFILE}
+    echo " ${_BUCKET_NAME}" >> ${_LOGFILE}
+    echo "This bucket must exist in the specified ${_SERVICE} region" >> ${_LOGFILE}
+    echo >> ${_LOGFILE}
+  else
+    echo "OK, I can connect to ${_BUCKET_NAME}"
+  fi
+}
+
 # Function to check collection-status only
 _status() {
-  _set_mode
-  _set_cmd
-  echo "Command is ${_DCY_MN_CMD} collection-status ${_BACKUP_TARGET}"
-  ${_DCY_MN_CMD} collection-status ${_BACKUP_TARGET}
+  echo "Command is ${_DCY_UTL_CMD} collection-status ${_BACKUP_TARGET}"
+  ${_DCY_UTL_CMD} collection-status ${_BACKUP_TARGET}
   wait
 }
 
 # Function to list-current-files only
 _list() {
-  _set_mode
-  _set_cmd
-  echo "Command is ${_DCY_MN_CMD} list-current-files ${_BACKUP_TARGET}"
-  ${_DCY_MN_CMD} list-current-files ${_BACKUP_TARGET}
+  echo "Command is ${_DCY_UTL_CMD} list-current-files ${_BACKUP_TARGET}"
+  ${_DCY_UTL_CMD} list-current-files ${_BACKUP_TARGET}
   wait
 }
 
 _remove_older_than() {
   echo "Running remove-older-than ${KEEP_WITHIN} for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
-  echo "Command is ${_DCY_MN_CMD} remove-older-than ${KEEP_WITHIN} --force ${_BACKUP_TARGET}"
-  ${_DCY_MN_CMD} remove-older-than ${KEEP_WITHIN} --force ${_BACKUP_TARGET} >> ${_LOGFILE}
+  echo "Command is ${_DCY_UTL_CMD} remove-older-than ${KEEP_WITHIN} --force ${_BACKUP_TARGET}"
+  ${_DCY_UTL_CMD} remove-older-than ${KEEP_WITHIN} --force ${_BACKUP_TARGET} >> ${_LOGFILE}
   wait
 }
 
 _collection_status() {
   echo "Running collection-status for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
-  echo "Command is ${_DCY_MN_CMD} collection-status ${_BACKUP_TARGET}"
-  ${_DCY_MN_CMD} collection-status ${_BACKUP_TARGET} >> ${_LOGFILE}
+  echo "Command is ${_DCY_UTL_CMD} collection-status ${_BACKUP_TARGET}"
+  ${_DCY_UTL_CMD} collection-status ${_BACKUP_TARGET} >> ${_LOGFILE}
   wait
 }
 
 # Function to only repair incomplete backup sets
 _repair_only() {
   echo "Running repair via cleanup --force for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
-  echo "Command is ${_DCY_MN_CMD} cleanup --force ${_BACKUP_TARGET}"
-  ${_DCY_MN_CMD} cleanup --force ${_BACKUP_TARGET} >> ${_LOGFILE}
+  echo "Command is ${_DCY_UTL_CMD} cleanup --force ${_BACKUP_TARGET}"
+  ${_DCY_UTL_CMD} cleanup --force ${_BACKUP_TARGET} >> ${_LOGFILE}
   wait
 }
 
 # Function to repair incomplete backup sets
 _repair() {
-  _set_mode
-  _set_cmd
   _repair_only
   _collection_status
 }
@@ -557,18 +653,32 @@ _check_if_repair() {
   fi
 }
 
+# Function to check if backup worked cleanly or log the errors
+_check_if_worked_cleanly_or_log_err() {
+  if [ "${_user}" = "global" ] || [ "${_user}" = "data" ] || [ "${_user}" = "custom" ]; then
+    local _logs_dir="/root/.remote_backups/logs"
+  else
+    local _logs_dir="/data/disk/${_user}/static/control/remote_backups/logs"
+  fi
+  if grep -q "Backup Statistics" "${_LOGFILE}"; then
+    [ ! -e "${_logs_dir}" ] && mkdir -p ${_logs_dir}
+    cp -af "${_LOGFILE}" "${_logs_dir}/OK-${_BUCKET_NAME}.log"
+  else
+    [ ! -e "${_logs_dir}" ] && mkdir -p ${_logs_dir}
+    cp -af "${_LOGFILE}" "${_logs_dir}/ERR-${_BUCKET_NAME}.log"
+  fi
+}
+
 # Function to wipe the bucket completely
 _wipe() {
   echo "Running wipe via remove-all-but-n-full 0 --force for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
-  echo "Command is ${_DCY_MN_CMD} remove-all-but-n-full 0 --force ${_BACKUP_TARGET}"
-  ${_DCY_MN_CMD} remove-all-but-n-full 0 --force ${_BACKUP_TARGET} >> ${_LOGFILE}
+  echo "Command is ${_DCY_UTL_CMD} remove-all-but-n-full 0 --force ${_BACKUP_TARGET}"
+  ${_DCY_UTL_CMD} remove-all-but-n-full 0 --force ${_BACKUP_TARGET} >> ${_LOGFILE}
   wait
 }
 
 # Function to purge all backup sets
 _purge() {
-  _set_mode
-  _set_cmd
   _repair_only
   _wipe
   _collection_status
@@ -580,26 +690,26 @@ _weekly_cleanup() {
     && [ ! -e "${_LOGPTH}/${_BUCKET_NAME}.${_TODAY}.cleanup.log" ] \
     && [ "${_DOW}" = 7 ] \
     && [ "${_cached}" = "YES" ]; then
+    _test "only"
     _remove_older_than
-    _collection_status
     echo "$(date)" >> ${_LOGPTH}/${_BUCKET_NAME}.${_TODAY}.cleanup.log
+  else
+    _test "only"
   fi
 }
 
 # Function to clean up old backups
 _cleanup() {
-  _set_mode
-  _set_cmd
   _remove_older_than
   _collection_status
 }
 
 # Function to perform backup
 _run_backup() {
-  export _FULL_BACK_CMD="${_DCY_UP_CMD} ${_BATCH_INCLUDE} ${_BATCH_EXCLUDE} --exclude '**' / ${_BACKUP_TARGET}"
+  export _FULL_BACK_CMD="${_DCY_BUP_CMD} ${_BATCH_EXCLUDE} ${_BATCH_INCLUDE} --exclude '**' / ${_BACKUP_TARGET}"
   echo "Running in ${_MODE} mode for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
   echo "$(date)" >> ${_LOGPTH}/${_BUCKET_NAME}.${_TODAY}.${_MODE}.log
-  ${_DCY_UP_CMD} ${_BATCH_INCLUDE} ${_BATCH_EXCLUDE} --exclude '**' / ${_BACKUP_TARGET} >> ${_LOGFILE}
+  ${_DCY_BUP_CMD} ${_BATCH_INCLUDE} ${_BATCH_EXCLUDE} --exclude '**' / ${_BACKUP_TARGET} >> ${_LOGFILE}
   wait
   _print_env "multiback_run_backup"
 }
@@ -612,6 +722,7 @@ _backup() {
   _run_backup
   _check_if_repair
   _weekly_cleanup
+  _check_if_worked_cleanly_or_log_err
   if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "YES" ]; then
     boa info  >> ${_LOGFILE}
     echo "Sending email report on $(date)" >> ${_LOGFILE}
@@ -638,11 +749,11 @@ _backup() {
 #
 # _restore() {
 #   if [ $# = 2 ]; then
-#     echo "Command is ${_DCY_MN_CMD} restore --file-to-restore $1 ${_BACKUP_TARGET} $2"
-#     ${_DCY_MN_CMD} restore --file-to-restore $1 ${_BACKUP_TARGET} $2
+#     echo "Command is ${_DCY_UTL_CMD} restore --file-to-restore $1 ${_BACKUP_TARGET} $2"
+#     ${_DCY_UTL_CMD} restore --file-to-restore $1 ${_BACKUP_TARGET} $2
 #   else
-#     echo "Command is ${_DCY_MN_CMD} restore --file-to-restore $1 --time $2 ${_BACKUP_TARGET} $3"
-#     ${_DCY_MN_CMD} restore --file-to-restore $1 --time $2 ${_BACKUP_TARGET} $3
+#     echo "Command is ${_DCY_UTL_CMD} restore --file-to-restore $1 --time $2 ${_BACKUP_TARGET} $3"
+#     ${_DCY_UTL_CMD} restore --file-to-restore $1 --time $2 ${_BACKUP_TARGET} $3
 #   fi
 # }
 #
@@ -671,11 +782,10 @@ _backup() {
 
 ### Restore Command in mybackup for reference
 #
-#   mybackup restore <SERVICE> [RESTORE_TARGET] [RESTORE_PATH] [RESTORE_TIME]
-#   mybackup restore aws ~/static/restores data/disk/your_username/static/projects 7D
+#   mybackup restore <SERVICE> [RESTORE_PATH] [RESTORE_TIME]
+#   mybackup restore aws data/disk/your_username/static/projects 7D
 #
 # - <SERVICE>: The cloud storage service used for your backups (e.g., aws, b2, wasabi).
-# - [RESTORE_TARGET] (optional): The directory where restored files will be placed. Defaults to ~/static/restores/.
 # - [RESTORE_PATH] (optional): The absolute path (no leading slash) of the file or directory to restore.
 # - [RESTORE_TIME] (optional): The point in time for the restore, specified in human-readable formats like:
 #   - 1D (1 day ago)
@@ -686,12 +796,20 @@ _backup() {
 
 # Function to restore backup
 _restore() {
-  _set_mode
-  _set_cmd
   local _restore_target=$1
   local _restore_path=$2
   local _restore_time=$3
-  local _restore_command="${_DCY_MN_CMD} restore"
+  local _restore_command="${_DCY_UTL_CMD} restore"
+
+  # Remove any trailing slash from _restore_path for proper basename extraction
+  _clean_restore_path="${_restore_path%/}"
+
+  # Extract the last part (basename) of the restore path.
+  _last_part=$(basename "${_clean_restore_path}")
+
+  # Combine _restore_target with the extracted basename.
+  # Also, remove any trailing slash from _restore_target to avoid double slashes.
+  _final_restore_target="${_restore_target%/}/${_last_part}"
 
   # Ensure _RESTORE_TARGET exists
   if [ -n "${_restore_target}" ]; then
@@ -713,10 +831,10 @@ _restore() {
   if [ -n "${_restore_path}" ]; then
     _restore_command="${_restore_command} --path-to-restore ${_restore_path}"
   fi
-  _restore_command="${_restore_command} ${_restore_target}"
+  _restore_command="${_restore_command} ${_final_restore_target}"
 
   echo "Command is ${_restore_command}"
-  # ${_DCY_MN_CMD} restore --time ${_restore_time} ${_BACKUP_TARGET} --path-to-restore ${_restore_path} ${_restore_target}
+  # ${_DCY_UTL_CMD} restore --time ${_restore_time} ${_BACKUP_TARGET} --path-to-restore ${_restore_path} ${_restore_target}
 
   # su -s /bin/bash ${_user} -c "eval \"${_restore_command}\"" &> /dev/null
   eval "${_restore_command}"
@@ -820,7 +938,7 @@ export _HST_DASH=$(echo -n ${_HST} | tr . - 2>&1)
 export _ACTION=$1
 export _SERVICE=$2
 export _USER=$3
-export _RESTORE_TARGET="${4:-/var/backups/}"
+export _RESTORE_TARGET="${4:-/var/backups/restored/}"
 export _RESTORE_PATH="${5:-}"
 export _RESTORE_TIME="${6:-}"
 export _PIDFILE="/var/run/duplicity_${_SERVICE}_${_USER}.pid"
@@ -847,32 +965,42 @@ _remove_stale_multiback_pid "${_SERVICE}" "${_USER}"
 _load_paths "${_USER}"
 
 case "${_ACTION}" in
+  test)
+    _set_backup_target "${_SERVICE}" "${_USER}"
+    _test
+    ;;
   backup)
     _set_backup_target "${_SERVICE}" "${_USER}"
     _backup
     ;;
   cleanup)
     _set_backup_target "${_SERVICE}" "${_USER}"
+    _test
     _cleanup
     ;;
   list)
     _set_backup_target "${_SERVICE}" "${_USER}"
+    _test
     _list
     ;;
   purge)
     _set_backup_target "${_SERVICE}" "${_USER}"
+    _test
     _purge
     ;;
   status)
     _set_backup_target "${_SERVICE}" "${_USER}"
+    _test
     _status
     ;;
   repair)
     _set_backup_target "${_SERVICE}" "${_USER}"
+    _test
     _repair
     ;;
   restore)
     _set_backup_target "${_SERVICE}" "${_USER}"
+    _test
     _restore "${_RESTORE_TARGET}" "${_RESTORE_PATH}" "${_RESTORE_TIME}"
     ;;
   *)
@@ -888,14 +1016,17 @@ _remove_pid_file "${_PIDFILE}"
   export _ACTION=
   export _BACKUP_TARGET=
   export _BUCKET_NAME=
-  export _DCY_MN_CMD=
-  export _DCY_UP_CMD=
+  export _DCY_BUP_CMD=
+  export _DCY_UTL_CMD=
   export _EXCLUDE_LIST=
+  export _FBF_BUP_CMD=
   export _INCLUDE_LIST=
   export _LST_EXCLUDE=
   export _LST_INCLUDE=
   export _MODE=
   export _NAME=
+  export _NOE_BUP_CMD=
+  export _NOE_UTL_CMD=
   export _PIDFILE=
   export _RESTORE_PATH=
   export _RESTORE_TARGET=

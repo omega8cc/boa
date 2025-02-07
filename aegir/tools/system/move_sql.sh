@@ -15,7 +15,7 @@ fi
 
     # Validate and set default if necessary
     if ! [[ "$_B_NICE" =~ ^-?[0-9]+$ ]]; then
-      _B_NICE=-5
+      _B_NICE=0
     fi
 
     # Clamp the value within -20 to 19
@@ -173,4 +173,4 @@ case "$1" in
   ;;
 esac
 
-###EOF2024###
+
