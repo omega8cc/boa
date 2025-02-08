@@ -3,7 +3,7 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-export _sPid="f71"
+export _sPid="f70"
 
 # Log file for escape attempts and validation issues
 _VALIDATION_LOG_FILE="/var/log/backup_validation_issues.log"
@@ -48,7 +48,7 @@ _log_issue() {
 _validate_and_merge_paths() {
   local _file=$1
   local _user=$2
-  local _allowed_prefixes="^/(data/disk/${_user}/static|^/home/${_user}.ftp)"
+  local _allowed_prefixes="'^/?((data/disk/${_user}/static)|(home/${_user}\.ftp))"
   local _output_file=$3
   local _if_validate=$4
   local _invalid_paths_found=false
