@@ -148,7 +148,7 @@ Configuration files which merge all other configuration files per bucket when yo
    - Example:
      ```bash
      _SOURCE="/etc /opt/solr4 /var/aegir /var/solr7 /var/www /var/xdrago"
-     _INCLUDE_PATHS="--include /data/disk/arch --include-regexp '^/var/backups/barracuda.*'"
+     _INCLUDE_PATHS="--include /data/disk/arch --include-regexp '^var/backups/barracuda.*'"
      _EXCLUDE_PATHS="--exclude /data/disk --exclude /var/aegir/backups"
      _INCLUDE_LIST="/root/.remote_backups/paths/.backboa.include.list"
      _EXCLUDE_LIST="/root/.remote_backups/paths/.backboa.exclude.list"
@@ -160,7 +160,7 @@ Configuration files which merge all other configuration files per bucket when yo
      ```bash
      _SOURCE=""
      _INCLUDE_PATHS="--include /data/disk/o1 --include /data/disk/o2"
-     _EXCLUDE_PATHS="--exclude-regexp '^/data/disk/.*/backups/'"
+     _EXCLUDE_PATHS="--exclude-regexp '^data/disk/.*/backups/'"
      _INCLUDE_LIST="/root/.remote_backups/paths/.backboa.include.list"
      _EXCLUDE_LIST="/root/.remote_backups/paths/.backboa.exclude.list"
      ```

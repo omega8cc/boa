@@ -3,7 +3,7 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-export _sPid="f71"
+export _sPid="f70"
 
 # Function to create or update global paths configuration
 _create_global_paths_config() {
@@ -154,30 +154,30 @@ EOF
 
     # _include_global_regexp_file
     cat << EOF > "${_include_global_regexp_file}"
---include-regexp '^/var/backups/barracuda.*'
---include-regexp '^/root/\..*\.cnf$'
+--include-regexp '^var/backups/barracuda.*'
+--include-regexp '^root/\..*\.cnf$'
 EOF
 
     # _exclude_data_regexp_file
     cat << EOF > "${_exclude_data_regexp_file}"
---exclude-regexp '^/data/disk/.*/\.tmp/'
---exclude-regexp '^/data/disk/.*/backup-exports/'
---exclude-regexp '^/data/disk/.*/backups/'
---exclude-regexp '^/data/disk/.*/clients/'
---exclude-regexp '^/data/disk/.*/src/'
---exclude-regexp '^/data/disk/.*/static/\.tmp/'
---exclude-regexp '^/data/disk/.*/static/restores/'
---exclude-regexp '^/data/disk/.*/static/tmp/'
---exclude-regexp '^/data/disk/.*/static/trash/'
---exclude-regexp '^/data/disk/.*/u/'
---exclude-regexp '^/data/disk/.*/undo/'
---exclude-regexp '^/data/disk/arch/.*'
---exclude-regexp '^/home/.*/\.tmp/'
---exclude-regexp '^/home/.*/backups/'
---exclude-regexp '^/home/.*/clients/'
---exclude-regexp '^/home/.*/platforms/'
---exclude-regexp '^/home/.*/static/'
---exclude-regexp '^/var/www/.*'
+--exclude-regexp '^data/disk/.*/\.tmp/'
+--exclude-regexp '^data/disk/.*/backup-exports/'
+--exclude-regexp '^data/disk/.*/backups/'
+--exclude-regexp '^data/disk/.*/clients/'
+--exclude-regexp '^data/disk/.*/src/'
+--exclude-regexp '^data/disk/.*/static/\.tmp/'
+--exclude-regexp '^data/disk/.*/static/restores/'
+--exclude-regexp '^data/disk/.*/static/tmp/'
+--exclude-regexp '^data/disk/.*/static/trash/'
+--exclude-regexp '^data/disk/.*/u/'
+--exclude-regexp '^data/disk/.*/undo/'
+--exclude-regexp '^data/disk/arch/.*'
+--exclude-regexp '^home/.*/\.tmp/'
+--exclude-regexp '^home/.*/backups/'
+--exclude-regexp '^home/.*/clients/'
+--exclude-regexp '^home/.*/platforms/'
+--exclude-regexp '^home/.*/static/'
+--exclude-regexp '^var/www/.*'
 EOF
 
     # Validate and merge include/exclude files
