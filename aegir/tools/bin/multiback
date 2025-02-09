@@ -437,7 +437,7 @@ _generate_include_directives() {
   local _source=$1
   local _include=""
   for _cdir in ${_source}; do
-    _include="${_include} --include '${_cdir}/'"
+    _include="${_include} --include ${_cdir}"
   done
   echo "${_include}"
 }
