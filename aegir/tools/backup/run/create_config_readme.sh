@@ -3,7 +3,7 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-export _sPid="f70"
+export _sPid="f69"
 
 # Base directory for user configurations
 _BASE_DIR="/data/disk"
@@ -28,9 +28,9 @@ _create_config_readme_file() {
   _config_dir="${_BASE_DIR}/${_user}/static/control/remote_backups/config"
   _readme_file="${_config_dir}/README.txt"
   _readme_ctrl_file="${_BASE_DIR}/${_user}/log/.backboa.${_user}.${_sPid}.config.readme.ctrl"
-  _user_static_dir="data/disk/${_user}/static"
+  _user_static_dir="/data/disk/${_user}/static"
   _user_ftp_dir="/home/${_user}.ftp"
-  _user_ftp_dir_regex="home/${_user}\.ftp"
+  _user_ftp_dir_regex="/home/${_user}\.ftp"
 
   _ensure_config_dir "${_user}"
 
@@ -42,7 +42,7 @@ This directory contains configuration files for customizing backup behavior.
 Users can define include and exclude directives for their backups.
 
 Allowed paths for backups are restricted to:
-- /${_user_static_dir}
+- ${_user_static_dir}
 - ${_user_ftp_dir}
 
 Available Configuration Files:
@@ -64,13 +64,13 @@ Usage Instructions:
 1. include.txt
    List full paths to the directories or files you want to include in the backup.
    Example:
-   --include /${_user_static_dir}/documents
+   --include ${_user_static_dir}/documents
    --include ${_user_ftp_dir}/documents
 
 2. exclude.txt
    List full paths to the directories or files you want to exclude from the backup.
    Example:
-   --exclude /${_user_static_dir}/cache
+   --exclude ${_user_static_dir}/cache
    --exclude ${_user_ftp_dir}/temp
 
 3. include_regexp.txt
