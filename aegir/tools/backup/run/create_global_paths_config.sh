@@ -119,16 +119,16 @@ EOF
 
     # _include_global_file
     cat << EOF > "${_include_global_file}"
---include '/data/disk/arch/**'
---include '/var/backups/csf/**'
---include '/var/backups/dragon/**'
---include '/var/backups/reports/**'
+--include '/data/disk/arch/'
+--include '/var/backups/csf/'
+--include '/var/backups/dragon/'
+--include '/var/backups/reports/'
 --include '/var/backups/barracuda*'
 EOF
 
     # _exclude_global_file
     cat << EOF > "${_exclude_global_file}"
---exclude '/var/aegir/backups/**'
+--exclude '/var/aegir/backups/'
 EOF
 
     # _include_data_file
@@ -144,16 +144,16 @@ EOF
         sanitized_subdir="${subdir%/}"
         # Append the --include line to the include data file
         if [ "${sanitized_subdir}" != "/data/disk/arch" ]; then
-          echo "--include '${sanitized_subdir}/**'" >> "${_include_data_file}"
+          echo "--include '${sanitized_subdir}/'" >> "${_include_data_file}"
         fi
       fi
     done
 
     # Append the additional include statements
     cat << EOF >> "${_include_data_file}"
---include '/data/all/**'
---include '/data/conf/**'
---include '/home/**'
+--include '/data/all/'
+--include '/data/conf/'
+--include '/home/'
 EOF
 
     # _include_global_regexp_file
@@ -163,24 +163,24 @@ EOF
 
     # _exclude_data_file
     cat << EOF > "${_exclude_data_file}"
---exclude '/data/disk/*/.tmp/**'
---exclude '/data/disk/*/backup-exports/**'
---exclude '/data/disk/*/backups/**'
---exclude '/data/disk/*/clients/**'
---exclude '/data/disk/*/src/**'
---exclude '/data/disk/*/static/.tmp/**'
---exclude '/data/disk/*/static/restores/**'
---exclude '/data/disk/*/static/tmp/**'
---exclude '/data/disk/*/static/trash/**'
---exclude '/data/disk/*/u/**'
---exclude '/data/disk/*/undo/**'
---exclude '/data/disk/arch/**'
---exclude '/home/*/.tmp/**'
---exclude '/home/*/backups/**'
---exclude '/home/*/clients/**'
---exclude '/home/*/platforms/**'
---exclude '/home/*/static/**'
---exclude '/var/www/**'
+--exclude '/data/disk/*/.tmp/'
+--exclude '/data/disk/*/backup-exports/'
+--exclude '/data/disk/*/backups/'
+--exclude '/data/disk/*/clients/'
+--exclude '/data/disk/*/src/'
+--exclude '/data/disk/*/static/.tmp/'
+--exclude '/data/disk/*/static/restores/'
+--exclude '/data/disk/*/static/tmp/'
+--exclude '/data/disk/*/static/trash/'
+--exclude '/data/disk/*/u/'
+--exclude '/data/disk/*/undo/'
+--exclude '/data/disk/arch/'
+--exclude '/home/*/.tmp/'
+--exclude '/home/*/backups/'
+--exclude '/home/*/clients/'
+--exclude '/home/*/platforms/'
+--exclude '/home/*/static/'
+--exclude '/var/www/'
 EOF
 
     # Validate and merge include/exclude files
