@@ -198,7 +198,7 @@ EOF
       cat "${_include_global_regexp_file}" >> "${_merged_global_include_file}"
     fi
     if [ -s "${_exclude_data_file}" ]; then
-      _validate_config "${_exclude_data_file}" "regexp"
+      _validate_config "${_exclude_data_file}"
       cat "${_exclude_data_file}" > "${_merged_data_exclude_file}"
     fi
 
