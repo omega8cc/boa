@@ -373,7 +373,7 @@ fi
 if [ ! -z "${_AWS_EXB}" ] && [ "${_AWS_EXB}" = "NO" ]; then
   _EXCLUDE="--exclude /data/conf/arch"
 else
-  _EXCLUDE="--exclude /data/conf/arch --exclude-regexp '^/data/disk/.*/backups/'"
+  _EXCLUDE="--exclude /data/conf/arch --exclude-regexp '^/data/disk/.*/backups'"
 fi
 
 _USER_INCLUDE=""
@@ -420,7 +420,7 @@ fi
 _backup_prepare() {
   _INCLUDE=""
   for _CDIR in ${_SOURCE}; do
-    _TMP=" --include '${_CDIR}/'"
+    _TMP=" --include ${_CDIR}"
     _INCLUDE="${_INCLUDE}${_TMP}"
   done
   if [ -e "/root/.cache/duplicity" ]; then
