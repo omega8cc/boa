@@ -3,7 +3,7 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-export _sPid="f65"
+export _sPid="f64"
 
 # Function to create or update global paths configuration
 _create_global_paths_config() {
@@ -29,6 +29,7 @@ _create_global_paths_config() {
   _data_paths_file="${_global_config_dir}/data_paths.txt"
   _custom_paths_file="${_global_config_dir}/custom_paths.txt"
   _disk_dir="/data/disk"
+  _home_dir="/home"
 
   # Ensure global configuration directory exists and is owned by root
   mkdir -p "${_global_config_dir}"
@@ -161,26 +162,59 @@ EOF
 EOF
 
     # _exclude_data_file
+    # Start writing to the exclude data file
     cat << EOF > "${_exclude_data_file}"
---exclude '/data/disk/*/.tmp'
---exclude '/data/disk/*/backup-exports'
---exclude '/data/disk/*/backups'
---exclude '/data/disk/*/clients'
---exclude '/data/disk/*/src'
---exclude '/data/disk/*/static/.tmp'
---exclude '/data/disk/*/static/restores'
---exclude '/data/disk/*/static/tmp'
---exclude '/data/disk/*/static/trash'
---exclude '/data/disk/*/u'
---exclude '/data/disk/*/undo'
---exclude '/data/disk/arch'
---exclude '/home/*/.tmp'
---exclude '/home/*/backups'
---exclude '/home/*/clients'
---exclude '/home/*/platforms'
---exclude '/home/*/static'
---exclude '/var/www'
 EOF
+
+    # Iterate over each item in the disk directory
+    for subdir in "${_disk_dir}"/*/; do
+      # Check if it's a directory
+      if [ -d "${subdir}" ]; then
+        # Remove the trailing slash for consistency
+        sanitized_subdir="${subdir%/}"
+        # Append the --exclude line to the exclude data path
+        if [ "${sanitized_subdir}" != "/data/disk/arch" ] \
+          && [ "${sanitized_subdir}" != "/data/disk/static" ]; then
+          echo "--exclude ${sanitized_subdir}/.tmp" >> "${_exclude_data_file}"
+          echo "--exclude ${sanitized_subdir}/backup-exports" >> "${_exclude_data_file}"
+          echo "--exclude ${sanitized_subdir}/backups" >> "${_exclude_data_file}"
+          echo "--exclude ${sanitized_subdir}/clients" >> "${_exclude_data_file}"
+          echo "--exclude ${sanitized_subdir}/src" >> "${_exclude_data_file}"
+          echo "--exclude ${sanitized_subdir}/static/.tmp" >> "${_exclude_data_file}"
+          echo "--exclude ${sanitized_subdir}/static/restores" >> "${_exclude_data_file}"
+          echo "--exclude ${sanitized_subdir}/static/tmp" >> "${_exclude_data_file}"
+          echo "--exclude ${sanitized_subdir}/static/trash" >> "${_exclude_data_file}"
+          echo "--exclude ${sanitized_subdir}/u" >> "${_exclude_data_file}"
+          echo "--exclude ${sanitized_subdir}/undo" >> "${_exclude_data_file}"
+        else
+          echo "--exclude ${sanitized_subdir}" >> "${_exclude_data_file}"
+        fi
+      fi
+    done
+
+    # Iterate over each item in the home directory
+    for subdir in "${_home_dir}"/*/; do
+      # Check if it's a directory
+      if [ -d "${subdir}" ]; then
+        # Remove the trailing slash for consistency
+        sanitized_subdir="${subdir%/}"
+        # Append the --exclude line to the exclude home path
+        if [[ "${sanitized_subdir}" =~ ".ftp"($) ]]; then
+          echo "--exclude ${sanitized_subdir}/.tmp" >> "${_exclude_data_file}"
+          echo "--exclude ${sanitized_subdir}/backups" >> "${_exclude_data_file}"
+          echo "--exclude ${sanitized_subdir}/clients" >> "${_exclude_data_file}"
+          echo "--exclude ${sanitized_subdir}/platforms" >> "${_exclude_data_file}"
+          echo "--exclude ${sanitized_subdir}/static" >> "${_exclude_data_file}"
+        else
+          echo "--exclude ${sanitized_subdir}" >> "${_exclude_data_file}"
+        fi
+      fi
+
+    # Append the additional exclude statements
+    cat << EOF >> "${_exclude_data_file}"
+--exclude /var/www
+EOF
+
 
     # Validate and merge include/exclude files
     [ -e "${_include_data_file}" ] && _validate_config "${_include_data_file}"
