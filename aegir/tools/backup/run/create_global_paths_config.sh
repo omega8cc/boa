@@ -209,6 +209,7 @@ EOF
           echo "--exclude ${sanitized_subdir}" >> "${_exclude_data_file}"
         fi
       fi
+    done
 
     # Append the additional exclude statements
     cat << EOF >> "${_exclude_data_file}"
