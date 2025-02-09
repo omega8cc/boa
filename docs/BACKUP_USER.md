@@ -254,8 +254,8 @@ You can customize what is included or excluded in your backups by editing config
    - **Important**: Regex patterns must start with `^` and match paths within your allowed directories.
    - Example:
      ```bash
-     --include-regexp '^data/disk/your_username/static/documents/.*\.pdf$'
-     --include-regexp '^home/your_username\.ftp/images/.*\.(jpg|png)$'
+     --include-regexp '^/data/disk/your_username/static/documents/.*\.pdf$'
+     --include-regexp '^/home/your_username\.ftp/images/.*\.(jpg|png)$'
      ```
 
 4. **`exclude_regexp.txt`**:
@@ -263,8 +263,8 @@ You can customize what is included or excluded in your backups by editing config
    - **Important**: Regex patterns must start with `^` and match paths within your allowed directories.
    - Example:
      ```bash
-     --exclude-regexp '^data/disk/your_username/static/cache/.*'
-     --exclude-regexp '^home/your_username\.ftp/tmp/.*'
+     --exclude-regexp '^/data/disk/your_username/static/cache/.*'
+     --exclude-regexp '^/home/your_username\.ftp/tmp/.*'
      ```
 
 ---
@@ -290,13 +290,13 @@ You can customize what is included or excluded in your backups by editing config
 
    - **Valid Regex Pattern**:
      ```bash
-     --include-regexp '^data/disk/your_username/static/documents/.*\.pdf$'
+     --include-regexp '^/data/disk/your_username/static/documents/.*\.pdf$'
      ```
      - Starts with `^data/disk/your_username/static`, which is allowed.
 
    - **Invalid Regex Pattern**:
      ```bash
-     --include-regexp '^/data/disk/your_username/static/foo/.*'
+     --include-regexp '^//data/disk/your_username/static/foo/.*'
      ```
      - Starts with `^/data/disk`, while in regexp the first slash should be omitted.
 

@@ -3,7 +3,7 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-export _sPid="f70"
+export _sPid="f69"
 
 # Function to create or update global paths configuration
 _create_global_paths_config() {
@@ -12,15 +12,18 @@ _create_global_paths_config() {
   _exclude_list="${_global_config_dir}/.backboa.exclude.list"
   _custom_include_list="${_global_config_dir}/.backboa.custom_include.list"
   _custom_exclude_list="${_global_config_dir}/.backboa.custom_exclude.list"
-  _include_global_file="${_global_config_dir}/.backboa.include_global.file"
-  _include_data_file="${_global_config_dir}/.backboa.include_data.file"
-  _exclude_global_file="${_global_config_dir}/.backboa.exclude.file"
+
   _include_global_regexp_file="${_global_config_dir}/.backboa.include_global_regexp.file"
-  _exclude_data_regexp_file="${_global_config_dir}/.backboa.exclude_data_regexp.file"
+  _include_global_file="${_global_config_dir}/.backboa.include_global.file"
+  _exclude_global_file="${_global_config_dir}/.backboa.exclude.file"
   _merged_global_include_file="${_global_config_dir}/.backboa.global_include.merged.file"
-  _merged_data_include_file="${_global_config_dir}/.backboa.data_include.merged.file"
   _merged_global_exclude_file="${_global_config_dir}/.backboa.global_exclude.merged.file"
+
+  _include_data_file="${_global_config_dir}/.backboa.include_data.file"
+  _exclude_data_file="${_global_config_dir}/.backboa.exclude_data.file"
+  _merged_data_include_file="${_global_config_dir}/.backboa.data_include.merged.file"
   _merged_data_exclude_file="${_global_config_dir}/.backboa.data_exclude.merged.file"
+
   _global_ctrl_file="${_global_config_dir}/.backboa.${_sPid}.paths.ctrl.file"
   _global_paths_file="${_global_config_dir}/global_paths.txt"
   _data_paths_file="${_global_config_dir}/data_paths.txt"
@@ -116,15 +119,16 @@ EOF
 
     # _include_global_file
     cat << EOF > "${_include_global_file}"
---include /data/disk/arch
---include /var/backups/csf
---include /var/backups/dragon
---include /var/backups/reports
+--include '/data/disk/arch/**'
+--include '/var/backups/csf/**'
+--include '/var/backups/dragon/**'
+--include '/var/backups/reports/**'
+--include '/var/backups/barracuda*'
 EOF
 
     # _exclude_global_file
     cat << EOF > "${_exclude_global_file}"
---exclude /var/aegir/backups
+--exclude '/var/aegir/backups/**'
 EOF
 
     # _include_data_file
@@ -140,44 +144,43 @@ EOF
         sanitized_subdir="${subdir%/}"
         # Append the --include line to the include data file
         if [ "${sanitized_subdir}" != "/data/disk/arch" ]; then
-          echo "--include ${sanitized_subdir}" >> "${_include_data_file}"
+          echo "--include '${sanitized_subdir}/**'" >> "${_include_data_file}"
         fi
       fi
     done
 
     # Append the additional include statements
     cat << EOF >> "${_include_data_file}"
---include /data/all
---include /data/conf
---include /home
+--include '/data/all/**'
+--include '/data/conf/**'
+--include '/home/**'
 EOF
 
     # _include_global_regexp_file
     cat << EOF > "${_include_global_regexp_file}"
---include-regexp '^var/backups/barracuda.*'
---include-regexp '^root/\..*\.cnf$'
+--include-regexp '^/root/\..*\.cnf$'
 EOF
 
-    # _exclude_data_regexp_file
-    cat << EOF > "${_exclude_data_regexp_file}"
---exclude-regexp '^data/disk/.*/\.tmp/'
---exclude-regexp '^data/disk/.*/backup-exports/'
---exclude-regexp '^data/disk/.*/backups/'
---exclude-regexp '^data/disk/.*/clients/'
---exclude-regexp '^data/disk/.*/src/'
---exclude-regexp '^data/disk/.*/static/\.tmp/'
---exclude-regexp '^data/disk/.*/static/restores/'
---exclude-regexp '^data/disk/.*/static/tmp/'
---exclude-regexp '^data/disk/.*/static/trash/'
---exclude-regexp '^data/disk/.*/u/'
---exclude-regexp '^data/disk/.*/undo/'
---exclude-regexp '^data/disk/arch/.*'
---exclude-regexp '^home/.*/\.tmp/'
---exclude-regexp '^home/.*/backups/'
---exclude-regexp '^home/.*/clients/'
---exclude-regexp '^home/.*/platforms/'
---exclude-regexp '^home/.*/static/'
---exclude-regexp '^var/www/.*'
+    # _exclude_data_file
+    cat << EOF > "${_exclude_data_file}"
+--exclude '/data/disk/*/.tmp/**'
+--exclude '/data/disk/*/backup-exports/**'
+--exclude '/data/disk/*/backups/**'
+--exclude '/data/disk/*/clients/**'
+--exclude '/data/disk/*/src/**'
+--exclude '/data/disk/*/static/.tmp/**'
+--exclude '/data/disk/*/static/restores/**'
+--exclude '/data/disk/*/static/tmp/**'
+--exclude '/data/disk/*/static/trash/**'
+--exclude '/data/disk/*/u/**'
+--exclude '/data/disk/*/undo/**'
+--exclude '/data/disk/arch/**'
+--exclude '/home/*/.tmp/**'
+--exclude '/home/*/backups/**'
+--exclude '/home/*/clients/**'
+--exclude '/home/*/platforms/**'
+--exclude '/home/*/static/**'
+--exclude '/var/www/**'
 EOF
 
     # Validate and merge include/exclude files
@@ -194,9 +197,9 @@ EOF
       _validate_config "${_include_global_regexp_file}" "regexp"
       cat "${_include_global_regexp_file}" >> "${_merged_global_include_file}"
     fi
-    if [ -s "${_exclude_data_regexp_file}" ]; then
-      _validate_config "${_exclude_data_regexp_file}" "regexp"
-      cat "${_exclude_data_regexp_file}" > "${_merged_data_exclude_file}"
+    if [ -s "${_exclude_data_file}" ]; then
+      _validate_config "${_exclude_data_file}" "regexp"
+      cat "${_exclude_data_file}" > "${_merged_data_exclude_file}"
     fi
 
     # Convert the exclude file contents to a single-line variable without backslashes and excessive whitespace
