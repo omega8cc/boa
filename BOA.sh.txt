@@ -835,7 +835,7 @@ _update_agents() {
 
   if [ -d "/root/.remote_backups/run" ] \
     && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthCtrl}/create_global_paths_config.sh.ctrl.f53.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthCtrl}/create_global_paths_config.sh.ctrl.f52.${_tRee}.${_xSrl}.pid" ]; then
     if [ -e "/root/.remote_backups/run/create_global_paths_config.sh" ]; then
       mv -f /root/.remote_backups/run/create_global_paths_config.sh /root/.remote_backups/run/create_global_paths_config.sh.old
     fi
@@ -843,7 +843,7 @@ _update_agents() {
     if [ -e "/root/.remote_backups/run/create_global_paths_config.sh" ]; then
       chmod 700 /root/.remote_backups/run/create_global_paths_config.sh
       chown root:root /root/.remote_backups/run/create_global_paths_config.sh
-      touch ${_pthCtrl}/create_global_paths_config.sh.ctrl.f53.${_tRee}.${_xSrl}.pid
+      touch ${_pthCtrl}/create_global_paths_config.sh.ctrl.f52.${_tRee}.${_xSrl}.pid
     else
       if [ -e "/root/.remote_backups/run/create_global_paths_config.sh.old" ]; then
         mv -f /root/.remote_backups/run/create_global_paths_config.sh.old /root/.remote_backups/run/create_global_paths_config.sh
