@@ -3,7 +3,7 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-export _sPid="f67"
+export _sPid="f66"
 
 # Function to create or update global paths configuration
 _create_global_paths_config() {
@@ -123,7 +123,6 @@ EOF
 --include /var/backups/csf
 --include /var/backups/dragon
 --include /var/backups/reports
---include /var/backups/barracuda*
 EOF
 
     # _exclude_global_file
