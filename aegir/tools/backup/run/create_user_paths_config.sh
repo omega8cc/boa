@@ -3,7 +3,7 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-export _sPid="f64"
+export _sPid="f63"
 
 # Log file for escape attempts and validation issues
 _VALIDATION_LOG_FILE="/var/log/backup_validation_issues.log"
@@ -126,7 +126,7 @@ _create_user_paths_config() {
 
   if [ ! -f "${_user_ctrl_file}" ]; then
 
-    ### Migrate legacy include/exclude files if present and merge unique entries
+    ### Migrate legacy exclude/include files if present and merge unique entries
 
     # _include_list
     if [ -f "/root/.backboa.include" ]; then
@@ -154,7 +154,7 @@ _create_user_paths_config() {
 EOF
     fi
 
-    ### Create default include/exclude files if they don't exist
+    ### Create default exclude/include files if they don't exist
 
     # _include_file
     if [ ! -f "${_include_ctrl_file}" ]; then

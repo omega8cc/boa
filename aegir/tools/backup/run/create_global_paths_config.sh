@@ -3,7 +3,7 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-export _sPid="f64"
+export _sPid="f63"
 
 # Function to create or update global paths configuration
 _create_global_paths_config() {
@@ -70,7 +70,7 @@ _create_global_paths_config() {
 
   if [ ! -f "${_global_ctrl_file}" ]; then
 
-    ### Migrate legacy include/exclude files if present and merge unique entries
+    ### Migrate legacy exclude/include files if present and merge unique entries
 
     # _include_list
     if [ -f "/root/.backboa.include" ]; then
@@ -116,7 +116,7 @@ EOF
       fi
     fi
 
-    ### Create default include/exclude files if they don't exist
+    ### Create default exclude/include files if they don't exist
 
     # _include_global_file
     cat << EOF > "${_include_global_file}"
@@ -129,6 +129,7 @@ EOF
     # _exclude_global_file
     cat << EOF > "${_exclude_global_file}"
 --exclude /var/aegir/backups
+--exclude /var/aegir/.tmp
 EOF
 
     # _include_data_file
@@ -217,7 +218,7 @@ EOF
 EOF
 
 
-    # Validate and merge include/exclude files
+    # Validate and merge exclude/include files
     [ -e "${_include_data_file}" ] && _validate_config "${_include_data_file}"
     [ -e "${_include_global_file}" ] && _validate_config "${_include_global_file}"
     [ -e "${_exclude_global_file}" ] && _validate_config "${_exclude_global_file}"
