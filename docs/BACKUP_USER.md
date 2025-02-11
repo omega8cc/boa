@@ -272,7 +272,7 @@ You can customize what is included or excluded in your backups by editing config
 #### **Configuration Rules**
 
 1. **Absolute Paths Only**:
-   - All paths in configuration files (include/exclude) must be absolute paths starting from `/`.
+   - All paths in configuration files (exclude/include) must be absolute paths starting from `/`.
    - Example:
      - Correct: `/data/disk/your_username/static/projects`
      - Incorrect: `~/static/projects`
