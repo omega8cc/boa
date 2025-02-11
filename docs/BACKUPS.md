@@ -48,7 +48,7 @@
     _AWS_EXB='Exclude Aegir Backups'      ### [O] By default 'YES' -- can be YES/NO
 ```
 
-    For more detailed include/exclude configuration see notes further below.
+    For more detailed exclude/include configuration see notes further below.
 
     Supported values to use as `_AWS_REG` (the symbol after the # comment):
 

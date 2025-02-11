@@ -166,7 +166,7 @@ Configuration files which merge all other configuration files per bucket when yo
      ```
 
 3. **`/root/.remote_backups/paths/.backboa.*`**:
-   - Configuration files with good defaults which are merged per system user bucket and referenced in either `global_paths.txt` or `data_paths.txt` when you run `dcysetup update` command, used to include or exclude additional absolute paths and regex patterns for fine-grained control of include/exclude logic:
+   - Configuration files with good defaults which are merged per system user bucket and referenced in either `global_paths.txt` or `data_paths.txt` when you run `dcysetup update` command, used to include or exclude additional absolute paths and regex patterns for fine-grained control of exclude/include logic:
 
      ```bash
      .backboa.data_exclude.merged.file
@@ -186,7 +186,7 @@ Configuration files which merge all other configuration files per bucket when yo
 ### **Configuration Rules**
 
 1. **Absolute Paths Only**:
-   - All paths in configuration files (include/exclude) must be absolute paths starting from `/`.
+   - All paths in configuration files (exclude/include) must be absolute paths starting from `/`.
    - Example:
      - Correct: `/root/projects`
      - Incorrect: `~/projects`
