@@ -6124,10 +6124,7 @@ _if_major_os_upgrade() {
     echo "libldap-common install"      | dpkg --set-selections &> /dev/null
     echo "libldap-dev install"         | dpkg --set-selections &> /dev/null
     echo "libldap2-dev install"        | dpkg --set-selections &> /dev/null
-    echo "libmariadb3 install"         | dpkg --set-selections &> /dev/null
     echo "libssl-dev install"          | dpkg --set-selections &> /dev/null
-    echo "mailutils install"           | dpkg --set-selections &> /dev/null
-    echo "mariadb-common install"      | dpkg --set-selections &> /dev/null
     echo "nginx install"               | dpkg --set-selections &> /dev/null
     echo "nginx-common install"        | dpkg --set-selections &> /dev/null
     echo "openssh-client install"      | dpkg --set-selections &> /dev/null
