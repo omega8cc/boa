@@ -3533,7 +3533,7 @@ _sshd_install_src() {
       ln -sfn /usr/local/sbin/ssh /usr/sbin/ssh
     fi
   fi
-  _SSH_GET_DPKG=$(dpkg --get-selections | grep openssh-sftp-server | grep 'hold$' 2>&1)
+  _SSH_GET_DPKG=$(dpkg --get-selections | grep openssh-server | grep 'hold$' 2>&1)
   _SSH_INSTALL_REQUIRED=NO
   _SSH_ITD=$(ssh -V 2>&1 \
     | tr -d "\n" \
@@ -3631,6 +3631,7 @@ _sshd_install_src() {
       aptitude hold openssh-server &> /dev/null
       aptitude hold openssh-client &> /dev/null
       aptitude hold ssh &> /dev/null
+      aptitude hold openssh-sftp-server &> /dev/null
       echo "openssh-client hold" | dpkg --set-selections &> /dev/null
       echo "openssh-server hold" | dpkg --set-selections &> /dev/null
       echo "ssh hold" | dpkg --set-selections &> /dev/null
