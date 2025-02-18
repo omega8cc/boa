@@ -2211,7 +2211,7 @@ _check_php_ssl_version() {
     daedalus|chimaera|beowulf|bookworm|bullseye|buster)
       _OPENSSL_USE_VRN="${_OPENSSL_EOL_VRN}"  # 1.1.1w
       if [ -e "/usr/local/ssl3/lib64/libssl.so.3" ]; then
-        _OPENSSL_USE_VRN="${_OPENSSL_MODERN_VRN}"  # 3.3.2
+        _OPENSSL_USE_VRN="${_OPENSSL_MODERN_VRN}"  # 3.4.1
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "INFO: Using modern OpenSSL ${_OPENSSL_USE_VRN} for PHP in ${_OS_CODE} by default"
         fi
