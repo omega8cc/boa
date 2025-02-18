@@ -113,7 +113,7 @@ _find_fast_mirror_early() {
   fi
   _ffMirr=$(which ffmirror 2>&1)
   if [ -x "${_ffMirr}" ]; then
-    _ffList="/var/backups/boa-mirrors-2024-12.txt"
+    _ffList="/var/backups/boa-mirrors-2025-01.txt"
     mkdir -p /var/backups
     if [ ! -e "${_ffList}" ]; then
       echo "eu.files.aegir.cc"  > ${_ffList}
@@ -3394,4 +3394,4 @@ find /run/*_backup.pid -mtime +1 -exec rm -rf {} \; &> /dev/null
 rm -f /run/daily-fix.pid
 echo "INFO: Daily maintenance complete"
 exit 0
-###EOF2024###
+

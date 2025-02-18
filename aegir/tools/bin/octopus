@@ -47,7 +47,7 @@ _sanitize_number() {
 }
 
 _clean_pid_exit() {
-  echo "REASON ${e} on $(date 2>&1)" >> /root/.octopus.exit.exceptions.log
+  echo "REASON ${1} on $(date)" >> /root/.octopus.exit.exceptions.log
   [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
   [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
   [ -e "/tmp/aegir_backup_mode.txt" ] && rm -f /tmp/aegir_backup_mode.txt
@@ -875,7 +875,7 @@ _find_fast_mirror_early() {
   fi
   _ffMirr=$(which ffmirror 2>&1)
   if [ -x "${_ffMirr}" ]; then
-    _ffList="/var/backups/boa-mirrors-2024-12.txt"
+    _ffList="/var/backups/boa-mirrors-2025-01.txt"
     mkdir -p /var/backups
     if [ ! -e "${_ffList}" ]; then
       echo "eu.files.aegir.cc"  > ${_ffList}
@@ -902,7 +902,7 @@ _find_fast_mirror_early() {
 }
 
 _if_reinstall_curl() {
-  _CURL_VRN=8.10.1
+  _CURL_VRN=8.12.1
   if ! command -v lsb_release &> /dev/null; then
     apt-get update -qq &> /dev/null
     apt-get install lsb-release ${_aptYesUnth} -qq &> /dev/null

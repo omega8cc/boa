@@ -71,7 +71,7 @@ _tBn="tools/bin"
 ###-------------SYSTEM-----------------###
 
 _clean_pid_exit() {
-  echo "REASON ${e} on $(date 2>&1)" >> /root/.cluster.exit.exceptions.log
+  echo "REASON ${1} on $(date)" >> /root/.cluster.exit.exceptions.log
   rm -f /run/cluster_run.pid
   service cron start
   exit 1
@@ -645,7 +645,7 @@ _find_fast_mirror_early() {
   fi
   _ffMirr=$(which ffmirror 2>&1)
   if [ -x "${_ffMirr}" ]; then
-    _ffList="/var/backups/boa-mirrors-2024-12.txt"
+    _ffList="/var/backups/boa-mirrors-2025-01.txt"
     mkdir -p /var/backups
     if [ ! -e "${_ffList}" ]; then
       echo "eu.files.aegir.cc"  > ${_ffList}

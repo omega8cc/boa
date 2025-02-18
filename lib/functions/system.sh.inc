@@ -49,7 +49,7 @@ _if_fix_iptables_symlinks() {
 #
 # Re-install curl if broken.
 _if_reinstall_curl_src() {
-  _CURL_VRN=8.10.1
+  _CURL_VRN=8.12.1
   if ! command -v lsb_release &> /dev/null; then
     apt-get update -qq &> /dev/null
     apt-get install lsb-release ${_aptYesUnth} -qq &> /dev/null
@@ -3427,7 +3427,7 @@ _sshd_install_src() {
       ln -sfn /usr/local/sbin/ssh /usr/sbin/ssh
     fi
   fi
-  _SSH_GET_DPKG=$(dpkg --get-selections | grep openssh-sftp-server | grep 'hold$' 2>&1)
+  _SSH_GET_DPKG=$(dpkg --get-selections | grep openssh-server | grep 'hold$' 2>&1)
   _SSH_INSTALL_REQUIRED=NO
   _SSH_ITD=$(ssh -V 2>&1 \
     | tr -d "\n" \
@@ -3525,6 +3525,7 @@ _sshd_install_src() {
       aptitude hold openssh-server &> /dev/null
       aptitude hold openssh-client &> /dev/null
       aptitude hold ssh &> /dev/null
+      aptitude hold openssh-sftp-server &> /dev/null
       echo "openssh-client hold" | dpkg --set-selections &> /dev/null
       echo "openssh-server hold" | dpkg --set-selections &> /dev/null
       echo "ssh hold" | dpkg --set-selections &> /dev/null
@@ -6124,10 +6125,7 @@ _if_major_os_upgrade() {
     echo "libldap-common install"      | dpkg --set-selections &> /dev/null
     echo "libldap-dev install"         | dpkg --set-selections &> /dev/null
     echo "libldap2-dev install"        | dpkg --set-selections &> /dev/null
-    echo "libmariadb3 install"         | dpkg --set-selections &> /dev/null
     echo "libssl-dev install"          | dpkg --set-selections &> /dev/null
-    echo "mailutils install"           | dpkg --set-selections &> /dev/null
-    echo "mariadb-common install"      | dpkg --set-selections &> /dev/null
     echo "nginx install"               | dpkg --set-selections &> /dev/null
     echo "nginx-common install"        | dpkg --set-selections &> /dev/null
     echo "openssh-client install"      | dpkg --set-selections &> /dev/null
@@ -6743,32 +6741,6 @@ _sys_packages_update() {
     _msg "PROC: _sys_packages_update"
   fi
   _msg "INFO: Running system packages update..."
-  if [ -e "/var/aegir" ]; then
-    echo "curl install"                | dpkg --set-selections &> /dev/null
-    echo "git install"                 | dpkg --set-selections &> /dev/null
-    echo "git-core install"            | dpkg --set-selections &> /dev/null
-    echo "git-man install"             | dpkg --set-selections &> /dev/null
-    echo "libldap-common install"      | dpkg --set-selections &> /dev/null
-    echo "libldap-dev install"         | dpkg --set-selections &> /dev/null
-    echo "libldap2-dev install"        | dpkg --set-selections &> /dev/null
-    echo "libmariadb3 install"         | dpkg --set-selections &> /dev/null
-    echo "libssl-dev install"          | dpkg --set-selections &> /dev/null
-    echo "mailutils install"           | dpkg --set-selections &> /dev/null
-    echo "mariadb-common install"      | dpkg --set-selections &> /dev/null
-    echo "nginx install"               | dpkg --set-selections &> /dev/null
-    echo "nginx-common install"        | dpkg --set-selections &> /dev/null
-    echo "openssh-client install"      | dpkg --set-selections &> /dev/null
-    echo "openssh-server install"      | dpkg --set-selections &> /dev/null
-    echo "openssh-sftp-server install" | dpkg --set-selections &> /dev/null
-    echo "openssl install"             | dpkg --set-selections &> /dev/null
-    echo "percona-release install"     | dpkg --set-selections &> /dev/null
-    echo "ssh install"                 | dpkg --set-selections &> /dev/null
-    echo "sysvinit-core install"       | dpkg --set-selections &> /dev/null
-    echo "sysvinit-utils install"      | dpkg --set-selections &> /dev/null
-    echo "zlib1g install"              | dpkg --set-selections &> /dev/null
-    echo "zlib1g-dev install"          | dpkg --set-selections &> /dev/null
-    echo "zlibc install"               | dpkg --set-selections &> /dev/null
-  fi
   _webmin_apt_update
   _apt_clean_update
   if [ -e "/var/aegir/drush" ]; then

@@ -5,7 +5,7 @@
 ###
 ###  BOA Meta Installer
 ###
-###  Copyright (C) 2010-2024 Omega8.cc
+###  Copyright (C) 2010-2025 Omega8.cc
 ###  noc@omega8.cc www.omega8.cc
 ###
 ###  This program is free software. You can
@@ -221,7 +221,7 @@ _find_fast_mirror_early() {
   fi
   _ffMirr=$(which ffmirror 2>&1)
   if [ -x "${_ffMirr}" ]; then
-    _ffList="/var/backups/boa-mirrors-2024-12.txt"
+    _ffList="/var/backups/boa-mirrors-2025-01.txt"
     mkdir -p /var/backups
     if [ ! -e "${_ffList}" ]; then
       echo "eu.files.aegir.cc"  > ${_ffList}
@@ -1084,13 +1084,13 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/clear.sh.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/clear.sh.ctrl.f94.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/clear.sh /var/xdrago/clear.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/clear.sh" -o /var/xdrago/clear.sh
     if [ -e "/var/xdrago/clear.sh" ]; then
       chmod 700 /var/xdrago/clear.sh
       chown root:root /var/xdrago/clear.sh
-      touch ${_pthLog}/clear.sh.ctrl.f95.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/clear.sh.ctrl.f94.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/clear.sh.old /var/xdrago/clear.sh
     fi
@@ -2771,7 +2771,7 @@ _check_and_move() {
 }
 
 _if_reinstall_curl() {
-  _CURL_VRN=8.10.1
+  _CURL_VRN=8.12.1
   _CURL_INSTALL_REQUIRED=NO
   if ! command -v lsb_release &> /dev/null; then
     apt-get update -qq &> /dev/null

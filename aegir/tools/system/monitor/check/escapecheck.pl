@@ -62,4 +62,4 @@ local(@MYARR)=`grep -i forbidden /var/log/lsh/*.log | tail --lines=999 2>&1`;
     }
   }
 }
-###EOF2024###
+
