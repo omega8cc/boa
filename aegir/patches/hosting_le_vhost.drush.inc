@@ -86,6 +86,7 @@ function hosting_le_vhost_provision_nginx_vhost_config($uri, $data) {
     $lines[] = "    allow all;";
     $lines[] = "    alias $aegir_root/tools/le/.acme-challenges;";
     $lines[] = "    try_files \$uri 404;";
+    $lines[] = "    auth_basic off;";
     $lines[] = "  }";
     $lines[] = "\n";
 
