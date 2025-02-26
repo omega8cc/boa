@@ -6868,6 +6868,36 @@ _sys_packages_update() {
     _msg "PROC: _sys_packages_update"
   fi
   _msg "INFO: Running system packages update..."
+  if [ -d "/data/u" ] && [ -e "/data/conf/global.inc" ]; then
+    aptitude hold curl &> /dev/null
+    aptitude hold libldap-common &> /dev/null
+    aptitude hold libldap-dev &> /dev/null
+    aptitude hold libldap2-dev &> /dev/null
+    aptitude hold libmariadb3 &> /dev/null
+    aptitude hold mailutils &> /dev/null
+    aptitude hold mariadb-common &> /dev/null
+    aptitude hold nginx &> /dev/null
+    aptitude hold nginx-common &> /dev/null
+    aptitude hold openssh-client &> /dev/null
+    aptitude hold openssh-server &> /dev/null
+    aptitude hold openssh-sftp-server &> /dev/null
+    aptitude hold percona-release &> /dev/null
+    aptitude hold ssh &> /dev/null
+    echo "curl hold" | dpkg --set-selections &> /dev/null
+    echo "libldap-common hold" | dpkg --set-selections &> /dev/null
+    echo "libldap-dev hold" | dpkg --set-selections &> /dev/null
+    echo "libldap2-dev hold" | dpkg --set-selections &> /dev/null
+    echo "libmariadb3 hold" | dpkg --set-selections &> /dev/null
+    echo "mailutils hold" | dpkg --set-selections &> /dev/null
+    echo "mariadb-common hold" | dpkg --set-selections &> /dev/null
+    echo "nginx hold" | dpkg --set-selections &> /dev/null
+    echo "nginx-common hold" | dpkg --set-selections &> /dev/null
+    echo "openssh-client hold" | dpkg --set-selections &> /dev/null
+    echo "openssh-server hold" | dpkg --set-selections &> /dev/null
+    echo "openssh-sftp-server hold" | dpkg --set-selections &> /dev/null
+    echo "percona-release hold" | dpkg --set-selections &> /dev/null
+    echo "ssh hold" | dpkg --set-selections &> /dev/null
+  fi
   _webmin_apt_update
   _apt_clean_update
   if [ -e "/var/aegir/drush" ]; then
