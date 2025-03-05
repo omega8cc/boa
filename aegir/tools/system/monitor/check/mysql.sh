@@ -169,6 +169,34 @@ _mysql_proc_control() {
   done
 }
 
+_mysql_high_load() {
+
+  # Define your thresholds
+  _LOAD_THRESHOLD=30.0        # Example: 1-minute load above 30 indicates high load
+  _THREAD_THRESHOLD=50        # Example: More than 50 MySQL threads
+
+  # Get the current 1-minute load average
+  _LOAD=$(awk '{print $1}' /proc/loadavg)
+
+  # Get the mysqld process ID
+  _MYSQL_PID=$(pidof mysqld)
+
+  # Count threads for the mysqld process (subtracting the header)
+  _MYSQL_THREADS=$(ps -T -p "${_MYSQL_PID}" | tail -n +2 | wc -l)
+
+  echo "Current load average: ${_LOAD}"
+  echo "Current MySQL thread count: ${_MYSQL_THREADS}"
+
+  # Compare against thresholds; use bc for floating point comparison
+  if (( $(echo "${_LOAD} > ${_LOAD_THRESHOLD}" | bc -l) )) && [ "${_MYSQL_THREADS}" -gt "${_THREAD_THRESHOLD}" ]; then
+    echo "High load and excessive MySQL threads detected. Restarting MySQL..."
+    _sql_restart "HIGH LOAD MySQL"
+  else
+    echo "System operating normally."
+  fi
+}
+
+_mysql_high_load
 _sql_busy_detection
 
 perl /var/xdrago/monitor/check/sqlcheck.pl &
