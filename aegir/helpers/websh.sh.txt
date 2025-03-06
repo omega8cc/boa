@@ -540,7 +540,13 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           _DEST_DRUSH="${_R_M}/vendor/drush/drush/drush.php"
         fi
         if [[ "${_ARGS}" =~ "vendor/drush/drush/drush.php " ]]; then
-          _DEST_DRUSH="vendor/drush/drush/drush.php"
+          # Detect if PWD ends with /web, /html, or /docroot
+          if [[ "$PWD" =~ /(web|html|docroot)$ ]]; then
+            _DEST_DRUSH="../vendor/drush/drush/drush.php"
+          else
+            _DEST_DRUSH="vendor/drush/drush/drush.php"
+          fi
+          ### echo INF 0 _DEST_DRUSH is ${_DEST_DRUSH}
         fi
         if [[ "${_ARGS}" =~ "drush11 " ]] \
           || [[ "${_ARGS}" =~ "drush10 " ]]; then
@@ -603,7 +609,13 @@ if [ "${_LTD_GID}" = "www-data users" ] \
             _DEST_DRUSH="${_R_M}/vendor/drush/drush/drush.php"
           fi
           if [[ "${_ARGS}" =~ "vendor/drush/drush/drush.php " ]]; then
-            _DEST_DRUSH="vendor/drush/drush/drush.php"
+            # Detect if PWD ends with /web, /html, or /docroot
+            if [[ "$PWD" =~ /(web|html|docroot)$ ]]; then
+              _DEST_DRUSH="../vendor/drush/drush/drush.php"
+            else
+              _DEST_DRUSH="vendor/drush/drush/drush.php"
+            fi
+            ### echo INF 1 _DEST_DRUSH is ${_DEST_DRUSH}
           fi
           if [[ ! "${HOME}" =~ (^)"/data/disk/" ]]; then
             _PHP_V="56 70 71 72 73 74 80 81 82 83 84"
@@ -996,13 +1008,24 @@ if [ "${_LTD_GID}" = "www-data users" ] \
       if [ -x "/bin/dash" ]; then
         if [ ! -z "${_ARR}" ] && [ -z "${_OCTO_SYS_ARR}" ]; then
           _DEST_DRUSH=${_DEST_DRUSH//\\/}
-          _ARR=`echo -n ${_ARR} | sed 's|/vendor/bin/drush||'`
           ### echo EXD 1 DRUSH_PHP is ${DRUSH_PHP}
           ### echo EXD 1 PHP_INI is ${PHP_INI}
           ### echo EXD 1 _DEST_DRUSH is ${_DEST_DRUSH}
           ### echo EXD 1 _ARR is ${_ARR}
           ### echo EXD 1 ${DRUSH_PHP} ${_DEST_DRUSH} ${_ARR}
-          exec /bin/dash -c "${DRUSH_PHP} ${_DEST_DRUSH} ${_ARR}"
+          # Store the original PWD before Drush changes it
+          _MYPWD=$(pwd)
+          ### echo EXD 1 _MYPWD is ${_MYPWD}
+          # Strip /web, /html, /docroot if present
+          _MYSITEROOT=$(echo "${_MYPWD}" | sed -E 's#/(web|html|docroot)$##')
+          ### echo EXD 1 _MYSITEROOT is ${_MYSITEROOT}
+          PWD=${_MYSITEROOT}
+          # Ensure the modified path is correct before executing Drush
+          if [[ -d "${_MYSITEROOT}/vendor/drush/drush" ]]; then
+            exec /bin/dash -c "${DRUSH_PHP} ${_DEST_DRUSH} ${_ARR} --root=${_MYSITEROOT}"
+          else
+            exec /bin/dash -c "${DRUSH_PHP} ${_DEST_DRUSH} ${_ARR}"
+          fi
           exit 0
         elif [ ! -z "${PHP_FWD}" ] && [ ! -z "${_OCTO_SYS_ARR}" ]; then
           _DEST_DRUSH=${_DEST_DRUSH//\\/}
