@@ -118,12 +118,8 @@ if [[ ! "${_ARGS}" =~ "composer" ]] \
   && [[ ! "${_ARGS}" =~ "mysql" ]] \
   && [[ ! "${_ARGS}" =~ "sudo" ]]; then
   _ARR=
-  if [[ "${_ARGS}" =~ "vendor/drush/drush/drush.php " ]]; then
-    if [[ "${_ARGS}" =~ "set -m" ]]; then
-      _R_M=`echo -n ${_ARGS}  | grep -o "set -m\; vendor/drush/drush/drush.php"`
-    else
-      _R_M=`echo -n ${_ARGS}  | grep -o "vendor/drush/drush/drush.php"`
-    fi
+  if [[ "${_ARGS}" =~ "/vendor/drush/drush/drush.php " ]]; then
+    _R_M=`echo -n ${_ARGS}  | grep -o ".*/vendor/drush/drush/drush.php"`
     ### echo _R_M is ${_R_M}
     _R_M=${_R_M//\//\\\/}
     ### echo _R_M is ${_R_M}
@@ -136,48 +132,8 @@ if [[ ! "${_ARGS}" =~ "composer" ]] \
       esac
     done
     ### echo _ARR is ${_ARR}
-  elif [[ "${_ARGS}" =~ "vendor/drush/drush/drush" ]]; then
-    if [[ "${_ARGS}" =~ "set -m" ]]; then
-      _R_M=`echo -n ${_ARGS}  | grep -o "set -m\; .*vendor/drush/drush/drush"`
-    else
-      _R_M=`echo -n ${_ARGS} | sed 's|vendor/drush/drush/drush.*||'`
-    fi
-    ### echo _R_M is ${_R_M}
-    _R_M=${_R_M//\//\\\/}
-    ### echo _R_M is ${_R_M}
-    _CLR=`echo ${_ARGS}  | sed "s/\${_R_M}//g"`
-    _ARR=() # the buffer array for filtered parameters
-    for arg in "${_CLR}"; do
-      case ${_R_M} in
-        $arg\ * | *\ $arg | *\ $arg\ *) ;;
-        *) _ARR+=("$arg") ;;
-      esac
-    done
-    ### echo _ARR is ${_ARR}
-  elif [[ "${_ARGS}" =~ "/vendor/bin/drush" ]]; then
-    if [[ "${_ARGS}" =~ "set -m" ]]; then
-      _R_M=`echo -n ${_ARGS}  | grep -o "set -m\; .*/vendor/bin/drush"`
-    else
-      _R_M=`echo -n ${_ARGS} | sed 's|/vendor/bin/drush.*||'`
-    fi
-    ### echo _R_M is ${_R_M}
-    _R_M=${_R_M//\//\\\/}
-    ### echo _R_M is ${_R_M}
-    _CLR=`echo ${_ARGS}  | sed "s/\${_R_M}//g"`
-    _ARR=() # the buffer array for filtered parameters
-    for arg in "${_CLR}"; do
-      case ${_R_M} in
-        $arg\ * | *\ $arg | *\ $arg\ *) ;;
-        *) _ARR+=("$arg") ;;
-      esac
-    done
-    ### echo _ARR is ${_ARR}
-  elif [[ "${_ARGS}" =~ "vendor/bin/drush " ]]; then
-    if [[ "${_ARGS}" =~ "set -m" ]]; then
-      _R_M=`echo -n ${_ARGS}  | grep -o "set -m\; .*vendor/bin/drush"`
-    else
-      _R_M=`echo -n ${_ARGS} | sed 's|vendor/bin/drush.*||'`
-    fi
+  elif [[ "${_ARGS}" =~ "vendor/drush/drush/drush.php " ]]; then
+    _R_M=`echo -n ${_ARGS}  | grep -o "vendor/drush/drush/drush.php"`
     ### echo _R_M is ${_R_M}
     _R_M=${_R_M//\//\\\/}
     ### echo _R_M is ${_R_M}
