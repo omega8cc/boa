@@ -969,19 +969,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           ### echo EXD 1 _DEST_DRUSH is ${_DEST_DRUSH}
           ### echo EXD 1 _ARR is ${_ARR}
           ### echo EXD 1 ${DRUSH_PHP} ${_DEST_DRUSH} ${_ARR}
-          # Store the original PWD before Drush changes it
-          _MYPWD=$(pwd)
-          ### echo EXD 1 _MYPWD is ${_MYPWD}
-          # Strip /web, /html, /docroot if present
-          _MYSITEROOT=$(echo "${_MYPWD}" | sed -E 's#/(web|html|docroot)$##')
-          ### echo EXD 1 _MYSITEROOT is ${_MYSITEROOT}
-          PWD=${_MYSITEROOT}
-          # Ensure the modified path is correct before executing Drush
-          if [[ -d "${_MYSITEROOT}/vendor/drush/drush" ]]; then
-            exec /bin/dash -c "${DRUSH_PHP} ${_DEST_DRUSH} ${_ARR} --root=${_MYSITEROOT}"
-          else
-            exec /bin/dash -c "${DRUSH_PHP} ${_DEST_DRUSH} ${_ARR}"
-          fi
+          exec /bin/dash -c "${DRUSH_PHP} ${_DEST_DRUSH} ${_ARR}"
           exit 0
         elif [ ! -z "${PHP_FWD}" ] && [ ! -z "${_OCTO_SYS_ARR}" ]; then
           _DEST_DRUSH=${_DEST_DRUSH//\\/}
