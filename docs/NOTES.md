@@ -10,7 +10,6 @@
 - **FTP**: Pure-FTPd server with forced FTPS (installed by default)
 - **GIT**: Latest Git from sources (installed by default)
 - **IMG**: Image Optimize binaries: `advdef`, `advpng`, `jpegoptim`, `jpegtran`, `optipng`, `pngcrush`, `pngquant` (installed by default)
-- **SR7**: Apache Solr 7
 
 ### Xtras Which Need to be Listed Explicitly:
 
@@ -23,6 +22,8 @@
 - **SR1**: Apache Solr 1 with Jetty 7 (deprecated)
 - **SR3**: Apache Solr 3 with Jetty 8 (deprecated)
 - **SR4**: Apache Solr 4 with Jetty 9
+- **SR7**: Apache Solr 7
+- **SR9**: Apache Solr 9
 - **WMN**: Webmin Control Panel (deprecated)
 
 ### Examples:
@@ -30,8 +31,7 @@
 ```
 _XTRAS_LIST=""
 _XTRAS_LIST="ALL"
-_XTRAS_LIST="ALL SR4"
-_XTRAS_LIST="SR4 SR7"
+_XTRAS_LIST="ALL SR9"
 ```
 
 - Configuration file template: [barracuda.cnf](https://github.com/omega8cc/boa/tree/5.x-dev/docs/cnf/barracuda.cnf)
