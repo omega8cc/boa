@@ -798,6 +798,11 @@ EOF
               _sub_count_usr_home ${_uH}
             fi
           done
+          for _uR in `find /var/solr9/data/oct.${_THIS_U}.* -maxdepth 0 -mindepth 0 | sort`; do
+            if [ -d "${_uR}" ]; then
+              _sub_count_usr_home ${_uR}
+            fi
+          done
           for _uR in `find /var/solr7/data/oct.${_THIS_U}.* -maxdepth 0 -mindepth 0 | sort`; do
             if [ -d "${_uR}" ]; then
               _sub_count_usr_home ${_uR}
