@@ -172,6 +172,10 @@ _graceful_action() {
     echo "INFO: Solr and Jetty servers will be restarted in 60 seconds"
     touch /run/boa_wait.pid
     sleep 60
+    if [ -x "/etc/init.d/solr9" ] && [ -e "/etc/default/solr9.in.sh" ]; then
+      echo "Restarting Solr 9..."
+      nice -n 0 service solr9 restart
+    fi
     if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
       echo "Restarting Solr 7..."
       nice -n 0 service solr7 restart
