@@ -1,26 +1,29 @@
 # SOLR Management Documentation
 
-You can easily add, update, or delete Solr cores powered by the very fast Jetty server. This process is fully automated and can be managed via the site-level active INI file. Ensure Solr is already installed on the system with the `SR7` and `SR4` keywords in the `_XTRAS_LIST` in the `/root/.barracuda.cnf` file.
+You can easily add, update, or delete Solr cores. This process is fully automated and can be managed via the site-level active INI file. Ensure Solr is already installed on the system with the `SR9` and/or `SR7` and/or `SR4` keywords in the `_XTRAS_LIST` in the `/root/.barracuda.cnf` file.
+
+Please note that latest Solr 9 support is available only in BOA PRO.
 
 There are three INI variables you can use to control the Solr automated setup:
 - `solr_integration_module`
 - `solr_update_config`
 - `solr_custom_config`
 
-Refer to the documentation below, which is also available in every site's INI template. For more information on how to control BOA on site and platform levels via INI files, check our [documentation](https://github.com/omega8cc/boa/tree/5.x-dev/docs/https://omega8.cc/node/293).
+Refer to the documentation below, which is also available in every site's INI template. For more information on how to control BOA on site level via INI files, check our [documentation](https://github.com/omega8cc/boa/blob/5.x-dev/docs/ini/site/INI.md).
 
 > **NOTE:** This feature works only for site-level INI files because Solr cores belong to sites, not platforms.
 
 ## Solr Core Configuration
 
-This option allows you to activate Solr core configuration for the site. Both Solr 7 and Solr 4 powered by the Jetty 9 server are available. Supported integration modules are limited to the latest versions of either `search_api_solr` (D9/Solr7, D8/Solr7, and D7/Solr7) or `apachesolr` (D7/Solr4 and D6/Solr4).
+This option allows you to activate Solr core configuration for the site. Solr 9, Solr 7 and Solr 4 powered by Jetty 9 server are available if installed. Supported integration modules are latest versions of either `search_api_solr` or `apachesolr`.
 
 Currently supported versions are listed below:
-- [search_api_solr-4.2.6.tar.gz (D9.2+)](https://ftp.drupal.org/files/projects/search_api_solr-4.2.6.tar.gz)
+- [search_api_solr-4.3.8.tar.gz (D10.2+)](https://ftp.drupal.org/files/projects/search_api_solr-4.3.8.tar.gz)
+- [search_api_solr-4.2.12.tar.gz (D9.3+)](https://ftp.drupal.org/files/projects/search_api_solr-4.2.12.tar.gz)
 - [search_api_solr-4.1.12.tar.gz (D8.8+)](https://ftp.drupal.org/files/projects/search_api_solr-4.1.12.tar.gz)
-- [search_api_solr-7.x-1.15.tar.gz](https://ftp.drupal.org/files/projects/search_api_solr-7.x-1.15.tar.gz)
-- [apachesolr-7.x-1.12.tar.gz](https://ftp.drupal.org/files/projects/apachesolr-7.x-1.12.tar.gz)
-- [apachesolr-6.x-3.1.tar.gz](https://ftp.drupal.org/files/projects/apachesolr-6.x-3.1.tar.gz)
+- [search_api_solr-7.x-1.15.tar.gz (D7)](https://ftp.drupal.org/files/projects/search_api_solr-7.x-1.15.tar.gz)
+- [apachesolr-7.x-1.12.tar.gz (D7)](https://ftp.drupal.org/files/projects/apachesolr-7.x-1.12.tar.gz)
+- [apachesolr-6.x-3.1.tar.gz (D6)](https://ftp.drupal.org/files/projects/apachesolr-6.x-3.1.tar.gz)
 
 Note that you still need to add the preferred integration module along with any dependencies to your codebase. This feature doesn't modify your platform or site - it only creates a Solr core with configuration files provided by the integration module: `schema.xml` and `solrconfig.xml`.
 
@@ -33,8 +36,10 @@ Once the Solr core is ready, a special file, `sites/foo.com/solr.php`, will prov
 Sites with enabled Solr cores can be safely migrated between platforms. The integration module can be moved within your codebase and even upgraded, provided it uses compatible `schema.xml` and `solrconfig.xml` files.
 
 Supported values for the `solr_integration_module` variable:
-- `search_api_solr`
-- `apachesolr`
+- `search_api_solr9` (Activates Solr 9 core if installed)
+- `search_api_solr7` (Activates Solr 7 core if installed)
+- `search_api_solr`  (Activates Solr 7 core if installed)
+- `apachesolr`       (Activates Solr 4 core if installed)
 
 To delete an existing Solr core, simply comment out the relevant line. The system will delete the existing Solr core within 15 minutes.
 
@@ -84,11 +89,5 @@ in settings.php.
 To fix this, add the following line to the site's `local.settings.php` file:
 
 ```php
-$conf['apachesolr_attachments_java'] = '/usr/bin/java7 -Xms32m -Xmx64m';
-```
-
-On Debian Stretch or newer, modify the line to:
-
-```php
-$conf['apachesolr_attachments_java'] = '/usr/bin/java8 -Xms32m -Xmx64m';
+$conf['apachesolr_attachments_java'] = '/usr/bin/java11 -Xms32m -Xmx64m';
 ```
