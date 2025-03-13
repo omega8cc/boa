@@ -11,10 +11,10 @@ This guide explains the global backup system, its configuration, supported servi
 ---
 
 ## **How the Global Backup System Works**
-The global backup system is designed to securely back up system-wide data (e.g., `/data`, `/etc`, `/home`, `/opt/solr4`, `/var/aegir`, `/var/solr7`, `/var/www`, `/var/xdrago`) and ensure data integrity and recoverability. It uses **Duplicity** to create encrypted, incremental, and versioned backups stored in remote cloud services.
+The global backup system is designed to securely back up system-wide data (e.g., `/data`, `/etc`, `/home`, `/opt/solr4`, `/var/aegir`, `/var/solr7`, `/var/solr9`, `/var/www`, `/var/xdrago`) and ensure data integrity and recoverability. It uses **Duplicity** to create encrypted, incremental, and versioned backups stored in remote cloud services.
 
 ### **Features**
-- **Global Scope**: Includes critical directories like `/data`, `/etc`, `/home`, `/opt/solr4`, `/var/aegir`, `/var/solr7`, `/var/www` and `/var/xdrago`.
+- **Global Scope**: Includes critical directories like `/data`, `/etc`, `/home`, `/opt/solr4`, `/var/aegir`, `/var/solr7`, `/var/solr9`, `/var/www` and `/var/xdrago`.
 - **Encryption**: Ensures that all backups are protected against unauthorized access.
 - **Incremental Backups**: Reduces storage usage and bandwidth by saving only changes since the last backup.
 - **Retention Policies**: Automatically removes old backups based on administrator-defined retention rules.
@@ -73,6 +73,7 @@ dcysetup <command>
      - `/opt/solr4`
      - `/var/aegir`
      - `/var/solr7`
+     - `/var/solr9`
      - `/var/www`
      - `/var/xdrago`
 
