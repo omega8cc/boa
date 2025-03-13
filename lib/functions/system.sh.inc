@@ -969,6 +969,20 @@ _tune_memory_limits() {
     _msg "TUNE: _USE_SOLR_MEM is ${_USE_SOLR_MEM}"
     _msg "TUNE: _USE_SOLR is ${_USE_SOLR}"
   fi
+
+  if [ -x "/etc/init.d/solr9" ] && [ -e "/etc/default/solr9.in.sh" ]; then
+    sed -i "s/^SOLR_HEAP/#SOLR_HEAP/g" /etc/default/solr9.in.sh &> /dev/null
+    wait
+    sed -i "s/^#SOLR_JAVA_MEM/SOLR_JAVA_MEM/g" /etc/default/solr9.in.sh &> /dev/null
+    wait
+    sed -i "s/^SOLR_JAVA_MEM=.*/SOLR_JAVA_MEM=\"-Xms64m ${_USE_SOLR}\"/g" /etc/default/solr9.in.sh
+    wait
+    sed -i "s/^#SOLR_STOP_WAIT=.*/SOLR_STOP_WAIT=\"8\"/g" /etc/default/solr9.in.sh &> /dev/null
+    wait
+    sed -i "s/^#SOLR_WAIT_FOR_ZK=.*/SOLR_WAIT_FOR_ZK=\"8\"/g" /etc/default/solr9.in.sh &> /dev/null
+    wait
+  fi
+
   if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
     sed -i "s/^SOLR_HEAP/#SOLR_HEAP/g" /etc/default/solr7.in.sh &> /dev/null
     wait
@@ -981,6 +995,7 @@ _tune_memory_limits() {
     sed -i "s/^#SOLR_WAIT_FOR_ZK=.*/SOLR_WAIT_FOR_ZK=\"8\"/g" /etc/default/solr7.in.sh &> /dev/null
     wait
   fi
+
   _tune_web_server_config
 }
 
@@ -8325,6 +8340,14 @@ _java_check_fix() {
   fi
 
   if [ "${_OS_CODE}" = "daedalus" ] || [ "${_OS_CODE}" = "bookworm" ]; then
+    if [ ! -e "/usr/lib/jvm/java-17-openjdk" ] \
+      && [ -d "/usr/lib/jvm/java-17-openjdk-amd64" ]; then
+      ln -sfn /usr/lib/jvm/java-17-openjdk-amd64 /usr/lib/jvm/java-17-openjdk
+    fi
+    if [ ! -e "/usr/bin/java17" ] \
+      && [ -e "/usr/lib/jvm/java-17-openjdk-amd64/bin/java" ]; then
+      ln -sfn /usr/lib/jvm/java-17-openjdk-amd64/bin/java /usr/bin/java17
+    fi
     if [ ! -e "/usr/lib/jvm/java-11-openjdk" ] \
       && [ -d "/usr/lib/jvm/java-11-openjdk-amd64" ]; then
       ln -sfn /usr/lib/jvm/java-11-openjdk-amd64 /usr/lib/jvm/java-11-openjdk
@@ -8548,6 +8571,13 @@ _initd_update() {
     fi
     _mrun "service ssh restart" 2> /dev/null
     _tune_memory_limits
+    if [ -x "/etc/init.d/solr9" ] && [ -e "/etc/default/solr9.in.sh" ]; then
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        _msg "INFO: Restarting Solr 9"
+      fi
+      kill -9 $(ps aux | grep '[s]olr' | awk '{print $2}') &> /dev/null
+      _mrun "service solr9 start" 2> /dev/null
+    fi
     if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: Restarting Solr 7"

@@ -1,8 +1,18 @@
 
-
-_if_fix_solr_permissions() {
+_if_fix_solr9_permissions() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "PROC: _if_fix_solr_permissions"
+    _msg "PROC: _if_fix_solr9_permissions"
+  fi
+  [ ! -e "/var/solr9" ] && mkdir -p /var/solr9
+  [ -L "/var/solr9" ] && chown -R solr9:solr9 /mnt/*/var/solr9
+  [ -L "/var/solr9" ] && chmod 750 /mnt/*/var/solr9
+  [ -e "/var/solr9" ] && chown -R solr9:solr9 /var/solr9/*
+  [ -e "/var/solr9" ] && chmod 750 /var/solr9
+}
+
+_if_fix_solr7_permissions() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _if_fix_solr7_permissions"
   fi
   [ ! -e "/var/solr7" ] && mkdir -p /var/solr7
   [ -L "/var/solr7" ] && chown -R solr7:solr7 /mnt/*/var/solr7
@@ -11,19 +21,94 @@ _if_fix_solr_permissions() {
   [ -e "/var/solr7" ] && chmod 750 /var/solr7
 }
 
-
 _if_install_solr_jetty() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _if_install_solr_jetty"
   fi
-  if [ -e "/var/solr7/data" ] && [ -L "/var/solr7" ]; then
-    _if_fix_solr_permissions
-  fi
   _if_to_do_fix
   _if_hosted_sys
-  if [[ "${_XTRAS_LIST}" =~ "SR7" ]] \
-    || [[ "${_XTRAS_LIST}" =~ "ALL" ]] \
+
+  ###--------------------###
+  if [[ "${_XTRAS_LIST}" =~ "SR9" ]] \
     || [ "${_hostedSys}" = "YES" ]; then
+    if [ -e "/var/solr9/data" ] && [ -L "/var/solr9" ]; then
+      _if_fix_solr9_permissions
+    fi
+    _R_SOLR="9"
+    _N_SOLR="solr${_R_SOLR}"
+    _SOLR_VPATH="/var/${_N_SOLR}/data"
+    _SOLR_CTRL="/var/${_N_SOLR}/solr-${_SOLR_9_VRN}-version.txt"
+  fi
+  if [[ "${_XTRAS_LIST}" =~ "SR9" ]] \
+    || [ "${_hostedSys}" = "YES" ]; then
+    if [ ! -d "${_SOLR_VPATH}" ]; then
+      echo " "
+      _tPrmt="Do you want to install MultiCore Apache Solr ${_R_SOLR}"
+      _tPrmt=$(echo -n ${_tPrmt} | fmt -su -w 2500 2>&1)
+      if _prompt_yes_no "${_tPrmt}?" ; then
+        true
+        _msg "INFO: Installing MultiCore Apache Solr ${_R_SOLR}..."
+        cd /var/opt
+        curl ${_crlGet} "${_urlDev}/solr-${_SOLR_9_VRN}.tgz" -o "solr-${_SOLR_9_VRN}.tgz"
+        rm -rf solr-${_SOLR_9_VRN}
+        adduser --system --group --shell /bin/bash --home /var/${_N_SOLR} ${_N_SOLR} &> /dev/null
+        usermod -aG users ${_N_SOLR}
+        tar xzf solr-${_SOLR_9_VRN}.tgz solr-${_SOLR_9_VRN}/bin/install_solr_service.sh --strip-components=2
+        bash ./install_solr_service.sh solr-${_SOLR_9_VRN}.tgz -f -i /opt -d /var/${_N_SOLR} -u ${_N_SOLR} -s ${_N_SOLR} -p 9099 &> /dev/null
+        cp -af ${_bldPth}/docs/SOLR.txt ${_SOLR_VPATH}/README.txt &> /dev/null
+        echo ${_SOLR_9_VRN} > ${_SOLR_CTRL}
+        cd /var/opt
+        _if_fix_solr9_permissions
+        _msg "INFO: MultiCore Apache Solr ${_R_SOLR} installed"
+      else
+        _msg "INFO: MultiCore Apache Solr ${_R_SOLR} not installed"
+      fi
+    fi
+  fi
+  if [ -e "/etc/default/${_N_SOLR}.in.sh" ]; then
+    _SOLR9_JAVA_TEST=$(grep "BOA ${_xSrl} Path to Java on ${_OS_CODE}" /etc/default/${_N_SOLR}.in.sh 2>&1)
+    if [[ "${_SOLR9_JAVA_TEST}" =~ "BOA ${_xSrl} Path to Java on ${_OS_CODE}" ]]; then
+      _DO_NOTHING=YES
+    else
+      sed -i "s/^SOLR_JAVA_HOME=.*//g" /etc/default/${_N_SOLR}.in.sh
+      wait
+      sed -i "s/^LOG4J_FORMAT_MSG_NO_LOOKUPS=.*//g" /etc/default/${_N_SOLR}.in.sh
+      wait
+      sed -i "/^$/d" /etc/default/${_N_SOLR}.in.sh
+      wait
+      echo "LOG4J_FORMAT_MSG_NO_LOOKUPS=true" >> /etc/default/${_N_SOLR}.in.sh
+      if [ "${_OS_CODE}" = "chimaera" ]; then
+        echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-17-openjdk\" # BOA ${_xSrl} Path to Java 17" >> \
+          /etc/default/${_N_SOLR}.in.sh
+      elif [ "${_OS_CODE}" = "daedalus" ]; then
+        echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-17-openjdk\" # BOA ${_xSrl} Path to Java 17" >> \
+          /etc/default/${_N_SOLR}.in.sh
+      fi
+    fi
+    if [ ! -e "${_SOLR_CTRL}" ]; then
+      _msg "INFO: Upgrading MultiCore Apache Solr ${_R_SOLR}..."
+      cd /var/opt
+      curl ${_crlGet} "${_urlDev}/solr-${_SOLR_9_VRN}.tgz" -o "solr-${_SOLR_9_VRN}.tgz"
+      rm -rf solr-${_SOLR_9_VRN}
+      tar xzf solr-${_SOLR_9_VRN}.tgz solr-${_SOLR_9_VRN}/bin/install_solr_service.sh --strip-components=2
+      bash ./install_solr_service.sh solr-${_SOLR_9_VRN}.tgz -f -i /opt -d /var/${_N_SOLR} -u ${_N_SOLR} -s ${_N_SOLR} -p 9099 &> /dev/null
+      echo ${_SOLR_9_VRN} > ${_SOLR_CTRL}
+      _if_fix_solr9_permissions
+      _msg "INFO: MultiCore Apache Solr ${_R_SOLR} upgrade completed"
+    fi
+  fi
+  if [ "${_UP_JDK}" = "YES" ] && [ -e "/etc/init.d/${_N_SOLR}" ]; then
+    _msg "INFO: Solr 9 restart in progress - required after java upgrade"
+    _mrun "service ${_N_SOLR} restart" 2> /dev/null
+    _msg "INFO: Solr 9 restart completed"
+  fi
+
+  ###--------------------###
+  if [[ "${_XTRAS_LIST}" =~ "SR7" ]] \
+    || [ "${_hostedSys}" = "YES" ]; then
+    if [ -e "/var/solr7/data" ] && [ -L "/var/solr7" ]; then
+      _if_fix_solr7_permissions
+    fi
     _R_SOLR="7"
     _N_SOLR="solr${_R_SOLR}"
     _SOLR_VPATH="/var/${_N_SOLR}/data"
@@ -40,12 +125,10 @@ _if_install_solr_jetty() {
     fi
   fi
   if [[ "${_XTRAS_LIST}" =~ "SR7" ]] \
-    || [[ "${_XTRAS_LIST}" =~ "ALL" ]] \
     || [ "${_hostedSys}" = "YES" ]; then
     if [ ! -d "${_SOLR_VPATH}" ]; then
       echo " "
       _tPrmt="Do you want to install MultiCore Apache Solr ${_R_SOLR}"
-      _tPrmt="${_tPrmt} with Jetty ${_R_JETTY}"
       _tPrmt=$(echo -n ${_tPrmt} | fmt -su -w 2500 2>&1)
       if _prompt_yes_no "${_tPrmt}?" ; then
         true
@@ -60,7 +143,7 @@ _if_install_solr_jetty() {
         cp -af ${_bldPth}/docs/SOLR.txt ${_SOLR_VPATH}/README.txt &> /dev/null
         echo ${_SOLR_7_VRN} > ${_SOLR_CTRL}
         cd /var/opt
-        _if_fix_solr_permissions
+        _if_fix_solr7_permissions
         _msg "INFO: MultiCore Apache Solr ${_R_SOLR} installed"
       else
         _msg "INFO: MultiCore Apache Solr ${_R_SOLR} not installed"
@@ -113,7 +196,7 @@ _if_install_solr_jetty() {
       tar xzf solr-${_SOLR_7_VRN}.tgz solr-${_SOLR_7_VRN}/bin/install_solr_service.sh --strip-components=2
       bash ./install_solr_service.sh solr-${_SOLR_7_VRN}.tgz -f -i /opt -d /var/${_N_SOLR} -u ${_N_SOLR} -s ${_N_SOLR} -p 9077 &> /dev/null
       echo ${_SOLR_7_VRN} > ${_SOLR_CTRL}
-      _if_fix_solr_permissions
+      _if_fix_solr7_permissions
       _msg "INFO: MultiCore Apache Solr ${_R_SOLR} upgrade completed"
     fi
   fi
