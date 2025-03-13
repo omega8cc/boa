@@ -65,6 +65,7 @@ With `_EASY_SETUP=NO` option (default is PUBLIC), Barracuda will offer installat
 - Your (optional) Chive Percona Manager will be available at `https://chive.master.f-q-d-n` (deprecated)
 - Your (optional) Collectd Graph Panel will be available at `https://cgp.master.f-q-d-n`
 - Your (optional) CSF/LFD Firewall will support integrated Nginx Abuse Guard.
+- Your (optional) MultiCore Apache Solr 9.8.1 will listen on `127.0.0.1:9099`
 - Your (optional) MultiCore Apache Solr 7.7.3 will listen on `127.0.0.1:9077`
 - Your (optional) MultiCore Apache Solr 4.9.1 with Jetty 9 will listen on `127.0.0.1:8099`
 - Your (optional) MultiCore Apache Solr 3.6.2 with Jetty 8 will listen on `127.0.0.1:8088` (deprecated)
