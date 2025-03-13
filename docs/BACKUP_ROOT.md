@@ -147,7 +147,7 @@ Configuration files which merge all other configuration files per bucket when yo
    - Defines which global directories are included in backups.
    - Example:
      ```bash
-     _SOURCE="/etc /opt/solr4 /var/aegir /var/solr7 /var/www /var/xdrago"
+     _SOURCE="/etc /opt/solr4 /var/aegir /var/solr7 /var/solr9 /var/www /var/xdrago"
      _INCLUDE_PATHS="--include /data/disk/arch --include-regexp '^/var/backups/barracuda.*'"
      _EXCLUDE_PATHS="--exclude /data/disk --exclude /var/aegir/backups"
      _INCLUDE_LIST="/root/.remote_backups/paths/.backboa.include.list"

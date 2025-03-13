@@ -872,6 +872,10 @@ _migrate_init() {
       rsync -aEAXq ${_ieni} -e ssh /var/solr7/data root@${_tgt}:/var/solr7/
       echo "INFO: ${_cmd} for ${_oct} /var/solr7/data complete"
     fi
+    if [ -e "/var/solr9/data" ]; then
+      rsync -aEAXq ${_ieni} -e ssh /var/solr9/data root@${_tgt}:/var/solr9/
+      echo "INFO: ${_cmd} for ${_oct} /var/solr9/data complete"
+    fi
     if [ -e "/var/www/static" ]; then
       rsync -aEAXq ${_ieni} -e ssh /var/www/static root@${_tgt}:/var/www/
       echo "INFO: ${_cmd} for ${_oct} /var/www/static complete"
@@ -1051,6 +1055,10 @@ _post_mig() {
     exit 1
   else
     echo Running _post_mig inside vms ${_hName}
+    if [ -x "/etc/init.d/solr9" ] && [ -e "/etc/default/solr9.in.sh" ]; then
+      #kill -9 $(ps aux | grep '[s]olr' | awk '{print $2}') &> /dev/null
+      service solr9 restart
+    fi
     if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
       #kill -9 $(ps aux | grep '[s]olr' | awk '{print $2}') &> /dev/null
       service solr7 restart
