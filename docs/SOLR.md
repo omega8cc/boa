@@ -2,7 +2,7 @@
 
 You can easily add, update, or delete Solr cores. This process is fully automated and can be managed via the site-level active INI file. Ensure Solr is already installed on the system with the `SR9` and/or `SR7` and/or `SR4` keywords in the `_XTRAS_LIST` in the `/root/.barracuda.cnf` file.
 
-Please note that latest Solr 9 support is available only in BOA PRO.
+> **NOTE:** New Solr 9 Support is available only in BOA PRO.
 
 There are three INI variables you can use to control the Solr automated setup:
 - `solr_integration_module`
@@ -25,9 +25,9 @@ Currently supported versions are listed below:
 - [apachesolr-7.x-1.12.tar.gz (D7)](https://ftp.drupal.org/files/projects/apachesolr-7.x-1.12.tar.gz)
 - [apachesolr-6.x-3.1.tar.gz (D6)](https://ftp.drupal.org/files/projects/apachesolr-6.x-3.1.tar.gz)
 
-Note that you still need to add the preferred integration module along with any dependencies to your codebase. This feature doesn't modify your platform or site - it only creates a Solr core with configuration files provided by the integration module: `schema.xml` and `solrconfig.xml`.
+Note that you still need to add and enable the preferred integration module along with any dependencies to your codebase. This feature doesn't modify your platform or site - it only creates a Solr core with configuration files provided by the integration module: `schema.xml` and `solrconfig.xml`.
 
-> **Important:** `search_api_solr` for D8+ requires Composer to install the module and its dependencies. After installation, configure it and generate customized Solr core config files, which should be uploaded to the path: `sites/foo.com/files/solr/`. The changes will take effect within 5-10 minutes on the Solr 7 core created by the system.
+> **Important:** `search_api_solr` for D8+ requires Composer to install the module and its dependencies. After installation, configure it and generate customized Solr core config files, which should be uploaded to the path: `sites/foo.com/files/solr/`. The changes will take effect within 5-10 minutes on the Solr core created by the system.
 >
 > **NOTE:** Set `solr_custom_config = NO` for the changes to take effect. This setting affects the running of the auto-installer every 5-10 minutes, eliminating the need to wait until the next morning to use the new Solr core.
 
