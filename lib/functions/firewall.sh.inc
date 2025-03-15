@@ -132,6 +132,11 @@ _csf_install() {
   ###
   rm -f ${_pthLog}/lastFire
   ### from https://download.configserver.com/csf.tgz
+  if [ "${_OS_CODE}" = "stretch" ]; then
+    _CSF_VRN=13.08
+  elif [ "${_OS_CODE}" = "jessie" ]; then
+    _CSF_VRN=12.04
+  fi
   _get_dev_src "csf-${_CSF_VRN}.tgz"
   cd csf
   _mrun "sh install.sh" 2> /dev/null
