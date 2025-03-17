@@ -689,7 +689,7 @@ _install_php_extensions() {
     _msg "INFO: Installing APCu ${_PHP_APCU} for PHP ${_T_PHP_VRN}..."
     cd /var/opt
     rm -rf apcu*
-    _get_dev_src "apcu-${_PHP_APCU}.tgz"
+    _get_dev_src "apcu-${_PHP_APCU}.tar.gz"
     cd /var/opt/apcu-${_PHP_APCU}
     _mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
     _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
@@ -770,7 +770,7 @@ _install_php_extensions() {
     _msg "INFO: Installing MCRYPT ${_PHP_MCRYPT} for PHP ${_T_PHP_VRN}..."
     cd /var/opt
     rm -rf mcrypt*
-    _get_dev_src "mcrypt-${_PHP_MCRYPT}.tgz"
+    _get_dev_src "mcrypt-${_PHP_MCRYPT}.tar.gz"
     cd /var/opt/mcrypt-${_PHP_MCRYPT}
     _mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
     _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
@@ -1075,7 +1075,7 @@ _php_extensions_update() {
       _msg "INFO: Installing APCu ${_PHP_APCU} upgrade for PHP ${_T_PHP_VRN}..."
       cd /var/opt
       rm -rf apcu*
-      _get_dev_src "apcu-${_PHP_APCU}.tgz"
+      _get_dev_src "apcu-${_PHP_APCU}.tar.gz"
       cd /var/opt/apcu-${_PHP_APCU}
       _mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
       _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
@@ -1165,7 +1165,7 @@ _php_extensions_update() {
       _msg "INFO: Installing MCRYPT ${_PHP_MCRYPT} upgrade for PHP ${_T_PHP_VRN}..."
       cd /var/opt
       rm -rf mcrypt*
-      _get_dev_src "mcrypt-${_PHP_MCRYPT}.tgz"
+      _get_dev_src "mcrypt-${_PHP_MCRYPT}.tar.gz"
       cd /var/opt/mcrypt-${_PHP_MCRYPT}
       _mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
       _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
