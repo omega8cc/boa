@@ -43,6 +43,12 @@ export _SQL_LOW_MAX_TTL=${_SQL_LOW_MAX_TTL//[^0-9]/}
 export _INCIDENT_REPORT=${_INCIDENT_REPORT//[^A-Z]/}
 : "${_INCIDENT_REPORT:=YES}"
 
+export _LOAD_THRESHOLD=${_LOAD_THRESHOLD//[^0-9.]/}
+: "${_LOAD_THRESHOLD:=33.0}" # Example: 1-minute load above 33 indicates high load
+
+export _THREAD_THRESHOLD=${_THREAD_THRESHOLD//[^0-9]/}
+: "${_THREAD_THRESHOLD:=99}" # Example: More than 99 MySQL threads
+
 if (( $(pgrep -fc 'mysql.sh') > 2 )); then
   echo "Too many mysql.sh running $(date)" >> /var/xdrago/log/too.many.log
   exit 0
@@ -170,10 +176,6 @@ _mysql_proc_control() {
 }
 
 _mysql_high_load() {
-
-  # Define your thresholds
-  _LOAD_THRESHOLD=30.0        # Example: 1-minute load above 30 indicates high load
-  _THREAD_THRESHOLD=50        # Example: More than 50 MySQL threads
 
   # Get the current 1-minute load average
   _LOAD=$(awk '{print $1}' /proc/loadavg)
