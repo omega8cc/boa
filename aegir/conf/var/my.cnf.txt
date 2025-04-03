@@ -56,6 +56,7 @@ sync_binlog             = 0
 open_files_limit        = 294912
 innodb_autoinc_lock_mode= 2
 group_concat_max_len    = 10000
+skip-log-bin
 #log_bin                 = mysql-bin
 #expire_logs_days        = 7
 #max_binlog_size         = 256M
