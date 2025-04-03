@@ -449,23 +449,30 @@ _sql_conf_update() {
     /etc/mysql/my.cnf &> /dev/null
   if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ]; then
     if [ "${_DB_BINARY_LOG}" = "NO" ]; then
-      # Execute the purge_binlogs script quietly
+      # Purge binlogs
       bash /var/xdrago/purge_binlogs.sh &> /dev/null
-      # Remove lines containing 'purge_binlogs' and delete empty lines in cron
+      # Remove cron jobs related to purge_binlogs
       sed -i -e "/purge_binlogs/d" -e "/^$/d" /var/spool/cron/crontabs/root &> /dev/null
-      # Comment out binary log related settings in MySQL configuration
-      sed -i -e "s/^log_bin/#log_bin/g" \
-        -e "s/^expire_logs_days/#expire_logs_days/g" \
-        -e "s/^max_binlog_size/#max_binlog_size/g" \
-        -e "s/^binlog_row_image/#binlog_row_image/g" \
-        -e "s/^binlog_format/#binlog_format/g" /etc/mysql/my.cnf &> /dev/null
+      # Disable binary logging
+      sed -i \
+        -e "s/^\s*\(log_bin\s*=.*\)/#\1/" \
+        -e "s/^\s*#\s*\(skip-log-bin\)/\1/" \
+        -e "s/^\s*\(expire_logs_days\s*=.*\)/#\1/" \
+        -e "s/^\s*\(max_binlog_size\s*=.*\)/#\1/" \
+        -e "s/^\s*\(binlog_row_image\s*=.*\)/#\1/" \
+        -e "s/^\s*\(binlog_format\s*=.*\)/#\1/" \
+        /etc/mysql/my.cnf &> /dev/null
+
     elif [ "${_DB_BINARY_LOG}" = "YES" ]; then
-      # Uncomment binary log related settings in MySQL configuration
-      sed -i -e "s/^#\s*\(log_bin\)/\1/g" \
-        -e "s/^#\s*\(expire_logs_days\)/\1/g" \
-        -e "s/^#\s*\(max_binlog_size\)/\1/g" \
-        -e "s/^#\s*\(binlog_row_image\)/\1/g" \
-        -e "s/^#\s*\(binlog_format\)/\1/g" /etc/mysql/my.cnf &> /dev/null
+      # Enable binary logging
+      sed -i \
+        -e "s/^\s*#\s*\(log_bin\s*=.*\)/\1/" \
+        -e "s/^\s*\(skip-log-bin\)/#\1/" \
+        -e "s/^\s*#\s*\(expire_logs_days\s*=.*\)/\1/" \
+        -e "s/^\s*#\s*\(max_binlog_size\s*=.*\)/\1/" \
+        -e "s/^\s*#\s*\(binlog_row_image\s*=.*\)/\1/" \
+        -e "s/^\s*#\s*\(binlog_format\s*=.*\)/\1/" \
+        /etc/mysql/my.cnf &> /dev/null
     fi
     if [ "${_DB_V}" = "5.7" ] || [ "${_DB_SERIES}" = "5.7" ]; then
       if [ -e "/root/.dev.server.cnf" ]; then
