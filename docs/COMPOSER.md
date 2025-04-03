@@ -1,36 +1,194 @@
-# Composer on BOA: Common Questions and Answers
+# Composer Usage in BOA Codebases
 
-Here are responses to some common Composer on BOA related questions.
+This document explains correct and incorrect Composer usage in the context of Ægir-powered Drupal 10 platforms managed by BOA (Barracuda Octopus Ægir), as well as safe Composer workflows for standalone Composer-based sites.
 
-The only documentation source for anything Ægir on BOA related is available at:
-- [Omega8.cc Documentation](https://learn.omega8.cc)
-- [BOA GitHub Issues](https://github.com/omega8cc/boa/issues?utf8=✓&q=is%3Aissue+composer)
-
-**IMPORTANT:** You must switch your `~/static/control/cli.info` to PHP version 8.1 or newer (BOA hosted on Omega8.cc comes with 8.4, 8.3, 8.2, 8.1, etc.), because D10 based distros require at least PHP 8.1. This also means that to run the sites installed after switching `cli.info` to 8.1 or newer, you will also need to either switch your `~/static/control/fpm.info` to 8.1 or newer, or more probably, to not break any existing sites not compatible with PHP 8.1+, you will need to list these old sites names in `~/static/control/multi-fpm.info`.
-
-For more information, please check:
-- [How To Quickly Switch PHP to Newer Version](https://learn.omega8.cc/how-to-quickly-switch-php-to-newer-version-330)
-
-BOA supports Drupal 8/9/10 codebases both with classic directory structure like in Drupal 7 and also Drupal 8/9/10 distros you can download from Drupal.org. However, if you use a Composer-based codebase with a different structure, the platform path is not the codebase root directory but the subdirectory where you see the Drupal own `index.php` and `core` subdirectory. It can be `platform-name/web` or `platform-name/docroot` or something similar depending on the distro design.
-
-As you may have discovered if you have already tried, the path you should use in Ægir when adding a Composer-based codebase as a platform is the directory where `index.php` resides, so effectively anything above that directory is not available for web requests and thus safely protected.
-
-The information from Ægir project docs saying "When verifying a platform, Ægir runs `composer install` if a `composer.json` file is found." doesn't apply to BOA. We have disabled this. There are several reasons, most importantly:
-
-a. Having this feature enabled is actually against the codebase management workflow in Ægir, because it may modify codebase on a live site.
-b. Some tasks launch verify many times during clone and migrate, which results in giant overhead and conflicts if we allowed it to run `composer install` many times in parallel.
-c. From our experience, having this poorly implemented feature enabled breaks clone and migration tasks between platforms when both have the `composer.json` file. It just doesn't make any sense in our opinion. The implementation should be improved to make it actually work similarly to Drush Makefiles.
+Composer is powerful, but misuse can result in broken platforms, partial upgrades, or corrupted deployments.
 
 You should think about Composer like it was Drush Make replacement, and you should not re-build nor upgrade the codebase on a platform with sites already hosted. Just use it to build new codebases and then add them as platforms when the build works without errors.
 
-You can modify the default path to configuration files in the site's `local.settings.php` file. We are looking into making it easier to configure, preferably with site-level INI files which are easier to edit safely. Just define your custom path in `local.settings.php` overriding the default:
+---
 
-```php
-$config_directories[CONFIG_SYNC_DIRECTORY] = 'sites/sitename/private/config/sync';
+## Table of Contents
+
+1. [Immutable Codebase Workflow (Safe & Supported)](#1-immutable-codebase-workflow-safe--supported)
+2. [Quick & Dirty Composer Usage (Unsafe & Unsupported)](#2-quick--dirty-composer-usage-unsafe--unsupported)
+3. [Developer Shortcut: Safe-ish Platform Clone](#3-developer-shortcut-safe-ish-platform-clone)
+4. [Site-local Drush (vdrush) for Direct Updates](#4-site-local-drush-vdrush-for-direct-updates)
+5. [Standalone Composer Sites – Module Updates](#5-standalone-composer-sites--module-updates)
+6. [Composer Branch Switching – Safe Handling After Git Checkout](#6-composer-branch-switching--safe-handling-after-git-checkout)
+7. [Summary](#7-summary)
+
+---
+
+## 1. Immutable Codebase Workflow (Safe & Supported)
+
+**Use this method for all production work.** This is the **only officially supported** and reproducible Composer workflow for Ægir-managed platforms.
+
+BOA platforms are **immutable** once deployed. Composer must never be used on platforms already powering Ægir-hosted sites.
+
+### ✅ Allowed Composer usage (before adding to Ægir):
+
+```bash
+composer create-project drupal/recommended-project:^10 myplatform
+cd myplatform
+
+composer require drupal/module_name
+composer update drupal/module_name --with-dependencies
+
+composer install --no-dev --optimize-autoloader
 ```
 
-Please also check the official docs at:
-- [Changing the Storage Location of the Sync Directory](https://www.drupal.org/docs/8/configuration-management/changing-the-storage-location-of-the-sync-directory)
+Then:
+- Commit `composer.json`, `composer.lock`, and any scaffolded files
+- Add to Ægir as a new platform
+- Migrate test sites
+- Migrate live sites after successful verification
 
-Please submit questions, suggestions, and patches to improve the docs in our issue queue at:
-- [BOA GitHub Issues](https://github.com/omega8cc/boa/issues)
+📚 Learn more: [Safe Upgrade Workflow](https://learn.omega8.cc/your-drupal-site-upgrade-safe-workflow-298)
+
+---
+
+## 2. Quick & Dirty Composer Usage (Unsafe & Unsupported)
+
+**NOT SUPPORTED — but documented for transparency.**
+Used by some developers who ignore Ægir’s platform immutability.
+
+### ⚠️ Risks:
+- Overwrites `core`, `vendor`, scaffolded files
+- Breaks symlinks, permissions, autoloaders
+- Causes unpredictable site behavior
+
+### ⚠️ Example (DANGEROUS):
+
+```bash
+cd ~/static/path/to/platform-app-root
+rm -rf core vendor composer.lock
+composer install --no-dev
+composer require drupal/module_name
+```
+
+Use [vdrush](#4-site-local-drush-vdrush-for-direct-updates) to update individual sites afterward.
+
+---
+
+## 3. Developer Shortcut: Safe-ish Platform Clone
+
+To test module updates or patches quickly:
+
+```bash
+cp -a ~/static/path/to/platform ~/static/path/to/platform-new
+cd ~/static/path/to/platform-new
+
+composer clear-cache
+composer require drupal/new_module
+composer update drupal/existing_module --with-dependencies
+composer install --no-dev --optimize-autoloader
+```
+
+- Add new platform in Ægir
+- Migrate a test site
+- If stable, migrate remaining sites
+- Later remove the old platform
+
+---
+
+## 4. Site-local Drush (vdrush) for Direct Updates
+
+If Composer is used outside Ægir, you must update each site manually:
+
+```bash
+cd ~/static/path/to/platform-app-root
+vdrush @site-alias updb
+vdrush @site-alias cr
+```
+
+📚 Learn more:
+[DRUSH-CLI.md – Site-local Drush](https://github.com/omega8cc/boa/blob/5.x-dev/docs/DRUSH-CLI.md#steps-to-use-site-local-drush)
+
+---
+
+## 5. Composer Sites Managed Directly – Module Updates
+
+For Composer-managed Drupal 10 sites **not using Ægir workflow**, here's the simplest way to update one or two modules (e.g., for security releases).
+
+### ✅ Update process:
+
+```bash
+composer clear-cache
+cd ~/static/path/to/platform-app-root
+composer update drupal/module_name --with-dependencies
+vdrush @site-alias updb
+vdrush @site-alias cr
+```
+
+### 🔐 Lock to specific version (optional):
+```bash
+composer require drupal/module_name:^1.8 --update-with-dependencies
+```
+
+### 🧠 Tips:
+- Preview first:
+  ```bash
+  composer update drupal/module_name --with-dependencies --dry-run
+  ```
+- Check what’s outdated:
+  ```bash
+  composer outdated drupal/*
+  ```
+
+---
+
+## 6. Composer Branch Switching – Safe Handling After Git Checkout
+
+Switching Git branches in a Composer-managed project can break dependencies if `vendor/` and `composer.lock` aren't reset.
+
+### ⚠️ Problem:
+
+```bash
+composer install
+git checkout feature/new-ui
+composer install  # ⛔ may fail!
+```
+
+Result: version mismatches, broken autoloaders, partial installs.
+
+---
+
+### ✅ Correct workflow:
+
+```bash
+rm -rf vendor/
+composer clear-cache
+composer install --no-dev
+```
+
+This ensures:
+- Clean dependency state
+- `composer.lock` matches `vendor/`
+- No leftover packages from previous branch
+
+💡 Avoid switching branches with uncommitted Composer changes.
+
+---
+
+## 7. Summary
+
+| Scenario                             | Composer Use Allowed? | Notes |
+|--------------------------------------|------------------------|-------|
+| Building a new platform              | ✅ Yes                | Fully supported |
+| Platform already in use by Ægir     | ❌ No                 | Never use Composer |
+| Cloned platform for dev/testing      | ⚠️ With care         | Register in Ægir separately |
+| Quick hacks on live platform         | ⚠️ Very risky         | Unsupported |
+| Updating standalone Composer site    | ✅ Yes                | Follow best practices |
+| Applying DB updates per site         | ✅ Use `vdrush`       | Required after Composer hacks |
+| Switching Git branches               | ⚠️ Requires cleanup   | Always clear cache + remove vendor |
+
+---
+
+**Composer is a build-time tool — not a runtime update manager.
+In Ægir, platforms are immutable once deployed.
+Always test changes before applying them to live sites.**
+
+_Last updated: 2025-04-03_
+
+
