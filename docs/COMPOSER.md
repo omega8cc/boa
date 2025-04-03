@@ -14,7 +14,7 @@ You should think about Composer like it was Drush Make replacement, and you shou
 2. [Quick & Dirty Composer Usage (Unsafe & Unsupported)](#2-quick--dirty-composer-usage-unsafe--unsupported)
 3. [Developer Shortcut: Safe-ish Platform Clone](#3-developer-shortcut-safe-ish-platform-clone)
 4. [Site-local Drush (vdrush) for Direct Updates](#4-site-local-drush-vdrush-for-direct-updates)
-5. [Standalone Composer Sites – Module Updates](#5-standalone-composer-sites--module-updates)
+5. [Standalone Composer Sites – Module Updates](#5-composer-sites-managed-directly--module-updates)
 6. [Composer Branch Switching – Safe Handling After Git Checkout](#6-composer-branch-switching--safe-handling-after-git-checkout)
 7. [Summary](#7-summary)
 
