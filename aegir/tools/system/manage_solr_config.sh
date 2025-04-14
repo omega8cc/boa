@@ -644,7 +644,7 @@ _fix_solr9_core() {
       sed -i "s/^solr\.replication\.masterUrl.*//g" "${file}"
       sed -i "s/^solr\.install\.dir.*//g" "${file}"
       sed -i "s/^solr\.contrib\.dir.*//g" "${file}"
-      echo "solr.replication.masterUrl=http://localhost:9099/solr" >> "${file}"
+      echo "solr.replication.masterUrl=http://localhost:9099" >> "${file}"
       echo "solr.install.dir=/opt/solr9" >> "${file}"
       sed -i "/^$/d" "${file}"
       echo "Fixed ${file}"
@@ -664,7 +664,7 @@ _fix_solr9_cnf() {
           sed -i "s/^solr\.replication\.masterUrl.*//g" ${_pRp}
           sed -i "s/^solr\.install\.dir.*//g" ${_pRp}
           sed -i "s/^solr\.contrib\.dir.*//g" ${_pRp}
-          echo "solr.replication.masterUrl=http://localhost:9099/solr" >> ${_pRp}
+          echo "solr.replication.masterUrl=http://localhost:9099" >> ${_pRp}
           echo "solr.install.dir=/opt/solr9" >> ${_pRp}
           sed -i "/^$/d" ${_pRp}
           echo "Fixed ${_pRp}"
