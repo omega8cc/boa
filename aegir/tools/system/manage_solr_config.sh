@@ -178,7 +178,7 @@ _update_solr() {
       && [ -e "${_Plr}/sites/${_Dom}/files/solr/solrconfig.xml" ] \
       && [ -e "${_Plr}/sites/${_Dom}/files/solr/solrcore.properties" ]; then
       if [ "${1}" = "search_api_solr" ] || [ "${1}" = "search_api_solr7" ] || [ "${1}" = "search_api_solr9" ]; then
-        _check_config_diff "${_Plr}/sites/${_Dom}/files/solr/schema.xml" "${2}/conf/schema.xml"
+        _check_config_diff "${_Plr}/sites/${_Dom}/files/solr/solrconfig.xml" "${2}/conf/solrconfig.xml"
         if [ ! -z "${_slrCnfUpdate}" ]; then
           rm -f ${2}/conf/*
           cp -af ${_Plr}/sites/${_Dom}/files/solr/* ${2}/conf/
