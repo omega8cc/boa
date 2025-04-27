@@ -1,4 +1,13 @@
 
+_if_fix_solr9_mod() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _if_fix_solr9_mod"
+  fi
+  [ ! -e "/opt/solr9/server/modules/ltr.mod" ] && cp -af ${_bldPth}/aegir/conf/solr9/*  /opt/solr9/server/modules/
+  chown root:root /opt/solr9/server/modules/*
+  chmod 644 /opt/solr9/server/modules/*
+}
+
 _if_fix_solr9_permissions() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _if_fix_solr9_permissions"
@@ -33,6 +42,7 @@ _if_install_solr_jetty() {
     || [ "${_hostedSys}" = "YES" ]; then
     if [ -e "/var/solr9/data" ] && [ -L "/var/solr9" ]; then
       _if_fix_solr9_permissions
+      _if_fix_solr9_mod
     fi
     _R_SOLR="9"
     _N_SOLR="solr${_R_SOLR}"
@@ -59,6 +69,7 @@ _if_install_solr_jetty() {
         echo ${_SOLR_9_VRN} > ${_SOLR_CTRL}
         cd /var/opt
         _if_fix_solr9_permissions
+        _if_fix_solr9_mod
         _msg "INFO: MultiCore Apache Solr ${_R_SOLR} installed"
       else
         _msg "INFO: MultiCore Apache Solr ${_R_SOLR} not installed"
@@ -94,6 +105,7 @@ _if_install_solr_jetty() {
       bash ./install_solr_service.sh solr-${_SOLR_9_VRN}.tgz -f -i /opt -d /var/${_N_SOLR} -u ${_N_SOLR} -s ${_N_SOLR} -p 9099 &> /dev/null
       echo ${_SOLR_9_VRN} > ${_SOLR_CTRL}
       _if_fix_solr9_permissions
+      _if_fix_solr9_mod
       _msg "INFO: MultiCore Apache Solr ${_R_SOLR} upgrade completed"
     fi
   fi
