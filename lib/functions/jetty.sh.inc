@@ -78,10 +78,14 @@ _if_install_solr_jetty() {
   fi
   if [ -e "/etc/default/${_N_SOLR}.in.sh" ]; then
     _SOLR9_JAVA_TEST=$(grep "BOA ${_xSrl} Path to Java on ${_OS_CODE}" /etc/default/${_N_SOLR}.in.sh 2>&1)
-    if [[ "${_SOLR9_JAVA_TEST}" =~ "BOA ${_xSrl} Path to Java on ${_OS_CODE}" ]]; then
+    _SOLR9_MODULES_TEST=$(grep "analysis-extras,clustering,extraction,langid,ltr" /etc/default/${_N_SOLR}.in.sh 2>&1)
+    if [[ "${_SOLR9_JAVA_TEST}" =~ "BOA ${_xSrl} Path to Java on ${_OS_CODE}" ]] \
+      && [[ "${_SOLR9_MODULES_TEST}" =~ "analysis-extras,clustering,extraction,langid,ltr" ]]; then
       _DO_NOTHING=YES
     else
       sed -i "s/^SOLR_JAVA_HOME=.*//g" /etc/default/${_N_SOLR}.in.sh
+      wait
+      sed -i "s/^SOLR_MODULES=.*//g" /etc/default/${_N_SOLR}.in.sh
       wait
       sed -i "s/^LOG4J_FORMAT_MSG_NO_LOOKUPS=.*//g" /etc/default/${_N_SOLR}.in.sh
       wait
@@ -91,8 +95,12 @@ _if_install_solr_jetty() {
       if [ "${_OS_CODE}" = "chimaera" ]; then
         echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-17-openjdk\" # BOA ${_xSrl} Path to Java 17" >> \
           /etc/default/${_N_SOLR}.in.sh
+        echo "SOLR_MODULES=\"analysis-extras,clustering,extraction,langid,ltr\" # Auto-Enable Modules" >> \
+          /etc/default/${_N_SOLR}.in.sh
       elif [ "${_OS_CODE}" = "daedalus" ]; then
         echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-17-openjdk\" # BOA ${_xSrl} Path to Java 17" >> \
+          /etc/default/${_N_SOLR}.in.sh
+        echo "SOLR_MODULES=\"analysis-extras,clustering,extraction,langid,ltr\" # Auto-Enable Modules" >> \
           /etc/default/${_N_SOLR}.in.sh
       fi
     fi
