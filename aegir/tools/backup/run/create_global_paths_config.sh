@@ -245,7 +245,7 @@ EOF
 
     # Create the final paths configuration file
     cat << EOF > "${_global_paths_file}"
-_SOURCE="/etc /opt/solr4 /var/aegir /var/solr7 /var/www /var/xdrago"
+_SOURCE="/etc /opt/solr4 /var/aegir /var/solr7 /var/solr9 /var/www /var/xdrago"
 _INCLUDE_PATHS="${_MERGED_GLOBAL_INCLUDE}"
 _EXCLUDE_PATHS="${_MERGED_GLOBAL_EXCLUDE}"
 _INCLUDE_LIST="${_include_list}"

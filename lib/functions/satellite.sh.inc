@@ -1790,6 +1790,78 @@ _satellite_o_contrib_ten_update_global() {
 
 
 #
+# Update o_contrib_eleven.
+_satellite_o_contrib_eleven_update_global() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _satellite_o_contrib_eleven_update_global"
+    _debug_proc
+  fi
+
+  _RMMODULES="some_foo_bar"
+
+  for i in `dir -d ${_D}/*`; do
+    if [ -e "${i}/o_contrib_eleven" ] \
+      && [ ! -e "${i}/o_contrib_eleven/update-${_xSrl}-${_X_VERSION}.info" ]; then
+      _FORCE_UP_TEN=YES
+    elif [ -e "${i}/o_contrib_eleven" ] \
+      && [ ! -L "${i}/o_contrib_eleven/redis_nine_ten" ]; then
+      _FORCE_UP_TEN=YES
+    else
+      _FORCE_UP_TEN=NO
+    fi
+    if [ "${_FORCE_UP_TEN}" = "YES" ] \
+      && [ -e "${i}/o_contrib_eleven" ]; then
+      for m in ${_RMMODULES}; do
+        if [ -d "${i}/o_contrib_eleven/$m" ]; then
+          rm -rf ${i}/o_contrib_eleven/$m
+        fi
+      done
+      cd ${i}/o_contrib_eleven
+      if [ -d "${i}/o_contrib_eleven/redis_compr" ]; then
+        rm -rf ${i}/o_contrib_eleven/redis_compr
+      fi
+      if [ -d "${i}/o_contrib_eleven/redis_eight" ]; then
+        rm -rf ${i}/o_contrib_eleven/redis_eight
+      fi
+      if [ -e "${_D}/000/modules/redis_nine_ten" ] \
+        && [ ! -L "${i}/o_contrib_eleven/redis_nine_ten" ]; then
+        ln -sfn ${_D}/000/modules/redis_nine_ten ${i}/o_contrib_eleven/redis_nine_ten
+      fi
+      find ${i}/o_contrib_eleven -type d -exec chmod 0755 {} \; &> /dev/null
+      find ${i}/o_contrib_eleven -type f -exec chmod 0644 {} \; &> /dev/null
+      touch ${i}/o_contrib_eleven/update-${_xSrl}-${_X_VERSION}.info
+    fi
+  done
+  cd
+}
+
+
+#
+# Download o_contrib_eleven.
+_satellite_download_o_contrib_eleven() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _satellite_download_o_contrib_eleven"
+    _debug_proc
+  fi
+  touch update-${_xSrl}-${_X_VERSION}.info
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "${_STATUS} A: Downloading o_contrib_eleven modules..."
+  fi
+  _get_dev_contrib "robotstxt-8.x-1.6.tar.gz"
+  _get_dev_contrib "readonlymode-8.x-1.3.tar.gz"
+  if [ ! -e "${_D}/000/modules/redis_nine_ten/ver-${_REDIS_T_VERSION}.${_xSrl}.info" ]; then
+    mkdir -p ${_D}/000/modules
+    cd ${_D}/000/modules
+    rm -rf ${_D}/000/modules/redis_nine_ten
+    _get_dev_contrib "redis_nine_ten-${_REDIS_T_VERSION}.tar.gz"
+    echo update > ${_D}/000/modules/redis_nine_ten/ver-${_REDIS_T_VERSION}.${_xSrl}.info
+  fi
+  find ${_D}/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
+  find ${_D}/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
+}
+
+
+#
 # Download o_contrib_ten.
 _satellite_download_o_contrib_ten() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -1800,8 +1872,8 @@ _satellite_download_o_contrib_ten() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "${_STATUS} A: Downloading o_contrib_ten modules..."
   fi
-  _get_dev_contrib "robotstxt-8.x-1.5.tar.gz"
-  _get_dev_contrib "readonlymode-8.x-1.2.tar.gz"
+  _get_dev_contrib "robotstxt-8.x-1.6.tar.gz"
+  _get_dev_contrib "readonlymode-8.x-1.3.tar.gz"
   if [ ! -e "${_D}/000/modules/redis_nine_ten/ver-${_REDIS_T_VERSION}.${_xSrl}.info" ]; then
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
@@ -2043,6 +2115,18 @@ _satellite_check_fix_o_contrib() {
     _msg "PROC: _satellite_check_fix_o_contrib"
     _debug_proc
   fi
+  if [ -e "${_CORE}/o_contrib_eleven" ]; then
+    if [ ! -d "${_CORE}/o_contrib_eleven/redis_nine_ten" ] \
+      || [ -e "${_CORE}/o_contrib_eleven/advagg" ] \
+      || [ "${_O_CONTRIB_FORCED_UP}" = "YES" ]; then
+      _msg "${_STATUS} A: Running o_contrib_eleven forced upgrade..."
+      cd ${_CORE}/o_contrib_eleven
+      rm -rf ${_CORE}/o_contrib_eleven/*
+      _satellite_download_o_contrib_eleven
+      cd ${_CORE}/o_contrib_eleven
+    fi
+  fi
+
   if [ -e "${_CORE}/o_contrib_ten" ]; then
     if [ ! -d "${_CORE}/o_contrib_ten/redis_nine_ten" ] \
       || [ -e "${_CORE}/o_contrib_ten/advagg" ] \
@@ -2144,6 +2228,12 @@ _satellite_manage_o_contrib() {
     _msg "PROC: _satellite_manage_o_contrib"
     _debug_proc
   fi
+  if [ ! -e "${_CORE}/o_contrib_eleven" ]; then
+    mkdir -p ${_CORE}/o_contrib_eleven
+    cd ${_CORE}/o_contrib_eleven
+    _satellite_download_o_contrib_eleven
+    cd ${_CORE}/o_contrib_eleven
+  fi
   if [ ! -e "${_CORE}/o_contrib_ten" ]; then
     mkdir -p ${_CORE}/o_contrib_ten
     cd ${_CORE}/o_contrib_ten
@@ -2175,6 +2265,8 @@ _satellite_manage_o_contrib() {
     cd ${_CORE}/o_contrib
   fi
   mkdir -p ${_D}/000/modules
+  rm -f ${_D}/000/modules/o_contrib_eleven
+  ln -s ${_CORE}/o_contrib_eleven ${_D}/000/modules/o_contrib_eleven
   rm -f ${_D}/000/modules/o_contrib_ten
   ln -s ${_CORE}/o_contrib_ten ${_D}/000/modules/o_contrib_ten
   rm -f ${_D}/000/modules/o_contrib_nine
@@ -4939,6 +5031,7 @@ _satellite_display_url_finalize() {
     _satellite_o_contrib_eight_update_global
     _satellite_o_contrib_nine_update_global
     _satellite_o_contrib_ten_update_global
+    _satellite_o_contrib_eleven_update_global
   fi
   if [ ! -e "/root/.upstart.cnf" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
