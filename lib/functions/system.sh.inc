@@ -5923,8 +5923,8 @@ _if_post_major_os_upgrade() {
       fi
       # If any of the above checks require an update, perform the upgrade
       if [ "${_needsBaseFilesUpdate}" = "YES" ]; then
-        _msg "Upgrade to base-files=12.4+deb12u7devuan1 is forced"
-        _mrun "${_INITINS} base-files=12.4+deb12u7devuan1 --allow-downgrades" 2> /dev/null
+        _msg "Upgrade to base-files=12.4+deb12u10devuan1 is forced"
+        _mrun "${_INITINS} base-files=12.4+deb12u10devuan1 --allow-downgrades" 2> /dev/null
       fi
     fi
 
