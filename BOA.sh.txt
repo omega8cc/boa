@@ -1389,13 +1389,13 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/usage.sh.ctrl.f87.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/usage.sh.ctrl.f86.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/usage.sh /var/xdrago/usage.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/usage.sh" -o /var/xdrago/usage.sh
     if [ -e "/var/xdrago/usage.sh" ]; then
       chmod 700 /var/xdrago/usage.sh
       chown root:root /var/xdrago/usage.sh
-      touch ${_pthLog}/usage.sh.ctrl.f87.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/usage.sh.ctrl.f86.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/usage.sh.old /var/xdrago/usage.sh
     fi
@@ -1419,14 +1419,14 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/manage_solr_config.sh.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/manage_solr_config.sh.ctrl.f94.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/manage_solr_config.sh /var/xdrago/manage_solr_config.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/manage_solr_config.sh" \
       -o /var/xdrago/manage_solr_config.sh
     if [ -e "/var/xdrago/manage_solr_config.sh" ]; then
       chmod 700 /var/xdrago/manage_solr_config.sh
       chown root:root /var/xdrago/manage_solr_config.sh
-      touch ${_pthLog}/manage_solr_config.sh.ctrl.f95.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/manage_solr_config.sh.ctrl.f94.${_tRee}.${_xSrl}.pid
       rm -f /run/manage_solr_config.pid
     else
       mv -f /var/xdrago/manage_solr_config.sh.old /var/xdrago/manage_solr_config.sh
@@ -1435,14 +1435,14 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/proc_num_ctrl.pl.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/proc_num_ctrl.pl.ctrl.f94.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/proc_num_ctrl.pl /var/xdrago/proc_num_ctrl.pl.old
     curl ${_crlGet} "${_urlHmr}/tools/system/proc_num_ctrl.pl" \
       -o /var/xdrago/proc_num_ctrl.pl
     if [ -e "/var/xdrago/proc_num_ctrl.pl" ]; then
       chmod 700 /var/xdrago/proc_num_ctrl.pl
       chown root:root /var/xdrago/proc_num_ctrl.pl
-      touch ${_pthLog}/proc_num_ctrl.pl.ctrl.f95.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/proc_num_ctrl.pl.ctrl.f94.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/proc_num_ctrl.pl.old /var/xdrago/proc_num_ctrl.pl
     fi
@@ -2618,7 +2618,7 @@ _if_fix_lshell() {
   fi
 }
 
-_fix_log4j() {
+_fix_log4j_solr7() {
   _LOG4J_VRN=2.17.1
   _DO_SOLR_RESTART=
   if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
@@ -3245,7 +3245,8 @@ _update_boa_tools() {
            vhostcheck \
            weblogx \
            websh \
-           xboa"
+           xboa \
+           xcopy"
   for _cbn in ${_boaBins}; do
     if [ -e "${_optBin}/${_cbn}" ]; then
       if [ `ps aux | grep -v "grep" | grep --count "/${_cbn}"` -gt 0 ]; then
@@ -3332,7 +3333,7 @@ _update_boa_tools() {
   fi
 
   chmod 700 ${_optBin}/{autoinit,autodaedalus,autochimaera,autobeowulf,autoupboa,backboa,duobackboa,mergecsf,verifyvhostsdns}
-  chmod 700 ${_optBin}/{barracuda,boa,ffmirror,killer,mycnfup,octopus,syncpass,xboa,weblogx,sqlclean,perftest,dcysetup,copydbackup}
+  chmod 700 ${_optBin}/{barracuda,boa,ffmirror,killer,mycnfup,octopus,syncpass,xboa,xcopy,weblogx,sqlclean,perftest,dcysetup,copydbackup}
   chmod 700 ${_optBin}/{fancynow,codebasecheck,vhostcheck,memorytuner,mysqltuner5,mysqltuner8,smtpgapps,setprio,multiback}
   chmod 755 ${_optBin}/{randpass,sqlmagic,thinkdifferent,websh,mybackup}
 }
@@ -3503,8 +3504,11 @@ _if_update_boa_key_tools_only() {
     fi
   fi
   _BOA_TOOLS_UPDATE=NO
-  if [ -e "${_pthLog}" ] && [ ! -e "${_pthLog}/updateBOAtools.${_bTs}.ctrl.${_tRee}.${_xSrl}.pid" ]; then
-    _BOA_TOOLS_UPDATE=YES
+  if [ -e "${_pthLog}" ]; then
+    if [ ! -x "/opt/local/bin/xcopy" ] \
+      || [ ! -e "${_pthLog}/updateBOAtools.${_bTs}.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+      _BOA_TOOLS_UPDATE=YES
+    fi
   fi
   [ ! -e "/var/aegir/drush" ] && _BOA_TOOLS_UPDATE=YES
   if [ "${_BOA_TOOLS_UPDATE}" = "YES" ]; then
@@ -3745,7 +3749,7 @@ _sysctl_update() {
       fi
     fi
     if [ -e "/etc/security/limits.d" ] \
-      && [ ! -e "/etc/security/limits.d/sshd.conf" ]; then
+      && [ ! -e "/etc/security/limits.d/solr9.conf" ]; then
       echo "sshd soft nofile 524288" > /etc/security/limits.d/sshd.conf
       echo "sshd hard nofile 999999" >> /etc/security/limits.d/sshd.conf
       echo "redis soft nofile 65535" > /etc/security/limits.d/redis.conf
@@ -3756,6 +3760,8 @@ _sysctl_update() {
       echo "jetty9 hard nofile 524288" >> /etc/security/limits.d/jetty9.conf
       echo "solr7 soft nofile 65535" > /etc/security/limits.d/solr7.conf
       echo "solr7 hard nofile 524288" >> /etc/security/limits.d/solr7.conf
+      echo "solr9 soft nofile 65535" > /etc/security/limits.d/solr9.conf
+      echo "solr9 hard nofile 524288" >> /etc/security/limits.d/solr9.conf
       echo "@www-data soft nofile 65535" > /etc/security/limits.d/www.conf
       echo "@www-data hard nofile 524288" >> /etc/security/limits.d/www.conf
       service redis-server restart &> /dev/null
@@ -3813,7 +3819,7 @@ if [ "$(id -u)" -eq 0 ]; then
   ### CVE-2021-44228 Log4j 2 Vulnerability
   ### CVE-2021-45046 Log4j 2 Vulnerability
   ### CVE-2021-45105 Log4j 2 Vulnerability
-  _fix_log4j
+  _fix_log4j_solr7
 
   ### Linux kernel TCP SACK CVEs mitigation
   ### CVE-2019-11477 SACK Panic

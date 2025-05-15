@@ -243,6 +243,11 @@ _if_disable_not_used_services() {
   fi
 
   if [ -e "/root/.deny.java.cnf" ]; then
+    if [ -e "/etc/init.d/solr9" ]; then
+      _clearSwap=YES
+      update-rc.d -f solr9 remove &> /dev/null
+      mv -f /etc/init.d/solr9 /var/backups/
+    fi
     if [ -e "/etc/init.d/solr7" ]; then
       _clearSwap=YES
       update-rc.d -f solr7 remove &> /dev/null
@@ -272,6 +277,16 @@ _if_disable_not_used_services() {
       _clearSwap=YES
       update-rc.d -f solr7 remove &> /dev/null
       mv -f /etc/init.d/solr7 /var/backups/
+      kill -9 $(ps aux | grep '[a]vahi-daemon' | awk '{print $2}') &> /dev/null
+      kill -9 $(ps aux | grep '[j]ava' | awk '{print $2}') &> /dev/null
+    fi
+  fi
+
+  if [ -e "/root/.deny.solr9.cnf" ]; then
+    if [ -e "/etc/init.d/solr9" ]; then
+      _clearSwap=YES
+      update-rc.d -f solr9 remove &> /dev/null
+      mv -f /etc/init.d/solr9 /var/backups/
       kill -9 $(ps aux | grep '[a]vahi-daemon' | awk '{print $2}') &> /dev/null
       kill -9 $(ps aux | grep '[j]ava' | awk '{print $2}') &> /dev/null
     fi

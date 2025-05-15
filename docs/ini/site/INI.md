@@ -335,17 +335,24 @@
 ;;
 ;;  This option allows to activate Solr core configuration for the site.
 ;;
-;;  Both Solr 7 and Solr 4 powered by Jetty 9 server are available. Supported
-;;  integration modules are limited to latest versions of either search_api_solr
-;;  (D9/Solr7, D8/Solr7 and D7/Solr7 ) or apachesolr (D7/Solr4 and D6/Solr4).
+;;  Supported values for the solr_integration_module variable:
 ;;
-;;  Currently supported versions are listed below:
+;;    search_api_solr9 (Activates Solr 9 core if installed)
+;;    search_api_solr7 (Activates Solr 7 core if installed)
+;;    search_api_solr  (Activates Solr 7 core if installed)
+;;    apachesolr       (Activates Solr 4 core if installed)
 ;;
-;;   https://ftp.drupal.org/files/projects/search_api_solr-4.2.6.tar.gz (D9.2+)
+;;  Solr 9, Solr 7 and Solr 4 powered by Jetty 9 are available if installed.
+;;
+;;  Supported integration modules are latest versions of either search_api_solr
+;;  or apachesolr as listed below:
+;;
+;;   https://ftp.drupal.org/files/projects/search_api_solr-4.3.8.tar.gz (D10.2+)
+;;   https://ftp.drupal.org/files/projects/search_api_solr-4.2.12.tar.gz (D9.3+)
 ;;   https://ftp.drupal.org/files/projects/search_api_solr-4.1.12.tar.gz (D8.8+)
-;;   https://ftp.drupal.org/files/projects/search_api_solr-7.x-1.15.tar.gz
-;;   https://ftp.drupal.org/files/projects/apachesolr-7.x-1.12.tar.gz
-;;   https://ftp.drupal.org/files/projects/apachesolr-6.x-3.1.tar.gz
+;;   https://ftp.drupal.org/files/projects/search_api_solr-7.x-1.17.tar.gz (D7)
+;;   https://ftp.drupal.org/files/projects/apachesolr-7.x-1.12.tar.gz (D7)
+;;   https://ftp.drupal.org/files/projects/apachesolr-6.x-3.1.tar.gz (D6)
 ;;
 ;;  Note that you still need to add preferred integration module along with
 ;;  any its dependencies in your codebase since this feature doesn't modify
@@ -371,11 +378,6 @@
 ;;  The site with enabled Solr core can be safely migrated between platforms,
 ;;  integration module can be moved within your codebase and even upgraded,
 ;;  as long as it is using compatible schema.xml and solrconfig.xml files.
-;;
-;;  Supported values for the solr_integration_module variable:
-;;
-;;    search_api_solr
-;;    apachesolr
 ;;
 ;;  To delete existing Solr core simply comment out this line.
 ;;  The system will cleanly delete existing Solr core in 15 minutes.

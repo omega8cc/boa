@@ -1857,10 +1857,10 @@ _manage_site_drush_alias_mirror() {
             fi
           fi
         else
-          rm -f ${_pthAliasCopy}
+          ### rm -f ${_pthAliasCopy}
           echo "ZOMBIE ${_SiteDir} detected"
           echo "Moving GHOST ${_SiteName}.alias.drushrc.php to ${_pthParen_tUsr}/undo/"
-          mv -f ${_pthParen_tUsr}/.drush/${_SiteName}.alias.drushrc.php ${_pthParen_tUsr}/undo/ &> /dev/null
+          ### mv -f ${_pthParen_tUsr}/.drush/${_SiteName}.alias.drushrc.php ${_pthParen_tUsr}/undo/ &> /dev/null
           echo
         fi
       fi
