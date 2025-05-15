@@ -542,6 +542,7 @@ _fix_o_contrib_symlink() {
       fi
     elif [ -e "${_Plr}/core/themes/olivero" ] \
       && [ -e "${_Plr}/core/themes/classy" ] \
+      && [ ! -e "${_Plr}/core/modules/workspaces_ui" ] \
       && [ -e "${_O_CONTRIB_NINE}" ]; then
       if [ -e "${_Plr}/modules/o_contrib_eight" ] \
         || [ -e "${_Plr}/modules/.o_contrib_eight_dont_use" ]; then
@@ -558,6 +559,7 @@ _fix_o_contrib_symlink() {
       fi
     elif [ -e "${_Plr}/core/themes/olivero" ] \
       && [ ! -e "${_Plr}/core/themes/classy" ] \
+      && [ ! -e "${_Plr}/core/modules/workspaces_ui" ] \
       && [ -e "${_O_CONTRIB_TEN}" ]; then
       if [ -e "${_Plr}/modules/o_contrib_eight" ] \
         || [ -e "${_Plr}/modules/.o_contrib_eight_dont_use" ]; then
@@ -571,6 +573,28 @@ _fix_o_contrib_symlink() {
       fi
       if [ ! -e "${_Plr}/modules/o_contrib_ten" ]; then
         ln -sfn ${_O_CONTRIB_TEN} ${_Plr}/modules/o_contrib_ten &> /dev/null
+      fi
+    elif [ -e "${_Plr}/core/themes/olivero" ] \
+      && [ ! -e "${_Plr}/core/themes/classy" ] \
+      && [ -e "${_Plr}/core/modules/workspaces_ui" ] \
+      && [ -e "${_O_CONTRIB_ELEVEN}" ]; then
+      if [ -e "${_Plr}/modules/o_contrib_eight" ] \
+        || [ -e "${_Plr}/modules/.o_contrib_eight_dont_use" ]; then
+        rm -f ${_Plr}/modules/o_contrib_eight
+        rm -f ${_Plr}/modules/.o_contrib_eight_dont_use
+      fi
+      if [ -e "${_Plr}/modules/o_contrib_nine" ] \
+        || [ -e "${_Plr}/modules/.o_contrib_nine_dont_use" ]; then
+        rm -f ${_Plr}/modules/o_contrib_nine
+        rm -f ${_Plr}/modules/.o_contrib_nine_dont_use
+      fi
+      if [ -e "${_Plr}/modules/o_contrib_ten" ] \
+        || [ -e "${_Plr}/modules/.o_contrib_ten_dont_use" ]; then
+        rm -f ${_Plr}/modules/o_contrib_ten
+        rm -f ${_Plr}/modules/.o_contrib_ten_dont_use
+      fi
+      if [ ! -e "${_Plr}/modules/o_contrib_eleven" ]; then
+        ln -sfn ${_O_CONTRIB_ELEVEN} ${_Plr}/modules/o_contrib_eleven &> /dev/null
       fi
     else
       if [ -e "${_Plr}/modules/watchdog" ]; then
@@ -3163,6 +3187,7 @@ if [ -e "/data/all" ]; then
   _O_CONTRIB_EIGHT="/data/all/${_LAST_ALL}/o_contrib_eight"
   _O_CONTRIB_NINE="/data/all/${_LAST_ALL}/o_contrib_nine"
   _O_CONTRIB_TEN="/data/all/${_LAST_ALL}/o_contrib_ten"
+  _O_CONTRIB_ELEVEN="/data/all/${_LAST_ALL}/o_contrib_eleven"
 elif [ -e "/data/disk/all" ]; then
   cd /data/disk/all
   _listl=([0-9]*)
@@ -3172,12 +3197,14 @@ elif [ -e "/data/disk/all" ]; then
   _O_CONTRIB_EIGHT="/data/disk/all/${_LAST_ALL}/o_contrib_eight"
   _O_CONTRIB_NINE="/data/disk/all/${_LAST_ALL}/o_contrib_nine"
   _O_CONTRIB_TEN="/data/disk/all/${_LAST_ALL}/o_contrib_ten"
+  _O_CONTRIB_ELEVEN="/data/disk/all/${_LAST_ALL}/o_contrib_eleven"
 else
   _O_CONTRIB=NO
   _O_CONTRIB_SEVEN=NO
   _O_CONTRIB_EIGHT=NO
   _O_CONTRIB_NINE=NO
   _O_CONTRIB_TEN=NO
+  _O_CONTRIB_ELEVEN=NO
 fi
 #
 mkdir -p /var/xdrago/log/daily

@@ -639,9 +639,12 @@ _fix_solr9_core() {
   if [ -e "${file}" ]; then
     local _test_id
     _test_id=$(grep "solr9" "${file}" 2>&1)
-    if [[ ! "${_test_id}" =~ "solr9" ]]; then
+    _test_port=$(grep "9099" "${file}" 2>&1)
+    if [[ ! "${_test_id}" =~ "solr9" ]] || [[ ! "${_test_port}" =~ "9099" ]]; then
+      sed -i "s/^solr\.replication\.masterUrl.*//g" "${file}"
       sed -i "s/^solr\.install\.dir.*//g" "${file}"
       sed -i "s/^solr\.contrib\.dir.*//g" "${file}"
+      echo "solr.replication.masterUrl=http://localhost:9099" >> "${file}"
       echo "solr.install.dir=/opt/solr9" >> "${file}"
       sed -i "/^$/d" "${file}"
       echo "Fixed ${file}"
@@ -656,9 +659,12 @@ _fix_solr9_cnf() {
     for _pRp in `find /var/solr9/data/oct.*/conf/solrcore.properties -maxdepth 1 | sort`; do
       if [ -e "${_pRp}" ]; then
         _PRP_TEST_ID=$(grep "solr9" ${_pRp} 2>&1)
-        if [[ ! "${_PRP_TEST_ID}" =~ "solr9" ]]; then
+        _PRP_TEST_PORT=$(grep "9099" ${_pRp} 2>&1)
+        if [[ ! "${_PRP_TEST_ID}" =~ "solr9" ]] || [[ ! "${_PRP_TEST_PORT}" =~ "9099" ]]; then
+          sed -i "s/^solr\.replication\.masterUrl.*//g" ${_pRp}
           sed -i "s/^solr\.install\.dir.*//g" ${_pRp}
           sed -i "s/^solr\.contrib\.dir.*//g" ${_pRp}
+          echo "solr.replication.masterUrl=http://localhost:9099" >> ${_pRp}
           echo "solr.install.dir=/opt/solr9" >> ${_pRp}
           sed -i "/^$/d" ${_pRp}
           echo "Fixed ${_pRp}"

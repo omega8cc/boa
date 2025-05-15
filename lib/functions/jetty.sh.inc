@@ -1,4 +1,13 @@
 
+_if_fix_solr9_mod() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _if_fix_solr9_mod"
+  fi
+  [ ! -e "/opt/solr9/server/modules/ltr.mod" ] && cp -af ${_bldPth}/aegir/conf/solr9/*  /opt/solr9/server/modules/
+  chown root:root /opt/solr9/server/modules/*
+  chmod 644 /opt/solr9/server/modules/*
+}
+
 _if_fix_solr9_permissions() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _if_fix_solr9_permissions"
@@ -33,6 +42,7 @@ _if_install_solr_jetty() {
     || [ "${_hostedSys}" = "YES" ]; then
     if [ -e "/var/solr9/data" ] && [ -L "/var/solr9" ]; then
       _if_fix_solr9_permissions
+      _if_fix_solr9_mod
     fi
     _R_SOLR="9"
     _N_SOLR="solr${_R_SOLR}"
@@ -59,6 +69,7 @@ _if_install_solr_jetty() {
         echo ${_SOLR_9_VRN} > ${_SOLR_CTRL}
         cd /var/opt
         _if_fix_solr9_permissions
+        _if_fix_solr9_mod
         _msg "INFO: MultiCore Apache Solr ${_R_SOLR} installed"
       else
         _msg "INFO: MultiCore Apache Solr ${_R_SOLR} not installed"
@@ -67,10 +78,14 @@ _if_install_solr_jetty() {
   fi
   if [ -e "/etc/default/${_N_SOLR}.in.sh" ]; then
     _SOLR9_JAVA_TEST=$(grep "BOA ${_xSrl} Path to Java on ${_OS_CODE}" /etc/default/${_N_SOLR}.in.sh 2>&1)
-    if [[ "${_SOLR9_JAVA_TEST}" =~ "BOA ${_xSrl} Path to Java on ${_OS_CODE}" ]]; then
+    _SOLR9_MODULES_TEST=$(grep "analysis-extras,clustering,extraction,langid,ltr" /etc/default/${_N_SOLR}.in.sh 2>&1)
+    if [[ "${_SOLR9_JAVA_TEST}" =~ "BOA ${_xSrl} Path to Java on ${_OS_CODE}" ]] \
+      && [[ "${_SOLR9_MODULES_TEST}" =~ "analysis-extras,clustering,extraction,langid,ltr" ]]; then
       _DO_NOTHING=YES
     else
       sed -i "s/^SOLR_JAVA_HOME=.*//g" /etc/default/${_N_SOLR}.in.sh
+      wait
+      sed -i "s/^SOLR_MODULES=.*//g" /etc/default/${_N_SOLR}.in.sh
       wait
       sed -i "s/^LOG4J_FORMAT_MSG_NO_LOOKUPS=.*//g" /etc/default/${_N_SOLR}.in.sh
       wait
@@ -80,8 +95,12 @@ _if_install_solr_jetty() {
       if [ "${_OS_CODE}" = "chimaera" ]; then
         echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-17-openjdk\" # BOA ${_xSrl} Path to Java 17" >> \
           /etc/default/${_N_SOLR}.in.sh
+        echo "SOLR_MODULES=\"analysis-extras,clustering,extraction,langid,ltr\" # Auto-Enable Modules" >> \
+          /etc/default/${_N_SOLR}.in.sh
       elif [ "${_OS_CODE}" = "daedalus" ]; then
         echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-17-openjdk\" # BOA ${_xSrl} Path to Java 17" >> \
+          /etc/default/${_N_SOLR}.in.sh
+        echo "SOLR_MODULES=\"analysis-extras,clustering,extraction,langid,ltr\" # Auto-Enable Modules" >> \
           /etc/default/${_N_SOLR}.in.sh
       fi
     fi
@@ -94,6 +113,7 @@ _if_install_solr_jetty() {
       bash ./install_solr_service.sh solr-${_SOLR_9_VRN}.tgz -f -i /opt -d /var/${_N_SOLR} -u ${_N_SOLR} -s ${_N_SOLR} -p 9099 &> /dev/null
       echo ${_SOLR_9_VRN} > ${_SOLR_CTRL}
       _if_fix_solr9_permissions
+      _if_fix_solr9_mod
       _msg "INFO: MultiCore Apache Solr ${_R_SOLR} upgrade completed"
     fi
   fi
@@ -267,17 +287,17 @@ _if_install_solr_jetty() {
             ${_Dir}/ &> /dev/null
         done
         adduser --system --group --home /opt/solr4 jetty9 &> /dev/null
-        if [ ! -e "/opt/solr4/search_api_solr-7.x-1.15.log" ]; then
+        if [ ! -e "/opt/solr4/search_api_solr-7.x-1.17.log" ]; then
           cd /var/opt
           rm -rf search_api_solr*
-          _get_dev_contrib "search_api_solr-7.x-1.15.tar.gz"
+          _get_dev_contrib "search_api_solr-7.x-1.17.tar.gz"
           for _Dir in `find /opt/solr4/core{0,1,2,3,4,5,6,7,8,9}/ \
             -maxdepth 1 -mindepth 1 -type d | grep conf`; do
             cp -af /var/opt/search_api_solr/solr-conf/4.x/* ${_Dir}/ &> /dev/null
           done
           sed -i "s/8983/8099/g" \
             /opt/solr4/core{0,1,2,3,4,5,6,7,8,9}/conf/solrcore.properties &> /dev/null
-          touch /opt/solr4/search_api_solr-7.x-1.15.log
+          touch /opt/solr4/search_api_solr-7.x-1.17.log
         fi
         cp -af ${_bldPth}/docs/SOLR.txt /opt/solr4/README.txt &> /dev/null
         cd /var/opt
@@ -474,17 +494,17 @@ _if_install_solr_jetty() {
             ${_Dir}/ &> /dev/null
         done
         adduser --system --group --home /opt/solr3 jetty8 &> /dev/null
-        if [ ! -e "/opt/solr3/search_api_solr-7.x-1.15.log" ]; then
+        if [ ! -e "/opt/solr3/search_api_solr-7.x-1.17.log" ]; then
           cd /var/opt
           rm -rf search_api_solr*
-          _get_dev_contrib "search_api_solr-7.x-1.15.tar.gz"
+          _get_dev_contrib "search_api_solr-7.x-1.17.tar.gz"
           for _Dir in `find /opt/solr3/core{0,1,2,3,4,5,6,7,8,9}/ \
             -maxdepth 1 -mindepth 1 -type d | grep conf`; do
             cp -af /var/opt/search_api_solr/solr-conf/3.x/* ${_Dir}/ &> /dev/null
           done
           sed -i "s/8983/8088/g" \
             /opt/solr3/core{0,1,2,3,4,5,6,7,8,9}/conf/solrcore.properties &> /dev/null
-          touch /opt/solr3/search_api_solr-7.x-1.15.log
+          touch /opt/solr3/search_api_solr-7.x-1.17.log
         fi
         cp -af ${_bldPth}/docs/SOLR.txt /opt/solr3/README.txt &> /dev/null
         chown -R jetty8:jetty8 /opt/solr3
@@ -603,10 +623,10 @@ _if_install_solr_jetty() {
           ${_Dir}/ &> /dev/null
         done
         adduser --system --group --home /opt/solr1 jetty7 &> /dev/null
-        if [ ! -e "/opt/solr1/search_api_solr-7.x-1.15.log" ]; then
+        if [ ! -e "/opt/solr1/search_api_solr-7.x-1.17.log" ]; then
           cd /var/opt
           rm -rf search_api_solr*
-          _get_dev_contrib "search_api_solr-7.x-1.15.tar.gz"
+          _get_dev_contrib "search_api_solr-7.x-1.17.tar.gz"
           for _Dir in `find /opt/solr1/core{0,1,2,3,4,5,6,7,8,9}/ \
             -maxdepth 1 -mindepth 1 -type d | grep conf`; do
             cp -af /var/opt/search_api_solr/solr-conf/1.4/* \
@@ -614,7 +634,7 @@ _if_install_solr_jetty() {
           done
           sed -i "s/8983/8077/g" \
             /opt/solr1/core{0,1,2,3,4,5,6,7,8,9}/conf/solrcore.properties &> /dev/null
-          touch /opt/solr1/search_api_solr-7.x-1.15.log
+          touch /opt/solr1/search_api_solr-7.x-1.17.log
         fi
         cp -af ${_bldPth}/docs/SOLR.txt /opt/solr1/README.txt &> /dev/null
         rm -rf /opt/jetty7/solr

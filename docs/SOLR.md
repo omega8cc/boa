@@ -21,7 +21,7 @@ Currently supported versions are listed below:
 - [search_api_solr-4.3.8.tar.gz (D10.2+)](https://ftp.drupal.org/files/projects/search_api_solr-4.3.8.tar.gz)
 - [search_api_solr-4.2.12.tar.gz (D9.3+)](https://ftp.drupal.org/files/projects/search_api_solr-4.2.12.tar.gz)
 - [search_api_solr-4.1.12.tar.gz (D8.8+)](https://ftp.drupal.org/files/projects/search_api_solr-4.1.12.tar.gz)
-- [search_api_solr-7.x-1.15.tar.gz (D7)](https://ftp.drupal.org/files/projects/search_api_solr-7.x-1.15.tar.gz)
+- [search_api_solr-7.x-1.17.tar.gz (D7)](https://ftp.drupal.org/files/projects/search_api_solr-7.x-1.17.tar.gz)
 - [apachesolr-7.x-1.12.tar.gz (D7)](https://ftp.drupal.org/files/projects/apachesolr-7.x-1.12.tar.gz)
 - [apachesolr-6.x-3.1.tar.gz (D6)](https://ftp.drupal.org/files/projects/apachesolr-6.x-3.1.tar.gz)
 
