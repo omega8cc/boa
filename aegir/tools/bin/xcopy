@@ -21,117 +21,6 @@ fi
 
 ###-------------SYSTEM-----------------###
 
-_send_notice_migration_complete() {
-  _MAILX_TEST=`s-nail -V 2>&1`
-  if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
-  cat <<EOF | s-nail -b ${_BCC_EMAIL} -s "IMPORTANT: Completed migration to ${_tgt} for ${_DOMAIN}" ${_CLIENT_EMAIL}
-Hello,
-
-This is a notification to inform you that the migration of your Aegir hosting system has been successfully completed. Below are important details and instructions regarding the changes.
-
-YOUR NEW SYSTEM IP ADDRESS IS: [${_tgt}]
-
-Please update DNS for all your sites as soon as possible to point traffic directly to the new IP address. The old servers with an HTTP proxy will remain active for a maximum of 10 days after migration.
-
----
-
-Important Changes to Note:
-
-1. New Aegir Control Panel URL
-   Your new welcome email will include details about the updated Aegir URL, including SQL Adminer access.
-
-2. Access Credentials
-   Aegir Control Panel access credentials for all current admins remain the same. Updated SSH/SFTP credentials (with a new password) are in your welcome email.
-
-3. SSH Key Transfer
-   Only the main SSH account keys have been transferred.
-   - SSH sub-accounts (Clients) will need to be recreated, so their old passwords and SSH keys will no longer work.
-
-4. Main SSH Account Directory
-   The contents of your main SSH account’s home directory have NOT been migrated. Please download any necessary files from the old server.
-
-5. Aegir Backend Key Update
-   The public SSH key (USER.id_rsa.pub) for the Aegir backend has changed. This is important if you use integration with a remote Git repository.
-
-6. SSL Certificates
-   SSL/Let’s Encrypt certificates have been migrated automatically. Renewals will be handled on the new server, so updating DNS promptly is advised.
-
-7. Paused Cron Tasks
-   All scheduled tasks were paused during migration and will resume within 1-3 hours.
-
-8. Old Aegir Control Panel
-   The old control panel has been disabled to secure proxy configurations.
-
----
-
-Thank you for your cooperation during this migration. If you have any questions or need assistance, please feel free to reach out.
-
-Kind regards,
-BOA Servers Sysadmins
-
-EOF
-  fi
-  echo "INFO: Migration complete notice sent to ${_CLIENT_EMAIL} [${_THIS_HM_USER}]: OK"
-}
-
-_send_notice_migration_start() {
-  _MAILX_TEST=`s-nail -V 2>&1`
-  if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
-  cat <<EOF | s-nail -b ${_BCC_EMAIL} -s "STATUS: Running migration to ${_tgt} for ${_DOMAIN}" ${_CLIENT_EMAIL}
-Hello,
-
-This notification is to inform you that the migration of your Aegir hosting system to the new platform has started.
-
-YOUR NEW SYSTEM IP ADDRESS IS: [${_tgt}]
-
-You will receive another message once the migration is complete, along with a separate New Welcome Email containing important details about your updated system.
-
-Please do not run any tasks in your old Aegir Control Panel during this migration, as it may interfere with special proxy configurations set up to ensure service continuity.
-
-Important: Update DNS for All Your Sites
-Once migrated, update DNS for all your sites to point traffic directly to the new IP address. The old servers with an HTTP proxy will remain active for up to 10 days after migration to assist in the transition.
-
----
-
-Important Changes to Note:
-
-1. New Aegir Control Panel URL
-   Your New Welcome Email will include details about the updated Aegir URL, including SQL Adminer access.
-
-2. Access Credentials
-   Aegir Control Panel credentials for all current admins will remain the same. Updated SSH/SFTP credentials (with a new password) will be provided in your welcome email.
-
-3. SSH Key Transfer
-   Only the main SSH account keys will be transferred.
-   - SSH sub-accounts (Clients) will need to be recreated, so their old passwords and SSH keys will no longer work.
-
-4. Main SSH Account Directory
-   The contents of your main SSH account’s home directory will NOT be migrated. Please download any necessary files from the old server.
-
-5. Aegir Backend Key Update
-   The public SSH key (USER.id_rsa.pub) for the Aegir backend will change. This is important if you use integration with a remote Git repository.
-
-6. SSL Certificates
-   SSL/Let’s Encrypt certificates will be migrated automatically. Renewals will be handled on the new server, so updating DNS promptly is advised.
-
-7. Paused Cron Tasks
-   All scheduled tasks will be paused during migration and for an additional 1-3 hours afterward.
-
-8. Old Aegir Control Panel
-   The old control panel will be disabled to secure proxy configurations.
-
----
-
-Thank you for your cooperation during this migration. If you have any questions or need assistance, please feel free to reach out.
-
-Kind regards,
-BOA Servers Sysadmins
-
-EOF
-  fi
-  echo "INFO: Migration start notice sent to ${_CLIENT_EMAIL} [${_THIS_HM_USER}]: OK"
-}
-
 _enable_chattr() {
   _isTest="$1"
   _isTest=${_isTest//[^a-z0-9]/}
@@ -343,13 +232,6 @@ EOFMYSQL
               --overwrite-tables \
               --verbose=1
             echo "INFO: site ${_Dom} db import on ${_oct} complete"
-            ###
-            ### Activate readonly on source via global.inc and not via drush
-            ###
-            ### _run_drush8_nosilent_cmd "variable-set --always-set site_readonly 0"
-            ### _run_drush8_nosilent_cmd "dis readonlymode -y"
-            ### echo "INFO: site ${_Dom} readonlymode on ${_oct} disabled"
-            ###
           else
             echo "ALRT: site ${_Dom} db failure due to missing ${_USR}/src/${_DBN}"
           fi
@@ -363,13 +245,6 @@ EOFMYSQL
           echo "ALRT: site ${_Dom} db failure due to empty _DBN/${_DBN} or _DBP/${_DBP}"
         fi
       elif [ "${_cmd}" = "export" ]; then
-        _run_drush8_nosilent_cmd "en readonlymode -y"
-        ###
-        ### Activate readonly on source via global.inc and not via drush
-        ###
-        ### _run_drush8_nosilent_cmd "variable-set --always-set site_readonly 1"
-        ###
-        echo "INFO: site ${_Dom} readonlymode module on ${_oct} enabled"
         if [ -x "/usr/local/bin/mydumper" ]; then
           _MYQUICK_ITD=$(mydumper -V 2>&1 \
             | tr -d "\n" \
@@ -420,7 +295,7 @@ EOFMYSQL
           --clear \
           --verbose=1
         echo "INFO: site ${_Dom} db export on ${_oct} complete"
-      elif [ "${_cmd}" = "proxy" ]; then
+      elif [ "${_cmd}" = "fooproxy" ]; then
         if [ -e "${_USR}/log/exported.pid" ] && [ ! -z "${_tgt}" ]; then
           if [ -e "${_Vht}" ]; then
             _NMS=`cat ${_Vht} | grep "server_name" | sed "s/server_name//g; s/;//g" | sort | uniq | tr -d "\n" | sed "s/  / /g; s/  / /g; s/  / /g" | sort | uniq`
@@ -458,15 +333,6 @@ EOFMYSQL
   done
 }
 
-_delete_this_platform() {
-  _run_drush8_hmr_cmd "hosting-task @platform_${_T_PFM_NAME} delete --force"
-  echo "Old empty platform_${_T_PFM_NAME} will be deleted"
-  _run_drush8_hmr_cmd "hosting-dispatch"
-  sleep 5
-  _run_drush8_hmr_cmd "hosting-tasks --force"
-  sleep 1
-}
-
 _migrate_prepare() {
   _THIS_HM_USER=${_oct}
   _USR=/data/disk/${_oct}
@@ -491,13 +357,7 @@ _migrate_prepare() {
     _CLIENT_SUBSCR=`echo -n ${_CLIENT_SUBSCR} | tr -d "\n"`
   fi
   if [ -e "${_USR}/log/email.txt" ]; then
-    _CLIENT_EMAIL=`cat ${_USR}/log/email.txt`
-    _CLIENT_EMAIL=`echo -n ${_CLIENT_EMAIL} | tr -d "\n"`
-    if [[ "${_CLIENT_EMAIL}" =~ "@" ]]; then
-      _DO_NOTHING=YES
-    else
-      _CLIENT_EMAIL="omega8cc@gmail.com"
-    fi
+    _CLIENT_EMAIL="mem@tkm.cc"
     _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
   fi
 
@@ -512,10 +372,6 @@ _migrate_prepare() {
   echo "_CLIENT_OPTION is ${_CLIENT_OPTION}"
   echo "_CLIENT_SUBSCR is ${_CLIENT_SUBSCR}"
   echo "_CLIENT_CORES is ${_CLIENT_CORES}"
-
-  if [ "${_cmd}" = "export" ] && [ ! -z "${_CLIENT_EMAIL}" ]; then
-    _send_notice_migration_start
-  fi
 
   su -s /bin/bash ${_THIS_HM_USER} -c "drush8 cc drush" &> /dev/null
   wait
@@ -627,7 +483,6 @@ _migrate_prepare() {
         users \
         users_roles \
         > ${_USR}/src/prev_hostmaster.sql
-    _run_drush8_hmr_cmd "variable-set --always-set maintenance_mode 1"
     if [ -e "${_USR}/src/prev_hostmaster.sql" ]; then
       echo "INFO: hostmaster ${_oct} db export complete"
       touch ${_USR}/log/exported.pid
@@ -692,35 +547,6 @@ _migrate_prepare() {
             sed -i "s/distro\/04.*',/distro\/002',/g"          ${_USR}/.drush/hm.alias.drushrc.php
             wait
             sed -i "s/distro\/05.*',/distro\/002',/g"          ${_USR}/.drush/hm.alias.drushrc.php
-            for _Platform in `find ${_USR}/.drush/platform_* -maxdepth 1 -type f | sort`; do
-              _T_PFM_NAME=$(echo "${_Platform}" \
-                | sed "s/.*platform_//g; s/.alias.drushrc.php//g" \
-                | awk '{ print $1}' 2>&1)
-              _T_PFM_ROOT=$(cat ${_Platform} \
-                | grep "root'" \
-                | cut -d: -f2 \
-                | awk '{ print $3}' \
-                | sed "s/[\,']//g" 2>&1)
-              _T_PFM_SITE=$(grep "${_T_PFM_ROOT}/sites/" \
-                ${_USR}/.drush/*.drushrc.php \
-                | grep site_path 2>&1)
-              if [ ! -e "${_T_PFM_ROOT}/sites/all" ] \
-                && [ "${_T_PFM_NAME}" != "hostmaster" ]; then
-                _delete_this_platform
-                mkdir -p ${_USR}/undo
-                mv -f ${_USR}/.drush/platform_${_T_PFM_NAME}.alias.drushrc.php \
-                  ${_USR}/undo/ &> /dev/null
-                echo "GHOST platform ${_T_PFM_ROOT} detected and moved to ${_USR}/undo/"
-              fi
-              if [[ "${_T_PFM_SITE}" =~ ".restore" ]]; then
-                echo "WARNING: ghost site leftover found: ${_T_PFM_SITE}"
-              fi
-              if [ -z "${_T_PFM_SITE}" ] \
-                && [ "${_T_PFM_NAME}" != "hostmaster" ] \
-                && [ -e "${_T_PFM_ROOT}/sites/all" ]; then
-                _delete_this_platform
-              fi
-            done
           fi
         fi
 
@@ -812,7 +638,7 @@ _migrate_prepare() {
   fi
   if [ "${_cmd}" = "import" ] \
     || [ "${_cmd}" = "export" ] \
-    || [ "${_cmd}" = "proxy" ]; then
+    || [ "${_cmd}" = "fooproxy" ]; then
     _migrate_sites
   fi
   echo Done ${_cmd} for ${_USR}
@@ -939,7 +765,7 @@ _migrate_init() {
     elif [ "${_cmd}" = "import" ] && [ -e "${_USR}/log/imported.pid" ]; then
       echo "_USR ${_oct} is not eligible for migration: already imported"
       exit 1
-    elif [ "${_cmd}" = "proxy" ] && [ -e "${_USR}/log/proxied.pid" ]; then
+    elif [ "${_cmd}" = "fooproxy" ] && [ -e "${_USR}/log/proxied.pid" ]; then
       echo "_USR ${_oct} is not eligible for migration: already proxied"
       exit 1
     elif [ "${_RESULT_EMAIL}" = "OUR" ]; then
@@ -1035,9 +861,8 @@ _migrate_init() {
           ### _NOW=`date +%y%m%d-%H%M`
           ### mkdir -p /var/xdrago/log/migrate
           ### _migrate_prepare >/var/xdrago/log/migrate/migrate-${_oct}-${_cmd}-${_NOW}.log 2>&1
-        if [ "${_cmd}" = "proxy" ]; then
+        if [ "${_cmd}" = "fooproxy" ]; then
           service nginx reload
-          _send_notice_migration_complete
           echo COMPLETE > ${_USR}/log/proxied.pid
         fi
       fi
@@ -1343,7 +1168,7 @@ case "$1" in
             _check_root
             _migrate_init
   ;;
-  proxy)    _cmd="$1"
+  noproxy)  _cmd="$1"
             _oct="$2"
             _tgt="$3"
             _dst="$4"

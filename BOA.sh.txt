@@ -3245,7 +3245,8 @@ _update_boa_tools() {
            vhostcheck \
            weblogx \
            websh \
-           xboa"
+           xboa \
+           xcopy"
   for _cbn in ${_boaBins}; do
     if [ -e "${_optBin}/${_cbn}" ]; then
       if [ `ps aux | grep -v "grep" | grep --count "/${_cbn}"` -gt 0 ]; then
@@ -3332,7 +3333,7 @@ _update_boa_tools() {
   fi
 
   chmod 700 ${_optBin}/{autoinit,autodaedalus,autochimaera,autobeowulf,autoupboa,backboa,duobackboa,mergecsf,verifyvhostsdns}
-  chmod 700 ${_optBin}/{barracuda,boa,ffmirror,killer,mycnfup,octopus,syncpass,xboa,weblogx,sqlclean,perftest,dcysetup,copydbackup}
+  chmod 700 ${_optBin}/{barracuda,boa,ffmirror,killer,mycnfup,octopus,syncpass,xboa,xcopy,weblogx,sqlclean,perftest,dcysetup,copydbackup}
   chmod 700 ${_optBin}/{fancynow,codebasecheck,vhostcheck,memorytuner,mysqltuner5,mysqltuner8,smtpgapps,setprio,multiback}
   chmod 755 ${_optBin}/{randpass,sqlmagic,thinkdifferent,websh,mybackup}
 }
@@ -3503,8 +3504,11 @@ _if_update_boa_key_tools_only() {
     fi
   fi
   _BOA_TOOLS_UPDATE=NO
-  if [ -e "${_pthLog}" ] && [ ! -e "${_pthLog}/updateBOAtools.${_bTs}.ctrl.${_tRee}.${_xSrl}.pid" ]; then
-    _BOA_TOOLS_UPDATE=YES
+  if [ -e "${_pthLog}" ]; then
+    if [ ! -x "/opt/local/bin/xcopy" ] \
+      || [ ! -e "${_pthLog}/updateBOAtools.${_bTs}.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+      _BOA_TOOLS_UPDATE=YES
+    fi
   fi
   [ ! -e "/var/aegir/drush" ] && _BOA_TOOLS_UPDATE=YES
   if [ "${_BOA_TOOLS_UPDATE}" = "YES" ]; then
