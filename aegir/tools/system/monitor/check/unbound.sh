@@ -7,7 +7,7 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 _pthOml="/var/xdrago/log/unbound.incident.log"
 
 _check_root() {
-  if [ $(whoami) = "root" ]; then
+  if [ "$(id -u)" -eq 0 ]; then
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
     chmod a+w /dev/null
   else
@@ -22,7 +22,7 @@ _check_root
 
     # Validate and set default if necessary
     if ! [[ "$_B_NICE" =~ ^-?[0-9]+$ ]]; then
-      _B_NICE=-5
+      _B_NICE=0
     fi
 
     # Clamp the value within -20 to 19
@@ -94,7 +94,7 @@ _unbound_check_fix() {
       unbound-control reload &> /dev/null
     fi
   fi
-  if [ `ps aux | grep -v "grep" | grep --count "/usr/sbin/unbound"` -gt "1" ]; then
+  if [ `ps aux | grep -v "grep" | grep --count "/usr/sbin/unbound"` -gt 1 ]; then
     kill -9 $(ps aux | grep '[u]sr/sbin/unbound' | awk '{print $2}') &> /dev/null
     service unbound start &> /dev/null
     wait
@@ -115,4 +115,4 @@ fi
 
 echo DONE!
 exit 0
-###EOF2024###
+

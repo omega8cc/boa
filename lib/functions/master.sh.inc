@@ -1,10 +1,9 @@
 
 export _tRee=dev
-export _rLsn="BOA-5.5.0"
+export _rLsn="BOA-5.6.0"
 export _rlsE="${_rLsn}-${_tRee}"
 export _bRnh="5.x-${_tRee}"
-_hName=$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)
-_pxSqlPass=$(cat /root/.my.proxysql_adm_pwd.txt 2>/dev/null | tr -d '\n')
+_hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
 
 #
 # Download and extract from core archive.
@@ -52,31 +51,32 @@ _provision_backend_dbpass_generate() {
   else
     _STRONG_PASSWORDS=${_STRONG_PASSWORDS//[^0-9]/}
     if [ ! -z "${_STRONG_PASSWORDS}" ] \
-      && [ "${_STRONG_PASSWORDS}" -gt "32" ]; then
+      && [ "${_STRONG_PASSWORDS}" -gt 32 ]; then
       _PWD_CHARS="${_STRONG_PASSWORDS}"
     else
       _PWD_CHARS=32
     fi
-    if [ ! -z "${_PWD_CHARS}" ] && [ "${_PWD_CHARS}" -gt "128" ]; then
+    if [ ! -z "${_PWD_CHARS}" ] && [ "${_PWD_CHARS}" -gt 128 ]; then
       _PWD_CHARS=128
     fi
   fi
 
   if [ "${_STRONG_PASSWORDS}" = "YES" ] \
-    || [ "${_PWD_CHARS}" -gt "32" ]; then
+    || [ "${_PWD_CHARS}" -gt 32 ]; then
     if [ "${_THIS_DB_HOST}" = "localhost" ] \
       || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
       || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
       || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
       if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
-        _ESC_PASS=$(openssl rand -base64 64 | tr -d '\n')
+        _ESC_PASS="$(openssl rand -base64 64 | tr -d '\n')"
       else
-        _RANDPASS_TEST=$(randpass -V)
+        _RANDPASS_TEST=$(randpass -V 2>&1)
         if [[ "${_RANDPASS_TEST}" =~ "alnum" ]]; then
-          _ESC_PASS=$(randpass "${_PWD_CHARS}" alnum)
+          _ESC_PASS=$(randpass "${_PWD_CHARS}" alnum 2>&1)
         else
-          _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' | tr -d '\n')
-          _ESC_PASS=$(_sanitize_string "${_ESC_PASS}")
+          _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
+          _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
+          _ESC_PASS=$(_sanitize_string "${_ESC_PASS}" 2>&1)
         fi
       fi
     else
@@ -88,6 +88,7 @@ _provision_backend_dbpass_generate() {
     fi
     _isPythonTwo=$(which python2 2>&1)
     _isPythonThree=$(which python3 2>&1)
+    _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
     if [ -x "${_isPythonThree}" ]; then
       _ENC_PASS=$(python3 -c "import urllib.parse; print(urllib.parse.quote('''${_ESC_PASS}'''))")
     elif [ -x "${_isPythonTwo}" ]; then
@@ -96,13 +97,14 @@ _provision_backend_dbpass_generate() {
     _LEN_PASS=$(echo ${#_ESC_PASS} 2>&1)
   fi
 
-  if [ -z "${_ESC_PASS}" ] || [ "${_LEN_PASS}" -lt "9" ]; then
+  if [ -z "${_ESC_PASS}" ] || [ "${_LEN_PASS}" -lt 9 ]; then
     if [ "${_THIS_DB_HOST}" = "localhost" ] \
       || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
       || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
       || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
-      _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' | tr -d '\n')
-      _ESC_PASS=$(_sanitize_string "${_ESC_PASS}")
+      _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
+      _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
+      _ESC_PASS=$(_sanitize_string "${_ESC_PASS}" 2>&1)
     else
       if [ -e "/root/.my.pass.txt" ]; then
         _ESC_PASS=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
@@ -156,7 +158,8 @@ _provision_backend_dbpass_generate() {
   if [ "${_STATUS}" = "INIT" ]; then
     [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL7 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
     if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
-      mysql -uadmin -p${_pxSqlPass} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
+      _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>/dev/null | tr -d '\n')
+      mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
 DELETE FROM mysql_users WHERE username='${_ADBU}';
 DELETE FROM mysql_query_rules WHERE username='${_ADBU}';
 INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_ADBU}','${_ESC_PASS}','10');
@@ -184,7 +187,8 @@ EOFMYSQL
       || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
       [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL8 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
       if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
-        mysql -uadmin -p${_pxSqlPass} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
+        _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>/dev/null | tr -d '\n')
+        mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
 DELETE FROM mysql_users WHERE username='${_ADBU}';
 DELETE FROM mysql_query_rules WHERE username='${_ADBU}';
 INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_ADBU}','${_ESC_PASS}','10');
@@ -225,7 +229,8 @@ EOFMYSQL
     _LOCAL_IP="${_LOC_IP}"
     [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL9 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
     if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
-      mysql -uadmin -p${_pxSqlPass} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
+      _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>/dev/null | tr -d '\n')
+      mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
 DELETE FROM mysql_users WHERE username='${_ADBU}';
 DELETE FROM mysql_query_rules WHERE username='${_ADBU}';
 INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_ADBU}','${_ESC_PASS}','10');
@@ -288,7 +293,8 @@ _provision_backend_dbpass_sync() {
     _USE_AEGIR_HOST="${_hName}"
     [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL10 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
     if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
-      mysql -uadmin -p${_pxSqlPass} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
+      _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>/dev/null | tr -d '\n')
+      mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
 DELETE FROM mysql_users WHERE username='${_USE_DB_USER}';
 DELETE FROM mysql_query_rules WHERE username='${_USE_DB_USER}';
 INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_USE_DB_USER}','${_ESC_PASS}','10');
@@ -391,7 +397,8 @@ _hostmaster_frontend_dbpass_sync() {
     _USE_AEGIR_HOST="${_hName}"
     [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL11 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
     if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
-      mysql -uadmin -p${_pxSqlPass} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
+      _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>/dev/null | tr -d '\n')
+      mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
 DELETE FROM mysql_users WHERE username='${_USE_DB_USER}';
 DELETE FROM mysql_query_rules WHERE username='${_USE_DB_USER}';
 INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_USE_DB_USER}','${_THIS_HM_DBPD}','10');
@@ -470,7 +477,12 @@ _master_download_for_local_build() {
     _get_dev_stc "timeago-7.x-2.3.tar.gz"
     _get_dev_stc "views_bulk_operations-7.x-3.7.tar.gz"
     _get_dev_stc "views-7.x-3.29.tar.gz"
+    ### Aegir Third Party Libraries
+    _get_dev_stc "qrcodejs.tar.gz"
+    _get_dev_stc "timeagojs.tar.gz"
+    _get_dev_stc "vuejs.tar.gz"
     ### BOA Drupal Contrib
+    _get_dev_stc "d7security_client-7.x-1.3.tar.gz"
     _get_dev_stc "features_extra-7.x-1.0.tar.gz"
     _get_dev_stc "features-7.x-2.15.tar.gz"
     _get_dev_stc "idna_convert-7.x-1.0.tar.gz"
@@ -568,7 +580,7 @@ _aegir_master_upgrade() {
     chown -R aegir:www-data ${_THIS_HM_SITE}/files
     chmod -R 02775 ${_THIS_HM_SITE}/files
 
-    export _xSrl=550devT01
+    export _xSrl=560devT00
     export _X_VERSION="${_X_VERSION}"
 
     echo "_AEGIR_VERSION=\"${_AEGIR_VERSION}\""         >> ${_vBs}/${_filIncB}
@@ -673,7 +685,10 @@ _php_cli_cron_update() {
     | tee -a /var/spool/cron/crontabs/aegir >/dev/null 2>&1
   fi
   if [ -e "/var/spool/cron/crontabs/aegir" ]; then
-    if [ "${_PHP_CLI_VERSION}" = "8.3" ] && [ -x "/opt/php83/bin/php" ]; then
+    if [ "${_PHP_CLI_VERSION}" = "8.4" ] && [ -x "/opt/php84/bin/php" ]; then
+      sed -i "s/^PATH=.*/PATH=\/opt\/php84\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
+        /var/spool/cron/crontabs/aegir &> /dev/null
+    elif [ "${_PHP_CLI_VERSION}" = "8.3" ] && [ -x "/opt/php83/bin/php" ]; then
       sed -i "s/^PATH=.*/PATH=\/opt\/php83\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
         /var/spool/cron/crontabs/aegir &> /dev/null
     elif [ "${_PHP_CLI_VERSION}" = "8.2" ] && [ -x "/opt/php82/bin/php" ]; then
@@ -779,30 +794,31 @@ _aegir_master_install_upgrade() {
     else
       _STRONG_PASSWORDS=${_STRONG_PASSWORDS//[^0-9]/}
       if [ ! -z "${_STRONG_PASSWORDS}" ] \
-        && [ "${_STRONG_PASSWORDS}" -gt "32" ]; then
+        && [ "${_STRONG_PASSWORDS}" -gt 32 ]; then
         _PWD_CHARS="${_STRONG_PASSWORDS}"
       else
         _PWD_CHARS=32
       fi
-      if [ ! -z "${_PWD_CHARS}" ] && [ "${_PWD_CHARS}" -gt "128" ]; then
+      if [ ! -z "${_PWD_CHARS}" ] && [ "${_PWD_CHARS}" -gt 128 ]; then
         _PWD_CHARS=128
       fi
     fi
 
-    if [ "${_STRONG_PASSWORDS}" = "YES" ] || [ "${_PWD_CHARS}" -gt "32" ]; then
+    if [ "${_STRONG_PASSWORDS}" = "YES" ] || [ "${_PWD_CHARS}" -gt 32 ]; then
       if [ "${_THIS_DB_HOST}" = "localhost" ] \
         || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
         || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
         || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
         if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
-          _ESC_PASS=$(openssl rand -base64 64 | tr -d '\n')
+          _ESC_PASS="$(openssl rand -base64 64 | tr -d '\n')"
         else
-          _RANDPASS_TEST=$(randpass -V)
+          _RANDPASS_TEST=$(randpass -V 2>&1)
           if [[ "${_RANDPASS_TEST}" =~ "alnum" ]]; then
-            _ESC_PASS=$(randpass "${_PWD_CHARS}" alnum)
+            _ESC_PASS=$(randpass "${_PWD_CHARS}" alnum 2>&1)
           else
-            _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' | tr -d '\n')
-            _ESC_PASS=$(_sanitize_string "${_ESC_PASS}")
+            _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
+            _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
+            _ESC_PASS=$(_sanitize_string "${_ESC_PASS}" 2>&1)
           fi
         fi
       else
@@ -812,16 +828,18 @@ _aegir_master_install_upgrade() {
           _ESC_PASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
         fi
       fi
+      _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
       _LEN_PASS=$(echo ${#_ESC_PASS} 2>&1)
     fi
 
-    if [ -z "${_ESC_PASS}" ] || [ "${_LEN_PASS}" -lt "9" ]; then
+    if [ -z "${_ESC_PASS}" ] || [ "${_LEN_PASS}" -lt 9 ]; then
       if [ "${_THIS_DB_HOST}" = "localhost" ] \
         || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
         || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
         || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
-        _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' | tr -d '\n')
-        _ESC_PASS=$(_sanitize_string "${_ESC_PASS}")
+        _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
+        _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
+        _ESC_PASS=$(_sanitize_string "${_ESC_PASS}" 2>&1)
       else
         if [ -e "/root/.my.pass.txt" ]; then
           _ESC_PASS=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
@@ -834,7 +852,8 @@ _aegir_master_install_upgrade() {
     _ESC="*.*"
     [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL12 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
     if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
-      mysql -uadmin -p${_pxSqlPass} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
+      _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>/dev/null | tr -d '\n')
+      mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
 DELETE FROM mysql_users WHERE username='${_AEGIR_DB_USER}';
 DELETE FROM mysql_query_rules WHERE username='${_AEGIR_DB_USER}';
 INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_AEGIR_DB_USER}','${_ESC_PASS}','10');
@@ -867,7 +886,8 @@ EOFMYSQL
       _LOCAL_IP="${_LOC_IP}"
       [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL13 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
       if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
-        mysql -uadmin -p${_pxSqlPass} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
+        _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>/dev/null | tr -d '\n')
+        mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
 DELETE FROM mysql_users WHERE username='${_AEGIR_DB_USER}';
 DELETE FROM mysql_query_rules WHERE username='${_AEGIR_DB_USER}';
 INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_AEGIR_DB_USER}','${_ESC_PASS}','10');
@@ -890,7 +910,7 @@ ALTER USER '${_AEGIR_DB_USER}'@'%' IDENTIFIED BY '${_ESC_PASS}';
 EOFMYSQL
     fi
 
-    export _xSrl=550devT01
+    export _xSrl=560devT00
     export _X_VERSION="${_X_VERSION}"
 
     echo "_AEGIR_DB_USER=\"${_AEGIR_DB_USER}\""         >> ${_vBs}/${_filIncB}
@@ -1037,7 +1057,7 @@ EOFMYSQL
     _msg "INFO: Aegir Master Instance installed"
   else
     if [ "${_tRee}" = "lts" ]; then
-      _SERIES_TEST=$(cat /var/log/barracuda_log.txt)
+      _SERIES_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
       if [[ "${_SERIES_TEST}" =~ "Barracuda ${_rLsn}-pro" ]]; then
         _msg "ERROR: Your system has been already upgraded to ${_rLsn}-pro"
         _msg "You can not downgrade back to previous/older/lts BOA version"
@@ -1150,7 +1170,7 @@ _php_cli_local_ini_update() {
   _U_II="${_U_HD}/php.ini"
   _PHP_CLI_UPDATE=NO
   _CHECK_USE_PHP_CLI=$(grep "/opt/php" ${_DRUSH_FILE} 2>&1)
-  _PHP_V="83 82 81 80 74 73 72 71 70 56"
+  _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     if [[ "${_CHECK_USE_PHP_CLI}" =~ "php${e}" ]] \
       && [ ! -e "${_U_HD}/.ctrl.php${e}.${_xSrl}.pid" ]; then
@@ -1168,7 +1188,7 @@ _php_cli_local_ini_update() {
     mkdir -p ${_U_HD}
     rm -f ${_U_HD}/.ctrl.php*
     rm -f ${_U_II}
-    _PHP_V="83 82 81 80 74 73 72 71 70 56"
+    _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
       if [[ "${_CHECK_USE_PHP_CLI}" =~ "php${e}" ]]; then
         cp -af /opt/php${e}/lib/php.ini ${_U_II}
@@ -1190,6 +1210,7 @@ _php_cli_local_ini_update() {
         /opt/php81:          \
         /opt/php82:          \
         /opt/php83:          \
+        /opt/php84:          \
         /opt/tika:           \
         /opt/tika7:          \
         /opt/tika8:          \

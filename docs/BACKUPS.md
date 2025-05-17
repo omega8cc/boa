@@ -1,6 +1,14 @@
-# Automated, encrypted backups to Amazon S3 bucket
 
-  * This feature is available on self-hosted **BOA** and hosted Phantom+ Engines.
+# New PRO Backups are now available!
+
+  * New PRO Backups for BOA SysAdmin [docs/BACKUP_ROOT.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_ROOT.md)
+  * New PRO Backups for Octopus Lshell User [docs/BACKUP_USER.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_USER.md)
+  * New PRO Backups Retention Policy Configuration [docs/BACKUP_RETENTION.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_RETENTION.md)
+  * New PRO Backups Supported Regions and Bucket Creation Guidelines [docs/BACKUP_REGIONS.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_REGIONS.md)
+
+# Automated, encrypted backups to Amazon S3 bucket (legacy for LTS)
+
+  * This legacy feature is available on self-hosted **BOA LTS** only.
   * Note that provided `backboa` tool uses symmetric password-only encryption.
   * You can configure AWS Region you prefer to use and Backup Rotation policy.
 
@@ -11,7 +19,7 @@
     /etc /var/aegir /var/www /home /data
 ```
 
-  It will start to run nightly at 1:15 AM (server time) only once you will add
+  It will start to run nightly at 3:15 AM (server time) only once you will add
   all required `_AWS_*` variables in the `/root/.barracuda.cnf` file and run the
   special command `backboa install` while logged in as root.
 
@@ -40,7 +48,7 @@
     _AWS_EXB='Exclude Aegir Backups'      ### [O] By default 'YES' -- can be YES/NO
 ```
 
-    For more detailed include/exclude configuration see notes further below.
+    For more detailed exclude/include configuration see notes further below.
 
     Supported values to use as `_AWS_REG` (the symbol after the # comment):
 
@@ -157,7 +165,7 @@
   * The extra script filename and command: `duobackboa`
   * Separate configuration file: `/root/.duobackboa.cnf`
   * S3 bucket naming convention: `daily-remote-srv-foo-bar`
-  * Cron entry set to start at 5:55 AM (server time)
+  * Cron entry set to start at 5:15 AM (server time)
   * Full backups are scheduled on Saturday
 
   The `duobackboa` script has also built-in how-to: just type `duobackboa`

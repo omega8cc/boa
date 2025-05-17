@@ -18,9 +18,9 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 export _tRee=dev
 
 _check_root() {
-  if [ $(whoami) = "root" ]; then
+  if [ "$(id -u)" -eq 0 ]; then
     ionice -c2 -n7 -p $$
-    renice 9 -p $$
+    renice 19 -p $$
     chmod a+w /dev/null
     [ -e "/root/.gnupg" ] && chmod 700 /root/.gnupg
   else
@@ -32,7 +32,7 @@ _check_root() {
     | sed 's/\%//g' \
     | awk '{print $6}' 2> /dev/null)
   _DF_TEST=${_DF_TEST//[^0-9]/}
-  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt "90" ]; then
+  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt 90 ]; then
     echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
     echo "ERROR: We can not proceed until it is below 90/100"
     exit 1
@@ -50,19 +50,19 @@ if [ ! -x "/usr/local/ssl3/bin/openssl" ]; then
   exit 1
 fi
 
-_PTN_VRN=3.12.5
-_DCY_VRN=3.0.3.1
+_PTN_VRN=3.12.8
+_DCY_VRN=3.0.3.2
 _LOGPTH="/var/xdrago/log"
-_NOW=$(date +%y%m%d-%H%M%S)
+_NOW=$(date +%y%m%d-%H%M%S 2>&1)
 _NOW=${_NOW//[^0-9-]/}
-_DOW=$(date +%u)
+_DOW=$(date +%u 2>&1)
 _DOW=${_DOW//[^1-7]/}
-_DOM=$(date +%e)
+_DOM=$(date +%e 2>&1)
 _DOM=${_DOM//[^0-9]/}
-_HST=$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)
+_HST="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
 _HST=${_HST//[^a-zA-Z0-9-.]/}
-_HST=$(echo -n "${_HST}" | tr A-Z a-z)
-_HST_DASH=$(echo -n "${_HST}" | tr . -)
+_HST=$(echo -n ${_HST} | tr A-Z a-z 2>&1)
+_HST_DASH=$(echo -n ${_HST} | tr . - 2>&1)
 
 _crlGet="-L --max-redirs 3 -k -s --retry 9 --retry-delay 9 -A iCab"
 _wgetGet="--max-redirect=3 --no-check-certificate -q --tries=9 --wait=9 --user-agent='iCab'"
@@ -96,7 +96,7 @@ fi
 
 _os_detection_minimal() {
   _APT_UPDATE="apt-get update"
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
   for e in ${_OS_LIST}; do
     if [ "${e}" = "${_OS_CODE}" ]; then
@@ -114,7 +114,7 @@ _apt_clean_update() {
 
 _check_vps() {
   _BENG_VS=NO
-  _VM_TEST=$(uname -a)
+  _VM_TEST="$(uname -a)"
   if [[ "${_VM_TEST}" =~ "-beng" ]]; then
     _BENG_VS=YES
   fi
@@ -122,7 +122,7 @@ _check_vps() {
 _check_vps
 
 _find_fast_mirror_early() {
-  _isNetc=$(which netcat)
+  _isNetc=$(which netcat 2>&1)
   if [ ! -x "${_isNetc}" ] || [ -z "${_isNetc}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
@@ -133,9 +133,9 @@ _find_fast_mirror_early() {
     apt-get install netcat-traditional ${_aptYesUnth}
     wait
   fi
-  _ffMirr=$(which ffmirror)
+  _ffMirr=$(which ffmirror 2>&1)
   if [ -x "${_ffMirr}" ]; then
-    _ffList="/var/backups/boa-mirrors-2024-12.txt"
+    _ffList="/var/backups/boa-mirrors-2025-01.txt"
     mkdir -p /var/backups
     if [ ! -e "${_ffList}" ]; then
       echo "eu.files.aegir.cc"  > ${_ffList}
@@ -143,9 +143,9 @@ _find_fast_mirror_early() {
       echo "ao.files.aegir.cc" >> ${_ffList}
     fi
     if [ -e "${_ffList}" ]; then
-      _BROKEN_FFMIRR_TEST=$(grep "stuff" "${_ffMirr}")
+      _BROKEN_FFMIRR_TEST=$(grep "stuff" ${_ffMirr} 2>&1)
       if [[ "${_BROKEN_FFMIRR_TEST}" =~ "stuff" ]]; then
-        _CHECK_MIRROR=$(bash "${_ffMirr}" < "${_ffList}")
+        _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _USE_MIR="${_CHECK_MIRROR}"
         [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.aegir.cc"
       else
@@ -169,7 +169,7 @@ _install() {
   _DUPLICITY_ITD=$(duplicity --version 2>&1 \
     | tr -d "\n" \
     | cut -d" " -f2 \
-    | awk '{ print $1}')
+    | awk '{ print $1}' 2>&1)
   if [ "${_DUPLICITY_ITD}" = "${_DCY_VRN}" ] \
     && [ -L "/usr/local/bin/jp.py" ] \
     && [ -L "/usr/local/bin/duplicity" ] \
@@ -198,7 +198,7 @@ _install() {
         rclone \
         rdiff \
         tzdata
-    _PTN_TEST=$("${_DCY_PTN}" --version)
+    _PTN_TEST=$(${_DCY_PTN} --version 2>&1)
     if [[ ! "${_PTN_TEST}" =~ "Python ${_PTN_VRN}" ]] \
       || [ ! -x "${_DCY_PTN}" ]; then
       cd /var/opt
@@ -215,7 +215,7 @@ _install() {
       make install --quiet
       cd
     fi
-    _PTN_TEST=$("${_DCY_PTN}" --version)
+    _PTN_TEST=$(${_DCY_PTN} --version 2>&1)
     if [[ "${_PTN_TEST}" =~ "Python ${_PTN_VRN}" ]]; then
       python3 -m pip install pipx --break-system-packages --root-user-action ignore
       pip3 install --upgrade pip --root-user-action ignore
@@ -228,7 +228,7 @@ _install() {
       echo "Python ${_PTN_VRN} installation failed with ${_PTN_TEST}"
       exit 1
     fi
-    _DCY_TEST=$("${_DCY_CMD}" --version)
+    _DCY_TEST=$(${_DCY_CMD} --version 2>&1)
     if [[ "${_DCY_TEST}" =~ "duplicity ${_DCY_VRN}" ]]; then
       echo "Installation complete!"
     else
@@ -245,7 +245,7 @@ _check_aws() {
   fi
 }
 
-if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ]; then
+if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt 0 ]; then
   echo "[$(date)] Active duplicity process detected, will try again later..." >> /var/log/mybackup_waiting_queue.log
   exit 1
 fi
@@ -373,7 +373,7 @@ fi
 if [ ! -z "${_AWS_EXB}" ] && [ "${_AWS_EXB}" = "NO" ]; then
   _EXCLUDE="--exclude /data/conf/arch"
 else
-  _EXCLUDE="--exclude /data/conf/arch --exclude-regexp '^/data/disk/.*/backups/'"
+  _EXCLUDE="--exclude /data/conf/arch --exclude-regexp '^/data/disk/.*/backups'"
 fi
 
 _USER_INCLUDE=""
@@ -390,7 +390,7 @@ export AWS_ACCESS_KEY_ID="${_AWS_KEY}"
 export AWS_SECRET_ACCESS_KEY="${_AWS_SEC}"
 export PASSPHRASE="${_AWS_PWD}"
 
-_SOURCE="/etc /var/aegir /var/www /home /data"
+_SOURCE="/data /etc /home /opt/solr4 /var/aegir /var/solr7 /var/solr9 /var/www /var/xdrago"
 _BUCKET_NAME="daily-remote-${_HST_DASH}"
 _BUCKET_NAME_DOT="daily.remote.${_HST}"
 _TARGET="boto3+s3://${_BUCKET_NAME}"
@@ -420,15 +420,15 @@ fi
 _backup_prepare() {
   _INCLUDE=""
   for _CDIR in ${_SOURCE}; do
-    TMP=" --include  ${_CDIR}"
-    _INCLUDE="${_INCLUDE}${TMP}"
+    _TMP=" --include ${_CDIR}"
+    _INCLUDE="${_INCLUDE}${_TMP}"
   done
   if [ -e "/root/.cache/duplicity" ]; then
     _CacheTest=$(find /root/.cache/duplicity/* \
       -maxdepth 1 \
       -mindepth 1 \
       -type f \
-      | sort)
+      | sort 2>&1)
     if [[ "${_CacheTest}" =~ "No such file or directory" ]] \
       || [ -z "${_CacheTest}" ]; then
       _DO_CLEANUP=NO
@@ -440,12 +440,13 @@ _backup_prepare() {
 
 _monthly_cleanup() {
   if [ -e "${_LOGPTH}/${_BUCKET_NAME}.randomize.cleanup.log" ]; then
-    _RCL=$(cat ${_LOGPTH}/${_BUCKET_NAME}.randomize.cleanup.log 2>/dev/null | tr -d '\n')
+    _RCL=$(cat ${_LOGPTH}/${_BUCKET_NAME}.randomize.cleanup.log 2>&1)
+    _RCL=$(echo -n ${_RCL} | tr -d "\n" 2>&1)
     _RCL=${_RCL//[^1-5]/}
   else
     _RCL=$((RANDOM%5+1))
     _RCL=${_RCL//[^1-5]/}
-    echo "${_RCL}" > "${_LOGPTH}/${_BUCKET_NAME}.randomize.cleanup.log"
+    echo ${_RCL} > ${_LOGPTH}/${_BUCKET_NAME}.randomize.cleanup.log
   fi
   if [ -e "${_LOGPTH}/${_BUCKET_NAME}.archive.log" ] \
     && [ ! -e "/root/.skip_duplicity_monthly_cleanup.cnf" ] \
@@ -467,14 +468,15 @@ _monthly_cleanup() {
 _randomize_full() {
   if [ -e "/root/.randomize_duplicity_full_backup_day.cnf" ]; then
     if [ -e "${_LOGPTH}/${_BUCKET_NAME}.randomize.full.log" ]; then
-      _RDW=$(cat ${_LOGPTH}/${_BUCKET_NAME}.randomize.full.log 2>/dev/null | tr -d '\n')
+      _RDW=$(cat ${_LOGPTH}/${_BUCKET_NAME}.randomize.full.log 2>&1)
+      _RDW=$(echo -n ${_RDW} | tr -d "\n" 2>&1)
       _RDW=${_RDW//[^1-7]/}
       _MODE="incremental"
     else
       _RDW=$((RANDOM%7+1))
       _RDW=${_RDW//[^1-7]/}
       _MODE="full"
-      echo "${_RDW}" > "${_LOGPTH}/${_BUCKET_NAME}.randomize.full.log"
+      echo ${_RDW} > ${_LOGPTH}/${_BUCKET_NAME}.randomize.full.log
     fi
   else
     _RDW=6
@@ -587,7 +589,7 @@ _conn_test() {
   fi
   echo "Running AWS connection test, please wait..."
   echo "Command is ${_DCY_MN_CMD} cleanup --dry-run --timeout 5 ${_NAME} ${_TARGET}"
-  _ConnTest=$(${_DCY_MN_CMD} cleanup --dry-run --timeout 5 ${_NAME} ${_TARGET})
+  _ConnTest=$(${_DCY_MN_CMD} cleanup --dry-run --timeout 5 ${_NAME} ${_TARGET} 2>&1)
   ### echo _ConnTest is STR ${_ConnTest} END
   if [[ "${_ConnTest}" =~ "No connection to backend" ]] \
     || [[ "${_ConnTest}" =~ "IllegalLocationConstraintException" ]]; then
@@ -633,13 +635,13 @@ _restore() {
 
 _retrieve() {
   if [ $# = 3 ]; then
-    _HST_DASH=$(echo -n $3 | tr . -)
+    _HST_DASH=$(echo -n $3 | tr . - 2>&1)
     _BUCKET_NAME="daily-remote-${_HST_DASH}"
     _TARGET="boto3+s3://${_BUCKET_NAME}"
     echo "Command is ${_DCY_MN_CMD} restore --file-to-restore $1 ${_NAME} ${_TARGET} $2"
     ${_DCY_MN_CMD} restore --file-to-restore $1 ${_NAME} ${_TARGET} $2
   elif [ $# = 4 ]; then
-    _HST_DASH=$(echo -n $4 | tr . -)
+    _HST_DASH=$(echo -n $4 | tr . - 2>&1)
     _BUCKET_NAME="daily-remote-${_HST_DASH}"
     _TARGET="boto3+s3://${_BUCKET_NAME}"
     echo "Command is ${_DCY_MN_CMD} restore --file-to-restore $1 --time $2 ${_NAME} ${_TARGET} $3"

@@ -5,7 +5,7 @@
 ###
 ###  Barracuda Aegir Installer
 ###
-###  Copyright (C) 2010-2024 Omega8.cc
+###  Copyright (C) 2010-2025 Omega8.cc
 ###  noc@omega8.cc www.omega8.cc
 ###
 ###  This program is free software. You can
@@ -81,9 +81,12 @@ done
 ### Local settings
 ###
 if [ "${_THIS_DB_HOST}" = "FQDN" ]; then
-  _THIS_DB_HOST=$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)
+  _THIS_DB_HOST="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
 fi
-if [ "${_PHP_CLI_VERSION}" = "8.3" ] \
+if [ "${_PHP_CLI_VERSION}" = "8.4" ] \
+  && [ -x "/opt/php84/bin/php" ]; then
+  _T_CLI=/opt/php84/bin
+elif [ "${_PHP_CLI_VERSION}" = "8.3" ] \
   && [ -x "/opt/php83/bin/php" ]; then
   _T_CLI=/opt/php83/bin
 elif [ "${_PHP_CLI_VERSION}" = "8.2" ] \
@@ -146,7 +149,11 @@ _php_cli_drush_update() {
   else
     _DRUSH_FILE="${_ROOT}/drush/drush.php"
   fi
-  if [ "${_PHP_CLI_VERSION}" = "8.3" ] \
+  if [ "${_PHP_CLI_VERSION}" = "8.4" ] \
+    && [ -x "/opt/php84/bin/php" ]; then
+    sed -i "s/^#\!\/.*/#\!\/opt\/php84\/bin\/php/g" \
+      ${_DRUSH_FILE} &> /dev/null
+  elif [ "${_PHP_CLI_VERSION}" = "8.3" ] \
     && [ -x "/opt/php83/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php83\/bin\/php/g" \
       ${_DRUSH_FILE} &> /dev/null
@@ -375,7 +382,7 @@ _hostmaster_mi_up() {
     _msg "INFO: Waiting 15 seconds..."
     sleep 15
   fi
-  _BROKEN_SSL_TEST=$(grep "nginx default ssl server" /var/aegir/config/server_master/nginx.conf)
+  _BROKEN_SSL_TEST=$(grep "nginx default ssl server" /var/aegir/config/server_master/nginx.conf 2>&1)
   if [ ! -z "${_BROKEN_SSL_TEST}" ]; then
     _msg "INFO: Disabling nginx_ssl on master..."
     ${_DRUSHCMD} @hostmaster dis hosting_ssl -y
@@ -446,7 +453,7 @@ _hostmaster_mi_up() {
       | grep "root'" \
       | cut -d: -f2 \
       | awk '{ print $3}' \
-      | sed "s/[\,']//g")
+      | sed "s/[\,']//g" 2>&1)
     if [ -e "${_THIS_HM_ROOT}/sites/all" ] \
       && [ ! -e "${_THIS_HM_ROOT}/sites/all/libraries" ]; then
       mkdir -p \
@@ -485,7 +492,7 @@ _hostmaster_mi_up() {
 
 _LASTNUM=001
 _DISTRO=001
-_PREV_HM_ROOT=$(find ${_ROOT} -maxdepth 1 -type d | grep hostmaster)
+_PREV_HM_ROOT=$(find ${_ROOT} -maxdepth 1 -type d | grep hostmaster 2>&1)
 
 if [ -d "${_ROOT}/host_master" ]; then
   if [ ! -d "${_ROOT}/host_master/000" ]; then
@@ -501,7 +508,7 @@ if [ -d "${_ROOT}/host_master/000" ]; then
   _list=([0-9]*)
   _last=${_list[@]: -1}
   _LASTNUM=$_last
-  _BASH_TEST=$(bash --version)
+  _BASH_TEST=$(bash --version 2>&1)
   if [[ "${_BASH_TEST}" =~ "version 5.1" ]] || [[ "${_BASH_TEST}" =~ "version 5.2" ]]; then
     _nextnum=00$((10#0${_last%%[^0-9]*} + 1))
   else
@@ -529,7 +536,7 @@ if [ -d "${_ROOT}/host_master/000" ]; then
     _list=([0-9]*)
     _last=${_list[@]: -1}
     _LASTNUM=$_last
-    _BASH_TEST=$(bash --version)
+    _BASH_TEST=$(bash --version 2>&1)
     if [[ "${_BASH_TEST}" =~ "version 5.1" ]] || [[ "${_BASH_TEST}" =~ "version 5.2" ]]; then
       _nextnum=00$((10#0${_last%%[^0-9]*} + 1))
     else
@@ -554,7 +561,7 @@ if [ -d "${_ROOT}/host_master/000" ]; then
       _list=([0-9]*)
       _last=${_list[@]: -1}
       _LASTNUM=$_last
-      _BASH_TEST=$(bash --version)
+      _BASH_TEST=$(bash --version 2>&1)
       if [[ "${_BASH_TEST}" =~ "version 5.1" ]] || [[ "${_BASH_TEST}" =~ "version 5.2" ]]; then
         _nextnum=00$((10#0${_last%%[^0-9]*} + 1))
       else
@@ -613,7 +620,7 @@ fi
 ###----------------------------------------###
 ###
 ###  Barracuda Aegir Installer
-###  Copyright (C) 2010-2024 Omega8.cc
+###  Copyright (C) 2010-2025 Omega8.cc
 ###  noc@omega8.cc www.omega8.cc
 ###
 ###----------------------------------------###

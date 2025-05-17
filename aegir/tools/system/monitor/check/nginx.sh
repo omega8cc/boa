@@ -8,7 +8,7 @@ _pthOml="/var/xdrago/log/nginx.incident.log"
 _monPath="/var/xdrago/monitor/check"
 
 _check_root() {
-  if [ $(whoami) = "root" ]; then
+  if [ "$(id -u)" -eq 0 ]; then
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
     chmod a+w /dev/null
   else
@@ -23,7 +23,7 @@ _check_root
 
     # Validate and set default if necessary
     if ! [[ "$_B_NICE" =~ ^-?[0-9]+$ ]]; then
-      _B_NICE=-5
+      _B_NICE=0
     fi
 
     # Clamp the value within -20 to 19
@@ -79,7 +79,7 @@ _restart_nginx() {
 _nginx_oom_detection() {
   if [ -e "/var/log/nginx/error.log" ]; then
     if [ `tail --lines=500 /var/log/nginx/error.log \
-      | grep --count "Cannot allocate memory"` -gt "0" ]; then
+      | grep --count "Cannot allocate memory"` -gt 0 ]; then
       _thisErrLog="$(date) Nginx OOM"
       echo ${_thisErrLog} >> ${_pthOml}
       _restart_nginx "Nginx OOM"
@@ -89,7 +89,7 @@ _nginx_oom_detection() {
 
 _nginx_bind_check_fix() {
   if [ `tail --lines=8 /var/log/nginx/error.log \
-    | grep --count "Address already in use"` -gt "0" ]; then
+    | grep --count "Address already in use"` -gt 0 ]; then
     _thisErrLog="$(date) Nginx BIND"
     echo ${_thisErrLog} >> ${_pthOml}
     _restart_nginx "Nginx BIND"
@@ -152,7 +152,7 @@ _if_nginx_restart() {
     || [[ "${_PrTestPhantom}" =~ "PHANTOM" ]] \
     || [[ "${_PrTestCluster}" =~ "CLUSTER" ]] \
     || [ -e "/root/.allow.nginx.restart.cnf" ]; then
-    if [ "${ReTest}" -ge "1" ]; then
+    if [ "${ReTest}" -ge 1 ]; then
       rm -f /data/disk/*/static/control/run-nginx-restart.pid
       _thisErrLog="$(date) Nginx Server Restart Requested"
       echo ${_thisErrLog} >> ${_pthOml}
@@ -186,4 +186,4 @@ fi
 
 echo "Done!"
 exit 0
-###EOF2024###
+

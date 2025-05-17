@@ -4,10 +4,10 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
-_TODAY=$(date +%y%m%d)
+_TODAY=$(date +%y%m%d 2>&1)
 export _TODAY=${_TODAY//[^0-9]/}
 
-_NOW=$(date +%y%m%d-%H%M%S)
+_NOW=$(date +%y%m%d-%H%M%S 2>&1)
 export _NOW=${_NOW//[^0-9-]/}
 
 _barCnf="/root/.barracuda.cnf"
@@ -27,7 +27,7 @@ _vBs="/var/backups"
 _LOG_DIR="${_vBs}/reports/up/$(basename "$0")/${_TODAY}"
 _UP_LOG="${_LOG_DIR}/$(basename "$0")-up-${_NOW}.log"
 _VMFAMILY=XEN
-_VM_TEST=$(uname -a)
+_VM_TEST="$(uname -a)"
 if [[ "${_VM_TEST}" =~ "-beng" ]]; then
   _VMFAMILY="VS"
 fi
@@ -53,7 +53,7 @@ _clean_pid_exit() {
 
 _os_detection_minimal() {
   _APT_UPDATE="apt-get update"
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
   for e in ${_OS_LIST}; do
     if [ "${e}" = "${_OS_CODE}" ]; then
@@ -69,7 +69,7 @@ _apt_clean_update() {
 }
 
 _ifnames_grub_check_sync() {
-  _IS_IFACE=$(ip a)
+  _IS_IFACE=$(ip a 2>&1)
   _ADD_GRUB_CMD=""
   _GRUB_FILE="/etc/default/grub"
 
@@ -175,9 +175,9 @@ _ifnames_grub_check_sync() {
 
 _check_root_direct() {
   _U_TEST=DENY
-  [ "${SUDO_USER}" ] && _U_TEST_SDO=${SUDO_USER} || _U_TEST_SDO=`whoami`
-  _U_TEST_WHO=$(who am i | awk '{print $1}')
-  _U_TEST_LNE=$(logname)
+  [ "${SUDO_USER}" ] && _U_TEST_SDO=${SUDO_USER} || _U_TEST_SDO=$(whoami)
+  _U_TEST_WHO=$(who am i | awk '{print $1}' 2>&1)
+  _U_TEST_LNE=$(logname 2>&1)
   if [ "${_U_TEST_SDO}" = "root" ] || [ "${_U_TEST_LNE}" = "root" ]; then
     if [ -z "${_U_TEST_WHO}" ]; then
       _U_TEST=ALLOW
@@ -207,7 +207,7 @@ _check_root_direct() {
 _check_root_keys_pwd() {
   # Check if root's password is locked
   _ROOT_PWD_LOCKED="NO"
-  _S_TEST=$(grep 'root:\*:' /etc/shadow)
+  _S_TEST=$(grep 'root:\*:' /etc/shadow 2>&1)
   if [[ "${_S_TEST}" =~ root:\*: ]]; then
     _ROOT_PWD_LOCKED="YES"
   fi
@@ -259,7 +259,7 @@ _check_root_keys_pwd() {
 _check_sql_running() {
   while [ -z "${_IS_MYSQLD_RUNNING}" ] \
     || [ ! -e "/run/mysqld/mysqld.sock" ]; do
-    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}')
+    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
     echo "INFO: Waiting for MySQLD availability..."
     sleep 5
   done
@@ -268,7 +268,7 @@ _check_sql_running() {
 _check_sql_access() {
   if [ -e "/root/.my.pass.txt" ] && [ -e "/root/.my.cnf" ]; then
     _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
-    _IS_SYNC_SQL_PSWD=$(grep "${_SQL_PSWD}" /root/.my.cnf)
+    _IS_SYNC_SQL_PSWD=$(grep "${_SQL_PSWD}" /root/.my.cnf 2>&1)
   else
     echo "ALERT: /root/.my.cnf or /root/.my.pass.txt not found."
     echo "ALERT: Please fix this before trying again, giving up."
@@ -285,7 +285,7 @@ _check_sql_access() {
     echo " "
     _clean_pid_exit _check_sql_access_b
   else
-    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}')
+    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
     if [ -z "${_IS_MYSQLD_RUNNING}" ]; then
       echo "ALERT: SQL server on this system is not running at all."
       echo "ALERT: Please fix this before trying again, giving up."
@@ -293,7 +293,7 @@ _check_sql_access() {
       echo " "
       _clean_pid_exit _check_sql_access_c
     else
-      _MYSQL_CONN_TEST=$(mysql -u root -e "status")
+      _MYSQL_CONN_TEST=$(mysql -u root -e "status" 2>&1)
       if [ -z "${_MYSQL_CONN_TEST}" ] \
         || [[ "${_MYSQL_CONN_TEST}" =~ "Access denied" ]]; then
         echo "ALERT: SQL password in /root/.my.cnf does not work."
@@ -320,7 +320,7 @@ _fix_dns_settings() {
   rm -f ${_vBs}/resolv.conf.tmp
   if [ -e "/etc/resolv.conf" ]; then
     if [ -L "/etc/resolv.conf" ]; then
-      _rslvT=$(readlink -n /etc/resolv.conf)
+      _rslvT="$(readlink -n /etc/resolv.conf)"
       if [ ! -e "${_rslvT}" ]; then
         rm -f /etc/resolv.conf
       fi
@@ -373,7 +373,7 @@ _check_dns_settings() {
   if [ -e "/root/.use.local.nameservers.cnf" ]; then
     _USE_PROVIDER_DNS=YES
   else
-    _REMOTE_DNS_TEST=$(host files.aegir.cc 1.1.1.1 -w 10)
+    _REMOTE_DNS_TEST=$(host files.aegir.cc 1.1.1.1 -w 10 2>&1)
   fi
   if [[ "${_REMOTE_DNS_TEST}" =~ "no servers could be reached" ]] \
     || [[ "${_REMOTE_DNS_TEST}" =~ "Host files.aegir.cc not found" ]] \
@@ -394,7 +394,7 @@ _barracuda_downgrade_protection() {
   if [ "${_cmNd}" != "php-idle" ] \
     && [ "${_cmNd}" != "up-distro" ] \
     && [ -e "/var/log/barracuda_log.txt" ]; then
-    _SERIES_TEST=$(cat /var/log/barracuda_log.txt)
+    _SERIES_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
     if [ "${_cmNd}" = "up-lts" ]; then
       if [[ "${_SERIES_TEST}" =~ "Barracuda ${_rLsn}-pro" ]]; then
         echo
@@ -476,7 +476,7 @@ _send_report() {
     if [ ! -z "${_MY_EMAIL}" ]; then
       _repSub="Successful Barracuda upgrade"
       _repSub="REPORT: ${_repSub} on ${_hName}"
-      _repSub=$(echo -n "${_repSub}" | fmt -su -w 2500)
+      _repSub=$(echo -n ${_repSub} | fmt -su -w 2500 2>&1)
       _if_extended_report
       cat ${_UP_LOG} | s-nail -s "${_repSub} at ${_NOW}" ${_MY_EMAIL}
       echo "${_repSub} sent to ${_MY_EMAIL}"
@@ -493,7 +493,7 @@ _send_alert() {
     fi
     if [ ! -z "${_MY_EMAIL}" ]; then
       _repSub="${_ALERT_MSG} on ${_hName}"
-      _repSub=$(echo -n "${_repSub}" | fmt -su -w 2500)
+      _repSub=$(echo -n ${_repSub} | fmt -su -w 2500 2>&1)
       _if_extended_report
       cat ${_UP_LOG} | s-nail -s "${_repSub} at ${_NOW}" ${_MY_EMAIL}
       echo "${_repSub} sent to ${_MY_EMAIL}"
@@ -509,16 +509,16 @@ _check_report() {
   sed -i "/^$/d"                 ${_UP_LOG}
   wait
   _SEND_ALERT=NO
-  _RESULT_TEST_OK=$(grep "INFO: Test OK" ${_UP_LOG})
-  _RESULT_TEST_CARD=$(grep "CARD: Now charging" ${_UP_LOG})
-  _RESULT_KERNEL=$(grep "NOTE: Your OS kernel has been upgraded" ${_UP_LOG})
-  _RESULT_REBOOT=$(grep "NOTE: Please reboot this server" ${_UP_LOG})
-  _RESULT_ENJOY=$(grep "Enjoy your Aegir Hosting System" ${_UP_LOG})
-  _RESULT_RLLY=$(grep "RLLY: No errors" ${_UP_LOG})
-  _RESULT_APT_FAIL=$(grep "Displaying the last 15 lines" ${_UP_LOG})
-  _RESULT_ALRT=$(grep "ALRT" ${_UP_LOG})
-  _RESULT_FATAL=$(grep "FATAL ERROR" ${_UP_LOG})
-  _RESULT_LIB_ERR=$(grep "cannot open shared object file" ${_UP_LOG})
+  _RESULT_TEST_OK=$(grep "INFO: Test OK" ${_UP_LOG} 2>&1)
+  _RESULT_TEST_CARD=$(grep "CARD: Now charging" ${_UP_LOG} 2>&1)
+  _RESULT_KERNEL=$(grep "NOTE: Your OS kernel has been upgraded" ${_UP_LOG} 2>&1)
+  _RESULT_REBOOT=$(grep "NOTE: Please reboot this server" ${_UP_LOG} 2>&1)
+  _RESULT_ENJOY=$(grep "Enjoy your Aegir Hosting System" ${_UP_LOG} 2>&1)
+  _RESULT_RLLY=$(grep "RLLY: No errors" ${_UP_LOG} 2>&1)
+  _RESULT_APT_FAIL=$(grep "Displaying the last 15 lines" ${_UP_LOG} 2>&1)
+  _RESULT_ALRT=$(grep "ALRT" ${_UP_LOG} 2>&1)
+  _RESULT_FATAL=$(grep "FATAL ERROR" ${_UP_LOG} 2>&1)
+  _RESULT_LIB_ERR=$(grep "cannot open shared object file" ${_UP_LOG} 2>&1)
   if [[ "${_RESULT_TEST_OK}" =~ "INFO: Test OK" ]] \
     || [[ "${_RESULT_TEST_OK}" =~ "binary file matches" ]] \
     || [[ "${_RESULT_TEST_CARD}" =~ "CARD: Now charging" ]] \
@@ -574,7 +574,7 @@ _check_report() {
 }
 
 _check_php_cli() {
-  _PHP_CHECK=$(readlink -n /usr/bin/php)
+  _PHP_CHECK="$(readlink -n /usr/bin/php)"
   if [ ! -x "${_PHP_CHECK}" ]; then
     if [ "${_PHP_CLI_VERSION}" = "8.1" ]; then
       _PHP_CLI_PATH="/opt/php81/bin/php"
@@ -582,6 +582,8 @@ _check_php_cli() {
       _PHP_CLI_PATH="/opt/php82/bin/php"
     elif [ "${_PHP_CLI_VERSION}" = "8.3" ]; then
       _PHP_CLI_PATH="/opt/php83/bin/php"
+    elif [ "${_PHP_CLI_VERSION}" = "8.4" ]; then
+      _PHP_CLI_PATH="/opt/php84/bin/php"
     elif [ "${_PHP_CLI_VERSION}" = "7.4" ]; then
       _PHP_CLI_PATH="/opt/php74/bin/php"
     else
@@ -596,6 +598,8 @@ _check_php_cli() {
         _USE_PHP_CLI_PATH="/opt/php82/bin/php"
       elif  [ -x "/opt/php83/bin/php" ]; then
         _USE_PHP_CLI_PATH="/opt/php83/bin/php"
+      elif  [ -x "/opt/php84/bin/php" ]; then
+        _USE_PHP_CLI_PATH="/opt/php84/bin/php"
       elif  [ -x "/opt/php74/bin/php" ]; then
         _USE_PHP_CLI_PATH="/opt/php74/bin/php"
       fi
@@ -622,9 +626,9 @@ _oops_mysql_exit() {
 
 _mysql_downgrade_protection() {
   _DB_V=""
-  _DBS_TEST=$(which mysql)
+  _DBS_TEST=$(which mysql 2>&1)
   if [ ! -z "${_DBS_TEST}" ]; then
-    _DB_SERVER_TEST=$(mysql -V)
+    _DB_SERVER_TEST=$(mysql -V 2>&1)
   else
     _oops_mysql_exit "MISSING MySQL: ${_DBS_TEST}"
   fi
@@ -644,7 +648,9 @@ _mysql_downgrade_protection() {
 _up_action() {
   if [ -e "${_vBs}/${_barName}" ] && [ -e "${_barCnf}" ]; then
     if [ ! -z "${_rKey}" ]; then
-      if [ "${_rKey}" = "php-83" ] || [ "${_rKey}" = "php-8.3" ]; then
+      if [ "${_rKey}" = "php-84" ] || [ "${_rKey}" = "php-8.4" ]; then
+        _phpS="8.4"
+      elif [ "${_rKey}" = "php-83" ] || [ "${_rKey}" = "php-8.3" ]; then
         _phpS="8.3"
       elif [ "${_rKey}" = "php-82" ] || [ "${_rKey}" = "php-8.2" ]; then
         _phpS="8.2"
@@ -666,7 +672,7 @@ _up_action() {
         sed -i "s/^_DNS_SETUP_TEST.*/_DNS_SETUP_TEST=NO/g"            ${_barCnf}
         wait
       else
-        _L_KEY=$(echo "${#_rKey}")
+        _L_KEY=$(echo ${#_rKey} 2>&1)
         if [ ! -z "${_L_KEY}" ] && [ "${_L_KEY}" = "40" ]; then
           sed -i "s/^_NEWREL.*/_NEWRELIC_KEY=\"${_rKey}\"/g" ${_vBs}/${_barName}
           wait
@@ -694,11 +700,12 @@ _up_action() {
 
     fi
     ### Make sure that _PHP_SINGLE_INSTALL is set in ${_barCnf}
-    if [ "${_phpS}" = "8.3" ] \
+    if [ "${_phpS}" = "8.4" ] \
+      || [ "${_phpS}" = "8.3" ] \
       || [ "${_phpS}" = "8.2" ] \
       || [ "${_phpS}" = "8.1" ] \
       || [ "${_phpS}" = "7.4" ]; then
-      _PHP_SINGLE_INSTALL_TEST=$(grep _PHP_SINGLE_INSTALL "${_barCnf}")
+      _PHP_SINGLE_INSTALL_TEST=$(grep _PHP_SINGLE_INSTALL ${_barCnf} 2>&1)
       if [[ "${_PHP_SINGLE_INSTALL_TEST}" =~ "_PHP_SINGLE_INSTALL" ]]; then
         sed -i "s/^_PHP_SINGLE.*/_PHP_SINGLE_INSTALL=${_phpS}/g" ${_barCnf}
         wait
@@ -708,7 +715,8 @@ _up_action() {
     fi
     ### Make sure that _PHP_SINGLE_INSTALL takes precedence
     if [ ! -z "${_phpS}" ]; then
-      if [ "${_phpS}" = "8.3" ] \
+      if [ "${_phpS}" = "8.4" ] \
+        || [ "${_phpS}" = "8.3" ] \
         || [ "${_phpS}" = "8.2" ] \
         || [ "${_phpS}" = "8.1" ] \
         || [ "${_phpS}" = "7.4" ]; then
@@ -766,9 +774,9 @@ _up_action() {
         fi
       elif [ "${_phpS}" = "MIN" ] || [ "${_phpS}" = "MAX" ]; then
         if [ "${_phpS}" = "MAX" ]; then
-          _phpM="5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2 8.3"
+          _phpM="5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2 8.3 8.4"
         else
-          _phpM="7.4 8.1 8.2 8.3"
+          _phpM="7.4 8.1 8.2 8.3 8.4"
         fi
         _phpS="8.3"
 
@@ -1222,7 +1230,7 @@ _up_finish() {
     _if_fix_iptables_symlinks
     csf -uf &> /dev/null
     wait
-    _NFTABLES_TEST=$(iptables -V)
+    _NFTABLES_TEST=$(iptables -V 2>&1)
     if [[ "${_NFTABLES_TEST}" =~ "nf_tables" ]]; then
       if [ -e "/usr/sbin/iptables-legacy" ]; then
         update-alternatives --set iptables /usr/sbin/iptables-legacy &> /dev/null
@@ -1263,7 +1271,7 @@ _up_finish() {
     ### CVE-2019-11478 SACK Slowness
     ### CVE-2019-11479 Excess Resource Consumption Due to Low MSS Values
     if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
-      _SACK_TEST=$(ip6tables --list | grep tcpmss)
+      _SACK_TEST=$(ip6tables --list | grep tcpmss 2>&1)
       if [[ ! "${_SACK_TEST}" =~ "tcpmss" ]]; then
         sysctl net.ipv4.tcp_mtu_probing=0 &> /dev/null
         iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
@@ -1292,7 +1300,7 @@ _check_etc_apt_preferences() {
 }
 
 _find_fast_mirror_early() {
-  _isNetc=$(which netcat)
+  _isNetc=$(which netcat 2>&1)
   if [ ! -x "${_isNetc}" ] || [ -z "${_isNetc}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
@@ -1303,9 +1311,9 @@ _find_fast_mirror_early() {
     apt-get install netcat-traditional ${_aptYesUnth} 2> /dev/null
     wait
   fi
-  _ffMirr=$(which ffmirror)
+  _ffMirr=$(which ffmirror 2>&1)
   if [ -x "${_ffMirr}" ]; then
-    _ffList="/var/backups/boa-mirrors-2024-12.txt"
+    _ffList="/var/backups/boa-mirrors-2025-01.txt"
     mkdir -p /var/backups
     if [ ! -e "${_ffList}" ]; then
       echo "eu.files.aegir.cc"  > ${_ffList}
@@ -1313,9 +1321,9 @@ _find_fast_mirror_early() {
       echo "ao.files.aegir.cc" >> ${_ffList}
     fi
     if [ -e "${_ffList}" ]; then
-      _BROKEN_FFMIRR_TEST=$(grep "stuff" "${_ffMirr}")
+      _BROKEN_FFMIRR_TEST=$(grep "stuff" ${_ffMirr} 2>&1)
       if [[ "${_BROKEN_FFMIRR_TEST}" =~ "stuff" ]]; then
-        _CHECK_MIRROR=$(bash "${_ffMirr}" < "${_ffList}")
+        _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _USE_MIR="${_CHECK_MIRROR}"
         [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.aegir.cc"
       else
@@ -1332,16 +1340,16 @@ _find_fast_mirror_early() {
 }
 
 _if_reinstall_curl() {
-  _CURL_VRN=8.10.1
+  _CURL_VRN=8.12.1
   if ! command -v lsb_release &> /dev/null; then
     apt-get update -qq &> /dev/null
     apt-get install lsb-release ${_aptYesUnth} -qq &> /dev/null
   fi
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   [ "${_OS_CODE}" = "wheezy" ] && _CURL_VRN=7.50.1
   [ "${_OS_CODE}" = "jessie" ] && _CURL_VRN=7.71.1
   [ "${_OS_CODE}" = "stretch" ] && _CURL_VRN=8.2.1
-  _isCurl=$(curl --version)
+  _isCurl=$(curl --version 2>&1)
   if [[ ! "${_isCurl}" =~ "OpenSSL" ]] || [ -z "${_isCurl}" ]; then
     echo "OOPS: cURL is broken! Re-installing.."
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
@@ -1393,7 +1401,7 @@ _if_reinstall_curl() {
       fi
     fi
     if [ -f "/usr/local/bin/curl" ]; then
-      _isCurl=$(/usr/local/bin/curl --version)
+      _isCurl=$(/usr/local/bin/curl --version 2>&1)
       if [[ ! "${_isCurl}" =~ "OpenSSL" ]] || [ -z "${_isCurl}" ]; then
         echo "ERRR: curl is still broken, please install it and debug manually"
         _clean_pid_exit
@@ -1450,9 +1458,9 @@ _csf_check_fix() {
     echo "iptables -t raw -A OUTPUT -p tcp --dport 21 -j CT --helper ftp" >> /etc/csf/csfpost.sh
     chmod 700 /etc/csf/csfpost.sh
     sed -i "s/.*aegir.*//g" /etc/csf/csf.allow
-    csf -a 172.104.235.123 eu.files.aegir.cc  &> /dev/null
-    csf -a 172.234.21.219  us.files.aegir.cc  &> /dev/null
-    csf -a 172.236.156.92  ao.files.aegir.cc  &> /dev/null
+    csf -a 172.235.166.69  eu.files.aegir.cc &> /dev/null
+    csf -a 172.233.219.37  us.files.aegir.cc &> /dev/null
+    csf -a 172.105.168.103 ao.files.aegir.cc &> /dev/null
     service lfd stop &> /dev/null
     wait
     kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
@@ -1465,7 +1473,7 @@ _csf_check_fix() {
     _if_fix_iptables_symlinks
     csf -uf &> /dev/null
     wait
-    _NFTABLES_TEST=$(iptables -V)
+    _NFTABLES_TEST=$(iptables -V 2>&1)
     if [[ "${_NFTABLES_TEST}" =~ "nf_tables" ]]; then
       if [ -e "/usr/sbin/iptables-legacy" ]; then
         update-alternatives --set iptables /usr/sbin/iptables-legacy &> /dev/null
@@ -1506,7 +1514,7 @@ _csf_check_fix() {
     ### CVE-2019-11478 SACK Slowness
     ### CVE-2019-11479 Excess Resource Consumption Due to Low MSS Values
     if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
-      _SACK_TEST=$(ip6tables --list | grep tcpmss)
+      _SACK_TEST=$(ip6tables --list | grep tcpmss 2>&1)
       if [[ ! "${_SACK_TEST}" =~ "tcpmss" ]]; then
         sysctl net.ipv4.tcp_mtu_probing=0 &> /dev/null
         iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
@@ -1517,9 +1525,9 @@ _csf_check_fix() {
 }
 
 _check_root() {
-  if [ $(whoami) = "root" ]; then
+  if [ "$(id -u)" -eq 0 ]; then
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
-    _hName=$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)
+    _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
 
     # Sanitize to allow only digits and minus sign
     export _B_NICE=${_B_NICE//[^0-9-]/}
@@ -1624,7 +1632,7 @@ _check_root() {
     else
       _PTMX=CHECK
     fi
-    _PTS_TEST=$(cat /proc/mounts | grep devpts)
+    _PTS_TEST=$(cat /proc/mounts | grep devpts 2>&1)
     if [[ ! "${_PTS_TEST}" =~ "devpts" ]] && [ ! -e "/dev/pts/ptmx" ]; then
       _PTS=FIX
     else
@@ -1664,7 +1672,7 @@ _check_root() {
     | sed 's/\%//g' \
     | awk '{print $6}' 2> /dev/null)
   _DF_TEST=${_DF_TEST//[^0-9]/}
-  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt "90" ]; then
+  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt 90 ]; then
     echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
     echo "ERROR: We can not proceed until it is below 90/100"
     _clean_pid_exit _check_root_b
@@ -1683,14 +1691,14 @@ _check_no_systemd() {
 }
 
 _old_apt_keys_cleanup() {
-  _isAptKey=$(which apt-key)
+  _isAptKey=$(which apt-key 2>&1)
   if [ -x "${_isAptKey}" ]; then
-    _OLD_KEY_KSPLICE_TEST=$(${_isAptKey} list | grep ksplice)
-    _OLD_KEY_ORACLE_TEST=$(${_isAptKey} list | grep oracle)
-    _OLD_KEY_NEWRELIC_TEST=$(${_isAptKey} list | grep newrelic)
-    _OLD_KEY_PERCONA_TEST=$(${_isAptKey} list | grep percona)
-    _OLD_KEY_MALLORY_TEST=$(${_isAptKey} list | grep mallory)
-    _OLD_KEY_GHOST_TEST=$(${_isAptKey} list | grep "6857 6280")
+    _OLD_KEY_KSPLICE_TEST=$(${_isAptKey} list | grep ksplice 2>&1)
+    _OLD_KEY_ORACLE_TEST=$(${_isAptKey} list | grep oracle 2>&1)
+    _OLD_KEY_NEWRELIC_TEST=$(${_isAptKey} list | grep newrelic 2>&1)
+    _OLD_KEY_PERCONA_TEST=$(${_isAptKey} list | grep percona 2>&1)
+    _OLD_KEY_MALLORY_TEST=$(${_isAptKey} list | grep mallory 2>&1)
+    _OLD_KEY_GHOST_TEST=$(${_isAptKey} list | grep "6857 6280" 2>&1)
     if [[ "${_OLD_KEY_KSPLICE_TEST}" =~ "ksplice" ]]; then
       ${_isAptKey} del B6D4038E &> /dev/null
     fi
@@ -1766,9 +1774,9 @@ _check_manufacturer_compatibility() {
     ${_INITINS} dmidecode &> /dev/null
   fi
   # Check if dmidecode is available
-  _DMI_TEST=$(which dmidecode)
+  _DMI_TEST=$(which dmidecode 2>&1)
   if [ -x "${_DMI_TEST}" ]; then
-    _HOST_INFO=$(dmidecode -s system-manufacturer)
+    _HOST_INFO=$(dmidecode -s system-manufacturer 2>&1)
   else
     _HOST_INFO="Unknown, dmidecode not available"
   fi
@@ -1830,9 +1838,9 @@ _if_display_help() {
 
     {options}
       newrelickey <-- activate New Relic integration with valid license key
-      php-8.3 <------ enable single-PHP mode (8.1 or 8.2 or 8.3 or 7.4)
-      php-min <------ install PHP 8.1, 8.2, 8.3, 7.4, use 8.3 by default (php-all)
-      php-max <------ install PHP 8.1, 8.2, 8.3, 8.0, 7.4, 7.3, 7.2, 7.1, 7.0, 5.6
+      php-8.3 <------ enable single-PHP mode (8.1 or 8.2 or 8.3 or 8.4 or 7.4)
+      php-min <------ install PHP 8.1, 8.2, 8.3, 8.4, 7.4, use 8.3 by default (php-all)
+      php-max <------ install PHP 8.0, 8.1, 8.2, 8.3, 8.4, 7.4, 7.3, 7.2, 7.1, 7.0, 5.6
       nodns <-------- disable DNS/SMTP checks on the fly
       percona-8.0 <-- specify Percona version to use (5.7, 8.0, 8.3, 8.4)
 
@@ -1860,13 +1868,13 @@ _set_tree_vars() {
   fi
   if [ "${_cmNd}" = "up-dev" ]; then
     _tRee=dev
-    [ -e "/root/.ifnames.check.cnf" ] && _ifnames_grub_check_sync
+    _ifnames_grub_check_sync
   elif [ "${_cmNd}" = "up-pro" ]; then
     _tRee=pro
-    [ -e "/root/.ifnames.check.cnf" ] && _ifnames_grub_check_sync
+    _ifnames_grub_check_sync
   elif [ "${_cmNd}" = "up-lts" ]; then
     _tRee=lts
-    [ -e "/root/.ifnames.check.cnf" ] && _ifnames_grub_check_sync
+    _ifnames_grub_check_sync
   else
     if [ "${_cmNd}" = "php-idle" ] \
       || [ "${_cmNd}" = "help" ] \
@@ -1883,7 +1891,7 @@ _set_tree_vars() {
   fi
 
   export _tRee="${_tRee}"
-  export _rLsn="BOA-5.5.0"
+  export _rLsn="BOA-5.6.0"
   export _rlsE="${_rLsn}-${_tRee}"
   export _bRnh="5.x-${_tRee}"
   export _rgUrl="http://files.aegir.cc/versions/${_tRee}/boa"

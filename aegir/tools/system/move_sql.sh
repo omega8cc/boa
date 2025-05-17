@@ -15,7 +15,7 @@ fi
 
     # Validate and set default if necessary
     if ! [[ "$_B_NICE" =~ ^-?[0-9]+$ ]]; then
-      _B_NICE=-5
+      _B_NICE=0
     fi
 
     # Clamp the value within -20 to 19
@@ -94,7 +94,7 @@ _stop_sql() {
   echo "Nginx stopped"
 
   echo "Stopping all PHP-FPM instances now..."
-  _PHP_V="83 82 81 80 74 73 72 71 70 56 55 54 53"
+  _PHP_V="84 83 82 81 80 74 73 72 71 70 56 55 54 53"
   for e in ${_PHP_V}; do
     if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
       service php${e}-fpm force-quit &> /dev/null
@@ -173,4 +173,4 @@ case "$1" in
   ;;
 esac
 
-###EOF2024###
+

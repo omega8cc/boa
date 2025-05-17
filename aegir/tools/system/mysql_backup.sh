@@ -5,7 +5,7 @@ export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
 _check_root() {
-  if [ $(whoami) = "root" ]; then
+  if [ "$(id -u)" -eq 0 ]; then
     ionice -c2 -n7 -p $$
     renice 19 -p $$
     chmod a+w /dev/null
@@ -18,7 +18,7 @@ _check_root() {
     | sed 's/\%//g' \
     | awk '{print $6}' 2> /dev/null)
   _DF_TEST=${_DF_TEST//[^0-9]/}
-  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt "90" ]; then
+  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt 90 ]; then
     echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
     echo "ERROR: We can not proceed until it is below 90/100"
     exit 1
@@ -44,7 +44,7 @@ bash /var/xdrago/usage.sh silent
 wait
 echo "INFO: Completing silent usage report on $(date)"
 
-_VM_TEST=$(uname -a)
+_VM_TEST="$(uname -a)"
 if [[ "${_VM_TEST}" =~ "-beng" ]]; then
   _VMFAMILY="VS"
 else
@@ -91,11 +91,11 @@ else
 fi
 
 _BACKUPDIR=/data/disk/arch/sql
-_hName=$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)
-_DATE=$(date +%y%m%d-%H%M%S)
-_DOW=$(date +%u)
+_DATE=$(date +%y%m%d-%H%M%S 2>&1)
+_DOW=$(date +%u 2>&1)
+_hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
 _DOW=${_DOW//[^1-7]/}
-_DOM=$(date +%e)
+_DOM=$(date +%e 2>&1)
 _DOM=${_DOM//[^0-9]/}
 _SAVELOCATION=${_BACKUPDIR}/${_hName}-${_DATE}
 if [ -e "/root/.my.optimize.cnf" ]; then
@@ -120,7 +120,7 @@ _remove_locks() {
 _check_running() {
   while [ -z "${_IS_MYSQLD_RUNNING}" ] \
     || [ ! -e "/run/mysqld/mysqld.sock" ]; do
-    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}')
+    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       echo "INFO: Waiting for MySQLD availability..."
     fi
@@ -283,9 +283,9 @@ _compress_backup() {
 [ ! -a ${_SAVELOCATION} ] && mkdir -p ${_SAVELOCATION};
 
 _check_mysql_version() {
-  _DBS_TEST=$(which mysql)
+  _DBS_TEST=$(which mysql 2>&1)
   if [ ! -z "${_DBS_TEST}" ]; then
-    _DB_SERVER_TEST=$(mysql -V)
+    _DB_SERVER_TEST=$(mysql -V 2>&1)
   fi
   if [[ "${_DB_SERVER_TEST}" =~ "Ver 8.4." ]]; then
     _DB_V=8.4
@@ -357,29 +357,29 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
     _check_running
     _create_locks ${_DB}
     if [ "${_DB}" != "mysql" ]; then
-      if [ -e "/var/lib/mysql/${_DB}/queue.ibd" ]; then
-        _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/queue.ibd | grep "G" 2>&1)
+      if [ -e "/var/lib/mysql/${_DB}/queue.ibd" ] && [ ! -e "/root/.disable_mysql_cleanup.cnf" ]; then
+        _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/queue.ibd | grep "G" 2>/dev/null)
         if [[ "${_IS_GB}" =~ "queue" ]]; then
           _truncate_queue_tables &> /dev/null
           echo "INFO: Truncated giant queue in ${_DB}"
         fi
       fi
-      if [ -e "/var/lib/mysql/${_DB}/batch.ibd" ]; then
-        _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/batch.ibd | grep "G" 2>&1)
+      if [ -e "/var/lib/mysql/${_DB}/batch.ibd" ] && [ ! -e "/root/.disable_mysql_cleanup.cnf" ]; then
+        _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/batch.ibd | grep "G" 2>/dev/null)
         if [[ "${_IS_GB}" =~ "batch" ]]; then
           _truncate_batch_tables &> /dev/null
           echo "INFO: Truncated giant batch in ${_DB}"
         fi
       fi
-      if [ -e "/var/lib/mysql/${_DB}/watchdog.ibd" ]; then
-        _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/watchdog.ibd | grep "G" 2>&1)
+      if [ -e "/var/lib/mysql/${_DB}/watchdog.ibd" ] && [ ! -e "/root/.disable_mysql_cleanup.cnf" ]; then
+        _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/watchdog.ibd | grep "G" 2>/dev/null)
         if [[ "${_IS_GB}" =~ "watchdog" ]]; then
           _truncate_watchdog_tables &> /dev/null
           echo "INFO: Truncated giant watchdog in ${_DB}"
         fi
       fi
-      if [ -e "/var/lib/mysql/${_DB}/accesslog.ibd" ]; then
-        _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/accesslog.ibd | grep "G" 2>&1)
+      if [ -e "/var/lib/mysql/${_DB}/accesslog.ibd" ] && [ ! -e "/root/.disable_mysql_cleanup.cnf" ]; then
+        _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/accesslog.ibd | grep "G" 2>/dev/null)
         if [[ "${_IS_GB}" =~ "accesslog" ]]; then
           _truncate_accesslog_tables &> /dev/null
           echo "INFO: Truncated giant accesslog in ${_DB}"
@@ -399,8 +399,8 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
       fi
       if [ "${_OPTIM}" = "YES" ] \
         && [ "${_DOW}" = "7" ] \
-        && [ "${_DOM}" -ge "24" ] \
-        && [ "${_DOM}" -lt "31" ]; then
+        && [ "${_DOM}" -ge 24 ] \
+        && [ "${_DOM}" -lt 31 ]; then
         _repair_this_database &> /dev/null
         echo "INFO: Repair task for ${_DB} completed"
         _truncate_cache_tables &> /dev/null
@@ -431,8 +431,8 @@ echo "INFO: Completing all dbs usage report on $(date)"
 
 if [ "${_OPTIM}" = "YES" ] \
   && [ "${_DOW}" = "7" ] \
-  && [ "${_DOM}" -ge "24" ] \
-  && [ "${_DOM}" -lt "31" ] \
+  && [ "${_DOM}" -ge 24 ] \
+  && [ "${_DOM}" -lt 31 ] \
   && [ -e "/root/.my.restart_after_optimize.cnf" ] \
   && [ ! -e "/run/boa_run.pid" ]; then
   _check_running
@@ -459,10 +459,16 @@ echo "INFO: Completing dbs backup compress on $(date)"
 echo "INFO: Starting dbs backup cleanup on $(date)"
 _DB_BACKUPS_TTL=${_DB_BACKUPS_TTL//[^0-9]/}
 if [ -z "${_DB_BACKUPS_TTL}" ]; then
-  _DB_BACKUPS_TTL="7"
+  _DB_BACKUPS_TTL="14"
 fi
 find ${_BACKUPDIR} -mtime +${_DB_BACKUPS_TTL} -type d -exec rm -rf {} \;
 echo "INFO: Backups older than ${_DB_BACKUPS_TTL} days deleted"
+
+if [ -x "/opt/local/bin/copydbackup" ]; then
+  echo "INFO: Copying backups to users space"
+  bash /opt/local/bin/copydbackup &> /dev/null
+  wait
+fi
 
 echo "INFO: Starting verbose usage report on $(date)"
 bash /var/xdrago/usage.sh verbose
@@ -471,4 +477,4 @@ echo "INFO: Completing verbose usage report on $(date)"
 
 echo "INFO: ALL TASKS COMPLETED, BYE!"
 exit 0
-###EOF2024###
+

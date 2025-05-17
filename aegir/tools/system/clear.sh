@@ -10,14 +10,14 @@ _aptYesUnth="-y ${_aptAllow}"
 _wgetGet="--max-redirect=3 --no-check-certificate -q --tries=9 --wait=9 --user-agent='iCab'"
 
 _check_root() {
-  if [ $(whoami) = "root" ]; then
+  if [ "$(id -u)" -eq 0 ]; then
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
     # Sanitize to allow only digits and minus sign
     export _B_NICE=${_B_NICE//[^0-9-]/}
 
     # Validate and set default if necessary
     if ! [[ "$_B_NICE" =~ ^-?[0-9]+$ ]]; then
-      _B_NICE=-5
+      _B_NICE=0
     fi
 
     # Clamp the value within -20 to 19
@@ -38,7 +38,7 @@ _check_root
 
 _os_detection_minimal() {
   _APT_UPDATE="apt-get update"
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
   for e in ${_OS_LIST}; do
     if [ "${e}" = "${_OS_CODE}" ]; then
@@ -78,7 +78,7 @@ fi
 #
 # Find the fastest mirror.
 _find_fast_mirror_early() {
-  _isNetc=$(which netcat)
+  _isNetc=$(which netcat 2>&1)
   if [ ! -x "${_isNetc}" ] || [ -z "${_isNetc}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
@@ -89,19 +89,26 @@ _find_fast_mirror_early() {
     apt-get install netcat-traditional ${_aptYesUnth} 2> /dev/null
     wait
   fi
-  _ffMirr=$(which ffmirror)
+  _ffMirr=$(which ffmirror 2>&1)
   if [ -x "${_ffMirr}" ]; then
-    _ffList="/var/backups/boa-mirrors-2024-12.txt"
+    _ffList="/var/backups/boa-mirrors-2025-01.txt"
     mkdir -p /var/backups
     if [ ! -e "${_ffList}" ]; then
       echo "eu.files.aegir.cc"  > ${_ffList}
       echo "us.files.aegir.cc" >> ${_ffList}
       echo "ao.files.aegir.cc" >> ${_ffList}
+      if [ -e "/etc/csf/csf.allow" ]; then
+        sed -i "s/.*aegir.*//g" /etc/csf/csf.allow
+        csf -a 172.235.166.69  eu.files.aegir.cc &> /dev/null
+        csf -a 172.233.219.37  us.files.aegir.cc &> /dev/null
+        csf -a 172.105.168.103 ao.files.aegir.cc &> /dev/null
+        csf -q &> /dev/null
+      fi
     fi
     if [ -e "${_ffList}" ]; then
-      _BROKEN_FFMIRR_TEST=$(grep "stuff" "${_ffMirr}")
+      _BROKEN_FFMIRR_TEST=$(grep "stuff" ${_ffMirr} 2>&1)
       if [[ "${_BROKEN_FFMIRR_TEST}" =~ "stuff" ]]; then
-        _CHECK_MIRROR=$(bash "${_ffMirr}" < "${_ffList}")
+        _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _USE_MIR="${_CHECK_MIRROR}"
         [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.aegir.cc"
       else
@@ -118,16 +125,16 @@ _find_fast_mirror_early() {
 }
 
 _if_reinstall_curl_src() {
-  _CURL_VRN=8.10.1
+  _CURL_VRN=8.12.1
   if ! command -v lsb_release &> /dev/null; then
     apt-get update -qq &> /dev/null
     apt-get install lsb-release ${_aptYesUnth} -qq &> /dev/null
   fi
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   [ "${_OS_CODE}" = "wheezy" ] && _CURL_VRN=7.50.1
   [ "${_OS_CODE}" = "jessie" ] && _CURL_VRN=7.71.1
   [ "${_OS_CODE}" = "stretch" ] && _CURL_VRN=8.2.1
-  _isCurl=$(curl --version)
+  _isCurl=$(curl --version 2>&1)
   if [[ ! "${_isCurl}" =~ "OpenSSL" ]] || [ -z "${_isCurl}" ]; then
     echo "OOPS: cURL is broken! Re-installing.."
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
@@ -224,7 +231,7 @@ for _OCT in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
   _SITES_NR=0
   if [ -e "${_OCT}/config/server_master/nginx/vhost.d" ]; then
     _SITES_NR=$(ls ${_OCT}/config/server_master/nginx/vhost.d | wc -l)
-    if [ "${_SITES_NR}" -gt "0" ]; then
+    if [ "${_SITES_NR}" -gt 0 ]; then
       if [ -z "${_chckSts}" ]; then
         _chckSts="SNR ${_OCT} ${_SITES_NR} "
       else
@@ -242,10 +249,10 @@ if [ -d "/data/u" ]; then
   _chckSts="SST ${_ALL_SITES_NR} ${_chckSts}"
   _chckHst=$(hostname 2>&1)
   _chckIps=$(hostname -I 2>&1)
-  _checkVn=$(/opt/local/bin/boa version | tr -d '\n')
+  _checkVn=$(/opt/local/bin/boa version | tr -d "\n" 2>&1)
   if [[ "${_checkVn}" =~ "===" ]] || [ -z "${_checkVn}" ]; then
     if [ -e "/var/log/barracuda_log.txt" ]; then
-      _checkVn=$(tail --lines=1 /var/log/barracuda_log.txt | tr -d '\n')
+      _checkVn=$(tail --lines=1 /var/log/barracuda_log.txt | tr -d "\n" 2>&1)
     else
       _checkVn="whereis barracuda_log.txt"
     fi
@@ -258,22 +265,32 @@ fi
 
 _if_fix_locked_sshd() {
   _SSH_LOG="/var/log/auth.log"
-  if [ `tail --lines=100 ${_SSH_LOG} \
-    | grep --count "error: Bind to port 22"` -gt "0" ]; then
+  if [ `tail --lines=30 ${_SSH_LOG} \
+    | grep --count "error: Bind to port 22"` -gt 0 ]; then
+    # killall -9 sshd-session
     kill -9 $(ps aux | grep '[s]tartups' | awk '{print $2}')
-    nice -n -9 service ssh start
+    service ssh start
   fi
 }
 _if_fix_locked_sshd
 
 #setprio &> /dev/null
 
-if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ]; then
-  echo "[$(date)] Active duplicity process detected, will try again later..." >> /var/log/mybackup_waiting_queue.log
-else
-  [ -x "/usr/local/bin/mybackup" ] && nohup /usr/local/bin/mybackup > /dev/null 2>&1 &
+if [ -e "/root/.remote_backups/schedule/backup_schedule.txt" ]; then
+  if [ -e "/root/.remote_backups/paths/paths.txt" ]; then
+    rm -f /root/.remote_backups/paths/*
+    rm -f /root/.remote_backups/paths/.*
+    [ -x "/usr/local/bin/dcysetup" ] && bash /usr/local/bin/dcysetup update &> /dev/null
+  fi
+  if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt 0 ]; then
+    echo "[$(date)] Active duplicity process detected, will try again later..." >> /var/log/mybackup_waiting_queue.log
+  else
+    [ -x "/usr/local/bin/dcysetup" ] && bash /usr/local/bin/dcysetup update &> /dev/null
+    wait
+    [ -x "/usr/local/bin/mybackup" ] && nohup /usr/local/bin/mybackup > /dev/null 2>&1 &
+  fi
 fi
 
 touch /var/xdrago/log/clear.done.pid
 exit 0
-###EOF2024###
+

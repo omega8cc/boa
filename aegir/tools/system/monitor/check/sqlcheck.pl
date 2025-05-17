@@ -53,4 +53,4 @@ local(@MYARR)=`grep mysql /var/log/syslog | tail --lines=999 2>&1`;
     }
   }
 }
-###EOF2024###
+

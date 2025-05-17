@@ -4,12 +4,11 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 export _tRee=dev
-export _xSrl=550devT01
+export _xSrl=560devT00
 
 _WEBG=www-data
 _THIS_DB_PORT=3306
 _ieni="--ignore-errors"
-_pxSqlPass=$(cat /root/.my.proxysql_adm_pwd.txt 2>/dev/null | tr -d '\n')
 
 ###
 ### Avoid too many questions
@@ -259,7 +258,8 @@ _migrate_sites() {
             fi
             [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL3 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
             if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
-              mysql -uadmin -p${_pxSqlPass} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
+              _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>/dev/null | tr -d '\n')
+              mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
 DELETE FROM mysql_users WHERE username='${_DBN}';
 DELETE FROM mysql_query_rules WHERE username='${_DBN}';
 INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_DBN}','${_DBP}','10');
@@ -427,7 +427,7 @@ EOFMYSQL
             if [ -e "${_USR}/config/server_master/ssl.d/${_Dom}/openssl.key" ] \
               && [ -e "/var/xdrago/conf/https_proxy_le.conf" ]; then
               cp -a /var/xdrago/conf/https_proxy_le.conf ${_Vhs}
-              sed -i "s/.*server_name.*;/  server_name                 ${_NMS};/g" ${_Vhs}
+              sed -i "s/.*server_name.*;/  server_name  ${_NMS};/g" ${_Vhs}
               wait
               sed -i "s/_target_ip/${_tgt}/g" ${_Vhs}
               wait
@@ -440,7 +440,7 @@ EOFMYSQL
             fi
             mv -f ${_Vht} ${_Vhd}
             cp -a /var/xdrago/conf/proxy.conf ${_Vht}
-            sed -i "s/.*server_name.*;/  server_name                 ${_NMS};/g" ${_Vht}
+            sed -i "s/.*server_name.*;/  server_name  ${_NMS};/g" ${_Vht}
             wait
             sed -i "s/_target_ip/${_tgt}/g" ${_Vht}
             wait
@@ -842,7 +842,6 @@ _migrate_init() {
     _SQL_CONNECT=127.0.0.1
     _THIS_DB_PORT=6033
   fi
-  rm -f /root/scentral_migration_notice.sh.txt
   if [ "${_oct}" = "xusage" ]; then
     echo "INFO: ${_cmd} for ${_oct} to ${_tgt} start"
     if [ -e "/var/xdrago/log/usage" ]; then
@@ -871,6 +870,10 @@ _migrate_init() {
     if [ -e "/var/solr7/data" ]; then
       rsync -aEAXq ${_ieni} -e ssh /var/solr7/data root@${_tgt}:/var/solr7/
       echo "INFO: ${_cmd} for ${_oct} /var/solr7/data complete"
+    fi
+    if [ -e "/var/solr9/data" ]; then
+      rsync -aEAXq ${_ieni} -e ssh /var/solr9/data root@${_tgt}:/var/solr9/
+      echo "INFO: ${_cmd} for ${_oct} /var/solr9/data complete"
     fi
     if [ -e "/var/www/static" ]; then
       rsync -aEAXq ${_ieni} -e ssh /var/www/static root@${_tgt}:/var/www/
@@ -1051,6 +1054,10 @@ _post_mig() {
     exit 1
   else
     echo Running _post_mig inside vms ${_hName}
+    if [ -x "/etc/init.d/solr9" ] && [ -e "/etc/default/solr9.in.sh" ]; then
+      #kill -9 $(ps aux | grep '[s]olr' | awk '{print $2}') &> /dev/null
+      service solr9 restart
+    fi
     if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
       #kill -9 $(ps aux | grep '[s]olr' | awk '{print $2}') &> /dev/null
       service solr7 restart
@@ -1164,7 +1171,8 @@ _sub_ssl_gen() {
       if [ "${_target_ip}" = "${_dedicated_ip}" ]; then
         _dedicated_ip="*"
         if [ -e "/data/disk/${_oct_uid}/log/extra_domain.txt" ]; then
-          _hmFrontExtra=$(cat /data/disk/${_oct_uid}/log/extra_domain.txt 2>/dev/null | tr -d '\n')
+          _hmFrontExtra=$(cat /data/disk/${_oct_uid}/log/extra_domain.txt 2>&1)
+          _hmFrontExtra=$(echo -n ${_hmFrontExtra} | tr -d "\n" 2>&1)
         fi
         if [ ! -z "${_hmFrontExtra}" ]; then
           _dedicated_sn="${_domain_name} ${_hmFrontExtra} www.${_domain_name}"
@@ -1254,7 +1262,7 @@ _ssl_gen() {
 }
 
 _check_root() {
-  if [ $(whoami) = "root" ]; then
+  if [ "$(id -u)" -eq 0 ]; then
     ionice -c2 -n7 -p $$
     chmod a+w /dev/null
     if [ ! -e "/dev/fd" ]; then
@@ -1290,12 +1298,12 @@ _check_root() {
     | sed 's/\%//g' \
     | awk '{print $6}' 2> /dev/null)
   _DF_TEST=${_DF_TEST//[^0-9]/}
-  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt "90" ]; then
+  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt 90 ]; then
     echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
     echo "ERROR: We can not proceed until it is below 90/100"
     exit 1
   fi
-  _hName=$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)
+  _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
 }
 
 case "$1" in

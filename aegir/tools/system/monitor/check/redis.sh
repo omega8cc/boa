@@ -7,7 +7,7 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 _pthOml="/var/xdrago/log/redis.incident.log"
 
 _check_root() {
-  if [ $(whoami) = "root" ]; then
+  if [ "$(id -u)" -eq 0 ]; then
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
     chmod a+w /dev/null
   else
@@ -22,7 +22,7 @@ _check_root
 
     # Validate and set default if necessary
     if ! [[ "$_B_NICE" =~ ^-?[0-9]+$ ]]; then
-      _B_NICE=-5
+      _B_NICE=0
     fi
 
     # Clamp the value within -20 to 19
@@ -56,7 +56,7 @@ _fpm_reload() {
   mkdir -p /var/backups/php-logs/${_NOW}/
   mv -f /var/log/php/* /var/backups/php-logs/${_NOW}/
   renice ${_B_NICE} -p $$ &> /dev/null
-  _PHP_V="83 82 81 80 74 73 72 71 70 56"
+  _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
       service php${e}-fpm reload
@@ -88,7 +88,7 @@ _redis_restart() {
 
 _redis_bind_check_fix() {
   if [ `tail --lines=8 /var/log/redis/redis-server.log \
-    | grep --count "Address already in use"` -gt "0" ]; then
+    | grep --count "Address already in use"` -gt 0 ]; then
     _thisErrLog="$(date) RedisException BIND detected, service will be restarted"
     echo ${_thisErrLog} >> ${_pthOml}
     _redis_restart "Redis BIND"
@@ -97,7 +97,7 @@ _redis_bind_check_fix() {
 
 _redis_connection_check_fix() {
   if [ `tail --lines=500 /var/log/php/error_log_* \
-    | grep --count "RedisException: Connection refused"` -gt "19" ]; then
+    | grep --count "RedisException: Connection refused"` -gt 19 ]; then
     _thisErrLog="$(date) RedisException Connection refused detected, service will be restarted"
     echo ${_thisErrLog} >> ${_pthOml}
     _redis_restart "Redis REFUSED"
@@ -106,7 +106,7 @@ _redis_connection_check_fix() {
 
 _redis_slow_check_fix() {
   if [ `tail --lines=500 /var/log/php/fpm-*-slow.log \
-    | grep --count "PhpRedis.php"` -gt "19" ]; then
+    | grep --count "PhpRedis.php"` -gt 19 ]; then
     _thisErrLog="$(date) Slow PhpRedis detected, service will be restarted"
     echo ${_thisErrLog} >> ${_pthOml}
     _redis_restart "Redis SLOW"
@@ -122,7 +122,7 @@ _if_redis_restart() {
     || [[ "${_PrTestPhantom}" =~ "PHANTOM" ]] \
     || [[ "${_PrTestCluster}" =~ "CLUSTER" ]] \
     || [ -e "/root/.allow.redis.restart.cnf" ]; then
-    if [ "${ReTest}" -ge "1" ]; then
+    if [ "${ReTest}" -ge 1 ]; then
       rm -f /data/disk/*/static/control/run-redis-restart.pid
       _thisErrLog="$(date) Redis Server Restart Requested"
       echo ${_thisErrLog} >> ${_pthOml}
@@ -145,4 +145,4 @@ fi
 
 echo DONE!
 exit 0
-###EOF2024###
+

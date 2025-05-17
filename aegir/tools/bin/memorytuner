@@ -31,7 +31,7 @@ _check_sql_running
 _check_sql_access() {
   if [ -e "/root/.my.pass.txt" ] && [ -e "/root/.my.cnf" ]; then
     _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
-    _IS_SYNC_SQL_PSWD=$(grep "password=${_SQL_PSWD}" /root/.my.cnf)
+    _IS_SYNC_SQL_PSWD=$(grep "password=${_SQL_PSWD}" /root/.my.cnf 2>&1)
   else
     echo "ALERT: /root/.my.cnf or /root/.my.pass.txt not found."
     echo "ALERT: Please fix this before trying again, giving up."
@@ -55,7 +55,7 @@ _check_sql_access() {
       echo " "
       _clean_pid_exit _check_sql_access_c
     else
-      _MYSQL_CONN_TEST=$(mysql -u root -e "status")
+      _MYSQL_CONN_TEST=$(mysql -u root -e "status" 2>&1)
       if [ -z "${_MYSQL_CONN_TEST}" ] \
         || [[ "${_MYSQL_CONN_TEST}" =~ "Access denied" ]]; then
         echo "ALERT: SQL password in /root/.my.cnf does not work."
@@ -231,8 +231,9 @@ declare -A _services_pidfiles=(
   ["php81-fpm"]="/run/php81-fpm.pid"
   ["php82-fpm"]="/run/php82-fpm.pid"
   ["php83-fpm"]="/run/php83-fpm.pid"
+  ["php84-fpm"]="/run/php84-fpm.pid"
   ["redis"]="/run/redis/redis.pid"
-  ["java"]="/var/solr7/solr-9077.pid"
+  ["java"]="/var/solr9/solr-9099.pid"
 )
 
 # Define estimated memory usage for services (in MB)
@@ -242,6 +243,7 @@ declare -A _service_estimated_mem_mb=(
   ["php81-fpm"]=200
   ["php82-fpm"]=200
   ["php83-fpm"]=200
+  ["php84-fpm"]=200
   ["redis"]=200
   ["java"]=100
 )

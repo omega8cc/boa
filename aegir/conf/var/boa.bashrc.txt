@@ -32,9 +32,9 @@ esac
 
 # workaround for immediate refresh in screen session
 if [ -n "$STY" ]; then
-    alias mc='TERM=dumb mc'
+  alias mc='TERM=dumb mc'
 else
-    alias mc='mc'
+  alias mc='mc'
 fi
 
 if [ -x /usr/bin/dircolors ]; then
@@ -67,7 +67,6 @@ fi
 
 alias df='df -kTh'
 alias wget='wget --no-check-certificate'
-alias make='make SHELL=/bin/bash'
 
 function xtitle() {
   case "$TERM" in
@@ -78,11 +77,11 @@ function xtitle() {
   esac
 }
 
-_L_HOST=$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)
+_L_HOST="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
 alias top='xtitle $_L_HOST System Monitor && top'
 alias htop='xtitle $_L_HOST System Monitor && htop'
 alias mytop='xtitle $_L_HOST SQL Monitor && mytop'
-alias make='xtitle Making $(basename $PWD) ; make'
+alias make='xtitle Making $(basename $PWD) ; make SHELL=/bin/bash'
 
 function extract() {
   if [ -f $1 ]; then

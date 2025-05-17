@@ -531,7 +531,7 @@ _mode_detection() {
     || [ "${_PHP_SV}" = "54" ] \
     || [ "${_PHP_SV}" = "53" ] \
     || [ "${_PHP_SV}" = "52" ]; then
-    _PHP_SV=74
+    _PHP_SV=83
   fi
   _PHP_CN="www${_PHP_SV}"
 }
@@ -567,7 +567,7 @@ _virt_detection() {
   _VIRT_TOOL=$(which virt-what 2> /dev/null)
   if [ -x "${_VIRT_TOOL}" ]; then
     _VIRT_TEST=$(virt-what 2> /dev/null)
-    _VIRT_TEST=$(echo -n ${_VIRT_TEST} | fmt -su -w 2500)
+    _VIRT_TEST=$(echo -n ${_VIRT_TEST} | fmt -su -w 2500 2>&1)
     if [ ! -e "/root/.allow.any.virt.cnf" ]; then
       if [ -e "/proc/self/status" ]; then
         _VS_GUEST_TEST=$(grep -E "VxID:[[:space:]]*[0-9]{2,}$" /proc/self/status 2> /dev/null)
@@ -644,7 +644,7 @@ _os_detection_minimal() {
     _msg "PROC: _os_detection_minimal"
   fi
   _APT_UPDATE="apt-get update"
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
   for e in ${_OS_LIST}; do
     if [ "${e}" = "${_OS_CODE}" ]; then
@@ -669,8 +669,8 @@ _os_detection() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _os_detection"
   fi
-  _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
+  _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   _DB_SERVER=Percona
   if [ "${_OS_DIST}" = "Debian" ]; then
     if [ "${_OS_CODE}" = "bookworm" ]; then
@@ -732,8 +732,8 @@ _os_detection() {
     _not_supported_os
   fi
   echo " "
-  _thiSys=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)/$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2) $(uname -m)
-  _thiSys=$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null) ${_thiSys} PHP ${_PHP_FPM_VERSION}"
+  _thiSys="$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)/$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1) $(uname -m 2>&1)"
+  _thiSys="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null) ${_thiSys} PHP ${_PHP_FPM_VERSION}"
   _msg "Aegir on ${_thiSys}"
   echo " "
 }
@@ -742,7 +742,8 @@ _check_boa_php_compatibility() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _check_boa_php_compatibility"
   fi
-  if [[ "${_PHP_MULTI_INSTALL}" =~ "8.3" ]] \
+  if [[ "${_PHP_MULTI_INSTALL}" =~ "8.4" ]] \
+    || [[ "${_PHP_MULTI_INSTALL}" =~ "8.3" ]] \
     || [[ "${_PHP_MULTI_INSTALL}" =~ "8.2" ]] \
     || [[ "${_PHP_MULTI_INSTALL}" =~ "8.1" ]] \
     || [[ "${_PHP_MULTI_INSTALL}" =~ "7.4" ]]; then
@@ -792,7 +793,7 @@ _check_boa_version() {
     _msg "INFO: Checking BARRACUDA version..."
   fi
   if [ -e "/var/log/barracuda_log.txt" ]; then
-    _SERIES_TEST=$(cat /var/log/barracuda_log.txt)
+    _SERIES_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
     if [ "${_tRee}" = "lts" ] \
       && [[ "${_SERIES_TEST}" =~ "Barracuda ${_rLsn}-pro" ]]; then
       _msg "ERROR: Your system has been already upgraded to ${_rLsn}-pro"
@@ -918,9 +919,9 @@ _barracuda_log_update() {
       | awk '{ print $1}' \
       | sed "s/[\,']//g" 2>&1)
   fi
-  _BARRACUDA_VERSION_INFO=$(date) / \
-    $(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1).$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2) \
-    $(uname -m) ${_VIRT_IS} / \
+  _BARRACUDA_VERSION_INFO="$(date) / \
+    $(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1).$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1) \
+    $(uname -m 2>&1) ${_VIRT_IS} / \
     Aegir ${_AEGIR_VERSION} / \
     Barracuda ${_X_VERSION}${_LOG_GIT_MIRROR} / \
     Nginx ${_NGINX_VRN} / \
@@ -947,7 +948,7 @@ _turn_off_apparmor_in_octopus() {
   fi
   _isAppArmOn=N
   if [ -e "/sys/module/apparmor/parameters/enabled" ]; then
-    _isAppArmOn=$(cat /sys/module/apparmor/parameters/enabled 2>/dev/null | tr -d '\n')
+    _isAppArmOn="$(cat /sys/module/apparmor/parameters/enabled 2>/dev/null | tr -d '\n')"
   fi
   if [ "${_isAppArmOn}" = "Y" ] && [ ! -e "/root/.turn_off_apparmor_in_octopus.cnf" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -970,7 +971,7 @@ _switch_to_dash_in_octopus() {
     _msg "PROC: _switch_to_dash_in_octopus"
   fi
   if [ -L "/bin/sh" ]; then
-    _WEB_SH=$(readlink -n /bin/sh)
+    _WEB_SH="$(readlink -n /bin/sh)"
     if [ -x "/bin/dash" ] || [ -x "/usr/bin/dash" ]; then
       if [ "${_WEB_SH}" != "/bin/dash" ]; then
         if [ -x "/usr/bin/dash" ] && [ ! -L "/usr/bin/dash" ]; then

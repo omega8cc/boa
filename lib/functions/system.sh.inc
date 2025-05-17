@@ -1,6 +1,6 @@
 
 export _tRee=dev
-export _hName=$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)
+export _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
 
 _if_fix_iptables_symlinks() {
   ###
@@ -50,16 +50,16 @@ _if_fix_iptables_symlinks() {
 #
 # Re-install curl if broken.
 _if_reinstall_curl_src() {
-  _CURL_VRN=8.10.1
+  _CURL_VRN=8.12.1
   if ! command -v lsb_release &> /dev/null; then
     apt-get update -qq &> /dev/null
     apt-get install lsb-release ${_aptYesUnth} -qq &> /dev/null
   fi
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   [ "${_OS_CODE}" = "wheezy" ] && _CURL_VRN=7.50.1
   [ "${_OS_CODE}" = "jessie" ] && _CURL_VRN=7.71.1
   [ "${_OS_CODE}" = "stretch" ] && _CURL_VRN=8.2.1
-  _isCurl=$(curl --version)
+  _isCurl=$(curl --version 2>&1)
   if [[ ! "${_isCurl}" =~ "OpenSSL" ]] || [ -z "${_isCurl}" ]; then
     _msg "OOPS: cURL is broken! Re-installing.."
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
@@ -157,8 +157,8 @@ _define_loc_osr() {
   _apt_clean_update_no_releaseinfo_change
   _mrun "apt-get upgrade ${_nrmUpArg}" 2> /dev/null
   _mrun "apt-get install lsb-release ${_nrmUpArg}" 2> /dev/null
-  _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
+  _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _define_loc_osr"
   fi
@@ -318,10 +318,10 @@ _count_cpu() {
   if [ ! -z "${_CPU_NR}" ] \
     && [ ! -z "${_CPU_INFO}" ] \
     && [ "${_CPU_NR}" -gt "${_CPU_INFO}" ] \
-    && [ "${_CPU_INFO}" -gt "0" ]; then
+    && [ "${_CPU_INFO}" -gt 0 ]; then
     _CPU_NR="${_CPU_INFO}"
   fi
-  if [ -z "${_CPU_NR}" ] || [ "${_CPU_NR}" -lt "1" ]; then
+  if [ -z "${_CPU_NR}" ] || [ "${_CPU_NR}" -lt 1 ]; then
     _CPU_NR=1
   fi
 }
@@ -332,7 +332,7 @@ _if_running_as_root_barracuda() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _if_running_as_root_barracuda"
   fi
-  if [ $(whoami) = "root" ]; then
+  if [ "$(id -u)" -eq 0 ]; then
     chmod a+w /dev/null
     rm -rf /tmp/drush_make_tmp*
     rm -rf /tmp/make_tmp*
@@ -354,10 +354,10 @@ _if_running_as_root_barracuda() {
       if  [ ! -e "/var/aegir/drush" ] \
         || [ ! -e "/data/u" ] \
         || [ ! -e "/var/xdrago" ]; then
-        touch /run/cloud_vhost.pid
+        [ ! -e "/run/linode_vm_postinstall.pid" ] && touch /run/linode_vm.pid
       fi
     fi
-    _VM_TEST=$(uname -a)
+    _VM_TEST="$(uname -a)"
     if [[ "${_VM_TEST}" =~ "-beng" ]]; then
       _VMFAMILY="VS"
       touch /run/cloud_vhost.pid
@@ -420,7 +420,7 @@ _kill_nash() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _kill_nash"
   fi
-  _VM_TEST=$(uname -a)
+  _VM_TEST="$(uname -a)"
   if [[ "${_VM_TEST}" =~ "-beng" ]]; then
     _DO_NOTHING=YES
   else
@@ -532,7 +532,7 @@ _sftp_ftps_modern_fix() {
   fi
   if [ ! -e "${_pthLog}/fixed-sftp-idle.log" ]; then
     sed -i "s/IdleTimeOut.*/IdleTimeOut            15m/g" /etc/ssh/sftp_config &> /dev/null
-    _mrun "service ssh reload" 2> /dev/null
+    _mrun "service ssh restart" 2> /dev/null
     touch ${_pthLog}/fixed-sftp-idle.log
   fi
 }
@@ -670,7 +670,7 @@ _tune_memory_limits() {
     _msg "TUNE: _MXC_SQL is ${_MXC_SQL}"
   fi
 
-  _VM_TEST=$(uname -a)
+  _VM_TEST="$(uname -a)"
   if [ -e "/proc/bean_counters" ]; then
     _VMFAMILY="VZ"
   elif [ -e "/root/.tg.cnf" ]; then
@@ -694,15 +694,15 @@ _tune_memory_limits() {
     _msg "TUNE: _VMFAMILY is ${_VMFAMILY}"
   fi
   _CPU_MX=$(( _CPU_NR * 2 ))
-  if [ "${_CPU_MX}" -lt "4" ]; then
+  if [ "${_CPU_MX}" -lt 4 ]; then
     _CPU_MX=4
   fi
   _CPU_TG=$(( _CPU_NR / 2 ))
-  if [ "${_CPU_TG}" -lt "4" ]; then
+  if [ "${_CPU_TG}" -lt 4 ]; then
     _CPU_TG=4
   fi
   _CPU_VS=$(( _CPU_NR / 12 ))
-  if [ "${_CPU_VS}" -lt "2" ]; then
+  if [ "${_CPU_VS}" -lt 2 ]; then
     _CPU_VS=2
   fi
   _PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
@@ -711,7 +711,7 @@ _tune_memory_limits() {
   if [[ "${_PrTestPower}" =~ "POWER" ]] \
     || [[ "${_PrTestPhantom}" =~ "PHANTOM" ]] \
     || [[ "${_PrTestCluster}" =~ "CLUSTER" ]]; then
-    if [ "${_CPU_VS}" -lt "8" ]; then
+    if [ "${_CPU_VS}" -lt 8 ]; then
       _CPU_VS=8
     fi
   fi
@@ -721,7 +721,10 @@ _tune_memory_limits() {
     _msg "TUNE: _PrTestCluster is ${_PrTestCluster}"
   fi
   _RAM=$(free -mt | grep Mem: | awk '{ print $2 }' 2>&1)
-  if [ "${_RESERVED_RAM}" -gt "0" ]; then
+  if [ "${_RESERVED_RAM}" -gt 0 ]; then
+    _RAM=$(( _RAM - _RESERVED_RAM ))
+  else
+    _RESERVED_RAM=$(( _RAM / 4 ))
     _RAM=$(( _RAM - _RESERVED_RAM ))
   fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -751,7 +754,7 @@ _tune_memory_limits() {
   else
     _USE_SQL=$(( _RAM / 8 ))
   fi
-  if [ "${_USE_SQL}" -lt "64" ]; then
+  if [ "${_USE_SQL}" -lt 64 ]; then
     _USE_SQL=64
   fi
   _TMP_SQL="${_USE_SQL}M"
@@ -762,7 +765,7 @@ _tune_memory_limits() {
     _msg "TUNE: _TMP_SQL is ${_TMP_SQL}"
     _msg "TUNE: _SRT_SQL is ${_SRT_SQL}"
   fi
-  if [ "${_USE}" -ge "512" ] && [ "${_USE}" -lt "2048" ]; then
+  if [ "${_USE}" -ge 512 ] && [ "${_USE}" -lt 2048 ]; then
     _USE_PHP=1024
     _USE_OPC=1024
     _USE_CLI=2048
@@ -774,7 +777,7 @@ _tune_memory_limits() {
     else
       _L_NGX_WRKS=${_NGINX_WORKERS}
     fi
-  elif [ "${_USE}" -ge "2048" ]; then
+  elif [ "${_USE}" -ge 2048 ]; then
     if [ "${_VMFAMILY}" = "XEN" ] || [ "${_VMFAMILY}" = "AWS" ]; then
       _USE_PHP=2048
       _USE_OPC=2048
@@ -797,7 +800,7 @@ _tune_memory_limits() {
         _QCE_SQL=64M
         _RND_SQL=8M
         _JBF_SQL=4M
-        if [ "${_MXC_SQL}" -lt "10" ]; then
+        if [ "${_MXC_SQL}" -lt 10 ]; then
           _MXC_SQL=10
         fi
         if [ "${_NGINX_WORKERS}" = "AUTO" ]; then
@@ -805,6 +808,7 @@ _tune_memory_limits() {
         else
           _L_NGX_WRKS=${_NGINX_WORKERS}
         fi
+        sed -i "s/64000/128000/g"  /opt/php84/etc/php84.ini &> /dev/null
         sed -i "s/64000/128000/g"  /opt/php83/etc/php83.ini &> /dev/null
         sed -i "s/64000/128000/g"  /opt/php82/etc/php82.ini &> /dev/null
         sed -i "s/64000/128000/g"  /opt/php81/etc/php81.ini &> /dev/null
@@ -857,11 +861,11 @@ _tune_memory_limits() {
   if [ "${_VMFAMILY}" = "VZ" ]; then
     _USE_OPC=64
   fi
-  if [ "${_USE_PHP}" -lt "1024" ]; then
+  if [ "${_USE_PHP}" -lt 1024 ]; then
     _USE_PHP=1024
   fi
   _USE_FPM=$(( _USE_PHP / 2 ))
-  if [ "${_USE_FPM}" -lt "1024" ]; then
+  if [ "${_USE_FPM}" -lt 1024 ]; then
     _USE_FPM=1024
   fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -885,13 +889,10 @@ _tune_memory_limits() {
   fi
   cp -af ${_locCnf}/php/fpm-pool-foo-multi.conf /var/xdrago/conf/
   cp -af ${_locCnf}/php/fpm-pool-foo.conf /var/xdrago/conf/
-  cp -af ${_locCnf}/hhvm /var/xdrago/conf/
-  cp -af ${_locCnf}/hhvm/hhvm_intercept.php /data/conf/hhvm_intercept.php
-  chmod 644 /data/conf/hhvm_intercept.php
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ]; then
     sed -i "s/395/${_USE_FPM}/g" /opt/etc/fpm/fpm-pool-common.conf &> /dev/null
   fi
-  _PHP_V="83 82 81 80 74 73 72 71 70 56"
+  _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     if [ -e "/opt/php${e}/etc/php${e}.ini" ]; then
       sed -i "s/395/${_USE_FPM}/g" /opt/php${e}/etc/php${e}.ini &> /dev/null
@@ -968,6 +969,20 @@ _tune_memory_limits() {
     _msg "TUNE: _USE_SOLR_MEM is ${_USE_SOLR_MEM}"
     _msg "TUNE: _USE_SOLR is ${_USE_SOLR}"
   fi
+
+  if [ -x "/etc/init.d/solr9" ] && [ -e "/etc/default/solr9.in.sh" ]; then
+    sed -i "s/^SOLR_HEAP/#SOLR_HEAP/g" /etc/default/solr9.in.sh &> /dev/null
+    wait
+    sed -i "s/^#SOLR_JAVA_MEM/SOLR_JAVA_MEM/g" /etc/default/solr9.in.sh &> /dev/null
+    wait
+    sed -i "s/^SOLR_JAVA_MEM=.*/SOLR_JAVA_MEM=\"-Xms64m ${_USE_SOLR}\"/g" /etc/default/solr9.in.sh
+    wait
+    sed -i "s/^#SOLR_STOP_WAIT=.*/SOLR_STOP_WAIT=\"8\"/g" /etc/default/solr9.in.sh &> /dev/null
+    wait
+    sed -i "s/^#SOLR_WAIT_FOR_ZK=.*/SOLR_WAIT_FOR_ZK=\"8\"/g" /etc/default/solr9.in.sh &> /dev/null
+    wait
+  fi
+
   if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
     sed -i "s/^SOLR_HEAP/#SOLR_HEAP/g" /etc/default/solr7.in.sh &> /dev/null
     wait
@@ -980,6 +995,7 @@ _tune_memory_limits() {
     sed -i "s/^#SOLR_WAIT_FOR_ZK=.*/SOLR_WAIT_FOR_ZK=\"8\"/g" /etc/default/solr7.in.sh &> /dev/null
     wait
   fi
+
   _tune_web_server_config
 }
 
@@ -992,7 +1008,8 @@ _find_server_city() {
     else
       if [ -e "/root/.found_correct_ipv4.cnf" ]; then
         _LOC_IP=$(cat /root/.found_correct_ipv4.cnf 2>/dev/null | tr -d '\n')
-        _LOC_CITY=$(curl ${_crlGet} ipinfo.io/${_LOC_IP}/city 2>/dev/null | tr -d '\n')
+        _LOC_CITY=$(curl ${_crlGet} ipinfo.io/${_LOC_IP}/city 2>&1)
+        _LOC_CITY=$(echo -n ${_LOC_CITY} | tr -d "\n" 2>&1)
       fi
       if [ ! -z "${_LOC_CITY}" ]; then
         _LOC_CITY=$(echo "${_LOC_CITY}" | tr ' ' '+' 2>&1)
@@ -1019,7 +1036,7 @@ _locales_check_fix() {
       echo "AcceptEnv LANG LC_*" >> /etc/ssh/sshd_config
     fi
   fi
-  _LOC_TEST=$(locale)
+  _LOC_TEST=$(locale 2>&1)
   if [[ "${_LOC_TEST}" =~ LANG=.*UTF-8 ]]; then
     _LOCALE_TEST=OK
   fi
@@ -1053,7 +1070,7 @@ _locales_check_fix() {
 EOF
     sleep 5
     if [ "${_OS_DIST}" = "Debian" ] || [ "${_OS_DIST}" = "Devuan" ]; then
-      _LOCALE_GEN_TEST=$(grep -v "^#" /etc/locale.gen)
+      _LOCALE_GEN_TEST=$(grep -v "^#" /etc/locale.gen 2>&1)
       if [[ ! "${_LOCALE_GEN_TEST}" =~ "en_US.UTF-8 UTF-8" ]]; then
         echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
       fi
@@ -1111,7 +1128,7 @@ EOF
       _set_xterm
     fi
     if [ "${_OS_DIST}" = "Debian" ] || [ "${_OS_DIST}" = "Devuan" ]; then
-      _LOCALE_GEN_TEST=$(grep -v "^#" /etc/locale.gen)
+      _LOCALE_GEN_TEST=$(grep -v "^#" /etc/locale.gen 2>&1)
       if [[ ! "${_LOCALE_GEN_TEST}" =~ "en_US.UTF-8 UTF-8" ]]; then
         echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
       fi
@@ -1137,7 +1154,7 @@ EOF
     export LC_NUMERIC=POSIX &> /dev/null
     export LC_ALL= &> /dev/null
   fi
-  _LOCALES_BASHRC_TEST=$(grep LC_COLLATE /root/.bashrc)
+  _LOCALES_BASHRC_TEST=$(grep LC_COLLATE /root/.bashrc 2>&1)
   if [[ ! "${_LOCALES_BASHRC_TEST}" =~ "LC_COLLATE" ]]; then
     printf "\n" >> /root/.bashrc
     echo "export LANG=en_US.UTF-8" >> /root/.bashrc
@@ -1581,7 +1598,7 @@ _php_legacy_versions_cleanup_cnf() {
   fi
 
   _VMFAMILY=XEN
-  _VM_TEST=$(uname -a)
+  _VM_TEST="$(uname -a)"
   if [[ "${_VM_TEST}" =~ "-beng" ]]; then
     _VMFAMILY="VS"
   fi
@@ -1625,7 +1642,8 @@ _php_if_versions_cleanup_cnf() {
   if [ "${_AUTO_PHP_CLEANUP}" = "YES" ]; then
     ### Make sure that _PHP_SINGLE_INSTALL takes precedence
     if [ ! -z "${_PHP_SINGLE_INSTALL}" ]; then
-      if [ "${_PHP_SINGLE_INSTALL}" = "8.3" ] \
+      if [ "${_PHP_SINGLE_INSTALL}" = "8.4" ] \
+        || [ "${_PHP_SINGLE_INSTALL}" = "8.3" ] \
         || [ "${_PHP_SINGLE_INSTALL}" = "8.2" ] \
         || [ "${_PHP_SINGLE_INSTALL}" = "8.1" ] \
         || [ "${_PHP_SINGLE_INSTALL}" = "7.4" ]; then
@@ -1785,6 +1803,18 @@ _php_if_versions_cleanup_cnf() {
         _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_eight_three}"
       fi
 
+      ### Add PHP 8.4 if used
+      _is_PHP_multi_eight_three=$(grep "8\.4" /data/disk/*/static/control/multi-fpm.info 4>&1)
+      _is_PHP_FPM_eight_three=$(grep "8\.4" /data/disk/*/static/control/fpm.info 4>&1)
+      _is_PHP_CLI_eight_three=$(grep "8\.4" /data/disk/*/static/control/cli.info 4>&1)
+      _is_PHP_eight_three=
+      if [[ "${_is_PHP_multi_eight_three}" =~ "8.4" ]] \
+        || [[ "${_is_PHP_FPM_eight_three}" =~ "8.4" ]] \
+        || [[ "${_is_PHP_CLI_eight_three}" =~ "8.4" ]]; then
+        _is_PHP_eight_three=8.4
+        _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_eight_three}"
+      fi
+
       ### Overwrite _PHP_MULTI_INSTALL with the list of used PHP versions
       _PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL}"
 
@@ -1835,10 +1865,8 @@ _if_php_idle_on_off() {
   if [ "${_PHP_IDLE}" = "ON" ]; then
     [ -e "/root/.allow-php-multi-install-cleanup.cnf" ] && rm -f /root/.allow-php-multi-install-cleanup.cnf
     if [ ! -e "/var/xdrago/log" ] && [ -e "/var/xdrago_wait/log" ]; then
-      rm -f /var/xdrago_wait/log/*.log
       rm -f /var/xdrago_wait/log/._php_libs_fix_*.pid
     else
-      rm -f /var/xdrago/log/*.log
       rm -f /var/xdrago/log/._php_libs_fix_*.pid
     fi
     touch /root/.proxy.cnf
@@ -1888,7 +1916,7 @@ _barracuda_cnf() {
     _msg "PROC: _barracuda_cnf"
   fi
   _VMFAMILY=XEN
-  _VM_TEST=$(uname -a)
+  _VM_TEST="$(uname -a)"
   if [[ "${_VM_TEST}" =~ "-beng" ]]; then
     _VMFAMILY="VS"
   fi
@@ -2552,7 +2580,8 @@ _barracuda_cnf() {
 
     ### Make sure that _PHP_SINGLE_INSTALL takes precedence
     if [ ! -z "${_PHP_SINGLE_INSTALL}" ]; then
-      if [ "${_PHP_SINGLE_INSTALL}" = "8.3" ] \
+      if [ "${_PHP_SINGLE_INSTALL}" = "8.4" ] \
+        || [ "${_PHP_SINGLE_INSTALL}" = "8.3" ] \
         || [ "${_PHP_SINGLE_INSTALL}" = "8.2" ] \
         || [ "${_PHP_SINGLE_INSTALL}" = "8.1" ] \
         || [ "${_PHP_SINGLE_INSTALL}" = "7.4" ]; then
@@ -2677,7 +2706,7 @@ _run_apt_get_dist_upgrade() {
   ### Reload key services if needed early
   _mrun "service redis-server reload" 2> /dev/null
   _mrun "service nginx reload" 2> /dev/null
-  _PHP_V="83 82 81 80 74 73 72 71 70 56"
+  _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
       _mrun "service php${e}-fpm reload" 2> /dev/null
@@ -2832,7 +2861,7 @@ _install_icu_modern() {
   if [ ! -e "${_pthLog}" ] && [ -e "/var/xdrago_wait/log" ]; then
     _pthLog="/var/xdrago_wait/log"
   fi
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   if [ -e "${_pthLog}" ]; then
     _pthIcuLog="${_pthLog}/icu-update-${_ICU_MODERN_VRN}-for-${_OS_CODE}.log"
     _pthIcuLcy="${_pthLog}/icu-update-${_ICU_MODERN_VRN}.log"
@@ -2868,7 +2897,7 @@ _install_icu_modern() {
     if [ -e "/usr/local/lib/icu" ]; then
       touch ${_pthIcuLog}
     fi
-    _X86_64_TEST=$(uname -m)
+    _X86_64_TEST=$(uname -m 2>&1)
     if [ "${_X86_64_TEST}" = "x86_64" ]; then
       if [ -e "/usr/local/lib/icu" ]; then
         if [ -d "/usr/lib/x86_64-linux-gnu/icu" ]; then
@@ -2893,7 +2922,7 @@ _install_icu_jessie() {
   if [ ! -e "${_pthLog}" ] && [ -e "/var/xdrago_wait/log" ]; then
     _pthLog="/var/xdrago_wait/log"
   fi
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   if [ -e "${_pthLog}" ]; then
     _pthIcuLog="${_pthLog}/icu-update-${_ICU_LEGACY_VRN}-for-${_OS_CODE}.log"
     _pthIcuLcy="${_pthLog}/icu-update-${_ICU_LEGACY_VRN}.log"
@@ -2929,7 +2958,7 @@ _install_icu_jessie() {
     if [ -e "/usr/local/lib/icu" ]; then
       touch ${_pthIcuLog}
     fi
-    _X86_64_TEST=$(uname -m)
+    _X86_64_TEST=$(uname -m 2>&1)
     if [ "${_X86_64_TEST}" = "x86_64" ]; then
       if [ -e "/usr/local/lib/icu" ]; then
         if [ -d "/usr/lib/x86_64-linux-gnu/icu" ]; then
@@ -3045,7 +3074,7 @@ _if_install_wkhtmltox() {
     _msg "PROC: _if_install_wkhtmltox"
   fi
   ###--------------------###
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   _isWkhtmltox=$(which wkhtmltopdf 2>&1)
   if [ -z "${_isWkhtmltox}" ] \
     || [ ! -e "${_isWkhtmltox}" ] \
@@ -3428,11 +3457,11 @@ _sources_list_update() {
           _msg "INFO: Now looking for the best/fastest ${_OS_DIST} mirror"
           _msg "INFO: This may take a while, please wait..."
           _hlpPth="/opt/tmp/boa/aegir/helpers"
-          _ffMirr=$(which ffmirror)
-          _ffList=${_hlpPth}/apt-list-debian.txt"
+          _ffMirr=$(which ffmirror 2>&1)
+          _ffList="${_hlpPth}/apt-list-debian.txt"
           if [ -e "${_ffMirr}" ] && [ -e "${_ffList}" ]; then
-            _MIRROR=$(bash "${_ffMirr}" < "${_ffList}")
-            _MIRROR=$(bash "${_ffMirr}" < "${_ffList}")
+            _MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
+            _MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
             echo " "
             _askThis="Enter your own mirror to use or press enter"
             _askThis="${_askThis} to use the fastest found mirror"
@@ -3519,7 +3548,7 @@ _sshd_install_src() {
       ln -sfn /usr/local/sbin/ssh /usr/sbin/ssh
     fi
   fi
-  _SSH_GET_DPKG=$(dpkg --get-selections | grep openssh-sftp-server | grep 'hold$' 2>&1)
+  _SSH_GET_DPKG=$(dpkg --get-selections | grep openssh-server | grep 'hold$' 2>&1)
   _SSH_INSTALL_REQUIRED=NO
   _SSH_ITD=$(ssh -V 2>&1 \
     | tr -d "\n" \
@@ -3617,6 +3646,7 @@ _sshd_install_src() {
       aptitude hold openssh-server &> /dev/null
       aptitude hold openssh-client &> /dev/null
       aptitude hold ssh &> /dev/null
+      aptitude hold openssh-sftp-server &> /dev/null
       echo "openssh-client hold" | dpkg --set-selections &> /dev/null
       echo "openssh-server hold" | dpkg --set-selections &> /dev/null
       echo "ssh hold" | dpkg --set-selections &> /dev/null
@@ -3648,7 +3678,9 @@ _sshd_install_src() {
       rm -f ${_OLD_SYSCONFDIR}/ssh*
       rm -f ${_OLD_SYSCONFDIR}/moduli*
     fi
-    _mrun "service ssh restart" 2> /dev/null
+    # killall -9 sshd-session &> /dev/null
+    kill -9 $(ps aux | grep '[s]tartups' | awk '{print $2}') &> /dev/null
+    _mrun "service ssh start" 2> /dev/null
   fi
   _SSH_FORCE_REINSTALL=NO
 }
@@ -3974,16 +4006,10 @@ _ssl_paths_update() {
     _msg "PROC: _ssl_paths_update"
   fi
 
-  if [ -x "${_SSL_MODERN_BINARY}" ]; then
-    _LINK_TO="${_SSL_MODERN_BINARY}"
-  elif [ -x "${_SSL_LEGACY_BINARY}" ]; then
-    _LINK_TO="${_SSL_LEGACY_BINARY}"
-  else
-    _LINK_TO=
-  fi
+  _LINK_TO="${1}"
 
-  if [ -n "${_LINK_TO}" ]; then
-    if [ -e "/usr/bin/openssl" ]; then
+  if [ -x "${_LINK_TO}" ]; then
+    if [ -f "/usr/bin/openssl" ]; then
       cp -af /usr/bin/openssl /usr/bin/old-openssl-$(date +%y%m%d-%H%M%S 2>&1)
     fi
     ln -sfn ${_LINK_TO} /usr/bin/openssl
@@ -4012,6 +4038,20 @@ _ssl_paths_update() {
   fi
   sed -i "/^$/d" /etc/ld.so.conf.d/libc.conf &> /dev/null
   ldconfig 2> /dev/null
+}
+
+#
+# Fix OpenSSL symlinks.
+_ssl_fix_symlinks() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _ssl_fix_symlinks"
+  fi
+  # Determine which OpenSSL version to use based on _OS_CODE
+  if [ "${_OS_CODE}" != "stretch" ] && [ "${_OS_CODE}" != "jessie" ]; then
+    _sslSymlink="/usr/bin/openssl"
+    _sslBinary="/usr/local/ssl3/bin/openssl"
+    [ ! -L "${_sslSymlink}" ] && [ -x "${_sslBinary}" ] && _ssl_paths_update "${_sslBinary}"
+  fi
 }
 
 #
@@ -4152,7 +4192,24 @@ _if_ssl_install_src() {
 
   # Check if modern version needs upgrading
   if [ "${_OS_CODE}" != "stretch" ] && [ "${_OS_CODE}" != "jessie" ]; then
-    if [ ! -x "${_SSL_MODERN_BINARY}" ] || [ "${_SSL_MODERN_ITD}" != "${_OPENSSL_NEW_VRN}" ]; then
+    _sslSymlink="/usr/bin/openssl"
+    _sslMacros="/usr/local/ssl3/include/openssl/macros.h"
+    _sslIncludesA=NO
+    _sslIncludesB=NO
+    _sslIncludes=YES
+    if grep -i 'OPENSSL_NO_DEPRECATED_3_4' ${_sslMacros} &> /dev/null; then
+      _sslIncludesA=YES
+    fi
+    if grep -i '2019-2024' ${_sslMacros} &> /dev/null; then
+      _sslIncludesB=YES
+    fi
+    if [ "${_sslIncludesA}" = "NO" ] || [ "${_sslIncludesB}" = "NO" ]; then
+      _sslIncludes=NO
+    fi
+    if [ ! -x "${_SSL_MODERN_BINARY}" ] \
+      || [ "${_sslIncludes}" != "YES" ] \
+      || [ "${_SSL_MODERN_ITD}" != "${_OPENSSL_NEW_VRN}" ] \
+      || [ ! -L "${_sslSymlink}" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: Modern OpenSSL (${_SSL_MODERN_ITD}), upgrade to (${_OPENSSL_NEW_VRN}) required"
       fi
@@ -4287,7 +4344,7 @@ _curl_install_src() {
     apt-get update -qq &> /dev/null
     apt-get install lsb-release ${_aptYesUnth} -qq &> /dev/null
   fi
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   [ "${_OS_CODE}" = "wheezy" ] && _CURL_VRN=7.50.1
   [ "${_OS_CODE}" = "jessie" ] && _CURL_VRN=7.71.1
   [ "${_OS_CODE}" = "stretch" ] && _CURL_VRN=8.2.1
@@ -4357,7 +4414,7 @@ _curl_install_src() {
     fi
   fi
 
-  _BROKEN_CURL_TEST=$(curl --version)
+  _BROKEN_CURL_TEST=$(curl --version 2>&1)
   if [[ "${_BROKEN_CURL_TEST}" =~ "libcurl.so.4" ]]; then
     _CURL_INSTALL_REQUIRED=YES
   fi
@@ -4427,7 +4484,7 @@ _curl_install_src() {
       fi
       [ -e "/root/.sorted.multi.php.cnf" ] && rm -f /root/.sorted.multi.php.cnf
       if [ -e "/usr/local/bin/curl" ]; then
-        mv -f /usr/local/bin/curl /usr/local/bin/curl-src-off-$(date +%y%m%d-%H%M%S)
+        mv -f /usr/local/bin/curl /usr/local/bin/curl-src-off-$(date +%y%m%d-%H%M%S 2>&1)
       fi
       if [[ "${_CURL_GET_DPKG}" =~ "hold" ]]; then
         echo "curl install" | dpkg --set-selections &> /dev/null
@@ -4483,7 +4540,7 @@ _curl_install_src() {
           _mrun "make install" 2> /dev/null
           ldconfig 2> /dev/null
           if [ -x "/usr/local/bin/curl" ]; then
-            mv -f /usr/bin/curl /usr/bin/old-curl-$(date +%y%m%d-%H%M%S)
+            mv -f /usr/bin/curl /usr/bin/old-curl-$(date +%y%m%d-%H%M%S 2>&1)
             ln -sfn /usr/local/bin/curl /usr/bin/curl
           fi
           if [ ! -e "${_SSL_PATH}/certs/ca-certificates.crt" ]; then
@@ -4619,6 +4676,7 @@ _switch_to_dash() {
                   /opt/php81/bin \
                   /opt/php82/bin \
                   /opt/php83/bin \
+                  /opt/php84/bin \
                   /sbin \
                   /usr/bin \
                   /usr/lib/ConsoleKit/run-session.d \
@@ -4702,6 +4760,7 @@ _switch_to_bash() {
                   /opt/php81/bin \
                   /opt/php82/bin \
                   /opt/php83/bin \
+                  /opt/php84/bin \
                   /sbin \
                   /usr/bin \
                   /usr/lib/ConsoleKit/run-session.d \
@@ -4770,6 +4829,7 @@ _strict_bin_permissions() {
               /opt/php81/bin \
               /opt/php82/bin \
               /opt/php83/bin \
+              /opt/php84/bin \
               /sbin \
               /usr/bin \
               /usr/local/bin \
@@ -4875,7 +4935,6 @@ _strict_bin_permissions() {
                   gpgv1 \
                   gpgv2 \
                   gs \
-                  hhvm \
                   id \
                   java \
                   java6 \
@@ -4992,7 +5051,7 @@ _turn_off_apparmor_temporarily() {
   fi
   _isAppArmOn=N
   if [ -e "/sys/module/apparmor/parameters/enabled" ]; then
-    _isAppArmOn=$(cat /sys/module/apparmor/parameters/enabled 2>/dev/null | tr -d '\n')
+    _isAppArmOn="$(cat /sys/module/apparmor/parameters/enabled 2>/dev/null | tr -d '\n')"
   fi
   if [ "${_isAppArmOn}" = "Y" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -5213,39 +5272,11 @@ _if_install_apparmor() {
   fi
   _isAppArmOn=N
   if [ -e "/sys/module/apparmor/parameters/enabled" ]; then
-    _isAppArmOn=$(cat /sys/module/apparmor/parameters/enabled 2>/dev/null | tr -d '\n')
+    _isAppArmOn="$(cat /sys/module/apparmor/parameters/enabled 2>/dev/null | tr -d '\n')"
   fi
   if [ "${_isAppArmOn}" = "Y" ]; then
     _sync_apparmor_profiles
     [ -e "/root/.turn_off_apparmor_in_octopus.cnf" ] && rm -f /root/.turn_off_apparmor_in_octopus.cnf
-  fi
-}
-
-_uninstall_apparmor_utils() {
-  [ ! -e "/root/.disable.apparmor.cnf" ] && touch /root/.disable.apparmor.cnf
-  [ ! -e "/root/.deny.apparmor.cnf" ] && touch /root/.deny.apparmor.cnf
-  if [ -e "/etc/apparmor.d" ]; then
-    _mrun "apt-get remove apparmor-profiles apparmor-notify -y --purge --auto-remove -qq" 2> /dev/null
-    _mrun "apt-get remove apparmor apparmor-utils -y --purge --auto-remove -qq" 2> /dev/null
-    _mrun "apt-get autoremove --purge -y" 2> /dev/null
-    _mrun "apt-get autoclean -y" 2> /dev/null
-  fi
-}
-
-_disable_apparmor_utils() {
-  if [ -e "/etc/apparmor.d" ] && [ -e "/var/cache/apparmor" ]; then
-    rm -rf /var/cache/apparmor/* 2> /dev/null
-    _mrun "apparmor_parser -r /etc/apparmor.d/*" 2> /dev/null
-    _mrun "aa-complain /etc/apparmor.d/*" 2> /dev/null
-  fi
-  if [ -x "/etc/init.d/apparmor" ]; then
-    _mrun "service apparmor stop" 2> /dev/null
-    _mrun "update-rc.d -f apparmor remove" 2> /dev/null
-    _mrun "service auditd stop" 2> /dev/null
-    _mrun "update-rc.d -f auditd remove" 2> /dev/null
-  fi
-  if [ -x "/usr/sbin/aa-teardown" ]; then
-    _mrun "aa-teardown" 2> /dev/null
   fi
 }
 
@@ -5286,7 +5317,7 @@ _finale() {
   _msg "Final post-${_L_ST} cleaning, one moment..."
   _barracuda_cnf_cleanup
   if [ -e "/var/log/barracuda_log.txt" ]; then
-    _T_SERIES_TEST=$(cat /var/log/barracuda_log.txt)
+    _T_SERIES_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
     if [[ "${_T_SERIES_TEST}" =~ "BOA-4." ]] \
       || [[ "${_T_SERIES_TEST}" =~ "BOA-3." ]] \
       || [[ "${_T_SERIES_TEST}" =~ "BOA-2.4." ]] \
@@ -5298,20 +5329,20 @@ _finale() {
     fi
   fi
   if [[ "${_hName}" =~ ".aegir.cc"($) ]]; then
-    _MTD_VR="BOA-5.5.0-omm"
+    _MTD_VR="BOA-5.6.0-omm"
   elif [ -e "/root/.host8.cnf" ]; then
-    _MTD_VR="BOA-5.5.0-aln"
+    _MTD_VR="BOA-5.6.0-aln"
   else
     _MTD_VR="${_X_VERSION}"
   fi
   mv -f /etc/motd ${_vBs}/dragon/t/motd-pre-${_xSrl}-${_MTD_VR}-${_NOW} &> /dev/null
   mv -f /etc/motd-pre-* ${_vBs}/dragon/t/ &> /dev/null
   echo > /etc/motd
-  echo " Skynet Agent v.${_MTD_VR} on $(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)/$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2) \
+  echo " Skynet Agent v.${_MTD_VR} on $(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)/$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1) \
     welcomes you aboard" | fmt -su -w 2500 >> /etc/motd
   echo >> /etc/motd
   echo > /etc/motd.tail
-  echo " Skynet Agent v.${_MTD_VR} on $(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)/$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2) \
+  echo " Skynet Agent v.${_MTD_VR} on $(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)/$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1) \
     welcomes you aboard" | fmt -su -w 2500 >> /etc/motd.tail
   echo >> /etc/motd.tail
   apt-get autoclean -y &> /dev/null
@@ -5403,7 +5434,7 @@ _finale() {
     _if_fix_iptables_symlinks
     csf -uf &> /dev/null
     wait
-    _NFTABLES_TEST=$(iptables -V)
+    _NFTABLES_TEST=$(iptables -V 2>&1)
     if [[ "${_NFTABLES_TEST}" =~ "nf_tables" ]]; then
       if [ -e "/usr/sbin/iptables-legacy" ]; then
         update-alternatives --set iptables /usr/sbin/iptables-legacy &> /dev/null
@@ -5444,7 +5475,7 @@ _finale() {
     ### CVE-2019-11478 SACK Slowness
     ### CVE-2019-11479 Excess Resource Consumption Due to Low MSS Values
     if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
-      _SACK_TEST=$(ip6tables --list | grep tcpmss)
+      _SACK_TEST=$(ip6tables --list | grep tcpmss 2>&1)
       if [[ ! "${_SACK_TEST}" =~ "tcpmss" ]]; then
         sysctl net.ipv4.tcp_mtu_probing=0 &> /dev/null
         iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
@@ -5892,8 +5923,8 @@ _if_post_major_os_upgrade() {
       fi
       # If any of the above checks require an update, perform the upgrade
       if [ "${_needsBaseFilesUpdate}" = "YES" ]; then
-        _msg "Upgrade to base-files=12.4+deb12u7devuan1 is forced"
-        _mrun "${_INITINS} base-files=12.4+deb12u7devuan1 --allow-downgrades" 2> /dev/null
+        _msg "Upgrade to base-files=12.4+deb12u10devuan1 is forced"
+        _mrun "${_INITINS} base-files=12.4+deb12u10devuan1 --allow-downgrades" 2> /dev/null
       fi
     fi
 
@@ -5902,7 +5933,7 @@ _if_post_major_os_upgrade() {
     ### Reload key services if needed early
     _mrun "service redis-server reload" 2> /dev/null
     _mrun "service nginx reload" 2> /dev/null
-    _PHP_V="83 82 81 80 74 73 72 71 70 56"
+    _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
       if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
         _mrun "service php${e}-fpm reload" 2> /dev/null
@@ -5931,10 +5962,8 @@ _if_post_major_os_upgrade() {
       && [ "${_REBUILD_SRC_ON_AUTO_NOW}" = "YES" ]; then
       _msg "INFO: Time for re-installing services built from sources..."
       if [ ! -e "/var/xdrago/log" ] && [ -e "/var/xdrago_wait/log" ]; then
-        rm -f /var/xdrago_wait/log/*.log
         rm -f /var/xdrago_wait/log/._php_libs_fix_*.pid
       else
-        rm -f /var/xdrago/log/*.log
         rm -f /var/xdrago/log/._php_libs_fix_*.pid
       fi
       _PURGE_MODE=OFF
@@ -5992,6 +6021,10 @@ _if_post_major_os_upgrade() {
       if [ -x "/opt/php83/bin/php" ]; then
         _PHP_VERSION="${_PHP83_VRN}"
         _install_php_multi "83"
+      fi
+      if [ -x "/opt/php84/bin/php" ]; then
+        _PHP_VERSION="${_PHP84_VRN}"
+        _install_php_multi "84"
       fi
       _PHP_VERSION=""
       _T_PHP_VRN=""
@@ -6061,7 +6094,7 @@ _if_major_os_upgrade() {
     echo
     _mrun "sleep 5"
     _tPrmt="Are you sure you want to proceed?"
-    _tPrmt=$(echo -n "${_tPrmt}" | fmt -su -w 2500)
+    _tPrmt=$(echo -n ${_tPrmt} | fmt -su -w 2500 2>&1)
     if _prompt_yes_no "${_tPrmt}?" ; then
       true
       echo
@@ -6234,10 +6267,7 @@ _if_major_os_upgrade() {
     echo "libldap-common install"      | dpkg --set-selections &> /dev/null
     echo "libldap-dev install"         | dpkg --set-selections &> /dev/null
     echo "libldap2-dev install"        | dpkg --set-selections &> /dev/null
-    echo "libmariadb3 install"         | dpkg --set-selections &> /dev/null
     echo "libssl-dev install"          | dpkg --set-selections &> /dev/null
-    echo "mailutils install"           | dpkg --set-selections &> /dev/null
-    echo "mariadb-common install"      | dpkg --set-selections &> /dev/null
     echo "nginx install"               | dpkg --set-selections &> /dev/null
     echo "nginx-common install"        | dpkg --set-selections &> /dev/null
     echo "openssh-client install"      | dpkg --set-selections &> /dev/null
@@ -6586,7 +6616,7 @@ _if_major_os_upgrade() {
     ### Reload key services if needed early
     _mrun "service redis-server reload" 2> /dev/null
     _mrun "service nginx reload" 2> /dev/null
-    _PHP_V="83 82 81 80 74 73 72 71 70 56"
+    _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
       if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
         _mrun "service php${e}-fpm reload" 2> /dev/null
@@ -6617,7 +6647,7 @@ _if_major_os_upgrade() {
       && [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
       touch /root/.rebuild_src_on_auto_before_reboot.info
       rm -f /var/xdrago_wait/log/*.log
-      _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
+      _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
       _PURGE_MODE=OFF
       _NGX_FORCE_REINSTALL=YES
       _PHP_FORCE_REINSTALL=YES
@@ -6673,7 +6703,7 @@ _if_major_os_upgrade() {
     # fi
     ###
     ### Time for init scripts cleanup for VM running beng kernel.
-    _VM_TEST=$(uname -a)
+    _VM_TEST="$(uname -a)"
     if [[ "${_VM_TEST}" =~ "-beng" ]]; then
       _PTMX=OK
       _REMOVE_LINKS="buagent \
@@ -6725,7 +6755,7 @@ _if_major_os_upgrade() {
     ###
     ### For extra debugging only.
     if [ -e "/root/.debug.cnf" ]; then
-      _PTS_TEST=$(cat /proc/mounts | grep devpts)
+      _PTS_TEST=$(cat /proc/mounts | grep devpts 2>&1)
       if [[ ! "${_PTS_TEST}" =~ "devpts" ]] && [ ! -e "/dev/pts/ptmx" ]; then
         _PTS=FIX
       else
@@ -6853,31 +6883,35 @@ _sys_packages_update() {
     _msg "PROC: _sys_packages_update"
   fi
   _msg "INFO: Running system packages update..."
-  if [ -e "/var/aegir" ]; then
-    echo "curl install"                | dpkg --set-selections &> /dev/null
-    echo "git install"                 | dpkg --set-selections &> /dev/null
-    echo "git-core install"            | dpkg --set-selections &> /dev/null
-    echo "git-man install"             | dpkg --set-selections &> /dev/null
-    echo "libldap-common install"      | dpkg --set-selections &> /dev/null
-    echo "libldap-dev install"         | dpkg --set-selections &> /dev/null
-    echo "libldap2-dev install"        | dpkg --set-selections &> /dev/null
-    echo "libmariadb3 install"         | dpkg --set-selections &> /dev/null
-    echo "libssl-dev install"          | dpkg --set-selections &> /dev/null
-    echo "mailutils install"           | dpkg --set-selections &> /dev/null
-    echo "mariadb-common install"      | dpkg --set-selections &> /dev/null
-    echo "nginx install"               | dpkg --set-selections &> /dev/null
-    echo "nginx-common install"        | dpkg --set-selections &> /dev/null
-    echo "openssh-client install"      | dpkg --set-selections &> /dev/null
-    echo "openssh-server install"      | dpkg --set-selections &> /dev/null
-    echo "openssh-sftp-server install" | dpkg --set-selections &> /dev/null
-    echo "openssl install"             | dpkg --set-selections &> /dev/null
-    echo "percona-release install"     | dpkg --set-selections &> /dev/null
-    echo "ssh install"                 | dpkg --set-selections &> /dev/null
-    echo "sysvinit-core install"       | dpkg --set-selections &> /dev/null
-    echo "sysvinit-utils install"      | dpkg --set-selections &> /dev/null
-    echo "zlib1g install"              | dpkg --set-selections &> /dev/null
-    echo "zlib1g-dev install"          | dpkg --set-selections &> /dev/null
-    echo "zlibc install"               | dpkg --set-selections &> /dev/null
+  if [ -d "/data/u" ] && [ -e "/data/conf/global.inc" ]; then
+    aptitude hold curl &> /dev/null
+    aptitude hold libldap-common &> /dev/null
+    aptitude hold libldap-dev &> /dev/null
+    aptitude hold libldap2-dev &> /dev/null
+    aptitude hold libmariadb3 &> /dev/null
+    aptitude hold mailutils &> /dev/null
+    aptitude hold mariadb-common &> /dev/null
+    aptitude hold nginx &> /dev/null
+    aptitude hold nginx-common &> /dev/null
+    aptitude hold openssh-client &> /dev/null
+    aptitude hold openssh-server &> /dev/null
+    aptitude hold openssh-sftp-server &> /dev/null
+    aptitude hold percona-release &> /dev/null
+    aptitude hold ssh &> /dev/null
+    echo "curl hold" | dpkg --set-selections &> /dev/null
+    echo "libldap-common hold" | dpkg --set-selections &> /dev/null
+    echo "libldap-dev hold" | dpkg --set-selections &> /dev/null
+    echo "libldap2-dev hold" | dpkg --set-selections &> /dev/null
+    echo "libmariadb3 hold" | dpkg --set-selections &> /dev/null
+    echo "mailutils hold" | dpkg --set-selections &> /dev/null
+    echo "mariadb-common hold" | dpkg --set-selections &> /dev/null
+    echo "nginx hold" | dpkg --set-selections &> /dev/null
+    echo "nginx-common hold" | dpkg --set-selections &> /dev/null
+    echo "openssh-client hold" | dpkg --set-selections &> /dev/null
+    echo "openssh-server hold" | dpkg --set-selections &> /dev/null
+    echo "openssh-sftp-server hold" | dpkg --set-selections &> /dev/null
+    echo "percona-release hold" | dpkg --set-selections &> /dev/null
+    echo "ssh hold" | dpkg --set-selections &> /dev/null
   fi
   _webmin_apt_update
   _apt_clean_update
@@ -7350,7 +7384,7 @@ _php_libs_fix() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: Fix for PHP libs in ${_OS_DIST}/${_OS_CODE}"
     fi
-    _X86_64_TEST=$(uname -m)
+    _X86_64_TEST=$(uname -m 2>&1)
     if [ "${_X86_64_TEST}" = "x86_64" ]; then
       if [ -e "/usr/local/lib/icu" ]; then
         if [ -e "/usr/lib/x86_64-linux-gnu/icu" ] \
@@ -7934,10 +7968,10 @@ _pam_umask_check_fix() {
     chown www-data:www-data /var/www/.profile &> /dev/null
     chown www-data:www-data /var/www/nginx-default &> /dev/null
   fi
-  _SFTP_UMASK_TEST=$(grep "internal-sftp -u 0002" /etc/ssh/sshd_config 2>&1)
-  if [[ ! "${_SFTP_UMASK_TEST}" =~ "internal-sftp -u 0002" ]]; then
+  _SFTP_UMASK_TEST=$(grep "sftp-server -u 0002" /etc/ssh/sshd_config 2>&1)
+  if [[ ! "${_SFTP_UMASK_TEST}" =~ "sftp-server -u 0002" ]]; then
     sed -i "s/^Subsystem.*//g" /etc/ssh/sshd_config
-    echo "Subsystem sftp internal-sftp -u 0002" >> /etc/ssh/sshd_config
+    echo "Subsystem sftp /usr/lib/openssh/sftp-server -u 0002" >> /etc/ssh/sshd_config
     sed -i "/^$/d" /etc/ssh/sshd_config
     _mrun "service ssh restart" 2> /dev/null
   fi
@@ -8049,7 +8083,7 @@ _lshell_install_upgrade() {
     elif [ -x "/usr/local/bin/pip3" ]; then
       _usePip=/usr/local/bin/pip3
     fi
-    _PIP_TEST=$("${_usePip}" --version)
+    _PIP_TEST=$(${_usePip} --version 2>&1)
     if [[ "${_PIP_TEST}" =~ "python 3.11" ]] \
       || [[ "${_PIP_TEST}" =~ "python 3.12" ]]; then
       _mrun "${_usePip} install --upgrade pip --root-user-action ignore" 2> /dev/null
@@ -8068,7 +8102,7 @@ _lshell_install_upgrade() {
     rm -rf /usr/local/lib/python*/site-packages/lshell*
     rm -rf /usr/local/lib/python*/dist-packages/lshell*
     cd /var/opt/lshell-${_LSHELL_VRN}
-    _PIP_TEST=$("${_usePip}" --version)
+    _PIP_TEST=$(${_usePip} --version 2>&1)
     if [[ "${_PIP_TEST}" =~ "python 3.11" ]] \
       || [[ "${_PIP_TEST}" =~ "python 3.12" ]]; then
       _mrun "${_usePip} install . --break-system-packages --root-user-action ignore" 2> /dev/null
@@ -8306,6 +8340,14 @@ _java_check_fix() {
   fi
 
   if [ "${_OS_CODE}" = "daedalus" ] || [ "${_OS_CODE}" = "bookworm" ]; then
+    if [ ! -e "/usr/lib/jvm/java-17-openjdk" ] \
+      && [ -d "/usr/lib/jvm/java-17-openjdk-amd64" ]; then
+      ln -sfn /usr/lib/jvm/java-17-openjdk-amd64 /usr/lib/jvm/java-17-openjdk
+    fi
+    if [ ! -e "/usr/bin/java17" ] \
+      && [ -e "/usr/lib/jvm/java-17-openjdk-amd64/bin/java" ]; then
+      ln -sfn /usr/lib/jvm/java-17-openjdk-amd64/bin/java /usr/bin/java17
+    fi
     if [ ! -e "/usr/lib/jvm/java-11-openjdk" ] \
       && [ -d "/usr/lib/jvm/java-11-openjdk-amd64" ]; then
       ln -sfn /usr/lib/jvm/java-11-openjdk-amd64 /usr/lib/jvm/java-11-openjdk
@@ -8353,7 +8395,7 @@ _sshd_armour() {
   if [ -e "/etc/ssh/sshd_config" ]; then
     if [ -e "/etc/ssh/ssh_config" ]; then
       grep -q '^[^#]*GSSAPIAuthentication' /etc/ssh/ssh_config && sed -i '/^[^#]*GSSAPIAuthentication/s/^/#/' /etc/ssh/ssh_config
-      _mrun "service ssh reload" 2> /dev/null
+      _mrun "service ssh restart" 2> /dev/null
     fi
     if [ "${_SSH_ARMOUR}" = "NO" ] \
       || [ -z "${_SSH_ARMOUR}" ]; then
@@ -8492,7 +8534,7 @@ _sshd_armour() {
         echo "  MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-512,hmac-sha2-256,umac-128@openssh.com" >> /etc/ssh/ssh_config
       fi
     fi
-    _mrun "service ssh reload" 2> /dev/null
+    _mrun "service ssh restart" 2> /dev/null
   fi
 }
 
@@ -8527,8 +8569,15 @@ _initd_update() {
       echo >> /etc/ssh/sshd_config
       echo "UsePAM no" >> /etc/ssh/sshd_config
     fi
-    _mrun "service ssh reload" 2> /dev/null
+    _mrun "service ssh restart" 2> /dev/null
     _tune_memory_limits
+    if [ -x "/etc/init.d/solr9" ] && [ -e "/etc/default/solr9.in.sh" ]; then
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        _msg "INFO: Restarting Solr 9"
+      fi
+      kill -9 $(ps aux | grep '[s]olr' | awk '{print $2}') &> /dev/null
+      _mrun "service solr9 start" 2> /dev/null
+    fi
     if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: Restarting Solr 7"
@@ -8563,7 +8612,7 @@ _initd_update() {
       _mrun "service redis-server reload" 2> /dev/null
       _mrun "update-rc.d -f php5-fpm remove" 2> /dev/null
       _mrun "update-rc.d cron defaults" 2> /dev/null
-      _PHP_V="83 82 81 80 74 73 72 71 70 56"
+      _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
           _mrun "update-rc.d php${e}-fpm defaults" 2> /dev/null
@@ -8621,10 +8670,10 @@ _initd_update() {
     echo "TCPKeepAlive yes" >> /etc/ssh/sshd_config
     echo "PermitEmptyPasswords no" >> /etc/ssh/sshd_config
     echo "KbdInteractiveAuthentication no" >> /etc/ssh/sshd_config
-    echo "Subsystem sftp internal-sftp -u 0002" >> /etc/ssh/sshd_config
+    echo "Subsystem sftp /usr/lib/openssh/sftp-server -u 0002" >> /etc/ssh/sshd_config
     sed -i "/^$/d" /etc/ssh/sshd_config
     wait
-    _mrun "service ssh reload" 2> /dev/null
+    _mrun "service ssh restart" 2> /dev/null
     _fix_on_upgrade
     _tune_memory_limits
     if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
@@ -8662,7 +8711,7 @@ _initd_update() {
       fi
       _mrun "update-rc.d -f php5-fpm remove" 2> /dev/null
       _mrun "service redis-server reload" 2> /dev/null
-      _PHP_V="83 82 81 80 74 73 72 71 70 56"
+      _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
           _mrun "update-rc.d php${e}-fpm defaults" 2> /dev/null
@@ -8674,7 +8723,7 @@ _initd_update() {
         fi
       done
       _mrun "service nginx quietupgrade" 2> /dev/null
-      _DB_SERVER_TEST=$(mysql -V)
+      _DB_SERVER_TEST=$(mysql -V 2>&1)
       if [[ "${_DB_SERVER_TEST}" =~ "Distrib ${_DB_SERIES}." ]]; then
         _check_mysql_version
         if [ "${_DB_V}" = "5.7" ]; then
@@ -8712,7 +8761,7 @@ _initd_update() {
           fi
         else
           _myCnfUpdate=YES
-          # _diffMyTest=$(echo -n ${_diffMyTest} | fmt -su -w 2500)
+          # _diffMyTest=$(echo -n ${_diffMyTest} | fmt -su -w 2500 2>&1)
           _msg "INFO: ${_DB_SERVER} diff1 ${_diffMyTest}"
         fi
         if [[ "${_diffMyTest}" =~ "innodb_buffer_pool_size" ]]; then
@@ -8725,7 +8774,7 @@ _initd_update() {
         fi
       fi
       if [ "${_UP_SQL}" = "YES" ]; then
-        _myVnTest=$(mysql -V)
+        _myVnTest=$(mysql -V 2>&1)
         if [[ "${_myVnTest}" =~ "${_DBS_VRN}" ]]; then
           if [ "${_DEBUG_MODE}" = "YES" ]; then
             _msg "INFO: ${_DB_SERVER} ${_DBS_VRN} already up to date"
@@ -8740,7 +8789,8 @@ _initd_update() {
         && [ ! -e "/root/.run-to-chimaera.cnf" ] \
         && [ ! -e "/root/.run-to-beowulf.cnf" ]; then
         _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
-        _myUptime=$(mysqladmin -u root version | grep -i uptime | fmt -su -w 2500)
+        _myUptime=$(mysqladmin -u root version | grep -i uptime 2>&1)
+        _myUptime=$(echo -n ${_myUptime} | fmt -su -w 2500 2>&1)
         _msg "INFO: ${_DB_SERVER} ${_myUptime}"
         if [ "${_myRstrd}" = "YES" ]; then
           _myCnfUpdate=NO
@@ -8759,7 +8809,7 @@ _initd_update() {
         if [ "${_DB_V}" = "5.7" ] || [ "${_DB_SERIES}" = "5.7" ]; then
           _CHECK_EXISTS=$(mysql -u root -e "SELECT EXISTS(SELECT 1 FROM mysql.user WHERE user = 'drandom_2test')" | grep "0" 2>&1)
           if [[ "${_CHECK_EXISTS}" =~ "0" ]]; then
-            _CHECK_REPAIR=$(mysql -u root -e "CREATE USER IF NOT EXISTS 'drandom_2test'@'localhost';")
+            _CHECK_REPAIR=$(mysql -u root -e "CREATE USER IF NOT EXISTS 'drandom_2test'@'localhost';" 2>&1)
             if [ "${_DEBUG_MODE}" = "YES" ]; then
               echo _CHECK_REPAIR 1 ${_CHECK_REPAIR}
             fi
@@ -8771,7 +8821,7 @@ _initd_update() {
               mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN max_statement_time;"
               mysql_upgrade -u root --force
             fi
-            _CHECK_REPAIR=$(mysql -u root -e "CREATE USER IF NOT EXISTS 'drandom_2test'@'localhost';")
+            _CHECK_REPAIR=$(mysql -u root -e "CREATE USER IF NOT EXISTS 'drandom_2test'@'localhost';" 2>&1)
             if [ "${_DEBUG_MODE}" = "YES" ]; then
               echo _CHECK_REPAIR 2 ${_CHECK_REPAIR}
             fi
@@ -8837,7 +8887,7 @@ _sysctl_update() {
       fi
     fi
     if [ -e "/etc/security/limits.d" ] \
-      && [ ! -e "/etc/security/limits.d/sshd.conf" ]; then
+      && [ ! -e "/etc/security/limits.d/solr9.conf" ]; then
       echo "sshd soft nofile 524288" > /etc/security/limits.d/sshd.conf
       echo "sshd hard nofile 999999" >> /etc/security/limits.d/sshd.conf
       echo "redis soft nofile 65535" > /etc/security/limits.d/redis.conf
@@ -8848,12 +8898,14 @@ _sysctl_update() {
       echo "jetty9 hard nofile 524288" >> /etc/security/limits.d/jetty9.conf
       echo "solr7 soft nofile 65535" > /etc/security/limits.d/solr7.conf
       echo "solr7 hard nofile 524288" >> /etc/security/limits.d/solr7.conf
+      echo "solr9 soft nofile 65535" > /etc/security/limits.d/solr9.conf
+      echo "solr9 hard nofile 524288" >> /etc/security/limits.d/solr9.conf
       echo "@www-data soft nofile 65535" > /etc/security/limits.d/www.conf
       echo "@www-data hard nofile 524288" >> /etc/security/limits.d/www.conf
       _mrun "service redis-server restart" 2> /dev/null
       _mrun "service nginx restart" 2> /dev/null
       _mrun "service sshd restart" 2> /dev/null
-      _PHP_V="83 82 81 80 74 73 72 71 70 56"
+      _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
           _mrun "service php${e}-fpm reload" 2> /dev/null

@@ -4,7 +4,7 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 export _tRee=dev
-export _xSrl=550devT01
+export _xSrl=560devT00
 
 ###
 ### Avoid too many questions
@@ -17,7 +17,7 @@ fi
 
 _AEGIR_VERSION="${_tRee}"
 _BRANCH_BOA="5.x-${_tRee}"
-_X_VERSION="BOA-5.5.0-${_tRee}"
+_X_VERSION="BOA-5.6.0-${_tRee}"
 _MYSQLTUNER_VRN=1.9.4
 _PHP_FPM_WORKERS=AUTO
 _RESERVED_RAM=0
@@ -36,8 +36,8 @@ _crlGet="-L --max-redirs 3 -k -s --retry 9 --retry-delay 9 -A iCab"
 _wgetGet="--max-redirect=3 --no-check-certificate -q --tries=9 --wait=9 --user-agent='iCab'"
 _vBs="/var/backups"
 _tVr="0.7"
-_OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
-_OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
+_OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
+_OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
 if [ -e "/var/aegir/drush" ]; then
   _DPKG_CNF="confold"
 else
@@ -57,7 +57,7 @@ fi
 
 _os_detection_minimal() {
   _APT_UPDATE="apt-get update"
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
   for e in ${_OS_LIST}; do
     if [ "${e}" = "${_OS_CODE}" ]; then
@@ -85,10 +85,10 @@ _count_cpu() {
   if [ ! -z "${_CPU_NR}" ] \
     && [ ! -z "${_CPU_INFO}" ] \
     && [ "${_CPU_NR}" -gt "${_CPU_INFO}" ] \
-    && [ "${_CPU_INFO}" -gt "0" ]; then
+    && [ "${_CPU_INFO}" -gt 0 ]; then
     _CPU_NR="${_CPU_INFO}"
   fi
-  if [ -z "${_CPU_NR}" ] || [ "${_CPU_NR}" -lt "1" ]; then
+  if [ -z "${_CPU_NR}" ] || [ "${_CPU_NR}" -lt 1 ]; then
     _CPU_NR=1
   fi
 }
@@ -105,7 +105,7 @@ _locales_check_fix() {
       echo "AcceptEnv LANG LC_*" >> /etc/ssh/sshd_config
     fi
   fi
-  _LOC_TEST=$(locale)
+  _LOC_TEST=$(locale 2>&1)
   if [[ "${_LOC_TEST}" =~ LANG=.*UTF-8 ]]; then
     _LOCALE_TEST=OK
   fi
@@ -139,7 +139,7 @@ _locales_check_fix() {
 EOF
     sleep 5
     if [ "${_OS_DIST}" = "Debian" ] || [ "${_OS_DIST}" = "Devuan" ]; then
-      _LOCALE_GEN_TEST=$(grep -v "^#" /etc/locale.gen)
+      _LOCALE_GEN_TEST=$(grep -v "^#" /etc/locale.gen 2>&1)
       if [[ ! "${_LOCALE_GEN_TEST}" =~ "en_US.UTF-8 UTF-8" ]]; then
         echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
       fi
@@ -182,7 +182,7 @@ EOF
     export LC_ALL=
   else
     if [ "${_OS_DIST}" = "Debian" ] || [ "${_OS_DIST}" = "Devuan" ]; then
-      _LOCALE_GEN_TEST=$(grep -v "^#" /etc/locale.gen)
+      _LOCALE_GEN_TEST=$(grep -v "^#" /etc/locale.gen 2>&1)
       if [[ ! "${_LOCALE_GEN_TEST}" =~ "en_US.UTF-8 UTF-8" ]]; then
         echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
       fi
@@ -209,7 +209,7 @@ EOF
     export LC_NUMERIC=POSIX
     export LC_ALL=
   fi
-  _LOCALES_BASHRC_TEST=$(grep LC_COLLATE /root/.bashrc)
+  _LOCALES_BASHRC_TEST=$(grep LC_COLLATE /root/.bashrc 2>&1)
   if [[ ! "${_LOCALES_BASHRC_TEST}" =~ "LC_COLLATE" ]]; then
     printf "\n" >> /root/.bashrc
     echo "export LANG=en_US.UTF-8" >> /root/.bashrc
@@ -260,7 +260,7 @@ _remove_systemd() {
 
 _check_root() {
   echo "running ${_tVr} _check_root procedure..."
-  if [ $(whoami) = "root" ]; then
+  if [ "$(id -u)" -eq 0 ]; then
     _locales_check_fix
     _os_detection_minimal
     _remove_systemd
@@ -269,14 +269,14 @@ _check_root() {
     sed -i "/^$/d"  /etc/crontab
     grep du.sql /etc/crontab
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
-    _hName=$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)
+    _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
 
     # Sanitize to allow only digits and minus sign
     export _B_NICE=${_B_NICE//[^0-9-]/}
 
     # Validate and set default if necessary
     if ! [[ "$_B_NICE" =~ ^-?[0-9]+$ ]]; then
-      _B_NICE=-5
+      _B_NICE=0
     fi
 
     # Clamp the value within -20 to 19
@@ -295,7 +295,7 @@ _check_root() {
         ln -s /proc/self/fd /dev/fd
       fi
     fi
-    _VM_TEST=$(uname -a)
+    _VM_TEST="$(uname -a)"
     if [ -e "/proc/bean_counters" ]; then
       _VMFAMILY="VZ"
     elif [ -e "/root/.tg.cnf" ]; then
@@ -462,7 +462,7 @@ _check_root() {
     | sed 's/\%//g' \
     | awk '{print $6}' 2> /dev/null)
   _DF_TEST=${_DF_TEST//[^0-9]/}
-  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt "90" ]; then
+  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt 90 ]; then
     echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
     echo "ERROR: We can not proceed until it is below 90/100"
     exit 1
@@ -478,7 +478,7 @@ _check_root() {
 [ -e "/root/.proxy.cnf" ] && exit 0
 
 _find_fast_mirror_early() {
-  _isNetc=$(which netcat)
+  _isNetc=$(which netcat 2>&1)
   if [ ! -x "${_isNetc}" ] || [ -z "${_isNetc}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
@@ -489,9 +489,9 @@ _find_fast_mirror_early() {
     ${_INSTAPP} netcat-traditional &> /dev/null
     wait
   fi
-  _ffMirr=$(which ffmirror)
+  _ffMirr=$(which ffmirror 2>&1)
   if [ -x "${_ffMirr}" ]; then
-    _ffList="/var/backups/boa-mirrors-2024-12.txt"
+    _ffList="/var/backups/boa-mirrors-2025-01.txt"
     mkdir -p /var/backups
     if [ ! -e "${_ffList}" ]; then
       echo "eu.files.aegir.cc"  > ${_ffList}
@@ -499,9 +499,9 @@ _find_fast_mirror_early() {
       echo "ao.files.aegir.cc" >> ${_ffList}
     fi
     if [ -e "${_ffList}" ]; then
-      _BROKEN_FFMIRR_TEST=$(grep "stuff" "${_ffMirr}")
+      _BROKEN_FFMIRR_TEST=$(grep "stuff" ${_ffMirr} 2>&1)
       if [[ "${_BROKEN_FFMIRR_TEST}" =~ "stuff" ]]; then
-        _CHECK_MIRROR=$(bash "${_ffMirr}" < "${_ffList}")
+        _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _USE_MIR="${_CHECK_MIRROR}"
         [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.aegir.cc"
       else
@@ -577,7 +577,8 @@ if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
   _SQL_HOST="127.0.0.1"
 else
   if [ -e "/root/.my.cluster_write_node.txt" ]; then
-    _SQL_HOST=$(cat /root/.my.cluster_write_node.txt 2>/dev/null | tr -d '\n')
+    _SQL_HOST=$(cat /root/.my.cluster_write_node.txt 2>&1)
+    _SQL_HOST=$(echo -n ${_SQL_HOST} | tr -d "\n" 2>&1)
   fi
 fi
 
@@ -585,10 +586,10 @@ _C_SQL="mysql --user=root --password=${_SQL_PSWD} --host=${_SQL_HOST} --port=${_
 
 echo "SQL --host=${_SQL_HOST} --port=${_SQL_PORT}"
 
-_DATE=$(date +%y%m%d-%H%M%S)
-_TODAY=$(date +%y%m%d)
+_DATE=$(date +%y%m%d-%H%M%S 2>&1)
+_TODAY=$(date +%y%m%d 2>&1)
 _TODAY=${_TODAY//[^0-9]/}
-_NOW=$(date +%y%m%d-%H%M%S)
+_NOW=$(date +%y%m%d-%H%M%S 2>&1)
 _NOW=${_NOW//[^0-9-]/}
 _LOG_DIR="${_vBs}/reports/up/$(basename "$0")/${_TODAY}"
 _UP_LOG="${_LOG_DIR}/$(basename "$0")-up-${_NOW}.log"
@@ -623,7 +624,7 @@ _start_sql() {
   _check_restart_if_running
   _create_locks
 
-  _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}')
+  _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
   if [ ! -z "${_IS_MYSQLD_RUNNING}" ]; then
     echo "MySQLD already running?"
     echo "Nothing to do. Bye!"
@@ -644,7 +645,7 @@ _start_sql() {
   fi
   while [ -z "${_IS_MYSQLD_RUNNING}" ] \
     || [ ! -e "/run/mysqld/mysqld.sock" ]; do
-    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}')
+    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
     echo "Waiting for MySQLD graceful start..."
     sleep 3
   done
@@ -661,12 +662,12 @@ _stop_sql() {
   _check_restart_if_running
   _create_locks
 
-  _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}')
+  _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
   if [ ! -z "${_IS_MYSQLD_RUNNING}" ]; then
     echo "Preparing MySQLD for quick shutdown..."
-    _DBS_TEST=$(which mysql)
+    _DBS_TEST=$(which mysql 2>&1)
     if [ ! -z "${_DBS_TEST}" ]; then
-      _DB_SERVER_TEST=$(mysql -V)
+      _DB_SERVER_TEST=$(mysql -V 2>&1)
     fi
     if [[ "${_DB_SERVER_TEST}" =~ "Ver 8.4." ]]; then
       _DB_V=8.4
@@ -698,7 +699,7 @@ _stop_sql() {
   fi
 
   until [ -z "${_IS_MYSQLD_RUNNING}" ]; do
-    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}')
+    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
     echo "Waiting for MySQLD graceful shutdown..."
     sleep 3
   done
@@ -750,7 +751,7 @@ _if_re_start_sql() {
     fi
   fi
   _myUptime=$(mysqladmin -u root version | grep -i uptime 2>&1)
-  _myUptime=$(echo -n ${_myUptime} | fmt -su -w 2500)
+  _myUptime=$(echo -n ${_myUptime} | fmt -su -w 2500 2>&1)
   echo "INFO: ${_DB_SERVER} ${_myUptime}"
   if [ "${_myCnfUpdate}" = "YES" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -768,7 +769,7 @@ _check_mysql_up() {
   echo "running ${_tVr} ${_hName} _check_mysql_up procedure..."
   while [ -z "${_IS_MYSQLD_RUNNING}" ] \
     || [ ! -e "/run/mysqld/mysqld.sock" ]; do
-    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}')
+    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
     echo "Waiting for MySQLD availability..."
     sleep 15
     _start_sql "chain"
@@ -859,7 +860,7 @@ _innodb_log_file_size_update() {
   echo "INFO: InnoDB log file will be set to ${_INNODB_LOG_FILE_SIZE_MB}..."
   mysql -u root -e "SET GLOBAL innodb_fast_shutdown = 0;" &> /dev/null
   _stop_sql "chain"
-  _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}')
+  _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
   if [ -z "${_IS_MYSQLD_RUNNING}" ]; then
     mkdir -p ${_vBs}/old-sql-ib-log-${_NOW}
     sleep 1
@@ -884,7 +885,7 @@ _innodb_log_file_size_update() {
     echo "INFO: Waiting 180s for ${_DB_SERVER} clean shutdown..."
     _stop_sql "chain"
     sleep 180
-    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}')
+    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
     if [ -z "${_IS_MYSQLD_RUNNING}" ]; then
       mkdir -p ${_vBs}/old-sql-ib-log-${_NOW}
       _mrun "sleep 1"
@@ -924,7 +925,7 @@ _sql_conf_update() {
   if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
     _INNODB_LOG_FILE_SIZE=${_INNODB_LOG_FILE_SIZE//[^0-9]/}
     if [ ! -z "${_INNODB_LOG_FILE_SIZE}" ]; then
-      if [ "${_INNODB_LOG_FILE_SIZE}" -ge "50" ]; then
+      if [ "${_INNODB_LOG_FILE_SIZE}" -ge 50 ]; then
         _INNODB_LOG_FILE_SIZE_MB="${_INNODB_LOG_FILE_SIZE}M"
         _INNODB_LOG_FILE_SIZE_TEST=$(grep "innodb_log_file_size" \
           ${_vBs}/dragon/t/my.cnf-pre-${_NOW} 2>&1)
@@ -955,7 +956,7 @@ _sql_conf_update() {
   sed -i "s/.*innodb_lazy_drop_table.*//g" /etc/mysql/my.cnf
   wait
   if [ ! -z "${_INNODB_LOG_FILE_SIZE}" ]; then
-    if [ "${_INNODB_LOG_FILE_SIZE}" -ge "50" ]; then
+    if [ "${_INNODB_LOG_FILE_SIZE}" -ge 50 ]; then
       _INNODB_LOG_FILE_SIZE_MB="${_INNODB_LOG_FILE_SIZE}M"
       _INNODB_LOG_FILE_SIZE_TEST=$(grep "innodb_log_file_size" \
         /root/.my.cluster_innodb_log_file_size.txt 2>&1)
@@ -1041,7 +1042,7 @@ _tune_sql_memory_limits() {
         _RAW_MYISAM_MEM=$(echo "scale=2; (${_RAW_MYISAM_MEM} * 1.1)" | bc 2>&1)
         _USE_MYISAM_MEM=$(echo "(${_RAW_MYISAM_MEM}+0.5)/1" | bc 2>&1)
       fi
-      if [ "${_USE_MYISAM_MEM}" -lt "256" ] \
+      if [ "${_USE_MYISAM_MEM}" -lt 256 ] \
         || [ -z "${_USE_MYISAM_MEM}" ]; then
         _USE_MYISAM_MEM="${_USE_SQL}"
       fi
@@ -1072,7 +1073,7 @@ _tune_sql_memory_limits() {
       echo _RAW_INNODB_MEM is ${_RAW_INNODB_MEM}
       if [ "${_RAW_INNODB_MEM}" -gt "${_USE_SQL}" ] \
         || [ -z "${_USE_INNODB_MEM}" ] \
-        || [ "${_RAW_INNODB_MEM}" -lt "512" ]; then
+        || [ "${_RAW_INNODB_MEM}" -lt 512 ]; then
         _USE_INNODB_MEM="${_USE_SQL}"
       else
         _RAW_INNODB_MEM=$(echo "scale=2; (${_RAW_INNODB_MEM} * 1.1)" | bc 2>&1)
@@ -1082,7 +1083,7 @@ _tune_sql_memory_limits() {
       echo _USE_INNODB_MEM is ${_USE_INNODB_MEM}
       _INNODB_BPI=$(echo "scale=0; ${_USE_INNODB_MEM}/1024/2" | bc 2>&1)
       echo Initial _INNODB_BPI is ${_INNODB_BPI}
-      if [ "${_INNODB_BPI}" -lt "1" ] || [ -z "${_INNODB_BPI}" ]; then
+      if [ "${_INNODB_BPI}" -lt 1 ] || [ -z "${_INNODB_BPI}" ]; then
         _INNODB_BPI="1"
         echo Forced _INNODB_BPI is ${_INNODB_BPI}
       fi
@@ -1094,24 +1095,24 @@ _tune_sql_memory_limits() {
       fi
       _INNODB_LOG_FILE_SIZE=$(echo "scale=0; ${_USE_INNODB_MEM}/4/40*40" | bc 2>&1)
       _DB_COUNT=$(ls /var/lib/mysql/ | wc -l 2>&1)
-      if [ "${_DB_COUNT}" -gt "3" ]; then
-        if [ "${_INNODB_LOG_FILE_SIZE}" -gt "64" ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -le "256" ]; then
+      if [ "${_DB_COUNT}" -gt 3 ]; then
+        if [ "${_INNODB_LOG_FILE_SIZE}" -gt 64 ] \
+          && [ "${_INNODB_LOG_FILE_SIZE}" -le 256 ]; then
           _INNODB_LOG_FILE_SIZE=256
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -gt "256" ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -le "512" ]; then
+        elif [ "${_INNODB_LOG_FILE_SIZE}" -gt 256 ] \
+          && [ "${_INNODB_LOG_FILE_SIZE}" -le 512 ]; then
           _INNODB_LOG_FILE_SIZE=512
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -gt "512" ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -le "1024" ]; then
+        elif [ "${_INNODB_LOG_FILE_SIZE}" -gt 512 ] \
+          && [ "${_INNODB_LOG_FILE_SIZE}" -le 1024 ]; then
           _INNODB_LOG_FILE_SIZE=1024
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -gt "1024" ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -le "2048" ]; then
+        elif [ "${_INNODB_LOG_FILE_SIZE}" -gt 1024 ] \
+          && [ "${_INNODB_LOG_FILE_SIZE}" -le 2048 ]; then
           _INNODB_LOG_FILE_SIZE=2048
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -gt "2048" ]; then
+        elif [ "${_INNODB_LOG_FILE_SIZE}" -gt 2048 ]; then
           _INNODB_LOG_FILE_SIZE=2048
         fi
       fi
-      if [ "${_INNODB_LOG_FILE_SIZE}" -le "64" ] \
+      if [ "${_INNODB_LOG_FILE_SIZE}" -le 64 ] \
         || [ -z "${_INNODB_LOG_FILE_SIZE}" ]; then
         _INNODB_LOG_FILE_SIZE=64
       fi
@@ -1124,24 +1125,24 @@ _tune_sql_memory_limits() {
       _USE_INNODB_MEM="${_USE_SQL}M"
       _INNODB_LOG_FILE_SIZE=$(echo "scale=0; ${_USE_SQL}/4/40*40" | bc 2>&1)
       _DB_COUNT=$(ls /var/lib/mysql/ | wc -l 2>&1)
-      if [ "${_DB_COUNT}" -gt "3" ]; then
-        if [ "${_INNODB_LOG_FILE_SIZE}" -gt "64" ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -le "256" ]; then
+      if [ "${_DB_COUNT}" -gt 3 ]; then
+        if [ "${_INNODB_LOG_FILE_SIZE}" -gt 64 ] \
+          && [ "${_INNODB_LOG_FILE_SIZE}" -le 256 ]; then
           _INNODB_LOG_FILE_SIZE=256
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -gt "256" ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -le "512" ]; then
+        elif [ "${_INNODB_LOG_FILE_SIZE}" -gt 256 ] \
+          && [ "${_INNODB_LOG_FILE_SIZE}" -le 512 ]; then
           _INNODB_LOG_FILE_SIZE=512
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -gt "512" ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -le "1024" ]; then
+        elif [ "${_INNODB_LOG_FILE_SIZE}" -gt 512 ] \
+          && [ "${_INNODB_LOG_FILE_SIZE}" -le 1024 ]; then
           _INNODB_LOG_FILE_SIZE=1024
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -gt "1024" ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -le "2048" ]; then
+        elif [ "${_INNODB_LOG_FILE_SIZE}" -gt 1024 ] \
+          && [ "${_INNODB_LOG_FILE_SIZE}" -le 2048 ]; then
           _INNODB_LOG_FILE_SIZE=2048
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -gt "2048" ]; then
+        elif [ "${_INNODB_LOG_FILE_SIZE}" -gt 2048 ]; then
           _INNODB_LOG_FILE_SIZE=2048
         fi
       fi
-      if [ "${_INNODB_LOG_FILE_SIZE}" -le "64" ] \
+      if [ "${_INNODB_LOG_FILE_SIZE}" -le 64 ] \
         || [ -z "${_INNODB_LOG_FILE_SIZE}" ]; then
         _INNODB_LOG_FILE_SIZE=64
       fi
@@ -1159,24 +1160,24 @@ _tune_sql_memory_limits() {
     fi
     _INNODB_LOG_FILE_SIZE=$(echo "scale=0; ${_USE_SQL}/4/40*40" | bc 2>&1)
     _DB_COUNT=$(ls /var/lib/mysql/ | wc -l 2>&1)
-    if [ "${_DB_COUNT}" -gt "3" ]; then
-      if [ "${_INNODB_LOG_FILE_SIZE}" -gt "64" ] \
-        && [ "${_INNODB_LOG_FILE_SIZE}" -le "256" ]; then
+    if [ "${_DB_COUNT}" -gt 3 ]; then
+      if [ "${_INNODB_LOG_FILE_SIZE}" -gt 64 ] \
+        && [ "${_INNODB_LOG_FILE_SIZE}" -le 256 ]; then
         _INNODB_LOG_FILE_SIZE=256
-      elif [ "${_INNODB_LOG_FILE_SIZE}" -gt "256" ] \
-        && [ "${_INNODB_LOG_FILE_SIZE}" -le "512" ]; then
+      elif [ "${_INNODB_LOG_FILE_SIZE}" -gt 256 ] \
+        && [ "${_INNODB_LOG_FILE_SIZE}" -le 512 ]; then
         _INNODB_LOG_FILE_SIZE=512
-      elif [ "${_INNODB_LOG_FILE_SIZE}" -gt "512" ] \
-        && [ "${_INNODB_LOG_FILE_SIZE}" -le "1024" ]; then
+      elif [ "${_INNODB_LOG_FILE_SIZE}" -gt 512 ] \
+        && [ "${_INNODB_LOG_FILE_SIZE}" -le 1024 ]; then
         _INNODB_LOG_FILE_SIZE=1024
-      elif [ "${_INNODB_LOG_FILE_SIZE}" -gt "1024" ] \
-        && [ "${_INNODB_LOG_FILE_SIZE}" -le "2048" ]; then
+      elif [ "${_INNODB_LOG_FILE_SIZE}" -gt 1024 ] \
+        && [ "${_INNODB_LOG_FILE_SIZE}" -le 2048 ]; then
         _INNODB_LOG_FILE_SIZE=2048
-      elif [ "${_INNODB_LOG_FILE_SIZE}" -gt "2048" ]; then
+      elif [ "${_INNODB_LOG_FILE_SIZE}" -gt 2048 ]; then
         _INNODB_LOG_FILE_SIZE=2048
       fi
     fi
-    if [ "${_INNODB_LOG_FILE_SIZE}" -le "64" ] \
+    if [ "${_INNODB_LOG_FILE_SIZE}" -le 64 ] \
       || [ -z "${_INNODB_LOG_FILE_SIZE}" ]; then
       _INNODB_LOG_FILE_SIZE=64
     fi
@@ -1188,7 +1189,10 @@ _tune_sql_memory_limits() {
 _tune_memory_limits() {
   echo "running ${_tVr} ${_hName} _tune_memory_limits procedure..."
   _RAM=$(free -mt | grep Mem: | awk '{ print $2 }' 2>&1)
-  if [ "${_RESERVED_RAM}" -gt "0" ]; then
+  if [ "${_RESERVED_RAM}" -gt 0 ]; then
+    _RAM=$(( _RAM - _RESERVED_RAM ))
+  else
+    _RESERVED_RAM=$(( _RAM / 4 ))
     _RAM=$(( _RAM - _RESERVED_RAM ))
   fi
   _USE=$(( _RAM / 4 ))
@@ -1208,13 +1212,13 @@ _tune_memory_limits() {
   else
     _USE_SQL=$(( _RAM / 8 ))
   fi
-  if [ "${_USE_SQL}" -lt "64" ]; then
+  if [ "${_USE_SQL}" -lt 64 ]; then
     _USE_SQL=64
   fi
   _TMP_SQL="${_USE_SQL}M"
   _SRT_SQL=$(( _USE_SQL * 2 ))
   _SRT_SQL="${_SRT_SQL}K"
-  if [ "${_USE}" -ge "512" ] && [ "${_USE}" -lt "2048" ]; then
+  if [ "${_USE}" -ge 512 ] && [ "${_USE}" -lt 2048 ]; then
     _USE_PHP=1024
     _USE_OPC=1024
     _QCE_SQL=64M
@@ -1226,7 +1230,7 @@ _tune_memory_limits() {
       _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
     fi
     _MXC_SQL=$(( _L_PHP_FPM_WORKERS * 4 ))
-  elif [ "${_USE}" -ge "2048" ]; then
+  elif [ "${_USE}" -ge 2048 ]; then
     if [ "${_VMFAMILY}" = "XEN" ] || [ "${_VMFAMILY}" = "AWS" ]; then
       _USE_PHP=2048
       _USE_OPC=2048
@@ -1253,7 +1257,7 @@ _tune_memory_limits() {
           _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
         fi
         _MXC_SQL=$(( _L_PHP_FPM_WORKERS * 4 ))
-        if [ "${_MXC_SQL}" -lt "10" ]; then
+        if [ "${_MXC_SQL}" -lt 10 ]; then
           _MXC_SQL=10
         fi
       else
@@ -1505,4 +1509,4 @@ esac
 
 exit 0
 
-###EOF2024###
+

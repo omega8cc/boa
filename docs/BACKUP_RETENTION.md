@@ -1,11 +1,12 @@
+
 # Backup Retention Policy and Default Settings
 
 The backup system is designed to reliably manage **live backups** while optimizing storage usage. This document explains the retention policies and settings, focusing entirely on managing **active backups** without disruptions.
 
-- New Backups for BOA SysAdmin [docs/BACKUP_ROOT.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_ROOT.md)
-- New Backups for Octopus Lshell User [docs/BACKUP_USER.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_USER.md)
-- New Backups Retention Policy Configuration (this document) [docs/BACKUP_RETENTION.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_RETENTION.md)
-- Supported Regions and Bucket Creation Guidelines [docs/BACKUP_REGIONS.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_REGIONS.md)
+- New PRO Backups for BOA SysAdmin [docs/BACKUP_ROOT.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_ROOT.md)
+- New PRO Backups for Octopus Lshell User [docs/BACKUP_USER.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_USER.md)
+- New PRO Backups Retention Policy Configuration (this document) [docs/BACKUP_RETENTION.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_RETENTION.md)
+- New PRO Backups Supported Regions and Bucket Creation Guidelines [docs/BACKUP_REGIONS.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_REGIONS.md)
 
 ---
 
@@ -17,11 +18,14 @@ The retention system for live backups relies entirely on **time-based retention*
    - Specifies how long backups are retained.
    - Deletes all backups (full and incremental) older than the specified timeframe.
    - **Example**: `KEEP_WITHIN="3M"` retains all backups created within the last 3 months and deletes older ones.
+   - Only values specified in M (months) or Y (years) are accepted; otherwise will automatically default to 3M.
 
 2. **Full Backup Frequency (`FULL_BACKUP_FREQUENCY`)**:
    - Defines how often a new full backup is created.
    - Incremental backups are created between full backups to save storage and backup time.
-   - **Example**: `FULL_BACKUP_FREQUENCY="7D"` creates a new full backup every 7 days.
+   - **Example**: `FULL_BACKUP_FREQUENCY="28D"` creates a new full backup every 28 days.
+   - Only values specified in D (days) are accepted.
+   - The value must be between 7D and 60D; otherwise will automatically default to 28D.
 
 ---
 
@@ -31,7 +35,7 @@ The system is preconfigured with these default settings:
 
 ```bash
 export KEEP_WITHIN="3M"             # Retain backups from the last 3 months
-export FULL_BACKUP_FREQUENCY="7D"   # Create a full backup every 7 days
+export FULL_BACKUP_FREQUENCY="28D"  # Create a full backup every 28 days
 ```
 
 These settings ensure:
@@ -40,7 +44,7 @@ These settings ensure:
    - This timeframe is sufficient for most recovery scenarios.
    - All backups older than 3 months are automatically removed.
 
-2. **A full backup every 7 days**:
+2. **A full backup every 28 days**:
    - Full backups ensure the integrity of the backup chain.
    - Incremental backups store changes between full backups, reducing storage usage.
 
@@ -100,10 +104,10 @@ If needed, you can adjust the retention settings to better fit your needs.
      export KEEP_WITHIN="6M"
      ```
 
-2. **Create Full Backups Bi-Weekly**:
-   - To create a new full backup every 14 days:
+2. **Create Full Backups Weekly**:
+   - To create a new full backup every 7 days:
      ```bash
-     export FULL_BACKUP_FREQUENCY="14D"
+     export FULL_BACKUP_FREQUENCY="7D"
      ```
 
 3. **Shorten Retention Period**:

@@ -21,7 +21,7 @@ case "$1" in
   start)
     echo -n "Starting $DESC: "
     if [ -L "/bin/sh" ]; then
-      _WEB_SH=$(readlink -n /bin/sh)
+      _WEB_SH="$(readlink -n /bin/sh)"
       if [ -x "/bin/dash" ] || [ -x "/usr/bin/dash" ]; then
         if [ "${_WEB_SH}" != "/bin/dash" ]; then
           if [ -x "/usr/bin/dash" ] && [ ! -L "/usr/bin/dash" ]; then
@@ -139,7 +139,7 @@ case "$1" in
   stop)
     echo -n "Stopping $DESC: "
     if [ -L "/bin/sh" ]; then
-      _WEB_SH=$(readlink -n /bin/sh)
+      _WEB_SH="$(readlink -n /bin/sh)"
       if [ -x "/bin/dash" ]; then
         if [ "${_WEB_SH}" != "/bin/dash" ]; then
           ln -sfn /bin/dash /bin/sh
@@ -159,8 +159,8 @@ case "$1" in
     ### service apparmor stop
     ### service auditd stop
     ### /usr/sbin/aa-teardown
-    _REBOOT_ONE_TEST=$(ls -la /root/.run-auto-major-os-reboot*-one.cnf)
-    _REBOOT_TWO_TEST=$(ls -la /root/.run-auto-major-os-reboot*-two.cnf)
+    _REBOOT_ONE_TEST=$(ls -la /root/.run-auto-major-os-reboot*-one.cnf 2>&1)
+    _REBOOT_TWO_TEST=$(ls -la /root/.run-auto-major-os-reboot*-two.cnf 2>&1)
     if [[ "${_REBOOT_ONE_TEST}" =~ "No such file" ]] \
       && [[ "${_REBOOT_TWO_TEST}" =~ "No such file" ]]; then
       service cron stop &> /dev/null
@@ -194,12 +194,12 @@ case "$1" in
       echo "Firewall has been purged"
       if [ -e "/root/.my.pass.txt" ]; then
         _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
-        _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}')
+        _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
         if [ ! -z "${_IS_MYSQLD_RUNNING}" ] && [ ! -z "${_SQL_PSWD}" ]; then
           echo "Preparing MySQLD for quick shutdown..."
-          _DBS_TEST=$(which mysql)
+          _DBS_TEST=$(which mysql 2>&1)
           if [ ! -z "${_DBS_TEST}" ]; then
-            _DB_SERVER_TEST=$(mysql -V)
+            _DB_SERVER_TEST=$(mysql -V 2>&1)
           fi
           if [[ "${_DB_SERVER_TEST}" =~ "Ver 8.4." ]]; then
             _DB_V=8.4

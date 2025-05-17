@@ -5,7 +5,7 @@
 ###
 ###  Automatic BOA System Major Upgrade Tool
 ###
-###  Copyright (C) 2010-2024 Omega8.cc
+###  Copyright (C) 2010-2025 Omega8.cc
 ###  noc@omega8.cc www.omega8.cc
 ###
 ###  This program is free software. You can
@@ -79,7 +79,7 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 export _tRee=dev
-export _xSrl=550devT01
+export _xSrl=560devT00
 
 _barCnf="/root/.barracuda.cnf"
 _logAds="/root/.autodaedalus.log"
@@ -98,13 +98,13 @@ _INITINS="/usr/bin/apt-get ${_aptAllow} -y install"
 _dstUpArg="-fuy -q ${_aptAllow} --config-file /opt/apt/apt.conf.noi.dist"
 _nrmUpArg="-fuy -q ${_aptAllow} --config-file /opt/apt/apt.conf.noi.nrml"
 
-_TODAY=$(date +%y%m%d)
+_TODAY=$(date +%y%m%d 2>&1)
 _TODAY=${_TODAY//[^0-9]/}
 _OS_CODE=check
 #
 
 _check_root() {
-  if [ $(whoami) = "root" ]; then
+  if [ "$(id -u)" -eq 0 ]; then
     [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
   else
     echo "ERROR: This script should be run as a root user"
@@ -115,7 +115,7 @@ _check_root() {
     | sed 's/\%//g' \
     | awk '{print $6}' 2> /dev/null)
   _DF_TEST=${_DF_TEST//[^0-9]/}
-  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt "90" ]; then
+  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt 90 ]; then
     echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
     echo "ERROR: We can not proceed until it is below 90/100"
     exit 1
@@ -143,9 +143,9 @@ _check_manufacturer_compatibility() {
     ${_INITINS} dmidecode &> /dev/null
   fi
   # Check if dmidecode is available
-  _DMI_TEST=$(which dmidecode)
+  _DMI_TEST=$(which dmidecode 2>&1)
   if [ -x "${_DMI_TEST}" ]; then
-    _HOST_INFO=$(dmidecode -s system-manufacturer)
+    _HOST_INFO=$(dmidecode -s system-manufacturer 2>&1)
   else
     _HOST_INFO="Unknown, dmidecode not available"
   fi
@@ -172,9 +172,9 @@ _check_manufacturer_compatibility() {
 _check_manufacturer_compatibility
 
 _check_mysql_compatibility() {
-  _DBS_TEST=$(which mysql)
+  _DBS_TEST=$(which mysql 2>&1)
   if [ ! -z "${_DBS_TEST}" ]; then
-    _DB_SERVER_TEST=$(mysql -V)
+    _DB_SERVER_TEST=$(mysql -V 2>&1)
   fi
   if [[ "${_DB_SERVER_TEST}" =~ "Ver 8.4." ]]; then
     _DB_V=8.4
@@ -229,7 +229,7 @@ _faster_reboot() {
   _msg "Firewall has been purged" >> "${_logAds}"
   if [ -e "/root/.my.pass.txt" ]; then
     _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
-    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}')
+    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
     if [ ! -z "${_IS_MYSQLD_RUNNING}" ] && [ ! -z "${_SQL_PSWD}" ]; then
       _msg "Preparing MySQLD for quick shutdown..." >> "${_logAds}"
       mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
@@ -261,8 +261,8 @@ fi
 [ ! -e "/root/.mysql.yes.new.password.cnf" ] && touch /root/.mysql.yes.new.password.cnf
 
 _check_os_compatibility() {
-  _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
+  _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   if [ "${_OS_CODE}" = "daedalus" ] \
     && [ ! -e "/root/.run-auto-major-os-reboot-daedalus-one.cnf" ] \
     && [ ! -e "/root/.run-auto-major-os-reboot-daedalus-two.cnf" ]; then
@@ -299,14 +299,23 @@ if [ -x "/opt/local/bin/killer" ]; then
 fi
 
 _if_remove_cloud_utils() {
-  _INITD_TEST=$(ls -la /etc/init.d/*cloud*)
+  _INITD_TEST=$(ls -la /etc/init.d/*cloud* 2>&1)
+  _aptAkamaiLst="/etc/apt/sources.list.d/akamai-linux-team.list"
+  _aptCloudInit="/etc/apt/preferences.d/99linode-cloudinit"
+  _etcCloudCfgd="/etc/cloud/cloud.cfg.d"
   if [[ ! "${_INITD_TEST}" =~ "No such file" ]] \
-    || [ -e "/etc/cloud/cloud.cfg.d" ]; then
+    || [ -e "${_aptAkamaiLst}" ] \
+    || [ -e "${_aptCloudInit}" ] \
+    || [ -e "${_etcCloudCfgd}" ]; then
     _msg "Removing problematic cloud-utils detected on this system" >> "${_logAds}"
     /usr/bin/apt-get update --allow-insecure-repositories 2> /dev/null
-    /usr/bin/apt-get remove cloud-utils -y -qq >> "${_logAds}"
-    /usr/bin/apt-get remove cloud-init -y -qq >> "${_logAds}"
-    /usr/bin/apt-get remove cloud-image-utils -y -qq >> "${_logAds}"
+    /usr/bin/apt-get remove cloud-utils cloud-init -y --purge --auto-remove -qq 2> /dev/null
+    /usr/bin/apt-get remove cloud-image-utils cloud-guest-utils -y --purge --auto-remove -qq 2> /dev/null
+    /usr/bin/apt-get autoremove --purge -y 2> /dev/null
+    /usr/bin/apt-get autoclean -y 2> /dev/null
+    [ -e "${_etcCloudCfgd}" ] && mv -f /etc/cloud /var/backups/
+    [ -e "${_aptAkamaiLst}" ] && mv -f ${_aptAkamaiLst} /var/backups/
+    [ -e "${_aptCloudInit}" ] && mv -f ${_aptCloudInit} /var/backups/
   fi
 }
 if [ "${_VMFAMILY}" != "AWS" ]; then
@@ -344,11 +353,11 @@ _if_fix_dhcp() {
   fi
   if [ -e "${_DHCP_LOG}" ]; then
     if [ `tail --lines=3 ${_DHCP_LOG} \
-      | grep --count "dhclient.*Failed"` -gt "0" ]; then
+      | grep --count "dhclient.*Failed"` -gt 0 ]; then
       sed -i "s/.*DHCP.*//g" /etc/csf/csf.allow
       wait
       sed -i "/^$/d" /etc/csf/csf.allow
-      _DHCP_TEST=$(grep DHCPREQUEST "${_DHCP_LOG}" | cut -d ' ' -f13 | sort | uniq)
+      _DHCP_TEST=$(grep DHCPREQUEST ${_DHCP_LOG} | cut -d ' ' -f13 | sort | uniq 2>&1)
       if [[ "${_DHCP_TEST}" =~ "port" ]]; then
         for _IP in `grep DHCPREQUEST ${_DHCP_LOG} | cut -d ' ' -f12 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
       else
@@ -373,7 +382,7 @@ if [ -e "/root/.run-to-daedalus.cnf" ]; then
   fi
 fi
 
-_AUTO_DAEDALUS_TEST=$(grep _AUTO_DAEDALUS "${_barCnf}")
+_AUTO_DAEDALUS_TEST=$(grep _AUTO_DAEDALUS ${_barCnf} 2>&1)
 if [[ ! "${_AUTO_DAEDALUS_TEST}" =~ "_AUTO_DAEDALUS" ]]; then
   echo "_AUTO_DAEDALUS=YES" >> ${_barCnf}
 fi
@@ -392,8 +401,8 @@ if [ -e "/root/.run-to-daedalus.cnf" ] \
   wait
   _msg "The standard barracuda up-${_tRee} system completed" >> "${_logAds}"
   if [ -e "/root/.latest-barracuda-upgrade-finale.info" ]; then
-    _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
-    _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
+    _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
+    _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
     if [ "${_OS_CODE}" = "buster" ]; then
       echo "_BUSTER_TO_BEOWULF=YES" >> ${_barCnf}
       _msg "Launching major upgrade from ${_OS_DIST}/${_OS_CODE} to Devuan/beowulf"  >> "${_logAds}"
@@ -439,8 +448,8 @@ if [ -e "/root/.run-to-daedalus.cnf" ] \
   wait
   _msg "The post-reboot barracuda up-${_tRee} system completed" >> "${_logAds}"
   echo " " >> "${_logAds}"
-  _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
+  _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   if [ -e "/root/.chimaera_to_daedalus_major_os_upgrade.info" ] \
     || [ -e "/root/.bookworm_to_daedalus_major_os_upgrade.info" ]; then
     _FURTHER_UPGRADE=NO
@@ -498,6 +507,7 @@ if [ -e "/root/.run-to-daedalus.cnf" ] \
   echo " " >> "${_logAds}"
   touch /root/.auto-upgraded-to-daedalus.cnf
   _msg "Launching the final post-second-reboot barracuda up-${_tRee} system" >> "${_logAds}"
+  [ ! -e "/root/.allow.apparmor.cnf" ] && touch /root/.allow.apparmor.cnf
   [ ! -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && touch /root/.force.rebuild.src.on.auto.now.cnf
   /opt/local/bin/barracuda up-${_tRee} system noscreen >> "${_logAds}"
   wait

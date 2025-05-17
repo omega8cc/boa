@@ -31,7 +31,7 @@ _check_root() {
     chmod a+w /dev/null
   fi
   # Get the hostname
-  _hName=$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)
+  _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
 }
 _check_root
 
@@ -46,6 +46,34 @@ _if_hosted_sys() {
     _HOSTED_SYS="YES"
   else
     _HOSTED_SYS="NO"
+  fi
+}
+
+# Function to calculate RAM usage percentage as an integer
+_calculate_ram_usage_percent() {
+  _total_ram_kb=$1
+  _available_ram_kb=$2
+  used_ram_kb=$((_total_ram_kb - _available_ram_kb))
+
+  # Using integer division to get a whole number percentage
+  echo $(( (used_ram_kb * 100) / _total_ram_kb ))
+}
+
+# Function to check and display system info
+_check_system_ram() {
+  # Get the total and available RAM in KB
+  _total_ram_kb=$(grep MemTotal /proc/meminfo | awk '{print $2}')
+  _available_ram_kb=$(grep MemAvailable /proc/meminfo | awk '{print $2}')
+
+  # Calculate RAM usage percentage
+  _ram_usage_percent=$(_calculate_ram_usage_percent ${_total_ram_kb} ${_available_ram_kb})
+}
+
+# Function to check and optimize RAM and disk caches
+_optimize_ram() {
+  _check_system_ram
+  if [ "${_ram_usage_percent}" -gt 90 ]; then
+    sync && echo 3 | sudo tee /proc/sys/vm/drop_caches
   fi
 }
 
@@ -71,29 +99,21 @@ _graceful_action() {
   fi
 
   # Clean up old log files
-  echo "Cleaning up old log files..."
-  rm -f /var/backups/.auth.IP.list*
+  echo "Cleaning up old pid files..."
   find /var/xdrago/log/*.pid -mtime +3  -type f -exec rm -rf {} \; &> /dev/null
-  find /var/xdrago/log/*.log -mtime +30 -type f -exec rm -rf {} \; &> /dev/null
-  find /var/xdrago/log/*.txt -mtime +30 -type f -exec rm -rf {} \; &> /dev/null
-  find /var/xdrago/log/last* -mtime +30 -type f -exec rm -rf {} \; &> /dev/null
-  find /var/xdrago/log/wait* -mtime +30 -type f -exec rm -rf {} \; &> /dev/null
-  find /var/xdrago/log/lshe* -mtime +30 -type f -exec rm -rf {} \; &> /dev/null
-  find /var/xdrago/log/ngin* -mtime +30 -type f -exec rm -rf {} \; &> /dev/null
-  find /var/xdrago/log/grac* -mtime +30 -type f -exec rm -rf {} \; &> /dev/null
-  find /var/xdrago/log/purg* -mtime +30 -type f -exec rm -rf {} \; &> /dev/null
-  find /var/xdrago/log/clea* -mtime +30 -type f -exec rm -rf {} \; &> /dev/null
-  find /var/xdrago/log/proc* -mtime +30 -type f -exec rm -rf {} \; &> /dev/null
-  find /var/xdrago/log/redi* -mtime +30 -type f -exec rm -rf {} \; &> /dev/null
 
-  # Swap management
+  # Swap, RAM and disk cache management
+  _IF_BCP="$(pgrep -f duplicity)"
   if [ -d "/dev/disk" ]; then
-    _IF_CDP=$(pgrep -f cdp_io)
-    if [ -z "${_IF_CDP}" ] && [ ! -e "/root/.no.swap.clear.cnf" ]; then
+    if [ ! -e "/root/.no.swap.clear.cnf" ]; then
       echo "Resetting swap..."
       swapoff -a
-      swapon -a
+      if [ -z "${_IF_BCP}" ]; then
+        swapon -a
+      fi
     fi
+    echo "Optimizing RAM usage..."
+    _optimize_ram
   fi
 
   # Setup GeoIP directories
@@ -152,6 +172,10 @@ _graceful_action() {
     echo "INFO: Solr and Jetty servers will be restarted in 60 seconds"
     touch /run/boa_wait.pid
     sleep 60
+    if [ -x "/etc/init.d/solr9" ] && [ -e "/etc/default/solr9.in.sh" ]; then
+      echo "Restarting Solr 9..."
+      nice -n 0 service solr9 restart
+    fi
     if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
       echo "Restarting Solr 7..."
       nice -n 0 service solr7 restart
@@ -169,7 +193,7 @@ _graceful_action() {
   fi
 
   # Speed cleanup
-  _IF_BCP=$(pgrep -f duplicity)
+  _IF_BCP="$(pgrep -f duplicity)"
   if [ -z "${_IF_BCP}" ] && [ ! -e "/run/speed_cleanup.pid" ] && [ ! -e "/root/.giant_traffic.cnf" ]; then
     echo "Performing speed cleanup..."
     touch /run/speed_cleanup.pid

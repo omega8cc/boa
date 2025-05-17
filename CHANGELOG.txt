@@ -1,4 +1,206 @@
 ###
+### Stable BOA-5.6.0-pro - Full Edition
+### Date: Tue Dec 31 06:12:44 AM AEDT 2024 in Sydney
+### Happy New Year!
+###
+
+@=> New BOA-5.6.0 PRO Release – Happy New Year!
+
+  We're thrilled to introduce BOA-5.6.0 PRO, our latest release and the fourth
+  under our new branch structure and dual licensing model.
+
+  This PRO release brings the project fully in sync with the DEV branch,
+  which has been actively developed over the past two months, incorporating
+  over 750 commits since BOA-5.5.0.
+
+  We extend our heartfelt thanks to all of you who support our work
+  by purchasing a BOA Pro license: https://omega8.cc/boapro.
+
+  As always, this announcement covers only the most impactful new features,
+  critical fixes, and enhancements. For a comprehensive list of all updates,
+  please refer to the full commit history.
+
+@=> New Features
+
+    * Active Sites Databases Backups are available in ~/static/files/dbackup/
+    * Add experimental support for Cloudflare R2 Object Storage
+    * Add mergecsf tool to join and de-duplicate legacy csf configuration
+    * Add perftest tool to test hardware performance within VM
+    * Add php-cli access for [grp:ltd-shell-more]
+    * Add smtpgapps tool to install and configure msmtp on Devuan
+    * Add support for all AWS S3 regions, including dual-stack endpoints
+    * Add support for php-rebuild or php-reinstall on barracuda upgrade
+    * Add support for separate /root/.deny.solr7.cnf and /root/.deny.jetty9.cnf
+    * Add verifyvhostsdns tool to check all vhosts for aliases with invalid DNS
+    * New Relic Integration for Drupal with Drush Compatibility (8, 12, 13)
+    * PHP 8.4 is fully supported and installed by default
+    * Remote System Backups use `global`, `data` and optional `custom` buckets
+
+    * Completely New Backups! There is too much to cover, so please refer to
+      our extensive new documentation pages for all details.
+
+      This new feature is exclusive to BOA PRO and will not be ported to LTS.
+
+      New PRO Backups for BOA SysAdmin:
+        https://github.com/omega8cc/boa/tree/5.x-pro/docs/BACKUP_ROOT.md
+
+      New PRO Backups for Octopus Lshell User:
+        https://github.com/omega8cc/boa/tree/5.x-pro/docs/BACKUP_USER.md
+
+      New PRO Backups Retention Policy Configuration:
+        https://github.com/omega8cc/boa/tree/5.x-pro/docs/BACKUP_RETENTION.md
+
+      New PRO Backups Supported Regions and Bucket Creation Guidelines:
+        https://github.com/omega8cc/boa/tree/5.x-pro/docs/BACKUP_REGIONS.md
+
+
+@=> Improvements
+
+    * Add _backup_waiting_notify to make admin aware of the backup status
+    * Add _csf_lfd_gateway_allow()
+    * Add _linode_vm_postinstall()
+    * Add _turn_off_apparmor unless /root/.keep_apparmor_on.cnf
+    * Add /etc/cron.hourly/systemtime
+    * Add auto-restore of backup_schedule
+    * Add boa info to all backup reports
+    * Add cleanup for /var/lib/redis/ on OOM incident
+    * Add d7security_client-7.x-1.3 to o_contrib_seven and Hostmaster
+    * Add early aa-teardown on init to make sure that AppArmor is turned off
+    * Add function to auto-repair incomplete backup sets
+    * Add local Aegir Third Party Libraries
+    * Add more checks to make sure that OpenSSL is fully up to date
+    * Add support for /root/.turn.off.auto.update.cnf
+    * Add support for cloudflare-dns-ssl-py.info and cloudflare-dns-ssl-sh.info
+    * Add wkhtmltox_0.12.6.1-3 for Daedalus
+    * Aegir Hostmaster: Log wget cron runs
+    * Aegir Provision: Install local Drush automatically on platform verify and unlock
+    * Always run dist-upgrade twice -- helps with slow access to Devuan servers
+    * Configure backups --concurrency dynamically
+    * Disable _if_start_screen with noscreen in the args
+    * Disable backup_schedule on systems with too low free RAM
+    * Do not install CSF until BOA installation is complete on Linode
+    * Do not install csf/lfd on Linode early
+    * Do not reinstall Duplicity unless /root/.force.duplicity.reinstall.cnf exists
+    * Drupal 7 now supports and expects Trusted Host Patterns
+    * Improve all wget/curl downloads with proper re-try logic
+    * Improve and simplify _switch_php()
+    * Improve sysctl.conf template
+    * Improve tools/le/hooks/cloudflare logic
+    * Install or upgrade csf/lfd monitoring early
+    * Install wkhtmltopdf from packages first to get all dependencies
+    * Integrate original _SKYNET_MODE docs/history
+    * More fixes in the vdrush wrapper to support Drush 13
+    * Move /data/disk/arch to global and /home to data backups
+    * Move certain log scanners from the slow minute.sh to fast second.sh loop
+    * Replace direct exec with _forward_to_shell in shell wrapper
+    * Report also on newrelic-daemon and monagent versions in boa info
+    * Run guest-water.sh right after CSF install or upgrade
+    * Run orphaned duplicity processes cleanup separately
+    * Sync _sql_busy_detection with max_connect_errors
+    * Sync barracuda.cnf templates and docs
+    * Sync sshd restart procedure across all scripts
+    * Update barracuda config with missing vars if any
+    * Update email template to remove confusing legacy details
+    * Update xboa email templates
+    * Use include/exclude instead of exclude/include logic
+    * Use just one graceful csf restart on upgrade
+    * Use newer, supported --copy-links option in Duplicity
+    * Use noscreen in non-interactive scripts launched by parent scripts or cron
+    * Waiting 8 minutes before attempting to run enforced post-install upgrade
+
+@=> Changes
+
+    * Add docs/IPv6.md to explain why BOA disables IPv6 by default
+    * Disable confusing hosting_client_send_welcome with non-working login link
+    * Disable memory swap when running duplicity
+    * Disable no longer supported GSSAPIAuthentication in SSH config
+    * Disable performance_schema for Percona 5.7 but enable for 8.0+
+    * Disable ssl_stapling and fix http2 directive
+    * Do not auto-re-enable swap
+    * Enforce Composer 2.8.2 (because 2.8.3+ breaks previously working builds)
+    * Force sysctl.conf.mod-disable-ipv6
+    * Introducing the New BOA Branching Scheme -- see docs/BRANCHES.md
+    * Move /bin/websh to /opt/local/bin/websh
+    * Newest Python should be installed only with barracuda or backup tools
+    * Remove hosting_cron_use_backend.txt support
+    * Remove no longer supported legacy _SCOUT_KEY
+    * Remove no longer supported legacy HHVM
+    * Set SOLR WAIT to 8s to speed up reboot and services restarts
+    * The oldest NewRelic supported PHP version is 7.2
+    * Update and Sync nice/renice logic for scripts and services
+    * Update boa-mirrors-2024-12.txt
+    * Updates for lshell.conf template
+    * Use gzip to compress classic myslqdump backups
+    * Use zero tolerance mode for SSH/FTP failed login attempts
+    * Use zstd to compress mydumper sql backups
+    * We have now doubled the disk space in all our hosted plans
+
+@=> Upgrades
+
+    * Composer 2.8.2
+    * cURL 8.11.1
+    * Drupal 7.103.1
+    * Drush 8.5.0.1
+    * Duplicity 3.0.3.2
+    * ionCube 14.0.0 (up to PHP 8.3)
+    * New Relic 11.4.0.17
+    * Nginx 1.27.3
+    * OpenSSL 3.4.0
+    * PHP 8.1.31
+    * PHP 8.2.27
+    * PHP 8.3.15
+    * PHP 8.4.2
+    * PHP APCu 5.1.24
+    * PHP MCRYPT 1.0.7
+    * Unbound 1.22.0
+    * Use phpredis 4.3.0 with PHP 5.6
+    * Use phpredis 6.1.0 for 7.4 and newer
+
+@=> Important Fixes
+
+    * Aegir Hostmaster: Improve hosting_cron_queue reliability
+    * Aegir Hostmaster: Unset variables at the end of the loop
+    * Aegir Provision: Add backup mode ctrl file cleanup on clone and migrate
+    * Aegir Provision: Add more supported compression variants
+    * Aegir Provision: Do not confuse PDO and MySQLi conventions
+    * Aegir Provision: Fix Drush 13 support by invoking vendor/drush/drush/drush.php
+    * Aegir Provision: Follow symlinks to include all files in custom backup task only
+    * Aegir Provision: Improve function revoke()
+    * Aegir Provision: Prioritize '.tar.zst' as provision_backup_suffix
+    * Aegir Provision: Use supported localhost in can_grant_privileges()
+    * Allow _php_if_versions_cleanup_cnf if Master Aegir was not upgraded yet
+    * Barracuda downgrade protection should not rely on key/barracuda_key.txt
+    * Constant E_STRICT is deprecated in PHP 8.4
+    * Disable shell wrapper on system stop/start early
+    * Double check if /etc/init.d/nginx is really updated
+    * Excessive email notifications due to DHCP error checks #1829
+    * Final fixes in shell wrapper make it rock solid again
+    * Fix and sync all apt options
+    * Fix autoinit conflicting functions
+    * Fix for --enable-redis-lzf also in _php_extensions_update()
+    * Fix for counting symlinked files in resources usage monitoring
+    * Fix for duplicate http2 in all vhosts on upgrade
+    * Fix for platforms deployed using Manage with Git method
+    * Fix for SFTP chroot by using external mode in Subsystem sftp
+    * Fix the bug in the shell wrapper when composer is both a command and argument
+    * Fix the logic for Devuan base-files update for Daedalus
+    * Fix the logic in _ifnames_grub_check_sync()
+    * Improve the http2/ssl_stapling logic
+    * Legacy MCRYPT can’t be used with PHP 8.4
+    * Make sure that both web and app root dirs are group writable
+    * Make sure we add keys in a new line in xboa
+    * More capabilities to satisfy complex composer tasks
+    * Octopus downgrade protection should not rely on tools/key/octopus_key.txt
+    * Patch hosting_cron.module automatically to make web cron 100% reliable
+    * Remove duplicate ssl directives in all vhosts templates
+    * Sync include/openssl extended check for latest version
+    * Sync max allowed PHP-FPM versions running (11)
+    * Sync maxBooleanClauses for new Solr cores to 4096
+    * Sync PHP 8.3 precedence -- it's still default version
+    * Use dash by default and limit the use of _forward_to_shell
+
+
+###
 ### Stable BOA-5.5.0-pro - Full Edition
 ### Date: Sat 26 Oct 2024 09:49:51 AM PDT in Santa Clara
 ###

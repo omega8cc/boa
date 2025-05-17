@@ -4,8 +4,8 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
-_PTN_VRN=3.12.5
-_DCY_VRN=3.0.3.1
+_PTN_VRN=3.12.8
+_DCY_VRN=3.0.3.2
 _DCY_CMD="/usr/local/bin/duplicity"
 
 _crlGet="-L --max-redirs 3 -k -s --retry 9 --retry-delay 9 -A iCab"
@@ -18,9 +18,9 @@ _apt_clean_update() {
 }
 
 _check_root() {
-  if [ $(whoami) = "root" ]; then
+  if [ "$(id -u)" -eq 0 ]; then
     ionice -c2 -n7 -p $$
-    renice 9 -p $$
+    renice 0 -p $$
     chmod a+w /dev/null
     [ -e "/root/.gnupg" ] && chmod 700 /root/.gnupg
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
@@ -33,7 +33,7 @@ _check_root() {
     | sed 's/\%//g' \
     | awk '{print $6}' 2> /dev/null)
   _DF_TEST=${_DF_TEST//[^0-9]/}
-  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt "90" ]; then
+  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt 90 ]; then
     echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
     echo "ERROR: We can not proceed until it is below 90/100"
     exit 1
@@ -50,7 +50,7 @@ _check_openssl() {
 
 _os_detection_minimal() {
   _APT_UPDATE="apt-get update"
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
   for e in ${_OS_LIST}; do
     if [ "${e}" = "${_OS_CODE}" ]; then
@@ -60,7 +60,7 @@ _os_detection_minimal() {
 }
 
 _find_fast_mirror_early() {
-  _isNetc=$(which netcat)
+  _isNetc=$(which netcat 2>&1)
   if [ ! -x "${_isNetc}" ] || [ -z "${_isNetc}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
@@ -71,9 +71,9 @@ _find_fast_mirror_early() {
     apt-get install netcat-traditional ${_aptYesUnth}
     wait
   fi
-  _ffMirr=$(which ffmirror)
+  _ffMirr=$(which ffmirror 2>&1)
   if [ -x "${_ffMirr}" ]; then
-    _ffList="/var/backups/boa-mirrors-2024-12.txt"
+    _ffList="/var/backups/boa-mirrors-2025-01.txt"
     mkdir -p /var/backups
     if [ ! -e "${_ffList}" ]; then
       echo "eu.files.aegir.cc"  > ${_ffList}
@@ -81,9 +81,9 @@ _find_fast_mirror_early() {
       echo "ao.files.aegir.cc" >> ${_ffList}
     fi
     if [ -e "${_ffList}" ]; then
-      _BROKEN_FFMIRR_TEST=$(grep "stuff" "${_ffMirr}")
+      _BROKEN_FFMIRR_TEST=$(grep "stuff" ${_ffMirr} 2>&1)
       if [[ "${_BROKEN_FFMIRR_TEST}" =~ "stuff" ]]; then
-        _CHECK_MIRROR=$(bash "${_ffMirr}" < "${_ffList}")
+        _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _USE_MIR="${_CHECK_MIRROR}"
         [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.aegir.cc"
       else
@@ -133,15 +133,26 @@ _install_duplicity() {
   export PIPX_BIN_DIR=/usr/local/bin
   export PIPX_HOME=/opt/pipx/venvs
 
+  if [ -x "${_DCY_CMD}" ]; then
+    _DCY_TEST=$(${_DCY_CMD} --version 2>&1)
+    if [[ "${_DCY_TEST}" =~ "duplicity ${_DCY_VRN}" ]]; then
+      echo "Already Installed ${_DCY_TEST}"
+      if [ ! -e "/root/.force.duplicity.reinstall.cnf" ]; then
+        exit 1
+      fi
+    fi
+  fi
+
   echo "Installing Duplicity ${_DCY_VRN}..."
   pipx install duplicity --include-deps --force
 
-  _DCY_TEST=$("${_DCY_CMD}" --version)
+  _DCY_TEST=$(${_DCY_CMD} --version 2>&1)
+  echo "Just Installed ${_DCY_TEST}"
+
   if [[ "${_DCY_TEST}" =~ "duplicity 3." ]]; then
-    echo "Duplicity ${_DCY_VRN} installation complete!"
-    exit 0
+    echo "Duplicity installation complete!"
   else
-    echo "Duplicity ${_DCY_VRN} installation failed with ${_DCY_TEST}"
+    echo "Duplicity installation failed with ${_DCY_TEST}"
     exit 1
   fi
 }
@@ -155,15 +166,25 @@ _python_install_src() {
   _apt_clean_update
   apt-get install ${_aptYesUnth} \
     intltool \
+    jq \
+    libdb-dev \
     libffi-dev \
+    libgdbm-compat-dev \
+    libgdbm-dev \
+    liblzma-dev \
+    libncursesw5-dev \
+    libreadline-dev \
     par2 \
+    python3 \
     python3-pip \
     python3-venv \
-    python3 \
     rclone \
     rdiff \
-    tzdata
-  _PTN_TEST=$(python3 --version)
+    tk-dev \
+    tzdata \
+    uuid-dev
+
+  _PTN_TEST=$(python3 --version 2>&1)
   if [[ ! "${_PTN_TEST}" =~ "Python ${_PTN_VRN}" ]] \
     || [ ! -x "${_DCY_PTN}" ]; then
     cd /var/opt
@@ -176,7 +197,7 @@ _python_install_src() {
     make install --quiet
     cd
   fi
-  _PTN_TEST=$("/usr/local/bin/python3.12" --version)
+  _PTN_TEST=$(/usr/local/bin/python3.12 --version 2>&1)
   if [[ "${_PTN_TEST}" =~ "Python ${_PTN_VRN}" ]]; then
     echo "Python ${_PTN_VRN} installed"
     _DCY_PTN="/usr/local/bin/python3.12"
@@ -195,7 +216,7 @@ _python_install_src() {
   echo "_usePip is ${_usePip}"
 
   echo "Installing pip..."
-  _PIP_TEST=$("${_usePip}" --version)
+  _PIP_TEST=$(${_usePip} --version 2>&1)
   if [[ "${_PIP_TEST}" =~ "python 3.11" ]] \
     || [[ "${_PIP_TEST}" =~ "python 3.12" ]]; then
     ${_usePip} install --upgrade pip --root-user-action ignore
@@ -210,8 +231,8 @@ _python_install_src() {
 _if_python_install_src() {
   _PYTHON_INSTALL=NO
   [ -e "/root/.gnupg" ] && chmod 700 /root/.gnupg
-  _PYTHON_TEST=$(python3 --version)
-  if [[ ! "${_PYTHON_TEST}" =~ Python\ 3\.12 ]]; then
+  _PYTHON_TEST=$(python3 --version 2>&1)
+  if [[ ! "${_PYTHON_TEST}" =~ "Python ${_PTN_VRN}" ]]; then
     echo "Python ${_PTN_VRN} installation is required to support Duplicity ${_DCY_VRN}"
     _python_install_src
   else
@@ -231,3 +252,4 @@ _check_root
 _check_openssl
 _os_detection_minimal
 _if_python_install_src
+

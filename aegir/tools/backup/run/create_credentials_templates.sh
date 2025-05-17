@@ -41,6 +41,12 @@ _create_credentials_templates() {
 
   for _service in "${_services[@]}"; do
     _template_file="${_target_dir}/${_service}.txt"
+
+    if [ -e "${_user_pid_dir}" ] && [ ! -e "${_user_pid_dir}/.backboa.${_user}.credentials.${_service}.tpl.ctrl" ]; then
+      sed -i "s/FULL_BACKUP_FREQUENCY=.*/FULL_BACKUP_FREQUENCY=\"28D\"/g" ${_template_file}
+      touch ${_user_pid_dir}/.backboa.${_user}.credentials.${_service}.tpl.ctrl
+    fi
+
     if [ ! -f "${_template_file}" ]; then
       case "${_service}" in
         aws|aws_one_zone|aws_standard_ia)
@@ -49,7 +55,7 @@ export AWS_ACCESS_KEY_ID="your_aws_access_key"
 export AWS_SECRET_ACCESS_KEY="your_aws_secret_key"
 export AWS_REGION="your_aws_region"  # E.g., "us-east-1"
 export KEEP_WITHIN="3M"
-export FULL_BACKUP_FREQUENCY="7D"
+export FULL_BACKUP_FREQUENCY="28D"
 EOF
           ;;
         azure)
@@ -57,7 +63,7 @@ EOF
 export AZURE_STORAGE_ACCOUNT="your_azure_storage_account"
 export AZURE_STORAGE_KEY="your_azure_storage_key"
 export KEEP_WITHIN="3M"
-export FULL_BACKUP_FREQUENCY="7D"
+export FULL_BACKUP_FREQUENCY="28D"
 EOF
           ;;
         b2)
@@ -65,7 +71,7 @@ EOF
 export B2_ACCOUNT_ID="your_b2_account_id"
 export B2_APPLICATION_KEY="your_b2_application_key"
 export KEEP_WITHIN="3M"
-export FULL_BACKUP_FREQUENCY="7D"
+export FULL_BACKUP_FREQUENCY="28D"
 EOF
           ;;
         cloudflare)
@@ -74,7 +80,7 @@ export R2_ACCOUNT_ID="your_account_id"
 export R2_ACCESS_KEY_ID="your_access_key_id"
 export R2_SECRET_ACCESS_KEY="your_secret_access_key"
 export KEEP_WITHIN="3M"
-export FULL_BACKUP_FREQUENCY="7D"
+export FULL_BACKUP_FREQUENCY="28D"
 EOF
           ;;
         do_spaces)
@@ -83,7 +89,7 @@ export DO_SPACES_KEY="your_do_spaces_key"
 export DO_SPACES_SECRET="your_do_spaces_secret"
 export DO_SPACES_REGION="your_do_spaces_region"  # E.g., "nyc3"
 export KEEP_WITHIN="3M"
-export FULL_BACKUP_FREQUENCY="7D"
+export FULL_BACKUP_FREQUENCY="28D"
 EOF
           ;;
         gcs)
@@ -91,7 +97,7 @@ EOF
 export GCS_PROJECT_ID="your_gcs_project_id"
 export GCS_SERVICE_ACCOUNT_KEY="your_gcs_service_account_key"
 export KEEP_WITHIN="3M"
-export FULL_BACKUP_FREQUENCY="7D"
+export FULL_BACKUP_FREQUENCY="28D"
 EOF
           ;;
         ibm)
@@ -100,7 +106,7 @@ export IBM_API_KEY_ID="your_ibm_api_key_id"
 export IBM_SERVICE_INSTANCE_ID="your_ibm_service_instance_id"
 export IBM_REGION="your_ibm_region"
 export KEEP_WITHIN="3M"
-export FULL_BACKUP_FREQUENCY="7D"
+export FULL_BACKUP_FREQUENCY="28D"
 EOF
           ;;
         linode)
@@ -109,7 +115,7 @@ export LINODE_ACCESS_KEY="your_linode_access_key"
 export LINODE_SECRET_KEY="your_linode_secret_key"
 export LINODE_REGION="your_linode_region"  # E.g., "us-east-1"
 export KEEP_WITHIN="3M"
-export FULL_BACKUP_FREQUENCY="7D"
+export FULL_BACKUP_FREQUENCY="28D"
 EOF
           ;;
         wasabi)
@@ -118,7 +124,7 @@ export WASABI_ACCESS_KEY="your_wasabi_access_key"
 export WASABI_SECRET_KEY="your_wasabi_secret_key"
 export WASABI_REGION="your_wasabi_region"  # E.g., "us-east-1"
 export KEEP_WITHIN="3M"
-export FULL_BACKUP_FREQUENCY="7D"
+export FULL_BACKUP_FREQUENCY="28D"
 EOF
           ;;
       esac
@@ -140,7 +146,8 @@ _main() {
   for _user_dir in "${_USER_BASE_DIR}"/*; do
     if [ -d "${_user_dir}" ]; then
       _user=$(basename "${_user_dir}")
-      if [ "${_user}" != "arch" ] && [ "${_user}" != "globalcatchall" ]; then
+      if [ "${_user}" != "arch" ] && [ "${_user}" != "data" ] && [ "${_user}" != "global" ] && [ "${_user}" != "custom" ]; then
+        _user_pid_dir="${_USER_BASE_DIR}/${_user}/log"
         _user_credentials_dir="${_USER_BASE_DIR}/${_user}/static/control/remote_backups/credentials"
         _ensure_directory "${_user_credentials_dir}"
         _create_credentials_templates "${_user_credentials_dir}"

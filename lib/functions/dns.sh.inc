@@ -11,7 +11,7 @@ _fix_dns_settings() {
   rm -f ${_vBs}/resolv.conf.tmp
   if [ -e "/etc/resolv.conf" ]; then
     if [ -L "/etc/resolv.conf" ]; then
-      _rslvT=$(readlink -n /etc/resolv.conf)
+      _rslvT="$(readlink -n /etc/resolv.conf)"
       if [ ! -e "${_rslvT}" ]; then
         rm -f /etc/resolv.conf
       fi
@@ -722,8 +722,8 @@ _check_ip_hostname() {
         _find_correct_ip
         _THEFRDIP="${_LOC_IP}"
         if [ "${_THEFRDIP}" = "${_THISHTIP}" ]; then
+          _TESTHOST="$(hostname -f 2>/dev/null || uname -n)"
           _LOC_DOM="${_TESTHOST}"
-          _TESTHOST=$(hostname -f 2>/dev/null || uname -n)
           _find_correct_ip
           _TESTRDIP="${_LOC_IP}"
           if [ "${_TESTRDIP}" = "${_THISHTIP}" ]; then
@@ -741,11 +741,11 @@ _check_ip_hostname() {
     else
       _find_correct_ip
       _THISHTIP="${_LOC_IP}"
-      _FQDNPROB=$(hostname -f 2>/dev/null || uname -n)
+      _FQDNPROB="$(hostname -f 2>/dev/null || uname -n)"
       _FQDNTEST="FALSE"
-      _THISHOST=$(hostname -f 2>/dev/null || uname -n)
+      _THISHOST="$(hostname -f 2>/dev/null || uname -n)"
       if [ ! -z "${_FQDNPROB}" ]; then
-        _THISHOST=$(hostname -f 2>/dev/null || uname -n)
+        _THISHOST="$(hostname -f 2>/dev/null || uname -n)"
         _THISHOST=${_THISHOST//[^a-zA-Z0-9-.]/}
         _THISHOST=$(echo -n ${_THISHOST} | tr A-Z a-z 2>&1)
         _LOC_DOM="${_THISHOST}"
@@ -854,9 +854,9 @@ EOF
       _clean_pid_exit _check_ip_hostname_d
     fi
   elif [ "${_STATUS}" = "UPGRADE" ]; then
-    _THISHOST=$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)
+    _THISHOST="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
     _THISHOST=${_THISHOST//[^a-zA-Z0-9-.]/}
-    _THISHOST=$(echo -n ${_THISHOST} | tr A-Z a-z)
+    _THISHOST=$(echo -n ${_THISHOST} | tr A-Z a-z 2>&1)
     if [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ]; then
       _THIS_FRONT=$(cat /var/aegir/.drush/hostmaster.alias.drushrc.php \
         | grep "uri'" \

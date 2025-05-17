@@ -5,7 +5,7 @@ export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
 _check_root() {
-  if [ $(whoami) = "root" ]; then
+  if [ "$(id -u)" -eq 0 ]; then
     ionice -c2 -n7 -p $$
     renice 19 -p $$
     chmod a+w /dev/null
@@ -174,28 +174,28 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
     _create_locks ${_DB}
     if [ "${_DB}" != "mysql" ]; then
       if [ -e "/var/lib/mysql/${_DB}/queue.ibd" ]; then
-        _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/queue.ibd | grep "G" 2>&1)
+        _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/queue.ibd | grep "G" 2>/dev/null)
         if [[ "${_IS_GB}" =~ "queue" ]]; then
           _truncate_queue_tables &> /dev/null
           echo "INFO: Truncated giant queue in ${_DB}"
         fi
       fi
       if [ -e "/var/lib/mysql/${_DB}/batch.ibd" ]; then
-        _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/batch.ibd | grep "G" 2>&1)
+        _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/batch.ibd | grep "G" 2>/dev/null)
         if [[ "${_IS_GB}" =~ "batch" ]]; then
           _truncate_batch_tables &> /dev/null
           echo "INFO: Truncated giant batch in ${_DB}"
         fi
       fi
       if [ -e "/var/lib/mysql/${_DB}/watchdog.ibd" ]; then
-        _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/watchdog.ibd | grep "G" 2>&1)
+        _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/watchdog.ibd | grep "G" 2>/dev/null)
         if [[ "${_IS_GB}" =~ "watchdog" ]]; then
           _truncate_watchdog_tables &> /dev/null
           echo "INFO: Truncated giant watchdog in ${_DB}"
         fi
       fi
       if [ -e "/var/lib/mysql/${_DB}/accesslog.ibd" ]; then
-        _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/accesslog.ibd | grep "G" 2>&1)
+        _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/accesslog.ibd | grep "G" 2>/dev/null)
         if [[ "${_IS_GB}" =~ "accesslog" ]]; then
           _truncate_accesslog_tables &> /dev/null
           echo "INFO: Truncated giant accesslog in ${_DB}"
@@ -218,4 +218,4 @@ rm -f /run/mysql_backup_running.pid
 
 echo "INFO: ALL TASKS COMPLETED, BYE!"
 exit 0
-###EOF2024###
+

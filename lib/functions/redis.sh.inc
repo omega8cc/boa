@@ -19,35 +19,38 @@ _forced_redis_password_update() {
     else
       _STRONG_PASSWORDS=${_STRONG_PASSWORDS//[^0-9]/}
       if [ ! -z "${_STRONG_PASSWORDS}" ] \
-        && [ "${_STRONG_PASSWORDS}" -gt "32" ]; then
+        && [ "${_STRONG_PASSWORDS}" -gt 32 ]; then
         _PWD_CHARS="${_STRONG_PASSWORDS}"
       else
         _PWD_CHARS=32
       fi
-      if [ ! -z "${_PWD_CHARS}" ] && [ "${_PWD_CHARS}" -gt "128" ]; then
+      if [ ! -z "${_PWD_CHARS}" ] && [ "${_PWD_CHARS}" -gt 128 ]; then
         _PWD_CHARS=128
       fi
     fi
-    if [ "${_STRONG_PASSWORDS}" = "YES" ] || [ "${_PWD_CHARS}" -gt "32" ]; then
-      _RANDPASS_TEST=$(randpass -V)
+    if [ "${_STRONG_PASSWORDS}" = "YES" ] || [ "${_PWD_CHARS}" -gt 32 ]; then
+      _RANDPASS_TEST=$(randpass -V 2>&1)
       if [[ "${_RANDPASS_TEST}" =~ "alnum" ]]; then
-        _ESC_RPASS=$(randpass "${_PWD_CHARS}" alnum)
+        _ESC_RPASS=$(randpass "${_PWD_CHARS}" alnum 2>&1)
       else
-        _ESC_RPASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' | tr -d '\n')
-        _ESC_RPASS=$(_sanitize_string "${_ESC_RPASS}")
+        _ESC_RPASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
+        _ESC_RPASS=$(echo -n "${_ESC_RPASS}" | tr -d "\n" 2>&1)
+        _ESC_RPASS=$(_sanitize_string "${_ESC_RPASS}" 2>&1)
       fi
-      _LEN_RPASS=$(echo ${#_ESC_RPASS})
+      _ESC_RPASS=$(echo -n "${_ESC_RPASS}" | tr -d "\n" 2>&1)
+      _LEN_RPASS=$(echo ${#_ESC_RPASS} 2>&1)
     fi
-    if [ -z "${_ESC_RPASS}" ] || [ "${_LEN_RPASS}" -lt "9" ]; then
-      _ESC_RPASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' | tr -d '\n')
-      _ESC_RPASS=$(_sanitize_string "${_ESC_RPASS}")
+    if [ -z "${_ESC_RPASS}" ] || [ "${_LEN_RPASS}" -lt 9 ]; then
+      _ESC_RPASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
+      _ESC_RPASS=$(echo -n "${_ESC_RPASS}" | tr -d "\n" 2>&1)
+      _ESC_RPASS=$(_sanitize_string "${_ESC_RPASS}" 2>&1)
     fi
   else
     _msg "INFO: Managing password for remote Redis server"
     if [ -e "/root/.redis.pass.txt" ] \
       && [ -e "${_pthLog}/remote-redis-passwd.log" ]; then
       _ESC_RPASS=$(cat /root/.redis.pass.txt 2>/dev/null | tr -d '\n')
-      _ESC_RPASS=$(_sanitize_string "${_ESC_RPASS}")
+      _ESC_RPASS=$(_sanitize_string "${_ESC_RPASS}" 2>&1)
     else
       _ESC_RPASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
       touch ${_pthLog}/remote-redis-passwd.log
@@ -204,7 +207,7 @@ _redis_password_update() {
     if [ -z "${_ESC_RPASS}" ]; then
       _RPASS=$(cat /root/.redis.pass.txt 2>/dev/null | tr -d '\n')
     else
-      _RPASS=${_ESC_RPASS}"
+      _RPASS="${_ESC_RPASS}"
     fi
     if [ -e "/data/conf/global/global-if-redis.inc" ]; then
       _REDIS_PWD_TEST=$(grep "'${_RPASS}'" /data/conf/global/global-if-redis.inc 2>&1)

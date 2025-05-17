@@ -59,13 +59,13 @@ _EASY_HOSTNAME="wildcard-enabled-hostname"
 ### and _PHP_CLI_VERSION.
 ###
 ### Available options:
-### 8.3, 8.2, 8.1, 8.0
+### 8.4, 8.3, 8.2, 8.1, 8.0
 ### 7.4, 7.3, 7.2, 7.1, 7.0
 ### 5.6
 ###
 ### NOTE: 8.3 is required
 ###
-### Example: _PHP_MULTI_INSTALL="7.4 8.1 8.2 8.3"
+### Example: _PHP_MULTI_INSTALL="7.4 8.2 8.3"
 ###
 ### Note that removing any version from this
 ### list once it is already installed, will
@@ -76,7 +76,7 @@ _EASY_HOSTNAME="wildcard-enabled-hostname"
 ### which are used to define version to be
 ### used by Master or Satellite Instance.
 ###
-_PHP_MULTI_INSTALL="7.4 8.1 8.2 8.3"
+_PHP_MULTI_INSTALL="7.4 8.1 8.2 8.3 8.4"
 
 
 ###----------------------------------------###
@@ -91,7 +91,7 @@ _PHP_MULTI_INSTALL="7.4 8.1 8.2 8.3"
 ### _PHP_MULTI_INSTALL
 ###
 ### Available options:
-### 8.3, 8.2, 8.1, 7.4
+### 8.4, 8.3, 8.2, 8.1, 7.4
 ###
 ### Example: _PHP_SINGLE_INSTALL=8.3
 ###
@@ -107,7 +107,7 @@ _PHP_SINGLE_INSTALL=
 ### install and upgrade.
 ###
 ### Available options (if installed):
-### 8.3, 8.2, 8.1, 8.0
+### 8.4, 8.3, 8.2, 8.1, 8.0
 ### 7.4, 7.3, 7.2, 7.1, 7.0
 ### 5.6
 ###
@@ -127,7 +127,7 @@ _PHP_FPM_VERSION=8.3
 ### install and upgrade.
 ###
 ### Available options (if installed):
-### 8.3, 8.2, 8.1, 8.0
+### 8.4, 8.3, 8.2, 8.1, 8.0
 ### 7.4, 7.3, 7.2, 7.1, 7.0
 ### 5.6
 ###
@@ -161,7 +161,6 @@ _PHP_CLI_VERSION=8.3
 ### FTP --- Pure-FTPd server with forced FTPS (installed by default)
 ### GIT --- Latest Git from sources (installed by default)
 ### IMG --- Image Optimize binaries (installed by default)
-### SR7 --- Apache Solr 7
 ###
 ### Xtras which need to be listed explicitly:
 ###
@@ -174,14 +173,15 @@ _PHP_CLI_VERSION=8.3
 ### SR1 --- Apache Solr 1 with Jetty 7 (deprecated)
 ### SR3 --- Apache Solr 3 with Jetty 8 (deprecated)
 ### SR4 --- Apache Solr 4 with Jetty 9
+### SR7 --- Apache Solr 7
+### SR9 --- Apache Solr 9
 ### WMN --- Webmin Control Panel (deprecated)
 ###
 ### Examples:
 ###
 ### _XTRAS_LIST=""
 ### _XTRAS_LIST="ALL"
-### _XTRAS_LIST="ALL SR4"
-### _XTRAS_LIST="SR4 SR7"
+### _XTRAS_LIST="ALL SR9"
 ###
 ### Note that removing any item from this
 ### list once it is already installed, will
@@ -885,6 +885,11 @@ _STRICT_BIN_PERMISSIONS=YES
 ###
 ### Example for 256MB: _RESERVED_RAM=256
 ###
+### If not specified, BOA will auto-reserve
+### 1/4 of RAM to make sure that the system
+### doesn't experience frequent OOM incidents
+### when running heavy tasks like backups.
+###
 _RESERVED_RAM=0
 
 ###
@@ -1151,7 +1156,7 @@ _BOA_REPO_NAME="boa"
 _BOA_REPO_GIT_URL="${_gitHub}"
 
 export _tRee=dev
-export _xSrl=550devT01
+export _xSrl=560devT00
 
 
 ###
@@ -1216,7 +1221,7 @@ _find_fast_mirror_cnf() {
     && [ -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
     unbound-control reload &> /dev/null
   fi
-  _isNetc=$(which netcat)
+  _isNetc=$(which netcat 2>&1)
   if [ ! -x "${_isNetc}" ] || [ -z "${_isNetc}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
@@ -1227,9 +1232,9 @@ _find_fast_mirror_cnf() {
     apt-get install netcat-traditional ${_aptYesUnth} 2> /dev/null
     wait
   fi
-  _ffMirr=$(which ffmirror)
+  _ffMirr=$(which ffmirror 2>&1)
   if [ -x "${_ffMirr}" ]; then
-    _ffList="/var/backups/boa-mirrors-2024-12.txt"
+    _ffList="/var/backups/boa-mirrors-2025-01.txt"
     mkdir -p /var/backups
     if [ ! -e "${_ffList}" ]; then
       echo "eu.files.aegir.cc"  > ${_ffList}
@@ -1237,9 +1242,9 @@ _find_fast_mirror_cnf() {
       echo "ao.files.aegir.cc" >> ${_ffList}
     fi
     if [ -e "${_ffList}" ]; then
-      _BROKEN_FFMIRR_TEST=$(grep "stuff" "${_ffMirr}")
+      _BROKEN_FFMIRR_TEST=$(grep "stuff" ${_ffMirr} 2>&1)
       if [[ "${_BROKEN_FFMIRR_TEST}" =~ "stuff" ]]; then
-        _CHECK_MIRROR=$(bash "${_ffMirr}" < "${_ffList}")
+        _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _USE_MIR="${_CHECK_MIRROR}"
         [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.aegir.cc"
       else
@@ -1266,11 +1271,11 @@ _verify_boa_keys() {
   if [ "${_tRee}" = "pro" ] || [ "${_tRee}" = "dev" ]; then
     _allw=NO
     _urlEnc="http://${_USE_MIR}/enc/2024"
-    _hName=$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)
+    _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
     _encName=$(echo ${_hName} \
       | openssl md5 \
       | awk '{ print $2}' \
-      | tr -d '\n')
+      | tr -d "\n" 2>&1)
     if [[ "${_hName}" =~ ".aegir.cc"($) ]] \
       || [[ "${_hName}" =~ ".o8.io"($) ]] \
       || [[ "${_hName}" =~ ".boa.io"($) ]]; then

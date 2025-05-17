@@ -7,7 +7,7 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 _pthOml="/var/xdrago/log/system.incident.log"
 
 _check_root() {
-  if [ $(whoami) = "root" ]; then
+  if [ "$(id -u)" -eq 0 ]; then
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
     chmod a+w /dev/null
   else
@@ -66,6 +66,7 @@ _oom_critical_restart() {
   echo "$(date) OOM solr/jetty killed" >> ${_pthOml}
   kill -9 $(ps aux | grep '[n]ewrelic-daemon' | awk '{print $2}') &> /dev/null
   echo "$(date) OOM newrelic-daemon killed" >> ${_pthOml}
+  rm -f /var/lib/redis/*
   kill -9 $(ps aux | grep '[r]edis-server' | awk '{print $2}') &> /dev/null
   echo "$(date) OOM redis-server killed" >> ${_pthOml}
   bash /var/xdrago/move_sql.sh
@@ -91,23 +92,51 @@ _system_oom_detection() {
   echo _RAM_TOTAL is ${_RAM_TOTAL}
   echo _RAM_PCT_FREE is ${_RAM_PCT_FREE}
   if [ ! -z "${_RAM_PCT_FREE}" ]; then
-    if [ "${_RAM_PCT_FREE}" -le "10" ]; then
+    if [ "${_RAM_PCT_FREE}" -le 5 ]; then
       _oom_critical_restart "RAM ${_RAM_PCT_FREE}/${_RAM_TOTAL}"
-    elif [ "${_RAM_PCT_FREE}" -le "20" ]; then
-      if [ `ps aux | grep -v "grep" | grep --count "wkhtmltopdf"` -gt "2" ]; then
+    elif [ "${_RAM_PCT_FREE}" -le 10 ]; then
+      if [ `ps aux | grep -v "grep" | grep --count "wkhtmltopdf"` -gt 2 ]; then
         _wkhtmltopdf_php_cli_oom_kill "RAM ${_RAM_PCT_FREE}/${_RAM_TOTAL}"
       fi
     fi
   fi
 }
 
+# Function to calculate RAM usage percentage as an integer
+_calculate_ram_usage_percent() {
+  _total_ram_kb=$1
+  _available_ram_kb=$2
+  used_ram_kb=$((_total_ram_kb - _available_ram_kb))
+
+  # Using integer division to get a whole number percentage
+  echo $(( (used_ram_kb * 100) / _total_ram_kb ))
+}
+
+# Function to check and display system info
+_check_system_ram() {
+  # Get the total and available RAM in KB
+  _total_ram_kb=$(grep MemTotal /proc/meminfo | awk '{print $2}')
+  _available_ram_kb=$(grep MemAvailable /proc/meminfo | awk '{print $2}')
+
+  # Calculate RAM usage percentage
+  _ram_usage_percent=$(_calculate_ram_usage_percent ${_total_ram_kb} ${_available_ram_kb})
+}
+
+# Function to check and optimize RAM and disk caches
+_optimize_ram() {
+  _check_system_ram
+  if [ "${_ram_usage_percent}" -gt 90 ]; then
+    sync && echo 3 | sudo tee /proc/sys/vm/drop_caches
+  fi
+}
+
 _if_fix_locked_sshd() {
   _SSH_LOG="/var/log/auth.log"
-  if [ `tail --lines=100 ${_SSH_LOG} \
-    | grep --count "error: Bind to port 22"` -gt "0" ]; then
+  if [ `tail --lines=10 ${_SSH_LOG} \
+    | grep --count "error: Bind to port 22"` -gt 0 ]; then
+    kill -9 sshd &> /dev/null
     kill -9 $(ps aux | grep '[s]tartups' | awk '{print $2}') &> /dev/null
-    nice -n -9 service ssh start
-    wait
+    service ssh start
     _thisErrLog="$(date) SSHD BIND error detected, service restarted"
     echo ${_thisErrLog} >> ${_pthOml}
     _incident_email_report "SSHD BIND error detected, service restarted"
@@ -162,7 +191,7 @@ _if_fix_dhcp() {
 }
 
 _cron_duplicate_instances_detection() {
-  if [ `ps aux | grep -v "grep" | grep --count "/usr/sbin/cron"` -gt "1" ]; then
+  if [ `ps aux | grep -v "grep" | grep --count "/usr/sbin/cron"` -gt 1 ]; then
     _thisErrLog="$(date) Too many Cron instances running killed"
     echo ${_thisErrLog} >> /var/xdrago/log/cron-count.kill.log
     killall -9 cron &> /dev/null
@@ -176,7 +205,7 @@ _cron_duplicate_instances_detection() {
 
 _syslog_giant_log_detection() {
   if [ -e "/etc/cron.daily/logrotate" ]; then
-    _SYSLOG_SIZE_TEST=$(du -s -h /var/log/syslog)
+    _SYSLOG_SIZE_TEST=$(du -s -h /var/log/syslog 2>/dev/null)
     if [[ "${_SYSLOG_SIZE_TEST}" =~ "G" ]]; then
       echo ${_SYSLOG_SIZE_TEST} too big
       bash /etc/cron.daily/logrotate &> /dev/null
@@ -190,7 +219,7 @@ _syslog_giant_log_detection() {
 }
 
 _gpg_too_many_instances_detection() {
-  if [ `ps aux | grep -v "grep" | grep --count "gpg-agent"` -gt "5" ]; then
+  if [ `ps aux | grep -v "grep" | grep --count "gpg-agent"` -gt 5 ]; then
     _thisErrLog="$(date) Too many gpg-agent processes killed"
     echo ${_thisErrLog} >> /var/xdrago/log/gpg-agent-count.kill.log
     kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
@@ -202,7 +231,7 @@ _gpg_too_many_instances_detection() {
 }
 
 _dirmngr_too_many_instances_detection() {
-  if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt "5" ]; then
+  if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt 5 ]; then
     _thisErrLog="$(date) Too many dirmngr processes killed"
     echo ${_thisErrLog} >> /var/xdrago/log/dirmngr-count.kill.log
     kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
@@ -228,10 +257,11 @@ _if_fix_dhcp
 _cron_duplicate_instances_detection
 _syslog_giant_log_detection
 
+[ "${_ALLOW_CTRL}" = "YES" ] && _optimize_ram
 [ "${_ALLOW_CTRL}" = "YES" ] && _system_oom_detection
 [ "${_ALLOW_CTRL}" = "YES" ] && _gpg_too_many_instances_detection
 [ "${_ALLOW_CTRL}" = "YES" ] && _dirmngr_too_many_instances_detection
 
 echo DONE!
 exit 0
-###EOF2024###
+

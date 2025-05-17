@@ -4,10 +4,10 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 export _tRee=dev
-export _xSrl=550devT01
+export _xSrl=560devT00
 
 _check_root() {
-  if [ $(whoami) = "root" ]; then
+  if [ "$(id -u)" -eq 0 ]; then
     ionice -c2 -n7 -p $$
     renice 19 -p $$
     chmod a+w /dev/null
@@ -20,12 +20,12 @@ _check_root() {
     | sed 's/\%//g' \
     | awk '{print $6}' 2> /dev/null)
   _DF_TEST=${_DF_TEST//[^0-9]/}
-  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt "90" ]; then
+  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt 90 ]; then
     echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
     echo "ERROR: We can not proceed until it is below 90/100"
     exit 1
   fi
-  _hName=$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)
+  _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
 }
 _check_root
 
@@ -38,26 +38,6 @@ if [ -e "/root/.pause_heavy_tasks_maint.cnf" ]; then
 fi
 
 _WEBG=www-data
-_OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
-
-if [ -e "/root/.install.modern.openssl.cnf" ] \
-  && [ -x "/usr/local/ssl3/bin/openssl" ]; then
-  _SSL_BINARY=/usr/local/ssl3/bin/openssl
-else
-  _SSL_BINARY=/usr/local/ssl/bin/openssl
-fi
-_SSL_ITD=$(${_SSL_BINARY} version 2>&1 \
-  | tr -d "\n" \
-  | cut -d" " -f2 \
-  | awk '{ print $1}')
-if [[ "${_SSL_ITD}" =~ "3.3." ]] \
-  || [[ "${_SSL_ITD}" =~ "3.2." ]] \
-  || [[ "${_SSL_ITD}" =~ "3.1." ]] \
-  || [[ "${_SSL_ITD}" =~ "3.0." ]] \
-  || [[ "${_SSL_ITD}" =~ "1.1." ]] \
-  || [[ "${_SSL_ITD}" =~ "1.0." ]]; then
-  _NEW_SSL=YES
-fi
 _crlGet="-L --max-redirs 3 -k -s --retry 9 --retry-delay 9 -A iCab"
 _wgetGet="--max-redirect=3 --no-check-certificate -q --tries=9 --wait=9 --user-agent='iCab'"
 _aptAllow="--allow-unauthenticated"
@@ -75,7 +55,7 @@ _sanitize_number() {
 
 _os_detection_minimal() {
   _APT_UPDATE="apt-get update"
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
   for e in ${_OS_LIST}; do
     if [ "${e}" = "${_OS_CODE}" ]; then
@@ -101,7 +81,7 @@ _if_hosted_sys() {
 }
 
 _find_fast_mirror_early() {
-  _isNetc=$(which netcat)
+  _isNetc=$(which netcat 2>&1)
   if [ ! -x "${_isNetc}" ] || [ -z "${_isNetc}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
@@ -112,9 +92,9 @@ _find_fast_mirror_early() {
     apt-get install netcat-traditional ${_aptYesUnth} 2> /dev/null
     wait
   fi
-  _ffMirr=$(which ffmirror)
+  _ffMirr=$(which ffmirror 2>&1)
   if [ -x "${_ffMirr}" ]; then
-    _ffList="/var/backups/boa-mirrors-2024-12.txt"
+    _ffList="/var/backups/boa-mirrors-2025-01.txt"
     mkdir -p /var/backups
     if [ ! -e "${_ffList}" ]; then
       echo "eu.files.aegir.cc"  > ${_ffList}
@@ -122,9 +102,9 @@ _find_fast_mirror_early() {
       echo "ao.files.aegir.cc" >> ${_ffList}
     fi
     if [ -e "${_ffList}" ]; then
-      _BROKEN_FFMIRR_TEST=$(grep "stuff" "${_ffMirr}")
+      _BROKEN_FFMIRR_TEST=$(grep "stuff" ${_ffMirr} 2>&1)
       if [[ "${_BROKEN_FFMIRR_TEST}" =~ "stuff" ]]; then
-        _CHECK_MIRROR=$(bash "${_ffMirr}" < "${_ffList}")
+        _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _USE_MIR="${_CHECK_MIRROR}"
         [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.aegir.cc"
       else
@@ -198,7 +178,7 @@ _disable_chattr() {
 
 _run_drush8_cmd() {
   if [ -e "/root/.debug_daily.info" ]; then
-    _nOw=$(date +%y%m%d-%H%M%S)
+    _nOw=$(date +%y%m%d-%H%M%S 2>&1)
     echo "${_nOw} ${_HM_U} running drush8 @${_Dom} $1"
   fi
   if [ -x "/opt/php74/bin/php" ]; then
@@ -211,7 +191,7 @@ _run_drush8_cmd() {
 
 _run_drush8_hmr_cmd() {
   if [ -e "/root/.debug_daily.info" ]; then
-    _nOw=$(date +%y%m%d-%H%M%S)
+    _nOw=$(date +%y%m%d-%H%M%S 2>&1)
     echo "${_nOw} ${_HM_U} running drush8 @hostmaster $1"
   fi
   su -s /bin/bash - ${_HM_U} -c "drush8 @hostmaster $1" &> /dev/null
@@ -220,7 +200,7 @@ _run_drush8_hmr_cmd() {
 
 _run_drush8_hmr_master_cmd() {
   if [ -e "/root/.debug_daily.info" ]; then
-    _nOw=$(date +%y%m%d-%H%M%S)
+    _nOw=$(date +%y%m%d-%H%M%S 2>&1)
     echo "${_nOw} aegir running drush8 @hostmaster $1"
   fi
   su -s /bin/bash - aegir -c "drush8 @hostmaster $1" &> /dev/null
@@ -229,7 +209,7 @@ _run_drush8_hmr_master_cmd() {
 
 _run_drush8_nosilent_cmd() {
   if [ -e "/root/.debug_daily.info" ]; then
-    _nOw=$(date +%y%m%d-%H%M%S)
+    _nOw=$(date +%y%m%d-%H%M%S 2>&1)
     echo "${_nOw} ${_HM_U} running drush8 @${_Dom} $1"
   fi
   if [ -x "/opt/php74/bin/php" ]; then
@@ -290,7 +270,7 @@ _check_if_required_with_drush8() {
       | cut -d: -f2 \
       | awk '{ print $1}' \
       | sed "s/['\"]//g" \
-      | tr -d '\n')
+      | tr -d "\n" 2>&1)
     _Profile=${_Profile//[^a-z_]/}
     echo "_Profile is == ${_Profile} =="
     if [ ! -z "${_Profile}" ]; then
@@ -475,7 +455,7 @@ _fix_user_register_protection_with_vSet() {
       | cut -d: -f2 \
       | awk '{ print $1}' \
       | sed "s/['\"]//g" \
-      | tr -d '\n')
+      | tr -d "\n" 2>&1)
     _Prm=${_Prm//[^0-2]/}
     echo "_Prm user_register for ${_Dom} is ${_Prm}"
     if [ "${_ENABLE_STRICT_USER_REGISTER_PROTECTION}" = "YES" ]; then
@@ -562,6 +542,7 @@ _fix_o_contrib_symlink() {
       fi
     elif [ -e "${_Plr}/core/themes/olivero" ] \
       && [ -e "${_Plr}/core/themes/classy" ] \
+      && [ ! -e "${_Plr}/core/modules/workspaces_ui" ] \
       && [ -e "${_O_CONTRIB_NINE}" ]; then
       if [ -e "${_Plr}/modules/o_contrib_eight" ] \
         || [ -e "${_Plr}/modules/.o_contrib_eight_dont_use" ]; then
@@ -578,6 +559,7 @@ _fix_o_contrib_symlink() {
       fi
     elif [ -e "${_Plr}/core/themes/olivero" ] \
       && [ ! -e "${_Plr}/core/themes/classy" ] \
+      && [ ! -e "${_Plr}/core/modules/workspaces_ui" ] \
       && [ -e "${_O_CONTRIB_TEN}" ]; then
       if [ -e "${_Plr}/modules/o_contrib_eight" ] \
         || [ -e "${_Plr}/modules/.o_contrib_eight_dont_use" ]; then
@@ -591,6 +573,28 @@ _fix_o_contrib_symlink() {
       fi
       if [ ! -e "${_Plr}/modules/o_contrib_ten" ]; then
         ln -sfn ${_O_CONTRIB_TEN} ${_Plr}/modules/o_contrib_ten &> /dev/null
+      fi
+    elif [ -e "${_Plr}/core/themes/olivero" ] \
+      && [ ! -e "${_Plr}/core/themes/classy" ] \
+      && [ -e "${_Plr}/core/modules/workspaces_ui" ] \
+      && [ -e "${_O_CONTRIB_ELEVEN}" ]; then
+      if [ -e "${_Plr}/modules/o_contrib_eight" ] \
+        || [ -e "${_Plr}/modules/.o_contrib_eight_dont_use" ]; then
+        rm -f ${_Plr}/modules/o_contrib_eight
+        rm -f ${_Plr}/modules/.o_contrib_eight_dont_use
+      fi
+      if [ -e "${_Plr}/modules/o_contrib_nine" ] \
+        || [ -e "${_Plr}/modules/.o_contrib_nine_dont_use" ]; then
+        rm -f ${_Plr}/modules/o_contrib_nine
+        rm -f ${_Plr}/modules/.o_contrib_nine_dont_use
+      fi
+      if [ -e "${_Plr}/modules/o_contrib_ten" ] \
+        || [ -e "${_Plr}/modules/.o_contrib_ten_dont_use" ]; then
+        rm -f ${_Plr}/modules/o_contrib_ten
+        rm -f ${_Plr}/modules/.o_contrib_ten_dont_use
+      fi
+      if [ ! -e "${_Plr}/modules/o_contrib_eleven" ]; then
+        ln -sfn ${_O_CONTRIB_ELEVEN} ${_Plr}/modules/o_contrib_eleven &> /dev/null
       fi
     else
       if [ -e "${_Plr}/modules/watchdog" ]; then
@@ -724,7 +728,7 @@ not secure codebase, even if it was not affected by Drupageddon bug
 directly.
 
 Please be a good web citizen and upgrade to latest Drupal core provided
-by BOA-5.5.0-dev. As a bonus, you will be able to speed up your sites
+by BOA-5.6.0-dev. As a bonus, you will be able to speed up your sites
 considerably by switching PHP-FPM to 8.3
 
 We recommend to follow this upgrade how-to:
@@ -808,7 +812,7 @@ not secure codebase, even if it was not affected by Drupageddon bug
 directly.
 
 Please be a good web citizen and upgrade to latest Drupal core provided
-by BOA-5.5.0-dev. As a bonus, you will be able to speed up your sites
+by BOA-5.6.0-dev. As a bonus, you will be able to speed up your sites
 considerably by switching PHP-FPM to 8.3
 
 We recommend to follow this upgrade how-to:
@@ -1015,7 +1019,7 @@ _fix_modules() {
         | cut -d: -f2 \
         | awk '{ print $1}' \
         | sed "s/['\"]//g" \
-        | tr -d '\n')
+        | tr -d "\n" 2>&1)
       _Pri=${_Pri//[^a-z]/}
       if [ "${_Pri}" = "private" ] || [ "${_Pri}" = "public" ]; then
         echo _Pri file_default_scheme for ${_Dom} is ${_Pri}
@@ -1515,11 +1519,11 @@ _if_site_db_conversion() {
     fi
     if [ "${_SQL_CONVERT}" = "myisam" ] \
       || [ "${_SQL_CONVERT}" = "innodb" ]; then
-      _TIMP=$(date +%y%m%d-%H%M%S)
+      _TIMP=$(date +%y%m%d-%H%M%S 2>&1)
       echo "${_TIMP} sql conversion to-${_SQL_CONVERT} \
         for ${_Dom} started"
       _sql_convert
-      _TIMP=$(date +%y%m%d-%H%M%S)
+      _TIMP=$(date +%y%m%d-%H%M%S 2>&1)
       echo "${_TIMP} sql conversion to-${_SQL_CONVERT} \
         for ${_Dom} completed"
     fi
@@ -1658,7 +1662,7 @@ _fix_permissions() {
     && [ -e "${_Dir}/files" ] \
     && [ -e "${_Dir}/private" ]; then
     ### Cleanup
-    rm ${_Dir}/*.{hm-fix-*,ctm-lock-*,lock-*,perm-fix-*}.info &> /dev/null
+    rm ${_Dir}/*.{codebasecheck*,hm-fix-*,ctm-lock-*,lock-*,perm-fix-*}.info &> /dev/null
     ### directory and settings files - site level
     if [ ! -e "${_Dir}/modules" ]; then
       mkdir ${_Dir}/modules
@@ -1919,12 +1923,22 @@ _cleanup_ghost_vhosts() {
     fi
     if [ -e "${_usEr}/config/server_master/nginx/vhost.d/${_Dom}" ]; then
       local _thisVhost="${_usEr}/config/server_master/nginx/vhost.d/${_Dom}"
-      if grep -q -e "ssl http2" -e "ssl_stapling" "${_thisVhost}"; then
+      local _fixHttpReqired=NO
+      if grep -q -e "ssl http2" "${_thisVhost}"; then
+        local _fixHttpReqired=YES
+      elif ! grep -q -E '^\s*http2\s+on;$' "${_thisVhost}"; then
+        local _fixHttpReqired=YES
+      elif grep -q -E '^\s+listen.*443\s+quic;$' "${_thisVhost}"; then
+        local _fixHttpReqired=YES
+      fi
+      if [ "${_fixHttpReqired}" = "YES" ]; then
         echo "FIXING vhost for ${_Dom}"
         # Remove 'http2' from 'listen' directives with varying spaces
         sed -i -E 's/(listen\s+[^;]*\s+ssl)\s+http2;$/\1;/' "${_thisVhost}"
         # Remove existing 'http2 on;' lines with varying spaces
         sed -i -E '/^\s*http2\s+on;/d' "${_thisVhost}"
+        # Remove existing 'quic' lines with varying spaces
+        sed -i -E '/^\s+listen.*443\s+quic;/d' "${_thisVhost}"
         # Remove unwanted directives with varying spaces
         sed -i -E \
           -e '/^\s*ssl_stapling\b/d' \
@@ -1934,9 +1948,18 @@ _cleanup_ghost_vhosts() {
           "${_thisVhost}"
         # Update 'ssl_prefer_server_ciphers' directive, handling spaces
         sed -i -E 's/^\s*ssl_prefer_server_ciphers\s+.*$/ssl_prefer_server_ciphers on;/' "${_thisVhost}"
-        # Add 'http2 on;' after 'ssl_prefer_server_ciphers on;', only if not already present
-        if ! grep -q -E '^\s*http2\s+on;$' "${_thisVhost}"; then
-          sed -i '/ssl_prefer_server_ciphers on;/ a\  http2 on;' "${_thisVhost}"
+        # Update 'http3_hq' directive, handling spaces
+        sed -i -E 's/http3_hq\s+on;$/http3_hq on;/' "${_thisVhost}"
+        if grep -q 'ssl_prefer_server_ciphers' "${_thisVhost}"; then
+          # Add 'http2 on;' after 'ssl_prefer_server_ciphers on;', only if not already present
+          if ! grep -q -E '^\s*http2\s+on;$' "${_thisVhost}"; then
+            sed -i '/ssl_prefer_server_ciphers on;/ a\  http2 on;' "${_thisVhost}"
+          fi
+        elif grep -q -E '^\s*#http3_hq\s+on;$' "${_thisVhost}"; then
+          # Add 'http2 on;' after 'http3_hq on;', only if not already present
+          if ! grep -q -E '^\s*http2\s+on;$' "${_thisVhost}"; then
+            sed -i '/http3_hq on;/ a\  http2 on;' "${_thisVhost}"
+          fi
         fi
       fi
       _Plx=$(cat ${_usEr}/config/server_master/nginx/vhost.d/${_Dom} \
@@ -2042,7 +2065,7 @@ _if_le_hm_ssl_old() {
 
   # Check if the path is a symlink
   if [ -L "${_filePath}" ]; then
-    _target_file=$(readlink -f "${_filePath}")
+    _target_file="$(readlink -f "${_filePath}")"
     # Get the file's modification time in seconds since epoch
     _file_mod_time=$(stat -c %Y "${_target_file}")
   else
@@ -2085,7 +2108,7 @@ _if_le_hm_ssl_crt_key_copy() {
   fi
   if [ -e "${_crtPath}" ]; then
     if [ -L "${_crtPath}" ]; then
-      _crtPathR=$(readlink -n "${_crtPath}")
+      _crtPathR="$(readlink -n "${_crtPath}")"
       if [ -f "${_leCrtPath}/${_crtPathR}" ]; then
         rm -f /etc/ssl/private/${_hmFront}.crt
         cp -a ${_leCrtPath}/${_crtPathR} /etc/ssl/private/${_hmFront}.crt
@@ -2098,7 +2121,7 @@ _if_le_hm_ssl_crt_key_copy() {
   _keyPath="${_leCrtPath}/privkey.pem"
   if [ -e "${_keyPath}" ]; then
     if [ -L "${_keyPath}" ]; then
-      _keyPathR=$(readlink -n "${_keyPath}")
+      _keyPathR="$(readlink -n "${_keyPath}")"
       if [ -f "${_leCrtPath}/${_keyPathR}" ]; then
         rm -f /etc/ssl/private/${_hmFront}.key
         cp -a ${_leCrtPath}/${_keyPathR} /etc/ssl/private/${_hmFront}.key
@@ -2114,10 +2137,12 @@ _le_hm_ssl_check_update() {
   _leCrtPath=
   _exeLe="${_usEr}/tools/le/dehydrated"
   if [ -e "${_usEr}/log/domain.txt" ]; then
-    _hmFront=$(cat ${_usEr}/log/domain.txt 2>/dev/null | tr -d '\n')
+    _hmFront=$(cat ${_usEr}/log/domain.txt 2>&1)
+    _hmFront=$(echo -n ${_hmFront} | tr -d "\n" 2>&1)
   fi
   if [ -e "${_usEr}/log/extra_domain.txt" ]; then
-    _hmFrontExtra=$(cat ${_usEr}/log/extra_domain.txt 2>/dev/null | tr -d '\n')
+    _hmFrontExtra=$(cat ${_usEr}/log/extra_domain.txt 2>&1)
+    _hmFrontExtra=$(echo -n ${_hmFrontExtra} | tr -d "\n" 2>&1)
   fi
   if [ -z "${_hmFront}" ]; then
     if [ -e "${_usEr}/.drush/hostmaster.alias.drushrc.php" ]; then
@@ -2134,7 +2159,7 @@ _le_hm_ssl_check_update() {
   if [ -x "${_exeLe}" ] \
     && [ ! -z "${_hmFront}" ] \
     && [ -e "${_leCrtPath}/fullchain.pem" ]; then
-    _DOM=$(date +%e)
+    _DOM=$(date +%e 2>&1)
     _DOM=${_DOM//[^0-9]/}
     _RDM=$((RANDOM%25+6))
     if [ "${_DOM}" = "${_RDM}" ] || [ -e "${_usEr}/static/control/force-ssl-certs-rebuild.info" ]; then
@@ -2216,7 +2241,7 @@ _le_ssl_check_update() {
             fi
           fi
         done
-		_DOM=$(date +%e)
+		_DOM=$(date +%e 2>&1)
 		_DOM=${_DOM//[^0-9]/}
 		_RDM=$((RANDOM%25+6))
 		if [ "${_DOM}" = "${_RDM}" ] || [ -e "${_usEr}/static/control/force-ssl-certs-rebuild.info" ]; then
@@ -2234,17 +2259,42 @@ _le_ssl_check_update() {
         if [ -e "${_usEr}/static/control/wildcard-enable-${_Dom}.info" ]; then
           _Dom=$(echo ${_Dom} | sed 's/^www.//g' 2>&1)
           echo "--domain *.${_Dom}"
-          if [ ! -e "${_usEr}/tools/le/hooks/cloudflare/hook.py" ]; then
-            mkdir -p ${_usEr}/tools/le/hooks
-            cd ${_usEr}/tools/le
-            git clone https://github.com/kappataumu/letsencrypt-cloudflare-hook hooks/cloudflare
-            pip install -r hooks/cloudflare/requirements.txt
-          fi
-          if [ -e "${_usEr}/tools/le/hooks/cloudflare/hook.py" ]; then
-            if [ -e "${_usEr}/tools/le/config" ]; then
-              _dhArgs="--alias ${_Dom} --domain *.${_Dom} --domain ${_Dom} ${_usEaliases}"
-              _dhArgs=" ${_dhArgs} --challenge dns-01 --hook '${_usEr}/tools/le/hooks/cloudflare/hook.py'"
+          if [ -e "${_usEr}/static/control/cloudflare-dns-ssl-py.info" ] \
+            || [ -e "${_usEr}/static/control/cloudflare-dns-ssl-sh.info" ]; then
+            [ -e "${_usEr}/static/control/cloudflare-dns-ssl-py.info" ] && chattr +i ${_usEr}/static/control/cloudflare-dns-ssl-py.info
+            [ -e "${_usEr}/static/control/cloudflare-dns-ssl-sh.info" ] && chattr +i ${_usEr}/static/control/cloudflare-dns-ssl-sh.info
+            export CF_DNS_SERVERS='8.8.8.8 8.8.4.4'
+            export CF_SETTLE_TIME='30'
+            export CF_DEBUG='true'
+            if [ ! -e "${_usEr}/tools/le/hooks/cloudflare-sh/cf-hook.sh" ]; then
+              _apt_clean_update
+              apt-get install gawk jq publicsuffix ldnsutils ${_aptYesUnth} 2> /dev/null
+              mkdir -p ${_usEr}/tools/le/hooks
+              cd ${_usEr}/tools/le
+              git clone https://github.com/omega8cc/dehydrated-hook-cloudflare hooks/cloudflare-sh 2> /dev/null
+              chmod 755 ${_usEr}/tools/le/hooks/cloudflare-sh/cf-hook.sh
             fi
+            if [ ! -e "${_usEr}/tools/le/hooks/cloudflare-py/hook.py" ]; then
+              _apt_clean_update
+              apt-get install python3-pip python-is-python3 ${_aptYesUnth} 2> /dev/null
+              mkdir -p ${_usEr}/tools/le/hooks
+              cd ${_usEr}/tools/le
+              git clone https://github.com/omega8cc/letsencrypt-cloudflare-hook hooks/cloudflare-py 2> /dev/null
+              chmod 755 ${_usEr}/tools/le/hooks/cloudflare-py/hook.py
+              pip3 install -r hooks/cloudflare-py/requirements.txt 2> /dev/null
+            fi
+            if [ -e "${_usEr}/static/control/cloudflare-dns-ssl-py.info" ]; then
+              _thisHook="${_usEr}/tools/le/hooks/cloudflare-py/hook.py"
+            elif [ -e "${_usEr}/static/control/cloudflare-dns-ssl-sh.info" ]; then
+              _thisHook="${_usEr}/tools/le/hooks/cloudflare-sh/cf-hook.sh"
+            fi
+            if [ -e "${_thisHook}" ] && [ -e "${_usEr}/tools/le/config" ]; then
+              chattr +i ${_usEr}/tools/le/config
+              _dhArgs="--alias ${_Dom} --domain *.${_Dom} --domain ${_Dom} ${_usEaliases}"
+              _dhArgs=" ${_dhArgs} --challenge dns-01 --hook '${_thisHook}'"
+            fi
+          else
+            _dhArgs="--alias ${_Dom} --domain *.${_Dom} --domain ${_Dom} ${_usEaliases}"
           fi
         fi
         echo "_leParams is ${_leParams}"
@@ -2289,10 +2339,16 @@ _daily_process() {
   _cleanup_ghost_drushrc
   for _Site in `find ${_usEr}/config/server_master/nginx/vhost.d \
     -maxdepth 1 -mindepth 1 -type f | sort`; do
-    _MOMENT=$(date +%y%m%d-%H%M%S)
+    _MOMENT=$(date +%y%m%d-%H%M%S 2>&1)
     echo ${_MOMENT} Start Counting Site ${_Site}
     _Dom=$(echo ${_Site} | cut -d'/' -f9 | awk '{ print $1}' 2>&1)
     _Dan=
+    _Plx=
+    _Plr=
+    _Dir=
+    _codeBaseCheckDir=
+    _codeBaseCheckFile=
+    _codeBaseCheckCtrl=
     if [ -e "${_usEr}/config/server_master/nginx/vhost.d/${_Dom}" ]; then
       _Plx=$(cat ${_usEr}/config/server_master/nginx/vhost.d/${_Dom} \
         | grep "root " \
@@ -2328,21 +2384,20 @@ _daily_process() {
         | sed "s/[\,']//g" 2>&1)
       _PLR_CTRL_F="${_Plr}/sites/all/modules/boa_platform_control.ini"
       if [ -e "${_Plr}" ]; then
-        if [ "${_NEW_SSL}" = "YES" ]; then
-          _PlrID=$(echo ${_Plr} \
-            | openssl md5 \
-            | awk '{ print $2}' \
-            | tr -d '\n')
-        else
-          _PlrID=$(echo ${_Plr} \
-            | openssl md5 \
-            | tr -d '\n')
-        fi
-        _codeBaseCheckInfo="${_usEr}/log/ctrl/plr.${_PlrID}.codebasecheck-${_NOW}.info"
-        if [ -x "/opt/local/bin/codebasecheck" ] && [ ! -f "${_codeBaseCheckInfo}" ]; then
-          codebasecheck ${_Plr}
+        _PlrID=$(echo ${_Plr} \
+          | openssl md5 \
+          | awk '{ print $2}' \
+          | tr -d "\n" 2>&1)
+        _codeBaseCheckDir="${_usEr}/log/ctrl"
+        _codeBaseCheckFile="plr.${_PlrID}.codebasecheck-${_NOW}.info"
+        _codeBaseCheckCtrl="${_codeBaseCheckDir}/${_codeBaseCheckFile}"
+        [ ! -e "${_codeBaseCheckDir}" ] && mkdir "${_codeBaseCheckDir}"
+        if [ -x "/opt/local/bin/codebasecheck" ] \
+          && [ -e "${_codeBaseCheckDir}" ] \
+          && [ ! -e "${_codeBaseCheckCtrl}" ]; then
+          codebasecheck "${_Plr}"
           wait
-          touch ${_codeBaseCheckInfo}
+          touch "${_codeBaseCheckCtrl}"
         fi
         _fix_platform_control_files
         _fix_o_contrib_symlink
@@ -2449,7 +2504,7 @@ _daily_process() {
           _fix_permissions
         fi
       fi
-      _MOMENT=$(date +%y%m%d-%H%M%S)
+      _MOMENT=$(date +%y%m%d-%H%M%S 2>&1)
       echo ${_MOMENT} End Counting Site ${_Site}
     fi
   done
@@ -2461,7 +2516,7 @@ _delete_this_empty_hostmaster_platform() {
 }
 
 _check_old_empty_hostmaster_platforms() {
-  if [ "${_DEL_OLD_EMPTY_PLATFORMS}" -gt "0" ] \
+  if [ "${_DEL_OLD_EMPTY_PLATFORMS}" -gt 0 ] \
 	&& [ ! -z "${_DEL_OLD_EMPTY_PLATFORMS}" ]; then
 	_DO_NOTHING=YES
   else
@@ -2473,7 +2528,7 @@ _check_old_empty_hostmaster_platforms() {
 	fi
   fi
   if [ ! -z "${_DEL_OLD_EMPTY_PLATFORMS}" ]; then
-    if [ "${_DEL_OLD_EMPTY_PLATFORMS}" -gt "0" ]; then
+    if [ "${_DEL_OLD_EMPTY_PLATFORMS}" -gt 0 ]; then
       echo "_DEL_OLD_EMPTY_PLATFORMS is set to \
         ${_DEL_OLD_EMPTY_PLATFORMS} days on /var/aegir instance"
       for _Platform in `find /var/aegir/.drush/platform_* -maxdepth 1 -mtime \
@@ -2519,7 +2574,7 @@ _check_old_empty_platforms() {
       || [ -e "${_usEr}/static/control/platforms.info" ]; then
       _DO_NOTHING=YES
     else
-      if [ "${_DEL_OLD_EMPTY_PLATFORMS}" -gt "0" ] \
+      if [ "${_DEL_OLD_EMPTY_PLATFORMS}" -gt 0 ] \
         && [ ! -z "${_DEL_OLD_EMPTY_PLATFORMS}" ]; then
         _DO_NOTHING=YES
       else
@@ -2528,7 +2583,7 @@ _check_old_empty_platforms() {
     fi
   fi
   if [ ! -z "${_DEL_OLD_EMPTY_PLATFORMS}" ]; then
-    if [ "${_DEL_OLD_EMPTY_PLATFORMS}" -gt "0" ]; then
+    if [ "${_DEL_OLD_EMPTY_PLATFORMS}" -gt 0 ]; then
       echo "_DEL_OLD_EMPTY_PLATFORMS is set to \
         ${_DEL_OLD_EMPTY_PLATFORMS} days on ${_HM_U} instance"
       for _Platform in `find ${_usEr}/.drush/platform_* -maxdepth 1 -mtime \
@@ -2566,13 +2621,13 @@ _check_old_empty_platforms() {
 
 _purge_cruft_machine() {
 
-  if [ ! -z "${_DEL_OLD_TMP}" ] && [ "${_DEL_OLD_TMP}" -gt "0" ]; then
+  if [ ! -z "${_DEL_OLD_TMP}" ] && [ "${_DEL_OLD_TMP}" -gt 0 ]; then
     _PURGE_TMP="${_DEL_OLD_TMP}"
   else
     _PURGE_TMP="0"
   fi
 
-  if [ ! -z "${_DEL_OLD_BACKUPS}" ] && [ "${_DEL_OLD_BACKUPS}" -gt "0" ]; then
+  if [ ! -z "${_DEL_OLD_BACKUPS}" ] && [ "${_DEL_OLD_BACKUPS}" -gt 0 ]; then
     _PURGE_BACKUPS="${_DEL_OLD_BACKUPS}"
   else
     _PURGE_BACKUPS="14"
@@ -2679,14 +2734,14 @@ _purge_cruft_machine() {
     if [ -e "${i}" ]; then
       _RevisionTest=$(ls ${i} \
         | wc -l \
-        | tr -d '\n')
+        | tr -d "\n" 2>&1)
       if [ "${_RevisionTest}" -lt "${_LOW_NR}" ] \
         && [ ! -z "${_RevisionTest}" ]; then
         if [ -d "/home/${_HM_U}.ftp/platforms" ]; then
           chattr -i /home/${_HM_U}.ftp/platforms
           chattr -i /home/${_HM_U}.ftp/platforms/* &> /dev/null
         fi
-        _NOW=$(date +%y%m%d-%H%M%S)
+        _NOW=$(date +%y%m%d-%H%M%S 2>&1)
         [ ! -e "/var/backups/ghost/${_HM_U}/${_NOW}" ] && mkdir -p /var/backups/ghost/${_HM_U}/${_NOW}
         echo "Moving ${i} to /var/backups/ghost/${_HM_U}/${_NOW}"
         mv -f ${i} /var/backups/ghost/${_HM_U}/${_NOW}/
@@ -2700,9 +2755,9 @@ _purge_cruft_machine() {
         mkdir -p ${i}/keys
       fi
       _RevisionTest=$(ls ${i} | wc -l 2>&1)
-      if [ "${_RevisionTest}" -lt "2" ] && [ ! -z "${_RevisionTest}" ]; then
+      if [ "${_RevisionTest}" -lt 2 ] && [ ! -z "${_RevisionTest}" ]; then
         echo "_RevisionTest is ${_RevisionTest}"
-        _NOW=$(date +%y%m%d-%H%M%S)
+        _NOW=$(date +%y%m%d-%H%M%S 2>&1)
         mkdir -p ${_usEr}/undo/dist/${_NOW}
         mv -f ${i} ${_usEr}/undo/dist/${_NOW}/ &> /dev/null
         echo "GHOST revision ${i} detected and moved to ${_usEr}/undo/dist/${_NOW}/"
@@ -2731,7 +2786,7 @@ _purge_cruft_machine() {
         ln -sfn ${i}/keys /home/${_HM_U}.ftp/platforms/${_distTrNr}/keys
       fi
       if [ -e "/home/${_HM_U}.ftp/platforms/data" ]; then
-        _NOW=$(date +%y%m%d-%H%M%S)
+        _NOW=$(date +%y%m%d-%H%M%S 2>&1)
         [ ! -e "/var/backups/ghost/${_HM_U}/${_NOW}" ] && mkdir -p /var/backups/ghost/${_HM_U}/${_NOW}
         mv -f /home/${_HM_U}.ftp/platforms/data /var/backups/ghost/${_HM_U}/${_NOW}/platforms_data
       fi
@@ -2763,10 +2818,10 @@ _count_cpu() {
   if [ ! -z "${_CPU_NR}" ] \
     && [ ! -z "${_CPU_INFO}" ] \
     && [ "${_CPU_NR}" -gt "${_CPU_INFO}" ] \
-    && [ "${_CPU_INFO}" -gt "0" ]; then
+    && [ "${_CPU_INFO}" -gt 0 ]; then
     _CPU_NR="${_CPU_INFO}"
   fi
-  if [ -z "${_CPU_NR}" ] || [ "${_CPU_NR}" -lt "1" ]; then
+  if [ -z "${_CPU_NR}" ] || [ "${_CPU_NR}" -lt 1 ]; then
     _CPU_NR=1
   fi
   echo ${_CPU_NR} > /data/all/cpuinfo
@@ -2782,7 +2837,7 @@ _load_control() {
   [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
   : "${_CPU_TASK_RATIO:=3.1}"
   [ -e "/root/.force.sites.verify.cnf" ] && _CPU_TASK_RATIO=3.9
-  _CPU_TASK_RATIO=$(_sanitize_number "${_CPU_TASK_RATIO}")
+  _CPU_TASK_RATIO="$(_sanitize_number "${_CPU_TASK_RATIO}")"
   _O_LOAD_MAX=$(echo "${_CPU_TASK_RATIO} * 100" | bc -l)
   _get_load
 }
@@ -2945,7 +3000,7 @@ _daily_action() {
           _MY_EMAIL=${_MY_EMAIL//\\\@/\@}
           if [ -e "${_usEr}/log/email.txt" ]; then
             _F_CLIENT_EMAIL=$(cat ${_usEr}/log/email.txt 2>&1)
-            _F_CLIENT_EMAIL=$(echo -n ${_F_CLIENT_EMAIL} | tr -d '\n')
+            _F_CLIENT_EMAIL=$(echo -n ${_F_CLIENT_EMAIL} | tr -d "\n" 2>&1)
             _F_CLIENT_EMAIL=${_F_CLIENT_EMAIL//\\\@/\@}
           fi
           if [ ! -z "${_F_CLIENT_EMAIL}" ]; then
@@ -3064,9 +3119,9 @@ while [ -e "/run/boa_wait.pid" ]; do
   sleep 5
 done
 #
-_NOW=$(date +%y%m%d-%H%M%S)
+_NOW=$(date +%y%m%d-%H%M%S 2>&1)
 _NOW=${_NOW//[^0-9-]/}
-_DOW=$(date +%u)
+_DOW=$(date +%u 2>&1)
 _DOW=${_DOW//[^1-7]/}
 #
 if [ -e "/root/.force.sites.verify.cnf" ]; then
@@ -3132,6 +3187,7 @@ if [ -e "/data/all" ]; then
   _O_CONTRIB_EIGHT="/data/all/${_LAST_ALL}/o_contrib_eight"
   _O_CONTRIB_NINE="/data/all/${_LAST_ALL}/o_contrib_nine"
   _O_CONTRIB_TEN="/data/all/${_LAST_ALL}/o_contrib_ten"
+  _O_CONTRIB_ELEVEN="/data/all/${_LAST_ALL}/o_contrib_eleven"
 elif [ -e "/data/disk/all" ]; then
   cd /data/disk/all
   _listl=([0-9]*)
@@ -3141,12 +3197,14 @@ elif [ -e "/data/disk/all" ]; then
   _O_CONTRIB_EIGHT="/data/disk/all/${_LAST_ALL}/o_contrib_eight"
   _O_CONTRIB_NINE="/data/disk/all/${_LAST_ALL}/o_contrib_nine"
   _O_CONTRIB_TEN="/data/disk/all/${_LAST_ALL}/o_contrib_ten"
+  _O_CONTRIB_ELEVEN="/data/disk/all/${_LAST_ALL}/o_contrib_eleven"
 else
   _O_CONTRIB=NO
   _O_CONTRIB_SEVEN=NO
   _O_CONTRIB_EIGHT=NO
   _O_CONTRIB_NINE=NO
   _O_CONTRIB_TEN=NO
+  _O_CONTRIB_ELEVEN=NO
 fi
 #
 mkdir -p /var/xdrago/log/daily
@@ -3171,7 +3229,7 @@ else
 fi
 if [ -e "/opt/tmp/barracuda-release.txt" ]; then
   _X_VERSION=$(cat /opt/tmp/barracuda-release.txt 2>&1)
-  _VERSIONS_TEST=$(cat /var/log/barracuda_log.txt)
+  _VERSIONS_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
   if [ ! -z "${_X_VERSION}" ]; then
     _MY_EMAIL=${_MY_EMAIL//\\\@/\@}
     if [[ "${_MY_EMAIL}" =~ "omega8.cc" ]]; then
@@ -3411,4 +3469,4 @@ find /run/*_backup.pid -mtime +1 -exec rm -rf {} \; &> /dev/null
 rm -f /run/daily-fix.pid
 echo "INFO: Daily maintenance complete"
 exit 0
-###EOF2024###
+

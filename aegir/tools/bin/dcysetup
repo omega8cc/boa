@@ -7,15 +7,18 @@ export _tRee=dev
 
 # Function to verify BOA keys
 _verify_boa_keys() {
+  if [ -e "/root/.dev.server.cnf" ]; then
+    echo "PROC: _verify_boa_keys in dcysetup"
+  fi
   if [ "${_tRee}" = "pro" ] || [ "${_tRee}" = "dev" ]; then
     _allw=NO
     _crlGet="-L --max-redirs 3 -k -s --retry 9 --retry-delay 9 -A iCab"
     _urlEnc="http://files.aegir.cc/enc/2024"
-    _hName=$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)
+    _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
     _encName=$(echo ${_hName} \
       | openssl md5 \
       | awk '{ print $2}' \
-      | tr -d '\n')
+      | tr -d "\n" 2>&1)
     if [[ "${_hName}" =~ ".aegir.cc"($) ]] \
       || [[ "${_hName}" =~ ".o8.io"($) ]] \
       || [[ "${_hName}" =~ ".boa.io"($) ]]; then
@@ -59,9 +62,9 @@ _verify_boa_keys() {
 
 # Function to verify root access
 _check_root() {
-  if [ $(whoami) = "root" ]; then
+  if [ "$(id -u)" -eq 0 ]; then
     ionice -c2 -n7 -p $$
-    renice 9 -p $$
+    renice 0 -p $$
     chmod a+w /dev/null
     [ -e "/root/.gnupg" ] && chmod 700 /root/.gnupg
   else
@@ -73,7 +76,7 @@ _check_root() {
     | sed 's/\%//g' \
     | awk '{print $6}' 2> /dev/null)
   _DF_TEST=${_DF_TEST//[^0-9]/}
-  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt "90" ]; then
+  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt 90 ]; then
     echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
     echo "ERROR: We can not proceed until it is below 90/100"
     exit 1
@@ -141,12 +144,14 @@ _check_scripts() {
 # Function to install dependencies
 _install_dependencies() {
   echo "Installing dependencies..."
+  service cron stop && ln -sfn /bin/dash /usr/bin/sh
   bash "${_INSTALL_DEPENDENCIES_SCRIPT}"
   if [ $? -ne 0 ]; then
     echo "Error: Failed to install dependencies."
     exit 1
   fi
   echo "Dependencies installed successfully."
+  service cron start
 }
 
 # Function to perform setup (initial configuration)

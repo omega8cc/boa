@@ -7,7 +7,7 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 _pthOml="/var/xdrago/log/mysql.incident.log"
 
 _check_root() {
-  if [ $(whoami) = "root" ]; then
+  if [ "$(id -u)" -eq 0 ]; then
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
     chmod a+w /dev/null
   else
@@ -22,7 +22,7 @@ _check_root
 
     # Validate and set default if necessary
     if ! [[ "$_B_NICE" =~ ^-?[0-9]+$ ]]; then
-      _B_NICE=-5
+      _B_NICE=0
     fi
 
     # Clamp the value within -20 to 19
@@ -42,6 +42,12 @@ export _SQL_LOW_MAX_TTL=${_SQL_LOW_MAX_TTL//[^0-9]/}
 
 export _INCIDENT_REPORT=${_INCIDENT_REPORT//[^A-Z]/}
 : "${_INCIDENT_REPORT:=YES}"
+
+export _LOAD_THRESHOLD=${_LOAD_THRESHOLD//[^0-9.]/}
+: "${_LOAD_THRESHOLD:=33.0}" # Example: 1-minute load above 33 indicates high load
+
+export _THREAD_THRESHOLD=${_THREAD_THRESHOLD//[^0-9]/}
+: "${_THREAD_THRESHOLD:=99}" # Example: More than 99 MySQL threads
 
 if (( $(pgrep -fc 'mysql.sh') > 2 )); then
   echo "Too many mysql.sh running $(date)" >> /var/xdrago/log/too.many.log
@@ -88,16 +94,19 @@ _sql_busy_detection() {
     _SQL_LOG="/var/log/syslog"
   fi
   if [ -e "${_SQL_LOG}" ]; then
-    if [ `tail --lines=1111 ${_SQL_LOG} \
-      | grep --count "Too many connections"` -gt "999" ]; then
-      _sql_restart "BUSY MySQL"
+    if [ `tail --lines=333 ${_SQL_LOG} \
+      | grep --count "Too many connections"` -gt 111 ]; then
+      _IS_PROVISION_RUNNING=$(ps aux | grep '[p]rovision' | awk '{print $2}' 2>&1)
+      if [ -z "${_IS_PROVISION_RUNNING}" ]; then
+        _sql_restart "BUSY MySQL"
+      fi
     fi
   fi
   if [ -e "/root/.instant.busy.mysql.action.cnf" ]; then
     _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
-    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}')
+    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
     if [ ! -z "${_IS_MYSQLD_RUNNING}" ] && [ ! -z "${_SQL_PSWD}" ]; then
-      _MYSQL_CONN_TEST=$(mysql -u root -e "status")
+      _MYSQL_CONN_TEST=$(mysql -u root -e "status" 2>&1)
       echo _MYSQL_CONN_TEST ${_MYSQL_CONN_TEST}
       if [[ "${_MYSQL_CONN_TEST}" =~ "Too many connections" ]]; then
         _sql_restart "BUSY MySQL"
@@ -166,6 +175,30 @@ _mysql_proc_control() {
   done
 }
 
+_mysql_high_load() {
+
+  # Get the current 1-minute load average
+  _LOAD=$(awk '{print $1}' /proc/loadavg)
+
+  # Get the mysqld process ID
+  _MYSQL_PID=$(pidof mysqld)
+
+  # Count threads for the mysqld process (subtracting the header)
+  _MYSQL_THREADS=$(ps -T -p "${_MYSQL_PID}" | tail -n +2 | wc -l)
+
+  echo "Current load average: ${_LOAD}"
+  echo "Current MySQL thread count: ${_MYSQL_THREADS}"
+
+  # Compare against thresholds; use bc for floating point comparison
+  if (( $(echo "${_LOAD} > ${_LOAD_THRESHOLD}" | bc -l) )) && [ "${_MYSQL_THREADS}" -gt "${_THREAD_THRESHOLD}" ]; then
+    echo "High load and excessive MySQL threads detected. Restarting MySQL..."
+    _sql_restart "HIGH LOAD MySQL"
+  else
+    echo "System operating normally."
+  fi
+}
+
+_mysql_high_load
 _sql_busy_detection
 
 perl /var/xdrago/monitor/check/sqlcheck.pl &
@@ -190,4 +223,4 @@ sleep 15
 
 echo DONE!
 exit 0
-###EOF2024###
+

@@ -5,7 +5,7 @@
 ###
 ###  Octopus Aegir Installer
 ###
-###  Copyright (C) 2010-2024 Omega8.cc
+###  Copyright (C) 2010-2025 Omega8.cc
 ###  noc@omega8.cc www.omega8.cc
 ###
 ###  This program is free software. You can
@@ -53,7 +53,7 @@ export _USER="${_USER}"
 ### Drush and Redis Variables
 ###
 
-export _DRUSH_VERSION=8.5.0.1
+export _DRUSH_VERSION=8.5.0.2
 export _REDIS_C_VERSION=com-19-04-2021
 export _REDIS_L_VERSION=7.x-3.19.1
 export _REDIS_N_VERSION=com-19-04-2021
@@ -235,11 +235,7 @@ sleep 3
 ###
 ### Turn Off AppArmor while running octopus
 ###
-if [ -e "/etc/init.d/apparmor" ]; then
-  if [ "${_OS_CODE}" != "stretch" ] && [ "${_OS_CODE}" != "jessie" ]; then
-    _turn_off_apparmor_in_octopus
-  fi
-fi
+_turn_off_apparmor_in_octopus
 
 
 ###
@@ -292,7 +288,7 @@ exit 0
 ###----------------------------------------###
 ###
 ###  Octopus Aegir Installer
-###  Copyright (C) 2010-2024 Omega8.cc
+###  Copyright (C) 2010-2025 Omega8.cc
 ###  noc@omega8.cc www.omega8.cc
 ###
 ###----------------------------------------###

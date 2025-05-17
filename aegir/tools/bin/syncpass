@@ -4,13 +4,12 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
-_NOW=$(date +%y%m%d-%H%M%S)
+_NOW=$(date +%y%m%d-%H%M%S 2>&1)
 _NOW=${_NOW//[^0-9-]/}
 _vBs="/var/backups"
 _THIS_DB_PORT=3306
 _crlGet="-L --max-redirs 3 -k -s --retry 9 --retry-delay 9 -A iCab"
 _wgetGet="--max-redirect=3 --no-check-certificate -q --tries=9 --wait=9 --user-agent='iCab'"
-_pxSqlPass=$(cat /root/.my.proxysql_adm_pwd.txt 2>/dev/null | tr -d '\n')
 
 # Remove dangerous stuff from the string.
 _sanitize_string() {
@@ -46,17 +45,17 @@ _check_generate() {
     else
       _STRONG_PASSWORDS=${_STRONG_PASSWORDS//[^0-9]/}
       if [ ! -z "${_STRONG_PASSWORDS}" ] \
-        && [ "${_STRONG_PASSWORDS}" -gt "32" ]; then
+        && [ "${_STRONG_PASSWORDS}" -gt 32 ]; then
         _PWD_CHARS="${_STRONG_PASSWORDS}"
       else
         _PWD_CHARS=32
       fi
-      if [ ! -z "${_PWD_CHARS}" ] && [ "${_PWD_CHARS}" -gt "128" ]; then
+      if [ ! -z "${_PWD_CHARS}" ] && [ "${_PWD_CHARS}" -gt 128 ]; then
         _PWD_CHARS=128
       fi
     fi
     if [ "${_STRONG_PASSWORDS}" = "YES" ] \
-      || [ "${_PWD_CHARS}" -gt "32" ]; then
+      || [ "${_PWD_CHARS}" -gt 32 ]; then
       echo "INFO: We will generate new random strong password (${_PWD_CHARS})"
       if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
         _ESC_PASS="$(openssl rand -base64 64 | tr -d '\n')"
@@ -90,7 +89,7 @@ _check_generate() {
     fi
   fi
   _LEN_PASS=$(echo ${#_ESC_PASS} 2>&1)
-  if [ -z "${_ESC_PASS}" ] || [ "${_LEN_PASS}" -lt "9" ]; then
+  if [ -z "${_ESC_PASS}" ] || [ "${_LEN_PASS}" -lt 9 ]; then
      echo "WARN: The random password=${_ESC_PASS} does not look good"
      echo "INFO: We will generate new random password using shuf tool"
     _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
@@ -103,8 +102,7 @@ _check_generate() {
 }
 
 _do_syncpass() {
-  _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
-  _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+  _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
   if [ ! -z "${_uname}" ]; then
     _find_correct_ip
     _prH="/var/aegir/.drush"
@@ -129,7 +127,8 @@ _do_syncpass() {
         _USE_RESOLVEIP="${_LOC_IP}"
         [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL1 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
         if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
-          mysql -uadmin -p${_pxSqlPass} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
+          _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>/dev/null | tr -d '\n')
+          mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
 DELETE FROM mysql_users WHERE username='${_USE_DB_USER}';
 DELETE FROM mysql_query_rules WHERE username='${_USE_DB_USER}';
 INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_USE_DB_USER}','${_ESC_PASS}','10');
@@ -196,7 +195,8 @@ EOFMYSQL
           _USE_RESOLVEIP="${_LOC_IP}"
           [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL2 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
           if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
-            mysql -uadmin -p${_pxSqlPass} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
+            _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>/dev/null | tr -d '\n')
+            mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
 DELETE FROM mysql_users WHERE username='${_USE_DB_USER}';
 DELETE FROM mysql_query_rules WHERE username='${_USE_DB_USER}';
 INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_USE_DB_USER}','${_ESC_PASS}','10');
@@ -267,7 +267,7 @@ EOFMYSQL
 }
 
 _check_root() {
-  if [ $(whoami) = "root" ]; then
+  if [ "$(id -u)" -eq 0 ]; then
     chmod a+w /dev/null
     if [ -e "/root/.barracuda.cnf" ]; then
       source /root/.barracuda.cnf
@@ -288,7 +288,7 @@ _check_root() {
     echo "ERROR: This script should be run as a root user"
     exit 1
   fi
-  _hName=$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)
+  _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
 }
 
 case "$1" in
