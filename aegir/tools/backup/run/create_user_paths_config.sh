@@ -3,7 +3,7 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-export _sPid="f71"
+export _sPid="f63"
 
 # Log file for escape attempts and validation issues
 _VALIDATION_LOG_FILE="/var/log/backup_validation_issues.log"
@@ -48,7 +48,7 @@ _log_issue() {
 _validate_and_merge_paths() {
   local _file=$1
   local _user=$2
-  local _allowed_prefixes="^/(data/disk/${_user}/static|^/home/${_user}.ftp)"
+  local _allowed_prefixes="'^/((data/disk/${_user}/static)|(home/${_user}\.ftp))"
   local _output_file=$3
   local _if_validate=$4
   local _invalid_paths_found=false
@@ -126,7 +126,7 @@ _create_user_paths_config() {
 
   if [ ! -f "${_user_ctrl_file}" ]; then
 
-    ### Migrate legacy include/exclude files if present and merge unique entries
+    ### Migrate legacy exclude/include files if present and merge unique entries
 
     # _include_list
     if [ -f "/root/.backboa.include" ]; then
@@ -154,7 +154,7 @@ _create_user_paths_config() {
 EOF
     fi
 
-    ### Create default include/exclude files if they don't exist
+    ### Create default exclude/include files if they don't exist
 
     # _include_file
     if [ ! -f "${_include_ctrl_file}" ]; then
@@ -244,7 +244,7 @@ EOF
 
     # Create the final paths configuration file
     cat << EOF > "${_user_paths_file}"
-_SOURCE="/data/disk/${_user}/static"
+_SOURCE=""
 _USER_INCLUDE_PATHS="${_MERGED_ALL_INCLUDE}"
 _USER_EXCLUDE_PATHS="${_MERGED_ALL_EXCLUDE}"
 _INCLUDE_LIST="${_include_list}"

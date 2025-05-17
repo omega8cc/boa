@@ -373,7 +373,7 @@ fi
 if [ ! -z "${_AWS_EXB}" ] && [ "${_AWS_EXB}" = "NO" ]; then
   _EXCLUDE="--exclude /data/conf/arch"
 else
-  _EXCLUDE="--exclude /data/conf/arch --exclude-regexp '^/data/disk/.*/backups/'"
+  _EXCLUDE="--exclude /data/conf/arch --exclude-regexp '^/data/disk/.*/backups'"
 fi
 
 _USER_INCLUDE=""
@@ -390,7 +390,7 @@ export AWS_ACCESS_KEY_ID="${_AWS_KEY}"
 export AWS_SECRET_ACCESS_KEY="${_AWS_SEC}"
 export PASSPHRASE="${_AWS_PWD}"
 
-_SOURCE="/data /etc /home /opt/solr4 /var/aegir /var/solr7 /var/www /var/xdrago"
+_SOURCE="/data /etc /home /opt/solr4 /var/aegir /var/solr7 /var/solr9 /var/www /var/xdrago"
 _BUCKET_NAME="daily-remote-${_HST_DASH}"
 _BUCKET_NAME_DOT="daily.remote.${_HST}"
 _TARGET="boto3+s3://${_BUCKET_NAME}"
@@ -420,8 +420,8 @@ fi
 _backup_prepare() {
   _INCLUDE=""
   for _CDIR in ${_SOURCE}; do
-    TMP=" --include  ${_CDIR}"
-    _INCLUDE="${_INCLUDE}${TMP}"
+    _TMP=" --include ${_CDIR}"
+    _INCLUDE="${_INCLUDE}${_TMP}"
   done
   if [ -e "/root/.cache/duplicity" ]; then
     _CacheTest=$(find /root/.cache/duplicity/* \

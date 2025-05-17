@@ -118,12 +118,8 @@ if [[ ! "${_ARGS}" =~ "composer" ]] \
   && [[ ! "${_ARGS}" =~ "mysql" ]] \
   && [[ ! "${_ARGS}" =~ "sudo" ]]; then
   _ARR=
-  if [[ "${_ARGS}" =~ "vendor/drush/drush/drush.php " ]]; then
-    if [[ "${_ARGS}" =~ "set -m" ]]; then
-      _R_M=`echo -n ${_ARGS}  | grep -o "set -m\; vendor/drush/drush/drush.php"`
-    else
-      _R_M=`echo -n ${_ARGS}  | grep -o "vendor/drush/drush/drush.php"`
-    fi
+  if [[ "${_ARGS}" =~ "/vendor/drush/drush/drush.php " ]]; then
+    _R_M=`echo -n ${_ARGS}  | grep -o ".*/vendor/drush/drush/drush.php"`
     ### echo _R_M is ${_R_M}
     _R_M=${_R_M//\//\\\/}
     ### echo _R_M is ${_R_M}
@@ -136,48 +132,8 @@ if [[ ! "${_ARGS}" =~ "composer" ]] \
       esac
     done
     ### echo _ARR is ${_ARR}
-  elif [[ "${_ARGS}" =~ "vendor/drush/drush/drush" ]]; then
-    if [[ "${_ARGS}" =~ "set -m" ]]; then
-      _R_M=`echo -n ${_ARGS}  | grep -o "set -m\; .*vendor/drush/drush/drush"`
-    else
-      _R_M=`echo -n ${_ARGS} | sed 's|vendor/drush/drush/drush.*||'`
-    fi
-    ### echo _R_M is ${_R_M}
-    _R_M=${_R_M//\//\\\/}
-    ### echo _R_M is ${_R_M}
-    _CLR=`echo ${_ARGS}  | sed "s/\${_R_M}//g"`
-    _ARR=() # the buffer array for filtered parameters
-    for arg in "${_CLR}"; do
-      case ${_R_M} in
-        $arg\ * | *\ $arg | *\ $arg\ *) ;;
-        *) _ARR+=("$arg") ;;
-      esac
-    done
-    ### echo _ARR is ${_ARR}
-  elif [[ "${_ARGS}" =~ "/vendor/bin/drush" ]]; then
-    if [[ "${_ARGS}" =~ "set -m" ]]; then
-      _R_M=`echo -n ${_ARGS}  | grep -o "set -m\; .*/vendor/bin/drush"`
-    else
-      _R_M=`echo -n ${_ARGS} | sed 's|/vendor/bin/drush.*||'`
-    fi
-    ### echo _R_M is ${_R_M}
-    _R_M=${_R_M//\//\\\/}
-    ### echo _R_M is ${_R_M}
-    _CLR=`echo ${_ARGS}  | sed "s/\${_R_M}//g"`
-    _ARR=() # the buffer array for filtered parameters
-    for arg in "${_CLR}"; do
-      case ${_R_M} in
-        $arg\ * | *\ $arg | *\ $arg\ *) ;;
-        *) _ARR+=("$arg") ;;
-      esac
-    done
-    ### echo _ARR is ${_ARR}
-  elif [[ "${_ARGS}" =~ "vendor/bin/drush " ]]; then
-    if [[ "${_ARGS}" =~ "set -m" ]]; then
-      _R_M=`echo -n ${_ARGS}  | grep -o "set -m\; .*vendor/bin/drush"`
-    else
-      _R_M=`echo -n ${_ARGS} | sed 's|vendor/bin/drush.*||'`
-    fi
+  elif [[ "${_ARGS}" =~ "vendor/drush/drush/drush.php " ]]; then
+    _R_M=`echo -n ${_ARGS}  | grep -o "vendor/drush/drush/drush.php"`
     ### echo _R_M is ${_R_M}
     _R_M=${_R_M//\//\\\/}
     ### echo _R_M is ${_R_M}
@@ -540,7 +496,13 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           _DEST_DRUSH="${_R_M}/vendor/drush/drush/drush.php"
         fi
         if [[ "${_ARGS}" =~ "vendor/drush/drush/drush.php " ]]; then
-          _DEST_DRUSH="vendor/drush/drush/drush.php"
+          # Detect if PWD ends with /web, /html, or /docroot
+          if [[ "$PWD" =~ /(web|html|docroot)$ ]]; then
+            _DEST_DRUSH="../vendor/drush/drush/drush.php"
+          else
+            _DEST_DRUSH="vendor/drush/drush/drush.php"
+          fi
+          ### echo INF 0 _DEST_DRUSH is ${_DEST_DRUSH}
         fi
         if [[ "${_ARGS}" =~ "drush11 " ]] \
           || [[ "${_ARGS}" =~ "drush10 " ]]; then
@@ -603,7 +565,13 @@ if [ "${_LTD_GID}" = "www-data users" ] \
             _DEST_DRUSH="${_R_M}/vendor/drush/drush/drush.php"
           fi
           if [[ "${_ARGS}" =~ "vendor/drush/drush/drush.php " ]]; then
-            _DEST_DRUSH="vendor/drush/drush/drush.php"
+            # Detect if PWD ends with /web, /html, or /docroot
+            if [[ "$PWD" =~ /(web|html|docroot)$ ]]; then
+              _DEST_DRUSH="../vendor/drush/drush/drush.php"
+            else
+              _DEST_DRUSH="vendor/drush/drush/drush.php"
+            fi
+            ### echo INF 1 _DEST_DRUSH is ${_DEST_DRUSH}
           fi
           if [[ ! "${HOME}" =~ (^)"/data/disk/" ]]; then
             _PHP_V="56 70 71 72 73 74 80 81 82 83 84"
@@ -996,7 +964,6 @@ if [ "${_LTD_GID}" = "www-data users" ] \
       if [ -x "/bin/dash" ]; then
         if [ ! -z "${_ARR}" ] && [ -z "${_OCTO_SYS_ARR}" ]; then
           _DEST_DRUSH=${_DEST_DRUSH//\\/}
-          _ARR=`echo -n ${_ARR} | sed 's|/vendor/bin/drush||'`
           ### echo EXD 1 DRUSH_PHP is ${DRUSH_PHP}
           ### echo EXD 1 PHP_INI is ${PHP_INI}
           ### echo EXD 1 _DEST_DRUSH is ${_DEST_DRUSH}

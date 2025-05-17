@@ -79,7 +79,7 @@ if (function_exists('drush_get_command')) {
 if (!$is_backend) {
   if (isset($_SERVER['SERVER_SOFTWARE']) &&
       !preg_match("/ApacheSolarisNginx/i", $_SERVER['SERVER_SOFTWARE'])) {
-    $_SERVER['SERVER_SOFTWARE'] = 'ApacheSolarisNginx/1.27.3';
+    $_SERVER['SERVER_SOFTWARE'] = 'ApacheSolarisNginx/1.28.0';
   }
 }
 
@@ -395,7 +395,7 @@ if (file_exists('web.config') || file_exists('index.php')) { // Check for the ma
         $drupal_core = '10';
         $drupal_id = 'DX';
       }
-      if (!file_exists('web.config')) { // Hypothetical check for Drupal 11
+      if (file_exists('core/modules/workspaces_ui') && !file_exists('web.config')) {
         $drupal_core = '11';
         $drupal_id = 'DXI';
       }
@@ -844,6 +844,7 @@ if (!$is_dev) {
       if (is_readable('modules/o_contrib_eight/advagg/advagg_bundler/advagg_bundler.module') ||
           is_readable('modules/o_contrib_nine/advagg/advagg_bundler/advagg_bundler.module') ||
           is_readable('modules/o_contrib_ten/advagg/advagg_bundler/advagg_bundler.module') ||
+          is_readable('modules/o_contrib_eleven/advagg/advagg_bundler/advagg_bundler.module') ||
           is_readable('modules/advagg/advagg_bundler/advagg_bundler.module') ||
           is_readable('sites/all/modules/advagg/advagg_bundler/advagg_bundler.module')) {
         $config['advagg.settings']['css']['combine_media'] = false;
@@ -1144,7 +1145,7 @@ if ($redis_up && $use_redis && !$custom_cache) {
         $redis_dirname = 'redis_compr';
         $redis_comprs = TRUE;
       }
-      if ($drupal_core == 9 || $drupal_core == 10) {
+      if ($drupal_core == 9 || $drupal_core == 10 || $drupal_core == 11) {
         $redis_dirname = 'redis_nine_ten';
         $redis_comprs = TRUE;
         if ($all_ini['redis_old_nine_mode']) {
@@ -1247,6 +1248,21 @@ if ($redis_up && $use_redis && !$custom_cache) {
             header("X-Redis-Services-Is-Readable: " . $redis_services_path);
           }
         }
+        if (is_readable('modules/o_contrib_eleven/' . $redis_dirname . '/example.services.yml')) {
+          $cache_redis = TRUE;
+          $example_services_path = 'modules/o_contrib_eleven/' . $redis_dirname . '/example.services.yml';
+          $cache_gzip_path = 'modules/o_contrib_eleven/' . $redis_dirname . '/lib/Redis/CacheCompressed.php';
+          if ($is_dev && !$is_backend) {
+            header("X-Example-Services-Is-Readable: " . $example_services_path);
+          }
+        }
+        if (is_readable('modules/o_contrib_eleven/' . $redis_dirname . '/redis.services.yml')) {
+          $cache_redis = TRUE;
+          $redis_services_path = 'modules/o_contrib_eleven/' . $redis_dirname . '/redis.services.yml';
+          if ($is_dev && !$is_backend) {
+            header("X-Redis-Services-Is-Readable: " . $redis_services_path);
+          }
+        }
       }
     }
   }
@@ -1307,7 +1323,10 @@ if ($redis_up && $use_redis && !$custom_cache) {
   }
   if ($cache_redis) {
     if ($drupal_core >= 8) {
-      if (is_readable('modules/o_contrib_ten/' . $redis_dirname . '/redis.services.yml')) {
+      if (is_readable('modules/o_contrib_eleven/' . $redis_dirname . '/redis.services.yml')) {
+        $class_loader->addPsr4('Drupal\\redis\\', 'modules/o_contrib_eleven/' . $redis_dirname . '/src');
+      }
+      elseif (is_readable('modules/o_contrib_ten/' . $redis_dirname . '/redis.services.yml')) {
         $class_loader->addPsr4('Drupal\\redis\\', 'modules/o_contrib_ten/' . $redis_dirname . '/src');
       }
       elseif (is_readable('modules/o_contrib_nine/' . $redis_dirname . '/redis.services.yml')) {

@@ -7,7 +7,7 @@ export _tRee=pro
 export _xSrl=560proT00
 
 _DB_SERIES=5.7
-_CSF_VRN=14.21
+_CSF_VRN=14.24
 _PROXYSQL_VRN="1.3.5-debian8_amd64"
 _UTIL_VRN="0.30.216-pre3126"
 _VNSTAT_VRN=2.7
@@ -1515,8 +1515,10 @@ sync_binlog             = 0
 open_files_limit        = 294912
 innodb_autoinc_lock_mode= 2
 group_concat_max_len    = 10000
-#expire_logs_days        = 1
-#max_binlog_size         = 100M
+skip-log-bin
+#log_bin                 = mysql-bin
+#expire_logs_days        = 7
+#max_binlog_size         = 256M
 #binlog_row_image        = minimal
 #binlog_format           = ROW
 #slow_query_log          = 1

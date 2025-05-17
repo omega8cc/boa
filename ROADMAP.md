@@ -30,6 +30,7 @@ Certain planned features are likely to be exclusive to **BOA PRO**, as indicated
 - **Grav CMS Support**: Introduce support for Grav CMS (command line only) (PRO/LTS)
 - **Import from Classic Ægir**: Extend xboa to import from remote classic Ægir servers using Nginx or Apache (PRO/LTS)
 - **Optional AppArmor Support**: Enhanced security and accounts privilege separation (PRO)
+- **Solr 9 Support**: Add latest Solr Server 9 as supported via BOA automation (PRO)
 - **Symlink Site Files**: Automatically symlink all site files to expedite migration tasks and conserve disk space (PRO)
 - **Tar Pipelines on Clone**: Use Tar Pipelines to create separate symlinked copies during site clone tasks (PRO)
 

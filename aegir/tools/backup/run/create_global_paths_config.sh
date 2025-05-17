@@ -3,7 +3,7 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-export _sPid="f71"
+export _sPid="f63"
 
 # Function to create or update global paths configuration
 _create_global_paths_config() {
@@ -12,20 +12,24 @@ _create_global_paths_config() {
   _exclude_list="${_global_config_dir}/.backboa.exclude.list"
   _custom_include_list="${_global_config_dir}/.backboa.custom_include.list"
   _custom_exclude_list="${_global_config_dir}/.backboa.custom_exclude.list"
-  _include_global_file="${_global_config_dir}/.backboa.include_global.file"
-  _include_data_file="${_global_config_dir}/.backboa.include_data.file"
-  _exclude_global_file="${_global_config_dir}/.backboa.exclude.file"
+
   _include_global_regexp_file="${_global_config_dir}/.backboa.include_global_regexp.file"
-  _exclude_data_regexp_file="${_global_config_dir}/.backboa.exclude_data_regexp.file"
+  _include_global_file="${_global_config_dir}/.backboa.include_global.file"
+  _exclude_global_file="${_global_config_dir}/.backboa.exclude.file"
   _merged_global_include_file="${_global_config_dir}/.backboa.global_include.merged.file"
-  _merged_data_include_file="${_global_config_dir}/.backboa.data_include.merged.file"
   _merged_global_exclude_file="${_global_config_dir}/.backboa.global_exclude.merged.file"
+
+  _include_data_file="${_global_config_dir}/.backboa.include_data.file"
+  _exclude_data_file="${_global_config_dir}/.backboa.exclude_data.file"
+  _merged_data_include_file="${_global_config_dir}/.backboa.data_include.merged.file"
   _merged_data_exclude_file="${_global_config_dir}/.backboa.data_exclude.merged.file"
+
   _global_ctrl_file="${_global_config_dir}/.backboa.${_sPid}.paths.ctrl.file"
   _global_paths_file="${_global_config_dir}/global_paths.txt"
   _data_paths_file="${_global_config_dir}/data_paths.txt"
   _custom_paths_file="${_global_config_dir}/custom_paths.txt"
   _disk_dir="/data/disk"
+  _home_dir="/home"
 
   # Ensure global configuration directory exists and is owned by root
   mkdir -p "${_global_config_dir}"
@@ -66,7 +70,7 @@ _create_global_paths_config() {
 
   if [ ! -f "${_global_ctrl_file}" ]; then
 
-    ### Migrate legacy include/exclude files if present and merge unique entries
+    ### Migrate legacy exclude/include files if present and merge unique entries
 
     # _include_list
     if [ -f "/root/.backboa.include" ]; then
@@ -112,7 +116,7 @@ EOF
       fi
     fi
 
-    ### Create default include/exclude files if they don't exist
+    ### Create default exclude/include files if they don't exist
 
     # _include_global_file
     cat << EOF > "${_include_global_file}"
@@ -125,6 +129,7 @@ EOF
     # _exclude_global_file
     cat << EOF > "${_exclude_global_file}"
 --exclude /var/aegir/backups
+--exclude /var/aegir/.tmp
 EOF
 
     # _include_data_file
@@ -154,33 +159,66 @@ EOF
 
     # _include_global_regexp_file
     cat << EOF > "${_include_global_regexp_file}"
---include-regexp '^/var/backups/barracuda.*'
 --include-regexp '^/root/\..*\.cnf$'
 EOF
 
-    # _exclude_data_regexp_file
-    cat << EOF > "${_exclude_data_regexp_file}"
---exclude-regexp '^/data/disk/.*/\.tmp/'
---exclude-regexp '^/data/disk/.*/backup-exports/'
---exclude-regexp '^/data/disk/.*/backups/'
---exclude-regexp '^/data/disk/.*/clients/'
---exclude-regexp '^/data/disk/.*/src/'
---exclude-regexp '^/data/disk/.*/static/\.tmp/'
---exclude-regexp '^/data/disk/.*/static/restores/'
---exclude-regexp '^/data/disk/.*/static/tmp/'
---exclude-regexp '^/data/disk/.*/static/trash/'
---exclude-regexp '^/data/disk/.*/u/'
---exclude-regexp '^/data/disk/.*/undo/'
---exclude-regexp '^/data/disk/arch/.*'
---exclude-regexp '^/home/.*/\.tmp/'
---exclude-regexp '^/home/.*/backups/'
---exclude-regexp '^/home/.*/clients/'
---exclude-regexp '^/home/.*/platforms/'
---exclude-regexp '^/home/.*/static/'
---exclude-regexp '^/var/www/.*'
+    # _exclude_data_file
+    # Start writing to the exclude data file
+    cat << EOF > "${_exclude_data_file}"
 EOF
 
-    # Validate and merge include/exclude files
+    # Iterate over each item in the disk directory
+    for subdir in "${_disk_dir}"/*/; do
+      # Check if it's a directory
+      if [ -d "${subdir}" ]; then
+        # Remove the trailing slash for consistency
+        sanitized_subdir="${subdir%/}"
+        # Append the --exclude line to the exclude data path
+        if [ "${sanitized_subdir}" != "/data/disk/arch" ] \
+          && [ "${sanitized_subdir}" != "/data/disk/static" ]; then
+          echo "--exclude ${sanitized_subdir}/.tmp" >> "${_exclude_data_file}"
+          echo "--exclude ${sanitized_subdir}/backup-exports" >> "${_exclude_data_file}"
+          echo "--exclude ${sanitized_subdir}/backups" >> "${_exclude_data_file}"
+          echo "--exclude ${sanitized_subdir}/clients" >> "${_exclude_data_file}"
+          echo "--exclude ${sanitized_subdir}/src" >> "${_exclude_data_file}"
+          echo "--exclude ${sanitized_subdir}/static/.tmp" >> "${_exclude_data_file}"
+          echo "--exclude ${sanitized_subdir}/static/restores" >> "${_exclude_data_file}"
+          echo "--exclude ${sanitized_subdir}/static/tmp" >> "${_exclude_data_file}"
+          echo "--exclude ${sanitized_subdir}/static/trash" >> "${_exclude_data_file}"
+          echo "--exclude ${sanitized_subdir}/u" >> "${_exclude_data_file}"
+          echo "--exclude ${sanitized_subdir}/undo" >> "${_exclude_data_file}"
+        else
+          echo "--exclude ${sanitized_subdir}" >> "${_exclude_data_file}"
+        fi
+      fi
+    done
+
+    # Iterate over each item in the home directory
+    for subdir in "${_home_dir}"/*/; do
+      # Check if it's a directory
+      if [ -d "${subdir}" ]; then
+        # Remove the trailing slash for consistency
+        sanitized_subdir="${subdir%/}"
+        # Append the --exclude line to the exclude home path
+        if [[ "${sanitized_subdir}" =~ ".ftp"($) ]]; then
+          echo "--exclude ${sanitized_subdir}/.tmp" >> "${_exclude_data_file}"
+          echo "--exclude ${sanitized_subdir}/backups" >> "${_exclude_data_file}"
+          echo "--exclude ${sanitized_subdir}/clients" >> "${_exclude_data_file}"
+          echo "--exclude ${sanitized_subdir}/platforms" >> "${_exclude_data_file}"
+          echo "--exclude ${sanitized_subdir}/static" >> "${_exclude_data_file}"
+        else
+          echo "--exclude ${sanitized_subdir}" >> "${_exclude_data_file}"
+        fi
+      fi
+    done
+
+    # Append the additional exclude statements
+    cat << EOF >> "${_exclude_data_file}"
+--exclude /var/www
+EOF
+
+
+    # Validate and merge exclude/include files
     [ -e "${_include_data_file}" ] && _validate_config "${_include_data_file}"
     [ -e "${_include_global_file}" ] && _validate_config "${_include_global_file}"
     [ -e "${_exclude_global_file}" ] && _validate_config "${_exclude_global_file}"
@@ -194,9 +232,9 @@ EOF
       _validate_config "${_include_global_regexp_file}" "regexp"
       cat "${_include_global_regexp_file}" >> "${_merged_global_include_file}"
     fi
-    if [ -s "${_exclude_data_regexp_file}" ]; then
-      _validate_config "${_exclude_data_regexp_file}" "regexp"
-      cat "${_exclude_data_regexp_file}" > "${_merged_data_exclude_file}"
+    if [ -s "${_exclude_data_file}" ]; then
+      _validate_config "${_exclude_data_file}"
+      cat "${_exclude_data_file}" > "${_merged_data_exclude_file}"
     fi
 
     # Convert the exclude file contents to a single-line variable without backslashes and excessive whitespace
@@ -207,7 +245,7 @@ EOF
 
     # Create the final paths configuration file
     cat << EOF > "${_global_paths_file}"
-_SOURCE="/etc /opt/solr4 /var/aegir /var/solr7 /var/www /var/xdrago"
+_SOURCE="/etc /opt/solr4 /var/aegir /var/solr7 /var/solr9 /var/www /var/xdrago"
 _INCLUDE_PATHS="${_MERGED_GLOBAL_INCLUDE}"
 _EXCLUDE_PATHS="${_MERGED_GLOBAL_EXCLUDE}"
 _INCLUDE_LIST="${_include_list}"

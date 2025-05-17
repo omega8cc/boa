@@ -11,10 +11,10 @@ This guide explains the global backup system, its configuration, supported servi
 ---
 
 ## **How the Global Backup System Works**
-The global backup system is designed to securely back up system-wide data (e.g., `/data`, `/etc`, `/home`, `/opt/solr4`, `/var/aegir`, `/var/solr7`, `/var/www`, `/var/xdrago`) and ensure data integrity and recoverability. It uses **Duplicity** to create encrypted, incremental, and versioned backups stored in remote cloud services.
+The global backup system is designed to securely back up system-wide data (e.g., `/data`, `/etc`, `/home`, `/opt/solr4`, `/var/aegir`, `/var/solr7`, `/var/solr9`, `/var/www`, `/var/xdrago`) and ensure data integrity and recoverability. It uses **Duplicity** to create encrypted, incremental, and versioned backups stored in remote cloud services.
 
 ### **Features**
-- **Global Scope**: Includes critical directories like `/data`, `/etc`, `/home`, `/opt/solr4`, `/var/aegir`, `/var/solr7`, `/var/www` and `/var/xdrago`.
+- **Global Scope**: Includes critical directories like `/data`, `/etc`, `/home`, `/opt/solr4`, `/var/aegir`, `/var/solr7`, `/var/solr9`, `/var/www` and `/var/xdrago`.
 - **Encryption**: Ensures that all backups are protected against unauthorized access.
 - **Incremental Backups**: Reduces storage usage and bandwidth by saving only changes since the last backup.
 - **Retention Policies**: Automatically removes old backups based on administrator-defined retention rules.
@@ -73,6 +73,7 @@ dcysetup <command>
      - `/opt/solr4`
      - `/var/aegir`
      - `/var/solr7`
+     - `/var/solr9`
      - `/var/www`
      - `/var/xdrago`
 
@@ -147,7 +148,7 @@ Configuration files which merge all other configuration files per bucket when yo
    - Defines which global directories are included in backups.
    - Example:
      ```bash
-     _SOURCE="/etc /opt/solr4 /var/aegir /var/solr7 /var/www /var/xdrago"
+     _SOURCE="/etc /opt/solr4 /var/aegir /var/solr7 /var/solr9 /var/www /var/xdrago"
      _INCLUDE_PATHS="--include /data/disk/arch --include-regexp '^/var/backups/barracuda.*'"
      _EXCLUDE_PATHS="--exclude /data/disk --exclude /var/aegir/backups"
      _INCLUDE_LIST="/root/.remote_backups/paths/.backboa.include.list"
@@ -160,13 +161,13 @@ Configuration files which merge all other configuration files per bucket when yo
      ```bash
      _SOURCE=""
      _INCLUDE_PATHS="--include /data/disk/o1 --include /data/disk/o2"
-     _EXCLUDE_PATHS="--exclude-regexp '^/data/disk/.*/backups/'"
+     _EXCLUDE_PATHS="--exclude-regexp '^/data/disk/.*/backups'"
      _INCLUDE_LIST="/root/.remote_backups/paths/.backboa.include.list"
      _EXCLUDE_LIST="/root/.remote_backups/paths/.backboa.exclude.list"
      ```
 
 3. **`/root/.remote_backups/paths/.backboa.*`**:
-   - Configuration files with good defaults which are merged per system user bucket and referenced in either `global_paths.txt` or `data_paths.txt` when you run `dcysetup update` command, used to include or exclude additional absolute paths and regex patterns for fine-grained control of include/exclude logic:
+   - Configuration files with good defaults which are merged per system user bucket and referenced in either `global_paths.txt` or `data_paths.txt` when you run `dcysetup update` command, used to include or exclude additional absolute paths and regex patterns for fine-grained control of exclude/include logic:
 
      ```bash
      .backboa.data_exclude.merged.file
@@ -186,7 +187,7 @@ Configuration files which merge all other configuration files per bucket when yo
 ### **Configuration Rules**
 
 1. **Absolute Paths Only**:
-   - All paths in configuration files (include/exclude) must be absolute paths starting from `/`.
+   - All paths in configuration files (exclude/include) must be absolute paths starting from `/`.
    - Example:
      - Correct: `/root/projects`
      - Incorrect: `~/projects`

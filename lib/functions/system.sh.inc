@@ -50,7 +50,7 @@ _if_fix_iptables_symlinks() {
 #
 # Re-install curl if broken.
 _if_reinstall_curl_src() {
-  _CURL_VRN=8.11.1
+  _CURL_VRN=8.12.1
   if ! command -v lsb_release &> /dev/null; then
     apt-get update -qq &> /dev/null
     apt-get install lsb-release ${_aptYesUnth} -qq &> /dev/null
@@ -969,6 +969,20 @@ _tune_memory_limits() {
     _msg "TUNE: _USE_SOLR_MEM is ${_USE_SOLR_MEM}"
     _msg "TUNE: _USE_SOLR is ${_USE_SOLR}"
   fi
+
+  if [ -x "/etc/init.d/solr9" ] && [ -e "/etc/default/solr9.in.sh" ]; then
+    sed -i "s/^SOLR_HEAP/#SOLR_HEAP/g" /etc/default/solr9.in.sh &> /dev/null
+    wait
+    sed -i "s/^#SOLR_JAVA_MEM/SOLR_JAVA_MEM/g" /etc/default/solr9.in.sh &> /dev/null
+    wait
+    sed -i "s/^SOLR_JAVA_MEM=.*/SOLR_JAVA_MEM=\"-Xms64m ${_USE_SOLR}\"/g" /etc/default/solr9.in.sh
+    wait
+    sed -i "s/^#SOLR_STOP_WAIT=.*/SOLR_STOP_WAIT=\"8\"/g" /etc/default/solr9.in.sh &> /dev/null
+    wait
+    sed -i "s/^#SOLR_WAIT_FOR_ZK=.*/SOLR_WAIT_FOR_ZK=\"8\"/g" /etc/default/solr9.in.sh &> /dev/null
+    wait
+  fi
+
   if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
     sed -i "s/^SOLR_HEAP/#SOLR_HEAP/g" /etc/default/solr7.in.sh &> /dev/null
     wait
@@ -981,6 +995,7 @@ _tune_memory_limits() {
     sed -i "s/^#SOLR_WAIT_FOR_ZK=.*/SOLR_WAIT_FOR_ZK=\"8\"/g" /etc/default/solr7.in.sh &> /dev/null
     wait
   fi
+
   _tune_web_server_config
 }
 
@@ -3533,7 +3548,7 @@ _sshd_install_src() {
       ln -sfn /usr/local/sbin/ssh /usr/sbin/ssh
     fi
   fi
-  _SSH_GET_DPKG=$(dpkg --get-selections | grep openssh-sftp-server | grep 'hold$' 2>&1)
+  _SSH_GET_DPKG=$(dpkg --get-selections | grep openssh-server | grep 'hold$' 2>&1)
   _SSH_INSTALL_REQUIRED=NO
   _SSH_ITD=$(ssh -V 2>&1 \
     | tr -d "\n" \
@@ -3631,6 +3646,7 @@ _sshd_install_src() {
       aptitude hold openssh-server &> /dev/null
       aptitude hold openssh-client &> /dev/null
       aptitude hold ssh &> /dev/null
+      aptitude hold openssh-sftp-server &> /dev/null
       echo "openssh-client hold" | dpkg --set-selections &> /dev/null
       echo "openssh-server hold" | dpkg --set-selections &> /dev/null
       echo "ssh hold" | dpkg --set-selections &> /dev/null
@@ -5907,8 +5923,8 @@ _if_post_major_os_upgrade() {
       fi
       # If any of the above checks require an update, perform the upgrade
       if [ "${_needsBaseFilesUpdate}" = "YES" ]; then
-        _msg "Upgrade to base-files=12.4+deb12u7devuan1 is forced"
-        _mrun "${_INITINS} base-files=12.4+deb12u7devuan1 --allow-downgrades" 2> /dev/null
+        _msg "Upgrade to base-files=12.4+deb12u10devuan1 is forced"
+        _mrun "${_INITINS} base-files=12.4+deb12u10devuan1 --allow-downgrades" 2> /dev/null
       fi
     fi
 
@@ -6251,10 +6267,7 @@ _if_major_os_upgrade() {
     echo "libldap-common install"      | dpkg --set-selections &> /dev/null
     echo "libldap-dev install"         | dpkg --set-selections &> /dev/null
     echo "libldap2-dev install"        | dpkg --set-selections &> /dev/null
-    echo "libmariadb3 install"         | dpkg --set-selections &> /dev/null
     echo "libssl-dev install"          | dpkg --set-selections &> /dev/null
-    echo "mailutils install"           | dpkg --set-selections &> /dev/null
-    echo "mariadb-common install"      | dpkg --set-selections &> /dev/null
     echo "nginx install"               | dpkg --set-selections &> /dev/null
     echo "nginx-common install"        | dpkg --set-selections &> /dev/null
     echo "openssh-client install"      | dpkg --set-selections &> /dev/null
@@ -6870,31 +6883,35 @@ _sys_packages_update() {
     _msg "PROC: _sys_packages_update"
   fi
   _msg "INFO: Running system packages update..."
-  if [ -e "/var/aegir" ]; then
-    echo "curl install"                | dpkg --set-selections &> /dev/null
-    echo "git install"                 | dpkg --set-selections &> /dev/null
-    echo "git-core install"            | dpkg --set-selections &> /dev/null
-    echo "git-man install"             | dpkg --set-selections &> /dev/null
-    echo "libldap-common install"      | dpkg --set-selections &> /dev/null
-    echo "libldap-dev install"         | dpkg --set-selections &> /dev/null
-    echo "libldap2-dev install"        | dpkg --set-selections &> /dev/null
-    echo "libmariadb3 install"         | dpkg --set-selections &> /dev/null
-    echo "libssl-dev install"          | dpkg --set-selections &> /dev/null
-    echo "mailutils install"           | dpkg --set-selections &> /dev/null
-    echo "mariadb-common install"      | dpkg --set-selections &> /dev/null
-    echo "nginx install"               | dpkg --set-selections &> /dev/null
-    echo "nginx-common install"        | dpkg --set-selections &> /dev/null
-    echo "openssh-client install"      | dpkg --set-selections &> /dev/null
-    echo "openssh-server install"      | dpkg --set-selections &> /dev/null
-    echo "openssh-sftp-server install" | dpkg --set-selections &> /dev/null
-    echo "openssl install"             | dpkg --set-selections &> /dev/null
-    echo "percona-release install"     | dpkg --set-selections &> /dev/null
-    echo "ssh install"                 | dpkg --set-selections &> /dev/null
-    echo "sysvinit-core install"       | dpkg --set-selections &> /dev/null
-    echo "sysvinit-utils install"      | dpkg --set-selections &> /dev/null
-    echo "zlib1g install"              | dpkg --set-selections &> /dev/null
-    echo "zlib1g-dev install"          | dpkg --set-selections &> /dev/null
-    echo "zlibc install"               | dpkg --set-selections &> /dev/null
+  if [ -d "/data/u" ] && [ -e "/data/conf/global.inc" ]; then
+    aptitude hold curl &> /dev/null
+    aptitude hold libldap-common &> /dev/null
+    aptitude hold libldap-dev &> /dev/null
+    aptitude hold libldap2-dev &> /dev/null
+    aptitude hold libmariadb3 &> /dev/null
+    aptitude hold mailutils &> /dev/null
+    aptitude hold mariadb-common &> /dev/null
+    aptitude hold nginx &> /dev/null
+    aptitude hold nginx-common &> /dev/null
+    aptitude hold openssh-client &> /dev/null
+    aptitude hold openssh-server &> /dev/null
+    aptitude hold openssh-sftp-server &> /dev/null
+    aptitude hold percona-release &> /dev/null
+    aptitude hold ssh &> /dev/null
+    echo "curl hold" | dpkg --set-selections &> /dev/null
+    echo "libldap-common hold" | dpkg --set-selections &> /dev/null
+    echo "libldap-dev hold" | dpkg --set-selections &> /dev/null
+    echo "libldap2-dev hold" | dpkg --set-selections &> /dev/null
+    echo "libmariadb3 hold" | dpkg --set-selections &> /dev/null
+    echo "mailutils hold" | dpkg --set-selections &> /dev/null
+    echo "mariadb-common hold" | dpkg --set-selections &> /dev/null
+    echo "nginx hold" | dpkg --set-selections &> /dev/null
+    echo "nginx-common hold" | dpkg --set-selections &> /dev/null
+    echo "openssh-client hold" | dpkg --set-selections &> /dev/null
+    echo "openssh-server hold" | dpkg --set-selections &> /dev/null
+    echo "openssh-sftp-server hold" | dpkg --set-selections &> /dev/null
+    echo "percona-release hold" | dpkg --set-selections &> /dev/null
+    echo "ssh hold" | dpkg --set-selections &> /dev/null
   fi
   _webmin_apt_update
   _apt_clean_update
@@ -8323,6 +8340,14 @@ _java_check_fix() {
   fi
 
   if [ "${_OS_CODE}" = "daedalus" ] || [ "${_OS_CODE}" = "bookworm" ]; then
+    if [ ! -e "/usr/lib/jvm/java-17-openjdk" ] \
+      && [ -d "/usr/lib/jvm/java-17-openjdk-amd64" ]; then
+      ln -sfn /usr/lib/jvm/java-17-openjdk-amd64 /usr/lib/jvm/java-17-openjdk
+    fi
+    if [ ! -e "/usr/bin/java17" ] \
+      && [ -e "/usr/lib/jvm/java-17-openjdk-amd64/bin/java" ]; then
+      ln -sfn /usr/lib/jvm/java-17-openjdk-amd64/bin/java /usr/bin/java17
+    fi
     if [ ! -e "/usr/lib/jvm/java-11-openjdk" ] \
       && [ -d "/usr/lib/jvm/java-11-openjdk-amd64" ]; then
       ln -sfn /usr/lib/jvm/java-11-openjdk-amd64 /usr/lib/jvm/java-11-openjdk
@@ -8546,6 +8571,13 @@ _initd_update() {
     fi
     _mrun "service ssh restart" 2> /dev/null
     _tune_memory_limits
+    if [ -x "/etc/init.d/solr9" ] && [ -e "/etc/default/solr9.in.sh" ]; then
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        _msg "INFO: Restarting Solr 9"
+      fi
+      kill -9 $(ps aux | grep '[s]olr' | awk '{print $2}') &> /dev/null
+      _mrun "service solr9 start" 2> /dev/null
+    fi
     if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: Restarting Solr 7"
@@ -8855,7 +8887,7 @@ _sysctl_update() {
       fi
     fi
     if [ -e "/etc/security/limits.d" ] \
-      && [ ! -e "/etc/security/limits.d/sshd.conf" ]; then
+      && [ ! -e "/etc/security/limits.d/solr9.conf" ]; then
       echo "sshd soft nofile 524288" > /etc/security/limits.d/sshd.conf
       echo "sshd hard nofile 999999" >> /etc/security/limits.d/sshd.conf
       echo "redis soft nofile 65535" > /etc/security/limits.d/redis.conf
@@ -8866,6 +8898,8 @@ _sysctl_update() {
       echo "jetty9 hard nofile 524288" >> /etc/security/limits.d/jetty9.conf
       echo "solr7 soft nofile 65535" > /etc/security/limits.d/solr7.conf
       echo "solr7 hard nofile 524288" >> /etc/security/limits.d/solr7.conf
+      echo "solr9 soft nofile 65535" > /etc/security/limits.d/solr9.conf
+      echo "solr9 hard nofile 524288" >> /etc/security/limits.d/solr9.conf
       echo "@www-data soft nofile 65535" > /etc/security/limits.d/www.conf
       echo "@www-data hard nofile 524288" >> /etc/security/limits.d/www.conf
       _mrun "service redis-server restart" 2> /dev/null

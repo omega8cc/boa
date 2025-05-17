@@ -288,6 +288,7 @@ if (!$is_dev) {
       if (is_readable('modules/o_contrib_eight/advagg/advagg_bundler/advagg_bundler.module') ||
           is_readable('modules/o_contrib_nine/advagg/advagg_bundler/advagg_bundler.module') ||
           is_readable('modules/o_contrib_ten/advagg/advagg_bundler/advagg_bundler.module') ||
+          is_readable('modules/o_contrib_eleven/advagg/advagg_bundler/advagg_bundler.module') ||
           is_readable('modules/advagg/advagg_bundler/advagg_bundler.module') ||
           is_readable('sites/all/modules/advagg/advagg_bundler/advagg_bundler.module')) {
         $config['advagg.settings']['css']['combine_media'] = false;

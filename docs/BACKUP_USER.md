@@ -272,7 +272,7 @@ You can customize what is included or excluded in your backups by editing config
 #### **Configuration Rules**
 
 1. **Absolute Paths Only**:
-   - All paths in configuration files (include/exclude) must be absolute paths starting from `/`.
+   - All paths in configuration files (exclude/include) must be absolute paths starting from `/`.
    - Example:
      - Correct: `/data/disk/your_username/static/projects`
      - Incorrect: `~/static/projects`
@@ -292,13 +292,13 @@ You can customize what is included or excluded in your backups by editing config
      ```bash
      --include-regexp '^/data/disk/your_username/static/documents/.*\.pdf$'
      ```
-     - Starts with `^/data/disk/your_username/static`, which is allowed.
+     - Starts with `^data/disk/your_username/static`, which is allowed.
 
    - **Invalid Regex Pattern**:
      ```bash
-     --include-regexp '^/etc/.*'
+     --include-regexp '^//data/disk/your_username/static/foo/.*'
      ```
-     - Starts with `^/etc`, which is not within your allowed directories.
+     - Starts with `^/data/disk`, while in regexp the first slash should be omitted.
 
 4. **Forbidden Characters**:
    - Paths and regex patterns must not contain forbidden characters that could pose security risks:
