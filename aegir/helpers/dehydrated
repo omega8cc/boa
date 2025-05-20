@@ -17,7 +17,7 @@ umask 077 # paranoid umask, we're creating private keys
 exec 3>&-
 exec 4>&-
 
-VERSION="0.7.2"
+VERSION="0.7.3"
 
 # Find directory in which this script is stored by traversing all symbolic links
 SOURCE="${0}"
@@ -326,11 +326,13 @@ hookscript_bricker_hook() {
 # verify configuration values
 verify_config() {
   [[ "${CHALLENGETYPE}" == "http-01" || "${CHALLENGETYPE}" == "dns-01" || "${CHALLENGETYPE}" == "tls-alpn-01" ]] || _exiterr "Unknown challenge type ${CHALLENGETYPE}... cannot continue."
-  if [[ "${CHALLENGETYPE}" = "dns-01" ]] && [[ -z "${HOOK}" ]]; then
-    _exiterr "Challenge type dns-01 needs a hook script for deployment... cannot continue."
-  fi
-  if [[ "${CHALLENGETYPE}" = "http-01" && ! -d "${WELLKNOWN}" && ! "${COMMAND:-}" = "register" ]]; then
-    _exiterr "WELLKNOWN directory doesn't exist, please create ${WELLKNOWN} and set appropriate permissions."
+  if [[ "${COMMAND:-}" =~ sign_domains|sign_csr ]]; then
+    if [[ "${CHALLENGETYPE}" = "dns-01" ]] && [[ -z "${HOOK}" ]]; then
+      _exiterr "Challenge type dns-01 needs a hook script for deployment... cannot continue."
+    fi
+    if [[ "${CHALLENGETYPE}" = "http-01" ]] && [[ ! -d "${WELLKNOWN}" ]]; then
+      _exiterr "WELLKNOWN directory doesn't exist, please create ${WELLKNOWN} and set appropriate permissions."
+    fi
   fi
   [[ "${KEY_ALGO}" == "rsa" || "${KEY_ALGO}" == "prime256v1" || "${KEY_ALGO}" == "secp384r1" || "${KEY_ALGO}" == "secp521r1" ]] || _exiterr "Unknown public key algorithm ${KEY_ALGO}... cannot continue."
   if [[ -n "${IP_VERSION}" ]]; then
