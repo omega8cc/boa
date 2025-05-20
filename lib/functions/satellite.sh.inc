@@ -5777,11 +5777,12 @@ _satellite_child_b_letsencrypt() {
   mkdir -p ${_ROOT}/backups/system
   chmod 700 ${_ROOT}/backups/system
   rm -f ${_ROOT}/backups/system/letsencrypt*
+  rm -f ${_ROOT}/backups/system/dehydrated*
   curl ${_crlGet} "${_urlHmr}/helpers/dehydrated" -o ${_pthLe}
   if [ ! -e "${_leRoot}" ]; then
     _leSetup="YES"
   fi
-  if [ -e "${_pthLe}" ]; then
+  if [ -e "${_pthLe}" ] && grep -q "OSTYPE" "${_pthLe}"; then
     mkdir -p ${_leRoot}/.ctrl
     chmod 0711 ${_leRoot}/.ctrl
     mkdir -p ${_leRoot}/.acme-challenges
