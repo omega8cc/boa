@@ -340,9 +340,9 @@
 ;;    search_api_solr9 (Activates Solr 9 core if installed)
 ;;    search_api_solr7 (Activates Solr 7 core if installed)
 ;;    search_api_solr  (Activates Solr 7 core if installed)
-;;    apachesolr       (Activates Solr 4 core if installed)
+;;    apachesolr       (Activates Solr 4 core if installed) (deprecated)
 ;;
-;;  Solr 9, Solr 7 and Solr 4 powered by Jetty 9 are available if installed.
+;;  Solr 9 and Solr 7 are available if installed.
 ;;
 ;;  Supported integration modules are latest versions of either search_api_solr
 ;;  or apachesolr as listed below:
