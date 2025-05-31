@@ -1,6 +1,6 @@
 # SOLR Management Documentation
 
-You can easily add, update, or delete Solr cores. This process is fully automated and can be managed via the site-level active INI file. Ensure Solr is already installed on the system with the `SR9` and/or `SR7` and/or `SR4` keywords in the `_XTRAS_LIST` in the `/root/.barracuda.cnf` file.
+You can easily add, update, or delete Solr cores. This process is fully automated and can be managed via the site-level active INI file. Ensure Solr is already installed on the system with the `SR9` and/or `SR7` keywords in the `_XTRAS_LIST` in the `/root/.barracuda.cnf` file.
 
 > **NOTE:** New Solr 9 Support is available only in BOA PRO.
 
@@ -15,7 +15,7 @@ Refer to the documentation below, which is also available in every site's INI te
 
 ## Solr Core Configuration
 
-This option allows you to activate Solr core configuration for the site. Solr 9, Solr 7 and Solr 4 powered by Jetty 9 server are available if installed. Supported integration modules are latest versions of either `search_api_solr` or `apachesolr`.
+This option allows you to activate Solr core configuration for the site. Solr 9 and Solr 7 are available if installed. Supported integration modules are latest versions of either `search_api_solr` or `apachesolr` (deprecated).
 
 Currently supported versions are listed below:
 - [search_api_solr-4.3.8.tar.gz (D10.2+)](https://ftp.drupal.org/files/projects/search_api_solr-4.3.8.tar.gz)
@@ -39,7 +39,7 @@ Supported values for the `solr_integration_module` variable:
 - `search_api_solr9` (Activates Solr 9 core if installed)
 - `search_api_solr7` (Activates Solr 7 core if installed)
 - `search_api_solr`  (Activates Solr 7 core if installed)
-- `apachesolr`       (Activates Solr 4 core if installed)
+- `apachesolr`       (Activates Solr 4 core if installed) (deprecated)
 
 To delete an existing Solr core, simply comment out the relevant line. The system will delete the existing Solr core within 15 minutes.
 
