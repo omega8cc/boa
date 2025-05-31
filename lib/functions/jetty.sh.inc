@@ -235,8 +235,7 @@ _if_install_solr_jetty() {
   else
     _PORT_CTRL="${_JETTY_CTRL}"
   fi
-  if [[ "${_XTRAS_LIST}" =~ "SR4" ]] \
-    || [ "${_hostedSys}" = "YES" ]; then
+  if [[ "${_XTRAS_LIST}" =~ "SR4" ]]; then
     if [ ! -d "/opt/solr4" ]; then
       _R_JETTY=9
       echo " "
