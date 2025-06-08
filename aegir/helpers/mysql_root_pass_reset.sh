@@ -1,15 +1,21 @@
 service cron stop
 
-Check /root/.my.cnf
+### Check /root/.my.cnf
 server:~# cat /root/.my.cnf
 [client]
 user=root
 password=FOOO
 server:~#
 
-Wait 60 sec.
+### If /root/.my.pass.txt does not exist or does not match /root/.my.cnf
+server:~# echo FOOO > /root/.my.pass.txt
 
-Run:
+### If /etc/mysql_pre exists and /etc/mysql does not
+server:~# mv -f /etc/mysql_pre /etc/mysql
+
+### Wait 60 sec.
+
+### Run:
 service mysql stop
 ps axf | grep mysql
 
