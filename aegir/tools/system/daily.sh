@@ -37,26 +37,6 @@ if [ -e "/root/.pause_heavy_tasks_maint.cnf" ]; then
 fi
 
 _WEBG=www-data
-_OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
-
-if [ -e "/root/.install.modern.openssl.cnf" ] \
-  && [ -x "/usr/local/ssl3/bin/openssl" ]; then
-  _SSL_BINARY=/usr/local/ssl3/bin/openssl
-else
-  _SSL_BINARY=/usr/local/ssl/bin/openssl
-fi
-_SSL_ITD=$(${_SSL_BINARY} version 2>&1 \
-  | tr -d "\n" \
-  | cut -d" " -f2 \
-  | awk '{ print $1}')
-if [[ "${_SSL_ITD}" =~ "3.3." ]] \
-  || [[ "${_SSL_ITD}" =~ "3.2." ]] \
-  || [[ "${_SSL_ITD}" =~ "3.1." ]] \
-  || [[ "${_SSL_ITD}" =~ "3.0." ]] \
-  || [[ "${_SSL_ITD}" =~ "1.1." ]] \
-  || [[ "${_SSL_ITD}" =~ "1.0." ]]; then
-  _NEW_SSL=YES
-fi
 _crlGet="-L --max-redirs 3 -k -s --retry 9 --retry-delay 9 -A iCab"
 _wgetGet="--max-redirect=3 --no-check-certificate -q --tries=9 --wait=9 --user-agent='iCab'"
 _aptAllow="--allow-unauthenticated"
@@ -2310,16 +2290,10 @@ _daily_process() {
         | sed "s/[\,']//g" 2>&1)
       _PLR_CTRL_F="${_Plr}/sites/all/modules/boa_platform_control.ini"
       if [ -e "${_Plr}" ]; then
-        if [ "${_NEW_SSL}" = "YES" ]; then
-          _PlrID=$(echo ${_Plr} \
-            | openssl md5 \
-            | awk '{ print $2}' \
-            | tr -d "\n" 2>&1)
-        else
-          _PlrID=$(echo ${_Plr} \
-            | openssl md5 \
-            | tr -d "\n" 2>&1)
-        fi
+        _PlrID=$(echo ${_Plr} \
+          | openssl md5 \
+          | awk '{ print $2}' \
+          | tr -d "\n" 2>&1)
         _codeBaseCheckInfo="${_usEr}/log/ctrl/plr.${_PlrID}.codebasecheck-${_NOW}.info"
         if [ -x "/opt/local/bin/codebasecheck" ] && [ ! -f "${_codeBaseCheckInfo}" ]; then
           codebasecheck ${_Plr}
