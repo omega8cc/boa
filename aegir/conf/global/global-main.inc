@@ -31,24 +31,53 @@ if (preg_match("/^\/cron\.php/", $_SERVER['REQUEST_URI']) ||
 
 
 /**
- * Fix for Akamai, CloudFlare and others running via Proxy
+ * Support real IP detection behind proxies (Cloudflare, Akamai, etc.)
  */
 if (isset($_SERVER['REMOTE_ADDR'])) {
-  if (isset($_SERVER['HTTP_X_FORWARDED_FOR']) &&
-      $_SERVER['HTTP_X_FORWARDED_FOR'] != "127.0.0.1") {
-    $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_X_FORWARDED_FOR'];
+
+  $real_ip = null;
+
+  // Prefer Cloudflare (if available and not localhost).
+  if (!empty($_SERVER['HTTP_CF_CONNECTING_IP']) && $_SERVER['HTTP_CF_CONNECTING_IP'] !== '127.0.0.1') {
+    $real_ip = $_SERVER['HTTP_CF_CONNECTING_IP'];
+    $proxy_header = 'CF-Connecting-IP';
   }
-  if (isset($_SERVER['HTTP_X_REAL_IP']) &&
-      $_SERVER['HTTP_X_REAL_IP'] != "127.0.0.1") {
-    $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_X_REAL_IP'];
+
+  // Fallback to Akamai.
+  elseif (!empty($_SERVER['HTTP_TRUE_CLIENT_IP']) && $_SERVER['HTTP_TRUE_CLIENT_IP'] !== '127.0.0.1') {
+    $real_ip = $_SERVER['HTTP_TRUE_CLIENT_IP'];
+    $proxy_header = 'True-Client-IP';
   }
-  if (isset($_SERVER['HTTP_CF_CONNECTING_IP']) &&
-      $_SERVER['HTTP_CF_CONNECTING_IP'] != "127.0.0.1") {
-    $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_CF_CONNECTING_IP'];
+
+  // Fallback to X-Real-IP.
+  elseif (!empty($_SERVER['HTTP_X_REAL_IP']) && $_SERVER['HTTP_X_REAL_IP'] !== '127.0.0.1') {
+    $real_ip = $_SERVER['HTTP_X_REAL_IP'];
+    $proxy_header = 'X-Real-IP';
   }
-  if (isset($_SERVER['HTTP_TRUE_CLIENT_IP']) &&
-      $_SERVER['HTTP_TRUE_CLIENT_IP'] != "127.0.0.1") {
-    $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_TRUE_CLIENT_IP'];
+
+  // Fallback to first valid public IP in X-Forwarded-For.
+  elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+    $ips = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']);
+    foreach ($ips as $ip) {
+      $ip = trim($ip);
+      if (filter_var($ip, FILTER_VALIDATE_IP) && $ip !== '127.0.0.1') {
+        $real_ip = $ip;
+        $proxy_header = 'X-Forwarded-For';
+        break;
+      }
+    }
+  }
+
+  // Apply override if a real IP was found.
+  if (!empty($real_ip)) {
+    $_SERVER['REMOTE_ADDR'] = $real_ip;
+
+    if ($drupal_core >= 8) {
+      // Trust the proxy and configure Symfony to respect the correct header.
+      $settings['reverse_proxy'] = TRUE;
+      $settings['reverse_proxy_addresses'] = ['127.0.0.1'];
+      $settings['reverse_proxy_header'] = $proxy_header;
+    }
   }
 }
 
