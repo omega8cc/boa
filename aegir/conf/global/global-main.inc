@@ -33,50 +33,59 @@ if (preg_match("/^\/cron\.php/", $_SERVER['REQUEST_URI']) ||
 /**
  * Support real IP detection behind proxies (Cloudflare, Akamai, etc.)
  */
-if (isset($_SERVER['REMOTE_ADDR'])) {
+if (isset($_SERVER['REMOTE_ADDR']) && php_sapi_name() !== 'cli') {
 
   $real_ip = null;
+  $proxy_header = null;
+  $proxy_ip = null;
 
-  // Prefer Cloudflare (if available and not localhost).
-  if (!empty($_SERVER['HTTP_CF_CONNECTING_IP']) && $_SERVER['HTTP_CF_CONNECTING_IP'] !== '127.0.0.1') {
-    $real_ip = $_SERVER['HTTP_CF_CONNECTING_IP'];
+  // Handle possible comma-separated proxy chain in REMOTE_ADDR
+  $raw_proxy_ip = $_SERVER['REMOTE_ADDR'];
+  $proxy_ip_list = array_map('trim', explode(',', $raw_proxy_ip));
+  $proxy_ip_list = array_filter($proxy_ip_list, function ($ip) {
+    return filter_var($ip, FILTER_VALIDATE_IP);
+  });
+
+  if (!empty($proxy_ip_list)) {
+    $proxy_ip = end($proxy_ip_list); // Trust the last proxy in the chain
+  }
+
+  // Detect real client IP using known proxy headers
+  if (!empty($_SERVER['HTTP_CF_CONNECTING_IP'])) {
+    // Cloudflare (single IP, trusted)
+    $real_ip = trim($_SERVER['HTTP_CF_CONNECTING_IP']);
     $proxy_header = 'CF-Connecting-IP';
   }
-
-  // Fallback to Akamai.
-  elseif (!empty($_SERVER['HTTP_TRUE_CLIENT_IP']) && $_SERVER['HTTP_TRUE_CLIENT_IP'] !== '127.0.0.1') {
-    $real_ip = $_SERVER['HTTP_TRUE_CLIENT_IP'];
+  elseif (!empty($_SERVER['HTTP_TRUE_CLIENT_IP'])) {
+    // Akamai / Fastly (single IP)
+    $real_ip = trim($_SERVER['HTTP_TRUE_CLIENT_IP']);
     $proxy_header = 'True-Client-IP';
   }
-
-  // Fallback to X-Real-IP.
-  elseif (!empty($_SERVER['HTTP_X_REAL_IP']) && $_SERVER['HTTP_X_REAL_IP'] !== '127.0.0.1') {
-    $real_ip = $_SERVER['HTTP_X_REAL_IP'];
+  elseif (!empty($_SERVER['HTTP_X_REAL_IP'])) {
+    // NGINX-style (single IP)
+    $real_ip = trim($_SERVER['HTTP_X_REAL_IP']);
     $proxy_header = 'X-Real-IP';
   }
-
-  // Fallback to first valid public IP in X-Forwarded-For.
   elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-    $ips = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']);
-    foreach ($ips as $ip) {
-      $ip = trim($ip);
-      if (filter_var($ip, FILTER_VALIDATE_IP) && $ip !== '127.0.0.1') {
-        $real_ip = $ip;
-        $proxy_header = 'X-Forwarded-For';
-        break;
-      }
+    // Generic proxy chain (may contain multiple IPs)
+    $forwarded_ips = array_map('trim', explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']));
+    $forwarded_ips = array_filter($forwarded_ips, function ($ip) {
+      return filter_var($ip, FILTER_VALIDATE_IP);
+    });
+    if (!empty($forwarded_ips)) {
+      $real_ip = $forwarded_ips[0]; // First = original client IP
+      $proxy_header = 'X-Forwarded-For';
     }
   }
 
-  // Apply override if a real IP was found.
-  if (!empty($real_ip)) {
+  // Apply the final values
+  if (!empty($real_ip) && !empty($proxy_ip) && !empty($proxy_header)) {
     $_SERVER['REMOTE_ADDR'] = $real_ip;
 
-    if ($drupal_core >= 8) {
-      // Trust the proxy and configure Symfony to respect the correct header.
+    if (isset($drupal_core) && $drupal_core >= 8) {
       $settings['reverse_proxy'] = TRUE;
-      $settings['reverse_proxy_addresses'] = ['127.0.0.1'];
       $settings['reverse_proxy_header'] = $proxy_header;
+      $settings['reverse_proxy_addresses'] = array($proxy_ip);
     }
   }
 }
@@ -298,5 +307,3 @@ if (is_array($all_ini) && $is_dev && !$is_backend) {
   header("X-Ini-AutoSlave-Enable: " . $all_ini['autoslave_enable']);
   header("X-Ini-CacheConsistent-Enable: " . $all_ini['cache_consistent_enable']);
 }
-
-
