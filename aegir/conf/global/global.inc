@@ -138,24 +138,107 @@ if (isset($_SERVER['HTTP_HOST']) &&
 
 
 /**
- * Fix for Akamai, CloudFlare and others running via Proxy
+ * Core version detection
  */
-if (isset($_SERVER['REMOTE_ADDR'])) {
-  if (isset($_SERVER['HTTP_X_FORWARDED_FOR']) &&
-      $_SERVER['HTTP_X_FORWARDED_FOR'] != "127.0.0.1") {
-    $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_X_FORWARDED_FOR'];
+if (file_exists('web.config') || file_exists('index.php')) { // Check for the main entry point file
+  if (file_exists('core')) {
+    if (file_exists('vendor/symfony') ||
+      file_exists('core/vendor/symfony') ||
+      file_exists('autoload.php')) {
+      $drupal_core = '8';
+      $drupal_id = 'DVIII';
+      if (file_exists('core/themes/olivero') && file_exists('core/themes/classy')) {
+        $drupal_core = '9';
+        $drupal_id = 'DIX';
+      }
+      if (file_exists('core/themes/olivero') && !file_exists('core/themes/classy')) {
+        $drupal_core = '10';
+        $drupal_id = 'DX';
+      }
+      if (file_exists('core/modules/workspaces_ui') && !file_exists('web.config')) {
+        $drupal_core = '11';
+        $drupal_id = 'DXI';
+      }
+      $use_redis = TRUE;
+    }
+    else {
+      $backdropcms = TRUE;
+      $drupal_id = 'ND';
+    }
   }
-  if (isset($_SERVER['HTTP_X_REAL_IP']) &&
-      $_SERVER['HTTP_X_REAL_IP'] != "127.0.0.1") {
-    $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_X_REAL_IP'];
+  elseif (file_exists('modules/path_alias_cache')) {
+    $drupal_core = '6';
+    $drupal_id = 'DVI';
+    $use_redis = TRUE;
   }
-  if (isset($_SERVER['HTTP_CF_CONNECTING_IP']) &&
-      $_SERVER['HTTP_CF_CONNECTING_IP'] != "127.0.0.1") {
-    $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_CF_CONNECTING_IP'];
+  else {
+    $drupal_core = '7';
+    $drupal_id = 'DVII';
+    $use_redis = TRUE;
   }
-  if (isset($_SERVER['HTTP_TRUE_CLIENT_IP']) &&
-      $_SERVER['HTTP_TRUE_CLIENT_IP'] != "127.0.0.1") {
-    $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_TRUE_CLIENT_IP'];
+  if ($drupal_id && $is_dev && !$is_backend) {
+    header('X-Backend: ' . $drupal_id);
+  }
+}
+
+
+/**
+ * Support real IP detection behind proxies (Cloudflare, Akamai, etc.)
+ */
+if (isset($_SERVER['REMOTE_ADDR']) && php_sapi_name() !== 'cli') {
+
+  $real_ip = null;
+  $proxy_header = null;
+  $proxy_ip = null;
+
+  // Handle possible comma-separated proxy chain in REMOTE_ADDR
+  $raw_proxy_ip = $_SERVER['REMOTE_ADDR'];
+  $proxy_ip_list = array_map('trim', explode(',', $raw_proxy_ip));
+  $proxy_ip_list = array_filter($proxy_ip_list, function ($ip) {
+    return filter_var($ip, FILTER_VALIDATE_IP);
+  });
+
+  if (!empty($proxy_ip_list)) {
+    $proxy_ip = end($proxy_ip_list); // Trust the last proxy in the chain
+  }
+
+  // Detect real client IP using known proxy headers
+  if (!empty($_SERVER['HTTP_CF_CONNECTING_IP'])) {
+    // Cloudflare (single IP, trusted)
+    $real_ip = trim($_SERVER['HTTP_CF_CONNECTING_IP']);
+    $proxy_header = 'CF-Connecting-IP';
+  }
+  elseif (!empty($_SERVER['HTTP_TRUE_CLIENT_IP'])) {
+    // Akamai / Fastly (single IP)
+    $real_ip = trim($_SERVER['HTTP_TRUE_CLIENT_IP']);
+    $proxy_header = 'True-Client-IP';
+  }
+  elseif (!empty($_SERVER['HTTP_X_REAL_IP'])) {
+    // NGINX-style (single IP)
+    $real_ip = trim($_SERVER['HTTP_X_REAL_IP']);
+    $proxy_header = 'X-Real-IP';
+  }
+  elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+    // Generic proxy chain (may contain multiple IPs)
+    $forwarded_ips = array_map('trim', explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']));
+    $forwarded_ips = array_filter($forwarded_ips, function ($ip) {
+      return filter_var($ip, FILTER_VALIDATE_IP);
+    });
+    if (!empty($forwarded_ips)) {
+      $real_ip = $forwarded_ips[0]; // First = original client IP
+      $proxy_header = 'X-Forwarded-For';
+    }
+  }
+
+  // Apply the final values
+  if (!empty($real_ip) && !empty($proxy_ip) && !empty($proxy_header)) {
+    $_SERVER['REMOTE_ADDR'] = $real_ip;
+
+    if (isset($drupal_core) && $drupal_core >= 8) {
+      $settings['reverse_proxy'] = TRUE;
+      $settings['reverse_proxy_header'] = $proxy_header;
+      $settings['reverse_proxy_addresses'] = array($proxy_ip);
+    }
   }
 }
 
@@ -374,51 +457,6 @@ if (is_array($all_ini) && $is_dev && !$is_backend) {
   header("X-Ini-Set-Composer-Manager-Vendor-Dir: " . $all_ini['set_composer_manager_vendor_dir']);
   header("X-Ini-AutoSlave-Enable: " . $all_ini['autoslave_enable']);
   header("X-Ini-CacheConsistent-Enable: " . $all_ini['cache_consistent_enable']);
-}
-
-
-/**
- * Core version detection
- */
-if (file_exists('web.config') || file_exists('index.php')) { // Check for the main entry point file
-  if (file_exists('core')) {
-    if (file_exists('vendor/symfony') ||
-      file_exists('core/vendor/symfony') ||
-      file_exists('autoload.php')) {
-      $drupal_core = '8';
-      $drupal_id = 'DVIII';
-      if (file_exists('core/themes/olivero') && file_exists('core/themes/classy')) {
-        $drupal_core = '9';
-        $drupal_id = 'DIX';
-      }
-      if (file_exists('core/themes/olivero') && !file_exists('core/themes/classy')) {
-        $drupal_core = '10';
-        $drupal_id = 'DX';
-      }
-      if (file_exists('core/modules/workspaces_ui') && !file_exists('web.config')) {
-        $drupal_core = '11';
-        $drupal_id = 'DXI';
-      }
-      $use_redis = TRUE;
-    }
-    else {
-      $backdropcms = TRUE;
-      $drupal_id = 'ND';
-    }
-  }
-  elseif (file_exists('modules/path_alias_cache')) {
-    $drupal_core = '6';
-    $drupal_id = 'DVI';
-    $use_redis = TRUE;
-  }
-  else {
-    $drupal_core = '7';
-    $drupal_id = 'DVII';
-    $use_redis = TRUE;
-  }
-  if ($drupal_id && $is_dev && !$is_backend) {
-    header('X-Backend: ' . $drupal_id);
-  }
 }
 
 
