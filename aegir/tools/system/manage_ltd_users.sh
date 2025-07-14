@@ -990,7 +990,7 @@ _php_cli_drush_update() {
   fi
   if [ -x "${_T_CLI}/php" ]; then
     #_DRUSH_HOSTING_TASKS_CMD="/usr/bin/drush @hostmaster hosting-tasks --force"
-    _DRUSH_HOSTING_DISPATCH_CMD="${_T_CLI}/php ${_dscUsr}/tools/drush/drush.php @hostmaster hosting-dispatch"
+    _DRUSH_HOSTING_DISPATCH_CMD="${_T_CLI}/php /usr/bin/drush8 @hostmaster hosting-dispatch"
     if [ -e "${_dscUsr}/aegir.sh" ]; then
       rm -f ${_dscUsr}/aegir.sh
     fi
