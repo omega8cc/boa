@@ -412,13 +412,13 @@ export USER=${USER}
 # Check PHP CLI version defined.
 check_php_cli_version() {
   ### echo CHK start check_php_cli_version
-  if [ "${HOME}" = "/var/aegir" ]; then
+  if [ "${HOME}" = "/var/aegir" ] && [ -f "/var/aegir/drush/drush.php" ]; then
     _PHP_CLI=$(grep "/opt/php" /var/aegir/drush/drush.php 2>&1)
-  elif [[ "${HOME}" =~ "/data/disk/" ]]; then
-    _PHP_CLI=$(grep "/opt/php" /data/disk/${_Y_USR}/tools/drush/drush.php 2>&1)
   else
     if [ -f "/data/disk/${_Y_USR}/tools/drush/drush.php" ]; then
       _PHP_CLI=$(grep "/opt/php" /data/disk/${_Y_USR}/tools/drush/drush.php 2>&1)
+    elif [ -f "/data/disk/${_Y_USR}/static/control/cli.info" ]; then
+      _PHP_CLI="php$(tr -d '.\n' < /data/disk/${_Y_USR}/static/control/cli.info)"
     fi
   fi
   ### echo CHK 1 _PHP_CLI is ${_PHP_CLI}
