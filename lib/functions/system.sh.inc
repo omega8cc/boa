@@ -3255,10 +3255,21 @@ _get_drush_eight() {
   fi
   rm -rf /opt/tools/drush/8/*
   cd /opt/tools/drush/8/
-  _get_dev_ext "drush-${_DRUSH_EIGHT_VRN}.tar.gz"
-  touch /opt/tools/drush/8/.ctrl.${_tRee}.${_xSrl}.pid
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "INFO: Drush ${_DRUSH_EIGHT_VRN} installation complete"
+  _get_dev_ext "drush8.phar-${_DRUSH_EIGHT_VRN}.gz"
+  if [ -e "/opt/tools/drush/8/drush8.phar-${_DRUSH_EIGHT_VRN}" ]; then
+    cp -af drush8.phar-${_DRUSH_EIGHT_VRN} /usr/local/bin/drush8
+    chmod 755 /usr/local/bin/drush8
+    mkdir -p /opt/tools/drush/8/drush
+    ln -sf /usr/local/bin/drush8 /opt/tools/drush/8/drush/drush
+    ln -sf /usr/local/bin/drush8 /opt/tools/drush/8/drush/drush.php
+    touch /opt/tools/drush/8/.ctrl.${_tRee}.${_xSrl}.pid
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: Drush ${_DRUSH_EIGHT_VRN} phar installation complete"
+    fi
+  else
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: Drush ${_DRUSH_EIGHT_VRN} phar installation failed!"
+    fi
   fi
 }
 
@@ -3310,15 +3321,15 @@ _drush_system_install_update() {
         | cut -d" " -f8 \
         | awk '{ print $1}' 2>&1)
       if [ "${_DRUSH_ITD}" != "${_DRUSH_EIGHT_TEST_VRN}" ] \
-        || [ ! -x "/opt/tools/drush/8/drush/drush.php" ] \
+        || [ ! -x "/usr/local/bin/drush8" ] \
         || [ ! -e "/opt/tools/drush/8/.ctrl.${_tRee}.${_xSrl}.pid" ]; then
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "INFO: Drush ${_DRUSH_EIGHT_VRN} re-installation required"
+          _msg "INFO: Drush ${_DRUSH_EIGHT_VRN} phar re-installation required"
         fi
         _get_drush_eight
       else
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "INFO: Drush ${_DRUSH_EIGHT_VRN} already installed"
+          _msg "INFO: Drush ${_DRUSH_EIGHT_VRN} phar already installed"
         fi
       fi
     fi
@@ -3359,13 +3370,13 @@ _drush_system_install_update() {
       fi
     fi
     _set_drush_perm
-    if [ -x "/opt/tools/drush/8/drush/drush.php" ]; then
+    if [ -x "/usr/local/bin/drush8" ]; then
       rm -f /usr/bin/drush8
       rm -f /usr/bin/drush
-      ln -s /opt/tools/drush/8/drush/drush.php /usr/bin/drush8
-      ln -s /opt/tools/drush/8/drush/drush.php /usr/bin/drush
+      ln -s /usr/local/bin/drush8 /usr/bin/drush8
+      ln -s /usr/local/bin/drush8 /usr/bin/drush
     else
-      _msg "FAIL: Drush ${_DRUSH_EIGHT_VRN} installation failed!"
+      _msg "FAIL: Drush ${_DRUSH_EIGHT_VRN} phar installation failed!"
     fi
     if [ -x "/opt/tools/drush/10/drush/vendor/drush/drush/drush" ]; then
       _clean_drush_ten
