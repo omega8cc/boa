@@ -3273,12 +3273,6 @@ _drush_system_install_update() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: Installing supported Drush versions..."
     fi
-    ###
-    ### Force all Drush versions update if serial is not new
-    rm -f /opt/tools/drush/8/.ctrl.${_tRee}.${_xSrl}.pid
-    rm -f /opt/tools/drush/10/.ctrl.${_tRee}.${_xSrl}.pid
-    rm -f /opt/tools/drush/11/.ctrl.${_tRee}.${_xSrl}.pid
-    ###
     ###--------------------###
     if [ -e "/opt/tools/drush/launcher" ]; then
       rm -rf /opt/tools/drush/launcher
