@@ -86,6 +86,12 @@ _dctpP="/data/conf/patches/${_dctpF}"
 _dctrF="drupal-ten-aegir-02.patch"
 _dctrP="/data/conf/patches/${_dctrF}"
 #
+_dctpEF="drupal-eleven-aegir-01.patch"
+_dctpEP="/data/conf/patches/${_dctpEF}"
+#
+_dctrEF="drupal-eleven-aegir-02.patch"
+_dctrEP="/data/conf/patches/${_dctrEF}"
+#
 _provLeInc="provision_hosting_le.drush.inc"
 _provLeIncFull="/var/xdrago/conf/${_provLeInc}"
 #
@@ -2847,6 +2853,16 @@ _fix_drupal_core_ten() {
   fi
 }
 
+_fix_drupal_core_eleven() {
+  if [ -e "/var/xdrago" ]; then
+    if [ ! -e "${_dctpEP}" ] || [ ! -e "${_dctrEP}" ]; then
+      mkdir -p /data/conf/patches
+      curl ${_crlGet} "${_urlHmr}/patches/${_dctrEF}" -o ${_dctrEP}
+      cp -af ${_dctrEP} ${_dctpEP}
+    fi
+  fi
+}
+
 _fix_pure_ftpd() {
   if [ -e "/usr/local/etc/pure-ftpd.conf" ]; then
     _PAM_AUTH=$(grep "^PAMAuthentication" /usr/local/etc/pure-ftpd.conf 2>&1)
@@ -3960,6 +3976,7 @@ if [ "$(id -u)" -eq 0 ]; then
     _fix_wkhtml_perms
     _fix_eldir
     _fix_drupal_core_ten
+    _fix_drupal_core_eleven
     _fix_pure_ftpd
     _fix_hosting_le
     _fix_newrelic
