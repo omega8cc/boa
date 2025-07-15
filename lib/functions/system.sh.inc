@@ -3257,11 +3257,11 @@ _get_drush_eight() {
   cd /opt/tools/drush/8/
   _get_dev_ext "drush8.phar-${_DRUSH_EIGHT_VRN}.gz"
   if [ -e "/opt/tools/drush/8/drush8.phar-${_DRUSH_EIGHT_VRN}" ]; then
-    cp -af drush8.phar-${_DRUSH_EIGHT_VRN} /usr/local/bin/drush8
-    chmod 755 /usr/local/bin/drush8
+    cp -af drush8.phar-${_DRUSH_EIGHT_VRN} /usr/local/bin/drush8.phar
+    chmod 755 /usr/local/bin/drush8.phar
     mkdir -p /opt/tools/drush/8/drush
-    ln -sf /usr/local/bin/drush8 /opt/tools/drush/8/drush/drush
-    ln -sf /usr/local/bin/drush8 /opt/tools/drush/8/drush/drush.php
+    ln -sf /usr/local/bin/drush8.phar /opt/tools/drush/8/drush/drush
+    ln -sf /usr/local/bin/drush8.phar /opt/tools/drush/8/drush/drush.php
     touch /opt/tools/drush/8/.ctrl.${_tRee}.${_xSrl}.pid
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: Drush ${_DRUSH_EIGHT_VRN} phar installation complete"
@@ -3321,7 +3321,7 @@ _drush_system_install_update() {
         | cut -d" " -f8 \
         | awk '{ print $1}' 2>&1)
       if [ "${_DRUSH_ITD}" != "${_DRUSH_EIGHT_TEST_VRN}" ] \
-        || [ ! -x "/usr/local/bin/drush8" ] \
+        || [ ! -x "/usr/local/bin/drush8.phar" ] \
         || [ ! -e "/opt/tools/drush/8/.ctrl.${_tRee}.${_xSrl}.pid" ]; then
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "INFO: Drush ${_DRUSH_EIGHT_VRN} phar re-installation required"
@@ -3370,11 +3370,11 @@ _drush_system_install_update() {
       fi
     fi
     _set_drush_perm
-    if [ -x "/usr/local/bin/drush8" ]; then
+    if [ -x "/usr/local/bin/drush8.phar" ]; then
       rm -f /usr/bin/drush8
       rm -f /usr/bin/drush
-      ln -s /usr/local/bin/drush8 /usr/bin/drush8
-      ln -s /usr/local/bin/drush8 /usr/bin/drush
+      ln -s /usr/local/bin/drush8.phar /usr/bin/drush8
+      ln -s /usr/local/bin/drush8.phar /usr/bin/drush
     else
       _msg "FAIL: Drush ${_DRUSH_EIGHT_VRN} phar installation failed!"
     fi

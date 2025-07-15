@@ -1149,15 +1149,15 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ ! -e "${_pthLog}/drush8-phar-symlink.ctrl.${_tRee}.${_xSrl}.pid" ]; then
-    if [ -x "/usr/local/bin/drush8" ] \
+    if [ -x "/usr/local/bin/drush8.phar" ] \
       && [ -L "/usr/bin/drush8" ]; then
       _DRUSH_SYMLINK=$(readlink -n /usr/bin/drush8 2>&1)
       _DRUSH_SYMLINK=$(echo -n ${_DRUSH_SYMLINK} | tr -d "\n" 2>&1)
-      if [ "${_DRUSH_SYMLINK}" != "/usr/local/bin/drush8" ]; then
+      if [ "${_DRUSH_SYMLINK}" != "/usr/local/bin/drush8.phar" ]; then
         rm -f /usr/bin/drush8
         rm -f /usr/bin/drush
-        ln -s /usr/local/bin/drush8 /usr/bin/drush8
-        ln -s /usr/local/bin/drush8 /usr/bin/drush
+        ln -s /usr/local/bin/drush8.phar /usr/bin/drush8
+        ln -s /usr/local/bin/drush8.phar /usr/bin/drush
         touch ${_pthLog}/drush8-phar-symlink.ctrl.${_tRee}.${_xSrl}.pid
       fi
     fi
@@ -1552,7 +1552,7 @@ _update_agents() {
     fi
   fi
 
-  if [ -x "/usr/local/bin/drush8" ] \
+  if [ -x "/usr/local/bin/drush8.phar" ] \
     && [ -e "/var/xdrago" ] \
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/lshell.ctrl.f92.${_tRee}.${_xSrl}.pid" ]; then
@@ -1571,7 +1571,7 @@ _update_agents() {
     fi
   fi
 
-  if [ -x "/usr/local/bin/drush8" ] \
+  if [ -x "/usr/local/bin/drush8.phar" ] \
     && [ -e "/var/xdrago" ] \
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/multi.ctrl.${_tRee}.${_xSrl}.pid" ]; then
@@ -1837,7 +1837,7 @@ _update_agents() {
     fi
   done
 
-  if [ -x "/usr/local/bin/drush8" ] \
+  if [ -x "/usr/local/bin/drush8.phar" ] \
     && [ -e "${_provLeIncFull}" ] \
     && [ -e "${_hoLeIncFull}" ] \
     && [ -e "/var/xdrago" ] \
