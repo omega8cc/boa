@@ -1,0 +1,11 @@
+diff -urp a/vendor/symfony/console/Output/Output.php b/vendor/symfony/console/Output/Output.php
+--- a/vendor/symfony/console/Output/Output.php	2025-05-24 11:34:04.000000000 +0100
++++ b/vendor/symfony/console/Output/Output.php	2025-07-15 22:16:24.471373174 +0100
+@@ -140,5 +140,5 @@ abstract class Output implements OutputI
+     /**
+      * Writes a message to the output.
+      */
+-    abstract protected function doWrite(string $message, bool $newline): void;
++    abstract protected function doWrite($message, $newline);
+ }
+
