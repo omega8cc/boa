@@ -244,7 +244,7 @@ _load_control() {
 }
 
 # Main execution
-for _iteration in {1..10}; do
+for _iteration in {1..9}; do
   echo "----------------------------"
   echo "Iteration ${_iteration}:"
   _load_control
