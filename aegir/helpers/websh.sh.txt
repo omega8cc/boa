@@ -2,7 +2,7 @@
 
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/local/ssl3
 
-_DEST_DRUSH="/usr/bin/drush8"
+_DEST_DRUSH="/usr/local/bin/drush8.phar"
 
 _forward_to_dash() {
   if [[ "${_ARGS}" =~ "sudo_noexec.so" ]] && [[ "${_LTD_GID}" =~ "ltd-shell-more"($) ]]; then
@@ -210,8 +210,8 @@ if [[ ! "${_ARGS}" =~ "composer" ]] \
       esac
     done
     ### echo _ARR is ${_ARR}
-  elif [[ "${_ARGS}" =~ "php /usr/bin/drush8" ]]; then
-    _R_M=`echo -n ${_ARGS} | grep -o "php /usr/bin/drush8"`
+  elif [[ "${_ARGS}" =~ "php /usr/local/bin/drush8.phar" ]]; then
+    _R_M=`echo -n ${_ARGS} | grep -o "php /usr/local/bin/drush8.phar"`
     ### echo _R_M is ${_R_M}
     _R_M=${_R_M//\//\\\/}
     ### echo _R_M is ${_R_M}
@@ -499,7 +499,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
         || [[ "${_ARGS}" =~ "drush11 " ]] \
         || [[ "${_ARGS}" =~ "vendor/drush/drush/drush.php " ]]; then
         _PWD=$(pwd 2>&1)
-        _DEST_DRUSH="/usr/bin/drush8"
+        _DEST_DRUSH="/usr/local/bin/drush8.phar"
         if [[ "${_ARGS}" =~ "vendor/bin/drush " ]]; then
           _DEST_DRUSH="${_R_M}/vendor/drush/drush/drush.php"
         fi
@@ -568,7 +568,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           fi
         elif [[ "${_ARGS}" =~ "drush" ]] \
           || [[ "${_ARGS}" =~ "drush8 " ]]; then
-          _DEST_DRUSH="/usr/bin/drush8"
+          _DEST_DRUSH="/usr/local/bin/drush8.phar"
           if [[ "${_ARGS}" =~ "vendor/bin/drush " ]]; then
             _DEST_DRUSH="${_R_M}/vendor/drush/drush/drush.php"
           fi
