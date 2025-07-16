@@ -80,17 +80,17 @@ _vBs="/var/backups"
 _eldirF="0001-Print-site_footer-if-defined.patch"
 _eldirP="/var/xdrago/conf/${_eldirF}"
 #
-_dctpF="drupal-ten-aegir-core-01.patch"
-_dctpP="/data/conf/patches/${_dctpF}"
+_tenCorePatchFname="drupal-ten-aegir-core-01.patch"
+_tenCorePatchPath="/data/conf/patches/${_tenCorePatchFname}"
 #
-_dctrF="drupal-ten-aegir-console-02.patch"
-_dctrP="/data/conf/patches/${_dctrF}"
+_tenConsolePatchFname="drupal-ten-aegir-console-02.patch"
+_tenConsolePatchPath="/data/conf/patches/${_tenConsolePatchFname}"
 #
-_dctpEF="drupal-eleven-aegir-core-01.patch"
-_dctpEP="/data/conf/patches/${_dctpEF}"
+_elevenCorePatchFname="drupal-eleven-aegir-core-01.patch"
+_elevenCorePatchPath="/data/conf/patches/${_elevenCorePatchFname}"
 #
-_dctrEF="drupal-eleven-aegir-console-02.patch"
-_dctrEP="/data/conf/patches/${_dctrEF}"
+_elevenConsolePatchFname="drupal-eleven-aegir-console-02.patch"
+_elevenConsolePatchPath="/data/conf/patches/${_elevenConsolePatchFname}"
 #
 _provLeInc="provision_hosting_le.drush.inc"
 _provLeIncFull="/var/xdrago/conf/${_provLeInc}"
@@ -2845,20 +2845,26 @@ _fix_eldir() {
 
 _fix_drupal_core_ten() {
   if [ -e "/var/xdrago" ]; then
-    if [ ! -e "${_dctpP}" ] || [ ! -e "${_dctrP}" ]; then
+    if [ ! -e "${_tenCorePatchPath}" ]; then
       mkdir -p /data/conf/patches
-      curl ${_crlGet} "${_urlHmr}/patches/${_dctrF}" -o ${_dctrP}
-      cp -af ${_dctrP} ${_dctpP}
+      curl ${_crlGet} "${_urlHmr}/patches/${_tenCorePatchFname}" -o ${_tenCorePatchPath}
+    fi
+    if [ ! -e "${_tenConsolePatchPath}" ]; then
+      mkdir -p /data/conf/patches
+      curl ${_crlGet} "${_urlHmr}/patches/${_tenConsolePatchFname}" -o ${_tenConsolePatchPath}
     fi
   fi
 }
 
 _fix_drupal_core_eleven() {
   if [ -e "/var/xdrago" ]; then
-    if [ ! -e "${_dctpEP}" ] || [ ! -e "${_dctrEP}" ]; then
+    if [ ! -e "${_elevenCorePatchPath}" ]; then
       mkdir -p /data/conf/patches
-      curl ${_crlGet} "${_urlHmr}/patches/${_dctrEF}" -o ${_dctrEP}
-      cp -af ${_dctrEP} ${_dctpEP}
+      curl ${_crlGet} "${_urlHmr}/patches/${_elevenCorePatchFname}" -o ${_elevenCorePatchPath}
+    fi
+    if [ ! -e "${_elevenConsolePatchPath}" ]; then
+      mkdir -p /data/conf/patches
+      curl ${_crlGet} "${_urlHmr}/patches/${_elevenConsolePatchFname}" -o ${_elevenConsolePatchPath}
     fi
   fi
 }
