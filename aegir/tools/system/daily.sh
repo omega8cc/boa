@@ -526,6 +526,7 @@ _fix_o_contrib_symlink() {
     elif [ -e "${_Plr}/core" ] \
       && [ ! -e "${_Plr}/core/themes/olivero" ] \
       && [ ! -e "${_Plr}/core/themes/stable9" ] \
+      && [ ! -e "${_Plr}/core/modules/workspaces_ui" ] \
       && [ -e "${_O_CONTRIB_EIGHT}" ]; then
       if [ -e "${_Plr}/modules/o_contrib_nine" ] \
         || [ -e "${_Plr}/modules/.o_contrib_nine_dont_use" ]; then
@@ -536,6 +537,11 @@ _fix_o_contrib_symlink() {
         || [ -e "${_Plr}/modules/.o_contrib_ten_dont_use" ]; then
         rm -f ${_Plr}/modules/o_contrib_ten
         rm -f ${_Plr}/modules/.o_contrib_ten_dont_use
+      fi
+      if [ -e "${_Plr}/modules/o_contrib_eleven" ] \
+        || [ -e "${_Plr}/modules/.o_contrib_eleven_dont_use" ]; then
+        rm -f ${_Plr}/modules/o_contrib_eleven
+        rm -f ${_Plr}/modules/.o_contrib_eleven_dont_use
       fi
       if [ ! -e "${_Plr}/modules/o_contrib_eight" ]; then
         ln -sfn ${_O_CONTRIB_EIGHT} ${_Plr}/modules/o_contrib_eight &> /dev/null
@@ -554,6 +560,11 @@ _fix_o_contrib_symlink() {
         rm -f ${_Plr}/modules/o_contrib_ten
         rm -f ${_Plr}/modules/.o_contrib_ten_dont_use
       fi
+      if [ -e "${_Plr}/modules/o_contrib_eleven" ] \
+        || [ -e "${_Plr}/modules/.o_contrib_eleven_dont_use" ]; then
+        rm -f ${_Plr}/modules/o_contrib_eleven
+        rm -f ${_Plr}/modules/.o_contrib_eleven_dont_use
+      fi
       if [ ! -e "${_Plr}/modules/o_contrib_nine" ]; then
         ln -sfn ${_O_CONTRIB_NINE} ${_Plr}/modules/o_contrib_nine &> /dev/null
       fi
@@ -570,6 +581,11 @@ _fix_o_contrib_symlink() {
         || [ -e "${_Plr}/modules/.o_contrib_nine_dont_use" ]; then
         rm -f ${_Plr}/modules/o_contrib_nine
         rm -f ${_Plr}/modules/.o_contrib_nine_dont_use
+      fi
+      if [ -e "${_Plr}/modules/o_contrib_eleven" ] \
+        || [ -e "${_Plr}/modules/.o_contrib_eleven_dont_use" ]; then
+        rm -f ${_Plr}/modules/o_contrib_eleven
+        rm -f ${_Plr}/modules/.o_contrib_eleven_dont_use
       fi
       if [ ! -e "${_Plr}/modules/o_contrib_ten" ]; then
         ln -sfn ${_O_CONTRIB_TEN} ${_Plr}/modules/o_contrib_ten &> /dev/null
