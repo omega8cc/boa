@@ -2843,6 +2843,16 @@ _fix_eldir() {
   fi
 }
 
+_if_drupal_patches_update() {
+  if [ -e "/var/xdrago" ]; then
+    if [ ! -e "/data/conf/patches/ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
+      mkdir -p /data/conf/patches
+      rm -f /data/conf/patches/*
+      touch /data/conf/patches/ctrl.f99.${_tRee}.${_xSrl}.pid
+    fi
+  fi
+}
+
 _fix_drupal_core_ten() {
   if [ -e "/var/xdrago" ]; then
     if [ ! -e "${_tenCorePatchPath}" ]; then
@@ -3981,6 +3991,7 @@ if [ "$(id -u)" -eq 0 ]; then
     _fix_wkhtml
     _fix_wkhtml_perms
     _fix_eldir
+    _if_drupal_patches_update
     _fix_drupal_core_ten
     _fix_drupal_core_eleven
     _fix_pure_ftpd
