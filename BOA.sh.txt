@@ -2845,10 +2845,10 @@ _fix_eldir() {
 
 _if_drupal_patches_update() {
   if [ -e "/var/xdrago" ]; then
-    if [ ! -e "/data/conf/patches/ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
+    if [ ! -e "/data/conf/patches/ctrl.f98.${_tRee}.${_xSrl}.pid" ]; then
       mkdir -p /data/conf/patches
       rm -f /data/conf/patches/*
-      touch /data/conf/patches/ctrl.f99.${_tRee}.${_xSrl}.pid
+      touch /data/conf/patches/ctrl.f98.${_tRee}.${_xSrl}.pid
     fi
   fi
 }
