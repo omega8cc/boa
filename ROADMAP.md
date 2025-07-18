@@ -44,6 +44,5 @@ Certain planned features are likely to be exclusive to **BOA PRO**, as indicated
 
 ## COMPLETED IN BOA DEV
 
+- **Drupal 11 with Aegir 3**: They Said It Couldn’t Be Done — We Did It Anyway.
 - **Documentation Conversion to Markdown**: Update all BOA documentation from legacy TXT to Markdown.
-
-
