@@ -2988,6 +2988,7 @@ _php_install_deps() {
     && [ ! -e "/usr/local/include/curl/easy.h" ]; then
     _mrun "${_INSTAPP} libcurl4-openssl-dev" 2> /dev/null
   fi
+  _mrun "${_INSTAPP} libavif-dev" 2> /dev/null
   _mrun "${_INSTAPP} libgd-dev" 2> /dev/null
   _mrun "${_INSTAPP} libgd3" 2> /dev/null
   _mrun "${_INSTAPP} libjpeg-dev" 2> /dev/null
