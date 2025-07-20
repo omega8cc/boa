@@ -132,10 +132,12 @@ if [ -e "${drupal_root}/core" ]; then
     printf "Locking Drush and Symfony Console Input in "${drupal_root}/vendor"...\n"
     chmod 0400 ${drupal_root}/vendor/drush
     chmod 0400 ${drupal_root}/vendor/symfony/console/Input
+    chmod 0400 ${drupal_root}/vendor/symfony/console/Style
   elif [ -e "${drupal_root}/../vendor" ]; then
     printf "Locking Drush and Symfony Console Input in "${drupal_root}/../vendor"...\n"
     chmod 0400 ${drupal_root}/../vendor/drush
     chmod 0400 ${drupal_root}/../vendor/symfony/console/Input
+    chmod 0400 ${drupal_root}/../vendor/symfony/console/Style
   fi
 fi
 
