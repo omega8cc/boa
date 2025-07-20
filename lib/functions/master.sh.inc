@@ -638,7 +638,11 @@ _aegir_master_upgrade() {
       && [ -e "/data/conf/global.inc" ]; then
       ln -sfn /data/conf/global.inc ${_mtrInc}/global.inc
     fi
-    _redis_password_update
+    if [ -e "/etc/init.d/valkey-server" ]; then
+      _valkey_password_update
+    elif [ -e "/etc/init.d/redis-server" ]; then
+      _redis_password_update
+    fi
     _force_advanced_nginx_config
     cd /var/aegir
     if [ -d "${_mtrNgx}/conf.d" ]; then
@@ -1032,7 +1036,11 @@ EOFMYSQL
       && [ -e "/data/conf/global.inc" ]; then
       ln -sfn /data/conf/global.inc ${_mtrInc}/global.inc
     fi
-    _redis_password_update
+    if [ -e "/etc/init.d/valkey-server" ]; then
+      _valkey_password_update
+    elif [ -e "/etc/init.d/redis-server" ]; then
+      _redis_password_update
+    fi
     _force_advanced_nginx_config
     chmod 0711 ${_mtrInc} &> /dev/null
     chmod 0711 /var/aegir/config &> /dev/null

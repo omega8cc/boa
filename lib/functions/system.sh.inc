@@ -622,7 +622,11 @@ _fix_on_upgrade() {
   _php_config_check_update
   _nginx_conf_update
   _global_inc_conf_update
-  _redis_password_update
+  if [ -e "/etc/init.d/valkey-server" ]; then
+    _valkey_password_update
+  elif [ -e "/etc/init.d/redis-server" ]; then
+    _redis_password_update
+  fi
 }
 
 #
