@@ -1949,6 +1949,19 @@ _display_info() {
         | cut -d"-" -f1 \
         | awk '{ print $3}' 2>&1)
     fi
+    if [ -x "/usr/bin/valkey-server" ]; then
+      _RDS=$(valkey-server -v 2>&1 \
+        | tr -d "\n" \
+        | cut -d" " -f4 \
+        | awk '{ print $1}' 2>&1)
+      if [[ "${_RDS}" =~ "sha" ]]; then
+        _RDS=$(valkey-server -v 2>&1 \
+          | tr -d "\n" \
+          | tr -d "v=" \
+          | cut -d" " -f3 \
+          | awk '{ print $1}' 2>&1)
+      fi
+    fi
     if [ -x "/usr/bin/redis-server" ]; then
       _RDS=$(redis-server -v 2>&1 \
         | tr -d "\n" \
@@ -2182,6 +2195,7 @@ _display_info() {
         "php83-fpm"
         "php84-fpm"
         "mysql"
+        "valkey"
         "redis"
         "solr9"
         "solr7"
@@ -2203,6 +2217,7 @@ _display_info() {
         ["php83-fpm"]="/run/php83-fpm.pid"
         ["php84-fpm"]="/run/php84-fpm.pid"
         ["mysql"]="/run/mysqld/mysqld.pid"
+        ["valkey"]="/run/valkey/valkey.pid"
         ["redis"]="/run/redis/redis.pid"
         ["solr9"]="/var/solr9/solr-9099.pid"
         ["solr7"]="/var/solr7/solr-9077.pid"
