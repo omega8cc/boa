@@ -2026,6 +2026,8 @@ _barracuda_cnf() {
     echo "_PHP_SINGLE_INSTALL=${_PHP_SINGLE_INSTALL}"         >> ${_barCnf}
 
     echo "###"                                                >> ${_barCnf}
+    echo "_VALKEY_LISTEN_MODE=${_VALKEY_LISTEN_MODE}"         >> ${_barCnf}
+    echo "_VALKEY_MAJOR_RELEASE=${_VALKEY_MAJOR_RELEASE}"     >> ${_barCnf}
     echo "_REDIS_LISTEN_MODE=${_REDIS_LISTEN_MODE}"           >> ${_barCnf}
     echo "_REDIS_MAJOR_RELEASE=${_REDIS_MAJOR_RELEASE}"       >> ${_barCnf}
     echo "_RESERVED_RAM=${_RESERVED_RAM}"                     >> ${_barCnf}
@@ -2341,6 +2343,16 @@ _barracuda_cnf() {
     _USE_MYSQLTUNER_TEST=$(grep _USE_MYSQLTUNER ${_barCnf} 2>&1)
     if [[ ! "${_USE_MYSQLTUNER_TEST}" =~ "_USE_MYSQLTUNER" ]]; then
       echo "_USE_MYSQLTUNER=${_USE_MYSQLTUNER}" >> ${_barCnf}
+    fi
+
+    _VALKEY_LISTEN_MODE_TEST=$(grep _VALKEY_LISTEN_MODE ${_barCnf} 2>&1)
+    if [[ ! "${_VALKEY_LISTEN_MODE_TEST}" =~ "_VALKEY_LISTEN_MODE" ]]; then
+      echo "_VALKEY_LISTEN_MODE=${_VALKEY_LISTEN_MODE}" >> ${_barCnf}
+    fi
+
+    _VALKEY_MAJOR_RELEASE_TEST=$(grep _VALKEY_MAJOR_RELEASE ${_barCnf} 2>&1)
+    if [[ ! "${_VALKEY_MAJOR_RELEASE_TEST}" =~ "_VALKEY_MAJOR_RELEASE" ]]; then
+      echo "_VALKEY_MAJOR_RELEASE=${_VALKEY_MAJOR_RELEASE}" >> ${_barCnf}
     fi
 
     _REDIS_LISTEN_MODE_TEST=$(grep _REDIS_LISTEN_MODE ${_barCnf} 2>&1)
@@ -2704,7 +2716,11 @@ _run_apt_get_dist_upgrade() {
   ### Update rsyslog configuration early
   _rsyslog_config_update
   ### Reload key services if needed early
-  _mrun "service redis-server reload" 2> /dev/null
+  if [ -e "/etc/init.d/valkey-server" ]; then
+    _mrun "service valkey-server reload" 2> /dev/null
+  elif [ -e "/etc/init.d/redis-server" ]; then
+    _mrun "service redis-server reload" 2> /dev/null
+  fi
   _mrun "service nginx reload" 2> /dev/null
   _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
@@ -5095,7 +5111,11 @@ _if_enforce_apparmor_profiles() {
         fi
         _mrun "bash /var/xdrago/move_sql.sh" 2> /dev/null
         wait
-        _mrun "service redis-server reload" 2> /dev/null
+        if [ -e "/etc/init.d/valkey-server" ]; then
+          _mrun "service valkey-server reload" 2> /dev/null
+        elif [ -e "/etc/init.d/redis-server" ]; then
+          _mrun "service redis-server reload" 2> /dev/null
+        fi
         _mrun "killall unbound" 2> /dev/null
         _mrun "killall pure-ftpd" 2> /dev/null
         _mrun "killall rsyslogd" 2> /dev/null
@@ -5937,7 +5957,11 @@ _if_post_major_os_upgrade() {
     ### Update rsyslog configuration early
     _rsyslog_config_update
     ### Reload key services if needed early
-    _mrun "service redis-server reload" 2> /dev/null
+    if [ -e "/etc/init.d/valkey-server" ]; then
+      _mrun "service valkey-server reload" 2> /dev/null
+    elif [ -e "/etc/init.d/redis-server" ]; then
+      _mrun "service redis-server reload" 2> /dev/null
+    fi
     _mrun "service nginx reload" 2> /dev/null
     _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
@@ -6620,7 +6644,11 @@ _if_major_os_upgrade() {
     ### Update rsyslog configuration early
     _rsyslog_config_update
     ### Reload key services if needed early
-    _mrun "service redis-server reload" 2> /dev/null
+    if [ -e "/etc/init.d/valkey-server" ]; then
+      _mrun "service valkey-server reload" 2> /dev/null
+    elif [ -e "/etc/init.d/redis-server" ]; then
+      _mrun "service redis-server reload" 2> /dev/null
+    fi
     _mrun "service nginx reload" 2> /dev/null
     _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
@@ -7806,7 +7834,7 @@ _xdrago_install_upgrade() {
     fi
     _if_hosted_sys
     if [ "${_hostedSys}" = "YES" ]; then
-      if [ ! -e "/etc/init.d/redis-server" ]; then
+      if [ ! -e "/etc/init.d/ssh" ]; then
         _NGINX_DOS_LIMIT=8888
       else
         if [ -z "${_NGINX_DOS_LIMIT}" ] \
@@ -7885,7 +7913,7 @@ _xdrago_install_upgrade() {
     fi
     _if_hosted_sys
     if [ "${_hostedSys}" = "YES" ]; then
-      if [ ! -e "/etc/init.d/redis-server" ]; then
+      if [ ! -e "/etc/init.d/ssh" ]; then
         _NGINX_DOS_LIMIT=8888
       else
         if [ -z "${_NGINX_DOS_LIMIT}" ] \
@@ -8614,8 +8642,11 @@ _initd_update() {
     fi
     if [ ! -e "/run/aegir_upgrade.pid" ]; then
       _msg "INFO: Starting Redis, PHP-FPM and Nginx"
-      _mrun "service redis-server start" 2> /dev/null
-      _mrun "service redis-server reload" 2> /dev/null
+      if [ -e "/etc/init.d/valkey-server" ]; then
+        _mrun "service valkey-server start" 2> /dev/null
+      elif [ -e "/etc/init.d/redis-server" ]; then
+        _mrun "service redis-server start" 2> /dev/null
+      fi
       _mrun "update-rc.d -f php5-fpm remove" 2> /dev/null
       _mrun "update-rc.d cron defaults" 2> /dev/null
       _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
@@ -8716,7 +8747,11 @@ _initd_update() {
         _msg "INFO: Reloading Redis, PHP-FPM and Nginx..."
       fi
       _mrun "update-rc.d -f php5-fpm remove" 2> /dev/null
-      _mrun "service redis-server reload" 2> /dev/null
+      if [ -e "/etc/init.d/valkey-server" ]; then
+        _mrun "service valkey-server reload" 2> /dev/null
+      if [ -e "/etc/init.d/redis-server" ]; then
+        _mrun "service redis-server reload" 2> /dev/null
+      fi
       _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
@@ -8893,9 +8928,11 @@ _sysctl_update() {
       fi
     fi
     if [ -e "/etc/security/limits.d" ] \
-      && [ ! -e "/etc/security/limits.d/solr9.conf" ]; then
+      && [ ! -e "/etc/security/limits.d/valkey.conf" ]; then
       echo "sshd soft nofile 524288" > /etc/security/limits.d/sshd.conf
       echo "sshd hard nofile 999999" >> /etc/security/limits.d/sshd.conf
+      echo "valkey soft nofile 65535" > /etc/security/limits.d/valkey.conf
+      echo "valkey hard nofile 524288" >> /etc/security/limits.d/valkey.conf
       echo "redis soft nofile 65535" > /etc/security/limits.d/redis.conf
       echo "redis hard nofile 524288" >> /etc/security/limits.d/redis.conf
       echo "nginx soft nofile 524288" > /etc/security/limits.d/nginx.conf
@@ -8908,9 +8945,13 @@ _sysctl_update() {
       echo "solr9 hard nofile 524288" >> /etc/security/limits.d/solr9.conf
       echo "@www-data soft nofile 65535" > /etc/security/limits.d/www.conf
       echo "@www-data hard nofile 524288" >> /etc/security/limits.d/www.conf
-      _mrun "service redis-server restart" 2> /dev/null
+      if [ -e "/etc/init.d/valkey-server" ]; then
+        _mrun "service valkey-server restart" 2> /dev/null
+      elif [ -e "/etc/init.d/redis-server" ]; then
+        _mrun "service redis-server restart" 2> /dev/null
+      fi
       _mrun "service nginx restart" 2> /dev/null
-      _mrun "service sshd restart" 2> /dev/null
+      _mrun "service ssh restart" 2> /dev/null
       _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then

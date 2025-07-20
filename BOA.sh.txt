@@ -3796,9 +3796,13 @@ _sysctl_update() {
       echo "solr9 hard nofile 524288" >> /etc/security/limits.d/solr9.conf
       echo "@www-data soft nofile 65535" > /etc/security/limits.d/www.conf
       echo "@www-data hard nofile 524288" >> /etc/security/limits.d/www.conf
-      service redis-server restart &> /dev/null
+      if [ -e "/etc/init.d/valkey-server" ]; then
+        service valkey-server restart &> /dev/null
+      elif [ -e "/etc/init.d/redis-server" ]; then
+        service redis-server restart &> /dev/null
+      fi
       service nginx restart &> /dev/null
-      service sshd restart &> /dev/null
+      service ssh restart &> /dev/null
       _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
