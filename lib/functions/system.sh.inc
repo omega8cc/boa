@@ -8754,7 +8754,7 @@ _initd_update() {
       _mrun "update-rc.d -f php5-fpm remove" 2> /dev/null
       if [ -e "/etc/init.d/valkey-server" ]; then
         _mrun "service valkey-server reload" 2> /dev/null
-      if [ -e "/etc/init.d/redis-server" ]; then
+      elif [ -e "/etc/init.d/redis-server" ]; then
         _mrun "service redis-server reload" 2> /dev/null
       fi
       _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
