@@ -695,6 +695,7 @@ _update_agents() {
     [ ! -e "/var/xdrago/monitor/check/mysql.sh" ] && rm -f ${_pthLog}/mysql.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/monitor/check/nginx.sh" ] && rm -f ${_pthLog}/nginx.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/monitor/check/php.sh" ] && rm -f ${_pthLog}/php.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/monitor/check/valkey.sh" ] && rm -f ${_pthLog}/valkey.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/monitor/check/redis.sh" ] && rm -f ${_pthLog}/redis.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/monitor/check/scan_nginx.sh" ] && rm -f ${_pthLog}/scan_nginx.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/monitor/check/system.sh" ] && rm -f ${_pthLog}/system.sh.ctrl.*.pid
@@ -1010,6 +1011,20 @@ _update_agents() {
       touch ${_pthLog}/php.sh.ctrl.f92.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/monitor/check/php.sh.old /var/xdrago/monitor/check/php.sh
+    fi
+  fi
+
+  if [ -e "/var/xdrago/monitor/check" ] \
+    && [ -e "/var/aegir/drush" ] \
+    && [ ! -e "${_pthLog}/valkey.sh.ctrl.f94.${_tRee}.${_xSrl}.pid" ]; then
+    mv -f /var/xdrago/monitor/check/valkey.sh /var/xdrago/monitor/check/valkey.sh.old
+    curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/valkey.sh" -o /var/xdrago/monitor/check/valkey.sh
+    if [ -e "/var/xdrago/monitor/check/valkey.sh" ]; then
+      chmod 700 /var/xdrago/monitor/check/valkey.sh
+      chown root:root /var/xdrago/monitor/check/valkey.sh
+      touch ${_pthLog}/valkey.sh.ctrl.f94.${_tRee}.${_xSrl}.pid
+    else
+      mv -f /var/xdrago/monitor/check/valkey.sh.old /var/xdrago/monitor/check/valkey.sh
     fi
   fi
 
