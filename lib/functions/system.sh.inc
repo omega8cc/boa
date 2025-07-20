@@ -8645,10 +8645,11 @@ _initd_update() {
       _mrun "service jetty7 start" 2> /dev/null
     fi
     if [ ! -e "/run/aegir_upgrade.pid" ]; then
-      _msg "INFO: Starting Redis, PHP-FPM and Nginx"
       if [ -e "/etc/init.d/valkey-server" ]; then
+        _msg "INFO: Starting Valkey, PHP-FPM and Nginx"
         _mrun "service valkey-server start" 2> /dev/null
       elif [ -e "/etc/init.d/redis-server" ]; then
+        _msg "INFO: Starting Redis, PHP-FPM and Nginx"
         _mrun "service redis-server start" 2> /dev/null
       fi
       _mrun "update-rc.d -f php5-fpm remove" 2> /dev/null
