@@ -101,12 +101,12 @@ _fix_valkey_mode() {
   if [ "${_CUSTOM_CONFIG_VALKEY}" = "NO" ]; then
     _VALKEY_LISTEN_MODE=SOCKET
     if [ "${_VALKEY_LISTEN_MODE}" = "SOCKET" ]; then
-      if [ -e "/data/conf/global/global-valkey.inc" ]; then
-        sed -i "s/valkey_client_host/valkey_client_socket/g" /data/conf/global/global-valkey.inc &> /dev/null
+      if [ -e "/data/conf/global/global-redis.inc" ]; then
+        sed -i "s/valkey_client_host/valkey_client_socket/g" /data/conf/global/global-redis.inc &> /dev/null
         wait
-        sed -i "s/'host'/'socket'/g" /data/conf/global/global-valkey.inc &> /dev/null
+        sed -i "s/'host'/'socket'/g" /data/conf/global/global-redis.inc &> /dev/null
         wait
-        sed -i "s/  = '127.0.0.1';/= '\/var\/run\/valkey\/valkey.sock';/g" /data/conf/global/global-valkey.inc &> /dev/null
+        sed -i "s/  = '127.0.0.1';/= '\/var\/run\/valkey\/valkey.sock';/g" /data/conf/global/global-redis.inc &> /dev/null
         wait
       fi
       if [ -e "/data/conf/global.inc" ]; then
@@ -143,8 +143,8 @@ _fix_valkey_mode() {
           if [ "${_VALKEY_HOST}" = "LOCAL" ]; then
             sed -i "s/^bind 127.0.0.1/bind ${_VALKEY_LISTEN_MODE}/g" /etc/valkey/valkey.conf &> /dev/null
             wait
-            if [ -e "/data/conf/global/global-valkey.inc" ]; then
-              sed -i "s/'127.0.0.1'/'${_VALKEY_LISTEN_MODE}'/g" /data/conf/global/global-valkey.inc &> /dev/null
+            if [ -e "/data/conf/global/global-redis.inc" ]; then
+              sed -i "s/'127.0.0.1'/'${_VALKEY_LISTEN_MODE}'/g" /data/conf/global/global-redis.inc &> /dev/null
               wait
             fi
             if [ -e "/data/conf/global.inc" ]; then
@@ -152,8 +152,8 @@ _fix_valkey_mode() {
               wait
             fi
           else
-            if [ -e "/data/conf/global/global-valkey.inc" ]; then
-              sed -i "s/'127.0.0.1'/'${_VALKEY_LISTEN_MODE}'/g" /data/conf/global/global-valkey.inc &> /dev/null
+            if [ -e "/data/conf/global/global-redis.inc" ]; then
+              sed -i "s/'127.0.0.1'/'${_VALKEY_LISTEN_MODE}'/g" /data/conf/global/global-redis.inc &> /dev/null
               wait
             fi
             if [ -e "/data/conf/global.inc" ]; then
@@ -171,8 +171,8 @@ _fix_valkey_mode() {
             _msg "INFO: Local Valkey instance has been disabled"
           fi
         else
-          if [ -e "/data/conf/global/global-valkey.inc" ]; then
-            sed -i "s/'127.0.0.1'/'${_VALKEY_LISTEN_MODE}'/g" /data/conf/global/global-valkey.inc &> /dev/null
+          if [ -e "/data/conf/global/global-redis.inc" ]; then
+            sed -i "s/'127.0.0.1'/'${_VALKEY_LISTEN_MODE}'/g" /data/conf/global/global-redis.inc &> /dev/null
             wait
           fi
           if [ -e "/data/conf/global.inc" ]; then
@@ -213,28 +213,28 @@ _valkey_password_update() {
     else
       _RPASS="${_ESC_RPASS}"
     fi
-    if [ -e "/data/conf/global/global-if-valkey.inc" ]; then
-      _VALKEY_PWD_TEST=$(grep "'${_RPASS}'" /data/conf/global/global-if-valkey.inc 2>&1)
+    if [ -e "/data/conf/global/global-if-redis.inc" ]; then
+      _VALKEY_PWD_TEST=$(grep "'${_RPASS}'" /data/conf/global/global-if-redis.inc 2>&1)
       if [[ "${_VALKEY_PWD_TEST}" =~ "'${_RPASS}'" ]]; then
         _DO_NOTHING=YES
       else
         if [ ! -z "${_RPASS}" ]; then
           mkdir -p /data/conf
-          cp -af ${_locCnf}/global/global-if-valkey.inc /data/conf/global/global-if-valkey.inc
-          sed -i "s/isfoobared/${_RPASS}/g" /data/conf/global/global-if-valkey.inc &> /dev/null
+          cp -af ${_locCnf}/global/global-if-redis.inc /data/conf/global/global-if-redis.inc
+          sed -i "s/isfoobared/${_RPASS}/g" /data/conf/global/global-if-redis.inc &> /dev/null
           wait
         fi
       fi
     fi
-    if [ -e "/data/conf/global/global-valkey.inc" ]; then
-      _VALKEY_PWD_TEST=$(grep "'${_RPASS}'" /data/conf/global/global-valkey.inc 2>&1)
+    if [ -e "/data/conf/global/global-redis.inc" ]; then
+      _VALKEY_PWD_TEST=$(grep "'${_RPASS}'" /data/conf/global/global-redis.inc 2>&1)
       if [[ "${_VALKEY_PWD_TEST}" =~ "'${_RPASS}'" ]]; then
         _DO_NOTHING=YES
       else
         if [ ! -z "${_RPASS}" ]; then
           mkdir -p /data/conf
-          cp -af ${_locCnf}/global/global-valkey.inc /data/conf/global/global-valkey.inc
-          sed -i "s/isfoobared/${_RPASS}/g" /data/conf/global/global-valkey.inc &> /dev/null
+          cp -af ${_locCnf}/global/global-redis.inc /data/conf/global/global-redis.inc
+          sed -i "s/isfoobared/${_RPASS}/g" /data/conf/global/global-redis.inc &> /dev/null
           wait
         fi
       fi
