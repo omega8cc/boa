@@ -2028,7 +2028,7 @@ _display_info() {
       _BIL=$(grep _BACKEND_ITEMS_LIST ${_barCnf} 2>&1)
       _CCC=$(grep _CUSTOM_CONFIG_CSF ${_barCnf} 2>&1)
       _CCL=$(grep _CUSTOM_CONFIG_LSHELL ${_barCnf} 2>&1)
-      _CCR=$(grep _CUSTOM_CONFIG_REDIS ${_barCnf} 2>&1)
+      _CCV=$(grep _CUSTOM_CONFIG_VALKEY ${_barCnf} 2>&1)
       _CCS=$(grep _CUSTOM_CONFIG_SQL ${_barCnf} 2>&1)
       _DBG=$(grep _DEBUG_MODE ${_barCnf} 2>&1)
       _DBS=$(grep _DB_SERIES ${_barCnf} 2>&1)
