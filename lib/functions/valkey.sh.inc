@@ -98,7 +98,7 @@ _fix_valkey_mode() {
   fi
   mkdir -p /run/valkey
   chown valkey:valkey /run/valkey
-  if [ "${_CUSTOM_CONFIG_VALKEY}" = "NO" ]; then
+  if [ "${_CUSTOM_CONFIG_VALKEY}" = "NO" ] || [ -z "${_CUSTOM_CONFIG_VALKEY}" ]; then
     _VALKEY_LISTEN_MODE=SOCKET
     if [ "${_VALKEY_LISTEN_MODE}" = "SOCKET" ]; then
       if [ -e "/data/conf/global/global-redis.inc" ]; then
@@ -292,6 +292,7 @@ _install_valkey_src() {
   if [ -e "/etc/valkey/valkey.conf" ] && [ "${_STATUS}" = "UPGRADE" ]; then
     _if_hosted_sys
     if [ "${_CUSTOM_CONFIG_VALKEY}" = "NO" ] \
+      || [ -z "${_CUSTOM_CONFIG_VALKEY}" ] \
       || [ "${_hostedSys}" = "YES" ]; then
       if [ "${_CUSTOM_CONFIG_VALKEY}" = "YES" ]; then
         _DO_NOTHING=YES
