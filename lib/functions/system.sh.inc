@@ -2474,9 +2474,9 @@ _barracuda_cnf() {
     _devM="deb.devuan.org"
     _debM="deb.debian.org"
 
-    sed -i "s/^_LOCAL_DEVUAN_.*/_LOCAL_DEVUAN_MIRROR=${_devM}/g"  ${_barCnf}
+    sed -i "s/^_LOCAL_DEVUAN_.*/_LOCAL_DEVUAN_MIRROR=${_devM}/g" ${_barCnf}
     wait
-    sed -i "s/^_LOCAL_DEBIAN_.*/_LOCAL_DEBIAN_MIRROR=${_debM}/g"  ${_barCnf}
+    sed -i "s/^_LOCAL_DEBIAN_.*/_LOCAL_DEBIAN_MIRROR=${_debM}/g" ${_barCnf}
     wait
 
     sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                   ${_barCnf}
