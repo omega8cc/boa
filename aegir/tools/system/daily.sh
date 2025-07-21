@@ -1582,22 +1582,29 @@ _fix_static_permissions() {
     if [ -e "${_Plr}/web.config" ] && [ ! -e "${_Plr}/core" ]; then
       _fix_seven_core_patch
     fi
+    if [ -e "${_Plr}/core/lib/Drupal.php" ] \
+      && [ -e "${_Plr}/../vendor/autoload.php" ] \
+      && grep -q '"drupal/core"' "${_Plr}/../composer.json" 2>/dev/null; then
+      _use_Plr="$(cd "${_Plr}/.." && pwd -P)"
+    else
+      _use_Plr="${_Plr}"
+    fi
     if [ ! -e "${_usEr}/static/control/unlock.info" ] \
-      && [ ! -e "${_Plr}/skip.info" ]; then
+      && [ ! -e "${_use_Plr}/skip.info" ]; then
       if [ ! -e "${_usEr}/log/ctrl/plr.${_PlrID}.ctm-lock-${_NOW}.info" ]; then
-        chown -R ${_HM_U} ${_Plr} &> /dev/null
+        chown -R ${_HM_U} ${_use_Plr} &> /dev/null
         touch ${_usEr}/log/ctrl/plr.${_PlrID}.ctm-lock-${_NOW}.info
       fi
     elif [ -e "${_usEr}/static/control/unlock.info" ] \
-      && [ ! -e "${_Plr}/skip.info" ]; then
+      && [ ! -e "${_use_Plr}/skip.info" ]; then
       if [ ! -e "${_usEr}/log/ctrl/plr.${_PlrID}.ctm-unlock-${_NOW}.info" ]; then
-        chown -R ${_HM_U}.ftp ${_Plr} &> /dev/null
+        chown -R ${_HM_U}.ftp ${_use_Plr} &> /dev/null
         touch ${_usEr}/log/ctrl/plr.${_PlrID}.ctm-unlock-${_NOW}.info
       fi
     fi
     if [ ! -f "${_usEr}/log/ctrl/plr.${_PlrID}.perm-fix-${_NOW}.info" ]; then
-      find ${_Plr} -type d -exec chmod 0775 {} \; &> /dev/null
-      find ${_Plr} -type f -exec chmod 0664 {} \; &> /dev/null
+      find ${_use_Plr} -type d -exec chmod 0775 {} \; &> /dev/null
+      find ${_use_Plr} -type f -exec chmod 0664 {} \; &> /dev/null
     fi
   fi
 }
