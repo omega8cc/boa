@@ -10,26 +10,31 @@ Ensure that you have corresponding PHP versions installed with barracuda before 
 
 On hosted BOA contact your host if you need any legacy PHP installed again.
 
+## Drupal 11
+
+- [Commerce v.3](https://github.com/centarro/commerce-kickstart-project) (11.2.2)
+- [Drupal 11.2.2](https://drupal.org/project/drupal/releases/11.2.2)
+- [Sector 11.0.x-dev](https://drupal.org/project/sector) (11.2.0)
+- [Thunder 8.2.0](https://drupal.org/project/thunder) (11.2.2)
+
 ## Drupal 10
 
-- [Commerce Base 2.40](https://drupal.org/project/commerce) (10.1.8)
-- [Commerce Kickstart 3.0.0](https://drupal.org/project/commerce_kickstart) (10.3.6)
+- [Commerce v.2](https://drupal.org/project/commerce) (10.1.8)
 - [Drupal 10.0.11](https://drupal.org/project/drupal/releases/10.0.11)
 - [Drupal 10.1.8](https://drupal.org/project/drupal/releases/10.1.8)
-- [Drupal 10.2.10](https://drupal.org/project/drupal/releases/10.2.10)
-- [Drupal 10.3.6](https://drupal.org/project/drupal/releases/10.3.6)
-- [Drupal 10.4.x-dev](https://drupal.org/project/drupal/releases/10.4.x-dev)
-- [DXPR Marketing 10.3.0 ](https://drupal.org/project/dxpr_marketing_cms) (10.3.6)
+- [Drupal 10.2.12](https://drupal.org/project/drupal/releases/10.2.12)
+- [Drupal 10.3.14](https://drupal.org/project/drupal/releases/10.3.14)
+- [Drupal 10.4.8](https://drupal.org/project/drupal/releases/10.4.8)
+- [Drupal 10.5.1](https://drupal.org/project/drupal/releases/10.5.1)
+- [DXPR Marketing 10.3.0](https://drupal.org/project/dxpr_marketing_cms) (10.3.6)
 - [EzContent 2.2.15](https://drupal.org/project/ezcontent) (10.3.6)
 - [farmOS 3.3.1](https://drupal.org/project/farm) (10.3.6)
-- [LocalGov 3.0.11](https://drupal.org/project/localgov) (10.3.6)
+- [LocalGov 3.1.3](https://drupal.org/project/localgov) (10.5.1)
 - [OpenCulturas 2.2.1](https://drupal.org/project/openculturas) (10.3.6)
 - [OpenFed 12.2.4](https://drupal.org/project/openfed) (10.2.10)
-- [Sector 10.0.0-rc5](https://drupal.org/project/sector) (10.2.10)
-- [Social 12.4.5](https://drupal.org/project/social) (10.2.10)
-- [Thunder 7.3.7](https://drupal.org/project/thunder) (10.3.6)
-- [Varbase 10.0.2](https://drupal.org/project/varbase) (10.3.6)
-- [Varbase 9.1.6](https://drupal.org/project/varbase) (10.3.6)
+- [Social 12.4.13](https://drupal.org/project/social) (10.2.12)
+- [Varbase 10.0.6](https://drupal.org/project/varbase) (10.5.1)
+- [Varbase 9.1.10](https://drupal.org/project/varbase) (10.5.1)
 
 ## Drupal 9
 
@@ -39,7 +44,7 @@ On hosted BOA contact your host if you need any legacy PHP installed again.
 
 ## Drupal 7
 
-- [Commerce Kickstart 2.77](https://drupal.org/project/commerce_kickstart) (7.103.1)
+- [Commerce v.1](https://drupal.org/project/commerce_kickstart) (7.103.1)
 - [Drupal 7.103.1](https://drupal.org/project/drupal/releases/7.103)
 - [Ubercart 3.13](https://drupal.org/project/ubercart) (7.103.1)
 
@@ -64,6 +69,20 @@ This file, if it exists and contains a list of symbols used to define supported 
 
 ## Supported Values
 
+### Drupal 11.2
+
+- `DE2` — Drupal 11.2 prod/stage/dev
+- `CK3` — Commerce v.3
+- `SCR` — Sector
+- `THR` — Thunder
+
+### Drupal 10.5
+
+- `DX5` — Drupal 10.5 prod/stage/dev
+- `LGV` — LocalGov
+- `VB9` — Varbase 9
+- `VBX` — Varbase 10
+
 ### Drupal 10.4
 
 - `DX4` — Drupal 10.4 prod/stage/dev
@@ -71,27 +90,21 @@ This file, if it exists and contains a list of symbols used to define supported 
 ### Drupal 10.3
 
 - `DX3` — Drupal 10.3 prod/stage/dev
-- `CK3` — Commerce Kickstart v.3
 - `DXP` — DXPR Marketing
 - `EZC` — EzContent
 - `FOS` — farmOS
-- `LGV` — LocalGov
 - `OCS` — OpenCulturas
-- `THR` — Thunder
-- `VB9` — Varbase 9
-- `VBX` — Varbase 10
 
 ### Drupal 10.2
 
 - `DX2` — Drupal 10.2 prod/stage/dev
 - `OFD` — OpenFed
-- `SCR` — Sector
 - `SOC` — Social
 
 ### Drupal 10.1
 
 - `DX1` — Drupal 10.1 prod/stage/dev
-- `CK2` — Commerce Base v.2
+- `CK2` — Commerce v.2
 
 ### Drupal 10.0
 
@@ -119,7 +132,7 @@ You can also use the special keyword `ALL` instead of any other symbols to have 
 ### Examples:
 
 ```
-DX2 DX3 SOC UC7
+DE2 DX5 SOC UC7
 ```
 
 ```

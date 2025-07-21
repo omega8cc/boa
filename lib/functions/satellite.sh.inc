@@ -3889,38 +3889,57 @@ _satellite_make() {
   echo "export _DEBUG_MODE=\"${_DEBUG_MODE}\""               >> ${_writeTo}
   echo "export _DISTRO=\"${_DISTRO}\""                       >> ${_writeTo}
   echo "export _DOMAIN=\"${_DOMAIN}\""                       >> ${_writeTo}
+
   echo "export _DRUPAL6=\"${_DRUPAL6}\""                     >> ${_writeTo}
   echo "export _DRUPAL6_D=\"${_DRUPAL6}-dev\""               >> ${_writeTo}
   echo "export _DRUPAL6_P=\"${_DRUPAL6}-prod\""              >> ${_writeTo}
   echo "export _DRUPAL6_S=\"${_DRUPAL6}-stage\""             >> ${_writeTo}
+
   echo "export _DRUPAL7=\"${_DRUPAL7}\""                     >> ${_writeTo}
   echo "export _DRUPAL7_D=\"${_DRUPAL7}-dev\""               >> ${_writeTo}
   echo "export _DRUPAL7_P=\"${_DRUPAL7}-prod\""              >> ${_writeTo}
   echo "export _DRUPAL7_S=\"${_DRUPAL7}-stage\""             >> ${_writeTo}
+
   echo "export _DRUPAL9=\"${_DRUPAL9}\""                     >> ${_writeTo}
   echo "export _DRUPAL9_D=\"${_DRUPAL9}-dev\""               >> ${_writeTo}
   echo "export _DRUPAL9_P=\"${_DRUPAL9}-prod\""              >> ${_writeTo}
   echo "export _DRUPAL9_S=\"${_DRUPAL9}-stage\""             >> ${_writeTo}
+
   echo "export _DRUPAL10_0=\"${_DRUPAL10_0}\""               >> ${_writeTo}
   echo "export _DRUPAL10_0_D=\"${_DRUPAL10_0}-dev\""         >> ${_writeTo}
   echo "export _DRUPAL10_0_P=\"${_DRUPAL10_0}-prod\""        >> ${_writeTo}
   echo "export _DRUPAL10_0_S=\"${_DRUPAL10_0}-stage\""       >> ${_writeTo}
+
   echo "export _DRUPAL10_1=\"${_DRUPAL10_1}\""               >> ${_writeTo}
   echo "export _DRUPAL10_1_D=\"${_DRUPAL10_1}-dev\""         >> ${_writeTo}
   echo "export _DRUPAL10_1_P=\"${_DRUPAL10_1}-prod\""        >> ${_writeTo}
   echo "export _DRUPAL10_1_S=\"${_DRUPAL10_1}-stage\""       >> ${_writeTo}
+
   echo "export _DRUPAL10_2=\"${_DRUPAL10_2}\""               >> ${_writeTo}
   echo "export _DRUPAL10_2_D=\"${_DRUPAL10_2}-dev\""         >> ${_writeTo}
   echo "export _DRUPAL10_2_P=\"${_DRUPAL10_2}-prod\""        >> ${_writeTo}
   echo "export _DRUPAL10_2_S=\"${_DRUPAL10_2}-stage\""       >> ${_writeTo}
+
   echo "export _DRUPAL10_3=\"${_DRUPAL10_3}\""               >> ${_writeTo}
   echo "export _DRUPAL10_3_D=\"${_DRUPAL10_3}-dev\""         >> ${_writeTo}
   echo "export _DRUPAL10_3_P=\"${_DRUPAL10_3}-prod\""        >> ${_writeTo}
   echo "export _DRUPAL10_3_S=\"${_DRUPAL10_3}-stage\""       >> ${_writeTo}
+
   echo "export _DRUPAL10_4=\"${_DRUPAL10_4}\""               >> ${_writeTo}
   echo "export _DRUPAL10_4_D=\"${_DRUPAL10_4}-dev\""         >> ${_writeTo}
   echo "export _DRUPAL10_4_P=\"${_DRUPAL10_4}-prod\""        >> ${_writeTo}
   echo "export _DRUPAL10_4_S=\"${_DRUPAL10_4}-stage\""       >> ${_writeTo}
+
+  echo "export _DRUPAL10_5=\"${_DRUPAL10_5}\""               >> ${_writeTo}
+  echo "export _DRUPAL10_5_D=\"${_DRUPAL10_5}-dev\""         >> ${_writeTo}
+  echo "export _DRUPAL10_5_P=\"${_DRUPAL10_5}-prod\""        >> ${_writeTo}
+  echo "export _DRUPAL10_5_S=\"${_DRUPAL10_5}-stage\""       >> ${_writeTo}
+
+  echo "export _DRUPAL11_2=\"${_DRUPAL11_2}\""               >> ${_writeTo}
+  echo "export _DRUPAL11_2_D=\"${_DRUPAL11_2}-dev\""         >> ${_writeTo}
+  echo "export _DRUPAL11_2_P=\"${_DRUPAL11_2}-prod\""        >> ${_writeTo}
+  echo "export _DRUPAL11_2_S=\"${_DRUPAL11_2}-stage\""       >> ${_writeTo}
+
   echo "export _DRUSH_VERSION=\"${_DRUSH_VERSION}\""         >> ${_writeTo}
   echo "export _F_TIME=\"${_F_TIME}\""                       >> ${_writeTo}
   echo "export _HM_DISTRO=\"${_HM_DISTRO}\""                 >> ${_writeTo}
@@ -3943,14 +3962,18 @@ _satellite_make() {
   echo "export _REDIS_N_VERSION=\"${_REDIS_N_VERSION}\""     >> ${_writeTo}
   echo "export _REDIS_T_VERSION=\"${_REDIS_T_VERSION}\""     >> ${_writeTo}
   echo "export _SERIES_RESULT=\"${_SERIES_RESULT}\""         >> ${_writeTo}
+
   echo "export _SMALLCORE10_0_V=\"${_SMALLCORE10_0_V}\""     >> ${_writeTo}
   echo "export _SMALLCORE10_1_V=\"${_SMALLCORE10_1_V}\""     >> ${_writeTo}
   echo "export _SMALLCORE10_2_V=\"${_SMALLCORE10_2_V}\""     >> ${_writeTo}
   echo "export _SMALLCORE10_3_V=\"${_SMALLCORE10_3_V}\""     >> ${_writeTo}
   echo "export _SMALLCORE10_4_V=\"${_SMALLCORE10_4_V}\""     >> ${_writeTo}
+  echo "export _SMALLCORE10_5_V=\"${_SMALLCORE10_5_V}\""     >> ${_writeTo}
+  echo "export _SMALLCORE11_2_V=\"${_SMALLCORE11_2_V}\""     >> ${_writeTo}
   echo "export _SMALLCORE6_V=\"${_SMALLCORE6_V}\""           >> ${_writeTo}
   echo "export _SMALLCORE7_V=\"${_SMALLCORE7_V}\""           >> ${_writeTo}
   echo "export _SMALLCORE9_V=\"${_SMALLCORE9_V}\""           >> ${_writeTo}
+
   echo "export _SPINNER=\"${_SPINNER}\""                     >> ${_writeTo}
   echo "export _STRONG_PASSWORDS=\"${_STRONG_PASSWORDS}\""   >> ${_writeTo}
   echo "export _T_BUILD=\"${_T_BUILD}\""                     >> ${_writeTo}
