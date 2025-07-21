@@ -126,7 +126,7 @@ chmod 0644 ${drupal_root}/sites/*.txt
 chmod 0644 ${drupal_root}/sites/*.yml
 chmod 0755 ${drupal_root}/sites/all/drush
 
-### Lock Local Drush and Symfony Console Input
+### Lock Local Drush and Symfony Console Input/Style
 if [ -e "${drupal_root}/core" ]; then
   if [ -e "${drupal_root}/vendor" ]; then
     printf "Locking Drush and Symfony Console Input in "${drupal_root}/vendor"...\n"
