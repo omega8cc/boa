@@ -1950,25 +1950,12 @@ _display_info() {
         | awk '{ print $3}' 2>&1)
     fi
     if [ -x "/usr/bin/valkey-server" ]; then
-      _RDS=$(valkey-server -v 2>&1 \
+      _VKS=$(valkey-server -v 2>&1 \
         | tr -d "\n" \
         | cut -d" " -f4 \
         | awk '{ print $1}' 2>&1)
-      if [[ "${_RDS}" =~ "sha" ]]; then
-        _RDS=$(valkey-server -v 2>&1 \
-          | tr -d "\n" \
-          | tr -d "v=" \
-          | cut -d" " -f3 \
-          | awk '{ print $1}' 2>&1)
-      fi
-    fi
-    if [ -x "/usr/bin/redis-server" ]; then
-      _RDS=$(redis-server -v 2>&1 \
-        | tr -d "\n" \
-        | cut -d" " -f4 \
-        | awk '{ print $1}' 2>&1)
-      if [[ "${_RDS}" =~ "sha" ]]; then
-        _RDS=$(redis-server -v 2>&1 \
+      if [[ "${_VKS}" =~ "sha" ]]; then
+        _VKS=$(valkey-server -v 2>&1 \
           | tr -d "\n" \
           | tr -d "v=" \
           | cut -d" " -f3 \
@@ -2093,7 +2080,7 @@ _display_info() {
     [ ! -z "${_NGX}" ] && echo "  NGX ${_NGX}"
     [ ! -z "${_PHP}" ] && echo "  PHP ${_PHP}"
     [ ! -z "${_DBV}" ] && echo "  DBV ${_DBV}"
-    [ ! -z "${_RDS}" ] && echo "  RDS ${_RDS}"
+    [ ! -z "${_VKS}" ] && echo "  RDS ${_VKS}"
     [ ! -z "${_PXY}" ] && echo "  PXY ${_PXY}"
     [ ! -z "${_SHD}" ] && echo "  SHD ${_SHD}"
     [ ! -z "${_SSH}" ] && echo "  SSH ${_SSH}"
@@ -2119,7 +2106,7 @@ _display_info() {
       [ ! -z "${_BIL}" ] && echo "  _BIL ${_BIL}"
       [ ! -z "${_CCC}" ] && echo "  _CCC ${_CCC}"
       [ ! -z "${_CCL}" ] && echo "  _CCL ${_CCL}"
-      [ ! -z "${_CCR}" ] && echo "  _CCR ${_CCR}"
+      [ ! -z "${_CCV}" ] && echo "  _CCV ${_CCV}"
       [ ! -z "${_CCS}" ] && echo "  _CCS ${_CCS}"
       [ ! -z "${_DBG}" ] && echo "  _DBG ${_DBG}"
       [ ! -z "${_DBS}" ] && echo "  _DBS ${_DBS}"
@@ -2196,7 +2183,6 @@ _display_info() {
         "php84-fpm"
         "mysql"
         "valkey"
-        "redis"
         "solr9"
         "solr7"
         "solr4"
@@ -2218,7 +2204,6 @@ _display_info() {
         ["php84-fpm"]="/run/php84-fpm.pid"
         ["mysql"]="/run/mysqld/mysqld.pid"
         ["valkey"]="/run/valkey/valkey.pid"
-        ["redis"]="/run/redis/redis.pid"
         ["solr9"]="/var/solr9/solr-9099.pid"
         ["solr7"]="/var/solr7/solr-9077.pid"
         ["solr4"]="/run/jetty9.pid"
