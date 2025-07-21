@@ -1605,6 +1605,15 @@ _fix_static_permissions() {
     if [ ! -f "${_usEr}/log/ctrl/plr.${_PlrID}.perm-fix-${_NOW}.info" ]; then
       find ${_use_Plr} -type d -exec chmod 0775 {} \; &> /dev/null
       find ${_use_Plr} -type f -exec chmod 0664 {} \; &> /dev/null
+      if [ -e "${_use_Plr}/vendor/drush" ]; then
+        chmod 0400 ${_use_Plr}/vendor/drush
+      fi
+      if [ -e "${_use_Plr}/vendor/symfony/console/Input" ]; then
+        chmod 0400 ${_use_Plr}/vendor/symfony/console/Input
+      fi
+      if [ -e "${_use_Plr}/vendor/symfony/console/Style" ]; then
+        chmod 0400 ${_use_Plr}/vendor/symfony/console/Style
+      fi
     fi
   fi
 }
