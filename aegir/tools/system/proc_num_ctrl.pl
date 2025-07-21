@@ -146,9 +146,9 @@ if (-f "/etc/init.d/valkey-server") {
   if (!$valkeysumar) {
     system("service valkey-server start");
   }
-  local(@RSARR)=`grep -e valkey_client_socket /data/conf/global.inc`;
+  local(@RSARR)=`grep -e redis_client_socket /data/conf/global.inc`;
   foreach $line (@RSARR) {
-    if ($line =~ /valkey_client_socket/) {$valkeysocket = "YES";}
+    if ($line =~ /redis_client_socket/) {$valkeysocket = "YES";}
   }
   system("service valkey-server restart") if (!-e "/run/valkey/valkey.sock" && $valkeysocket);
   sleep(2);

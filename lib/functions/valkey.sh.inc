@@ -102,7 +102,7 @@ _fix_valkey_mode() {
     _VALKEY_LISTEN_MODE=SOCKET
     if [ "${_VALKEY_LISTEN_MODE}" = "SOCKET" ]; then
       if [ -e "/data/conf/global/global-redis.inc" ]; then
-        sed -i "s/valkey_client_host/valkey_client_socket/g" /data/conf/global/global-redis.inc &> /dev/null
+        sed -i "s/redis_client_host/redis_client_socket/g" /data/conf/global/global-redis.inc &> /dev/null
         wait
         sed -i "s/'host'/'socket'/g" /data/conf/global/global-redis.inc &> /dev/null
         wait
@@ -110,7 +110,7 @@ _fix_valkey_mode() {
         wait
       fi
       if [ -e "/data/conf/global.inc" ]; then
-        sed -i "s/valkey_client_host/valkey_client_socket/g" /data/conf/global.inc &> /dev/null
+        sed -i "s/redis_client_host/redis_client_socket/g" /data/conf/global.inc &> /dev/null
         wait
         sed -i "s/'host'/'socket'/g" /data/conf/global.inc &> /dev/null
         wait
