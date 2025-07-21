@@ -8748,13 +8748,16 @@ _initd_update() {
     fi
     if [ ! -e "/run/aegir_upgrade.pid" ] \
       && [ ! -e "/root/.proxy.cnf" ]; then
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        _msg "INFO: Reloading Redis, PHP-FPM and Nginx..."
-      fi
       _mrun "update-rc.d -f php5-fpm remove" 2> /dev/null
       if [ -e "/etc/init.d/valkey-server" ]; then
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "INFO: Reloading Valkey, PHP-FPM and Nginx..."
+        fi
         _mrun "service valkey-server reload" 2> /dev/null
       elif [ -e "/etc/init.d/redis-server" ]; then
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "INFO: Reloading Redis, PHP-FPM and Nginx..."
+        fi
         _mrun "service redis-server reload" 2> /dev/null
       fi
       _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
