@@ -1169,6 +1169,20 @@ _update_agents() {
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
+    && [ ! -e "${_pthLog}/cv-phar-symlink.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+    if [ -x "/usr/local/bin/cv.phar" ] \
+      && [ -L "/usr/bin/cv" ]; then
+      _CV_SYMLINK=$(readlink -n /usr/bin/cv 2>&1)
+      _CV_SYMLINK=$(echo -n ${_CV_SYMLINK} | tr -d "\n" 2>&1)
+      if [ "${_CV_SYMLINK}" != "/usr/local/bin/cv.phar" ]; then
+        rm -f /usr/bin/cv
+        ln -s /usr/local/bin/cv.phar /usr/bin/cv
+        touch ${_pthLog}/cv-phar-symlink.ctrl.${_tRee}.${_xSrl}.pid
+      fi
+    fi
+  fi
+
+  if [ -e "/var/xdrago/monitor/check" ] \
     && [ ! -e "${_pthLog}/drush8-phar-symlink.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     if [ -x "/usr/local/bin/drush8.phar" ] \
       && [ -L "/usr/bin/drush8" ]; then
