@@ -3295,6 +3295,30 @@ _get_drush_eight() {
 }
 
 #
+# Install or update CiviCRM CLI Tool phar.
+_get_civicrm_cli() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _get_civicrm_cli"
+  fi
+  rm -rf /opt/tmp/cv.phar*
+  cd /opt/tmp/
+  _get_dev_ext "cv.phar.gz"
+  if [ -e "/opt/tmp/cv.phar" ]; then
+    cp -af cv.phar /usr/local/bin/cv.phar
+    chmod 755 /usr/local/bin/cv.phar
+    ln -sf /usr/local/bin/cv.phar /usr/bin/cv
+    touch /opt/tools/drush/.ci.ctrl.${_tRee}.${_xSrl}.pid
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: CiviCRM CLI Tool phar installation complete"
+    fi
+  else
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: CiviCRM CLI Tool phar installation failed!"
+    fi
+  fi
+}
+
+#
 # Install or update Drush versions.
 _drush_system_install_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -3410,6 +3434,10 @@ _drush_system_install_update() {
       _msg "FAIL: Drush ${_DRUSH_ELEVEN_VRN} installation failed!"
     fi
     chown -R root:root /opt/tools/drush
+    if [ ! -x "/usr/local/bin/cv.phar" ] \
+      || [ ! -e "/opt/tools/drush/.ci.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+      _get_civicrm_cli
+    fi
     cd /opt/tmp
   fi
 }
