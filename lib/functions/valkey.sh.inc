@@ -320,8 +320,10 @@ _valkey_install_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _valkey_install_upgrade"
   fi
-  if [ "${_VALKEY_MAJOR_RELEASE}" = "8" ] \
-    && [ ! -z "${_VALKEY_EIGHT_VRN}" ]; then
+  if [ "${_VALKEY_MAJOR_RELEASE}" = "7" ]; then
+    _VALKEY_VRN=${_VALKEY_SEVEN_VRN}
+    _valkeyCnfTpl="valkey7.conf"
+  elif [ "${_VALKEY_MAJOR_RELEASE}" = "8" ]; then
     _VALKEY_VRN=${_VALKEY_EIGHT_VRN}
     _valkeyCnfTpl="valkey8.conf"
   fi
