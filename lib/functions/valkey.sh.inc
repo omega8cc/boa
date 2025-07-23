@@ -200,7 +200,9 @@ _valkey_password_update() {
     _msg "PROC: _valkey_password_update"
   fi
   if [ -e "/etc/valkey/valkey.conf" ]; then
-    if [ ! -e "${_pthLog}/sec-valkey-pass-${_xSrl}-${_X_VERSION}-${_NOW}.log" ]; then
+    _VALKEY_TEST=$(grep "user default on" /etc/valkey/valkey.conf 2>&1)
+    if [ -z "${_VALKEY_TEST}" ] \
+      || [ ! -e "${_pthLog}/sec-valkey-pass-${_xSrl}-${_X_VERSION}-${_NOW}.log" ]; then
       if [ ! -e "/root/.valkey.no.new.password.cnf" ] \
         || [ ! -e "/root/.valkey.pass.txt" ]; then
          _forced_valkey_password_update
