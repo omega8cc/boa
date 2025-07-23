@@ -77,10 +77,10 @@ _forced_valkey_password_update() {
   touch ${_pthLog}/sec-valkey-pass-${_xSrl}-${_X_VERSION}-${_NOW}.log
   if [ -e "/etc/valkey/valkey.conf" ]; then
     _FORCE_VALKEY_RESTART=YES
-    sed -i "s/^# requirepass /requirepass /g" \
+    sed -i "s/^requirepass /# requirepass /g" \
       /etc/valkey/valkey.conf &> /dev/null
     wait
-    sed -i "s/^requirepass.*/requirepass ${_ESC_RPASS}/g" \
+    sed -i "s/^user default on.*/user default on >${_ESC_RPASS} allcommands allkeys/g" \
       /etc/valkey/valkey.conf &> /dev/null
     wait
     chown valkey:valkey /etc/valkey/valkey.conf
