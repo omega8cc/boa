@@ -87,7 +87,7 @@ _forced_valkey_password_update() {
     chmod 0600 /etc/valkey/valkey.conf
   fi
   if [ "${_FORCE_VALKEY_RESTART}" = "YES" ]; then
-    _mrun "service valkey-server reload" 2> /dev/null
+    _mrun "service valkey-server restart" 2> /dev/null
   fi
 }
 #
@@ -315,7 +315,7 @@ _install_valkey_src() {
   _valkey_password_update
   touch ${_pthLog}/valkey-${_VALKEY_VRN}-${_xSrl}-${_X_VERSION}.log
   _disable_redis
-  _mrun "service valkey-server reload" 2> /dev/null
+  _mrun "service valkey-server restart" 2> /dev/null
 }
 
 _valkey_install_upgrade() {
