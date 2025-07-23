@@ -363,9 +363,10 @@ _valkey_install_upgrade() {
     if [ -x "/usr/bin/valkey-server" ]; then
       _VALKEY_V_ITD=$(valkey-server -v 2>&1 \
         | tr -d "\n" \
-        | cut -d" " -f4 \
+        | tr -d "v=" \
+        | cut -d" " -f2 \
         | awk '{ print $1}' 2>&1)
-      if [[ "${_VALKEY_V_ITD}" =~ "sha" ]]; then
+      if [ "${_VALKEY_V_ITD}" = "serer" ]; then
         _VALKEY_V_ITD=$(valkey-server -v 2>&1 \
           | tr -d "\n" \
           | tr -d "v=" \
