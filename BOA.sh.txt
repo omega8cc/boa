@@ -46,7 +46,7 @@ export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 export _tRee=dev
 export _xSrl=570devT11
-export _rLsn="BOA-5.6.0"
+export _rLsn="BOA-5.7.11"
 export _bTs=DE12
 
 ###
