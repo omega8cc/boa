@@ -5,7 +5,7 @@ export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
 _randpass() {
-  if [ "${_integer}" -ge "32" ]; then
+  if [ "${_integer}" -ge 32 ]; then
     _rkey="${_integer}"
   else
     _rkey=32

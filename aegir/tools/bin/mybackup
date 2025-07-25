@@ -1,0 +1,503 @@
+#!/bin/bash
+
+# Environment setup
+export SHELL=/bin/bash
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+export _tRee=lts
+
+# Function to print env for debugging
+_print_env() {
+  if [ "$(id -u)" -eq 0 ] && [ -e "/root/.dev.server.cnf" ]; then
+    _ENV=$(env 2>&1)
+    echo
+    echo "_ENV in $1 start"
+    echo "${_ENV}"
+    echo "_ENV in $1 end"
+    echo
+    _ENV=
+  fi
+}
+
+# Base directory for user commands
+_BASE_DIR="/data/disk"
+_RUN_SUBDIR="static/control/.run"
+_CMD_FILE="command.txt"
+
+# Function to display usage information
+_usage() {
+  echo "Usage: $0 restore <SERVICE> [RESTORE_PATH] [RESTORE_TIME]"
+  echo
+  echo "Example command:"
+  echo "  Restore:"
+  echo "  $0 restore aws static/projects 1D"
+  echo "  $0 restore b2 static/another-project 2W"
+  echo
+  echo "Supported services:"
+  echo "  aws, aws_one_zone, aws_standard_ia, azure, b2, cloudflare, do_spaces, gcs, ibm, linode, wasabi"
+  echo
+  echo "NOTE: [RESTORE_PATH] must be an absolute path (no leading slash) of the file or directory to restore"
+  echo
+  exit 1
+}
+
+# Function to create PID file
+_create_pid_file() {
+  local _pidfile=$1
+  if [ -e "${_pidfile}" ]; then
+    echo "Process already running with PID file ${_pidfile}"
+    exit 1
+  else
+    echo $$ > "${_pidfile}"
+  fi
+}
+
+# Function to remove PID file
+_remove_pid_file() {
+  local _pidfile=$1
+  if [ -f "${_pidfile}" ]; then
+    rm -f "${_pidfile}" || {
+      echo "Warning: Failed to remove PID file: ${_pidfile}"
+    }
+  fi
+}
+
+# Function to log validation issues
+_log_issue() {
+  local _type=$1
+  local _file=$2
+  local _message=$3
+  echo "[$(date)] Validation issue type: [${_type}] in file: [${_file}] with error: ${_message}" >> "${_LOG_FILE}"
+  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "YES" ]; then
+    # Alert the admin
+    echo "Sending Backup Validation Alert to ${_MY_EMAIL} on $(date)" >> ${_LOGFILE}
+    s-nail -s "Backup Validation Alert for [$(hostname)] on $(date)" ${_MY_EMAIL} < ${_LOGFILE}
+  fi
+}
+
+# Helper function to URL-encode using jq
+_url_encode() {
+  echo -n "$1" | jq -s -R -r @uri
+}
+
+# Function to escape values
+_escape_value() {
+  printf '%q' "$1"
+}
+
+# Function to sanitize and validate credentials file
+_validate_credentials() {
+  local _cred_file="$1"
+  local _service="$2"
+  local _line_number=0
+
+  while IFS= read -r _line || [ -n "${_line}" ]; do
+    _line_number=$(( _line_number + 1 ))
+    # Trim leading and trailing whitespace
+    _line="${_line#"${_line%%[![:space:]]*}"}"
+    _line="${_line%"${_line##*[![:space:]]}"}"
+
+    # Skip comments and empty lines
+    if [[ -z "${_line}" || "${_line}" == \#* ]]; then
+      continue
+    fi
+
+    # Remove 'export ' prefix if present
+    _line="${_line#export }"
+
+    # Validate the variable assignment
+    if [[ "${_line}" =~ ^([A-Za-z_][A-Za-z0-9_]*)=(\".*\"|'.*'|[^[:space:]]+)$ ]]; then
+      local _varname="${BASH_REMATCH[1]}"
+      local _value="${BASH_REMATCH[2]}"
+
+      # Remove surrounding quotes if present
+      if [[ "${_value}" =~ ^\".*\"$ || "${_value}" =~ ^\'.*\'$ ]]; then
+        _value="${_value:1:-1}"
+      fi
+
+      # Check for forbidden characters in value
+      if echo "${_value}" | grep -q -E '[$`(){};&|<>]'; then
+        _log_issue "credentials" "${_cred_file}" "Forbidden characters in value at line ${_line_number}: ${_line}"
+        continue
+      fi
+
+      # Safely export the variable (URL-encode if needed)
+      if [ "${_service}" = "b2" ]; then
+        export ${_varname}=$(_url_encode "${_value}")
+      else
+        export ${_varname}="${_value}"
+      fi
+    else
+      _log_issue "credentials" "${_cred_file}" "Invalid syntax at line ${_line_number}: ${_line}"
+    fi
+  done < "${_cred_file}"
+  _print_env "mybackup_validate_credentials"
+}
+
+# Function to load credentials
+_load_credentials() {
+  local _service="$1"
+  local _user="$2"
+  if [ "${_user}" != "arch" ] && [ "${_user}" != "data" ] && [ "${_user}" != "global" ] && [ "${_user}" != "custom" ]; then
+    _cred_file="/data/disk/${_user}/static/control/remote_backups/credentials/${_service}.txt"
+    _secret_file="/data/disk/${_user}/remote_backups/.secret.txt"
+  fi
+  if [ "${_user}" = "global" ] || [ "${_user}" = "data" ] || [ "${_user}" = "custom" ]; then
+    _cred_file="/root/.remote_backups/credentials/${_service}.txt"
+    _secret_file="/root/.remote_backups/.secret.txt"
+  fi
+
+  if [ -f "${_secret_file}" ]; then
+    export PASSPHRASE=$(cat "${_secret_file}")
+  else
+    echo "Secret file ${_secret_file} not found. Unable to proceed."
+    _remove_pid_file "${_PIDFILE}"
+    exit 1
+  fi
+
+  if [ ! -f "${_cred_file}" ]; then
+    echo "Error: Credentials file '${_cred_file}' not found."
+    _remove_pid_file "${_PIDFILE}"
+    exit 1
+  fi
+
+  _validate_credentials "${_cred_file}" "${_service}"
+  _print_env "mybackup_load_credentials"
+}
+
+# Function to load paths configuration
+_load_paths() {
+  local _user="$1"
+  if [ "${_user}" != "arch" ] && [ "${_user}" != "data" ] && [ "${_user}" != "global" ] && [ "${_user}" != "custom" ]; then
+    local _paths_file="/data/disk/${_user}/remote_backups/paths/paths.txt"
+  fi
+  if [ "${_user}" = "global" ] || [ "${_user}" = "data" ] || [ "${_user}" = "custom" ]; then
+    local _paths_file="/root/.remote_backups/paths/${_user}_paths.txt"
+  fi
+
+  if [ ! -f "${_paths_file}" ]; then
+    echo "Error: Paths configuration file '${_paths_file}' not found."
+    _remove_pid_file "${_PIDFILE}"
+    exit 1
+  fi
+
+  if [ "${_user}" != "arch" ]; then
+    source "${_paths_file}"
+  fi
+  _print_env "mybackup_load_paths"
+}
+
+# Function to construct _BUCKET_NAME
+_construct_bucket_name() {
+  local _service_abbr=$1
+  local _user=$2
+  _service_dash=$(echo -n ${_service_abbr} | tr _ - 2>&1)
+  _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
+  _hst_dash=$(echo -n ${_hName} | tr . -)
+  export _BUCKET_NAME="back-to-${_user}-${_hst_dash}-${_service_dash}"
+  export _NAME="${_user}-${_service_dash}"
+}
+
+# Function to notify user about completed restore
+_send_restore_confirmation_email() {
+  local _recipient=$1
+  local _subject=$1
+
+  if [ -n "${_recipient}" ]; then
+    echo "Sending email report on $(date)" >> ${_LOGFILE}
+    s-nail -s "${_subject}" "${_recipient}" < ${_LOGFILE}
+  fi
+}
+
+# Function to restore backup
+_restore() {
+  local _restore_path=$1
+  local _restore_time=$2
+  local _restore_command="${_DCY_MN_CMD} restore --no-restore-owner"
+  local _restore_target="/data/disk/${_user}/static/restores"
+
+  # Ensure _restore_target exists
+  if [ ! -d "${_restore_target}" ]; then
+    echo "Creating restore target directory: ${_restore_target}"
+    mkdir -p ${_restore_target}
+    chown ${_user}:users ${_restore_target}
+  fi
+
+  # Remove any trailing slash from _restore_path for proper basename extraction
+  _clean_restore_path="${_restore_path%/}"
+
+  # Extract the last part (basename) of the restore path.
+  _last_part=$(basename "${_clean_restore_path}")
+
+  # Combine _restore_target with the extracted basename.
+  # Also, remove any trailing slash from _restore_target to avoid double slashes.
+  _final_restore_target="${_restore_target%/}/${_last_part}"
+
+  if [ -n "${_restore_time}" ]; then
+    _restore_command="${_restore_command} --time ${_restore_time}"
+  fi
+  _restore_command="${_restore_command} ${_BACKUP_TARGET}"
+  if [ -n "${_restore_path}" ]; then
+    _restore_command="${_restore_command} --path-to-restore ${_restore_path}"
+  fi
+  _restore_command="${_restore_command} ${_final_restore_target}"
+
+  echo "Command is ${_restore_command}"
+
+  echo "MyBackup Restore for [${_user}] on [$(date)]" >> ${_LOGFILE}
+  eval "${_restore_command}" >> ${_LOGFILE}
+  if [ -n "${_userEmail}" ]; then
+    _subject="MyBackup Restore Notification [${_user}] on [$(date)]"
+    _send_restore_confirmation_email "${_userEmail}" "${_subject}"
+  fi
+}
+
+# Function to set backup target based on service
+_set_backup_target() {
+  local _service=$1
+  local _user=$2
+
+  case "${_service}" in
+    aws|aws_one_zone|aws_standard_ia)
+      _load_credentials "${_service}" "${_user}"
+      _construct_bucket_name "${_service}" "${_user}"
+
+      # Define S3-specific options
+      _s3_endpoint="https://s3.dualstack.${AWS_REGION}.amazonaws.com"
+      _s3_options="--s3-endpoint-url ${_s3_endpoint} --s3-region-name ${AWS_REGION}"
+
+      # Use intelligent-tiering options for specific services
+      if [ "${_service}" = "aws_standard_ia" ] || [ "${_service}" = "aws_one_zone" ]; then
+        _s3_options="${_s3_options} --s3-use-ia"
+      fi
+
+      _BACKUP_TARGET="boto3+s3://${_BUCKET_NAME} ${_s3_options}"
+      ;;
+    azure)
+      _load_credentials "azure" "${_user}"
+      _construct_bucket_name "azure" "${_user}"
+      _BACKUP_TARGET="azure://${AZURE_STORAGE_ACCOUNT}@${_BUCKET_NAME}"
+      ;;
+    b2)
+      _load_credentials "b2" "${_user}"
+      _construct_bucket_name "b2" "${_user}"
+      _BACKUP_TARGET="b2://${B2_ACCOUNT_ID}:${B2_APPLICATION_KEY}@${_BUCKET_NAME}"
+      ;;
+    cloudflare)
+      _load_credentials "cloudflare" "${_user}"
+      _construct_bucket_name "cloudflare" "${_user}"
+
+      # Custom endpoint for Cloudflare R2
+      _r2_endpoint="https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
+
+      # Configure the S3 backup target
+      _BACKUP_TARGET="boto3+s3://${R2_ACCESS_KEY_ID}:${R2_SECRET_ACCESS_KEY}@${_r2_endpoint}/${_BUCKET_NAME}"
+      ;;
+    do_spaces)
+      _load_credentials "do_spaces" "${_user}"
+      _construct_bucket_name "do_spaces" "${_user}"
+      _BACKUP_TARGET="s3://${DO_SPACES_KEY}:${DO_SPACES_SECRET}@${DO_SPACES_REGION}/${_BUCKET_NAME}"
+      ;;
+    gcs)
+      _load_credentials "gcs" "${_user}"
+      _construct_bucket_name "gcs" "${_user}"
+      _BACKUP_TARGET="gs://${_BUCKET_NAME}"
+      ;;
+    ibm)
+      _load_credentials "ibm" "${_user}"
+      _construct_bucket_name "ibm" "${_user}"
+      _BACKUP_TARGET="ibmcos://${IBM_API_KEY_ID}:${IBM_SERVICE_INSTANCE_ID}@${IBM_REGION}/${_BUCKET_NAME}"
+      ;;
+    linode)
+      _load_credentials "linode" "${_user}"
+      _construct_bucket_name "linode" "${_user}"
+      _BACKUP_TARGET="s3://${LINODE_ACCESS_KEY}:${LINODE_SECRET_KEY}@${LINODE_REGION}/${_BUCKET_NAME}"
+      ;;
+    wasabi)
+      _load_credentials "wasabi" "${_user}"
+      _construct_bucket_name "wasabi" "${_user}"
+      _BACKUP_TARGET="s3://${WASABI_ACCESS_KEY}:${WASABI_SECRET_KEY}@${WASABI_REGION}/${_BUCKET_NAME}"
+      ;;
+    *)
+      echo "Error: Unknown service ${_service}"
+      _remove_pid_file "${_PIDFILE}"
+      exit 1
+      ;;
+  esac
+}
+
+# Function to validate restore command
+_validate_restore_command() {
+  # Store all arguments in an array
+  local args=("$@")
+
+  # Now use the array indices to assign variables.
+  # Note: Array indices start at 0.
+  local _action="${args[0]}"
+  local _service="${args[1]}"
+  local _restore_path="${args[2]}"
+  local _restore_time="${args[3]}"
+
+  # Ensure the command starts with "restore"
+  if [[ "${_action}" != "restore" ]]; then
+    echo "Error: Invalid command action '${_action}'. Only 'restore' is allowed."
+    return 1
+  fi
+
+  # Validate service
+  case "${_service}" in
+    aws|aws_one_zone|aws_standard_ia|azure|b2|cloudflare|do_spaces|gcs|ibm|linode|wasabi)
+      # Valid services
+      ;;
+    *)
+      echo "Error: Invalid service '${_service}'."
+      return 1
+      ;;
+  esac
+
+  # Validate restore path (optional, no leading slash)
+  if [[ -n "${_restore_path}" && "${_restore_path}" =~ ^/ ]]; then
+    echo "Error: Restore path '${_restore_path}' must not have a leading slash."
+    return 1
+  fi
+
+  # Validate restore time (optional, must match supported formats: 1D, 7D, 2W, etc.)
+  if [[ -n "${_restore_time}" && ! "${_restore_time}" =~ ^[0-9]+[DWMY]$ ]]; then
+    echo "Error: Invalid restore time format '${_restore_time}'. Supported formats: 1D, 7D, 2W, etc."
+    return 1
+  fi
+
+  # Command is valid
+  _print_env "mybackup_validate_restore_command"
+  return 0
+}
+
+# Check if run as root
+export _run_as_user=$(whoami)
+
+# Main script
+_main_script() {
+  if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt 0 ]; then
+    echo "[$(date)] Active duplicity process detected, will try again later..." >> /var/log/mybackup_waiting_queue.log
+    exit 1
+  fi
+  # Process queued commands for all users
+  for _user_dir in "${_BASE_DIR}"/*; do
+    if [[ -d "${_user_dir}" ]]; then
+      export _user=$(basename "${_user_dir}")
+      export _user_run_dir="${_user_dir}/${_RUN_SUBDIR}"
+      export _user_cmd_file="${_user_run_dir}/${_CMD_FILE}"
+      if [[ -f "${_user_cmd_file}" ]]; then
+        export _command=$(cat "${_user_cmd_file}")
+        echo "Executing backup restore for user ${_user}."
+        chmod 755 /data/disk/${_user}/remote_backups/paths
+        local _user_credentials_dir="/data/disk/${_user}/static/control/remote_backups/credentials"
+        chmod 755 ${_user_credentials_dir}
+        chmod 644 ${_user_credentials_dir}/*.txt
+        chattr -i /data/disk/${_user}/remote_backups/.secret.txt
+        chmod 644 /data/disk/${_user}/remote_backups/.secret.txt
+        su -s /bin/bash - ${_user} -c "mybackup ${_command}"
+        wait
+        # Clean up the command file
+        echo "[$(date)] Command was run for user ${_user}: ${_command}" >> /var/log/mybackup_commands_history.log
+        echo "[$(date)] Command was run for user ${_user}: ${_command}" >> /data/disk/${_user}/log/mybackup_commands_history.log
+        rm -f "${_user_cmd_file}"
+        chmod 700 ${_user_credentials_dir}
+        chmod 600 ${_user_credentials_dir}/*.txt
+        chmod 600 /data/disk/${_user}/remote_backups/.secret.txt
+        chattr +i /data/disk/${_user}/remote_backups/.secret.txt
+        sleep 10
+      fi
+    fi
+  _print_env "mybackup_run_as_user"
+  export _user=
+  export _user_run_dir=
+  export _user_cmd_file=
+  done
+  exit 0
+}
+
+if [[ "$#" -eq 0 ]] && [ "${_run_as_user}" = "root" ]; then
+  _main_script
+fi
+
+# Extract the current user
+export _user=$(whoami | sed 's/\.ftp$//')
+
+_userEmail=""
+[ -e "/data/disk/${_user}/log/email.txt" ] && _userEmail="$(cat /data/disk/${_user}/log/email.txt)"
+[ -n "${_userEmail}" ] && export _userEmail=$(echo -n ${_userEmail} | tr -d "\n" 2>&1)
+
+if [[ $(whoami) == *.ftp ]]; then
+  _user_run_dir="/data/disk/${_user}/static/control/.run"
+  [ ! -e "${_user_run_dir}" ] && mkdir -p "${_user_run_dir}"
+  # Check if there is any task queued already
+  [ -e "${_user_run_dir}/${_CMD_FILE}" ] && echo "Previous task is still in the queue. Please try again later."
+  # Validate the command
+  if ! _validate_restore_command "$@"; then
+    echo "Error: Invalid command. The command has not been queued."
+    # Optionally log invalid commands
+    echo "[$(date)] Invalid command attempted by $(whoami): $@" >> ${_user_run_dir}/mybackup_invalid_commands.log
+    exit 1
+  fi
+
+  # If invoked as USER.ftp, queue the command
+  echo "$@" > "${_user_run_dir}/${_CMD_FILE}"
+  echo "Command queued for user ${_user}..."
+  echo "It will be executed by the system shortly..."
+  echo "Bye!"
+  exit 0
+fi
+
+export _ACTION=$1
+export _SERVICE=$2
+export _RESTORE_PATH="${3:-}"
+export _RESTORE_TIME="${4:-}"
+export _PIDFILE="/data/disk/${_user}/log/mybackup_${_SERVICE}_${_user}.pid"
+export _LOGPTH="/data/disk/${_user}/log"
+export _LOGFILE="${_LOGPTH}/mybackup_${_SERVICE}_${_user}.log"
+
+export _DCY_MN_CMD="/usr/local/bin/duplicity \
+    --name=${_NAME} \
+    --allow-source-mismatch \
+    --concurrency 4"
+
+_create_pid_file "${_PIDFILE}"
+
+# Load paths configuration
+_load_paths "${_user}"
+
+_print_env "mybackup_main"
+
+case "${_ACTION}" in
+  restore)
+    _set_backup_target "${_SERVICE}" "${_user}"
+    _restore "${_RESTORE_PATH}" "${_RESTORE_TIME}"
+    ;;
+  *)
+    _usage
+    ;;
+esac
+
+_remove_pid_file "${_PIDFILE}"
+
+# Wipe out any exported variables to clean up env after running the backup
+  export PASSPHRASE=
+  export _ACTION=
+  export _BACKUP_TARGET=
+  export _BUCKET_NAME=
+  export _DCY_MN_CMD=
+  export _NAME=
+  export _PIDFILE=
+  export _RESTORE_PATH=
+  export _RESTORE_TIME=
+  export _SERVICE=
+  export _cred_file=
+  export _paths_file=
+  export _r2_endpoint=
+  export _run_as_user=
+  export _secret_file=
+  export _user=
+  export _userEmail=
+
+_print_env "mybackup_exit"
+exit 0

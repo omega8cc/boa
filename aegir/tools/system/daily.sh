@@ -4,10 +4,10 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 export _tRee=lts
-export _xSrl=550ltsT04
+export _xSrl=570ltsT11
 
 _check_root() {
-  if [ `whoami` = "root" ]; then
+  if [ "$(id -u)" -eq 0 ]; then
     ionice -c2 -n7 -p $$
     renice 19 -p $$
     chmod a+w /dev/null
@@ -20,11 +20,12 @@ _check_root() {
     | sed 's/\%//g' \
     | awk '{print $6}' 2> /dev/null)
   _DF_TEST=${_DF_TEST//[^0-9]/}
-  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt "90" ]; then
+  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt 90 ]; then
     echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
     echo "ERROR: We can not proceed until it is below 90/100"
     exit 1
   fi
+  _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
 }
 _check_root
 
@@ -72,7 +73,7 @@ _apt_clean_update() {
 
 _if_hosted_sys() {
   if [ -e "/root/.host8.cnf" ] \
-    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
+    || [[ "${_hName}" =~ ".aegir.cc"($) ]]; then
     _hostedSys=YES
   else
     _hostedSys=NO
@@ -525,6 +526,7 @@ _fix_o_contrib_symlink() {
     elif [ -e "${_Plr}/core" ] \
       && [ ! -e "${_Plr}/core/themes/olivero" ] \
       && [ ! -e "${_Plr}/core/themes/stable9" ] \
+      && [ ! -e "${_Plr}/core/modules/workspaces_ui" ] \
       && [ -e "${_O_CONTRIB_EIGHT}" ]; then
       if [ -e "${_Plr}/modules/o_contrib_nine" ] \
         || [ -e "${_Plr}/modules/.o_contrib_nine_dont_use" ]; then
@@ -536,11 +538,17 @@ _fix_o_contrib_symlink() {
         rm -f ${_Plr}/modules/o_contrib_ten
         rm -f ${_Plr}/modules/.o_contrib_ten_dont_use
       fi
+      if [ -e "${_Plr}/modules/o_contrib_eleven" ] \
+        || [ -e "${_Plr}/modules/.o_contrib_eleven_dont_use" ]; then
+        rm -f ${_Plr}/modules/o_contrib_eleven
+        rm -f ${_Plr}/modules/.o_contrib_eleven_dont_use
+      fi
       if [ ! -e "${_Plr}/modules/o_contrib_eight" ]; then
         ln -sfn ${_O_CONTRIB_EIGHT} ${_Plr}/modules/o_contrib_eight &> /dev/null
       fi
     elif [ -e "${_Plr}/core/themes/olivero" ] \
       && [ -e "${_Plr}/core/themes/classy" ] \
+      && [ ! -e "${_Plr}/core/modules/workspaces_ui" ] \
       && [ -e "${_O_CONTRIB_NINE}" ]; then
       if [ -e "${_Plr}/modules/o_contrib_eight" ] \
         || [ -e "${_Plr}/modules/.o_contrib_eight_dont_use" ]; then
@@ -552,11 +560,17 @@ _fix_o_contrib_symlink() {
         rm -f ${_Plr}/modules/o_contrib_ten
         rm -f ${_Plr}/modules/.o_contrib_ten_dont_use
       fi
+      if [ -e "${_Plr}/modules/o_contrib_eleven" ] \
+        || [ -e "${_Plr}/modules/.o_contrib_eleven_dont_use" ]; then
+        rm -f ${_Plr}/modules/o_contrib_eleven
+        rm -f ${_Plr}/modules/.o_contrib_eleven_dont_use
+      fi
       if [ ! -e "${_Plr}/modules/o_contrib_nine" ]; then
         ln -sfn ${_O_CONTRIB_NINE} ${_Plr}/modules/o_contrib_nine &> /dev/null
       fi
     elif [ -e "${_Plr}/core/themes/olivero" ] \
       && [ ! -e "${_Plr}/core/themes/classy" ] \
+      && [ ! -e "${_Plr}/core/modules/workspaces_ui" ] \
       && [ -e "${_O_CONTRIB_TEN}" ]; then
       if [ -e "${_Plr}/modules/o_contrib_eight" ] \
         || [ -e "${_Plr}/modules/.o_contrib_eight_dont_use" ]; then
@@ -568,8 +582,35 @@ _fix_o_contrib_symlink() {
         rm -f ${_Plr}/modules/o_contrib_nine
         rm -f ${_Plr}/modules/.o_contrib_nine_dont_use
       fi
+      if [ -e "${_Plr}/modules/o_contrib_eleven" ] \
+        || [ -e "${_Plr}/modules/.o_contrib_eleven_dont_use" ]; then
+        rm -f ${_Plr}/modules/o_contrib_eleven
+        rm -f ${_Plr}/modules/.o_contrib_eleven_dont_use
+      fi
       if [ ! -e "${_Plr}/modules/o_contrib_ten" ]; then
         ln -sfn ${_O_CONTRIB_TEN} ${_Plr}/modules/o_contrib_ten &> /dev/null
+      fi
+    elif [ -e "${_Plr}/core/themes/olivero" ] \
+      && [ ! -e "${_Plr}/core/themes/classy" ] \
+      && [ -e "${_Plr}/core/modules/workspaces_ui" ] \
+      && [ -e "${_O_CONTRIB_ELEVEN}" ]; then
+      if [ -e "${_Plr}/modules/o_contrib_eight" ] \
+        || [ -e "${_Plr}/modules/.o_contrib_eight_dont_use" ]; then
+        rm -f ${_Plr}/modules/o_contrib_eight
+        rm -f ${_Plr}/modules/.o_contrib_eight_dont_use
+      fi
+      if [ -e "${_Plr}/modules/o_contrib_nine" ] \
+        || [ -e "${_Plr}/modules/.o_contrib_nine_dont_use" ]; then
+        rm -f ${_Plr}/modules/o_contrib_nine
+        rm -f ${_Plr}/modules/.o_contrib_nine_dont_use
+      fi
+      if [ -e "${_Plr}/modules/o_contrib_ten" ] \
+        || [ -e "${_Plr}/modules/.o_contrib_ten_dont_use" ]; then
+        rm -f ${_Plr}/modules/o_contrib_ten
+        rm -f ${_Plr}/modules/.o_contrib_ten_dont_use
+      fi
+      if [ ! -e "${_Plr}/modules/o_contrib_eleven" ]; then
+        ln -sfn ${_O_CONTRIB_ELEVEN} ${_Plr}/modules/o_contrib_eleven &> /dev/null
       fi
     else
       if [ -e "${_Plr}/modules/watchdog" ]; then
@@ -611,7 +652,7 @@ _send_shutdown_notice() {
   _MAILX_TEST=$(s-nail -V 2>&1)
   if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
   cat <<EOF | s-nail -b ${_BCC_EMAIL} \
-    -s "ALERT! Shutdown of Hacked ${_Dom} Site on ${_CHECK_HOST}" \
+    -s "ALERT! Shutdown of Hacked ${_Dom} Site on ${_hName}" \
     ${_ALRT_EMAIL}
 Hello,
 
@@ -635,7 +676,7 @@ The platform root directory for this site is:
 
 The system hostname is:
 
-  ${_CHECK_HOST}
+  ${_hName}
 
 To learn more on what happened, how it was possible and
 how to survive #Drupageddon, please read:
@@ -671,7 +712,7 @@ _send_hacked_alert() {
   _MAILX_TEST=$(s-nail -V 2>&1)
   if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
   cat <<EOF | s-nail -b ${_BCC_EMAIL} \
-    -s "URGENT: The ${_Dom} site on ${_CHECK_HOST} has been HACKED!" \
+    -s "URGENT: The ${_Dom} site on ${_hName} has been HACKED!" \
     ${_ALRT_EMAIL}
 Hello,
 
@@ -687,7 +728,7 @@ The platform root directory for this site is:
 
 The system hostname is:
 
-  ${_CHECK_HOST}
+  ${_hName}
 
 To learn more on what happened, how it was possible and
 how to survive #Drupageddon, please read:
@@ -703,7 +744,7 @@ not secure codebase, even if it was not affected by Drupageddon bug
 directly.
 
 Please be a good web citizen and upgrade to latest Drupal core provided
-by BOA-5.5.0-lts. As a bonus, you will be able to speed up your sites
+by BOA-5.7.11-lts. As a bonus, you will be able to speed up your sites
 considerably by switching PHP-FPM to 8.3
 
 We recommend to follow this upgrade how-to:
@@ -743,7 +784,7 @@ _send_core_alert() {
   _MAILX_TEST=$(s-nail -V 2>&1)
   if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
   cat <<EOF | s-nail -b ${_BCC_EMAIL} \
-    -s "URGENT: The ${_Dom} site on ${_CHECK_HOST} runs on not secure Drupal core!" \
+    -s "URGENT: The ${_Dom} site on ${_hName} runs on not secure Drupal core!" \
     ${_ALRT_EMAIL}
 Hello,
 
@@ -761,7 +802,7 @@ The platform root directory for this site is:
 
 The system hostname is:
 
-  ${_CHECK_HOST}
+  ${_hName}
 
 Does it mean that your site is vulnerable to Drupageddon attack, recently
 made famous again by Panama Papers leak?
@@ -787,7 +828,7 @@ not secure codebase, even if it was not affected by Drupageddon bug
 directly.
 
 Please be a good web citizen and upgrade to latest Drupal core provided
-by BOA-5.5.0-lts. As a bonus, you will be able to speed up your sites
+by BOA-5.7.11-lts. As a bonus, you will be able to speed up your sites
 considerably by switching PHP-FPM to 8.3
 
 We recommend to follow this upgrade how-to:
@@ -1541,22 +1582,38 @@ _fix_static_permissions() {
     if [ -e "${_Plr}/web.config" ] && [ ! -e "${_Plr}/core" ]; then
       _fix_seven_core_patch
     fi
+    if [ -e "${_Plr}/core/lib/Drupal.php" ] \
+      && [ -e "${_Plr}/../vendor/autoload.php" ] \
+      && grep -q '"drupal/core"' "${_Plr}/../composer.json" 2>/dev/null; then
+      _use_Plr="$(cd "${_Plr}/.." && pwd -P)"
+    else
+      _use_Plr="${_Plr}"
+    fi
     if [ ! -e "${_usEr}/static/control/unlock.info" ] \
-      && [ ! -e "${_Plr}/skip.info" ]; then
+      && [ ! -e "${_use_Plr}/skip.info" ]; then
       if [ ! -e "${_usEr}/log/ctrl/plr.${_PlrID}.ctm-lock-${_NOW}.info" ]; then
-        chown -R ${_HM_U} ${_Plr} &> /dev/null
+        chown -R ${_HM_U} ${_use_Plr} &> /dev/null
         touch ${_usEr}/log/ctrl/plr.${_PlrID}.ctm-lock-${_NOW}.info
       fi
     elif [ -e "${_usEr}/static/control/unlock.info" ] \
-      && [ ! -e "${_Plr}/skip.info" ]; then
+      && [ ! -e "${_use_Plr}/skip.info" ]; then
       if [ ! -e "${_usEr}/log/ctrl/plr.${_PlrID}.ctm-unlock-${_NOW}.info" ]; then
-        chown -R ${_HM_U}.ftp ${_Plr} &> /dev/null
+        chown -R ${_HM_U}.ftp ${_use_Plr} &> /dev/null
         touch ${_usEr}/log/ctrl/plr.${_PlrID}.ctm-unlock-${_NOW}.info
       fi
     fi
     if [ ! -f "${_usEr}/log/ctrl/plr.${_PlrID}.perm-fix-${_NOW}.info" ]; then
-      find ${_Plr} -type d -exec chmod 0775 {} \; &> /dev/null
-      find ${_Plr} -type f -exec chmod 0664 {} \; &> /dev/null
+      find ${_use_Plr} -type d -exec chmod 0775 {} \; &> /dev/null
+      find ${_use_Plr} -type f -exec chmod 0664 {} \; &> /dev/null
+      if [ -e "${_use_Plr}/vendor/drush" ]; then
+        chmod 0400 ${_use_Plr}/vendor/drush
+      fi
+      if [ -e "${_use_Plr}/vendor/symfony/console/Input" ]; then
+        chmod 0400 ${_use_Plr}/vendor/symfony/console/Input
+      fi
+      if [ -e "${_use_Plr}/vendor/symfony/console/Style" ]; then
+        chmod 0400 ${_use_Plr}/vendor/symfony/console/Style
+      fi
     fi
   fi
 }
@@ -1637,7 +1694,7 @@ _fix_permissions() {
     && [ -e "${_Dir}/files" ] \
     && [ -e "${_Dir}/private" ]; then
     ### Cleanup
-    rm ${_Dir}/*.{hm-fix-*,ctm-lock-*,lock-*,perm-fix-*}.info &> /dev/null
+    rm ${_Dir}/*.{codebasecheck*,hm-fix-*,ctm-lock-*,lock-*,perm-fix-*}.info &> /dev/null
     ### directory and settings files - site level
     if [ ! -e "${_Dir}/modules" ]; then
       mkdir ${_Dir}/modules
@@ -1897,6 +1954,46 @@ _cleanup_ghost_vhosts() {
       echo "GHOST vhost for ${_Dom} detected and moved to ${_usEr}/undo/"
     fi
     if [ -e "${_usEr}/config/server_master/nginx/vhost.d/${_Dom}" ]; then
+      local _thisVhost="${_usEr}/config/server_master/nginx/vhost.d/${_Dom}"
+      local _fixHttpReqired=NO
+      if grep -q -e "ssl http2" "${_thisVhost}"; then
+        local _fixHttpReqired=YES
+      elif ! grep -q -E '^\s*http2\s+on;$' "${_thisVhost}"; then
+        local _fixHttpReqired=YES
+      elif grep -q -E '^\s+listen.*443\s+quic;$' "${_thisVhost}"; then
+        local _fixHttpReqired=YES
+      fi
+      if [ "${_fixHttpReqired}" = "YES" ]; then
+        echo "FIXING vhost for ${_Dom}"
+        # Remove 'http2' from 'listen' directives with varying spaces
+        sed -i -E 's/(listen\s+[^;]*\s+ssl)\s+http2;$/\1;/' "${_thisVhost}"
+        # Remove existing 'http2 on;' lines with varying spaces
+        sed -i -E '/^\s*http2\s+on;/d' "${_thisVhost}"
+        # Remove existing 'quic' lines with varying spaces
+        sed -i -E '/^\s+listen.*443\s+quic;/d' "${_thisVhost}"
+        # Remove unwanted directives with varying spaces
+        sed -i -E \
+          -e '/^\s*ssl_stapling\b/d' \
+          -e '/^\s*ssl_stapling_verify\b/d' \
+          -e '/^\s*resolver\b/d' \
+          -e '/^\s*resolver_timeout\b/d' \
+          "${_thisVhost}"
+        # Update 'ssl_prefer_server_ciphers' directive, handling spaces
+        sed -i -E 's/^\s*ssl_prefer_server_ciphers\s+.*$/ssl_prefer_server_ciphers on;/' "${_thisVhost}"
+        # Update 'http3_hq' directive, handling spaces
+        sed -i -E 's/http3_hq\s+on;$/http3_hq on;/' "${_thisVhost}"
+        if grep -q 'ssl_prefer_server_ciphers' "${_thisVhost}"; then
+          # Add 'http2 on;' after 'ssl_prefer_server_ciphers on;', only if not already present
+          if ! grep -q -E '^\s*http2\s+on;$' "${_thisVhost}"; then
+            sed -i '/ssl_prefer_server_ciphers on;/ a\  http2 on;' "${_thisVhost}"
+          fi
+        elif grep -q -E '^\s*#http3_hq\s+on;$' "${_thisVhost}"; then
+          # Add 'http2 on;' after 'http3_hq on;', only if not already present
+          if ! grep -q -E '^\s*http2\s+on;$' "${_thisVhost}"; then
+            sed -i '/http3_hq on;/ a\  http2 on;' "${_thisVhost}"
+          fi
+        fi
+      fi
       _Plx=$(cat ${_usEr}/config/server_master/nginx/vhost.d/${_Dom} \
         | grep "root " \
         | cut -d: -f2 \
@@ -2000,7 +2097,7 @@ _if_le_hm_ssl_old() {
 
   # Check if the path is a symlink
   if [ -L "${_filePath}" ]; then
-    _target_file=$(readlink -f "${_filePath}")
+    _target_file="$(readlink -f "${_filePath}")"
     # Get the file's modification time in seconds since epoch
     _file_mod_time=$(stat -c %Y "${_target_file}")
   else
@@ -2043,8 +2140,7 @@ _if_le_hm_ssl_crt_key_copy() {
   fi
   if [ -e "${_crtPath}" ]; then
     if [ -L "${_crtPath}" ]; then
-      _crtPathR=$(readlink -n ${_crtPath} 2>&1)
-      _crtPathR=$(echo -n ${_crtPathR} | tr -d "\n" 2>&1)
+      _crtPathR="$(readlink -n "${_crtPath}")"
       if [ -f "${_leCrtPath}/${_crtPathR}" ]; then
         rm -f /etc/ssl/private/${_hmFront}.crt
         cp -a ${_leCrtPath}/${_crtPathR} /etc/ssl/private/${_hmFront}.crt
@@ -2057,8 +2153,7 @@ _if_le_hm_ssl_crt_key_copy() {
   _keyPath="${_leCrtPath}/privkey.pem"
   if [ -e "${_keyPath}" ]; then
     if [ -L "${_keyPath}" ]; then
-      _keyPathR=$(readlink -n ${_keyPath} 2>&1)
-      _keyPathR=$(echo -n ${_keyPathR} | tr -d "\n" 2>&1)
+      _keyPathR="$(readlink -n "${_keyPath}")"
       if [ -f "${_leCrtPath}/${_keyPathR}" ]; then
         rm -f /etc/ssl/private/${_hmFront}.key
         cp -a ${_leCrtPath}/${_keyPathR} /etc/ssl/private/${_hmFront}.key
@@ -2196,17 +2291,42 @@ _le_ssl_check_update() {
         if [ -e "${_usEr}/static/control/wildcard-enable-${_Dom}.info" ]; then
           _Dom=$(echo ${_Dom} | sed 's/^www.//g' 2>&1)
           echo "--domain *.${_Dom}"
-          if [ ! -e "${_usEr}/tools/le/hooks/cloudflare/hook.py" ]; then
-            mkdir -p ${_usEr}/tools/le/hooks
-            cd ${_usEr}/tools/le
-            git clone https://github.com/kappataumu/letsencrypt-cloudflare-hook hooks/cloudflare
-            pip install -r hooks/cloudflare/requirements.txt
-          fi
-          if [ -e "${_usEr}/tools/le/hooks/cloudflare/hook.py" ]; then
-            if [ -e "${_usEr}/tools/le/config" ]; then
-              _dhArgs="--alias ${_Dom} --domain *.${_Dom} --domain ${_Dom} ${_usEaliases}"
-              _dhArgs=" ${_dhArgs} --challenge dns-01 --hook '${_usEr}/tools/le/hooks/cloudflare/hook.py'"
+          if [ -e "${_usEr}/static/control/cloudflare-dns-ssl-py.info" ] \
+            || [ -e "${_usEr}/static/control/cloudflare-dns-ssl-sh.info" ]; then
+            [ -e "${_usEr}/static/control/cloudflare-dns-ssl-py.info" ] && chattr +i ${_usEr}/static/control/cloudflare-dns-ssl-py.info
+            [ -e "${_usEr}/static/control/cloudflare-dns-ssl-sh.info" ] && chattr +i ${_usEr}/static/control/cloudflare-dns-ssl-sh.info
+            export CF_DNS_SERVERS='8.8.8.8 8.8.4.4'
+            export CF_SETTLE_TIME='30'
+            export CF_DEBUG='true'
+            if [ ! -e "${_usEr}/tools/le/hooks/cloudflare-sh/cf-hook.sh" ]; then
+              _apt_clean_update
+              apt-get install gawk jq publicsuffix ldnsutils ${_aptYesUnth} 2> /dev/null
+              mkdir -p ${_usEr}/tools/le/hooks
+              cd ${_usEr}/tools/le
+              git clone https://github.com/omega8cc/dehydrated-hook-cloudflare hooks/cloudflare-sh 2> /dev/null
+              chmod 755 ${_usEr}/tools/le/hooks/cloudflare-sh/cf-hook.sh
             fi
+            if [ ! -e "${_usEr}/tools/le/hooks/cloudflare-py/hook.py" ]; then
+              _apt_clean_update
+              apt-get install python3-pip python-is-python3 ${_aptYesUnth} 2> /dev/null
+              mkdir -p ${_usEr}/tools/le/hooks
+              cd ${_usEr}/tools/le
+              git clone https://github.com/omega8cc/letsencrypt-cloudflare-hook hooks/cloudflare-py 2> /dev/null
+              chmod 755 ${_usEr}/tools/le/hooks/cloudflare-py/hook.py
+              pip3 install -r hooks/cloudflare-py/requirements.txt 2> /dev/null
+            fi
+            if [ -e "${_usEr}/static/control/cloudflare-dns-ssl-py.info" ]; then
+              _thisHook="${_usEr}/tools/le/hooks/cloudflare-py/hook.py"
+            elif [ -e "${_usEr}/static/control/cloudflare-dns-ssl-sh.info" ]; then
+              _thisHook="${_usEr}/tools/le/hooks/cloudflare-sh/cf-hook.sh"
+            fi
+            if [ -e "${_thisHook}" ] && [ -e "${_usEr}/tools/le/config" ]; then
+              chattr +i ${_usEr}/tools/le/config
+              _dhArgs="--alias ${_Dom} --domain *.${_Dom} --domain ${_Dom} ${_usEaliases}"
+              _dhArgs=" ${_dhArgs} --challenge dns-01 --hook '${_thisHook}'"
+            fi
+          else
+            _dhArgs="--alias ${_Dom} --domain *.${_Dom} --domain ${_Dom} ${_usEaliases}"
           fi
         fi
         echo "_leParams is ${_leParams}"
@@ -2255,6 +2375,12 @@ _daily_process() {
     echo ${_MOMENT} Start Counting Site ${_Site}
     _Dom=$(echo ${_Site} | cut -d'/' -f9 | awk '{ print $1}' 2>&1)
     _Dan=
+    _Plx=
+    _Plr=
+    _Dir=
+    _codeBaseCheckDir=
+    _codeBaseCheckFile=
+    _codeBaseCheckCtrl=
     if [ -e "${_usEr}/config/server_master/nginx/vhost.d/${_Dom}" ]; then
       _Plx=$(cat ${_usEr}/config/server_master/nginx/vhost.d/${_Dom} \
         | grep "root " \
@@ -2294,11 +2420,16 @@ _daily_process() {
           | openssl md5 \
           | awk '{ print $2}' \
           | tr -d "\n" 2>&1)
-        _codeBaseCheckInfo="${_usEr}/log/ctrl/plr.${_PlrID}.codebasecheck-${_NOW}.info"
-        if [ -x "/opt/local/bin/codebasecheck" ] && [ ! -f "${_codeBaseCheckInfo}" ]; then
-          codebasecheck ${_Plr}
+        _codeBaseCheckDir="${_usEr}/log/ctrl"
+        _codeBaseCheckFile="plr.${_PlrID}.codebasecheck-${_NOW}.info"
+        _codeBaseCheckCtrl="${_codeBaseCheckDir}/${_codeBaseCheckFile}"
+        [ ! -e "${_codeBaseCheckDir}" ] && mkdir "${_codeBaseCheckDir}"
+        if [ -x "/opt/local/bin/codebasecheck" ] \
+          && [ -e "${_codeBaseCheckDir}" ] \
+          && [ ! -e "${_codeBaseCheckCtrl}" ]; then
+          codebasecheck "${_Plr}"
           wait
-          touch ${_codeBaseCheckInfo}
+          touch "${_codeBaseCheckCtrl}"
         fi
         _fix_platform_control_files
         _fix_o_contrib_symlink
@@ -2417,7 +2548,7 @@ _delete_this_empty_hostmaster_platform() {
 }
 
 _check_old_empty_hostmaster_platforms() {
-  if [ "${_DEL_OLD_EMPTY_PLATFORMS}" -gt "0" ] \
+  if [ "${_DEL_OLD_EMPTY_PLATFORMS}" -gt 0 ] \
 	&& [ ! -z "${_DEL_OLD_EMPTY_PLATFORMS}" ]; then
 	_DO_NOTHING=YES
   else
@@ -2429,7 +2560,7 @@ _check_old_empty_hostmaster_platforms() {
 	fi
   fi
   if [ ! -z "${_DEL_OLD_EMPTY_PLATFORMS}" ]; then
-    if [ "${_DEL_OLD_EMPTY_PLATFORMS}" -gt "0" ]; then
+    if [ "${_DEL_OLD_EMPTY_PLATFORMS}" -gt 0 ]; then
       echo "_DEL_OLD_EMPTY_PLATFORMS is set to \
         ${_DEL_OLD_EMPTY_PLATFORMS} days on /var/aegir instance"
       for _Platform in `find /var/aegir/.drush/platform_* -maxdepth 1 -mtime \
@@ -2471,11 +2602,11 @@ _delete_this_platform() {
 _check_old_empty_platforms() {
   _if_hosted_sys
   if [ "${_hostedSys}" = "YES" ]; then
-    if [[ "${_CHECK_HOST}" =~ "demo.aegir.cc" ]] \
+    if [[ "${_hName}" =~ "demo.aegir.cc" ]] \
       || [ -e "${_usEr}/static/control/platforms.info" ]; then
       _DO_NOTHING=YES
     else
-      if [ "${_DEL_OLD_EMPTY_PLATFORMS}" -gt "0" ] \
+      if [ "${_DEL_OLD_EMPTY_PLATFORMS}" -gt 0 ] \
         && [ ! -z "${_DEL_OLD_EMPTY_PLATFORMS}" ]; then
         _DO_NOTHING=YES
       else
@@ -2484,7 +2615,7 @@ _check_old_empty_platforms() {
     fi
   fi
   if [ ! -z "${_DEL_OLD_EMPTY_PLATFORMS}" ]; then
-    if [ "${_DEL_OLD_EMPTY_PLATFORMS}" -gt "0" ]; then
+    if [ "${_DEL_OLD_EMPTY_PLATFORMS}" -gt 0 ]; then
       echo "_DEL_OLD_EMPTY_PLATFORMS is set to \
         ${_DEL_OLD_EMPTY_PLATFORMS} days on ${_HM_U} instance"
       for _Platform in `find ${_usEr}/.drush/platform_* -maxdepth 1 -mtime \
@@ -2522,13 +2653,13 @@ _check_old_empty_platforms() {
 
 _purge_cruft_machine() {
 
-  if [ ! -z "${_DEL_OLD_TMP}" ] && [ "${_DEL_OLD_TMP}" -gt "0" ]; then
+  if [ ! -z "${_DEL_OLD_TMP}" ] && [ "${_DEL_OLD_TMP}" -gt 0 ]; then
     _PURGE_TMP="${_DEL_OLD_TMP}"
   else
     _PURGE_TMP="0"
   fi
 
-  if [ ! -z "${_DEL_OLD_BACKUPS}" ] && [ "${_DEL_OLD_BACKUPS}" -gt "0" ]; then
+  if [ ! -z "${_DEL_OLD_BACKUPS}" ] && [ "${_DEL_OLD_BACKUPS}" -gt 0 ]; then
     _PURGE_BACKUPS="${_DEL_OLD_BACKUPS}"
   else
     _PURGE_BACKUPS="14"
@@ -2656,7 +2787,7 @@ _purge_cruft_machine() {
         mkdir -p ${i}/keys
       fi
       _RevisionTest=$(ls ${i} | wc -l 2>&1)
-      if [ "${_RevisionTest}" -lt "2" ] && [ ! -z "${_RevisionTest}" ]; then
+      if [ "${_RevisionTest}" -lt 2 ] && [ ! -z "${_RevisionTest}" ]; then
         echo "_RevisionTest is ${_RevisionTest}"
         _NOW=$(date +%y%m%d-%H%M%S 2>&1)
         mkdir -p ${_usEr}/undo/dist/${_NOW}
@@ -2719,10 +2850,10 @@ _count_cpu() {
   if [ ! -z "${_CPU_NR}" ] \
     && [ ! -z "${_CPU_INFO}" ] \
     && [ "${_CPU_NR}" -gt "${_CPU_INFO}" ] \
-    && [ "${_CPU_INFO}" -gt "0" ]; then
+    && [ "${_CPU_INFO}" -gt 0 ]; then
     _CPU_NR="${_CPU_INFO}"
   fi
-  if [ -z "${_CPU_NR}" ] || [ "${_CPU_NR}" -lt "1" ]; then
+  if [ -z "${_CPU_NR}" ] || [ "${_CPU_NR}" -lt 1 ]; then
     _CPU_NR=1
   fi
   echo ${_CPU_NR} > /data/all/cpuinfo
@@ -2820,14 +2951,13 @@ _cleanup_weblogx() {
 _incident_email_report() {
   if [ -e "/root/.barracuda.cnf" ]; then
     source /root/.barracuda.cnf
-    local _thisEmail="${_MY_EMAIL}"
-    export _INCIDENT_EMAIL_REPORT=${_INCIDENT_EMAIL_REPORT//[^A-Z]/}
-    : "${_INCIDENT_EMAIL_REPORT:=YES}"
+    _thisEmail="${_MY_EMAIL}"
+    export _INCIDENT_REPORT=${_INCIDENT_REPORT//[^A-Z]/}
+    : "${_INCIDENT_REPORT:=YES}"
   fi
-  if [ -n "${_thisEmail}" ] && [ "${_INCIDENT_EMAIL_REPORT}" = "YES" ]; then
-    _hName=$(cat /etc/hostname 2>&1)
-    echo "Sending Incident Report Email on $(date 2>&1)" >> ${_thisLog}
-    s-nail -s "Incident Report during daily.sh: ${1} on ${_hName} at $(date 2>&1)" ${_thisEmail} < ${_thisLog}
+  if [ -n "${_thisEmail}" ] && [ "${_INCIDENT_REPORT}" = "YES" ]; then
+    echo "Sending Incident Report Email on $(date)" >> ${_thisLog}
+    s-nail -s "Incident Report during daily.sh: ${1} on ${_hName} at $(date)" ${_thisEmail} < ${_thisLog}
   fi
 }
 
@@ -3025,7 +3155,6 @@ _NOW=$(date +%y%m%d-%H%M%S 2>&1)
 _NOW=${_NOW//[^0-9-]/}
 _DOW=$(date +%u 2>&1)
 _DOW=${_DOW//[^1-7]/}
-_CHECK_HOST=$(uname -n 2>&1)
 #
 if [ -e "/root/.force.sites.verify.cnf" ]; then
   _FORCE_SITES_VERIFY=YES
@@ -3090,6 +3219,7 @@ if [ -e "/data/all" ]; then
   _O_CONTRIB_EIGHT="/data/all/${_LAST_ALL}/o_contrib_eight"
   _O_CONTRIB_NINE="/data/all/${_LAST_ALL}/o_contrib_nine"
   _O_CONTRIB_TEN="/data/all/${_LAST_ALL}/o_contrib_ten"
+  _O_CONTRIB_ELEVEN="/data/all/${_LAST_ALL}/o_contrib_eleven"
 elif [ -e "/data/disk/all" ]; then
   cd /data/disk/all
   _listl=([0-9]*)
@@ -3099,12 +3229,14 @@ elif [ -e "/data/disk/all" ]; then
   _O_CONTRIB_EIGHT="/data/disk/all/${_LAST_ALL}/o_contrib_eight"
   _O_CONTRIB_NINE="/data/disk/all/${_LAST_ALL}/o_contrib_nine"
   _O_CONTRIB_TEN="/data/disk/all/${_LAST_ALL}/o_contrib_ten"
+  _O_CONTRIB_ELEVEN="/data/disk/all/${_LAST_ALL}/o_contrib_eleven"
 else
   _O_CONTRIB=NO
   _O_CONTRIB_SEVEN=NO
   _O_CONTRIB_EIGHT=NO
   _O_CONTRIB_NINE=NO
   _O_CONTRIB_TEN=NO
+  _O_CONTRIB_ELEVEN=NO
 fi
 #
 mkdir -p /var/xdrago/log/daily
@@ -3282,18 +3414,19 @@ else
       fi
     done
     if [ -e "/var/aegir/config" ]; then
-      sed -i "s/.*ssl_stapling .*//g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf               &> /dev/null
+      sed -i "s/.*ssl_stapling .*//g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf &> /dev/null
       wait
-      sed -i "s/.*ssl_stapling_verify .*//g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf        &> /dev/null
+      sed -i "s/.*ssl_stapling_verify .*//g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf &> /dev/null
       wait
-      sed -i "s/.*resolver .*//g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf                   &> /dev/null
+      sed -i "s/.*resolver .*//g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf &> /dev/null
       wait
-      sed -i "s/.*resolver_timeout .*//g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf           &> /dev/null
+      sed -i "s/.*resolver_timeout .*//g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf &> /dev/null
       wait
-      sed -i "s/ssl_prefer_server_ciphers .*/ssl_prefer_server_ciphers on;\n  ssl_stapling on;\n  ssl_stapling_verify on;\n  resolver 1.1.1.1 1.0.0.1 valid=300s;\n  resolver_timeout 5s;/g" \
-        /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf &> /dev/null
+      sed -i "s/.*http2.*on;//g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf &> /dev/null
       wait
-      sed -i "s/ *$//g; /^$/d" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf                      &> /dev/null
+      sed -i "s/ssl_prefer_server_ciphers .*/ssl_prefer_server_ciphers on;\n  http2 on;/g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf &> /dev/null
+      wait
+      sed -i "s/ *$//g; /^$/d" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf &> /dev/null
       wait
     fi
     if [ -d "/data/u" ]; then

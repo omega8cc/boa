@@ -79,7 +79,7 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 export _tRee=lts
-export _xSrl=550ltsT04
+export _xSrl=570ltsT11
 
 _barCnf="/root/.barracuda.cnf"
 _logAds="/root/.autodaedalus.log"
@@ -104,7 +104,7 @@ _OS_CODE=check
 #
 
 _check_root() {
-  if [ `whoami` = "root" ]; then
+  if [ "$(id -u)" -eq 0 ]; then
     [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
   else
     echo "ERROR: This script should be run as a root user"
@@ -115,7 +115,7 @@ _check_root() {
     | sed 's/\%//g' \
     | awk '{print $6}' 2> /dev/null)
   _DF_TEST=${_DF_TEST//[^0-9]/}
-  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt "90" ]; then
+  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt 90 ]; then
     echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
     echo "ERROR: We can not proceed until it is below 90/100"
     exit 1
@@ -228,8 +228,7 @@ _faster_reboot() {
   csf -tf &> /dev/null
   _msg "Firewall has been purged" >> "${_logAds}"
   if [ -e "/root/.my.pass.txt" ]; then
-    _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
-    _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+    _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
     _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
     if [ ! -z "${_IS_MYSQLD_RUNNING}" ] && [ ! -z "${_SQL_PSWD}" ]; then
       _msg "Preparing MySQLD for quick shutdown..." >> "${_logAds}"
@@ -301,17 +300,22 @@ fi
 
 _if_remove_cloud_utils() {
   _INITD_TEST=$(ls -la /etc/init.d/*cloud* 2>&1)
+  _aptAkamaiLst="/etc/apt/sources.list.d/akamai-linux-team.list"
+  _aptCloudInit="/etc/apt/preferences.d/99linode-cloudinit"
+  _etcCloudCfgd="/etc/cloud/cloud.cfg.d"
   if [[ ! "${_INITD_TEST}" =~ "No such file" ]] \
-    || [ -e "/etc/cloud/cloud.cfg.d" ]; then
+    || [ -e "${_aptAkamaiLst}" ] \
+    || [ -e "${_aptCloudInit}" ] \
+    || [ -e "${_etcCloudCfgd}" ]; then
     _msg "Removing problematic cloud-utils detected on this system" >> "${_logAds}"
     /usr/bin/apt-get update --allow-insecure-repositories 2> /dev/null
     /usr/bin/apt-get remove cloud-utils cloud-init -y --purge --auto-remove -qq 2> /dev/null
     /usr/bin/apt-get remove cloud-image-utils cloud-guest-utils -y --purge --auto-remove -qq 2> /dev/null
     /usr/bin/apt-get autoremove --purge -y 2> /dev/null
     /usr/bin/apt-get autoclean -y 2> /dev/null
-    if [ -e "/etc/cloud/cloud.cfg.d" ]; then
-      mv -f /etc/cloud /var/backups/
-    fi
+    [ -e "${_etcCloudCfgd}" ] && mv -f /etc/cloud /var/backups/
+    [ -e "${_aptAkamaiLst}" ] && mv -f ${_aptAkamaiLst} /var/backups/
+    [ -e "${_aptCloudInit}" ] && mv -f ${_aptCloudInit} /var/backups/
   fi
 }
 if [ "${_VMFAMILY}" != "AWS" ]; then
@@ -349,7 +353,7 @@ _if_fix_dhcp() {
   fi
   if [ -e "${_DHCP_LOG}" ]; then
     if [ `tail --lines=3 ${_DHCP_LOG} \
-      | grep --count "dhclient.*Failed"` -gt "0" ]; then
+      | grep --count "dhclient.*Failed"` -gt 0 ]; then
       sed -i "s/.*DHCP.*//g" /etc/csf/csf.allow
       wait
       sed -i "/^$/d" /etc/csf/csf.allow

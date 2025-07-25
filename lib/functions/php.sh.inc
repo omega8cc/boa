@@ -140,6 +140,21 @@ _fix_php_ini_mcrypt() {
 }
 
 #
+# Fix php.ini files to remove mcrypt.so
+_remove_php_ini_mcrypt() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _remove_php_ini_mcrypt $1"
+  fi
+  if [ -e "${_THIS_FILE}" ]; then
+    _JSMIN_INI_TEST=$(grep "^extension=mcrypt.so" ${_THIS_FILE} 2>&1)
+    if [[ "${_JSMIN_INI_TEST}" =~ "extension=mcrypt.so" ]]; then
+      sed -i "s/.*mcrypt.*//g" ${_THIS_FILE} &> /dev/null
+      wait
+    fi
+  fi
+}
+
+#
 # Fix php.ini files to add apcu.so
 _fix_php_ini_apcu() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -207,13 +222,9 @@ _fix_php_ini_newrelic_all() {
   fi
   if [ -e "/etc/newrelic/newrelic.cfg" ]; then
     if [ -z "${_NEWRELIC_KEY}" ]; then
-      _NEWRELIC_KEY=$(grep license_key /etc/newrelic/newrelic.cfg 2>&1)
-      _NEWRELIC_KEY=$(echo -n ${_NEWRELIC_KEY} | tr -d "\n" 2>&1)
+      _NEWRELIC_KEY=$(grep license_key /etc/newrelic/newrelic.cfg 2>/dev/null | tr -d '\n')
     fi
-    _PHP_V="83 82 81 80 74 73 72 71 70"
-    if [ "${_DB_SERIES}" = "5.7" ]; then
-      _PHP_V="83 82 81 80 74 73 72 71 70"
-    fi
+    _PHP_V="83 82 81 80 74 73 72"
     for e in ${_PHP_V}; do
       _THIS_FILE=/opt/php${e}/etc/php${e}.ini
       _fix_php_ini_newrelic ${e}
@@ -251,13 +262,14 @@ _fix_php_ini_opcache_all() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _fix_php_ini_opcache_all"
   fi
-  _PHP_V="83 82 81 80 74 73 72 71 70 56"
+  _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
   if [ "${_DB_SERIES}" = "5.7" ]; then
-    _PHP_V="83 82 81 80 74 73 72 71 70 56"
+    _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
   fi
   for e in ${_PHP_V}; do
     _P_API=
     case "${e}" in
+      84) _P_API="${_PHP84_API}" ;;
       83) _P_API="${_PHP83_API}" ;;
       82) _P_API="${_PHP82_API}" ;;
       81) _P_API="${_PHP81_API}" ;;
@@ -307,10 +319,11 @@ _fix_php_ini_tet_all() {
     _msg "PROC: _fix_php_ini_tet_all"
   fi
   if [ "${_PHP_TET}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "TET" ]]; then
-    _PHP_V="83 82 81 80 74 73 72 71 70 56"
+    _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
       _P_API=
       case "${e}" in
+        84) _P_API="${_PHP84_API}" ;;
         83) _P_API="${_PHP83_API}" ;;
         82) _P_API="${_PHP82_API}" ;;
         81) _P_API="${_PHP81_API}" ;;
@@ -327,7 +340,8 @@ _fix_php_ini_tet_all() {
       _TET_BASE="/opt/php${e}/lib/php/extensions/no-debug-non-zts"
       _TET_SO="${_TET_BASE}-${_P_API}/php_tet.so"
       if [ ! -e "${_TET_SO}" ]; then
-        if [[ "${e}" =~ "83" ]] \
+        if [[ "${e}" =~ "84" ]] \
+          || [[ "${e}" =~ "83" ]] \
           || [[ "${e}" =~ "82" ]] \
           || [[ "${e}" =~ "81" ]] \
           || [[ "${e}" =~ "80" ]] \
@@ -342,7 +356,8 @@ _fix_php_ini_tet_all() {
           cd /var/opt
           _get_dev_src "TET-${_TET_VRN}.tar.gz"
         fi
-        if [ -e "/var/opt/TET-${_TET_VRN}/bind/php/php-${e}0-nts" ]; then
+        if [ -e "${_TET_BASE}-${_P_API}" ] \
+          && [ -e "/var/opt/TET-${_TET_VRN}/bind/php/php-${e}0-nts" ]; then
           cd /var/opt/TET-${_TET_VRN}/bind/php/php-${e}0-nts/
           cp -a php_tet.so ${_TET_SO}
         fi
@@ -466,9 +481,9 @@ _php_conf_update() {
   wait
   sed -i "s/mode =.*/mode = 0660/g" /opt/etc/fpm/fpm-pool-common.conf
   wait
-  _PHP_V="83 82 81 80 74 73 72 71 70 56"
+  _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
   if [ "${_DB_SERIES}" = "5.7" ]; then
-    _PHP_V="83 82 81 80 74 73 72 71 70 56"
+    _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
   fi
   for e in ${_PHP_V}; do
     if [ ! -e "/var/www/www${e}" ]; then
@@ -500,11 +515,14 @@ _php_conf_update() {
       _fix_php_ini_mailparse ${e}
       _fix_php_ini_twig ${e}
     fi
-    if [ "${e}" != "80" ] && [ "${e}" != "81" ] && [ "${e}" != "82" ] && [ "${e}" != "83" ]; then
+    if [ "${e}" != "80" ] && [ "${e}" != "81" ] && [ "${e}" != "82" ] && [ "${e}" != "83" ] && [ "${e}" != "84" ]; then
       _add_php_ini_jsmin ${e}
     fi
-    if [ "${e}" = "80" ] || [ "${e}" = "81" ] || [ "${e}" = "82" ] || [ "${e}" = "83" ]; then
+    if [ "${e}" = "80" ] || [ "${e}" = "81" ] || [ "${e}" = "82" ] || [ "${e}" = "83" ] || [ "${e}" = "84" ]; then
       _remove_php_ini_jsmin ${e}
+    fi
+    if [ "${e}" = "84" ]; then
+      _remove_php_ini_mcrypt ${e}
     fi
     _fix_php_ini_igbinary ${e}
     _fix_php_ini_redis ${e}
@@ -523,11 +541,14 @@ _php_conf_update() {
       _fix_php_ini_mailparse ${e}
       _fix_php_ini_twig ${e}
     fi
-    if [ "${e}" != "80" ] && [ "${e}" != "81" ] && [ "${e}" != "82" ] && [ "${e}" != "83" ]; then
+    if [ "${e}" != "80" ] && [ "${e}" != "81" ] && [ "${e}" != "82" ] && [ "${e}" != "83" ] && [ "${e}" != "84" ]; then
       _add_php_ini_jsmin ${e}
     fi
-    if [ "${e}" = "80" ] || [ "${e}" = "81" ] || [ "${e}" = "82" ] || [ "${e}" = "83" ]; then
+    if [ "${e}" = "80" ] || [ "${e}" = "81" ] || [ "${e}" = "82" ] || [ "${e}" = "83" ] || [ "${e}" = "84" ]; then
       _remove_php_ini_jsmin ${e}
+    fi
+    if [ "${e}" = "84" ]; then
+      _remove_php_ini_mcrypt ${e}
     fi
     _fix_php_ini_igbinary ${e}
     _fix_php_ini_redis ${e}
@@ -585,7 +606,7 @@ _tune_web_server_config() {
   [ "${_PHP_FPM_WORKERS}" != "AUTO" ] && _PHP_FPM_WORKERS=${_PHP_FPM_WORKERS//[^0-9]/}
   [ ! -z "${_L_PHP_FPM_WORKERS}" ] && _L_PHP_FPM_WORKERS=${_L_PHP_FPM_WORKERS//[^0-9]/}
   [ ! -z "${_L_PHP_FPM_WORKERS}" ] && _LIM_FPM="${_L_PHP_FPM_WORKERS}"
-  if [ "${_LIM_FPM}" -lt "48" ]; then
+  if [ "${_LIM_FPM}" -lt 48 ]; then
     _if_hosted_sys
     if [ "${_hostedSys}" = "YES" ]; then
       _LIM_FPM=48
@@ -593,11 +614,11 @@ _tune_web_server_config() {
   fi
   if [ "${_PHP_FPM_WORKERS}" != "AUTO" ]; then
     _PHP_FPM_WORKERS=${_PHP_FPM_WORKERS//[^0-9]/}
-    if [ ! -z "${_PHP_FPM_WORKERS}" ] && [ "${_PHP_FPM_WORKERS}" -ge "1" ]; then
+    if [ ! -z "${_PHP_FPM_WORKERS}" ] && [ "${_PHP_FPM_WORKERS}" -ge 1 ]; then
       _LIM_FPM="${_PHP_FPM_WORKERS}"
     fi
   fi
-  if [ "${_LIM_FPM}" -gt "100" ]; then
+  if [ "${_LIM_FPM}" -gt 100 ]; then
     _LIM_FPM=100
   fi
   _CHILD_MAX_FPM=$(( _LIM_FPM * 2 ))
@@ -607,12 +628,12 @@ _tune_web_server_config() {
     _msg "TUNE: _LIM_FPM is ${_LIM_FPM}"
     _msg "TUNE: _CHILD_MAX_FPM is ${_CHILD_MAX_FPM}"
   fi
-  _PHP_V="83 82 81 80 74 73 72 71 70 56"
+  _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
   if [ "${_DB_SERIES}" = "5.7" ]; then
-    _PHP_V="83 82 81 80 74 73 72 71 70 56"
+    _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
   fi
   for e in ${_PHP_V}; do
-    if [ ! -z "${_CHILD_MAX_FPM}" ] && [ "${_CHILD_MAX_FPM}" -ge "8" ]; then
+    if [ ! -z "${_CHILD_MAX_FPM}" ] && [ "${_CHILD_MAX_FPM}" -ge 8 ]; then
       sed -i "s/pm.max_children =.*/pm.max_children = ${_CHILD_MAX_FPM}/g" \
          /opt/php${e}/etc/pool.d/www${e}.conf &> /dev/null
       wait
@@ -766,7 +787,7 @@ _install_php_extensions() {
     touch ${_pthLog}/igbinary-${_USE_IGBINARY}-${_T_PHP_VRN}.log
   fi
   ###--------------------###
-  if [ "$1" != "56" ] && [ "$1" != "70" ] && [ "$1" != "71" ]; then
+  if [ "$1" != "56" ] && [ "$1" != "70" ] && [ "$1" != "71" ] && [ "$1" != "84" ]; then
     _msg "INFO: Installing MCRYPT ${_PHP_MCRYPT} for PHP ${_T_PHP_VRN}..."
     cd /var/opt
     rm -rf mcrypt*
@@ -806,7 +827,8 @@ _install_php_extensions() {
     || [ "$1" = "80" ] \
     || [ "$1" = "81" ] \
     || [ "$1" = "82" ] \
-    || [ "$1" = "83" ]; then
+    || [ "$1" = "83" ] \
+    || [ "$1" = "84" ]; then
     _msg "INFO: Installing UploadProgress ${_UPROGRESS_EIGHT_VRN} for PHP ${_T_PHP_VRN}..."
     cd /var/opt
     rm -rf uploadprogress*
@@ -1159,7 +1181,7 @@ _php_extensions_update() {
     fi
   fi
   ###--------------------###
-  if [ "$1" != "56" ] && [ "$1" != "70" ] && [ "$1" != "71" ]; then
+  if [ "$1" != "56" ] && [ "$1" != "70" ] && [ "$1" != "71" ] && [ "$1" != "84" ]; then
     if [ ! -e "${_THIS_PHP_EXT_DIR}/mcrypt.so" ] \
       || [ ! -e "${_pthLog}/mcrypt-${_PHP_MCRYPT}-${_T_PHP_VRN}.log" ]; then
       _msg "INFO: Installing MCRYPT ${_PHP_MCRYPT} upgrade for PHP ${_T_PHP_VRN}..."
@@ -1205,7 +1227,8 @@ _php_extensions_update() {
     || [ "$1" = "80" ] \
     || [ "$1" = "81" ] \
     || [ "$1" = "82" ] \
-    || [ "$1" = "83" ]; then
+    || [ "$1" = "83" ] \
+    || [ "$1" = "84" ]; then
     if [ ! -e "${_THIS_PHP_EXT_DIR}/uploadprogress.so" ] \
       || [ ! -e "${_pthLog}/f_uploadprogress-${_UPROGRESS_EIGHT_VRN}-${_T_PHP_VRN}.log" ]; then
       _msg "INFO: Installing UploadProgress ${_UPROGRESS_EIGHT_VRN} upgrade for PHP ${_T_PHP_VRN}..."
@@ -1640,7 +1663,7 @@ _install_php_multi() {
   if [ "${_OS_CODE}" != "jessie" ]; then
     _NEW_SNFR="${_NEW_SNFR} --with-sodium"
   fi
-  if [ "$1" = "74" ] || [ "$1" = "80" ] || [ "$1" = "81" ] || [ "$1" = "82" ] || [ "$1" = "83" ]; then
+  if [ "$1" = "74" ] || [ "$1" = "80" ] || [ "$1" = "81" ] || [ "$1" = "82" ] || [ "$1" = "83" ] || [ "$1" = "84" ]; then
     _PHP_EXTRA=$(echo "${_PHP_EXTRA}" | sed "s/--with-freetype-dir=\/usr//g" 2>&1)
     _PHP_EXTRA="${_PHP_EXTRA} ${_NEW_SNFR}"
   elif [ "$1" = "73" ]; then
@@ -1662,6 +1685,9 @@ _install_php_multi() {
       fi
     fi
   fi
+  if [ "$1" = "81" ] || [ "$1" = "82" ] || [ "$1" = "83" ] || [ "$1" = "84" ]; then
+    _PHP_EXTRA="${_PHP_EXTRA} --with-avi"
+  fi
   if [ "${_OS_CODE}" = "daedalus" ] \
     || [ "${_OS_CODE}" = "chimaera" ] \
     || [ "${_OS_CODE}" = "beowulf" ] \
@@ -1676,7 +1702,7 @@ _install_php_multi() {
         patch -p1 < ${_bldPth}/aegir/patches/${_patchFile} &> /dev/null
       fi
     fi
-    if [ "$1" != "81" ] && [ "$1" != "82" ] && [ "$1" != "83" ]; then
+    if [ "$1" != "81" ] && [ "$1" != "82" ] && [ "$1" != "83" ] && [ "$1" != "84" ]; then
       _patchFile="php-8.1-openssl3.patch"
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         patch -p1 < ${_bldPth}/aegir/patches/${_patchFile}
@@ -1806,6 +1832,8 @@ _install_php_multi() {
       _THIS_PHP_EXT_DIR="/opt/php82/lib/php/extensions/no-debug-non-zts-${_PHP82_API}"
     elif [ "$1" = "83" ]; then
       _THIS_PHP_EXT_DIR="/opt/php83/lib/php/extensions/no-debug-non-zts-${_PHP83_API}"
+    elif [ "$1" = "84" ]; then
+      _THIS_PHP_EXT_DIR="/opt/php84/lib/php/extensions/no-debug-non-zts-${_PHP84_API}"
     fi
     if [ ! -z "${_THIS_PHP_EXT_DIR}" ]; then
       _install_php_extensions "$1"
@@ -1856,6 +1884,8 @@ _php_multi_update() {
     _THIS_PHP_EXT_DIR="/opt/php82/lib/php/extensions/no-debug-non-zts-${_PHP82_API}"
   elif [ "$1" = "83" ]; then
     _THIS_PHP_EXT_DIR="/opt/php83/lib/php/extensions/no-debug-non-zts-${_PHP83_API}"
+  elif [ "$1" = "84" ]; then
+    _THIS_PHP_EXT_DIR="/opt/php84/lib/php/extensions/no-debug-non-zts-${_PHP84_API}"
   fi
   if [ ! -z "${_THIS_PHP_EXT_DIR}" ]; then
     _php_extensions_update "$1"
@@ -1922,6 +1952,7 @@ _newrelic_update() {
       mv -f /etc/newrelic \
         ${_vBs}/nr/etc-newrelic-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
       _pthNrx="lib/php/extensions/no-debug-non-zts"
+      _PHP_EXT_DIR_84="/opt/php84/${_pthNrx}-${_PHP84_API}"
       _PHP_EXT_DIR_83="/opt/php83/${_pthNrx}-${_PHP83_API}"
       _PHP_EXT_DIR_82="/opt/php82/${_pthNrx}-${_PHP82_API}"
       _PHP_EXT_DIR_81="/opt/php81/${_pthNrx}-${_PHP81_API}"
@@ -1948,7 +1979,7 @@ _newrelic_update() {
       # dpkg -i /var/opt/newrelic-php5-common_${_NEW_RELIC_VRN}_all.deb &> /dev/null
       # dpkg -i /var/opt/newrelic-daemon_${_NEW_RELIC_VRN}_amd64.deb &> /dev/null
       # dpkg -i /var/opt/newrelic-php5_${_NEW_RELIC_VRN}_amd64.deb &> /dev/null
-      NR_PHPLIST="/opt/php70/bin:/opt/php71/bin:/opt/php72/bin:/opt/php73/bin:/opt/php74/bin:/opt/php80/bin:/opt/php81/bin:/opt/php82/bin:/opt/php83/bin"
+      NR_PHPLIST="/opt/php70/bin:/opt/php71/bin:/opt/php72/bin:/opt/php73/bin:/opt/php74/bin:/opt/php80/bin:/opt/php81/bin:/opt/php82/bin:/opt/php83/bin:/opt/php84/bin"
       NR_SILENT="silent"
       export NR_INSTALL_PHPLIST="${NR_PHPLIST}"
       export NR_INSTALL_SILENT="${NR_SILENT}"
@@ -1960,6 +1991,11 @@ _newrelic_update() {
         _SYSTEM_ARCH="x32"
       fi
       _pthNra="/usr/lib/newrelic-php5/agent"
+      if [ -e "${_PHP_EXT_DIR_84}" ] && [ ! -e "${_PHP_EXT_DIR_84}/newrelic.so" ] \
+        && [ -e "${_pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP84_API}.so" ]; then
+        ln -sfn ${_pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP84_API}.so \
+          ${_PHP_EXT_DIR_84}/newrelic.so
+      fi
       if [ -e "${_PHP_EXT_DIR_83}" ] && [ ! -e "${_PHP_EXT_DIR_83}/newrelic.so" ] \
         && [ -e "${_pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP83_API}.so" ]; then
         ln -sfn ${_pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP83_API}.so \
@@ -2040,6 +2076,7 @@ _if_install_php_newrelic() {
     _MULTI_NR=NO
     _NEWRELIC_KEYS_SIG="548C16BF"
     _nrList="/etc/apt/sources.list.d/newrelic.list"
+    _PHP_EXT_DIR_84="/opt/php84/lib/php/extensions/no-debug-non-zts-${_PHP84_API}"
     _PHP_EXT_DIR_83="/opt/php83/lib/php/extensions/no-debug-non-zts-${_PHP83_API}"
     _PHP_EXT_DIR_82="/opt/php82/lib/php/extensions/no-debug-non-zts-${_PHP82_API}"
     _PHP_EXT_DIR_81="/opt/php81/lib/php/extensions/no-debug-non-zts-${_PHP81_API}"
@@ -2126,7 +2163,7 @@ _if_install_php_newrelic() {
       # dpkg -i /var/opt/newrelic-php5_${_NEW_RELIC_VRN}_amd64.deb &> /dev/null
       if [ "${_MULTI_NR}" = "YES" ]; then
         _msg "INFO: Installing latest version of New Relic Apps Monitor..."
-        NR_PHPLIST="/opt/php70/bin:/opt/php71/bin:/opt/php72/bin:/opt/php73/bin:/opt/php74/bin:/opt/php80/bin:/opt/php81/bin:/opt/php82/bin:/opt/php83/bin"
+        NR_PHPLIST="/opt/php70/bin:/opt/php71/bin:/opt/php72/bin:/opt/php73/bin:/opt/php74/bin:/opt/php80/bin:/opt/php81/bin:/opt/php82/bin:/opt/php83/bin:/opt/php84/bin"
         NR_SILENT="silent"
         export NR_INSTALL_PHPLIST="${NR_PHPLIST}"
         export NR_INSTALL_SILENT="${NR_SILENT}"
@@ -2138,6 +2175,11 @@ _if_install_php_newrelic() {
           _SYSTEM_ARCH="x32"
         fi
         _pthNra="/usr/lib/newrelic-php5/agent"
+        if [ -e "${_PHP_EXT_DIR_84}" ] && [ ! -e "${_PHP_EXT_DIR_84}/newrelic.so" ] \
+          && [ -e "${_pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP84_API}.so" ]; then
+          ln -sfn ${_pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP84_API}.so \
+            ${_PHP_EXT_DIR_84}/newrelic.so
+        fi
         if [ -e "${_PHP_EXT_DIR_83}" ] && [ ! -e "${_PHP_EXT_DIR_83}/newrelic.so" ] \
           && [ -e "${_pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP83_API}.so" ]; then
           ln -sfn ${_pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP83_API}.so \
@@ -2211,7 +2253,7 @@ _check_php_ssl_version() {
     daedalus|chimaera|beowulf|bookworm|bullseye|buster)
       _OPENSSL_USE_VRN="${_OPENSSL_EOL_VRN}"  # 1.1.1w
       if [ -e "/usr/local/ssl3/lib64/libssl.so.3" ]; then
-        _OPENSSL_USE_VRN="${_OPENSSL_MODERN_VRN}"  # 3.4.1
+        _OPENSSL_USE_VRN="${_OPENSSL_MODERN_VRN}"  # 3.4.2
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "INFO: Using modern OpenSSL ${_OPENSSL_USE_VRN} for PHP in ${_OS_CODE} by default"
         fi
@@ -2356,11 +2398,11 @@ _check_php_rebuild() {
   # Additional conditions for force rebuild or upgrade
   if [ "${_FULL_FORCE_REINSTALL}" = "YES" ] || [ "${_PHP_FORCE_REINSTALL}" = "YES" ]; then
     if [ ! -e "/var/xdrago/log" ] && [ -e "/var/xdrago_wait/log" ]; then
-      rm -f /var/xdrago_wait/log/*.log
       rm -f /var/xdrago_wait/log/._php_libs_fix_*.pid
+      rm -f /var/xdrago_wait/log/re-installed-php*
     else
-      rm -f /var/xdrago/log/*.log
       rm -f /var/xdrago/log/._php_libs_fix_*.pid
+      rm -f /var/xdrago/log/re-installed-php*
     fi
     if [ "${_DO_FIX}" = "YES" ] || [ "${_STATUS}" != "UPGRADE" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -2374,7 +2416,6 @@ _check_php_rebuild() {
         fi
         _install_php_multi "$1"
         _PHP_ALREADY_REBUILT=$1
-        _PHP_FORCE_REINSTALL=NO
       fi
     fi
   fi
@@ -2498,7 +2539,7 @@ _php_not_used_enable_again() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _php_not_used_enable_again"
   fi
-  _PHP_V="5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2 8.3"
+  _PHP_V="5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2 8.3 8.4"
   for e in ${_PHP_V}; do
     _re=
     if [ ! -e "/opt/php${_re}/bin/php" ]; then
@@ -2528,7 +2569,7 @@ _php_not_used_disable() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _php_not_used_disable"
   fi
-  _PHP_V="5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2 8.3"
+  _PHP_V="5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2 8.3 8.4"
   _PHP_A="${_PHP_MULTI_OPTIM}"
   for e in ${_PHP_V}; do
     _re=
@@ -2587,8 +2628,21 @@ _php_single_initd_cleanup() {
   fi
   if [ ! -z "${_PHP_SINGLE_INSTALL}" ]; then
     _FPM_INITD_CLEANUP=
-    if [ "${_PHP_SINGLE_INSTALL}" = "8.3" ] && [ -x "/opt/php83/bin/php" ]; then
-      _PHP_V="82 81 80 74 73 72 71 70 56"
+    if [ "${_PHP_SINGLE_INSTALL}" = "8.4" ] && [ -x "/opt/php84/bin/php" ]; then
+      _PHP_V="83 82 81 80 74 74 72 71 70 56"
+      for e in ${_PHP_V}; do
+        if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
+          _mrun "service php${e}-fpm force-quit" 2> /dev/null
+          _mrun "update-rc.d -f php${e}-fpm remove" 2> /dev/null
+          mv -f /etc/init.d/php${e}-fpm ${_vBs}/initd-php${e}-fpm
+          _FPM_INITD_CLEANUP=YES
+        fi
+        if [ -e "/opt/php${e}/bin/php" ]; then
+          mv -f /opt/php${e}/bin/php ${_vBs}/bin-php${e}-cli
+        fi
+      done
+    elif [ "${_PHP_SINGLE_INSTALL}" = "8.3" ] && [ -x "/opt/php83/bin/php" ]; then
+      _PHP_V="84 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
           _mrun "service php${e}-fpm force-quit" 2> /dev/null
@@ -2601,7 +2655,7 @@ _php_single_initd_cleanup() {
         fi
       done
     elif [ "${_PHP_SINGLE_INSTALL}" = "8.2" ] && [ -x "/opt/php82/bin/php" ]; then
-      _PHP_V="83 81 80 74 73 72 71 70 56"
+      _PHP_V="84 83 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
           _mrun "service php${e}-fpm force-quit" 2> /dev/null
@@ -2614,7 +2668,7 @@ _php_single_initd_cleanup() {
         fi
       done
     elif [ "${_PHP_SINGLE_INSTALL}" = "8.1" ] && [ -x "/opt/php81/bin/php" ]; then
-      _PHP_V="83 82 80 74 73 72 71 70 56"
+      _PHP_V="84 83 82 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
           _mrun "service php${e}-fpm force-quit" 2> /dev/null
@@ -2627,7 +2681,7 @@ _php_single_initd_cleanup() {
         fi
       done
     elif [ "${_PHP_SINGLE_INSTALL}" = "7.4" ] && [ -x "/opt/php74/bin/php" ]; then
-      _PHP_V="83 82 81 80 73 72 71 70 56"
+      _PHP_V="84 83 82 81 80 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
           _mrun "service php${e}-fpm force-quit" 2> /dev/null
@@ -2654,7 +2708,9 @@ _re_set_default_php_cli() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _re_set_default_php_cli ${_PHP_CLI_VERSION}"
   fi
-  if [ "${_PHP_CLI_VERSION}" = "8.3" ]; then
+  if [ "${_PHP_CLI_VERSION}" = "8.4" ]; then
+    _switch_php_cli "84"
+  elif [ "${_PHP_CLI_VERSION}" = "8.3" ]; then
     _switch_php_cli "83"
   elif [ "${_PHP_CLI_VERSION}" = "8.2" ]; then
     _switch_php_cli "82"
@@ -2679,6 +2735,8 @@ _check_php_cli() {
     _PHP_CLI_PATH="/opt/php82/bin/php"
   elif [ "${_PHP_CLI_VERSION}" = "8.3" ]; then
     _PHP_CLI_PATH="/opt/php83/bin/php"
+  elif [ "${_PHP_CLI_VERSION}" = "8.4" ]; then
+    _PHP_CLI_PATH="/opt/php84/bin/php"
   else
     _PHP_CLI_PATH=""
   fi
@@ -2693,6 +2751,8 @@ _check_php_cli() {
       _USE_PHP_CLI_PATH="/opt/php82/bin/php"
     elif  [ -x "/opt/php83/bin/php" ]; then
       _USE_PHP_CLI_PATH="/opt/php83/bin/php"
+    elif  [ -x "/opt/php84/bin/php" ]; then
+      _USE_PHP_CLI_PATH="/opt/php84/bin/php"
     fi
   fi
   if [ -x "${_USE_PHP_CLI_PATH}" ]; then
@@ -2740,7 +2800,7 @@ _php_upgrade_all() {
     if [ "${_OS_CODE}" = "stretch" ] || [ "${_OS_CODE}" = "jessie" ]; then
       _PHP_V="56 70 71 72 73 74 80 81"
     else
-      _PHP_V="56 70 71 72 73 74 80 81 82 83"
+      _PHP_V="56 70 71 72 73 74 80 81 82 83 84"
     fi
   fi
   for e in ${_PHP_V}; do
@@ -2765,6 +2825,8 @@ _php_upgrade_all() {
         _PHP_VERSION="${_PHP82_VRN}"
       elif [ "${e}" = "83" ]; then
         _PHP_VERSION="${_PHP83_VRN}"
+      elif [ "${e}" = "84" ]; then
+        _PHP_VERSION="${_PHP84_VRN}"
       fi
       _PHP_BIN_BROKEN=NO
       _BROKEN_LIBCURL_TEST=""
@@ -2919,6 +2981,17 @@ _php_install_upgrade() {
       _T_PHP_PTH=""
       _FRESH_PHP83_BUILD=83
     fi
+    if [[ "${_PHP_MULTI_INSTALL}" =~ "8.4" ]] \
+      && [ ! -x "/opt/php84/bin/php" ]; then
+      _PHP_VERSION="${_PHP84_VRN}"
+      _msg "INFO: PHP ${_PHP_VERSION} will be installed now"
+      _install_php_multi "84"
+      _switch_php_cli "84"
+      _PHP_VERSION=""
+      _T_PHP_VRN=""
+      _T_PHP_PTH=""
+      _FRESH_PHP84_BUILD=84
+    fi
   fi
 }
 
@@ -2977,7 +3050,7 @@ _php_check_if_rebuild() {
       if [ "${_OS_CODE}" = "stretch" ]; then
         _php_upgrade_all "74 80 81"
       else
-        _php_upgrade_all "74 80 81 82 83"
+        _php_upgrade_all "74 80 81 82 83 84"
       fi
       _PHP_FORCE_REINSTALL=NO
     fi
@@ -3045,10 +3118,8 @@ _php_ioncube_check_if_update() {
       || [ "${_PHP_FORCE_REINSTALL}" = "YES" ] \
       || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
       if [ ! -e "/var/xdrago/log" ] && [ -e "/var/xdrago_wait/log" ]; then
-        rm -f /var/xdrago_wait/log/*.log
         rm -f /var/xdrago_wait/log/._php_libs_fix_*.pid
       else
-        rm -f /var/xdrago/log/*.log
         rm -f /var/xdrago/log/._php_libs_fix_*.pid
       fi
       _if_install_php_ioncube

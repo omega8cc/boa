@@ -18,34 +18,49 @@ if (( $(pgrep -fc 'second.sh') > 2 )); then
 fi
 
 # Set default values
-: "${_B_NICE:=10}"
 : "${_CPU_SPIDER_RATIO:=2.1}"
 : "${_CPU_MAX_RATIO:=4.1}"
 : "${_CPU_CRIT_RATIO:=6.1}"
-: "${_INCIDENT_EMAIL_REPORT:=YES}"
+: "${_INCIDENT_REPORT:=YES}"
 
 # Source configuration file to override defaults
 if [ -e "/root/.barracuda.cnf" ]; then
   source /root/.barracuda.cnf
 fi
 
+    # Sanitize to allow only digits and minus sign
+    export _B_NICE=${_B_NICE//[^0-9-]/}
+
+    # Validate and set default if necessary
+    if ! [[ "$_B_NICE" =~ ^-?[0-9]+$ ]]; then
+      _B_NICE=0
+    fi
+
+    # Clamp the value within -20 to 19
+    if (( _B_NICE < -20 )); then
+      _B_NICE=-20
+    elif (( _B_NICE > 19 )); then
+      _B_NICE=19
+    fi
+
+    renice ${_B_NICE} -p $$ &> /dev/null
+
 # Sanitize numeric variables (allow digits and decimal point)
 _sanitize_number() {
   echo "$1" | sed 's/[^0-9.]//g'
 }
 
-_B_NICE="$(_sanitize_number "${_B_NICE}")"
 _CPU_SPIDER_RATIO="$(_sanitize_number "${_CPU_SPIDER_RATIO}")"
 _CPU_MAX_RATIO="$(_sanitize_number "${_CPU_MAX_RATIO}")"
 _CPU_CRIT_RATIO="$(_sanitize_number "${_CPU_CRIT_RATIO}")"
 
 # Sanitize email report variable
-_INCIDENT_EMAIL_REPORT="${_INCIDENT_EMAIL_REPORT^^}"
-case "${_INCIDENT_EMAIL_REPORT}" in
+_INCIDENT_REPORT="${_INCIDENT_REPORT^^}"
+case "${_INCIDENT_REPORT}" in
   "YES"|"NO"|"VERBOSE")
     ;;
   *)
-    _INCIDENT_EMAIL_REPORT="YES"
+    _INCIDENT_REPORT="YES"
     ;;
 esac
 
@@ -62,19 +77,18 @@ _incident_email_report() {
   if [ -n "${_MY_EMAIL}" ]; then
     local _send_email=false
 
-    if [ "${_INCIDENT_EMAIL_REPORT}" = "VERBOSE" ]; then
+    if [ "${_INCIDENT_REPORT}" = "VERBOSE" ]; then
       _send_email=true
-    elif [ "${_INCIDENT_EMAIL_REPORT}" = "YES" ]; then
+    elif [ "${_INCIDENT_REPORT}" = "YES" ]; then
       if [ "${_incident_level}" = "ALERT" ]; then
         _send_email=true
       fi
     fi
 
     if [ "${_send_email}" = true ]; then
-      local _hostname
-      _hostname="$(cat /etc/hostname)"
+      _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
       echo "Sending Incident Report Email on $(date)" >> "${_pthOml}"
-      s-nail -s "Incident Report on ${_hostname}: ${_subject}" "${_MY_EMAIL}" < "${_pthOml}"
+      s-nail -s "Incident Report on ${_hName}: ${_subject}" "${_MY_EMAIL}" < "${_pthOml}"
     fi
   fi
 }
@@ -247,6 +261,9 @@ _load_control() {
 for _iteration in {1..9}; do
   echo "----------------------------"
   echo "Iteration ${_iteration}:"
+  perl /var/xdrago/monitor/check/hackcheck.pl &
+  perl /var/xdrago/monitor/check/hackftp.pl &
+  perl /var/xdrago/monitor/check/escapecheck.pl &
   _load_control
   sleep 5
 done

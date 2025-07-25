@@ -1,6 +1,6 @@
 # Welcome to BOA!
 
-BOA stands for Barracuda, Octopus, and Ægir—a high-performance LEMP stack supporting Drupal from Pressflow 6 to the latest Drupal 10 (and soon Drupal 11), as well as Backdrop CMS and Grav CMS (soon).
+BOA stands for Barracuda, Octopus, and Ægir—a high-performance LEMP stack supporting Drupal from Pressflow 6 to the latest Drupal 11, as well as Backdrop CMS and Grav CMS (soon).
 
 ## What is Ægir?
 
@@ -105,6 +105,13 @@ Check out the details in [ROADMAP](https://github.com/omega8cc/boa/tree/5.x-dev/
 - INI configuration per platform: [docs/ini/platform/INI.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/ini/platform/INI.md)
 - Configuration Templates: [docs/cnf/barracuda.cnf](https://github.com/omega8cc/boa/tree/5.x-dev/docs/cnf/barracuda.cnf), [docs/cnf/octopus.cnf](https://github.com/omega8cc/boa/tree/5.x-dev/docs/cnf/octopus.cnf)
 - System Control Files Index: [docs/ctrl/system.ctrl](https://github.com/omega8cc/boa/tree/5.x-dev/docs/ctrl/system.ctrl)
+
+## Documentation for BOA PRO
+
+- New Backups for BOA SysAdmin [docs/BACKUP_ROOT.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_ROOT.md)
+- New Backups for Octopus Lshell User [docs/BACKUP_USER.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_USER.md)
+- New Backups Retention Policy Configuration [docs/BACKUP_RETENTION.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_RETENTION.md)
+- Supported Regions and Bucket Creation Guidelines [docs/BACKUP_REGIONS.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_REGIONS.md)
 
 ## Additional Documentation
 

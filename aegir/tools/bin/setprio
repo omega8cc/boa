@@ -1,0 +1,216 @@
+#!/bin/bash
+
+export HOME=/root
+export SHELL=/bin/bash
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+
+# ======================================================================
+# Script Name: setprio
+# Description: Sets CPU and I/O priorities for critical services to ensure
+#  higher priority for web services and lower priority for backups.
+#  Designed for systems using SysVinit (e.g., Devuan).
+# ======================================================================
+
+# Ensure the script is run as root
+if [[ ${EUID} -ne 0 ]]; then
+   echo "This script must be run as root. Exiting."
+   exit 1
+fi
+
+# Optional: Enable verbose mode if needed
+_VERBOSITY=0
+while [[ "$#" -gt 0 ]]; do
+  case $1 in
+    -v|--verbose) _VERBOSITY=1 ;;
+    *) echo "Unknown parameter passed: $1"; exit 1 ;;
+  esac
+  shift
+done
+
+# Define services and their desired priorities
+# Format: "service_name:renice_value:ionice_class:ionice_priority"
+declare -A _services_priorities=(
+  ["nginx"]="0:2:4"
+  ["redis-server"]="0:2:4"
+  ["sshd"]="-5:2:3"
+  ["php-fpm"]="0:2:4"
+  ["mysqld"]="0:2:4"  # Handle all MySQL processes
+)
+
+# Function to get current nice value
+_get_current_nice() {
+  local _pid=$1
+  # Extract the nice value using ps
+  _nice=$(ps -o ni= -p "${_pid}" 2>/dev/null | xargs)
+  echo "${_nice}"
+}
+
+# Function to get current ionice values using Regex for accurate parsing
+_get_current_ionice() {
+  local _pid=$1
+  # Capture the output of ionice
+  _ionice_output=$(ionice -p "${_pid}" 2>/dev/null)
+
+  # Check if ionice_output contains expected information
+  if [[ $? -ne 0 || -z "${_ionice_output}" ]]; then
+    echo "Unknown:Unknown"
+    return
+  fi
+
+  # Use Regex to parse the ionice output
+  if [[ "${_ionice_output}" =~ ^([a-z-]+):[[:space:]]+prio[[:space:]]+([0-9]+)$ ]]; then
+    _description="${BASH_REMATCH[1]}"
+    _priority="${BASH_REMATCH[2]}"
+  elif [[ "${_ionice_output}" =~ ^([a-z-]+)$ ]]; then
+    _description="${BASH_REMATCH[1]}"
+    _priority="N/A"
+  else
+    # Handle unexpected formats
+    _description="Unknown"
+    _priority="Unknown"
+  fi
+
+  # Map description to class number
+  case "${_description}" in
+    "realtime")
+      _class=1
+      ;;
+    "best-effort")
+      _class=2
+      ;;
+    "idle")
+      _class=3
+      ;;
+    *)
+      _class="Unknown"
+      ;;
+  esac
+
+  echo "${_class}:${_priority}"
+}
+
+# Function to set priorities
+_set_priorities() {
+  local _pid=$1
+  _service=$2
+  local _renice_val=$3
+  local _ionice_class=$4
+  local _ionice_priority=$5
+
+  # Get current priorities
+  _current_nice=$(_get_current_nice "${_pid}")
+  _current_ionice=$(_get_current_ionice "${_pid}")
+  _current_class=$(echo "${_current_ionice}" | cut -d':' -f1)
+  _current_priority=$(echo "${_current_ionice}" | cut -d':' -f2)
+
+  # Apply renice
+  _renice_output=$(renice "${_renice_val}" -p "${_pid}" 2>&1)
+  if [[ $? -ne 0 ]]; then
+    echo "Failed to renice PID ${_pid} (${_service}): ${_renice_output}"
+    return
+  fi
+
+  # Apply ionice
+  _ionice_output=$(ionice -c"${_ionice_class}" -n"${_ionice_priority}" -p "${_pid}" 2>&1)
+  if [[ $? -ne 0 ]]; then
+    echo "Failed to ionice PID ${_pid} (${_service}): ${_ionice_output}"
+    return
+  fi
+
+  # Get new priorities
+  _new_nice=$(_get_current_nice "${_pid}")
+  _new_ionice=$(_get_current_ionice "${_pid}")
+  _new_class=$(echo "${_new_ionice}" | cut -d':' -f1)
+  _new_priority=$(echo "${_new_ionice}" | cut -d':' -f2)
+
+  # Display the changes if verbose or if changes were made
+  if [[ ${_VERBOSITY} -eq 1 || "${_current_nice}" != "${_new_nice}" || "${_current_class}" != "${_new_class}" || "${_current_priority}" != "${_new_priority}" ]]; then
+    echo "Service: ${_service} | PID: ${_pid}"
+    echo "  CPU Priority (nice): ${_current_nice} -> ${_new_nice}"
+    echo "  I/O Priority (ionice): Class ${_current_class} Priority ${_current_priority} -> Class ${_new_class} Priority ${_new_priority}"
+    echo "---------------------------------------------------------------------"
+  fi
+}
+
+# Function to set priorities for MySQL processes using a more robust method
+_set_mysql_priorities() {
+  _service="mysqld"
+  local _renice_val="0"
+  local _ionice_class="2"
+  local _ionice_priority="4"
+
+  # Use pgrep with -f to match the full command line for all mysqld processes
+  _all_mysql_pids=$(pgrep -u mysql -f 'mysqld')
+
+  if [[ -z "${_all_mysql_pids}" ]]; then
+    echo "No running mysqld processes found."
+    echo "---------------------------------------------------------------------"
+    return
+  fi
+
+  # Iterate over each PID and set priorities
+  for _pid in ${_all_mysql_pids}; do
+    # Set priorities for the process
+    _set_priorities "${_pid}" "${_service}" "${_renice_val}" "${_ionice_class}" "${_ionice_priority}"
+  done
+}
+
+# Iterate over each service and apply priorities
+for _service in "${!_services_priorities[@]}"; do
+  # Extract desired priorities
+  IFS=':' read -r _renice_val _ionice_class _ionice_priority <<< "${_services_priorities[${_service}]}"
+
+  # Find PIDs matching the service
+  case "${_service}" in
+    "php-fpm")
+      # Handle multiple php-fpm versions
+      _pids=$(pgrep -f 'php-fpm: pool')
+      ;;
+    "sshd")
+      # Exact match for sshd to exclude child processes
+      _pids=$(pgrep -x sshd)
+      ;;
+    "nginx")
+      # Handle multiple nginx worker processes
+      _pids=$(pgrep -f 'nginx: worker process')
+      ;;
+    "redis-server")
+      # Exact match for redis-server processes
+      _pids=$(pgrep -x redis-server)
+      ;;
+    "mysqld")
+      # Handled separately below
+      _pids=""
+      ;;
+    *)
+      _pids=$(pgrep -x "${_service}")
+      ;;
+  esac
+
+  # Skip if the service is mysqld (handled separately)
+  if [[ "${_service}" == "mysqld" ]]; then
+    continue
+  fi
+
+  if [[ -z "${_pids}" ]]; then
+    echo "No running processes found for service: ${_service}"
+    echo "---------------------------------------------------------------------"
+    continue
+  fi
+
+  # Iterate over each PID and set priorities
+  for _pid in ${_pids}; do
+    # Avoid changing priority of this script itself
+    if [[ "${_pid}" -eq $$ ]]; then
+      continue
+    fi
+
+    # Set priorities for the process
+    _set_priorities "${_pid}" "${_service}" "${_renice_val}" "${_ionice_class}" "${_ionice_priority}"
+  done
+done
+
+# Handle MySQL processes separately
+_set_mysql_priorities
+
+exit 0

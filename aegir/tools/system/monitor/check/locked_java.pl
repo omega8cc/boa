@@ -20,6 +20,9 @@ chomp($now_is);
 if ($fpm_status ne "CLEAN") {
   `kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}')`;
   system("touch /run/fmp_wait.pid");
+  if (-f "/etc/init.d/php84-fpm") {
+    `service php84-fpm restart`;
+  }
   if (-f "/etc/init.d/php83-fpm") {
     `service php83-fpm restart`;
   }

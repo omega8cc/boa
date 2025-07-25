@@ -5,7 +5,7 @@ export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
 _check_root() {
-  if [ `whoami` = "root" ]; then
+  if [ "$(id -u)" -eq 0 ]; then
     ionice -c2 -n7 -p $$
     renice 19 -p $$
     chmod a+w /dev/null
@@ -18,7 +18,7 @@ _check_root() {
     | sed 's/\%//g' \
     | awk '{print $6}' 2> /dev/null)
   _DF_TEST=${_DF_TEST//[^0-9]/}
-  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt "90" ]; then
+  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt 90 ]; then
     echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
     echo "ERROR: We can not proceed until it is below 90/100"
     exit 1
@@ -39,12 +39,12 @@ if [ ! -z "${_IS_SQLBACKUP_RUNNING}" ]; then
   exit 0
 fi
 
-echo "INFO: Starting silent usage report on `date`"
+echo "INFO: Starting silent usage report on $(date)"
 bash /var/xdrago/usage.sh silent
 wait
-echo "INFO: Completing silent usage report on `date`"
+echo "INFO: Completing silent usage report on $(date)"
 
-_VM_TEST=$(uname -a 2>&1)
+_VM_TEST="$(uname -a)"
 if [[ "${_VM_TEST}" =~ "-beng" ]]; then
   _VMFAMILY="VS"
 else
@@ -53,19 +53,33 @@ fi
 
 if [ "${_VMFAMILY}" = "VS" ]; then
   _n=$((RANDOM%600+8))
-  echo "INFO: Waiting ${_n} seconds 1/2 on `date` before running backup..."
+  echo "INFO: Waiting ${_n} seconds 1/2 on $(date) before running backup..."
   sleep ${_n}
   _n=$((RANDOM%300+8))
-  echo "INFO: Waiting ${_n} seconds 2/2 on `date` before running backup..."
+  echo "INFO: Waiting ${_n} seconds 2/2 on $(date) before running backup..."
   sleep ${_n}
 fi
 
-echo "INFO: Starting dbs backup on `date`"
+echo "INFO: Starting dbs backup on $(date)"
 
 [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
-export _B_NICE=${_B_NICE//[^0-9]/}
-: "${_B_NICE:=10}"
 
+    # Sanitize to allow only digits and minus sign
+    export _B_NICE=${_B_NICE//[^0-9-]/}
+
+    # Validate and set default if necessary
+    if ! [[ "$_B_NICE" =~ ^-?[0-9]+$ ]]; then
+      _B_NICE=9
+    fi
+
+    # Clamp the value within -20 to 19
+    if (( _B_NICE < -20 )); then
+      _B_NICE=-20
+    elif (( _B_NICE > 19 )); then
+      _B_NICE=19
+    fi
+
+    renice ${_B_NICE} -p $$ &> /dev/null
 
 _SQL_CACHE_EXC_DEF="cache_bootstrap cache_discovery cache_config"
 
@@ -77,13 +91,13 @@ else
 fi
 
 _BACKUPDIR=/data/disk/arch/sql
-_CHECK_HOST=$(uname -n 2>&1)
 _DATE=$(date +%y%m%d-%H%M%S 2>&1)
 _DOW=$(date +%u 2>&1)
+_hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
 _DOW=${_DOW//[^1-7]/}
 _DOM=$(date +%e 2>&1)
 _DOM=${_DOM//[^0-9]/}
-_SAVELOCATION=${_BACKUPDIR}/${_CHECK_HOST}-${_DATE}
+_SAVELOCATION=${_BACKUPDIR}/${_hName}-${_DATE}
 if [ -e "/root/.my.optimize.cnf" ]; then
   _OPTIM=YES
 else
@@ -91,8 +105,7 @@ else
 fi
 touch /run/boa_sql_backup.pid
 
-_SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
-_SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+_SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
 
 _create_locks() {
   echo "INFO: Creating locks for $1"
@@ -249,7 +262,7 @@ _compress_backup() {
       if [ -e "${DbPath}/metadata" ]; then
         DbName=$(echo ${DbPath} | cut -d'/' -f7 | awk '{ print $1}' 2>&1)
         cd ${_SAVELOCATION}
-        tar cvfj ${DbName}-${_DATE}.tar.bz2 ${DbName} &> /dev/null
+        tar -c -p -I zstd -f ${DbName}-${_DATE}.tar.zst ${DbName} &> /dev/null
         rm -f -r ${DbName}
       fi
     done
@@ -258,7 +271,7 @@ _compress_backup() {
     chmod 700 /data/disk/arch
     echo "INFO: Permissions fixed"
   else
-    bzip2 ${_SAVELOCATION}/*.sql
+    gzip ${_SAVELOCATION}/*.sql
     chmod 600 ${_BACKUPDIR}/*/*
     chmod 700 ${_BACKUPDIR}/*
     chmod 700 ${_BACKUPDIR}
@@ -344,29 +357,29 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
     _check_running
     _create_locks ${_DB}
     if [ "${_DB}" != "mysql" ]; then
-      if [ -e "/var/lib/mysql/${_DB}/queue.ibd" ]; then
-        _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/queue.ibd | grep "G" 2>&1)
+      if [ -e "/var/lib/mysql/${_DB}/queue.ibd" ] && [ ! -e "/root/.disable_mysql_cleanup.cnf" ]; then
+        _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/queue.ibd | grep "G" 2>/dev/null)
         if [[ "${_IS_GB}" =~ "queue" ]]; then
           _truncate_queue_tables &> /dev/null
           echo "INFO: Truncated giant queue in ${_DB}"
         fi
       fi
-      if [ -e "/var/lib/mysql/${_DB}/batch.ibd" ]; then
-        _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/batch.ibd | grep "G" 2>&1)
+      if [ -e "/var/lib/mysql/${_DB}/batch.ibd" ] && [ ! -e "/root/.disable_mysql_cleanup.cnf" ]; then
+        _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/batch.ibd | grep "G" 2>/dev/null)
         if [[ "${_IS_GB}" =~ "batch" ]]; then
           _truncate_batch_tables &> /dev/null
           echo "INFO: Truncated giant batch in ${_DB}"
         fi
       fi
-      if [ -e "/var/lib/mysql/${_DB}/watchdog.ibd" ]; then
-        _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/watchdog.ibd | grep "G" 2>&1)
+      if [ -e "/var/lib/mysql/${_DB}/watchdog.ibd" ] && [ ! -e "/root/.disable_mysql_cleanup.cnf" ]; then
+        _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/watchdog.ibd | grep "G" 2>/dev/null)
         if [[ "${_IS_GB}" =~ "watchdog" ]]; then
           _truncate_watchdog_tables &> /dev/null
           echo "INFO: Truncated giant watchdog in ${_DB}"
         fi
       fi
-      if [ -e "/var/lib/mysql/${_DB}/accesslog.ibd" ]; then
-        _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/accesslog.ibd | grep "G" 2>&1)
+      if [ -e "/var/lib/mysql/${_DB}/accesslog.ibd" ] && [ ! -e "/root/.disable_mysql_cleanup.cnf" ]; then
+        _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/accesslog.ibd | grep "G" 2>/dev/null)
         if [[ "${_IS_GB}" =~ "accesslog" ]]; then
           _truncate_accesslog_tables &> /dev/null
           echo "INFO: Truncated giant accesslog in ${_DB}"
@@ -386,8 +399,8 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
       fi
       if [ "${_OPTIM}" = "YES" ] \
         && [ "${_DOW}" = "7" ] \
-        && [ "${_DOM}" -ge "24" ] \
-        && [ "${_DOM}" -lt "31" ]; then
+        && [ "${_DOM}" -ge 24 ] \
+        && [ "${_DOM}" -lt 31 ]; then
         _repair_this_database &> /dev/null
         echo "INFO: Repair task for ${_DB} completed"
         _truncate_cache_tables &> /dev/null
@@ -412,49 +425,55 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
   fi
 done
 
-echo "INFO: Running all dbs usage report on `date`"
+echo "INFO: Running all dbs usage report on $(date)"
 du -s /var/lib/mysql/* > /root/.du.local.sql
-echo "INFO: Completing all dbs usage report on `date`"
+echo "INFO: Completing all dbs usage report on $(date)"
 
 if [ "${_OPTIM}" = "YES" ] \
   && [ "${_DOW}" = "7" ] \
-  && [ "${_DOM}" -ge "24" ] \
-  && [ "${_DOM}" -lt "31" ] \
+  && [ "${_DOM}" -ge 24 ] \
+  && [ "${_DOM}" -lt 31 ] \
   && [ -e "/root/.my.restart_after_optimize.cnf" ] \
   && [ ! -e "/run/boa_run.pid" ]; then
   _check_running
   _check_mysql_version
-  echo "INFO: Running db server restart on `date`"
+  echo "INFO: Running db server restart on $(date)"
   bash /var/xdrago/move_sql.sh
   wait
-  echo "INFO: Completing db server restart on `date`"
+  echo "INFO: Completing db server restart on $(date)"
 fi
 
-echo "INFO: Completing all dbs backups on `date`"
+echo "INFO: Completing all dbs backups on $(date)"
 rm -f /run/boa_sql_backup.pid
 touch /var/xdrago/log/last-run-backup
 
 if [ "${_VMFAMILY}" = "VS" ]; then
   _n=$((RANDOM%300+8))
-  echo "INFO: Waiting ${_n} seconds on `date` before running compress..."
+  echo "INFO: Waiting ${_n} seconds on $(date) before running compress..."
   sleep ${_n}
 fi
-echo "INFO: Starting dbs backup compress on `date`"
+echo "INFO: Starting dbs backup compress on $(date)"
 _compress_backup &> /dev/null
-echo "INFO: Completing dbs backup compress on `date`"
+echo "INFO: Completing dbs backup compress on $(date)"
 
-echo "INFO: Starting dbs backup cleanup on `date`"
+echo "INFO: Starting dbs backup cleanup on $(date)"
 _DB_BACKUPS_TTL=${_DB_BACKUPS_TTL//[^0-9]/}
 if [ -z "${_DB_BACKUPS_TTL}" ]; then
-  _DB_BACKUPS_TTL="7"
+  _DB_BACKUPS_TTL="14"
 fi
 find ${_BACKUPDIR} -mtime +${_DB_BACKUPS_TTL} -type d -exec rm -rf {} \;
 echo "INFO: Backups older than ${_DB_BACKUPS_TTL} days deleted"
 
-echo "INFO: Starting verbose usage report on `date`"
+if [ -x "/opt/local/bin/copydbackup" ]; then
+  echo "INFO: Copying backups to users space"
+  bash /opt/local/bin/copydbackup &> /dev/null
+  wait
+fi
+
+echo "INFO: Starting verbose usage report on $(date)"
 bash /var/xdrago/usage.sh verbose
 wait
-echo "INFO: Completing verbose usage report on `date`"
+echo "INFO: Completing verbose usage report on $(date)"
 
 echo "INFO: ALL TASKS COMPLETED, BYE!"
 exit 0

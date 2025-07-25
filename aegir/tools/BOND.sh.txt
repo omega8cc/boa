@@ -140,17 +140,16 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 export _tRee=lts
-export _xSrl=550ltsT04
+export _xSrl=570ltsT11
 
 _AEGIR_VERSION="${_tRee}"
 _BRANCH_BOA="5.x-${_tRee}"
-_X_VERSION="BOA-5.5.0-${_tRee}"
+_X_VERSION="BOA-5.7.11-${_tRee}"
 _MYSQLTUNER_VRN=1.9.4
 
 _NOW=$(date +%y%m%d-%H%M%S 2>&1)
 _NOW=${_NOW//[^0-9-]/}
 _RAM=$(free -mt | grep Mem: | awk '{ print $2 }' 2>&1)
-_CHECK_HOST=$(uname -n 2>&1)
 _SPINNER=NO
 if [ -n "${STY+x}" ]; then
   _SPINNER=NO
@@ -175,6 +174,8 @@ _PHP82_API=20220829
 _PHP82_VRN=8.2.29
 _PHP83_API=20230831
 _PHP83_VRN=8.3.23
+_PHP84_API=20240924
+_PHP84_VRN=8.4.10
 
 ###
 ### Helper variables
@@ -212,16 +213,30 @@ _clean_pid_exit() {
 }
 
 _check_root() {
-  if [ `whoami` = "root" ]; then
+  if [ "$(id -u)" -eq 0 ]; then
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
-    export _B_NICE=${_B_NICE//[^0-9]/}
-    : "${_B_NICE:=10}"
+    # Sanitize to allow only digits and minus sign
+    export _B_NICE=${_B_NICE//[^0-9-]/}
+
+    # Validate and set default if necessary
+    if ! [[ "$_B_NICE" =~ ^-?[0-9]+$ ]]; then
+      _B_NICE=0
+    fi
+
+    # Clamp the value within -20 to 19
+    if (( _B_NICE < -20 )); then
+      _B_NICE=-20
+    elif (( _B_NICE > 19 )); then
+      _B_NICE=19
+    fi
+
     renice ${_B_NICE} -p $$ &> /dev/null
     ionice -c2 -n7 -p $$
   else
     echo "ERROR: This script should be run as a root user"
     _clean_pid_exit _check_root_a
   fi
+  _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
 }
 _check_root
 
@@ -245,7 +260,7 @@ _apt_clean_update() {
 
 _if_hosted_sys() {
   if [ -e "/root/.host8.cnf" ] \
-    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
+    || [[ "${_hName}" =~ ".aegir.cc"($) ]]; then
     _hostedSys=YES
   else
     _hostedSys=NO
@@ -264,8 +279,7 @@ _check_sql_running
 
 _check_sql_access() {
   if [ -e "/root/.my.pass.txt" ] && [ -e "/root/.my.cnf" ]; then
-    _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
-    _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+    _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
     _IS_SYNC_SQL_PSWD=$(grep "${_SQL_PSWD}" /root/.my.cnf 2>&1)
   else
     echo "ALERT: /root/.my.cnf or /root/.my.pass.txt not found."
@@ -308,7 +322,7 @@ _check_sql_access
 #
 # Noticeable messages.
 _msg() {
-  echo "Tuner [$(date 2>&1)] ==> $*"
+  echo "Tuner [$(date)] ==> $*"
 }
 # Simple prompt.
 _prompt_yes_no() {
@@ -364,10 +378,10 @@ _count_cpu() {
   if [ ! -z "${_CPU_NR}" ] \
     && [ ! -z "${_CPU_INFO}" ] \
     && [ "${_CPU_NR}" -gt "${_CPU_INFO}" ] \
-    && [ "${_CPU_INFO}" -gt "0" ]; then
+    && [ "${_CPU_INFO}" -gt 0 ]; then
     _CPU_NR="${_CPU_INFO}"
   fi
-  if [ -z "${_CPU_NR}" ] || [ "${_CPU_NR}" -lt "1" ]; then
+  if [ -z "${_CPU_NR}" ] || [ "${_CPU_NR}" -lt 1 ]; then
     _CPU_NR=1
   fi
 }
@@ -416,14 +430,11 @@ _find_fast_mirror_early() {
 # Find correct IP.
 _find_correct_ip() {
   if [ -e "/root/.found_correct_ipv4.cnf" ]; then
-    _LOC_IP=$(cat /root/.found_correct_ipv4.cnf 2>&1)
-    _LOC_IP=$(echo -n ${_LOC_IP} | tr -d "\n" 2>&1)
+    _LOC_IP=$(cat /root/.found_correct_ipv4.cnf 2>/dev/null | tr -d '\n')
   else
-    _LOC_IP=$(curl ${_crlGet} https://api.ipify.org \
-      | sed 's/[^0-9\.]//g' 2>&1)
+    _LOC_IP=$(curl ${_crlGet} https://api.ipify.org | sed 's/[^0-9\.]//g')
     if [ -z "${_LOC_IP}" ]; then
-      _LOC_IP=$(curl ${_crlGet} http://ipv4.icanhazip.com \
-        | sed 's/[^0-9\.]//g' 2>&1)
+      _LOC_IP=$(curl ${_crlGet} http://ipv4.icanhazip.com | sed 's/[^0-9\.]//g')
     fi
     if [ ! -z "${_LOC_IP}" ]; then
       echo ${_LOC_IP} > /root/.found_correct_ipv4.cnf
@@ -588,10 +599,9 @@ _fix_php_ini_newrelic() {
 _fix_php_ini_newrelic_all() {
   if [ -e "/etc/newrelic/newrelic.cfg" ]; then
     if [ -z "${_NEWRELIC_KEY}" ]; then
-      _NEWRELIC_KEY=$(grep license_key /etc/newrelic/newrelic.cfg 2>&1)
-      _NEWRELIC_KEY=$(echo -n ${_NEWRELIC_KEY} | tr -d "\n" 2>&1)
+      _NEWRELIC_KEY=$(grep license_key /etc/newrelic/newrelic.cfg 2>/dev/null | tr -d '\n')
     fi
-    _PHP_V="83 82 81 80 74 73 72 71 70"
+    _PHP_V="83 82 81 80 74 73 72"
     for e in ${_PHP_V}; do
       _THIS_FILE=/opt/php${e}/etc/php${e}.ini
       _fix_php_ini_newrelic
@@ -621,10 +631,11 @@ _fix_php_ini_opcache() {
 #
 # Fix all FMP php.ini files to add Zend OPcache
 _fix_php_ini_opcache_all() {
-  _PHP_V="83 82 81 80 74 73 72 71 70 56"
+  _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     _P_API=
     case "${e}" in
+      84) _P_API="${_PHP84_API}" ;;
       83) _P_API="${_PHP83_API}" ;;
       82) _P_API="${_PHP82_API}" ;;
       81) _P_API="${_PHP81_API}" ;;
@@ -660,10 +671,11 @@ _fix_php_ini_tet() {
 # Fix all php.ini files to add php_tet.so
 _fix_php_ini_tet_all() {
   if [ "${_PHP_TET}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "TET" ]]; then
-    _PHP_V="83 82 81 80 74 73 72 71 70 56"
+    _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
       _P_API=
       case "${e}" in
+        84) _P_API="${_PHP84_API}" ;;
         83) _P_API="${_PHP83_API}" ;;
         82) _P_API="${_PHP82_API}" ;;
         81) _P_API="${_PHP81_API}" ;;
@@ -777,7 +789,7 @@ _fix_php_ini_mongo_all() {
 # Update PHP Config.
 _php_conf_update() {
   if [ -z "${_THISHTIP}" ]; then
-    _LOC_DOM="${_CHECK_HOST}"
+    _LOC_DOM="${_hName}"
     _find_correct_ip
     _THISHTIP="${_LOC_IP}"
   fi
@@ -790,7 +802,7 @@ _php_conf_update() {
   wait
   sed -i "s/mode =.*/mode = 0660/g" /opt/etc/fpm/fpm-pool-common.conf
   wait
-  _PHP_V="83 82 81 80 74 73 72 71 70 56"
+  _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     if [ ! -e "/var/www/www${e}" ]; then
       adduser --system --group --home /var/www/www${e} www${e} &> /dev/null
@@ -880,6 +892,8 @@ _php_conf_update() {
 #
 _restore_default_php() {
   _msg "INFO: Restoring default PHP configuration"
+  cp -af ${_locCnf}/php/php84-cli.ini /opt/php84/lib/php.ini &> /dev/null
+  cp -af ${_locCnf}/php/php84.ini /opt/php84/etc/php84.ini   &> /dev/null
   cp -af ${_locCnf}/php/php83-cli.ini /opt/php83/lib/php.ini &> /dev/null
   cp -af ${_locCnf}/php/php83.ini /opt/php83/etc/php83.ini   &> /dev/null
   cp -af ${_locCnf}/php/php82-cli.ini /opt/php82/lib/php.ini &> /dev/null
@@ -904,7 +918,7 @@ _restore_default_php() {
 #
 _tune_php() {
   _msg "INFO: Tuning PHP configuration"
-  if [ "${_TUNE_PHP_FPM_TIMEOUT}" -lt "60" ]; then
+  if [ "${_TUNE_PHP_FPM_TIMEOUT}" -lt 60 ]; then
     _TUNE_PHP_FPM_TIMEOUT=60
   fi
   # PHP-FPM pools
@@ -951,8 +965,7 @@ _innodb_log_file_size_update() {
   fi
   _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
   if [ ! -z "${_IS_MYSQLD_RUNNING}" ] && [ "${_DB_V}" = "5.7" ]; then
-    _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
-    _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+    _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
     mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
     mysql -u root -e "SET GLOBAL innodb_change_buffering = 'none';" &> /dev/null
     mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null
@@ -998,7 +1011,7 @@ _restore_default_sql() {
       cp -af ${_locCnf}/var/my.cnf.txt /etc/mysql/my.cnf
       _INNODB_LOG_FILE_SIZE=${_INNODB_LOG_FILE_SIZE//[^0-9]/}
       if [ ! -z "${_INNODB_LOG_FILE_SIZE}" ]; then
-        if [ "${_INNODB_LOG_FILE_SIZE}" -ge "50" ]; then
+        if [ "${_INNODB_LOG_FILE_SIZE}" -ge 50 ]; then
           _INNODB_LOG_FILE_SIZE_MB="${_INNODB_LOG_FILE_SIZE}M"
           _INNODB_LOG_FILE_SIZE_TEST=$(grep "innodb_log_file_size" \
             /var/backups/dragon/t/my.cnf-pre-${_xSrl}-${_X_VERSION}-${_NOW} 2>&1)
@@ -1030,35 +1043,32 @@ _restore_default_sql() {
   wait
   if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ]; then
     if [ "${_DB_BINARY_LOG}" = "NO" ]; then
-      sed -i "s/.*purge_binlogs.*//g" /var/spool/cron/crontabs/root
-      wait
-      sed -i "/^$/d" /var/spool/cron/crontabs/root
+      # Purge binlogs
       bash /var/xdrago/purge_binlogs.sh &> /dev/null
-      wait
-      sed -i "s/^log_bin/#log_bin/g"                   /etc/mysql/my.cnf
-      wait
-      sed -i "s/^expire_logs_days/#expire_logs_days/g" /etc/mysql/my.cnf
-      wait
-      sed -i "s/^max_binlog_size/#max_binlog_size/g"   /etc/mysql/my.cnf
-      wait
-      sed -i "s/^binlog_row_image/#binlog_row_image/g" /etc/mysql/my.cnf
-      wait
-      sed -i "s/^binlog_format/#binlog_format/g"       /etc/mysql/my.cnf
-      wait
+      # Remove cron jobs related to purge_binlogs
+      sed -i -e "/purge_binlogs/d" -e "/^$/d" /var/spool/cron/crontabs/root &> /dev/null
+      # Disable binary logging
+      sed -i \
+        -e "s/^\s*\(log_bin\s*=.*\)/#\1/" \
+        -e "s/^\s*#\s*\(skip-log-bin\)/\1/" \
+        -e "s/^\s*\(expire_logs_days\s*=.*\)/#\1/" \
+        -e "s/^\s*\(max_binlog_size\s*=.*\)/#\1/" \
+        -e "s/^\s*\(binlog_row_image\s*=.*\)/#\1/" \
+        -e "s/^\s*\(binlog_format\s*=.*\)/#\1/" \
+        /etc/mysql/my.cnf &> /dev/null
     elif [ "${_DB_BINARY_LOG}" = "YES" ]; then
-      sed -i "s/.*log_bin/log_bin/g"                   /etc/mysql/my.cnf
-      wait
-      sed -i "s/.*expire_logs_days/expire_logs_days/g" /etc/mysql/my.cnf
-      wait
-      sed -i "s/.*max_binlog_size/max_binlog_size/g"   /etc/mysql/my.cnf
-      wait
-      sed -i "s/.*binlog_row_image/binlog_row_image/g" /etc/mysql/my.cnf
-      wait
-      sed -i "s/.*binlog_format/binlog_format/g"       /etc/mysql/my.cnf
-      wait
+      # Enable binary logging
+      sed -i \
+        -e "s/^\s*#\s*\(log_bin\s*=.*\)/\1/" \
+        -e "s/^\s*\(skip-log-bin\)/#\1/" \
+        -e "s/^\s*#\s*\(expire_logs_days\s*=.*\)/\1/" \
+        -e "s/^\s*#\s*\(max_binlog_size\s*=.*\)/\1/" \
+        -e "s/^\s*#\s*\(binlog_row_image\s*=.*\)/\1/" \
+        -e "s/^\s*#\s*\(binlog_format\s*=.*\)/\1/" \
+        /etc/mysql/my.cnf &> /dev/null
     fi
     if [ ! -z "${_INNODB_LOG_FILE_SIZE}" ]; then
-      if [ "${_INNODB_LOG_FILE_SIZE}" -ge "50" ]; then
+      if [ "${_INNODB_LOG_FILE_SIZE}" -ge 50 ]; then
         _INNODB_LOG_FILE_SIZE_MB="${_INNODB_LOG_FILE_SIZE}M"
         _INNODB_LOG_FILE_SIZE_TEST=$(grep "innodb_log_file_size" /etc/mysql/my.cnf 2>&1)
         if [[ "${_INNODB_LOG_FILE_SIZE_TEST}" =~ "= ${_INNODB_LOG_FILE_SIZE_MB}" ]]; then
@@ -1124,7 +1134,7 @@ _tune_nginx() {
 #
 _restart_services() {
   _msg "INFO: Reloading services"
-  _PHP_V="83 82 81 80 74 73 72 71 70 56"
+  _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     if [ -e "/etc/init.d/php${e}-fpm" ]; then
       service php${e}-fpm reload &> /dev/null
@@ -1133,7 +1143,11 @@ _restart_services() {
   bash /var/xdrago/move_sql.sh &> /dev/null
   wait
   service nginx reload &> /dev/null
-  service redis-server reload &> /dev/null
+  if [ -e "/etc/init.d/valkey-server" ]; then
+    service valkey-server reload &> /dev/null
+  elif [ -e "/etc/init.d/redis-server" ]; then
+    service redis-server reload &> /dev/null
+  fi
   if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
     _mrun "csf -q" &> /dev/null
     ### Linux kernel TCP SACK CVEs mitigation
@@ -1154,7 +1168,7 @@ _restart_services() {
 # Tune Web Sever configuration.
 _tune_web_server_config() {
   _LIM_FPM="${_L_PHP_FPM_WORKERS}"
-  if [ "${_LIM_FPM}" -lt "48" ]; then
+  if [ "${_LIM_FPM}" -lt 48 ]; then
     _if_hosted_sys
     if [ "${_hostedSys}" = "YES" ]; then
       _LIM_FPM=48
@@ -1163,11 +1177,11 @@ _tune_web_server_config() {
   _CHILD_MAX_FPM=$(( _LIM_FPM * 2 ))
   if [ "${_PHP_FPM_WORKERS}" != "AUTO" ]; then
     _PHP_FPM_WORKERS=${_PHP_FPM_WORKERS//[^0-9]/}
-    if [ ! -z "${_PHP_FPM_WORKERS}" ] && [ "${_PHP_FPM_WORKERS}" -gt "0" ]; then
+    if [ ! -z "${_PHP_FPM_WORKERS}" ] && [ "${_PHP_FPM_WORKERS}" -gt 0 ]; then
       _CHILD_MAX_FPM="${_PHP_FPM_WORKERS}"
     fi
   fi
-  _PHP_V="83 82 81 80 74 73 72 71 70 56"
+  _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     sed -i "s/pm.max_children =.*/pm.max_children = ${_CHILD_MAX_FPM}/g" \
       /opt/php${e}/etc/pool.d/www${e}.conf &> /dev/null
@@ -1261,7 +1275,7 @@ _tune_sql_memory_limits() {
       else
         _USE_MYISAM_MEM="${_RAW_MYISAM_MEM}"
       fi
-      if [ "${_USE_MYISAM_MEM}" -lt "256" ] || [ -z "${_USE_MYISAM_MEM}" ]; then
+      if [ "${_USE_MYISAM_MEM}" -lt 256 ] || [ -z "${_USE_MYISAM_MEM}" ]; then
         _USE_MYISAM_MEM="${_USE_SQL}"
       fi
       _USE_MYISAM_MEM="${_USE_MYISAM_MEM}M"
@@ -1288,14 +1302,14 @@ _tune_sql_memory_limits() {
       _RAW_INNODB_MEM=$(echo "(${_RAW_INNODB_MEM}+0.5)/1" | bc 2>&1)
       if [ "${_RAW_INNODB_MEM}" -gt "${_USE_SQL}" ] \
         || [ -z "${_USE_INNODB_MEM}" ] \
-        || [ "${_RAW_INNODB_MEM}" -lt "512" ]; then
+        || [ "${_RAW_INNODB_MEM}" -lt 512 ]; then
         _USE_INNODB_MEM="${_USE_SQL}"
       else
         _RAW_INNODB_MEM=$(echo "scale=2; (${_RAW_INNODB_MEM} * 1.1)" | bc 2>&1)
         _USE_INNODB_MEM=$(echo "(${_RAW_INNODB_MEM}+0.5)/1" | bc 2>&1)
       fi
       _INNODB_BPI=$(echo "scale=0; ${_USE_INNODB_MEM}/1024/2" | bc 2>&1)
-      if [ "${_INNODB_BPI}" -lt "1" ] || [ -z "${_INNODB_BPI}" ]; then
+      if [ "${_INNODB_BPI}" -lt 1 ] || [ -z "${_INNODB_BPI}" ]; then
         _INNODB_BPI="1"
       fi
       sed -i "s/^innodb_buffer_pool_instances.*/innodb_buffer_pool_instances = ${_INNODB_BPI}/g" /etc/mysql/my.cnf
@@ -1326,7 +1340,7 @@ _tune_sql_memory_limits() {
 # Tune memory limits for PHP, Nginx and Percona.
 _tune_memory_limits() {
   _msg "INFO: Default Memory Tuning"
-  _VM_TEST=$(uname -a 2>&1)
+  _VM_TEST="$(uname -a)"
   if [ -e "/proc/bean_counters" ]; then
     _VMFAMILY="VZ"
   elif [ -e "/root/.tg.cnf" ]; then
@@ -1351,44 +1365,47 @@ _tune_memory_limits() {
   fi
   _CPU_NR=${_CPU_NR//[^0-9]/}
   if [ ! -z "${_CPU_NR}" ] && [ ! -z "${_CPU_INFO}" ] \
-    && [ "${_CPU_NR}" -gt "${_CPU_INFO}" ] && [ "${_CPU_INFO}" -gt "0" ]; then
+    && [ "${_CPU_NR}" -gt "${_CPU_INFO}" ] && [ "${_CPU_INFO}" -gt 0 ]; then
     _CPU_NR="${_CPU_INFO}"
   fi
-  if [ -z "${_CPU_NR}" ] || [ "${_CPU_NR}" -lt "1" ]; then
+  if [ -z "${_CPU_NR}" ] || [ "${_CPU_NR}" -lt 1 ]; then
     _CPU_NR=1
   fi
   _CPU_MX=$(( _CPU_NR * 2 ))
-  if [ "${_CPU_MX}" -lt "4" ]; then
+  if [ "${_CPU_MX}" -lt 4 ]; then
     _CPU_MX=4
   fi
   _CPU_TG=$(( _CPU_NR / 2 ))
-  if [ "${_CPU_TG}" -lt "4" ]; then
+  if [ "${_CPU_TG}" -lt 4 ]; then
     _CPU_TG=4
   fi
   _CPU_VS=$(( _CPU_NR / 12 ))
-  if [ "${_CPU_VS}" -lt "2" ]; then
+  if [ "${_CPU_VS}" -lt 2 ]; then
     _CPU_VS=2
   fi
   _PrTest=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
   if [[ "${_PrTest}" =~ "POWER" ]]; then
-    if [ "${_CPU_VS}" -lt "8" ]; then
+    if [ "${_CPU_VS}" -lt 8 ]; then
       _CPU_VS=8
     fi
   fi
   _PrTest=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
   if [[ "${_PrTest}" =~ "PHANTOM" ]]; then
-    if [ "${_CPU_VS}" -lt "8" ]; then
+    if [ "${_CPU_VS}" -lt 8 ]; then
       _CPU_VS=8
     fi
   fi
   _PrTest=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
   if [[ "${_PrTest}" =~ "CLUSTER" ]]; then
-    if [ "${_CPU_VS}" -lt "8" ]; then
+    if [ "${_CPU_VS}" -lt 8 ]; then
       _CPU_VS=8
     fi
   fi
   _RAM=$(free -mt | grep Mem: | awk '{ print $2 }' 2>&1)
-  if [ "${_RESERVED_RAM}" -gt "0" ]; then
+  if [ "${_RESERVED_RAM}" -gt 0 ]; then
+    _RAM=$(( _RAM - _RESERVED_RAM ))
+  else
+    _RESERVED_RAM=$(( _RAM / 4 ))
     _RAM=$(( _RAM - _RESERVED_RAM ))
   fi
   _USE=$(( _RAM / 4 ))
@@ -1407,13 +1424,13 @@ _tune_memory_limits() {
   else
     _USE_SQL=$(( _RAM / 8 ))
   fi
-  if [ "${_USE_SQL}" -lt "64" ]; then
+  if [ "${_USE_SQL}" -lt 64 ]; then
     _USE_SQL=64
   fi
   _TMP_SQL="${_USE_SQL}M"
   _SRT_SQL=$(( _USE_SQL * 2 ))
   _SRT_SQL="${_SRT_SQL}K"
-  if [ "${_USE}" -ge "512" ] && [ "${_USE}" -lt "2048" ]; then
+  if [ "${_USE}" -ge 512 ] && [ "${_USE}" -lt 2048 ]; then
     _USE_PHP=1024
     _USE_OPC=1024
     _USE_CLI=2048
@@ -1431,7 +1448,7 @@ _tune_memory_limits() {
     else
       _L_NGX_WRKS=${_NGINX_WORKERS}
     fi
-  elif [ "${_USE}" -ge "2048" ]; then
+  elif [ "${_USE}" -ge 2048 ]; then
     if [ "${_VMFAMILY}" = "XEN" ] || [ "${_VMFAMILY}" = "AWS" ]; then
       _USE_PHP=2048
       _USE_OPC=2048
@@ -1466,7 +1483,7 @@ _tune_memory_limits() {
           _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
         fi
         _MXC_SQL=$(( _L_PHP_FPM_WORKERS * 4 ))
-        if [ "${_MXC_SQL}" -lt "10" ]; then
+        if [ "${_MXC_SQL}" -lt 10 ]; then
           _MXC_SQL=10
         fi
         if [ "${_NGINX_WORKERS}" = "AUTO" ]; then
@@ -1474,6 +1491,7 @@ _tune_memory_limits() {
         else
           _L_NGX_WRKS=${_NGINX_WORKERS}
         fi
+        sed -i "s/64000/128000/g"  /opt/php84/etc/php84.ini &> /dev/null
         sed -i "s/64000/128000/g"  /opt/php83/etc/php83.ini &> /dev/null
         sed -i "s/64000/128000/g"  /opt/php82/etc/php82.ini &> /dev/null
         sed -i "s/64000/128000/g"  /opt/php81/etc/php81.ini &> /dev/null
@@ -1545,11 +1563,11 @@ _tune_memory_limits() {
   if [ "${_VMFAMILY}" = "VZ" ]; then
     _USE_OPC=64
   fi
-  if [ "${_USE_PHP}" -lt "1024" ]; then
+  if [ "${_USE_PHP}" -lt 1024 ]; then
     _USE_PHP=1024
   fi
   _USE_FPM=$(( _USE_PHP / 2 ))
-  if [ "${_USE_FPM}" -lt "1024" ]; then
+  if [ "${_USE_FPM}" -lt 1024 ]; then
     _USE_FPM=1024
   fi
   if [ ! -e "/var/xdrago/conf/fpm-pool-foo-multi.conf" ]; then
@@ -1560,12 +1578,15 @@ _tune_memory_limits() {
   fi
   cp -af ${_locCnf}/php/fpm-pool-foo-multi.conf /var/xdrago/conf/
   cp -af ${_locCnf}/php/fpm-pool-foo.conf /var/xdrago/conf/
-  cp -af ${_locCnf}/hhvm /var/xdrago/conf/
-  cp -af ${_locCnf}/hhvm/hhvm_intercept.php /data/conf/hhvm_intercept.php
-  chmod 644 /data/conf/hhvm_intercept.php
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ]; then
     sed -i "s/395/${_USE_FPM}/g" /opt/etc/fpm/fpm-pool-common.conf &> /dev/null
     wait
+  fi
+  if [ -e "/opt/php84/etc/php84.ini" ]; then
+    sed -i "s/395/${_USE_FPM}/g" /opt/php84/etc/php84.ini &> /dev/null
+    wait
+    sed -i "s/181/${_USE_OPC}/g" /opt/php84/etc/php84.ini &> /dev/null
+    sed -i "s/395/${_USE_CLI}/g" /opt/php84/lib/php.ini   &> /dev/null
   fi
   if [ -e "/opt/php83/etc/php83.ini" ]; then
     sed -i "s/395/${_USE_FPM}/g" /opt/php83/etc/php83.ini &> /dev/null
@@ -1655,7 +1676,7 @@ _tune_memory_limits() {
     sed -i "s/^join_buffer_size.*/join_buffer_size        = ${_JBF_SQL}/g"        /etc/mysql/my.cnf
     wait
   fi
-  if [ "${_USE_OPC}" -gt "2048" ]; then
+  if [ "${_USE_OPC}" -gt 2048 ]; then
     _MAX_MEM_REDIS=2048
   else
     _MAX_MEM_REDIS="${_USE_OPC}"
@@ -1752,7 +1773,7 @@ if [ "${_AEGIR_VERSION}" != "static" ]; then
 fi
 #
 #
-if [ `whoami` = "root" ]; then
+if [ "$(id -u)" -eq 0 ]; then
   chmod a+w /dev/null
   _msg "INFO: This script is ran as a root user"
   _count_cpu

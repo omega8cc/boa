@@ -7,7 +7,7 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 _pthOml="/var/xdrago/log/php.incident.log"
 
 _check_root() {
-  if [ `whoami` = "root" ]; then
+  if [ "$(id -u)" -eq 0 ]; then
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
     chmod a+w /dev/null
   else
@@ -17,11 +17,25 @@ _check_root() {
 }
 _check_root
 
-export _B_NICE=${_B_NICE//[^0-9]/}
-: "${_B_NICE:=10}"
+    # Sanitize to allow only digits and minus sign
+    export _B_NICE=${_B_NICE//[^0-9-]/}
 
-export _INCIDENT_EMAIL_REPORT=${_INCIDENT_EMAIL_REPORT//[^A-Z]/}
-: "${_INCIDENT_EMAIL_REPORT:=YES}"
+    # Validate and set default if necessary
+    if ! [[ "$_B_NICE" =~ ^-?[0-9]+$ ]]; then
+      _B_NICE=0
+    fi
+
+    # Clamp the value within -20 to 19
+    if (( _B_NICE < -20 )); then
+      _B_NICE=-20
+    elif (( _B_NICE > 19 )); then
+      _B_NICE=19
+    fi
+
+    renice ${_B_NICE} -p $$ &> /dev/null
+
+export _INCIDENT_REPORT=${_INCIDENT_REPORT//[^A-Z]/}
+: "${_INCIDENT_REPORT:=YES}"
 
 if (( $(pgrep -fc 'php.sh') > 2 )); then
   echo "Too many php.sh running $(date)" >> /var/xdrago/log/too.many.log
@@ -29,10 +43,10 @@ if (( $(pgrep -fc 'php.sh') > 2 )); then
 fi
 
 _incident_email_report() {
-  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_EMAIL_REPORT}" = "YES" ]; then
-    _hName=$(cat /etc/hostname 2>&1)
-    echo "Sending Incident Report Email on $(date 2>&1)" >> ${_pthOml}
-    s-nail -s "Incident Report: ${1} on ${_hName} at $(date 2>&1)" ${_MY_EMAIL} < ${_pthOml}
+  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "YES" ]; then
+    _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
+    echo "Sending Incident Report Email on $(date)" >> ${_pthOml}
+    s-nail -s "Incident Report: ${1} on ${_hName} at $(date)" ${_MY_EMAIL} < ${_pthOml}
   fi
 }
 
@@ -46,7 +60,7 @@ _fpm_forced_restart() {
   mv -f /var/log/php/* /var/backups/php-logs/${_NOW}/
   kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}') &> /dev/null
   renice ${_B_NICE} -p $$ &> /dev/null
-  _PHP_V="83 82 81 80 74 73 72 71 70 56"
+  _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
       service php${e}-fpm start
@@ -61,17 +75,17 @@ _fpm_forced_restart() {
 }
 
 _fpm_duplicate_instances_detection() {
-  if [ `ps aux | grep -v "grep" | grep --count "php-fpm: master process"` -gt "10" ]; then
-    _thisErrLog="$(date 2>&1) Too many PHP-FPM master processes killed"
+  if [ `ps aux | grep -v "grep" | grep --count "php-fpm: master process"` -gt 11 ]; then
+    _thisErrLog="$(date) Too many PHP-FPM master processes killed"
     echo ${_thisErrLog} >> ${_pthOml}
     _fpm_forced_restart "Too many PHP-FPM master"
   fi
 }
 
 _fpm_giant_log_detection() {
-  _PHPLOG_SIZE_TEST=$(du -s -h /var/log/php 2>&1)
+  _PHPLOG_SIZE_TEST=$(du -s -h /var/log/php 2>/dev/null)
   if [[ "${_PHPLOG_SIZE_TEST}" =~ "G" ]]; then
-    _thisErrLog="$(date 2>&1) Too big PHP error logs deleted: ${_PHPLOG_SIZE_TEST}"
+    _thisErrLog="$(date) Too big PHP error logs deleted: ${_PHPLOG_SIZE_TEST}"
     echo ${_thisErrLog} >> ${_pthOml}
     _fpm_forced_restart "Too big PHP error logs"
   fi
@@ -80,8 +94,8 @@ _fpm_giant_log_detection() {
 _fpm_listen_conflict_detection() {
   if [ -e "/var/log/php" ]; then
     if [ `tail --lines=500 /var/log/php/php*-fpm-error.log \
-      | grep --count "already listen on"` -gt "0" ]; then
-      _thisErrLog="$(date 2>&1) FPM instances conflict detected, service will be restarted"
+      | grep --count "already listen on"` -gt 0 ]; then
+      _thisErrLog="$(date) FPM instances conflict detected, service will be restarted"
       echo ${_thisErrLog} >> ${_pthOml}
       _fpm_forced_restart "FPM instances conflict"
     fi
@@ -90,8 +104,8 @@ _fpm_listen_conflict_detection() {
 
 _fpm_proc_max_detection() {
   if [ `tail --lines=500 /var/log/php/php*-fpm-error.log \
-    | grep --count "process.max"` -gt "0" ]; then
-    _thisErrLog="$(date 2>&1) Too many running FPM childs detected, service will be restarted"
+    | grep --count "process.max"` -gt 0 ]; then
+    _thisErrLog="$(date) Too many running FPM childs detected, service will be restarted"
     echo ${_thisErrLog} >> ${_pthOml}
     _fpm_forced_restart "Too many running FPM childs"
   fi
@@ -99,22 +113,22 @@ _fpm_proc_max_detection() {
 
 _fpm_sockets_healing() {
   if [ `tail --lines=500 /var/log/php/php*-fpm-error.log \
-    | grep --count "Address already in use"` -gt "0" ]; then
-    _thisErrLog="$(date 2>&1) FPM Sockets conflict detected, service will be restarted"
+    | grep --count "Address already in use"` -gt 0 ]; then
+    _thisErrLog="$(date) FPM Sockets conflict detected, service will be restarted"
     echo ${_thisErrLog} >> ${_pthOml}
     _fpm_forced_restart "FPM Sockets conflict"
   fi
 }
 
 _fpm_fastcgi_temp() {
-  _FASTCGI_SIZE_TEST=$(du -s -h /usr/fastcgi_temp/*/*/* | grep G 2> /dev/null)
+  _FASTCGI_SIZE_TEST=$(du -s -h /usr/fastcgi_temp/*/*/* | grep G 2>/dev/null)
   if [[ "${_FASTCGI_SIZE_TEST}" =~ "G" ]]; then
     rm -f /usr/fastcgi_temp/*/*/*
     killall -9 nginx
     killall -9 php-fpm
-    _thisErrLog="$(date 2>&1) PHP fastcgi_temp too big, cleanup forced"
+    _thisErrLog="$(date) PHP fastcgi_temp too big, cleanup forced"
     echo ${_thisErrLog} >> ${_pthOml}
-    echo "$(date 2>&1) ${_FASTCGI_SIZE_TEST}" >> ${_pthOml}
+    echo "$(date) ${_FASTCGI_SIZE_TEST}" >> ${_pthOml}
     _incident_email_report "PHP fastcgi_temp too big, cleanup forced"
     echo >> ${_pthOml}
   fi

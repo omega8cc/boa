@@ -84,17 +84,31 @@ elif [ -e "${drupal_root}/../vendor" ]; then
 fi
 
 if [ -e "${drupal_root}/vendor/bin/drush" ]; then
-  chmod 0775 ${drupal_root}/vendor/bin/drush
+  mv -f ${drupal_root}/vendor/bin/drush ${drupal_root}/vendor/bin/.off-drush
 elif [ -e "${drupal_root}/../vendor/bin/drush" ]; then
-  chmod 0775 ${drupal_root}/../vendor/bin/drush
+  mv -f ${drupal_root}/../vendor/bin/drush ${drupal_root}/../vendor/bin/.off-drush
+fi
+
+if [ -e "${drupal_root}/vendor/drush/drush/drush" ]; then
+  mv -f ${drupal_root}/vendor/drush/drush/drush ${drupal_root}/vendor/drush/drush/.off-drush
+elif [ -e "${drupal_root}/../vendor/drush/drush/drush" ]; then
+  mv -f ${drupal_root}/../vendor/drush/drush/drush ${drupal_root}/../vendor/drush/drush/.off-drush
 fi
 
 if [ -e "${drupal_root}/vendor/drush/drush/drush.php" ]; then
   chmod 0775 ${drupal_root}/vendor/drush/drush/drush.php
-  chmod 0775 ${drupal_root}/vendor/drush/drush/drush
 elif [ -e "${drupal_root}/../vendor/drush/drush/drush.php" ]; then
   chmod 0775 ${drupal_root}/../vendor/drush/drush/drush.php
-  chmod 0775 ${drupal_root}/../vendor/drush/drush/drush
+fi
+
+[ -d "${drupal_root}" ] && chmod 02775 ${drupal_root}
+
+if [ -d "${drupal_root}/web" ]; then
+  chmod 02775 ${drupal_root}/web
+elif [ -d "${drupal_root}/docroot" ]; then
+  chmod 02775 ${drupal_root}/docroot
+elif [ -d "${drupal_root}/html" ]; then
+  chmod 02775 ${drupal_root}/html
 fi
 
 printf "Setting permissions of all codebase directories inside "${drupal_root}/sites/all"...\n"
@@ -112,16 +126,18 @@ chmod 0644 ${drupal_root}/sites/*.txt
 chmod 0644 ${drupal_root}/sites/*.yml
 chmod 0755 ${drupal_root}/sites/all/drush
 
-### Lock Local Drush and Symfony Console Input
+### Lock Local Drush and Symfony Console Input/Style
 if [ -e "${drupal_root}/core" ]; then
   if [ -e "${drupal_root}/vendor" ]; then
     printf "Locking Drush and Symfony Console Input in "${drupal_root}/vendor"...\n"
     chmod 0400 ${drupal_root}/vendor/drush
     chmod 0400 ${drupal_root}/vendor/symfony/console/Input
+    chmod 0400 ${drupal_root}/vendor/symfony/console/Style
   elif [ -e "${drupal_root}/../vendor" ]; then
     printf "Locking Drush and Symfony Console Input in "${drupal_root}/../vendor"...\n"
     chmod 0400 ${drupal_root}/../vendor/drush
     chmod 0400 ${drupal_root}/../vendor/symfony/console/Input
+    chmod 0400 ${drupal_root}/../vendor/symfony/console/Style
   fi
 fi
 

@@ -5,7 +5,7 @@ export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
 _check_root() {
-  if [ `whoami` != "root" ]; then
+  if [ "$(id -u)" -ne 0 ]; then
     echo "ERROR: This script should be run as a root user"
     exit 1
   fi
@@ -84,9 +84,9 @@ rm "${_PHP_TEST_SCRIPT}"
 
 # Function to run fio test on a given directory
 _run_fio_test() {
-  local _test_dir="$1"
-  local _mount_point="$2"
-  local _output_file="$3"
+  _test_dir="$1"
+  _mount_point="$2"
+  _output_file="$3"
 
   mkdir -p "${_test_dir}"
   cd "${_test_dir}" || exit

@@ -108,6 +108,7 @@
 ###
 ### Supported values for single PHP-FPM mode which can be written in this file:
 ###
+### 8.4
 ### 8.3
 ### 8.2
 ### 8.1
@@ -166,6 +167,7 @@
 ###
 ### Supported values which can be written in this file:
 ###
+### 8.4
 ### 8.3
 ### 8.2
 ### 8.1
@@ -217,6 +219,20 @@
 ### or one per line:
 ###
 
+### Drupal 11.2
+#
+# DE2 — Drupal 11.2 prod/stage/dev
+# CK3 — Commerce v.3
+# SCR — Sector
+# THR — Thunder
+
+### Drupal 10.5
+#
+# DX5 — Drupal 10.5 prod/stage/dev
+# LGV — LocalGov
+# VB9 — Varbase 9
+# VBX — Varbase 10
+
 ### Drupal 10.4
 #
 # DX4 — Drupal 10.4 prod/stage/dev
@@ -224,27 +240,21 @@
 ### Drupal 10.3
 #
 # DX3 — Drupal 10.3 prod/stage/dev
-# CK3 — Commerce Kickstart v.3
 # DXP — DXPR Marketing
 # EZC — EzContent
 # FOS — farmOS
-# LGV — LocalGov
 # OCS — OpenCulturas
-# THR — Thunder
-# VB9 — Varbase 9
-# VBX — Varbase 10
 
 ### Drupal 10.2
 #
 # DX2 — Drupal 10.2 prod/stage/dev
 # OFD — OpenFed
-# SCR — Sector
 # SOC — Social
 
 ### Drupal 10.1
 #
 # DX1 — Drupal 10.1 prod/stage/dev
-# CK2 — Commerce Base v.2
+# CK2 — Commerce v.2
 
 ### Drupal 10.0
 #
