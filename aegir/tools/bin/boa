@@ -1134,7 +1134,7 @@ _init_setup() {
       echo
     fi
     if [ "${_eXtr}" = "dev" ]; then
-      _tRee=lts
+      _tRee=dev
     elif [ "${_eXtr}" = "pro" ]; then
       _tRee=pro
     elif [ "${_eXtr}" = "lts" ]; then
@@ -2557,7 +2557,7 @@ case "$1" in
               [[ "${_ARGS}" =~ noscreen ]] && _BOA_COMMAND=$(echo "${_BOA_COMMAND}" | sed -E "s/noscreen//g")
               _init_setup
   ;;
-  in-dev)     _tRee=lts
+  in-dev)     _tRee=dev
               _cmNd="$1"
               _kiNd="$2"
               _fQdn="$3"
