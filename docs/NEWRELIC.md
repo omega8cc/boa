@@ -36,5 +36,5 @@ To disable New Relic monitoring for all sites on the Octopus instance, simply de
 
 On a self-hosted BOA, you still need to add your valid license key as `_NEWRELIC_KEY` in the `/root/.barracuda.cnf` file and run a system upgrade with `barracuda up-lts system` first. This step is not required on Omega8.cc hosted service, where the New Relic agent is already pre-installed for you.
 
-For more information, please visit the [documentation](https://github.com/omega8cc/boa/tree/5.x-dev/docs).
+For more information, please visit the [documentation](https://github.com/omega8cc/boa/tree/5.x-lts/docs).
 
