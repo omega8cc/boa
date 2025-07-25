@@ -71,8 +71,8 @@ This file, if it exists and contains a list of symbols used to define supported 
 
 ### Drupal 11.2
 
-- `DE2` — Drupal 11.2 prod/stage/dev
 - `CK3` — Commerce v.3
+- `DE2` — Drupal 11.2 prod/stage/dev
 - `SCR` — Sector
 - `THR` — Thunder
 
