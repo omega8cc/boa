@@ -46,4 +46,4 @@ You can obtain a **BOA PRO** license from [Omega8.cc](https://omega8.cc/licenses
 
 Certain planned features are likely to be exclusive to **BOA PRO**. If these features are added to other **BOA** versions, it will be with a significant delay. However, some key features, such as Backdrop CMS and Grav CMS support, will also be added to **BOA LTS**.
 
-Check out the details in [ROADMAP](https://github.com/omega8cc/boa/tree/5.x-dev/ROADMAP.md)
+Check out the details in [ROADMAP](https://github.com/omega8cc/boa/tree/5.x-pro/ROADMAP.md)

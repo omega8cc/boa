@@ -1895,7 +1895,7 @@ _set_tree_vars() {
   fi
 
   export _tRee="${_tRee}"
-  export _rLsn="BOA-5.6.0"
+  export _rLsn="BOA-5.7.11"
   export _rlsE="${_rLsn}-${_tRee}"
   export _bRnh="5.x-${_tRee}"
   export _rgUrl="http://files.aegir.cc/versions/${_tRee}/boa"

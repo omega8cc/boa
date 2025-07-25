@@ -4,7 +4,7 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 export _tRee=pro
-export _xSrl=560proT00
+export _xSrl=570proT11
 
 _DB_SERIES=5.7
 _CSF_VRN=14.24
@@ -54,7 +54,7 @@ fi
 
 _TODAY=$(date +%y%m%d 2>&1)
 _TODAY=${_TODAY//[^0-9]/}
-_X_VERSION="BOA-5.6.0-${_tRee}"
+_X_VERSION="BOA-5.7.11-${_tRee}"
 #
 _barCnf="/root/.barracuda.cnf"
 _crlGet="-L --max-redirs 3 -k -s --retry 9 --retry-delay 9 -A iCab"
