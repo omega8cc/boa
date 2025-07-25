@@ -1,0 +1,10 @@
+diff -urp a/console/Output/Output.php b/console/Output/Output.php
+--- a/console/Output/Output.php	2025-05-07 08:05:04.000000000 +0100
++++ b/console/Output/Output.php	2025-07-24 03:21:09.032482294 +0100
+@@ -151,5 +151,5 @@ abstract class Output implements OutputI
+      *
+      * @return void
+      */
+-    abstract protected function doWrite(string $message, bool $newline);
++    abstract protected function doWrite($message, $newline);
+ }

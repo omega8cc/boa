@@ -230,7 +230,9 @@ if ($redis_up && $use_redis && !$custom_cache) {
           header("X-Redis-Services-Is-Readable: " . $redis_services_path);
         }
       }
-      $settings['queue_default']                 = 'queue.redis';
+      if ($drupal_core <= 10) {
+        $settings['queue_default']               = 'queue.redis_reliable';
+      }
       if ($redis_comprs) {
         $settings['redis_compress_length']       = 100;
         $settings['redis_compress_level']        = 5;
