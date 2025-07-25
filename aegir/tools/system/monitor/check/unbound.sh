@@ -7,7 +7,7 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 _pthOml="/var/xdrago/log/unbound.incident.log"
 
 _check_root() {
-  if [ `whoami` = "root" ]; then
+  if [ "$(id -u)" -eq 0 ]; then
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
     chmod a+w /dev/null
   else
@@ -17,11 +17,25 @@ _check_root() {
 }
 _check_root
 
-export _B_NICE=${_B_NICE//[^0-9]/}
-: "${_B_NICE:=10}"
+    # Sanitize to allow only digits and minus sign
+    export _B_NICE=${_B_NICE//[^0-9-]/}
 
-export _INCIDENT_EMAIL_REPORT=${_INCIDENT_EMAIL_REPORT//[^A-Z]/}
-: "${_INCIDENT_EMAIL_REPORT:=YES}"
+    # Validate and set default if necessary
+    if ! [[ "$_B_NICE" =~ ^-?[0-9]+$ ]]; then
+      _B_NICE=0
+    fi
+
+    # Clamp the value within -20 to 19
+    if (( _B_NICE < -20 )); then
+      _B_NICE=-20
+    elif (( _B_NICE > 19 )); then
+      _B_NICE=19
+    fi
+
+    renice ${_B_NICE} -p $$ &> /dev/null
+
+export _INCIDENT_REPORT=${_INCIDENT_REPORT//[^A-Z]/}
+: "${_INCIDENT_REPORT:=YES}"
 
 if (( $(pgrep -fc 'unbound.sh') > 2 )); then
   echo "Too many unbound.sh running $(date)" >> /var/xdrago/log/too.many.log
@@ -29,10 +43,10 @@ if (( $(pgrep -fc 'unbound.sh') > 2 )); then
 fi
 
 _incident_email_report() {
-  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_EMAIL_REPORT}" = "YES" ]; then
-    _hName=$(cat /etc/hostname 2>&1)
-    echo "Sending Incident Report Email on $(date 2>&1)" >> ${_pthOml}
-    s-nail -s "Incident Report: ${1} on ${_hName} at $(date 2>&1)" ${_MY_EMAIL} < ${_pthOml}
+  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "YES" ]; then
+    _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
+    echo "Sending Incident Report Email on $(date)" >> ${_pthOml}
+    s-nail -s "Incident Report: ${1} on ${_hName} at $(date)" ${_MY_EMAIL} < ${_pthOml}
   fi
 }
 
@@ -80,11 +94,11 @@ _unbound_check_fix() {
       unbound-control reload &> /dev/null
     fi
   fi
-  if [ `ps aux | grep -v "grep" | grep --count "/usr/sbin/unbound"` -gt "1" ]; then
+  if [ `ps aux | grep -v "grep" | grep --count "/usr/sbin/unbound"` -gt 1 ]; then
     kill -9 $(ps aux | grep '[u]sr/sbin/unbound' | awk '{print $2}') &> /dev/null
     service unbound start &> /dev/null
     wait
-    echo "$(date 2>&1) Too many Unbound processes killed" >> ${_pthOml}
+    echo "$(date) Too many Unbound processes killed" >> ${_pthOml}
     _incident_email_report "Too many Unbound processes"
     echo >> ${_pthOml}
   fi

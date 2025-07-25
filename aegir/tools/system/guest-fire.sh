@@ -7,8 +7,8 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 # Protect from high load due to csf loop/flood
 _csf_flood_guard() {
   _thisCountCsf=`ps aux | grep -v "grep" | grep -v "null" | grep --count "/csf"`
-  if [ ! -e "/run/boa_run.pid" ] && [ ${_thisCountCsf} -gt "4" ]; then
-    echo "$(date 2>&1) Too many ${_thisCountCsf} csf processes killed" >> \
+  if [ ! -e "/run/boa_run.pid" ] && [ ${_thisCountCsf} -gt 4 ]; then
+    echo "$(date) Too many ${_thisCountCsf} csf processes killed" >> \
       /var/log/csf-count.kill.log
     kill -9 $(ps aux | grep '[c]sf' | awk '{print $2}') &> /dev/null
     csf -tf
@@ -17,16 +17,16 @@ _csf_flood_guard() {
     wait
   fi
   _thisCountFire=`ps aux | grep -v "grep" | grep -v "null" | grep --count "fire.sh"`
-  if [ ! -e "/run/boa_run.pid" ] && [ ${_thisCountFire} -gt "9" ]; then
-    echo "$(date 2>&1) Too many ${_thisCountFire} fire.sh processes killed and rules purged" >> \
+  if [ ! -e "/run/boa_run.pid" ] && [ ${_thisCountFire} -gt 9 ]; then
+    echo "$(date) Too many ${_thisCountFire} fire.sh processes killed and rules purged" >> \
       /var/log/fire-purge.kill.log
     csf -tf
     wait
     csf -df
     wait
     kill -9 $(ps aux | grep '[f]ire.sh' | awk '{print $2}') &> /dev/null
-  elif [ ! -e "/run/boa_run.pid" ] && [ ${_thisCountFire} -gt "7" ]; then
-    echo "$(date 2>&1) Too many ${_thisCountFire} fire.sh processes killed" >> \
+  elif [ ! -e "/run/boa_run.pid" ] && [ ${_thisCountFire} -gt 7 ]; then
+    echo "$(date) Too many ${_thisCountFire} fire.sh processes killed" >> \
       /var/log/fire-count.kill.log
     csf -tf
     wait
@@ -65,17 +65,17 @@ fi
 
 # Function for logging in verbose mode
 _verbose_log() {
-  local _reason="${1}"
-  local _message="${2}"
-  local _timestamp
-  local _log_file
+  _reason="${1}"
+  _message="${2}"
+  _timestamp
+  _log_file
 
   # Define log file paths
-  local _csf_dry_log="/var/log/csf_dry_debug.log"
-  local _csf_fail_log="/var/log/csf_fail_debug.log"
-  local _csf_deny_log="/var/log/csf_deny_debug.log"
-  local _csf_denied_log="/var/log/csf_denied_debug.log"
-  local _csf_allow_log="/var/log/csf_allow_debug.log"
+  _csf_dry_log="/var/log/csf_dry_debug.log"
+  _csf_fail_log="/var/log/csf_fail_debug.log"
+  _csf_deny_log="/var/log/csf_deny_debug.log"
+  _csf_denied_log="/var/log/csf_denied_debug.log"
+  _csf_allow_log="/var/log/csf_allow_debug.log"
 
   # Check if logging is enabled
   if [[ -e "/root/.debug.monitor.log.cnf" || "${_NGINX_DOS_LOG}" =~ ^(NORMAL|VERBOSE)$ ]]; then

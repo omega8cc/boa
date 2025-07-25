@@ -56,20 +56,24 @@ if [ -e "${drupal_root}/core" ]; then
       printf "Unlocking Drush and Symfony Console Input in "${drupal_root}/vendor"...\n"
       chmod 0775 ${drupal_root}/vendor/drush
       chmod 0775 ${drupal_root}/vendor/symfony/console/Input
+      chmod 0775 ${drupal_root}/vendor/symfony/console/Style
     else
       printf "Locking Drush and Symfony Console Input in "${drupal_root}/vendor"...\n"
       chmod 0400 ${drupal_root}/vendor/drush
       chmod 0400 ${drupal_root}/vendor/symfony/console/Input
+      chmod 0400 ${drupal_root}/vendor/symfony/console/Style
     fi
   elif [ -e "${drupal_root}/../vendor" ]; then
     if [ "$mode" = "unlock" ]; then
       printf "Unlocking Drush and Symfony Console Input in "${drupal_root}/../vendor"...\n"
       chmod 0775 ${drupal_root}/../vendor/drush
       chmod 0775 ${drupal_root}/../vendor/symfony/console/Input
+      chmod 0775 ${drupal_root}/../vendor/symfony/console/Style
     else
       printf "Locking Drush and Symfony Console Input in "${drupal_root}/../vendor"...\n"
       chmod 0400 ${drupal_root}/../vendor/drush
       chmod 0400 ${drupal_root}/../vendor/symfony/console/Input
+      chmod 0400 ${drupal_root}/../vendor/symfony/console/Style
     fi
   fi
   if [ "$mode" = "unlock" ]; then

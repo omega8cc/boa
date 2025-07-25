@@ -77,11 +77,11 @@ function xtitle() {
   esac
 }
 
-_L_HOST=$(uname -n 2>&1)
+_L_HOST="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
 alias top='xtitle $_L_HOST System Monitor && top'
 alias htop='xtitle $_L_HOST System Monitor && htop'
 alias mytop='xtitle $_L_HOST SQL Monitor && mytop'
-alias make='xtitle Making $(basename $PWD) ; make'
+alias make='xtitle Making $(basename $PWD) ; make SHELL=/bin/bash'
 
 function extract() {
   if [ -f $1 ]; then

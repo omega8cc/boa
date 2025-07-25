@@ -10,11 +10,9 @@
 - **FTP**: Pure-FTPd server with forced FTPS (installed by default)
 - **GIT**: Latest Git from sources (installed by default)
 - **IMG**: Image Optimize binaries: `advdef`, `advpng`, `jpegoptim`, `jpegtran`, `optipng`, `pngcrush`, `pngquant` (installed by default)
-- **SR7**: Apache Solr 7
 
 ### Xtras Which Need to be Listed Explicitly:
 
-- **HVM**: HHVM Engine—once installed, use `~/static/control/hhvm.info` to enable per Octopus instance. (deprecated)
 - **BDD**: SQL Buddy DB Manager (deprecated)
 - **BND**: Bind9 DNS Server (deprecated)
 - **BZR**: Bazaar
@@ -23,7 +21,9 @@
 - **FMG**: FFmpeg support (deprecated)
 - **SR1**: Apache Solr 1 with Jetty 7 (deprecated)
 - **SR3**: Apache Solr 3 with Jetty 8 (deprecated)
-- **SR4**: Apache Solr 4 with Jetty 9
+- **SR4**: Apache Solr 4 with Jetty 9 (deprecated)
+- **SR7**: Apache Solr 7
+- **SR9**: Apache Solr 9
 - **WMN**: Webmin Control Panel (deprecated)
 
 ### Examples:
@@ -31,8 +31,7 @@
 ```
 _XTRAS_LIST=""
 _XTRAS_LIST="ALL"
-_XTRAS_LIST="ALL SR4"
-_XTRAS_LIST="SR4 SR7"
+_XTRAS_LIST="ALL SR9"
 ```
 
 - Configuration file template: [barracuda.cnf](https://github.com/omega8cc/boa/tree/5.x-dev/docs/cnf/barracuda.cnf)
@@ -66,6 +65,7 @@ With `_EASY_SETUP=NO` option (default is PUBLIC), Barracuda will offer installat
 - Your (optional) Chive Percona Manager will be available at `https://chive.master.f-q-d-n` (deprecated)
 - Your (optional) Collectd Graph Panel will be available at `https://cgp.master.f-q-d-n`
 - Your (optional) CSF/LFD Firewall will support integrated Nginx Abuse Guard.
+- Your (optional) MultiCore Apache Solr 9.8.1 will listen on `127.0.0.1:9099`
 - Your (optional) MultiCore Apache Solr 7.7.3 will listen on `127.0.0.1:9077`
 - Your (optional) MultiCore Apache Solr 4.9.1 with Jetty 9 will listen on `127.0.0.1:8099`
 - Your (optional) MultiCore Apache Solr 3.6.2 with Jetty 8 will listen on `127.0.0.1:8088` (deprecated)

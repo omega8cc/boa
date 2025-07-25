@@ -24,11 +24,10 @@ _pthIncB="lib/settings/${_filIncB}"
 _pthIncO="lib/settings/${_filIncO}"
 _vBs="/var/backups"
 
-_CHECK_HOST=$(uname -n 2>&1)
 _LOG_DIR="${_vBs}/reports/up/$(basename "$0")/${_TODAY}"
 _UP_LOG="${_LOG_DIR}/$(basename "$0")-up-${_NOW}.log"
 _VMFAMILY=XEN
-_VM_TEST=$(uname -a 2>&1)
+_VM_TEST="$(uname -a)"
 if [[ "${_VM_TEST}" =~ "-beng" ]]; then
   _VMFAMILY="VS"
 fi
@@ -97,7 +96,7 @@ _ifnames_grub_check_sync() {
 
     # Function to append option to _ADD_GRUB_CMD
     _append_grub_cmd_option() {
-      local _option="$1"
+      _option="$1"
       if [[ -z "${_ADD_GRUB_CMD}" ]]; then
         _ADD_GRUB_CMD="${_option}"
       else
@@ -176,7 +175,7 @@ _ifnames_grub_check_sync() {
 
 _check_root_direct() {
   _U_TEST=DENY
-  [ "${SUDO_USER}" ] && _U_TEST_SDO=${SUDO_USER} || _U_TEST_SDO=`whoami`
+  [ "${SUDO_USER}" ] && _U_TEST_SDO=${SUDO_USER} || _U_TEST_SDO=$(whoami)
   _U_TEST_WHO=$(who am i | awk '{print $1}' 2>&1)
   _U_TEST_LNE=$(logname 2>&1)
   if [ "${_U_TEST_SDO}" = "root" ] || [ "${_U_TEST_LNE}" = "root" ]; then
@@ -268,8 +267,7 @@ _check_sql_running() {
 
 _check_sql_access() {
   if [ -e "/root/.my.pass.txt" ] && [ -e "/root/.my.cnf" ]; then
-    _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
-    _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+    _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
     _IS_SYNC_SQL_PSWD=$(grep "${_SQL_PSWD}" /root/.my.cnf 2>&1)
   else
     echo "ALERT: /root/.my.cnf or /root/.my.pass.txt not found."
@@ -310,7 +308,7 @@ _check_sql_access() {
 
 _if_hosted_sys() {
   if [ -e "/root/.host8.cnf" ] \
-    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
+    || [[ "${_hName}" =~ ".aegir.cc"($) ]]; then
     _hostedSys=YES
   else
     _hostedSys=NO
@@ -322,7 +320,7 @@ _fix_dns_settings() {
   rm -f ${_vBs}/resolv.conf.tmp
   if [ -e "/etc/resolv.conf" ]; then
     if [ -L "/etc/resolv.conf" ]; then
-      _rslvT=`readlink -n /etc/resolv.conf`
+      _rslvT="$(readlink -n /etc/resolv.conf)"
       if [ ! -e "${_rslvT}" ]; then
         rm -f /etc/resolv.conf
       fi
@@ -477,7 +475,7 @@ _send_report() {
     fi
     if [ ! -z "${_MY_EMAIL}" ]; then
       _repSub="Successful Barracuda upgrade"
-      _repSub="REPORT: ${_repSub} on ${_CHECK_HOST}"
+      _repSub="REPORT: ${_repSub} on ${_hName}"
       _repSub=$(echo -n ${_repSub} | fmt -su -w 2500 2>&1)
       _if_extended_report
       cat ${_UP_LOG} | s-nail -s "${_repSub} at ${_NOW}" ${_MY_EMAIL}
@@ -494,7 +492,7 @@ _send_alert() {
       _MY_EMAIL="$(basename "$0")@omega8.cc"
     fi
     if [ ! -z "${_MY_EMAIL}" ]; then
-      _repSub="${_ALERT_MSG} on ${_CHECK_HOST}"
+      _repSub="${_ALERT_MSG} on ${_hName}"
       _repSub=$(echo -n ${_repSub} | fmt -su -w 2500 2>&1)
       _if_extended_report
       cat ${_UP_LOG} | s-nail -s "${_repSub} at ${_NOW}" ${_MY_EMAIL}
@@ -507,8 +505,6 @@ _check_report() {
   sed -i "s/^_AWS_.*//g"         ${_UP_LOG}
   wait
   sed -i "s/^_NEWRELIC_KEY.*//g" ${_UP_LOG}
-  wait
-  sed -i "s/^_SCOUT_KEY.*//g"    ${_UP_LOG}
   wait
   sed -i "/^$/d"                 ${_UP_LOG}
   wait
@@ -578,7 +574,7 @@ _check_report() {
 }
 
 _check_php_cli() {
-  _PHP_CHECK=$(readlink -n /usr/bin/php 2>&1)
+  _PHP_CHECK="$(readlink -n /usr/bin/php)"
   if [ ! -x "${_PHP_CHECK}" ]; then
     if [ "${_PHP_CLI_VERSION}" = "8.1" ]; then
       _PHP_CLI_PATH="/opt/php81/bin/php"
@@ -586,6 +582,8 @@ _check_php_cli() {
       _PHP_CLI_PATH="/opt/php82/bin/php"
     elif [ "${_PHP_CLI_VERSION}" = "8.3" ]; then
       _PHP_CLI_PATH="/opt/php83/bin/php"
+    elif [ "${_PHP_CLI_VERSION}" = "8.4" ]; then
+      _PHP_CLI_PATH="/opt/php84/bin/php"
     elif [ "${_PHP_CLI_VERSION}" = "7.4" ]; then
       _PHP_CLI_PATH="/opt/php74/bin/php"
     else
@@ -600,6 +598,8 @@ _check_php_cli() {
         _USE_PHP_CLI_PATH="/opt/php82/bin/php"
       elif  [ -x "/opt/php83/bin/php" ]; then
         _USE_PHP_CLI_PATH="/opt/php83/bin/php"
+      elif  [ -x "/opt/php84/bin/php" ]; then
+        _USE_PHP_CLI_PATH="/opt/php84/bin/php"
       elif  [ -x "/opt/php74/bin/php" ]; then
         _USE_PHP_CLI_PATH="/opt/php74/bin/php"
       fi
@@ -648,7 +648,9 @@ _mysql_downgrade_protection() {
 _up_action() {
   if [ -e "${_vBs}/${_barName}" ] && [ -e "${_barCnf}" ]; then
     if [ ! -z "${_rKey}" ]; then
-      if [ "${_rKey}" = "php-83" ] || [ "${_rKey}" = "php-8.3" ]; then
+      if [ "${_rKey}" = "php-84" ] || [ "${_rKey}" = "php-8.4" ]; then
+        _phpS="8.4"
+      elif [ "${_rKey}" = "php-83" ] || [ "${_rKey}" = "php-8.3" ]; then
         _phpS="8.3"
       elif [ "${_rKey}" = "php-82" ] || [ "${_rKey}" = "php-8.2" ]; then
         _phpS="8.2"
@@ -698,7 +700,8 @@ _up_action() {
 
     fi
     ### Make sure that _PHP_SINGLE_INSTALL is set in ${_barCnf}
-    if [ "${_phpS}" = "8.3" ] \
+    if [ "${_phpS}" = "8.4" ] \
+      || [ "${_phpS}" = "8.3" ] \
       || [ "${_phpS}" = "8.2" ] \
       || [ "${_phpS}" = "8.1" ] \
       || [ "${_phpS}" = "7.4" ]; then
@@ -712,7 +715,8 @@ _up_action() {
     fi
     ### Make sure that _PHP_SINGLE_INSTALL takes precedence
     if [ ! -z "${_phpS}" ]; then
-      if [ "${_phpS}" = "8.3" ] \
+      if [ "${_phpS}" = "8.4" ] \
+        || [ "${_phpS}" = "8.3" ] \
         || [ "${_phpS}" = "8.2" ] \
         || [ "${_phpS}" = "8.1" ] \
         || [ "${_phpS}" = "7.4" ]; then
@@ -770,9 +774,9 @@ _up_action() {
         fi
       elif [ "${_phpS}" = "MIN" ] || [ "${_phpS}" = "MAX" ]; then
         if [ "${_phpS}" = "MAX" ]; then
-          _phpM="5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2 8.3"
+          _phpM="5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2 8.3 8.4"
         else
-          _phpM="7.4 8.1 8.2 8.3"
+          _phpM="7.4 8.1 8.2 8.3 8.4"
         fi
         _phpS="8.3"
 
@@ -849,6 +853,8 @@ _up_action() {
       sed -i "s/^_AEGIR_XTS_VRN.*/_AEGIR_XTS_VRN=${_tRee}/g" ${_vBs}/${_filIncB}
       wait
       sed -i "s/^_X_VERSION=.*/_X_VERSION=${_rlsE}/g"        ${_vBs}/${_filIncB}
+      wait
+      sed -i "s/^_VALKEY_MAJOR_RELEASE=.*/_VALKEY_MAJOR_RELEASE=7/g"  ${_barCnf}
       wait
       sed -i "s/^_REDIS_MAJOR_RELEASE=.*/_REDIS_MAJOR_RELEASE=7/g"    ${_barCnf}
       wait
@@ -943,9 +949,11 @@ _up_action() {
       wait
       sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g"          ${_barCnf}
       wait
+      sed -i "s/^_VALKEY_LISTEN.*/_VALKEY_LISTEN_MODE=SOCKET/g"       ${_barCnf}
+      wait
       sed -i "s/^_REDIS_LISTEN.*/_REDIS_LISTEN_MODE=SOCKET/g"         ${_barCnf}
       wait
-      if [ -e "/etc/init.d/redis-server" ]; then
+      if [ -e "/etc/init.d/valkey-server" ] || [ -e "/etc/init.d/redis-server" ]; then
         sed -i "s/^_USE_MYSQLTUNER=.*/_USE_MYSQLTUNER=NO/g"           ${_barCnf}
         wait
       fi
@@ -1336,7 +1344,7 @@ _find_fast_mirror_early() {
 }
 
 _if_reinstall_curl() {
-  _CURL_VRN=8.12.1
+  _CURL_VRN=8.14.1
   if ! command -v lsb_release &> /dev/null; then
     apt-get update -qq &> /dev/null
     apt-get install lsb-release ${_aptYesUnth} -qq &> /dev/null
@@ -1521,11 +1529,27 @@ _csf_check_fix() {
 }
 
 _check_root() {
-  if [ `whoami` = "root" ]; then
+  if [ "$(id -u)" -eq 0 ]; then
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
-    export _B_NICE=${_B_NICE//[^0-9]/}
-    : "${_B_NICE:=10}"
+    _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
+
+    # Sanitize to allow only digits and minus sign
+    export _B_NICE=${_B_NICE//[^0-9-]/}
+
+    # Validate and set default if necessary
+    if ! [[ "$_B_NICE" =~ ^-?[0-9]+$ ]]; then
+      _B_NICE=0
+    fi
+
+    # Clamp the value within -20 to 19
+    if (( _B_NICE < -20 )); then
+      _B_NICE=-20
+    elif (( _B_NICE > 19 )); then
+      _B_NICE=19
+    fi
+
     renice ${_B_NICE} -p $$ &> /dev/null
+
     _csf_check_fix
     chmod a+w /dev/null
     if [ ! -e "/dev/fd" ]; then
@@ -1652,7 +1676,7 @@ _check_root() {
     | sed 's/\%//g' \
     | awk '{print $6}' 2> /dev/null)
   _DF_TEST=${_DF_TEST//[^0-9]/}
-  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt "90" ]; then
+  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt 90 ]; then
     echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
     echo "ERROR: We can not proceed until it is below 90/100"
     _clean_pid_exit _check_root_b
@@ -1700,6 +1724,12 @@ _old_apt_keys_cleanup() {
   fi
 }
 
+_if_force_php_rebuild() {
+  if [[ "${_ARGS}" =~ (php-rebuild|php-reinstall) ]]; then
+    echo "_PHP_FORCE_REINSTALL=YES" >> ${_barCnf}
+  fi
+}
+
 _proceed() {
   _check_root_keys_pwd
   _check_root
@@ -1710,6 +1740,7 @@ _proceed() {
   _os_detection_minimal
   _check_dns_curl
   _check_php_cli
+  _if_force_php_rebuild
   _old_apt_keys_cleanup &> /dev/null
   _check_etc_apt_preferences
   if [ "${_tRee}" = "dev" ]; then
@@ -1811,9 +1842,9 @@ _if_display_help() {
 
     {options}
       newrelickey <-- activate New Relic integration with valid license key
-      php-8.3 <------ enable single-PHP mode (8.1 or 8.2 or 8.3 or 7.4)
-      php-min <------ install PHP 8.1, 8.2, 8.3, 7.4, use 8.3 by default (php-all)
-      php-max <------ install PHP 8.1, 8.2, 8.3, 8.0, 7.4, 7.3, 7.2, 7.1, 7.0, 5.6
+      php-8.3 <------ enable single-PHP mode (8.1 or 8.2 or 8.3 or 8.4 or 7.4)
+      php-min <------ install PHP 8.1, 8.2, 8.3, 8.4, 7.4, use 8.3 by default (php-all)
+      php-max <------ install PHP 8.0, 8.1, 8.2, 8.3, 8.4, 7.4, 7.3, 7.2, 7.1, 7.0, 5.6
       nodns <-------- disable DNS/SMTP checks on the fly
       percona-8.0 <-- specify Percona version to use (5.7, 8.0, 8.3, 8.4)
 
@@ -1864,7 +1895,7 @@ _set_tree_vars() {
   fi
 
   export _tRee="${_tRee}"
-  export _rLsn="BOA-5.5.0"
+  export _rLsn="BOA-5.7.11"
   export _rlsE="${_rLsn}-${_tRee}"
   export _bRnh="5.x-${_tRee}"
   export _rgUrl="http://files.aegir.cc/versions/${_tRee}/boa"

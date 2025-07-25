@@ -56,6 +56,8 @@
 
   # Drush access
   /opt/tools/drush/** mrix,
+  /usr/local/bin/drush8.phar mrix,
+  /usr/local/bin/cv.phar mrix,
 
   # Read-only access to Octopus directories
   /data/disk/*/.drush/ r,
@@ -102,7 +104,7 @@
 
   # Allow execution of necessary binaries
   /bin/dash mrix,
-  /bin/websh mrix,
+  /opt/local/bin/websh mrix,
   /usr/bin/mysecureshell mrix,
   /usr/bin/python* mrix,
   /usr/local/bin/lshell mrix,
@@ -131,6 +133,7 @@
   /bin/touch mrix,
   /bin/true mrix,
   /data/disk/*/tools/drush/drush.php mrix,
+  /opt/local/bin/mybackup mrix,
   /opt/local/bin/sqlmagic mrix,
   /opt/php*/bin/php mrix,
   /usr/bin/diff mrix,
@@ -150,6 +153,7 @@
   /usr/bin/unzip mrix,
   /usr/bin/wget mrix,
   /usr/bin/which.debianutils mrix,
+  /usr/bin/zstd mrix,
   /usr/lib/node_modules/npm/bin/** mrix,
   /usr/local/bin/composer mrix,
   /usr/local/bin/curl mrix,

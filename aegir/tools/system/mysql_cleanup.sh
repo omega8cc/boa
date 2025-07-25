@@ -5,7 +5,7 @@ export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
 _check_root() {
-  if [ `whoami` = "root" ]; then
+  if [ "$(id -u)" -eq 0 ]; then
     ionice -c2 -n7 -p $$
     renice 19 -p $$
     chmod a+w /dev/null
@@ -42,11 +42,26 @@ if [ ! -z "${_ALL_DBS_NR}" ] && [ "${_ALL_DBS_NR}" -gt 100 ]; then
   exit 0
 fi
 
-echo "INFO: Starting dbs cleanup on `date`"
+echo "INFO: Starting dbs cleanup on $(date)"
 
 [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
-export _B_NICE=${_B_NICE//[^0-9]/}
-: "${_B_NICE:=10}"
+
+    # Sanitize to allow only digits and minus sign
+    export _B_NICE=${_B_NICE//[^0-9-]/}
+
+    # Validate and set default if necessary
+    if ! [[ "$_B_NICE" =~ ^-?[0-9]+$ ]]; then
+      _B_NICE=9
+    fi
+
+    # Clamp the value within -20 to 19
+    if (( _B_NICE < -20 )); then
+      _B_NICE=-20
+    elif (( _B_NICE > 19 )); then
+      _B_NICE=19
+    fi
+
+    renice ${_B_NICE} -p $$ &> /dev/null
 
 _SQL_CACHE_EXC_DEF="cache_bootstrap cache_discovery cache_config"
 
@@ -57,8 +72,7 @@ else
   _SQL_CACHE_EXC="${_SQL_CACHE_EXC_DEF}"
 fi
 
-_SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
-_SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+_SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
 
 _create_locks() {
   echo "INFO: Creating locks for $1"
@@ -160,28 +174,28 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
     _create_locks ${_DB}
     if [ "${_DB}" != "mysql" ]; then
       if [ -e "/var/lib/mysql/${_DB}/queue.ibd" ]; then
-        _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/queue.ibd | grep "G" 2>&1)
+        _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/queue.ibd | grep "G" 2>/dev/null)
         if [[ "${_IS_GB}" =~ "queue" ]]; then
           _truncate_queue_tables &> /dev/null
           echo "INFO: Truncated giant queue in ${_DB}"
         fi
       fi
       if [ -e "/var/lib/mysql/${_DB}/batch.ibd" ]; then
-        _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/batch.ibd | grep "G" 2>&1)
+        _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/batch.ibd | grep "G" 2>/dev/null)
         if [[ "${_IS_GB}" =~ "batch" ]]; then
           _truncate_batch_tables &> /dev/null
           echo "INFO: Truncated giant batch in ${_DB}"
         fi
       fi
       if [ -e "/var/lib/mysql/${_DB}/watchdog.ibd" ]; then
-        _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/watchdog.ibd | grep "G" 2>&1)
+        _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/watchdog.ibd | grep "G" 2>/dev/null)
         if [[ "${_IS_GB}" =~ "watchdog" ]]; then
           _truncate_watchdog_tables &> /dev/null
           echo "INFO: Truncated giant watchdog in ${_DB}"
         fi
       fi
       if [ -e "/var/lib/mysql/${_DB}/accesslog.ibd" ]; then
-        _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/accesslog.ibd | grep "G" 2>&1)
+        _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/accesslog.ibd | grep "G" 2>/dev/null)
         if [[ "${_IS_GB}" =~ "accesslog" ]]; then
           _truncate_accesslog_tables &> /dev/null
           echo "INFO: Truncated giant accesslog in ${_DB}"
@@ -198,7 +212,7 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
   fi
 done
 
-echo "INFO: Completing all dbs cleanup on `date`"
+echo "INFO: Completing all dbs cleanup on $(date)"
 touch /var/xdrago/log/last-run-db-cleanup
 rm -f /run/mysql_backup_running.pid
 

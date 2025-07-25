@@ -23,12 +23,11 @@ _pthIncB="lib/settings/${_filIncB}"
 _pthIncO="lib/settings/${_filIncO}"
 _vBs="/var/backups"
 
-_CHECK_HOST=$(uname -n 2>&1)
 _LOG_DIR="${_vBs}/reports/in/$(basename "$0")/${_TODAY}"
 _IN_BARRACUDA_LOG="${_LOG_DIR}/$(basename "$0")-in-barracuda-${_NOW}.log"
 _IN_OCTOPUS_LOG="${_LOG_DIR}/$(basename "$0")-in-octopus-${_NOW}.log"
 _VMFAMILY=XEN
-_VM_TEST=$(uname -a 2>&1)
+_VM_TEST="$(uname -a)"
 if [[ "${_VM_TEST}" =~ "-beng" ]]; then
   _VMFAMILY="VS"
 fi
@@ -106,7 +105,7 @@ _check_no_systemd() {
 
 _if_hosted_sys() {
   if [ -e "/root/.host8.cnf" ] \
-    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
+    || [[ "${_hName}" =~ ".aegir.cc"($) ]]; then
     _hostedSys=YES
   else
     _hostedSys=NO
@@ -283,7 +282,7 @@ _ifnames_grub_check_sync() {
 
     # Function to append option to _ADD_GRUB_CMD
     _append_grub_cmd_option() {
-      local _option="$1"
+      _option="$1"
       if [[ -z "${_ADD_GRUB_CMD}" ]]; then
         _ADD_GRUB_CMD="${_option}"
       else
@@ -362,7 +361,7 @@ _ifnames_grub_check_sync() {
 
 _check_root_direct() {
   _U_TEST=DENY
-  [ "${SUDO_USER}" ] && _U_TEST_SDO=${SUDO_USER} || _U_TEST_SDO=`whoami`
+  [ "${SUDO_USER}" ] && _U_TEST_SDO=${SUDO_USER} || _U_TEST_SDO=$(whoami)
   _U_TEST_WHO=$(who am i | awk '{print $1}' 2>&1)
   _U_TEST_LNE=$(logname 2>&1)
   if [ "${_U_TEST_SDO}" = "root" ] || [ "${_U_TEST_LNE}" = "root" ]; then
@@ -488,7 +487,7 @@ _fix_dns_settings() {
   rm -f ${_vBs}/resolv.conf.tmp
   if [ -e "/etc/resolv.conf" ]; then
     if [ -L "/etc/resolv.conf" ]; then
-      _rslvT=`readlink -n /etc/resolv.conf`
+      _rslvT="$(readlink -n /etc/resolv.conf)"
       if [ ! -e "${_rslvT}" ]; then
         rm -f /etc/resolv.conf
       fi
@@ -600,7 +599,7 @@ _send_report() {
   fi
   if [ ! -z "${_MY_EMAIL}" ]; then
     _repSub="Successful ${_RS} installation"
-    _repSub="REPORT: ${_repSub} on ${_CHECK_HOST}"
+    _repSub="REPORT: ${_repSub} on ${_hName}"
     _repSub=$(echo -n ${_repSub} | fmt -su -w 2500 2>&1)
     _if_extended_report
     cat ${_THIS_LOG} | s-nail -s "${_repSub} at ${_NOW}" ${_MY_EMAIL}
@@ -753,6 +752,8 @@ _octopus_install() {
         _USE_PHP=8.2
       elif [ -x "/opt/php81/bin/php" ]; then
         _USE_PHP=8.1
+      elif [ -x "/opt/php84/bin/php" ]; then
+        _USE_PHP=8.4
       elif [ -x "/opt/php74/bin/php" ]; then
         _USE_PHP=7.4
       fi
@@ -806,20 +807,28 @@ _barracuda_install() {
     elif [ "${_kiNd}" = "public" ] && [ ! -z "${_fQdn}" ]; then
       sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=PUBLIC/g"        ${_vBs}/${_filIncB}
       wait
+      _fQdn="${_fQdn//[^a-zA-Z0-9-.]/}"
+      _fQdn="$(echo -n ${_fQdn} | tr A-Z a-z 2>&1)"
       sed -i "s/^_EASY_HOSTNAME.*/_EASY_HOSTNAME=${_fQdn}/g" ${_vBs}/${_filIncB}
       wait
     else
       sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=PUBLIC/g"        ${_vBs}/${_filIncB}
       wait
+      _fQdn="${_fQdn//[^a-zA-Z0-9-.]/}"
+      _fQdn="$(echo -n ${_fQdn} | tr A-Z a-z 2>&1)"
       sed -i "s/^_EASY_HOSTNAME.*/_EASY_HOSTNAME=${_fQdn}/g" ${_vBs}/${_filIncB}
       wait
     fi
+
+    [ ! -z "${_fQdn}" ] && export _EASY_HOSTNAME=${_fQdn}
 
     if [ -n "${_eXtr}" ] \
       && [ -e "${_vBs}/${_filIncB}" ] \
       && [ -e "${_vBs}/${_filIncO}" ]; then
       if [ -n "${_eXtr}" ]; then
-        if [ "${_eXtr}" = "php-83" ] || [ "${_eXtr}" = "php-8.3" ]; then
+        if [ "${_eXtr}" = "php-84" ] || [ "${_eXtr}" = "php-8.4" ]; then
+          _pI=8.4
+        elif [ "${_eXtr}" = "php-83" ] || [ "${_eXtr}" = "php-8.3" ]; then
           _pI=8.3
         elif [ "${_eXtr}" = "php-82" ] || [ "${_eXtr}" = "php-8.2" ]; then
           _pI=8.2
@@ -847,9 +856,9 @@ _barracuda_install() {
         || [ "${_eXtr}" = "php-max" ]; then
         sed -i "s/^_PHP_SINGLE_.*/_PHP_SINGLE_INSTALL=/g"    ${_vBs}/${_filIncB}
         if [ "${_eXtr}" = "php-max" ]; then
-          _pA="5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2 8.3"
+          _pA="5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2 8.3 8.4"
         else
-          _pA="7.4 8.1 8.2 8.3"
+          _pA="7.4 8.1 8.2 8.3 8.4"
         fi
         _pI=8.3
         sed -i "s/^_PHP_M.*/_PHP_MULTI_INSTALL=\"${_pA}\"/g" ${_vBs}/${_filIncB}
@@ -1228,6 +1237,8 @@ _init_setup() {
     if [ -e "/root/.dev.server.cnf" ]; then
       echo MODD _tRee is ${_tRee}
       echo MODD _kiNd is ${_kiNd}
+      _fQdn="${_fQdn//[^a-zA-Z0-9-.]/}"
+      _fQdn="$(echo -n ${_fQdn} | tr A-Z a-z 2>&1)"
       echo MODD _fQdn is ${_fQdn}
       echo MODD _eMal is ${_eMal}
       echo MODD _usEr is ${_usEr}
@@ -1252,7 +1263,7 @@ _init_setup() {
   _check_etc_apt_preferences
 
   export _tRee="${_tRee}"
-  export _rLsn="BOA-5.5.0"
+  export _rLsn="BOA-5.7.11"
   export _rlsE="${_rLsn}-${_tRee}"
   export _bRnh="5.x-${_tRee}"
   export _rgUrl="http://files.aegir.cc/versions/${_tRee}/boa"
@@ -1595,7 +1606,8 @@ _csf_check_fix() {
 }
 
 _check_root() {
-  if [ `whoami` = "root" ]; then
+  if [ "$(id -u)" -eq 0 ]; then
+    _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
     [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
     if [ "${_cmNd}" = "in-octopus" ] || [ "${_cmNd}" = "in-oct" ]; then
       _system_check_ready
@@ -1630,7 +1642,7 @@ _check_root() {
     | sed 's/\%//g' \
     | awk '{print $6}' 2> /dev/null)
   _DF_TEST=${_DF_TEST//[^0-9]/}
-  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt "90" ]; then
+  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt 90 ]; then
     echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
     echo "ERROR: We can not proceed until it is below 90/100"
     _clean_pid_exit _check_root_b
@@ -1712,7 +1724,7 @@ _check_root() {
 }
 
 _display_version() {
-  if [ `whoami` = "root" ]; then
+  if [ "$(id -u)" -eq 0 ]; then
     _HOST_INFO=$(dmidecode -s system-manufacturer 2>&1)
     _VIRT_TOOL=$(which virt-what 2> /dev/null)
     if [ -x "${_VIRT_TOOL}" ]; then
@@ -1865,7 +1877,7 @@ _check_system_ram() {
 }
 
 _display_info() {
-  if [ `whoami` = "root" ]; then
+  if [ "$(id -u)" -eq 0 ]; then
     _HOST_INFO=$(dmidecode -s system-manufacturer 2>&1)
     _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)
     _CPU_INFO=${_CPU_INFO//[^0-9]/}
@@ -1879,7 +1891,7 @@ _display_info() {
     if [ ! -z "${_CPU_NR}" ] \
       && [ ! -z "${_CPU_INFO}" ] \
       && [ "${_CPU_NR}" -gt "${_CPU_INFO}" ] \
-      && [ "${_CPU_INFO}" -gt "0" ]; then
+      && [ "${_CPU_INFO}" -gt 0 ]; then
       _CPU_NR="${_CPU_INFO}"
     fi
     _DF_TEST=$(df -kTh / -l \
@@ -1937,13 +1949,13 @@ _display_info() {
         | cut -d"-" -f1 \
         | awk '{ print $3}' 2>&1)
     fi
-    if [ -x "/usr/bin/redis-server" ]; then
-      _RDS=$(redis-server -v 2>&1 \
+    if [ -x "/usr/bin/valkey-server" ]; then
+      _VKS=$(valkey-server -v 2>&1 \
         | tr -d "\n" \
         | cut -d" " -f4 \
         | awk '{ print $1}' 2>&1)
-      if [[ "${_RDS}" =~ "sha" ]]; then
-        _RDS=$(redis-server -v 2>&1 \
+      if [[ "${_VKS}" =~ "sha" ]]; then
+        _VKS=$(valkey-server -v 2>&1 \
           | tr -d "\n" \
           | tr -d "v=" \
           | cut -d" " -f3 \
@@ -2003,7 +2015,7 @@ _display_info() {
       _BIL=$(grep _BACKEND_ITEMS_LIST ${_barCnf} 2>&1)
       _CCC=$(grep _CUSTOM_CONFIG_CSF ${_barCnf} 2>&1)
       _CCL=$(grep _CUSTOM_CONFIG_LSHELL ${_barCnf} 2>&1)
-      _CCR=$(grep _CUSTOM_CONFIG_REDIS ${_barCnf} 2>&1)
+      _CCV=$(grep _CUSTOM_CONFIG_VALKEY ${_barCnf} 2>&1)
       _CCS=$(grep _CUSTOM_CONFIG_SQL ${_barCnf} 2>&1)
       _DBG=$(grep _DEBUG_MODE ${_barCnf} 2>&1)
       _DBS=$(grep _DB_SERIES ${_barCnf} 2>&1)
@@ -2036,8 +2048,8 @@ _display_info() {
       echo "Ready for BOA ${_crlBoav} on ${_thiSys}"
     fi
 
-    [ "${_mOde}" = "report" ] && echo "Host `hostname` check on `date`"
-    [ "${_mOde}" = "report" ] && echo "Host uptime `uptime`"
+    [ "${_mOde}" = "report" ] && echo "Host ${_hName} check on $(date)"
+    [ "${_mOde}" = "report" ] && echo "Host uptime $(uptime)"
     [ ! -z "${_HOST_INFO}" ] && echo "  HOST ${_HOST_INFO}"
     [ ! -z "${_VIRT_IS}" ] && echo "  VPS ${_VIRT_IS}"
     [ -z "${_VIRT_IS}" ] && echo "  VPS unknown / not a virtual machine"
@@ -2068,7 +2080,7 @@ _display_info() {
     [ ! -z "${_NGX}" ] && echo "  NGX ${_NGX}"
     [ ! -z "${_PHP}" ] && echo "  PHP ${_PHP}"
     [ ! -z "${_DBV}" ] && echo "  DBV ${_DBV}"
-    [ ! -z "${_RDS}" ] && echo "  RDS ${_RDS}"
+    [ ! -z "${_VKS}" ] && echo "  RDS ${_VKS}"
     [ ! -z "${_PXY}" ] && echo "  PXY ${_PXY}"
     [ ! -z "${_SHD}" ] && echo "  SHD ${_SHD}"
     [ ! -z "${_SSH}" ] && echo "  SSH ${_SSH}"
@@ -2094,7 +2106,7 @@ _display_info() {
       [ ! -z "${_BIL}" ] && echo "  _BIL ${_BIL}"
       [ ! -z "${_CCC}" ] && echo "  _CCC ${_CCC}"
       [ ! -z "${_CCL}" ] && echo "  _CCL ${_CCL}"
-      [ ! -z "${_CCR}" ] && echo "  _CCR ${_CCR}"
+      [ ! -z "${_CCV}" ] && echo "  _CCV ${_CCV}"
       [ ! -z "${_CCS}" ] && echo "  _CCS ${_CCS}"
       [ ! -z "${_DBG}" ] && echo "  _DBG ${_DBG}"
       [ ! -z "${_DBS}" ] && echo "  _DBS ${_DBS}"
@@ -2168,10 +2180,12 @@ _display_info() {
         "php81-fpm"
         "php82-fpm"
         "php83-fpm"
+        "php84-fpm"
         "mysql"
-        "redis"
+        "valkey"
+        "solr9"
         "solr7"
-        "jetty9"
+        "solr4"
         "pure-ftpd"
         "lfd"
         "rsyslogd"
@@ -2187,10 +2201,12 @@ _display_info() {
         ["php81-fpm"]="/run/php81-fpm.pid"
         ["php82-fpm"]="/run/php82-fpm.pid"
         ["php83-fpm"]="/run/php83-fpm.pid"
+        ["php84-fpm"]="/run/php84-fpm.pid"
         ["mysql"]="/run/mysqld/mysqld.pid"
-        ["redis"]="/run/redis/redis.pid"
+        ["valkey"]="/run/valkey/valkey.pid"
+        ["solr9"]="/var/solr9/solr-9099.pid"
         ["solr7"]="/var/solr7/solr-9077.pid"
-        ["jetty9"]="/run/jetty9.pid"
+        ["solr4"]="/run/jetty9.pid"
         ["pure-ftpd"]="/run/pure-ftpd.pid"
         ["lfd"]="/run/lfd.pid"
         ["rsyslogd"]="/run/rsyslogd.pid"
@@ -2241,7 +2257,7 @@ _display_info() {
             fi
             if [ -e "${_OCT}/config/server_master/nginx/vhost.d" ]; then
               _SITES_NR=$(ls ${_OCT}/config/server_master/nginx/vhost.d | wc -l)
-              if [ "${_SITES_NR}" -gt "0" ]; then
+              if [ "${_SITES_NR}" -gt 0 ]; then
                 echo "  Number of Hosted Sites in ${_OCT} is ${_SITES_NR}"
               else
                 _OCT_NR=$(( _OCT_NR - 1 ))
@@ -2304,7 +2320,7 @@ _display_info() {
 }
 
 _octopus_cleanup() {
-  if [ `whoami` = "root" ]; then
+  if [ "$(id -u)" -eq 0 ]; then
     if [ "${_aCtn}" = "detect" ]; then
       echo
       echo "Accounts marked for cleanup or active"
@@ -2315,7 +2331,7 @@ _octopus_cleanup() {
         if [ -d "${_Usr}/config/server_master/nginx/vhost.d" ] \
           && [ -e "${_Usr}/log/cores.txt" ] \
           && [ -e "${_Usr}/log/CANCELLED" ]; then
-          _sIze=$(du -s -h ${_Usr} | cut -d' ' -f1 | awk '{ print $1}' 2>&1)
+          _sIze=$(du -s -h ${_Usr} | cut -d' ' -f1 | awk '{ print $1}' 2>/dev/null)
           echo "CANCELLED ${_Usr} ${_sIze}"
           _iUsr=$(echo ${_Usr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
           echo "CANCELLED ${_iUsr}" >> /root/.cleanup.detect.txt
@@ -2357,7 +2373,7 @@ _octopus_cleanup() {
         echo "${_usEr}:/data/disk/${_usEr}" > ${_zombie_dir}.purge.list
         echo "${_usEr}.ftp:/home/${_usEr}.ftp" >> ${_zombie_dir}.purge.list
         echo "${_usEr}.web:/home/${_usEr}.web" >> ${_zombie_dir}.purge.list
-        _PHP_V="83 82 81 80 74 73 72 71 70 56"
+        _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
         for e in ${_PHP_V}; do
           if [ -e "/opt/php${e}/etc/pool.d/${_usEr}.${e}.conf" ] \
             || [ -e "/home/${_usEr}.${e}.web" ]; then
@@ -2466,9 +2482,9 @@ _if_display_help() {
 
     {extra}
       license <------ valid new relic license key
-      php-8.3 <------ enable single-PHP mode (8.1 or 8.2 or 8.3 or 7.4)
-      php-min <------ install PHP 8.1, 8.2, 8.3, 7.4, use 8.3 by default (php-all)
-      php-max <------ install PHP 8.1, 8.2, 8.3, 8.0, 7.4, 7.3, 7.2, 7.1, 7.0, 5.6
+      php-8.3 <------ enable single-PHP mode (8.1 or 8.2 or 8.3 or 8.4 or 7.4)
+      php-min <------ install PHP 8.1, 8.2, 8.3, 8.4, 7.4, use 8.3 by default (php-all)
+      php-max <------ install PHP 8.0, 8.1, 8.2, 8.3, 8.4, 7.4, 7.3, 7.2, 7.1, 7.0, 5.6
       nodns <-------- disable DNS/SMTP checks on the fly
       percona-8.0 <-- specify Percona version to use (5.7, 8.0, 8.3, 8.4)
 

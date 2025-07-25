@@ -564,9 +564,10 @@ _nginx_initd_check() {
   fi
   _X_INIT_TEST=
   if [ -e "/etc/init.d/nginx" ]; then
-    _X_INIT_TEST=$(cat /etc/init.d/nginx | grep ULIMIT 2>&1)
+    _X_INIT_TEST_A=$(cat /etc/init.d/nginx | grep ULIMIT 2>&1)
+    _X_INIT_TEST_B=$(cat /etc/init.d/nginx | grep Giedymin 2>&1)
   fi
-  if [[ "${_X_INIT_TEST}" =~ "ULIMIT" ]]; then
+  if [[ "${_X_INIT_TEST_A}" =~ ULIMIT ]] && [[ "${_X_INIT_TEST_B}" =~ Giedymin ]]; then
     chmod 755 /etc/init.d/nginx &> /dev/null
     _mrun "update-rc.d nginx defaults" 2> /dev/null
   else
@@ -632,7 +633,11 @@ _nginx_wildcard_ssl_install() {
       ln -sfn /data/conf/global.inc ${_mtrInc}/global.inc
     fi
     sed -i "s/3600/${_SPEED_VALID_MAX}/g" /data/conf/global.inc &> /dev/null
-    _redis_password_update
+    if [ -e "/etc/init.d/valkey-server" ]; then
+      _valkey_password_update
+    elif [ -e "/etc/init.d/redis-server" ]; then
+      _redis_password_update
+    fi
     _mrun "service nginx quietupgrade" 2> /dev/null
   else
     _WILD_SSL_PROXY_UP=NO
@@ -687,15 +692,15 @@ _nginx_config_update_fix() {
       wait
       sed -i "s/.*ssl .*on;//g" /var/aegir/config/server_*/nginx/vhost.d/sqlbuddy.* &> /dev/null
       wait
-      sed -i "s/.*listen .*\*:80;/  listen                       \*:80;/g" /var/aegir/config/server_*/nginx/vhost.d/* &> /dev/null
+      sed -i "s/.*listen .*\*:80;/  listen  \*:80;/g" /var/aegir/config/server_*/nginx/vhost.d/* &> /dev/null
       wait
-      sed -i "s/.*listen .*\*:443/  listen                       \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/adminer.* &> /dev/null
+      sed -i "s/.*listen .*\*:443/  listen  \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/adminer.* &> /dev/null
       wait
-      sed -i "s/.*listen .*\*:443/  listen                       \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/cgp.* &> /dev/null
+      sed -i "s/.*listen .*\*:443/  listen  \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/cgp.* &> /dev/null
       wait
-      sed -i "s/.*listen .*\*:443/  listen                       \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/chive.* &> /dev/null
+      sed -i "s/.*listen .*\*:443/  listen  \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/chive.* &> /dev/null
       wait
-      sed -i "s/.*listen .*\*:443/  listen                       \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/sqlbuddy.* &> /dev/null
+      sed -i "s/.*listen .*\*:443/  listen  \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/sqlbuddy.* &> /dev/null
       wait
       sed -i "s/SSLv3 TLSv1;/TLSv1.2 TLSv1.3;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
       wait
@@ -750,8 +755,9 @@ _nginx_config_update_fix() {
       wait
       sed -i "s/.*resolver_timeout .*//g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf &> /dev/null
       wait
-      sed -i "s/ssl_prefer_server_ciphers .*/ssl_prefer_server_ciphers on;\n  ssl_stapling on;\n  ssl_stapling_verify on;\n  resolver 1.1.1.1 1.0.0.1 valid=300s;\n  resolver_timeout 5s;/g" \
-        /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf &> /dev/null
+      sed -i "s/.*http2.*on;//g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf &> /dev/null
+      wait
+      sed -i "s/ssl_prefer_server_ciphers .*/ssl_prefer_server_ciphers on;\n  http2 on;/g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf &> /dev/null
       wait
       sed -i "s/ *$//g; /^$/d" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
       wait
@@ -870,7 +876,7 @@ _nginx_config_update_fix() {
       sed -i "s/.*listen.*127.0.0.1:80;.*//g" \
         /var/aegir/config/server_*/nginx.conf &> /dev/null
       wait
-      sed -i "s/listen .*\*:80;/listen        \*:80;/g" \
+      sed -i "s/listen .*\*:80;/listen  \*:80;/g" \
         /var/aegir/config/server_*/nginx.conf &> /dev/null
       wait
     fi
@@ -878,13 +884,13 @@ _nginx_config_update_fix() {
       sed -i "s/.*listen.*127.0.0.1:80;.*//g" \
         /data/disk/*/config/server_*/nginx.conf &> /dev/null
       wait
-      sed -i "s/listen .*\*:80;/listen        \*:80;/g" \
+      sed -i "s/listen .*\*:80;/listen  \*:80;/g" \
         /data/disk/*/config/server_*/nginx.conf &> /dev/null
       wait
-      sed -i "s/.*listen .*\*:80;/  listen        \*:80;/g" \
+      sed -i "s/.*listen .*\*:80;/  listen  \*:80;/g" \
         /data/disk/*/config/server_*/nginx/vhost.d/* &> /dev/null
       wait
-      sed -i "s/.*listen .*\*:443/  listen        \*:443/g" \
+      sed -i "s/.*listen .*\*:443/  listen  \*:443/g" \
         /data/disk/*/config/server_*/nginx/vhost.d/* &> /dev/null
       wait
       sed -i "s/.*ssl .*on;//g" \
@@ -930,7 +936,7 @@ _nginx_config_update_fix() {
     ###
     if [ -d "/data/u" ]; then
       for _File in $(find /data/disk/*/config/includes/ -type f -exec grep -l will_expire_in {} +); do
-        rm -f "$File"
+        rm -f "${_File}"
       done
       for Vght in `ls /data/disk/*/log/CANCELLED 2> /dev/null \
         | cut -d"/" -f4 \
