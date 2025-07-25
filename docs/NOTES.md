@@ -34,7 +34,7 @@ _XTRAS_LIST="ALL"
 _XTRAS_LIST="ALL SR9"
 ```
 
-- Configuration file template: [barracuda.cnf](https://github.com/omega8cc/boa/tree/5.x-dev/docs/cnf/barracuda.cnf)
+- Configuration file template: [barracuda.cnf](https://github.com/omega8cc/boa/tree/5.x-lts/docs/cnf/barracuda.cnf)
 
 ## Barracuda _EASY_SETUP options explained
 
@@ -86,11 +86,11 @@ With `_EASY_SETUP=LOCAL` option (not enabled by default), Barracuda will install
 
 ## Barracuda and Octopus Customized Install and Upgrades
 
-While the BOA system installed per [docs/INSTALL.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/INSTALL.md) comes with many options set by default to make it as easy as possible, you may want to customize it further on upgrade by editing various settings stored in the BOA config files, respectively:
+While the BOA system installed per [docs/INSTALL.md](https://github.com/omega8cc/boa/tree/5.x-lts/docs/INSTALL.md) comes with many options set by default to make it as easy as possible, you may want to customize it further on upgrade by editing various settings stored in the BOA config files, respectively:
 
-- `/root/.barracuda.cnf` - check [barracuda.cnf](https://github.com/omega8cc/boa/tree/5.x-dev/docs/cnf/barracuda.cnf) template
-- `/root/.o1.octopus.cnf` - check [octopus.cnf](https://github.com/omega8cc/boa/tree/5.x-dev/docs/cnf/octopus.cnf) template
-- `/root/.o2.octopus.cnf` - check [octopus.cnf](https://github.com/omega8cc/boa/tree/5.x-dev/docs/cnf/octopus.cnf) template
+- `/root/.barracuda.cnf` - check [barracuda.cnf](https://github.com/omega8cc/boa/tree/5.x-lts/docs/cnf/barracuda.cnf) template
+- `/root/.o1.octopus.cnf` - check [octopus.cnf](https://github.com/omega8cc/boa/tree/5.x-lts/docs/cnf/octopus.cnf) template
+- `/root/.o2.octopus.cnf` - check [octopus.cnf](https://github.com/omega8cc/boa/tree/5.x-lts/docs/cnf/octopus.cnf) template
 - etc.
 
-Please read [docs/UPGRADE.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/UPGRADE.md) for simple upgrades how-to.
+Please read [docs/UPGRADE.md](https://github.com/omega8cc/boa/tree/5.x-lts/docs/UPGRADE.md) for simple upgrades how-to.
