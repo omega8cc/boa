@@ -42,6 +42,7 @@ foreach $COMMAND (sort keys %li_cnt) {
   if ($COMMAND =~ /php-fpm/) {$fpmlives = "YES"; $fpmsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /postfix/) {$postfixlives = "YES"; $postfixsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /pure-ftpd/) {$ftplives = "YES"; $ftpsumar = $li_cnt{$COMMAND};}
+  if ($COMMAND =~ /valkey-server/) {$valkeylives = "YES"; $valkeysumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /redis-server/) {$redislives = "YES"; $redissumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /newrelic-daemon/) {$newrelicdaemonlives = "YES"; $newrelicdaemonsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /nrsysmond/) {$newrelicsysmondlives = "YES"; $newrelicsysmondsumar = $li_cnt{$COMMAND};}
@@ -100,6 +101,7 @@ print "\n $nginxsumar Nginx procs\t\tGLOBAL" if ($nginxlives);
 print "\n $unboundsumar DNS procs\t\tGLOBAL" if ($unboundlives);
 print "\n $phpsumar PHP procs\t\tGLOBAL" if ($phplives);
 print "\n $postfixsumar Postfix procs\tGLOBAL" if ($postfixlives);
+print "\n $valkeysumar Valkey procs\t\tGLOBAL" if ($valkeylives);
 print "\n $redissumar Redis procs\t\tGLOBAL" if ($redislives);
 print "\n $newrelicdaemonsumar New Relic Apps\tGLOBAL" if ($newrelicdaemonlives);
 print "\n $newrelicsysmondsumar New Relic Server\tGLOBAL" if ($newrelicsysmondlives);
@@ -134,6 +136,23 @@ if (-e "/usr/sbin/unbound" && !$unboundsumar) {
 
 if ((!$mysqlsumar || $mysqlsumar > 150) && !-f "/run/mysql_restart_running.pid" && !-f "/run/boa_run.pid" && !-f "/root/.remote.db.cnf") {
   system("bash /var/xdrago/move_sql.sh");
+}
+
+if (-f "/etc/init.d/valkey-server") {
+  if (!-d "/run/valkey") {
+    system("mkdir -p /run/valkey");
+    system("chown -R valkey:valkey /run/valkey");
+  }
+  if (!$valkeysumar) {
+    system("service valkey-server start");
+  }
+  local(@RSARR)=`grep -e redis_client_socket /data/conf/global.inc`;
+  foreach $line (@RSARR) {
+    if ($line =~ /redis_client_socket/) {$valkeysocket = "YES";}
+  }
+  system("service valkey-server restart") if (!-e "/run/valkey/valkey.sock" && $valkeysocket);
+  sleep(2);
+  system("service valkey-server restart") if (!-f "/run/valkey/valkey.pid");
 }
 
 if (-f "/etc/init.d/redis-server") {

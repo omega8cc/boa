@@ -622,7 +622,11 @@ _fix_on_upgrade() {
   _php_config_check_update
   _nginx_conf_update
   _global_inc_conf_update
-  _redis_password_update
+  if [ -e "/etc/init.d/valkey-server" ]; then
+    _valkey_password_update
+  elif [ -e "/etc/init.d/redis-server" ]; then
+    _redis_password_update
+  fi
 }
 
 #
@@ -2026,6 +2030,8 @@ _barracuda_cnf() {
     echo "_PHP_SINGLE_INSTALL=${_PHP_SINGLE_INSTALL}"         >> ${_barCnf}
 
     echo "###"                                                >> ${_barCnf}
+    echo "_VALKEY_LISTEN_MODE=${_VALKEY_LISTEN_MODE}"         >> ${_barCnf}
+    echo "_VALKEY_MAJOR_RELEASE=${_VALKEY_MAJOR_RELEASE}"     >> ${_barCnf}
     echo "_REDIS_LISTEN_MODE=${_REDIS_LISTEN_MODE}"           >> ${_barCnf}
     echo "_REDIS_MAJOR_RELEASE=${_REDIS_MAJOR_RELEASE}"       >> ${_barCnf}
     echo "_RESERVED_RAM=${_RESERVED_RAM}"                     >> ${_barCnf}
@@ -2039,7 +2045,7 @@ _barracuda_cnf() {
     echo "###"                                                >> ${_barCnf}
     echo "_CUSTOM_CONFIG_CSF=${_CUSTOM_CONFIG_CSF}"           >> ${_barCnf}
     echo "_CUSTOM_CONFIG_LSHELL=${_CUSTOM_CONFIG_LSHELL}"     >> ${_barCnf}
-    echo "_CUSTOM_CONFIG_REDIS=${_CUSTOM_CONFIG_REDIS}"       >> ${_barCnf}
+    echo "_CUSTOM_CONFIG_VALKEY=${_CUSTOM_CONFIG_VALKEY}"       >> ${_barCnf}
     echo "_CUSTOM_CONFIG_SQL=${_CUSTOM_CONFIG_SQL}"           >> ${_barCnf}
 
     echo "###"                                                >> ${_barCnf}
@@ -2294,9 +2300,9 @@ _barracuda_cnf() {
       echo "_AEGIR_UPGRADE_ONLY=${_AEGIR_UPGRADE_ONLY}" >> ${_barCnf}
     fi
 
-    _CUSTOM_CONFIG_REDIS_TEST=$(grep _CUSTOM_CONFIG_REDIS ${_barCnf} 2>&1)
-    if [[ ! "${_CUSTOM_CONFIG_REDIS_TEST}" =~ "_CUSTOM_CONFIG_REDIS" ]]; then
-      echo "_CUSTOM_CONFIG_REDIS=${_CUSTOM_CONFIG_REDIS}" >> ${_barCnf}
+    _CUSTOM_CONFIG_VALKEY_TEST=$(grep _CUSTOM_CONFIG_VALKEY ${_barCnf} 2>&1)
+    if [[ ! "${_CUSTOM_CONFIG_VALKEY_TEST}" =~ "_CUSTOM_CONFIG_VALKEY" ]]; then
+      echo "_CUSTOM_CONFIG_VALKEY=${_CUSTOM_CONFIG_VALKEY}" >> ${_barCnf}
     fi
 
     _NEWRELIC_KEY_TEST=$(grep _NEWRELIC_KEY ${_barCnf} 2>&1)
@@ -2341,6 +2347,16 @@ _barracuda_cnf() {
     _USE_MYSQLTUNER_TEST=$(grep _USE_MYSQLTUNER ${_barCnf} 2>&1)
     if [[ ! "${_USE_MYSQLTUNER_TEST}" =~ "_USE_MYSQLTUNER" ]]; then
       echo "_USE_MYSQLTUNER=${_USE_MYSQLTUNER}" >> ${_barCnf}
+    fi
+
+    _VALKEY_LISTEN_MODE_TEST=$(grep _VALKEY_LISTEN_MODE ${_barCnf} 2>&1)
+    if [[ ! "${_VALKEY_LISTEN_MODE_TEST}" =~ "_VALKEY_LISTEN_MODE" ]]; then
+      echo "_VALKEY_LISTEN_MODE=${_VALKEY_LISTEN_MODE}" >> ${_barCnf}
+    fi
+
+    _VALKEY_MAJOR_RELEASE_TEST=$(grep _VALKEY_MAJOR_RELEASE ${_barCnf} 2>&1)
+    if [[ ! "${_VALKEY_MAJOR_RELEASE_TEST}" =~ "_VALKEY_MAJOR_RELEASE" ]]; then
+      echo "_VALKEY_MAJOR_RELEASE=${_VALKEY_MAJOR_RELEASE}" >> ${_barCnf}
     fi
 
     _REDIS_LISTEN_MODE_TEST=$(grep _REDIS_LISTEN_MODE ${_barCnf} 2>&1)
@@ -2458,9 +2474,9 @@ _barracuda_cnf() {
     _devM="deb.devuan.org"
     _debM="deb.debian.org"
 
-    sed -i "s/^_LOCAL_DEVUAN_.*/_LOCAL_DEVUAN_MIRROR=${_devM}/g"  ${_barCnf}
+    sed -i "s/^_LOCAL_DEVUAN_.*/_LOCAL_DEVUAN_MIRROR=${_devM}/g" ${_barCnf}
     wait
-    sed -i "s/^_LOCAL_DEBIAN_.*/_LOCAL_DEBIAN_MIRROR=${_debM}/g"  ${_barCnf}
+    sed -i "s/^_LOCAL_DEBIAN_.*/_LOCAL_DEBIAN_MIRROR=${_debM}/g" ${_barCnf}
     wait
 
     sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                   ${_barCnf}
@@ -2704,7 +2720,11 @@ _run_apt_get_dist_upgrade() {
   ### Update rsyslog configuration early
   _rsyslog_config_update
   ### Reload key services if needed early
-  _mrun "service redis-server reload" 2> /dev/null
+  if [ -e "/etc/init.d/valkey-server" ]; then
+    _mrun "service valkey-server reload" 2> /dev/null
+  elif [ -e "/etc/init.d/redis-server" ]; then
+    _mrun "service redis-server reload" 2> /dev/null
+  fi
   _mrun "service nginx reload" 2> /dev/null
   _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
@@ -2988,6 +3008,7 @@ _php_install_deps() {
     && [ ! -e "/usr/local/include/curl/easy.h" ]; then
     _mrun "${_INSTAPP} libcurl4-openssl-dev" 2> /dev/null
   fi
+  _mrun "${_INSTAPP} libavif-dev" 2> /dev/null
   _mrun "${_INSTAPP} libgd-dev" 2> /dev/null
   _mrun "${_INSTAPP} libgd3" 2> /dev/null
   _mrun "${_INSTAPP} libjpeg-dev" 2> /dev/null
@@ -3248,17 +3269,52 @@ _get_drush_ten() {
 }
 
 #
-# Install or update Drush 8.
+# Install or update Drush 8 phar.
 _get_drush_eight() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _get_drush_eight"
   fi
   rm -rf /opt/tools/drush/8/*
   cd /opt/tools/drush/8/
-  _get_dev_ext "drush-${_DRUSH_EIGHT_VRN}.tar.gz"
-  touch /opt/tools/drush/8/.ctrl.${_tRee}.${_xSrl}.pid
+  _get_dev_ext "drush8.phar-${_DRUSH_EIGHT_VRN}.gz"
+  if [ -e "/opt/tools/drush/8/drush8.phar-${_DRUSH_EIGHT_VRN}" ]; then
+    cp -af drush8.phar-${_DRUSH_EIGHT_VRN} /usr/local/bin/drush8.phar
+    chmod 755 /usr/local/bin/drush8.phar
+    mkdir -p /opt/tools/drush/8/drush
+    ln -sf /usr/local/bin/drush8.phar /opt/tools/drush/8/drush/drush
+    ln -sf /usr/local/bin/drush8.phar /opt/tools/drush/8/drush/drush.php
+    touch /opt/tools/drush/8/.ctrl.${_tRee}.${_xSrl}.pid
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: Drush ${_DRUSH_EIGHT_VRN} phar installation complete"
+    fi
+  else
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: Drush ${_DRUSH_EIGHT_VRN} phar installation failed!"
+    fi
+  fi
+}
+
+#
+# Install or update CiviCRM CLI Tool phar.
+_get_civicrm_cli() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "INFO: Drush ${_DRUSH_EIGHT_VRN} installation complete"
+    _msg "PROC: _get_civicrm_cli"
+  fi
+  rm -rf /opt/tmp/cv.phar*
+  cd /opt/tmp/
+  _get_dev_ext "cv.phar.gz"
+  if [ -e "/opt/tmp/cv.phar" ]; then
+    cp -af cv.phar /usr/local/bin/cv.phar
+    chmod 755 /usr/local/bin/cv.phar
+    ln -sf /usr/local/bin/cv.phar /usr/bin/cv
+    touch /opt/tools/drush/.ci.ctrl.${_tRee}.${_xSrl}.pid
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: CiviCRM CLI Tool phar installation complete"
+    fi
+  else
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: CiviCRM CLI Tool phar installation failed!"
+    fi
   fi
 }
 
@@ -3273,12 +3329,6 @@ _drush_system_install_update() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: Installing supported Drush versions..."
     fi
-    ###
-    ### Force all Drush versions update if serial is not new
-    rm -f /opt/tools/drush/8/.ctrl.${_tRee}.${_xSrl}.pid
-    rm -f /opt/tools/drush/10/.ctrl.${_tRee}.${_xSrl}.pid
-    rm -f /opt/tools/drush/11/.ctrl.${_tRee}.${_xSrl}.pid
-    ###
     ###--------------------###
     if [ -e "/opt/tools/drush/launcher" ]; then
       rm -rf /opt/tools/drush/launcher
@@ -3316,15 +3366,15 @@ _drush_system_install_update() {
         | cut -d" " -f8 \
         | awk '{ print $1}' 2>&1)
       if [ "${_DRUSH_ITD}" != "${_DRUSH_EIGHT_TEST_VRN}" ] \
-        || [ ! -x "/opt/tools/drush/8/drush/drush.php" ] \
+        || [ ! -x "/usr/local/bin/drush8.phar" ] \
         || [ ! -e "/opt/tools/drush/8/.ctrl.${_tRee}.${_xSrl}.pid" ]; then
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "INFO: Drush ${_DRUSH_EIGHT_VRN} re-installation required"
+          _msg "INFO: Drush ${_DRUSH_EIGHT_VRN} phar re-installation required"
         fi
         _get_drush_eight
       else
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "INFO: Drush ${_DRUSH_EIGHT_VRN} already installed"
+          _msg "INFO: Drush ${_DRUSH_EIGHT_VRN} phar already installed"
         fi
       fi
     fi
@@ -3365,13 +3415,13 @@ _drush_system_install_update() {
       fi
     fi
     _set_drush_perm
-    if [ -x "/opt/tools/drush/8/drush/drush.php" ]; then
+    if [ -x "/usr/local/bin/drush8.phar" ]; then
       rm -f /usr/bin/drush8
       rm -f /usr/bin/drush
-      ln -s /opt/tools/drush/8/drush/drush.php /usr/bin/drush8
-      ln -s /opt/tools/drush/8/drush/drush.php /usr/bin/drush
+      ln -s /usr/local/bin/drush8.phar /usr/bin/drush8
+      ln -s /usr/local/bin/drush8.phar /usr/bin/drush
     else
-      _msg "FAIL: Drush ${_DRUSH_EIGHT_VRN} installation failed!"
+      _msg "FAIL: Drush ${_DRUSH_EIGHT_VRN} phar installation failed!"
     fi
     if [ -x "/opt/tools/drush/10/drush/vendor/drush/drush/drush" ]; then
       _clean_drush_ten
@@ -3384,6 +3434,10 @@ _drush_system_install_update() {
       _msg "FAIL: Drush ${_DRUSH_ELEVEN_VRN} installation failed!"
     fi
     chown -R root:root /opt/tools/drush
+    if [ ! -x "/usr/local/bin/cv.phar" ] \
+      || [ ! -e "/opt/tools/drush/.ci.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+      _get_civicrm_cli
+    fi
     cd /opt/tmp
   fi
 }
@@ -5089,7 +5143,11 @@ _if_enforce_apparmor_profiles() {
         fi
         _mrun "bash /var/xdrago/move_sql.sh" 2> /dev/null
         wait
-        _mrun "service redis-server reload" 2> /dev/null
+        if [ -e "/etc/init.d/valkey-server" ]; then
+          _mrun "service valkey-server reload" 2> /dev/null
+        elif [ -e "/etc/init.d/redis-server" ]; then
+          _mrun "service redis-server reload" 2> /dev/null
+        fi
         _mrun "killall unbound" 2> /dev/null
         _mrun "killall pure-ftpd" 2> /dev/null
         _mrun "killall rsyslogd" 2> /dev/null
@@ -5931,7 +5989,11 @@ _if_post_major_os_upgrade() {
     ### Update rsyslog configuration early
     _rsyslog_config_update
     ### Reload key services if needed early
-    _mrun "service redis-server reload" 2> /dev/null
+    if [ -e "/etc/init.d/valkey-server" ]; then
+      _mrun "service valkey-server reload" 2> /dev/null
+    elif [ -e "/etc/init.d/redis-server" ]; then
+      _mrun "service redis-server reload" 2> /dev/null
+    fi
     _mrun "service nginx reload" 2> /dev/null
     _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
@@ -6614,7 +6676,11 @@ _if_major_os_upgrade() {
     ### Update rsyslog configuration early
     _rsyslog_config_update
     ### Reload key services if needed early
-    _mrun "service redis-server reload" 2> /dev/null
+    if [ -e "/etc/init.d/valkey-server" ]; then
+      _mrun "service valkey-server reload" 2> /dev/null
+    elif [ -e "/etc/init.d/redis-server" ]; then
+      _mrun "service redis-server reload" 2> /dev/null
+    fi
     _mrun "service nginx reload" 2> /dev/null
     _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
@@ -7800,7 +7866,7 @@ _xdrago_install_upgrade() {
     fi
     _if_hosted_sys
     if [ "${_hostedSys}" = "YES" ]; then
-      if [ ! -e "/etc/init.d/redis-server" ]; then
+      if [ ! -e "/etc/init.d/ssh" ]; then
         _NGINX_DOS_LIMIT=8888
       else
         if [ -z "${_NGINX_DOS_LIMIT}" ] \
@@ -7879,7 +7945,7 @@ _xdrago_install_upgrade() {
     fi
     _if_hosted_sys
     if [ "${_hostedSys}" = "YES" ]; then
-      if [ ! -e "/etc/init.d/redis-server" ]; then
+      if [ ! -e "/etc/init.d/ssh" ]; then
         _NGINX_DOS_LIMIT=8888
       else
         if [ -z "${_NGINX_DOS_LIMIT}" ] \
@@ -8607,9 +8673,13 @@ _initd_update() {
       _mrun "service jetty7 start" 2> /dev/null
     fi
     if [ ! -e "/run/aegir_upgrade.pid" ]; then
-      _msg "INFO: Starting Redis, PHP-FPM and Nginx"
-      _mrun "service redis-server start" 2> /dev/null
-      _mrun "service redis-server reload" 2> /dev/null
+      if [ -e "/etc/init.d/valkey-server" ]; then
+        _msg "INFO: Starting Valkey, PHP-FPM and Nginx"
+        _mrun "service valkey-server start" 2> /dev/null
+      elif [ -e "/etc/init.d/redis-server" ]; then
+        _msg "INFO: Starting Redis, PHP-FPM and Nginx"
+        _mrun "service redis-server start" 2> /dev/null
+      fi
       _mrun "update-rc.d -f php5-fpm remove" 2> /dev/null
       _mrun "update-rc.d cron defaults" 2> /dev/null
       _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
@@ -8706,11 +8776,18 @@ _initd_update() {
     fi
     if [ ! -e "/run/aegir_upgrade.pid" ] \
       && [ ! -e "/root/.proxy.cnf" ]; then
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        _msg "INFO: Reloading Redis, PHP-FPM and Nginx..."
-      fi
       _mrun "update-rc.d -f php5-fpm remove" 2> /dev/null
-      _mrun "service redis-server reload" 2> /dev/null
+      if [ -e "/etc/init.d/valkey-server" ]; then
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "INFO: Reloading Valkey, PHP-FPM and Nginx..."
+        fi
+        _mrun "service valkey-server reload" 2> /dev/null
+      elif [ -e "/etc/init.d/redis-server" ]; then
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "INFO: Reloading Redis, PHP-FPM and Nginx..."
+        fi
+        _mrun "service redis-server reload" 2> /dev/null
+      fi
       _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
@@ -8887,9 +8964,11 @@ _sysctl_update() {
       fi
     fi
     if [ -e "/etc/security/limits.d" ] \
-      && [ ! -e "/etc/security/limits.d/solr9.conf" ]; then
+      && [ ! -e "/etc/security/limits.d/valkey.conf" ]; then
       echo "sshd soft nofile 524288" > /etc/security/limits.d/sshd.conf
       echo "sshd hard nofile 999999" >> /etc/security/limits.d/sshd.conf
+      echo "valkey soft nofile 65535" > /etc/security/limits.d/valkey.conf
+      echo "valkey hard nofile 524288" >> /etc/security/limits.d/valkey.conf
       echo "redis soft nofile 65535" > /etc/security/limits.d/redis.conf
       echo "redis hard nofile 524288" >> /etc/security/limits.d/redis.conf
       echo "nginx soft nofile 524288" > /etc/security/limits.d/nginx.conf
@@ -8902,9 +8981,13 @@ _sysctl_update() {
       echo "solr9 hard nofile 524288" >> /etc/security/limits.d/solr9.conf
       echo "@www-data soft nofile 65535" > /etc/security/limits.d/www.conf
       echo "@www-data hard nofile 524288" >> /etc/security/limits.d/www.conf
-      _mrun "service redis-server restart" 2> /dev/null
+      if [ -e "/etc/init.d/valkey-server" ]; then
+        _mrun "service valkey-server restart" 2> /dev/null
+      elif [ -e "/etc/init.d/redis-server" ]; then
+        _mrun "service redis-server restart" 2> /dev/null
+      fi
       _mrun "service nginx restart" 2> /dev/null
-      _mrun "service sshd restart" 2> /dev/null
+      _mrun "service ssh restart" 2> /dev/null
       _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then

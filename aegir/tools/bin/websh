@@ -2,7 +2,7 @@
 
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/local/ssl3
 
-_DEST_DRUSH="/opt/tools/drush/8/drush/drush.php"
+_DEST_DRUSH="/usr/local/bin/drush8.phar"
 
 _forward_to_dash() {
   if [[ "${_ARGS}" =~ "sudo_noexec.so" ]] && [[ "${_LTD_GID}" =~ "ltd-shell-more"($) ]]; then
@@ -210,6 +210,20 @@ if [[ ! "${_ARGS}" =~ "composer" ]] \
       esac
     done
     ### echo _ARR is ${_ARR}
+  elif [[ "${_ARGS}" =~ "php /usr/local/bin/drush8.phar" ]]; then
+    _R_M=`echo -n ${_ARGS} | grep -o "php /usr/local/bin/drush8.phar"`
+    ### echo _R_M is ${_R_M}
+    _R_M=${_R_M//\//\\\/}
+    ### echo _R_M is ${_R_M}
+    _CLR=`echo ${_ARGS} | sed "s/\${_R_M}//g"`
+    _ARR=() # the buffer array for filtered parameters
+    for arg in "${_CLR}"; do
+      case ${_R_M} in
+        $arg\ * | *\ $arg | *\ $arg\ *) ;;
+        *) _ARR+=("$arg") ;;
+	  esac
+    done
+    ### echo _ARR is ${_ARR}
   elif [[ "${_ARGS}" =~ "php /opt/tools/" ]]; then
     _R_M=`echo -n ${_ARGS} | grep -o "php /opt/tools/drush/.*/drush/drush.php"`
     ### echo _R_M is ${_R_M}
@@ -398,13 +412,13 @@ export USER=${USER}
 # Check PHP CLI version defined.
 check_php_cli_version() {
   ### echo CHK start check_php_cli_version
-  if [ "${HOME}" = "/var/aegir" ]; then
+  if [ "${HOME}" = "/var/aegir" ] && [ -f "/var/aegir/drush/drush.php" ]; then
     _PHP_CLI=$(grep "/opt/php" /var/aegir/drush/drush.php 2>&1)
-  elif [[ "${HOME}" =~ "/data/disk/" ]]; then
-    _PHP_CLI=$(grep "/opt/php" /data/disk/${_Y_USR}/tools/drush/drush.php 2>&1)
   else
     if [ -f "/data/disk/${_Y_USR}/tools/drush/drush.php" ]; then
       _PHP_CLI=$(grep "/opt/php" /data/disk/${_Y_USR}/tools/drush/drush.php 2>&1)
+    elif [ -f "/data/disk/${_Y_USR}/static/control/cli.info" ]; then
+      _PHP_CLI="php$(tr -d '.\n' < /data/disk/${_Y_USR}/static/control/cli.info)"
     fi
   fi
   ### echo CHK 1 _PHP_CLI is ${_PHP_CLI}
@@ -485,7 +499,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
         || [[ "${_ARGS}" =~ "drush11 " ]] \
         || [[ "${_ARGS}" =~ "vendor/drush/drush/drush.php " ]]; then
         _PWD=$(pwd 2>&1)
-        _DEST_DRUSH="/opt/tools/drush/8/drush/drush.php"
+        _DEST_DRUSH="/usr/local/bin/drush8.phar"
         if [[ "${_ARGS}" =~ "vendor/bin/drush " ]]; then
           _DEST_DRUSH="${_R_M}/vendor/drush/drush/drush.php"
         fi
@@ -554,7 +568,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           fi
         elif [[ "${_ARGS}" =~ "drush" ]] \
           || [[ "${_ARGS}" =~ "drush8 " ]]; then
-          _DEST_DRUSH="/opt/tools/drush/8/drush/drush.php"
+          _DEST_DRUSH="/usr/local/bin/drush8.phar"
           if [[ "${_ARGS}" =~ "vendor/bin/drush " ]]; then
             _DEST_DRUSH="${_R_M}/vendor/drush/drush/drush.php"
           fi

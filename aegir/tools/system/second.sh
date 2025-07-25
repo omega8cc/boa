@@ -258,7 +258,7 @@ _load_control() {
 }
 
 # Main execution
-for _iteration in {1..12}; do
+for _iteration in {1..9}; do
   echo "----------------------------"
   echo "Iteration ${_iteration}:"
   perl /var/xdrago/monitor/check/hackcheck.pl &
