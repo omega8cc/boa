@@ -1,3 +1,23 @@
+
+###
+### Stable BOA-5.7.11-lts - Full Edition
+### Date: Fri Jul 25 10:26:18 PM BST 2025 in London
+### Welcome Drupal 11—Aegir Mission Impossible—Again!
+###
+
+@=> New BOA-5.7.11 LTS Release
+
+  After nearly a year trailing behind the PRO branch, the BOA LTS edition
+  finally catches up — and it does so in style. This long-awaited release
+  brings all the advancements, fixes, and innovations introduced in BOA PRO,
+  including the headline feature: seamless Drupal 11 support with Aegir 3,
+  while preserving the rock-solid stability expected from LTS.
+
+  With BOA-5.7.11-lts, you get the best of both worlds — cutting-edge
+  capabilities for next-generation Drupal and continued reliability
+  for legacy sites.
+
+
 ###
 ### Stable BOA-5.7.11-pro - Full Edition
 ### Date: Fri Jul 25 06:53:03 PM BST 2025 in London
