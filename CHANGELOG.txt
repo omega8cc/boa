@@ -1,4 +1,145 @@
 ###
+### Stable BOA-5.7.11-pro - Full Edition
+### Date: Fri Jul 25 06:53:03 PM BST 2025 in London
+### Welcome Drupal 11—Aegir Mission Impossible—Again!
+###
+
+@=> New BOA-5.7.11 PRO Release
+
+  Drupal 11 with Aegir 3: They Said It Couldn’t Be Done — We Did It Anyway
+
+  The future of Drupal hosting is here! With BOA-5.7.11 PRO, we proudly deliver
+  what many thought impossible—full Drupal 11 support integrated with Aegir 3.
+
+  This groundbreaking feature not only pushes the boundaries of what the BOA
+  can achieve but also reaffirms our commitment to staying ahead of the curve
+  for modern Drupal deployments.
+
+  This release marks a major milestone: for the first time, BOA users can
+  seamlessly install, manage, and scale Drupal 11 sites with all the automation,
+  performance, and reliability you’ve come to expect.
+
+  Powered by Percona 8 and fine-tuned to leverage the latest innovations
+  across the stack, this update sets a new standard for hosting next-generation
+  Drupal applications while continuing to fully support legacy Drupal versions,
+  ensuring smooth operations for every site in your ecosystem, old or new.
+
+  We are thrilled to introduce BOA-5.7.11 PRO, our 5th release under the
+  new branch structure and dual licensing model. It merges seven months of
+  intense development from the DEV branch, delivering over 340 commits packed
+  with powerful features, critical fixes, and enhancements.
+
+  Thank you to everyone who supports our work by purchasing a BOA PRO license:
+  https://omega8.cc/boapro.
+
+  As always, this announcement highlights only the most impactful changes.
+  For a full breakdown, explore the complete commit history.
+
+@=> New Features
+
+    * Drupal 11 support (requires Percona 8)
+    * Install or update CiviCRM CLI Tool phar
+    * MultiCore Apache Solr 9 support
+    * Use Valkey and drop Redis support
+    * Write usage reports also to ~/static/usage/
+
+@=> Improvements
+
+    * Add _mysql_high_load procedure
+    * Add --with-avi to compatible PHP versions 8.1+
+    * Add check for downloaded dehydrated script integrity
+    * Add fstab helper for Linode Volumes
+    * Add mysql root password reset helper
+    * Allow to force symlinks mode with empty /data/conf/force_symlinks.conf
+    * Drupal 10+ core patches files are no longer added to codebase
+    * Drupal 11 site installation details including admin pwd in the task log
+    * Drupal 11 site is installed via site-platform-local Drush
+    * Improve _PHP_CLI detection, also from static/control/cli.info
+    * Improve permissions fix to include parent dir if app root != web root
+    * Local Drush locking/unlocking no longer adds control files in codebase
+    * Lock Local Drush and Symfony Console Input/Style in daily.sh
+    * Lock/Unlock Local Drush is more reliable with both Provision and bash
+    * More robust support for real IP detection behind vaious proxies
+    * Symfony Console Input/Style locking more reliable with live diff/patch
+    * Use faster SQL auto-healing for Too many connections
+    * Use older CSF/LFD for legacy systems
+    * Use queue.redis_reliable but only for core D8 to D10
+
+@=> Changes
+
+    * Always use system Drush 8 PHAR instead of Aegir local Drush
+    * Install System Drush 8 as PHAR (self-contained)
+    * Mark Apache Solr 4 with Jetty 9 as (deprecated)
+    * Solr is no longer included via ALL keyword in the _XTRAS_LIST
+
+@=> Upgrades
+
+    * CSF 14.24
+    * cURL 8.14.1
+    * dehydrated 0.7.3
+    * Drush 8.5.0.3
+    * MultiCore Apache Solr 9.8.1
+    * Nginx 1.29.0
+    * OpenSSH 10.0p2
+    * OpenSSL 3.4.2
+    * PHP 8.1.33
+    * PHP 8.2.29
+    * PHP 8.3.23
+    * PHP 8.4.10
+    * Valkey 7.2.10
+
+@=> Important Fixes
+
+    * Allow LE with HTTP Basic Auth fixed by Naurisr in #1790
+    * Remove too aggressive bots protection on /civicrm URLs
+
+@=> Drupal platforms available for installation -- docs/PLATFORMS.md
+
+	## Drupal 11
+
+	CK3 - [Commerce v.3] with core (11.2.2)
+	DE2 - [Drupal 11.2.2]
+	SCR - [Sector 11.0.x-dev] with core (11.2.0)
+	THR - [Thunder 8.2.1] with core (11.2.2)
+
+	## Drupal 10
+
+	CK2 - [Commerce v.2] with core (10.1.8)
+	DX0 - [Drupal 10.0.11]
+	DX1 - [Drupal 10.1.8]
+	DX2 - [Drupal 10.2.12]
+	DX3 - [Drupal 10.3.14]
+	DX4 - [Drupal 10.4.8]
+	DX5 - [Drupal 10.5.1]
+	DXP - [DXPR Marketing 10.3.0] with core (10.3.6)
+	EZC - [EzContent 2.2.15] with core (10.3.6)
+	FOS - [farmOS 3.3.1] with core (10.3.6)
+	LGV - [LocalGov 3.1.3] with core (10.5.1)
+	OCS - [OpenCulturas 2.2.1] with core (10.3.6)
+	OFD - [OpenFed 12.2.4] with core (10.2.10)
+	SOC - [Social 12.4.5] with core (10.2.10)
+	VBX - [Varbase 10.0.6] with core (10.5.1)
+	VB9 - [Varbase 9.1.10] with core (10.5.1)
+
+	## Drupal 9
+
+	DL9 - [Drupal 9.5.11]
+	OLS - [OpenLucius 2.0.0] with core (9.5.11)
+	OPG - [Opigno LMS 3.1.0] with core (9.5.11)
+
+	## Drupal 7
+
+	CK1 - [Commerce v.1] with core (7.103.1)
+	DL7 - [Drupal 7.103.1]
+	UC7 - [Ubercart 3.13] with core (7.103.1)
+
+	## Drupal 6
+
+	DL6 - [Pressflow 6.60.1]
+	UC6 - [Ubercart 2.15] with core (6.60.1)
+
+
+###
 ### Stable BOA-5.6.0-pro - Full Edition
 ### Date: Tue Dec 31 06:12:44 AM AEDT 2024 in Sydney
 ### Happy New Year!

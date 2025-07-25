@@ -1685,6 +1685,9 @@ _install_php_multi() {
       fi
     fi
   fi
+  if [ "$1" = "81" ] || [ "$1" = "82" ] || [ "$1" = "83" ] || [ "$1" = "84" ]; then
+    _PHP_EXTRA="${_PHP_EXTRA} --with-avi"
+  fi
   if [ "${_OS_CODE}" = "daedalus" ] \
     || [ "${_OS_CODE}" = "chimaera" ] \
     || [ "${_OS_CODE}" = "beowulf" ] \
