@@ -1205,13 +1205,13 @@ _up_proceed() {
     _check_sql_access
   fi
   if [ "${_cmNd}" = "up-dev" ]; then
-    _tRee=dev
+    _tRee=lts
   elif [ "${_cmNd}" = "up-pro" ]; then
     _tRee=pro
   elif [ "${_cmNd}" = "up-lts" ]; then
     _tRee=lts
   elif [ "${_cmNd}" = "help" ] || [ "${_cmNd}" = "info" ]; then
-    _tRee=dev
+    _tRee=lts
   else
     echo
     echo "Sorry, you are trying not supported command.."
