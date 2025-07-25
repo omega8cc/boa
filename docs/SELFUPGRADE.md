@@ -8,7 +8,7 @@ You can now launch an Ægir upgrade to (re)install platforms listed in the file 
 
 This file, if it exists, will launch your Ægir upgrade in just a few minutes and will be automatically deleted afterward. This means that you can upgrade your Ægir instance easily to install supported platforms even if you don't have root access or are on a hosted BOA system.
 
-Note that this PID file will be ignored if there is no `platforms.info` file, as explained in [PLATFORMS.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/PLATFORMS.md).
+Note that this PID file will be ignored if there is no `platforms.info` file, as explained in [PLATFORMS.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/PLATFORMS.md).
 
 # Barracuda and Octopus Upgrade on Schedule with Root Access
 
