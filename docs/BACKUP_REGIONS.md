@@ -3,10 +3,10 @@
 
 This document outlines the supported regions and configuration guidelines for the `multiback` (used by root) and `mybackup` (used by regular users) backup scripts. It consolidates details about supported storage services, region IDs, bucket creation behavior, and user configuration steps.
 
-- New PRO Backups for BOA SysAdmin [docs/BACKUP_ROOT.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_ROOT.md)
-- New PRO Backups for Octopus Lshell User [docs/BACKUP_USER.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_USER.md)
-- New PRO Backups Retention Policy Configuration [docs/BACKUP_RETENTION.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_RETENTION.md)
-- New PRO Backups Supported Regions and Bucket Creation Guidelines (this document) [docs/BACKUP_REGIONS.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_REGIONS.md)
+- New PRO Backups for BOA SysAdmin [docs/BACKUP_ROOT.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/BACKUP_ROOT.md)
+- New PRO Backups for Octopus Lshell User [docs/BACKUP_USER.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/BACKUP_USER.md)
+- New PRO Backups Retention Policy Configuration [docs/BACKUP_RETENTION.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/BACKUP_RETENTION.md)
+- New PRO Backups Supported Regions and Bucket Creation Guidelines (this document) [docs/BACKUP_REGIONS.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/BACKUP_REGIONS.md)
 
 ---
 
@@ -337,10 +337,10 @@ However, when used in the bucket name, it becomes `back-to-USER-HOSTNAME-PROVIDE
 ### Configuration Overview
 
 #### Root Configuration (`multiback`)
-For system-wide backups managed by `multiback`, ensure that your configuration includes the necessary credentials in `/root/.remote_backups/credentials/` directory. More details in New Backups for BOA SysAdmin [docs/BACKUP_ROOT.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_ROOT.md)
+For system-wide backups managed by `multiback`, ensure that your configuration includes the necessary credentials in `/root/.remote_backups/credentials/` directory. More details in New Backups for BOA SysAdmin [docs/BACKUP_ROOT.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/BACKUP_ROOT.md)
 
 #### User Configuration (`mybackup`)
-Regular users should place their backup configurations in the `~/static/control/remote_backups/credentials/` directory. The `mybackup` script automatically uses these credentials to restore backups for the current user. More details in New Backups for Octopus Lshell User [docs/BACKUP_USER.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUP_USER.md)
+Regular users should place their backup configurations in the `~/static/control/remote_backups/credentials/` directory. The `mybackup` script automatically uses these credentials to restore backups for the current user. More details in New Backups for Octopus Lshell User [docs/BACKUP_USER.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/BACKUP_USER.md)
 
 ---
 

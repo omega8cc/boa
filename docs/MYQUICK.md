@@ -16,5 +16,5 @@ We need to emphasize this again: with this control file present, all normally sl
 
 Of course, the system still maintains nightly backups of all your sites using the new split SQL dump archives. However, with this control file present, you won't be able to use the restore task in Ægir because the site archive won't include the database dump. You can still find that SQL dump split into per-table files in the backups directory, though, in a subdirectory with a timestamp added, so you can still access it manually if needed.
 
-For more information, please visit the [documentation](https://github.com/omega8cc/boa/tree/5.x-dev/docs).
+For more information, please visit the [documentation](https://github.com/omega8cc/boa/tree/5.x-pro/docs).
 
