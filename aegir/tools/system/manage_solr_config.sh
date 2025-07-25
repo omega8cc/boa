@@ -4,7 +4,7 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 export _tRee=lts
-export _xSrl=570devT11
+export _xSrl=570ltsT11
 
 if [ -e "/root/.proxy.cnf" ]; then
   exit 0
