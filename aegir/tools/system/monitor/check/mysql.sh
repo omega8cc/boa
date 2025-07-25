@@ -7,7 +7,7 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 _pthOml="/var/xdrago/log/mysql.incident.log"
 
 _check_root() {
-  if [ `whoami` = "root" ]; then
+  if [ "$(id -u)" -eq 0 ]; then
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
     chmod a+w /dev/null
   else
@@ -17,8 +17,22 @@ _check_root() {
 }
 _check_root
 
-export _B_NICE=${_B_NICE//[^0-9]/}
-: "${_B_NICE:=10}"
+    # Sanitize to allow only digits and minus sign
+    export _B_NICE=${_B_NICE//[^0-9-]/}
+
+    # Validate and set default if necessary
+    if ! [[ "$_B_NICE" =~ ^-?[0-9]+$ ]]; then
+      _B_NICE=0
+    fi
+
+    # Clamp the value within -20 to 19
+    if (( _B_NICE < -20 )); then
+      _B_NICE=-20
+    elif (( _B_NICE > 19 )); then
+      _B_NICE=19
+    fi
+
+    renice ${_B_NICE} -p $$ &> /dev/null
 
 export _SQL_MAX_TTL=${_SQL_MAX_TTL//[^0-9]/}
 : "${_SQL_MAX_TTL:=3600}"
@@ -26,8 +40,14 @@ export _SQL_MAX_TTL=${_SQL_MAX_TTL//[^0-9]/}
 export _SQL_LOW_MAX_TTL=${_SQL_LOW_MAX_TTL//[^0-9]/}
 : "${_SQL_LOW_MAX_TTL:=60}"
 
-export _INCIDENT_EMAIL_REPORT=${_INCIDENT_EMAIL_REPORT//[^A-Z]/}
-: "${_INCIDENT_EMAIL_REPORT:=YES}"
+export _INCIDENT_REPORT=${_INCIDENT_REPORT//[^A-Z]/}
+: "${_INCIDENT_REPORT:=YES}"
+
+export _LOAD_THRESHOLD=${_LOAD_THRESHOLD//[^0-9.]/}
+: "${_LOAD_THRESHOLD:=33.0}" # Example: 1-minute load above 33 indicates high load
+
+export _THREAD_THRESHOLD=${_THREAD_THRESHOLD//[^0-9]/}
+: "${_THREAD_THRESHOLD:=99}" # Example: More than 99 MySQL threads
 
 if (( $(pgrep -fc 'mysql.sh') > 2 )); then
   echo "Too many mysql.sh running $(date)" >> /var/xdrago/log/too.many.log
@@ -35,11 +55,18 @@ if (( $(pgrep -fc 'mysql.sh') > 2 )); then
 fi
 
 _incident_email_report() {
-  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_EMAIL_REPORT}" = "YES" ]; then
-    _hName=$(cat /etc/hostname 2>&1)
-    echo "Sending Incident Report Email on $(date 2>&1)" >> ${_pthOml}
-    s-nail -s "Incident Report: ${1} on ${_hName} at $(date 2>&1)" ${_MY_EMAIL} < ${_pthOml}
+  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "YES" ]; then
+    _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
+    echo "Sending Incident Report Email on $(date)" >> ${_pthOml}
+    s-nail -s "Incident Report: ${1} on ${_hName} at $(date)" ${_MY_EMAIL} < ${_pthOml}
   fi
+}
+
+_valkey_cold_restart() {
+  killall -9 valkey-server &> /dev/null
+  rm -f /var/lib/valkey/*
+  service valkey-server start &> /dev/null
+  wait
 }
 
 _redis_cold_restart() {
@@ -52,15 +79,19 @@ _redis_cold_restart() {
 _sql_restart() {
   touch /run/boa_run.pid
   sleep 3
-  echo "$(date 2>&1) $1 incident detected" >> ${_pthOml}
+  echo "$(date) $1 incident detected" >> ${_pthOml}
   killall sleep &> /dev/null
   killall php
   bash /var/xdrago/move_sql.sh
   wait
-  echo "$(date 2>&1) $1 incident Percona MySQL server restarted" >> ${_pthOml}
-  _redis_cold_restart
-  echo "$(date 2>&1) $1 incident Redis server restarted" >> ${_pthOml}
-  echo "$(date 2>&1) $1 incident response completed" >> ${_pthOml}
+  echo "$(date) $1 incident Percona MySQL server restarted" >> ${_pthOml}
+  if [ -e "/var/lib/valkey" ]; then
+    _valkey_cold_restart
+  elif [ -e "/var/lib/redis" ]; then
+    _redis_cold_restart
+  fi
+  echo "$(date) $1 incident Redis server restarted" >> ${_pthOml}
+  echo "$(date) $1 incident response completed" >> ${_pthOml}
   _incident_email_report "$1"
   echo >> ${_pthOml}
   [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
@@ -74,14 +105,16 @@ _sql_busy_detection() {
     _SQL_LOG="/var/log/syslog"
   fi
   if [ -e "${_SQL_LOG}" ]; then
-    if [ `tail --lines=1111 ${_SQL_LOG} \
-      | grep --count "Too many connections"` -gt "999" ]; then
-      _sql_restart "BUSY MySQL"
+    if [ `tail --lines=333 ${_SQL_LOG} \
+      | grep --count "Too many connections"` -gt 111 ]; then
+      _IS_PROVISION_RUNNING=$(ps aux | grep '[p]rovision' | awk '{print $2}' 2>&1)
+      if [ -z "${_IS_PROVISION_RUNNING}" ]; then
+        _sql_restart "BUSY MySQL"
+      fi
     fi
   fi
   if [ -e "/root/.instant.busy.mysql.action.cnf" ]; then
-    _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
-    _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+    _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
     _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
     if [ ! -z "${_IS_MYSQLD_RUNNING}" ] && [ ! -z "${_SQL_PSWD}" ]; then
       _MYSQL_CONN_TEST=$(mysql -u root -e "status" 2>&1)
@@ -153,6 +186,30 @@ _mysql_proc_control() {
   done
 }
 
+_mysql_high_load() {
+
+  # Get the current 1-minute load average
+  _LOAD=$(awk '{print $1}' /proc/loadavg)
+
+  # Get the mysqld process ID
+  _MYSQL_PID=$(pidof mysqld)
+
+  # Count threads for the mysqld process (subtracting the header)
+  _MYSQL_THREADS=$(ps -T -p "${_MYSQL_PID}" | tail -n +2 | wc -l)
+
+  echo "Current load average: ${_LOAD}"
+  echo "Current MySQL thread count: ${_MYSQL_THREADS}"
+
+  # Compare against thresholds; use bc for floating point comparison
+  if (( $(echo "${_LOAD} > ${_LOAD_THRESHOLD}" | bc -l) )) && [ "${_MYSQL_THREADS}" -gt "${_THREAD_THRESHOLD}" ]; then
+    echo "High load and excessive MySQL threads detected. Restarting MySQL..."
+    _sql_restart "HIGH LOAD MySQL"
+  else
+    echo "System operating normally."
+  fi
+}
+
+_mysql_high_load
 _sql_busy_detection
 
 perl /var/xdrago/monitor/check/sqlcheck.pl &

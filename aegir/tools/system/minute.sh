@@ -8,7 +8,7 @@ _pthOml="/var/xdrago/log/oom.incident.log"
 _oldOml="/var/xdrago/log/oom.incident.old.log"
 
 _check_root() {
-  if [ `whoami` = "root" ]; then
+  if [ "$(id -u)" -eq 0 ]; then
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
     chmod a+w /dev/null
   else
@@ -31,19 +31,20 @@ fi
 
 bash /var/xdrago/monitor/check/nginx.sh &
 bash /var/xdrago/monitor/check/php.sh &
-bash /var/xdrago/monitor/check/redis.sh &
+if [ -e "/etc/init.d/valkey-server" ]; then
+  bash /var/xdrago/monitor/check/valkey.sh &
+elif [ -e "/etc/init.d/redis-server" ]; then
+  bash /var/xdrago/monitor/check/redis.sh &
+fi
 bash /var/xdrago/monitor/check/mysql.sh &
 bash /var/xdrago/monitor/check/unbound.sh &
 bash /var/xdrago/monitor/check/system.sh &
 bash /var/xdrago/monitor/check/java.sh &
-perl /var/xdrago/monitor/check/hackcheck.pl &
-perl /var/xdrago/monitor/check/hackftp.pl &
-perl /var/xdrago/monitor/check/escapecheck.pl &
 
 _second_flood_guard() {
   _thisCountSec=`ps aux | grep -v "grep" | grep -v "null" | grep --count "/second.sh"`
-  if [ ${_thisCountSec} -gt "4" ]; then
-    echo "$(date 2>&1) Too many ${_thisCountSec} second.sh processes killed" >> \
+  if [ ${_thisCountSec} -gt 4 ]; then
+    echo "$(date) Too many ${_thisCountSec} second.sh processes killed" >> \
       /var/log/sec-count.kill.log
     kill -9 $(ps aux | grep '[s]econd.sh' | awk '{print $2}') &> /dev/null
   fi

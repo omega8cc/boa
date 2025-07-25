@@ -3,8 +3,8 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-export _tRee=lts
-export _xSrl=550ltsT04
+export _tRee=dev
+export _xSrl=570devT11
 
 _DB_SERIES=5.7
 _CSF_VRN=14.24
@@ -54,7 +54,7 @@ fi
 
 _TODAY=$(date +%y%m%d 2>&1)
 _TODAY=${_TODAY//[^0-9]/}
-_X_VERSION="BOA-5.5.0-${_tRee}"
+_X_VERSION="BOA-5.7.11-${_tRee}"
 #
 _barCnf="/root/.barracuda.cnf"
 _crlGet="-L --max-redirs 3 -k -s --retry 9 --retry-delay 9 -A iCab"
@@ -111,7 +111,7 @@ _apt_clean_update() {
 }
 
 _check_root() {
-  if [ `whoami` = "root" ]; then
+  if [ "$(id -u)" -eq 0 ]; then
     chmod a+w /dev/null
     if [ ! -e "/dev/fd" ]; then
       if [ -e "/proc/self/fd" ]; then
@@ -240,7 +240,7 @@ _ifnames_grub_check_sync() {
 
     # Function to append option to _ADD_GRUB_CMD
     _append_grub_cmd_option() {
-      local _option="$1"
+      _option="$1"
       if [[ -z "${_ADD_GRUB_CMD}" ]]; then
         _ADD_GRUB_CMD="${_option}"
       else
@@ -319,7 +319,7 @@ _ifnames_grub_check_sync() {
 
 _check_root_direct() {
   _U_TEST=DENY
-  [ "${SUDO_USER}" ] && _U_TEST_SDO=${SUDO_USER} || _U_TEST_SDO=`whoami`
+  [ "${SUDO_USER}" ] && _U_TEST_SDO=${SUDO_USER} || _U_TEST_SDO=$(whoami)
   _U_TEST_WHO=$(who am i | awk '{print $1}' 2>&1)
   _U_TEST_LNE=$(logname 2>&1)
   if [ "${_U_TEST_SDO}" = "root" ] || [ "${_U_TEST_LNE}" = "root" ]; then
@@ -674,7 +674,7 @@ _find_fast_mirror_early
 
 _if_firewall_update() {
   if [ -e "/etc/csf" ]; then
-    echo "Running Firewall Update on `hostname`..."
+    echo "Running Firewall Update on $(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)..."
     _NOW=`date +%y%m%d-%H%M`
     _WFC="/var/backups/wfc/${_NOW}"
     mkdir -p ${_WFC}
@@ -768,9 +768,9 @@ _install_proxysql() {
     fi
   fi
 
-  _PROXYSQL_PASSWORD="$(openssl rand -base64 64 2>&1)"
-  _MONITOR_PASSWORD="$(openssl rand -base64 64 2>&1)"
-  _CLUSTER_APP_PASSWORD="$(openssl rand -base64 64 2>&1)"
+  _PROXYSQL_PASSWORD="$(openssl rand -base64 64 | tr -d '\n')"
+  _MONITOR_PASSWORD="$(openssl rand -base64 64 | tr -d '\n')"
+  _CLUSTER_APP_PASSWORD="$(openssl rand -base64 64 | tr -d '\n')"
 
   _E_PROXYSQL_PASSWORD="${_PROXYSQL_PASSWORD//\//\\\/}"
   _E_MONITOR_PASSWORD="${_MONITOR_PASSWORD//\//\\\/}"
@@ -1378,14 +1378,14 @@ _default_my_cnf_copy() {
   fi
   _CPU_NR=${_CPU_NR//[^0-9]/}
   if [ ! -z "${_CPU_NR}" ] && [ ! -z "${_CPU_INFO}" ] \
-    && [ "${_CPU_NR}" -gt "${_CPU_INFO}" ] && [ "${_CPU_INFO}" -gt "0" ]; then
+    && [ "${_CPU_NR}" -gt "${_CPU_INFO}" ] && [ "${_CPU_INFO}" -gt 0 ]; then
     _CPU_NR="${_CPU_INFO}"
   fi
-  if [ -z "${_CPU_NR}" ] || [ "${_CPU_NR}" -lt "1" ]; then
+  if [ -z "${_CPU_NR}" ] || [ "${_CPU_NR}" -lt 1 ]; then
     _CPU_NR=1
   fi
   _CPU_MX=$(( _CPU_NR * 2 ))
-  if [ "${_CPU_MX}" -lt "64" ]; then
+  if [ "${_CPU_MX}" -lt 64 ]; then
     _CPU_MX=64
   fi
   _CPU_FC=$(( _CPU_MX * 5 ))
@@ -1416,6 +1416,7 @@ innodb_autoinc_lock_mode=2
 ### Recommended for Galera
 #
 innodb_flush_log_at_trx_commit=0
+performance_schema=OFF
 binlog_row_image=minimal
 wsrep_slave_threads=${_CPU_MX}
 wsrep_log_conflicts=ON
@@ -1483,6 +1484,7 @@ transaction-isolation   = READ-COMMITTED
 transaction-read-only   = OFF
 skip-external-locking
 skip-name-resolve
+performance_schema      = OFF
 connect_timeout         = 60
 join_buffer_size        = 4M
 key_buffer_size         = 1024M
@@ -1513,8 +1515,10 @@ sync_binlog             = 0
 open_files_limit        = 294912
 innodb_autoinc_lock_mode= 2
 group_concat_max_len    = 10000
-#expire_logs_days        = 1
-#max_binlog_size         = 100M
+skip-log-bin
+#log_bin                 = mysql-bin
+#expire_logs_days        = 7
+#max_binlog_size         = 256M
 #binlog_row_image        = minimal
 #binlog_format           = ROW
 #slow_query_log          = 1
@@ -1608,8 +1612,8 @@ _install_db_cluster() {
   fi
 
   _CLUSTER_NAME="${_CLUSTER_PREFIX}_galera"
-  _MAINT_USER_PWD="$(openssl rand -base64 64 2>&1)"
-  _ROOT_SQL_PASWD="$(openssl rand -base64 64 2>&1)"
+  _MAINT_USER_PWD="$(openssl rand -base64 64 | tr -d '\n')"
+  _ROOT_SQL_PASWD="$(openssl rand -base64 64 | tr -d '\n')"
   _E_MAINT_USER_PWD="${_MAINT_USER_PWD//\//\\\/}"
   _E_ROOT_SQL_PASWD="${_ROOT_SQL_PASWD//\//\\\/}"
   _CLUSTER_STRING="gcomm://"$(IFS=, ; echo "${_DB_NODE_IP[*]}")
@@ -2122,9 +2126,9 @@ _install_host() {
       wget ${_wgetGet} http://repo.psand.net/pubkey.txt
       _KEYS_SERVER_TEST=$(grep GnuPG pubkey.txt 2>&1)
       sleep 2
-      if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt "5" ]; then
+      if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt 5 ]; then
         kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
-        echo "$(date 2>&1) Too many dirmngr processes killed" >> \
+        echo "$(date) Too many dirmngr processes killed" >> \
           /var/xdrago/log/dirmngr-count.kill.log
       fi
     done

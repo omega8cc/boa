@@ -5,7 +5,7 @@ export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
 _check_root() {
-  if [ `whoami` = "root" ]; then
+  if [ "$(id -u)" -eq 0 ]; then
     ionice -c2 -n7 -p $$
     renice 19 -p $$
     chmod a+w /dev/null
@@ -18,7 +18,7 @@ _check_root() {
     | sed 's/\%//g' \
     | awk '{print $6}' 2> /dev/null)
   _DF_TEST=${_DF_TEST//[^0-9]/}
-  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt "90" ]; then
+  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt 90 ]; then
     echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
     echo "ERROR: We can not proceed until it is below 90/100"
     exit 1
@@ -36,8 +36,7 @@ if [ ! -z "${_IS_SQLBACKUP_RUNNING}" ]; then
 fi
 
 if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
-  _SQL_PSWD=$(cat /root/.my.cluster_root_pwd.txt 2>&1)
-  _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+  _SQL_PSWD=$(cat /root/.my.cluster_root_pwd.txt 2>/dev/null | tr -d '\n')
 fi
 
 if [ -e "/root/.my.cluster_backup_proxysql.txt" ]; then
@@ -56,13 +55,28 @@ _C_SQL="mysql --user=root --password=${_SQL_PSWD} --host=${_SQL_HOST} --port=${_
 
 echo "SQL --host=${_SQL_HOST} --port=${_SQL_PORT}"
 _n=$((RANDOM%600+8))
-echo "INFO: Waiting ${_n} seconds on `date` before running backup..."
+echo "INFO: Waiting ${_n} seconds on $(date) before running backup..."
 sleep ${_n}
-echo "INFO: Starting backup on `date`"
+echo "INFO: Starting backup on $(date)"
 
 [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
-export _B_NICE=${_B_NICE//[^0-9]/}
-: "${_B_NICE:=10}"
+
+    # Sanitize to allow only digits and minus sign
+    export _B_NICE=${_B_NICE//[^0-9-]/}
+
+    # Validate and set default if necessary
+    if ! [[ "$_B_NICE" =~ ^-?[0-9]+$ ]]; then
+      _B_NICE=9
+    fi
+
+    # Clamp the value within -20 to 19
+    if (( _B_NICE < -20 )); then
+      _B_NICE=-20
+    elif (( _B_NICE > 19 )); then
+      _B_NICE=19
+    fi
+
+    renice ${_B_NICE} -p $$ &> /dev/null
 
 _SQL_CACHE_EXC_DEF="cache_bootstrap cache_discovery cache_config"
 
@@ -74,19 +88,19 @@ else
 fi
 
 _BACKUPDIR=/data/disk/arch/cluster
-_CHECK_HOST=$(uname -n 2>&1)
 _DATE=$(date +%y%m%d-%H%M%S 2>&1)
 _DOW=$(date +%u 2>&1)
+_hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
 _DOW=${_DOW//[^1-7]/}
 _DOM=$(date +%e 2>&1)
 _DOM=${_DOM//[^0-9]/}
-_SAVELOCATION=${_BACKUPDIR}/${_CHECK_HOST}-${_DATE}
+_SAVELOCATION=${_BACKUPDIR}/${_hName}-${_DATE}
 if [ -e "/root/.my.optimize.cnf" ]; then
   _OPTIM=YES
 else
   _OPTIM=NO
 fi
-_VM_TEST=$(uname -a 2>&1)
+_VM_TEST="$(uname -a)"
 if [[ "${_VM_TEST}" =~ "-beng" ]]; then
   _VMFAMILY="VS"
 else
@@ -253,7 +267,7 @@ _compress_backup() {
       if [ -e "${DbPath}/metadata" ]; then
         DbName=$(echo ${DbPath} | cut -d'/' -f7 | awk '{ print $1}' 2>&1)
         cd ${_SAVELOCATION}
-        tar cvfj ${DbName}-${_DATE}.tar.bz2 ${DbName} &> /dev/null
+        tar -c -p -I zstd -f ${DbName}-${_DATE}.tar.zst ${DbName} &> /dev/null
         rm -f -r ${DbName}
       fi
     done
@@ -262,7 +276,7 @@ _compress_backup() {
     chmod 700 /data/disk/arch
     echo "INFO: Permissions fixed"
   else
-    bzip2 ${_SAVELOCATION}/*.sql
+    gzip ${_SAVELOCATION}/*.sql
     chmod 600 ${_BACKUPDIR}/*/*
     chmod 700 ${_BACKUPDIR}/*
     chmod 700 ${_BACKUPDIR}
@@ -374,8 +388,8 @@ for _DB in `${_C_SQL} -e "show databases" -s | uniq | sort`; do
       # fi
       # if [ "${_OPTIM}" = "YES" ] \
       #   && [ "${_DOW}" = "7" ] \
-      #   && [ "${_DOM}" -ge "24" ] \
-      #   && [ "${_DOM}" -lt "31" ]; then
+      #   && [ "${_DOM}" -ge 24 ] \
+      #   && [ "${_DOM}" -lt 31 ]; then
       #   _repair_this_database &> /dev/null
       #   echo "Repair task for ${_DB} completed"
       #   _truncate_cache_tables &> /dev/null
@@ -400,15 +414,15 @@ for _DB in `${_C_SQL} -e "show databases" -s | uniq | sort`; do
   fi
 done
 
-echo "INFO: Completing all dbs backups on `date`"
+echo "INFO: Completing all dbs backups on $(date)"
 rm -f /run/boa_sql_cluster_backup.pid
 touch /var/xdrago/log/last-run-cluster-backup
 
-echo "INFO: Starting dbs backup compress on `date`"
+echo "INFO: Starting dbs backup compress on $(date)"
 _compress_backup &> /dev/null
-echo "INFO: Completing dbs backup compress on `date`"
+echo "INFO: Completing dbs backup compress on $(date)"
 
-echo "INFO: Starting dbs backup cleanup on `date`"
+echo "INFO: Starting dbs backup cleanup on $(date)"
 _DB_BACKUPS_TTL=${_DB_BACKUPS_TTL//[^0-9]/}
 if [ -z "${_DB_BACKUPS_TTL}" ]; then
   _DB_BACKUPS_TTL="30"

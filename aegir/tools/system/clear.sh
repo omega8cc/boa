@@ -3,17 +3,31 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-export _tRee=lts
+export _tRee=dev
 
 _aptAllow="--allow-unauthenticated"
 _aptYesUnth="-y ${_aptAllow}"
 _wgetGet="--max-redirect=3 --no-check-certificate -q --tries=9 --wait=9 --user-agent='iCab'"
 
 _check_root() {
-  if [ `whoami` = "root" ]; then
+  if [ "$(id -u)" -eq 0 ]; then
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
-    export _B_NICE=${_B_NICE//[^0-9]/}
-    : "${_B_NICE:=10}"
+    # Sanitize to allow only digits and minus sign
+    export _B_NICE=${_B_NICE//[^0-9-]/}
+
+    # Validate and set default if necessary
+    if ! [[ "$_B_NICE" =~ ^-?[0-9]+$ ]]; then
+      _B_NICE=0
+    fi
+
+    # Clamp the value within -20 to 19
+    if (( _B_NICE < -20 )); then
+      _B_NICE=-20
+    elif (( _B_NICE > 19 )); then
+      _B_NICE=19
+    fi
+
+    renice ${_B_NICE} -p $$ &> /dev/null
     chmod a+w /dev/null
   else
     echo "ERROR: This script should be run as a root user"
@@ -111,7 +125,7 @@ _find_fast_mirror_early() {
 }
 
 _if_reinstall_curl_src() {
-  _CURL_VRN=8.12.1
+  _CURL_VRN=8.14.1
   if ! command -v lsb_release &> /dev/null; then
     apt-get update -qq &> /dev/null
     apt-get install lsb-release ${_aptYesUnth} -qq &> /dev/null
@@ -217,7 +231,7 @@ for _OCT in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
   _SITES_NR=0
   if [ -e "${_OCT}/config/server_master/nginx/vhost.d" ]; then
     _SITES_NR=$(ls ${_OCT}/config/server_master/nginx/vhost.d | wc -l)
-    if [ "${_SITES_NR}" -gt "0" ]; then
+    if [ "${_SITES_NR}" -gt 0 ]; then
       if [ -z "${_chckSts}" ]; then
         _chckSts="SNR ${_OCT} ${_SITES_NR} "
       else
@@ -249,17 +263,34 @@ if [ -d "/data/u" ]; then
   wait
 fi
 
-renice ${_B_NICE} -p $$ &> /dev/null
-
 _if_fix_locked_sshd() {
   _SSH_LOG="/var/log/auth.log"
-  if [ `tail --lines=100 ${_SSH_LOG} \
-    | grep --count "error: Bind to port 22"` -gt "0" ]; then
+  if [ `tail --lines=30 ${_SSH_LOG} \
+    | grep --count "error: Bind to port 22"` -gt 0 ]; then
+    # killall -9 sshd-session
     kill -9 $(ps aux | grep '[s]tartups' | awk '{print $2}')
     service ssh start
   fi
 }
 _if_fix_locked_sshd
+
+#setprio &> /dev/null
+
+if [ -e "/root/.remote_backups/schedule/backup_schedule.txt" ]; then
+  if [ -e "/root/.remote_backups/paths/paths.txt" ]; then
+    rm -f /root/.remote_backups/paths/*
+    rm -f /root/.remote_backups/paths/.*
+    [ -x "/usr/local/bin/dcysetup" ] && bash /usr/local/bin/dcysetup update &> /dev/null
+  fi
+  if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt 0 ]; then
+    echo "[$(date)] Active duplicity process detected, will try again later..." >> /var/log/mybackup_waiting_queue.log
+  else
+    [ -x "/usr/local/bin/dcysetup" ] && bash /usr/local/bin/dcysetup update &> /dev/null
+    wait
+    [ -x "/usr/local/bin/mybackup" ] && nohup /usr/local/bin/mybackup > /dev/null 2>&1 &
+  fi
+fi
+
 touch /var/xdrago/log/clear.done.pid
 exit 0
 

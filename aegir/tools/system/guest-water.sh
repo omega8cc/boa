@@ -445,7 +445,7 @@ _guard_stats() {
           echo "${_IP} is a local IP address, ignoring ${_HA}"
         fi
       fi
-      if [ ! -z "${_NR_TEST}" ] && [ "${_NR_TEST}" -ge "24" ]; then
+      if [ ! -z "${_NR_TEST}" ] && [ "${_NR_TEST}" -ge 24 ]; then
         echo ${_IP} ${_NR_TEST}
         _FW_TEST=
         _FF_TEST=
@@ -459,7 +459,7 @@ _guard_stats() {
           fi
         else
           _IP_RV=$(host -s ${_IP} 2>&1)
-          if [ "${_NR_TEST}" -ge "64" ]; then
+          if [ "${_NR_TEST}" -ge 64 ]; then
             echo "Deny ${_IP} permanently ${_NR_TEST} ${_IP_RV}"
             csf -d ${_IP} do not delete Brute force SSH Server ${_NR_TEST} attacks ${_IP_RV}
           else
@@ -487,7 +487,7 @@ _guard_stats() {
           echo "${_IP} is a local IP address, ignoring ${_WA}"
         fi
       fi
-      if [ ! -z "${_NR_TEST}" ] && [ "${_NR_TEST}" -ge "24" ]; then
+      if [ ! -z "${_NR_TEST}" ] && [ "${_NR_TEST}" -ge 24 ]; then
         echo ${_IP} ${_NR_TEST}
         _FW_TEST=
         _FF_TEST=
@@ -501,7 +501,7 @@ _guard_stats() {
           fi
         else
           _IP_RV=$(host -s ${_IP} 2>&1)
-          if [ "${_NR_TEST}" -ge "64" ]; then
+          if [ "${_NR_TEST}" -ge 64 ]; then
             echo "Deny ${_IP} permanently ${_NR_TEST} ${_IP_RV}"
             csf -d ${_IP} do not delete Brute force Web Server ${_NR_TEST} attacks ${_IP_RV}
           else
@@ -529,7 +529,7 @@ _guard_stats() {
           echo "${_IP} is a local IP address, ignoring ${_FA}"
         fi
       fi
-      if [ ! -z "${_NR_TEST}" ] && [ "${_NR_TEST}" -ge "24" ]; then
+      if [ ! -z "${_NR_TEST}" ] && [ "${_NR_TEST}" -ge 24 ]; then
         echo ${_IP} ${_NR_TEST}
         _FW_TEST=
         _FF_TEST=
@@ -543,7 +543,7 @@ _guard_stats() {
           fi
         else
           _IP_RV=$(host -s ${_IP} 2>&1)
-          if [ "${_NR_TEST}" -ge "64" ]; then
+          if [ "${_NR_TEST}" -ge 64 ]; then
             echo "Deny ${_IP} permanently ${_NR_TEST} ${_IP_RV}"
             csf -d ${_IP} do not delete Brute force FTP Server ${_NR_TEST} attacks ${_IP_RV}
           else
@@ -587,7 +587,7 @@ _whitelist_ip_dns() {
 
 if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
   if [ -e "/root/.local.IP.list" ]; then
-    echo local dr/tr start `date`
+    echo local dr/tr start $(date)
     for _IP in `cat /root/.local.IP.list \
       | cut -d '#' -f1 \
       | sort \
@@ -639,13 +639,13 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
       -I DHCP ${_useCnf} ${_preCnf} 2>&1)
     if [ -z "${_diffCnfTest}" ]; then
       _useCnfUpdate=YES
-      echo "YES $(date 2>&1) diff0 empty" >> ${_vBs}/dragon/t/csf.log
+      echo "YES $(date) diff0 empty" >> ${_vBs}/dragon/t/csf.log
     else
       _diffCnfTest=$(echo -n ${_diffCnfTest} | fmt -su -w 2500 2>&1)
-      echo "NO $(date 2>&1) diff1 ${_diffCnfTest}" >> ${_vBs}/dragon/t/csf.log
+      echo "NO $(date) diff1 ${_diffCnfTest}" >> ${_vBs}/dragon/t/csf.log
     fi
     if [[ "${_diffCnfTest}" =~ "No such file or directory" ]]; then
-      echo "NO $(date 2>&1) diff3 ${_diffCnfTest}" >> ${_vBs}/dragon/t/csf.log
+      echo "NO $(date) diff3 ${_diffCnfTest}" >> ${_vBs}/dragon/t/csf.log
     fi
   fi
   if [ "${_myCnfUpdate}" = "NO" ]; then
@@ -683,7 +683,7 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
     fi
   fi
 
-  echo local start `date`
+  echo local start $(date)
   _local_ip_rg
 
   _HA=/var/xdrago/monitor/log/hackcheck.archive.log
@@ -693,7 +693,7 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
   _FA=/var/xdrago/monitor/log/hackftp.archive.log
   _FX=/var/xdrago/monitor/log/hackftp.archive.x3.log
 
-  echo guard start `date`
+  echo guard start $(date)
   _guard_stats
   rm -f /var/xdrago/monitor/log/ssh.log
   rm -f /var/xdrago/monitor/log/web.log
@@ -743,7 +743,7 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
     fi
   fi
   rm -f /run/water.pid
-  echo guard fin `date`
+  echo guard fin $(date)
   ntpdate pool.ntp.org > /dev/null 2>&1 &
 fi
 exit 0

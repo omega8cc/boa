@@ -3,7 +3,7 @@ export _tRee=lts
 
 _if_hosted_sys() {
   if [ -e "/root/.host8.cnf" ] \
-    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
+    || [[ "${_hName}" =~ ".aegir.cc"($) ]]; then
     _hostedSys=YES
   else
     _hostedSys=NO
@@ -531,7 +531,7 @@ _mode_detection() {
     || [ "${_PHP_SV}" = "54" ] \
     || [ "${_PHP_SV}" = "53" ] \
     || [ "${_PHP_SV}" = "52" ]; then
-    _PHP_SV=74
+    _PHP_SV=83
   fi
   _PHP_CN="www${_PHP_SV}"
 }
@@ -733,7 +733,7 @@ _os_detection() {
   fi
   echo " "
   _thiSys="$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)/$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1) $(uname -m 2>&1)"
-  _thiSys="$(uname -n 2>&1) ${_thiSys} PHP ${_PHP_FPM_VERSION}"
+  _thiSys="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null) ${_thiSys} PHP ${_PHP_FPM_VERSION}"
   _msg "Aegir on ${_thiSys}"
   echo " "
 }
@@ -742,7 +742,8 @@ _check_boa_php_compatibility() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _check_boa_php_compatibility"
   fi
-  if [[ "${_PHP_MULTI_INSTALL}" =~ "8.3" ]] \
+  if [[ "${_PHP_MULTI_INSTALL}" =~ "8.4" ]] \
+    || [[ "${_PHP_MULTI_INSTALL}" =~ "8.3" ]] \
     || [[ "${_PHP_MULTI_INSTALL}" =~ "8.2" ]] \
     || [[ "${_PHP_MULTI_INSTALL}" =~ "8.1" ]] \
     || [[ "${_PHP_MULTI_INSTALL}" =~ "7.4" ]]; then
@@ -918,7 +919,7 @@ _barracuda_log_update() {
       | awk '{ print $1}' \
       | sed "s/[\,']//g" 2>&1)
   fi
-  _BARRACUDA_VERSION_INFO="$(date 2>&1) / \
+  _BARRACUDA_VERSION_INFO="$(date) / \
     $(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1).$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1) \
     $(uname -m 2>&1) ${_VIRT_IS} / \
     Aegir ${_AEGIR_VERSION} / \
@@ -947,8 +948,7 @@ _turn_off_apparmor_in_octopus() {
   fi
   _isAppArmOn=N
   if [ -e "/sys/module/apparmor/parameters/enabled" ]; then
-    _isAppArmOn=$(cat /sys/module/apparmor/parameters/enabled 2>&1)
-    _isAppArmOn=$(echo -n ${_isAppArmOn} | tr -d "\n" 2>&1)
+    _isAppArmOn="$(cat /sys/module/apparmor/parameters/enabled 2>/dev/null | tr -d '\n')"
   fi
   if [ "${_isAppArmOn}" = "Y" ] && [ ! -e "/root/.turn_off_apparmor_in_octopus.cnf" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -965,14 +965,13 @@ _turn_off_apparmor_in_octopus() {
 }
 
 #
-# Switch to bash while running octopus.
-_switch_to_bash_in_octopus() {
+# Switch to dash while running octopus.
+_switch_to_dash_in_octopus() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "PROC: _switch_to_bash_in_octopus"
+    _msg "PROC: _switch_to_dash_in_octopus"
   fi
-  if [ -x "/bin/websh" ] && [ -L "/bin/sh" ]; then
-    _WEB_SH=`readlink -n /bin/sh`
-    _WEB_SH=`echo -n ${_WEB_SH} | tr -d "\n"`
+  if [ -L "/bin/sh" ]; then
+    _WEB_SH="$(readlink -n /bin/sh)"
     if [ -x "/bin/dash" ] || [ -x "/usr/bin/dash" ]; then
       if [ "${_WEB_SH}" != "/bin/dash" ]; then
         if [ -x "/usr/bin/dash" ] && [ ! -L "/usr/bin/dash" ]; then

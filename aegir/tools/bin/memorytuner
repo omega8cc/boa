@@ -30,8 +30,7 @@ _check_sql_running
 # Function to check if MySQL server access credentials for root are working
 _check_sql_access() {
   if [ -e "/root/.my.pass.txt" ] && [ -e "/root/.my.cnf" ]; then
-    _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
-    _SQL_PSWD=$(echo -n "${_SQL_PSWD}" | tr -d "\n" 2>&1)
+    _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
     _IS_SYNC_SQL_PSWD=$(grep "password=${_SQL_PSWD}" /root/.my.cnf 2>&1)
   else
     echo "ALERT: /root/.my.cnf or /root/.my.pass.txt not found."
@@ -72,15 +71,15 @@ _check_sql_access
 
 # Function to get total system memory in MB
 _get_total_mem_mb() {
-  local _mem_kb
+  _mem_kb
   _mem_kb=$(grep MemTotal /proc/meminfo | awk '{print $2}')
   echo $((_mem_kb / 1024))
 }
 
 # Function to get memory usage of a process or group of processes in MB
 _get_mem_usage_mb() {
-  local _process_name=$1
-  local _mem_usage_kb
+  _process_name=$1
+  _mem_usage_kb
   _mem_usage_kb=$(ps -eo rss,args | grep -w "${_process_name}" | grep -v grep | awk '{sum+=$1} END {print sum}')
   _mem_usage_kb=${_mem_usage_kb:-0}
   echo "scale=2; ${_mem_usage_kb} / 1024" | bc
@@ -121,7 +120,6 @@ _get_service_uptime() {
 
 # Function to get MySQL server uptime in seconds
 _get_mysql_uptime() {
-  local _uptime
   _uptime=$(mysql -Nse "SHOW GLOBAL STATUS LIKE 'Uptime';" | awk '{print $2}')
   echo "${_uptime}"
 }
@@ -145,9 +143,9 @@ _parse_mysqltuner_recommendations() {
       exit 1
     fi
     echo "Running mysqltuner8..."
-    local _tempfile=$(mktemp)
-    mysqltuner8 --nogood --nocolor --nographics --buffers --silent > "${_tempfile}" &
-    local _mysqltuner_pid=$!
+    _tempfile=$(mktemp)
+    mysqltuner8 --nogood --nocolor --buffers --silent > "${_tempfile}" &
+    _mysqltuner_pid=$!
   elif [[ "${_MYSQL_VERSION}" =~ ^5\.7 ]]; then
     # Use mysqltuner5 for Percona 5.7
     if ! command -v mysqltuner5 &> /dev/null; then
@@ -155,9 +153,9 @@ _parse_mysqltuner_recommendations() {
       exit 1
     fi
     echo "Running mysqltuner5..."
-    local _tempfile=$(mktemp)
-    mysqltuner5 --nogood --nocolor --nographics --buffers --silent > "${_tempfile}" &
-    local _mysqltuner_pid=$!
+    _tempfile=$(mktemp)
+    mysqltuner5 --nogood --nocolor --buffers --silent > "${_tempfile}" &
+    _mysqltuner_pid=$!
   else
     echo "Unsupported MySQL version: ${_MYSQL_VERSION}"
     exit 1
@@ -171,7 +169,7 @@ _parse_mysqltuner_recommendations() {
   done
   echo " Done."
 
-  local _mysqltuner_output=$(cat "${_tempfile}")
+  _mysqltuner_output=$(cat "${_tempfile}")
   rm "${_tempfile}"
 
   # Parse key recommendations
@@ -233,8 +231,9 @@ declare -A _services_pidfiles=(
   ["php81-fpm"]="/run/php81-fpm.pid"
   ["php82-fpm"]="/run/php82-fpm.pid"
   ["php83-fpm"]="/run/php83-fpm.pid"
+  ["php84-fpm"]="/run/php84-fpm.pid"
   ["redis"]="/run/redis/redis.pid"
-  ["java"]="/var/solr7/solr-9077.pid"
+  ["java"]="/var/solr9/solr-9099.pid"
 )
 
 # Define estimated memory usage for services (in MB)
@@ -244,19 +243,20 @@ declare -A _service_estimated_mem_mb=(
   ["php81-fpm"]=200
   ["php82-fpm"]=200
   ["php83-fpm"]=200
+  ["php84-fpm"]=200
   ["redis"]=200
   ["java"]=100
 )
 
-# Ensure _TOTAL_MEM_MB is set by default to 85% of available RAM
+# Ensure _TOTAL_MEM_MB is set by default to 75% of available RAM
 _MAX_MEM_MB="${_TOTAL_MEM_MB}"
-_TOTAL_MEM_MB=$(echo "(${_TOTAL_MEM_MB} * 85) / 100" | bc)
+_TOTAL_MEM_MB=$(echo "(${_TOTAL_MEM_MB} * 75) / 100" | bc)
 
 # Threshold for uptime (e.g., 1 hour = 3600 seconds)
 _UPTIME_THRESHOLD=3600
 
 # Initialize total memory usage of other services
-_TOTAL_OTHER_SERVICES_MEM_MB=0
+_TOTAL_OTHER_SERVICES_MEM_MB=500
 
 # Array to store debugging information
 declare -A _service_mem_usage_mb
@@ -316,8 +316,8 @@ fi
 # Calculate max memory for MySQL
 _MAX_MEM_FOR_MYSQL_MB=$(echo "${_TOTAL_MEM_MB} - ${_TOTAL_OTHER_SERVICES_MEM_MB}" | bc)
 
-# Ensure _AVA_MEM_FOR_MYSQL_MB is set by default to 85% of _MAX_MEM_FOR_MYSQL_MB
-_AVA_MEM_FOR_MYSQL_MB=$(echo "(${_MAX_MEM_FOR_MYSQL_MB} * 85) / 100" | bc)
+# Ensure _AVA_MEM_FOR_MYSQL_MB is set by default to 75% of _MAX_MEM_FOR_MYSQL_MB
+_AVA_MEM_FOR_MYSQL_MB=$(echo "(${_MAX_MEM_FOR_MYSQL_MB} * 75) / 100" | bc)
 
 echo "Max raw RAM available: ${_MAX_MEM_MB} MB"
 echo "Memory safely available for all services: ${_TOTAL_MEM_MB} MB"
@@ -338,17 +338,17 @@ fi
 # Get MySQL uptime
 _MYSQL_UPTIME_SECONDS=$(_get_mysql_uptime)
 
-# Run MySQLTuner-perl only if uptime >= 24 hours (86400 seconds)
-if [ "${_NUMBER_OF_DATABASES}" -lt 100 ] && [ "${_MYSQL_UPTIME_SECONDS}" -ge 86400 ]; then
+# Run MySQLTuner-perl only if uptime >= 1 hour (3600 seconds)
+if [ "${_NUMBER_OF_DATABASES}" -lt 300 ] && [ "${_MYSQL_UPTIME_SECONDS}" -ge 3600 ]; then
   echo "Running MySQLTuner-perl to gather recommendations..."
   _parse_mysqltuner_recommendations
 else
   echo "Skipping MySQLTuner-perl."
-  if [ "${_NUMBER_OF_DATABASES}" -ge 100 ]; then
-    echo "Reason: Number of databases is ${_NUMBER_OF_DATABASES} (>=100)."
+  if [ "${_NUMBER_OF_DATABASES}" -ge 300 ]; then
+    echo "Reason: Number of databases is ${_NUMBER_OF_DATABASES} (>=300)."
   fi
-  if [ "${_MYSQL_UPTIME_SECONDS}" -lt 86400 ]; then
-    echo "Reason: MySQL uptime is less than 24 hours."
+  if [ "${_MYSQL_UPTIME_SECONDS}" -lt 3600 ]; then
+    echo "Reason: MySQL uptime is less than 1 hour."
   fi
   _REC_INNODB_BUFFER_POOL_SIZE_MB=0
   _REC_KEY_BUFFER_SIZE_MB=0
@@ -474,11 +474,11 @@ _NEEDS_RESTART=0
 
 # Function to update MySQL configuration settings
 _update_setting() {
-  local _setting_name=$1
-  local _new_value=$2
-  local _current_value=$3
-  local _requires_restart=$4
-  local _is_memory_size=$5  # New parameter indicating if setting is a memory size
+  _setting_name=$1
+  _new_value=$2
+  _current_value=$3
+  _requires_restart=$4
+  _is_memory_size=$5  # New parameter indicating if setting is a memory size
 
   # Ensure _new_value is valid
   if [ -z "${_new_value}" ] || ! [[ "${_new_value}" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then

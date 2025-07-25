@@ -49,7 +49,7 @@ export _libFnc="${_bldPth}/lib/functions"
 export _tocIncO="${_filIncO}.$1"
 export _vBs="/var/backups"
 export _vSet="variable-set --always-set"
-export _tRee=lts
+export _tRee=dev
 
 
 ###
@@ -118,7 +118,7 @@ done
 ### Local variables
 ###
 if [ "${_THIS_DB_HOST}" = "FQDN" ]; then
-  export _THIS_DB_HOST=$(uname -n 2>&1)
+  export _THIS_DB_HOST="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
 fi
 export _USE_AEGIR_VER=SRC
 export _T_BUILD=SRC
@@ -135,7 +135,10 @@ export _D="/data/all"
 export _SRCDIR="/opt/tmp/files"
 export _LOG="/var/backups/octopus-${_USER}-${_NOW}.log"
 
-if [ "${_PHP_CLI_VERSION}" = "8.3" ] \
+if [ "${_PHP_CLI_VERSION}" = "8.4" ] \
+  && [ -x "/opt/php84/bin/php" ]; then
+  _T_CLI=/opt/php84/bin
+elif [ "${_PHP_CLI_VERSION}" = "8.3" ] \
   && [ -x "/opt/php83/bin/php" ]; then
   _T_CLI=/opt/php83/bin
 elif [ "${_PHP_CLI_VERSION}" = "8.2" ] \
@@ -194,7 +197,7 @@ fi
 if [ "${_DEBUG_MODE}" = "YES" ]; then
   _msg "${_STATUS} C: Aegir automated install script part C"
 fi
-if [ `whoami` = "root" ]; then
+if [ "$(id -u)" -eq 0 ]; then
   _msg "${_STATUS} C: FATAL ERROR: This script should be run as a non-root user"
   _msg "${_STATUS} C: FATAL ERROR: Aborting AegirSetupC installer NOW!"
   touch /opt/tmp/status-AegirSetupC-FAIL
@@ -240,7 +243,7 @@ chmod 0711 ${_pthDst} &> /dev/null
 
 ###---###
 export _ALLOW_ALL=YES
-if [ "${_CLIENT_CORES}" -lt "1" ]; then
+if [ "${_CLIENT_CORES}" -lt 1 ]; then
   _ALLOW_ALL=NO
   _D_8_ALLOW=NO
 fi
@@ -313,14 +316,14 @@ _save_verify_this_platform() {
   # _save_verify_this_platform 'OCS' '2.2.1' '10.3.6' 'openculturas-2.2.1-10.3.6' 'contrib/' 'openculturas' '/web'
   # make_platform 'ezcontent-2.2.15-10.3.6' ezcontent /data/disk/o8/distro/001/ezcontent-2.2.15-10.3.6/web
   # make_platform 'commerce_base-2.40-10.1.8' commerce_base /data/disk/o8/distro/001/commerce_base-2.40-10.1.8/web
-  local _make_p="${_pthDst}/${params[profile_name]}-${params[version]}-${params[core_version]}${params[web_dir]}"
+  _make_p="${_pthDst}/${params[profile_name]}-${params[version]}-${params[core_version]}${params[web_dir]}"
 
   # _save_verify_this_platform 'UC7' '3.13' '7.103.1' 'ubercart-3.13-7.103.1' '/' 'minimal' ''
-  local _make_u="${_pthDst}/ubercart-${params[version]}-${params[core_version]}${params[web_dir]}"
+  _make_u="${_pthDst}/ubercart-${params[version]}-${params[core_version]}${params[web_dir]}"
 
   # _save_verify_this_platform 'DX3' '10.3.6' '10.3.6' 'drupal-10.3.6-dev' '/' 'standard' '/web'
   # /data/disk/o8/distro/001/drupal-10.3.6-prod
-  local _make_x="${_pthDst}/${params[version]}${params[web_dir]}"
+  _make_x="${_pthDst}/${params[version]}${params[web_dir]}"
 
   if [ -d "${_make_p}" ]; then
     if [ ! -e "${_make_p}/${_drhSrc}" ]; then
@@ -842,6 +845,12 @@ _create_drupal_core_basic() {
     "DX4")
       _create_drupal_basic_version "10_4"
       ;;
+    "DX5")
+      _create_drupal_basic_version "10_5"
+      ;;
+    "DE2")
+      _create_drupal_basic_version "11_2"
+      ;;
     *)
       echo "Unsupported version code: $version_code"
       ;;
@@ -850,9 +859,9 @@ _create_drupal_core_basic() {
 
 # Define distros names and their key-words for configuration
 declare -A _distros_names=(
-  ["CK1"]="Commerce Kickstart"
-  ["CK2"]="Commerce Base"
-  ["CK3"]="Commerce Kickstart"
+  ["CK1"]="Commerce v.1"
+  ["CK2"]="Commerce v.2"
+  ["CK3"]="Commerce v.3"
   ["DXP"]="DXPR Marketing"
   ["EZC"]="EzContent"
   ["FOS"]="farmOS"
@@ -876,24 +885,26 @@ declare -A _distros_names=(
   ["DX2"]="Drupal"
   ["DX3"]="Drupal"
   ["DX4"]="Drupal"
+  ["DX5"]="Drupal"
+  ["DE2"]="Drupal"
 )
 
 # Define distros versions for configuration
 declare -A _distros_versions=(
   ["CK1"]="2.77"
   ["CK2"]="2.40"
-  ["CK3"]="3.0.0"
+  ["CK3"]="3.1.0"
   ["DXP"]="10.3.0"
   ["EZC"]="2.2.15"
   ["FOS"]="3.3.1"
-  ["LGV"]="3.0.11"
+  ["LGV"]="3.1.3"
   ["OCS"]="2.2.1"
   ["OFD"]="12.2.4"
   ["OLS"]="2.0.0"
   ["OPG"]="3.1.0"
-  ["SCR"]="10.0.0-rc5"
+  ["SCR"]="11.0.x-dev"
   ["SOC"]="12.4.5"
-  ["THR"]="7.3.7"
+  ["THR"]="8.2.1"
   ["UC6"]="2.15"
   ["UC7"]="3.13"
   ["VB9"]="9.1.6"
@@ -906,28 +917,30 @@ declare -A _distros_versions=(
   ["DX2"]="${_SMALLCORE10_2_V}"
   ["DX3"]="${_SMALLCORE10_3_V}"
   ["DX4"]="${_SMALLCORE10_4_V}"
+  ["DX5"]="${_SMALLCORE10_5_V}"
+  ["DE2"]="${_SMALLCORE11_2_V}"
 )
 
 # Define distros Drupal cores versions for configuration
 declare -A _distros_drupal_cores=(
   ["CK1"]="${_SMALLCORE7_V}"
   ["CK2"]="${_SMALLCORE10_1_V}"
-  ["CK3"]="${_SMALLCORE10_3_V}"
-  ["DXP"]="${_SMALLCORE10_3_V}"
-  ["EZC"]="${_SMALLCORE10_3_V}"
-  ["FOS"]="${_SMALLCORE10_3_V}"
-  ["LGV"]="${_SMALLCORE10_3_V}"
-  ["OCS"]="${_SMALLCORE10_3_V}"
-  ["OFD"]="${_SMALLCORE10_2_V}"
+  ["CK3"]="${_SMALLCORE11_2_V}"
+  ["DXP"]="10.3.6"
+  ["EZC"]="10.3.6"
+  ["FOS"]="10.3.6"
+  ["LGV"]="${_SMALLCORE10_5_V}"
+  ["OCS"]="10.3.6"
+  ["OFD"]="10.2.10"
   ["OLS"]="${_SMALLCORE9_V}"
   ["OPG"]="${_SMALLCORE9_V}"
-  ["SCR"]="${_SMALLCORE10_2_V}"
-  ["SOC"]="${_SMALLCORE10_2_V}"
-  ["THR"]="${_SMALLCORE10_3_V}"
+  ["SCR"]="${_SMALLCORE11_2_V}"
+  ["SOC"]="10.2.10"
+  ["THR"]="${_SMALLCORE11_2_V}"
   ["UC6"]="${_SMALLCORE6_V}"
   ["UC7"]="${_SMALLCORE7_V}"
-  ["VB9"]="${_SMALLCORE10_3_V}"
-  ["VBX"]="${_SMALLCORE10_3_V}"
+  ["VB9"]="${_SMALLCORE10_5_V}"
+  ["VBX"]="${_SMALLCORE10_5_V}"
   ["DL6"]="${_SMALLCORE6_V}"
   ["DL7"]="${_SMALLCORE7_V}"
   ["DL9"]="${_SMALLCORE9_V}"
@@ -936,6 +949,8 @@ declare -A _distros_drupal_cores=(
   ["DX2"]="${_SMALLCORE10_2_V}"
   ["DX3"]="${_SMALLCORE10_3_V}"
   ["DX4"]="${_SMALLCORE10_4_V}"
+  ["DX5"]="${_SMALLCORE10_5_V}"
+  ["DE2"]="${_SMALLCORE11_2_V}"
 )
 
 # Define distros profiles names for configuration
@@ -966,6 +981,8 @@ declare -A _distros_profiles_names=(
   ["DX2"]="standard"
   ["DX3"]="standard"
   ["DX4"]="standard"
+  ["DX5"]="standard"
+  ["DE2"]="standard"
 )
 
 # Define distros profiles paths for configuration
@@ -996,6 +1013,8 @@ declare -A _distros_profiles_paths=(
   ["DX2"]="/"
   ["DX3"]="/"
   ["DX4"]="/"
+  ["DX5"]="/"
+  ["DE2"]="/"
 )
 
 # Define distros web dirs for configuration
@@ -1026,6 +1045,8 @@ declare -A _distros_web_dirs=(
   ["DX2"]="/web"
   ["DX3"]="/web"
   ["DX4"]="/web"
+  ["DX5"]="/web"
+  ["DE2"]="/web"
 )
 
 # Define distros names and their URLs for information
@@ -1056,13 +1077,15 @@ declare -A _distros_urls=(
   ["DX2"]="${_urlPrt}/drupal/releases/${_SMALLCORE10_2_V}"
   ["DX3"]="${_urlPrt}/drupal/releases/${_SMALLCORE10_3_V}"
   ["DX4"]="${_urlPrt}/drupal/releases/${_SMALLCORE10_4_V}"
+  ["DX5"]="${_urlPrt}/drupal/releases/${_SMALLCORE10_5_V}"
+  ["DE2"]="${_urlPrt}/drupal/releases/${_SMALLCORE11_2_V}"
 )
 
 # Define distros names and their compatible max PHP versions for information
 declare -A _distros_php_versions=(
   ["CK1"]="7.4"
   ["CK2"]="8.3"
-  ["CK3"]="8.3"
+  ["CK3"]="8.4"
   ["DXP"]="8.3"
   ["EZC"]="8.3"
   ["FOS"]="8.3"
@@ -1071,9 +1094,9 @@ declare -A _distros_php_versions=(
   ["OFD"]="8.3"
   ["OLS"]="8.3"
   ["OPG"]="8.3"
-  ["SCR"]="8.3"
+  ["SCR"]="8.4"
   ["SOC"]="8.3"
-  ["THR"]="8.3"
+  ["THR"]="8.4"
   ["UC6"]="7.4"
   ["UC7"]="7.4"
   ["VB9"]="8.3"
@@ -1086,6 +1109,8 @@ declare -A _distros_php_versions=(
   ["DX2"]="8.3"
   ["DX3"]="8.3"
   ["DX4"]="8.3"
+  ["DX5"]="8.3"
+  ["DE2"]="8.4"
 )
 
 
@@ -1284,12 +1309,12 @@ _ubercart7_install() {
   fi
 
   # /data/disk/o8/distro/001/ubercart-3.13-7.103.1
-  local _REAL_PRNAME="${params[profile_name]}"
-  local _VIRT_PRNAME="ubercart"
-  local _SHRD_PLNAME="${_VIRT_PRNAME}-${params[version]}-${params[core_version]}"
-  local _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
-  local _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
-  local _OCTO_PLPATH="${_pthDst}/${_SHRD_PLNAME}"
+  _REAL_PRNAME="${params[profile_name]}"
+  _VIRT_PRNAME="ubercart"
+  _SHRD_PLNAME="${_VIRT_PRNAME}-${params[version]}-${params[core_version]}"
+  _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
+  _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
+  _OCTO_PLPATH="${_pthDst}/${_SHRD_PLNAME}"
   if [ "${_ALLOW_ALL}" = "YES" ]; then
     if [[ "${_PLATFORMS_LIST}" =~ ALL ]] \
       || [[ "${_PLATFORMS_LIST}" =~ ${params[dist]} ]]; then
@@ -1447,7 +1472,15 @@ _d_dist_platform_install() {
 _d_core_platform_install() {
 ###---### Template function for core-only-type platforms
 #
-  if [ "${1}" = "DX4" ]; then
+  if [ "${1}" = "DE2" ]; then
+    _CORE_DEV="${_DRUPAL11_2_D}"
+    _CORE_STG="${_DRUPAL11_2_S}"
+    _CORE_PRD="${_DRUPAL11_2_P}"
+  elif [ "${1}" = "DX5" ]; then
+    _CORE_DEV="${_DRUPAL10_5_D}"
+    _CORE_STG="${_DRUPAL10_5_S}"
+    _CORE_PRD="${_DRUPAL10_5_P}"
+  elif [ "${1}" = "DX4" ]; then
     _CORE_DEV="${_DRUPAL10_4_D}"
     _CORE_STG="${_DRUPAL10_4_S}"
     _CORE_PRD="${_DRUPAL10_4_P}"
@@ -1573,7 +1606,7 @@ _d_dist_loop() {
     _d_webd="${_distros_web_dirs[${_dist}]}"
     _d_phpv="${_distros_php_versions[${_dist}]}"
     _d_xurl="${_distros_urls[${_dist}]}"
-    if [[ "${_dist}" =~ DL || "${_dist}" =~ DX ]]; then
+    if [[ "${_dist}" =~ DL || "${_dist}" =~ DX || "${_dist}" =~ DE ]]; then
       _d_core_platform_install "${_dist}" "${_d_vers}" "${_d_core}" "${_d_xdes}" "${_d_ppth}" "${_d_prfn}" "${_d_webd}" "${_d_phpv}" "${_d_xurl}"
     elif [[ "${_dist}" =~ CK1 || "${_dist}" =~ UC ]]; then
       _d_dist_custom_platform_install "${_dist}" "${_d_vers}" "${_d_core}" "${_d_desc}" "${_d_ppth}" "${_d_prfn}" "${_d_webd}" "${_d_phpv}" "${_d_xurl}"

@@ -50,7 +50,7 @@
 
   # Allow PHP-FPM to execute some other binaries
   /bin/dash mrix,
-  /bin/websh mrix,
+  /opt/local/bin/websh mrix,
   /usr/bin/advdef mrix,
   /usr/bin/advpng mrix,
   /usr/bin/convert mrix,

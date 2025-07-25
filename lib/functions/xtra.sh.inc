@@ -307,58 +307,6 @@ _if_install_collectd() {
   fi
 }
 
-_if_install_hhvm() {
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "PROC: _if_install_hhvm"
-  fi
-  _if_to_do_fix
-  if [[ "${_XTRAS_LIST}" =~ "HVM" ]]; then
-    if [ -x "/usr/bin/gpg2" ]; then
-      _GPG=gpg2
-    else
-      _GPG=gpg
-    fi
-    if [ "${_OS_CODE}" = "buster" ] \
-      || [ "${_OS_CODE}" = "stretch" ] \
-      || [ "${_OS_CODE}" = "jessie" ] \
-      || [ "${_DO_FIX}" = "YES" ]; then
-      if [ ! -x "/usr/bin/hhvm" ]; then
-        echo " "
-        if _prompt_yes_no "Do you want to install HHVM Engine?" ; then
-          true
-          _msg "INFO: Installing HHVM Engine..."
-          cd /var/opt
-          echo "## HHVM APT Repository" > /etc/apt/sources.list.d/hhvm.list
-          if [ "${_OS_CODE}" = "jessie" ]; then
-            echo "deb http://dl.hhvm.com/debian jessie main" >> \
-              /etc/apt/sources.list.d/hhvm.list
-          elif [ "${_OS_CODE}" = "stretch" ] || [ "${_DO_FIX}" = "YES" ]; then
-            echo "deb http://dl.hhvm.com/debian stretch main" >> \
-              /etc/apt/sources.list.d/hhvm.list
-          elif [ "${_OS_CODE}" = "buster" ] || [ "${_DO_FIX}" = "YES" ]; then
-            echo "deb http://dl.hhvm.com/debian buster main" >> \
-              /etc/apt/sources.list.d/hhvm.list
-          fi
-          _KEYS_SERVER_TEST=FALSE
-          until [[ "${_KEYS_SERVER_TEST}" =~ "GnuPG" ]]; do
-            rm -f /var/opt/hhvm.gpg.key*
-            cd /var/opt
-            wget ${_wgetGet} "http://dl.hhvm.com/conf/hhvm.gpg.key"
-            _KEYS_SERVER_TEST=$(grep GnuPG /var/opt/hhvm.gpg.key 2>&1)
-            sleep 2
-          done
-          cat /var/opt/hhvm.gpg.key | ${_GPG} --import &> /dev/null
-          _apt_clean_update
-          _st_runner "apt-get install hhvm ${_aptYesUnth}" 2> /dev/null
-          _msg "INFO: HHVM Engine installed"
-        else
-          _msg "INFO: HHVM Engine installation skipped"
-        fi
-      fi
-    fi
-  fi
-}
-
 _if_install_webmin() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _if_install_webmin"

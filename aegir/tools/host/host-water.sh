@@ -449,7 +449,7 @@ _guard_stats() {
             echo "${_IP} is a local IP address, ignoring ${i}/${_HA}"
           fi
         fi
-        if [ ! -z "${_NR_TEST}" ] && [ "${_NR_TEST}" -ge "24" ]; then
+        if [ ! -z "${_NR_TEST}" ] && [ "${_NR_TEST}" -ge 24 ]; then
           echo ${_IP} ${_NR_TEST}
           _FW_TEST=
           _FF_TEST=
@@ -463,7 +463,7 @@ _guard_stats() {
             fi
           else
             _IP_RV=$(host -s ${_IP} 2>&1)
-            if [ "${_NR_TEST}" -ge "64" ]; then
+            if [ "${_NR_TEST}" -ge 64 ]; then
               echo "Deny ${_IP} permanently ${_NR_TEST} ${_IP_RV}"
               csf -d ${_IP} do not delete Brute force SSH Server ${_NR_TEST} attacks ${_IP_RV}
             else
@@ -491,7 +491,7 @@ _guard_stats() {
             echo "${_IP} is a local IP address, ignoring ${i}/${_WA}"
           fi
         fi
-        if [ ! -z "${_NR_TEST}" ] && [ "${_NR_TEST}" -ge "24" ]; then
+        if [ ! -z "${_NR_TEST}" ] && [ "${_NR_TEST}" -ge 24 ]; then
           echo ${_IP} ${_NR_TEST}
           _FW_TEST=
           _FF_TEST=
@@ -505,7 +505,7 @@ _guard_stats() {
             fi
           else
             _IP_RV=$(host -s ${_IP} 2>&1)
-            if [ "${_NR_TEST}" -ge "64" ]; then
+            if [ "${_NR_TEST}" -ge 64 ]; then
               echo "Deny ${_IP} permanently ${_NR_TEST} ${_IP_RV}"
               csf -d ${_IP} do not delete Brute force Web Server ${_NR_TEST} attacks ${_IP_RV}
             else
@@ -533,7 +533,7 @@ _guard_stats() {
             echo "${_IP} is a local IP address, ignoring ${i}/${_FA}"
           fi
         fi
-        if [ ! -z "${_NR_TEST}" ] && [ "${_NR_TEST}" -ge "24" ]; then
+        if [ ! -z "${_NR_TEST}" ] && [ "${_NR_TEST}" -ge 24 ]; then
           echo ${_IP} ${_NR_TEST}
           _FW_TEST=
           _FF_TEST=
@@ -547,7 +547,7 @@ _guard_stats() {
             fi
           else
             _IP_RV=$(host -s ${_IP} 2>&1)
-            if [ "${_NR_TEST}" -ge "64" ]; then
+            if [ "${_NR_TEST}" -ge 64 ]; then
               echo "Deny ${_IP} permanently ${_NR_TEST} ${_IP_RV}"
               csf -d ${_IP} do not delete Brute force FTP Server ${_NR_TEST} attacks ${_IP_RV}
             else
@@ -586,7 +586,7 @@ if [ -e "/vservers" ] \
   && [ -e "/etc/csf/csf.deny" ] \
   && [ -x "/usr/sbin/csf" ]; then
   if [ -e "/root/.local.IP.list" ]; then
-    echo local dr/tr start `date`
+    echo local dr/tr start $(date)
     for _IP in `cat /root/.local.IP.list \
       | cut -d '#' -f1 \
       | sort \
@@ -641,7 +641,7 @@ if [ -e "/vservers" ] \
     fi
   fi
 
-  echo local start `date`
+  echo local start $(date)
   _local_ip_rg
 
   _HA=var/xdrago/monitor/log/hackcheck.archive.log
@@ -651,7 +651,7 @@ if [ -e "/vservers" ] \
   _FA=var/xdrago/monitor/log/hackftp.archive.log
   _FX=var/xdrago/monitor/log/hackftp.archive.x3.log
 
-  echo guard start `date`
+  echo guard start $(date)
   _guard_stats
 
   rm -f /vservers/*/var/xdrago/monitor/log/ssh.log
@@ -695,13 +695,15 @@ if [ -e "/vservers" ] \
     fi
   fi
   rm -f /run/water.pid
-  echo guard fin `date`
+  echo guard fin $(date)
 fi
 ntpdate pool.ntp.org > /dev/null 2>&1 &
-_IF_CDP=$(ps aux | grep '[c]dp_io' | awk '{print $2}')
-if [ -z "${_IF_CDP}" ] && [ ! -e "/root/.no.swap.clear.cnf" ]; then
+_IF_BCP="$(pgrep -f duplicity)"
+if [ ! -e "/root/.no.swap.clear.cnf" ]; then
   swapoff -a
-  swapon -a
+  if [ -z "${_IF_BCP}" ]; then
+    swapon -a
+  fi
 fi
 exit 0
 

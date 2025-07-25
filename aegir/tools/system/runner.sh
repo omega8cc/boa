@@ -7,7 +7,7 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 ###-------------SYSTEM-----------------###
 
 _check_root() {
-  if [ "$(whoami)" = "root" ]; then
+  if [ "$(id -u)" -eq 0 ]; then
     chmod a+w /dev/null
   else
     echo "ERROR: This script should be run as a root user"
@@ -18,7 +18,7 @@ _check_root() {
     | sed 's/\%//g' \
     | awk '{print $6}' 2> /dev/null)
   _DF_TEST=${_DF_TEST//[^0-9]/}
-  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt "90" ]; then
+  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt 90 ]; then
     echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
     echo "ERROR: We can not proceed until it is below 90/100"
     exit 1
@@ -51,10 +51,10 @@ _count_cpu() {
   if [ ! -z "${_CPU_NR}" ] \
     && [ ! -z "${_CPU_INFO}" ] \
     && [ "${_CPU_NR}" -gt "${_CPU_INFO}" ] \
-    && [ "${_CPU_INFO}" -gt "0" ]; then
+    && [ "${_CPU_INFO}" -gt 0 ]; then
     _CPU_NR="${_CPU_INFO}"
   fi
-  if [ -z "${_CPU_NR}" ] || [ "${_CPU_NR}" -lt "1" ]; then
+  if [ -z "${_CPU_NR}" ] || [ "${_CPU_NR}" -lt 1 ]; then
     _CPU_NR=1
   fi
 }
@@ -106,7 +106,7 @@ if [ -e "/run/boa_wait.pid" ] \
     exit 0
   fi
 elif [ "$(ps aux | grep -v "grep" \
-  | grep --count "n7 bash.*runner")" -gt "8" ]; then
+  | grep --count "n7 bash.*runner")" -gt 8 ]; then
   if [ ! -e "/root/.force.queue.runner.cnf" ]; then
     touch /var/xdrago/log/wait-runner.pid
     echo "Too many Aegir tasks running now, we will try again later..."

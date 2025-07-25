@@ -26,6 +26,7 @@ foreach $USER (sort keys %li_cnt) {
   if ($USER eq "jetty8") {$jetty8lives = "YES"; $jetty8sumar = $li_cnt{$USER};}
   if ($USER eq "jetty9") {$jetty9lives = "YES"; $jetty9sumar = $li_cnt{$USER};}
   if ($USER eq "solr7") {$solr7lives = "YES"; $solr7sumar = $li_cnt{$USER};}
+  if ($USER eq "solr9") {$solr9lives = "YES"; $solr9sumar = $li_cnt{$USER};}
 }
 foreach $COMMAND (sort keys %li_cnt) {
   if ($COMMAND =~ /lfd/) {$lfdlives = "YES"; $lfdsumar = $li_cnt{$COMMAND};}
@@ -41,6 +42,7 @@ foreach $COMMAND (sort keys %li_cnt) {
   if ($COMMAND =~ /php-fpm/) {$fpmlives = "YES"; $fpmsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /postfix/) {$postfixlives = "YES"; $postfixsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /pure-ftpd/) {$ftplives = "YES"; $ftpsumar = $li_cnt{$COMMAND};}
+  if ($COMMAND =~ /valkey-server/) {$valkeylives = "YES"; $valkeysumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /redis-server/) {$redislives = "YES"; $redissumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /newrelic-daemon/) {$newrelicdaemonlives = "YES"; $newrelicdaemonsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /nrsysmond/) {$newrelicsysmondlives = "YES"; $newrelicsysmondsumar = $li_cnt{$COMMAND};}
@@ -53,6 +55,7 @@ foreach $COMMAND (sort keys %li_cnt) {
   if ($COMMAND =~ /proxysql/) {$pxydlives = "YES"; $pxydsumar = $li_cnt{$COMMAND};}
 }
 foreach $X (sort keys %li_cnt) {
+  if ($X =~ /php84/) {$php84lives = "YES";}
   if ($X =~ /php83/) {$php83lives = "YES";}
   if ($X =~ /php82/) {$php82lives = "YES";}
   if ($X =~ /php81/) {$php81lives = "YES";}
@@ -81,6 +84,7 @@ print "\n $buagentsumar Backup procs\t\tGLOBAL" if ($buagentlives);
 print "\n $collectdsumar Collectd\t\tGLOBAL" if ($collectdlives);
 print "\n $dhcpcdsumar dhcpcd procs\t\tGLOBAL" if ($dhcpcdlives);
 print "\n $fpmsumar FPM procs\t\tGLOBAL" if ($fpmlives);
+print "\n 1 FPM84 procs\t\tGLOBAL" if ($php84lives);
 print "\n 1 FPM83 procs\t\tGLOBAL" if ($php83lives);
 print "\n 1 FPM82 procs\t\tGLOBAL" if ($php82lives);
 print "\n 1 FPM81 procs\t\tGLOBAL" if ($php81lives);
@@ -97,6 +101,7 @@ print "\n $nginxsumar Nginx procs\t\tGLOBAL" if ($nginxlives);
 print "\n $unboundsumar DNS procs\t\tGLOBAL" if ($unboundlives);
 print "\n $phpsumar PHP procs\t\tGLOBAL" if ($phplives);
 print "\n $postfixsumar Postfix procs\tGLOBAL" if ($postfixlives);
+print "\n $valkeysumar Valkey procs\t\tGLOBAL" if ($valkeylives);
 print "\n $redissumar Redis procs\t\tGLOBAL" if ($redislives);
 print "\n $newrelicdaemonsumar New Relic Apps\tGLOBAL" if ($newrelicdaemonlives);
 print "\n $newrelicsysmondsumar New Relic Server\tGLOBAL" if ($newrelicsysmondlives);
@@ -104,6 +109,7 @@ print "\n $jetty7sumar Jetty7 procs\t\tGLOBAL" if ($jetty7lives);
 print "\n $jetty8sumar Jetty8 procs\t\tGLOBAL" if ($jetty8lives);
 print "\n $jetty9sumar Jetty9 procs\t\tGLOBAL" if ($jetty9lives);
 print "\n $solr7sumar Solr7 procs\t\tGLOBAL" if ($solr7lives);
+print "\n $solr9sumar Solr9 procs\t\tGLOBAL" if ($solr9lives);
 print "\n $rsyslogdsumar Syslog procs\t\tGLOBAL" if ($rsyslogdlives);
 print "\n $sysklogdsumar Syslog procs\t\tGLOBAL" if ($sysklogdlives);
 print "\n $syslogdsumar Syslog procs\t\tGLOBAL" if ($syslogdlives);
@@ -130,6 +136,23 @@ if (-e "/usr/sbin/unbound" && !$unboundsumar) {
 
 if ((!$mysqlsumar || $mysqlsumar > 150) && !-f "/run/mysql_restart_running.pid" && !-f "/run/boa_run.pid" && !-f "/root/.remote.db.cnf") {
   system("bash /var/xdrago/move_sql.sh");
+}
+
+if (-f "/etc/init.d/valkey-server") {
+  if (!-d "/run/valkey") {
+    system("mkdir -p /run/valkey");
+    system("chown -R valkey:valkey /run/valkey");
+  }
+  if (!$valkeysumar) {
+    system("service valkey-server start");
+  }
+  local(@RSARR)=`grep -e redis_client_socket /data/conf/global.inc`;
+  foreach $line (@RSARR) {
+    if ($line =~ /redis_client_socket/) {$valkeysocket = "YES";}
+  }
+  system("service valkey-server restart") if (!-e "/run/valkey/valkey.sock" && $valkeysocket);
+  sleep(2);
+  system("service valkey-server restart") if (!-f "/run/valkey/valkey.pid");
 }
 
 if (-f "/etc/init.d/redis-server") {
@@ -164,12 +187,13 @@ if (!$nginxsumar && -f "/etc/init.d/nginx") {
   `echo "$timedate KILL START $nginxsumar" >> /var/xdrago/log/nginx.kill-start.log`;
 }
 
-if ($fpmsumar > 10 ) {
+if ($fpmsumar > 11 ) {
   $timedate=`date +%y%m%d-%H%M%S`;
   chomp($timedate);
   system("killall -9 php-fpm");
   `echo "$timedate KILL FPM $fpmsumar" >> /var/xdrago/log/fpm.kill-all.log`;
 }
+system("service php84-fpm start") if ((!$php84lives || !$fpmsumar || !-f "/run/php84-fpm.pid") && -f "/etc/init.d/php84-fpm");
 system("service php83-fpm start") if ((!$php83lives || !$fpmsumar || !-f "/run/php83-fpm.pid") && -f "/etc/init.d/php83-fpm");
 system("service php82-fpm start") if ((!$php82lives || !$fpmsumar || !-f "/run/php82-fpm.pid") && -f "/etc/init.d/php82-fpm");
 system("service php81-fpm start") if ((!$php81lives || !$fpmsumar || !-f "/run/php81-fpm.pid") && -f "/etc/init.d/php81-fpm");
@@ -187,6 +211,7 @@ if (!-f "/root/.run-to-daedalus.cnf" && !-f "/root/.run-to-chimaera.cnf" && !-f 
   system("service jetty8 start") if (!$jetty8sumar && -f "/etc/init.d/jetty8");
   system("service jetty9 start") if (!$jetty9sumar && -f "/etc/init.d/jetty9");
   system("service solr7 start") if (!$solr7sumar && -f "/etc/init.d/solr7");
+  system("service solr9 start") if (!$solr9sumar && -f "/etc/init.d/solr9");
   system("service collectd start") if (!$collectdsumar && -f "/etc/init.d/collectd");
   system("service xinetd start") if (!$xinetdsumar && -f "/etc/init.d/xinetd");
   system("service lsyncd start") if (!$lsyncdsumar && -f "/etc/init.d/lsyncd");

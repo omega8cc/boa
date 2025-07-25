@@ -1,0 +1,182 @@
+#!/bin/bash
+
+# smtpgapps
+# A script to install and configure msmtp on Devuan
+# Usage: smtpgapps your-email@gmail.com your-app-password
+
+export HOME=/root
+export SHELL=/bin/bash
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+export _tRee=dev
+export _xSrl=570devT11
+
+###
+### Avoid too many questions
+###
+export DEBIAN_FRONTEND=noninteractive
+export APT_LISTCHANGES_FRONTEND=none
+if [ -z "${TERM+x}" ]; then
+  export TERM=vt100
+fi
+
+_os_detection_minimal() {
+  _APT_UPDATE="apt-get update"
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
+  for e in ${_OS_LIST}; do
+    if [ "${e}" = "${_OS_CODE}" ]; then
+      _APT_UPDATE="apt-get update --allow-releaseinfo-change"
+    fi
+  done
+}
+
+_apt_clean_update() {
+  ${_APT_UPDATE} -qq &> /dev/null
+}
+
+_usage() {
+  echo
+  echo "Usage: smtpgapps your-email@gmail.com your-app-password"
+  echo ""
+  echo "Arguments:"
+  echo "  your-email@gmail.com    Your Gmail address"
+  echo "  your-app-password       Your Gmail App Password"
+  echo ""
+  echo "Example:"
+  echo "  smtpgapps foobar@gmail.com yourgapppassword"
+  echo
+  exit 1
+}
+
+###
+### Noticeable messages
+###
+_msg() {
+  echo "GA SMTP Setup v.${_tRee} [$(date +%T 2>&1)] ==> $*"
+}
+
+# Function to check if running as root
+_check_root() {
+  if [ "$(id -u)" -ne 0 ]; then
+    echo
+    _msg "Error: This script must be run as root."
+    _usage
+    exit 1
+  fi
+}
+
+# Function to check if a package is installed
+_is_installed() {
+  dpkg -l | grep -qw "$1"
+}
+
+# Function to validate email address format
+_validate_email() {
+  _EMAIL_REGEX="^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$"
+  if [[ ! "${_GMAIL_USER}" =~ ${_EMAIL_REGEX} ]]; then
+    echo
+    _msg "Error: Invalid email address format."
+    _usage
+  fi
+}
+
+# Function to validate password format
+_validate_password() {
+  _PASS_REGEX="^[a-z]{16}$"
+  if [[ ! "${_GMAIL_PASS}" =~ ${_PASS_REGEX} ]]; then
+    echo
+    _msg "Error: Password must be exactly 16 lowercase letters (a-z)."
+    _usage
+  fi
+}
+
+# -----------------------------
+# Initial Setup
+# -----------------------------
+
+# Check if running as root
+_check_root
+_os_detection_minimal
+
+# Check for correct number of arguments
+if [ "$#" -ne 2 ]; then
+  echo
+  _msg "Incorrect number of arguments."
+  _usage
+fi
+
+_GMAIL_USER="$1"
+_GMAIL_PASS="$2"
+
+# Validate email and password
+_validate_email
+_validate_password
+
+# Install msmtp if not already installed
+if _is_installed "msmtp"; then
+  _msg "Package 'msmtp' is already installed."
+else
+  _msg "Installing msmtp and necessary packages..."
+  _apt_clean_update
+  apt-get install msmtp ca-certificates -y &> /dev/null
+  _msg "'msmtp' installed successfully."
+fi
+
+_msg "Backing up existing /etc/msmtprc if it exists..."
+if [ -f /etc/msmtprc ]; then
+  cp -a /etc/msmtprc /etc/msmtprc.bak
+  _msg "Existing /etc/msmtprc backed up to /etc/msmtprc.bak"
+fi
+
+_msg "Creating /etc/msmtprc configuration file..."
+
+cat <<EOF > /etc/msmtprc
+# msmtp configuration file
+
+# Set default values for all following accounts.
+defaults
+auth           on
+tls            on
+tls_trust_file /etc/ssl/certs/ca-certificates.crt
+logfile        /var/log/msmtp.log
+
+# Gmail account
+account        gmail
+host           smtp.gmail.com
+port           587
+from           ${_GMAIL_USER}
+user           ${_GMAIL_USER}
+password       ${_GMAIL_PASS}
+
+# Set a default account
+account default : gmail
+EOF
+
+_msg "/etc/msmtprc configuration file created."
+
+# Secure the msmtprc file
+chmod 600 /etc/msmtprc
+chown root:root /etc/msmtprc
+
+_msg "Setting up log file for msmtp..."
+touch /var/log/msmtp.log
+chmod 640 /var/log/msmtp.log
+chown root:adm /var/log/msmtp.log
+
+_msg "Configuring log rotation for msmtp.log..."
+cat <<EOF > /etc/logrotate.d/msmtp
+/var/log/msmtp.log {
+    weekly
+    rotate 4
+    compress
+    missingok
+    notifempty
+    create 640 root adm
+}
+EOF
+
+_msg "Log rotation configured."
+
+_msg "Installation and configuration of msmtp completed successfully!"
+
+exit 0

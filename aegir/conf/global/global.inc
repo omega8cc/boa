@@ -79,7 +79,7 @@ if (function_exists('drush_get_command')) {
 if (!$is_backend) {
   if (isset($_SERVER['SERVER_SOFTWARE']) &&
       !preg_match("/ApacheSolarisNginx/i", $_SERVER['SERVER_SOFTWARE'])) {
-    $_SERVER['SERVER_SOFTWARE'] = 'ApacheSolarisNginx/1.27.4';
+    $_SERVER['SERVER_SOFTWARE'] = 'ApacheSolarisNginx/1.29.0';
   }
 }
 
@@ -138,24 +138,107 @@ if (isset($_SERVER['HTTP_HOST']) &&
 
 
 /**
- * Fix for Akamai, CloudFlare and others running via Proxy
+ * Core version detection
  */
-if (isset($_SERVER['REMOTE_ADDR'])) {
-  if (isset($_SERVER['HTTP_X_FORWARDED_FOR']) &&
-      $_SERVER['HTTP_X_FORWARDED_FOR'] != "127.0.0.1") {
-    $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_X_FORWARDED_FOR'];
+if (file_exists('web.config') || file_exists('index.php')) { // Check for the main entry point file
+  if (file_exists('core')) {
+    if (file_exists('vendor/symfony') ||
+      file_exists('core/vendor/symfony') ||
+      file_exists('autoload.php')) {
+      $drupal_core = '8';
+      $drupal_id = 'DVIII';
+      if (file_exists('core/themes/olivero') && file_exists('core/themes/classy')) {
+        $drupal_core = '9';
+        $drupal_id = 'DIX';
+      }
+      if (file_exists('core/themes/olivero') && !file_exists('core/themes/classy')) {
+        $drupal_core = '10';
+        $drupal_id = 'DX';
+      }
+      if (file_exists('core/modules/workspaces_ui') && !file_exists('web.config')) {
+        $drupal_core = '11';
+        $drupal_id = 'DXI';
+      }
+      $use_redis = TRUE;
+    }
+    else {
+      $backdropcms = TRUE;
+      $drupal_id = 'ND';
+    }
   }
-  if (isset($_SERVER['HTTP_X_REAL_IP']) &&
-      $_SERVER['HTTP_X_REAL_IP'] != "127.0.0.1") {
-    $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_X_REAL_IP'];
+  elseif (file_exists('modules/path_alias_cache')) {
+    $drupal_core = '6';
+    $drupal_id = 'DVI';
+    $use_redis = TRUE;
   }
-  if (isset($_SERVER['HTTP_CF_CONNECTING_IP']) &&
-      $_SERVER['HTTP_CF_CONNECTING_IP'] != "127.0.0.1") {
-    $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_CF_CONNECTING_IP'];
+  else {
+    $drupal_core = '7';
+    $drupal_id = 'DVII';
+    $use_redis = TRUE;
   }
-  if (isset($_SERVER['HTTP_TRUE_CLIENT_IP']) &&
-      $_SERVER['HTTP_TRUE_CLIENT_IP'] != "127.0.0.1") {
-    $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_TRUE_CLIENT_IP'];
+  if ($drupal_id && $is_dev && !$is_backend) {
+    header('X-Backend: ' . $drupal_id);
+  }
+}
+
+
+/**
+ * Support real IP detection behind proxies (Cloudflare, Akamai, etc.)
+ */
+if (isset($_SERVER['REMOTE_ADDR']) && php_sapi_name() !== 'cli') {
+
+  $real_ip = null;
+  $proxy_header = null;
+  $proxy_ip = null;
+
+  // Handle possible comma-separated proxy chain in REMOTE_ADDR
+  $raw_proxy_ip = $_SERVER['REMOTE_ADDR'];
+  $proxy_ip_list = array_map('trim', explode(',', $raw_proxy_ip));
+  $proxy_ip_list = array_filter($proxy_ip_list, function ($ip) {
+    return filter_var($ip, FILTER_VALIDATE_IP);
+  });
+
+  if (!empty($proxy_ip_list)) {
+    $proxy_ip = end($proxy_ip_list); // Trust the last proxy in the chain
+  }
+
+  // Detect real client IP using known proxy headers
+  if (!empty($_SERVER['HTTP_CF_CONNECTING_IP'])) {
+    // Cloudflare (single IP, trusted)
+    $real_ip = trim($_SERVER['HTTP_CF_CONNECTING_IP']);
+    $proxy_header = 'CF-Connecting-IP';
+  }
+  elseif (!empty($_SERVER['HTTP_TRUE_CLIENT_IP'])) {
+    // Akamai / Fastly (single IP)
+    $real_ip = trim($_SERVER['HTTP_TRUE_CLIENT_IP']);
+    $proxy_header = 'True-Client-IP';
+  }
+  elseif (!empty($_SERVER['HTTP_X_REAL_IP'])) {
+    // NGINX-style (single IP)
+    $real_ip = trim($_SERVER['HTTP_X_REAL_IP']);
+    $proxy_header = 'X-Real-IP';
+  }
+  elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+    // Generic proxy chain (may contain multiple IPs)
+    $forwarded_ips = array_map('trim', explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']));
+    $forwarded_ips = array_filter($forwarded_ips, function ($ip) {
+      return filter_var($ip, FILTER_VALIDATE_IP);
+    });
+    if (!empty($forwarded_ips)) {
+      $real_ip = $forwarded_ips[0]; // First = original client IP
+      $proxy_header = 'X-Forwarded-For';
+    }
+  }
+
+  // Apply the final values
+  if (!empty($real_ip) && !empty($proxy_ip) && !empty($proxy_header)) {
+    $_SERVER['REMOTE_ADDR'] = $real_ip;
+
+    if (isset($drupal_core) && $drupal_core >= 8) {
+      $settings['reverse_proxy'] = TRUE;
+      $settings['reverse_proxy_header'] = $proxy_header;
+      $settings['reverse_proxy_addresses'] = array($proxy_ip);
+    }
   }
 }
 
@@ -374,51 +457,6 @@ if (is_array($all_ini) && $is_dev && !$is_backend) {
   header("X-Ini-Set-Composer-Manager-Vendor-Dir: " . $all_ini['set_composer_manager_vendor_dir']);
   header("X-Ini-AutoSlave-Enable: " . $all_ini['autoslave_enable']);
   header("X-Ini-CacheConsistent-Enable: " . $all_ini['cache_consistent_enable']);
-}
-
-
-/**
- * Core version detection
- */
-if (file_exists('web.config') || file_exists('index.php')) { // Check for the main entry point file
-  if (file_exists('core')) {
-    if (file_exists('vendor/symfony') ||
-      file_exists('core/vendor/symfony') ||
-      file_exists('autoload.php')) {
-      $drupal_core = '8';
-      $drupal_id = 'DVIII';
-      if (file_exists('core/themes/olivero') && file_exists('core/themes/classy')) {
-        $drupal_core = '9';
-        $drupal_id = 'DIX';
-      }
-      if (file_exists('core/themes/olivero') && !file_exists('core/themes/classy')) {
-        $drupal_core = '10';
-        $drupal_id = 'DX';
-      }
-      if (!file_exists('web.config')) { // Hypothetical check for Drupal 11
-        $drupal_core = '11';
-        $drupal_id = 'DXI';
-      }
-      $use_redis = TRUE;
-    }
-    else {
-      $backdropcms = TRUE;
-      $drupal_id = 'ND';
-    }
-  }
-  elseif (file_exists('modules/path_alias_cache')) {
-    $drupal_core = '6';
-    $drupal_id = 'DVI';
-    $use_redis = TRUE;
-  }
-  else {
-    $drupal_core = '7';
-    $drupal_id = 'DVII';
-    $use_redis = TRUE;
-  }
-  if ($drupal_id && $is_dev && !$is_backend) {
-    header('X-Backend: ' . $drupal_id);
-  }
 }
 
 
@@ -844,6 +882,7 @@ if (!$is_dev) {
       if (is_readable('modules/o_contrib_eight/advagg/advagg_bundler/advagg_bundler.module') ||
           is_readable('modules/o_contrib_nine/advagg/advagg_bundler/advagg_bundler.module') ||
           is_readable('modules/o_contrib_ten/advagg/advagg_bundler/advagg_bundler.module') ||
+          is_readable('modules/o_contrib_eleven/advagg/advagg_bundler/advagg_bundler.module') ||
           is_readable('modules/advagg/advagg_bundler/advagg_bundler.module') ||
           is_readable('sites/all/modules/advagg/advagg_bundler/advagg_bundler.module')) {
         $config['advagg.settings']['css']['combine_media'] = false;
@@ -1144,7 +1183,7 @@ if ($redis_up && $use_redis && !$custom_cache) {
         $redis_dirname = 'redis_compr';
         $redis_comprs = TRUE;
       }
-      if ($drupal_core == 9 || $drupal_core == 10) {
+      if ($drupal_core == 9 || $drupal_core == 10 || $drupal_core == 11) {
         $redis_dirname = 'redis_nine_ten';
         $redis_comprs = TRUE;
         if ($all_ini['redis_old_nine_mode']) {
@@ -1247,6 +1286,21 @@ if ($redis_up && $use_redis && !$custom_cache) {
             header("X-Redis-Services-Is-Readable: " . $redis_services_path);
           }
         }
+        if (is_readable('modules/o_contrib_eleven/' . $redis_dirname . '/example.services.yml')) {
+          $cache_redis = TRUE;
+          $example_services_path = 'modules/o_contrib_eleven/' . $redis_dirname . '/example.services.yml';
+          $cache_gzip_path = 'modules/o_contrib_eleven/' . $redis_dirname . '/lib/Redis/CacheCompressed.php';
+          if ($is_dev && !$is_backend) {
+            header("X-Example-Services-Is-Readable: " . $example_services_path);
+          }
+        }
+        if (is_readable('modules/o_contrib_eleven/' . $redis_dirname . '/redis.services.yml')) {
+          $cache_redis = TRUE;
+          $redis_services_path = 'modules/o_contrib_eleven/' . $redis_dirname . '/redis.services.yml';
+          if ($is_dev && !$is_backend) {
+            header("X-Redis-Services-Is-Readable: " . $redis_services_path);
+          }
+        }
       }
     }
   }
@@ -1307,7 +1361,10 @@ if ($redis_up && $use_redis && !$custom_cache) {
   }
   if ($cache_redis) {
     if ($drupal_core >= 8) {
-      if (is_readable('modules/o_contrib_ten/' . $redis_dirname . '/redis.services.yml')) {
+      if (is_readable('modules/o_contrib_eleven/' . $redis_dirname . '/redis.services.yml')) {
+        $class_loader->addPsr4('Drupal\\redis\\', 'modules/o_contrib_eleven/' . $redis_dirname . '/src');
+      }
+      elseif (is_readable('modules/o_contrib_ten/' . $redis_dirname . '/redis.services.yml')) {
         $class_loader->addPsr4('Drupal\\redis\\', 'modules/o_contrib_ten/' . $redis_dirname . '/src');
       }
       elseif (is_readable('modules/o_contrib_nine/' . $redis_dirname . '/redis.services.yml')) {
@@ -1330,7 +1387,9 @@ if ($redis_up && $use_redis && !$custom_cache) {
       }
       $settings['container_yamls'][]             = $example_services_path;
       $settings['container_yamls'][]             = $redis_services_path;
-      $settings['queue_default']                 = 'queue.redis';
+      if ($drupal_core <= 10) {
+        $settings['queue_default']               = 'queue.redis_reliable';
+      }
       if ($redis_comprs) {
         $settings['redis_compress_length']       = 100;
         $settings['redis_compress_level']        = 5;
@@ -1507,44 +1566,88 @@ if (!$custom_da) {
 
 
 /**
- * New Relic - see: https://newrelic.com/docs/php/per-directory-settings#perdir-rollup
- * Support for background job borrowed from https://drupal.org/project/newrelic_drush_plugin
+ * New Relic Integration for Drupal with Drush Compatibility (8, 12, 13)
+ *
+ * Supports background jobs and sets appropriate New Relic parameters.
  */
-if (extension_loaded('newrelic') && $all_ini['enable_newrelic_integration']) {
+if (extension_loaded('newrelic') && !empty($all_ini['enable_newrelic_integration'])) {
   $this_instance = FALSE;
+
   if ($is_backend) {
-    $context = drush_get_context();
     $uri = FALSE;
-    if (isset($context['DRUSH_URI'])) {
-      $uri = $context['DRUSH_URI'];
-      $uri = str_replace('http://', '', $uri);
-      $uri = str_replace('https://', '', $uri);
+
+    // Check if drush_get_context exists (Drush 8)
+    if (function_exists('drush_get_context')) {
+      // Drush 8 context retrieval
+      $context = drush_get_context();
+      if (isset($context['DRUSH_URI'])) {
+        $uri = $context['DRUSH_URI'];
+      }
+      elseif (isset($context['DRUSH_DRUPAL_SITE'])) {
+        $uri = $context['DRUSH_DRUPAL_SITE'];
+      }
     }
-    elseif (isset($context['DRUSH_DRUPAL_SITE'])) {
-      $uri = $context['DRUSH_DRUPAL_SITE'];
+    else {
+      // Drush 9+ context retrieval
+      // Attempt to retrieve URI from environment variables or Drush services
+      // Drush commands can pass the URI as an environment variable or argument
+
+      // Example: Using environment variable (you might need to set this in Drush commands)
+      if (isset($_SERVER['DRUSH_URI'])) {
+        $uri = $_SERVER['DRUSH_URI'];
+      }
+      elseif (isset($_SERVER['DRUPAL_SITE_URI'])) {
+        $uri = $_SERVER['DRUPAL_SITE_URI'];
+      }
+      else {
+        // Fallback: Attempt to determine URI using Drupal APIs
+        // Note: In Drush context, some Drupal services might not be fully bootstrapped
+        try {
+          $request = \Drupal::request();
+          $uri = $request->getSchemeAndHttpHost();
+        }
+        catch (\Exception $e) {
+          // Unable to determine URI; proceed without setting it
+        }
+      }
     }
+
     if ($uri) {
+      // Clean the URI by removing the scheme
+      $uri = str_replace(['http://', 'https://'], '', $uri);
       $this_instance = 'Drush Site: ' . $uri;
+
+      // Set New Relic transaction name and parameters if command details are available
       if (isset($command['command']) && isset($command['arguments'])) {
-        $drush_command = array_merge(array($command['command']), $command['arguments']);
-        newrelic_add_custom_parameter('Drush command', implode(' ', $drush_command));
-        newrelic_name_transaction(implode(' ', $drush_command));
+        $drush_command = array_merge([$command['command']], $command['arguments']);
+        $command_str = implode(' ', $drush_command);
+
+        // Add custom parameters to New Relic
+        newrelic_add_custom_parameter('Drush command', $command_str);
+        newrelic_name_transaction($command_str);
+
+        // Indicate that this is a background job
         newrelic_background_job(TRUE);
       }
     }
   }
   else {
+    // Non-Drush (web request) context
     if (isset($_SERVER['SERVER_NAME'])) {
       $this_instance = 'Web Site: ' . $_SERVER['SERVER_NAME'];
-      //newrelic_background_job(FALSE);
+      // Optionally, indicate this is not a background job
+      // newrelic_background_job(FALSE);
     }
   }
+
+  // Apply the New Relic app name if determined
   if ($this_instance) {
     ini_set('newrelic.appname', $this_instance);
     newrelic_set_appname($this_instance);
   }
 }
-elseif (extension_loaded('newrelic') && !$all_ini['enable_newrelic_integration']) {
+elseif (extension_loaded('newrelic') && empty($all_ini['enable_newrelic_integration'])) {
+  // Disable New Relic auto-RUM and ignore transactions if integration is disabled
   newrelic_disable_autorum();
   newrelic_ignore_apdex();
   newrelic_ignore_transaction();
