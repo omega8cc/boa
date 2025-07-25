@@ -208,6 +208,8 @@
   /data/disk/*/tools/drush/* mrix,
   /data/disk/*/tools/drush/** r,
   /opt/tools/drush/** mrix,
+  /usr/local/bin/drush8.phar mrix,
+  /usr/local/bin/cv.phar mrix,
   /var/aegir/drush/ r,
   /var/aegir/drush/* mrix,
   /var/aegir/drush/** r,

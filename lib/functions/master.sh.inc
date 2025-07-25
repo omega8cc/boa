@@ -638,7 +638,11 @@ _aegir_master_upgrade() {
       && [ -e "/data/conf/global.inc" ]; then
       ln -sfn /data/conf/global.inc ${_mtrInc}/global.inc
     fi
-    _redis_password_update
+    if [ -e "/etc/init.d/valkey-server" ]; then
+      _valkey_password_update
+    elif [ -e "/etc/init.d/redis-server" ]; then
+      _redis_password_update
+    fi
     _force_advanced_nginx_config
     cd /var/aegir
     if [ -d "${_mtrNgx}/conf.d" ]; then
@@ -677,7 +681,7 @@ _php_cli_cron_update() {
   rm -f /var/spool/cron/crontabs/aegir
   if [ ! -e "/var/spool/cron/crontabs/aegir" ]; then
     #_DRUSH_HOSTING_TASKS_CMD="/usr/bin/drush @hostmaster hosting-tasks --force;"
-    _DRUSH_HOSTING_DISPATCH_CMD="/usr/bin/env php /var/aegir/drush/drush.php @hostmaster hosting-dispatch"
+    _DRUSH_HOSTING_DISPATCH_CMD="/usr/bin/env php /usr/local/bin/drush8.phar @hostmaster hosting-dispatch"
     echo -e \
     "\nSHELL=/bin/sh\nPATH=/opt/php83/bin:/usr/bin\n\n*/1 * * * * \
     ${_DRUSH_HOSTING_DISPATCH_CMD}" \
@@ -1032,7 +1036,11 @@ EOFMYSQL
       && [ -e "/data/conf/global.inc" ]; then
       ln -sfn /data/conf/global.inc ${_mtrInc}/global.inc
     fi
-    _redis_password_update
+    if [ -e "/etc/init.d/valkey-server" ]; then
+      _valkey_password_update
+    elif [ -e "/etc/init.d/redis-server" ]; then
+      _redis_password_update
+    fi
     _force_advanced_nginx_config
     chmod 0711 ${_mtrInc} &> /dev/null
     chmod 0711 /var/aegir/config &> /dev/null

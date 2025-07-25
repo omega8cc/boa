@@ -1143,7 +1143,11 @@ _restart_services() {
   bash /var/xdrago/move_sql.sh &> /dev/null
   wait
   service nginx reload &> /dev/null
-  service redis-server reload &> /dev/null
+  if [ -e "/etc/init.d/valkey-server" ]; then
+    service valkey-server reload &> /dev/null
+  elif [ -e "/etc/init.d/redis-server" ]; then
+    service redis-server reload &> /dev/null
+  fi
   if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
     _mrun "csf -q" &> /dev/null
     ### Linux kernel TCP SACK CVEs mitigation

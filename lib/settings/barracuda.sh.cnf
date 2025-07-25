@@ -359,6 +359,39 @@ _DB_SERIES=5.7
 
 
 ###----------------------------------------###
+### VALKEY LISTEN MODE                      ###
+###----------------------------------------###
+###
+### By default this option is set to SOCKET
+### to improve caching backend performance.
+###
+### If set to PORT (old default) Valkey will
+### listen on standard port and 127.0.0.1 IP.
+###
+### When set to any other IP address, it will
+### switch ALL your Aegir Satellite Instances
+### along with your Aegir Master Instance from
+### local Valkey server to the remote Valkey
+### server you have installed in your network.
+### It will also permanently disable your
+### local Valkey server. Make sure to specify
+### correct IP when using this mode and also
+### modify /etc/csf/csf.conf to allow outgoing
+### TCP connections via port 6379.
+###
+_VALKEY_LISTEN_MODE=SOCKET
+
+
+###----------------------------------------###
+### VALKEY MAJOR RELEASE                    ###
+###----------------------------------------###
+###
+### Supported values: 7, 8
+###
+_VALKEY_MAJOR_RELEASE=7
+
+
+###----------------------------------------###
 ### REDIS LISTEN MODE                      ###
 ###----------------------------------------###
 ###
@@ -821,7 +854,7 @@ _EXTRA_PACKAGES=""
 ###
 _CUSTOM_CONFIG_CSF=NO
 _CUSTOM_CONFIG_LSHELL=NO
-_CUSTOM_CONFIG_REDIS=NO
+_CUSTOM_CONFIG_VALKEY=NO
 _CUSTOM_CONFIG_SQL=NO
 
 ###

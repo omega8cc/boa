@@ -31,7 +31,11 @@ fi
 
 bash /var/xdrago/monitor/check/nginx.sh &
 bash /var/xdrago/monitor/check/php.sh &
-bash /var/xdrago/monitor/check/redis.sh &
+if [ -e "/etc/init.d/valkey-server" ]; then
+  bash /var/xdrago/monitor/check/valkey.sh &
+elif [ -e "/etc/init.d/redis-server" ]; then
+  bash /var/xdrago/monitor/check/redis.sh &
+fi
 bash /var/xdrago/monitor/check/mysql.sh &
 bash /var/xdrago/monitor/check/unbound.sh &
 bash /var/xdrago/monitor/check/system.sh &
