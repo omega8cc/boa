@@ -62,6 +62,13 @@ _incident_email_report() {
   fi
 }
 
+_valkey_cold_restart() {
+  killall -9 valkey-server &> /dev/null
+  rm -f /var/lib/valkey/*
+  service valkey-server start &> /dev/null
+  wait
+}
+
 _redis_cold_restart() {
   killall -9 redis-server &> /dev/null
   rm -f /var/lib/redis/*
@@ -78,7 +85,11 @@ _sql_restart() {
   bash /var/xdrago/move_sql.sh
   wait
   echo "$(date) $1 incident Percona MySQL server restarted" >> ${_pthOml}
-  _redis_cold_restart
+  if [ -e "/var/lib/valkey" ]; then
+    _valkey_cold_restart
+  elif [ -e "/var/lib/redis" ]; then
+    _redis_cold_restart
+  fi
   echo "$(date) $1 incident Redis server restarted" >> ${_pthOml}
   echo "$(date) $1 incident response completed" >> ${_pthOml}
   _incident_email_report "$1"

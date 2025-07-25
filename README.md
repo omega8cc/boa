@@ -1,6 +1,6 @@
 # Welcome to BOA!
 
-BOA stands for Barracuda, Octopus, and Ægir—a high-performance LEMP stack supporting Drupal from Pressflow 6 to the latest Drupal 10 (and soon Drupal 11), as well as Backdrop CMS and Grav CMS (soon).
+BOA stands for Barracuda, Octopus, and Ægir—a high-performance LEMP stack supporting Drupal from Pressflow 6 to the latest Drupal 11, as well as Backdrop CMS and Grav CMS (soon).
 
 ## What is Ægir?
 

@@ -526,6 +526,7 @@ _fix_o_contrib_symlink() {
     elif [ -e "${_Plr}/core" ] \
       && [ ! -e "${_Plr}/core/themes/olivero" ] \
       && [ ! -e "${_Plr}/core/themes/stable9" ] \
+      && [ ! -e "${_Plr}/core/modules/workspaces_ui" ] \
       && [ -e "${_O_CONTRIB_EIGHT}" ]; then
       if [ -e "${_Plr}/modules/o_contrib_nine" ] \
         || [ -e "${_Plr}/modules/.o_contrib_nine_dont_use" ]; then
@@ -536,6 +537,11 @@ _fix_o_contrib_symlink() {
         || [ -e "${_Plr}/modules/.o_contrib_ten_dont_use" ]; then
         rm -f ${_Plr}/modules/o_contrib_ten
         rm -f ${_Plr}/modules/.o_contrib_ten_dont_use
+      fi
+      if [ -e "${_Plr}/modules/o_contrib_eleven" ] \
+        || [ -e "${_Plr}/modules/.o_contrib_eleven_dont_use" ]; then
+        rm -f ${_Plr}/modules/o_contrib_eleven
+        rm -f ${_Plr}/modules/.o_contrib_eleven_dont_use
       fi
       if [ ! -e "${_Plr}/modules/o_contrib_eight" ]; then
         ln -sfn ${_O_CONTRIB_EIGHT} ${_Plr}/modules/o_contrib_eight &> /dev/null
@@ -554,6 +560,11 @@ _fix_o_contrib_symlink() {
         rm -f ${_Plr}/modules/o_contrib_ten
         rm -f ${_Plr}/modules/.o_contrib_ten_dont_use
       fi
+      if [ -e "${_Plr}/modules/o_contrib_eleven" ] \
+        || [ -e "${_Plr}/modules/.o_contrib_eleven_dont_use" ]; then
+        rm -f ${_Plr}/modules/o_contrib_eleven
+        rm -f ${_Plr}/modules/.o_contrib_eleven_dont_use
+      fi
       if [ ! -e "${_Plr}/modules/o_contrib_nine" ]; then
         ln -sfn ${_O_CONTRIB_NINE} ${_Plr}/modules/o_contrib_nine &> /dev/null
       fi
@@ -570,6 +581,11 @@ _fix_o_contrib_symlink() {
         || [ -e "${_Plr}/modules/.o_contrib_nine_dont_use" ]; then
         rm -f ${_Plr}/modules/o_contrib_nine
         rm -f ${_Plr}/modules/.o_contrib_nine_dont_use
+      fi
+      if [ -e "${_Plr}/modules/o_contrib_eleven" ] \
+        || [ -e "${_Plr}/modules/.o_contrib_eleven_dont_use" ]; then
+        rm -f ${_Plr}/modules/o_contrib_eleven
+        rm -f ${_Plr}/modules/.o_contrib_eleven_dont_use
       fi
       if [ ! -e "${_Plr}/modules/o_contrib_ten" ]; then
         ln -sfn ${_O_CONTRIB_TEN} ${_Plr}/modules/o_contrib_ten &> /dev/null
@@ -1566,22 +1582,38 @@ _fix_static_permissions() {
     if [ -e "${_Plr}/web.config" ] && [ ! -e "${_Plr}/core" ]; then
       _fix_seven_core_patch
     fi
+    if [ -e "${_Plr}/core/lib/Drupal.php" ] \
+      && [ -e "${_Plr}/../vendor/autoload.php" ] \
+      && grep -q '"drupal/core"' "${_Plr}/../composer.json" 2>/dev/null; then
+      _use_Plr="$(cd "${_Plr}/.." && pwd -P)"
+    else
+      _use_Plr="${_Plr}"
+    fi
     if [ ! -e "${_usEr}/static/control/unlock.info" ] \
-      && [ ! -e "${_Plr}/skip.info" ]; then
+      && [ ! -e "${_use_Plr}/skip.info" ]; then
       if [ ! -e "${_usEr}/log/ctrl/plr.${_PlrID}.ctm-lock-${_NOW}.info" ]; then
-        chown -R ${_HM_U} ${_Plr} &> /dev/null
+        chown -R ${_HM_U} ${_use_Plr} &> /dev/null
         touch ${_usEr}/log/ctrl/plr.${_PlrID}.ctm-lock-${_NOW}.info
       fi
     elif [ -e "${_usEr}/static/control/unlock.info" ] \
-      && [ ! -e "${_Plr}/skip.info" ]; then
+      && [ ! -e "${_use_Plr}/skip.info" ]; then
       if [ ! -e "${_usEr}/log/ctrl/plr.${_PlrID}.ctm-unlock-${_NOW}.info" ]; then
-        chown -R ${_HM_U}.ftp ${_Plr} &> /dev/null
+        chown -R ${_HM_U}.ftp ${_use_Plr} &> /dev/null
         touch ${_usEr}/log/ctrl/plr.${_PlrID}.ctm-unlock-${_NOW}.info
       fi
     fi
     if [ ! -f "${_usEr}/log/ctrl/plr.${_PlrID}.perm-fix-${_NOW}.info" ]; then
-      find ${_Plr} -type d -exec chmod 0775 {} \; &> /dev/null
-      find ${_Plr} -type f -exec chmod 0664 {} \; &> /dev/null
+      find ${_use_Plr} -type d -exec chmod 0775 {} \; &> /dev/null
+      find ${_use_Plr} -type f -exec chmod 0664 {} \; &> /dev/null
+      if [ -e "${_use_Plr}/vendor/drush" ]; then
+        chmod 0400 ${_use_Plr}/vendor/drush
+      fi
+      if [ -e "${_use_Plr}/vendor/symfony/console/Input" ]; then
+        chmod 0400 ${_use_Plr}/vendor/symfony/console/Input
+      fi
+      if [ -e "${_use_Plr}/vendor/symfony/console/Style" ]; then
+        chmod 0400 ${_use_Plr}/vendor/symfony/console/Style
+      fi
     fi
   fi
 }

@@ -80,11 +80,17 @@ _vBs="/var/backups"
 _eldirF="0001-Print-site_footer-if-defined.patch"
 _eldirP="/var/xdrago/conf/${_eldirF}"
 #
-_dctpF="drupal-ten-aegir-01.patch"
-_dctpP="/data/conf/patches/${_dctpF}"
+_tenCorePatchFname="drupal-ten-aegir-core-01.patch"
+_tenCorePatchPath="/data/conf/patches/${_tenCorePatchFname}"
 #
-_dctrF="drupal-ten-aegir-02.patch"
-_dctrP="/data/conf/patches/${_dctrF}"
+_tenConsolePatchFname="drupal-ten-aegir-console-02.patch"
+_tenConsolePatchPath="/data/conf/patches/${_tenConsolePatchFname}"
+#
+_elevenCorePatchFname="drupal-eleven-aegir-core-01.patch"
+_elevenCorePatchPath="/data/conf/patches/${_elevenCorePatchFname}"
+#
+_elevenConsolePatchFname="drupal-eleven-aegir-console-02.patch"
+_elevenConsolePatchPath="/data/conf/patches/${_elevenConsolePatchFname}"
 #
 _provLeInc="provision_hosting_le.drush.inc"
 _provLeIncFull="/var/xdrago/conf/${_provLeInc}"
@@ -689,6 +695,7 @@ _update_agents() {
     [ ! -e "/var/xdrago/monitor/check/mysql.sh" ] && rm -f ${_pthLog}/mysql.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/monitor/check/nginx.sh" ] && rm -f ${_pthLog}/nginx.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/monitor/check/php.sh" ] && rm -f ${_pthLog}/php.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/monitor/check/valkey.sh" ] && rm -f ${_pthLog}/valkey.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/monitor/check/redis.sh" ] && rm -f ${_pthLog}/redis.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/monitor/check/scan_nginx.sh" ] && rm -f ${_pthLog}/scan_nginx.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/monitor/check/system.sh" ] && rm -f ${_pthLog}/system.sh.ctrl.*.pid
@@ -1009,6 +1016,20 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
+    && [ ! -e "${_pthLog}/valkey.sh.ctrl.f93.${_tRee}.${_xSrl}.pid" ]; then
+    mv -f /var/xdrago/monitor/check/valkey.sh /var/xdrago/monitor/check/valkey.sh.old
+    curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/valkey.sh" -o /var/xdrago/monitor/check/valkey.sh
+    if [ -e "/var/xdrago/monitor/check/valkey.sh" ]; then
+      chmod 700 /var/xdrago/monitor/check/valkey.sh
+      chown root:root /var/xdrago/monitor/check/valkey.sh
+      touch ${_pthLog}/valkey.sh.ctrl.f93.${_tRee}.${_xSrl}.pid
+    else
+      mv -f /var/xdrago/monitor/check/valkey.sh.old /var/xdrago/monitor/check/valkey.sh
+    fi
+  fi
+
+  if [ -e "/var/xdrago/monitor/check" ] \
+    && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/redis.sh.ctrl.f94.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/redis.sh /var/xdrago/monitor/check/redis.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/redis.sh" -o /var/xdrago/monitor/check/redis.sh
@@ -1148,17 +1169,31 @@ _update_agents() {
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
-    && [ ! -e "${_pthLog}/drush8-symlink.ctrl.${_tRee}.${_xSrl}.pid" ]; then
-    if [ -x "/opt/tools/drush/8/drush/drush.php" ] \
+    && [ ! -e "${_pthLog}/cv-phar-symlink.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+    if [ -x "/usr/local/bin/cv.phar" ] \
+      && [ -L "/usr/bin/cv" ]; then
+      _CV_SYMLINK=$(readlink -n /usr/bin/cv 2>&1)
+      _CV_SYMLINK=$(echo -n ${_CV_SYMLINK} | tr -d "\n" 2>&1)
+      if [ "${_CV_SYMLINK}" != "/usr/local/bin/cv.phar" ]; then
+        rm -f /usr/bin/cv
+        ln -s /usr/local/bin/cv.phar /usr/bin/cv
+        touch ${_pthLog}/cv-phar-symlink.ctrl.${_tRee}.${_xSrl}.pid
+      fi
+    fi
+  fi
+
+  if [ -e "/var/xdrago/monitor/check" ] \
+    && [ ! -e "${_pthLog}/drush8-phar-symlink.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+    if [ -x "/usr/local/bin/drush8.phar" ] \
       && [ -L "/usr/bin/drush8" ]; then
       _DRUSH_SYMLINK=$(readlink -n /usr/bin/drush8 2>&1)
       _DRUSH_SYMLINK=$(echo -n ${_DRUSH_SYMLINK} | tr -d "\n" 2>&1)
-      if [ "${_DRUSH_SYMLINK}" != "/opt/tools/drush/8/drush/drush.php" ]; then
+      if [ "${_DRUSH_SYMLINK}" != "/usr/local/bin/drush8.phar" ]; then
         rm -f /usr/bin/drush8
         rm -f /usr/bin/drush
-        ln -s /opt/tools/drush/8/drush/drush.php /usr/bin/drush8
-        ln -s /opt/tools/drush/8/drush/drush.php /usr/bin/drush
-        touch ${_pthLog}/drush8-symlink.ctrl.${_tRee}.${_xSrl}.pid
+        ln -s /usr/local/bin/drush8.phar /usr/bin/drush8
+        ln -s /usr/local/bin/drush8.phar /usr/bin/drush
+        touch ${_pthLog}/drush8-phar-symlink.ctrl.${_tRee}.${_xSrl}.pid
       fi
     fi
   fi
@@ -1361,13 +1396,13 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/daily.sh.ctrl.f83.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/daily.sh.ctrl.f81.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/daily.sh /var/xdrago/daily.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/daily.sh" -o /var/xdrago/daily.sh
     if [ -e "/var/xdrago/daily.sh" ]; then
       chmod 700 /var/xdrago/daily.sh
       chown root:root /var/xdrago/daily.sh
-      touch ${_pthLog}/daily.sh.ctrl.f83.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/daily.sh.ctrl.f81.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/daily.sh.old /var/xdrago/daily.sh
     fi
@@ -1435,14 +1470,14 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/proc_num_ctrl.pl.ctrl.f94.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/proc_num_ctrl.pl.ctrl.f93.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/proc_num_ctrl.pl /var/xdrago/proc_num_ctrl.pl.old
     curl ${_crlGet} "${_urlHmr}/tools/system/proc_num_ctrl.pl" \
       -o /var/xdrago/proc_num_ctrl.pl
     if [ -e "/var/xdrago/proc_num_ctrl.pl" ]; then
       chmod 700 /var/xdrago/proc_num_ctrl.pl
       chown root:root /var/xdrago/proc_num_ctrl.pl
-      touch ${_pthLog}/proc_num_ctrl.pl.ctrl.f94.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/proc_num_ctrl.pl.ctrl.f93.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/proc_num_ctrl.pl.old /var/xdrago/proc_num_ctrl.pl
     fi
@@ -1552,7 +1587,7 @@ _update_agents() {
     fi
   fi
 
-  if [ -x "/opt/tools/drush/8/drush/drush.php" ] \
+  if [ -x "/usr/local/bin/drush8.phar" ] \
     && [ -e "/var/xdrago" ] \
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/lshell.ctrl.f92.${_tRee}.${_xSrl}.pid" ]; then
@@ -1571,7 +1606,7 @@ _update_agents() {
     fi
   fi
 
-  if [ -x "/opt/tools/drush/8/drush/drush.php" ] \
+  if [ -x "/usr/local/bin/drush8.phar" ] \
     && [ -e "/var/xdrago" ] \
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/multi.ctrl.${_tRee}.${_xSrl}.pid" ]; then
@@ -1837,7 +1872,7 @@ _update_agents() {
     fi
   done
 
-  if [ -x "/opt/tools/drush/8/drush/drush.php" ] \
+  if [ -x "/usr/local/bin/drush8.phar" ] \
     && [ -e "${_provLeIncFull}" ] \
     && [ -e "${_hoLeIncFull}" ] \
     && [ -e "/var/xdrago" ] \
@@ -2837,12 +2872,38 @@ _fix_eldir() {
   fi
 }
 
+_if_drupal_patches_update() {
+  if [ -e "/var/xdrago" ]; then
+    if [ ! -e "/data/conf/patches/ctrl.f97.${_tRee}.${_xSrl}.pid" ]; then
+      mkdir -p /data/conf/patches
+      rm -f /data/conf/patches/*
+      touch /data/conf/patches/ctrl.f97.${_tRee}.${_xSrl}.pid
+    fi
+  fi
+}
+
 _fix_drupal_core_ten() {
   if [ -e "/var/xdrago" ]; then
-    if [ ! -e "${_dctpP}" ] || [ ! -e "${_dctrP}" ]; then
+    if [ ! -e "${_tenCorePatchPath}" ]; then
       mkdir -p /data/conf/patches
-      curl ${_crlGet} "${_urlHmr}/patches/${_dctrF}" -o ${_dctrP}
-      cp -af ${_dctrP} ${_dctpP}
+      curl ${_crlGet} "${_urlHmr}/patches/${_tenCorePatchFname}" -o ${_tenCorePatchPath}
+    fi
+    if [ ! -e "${_tenConsolePatchPath}" ]; then
+      mkdir -p /data/conf/patches
+      curl ${_crlGet} "${_urlHmr}/patches/${_tenConsolePatchFname}" -o ${_tenConsolePatchPath}
+    fi
+  fi
+}
+
+_fix_drupal_core_eleven() {
+  if [ -e "/var/xdrago" ]; then
+    if [ ! -e "${_elevenCorePatchPath}" ]; then
+      mkdir -p /data/conf/patches
+      curl ${_crlGet} "${_urlHmr}/patches/${_elevenCorePatchFname}" -o ${_elevenCorePatchPath}
+    fi
+    if [ ! -e "${_elevenConsolePatchPath}" ]; then
+      mkdir -p /data/conf/patches
+      curl ${_crlGet} "${_urlHmr}/patches/${_elevenConsolePatchFname}" -o ${_elevenConsolePatchPath}
     fi
   fi
 }
@@ -3193,7 +3254,7 @@ _if_boa_key_tools_update_allowed() {
 
 _update_boa_tools() {
   mkdir -p ${_usrBin}
-  if [ -e "${_pthLog}" ] && [ ! -e "${_pthLog}/updateFx10.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+  if [ -e "${_pthLog}" ] && [ ! -e "${_pthLog}/updateFx11.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     _fxPp="fix-drupal-platform-permissions.sh"
     _fxSp="fix-drupal-site-permissions.sh"
     _fxPo="fix-drupal-platform-ownership.sh"
@@ -3209,7 +3270,7 @@ _update_boa_tools() {
     chmod 700 ${_usrBin}/${_fxPo}
     chmod 700 ${_usrBin}/${_fxSo}
     chmod 700 ${_usrBin}/${_fxLo}
-    touch ${_pthLog}/updateFx10.ctrl.${_tRee}.${_xSrl}.pid
+    touch ${_pthLog}/updateFx11.ctrl.${_tRee}.${_xSrl}.pid
   fi
   mkdir -p ${_optBin}
   _boaBins="autobeowulf \
@@ -3764,9 +3825,13 @@ _sysctl_update() {
       echo "solr9 hard nofile 524288" >> /etc/security/limits.d/solr9.conf
       echo "@www-data soft nofile 65535" > /etc/security/limits.d/www.conf
       echo "@www-data hard nofile 524288" >> /etc/security/limits.d/www.conf
-      service redis-server restart &> /dev/null
+      if [ -e "/etc/init.d/valkey-server" ]; then
+        service valkey-server restart &> /dev/null
+      elif [ -e "/etc/init.d/redis-server" ]; then
+        service redis-server restart &> /dev/null
+      fi
       service nginx restart &> /dev/null
-      service sshd restart &> /dev/null
+      service ssh restart &> /dev/null
       _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
@@ -3959,7 +4024,9 @@ if [ "$(id -u)" -eq 0 ]; then
     _fix_wkhtml
     _fix_wkhtml_perms
     _fix_eldir
+    _if_drupal_patches_update
     _fix_drupal_core_ten
+    _fix_drupal_core_eleven
     _fix_pure_ftpd
     _fix_hosting_le
     _fix_newrelic

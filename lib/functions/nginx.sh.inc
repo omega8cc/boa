@@ -633,7 +633,11 @@ _nginx_wildcard_ssl_install() {
       ln -sfn /data/conf/global.inc ${_mtrInc}/global.inc
     fi
     sed -i "s/3600/${_SPEED_VALID_MAX}/g" /data/conf/global.inc &> /dev/null
-    _redis_password_update
+    if [ -e "/etc/init.d/valkey-server" ]; then
+      _valkey_password_update
+    elif [ -e "/etc/init.d/redis-server" ]; then
+      _redis_password_update
+    fi
     _mrun "service nginx quietupgrade" 2> /dev/null
   else
     _WILD_SSL_PROXY_UP=NO
