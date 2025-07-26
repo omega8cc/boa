@@ -66,7 +66,7 @@
 @=> Improvements
 
     * Add _mysql_high_load procedure
-    * Add --with-avi to compatible PHP versions 8.1+
+    * Add --with-avif to compatible PHP versions 8.1+
     * Add check for downloaded dehydrated script integrity
     * Add fstab helper for Linode Volumes
     * Add mysql root password reset helper
