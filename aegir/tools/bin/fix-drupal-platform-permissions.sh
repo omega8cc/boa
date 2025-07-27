@@ -71,6 +71,9 @@ find ${drupal_root}/{modules,themes,libraries,includes,misc,profiles,core} -type
 printf "Setting permissions of all codebase files inside "${drupal_root}"...\n"
 find ${drupal_root}/{modules,themes,libraries,includes,misc,profiles,core} -type f -exec chmod 0664 {} \;
 
+printf "Locking permissions of all .drush.inc files inside codebase "${drupal_root}"...\n"
+find ${drupal_root}/modules -type f -name "*.drush.inc" -exec chmod 0000 {} \;
+
 if [ -e "${drupal_root}/vendor" ]; then
   printf "Setting permissions of all codebase directories inside "${drupal_root}/vendor"...\n"
   find ${drupal_root}/vendor -type d -exec chmod 02775 {} \;
