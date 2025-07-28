@@ -47,7 +47,7 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 export _tRee=lts
 export _xSrl=570ltsT11
 export _rLsn="BOA-5.7.11"
-export _bTs=DE12
+export _bTs=570v17
 
 ###
 ### Avoid too many questions
@@ -91,6 +91,9 @@ _elevenCorePatchPath="/data/conf/patches/${_elevenCorePatchFname}"
 #
 _elevenConsolePatchFname="drupal-eleven-aegir-console-02.patch"
 _elevenConsolePatchPath="/data/conf/patches/${_elevenConsolePatchFname}"
+#
+_elevenValidatorPatchFname="drupal-eleven-aegir-validator-03.patch"
+_elevenValidatorPatchPath="/data/conf/patches/${_elevenValidatorPatchFname}"
 #
 _provLeInc="provision_hosting_le.drush.inc"
 _provLeIncFull="/var/xdrago/conf/${_provLeInc}"
@@ -1183,17 +1186,17 @@ _update_agents() {
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
-    && [ ! -e "${_pthLog}/drush8-phar-symlink.ctrl.${_tRee}.${_xSrl}.pid" ]; then
-    if [ -x "/usr/local/bin/drush8.phar" ] \
+    && [ ! -e "${_pthLog}/drush8-classic-symlink.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+    if [ -x "/opt/tools/drush/8/drush/drush.php" ] \
       && [ -L "/usr/bin/drush8" ]; then
       _DRUSH_SYMLINK=$(readlink -n /usr/bin/drush8 2>&1)
       _DRUSH_SYMLINK=$(echo -n ${_DRUSH_SYMLINK} | tr -d "\n" 2>&1)
-      if [ "${_DRUSH_SYMLINK}" != "/usr/local/bin/drush8.phar" ]; then
+      if [ "${_DRUSH_SYMLINK}" != "/opt/tools/drush/8/drush/drush.php" ]; then
         rm -f /usr/bin/drush8
         rm -f /usr/bin/drush
-        ln -s /usr/local/bin/drush8.phar /usr/bin/drush8
-        ln -s /usr/local/bin/drush8.phar /usr/bin/drush
-        touch ${_pthLog}/drush8-phar-symlink.ctrl.${_tRee}.${_xSrl}.pid
+        ln -s /opt/tools/drush/8/drush/drush.php /usr/bin/drush8
+        ln -s /opt/tools/drush/8/drush/drush.php /usr/bin/drush
+        touch ${_pthLog}/drush8-classic-symlink.ctrl.${_tRee}.${_xSrl}.pid
       fi
     fi
   fi
@@ -1438,14 +1441,14 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/manage_ltd_users.sh.ctrl.f81.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/manage_ltd_users.sh.ctrl.f80.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/manage_ltd_users.sh /var/xdrago/manage_ltd_users.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/manage_ltd_users.sh" \
       -o /var/xdrago/manage_ltd_users.sh
     if [ -e "/var/xdrago/manage_ltd_users.sh" ]; then
       chmod 700 /var/xdrago/manage_ltd_users.sh
       chown root:root /var/xdrago/manage_ltd_users.sh
-      touch ${_pthLog}/manage_ltd_users.sh.ctrl.f81.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/manage_ltd_users.sh.ctrl.f80.${_tRee}.${_xSrl}.pid
       [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
     else
       mv -f /var/xdrago/manage_ltd_users.sh.old /var/xdrago/manage_ltd_users.sh
@@ -1587,7 +1590,7 @@ _update_agents() {
     fi
   fi
 
-  if [ -x "/usr/local/bin/drush8.phar" ] \
+  if [ -x "/opt/tools/drush/8/drush/drush.php" ] \
     && [ -e "/var/xdrago" ] \
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/lshell.ctrl.f92.${_tRee}.${_xSrl}.pid" ]; then
@@ -1606,7 +1609,7 @@ _update_agents() {
     fi
   fi
 
-  if [ -x "/usr/local/bin/drush8.phar" ] \
+  if [ -x "/opt/tools/drush/8/drush/drush.php" ] \
     && [ -e "/var/xdrago" ] \
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/multi.ctrl.${_tRee}.${_xSrl}.pid" ]; then
@@ -1872,7 +1875,7 @@ _update_agents() {
     fi
   done
 
-  if [ -x "/usr/local/bin/drush8.phar" ] \
+  if [ -x "/opt/tools/drush/8/drush/drush.php" ] \
     && [ -e "${_provLeIncFull}" ] \
     && [ -e "${_hoLeIncFull}" ] \
     && [ -e "/var/xdrago" ] \
@@ -2874,10 +2877,10 @@ _fix_eldir() {
 
 _if_drupal_patches_update() {
   if [ -e "/var/xdrago" ]; then
-    if [ ! -e "/data/conf/patches/ctrl.f97.${_tRee}.${_xSrl}.pid" ]; then
+    if [ ! -e "/data/conf/patches/ctrl.f96.${_tRee}.${_xSrl}.pid" ]; then
       mkdir -p /data/conf/patches
       rm -f /data/conf/patches/*
-      touch /data/conf/patches/ctrl.f97.${_tRee}.${_xSrl}.pid
+      touch /data/conf/patches/ctrl.f96.${_tRee}.${_xSrl}.pid
     fi
   fi
 }
@@ -2904,6 +2907,10 @@ _fix_drupal_core_eleven() {
     if [ ! -e "${_elevenConsolePatchPath}" ]; then
       mkdir -p /data/conf/patches
       curl ${_crlGet} "${_urlHmr}/patches/${_elevenConsolePatchFname}" -o ${_elevenConsolePatchPath}
+    fi
+    if [ ! -e "${_elevenValidatorPatchPath}" ]; then
+      mkdir -p /data/conf/patches
+      curl ${_crlGet} "${_urlHmr}/patches/${_elevenValidatorPatchFname}" -o ${_elevenValidatorPatchPath}
     fi
   fi
 }
@@ -3254,7 +3261,7 @@ _if_boa_key_tools_update_allowed() {
 
 _update_boa_tools() {
   mkdir -p ${_usrBin}
-  if [ -e "${_pthLog}" ] && [ ! -e "${_pthLog}/updateFx11.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+  if [ -e "${_pthLog}" ] && [ ! -e "${_pthLog}/updateFx15.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     _fxPp="fix-drupal-platform-permissions.sh"
     _fxSp="fix-drupal-site-permissions.sh"
     _fxPo="fix-drupal-platform-ownership.sh"
@@ -3270,7 +3277,7 @@ _update_boa_tools() {
     chmod 700 ${_usrBin}/${_fxPo}
     chmod 700 ${_usrBin}/${_fxSo}
     chmod 700 ${_usrBin}/${_fxLo}
-    touch ${_pthLog}/updateFx11.ctrl.${_tRee}.${_xSrl}.pid
+    touch ${_pthLog}/updateFx15.ctrl.${_tRee}.${_xSrl}.pid
   fi
   mkdir -p ${_optBin}
   _boaBins="autobeowulf \
