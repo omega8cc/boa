@@ -1,5 +1,35 @@
 
 ###
+### Stable BOA-5.7.12-lts - Full Edition
+### Date: Tue Jul 29 08:44:02 AM AEST 2025 in Sydney
+###
+
+@=> New BOA-5.7.12 LTS Release
+
+  This maintenance release delivers critical hot-fixes and essential
+  component upgrades to ensure maximum stability and compatibility across
+  all environments.
+
+  Immediate upgrade of both Barracuda and Octopus is strongly recommended
+  to benefit from these fixes and avoid potential issues.
+
+@=> Important Fixes
+
+    * Add _elevenValidatorPatch to fix Drupal 11 CMS distro fatal error
+    * Fix typo in --with-avif for PHP 8.1+ — fixes #1881
+    * Removing all .drush.inc files only in Drupal 11 -- fixes #1885 and #5
+
+@=> Changes
+
+    * Back to non-phar drush8 to restore PHP-CLI live PHP switch capability
+
+@=> Upgrades
+
+    * Drush 8.5.0.4 classic
+    * Unbound 1.23.1
+
+
+###
 ### Stable BOA-5.7.11-lts - Full Edition
 ### Date: Fri Jul 25 10:26:18 PM BST 2025 in London
 ### Welcome Drupal 11—Aegir Mission Impossible—Again!
@@ -19,6 +49,35 @@
 
 
 ###
+### Stable BOA-5.7.11-pro - Full Edition
+### Date: Tue Jul 29 08:44:02 AM AEST 2025 in Sydney
+###
+
+@=> New BOA-5.7.11 PRO Release
+
+  This maintenance release delivers critical hot-fixes and essential
+  component upgrades to ensure maximum stability and compatibility across
+  all environments.
+
+  Immediate upgrade of both Barracuda and Octopus is strongly recommended
+  to benefit from these fixes and avoid potential issues.
+
+@=> Important Fixes
+
+    * Add _elevenValidatorPatch to fix Drupal 11 CMS distro fatal error
+    * Fix typo in --with-avif for PHP 8.1+ — fixes #1881
+    * Removing all .drush.inc files only in Drupal 11 -- fixes #1885 and #5
+
+@=> Changes
+
+    * Back to non-phar drush8 to restore PHP-CLI live PHP switch capability
+
+@=> Upgrades
+
+    * Drush 8.5.0.4 classic
+    * Unbound 1.23.1
+
+
 ### Stable BOA-5.7.11-pro - Full Edition
 ### Date: Fri Jul 25 06:53:03 PM BST 2025 in London
 ### Welcome Drupal 11—Aegir Mission Impossible—Again!
