@@ -3273,7 +3273,7 @@ _get_drush_ten() {
 }
 
 #
-# Install or update Drush 8 phar.
+# Install or update Drush 8.
 _get_drush_eight() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _get_drush_eight"
