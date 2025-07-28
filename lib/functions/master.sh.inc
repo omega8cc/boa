@@ -681,7 +681,7 @@ _php_cli_cron_update() {
   rm -f /var/spool/cron/crontabs/aegir
   if [ ! -e "/var/spool/cron/crontabs/aegir" ]; then
     #_DRUSH_HOSTING_TASKS_CMD="/usr/bin/drush @hostmaster hosting-tasks --force;"
-    _DRUSH_HOSTING_DISPATCH_CMD="/usr/bin/env php /usr/local/bin/drush8.phar @hostmaster hosting-dispatch"
+    _DRUSH_HOSTING_DISPATCH_CMD="/usr/bin/env php /usr/bin/drush8 @hostmaster hosting-dispatch"
     echo -e \
     "\nSHELL=/bin/sh\nPATH=/opt/php83/bin:/usr/bin\n\n*/1 * * * * \
     ${_DRUSH_HOSTING_DISPATCH_CMD}" \

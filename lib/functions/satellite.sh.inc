@@ -5083,7 +5083,7 @@ _satellite_child_b_prepare_dirs_permissions() {
     rm -f ${_ROOT}/aegir.sh
   fi
   #_DRUSH_HOSTING_TASKS_CMD="/usr/bin/drush @hostmaster hosting-tasks --force"
-  _DRUSH_HOSTING_DISPATCH_CMD="${_T_CLI}/php /usr/local/bin/drush8.phar @hostmaster hosting-dispatch"
+  _DRUSH_HOSTING_DISPATCH_CMD="${_T_CLI}/php /usr/bin/drush8 @hostmaster hosting-dispatch"
   touch ${_ROOT}/aegir.sh
   chmod 0700 ${_ROOT}/aegir.sh &> /dev/null
   echo -e \
