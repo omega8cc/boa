@@ -1,0 +1,64 @@
+# AppArmor profile for Valkey server
+# This profile restricts the Valkey server (valkey-server) to essential operations only.
+
+#include <tunables/global>
+
+/usr/bin/valkey-server flags=(complain) {
+
+  # Include common AppArmor abstractions
+  include <abstractions/base>
+  include <abstractions/nameservice>
+  include <abstractions/user-tmp>
+
+  # Allow Valkey to accept signal from PHP-CLI processes
+  signal (receive) peer=/opt/php*/bin/php,
+
+  # Allow reading necessary kernel parameters
+  /proc/sys/** r,
+  /sys/devices/** r,
+  /sys/kernel/** r,
+
+  # Allow execution of valkey-server binary
+  /usr/bin/valkey-server mrix,
+
+  # Allow Valkey to read its configuration file
+  /etc/valkey/valkey.conf r,
+
+  # Allow Valkey to read and write its data files
+  /var/lib/valkey/** rwk,
+
+  # Allow Valkey to read and write its log files
+  /var/log/valkey/** rw,
+
+  # Allow Valkey to open TCP sockets on any address
+  network inet stream,
+
+  # Allow Valkey to use syslog
+  /dev/log w,
+  /usr/bin/logger ixr,
+
+  # Allow Valkey to read system libraries
+  /lib/** mr,
+  /lib64/** mr,
+  /usr/lib/** mr,
+  /usr/local/sbin/* mrix,
+  /usr/local/ssl/** mr,
+  /usr/local/ssl3/** mr,
+
+  # Allow Valkey to use /run for pid/sock files
+  /run/valkey/** rw,
+
+  # Allow Valkey to use tmp files
+  /tmp/ r,
+  /tmp/** rw,
+
+  owner /proc/*/smaps r,
+  owner /proc/*/stat r,
+  owner /var/lib/valkey/ r,
+  owner /var/lib/valkey/dump.rdb rw,
+  owner /var/lib/valkey/temp-*.rdb rw,
+  owner /var/log/valkey/valkey-server.log rw,
+
+  # Catchall to deny everything else
+  #deny /** rwklx,
+}
