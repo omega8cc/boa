@@ -1,0 +1,12 @@
+diff -urp a/core/modules/package_manager/src/Validator/DiskSpaceValidator.php b/core/modules/package_manager/src/Validator/DiskSpaceValidator.php
+--- a/core/modules/package_manager/src/Validator/DiskSpaceValidator.php	2025-06-26 14:56:54.000000000 +0100
++++ b/core/modules/package_manager/src/Validator/DiskSpaceValidator.php	2025-07-28 00:56:23.271822366 +0100
+@@ -40,7 +40,7 @@ class DiskSpaceValidator implements Even
+    *   If the amount of free space could not be determined.
+    */
+   protected function freeSpace(string $path): float {
+-    $free_space = disk_free_space($path);
++    $free_space = function_exists('disk_free_space') ? disk_free_space($path) : 9999999999; // assume plenty of space
+     if ($free_space === FALSE) {
+       throw new \RuntimeException("Cannot get disk information for $path.");
+     }

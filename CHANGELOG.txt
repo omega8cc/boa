@@ -46,7 +46,7 @@
 @=> Improvements
 
     * Add _mysql_high_load procedure
-    * Add --with-avi to compatible PHP versions 8.1+
+    * Add --with-avif to compatible PHP versions 8.1+
     * Add check for downloaded dehydrated script integrity
     * Add fstab helper for Linode Volumes
     * Add mysql root password reset helper
@@ -77,7 +77,7 @@
     * CSF 14.24
     * cURL 8.14.1
     * dehydrated 0.7.3
-    * Drush 8.5.0.3
+    * Drush 8.5.0.4
     * MultiCore Apache Solr 9.8.1
     * Nginx 1.29.0
     * OpenSSH 10.0p2
@@ -293,7 +293,7 @@
     * PHP 8.4.2
     * PHP APCu 5.1.24
     * PHP MCRYPT 1.0.7
-    * Unbound 1.22.0
+    * Unbound 1.23.1
     * Use phpredis 4.3.0 with PHP 5.6
     * Use phpredis 6.1.0 for 7.4 and newer
 

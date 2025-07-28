@@ -15,7 +15,7 @@
 11. HTTP/2 or SPDY Nginx support.
 12. Perfect Forward Secrecy (PFS) support in Nginx.
 13. PHP extensions: Zend OPcache, PHPRedis, UploadProgress, MailParse, and ionCube.
-14. Fast Redis Cache/Lock/Path with DB auto-failover for all Drupal core versions.
+14. Fast Valkey Cache/Lock/Path with DB auto-failover for all Drupal core versions.
 15. Limited Shell, SFTP, and FTPS accounts per Ægir Client with per-site access.
 16. Drush access on the command line in all shell accounts.
 17. Composer and Drush Make access on the command line for the main shell account only.

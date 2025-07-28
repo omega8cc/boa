@@ -648,6 +648,7 @@ _tune_web_server_config() {
       wait
     fi
   done
+
   # PHP-FPM INI
   sed -i "s/^default_socket_timeout =.*/default_socket_timeout = 180/g" /opt/php*/etc/php*.ini &> /dev/null
   wait
@@ -655,6 +656,7 @@ _tune_web_server_config() {
   wait
   sed -i "s/^max_input_time =.*/max_input_time = 180/g" /opt/php*/etc/php*.ini                 &> /dev/null
   wait
+
   # PHP-CLI INI
   sed -i "s/^default_socket_timeout =.*/default_socket_timeout = 3600/g" /opt/php*/lib/php.ini &> /dev/null
   wait
@@ -662,6 +664,11 @@ _tune_web_server_config() {
   wait
   sed -i "s/^max_input_time =.*/max_input_time = 3600/g" /opt/php*/lib/php.ini                 &> /dev/null
   wait
+
+  # Valkey config should sync with PHP-CLI
+  sed -i "s/^timeout .*/timeout 3600/g" /etc/valkey/valkey.conf                                &> /dev/null
+  wait
+
   # Redis config should sync with PHP-CLI
   sed -i "s/^timeout .*/timeout 3600/g" /etc/redis/redis.conf                                  &> /dev/null
   wait
@@ -1686,7 +1693,7 @@ _install_php_multi() {
     fi
   fi
   if [ "$1" = "81" ] || [ "$1" = "82" ] || [ "$1" = "83" ] || [ "$1" = "84" ]; then
-    _PHP_EXTRA="${_PHP_EXTRA} --with-avi"
+    _PHP_EXTRA="${_PHP_EXTRA} --with-avif"
   fi
   if [ "${_OS_CODE}" = "daedalus" ] \
     || [ "${_OS_CODE}" = "chimaera" ] \
