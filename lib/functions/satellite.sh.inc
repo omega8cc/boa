@@ -1,5 +1,5 @@
 
-export _tRee=pro
+export _tRee=dev
 export _rLsn="BOA-5.7.11"
 export _rlsE="${_rLsn}-${_tRee}"
 export _bRnh="5.x-${_tRee}"
@@ -3872,7 +3872,7 @@ _satellite_make() {
     _writeTo="${_vBs}/${_filIncO}"
   fi
 
-  export _xSrl=570proT11
+  export _xSrl=570devT11
   export _X_VERSION="${_X_VERSION}"
 
   echo "export _AEGIR_VERSION=\"${_AEGIR_VERSION}\""         >> ${_writeTo}
@@ -5083,7 +5083,7 @@ _satellite_child_b_prepare_dirs_permissions() {
     rm -f ${_ROOT}/aegir.sh
   fi
   #_DRUSH_HOSTING_TASKS_CMD="/usr/bin/drush @hostmaster hosting-tasks --force"
-  _DRUSH_HOSTING_DISPATCH_CMD="${_T_CLI}/php /usr/local/bin/drush8.phar @hostmaster hosting-dispatch"
+  _DRUSH_HOSTING_DISPATCH_CMD="${_T_CLI}/php ${_ROOT}/tools/drush/drush.php @hostmaster hosting-dispatch"
   touch ${_ROOT}/aegir.sh
   chmod 0700 ${_ROOT}/aegir.sh &> /dev/null
   echo -e \
