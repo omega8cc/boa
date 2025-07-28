@@ -4,7 +4,7 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 export _tRee=dev
-export _xSrl=570devT11
+export _xSrl=570devT12
 
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
