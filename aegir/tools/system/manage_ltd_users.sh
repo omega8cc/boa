@@ -1975,7 +1975,7 @@ _manage_user() {
         | awk '{ print $3}' \
         | sed "s/[\,']//g" 2>&1)
       if [ -e "${_THIS_HM_PLR}/modules/path_alias_cache" ] \
-        && [ -x "/usr/local/bin/drush8.phar" ]; then
+        && [ -x "/usr/local/bin/drush8" ]; then
         if [ -x "/opt/php56/bin/php" ]; then
           echo 5.6 > ${_dscUsr}/static/control/cli.info
         fi
