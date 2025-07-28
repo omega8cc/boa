@@ -2094,6 +2094,8 @@ _barracuda_cnf() {
     wait
     sed -i "s/^_STRONG_PASS.*/_STRONG_PASSWORDS=YES/g" /root/.*.octopus.cnf &> /dev/null
     wait
+    sed -i "s/^_VALKEY_LISTEN.*/_VALKEY_LISTEN_MODE=SOCKET/g"    ${_barCnf}
+    wait
     sed -i "s/^_REDIS_LISTEN.*/_REDIS_LISTEN_MODE=SOCKET/g"      ${_barCnf}
     wait
     if [ "${_OS_CODE}" = "stretch" ] || [ "${_OS_CODE}" = "jessie" ]; then
@@ -2492,6 +2494,8 @@ _barracuda_cnf() {
     sed -i "s/^_FORCE_GIT_.*/_FORCE_GIT_MIRROR=\"\"/g" /root/.*.octopus.cnf &> /dev/null
     wait
     sed -i "s/^_STRONG_PASS.*/_STRONG_PASSWORDS=YES/g" /root/.*.octopus.cnf &> /dev/null
+    wait
+    sed -i "s/^_VALKEY_LISTEN_.*/_VALKEY_LISTEN_MODE=SOCKET/g"   ${_barCnf}
     wait
     sed -i "s/^_REDIS_LISTEN_.*/_REDIS_LISTEN_MODE=SOCKET/g"     ${_barCnf}
     wait

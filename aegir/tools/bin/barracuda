@@ -888,6 +888,9 @@ _up_action() {
     wait
     sed -i "s/^_NGINX_FORWARD.*/_NGINX_FORWARD_SECRECY=YES/g"         ${_barCnf}
     wait
+    ### Force Valkey SOCKET mode if PORT was used before
+    sed -i "s/^_VALKEY_LISTEN_MODE=PORT/_VALKEY_LISTEN_MODE=SOCKET/g" ${_barCnf}
+    wait
     ### Force Redis SOCKET mode if PORT was used before
     sed -i "s/^_REDIS_LISTEN_MODE=PORT/_REDIS_LISTEN_MODE=SOCKET/g"   ${_barCnf}
     wait
