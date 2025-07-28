@@ -990,7 +990,7 @@ _php_cli_drush_update() {
   fi
   if [ -x "${_T_CLI}/php" ]; then
     #_DRUSH_HOSTING_TASKS_CMD="/usr/bin/drush @hostmaster hosting-tasks --force"
-    _DRUSH_HOSTING_DISPATCH_CMD="${_T_CLI}/php /usr/local/bin/drush8.phar @hostmaster hosting-dispatch"
+    _DRUSH_HOSTING_DISPATCH_CMD="${_T_CLI}/php ${_dscUsr}/tools/drush/drush.php @hostmaster hosting-dispatch"
     if [ -e "${_dscUsr}/aegir.sh" ]; then
       rm -f ${_dscUsr}/aegir.sh
     fi
@@ -1975,7 +1975,7 @@ _manage_user() {
         | awk '{ print $3}' \
         | sed "s/[\,']//g" 2>&1)
       if [ -e "${_THIS_HM_PLR}/modules/path_alias_cache" ] \
-        && [ -x "/usr/local/bin/drush8.phar" ]; then
+        && [ -x "/opt/tools/drush/8/drush/drush.php" ]; then
         if [ -x "/opt/php56/bin/php" ]; then
           echo 5.6 > ${_dscUsr}/static/control/cli.info
         fi
