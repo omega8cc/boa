@@ -92,6 +92,9 @@ _elevenCorePatchPath="/data/conf/patches/${_elevenCorePatchFname}"
 _elevenConsolePatchFname="drupal-eleven-aegir-console-02.patch"
 _elevenConsolePatchPath="/data/conf/patches/${_elevenConsolePatchFname}"
 #
+_elevenValidatorPatchFname="drupal-eleven-aegir-validator-03.patch"
+_elevenValidatorPatchPath="/data/conf/patches/${_elevenValidatorPatchFname}"
+#
 _provLeInc="provision_hosting_le.drush.inc"
 _provLeIncFull="/var/xdrago/conf/${_provLeInc}"
 #
@@ -2874,10 +2877,10 @@ _fix_eldir() {
 
 _if_drupal_patches_update() {
   if [ -e "/var/xdrago" ]; then
-    if [ ! -e "/data/conf/patches/ctrl.f97.${_tRee}.${_xSrl}.pid" ]; then
+    if [ ! -e "/data/conf/patches/ctrl.f96.${_tRee}.${_xSrl}.pid" ]; then
       mkdir -p /data/conf/patches
       rm -f /data/conf/patches/*
-      touch /data/conf/patches/ctrl.f97.${_tRee}.${_xSrl}.pid
+      touch /data/conf/patches/ctrl.f96.${_tRee}.${_xSrl}.pid
     fi
   fi
 }
@@ -2904,6 +2907,10 @@ _fix_drupal_core_eleven() {
     if [ ! -e "${_elevenConsolePatchPath}" ]; then
       mkdir -p /data/conf/patches
       curl ${_crlGet} "${_urlHmr}/patches/${_elevenConsolePatchFname}" -o ${_elevenConsolePatchPath}
+    fi
+    if [ ! -e "${_elevenValidatorPatchPath}" ]; then
+      mkdir -p /data/conf/patches
+      curl ${_crlGet} "${_urlHmr}/patches/${_elevenValidatorPatchFname}" -o ${_elevenValidatorPatchPath}
     fi
   fi
 }
