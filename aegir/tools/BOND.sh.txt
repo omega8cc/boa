@@ -144,7 +144,7 @@ export _xSrl=570devT12
 
 _AEGIR_VERSION="${_tRee}"
 _BRANCH_BOA="5.x-${_tRee}"
-_X_VERSION="BOA-5.7.11-${_tRee}"
+_X_VERSION="BOA-5.7.12-${_tRee}"
 _MYSQLTUNER_VRN=1.9.4
 
 _NOW=$(date +%y%m%d-%H%M%S 2>&1)
