@@ -87,10 +87,11 @@ _sql_restart() {
   echo "$(date) $1 incident Percona MySQL server restarted" >> ${_pthOml}
   if [ -e "/var/lib/valkey" ]; then
     _valkey_cold_restart
+    echo "$(date) $1 incident Valkey server restarted" >> ${_pthOml}
   elif [ -e "/var/lib/redis" ]; then
     _redis_cold_restart
+    echo "$(date) $1 incident Redis server restarted" >> ${_pthOml}
   fi
-  echo "$(date) $1 incident Redis server restarted" >> ${_pthOml}
   echo "$(date) $1 incident response completed" >> ${_pthOml}
   _incident_email_report "$1"
   echo >> ${_pthOml}
