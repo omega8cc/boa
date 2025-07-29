@@ -2656,6 +2656,35 @@ _if_fix_lshell() {
   fi
 }
 
+_fix_stop_solr() {
+  _restartSolr=FALSE
+  if [ -x "/etc/init.d/solr9" ] && [ -e "/etc/default/solr9.in.sh" ]; then
+    _SOLR9_STOP_TEST=$(grep "SOLR_STOP_PORT=19099" /etc/default/solr9.in.sh 2>&1)
+    if [[ ! "${_SOLR9_STOP_TEST}" =~ "SOLR_STOP_PORT=19099" ]]; then
+      sed -i "s/^SOLR_STOP_.*//g" /etc/default/solr9.in.sh
+      wait
+      echo "SOLR_STOP_PORT=19099" >> /etc/default/solr9.in.sh
+      echo "SOLR_STOP_KEY=mycustomkey9" >> /etc/default/solr9.in.sh
+      _restartSolr=TRUE
+    fi
+  fi
+  if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
+    _SOLR7_STOP_TEST=$(grep "SOLR_STOP_PORT=17077" /etc/default/solr7.in.sh 2>&1)
+    if [[ ! "${_SOLR7_STOP_TEST}" =~ "SOLR_STOP_PORT=17077" ]]; then
+      sed -i "s/^SOLR_STOP_.*//g" /etc/default/solr7.in.sh
+      wait
+      echo "SOLR_STOP_PORT=17077" >> /etc/default/solr7.in.sh
+      echo "SOLR_STOP_KEY=mycustomkey7" >> /etc/default/solr7.in.sh
+      _restartSolr=TRUE
+    fi
+  fi
+  if [ "${_restartSolr}" = "TRUE" ]; then
+    rm -rf /tmp/jetty-*
+    killall -9 java
+    echo "_restartSolr at $(date)" >> ${_pthLog}/_fix_stop_solr.log
+  fi
+}
+
 _fix_log4j_solr7() {
   _LOG4J_VRN=2.17.1
   _DO_SOLR_RESTART=
@@ -3887,6 +3916,9 @@ if [ "$(id -u)" -eq 0 ]; then
   if command -v curl &> /dev/null; then
     _verify_boa_keys
   fi
+
+  ### Fix Solr 7/9 conflicting ports
+  _fix_stop_solr
 
   ### CVE-2021-44228 Log4j 2 Vulnerability
   ### CVE-2021-45046 Log4j 2 Vulnerability
