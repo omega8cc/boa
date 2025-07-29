@@ -4,7 +4,7 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 export _tRee=pro
-export _xSrl=570proT12
+export _xSrl=570proT03
 
 _WEBG=www-data
 _THIS_DB_PORT=3306
