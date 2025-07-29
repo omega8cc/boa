@@ -2678,7 +2678,7 @@ _fix_stop_solr() {
       _restartSolr=TRUE
     fi
   fi
-  _ctrl_jetty_nr=$(ll /tmp/jetty-0.0.0.0-8099-solr.war* | wc -l)
+  _ctrl_jetty_nr=$(ls -la /tmp/jetty-0.0.0.0-8099-solr.war* | wc -l)
   if [ "${_ctrl_jetty_nr}" -gt 8 ]; then
     _restartSolr=TRUE
   fi
