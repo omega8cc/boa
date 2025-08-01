@@ -66,9 +66,15 @@ _oom_critical_restart() {
   echo "$(date) OOM solr/jetty killed" >> ${_pthOml}
   kill -9 $(ps aux | grep '[n]ewrelic-daemon' | awk '{print $2}') &> /dev/null
   echo "$(date) OOM newrelic-daemon killed" >> ${_pthOml}
-  rm -f /var/lib/redis/*
-  kill -9 $(ps aux | grep '[r]edis-server' | awk '{print $2}') &> /dev/null
-  echo "$(date) OOM redis-server killed" >> ${_pthOml}
+  if [ -e "/etc/init.d/valkey-server" ]; then
+    rm -f /var/lib/valkey/*
+    kill -9 $(ps aux | grep '[v]alkey-server' | awk '{print $2}') &> /dev/null
+    echo "$(date) OOM valkey-server killed" >> ${_pthOml}
+  elif [ -e "/etc/init.d/redis-server" ]; then
+    rm -f /var/lib/redis/*
+    kill -9 $(ps aux | grep '[r]edis-server' | awk '{print $2}') &> /dev/null
+    echo "$(date) OOM redis-server killed" >> ${_pthOml}
+  fi
   bash /var/xdrago/move_sql.sh
   wait
   echo "$(date) OOM Percona MySQL Server restarted" >> ${_pthOml}
