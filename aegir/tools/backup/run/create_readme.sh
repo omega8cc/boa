@@ -3,7 +3,7 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-export _sPid="f63"
+export _sPid="f62"
 
 # Directory for storing README files
 _BASE_DIR="/data/disk"
@@ -132,7 +132,11 @@ _main() {
   for _user_dir in "${_BASE_DIR}"/*; do
     if [ -d "${_user_dir}" ]; then
       _user=$(basename "${_user_dir}")
-      if [ "${_user}" != "arch" ] && [ "${_user}" != "data" ] && [ "${_user}" != "global" ] && [ "${_user}" != "custom" ]; then
+      if [ "${_user}" != "arch" ] \
+        && [ "${_user}" != "data" ] \
+        && [ "${_user}" != "global" ] \
+        && [ "${_user}" != "static" ] \
+        && [ "${_user}" != "custom" ]; then
         _create_readme_file "${_user}"
       fi
     fi
