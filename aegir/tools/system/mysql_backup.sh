@@ -39,10 +39,18 @@ if [ ! -z "${_IS_SQLBACKUP_RUNNING}" ]; then
   exit 0
 fi
 
-echo "INFO: Starting silent usage report on $(date)"
-bash /var/xdrago/usage.sh silent
-wait
-echo "INFO: Completing silent usage report on $(date)"
+if [ "${1}" = "full" ] || [ -z "${1}" ]; then
+  _THIS_MODE="full"
+elif [ "${1}" = "basic" ]; then
+  _THIS_MODE="basic"
+fi
+
+if [ "${_THIS_MODE}" = "full" ]; then
+  echo "INFO: Starting silent usage report on $(date)"
+  bash /var/xdrago/usage.sh silent
+  wait
+  echo "INFO: Completing silent usage report on $(date)"
+fi
 
 _VM_TEST="$(uname -a)"
 if [[ "${_VM_TEST}" =~ "-beng" ]]; then
@@ -51,7 +59,7 @@ else
   _VMFAMILY="XEN"
 fi
 
-if [ "${_VMFAMILY}" = "VS" ]; then
+if [ "${_VMFAMILY}" = "VS" ] && [ "${_THIS_MODE}" = "full" ]; then
   _n=$((RANDOM%600+8))
   echo "INFO: Waiting ${_n} seconds 1/2 on $(date) before running backup..."
   sleep ${_n}
@@ -406,6 +414,7 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
       fi
       if [ "${_OPTIM}" = "YES" ] \
         && [ "${_DOW}" = "7" ] \
+        && [ "${_THIS_MODE}" = "full" ] \
         && [ "${_DOM}" -ge 24 ] \
         && [ "${_DOM}" -lt 31 ]; then
         _repair_this_database &> /dev/null
@@ -432,12 +441,15 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
   fi
 done
 
-echo "INFO: Running all dbs usage report on $(date)"
-du -s /var/lib/mysql/* > /root/.du.local.sql
-echo "INFO: Completing all dbs usage report on $(date)"
+if [ "${_THIS_MODE}" = "full" ]; then
+  echo "INFO: Running all dbs usage report on $(date)"
+  du -s /var/lib/mysql/* > /root/.du.local.sql
+  echo "INFO: Completing all dbs usage report on $(date)"
+fi
 
 if [ "${_OPTIM}" = "YES" ] \
   && [ "${_DOW}" = "7" ] \
+  && [ "${_THIS_MODE}" = "full" ] \
   && [ "${_DOM}" -ge 24 ] \
   && [ "${_DOM}" -lt 31 ] \
   && [ -e "/root/.my.restart_after_optimize.cnf" ] \
@@ -454,7 +466,7 @@ echo "INFO: Completing all dbs backups on $(date)"
 rm -f /run/boa_sql_backup.pid
 touch /var/xdrago/log/last-run-backup
 
-if [ "${_VMFAMILY}" = "VS" ]; then
+if [ "${_VMFAMILY}" = "VS" ] && [ "${_THIS_MODE}" = "full" ]; then
   _n=$((RANDOM%300+8))
   echo "INFO: Waiting ${_n} seconds on $(date) before running compress..."
   sleep ${_n}
@@ -468,19 +480,26 @@ _DB_BACKUPS_TTL=${_DB_BACKUPS_TTL//[^0-9]/}
 if [ -z "${_DB_BACKUPS_TTL}" ]; then
   _DB_BACKUPS_TTL="14"
 fi
+if [ "${_THIS_MODE}" = "basic" ]; then
+  _DB_BACKUPS_TTL="3"
+fi
 find ${_BACKUPDIR} -mtime +${_DB_BACKUPS_TTL} -type d -exec rm -rf {} \;
 echo "INFO: Backups older than ${_DB_BACKUPS_TTL} days deleted"
 
-if [ -x "/opt/local/bin/copydbackup" ]; then
-  echo "INFO: Copying backups to users space"
-  bash /opt/local/bin/copydbackup &> /dev/null
-  wait
+if [ "${_THIS_MODE}" = "full" ]; then
+  if [ -x "/opt/local/bin/copydbackup" ]; then
+    echo "INFO: Copying backups to users space"
+    bash /opt/local/bin/copydbackup &> /dev/null
+    wait
+  fi
 fi
 
-echo "INFO: Starting verbose usage report on $(date)"
-bash /var/xdrago/usage.sh verbose
-wait
-echo "INFO: Completing verbose usage report on $(date)"
+if [ "${_THIS_MODE}" = "full" ]; then
+  echo "INFO: Starting verbose usage report on $(date)"
+  bash /var/xdrago/usage.sh verbose
+  wait
+  echo "INFO: Completing verbose usage report on $(date)"
+fi
 
 echo "INFO: ALL TASKS COMPLETED, BYE!"
 exit 0
