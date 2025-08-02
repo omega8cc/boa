@@ -27,12 +27,18 @@ fi
 
     renice ${_B_NICE} -p $$ &> /dev/null
 
+_free_memory() {
+  echo "Freeing memory..."
+  sync && echo 3 | sudo tee /proc/sys/vm/drop_caches
+}
+
 _create_locks() {
   echo "Creating locks..."
   touch /run/boa_wait.pid
   touch /run/fmp_wait.pid
   touch /run/restarting_fmp_wait.pid
   touch /run/mysql_restart_running.pid
+  _free_memory
 }
 
 _remove_locks() {
@@ -41,6 +47,7 @@ _remove_locks() {
   rm -f /run/fmp_wait.pid
   rm -f /run/restarting_fmp_wait.pid
   rm -f /run/mysql_restart_running.pid
+  _free_memory
 }
 
 _check_running() {
