@@ -1,0 +1,81 @@
+#!/bin/bash
+
+export SHELL=/bin/bash
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+
+if [ "${1}" = "switch" ] || [ -z "${1}" ]; then
+  _THIS_MODE="switch"
+elif [ "${1}" = "setup" ] && [ ! -z "${2}" ]; then
+  _THIS_MODE="setup"
+fi
+
+_check_disk() {
+  _DF_TEST=$(df -kTh / -l \
+    | grep '/' \
+    | sed 's/\%//g' \
+    | awk '{print $6}' 2> /dev/null)
+  _DF_TEST=${_DF_TEST//[^0-9]/}
+  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt 90 ]; then
+    echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
+    echo "ERROR: We can not proceed until it is below 90/100"
+    exit 1
+  fi
+}
+
+_check_root() {
+  if [ "$(id -u)" -eq 0 ]; then
+    ionice -c2 -n7 -p $$
+    renice 19 -p $$
+    chmod a+w /dev/null
+  else
+    echo "ERROR: This command ${1} should be run as a root user"
+    exit 1
+  fi
+}
+
+_set_sudo() {
+  _SQL_IF_PRESENT=$(grep "${2} ALL=NOPASSWD: /var/xdrago/mysql_backup.sh" /etc/sudoers.d/mysql_backup 2>&1)
+  if [[ ! "${_SQL_IF_PRESENT}" =~ "${2} ALL=NOPASSWD" ]]; then
+    echo "${2} ALL=NOPASSWD: /var/xdrago/mysql_backup.sh" >> /etc/sudoers.d/mysql_backup
+    chmod 0440 /etc/sudoers.d/mysql_backup
+  fi
+  _MLT_IF_PRESENT=$(grep "${2} ALL=NOPASSWD: /opt/local/bin/multiback" /etc/sudoers.d/multiback 2>&1)
+  if [[ ! "${_MLT_IF_PRESENT}" =~ "${2} ALL=NOPASSWD" ]]; then
+    echo "${2} ALL=NOPASSWD: /opt/local/bin/multiback" >> /etc/sudoers.d/multiback
+    chmod 0440 /etc/sudoers.d/multiback
+  fi
+}
+
+if [ "${_THIS_MODE}" = "setup" ] && [ ! -z "${2}" ]; then
+  _check_root
+  _check_disk
+  _set_sudo
+else
+  _check_disk
+fi
+
+# First privileged command
+sudo --non-interactive /var/xdrago/mysql_backup.sh basic
+wait
+if [ $? -ne 0 ]; then
+  echo "command1 failed" >&2
+  exit 1
+fi
+
+# Wait for the first command to complete (it already does by default,
+# but we explicitly ensure sequential execution)
+echo "command1 completed successfully."
+
+# Second privileged command (runs only after the first succeeds)
+sudo --non-interactive /opt/local/bin/multiback repair b2 data
+wait
+sudo --non-interactive /opt/local/bin/multiback backup b2 data
+wait
+if [ $? -ne 0 ]; then
+  echo "command2 failed" >&2
+  exit 1
+fi
+
+echo "All root commands executed successfully."
+
+exit 0
