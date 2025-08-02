@@ -107,14 +107,21 @@ touch /run/boa_sql_backup.pid
 
 _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
 
+_free_memory() {
+  echo "Freeing memory..."
+  sync && echo 3 | sudo tee /proc/sys/vm/drop_caches
+}
+
 _create_locks() {
   echo "INFO: Creating locks for $1"
   touch /run/mysql_backup_running.pid
+  _free_memory
 }
 
 _remove_locks() {
   echo "INFO: Removing locks for $1"
   rm -f /run/mysql_backup_running.pid
+  _free_memory
 }
 
 _check_running() {
