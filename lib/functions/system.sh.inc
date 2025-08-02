@@ -7393,7 +7393,8 @@ _sys_packages_install() {
                      ${_EXTRA_PACKAGES}"
   fi
 
-  _EXTRA_PACKAGES="libgd3 \
+  _EXTRA_PACKAGES="yq \
+                   libgd3 \
                    libxpm-dev \
                    libwebp-dev \
                    ${_EXTRA_PACKAGES}"
