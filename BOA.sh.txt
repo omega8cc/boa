@@ -47,7 +47,7 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 export _tRee=lts
 export _xSrl=570ltsT03
 export _rLsn="BOA-5.7.12"
-export _bTs=570v17
+export _bTs=570v19
 
 ###
 ### Avoid too many questions
@@ -3294,7 +3294,7 @@ _if_boa_key_tools_update_allowed() {
 
 _update_boa_tools() {
   mkdir -p ${_usrBin}
-  if [ -e "${_pthLog}" ] && [ ! -e "${_pthLog}/updateFx15.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+  if [ -e "${_pthLog}" ] && [ ! -e "${_pthLog}/updateFx17.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     _fxPp="fix-drupal-platform-permissions.sh"
     _fxSp="fix-drupal-site-permissions.sh"
     _fxPo="fix-drupal-platform-ownership.sh"
@@ -3310,7 +3310,7 @@ _update_boa_tools() {
     chmod 700 ${_usrBin}/${_fxPo}
     chmod 700 ${_usrBin}/${_fxSo}
     chmod 700 ${_usrBin}/${_fxLo}
-    touch ${_pthLog}/updateFx15.ctrl.${_tRee}.${_xSrl}.pid
+    touch ${_pthLog}/updateFx17.ctrl.${_tRee}.${_xSrl}.pid
   fi
   mkdir -p ${_optBin}
   _boaBins="autobeowulf \
@@ -3318,6 +3318,7 @@ _update_boa_tools() {
            autodaedalus \
            autoinit \
            autoupboa \
+           backchain \
            barracuda \
            boa \
            codebasecheck \
@@ -3402,7 +3403,7 @@ _update_boa_tools() {
   echo "### ${_TODAY} ###" >> ${_optBin}/vhostcheck
 
   if [ ! -e "/data/u" ] && [ -e "${_optBin}/killer" ] && [ ! -e "${_usrBin}/websh" ]; then
-    rm -f ${_usrBin}/{autoinit*,barracuda*,boa*,killer*,octopus*,websh*}
+    rm -f ${_usrBin}/{autoinit*,barracuda*,boa*,killer*,octopus*,websh*,backchain*}
     ln -s ${_optBin}/autoinit    ${_usrBin}/autoinit
     ln -s ${_optBin}/barracuda   ${_usrBin}/barracuda
     ln -s ${_optBin}/boa         ${_usrBin}/boa
@@ -3436,7 +3437,7 @@ _update_boa_tools() {
   chmod 700 ${_optBin}/{autoinit,autodaedalus,autochimaera,autobeowulf,autoupboa,backboa,duobackboa,mergecsf,verifyvhostsdns}
   chmod 700 ${_optBin}/{barracuda,boa,ffmirror,killer,mycnfup,octopus,syncpass,xboa,xcopy,weblogx,sqlclean,perftest,dcysetup,copydbackup}
   chmod 700 ${_optBin}/{fancynow,codebasecheck,vhostcheck,memorytuner,mysqltuner5,mysqltuner8,smtpgapps,setprio,multiback}
-  chmod 755 ${_optBin}/{randpass,sqlmagic,thinkdifferent,websh,mybackup}
+  chmod 755 ${_optBin}/{randpass,sqlmagic,thinkdifferent,websh,mybackup,backchain}
 }
 
 _if_update_boa_key_tools_only() {
