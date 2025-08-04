@@ -3076,7 +3076,7 @@ _daily_action() {
             || [ -e "${_usEr}/log/exported.pid" ]; then
             if [ ! -e "${_usEr}/log/hosting_context.pid" ]; then
               _HM_NID=$(_run_drush8_hmr_cmd "sqlq \
-                \"SELECT site.nid FROM hosting_site site JOIN \
+                \"SELECT MIN(site.nid) AS lowest_nid FROM hosting_site site JOIN \
                 hosting_package_instance pkgi ON pkgi.rid=site.nid JOIN \
                 hosting_package pkg ON pkg.nid=pkgi.package_id \
                 WHERE pkg.short_name='hostmaster'\" 2>&1")

@@ -5649,7 +5649,7 @@ _satellite_child_b_aegir_build() {
         SET uid='1' WHERE uid='0'" &> /dev/null
       ${_DRUSHCMD} @hostmaster sqlq "UPDATE node_revision \
         SET uid='1' WHERE uid='0'" &> /dev/null
-      _HM_NID=$(${_DRUSHCMD} @hostmaster sqlq "SELECT site.nid \
+      _HM_NID=$(${_DRUSHCMD} @hostmaster sqlq "SELECT MIN(site.nid) AS lowest_nid \
         FROM hosting_site site JOIN hosting_package_instance pkgi \
         ON pkgi.rid=site.nid JOIN hosting_package pkg \
         ON pkg.nid=pkgi.package_id WHERE pkg.short_name='hostmaster'" 2>&1)
@@ -5720,7 +5720,7 @@ _satellite_child_b_aegir_build() {
         SET uid='1' WHERE uid='0'" &> /dev/null
       ${_DRUSHCMD} @hostmaster sqlq "UPDATE node_revision \
         SET uid='1' WHERE uid='0'" &> /dev/null
-      _HM_NID=$(${_DRUSHCMD} @hostmaster sqlq "SELECT site.nid \
+      _HM_NID=$(${_DRUSHCMD} @hostmaster sqlq "SELECT MIN(site.nid) AS lowest_nid \
         FROM hosting_site site JOIN hosting_package_instance pkgi \
         ON pkgi.rid=site.nid JOIN hosting_package pkg \
         ON pkg.nid=pkgi.package_id WHERE pkg.short_name='hostmaster'" 2>&1)
