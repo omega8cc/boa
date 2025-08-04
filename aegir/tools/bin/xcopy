@@ -584,7 +584,7 @@ _migrate_prepare() {
       _run_drush8_hmr_cmd "sqlq \"UPDATE hosting_platform SET web_server='2' WHERE web_server='0'\"" &> /dev/null
       _run_drush8_hmr_cmd "sqlq \"UPDATE node SET uid='1' WHERE uid='0'\"" &> /dev/null
       _run_drush8_hmr_cmd "sqlq \"UPDATE node_revision SET uid='1' WHERE uid='0'\"" &> /dev/null
-      _HM_NID=$(_run_drush8_hmr_cmd "sqlq \"SELECT MIN(site.nid) AS lowest_nid FROM hosting_site site JOIN hosting_package_instance pkgi ON pkgi.rid = site.nid JOIN hosting_package pkg ON pkg.nid = pkgi.package_id WHERE pkg.short_name = 'hostmaster';\"" 2>&1)
+      _HM_NID=$(_run_drush8_hmr_cmd "sqlq \"SELECT MIN(site.nid) AS lowest_nid FROM hosting_site site JOIN hosting_package_instance pkgi ON pkgi.rid=site.nid JOIN hosting_package pkg ON pkg.nid=pkgi.package_id WHERE pkg.short_name='hostmaster';\"" 2>&1)
       _HM_NID=${_HM_NID//[^0-9]/}
       if [ ! -z "${_HM_NID}" ]; then
         echo "HOTFIX B: Hostmaster STATUS: Fix 1/2 hosting_context ${_HM_NID}"
