@@ -2531,6 +2531,9 @@ _daily_process() {
             _DONT_TOUCH_PERMISSIONS=NO
           fi
         fi
+        if [ -e "/root/.dont.touch.permissions.cnf" ]; then
+          _DONT_TOUCH_PERMISSIONS=YES
+        fi
         if [ "${_DONT_TOUCH_PERMISSIONS}" = "NO" ] \
           && [ "${_PERMISSIONS_FIX}" = "YES" ]; then
           _fix_permissions
