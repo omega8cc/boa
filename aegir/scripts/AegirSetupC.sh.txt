@@ -859,6 +859,7 @@ _create_drupal_core_basic() {
 
 # Define distros names and their key-words for configuration
 declare -A _distros_names=(
+  ["CMS"]="Drupal CMS"
   ["CK1"]="Commerce v.1"
   ["CK2"]="Commerce v.2"
   ["CK3"]="Commerce v.3"
@@ -891,6 +892,7 @@ declare -A _distros_names=(
 
 # Define distros versions for configuration
 declare -A _distros_versions=(
+  ["CMS"]="cms"
   ["CK1"]="2.77"
   ["CK2"]="2.40"
   ["CK3"]="3.1.0"
@@ -923,6 +925,7 @@ declare -A _distros_versions=(
 
 # Define distros Drupal cores versions for configuration
 declare -A _distros_drupal_cores=(
+  ["CMS"]="${_SMALLCORE11_2_V}"
   ["CK1"]="${_SMALLCORE7_V}"
   ["CK2"]="${_SMALLCORE10_1_V}"
   ["CK3"]="${_SMALLCORE11_2_V}"
@@ -955,6 +958,7 @@ declare -A _distros_drupal_cores=(
 
 # Define distros profiles names for configuration
 declare -A _distros_profiles_names=(
+  ["CMS"]="drupal_cms_installer"
   ["CK1"]="commerce_kickstart"
   ["CK2"]="commerce_base"
   ["CK3"]="commerce_kickstart"
@@ -987,6 +991,7 @@ declare -A _distros_profiles_names=(
 
 # Define distros profiles paths for configuration
 declare -A _distros_profiles_paths=(
+  ["CMS"]="/"
   ["CK1"]="/"
   ["CK2"]="contrib/"
   ["CK3"]="contrib/"
@@ -1019,6 +1024,7 @@ declare -A _distros_profiles_paths=(
 
 # Define distros web dirs for configuration
 declare -A _distros_web_dirs=(
+  ["CMS"]="/web"
   ["CK1"]=""
   ["CK2"]="/web"
   ["CK3"]="/web"
@@ -1051,6 +1057,7 @@ declare -A _distros_web_dirs=(
 
 # Define distros names and their URLs for information
 declare -A _distros_urls=(
+  ["CMS"]="https://new.drupal.org/drupal-cms"
   ["CK1"]="${_urlPrt}/commerce_kickstart"
   ["CK2"]="${_urlPrt}/commerce"
   ["CK3"]="${_urlPrt}/commerce_kickstart"
@@ -1083,6 +1090,7 @@ declare -A _distros_urls=(
 
 # Define distros names and their compatible max PHP versions for information
 declare -A _distros_php_versions=(
+  ["CMS"]="8.3"
   ["CK1"]="7.4"
   ["CK2"]="8.3"
   ["CK3"]="8.4"
