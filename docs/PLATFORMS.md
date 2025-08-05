@@ -14,6 +14,7 @@ On hosted BOA contact your host if you need any legacy PHP installed again.
 
 - [Commerce v.3](https://github.com/centarro/commerce-kickstart-project) (11.2.2)
 - [Drupal 11.2.2](https://drupal.org/project/drupal/releases/11.2.2)
+- [Drupal CMS 11.2.2](https://new.drupal.org/drupal-cms) (11.2.2)
 - [Sector 11.0.x-dev](https://drupal.org/project/sector) (11.2.0)
 - [Thunder 8.2.1](https://drupal.org/project/thunder) (11.2.2)
 
@@ -72,6 +73,7 @@ This file, if it exists and contains a list of symbols used to define supported 
 ### Drupal 11.2
 
 - `CK3` — Commerce v.3
+- `CMS` — Drupal CMS
 - `DE2` — Drupal 11.2 prod/stage/dev
 - `SCR` — Sector
 - `THR` — Thunder
