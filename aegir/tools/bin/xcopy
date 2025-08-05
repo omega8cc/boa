@@ -414,6 +414,7 @@ _migrate_prepare() {
         date_format_type \
         date_formats \
         fe_block_boxes \
+        features_signature \
         field_config \
         field_config_instance \
         field_data_body \
@@ -462,15 +463,20 @@ _migrate_prepare() {
         hosting_package_languages \
         hosting_platform \
         hosting_platform_client_access \
+        hosting_service \
         hosting_site \
         hosting_site_alias \
         hosting_site_backups \
         hosting_ssl_cert \
         hosting_ssl_cert_ips \
+        hosting_ssl_server \
         hosting_ssl_site \
         hosting_task \
         hosting_task_arguments \
         hosting_task_log \
+        menu_custom \
+        menu_links \
+        menu_router \
         node \
         node_access \
         node_comment_statistics \
