@@ -3083,7 +3083,7 @@ _daily_action() {
               _HM_NID=${_HM_NID//[^0-9]/}
               if [ ! -z "${_HM_NID}" ]; then
                 _run_drush8_hmr_cmd "sqlq \"UPDATE hosting_context \
-                  SET name='hostmaster' WHERE nid='${_HM_NID}'\""
+                  SET name='hostmaster' WHERE nid=${_HM_NID}\""
                 echo ${_HM_NID} > ${_usEr}/log/hosting_context.pid
               fi
             fi
