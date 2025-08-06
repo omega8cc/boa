@@ -2793,11 +2793,25 @@ _fix_java_symlinks() {
     fi
   fi
   if [ "${_OS_CODE}" = "daedalus" ] || [ "${_OS_CODE}" = "bookworm" ]; then
-    if [ -x "/usr/lib/jvm/java-11-openjdk/bin/java" ]; then
-      if [ ! -e "/usr/bin/java" ] || [ ! -e "/etc/alternatives/java" ]; then
-        ln -sfn /usr/lib/jvm/java-11-openjdk/bin/java /etc/alternatives/java
+    if [ -x "/etc/init.d/jenkins" ] && [ -e "/var/lib/jenkins" ]; then
+      if [ -x "/usr/lib/jvm/java-17-openjdk/bin/java" ] \
+        && [ ! -e "/var/lib/jenkins/.fixed-java-version.cnf" ]; then
+        if [ -e "/usr/lib/jvm/java-1.17.0-openjdk-amd64" ]; then
+          rm -f /usr/lib/jvm/default-java
+          ln -sfn /usr/lib/jvm/java-1.17.0-openjdk-amd64 /usr/lib/jvm/default-java
+        fi
+        ln -sfn /usr/lib/jvm/java-17-openjdk/bin/java /etc/alternatives/java
         ln -sfn /etc/alternatives/java /usr/bin/java
+        touch /var/lib/jenkins/.fixed-java-version.cnf
         echo fixed java symlinks for ${_OS_CODE}
+      fi
+    else
+      if [ -x "/usr/lib/jvm/java-11-openjdk/bin/java" ]; then
+        if [ ! -e "/usr/bin/java" ] || [ ! -e "/etc/alternatives/java" ]; then
+          ln -sfn /usr/lib/jvm/java-11-openjdk/bin/java /etc/alternatives/java
+          ln -sfn /etc/alternatives/java /usr/bin/java
+          echo fixed java symlinks for ${_OS_CODE}
+        fi
       fi
     fi
   else
