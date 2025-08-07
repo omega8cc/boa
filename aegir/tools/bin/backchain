@@ -23,7 +23,7 @@ _error() {
 }
 
 _info() {
-  echo "INFO: $*"
+  echo "INFO:  $*"
 }
 
 #----------------------------------------
@@ -50,15 +50,18 @@ _check_root() {
 }
 
 _add_sudo_rule() {
-  _USER="$1"; _CMD="$2"; _SUF="$3"
+  _USER="$1"
+  _CMD="$2"
+  _SUF="$3"
   _ENTRY="${_USER} ALL=NOPASSWD: ${_CMD}"
   _FILE="/etc/sudoers.d/${_SUF}"
+
   if ! grep -qF "${_ENTRY}" "${_FILE}" 2>/dev/null; then
-    _info "Adding sudo rule to ${_FILE}"
+    _info "Adding sudoers entry to ${_FILE}"
     echo "${_ENTRY}" >> "${_FILE}"
     chmod 0440 "${_FILE}"
   else
-    _info "Sudo rule already present in ${_FILE}"
+    _info "Sudoers entry already present in ${_FILE}"
   fi
 }
 
@@ -70,14 +73,24 @@ _set_sudo() {
 _run_cmd() {
   _info "Running: sudo --non-interactive $*"
   sudo --non-interactive "$@"
-  if [ $? -ne 0 ]; then
-    _error "Command failed: $*"
-    exit 1
+  _RC=$?
+
+  if [ "${_RC}" -ge 128 ]; then
+    _SIG=$(( _RC - 128 ))
+    _error "Command '$*' terminated by signal ${_SIG}"
+    if [ "${_SIG}" -eq 9 ]; then
+      _error "  → SIGKILL (9) usually means the OS ran out of memory or someone used kill -9."
+      _error "    Check 'dmesg' or 'journalctl -k' for OOM events."
+    fi
+    exit "${_RC}"
+  elif [ "${_RC}" -ne 0 ]; then
+    _error "Command failed with exit code ${_RC}: $*"
+    exit "${_RC}"
   fi
 }
 
 #----------------------------------------
-# Parse args
+# Parse arguments
 #----------------------------------------
 if [ "${1:-}" = "setup" ] && [ -n "${2:-}" ]; then
   _THIS_MODE="setup"
