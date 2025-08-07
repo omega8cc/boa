@@ -1810,41 +1810,41 @@ _display_version() {
 
 # Function to display time in appropriate units
 _display_time() {
-  local service=$1
-  local pidfile=$2
+  local _service=$1
+  local _pidfile=$2
 
-  if [ ! -f "$pidfile" ]; then
+  if [ ! -f "${_pidfile}" ]; then
     _not_running_services+=("  _XSE ${_service} is not running (PID file not found).")
     return
   fi
 
   # Get the PID from the PID file
-  pid=$(cat "$pidfile")
+  _pid=$(cat "${_pidfile}")
 
   # Check if the process is running
-  if ! ps -p "$pid" > /dev/null 2>&1; then
+  if ! ps -p "${_pid}" > /dev/null 2>&1; then
     _not_running_services+=("  _XSE ${_service} is not running (stale PID file).")
     return
   fi
 
   # Get the current time and the PID file modification time in seconds since epoch
-  current_time=$(date +%s)
-  file_time=$(stat -c %Y "$pidfile")
+  _current_time=$(date +%s)
+  _file_time=$(stat -c %Y "${_pidfile}")
 
   # Calculate the time difference in seconds
-  elapsed=$((current_time - file_time))
+  _elapsed=$((_current_time - _file_time))
 
-  if [ $elapsed -lt 60 ]; then
-    _running_services+=("  _XSE ${_service} is running for $elapsed seconds.")
-  elif [ $elapsed -lt 3600 ]; then
-    minutes=$((elapsed / 60))
-    _running_services+=("  _XSE ${_service} is running for $minutes minutes.")
-  elif [ $elapsed -lt 172800 ]; then
-    hours=$((elapsed / 3600))
-    _running_services+=("  _XSE ${_service} is running for $hours hours.")
+  if [ "${_elapsed}" -lt 60 ]; then
+    _running_services+=("  _XSE ${_service} is running for ${_elapsed} seconds.")
+  elif [ "${_elapsed}" -lt 3600 ]; then
+    _minutes=$((_elapsed / 60))
+    _running_services+=("  _XSE ${_service} is running for ${_minutes} minutes.")
+  elif [ "${_elapsed}" -lt 172800 ]; then
+    _hours=$((_elapsed / 3600))
+    _running_services+=("  _XSE ${_service} is running for ${_hours} hours.")
   else
-    days=$((elapsed / 86400))
-    _running_services+=("  _XSE ${_service} is running for $days days.")
+    _days=$((_elapsed / 86400))
+    _running_services+=("  _XSE ${_service} is running for ${_days} days.")
   fi
 }
 
@@ -1857,10 +1857,10 @@ _convert_kb_to_gb() {
 _calculate_ram_usage_percent() {
   _total_ram_kb=$1
   _available_ram_kb=$2
-  used_ram_kb=$((_total_ram_kb - _available_ram_kb))
+  _used_ram_kb=$((_total_ram_kb - _available_ram_kb))
 
   # Using integer division to get a whole number percentage
-  echo $(( (used_ram_kb * 100) / _total_ram_kb ))
+  echo $(( (_used_ram_kb * 100) / _total_ram_kb ))
 }
 
 # Function to check and display system info
@@ -2220,8 +2220,8 @@ _display_info() {
         _display_time "${_service}" "${_services[${_service}]}"
       done
       # Conditionally display headers only if there are both running and not running services
-      if [ ${#_running_services[@]} -gt 0 ]; then
-        if [ ${#_not_running_services[@]} -gt 0 ]; then
+      if [ "${#_running_services[@]}" -gt 0 ]; then
+        if [ "${#_not_running_services[@]}" -gt 0 ]; then
           echo "  _XSE Running services:"
           echo
         fi
@@ -2229,7 +2229,7 @@ _display_info() {
           echo "${_service}"
         done
       fi
-      if [ ${#_not_running_services[@]} -gt 0 ]; then
+      if [ "${#_not_running_services[@]}" -gt 0 ]; then
         echo
         echo "  _XSE Not running services:"
         echo

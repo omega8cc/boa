@@ -36,7 +36,7 @@ for _FILE in "${_FILES[@]}"; do
   done
 
   # Proceed if any files were found
-  if [ ${#_FILE_PATHS[@]} -eq 0 ]; then
+  if [ "${#_FILE_PATHS[@]}" -eq 0 ]; then
     echo "No files found for ${_FILE}"
     continue
   fi
