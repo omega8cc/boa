@@ -953,7 +953,7 @@ _pre_mig() {
       mv -f /var/xdrago/manage_ltd_users.sh /var/xdrago/.manage_ltd_users.sh.off
       kill -9 $(ps aux | grep '[m]anage_ltd_users' | awk '{print $2}')
     fi
-    if [ ${_hName} = "${_hst}" ]; then
+    if [ "${_hName}" = "${_hst}" ]; then
       echo Preparing source ${_hName} for outgoing migration...
       if [ ! -e "/root/.ssh/id_rsa.pub" ]; then
         echo Create id_rsa.pub...
