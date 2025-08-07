@@ -3,79 +3,109 @@
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
-if [ "${1}" = "switch" ] || [ -z "${1}" ]; then
-  _THIS_MODE="switch"
-elif [ "${1}" = "setup" ] && [ ! -z "${2}" ]; then
-  _THIS_MODE="setup"
-fi
+#----------------------------------------
+# Constants
+#----------------------------------------
+_DISK_THRESHOLD=90
 
+#----------------------------------------
+# Helpers
+#----------------------------------------
+_usage() {
+  echo "Usage: ${0##*/} <mode> [user]"
+  echo "  setup <user>    Prepare sudo-NOPASSWD for <user>"
+  echo "  switch          Run backup routines (default)"
+  exit 1
+}
+
+_error() {
+  echo "ERROR: $*" >&2
+}
+
+_info() {
+  echo "INFO: $*"
+}
+
+#----------------------------------------
+# Checks & Setup
+#----------------------------------------
 _check_disk() {
-  _DF_TEST=$(df -kTh / -l \
-    | grep '/' \
-    | sed 's/\%//g' \
-    | awk '{print $6}' 2> /dev/null)
+  _DF_TEST=$(df -P / | awk 'NR==2 { gsub(/%/,""); print $5 }' 2>/dev/null)
   _DF_TEST=${_DF_TEST//[^0-9]/}
-  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt 90 ]; then
-    echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
-    echo "ERROR: We can not proceed until it is below 90/100"
+  if [ -n "${_DF_TEST}" ] && [ "${_DF_TEST}" -ge "${_DISK_THRESHOLD}" ]; then
+    _error "Disk usage is at ${_DF_TEST}% — must be below ${_DISK_THRESHOLD}%"
     exit 1
   fi
 }
 
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
-    ionice -c2 -n7 -p $$
-    renice 19 -p $$
-    chmod a+w /dev/null
+    ionice -c2 -n7 -p $$ &>/dev/null
+    renice 19 -p $$       &>/dev/null
+    chmod a+w /dev/null   &>/dev/null
   else
-    echo "ERROR: This command ${1} should be run as a root user"
+    _error "This command must be run as root"
     exit 1
   fi
 }
 
-_set_sudo() {
-  _SQL_IF_PRESENT=$(grep "${2} ALL=NOPASSWD: /var/xdrago/mysql_backup.sh" /etc/sudoers.d/mysql_backup 2>&1)
-  if [[ ! "${_SQL_IF_PRESENT}" =~ "${2} ALL=NOPASSWD" ]]; then
-    echo "${2} ALL=NOPASSWD: /var/xdrago/mysql_backup.sh" >> /etc/sudoers.d/mysql_backup
-    chmod 0440 /etc/sudoers.d/mysql_backup
-  fi
-  _MLT_IF_PRESENT=$(grep "${2} ALL=NOPASSWD: /opt/local/bin/multiback" /etc/sudoers.d/multiback 2>&1)
-  if [[ ! "${_MLT_IF_PRESENT}" =~ "${2} ALL=NOPASSWD" ]]; then
-    echo "${2} ALL=NOPASSWD: /opt/local/bin/multiback" >> /etc/sudoers.d/multiback
-    chmod 0440 /etc/sudoers.d/multiback
+_add_sudo_rule() {
+  _USER="$1"; _CMD="$2"; _SUF="$3"
+  _ENTRY="${_USER} ALL=NOPASSWD: ${_CMD}"
+  _FILE="/etc/sudoers.d/${_SUF}"
+  if ! grep -qF "${_ENTRY}" "${_FILE}" 2>/dev/null; then
+    _info "Adding sudo rule to ${_FILE}"
+    echo "${_ENTRY}" >> "${_FILE}"
+    chmod 0440 "${_FILE}"
+  else
+    _info "Sudo rule already present in ${_FILE}"
   fi
 }
 
-if [ "${_THIS_MODE}" = "setup" ] && [ ! -z "${2}" ]; then
+_set_sudo() {
+  _add_sudo_rule "${_USER}" "/var/xdrago/mysql_backup.sh" mysql_backup
+  _add_sudo_rule "${_USER}" "/opt/local/bin/multiback"   multiback
+}
+
+_run_cmd() {
+  _info "Running: sudo --non-interactive $*"
+  sudo --non-interactive "$@"
+  if [ $? -ne 0 ]; then
+    _error "Command failed: $*"
+    exit 1
+  fi
+}
+
+#----------------------------------------
+# Parse args
+#----------------------------------------
+if [ "${1:-}" = "setup" ] && [ -n "${2:-}" ]; then
+  _THIS_MODE="setup"
+  _USER="${2}"
+elif [ "${1:-}" = "switch" ] || [ -z "${1:-}" ]; then
+  _THIS_MODE="switch"
+else
+  _usage
+fi
+
+#----------------------------------------
+# Main logic
+#----------------------------------------
+if [ "${_THIS_MODE}" = "setup" ]; then
   _check_root
   _check_disk
   _set_sudo
-else
-  _check_disk
+  _info "Sudoers setup complete for user '${_USER}'"
+  exit 0
 fi
 
-# First privileged command
-sudo --non-interactive /var/xdrago/mysql_backup.sh basic
-wait
-if [ $? -ne 0 ]; then
-  echo "command1 failed" >&2
-  exit 1
-fi
+# mode = switch
+_check_disk
+_run_cmd /var/xdrago/mysql_backup.sh basic
+_info "MySQL backup completed successfully."
 
-# Wait for the first command to complete (it already does by default,
-# but we explicitly ensure sequential execution)
-echo "command1 completed successfully."
-
-# Second privileged command (runs only after the first succeeds)
-sudo --non-interactive /opt/local/bin/multiback repair b2 data
-wait
-sudo --non-interactive /opt/local/bin/multiback backup b2 data
-wait
-if [ $? -ne 0 ]; then
-  echo "command2 failed" >&2
-  exit 1
-fi
-
-echo "All root commands executed successfully."
+_run_cmd /opt/local/bin/multiback repair b2 data
+_run_cmd /opt/local/bin/multiback backup b2 data
+_info "Multiback operations completed successfully."
 
 exit 0
