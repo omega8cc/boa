@@ -8418,6 +8418,13 @@ _java_check_fix() {
     fi
 
     if [ -x "/etc/init.d/jenkins" ] && [ -e "/var/lib/jenkins" ]; then
+      _LOOK_LIKE_JENKINS=TRUE
+    elif [ -e "/root/.look.like.jenkins.cnf" ]; then
+      _LOOK_LIKE_JENKINS=TRUE
+    else
+      _LOOK_LIKE_JENKINS=FALSE
+    fi
+    if [ "${_LOOK_LIKE_JENKINS}" = "TRUE" ]; then
       if [ -x "/usr/lib/jvm/java-17-openjdk/bin/java" ] \
         && [ ! -e "/var/lib/jenkins/.fixed-java-version.cnf" ]; then
         if [ -e "/usr/lib/jvm/java-1.17.0-openjdk-amd64" ]; then
