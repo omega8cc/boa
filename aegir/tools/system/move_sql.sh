@@ -73,7 +73,7 @@ _start_sql() {
   echo "Starting MySQLD again..."
 
   if [ -e "/run/mysqld/mysqld.pid" ] \
-    || [ -e "/run/mysqld/mysqld.sock" ]
+    || [ -e "/run/mysqld/mysqld.sock" ] \
     || [ -e "/run/mysqld/mysqlx.sock" ]; then
     rm -f /run/mysqld/mysql*
   fi
