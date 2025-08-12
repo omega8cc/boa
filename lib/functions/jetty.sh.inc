@@ -77,10 +77,10 @@ _if_install_solr_jetty() {
     fi
   fi
   if [ -e "/etc/default/${_N_SOLR}.in.sh" ]; then
-    _SOLR9_JAVA_TEST=$(grep "BOA ${_xSrl} Path to Java on ${_OS_CODE}" /etc/default/${_N_SOLR}.in.sh 2>&1)
+    _SOLR9_JAVA_TEST=$(grep "BOA ${_xSrl} Path to Java 17 on ${_OS_CODE}" /etc/default/${_N_SOLR}.in.sh 2>&1)
     _SOLR9_MODULES_TEST=$(grep "analysis-extras,clustering,extraction,langid,ltr" /etc/default/${_N_SOLR}.in.sh 2>&1)
     _SOLR9_STOP_TEST=$(grep "SOLR_STOP_PORT=19099" /etc/default/${_N_SOLR}.in.sh 2>&1)
-    if [[ "${_SOLR9_JAVA_TEST}" =~ "BOA ${_xSrl} Path to Java on ${_OS_CODE}" ]] \
+    if [[ "${_SOLR9_JAVA_TEST}" =~ "BOA ${_xSrl} Path to Java 17 on ${_OS_CODE}" ]] \
       && [[ "${_SOLR9_MODULES_TEST}" =~ "analysis-extras,clustering,extraction,langid,ltr" ]] \
       && [[ "${_SOLR9_STOP_TEST}" =~ "SOLR_STOP_PORT=19099" ]]; then
       _DO_NOTHING=YES
