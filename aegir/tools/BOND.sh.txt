@@ -1682,8 +1682,8 @@ _tune_memory_limits() {
     _MAX_MEM_REDIS="${_USE_OPC}"
   fi
   _MAX_MEM_REDIS="${_MAX_MEM_REDIS}MB"
-  sed -i "s/^maxmemory .*/maxmemory ${_MAX_MEM_REDIS}/g" \
-    /etc/redis/redis.conf &> /dev/null
+  sed -i "s/^maxmemory .*/maxmemory ${_MAX_MEM_REDIS}/g" /etc/valkey/valkey.conf &> /dev/null
+  sed -i "s/^maxmemory .*/maxmemory ${_MAX_MEM_REDIS}/g" /etc/redis/redis.conf &> /dev/null
   wait
   if [ -e "/etc/default/jetty9" ] && [ -e "/opt/solr4" ]; then
     sed -i "s/^JAVA_OPTIONS.*/JAVA_OPTIONS=\"-Xms64m ${_USE_JETTY} -Djava.awt.headless=true -Dsolr.solr.home=\/opt\/solr4 \$JAVA_OPTIONS\" # Options/g" /etc/default/jetty9

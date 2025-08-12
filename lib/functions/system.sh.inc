@@ -945,6 +945,7 @@ _tune_memory_limits() {
 
   _MAX_MEM_REDIS=$(( _RAM / 6 ))
   _MAX_REDIS="${_MAX_MEM_REDIS}MB"
+  sed -i "s/^maxmemory .*/maxmemory ${_MAX_REDIS}/g" /etc/valkey/valkey.conf &> /dev/null
   sed -i "s/^maxmemory .*/maxmemory ${_MAX_REDIS}/g" /etc/redis/redis.conf &> /dev/null
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "TUNE: _MAX_MEM_REDIS is ${_MAX_MEM_REDIS}"
