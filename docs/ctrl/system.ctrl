@@ -120,7 +120,7 @@ by the BOA install and upgrade tools exclusively.
  @=> /root/.no.swap.clear.cnf
 
   This file, if exists, allows to skip the otherwise default procedure
-  designed to clear system (memory) swap hourly.
+  designed to clear system (memory) swap daily.
 
  @=> /root/.no.sysctl.update.cnf
 
