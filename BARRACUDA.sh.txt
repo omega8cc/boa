@@ -506,6 +506,7 @@ if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
 fi
 _smtp_check
 _xdrago_install_upgrade
+_if_drupal_patches_update
 
 
 ###

@@ -8004,6 +8004,61 @@ _xdrago_install_upgrade() {
   chmod 700 /var/xdrago &> /dev/null
 }
 
+_set_drupal_patches_paths() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _pam_many_check_fix"
+  fi
+  #
+  _tenCorePatchFname="drupal-ten-aegir-core-01.patch"
+  _tenCorePatchPath="/data/conf/patches/${_tenCorePatchFname}"
+  #
+  _tenConsolePatchFname="drupal-ten-aegir-console-02.patch"
+  _tenConsolePatchPath="/data/conf/patches/${_tenConsolePatchFname}"
+  #
+  _elevenCorePatchFname="drupal-eleven-aegir-core-01.patch"
+  _elevenCorePatchPath="/data/conf/patches/${_elevenCorePatchFname}"
+  #
+  _elevenConsolePatchFname="drupal-eleven-aegir-console-02.patch"
+  _elevenConsolePatchPath="/data/conf/patches/${_elevenConsolePatchFname}"
+  #
+  _elevenValidatorPatchFname="drupal-eleven-aegir-validator-03.patch"
+  _elevenValidatorPatchPath="/data/conf/patches/${_elevenValidatorPatchFname}"
+  #
+}
+
+_update_patches_drupal_ten() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _update_patches_drupal_ten"
+  fi
+  cp -af ${_bldPth}/aegir/patches/${_tenCorePatchFname} ${_tenCorePatchPath}
+  cp -af ${_bldPth}/aegir/patches/${_tenConsolePatchFname} ${_tenConsolePatchPath}
+}
+
+_update_patches_drupal_eleven() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _update_patches_drupal_eleven"
+  fi
+  cp -af ${_bldPth}/aegir/patches/${_elevenCorePatchFname} ${_elevenCorePatchPath}
+  cp -af ${_bldPth}/aegir/patches/${_elevenConsolePatchFname} ${_elevenConsolePatchPath}
+  cp -af ${_bldPth}/aegir/patches/${_elevenValidatorPatchFname} ${_elevenValidatorPatchPath}
+}
+
+_if_drupal_patches_update() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _if_drupal_patches_update"
+  fi
+  if [ -e "/var/xdrago" ]; then
+    if [ ! -e "/data/conf/patches/ctrl.f96.${_tRee}.${_xSrl}.pid" ]; then
+      _set_drupal_patches_paths
+      mkdir -p /data/conf/patches
+      rm -f /data/conf/patches/*
+      _update_patches_drupal_ten
+      _update_patches_drupal_eleven
+      touch /data/conf/patches/ctrl.f96.${_tRee}.${_xSrl}.pid
+    fi
+  fi
+}
+
 _pam_umask_check_fix() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _pam_umask_check_fix"
