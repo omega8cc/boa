@@ -147,6 +147,11 @@ by the BOA install and upgrade tools exclusively.
   instance configuration with ~/static/control/MyQuick.info file present,
   since it's used only by Aegir tasks.
 
+ @=> /root/.valkey.no.new.password.cnf
+
+  This file, if exists, allows to skip the otherwise default procedure
+  designed to generate new Valkey password on every barracuda upgrade.
+
  @=> /root/.redis.no.new.password.cnf
 
   This file, if exists, allows to skip the otherwise default procedure
