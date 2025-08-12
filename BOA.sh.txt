@@ -3405,25 +3405,6 @@ _update_boa_tools() {
       fi
     fi
   done
-  echo "### ${_TODAY} ###" >> ${_optBin}/autoinit
-  echo "### ${_TODAY} ###" >> ${_optBin}/barracuda
-  echo "### ${_TODAY} ###" >> ${_optBin}/boa
-  echo "### ${_TODAY} ###" >> ${_optBin}/codebasecheck
-  echo "### ${_TODAY} ###" >> ${_optBin}/copydbackup
-  echo "### ${_TODAY} ###" >> ${_optBin}/dcysetup
-  echo "### ${_TODAY} ###" >> ${_optBin}/fancynow
-  echo "### ${_TODAY} ###" >> ${_optBin}/killer
-  echo "### ${_TODAY} ###" >> ${_optBin}/memorytuner
-  echo "### ${_TODAY} ###" >> ${_optBin}/mergecsf
-  echo "### ${_TODAY} ###" >> ${_optBin}/multiback
-  echo "### ${_TODAY} ###" >> ${_optBin}/mybackup
-  echo "### ${_TODAY} ###" >> ${_optBin}/octopus
-  echo "### ${_TODAY} ###" >> ${_optBin}/perftest
-  echo "### ${_TODAY} ###" >> ${_optBin}/setprio
-  echo "### ${_TODAY} ###" >> ${_optBin}/smtpgapps
-  echo "### ${_TODAY} ###" >> ${_optBin}/sqlclean
-  echo "### ${_TODAY} ###" >> ${_optBin}/verifyvhostsdns
-  echo "### ${_TODAY} ###" >> ${_optBin}/vhostcheck
 
   if [ ! -e "/data/u" ] && [ -e "${_optBin}/killer" ] && [ ! -e "${_usrBin}/websh" ]; then
     rm -f ${_usrBin}/{autoinit*,barracuda*,boa*,killer*,octopus*,websh*,backchain*}
