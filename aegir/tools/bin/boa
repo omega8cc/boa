@@ -1145,6 +1145,12 @@ _init_setup() {
   # Define the BOA log file for use after autoinit
   _BOA_LOGFILE="/root/.boa.install.command.cnf"
 
+  # Disable forced MySQL/Valkey/Redis password updates during installation
+  # Delete any/all of these files to re-enable standard behaviour later
+  touch /root/.mysql.no.new.password.cnf
+  touch /root/.valkey.no.new.password.cnf
+  touch /root/.redis.no.new.password.cnf
+
   if [ "${_cmNd}" = "in-lts" ] \
     || [ "${_cmNd}" = "in-dev" ]; then
     if [ ! -e "/root/.autoinit.log" ] || [ -e "/lib/systemd/systemd" ]; then
