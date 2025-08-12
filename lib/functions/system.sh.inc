@@ -4260,6 +4260,11 @@ _if_ssl_install_src() {
       || [ ! -L "${_sslSymlink}" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: Modern OpenSSL (${_SSL_MODERN_ITD}), upgrade to (${_OPENSSL_NEW_VRN}) required"
+        _msg "INFO: _SSL_MODERN_BINARY is ${_SSL_MODERN_BINARY}"
+        _msg "INFO: _sslIncludes is ${_sslIncludes}"
+        _msg "INFO: _SSL_MODERN_ITD is ${_SSL_MODERN_ITD}"
+        _msg "INFO: _OPENSSL_NEW_VRN is ${_OPENSSL_NEW_VRN}"
+        _msg "INFO: _sslSymlink is ${_sslSymlink}"
       fi
       _SSL_MODERN_INSTALL_REQUIRED=YES
     fi
