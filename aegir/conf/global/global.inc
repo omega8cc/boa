@@ -800,6 +800,22 @@ if ($all_ini['auto_detect_domain_access_integration']) {
 }
 
 /**
+ * Activate mail_safety for sites-cron-off on the fly
+ */
+if (is_readable('/data/conf/sites-cron-off.ctrl')) {
+  if ($drupal_core >= 8) {
+    $config['mail_safety.settings']['enabled'] = TRUE;
+    $config['mail_safety.settings']['send_mail_to_dashboard'] = TRUE;
+    $config['mail_safety.settings']['send_mail_to_default_mail'] = FALSE;
+    $config['mail_safety.settings']['default_mail_address'] = '';
+  }
+  else {
+    $conf['mail_safety_enabled'] = TRUE;
+    $conf['mail_safety_send_mail_to_dashboard'] = TRUE;
+  }
+}
+
+/**
  * Use site specific composer_manager dir
  */
 if ($all_ini['set_composer_manager_vendor_dir'] && !$is_install) {
