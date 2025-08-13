@@ -155,8 +155,9 @@ _unbound_check_nomail() {
   [ -e "/etc/init.d/unbound" ] && _isIntUnb=$(grep "apply_ci_nomail" /etc/init.d/unbound 2>&1)
   if [[ "${_isNxdEtc}" =~ "always_nxdomain" ]] \
     && [[ "${_isIntUnb}" =~ "apply_ci_nomail" ]]; then
+    _isIncTop=$(grep "include-toplevel" /usr/etc/unbound/unbound.conf 2>&1)
     if [ ! -e "/usr/etc/unbound/unbound.conf.d/ci-nomail.conf" ] \
-      && [ -e "/usr/local/sbin/unbound_ci_nomail.sh" ]; then
+      || [[ ! "${_isIncTop}" =~ "include-toplevel" ]]; then
       _unbound_fix_nomail
     fi
     _isActiveCtrl=$(unbound-control list_local_zones | grep -E 'sendgrid' 2>&1)
