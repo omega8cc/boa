@@ -1959,9 +1959,10 @@ _display_info() {
     if [ -x "/usr/bin/valkey-server" ]; then
       _VKS=$(valkey-server -v 2>&1 \
         | tr -d "\n" \
-        | cut -d" " -f4 \
+        | tr -d "v=" \
+        | cut -d" " -f2 \
         | awk '{ print $1}' 2>&1)
-      if [[ "${_VKS}" =~ "sha" ]]; then
+      if [ "${_VKS}" = "serer" ]; then
         _VKS=$(valkey-server -v 2>&1 \
           | tr -d "\n" \
           | tr -d "v=" \
