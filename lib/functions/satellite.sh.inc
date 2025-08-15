@@ -20,13 +20,13 @@ _get_core_ext() {
       else
         [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Attempt ${_attempt_num} failed."
         _attempt_num=$((_attempt_num+1))
-        if [ ${_attempt_num} -le ${_max_attempts} ]; then
+        if [ "${_attempt_num}" -le "${_max_attempts}" ]; then
           [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Retrying in 9 seconds..."
           sleep 9
         fi
       fi
     done
-    if [ ${_success} -eq 1 ]; then
+    if [ "${_success}" -eq 1 ]; then
       _extract_archive "$1"
     else
       _msg "OOPS: Failed to download http://${_USE_MIR}/core/$1 after ${_max_attempts} attempts"
@@ -5595,31 +5595,31 @@ _satellite_child_b_aegir_build() {
           'drupal', '1', '1', '1412168321', '1412168340', '0', '0', '0', '0', \
           '0', '0')" &> /dev/null
         ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM hosting_package \
-          WHERE nid='2' AND short_name='drupal'" &> /dev/null
+          WHERE nid=2 AND short_name='drupal'" &> /dev/null
         ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM hosting_package \
-          WHERE nid='4' AND short_name='drupal'" &> /dev/null
+          WHERE nid=4 AND short_name='drupal'" &> /dev/null
         ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM node \
-          WHERE nid='8' AND type='site'" &> /dev/null
+          WHERE nid=8 AND type='site'" &> /dev/null
         ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM node_revisions \
-          WHERE nid='8'" &> /dev/null
+          WHERE nid=8" &> /dev/null
         ${_DRUSHCMD} @hostmaster sqlq "UPDATE node \
-          SET type='server' WHERE nid='2'" &> /dev/null
+          SET type='server' WHERE nid=2" &> /dev/null
         ${_DRUSHCMD} @hostmaster sqlq "UPDATE node \
-          SET type='server' WHERE nid='4'" &> /dev/null
+          SET type='server' WHERE nid=4" &> /dev/null
         ${_DRUSHCMD} @hostmaster sqlq "UPDATE node \
-          SET title='${_USE_AEGIR_HOST}' WHERE nid='2'" &> /dev/null
+          SET title='${_USE_AEGIR_HOST}' WHERE nid=2" &> /dev/null
         ${_DRUSHCMD} @hostmaster sqlq "UPDATE node \
-          SET title='localhost' WHERE nid='4'" &> /dev/null
+          SET title='localhost' WHERE nid=4" &> /dev/null
         ${_DRUSHCMD} @hostmaster sqlq "UPDATE node_revision \
-          SET title='${_USE_AEGIR_HOST}' WHERE nid='2'" &> /dev/null
+          SET title='${_USE_AEGIR_HOST}' WHERE nid=2" &> /dev/null
         ${_DRUSHCMD} @hostmaster sqlq "UPDATE node_revision \
-          SET title='localhost' WHERE nid='4'" &> /dev/null
+          SET title='localhost' WHERE nid=4" &> /dev/null
         ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_site \
-          SET db_server='4' WHERE db_server='2'" &> /dev/null
+          SET db_server=4 WHERE db_server=2" &> /dev/null
         ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
-          SET web_server='2' WHERE web_server='0'" &> /dev/null
+          SET web_server=2 WHERE web_server=0" &> /dev/null
         ${_DRUSHCMD} @hostmaster sqlq "UPDATE users_roles \
-          SET rid='7' WHERE rid='5'" &> /dev/null
+          SET rid=7 WHERE rid=5" &> /dev/null
         ${_DRUSHCMD} cc drush &> /dev/null
         rm -rf ${_ROOT}/.tmp/cache
         ${_DRUSHCMD} @hostmaster hosting-task @server_localhost \
@@ -5638,17 +5638,17 @@ _satellite_child_b_aegir_build() {
         _msg "${_STATUS} B: Hostmaster STATUS: Fix for migrated/merged instance 1/2 complete"
       fi
       ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_site \
-        SET client='1' WHERE profile='7'" &> /dev/null
+        SET client=1 WHERE profile=7" &> /dev/null
       ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_site \
-        SET client='1' WHERE profile='9'" &> /dev/null
+        SET client=1 WHERE profile=9" &> /dev/null
       ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_site \
-        SET client='1' WHERE client='0'" &> /dev/null
+        SET client=1 WHERE client=0" &> /dev/null
       ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
-        SET web_server='2' WHERE web_server='0'" &> /dev/null
+        SET web_server=2 WHERE web_server=0" &> /dev/null
       ${_DRUSHCMD} @hostmaster sqlq "UPDATE node \
-        SET uid='1' WHERE uid='0'" &> /dev/null
+        SET uid=1 WHERE uid=0" &> /dev/null
       ${_DRUSHCMD} @hostmaster sqlq "UPDATE node_revision \
-        SET uid='1' WHERE uid='0'" &> /dev/null
+        SET uid=1 WHERE uid=0" &> /dev/null
       _HM_NID=$(${_DRUSHCMD} @hostmaster sqlq "SELECT MIN(site.nid) AS lowest_nid \
         FROM hosting_site site JOIN hosting_package_instance pkgi \
         ON pkgi.rid=site.nid JOIN hosting_package pkg \
@@ -5657,14 +5657,14 @@ _satellite_child_b_aegir_build() {
       if [ ! -z "${_HM_NID}" ]; then
         _msg "${_STATUS} B: Hostmaster STATUS: Fix 1/2 hosting_context ${_HM_NID}"
         if [ -e "${_ROOT}/aegir/distro/001/sites/${_DOMAIN}/drushrc.php" ]; then
-          _HM_PLF=$(${_DRUSHCMD} @hostmaster sqlq "SELECT platform FROM hosting_site WHERE nid='${_HM_NID}'" 2>&1)
+          _HM_PLF=$(${_DRUSHCMD} @hostmaster sqlq "SELECT platform FROM hosting_site WHERE nid=${_HM_NID}" 2>&1)
           _HM_PLF=${_HM_PLF//[^0-9]/}
-          ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_context SET name='platform_hostmaster' WHERE nid='${_HM_PLF}'" &> /dev/null
+          ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_context SET name='platform_hostmaster' WHERE nid=${_HM_PLF}" &> /dev/null
         fi
-        ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_context SET name='hostmaster' WHERE nid='${_HM_NID}'"         &> /dev/null
-        ${_DRUSHCMD} @hostmaster sqlq "UPDATE node SET title='${_DOMAIN}' WHERE nid='${_HM_NID}'"                   &> /dev/null
-        ${_DRUSHCMD} @hostmaster sqlq "UPDATE node_revision SET title='${_DOMAIN}' WHERE nid='${_HM_NID}'"          &> /dev/null
-        ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_site_alias SET alias='www.${_DOMAIN}' WHERE nid='${_HM_NID}'" &> /dev/null
+        ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_context SET name='hostmaster' WHERE nid=${_HM_NID}"         &> /dev/null
+        ${_DRUSHCMD} @hostmaster sqlq "UPDATE node SET title='${_DOMAIN}' WHERE nid=${_HM_NID}"                   &> /dev/null
+        ${_DRUSHCMD} @hostmaster sqlq "UPDATE node_revision SET title='${_DOMAIN}' WHERE nid=${_HM_NID}"          &> /dev/null
+        ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_site_alias SET alias='www.${_DOMAIN}' WHERE nid=${_HM_NID}" &> /dev/null
       else
         _msg "${_STATUS} B: Hostmaster STATUS: Fix 1/2 hosting_context ${_HM_NID} empty!"
       fi
@@ -5704,22 +5704,22 @@ _satellite_child_b_aegir_build() {
       if [ ! -e "${_ROOT}/log/post-merge-fix.pid" ]; then
         _msg "${_STATUS} B: Hostmaster STATUS: Fix for migrated/merged instance 2/2 start"
         ${_DRUSHCMD} @hostmaster sqlq "UPDATE users_roles \
-          SET rid='7' WHERE rid='5'" &> /dev/null
+          SET rid=7 WHERE rid=5" &> /dev/null
         echo FIXED > ${_ROOT}/log/post-merge-fix.pid
         _msg "${_STATUS} B: Hostmaster STATUS: Fix for migrated/merged instance 2/2 complete"
       fi
       ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_site \
-        SET client='1' WHERE profile='7'" &> /dev/null
+        SET client=1 WHERE profile=7" &> /dev/null
       ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_site \
-        SET client='1' WHERE profile='9'" &> /dev/null
+        SET client=1 WHERE profile=9" &> /dev/null
       ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_site \
-        SET client='1' WHERE client='0'" &> /dev/null
+        SET client=1 WHERE client=0" &> /dev/null
       ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
-        SET web_server='2' WHERE web_server='0'" &> /dev/null
+        SET web_server=2 WHERE web_server=0" &> /dev/null
       ${_DRUSHCMD} @hostmaster sqlq "UPDATE node \
-        SET uid='1' WHERE uid='0'" &> /dev/null
+        SET uid=1 WHERE uid=0" &> /dev/null
       ${_DRUSHCMD} @hostmaster sqlq "UPDATE node_revision \
-        SET uid='1' WHERE uid='0'" &> /dev/null
+        SET uid=1 WHERE uid=0" &> /dev/null
       _HM_NID=$(${_DRUSHCMD} @hostmaster sqlq "SELECT MIN(site.nid) AS lowest_nid \
         FROM hosting_site site JOIN hosting_package_instance pkgi \
         ON pkgi.rid=site.nid JOIN hosting_package pkg \
@@ -5728,14 +5728,14 @@ _satellite_child_b_aegir_build() {
       if [ ! -z "${_HM_NID}" ]; then
         _msg "${_STATUS} B: Hostmaster STATUS: Fix 2/2 hosting_context ${_HM_NID}"
         if [ -e "${_ROOT}/aegir/distro/001/sites/${_DOMAIN}/drushrc.php" ]; then
-          _HM_PLF=$(${_DRUSHCMD} @hostmaster sqlq "SELECT platform FROM hosting_site WHERE nid='${_HM_NID}'" 2>&1)
+          _HM_PLF=$(${_DRUSHCMD} @hostmaster sqlq "SELECT platform FROM hosting_site WHERE nid=${_HM_NID}" 2>&1)
           _HM_PLF=${_HM_PLF//[^0-9]/}
-          ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_context SET name='platform_hostmaster' WHERE nid='${_HM_PLF}'" &> /dev/null
+          ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_context SET name='platform_hostmaster' WHERE nid=${_HM_PLF}" &> /dev/null
         fi
-        ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_context SET name='hostmaster' WHERE nid='${_HM_NID}'"         &> /dev/null
-        ${_DRUSHCMD} @hostmaster sqlq "UPDATE node SET title='${_DOMAIN}' WHERE nid='${_HM_NID}'"                   &> /dev/null
-        ${_DRUSHCMD} @hostmaster sqlq "UPDATE node_revision SET title='${_DOMAIN}' WHERE nid='${_HM_NID}'"          &> /dev/null
-        ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_site_alias SET alias='www.${_DOMAIN}' WHERE nid='${_HM_NID}'" &> /dev/null
+        ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_context SET name='hostmaster' WHERE nid=${_HM_NID}"         &> /dev/null
+        ${_DRUSHCMD} @hostmaster sqlq "UPDATE node SET title='${_DOMAIN}' WHERE nid=${_HM_NID}"                   &> /dev/null
+        ${_DRUSHCMD} @hostmaster sqlq "UPDATE node_revision SET title='${_DOMAIN}' WHERE nid=${_HM_NID}"          &> /dev/null
+        ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_site_alias SET alias='www.${_DOMAIN}' WHERE nid=${_HM_NID}" &> /dev/null
       else
         _msg "${_STATUS} B: Hostmaster STATUS: Fix 2/2 hosting_context ${_HM_NID} empty!"
       fi
@@ -6060,7 +6060,7 @@ _satellite_child_b_aegir_ui_enhance() {
     fi
 
     ${_DRUSHCMD} @hostmaster sqlq "UPDATE menu_links \
-      SET hidden=1 WHERE plid='0' AND menu_name LIKE 'user-menu'" &> /dev/null
+      SET hidden=1 WHERE plid=0 AND menu_name LIKE 'user-menu'" &> /dev/null
 
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter_format"  &> /dev/null

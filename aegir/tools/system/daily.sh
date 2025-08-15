@@ -2121,10 +2121,10 @@ _if_le_hm_ssl_old() {
   _last_update_diff_days=$(( (_current_time - _last_update_time) / 86400 ))  # 86400 seconds in a day
 
   # Check if the file was modified within the last 30 minutes
-  if [ ${_time_diff_minutes} -lt 30 ]; then
+  if [ "${_time_diff_minutes}" -lt 30 ]; then
     _crtLastMod=NEW
   # Check if the file was modified within the last 60 days and not marked NEW in the last 30 days
-  elif [ ${_time_diff_days} -le ${_recent_threshold_days} ] && [ ${_last_update_diff_days} -ge ${_update_check_days} ]; then
+  elif [ "${_time_diff_days}" -le "${_recent_threshold_days}" ] && [ "${_last_update_diff_days}" -ge "${_update_check_days}" ]; then
     _crtLastMod=NEW
     echo ${_current_time} > "${_filePath}.lastupdate"
   else
@@ -2530,6 +2530,9 @@ _daily_process() {
           else
             _DONT_TOUCH_PERMISSIONS=NO
           fi
+        fi
+        if [ -e "/root/.dont.touch.permissions.cnf" ]; then
+          _DONT_TOUCH_PERMISSIONS=YES
         fi
         if [ "${_DONT_TOUCH_PERMISSIONS}" = "NO" ] \
           && [ "${_PERMISSIONS_FIX}" = "YES" ]; then
@@ -3083,7 +3086,7 @@ _daily_action() {
               _HM_NID=${_HM_NID//[^0-9]/}
               if [ ! -z "${_HM_NID}" ]; then
                 _run_drush8_hmr_cmd "sqlq \"UPDATE hosting_context \
-                  SET name='hostmaster' WHERE nid='${_HM_NID}'\""
+                  SET name='hostmaster' WHERE nid=${_HM_NID}\""
                 echo ${_HM_NID} > ${_usEr}/log/hosting_context.pid
               fi
             fi

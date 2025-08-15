@@ -7401,8 +7401,7 @@ _sys_packages_install() {
                      ${_EXTRA_PACKAGES}"
   fi
 
-  _EXTRA_PACKAGES="yq \
-                   smem \
+  _EXTRA_PACKAGES="smem \
                    libgd3 \
                    libxpm-dev \
                    libwebp-dev \
@@ -8463,7 +8462,7 @@ _java_check_fix() {
     ln -sfn /etc/alternatives/java /usr/bin/java
   fi
 
-  if [ "${_OS_CODE}" = "daedalus" ] || [ "${_OS_CODE}" = "bookworm" ]; then
+  if [ "${_OS_CODE}" = "daedalus" ] || [ "${_OS_CODE}" = "chimaera" ]; then
     if [ ! -e "/usr/lib/jvm/java-17-openjdk" ] \
       && [ -d "/usr/lib/jvm/java-17-openjdk-amd64" ]; then
       ln -sfn /usr/lib/jvm/java-17-openjdk-amd64 /usr/lib/jvm/java-17-openjdk
@@ -8480,13 +8479,38 @@ _java_check_fix() {
       && [ -e "/usr/lib/jvm/java-11-openjdk-amd64/bin/java" ]; then
       ln -sfn /usr/lib/jvm/java-11-openjdk-amd64/bin/java /usr/bin/java11
     fi
-    if [ -e "/usr/lib/jvm/java-1.11.0-openjdk-amd64" ]; then
-      rm -f /usr/lib/jvm/default-java
-      ln -sfn /usr/lib/jvm/java-1.11.0-openjdk-amd64 /usr/lib/jvm/default-java
+
+    if [ -x "/etc/init.d/jenkins" ] && [ -e "/var/lib/jenkins" ]; then
+      _LOOK_LIKE_JENKINS=TRUE
+    elif [ -e "/root/.look.like.jenkins.cnf" ]; then
+      _LOOK_LIKE_JENKINS=TRUE
+    else
+      _LOOK_LIKE_JENKINS=FALSE
     fi
-    if [ -x "/usr/lib/jvm/java-11-openjdk/bin/java" ]; then
-      ln -sfn /usr/lib/jvm/java-11-openjdk/bin/java /etc/alternatives/java
-      ln -sfn /etc/alternatives/java /usr/bin/java
+    if [ "${_LOOK_LIKE_JENKINS}" = "TRUE" ]; then
+      if [ -x "/usr/lib/jvm/java-17-openjdk/bin/java" ] \
+        && [ ! -e "/var/lib/jenkins/.fixed-java-version.cnf" ]; then
+        if [ -e "/usr/lib/jvm/java-1.17.0-openjdk-amd64" ]; then
+          rm -f /usr/lib/jvm/default-java
+          ln -sfn /usr/lib/jvm/java-1.17.0-openjdk-amd64 /usr/lib/jvm/default-java
+        fi
+        ln -sfn /usr/lib/jvm/java-17-openjdk/bin/java /etc/alternatives/java
+        ln -sfn /etc/alternatives/java /usr/bin/java
+        touch /var/lib/jenkins/.fixed-java-version.cnf
+        echo fixed java symlinks for ${_OS_CODE}
+      fi
+    else
+      if [ -x "/usr/lib/jvm/java-11-openjdk/bin/java" ]; then
+        if [ -e "/usr/lib/jvm/java-1.11.0-openjdk-amd64" ]; then
+          rm -f /usr/lib/jvm/default-java
+          ln -sfn /usr/lib/jvm/java-1.11.0-openjdk-amd64 /usr/lib/jvm/default-java
+        fi
+        if [ ! -e "/usr/bin/java" ] || [ ! -e "/etc/alternatives/java" ]; then
+          ln -sfn /usr/lib/jvm/java-11-openjdk/bin/java /etc/alternatives/java
+          ln -sfn /etc/alternatives/java /usr/bin/java
+          echo fixed java symlinks for ${_OS_CODE}
+        fi
+      fi
     fi
   else
     if [ ! -e "/usr/lib/jvm/java-11-openjdk" ] \

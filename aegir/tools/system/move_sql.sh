@@ -71,6 +71,12 @@ _start_sql() {
   fi
 
   echo "Starting MySQLD again..."
+
+  if [ -e "/run/mysqld/mysqld.pid" ] \
+    || [ -e "/run/mysqld/mysqld.sock" ] \
+    || [ -e "/run/mysqld/mysqlx.sock" ]; then
+    rm -f /run/mysqld/mysql*
+  fi
   renice ${_B_NICE} -p $$ &> /dev/null
   service mysql start &> /dev/null
   while [ -z "${_IS_MYSQLD_RUNNING}" ] \
@@ -146,6 +152,8 @@ _stop_sql() {
     mysql -u root -e "SET GLOBAL innodb_fast_shutdown = 1;" &> /dev/null
     echo "Stopping MySQLD now..."
     service mysql stop &> /dev/null
+    wait
+    rm -f /run/mysqld/mysql*
   else
     echo "MySQLD already stopped?"
     echo "Nothing to do. Bye!"

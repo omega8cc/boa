@@ -30,7 +30,7 @@ _enable_chattr() {
     else
       if [ -d "/home/$1/platforms/" ]; then
         chattr +i /home/$1/platforms/
-        chattr +i /home/$1/platforms/* &> /dev/null
+        chattr +i /home/$1/platforms/*
       fi
     fi
     if [ -d "/home/$1/.drush/" ]; then
@@ -59,7 +59,7 @@ _disable_chattr() {
     else
       if [ -d "/home/$1/platforms/" ]; then
         chattr -i /home/$1/platforms/
-        chattr -i /home/$1/platforms/* &> /dev/null
+        chattr -i /home/$1/platforms/*
       fi
     fi
     if [ -d "/home/$1/.drush/" ]; then
@@ -141,9 +141,9 @@ _migrate_sites() {
             if [ -e "/data/conf/${_USR}_use_proxysql.txt" ]; then
               _SQL_CONNECT=127.0.0.1
               _THIS_DB_PORT=6033
-              mysqladmin -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges &> /dev/null
+              mysqladmin -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
             else
-              mysqladmin -u root flush-privileges &> /dev/null
+              mysqladmin -u root flush-privileges
             fi
             [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL3 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
             if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
@@ -173,9 +173,9 @@ EOFMYSQL
             if [ -e "/data/conf/${_USR}_use_proxysql.txt" ]; then
               _SQL_CONNECT=127.0.0.1
               _THIS_DB_PORT=6033
-              mysqladmin -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges &> /dev/null
+              mysqladmin -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
             else
-              mysqladmin -u root flush-privileges &> /dev/null
+              mysqladmin -u root flush-privileges
             fi
             echo "INFO: site ${_Dom} db setup on ${_oct} complete"
           else
@@ -373,16 +373,16 @@ _migrate_prepare() {
   echo "_CLIENT_SUBSCR is ${_CLIENT_SUBSCR}"
   echo "_CLIENT_CORES is ${_CLIENT_CORES}"
 
-  su -s /bin/bash ${_THIS_HM_USER} -c "drush8 cc drush" &> /dev/null
+  su -s /bin/bash ${_THIS_HM_USER} -c "drush8 cc drush"
   wait
-  _disable_chattr ${_THIS_HM_USER}.ftp &> /dev/null
+  _disable_chattr ${_THIS_HM_USER}.ftp
   rm -rf /home/${_THIS_HM_USER}.ftp/drush-backups
   _run_drush8_hmr_cmd "sqlq \"DELETE FROM hosting_task WHERE task_type='delete' AND task_status='-1'\""
   _run_drush8_hmr_cmd "sqlq \"DELETE FROM hosting_task WHERE task_type='delete' AND task_status='0' AND executed='0'\""
   rm -rf ${_USR}/clients/*/backups
-  symlinks -dr ${_USR}/clients &> /dev/null
+  symlinks -dr ${_USR}/clients
   if [ -d "/home/${_THIS_HM_USER}.ftp" ]; then
-    symlinks -dr /home/${_THIS_HM_USER}.ftp &> /dev/null
+    symlinks -dr /home/${_THIS_HM_USER}.ftp
     rm -f /home/${_THIS_HM_USER}.ftp/{.profile,.bash_logout,.bash_profile,.bashrc}
   fi
   if [ -e "${_THIS_HM_SITE}/drushrc.php" ]; then
@@ -414,6 +414,7 @@ _migrate_prepare() {
         date_format_type \
         date_formats \
         fe_block_boxes \
+        features_signature \
         field_config \
         field_config_instance \
         field_data_body \
@@ -462,15 +463,20 @@ _migrate_prepare() {
         hosting_package_languages \
         hosting_platform \
         hosting_platform_client_access \
+        hosting_service \
         hosting_site \
         hosting_site_alias \
         hosting_site_backups \
         hosting_ssl_cert \
         hosting_ssl_cert_ips \
+        hosting_ssl_server \
         hosting_ssl_site \
         hosting_task \
         hosting_task_arguments \
         hosting_task_log \
+        menu_custom \
+        menu_links \
+        menu_router \
         node \
         node_access \
         node_comment_statistics \
@@ -550,61 +556,61 @@ _migrate_prepare() {
           fi
         fi
 
-        _run_drush8_hmr_cmd "sqlq \"REPLACE INTO hosting_context (nid, name) VALUES ('4', 'server_localhost'), ('2', 'server_master')\"" &> /dev/null
-        _run_drush8_hmr_cmd "sqlq \"REPLACE INTO hosting_package (vid, nid, package_type, short_name, old_short_name, description) VALUES ('6', '6', 'platform', 'drupal', '', '')\"" &> /dev/null
-        _run_drush8_hmr_cmd "sqlq \"REPLACE INTO node_revision (nid, vid, uid, title, body, teaser, log, timestamp, format) VALUES ('6', '6', '1', 'drupal', '', '', '', '1412168340', '0')\"" &> /dev/null
-        _run_drush8_hmr_cmd "sqlq \"REPLACE INTO node (nid, vid, type, language, title, uid, status, created, changed, comment, promote, moderate, sticky, tnid, translate) VALUES ('6', '6', 'package', '', 'drupal', '1', '1', '1412168321', '1412168340', '0', '0', '0', '0', '0', '0')\"" &> /dev/null
-        _run_drush8_hmr_cmd "sqlq \"DELETE FROM hosting_package WHERE nid='2' AND short_name='drupal'\"" &> /dev/null
-        _run_drush8_hmr_cmd "sqlq \"DELETE FROM hosting_package WHERE nid='4' AND short_name='drupal'\"" &> /dev/null
-        _run_drush8_hmr_cmd "sqlq \"DELETE FROM node WHERE nid='8' AND type='site'\"" &> /dev/null
-        _run_drush8_hmr_cmd "sqlq \"DELETE FROM node_revision WHERE nid='8'\"" &> /dev/null
-        _run_drush8_hmr_cmd "sqlq \"UPDATE node SET type='server' WHERE nid='2'\"" &> /dev/null
-        _run_drush8_hmr_cmd "sqlq \"UPDATE node SET type='server' WHERE nid='4'\"" &> /dev/null
-        _run_drush8_hmr_cmd "sqlq \"UPDATE node SET title='${_USE_AEGIR_HOST}' WHERE nid='2'\"" &> /dev/null
-        _run_drush8_hmr_cmd "sqlq \"UPDATE node SET title='localhost' WHERE nid='4'\"" &> /dev/null
-        _run_drush8_hmr_cmd "sqlq \"UPDATE node_revision SET title='${_USE_AEGIR_HOST}' WHERE nid='2'\"" &> /dev/null
-        _run_drush8_hmr_cmd "sqlq \"UPDATE node_revision SET title='localhost' WHERE nid='4'\"" &> /dev/null
-        _run_drush8_hmr_cmd "sqlq \"UPDATE hosting_site SET db_server='4' WHERE db_server='2'\"" &> /dev/null
-        _run_drush8_hmr_cmd "sqlq \"UPDATE hosting_platform SET web_server='2' WHERE web_server='0'\"" &> /dev/null
-        _run_drush8_hmr_cmd "sqlq \"UPDATE users_roles SET rid='7' WHERE rid='5'\"" &> /dev/null
-        su -s /bin/bash ${_THIS_HM_USER} -c "drush8 cc drush" &> /dev/null
+        _run_drush8_hmr_cmd "sqlq \"REPLACE INTO hosting_context (nid, name) VALUES ('4', 'server_localhost'), ('2', 'server_master')\""
+        _run_drush8_hmr_cmd "sqlq \"REPLACE INTO hosting_package (vid, nid, package_type, short_name, old_short_name, description) VALUES ('6', '6', 'platform', 'drupal', '', '')\""
+        _run_drush8_hmr_cmd "sqlq \"REPLACE INTO node_revision (nid, vid, uid, title, body, teaser, log, timestamp, format) VALUES ('6', '6', '1', 'drupal', '', '', '', '1412168340', '0')\""
+        _run_drush8_hmr_cmd "sqlq \"REPLACE INTO node (nid, vid, type, language, title, uid, status, created, changed, comment, promote, moderate, sticky, tnid, translate) VALUES ('6', '6', 'package', '', 'drupal', '1', '1', '1412168321', '1412168340', '0', '0', '0', '0', '0', '0')\""
+        _run_drush8_hmr_cmd "sqlq \"DELETE FROM hosting_package WHERE nid=2 AND short_name='drupal'\""
+        _run_drush8_hmr_cmd "sqlq \"DELETE FROM hosting_package WHERE nid=4 AND short_name='drupal'\""
+        _run_drush8_hmr_cmd "sqlq \"DELETE FROM node WHERE nid=8 AND type='site'\""
+        _run_drush8_hmr_cmd "sqlq \"DELETE FROM node_revision WHERE nid=8\""
+        _run_drush8_hmr_cmd "sqlq \"UPDATE node SET type='server' WHERE nid=2\""
+        _run_drush8_hmr_cmd "sqlq \"UPDATE node SET type='server' WHERE nid=4\""
+        _run_drush8_hmr_cmd "sqlq \"UPDATE node SET title='${_USE_AEGIR_HOST}' WHERE nid=2\""
+        _run_drush8_hmr_cmd "sqlq \"UPDATE node SET title='localhost' WHERE nid=4\""
+        _run_drush8_hmr_cmd "sqlq \"UPDATE node_revision SET title='${_USE_AEGIR_HOST}' WHERE nid=2\""
+        _run_drush8_hmr_cmd "sqlq \"UPDATE node_revision SET title='localhost' WHERE nid=4\""
+        _run_drush8_hmr_cmd "sqlq \"UPDATE hosting_site SET db_server=4 WHERE db_server=2\""
+        _run_drush8_hmr_cmd "sqlq \"UPDATE hosting_platform SET web_server=2 WHERE web_server=0\""
+        _run_drush8_hmr_cmd "sqlq \"UPDATE users_roles SET rid=7 WHERE rid=5\""
+        su -s /bin/bash ${_THIS_HM_USER} -c "drush8 cc drush"
         wait
         rm -rf ${_USR}/.tmp/cache
-        _run_drush8_hmr_cmd "hosting-task @server_localhost verify --force" &> /dev/null
-        _run_drush8_hmr_cmd "hosting-dispatch" &> /dev/null
+        _run_drush8_hmr_cmd "hosting-task @server_localhost verify --force"
+        _run_drush8_hmr_cmd "hosting-dispatch"
         sleep 5
-        _run_drush8_hmr_cmd "hosting-tasks --force" &> /dev/null
+        _run_drush8_hmr_cmd "hosting-tasks --force"
         echo "HOTFIX B: Hostmaster STATUS: Fix for migrated/merged instance 1/2 complete"
       fi
       _vSet="variable-set --always-set"
-      _run_drush8_hmr_cmd "${_vSet} hosting_client_send_welcome 0" &> /dev/null
-      _run_drush8_hmr_cmd "sqlq \"UPDATE hosting_site SET client='1' WHERE profile='7'\"" &> /dev/null
-      _run_drush8_hmr_cmd "sqlq \"UPDATE hosting_site SET client='1' WHERE profile='9'\"" &> /dev/null
-      _run_drush8_hmr_cmd "sqlq \"UPDATE hosting_site SET client='1' WHERE client='0'\"" &> /dev/null
-      _run_drush8_hmr_cmd "sqlq \"UPDATE hosting_platform SET web_server='2' WHERE web_server='0'\"" &> /dev/null
-      _run_drush8_hmr_cmd "sqlq \"UPDATE node SET uid='1' WHERE uid='0'\"" &> /dev/null
-      _run_drush8_hmr_cmd "sqlq \"UPDATE node_revision SET uid='1' WHERE uid='0'\"" &> /dev/null
+      _run_drush8_hmr_cmd "${_vSet} hosting_client_send_welcome 0"
+      _run_drush8_hmr_cmd "sqlq \"UPDATE hosting_site SET client=1 WHERE profile=7\""
+      _run_drush8_hmr_cmd "sqlq \"UPDATE hosting_site SET client=1 WHERE profile=9\""
+      _run_drush8_hmr_cmd "sqlq \"UPDATE hosting_site SET client=1 WHERE client=0\""
+      _run_drush8_hmr_cmd "sqlq \"UPDATE hosting_platform SET web_server=2 WHERE web_server=0\""
+      _run_drush8_hmr_cmd "sqlq \"UPDATE node SET uid=1 WHERE uid=0\""
+      _run_drush8_hmr_cmd "sqlq \"UPDATE node_revision SET uid=1 WHERE uid=0\""
       _HM_NID=$(_run_drush8_hmr_cmd "sqlq \"SELECT MIN(site.nid) AS lowest_nid FROM hosting_site site JOIN hosting_package_instance pkgi ON pkgi.rid=site.nid JOIN hosting_package pkg ON pkg.nid=pkgi.package_id WHERE pkg.short_name='hostmaster';\"" 2>&1)
       _HM_NID=${_HM_NID//[^0-9]/}
       if [ ! -z "${_HM_NID}" ]; then
         echo "HOTFIX B: Hostmaster STATUS: Fix 1/2 hosting_context ${_HM_NID}"
         if [ -e "${_USR}/aegir/distro/002/sites/${_DOMAIN}/drushrc.php" ]; then
-          _HM_PLF=$(_run_drush8_hmr_cmd "sqlq \"SELECT platform FROM hosting_site WHERE nid='${_HM_NID}'\"" 2>&1)
+          _HM_PLF=$(_run_drush8_hmr_cmd "sqlq \"SELECT platform FROM hosting_site WHERE nid=${_HM_NID}\"" 2>&1)
           _HM_PLF=${_HM_PLF//[^0-9]/}
-          _run_drush8_hmr_cmd "sqlq \"DELETE FROM hosting_context WHERE name='platform_002' AND nid != '${_HM_PLF}'\"" &> /dev/null
-          _run_drush8_hmr_cmd "sqlq \"UPDATE hosting_context SET name='platform_002' WHERE nid='${_HM_PLF}'\"" &> /dev/null
+          _run_drush8_hmr_cmd "sqlq \"DELETE FROM hosting_context WHERE name='platform_002' AND nid != ${_HM_PLF}\""
+          _run_drush8_hmr_cmd "sqlq \"UPDATE hosting_context SET name='platform_002' WHERE nid=${_HM_PLF}\""
         fi
-        _run_drush8_hmr_cmd "sqlq \"UPDATE hosting_context SET name='hostmaster' WHERE nid='${_HM_NID}'\"" &> /dev/null
-        _run_drush8_hmr_cmd "sqlq \"UPDATE node SET title='${_DOMAIN}' WHERE nid='${_HM_NID}'\"" &> /dev/null
-        _run_drush8_hmr_cmd "sqlq \"UPDATE node_revision SET title='${_DOMAIN}' WHERE nid='${_HM_NID}'\"" &> /dev/null
-        _run_drush8_hmr_cmd "sqlq \"UPDATE hosting_site_alias SET alias='www.${_DOMAIN}' WHERE nid='${_HM_NID}'\"" &> /dev/null
+        _run_drush8_hmr_cmd "sqlq \"UPDATE hosting_context SET name='hostmaster' WHERE nid=${_HM_NID}\""
+        _run_drush8_hmr_cmd "sqlq \"UPDATE node SET title='${_DOMAIN}' WHERE nid=${_HM_NID}\""
+        _run_drush8_hmr_cmd "sqlq \"UPDATE node_revision SET title='${_DOMAIN}' WHERE nid=${_HM_NID}\""
+        _run_drush8_hmr_cmd "sqlq \"UPDATE hosting_site_alias SET alias='www.${_DOMAIN}' WHERE nid=${_HM_NID}\""
         echo FIXED > ${_USR}/log/post-merge-fix.pid
       else
         echo "HOTFIX B: Hostmaster STATUS: Fix 1/2 hosting_context _HM_NID empty!"
       fi
       if [ -e "${_USR}/aegir/distro/002/sites/${_DOMAIN}/drushrc.php" ] \
         && [ ! -e "${_USR}/log/hmpathfix.pid" ]; then
-        _run_drush8_hmr_cmd "sqlq \"UPDATE hosting_platform SET publish_path='${_USR}/aegir/distro/002' WHERE publish_path LIKE '%/aegir/distro/%'\"" &> /dev/null
+        _run_drush8_hmr_cmd "sqlq \"UPDATE hosting_platform SET publish_path='${_USR}/aegir/distro/002' WHERE publish_path LIKE '%/aegir/distro/%'\""
         touch ${_USR}/log/hmpathfix.pid
       fi
     fi
@@ -642,7 +648,7 @@ _migrate_prepare() {
     _migrate_sites
   fi
   echo Done ${_cmd} for ${_USR}
-  _enable_chattr ${_THIS_HM_USER}.ftp &> /dev/null
+  _enable_chattr ${_THIS_HM_USER}.ftp
 }
 
 _migrate_init() {
@@ -787,12 +793,12 @@ _migrate_init() {
             rsync -aEAXquL ${_ieni} -e ssh ${_USR}/static/files  root@${_tgt}:${_DST}/static/
           fi
           #
-          rsync -aEAXqu ${_ieni} -e ssh ${_USR}/clients/*        root@${_tgt}:${_DST}/clients/        &> /dev/null
+          rsync -aEAXqu ${_ieni} -e ssh ${_USR}/clients/*        root@${_tgt}:${_DST}/clients/
           rsync -aEAXqu ${_ieni} -e ssh ${_USR}/log/*            root@${_tgt}:${_DST}/log/
-          rsync -aEAXqu ${_ieni} -e ssh ${_USR}/static/control/* root@${_tgt}:${_DST}/static/control/ &> /dev/null
+          rsync -aEAXqu ${_ieni} -e ssh ${_USR}/static/control/* root@${_tgt}:${_DST}/static/control/
           #
-          rsync -aEAXqu ${_ieni} -e ssh ${_USR}/backups/*        root@${_tgt}:${_DST}/backups/        &> /dev/null
-          rsync -aEAXqu ${_ieni} -e ssh ${_USR}/undo/*           root@${_tgt}:${_DST}/undo/           &> /dev/null
+          rsync -aEAXqu ${_ieni} -e ssh ${_USR}/backups/*        root@${_tgt}:${_DST}/backups/
+          rsync -aEAXqu ${_ieni} -e ssh ${_USR}/undo/*           root@${_tgt}:${_DST}/undo/
           if [ ! -z "${_dst}" ]; then
             rsync -aEAXqu ${_ieni} -e ssh /home/${_oct}.ftp/.ssh  root@${_tgt}:/home/${_dst}.ftp/
           else
@@ -817,37 +823,37 @@ _migrate_init() {
           rsync -aEAXqu \
             ${_ieni} \
             -e ssh ${_USR}/config/server_master/nginx/pre.d/* \
-            root@${_tgt}:${_DST}/config/server_master/nginx/pre.d/ &> /dev/null
+            root@${_tgt}:${_DST}/config/server_master/nginx/pre.d/
 
           rsync -aEAXqu \
             ${_ieni} \
             -e ssh ${_USR}/config/server_master/nginx/post.d/* \
-            root@${_tgt}:${_DST}/config/server_master/nginx/post.d/ &> /dev/null
+            root@${_tgt}:${_DST}/config/server_master/nginx/post.d/
 
           rsync -aEAXqu \
             ${_ieni} \
             -e ssh ${_USR}/config/server_master/nginx/subdir.d/* \
-            root@${_tgt}:${_DST}/config/server_master/nginx/subdir.d/ &> /dev/null
+            root@${_tgt}:${_DST}/config/server_master/nginx/subdir.d/
 
           rsync -aEAXqu \
             ${_ieni} \
             -e ssh ${_USR}/config/server_master/nginx/platform.d/* \
-            root@${_tgt}:${_DST}/config/server_master/nginx/platform.d/ &> /dev/null
+            root@${_tgt}:${_DST}/config/server_master/nginx/platform.d/
 
           rsync -aEAXqu \
             ${_ieni} \
             -e ssh ${_USR}/config/ssl.d/* \
-            root@${_tgt}:${_DST}/config/ssl.d/ &> /dev/null
+            root@${_tgt}:${_DST}/config/ssl.d/
 
           rsync -aEAXqu \
             ${_ieni} \
             -e ssh ${_USR}/config/server_master/ssl.d/* \
-            root@${_tgt}:${_DST}/config/server_master/ssl.d/ &> /dev/null
+            root@${_tgt}:${_DST}/config/server_master/ssl.d/
 
           rsync -aEAXqu \
             ${_ieni} \
             -e ssh ${_USR}/tools/le \
-            root@${_tgt}:${_DST}/tools/ &> /dev/null
+            root@${_tgt}:${_DST}/tools/
 
           echo "INFO: ${_cmd} for ${_oct} to ${_tgt} ${_dst} complete"
           touch ${_USR}/log/transferred.pid
@@ -880,14 +886,14 @@ _post_mig() {
   else
     echo Running _post_mig inside vms ${_hName}
     if [ -x "/etc/init.d/solr9" ] && [ -e "/etc/default/solr9.in.sh" ]; then
-      #kill -9 $(ps aux | grep '[s]olr' | awk '{print $2}') &> /dev/null
+      #kill -9 $(ps aux | grep '[s]olr' | awk '{print $2}')
       service solr9 restart
     fi
     if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
-      #kill -9 $(ps aux | grep '[s]olr' | awk '{print $2}') &> /dev/null
+      #kill -9 $(ps aux | grep '[s]olr' | awk '{print $2}')
       service solr7 restart
     fi
-    kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}') &> /dev/null
+    kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}')
     rm -rf /tmp/{drush*,pear,jetty*}
     rm -f /var/log/jetty{7,8,9}/*
     if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
@@ -929,29 +935,29 @@ _pre_mig() {
     echo Running _pre_mig inside vms ${_hName}
     if [ -e "/var/xdrago/runner.sh" ]; then
       mv -f /var/xdrago/runner.sh /var/xdrago/.runner.sh.off
-      kill -9 $(ps aux | grep '[r]unner' | awk '{print $2}') &> /dev/null
+      kill -9 $(ps aux | grep '[r]unner' | awk '{print $2}')
     fi
     if [ -e "/var/xdrago/daily.sh" ]; then
       mv -f /var/xdrago/daily.sh /var/xdrago/.daily.sh.off
-      kill -9 $(ps aux | grep '[d]aily' | awk '{print $2}') &> /dev/null
+      kill -9 $(ps aux | grep '[d]aily' | awk '{print $2}')
     fi
     if [ -e "/var/xdrago/usage.sh" ]; then
       mv -f /var/xdrago/usage.sh /var/xdrago/.usage.sh.off
-      kill -9 $(ps aux | grep '[w]eekly' | awk '{print $2}') &> /dev/null
+      kill -9 $(ps aux | grep '[w]eekly' | awk '{print $2}')
     fi
     if [ -e "/var/xdrago/graceful.sh" ]; then
       mv -f /var/xdrago/graceful.sh /var/xdrago/.graceful.sh.off
-      kill -9 $(ps aux | grep '[g]raceful' | awk '{print $2}') &> /dev/null
+      kill -9 $(ps aux | grep '[g]raceful' | awk '{print $2}')
     fi
     if [ -e "/var/xdrago/manage_ltd_users.sh" ]; then
       mv -f /var/xdrago/manage_ltd_users.sh /var/xdrago/.manage_ltd_users.sh.off
-      kill -9 $(ps aux | grep '[m]anage_ltd_users' | awk '{print $2}') &> /dev/null
+      kill -9 $(ps aux | grep '[m]anage_ltd_users' | awk '{print $2}')
     fi
-    if [ ${_hName} = "${_hst}" ]; then
+    if [ "${_hName}" = "${_hst}" ]; then
       echo Preparing source ${_hName} for outgoing migration...
       if [ ! -e "/root/.ssh/id_rsa.pub" ]; then
         echo Create id_rsa.pub...
-        ssh-keygen -b 4096 -t rsa -N "" -f ~/.ssh/id_rsa &> /dev/null
+        ssh-keygen -b 4096 -t rsa -N "" -f ~/.ssh/id_rsa
       fi
       if [ -e "/root/.ssh/id_rsa.pub" ]; then
         mkdir -p /var/www/nginx-default
@@ -1050,12 +1056,12 @@ _sub_ssl_gen() {
         _sslFile="/etc/ssl/private/${_domain_name}.dhp"
         if [ ! -e "${_sslFile}" ]; then
           echo "We will generate .dhp file now, please wait..."
-          openssl dhparam -out ${_sslFile} 2048 &> /dev/null
+          openssl dhparam -out ${_sslFile} 2048
         else
           _PFS_TEST=$(grep "DH PARAMETERS" ${_sslFile} 2>&1)
           if [[ ! "${_PFS_TEST}" =~ "DH PARAMETERS" ]]; then
             echo "We will generate .dhp file now, please wait..."
-            openssl dhparam -out ${_sslFile} 2048 &> /dev/null
+            openssl dhparam -out ${_sslFile} 2048
           fi
         fi
       fi
