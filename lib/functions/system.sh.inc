@@ -8462,7 +8462,7 @@ _java_check_fix() {
     ln -sfn /etc/alternatives/java /usr/bin/java
   fi
 
-  if [ "${_OS_CODE}" = "daedalus" ] || [ "${_OS_CODE}" = "bookworm" ]; then
+  if [ "${_OS_CODE}" = "daedalus" ] || [ "${_OS_CODE}" = "chimaera" ]; then
     if [ ! -e "/usr/lib/jvm/java-17-openjdk" ] \
       && [ -d "/usr/lib/jvm/java-17-openjdk-amd64" ]; then
       ln -sfn /usr/lib/jvm/java-17-openjdk-amd64 /usr/lib/jvm/java-17-openjdk
