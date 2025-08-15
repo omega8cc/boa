@@ -3,8 +3,8 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-export _tRee=lts
-export _xSrl=570ltsT03
+export _tRee=dev
+export _xSrl=570devT03
 
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
@@ -744,7 +744,7 @@ not secure codebase, even if it was not affected by Drupageddon bug
 directly.
 
 Please be a good web citizen and upgrade to latest Drupal core provided
-by BOA-5.7.12-lts. As a bonus, you will be able to speed up your sites
+by BOA-5.7.12-dev. As a bonus, you will be able to speed up your sites
 considerably by switching PHP-FPM to 8.3
 
 We recommend to follow this upgrade how-to:
@@ -828,7 +828,7 @@ not secure codebase, even if it was not affected by Drupageddon bug
 directly.
 
 Please be a good web citizen and upgrade to latest Drupal core provided
-by BOA-5.7.12-lts. As a bonus, you will be able to speed up your sites
+by BOA-5.7.12-dev. As a bonus, you will be able to speed up your sites
 considerably by switching PHP-FPM to 8.3
 
 We recommend to follow this upgrade how-to:
@@ -2121,10 +2121,10 @@ _if_le_hm_ssl_old() {
   _last_update_diff_days=$(( (_current_time - _last_update_time) / 86400 ))  # 86400 seconds in a day
 
   # Check if the file was modified within the last 30 minutes
-  if [ ${_time_diff_minutes} -lt 30 ]; then
+  if [ "${_time_diff_minutes}" -lt 30 ]; then
     _crtLastMod=NEW
   # Check if the file was modified within the last 60 days and not marked NEW in the last 30 days
-  elif [ ${_time_diff_days} -le ${_recent_threshold_days} ] && [ ${_last_update_diff_days} -ge ${_update_check_days} ]; then
+  elif [ "${_time_diff_days}" -le "${_recent_threshold_days}" ] && [ "${_last_update_diff_days}" -ge "${_update_check_days}" ]; then
     _crtLastMod=NEW
     echo ${_current_time} > "${_filePath}.lastupdate"
   else
@@ -2530,6 +2530,9 @@ _daily_process() {
           else
             _DONT_TOUCH_PERMISSIONS=NO
           fi
+        fi
+        if [ -e "/root/.dont.touch.permissions.cnf" ]; then
+          _DONT_TOUCH_PERMISSIONS=YES
         fi
         if [ "${_DONT_TOUCH_PERMISSIONS}" = "NO" ] \
           && [ "${_PERMISSIONS_FIX}" = "YES" ]; then
@@ -3076,14 +3079,14 @@ _daily_action() {
             || [ -e "${_usEr}/log/exported.pid" ]; then
             if [ ! -e "${_usEr}/log/hosting_context.pid" ]; then
               _HM_NID=$(_run_drush8_hmr_cmd "sqlq \
-                \"SELECT site.nid FROM hosting_site site JOIN \
+                \"SELECT MIN(site.nid) AS lowest_nid FROM hosting_site site JOIN \
                 hosting_package_instance pkgi ON pkgi.rid=site.nid JOIN \
                 hosting_package pkg ON pkg.nid=pkgi.package_id \
                 WHERE pkg.short_name='hostmaster'\" 2>&1")
               _HM_NID=${_HM_NID//[^0-9]/}
               if [ ! -z "${_HM_NID}" ]; then
                 _run_drush8_hmr_cmd "sqlq \"UPDATE hosting_context \
-                  SET name='hostmaster' WHERE nid='${_HM_NID}'\""
+                  SET name='hostmaster' WHERE nid=${_HM_NID}\""
                 echo ${_HM_NID} > ${_usEr}/log/hosting_context.pid
               fi
             fi

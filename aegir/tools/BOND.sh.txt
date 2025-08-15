@@ -139,8 +139,8 @@ _TUNE_PHP_CLI_TIMEOUT=9999
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-export _tRee=lts
-export _xSrl=570ltsT03
+export _tRee=dev
+export _xSrl=570devT03
 
 _AEGIR_VERSION="${_tRee}"
 _BRANCH_BOA="5.x-${_tRee}"
@@ -173,9 +173,9 @@ _PHP81_VRN=8.1.33
 _PHP82_API=20220829
 _PHP82_VRN=8.2.29
 _PHP83_API=20230831
-_PHP83_VRN=8.3.23
+_PHP83_VRN=8.3.24
 _PHP84_API=20240924
-_PHP84_VRN=8.4.10
+_PHP84_VRN=8.4.11
 
 ###
 ### Helper variables
@@ -1682,8 +1682,8 @@ _tune_memory_limits() {
     _MAX_MEM_REDIS="${_USE_OPC}"
   fi
   _MAX_MEM_REDIS="${_MAX_MEM_REDIS}MB"
-  sed -i "s/^maxmemory .*/maxmemory ${_MAX_MEM_REDIS}/g" \
-    /etc/redis/redis.conf &> /dev/null
+  sed -i "s/^maxmemory .*/maxmemory ${_MAX_MEM_REDIS}/g" /etc/valkey/valkey.conf &> /dev/null
+  sed -i "s/^maxmemory .*/maxmemory ${_MAX_MEM_REDIS}/g" /etc/redis/redis.conf &> /dev/null
   wait
   if [ -e "/etc/default/jetty9" ] && [ -e "/opt/solr4" ]; then
     sed -i "s/^JAVA_OPTIONS.*/JAVA_OPTIONS=\"-Xms64m ${_USE_JETTY} -Djava.awt.headless=true -Dsolr.solr.home=\/opt\/solr4 \$JAVA_OPTIONS\" # Options/g" /etc/default/jetty9

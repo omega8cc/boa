@@ -104,8 +104,8 @@ xboa transfer shared target-ip
 ## On the Target Host
 
 ```sh
-ln -sfn /bin/websh /bin/sh
-ln -sfn /bin/websh /usr/bin/sh
+ln -sfn $(which websh) /bin/sh
+ln -sfn $(which websh) /usr/bin/sh
 ls -la /bin/sh
 xboa import o1 target-ip
 service nginx reload

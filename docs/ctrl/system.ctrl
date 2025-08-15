@@ -120,7 +120,7 @@ by the BOA install and upgrade tools exclusively.
  @=> /root/.no.swap.clear.cnf
 
   This file, if exists, allows to skip the otherwise default procedure
-  designed to clear system (memory) swap hourly.
+  designed to clear system (memory) swap daily.
 
  @=> /root/.no.sysctl.update.cnf
 
@@ -146,6 +146,11 @@ by the BOA install and upgrade tools exclusively.
   in the /data/disk/arch/sql/ directory. It will not affect any Octopus
   instance configuration with ~/static/control/MyQuick.info file present,
   since it's used only by Aegir tasks.
+
+ @=> /root/.valkey.no.new.password.cnf
+
+  This file, if exists, allows to skip the otherwise default procedure
+  designed to generate new Valkey password on every barracuda upgrade.
 
  @=> /root/.redis.no.new.password.cnf
 

@@ -60,6 +60,7 @@ _PHP_CLI_VERSION=8.3
 #
 # DE2 — Drupal 11.2 prod/stage/dev
 # CK3 — Commerce v.3
+# CMS — Drupal CMS
 # SCR — Sector
 # THR — Thunder
 
@@ -670,8 +671,8 @@ _BOA_REPO_GIT_URL="${_gitHub}"
 _aptAllow="--allow-unauthenticated"
 _aptYesUnth="-y ${_aptAllow}"
 
-export _tRee=lts
-export _xSrl=570ltsT03
+export _tRee=dev
+export _xSrl=570devT03
 
 
 ###

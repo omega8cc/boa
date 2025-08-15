@@ -1,5 +1,5 @@
 
-export _tRee=lts
+export _tRee=dev
 export _rLsn="BOA-5.7.12"
 export _rlsE="${_rLsn}-${_tRee}"
 export _bRnh="5.x-${_tRee}"
@@ -20,13 +20,13 @@ _get_core_ext() {
       else
         [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Attempt ${_attempt_num} failed."
         _attempt_num=$((_attempt_num+1))
-        if [ ${_attempt_num} -le ${_max_attempts} ]; then
+        if [ "${_attempt_num}" -le "${_max_attempts}" ]; then
           [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Retrying in 9 seconds..."
           sleep 9
         fi
       fi
     done
-    if [ ${_success} -eq 1 ]; then
+    if [ "${_success}" -eq 1 ]; then
       _extract_archive "$1"
     else
       _msg "OOPS: Failed to download http://${_USE_MIR}/core/$1 after ${_max_attempts} attempts"
@@ -580,7 +580,7 @@ _aegir_master_upgrade() {
     chown -R aegir:www-data ${_THIS_HM_SITE}/files
     chmod -R 02775 ${_THIS_HM_SITE}/files
 
-    export _xSrl=570ltsT03
+    export _xSrl=570devT03
     export _X_VERSION="${_X_VERSION}"
 
     echo "_AEGIR_VERSION=\"${_AEGIR_VERSION}\""         >> ${_vBs}/${_filIncB}
@@ -914,7 +914,7 @@ ALTER USER '${_AEGIR_DB_USER}'@'%' IDENTIFIED BY '${_ESC_PASS}';
 EOFMYSQL
     fi
 
-    export _xSrl=570ltsT03
+    export _xSrl=570devT03
     export _X_VERSION="${_X_VERSION}"
 
     echo "_AEGIR_DB_USER=\"${_AEGIR_DB_USER}\""         >> ${_vBs}/${_filIncB}

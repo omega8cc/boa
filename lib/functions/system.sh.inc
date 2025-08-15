@@ -945,6 +945,7 @@ _tune_memory_limits() {
 
   _MAX_MEM_REDIS=$(( _RAM / 6 ))
   _MAX_REDIS="${_MAX_MEM_REDIS}MB"
+  sed -i "s/^maxmemory .*/maxmemory ${_MAX_REDIS}/g" /etc/valkey/valkey.conf &> /dev/null
   sed -i "s/^maxmemory .*/maxmemory ${_MAX_REDIS}/g" /etc/redis/redis.conf &> /dev/null
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "TUNE: _MAX_MEM_REDIS is ${_MAX_MEM_REDIS}"
@@ -4259,6 +4260,13 @@ _if_ssl_install_src() {
       || [ ! -L "${_sslSymlink}" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: Modern OpenSSL (${_SSL_MODERN_ITD}), upgrade to (${_OPENSSL_NEW_VRN}) required"
+        _msg "INFO: _SSL_MODERN_BINARY is ${_SSL_MODERN_BINARY}"
+        _msg "INFO: _sslIncludesA is ${_sslIncludesA}"
+        _msg "INFO: _sslIncludesB is ${_sslIncludesB}"
+        _msg "INFO: _sslIncludes is ${_sslIncludes}"
+        _msg "INFO: _SSL_MODERN_ITD is ${_SSL_MODERN_ITD}"
+        _msg "INFO: _OPENSSL_NEW_VRN is ${_OPENSSL_NEW_VRN}"
+        _msg "INFO: _sslSymlink is ${_sslSymlink}"
       fi
       _SSL_MODERN_INSTALL_REQUIRED=YES
     fi
@@ -7393,7 +7401,8 @@ _sys_packages_install() {
                      ${_EXTRA_PACKAGES}"
   fi
 
-  _EXTRA_PACKAGES="libgd3 \
+  _EXTRA_PACKAGES="smem \
+                   libgd3 \
                    libxpm-dev \
                    libwebp-dev \
                    ${_EXTRA_PACKAGES}"
@@ -8003,6 +8012,61 @@ _xdrago_install_upgrade() {
   chmod 700 /var/xdrago &> /dev/null
 }
 
+_set_drupal_patches_paths() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _pam_many_check_fix"
+  fi
+  #
+  _tenCorePatchFname="drupal-ten-aegir-core-01.patch"
+  _tenCorePatchPath="/data/conf/patches/${_tenCorePatchFname}"
+  #
+  _tenConsolePatchFname="drupal-ten-aegir-console-02.patch"
+  _tenConsolePatchPath="/data/conf/patches/${_tenConsolePatchFname}"
+  #
+  _elevenCorePatchFname="drupal-eleven-aegir-core-01.patch"
+  _elevenCorePatchPath="/data/conf/patches/${_elevenCorePatchFname}"
+  #
+  _elevenConsolePatchFname="drupal-eleven-aegir-console-02.patch"
+  _elevenConsolePatchPath="/data/conf/patches/${_elevenConsolePatchFname}"
+  #
+  _elevenValidatorPatchFname="drupal-eleven-aegir-validator-03.patch"
+  _elevenValidatorPatchPath="/data/conf/patches/${_elevenValidatorPatchFname}"
+  #
+}
+
+_update_patches_drupal_ten() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _update_patches_drupal_ten"
+  fi
+  cp -af ${_bldPth}/aegir/patches/${_tenCorePatchFname} ${_tenCorePatchPath}
+  cp -af ${_bldPth}/aegir/patches/${_tenConsolePatchFname} ${_tenConsolePatchPath}
+}
+
+_update_patches_drupal_eleven() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _update_patches_drupal_eleven"
+  fi
+  cp -af ${_bldPth}/aegir/patches/${_elevenCorePatchFname} ${_elevenCorePatchPath}
+  cp -af ${_bldPth}/aegir/patches/${_elevenConsolePatchFname} ${_elevenConsolePatchPath}
+  cp -af ${_bldPth}/aegir/patches/${_elevenValidatorPatchFname} ${_elevenValidatorPatchPath}
+}
+
+_if_drupal_patches_update() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _if_drupal_patches_update"
+  fi
+  if [ -e "/var/xdrago" ]; then
+    if [ ! -e "/data/conf/patches/ctrl.f96.${_tRee}.${_xSrl}.pid" ]; then
+      _set_drupal_patches_paths
+      mkdir -p /data/conf/patches
+      rm -f /data/conf/patches/*
+      _update_patches_drupal_ten
+      _update_patches_drupal_eleven
+      touch /data/conf/patches/ctrl.f96.${_tRee}.${_xSrl}.pid
+    fi
+  fi
+}
+
 _pam_umask_check_fix() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _pam_umask_check_fix"
@@ -8398,7 +8462,7 @@ _java_check_fix() {
     ln -sfn /etc/alternatives/java /usr/bin/java
   fi
 
-  if [ "${_OS_CODE}" = "daedalus" ] || [ "${_OS_CODE}" = "bookworm" ]; then
+  if [ "${_OS_CODE}" = "daedalus" ] || [ "${_OS_CODE}" = "chimaera" ]; then
     if [ ! -e "/usr/lib/jvm/java-17-openjdk" ] \
       && [ -d "/usr/lib/jvm/java-17-openjdk-amd64" ]; then
       ln -sfn /usr/lib/jvm/java-17-openjdk-amd64 /usr/lib/jvm/java-17-openjdk
@@ -8415,13 +8479,38 @@ _java_check_fix() {
       && [ -e "/usr/lib/jvm/java-11-openjdk-amd64/bin/java" ]; then
       ln -sfn /usr/lib/jvm/java-11-openjdk-amd64/bin/java /usr/bin/java11
     fi
-    if [ -e "/usr/lib/jvm/java-1.11.0-openjdk-amd64" ]; then
-      rm -f /usr/lib/jvm/default-java
-      ln -sfn /usr/lib/jvm/java-1.11.0-openjdk-amd64 /usr/lib/jvm/default-java
+
+    if [ -x "/etc/init.d/jenkins" ] && [ -e "/var/lib/jenkins" ]; then
+      _LOOK_LIKE_JENKINS=TRUE
+    elif [ -e "/root/.look.like.jenkins.cnf" ]; then
+      _LOOK_LIKE_JENKINS=TRUE
+    else
+      _LOOK_LIKE_JENKINS=FALSE
     fi
-    if [ -x "/usr/lib/jvm/java-11-openjdk/bin/java" ]; then
-      ln -sfn /usr/lib/jvm/java-11-openjdk/bin/java /etc/alternatives/java
-      ln -sfn /etc/alternatives/java /usr/bin/java
+    if [ "${_LOOK_LIKE_JENKINS}" = "TRUE" ]; then
+      if [ -x "/usr/lib/jvm/java-17-openjdk/bin/java" ] \
+        && [ ! -e "/var/lib/jenkins/.fixed-java-version.cnf" ]; then
+        if [ -e "/usr/lib/jvm/java-1.17.0-openjdk-amd64" ]; then
+          rm -f /usr/lib/jvm/default-java
+          ln -sfn /usr/lib/jvm/java-1.17.0-openjdk-amd64 /usr/lib/jvm/default-java
+        fi
+        ln -sfn /usr/lib/jvm/java-17-openjdk/bin/java /etc/alternatives/java
+        ln -sfn /etc/alternatives/java /usr/bin/java
+        touch /var/lib/jenkins/.fixed-java-version.cnf
+        echo fixed java symlinks for ${_OS_CODE}
+      fi
+    else
+      if [ -x "/usr/lib/jvm/java-11-openjdk/bin/java" ]; then
+        if [ -e "/usr/lib/jvm/java-1.11.0-openjdk-amd64" ]; then
+          rm -f /usr/lib/jvm/default-java
+          ln -sfn /usr/lib/jvm/java-1.11.0-openjdk-amd64 /usr/lib/jvm/default-java
+        fi
+        if [ ! -e "/usr/bin/java" ] || [ ! -e "/etc/alternatives/java" ]; then
+          ln -sfn /usr/lib/jvm/java-11-openjdk/bin/java /etc/alternatives/java
+          ln -sfn /etc/alternatives/java /usr/bin/java
+          echo fixed java symlinks for ${_OS_CODE}
+        fi
+      fi
     fi
   else
     if [ ! -e "/usr/lib/jvm/java-11-openjdk" ] \

@@ -585,6 +585,15 @@ _dns_unbound_install_upgrade() {
     _mrun "service unbound restart" 2> /dev/null
     wait
   fi
+  [ -e "/etc/default/unbound" ] && _isNxdEtc=$(grep "always_nxdomain" /etc/default/unbound 2>&1)
+  [ -e "/etc/init.d/unbound" ] && _isIntUnb=$(grep "apply_ci_nomail" /etc/init.d/unbound 2>&1)
+  if [[ "${_isNxdEtc}" =~ "always_nxdomain" ]] \
+    && [[ ! "${_isIntUnb}" =~ "apply_ci_nomail" ]]; then
+    cp -af ${_locCnf}/dns/unbound /etc/init.d/unbound
+    chmod 755 /etc/init.d/unbound
+    _mrun "update-rc.d unbound defaults" 2> /dev/null
+    _mrun "service unbound reload" 2> /dev/null
+  fi
   if [ -x "${_isUnbnd}" ] \
     && [ "${_isUnbndFix}" = "NO" ] \
     && [ -e "/etc/resolvconf/interface-order" ]; then

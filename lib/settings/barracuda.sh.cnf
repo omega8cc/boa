@@ -386,7 +386,7 @@ _VALKEY_LISTEN_MODE=SOCKET
 ### VALKEY MAJOR RELEASE                    ###
 ###----------------------------------------###
 ###
-### Supported values: 7, 8
+### Supported values: 7
 ###
 _VALKEY_MAJOR_RELEASE=7
 
@@ -1188,8 +1188,8 @@ _X_VERSION=AUTO
 _BOA_REPO_NAME="boa"
 _BOA_REPO_GIT_URL="${_gitHub}"
 
-export _tRee=lts
-export _xSrl=570ltsT03
+export _tRee=dev
+export _xSrl=570devT03
 
 
 ###
