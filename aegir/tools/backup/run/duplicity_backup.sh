@@ -347,7 +347,11 @@ _validate_credentials() {
 _load_credentials() {
   local _service="$1"
   local _user="$2"
-  if [ "${_user}" != "arch" ] && [ "${_user}" != "data" ] && [ "${_user}" != "global" ] && [ "${_user}" != "custom" ]; then
+  if [ "${_user}" != "arch" ] \
+    && [ "${_user}" != "data" ] \
+    && [ "${_user}" != "global" ] \
+    && [ "${_user}" != "static" ] \
+    && [ "${_user}" != "custom" ]; then
     local _cred_file="/data/disk/${_user}/static/control/remote_backups/credentials/${_service}.txt"
     local _secret_file="/data/disk/${_user}/remote_backups/.secret.txt"
   fi
@@ -375,7 +379,11 @@ _load_credentials() {
 # Function to load paths configuration
 _load_paths() {
   local _user="$1"
-  if [ "${_user}" != "arch" ] && [ "${_user}" != "data" ] && [ "${_user}" != "global" ] && [ "${_user}" != "custom" ]; then
+  if [ "${_user}" != "arch" ] \
+    && [ "${_user}" != "data" ] \
+    && [ "${_user}" != "global" ] \
+    && [ "${_user}" != "static" ] \
+    && [ "${_user}" != "custom" ]; then
     local _paths_file="/data/disk/${_user}/remote_backups/paths/paths.txt"
   elif [ "${_user}" = "global" ] || [ "${_user}" = "data" ] || [ "${_user}" = "custom" ]; then
     local _paths_file="/root/.remote_backups/paths/${_user}_paths.txt"
