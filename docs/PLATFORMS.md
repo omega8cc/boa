@@ -14,6 +14,7 @@ On hosted BOA contact your host if you need any legacy PHP installed again.
 
 - [Commerce v.3](https://github.com/centarro/commerce-kickstart-project) (11.2.2)
 - [Drupal 11.2.2](https://drupal.org/project/drupal/releases/11.2.2)
+- [Drupal CMS 11.2.2](https://new.drupal.org/drupal-cms) (11.2.2)
 - [Sector 11.0.x-dev](https://drupal.org/project/sector) (11.2.0)
 - [Thunder 8.2.1](https://drupal.org/project/thunder) (11.2.2)
 
@@ -29,7 +30,7 @@ On hosted BOA contact your host if you need any legacy PHP installed again.
 - [DXPR Marketing 10.3.0](https://drupal.org/project/dxpr_marketing_cms) (10.3.6)
 - [EzContent 2.2.15](https://drupal.org/project/ezcontent) (10.3.6)
 - [farmOS 3.3.1](https://drupal.org/project/farm) (10.3.6)
-- [LocalGov 3.1.3](https://drupal.org/project/localgov) (10.5.1)
+- [LocalGov 3.1.5](https://drupal.org/project/localgov) (10.5.1)
 - [OpenCulturas 2.2.1](https://drupal.org/project/openculturas) (10.3.6)
 - [OpenFed 12.2.4](https://drupal.org/project/openfed) (10.2.10)
 - [Social 12.4.5](https://drupal.org/project/social) (10.2.10)
@@ -72,6 +73,7 @@ This file, if it exists and contains a list of symbols used to define supported 
 ### Drupal 11.2
 
 - `CK3` — Commerce v.3
+- `CMS` — Drupal CMS
 - `DE2` — Drupal 11.2 prod/stage/dev
 - `SCR` — Sector
 - `THR` — Thunder

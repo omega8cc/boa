@@ -14,7 +14,7 @@ HELP
 exit 0
 }
 
-if [ $(id -u) != 0 ]; then
+if [ "$(id -u)" != 0 ]; then
   printf "Error: You must run this with sudo or root.\n"
   exit 1
 fi

@@ -386,7 +386,7 @@ _VALKEY_LISTEN_MODE=SOCKET
 ### VALKEY MAJOR RELEASE                    ###
 ###----------------------------------------###
 ###
-### Supported values: 7, 8
+### Supported values: 7
 ###
 _VALKEY_MAJOR_RELEASE=7
 

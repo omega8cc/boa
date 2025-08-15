@@ -196,13 +196,13 @@ _get_dev_arch() {
       else
         [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Attempt ${_attempt_num} failed."
         _attempt_num=$((_attempt_num+1))
-        if [ ${_attempt_num} -le ${_max_attempts} ]; then
+        if [ "${_attempt_num}" -le "${_max_attempts}" ]; then
           [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Retrying in 9 seconds..."
           sleep 9
         fi
       fi
     done
-    if [ ${_success} -eq 1 ]; then
+    if [ "${_success}" -eq 1 ]; then
       _extract_archive "$1"
     else
       _msg "OOPS: Failed to download ${_urlDev}/$1 after ${_max_attempts} attempts"
@@ -226,13 +226,13 @@ _get_dev_ext() {
       else
         [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Attempt ${_attempt_num} failed."
         _attempt_num=$((_attempt_num+1))
-        if [ ${_attempt_num} -le ${_max_attempts} ]; then
+        if [ "${_attempt_num}" -le "${_max_attempts}" ]; then
           [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Retrying in 9 seconds..."
           sleep 9
         fi
       fi
     done
-    if [ ${_success} -eq 1 ]; then
+    if [ "${_success}" -eq 1 ]; then
       _extract_archive "$1"
     else
       _msg "OOPS: Failed to download ${_urlDev}/${_tRee}/$1 after ${_max_attempts} attempts"
@@ -256,13 +256,13 @@ _get_dev_stc() {
       else
         [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Attempt ${_attempt_num} failed."
         _attempt_num=$((_attempt_num+1))
-        if [ ${_attempt_num} -le ${_max_attempts} ]; then
+        if [ "${_attempt_num}" -le "${_max_attempts}" ]; then
           [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Retrying in 9 seconds..."
           sleep 9
         fi
       fi
     done
-    if [ ${_success} -eq 1 ]; then
+    if [ "${_success}" -eq 1 ]; then
       _extract_archive "$1"
     else
       _msg "OOPS: Failed to download ${_urlDev}/${_tRee}/static/$1 after ${_max_attempts} attempts"
@@ -286,13 +286,13 @@ _get_dev_contrib() {
       else
         [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Attempt ${_attempt_num} failed."
         _attempt_num=$((_attempt_num+1))
-        if [ ${_attempt_num} -le ${_max_attempts} ]; then
+        if [ "${_attempt_num}" -le "${_max_attempts}" ]; then
           [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Retrying in 9 seconds..."
           sleep 9
         fi
       fi
     done
-    if [ ${_success} -eq 1 ]; then
+    if [ "${_success}" -eq 1 ]; then
       _extract_archive "$1"
     else
       _msg "OOPS: Failed to download ${_urlDev}/${_tRee}/contrib/$1 after ${_max_attempts} attempts"
@@ -316,13 +316,13 @@ _get_dev_src() {
       else
         [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Attempt ${_attempt_num} failed."
         _attempt_num=$((_attempt_num+1))
-        if [ ${_attempt_num} -le ${_max_attempts} ]; then
+        if [ "${_attempt_num}" -le "${_max_attempts}" ]; then
           [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Retrying in 9 seconds..."
           sleep 9
         fi
       fi
     done
-    if [ ${_success} -eq 1 ]; then
+    if [ "${_success}" -eq 1 ]; then
       _extract_archive "$1"
     else
       _msg "OOPS: Failed to download ${_urlDev}/src/$1 after ${_max_attempts} attempts"
@@ -346,13 +346,13 @@ _get_dev_src_wget() {
       else
         [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Attempt ${_attempt_num} failed."
         _attempt_num=$((_attempt_num+1))
-        if [ ${_attempt_num} -le ${_max_attempts} ]; then
+        if [ "${_attempt_num}" -le "${_max_attempts}" ]; then
           [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Retrying in 9 seconds..."
           sleep 9
         fi
       fi
     done
-    if [ ${_success} -eq 1 ]; then
+    if [ "${_success}" -eq 1 ]; then
       _extract_archive "$1"
     else
       _msg "OOPS: Failed to download ${_urlDev}/src/$1 after ${_max_attempts} attempts"
