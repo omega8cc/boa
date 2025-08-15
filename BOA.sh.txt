@@ -2794,7 +2794,7 @@ _fix_java_symlinks() {
       echo fixed java symlinks for ${_OS_CODE}
     fi
   fi
-  if [ "${_OS_CODE}" = "daedalus" ] || [ "${_OS_CODE}" = "bookworm" ]; then
+  if [ "${_OS_CODE}" = "daedalus" ] || [ "${_OS_CODE}" = "chimaera" ]; then
     if [ -x "/etc/init.d/jenkins" ] && [ -e "/var/lib/jenkins" ]; then
       _LOOK_LIKE_JENKINS=TRUE
     elif [ -e "/root/.look.like.jenkins.cnf" ]; then
