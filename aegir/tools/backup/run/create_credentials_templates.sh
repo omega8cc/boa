@@ -146,7 +146,11 @@ _main() {
   for _user_dir in "${_USER_BASE_DIR}"/*; do
     if [ -d "${_user_dir}" ]; then
       _user=$(basename "${_user_dir}")
-      if [ "${_user}" != "arch" ] && [ "${_user}" != "data" ] && [ "${_user}" != "global" ] && [ "${_user}" != "custom" ]; then
+      if [ "${_user}" != "arch" ] \
+        && [ "${_user}" != "data" ] \
+        && [ "${_user}" != "global" ] \
+        && [ "${_user}" != "static" ] \
+        && [ "${_user}" != "custom" ]; then
         _user_pid_dir="${_USER_BASE_DIR}/${_user}/log"
         _user_credentials_dir="${_USER_BASE_DIR}/${_user}/static/control/remote_backups/credentials"
         _ensure_directory "${_user_credentials_dir}"

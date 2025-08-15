@@ -329,7 +329,7 @@ if ($is_bot) {
  */
 if (preg_match("/^\/cron\.php/", $_SERVER['REQUEST_URI']) ||
     preg_match("/^\/cron\//", $_SERVER['REQUEST_URI'])) {
-  if ($is_tmp) {
+  if (($is_tmp) || (file_exists('/data/conf/sites-cron-off.ctrl'))) {
     // Ignore cron requests
     header('X-Accel-Expires: 300');
     header('HTTP/1.0 404 Not Found');
@@ -796,6 +796,22 @@ if ($all_ini['auto_detect_domain_access_integration']) {
   }
   elseif (is_readable('profiles/' . $conf['install_profile'] . '/modules/contrib/domain/settings.inc')) {
     $da_inc = 'profiles/' . $conf['install_profile'] . '/modules/contrib/domain/settings.inc';
+  }
+}
+
+/**
+ * Activate mail_safety for sites-cron-off on the fly
+ */
+if (is_readable('/data/conf/sites-cron-off.ctrl')) {
+  if ($drupal_core >= 8) {
+    $config['mail_safety.settings']['enabled'] = TRUE;
+    $config['mail_safety.settings']['send_mail_to_dashboard'] = TRUE;
+    $config['mail_safety.settings']['send_mail_to_default_mail'] = FALSE;
+    $config['mail_safety.settings']['default_mail_address'] = '';
+  }
+  else {
+    $conf['mail_safety_enabled'] = TRUE;
+    $conf['mail_safety_send_mail_to_dashboard'] = TRUE;
   }
 }
 

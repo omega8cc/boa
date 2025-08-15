@@ -32,6 +32,15 @@ if [ -f /etc/default/unbound ]; then
     . /etc/default/unbound
 fi
 
+# --- BEGIN CI NoMail hook ---
+apply_ci_nomail() {
+    if [ "${UNBOUND_CI_NOMAIL:-NO}" = "YES" ] && [ -x /usr/local/sbin/unbound_ci_nomail.sh ]; then
+        /usr/bin/env _LOCAL_ZONE_TYPE="${UNBOUND_CI_NOMAIL_TYPE:-always_nxdomain}" \
+            /usr/local/sbin/unbound_ci_nomail.sh
+    fi
+}
+# --- END CI NoMail hook ---
+
 case "$1" in
     start)
         log_daemon_msg "Starting $DESC" "$NAME"
@@ -39,6 +48,7 @@ case "$1" in
         $HELPER root_trust_anchor_update 2>&1 | tee /dev/fd/2 | logger -p daemon.info -t unbound
         if start-stop-daemon --start --quiet --oknodo --pidfile $PIDFILE --name $NAME --startas $DAEMON -- $DAEMON_OPTS; then
             $HELPER resolvconf_start
+            apply_ci_nomail
             log_end_msg 0
         else
             log_end_msg 1
@@ -63,6 +73,7 @@ case "$1" in
         if start-stop-daemon --start --quiet --oknodo --pidfile $PIDFILE --name $NAME --startas $DAEMON -- $DAEMON_OPTS; then
             $HELPER chroot_setup
             $HELPER resolvconf_start
+            apply_ci_nomail
             log_end_msg 0
         else
             log_end_msg 1
@@ -73,6 +84,7 @@ case "$1" in
         log_daemon_msg "Reloading $DESC" "$NAME"
         if start-stop-daemon --stop --pidfile $PIDFILE --name $NAME --signal 1; then
             $HELPER chroot_setup
+            apply_ci_nomail
             log_end_msg 0
         else
             log_end_msg 1

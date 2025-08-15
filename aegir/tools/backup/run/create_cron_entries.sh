@@ -181,7 +181,11 @@ while IFS= read -r _line || [ -n "${_line}" ]; do
     cd /root/.remote_backups
     _print_env "sequential_backups_a"
 
-  elif [ "${_user}" != "arch" ] && [ "${_user}" != "data" ] && [ "${_user}" != "global" ] && [ "${_user}" != "custom" ]; then
+  elif [ "${_user}" != "arch" ] \
+    && [ "${_user}" != "data" ] \
+    && [ "${_user}" != "global" ] \
+    && [ "${_user}" != "static" ] \
+    && [ "${_user}" != "custom" ]; then
     _paths_file="/data/disk/${_user}/remote_backups/paths/paths.txt"
     _credentials_file="/data/disk/${_user}/static/control/remote_backups/credentials/${_service}.txt"
     _secret_file="/data/disk/${_user}/remote_backups/.secret.txt"

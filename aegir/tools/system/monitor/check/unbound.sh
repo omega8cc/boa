@@ -104,6 +104,69 @@ _unbound_check_fix() {
   fi
 }
 
+_unbound_fix_nomail() {
+  _MAIN_CONF="$(unbound-checkconf 2>&1 | awk 'NR==1{print $NF}')"
+  if [ -z "${_MAIN_CONF}" ]; then
+    _MAIN_CONF="/usr/etc/unbound/unbound.conf"
+  fi
+  _CONF_DIR="$(dirname "${_MAIN_CONF}")/unbound.conf.d"
+  _DROP_IN="${_CONF_DIR}/ci-nomail.conf"
+  install -d -m 0755 -o root -g root "${_CONF_DIR}"
+
+cat >"${_DROP_IN}" <<'CONF'
+server:
+  # SendGrid
+  local-zone: "sendgrid.com." always_nxdomain
+  local-zone: "sendgrid.net." always_nxdomain
+
+  # Mailgun
+  local-zone: "mailgun.net." always_nxdomain
+
+  # SparkPost
+  local-zone: "sparkpost.com." always_nxdomain
+
+  # Postmark
+  local-zone: "postmarkapp.com." always_nxdomain
+
+  # Brevo (Sendinblue)
+  local-zone: "brevo.com." always_nxdomain
+
+  # AWS SES
+  local-zone: "amazonaws.com." always_nxdomain
+CONF
+
+  _INCLUDE_LINE=$(printf 'include-toplevel: "%s/*.conf"' "${_CONF_DIR}")
+  if ! grep -Fq "${_INCLUDE_LINE}" "${_MAIN_CONF}"; then
+    printf '\n%s\n' "${_INCLUDE_LINE}" >> "${_MAIN_CONF}"
+  fi
+
+  unbound-checkconf "${_MAIN_CONF}"
+  service unbound reload
+
+  if dig @127.0.0.1 api.sendgrid.com | grep -q 'status: NXDOMAIN'; then
+    echo "OK: NXDOMAIN for api.sendgrid.com"
+  else
+    echo "WARN: api.sendgrid.com did not return NXDOMAIN"
+  fi
+}
+
+_unbound_check_nomail() {
+  [ -e "/etc/default/unbound" ] && _isNxdEtc=$(grep "always_nxdomain" /etc/default/unbound 2>&1)
+  [ -e "/etc/init.d/unbound" ] && _isIntUnb=$(grep "apply_ci_nomail" /etc/init.d/unbound 2>&1)
+  if [[ "${_isNxdEtc}" =~ "always_nxdomain" ]] \
+    && [[ "${_isIntUnb}" =~ "apply_ci_nomail" ]]; then
+    _isIncTop=$(grep "include-toplevel" /usr/etc/unbound/unbound.conf 2>&1)
+    if [ ! -e "/usr/etc/unbound/unbound.conf.d/ci-nomail.conf" ] \
+      || [[ ! "${_isIncTop}" =~ "include-toplevel" ]]; then
+      _unbound_fix_nomail
+    fi
+    _isActiveCtrl=$(unbound-control list_local_zones | grep -E 'sendgrid' 2>&1)
+    if [[ ! "${_isActiveCtrl}" =~ "sendgrid" ]]; then
+      service unbound reload &> /dev/null
+    fi
+  fi
+}
+
 if [ -e "/run/boa_run.pid" ] \
   || [ -e "/run/boa_wait.pid" ]; then
   _ALLOW_CTRL=NO
@@ -112,6 +175,9 @@ else
 fi
 
 [ "${_ALLOW_CTRL}" = "YES" ] && _unbound_check_fix
+
+### Check and modify and reload if needed
+_unbound_check_nomail
 
 echo DONE!
 exit 0

@@ -42,6 +42,7 @@ foreach $COMMAND (sort keys %li_cnt) {
   if ($COMMAND =~ /php-fpm/) {$fpmlives = "YES"; $fpmsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /postfix/) {$postfixlives = "YES"; $postfixsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /pure-ftpd/) {$ftplives = "YES"; $ftpsumar = $li_cnt{$COMMAND};}
+  if ($COMMAND =~ /jenkins/) {$jenkinslives = "YES"; $jenkinssumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /valkey-server/) {$valkeylives = "YES"; $valkeysumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /redis-server/) {$redislives = "YES"; $redissumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /newrelic-daemon/) {$newrelicdaemonlives = "YES"; $newrelicdaemonsumar = $li_cnt{$COMMAND};}
@@ -101,6 +102,7 @@ print "\n $nginxsumar Nginx procs\t\tGLOBAL" if ($nginxlives);
 print "\n $unboundsumar DNS procs\t\tGLOBAL" if ($unboundlives);
 print "\n $phpsumar PHP procs\t\tGLOBAL" if ($phplives);
 print "\n $postfixsumar Postfix procs\tGLOBAL" if ($postfixlives);
+print "\n $jenkinssumar Jenkins procs\t\tGLOBAL" if ($jenkinslives);
 print "\n $valkeysumar Valkey procs\t\tGLOBAL" if ($valkeylives);
 print "\n $redissumar Redis procs\t\tGLOBAL" if ($redislives);
 print "\n $newrelicdaemonsumar New Relic Apps\tGLOBAL" if ($newrelicdaemonlives);
@@ -122,6 +124,7 @@ print "\n";
 
 system("csf -e") if (!$lfdsumar && -f "/etc/init.d/lfd");
 system("service lfd start") if (!$lfdsumar && -f "/etc/init.d/lfd");
+system("service jenkins restart") if (!$jenkinssumar && -f "/etc/init.d/jenkins");
 system("service bind9 restart") if (!$namedsumar && -f "/etc/init.d/bind9");
 system("service ssh restart") if (!$sshdsumar && -f "/etc/init.d/ssh");
 system("service proxysql restart") if (!$pxydsumar && -f "/etc/init.d/proxysql");

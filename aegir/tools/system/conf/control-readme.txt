@@ -223,6 +223,7 @@
 #
 # DE2 — Drupal 11.2 prod/stage/dev
 # CK3 — Commerce v.3
+# CMS — Drupal CMS
 # SCR — Sector
 # THR — Thunder
 
