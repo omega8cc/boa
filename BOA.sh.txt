@@ -2795,6 +2795,22 @@ _fix_java_symlinks() {
     fi
   fi
   if [ "${_OS_CODE}" = "daedalus" ] || [ "${_OS_CODE}" = "chimaera" ]; then
+    if [ ! -e "/usr/lib/jvm/java-17-openjdk" ] \
+      && [ -d "/usr/lib/jvm/java-17-openjdk-amd64" ]; then
+      ln -sfn /usr/lib/jvm/java-17-openjdk-amd64 /usr/lib/jvm/java-17-openjdk
+    fi
+    if [ ! -e "/usr/bin/java17" ] \
+      && [ -e "/usr/lib/jvm/java-17-openjdk-amd64/bin/java" ]; then
+      ln -sfn /usr/lib/jvm/java-17-openjdk-amd64/bin/java /usr/bin/java17
+    fi
+    if [ ! -e "/usr/lib/jvm/java-11-openjdk" ] \
+      && [ -d "/usr/lib/jvm/java-11-openjdk-amd64" ]; then
+      ln -sfn /usr/lib/jvm/java-11-openjdk-amd64 /usr/lib/jvm/java-11-openjdk
+    fi
+    if [ ! -e "/usr/bin/java11" ] \
+      && [ -e "/usr/lib/jvm/java-11-openjdk-amd64/bin/java" ]; then
+      ln -sfn /usr/lib/jvm/java-11-openjdk-amd64/bin/java /usr/bin/java11
+    fi
     if [ -x "/etc/init.d/jenkins" ] && [ -e "/var/lib/jenkins" ]; then
       _LOOK_LIKE_JENKINS=TRUE
     elif [ -e "/root/.look.like.jenkins.cnf" ]; then
@@ -2816,6 +2832,10 @@ _fix_java_symlinks() {
       fi
     else
       if [ -x "/usr/lib/jvm/java-11-openjdk/bin/java" ]; then
+        if [ -e "/usr/lib/jvm/java-1.11.0-openjdk-amd64" ]; then
+          rm -f /usr/lib/jvm/default-java
+          ln -sfn /usr/lib/jvm/java-1.11.0-openjdk-amd64 /usr/lib/jvm/default-java
+        fi
         if [ ! -e "/usr/bin/java" ] || [ ! -e "/etc/alternatives/java" ]; then
           ln -sfn /usr/lib/jvm/java-11-openjdk/bin/java /etc/alternatives/java
           ln -sfn /etc/alternatives/java /usr/bin/java

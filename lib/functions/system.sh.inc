@@ -8479,7 +8479,6 @@ _java_check_fix() {
       && [ -e "/usr/lib/jvm/java-11-openjdk-amd64/bin/java" ]; then
       ln -sfn /usr/lib/jvm/java-11-openjdk-amd64/bin/java /usr/bin/java11
     fi
-
     if [ -x "/etc/init.d/jenkins" ] && [ -e "/var/lib/jenkins" ]; then
       _LOOK_LIKE_JENKINS=TRUE
     elif [ -e "/root/.look.like.jenkins.cnf" ]; then
