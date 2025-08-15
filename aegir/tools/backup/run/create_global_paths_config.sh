@@ -3,7 +3,7 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-export _sPid="f63"
+export _sPid="f62"
 
 # Function to create or update global paths configuration
 _create_global_paths_config() {
@@ -144,7 +144,8 @@ EOF
         # Remove the trailing slash for consistency
         sanitized_subdir="${subdir%/}"
         # Append the --include line to the include data file
-        if [ "${sanitized_subdir}" != "/data/disk/arch" ]; then
+        if [ "${sanitized_subdir}" != "/data/disk/arch" ] \
+          && [ "${sanitized_subdir}" != "/data/disk/static" ]; then
           echo "--include ${sanitized_subdir}" >> "${_include_data_file}"
         fi
       fi

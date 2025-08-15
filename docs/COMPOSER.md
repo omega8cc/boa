@@ -35,7 +35,7 @@ cd myplatform
 composer require drupal/module_name
 composer update drupal/module_name --with-dependencies
 
-composer install --no-dev --optimize-autoloader
+composer install --no-interaction --optimize-autoloader
 ```
 
 Then:
@@ -82,7 +82,7 @@ cd ~/static/path/to/platform-new
 composer clear-cache
 composer require drupal/new_module
 composer update drupal/existing_module --with-dependencies
-composer install --no-dev --optimize-autoloader
+composer install --no-interaction --optimize-autoloader
 ```
 
 - Add new platform in Ægir

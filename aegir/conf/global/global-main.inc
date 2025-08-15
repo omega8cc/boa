@@ -20,7 +20,7 @@ if ($is_bot) {
  */
 if (preg_match("/^\/cron\.php/", $_SERVER['REQUEST_URI']) ||
     preg_match("/^\/cron\//", $_SERVER['REQUEST_URI'])) {
-  if ($is_tmp) {
+  if (($is_tmp) || (file_exists('/data/conf/sites-cron-off.ctrl'))) {
     // Ignore cron requests
     header('X-Accel-Expires: 300');
     header('HTTP/1.0 404 Not Found');

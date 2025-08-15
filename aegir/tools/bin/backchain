@@ -1,0 +1,124 @@
+#!/bin/bash
+
+export SHELL=/bin/bash
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+
+#----------------------------------------
+# Constants
+#----------------------------------------
+_DISK_THRESHOLD=90
+
+#----------------------------------------
+# Helpers
+#----------------------------------------
+_usage() {
+  echo "Usage: ${0##*/} <mode> [user]"
+  echo "  setup <user>    Prepare sudo-NOPASSWD for <user>"
+  echo "  switch          Run backup routines (default)"
+  exit 1
+}
+
+_error() {
+  echo "ERROR: $*" >&2
+}
+
+_info() {
+  echo "INFO:  $*"
+}
+
+#----------------------------------------
+# Checks & Setup
+#----------------------------------------
+_check_disk() {
+  _DF_TEST=$(df -P / | awk 'NR==2 { gsub(/%/,""); print $5 }' 2>/dev/null)
+  _DF_TEST=${_DF_TEST//[^0-9]/}
+  if [ -n "${_DF_TEST}" ] && [ "${_DF_TEST}" -ge "${_DISK_THRESHOLD}" ]; then
+    _error "Disk usage is at ${_DF_TEST}% — must be below ${_DISK_THRESHOLD}%"
+    exit 1
+  fi
+}
+
+_check_root() {
+  if [ "$(id -u)" -eq 0 ]; then
+    ionice -c2 -n7 -p $$ &>/dev/null
+    renice 19 -p $$       &>/dev/null
+    chmod a+w /dev/null   &>/dev/null
+  else
+    _error "This command must be run as root"
+    exit 1
+  fi
+}
+
+_add_sudo_rule() {
+  _USER="$1"
+  _CMD="$2"
+  _SUF="$3"
+  _ENTRY="${_USER} ALL=NOPASSWD: ${_CMD}"
+  _FILE="/etc/sudoers.d/${_SUF}"
+
+  if ! grep -qF "${_ENTRY}" "${_FILE}" 2>/dev/null; then
+    _info "Adding sudoers entry to ${_FILE}"
+    echo "${_ENTRY}" >> "${_FILE}"
+    chmod 0440 "${_FILE}"
+  else
+    _info "Sudoers entry already present in ${_FILE}"
+  fi
+}
+
+_set_sudo() {
+  _add_sudo_rule "${_USER}" "/var/xdrago/mysql_backup.sh" mysql_backup
+  _add_sudo_rule "${_USER}" "/opt/local/bin/multiback"   multiback
+}
+
+_run_cmd() {
+  _info "Running: sudo --non-interactive $*"
+  sudo --non-interactive "$@"
+  _RC=$?
+
+  if [ "${_RC}" -ge 128 ]; then
+    _SIG=$(( _RC - 128 ))
+    _error "Command '$*' terminated by signal ${_SIG}"
+    if [ "${_SIG}" -eq 9 ]; then
+      _error "  → SIGKILL (9) usually means the OS ran out of memory or someone used kill -9."
+      _error "    Check 'dmesg' or 'journalctl -k' for OOM events."
+    fi
+    exit "${_RC}"
+  elif [ "${_RC}" -ne 0 ]; then
+    _error "Command failed with exit code ${_RC}: $*"
+    exit "${_RC}"
+  fi
+}
+
+#----------------------------------------
+# Parse arguments
+#----------------------------------------
+if [ "${1:-}" = "setup" ] && [ -n "${2:-}" ]; then
+  _THIS_MODE="setup"
+  _USER="${2}"
+elif [ "${1:-}" = "switch" ] || [ -z "${1:-}" ]; then
+  _THIS_MODE="switch"
+else
+  _usage
+fi
+
+#----------------------------------------
+# Main logic
+#----------------------------------------
+if [ "${_THIS_MODE}" = "setup" ]; then
+  _check_root
+  _check_disk
+  _set_sudo
+  _info "Sudoers setup complete for user '${_USER}'"
+  exit 0
+fi
+
+# mode = switch
+_check_disk
+_run_cmd /var/xdrago/mysql_backup.sh basic
+_info "MySQL backup completed successfully."
+
+_run_cmd /opt/local/bin/multiback repair b2 data
+_run_cmd /opt/local/bin/multiback backup b2 data
+_info "Multiback operations completed successfully."
+
+exit 0

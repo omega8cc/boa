@@ -392,7 +392,6 @@ _valkey_install_upgrade() {
   _VALKEY_TEST=$(grep "user default on" /etc/valkey/valkey.conf 2>&1)
   if [ "${_VALKEY_INSTALL_MISMATCH}" = "YES" ] \
     || [ -z "${_VALKEY_TEST}" ] \
-    || [ ! -e "${_pthLog}/valkey-${_VALKEY_VRN}-${_xSrl}-${_X_VERSION}.log" ] \
     || [ ! -d "/run/valkey" ] \
     || [ ! -x "/usr/bin/valkey-server" ] \
     || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then

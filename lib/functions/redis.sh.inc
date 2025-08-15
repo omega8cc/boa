@@ -389,7 +389,6 @@ _redis_install_upgrade() {
     fi
   fi
   if [ "${_REDIS_INSTALL_MISMATCH}" = "YES" ] \
-    || [ ! -e "${_pthLog}/redis-${_REDIS_VRN}-${_xSrl}-${_X_VERSION}.log" ] \
     || [ ! -d "/run/redis" ] \
     || [ ! -x "/usr/bin/redis-server" ] \
     || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
