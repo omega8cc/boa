@@ -113,7 +113,10 @@ elif [ "$(ps aux | grep -v "grep" \
     exit 0
   fi
 else
-  if [ -e "/root/.slow.cron.cnf" ] && [ ! -e "/root/.force.queue.runner.cnf" ]; then
+  if [ -e "/root/.look.like.jenkins.cnf" ]; then
+    echo "No automatic task queue on CI instance..."
+    exit 0
+  elif [ -e "/root/.slow.cron.cnf" ] && [ ! -e "/root/.force.queue.runner.cnf" ]; then
     touch /run/boa_cron_wait.pid
     sleep 15
     _runner_action
