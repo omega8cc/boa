@@ -96,6 +96,21 @@ _runner_action() {
   done
 }
 
+_if_allow_aegir_queue() {
+  _PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
+  _PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
+  _PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
+  ReTest=$(ls /data/disk/*/static/control/run-aegir-queue.info | wc -l 2>&1)
+  if [[ "${_PrTestPower}" =~ "POWER" ]] \
+    || [[ "${_PrTestPhantom}" =~ "PHANTOM" ]] \
+    || [[ "${_PrTestCluster}" =~ "CLUSTER" ]] \
+    || [ -e "/root/.allow.aegir.queue.cnf" ]; then
+    if [ "${ReTest}" -ge 1 ]; then
+      _ALLOW_AEGIR_QUEUE=TRUE
+    fi
+  fi
+}
+
 ###-------------SYSTEM-----------------###
 
 if [ -e "/run/boa_wait.pid" ] \
@@ -114,8 +129,17 @@ elif [ "$(ps aux | grep -v "grep" \
   fi
 else
   if [ -e "/root/.look.like.jenkins.cnf" ]; then
-    echo "No automatic task queue on CI instance..."
-    exit 0
+    _ALLOW_AEGIR_QUEUE=FALSE
+    _if_allow_aegir_queue
+    if [ "${_ALLOW_AEGIR_QUEUE}" = "TRUE" ]; then
+      touch /run/boa_cron_wait.pid
+      _runner_action
+      sleep 5
+      rm -f /run/boa_cron_wait.pid
+    else
+      echo "No automatic task queue on CI instance allowed by default"
+      exit 0
+    fi
   elif [ -e "/root/.slow.cron.cnf" ] && [ ! -e "/root/.force.queue.runner.cnf" ]; then
     touch /run/boa_cron_wait.pid
     sleep 15
