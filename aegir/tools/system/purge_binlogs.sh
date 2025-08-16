@@ -26,13 +26,8 @@ _check_root() {
 }
 _check_root
 
-if [ -e "/root/.proxy.cnf" ]; then
-  exit 0
-fi
-
-if [ -e "/root/.pause_tasks_maint.cnf" ]; then
-  exit 0
-fi
+[ -e "/root/.proxy.cnf" ] && exit 0
+[ -e "/root/.pause_tasks_maint.cnf" ] && exit 0
 
 if (( $(pgrep -fc 'purge_binlogs.sh') > 2 )); then
   echo "Too many purge_binlogs.sh running $(date)" >> /var/xdrago/log/too.many.log

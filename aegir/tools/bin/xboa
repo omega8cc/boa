@@ -1061,11 +1061,11 @@ _post_mig() {
   else
     echo Running _post_mig inside vms ${_hName}
     if [ -x "/etc/init.d/solr9" ] && [ -e "/etc/default/solr9.in.sh" ]; then
-      #kill -9 $(ps aux | grep '[s]olr' | awk '{print $2}') &> /dev/null
+      #kill -9 $(ps aux | grep '[s]olr9' | awk '{print $2}') &> /dev/null
       service solr9 restart
     fi
     if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
-      #kill -9 $(ps aux | grep '[s]olr' | awk '{print $2}') &> /dev/null
+      #kill -9 $(ps aux | grep '[s]olr7' | awk '{print $2}') &> /dev/null
       service solr7 restart
     fi
     kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}') &> /dev/null
