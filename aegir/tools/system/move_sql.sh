@@ -4,9 +4,7 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
-if [ -e "/root/.proxy.cnf" ]; then
-  exit 0
-fi
+[ -e "/root/.proxy.cnf" ] && exit 0
 
 [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
 

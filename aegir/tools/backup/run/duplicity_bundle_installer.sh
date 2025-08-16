@@ -92,9 +92,7 @@ _check_root() {
 _check_root
 _verify_boa_keys
 
-if [ -e "/root/.pause_heavy_tasks_maint.cnf" ]; then
-  exit 0
-fi
+[ -e "/root/.pause_heavy_tasks_maint.cnf" ] && exit 0
 
 # New OpenSSL 3.x version is required
 if [ ! -x "/usr/local/ssl3/bin/openssl" ]; then
