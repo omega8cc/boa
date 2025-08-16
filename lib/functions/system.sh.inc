@@ -8479,7 +8479,6 @@ _java_check_fix() {
       && [ -e "/usr/lib/jvm/java-11-openjdk-amd64/bin/java" ]; then
       ln -sfn /usr/lib/jvm/java-11-openjdk-amd64/bin/java /usr/bin/java11
     fi
-
     if [ -x "/etc/init.d/jenkins" ] && [ -e "/var/lib/jenkins" ]; then
       _LOOK_LIKE_JENKINS=TRUE
     elif [ -e "/root/.look.like.jenkins.cnf" ]; then
@@ -8723,14 +8722,14 @@ _initd_update() {
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: Restarting Solr 9"
       fi
-      kill -9 $(ps aux | grep '[s]olr' | awk '{print $2}') &> /dev/null
+      kill -9 $(ps aux | grep '[s]olr9' | awk '{print $2}') &> /dev/null
       _mrun "service solr9 start" 2> /dev/null
     fi
     if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: Restarting Solr 7"
       fi
-      kill -9 $(ps aux | grep '[s]olr' | awk '{print $2}') &> /dev/null
+      kill -9 $(ps aux | grep '[s]olr7' | awk '{print $2}') &> /dev/null
       _mrun "service solr7 start" 2> /dev/null
     fi
     if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
@@ -8828,11 +8827,18 @@ _initd_update() {
     _mrun "service ssh restart" 2> /dev/null
     _fix_on_upgrade
     _tune_memory_limits
+    if [ -x "/etc/init.d/solr9" ] && [ -e "/etc/default/solr9.in.sh" ]; then
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        _msg "INFO: Restarting Solr 9"
+      fi
+      kill -9 $(ps aux | grep '[s]olr9' | awk '{print $2}') &> /dev/null
+      _mrun "service solr9 start" 2> /dev/null
+    fi
     if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: Restarting Solr 7"
       fi
-      kill -9 $(ps aux | grep '[s]olr' | awk '{print $2}') &> /dev/null
+      kill -9 $(ps aux | grep '[s]olr7' | awk '{print $2}') &> /dev/null
       _mrun "service solr7 start" 2> /dev/null
     fi
     if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
