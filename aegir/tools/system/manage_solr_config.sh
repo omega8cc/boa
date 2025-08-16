@@ -6,9 +6,7 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 export _tRee=dev
 export _xSrl=570devT03
 
-if [ -e "/root/.proxy.cnf" ]; then
-  exit 0
-fi
+[ -e "/root/.proxy.cnf" ] && exit 0
 
 _crlGet="-L --max-redirs 3 -k -s --retry 9 --retry-delay 9 -A iCab"
 _wgetGet="--max-redirect=3 --no-check-certificate -q --tries=9 --wait=9 --user-agent='iCab'"
