@@ -16,14 +16,9 @@ _wgetGet="--max-redirect=3 --no-check-certificate -q --tries=9 --wait=9 --user-a
 _aptAllow="--allow-unauthenticated"
 _aptYesUnth="-y ${_aptAllow}"
 
-
-if [ -e "/root/.proxy.cnf" ]; then
-  exit 0
-fi
-
-if [ -e "/root/.pause_tasks_maint.cnf" ]; then
-  exit 0
-fi
+[ -e "/root/.look.like.jenkins.cnf" ] && exit 0
+[ -e "/root/.proxy.cnf" ] && exit 0
+[ -e "/root/.pause_tasks_maint.cnf" ] && exit 0
 
 if [ -x "/usr/bin/gpg2" ]; then
   _GPG=gpg2

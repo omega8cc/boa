@@ -26,13 +26,8 @@ _check_root() {
 }
 _check_root
 
-if [ -e "/root/.proxy.cnf" ]; then
-  exit 0
-fi
-
-if [ -e "/root/.pause_heavy_tasks_maint.cnf" ]; then
-  exit 0
-fi
+[ -e "/root/.proxy.cnf" ] && exit 0
+[ -e "/root/.pause_heavy_tasks_maint.cnf" ] && exit 0
 
 _IS_SQLBACKUP_RUNNING=$(ps aux | grep '[m]ysql_cluster_backup.sh' | awk '{print $2}' 2>&1)
 if [ ! -z "${_IS_SQLBACKUP_RUNNING}" ]; then
