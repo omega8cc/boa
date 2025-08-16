@@ -26,13 +26,8 @@ _check_root() {
 }
 _check_root
 
-if [ -e "/root/.proxy.cnf" ]; then
-  exit 0
-fi
-
-if [ -e "/root/.pause_tasks_maint.cnf" ]; then
-  exit 0
-fi
+[ -e "/root/.proxy.cnf" ] && exit 0
+[ -e "/root/.pause_tasks_maint.cnf" ] && exit 0
 
 _sanitize_number() {
   echo "$1" | sed 's/[^0-9.]//g'

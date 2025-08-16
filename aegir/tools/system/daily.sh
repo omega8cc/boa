@@ -29,13 +29,8 @@ _check_root() {
 }
 _check_root
 
-if [ -e "/root/.proxy.cnf" ]; then
-  exit 0
-fi
-
-if [ -e "/root/.pause_heavy_tasks_maint.cnf" ]; then
-  exit 0
-fi
+[ -e "/root/.proxy.cnf" ] && exit 0
+[ -e "/root/.pause_heavy_tasks_maint.cnf" ] && exit 0
 
 _WEBG=www-data
 _crlGet="-L --max-redirs 3 -k -s --retry 9 --retry-delay 9 -A iCab"
