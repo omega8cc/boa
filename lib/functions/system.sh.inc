@@ -8722,14 +8722,14 @@ _initd_update() {
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: Restarting Solr 9"
       fi
-      kill -9 $(ps aux | grep '[s]olr' | awk '{print $2}') &> /dev/null
+      kill -9 $(ps aux | grep '[s]olr9' | awk '{print $2}') &> /dev/null
       _mrun "service solr9 start" 2> /dev/null
     fi
     if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: Restarting Solr 7"
       fi
-      kill -9 $(ps aux | grep '[s]olr' | awk '{print $2}') &> /dev/null
+      kill -9 $(ps aux | grep '[s]olr7' | awk '{print $2}') &> /dev/null
       _mrun "service solr7 start" 2> /dev/null
     fi
     if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
@@ -8831,14 +8831,14 @@ _initd_update() {
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: Restarting Solr 9"
       fi
-      kill -9 $(ps aux | grep '[s]olr' | awk '{print $2}') &> /dev/null
+      kill -9 $(ps aux | grep '[s]olr9' | awk '{print $2}') &> /dev/null
       _mrun "service solr9 start" 2> /dev/null
     fi
     if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: Restarting Solr 7"
       fi
-      kill -9 $(ps aux | grep '[s]olr' | awk '{print $2}') &> /dev/null
+      kill -9 $(ps aux | grep '[s]olr7' | awk '{print $2}') &> /dev/null
       _mrun "service solr7 start" 2> /dev/null
     fi
     if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
