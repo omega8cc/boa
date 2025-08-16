@@ -4,13 +4,9 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
-if [ -e "/root/.proxy.cnf" ]; then
-  exit 0
-fi
-
-if [ -e "/root/.pause_heavy_tasks_maint.cnf" ]; then
-  exit 0
-fi
+[ -e "/root/.look.like.jenkins.cnf" ] && exit 0
+[ -e "/root/.proxy.cnf" ] && exit 0
+[ -e "/root/.pause_heavy_tasks_maint.cnf" ] && exit 0
 
 if (( $(pgrep -fc 'usage.sh') > 2 )); then
   echo "Too many usage.sh running $(date)" >> /var/xdrago/log/too.many.log
