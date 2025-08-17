@@ -48,6 +48,7 @@ _turn_off_apparmor() {
   sed -i "s/\/bin\/sh/\/bin\/bash/g" /lib/apparmor/profile-load
   # Disable Apparmor
   rm -rf /var/cache/apparmor/*
+  rm /etc/apparmor.d/*~
   apparmor_parser -r /etc/apparmor.d/* 2> /dev/null
   aa-complain /etc/apparmor.d/* 2> /dev/null
   service apparmor stop 2> /dev/null
