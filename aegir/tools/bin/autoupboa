@@ -340,8 +340,6 @@ _system_hostname_check_fix() {
 }
 _system_hostname_check_fix
 
-rm -f /run/clear_m.pid
-
 _ADD_XTRA=YES
 _CRON_TEST=$(grep "clear.xsh" /var/spool/cron/crontabs/root 2>&1)
 if [[ "${_CRON_TEST}" =~ "clear.xsh" ]]; then
