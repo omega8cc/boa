@@ -459,7 +459,7 @@ fi
 
 echo "INFO: Completing all dbs backups on $(date)"
 rm -f /run/boa_sql_backup.pid
-touch /var/xdrago/log/last-run-backup
+touch /var/log/boa/last-run-backup
 
 if [ "${_VMFAMILY}" = "VS" ] && [ "${_THIS_MODE}" = "full" ]; then
   _n=$((RANDOM%300+8))

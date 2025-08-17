@@ -9,7 +9,7 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 [ -e "/root/.pause_heavy_tasks_maint.cnf" ] && exit 0
 
 if (( $(pgrep -fc 'usage.sh') > 2 )); then
-  echo "Too many usage.sh running $(date)" >> /var/xdrago/log/too.many.log
+  echo "Too many usage.sh running $(date)" >> /var/log/boa/too.many.log
   exit 0
 fi
 
@@ -883,7 +883,7 @@ EOF
               elif [ "${_THIS_MODE}" = "silent" ]; then
                 _LOG_FILE="usage-latest-silent.log"
               fi
-              echo "${_AegirUrl},${_Files}:${_TotSizH},${_DbsL}:${_SumDatH},${_DbsD}:${_SkipDtH},${_eMail},Subs:${_CLIENT_OPTION}:${_CLIENT_CORES},${_THIS_U}" >> /var/xdrago/log/usage/${_LOG_FILE}
+              echo "${_AegirUrl},${_Files}:${_TotSizH},${_DbsL}:${_SumDatH},${_DbsD}:${_SkipDtH},${_eMail},Subs:${_CLIENT_OPTION}:${_CLIENT_CORES},${_THIS_U}" >> /var/log/boa/usage/${_LOG_FILE}
             fi
             _TmDir="${_THIS_HM_PLR}/profiles/hostmaster/themes/aegir/eldir"
             _PgTpl="${_TmDir}/page.tpl.php"
@@ -931,15 +931,15 @@ _NOW=$(date +%y%m%d-%H%M%S 2>&1)
 _NOW=${_NOW//[^0-9-]/}
 _DATE=$(date)
 _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
-mkdir -p /var/xdrago/log/usage
+mkdir -p /var/log/boa/usage
 if [ "${1}" = "verbose" ] || [ -z "${1}" ]; then
   _THIS_MODE="verbose"
-  rm -f /var/xdrago/log/usage/usage-latest-verbose.log
+  rm -f /var/log/boa/usage/usage-latest-verbose.log
 elif [ "${1}" = "silent" ]; then
   _THIS_MODE="silent"
-  rm -f /var/xdrago/log/usage/usage-latest-silent.log
+  rm -f /var/log/boa/usage/usage-latest-silent.log
 fi
-_usage_action >/var/xdrago/log/usage/usage-${_NOW}.log 2>&1
+_usage_action >/var/log/boa/usage/usage-${_NOW}.log 2>&1
 echo "INFO: Completing usage monitoring on $(date)"
 exit 0
 

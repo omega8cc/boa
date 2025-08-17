@@ -18,7 +18,7 @@ $time_is=`date +%H:%M`;
 chomp($time_is);
 $now_is="$date_is $time_is";
 chomp($now_is);
-$logfile="/var/xdrago/log/last-shell-escape-log";
+$logfile="/var/log/boa/last-shell-escape-log";
 `rm -f $logfile`;
 &makeactions;
 if ($status ne "CLEAN") {
@@ -53,10 +53,10 @@ local(@MYARR)=`grep -i forbidden /var/log/lsh/*.log | tail --lines=999 2>&1`;
         if ($now_is eq $log_is) {
           $status="ERROR";
           `echo "$line" >> $logfile`;
-          `echo "[$now_is]:[$log_is]:[$line]" >> /var/xdrago/log/last-shell-escape-y-problem`;
+          `echo "[$now_is]:[$log_is]:[$line]" >> /var/log/boa/last-shell-escape-y-problem`;
         }
 #         else {
-#           `echo "[$now_is]:[$log_is]" >> /var/xdrago/log/last-shell-escape-n-problem`;
+#           `echo "[$now_is]:[$log_is]" >> /var/log/boa/last-shell-escape-n-problem`;
 #         }
       }
     }

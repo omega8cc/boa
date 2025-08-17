@@ -24,7 +24,7 @@ $server=`uname -n`;
 chomp($server);
 $timedate=`date +%y%m%d-%H%M`;
 chomp($timedate);
-$logfile="/var/xdrago/log/mysqlcheck.log";
+$logfile="/var/log/boa/mysqlcheck.log";
 system("touch /run/boa_wait.pid");
 sleep(90);
 $mysqlrootpass=`cat /root/.my.pass.txt`;
@@ -32,7 +32,7 @@ chomp($mysqlrootpass);
 system("/usr/bin/mysqlcheck -u root -Aa > $logfile");
 &makeactions;
 system("rm -f /run/boa_wait.pid");
-system("touch /var/xdrago/log/last-run-acrashsql");
+system("touch /var/log/boa/last-run-acrashsql");
 if ($mailx_test =~ /(built for Linux)/i) {
   if ($status ne "CLEAN") {
     system("cat $logfile | s-nail -s \"SQL check ERROR [$server] $timedate\" notify\@omega8.cc");

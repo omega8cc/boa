@@ -18,7 +18,7 @@ if ($status ne "CLEAN") {
   `perl /var/xdrago/checksql.pl`;
 }
 else {
-  `touch /var/xdrago/log/last-sqlcheck-clean`;
+  `touch /var/log/boa/last-sqlcheck-clean`;
 }
 exit;
 
@@ -44,10 +44,10 @@ local(@MYARR)=`grep mysql /var/log/syslog | tail --lines=999 2>&1`;
         if ($now_is eq $log_is) {
           $status="ERROR";
           print "===[$now_is]\t[$log_is]===\n";
-          `echo "[$now_is]:[$log_is]" >> /var/xdrago/log/last-sqlcheck-y-problem`;
+          `echo "[$now_is]:[$log_is]" >> /var/log/boa/last-sqlcheck-y-problem`;
         }
 #         else {
-#           `echo "[$now_is]:[$log_is]" >> /var/xdrago/log/last-sqlcheck-n-problem`;
+#           `echo "[$now_is]:[$log_is]" >> /var/log/boa/last-sqlcheck-n-problem`;
 #         }
       }
     }

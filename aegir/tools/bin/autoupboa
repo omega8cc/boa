@@ -3,8 +3,8 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-export _tRee=pro
-export _xSrl=570proT05
+export _tRee=dev
+export _xSrl=570devT05
 
 _barCnf="/root/.barracuda.cnf"
 
@@ -63,10 +63,10 @@ _DEFAULT_CPU_MAX_RATIO="4.1"
 _DEFAULT_CPU_TASK_RATIO="3.1"
 _DEFAULT_CPU_SPIDER_RATIO="2.1"
 _LOCK_CPU_CONFIG="/root/.lock.cpu.update.f98.cnf"
-_UPDATE_CPU_PID="/var/xdrago/log/.update_conf_variable.ctrl.f98.${_tRee}.${_xSrl}.pid"
+_UPDATE_CPU_PID="/var/log/boa/.update_conf_variable.ctrl.f98.${_tRee}.${_xSrl}.pid"
 
 _LOCK_DOS_CONFIG="/root/.lock.dos.update.f98.cnf"
-_LOCK_DOS_PID="/var/xdrago/log/.sync_scan_nginx.ctrl.f98.${_tRee}.${_xSrl}.pid"
+_LOCK_DOS_PID="/var/log/boa/.sync_scan_nginx.ctrl.f98.${_tRee}.${_xSrl}.pid"
 
 _DEFAULT_NGINX_DOS_LINES=1999
 _DEFAULT_NGINX_DOS_LIMIT=399
@@ -99,7 +99,7 @@ if [ ! -e "${_LOCK_CPU_CONFIG}" ]; then
     _update_conf_variable "_CPU_MAX_RATIO" "${_DEFAULT_CPU_MAX_RATIO}" "${_barCnf}"
     _update_conf_variable "_CPU_TASK_RATIO" "${_DEFAULT_CPU_TASK_RATIO}" "${_barCnf}"
     _update_conf_variable "_CPU_SPIDER_RATIO" "${_DEFAULT_CPU_SPIDER_RATIO}" "${_barCnf}"
-    rm -f /var/xdrago/log/.update_conf_variable.ctrl*
+    rm -f /var/log/boa/.update_conf_variable.ctrl*
     touch ${_UPDATE_CPU_PID}
     touch ${_LOCK_CPU_CONFIG}
   fi
@@ -509,18 +509,18 @@ _crontab_cleanup() {
 [ -e "/root/.use.curl.from.packages.cnf" ] && chattr -i /root/.use.curl.from.packages.cnf
 [ -e "/root/.use.curl.from.packages.cnf" ] && rm -f /root/.use.curl.from.packages.cnf
 
-if [ -e "/var/xdrago/log" ]; then
+if [ -e "/var/log/boa" ]; then
   _BROKEN_UPDATE_TEST=$(grep "Under Construction" /var/xdrago/*.sh 2>&1)
   if [ ! -z "${_BROKEN_UPDATE_TEST}" ]; then
-    rm -f /var/xdrago/log/*.pid
+    rm -f /var/log/boa/*.pid
   fi
   _BROKEN_UPDATE_TEST=$(grep "Under Construction" /var/xdrago/monitor/check/* 2>&1)
   if [ ! -z "${_BROKEN_UPDATE_TEST}" ]; then
-    rm -f /var/xdrago/log/*.pid
+    rm -f /var/log/boa/*.pid
   fi
   _BROKEN_UPDATE_TEST=$(grep "404 Not Found" /var/xdrago/monitor/check/* 2>&1)
   if [ ! -z "${_BROKEN_UPDATE_TEST}" ]; then
-    rm -f /var/xdrago/log/*.pid
+    rm -f /var/log/boa/*.pid
   fi
 fi
 
@@ -554,7 +554,7 @@ if [ -e "/var/aegir/drush" ]; then
       sed -i "s/default_critnumber =.*/default_critnumber = 399;/g" /var/xdrago/monitor/check/scan_nginx.pl
       wait
       sed -i "s/default_lines =.*/default_lines = 1999;/g" /var/xdrago/monitor/check/scan_nginx.pl
-      rm -f /var/xdrago/log/.sync_scan_nginx*
+      rm -f /var/log/boa/.sync_scan_nginx*
       rm -f /var/log/scan_nginx_*
       touch ${_LOCK_DOS_PID}
       touch ${_LOCK_DOS_CONFIG}
@@ -610,7 +610,7 @@ if [ -e "/var/aegir/drush" ]; then
 	  _DONT_TOUCH=OK
 	  rm -f /etc/csf/csf.conf-pre*
 	else
-	  if [ ! -e "/var/xdrago/log/.csf_legacy_cleanup.${_xSrl}.pid" ]; then
+	  if [ ! -e "/var/log/boa/.csf_legacy_cleanup.${_xSrl}.pid" ]; then
 	    sed -i "s/.*Legacy.*//g"    /etc/csf/csf.ignore
 	    wait
 	    sed -i "s/.*Legacy.*//g"    /etc/csf/csf.allow
@@ -626,14 +626,14 @@ if [ -e "/var/aegir/drush" ]; then
 	    sed -i "/^$/d" /etc/csf/csf.ignore
 	    sed -i "/^$/d" /etc/csf/csf.allow
 	    rm -f /etc/csf/csf.conf-pre*
-	    touch /var/xdrago/log/.csf_legacy_cleanup.${_xSrl}.pid
+	    touch /var/log/boa/.csf_legacy_cleanup.${_xSrl}.pid
 	  fi
 	fi
 
 	rm -f /var/xdrago/*.old
 	rm -f /var/xdrago/.*.off
 
-	if [ ! -e "/var/xdrago/log/.csf_dhcp_udp_cleanup.${_xSrl}.pid" ]; then
+	if [ ! -e "/var/log/boa/.csf_dhcp_udp_cleanup.${_xSrl}.pid" ]; then
       sed -i "s/.*DHCP.*//g" /etc/csf/csf.allow
       wait
       sed -i "/^$/d" /etc/csf/csf.allow
@@ -651,15 +651,15 @@ if [ -e "/var/aegir/drush" ]; then
         fi
       done
  	  csf -q
-	  touch /var/xdrago/log/.csf_dhcp_udp_cleanup.${_xSrl}.pid
+	  touch /var/log/boa/.csf_dhcp_udp_cleanup.${_xSrl}.pid
 	fi
 
-    if [ ! -e "/var/xdrago/log/.disabled_modules_fix.${_xSrl}.pid" ]; then
+    if [ ! -e "/var/log/boa/.disabled_modules_fix.${_xSrl}.pid" ]; then
       sed -i "s/^_MODULES_FIX=.*/_MODULES_FIX=NO/g"  ${_barCnf}
-      touch /var/xdrago/log/.disabled_modules_fix.${_xSrl}.pid
+      touch /var/log/boa/.disabled_modules_fix.${_xSrl}.pid
     fi
 
-    if [ ! -e "/var/xdrago/log/.custom_percona_forced.${_xSrl}.pid" ]; then
+    if [ ! -e "/var/log/boa/.custom_percona_forced.${_xSrl}.pid" ]; then
       _DBS_TEST=$(which mysql 2>&1)
       if [ ! -z "${_DBS_TEST}" ]; then
         _DB_SERVER_TEST=$(mysql -V 2>&1)
@@ -704,7 +704,7 @@ if [ -e "/var/aegir/drush" ]; then
       fi
       sed -i "s/^_USE_MYSQLTUNER=.*/_USE_MYSQLTUNER=NO/g"  ${_barCnf}
       rm -f /etc/mysql/conf.d/mysqldump.cnf
-      touch /var/xdrago/log/.custom_percona_forced.${_xSrl}.pid
+      touch /var/log/boa/.custom_percona_forced.${_xSrl}.pid
     fi
 
     _AUTO_PHP="php-min"
@@ -740,12 +740,12 @@ if [ -e "/var/aegir/drush" ]; then
       if [ `ps aux | grep -v "grep" | grep --count "gpg-agent"` -gt 5 ]; then
         kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
         echo "$(date) Too many gpg-agent processes killed" >> \
-          /var/xdrago/log/gpg-agent-count.kill.log
+          /var/log/boa/gpg-agent-count.kill.log
       fi
       if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt 5 ]; then
         kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
         echo "$(date) Too many dirmngr processes killed" >> \
-          /var/xdrago/log/dirmngr-count.kill.log
+          /var/log/boa/dirmngr-count.kill.log
       fi
     fi
     if [ -e "/root/.restrict_this_vm.cnf" ]; then
@@ -769,15 +769,15 @@ if [ -e "/var/aegir/drush" ]; then
   fi
 
   if [ -e "/root/.dev.server.cnf" ]; then
-    if [ ! -e "/var/xdrago/log/.etc_crontab_update_dev_ctrl_f009.${_tRee}.${_xSrl}.pid" ]; then
-      rm -f /var/xdrago/log/.*etc_crontab_update_dev_ctrl*
+    if [ ! -e "/var/log/boa/.etc_crontab_update_dev_ctrl_f009.${_tRee}.${_xSrl}.pid" ]; then
+      rm -f /var/log/boa/.*etc_crontab_update_dev_ctrl*
       _crontab_cleanup
       service cron restart
-      touch /var/xdrago/log/.etc_crontab_update_dev_ctrl_f009.${_tRee}.${_xSrl}.pid
+      touch /var/log/boa/.etc_crontab_update_dev_ctrl_f009.${_tRee}.${_xSrl}.pid
     fi
   else
-    if [ ! -e "/var/xdrago/log/.etc_crontab_update_prod_ctrl_f009.${_tRee}.${_xSrl}.pid" ]; then
-      rm -f /var/xdrago/log/.*etc_crontab_update_prod_ctrl*
+    if [ ! -e "/var/log/boa/.etc_crontab_update_prod_ctrl_f009.${_tRee}.${_xSrl}.pid" ]; then
+      rm -f /var/log/boa/.*etc_crontab_update_prod_ctrl*
       if [ ! -z "${_AUTO_UP_MONTH}" ] \
         && [ ! -z "${_AUTO_UP_DAY}" ]; then
         _crontab_update
@@ -785,17 +785,17 @@ if [ -e "/var/aegir/drush" ]; then
         _crontab_cleanup
       fi
       service cron restart
-      touch /var/xdrago/log/.etc_crontab_update_prod_ctrl_f009.${_tRee}.${_xSrl}.pid
+      touch /var/log/boa/.etc_crontab_update_prod_ctrl_f009.${_tRee}.${_xSrl}.pid
     fi
   fi
 
-  if [ ! -e "/var/xdrago/log/.etc_csf_allow_ctrl.${_tRee}.${_xSrl}.pid" ]; then
+  if [ ! -e "/var/log/boa/.etc_csf_allow_ctrl.${_tRee}.${_xSrl}.pid" ]; then
     mkdir -p /var/backups/csf
     cp -a /etc/csf/csf.ignore /var/backups/csf/csf.ignore.${_tRee}.${_xSrl}.txt
     cp -a /etc/csf/csf.allow /var/backups/csf/csf.allow.${_tRee}.${_xSrl}.txt
     rm -f /root/.*.pid
-    rm -f /var/xdrago/log/.etc_csf_allow_ctrl*
-    touch /var/xdrago/log/.etc_csf_allow_ctrl.${_tRee}.${_xSrl}.pid
+    rm -f /var/log/boa/.etc_csf_allow_ctrl*
+    touch /var/log/boa/.etc_csf_allow_ctrl.${_tRee}.${_xSrl}.pid
   fi
 
   ###
@@ -855,25 +855,25 @@ if [ -e "/var/aegir/drush" ]; then
     if [ -e "/usr/sbin/ebtables-legacy" ]; then
       update-alternatives --set ebtables /usr/sbin/ebtables-legacy &> /dev/null
     fi
-    touch /var/xdrago/log/.nf_tables_ctrl.${_tRee}.${_xSrl}.pid
+    touch /var/log/boa/.nf_tables_ctrl.${_tRee}.${_xSrl}.pid
   fi
 
   if [ -x "/etc/init.d/site24x7monagent" ] \
-    && [ ! -e "/var/xdrago/log/.site24x7monagent_ctrl.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "/var/log/boa/.site24x7monagent_ctrl.${_tRee}.${_xSrl}.pid" ]; then
     service site24x7monagent stop
     wait
     service site24x7monagent start
-    rm -f /var/xdrago/log/.site24x7monagent*
-    touch /var/xdrago/log/.site24x7monagent_ctrl.${_tRee}.${_xSrl}.pid
+    rm -f /var/log/boa/.site24x7monagent*
+    touch /var/log/boa/.site24x7monagent_ctrl.${_tRee}.${_xSrl}.pid
   fi
 
   if [ -x "/usr/local/bin/curl" ] \
-    && [ ! -e "/var/xdrago/log/.curl_ctrl.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "/var/log/boa/.curl_ctrl.${_tRee}.${_xSrl}.pid" ]; then
     if [ -f "/usr/bin/curl" ]; then
       mv -f /usr/bin/curl /usr/bin/legacy-curl
     fi
     ln -s /usr/local/bin/curl /usr/bin/curl
-    touch /var/xdrago/log/.curl_ctrl.${_tRee}.${_xSrl}.pid
+    touch /var/log/boa/.curl_ctrl.${_tRee}.${_xSrl}.pid
   fi
 
   _IS_MOVESQL_RUNNING=$(ps aux | grep '[m]ove_sql.sh' | awk '{print $2}' 2>&1)
@@ -882,8 +882,8 @@ if [ -e "/var/aegir/drush" ]; then
       kill -9 $(ps aux | grep '[m]ove_sql.sh' | awk '{print $2}') &> /dev/null
       rm -f /run/mysql_restart_running.pid
       rm -f /run/boa_wait.pid
-      rm -f /var/xdrago/log/.move_sql_ctrl*
-      touch /var/xdrago/log/.move_sql_ctrl.${_tRee}.${_xSrl}.pid
+      rm -f /var/log/boa/.move_sql_ctrl*
+      touch /var/log/boa/.move_sql_ctrl.${_tRee}.${_xSrl}.pid
     fi
   fi
 
@@ -892,8 +892,8 @@ if [ -e "/var/aegir/drush" ]; then
     if [ `ps aux | grep -v "grep" | grep --count "mysql_cleanup.sh"` -gt 2 ]; then
       kill -9 $(ps aux | grep '[m]ysql_cleanup.sh' | awk '{print $2}') &> /dev/null
       rm -f /run/mysql_backup_running.pid
-      rm -f /var/xdrago/log/.sqlcleanup_ctrl*
-      touch /var/xdrago/log/.sqlcleanup_ctrl.${_tRee}.${_xSrl}.pid
+      rm -f /var/log/boa/.sqlcleanup_ctrl*
+      touch /var/log/boa/.sqlcleanup_ctrl.${_tRee}.${_xSrl}.pid
     fi
   fi
 
@@ -901,7 +901,7 @@ if [ -e "/var/aegir/drush" ]; then
   if [ ! -z "${_IS_SOLRSTART_RUNNING}" ]; then
     if [ `ps aux | grep -v "grep" | grep --count "solr start"` -gt 2 ]; then
       kill -9 $(ps aux | grep '[s]olr start' | awk '{print $2}') &> /dev/null
-      touch /var/xdrago/log/.solr_start_ctrl.${_tRee}.${_xSrl}.pid
+      touch /var/log/boa/.solr_start_ctrl.${_tRee}.${_xSrl}.pid
     fi
   fi
 
@@ -909,7 +909,7 @@ if [ -e "/var/aegir/drush" ]; then
   if [ ! -z "${_IS_PROCTRL_RUNNING}" ]; then
     if [ `ps aux | grep -v "grep" | grep --count "proc_num_ctrl.pl"` -gt 1 ]; then
       kill -9 $(ps aux | grep '[p]roc_num_ctrl.cgi' | awk '{print $2}') &> /dev/null
-      touch /var/xdrago/log/.proc_num_ctrl.${_tRee}.${_xSrl}.pid
+      touch /var/log/boa/.proc_num_ctrl.${_tRee}.${_xSrl}.pid
     fi
   fi
 
@@ -928,8 +928,8 @@ if [ -e "/var/aegir/drush" ]; then
       rm -f /run/mysql_backup_running.pid
       rm -f /run/boa_wait.pid
       rm -f /run/daily-fix.pid
-      rm -f /var/xdrago/log/.sqlbackup_ctrl*
-      touch /var/xdrago/log/.sqlbackup_ctrl.${_tRee}.${_xSrl}.pid
+      rm -f /var/log/boa/.sqlbackup_ctrl*
+      touch /var/log/boa/.sqlbackup_ctrl.${_tRee}.${_xSrl}.pid
     fi
   fi
 fi

@@ -4,8 +4,8 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
-_pthOml="/var/xdrago/log/oom.incident.log"
-_oldOml="/var/xdrago/log/oom.incident.old.log"
+_pthOml="/var/log/boa/oom.incident.log"
+_oldOml="/var/log/boa/oom.incident.old.log"
 
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
@@ -19,7 +19,7 @@ _check_root() {
 _check_root
 
 if (( $(pgrep -fc 'minute.sh') > 2 )); then
-  echo "Too many minute.sh running $(date)" >> /var/xdrago/log/too.many.log
+  echo "Too many minute.sh running $(date)" >> /var/log/boa/too.many.log
   exit 0
 fi
 

@@ -30,7 +30,7 @@ _check_root
 [ -e "/root/.pause_tasks_maint.cnf" ] && exit 0
 
 if (( $(pgrep -fc 'purge_binlogs.sh') > 2 )); then
-  echo "Too many purge_binlogs.sh running $(date)" >> /var/xdrago/log/too.many.log
+  echo "Too many purge_binlogs.sh running $(date)" >> /var/log/boa/too.many.log
   exit 0
 fi
 
@@ -81,16 +81,16 @@ _purge_action() {
 /usr/bin/mysql mysql<<EOFMYSQL
 PURGE MASTER LOGS BEFORE DATE_SUB( NOW( ), INTERVAL 1 HOUR);
 EOFMYSQL
-    touch /var/xdrago/log/purge_binlogs.done
+    touch /var/log/boa/purge_binlogs.done
   fi
 }
 
 if [ -e "/run/boa_wait.pid" ]; then
-  touch /var/xdrago/log/wait-purge.pid
+  touch /var/log/boa/wait-purge.pid
   exit 0
 else
   _purge_action
-  touch /var/xdrago/log/last-run-purge
+  touch /var/log/boa/last-run-purge
   exit 0
 fi
 

@@ -3,8 +3,8 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-export _tRee=pro
-export _xSrl=570proT05
+export _tRee=dev
+export _xSrl=570devT05
 
 _DB_SERIES=5.7
 _CSF_VRN=14.24
@@ -61,10 +61,7 @@ _crlGet="-L --max-redirs 3 -k -s --retry 9 --retry-delay 9 -A iCab"
 _wgetGet="--max-redirect=3 --no-check-certificate -q --tries=9 --wait=9 --user-agent='iCab'"
 _optBin="/opt/local/bin"
 _usrBin="/usr/local/bin"
-_pthLog="/var/xdrago/log"
-if [ ! -e "${_pthLog}" ] && [ -e "/var/xdrago_wait/log" ]; then
-  _pthLog="/var/xdrago_wait/log"
-fi
+_pthLog="/var/log/boa"
 _tBn="tools/bin"
 #
 
@@ -2129,7 +2126,7 @@ _install_host() {
       if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt 5 ]; then
         kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
         echo "$(date) Too many dirmngr processes killed" >> \
-          /var/xdrago/log/dirmngr-count.kill.log
+          /var/log/boa/dirmngr-count.kill.log
       fi
     done
     cat pubkey.txt | ${_GPG} --import &> /dev/null
