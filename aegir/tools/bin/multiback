@@ -155,9 +155,7 @@ _if_hosted_sys
 _verify_boa_keys
 _print_env "multiback_init"
 
-if [ -e "/root/.pause_heavy_tasks_maint.cnf" ]; then
-  exit 0
-fi
+[ -e "/root/.pause_heavy_tasks_maint.cnf" ] && exit 0
 
 # New OpenSSL 3.x version is required
 if [ ! -x "/usr/local/ssl3/bin/openssl" ]; then
@@ -930,7 +928,7 @@ if [ "$#" -lt 3 ]; then
   _usage
 fi
 
-export _LOGPTH="/var/xdrago/log"
+export _LOGPTH="/var/log/boa"
 _NOW=$(date +%y%m%d-%H%M%S 2>&1)
 export _NOW=${_NOW//[^0-9-]/}
 _TODAY=$(date +%y%m%d 2>&1)

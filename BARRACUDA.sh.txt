@@ -183,10 +183,7 @@ _locCnf="${_bldPth}/aegir/conf"
 _mtrInc="/var/aegir/config/includes"
 _mtrNgx="/var/aegir/config/server_master/nginx"
 _mtrTpl="/var/aegir/.drush/sys/provision/http/Provision/Config/Nginx"
-_pthLog="/var/xdrago/log"
-if [ ! -e "${_pthLog}" ] && [ -e "/var/xdrago_wait/log" ]; then
-  _pthLog="/var/xdrago_wait/log"
-fi
+_pthLog="/var/log/boa"
 _vBs="/var/backups"
 
 

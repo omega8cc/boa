@@ -9,7 +9,7 @@ There are three INI variables you can use to control the Solr automated setup:
 - `solr_update_config`
 - `solr_custom_config`
 
-Refer to the documentation below, which is also available in every site's INI template. For more information on how to control BOA on site level via INI files, check our [documentation](https://github.com/omega8cc/boa/blob/5.x-dev/docs/ini/site/INI.md).
+Refer to the documentation below, which is also available in every site's INI template. For more information on how to control BOA on site level via INI files, check our [documentation](https://github.com/omega8cc/boa/blob/5.x-lts/docs/ini/site/INI.md).
 
 > **NOTE:** This feature works only for site-level INI files because Solr cores belong to sites, not platforms.
 

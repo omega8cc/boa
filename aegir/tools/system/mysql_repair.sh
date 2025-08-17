@@ -26,18 +26,16 @@ _check_root() {
 }
 _check_root
 
-if [ -e "/root/.proxy.cnf" ]; then
-  exit 0
-fi
+[ -e "/root/.proxy.cnf" ] && exit 0
 
 if (( $(pgrep -fc 'mysql_repair.sh') > 2 )); then
-  echo "Too many mysql_repair.sh running $(date)" >> /var/xdrago/log/too.many.log
+  echo "Too many mysql_repair.sh running $(date)" >> /var/log/boa/too.many.log
   exit 0
 fi
 
 touch /run/boa_wait.pid
 sleep 8
-dir=/var/xdrago/log/mysql_optimize
+dir=/var/log/boa/mysql_optimize
 mkdir -p $dir
 _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
 /usr/bin/mysqlcheck -u root -Aa >> $dir/all.a.`date +%y%m%d-%H%M%S`
