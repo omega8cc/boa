@@ -4,7 +4,7 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
-_pthOml="/var/xdrago/log/unbound.incident.log"
+_pthOml="/var/log/boa/unbound.incident.log"
 
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
@@ -38,7 +38,7 @@ export _INCIDENT_REPORT=${_INCIDENT_REPORT//[^A-Z]/}
 : "${_INCIDENT_REPORT:=YES}"
 
 if (( $(pgrep -fc 'unbound.sh') > 2 )); then
-  echo "Too many unbound.sh running $(date)" >> /var/xdrago/log/too.many.log
+  echo "Too many unbound.sh running $(date)" >> /var/log/boa/too.many.log
   exit 0
 fi
 
@@ -75,7 +75,11 @@ _unbound_check_fix() {
         sleep 1
         killall -9 unbound &> /dev/null
         renice ${_B_NICE} -p $$ &> /dev/null
-        perl /var/xdrago/proc_num_ctrl.pl &
+        if [ -e "/var/xdrago/proc_num_ctrl.pl" ]; then
+          perl /var/xdrago/proc_num_ctrl.pl &
+        elif [ -e "/var/xdrago_wait/proc_num_ctrl.pl" ]; then
+          perl /var/xdrago_wait/proc_num_ctrl.pl &
+        fi
       fi
     else
       rm -f /etc/resolv.conf

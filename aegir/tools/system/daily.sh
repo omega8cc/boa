@@ -4,7 +4,7 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 export _tRee=dev
-export _xSrl=570devT03
+export _xSrl=570devT05
 
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
@@ -2333,7 +2333,7 @@ _le_ssl_check_update() {
         else
           sleep 3
         fi
-        echo ${_MOMENT} >> /var/xdrago/log/le/${_Dom}
+        echo ${_MOMENT} >> /var/log/boa/le/${_Dom}
       fi
     fi
   fi
@@ -3237,8 +3237,8 @@ else
   _O_CONTRIB_ELEVEN=NO
 fi
 #
-mkdir -p /var/xdrago/log/daily
-mkdir -p /var/xdrago/log/le
+mkdir -p /var/log/boa/daily
+mkdir -p /var/log/boa/le
 #
 [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
 #
@@ -3290,7 +3290,7 @@ EOF
 fi
 #
 if [ -e "/run/daily-fix.pid" ]; then
-  touch /var/xdrago/log/wait-for-daily
+  touch /var/log/boa/wait-for-daily
   exit 1
 else
   touch /run/daily-fix.pid
@@ -3337,7 +3337,7 @@ else
   su -s /bin/bash - aegir -c "drush8 @hostmaster utf8mb4-convert-databases -y" &> /dev/null
   wait
 
-  _thisLog="/var/xdrago/log/daily/daily-${_NOW}.log"
+  _thisLog="/var/log/boa/daily/daily-${_NOW}.log"
 
   _daily_action > ${_thisLog} 2>&1
 

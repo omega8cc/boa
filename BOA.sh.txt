@@ -45,9 +45,9 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 export _tRee=dev
-export _xSrl=570devT03
+export _xSrl=570devT05
 export _rLsn="BOA-5.7.12"
-export _bTs=570v33
+export _bTs=570v35
 
 ###
 ### Avoid too many questions
@@ -70,12 +70,27 @@ _aptAllow="--allow-unauthenticated"
 _aptYesUnth="-y ${_aptAllow}"
 _optBin="/opt/local/bin"
 _usrBin="/usr/local/bin"
-_pthLog="/var/xdrago/log"
-if [ ! -e "${_pthLog}" ] && [ -e "/var/xdrago_wait/log" ]; then
-  _pthLog="/var/xdrago_wait/log"
-fi
+_xpthLog="/var/xdrago/log"
+_pthLog="/var/log/boa"
 _tBn="tools/bin"
 _vBs="/var/backups"
+#
+if [ ! -e "${_pthLog}/.migrated.txt" ] && [ -d "${_xpthLog}" ]; then
+  mkdir -p "${_pthLog}"
+  cp -a ${_xpthLog}/*.pid ${_pthLog}/
+  cp -a ${_xpthLog}/.*pid ${_pthLog}/
+  cp -a ${_xpthLog}/*.log ${_pthLog}/
+  cp -a ${_xpthLog}/*.txt ${_pthLog}/
+  cp -a ${_xpthLog}/usage ${_pthLog}/
+  cp -a ${_xpthLog}/daily ${_pthLog}/
+  cp -a ${_xpthLog}/core  ${_pthLog}/
+  cp -a ${_xpthLog}/le    ${_pthLog}/
+  touch "${_pthLog}/.migrated.txt"
+fi
+[ ! -d "${_pthLog}/usage" ] && mkdir -p "${_pthLog}/usage"
+[ ! -d "${_pthLog}/daily" ] && mkdir -p "${_pthLog}/daily"
+[ ! -d "${_pthLog}/core" ] && mkdir -p "${_pthLog}/core"
+[ ! -d "${_pthLog}/le" ] && mkdir -p "${_pthLog}/le"
 #
 _eldirF="0001-Print-site_footer-if-defined.patch"
 _eldirP="/var/xdrago/conf/${_eldirF}"
@@ -936,13 +951,37 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/scan_nginx.sh.ctrl.f94.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/scan_nginx.sh.ctrl.f92.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/scan_nginx.sh /var/xdrago/monitor/check/scan_nginx.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/scan_nginx.sh" -o /var/xdrago/monitor/check/scan_nginx.sh
     if [ -e "/var/xdrago/monitor/check/scan_nginx.sh" ]; then
       chmod 700 /var/xdrago/monitor/check/scan_nginx.sh
       chown root:root /var/xdrago/monitor/check/scan_nginx.sh
-      touch ${_pthLog}/scan_nginx.sh.ctrl.f94.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/scan_nginx.sh.ctrl.f92.${_tRee}.${_xSrl}.pid
+      if [ ! -e "/var/xdrago/monitor/log/.scan_nginx_arch.${_xSrl}.pid" ]; then
+        if [ -e "/var/xdrago/monitor/scan_nginx.archive.log" ]; then
+          mv -f /var/xdrago/monitor/scan_nginx.archive.log /var/xdrago/monitor/log/.scan_nginx_legacy.archive.f92.${_tRee}.${_xSrl}.log
+        fi
+        if [ -e "/var/xdrago/monitor/log/scan_nginx.archive.log" ]; then
+          mv -f /var/xdrago/monitor/log/scan_nginx.archive.log /var/xdrago/monitor/log/scan_nginx.archive.f92.${_tRee}.${_xSrl}.log
+        fi
+        rm -f /var/xdrago/monitor/log/.scan_nginx_arch*.pid
+        touch /var/xdrago/monitor/log/.scan_nginx_arch.${_xSrl}.pid
+        csf -df
+        wait
+      fi
+      if [ ! -e "/var/xdrago/monitor/log/.hackcheck.arch.${_xSrl}.pid" ]; then
+        if [ -e "/var/xdrago/monitor/hackcheck.archive.log" ]; then
+          mv -f /var/xdrago/monitor/hackcheck.archive.log /var/xdrago/monitor/log/.scan_nginx_legacy.archive.f92.${_tRee}.${_xSrl}.log
+        fi
+        if [ -e "/var/xdrago/monitor/log/hackcheck.archive.log" ]; then
+          mv -f /var/xdrago/monitor/log/hackcheck.archive.log /var/xdrago/monitor/log/hackcheck.archive.f92.${_tRee}.${_xSrl}.log
+        fi
+        rm -f /var/xdrago/monitor/log/.hackcheck.arch*.pid
+        touch /var/xdrago/monitor/log/.hackcheck.arch.${_xSrl}.pid
+        csf -df
+        wait
+      fi
     else
       mv -f /var/xdrago/monitor/check/scan_nginx.sh.old /var/xdrago/monitor/check/scan_nginx.sh
     fi
@@ -1572,18 +1611,6 @@ _update_agents() {
       fi
       chmod 700 /var/xdrago/monitor/check/scan_nginx.pl
       chown root:root /var/xdrago/monitor/check/scan_nginx.pl
-      if [ ! -e "/var/xdrago/monitor/log/.scan_nginx_arch.${_xSrl}.pid" ]; then
-        if [ -e "/var/xdrago/monitor/scan_nginx.archive.log" ]; then
-          mv -f /var/xdrago/monitor/scan_nginx.archive.log /var/xdrago/monitor/log/scan_nginx_legacy.archive.${_xSrl}.log
-        fi
-        if [ -e "/var/xdrago/monitor/log/scan_nginx.archive.log" ]; then
-          mv -f /var/xdrago/monitor/log/scan_nginx.archive.log /var/xdrago/monitor/log/scan_nginx.archive.${_xSrl}.log
-        fi
-        rm -f /var/xdrago/monitor/log/.scan_nginx_arch*
-        touch /var/xdrago/monitor/log/.scan_nginx_arch.${_xSrl}.pid
-        csf -df
-        wait
-      fi
       touch ${_pthLog}/scan_nginx.pl.ctrl.f95.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/monitor/check/scan_nginx.pl.old /var/xdrago/monitor/check/scan_nginx.pl
@@ -2820,15 +2847,15 @@ _fix_java_symlinks() {
     fi
     if [ "${_LOOK_LIKE_JENKINS}" = "TRUE" ]; then
       if [ -x "/usr/lib/jvm/java-17-openjdk/bin/java" ] \
-        && [ ! -e "/var/lib/jenkins/.fixed-java-version.cnf" ]; then
+        && [ ! -e "/var/log/.fixed-java17-symlinks.log" ]; then
         if [ -e "/usr/lib/jvm/java-1.17.0-openjdk-amd64" ]; then
           rm -f /usr/lib/jvm/default-java
           ln -sfn /usr/lib/jvm/java-1.17.0-openjdk-amd64 /usr/lib/jvm/default-java
         fi
         ln -sfn /usr/lib/jvm/java-17-openjdk/bin/java /etc/alternatives/java
         ln -sfn /etc/alternatives/java /usr/bin/java
-        touch /var/lib/jenkins/.fixed-java-version.cnf
-        echo fixed java symlinks for ${_OS_CODE}
+        touch /var/log/.fixed-java17-symlinks.log
+        echo "Fixed Java 17 symlinks for ${_OS_CODE}"
       fi
     else
       if [ -x "/usr/lib/jvm/java-11-openjdk/bin/java" ]; then
@@ -2839,7 +2866,7 @@ _fix_java_symlinks() {
         if [ ! -e "/usr/bin/java" ] || [ ! -e "/etc/alternatives/java" ]; then
           ln -sfn /usr/lib/jvm/java-11-openjdk/bin/java /etc/alternatives/java
           ln -sfn /etc/alternatives/java /usr/bin/java
-          echo fixed java symlinks for ${_OS_CODE}
+          echo "Fixed Java 11 symlinks for ${_OS_CODE}"
         fi
       fi
     fi
@@ -2848,7 +2875,7 @@ _fix_java_symlinks() {
       if [ ! -e "/usr/bin/java" ] || [ ! -e "/etc/alternatives/java" ]; then
         ln -sfn /usr/lib/jvm/java-11-openjdk/bin/java /etc/alternatives/java
         ln -sfn /etc/alternatives/java /usr/bin/java
-        echo fixed java symlinks for ${_OS_CODE}
+        echo "Fixed Java 11 symlinks for ${_OS_CODE}"
       fi
     fi
   fi
@@ -3085,6 +3112,7 @@ _force_rebuild() {
     rm -f ${_pthLog}/mss-build*
     rm -f ${_pthLog}/lshell-build*
     rm -f ${_pthLog}/redis-*
+    rm -f ${_pthLog}/valkey-*
     touch ${_pthLog}/forced.rebuild.glibc.txt
   fi
 }

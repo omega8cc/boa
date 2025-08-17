@@ -100,7 +100,7 @@ _graceful_action() {
 
   # Clean up old log files
   echo "Cleaning up old pid files..."
-  find /var/xdrago/log/*.pid -mtime +3  -type f -exec rm -rf {} \; &> /dev/null
+  find /var/log/boa/*.pid -mtime +3  -type f -exec rm -rf {} \; &> /dev/null
 
   # Swap, RAM and disk cache management
   _IF_BCP="$(pgrep -f duplicity)"
@@ -207,7 +207,7 @@ _graceful_action() {
     rm -f /run/speed_cleanup.pid
   fi
 
-  touch /var/xdrago/log/graceful.done.pid
+  touch /var/log/boa/graceful.done.pid
   echo "System maintenance tasks completed."
 }
 
