@@ -3,8 +3,8 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-export _tRee=dev
-export _xSrl=570devT05
+export _tRee=lts
+export _xSrl=570ltsT05
 
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then

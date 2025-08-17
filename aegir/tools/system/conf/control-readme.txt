@@ -352,5 +352,5 @@
 ###
 ###  ~/static/control/compass.info
 ###
-### Details: https://github.com/omega8cc/boa/blob/5.x-dev/docs/GEM.md
+### Details: https://github.com/omega8cc/boa/blob/5.x-lts/docs/GEM.md
 ###
