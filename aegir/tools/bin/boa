@@ -2242,7 +2242,11 @@ _display_info() {
         echo "  _XSE Not running services:"
         echo
         for _service in "${_not_running_services[@]}"; do
-          echo "${_service}"
+          if [ "${_service}" = "jenkins" ] && [ -e "/var/lib/jenkins" ]; then
+            echo "${_service}"
+          else
+            echo "${_service}"
+          fi
         done
       fi
       echo
@@ -2259,7 +2263,7 @@ _display_info() {
           for _OCT in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
             _SITES_NR=0
             _THIS_U=$(echo ${_OCT} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
-            _OCT_USG=$(grep ",${_THIS_U}" /var/xdrago/log/usage/usage-latest-silent.log)
+            _OCT_USG=$(grep ",${_THIS_U}" /var/log/boa/usage/usage-latest-silent.log)
             if [ -n "${_OCT_USG}" ]; then
               echo
               echo "  Usage Report for ${_OCT}"
@@ -2277,7 +2281,7 @@ _display_info() {
               echo "  ${_PHP_CLI}"
               echo "  ${_PHP_FPM}"
               echo
-              _OCT_ERR=$(grep "Incompatibility detected in codebase at ${_OCT}/" /var/xdrago/log/core/incompatible-*.log)
+              _OCT_ERR=$(grep "Incompatibility detected in codebase at ${_OCT}/" /var/log/boa/core/incompatible-*.log)
               if [ -n "${_OCT_ERR}" ]; then
                 echo "  ${_THIS_U} Percona 8.0 Incompatibility Report"
                 echo ${_OCT_ERR}
@@ -2292,7 +2296,7 @@ _display_info() {
           echo
         fi
         if [ "${_eXtr}" = "backups" ]; then
-          tail --lines=19 /var/xdrago/log/*.archive.log
+          tail --lines=19 /var/log/boa/*.archive.log
           echo
         fi
         if [ "${_eXtr}" = "both" ]; then
@@ -2300,7 +2304,7 @@ _display_info() {
           echo
           grep _PHP_FPM_VERSION /root/.*.octopus.cnf
           echo
-          tail --lines=19 /var/xdrago/log/*.archive.log
+          tail --lines=19 /var/log/boa/*.archive.log
           echo
         fi
       elif [ "${_mOde}" = "full" ]; then

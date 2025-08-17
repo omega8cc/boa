@@ -4,11 +4,10 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 export _tRee=pro
-export _xSrl=570proT03
+export _xSrl=570proT05
 
-if [ -e "/root/.proxy.cnf" ]; then
-  exit 0
-fi
+[ -e "/root/.look.like.jenkins.cnf" ] && exit 0
+[ -e "/root/.proxy.cnf" ] && exit 0
 
 _crlGet="-L --max-redirs 3 -k -s --retry 9 --retry-delay 9 -A iCab"
 _wgetGet="--max-redirect=3 --no-check-certificate -q --tries=9 --wait=9 --user-agent='iCab'"

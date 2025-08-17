@@ -37,9 +37,7 @@ _check_root() {
 }
 _check_root
 
-if [ -e "/root/.pause_tasks_maint.cnf" ]; then
-  exit 0
-fi
+[ -e "/root/.pause_tasks_maint.cnf" ] && exit 0
 
 if [ -n "${_ENABLE_GOACCESS}" ] && [ "${_ENABLE_GOACCESS}" = "YES" ]; then
   _GOACCESS=YES
@@ -186,7 +184,7 @@ _if_install() {
     fi
   fi
   if [ -e "/usr/etc/goaccess/goaccess.conf" ]; then
-    if [ ! -e "/root/.goaccessrc" ] || [ ! -e "/var/xdrago/log/.goaccessrc.fix.019.pid" ]; then
+    if [ ! -e "/root/.goaccessrc" ] || [ ! -e "/var/log/boa/.goaccessrc.fix.019.pid" ]; then
       echo 'date-format %d/%b/%Y' > /root/.goaccessrc
       echo 'time-format %H:%M:%S' >> /root/.goaccessrc
       echo 'log-format "~h{, }" %v [%d:%t %^] "%r" %s %^ %^ %b "%R" "%u" %T "%^"' >> /root/.goaccessrc
@@ -240,8 +238,8 @@ _if_install() {
         echo 'geoip-database /usr/share/GeoIP/GeoLite2-City.mmdb' >> /root/.goaccessrc
       fi
       echo 'html-prefs {"theme":"darkBlue","perPage":10,"visitors":{"plot":{"chartType":"bar"}},"visit_time":{"plot":{"chartType":"bar"}}}' >> /root/.goaccessrc
-      rm -f /var/xdrago/log/.goaccessrc.fix*
-      touch /var/xdrago/log/.goaccessrc.fix.019.pid
+      rm -f /var/log/boa/.goaccessrc.fix*
+      touch /var/log/boa/.goaccessrc.fix.019.pid
       sleep 1
     fi
   else

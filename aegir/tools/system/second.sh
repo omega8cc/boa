@@ -6,14 +6,14 @@ export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
 # Paths
-_pthOml="/var/xdrago/log/high.load.incident.log"
+_pthOml="/var/log/boa/high.load.incident.log"
 
 # Exit if proxy config exists
 [ -e "/root/.proxy.cnf" ] && exit 0
 
 # Ensure not too many instances are running
 if (( $(pgrep -fc 'second.sh') > 2 )); then
-  echo "Too many second.sh running $(date)" >> /var/xdrago/log/too.many.log
+  echo "Too many second.sh running $(date)" >> /var/log/boa/too.many.log
   exit 0
 fi
 
@@ -159,8 +159,12 @@ _nginx_high_load_off() {
 _proc_control() {
   echo "Running process control..."
   renice "${_B_NICE}" -p $$ &> /dev/null
-  perl /var/xdrago/proc_num_ctrl.pl &
-  touch /var/xdrago/log/proc_num_ctrl.done.pid
+  if [ -e "/var/xdrago/proc_num_ctrl.pl" ]; then
+    perl /var/xdrago/proc_num_ctrl.pl &
+  elif [ -e "/var/xdrago_wait/proc_num_ctrl.pl" ]; then
+    perl /var/xdrago_wait/proc_num_ctrl.pl &
+  fi
+  touch /var/log/boa/proc_num_ctrl.done.pid
   echo "Process control done."
 }
 

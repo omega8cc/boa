@@ -71,9 +71,7 @@ find /run/boa_run.pid -mtime +0 -type f -not -newermt "${_THR_HOURS}" -exec rm -
 find /run/*_backup.pid -mtime +0 -type f -not -newermt "${_THR_HOURS}" -exec rm -rf {} \; &> /dev/null
 find /run/daily-fix.pid -mtime +0 -type f -not -newermt "${_THR_HOURS}" -exec rm -rf {} \; &> /dev/null
 
-if [ -e "/root/.proxy.cnf" ]; then
-  exit 0
-fi
+[ -e "/root/.proxy.cnf" ] && exit 0
 
 #
 # Find the fastest mirror.
@@ -291,6 +289,6 @@ if [ -e "/root/.remote_backups/schedule/backup_schedule.txt" ]; then
   fi
 fi
 
-touch /var/xdrago/log/clear.done.pid
+touch /var/log/boa/clear.done.pid
 exit 0
 
