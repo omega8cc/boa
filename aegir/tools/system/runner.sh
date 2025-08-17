@@ -111,14 +111,14 @@ _if_allow_aegir_queue() {
 if [ -e "/run/boa_wait.pid" ] \
   || [ -e "/run/boa_cron_wait.pid" ]; then
   if [ ! -e "/root/.force.queue.runner.cnf" ]; then
-    touch /var/xdrago/log/wait-runner.pid
+    touch /var/log/boa/wait-runner.pid
     echo "Another BOA task is running, we will try again later..."
     exit 0
   fi
 elif [ "$(ps aux | grep -v "grep" \
   | grep --count "n7 bash.*runner")" -gt 8 ]; then
   if [ ! -e "/root/.force.queue.runner.cnf" ]; then
-    touch /var/xdrago/log/wait-runner.pid
+    touch /var/log/boa/wait-runner.pid
     echo "Too many Aegir tasks running now, we will try again later..."
     exit 0
   fi

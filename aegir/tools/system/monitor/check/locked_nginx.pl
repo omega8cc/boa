@@ -78,7 +78,7 @@ if ($java_status ne "CLEAN") {
     `service jetty7 start`;
   }
 }
-`touch /var/xdrago/log/last-run-locked.pid`;
+`touch /var/log/boa/last-run-locked.pid`;
 exit;
 
 #############################################################################
@@ -111,7 +111,7 @@ local($sumar,$maxnumber);
         if ($now_is eq $log_is) {
           $li_cnt{$DROP}++;
           print "===NEW:[$now_is]:[$log_is]:$line===\n";
-          `echo "[$now_is]:[$log_is]:$line" >> /var/xdrago/log/last-fpmcheck-y-problem.log`;
+          `echo "[$now_is]:[$log_is]:$line" >> /var/log/boa/last-fpmcheck-y-problem.log`;
         }
         else {
           print "===OLD:[$now_is]:[$log_is]:$line===\n";
@@ -151,7 +151,7 @@ local(@MYARR)=`grep "Apache Solr" /var/log/syslog | tail --lines=999 2>&1`;
         if ($now_is eq $log_is) {
           $java_status="ERROR";
           print "===NEW:[$now_is]:[$log_is]:$line===\n";
-          `echo "[$now_is]:[$log_is]:$line" >> /var/xdrago/log/last-javacheck-y-problem`;
+          `echo "[$now_is]:[$log_is]:$line" >> /var/log/boa/last-javacheck-y-problem`;
         }
         else {
           print "===OLD:[$now_is]:[$log_is]:$line===\n";

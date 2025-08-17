@@ -706,9 +706,6 @@ _if_install_php_ioncube() {
 #
 # Install PHP extensions.
 _install_php_extensions() {
-  if [ ! -e "${_pthLog}" ] && [ -e "/var/xdrago_wait/log" ]; then
-    _pthLog="/var/xdrago_wait/log"
-  fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _install_php_extensions $1"
   fi
@@ -1091,9 +1088,6 @@ _install_php_extensions() {
 #
 # Update extensions for PHP built from sources.
 _php_extensions_update() {
-  if [ ! -e "${_pthLog}" ] && [ -e "/var/xdrago_wait/log" ]; then
-    _pthLog="/var/xdrago_wait/log"
-  fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _php_extensions_update $1"
   fi
@@ -2404,12 +2398,9 @@ _check_php_rebuild() {
 
   # Additional conditions for force rebuild or upgrade
   if [ "${_FULL_FORCE_REINSTALL}" = "YES" ] || [ "${_PHP_FORCE_REINSTALL}" = "YES" ]; then
-    if [ ! -e "/var/xdrago/log" ] && [ -e "/var/xdrago_wait/log" ]; then
-      rm -f /var/xdrago_wait/log/._php_libs_fix_*.pid
-      rm -f /var/xdrago_wait/log/re-installed-php*
-    else
-      rm -f /var/xdrago/log/._php_libs_fix_*.pid
-      rm -f /var/xdrago/log/re-installed-php*
+    if [ -e "/var/log/boa" ]; then
+      rm -f /var/log/boa/._php_libs_fix_*.pid
+      rm -f /var/log/boa/re-installed-php*
     fi
     if [ "${_DO_FIX}" = "YES" ] || [ "${_STATUS}" != "UPGRADE" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -3124,10 +3115,8 @@ _php_ioncube_check_if_update() {
     if [ ! -e "${_pthLog}/ioncube-update-${_IONCUBE_VRN}.log" ] \
       || [ "${_PHP_FORCE_REINSTALL}" = "YES" ] \
       || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
-      if [ ! -e "/var/xdrago/log" ] && [ -e "/var/xdrago_wait/log" ]; then
-        rm -f /var/xdrago_wait/log/._php_libs_fix_*.pid
-      else
-        rm -f /var/xdrago/log/._php_libs_fix_*.pid
+      if [ -e "/var/log/boa" ]; then
+        rm -f /var/log/boa/._php_libs_fix_*.pid
       fi
       _if_install_php_ioncube
     fi

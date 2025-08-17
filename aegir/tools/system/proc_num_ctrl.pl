@@ -187,14 +187,14 @@ if (!$nginxsumar && -f "/etc/init.d/nginx") {
   system("service nginx start");
   $timedate=`date +%y%m%d-%H%M%S`;
   chomp($timedate);
-  `echo "$timedate KILL START $nginxsumar" >> /var/xdrago/log/nginx.kill-start.log`;
+  `echo "$timedate KILL START $nginxsumar" >> /var/log/boa/nginx.kill-start.log`;
 }
 
 if ($fpmsumar > 11 ) {
   $timedate=`date +%y%m%d-%H%M%S`;
   chomp($timedate);
   system("killall -9 php-fpm");
-  `echo "$timedate KILL FPM $fpmsumar" >> /var/xdrago/log/fpm.kill-all.log`;
+  `echo "$timedate KILL FPM $fpmsumar" >> /var/log/boa/fpm.kill-all.log`;
 }
 system("service php84-fpm start") if ((!$php84lives || !$fpmsumar || !-f "/run/php84-fpm.pid") && -f "/etc/init.d/php84-fpm");
 system("service php83-fpm start") if ((!$php83lives || !$fpmsumar || !-f "/run/php83-fpm.pid") && -f "/etc/init.d/php83-fpm");
@@ -355,18 +355,18 @@ sub convert_action
         chomp($timedate);
         if ($convertsumar > 5 && $CPU > 50) {
           system("kill -9 $PID");
-         `echo "$USER $CPU $STAT $START ${TIME} $timedate KILL Q $convertsumar" >> /var/xdrago/log/convert.kill.log`;
+         `echo "$USER $CPU $STAT $START ${TIME} $timedate KILL Q $convertsumar" >> /var/log/boa/convert.kill.log`;
           $kill_convert = "YES";
         }
         else {
-         `echo "$USER $CPU $STAT $START ${TIME} $timedate WATCH $convertsumar" >> /var/xdrago/log/convert.watch.log`;
+         `echo "$USER $CPU $STAT $START ${TIME} $timedate WATCH $convertsumar" >> /var/log/boa/convert.watch.log`;
         }
       }
 
       if ($kill_convert && $COMMAND =~ /^(\|)/ && $K =~ /bin/ && $Y =~ /convert/)
       {
         system("kill -9 $PID");
-       `echo "$USER $CPU $STAT $START ${TIME} $timedate KILL Z $convertsumar" >> /var/xdrago/log/convert.kill.log`;
+       `echo "$USER $CPU $STAT $START ${TIME} $timedate KILL Z $convertsumar" >> /var/log/boa/convert.kill.log`;
       }
     }
   }

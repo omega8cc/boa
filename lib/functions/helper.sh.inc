@@ -871,14 +871,14 @@ _aegir_bin_extra_check_fix() {
   SDIR="${_bldPth}/aegir/tools/bin"
   _SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership lock-local-drush-permissions)
   if [ ! -x "/usr/local/bin/fix-drupal-site-permissions.sh" ] \
-    || [ ! -e "/var/xdrago/log/fix-drupal-site-permissions-${_xSrl}-${_X_VERSION}.log" ]; then
+    || [ ! -e "/var/log/boa/fix-drupal-site-permissions-${_xSrl}-${_X_VERSION}.log" ]; then
     if [ -e "${SDIR}/fix-drupal-site-permissions.sh" ]; then
       for _SCRIPT in ${_SCRIPTS[@]}; do
         cp -af ${SDIR}/${_SCRIPT}.sh /usr/local/bin/
         chown root:root /usr/local/bin/${_SCRIPT}.sh
         chmod 700 /usr/local/bin/${_SCRIPT}.sh
       done
-      touch /var/xdrago/log/fix-drupal-site-permissions-${_xSrl}-${_X_VERSION}.log
+      touch /var/log/boa/fix-drupal-site-permissions-${_xSrl}-${_X_VERSION}.log
     fi
   fi
 }

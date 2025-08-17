@@ -26,7 +26,7 @@ if [ -e "/root/.proxy.cnf" ]; then
 fi
 
 if (( $(pgrep -fc 'mysql_cleanup.sh') > 2 )); then
-  echo "Too many mysql_cleanup.sh running $(date)" >> /var/xdrago/log/too.many.log
+  echo "Too many mysql_cleanup.sh running $(date)" >> /var/log/boa/too.many.log
   exit 0
 fi
 
@@ -213,7 +213,7 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
 done
 
 echo "INFO: Completing all dbs cleanup on $(date)"
-touch /var/xdrago/log/last-run-db-cleanup
+touch /var/log/boa/last-run-db-cleanup
 rm -f /run/mysql_backup_running.pid
 
 echo "INFO: ALL TASKS COMPLETED, BYE!"

@@ -1869,11 +1869,7 @@ _if_php_idle_on_off() {
   fi
   if [ "${_PHP_IDLE}" = "ON" ]; then
     [ -e "/root/.allow-php-multi-install-cleanup.cnf" ] && rm -f /root/.allow-php-multi-install-cleanup.cnf
-    if [ ! -e "/var/xdrago/log" ] && [ -e "/var/xdrago_wait/log" ]; then
-      rm -f /var/xdrago_wait/log/._php_libs_fix_*.pid
-    else
-      rm -f /var/xdrago/log/._php_libs_fix_*.pid
-    fi
+    rm -f /var/log/boa/._php_libs_fix_*.pid
     touch /root/.proxy.cnf
     kill -9 $(ps aux | grep '[s]econd.sh' | awk '{print $2}') &> /dev/null
     sleep 5
@@ -2737,10 +2733,10 @@ _run_apt_get_dist_upgrade() {
       _mrun "service php${e}-fpm reload" 2> /dev/null
     fi
   done
-  if [ ! -e "/var/xdrago/log" ] && [ -e "/var/xdrago_wait/log" ]; then
-    perl /var/xdrago_wait/proc_num_ctrl.pl &
-  else
+  if [ -e "/var/xdrago/proc_num_ctrl.pl" ]; then
     perl /var/xdrago/proc_num_ctrl.pl &
+  elif [ -e "/var/xdrago_wait/proc_num_ctrl.pl" ]; then
+    perl /var/xdrago_wait/proc_num_ctrl.pl &
   fi
 }
 
@@ -2883,9 +2879,6 @@ _install_icu_modern() {
     rm -rf /var/backups/.legacy_icu
     mv -f /usr/lib/x86_64-linux-gnu/.legacy_icu /var/backups/.legacy_icu
   fi
-  if [ ! -e "${_pthLog}" ] && [ -e "/var/xdrago_wait/log" ]; then
-    _pthLog="/var/xdrago_wait/log"
-  fi
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   if [ -e "${_pthLog}" ]; then
     _pthIcuLog="${_pthLog}/icu-update-${_ICU_MODERN_VRN}-for-${_OS_CODE}.log"
@@ -2944,9 +2937,6 @@ _install_icu_jessie() {
     _msg "PROC: _install_icu_jessie"
   fi
   ###--------------------###
-  if [ ! -e "${_pthLog}" ] && [ -e "/var/xdrago_wait/log" ]; then
-    _pthLog="/var/xdrago_wait/log"
-  fi
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   if [ -e "${_pthLog}" ]; then
     _pthIcuLog="${_pthLog}/icu-update-${_ICU_LEGACY_VRN}-for-${_OS_CODE}.log"
@@ -4609,7 +4599,7 @@ _curl_install_src() {
         _msg "OOPS: cURL ${_CURL_VRN} could not be extracted..."
       fi
       if [ -x "/usr/local/bin/curl" ] \
-        && [ ! -e "/var/xdrago/log/.curl_libs_fix_${_CURL_VRN}-${_X_VERSION}-${_NOW}.pid" ]; then
+        && [ ! -e "/var/log/boa/.curl_libs_fix_${_CURL_VRN}-${_X_VERSION}-${_NOW}.pid" ]; then
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "INFO: Updating cURL ${_CURL_VRN} libs symlinks..."
         fi
@@ -4631,7 +4621,7 @@ _curl_install_src() {
         fi
       fi
       ldconfig 2> /dev/null
-      touch /var/xdrago/log/.curl_libs_fix_${_CURL_VRN}-${_X_VERSION}-${_NOW}.pid &> /dev/null
+      touch /var/log/boa/.curl_libs_fix_${_CURL_VRN}-${_X_VERSION}-${_NOW}.pid &> /dev/null
       _CURL_ALREADY_REBUILT=YES
       if [ -e "/usr/local/include/curl/curl.h" ] \
         && [ -e "/usr/local/include/curl/easy.h" ] \
@@ -6002,10 +5992,10 @@ _if_post_major_os_upgrade() {
         _mrun "service php${e}-fpm reload" 2> /dev/null
       fi
     done
-    if [ ! -e "/var/xdrago/log" ] && [ -e "/var/xdrago_wait/log" ]; then
-      perl /var/xdrago_wait/proc_num_ctrl.pl &
-    else
+    if [ -e "/var/xdrago/proc_num_ctrl.pl" ]; then
       perl /var/xdrago/proc_num_ctrl.pl &
+    elif [ -e "/var/xdrago_wait/proc_num_ctrl.pl" ]; then
+      perl /var/xdrago_wait/proc_num_ctrl.pl &
     fi
 
     _REBUILD_SRC_ON_AUTO_NOW=YES
@@ -6024,11 +6014,7 @@ _if_post_major_os_upgrade() {
       && [ ! -e "/root/.rebuild_src_on_auto_before_reboot.info" ] \
       && [ "${_REBUILD_SRC_ON_AUTO_NOW}" = "YES" ]; then
       _msg "INFO: Time for re-installing services built from sources..."
-      if [ ! -e "/var/xdrago/log" ] && [ -e "/var/xdrago_wait/log" ]; then
-        rm -f /var/xdrago_wait/log/._php_libs_fix_*.pid
-      else
-        rm -f /var/xdrago/log/._php_libs_fix_*.pid
-      fi
+      rm -f /var/log/boa/._php_libs_fix_*.pid
       _PURGE_MODE=OFF
       _NGX_FORCE_REINSTALL=YES
       _PHP_FORCE_REINSTALL=YES
@@ -6116,7 +6102,7 @@ _if_post_major_os_upgrade() {
     if [ -e "/root/.allow.downgrades.on.same.os.dist.upgrade.cnf" ]; then
       rm -f /root/.allow.downgrades.on.same.os.dist.upgrade.cnf
     fi
-    rm -f /var/xdrago/log/.*_crontab_*
+    rm -f /var/log/boa/.*_crontab_*
     touch /root/.completed_post_major_os_upgrade.info
     _msg "INFO: The post_major_os_upgrade procedure is complete"
   fi
@@ -6689,10 +6675,10 @@ _if_major_os_upgrade() {
         _mrun "service php${e}-fpm reload" 2> /dev/null
       fi
     done
-    if [ ! -e "/var/xdrago/log" ] && [ -e "/var/xdrago_wait/log" ]; then
-      perl /var/xdrago_wait/proc_num_ctrl.pl &
-    else
+    if [ -e "/var/xdrago/proc_num_ctrl.pl" ]; then
       perl /var/xdrago/proc_num_ctrl.pl &
+    elif [ -e "/var/xdrago_wait/proc_num_ctrl.pl" ]; then
+      perl /var/xdrago_wait/proc_num_ctrl.pl &
     fi
     ### Add info file to keep major OS upgrades track.
     touch /root/.${_LOC_OS_CODE}_to_${_NEW_OS_CODE}_major_os_upgrade.info
@@ -6713,7 +6699,7 @@ _if_major_os_upgrade() {
     if [ "${_REBUILD_SRC_ON_AUTO_NOW}" = "YES" ] \
       && [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
       touch /root/.rebuild_src_on_auto_before_reboot.info
-      rm -f /var/xdrago_wait/log/*.log
+      rm -f /var/log/boa/*.log
       _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
       _PURGE_MODE=OFF
       _NGX_FORCE_REINSTALL=YES
@@ -6880,7 +6866,7 @@ _if_major_os_upgrade() {
     ###
     ### Final cleanup.
     echo rotate > /var/log/syslog
-    rm -f /var/xdrago_wait/log/*.log
+    rm -f /var/log/boa/*.log
     mv -f /var/xdrago_wait /var/xdrago &> /dev/null
     ###
     ### Add ctrl file to trigger _if_post_major_os_upgrade() after reboot.
@@ -7446,7 +7432,7 @@ _php_libs_fix() {
     || [ ! -e "/usr/lib/libonig.so" ] \
     || [ ! -e "/usr/lib/libicuio.so" ] \
     || [ ! -e "/usr/lib/liblber.so" ] \
-    || [ ! -e "/var/xdrago/log/._php_libs_fix_${_OS_CODE}_${_LIB_NOW}.pid" ] \
+    || [ ! -e "/var/log/boa/._php_libs_fix_${_OS_CODE}_${_LIB_NOW}.pid" ] \
     || [ ! -e "/usr/include/gmp.h" ] \
     || [ ! -e "/usr/include/lzf.h" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -7557,13 +7543,8 @@ _php_libs_fix() {
         ln -sfn librtmp.so.1 librtmp.so.0
       fi
     fi
-    if [ ! -e "/var/xdrago/log" ] && [ -e "/var/xdrago_wait/log" ]; then
-      touch /var/xdrago_wait/log/._php_libs_fix_${_OS_CODE}_${_LIB_NOW}.pid
-      touch /var/xdrago_wait/log/._php_libs_fix_${_OS_CODE}_${_LIB_NOW}.pid
-    else
-      touch /var/xdrago/log/._php_libs_fix_${_OS_CODE}_${_LIB_NOW}.pid
-      touch /var/xdrago/log/._php_libs_fix_${_OS_CODE}_${_LIB_NOW}.pid
-    fi
+    touch /var/log/boa/._php_libs_fix_${_OS_CODE}_${_LIB_NOW}.pid
+    touch /var/log/boa/._php_libs_fix_${_OS_CODE}_${_LIB_NOW}.pid
   fi
   ldconfig 2> /dev/null
 }
@@ -8488,15 +8469,15 @@ _java_check_fix() {
     fi
     if [ "${_LOOK_LIKE_JENKINS}" = "TRUE" ]; then
       if [ -x "/usr/lib/jvm/java-17-openjdk/bin/java" ] \
-        && [ ! -e "/var/lib/jenkins/.fixed-java-version.cnf" ]; then
+        && [ ! -e "/var/log/.fixed-java17-symlinks.log" ]; then
         if [ -e "/usr/lib/jvm/java-1.17.0-openjdk-amd64" ]; then
           rm -f /usr/lib/jvm/default-java
           ln -sfn /usr/lib/jvm/java-1.17.0-openjdk-amd64 /usr/lib/jvm/default-java
         fi
         ln -sfn /usr/lib/jvm/java-17-openjdk/bin/java /etc/alternatives/java
         ln -sfn /etc/alternatives/java /usr/bin/java
-        touch /var/lib/jenkins/.fixed-java-version.cnf
-        echo fixed java symlinks for ${_OS_CODE}
+        touch /var/log/.fixed-java17-symlinks.log
+        echo "Fixed Java 17 symlinks for ${_OS_CODE}"
       fi
     else
       if [ -x "/usr/lib/jvm/java-11-openjdk/bin/java" ]; then
@@ -8507,7 +8488,7 @@ _java_check_fix() {
         if [ ! -e "/usr/bin/java" ] || [ ! -e "/etc/alternatives/java" ]; then
           ln -sfn /usr/lib/jvm/java-11-openjdk/bin/java /etc/alternatives/java
           ln -sfn /etc/alternatives/java /usr/bin/java
-          echo fixed java symlinks for ${_OS_CODE}
+          echo "Fixed Java 11 symlinks for ${_OS_CODE}"
         fi
       fi
     fi
@@ -8528,6 +8509,7 @@ _java_check_fix() {
       ln -sfn /usr/lib/jvm/java-11-openjdk/bin/java /etc/alternatives/java
       ln -sfn /etc/alternatives/java /usr/bin/java
     fi
+    echo "Fixed Java 11 symlinks for ${_OS_CODE}"
   fi
 }
 
