@@ -4,7 +4,7 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
-_pthOml="/var/xdrago/log/mysql.incident.log"
+_pthOml="/var/log/boa/mysql.incident.log"
 
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
@@ -50,7 +50,7 @@ export _THREAD_THRESHOLD=${_THREAD_THRESHOLD//[^0-9]/}
 : "${_THREAD_THRESHOLD:=99}" # Example: More than 99 MySQL threads
 
 if (( $(pgrep -fc 'mysql.sh') > 2 )); then
-  echo "Too many mysql.sh running $(date)" >> /var/xdrago/log/too.many.log
+  echo "Too many mysql.sh running $(date)" >> /var/log/boa/too.many.log
   exit 0
 fi
 
@@ -138,15 +138,15 @@ _mysql_proc_kill() {
     _load=$(cat /proc/_loadavg)
 
     # Log the _load and the process killing details
-    echo "${_load}" >> /var/xdrago/log/sql_watch.log
-    echo "${_times} ${_each} ${_xuser} ${_xtime} ${_xkill}" >> /var/xdrago/log/sql_watch.log
+    echo "${_load}" >> /var/log/boa/sql_watch.log
+    echo "${_times} ${_each} ${_xuser} ${_xtime} ${_xkill}" >> /var/log/boa/sql_watch.log
   fi
 }
 
 _mysql_proc_control() {
   # Log the MySQL process list if _SQLMONITOR is enabled
   if [[ "${_SQLMONITOR}" == "YES" ]]; then
-    mysqladmin -u root proc -v >> /var/xdrago/log/mysqladmin.monitor.log
+    mysqladmin -u root proc -v >> /var/log/boa/mysqladmin.monitor.log
   fi
 
   # Default TTL _limit in seconds (can be adjusted)

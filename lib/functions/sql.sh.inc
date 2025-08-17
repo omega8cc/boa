@@ -55,12 +55,12 @@ _if_sql_keyring_apt_update() {
       if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt 5 ]; then
         kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
         echo "$(date) Too many dirmngr processes killed" >> \
-          /var/xdrago/log/dirmngr-count.kill.log
+          /var/log/boa/dirmngr-count.kill.log
       fi
       if [ `ps aux | grep -v "grep" | grep --count "gpg-agent"` -gt 5 ]; then
         kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
         echo "$(date) Too many gpg-agent processes killed" >> \
-          /var/xdrago/log/gpg-agent-count.kill.log
+          /var/log/boa/gpg-agent-count.kill.log
       fi
     fi
     _apt_clean_update

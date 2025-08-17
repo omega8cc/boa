@@ -4,7 +4,7 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
-_pthOml="/var/xdrago/log/system.incident.log"
+_pthOml="/var/log/boa/system.incident.log"
 
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
@@ -21,7 +21,7 @@ export _INCIDENT_REPORT=${_INCIDENT_REPORT//[^A-Z]/}
 : "${_INCIDENT_REPORT:=YES}"
 
 if (( $(pgrep -fc 'system.sh') > 2 )); then
-  echo "Too many system.sh running $(date)" >> /var/xdrago/log/too.many.log
+  echo "Too many system.sh running $(date)" >> /var/log/boa/too.many.log
   exit 0
 fi
 
@@ -199,7 +199,7 @@ _if_fix_dhcp() {
 _cron_duplicate_instances_detection() {
   if [ `ps aux | grep -v "grep" | grep --count "/usr/sbin/cron"` -gt 1 ]; then
     _thisErrLog="$(date) Too many Cron instances running killed"
-    echo ${_thisErrLog} >> /var/xdrago/log/cron-count.kill.log
+    echo ${_thisErrLog} >> /var/log/boa/cron-count.kill.log
     killall -9 cron &> /dev/null
     service cron start &> /dev/null
     _thisErrLog="$(date) Too many Cron instances, service restarted"
@@ -227,7 +227,7 @@ _syslog_giant_log_detection() {
 _gpg_too_many_instances_detection() {
   if [ `ps aux | grep -v "grep" | grep --count "gpg-agent"` -gt 5 ]; then
     _thisErrLog="$(date) Too many gpg-agent processes killed"
-    echo ${_thisErrLog} >> /var/xdrago/log/gpg-agent-count.kill.log
+    echo ${_thisErrLog} >> /var/log/boa/gpg-agent-count.kill.log
     kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
     _thisErrLog="$(date) Too many gpg-agent processes killed"
     echo ${_thisErrLog} >> ${_pthOml}
@@ -239,7 +239,7 @@ _gpg_too_many_instances_detection() {
 _dirmngr_too_many_instances_detection() {
   if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt 5 ]; then
     _thisErrLog="$(date) Too many dirmngr processes killed"
-    echo ${_thisErrLog} >> /var/xdrago/log/dirmngr-count.kill.log
+    echo ${_thisErrLog} >> /var/log/boa/dirmngr-count.kill.log
     kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
     _thisErrLog="$(date) Too many dirmngr processes killed"
     echo ${_thisErrLog} >> ${_pthOml}
