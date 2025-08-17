@@ -4,7 +4,7 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
-_pthOml="/var/xdrago/log/valkey.incident.log"
+_pthOml="/var/log/boa/valkey.incident.log"
 
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
@@ -38,7 +38,7 @@ export _INCIDENT_REPORT=${_INCIDENT_REPORT//[^A-Z]/}
 : "${_INCIDENT_REPORT:=YES}"
 
 if (( $(pgrep -fc 'valkey.sh') > 2 )); then
-  echo "Too many valkey.sh running $(date)" >> /var/xdrago/log/too.many.log
+  echo "Too many valkey.sh running $(date)" >> /var/log/boa/too.many.log
   exit 0
 fi
 

@@ -289,6 +289,6 @@ if [ -e "/root/.remote_backups/schedule/backup_schedule.txt" ]; then
   fi
 fi
 
-touch /var/xdrago/log/clear.done.pid
+touch /var/log/boa/clear.done.pid
 exit 0
 

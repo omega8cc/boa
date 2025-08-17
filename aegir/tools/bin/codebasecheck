@@ -11,8 +11,8 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 _DRUPAL_PATH="${1:-/path/to/drupal}"
 
 # Log file to store incompatibility results
-[ ! -d "/var/xdrago/log/core" ] && mkdir -p /var/xdrago/log/core
-_LOG_FILE="/var/xdrago/log/core/incompatible-$(date +%y%m%d-%H%M%S).log"
+[ ! -d "/var/log/boa/core" ] && mkdir -p /var/log/boa/core
+_LOG_FILE="/var/log/boa/core/incompatible-$(date +%y%m%d-%H%M%S).log"
 
 # Function to get Drupal core version
 get_drupal_version() {

@@ -12,7 +12,7 @@ This feature disables global New Relic monitoring by deactivating the server-lev
 ;;  ~/static/control/newrelic.info control file.
 ```
 
-See also [more details in platform/INI.md docs](https://github.com/omega8cc/boa/blob/5.x-dev/docs/ini/platform/INI.md)
+See also [more details in platform/INI.md docs](https://github.com/omega8cc/boa/blob/5.x-pro/docs/ini/platform/INI.md)
 
 ## INI (site level) directive for New Relic
 
@@ -24,7 +24,7 @@ See also [more details in platform/INI.md docs](https://github.com/omega8cc/boa/
 ;;  ~/static/control/newrelic.info
 ```
 
-See also [more details in site/INI.md docs](https://github.com/omega8cc/boa/blob/5.x-dev/docs/ini/site/INI.md)
+See also [more details in site/INI.md docs](https://github.com/omega8cc/boa/blob/5.x-pro/docs/ini/site/INI.md)
 
 Please note that a valid license key is a 40-character hexadecimal string that New Relic provides when you sign up for an account.
 

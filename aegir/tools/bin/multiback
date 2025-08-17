@@ -928,7 +928,7 @@ if [ "$#" -lt 3 ]; then
   _usage
 fi
 
-export _LOGPTH="/var/xdrago/log"
+export _LOGPTH="/var/log/boa"
 _NOW=$(date +%y%m%d-%H%M%S 2>&1)
 export _NOW=${_NOW//[^0-9-]/}
 _TODAY=$(date +%y%m%d 2>&1)
