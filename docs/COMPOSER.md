@@ -103,7 +103,7 @@ vdrush @site-alias cr
 ```
 
 📚 Learn more:
-[DRUSH-CLI.md – Site-local Drush](https://github.com/omega8cc/boa/blob/5.x-dev/docs/DRUSH-CLI.md#steps-to-use-site-local-drush)
+[DRUSH-CLI.md – Site-local Drush](https://github.com/omega8cc/boa/blob/5.x-lts/docs/DRUSH-CLI.md#steps-to-use-site-local-drush)
 
 ---
 

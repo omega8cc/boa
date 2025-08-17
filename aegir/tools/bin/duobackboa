@@ -50,7 +50,7 @@ fi
 
 _PTN_VRN=3.12.8
 _DCY_VRN=3.0.3.2
-_LOGPTH="/var/xdrago/log"
+_LOGPTH="/var/log/boa"
 _NOW=$(date +%y%m%d-%H%M%S 2>&1)
 _NOW=${_NOW//[^0-9-]/}
 _DOW=$(date +%u 2>&1)

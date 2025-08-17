@@ -4,7 +4,7 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 export _tRee=lts
-export _xSrl=570ltsT03
+export _xSrl=570ltsT05
 
 _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
 _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
@@ -2087,10 +2087,7 @@ _find_correct_ip() {
 #
 # Restrict node if needed.
 _fix_node_in_lshell_access() {
-  _pthLog="/var/xdrago/log"
-  if [ ! -e "${_pthLog}" ] && [ -e "/var/xdrago_wait/log" ]; then
-    _pthLog="/var/xdrago_wait/log"
-  fi
+  _pthLog="/var/log/boa"
   if [ -e "/etc/lshell.conf" ]; then
     _PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
     _PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
@@ -2111,10 +2108,7 @@ _fix_node_in_lshell_access() {
 #
 # Restrict php if needed.
 _fix_php_in_lshell_access() {
-  _pthLog="/var/xdrago/log"
-  if [ ! -e "${_pthLog}" ] && [ -e "/var/xdrago_wait/log" ]; then
-    _pthLog="/var/xdrago_wait/log"
-  fi
+  _pthLog="/var/log/boa"
   if [ -e "/etc/lshell.conf" ]; then
     _PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
     _PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
@@ -2182,7 +2176,7 @@ if [ -e "/run/manage_ruby_users.pid" ] \
   || [ -e "/run/boa_run.pid" ] \
   || [ -e "/run/boa_wait.pid" ] \
   || [ -e "/run/octopus_install_run.pid" ]; then
-  touch /var/xdrago/log/wait-manage-ltd-users.pid
+  touch /var/log/boa/wait-manage-ltd-users.pid
   echo "Another BOA task is running, we have to wait"
   sleep 3
   exit 0
@@ -2190,7 +2184,7 @@ elif [ ! -e "/var/xdrago/conf/lshell.conf" ]; then
   echo "Missing /var/xdrago/conf/lshell.conf template"
   exit 0
 else
-  rm -f /var/xdrago/log/wait-manage-ltd-users.pid
+  rm -f /var/log/boa/wait-manage-ltd-users.pid
   touch /run/manage_ltd_users.pid
   _count_cpu
   _find_fast_mirror_early

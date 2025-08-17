@@ -416,7 +416,7 @@ done
 
 echo "INFO: Completing all dbs backups on $(date)"
 rm -f /run/boa_sql_cluster_backup.pid
-touch /var/xdrago/log/last-run-cluster-backup
+touch /var/log/boa/last-run-cluster-backup
 
 echo "INFO: Starting dbs backup compress on $(date)"
 _compress_backup &> /dev/null

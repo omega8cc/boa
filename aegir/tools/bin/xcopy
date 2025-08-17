@@ -4,7 +4,7 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 export _tRee=lts
-export _xSrl=570ltsT03
+export _xSrl=570ltsT05
 
 _WEBG=www-data
 _THIS_DB_PORT=3306
@@ -676,9 +676,9 @@ _migrate_init() {
   fi
   if [ "${_oct}" = "xusage" ]; then
     echo "INFO: ${_cmd} for ${_oct} to ${_tgt} start"
-    if [ -e "/var/xdrago/log/usage" ]; then
-      rsync -aEAXq ${_ieni} -e ssh /var/xdrago/log/usage/* root@${_tgt}:/var/xdrago/log/usage/
-      echo "INFO: ${_cmd} for ${_oct} /var/xdrago/log/usage complete"
+    if [ -e "/var/log/boa/usage" ]; then
+      rsync -aEAXq ${_ieni} -e ssh /var/log/boa/usage/* root@${_tgt}:/var/log/boa/usage/
+      echo "INFO: ${_cmd} for ${_oct} /var/log/boa/usage complete"
     fi
     echo "INFO: ${_cmd} for ${_oct} to ${_tgt} complete"
   elif [ "${_oct}" = "shared" ]; then
@@ -715,9 +715,9 @@ _migrate_init() {
       rsync -aEAXq ${_ieni} -e ssh /etc/bind root@${_tgt}:/etc/
       echo "INFO: ${_cmd} for ${_oct} /etc/bind complete"
     fi
-    if [ -e "/var/xdrago/log/usage" ]; then
-      rsync -aEAXq ${_ieni} -e ssh /var/xdrago/log/usage root@${_tgt}:/var/xdrago/log/
-      echo "INFO: ${_cmd} for ${_oct} /var/xdrago/log/usage complete"
+    if [ -e "/var/log/boa/usage" ]; then
+      rsync -aEAXq ${_ieni} -e ssh /var/log/boa/usage root@${_tgt}:/var/log/boa/
+      echo "INFO: ${_cmd} for ${_oct} /var/log/boa/usage complete"
     fi
     if [ -e "/data/disk/legacy" ]; then
       echo "INFO: ${_cmd} for ${_oct} /data/disk/legacy start"
@@ -865,8 +865,8 @@ _migrate_init() {
         ### We are using max verbose mode by default
         _migrate_prepare
           ### _NOW=`date +%y%m%d-%H%M`
-          ### mkdir -p /var/xdrago/log/migrate
-          ### _migrate_prepare >/var/xdrago/log/migrate/migrate-${_oct}-${_cmd}-${_NOW}.log 2>&1
+          ### mkdir -p /var/log/boa/migrate
+          ### _migrate_prepare >/var/log/boa/migrate/migrate-${_oct}-${_cmd}-${_NOW}.log 2>&1
         if [ "${_cmd}" = "fooproxy" ]; then
           service nginx reload
           echo COMPLETE > ${_USR}/log/proxied.pid

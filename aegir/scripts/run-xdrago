@@ -117,14 +117,14 @@ _run_action() {
     wait
     su -s /bin/bash - ${_H_USER} -c "bash /data/disk/${_H_USER}/aegir.sh"
     wait
-    touch /var/xdrago/log/last-run-${_H_USER}
+    touch /var/log/boa/last-run-${_H_USER}
   else
-    touch /var/xdrago/log/skip-run-${_H_USER}
+    touch /var/log/boa/skip-run-${_H_USER}
   fi
 }
 
 if [ -e "/run/boa_wait.pid" ]; then
-  touch /var/xdrago/log/wait-${_H_USER}
+  touch /var/log/boa/wait-${_H_USER}
   exit 0
 else
   _if_sftp_password_update
