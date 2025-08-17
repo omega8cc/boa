@@ -2242,7 +2242,11 @@ _display_info() {
         echo "  _XSE Not running services:"
         echo
         for _service in "${_not_running_services[@]}"; do
-          echo "${_service}"
+          if [ "${_service}" = "jenkins" ] && [ -e "/var/lib/jenkins" ]; then
+            echo "${_service}"
+          else
+            echo "${_service}"
+          fi
         done
       fi
       echo
