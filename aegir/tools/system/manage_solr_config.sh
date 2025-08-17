@@ -4,7 +4,7 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 export _tRee=pro
-export _xSrl=570proT03
+export _xSrl=570proT05
 
 [ -e "/root/.look.like.jenkins.cnf" ] && exit 0
 [ -e "/root/.proxy.cnf" ] && exit 0
