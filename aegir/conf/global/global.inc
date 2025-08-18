@@ -697,6 +697,25 @@ if ($conf['install_profile'] == 'hostmaster') {
   $conf['theme_link'] = FALSE;
   $conf['cache'] = 0;
   if (!$is_backend && isset($_SERVER['HTTP_USER_AGENT'])) {
+    $conf['environment_indicator_overwrite'] = TRUE;
+    $conf['environment_indicator_overwritten_position'] = 'top';
+    if (is_readable('/data/conf/development-env.ctrl')) {
+      $conf['environment_indicator_overwritten_name'] = 'Development';
+      $conf['environment_indicator_overwritten_color'] = '#00AA00'; // Green
+    }
+    elseif (is_readable('/data/conf/staging-env.ctrl')) {
+      $conf['environment_indicator_overwritten_name'] = 'Staging';
+      $conf['environment_indicator_overwritten_color'] = '#FFCC00'; // Yellow
+    }
+    elseif (is_readable('/data/conf/production-env.ctrl')) {
+      $conf['environment_indicator_overwritten_name'] = 'Production';
+      $conf['environment_indicator_overwritten_color'] = '#CC0000'; // Red
+    }
+    elseif (is_readable('/data/conf/testing-env.ctrl')) {
+      $conf['environment_indicator_overwritten_name'] = 'Testing';
+      $conf['environment_indicator_overwritten_color'] = '#FF69B4'; // Hot Pink
+      //$conf['environment_indicator_overwritten_color'] = '#FFC0CB'; // Light Pink
+    }
     ini_set('session.cookie_lifetime', 0); // Force log-out on browser quit
     header('X-Accel-Expires: 1');
     if (!file_exists('/data/conf/no-https-aegir.inc')) {
