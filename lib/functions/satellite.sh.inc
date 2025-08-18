@@ -2883,6 +2883,7 @@ _satellite_download_for_local_build() {
     _get_dev_stc "revision_deletion-7.x-1.3.tar.gz"
     _get_dev_stc "strongarm-7.x-2.0.tar.gz"
     _get_dev_stc "userprotect-7.x-1.3.tar.gz"
+    _get_dev_stc "environment_indicator-7.x-2.9.tar.gz"
   fi
   find ${_mL} -type d -exec chmod 0755 {} \; &> /dev/null
   find ${_mL} -type f -exec chmod 0644 {} \; &> /dev/null
@@ -5923,7 +5924,7 @@ _satellite_child_b_aegir_ui_enhance() {
     rm -rf ${_ROOT}/.tmp/cache
     ${_DRUSHCMD} @hostmaster en aegir_objects -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en fix_ownership -y &> /dev/null
-    ${_DRUSHCMD} @hostmaster en _fix_permissions -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster en fix_permissions -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en hosting_civicrm -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en hosting_civicrm_cron -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en hosting_client -y &> /dev/null
@@ -5941,6 +5942,7 @@ _satellite_child_b_aegir_ui_enhance() {
     ${_DRUSHCMD} @hostmaster en revision_deletion -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en timeago -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en userprotect -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster en environment_indicator -y &> /dev/null
     ${_DRUSHCMD} @hostmaster ${_vSet} client 1 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${_vSet} clone 1 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${_vSet} hosting_admin_client 1 &> /dev/null
