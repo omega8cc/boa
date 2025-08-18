@@ -161,6 +161,7 @@ Provision [E]xtensions [M]aster [S]atellite:
 Hostmaster [E]xtensions [M]aster [S]atellite:
 
  aegir_objects -------------- [D7] ------ [S] [B] [FE] [ES]
+ environment_indicator ------ [D7] ------ [S] [B] [FE] [ES]
  hosting_civicrm ------------ [D7] ------ [S] [B] [FE] [ES]
  hosting_custom_settings ---- [D7] ------ [S] [B] [FE] [ES]
  hosting_deploy ------------- [D7] ------ [S] [B] [FE] [ES]

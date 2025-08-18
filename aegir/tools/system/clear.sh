@@ -46,15 +46,15 @@ _os_detection_minimal() {
     fi
   done
 }
-_os_detection_minimal
 
 _apt_clean_update() {
   #apt-get clean -qq 2> /dev/null
   #rm -rf /var/lib/apt/lists/* &> /dev/null
+  touch /run/clear_m.pid
+  _os_detection_minimal
   ${_APT_UPDATE} -qq 2> /dev/null
+  rm -f /run/clear_m.pid
 }
-
-rm -f /run/clear_m.pid
 
 _FIVE_MINUTES=$(date --date '5 minutes ago' +"%Y-%m-%d %H:%M:%S")
 find /run/solr_jetty.pid -mtime +0 -type f -not -newermt "${_FIVE_MINUTES}" -exec rm -rf {} \; &> /dev/null
@@ -82,7 +82,7 @@ _find_fast_mirror_early() {
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
-    _apt_clean_update
+    [ ! -e "/run/clear_m.pid" ] && _apt_clean_update
     apt-get install netcat ${_aptYesUnth} 2> /dev/null
     apt-get install netcat-traditional ${_aptYesUnth} 2> /dev/null
     wait
@@ -140,7 +140,7 @@ _if_reinstall_curl_src() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     echo "curl install" | dpkg --set-selections 2> /dev/null
-    _apt_clean_update
+    [ ! -e "/run/clear_m.pid" ] && _apt_clean_update
     apt-get remove libssl1.0-dev -y --purge --auto-remove -qq 2> /dev/null
     apt-get autoremove -y 2> /dev/null
     apt-get install libssl-dev ${_aptYesUnth} -qq 2> /dev/null
