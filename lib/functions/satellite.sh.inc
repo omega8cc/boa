@@ -5924,7 +5924,7 @@ _satellite_child_b_aegir_ui_enhance() {
     rm -rf ${_ROOT}/.tmp/cache
     ${_DRUSHCMD} @hostmaster en aegir_objects -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en fix_ownership -y &> /dev/null
-    ${_DRUSHCMD} @hostmaster en _fix_permissions -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster en fix_permissions -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en hosting_civicrm -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en hosting_civicrm_cron -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en hosting_client -y &> /dev/null
