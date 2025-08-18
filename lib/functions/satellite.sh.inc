@@ -5942,6 +5942,7 @@ _satellite_child_b_aegir_ui_enhance() {
     ${_DRUSHCMD} @hostmaster en revision_deletion -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en timeago -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en userprotect -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster en environment_indicator -y &> /dev/null
     ${_DRUSHCMD} @hostmaster ${_vSet} client 1 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${_vSet} clone 1 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${_vSet} hosting_admin_client 1 &> /dev/null
