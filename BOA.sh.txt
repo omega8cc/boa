@@ -1437,6 +1437,28 @@ _update_agents() {
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
+    && [ -d "/var/aegir/drush" ] \
+    && [ ! -e "${_pthCtrl}/autoupboa.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
+    if [ `ps aux | grep -v "grep" | grep --count "autoupboa"` -gt 0 ]; then
+      echo "The autoupboa is running!"
+    else
+      if [ -e "${_optBin}/autoupboa" ]; then
+        mv -f ${_optBin}/autoupboa ${_optBin}/autoupboa.old
+      fi
+      curl ${_crlGet} "${_urlHmr}/tools/bin/autoupboa" -o ${_optBin}/autoupboa
+      if [ -e "${_optBin}/autoupboa" ]; then
+        chmod 700 ${_optBin}/autoupboa
+        chown root:root ${_optBin}/autoupboa
+        touch ${_pthCtrl}/autoupboa.ctrl.f99.${_tRee}.${_xSrl}.pid
+      else
+        if [ -e "${_optBin}/autoupboa.old" ]; then
+          mv -f ${_optBin}/autoupboa.old ${_optBin}/autoupboa
+        fi
+      fi
+    fi
+  fi
+
+  if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/daily.sh.ctrl.f79.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/daily.sh /var/xdrago/daily.sh.old
