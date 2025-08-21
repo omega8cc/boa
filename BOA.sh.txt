@@ -2845,7 +2845,7 @@ _fix_java_symlinks() {
     else
       _LOOK_LIKE_JENKINS=FALSE
     fi
-    if [ "${_LOOK_LIKE_JENKINS}" = "TRUE" ]; then
+    if [ "${_LOOK_LIKE_JENKINS}" = "TRUE" ] || [ "${_OS_CODE}" = "daedalus" ]; then
       if [ -x "/usr/lib/jvm/java-17-openjdk/bin/java" ] \
         && [ ! -e "/var/log/.fixed-java17-symlinks.log" ]; then
         if [ -e "/usr/lib/jvm/java-1.17.0-openjdk-amd64" ]; then
