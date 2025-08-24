@@ -5,10 +5,18 @@
  */
 if (is_readable('/data/conf/sites-cron-off.ctrl')) {
   if ($drupal_core >= 8) {
+    $config['automated_cron.settings']['interval'] = 0;
+    $config['mail_safety.settings']['default_mail_address'] = '';
     $config['mail_safety.settings']['enabled'] = TRUE;
     $config['mail_safety.settings']['send_mail_to_dashboard'] = TRUE;
     $config['mail_safety.settings']['send_mail_to_default_mail'] = FALSE;
-    $config['mail_safety.settings']['default_mail_address'] = '';
+    $config['scheduler.settings']['lightweight_cron_access_key'] = '';
+    $config['simple_cron.settings']['interval'] = 0;
+    $config['system.cron']['key'] = '';
+    $config['system.cron']['last'] = 0;
+    $config['system.cron']['threshold']['auto'] = 0;
+    $config['ultimate_cron.job.cron_queue']['status'] = FALSE;
+    $config['ultimate_cron.settings']['scheduler'] = 'never';
   }
   else {
     $conf['mail_safety_enabled'] = TRUE;
