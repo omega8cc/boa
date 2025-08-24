@@ -14,7 +14,8 @@ if ($drupal_core >= 8) {
   //
   $config['image.settings']['allow_insecure_derivatives'] = TRUE;  // Not sure if it's a good idea in D8
   $config['image.settings']['suppress_itok_output'] = TRUE;        // Not sure if it's a good idea in D8
-  $config['system.cron']['threshold.autorun'] = FALSE;             // Disable poormanscron
+  $config['system.cron']['threshold.autorun'] = FALSE;             // Disable poormanscron (legacy)
+  $config['system.cron']['threshold']['auto'] = 0;                 // Disable auto-cron (current)
   $config['system.logging']['error_level'] = 'hide';               // Disable errors on screen
   $config['system.performance']['css']['preprocess'] = TRUE;       // Enable hardcoded CSS aggregation
   $config['system.performance']['js']['preprocess'] = TRUE;        // Enable hardcoded JS aggregation
