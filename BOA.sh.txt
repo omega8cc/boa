@@ -779,7 +779,7 @@ _update_agents() {
 
   if [ -e "/root/.remote_backups/schedule/backup_schedule.txt" ] \
     && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthCtrl}/multiback.sh.ctrl.f38.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthCtrl}/multiback.sh.ctrl.f37.${_tRee}.${_xSrl}.pid" ]; then
     if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt 0 ]; then
       echo "The duplicity backup is running!"
     else
@@ -790,7 +790,7 @@ _update_agents() {
       if [ -e "${_optBin}/multiback" ]; then
         chmod 700 ${_optBin}/multiback
         chown root:root ${_optBin}/multiback
-        touch ${_pthCtrl}/multiback.sh.ctrl.f38.${_tRee}.${_xSrl}.pid
+        touch ${_pthCtrl}/multiback.sh.ctrl.f37.${_tRee}.${_xSrl}.pid
       else
         if [ -e "${_optBin}/multiback.old" ]; then
           mv -f ${_optBin}/multiback.old ${_optBin}/multiback
@@ -1437,6 +1437,28 @@ _update_agents() {
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
+    && [ -d "/var/aegir/drush" ] \
+    && [ ! -e "${_pthCtrl}/autoupboa.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
+    if [ `ps aux | grep -v "grep" | grep --count "autoupboa"` -gt 0 ]; then
+      echo "The autoupboa is running!"
+    else
+      if [ -e "${_optBin}/autoupboa" ]; then
+        mv -f ${_optBin}/autoupboa ${_optBin}/autoupboa.old
+      fi
+      curl ${_crlGet} "${_urlHmr}/tools/bin/autoupboa" -o ${_optBin}/autoupboa
+      if [ -e "${_optBin}/autoupboa" ]; then
+        chmod 700 ${_optBin}/autoupboa
+        chown root:root ${_optBin}/autoupboa
+        touch ${_pthCtrl}/autoupboa.ctrl.f99.${_tRee}.${_xSrl}.pid
+      else
+        if [ -e "${_optBin}/autoupboa.old" ]; then
+          mv -f ${_optBin}/autoupboa.old ${_optBin}/autoupboa
+        fi
+      fi
+    fi
+  fi
+
+  if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/daily.sh.ctrl.f79.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/daily.sh /var/xdrago/daily.sh.old
@@ -1480,14 +1502,14 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/manage_ltd_users.sh.ctrl.f79.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/manage_ltd_users.sh.ctrl.f78.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/manage_ltd_users.sh /var/xdrago/manage_ltd_users.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/manage_ltd_users.sh" \
       -o /var/xdrago/manage_ltd_users.sh
     if [ -e "/var/xdrago/manage_ltd_users.sh" ]; then
       chmod 700 /var/xdrago/manage_ltd_users.sh
       chown root:root /var/xdrago/manage_ltd_users.sh
-      touch ${_pthLog}/manage_ltd_users.sh.ctrl.f79.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/manage_ltd_users.sh.ctrl.f78.${_tRee}.${_xSrl}.pid
       [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
     else
       mv -f /var/xdrago/manage_ltd_users.sh.old /var/xdrago/manage_ltd_users.sh
@@ -1496,14 +1518,14 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/manage_solr_config.sh.ctrl.f93.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/manage_solr_config.sh.ctrl.f92.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/manage_solr_config.sh /var/xdrago/manage_solr_config.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/manage_solr_config.sh" \
       -o /var/xdrago/manage_solr_config.sh
     if [ -e "/var/xdrago/manage_solr_config.sh" ]; then
       chmod 700 /var/xdrago/manage_solr_config.sh
       chown root:root /var/xdrago/manage_solr_config.sh
-      touch ${_pthLog}/manage_solr_config.sh.ctrl.f93.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/manage_solr_config.sh.ctrl.f92.${_tRee}.${_xSrl}.pid
       rm -f /run/manage_solr_config.pid
     else
       mv -f /var/xdrago/manage_solr_config.sh.old /var/xdrago/manage_solr_config.sh
@@ -2845,7 +2867,7 @@ _fix_java_symlinks() {
     else
       _LOOK_LIKE_JENKINS=FALSE
     fi
-    if [ "${_LOOK_LIKE_JENKINS}" = "TRUE" ]; then
+    if [ "${_LOOK_LIKE_JENKINS}" = "TRUE" ] || [ "${_OS_CODE}" = "daedalus" ]; then
       if [ -x "/usr/lib/jvm/java-17-openjdk/bin/java" ] \
         && [ ! -e "/var/log/.fixed-java17-symlinks.log" ]; then
         if [ -e "/usr/lib/jvm/java-1.17.0-openjdk-amd64" ]; then

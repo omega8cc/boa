@@ -6,7 +6,6 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 export _tRee=dev
 export _xSrl=570devT05
 
-[ -e "/root/.look.like.jenkins.cnf" ] && exit 0
 [ -e "/root/.proxy.cnf" ] && exit 0
 
 _crlGet="-L --max-redirs 3 -k -s --retry 9 --retry-delay 9 -A iCab"
