@@ -479,7 +479,8 @@ if ($drupal_core >= 8) {
   //
   $config['image.settings']['allow_insecure_derivatives'] = TRUE;  // Not sure if it's a good idea in D8
   $config['image.settings']['suppress_itok_output'] = TRUE;        // Not sure if it's a good idea in D8
-  $config['system.cron']['threshold.autorun'] = FALSE;             // Disable poormanscron
+  $config['system.cron']['threshold.autorun'] = FALSE;             // Disable poormanscron (legacy)
+  $config['system.cron']['threshold']['auto'] = 0;                 // Disable auto-cron (current)
   $config['system.logging']['error_level'] = 'hide';               // Disable errors on screen
   $config['system.performance']['css']['preprocess'] = TRUE;       // Enable hardcoded CSS aggregation
   $config['system.performance']['js']['preprocess'] = TRUE;        // Enable hardcoded JS aggregation
@@ -697,6 +698,25 @@ if ($conf['install_profile'] == 'hostmaster') {
   $conf['theme_link'] = FALSE;
   $conf['cache'] = 0;
   if (!$is_backend && isset($_SERVER['HTTP_USER_AGENT'])) {
+    $conf['environment_indicator_overwrite'] = TRUE;
+    $conf['environment_indicator_overwritten_position'] = 'top';
+    if (is_readable('/data/conf/development-env.ctrl')) {
+      $conf['environment_indicator_overwritten_name'] = 'Development';
+      $conf['environment_indicator_overwritten_color'] = '#00AA00'; // Green
+    }
+    elseif (is_readable('/data/conf/staging-env.ctrl')) {
+      $conf['environment_indicator_overwritten_name'] = 'Staging';
+      $conf['environment_indicator_overwritten_color'] = '#FFCC00'; // Yellow
+    }
+    elseif (is_readable('/data/conf/production-env.ctrl')) {
+      $conf['environment_indicator_overwritten_name'] = 'Production';
+      $conf['environment_indicator_overwritten_color'] = '#CC0000'; // Red
+    }
+    elseif (is_readable('/data/conf/testing-env.ctrl')) {
+      $conf['environment_indicator_overwritten_name'] = 'Testing';
+      $conf['environment_indicator_overwritten_color'] = '#FF69B4'; // Hot Pink
+      //$conf['environment_indicator_overwritten_color'] = '#FFC0CB'; // Light Pink
+    }
     ini_set('session.cookie_lifetime', 0); // Force log-out on browser quit
     header('X-Accel-Expires: 1');
     if (!file_exists('/data/conf/no-https-aegir.inc')) {
@@ -804,10 +824,18 @@ if ($all_ini['auto_detect_domain_access_integration']) {
  */
 if (is_readable('/data/conf/sites-cron-off.ctrl')) {
   if ($drupal_core >= 8) {
+    $config['automated_cron.settings']['interval'] = 0;
+    $config['mail_safety.settings']['default_mail_address'] = '';
     $config['mail_safety.settings']['enabled'] = TRUE;
     $config['mail_safety.settings']['send_mail_to_dashboard'] = TRUE;
     $config['mail_safety.settings']['send_mail_to_default_mail'] = FALSE;
-    $config['mail_safety.settings']['default_mail_address'] = '';
+    $config['scheduler.settings']['lightweight_cron_access_key'] = '';
+    $config['simple_cron.settings']['interval'] = 0;
+    $config['system.cron']['key'] = '';
+    $config['system.cron']['last'] = 0;
+    $config['system.cron']['threshold']['auto'] = 0;
+    $config['ultimate_cron.job.cron_queue']['status'] = FALSE;
+    $config['ultimate_cron.settings']['scheduler'] = 'never';
   }
   else {
     $conf['mail_safety_enabled'] = TRUE;

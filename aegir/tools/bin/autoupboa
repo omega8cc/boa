@@ -48,7 +48,9 @@ _turn_off_apparmor() {
   sed -i "s/\/bin\/sh/\/bin\/bash/g" /lib/apparmor/profile-load
   # Disable Apparmor
   rm -rf /var/cache/apparmor/*
+  rm -f /etc/apparmor.d/*~
   apparmor_parser -r /etc/apparmor.d/* 2> /dev/null
+  rm -f /etc/apparmor.d/*~
   aa-complain /etc/apparmor.d/* 2> /dev/null
   service apparmor stop 2> /dev/null
   aa-teardown 2> /dev/null
@@ -339,8 +341,6 @@ _system_hostname_check_fix() {
   fi
 }
 _system_hostname_check_fix
-
-rm -f /run/clear_m.pid
 
 _ADD_XTRA=YES
 _CRON_TEST=$(grep "clear.xsh" /var/spool/cron/crontabs/root 2>&1)
