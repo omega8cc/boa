@@ -171,6 +171,9 @@ if [ ! -e "/root/.high_traffic.cnf" ] \
   perl ${_monPath}/locked_nginx.pl &
 fi
 
+# Reload nginx if access log is missing or empty
+[ -s /var/log/nginx/access.log ] || service nginx reload
+
 # Main execution
 if [ -f "${_monPath}/scan_nginx.sh" ]; then
   for _iteration in {1..4}; do

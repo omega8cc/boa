@@ -8987,6 +8987,16 @@ _sysctl_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _sysctl_update"
   fi
+  # Check if conntrack is available
+  if ! command -v conntrack &> /dev/null; then
+    _apt_clean_update
+    ${_INITINS} conntrack &> /dev/null
+  fi
+  # Check if tcpdump is available
+  if ! command -v tcpdump &> /dev/null; then
+    _apt_clean_update
+    ${_INITINS} tcpdump &> /dev/null
+  fi
   if [ ! -e "/root/.no.sysctl.update.cnf" ] \
     && [ ! -e "${_pthLog}/sysctl.conf-${_xSrl}-${_X_VERSION}-${_NOW}.log" ]; then
     cp -af /etc/sysctl.conf \
