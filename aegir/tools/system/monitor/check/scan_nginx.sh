@@ -472,15 +472,15 @@ _process_ip() {
       fi
       if [[ -n "${_NGINX_DOS_STOP}" ]]; then
         if [[ "${_line}" =~ (${_NGINX_DOS_STOP}) ]]; then
-          (( _COUNTERS["${_IP}"] += 5 ))
-          _verbose_log "Counter++ 5 for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "_NGINX_DOS_STOP protection"
+          (( _COUNTERS["${_IP}"] += _NGINX_DOS_LIMIT ))
+          _verbose_log "Counter++ ${_NGINX_DOS_LIMIT} for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "_NGINX_DOS_STOP protection"
         fi
       fi
     else
       if [[ -n "${_NGINX_DOS_STOP}" ]]; then
         if [[ "${_line}" =~ (${_NGINX_DOS_STOP}) ]]; then
-          (( _COUNTERS["${_IP}"] += 5 ))
-          _verbose_log "Counter++ 5 for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "_NGINX_DOS_STOP protection"
+          (( _COUNTERS["${_IP}"] += _NGINX_DOS_LIMIT ))
+          _verbose_log "Counter++ ${_NGINX_DOS_LIMIT} for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "_NGINX_DOS_STOP protection"
         fi
       fi
     fi
