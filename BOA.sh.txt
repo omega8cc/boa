@@ -2069,6 +2069,28 @@ _update_agents() {
     fi
   fi
 
+  if [ -e "/var/xdrago/monitor/check" ] \
+    && [ -d "/var/aegir/drush" ] \
+    && [ ! -e "${_pthCtrl}/synproxy.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
+    if [ `ps aux | grep -v "grep" | grep --count "synproxy"` -gt 0 ]; then
+      echo "The synproxy is running!"
+    else
+      if [ -e "${_optBin}/synproxy" ]; then
+        mv -f ${_optBin}/synproxy ${_optBin}/synproxy.old
+      fi
+      curl ${_crlGet} "${_urlHmr}/tools/bin/synproxy" -o ${_optBin}/synproxy
+      if [ -e "${_optBin}/synproxy" ]; then
+        chmod 700 ${_optBin}/synproxy
+        chown root:root ${_optBin}/synproxy
+        touch ${_pthCtrl}/synproxy.ctrl.f99.${_tRee}.${_xSrl}.pid
+      else
+        if [ -e "${_optBin}/synproxy.old" ]; then
+          mv -f ${_optBin}/synproxy.old ${_optBin}/synproxy
+        fi
+      fi
+    fi
+  fi
+
   _Dir="/data/all/000/modules"
   _REDIS_T_VERSION=8.x-1.8.2
   if [ -e "/var/xdrago/manage_solr_config.sh" ]; then
@@ -3435,6 +3457,7 @@ _update_boa_tools() {
            sqlclean \
            sqlmagic \
            syncpass \
+           synproxy \
            thinkdifferent \
            verifyvhostsdns \
            vhostcheck \
@@ -3508,7 +3531,7 @@ _update_boa_tools() {
     chmod 700 ${_optBin}/{backboa,duobackboa}
   fi
 
-  chmod 700 ${_optBin}/{autoinit,autodaedalus,autochimaera,autobeowulf,autoupboa,backboa,duobackboa,mergecsf,verifyvhostsdns}
+  chmod 700 ${_optBin}/{autoinit,autodaedalus,autochimaera,autobeowulf,autoupboa,backboa,duobackboa,mergecsf,verifyvhostsdns,synproxy}
   chmod 700 ${_optBin}/{barracuda,boa,ffmirror,killer,mycnfup,octopus,syncpass,xboa,xcopy,weblogx,sqlclean,perftest,dcysetup,copydbackup}
   chmod 700 ${_optBin}/{fancynow,codebasecheck,vhostcheck,memorytuner,mysqltuner5,mysqltuner8,smtpgapps,setprio,multiback}
   chmod 755 ${_optBin}/{randpass,sqlmagic,thinkdifferent,websh,mybackup,backchain}
