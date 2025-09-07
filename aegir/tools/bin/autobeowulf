@@ -209,11 +209,13 @@ _faster_reboot() {
   _msg "Cron has been stopped" >> "${_logAbf}"
   _msg "Now waiting 60 seconds for any running tasks to complete" >> "${_logAbf}"
   sleep 55
-  if [ -e "/etc/init.d/clamav-daemon" ]; then
-    update-rc.d -f clamav-daemon remove &> /dev/null
-  fi
-  if [ -e "/etc/init.d/clamav-freshclam" ]; then
-    update-rc.d -f clamav-freshclam remove &> /dev/null
+  if [ ! -e "/root/.allow.clamav.cnf" ] || [ -e "/root/.deny.clamav.cnf" ]; then
+    if [ -e "/etc/init.d/clamav-daemon" ]; then
+      update-rc.d -f clamav-daemon remove &> /dev/null
+    fi
+    if [ -e "/etc/init.d/clamav-freshclam" ]; then
+      update-rc.d -f clamav-freshclam remove &> /dev/null
+    fi
   fi
   kill -9 $(ps aux | grep '[a]vahi-daemon' | awk '{print $2}') &> /dev/null
   kill -9 $(ps aux | grep '[c]lamd' | awk '{print $2}') &> /dev/null

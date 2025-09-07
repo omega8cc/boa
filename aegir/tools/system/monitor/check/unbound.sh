@@ -51,6 +51,9 @@ _incident_email_report() {
 }
 
 _unbound_check_fix() {
+
+  [ ! -e "/usr/etc/unbound/unbound.conf.d" ] && mkdir -p /usr/etc/unbound/unbound.conf.d
+
   if [ -x "/usr/sbin/unbound" ] \
     && [ ! -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
     mkdir -p /etc/resolvconf/run/interface
