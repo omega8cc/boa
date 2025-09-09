@@ -891,10 +891,12 @@ _tune_memory_limits() {
   if [ ! -e "/data/conf" ]; then
     mkdir -p /data/conf
   fi
-  cp -af ${_locCnf}/php/fpm-pool-foo-multi.conf /var/xdrago/conf/
-  cp -af ${_locCnf}/php/fpm-pool-foo.conf /var/xdrago/conf/
+  cp -af ${_locCnf}/php/fpm-pool-foo-multi.conf  /var/xdrago/conf/
+  cp -af ${_locCnf}/php/fpm-pool-foo.conf        /var/xdrago/conf/
+  cp -af ${_locCnf}/php/fpm-pool-foo-legacy.conf /var/xdrago/conf/
+  cp -af ${_locCnf}/php/fpm-pool-foo-modern.conf /var/xdrago/conf/
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ]; then
-    sed -i "s/395/${_USE_FPM}/g" /opt/etc/fpm/fpm-pool-common.conf &> /dev/null
+    sed -i "s/395/${_USE_FPM}/g" /opt/etc/fpm/fpm-pool-commo*.conf &> /dev/null
   fi
   _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do

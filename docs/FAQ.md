@@ -31,7 +31,7 @@ Check also:
 
 **Q: How to increase PHP-FPM `memory_limit`?**
 
-**A:** While limits are still auto-configured, depending on available RAM and CPU cores and written in the respective PHP ini files, the only place to modify `memory_limit` manually is the line with `php_admin_value[memory_limit]` in a file shared between all PHP-FPM pools in all running PHP versions: `/opt/etc/fpm/fpm-pool-common.conf` -- of course you need to reload all running FPM versions to make the change active, for example: `service php74-fpm reload`, `service php81-fpm reload`, etc.
+**A:** While limits are still auto-configured, depending on available RAM and CPU cores and written in the respective PHP ini files, the only place to modify `memory_limit` manually is the line with `php_admin_value[memory_limit]` in a file shared between all PHP-FPM pools in all running PHP versions: `/opt/etc/fpm/fpm-pool-common.conf`, `/opt/etc/fpm/fpm-pool-common-legacy.conf`, `/opt/etc/fpm/fpm-pool-common-modern.conf` -- of course you need to reload all running FPM versions to make the change active, for example: `service php74-fpm reload`, `service php83-fpm reload`, etc.
 Check also: [Drupal Comment 8689745](https://drupal.org/comment/8689745#comment-8689745)
 
 The same applies to some other hardcoded/enforced limits:

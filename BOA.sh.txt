@@ -1550,7 +1550,7 @@ _update_agents() {
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/fast_shutdown.ctrl.${_tRee}.${_xSrl}.pid" ]; then
-    sed -i "s/.*opcache.fast_shutdown.*//g" /opt/etc/fpm/fpm-pool-common.conf
+    sed -i "s/.*opcache.fast_shutdown.*//g" /opt/etc/fpm/fpm-pool-commo*.conf
     _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
       if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
@@ -1671,6 +1671,38 @@ _update_agents() {
       touch ${_pthLog}/multi.ctrl.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/conf/fpm-pool-foo-multi.conf.old /var/xdrago/conf/fpm-pool-foo-multi.conf
+    fi
+  fi
+
+  if [ -x "/opt/tools/drush/8/drush/drush.php" ] \
+    && [ -e "/var/xdrago" ] \
+    && [ -e "/var/aegir/drush" ] \
+    && [ ! -e "${_pthLog}/legacy.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+    mv -f /var/xdrago/conf/fpm-pool-foo-legacy.conf /var/xdrago/conf/fpm-pool-foo-legacy.conf.old
+    curl ${_crlGet} "${_urlHmr}/conf/php/fpm-pool-foo-legacy.conf" \
+      -o /var/xdrago/conf/fpm-pool-foo-legacy.conf
+    if [ -e "/var/xdrago/conf/fpm-pool-foo-legacy.conf" ]; then
+      chmod 644 /var/xdrago/conf/fpm-pool-foo-legacy.conf
+      chown root:root /var/xdrago/conf/fpm-pool-foo-legacy.conf
+      touch ${_pthLog}/legacy.ctrl.${_tRee}.${_xSrl}.pid
+    else
+      mv -f /var/xdrago/conf/fpm-pool-foo-legacy.conf.old /var/xdrago/conf/fpm-pool-foo-legacy.conf
+    fi
+  fi
+
+  if [ -x "/opt/tools/drush/8/drush/drush.php" ] \
+    && [ -e "/var/xdrago" ] \
+    && [ -e "/var/aegir/drush" ] \
+    && [ ! -e "${_pthLog}/modern.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+    mv -f /var/xdrago/conf/fpm-pool-foo-modern.conf /var/xdrago/conf/fpm-pool-foo-modern.conf.old
+    curl ${_crlGet} "${_urlHmr}/conf/php/fpm-pool-foo-modern.conf" \
+      -o /var/xdrago/conf/fpm-pool-foo-modern.conf
+    if [ -e "/var/xdrago/conf/fpm-pool-foo-modern.conf" ]; then
+      chmod 644 /var/xdrago/conf/fpm-pool-foo-modern.conf
+      chown root:root /var/xdrago/conf/fpm-pool-foo-modern.conf
+      touch ${_pthLog}/modern.ctrl.${_tRee}.${_xSrl}.pid
+    else
+      mv -f /var/xdrago/conf/fpm-pool-foo-modern.conf.old /var/xdrago/conf/fpm-pool-foo-modern.conf
     fi
   fi
 
