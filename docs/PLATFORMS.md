@@ -45,16 +45,16 @@ On hosted BOA contact your host if you need any legacy PHP installed again.
 
 ## Drupal 7
 
-- [Commerce v.1](https://drupal.org/project/commerce_kickstart) (7.103.1)
-- [Drupal 7.103.1](https://drupal.org/project/drupal/releases/7.103)
-- [Ubercart 3.13](https://drupal.org/project/ubercart) (7.103.1)
+- [Commerce v.1](https://drupal.org/project/commerce_kickstart) (7.103.2)
+- [Drupal 7.103.2](https://drupal.org/project/drupal/releases/7.103)
+- [Ubercart 3.13](https://drupal.org/project/ubercart) (7.103.2)
 
 ## Drupal 6
 
 - [Pressflow 6.60.1](https://www.pressflow.org)
 - [Ubercart 2.15](https://drupal.org/project/ubercart) (6.60.1)
 
-* All D7 platforms have been enhanced using [Drupal 7.103.1 +Extra core](https://github.com/omega8cc/7x/tree/7.x-om8)
+* All D7 platforms have been enhanced using [Drupal 7.103.2 +Extra core](https://github.com/omega8cc/7x/tree/7.x-om8)
 
 * All D6 platforms have been enhanced using [Pressflow (LTS) 6.60.1 +Extra core](https://github.com/omega8cc/pressflow6/tree/pressflow-plus)
 
