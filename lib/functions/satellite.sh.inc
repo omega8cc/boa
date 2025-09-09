@@ -453,6 +453,9 @@ _satellite_tune_fpm_config() {
       sed -i "s/pm.max_children =.*/pm.max_children = 8/g" /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
       wait
     fi
+    mkdir -p /var/www/phpcache/${_USER}/${_USER}.{84,83,82,81,80,74,73,72,71,70,56}
+    chgrp www-data /var/www/phpcache/${_USER}/${_USER}.{84,83,82,81,80,74,73,72,71,70,56}
+    chmod 770 /var/www/phpcache/${_USER}/${_USER}.{84,83,82,81,80,74,73,72,71,70,56}
     if [ ! -d "${_ROOT}/tmp" ]; then
       mkdir -p ${_ROOT}/tmp
       chown ${_USER}:users ${_ROOT}/tmp &> /dev/null

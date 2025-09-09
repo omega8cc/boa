@@ -1776,6 +1776,11 @@ _switch_php() {
             fi
 
             _switch_newrelic ${m} ${_POOL} 0
+
+            mkdir -p /var/www/phpcache/${_POOL}/${_POOL}.{84,83,82,81,80,74,73,72,71,70,56}
+            chgrp www-data /var/www/phpcache/${_POOL}/${_POOL}.{84,83,82,81,80,74,73,72,71,70,56}
+            chmod 770 /var/www/phpcache/${_POOL}/${_POOL}.{84,83,82,81,80,74,73,72,71,70,56}
+
             [ -e "/etc/init.d/php${_PHP_OLD_SV}-fpm" ] && service php${_PHP_OLD_SV}-fpm reload &> /dev/null
             [ -e "/etc/init.d/php${m}-fpm" ] && service php${m}-fpm reload &> /dev/null
           fi
