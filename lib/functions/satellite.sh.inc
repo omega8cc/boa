@@ -1,5 +1,5 @@
 
-export _tRee=dev
+export _tRee=pro
 export _rLsn="BOA-5.7.12"
 export _rlsE="${_rLsn}-${_tRee}"
 export _bRnh="5.x-${_tRee}"
@@ -3874,7 +3874,7 @@ _satellite_make() {
     _writeTo="${_vBs}/${_filIncO}"
   fi
 
-  export _xSrl=570devT07
+  export _xSrl=570proT07
   export _X_VERSION="${_X_VERSION}"
 
   echo "export _AEGIR_VERSION=\"${_AEGIR_VERSION}\""         >> ${_writeTo}
