@@ -1660,7 +1660,7 @@ _update_agents() {
 
   if [ -x "/opt/tools/drush/8/drush/drush.php" ] \
     && [ -e "/var/xdrago" ] \
-    && [ -e "/var/aegir/drush" ] \
+    && [ -e "/var/aegir/drush" ]; then
     _BROKEN_UPDATE_TEST=$(grep "Under Construction" /var/xdrago/conf/fpm-pool* 2>&1)
     if [ ! -z "${_BROKEN_UPDATE_TEST}" ]; then
       rm -f /var/xdrago/conf/fpm-pool*
