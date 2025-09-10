@@ -614,16 +614,16 @@ if (!$is_backend) {
   else {
     if (preg_match("/^\/civicrm/", $_SERVER['REQUEST_URI'])) {
       // Force custom opcache TTL for CiviCRM codebase
-      ini_set('opcache.revalidate_freq', '60');
+      ini_set('opcache.revalidate_freq', '180');
       if (!$is_backend) {
-        header("X-Opcache-Revalidate-Freq: 60");
+        header("X-Opcache-Revalidate-Freq: 180");
       }
     }
     else {
       // Set sane default opcache TTL on non-dev sites
-      ini_set('opcache.revalidate_freq', '10');
+      ini_set('opcache.revalidate_freq', '60');
       if (!$is_backend) {
-        header("X-Opcache-Revalidate-Freq: 10");
+        header("X-Opcache-Revalidate-Freq: 60");
       }
     }
   }
