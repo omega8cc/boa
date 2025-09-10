@@ -293,6 +293,8 @@ store_configvars() {
   __IP_VERSION="${IP_VERSION}"
   __ACME_PROFILE="${ACME_PROFILE}"
   __ORDER_TIMEOUT=${ORDER_TIMEOUT}
+  __VALIDATION_TIMEOUT=${VALIDATION_TIMEOUT}
+  __KEEP_GOING=${KEEP_GOING}
 }
 
 reset_configvars() {
@@ -313,6 +315,8 @@ reset_configvars() {
   IP_VERSION="${__IP_VERSION}"
   ACME_PROFILE="${__ACME_PROFILE}"
   ORDER_TIMEOUT=${__ORDER_TIMEOUT}
+  VALIDATION_TIMEOUT=${__VALIDATION_TIMEOUT}
+  KEEP_GOING="${__KEEP_GOING}"
 }
 
 hookscript_bricker_hook() {
@@ -341,6 +345,7 @@ verify_config() {
   [[ "${API}" == "auto" || "${API}" == "1" || "${API}" == "2" ]] || _exiterr "Unsupported API version defined in config: ${API}"
   [[ "${OCSP_DAYS}" =~ ^[0-9]+$ ]] || _exiterr "OCSP_DAYS must be a number"
   [[ "${ORDER_TIMEOUT}" =~ ^[0-9]+$ ]] || _exiterr "ORDER_TIMEOUT must be a number"
+  [[ "${VALIDATION_TIMEOUT}" =~ ^[0-9]+$ ]] || _exiterr "VALIDATION_TIMEOUT must be a number"
 }
 
 # Setup default config values, search for and load configuration files
@@ -403,6 +408,8 @@ load_config() {
   API=2
   ACME_PROFILE=""
   ORDER_TIMEOUT=0
+  VALIDATION_TIMEOUT=0
+  KEEP_GOING="no"
 
   if [[ -z "${CONFIG:-}" ]]; then
     echo "#" >&2
@@ -562,6 +569,8 @@ load_config() {
   [[ -n "${PARAM_IP_VERSION:-}" ]] && IP_VERSION="${PARAM_IP_VERSION}"
   [[ -n "${PARAM_ACME_PROFILE:-}" ]] && ACME_PROFILE="${PARAM_ACME_PROFILE}"
   [[ -n "${PARAM_ORDER_TIMEOUT:-}" ]] && ORDER_TIMEOUT="${PARAM_ORDER_TIMEOUT}"
+  [[ -n "${PARAM_VALIDATION_TIMEOUT:-}" ]] && VALIDATION_TIMEOUT="${PARAM_VALIDATION_TIMEOUT}"
+  [[ -n "${PARAM_KEEP_GOING:-}" ]] && KEEP_GOING="${PARAM_KEEP_GOING}"
 
   if [ "${PARAM_FORCE_VALIDATION:-no}" = "yes" ] && [ "${PARAM_FORCE:-no}" = "no" ]; then
     _exiterr "Argument --force-validation can only be used in combination with --force (-x)"
@@ -930,14 +939,14 @@ http_request() {
   set +e
   # shellcheck disable=SC2086
   if [[ "${1}" = "head" ]]; then
-    statuscode="$(curl ${ip_version:-} ${CURL_OPTS} -A "dehydrated/${VERSION} curl/${CURL_VERSION}" -s -w "%{http_code}" -o "${tempcont}" "${2}" -I)"
+    statuscode="$(curl ${ip_version:-} ${CURL_OPTS} -A "dehydrated/${VERSION} curl/${CURL_VERSION}" -s -w "%{http_code}" -o "${tempcont}" -H 'Cache-Control: no-cache' "${2}" -I)"
     curlret="${?}"
     touch "${tempheaders}"
   elif [[ "${1}" = "get" ]]; then
-    statuscode="$(curl ${ip_version:-} ${CURL_OPTS} -A "dehydrated/${VERSION} curl/${CURL_VERSION}" -L -s -w "%{http_code}" -o "${tempcont}" -D "${tempheaders}" "${2}")"
+    statuscode="$(curl ${ip_version:-} ${CURL_OPTS} -A "dehydrated/${VERSION} curl/${CURL_VERSION}" -L -s -w "%{http_code}" -o "${tempcont}" -D "${tempheaders}" -H 'Cache-Control: no-cache' "${2}")"
     curlret="${?}"
   elif [[ "${1}" = "post" ]]; then
-    statuscode="$(curl ${ip_version:-} ${CURL_OPTS} -A "dehydrated/${VERSION} curl/${CURL_VERSION}" -s -w "%{http_code}" -o "${tempcont}" "${2}" -D "${tempheaders}" -H 'Content-Type: application/jose+json' -d "${3}")"
+    statuscode="$(curl ${ip_version:-} ${CURL_OPTS} -A "dehydrated/${VERSION} curl/${CURL_VERSION}" -s -w "%{http_code}" -o "${tempcont}" "${2}" -D "${tempheaders}" -H 'Cache-Control: no-cache' -H 'Content-Type: application/jose+json' -d "${3}")"
     curlret="${?}"
   else
     set -e
@@ -1282,8 +1291,14 @@ sign_csr() {
 
     reqstatus="$(echo "${result}" | get_json_string_value status)"
 
+    local waited=0
     while [[ "${reqstatus}" = "pending" ]] || [[ "${reqstatus}" = "processing" ]]; do
+      if [ ${VALIDATION_TIMEOUT} -gt 0 ] && [ ${waited} -gt ${VALIDATION_TIMEOUT} ]; then
+        _exiterr "Timed out waiting for processing of domain validation (still ${reqstatus})"
+      fi
+      echo " + Validation is ${reqstatus}..."
       sleep 1
+      waited=$((waited+1))
       if [[ "${API}" -eq 2 ]]; then
         result="$(signed_request "${challenge_uris[${idx}]}" "" | jsonsh)"
       else
@@ -1556,7 +1571,7 @@ sign_domain() {
       fi
     done
     if [[ "${domain}" =~ ^ip: ]]; then
-      SUBJ="/CN=${domain:3}/"
+      SUBJ="/"
     else
       SUBJ="/CN=${domain}/"
     fi
@@ -1624,6 +1639,42 @@ sign_domain() {
 
   unset challenge_token
   echo " + Done!"
+}
+
+# Update OCSP stapling file
+update_ocsp_stapling() {
+    local certdir="${1}"
+    local update_ocsp="${2}"
+    local cert="${3}"
+    local chain="${4}"
+
+    local ocsp_url="$(get_ocsp_url "${cert}")"
+
+    if [[ -z "${ocsp_url}" ]]; then
+      echo " ! ERROR: OCSP stapling requested but no OCSP url found in certificate." >&2
+      echo " ! Keep in mind that some CAs ended support for OCSP: https://letsencrypt.org/2024/12/05/ending-ocsp/" >&2
+      return 1
+    fi
+
+    if [[ ! -e "${certdir}/ocsp.der" ]]; then
+      update_ocsp="yes"
+    elif ! ("${OPENSSL}" ocsp -no_nonce -issuer "${chain}" -verify_other "${chain}" -cert "${cert}" -respin "${certdir}/ocsp.der" -status_age $((OCSP_DAYS*24*3600)) 2>&1 | grep -q "${cert}: good"); then
+      update_ocsp="yes"
+    fi
+
+    if [[ "${update_ocsp}" = "yes" ]]; then
+      echo " + Updating OCSP stapling file"
+      ocsp_timestamp="$(date +%s)"
+      if grep -qE "^(openssl (0|(1\.0))\.)|(libressl (1|2|3)\.)" <<< "$(${OPENSSL} version | awk '{print tolower($0)}')"; then
+        ocsp_log="$("${OPENSSL}" ocsp -no_nonce -issuer "${chain}" -verify_other "${chain}" -cert "${cert}" -respout "${certdir}/ocsp-${ocsp_timestamp}.der" -url "${ocsp_url}" -header "HOST" "$(echo "${ocsp_url}" | _sed -e 's/^http(s?):\/\///' -e 's/\/.*$//g')" 2>&1)" || _exiterr "Fetching of OCSP information failed. Please note that some CAs (e.g. LetsEncrypt) do no longer support OCSP. Error message: ${ocsp_log}"
+      else
+        ocsp_log="$("${OPENSSL}" ocsp -no_nonce -issuer "${chain}" -verify_other "${chain}" -cert "${cert}" -respout "${certdir}/ocsp-${ocsp_timestamp}.der" -url "${ocsp_url}" 2>&1)" || _exiterr "Fetching of OCSP information failed. Please note that some CAs (e.g. LetsEncrypt) do no longer support OCSP. Error message: ${ocsp_log}"
+      fi
+      ln -sf "ocsp-${ocsp_timestamp}.der" "${certdir}/ocsp.der"
+      [[ -n "${HOOK}" ]] && (altnames="${domain} ${morenames}" "${HOOK}" "deploy_ocsp" "${domain}" "${certdir}/ocsp.der" "${ocsp_timestamp}" || _exiterr 'deploy_ocsp hook returned with non-zero exit code')
+    else
+      echo " + OCSP stapling file is still valid (skipping update)"
+    fi
 }
 
 # Usage: --version (-v)
@@ -1844,7 +1895,7 @@ command_sign_domains() {
 	# All settings that are allowed here should also be stored and
 	# restored in store_configvars() and reset_configvars()
         case "${config_var}" in
-          KEY_ALGO|OCSP_MUST_STAPLE|OCSP_FETCH|OCSP_DAYS|PRIVATE_KEY_RENEW|PRIVATE_KEY_ROLLOVER|KEYSIZE|CHALLENGETYPE|HOOK|PREFERRED_CHAIN|WELLKNOWN|HOOK_CHAIN|OPENSSL_CNF|RENEW_DAYS|ACME_PROFILE|ORDER_TIMEOUT)
+          KEY_ALGO|OCSP_MUST_STAPLE|OCSP_FETCH|OCSP_DAYS|PRIVATE_KEY_RENEW|PRIVATE_KEY_ROLLOVER|KEYSIZE|CHALLENGETYPE|HOOK|PREFERRED_CHAIN|WELLKNOWN|HOOK_CHAIN|OPENSSL_CNF|RENEW_DAYS|ACME_PROFILE|ORDER_TIMEOUT|VALIDATION_TIMEOUT|KEEP_GOING)
             echo "   + ${config_var} = ${config_value}"
             declare -- "${config_var}=${config_value}"
             ;;
@@ -1927,7 +1978,7 @@ command_sign_domains() {
         rm "${csrfile}"
       fi
       # shellcheck disable=SC2086
-      if [[ "${PARAM_KEEP_GOING:-}" = "yes" ]]; then
+      if [[ "${KEEP_GOING:-}" = "yes" ]]; then
         skip_exit_hook=yes
         sign_domain "${certdir}" "${timestamp}" "${domain}" ${morenames} &
         wait $! || exit_with_errorcode=1
@@ -1938,27 +1989,13 @@ command_sign_domains() {
     fi
 
     if [[ "${OCSP_FETCH}" = "yes" ]]; then
-      local ocsp_url
-      ocsp_url="$(get_ocsp_url "${cert}")"
-
-      if [[ ! -e "${certdir}/ocsp.der" ]]; then
-        update_ocsp="yes"
-      elif ! ("${OPENSSL}" ocsp -no_nonce -issuer "${chain}" -verify_other "${chain}" -cert "${cert}" -respin "${certdir}/ocsp.der" -status_age $((OCSP_DAYS*24*3600)) 2>&1 | grep -q "${cert}: good"); then
-        update_ocsp="yes"
-      fi
-
-      if [[ "${update_ocsp}" = "yes" ]]; then
-        echo " + Updating OCSP stapling file"
-        ocsp_timestamp="$(date +%s)"
-        if grep -qE "^(openssl (0|(1\.0))\.)|(libressl (1|2|3)\.)" <<< "$(${OPENSSL} version | awk '{print tolower($0)}')"; then
-          ocsp_log="$("${OPENSSL}" ocsp -no_nonce -issuer "${chain}" -verify_other "${chain}" -cert "${cert}" -respout "${certdir}/ocsp-${ocsp_timestamp}.der" -url "${ocsp_url}" -header "HOST" "$(echo "${ocsp_url}" | _sed -e 's/^http(s?):\/\///' -e 's/\/.*$//g')" 2>&1)" || _exiterr "Error while fetching OCSP information: ${ocsp_log}"
-        else
-          ocsp_log="$("${OPENSSL}" ocsp -no_nonce -issuer "${chain}" -verify_other "${chain}" -cert "${cert}" -respout "${certdir}/ocsp-${ocsp_timestamp}.der" -url "${ocsp_url}" 2>&1)" || _exiterr "Error while fetching OCSP information: ${ocsp_log}"
-        fi
-        ln -sf "ocsp-${ocsp_timestamp}.der" "${certdir}/ocsp.der"
-        [[ -n "${HOOK}" ]] && (altnames="${domain} ${morenames}" "${HOOK}" "deploy_ocsp" "${domain}" "${certdir}/ocsp.der" "${ocsp_timestamp}" || _exiterr 'deploy_ocsp hook returned with non-zero exit code')
+      if [[ "${KEEP_GOING:-}" = "yes" ]]; then
+        skip_exit_hook=yes
+        update_ocsp_stapling "${certdir}" "${update_ocsp}" "${cert}" "${chain}" &
+        wait $! || exit_with_errorcode=1
+        skip_exit_hook=no
       else
-        echo " + OCSP stapling file is still valid (skipping update)"
+        update_ocsp_stapling "${certdir}" "${update_ocsp}" "${cert}" "${chain}"
       fi
     fi
   done
@@ -2452,6 +2489,14 @@ main() {
         shift 1
         check_parameters "${1:-}"
         PARAM_ORDER_TIMEOUT=${1}
+        ;;
+
+      # PARAM_Usage: --validation-timeout seconds
+      # PARAM_Description: Amount of seconds to wait for processing of domain validations until erroring out
+      --validation-timeout)
+        shift 1
+        check_parameters "${1:-}"
+        PARAM_VALIDATION_TIMEOUT=${1}
         ;;
 
       *)

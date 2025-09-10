@@ -134,6 +134,7 @@ Check out the details in [ROADMAP](https://github.com/omega8cc/boa/tree/5.x-pro/
 - Ruby Gems and NPM: [docs/GEM.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/GEM.md)
 - Security Settings: [docs/SECURITY.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/SECURITY.md)
 - Self-Upgrade How-To: [docs/SELFUPGRADE.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/SELFUPGRADE.md)
+- SMTP SSL Error Debugging: [docs/SMTP_SSL_DEBUG.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/SMTP_SSL_DEBUG.md)
 - Solr and Jetty How-To: [docs/SOLR.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/SOLR.md)
 - SSH Encryption: [docs/BLOWFISH.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/BLOWFISH.md)
 - VServer Cluster: [docs/CLUSTER.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/CLUSTER.md) (deprecated)
