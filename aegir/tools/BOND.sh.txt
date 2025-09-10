@@ -623,7 +623,7 @@ _fix_php_ini_opcache() {
       echo "zend_extension=\"${_OPCACHE_SO}\""    >> ${_THIS_FILE}
       echo "opcache.enable=1"                     >> ${_THIS_FILE}
       echo "opcache.memory_consumption=181"       >> ${_THIS_FILE}
-      echo "opcache.revalidate_freq=10"           >> ${_THIS_FILE}
+      echo "opcache.revalidate_freq=60"           >> ${_THIS_FILE}
       echo ";"                                    >> ${_THIS_FILE}
     fi
   fi
@@ -794,13 +794,17 @@ _php_conf_update() {
     _THISHTIP="${_LOC_IP}"
   fi
   if [ ! -e "/opt/etc/fpm" ] \
-    || [ ! -e "/opt/etc/fpm/fpm-pool-common.conf" ]; then
+    || [ ! -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
+    || [ ! -e "/opt/etc/fpm/fpm-pool-common-legacy.conf" ] \
+    || [ ! -e "/opt/etc/fpm/fpm-pool-common-modern.conf" ]; then
     mkdir -p /opt/etc/fpm
   fi
   cp -af ${_locCnf}/php/fpm-pool-common.conf /opt/etc/fpm/fpm-pool-common.conf
-  sed -i "s/127.0.0.1/127.0.0.1,${_THISHTIP}/g" /opt/etc/fpm/fpm-pool-common.conf
+  cp -af ${_locCnf}/php/fpm-pool-common-legacy.conf /opt/etc/fpm/fpm-pool-common-legacy.conf
+  cp -af ${_locCnf}/php/fpm-pool-common-modern.conf /opt/etc/fpm/fpm-pool-common-modern.conf
+  sed -i "s/127.0.0.1/127.0.0.1,${_THISHTIP}/g" /opt/etc/fpm/fpm-pool-commo*.conf
   wait
-  sed -i "s/mode =.*/mode = 0660/g" /opt/etc/fpm/fpm-pool-common.conf
+  sed -i "s/mode =.*/mode = 0660/g" /opt/etc/fpm/fpm-pool-commo*.conf
   wait
   _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
@@ -926,7 +930,7 @@ _tune_php() {
   wait
   sed -i "s/180s/${_TUNE_PHP_FPM_TIMEOUT}s/g" /opt/php*/etc/php*-fpm.conf                                           &> /dev/null
   wait
-  sed -i "s/180/${_TUNE_PHP_FPM_TIMEOUT}/g" /opt/etc/fpm/fpm-pool-common.conf                                       &> /dev/null
+  sed -i "s/180/${_TUNE_PHP_FPM_TIMEOUT}/g" /opt/etc/fpm/fpm-pool-common*.conf                                      &> /dev/null
   wait
   # PHP-FPM INI
   sed -i "s/^default_socket_timeout =.*/default_socket_timeout = ${_TUNE_PHP_FPM_TIMEOUT}/g" /opt/php*/etc/php*.ini &> /dev/null
@@ -1576,10 +1580,12 @@ _tune_memory_limits() {
   if [ ! -e "/data/conf" ]; then
     mkdir -p /data/conf
   fi
-  cp -af ${_locCnf}/php/fpm-pool-foo-multi.conf /var/xdrago/conf/
-  cp -af ${_locCnf}/php/fpm-pool-foo.conf /var/xdrago/conf/
+  cp -af ${_locCnf}/php/fpm-pool-foo-multi.conf  /var/xdrago/conf/
+  cp -af ${_locCnf}/php/fpm-pool-foo.conf        /var/xdrago/conf/
+  cp -af ${_locCnf}/php/fpm-pool-foo-legacy.conf /var/xdrago/conf/
+  cp -af ${_locCnf}/php/fpm-pool-foo-modern.conf /var/xdrago/conf/
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ]; then
-    sed -i "s/395/${_USE_FPM}/g" /opt/etc/fpm/fpm-pool-common.conf &> /dev/null
+    sed -i "s/395/${_USE_FPM}/g" /opt/etc/fpm/fpm-pool-commo*.conf &> /dev/null
     wait
   fi
   if [ -e "/opt/php84/etc/php84.ini" ]; then
