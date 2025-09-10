@@ -3,8 +3,8 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-export _tRee=pro
-export _xSrl=570proT07
+export _tRee=dev
+export _xSrl=570devT07
 
 _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
 _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
@@ -1743,23 +1743,44 @@ _switch_php() {
               cp -af /var/xdrago/conf/fpm-pool-foo.conf /opt/php${m}/etc/pool.d/${_POOL}.conf
             fi
             sed -i "s/.ftp/.web/g" /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
+            wait
             sed -i "s/\/data\/disk\/foo\/.tmp/\/home\/foo.web\/.tmp/g" /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
+            wait
             sed -i "s/foo.web/${_WEB}/g" /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
+            wait
             sed -i "s/THISPOOL/${_POOL}/g" /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
+            wait
             sed -i "s/foo/${_USER}/g" /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
+            wait
+
+            if [[ "${m}" == 8* ]] && [ -e "/opt/etc/fpm/fpm-pool-common-modern.conf" ]; then
+              sed -i "s/fpm-pool-common.conf/fpm-pool-common-modern.conf/g" /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
+              wait
+            elif [[ "${m}" == 7* ]] && [ -e "/opt/etc/fpm/fpm-pool-common-legacy.conf" ]; then
+              sed -i "s/fpm-pool-common.conf/fpm-pool-common-legacy.conf/g" /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
+              wait
+            fi
 
             [ -n "${_PHP_FPM_DENY}" ] && sed -i "s/passthru,/${_PHP_FPM_DENY},/g" /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
+            wait
 
             if [ -n "${_PHP_FPM_TIMEOUT}" ] && [ "${_PHP_FPM_TIMEOUT}" -ge 60 ]; then
               _PHP_TO="${_PHP_FPM_TIMEOUT}s"
               sed -i "s/180s/${_PHP_TO}/g" /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
+              wait
             fi
 
             if [ -n "${_CHILD_MAX_FPM}" ] && [ "${_CHILD_MAX_FPM}" -ge 2 ]; then
               sed -i "s/pm.max_children =.*/pm.max_children = ${_CHILD_MAX_FPM}/g" /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
+              wait
             fi
 
             _switch_newrelic ${m} ${_POOL} 0
+
+            mkdir -p /var/www/phpcache/${_USER}/${_POOL}
+            chgrp www-data /var/www/phpcache/${_USER}/${_POOL}
+            chmod 770 /var/www/phpcache/${_USER}/${_POOL}
+
             [ -e "/etc/init.d/php${_PHP_OLD_SV}-fpm" ] && service php${_PHP_OLD_SV}-fpm reload &> /dev/null
             [ -e "/etc/init.d/php${m}-fpm" ] && service php${m}-fpm reload &> /dev/null
           fi

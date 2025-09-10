@@ -44,8 +44,8 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-export _tRee=pro
-export _xSrl=570proT07
+export _tRee=dev
+export _xSrl=570devT07
 export _rLsn="BOA-5.7.12"
 export _bTs=570v37
 
@@ -1502,14 +1502,14 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/manage_ltd_users.sh.ctrl.f78.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/manage_ltd_users.sh.ctrl.f77.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/manage_ltd_users.sh /var/xdrago/manage_ltd_users.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/manage_ltd_users.sh" \
       -o /var/xdrago/manage_ltd_users.sh
     if [ -e "/var/xdrago/manage_ltd_users.sh" ]; then
       chmod 700 /var/xdrago/manage_ltd_users.sh
       chown root:root /var/xdrago/manage_ltd_users.sh
-      touch ${_pthLog}/manage_ltd_users.sh.ctrl.f78.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/manage_ltd_users.sh.ctrl.f77.${_tRee}.${_xSrl}.pid
       [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
     else
       mv -f /var/xdrago/manage_ltd_users.sh.old /var/xdrago/manage_ltd_users.sh
@@ -1550,7 +1550,7 @@ _update_agents() {
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/fast_shutdown.ctrl.${_tRee}.${_xSrl}.pid" ]; then
-    sed -i "s/.*opcache.fast_shutdown.*//g" /opt/etc/fpm/fpm-pool-common.conf
+    sed -i "s/.*opcache.fast_shutdown.*//g" /opt/etc/fpm/fpm-pool-commo*.conf
     _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
       if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
@@ -1671,6 +1671,38 @@ _update_agents() {
       touch ${_pthLog}/multi.ctrl.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/conf/fpm-pool-foo-multi.conf.old /var/xdrago/conf/fpm-pool-foo-multi.conf
+    fi
+  fi
+
+  if [ -x "/opt/tools/drush/8/drush/drush.php" ] \
+    && [ -e "/var/xdrago" ] \
+    && [ -e "/var/aegir/drush" ] \
+    && [ ! -e "${_pthLog}/legacy.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+    mv -f /var/xdrago/conf/fpm-pool-foo-legacy.conf /var/xdrago/conf/fpm-pool-foo-legacy.conf.old
+    curl ${_crlGet} "${_urlHmr}/conf/php/fpm-pool-foo-legacy.conf" \
+      -o /var/xdrago/conf/fpm-pool-foo-legacy.conf
+    if [ -e "/var/xdrago/conf/fpm-pool-foo-legacy.conf" ]; then
+      chmod 644 /var/xdrago/conf/fpm-pool-foo-legacy.conf
+      chown root:root /var/xdrago/conf/fpm-pool-foo-legacy.conf
+      touch ${_pthLog}/legacy.ctrl.${_tRee}.${_xSrl}.pid
+    else
+      mv -f /var/xdrago/conf/fpm-pool-foo-legacy.conf.old /var/xdrago/conf/fpm-pool-foo-legacy.conf
+    fi
+  fi
+
+  if [ -x "/opt/tools/drush/8/drush/drush.php" ] \
+    && [ -e "/var/xdrago" ] \
+    && [ -e "/var/aegir/drush" ] \
+    && [ ! -e "${_pthLog}/modern.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+    mv -f /var/xdrago/conf/fpm-pool-foo-modern.conf /var/xdrago/conf/fpm-pool-foo-modern.conf.old
+    curl ${_crlGet} "${_urlHmr}/conf/php/fpm-pool-foo-modern.conf" \
+      -o /var/xdrago/conf/fpm-pool-foo-modern.conf
+    if [ -e "/var/xdrago/conf/fpm-pool-foo-modern.conf" ]; then
+      chmod 644 /var/xdrago/conf/fpm-pool-foo-modern.conf
+      chown root:root /var/xdrago/conf/fpm-pool-foo-modern.conf
+      touch ${_pthLog}/modern.ctrl.${_tRee}.${_xSrl}.pid
+    else
+      mv -f /var/xdrago/conf/fpm-pool-foo-modern.conf.old /var/xdrago/conf/fpm-pool-foo-modern.conf
     fi
   fi
 

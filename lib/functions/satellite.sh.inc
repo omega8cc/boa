@@ -1,5 +1,5 @@
 
-export _tRee=pro
+export _tRee=dev
 export _rLsn="BOA-5.7.12"
 export _rlsE="${_rLsn}-${_tRee}"
 export _bRnh="5.x-${_tRee}"
@@ -401,8 +401,7 @@ _satellite_tune_fpm_config() {
   if [ ! -z "${_PHP_FPM_TIMEOUT}" ] && [ ! -z "${_PHP_SV}" ]; then
     if [ -e "/var/xdrago/conf/fpm-pool-foo.conf" ]; then
       rm -f /opt/php*/etc/pool.d/${_USER}.conf
-      cp -af /var/xdrago/conf/fpm-pool-foo.conf \
-        /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf
+      cp -af /var/xdrago/conf/fpm-pool-foo.conf /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf
     fi
     if [ -e "/opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf" ]; then
       ### create or update special system user if needed
@@ -424,37 +423,39 @@ _satellite_tune_fpm_config() {
         _satellite_create_web_user "${_PHP_SV}"
       fi
       ### create or update special system user if needed
-      sed -i "s/.ftp/.web/g" \
-        /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
+      sed -i "s/.ftp/.web/g" /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
       wait
-      sed -i "s/\/data\/disk\/foo\/.tmp/\/home\/foo.web\/.tmp/g" \
-        /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
+      sed -i "s/\/data\/disk\/foo\/.tmp/\/home\/foo.web\/.tmp/g" /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
       wait
-      sed -i "s/foo/${_USER}/g" \
-        /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
+      sed -i "s/foo/${_USER}/g" /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
       wait
-      sed -i "s/THISPOOL/${_USER}/g" \
-        /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
+      sed -i "s/THISPOOL/${_USER}/g" /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
       wait
+      if [[ "${_PHP_SV}" == 8* ]] && [ -e "/opt/etc/fpm/fpm-pool-common-modern.conf" ]; then
+        sed -i "s/fpm-pool-common.conf/fpm-pool-common-modern.conf/g" /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
+        wait
+      elif [[ "${_PHP_SV}" == 7* ]] && [ -e "/opt/etc/fpm/fpm-pool-common-legacy.conf" ]; then
+        sed -i "s/fpm-pool-common.conf/fpm-pool-common-legacy.conf/g" /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
+        wait
+      fi
       if [ ! -z "${_PHP_FPM_DENY}" ]; then
-        sed -i "s/passthru,/${_PHP_FPM_DENY},/g" \
-          /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
+        sed -i "s/passthru,/${_PHP_FPM_DENY},/g" /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
         wait
       fi
     fi
     _PHP_TO="${_PHP_FPM_TIMEOUT}s"
-    sed -i "s/180s/${_PHP_TO}/g" \
-      /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
+    sed -i "s/180s/${_PHP_TO}/g" /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
     wait
     if [ ! -z "${_CHILD_MAX_FPM}" ] && [ "${_CHILD_MAX_FPM}" -ge 8 ]; then
-      sed -i "s/pm.max_children =.*/pm.max_children = ${_CHILD_MAX_FPM}/g" \
-        /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
+      sed -i "s/pm.max_children =.*/pm.max_children = ${_CHILD_MAX_FPM}/g" /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
       wait
     else
-      sed -i "s/pm.max_children =.*/pm.max_children = 8/g" \
-        /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
+      sed -i "s/pm.max_children =.*/pm.max_children = 8/g" /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
       wait
     fi
+    mkdir -p /var/www/phpcache/${_USER}/${_USER}.{84,83,82,81,80,74,73,72,71,70,56}
+    chgrp www-data /var/www/phpcache/${_USER}/${_USER}.{84,83,82,81,80,74,73,72,71,70,56}
+    chmod 770 /var/www/phpcache/${_USER}/${_USER}.{84,83,82,81,80,74,73,72,71,70,56}
     if [ ! -d "${_ROOT}/tmp" ]; then
       mkdir -p ${_ROOT}/tmp
       chown ${_USER}:users ${_ROOT}/tmp &> /dev/null
@@ -3873,7 +3874,7 @@ _satellite_make() {
     _writeTo="${_vBs}/${_filIncO}"
   fi
 
-  export _xSrl=570proT07
+  export _xSrl=570devT07
   export _X_VERSION="${_X_VERSION}"
 
   echo "export _AEGIR_VERSION=\"${_AEGIR_VERSION}\""         >> ${_writeTo}
