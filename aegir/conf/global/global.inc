@@ -621,9 +621,9 @@ if (!$is_backend) {
     }
     else {
       // Set sane default opcache TTL on non-dev sites
-      ini_set('opcache.revalidate_freq', '10');
+      ini_set('opcache.revalidate_freq', '60');
       if (!$is_backend) {
-        header("X-Opcache-Revalidate-Freq: 10");
+        header("X-Opcache-Revalidate-Freq: 60");
       }
     }
   }
