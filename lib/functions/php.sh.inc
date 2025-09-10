@@ -250,7 +250,7 @@ _fix_php_ini_opcache() {
       echo "zend_extension=\"${_OPCACHE_SO}\""    >> ${_THIS_FILE}
       echo "opcache.enable=1"                     >> ${_THIS_FILE}
       echo "opcache.memory_consumption=181"       >> ${_THIS_FILE}
-      echo "opcache.revalidate_freq=10"           >> ${_THIS_FILE}
+      echo "opcache.revalidate_freq=60"           >> ${_THIS_FILE}
       echo ";"                                    >> ${_THIS_FILE}
     fi
   fi
@@ -477,9 +477,11 @@ _php_conf_update() {
     mkdir -p /opt/etc/fpm
   fi
   cp -af ${_locCnf}/php/fpm-pool-common.conf /opt/etc/fpm/fpm-pool-common.conf
-  sed -i "s/127.0.0.1/127.0.0.1,${_THISHTIP}/g" /opt/etc/fpm/fpm-pool-common.conf
+  cp -af ${_locCnf}/php/fpm-pool-common-legacy.conf /opt/etc/fpm/fpm-pool-common-legacy.conf
+  cp -af ${_locCnf}/php/fpm-pool-common-modern.conf /opt/etc/fpm/fpm-pool-common-modern.conf
+  sed -i "s/127.0.0.1/127.0.0.1,${_THISHTIP}/g" /opt/etc/fpm/fpm-pool-commo*.conf
   wait
-  sed -i "s/mode =.*/mode = 0660/g" /opt/etc/fpm/fpm-pool-common.conf
+  sed -i "s/mode =.*/mode = 0660/g" /opt/etc/fpm/fpm-pool-commo*.conf
   wait
   _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
   if [ "${_DB_SERIES}" = "5.7" ]; then
