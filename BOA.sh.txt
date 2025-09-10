@@ -1661,6 +1661,27 @@ _update_agents() {
   if [ -x "/opt/tools/drush/8/drush/drush.php" ] \
     && [ -e "/var/xdrago" ] \
     && [ -e "/var/aegir/drush" ] \
+    _BROKEN_UPDATE_TEST=$(grep "Under Construction" /var/xdrago/conf/fpm-pool* 2>&1)
+    if [ ! -z "${_BROKEN_UPDATE_TEST}" ]; then
+      rm -f /var/xdrago/conf/fpm-pool*
+      rm ${_pthLog}/multi.ctrl.*
+      rm ${_pthLog}/legacy.ctrl.*
+      rm ${_pthLog}/modern.ctrl.*
+      rm ${_pthLog}/single.ctrl.*
+    fi
+    _BROKEN_UPDATE_TEST=$(grep "404 Not Found" /var/xdrago/conf/fpm-pool* 2>&1)
+    if [ ! -z "${_BROKEN_UPDATE_TEST}" ]; then
+      rm -f /var/xdrago/conf/fpm-pool*
+      rm ${_pthLog}/multi.ctrl.*
+      rm ${_pthLog}/legacy.ctrl.*
+      rm ${_pthLog}/modern.ctrl.*
+      rm ${_pthLog}/single.ctrl.*
+    fi
+  fi
+
+  if [ -x "/opt/tools/drush/8/drush/drush.php" ] \
+    && [ -e "/var/xdrago" ] \
+    && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/multi.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/conf/fpm-pool-foo-multi.conf /var/xdrago/conf/fpm-pool-foo-multi.conf.old
     curl ${_crlGet} "${_urlHmr}/conf/php/fpm-pool-foo-multi.conf" \
