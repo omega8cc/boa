@@ -3,8 +3,8 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-export _tRee=dev
-export _xSrl=570devT07
+export _tRee=lts
+export _xSrl=570ltsT07
 
 [ -e "/root/.proxy.cnf" ] && exit 0
 
