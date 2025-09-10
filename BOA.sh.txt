@@ -1690,6 +1690,38 @@ _update_agents() {
   if [ -x "/opt/tools/drush/8/drush/drush.php" ] \
     && [ -e "/var/xdrago" ] \
     && [ -e "/var/aegir/drush" ] \
+    && [ ! -e "${_pthLog}/legacy.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+    mv -f /var/xdrago/conf/fpm-pool-common-legacy.conf /var/xdrago/conf/fpm-pool-common-legacy.conf.old
+    curl ${_crlGet} "${_urlHmr}/conf/php/fpm-pool-common-legacy.conf" \
+      -o /var/xdrago/conf/fpm-pool-common-legacy.conf
+    if [ -e "/var/xdrago/conf/fpm-pool-common-legacy.conf" ]; then
+      chmod 644 /var/xdrago/conf/fpm-pool-common-legacy.conf
+      chown root:root /var/xdrago/conf/fpm-pool-common-legacy.conf
+      touch ${_pthLog}/legacy.ctrl.${_tRee}.${_xSrl}.pid
+    else
+      mv -f /var/xdrago/conf/fpm-pool-common-legacy.conf.old /var/xdrago/conf/fpm-pool-common-legacy.conf
+    fi
+  fi
+
+  if [ -x "/opt/tools/drush/8/drush/drush.php" ] \
+    && [ -e "/var/xdrago" ] \
+    && [ -e "/var/aegir/drush" ] \
+    && [ ! -e "${_pthLog}/modern.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+    mv -f /var/xdrago/conf/fpm-pool-common-modern.conf /var/xdrago/conf/fpm-pool-common-modern.conf.old
+    curl ${_crlGet} "${_urlHmr}/conf/php/fpm-pool-common-modern.conf" \
+      -o /var/xdrago/conf/fpm-pool-common-modern.conf
+    if [ -e "/var/xdrago/conf/fpm-pool-common-modern.conf" ]; then
+      chmod 644 /var/xdrago/conf/fpm-pool-common-modern.conf
+      chown root:root /var/xdrago/conf/fpm-pool-common-modern.conf
+      touch ${_pthLog}/modern.ctrl.${_tRee}.${_xSrl}.pid
+    else
+      mv -f /var/xdrago/conf/fpm-pool-common-modern.conf.old /var/xdrago/conf/fpm-pool-common-modern.conf
+    fi
+  fi
+
+  if [ -x "/opt/tools/drush/8/drush/drush.php" ] \
+    && [ -e "/var/xdrago" ] \
+    && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/multi.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/conf/fpm-pool-foo-multi.conf /var/xdrago/conf/fpm-pool-foo-multi.conf.old
     curl ${_crlGet} "${_urlHmr}/conf/php/fpm-pool-foo-multi.conf" \
@@ -1700,38 +1732,6 @@ _update_agents() {
       touch ${_pthLog}/multi.ctrl.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/conf/fpm-pool-foo-multi.conf.old /var/xdrago/conf/fpm-pool-foo-multi.conf
-    fi
-  fi
-
-  if [ -x "/opt/tools/drush/8/drush/drush.php" ] \
-    && [ -e "/var/xdrago" ] \
-    && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/legacy.ctrl.${_tRee}.${_xSrl}.pid" ]; then
-    mv -f /var/xdrago/conf/fpm-pool-foo-legacy.conf /var/xdrago/conf/fpm-pool-foo-legacy.conf.old
-    curl ${_crlGet} "${_urlHmr}/conf/php/fpm-pool-foo-legacy.conf" \
-      -o /var/xdrago/conf/fpm-pool-foo-legacy.conf
-    if [ -e "/var/xdrago/conf/fpm-pool-foo-legacy.conf" ]; then
-      chmod 644 /var/xdrago/conf/fpm-pool-foo-legacy.conf
-      chown root:root /var/xdrago/conf/fpm-pool-foo-legacy.conf
-      touch ${_pthLog}/legacy.ctrl.${_tRee}.${_xSrl}.pid
-    else
-      mv -f /var/xdrago/conf/fpm-pool-foo-legacy.conf.old /var/xdrago/conf/fpm-pool-foo-legacy.conf
-    fi
-  fi
-
-  if [ -x "/opt/tools/drush/8/drush/drush.php" ] \
-    && [ -e "/var/xdrago" ] \
-    && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/modern.ctrl.${_tRee}.${_xSrl}.pid" ]; then
-    mv -f /var/xdrago/conf/fpm-pool-foo-modern.conf /var/xdrago/conf/fpm-pool-foo-modern.conf.old
-    curl ${_crlGet} "${_urlHmr}/conf/php/fpm-pool-foo-modern.conf" \
-      -o /var/xdrago/conf/fpm-pool-foo-modern.conf
-    if [ -e "/var/xdrago/conf/fpm-pool-foo-modern.conf" ]; then
-      chmod 644 /var/xdrago/conf/fpm-pool-foo-modern.conf
-      chown root:root /var/xdrago/conf/fpm-pool-foo-modern.conf
-      touch ${_pthLog}/modern.ctrl.${_tRee}.${_xSrl}.pid
-    else
-      mv -f /var/xdrago/conf/fpm-pool-foo-modern.conf.old /var/xdrago/conf/fpm-pool-foo-modern.conf
     fi
   fi
 
