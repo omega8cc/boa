@@ -890,6 +890,7 @@ _php_cli_local_ini_update() {
       cp -af /opt/php56/lib/php.ini ${_U_II}
       _U_INI=56
     fi
+    _OPCD="/var/www/phpcache"
     if [ -e "${_U_II}" ]; then
       _INI="open_basedir = \".: \
         /data/all:           \
@@ -913,7 +914,8 @@ _php_cli_local_ini_update() {
         /dev/urandom:        \
         /opt/tmp/make_local: \
         /opt/tools/drush:    \
-        ${_dscUsr}:           \
+        ${_dscUsr}:          \
+        ${_OPCD}/${_USER}:   \
         /usr/local/bin:      \
         /usr/bin\""
       _INI=$(echo "${_INI}" | sed "s/ //g" 2>&1)

@@ -1289,6 +1289,7 @@ _satellite_child_b_update_ini_php_cli() {
         fi
       fi
     done
+    _OPCD="/var/www/phpcache"
     if [ -e "${_U_II}" ]; then
       _INI="open_basedir = \".: \
         /data/all:           \
@@ -1312,6 +1313,7 @@ _satellite_child_b_update_ini_php_cli() {
         /dev/urandom:        \
         /opt/tmp/make_local: \
         /opt/tools/drush:    \
+        ${_OPCD}/${_USER}:   \
         ${_ROOT}:            \
         /usr/local/bin:      \
         /usr/bin\""
