@@ -1678,6 +1678,14 @@ _update_agents() {
       rm ${_pthLog}/single.ctrl.*
     fi
     _BROKEN_UPDATE_TEST=$(grep "max_execution_time" /var/xdrago/conf/fpm-pool* 2>&1)
+    if [ -z "${_BROKEN_UPDATE_TEST}" ]; then
+      rm -f /var/xdrago/conf/fpm-pool*
+      rm ${_pthLog}/multi.ctrl.*
+      rm ${_pthLog}/legacy.ctrl.*
+      rm ${_pthLog}/modern.ctrl.*
+      rm ${_pthLog}/single.ctrl.*
+    fi
+    _BROKEN_UPDATE_TEST=$(grep "max_accelerated_files" /var/xdrago/conf/fpm-pool* 2>&1)
     if [ ! -z "${_BROKEN_UPDATE_TEST}" ]; then
       rm -f /var/xdrago/conf/fpm-pool*
       rm ${_pthLog}/multi.ctrl.*
