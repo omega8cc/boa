@@ -252,12 +252,26 @@ _fix_php_ini_opcache() {
     if [[ "${_OPCACHE_INI_TEST}" =~ "opcache.so" ]]; then
       _DO_NOTHING=YES
     else
-      echo ";"                                    >> ${_THIS_FILE}
+      echo " "                                    >> ${_THIS_FILE}
       echo "; Zend OPcache"                       >> ${_THIS_FILE}
       echo "zend_extension=\"${_OPCACHE_SO}\""    >> ${_THIS_FILE}
       echo "opcache.enable=1"                     >> ${_THIS_FILE}
       echo "opcache.memory_consumption=181"       >> ${_THIS_FILE}
       echo "opcache.revalidate_freq=60"           >> ${_THIS_FILE}
+      echo "opcache.dups_fix=1"                   >> ${_THIS_FILE}
+      echo "opcache.file_update_protection=8"     >> ${_THIS_FILE}
+      echo "opcache.huge_code_pages=0"            >> ${_THIS_FILE}
+      echo "opcache.interned_strings_buffer=256"  >> ${_THIS_FILE}
+      echo "opcache.jit=off"                      >> ${_THIS_FILE}
+      echo "opcache.lockfile_path=/var/tmp/fpm"   >> ${_THIS_FILE}
+      echo "opcache.max_accelerated_files=200000" >> ${_THIS_FILE}
+      echo "opcache.restrict_api=/var/www"        >> ${_THIS_FILE}
+      echo "opcache.revalidate_path=1"            >> ${_THIS_FILE}
+      echo "opcache.save_comments=1"              >> ${_THIS_FILE}
+      echo "opcache.use_cwd=1"                    >> ${_THIS_FILE}
+      echo "opcache.validate_permission=1"        >> ${_THIS_FILE}
+      echo "opcache.validate_root=1"              >> ${_THIS_FILE}
+      echo "opcache.validate_timestamps=1"        >> ${_THIS_FILE}
       echo ";"                                    >> ${_THIS_FILE}
     fi
   fi
