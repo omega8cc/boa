@@ -1,0 +1,180 @@
+#!/bin/bash
+
+#
+# Keep SYNPROXY/NOTRACK/QUIC ordering correct after any CSF change
+#
+
+export HOME=/root
+export SHELL=/bin/bash
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+
+# Function to check if the script is run as root
+_check_root() {
+  if [ "$(id -u)" -ne 0 ]; then
+    echo "ERROR: This script should be run as a root user"
+    exit 1
+  fi
+}
+_check_root
+
+set -u  # no 'set -e' on purpose: never break caller; best-effort only
+
+# ---------- defaults (override via CLI flags) ----------
+_TCP_PORTS="${_TCP_PORTS:-443 80}"   # space-separated list, e.g. "443"
+_QUIC_PORT="${_QUIC_PORT:-443}"      # set empty to skip QUIC limiter
+_ENABLE_QUIC_LIMITER="${_ENABLE_QUIC_LIMITER:-YES}" # YES/NO
+_REBUILD_CHAIN="${_REBUILD_CHAIN:-YES}"   # YES -> flush & rebuild SYNPROXY_EARLY; NO -> ensure rules exist
+_QUIET="${_QUIET:-NO}"               # YES/NO
+_VERBOSE="${_VERBOSE:-NO}"           # YES/NO
+_RATE_PER_IP="${_RATE_PER_IP:-80/second}"
+_BURST_PER_IP="${_BURST_PER_IP:-160}"
+_RATE_PER_24="${_RATE_PER_24:-800/second}"
+_BURST_PER_24="${_BURST_PER_24:-1600}"
+
+# ---------- logging ----------
+_msg(){ [ "${_QUIET}" = "YES" ] && return 0; echo "[REASSERT] $*"; }
+_v(){ [ "${_VERBOSE}" = "YES" ] && _msg "$@"; }
+
+# ---------- parse args ----------
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -p|--ports)              _TCP_PORTS="$2"; shift 2;;
+    --quic-port)             _QUIC_PORT="$2"; shift 2;;
+    --no-quic)               _ENABLE_QUIC_LIMITER="NO"; shift 1;;
+    --rate-ip)               _RATE_PER_IP="$2"; shift 2;;
+    --burst-ip)              _BURST_PER_IP="$2"; shift 2;;
+    --rate-24)               _RATE_PER_24="$2"; shift 2;;
+    --burst-24)              _BURST_PER_24="$2"; shift 2;;
+    --rebuild-chain)         _REBUILD_CHAIN="YES"; shift 1;;
+    --no-rebuild)            _REBUILD_CHAIN="NO"; shift 1;;
+    -q|--quiet)              _QUIET="YES"; _VERBOSE="NO"; shift 1;;
+    -v|--verbose)            _VERBOSE="YES"; _QUIET="NO"; shift 1;;
+    -h|--help)
+      cat <<USAGE
+Usage: synproxy_reassert [options]
+  -p, --ports "443 80"        Protect these TCP ports with SYNPROXY (default: "443 80")
+      --quic-port 443         QUIC UDP port to limit (default: 443)
+      --no-quic               Disable QUIC limiter
+      --rate-ip 80/second     Per-IP QUIC rate (default: 80/second)
+      --burst-ip 160          Per-IP QUIC burst (default: 160)
+      --rate-24 800/second    Per-/24 QUIC rate (default: 800/second)
+      --burst-24 1600         Per-/24 QUIC burst (default: 1600)
+      --rebuild-chain         Flush & rebuild SYNPROXY_EARLY (default: YES)
+      --no-rebuild            Only ensure rules exist (append if missing)
+  -q, --quiet                 Minimal output
+  -v, --verbose               Extra output
+Example:
+  synproxy_reassert -p "443" --quic-port 443 -v
+USAGE
+      exit 0;;
+    *) _msg "Unknown option: $1"; exit 2;;
+  esac
+done
+
+# ---------- tools & wrappers ----------
+command -v iptables >/dev/null 2>&1 || { _msg "iptables not found"; exit 0; }
+command -v modprobe >/dev/null 2>&1 || true
+
+_IPT_HAS_W="NO"; iptables -w -L -n >/dev/null 2>&1 && _IPT_HAS_W="YES"
+_ipt(){ if [ "${_IPT_HAS_W}" = "YES" ]; then iptables -w "$@"; else iptables "$@"; fi; }
+_chain_exists(){ _ipt -L "$1" -n >/dev/null 2>&1; }
+
+# ---------- modules (best-effort) ----------
+modprobe xt_CT 2>/dev/null || true
+modprobe xt_conntrack 2>/dev/null || true
+modprobe xt_SYNPROXY 2>/dev/null || true
+modprobe nf_synproxy_core 2>/dev/null || true
+modprobe xt_hashlimit 2>/dev/null || true
+
+# ---------- helpers ----------
+_ensure_notrack(){
+  # one copy at the very top of raw/PREROUTING for a given TCP port
+  local _port="$1"
+  # remove duplicates first
+  while _ipt -t raw -C PREROUTING -p tcp --syn --dport "${_port}" -j CT --notrack 2>/dev/null; do
+    _ipt -t raw -D PREROUTING -p tcp --syn --dport "${_port}" -j CT --notrack 2>/dev/null || break
+  done
+  while _ipt -t raw -C PREROUTING -p tcp --syn --dport "${_port}" -j NOTRACK 2>/dev/null; do
+    _ipt -t raw -D PREROUTING -p tcp --syn --dport "${_port}" -j NOTRACK 2>/dev/null || break
+  done
+  _ipt -t raw -I PREROUTING 1 -p tcp --syn --dport "${_port}" -j CT --notrack 2>/dev/null || true
+  _v "raw: ensured CT --notrack for :${_port}"
+}
+
+_pin_early_jump(){
+  # ensure SYNPROXY_EARLY exists and jump is rule #1 in INPUT/LOCALINPUT
+  _chain_exists SYNPROXY_EARLY || _ipt -N SYNPROXY_EARLY 2>/dev/null || true
+  # INPUT
+  while _ipt -C INPUT -j SYNPROXY_EARLY 2>/dev/null; do _ipt -D INPUT -j SYNPROXY_EARLY 2>/dev/null || break; done
+  _ipt -I INPUT 1 -j SYNPROXY_EARLY 2>/dev/null || true
+  # LOCALINPUT (if present)
+  if _chain_exists LOCALINPUT; then
+    while _ipt -C LOCALINPUT -j SYNPROXY_EARLY 2>/dev/null; do _ipt -D LOCALINPUT -j SYNPROXY_EARLY 2>/dev/null || break; done
+    _ipt -I LOCALINPUT 1 -j SYNPROXY_EARLY 2>/dev/null || true
+  fi
+}
+
+_populate_early_chain(){
+  # order: ESTABLISHED,RELATED -> UNTRACKED+SYN -> NEW+SYN -> NEW->DROP -> INVALID->DROP
+  if [ "${_REBUILD_CHAIN}" = "YES" ]; then _ipt -F SYNPROXY_EARLY 2>/dev/null || true; fi
+  _ipt -C SYNPROXY_EARLY -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT 2>/dev/null \
+    || _ipt -A SYNPROXY_EARLY -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT 2>/dev/null || true
+  local _p
+  for _p in ${_TCP_PORTS}; do
+    _ipt -C SYNPROXY_EARLY -p tcp -m tcp --syn --dport "${_p}" -m conntrack --ctstate UNTRACKED \
+      -j SYNPROXY --sack-perm --timestamp --wscale 7 --mss 1460 2>/dev/null \
+      || _ipt -A SYNPROXY_EARLY -p tcp -m tcp --syn --dport "${_p}" -m conntrack --ctstate UNTRACKED \
+         -j SYNPROXY --sack-perm --timestamp --wscale 7 --mss 1460 2>/dev/null || true
+    _ipt -C SYNPROXY_EARLY -p tcp -m tcp --syn --dport "${_p}" -m state --state NEW \
+      -j SYNPROXY --sack-perm --timestamp --wscale 7 --mss 1460 2>/dev/null \
+      || _ipt -A SYNPROXY_EARLY -p tcp -m tcp --syn --dport "${_p}" -m state --state NEW \
+         -j SYNPROXY --sack-perm --timestamp --wscale 7 --mss 1460 2>/dev/null || true
+    _ipt -C SYNPROXY_EARLY -p tcp -m tcp --dport "${_p}" -m state --state NEW -j DROP 2>/dev/null \
+      || _ipt -A SYNPROXY_EARLY -p tcp -m tcp --dport "${_p}" -m state --state NEW -j DROP 2>/dev/null || true
+  done
+  _ipt -C SYNPROXY_EARLY -m conntrack --ctstate INVALID -j DROP 2>/dev/null \
+    || _ipt -A SYNPROXY_EARLY -m conntrack --ctstate INVALID -j DROP 2>/dev/null || true
+}
+
+_ensure_quic_limits(){
+  [ "${_ENABLE_QUIC_LIMITER}" = "YES" ] && [ -n "${_QUIC_PORT}" ] || return 0
+  local _p="${_QUIC_PORT}"
+  # clear dups first (only the ones we own)
+  while _ipt -C INPUT -p udp --dport "${_p}" -m conntrack --ctstate INVALID -j DROP 2>/dev/null; do
+    _ipt -D INPUT -p udp --dport "${_p}" -m conntrack --ctstate INVALID -j DROP 2>/dev/null || break
+  done
+  while _ipt -C INPUT -p udp --dport "${_p}" -m hashlimit --hashlimit-name quic${_p}_ip -j DROP 2>/dev/null; do
+    _ipt -D INPUT -p udp --dport "${_p}" -m hashlimit --hashlimit-name quic${_p}_ip -j DROP 2>/dev/null || break
+  done
+  while _ipt -C INPUT -p udp --dport "${_p}" -m hashlimit --hashlimit-name quic${_p}_24 -j DROP 2>/dev/null; do
+    _ipt -D INPUT -p udp --dport "${_p}" -m hashlimit --hashlimit-name quic${_p}_24 -j DROP 2>/dev/null || break
+  done
+  # insert back in proper order at the very top
+  _ipt -I INPUT 1 -p udp --dport "${_p}" -m conntrack --ctstate INVALID -j DROP 2>/dev/null || true
+  _ipt -I INPUT 1 -p udp --dport "${_p}" -m hashlimit --hashlimit-name quic${_p}_ip \
+      --hashlimit-above "${_RATE_PER_IP}" --hashlimit-burst "${_BURST_PER_IP}" \
+      --hashlimit-mode srcip --hashlimit-htable-expire 60000 -j DROP 2>/dev/null || true
+  _ipt -I INPUT 1 -p udp --dport "${_p}" -m hashlimit --hashlimit-name quic${_p}_24 \
+      --hashlimit-above "${_RATE_PER_24}" --hashlimit-burst "${_BURST_PER_24}" \
+      --hashlimit-mode srcip --hashlimit-srcmask 24 --hashlimit-htable-expire 60000 -j DROP 2>/dev/null || true
+  _v "INPUT: ensured QUIC limiter for UDP:${_p}"
+}
+
+# ---------- do the work ----------
+_msg "Reassert SYNPROXY/NOTRACK/QUIC (ports: ${_TCP_PORTS}; quic: ${_QUIC_PORT:-disabled})"
+
+# 1) NOTRACK on SYNs
+for _pp in ${_TCP_PORTS}; do _ensure_notrack "${_pp}"; done
+
+# 2) Early jump at rule #1 in INPUT/LOCALINPUT
+_pin_early_jump
+
+# 3) Populate early chain in correct order
+_populate_early_chain
+
+# 4) QUIC limiter (optional)
+_ensure_quic_limits
+
+_v "Done."
+exit 0
+EOF
