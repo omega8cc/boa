@@ -1668,6 +1668,7 @@ _update_agents() {
       rm ${_pthLog}/legacy.ctrl.*
       rm ${_pthLog}/modern.ctrl.*
       rm ${_pthLog}/single.ctrl.*
+      rm ${_pthLog}/common.ctrl.*
     fi
     _BROKEN_UPDATE_TEST=$(grep "404 Not Found" /var/xdrago/conf/fpm-pool* 2>&1)
     if [ ! -z "${_BROKEN_UPDATE_TEST}" ]; then
@@ -1676,6 +1677,7 @@ _update_agents() {
       rm ${_pthLog}/legacy.ctrl.*
       rm ${_pthLog}/modern.ctrl.*
       rm ${_pthLog}/single.ctrl.*
+      rm ${_pthLog}/common.ctrl.*
     fi
     _BROKEN_UPDATE_TEST=$(grep "max_execution_time" /var/xdrago/conf/fpm-pool* 2>&1)
     if [ -z "${_BROKEN_UPDATE_TEST}" ]; then
@@ -1684,6 +1686,7 @@ _update_agents() {
       rm ${_pthLog}/legacy.ctrl.*
       rm ${_pthLog}/modern.ctrl.*
       rm ${_pthLog}/single.ctrl.*
+      rm ${_pthLog}/common.ctrl.*
     fi
     _BROKEN_UPDATE_TEST=$(grep "max_accelerated_files" /var/xdrago/conf/fpm-pool* 2>&1)
     if [ ! -z "${_BROKEN_UPDATE_TEST}" ]; then
@@ -1692,6 +1695,24 @@ _update_agents() {
       rm ${_pthLog}/legacy.ctrl.*
       rm ${_pthLog}/modern.ctrl.*
       rm ${_pthLog}/single.ctrl.*
+      rm ${_pthLog}/common.ctrl.*
+    fi
+  fi
+
+  if [ -x "/opt/tools/drush/8/drush/drush.php" ] \
+    && [ -e "/var/xdrago" ] \
+    && [ -e "/var/aegir/drush" ] \
+    && [ ! -e "${_pthLog}/common.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+    mv -f /var/xdrago/conf/fpm-pool-common.conf /var/xdrago/conf/fpm-pool-common.conf.old
+    curl ${_crlGet} "${_urlHmr}/conf/php/fpm-pool-common.conf" \
+      -o /var/xdrago/conf/fpm-pool-common.conf
+    if [ -e "/var/xdrago/conf/fpm-pool-common.conf" ]; then
+      sed -i "s/127.0.0.1/127.0.0.1,${_LOC_IP}/g" /var/xdrago/conf/fpm-pool-common.conf
+      chmod 644 /var/xdrago/conf/fpm-pool-common.conf
+      chown root:root /var/xdrago/conf/fpm-pool-common.conf
+      touch ${_pthLog}/common.ctrl.${_tRee}.${_xSrl}.pid
+    else
+      mv -f /var/xdrago/conf/fpm-pool-common.conf.old /var/xdrago/conf/fpm-pool-common.conf
     fi
   fi
 
@@ -1703,6 +1724,7 @@ _update_agents() {
     curl ${_crlGet} "${_urlHmr}/conf/php/fpm-pool-common-legacy.conf" \
       -o /var/xdrago/conf/fpm-pool-common-legacy.conf
     if [ -e "/var/xdrago/conf/fpm-pool-common-legacy.conf" ]; then
+      sed -i "s/127.0.0.1/127.0.0.1,${_LOC_IP}/g" /var/xdrago/conf/fpm-pool-common-legacy.conf
       chmod 644 /var/xdrago/conf/fpm-pool-common-legacy.conf
       chown root:root /var/xdrago/conf/fpm-pool-common-legacy.conf
       touch ${_pthLog}/legacy.ctrl.${_tRee}.${_xSrl}.pid
@@ -1719,6 +1741,7 @@ _update_agents() {
     curl ${_crlGet} "${_urlHmr}/conf/php/fpm-pool-common-modern.conf" \
       -o /var/xdrago/conf/fpm-pool-common-modern.conf
     if [ -e "/var/xdrago/conf/fpm-pool-common-modern.conf" ]; then
+      sed -i "s/127.0.0.1/127.0.0.1,${_LOC_IP}/g" /var/xdrago/conf/fpm-pool-common-modern.conf
       chmod 644 /var/xdrago/conf/fpm-pool-common-modern.conf
       chown root:root /var/xdrago/conf/fpm-pool-common-modern.conf
       touch ${_pthLog}/modern.ctrl.${_tRee}.${_xSrl}.pid
@@ -1814,7 +1837,6 @@ _update_agents() {
     && [ ! -e "${_pthLog}/hosting.cron.queue.ctrl.f96.${_tRee}.${_xSrl}.pid" ]; then
     _hQueueF="hosting_cron.module"
     _hQueueP="/var/xdrago/conf/${_hQueueF}"
-    _find_correct_ip
     [ -e "${_hQueueP}" ] && _isPatchedTpl=$(grep "url_own" "${_hQueueP}")
     if [ ! -e "${_hQueueP}" ] || [[ ! "${_isPatchedTpl}" =~ "url_own" ]]; then
       curl ${_crlGet} "${_urlHmr}/patches/${_hQueueF}" -o ${_hQueueP}
@@ -4072,6 +4094,8 @@ _backup_waiting_notify() {
 
 ###--------------------###
 if [ "$(id -u)" -eq 0 ]; then
+
+  _find_correct_ip
 
   if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt 0 ]; then
     _bLogA="/var/backups/multiback_waiting_queue.log"
