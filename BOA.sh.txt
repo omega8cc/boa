@@ -3795,7 +3795,8 @@ _if_update_boa_key_tools_only() {
           fi
         fi
       done
-      csf -q
+      csf -r
+      wait
       ### Linux kernel TCP SACK CVEs mitigation
       ### CVE-2019-11477 SACK Panic
       ### CVE-2019-11478 SACK Slowness
@@ -3838,7 +3839,8 @@ _if_update_boa_key_tools_only() {
       sed -i "s/^CC_SRC .*/CC_SRC = \"2\"/g" /etc/csf/csf.conf
       wait
       sed -i "s/^AUTO_UPDATES .*/AUTO_UPDATES = \"0\"/g" /etc/csf/csf.conf
-      csf -q
+      csf -r
+      wait
     fi
   fi
   _BOA_TOOLS_UPDATE=NO

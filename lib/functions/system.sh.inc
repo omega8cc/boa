@@ -5520,7 +5520,8 @@ _finale() {
         fi
       fi
     done
-    csf -q  &> /dev/null
+    csf -r  &> /dev/null
+    wait
     _mrun "service lfd start" 2> /dev/null
     wait
     ### Linux kernel TCP SACK CVEs mitigation

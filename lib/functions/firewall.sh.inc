@@ -274,6 +274,7 @@ _csf_lfd_gateway_allow() {
       _msg "INFO: Reloading CSF..."
     fi
     _mrun "csf -r" 2> /dev/null
+    wait
   fi
 }
 

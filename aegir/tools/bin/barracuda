@@ -1270,7 +1270,8 @@ _up_finish() {
         fi
       fi
     done
-    csf -q  &> /dev/null
+    csf -r  &> /dev/null
+    wait
     service lfd start &> /dev/null
     wait
     ### Linux kernel TCP SACK CVEs mitigation
@@ -1513,7 +1514,8 @@ _csf_check_fix() {
         fi
       fi
     done
-    csf -q  &> /dev/null
+    csf -r  &> /dev/null
+    wait
     service lfd start &> /dev/null
     wait
     ### Linux kernel TCP SACK CVEs mitigation

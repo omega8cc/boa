@@ -40,7 +40,7 @@ For Drupal 6 based sites which are configured to block IPs, you may need to whit
 ```sh
 echo "source-ip # Legacy Proxy" >> /etc/csf/csf.allow
 echo "source-ip # Legacy Proxy" >> /etc/csf/csf.ignore
-csf -q
+csf -r
 ```
 
 ## On the Source Host

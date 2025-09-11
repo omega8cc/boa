@@ -100,7 +100,8 @@ _find_fast_mirror_early() {
         csf -a 172.235.166.69  eu.files.aegir.cc &> /dev/null
         csf -a 172.233.219.37  us.files.aegir.cc &> /dev/null
         csf -a 172.105.168.103 ao.files.aegir.cc &> /dev/null
-        csf -q &> /dev/null
+        csf -r &> /dev/null
+        wait
       fi
     fi
     if [ -e "${_ffList}" ]; then

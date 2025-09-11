@@ -650,7 +650,8 @@ if [ -e "/var/aegir/drush" ]; then
           fi
         fi
       done
- 	  csf -q
+ 	  csf -r
+ 	  wait
 	  touch /var/log/boa/.csf_dhcp_udp_cleanup.${_xSrl}.pid
 	fi
 

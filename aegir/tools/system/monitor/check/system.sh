@@ -185,7 +185,8 @@ _if_fix_dhcp() {
       done
 
       # Reload the firewall
-      csf -q &> /dev/null
+      csf -r &> /dev/null
+      wait
 
       # Log the error and send an email report
       _thisErrLog="$(date) DHCP error detected, firewall updated"
