@@ -1286,6 +1286,7 @@ _up_finish() {
         ip6tables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
       fi
     fi
+    [ -e "/etc/init.d/synproxy-assert" ] && synproxy_reassert -p "443 80" --quic-port 443 -q
   fi
   if [ -e "/etc/init.d/postfix" ]; then
     service postfix restart &> /dev/null
@@ -1530,6 +1531,7 @@ _csf_check_fix() {
         ip6tables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
       fi
     fi
+    [ -e "/etc/init.d/synproxy-assert" ] && synproxy_reassert -p "443 80" --quic-port 443 -q
   fi
 }
 

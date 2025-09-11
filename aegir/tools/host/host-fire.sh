@@ -51,6 +51,7 @@ if [ ! -e "/run/fire.pid" ] && [ ! -e "/run/water.pid" ]; then
           csf -td ${_IP} 3600 -p 443
           csf -td ${_IP} 3600 -p 80
         fi
+        [ -e "/etc/init.d/synproxy-assert" ] && synproxy_reassert -p "443 80" --quic-port 443 -q
       done
     fi
     if [ -e "${i}/var/xdrago/monitor/log/web.log" ] && [ -e "/usr/var/run${i}" ]; then
@@ -72,6 +73,7 @@ if [ ! -e "/run/fire.pid" ] && [ ! -e "/run/water.pid" ]; then
           csf -td ${_IP} 3600 -p 443
           csf -td ${_IP} 3600 -p 80
         fi
+        [ -e "/etc/init.d/synproxy-assert" ] && synproxy_reassert -p "443 80" --quic-port 443 -q
       done
     fi
     if [ -e "${i}/var/xdrago/monitor/log/ftp.log" ] && [ -e "/usr/var/run${i}" ]; then
@@ -93,6 +95,7 @@ if [ ! -e "/run/fire.pid" ] && [ ! -e "/run/water.pid" ]; then
           csf -td ${_IP} 3600 -p 443
           csf -td ${_IP} 3600 -p 80
         fi
+        [ -e "/etc/init.d/synproxy-assert" ] && synproxy_reassert -p "443 80" --quic-port 443 -q
       done
     fi
     echo Completed for $i $(date)

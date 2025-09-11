@@ -752,6 +752,7 @@ _if_firewall_update() {
         ip6tables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
       fi
     fi
+    [ -e "/etc/init.d/synproxy-assert" ] && synproxy_reassert -p "443 80" --quic-port 443 -q
   fi
 }
 
@@ -1652,6 +1653,7 @@ _install_db_cluster() {
       ip6tables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
     fi
   fi
+  [ -e "/etc/init.d/synproxy-assert" ] && synproxy_reassert -p "443 80" --quic-port 443 -q
 
   for IP in "${_DB_NODE_IP[@]}"; do
   	echo "Installing DB cluster node on ${IP} ..."

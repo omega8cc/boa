@@ -357,6 +357,7 @@ _whitelist_ip_site24x7() {
     csf -df
     wait
     touch /root/.whitelist.site24x7.cnf
+    [ -e "/etc/init.d/synproxy-assert" ] && synproxy_reassert -p "443 80" --quic-port 443 -q
   fi
 }
 
@@ -400,6 +401,7 @@ _local_ip_rg() {
         echo "${_IP} # local.IP.list" >> /etc/csf/csf.allow
         wait
       fi
+      [ -e "/etc/init.d/synproxy-assert" ] && synproxy_reassert -p "443 80" --quic-port 443 -q
     done
     touch /root/.local.IP.csf.listed
   else
@@ -472,6 +474,7 @@ _guard_stats() {
             fi
           fi
         fi
+        [ -e "/etc/init.d/synproxy-assert" ] && synproxy_reassert -p "443 80" --quic-port 443 -q
       done
     fi
     if [ -e "${i}/${_WA}" ] && [ -e "/usr/var/run${i}" ]; then
@@ -514,6 +517,7 @@ _guard_stats() {
             fi
           fi
         fi
+        [ -e "/etc/init.d/synproxy-assert" ] && synproxy_reassert -p "443 80" --quic-port 443 -q
       done
     fi
     if [ -e "${i}/${_FA}" ] && [ -e "/usr/var/run${i}" ]; then
@@ -556,6 +560,7 @@ _guard_stats() {
             fi
           fi
         fi
+        [ -e "/etc/init.d/synproxy-assert" ] && synproxy_reassert -p "443 80" --quic-port 443 -q
       done
     fi
   done
@@ -566,6 +571,7 @@ _whitelist_ip_dns() {
   csf -tr 1.0.0.1
   csf -dr 1.1.1.1
   csf -dr 1.0.0.1
+  [ -e "/etc/init.d/synproxy-assert" ] && synproxy_reassert -p "443 80" --quic-port 443 -q
   sed -i "s/.*1.1.1.1.*//g"  /etc/csf/csf.allow
   sed -i "s/.*1.1.1.1.*//g"  /etc/csf/csf.ignore
   sed -i "s/.*1.0.0.1.*//g"  /etc/csf/csf.allow
@@ -594,6 +600,7 @@ if [ -e "/vservers" ] \
       | tr -d "\s"`; do
       csf -dr ${_IP} &> /dev/null
       csf -tr ${_IP} &> /dev/null
+      [ -e "/etc/init.d/synproxy-assert" ] && synproxy_reassert -p "443 80" --quic-port 443 -q
     done
   fi
 
@@ -641,6 +648,8 @@ if [ -e "/vservers" ] \
       ip6tables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
     fi
   fi
+
+  [ -e "/etc/init.d/synproxy-assert" ] && synproxy_reassert -p "443 80" --quic-port 443 -q
 
   echo local start $(date)
   _local_ip_rg
@@ -696,6 +705,7 @@ if [ -e "/vservers" ] \
       ip6tables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
     fi
   fi
+  [ -e "/etc/init.d/synproxy-assert" ] && synproxy_reassert -p "443 80" --quic-port 443 -q
   rm -f /run/water.pid
   echo guard fin $(date)
 fi

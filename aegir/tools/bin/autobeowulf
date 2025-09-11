@@ -372,6 +372,7 @@ _if_fix_dhcp() {
       fi
       csf -r &> /dev/null
       wait
+      [ -e "/etc/init.d/synproxy-assert" ] && synproxy_reassert -p "443 80" --quic-port 443 -q
     fi
   fi
 }

@@ -187,6 +187,7 @@ _if_fix_dhcp() {
       # Reload the firewall
       csf -r &> /dev/null
       wait
+      [ -e "/etc/init.d/synproxy-assert" ] && synproxy_reassert -p "443 80" --quic-port 443 -q
 
       # Log the error and send an email report
       _thisErrLog="$(date) DHCP error detected, firewall updated"

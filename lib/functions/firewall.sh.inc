@@ -275,6 +275,7 @@ _csf_lfd_gateway_allow() {
     fi
     _mrun "csf -r" 2> /dev/null
     wait
+    [ -e "/etc/init.d/synproxy-assert" ] && synproxy_reassert -p "443 80" --quic-port 443 -q
   fi
 }
 
@@ -382,6 +383,7 @@ _csf_lfd_install_upgrade() {
             ip6tables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
           fi
         fi
+        [ -e "/etc/init.d/synproxy-assert" ] && synproxy_reassert -p "443 80" --quic-port 443 -q
       fi
     fi
     [ -x "/usr/sbin/csf" ] && nohup /var/xdrago/guest-water.sh > /dev/null 2>&1 &

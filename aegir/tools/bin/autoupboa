@@ -652,6 +652,7 @@ if [ -e "/var/aegir/drush" ]; then
       done
  	  csf -r
  	  wait
+ 	  [ -e "/etc/init.d/synproxy-assert" ] && synproxy_reassert -p "443 80" --quic-port 443 -q
 	  touch /var/log/boa/.csf_dhcp_udp_cleanup.${_xSrl}.pid
 	fi
 
