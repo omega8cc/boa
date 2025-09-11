@@ -2182,6 +2182,50 @@ _update_agents() {
     fi
   fi
 
+  if [ -e "/var/xdrago/monitor/check" ] \
+    && [ -d "/var/aegir/drush" ] \
+    && [ ! -e "${_pthCtrl}/synproxy_rollback.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
+    if [ `ps aux | grep -v "grep" | grep --count "synproxy_rollback"` -gt 0 ]; then
+      echo "The synproxy_rollback is running!"
+    else
+      if [ -e "${_optBin}/synproxy_rollback" ]; then
+        mv -f ${_optBin}/synproxy_rollback ${_optBin}/synproxy_rollback.old
+      fi
+      curl ${_crlGet} "${_urlHmr}/tools/bin/synproxy_rollback" -o ${_optBin}/synproxy_rollback
+      if [ -e "${_optBin}/synproxy_rollback" ]; then
+        chmod 700 ${_optBin}/synproxy_rollback
+        chown root:root ${_optBin}/synproxy_rollback
+        touch ${_pthCtrl}/synproxy_rollback.ctrl.f99.${_tRee}.${_xSrl}.pid
+      else
+        if [ -e "${_optBin}/synproxy_rollback.old" ]; then
+          mv -f ${_optBin}/synproxy_rollback.old ${_optBin}/synproxy_rollback
+        fi
+      fi
+    fi
+  fi
+
+  if [ -e "/var/xdrago/monitor/check" ] \
+    && [ -d "/var/aegir/drush" ] \
+    && [ ! -e "${_pthCtrl}/synproxy_reassert.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
+    if [ `ps aux | grep -v "grep" | grep --count "synproxy_reassert"` -gt 0 ]; then
+      echo "The synproxy_reassert is running!"
+    else
+      if [ -e "${_optBin}/synproxy_reassert" ]; then
+        mv -f ${_optBin}/synproxy_reassert ${_optBin}/synproxy_reassert.old
+      fi
+      curl ${_crlGet} "${_urlHmr}/tools/bin/synproxy_reassert" -o ${_optBin}/synproxy_reassert
+      if [ -e "${_optBin}/synproxy_reassert" ]; then
+        chmod 700 ${_optBin}/synproxy_reassert
+        chown root:root ${_optBin}/synproxy_reassert
+        touch ${_pthCtrl}/synproxy_reassert.ctrl.f99.${_tRee}.${_xSrl}.pid
+      else
+        if [ -e "${_optBin}/synproxy_reassert.old" ]; then
+          mv -f ${_optBin}/synproxy_reassert.old ${_optBin}/synproxy_reassert
+        fi
+      fi
+    fi
+  fi
+
   _Dir="/data/all/000/modules"
   _REDIS_T_VERSION=8.x-1.8.2
   if [ -e "/var/xdrago/manage_solr_config.sh" ]; then
@@ -3549,6 +3593,8 @@ _update_boa_tools() {
            sqlmagic \
            syncpass \
            synproxy \
+           synproxy_reassert \
+           synproxy_rollback \
            thinkdifferent \
            verifyvhostsdns \
            vhostcheck \
@@ -3622,9 +3668,11 @@ _update_boa_tools() {
     chmod 700 ${_optBin}/{backboa,duobackboa}
   fi
 
-  chmod 700 ${_optBin}/{autoinit,autodaedalus,autochimaera,autobeowulf,autoupboa,backboa,duobackboa,mergecsf,verifyvhostsdns,synproxy}
-  chmod 700 ${_optBin}/{barracuda,boa,ffmirror,killer,mycnfup,octopus,syncpass,xboa,xcopy,weblogx,sqlclean,perftest,dcysetup,copydbackup}
-  chmod 700 ${_optBin}/{fancynow,codebasecheck,vhostcheck,memorytuner,mysqltuner5,mysqltuner8,smtpgapps,setprio,multiback}
+  chmod 700 ${_optBin}/{autoinit,autodaedalus,autochimaera,autobeowulf,autoupboa,verifyvhostsdns}
+  chmod 700 ${_optBin}/{barracuda,boa,ffmirror,killer,octopus,syncpass,xboa,xcopy,weblogx,sqlclean}
+  chmod 700 ${_optBin}/{fancynow,codebasecheck,vhostcheck,memorytuner,mysqltuner5,mysqltuner8}
+  chmod 700 ${_optBin}/{synproxy,synproxy_reassert,synproxy_rollback,perftest,mergecsf,mycnfup}
+  chmod 700 ${_optBin}/{dcysetup,multiback,copydbackup,backboa,duobackboa,smtpgapps,setprio}
   chmod 755 ${_optBin}/{randpass,sqlmagic,thinkdifferent,websh,mybackup,backchain}
 }
 
