@@ -3764,7 +3764,7 @@ _if_update_boa_key_tools_only() {
       service clean-boa-env start &> /dev/null
       wait
       _if_fix_iptables_symlinks
-      csf -uf
+      ### csf -uf
       wait
       _NFTABLES_TEST=$(iptables -V 2>&1)
       if [[ "${_NFTABLES_TEST}" =~ "nf_tables" ]]; then
@@ -3822,7 +3822,7 @@ _if_update_boa_key_tools_only() {
       service clean-boa-env start &> /dev/null
       wait
       _if_fix_iptables_symlinks
-      csf -uf
+      ### csf -uf
       wait
       _NFTABLES_TEST=$(iptables -V 2>&1)
       if [[ "${_NFTABLES_TEST}" =~ "nf_tables" ]]; then

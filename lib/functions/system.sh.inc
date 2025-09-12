@@ -5485,7 +5485,7 @@ _finale() {
     _mrun "service clean-boa-env start" 2> /dev/null
     wait
     _if_fix_iptables_symlinks
-    csf -uf &> /dev/null
+    ### csf -uf &> /dev/null
     wait
     _NFTABLES_TEST=$(iptables -V 2>&1)
     if [[ "${_NFTABLES_TEST}" =~ "nf_tables" ]]; then
