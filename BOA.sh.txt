@@ -2164,7 +2164,7 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthCtrl}/synproxy.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthCtrl}/synproxy.ctrl.f98.${_tRee}.${_xSrl}.pid" ]; then
     if [ `ps aux | grep -v "grep" | grep --count "synproxy"` -gt 0 ]; then
       echo "The synproxy is running!"
     else
@@ -2175,7 +2175,7 @@ _update_agents() {
       if [ -e "${_optBin}/synproxy" ]; then
         chmod 700 ${_optBin}/synproxy
         chown root:root ${_optBin}/synproxy
-        touch ${_pthCtrl}/synproxy.ctrl.f99.${_tRee}.${_xSrl}.pid
+        touch ${_pthCtrl}/synproxy.ctrl.f98.${_tRee}.${_xSrl}.pid
       else
         if [ -e "${_optBin}/synproxy.old" ]; then
           mv -f ${_optBin}/synproxy.old ${_optBin}/synproxy
