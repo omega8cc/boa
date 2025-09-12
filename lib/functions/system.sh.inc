@@ -5520,10 +5520,13 @@ _finale() {
         fi
       fi
     done
-    csf -r  &> /dev/null
-    wait
-    _mrun "service lfd start" 2> /dev/null
-    wait
+    if [ -e "/etc/init.d/synproxy-assert" ]; then
+      csf -ra &> /dev/null
+      wait
+      synproxy_reassert -p "443 80" --quic-port 443 -q &> /dev/null
+    else
+      csf -r &> /dev/null
+    fi
     ### Linux kernel TCP SACK CVEs mitigation
     ### CVE-2019-11477 SACK Panic
     ### CVE-2019-11478 SACK Slowness
@@ -5534,9 +5537,9 @@ _finale() {
         sysctl net.ipv4.tcp_mtu_probing=0 &> /dev/null
         iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
         ip6tables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
+        [ -e "/etc/init.d/synproxy-assert" ] && synproxy_reassert -p "443 80" --quic-port 443 -q &> /dev/null
       fi
     fi
-    [ -e "/etc/init.d/synproxy-assert" ] && synproxy_reassert -p "443 80" --quic-port 443 -q
   fi
   cd /
   chmod 711 bin boot data dev emul etc home lib lib64 lib32 media mnt opt \

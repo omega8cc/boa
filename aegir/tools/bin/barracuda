@@ -1270,10 +1270,13 @@ _up_finish() {
         fi
       fi
     done
-    csf -r  &> /dev/null
-    wait
-    service lfd start &> /dev/null
-    wait
+    if [ -e "/etc/init.d/synproxy-assert" ]; then
+      csf -ra &> /dev/null
+      wait
+      synproxy_reassert -p "443 80" --quic-port 443 -q &> /dev/null
+    else
+      csf -r &> /dev/null
+    fi
     ### Linux kernel TCP SACK CVEs mitigation
     ### CVE-2019-11477 SACK Panic
     ### CVE-2019-11478 SACK Slowness
@@ -1284,9 +1287,9 @@ _up_finish() {
         sysctl net.ipv4.tcp_mtu_probing=0 &> /dev/null
         iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
         ip6tables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
+        [ -e "/etc/init.d/synproxy-assert" ] && synproxy_reassert -p "443 80" --quic-port 443 -q &> /dev/null
       fi
     fi
-    [ -e "/etc/init.d/synproxy-assert" ] && synproxy_reassert -p "443 80" --quic-port 443 -q
   fi
   if [ -e "/etc/init.d/postfix" ]; then
     service postfix restart &> /dev/null
@@ -1515,10 +1518,13 @@ _csf_check_fix() {
         fi
       fi
     done
-    csf -r  &> /dev/null
-    wait
-    service lfd start &> /dev/null
-    wait
+    if [ -e "/etc/init.d/synproxy-assert" ]; then
+      csf -ra &> /dev/null
+      wait
+      synproxy_reassert -p "443 80" --quic-port 443 -q &> /dev/null
+    else
+      csf -r &> /dev/null
+    fi
     ### Linux kernel TCP SACK CVEs mitigation
     ### CVE-2019-11477 SACK Panic
     ### CVE-2019-11478 SACK Slowness
@@ -1529,9 +1535,9 @@ _csf_check_fix() {
         sysctl net.ipv4.tcp_mtu_probing=0 &> /dev/null
         iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
         ip6tables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
+        [ -e "/etc/init.d/synproxy-assert" ] && synproxy_reassert -p "443 80" --quic-port 443 -q &> /dev/null
       fi
     fi
-    [ -e "/etc/init.d/synproxy-assert" ] && synproxy_reassert -p "443 80" --quic-port 443 -q
   fi
 }
 

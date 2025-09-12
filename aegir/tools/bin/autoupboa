@@ -606,34 +606,34 @@ if [ -e "/var/aegir/drush" ]; then
 
     [ ! -e "/root/.turn.off.auto.update.cnf" ] && touch /root/.turn.off.auto.update.cnf
 
-	if [[ "${_hName}" =~ ^(lcy1.ao.|lcy15.uk.) ]]; then
-	  _DONT_TOUCH=OK
-	  rm -f /etc/csf/csf.conf-pre*
-	else
-	  if [ ! -e "/var/log/boa/.csf_legacy_cleanup.${_xSrl}.pid" ]; then
-	    sed -i "s/.*Legacy.*//g"    /etc/csf/csf.ignore
-	    wait
-	    sed -i "s/.*Legacy.*//g"    /etc/csf/csf.allow
-	    wait
-	    sed -i "s/.*Manually.*//g"  /etc/csf/csf.ignore
-	    wait
-	    sed -i "s/.*Manually.*//g"  /etc/csf/csf.allow
-	    wait
-	    sed -i "s/.*Temporary.*//g" /etc/csf/csf.ignore
-	    wait
-	    sed -i "s/.*Temporary.*//g" /etc/csf/csf.allow
-	    wait
-	    sed -i "/^$/d" /etc/csf/csf.ignore
-	    sed -i "/^$/d" /etc/csf/csf.allow
-	    rm -f /etc/csf/csf.conf-pre*
-	    touch /var/log/boa/.csf_legacy_cleanup.${_xSrl}.pid
-	  fi
-	fi
+  	if [[ "${_hName}" =~ ^(lcy1.ao.|lcy15.uk.) ]]; then
+  	  _DONT_TOUCH=OK
+  	  rm -f /etc/csf/csf.conf-pre*
+  	else
+  	  if [ ! -e "/var/log/boa/.csf_legacy_cleanup.${_xSrl}.pid" ]; then
+  	    sed -i "s/.*Legacy.*//g"    /etc/csf/csf.ignore
+  	    wait
+  	    sed -i "s/.*Legacy.*//g"    /etc/csf/csf.allow
+  	    wait
+  	    sed -i "s/.*Manually.*//g"  /etc/csf/csf.ignore
+  	    wait
+  	    sed -i "s/.*Manually.*//g"  /etc/csf/csf.allow
+  	    wait
+  	    sed -i "s/.*Temporary.*//g" /etc/csf/csf.ignore
+  	    wait
+  	    sed -i "s/.*Temporary.*//g" /etc/csf/csf.allow
+  	    wait
+  	    sed -i "/^$/d" /etc/csf/csf.ignore
+  	    sed -i "/^$/d" /etc/csf/csf.allow
+  	    rm -f /etc/csf/csf.conf-pre*
+  	    touch /var/log/boa/.csf_legacy_cleanup.${_xSrl}.pid
+  	  fi
+  	fi
 
-	rm -f /var/xdrago/*.old
-	rm -f /var/xdrago/.*.off
+  	rm -f /var/xdrago/*.old
+  	rm -f /var/xdrago/.*.off
 
-	if [ ! -e "/var/log/boa/.csf_dhcp_udp_cleanup.${_xSrl}.pid" ]; then
+    if [ ! -e "/var/log/boa/.csf_dhcp_udp_cleanup.${_xSrl}.pid" ]; then
       sed -i "s/.*DHCP.*//g" /etc/csf/csf.allow
       wait
       sed -i "/^$/d" /etc/csf/csf.allow
@@ -650,11 +650,15 @@ if [ -e "/var/aegir/drush" ]; then
           fi
         fi
       done
- 	  csf -r
- 	  wait
- 	  [ -e "/etc/init.d/synproxy-assert" ] && synproxy_reassert -p "443 80" --quic-port 443 -q
-	  touch /var/log/boa/.csf_dhcp_udp_cleanup.${_xSrl}.pid
-	fi
+      if [ -e "/etc/init.d/synproxy-assert" ]; then
+        csf -ra &> /dev/null
+        wait
+        synproxy_reassert -p "443 80" --quic-port 443 -q &> /dev/null
+      else
+        csf -r &> /dev/null
+      fi
+      touch /var/log/boa/.csf_dhcp_udp_cleanup.${_xSrl}.pid
+    fi
 
     if [ ! -e "/var/log/boa/.disabled_modules_fix.${_xSrl}.pid" ]; then
       sed -i "s/^_MODULES_FIX=.*/_MODULES_FIX=NO/g"  ${_barCnf}
@@ -759,11 +763,13 @@ if [ -e "/var/aegir/drush" ]; then
       chmod 750 /usr/bin/mysqldump
     fi
   fi
+
   if [ ! -e "/etc/init.d/ssh" ]; then
     _AUTO_UP_WEEKLY=
     _AUTO_UP_MONTH=
     _AUTO_UP_DAY=
   fi
+
   if [ -e "/root/.my.cluster_root_pwd.txt" ] || [ -e "/root/.turn.off.auto.update.cnf" ]; then
     _AUTO_UP_WEEKLY=
     _AUTO_UP_MONTH=
@@ -937,5 +943,3 @@ if [ -e "/var/aegir/drush" ]; then
 fi
 
 exit 0
-
-

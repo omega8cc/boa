@@ -282,7 +282,7 @@ _block_ip() {
   if [[ -x "/usr/sbin/csf" ]] && [[ -e "/root/.instant.csf.block.cnf" ]]; then
     /usr/sbin/csf -td "${_IP}" 900 -p 80
     /usr/sbin/csf -td "${_IP}" 900 -p 443
-    [ -e "/etc/init.d/synproxy-assert" ] && synproxy_reassert -p "443 80" --quic-port 443 -q
+    [ -e "/etc/init.d/synproxy-assert" ] && synproxy_reassert -p "443 80" --quic-port 443 -q &> /dev/null
   fi
 }
 
