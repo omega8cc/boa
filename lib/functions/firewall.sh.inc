@@ -371,10 +371,13 @@ _csf_lfd_install_upgrade() {
         kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
         killall sleep &> /dev/null
         rm -f /etc/csf/csf.error
-        _mrun "csf -r" &> /dev/null
-        wait
-        _mrun "service lfd start" 2> /dev/null
-        wait
+        if [ -e "/etc/init.d/synproxy-assert" ]; then
+          csf -ra &> /dev/null
+          wait
+          synproxy_reassert -p "443 80" --quic-port 443 -q &> /dev/null
+        else
+          csf -r &> /dev/null
+        fi
         ### Linux kernel TCP SACK CVEs mitigation
         ### CVE-2019-11477 SACK Panic
         ### CVE-2019-11478 SACK Slowness

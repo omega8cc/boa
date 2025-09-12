@@ -736,10 +736,13 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
       fi
     fi
   done
-  csf -e
-  wait
-  csf -r
-  wait
+  if [ -e "/etc/init.d/synproxy-assert" ]; then
+    csf -ra &> /dev/null
+    wait
+    synproxy_reassert -p "443 80" --quic-port 443 -q &> /dev/null
+  else
+    csf -r &> /dev/null
+  fi
   ### Linux kernel TCP SACK CVEs mitigation
   ### CVE-2019-11477 SACK Panic
   ### CVE-2019-11478 SACK Slowness
@@ -758,4 +761,3 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
   ntpdate pool.ntp.org > /dev/null 2>&1 &
 fi
 exit 0
-
