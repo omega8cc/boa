@@ -140,7 +140,7 @@ _csf_install() {
   _get_dev_src "csf-${_CSF_VRN}.tgz"
   cd csf
   _mrun "sh install.sh" 2> /dev/null
-  _NFTABLES_TEST=$(iptables -V 2>&1)
+  _NFTABLES_TEST=$(iptables -V)
   if [[ "${_NFTABLES_TEST}" =~ "nf_tables" ]]; then
     if [ -e "/usr/sbin/iptables-legacy" ]; then
       update-alternatives --set iptables /usr/sbin/iptables-legacy &> /dev/null
