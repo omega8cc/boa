@@ -1371,7 +1371,7 @@ _db_server_install() {
         ### CVE-2019-11478 SACK Slowness
         ### CVE-2019-11479 Excess Resource Consumption Due to Low MSS Values
         if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
-          _SACK_TEST=$(ip6tables --list | grep tcpmss 2>&1)
+          _SACK_TEST=$(ip6tables --list | grep tcpmss)
           if [[ ! "${_SACK_TEST}" =~ "tcpmss" ]]; then
             sysctl net.ipv4.tcp_mtu_probing=0 &> /dev/null
             iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
