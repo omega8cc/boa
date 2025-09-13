@@ -357,6 +357,7 @@ _whitelist_ip_site24x7() {
     csf -df
     wait
     touch /root/.whitelist.site24x7.cnf
+    [ -e "/etc/init.d/synproxy-assert" ] && synproxy_reassert -p "443 80" --quic-port 443 -q &> /dev/null
   fi
 }
 
@@ -404,6 +405,7 @@ _local_ip_rg() {
         echo "${_IP} # local.IP.list" >> /etc/csf/csf.allow
         wait
       fi
+      [ -e "/etc/init.d/synproxy-assert" ] && synproxy_reassert -p "443 80" --quic-port 443 -q &> /dev/null
     done
     touch /root/.local.IP.csf.listed
   else
@@ -468,6 +470,7 @@ _guard_stats() {
           fi
         fi
       fi
+      [ -e "/etc/init.d/synproxy-assert" ] && synproxy_reassert -p "443 80" --quic-port 443 -q &> /dev/null
     done
   fi
   if [ -e "${_WA}" ]; then
@@ -510,6 +513,7 @@ _guard_stats() {
           fi
         fi
       fi
+      [ -e "/etc/init.d/synproxy-assert" ] && synproxy_reassert -p "443 80" --quic-port 443 -q &> /dev/null
     done
   fi
   if [ -e "${_FA}" ]; then
@@ -552,6 +556,7 @@ _guard_stats() {
           fi
         fi
       fi
+      [ -e "/etc/init.d/synproxy-assert" ] && synproxy_reassert -p "443 80" --quic-port 443 -q &> /dev/null
     done
   fi
 }
@@ -561,6 +566,7 @@ _whitelist_ip_dns() {
   csf -tr 1.0.0.1
   csf -dr 1.1.1.1
   csf -dr 1.0.0.1
+  [ -e "/etc/init.d/synproxy-assert" ] && synproxy_reassert -p "443 80" --quic-port 443 -q &> /dev/null
   _NOW=$(date +%y%m%d-%H%M%S 2>&1)
   cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-dns-${_NOW}
   sed -i "s/.*1.1.1.1.*//g"  /etc/csf/csf.allow
@@ -595,6 +601,7 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
       | tr -d "\s"`; do
       csf -dr ${_IP} &> /dev/null
       csf -tr ${_IP} &> /dev/null
+      [ -e "/etc/init.d/synproxy-assert" ] && synproxy_reassert -p "443 80" --quic-port 443 -q &> /dev/null
     done
   fi
 
@@ -663,13 +670,14 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
   kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
   killall sleep &> /dev/null
   rm -f /etc/csf/csf.error
-  service lfd restart
-  wait
-  csf -e
-  wait
+  if [ -e "/etc/init.d/synproxy-assert" ]; then
+    csf -ra &> /dev/null
+    wait
+    synproxy_reassert -p "443 80" --quic-port 443 -q &> /dev/null
+  else
+    csf -r &> /dev/null
+  fi
   csf -tf
-  wait
-  csf -q
   ### Linux kernel TCP SACK CVEs mitigation
   ### CVE-2019-11477 SACK Panic
   ### CVE-2019-11478 SACK Slowness
@@ -680,6 +688,7 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
       sysctl net.ipv4.tcp_mtu_probing=0 &> /dev/null
       iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
       ip6tables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
+      [ -e "/etc/init.d/synproxy-assert" ] && synproxy_reassert -p "443 80" --quic-port 443 -q &> /dev/null
     fi
   fi
 
@@ -727,9 +736,13 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
       fi
     fi
   done
-  csf -e
-  wait
-  csf -q
+  if [ -e "/etc/init.d/synproxy-assert" ]; then
+    csf -ra &> /dev/null
+    wait
+    synproxy_reassert -p "443 80" --quic-port 443 -q &> /dev/null
+  else
+    csf -r &> /dev/null
+  fi
   ### Linux kernel TCP SACK CVEs mitigation
   ### CVE-2019-11477 SACK Panic
   ### CVE-2019-11478 SACK Slowness
@@ -740,6 +753,7 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
       sysctl net.ipv4.tcp_mtu_probing=0 &> /dev/null
       iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
       ip6tables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
+      [ -e "/etc/init.d/synproxy-assert" ] && synproxy_reassert -p "443 80" --quic-port 443 -q &> /dev/null
     fi
   fi
   rm -f /run/water.pid
@@ -747,4 +761,3 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
   ntpdate pool.ntp.org > /dev/null 2>&1 &
 fi
 exit 0
-

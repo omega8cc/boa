@@ -891,10 +891,12 @@ _tune_memory_limits() {
   if [ ! -e "/data/conf" ]; then
     mkdir -p /data/conf
   fi
-  cp -af ${_locCnf}/php/fpm-pool-foo-multi.conf  /var/xdrago/conf/
-  cp -af ${_locCnf}/php/fpm-pool-foo.conf        /var/xdrago/conf/
-  cp -af ${_locCnf}/php/fpm-pool-foo-legacy.conf /var/xdrago/conf/
-  cp -af ${_locCnf}/php/fpm-pool-foo-modern.conf /var/xdrago/conf/
+  cp -af ${_locCnf}/php/fpm-pool-foo-multi.conf     /var/xdrago/conf/
+  cp -af ${_locCnf}/php/fpm-pool-foo.conf           /var/xdrago/conf/
+  cp -af ${_locCnf}/php/fpm-pool-common.conf        /var/xdrago/conf/
+  cp -af ${_locCnf}/php/fpm-pool-common-legacy.conf /var/xdrago/conf/
+  cp -af ${_locCnf}/php/fpm-pool-common-modern.conf /var/xdrago/conf/
+  sed -i "s/127.0.0.1/127.0.0.1,${_THISHTIP}/g" /var/xdrago/conf/fpm-pool-commo*.conf
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ]; then
     sed -i "s/395/${_USE_FPM}/g" /opt/etc/fpm/fpm-pool-commo*.conf &> /dev/null
   fi
@@ -5483,7 +5485,7 @@ _finale() {
     _mrun "service clean-boa-env start" 2> /dev/null
     wait
     _if_fix_iptables_symlinks
-    csf -uf &> /dev/null
+    ### csf -uf &> /dev/null
     wait
     _NFTABLES_TEST=$(iptables -V 2>&1)
     if [[ "${_NFTABLES_TEST}" =~ "nf_tables" ]]; then
@@ -5518,9 +5520,13 @@ _finale() {
         fi
       fi
     done
-    csf -q  &> /dev/null
-    _mrun "service lfd start" 2> /dev/null
-    wait
+    if [ -e "/etc/init.d/synproxy-assert" ]; then
+      csf -ra &> /dev/null
+      wait
+      synproxy_reassert -p "443 80" --quic-port 443 -q &> /dev/null
+    else
+      csf -r &> /dev/null
+    fi
     ### Linux kernel TCP SACK CVEs mitigation
     ### CVE-2019-11477 SACK Panic
     ### CVE-2019-11478 SACK Slowness
@@ -5531,6 +5537,7 @@ _finale() {
         sysctl net.ipv4.tcp_mtu_probing=0 &> /dev/null
         iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
         ip6tables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
+        [ -e "/etc/init.d/synproxy-assert" ] && synproxy_reassert -p "443 80" --quic-port 443 -q &> /dev/null
       fi
     fi
   fi

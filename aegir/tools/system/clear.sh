@@ -100,7 +100,13 @@ _find_fast_mirror_early() {
         csf -a 172.235.166.69  eu.files.aegir.cc &> /dev/null
         csf -a 172.233.219.37  us.files.aegir.cc &> /dev/null
         csf -a 172.105.168.103 ao.files.aegir.cc &> /dev/null
-        csf -q &> /dev/null
+        if [ -e "/etc/init.d/synproxy-assert" ]; then
+          csf -ra &> /dev/null
+          wait
+          synproxy_reassert -p "443 80" --quic-port 443 -q &> /dev/null
+        else
+          csf -r &> /dev/null
+        fi
       fi
     fi
     if [ -e "${_ffList}" ]; then
@@ -291,4 +297,3 @@ fi
 
 touch /var/log/boa/clear.done.pid
 exit 0
-
