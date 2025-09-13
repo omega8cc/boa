@@ -3806,7 +3806,7 @@ _ssl_crypto_lib_fix() {
   fi
   if [ "${_SSL_INSTALLED}" = "LEGACY" ]; then
     ###
-    _LIB_NOW=$(date +%y%m%d-%H%M 2>&1)
+    _LIB_NOW=$(date +%y%m%d-%H%M)
     _LIB_NOW=${_LIB_NOW//[^0-9-]/}
     ###
     if [ -f "/usr/local/ssl/lib/libssl.so.1.0.0" ] \
@@ -3867,7 +3867,7 @@ _ssl_crypto_lib_fix() {
     fi
   elif [ "${_SSL_INSTALLED}" = "EOL" ]; then
     ###
-    _LIB_NOW=$(date +%y%m%d-%H%M 2>&1)
+    _LIB_NOW=$(date +%y%m%d-%H%M)
     _LIB_NOW=${_LIB_NOW//[^0-9-]/}
     ###
     if [ -f "/usr/local/ssl/lib/libssl.so.1.1" ] \
@@ -3928,7 +3928,7 @@ _ssl_crypto_lib_fix() {
     fi
   elif [ "${_SSL_INSTALLED}" = "MODERN" ]; then
     ###
-    _LIB_NOW=$(date +%y%m%d-%H%M 2>&1)
+    _LIB_NOW=$(date +%y%m%d-%H%M)
     _LIB_NOW=${_LIB_NOW//[^0-9-]/}
     ###
     if [ -f "/usr/local/ssl/lib/libssl.so.1.1" ] \
@@ -4052,11 +4052,11 @@ _ssl_paths_update() {
 
   if [ -x "${_LINK_TO}" ]; then
     if [ -f "/usr/bin/openssl" ]; then
-      cp -af /usr/bin/openssl /usr/bin/old-openssl-$(date +%y%m%d-%H%M%S 2>&1)
+      cp -af /usr/bin/openssl /usr/bin/old-openssl-$(date +%y%m%d-%H%M%S)
     fi
     ln -sfn ${_LINK_TO} /usr/bin/openssl
     if [ -e "/bin/openssl" ] && [ ! -L "/bin" ]; then
-      cp -af /bin/openssl /bin/old-openssl-$(date +%y%m%d-%H%M%S 2>&1)
+      cp -af /bin/openssl /bin/old-openssl-$(date +%y%m%d-%H%M%S)
       ln -sfn ${_LINK_TO} /bin/openssl
     fi
   fi
@@ -4533,7 +4533,7 @@ _curl_install_src() {
       fi
       [ -e "/root/.sorted.multi.php.cnf" ] && rm -f /root/.sorted.multi.php.cnf
       if [ -e "/usr/local/bin/curl" ]; then
-        mv -f /usr/local/bin/curl /usr/local/bin/curl-src-off-$(date +%y%m%d-%H%M%S 2>&1)
+        mv -f /usr/local/bin/curl /usr/local/bin/curl-src-off-$(date +%y%m%d-%H%M%S)
       fi
       if [[ "${_CURL_GET_DPKG}" =~ "hold" ]]; then
         echo "curl install" | dpkg --set-selections &> /dev/null
@@ -4589,7 +4589,7 @@ _curl_install_src() {
           _mrun "make install" 2> /dev/null
           ldconfig 2> /dev/null
           if [ -x "/usr/local/bin/curl" ]; then
-            mv -f /usr/bin/curl /usr/bin/old-curl-$(date +%y%m%d-%H%M%S 2>&1)
+            mv -f /usr/bin/curl /usr/bin/old-curl-$(date +%y%m%d-%H%M%S)
             ln -sfn /usr/local/bin/curl /usr/bin/curl
           fi
           if [ ! -e "${_SSL_PATH}/certs/ca-certificates.crt" ]; then
@@ -7434,7 +7434,7 @@ _php_libs_fix() {
     _msg "PROC: _php_libs_fix"
   fi
   _if_to_do_fix
-  _LIB_NOW=$(date +%y%m%d-%H%M 2>&1)
+  _LIB_NOW=$(date +%y%m%d-%H%M)
   _LIB_NOW=${_LIB_NOW//[^0-9-]/}
   if [ ! -L "/usr/lib/librtmp.so" ] \
     || [ ! -e "/usr/lib/libwebpmux.so" ] \

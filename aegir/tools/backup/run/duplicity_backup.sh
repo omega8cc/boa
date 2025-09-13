@@ -930,13 +930,13 @@ if [ "$#" -lt 3 ]; then
 fi
 
 export _LOGPTH="/var/log/boa"
-_NOW=$(date +%y%m%d-%H%M%S 2>&1)
+_NOW=$(date +%y%m%d-%H%M%S)
 export _NOW=${_NOW//[^0-9-]/}
-_TODAY=$(date +%y%m%d 2>&1)
+_TODAY=$(date +%y%m%d)
 export _TODAY=${_TODAY//[^0-9]/}
-_DOW=$(date +%u 2>&1)
+_DOW=$(date +%u)
 export _DOW=${_DOW//[^1-7]/}
-_DOM=$(date +%e 2>&1)
+_DOM=$(date +%e)
 export _DOM=${_DOM//[^0-9]/}
 _HST=${_hName//[^a-zA-Z0-9-.]/}
 _HST=$(echo -n ${_HST} | tr A-Z a-z 2>&1)

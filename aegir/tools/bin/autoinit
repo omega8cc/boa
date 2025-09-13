@@ -113,7 +113,7 @@ cd /root/
 ### Noticeable messages
 ###
 _msg() {
-  echo "AutoInit v.${_tRee} [$(date +%T 2>&1)] ==> $*"
+  echo "AutoInit v.${_tRee} [$(date +%T)] ==> $*"
 }
 
 _check_manufacturer_compatibility() {

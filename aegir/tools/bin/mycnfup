@@ -586,10 +586,10 @@ _C_SQL="mysql --user=root --password=${_SQL_PSWD} --host=${_SQL_HOST} --port=${_
 
 echo "SQL --host=${_SQL_HOST} --port=${_SQL_PORT}"
 
-_DATE=$(date +%y%m%d-%H%M%S 2>&1)
-_TODAY=$(date +%y%m%d 2>&1)
+_DATE=$(date +%y%m%d-%H%M%S)
+_TODAY=$(date +%y%m%d)
 _TODAY=${_TODAY//[^0-9]/}
-_NOW=$(date +%y%m%d-%H%M%S 2>&1)
+_NOW=$(date +%y%m%d-%H%M%S)
 _NOW=${_NOW//[^0-9-]/}
 _LOG_DIR="${_vBs}/reports/up/$(basename "$0")/${_TODAY}"
 _UP_LOG="${_LOG_DIR}/$(basename "$0")-up-${_NOW}.log"
