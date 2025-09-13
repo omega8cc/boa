@@ -623,11 +623,11 @@ _list() {
 
 _restore() {
   if [ $# = 2 ]; then
-    echo "Command is ${_DCY_MN_CMD} restore --file-to-restore $1 ${_NAME} ${_TARGET} $2"
-    ${_DCY_MN_CMD} restore --file-to-restore $1 ${_NAME} ${_TARGET} $2
+    echo "Command is ${_DCY_MN_CMD} restore --path-to-restore $1 ${_NAME} ${_TARGET} $2"
+    ${_DCY_MN_CMD} restore --path-to-restore $1 ${_NAME} ${_TARGET} $2
   else
-    echo "Command is ${_DCY_MN_CMD} restore --file-to-restore $1 --time $2 ${_NAME} ${_TARGET} $3"
-    ${_DCY_MN_CMD} restore --file-to-restore $1 --time $2 ${_NAME} ${_TARGET} $3
+    echo "Command is ${_DCY_MN_CMD} restore --path-to-restore $1 --time $2 ${_NAME} ${_TARGET} $3"
+    ${_DCY_MN_CMD} restore --path-to-restore $1 --time $2 ${_NAME} ${_TARGET} $3
   fi
 }
 
@@ -636,14 +636,14 @@ _retrieve() {
     _HST_DASH=$(echo -n $3 | tr . - 2>&1)
     _BUCKET_NAME="daily-remote-${_HST_DASH}"
     _TARGET="boto3+s3://${_BUCKET_NAME}"
-    echo "Command is ${_DCY_MN_CMD} restore --file-to-restore $1 ${_NAME} ${_TARGET} $2"
-    ${_DCY_MN_CMD} restore --file-to-restore $1 ${_NAME} ${_TARGET} $2
+    echo "Command is ${_DCY_MN_CMD} restore --path-to-restore $1 ${_NAME} ${_TARGET} $2"
+    ${_DCY_MN_CMD} restore --path-to-restore $1 ${_NAME} ${_TARGET} $2
   elif [ $# = 4 ]; then
     _HST_DASH=$(echo -n $4 | tr . - 2>&1)
     _BUCKET_NAME="daily-remote-${_HST_DASH}"
     _TARGET="boto3+s3://${_BUCKET_NAME}"
-    echo "Command is ${_DCY_MN_CMD} restore --file-to-restore $1 --time $2 ${_NAME} ${_TARGET} $3"
-    ${_DCY_MN_CMD} restore --file-to-restore $1 --time $2 ${_NAME} ${_TARGET} $3
+    echo "Command is ${_DCY_MN_CMD} restore --path-to-restore $1 --time $2 ${_NAME} ${_TARGET} $3"
+    ${_DCY_MN_CMD} restore --path-to-restore $1 --time $2 ${_NAME} ${_TARGET} $3
   fi
 }
 
