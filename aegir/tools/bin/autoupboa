@@ -303,7 +303,7 @@ _if_disable_not_used_services
 
 _os_detection_minimal() {
   _APT_UPDATE="apt-get update"
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
   for e in ${_OS_LIST}; do
     if [ "${e}" = "${_OS_CODE}" ]; then
@@ -849,7 +849,7 @@ if [ -e "/var/aegir/drush" ]; then
   ### Fix for iptables paths backward compatibility
   ###
 
-  _NFTABLES_TEST=$(iptables -V 2>&1)
+  _NFTABLES_TEST=$(iptables -V)
   if [[ "${_NFTABLES_TEST}" =~ "nf_tables" ]]; then
     if [ -e "/usr/sbin/iptables-legacy" ]; then
       update-alternatives --set iptables /usr/sbin/iptables-legacy &> /dev/null
