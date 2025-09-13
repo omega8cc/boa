@@ -644,7 +644,7 @@ _os_detection_minimal() {
     _msg "PROC: _os_detection_minimal"
   fi
   _APT_UPDATE="apt-get update"
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
   for e in ${_OS_LIST}; do
     if [ "${e}" = "${_OS_CODE}" ]; then
@@ -669,8 +669,8 @@ _os_detection() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _os_detection"
   fi
-  _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   _DB_SERVER=Percona
   if [ "${_OS_DIST}" = "Debian" ]; then
     if [ "${_OS_CODE}" = "bookworm" ]; then
@@ -732,7 +732,7 @@ _os_detection() {
     _not_supported_os
   fi
   echo " "
-  _thiSys="$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)/$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1) $(uname -m 2>&1)"
+  _thiSys="$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)/$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2) $(uname -m)"
   _thiSys="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null) ${_thiSys} PHP ${_PHP_FPM_VERSION}"
   _msg "Aegir on ${_thiSys}"
   echo " "
@@ -920,8 +920,8 @@ _barracuda_log_update() {
       | sed "s/[\,']//g" 2>&1)
   fi
   _BARRACUDA_VERSION_INFO="$(date) / \
-    $(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1).$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1) \
-    $(uname -m 2>&1) ${_VIRT_IS} / \
+    $(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2).$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2) \
+    $(uname -m) ${_VIRT_IS} / \
     Aegir ${_AEGIR_VERSION} / \
     Barracuda ${_X_VERSION}${_LOG_GIT_MIRROR} / \
     Nginx ${_NGINX_VRN} / \
