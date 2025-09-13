@@ -5487,7 +5487,7 @@ _finale() {
     _if_fix_iptables_symlinks
     ### csf -uf &> /dev/null
     wait
-    _NFTABLES_TEST=$(iptables -V 2>&1)
+    _NFTABLES_TEST=$(iptables -V)
     if [[ "${_NFTABLES_TEST}" =~ "nf_tables" ]]; then
       if [ -e "/usr/sbin/iptables-legacy" ]; then
         update-alternatives --set iptables /usr/sbin/iptables-legacy &> /dev/null
@@ -5532,7 +5532,7 @@ _finale() {
     ### CVE-2019-11478 SACK Slowness
     ### CVE-2019-11479 Excess Resource Consumption Due to Low MSS Values
     if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
-      _SACK_TEST=$(ip6tables --list | grep tcpmss 2>&1)
+      _SACK_TEST=$(ip6tables --list | grep tcpmss)
       if [[ ! "${_SACK_TEST}" =~ "tcpmss" ]]; then
         sysctl net.ipv4.tcp_mtu_probing=0 &> /dev/null
         iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null

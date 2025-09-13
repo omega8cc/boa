@@ -1748,7 +1748,7 @@ _install_php_multi() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       echo "${_PHP_EXTRA}" | fmt -su -w 2500 > /var/backups/php_extra_${_PHP_VERSION}.txt
       _DISPLAY_PHP_EXTRA=$(cat /var/backups/php_extra_${_PHP_VERSION}.txt 2>&1)
-      _DISPLAY_PHP_EXTRA=$(echo -n ${_DISPLAY_PHP_EXTRA} | tr -d "\n" 2>&1)
+      _DISPLAY_PHP_EXTRA=$(echo -n ${_DISPLAY_PHP_EXTRA} | tr -d '\n')
       _msg "INFO: This PHP ${_PHP_VERSION} is built with:"
       _msg "INFO: ${_DISPLAY_PHP_EXTRA}"
     fi
