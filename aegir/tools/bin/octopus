@@ -281,6 +281,7 @@ _php_cli_local_ini_update() {
     rm -f ${_U_HD}/.ctrl.php*
     rm -f ${_U_II}
     cp -af /opt/php74/lib/php.ini ${_U_II}
+    _OPCD="/var/www/phpcache"
     if [ -e "${_U_II}" ]; then
       _INI="open_basedir = \".: \
         /data/all:           \
@@ -291,6 +292,7 @@ _php_cli_local_ini_update() {
         /opt/tmp/make_local: \
         /opt/tools/drush:    \
         ${_usEr}:            \
+        ${_OPCD}/${_USER}:   \
         /usr/local/bin:      \
         /usr/bin\""
       _INI=$(echo "${_INI}" | sed "s/ //g" 2>&1)

@@ -1376,6 +1376,7 @@ _db_server_install() {
             sysctl net.ipv4.tcp_mtu_probing=0 &> /dev/null
             iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
             ip6tables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
+            [ -e "/etc/init.d/synproxy-assert" ] && synproxy_reassert -p "443 80" --quic-port 443 -q &> /dev/null
           fi
         fi
       fi
