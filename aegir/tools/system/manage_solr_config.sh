@@ -33,7 +33,7 @@ _check_config_diff() {
       echo "INFO: ${_slrCnf} diff0 empty -- nothing to update"
     else
       _slrCnfUpdate=YES
-      # _diffMyTest=$(echo -n ${_diffMyTest} | fmt -su -w 2500 2>&1)
+      # _diffMyTest=$(echo -n ${_diffMyTest} | fmt -su -w 2500)
       echo "INFO: ${_slrCnf} diff1 ${_diffMyTest}"
     fi
   fi

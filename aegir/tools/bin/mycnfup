@@ -624,7 +624,7 @@ _start_sql() {
   _check_restart_if_running
   _create_locks
 
-  _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
+  _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}')
   if [ ! -z "${_IS_MYSQLD_RUNNING}" ]; then
     echo "MySQLD already running?"
     echo "Nothing to do. Bye!"
@@ -645,7 +645,7 @@ _start_sql() {
   fi
   while [ -z "${_IS_MYSQLD_RUNNING}" ] \
     || [ ! -e "/run/mysqld/mysqld.sock" ]; do
-    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
+    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}')
     echo "Waiting for MySQLD graceful start..."
     sleep 3
   done
@@ -662,7 +662,7 @@ _stop_sql() {
   _check_restart_if_running
   _create_locks
 
-  _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
+  _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}')
   if [ ! -z "${_IS_MYSQLD_RUNNING}" ]; then
     echo "Preparing MySQLD for quick shutdown..."
     _DBS_TEST=$(which mysql 2>&1)
@@ -699,7 +699,7 @@ _stop_sql() {
   fi
 
   until [ -z "${_IS_MYSQLD_RUNNING}" ]; do
-    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
+    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}')
     echo "Waiting for MySQLD graceful shutdown..."
     sleep 3
   done
@@ -769,7 +769,7 @@ _check_mysql_up() {
   echo "running ${_tVr} ${_hName} _check_mysql_up procedure..."
   while [ -z "${_IS_MYSQLD_RUNNING}" ] \
     || [ ! -e "/run/mysqld/mysqld.sock" ]; do
-    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
+    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}')
     echo "Waiting for MySQLD availability..."
     sleep 15
     _start_sql "chain"
@@ -860,7 +860,7 @@ _innodb_log_file_size_update() {
   echo "INFO: InnoDB log file will be set to ${_INNODB_LOG_FILE_SIZE_MB}..."
   mysql -u root -e "SET GLOBAL innodb_fast_shutdown = 0;" &> /dev/null
   _stop_sql "chain"
-  _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
+  _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}')
   if [ -z "${_IS_MYSQLD_RUNNING}" ]; then
     mkdir -p ${_vBs}/old-sql-ib-log-${_NOW}
     sleep 1
@@ -885,7 +885,7 @@ _innodb_log_file_size_update() {
     echo "INFO: Waiting 180s for ${_DB_SERVER} clean shutdown..."
     _stop_sql "chain"
     sleep 180
-    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
+    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}')
     if [ -z "${_IS_MYSQLD_RUNNING}" ]; then
       mkdir -p ${_vBs}/old-sql-ib-log-${_NOW}
       _mrun "sleep 1"
