@@ -672,7 +672,7 @@ _find_fast_mirror_early
 _if_firewall_update() {
   if [ -e "/etc/csf" ]; then
     echo "Running Firewall Update on $(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)..."
-    _NOW=`date +%y%m%d-%H%M`
+    _NOW=$(date +%y%m%d-%H%M)
     _WFC="/var/backups/wfc/${_NOW}"
     mkdir -p ${_WFC}
     cp -af /etc/sysctl.conf  ${_WFC}/sysctl.conf-pre
@@ -785,7 +785,7 @@ _install_proxysql() {
     if [ "${_cmd}" = "in-pxy" ] \
       && [ -e "/vservers/${_idn}/usr/bin/proxysql" ] \
       && [ -e "/vservers/${_idn}/var/lib/proxysql" ]; then
-      _ATMIS=`date +%y%m%d-%H%M%S`
+      _ATMIS=$(date +%y%m%d-%H%M%S)
       _XPSQL="/vservers/${_idn}/var/backups/xpySQL/${_ATMIS}"
       mkdir -p ${_XPSQL}
       cp -af /vservers/${_idn}/var/lib/proxysql/* ${_XPSQL}/
