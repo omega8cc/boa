@@ -2,7 +2,7 @@
 
 UNBOUND_CONF="/etc/unbound/unbound.conf"
 UNBOUND_BASE_DIR="${UNBOUND_CONF%/*}"
-CHROOT_DIR=$(unbound-checkconf -o chroot)
+CHROOT_DIR="$(unbound-checkconf -o chroot)"
 
 DNS_ROOT_KEY_FILE="/usr/share/dns/root.key"
 ROOT_TRUST_ANCHOR_FILE="/var/lib/unbound/root.key"

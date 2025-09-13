@@ -2919,7 +2919,7 @@ _install_icu_modern() {
     if [ -e "/usr/local/lib/icu" ]; then
       touch ${_pthIcuLog}
     fi
-    _X86_64_TEST=$(uname -m 2>&1)
+    _X86_64_TEST=$(uname -m)
     if [ "${_X86_64_TEST}" = "x86_64" ]; then
       if [ -e "/usr/local/lib/icu" ]; then
         if [ -d "/usr/lib/x86_64-linux-gnu/icu" ]; then
@@ -2977,7 +2977,7 @@ _install_icu_jessie() {
     if [ -e "/usr/local/lib/icu" ]; then
       touch ${_pthIcuLog}
     fi
-    _X86_64_TEST=$(uname -m 2>&1)
+    _X86_64_TEST=$(uname -m)
     if [ "${_X86_64_TEST}" = "x86_64" ]; then
       if [ -e "/usr/local/lib/icu" ]; then
         if [ -d "/usr/lib/x86_64-linux-gnu/icu" ]; then
@@ -7447,7 +7447,7 @@ _php_libs_fix() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: Fix for PHP libs in ${_OS_DIST}/${_OS_CODE}"
     fi
-    _X86_64_TEST=$(uname -m 2>&1)
+    _X86_64_TEST=$(uname -m)
     if [ "${_X86_64_TEST}" = "x86_64" ]; then
       if [ -e "/usr/local/lib/icu" ]; then
         if [ -e "/usr/lib/x86_64-linux-gnu/icu" ] \

@@ -732,7 +732,7 @@ _os_detection() {
     _not_supported_os
   fi
   echo " "
-  _thiSys="$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)/$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1) $(uname -m 2>&1)"
+  _thiSys="$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)/$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1) $(uname -m)"
   _thiSys="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null) ${_thiSys} PHP ${_PHP_FPM_VERSION}"
   _msg "Aegir on ${_thiSys}"
   echo " "
@@ -921,7 +921,7 @@ _barracuda_log_update() {
   fi
   _BARRACUDA_VERSION_INFO="$(date) / \
     $(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1).$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1) \
-    $(uname -m 2>&1) ${_VIRT_IS} / \
+    $(uname -m) ${_VIRT_IS} / \
     Aegir ${_AEGIR_VERSION} / \
     Barracuda ${_X_VERSION}${_LOG_GIT_MIRROR} / \
     Nginx ${_NGINX_VRN} / \
