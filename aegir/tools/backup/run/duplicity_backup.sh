@@ -756,11 +756,11 @@ _backup() {
 #
 # _restore() {
 #   if [ $# = 2 ]; then
-#     echo "Command is ${_DCY_UTL_CMD} restore --file-to-restore $1 ${_BACKUP_TARGET} $2"
-#     ${_DCY_UTL_CMD} restore --file-to-restore $1 ${_BACKUP_TARGET} $2
+#     echo "Command is ${_DCY_UTL_CMD} restore --path-to-restore $1 ${_BACKUP_TARGET} $2"
+#     ${_DCY_UTL_CMD} restore --path-to-restore $1 ${_BACKUP_TARGET} $2
 #   else
-#     echo "Command is ${_DCY_UTL_CMD} restore --file-to-restore $1 --time $2 ${_BACKUP_TARGET} $3"
-#     ${_DCY_UTL_CMD} restore --file-to-restore $1 --time $2 ${_BACKUP_TARGET} $3
+#     echo "Command is ${_DCY_UTL_CMD} restore --path-to-restore $1 --time $2 ${_BACKUP_TARGET} $3"
+#     ${_DCY_UTL_CMD} restore --path-to-restore $1 --time $2 ${_BACKUP_TARGET} $3
 #   fi
 # }
 #
