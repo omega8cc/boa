@@ -265,8 +265,8 @@ fi
 [ ! -e "/root/.mysql.yes.new.password.cnf" ] && touch /root/.mysql.yes.new.password.cnf
 
 _check_os_compatibility() {
-  _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   if [ "${_OS_CODE}" = "beowulf" ] \
     && [ ! -e "/root/.run-auto-major-os-reboot-beowulf-one.cnf" ] \
     && [ ! -e "/root/.run-auto-major-os-reboot-beowulf-two.cnf" ]; then
@@ -414,8 +414,8 @@ if [ -e "/root/.run-to-beowulf.cnf" ] \
   wait
   _msg "The standard barracuda up-${_tRee} system completed" >> "${_logAbf}"
   if [ -e "/root/.latest-barracuda-upgrade-finale.info" ]; then
-    _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
-    _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+    _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
+    _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
     if [ "${_OS_CODE}" = "jessie" ]; then
       echo "_JESSIE_TO_BEOWULF=YES" >> ${_barCnf}
       _msg "Launching major upgrade from ${_OS_DIST}/${_OS_CODE} to Devuan/beowulf" >> "${_logAbf}"

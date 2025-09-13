@@ -52,7 +52,7 @@ _clean_pid_exit() {
 
 _os_detection_minimal() {
   _APT_UPDATE="apt-get update"
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
   for e in ${_OS_LIST}; do
     if [ "${e}" = "${_OS_CODE}" ]; then
@@ -1801,7 +1801,7 @@ _display_version() {
         _VIRT_IS="${_VIRT_TEST} not supported"
       fi
     fi
-    _thiSys="$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)/$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1) $(uname -m 2>&1)"
+    _thiSys="$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)/$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2) $(uname -m)"
     if [ -e "/var/log/barracuda_log.txt" ]; then
       _crlBoav=`tail --lines=1 /var/log/barracuda_log.txt \
         | cut -d '/' -f4 \
@@ -2018,7 +2018,7 @@ _display_info() {
     [ -n "${_MON}" ] && _MON=$(echo -n ${_MON} | tr -d "\n" 2>&1)
     [ "${_mOde}" = "clear" ] && clear
     echo
-    _thiSys="$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)/$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1) $(uname -m 2>&1)"
+    _thiSys="$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)/$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2) $(uname -m)"
     if [ -e "/var/log/barracuda_log.txt" ]; then
       _AUT=$(grep _AUTOPILOT ${_barCnf} 2>&1)
       _BIL=$(grep _BACKEND_ITEMS_LIST ${_barCnf} 2>&1)
