@@ -57,7 +57,7 @@ _oom_critical_restart() {
   killall -9 sleep &> /dev/null
   killall -9 php
   echo "$(date) OOM php-cli killed" >> ${_pthOml}
-  mv -f /var/log/nginx/error.log /var/log/nginx/`date +%y%m%d-%H%M`-error.log
+  mv -f /var/log/nginx/error.log /var/log/nginx/$(date +%y%m%d-%H%M)-error.log
   kill -9 $(ps aux | grep '[n]ginx' | awk '{print $2}') &> /dev/null
   echo "$(date) OOM nginx killed" >> ${_pthOml}
   kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}') &> /dev/null

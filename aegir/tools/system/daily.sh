@@ -2911,7 +2911,7 @@ _ghost_codebases_cleanup() {
         _CLEAN_THIS=SKIP
       else
         _CLEAN_THIS="${_ParentDir}"
-        _TSTAMP=`date +%y%m%d-%H%M%S`
+        _TSTAMP=$(date +%y%m%d-%H%M%S)
         mkdir -p ${_CLD}${i}${_TSTAMP}
         echo "Moving ghost ${_CLEAN_THIS} to ${_CLD}${i}${_TSTAMP}/"
         ### mv -f ${_CLEAN_THIS} ${_CLD}${i}${_TSTAMP}/
