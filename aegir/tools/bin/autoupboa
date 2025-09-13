@@ -348,11 +348,11 @@ if [[ "${_CRON_TEST}" =~ "clear.xsh" ]]; then
   _ADD_XTRA=NO
 fi
 
-_TIME=$(date +%H%M 2>&1)
+_TIME=$(date +%H%M)
 _TIME=${_TIME//[^0-9-]/}
-_MINUTE=$(date +%M 2>&1)
+_MINUTE=$(date +%M)
 _MINUTE=${_MINUTE//[^0-9-]/}
-_NOW=$(date +%y%m%d-%H%M%S 2>&1)
+_NOW=$(date +%y%m%d-%H%M%S)
 _NOW=${_NOW//[^0-9-]/}
 
 _if_hosted_sys() {

@@ -52,7 +52,7 @@ _usage() {
 ### Noticeable messages
 ###
 _msg() {
-  echo "GA SMTP Setup v.${_tRee} [$(date +%T 2>&1)] ==> $*"
+  echo "GA SMTP Setup v.${_tRee} [$(date +%T)] ==> $*"
 }
 
 # Function to check if running as root
