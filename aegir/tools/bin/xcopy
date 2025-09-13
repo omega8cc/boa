@@ -864,7 +864,7 @@ _migrate_init() {
         fi
         ### We are using max verbose mode by default
         _migrate_prepare
-          ### _NOW=`date +%y%m%d-%H%M`
+          ### _NOW=$(date +%y%m%d-%H%M)
           ### mkdir -p /var/log/boa/migrate
           ### _migrate_prepare >/var/log/boa/migrate/migrate-${_oct}-${_cmd}-${_NOW}.log 2>&1
         if [ "${_cmd}" = "fooproxy" ]; then
