@@ -14,7 +14,7 @@ _if_hosted_sys() {
 ### Noticeable messages
 ###
 _msg() {
-  echo "BOA [$(date +%T 2>&1)] ==> $*"
+  echo "BOA [$(date +%T)] ==> $*"
 }
 
 ###

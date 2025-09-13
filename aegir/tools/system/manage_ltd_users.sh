@@ -2188,7 +2188,7 @@ if [ ! -L "/usr/bin/MySecureShell" ] && [ -x "/usr/bin/mysecureshell" ]; then
   ln -sfn /usr/bin/mysecureshell /usr/bin/MySecureShell
 fi
 
-_NOW=$(date +%y%m%d-%H%M%S 2>&1)
+_NOW=$(date +%y%m%d-%H%M%S)
 _NOW=${_NOW//[^0-9-]/}
 mkdir -p /var/backups/ltd/{conf,log,old}
 mkdir -p /var/backups/zombie/deleted

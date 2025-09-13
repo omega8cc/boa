@@ -3572,7 +3572,7 @@ _satellite_if_add_update_user_platforms_symlinks() {
           chattr -i /home/${_HM_U}.ftp/platforms &> /dev/null
           chattr -i /home/${_HM_U}.ftp/platforms/* &> /dev/null
         fi
-        _NOW=$(date +%y%m%d-%H%M%S 2>&1)
+        _NOW=$(date +%y%m%d-%H%M%S)
         [ ! -e "/var/backups/ghost/${_HM_U}/${_NOW}" ] && mkdir -p /var/backups/ghost/${_HM_U}/${_NOW}
         [ "${_DEBUG_MODE}" = "YES" ] && echo "Moving ${i} to /var/backups/ghost/${_HM_U}/${_NOW}"
         mv -f ${i} /var/backups/ghost/${_HM_U}/${_NOW}/
@@ -3588,7 +3588,7 @@ _satellite_if_add_update_user_platforms_symlinks() {
       _RevisionTest=$(ls ${i} | wc -l 2>&1)
       if [ "${_RevisionTest}" -lt 2 ] && [ ! -z "${_RevisionTest}" ]; then
         [ "${_DEBUG_MODE}" = "YES" ] && echo "_RevisionTest is ${_RevisionTest}"
-        _NOW=$(date +%y%m%d-%H%M%S 2>&1)
+        _NOW=$(date +%y%m%d-%H%M%S)
         mkdir -p ${_usEr}/undo/dist/${_NOW}
         mv -f ${i} ${_usEr}/undo/dist/${_NOW}/ &> /dev/null
         [ "${_DEBUG_MODE}" = "YES" ] && echo "GHOST revision ${i} detected and moved to ${_usEr}/undo/dist/${_NOW}/"
@@ -3617,7 +3617,7 @@ _satellite_if_add_update_user_platforms_symlinks() {
         ln -sfn ${i}/keys /home/${_HM_U}.ftp/platforms/${_distTrNr}/keys
       fi
       if [ -e "/home/${_HM_U}.ftp/platforms/data" ]; then
-        _NOW=$(date +%y%m%d-%H%M%S 2>&1)
+        _NOW=$(date +%y%m%d-%H%M%S)
         [ ! -e "/var/backups/ghost/${_HM_U}/${_NOW}" ] && mkdir -p /var/backups/ghost/${_HM_U}/${_NOW}
         mv -f /home/${_HM_U}.ftp/platforms/data /var/backups/ghost/${_HM_U}/${_NOW}/platforms_data
       fi

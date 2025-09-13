@@ -147,7 +147,7 @@ _BRANCH_BOA="5.x-${_tRee}"
 _X_VERSION="BOA-5.7.12-${_tRee}"
 _MYSQLTUNER_VRN=1.9.4
 
-_NOW=$(date +%y%m%d-%H%M%S 2>&1)
+_NOW=$(date +%y%m%d-%H%M%S)
 _NOW=${_NOW//[^0-9-]/}
 _RAM=$(free -mt | grep Mem: | awk '{ print $2 }' 2>&1)
 _SPINNER=NO

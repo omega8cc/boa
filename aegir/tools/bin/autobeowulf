@@ -100,7 +100,7 @@ _INITINS="/usr/bin/apt-get ${_aptAllow} -y install"
 _dstUpArg="-fuy -q ${_aptAllow} --config-file /opt/apt/apt.conf.noi.dist"
 _nrmUpArg="-fuy -q ${_aptAllow} --config-file /opt/apt/apt.conf.noi.nrml"
 
-_TODAY=$(date +%y%m%d 2>&1)
+_TODAY=$(date +%y%m%d)
 _TODAY=${_TODAY//[^0-9]/}
 _OS_CODE=check
 #
@@ -135,7 +135,7 @@ fi
 ### Noticeable messages
 ###
 _msg() {
-  echo "AutoBeowulf v.${_tRee} [$(date +%T 2>&1)] ==> $*"
+  echo "AutoBeowulf v.${_tRee} [$(date +%T)] ==> $*"
 }
 
 _check_manufacturer_compatibility() {

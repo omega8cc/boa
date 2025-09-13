@@ -58,9 +58,9 @@ if [ -z "${TERM+x}" ]; then
   export TERM=vt100
 fi
 
-_NOW=$(date +%y%m%d-%H%M%S 2>&1)
+_NOW=$(date +%y%m%d-%H%M%S)
 export _NOW=${_NOW//[^0-9-]/}
-_TODAY=$(date +%y%m%d 2>&1)
+_TODAY=$(date +%y%m%d)
 export _TODAY=${_TODAY//[^0-9]/}
 #
 _barCnf="/root/.barracuda.cnf"
@@ -3496,7 +3496,7 @@ _if_reinstall_curl() {
         echo "curl hold" | dpkg --set-selections &> /dev/null
         if [ -x "/usr/local/bin/curl" ]; then
           if [ -x "/usr/bin/curl" ] && [ ! -L "/usr/bin/curl" ]; then
-            mv -f /usr/bin/curl /usr/bin/old-curl-$(date +%y%m%d-%H%M%S 2>&1)
+            mv -f /usr/bin/curl /usr/bin/old-curl-$(date +%y%m%d-%H%M%S)
           fi
           ln -sfn /usr/local/bin/curl /usr/bin/curl
         fi

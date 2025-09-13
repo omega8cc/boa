@@ -51,11 +51,11 @@ fi
 _PTN_VRN=3.12.8
 _DCY_VRN=3.0.3.2
 _LOGPTH="/var/log/boa"
-_NOW=$(date +%y%m%d-%H%M%S 2>&1)
+_NOW=$(date +%y%m%d-%H%M%S)
 _NOW=${_NOW//[^0-9-]/}
-_DOW=$(date +%u 2>&1)
+_DOW=$(date +%u)
 _DOW=${_DOW//[^1-7]/}
-_DOM=$(date +%e 2>&1)
+_DOM=$(date +%e)
 _DOM=${_DOM//[^0-9]/}
 _HST="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
 _HST=${_HST//[^a-zA-Z0-9-.]/}
