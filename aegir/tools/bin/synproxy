@@ -125,8 +125,12 @@ fi
 _msg "6) Write CSF add-on to call reassert on every CSF reload: ${_ADDON}"
 cat > "${_ADDON}" <<EOF
 #!/bin/bash
-# CSF post hook — call reassert tool (idempotent)
+# CSF post hook — call SYNPROXY reassert tool (idempotent, safe quoting)
+set -u
+
 _REASSERT="${_REASSERT}"
+
+# Params (can be edited later right here if needed)
 _TCP_PORTS="${_TCP_PORTS}"
 _ENABLE_QUIC_LIMITER="${_ENABLE_QUIC_LIMITER}"
 _QUIC_PORT="${_QUIC_PORT}"
@@ -135,13 +139,21 @@ _BURST_PER_IP="${_BURST_PER_IP}"
 _RATE_PER_24="${_RATE_PER_24}"
 _BURST_PER_24="${_BURST_PER_24}"
 _TRUSTED_SRC="${_TRUSTED_SRC}"
-_ARGS="-p \\"\${_TCP_PORTS}\\""
-[ "\${_ENABLE_QUIC_LIMITER}" = "YES" ] || _ARGS="\${_ARGS} --no-quic"
-[ -n "\${_QUIC_PORT}" ] && _ARGS="\${_ARGS} --quic-port \${_QUIC_PORT}"
-[ -n "\${_TRUSTED_SRC}" ] && _ARGS="\${_ARGS} --trust \\"\${_TRUSTED_SRC}\\""
-_ARGS="\${_ARGS} --rate-ip \\"\${_RATE_PER_IP}\\" --burst-ip \\"\${_BURST_PER_IP}\\" --rate-24 \\"\${_RATE_PER_24}\\" --burst-24 \\"\${_BURST_PER_24}\\" -q"
-\${_REASSERT} \${_ARGS}
-exit 0
+
+# Build argv safely
+declare -a _ARGS
+_ARGS=( -p "${_TCP_PORTS}" )
+if [ "\${_ENABLE_QUIC_LIMITER}" != "YES" ]; then
+  _ARGS+=( --no-quic )
+else
+  [ -n "\${_QUIC_PORT}" ] && _ARGS+=( --quic-port "\${_QUIC_PORT}" )
+  _ARGS+=( --rate-ip "\${_RATE_PER_IP}" --burst-ip "\${_BURST_PER_IP}" --rate-24 "\${_RATE_PER_24}" --burst-24 "\${_BURST_PER_24}" )
+fi
+[ -n "\${_TRUSTED_SRC}" ] && _ARGS+=( --trust "\${_TRUSTED_SRC}" )
+_ARGS+=( -q )
+
+# Exec the tool with proper quoting
+exec "\${_REASSERT}" "\${_ARGS[@]}"
 EOF
 chmod 700 "${_ADDON}"
 
