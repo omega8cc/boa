@@ -36,7 +36,8 @@ _ipt(){ if [ "${_IPT_HAS_W}" = "YES" ]; then iptables -w "$@"; else iptables "$@
 
 # Files we created
 _INC_DIR="/etc/csf/csfpost.d"
-_SYN_ADDON="${_INC_DIR}/synproxy.sh"
+_SYN_ADDON="${_INC_DIR}/99-synproxy-reassert.sh"
+_OLD_SYN_ADDON="${_INC_DIR}/synproxy.sh"
 _MONITOR="/usr/local/sbin/mon_synproxy"
 _WATCHER="/usr/local/sbin/watch_synproxy"
 _ASSERT_BIN="/usr/local/sbin/synproxy_assert"
@@ -115,6 +116,7 @@ done
 
 # 6) Remove generated files (leave CSF core files untouched)
 _msg "6) Remove generated scripts (add-ons/monitors/assert/cron/init.d)"
+rm -f "${_OLD_SYN_ADDON}" 2>/dev/null || true
 rm -f "${_SYN_ADDON}" 2>/dev/null || true
 if [ -d "${_INC_DIR}" ]; then
   find "${_INC_DIR}" -maxdepth 1 -type f -name 'quic_udp*_limit.sh' -exec rm -f {} + 2>/dev/null || true
@@ -142,6 +144,7 @@ echo "  iptables -L LOCALINPUT -n -v --line-numbers 2>/dev/null | sed -n '1,60p'
 echo "  iptables -t raw -L PREROUTING -n -v --line-numbers | sed -n '1,40p'"
 echo
 echo "Removed files (if present):"
+echo "  ${_OLD_SYN_ADDON}"
 echo "  ${_SYN_ADDON}"
 echo "  ${_INC_DIR}/quic_udp*_limit.sh"
 echo "  ${_MONITOR} , ${_WATCHER} , ${_ASSERT_BIN}"
