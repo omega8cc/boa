@@ -54,7 +54,7 @@ while [ $# -gt 0 ]; do
 Usage: synproxy_reassert [options]
   -p, --ports "443 80"       TCP ports to protect with SYNPROXY (default: "443 80")
       --quic-port 443        QUIC UDP port to limit (default: 443)
-      --no-quic              Disable QUIC limiter
+      --no-quic              Disable QUIC limiter AND remove any existing QUIC rules
       --rate-ip 80/second    Per-IP QUIC rate (default: 80/second)
       --burst-ip 160         Per-IP QUIC burst (default: 160)
       --rate-24 800/second   Per-/24 QUIC rate (default: 800/second)
@@ -148,14 +148,24 @@ _del_specs_from_INPUT(){
   done
 }
 
-_ensure_quic_limits(){
-  [ "${_ENABLE_QUIC_LIMITER}" = "YES" ] && [ -n "${_QUIC_PORT}" ] || return 0
+_purge_quic_rules(){
+  [ -n "${_QUIC_PORT}" ] || return 0
   local _p="${_QUIC_PORT}"
-  # Dedup all our QUIC rules first
   _del_specs_from_INPUT "-p udp .*(--dport|dpt:) ${_p} .*hashlimit-name quic${_p}_ip"
   _del_specs_from_INPUT "-p udp .*(--dport|dpt:) ${_p} .*hashlimit-name quic${_p}_24"
   _del_specs_from_INPUT "-p udp .*(--dport|dpt:) ${_p} .* -m conntrack --ctstate INVALID .* -j DROP"
-  # Insert canonical order: INVALID first, then per-IP, then per-/24
+}
+
+_ensure_quic_limits(){
+  [ -n "${_QUIC_PORT}" ] || return 0
+  if [ "${_ENABLE_QUIC_LIMITER}" != "YES" ]; then
+    _purge_quic_rules
+    _v "INPUT: QUIC limiter disabled; rules purged for UDP:${_QUIC_PORT}"
+    return 0
+  fi
+  local _p="${_QUIC_PORT}"
+  _purge_quic_rules
+  # Insert canonical order (INVALID first, then per-IP, then per-/24) at the very top
   _ipt -I INPUT 1 -p udp --dport "${_p}" -m hashlimit --hashlimit-name quic${_p}_24 \
       --hashlimit-above "${_RATE_PER_24}" --hashlimit-burst "${_BURST_PER_24}" \
       --hashlimit-mode srcip --hashlimit-srcmask 24 --hashlimit-htable-expire 60000 -j DROP 2>/dev/null || true
@@ -163,10 +173,11 @@ _ensure_quic_limits(){
       --hashlimit-above "${_RATE_PER_IP}" --hashlimit-burst "${_BURST_PER_IP}" \
       --hashlimit-mode srcip --hashlimit-htable-expire 60000 -j DROP 2>/dev/null || true
   _ipt -I INPUT 1 -p udp --dport "${_p}" -m conntrack --ctstate INVALID -j DROP 2>/dev/null || true
+  _v "INPUT: QUIC limiter ensured for UDP:${_p}"
 }
 
 # ---------- do the work ----------
-_msg "Reassert SYNPROXY/NOTRACK/QUIC (ports: ${_TCP_PORTS}; QUIC: ${_QUIC_PORT:-disabled})"
+_msg "Reassert SYNPROXY/NOTRACK; QUIC: $([ "${_ENABLE_QUIC_LIMITER}" = "YES" ] && echo "enabled on ${_QUIC_PORT}" || echo "disabled") (ports: ${_TCP_PORTS})"
 
 # 1) NOTRACK on SYNs (raw)
 for _pp in ${_TCP_PORTS}; do _ensure_notrack "${_pp}"; done
@@ -177,7 +188,7 @@ _pin_early_jump
 # 3) Early chain content
 _populate_early_chain
 
-# 4) QUIC limiter (robust de-dup)
+# 4) QUIC management (purge or ensure)
 _ensure_quic_limits
 
 _v "Done."
