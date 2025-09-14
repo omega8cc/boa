@@ -15,6 +15,7 @@ _crlGet="-L --max-redirs 3 -k -s --retry 9 --retry-delay 9 -A iCab"
 _wgetGet="--max-redirect=3 --no-check-certificate -q --tries=9 --wait=9 --user-agent='iCab'"
 _aptAllow="--allow-unauthenticated"
 _aptYesUnth="-y ${_aptAllow}"
+_pthLog="/var/log/boa"
 
 [ -e "/root/.proxy.cnf" ] && exit 0
 [ -e "/root/.pause_tasks_maint.cnf" ] && exit 0
@@ -2109,7 +2110,6 @@ _find_correct_ip() {
 #
 # Restrict node if needed.
 _fix_node_in_lshell_access() {
-  _pthLog="/var/log/boa"
   if [ -e "/etc/lshell.conf" ]; then
     _PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
     _PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
@@ -2130,7 +2130,6 @@ _fix_node_in_lshell_access() {
 #
 # Restrict php if needed.
 _fix_php_in_lshell_access() {
-  _pthLog="/var/log/boa"
   if [ -e "/etc/lshell.conf" ]; then
     _PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
     _PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
