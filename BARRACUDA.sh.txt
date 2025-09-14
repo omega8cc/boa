@@ -504,6 +504,7 @@ fi
 _smtp_check
 _xdrago_install_upgrade
 _if_drupal_patches_update
+_mc_panels_ini_update
 
 
 ###

@@ -570,6 +570,22 @@ _boa_ini_tpl_update() {
 }
 
 #
+# Update MC Panels INI.
+_mc_panels_ini_update() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _mc_panels_ini_update"
+  fi
+  if [ -d "/root/.config/mc" ]; then
+    _SORT_ORDER_TEST=$(grep "sort_order" /root/.config/mc/panels.ini 2>&1)
+    if [[ ! "${_SORT_ORDER_TEST}" =~ "sort_order" ]]; then
+      if [ -e "${_locCnf}/ini/panels.ini" ]; then
+        cat ${_locCnf}/ini/panels.ini >> /root/.config/mc/panels.ini
+      fi
+    fi
+  fi
+}
+
+#
 # Update global.inc Config.
 _global_inc_conf_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
