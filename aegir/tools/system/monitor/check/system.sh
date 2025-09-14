@@ -185,10 +185,10 @@ _if_fix_dhcp() {
       done
 
       # Reload the firewall
-      if [ -e "/etc/init.d/synproxy-assert" ]; then
+      if [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
         csf -ra &> /dev/null
         wait
-        synproxy_reassert -p "443 80" --quic-port 443 -q &> /dev/null
+        synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
       else
         csf -r &> /dev/null
       fi
