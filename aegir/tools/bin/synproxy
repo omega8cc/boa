@@ -45,8 +45,6 @@ _CSFPOST="/etc/csf/csfpost.sh"
 _INC_DIR="/etc/csf/csfpost.d"
 _SYN_ADDON="${_INC_DIR}/synproxy.sh"
 _QUIC_ADDON="${_INC_DIR}/quic_udp${_QUIC_PORT}_limit.sh"
-_ASSERT_BIN="/usr/local/sbin/synproxy_assert"
-_INITD="/etc/init.d/synproxy-assert"
 _MONITOR="/usr/local/sbin/mon_synproxy"
 _WATCHER="/usr/local/sbin/watch_synproxy"
 
@@ -187,73 +185,7 @@ _msg "6) Apply add-ons and reload CSF once"
 /bin/bash "${_QUIC_ADDON}" || true
 command -v csf >/dev/null 2>&1 && csf -r || true
 
-# 7) Install sysvinit daemon that re-asserts every 5s
-_msg "7) Install sysvinit self-heal service (every 5s)"
-cat > "${_ASSERT_BIN}" <<'EOSH'
-#!/bin/bash
-# /usr/local/sbin/synproxy_assert — keep SYNPROXY_EARLY jump pinned at rule #1 and refresh rules
-set -Eeuo pipefail
-_IPT_HAS_W="NO"; iptables -w -L -n >/dev/null 2>&1 && _IPT_HAS_W="YES"
-_ipt(){ if [ "${_IPT_HAS_W}" = "YES" ]; then iptables -w "$@"; else iptables "$@"; fi; }
-/bin/bash /etc/csf/csfpost.d/synproxy.sh >/dev/null 2>&1 || true
-/bin/bash /etc/csf/csfpost.d/quic_udp443_limit.sh >/dev/null 2>&1 || true
-# Re-pin the early jump to position 1 in INPUT and LOCALINPUT, if needed
-_ipt -t filter -C INPUT -j SYNPROXY_EARLY >/dev/null 2>&1 || _ipt -t filter -I INPUT 1 -j SYNPROXY_EARLY || true
-iptables -L LOCALINPUT -n >/dev/null 2>&1 && { _ipt -t filter -C LOCALINPUT -j SYNPROXY_EARLY >/dev/null 2>&1 || _ipt -t filter -I LOCALINPUT 1 -j SYNPROXY_EARLY || true; } || true
-exit 0
-EOSH
-chmod 750 "${_ASSERT_BIN}"
-
-cat > "${_INITD}" <<'EOSH'
-#!/bin/sh
-### BEGIN INIT INFO
-# Provides:          synproxy-assert
-# Required-Start:    $local_fs $network
-# Required-Stop:     $local_fs $network
-# Default-Start:     2 3 4 5
-# Default-Stop:      0 1 6
-# Short-Description: Keep SYNPROXY jump/rules pinned despite CSF/lfd churn
-### END INIT INFO
-
-DAEMON=/usr/local/sbin/synproxy_assert
-PIDFILE=/var/run/synproxy-assert.pid
-INTERVAL=5
-
-start() {
-  echo "Starting synproxy-assert loop (every ${INTERVAL}s)"
-  [ -f "$PIDFILE" ] && stop
-  ( while :; do "$DAEMON"; sleep "$INTERVAL"; done ) >/dev/null 2>&1 &
-  echo $! > "$PIDFILE"
-}
-
-stop() {
-  echo "Stopping synproxy-assert"
-  [ -f "$PIDFILE" ] && kill "$(cat "$PIDFILE")" 2>/dev/null || true
-  rm -f "$PIDFILE"
-}
-
-status() {
-  if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
-    echo "synproxy-assert running (pid $(cat "$PIDFILE"))"
-    exit 0
-  else
-    echo "synproxy-assert not running"
-    exit 3
-  fi
-}
-
-case "$1" in
-  start) start ;;
-  stop) stop ;;
-  restart) stop; sleep 1; start ;;
-  status) status ;;
-  *) echo "Usage: $0 {start|stop|restart|status}"; exit 1 ;;
-esac
-exit 0
-EOSH
-chmod 755 "${_INITD}"
-update-rc.d synproxy-assert defaults >/dev/null 2>&1 || true
-/etc/init.d/synproxy-assert restart || /etc/init.d/synproxy-assert start || true
+# 7) Install sysvinit daemon that re-asserts every 5s (removed)
 
 # 8) Monitor + watcher (optional)
 if [ "${_INSTALL_MONITOR}" = "YES" ]; then
