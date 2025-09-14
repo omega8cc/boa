@@ -126,6 +126,7 @@ _msg "6) Write CSF add-on to call reassert on every CSF reload: ${_ADDON}"
 cat > "${_ADDON}" <<EOF
 #!/bin/bash
 # CSF post hook — call reassert tool (idempotent)
+_REASSERT="${_REASSERT}"
 _TCP_PORTS="${_TCP_PORTS}"
 _ENABLE_QUIC_LIMITER="${_ENABLE_QUIC_LIMITER}"
 _QUIC_PORT="${_QUIC_PORT}"
