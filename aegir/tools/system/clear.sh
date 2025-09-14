@@ -103,7 +103,7 @@ _find_fast_mirror_early() {
         if [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
           csf -ra &> /dev/null
           wait
-          synproxy_reassert -p "443 80" --quic-port 443 -q &> /dev/null
+          synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
         else
           csf -r &> /dev/null
         fi

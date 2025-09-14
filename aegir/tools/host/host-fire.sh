@@ -51,7 +51,7 @@ if [ ! -e "/run/fire.pid" ] && [ ! -e "/run/water.pid" ]; then
           csf -td ${_IP} 3600 -p 443
           csf -td ${_IP} 3600 -p 80
         fi
-        [ -e "/etc/csf/csfpost.d/synproxy.sh" ] && synproxy_reassert -p "443 80" --quic-port 443 -q &> /dev/null
+        [ -e "/etc/csf/csfpost.d/synproxy.sh" ] && synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
       done
     fi
     if [ -e "${i}/var/xdrago/monitor/log/web.log" ] && [ -e "/usr/var/run${i}" ]; then
@@ -73,7 +73,7 @@ if [ ! -e "/run/fire.pid" ] && [ ! -e "/run/water.pid" ]; then
           csf -td ${_IP} 3600 -p 443
           csf -td ${_IP} 3600 -p 80
         fi
-        [ -e "/etc/csf/csfpost.d/synproxy.sh" ] && synproxy_reassert -p "443 80" --quic-port 443 -q &> /dev/null
+        [ -e "/etc/csf/csfpost.d/synproxy.sh" ] && synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
       done
     fi
     if [ -e "${i}/var/xdrago/monitor/log/ftp.log" ] && [ -e "/usr/var/run${i}" ]; then
@@ -95,7 +95,7 @@ if [ ! -e "/run/fire.pid" ] && [ ! -e "/run/water.pid" ]; then
           csf -td ${_IP} 3600 -p 443
           csf -td ${_IP} 3600 -p 80
         fi
-        [ -e "/etc/csf/csfpost.d/synproxy.sh" ] && synproxy_reassert -p "443 80" --quic-port 443 -q &> /dev/null
+        [ -e "/etc/csf/csfpost.d/synproxy.sh" ] && synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
       done
     fi
     echo Completed for $i $(date)
