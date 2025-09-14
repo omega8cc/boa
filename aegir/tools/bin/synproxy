@@ -2,7 +2,10 @@
 
 #
 # synproxy — SYNPROXY (TCP/443/80) + QUIC limiter (UDP/443) for CSF
-# Use early dedicated chain + cron self-heal to defeat CSF/lfd rule drift.
+#
+# - Hooks CSF post scripts to call reassert tool on every reload
+# - No background loops, removes NEW->DROP, purges QUIC when disabled
+# - Adds lo bypass + optional trusted bypass, adds ACK-only NEW accept shim
 #
 
 export HOME=/root
@@ -19,68 +22,73 @@ _check_root() {
 _check_root
 
 set -Eeuo pipefail
-trap '_rc=$?; echo "[ERROR] line ${LINENO}: command failed (exit ${_rc})"; exit ${_rc}' ERR
+trap '_rc=$?; echo "[INSTALL] line ${LINENO}: exit ${_rc}" >&2; exit ${_rc}' ERR
 
-# ---------- User tunables ----------
-_TCP_PORTS=(443 80)
-_QUIC_PORT=443
-_RATE_PER_IP="80/second"
-_BURST_PER_IP="160"
-_RATE_PER_24="800/second"
-_BURST_PER_24="1600"
+# -------------------- TUNABLES --------------------
+_TCP_PORTS="${_TCP_PORTS:-443 80}"           # Protect these TCP ports with SYNPROXY
+_ENABLE_QUIC_LIMITER="${_ENABLE_QUIC_LIMITER:-NO}"  # YES to rate-limit UDP/${_QUIC_PORT}
+_QUIC_PORT="${_QUIC_PORT:-443}"              # QUIC UDP port (ignored if limiter disabled)
+_RATE_PER_IP="${_RATE_PER_IP:-80/second}"    # QUIC per-IP
+_BURST_PER_IP="${_BURST_PER_IP:-160}"
+_RATE_PER_24="${_RATE_PER_24:-800/second}"   # QUIC per-/24
+_BURST_PER_24="${_BURST_PER_24:-1600}"
+_TRUSTED_SRC="${_TRUSTED_SRC:-}"             # space-separated CIDRs to bypass SYNPROXY (optional)
+_APPLY_NOW="${_APPLY_NOW:-YES}"              # Run a CSF reload + reassert at the end
 _SYSCTL_FILE="/etc/sysctl.d/60-synproxy.conf"
-_INSTALL_MONITOR="YES"
-_LOG="/var/log/synproxy-stability.log"
-# -----------------------------------
+# -------------------------------------------------
 
-# ---------- utils ----------
-_msg(){ echo "[SYNPROXY-STABILITY] $*" | tee -a "${_LOG}"; }
-_die(){ echo "[SYNPROXY-STABILITY] ERROR: $*" | tee -a "${_LOG}" >&2; exit 1; }
-_need(){ command -v "$1" >/dev/null 2>&1 || _die "Missing command: $1"; }
-_need iptables; _need sysctl; _need modprobe; _need sed; _need awk; _need grep; _need date; _need update-rc.d
+# -------------------- prerequisites & helpers ------------------------
+_need(){ command -v "$1" >/dev/null 2>&1 || { echo "[INSTALL] Missing: $1" >&2; exit 1; }; }
+_need iptables; _need sed; _need grep; _need awk; _need modprobe; _need sysctl
+_CSF_BIN="csf"; command -v "${_CSF_BIN}" >/dev/null 2>&1 || _CSF_BIN=""
 
-# paths
+_IPT_HAS_W="NO"; iptables -w -L -n >/dev/null 2>&1 && _IPT_HAS_W="YES"
+_ipt(){ if [ "${_IPT_HAS_W}" = "YES" ]; then iptables -w "$@"; else iptables "$@"; fi; }
+
+_LOG="/var/log/synproxy-install.log"; : > "${_LOG}"
+_msg(){ echo "[INSTALL] $*" | tee -a "${_LOG}"; }
+
 _CSFCONF="/etc/csf/csf.conf"
 _CSFPOST="/etc/csf/csfpost.sh"
 _INC_DIR="/etc/csf/csfpost.d"
-_SYN_ADDON="${_INC_DIR}/synproxy.sh"
-_QUIC_ADDON="${_INC_DIR}/quic_udp${_QUIC_PORT}_limit.sh"
-_MONITOR="/usr/local/sbin/mon_synproxy"
-_WATCHER="/usr/local/sbin/watch_synproxy"
 
-# iptables -w compat
-_IPT_HAS_W="NO"; iptables -w -L -n >/dev/null 2>&1 && _IPT_HAS_W="YES"
-_ipt(){ if [ "${_IPT_HAS_W}" = "YES" ]; then iptables -w "$@"; else iptables "$@"; fi; }
-_chain_exists(){ _ipt -L "$1" -n >/dev/null 2>&1; }
+_REASSERT="/opt/local/bin/synproxy_reassert"
+_ADDON="${_INC_DIR}/99-synproxy-reassert.sh"
+_WATCH_BIN="/usr/local/sbin/watch_synproxy"
+_ROLLBACK="/opt/local/bin/synproxy_rollback"
 
-# fresh log
-: > "${_LOG}"
-_msg "Started at $(date -u +'%F %T UTC')"
+# Old artifacts we’ll clean up
+_OLD_SYN_ADDON="${_INC_DIR}/synproxy.sh"
+_OLD_QUIC_ADDONS_GLOB="${_INC_DIR}/quic_udp*_limit.sh"
+_ASSERT_BIN="/usr/local/sbin/synproxy_assert"
+_INITD="/etc/init.d/synproxy-assert"
+_CRON="/etc/cron.d/synproxy-assert"
+_MONITOR_OLD="/usr/local/sbin/mon_synproxy"
+_WATCHER_OLD="/usr/local/sbin/watch_synproxy"
+_OLD_ROLLBACK="/usr/local/sbin/synproxy_rollback"
+# ---------------------------------------------------------------------
 
-# 1) kernel bits
 _msg "1) Load SYNPROXY modules & persist nf_synproxy_core"
 modprobe xt_CT 2>/dev/null || true
 modprobe xt_conntrack 2>/dev/null || true
-modprobe xt_hashlimit 2>/dev/null || true
 modprobe xt_SYNPROXY 2>/dev/null || true
-lsmod | grep -q '^nf_synproxy_core' || modprobe nf_synproxy_core
+modprobe nf_synproxy_core 2>/dev/null || true
 grep -qs '^nf_synproxy_core$' /etc/modules || echo nf_synproxy_core >> /etc/modules
 
-# 2) minimal TCP sysctls (don’t clobber other tuning)
-_msg "2) Ensure tcp_syncookies/timestamps/window_scaling are on"
+_msg "2) Minimal TCP sysctls (non-clobber of other files)"
 mkdir -p /etc/sysctl.d
 : > "${_SYSCTL_FILE}"
-_ensure_sysctl(){ local _k="$1" _v="$2" _c; _c="$(sysctl -n "${_k}" 2>/dev/null || true)"; [ "${_c}" = "${_v}" ] || sysctl -w "${_k}=${_v}" >/dev/null; printf '%s = %s\n' "${_k}" "${_v}" >> "${_SYSCTL_FILE}"; }
-_ensure_sysctl net.ipv4.tcp_syncookies 1
-_ensure_sysctl net.ipv4.tcp_timestamps 1
-_ensure_sysctl net.ipv4.tcp_window_scaling 1
+_set_sys(){ local _k="$1" _v="$2" _cur; _cur="$(sysctl -n "${_k}" 2>/dev/null || echo)"; [ "${_cur}" = "${_v}" ] || sysctl -w "${_k}=${_v}" >/dev/null; printf '%s = %s\n' "${_k}" "${_v}" >> "${_SYSCTL_FILE}"; }
+_set_sys net.ipv4.tcp_syncookies 1
+_set_sys net.ipv4.tcp_timestamps 1
+_set_sys net.ipv4.tcp_window_scaling 1
 sysctl -p "${_SYSCTL_FILE}" >/dev/null || true
 
-# 3) Ensure csfpost runs add-ons with bash
-_msg "3) Ensure ${_CSFPOST} executes /etc/csf/csfpost.d/*.sh with bash"
+_msg "3) Ensure csfpost executes ${_INC_DIR}/*.sh with bash (not source)"
 mkdir -p "${_INC_DIR}"
 if [ ! -e "${_CSFPOST}" ]; then echo "#!/bin/bash" > "${_CSFPOST}"; chmod 700 "${_CSFPOST}"; fi
 cp -a "${_CSFPOST}" "${_CSFPOST}.bak.$(date +%s)"
+# remove any prior include block we added
 sed -i '/^# ===== BEGIN synproxy include/,/^# ===== END synproxy include/d' "${_CSFPOST}"
 cat >> "${_CSFPOST}" <<'EOF'
 
@@ -90,138 +98,155 @@ if [ -d /etc/csf/csfpost.d ]; then
     [ -r "${_inc}" ] && /bin/bash "${_inc}"
   done
 fi
-# ===== END synproxy include (bash exec) =====
+# ===== END synproxy include =====
 EOF
 chmod 700 "${_CSFPOST}"
 
-# 4) Tame CSF features that fight SYNPROXY
+_msg "4) Disable CSF SYNFLOOD (SYNPROXY supersedes it); warn for PORTFLOOD 80/443"
 if [ -f "${_CSFCONF}" ]; then
-  _msg "4) Disable CSF SYNFLOOD (SYNPROXY supersedes it) and warn if PORTFLOOD hits 80/443"
   cp -a "${_CSFCONF}" "${_CSFCONF}.bak.$(date +%s)"
-  sed -ri 's/^SYNFLOOD *= *".*"/SYNFLOOD = "0"/' "${_CSFCONF}" || true
+  sed -i 's/^SYNFLOOD *= *".*"/SYNFLOOD = "0"/' "${_CSFCONF}" || true
   _pf="$(grep -E '^PORTFLOOD' "${_CSFCONF}" || true)"
   if echo "${_pf}" | grep -Eq '(^|,)(80|443);tcp;'; then
     _msg "WARNING: PORTFLOOD includes 80/443 — consider removing those to avoid top-of-chain inserts above SYNPROXY."
   fi
 fi
 
-# 5) Write add-ons: early chain + NOTRACK + SYNPROXY + NEW→DROP; QUIC limiter
-_msg "5) Install add-ons: SYNPROXY_EARLY chain + QUIC limiter"
-_TCP_PORTS_STR="$(printf '%s ' "${_TCP_PORTS[@]}")"
-cat > "${_SYN_ADDON}" <<'EOF'
+_msg "5) Remove older/broken artifacts (safe if absent)"
+rm -f "${_OLD_SYN_ADDON}" 2>/dev/null || true
+[ -d "${_INC_DIR}" ] && find "${_INC_DIR}" -maxdepth 1 -type f -name "$(basename "${_OLD_QUIC_ADDONS_GLOB}")" -exec rm -f {} + 2>/dev/null || true
+rm -f "${_ASSERT_BIN}" "${_CRON}" "${_MONITOR_OLD}" "${_OLD_ROLLBACK}" 2>/dev/null || true
+if [ -x "${_INITD}" ]; then
+  "${_INITD}" stop >/dev/null 2>&1 || true
+  command -v update-rc.d >/dev/null 2>&1 && update-rc.d synproxy-assert remove >/dev/null 2>&1 || true
+  rm -f "${_INITD}" 2>/dev/null || true
+fi
+
+_msg "6) Write CSF add-on to call reassert on every CSF reload: ${_ADDON}"
+cat > "${_ADDON}" <<EOF
 #!/bin/bash
-set -Eeuo pipefail
-_TCP_PORTS=(_PORTS_PLACEHOLDER_)
+# CSF post hook — call reassert tool (idempotent)
+_TCP_PORTS="${_TCP_PORTS}"
+_ENABLE_QUIC_LIMITER="${_ENABLE_QUIC_LIMITER}"
+_QUIC_PORT="${_QUIC_PORT}"
+_RATE_PER_IP="${_RATE_PER_IP}"
+_BURST_PER_IP="${_BURST_PER_IP}"
+_RATE_PER_24="${_RATE_PER_24}"
+_BURST_PER_24="${_BURST_PER_24}"
+_TRUSTED_SRC="${_TRUSTED_SRC}"
+_ARGS="-p \\"\${_TCP_PORTS}\\""
+[ "\${_ENABLE_QUIC_LIMITER}" = "YES" ] || _ARGS="\${_ARGS} --no-quic"
+[ -n "\${_QUIC_PORT}" ] && _ARGS="\${_ARGS} --quic-port \${_QUIC_PORT}"
+[ -n "\${_TRUSTED_SRC}" ] && _ARGS="\${_ARGS} --trust \\"\${_TRUSTED_SRC}\\""
+_ARGS="\${_ARGS} --rate-ip \\"\${_RATE_PER_IP}\\" --burst-ip \\"\${_BURST_PER_IP}\\" --rate-24 \\"\${_RATE_PER_24}\\" --burst-24 \\"\${_BURST_PER_24}\\" -q"
+\${_REASSERT} \${_ARGS}
+exit 0
+EOF
+chmod 700 "${_ADDON}"
+
+_msg "7) Install the new watch tool: ${_WATCH_BIN}"
+cat > "${_WATCH_BIN}" <<'EOWATCH'
+#!/bin/bash
+# /usr/local/sbin/watch_synproxy — Devuan-friendly live view for SYNPROXY.
+# Shows: INPUT top, LOCALINPUT (if any), raw/PREROUTING NOTRACK hits, SYNPROXY_EARLY with counters.
+# STYLE: all names start with _ ; all refs use ${_VAR}.
+set -u
+
+_INTERVAL="${_INTERVAL:-2}"
+_TCP_PORTS="${_TCP_PORTS:-443 80}"
+_SHOW_INPUT_LINES="${_SHOW_INPUT_LINES:-20}"
+
+_usage(){
+  cat <<USAGE
+Usage: watch_synproxy [options]
+  -n SEC         Refresh interval (default: ${_INTERVAL})
+  -p "443 80"    Ports to highlight in raw NOTRACK view (default: "${_TCP_PORTS}")
+  -l NUM         How many INPUT lines to show (default: ${_SHOW_INPUT_LINES})
+  -h             Help
+Tip: run after a CSF change: csf -r && /usr/local/sbin/csf_synproxy_reassert.sh -p "443 80" --no-quic -q
+USAGE
+}
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -n) _INTERVAL="$2"; shift 2;;
+    -p) _TCP_PORTS="$2"; shift 2;;
+    -l) _SHOW_INPUT_LINES="$2"; shift 2;;
+    -h|--help) _usage; exit 0;;
+    *) echo "Unknown option: $1" >&2; _usage; exit 2;;
+  esac
+done
+
+_has(){ command -v "$1" >/dev/null 2>&1; }
 _IPT_HAS_W="NO"; iptables -w -L -n >/dev/null 2>&1 && _IPT_HAS_W="YES"
 _ipt(){ if [ "${_IPT_HAS_W}" = "YES" ]; then iptables -w "$@"; else iptables "$@"; fi; }
 _chain_exists(){ _ipt -L "$1" -n >/dev/null 2>&1; }
-_has_t(){ _ipt -t "$1" -C "$2" "${@:3}" >/dev/null 2>&1; }
-_ins_top(){ _ipt -t "$1" -I "$2" 1 "${@:3}" 2>/dev/null || true; }
-_add_end(){ _ipt -A "$1" "${@:2}" 2>/dev/null || true; }
 
-# modules
-modprobe xt_CT 2>/dev/null || true
-modprobe xt_conntrack 2>/dev/null || true
-modprobe xt_SYNPROXY 2>/dev/null || true
-modprobe nf_synproxy_core 2>/dev/null || true
-
-# raw: NOTRACK SYNs
-for _p in "${_TCP_PORTS[@]}"; do
-  _has_t raw PREROUTING -p tcp --syn --dport "${_p}" -j CT --notrack || _ins_top raw PREROUTING -p tcp --syn --dport "${_p}" -j CT --notrack
-done
-
-# 1) Ensure early chain exists
-_chain_exists SYNPROXY_EARLY || _ipt -N SYNPROXY_EARLY 2>/dev/null || true
-
-# 2) Ensure jumps to early chain are #1 in INPUT and (if present) LOCALINPUT
-_has_t filter INPUT -j SYNPROXY_EARLY || _ins_top filter INPUT -j SYNPROXY_EARLY
-_chain_exists LOCALINPUT && { _has_t filter LOCALINPUT -j SYNPROXY_EARLY || _ins_top filter LOCALINPUT -j SYNPROXY_EARLY; } || true
-
-# 3) Populate early chain (order matters):
-_ipt -C SYNPROXY_EARLY -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT 2>/dev/null || _add_end SYNPROXY_EARLY -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
-for _p in "${_TCP_PORTS[@]}"; do
-  _ipt -C SYNPROXY_EARLY -p tcp -m tcp --syn --dport "${_p}" -m conntrack --ctstate UNTRACKED -j SYNPROXY --sack-perm --timestamp --wscale 7 --mss 1460 2>/dev/null \
-    || _add_end SYNPROXY_EARLY -p tcp -m tcp --syn --dport "${_p}" -m conntrack --ctstate UNTRACKED -j SYNPROXY --sack-perm --timestamp --wscale 7 --mss 1460
-  _ipt -C SYNPROXY_EARLY -p tcp -m tcp --syn --dport "${_p}" -m state --state NEW -j SYNPROXY --sack-perm --timestamp --wscale 7 --mss 1460 2>/dev/null \
-    || _add_end SYNPROXY_EARLY -p tcp -m tcp --syn --dport "${_p}" -m state --state NEW -j SYNPROXY --sack-perm --timestamp --wscale 7 --mss 1460
-  _ipt -C SYNPROXY_EARLY -p tcp -m tcp --dport "${_p}" -m state --state NEW -j DROP 2>/dev/null \
-    || _add_end SYNPROXY_EARLY -p tcp -m tcp --dport "${_p}" -m state --state NEW -j DROP
-done
-_ipt -C SYNPROXY_EARLY -m conntrack --ctstate INVALID -j DROP 2>/dev/null || _add_end SYNPROXY_EARLY -m conntrack --ctstate INVALID -j DROP
-exit 0
-EOF
-sed -i "s/_PORTS_PLACEHOLDER_/$(printf '%s ' "${_TCP_PORTS[@]}")/" "${_SYN_ADDON}"
-chmod 700 "${_SYN_ADDON}"
-
-# QUIC limiter add-on
-cat > "${_QUIC_ADDON}" <<'EOF'
-#!/bin/bash
-set -Eeuo pipefail
-_PORT=_LIMIT_
-_RATE_PER_IP="_RATEIP_"
-_BURST_PER_IP="_BURSTIP_"
-_RATE_PER_24="_RATE24_"
-_BURST_PER_24="_BURST24_"
-_IPT_HAS_W="NO"; iptables -w -L -n >/dev/null 2>&1 && _IPT_HAS_W="YES"
-_ipt(){ if [ "${_IPT_HAS_W}" = "YES" ]; then iptables -w "$@"; else iptables "$@"; fi; }
-_ins_top(){ _ipt -I INPUT 1 "$@" 2>/dev/null || true; }
-_has(){ _ipt -C INPUT "$@" >/dev/null 2>&1; }
-_ensure(){ _has "$@" || _ins_top "$@"; }
-_ensure -p udp --dport "${_PORT}" -m conntrack --ctstate INVALID -j DROP
-_ensure -p udp --dport "${_PORT}" -m hashlimit --hashlimit-name quic${_PORT}_ip  --hashlimit-above "${_RATE_PER_IP}"  --hashlimit-burst "${_BURST_PER_IP}" --hashlimit-mode srcip --hashlimit-htable-expire 60000 -j DROP
-_ensure -p udp --dport "${_PORT}" -m hashlimit --hashlimit-name quic${_PORT}_24 --hashlimit-above "${_RATE_PER_24}" --hashlimit-burst "${_BURST_PER_24}" --hashlimit-mode srcip --hashlimit-srcmask 24 --hashlimit-htable-expire 60000 -j DROP
-exit 0
-EOF
-sed -i "s/_LIMIT_/${_QUIC_PORT}/g" "${_QUIC_ADDON}"
-sed -i "s/_RATEIP_/$(printf '%s' "${_RATE_PER_IP}" | sed 's:/:\\/:g')/g" "${_QUIC_ADDON}"
-sed -i "s/_BURSTIP_/${_BURST_PER_IP}/g" "${_QUIC_ADDON}"
-sed -i "s/_RATE24_/$(printf '%s' "${_RATE_PER_24}" | sed 's:/:\\/:g')/g" "${_QUIC_ADDON}"
-sed -i "s/_BURST24_/${_BURST_PER_24}/g" "${_QUIC_ADDON}"
-chmod 700 "${_QUIC_ADDON}"
-
-# 6) Apply once and CSF reload (if present)
-_msg "6) Apply add-ons and reload CSF once"
-/bin/bash "${_SYN_ADDON}" || true
-/bin/bash "${_QUIC_ADDON}" || true
-command -v csf >/dev/null 2>&1 && csf -r || true
-
-# 7) Install sysvinit daemon that re-asserts every 5s (removed)
-
-# 8) Monitor + watcher (optional)
-if [ "${_INSTALL_MONITOR}" = "YES" ]; then
-  _msg "8) Install compact monitor"
-  cat > "${_MONITOR}" <<'EOSH'
-#!/bin/sh
-_PORTS="$*"; [ -n "${_PORTS}" ] || _PORTS="443 80"
-echo "=== INPUT top ===";        iptables -L INPUT -n -v --line-numbers 2>/dev/null | sed -n '1,25p'
-echo; if iptables -L LOCALINPUT -n >/dev/null 2>&1; then
-  echo "=== LOCALINPUT top ==="; iptables -L LOCALINPUT -n -v --line-numbers 2>/dev/null | sed -n '1,25p'; echo
-fi
-echo "=== raw PREROUTING (first 20) ==="; iptables -t raw -L PREROUTING -n -v --line-numbers 2>/dev/null | sed -n '1,20p'; echo
-for _p in ${_PORTS}; do
-  echo "=== TCP :${_p} ==="
-  printf "SYN_RECV: "; ss -tan state syn-recv sport = :"${_p}" 2>/dev/null | wc -l || ss -tan state synrecv sport = :"${_p}" 2>/dev/null | wc -l
-  printf "ESTAB:    "; ss -tan state established sport = :"${_p}" 2>/dev/null | wc -l
+while :; do
+  clear
+  echo "=== SYNPROXY monitor @ $(date '+%F %T %Z')  interval=${_INTERVAL}s  ports: ${_TCP_PORTS}"
   echo
+
+  echo "-- INPUT (top ${_SHOW_INPUT_LINES})"
+  _ipt -L INPUT -n -v --line-numbers | sed -n "1,${_SHOW_INPUT_LINES}p"
+  if _chain_exists LOCALINPUT; then
+    echo; echo "-- LOCALINPUT (top ${_SHOW_INPUT_LINES})"
+    _ipt -L LOCALINPUT -n -v --line-numbers | sed -n "1,${_SHOW_INPUT_LINES}p"
+  fi
+
+  echo; echo "-- raw/PREROUTING (NOTRACK hits for web ports)"
+  _ipt -t raw -L PREROUTING -n -v --line-numbers \
+    | awk -v PORTS="${_TCP_PORTS}" '
+        BEGIN{ split(PORTS,a," "); for(i in a) p[a[i]]=1 }
+        /CT --notrack|NOTRACK/ && /--syn/ && /--dport/ {
+          port=""; for(i=1;i<=NF;i++){ if($i=="dpt:" || $i=="--dport"){ port=$(i+1) } }
+          if(port in p){ print }
+        }'
+
+  echo; echo "-- SYNPROXY_EARLY (full chain with counters)"
+  if _chain_exists SYNPROXY_EARLY; then
+    _ipt -L SYNPROXY_EARLY -n -v --line-numbers
+  else
+    echo "SYNPROXY_EARLY not found"
+  fi
+
+  echo; echo "(q to quit)"; read -t "${_INTERVAL}" -n 1 _k && [ "${_k:-}" = "q" ] && exit 0
 done
-EOSH
-  chmod 750 "${_MONITOR}"
-  cat > "${_WATCHER}" <<'EOSH'
-#!/bin/sh
-_INT="${1:-2}"; shift || true
-_PORTS="$*"; [ -n "${_PORTS}" ] || _PORTS="443 80"
-exec watch -n "${_INT}" "/usr/local/sbin/mon_synproxy ${_PORTS}"
-EOSH
-  chmod 750 "${_WATCHER}"
+EOWATCH
+chmod 755 "${_WATCH_BIN}"
+
+if [ -n "${_CSF_BIN}" ]; then
+  _msg "8) Reload CSF once to pick up add-on"
+  ${_CSF_BIN} -r || true
+else
+  _msg "8) CSF not found; skipping CSF reload"
+fi
+
+if [ "${_APPLY_NOW}" = "YES" ]; then
+  _msg "9) Apply reassert now (twice to beat lfd churn)"
+  "${_REASSERT}" -p "${_TCP_PORTS}" $([ "${_ENABLE_QUIC_LIMITER}" = "YES" ] && echo "--quic-port ${_QUIC_PORT}" || echo "--no-quic") \
+     --rate-ip "${_RATE_PER_IP}" --burst-ip "${_BURST_PER_IP}" --rate-24 "${_RATE_PER_24}" --burst-24 "${_BURST_PER_24}" \
+     $([ -n "${_TRUSTED_SRC}" ] && printf "%s" "--trust \"${_TRUSTED_SRC}\"") -q || true
+  sleep 1
+  "${_REASSERT}" -p "${_TCP_PORTS}" $([ "${_ENABLE_QUIC_LIMITER}" = "YES" ] && echo "--quic-port ${_QUIC_PORT}" || echo "--no-quic") -q || true
 fi
 
 echo
 echo "---------------------------------------------------------------------"
-echo "Pinned model: INPUT/LOCALINPUT -> SYNPROXY_EARLY (rule #1), then:"
-echo "  UNTRACKED+SYN -> SYNPROXY ; NEW+SYN -> SYNPROXY ; NEW (to port) -> DROP ; INVALID -> DROP"
-echo "raw/PREROUTING: CT --notrack for SYNs to protected ports"
-echo "QUIC limiter: INVALID+hashlimit on UDP/${_QUIC_PORT}"
-echo "CSF: SYNFLOOD disabled; review PORTFLOOD for 80/443"
-echo "Monitor:   ${_WATCHER}  (e.g., '${_WATCHER} 2 443 80')"
-echo "Log:       ${_LOG}"
+echo "SYNPROXY installed with updated logic."
+echo " Reassert tool: ${_REASSERT}"
+echo " CSF hook:      ${_ADDON}"
+echo " Watch tool:    ${_WATCH_BIN}    (e.g., ${_WATCH_BIN} -n 2 -p \"${_TCP_PORTS}\")"
+echo
+echo "Use after ANY CSF mutation (example):"
+echo "  csf -r && ${_REASSERT} -p \"${_TCP_PORTS}\" --no-quic -q"
+[ "${_ENABLE_QUIC_LIMITER}" = "YES" ] && echo "QUIC limiter:   ENABLED on UDP/${_QUIC_PORT}  (rates: ${_RATE_PER_IP}, ${_RATE_PER_24})" || echo "QUIC limiter:   DISABLED (no UDP/${_QUIC_PORT} drops left)"
+[ -n "${_TRUSTED_SRC}" ] && echo "Trusted bypass: ${_TRUSTED_SRC}" || true
+echo
+echo "Verify:"
+echo "  iptables -S INPUT | sed -n '1,25p'     # INPUT#1 should be -j SYNPROXY_EARLY ; no udp/${_QUIC_PORT} INVALID drops if disabled"
+echo "  iptables -S SYNPROXY_EARLY | sed -n '1,120p'  # lo RETURN; EST/REL ACCEPT; SYNPROXY; ACK-NEW ACCEPT; INVALID DROP"
+echo "Log: ${_LOG}"
+echo
+echo " Uninstall tool: ${_ROLLBACK}"
 echo "---------------------------------------------------------------------"
