@@ -222,7 +222,6 @@ echo "  UNTRACKED+SYN -> SYNPROXY ; NEW+SYN -> SYNPROXY ; NEW (to port) -> DROP 
 echo "raw/PREROUTING: CT --notrack for SYNs to protected ports"
 echo "QUIC limiter: INVALID+hashlimit on UDP/${_QUIC_PORT}"
 echo "CSF: SYNFLOOD disabled; review PORTFLOOD for 80/443"
-echo "Self-heal: sysvinit service '/etc/init.d/synproxy-assert' (every 5s)"
 echo "Monitor:   ${_WATCHER}  (e.g., '${_WATCHER} 2 443 80')"
 echo "Log:       ${_LOG}"
 echo "---------------------------------------------------------------------"
