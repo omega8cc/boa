@@ -75,7 +75,6 @@ done
 # ---------- tools & wrappers ----------
 command -v iptables >/dev/null 2>&1 || { _msg "iptables not found"; exit 0; }
 command -v modprobe >/dev/null 2>&1 || true
-
 _IPT_HAS_W="NO"; iptables -w -L -n >/dev/null 2>&1 && _IPT_HAS_W="YES"
 _ipt(){ if [ "${_IPT_HAS_W}" = "YES" ]; then iptables -w "$@"; else iptables "$@"; fi; }
 _chain_exists(){ _ipt -L "$1" -n >/dev/null 2>&1; }
@@ -99,7 +98,7 @@ _ensure_notrack(){
     _ipt -t raw -D PREROUTING -p tcp --syn --dport "${_port}" -j NOTRACK 2>/dev/null || break
   done
   _ipt -t raw -I PREROUTING 1 -p tcp --syn --dport "${_port}" -j CT --notrack 2>/dev/null || true
-  _v "raw: ensured CT --notrack for :${_port}"
+  _v "raw: CT --notrack for :${_port}"
 }
 
 _pin_early_jump(){
@@ -116,7 +115,7 @@ _pin_early_jump(){
 }
 
 _populate_early_chain(){
-  # order: ESTABLISHED,RELATED -> UNTRACKED+SYN -> NEW+SYN -> NEW->DROP -> INVALID->DROP
+  # Order: ESTABLISHED/RELATED -> UNTRACKED+SYN -> NEW+SYN -> INVALID->DROP
   [ "${_REBUILD_CHAIN}" = "YES" ] && _ipt -F SYNPROXY_EARLY 2>/dev/null || true
   _ipt -C SYNPROXY_EARLY -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT 2>/dev/null \
     || _ipt -A SYNPROXY_EARLY -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT 2>/dev/null || true
@@ -130,8 +129,7 @@ _populate_early_chain(){
       -j SYNPROXY --sack-perm --timestamp --wscale 7 --mss 1460 2>/dev/null \
       || _ipt -A SYNPROXY_EARLY -p tcp -m tcp --syn --dport "${_p}" -m state --state NEW \
          -j SYNPROXY --sack-perm --timestamp --wscale 7 --mss 1460 2>/dev/null || true
-    _ipt -C SYNPROXY_EARLY -p tcp -m tcp --dport "${_p}" -m state --state NEW -j DROP 2>/dev/null \
-      || _ipt -A SYNPROXY_EARLY -p tcp -m tcp --dport "${_p}" -m state --state NEW -j DROP 2>/dev/null || true
+    # NOTE: intentionally NO "NEW -> DROP" here (it can kill final ACKs)
   done
   _ipt -C SYNPROXY_EARLY -m conntrack --ctstate INVALID -j DROP 2>/dev/null \
     || _ipt -A SYNPROXY_EARLY -m conntrack --ctstate INVALID -j DROP 2>/dev/null || true
@@ -153,24 +151,18 @@ _del_specs_from_INPUT(){
 _ensure_quic_limits(){
   [ "${_ENABLE_QUIC_LIMITER}" = "YES" ] && [ -n "${_QUIC_PORT}" ] || return 0
   local _p="${_QUIC_PORT}"
-
-  # Deduplicate ALL existing QUIC limiter rules first (any order)
+  # Dedup all our QUIC rules first
   _del_specs_from_INPUT "-p udp .*(--dport|dpt:) ${_p} .*hashlimit-name quic${_p}_ip"
   _del_specs_from_INPUT "-p udp .*(--dport|dpt:) ${_p} .*hashlimit-name quic${_p}_24"
   _del_specs_from_INPUT "-p udp .*(--dport|dpt:) ${_p} .* -m conntrack --ctstate INVALID .* -j DROP"
-
-  # Insert a single canonical trio at the very top (insert in reverse so final order is INVALID, per-IP, per-/24)
+  # Insert canonical order: INVALID first, then per-IP, then per-/24
   _ipt -I INPUT 1 -p udp --dport "${_p}" -m hashlimit --hashlimit-name quic${_p}_24 \
       --hashlimit-above "${_RATE_PER_24}" --hashlimit-burst "${_BURST_PER_24}" \
       --hashlimit-mode srcip --hashlimit-srcmask 24 --hashlimit-htable-expire 60000 -j DROP 2>/dev/null || true
-
   _ipt -I INPUT 1 -p udp --dport "${_p}" -m hashlimit --hashlimit-name quic${_p}_ip \
       --hashlimit-above "${_RATE_PER_IP}" --hashlimit-burst "${_BURST_PER_IP}" \
       --hashlimit-mode srcip --hashlimit-htable-expire 60000 -j DROP 2>/dev/null || true
-
   _ipt -I INPUT 1 -p udp --dport "${_p}" -m conntrack --ctstate INVALID -j DROP 2>/dev/null || true
-
-  _v "INPUT: ensured QUIC limiter (single set) for UDP:${_p}"
 }
 
 # ---------- do the work ----------
