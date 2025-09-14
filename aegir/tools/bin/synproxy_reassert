@@ -151,56 +151,85 @@ _pin_early_jump(){
   fi
 }
 
-_purge_legacy_rules(){
-  # Remove any old NEW->DROP or old “NEW !SYN -> ACCEPT” shims we previously created
-  local _line _spec
+_populate_early_chain(){
+  # Canonical SYNPROXY early chain:
+  #  (a) optional flush
+  #  (b) purge legacy ACK-NEW accepts and per-port NEW->DROP mistakes
+  #  (c) bypass loopback (and optional trusted sources)
+  #  (d) ACCEPT ESTABLISHED,RELATED
+  #  (e) per-port: UNTRACKED+SYN -> SYNPROXY
+  #  (f) per-port: NEW+SYN       -> SYNPROXY
+  #  (g) per-port: NEW !SYN      -> DROP      (prevents stray final-ACK resets)
+  #  (h) INVALID -> DROP
+  [ "${_REBUILD_CHAIN}" = "YES" ] && _ipt -F SYNPROXY_EARLY 2>/dev/null || true
+
+  # (b) purge legacy shims/mistakes (built around your protected ports)
+  #     - remove any ACK-only ACCEPT for ctstate NEW on :80/:443
+  #     - remove any per-port "NEW -> DROP" we may have inserted previously
+  local _PORTS_REGEX _line _spec
+  _PORTS_REGEX="$(printf '%s|' ${_TCP_PORTS})"; _PORTS_REGEX="${_PORTS_REGEX%|}"
+
+  # purge ACK-NEW accept shims (either --tcp-flags ACK or ! --syn forms)
   while :; do
-    _line="$({ iptables -S SYNPROXY_EARLY 2>/dev/null || true; } | grep -E -- '-m state --state NEW .* --dport [0-9]+ .* -j (DROP|ACCEPT)' | head -n1 || true)"
+    _line="$({ iptables -S SYNPROXY_EARLY 2>/dev/null || true; } \
+      | grep -E -- "-p tcp .* --dport (${_PORTS_REGEX}) .* (tcp-flags .* ACK|! --syn) .* (ctstate NEW|state NEW) .* -j ACCEPT" \
+      | head -n1 || true)"
     [ -n "${_line}" ] || break
     _spec="${_line#-A SYNPROXY_EARLY }"
     _ipt -D SYNPROXY_EARLY ${_spec} 2>/dev/null || break
   done
-}
 
-_populate_early_chain(){
-  # (a) bypass lo/trusted → (b) EST/REL → (c) UNTRACKED+SYN SYNPROXY
-  # (d) NEW+SYN SYNPROXY → (e) ACK-only NEW accept → (f) INVALID drop
-  [ "${_REBUILD_CHAIN}" = "YES" ] && _ipt -F SYNPROXY_EARLY 2>/dev/null || true
+  # purge per-port NEW->DROP mistakes (keep only the canonical NEW !SYN drop we add below)
+  while :; do
+    _line="$({ iptables -S SYNPROXY_EARLY 2>/dev/null || true; } \
+      | grep -E -- "-p tcp .* --dport (${_PORTS_REGEX}) .* (ctstate NEW|state NEW) .* -j DROP" \
+      | grep -v '! --syn' \
+      | head -n1 || true)"
+    [ -n "${_line}" ] || break
+    _spec="${_line#-A SYNPROXY_EARLY }"
+    _ipt -D SYNPROXY_EARLY ${_spec} 2>/dev/null || break
+  done
 
-  # (a) bypasses: loopback + optional trusted sources
+  # (c) bypasses
   _ipt -C SYNPROXY_EARLY -i lo -j RETURN 2>/dev/null || _ipt -I SYNPROXY_EARLY 1 -i lo -j RETURN
   if [ -n "${_TRUSTED_SRC}" ]; then
+    local _cidr
     for _cidr in ${_TRUSTED_SRC}; do
       _ipt -C SYNPROXY_EARLY -s "${_cidr}" -j RETURN 2>/dev/null || _ipt -I SYNPROXY_EARLY 2 -s "${_cidr}" -j RETURN
     done
   fi
 
-  # (b) established
+  # (d) established/related
   _ipt -C SYNPROXY_EARLY -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT 2>/dev/null \
     || _ipt -A SYNPROXY_EARLY -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT 2>/dev/null || true
 
+  # (e)(f)(g) per protected port
   local _p
   for _p in ${_TCP_PORTS}; do
-    # (c) UNTRACKED+SYN
-    _ipt -C SYNPROXY_EARLY -p tcp --dport "${_p}" -m tcp --tcp-flags FIN,SYN,RST,ACK SYN -m conntrack --ctstate UNTRACKED \
-      -j SYNPROXY --sack-perm --timestamp --wscale 7 --mss 1460 2>/dev/null \
-      || _ipt -A SYNPROXY_EARLY -p tcp --dport "${_p}" -m tcp --tcp-flags FIN,SYN,RST,ACK SYN -m conntrack --ctstate UNTRACKED \
+    # UNTRACKED+SYN -> SYNPROXY
+    _ipt -C SYNPROXY_EARLY -p tcp --dport "${_p}" -m tcp --tcp-flags FIN,SYN,RST,ACK SYN \
+         -m conntrack --ctstate UNTRACKED \
+         -j SYNPROXY --sack-perm --timestamp --wscale 7 --mss 1460 2>/dev/null \
+      || _ipt -A SYNPROXY_EARLY -p tcp --dport "${_p}" -m tcp --tcp-flags FIN,SYN,RST,ACK SYN \
+         -m conntrack --ctstate UNTRACKED \
          -j SYNPROXY --sack-perm --timestamp --wscale 7 --mss 1460 2>/dev/null || true
-    # (d) NEW+SYN
-    _ipt -C SYNPROXY_EARLY -p tcp --dport "${_p}" -m tcp --tcp-flags FIN,SYN,RST,ACK SYN -m conntrack --ctstate NEW \
-      -j SYNPROXY --sack-perm --timestamp --wscale 7 --mss 1460 2>/dev/null \
-      || _ipt -A SYNPROXY_EARLY -p tcp --dport "${_p}" -m tcp --tcp-flags FIN,SYN,RST,ACK SYN -m conntrack --ctstate NEW \
+
+    # NEW+SYN -> SYNPROXY
+    _ipt -C SYNPROXY_EARLY -p tcp --dport "${_p}" -m tcp --tcp-flags FIN,SYN,RST,ACK SYN \
+         -m conntrack --ctstate NEW \
+         -j SYNPROXY --sack-perm --timestamp --wscale 7 --mss 1460 2>/dev/null \
+      || _ipt -A SYNPROXY_EARLY -p tcp --dport "${_p}" -m tcp --tcp-flags FIN,SYN,RST,ACK SYN \
+         -m conntrack --ctstate NEW \
          -j SYNPROXY --sack-perm --timestamp --wscale 7 --mss 1460 2>/dev/null || true
-    # (e) ACK-only NEW (final ACK of TCP 3WHS)
-    _ipt -C SYNPROXY_EARLY -p tcp --dport "${_p}" -m tcp --tcp-flags SYN,RST,ACK ACK -m conntrack --ctstate NEW -j ACCEPT 2>/dev/null \
-      || _ipt -A SYNPROXY_EARLY -p tcp --dport "${_p}" -m tcp --tcp-flags SYN,RST,ACK ACK -m conntrack --ctstate NEW -j ACCEPT 2>/dev/null || true
+
+    # NEW !SYN -> DROP (prevents “final-ACK hits kernel → RST”)
+    _ipt -C SYNPROXY_EARLY -p tcp --dport "${_p}" -m conntrack --ctstate NEW -m tcp ! --syn -j DROP 2>/dev/null \
+      || _ipt -A SYNPROXY_EARLY -p tcp --dport "${_p}" -m conntrack --ctstate NEW -m tcp ! --syn -j DROP 2>/dev/null || true
   done
 
-  # (f) INVALID drop
+  # (h) INVALID -> DROP
   _ipt -C SYNPROXY_EARLY -m conntrack --ctstate INVALID -j DROP 2>/dev/null \
     || _ipt -A SYNPROXY_EARLY -m conntrack --ctstate INVALID -j DROP 2>/dev/null || true
-
-  _purge_legacy_rules
 }
 
 # ---------- do the work ----------
