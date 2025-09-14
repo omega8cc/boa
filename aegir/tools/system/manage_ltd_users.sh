@@ -2215,10 +2215,10 @@ else
     _fix_node_in_lshell_access
     touch ${_pthLog}/node.manage.lshell.ctrl.${_tRee}.${_xSrl}.pid
   fi
-  if [ ! -e "${_pthLog}/php.manage.lshell.ctrl.${_tRee}.${_xSrl}.pid" ]; then
-    # _fix_php_in_lshell_access
-    touch ${_pthLog}/php.manage.lshell.ctrl.${_tRee}.${_xSrl}.pid
-  fi
+#   if [ ! -e "${_pthLog}/php.manage.lshell.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+#     _fix_php_in_lshell_access
+#     touch ${_pthLog}/php.manage.lshell.ctrl.${_tRee}.${_xSrl}.pid
+#   fi
   cat /var/xdrago/conf/lshell.conf > ${_THIS_LTD_CONF}
   _find_correct_ip
   sed -i "s/1.1.1.1/${_LOC_IP}/g" ${_THIS_LTD_CONF}
