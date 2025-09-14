@@ -357,7 +357,7 @@ _whitelist_ip_site24x7() {
     csf -df
     wait
     touch /root/.whitelist.site24x7.cnf
-    [ -e "/etc/init.d/synproxy-assert" ] && synproxy_reassert -p "443 80" --quic-port 443 -q &> /dev/null
+    [ -e "/etc/csf/csfpost.d/synproxy.sh" ] && synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
   fi
 }
 
@@ -405,7 +405,7 @@ _local_ip_rg() {
         echo "${_IP} # local.IP.list" >> /etc/csf/csf.allow
         wait
       fi
-      [ -e "/etc/init.d/synproxy-assert" ] && synproxy_reassert -p "443 80" --quic-port 443 -q &> /dev/null
+      [ -e "/etc/csf/csfpost.d/synproxy.sh" ] && synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
     done
     touch /root/.local.IP.csf.listed
   else
@@ -470,7 +470,7 @@ _guard_stats() {
           fi
         fi
       fi
-      [ -e "/etc/init.d/synproxy-assert" ] && synproxy_reassert -p "443 80" --quic-port 443 -q &> /dev/null
+      [ -e "/etc/csf/csfpost.d/synproxy.sh" ] && synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
     done
   fi
   if [ -e "${_WA}" ]; then
@@ -513,7 +513,7 @@ _guard_stats() {
           fi
         fi
       fi
-      [ -e "/etc/init.d/synproxy-assert" ] && synproxy_reassert -p "443 80" --quic-port 443 -q &> /dev/null
+      [ -e "/etc/csf/csfpost.d/synproxy.sh" ] && synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
     done
   fi
   if [ -e "${_FA}" ]; then
@@ -556,7 +556,7 @@ _guard_stats() {
           fi
         fi
       fi
-      [ -e "/etc/init.d/synproxy-assert" ] && synproxy_reassert -p "443 80" --quic-port 443 -q &> /dev/null
+      [ -e "/etc/csf/csfpost.d/synproxy.sh" ] && synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
     done
   fi
 }
@@ -566,7 +566,7 @@ _whitelist_ip_dns() {
   csf -tr 1.0.0.1
   csf -dr 1.1.1.1
   csf -dr 1.0.0.1
-  [ -e "/etc/init.d/synproxy-assert" ] && synproxy_reassert -p "443 80" --quic-port 443 -q &> /dev/null
+  [ -e "/etc/csf/csfpost.d/synproxy.sh" ] && synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
   _NOW=$(date +%y%m%d-%H%M%S)
   cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-dns-${_NOW}
   sed -i "s/.*1.1.1.1.*//g"  /etc/csf/csf.allow
@@ -601,7 +601,7 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
       | tr -d "\s"`; do
       csf -dr ${_IP} &> /dev/null
       csf -tr ${_IP} &> /dev/null
-      [ -e "/etc/init.d/synproxy-assert" ] && synproxy_reassert -p "443 80" --quic-port 443 -q &> /dev/null
+      [ -e "/etc/csf/csfpost.d/synproxy.sh" ] && synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
     done
   fi
 
@@ -670,10 +670,10 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
   kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
   killall sleep &> /dev/null
   rm -f /etc/csf/csf.error
-  if [ -e "/etc/init.d/synproxy-assert" ]; then
+  if [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
     csf -ra &> /dev/null
     wait
-    synproxy_reassert -p "443 80" --quic-port 443 -q &> /dev/null
+    synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
   else
     csf -r &> /dev/null
   fi
@@ -688,7 +688,7 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
       sysctl net.ipv4.tcp_mtu_probing=0 &> /dev/null
       iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
       ip6tables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
-      [ -e "/etc/init.d/synproxy-assert" ] && synproxy_reassert -p "443 80" --quic-port 443 -q &> /dev/null
+      [ -e "/etc/csf/csfpost.d/synproxy.sh" ] && synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
     fi
   fi
 
@@ -736,10 +736,10 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
       fi
     fi
   done
-  if [ -e "/etc/init.d/synproxy-assert" ]; then
+  if [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
     csf -ra &> /dev/null
     wait
-    synproxy_reassert -p "443 80" --quic-port 443 -q &> /dev/null
+    synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
   else
     csf -r &> /dev/null
   fi
@@ -753,7 +753,7 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
       sysctl net.ipv4.tcp_mtu_probing=0 &> /dev/null
       iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
       ip6tables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
-      [ -e "/etc/init.d/synproxy-assert" ] && synproxy_reassert -p "443 80" --quic-port 443 -q &> /dev/null
+      [ -e "/etc/csf/csfpost.d/synproxy.sh" ] && synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
     fi
   fi
   rm -f /run/water.pid

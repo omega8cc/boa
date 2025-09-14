@@ -38,33 +38,34 @@ _v(){ [ "${_VERBOSE}" = "YES" ] && _msg "$@"; }
 # ---------- parse args ----------
 while [ $# -gt 0 ]; do
   case "$1" in
-    -p|--ports)              _TCP_PORTS="$2"; shift 2;;
-    --quic-port)             _QUIC_PORT="$2"; shift 2;;
-    --no-quic)               _ENABLE_QUIC_LIMITER="NO"; shift 1;;
-    --rate-ip)               _RATE_PER_IP="$2"; shift 2;;
-    --burst-ip)              _BURST_PER_IP="$2"; shift 2;;
-    --rate-24)               _RATE_PER_24="$2"; shift 2;;
-    --burst-24)              _BURST_PER_24="$2"; shift 2;;
-    --rebuild-chain)         _REBUILD_CHAIN="YES"; shift 1;;
-    --no-rebuild)            _REBUILD_CHAIN="NO"; shift 1;;
-    -q|--quiet)              _QUIET="YES"; _VERBOSE="NO"; shift 1;;
-    -v|--verbose)            _VERBOSE="YES"; _QUIET="NO"; shift 1;;
+    -p|--ports)        _TCP_PORTS="$2"; shift 2;;
+    --quic-port)       _QUIC_PORT="$2"; shift 2;;
+    --no-quic)         _ENABLE_QUIC_LIMITER="NO"; shift 1;;
+    --rate-ip)         _RATE_PER_IP="$2"; shift 2;;
+    --burst-ip)        _BURST_PER_IP="$2"; shift 2;;
+    --rate-24)         _RATE_PER_24="$2"; shift 2;;
+    --burst-24)        _BURST_PER_24="$2"; shift 2;;
+    --rebuild-chain)   _REBUILD_CHAIN="YES"; shift 1;;
+    --no-rebuild)      _REBUILD_CHAIN="NO"; shift 1;;
+    -q|--quiet)        _QUIET="YES"; _VERBOSE="NO"; shift 1;;
+    -v|--verbose)      _VERBOSE="YES"; _QUIET="NO"; shift 1;;
     -h|--help)
       cat <<USAGE
 Usage: synproxy_reassert [options]
-  -p, --ports "443 80"        Protect these TCP ports with SYNPROXY (default: "443 80")
-      --quic-port 443         QUIC UDP port to limit (default: 443)
-      --no-quic               Disable QUIC limiter
-      --rate-ip 80/second     Per-IP QUIC rate (default: 80/second)
-      --burst-ip 160          Per-IP QUIC burst (default: 160)
-      --rate-24 800/second    Per-/24 QUIC rate (default: 800/second)
-      --burst-24 1600         Per-/24 QUIC burst (default: 1600)
-      --rebuild-chain         Flush & rebuild SYNPROXY_EARLY (default: YES)
-      --no-rebuild            Only ensure rules exist (append if missing)
-  -q, --quiet                 Minimal output
-  -v, --verbose               Extra output
-Example:
+  -p, --ports "443 80"       TCP ports to protect with SYNPROXY (default: "443 80")
+      --quic-port 443        QUIC UDP port to limit (default: 443)
+      --no-quic              Disable QUIC limiter
+      --rate-ip 80/second    Per-IP QUIC rate (default: 80/second)
+      --burst-ip 160         Per-IP QUIC burst (default: 160)
+      --rate-24 800/second   Per-/24 QUIC rate (default: 800/second)
+      --burst-24 1600        Per-/24 QUIC burst (default: 1600)
+      --rebuild-chain        Flush & rebuild SYNPROXY_EARLY (default: YES)
+      --no-rebuild           Ensure-only (append if missing)
+  -q, --quiet                Minimal output
+  -v, --verbose              Extra output
+Examples:
   synproxy_reassert -p "443" --quic-port 443 -v
+  synproxy_reassert -p "443 80" --no-quic -q
 USAGE
       exit 0;;
     *) _msg "Unknown option: $1"; exit 2;;
@@ -74,7 +75,6 @@ done
 # ---------- tools & wrappers ----------
 command -v iptables >/dev/null 2>&1 || { _msg "iptables not found"; exit 0; }
 command -v modprobe >/dev/null 2>&1 || true
-
 _IPT_HAS_W="NO"; iptables -w -L -n >/dev/null 2>&1 && _IPT_HAS_W="YES"
 _ipt(){ if [ "${_IPT_HAS_W}" = "YES" ]; then iptables -w "$@"; else iptables "$@"; fi; }
 _chain_exists(){ _ipt -L "$1" -n >/dev/null 2>&1; }
@@ -90,7 +90,7 @@ modprobe xt_hashlimit 2>/dev/null || true
 _ensure_notrack(){
   # one copy at the very top of raw/PREROUTING for a given TCP port
   local _port="$1"
-  # remove duplicates first
+  # kill any CT/NOTRACK duplicates
   while _ipt -t raw -C PREROUTING -p tcp --syn --dport "${_port}" -j CT --notrack 2>/dev/null; do
     _ipt -t raw -D PREROUTING -p tcp --syn --dport "${_port}" -j CT --notrack 2>/dev/null || break
   done
@@ -98,11 +98,11 @@ _ensure_notrack(){
     _ipt -t raw -D PREROUTING -p tcp --syn --dport "${_port}" -j NOTRACK 2>/dev/null || break
   done
   _ipt -t raw -I PREROUTING 1 -p tcp --syn --dport "${_port}" -j CT --notrack 2>/dev/null || true
-  _v "raw: ensured CT --notrack for :${_port}"
+  _v "raw: CT --notrack for :${_port}"
 }
 
 _pin_early_jump(){
-  # ensure SYNPROXY_EARLY exists and jump is rule #1 in INPUT/LOCALINPUT
+  # ensure SYNPROXY_EARLY exists and jump is rule #1 in INPUT/LOCALINPUT (dedupe first)
   _chain_exists SYNPROXY_EARLY || _ipt -N SYNPROXY_EARLY 2>/dev/null || true
   # INPUT
   while _ipt -C INPUT -j SYNPROXY_EARLY 2>/dev/null; do _ipt -D INPUT -j SYNPROXY_EARLY 2>/dev/null || break; done
@@ -115,8 +115,8 @@ _pin_early_jump(){
 }
 
 _populate_early_chain(){
-  # order: ESTABLISHED,RELATED -> UNTRACKED+SYN -> NEW+SYN -> NEW->DROP -> INVALID->DROP
-  if [ "${_REBUILD_CHAIN}" = "YES" ]; then _ipt -F SYNPROXY_EARLY 2>/dev/null || true; fi
+  # Order: ESTABLISHED/RELATED -> UNTRACKED+SYN -> NEW+SYN -> INVALID->DROP
+  [ "${_REBUILD_CHAIN}" = "YES" ] && _ipt -F SYNPROXY_EARLY 2>/dev/null || true
   _ipt -C SYNPROXY_EARLY -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT 2>/dev/null \
     || _ipt -A SYNPROXY_EARLY -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT 2>/dev/null || true
   local _p
@@ -129,52 +129,56 @@ _populate_early_chain(){
       -j SYNPROXY --sack-perm --timestamp --wscale 7 --mss 1460 2>/dev/null \
       || _ipt -A SYNPROXY_EARLY -p tcp -m tcp --syn --dport "${_p}" -m state --state NEW \
          -j SYNPROXY --sack-perm --timestamp --wscale 7 --mss 1460 2>/dev/null || true
-    _ipt -C SYNPROXY_EARLY -p tcp -m tcp --dport "${_p}" -m state --state NEW -j DROP 2>/dev/null \
-      || _ipt -A SYNPROXY_EARLY -p tcp -m tcp --dport "${_p}" -m state --state NEW -j DROP 2>/dev/null || true
+    # NOTE: intentionally NO "NEW -> DROP" here (it can kill final ACKs)
   done
   _ipt -C SYNPROXY_EARLY -m conntrack --ctstate INVALID -j DROP 2>/dev/null \
     || _ipt -A SYNPROXY_EARLY -m conntrack --ctstate INVALID -j DROP 2>/dev/null || true
 }
 
+# delete from INPUT by exact spec using `iptables -S` (robust dedupe)
+_del_specs_from_INPUT(){
+  # $1 = grep regex to select lines from `iptables -S INPUT`
+  local _pat="$1" _line _spec
+  while :; do
+    _line="$({ iptables -S INPUT 2>/dev/null || true; } | grep -E -- "${_pat}" | head -n1 || true)"
+    [ -n "${_line}" ] || break
+    _spec="${_line#-A INPUT }"
+    # shellcheck disable=SC2086
+    _ipt -D INPUT ${_spec} 2>/dev/null || break
+  done
+}
+
 _ensure_quic_limits(){
   [ "${_ENABLE_QUIC_LIMITER}" = "YES" ] && [ -n "${_QUIC_PORT}" ] || return 0
   local _p="${_QUIC_PORT}"
-  # clear dups first (only the ones we own)
-  while _ipt -C INPUT -p udp --dport "${_p}" -m conntrack --ctstate INVALID -j DROP 2>/dev/null; do
-    _ipt -D INPUT -p udp --dport "${_p}" -m conntrack --ctstate INVALID -j DROP 2>/dev/null || break
-  done
-  while _ipt -C INPUT -p udp --dport "${_p}" -m hashlimit --hashlimit-name quic${_p}_ip -j DROP 2>/dev/null; do
-    _ipt -D INPUT -p udp --dport "${_p}" -m hashlimit --hashlimit-name quic${_p}_ip -j DROP 2>/dev/null || break
-  done
-  while _ipt -C INPUT -p udp --dport "${_p}" -m hashlimit --hashlimit-name quic${_p}_24 -j DROP 2>/dev/null; do
-    _ipt -D INPUT -p udp --dport "${_p}" -m hashlimit --hashlimit-name quic${_p}_24 -j DROP 2>/dev/null || break
-  done
-  # insert back in proper order at the very top
-  _ipt -I INPUT 1 -p udp --dport "${_p}" -m conntrack --ctstate INVALID -j DROP 2>/dev/null || true
-  _ipt -I INPUT 1 -p udp --dport "${_p}" -m hashlimit --hashlimit-name quic${_p}_ip \
-      --hashlimit-above "${_RATE_PER_IP}" --hashlimit-burst "${_BURST_PER_IP}" \
-      --hashlimit-mode srcip --hashlimit-htable-expire 60000 -j DROP 2>/dev/null || true
+  # Dedup all our QUIC rules first
+  _del_specs_from_INPUT "-p udp .*(--dport|dpt:) ${_p} .*hashlimit-name quic${_p}_ip"
+  _del_specs_from_INPUT "-p udp .*(--dport|dpt:) ${_p} .*hashlimit-name quic${_p}_24"
+  _del_specs_from_INPUT "-p udp .*(--dport|dpt:) ${_p} .* -m conntrack --ctstate INVALID .* -j DROP"
+  # Insert canonical order: INVALID first, then per-IP, then per-/24
   _ipt -I INPUT 1 -p udp --dport "${_p}" -m hashlimit --hashlimit-name quic${_p}_24 \
       --hashlimit-above "${_RATE_PER_24}" --hashlimit-burst "${_BURST_PER_24}" \
       --hashlimit-mode srcip --hashlimit-srcmask 24 --hashlimit-htable-expire 60000 -j DROP 2>/dev/null || true
-  _v "INPUT: ensured QUIC limiter for UDP:${_p}"
+  _ipt -I INPUT 1 -p udp --dport "${_p}" -m hashlimit --hashlimit-name quic${_p}_ip \
+      --hashlimit-above "${_RATE_PER_IP}" --hashlimit-burst "${_BURST_PER_IP}" \
+      --hashlimit-mode srcip --hashlimit-htable-expire 60000 -j DROP 2>/dev/null || true
+  _ipt -I INPUT 1 -p udp --dport "${_p}" -m conntrack --ctstate INVALID -j DROP 2>/dev/null || true
 }
 
 # ---------- do the work ----------
-_msg "Reassert SYNPROXY/NOTRACK/QUIC (ports: ${_TCP_PORTS}; quic: ${_QUIC_PORT:-disabled})"
+_msg "Reassert SYNPROXY/NOTRACK/QUIC (ports: ${_TCP_PORTS}; QUIC: ${_QUIC_PORT:-disabled})"
 
-# 1) NOTRACK on SYNs
+# 1) NOTRACK on SYNs (raw)
 for _pp in ${_TCP_PORTS}; do _ensure_notrack "${_pp}"; done
 
-# 2) Early jump at rule #1 in INPUT/LOCALINPUT
+# 2) Early jump at rule #1
 _pin_early_jump
 
-# 3) Populate early chain in correct order
+# 3) Early chain content
 _populate_early_chain
 
-# 4) QUIC limiter (optional)
+# 4) QUIC limiter (robust de-dup)
 _ensure_quic_limits
 
 _v "Done."
 exit 0
-EOF

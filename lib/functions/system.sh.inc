@@ -5520,10 +5520,10 @@ _finale() {
         fi
       fi
     done
-    if [ -e "/etc/init.d/synproxy-assert" ]; then
+    if [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
       csf -ra &> /dev/null
       wait
-      synproxy_reassert -p "443 80" --quic-port 443 -q &> /dev/null
+      synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
     else
       csf -r &> /dev/null
     fi
@@ -5537,7 +5537,7 @@ _finale() {
         sysctl net.ipv4.tcp_mtu_probing=0 &> /dev/null
         iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
         ip6tables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
-        [ -e "/etc/init.d/synproxy-assert" ] && synproxy_reassert -p "443 80" --quic-port 443 -q &> /dev/null
+        [ -e "/etc/csf/csfpost.d/synproxy.sh" ] && synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
       fi
     fi
   fi

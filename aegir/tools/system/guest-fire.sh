@@ -32,7 +32,7 @@ _csf_flood_guard() {
     wait
     kill -9 $(ps aux | grep '[f]ire.sh' | awk '{print $2}') &> /dev/null
   fi
-  [ -e "/etc/init.d/synproxy-assert" ] && synproxy_reassert -p "443 80" --quic-port 443 -q &> /dev/null
+  [ -e "/etc/csf/csfpost.d/synproxy.sh" ] && synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
 }
 [ ! -e "/run/water.pid" ] && _csf_flood_guard
 
@@ -136,7 +136,7 @@ _guest_guard() {
         csf -td ${_IP} 900 -p 22
         _verbose_log "DENY" "Denying ${_IP} on port 22 in the next 15 min"
       fi
-      [ -e "/etc/init.d/synproxy-assert" ] && synproxy_reassert -p "443 80" --quic-port 443 -q &> /dev/null
+      [ -e "/etc/csf/csfpost.d/synproxy.sh" ] && synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
     done
   fi
 
@@ -174,7 +174,7 @@ _guest_guard() {
         csf -td ${_IP} 900 -p 443
         _verbose_log "DENY" "Denying ${_IP} on ports 443,80 in the next 15 min"
       fi
-      [ -e "/etc/init.d/synproxy-assert" ] && synproxy_reassert -p "443 80" --quic-port 443 -q &> /dev/null
+      [ -e "/etc/csf/csfpost.d/synproxy.sh" ] && synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
     done
   fi
 
@@ -208,7 +208,7 @@ _guest_guard() {
         csf -td ${_IP} 900 -p 21
         _verbose_log "DENY" "Denying ${_IP} on port 21 in the next 15 min"
       fi
-      [ -e "/etc/init.d/synproxy-assert" ] && synproxy_reassert -p "443 80" --quic-port 443 -q &> /dev/null
+      [ -e "/etc/csf/csfpost.d/synproxy.sh" ] && synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
     done
   fi
 
