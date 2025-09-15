@@ -2294,6 +2294,28 @@ _update_agents() {
     fi
   fi
 
+  if [ -e "/var/xdrago/monitor/check" ] \
+    && [ -d "/var/aegir/drush" ] \
+    && [ ! -e "${_pthLog}/synproxy_monitor.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
+    if [ `ps aux | grep -v "grep" | grep --count "synproxy_rollback"` -gt 0 ]; then
+      echo "The synproxy_rollback is running!"
+    else
+      if [ -e "${_optBin}/synproxy_monitor" ]; then
+        mv -f ${_optBin}/synproxy_monitor ${_optBin}/synproxy_monitor.old
+      fi
+      curl ${_crlGet} "${_urlHmr}/tools/bin/synproxy_monitor" -o ${_optBin}/synproxy_monitor
+      if [ -e "${_optBin}/synproxy_monitor" ]; then
+        chmod 700 ${_optBin}/synproxy_monitor
+        chown root:root ${_optBin}/synproxy_monitor
+        touch ${_pthLog}/synproxy_monitor.ctrl.f99.${_tRee}.${_xSrl}.pid
+      else
+        if [ -e "${_optBin}/synproxy_monitor.old" ]; then
+          mv -f ${_optBin}/synproxy_monitor.old ${_optBin}/synproxy_monitor
+        fi
+      fi
+    fi
+  fi
+
   _Dir="/data/all/000/modules"
   _REDIS_T_VERSION=8.x-1.8.2
   if [ -e "/var/xdrago/manage_solr_config.sh" ]; then
@@ -3662,6 +3684,7 @@ _update_boa_tools() {
            syncpass \
            synproxy \
            synproxy_hook_fix \
+           synproxy_monitor \
            synproxy_reassert \
            synproxy_rollback \
            synproxy_snapshot \
@@ -3742,7 +3765,7 @@ _update_boa_tools() {
   chmod 700 ${_optBin}/{autoinit,autodaedalus,autochimaera,autobeowulf,autoupboa,verifyvhostsdns,perftest,mergecsf}
   chmod 700 ${_optBin}/{barracuda,boa,ffmirror,killer,octopus,syncpass,xboa,xcopy,weblogx,sqlclean}
   chmod 700 ${_optBin}/{fancynow,codebasecheck,vhostcheck,memorytuner,mysqltuner5,mysqltuner8,mycnfup}
-  chmod 700 ${_optBin}/{synproxy,synproxy_reassert,synproxy_rollback,synproxy_hook_fix,synproxy_snapshot,synproxy_status}
+  chmod 700 ${_optBin}/synproxy*
   chmod 700 ${_optBin}/{dcysetup,multiback,copydbackup,backboa,duobackboa,smtpgapps,setprio}
   chmod 755 ${_optBin}/{randpass,sqlmagic,thinkdifferent,websh,mybackup,backchain}
 }
