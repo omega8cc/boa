@@ -21,8 +21,8 @@ set -u
 
 _INTERVAL="${_INTERVAL:-2}"
 _TCP_PORTS="${_TCP_PORTS:-443 80}"
-_SHOW_INPUT_LINES="${_SHOW_INPUT_LINES:-20}"
-_SHOW_OUTPUT_LINES="${_SHOW_OUTPUT_LINES:-20}"
+_SHOW_INPUT_LINES="${_SHOW_INPUT_LINES:-8}"
+_SHOW_OUTPUT_LINES="${_SHOW_OUTPUT_LINES:-8}"
 
 _usage(){
   cat <<USAGE
@@ -62,6 +62,7 @@ while :; do
     _ipt -L LOCALINPUT -n -v --line-numbers | sed -n "1,${_SHOW_INPUT_LINES}p"
   fi
 
+  echo
   echo "-- OUTPUT (top ${_SHOW_OUTPUT_LINES})"
   _ipt -L OUTPUT -n -v --line-numbers | sed -n "1,${_SHOW_OUTPUT_LINES}p"
   if _chain_exists LOCALOUTPUT; then
