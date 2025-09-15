@@ -2274,21 +2274,21 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/synproxy_watch.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/synproxy_status.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
     if [ `ps aux | grep -v "grep" | grep --count "synproxy_rollback"` -gt 0 ]; then
       echo "The synproxy_rollback is running!"
     else
-      if [ -e "${_optBin}/synproxy_watch" ]; then
-        mv -f ${_optBin}/synproxy_watch ${_optBin}/synproxy_watch.old
+      if [ -e "${_optBin}/synproxy_status" ]; then
+        mv -f ${_optBin}/synproxy_status ${_optBin}/synproxy_status.old
       fi
-      curl ${_crlGet} "${_urlHmr}/tools/bin/synproxy_watch" -o ${_optBin}/synproxy_watch
-      if [ -e "${_optBin}/synproxy_watch" ]; then
-        chmod 700 ${_optBin}/synproxy_watch
-        chown root:root ${_optBin}/synproxy_watch
-        touch ${_pthLog}/synproxy_watch.ctrl.f99.${_tRee}.${_xSrl}.pid
+      curl ${_crlGet} "${_urlHmr}/tools/bin/synproxy_status" -o ${_optBin}/synproxy_status
+      if [ -e "${_optBin}/synproxy_status" ]; then
+        chmod 700 ${_optBin}/synproxy_status
+        chown root:root ${_optBin}/synproxy_status
+        touch ${_pthLog}/synproxy_status.ctrl.f99.${_tRee}.${_xSrl}.pid
       else
-        if [ -e "${_optBin}/synproxy_watch.old" ]; then
-          mv -f ${_optBin}/synproxy_watch.old ${_optBin}/synproxy_watch
+        if [ -e "${_optBin}/synproxy_status.old" ]; then
+          mv -f ${_optBin}/synproxy_status.old ${_optBin}/synproxy_status
         fi
       fi
     fi
@@ -3665,7 +3665,7 @@ _update_boa_tools() {
            synproxy_reassert \
            synproxy_rollback \
            synproxy_snapshot \
-           synproxy_watch \
+           synproxy_status \
            thinkdifferent \
            verifyvhostsdns \
            vhostcheck \
@@ -3742,7 +3742,7 @@ _update_boa_tools() {
   chmod 700 ${_optBin}/{autoinit,autodaedalus,autochimaera,autobeowulf,autoupboa,verifyvhostsdns,perftest,mergecsf}
   chmod 700 ${_optBin}/{barracuda,boa,ffmirror,killer,octopus,syncpass,xboa,xcopy,weblogx,sqlclean}
   chmod 700 ${_optBin}/{fancynow,codebasecheck,vhostcheck,memorytuner,mysqltuner5,mysqltuner8,mycnfup}
-  chmod 700 ${_optBin}/{synproxy,synproxy_reassert,synproxy_rollback,synproxy_hook_fix,synproxy_snapshot,synproxy_watch}
+  chmod 700 ${_optBin}/{synproxy,synproxy_reassert,synproxy_rollback,synproxy_hook_fix,synproxy_snapshot,synproxy_status}
   chmod 700 ${_optBin}/{dcysetup,multiback,copydbackup,backboa,duobackboa,smtpgapps,setprio}
   chmod 755 ${_optBin}/{randpass,sqlmagic,thinkdifferent,websh,mybackup,backchain}
 }
