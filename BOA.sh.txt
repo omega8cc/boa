@@ -2208,7 +2208,7 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/synproxy_reassert.ctrl.f90.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/synproxy_reassert.ctrl.f89.${_tRee}.${_xSrl}.pid" ]; then
     if [ `ps aux | grep -v "grep" | grep --count "synproxy_rollback"` -gt 0 ]; then
       echo "The synproxy_rollback is running!"
     else
@@ -2219,7 +2219,7 @@ _update_agents() {
       if [ -e "${_optBin}/synproxy_reassert" ]; then
         chmod 700 ${_optBin}/synproxy_reassert
         chown root:root ${_optBin}/synproxy_reassert
-        touch ${_pthLog}/synproxy_reassert.ctrl.f90.${_tRee}.${_xSrl}.pid
+        touch ${_pthLog}/synproxy_reassert.ctrl.f89.${_tRee}.${_xSrl}.pid
       else
         if [ -e "${_optBin}/synproxy_reassert.old" ]; then
           mv -f ${_optBin}/synproxy_reassert.old ${_optBin}/synproxy_reassert
