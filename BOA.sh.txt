@@ -2250,6 +2250,28 @@ _update_agents() {
     fi
   fi
 
+  if [ -e "/var/xdrago/monitor/check" ] \
+    && [ -d "/var/aegir/drush" ] \
+    && [ ! -e "${_pthLog}/synproxy_snapshot.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
+    if [ `ps aux | grep -v "grep" | grep --count "synproxy_rollback"` -gt 0 ]; then
+      echo "The synproxy_rollback is running!"
+    else
+      if [ -e "${_optBin}/synproxy_snapshot" ]; then
+        mv -f ${_optBin}/synproxy_snapshot ${_optBin}/synproxy_snapshot.old
+      fi
+      curl ${_crlGet} "${_urlHmr}/tools/bin/synproxy_snapshot" -o ${_optBin}/synproxy_snapshot
+      if [ -e "${_optBin}/synproxy_snapshot" ]; then
+        chmod 700 ${_optBin}/synproxy_snapshot
+        chown root:root ${_optBin}/synproxy_snapshot
+        touch ${_pthLog}/synproxy_snapshot.ctrl.f99.${_tRee}.${_xSrl}.pid
+      else
+        if [ -e "${_optBin}/synproxy_snapshot.old" ]; then
+          mv -f ${_optBin}/synproxy_snapshot.old ${_optBin}/synproxy_snapshot
+        fi
+      fi
+    fi
+  fi
+
   _Dir="/data/all/000/modules"
   _REDIS_T_VERSION=8.x-1.8.2
   if [ -e "/var/xdrago/manage_solr_config.sh" ]; then
@@ -3620,6 +3642,7 @@ _update_boa_tools() {
            synproxy_hook_fix \
            synproxy_reassert \
            synproxy_rollback \
+           synproxy_snapshot \
            thinkdifferent \
            verifyvhostsdns \
            vhostcheck \
@@ -3693,10 +3716,10 @@ _update_boa_tools() {
     chmod 700 ${_optBin}/{backboa,duobackboa}
   fi
 
-  chmod 700 ${_optBin}/{autoinit,autodaedalus,autochimaera,autobeowulf,autoupboa,verifyvhostsdns,perftest}
+  chmod 700 ${_optBin}/{autoinit,autodaedalus,autochimaera,autobeowulf,autoupboa,verifyvhostsdns,perftest,mergecsf}
   chmod 700 ${_optBin}/{barracuda,boa,ffmirror,killer,octopus,syncpass,xboa,xcopy,weblogx,sqlclean}
   chmod 700 ${_optBin}/{fancynow,codebasecheck,vhostcheck,memorytuner,mysqltuner5,mysqltuner8,mycnfup}
-  chmod 700 ${_optBin}/{synproxy,synproxy_reassert,synproxy_rollback,synproxy_hook_fix,mergecsf}
+  chmod 700 ${_optBin}/{synproxy,synproxy_reassert,synproxy_rollback,synproxy_hook_fix,synproxy_snapshot}
   chmod 700 ${_optBin}/{dcysetup,multiback,copydbackup,backboa,duobackboa,smtpgapps,setprio}
   chmod 755 ${_optBin}/{randpass,sqlmagic,thinkdifferent,websh,mybackup,backchain}
 }
