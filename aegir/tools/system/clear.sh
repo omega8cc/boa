@@ -38,7 +38,7 @@ _check_root
 
 _os_detection_minimal() {
   _APT_UPDATE="apt-get update"
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
   for e in ${_OS_LIST}; do
     if [ "${e}" = "${_OS_CODE}" ]; then
@@ -100,7 +100,13 @@ _find_fast_mirror_early() {
         csf -a 172.235.166.69  eu.files.aegir.cc &> /dev/null
         csf -a 172.233.219.37  us.files.aegir.cc &> /dev/null
         csf -a 172.105.168.103 ao.files.aegir.cc &> /dev/null
-        csf -q &> /dev/null
+        if [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
+          csf -ra &> /dev/null
+          wait
+          synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
+        else
+          csf -r &> /dev/null
+        fi
       fi
     fi
     if [ -e "${_ffList}" ]; then
@@ -128,7 +134,7 @@ _if_reinstall_curl_src() {
     apt-get update -qq &> /dev/null
     apt-get install lsb-release ${_aptYesUnth} -qq &> /dev/null
   fi
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   [ "${_OS_CODE}" = "wheezy" ] && _CURL_VRN=7.50.1
   [ "${_OS_CODE}" = "jessie" ] && _CURL_VRN=7.71.1
   [ "${_OS_CODE}" = "stretch" ] && _CURL_VRN=8.2.1
@@ -291,4 +297,3 @@ fi
 
 touch /var/log/boa/clear.done.pid
 exit 0
-

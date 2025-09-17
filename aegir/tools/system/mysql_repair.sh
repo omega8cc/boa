@@ -38,9 +38,9 @@ sleep 8
 dir=/var/log/boa/mysql_optimize
 mkdir -p $dir
 _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
-/usr/bin/mysqlcheck -u root -Aa >> $dir/all.a.`date +%y%m%d-%H%M%S`
-/usr/bin/mysqlcheck -u root -A --auto-repair >> $dir/all.r.`date +%y%m%d-%H%M%S`
-/usr/bin/mysqlcheck -u root -Ao >> $dir/all.o.`date +%y%m%d-%H%M%S`
+/usr/bin/mysqlcheck -u root -Aa >> $dir/all.a.$(date +%y%m%d-%H%M%S)
+/usr/bin/mysqlcheck -u root -A --auto-repair >> $dir/all.r.$(date +%y%m%d-%H%M%S)
+/usr/bin/mysqlcheck -u root -Ao >> $dir/all.o.$(date +%y%m%d-%H%M%S)
 [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
 exit 0
 

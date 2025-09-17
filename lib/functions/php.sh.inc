@@ -165,8 +165,15 @@ _fix_php_ini_apcu() {
     if [[ "${_APCU_INI_TEST}" =~ "apc.shm_size" ]]; then
       _DO_NOTHING=YES
     else
-      echo "extension=apcu.so" >> ${_THIS_FILE}
-      echo "apc.shm_size=128M" >> ${_THIS_FILE}
+      echo " "                  >> ${_THIS_FILE}
+      echo "; APCu"             >> ${_THIS_FILE}
+      echo "extension=apcu.so"  >> ${_THIS_FILE}
+      echo "apc.gc_ttl=300"     >> ${_THIS_FILE}
+      echo "apc.shm_segments=1" >> ${_THIS_FILE}
+      echo "apc.shm_size=128M"  >> ${_THIS_FILE}
+      echo "apc.slam_defense=1" >> ${_THIS_FILE}
+      echo "apc.ttl=60"         >> ${_THIS_FILE}
+      echo ";"                  >> ${_THIS_FILE}
     fi
   fi
 }
@@ -245,12 +252,26 @@ _fix_php_ini_opcache() {
     if [[ "${_OPCACHE_INI_TEST}" =~ "opcache.so" ]]; then
       _DO_NOTHING=YES
     else
-      echo ";"                                    >> ${_THIS_FILE}
+      echo " "                                    >> ${_THIS_FILE}
       echo "; Zend OPcache"                       >> ${_THIS_FILE}
       echo "zend_extension=\"${_OPCACHE_SO}\""    >> ${_THIS_FILE}
       echo "opcache.enable=1"                     >> ${_THIS_FILE}
       echo "opcache.memory_consumption=181"       >> ${_THIS_FILE}
       echo "opcache.revalidate_freq=60"           >> ${_THIS_FILE}
+      echo "opcache.dups_fix=1"                   >> ${_THIS_FILE}
+      echo "opcache.file_update_protection=8"     >> ${_THIS_FILE}
+      echo "opcache.huge_code_pages=0"            >> ${_THIS_FILE}
+      echo "opcache.interned_strings_buffer=256"  >> ${_THIS_FILE}
+      echo "opcache.jit=off"                      >> ${_THIS_FILE}
+      echo "opcache.lockfile_path=/var/tmp/fpm"   >> ${_THIS_FILE}
+      echo "opcache.max_accelerated_files=200000" >> ${_THIS_FILE}
+      echo "opcache.restrict_api=/var/www"        >> ${_THIS_FILE}
+      echo "opcache.revalidate_path=1"            >> ${_THIS_FILE}
+      echo "opcache.save_comments=1"              >> ${_THIS_FILE}
+      echo "opcache.use_cwd=1"                    >> ${_THIS_FILE}
+      echo "opcache.validate_permission=1"        >> ${_THIS_FILE}
+      echo "opcache.validate_root=1"              >> ${_THIS_FILE}
+      echo "opcache.validate_timestamps=1"        >> ${_THIS_FILE}
       echo ";"                                    >> ${_THIS_FILE}
     fi
   fi
@@ -683,7 +704,7 @@ _if_install_php_ioncube() {
     _msg "PROC: _if_install_php_ioncube"
   fi
   ###--------------------###
-  _X86_64_TEST=$(uname -m 2>&1)
+  _X86_64_TEST=$(uname -m)
   if [ "${_X86_64_TEST}" = "x86_64" ]; then
     _SYSTEM_ARCH="x64"
   else
@@ -1039,7 +1060,7 @@ _install_php_extensions() {
     touch ${_pthLog}/f_libyaml-${_LIB_YAML_VRN}.log
     rm -f ${_pthLog}/yaml*.log
     rm -f ${_pthLog}/f_yaml*.log
-    _X86_64_TEST=$(uname -m 2>&1)
+    _X86_64_TEST=$(uname -m)
     if [ "${_X86_64_TEST}" = "x86_64" ]; then
       if [ ! -e "/usr/lib/x86_64-linux-gnu/libyaml-0.so.2.0.9" ] \
         || [ -e "/usr/lib/x86_64-linux-gnu/libyaml-0.so.2.0.4" ]; then
@@ -1470,7 +1491,7 @@ _php_extensions_update() {
     touch ${_pthLog}/f_libyaml-${_LIB_YAML_VRN}.log
     rm -f ${_pthLog}/yaml*.log
     rm -f ${_pthLog}/f_yaml*.log
-    _X86_64_TEST=$(uname -m 2>&1)
+    _X86_64_TEST=$(uname -m)
     if [ "${_X86_64_TEST}" = "x86_64" ]; then
       if [ ! -e "/usr/lib/x86_64-linux-gnu/libyaml-0.so.2.0.9" ] \
         || [ -e "/usr/lib/x86_64-linux-gnu/libyaml-0.so.2.0.4" ]; then
@@ -1727,7 +1748,7 @@ _install_php_multi() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       echo "${_PHP_EXTRA}" | fmt -su -w 2500 > /var/backups/php_extra_${_PHP_VERSION}.txt
       _DISPLAY_PHP_EXTRA=$(cat /var/backups/php_extra_${_PHP_VERSION}.txt 2>&1)
-      _DISPLAY_PHP_EXTRA=$(echo -n ${_DISPLAY_PHP_EXTRA} | tr -d "\n" 2>&1)
+      _DISPLAY_PHP_EXTRA=$(echo -n ${_DISPLAY_PHP_EXTRA} | tr -d '\n')
       _msg "INFO: This PHP ${_PHP_VERSION} is built with:"
       _msg "INFO: ${_DISPLAY_PHP_EXTRA}"
     fi
@@ -1906,7 +1927,7 @@ _newrelic_update() {
     _msg "PROC: _newrelic_update"
   fi
   ###--------------------###
-  _X86_64_TEST=$(uname -m 2>&1)
+  _X86_64_TEST=$(uname -m)
   if [ "${_X86_64_TEST}" = "x86_64" ]; then
     _SYSTEM_ARCH="x64"
   else
@@ -1987,7 +2008,7 @@ _newrelic_update() {
       export NR_INSTALL_PHPLIST="${NR_PHPLIST}"
       export NR_INSTALL_SILENT="${NR_SILENT}"
       newrelic-install install &> /dev/null
-      _X86_64_TEST=$(uname -m 2>&1)
+      _X86_64_TEST=$(uname -m)
       if [ "${_X86_64_TEST}" = "x86_64" ]; then
         _SYSTEM_ARCH="x64"
       else
@@ -2064,7 +2085,7 @@ _if_install_php_newrelic() {
     _msg "PROC: _if_install_php_newrelic"
   fi
   ###--------------------###
-  _X86_64_TEST=$(uname -m 2>&1)
+  _X86_64_TEST=$(uname -m)
   if [ "${_X86_64_TEST}" = "x86_64" ]; then
     _SYSTEM_ARCH="x64"
   else
@@ -2171,7 +2192,7 @@ _if_install_php_newrelic() {
         export NR_INSTALL_PHPLIST="${NR_PHPLIST}"
         export NR_INSTALL_SILENT="${NR_SILENT}"
         newrelic-install install &> /dev/null
-        _X86_64_TEST=$(uname -m 2>&1)
+        _X86_64_TEST=$(uname -m)
         if [ "${_X86_64_TEST}" = "x86_64" ]; then
           _SYSTEM_ARCH="x64"
         else

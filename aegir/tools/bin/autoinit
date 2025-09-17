@@ -69,10 +69,17 @@ export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 export _tRee=pro
 
+###
+### Variables
+###
 _initFile="/root/.init-to-devuan-ctrl.cnf"
 _barCnf="/root/.barracuda.cnf"
 _logInt="/root/.autoinit.log"
 _logSlt="/root/.autoinit-verbose.log"
+_aptAllow="--allow-unauthenticated"
+_INITINS="/usr/bin/apt-get ${_aptAllow} -y install"
+_dstUpArg="-fuy -q ${_aptAllow} --config-file /opt/apt/apt.conf.noi.dist"
+_nrmUpArg="-fuy -q ${_aptAllow} --config-file /opt/apt/apt.conf.noi.nrml"
 
 ###
 ### Avoid too many questions
@@ -83,11 +90,9 @@ if [ -z "${TERM+x}" ]; then
   export TERM=vt100
 fi
 
-_aptAllow="--allow-unauthenticated"
-_INITINS="/usr/bin/apt-get ${_aptAllow} -y install"
-_dstUpArg="-fuy -q ${_aptAllow} --config-file /opt/apt/apt.conf.noi.dist"
-_nrmUpArg="-fuy -q ${_aptAllow} --config-file /opt/apt/apt.conf.noi.nrml"
-
+###
+### Only root allowed
+###
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
     [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
@@ -113,8 +118,24 @@ cd /root/
 ### Noticeable messages
 ###
 _msg() {
-  echo "AutoInit v.${_tRee} [$(date +%T 2>&1)] ==> $*"
+  echo "AutoInit v.${_tRee} [$(date +%T)] ==> $*"
 }
+
+_check_set_mode() {
+  # --- Mode selection -------------------------------------------------
+  # Usage: autoinit [minimal|full]
+  # Default: "minimal". Persisted across reboots via cron argument.
+  if [ -z "${_AUTO_MODE}" ]; then
+    case "${1:-minimal}" in
+      minimal|*) _AUTO_MODE="minimal" ;;
+      full)      _AUTO_MODE="full" ;;
+    esac
+  fi
+  touch /root/.mode.selected.${_AUTO_MODE}.info
+  chattr +i /root/.mode.selected.${_AUTO_MODE}.info
+  _msg "Mode selected: ${_AUTO_MODE}" >> "${_logInt}"
+}
+_check_set_mode
 
 _check_manufacturer_compatibility() {
   # Install dmidecode of not present
@@ -167,7 +188,8 @@ _locales_check_fix_early() {
   _isLoc=$(which locale 2>&1)
   if [ ! -x "${_isLoc}" ] || [ -z "${_isLoc}" ]; then
     apt-get update --allow-insecure-repositories -qq &> /dev/null
-    ${_INITINS} locales locales-all &> /dev/null
+    ${_INITINS} locales &> /dev/null
+    [ "${_AUTO_MODE}" = "full" ] && ${_INITINS} locales-all &> /dev/null
   fi
   _LOC_TEST=$(locale 2>&1)
   if [[ "${_LOC_TEST}" =~ LANG=.*UTF-8 ]]; then
@@ -456,6 +478,14 @@ _ifnames_grub_check_sync() {
   fi
 }
 
+_if_remove_conflicting_sources() {
+  _SRC_TEST=$(ls -la /etc/apt/sources.list.d/* 2>&1)
+  if [[ ! "${_SRC_TEST}" =~ "No such file" ]]; then
+    _msg "Removing conflicting sources from /etc/apt/sources.list.d on this system" >> "${_logAch}"
+    mv -f /etc/apt/sources.list.d/* /var/backups/
+  fi
+}
+
 _init_prepare() {
   if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
     && [ -e "/etc/apt/apt.conf.d" ]; then
@@ -482,14 +512,14 @@ _init_prepare() {
     echo "Dir::Etc::SourceList \"/etc/apt/sources.list\";" >> /opt/apt/apt.conf.noi.nrml
   fi
 
-  _ifnames_grub_check_sync
+  [ "${_AUTO_MODE}" = "full" ] && _ifnames_grub_check_sync
 
   if [[ -n "${_ADD_GRUB_CMD}" ]] && [[ "${_NEW_GRUB}" == "LIVE" ]]; then
     echo "Running _init_prepare procedure A..."
     touch /run/autoinit.pid
     update-grub >> "${_logSlt}"
     sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
-    echo "*/1 *   * * *   root    bash /opt/local/bin/autoinit" >> /etc/crontab
+    echo "*/1 *   * * *   root    bash /opt/local/bin/autoinit ${_AUTO_MODE}" >> /etc/crontab
     if [ -x "/opt/local/bin/killer" ]; then
       sed -i "s/.*killer.*//gi" /etc/crontab &> /dev/null
       echo "*/1 *   * * *   root    bash /opt/local/bin/killer" >> /etc/crontab
@@ -506,11 +536,11 @@ _init_prepare() {
       touch /run/autoinit.pid
       /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
       ${_INITINS} lsb-release >> "${_logSlt}"
-      _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
-      _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+      _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
+      _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
       _msg "We need to install some tools early..." >> "${_logInt}"
       /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
-      if [ "${_VMFAMILY}" != "AWS" ]; then
+      if [ "${_AUTO_MODE}" = "full" ] && [ "${_VMFAMILY}" != "AWS" ]; then
         /usr/bin/apt-get remove chrony -y --purge --auto-remove -qq >> "${_logSlt}"
         _INITD_TEST=$(ls -la /etc/init.d/*cloud* 2>&1)
         _aptAkamaiLst="/etc/apt/sources.list.d/akamai-linux-team.list"
@@ -529,17 +559,22 @@ _init_prepare() {
           [ -e "${_aptCloudInit}" ] && mv -f ${_aptCloudInit} /var/backups/
         fi
       fi
-      ${_INITINS} cron >> "${_logSlt}"
-      ${_INITINS} locales-all aptitude >> "${_logSlt}"
-      ${_INITINS} build-essential curl git >> "${_logSlt}"
-      ${_INITINS} libgd-dev libmagickwand-dev >> "${_logSlt}"
+      ${_INITINS} aptitude >> "${_logSlt}"
+      ${_INITINS} cron     >> "${_logSlt}"
+      ${_INITINS} curl     >> "${_logSlt}"
+      if [ "${_AUTO_MODE}" = "full" ]; then
+        ${_INITINS} build-essential   >> "${_logSlt}"
+        ${_INITINS} git               >> "${_logSlt}"
+        ${_INITINS} libgd-dev         >> "${_logSlt}"
+        ${_INITINS} libmagickwand-dev >> "${_logSlt}"
+      fi
       sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
-      echo "*/1 *   * * *   root    bash /opt/local/bin/autoinit" >> /etc/crontab
+      echo "*/1 *   * * *   root    bash /opt/local/bin/autoinit ${_AUTO_MODE}" >> /etc/crontab
       if [ -x "/opt/local/bin/killer" ]; then
         sed -i "s/.*killer.*//gi" /etc/crontab &> /dev/null
         echo "*/1 *   * * *   root    bash /opt/local/bin/killer" >> /etc/crontab
       fi
-      _install_apparmor_utils
+      [ "${_AUTO_MODE}" = "full" ] && _install_apparmor_utils
       touch ${_initFile}
       _msg "Time for reboot and next upgrade cycle..." >> "${_logInt}"
       echo " " >> "${_logInt}"
@@ -565,9 +600,33 @@ _init_info() {
   echo "..."
 }
 
+_ensure_devuan_base_files() {
+  # Ensure Devuan base-files is applied so /etc/os-release reflects Devuan/daedalus
+  _msg "Ensuring Devuan base-files is applied (force-confnew)" >> "${_logInt}"
+  _BF_CANDIDATE=$(apt-cache policy base-files 2>/dev/null | awk '/Candidate: /{print $2; exit}')
+  _APTOPTS="-o Dpkg::Options::=--force-confnew \
+            -o Dpkg::Options::=--force-overwrite \
+            -o Dpkg::Options::=--force-confdef"
+  if [ ! -z "${_BF_CANDIDATE}" ]; then
+    /usr/bin/apt-get ${_aptAllow} -y ${_APTOPTS} install \
+    base-files="${_BF_CANDIDATE}" --allow-downgrades >> "${_logSlt}" 2>&1 || true
+  else
+    /usr/bin/apt-get ${_aptAllow} -y ${_APTOPTS} install \
+    base-files --allow-downgrades >> "${_logSlt}" 2>&1 || true
+  fi
+  # If /etc/os-release still says Debian, try to refresh from the installed base-files
+  if grep -qi 'ID=debian' /etc/os-release 2>/dev/null; then
+    if [ -f /usr/lib/os-release ]; then
+      cp -f /usr/lib/os-release /etc/os-release || true
+    elif [ -f /usr/share/base-files/os-release ]; then
+      cp -f /usr/share/base-files/os-release /etc/os-release || true
+    fi
+  fi
+}
+
 _init_offsystemd() {
-  _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   _msg "Running _init_offsystemd procedure..." >> "${_logInt}"
   touch /run/autoinit.pid
   _msg "Launching a quick dist-upgrade..." >> "${_logInt}"
@@ -604,12 +663,12 @@ _init_offsystemd() {
     fi
     # If any of the above checks require an update, perform the upgrade
     if [ "${_needsBaseFilesUpdate}" = "YES" ]; then
-      _msg "Upgrade to base-files=12.4+deb12u10devuan1 is forced" >> "${_logInt}"
-      ${_INITINS} base-files=12.4+deb12u10devuan1 --allow-downgrades >> "${_logSlt}"
+      _msg "Upgrading base-files from Devuan repository (dynamic candidate)" >> "${_logInt}"
+      _ensure_devuan_base_files
     fi
   fi
-  _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   _msg "Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
   if [ "${_OS_CODE}" = "daedalus" ]; then
     echo " " >> "${_logInt}"
@@ -629,8 +688,8 @@ _init_offsystemd() {
 }
 
 _init_cycle() {
-  _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   _msg "Running _init_cycle procedure..." >> "${_logInt}"
   touch /run/autoinit.pid
   _msg "Your current system is ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
@@ -683,6 +742,7 @@ _init_cycle() {
     if [ -e "/etc/apt/apt.conf" ]; then
       rm -f /etc/apt/apt.conf
     fi
+    _if_remove_conflicting_sources
     /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
     /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
     if [ "${_OLD_SYS}" = "Debian" ]; then
@@ -722,14 +782,14 @@ _init_cycle() {
           _needsBaseFilesUpdate=YES
         fi
         if [ "${_needsBaseFilesUpdate}" = "YES" ]; then
-          _msg "Upgrade to base-files=12.4+deb12u10devuan1 is forced" >> "${_logInt}"
-          ${_INITINS} base-files=12.4+deb12u10devuan1 --allow-downgrades >> "${_logSlt}"
+          _msg "Upgrading base-files from Devuan repository (dynamic candidate)" >> "${_logInt}"
+          _ensure_devuan_base_files
         fi
       fi
     fi
   fi
-  _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   if [ "${_OLD_SYS}" = "Debian" ]; then
     _msg "Time for reboot and next upgrade cycle..." >> "${_logInt}"
     echo " " >> "${_logInt}"
@@ -780,8 +840,8 @@ _init_start() {
 }
 
 _init_launch() {
-  _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   touch /run/autoinit.pid
   if [ ! -e "/root/.autoinit.log" ]; then
     echo "Launching BOA System INIT on ${_OS_DIST}/${_OS_CODE}..."

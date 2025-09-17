@@ -756,11 +756,11 @@ _backup() {
 #
 # _restore() {
 #   if [ $# = 2 ]; then
-#     echo "Command is ${_DCY_UTL_CMD} restore --file-to-restore $1 ${_BACKUP_TARGET} $2"
-#     ${_DCY_UTL_CMD} restore --file-to-restore $1 ${_BACKUP_TARGET} $2
+#     echo "Command is ${_DCY_UTL_CMD} restore --path-to-restore $1 ${_BACKUP_TARGET} $2"
+#     ${_DCY_UTL_CMD} restore --path-to-restore $1 ${_BACKUP_TARGET} $2
 #   else
-#     echo "Command is ${_DCY_UTL_CMD} restore --file-to-restore $1 --time $2 ${_BACKUP_TARGET} $3"
-#     ${_DCY_UTL_CMD} restore --file-to-restore $1 --time $2 ${_BACKUP_TARGET} $3
+#     echo "Command is ${_DCY_UTL_CMD} restore --path-to-restore $1 --time $2 ${_BACKUP_TARGET} $3"
+#     ${_DCY_UTL_CMD} restore --path-to-restore $1 --time $2 ${_BACKUP_TARGET} $3
 #   fi
 # }
 #
@@ -930,13 +930,13 @@ if [ "$#" -lt 3 ]; then
 fi
 
 export _LOGPTH="/var/log/boa"
-_NOW=$(date +%y%m%d-%H%M%S 2>&1)
+_NOW=$(date +%y%m%d-%H%M%S)
 export _NOW=${_NOW//[^0-9-]/}
-_TODAY=$(date +%y%m%d 2>&1)
+_TODAY=$(date +%y%m%d)
 export _TODAY=${_TODAY//[^0-9]/}
-_DOW=$(date +%u 2>&1)
+_DOW=$(date +%u)
 export _DOW=${_DOW//[^1-7]/}
-_DOM=$(date +%e 2>&1)
+_DOM=$(date +%e)
 export _DOM=${_DOM//[^0-9]/}
 _HST=${_hName//[^a-zA-Z0-9-.]/}
 _HST=$(echo -n ${_HST} | tr A-Z a-z 2>&1)
