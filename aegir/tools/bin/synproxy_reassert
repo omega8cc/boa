@@ -1,16 +1,8 @@
 #!/bin/bash
 
 #
-# Enforces:
-#   raw/PREROUTING : CT --notrack for inbound SYN to protected ports
-#   filter/INPUT   : rule #1 jump to SYNPROXY_EARLY (respects CSF LOCALINPUT topology)
-#   SYNPROXY_EARLY : lo/trusted RETURN, EST/REL ACCEPT, ANY SYN -> SYNPROXY, INVALID DROP,
-#                    NEW !SYN -> DROP  (strict guard)
-#   filter/OUTPUT  : (1) ACCEPT EST/REL
-#                    (2) ACCEPT SYN,ACK and RST from --sport <ports>
-#                    (3) ACCEPT ACK’ed data from --sport <ports>  <—— **added**
-#
-# QUIC limiter flags accepted (OFF by default). All vars+funcs are underscored; refs use ${_VAR}.
+# SYNPROXY limiter for CSF/Devuan (IPv4).
+# QUIC limiter flags accepted (OFF by default).
 #
 
 export HOME=/root
@@ -26,9 +18,16 @@ _check_root() {
 }
 _check_root
 
+# Ensure not too many instances are running
+if (( $(pgrep -fc 'synproxy_reassert') > 1 )); then
+  echo "Too many synproxy_reassert running $(date)" >> /var/log/boa/too.many.log
+  echo "The synproxy_reassert is running! Bye."
+  exit 0
+fi
+
 set -u
 
-# -------- defaults -------------------------------------------------------------
+# ---------- Defaults ----------
 _TCP_PORTS="${_TCP_PORTS:-443 80}"
 _MSS="${_MSS:-1400}"
 _TRUSTED_SRC="${_TRUSTED_SRC:-}"
@@ -42,18 +41,18 @@ _BURST_PER_IP="${_BURST_PER_IP:-160}"
 _RATE_PER_24="${_RATE_PER_24:-800/second}"
 _BURST_PER_24="${_BURST_PER_24:-1600}"
 
-_RETRY_MAX="${_RETRY_MAX:-120}"
+_RETRY_MAX="${_RETRY_MAX:-120}"     # ~30s with default sleep
 _RETRY_SLEEP="${_RETRY_SLEEP:-0.25}"
 
 _QUIET="${_QUIET:-NO}"
 _VERBOSE="${_VERBOSE:-NO}"
 
-# -------- logging --------------------------------------------------------------
+# ---------- Logging ----------
 _msg(){ [ "${_QUIET}" = "YES" ] && return 0; echo "[REASSERT] $*"; }
 _v(){ [ "${_VERBOSE}" = "YES" ] && _msg "$@"; }
 _die(){ echo "[REASSERT][ERROR] $*" >&2; exit 1; }
 
-# -------- args ----------------------------------------------------------------
+# ---------- Args ----------
 while [ $# -gt 0 ]; do
   case "$1" in
     -p|--ports)      _TCP_PORTS="$2"; shift 2;;
@@ -76,8 +75,8 @@ while [ $# -gt 0 ]; do
 Usage: synproxy_reassert [options]
   -p, --ports "443 80"   TCP ports to protect (default: "443 80")
       --mss 1400         MSS for SYNPROXY cookie (default: 1400)
-      --trust "CIDR ..." Bypass SYNPROXY for these sources
-      --rebuild-chain    Flush & rebuild SYNPROXY_EARLY (default)
+      --trust "CIDR ..." Bypass SYNPROXY for sources (space-separated)
+      --rebuild-chain    Flush & rebuild SYNPROXY_EARLY/EGRESS (default)
       --no-rebuild       Ensure-only (no flush)
       --strict           Add per-port NEW !SYN -> DROP (default: off)
       --no-strict        Disable the above
@@ -99,7 +98,7 @@ USAGE
   esac
 done
 
-# -------- tools/wrappers ------------------------------------------------------
+# ---------- Tools ----------
 command -v iptables >/dev/null 2>&1 || { _msg "iptables not found"; exit 0; }
 command -v modprobe >/dev/null 2>&1 || true
 command -v sleep >/dev/null 2>&1 || _die "sleep not found"
@@ -116,210 +115,235 @@ modprobe xt_SYNPROXY 2>/dev/null || true
 modprobe nf_synproxy_core 2>/dev/null || true
 modprobe xt_hashlimit 2>/dev/null || true
 
-# -------- NOTRACK detection (v4) ---------------------------------------------
+grep -wq SYNPROXY /proc/net/ip_tables_targets 2>/dev/null \
+  || _die "Kernel target SYNPROXY not available (xt_SYNPROXY/nf_synproxy_core not loaded?)"
+
+# ---------- Detect NOTRACK flavor ----------
 _NOTRACK_KIND=""
-_detect_notrack_kind(){
-  if iptables -t raw -I PREROUTING 1 -p tcp --syn --dport 9 -j CT --notrack 2>/dev/null; then
-    iptables -t raw -D PREROUTING -p tcp --syn --dport 9 -j CT --notrack 2>/dev/null || true
-    _NOTRACK_KIND="CT"; _v "NOTRACK: CT --notrack"; return 0
+if iptables -t raw -I PREROUTING 1 -p tcp --tcp-flags FIN,SYN,RST,ACK SYN --dport 9 -j CT --notrack 2>/dev/null; then
+  iptables -t raw -D PREROUTING -p tcp --tcp-flags FIN,SYN,RST,ACK SYN --dport 9 -j CT --notrack >/dev/null 2>&1 || true
+  _NOTRACK_KIND="CT"
+elif iptables -t raw -I PREROUTING 1 -p tcp --tcp-flags FIN,SYN,RST,ACK SYN --dport 9 -j NOTRACK 2>/dev/null; then
+  iptables -t raw -D PREROUTING -p tcp --tcp-flags FIN,SYN,RST,ACK SYN --dport 9 -j NOTRACK >/dev/null 2>&1 || true
+  _NOTRACK_KIND="LEGACY"
+else
+  _die "Kernel lacks CT --notrack/NOTRACK support"
+fi
+_v "NOTRACK flavor: ${_NOTRACK_KIND}"
+
+# ---------- Helpers ----------
+_add_or_die(){
+  if ! iptables "$@"; then
+    echo "[REASSERT][iptables] iptables $* failed:" >&2
+    iptables "$@" 2>&1 | sed 's/^/[REASSERT][iptables] /' >&2 || true
+    _die "iptables insertion failed (see above)"
   fi
-  if iptables -t raw -I PREROUTING 1 -p tcp --syn --dport 9 -j NOTRACK 2>/dev/null; then
-    iptables -t raw -D PREROUTING -p tcp --syn --dport 9 -j NOTRACK 2>/dev/null || true
-    _NOTRACK_KIND="LEGACY"; _v "NOTRACK: NOTRACK target"; return 0
-  fi
-  _die "Kernel lacks CT --notrack/NOTRACK support; cannot proceed"
 }
 
-# -------- helpers -------------------------------------------------------------
-_del_specs_from(){
-  local _table="$1" _chain="$2" _pat="$3" _line _spec
-  while :; do
-    _line="$({ iptables -t "${_table}" -S "${_chain}" 2>/dev/null || true; } | grep -E -- "${_pat}" | head -n1 || true)"
-    [ -n "${_line}" ] || break
-    _spec="${_line#-A ${_chain} }"
-    _ipt -t "${_table}" -D "${_chain}" ${_spec} 2>/dev/null || break
-  done
-}
-
-_first_rule_line(){ iptables -S INPUT 2>/dev/null | awk '$1=="-A"&&$2=="INPUT"{print;exit}'; }
-_first_rule_target(){
-  local _line; _line="$(_first_rule_line)"; echo "${_line}" \
-  | awk '{for(i=1;i<=NF;i++) if($i=="-j"&&i+1<=NF){print $(i+1); exit}}'
-}
-
+# ensure raw NOTRACK for SYN to a port (insert at top; dedupe)
 _ensure_raw_notrack_port(){
-  local _port="$1"
+  local _p="$1"
   if [ "${_NOTRACK_KIND}" = "CT" ]; then
-    while _ipt -t raw -C PREROUTING -p tcp --syn --dport "${_port}" -j CT --notrack 2>/dev/null; do
-      _ipt -t raw -D PREROUTING -p tcp --syn --dport "${_port}" -j CT --notrack || break
+    while _ipt -t raw -C PREROUTING -p tcp --tcp-flags FIN,SYN,RST,ACK SYN --dport "${_p}" -j CT --notrack 2>/dev/null; do
+      _ipt -t raw -D PREROUTING -p tcp --tcp-flags FIN,SYN,RST,ACK SYN --dport "${_p}" -j CT --notrack || break
     done
-    _ipt -t raw -I PREROUTING 1 -p tcp --syn --dport "${_port}" -j CT --notrack 2>/dev/null || true
+    _add_or_die -t raw -I PREROUTING 1 -p tcp --tcp-flags FIN,SYN,RST,ACK SYN --dport "${_p}" -j CT --notrack
   else
-    while _ipt -t raw -C PREROUTING -p tcp --syn --dport "${_port}" -j NOTRACK 2>/dev/null; do
-      _ipt -t raw -D PREROUTING -p tcp --syn --dport "${_port}" -j NOTRACK || break
+    while _ipt -t raw -C PREROUTING -p tcp --tcp-flags FIN,SYN,RST,ACK SYN --dport "${_p}" -j NOTRACK 2>/dev/null; do
+      _ipt -t raw -D PREROUTING -p tcp --tcp-flags FIN,SYN,RST,ACK SYN --dport "${_p}" -j NOTRACK || break
     done
-    _ipt -t raw -I PREROUTING 1 -p tcp --syn --dport "${_port}" -j NOTRACK 2>/dev/null || true
+    _add_or_die -t raw -I PREROUTING 1 -p tcp --tcp-flags FIN,SYN,RST,ACK SYN --dport "${_p}" -j NOTRACK
   fi
-  _v "raw: NOTRACK for :${_port} (${_NOTRACK_KIND})"
 }
 
-_ensure_jump_order(){
-  local _i=0 _ok="NO"
-  _chain_exists SYNPROXY_EARLY || _ipt -N SYNPROXY_EARLY 2>/dev/null || true
+# ensure INPUT/LOCALINPUT has early jump (we try to be #1 but verify presence)
+_ensure_jump_order_INPUT(){
+  local _i=0
+  _chain_exists SYNPROXY_EARLY || _ipt -N SYNPROXY_EARLY
   while [ "${_i}" -lt "${_RETRY_MAX}" ]; do
-    local _tgt="$(_first_rule_target)"
-    if [ "${_tgt}" = "LOCALINPUT" ] && _chain_exists LOCALINPUT; then
-      while _ipt -C LOCALINPUT -j SYNPROXY_EARLY 2>/dev/null; do _ipt -D LOCALINPUT -j SYNPROXY_EARLY 2>/dev/null || break; done
+    # prefer LOCALINPUT first hop if CSF uses it
+    if _ipt -C INPUT -j LOCALINPUT 2>/dev/null && _chain_exists LOCALINPUT; then
+      _ipt -C LOCALINPUT -j SYNPROXY_EARLY 2>/dev/null && _ipt -D LOCALINPUT -j SYNPROXY_EARLY || true
       _ipt -I LOCALINPUT 1 -j SYNPROXY_EARLY 2>/dev/null || true
-      [ "$(iptables -S LOCALINPUT | awk '$1=="-A"&&$2=="LOCALINPUT"{for(i=1;i<=NF;i++) if($i=="-j"&&i+1<=NF){print $(i+1); exit}}')" = "SYNPROXY_EARLY" ] && _ok="YES"
+      _ipt -C LOCALINPUT -j SYNPROXY_EARLY 2>/dev/null && return 0
     else
-      while _ipt -C INPUT -j SYNPROXY_EARLY 2>/dev/null; do _ipt -D INPUT -j SYNPROXY_EARLY 2>/dev/null || break; done
+      _ipt -C INPUT -j SYNPROXY_EARLY 2>/dev/null && _ipt -D INPUT -j SYNPROXY_EARLY || true
       _ipt -I INPUT 1 -j SYNPROXY_EARLY 2>/dev/null || true
-      [ "$(_first_rule_target)" = "SYNPROXY_EARLY" ] && _ok="YES"
+      _ipt -C INPUT -j SYNPROXY_EARLY 2>/dev/null && return 0
     fi
-    [ "${_ok}" = "YES" ] && return 0
     sleep "${_RETRY_SLEEP}"; _i=$((_i+1))
   done
   return 1
 }
 
-# -------- OUTPUT allows (incl. ACK’ed data) -----------------------------------
-_ensure_output_synproxy_allow(){
-  # ESTABLISHED/RELATED (both matchers)
-  _ipt -C OUTPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT 2>/dev/null || _ipt -I OUTPUT 1 -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT 2>/dev/null || true
-  _ipt -C OUTPUT -m state --state ESTABLISHED,RELATED -j ACCEPT 2>/dev/null      || _ipt -I OUTPUT 1 -m state --state ESTABLISHED,RELATED -j ACCEPT 2>/dev/null      || true
-
-  local _p
-  for _p in ${_TCP_PORTS}; do
-    # SYN,ACK replies
-    _ipt -C OUTPUT -p tcp --sport "${_p}" -m tcp --tcp-flags SYN,ACK SYN,ACK -j ACCEPT 2>/dev/null \
-      || _ipt -I OUTPUT 1 -p tcp --sport "${_p}" -m tcp --tcp-flags SYN,ACK SYN,ACK -j ACCEPT 2>/dev/null || true
-    # RST cleanups
-    _ipt -C OUTPUT -p tcp --sport "${_p}" -m tcp --tcp-flags RST RST -j ACCEPT 2>/dev/null \
-      || _ipt -I OUTPUT 1 -p tcp --sport "${_p}" -m tcp --tcp-flags RST RST -j ACCEPT 2>/dev/null || true
-    # ACK’ed data (first ServerHello, etc.)  <—— **NEW**
-    _ipt -C OUTPUT -p tcp --sport "${_p}" -m tcp --tcp-flags ACK ACK -j ACCEPT 2>/dev/null \
-      || _ipt -I OUTPUT 1 -p tcp --sport "${_p}" -m tcp --tcp-flags ACK ACK -j ACCEPT 2>/dev/null || true
-  done
-  _v "output: allow EST/REL + SYN,ACK/RST + ACK-data from service ports: ${_TCP_PORTS}"
-}
-
-# -------- purge legacy ---------------------------------------------------------
-_purge_legacy(){
-  local _ports_re; _ports_re="$(printf '%s|' ${_TCP_PORTS})"; _ports_re="${_ports_re%|}"
-  _del_specs_from filter INPUT      "-j SYNPROXY"
-  _del_specs_from filter LOCALINPUT "-j SYNPROXY"
-  _del_specs_from filter SYNPROXY_EARLY "-p tcp .* --dport (${_ports_re}) .*(tcp-flags .* ACK|! --syn) .*(ctstate NEW|state NEW) .* -j ACCEPT"
-  while :; do
-    local _line _spec
-    _line="$({ iptables -t filter -S SYNPROXY_EARLY 2>/dev/null || true; } \
-      | grep -E -- "-p tcp .* --dport (${_ports_re}) .*(ctstate NEW|state NEW) .* -j DROP" \
-      | grep -v '! --syn' | head -n1 || true)"
-    [ -n "${_line}" ] || break
-    _spec="${_line#-A SYNPROXY_EARLY }"
-    _ipt -t filter -D SYNPROXY_EARLY ${_spec} 2>/dev/null || break
-  done
-}
-
-# -------- populate SYNPROXY_EARLY ---------------------------------------------
+# (re)build contents of SYNPROXY_EARLY (—tcp-flags SYN form) + post-SYN DROP
 _populate_filter_early(){
-  [ "${_REBUILD_CHAIN}" = "YES" ] && _ipt -F SYNPROXY_EARLY 2>/dev/null || true
+  [ "${_REBUILD_CHAIN}" = "YES" ] && _ipt -F SYNPROXY_EARLY || true
 
-  # loopback & trusted bypass
+  # loopback/trusted bypass
   _ipt -C SYNPROXY_EARLY -i lo -j RETURN 2>/dev/null || _ipt -I SYNPROXY_EARLY 1 -i lo -j RETURN
   if [ -n "${_TRUSTED_SRC}" ]; then
-    local _cidr
-    for _cidr in ${_TRUSTED_SRC}; do
-      _ipt -C SYNPROXY_EARLY -s "${_cidr}" -j RETURN 2>/dev/null || _ipt -I SYNPROXY_EARLY 2 -s "${_cidr}" -j RETURN
+    local _c
+    for _c in ${_TRUSTED_SRC}; do
+      _ipt -C SYNPROXY_EARLY -s "${_c}" -j RETURN 2>/dev/null || _ipt -I SYNPROXY_EARLY 2 -s "${_c}" -j RETURN
     done
   fi
 
-  # established accepts
+  # established/related accept (both matchers for broad compatibility)
   _ipt -C SYNPROXY_EARLY -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT 2>/dev/null \
-    || _ipt -A SYNPROXY_EARLY -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT 2>/dev/null || true
+    || _ipt -A SYNPROXY_EARLY -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
   _ipt -C SYNPROXY_EARLY -m state --state ESTABLISHED,RELATED -j ACCEPT 2>/dev/null \
-    || _ipt -A SYNPROXY_EARLY -m state --state ESTABLISHED,RELATED -j ACCEPT 2>/dev/null || true
+    || _ipt -A SYNPROXY_EARLY -m state --state ESTABLISHED,RELATED -j ACCEPT
 
-  # SYN -> SYNPROXY (explicit flags form; monitor should treat as present)
+  # per-port guards + SYNPROXY + post-SYN DROP
   local _p
   for _p in ${_TCP_PORTS}; do
-    _ipt -C SYNPROXY_EARLY -p tcp --dport "${_p}" -m tcp --tcp-flags FIN,SYN,RST,ACK SYN \
-      -j SYNPROXY --sack-perm --timestamp --wscale 7 --mss "${_MSS}" 2>/dev/null || \
-    _ipt -A SYNPROXY_EARLY -p tcp --dport "${_p}" -m tcp --tcp-flags FIN,SYN,RST,ACK SYN \
-      -j SYNPROXY --sack-perm --timestamp --wscale 7 --mss "${_MSS}" 2>/dev/null || true
-
     if [ "${_STRICT}" = "YES" ]; then
-      _ipt -C SYNPROXY_EARLY -p tcp --dport "${_p}" -m conntrack --ctstate NEW -m tcp ! --tcp-flags FIN,SYN,RST,ACK SYN -j DROP 2>/dev/null \
-        || _ipt -A SYNPROXY_EARLY -p tcp --dport "${_p}" -m conntrack --ctstate NEW -m tcp ! --tcp-flags FIN,SYN,RST,ACK SYN -j DROP 2>/dev/null || true
-      _ipt -C SYNPROXY_EARLY -p tcp --dport "${_p}" -m state --state NEW -m tcp ! --tcp-flags FIN,SYN,RST,ACK SYN -j DROP 2>/dev/null \
-        || _ipt -A SYNPROXY_EARLY -p tcp --dport "${_p}" -m state --state NEW -m tcp ! --tcp-flags FIN,SYN,RST,ACK SYN -j DROP 2>/dev/null || true
+      _ipt -C SYNPROXY_EARLY -p tcp --dport "${_p}" -m conntrack --ctstate NEW -m tcp '!' --syn -j DROP 2>/dev/null \
+        || _ipt -A SYNPROXY_EARLY -p tcp --dport "${_p}" -m conntrack --ctstate NEW -m tcp '!' --syn -j DROP
+      _ipt -C SYNPROXY_EARLY -p tcp --dport "${_p}" -m state --state NEW -m tcp '!' --syn -j DROP 2>/dev/null \
+        || _ipt -A SYNPROXY_EARLY -p tcp --dport "${_p}" -m state --state NEW -m tcp '!' --syn -j DROP
     fi
+    # ANY SYN -> SYNPROXY (exact spec we also use for -C checks)
+    _ipt -C SYNPROXY_EARLY -p tcp --dport "${_p}" -m tcp --tcp-flags FIN,SYN,RST,ACK SYN \
+         -j SYNPROXY --sack-perm --timestamp --wscale 7 --mss "${_MSS}" 2>/dev/null \
+      || _ipt -A SYNPROXY_EARLY -p tcp --dport "${_p}" -m tcp --tcp-flags FIN,SYN,RST,ACK SYN \
+         -j SYNPROXY --sack-perm --timestamp --wscale 7 --mss "${_MSS}"
+    # Drop the original SYN so it can't fall through into CSF paths
+    _ipt -C SYNPROXY_EARLY -p tcp --dport "${_p}" -m tcp --tcp-flags FIN,SYN,RST,ACK SYN -j DROP 2>/dev/null \
+      || _ipt -A SYNPROXY_EARLY -p tcp --dport "${_p}" -m tcp --tcp-flags FIN,SYN,RST,ACK SYN -j DROP
   done
 
-  # INVALID -> DROP
+  # INVALID -> DROP (both matchers)
   _ipt -C SYNPROXY_EARLY -m conntrack --ctstate INVALID -j DROP 2>/dev/null \
-    || _ipt -A SYNPROXY_EARLY -m conntrack --ctstate INVALID -j DROP 2>/dev/null || true
+    || _ipt -A SYNPROXY_EARLY -m conntrack --ctstate INVALID -j DROP
   _ipt -C SYNPROXY_EARLY -m state --state INVALID -j DROP 2>/dev/null \
-    || _ipt -A SYNPROXY_EARLY -m state --state INVALID -j DROP 2>/dev/null || true
+    || _ipt -A SYNPROXY_EARLY -m state --state INVALID -j DROP
 }
 
-# -------- QUIC limiter (off unless enabled) -----------------------------------
+# OUTPUT: own chain + single jump (we verify with -C only)
+_ensure_output_egress_chain(){
+  _chain_exists SYNPROXY_EGRESS || _ipt -N SYNPROXY_EGRESS
+  [ "${_REBUILD_CHAIN}" = "YES" ] && _ipt -F SYNPROXY_EGRESS || true
+
+  # Canonical egress allows (SYNPROXY replies + first data)
+  _ipt -C SYNPROXY_EGRESS -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT 2>/dev/null \
+    || _ipt -A SYNPROXY_EGRESS -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+  _ipt -C SYNPROXY_EGRESS -m state --state ESTABLISHED,RELATED -j ACCEPT 2>/dev/null \
+    || _ipt -A SYNPROXY_EGRESS -m state --state ESTABLISHED,RELATED -j ACCEPT
+
+  local _p
+  for _p in ${_TCP_PORTS}; do
+    _ipt -C SYNPROXY_EGRESS -p tcp --sport "${_p}" -m tcp --tcp-flags ACK ACK -j ACCEPT 2>/dev/null \
+      || _ipt -A SYNPROXY_EGRESS -p tcp --sport "${_p}" -m tcp --tcp-flags ACK ACK -j ACCEPT
+    _ipt -C SYNPROXY_EGRESS -p tcp --sport "${_p}" -m tcp --tcp-flags SYN,ACK SYN,ACK -j ACCEPT 2>/dev/null \
+      || _ipt -A SYNPROXY_EGRESS -p tcp --sport "${_p}" -m tcp --tcp-flags SYN,ACK SYN,ACK -j ACCEPT
+    _ipt -C SYNPROXY_EGRESS -p tcp --sport "${_p}" -m tcp --tcp-flags RST RST -j ACCEPT 2>/dev/null \
+      || _ipt -A SYNPROXY_EGRESS -p tcp --sport "${_p}" -m tcp --tcp-flags RST RST -j ACCEPT
+  done
+
+  # Ensure OUTPUT jump exists and is near top; we verify presence, not position.
+  _ipt -C OUTPUT -j SYNPROXY_EGRESS 2>/dev/null || _ipt -I OUTPUT 1 -j SYNPROXY_EGRESS
+}
+
+# QUIC limiter (optional)
 _purge_quic_rules(){
   [ -n "${_QUIC_PORT}" ] || return 0
-  _del_specs_from filter INPUT "-p udp .*--dport ${_QUIC_PORT} .*hashlimit-name quic${_QUIC_PORT}_ip"
-  _del_specs_from filter INPUT "-p udp .*--dport ${_QUIC_PORT} .*hashlimit-name quic${_QUIC_PORT}_24"
-  _del_specs_from filter INPUT "-p udp .*--dport ${_QUIC_PORT} .*(-m conntrack --ctstate INVALID|-m state --state INVALID).* -j DROP"
+  local _p="${_QUIC_PORT}"
+  while _ipt -C INPUT -p udp --dport "${_p}" -m hashlimit --hashlimit-name quic${_p}_24 -j DROP 2>/dev/null; do
+    _ipt -D INPUT -p udp --dport "${_p}" -m hashlimit --hashlimit-name quic${_p}_24 -j DROP || break
+  done
+  while _ipt -C INPUT -p udp --dport "${_p}" -m hashlimit --hashlimit-name quic${_p}_ip -j DROP 2>/dev/null; do
+    _ipt -D INPUT -p udp --dport "${_p}" -m hashlimit --hashlimit-name quic${_p}_ip -j DROP || break
+  done
+  while _ipt -C INPUT -p udp --dport "${_p}" -m conntrack --ctstate INVALID -j DROP 2>/dev/null; do
+    _ipt -D INPUT -p udp --dport "${_p}" -m conntrack --ctstate INVALID -j DROP || break
+  done
 }
 _ensure_quic_limits(){
   [ -n "${_QUIC_PORT}" ] || return 0
   if [ "${_ENABLE_QUIC_LIMITER}" != "YES" ]; then
-    _purge_quic_rules; _v "input: QUIC limiter disabled; purged for UDP:${_QUIC_PORT}"; return 0
+    _purge_quic_rules; _v "QUIC limiter disabled; purged for UDP:${_QUIC_PORT}"; return 0
   fi
-  _purge_quic_rules
-  _ipt -I INPUT 1 -p udp --dport "${_QUIC_PORT}" -m hashlimit --hashlimit-name quic${_QUIC_PORT}_24 --hashlimit-above "${_RATE_PER_24}" --hashlimit-burst "${_BURST_PER_24}" --hashlimit-mode srcip --hashlimit-srcmask 24 --hashlimit-htable-expire 60000 -j DROP 2>/dev/null || true
-  _ipt -I INPUT 1 -p udp --dport "${_QUIC_PORT}" -m hashlimit --hashlimit-name quic${_QUIC_PORT}_ip --hashlimit-above "${_RATE_PER_IP}" --hashlimit-burst "${_BURST_PER_IP}" --hashlimit-mode srcip --hashlimit-htable-expire 60000 -j DROP 2>/dev/null || true
-  _ipt -I INPUT 1 -p udp --dport "${_QUIC_PORT}" -m conntrack --ctstate INVALID -j DROP 2>/dev/null || true
+  local _p="${_QUIC_PORT}"
+  # Place after early jump (positions 2/3/4 typically); verify by presence only.
+  _ipt -C INPUT -p udp --dport "${_p}" -m hashlimit --hashlimit-name quic${_p}_24 \
+       --hashlimit-above "${_RATE_PER_24}" --hashlimit-burst "${_BURST_PER_24}" \
+       --hashlimit-mode srcip --hashlimit-srcmask 24 --hashlimit-htable-expire 60000 -j DROP 2>/dev/null \
+    || _ipt -I INPUT 2 -p udp --dport "${_p}" -m hashlimit --hashlimit-name quic${_p}_24 \
+       --hashlimit-above "${_RATE_PER_24}" --hashlimit-burst "${_BURST_PER_24}" \
+       --hashlimit-mode srcip --hashlimit-srcmask 24 --hashlimit-htable-expire 60000 -j DROP
+
+  _ipt -C INPUT -p udp --dport "${_p}" -m hashlimit --hashlimit-name quic${_p}_ip \
+       --hashlimit-above "${_RATE_PER_IP}" --hashlimit-burst "${_BURST_PER_IP}" \
+       --hashlimit-mode srcip --hashlimit-htable-expire 60000 -j DROP 2>/dev/null \
+    || _ipt -I INPUT 3 -p udp --dport "${_p}" -m hashlimit --hashlimit-name quic${_p}_ip \
+       --hashlimit-above "${_RATE_PER_IP}" --hashlimit-burst "${_BURST_PER_IP}" \
+       --hashlimit-mode srcip --hashlimit-htable-expire 60000 -j DROP
+
+  _ipt -C INPUT -p udp --dport "${_p}" -m conntrack --ctstate INVALID -j DROP 2>/dev/null \
+    || _ipt -I INPUT 4 -p udp --dport "${_p}" -m conntrack --ctstate INVALID -j DROP
+
+  _v "QUIC limiter enabled on UDP:${_p}"
 }
 
-# -------- verification ---------------------------------------------------------
+# ---------- Verify using iptables -C only ----------
 _verify_once(){
   local _ok=1 _why=""
-  # jump placement
-  if [ "$(_first_rule_target)" = "LOCALINPUT" ] && _chain_exists LOCALINPUT; then
-    [ "$(iptables -S LOCALINPUT | awk '$1=="-A"&&$2=="LOCALINPUT"{for(i=1;i<=NF;i++) if($i=="-j"&&i+1<=NF){print $(i+1); exit}}')" = "SYNPROXY_EARLY" ] || { _why="${_why}\n - LOCALINPUT #1 != SYNPROXY_EARLY"; _ok=0; }
+
+  # Early jump present (either INPUT or LOCALINPUT topology)
+  if _ipt -C INPUT -j LOCALINPUT 2>/dev/null && _chain_exists LOCALINPUT; then
+    _ipt -C LOCALINPUT -j SYNPROXY_EARLY 2>/dev/null || { _why="${_why}\n - LOCALINPUT lacks jump to SYNPROXY_EARLY"; _ok=0; }
   else
-    [ "$(_first_rule_target)" = "SYNPROXY_EARLY" ] || { _why="${_why}\n - INPUT #1 != SYNPROXY_EARLY"; _ok=0; }
+    _ipt -C INPUT -j SYNPROXY_EARLY 2>/dev/null || { _why="${_why}\n - INPUT lacks jump to SYNPROXY_EARLY"; _ok=0; }
   fi
 
-  # raw NOTRACK
-  local _p _has
+  # raw NOTRACK per port
+  local _p
   for _p in ${_TCP_PORTS}; do
-    _has="NO"
-    iptables -t raw -C PREROUTING -p tcp --syn --dport "${_p}" -j CT --notrack 2>/dev/null && _has="YES"
-    iptables -t raw -C PREROUTING -p tcp --syn --dport "${_p}" -j NOTRACK 2>/dev/null && _has="YES"
-    [ "${_has}" = "YES" ] || { _why="${_why}\n - raw/PREROUTING missing NOTRACK for SYN dport ${_p}"; _ok=0; }
+    if [ "${_NOTRACK_KIND}" = "CT" ]; then
+      _ipt -t raw -C PREROUTING -p tcp --tcp-flags FIN,SYN,RST,ACK SYN --dport "${_p}" -j CT --notrack 2>/dev/null \
+        || { _why="${_why}\n - raw/PREROUTING missing CT --notrack for dport ${_p}"; _ok=0; }
+    else
+      _ipt -t raw -C PREROUTING -p tcp --tcp-flags FIN,SYN,RST,ACK SYN --dport "${_p}" -j NOTRACK 2>/dev/null \
+        || { _why="${_why}\n - raw/PREROUTING missing NOTRACK for dport ${_p}"; _ok=0; }
+    fi
   done
 
-  # SYNPROXY per port (accept either --syn or --tcp-flags form)
+  # SYNPROXY + post-SYN DROP present for each port
   for _p in ${_TCP_PORTS}; do
-    iptables -C SYNPROXY_EARLY -p tcp --dport "${_p}" -m tcp --syn -j SYNPROXY 2>/dev/null || \
-    iptables -C SYNPROXY_EARLY -p tcp --dport "${_p}" -m tcp --tcp-flags FIN,SYN,RST,ACK SYN -j SYNPROXY 2>/dev/null || {
-      _why="${_why}\n - SYNPROXY_EARLY missing SYNPROXY for dport ${_p}"
-      _ok=0
-    }
+    _ipt -C SYNPROXY_EARLY -p tcp --dport "${_p}" -m tcp --tcp-flags FIN,SYN,RST,ACK SYN \
+         -j SYNPROXY --sack-perm --timestamp --wscale 7 --mss "${_MSS}" 2>/dev/null \
+      || { _why="${_why}\n - SYNPROXY_EARLY missing SYNPROXY (dport ${_p})"; _ok=0; }
+    _ipt -C SYNPROXY_EARLY -p tcp --dport "${_p}" -m tcp --tcp-flags FIN,SYN,RST,ACK SYN -j DROP 2>/dev/null \
+      || { _why="${_why}\n - SYNPROXY_EARLY missing post-SYN DROP (dport ${_p})"; _ok=0; }
   done
 
-  # OUTPUT allows (EST/REL + SYN,ACK + RST + ACK-data)
+  # OUTPUT: either has our jump or inline egress rules — we require the jump
+  _ipt -C OUTPUT -j SYNPROXY_EGRESS 2>/dev/null || { _why="${_why}\n - OUTPUT lacks jump to SYNPROXY_EGRESS"; _ok=0; }
+  # And the egress chain must have its accepts
+  _ipt -C SYNPROXY_EGRESS -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT 2>/dev/null \
+    || { _why="${_why}\n - SYNPROXY_EGRESS lacks EST/REL accept"; _ok=0; }
+  _ipt -C SYNPROXY_EGRESS -m state --state ESTABLISHED,RELATED -j ACCEPT 2>/dev/null \
+    || { _why="${_why}\n - SYNPROXY_EGRESS lacks state EST/REL accept"; _ok=0; }
   for _p in ${_TCP_PORTS}; do
-    iptables -C OUTPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT 2>/dev/null || iptables -C OUTPUT -m state --state ESTABLISHED,RELATED -j ACCEPT 2>/dev/null || {
-      _why="${_why}\n - OUTPUT lacks EST/REL ACCEPT"; _ok=0; }
-    iptables -C OUTPUT -p tcp --sport "${_p}" -m tcp --tcp-flags SYN,ACK SYN,ACK -j ACCEPT 2>/dev/null || {
-      _why="${_why}\n - OUTPUT lacks SYN,ACK allow for --sport ${_p}"; _ok=0; }
-    iptables -C OUTPUT -p tcp --sport "${_p}" -m tcp --tcp-flags RST RST -j ACCEPT 2>/dev/null || {
-      _why="${_why}\n - OUTPUT lacks RST allow for --sport ${_p}"; _ok=0; }
-    iptables -C OUTPUT -p tcp --sport "${_p}" -m tcp --tcp-flags ACK ACK -j ACCEPT 2>/dev/null || {
-      _why="${_why}\n - OUTPUT lacks ACK-data allow for --sport ${_p}"; _ok=0; }
+    _ipt -C SYNPROXY_EGRESS -p tcp --sport "${_p}" -m tcp --tcp-flags ACK ACK -j ACCEPT 2>/dev/null \
+      || { _why="${_why}\n - SYNPROXY_EGRESS lacks ACK allow (sport ${_p})"; _ok=0; }
+    _ipt -C SYNPROXY_EGRESS -p tcp --sport "${_p}" -m tcp --tcp-flags SYN,ACK SYN,ACK -j ACCEPT 2>/dev/null \
+      || { _why="${_why}\n - SYNPROXY_EGRESS lacks SYN,ACK allow (sport ${_p})"; _ok=0; }
+    _ipt -C SYNPROXY_EGRESS -p tcp --sport "${_p}" -m tcp --tcp-flags RST RST -j ACCEPT 2>/dev/null \
+      || { _why="${_why}\n - SYNPROXY_EGRESS lacks RST allow (sport ${_p})"; _ok=0; }
   done
+
+  # QUIC (if enabled)
+  if [ "${_ENABLE_QUIC_LIMITER}" = "YES" ] && [ -n "${_QUIC_PORT}" ]; then
+    _ipt -C INPUT -p udp --dport "${_QUIC_PORT}" -m hashlimit --hashlimit-name "quic${_QUIC_PORT}_24" -j DROP 2>/dev/null \
+      || { _why="${_why}\n - QUIC /24 hashlimit missing (udp ${_QUIC_PORT})"; _ok=0; }
+    _ipt -C INPUT -p udp --dport "${_QUIC_PORT}" -m hashlimit --hashlimit-name "quic${_QUIC_PORT}_ip" -j DROP 2>/dev/null \
+      || { _why="${_why}\n - QUIC per-IP hashlimit missing (udp ${_QUIC_PORT})"; _ok=0; }
+    _ipt -C INPUT -p udp --dport "${_QUIC_PORT}" -m conntrack --ctstate INVALID -j DROP 2>/dev/null \
+      || { _why="${_why}\n - QUIC INVALID drop missing (udp ${_QUIC_PORT})"; _ok=0; }
+  fi
 
   if [ "${_ok}" -ne 1 ]; then _why="${_why#\\n }"; echo "${_why}"; return 1; fi
   return 0
@@ -329,31 +353,38 @@ _verify_with_retry(){
   local _i=0
   while [ "${_i}" -lt "${_RETRY_MAX}" ]; do
     if _verify_once >/dev/null; then return 0; fi
-    # repair
+    # attempt repairs during churn
     local _p
     for _p in ${_TCP_PORTS}; do _ensure_raw_notrack_port "${_p}"; done
-    _ensure_jump_order || true
-    _ensure_output_synproxy_allow || true
+    _ensure_jump_order_INPUT || true
+    _ensure_output_egress_chain || true
+    _ensure_quic_limits || true
     sleep "${_RETRY_SLEEP}"; _i=$((_i+1))
   done
   local _why="$(_verify_once || true)"
   _die "One or more invariants failed; SYNPROXY not active:${_why:+ ${_why}}"
 }
 
-# -------- go ------------------------------------------------------------------
-_msg "Reassert SYNPROXY (ports: ${_TCP_PORTS}, mss: ${_MSS}, strict: ${_STRICT}, quic: ${_ENABLE_QUIC_LIMITER})"
+# ---------- Execute ----------
+_msg "Reassert SYNPROXY (ports: ${_TCP_PORTS}, mss: ${_MSS}, strict: ${_STRICT}, quic: ${_ENABLE_QUIC_LIMITER} on udp/${_QUIC_PORT})"
 
-_detect_notrack_kind
-
+# 1) raw NOTRACK per protected port
 for _pp in ${_TCP_PORTS}; do _ensure_raw_notrack_port "${_pp}"; done
-_ensure_jump_order || _die "Could not place jump to SYNPROXY_EARLY at top of INPUT/LOCALINPUT after retries"
 
-_purge_legacy
+# 2) early jump placement (INPUT/LOCALINPUT)
+_ensure_jump_order_INPUT || _die "Could not place jump to SYNPROXY_EARLY in INPUT/LOCALINPUT"
+
+# 3) canonical early chain with SYNPROXY + post-SYN DROP
 _populate_filter_early
 
-_ensure_output_synproxy_allow
+# 4) egress chain + OUTPUT jump
+_ensure_output_egress_chain
+
+# 5) QUIC limiter (optional)
 _ensure_quic_limits
 
+# 6) verify with retries
 _verify_with_retry
+
 _v "Done."
 exit 0
