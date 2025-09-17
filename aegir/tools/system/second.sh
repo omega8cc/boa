@@ -65,7 +65,7 @@ case "${_INCIDENT_REPORT}" in
 esac
 
 # Get CPU count
-_CPU_COUNT="$(nproc)"
+_CPU_COUNT=$(nproc)
 [ -z "${_CPU_COUNT}" ] && _CPU_COUNT=1
 
 # Function to send incident email report

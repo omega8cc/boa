@@ -57,7 +57,7 @@ _oom_critical_restart() {
   killall -9 sleep &> /dev/null
   killall -9 php
   echo "$(date) OOM php-cli killed" >> ${_pthOml}
-  mv -f /var/log/nginx/error.log /var/log/nginx/`date +%y%m%d-%H%M`-error.log
+  mv -f /var/log/nginx/error.log /var/log/nginx/$(date +%y%m%d-%H%M)-error.log
   kill -9 $(ps aux | grep '[n]ginx' | awk '{print $2}') &> /dev/null
   echo "$(date) OOM nginx killed" >> ${_pthOml}
   kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}') &> /dev/null
@@ -185,7 +185,13 @@ _if_fix_dhcp() {
       done
 
       # Reload the firewall
-      csf -q &> /dev/null
+      if [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
+        csf -ra &> /dev/null
+        wait
+        synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
+      else
+        csf -r &> /dev/null
+      fi
 
       # Log the error and send an email report
       _thisErrLog="$(date) DHCP error detected, firewall updated"
@@ -270,4 +276,3 @@ _syslog_giant_log_detection
 
 echo DONE!
 exit 0
-

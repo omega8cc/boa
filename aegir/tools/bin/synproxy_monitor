@@ -1,0 +1,90 @@
+#!/bin/bash
+
+#
+# Shows: INPUT/OUTPUT top, LOCALINPUT (if any), raw/PREROUTING NOTRACK hits, SYNPROXY_EARLY with counters.
+#
+
+export HOME=/root
+export SHELL=/bin/bash
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+
+# Function to check if the script is run as root
+_check_root() {
+  if [ "$(id -u)" -ne 0 ]; then
+    echo "ERROR: This script should be run as a root user"
+    exit 1
+  fi
+}
+_check_root
+
+set -u
+
+_INTERVAL="${_INTERVAL:-2}"
+_TCP_PORTS="${_TCP_PORTS:-443 80}"
+_SHOW_INPUT_LINES="${_SHOW_INPUT_LINES:-8}"
+_SHOW_OUTPUT_LINES="${_SHOW_OUTPUT_LINES:-8}"
+
+_usage(){
+  cat <<USAGE
+Usage: watch_synproxy [options]
+  -n SEC         Refresh interval (default: ${_INTERVAL})
+  -p "443 80"    Ports to highlight in raw NOTRACK view (default: "${_TCP_PORTS}")
+  -l NUM         How many INPUT lines to show (default: ${_SHOW_INPUT_LINES})
+  -h             Help
+Tip: run after a CSF change: csf -r && synproxy_reassert -p "443 80" --no-quic -q
+USAGE
+}
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -n) _INTERVAL="$2"; shift 2;;
+    -p) _TCP_PORTS="$2"; shift 2;;
+    -l) _SHOW_INPUT_LINES="$2"; shift 2;;
+    -h|--help) _usage; exit 0;;
+    *) echo "Unknown option: $1" >&2; _usage; exit 2;;
+  esac
+done
+
+_has(){ command -v "$1" >/dev/null 2>&1; }
+_IPT_HAS_W="NO"; iptables -w -L -n >/dev/null 2>&1 && _IPT_HAS_W="YES"
+_ipt(){ if [ "${_IPT_HAS_W}" = "YES" ]; then iptables -w "$@"; else iptables "$@"; fi; }
+_chain_exists(){ _ipt -L "$1" -n >/dev/null 2>&1; }
+
+while :; do
+  clear
+  echo "=== SYNPROXY monitor @ $(date '+%F %T %Z')  interval=${_INTERVAL}s  ports: ${_TCP_PORTS}"
+  echo
+
+  echo "-- INPUT (top ${_SHOW_INPUT_LINES})"
+  _ipt -L INPUT -n -v --line-numbers | sed -n "1,${_SHOW_INPUT_LINES}p"
+  if _chain_exists LOCALINPUT; then
+    echo; echo "-- LOCALINPUT (top ${_SHOW_INPUT_LINES})"
+    _ipt -L LOCALINPUT -n -v --line-numbers | sed -n "1,${_SHOW_INPUT_LINES}p"
+  fi
+
+  echo
+  echo "-- OUTPUT (top ${_SHOW_OUTPUT_LINES})"
+  _ipt -L OUTPUT -n -v --line-numbers | sed -n "1,${_SHOW_OUTPUT_LINES}p"
+  if _chain_exists LOCALOUTPUT; then
+    echo; echo "-- LOCALOUTPUT (top ${_SHOW_OUTPUT_LINES})"
+    _ipt -L LOCALOUTPUT -n -v --line-numbers | sed -n "1,${_SHOW_OUTPUT_LINES}p"
+  fi
+
+  echo; echo "-- raw/PREROUTING (NOTRACK hits for web ports)"
+  _ipt -t raw -L PREROUTING -n -v --line-numbers \
+    | awk -v PORTS="${_TCP_PORTS}" '
+        BEGIN{ split(PORTS,a," "); for(i in a) p[a[i]]=1 }
+        /CT --notrack|NOTRACK/ && /--syn/ && /--dport/ {
+          port=""; for(i=1;i<=NF;i++){ if($i=="dpt:" || $i=="--dport"){ port=$(i+1) } }
+          if(port in p){ print }
+        }'
+
+  echo; echo "-- SYNPROXY_EARLY (full chain with counters)"
+  if _chain_exists SYNPROXY_EARLY; then
+    _ipt -L SYNPROXY_EARLY -n -v --line-numbers
+  else
+    echo "SYNPROXY_EARLY not found"
+  fi
+
+  echo; echo "(q to quit)"; read -t "${_INTERVAL}" -n 1 _k && [ "${_k:-}" = "q" ] && exit 0
+done
