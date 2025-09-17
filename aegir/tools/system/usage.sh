@@ -782,7 +782,7 @@ even if they are marked as disabled in your Aegir control panel.
 
 EOF
         fi
-        _DOW=$(date +%u 2>&1)
+        _DOW=$(date +%u)
         _DOW=${_DOW//[^1-7]/}
         if [ "${_DOW}" = "2" ]; then
           _detect_deprecated_php
@@ -927,7 +927,7 @@ EOF
 
 ###--------------------###
 echo "INFO: Starting usage monitoring on $(date)"
-_NOW=$(date +%y%m%d-%H%M%S 2>&1)
+_NOW=$(date +%y%m%d-%H%M%S)
 _NOW=${_NOW//[^0-9-]/}
 _DATE=$(date)
 _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"

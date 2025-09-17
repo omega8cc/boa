@@ -140,7 +140,7 @@ _csf_install() {
   _get_dev_src "csf-${_CSF_VRN}.tgz"
   cd csf
   _mrun "sh install.sh" 2> /dev/null
-  _NFTABLES_TEST=$(iptables -V 2>&1)
+  _NFTABLES_TEST=$(iptables -V)
   if [[ "${_NFTABLES_TEST}" =~ "nf_tables" ]]; then
     if [ -e "/usr/sbin/iptables-legacy" ]; then
       update-alternatives --set iptables /usr/sbin/iptables-legacy &> /dev/null
@@ -273,7 +273,13 @@ _csf_lfd_gateway_allow() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: Reloading CSF..."
     fi
-    _mrun "csf -r" 2> /dev/null
+    if [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
+      csf -ra &> /dev/null
+      wait
+      synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
+    else
+      csf -r &> /dev/null
+    fi
   fi
 }
 
@@ -365,24 +371,27 @@ _csf_lfd_install_upgrade() {
         kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
         killall sleep &> /dev/null
         rm -f /etc/csf/csf.error
-        _mrun "csf -r" &> /dev/null
-        wait
-        _mrun "service lfd start" 2> /dev/null
-        wait
+        if [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
+          csf -ra &> /dev/null
+          wait
+          synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
+        else
+          csf -r &> /dev/null
+        fi
         ### Linux kernel TCP SACK CVEs mitigation
         ### CVE-2019-11477 SACK Panic
         ### CVE-2019-11478 SACK Slowness
         ### CVE-2019-11479 Excess Resource Consumption Due to Low MSS Values
         if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
-          _SACK_TEST=$(ip6tables --list | grep tcpmss 2>&1)
+          _SACK_TEST=$(ip6tables --list | grep tcpmss)
           if [[ ! "${_SACK_TEST}" =~ "tcpmss" ]]; then
             sysctl net.ipv4.tcp_mtu_probing=0 &> /dev/null
             iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
             ip6tables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
+            [ -e "/etc/csf/csfpost.d/synproxy.sh" ] && synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
           fi
         fi
       fi
     fi
-    [ -x "/usr/sbin/csf" ] && nohup /var/xdrago/guest-water.sh > /dev/null 2>&1 &
   fi
 }

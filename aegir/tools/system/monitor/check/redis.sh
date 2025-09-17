@@ -51,7 +51,7 @@ _incident_email_report() {
 }
 
 _fpm_reload() {
-  _NOW=$(date +%y%m%d-%H%M%S 2>&1)
+  _NOW=$(date +%y%m%d-%H%M%S)
   _NOW=${_NOW//[^0-9-]/}
   mkdir -p /var/backups/php-logs/${_NOW}/
   mv -f /var/log/php/* /var/backups/php-logs/${_NOW}/
