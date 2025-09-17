@@ -69,10 +69,17 @@ export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 export _tRee=dev
 
+###
+### Variables
+###
 _initFile="/root/.init-to-devuan-ctrl.cnf"
 _barCnf="/root/.barracuda.cnf"
 _logInt="/root/.autoinit.log"
 _logSlt="/root/.autoinit-verbose.log"
+_aptAllow="--allow-unauthenticated"
+_INITINS="/usr/bin/apt-get ${_aptAllow} -y install"
+_dstUpArg="-fuy -q ${_aptAllow} --config-file /opt/apt/apt.conf.noi.dist"
+_nrmUpArg="-fuy -q ${_aptAllow} --config-file /opt/apt/apt.conf.noi.nrml"
 
 ###
 ### Avoid too many questions
@@ -83,11 +90,9 @@ if [ -z "${TERM+x}" ]; then
   export TERM=vt100
 fi
 
-_aptAllow="--allow-unauthenticated"
-_INITINS="/usr/bin/apt-get ${_aptAllow} -y install"
-_dstUpArg="-fuy -q ${_aptAllow} --config-file /opt/apt/apt.conf.noi.dist"
-_nrmUpArg="-fuy -q ${_aptAllow} --config-file /opt/apt/apt.conf.noi.nrml"
-
+###
+### Only root allowed
+###
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
     [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
