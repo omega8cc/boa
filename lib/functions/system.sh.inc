@@ -5916,6 +5916,33 @@ _if_long_generate_on_major_os_upgrade() {
   fi
 }
 
+_ensure_devuan_base_files() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _ensure_devuan_base_files"
+  fi
+  # Ensure Devuan base-files is applied so /etc/os-release reflects Devuan/daedalus
+  _msg "Ensuring Devuan base-files is applied (force-confnew)"
+  _BF_CANDIDATE=$(apt-cache policy base-files 2>/dev/null | awk '/Candidate: /{print $2; exit}')
+  _APTOPTS="-o Dpkg::Options::=--force-confnew \
+            -o Dpkg::Options::=--force-overwrite \
+            -o Dpkg::Options::=--force-confdef"
+  if [ ! -z "${_BF_CANDIDATE}" ]; then
+    _mrun "apt-get ${_aptAllow} -y ${_APTOPTS} install \
+    base-files="${_BF_CANDIDATE}" --allow-downgrades" 2> /dev/null
+  else
+    _mrun "apt-get ${_aptAllow} -y ${_APTOPTS} install \
+    base-files --allow-downgrades" 2> /dev/null
+  fi
+  # If /etc/os-release still says Debian, try to refresh from the installed base-files
+  if grep -qi 'ID=debian' /etc/os-release 2>/dev/null; then
+    if [ -f /usr/lib/os-release ]; then
+      cp -f /usr/lib/os-release /etc/os-release || true
+    elif [ -f /usr/share/base-files/os-release ]; then
+      cp -f /usr/share/base-files/os-release /etc/os-release || true
+    fi
+  fi
+}
+
 _if_post_major_os_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _if_post_major_os_upgrade"
@@ -5974,8 +6001,8 @@ _if_post_major_os_upgrade() {
       fi
       # If any of the above checks require an update, perform the upgrade
       if [ "${_needsBaseFilesUpdate}" = "YES" ]; then
-        _msg "Upgrade to base-files=12.4+deb12u10devuan1 is forced"
-        _mrun "${_INITINS} base-files=12.4+deb12u10devuan1 --allow-downgrades" 2> /dev/null
+        _msg "Upgrading base-files from Devuan repository (dynamic candidate)"
+        _ensure_devuan_base_files
       fi
     fi
 
