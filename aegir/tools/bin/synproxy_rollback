@@ -23,6 +23,7 @@ trap '_rc=$?; echo "[ROLLBACK] line ${LINENO}: exit ${_rc}" >&2; exit ${_rc}' ER
 # --- utils ---
 _LOG="/var/log/synproxy-rollback.log"
 _msg(){ echo "[ROLLBACK] $*" | tee -a "${_LOG}"; }
+_silent(){ "$@" >/dev/null 2>&1 || true; }
 _need(){ command -v "$1" >/dev/null 2>&1 || { echo "[ROLLBACK] Missing: $1" >&2; exit 1; }; }
 
 _need iptables
@@ -48,74 +49,70 @@ _SYSCTL_FILE="/etc/sysctl.d/60-synproxy.conf"
 _ETC_MODULES="/etc/modules"
 
 : > "${_LOG}"
+echo
 _msg "Starting rollback at $(date -u +'%F %T UTC')"
+echo
 
-# 1) Remove jumps to early chain (so we can delete the chain)
-_msg "1) Remove any jumps to SYNPROXY_EARLY from INPUT/LOCALINPUT"
-while _ipt -C INPUT -j SYNPROXY_EARLY 2>/dev/null; do _ipt -D INPUT -j SYNPROXY_EARLY 2>/dev/null || break; done
-if _ipt -L LOCALINPUT -n >/dev/null 2>&1; then
-  while _ipt -C LOCALINPUT -j SYNPROXY_EARLY 2>/dev/null; do _ipt -D LOCALINPUT -j SYNPROXY_EARLY 2>/dev/null || break; done
+# 1) INPUT/LOCALINPUT jumps to SYNPROXY_EARLY
+_msg "1) Remove INPUT/LOCALINPUT jumps to SYNPROXY_EARLY"
+_silent iptables -D INPUT -j SYNPROXY_EARLY
+_silent iptables -D LOCALINPUT -j SYNPROXY_EARLY
+
+# 2) Flush & delete SYNPROXY_EARLY (if not referenced)
+_msg "2) Flush & delete SYNPROXY_EARLY (if not referenced)"
+if iptables -L SYNPROXY_EARLY -n >/dev/null 2>&1; then
+  _silent iptables -F SYNPROXY_EARLY
+  # Delete only if no references
+  if ! iptables -S | grep -q -- "-j SYNPROXY_EARLY"; then
+    _silent iptables -X SYNPROXY_EARLY
+  fi
 fi
 
-# 2) Flush & delete SYNPROXY_EARLY (if exists)
-_msg "2) Flush and delete SYNPROXY_EARLY (if exists)"
-_ipt -F SYNPROXY_EARLY 2>/dev/null || true
-_ipt -X SYNPROXY_EARLY 2>/dev/null || true
+# 3) Remove old direct SYNPROXY & NEW!SYN rules (defensive cleanup)
+_msg "3) Remove old direct SYNPROXY & NEW!SYN rules (defensive cleanup)"
+while iptables -S INPUT 2>/dev/null | egrep -q -- "-A INPUT .* -p tcp .* --dport (80|443) .* -j SYNPROXY"; do
+  spec="$(iptables -S INPUT | egrep -- "-A INPUT .* -p tcp .* --dport (80|443) .* -j SYNPROXY" | head -n1)"
+  spec="${spec#-A INPUT }"; _silent iptables -D INPUT ${spec}
+done
+while iptables -S INPUT 2>/dev/null | egrep -q -- "-A INPUT .* -m (conntrack --ctstate NEW|state --state NEW) .* -m tcp ! --syn .* -j DROP"; do
+  spec="$(iptables -S INPUT | egrep -- "-A INPUT .* -m (conntrack --ctstate NEW|state --state NEW) .* -m tcp ! --syn .* -j DROP" | head -n1)"
+  spec="${spec#-A INPUT }"; _silent iptables -D INPUT ${spec}
+done
 
-# Helper: delete rules by exact spec from `iptables -S` output
-# Usage: _delete_by_spec <table> <chain> <grep pattern>
-_delete_by_spec(){
-  local _tbl="$1" _ch="$2" _pat="$3" _line _spec
-  # Read current specs (don’t fail if empty)
-  while true; do
-    _line="$({ iptables ${_tbl:+-t "${_tbl}"} -S "${_ch}" 2>/dev/null || true; } | grep -F -- "${_pat}" | head -n1 || true)"
-    [ -n "${_line}" ] || break
-    # Example: "-A INPUT -p tcp --syn --dport 443 -m conntrack ... -j SYNPROXY ..."
-    # Strip prefix "-A <CHAIN> " and delete with -D
-    _spec="${_line#-A ${_ch} }"
-    # shellcheck disable=SC2086
-    _ipt ${_tbl:+-t "${_tbl}"} -D "${_ch}" ${_spec} 2>/dev/null || break
+# 4) raw PREROUTING NOTRACK for 80/443 (and any other protected ports if present)
+_msg "4) Remove raw PREROUTING NOTRACK for 80/443 (and any other protected ports if present)"
+for p in 80 443; do
+  while iptables -t raw -S PREROUTING 2>/dev/null | egrep -q -- "-A PREROUTING .* -p tcp .* --dport ${p} .* (CT --notrack| -j NOTRACK)"; do
+    spec="$(iptables -t raw -S PREROUTING | egrep -- "-A PREROUTING .* -p tcp .* --dport ${p} .* (CT --notrack| -j NOTRACK)" | head -n1)"
+    spec="${spec#-A PREROUTING }"; _silent iptables -t raw -D PREROUTING ${spec}
   done
-}
-
-# 3) Remove legacy direct rules in INPUT/LOCALINPUT
-_msg "3) Remove legacy direct SYNPROXY & NEW->DROP rules from INPUT/LOCALINPUT (if any)"
-for _C in INPUT LOCALINPUT; do
-  _ipt -L "${_C}" -n >/dev/null 2>&1 || continue
-  _delete_by_spec "" "${_C}" "SYNPROXY"         # any SYNPROXY rule we added
-  _delete_by_spec "" "${_C}" "-m state --state NEW -j DROP"  # our NEW->DROP per-port
 done
 
-# 4) Remove raw PREROUTING NOTRACK/CT --notrack on SYNs (delete by spec, no port parsing)
-_msg "4) Remove CT --notrack / NOTRACK rules from raw PREROUTING (SYN to ports)"
-# First CT --notrack variants
-_delete_by_spec "raw" "PREROUTING" "--syn"
-# Above line is broad; ensure we only wipe NOTRACK/CT-notrack lines:
-# Re-run but narrowed to NOTRACK/CT --notrack if any remain
-_delete_by_spec "raw" "PREROUTING" "CT --notrack"
-_delete_by_spec "raw" "PREROUTING" " -j NOTRACK"
-
-# 5) Remove QUIC limiter rules from INPUT (hashlimit name “quic<port>_*” and UDP/port INVALID)
-_msg "5) Remove QUIC limiter rules from INPUT"
-# Remove hashlimit-based rules first (any port named like quic####_*)
-/bin/true
-while :; do
-  _r="$({ iptables -S INPUT 2>/dev/null || true; } | grep -E 'hashlimit-name quic[0-9]+_(ip|24)' | head -n1 || true)"
-  [ -n "${_r}" ] || break
-  _spec="${_r#-A INPUT }"
-  # shellcheck disable=SC2086
-  _ipt -D INPUT ${_spec} 2>/dev/null || break
-done
-# Remove our UDP/port INVALID drop (safe: it matches only lines with "-p udp --dport ... INVALID -j DROP")
-while :; do
-  _r="$({ iptables -S INPUT 2>/dev/null || true; } | grep -E -- '-p udp .*--dport [0-9]+ .* -m conntrack --ctstate INVALID .* -j DROP' | head -n1 || true)"
-  [ -n "${_r}" ] || break
-  _spec="${_r#-A INPUT }"
-  _ipt -D INPUT ${_spec} 2>/dev/null || break
+# 5) QUIC limiter rules (UDP/443 default)
+_msg "6) Remove QUIC limiter rules (UDP/443 default)"
+for p in 443; do
+  while iptables -S INPUT 2>/dev/null | egrep -q -- "-A INPUT .* -p udp .* --dport ${p} .*hashlimit-name quic${p}_(24|ip)"; do
+    spec="$(iptables -S INPUT | egrep -- "-A INPUT .* -p udp .* --dport ${p} .*hashlimit-name quic${p}_(24|ip)" | head -n1)"
+    spec="${spec#-A INPUT }"; _silent iptables -D INPUT ${spec}
+  done
+  while iptables -S INPUT 2>/dev/null | egrep -q -- "-A INPUT .* -p udp .* --dport ${p} .*(-m conntrack --ctstate INVALID|-m state --state INVALID) .* -j DROP"; do
+    spec="$(iptables -S INPUT | egrep -- "-A INPUT .* -p udp .* --dport ${p} .*(-m conntrack --ctstate INVALID|-m state --state INVALID) .* -j DROP" | head -n1)"
+    spec="${spec#-A INPUT }"; _silent iptables -D INPUT ${spec}
+  done
 done
 
-# 6) Remove generated files (leave CSF core files untouched)
-_msg "6) Remove generated scripts (add-ons/monitors/assert/cron/init.d)"
+# 6) OUTPUT jump & egress chain
+_msg "6) Remove OUTPUT jump & egress chain"
+_silent iptables -D OUTPUT -j SYNPROXY_EGRESS
+if iptables -L SYNPROXY_EGRESS -n >/dev/null 2>&1; then
+  _silent iptables -F SYNPROXY_EGRESS
+  if ! iptables -S | grep -q -- "-j SYNPROXY_EGRESS"; then
+    _silent iptables -X SYNPROXY_EGRESS
+  fi
+fi
+
+# 7) Remove generated files (leave CSF core files untouched)
+_msg "7) Remove generated scripts (add-ons/cron/init.d)"
 rm -f "${_OLD_SYN_ADDON}" 2>/dev/null || true
 rm -f "${_SYN_ADDON}" 2>/dev/null || true
 if [ -d "${_INC_DIR}" ]; then
@@ -129,8 +126,8 @@ if [ -x "${_INITD}" ]; then
   rm -f "${_INITD}" 2>/dev/null || true
 fi
 
-# 7) Clean persistence knobs we added (non-CSF)
-_msg "7) Remove nf_synproxy_core from /etc/modules; remove our sysctl file (live values unchanged)"
+# 8) Clean persistence knobs we added (non-CSF)
+_msg "8) Remove nf_synproxy_core from /etc/modules; remove our sysctl file (live values unchanged)"
 [ -f "${_ETC_MODULES}" ] && sed -i '/^nf_synproxy_core$/d' "${_ETC_MODULES}" 2>/dev/null || true
 [ -f "${_SYSCTL_FILE}" ] && rm -f "${_SYSCTL_FILE}" 2>/dev/null || true
 
@@ -151,3 +148,5 @@ echo "  ${_MONITOR} , ${_WATCHER} , ${_ASSERT_BIN}"
 echo "  ${_CRON} , ${_INITD} , ${_OLD_ROLLBACK}"
 echo "  ${_SYSCTL_FILE}  (live sysctls not reverted)"
 echo "Persistence cleaned: 'nf_synproxy_core' line removed from ${_ETC_MODULES}"
+echo
+exit 0
