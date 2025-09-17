@@ -121,6 +121,22 @@ _msg() {
   echo "AutoInit v.${_tRee} [$(date +%T 2>&1)] ==> $*"
 }
 
+_check_set_mode() {
+  # --- Mode selection -------------------------------------------------
+  # Usage: autoinit [minimal|full]
+  # Default: "minimal". Persisted across reboots via cron argument.
+  if [ -z "${_AUTO_MODE}" ]; then
+    case "${1:-minimal}" in
+      minimal|*) _AUTO_MODE="minimal" ;;
+      full)      _AUTO_MODE="full" ;;
+    esac
+  fi
+  touch /root/.mode.selected.${_AUTO_MODE}.info
+  chattr +i /root/.mode.selected.${_AUTO_MODE}.info
+  _msg "Mode selected: ${_AUTO_MODE}" >> "${_logInt}"
+}
+_check_set_mode
+
 _check_manufacturer_compatibility() {
   # Install dmidecode of not present
   if ! command -v dmidecode &> /dev/null; then
@@ -172,7 +188,8 @@ _locales_check_fix_early() {
   _isLoc=$(which locale 2>&1)
   if [ ! -x "${_isLoc}" ] || [ -z "${_isLoc}" ]; then
     apt-get update --allow-insecure-repositories -qq &> /dev/null
-    ${_INITINS} locales locales-all &> /dev/null
+    ${_INITINS} locales &> /dev/null
+    [ "${_AUTO_MODE}" = "full" ] && ${_INITINS} locales-all &> /dev/null
   fi
   _LOC_TEST=$(locale 2>&1)
   if [[ "${_LOC_TEST}" =~ LANG=.*UTF-8 ]]; then
@@ -495,14 +512,14 @@ _init_prepare() {
     echo "Dir::Etc::SourceList \"/etc/apt/sources.list\";" >> /opt/apt/apt.conf.noi.nrml
   fi
 
-  _ifnames_grub_check_sync
+  [ "${_AUTO_MODE}" = "full" ] && _ifnames_grub_check_sync
 
   if [[ -n "${_ADD_GRUB_CMD}" ]] && [[ "${_NEW_GRUB}" == "LIVE" ]]; then
     echo "Running _init_prepare procedure A..."
     touch /run/autoinit.pid
     update-grub >> "${_logSlt}"
     sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
-    echo "*/1 *   * * *   root    bash /opt/local/bin/autoinit" >> /etc/crontab
+    echo "*/1 *   * * *   root    bash /opt/local/bin/autoinit ${_AUTO_MODE}" >> /etc/crontab
     if [ -x "/opt/local/bin/killer" ]; then
       sed -i "s/.*killer.*//gi" /etc/crontab &> /dev/null
       echo "*/1 *   * * *   root    bash /opt/local/bin/killer" >> /etc/crontab
@@ -523,7 +540,7 @@ _init_prepare() {
       _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
       _msg "We need to install some tools early..." >> "${_logInt}"
       /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
-      if [ "${_VMFAMILY}" != "AWS" ]; then
+      if [ "${_AUTO_MODE}" = "full" ] && [ "${_VMFAMILY}" != "AWS" ]; then
         /usr/bin/apt-get remove chrony -y --purge --auto-remove -qq >> "${_logSlt}"
         _INITD_TEST=$(ls -la /etc/init.d/*cloud* 2>&1)
         _aptAkamaiLst="/etc/apt/sources.list.d/akamai-linux-team.list"
@@ -542,17 +559,22 @@ _init_prepare() {
           [ -e "${_aptCloudInit}" ] && mv -f ${_aptCloudInit} /var/backups/
         fi
       fi
-      ${_INITINS} cron >> "${_logSlt}"
-      ${_INITINS} locales-all aptitude >> "${_logSlt}"
-      ${_INITINS} build-essential curl git >> "${_logSlt}"
-      ${_INITINS} libgd-dev libmagickwand-dev >> "${_logSlt}"
+      ${_INITINS} aptitude >> "${_logSlt}"
+      ${_INITINS} cron     >> "${_logSlt}"
+      ${_INITINS} curl     >> "${_logSlt}"
+      if [ "${_AUTO_MODE}" = "full" ]; then
+        ${_INITINS} build-essential   >> "${_logSlt}"
+        ${_INITINS} git               >> "${_logSlt}"
+        ${_INITINS} libgd-dev         >> "${_logSlt}"
+        ${_INITINS} libmagickwand-dev >> "${_logSlt}"
+      fi
       sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
-      echo "*/1 *   * * *   root    bash /opt/local/bin/autoinit" >> /etc/crontab
+      echo "*/1 *   * * *   root    bash /opt/local/bin/autoinit ${_AUTO_MODE}" >> /etc/crontab
       if [ -x "/opt/local/bin/killer" ]; then
         sed -i "s/.*killer.*//gi" /etc/crontab &> /dev/null
         echo "*/1 *   * * *   root    bash /opt/local/bin/killer" >> /etc/crontab
       fi
-      _install_apparmor_utils
+      [ "${_AUTO_MODE}" = "full" ] && _install_apparmor_utils
       touch ${_initFile}
       _msg "Time for reboot and next upgrade cycle..." >> "${_logInt}"
       echo " " >> "${_logInt}"
