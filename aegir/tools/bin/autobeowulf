@@ -326,7 +326,7 @@ _if_remove_cloud_utils() {
   fi
 }
 if [ "${_VMFAMILY}" != "AWS" ]; then
-  _if_remove_cloud_utils
+  [ -e "/root/.mode.selected.full.info" ] && _if_remove_cloud_utils
 fi
 
 _if_clean_boa_env() {

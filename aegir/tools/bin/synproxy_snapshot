@@ -1,0 +1,87 @@
+#!/bin/bash
+
+#
+# One-shot snapshot of SYNPROXY state: chain order, counters, raw NOTRACK hits, OUTPUT accept/drop posture.
+#
+
+export HOME=/root
+export SHELL=/bin/bash
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+
+# Function to check if the script is run as root
+_check_root() {
+  if [ "$(id -u)" -ne 0 ]; then
+    echo "ERROR: This script should be run as a root user"
+    exit 1
+  fi
+}
+_check_root
+
+set -u
+_TCP_PORTS="${_TCP_PORTS:-443 80}"
+
+echo "=== $(date -u) ==="
+echo
+echo "## Policies"
+iptables -S | egrep '^-P (INPUT|OUTPUT|FORWARD) ' || true
+echo
+
+echo "## INPUT first rule (actual)"; iptables -S INPUT | awk '$1=="-A" && $2=="INPUT"{print; exit}'
+if iptables -S LOCALINPUT >/dev/null 2>&1; then
+  echo "## LOCALINPUT first rule (actual)"; iptables -S LOCALINPUT | awk '$1=="-A" && $2=="LOCALINPUT"{print; exit}'
+else
+  echo "## LOCALINPUT: (absent)"
+fi
+echo
+
+echo "## SYNPROXY_EARLY (top 40 lines)"
+iptables -S SYNPROXY_EARLY 2>/dev/null | sed -n '1,40p' || echo "(missing)"
+echo
+echo "## SYNPROXY_EARLY counters"
+iptables -L SYNPROXY_EARLY -n -v --line-numbers 2>/dev/null || echo "(missing)"
+echo
+
+echo "## raw PREROUTING (line-numbers + counters)"
+iptables -t raw -L PREROUTING -n -v --line-numbers 2>/dev/null || true
+echo
+echo "## raw PREROUTING rules"
+iptables -t raw -S PREROUTING 2>/dev/null || true
+echo
+
+echo "## OUTPUT (top 40 lines)"
+iptables -S OUTPUT | sed -n '1,40p'
+echo
+echo "## OUTPUT counters (first 20 lines)"
+iptables -L OUTPUT -n -v --line-numbers | sed -n '1,20p'
+echo
+
+# Quick checks for each protected port
+for p in ${_TCP_PORTS}; do
+  echo "== Port ${p} checks =="
+  if iptables -t raw -C PREROUTING -p tcp --syn --dport "${p}" -j CT --notrack 2>/dev/null; then
+    echo "raw: CT --notrack present for SYN dport ${p}"
+  elif iptables -t raw -C PREROUTING -p tcp --syn --dport "${p}" -j NOTRACK 2>/dev/null; then
+    echo "raw: NOTRACK present for SYN dport ${p}"
+  else
+    echo "raw: NOTRACK MISSING for SYN dport ${p}"
+  fi
+
+  if iptables -C SYNPROXY_EARLY -p tcp --dport "${p}" -m tcp --syn -j SYNPROXY 2>/dev/null; then
+    echo "SYNPROXY_EARLY: SYN->SYNPROXY present for dport ${p}"
+  else
+    echo "SYNPROXY_EARLY: SYN->SYNPROXY MISSING for dport ${p}"
+  fi
+
+  if iptables -C OUTPUT -p tcp --sport "${p}" -m tcp --tcp-flags SYN,ACK SYN,ACK -j ACCEPT 2>/dev/null; then
+    echo "OUTPUT: allow SYN,ACK from --sport ${p} present"
+  else
+    echo "OUTPUT: allow SYN,ACK from --sport ${p} MISSING"
+  fi
+
+  if iptables -C OUTPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT 2>/dev/null || iptables -C OUTPUT -m state --state ESTABLISHED,RELATED -j ACCEPT 2>/dev/null; then
+    echo "OUTPUT: EST/REL ACCEPT present"
+  else
+    echo "OUTPUT: EST/REL ACCEPT MISSING"
+  fi
+  echo
+done
