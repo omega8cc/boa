@@ -1,0 +1,152 @@
+#!/bin/bash
+
+#
+# Remove SYNPROXY/QUIC add-ons & rules without touching CSF
+#
+
+export HOME=/root
+export SHELL=/bin/bash
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+
+# Function to check if the script is run as root
+_check_root() {
+  if [ "$(id -u)" -ne 0 ]; then
+    echo "ERROR: This script should be run as a root user"
+    exit 1
+  fi
+}
+_check_root
+
+set -euo pipefail
+trap '_rc=$?; echo "[ROLLBACK] line ${LINENO}: exit ${_rc}" >&2; exit ${_rc}' ERR
+
+# --- utils ---
+_LOG="/var/log/synproxy-rollback.log"
+_msg(){ echo "[ROLLBACK] $*" | tee -a "${_LOG}"; }
+_silent(){ "$@" >/dev/null 2>&1 || true; }
+_need(){ command -v "$1" >/dev/null 2>&1 || { echo "[ROLLBACK] Missing: $1" >&2; exit 1; }; }
+
+_need iptables
+_need sed
+_need grep
+_need date
+
+# iptables wrapper (-w if supported)
+_IPT_HAS_W="NO"; iptables -w -L -n >/dev/null 2>&1 && _IPT_HAS_W="YES"
+_ipt(){ if [ "${_IPT_HAS_W}" = "YES" ]; then iptables -w "$@"; else iptables "$@"; fi; }
+
+# Files we created
+_INC_DIR="/etc/csf/csfpost.d"
+_SYN_ADDON="${_INC_DIR}/99-synproxy-reassert.sh"
+_OLD_SYN_ADDON="${_INC_DIR}/synproxy.sh"
+_MONITOR="/usr/local/sbin/mon_synproxy"
+_WATCHER="/usr/local/sbin/watch_synproxy"
+_ASSERT_BIN="/usr/local/sbin/synproxy_assert"
+_CRON="/etc/cron.d/synproxy-assert"
+_INITD="/etc/init.d/synproxy-assert"
+_OLD_ROLLBACK="/usr/local/sbin/synproxy_rollback"
+_SYSCTL_FILE="/etc/sysctl.d/60-synproxy.conf"
+_ETC_MODULES="/etc/modules"
+
+: > "${_LOG}"
+echo
+_msg "Starting rollback at $(date -u +'%F %T UTC')"
+echo
+
+# 1) INPUT/LOCALINPUT jumps to SYNPROXY_EARLY
+_msg "1) Remove INPUT/LOCALINPUT jumps to SYNPROXY_EARLY"
+_silent iptables -D INPUT -j SYNPROXY_EARLY
+_silent iptables -D LOCALINPUT -j SYNPROXY_EARLY
+
+# 2) Flush & delete SYNPROXY_EARLY (if not referenced)
+_msg "2) Flush & delete SYNPROXY_EARLY (if not referenced)"
+if iptables -L SYNPROXY_EARLY -n >/dev/null 2>&1; then
+  _silent iptables -F SYNPROXY_EARLY
+  # Delete only if no references
+  if ! iptables -S | grep -q -- "-j SYNPROXY_EARLY"; then
+    _silent iptables -X SYNPROXY_EARLY
+  fi
+fi
+
+# 3) Remove old direct SYNPROXY & NEW!SYN rules (defensive cleanup)
+_msg "3) Remove old direct SYNPROXY & NEW!SYN rules (defensive cleanup)"
+while iptables -S INPUT 2>/dev/null | egrep -q -- "-A INPUT .* -p tcp .* --dport (80|443) .* -j SYNPROXY"; do
+  spec="$(iptables -S INPUT | egrep -- "-A INPUT .* -p tcp .* --dport (80|443) .* -j SYNPROXY" | head -n1)"
+  spec="${spec#-A INPUT }"; _silent iptables -D INPUT ${spec}
+done
+while iptables -S INPUT 2>/dev/null | egrep -q -- "-A INPUT .* -m (conntrack --ctstate NEW|state --state NEW) .* -m tcp ! --syn .* -j DROP"; do
+  spec="$(iptables -S INPUT | egrep -- "-A INPUT .* -m (conntrack --ctstate NEW|state --state NEW) .* -m tcp ! --syn .* -j DROP" | head -n1)"
+  spec="${spec#-A INPUT }"; _silent iptables -D INPUT ${spec}
+done
+
+# 4) raw PREROUTING NOTRACK for 80/443 (and any other protected ports if present)
+_msg "4) Remove raw PREROUTING NOTRACK for 80/443 (and any other protected ports if present)"
+for p in 80 443; do
+  while iptables -t raw -S PREROUTING 2>/dev/null | egrep -q -- "-A PREROUTING .* -p tcp .* --dport ${p} .* (CT --notrack| -j NOTRACK)"; do
+    spec="$(iptables -t raw -S PREROUTING | egrep -- "-A PREROUTING .* -p tcp .* --dport ${p} .* (CT --notrack| -j NOTRACK)" | head -n1)"
+    spec="${spec#-A PREROUTING }"; _silent iptables -t raw -D PREROUTING ${spec}
+  done
+done
+
+# 5) QUIC limiter rules (UDP/443 default)
+_msg "6) Remove QUIC limiter rules (UDP/443 default)"
+for p in 443; do
+  while iptables -S INPUT 2>/dev/null | egrep -q -- "-A INPUT .* -p udp .* --dport ${p} .*hashlimit-name quic${p}_(24|ip)"; do
+    spec="$(iptables -S INPUT | egrep -- "-A INPUT .* -p udp .* --dport ${p} .*hashlimit-name quic${p}_(24|ip)" | head -n1)"
+    spec="${spec#-A INPUT }"; _silent iptables -D INPUT ${spec}
+  done
+  while iptables -S INPUT 2>/dev/null | egrep -q -- "-A INPUT .* -p udp .* --dport ${p} .*(-m conntrack --ctstate INVALID|-m state --state INVALID) .* -j DROP"; do
+    spec="$(iptables -S INPUT | egrep -- "-A INPUT .* -p udp .* --dport ${p} .*(-m conntrack --ctstate INVALID|-m state --state INVALID) .* -j DROP" | head -n1)"
+    spec="${spec#-A INPUT }"; _silent iptables -D INPUT ${spec}
+  done
+done
+
+# 6) OUTPUT jump & egress chain
+_msg "6) Remove OUTPUT jump & egress chain"
+_silent iptables -D OUTPUT -j SYNPROXY_EGRESS
+if iptables -L SYNPROXY_EGRESS -n >/dev/null 2>&1; then
+  _silent iptables -F SYNPROXY_EGRESS
+  if ! iptables -S | grep -q -- "-j SYNPROXY_EGRESS"; then
+    _silent iptables -X SYNPROXY_EGRESS
+  fi
+fi
+
+# 7) Remove generated files (leave CSF core files untouched)
+_msg "7) Remove generated scripts (add-ons/cron/init.d)"
+rm -f "${_OLD_SYN_ADDON}" 2>/dev/null || true
+rm -f "${_SYN_ADDON}" 2>/dev/null || true
+if [ -d "${_INC_DIR}" ]; then
+  find "${_INC_DIR}" -maxdepth 1 -type f -name 'quic_udp*_limit.sh' -exec rm -f {} + 2>/dev/null || true
+fi
+rm -f "${_MONITOR}" "${_WATCHER}" "${_ASSERT_BIN}" "${_OLD_ROLLBACK}" 2>/dev/null || true
+rm -f "${_CRON}" 2>/dev/null || true
+if [ -x "${_INITD}" ]; then
+  "${_INITD}" stop >/dev/null 2>&1 || true
+  command -v update-rc.d >/dev/null 2>&1 && update-rc.d synproxy-assert remove >/dev/null 2>&1 || true
+  rm -f "${_INITD}" 2>/dev/null || true
+fi
+
+# 8) Clean persistence knobs we added (non-CSF)
+_msg "8) Remove nf_synproxy_core from /etc/modules; remove our sysctl file (live values unchanged)"
+[ -f "${_ETC_MODULES}" ] && sed -i '/^nf_synproxy_core$/d' "${_ETC_MODULES}" 2>/dev/null || true
+[ -f "${_SYSCTL_FILE}" ] && rm -f "${_SYSCTL_FILE}" 2>/dev/null || true
+
+echo
+_msg "Rollback complete. CSF was not modified or reloaded."
+
+echo
+echo "Verify (should show no SYNPROXY_EARLY, no quic* hashlimits, and no CT --notrack on web ports):"
+echo "  iptables -L INPUT -n -v --line-numbers | sed -n '1,60p'"
+echo "  iptables -L LOCALINPUT -n -v --line-numbers 2>/dev/null | sed -n '1,60p'"
+echo "  iptables -t raw -L PREROUTING -n -v --line-numbers | sed -n '1,40p'"
+echo
+echo "Removed files (if present):"
+echo "  ${_OLD_SYN_ADDON}"
+echo "  ${_SYN_ADDON}"
+echo "  ${_INC_DIR}/quic_udp*_limit.sh"
+echo "  ${_MONITOR} , ${_WATCHER} , ${_ASSERT_BIN}"
+echo "  ${_CRON} , ${_INITD} , ${_OLD_ROLLBACK}"
+echo "  ${_SYSCTL_FILE}  (live sysctls not reverted)"
+echo "Persistence cleaned: 'nf_synproxy_core' line removed from ${_ETC_MODULES}"
+echo
+exit 0

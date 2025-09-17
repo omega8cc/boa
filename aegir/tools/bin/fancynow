@@ -16,8 +16,7 @@ _DateColumn=55 # Default is 27 for 80 character line, 34 for 92 character line
 _TimeColumn=80 # Default is 49 for   "   "   "   "    61 "   "   "   "
 
   if [ -e "/root/.found_correct_city.cnf" ]; then
-    _LOC_CITY=$(cat /root/.found_correct_city.cnf 2>&1)
-    _LOC_CITY=$(echo -n ${_LOC_CITY} | tr -d "\n" 2>&1)
+    _LOC_CITY=$(cat /root/.found_correct_city.cnf 2>/dev/null | tr -d '\n')
   else
     exit 0
   fi
