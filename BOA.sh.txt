@@ -2974,8 +2974,8 @@ _fix_stop_solr() {
       _restartSolr=TRUE
     fi
   fi
-  _ctrl_jetty_nr=$(ls -la /tmp/jetty-0.0.0.0-8099-solr.war* | wc -l)
-  if [ "${_ctrl_jetty_nr}" -gt 8 ]; then
+  _ctrl_jetty_nr=$(ls -la /tmp/jetty-0.0.0.0-8099-solr.war* | wc -l 2>&1)
+  if [[ ! "${_ctrl_jetty_nr}" =~ "No such file" ]] && [ "${_ctrl_jetty_nr}" -gt 8 ]; then
     _restartSolr=TRUE
   fi
   if [ "${_restartSolr}" = "TRUE" ]; then
@@ -4267,8 +4267,10 @@ if [ "$(id -u)" -eq 0 ]; then
     _verify_boa_keys
   fi
 
-  ### Fix Solr 7/9 conflicting ports
-  _fix_stop_solr
+  ### Fix Solr 4/7/9 conflicting ports
+  if [ -d "/var/aegir" ]; then
+    [ -e "/opt/solr4/solr.xml" ] && _fix_stop_solr
+  fi
 
   ### CVE-2021-44228 Log4j 2 Vulnerability
   ### CVE-2021-45046 Log4j 2 Vulnerability
