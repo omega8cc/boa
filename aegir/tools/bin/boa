@@ -608,7 +608,7 @@ _send_report() {
 }
 
 _octopus_install() {
-  if [ -e "${_vBs}/${_octName}" ]; then
+  if [ -e "${_vBs}/${_octName}" ] && [ -e "${_vBs}/${_filIncO}" ]; then
     if [ -z "${_usEr}" ]; then
       _usEr="o1"
     else
@@ -784,13 +784,22 @@ _octopus_install() {
     sed -i "/^$/d" /etc/hosts
     wait
   else
-    echo "${_octName} installer not available - try again"
+    if [ ! -e "${_vBs}/${_octName}" ]; then
+      echo
+      echo "${_vBs}/${_octName} installer not available, exit"
+      echo
+    fi
+    if [ ! -e "${_vBs}/${_filIncO}" ]; then
+      echo
+      echo "${_vBs}/${_filIncO} inc file not available, exit"
+      echo
+    fi
     _clean_pid_exit _octopus_install_a
   fi
 }
 
 _barracuda_install() {
-  if [ -e "${_vBs}/${_barName}" ]; then
+  if [ -e "${_vBs}/${_barName}" ] && [ -e "${_vBs}/${_filIncB}" ]; then
 
     sed -i "s/^127.0.1.1.*//g" /etc/hosts
 
@@ -966,7 +975,12 @@ _barracuda_install() {
       wait
     fi
   else
-    echo "${_barName} installer not available - try again"
+    if [ ! -e "${_vBs}/${_barName}" ]; then
+      echo "${_vBs}/${_barName} installer not available, exit"
+    fi
+    if [ ! -e "${_vBs}/${_filIncB}" ]; then
+      echo "${_vBs}/${_filIncB} inc file not available, exit"
+    fi
     _clean_pid_exit _barracuda_install_a
   fi
 }
