@@ -226,16 +226,16 @@ _system_check_ready() {
 }
 
 _system_check_clean() {
-  if [ -e "/etc/mysql" ]; then
-    mv -f /etc/mysql /etc/mysql_pre
-  fi
   if [ -e "/etc/apache2" ]; then
     mv -f /etc/apache2 /etc/apache2_pre
+    if [ -e "/etc/mysql" ]; then
+      mv -f /etc/mysql /etc/mysql_pre
+    fi
   fi
   if [ -e "/etc/nginx" ] \
     || [ -e "/etc/mysql" ] \
     || [ -e "/var/lib/mysql/mysql" ] \
-    || [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ]; then
+    || [ -e "/var/aegir/.drush" ]; then
     echo
     echo "ERROR: BOA requires minimal supported OS with no services installed."
     echo
