@@ -423,6 +423,38 @@ _linode_vm_postinstall() {
 }
 [ -e "/run/linode_vm.pid" ] && [ ! -e "/run/linode_vm_postinstall.pid" ] && _linode_vm_postinstall
 
+_hetzner_vm_postinstall() {
+  _protectedRun=FALSE
+  _optBin="/opt/local/bin"
+  _boaBins="autoinit barracuda boa octopus"
+  for _cbn in ${_boaBins}; do
+    if [ -e "${_optBin}/${_cbn}" ]; then
+      if [ `ps aux | grep -v "grep" | grep --count "/${_cbn}"` -gt 0 ]; then
+        echo "The ${_cbn} is running!"
+        _protectedRun=TRUE
+      fi
+    fi
+  done
+  [ -e "/run/octopus_install_run.pid" ] && _protectedRun=TRUE
+  [ -e "/run/boa_run.pid" ] && _protectedRun=TRUE
+  [ -e "/run/boa_wait.pid" ] && _protectedRun=TRUE
+  if [ "${_protectedRun}" = "FALSE" ]; then
+    if dmidecode -s system-manufacturer | grep -i 'Hetzner' &> /dev/null; then
+      if [ -e "/var/aegir/drush" ] \
+        && [ -e "/data/u" ] \
+        && [ -e "/var/xdrago" ]; then
+        if [ "$(boa info | grep -c Percona)" -ge 2 ]; then
+          touch /run/hetzner_vm_postinstall.pid
+          chattr +i /run/hetzner_vm_postinstall.pid
+          rm -f /run/hetzner_vm.pid
+          nohup /opt/local/bin/barracuda up-${_tRee} system noscreen > /dev/null 2>&1 &
+        fi
+      fi
+    fi
+  fi
+}
+[ -e "/run/hetzner_vm.pid" ] && [ ! -e "/run/hetzner_vm_postinstall.pid" ] && _hetzner_vm_postinstall
+
 _crontab_update() {
   if [ -e "/etc/crontab" ]; then
     sed -i "s/.*xdrago.*//gi" /etc/crontab &> /dev/null

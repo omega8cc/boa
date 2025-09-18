@@ -357,6 +357,13 @@ _if_running_as_root_barracuda() {
         [ ! -e "/run/linode_vm_postinstall.pid" ] && touch /run/linode_vm.pid
       fi
     fi
+    if dmidecode -s system-manufacturer | grep -i 'Hetzner' &> /dev/null; then
+      if  [ ! -e "/var/aegir/drush" ] \
+        || [ ! -e "/data/u" ] \
+        || [ ! -e "/var/xdrago" ]; then
+        [ ! -e "/run/hetzner_vm_postinstall.pid" ] && touch /run/hetzner_vm.pid
+      fi
+    fi
     _VM_TEST="$(uname -a)"
     if [[ "${_VM_TEST}" =~ "-beng" ]]; then
       _VMFAMILY="VS"

@@ -4190,6 +4190,13 @@ _satellite_if_running_as_root_octopus() {
         [ ! -e "/run/linode_vm_postinstall.pid" ] && touch /run/linode_vm.pid
       fi
     fi
+    if dmidecode -s system-manufacturer | grep -i 'Hetzner' &> /dev/null; then
+      if  [ ! -e "/var/aegir/drush" ] \
+        || [ ! -e "/data/u" ] \
+        || [ ! -e "/var/xdrago" ]; then
+        [ ! -e "/run/hetzner_vm_postinstall.pid" ] && touch /run/hetzner_vm.pid
+      fi
+    fi
   else
     _msg "ERROR: This script should be run as a root user"
     _msg "Bye"
