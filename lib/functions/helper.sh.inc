@@ -393,22 +393,20 @@ _mode_detection() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _mode_detection"
   fi
+    [ -e "/root/.use.curl.from.packages.cnf" ] && chattr -i /root/.use.curl.from.packages.cnf
+    [ -e "/root/.use.curl.from.packages.cnf" ] && rm -f /root/.use.curl.from.packages.cnf
   if [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ] \
     && [ ! -e "/lib/systemd/systemd" ]; then
     _STATUS=UPGRADE
     _msg "MODE: UPGRADE"
     _barracuda_cnf
     touch /run/boa_wait.pid
-    [ -e "/root/.use.curl.from.packages.cnf" ] && chattr -i /root/.use.curl.from.packages.cnf
-    [ -e "/root/.use.curl.from.packages.cnf" ] && rm -f /root/.use.curl.from.packages.cnf
     if [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ]; then
       _XTRAS_LIST="ADM CSF FTP IMG"
     fi
   else
     _STATUS=INIT
-    [ -e "/root/.use.curl.from.packages.cnf" ] && chattr -i /root/.use.curl.from.packages.cnf
-    [ -e "/root/.use.curl.from.packages.cnf" ] && rm -f /root/.use.curl.from.packages.cnf
     if [ -d "/var/aegir" ]; then
       _msg "MODE: FORCED INIT"
       _FULL_FORCE_REINSTALL=YES
