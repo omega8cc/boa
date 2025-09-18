@@ -1771,7 +1771,6 @@ _proceed() {
     touch /root/.debug-boa-installer.cnf
     touch /root/.debug-octopus-installer.cnf
   fi
-  [ ! -e "/root/.mysql.yes.new.password.cnf" ] && touch /root/.mysql.yes.new.password.cnf
   if [ -e "/root/.run-to-daedalus.cnf" ] \
     || [ -e "/root/.run-to-chimaera.cnf" ] \
     || [ -e "/root/.run-to-beowulf.cnf" ] \
