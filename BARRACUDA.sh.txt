@@ -444,22 +444,6 @@ fi
 
 
 ###
-### Install or upgrade csf/lfd monitoring
-###
-_csf_lfd_install_upgrade
-
-
-###
-### DNS cache server
-###
-if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "UPGRADE" ]; then
-  if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
-    _dns_unbound_install_upgrade
-  fi
-fi
-
-
-###
 ### Install Percona server
 ###
 _db_server_install
@@ -522,6 +506,22 @@ if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
   _nginx_wildcard_ssl_install
   _nginx_config_update_fix
   _aegir_master_display_login_link
+fi
+
+
+###
+### Install or upgrade DNS cache server
+###
+if [ "${_STATUS}" = "UPGRADE" ]; then
+  _dns_unbound_install_upgrade
+fi
+
+
+###
+### Install or upgrade csf/lfd monitoring
+###
+if [ "${_STATUS}" = "UPGRADE" ]; then
+  _csf_lfd_install_upgrade
 fi
 
 
