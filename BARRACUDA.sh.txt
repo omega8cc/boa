@@ -454,7 +454,6 @@ _db_server_install
 ###
 _init_sql_root_credentials
 _sql_root_credentials_update
-_mytop_install
 _myquick_install_upgrade
 
 
@@ -478,6 +477,7 @@ if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
   if [ "${_STATUS}" = "UPGRADE" ]; then
     _php_ioncube_check_if_update
     _php_check_if_rebuild
+    _mytop_install
   fi
   _php_install_upgrade
   _php_config_check_update
