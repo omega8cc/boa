@@ -17,6 +17,8 @@ BOA stands for Barracuda, Octopus, and Ægir—a high-performance LEMP stack sup
 - **Open-Source**: Customize and extend Ægir to fit your needs.
 - **Integration with Drush**: Use powerful command-line tools for site administration.
 
+<img width="1215" height="1264" alt="Aegir-BOA" src="https://github.com/user-attachments/assets/b2417cc7-2fb8-422c-96f8-71d12c1c2fd7" />
+
 ## Why Barracuda?
 
 Barracuda is a specially tuned hosting environment for Ægir, designed to be lightning fast and agile, just like the barracuda fish known for its incredible speed and agility in the ocean.
