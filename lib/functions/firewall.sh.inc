@@ -131,7 +131,6 @@ _csf_install() {
   ### Fix for iptables paths backward compatibility
   ###
   rm -f ${_pthLog}/lastFire
-  ### from https://download.configserver.com/csf.tgz
   if [ "${_OS_CODE}" = "stretch" ]; then
     _CSF_VRN=13.08
   elif [ "${_OS_CODE}" = "jessie" ]; then
