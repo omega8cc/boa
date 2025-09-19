@@ -3,6 +3,8 @@
 
 Omega8.cc is now the lead developer team for Aegir 3 running on BOA (Barracuda-Octopus-Aegir stack). We want to thank all past contributors who brought Aegir to life – your work makes today’s progress possible. Because of you, there is still a Bryght Future for Aegir.
 
+<img width="1201" height="975" alt="Aegir-Sector" src="https://github.com/user-attachments/assets/8d444437-6931-481c-b0f7-66c09a953413" />
+
 ## What to Expect
 
 - **Active maintenance and development**: Aegir 3 on BOA is alive and under active development. [See Adam’s comments here](https://www.drupal.org/project/hostmaster/issues/3517915).
