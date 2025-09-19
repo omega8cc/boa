@@ -47,7 +47,7 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 export _tRee=pro
 export _xSrl=570proT07
 export _rLsn="BOA-5.7.12"
-export _bTs=570v39
+export _bTs=570v41
 
 ###
 ### Avoid too many questions
@@ -3634,7 +3634,7 @@ _if_boa_key_tools_update_allowed() {
 
 _update_boa_tools() {
   mkdir -p ${_usrBin}
-  if [ -e "${_pthLog}" ] && [ ! -e "${_pthLog}/updateFx28.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+  if [ -e "${_pthLog}" ] && [ ! -e "${_pthLog}/updateFx30.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     _fxPp="fix-drupal-platform-permissions.sh"
     _fxSp="fix-drupal-site-permissions.sh"
     _fxPo="fix-drupal-platform-ownership.sh"
@@ -3650,7 +3650,7 @@ _update_boa_tools() {
     chmod 700 ${_usrBin}/${_fxPo}
     chmod 700 ${_usrBin}/${_fxSo}
     chmod 700 ${_usrBin}/${_fxLo}
-    touch ${_pthLog}/updateFx28.ctrl.${_tRee}.${_xSrl}.pid
+    touch ${_pthLog}/updateFx30.ctrl.${_tRee}.${_xSrl}.pid
   fi
   mkdir -p ${_optBin}
   _boaBins="autobeowulf \
