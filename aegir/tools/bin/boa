@@ -1971,6 +1971,13 @@ _display_info() {
         | cut -d"-" -f1 \
         | awk '{ print $3}' 2>&1)
     fi
+    if [ -x "/usr/sbin/csf" ]; then
+      _CSF=$(/usr/sbin/csf --version 2>&1 \
+        | tr -d "\n" \
+        | tr -d "v" \
+        | cut -d"-" -f1 \
+        | awk '{ print $2}' 2>&1)
+    fi
     if [ -x "/usr/bin/valkey-server" ]; then
       _VKS=$(valkey-server -v 2>&1 \
         | tr -d "\n" \
@@ -2100,6 +2107,7 @@ _display_info() {
     fi
 
     [ ! -z "${_SKY}" ] && echo "  SKY ${_SKY}"
+    [ ! -z "${_CSF}" ] && echo "  CSF ${_CSF}"
     [ ! -z "${_NGX}" ] && echo "  NGX ${_NGX}"
     [ ! -z "${_PHP}" ] && echo "  PHP ${_PHP}"
     [ ! -z "${_DBV}" ] && echo "  DBV ${_DBV}"
