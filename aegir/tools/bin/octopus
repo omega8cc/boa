@@ -531,7 +531,7 @@ _satellite_check_supported_php_cli() {
 }
 
 _up_one() {
-  if [ -e "${_vBs}/${_octName}" ]; then
+  if [ -e "${_vBs}/${_tocIncO}" ] && [ -e "${_vBs}/${_tocName}" ] && [ -e "${_octCnf}" ]; then
     if [ "${_cmNd}" = "up-dev" ] \
       || [ "${_cmNd}" = "up-pro" ] \
       || [ "${_cmNd}" = "up-lts" ]; then
@@ -612,7 +612,21 @@ _up_one() {
         fi
       fi
     else
-      echo "${_vBs}/${_tocName} installer not available - try again"
+      if [ ! -e "${_vBs}/${_tocIncO}" ]; then
+        echo
+        echo "${_vBs}/${_tocIncO} installer not available, exit"
+        echo
+      fi
+      if [ ! -e "${_vBs}/${_tocName}" ]; then
+        echo
+        echo "${_vBs}/${_tocName} installer not available, exit"
+        echo
+      fi
+      if [ ! -e "${_octCnf}" ]; then
+        echo
+        echo "${_octCnf} file not available, exit"
+        echo
+      fi
       _clean_pid_exit _up_one_a
     fi
   fi
