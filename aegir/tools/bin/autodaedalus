@@ -98,7 +98,7 @@ _INITINS="/usr/bin/apt-get ${_aptAllow} -y install"
 _dstUpArg="-fuy -q ${_aptAllow} --config-file /opt/apt/apt.conf.noi.dist"
 _nrmUpArg="-fuy -q ${_aptAllow} --config-file /opt/apt/apt.conf.noi.nrml"
 
-_TODAY=$(date +%y%m%d 2>&1)
+_TODAY=$(date +%y%m%d)
 _TODAY=${_TODAY//[^0-9]/}
 _OS_CODE=check
 #
@@ -133,7 +133,7 @@ fi
 ### Noticeable messages
 ###
 _msg() {
-  echo "AutoDaedalus v.${_tRee} [$(date +%T 2>&1)] ==> $*"
+  echo "AutoDaedalus v.${_tRee} [$(date +%T)] ==> $*"
 }
 
 _check_manufacturer_compatibility() {
@@ -231,7 +231,7 @@ _faster_reboot() {
   _msg "Firewall has been purged" >> "${_logAds}"
   if [ -e "/root/.my.pass.txt" ]; then
     _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
-    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
+    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}')
     if [ ! -z "${_IS_MYSQLD_RUNNING}" ] && [ ! -z "${_SQL_PSWD}" ]; then
       _msg "Preparing MySQLD for quick shutdown..." >> "${_logAds}"
       mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
@@ -260,11 +260,9 @@ if [ ! -e "/root/.run-to-daedalus.cnf" ]; then
   exit 1
 fi
 
-[ ! -e "/root/.mysql.yes.new.password.cnf" ] && touch /root/.mysql.yes.new.password.cnf
-
 _check_os_compatibility() {
-  _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   if [ "${_OS_CODE}" = "daedalus" ] \
     && [ ! -e "/root/.run-auto-major-os-reboot-daedalus-one.cnf" ] \
     && [ ! -e "/root/.run-auto-major-os-reboot-daedalus-two.cnf" ]; then
@@ -365,7 +363,13 @@ _if_fix_dhcp() {
       else
         for _IP in `grep DHCPREQUEST ${_DHCP_LOG} | cut -d ' ' -f13 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
       fi
-      csf -q &> /dev/null
+      if [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
+        csf -ra &> /dev/null
+        wait
+        synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
+      else
+        csf -r &> /dev/null
+      fi
     fi
   fi
 }
@@ -403,8 +407,8 @@ if [ -e "/root/.run-to-daedalus.cnf" ] \
   wait
   _msg "The standard barracuda up-${_tRee} system completed" >> "${_logAds}"
   if [ -e "/root/.latest-barracuda-upgrade-finale.info" ]; then
-    _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
-    _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+    _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
+    _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
     if [ "${_OS_CODE}" = "buster" ]; then
       echo "_BUSTER_TO_BEOWULF=YES" >> ${_barCnf}
       _msg "Launching major upgrade from ${_OS_DIST}/${_OS_CODE} to Devuan/beowulf"  >> "${_logAds}"
@@ -450,8 +454,8 @@ if [ -e "/root/.run-to-daedalus.cnf" ] \
   wait
   _msg "The post-reboot barracuda up-${_tRee} system completed" >> "${_logAds}"
   echo " " >> "${_logAds}"
-  _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   if [ -e "/root/.chimaera_to_daedalus_major_os_upgrade.info" ] \
     || [ -e "/root/.bookworm_to_daedalus_major_os_upgrade.info" ]; then
     _FURTHER_UPGRADE=NO

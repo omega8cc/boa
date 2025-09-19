@@ -303,7 +303,7 @@ _if_disable_not_used_services
 
 _os_detection_minimal() {
   _APT_UPDATE="apt-get update"
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
   for e in ${_OS_LIST}; do
     if [ "${e}" = "${_OS_CODE}" ]; then
@@ -348,11 +348,11 @@ if [[ "${_CRON_TEST}" =~ "clear.xsh" ]]; then
   _ADD_XTRA=NO
 fi
 
-_TIME=$(date +%H%M 2>&1)
+_TIME=$(date +%H%M)
 _TIME=${_TIME//[^0-9-]/}
-_MINUTE=$(date +%M 2>&1)
+_MINUTE=$(date +%M)
 _MINUTE=${_MINUTE//[^0-9-]/}
-_NOW=$(date +%y%m%d-%H%M%S 2>&1)
+_NOW=$(date +%y%m%d-%H%M%S)
 _NOW=${_NOW//[^0-9-]/}
 
 _if_hosted_sys() {
@@ -391,7 +391,42 @@ if [ "${_TIME}" = "1200" ] || [ "${_MINUTE}" = "00" ]; then
   _send_boa_system_report
 fi
 
-_linode_vm_postinstall() {
+_check_system_manufacturer() {
+  # Extract manufacturer string
+  _SYS_MANUFACTURER_RAW=$(dmidecode -s system-manufacturer 2>/dev/null)
+
+  # Trim leading/trailing whitespace, convert spaces to underscores
+  _SYS_MANUFACTURER_CLEAN=$(printf "%s" "${_SYS_MANUFACTURER_RAW}" \
+    | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -e 's/[[:space:]]\+/_/g')
+
+  # Normalise: keep only A-Za-z0-9_
+  _SYS_MANUFACTURER=$(printf "%s" "${_SYS_MANUFACTURER_CLEAN}" | tr -cd 'A-Za-z0-9_')
+
+  # Enforce max length with safe underscore-aware truncation
+  _MAX_LEN=32
+  if [ "${#_SYS_MANUFACTURER}" -gt "${_MAX_LEN}" ]; then
+    _CUT=$(printf "%s" "${_SYS_MANUFACTURER}" | cut -c1-"${_MAX_LEN}")
+    _SAFE_CUT=$(printf "%s" "${_CUT}" | sed 's/_[^_]*$//')
+    if [ -n "${_SAFE_CUT}" ]; then
+      _SYS_MANUFACTURER="${_SAFE_CUT}"
+    else
+      _SYS_MANUFACTURER="${_CUT}"
+    fi
+  fi
+
+  # Secondary variable: lowercase
+  _SYS_MANUFACTURER_LC=$(printf "%s" "${_SYS_MANUFACTURER}" | tr 'A-Z' 'a-z')
+
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    echo "_SYS_MANUFACTURER_RAW: ${_SYS_MANUFACTURER_RAW}"
+    echo "_SYS_MANUFACTURER_CLEAN: ${_SYS_MANUFACTURER_CLEAN}"
+    echo "_SYS_MANUFACTURER: ${_SYS_MANUFACTURER}"
+    echo "_SYS_MANUFACTURER_LC: ${_SYS_MANUFACTURER_LC}"
+  fi
+}
+_check_system_manufacturer
+
+_is_protected_run() {
   _protectedRun=FALSE
   _optBin="/opt/local/bin"
   _boaBins="autoinit barracuda boa octopus"
@@ -406,6 +441,35 @@ _linode_vm_postinstall() {
   [ -e "/run/octopus_install_run.pid" ] && _protectedRun=TRUE
   [ -e "/run/boa_run.pid" ] && _protectedRun=TRUE
   [ -e "/run/boa_wait.pid" ] && _protectedRun=TRUE
+}
+
+_generic_vm_postinstall() {
+  _is_protected_run
+  if [ "${_protectedRun}" = "FALSE" ]; then
+    if [ -n "${_SYS_MANUFACTURER_LC}" ]; then
+      if [ -e "/var/aegir/drush" ] \
+        && [ -e "/data/u" ] \
+        && [ -e "/var/xdrago" ]; then
+        if [ "$(boa info | grep -c Percona)" -ge 2 ]; then
+          touch /run/${_SYS_MANUFACTURER_LC}_vm_postinstall.pid
+          chattr +i /run/${_SYS_MANUFACTURER_LC}_vm_postinstall.pid
+          rm -f /run/${_SYS_MANUFACTURER_LC}_vm.pid
+          nohup /opt/local/bin/barracuda up-${_tRee} system noscreen > /dev/null 2>&1 &
+        fi
+      fi
+    fi
+  fi
+}
+if [ -n "${_SYS_MANUFACTURER_LC}" ]; then
+  if [[ ! "${_SYS_MANUFACTURER_LC}" =~ "linode" ]] && [[ ! "${_SYS_MANUFACTURER_LC}" =~ "hetzner" ]]; then
+    if [ -e "/run/${_SYS_MANUFACTURER_LC}_vm.pid" ] && [ ! -e "/run/${_SYS_MANUFACTURER_LC}_vm_postinstall.pid" ]; then
+      _generic_vm_postinstall
+    fi
+  fi
+fi
+
+_linode_vm_postinstall() {
+  _is_protected_run
   if [ "${_protectedRun}" = "FALSE" ]; then
     if dmidecode -s system-manufacturer | grep -i 'Linode' &> /dev/null; then
       if [ -e "/var/aegir/drush" ] \
@@ -422,6 +486,25 @@ _linode_vm_postinstall() {
   fi
 }
 [ -e "/run/linode_vm.pid" ] && [ ! -e "/run/linode_vm_postinstall.pid" ] && _linode_vm_postinstall
+
+_hetzner_vm_postinstall() {
+  _is_protected_run
+  if [ "${_protectedRun}" = "FALSE" ]; then
+    if dmidecode -s system-manufacturer | grep -i 'Hetzner' &> /dev/null; then
+      if [ -e "/var/aegir/drush" ] \
+        && [ -e "/data/u" ] \
+        && [ -e "/var/xdrago" ]; then
+        if [ "$(boa info | grep -c Percona)" -ge 2 ]; then
+          touch /run/hetzner_vm_postinstall.pid
+          chattr +i /run/hetzner_vm_postinstall.pid
+          rm -f /run/hetzner_vm.pid
+          nohup /opt/local/bin/barracuda up-${_tRee} system noscreen > /dev/null 2>&1 &
+        fi
+      fi
+    fi
+  fi
+}
+[ -e "/run/hetzner_vm.pid" ] && [ ! -e "/run/hetzner_vm_postinstall.pid" ] && _hetzner_vm_postinstall
 
 _crontab_update() {
   if [ -e "/etc/crontab" ]; then
@@ -606,34 +689,34 @@ if [ -e "/var/aegir/drush" ]; then
 
     [ ! -e "/root/.turn.off.auto.update.cnf" ] && touch /root/.turn.off.auto.update.cnf
 
-	if [[ "${_hName}" =~ ^(lcy1.ao.|lcy15.uk.) ]]; then
-	  _DONT_TOUCH=OK
-	  rm -f /etc/csf/csf.conf-pre*
-	else
-	  if [ ! -e "/var/log/boa/.csf_legacy_cleanup.${_xSrl}.pid" ]; then
-	    sed -i "s/.*Legacy.*//g"    /etc/csf/csf.ignore
-	    wait
-	    sed -i "s/.*Legacy.*//g"    /etc/csf/csf.allow
-	    wait
-	    sed -i "s/.*Manually.*//g"  /etc/csf/csf.ignore
-	    wait
-	    sed -i "s/.*Manually.*//g"  /etc/csf/csf.allow
-	    wait
-	    sed -i "s/.*Temporary.*//g" /etc/csf/csf.ignore
-	    wait
-	    sed -i "s/.*Temporary.*//g" /etc/csf/csf.allow
-	    wait
-	    sed -i "/^$/d" /etc/csf/csf.ignore
-	    sed -i "/^$/d" /etc/csf/csf.allow
-	    rm -f /etc/csf/csf.conf-pre*
-	    touch /var/log/boa/.csf_legacy_cleanup.${_xSrl}.pid
-	  fi
-	fi
+  	if [[ "${_hName}" =~ ^(lcy1.ao.|lcy15.uk.) ]]; then
+  	  _DONT_TOUCH=OK
+  	  rm -f /etc/csf/csf.conf-pre*
+  	else
+  	  if [ ! -e "/var/log/boa/.csf_legacy_cleanup.${_xSrl}.pid" ]; then
+  	    sed -i "s/.*Legacy.*//g"    /etc/csf/csf.ignore
+  	    wait
+  	    sed -i "s/.*Legacy.*//g"    /etc/csf/csf.allow
+  	    wait
+  	    sed -i "s/.*Manually.*//g"  /etc/csf/csf.ignore
+  	    wait
+  	    sed -i "s/.*Manually.*//g"  /etc/csf/csf.allow
+  	    wait
+  	    sed -i "s/.*Temporary.*//g" /etc/csf/csf.ignore
+  	    wait
+  	    sed -i "s/.*Temporary.*//g" /etc/csf/csf.allow
+  	    wait
+  	    sed -i "/^$/d" /etc/csf/csf.ignore
+  	    sed -i "/^$/d" /etc/csf/csf.allow
+  	    rm -f /etc/csf/csf.conf-pre*
+  	    touch /var/log/boa/.csf_legacy_cleanup.${_xSrl}.pid
+  	  fi
+  	fi
 
-	rm -f /var/xdrago/*.old
-	rm -f /var/xdrago/.*.off
+  	rm -f /var/xdrago/*.old
+  	rm -f /var/xdrago/.*.off
 
-	if [ ! -e "/var/log/boa/.csf_dhcp_udp_cleanup.${_xSrl}.pid" ]; then
+    if [ ! -e "/var/log/boa/.csf_dhcp_udp_cleanup.${_xSrl}.pid" ]; then
       sed -i "s/.*DHCP.*//g" /etc/csf/csf.allow
       wait
       sed -i "/^$/d" /etc/csf/csf.allow
@@ -650,9 +733,15 @@ if [ -e "/var/aegir/drush" ]; then
           fi
         fi
       done
- 	  csf -q
-	  touch /var/log/boa/.csf_dhcp_udp_cleanup.${_xSrl}.pid
-	fi
+      if [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
+        csf -ra &> /dev/null
+        wait
+        synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
+      else
+        csf -r &> /dev/null
+      fi
+      touch /var/log/boa/.csf_dhcp_udp_cleanup.${_xSrl}.pid
+    fi
 
     if [ ! -e "/var/log/boa/.disabled_modules_fix.${_xSrl}.pid" ]; then
       sed -i "s/^_MODULES_FIX=.*/_MODULES_FIX=NO/g"  ${_barCnf}
@@ -757,11 +846,13 @@ if [ -e "/var/aegir/drush" ]; then
       chmod 750 /usr/bin/mysqldump
     fi
   fi
+
   if [ ! -e "/etc/init.d/ssh" ]; then
     _AUTO_UP_WEEKLY=
     _AUTO_UP_MONTH=
     _AUTO_UP_DAY=
   fi
+
   if [ -e "/root/.my.cluster_root_pwd.txt" ] || [ -e "/root/.turn.off.auto.update.cnf" ]; then
     _AUTO_UP_WEEKLY=
     _AUTO_UP_MONTH=
@@ -841,7 +932,7 @@ if [ -e "/var/aegir/drush" ]; then
   ### Fix for iptables paths backward compatibility
   ###
 
-  _NFTABLES_TEST=$(iptables -V 2>&1)
+  _NFTABLES_TEST=$(iptables -V)
   if [[ "${_NFTABLES_TEST}" =~ "nf_tables" ]]; then
     if [ -e "/usr/sbin/iptables-legacy" ]; then
       update-alternatives --set iptables /usr/sbin/iptables-legacy &> /dev/null
@@ -935,5 +1026,3 @@ if [ -e "/var/aegir/drush" ]; then
 fi
 
 exit 0
-
-

@@ -1020,7 +1020,8 @@ EOFMYSQL
       _msg "FATAL ERROR: Something went wrong, Aegir Master Instance not installed!"
       _msg "HINT: Please check /var/aegir/install.log for details, and then"
       _msg "HINT: run the same install command again to complete installation."
-      touch /root/.force.reinstall.cnf
+      _msg "HINT: You can also enforce installation with empty control file:"
+      _msg "      touch /root/.force.reinstall.cnf -- and then try again."
       _clean_pid_exit _aegir_master_install_upgrade_e
     fi
 

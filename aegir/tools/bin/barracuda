@@ -4,10 +4,10 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
-_TODAY=$(date +%y%m%d 2>&1)
+_TODAY=$(date +%y%m%d)
 export _TODAY=${_TODAY//[^0-9]/}
 
-_NOW=$(date +%y%m%d-%H%M%S 2>&1)
+_NOW=$(date +%y%m%d-%H%M%S)
 export _NOW=${_NOW//[^0-9-]/}
 
 _barCnf="/root/.barracuda.cnf"
@@ -53,7 +53,7 @@ _clean_pid_exit() {
 
 _os_detection_minimal() {
   _APT_UPDATE="apt-get update"
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
   for e in ${_OS_LIST}; do
     if [ "${e}" = "${_OS_CODE}" ]; then
@@ -259,7 +259,7 @@ _check_root_keys_pwd() {
 _check_sql_running() {
   while [ -z "${_IS_MYSQLD_RUNNING}" ] \
     || [ ! -e "/run/mysqld/mysqld.sock" ]; do
-    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
+    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}')
     echo "INFO: Waiting for MySQLD availability..."
     sleep 5
   done
@@ -285,7 +285,7 @@ _check_sql_access() {
     echo " "
     _clean_pid_exit _check_sql_access_b
   else
-    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
+    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}')
     if [ -z "${_IS_MYSQLD_RUNNING}" ]; then
       echo "ALERT: SQL server on this system is not running at all."
       echo "ALERT: Please fix this before trying again, giving up."
@@ -980,7 +980,7 @@ _up_action() {
       echo "_TOMCAT_TO_JETTY=YES" >>                                  ${_barCnf}
     fi
 
-    if [ -e "${_vBs}/${_barName}" ]; then
+    if [ -e "${_vBs}/${_barName}" ] && [ -e "${_vBs}/${_filIncB}" ]; then
       if [ "${_outP}" = "log" ] \
         || [ "${_outP}" = "system" ] \
         || [ "${_outP}" = "disable" ] \
@@ -1105,10 +1105,21 @@ _up_action() {
       fi
     fi
   else
-    echo
-    echo "  ${_vBs}/${_barName} installer not available - try again later"
-    echo "  Make sure that required ${_barCnf} file also exists"
-    echo
+    if [ ! -e "${_vBs}/${_barName}" ]; then
+      echo
+      echo "  ${_vBs}/${_barName} installer not available, exit"
+      echo
+    fi
+    if [ ! -e "${_vBs}/${_filIncB}" ]; then
+      echo
+      echo "  ${_vBs}/${_filIncB} inc file not available, exit"
+      echo
+    fi
+    if [ ! -e "${_barCnf}" ]; then
+      echo
+      echo "  ${_barCnf} file not available, exit"
+      echo
+    fi
     _clean_pid_exit _up_action_a
   fi
 }
@@ -1235,9 +1246,9 @@ _up_finish() {
     service clean-boa-env start &> /dev/null
     wait
     _if_fix_iptables_symlinks
-    csf -uf &> /dev/null
+    ### csf -uf &> /dev/null
     wait
-    _NFTABLES_TEST=$(iptables -V 2>&1)
+    _NFTABLES_TEST=$(iptables -V)
     if [[ "${_NFTABLES_TEST}" =~ "nf_tables" ]]; then
       if [ -e "/usr/sbin/iptables-legacy" ]; then
         update-alternatives --set iptables /usr/sbin/iptables-legacy &> /dev/null
@@ -1270,19 +1281,24 @@ _up_finish() {
         fi
       fi
     done
-    csf -q  &> /dev/null
-    service lfd start &> /dev/null
-    wait
+    if [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
+      csf -ra &> /dev/null
+      wait
+      synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
+    else
+      csf -r &> /dev/null
+    fi
     ### Linux kernel TCP SACK CVEs mitigation
     ### CVE-2019-11477 SACK Panic
     ### CVE-2019-11478 SACK Slowness
     ### CVE-2019-11479 Excess Resource Consumption Due to Low MSS Values
     if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
-      _SACK_TEST=$(ip6tables --list | grep tcpmss 2>&1)
+      _SACK_TEST=$(ip6tables --list | grep tcpmss)
       if [[ ! "${_SACK_TEST}" =~ "tcpmss" ]]; then
         sysctl net.ipv4.tcp_mtu_probing=0 &> /dev/null
         iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
         ip6tables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
+        [ -e "/etc/csf/csfpost.d/synproxy.sh" ] && synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
       fi
     fi
   fi
@@ -1352,7 +1368,7 @@ _if_reinstall_curl() {
     apt-get update -qq &> /dev/null
     apt-get install lsb-release ${_aptYesUnth} -qq &> /dev/null
   fi
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   [ "${_OS_CODE}" = "wheezy" ] && _CURL_VRN=7.50.1
   [ "${_OS_CODE}" = "jessie" ] && _CURL_VRN=7.71.1
   [ "${_OS_CODE}" = "stretch" ] && _CURL_VRN=8.2.1
@@ -1478,9 +1494,9 @@ _csf_check_fix() {
     service clean-boa-env start &> /dev/null
     wait
     _if_fix_iptables_symlinks
-    csf -uf &> /dev/null
+    ### csf -uf &> /dev/null
     wait
-    _NFTABLES_TEST=$(iptables -V 2>&1)
+    _NFTABLES_TEST=$(iptables -V)
     if [[ "${_NFTABLES_TEST}" =~ "nf_tables" ]]; then
       if [ -e "/usr/sbin/iptables-legacy" ]; then
         update-alternatives --set iptables /usr/sbin/iptables-legacy &> /dev/null
@@ -1513,19 +1529,24 @@ _csf_check_fix() {
         fi
       fi
     done
-    csf -q  &> /dev/null
-    service lfd start &> /dev/null
-    wait
+    if [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
+      csf -ra &> /dev/null
+      wait
+      synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
+    else
+      csf -r &> /dev/null
+    fi
     ### Linux kernel TCP SACK CVEs mitigation
     ### CVE-2019-11477 SACK Panic
     ### CVE-2019-11478 SACK Slowness
     ### CVE-2019-11479 Excess Resource Consumption Due to Low MSS Values
     if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
-      _SACK_TEST=$(ip6tables --list | grep tcpmss 2>&1)
+      _SACK_TEST=$(ip6tables --list | grep tcpmss)
       if [[ ! "${_SACK_TEST}" =~ "tcpmss" ]]; then
         sysctl net.ipv4.tcp_mtu_probing=0 &> /dev/null
         iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
         ip6tables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
+        [ -e "/etc/csf/csfpost.d/synproxy.sh" ] && synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
       fi
     fi
   fi
@@ -1750,7 +1771,6 @@ _proceed() {
     touch /root/.debug-boa-installer.cnf
     touch /root/.debug-octopus-installer.cnf
   fi
-  [ ! -e "/root/.mysql.yes.new.password.cnf" ] && touch /root/.mysql.yes.new.password.cnf
   if [ -e "/root/.run-to-daedalus.cnf" ] \
     || [ -e "/root/.run-to-chimaera.cnf" ] \
     || [ -e "/root/.run-to-beowulf.cnf" ] \

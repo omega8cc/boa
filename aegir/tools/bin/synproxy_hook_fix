@@ -1,0 +1,88 @@
+#!/bin/bash
+
+# synproxy_hook_fix — replace CSF post-hook with safe array-based call
+
+export HOME=/root
+export SHELL=/bin/bash
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+
+# Function to check if the script is run as root
+_check_root() {
+  if [ "$(id -u)" -ne 0 ]; then
+    echo "ERROR: This script should be run as a root user"
+    exit 1
+  fi
+}
+_check_root
+
+set -Eeuo pipefail
+trap '_rc=$?; echo "[FIX] line ${LINENO}: exit ${_rc}" >&2; exit ${_rc}' ERR
+
+# ---- tunables (same defaults you showed; override via env if you like) ----
+_TCP_PORTS="${_TCP_PORTS:-443 80}"
+_ENABLE_QUIC_LIMITER="${_ENABLE_QUIC_LIMITER:-NO}"   # YES/NO
+_QUIC_PORT="${_QUIC_PORT:-443}"
+_RATE_PER_IP="${_RATE_PER_IP:-80/second}"
+_BURST_PER_IP="${_BURST_PER_IP:-160}"
+_RATE_PER_24="${_RATE_PER_24:-800/second}"
+_BURST_PER_24="${_BURST_PER_24:-1600}"
+_TRUSTED_SRC="${_TRUSTED_SRC:-}"                     # optional space-separated CIDRs
+
+# ---- paths ----
+_INC_DIR="/etc/csf/csfpost.d"
+mkdir -p "${_INC_DIR}"
+
+# Prefer your moved tool; fall back to the default location.
+_REASSERT_PATH="/opt/local/bin/synproxy_reassert"
+[ -x "${_REASSERT_PATH}" ] || _REASSERT_PATH="/usr/local/sbin/csf_synproxy_reassert.sh"
+
+_HOOK="${_INC_DIR}/99-synproxy-reassert.sh"
+
+# ---- write the new hook (uses a bash array to preserve the "443 80" as one arg) ----
+cat > "${_HOOK}" <<EOF
+#!/bin/bash
+# CSF post hook — call SYNPROXY reassert tool (idempotent, safe quoting)
+set -u
+
+_REASSERT="${_REASSERT_PATH}"
+
+# Params (can be edited later right here if needed)
+_TCP_PORTS="${_TCP_PORTS}"
+_ENABLE_QUIC_LIMITER="${_ENABLE_QUIC_LIMITER}"
+_QUIC_PORT="${_QUIC_PORT}"
+_RATE_PER_IP="${_RATE_PER_IP}"
+_BURST_PER_IP="${_BURST_PER_IP}"
+_RATE_PER_24="${_RATE_PER_24}"
+_BURST_PER_24="${_BURST_PER_24}"
+_TRUSTED_SRC="${_TRUSTED_SRC}"
+
+# Build argv safely
+declare -a _ARGS
+_ARGS=( -p "\${_TCP_PORTS}" )
+if [ "\${_ENABLE_QUIC_LIMITER}" != "YES" ]; then
+  _ARGS+=( --no-quic )
+else
+  [ -n "\${_QUIC_PORT}" ] && _ARGS+=( --quic-port "\${_QUIC_PORT}" )
+  _ARGS+=( --rate-ip "\${_RATE_PER_IP}" --burst-ip "\${_BURST_PER_IP}" --rate-24 "\${_RATE_PER_24}" --burst-24 "\${_BURST_PER_24}" )
+fi
+[ -n "\${_TRUSTED_SRC}" ] && _ARGS+=( --trust "\${_TRUSTED_SRC}" )
+_ARGS+=( -q )
+
+# Exec the tool with proper quoting
+exec "\${_REASSERT}" "\${_ARGS[@]}"
+EOF
+
+chmod 700 "${_HOOK}"
+
+# ---- sanity: show what we wrote ----
+echo "[FIX] Wrote ${_HOOK} -> uses: ${_REASSERT_PATH}"
+sed -n '1,80p' "${_HOOK}"
+
+# ---- optional: reload CSF once so hook runs automatically next time ----
+if command -v csf >/dev/null 2>&1; then
+  echo "[FIX] Reload CSF now (csf -r) so the hook is in effect..."
+  csf -r || true
+fi
+
+echo "[FIX] Done. After any CSF change, the hook will call the tool as:"
+echo "      ${_REASSERT_PATH} -p \"${_TCP_PORTS}\" $([ "${_ENABLE_QUIC_LIMITER}" = "YES" ] && echo "--quic-port ${_QUIC_PORT}" || echo "--no-quic") -q"

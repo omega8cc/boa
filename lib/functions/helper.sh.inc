@@ -14,7 +14,7 @@ _if_hosted_sys() {
 ### Noticeable messages
 ###
 _msg() {
-  echo "BOA [$(date +%T 2>&1)] ==> $*"
+  echo "BOA [$(date +%T)] ==> $*"
 }
 
 ###
@@ -393,46 +393,58 @@ _mode_detection() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _mode_detection"
   fi
+    [ -e "/root/.use.curl.from.packages.cnf" ] && chattr -i /root/.use.curl.from.packages.cnf
+    [ -e "/root/.use.curl.from.packages.cnf" ] && rm -f /root/.use.curl.from.packages.cnf
   if [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ] \
     && [ ! -e "/lib/systemd/systemd" ]; then
     _STATUS=UPGRADE
     _msg "MODE: UPGRADE"
     _barracuda_cnf
     touch /run/boa_wait.pid
-    [ -e "/root/.use.curl.from.packages.cnf" ] && chattr -i /root/.use.curl.from.packages.cnf
-    [ -e "/root/.use.curl.from.packages.cnf" ] && rm -f /root/.use.curl.from.packages.cnf
     if [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ]; then
       _XTRAS_LIST="ADM CSF FTP IMG"
     fi
+  elif [ -e "/lib/systemd/systemd" ]; then
+    _msg "FATAL ERROR: Something went wrong because /lib/systemd/systemd still exists, exit"
+    _clean_pid_exit _mode_detection_a
   else
     _STATUS=INIT
-    [ -e "/root/.use.curl.from.packages.cnf" ] && chattr -i /root/.use.curl.from.packages.cnf
-    [ -e "/root/.use.curl.from.packages.cnf" ] && rm -f /root/.use.curl.from.packages.cnf
     if [ -d "/var/aegir" ]; then
-      _msg "MODE: FORCED INIT"
-      _FULL_FORCE_REINSTALL=YES
+      if [ -e "/root/.force.reinstall.cnf" ]; then
+        ###--------------------###
+        _msg "MODE: FORCED INIT"
+        _FULL_FORCE_REINSTALL=YES
+        _ZOMBIE_HOME="${_vBs}/zombie/${_X_VERSION}-${_NOW}"
+        mkdir -p ${_ZOMBIE_HOME}
+        mv -f /etc/nginx/conf.d/* ${_ZOMBIE_HOME}/ &> /dev/null
+        mv -f /var/aegir ${_ZOMBIE_HOME}/ &> /dev/null
+        mv -f /var/xdrago ${_ZOMBIE_HOME}/ &> /dev/null
+        ### mv -f /root/.my.cnf ${_ZOMBIE_HOME}/ &> /dev/null
+        ### mv -f /root/.my.pass.txt ${_ZOMBIE_HOME}/ &> /dev/null
+        cp -af /etc/sudoers ${_ZOMBIE_HOME}/ &> /dev/null
+        sed -i "s/^aegir.*//g" /etc/sudoers &> /dev/null
+        kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
+        deluser aegir &> /dev/null
+        rm -f /usr/bin/drush
+      else
+        ###--------------------###
+        _msg "FATAL ERROR: Something went wrong, Aegir Master exists but looks broken!"
+        _msg "HINT: Please check /var/aegir/install.log for details, and then"
+        _msg "HINT: run the same install command again to complete installation."
+        _msg "HINT: You can also enforce installation with empty control file:"
+        _msg "      touch /root/.force.reinstall.cnf -- and then try again."
+        _clean_pid_exit _mode_detection_b
+      fi
     else
       _msg "MODE: NORMAL INIT"
     fi
-    _ZOMBIE_HOME="${_vBs}/zombie/${_X_VERSION}-${_NOW}"
-    mkdir -p ${_ZOMBIE_HOME}
-    mv -f /etc/nginx/conf.d/* ${_ZOMBIE_HOME}/ &> /dev/null
-    mv -f /var/aegir ${_ZOMBIE_HOME}/ &> /dev/null
-    mv -f /var/xdrago ${_ZOMBIE_HOME}/ &> /dev/null
-    mv -f /root/.my.cnf ${_ZOMBIE_HOME}/ &> /dev/null
-    mv -f /root/.my.pass.txt ${_ZOMBIE_HOME}/ &> /dev/null
-    cp -af /etc/sudoers ${_ZOMBIE_HOME}/ &> /dev/null
-    sed -i "s/^aegir.*//g" /etc/sudoers &> /dev/null
-    kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
-    deluser aegir &> /dev/null
-    rm -f /usr/bin/drush
     if [ ! -z "${_EASY_SETUP}" ] && [[ ! "${_EASY_SETUP}" =~ "NO" ]]; then
       if [ "${_EASY_SETUP}" != "LOCAL" ]; then
         if [ -z "${_EASY_HOSTNAME}" ] \
           || [ "${_EASY_HOSTNAME}" = "wildcard-enabled-hostname" ]; then
           _msg "FATAL ERROR: You must define also _EASY_HOSTNAME"
-          _clean_pid_exit _mode_detection_a
+          _clean_pid_exit _mode_detection_c
         fi
       fi
     fi
@@ -644,7 +656,7 @@ _os_detection_minimal() {
     _msg "PROC: _os_detection_minimal"
   fi
   _APT_UPDATE="apt-get update"
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
   for e in ${_OS_LIST}; do
     if [ "${e}" = "${_OS_CODE}" ]; then
@@ -669,8 +681,8 @@ _os_detection() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _os_detection"
   fi
-  _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   _DB_SERVER=Percona
   if [ "${_OS_DIST}" = "Debian" ]; then
     if [ "${_OS_CODE}" = "bookworm" ]; then
@@ -732,7 +744,7 @@ _os_detection() {
     _not_supported_os
   fi
   echo " "
-  _thiSys="$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)/$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1) $(uname -m 2>&1)"
+  _thiSys="$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)/$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2) $(uname -m)"
   _thiSys="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null) ${_thiSys} PHP ${_PHP_FPM_VERSION}"
   _msg "Aegir on ${_thiSys}"
   echo " "
@@ -920,8 +932,8 @@ _barracuda_log_update() {
       | sed "s/[\,']//g" 2>&1)
   fi
   _BARRACUDA_VERSION_INFO="$(date) / \
-    $(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1).$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1) \
-    $(uname -m 2>&1) ${_VIRT_IS} / \
+    $(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2).$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2) \
+    $(uname -m) ${_VIRT_IS} / \
     Aegir ${_AEGIR_VERSION} / \
     Barracuda ${_X_VERSION}${_LOG_GIT_MIRROR} / \
     Nginx ${_NGINX_VRN} / \

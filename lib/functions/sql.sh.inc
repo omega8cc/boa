@@ -280,7 +280,7 @@ _innodb_log_file_size_update() {
   mysql -u root -e "SET GLOBAL innodb_fast_shutdown = 0;" &> /dev/null
   _mrun "bash /var/xdrago/move_sql.sh stop" &> /dev/null
   wait
-  _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
+  _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}')
   if [ -z "${_IS_MYSQLD_RUNNING}" ]; then
     mkdir -p ${_vBs}/old-sql-ib-log-${_NOW}
     _mrun "sleep 1"
@@ -325,7 +325,7 @@ _innodb_log_file_size_update() {
     _mrun "bash /var/xdrago/move_sql.sh stop" &> /dev/null
     wait
     _mrun "sleep 180"
-    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
+    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}')
     if [ -z "${_IS_MYSQLD_RUNNING}" ]; then
       mkdir -p ${_vBs}/old-sql-ib-log-${_NOW}
       _mrun "sleep 1"
@@ -542,7 +542,7 @@ _check_mysqld_running() {
   fi
   while [ -z "${_IS_MYSQLD_RUNNING}" ] \
     || [ ! -e "/run/mysqld/mysqld.sock" ]; do
-    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
+    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}')
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: Waiting for MySQLD availability before _tune_sql_memory_limits..."
     fi
@@ -929,42 +929,6 @@ _install_with_aptitude_sql() {
   if [ -x "/usr/sbin/aa-teardown" ]; then
     _mrun "aa-teardown" 2> /dev/null
   fi
-  if [ -e "/usr/bin/mytop" ]; then
-    _mrun "apt-get remove mytop -y -qq" 2> /dev/null
-    rm -f /usr/bin/mytop
-  fi
-  _MYTOP_REINSTALL=NO
-  _MYTOP_TEST=$(mytop -b 2>&1)
-  if [[ "${_MYTOP_TEST}" =~ "cannot open shared object file" ]] \
-    || [[ "${_MYTOP_TEST}" =~ "you may need to install" ]] \
-    || [[ "${_MYTOP_TEST}" =~ "failed" ]]; then
-    _MYTOP_REINSTALL=YES
-  fi
-  if [ -e "/usr/bin/mysql" ]; then
-    if [ ! -e "/usr/local/bin/mytop" ] || [ "${_MYTOP_REINSTALL}" = "YES" ]; then
-      _msg "INFO: Building MyTop from sources..."
-      _check_mysql_version
-      _apt_clean_update
-      _mrun "${_INSTAPP} libperl-dev" 2> /dev/null
-      _mrun "${_INSTAPP} cpanminus" 2> /dev/null
-      if [ "${_DB_V}" != "5.7" ] || [ "${_SQL_UPGRADE}" = "YES" ]; then
-        _mrun "cpanm DBD::mysql" 2> /dev/null
-        _mrun "cpanm DBI" 2> /dev/null
-        _mrun "cpanm Term::ReadKey" 2> /dev/null
-      else
-        _mrun "cpanm DBD::mysql@4.050" 2> /dev/null
-        _mrun "cpanm Term::ReadKey" 2> /dev/null
-      fi
-      cd /var/opt
-      rm -rf git*
-      _get_dev_src "mytop-1.6.tar.gz"
-      cd /var/opt/mytop-1.6
-      _mrun "perl Makefile.PL" 2> /dev/null
-      _mrun "make -j $(nproc) --quiet" 2> /dev/null
-      _mrun "make --quiet install" 2> /dev/null
-      ldconfig 2> /dev/null
-    fi
-  fi
   if [ "${_DB_SERVER}" = "Percona" ] \
     && [ "${_SQL_FORCE_REINSTALL}" = "YES" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -1303,7 +1267,7 @@ _db_server_install() {
           fi
         else
           _myCnfUpdate=YES
-          # _diffMyTest=$(echo -n ${_diffMyTest} | fmt -su -w 2500 2>&1)
+          # _diffMyTest=$(echo -n ${_diffMyTest} | fmt -su -w 2500)
           _msg "INFO: ${_DB_SERVER} diff1 ${_diffMyTest}"
         fi
         if [[ "${_diffMyTest}" =~ "innodb_buffer_pool_size" ]]; then
@@ -1371,11 +1335,12 @@ _db_server_install() {
         ### CVE-2019-11478 SACK Slowness
         ### CVE-2019-11479 Excess Resource Consumption Due to Low MSS Values
         if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
-          _SACK_TEST=$(ip6tables --list | grep tcpmss 2>&1)
+          _SACK_TEST=$(ip6tables --list | grep tcpmss)
           if [[ ! "${_SACK_TEST}" =~ "tcpmss" ]]; then
             sysctl net.ipv4.tcp_mtu_probing=0 &> /dev/null
             iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
             ip6tables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
+            [ -e "/etc/csf/csfpost.d/synproxy.sh" ] && synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
           fi
         fi
       fi

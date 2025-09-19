@@ -55,7 +55,7 @@ _if_reinstall_curl_src() {
     apt-get update -qq &> /dev/null
     apt-get install lsb-release ${_aptYesUnth} -qq &> /dev/null
   fi
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   [ "${_OS_CODE}" = "wheezy" ] && _CURL_VRN=7.50.1
   [ "${_OS_CODE}" = "jessie" ] && _CURL_VRN=7.71.1
   [ "${_OS_CODE}" = "stretch" ] && _CURL_VRN=8.2.1
@@ -157,8 +157,8 @@ _define_loc_osr() {
   _apt_clean_update_no_releaseinfo_change
   _mrun "apt-get upgrade ${_nrmUpArg}" 2> /dev/null
   _mrun "apt-get install lsb-release ${_nrmUpArg}" 2> /dev/null
-  _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _define_loc_osr"
   fi
@@ -327,6 +327,42 @@ _count_cpu() {
 }
 
 #
+# Discover system-manufacturer.
+_check_system_manufacturer() {
+  # Extract manufacturer string
+  _SYS_MANUFACTURER_RAW=$(dmidecode -s system-manufacturer 2>/dev/null)
+
+  # Trim leading/trailing whitespace, convert spaces to underscores
+  _SYS_MANUFACTURER_CLEAN=$(printf "%s" "${_SYS_MANUFACTURER_RAW}" \
+    | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -e 's/[[:space:]]\+/_/g')
+
+  # Normalise: keep only A-Za-z0-9_
+  _SYS_MANUFACTURER=$(printf "%s" "${_SYS_MANUFACTURER_CLEAN}" | tr -cd 'A-Za-z0-9_')
+
+  # Enforce max length with safe underscore-aware truncation
+  _MAX_LEN=32
+  if [ "${#_SYS_MANUFACTURER}" -gt "${_MAX_LEN}" ]; then
+    _CUT=$(printf "%s" "${_SYS_MANUFACTURER}" | cut -c1-"${_MAX_LEN}")
+    _SAFE_CUT=$(printf "%s" "${_CUT}" | sed 's/_[^_]*$//')
+    if [ -n "${_SAFE_CUT}" ]; then
+      _SYS_MANUFACTURER="${_SAFE_CUT}"
+    else
+      _SYS_MANUFACTURER="${_CUT}"
+    fi
+  fi
+
+  # Secondary variable: lowercase
+  _SYS_MANUFACTURER_LC=$(printf "%s" "${_SYS_MANUFACTURER}" | tr 'A-Z' 'a-z')
+
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "_SYS_MANUFACTURER_RAW: ${_SYS_MANUFACTURER_RAW}"
+    _msg "_SYS_MANUFACTURER_CLEAN: ${_SYS_MANUFACTURER_CLEAN}"
+    _msg "_SYS_MANUFACTURER: ${_SYS_MANUFACTURER}"
+    _msg "_SYS_MANUFACTURER_LC: ${_SYS_MANUFACTURER_LC}"
+  fi
+}
+
+#
 # Make sure that we are root.
 _if_running_as_root_barracuda() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -346,6 +382,7 @@ _if_running_as_root_barracuda() {
       _apt_clean_update
       ${_INITINS} dmidecode &> /dev/null
     fi
+    _check_system_manufacturer
     # Check for Amazon EC2 in the system manufacturer field
     if dmidecode -s system-manufacturer | grep -i 'Amazon EC2' &> /dev/null; then
       _VMFAMILY="AWS"
@@ -355,6 +392,20 @@ _if_running_as_root_barracuda() {
         || [ ! -e "/data/u" ] \
         || [ ! -e "/var/xdrago" ]; then
         [ ! -e "/run/linode_vm_postinstall.pid" ] && touch /run/linode_vm.pid
+      fi
+    elif dmidecode -s system-manufacturer | grep -i 'Hetzner' &> /dev/null; then
+      if  [ ! -e "/var/aegir/drush" ] \
+        || [ ! -e "/data/u" ] \
+        || [ ! -e "/var/xdrago" ]; then
+        [ ! -e "/run/hetzner_vm_postinstall.pid" ] && touch /run/hetzner_vm.pid
+      fi
+    else
+      if [ -n "${_SYS_MANUFACTURER_LC}" ]; then
+        if  [ ! -e "/var/aegir/drush" ] \
+          || [ ! -e "/data/u" ] \
+          || [ ! -e "/var/xdrago" ]; then
+          [ ! -e "/run/${_SYS_MANUFACTURER_LC}_vm_postinstall.pid" ] && touch /run/${_SYS_MANUFACTURER_LC}_vm.pid
+        fi
       fi
     fi
     _VM_TEST="$(uname -a)"
@@ -566,6 +617,22 @@ _boa_ini_tpl_update() {
   if [ -e "${_locCnf}/ini/default.boa_site_control.ini" ]; then
     cp -af ${_locCnf}/ini/default.boa_site_control.ini /data/conf/default.boa_site_control.ini
     rm -f /var/xdrago/conf/default.boa_site_control.ini
+  fi
+}
+
+#
+# Update MC Panels INI.
+_mc_panels_ini_update() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _mc_panels_ini_update"
+  fi
+  if [ -d "/root/.config/mc" ]; then
+    _SORT_ORDER_TEST=$(grep "sort_order" /root/.config/mc/panels.ini 2>&1)
+    if [[ ! "${_SORT_ORDER_TEST}" =~ "sort_order" ]]; then
+      if [ -e "${_locCnf}/ini/panels.ini" ]; then
+        cat ${_locCnf}/ini/panels.ini >> /root/.config/mc/panels.ini
+      fi
+    fi
   fi
 }
 
@@ -891,10 +958,12 @@ _tune_memory_limits() {
   if [ ! -e "/data/conf" ]; then
     mkdir -p /data/conf
   fi
-  cp -af ${_locCnf}/php/fpm-pool-foo-multi.conf  /var/xdrago/conf/
-  cp -af ${_locCnf}/php/fpm-pool-foo.conf        /var/xdrago/conf/
-  cp -af ${_locCnf}/php/fpm-pool-foo-legacy.conf /var/xdrago/conf/
-  cp -af ${_locCnf}/php/fpm-pool-foo-modern.conf /var/xdrago/conf/
+  cp -af ${_locCnf}/php/fpm-pool-foo-multi.conf     /var/xdrago/conf/
+  cp -af ${_locCnf}/php/fpm-pool-foo.conf           /var/xdrago/conf/
+  cp -af ${_locCnf}/php/fpm-pool-common.conf        /var/xdrago/conf/
+  cp -af ${_locCnf}/php/fpm-pool-common-legacy.conf /var/xdrago/conf/
+  cp -af ${_locCnf}/php/fpm-pool-common-modern.conf /var/xdrago/conf/
+  sed -i "s/127.0.0.1/127.0.0.1,${_THISHTIP}/g" /var/xdrago/conf/fpm-pool-commo*.conf
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ]; then
     sed -i "s/395/${_USE_FPM}/g" /opt/etc/fpm/fpm-pool-commo*.conf &> /dev/null
   fi
@@ -2881,7 +2950,7 @@ _install_icu_modern() {
     rm -rf /var/backups/.legacy_icu
     mv -f /usr/lib/x86_64-linux-gnu/.legacy_icu /var/backups/.legacy_icu
   fi
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   if [ -e "${_pthLog}" ]; then
     _pthIcuLog="${_pthLog}/icu-update-${_ICU_MODERN_VRN}-for-${_OS_CODE}.log"
     _pthIcuLcy="${_pthLog}/icu-update-${_ICU_MODERN_VRN}.log"
@@ -2917,7 +2986,7 @@ _install_icu_modern() {
     if [ -e "/usr/local/lib/icu" ]; then
       touch ${_pthIcuLog}
     fi
-    _X86_64_TEST=$(uname -m 2>&1)
+    _X86_64_TEST=$(uname -m)
     if [ "${_X86_64_TEST}" = "x86_64" ]; then
       if [ -e "/usr/local/lib/icu" ]; then
         if [ -d "/usr/lib/x86_64-linux-gnu/icu" ]; then
@@ -2939,7 +3008,7 @@ _install_icu_jessie() {
     _msg "PROC: _install_icu_jessie"
   fi
   ###--------------------###
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   if [ -e "${_pthLog}" ]; then
     _pthIcuLog="${_pthLog}/icu-update-${_ICU_LEGACY_VRN}-for-${_OS_CODE}.log"
     _pthIcuLcy="${_pthLog}/icu-update-${_ICU_LEGACY_VRN}.log"
@@ -2975,7 +3044,7 @@ _install_icu_jessie() {
     if [ -e "/usr/local/lib/icu" ]; then
       touch ${_pthIcuLog}
     fi
-    _X86_64_TEST=$(uname -m 2>&1)
+    _X86_64_TEST=$(uname -m)
     if [ "${_X86_64_TEST}" = "x86_64" ]; then
       if [ -e "/usr/local/lib/icu" ]; then
         if [ -d "/usr/lib/x86_64-linux-gnu/icu" ]; then
@@ -3092,7 +3161,7 @@ _if_install_wkhtmltox() {
     _msg "PROC: _if_install_wkhtmltox"
   fi
   ###--------------------###
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   _isWkhtmltox=$(which wkhtmltopdf 2>&1)
   if [ -z "${_isWkhtmltox}" ] \
     || [ ! -e "${_isWkhtmltox}" ] \
@@ -3804,7 +3873,7 @@ _ssl_crypto_lib_fix() {
   fi
   if [ "${_SSL_INSTALLED}" = "LEGACY" ]; then
     ###
-    _LIB_NOW=$(date +%y%m%d-%H%M 2>&1)
+    _LIB_NOW=$(date +%y%m%d-%H%M)
     _LIB_NOW=${_LIB_NOW//[^0-9-]/}
     ###
     if [ -f "/usr/local/ssl/lib/libssl.so.1.0.0" ] \
@@ -3865,7 +3934,7 @@ _ssl_crypto_lib_fix() {
     fi
   elif [ "${_SSL_INSTALLED}" = "EOL" ]; then
     ###
-    _LIB_NOW=$(date +%y%m%d-%H%M 2>&1)
+    _LIB_NOW=$(date +%y%m%d-%H%M)
     _LIB_NOW=${_LIB_NOW//[^0-9-]/}
     ###
     if [ -f "/usr/local/ssl/lib/libssl.so.1.1" ] \
@@ -3926,7 +3995,7 @@ _ssl_crypto_lib_fix() {
     fi
   elif [ "${_SSL_INSTALLED}" = "MODERN" ]; then
     ###
-    _LIB_NOW=$(date +%y%m%d-%H%M 2>&1)
+    _LIB_NOW=$(date +%y%m%d-%H%M)
     _LIB_NOW=${_LIB_NOW//[^0-9-]/}
     ###
     if [ -f "/usr/local/ssl/lib/libssl.so.1.1" ] \
@@ -4050,11 +4119,11 @@ _ssl_paths_update() {
 
   if [ -x "${_LINK_TO}" ]; then
     if [ -f "/usr/bin/openssl" ]; then
-      cp -af /usr/bin/openssl /usr/bin/old-openssl-$(date +%y%m%d-%H%M%S 2>&1)
+      cp -af /usr/bin/openssl /usr/bin/old-openssl-$(date +%y%m%d-%H%M%S)
     fi
     ln -sfn ${_LINK_TO} /usr/bin/openssl
     if [ -e "/bin/openssl" ] && [ ! -L "/bin" ]; then
-      cp -af /bin/openssl /bin/old-openssl-$(date +%y%m%d-%H%M%S 2>&1)
+      cp -af /bin/openssl /bin/old-openssl-$(date +%y%m%d-%H%M%S)
       ln -sfn ${_LINK_TO} /bin/openssl
     fi
   fi
@@ -4391,7 +4460,7 @@ _curl_install_src() {
     apt-get update -qq &> /dev/null
     apt-get install lsb-release ${_aptYesUnth} -qq &> /dev/null
   fi
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   [ "${_OS_CODE}" = "wheezy" ] && _CURL_VRN=7.50.1
   [ "${_OS_CODE}" = "jessie" ] && _CURL_VRN=7.71.1
   [ "${_OS_CODE}" = "stretch" ] && _CURL_VRN=8.2.1
@@ -4531,7 +4600,7 @@ _curl_install_src() {
       fi
       [ -e "/root/.sorted.multi.php.cnf" ] && rm -f /root/.sorted.multi.php.cnf
       if [ -e "/usr/local/bin/curl" ]; then
-        mv -f /usr/local/bin/curl /usr/local/bin/curl-src-off-$(date +%y%m%d-%H%M%S 2>&1)
+        mv -f /usr/local/bin/curl /usr/local/bin/curl-src-off-$(date +%y%m%d-%H%M%S)
       fi
       if [[ "${_CURL_GET_DPKG}" =~ "hold" ]]; then
         echo "curl install" | dpkg --set-selections &> /dev/null
@@ -4587,7 +4656,7 @@ _curl_install_src() {
           _mrun "make install" 2> /dev/null
           ldconfig 2> /dev/null
           if [ -x "/usr/local/bin/curl" ]; then
-            mv -f /usr/bin/curl /usr/bin/old-curl-$(date +%y%m%d-%H%M%S 2>&1)
+            mv -f /usr/bin/curl /usr/bin/old-curl-$(date +%y%m%d-%H%M%S)
             ln -sfn /usr/local/bin/curl /usr/bin/curl
           fi
           if [ ! -e "${_SSL_PATH}/certs/ca-certificates.crt" ]; then
@@ -5389,11 +5458,11 @@ _finale() {
   mv -f /etc/motd ${_vBs}/dragon/t/motd-pre-${_xSrl}-${_MTD_VR}-${_NOW} &> /dev/null
   mv -f /etc/motd-pre-* ${_vBs}/dragon/t/ &> /dev/null
   echo > /etc/motd
-  echo " Skynet Agent v.${_MTD_VR} on $(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)/$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1) \
+  echo " Skynet Agent v.${_MTD_VR} on $(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)/$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2) \
     welcomes you aboard" | fmt -su -w 2500 >> /etc/motd
   echo >> /etc/motd
   echo > /etc/motd.tail
-  echo " Skynet Agent v.${_MTD_VR} on $(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)/$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1) \
+  echo " Skynet Agent v.${_MTD_VR} on $(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)/$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2) \
     welcomes you aboard" | fmt -su -w 2500 >> /etc/motd.tail
   echo >> /etc/motd.tail
   apt-get autoclean -y &> /dev/null
@@ -5483,9 +5552,9 @@ _finale() {
     _mrun "service clean-boa-env start" 2> /dev/null
     wait
     _if_fix_iptables_symlinks
-    csf -uf &> /dev/null
+    ### csf -uf &> /dev/null
     wait
-    _NFTABLES_TEST=$(iptables -V 2>&1)
+    _NFTABLES_TEST=$(iptables -V)
     if [[ "${_NFTABLES_TEST}" =~ "nf_tables" ]]; then
       if [ -e "/usr/sbin/iptables-legacy" ]; then
         update-alternatives --set iptables /usr/sbin/iptables-legacy &> /dev/null
@@ -5518,19 +5587,24 @@ _finale() {
         fi
       fi
     done
-    csf -q  &> /dev/null
-    _mrun "service lfd start" 2> /dev/null
-    wait
+    if [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
+      csf -ra &> /dev/null
+      wait
+      synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
+    else
+      csf -r &> /dev/null
+    fi
     ### Linux kernel TCP SACK CVEs mitigation
     ### CVE-2019-11477 SACK Panic
     ### CVE-2019-11478 SACK Slowness
     ### CVE-2019-11479 Excess Resource Consumption Due to Low MSS Values
     if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
-      _SACK_TEST=$(ip6tables --list | grep tcpmss 2>&1)
+      _SACK_TEST=$(ip6tables --list | grep tcpmss)
       if [[ ! "${_SACK_TEST}" =~ "tcpmss" ]]; then
         sysctl net.ipv4.tcp_mtu_probing=0 &> /dev/null
         iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
         ip6tables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
+        [ -e "/etc/csf/csfpost.d/synproxy.sh" ] && synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
       fi
     fi
   fi
@@ -6729,7 +6803,7 @@ _if_major_os_upgrade() {
       && [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
       touch /root/.rebuild_src_on_auto_before_reboot.info
       rm -f /var/log/boa/*.log
-      _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+      _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
       _PURGE_MODE=OFF
       _NGX_FORCE_REINSTALL=YES
       _PHP_FORCE_REINSTALL=YES
@@ -7454,7 +7528,7 @@ _php_libs_fix() {
     _msg "PROC: _php_libs_fix"
   fi
   _if_to_do_fix
-  _LIB_NOW=$(date +%y%m%d-%H%M 2>&1)
+  _LIB_NOW=$(date +%y%m%d-%H%M)
   _LIB_NOW=${_LIB_NOW//[^0-9-]/}
   if [ ! -L "/usr/lib/librtmp.so" ] \
     || [ ! -e "/usr/lib/libwebpmux.so" ] \
@@ -7467,7 +7541,7 @@ _php_libs_fix() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: Fix for PHP libs in ${_OS_DIST}/${_OS_CODE}"
     fi
-    _X86_64_TEST=$(uname -m 2>&1)
+    _X86_64_TEST=$(uname -m)
     if [ "${_X86_64_TEST}" = "x86_64" ]; then
       if [ -e "/usr/local/lib/icu" ]; then
         if [ -e "/usr/lib/x86_64-linux-gnu/icu" ] \
@@ -8937,7 +9011,7 @@ _initd_update() {
           fi
         else
           _myCnfUpdate=YES
-          # _diffMyTest=$(echo -n ${_diffMyTest} | fmt -su -w 2500 2>&1)
+          # _diffMyTest=$(echo -n ${_diffMyTest} | fmt -su -w 2500)
           _msg "INFO: ${_DB_SERVER} diff1 ${_diffMyTest}"
         fi
         if [[ "${_diffMyTest}" =~ "innodb_buffer_pool_size" ]]; then

@@ -88,11 +88,11 @@ else
 fi
 
 _BACKUPDIR=/data/disk/arch/cluster
-_DATE=$(date +%y%m%d-%H%M%S 2>&1)
-_DOW=$(date +%u 2>&1)
+_DATE=$(date +%y%m%d-%H%M%S)
+_DOW=$(date +%u)
 _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
 _DOW=${_DOW//[^1-7]/}
-_DOM=$(date +%e 2>&1)
+_DOM=$(date +%e)
 _DOM=${_DOM//[^0-9]/}
 _SAVELOCATION=${_BACKUPDIR}/${_hName}-${_DATE}
 if [ -e "/root/.my.optimize.cnf" ]; then

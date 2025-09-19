@@ -116,7 +116,7 @@ _sql_busy_detection() {
   fi
   if [ -e "/root/.instant.busy.mysql.action.cnf" ]; then
     _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
-    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
+    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}')
     if [ ! -z "${_IS_MYSQLD_RUNNING}" ] && [ ! -z "${_SQL_PSWD}" ]; then
       _MYSQL_CONN_TEST=$(mysql -u root -e "status" 2>&1)
       echo _MYSQL_CONN_TEST ${_MYSQL_CONN_TEST}
@@ -210,8 +210,38 @@ _mysql_high_load() {
   fi
 }
 
+
+_mysql_is_locked() {
+  _OCT_NR=$(ls /data/disk | wc -l)
+
+  if [ -n "${_OCT_NR}" ] && [ "${_OCT_NR}" -ge 1 ]; then
+    if [ "${_OCT_NR}" -ge 6 ]; then
+      _MULTI_MX=$(( _OCT_NR / 2 ))
+    else
+      _MULTI_MX=$(( _OCT_NR * 2 ))
+    fi
+    if [ "${_OCT_NR}" -lt 4 ]; then
+      _MULTI_MX=$(( _OCT_NR + 3 ))
+    fi
+  fi
+
+  if (( $(pgrep -fc 'aegir.sh') > ${_MULTI_MX} )); then
+    if (( $(pgrep -fc 'mysql_backup.sh') > 0 )); then
+      kill -9 $(ps aux | grep '[m]ydumper' | awk '{print $2}') &> /dev/null
+      _incident_email_report "TOO MANY ($(pgrep -fc 'aegir.sh') aegir.sh required killing mydumper"
+    fi
+  fi
+  if (( $(pgrep -fc 'drush.php') > ${_MULTI_MX} )); then
+    if (( $(pgrep -fc 'mysql_backup.sh') > 0 )); then
+      kill -9 $(ps aux | grep '[m]ydumper' | awk '{print $2}') &> /dev/null
+      _incident_email_report "TOO MANY ($(pgrep -fc 'drush.php') drush.php required killing mydumper"
+    fi
+  fi
+}
+
 _mysql_high_load
 _sql_busy_detection
+_mysql_is_locked
 
 perl /var/xdrago/monitor/check/sqlcheck.pl &
 

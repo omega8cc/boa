@@ -43,6 +43,15 @@
    cat /root/.autoinit-verbose.log
    ```
 
+   If the verbose log shows a warning at the end mentioning a `grub` configuration error (for example, inability to configure `grub-pc`), you will need to fix GRUB before proceeding to the BOA stack installation. To do this, run:
+
+   ```sh
+   DEBIAN_FRONTEND=dialog dpkg --configure grub-pc
+   dpkg --configure -a
+   ```
+
+   Use the dialog to select the appropriate device (usually `/dev/sda`) and once it completes successfully, you can proceed with the BOA installation steps.
+
 5. Install Barracuda and Octopus.
 
    **NOTE:** Always start with a screen session!

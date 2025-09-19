@@ -40,7 +40,7 @@ _BZR_VRN=2.6.0
 _CGP_VRN=master-22-07-2020
 _CHIVE_VRN=1.3
 _COMPOSER_VRN=2.8.2
-_CSF_VRN=14.24
+_CSF_VRN=15.00
 _CURL_VRN=8.14.1
 _DB_SRC=repo.percona.com
 ###
@@ -444,22 +444,6 @@ fi
 
 
 ###
-### Install or upgrade csf/lfd monitoring
-###
-_csf_lfd_install_upgrade
-
-
-###
-### DNS cache server
-###
-if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "UPGRADE" ]; then
-  if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
-    _dns_unbound_install_upgrade
-  fi
-fi
-
-
-###
 ### Install Percona server
 ###
 _db_server_install
@@ -470,7 +454,6 @@ _db_server_install
 ###
 _init_sql_root_credentials
 _sql_root_credentials_update
-_mytop_install
 _myquick_install_upgrade
 
 
@@ -494,6 +477,7 @@ if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
   if [ "${_STATUS}" = "UPGRADE" ]; then
     _php_ioncube_check_if_update
     _php_check_if_rebuild
+    _mytop_install
   fi
   _php_install_upgrade
   _php_config_check_update
@@ -504,6 +488,7 @@ fi
 _smtp_check
 _xdrago_install_upgrade
 _if_drupal_patches_update
+_mc_panels_ini_update
 
 
 ###
@@ -521,6 +506,22 @@ if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
   _nginx_wildcard_ssl_install
   _nginx_config_update_fix
   _aegir_master_display_login_link
+fi
+
+
+###
+### Install or upgrade DNS cache server
+###
+if [ "${_STATUS}" = "UPGRADE" ]; then
+  _dns_unbound_install_upgrade
+fi
+
+
+###
+### Install or upgrade csf/lfd monitoring
+###
+if [ "${_STATUS}" = "UPGRADE" ]; then
+  _csf_lfd_install_upgrade
 fi
 
 

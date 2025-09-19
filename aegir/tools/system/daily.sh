@@ -50,7 +50,7 @@ _sanitize_number() {
 
 _os_detection_minimal() {
   _APT_UPDATE="apt-get update"
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
   for e in ${_OS_LIST}; do
     if [ "${e}" = "${_OS_CODE}" ]; then
@@ -173,7 +173,7 @@ _disable_chattr() {
 
 _run_drush8_cmd() {
   if [ -e "/root/.debug_daily.info" ]; then
-    _nOw=$(date +%y%m%d-%H%M%S 2>&1)
+    _nOw=$(date +%y%m%d-%H%M%S)
     echo "${_nOw} ${_HM_U} running drush8 @${_Dom} $1"
   fi
   if [ -x "/opt/php74/bin/php" ]; then
@@ -186,7 +186,7 @@ _run_drush8_cmd() {
 
 _run_drush8_hmr_cmd() {
   if [ -e "/root/.debug_daily.info" ]; then
-    _nOw=$(date +%y%m%d-%H%M%S 2>&1)
+    _nOw=$(date +%y%m%d-%H%M%S)
     echo "${_nOw} ${_HM_U} running drush8 @hostmaster $1"
   fi
   su -s /bin/bash - ${_HM_U} -c "drush8 @hostmaster $1" &> /dev/null
@@ -195,7 +195,7 @@ _run_drush8_hmr_cmd() {
 
 _run_drush8_hmr_master_cmd() {
   if [ -e "/root/.debug_daily.info" ]; then
-    _nOw=$(date +%y%m%d-%H%M%S 2>&1)
+    _nOw=$(date +%y%m%d-%H%M%S)
     echo "${_nOw} aegir running drush8 @hostmaster $1"
   fi
   su -s /bin/bash - aegir -c "drush8 @hostmaster $1" &> /dev/null
@@ -204,7 +204,7 @@ _run_drush8_hmr_master_cmd() {
 
 _run_drush8_nosilent_cmd() {
   if [ -e "/root/.debug_daily.info" ]; then
-    _nOw=$(date +%y%m%d-%H%M%S 2>&1)
+    _nOw=$(date +%y%m%d-%H%M%S)
     echo "${_nOw} ${_HM_U} running drush8 @${_Dom} $1"
   fi
   if [ -x "/opt/php74/bin/php" ]; then
@@ -1530,11 +1530,11 @@ _if_site_db_conversion() {
     fi
     if [ "${_SQL_CONVERT}" = "myisam" ] \
       || [ "${_SQL_CONVERT}" = "innodb" ]; then
-      _TIMP=$(date +%y%m%d-%H%M%S 2>&1)
+      _TIMP=$(date +%y%m%d-%H%M%S)
       echo "${_TIMP} sql conversion to-${_SQL_CONVERT} \
         for ${_Dom} started"
       _sql_convert
-      _TIMP=$(date +%y%m%d-%H%M%S 2>&1)
+      _TIMP=$(date +%y%m%d-%H%M%S)
       echo "${_TIMP} sql conversion to-${_SQL_CONVERT} \
         for ${_Dom} completed"
     fi
@@ -2186,7 +2186,7 @@ _le_hm_ssl_check_update() {
   if [ -x "${_exeLe}" ] \
     && [ ! -z "${_hmFront}" ] \
     && [ -e "${_leCrtPath}/fullchain.pem" ]; then
-    _DOM=$(date +%e 2>&1)
+    _DOM=$(date +%e)
     _DOM=${_DOM//[^0-9]/}
     _RDM=$((RANDOM%25+6))
     if [ "${_DOM}" = "${_RDM}" ] || [ -e "${_usEr}/static/control/force-ssl-certs-rebuild.info" ]; then
@@ -2268,7 +2268,7 @@ _le_ssl_check_update() {
             fi
           fi
         done
-		_DOM=$(date +%e 2>&1)
+		_DOM=$(date +%e)
 		_DOM=${_DOM//[^0-9]/}
 		_RDM=$((RANDOM%25+6))
 		if [ "${_DOM}" = "${_RDM}" ] || [ -e "${_usEr}/static/control/force-ssl-certs-rebuild.info" ]; then
@@ -2366,7 +2366,7 @@ _daily_process() {
   _cleanup_ghost_drushrc
   for _Site in `find ${_usEr}/config/server_master/nginx/vhost.d \
     -maxdepth 1 -mindepth 1 -type f | sort`; do
-    _MOMENT=$(date +%y%m%d-%H%M%S 2>&1)
+    _MOMENT=$(date +%y%m%d-%H%M%S)
     echo ${_MOMENT} Start Counting Site ${_Site}
     _Dom=$(echo ${_Site} | cut -d'/' -f9 | awk '{ print $1}' 2>&1)
     _Dan=
@@ -2534,7 +2534,7 @@ _daily_process() {
           _fix_permissions
         fi
       fi
-      _MOMENT=$(date +%y%m%d-%H%M%S 2>&1)
+      _MOMENT=$(date +%y%m%d-%H%M%S)
       echo ${_MOMENT} End Counting Site ${_Site}
     fi
   done
@@ -2771,7 +2771,7 @@ _purge_cruft_machine() {
           chattr -i /home/${_HM_U}.ftp/platforms
           chattr -i /home/${_HM_U}.ftp/platforms/* &> /dev/null
         fi
-        _NOW=$(date +%y%m%d-%H%M%S 2>&1)
+        _NOW=$(date +%y%m%d-%H%M%S)
         [ ! -e "/var/backups/ghost/${_HM_U}/${_NOW}" ] && mkdir -p /var/backups/ghost/${_HM_U}/${_NOW}
         echo "Moving ${i} to /var/backups/ghost/${_HM_U}/${_NOW}"
         mv -f ${i} /var/backups/ghost/${_HM_U}/${_NOW}/
@@ -2787,7 +2787,7 @@ _purge_cruft_machine() {
       _RevisionTest=$(ls ${i} | wc -l 2>&1)
       if [ "${_RevisionTest}" -lt 2 ] && [ ! -z "${_RevisionTest}" ]; then
         echo "_RevisionTest is ${_RevisionTest}"
-        _NOW=$(date +%y%m%d-%H%M%S 2>&1)
+        _NOW=$(date +%y%m%d-%H%M%S)
         mkdir -p ${_usEr}/undo/dist/${_NOW}
         mv -f ${i} ${_usEr}/undo/dist/${_NOW}/ &> /dev/null
         echo "GHOST revision ${i} detected and moved to ${_usEr}/undo/dist/${_NOW}/"
@@ -2816,7 +2816,7 @@ _purge_cruft_machine() {
         ln -sfn ${i}/keys /home/${_HM_U}.ftp/platforms/${_distTrNr}/keys
       fi
       if [ -e "/home/${_HM_U}.ftp/platforms/data" ]; then
-        _NOW=$(date +%y%m%d-%H%M%S 2>&1)
+        _NOW=$(date +%y%m%d-%H%M%S)
         [ ! -e "/var/backups/ghost/${_HM_U}/${_NOW}" ] && mkdir -p /var/backups/ghost/${_HM_U}/${_NOW}
         mv -f /home/${_HM_U}.ftp/platforms/data /var/backups/ghost/${_HM_U}/${_NOW}/platforms_data
       fi
@@ -2911,7 +2911,7 @@ _ghost_codebases_cleanup() {
         _CLEAN_THIS=SKIP
       else
         _CLEAN_THIS="${_ParentDir}"
-        _TSTAMP=`date +%y%m%d-%H%M%S`
+        _TSTAMP=$(date +%y%m%d-%H%M%S)
         mkdir -p ${_CLD}${i}${_TSTAMP}
         echo "Moving ghost ${_CLEAN_THIS} to ${_CLD}${i}${_TSTAMP}/"
         ### mv -f ${_CLEAN_THIS} ${_CLD}${i}${_TSTAMP}/
@@ -3149,9 +3149,9 @@ while [ -e "/run/boa_wait.pid" ]; do
   sleep 5
 done
 #
-_NOW=$(date +%y%m%d-%H%M%S 2>&1)
+_NOW=$(date +%y%m%d-%H%M%S)
 _NOW=${_NOW//[^0-9-]/}
-_DOW=$(date +%u 2>&1)
+_DOW=$(date +%u)
 _DOW=${_DOW//[^1-7]/}
 #
 if [ -e "/root/.force.sites.verify.cnf" ]; then

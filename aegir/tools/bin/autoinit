@@ -118,7 +118,7 @@ cd /root/
 ### Noticeable messages
 ###
 _msg() {
-  echo "AutoInit v.${_tRee} [$(date +%T 2>&1)] ==> $*"
+  echo "AutoInit v.${_tRee} [$(date +%T)] ==> $*"
 }
 
 _check_set_mode() {
@@ -481,7 +481,7 @@ _ifnames_grub_check_sync() {
 _if_remove_conflicting_sources() {
   _SRC_TEST=$(ls -la /etc/apt/sources.list.d/* 2>&1)
   if [[ ! "${_SRC_TEST}" =~ "No such file" ]]; then
-    _msg "Removing conflicting sources from /etc/apt/sources.list.d on this system" >> "${_logInt}"
+    _msg "Removing conflicting sources from /etc/apt/sources.list.d on this system" >> "${_logAch}"
     mv -f /etc/apt/sources.list.d/* /var/backups/
   fi
 }
@@ -536,8 +536,8 @@ _init_prepare() {
       touch /run/autoinit.pid
       /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
       ${_INITINS} lsb-release >> "${_logSlt}"
-      _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
-      _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+      _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
+      _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
       _msg "We need to install some tools early..." >> "${_logInt}"
       /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
       if [ "${_AUTO_MODE}" = "full" ] && [ "${_VMFAMILY}" != "AWS" ]; then
@@ -625,8 +625,8 @@ _ensure_devuan_base_files() {
 }
 
 _init_offsystemd() {
-  _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   _msg "Running _init_offsystemd procedure..." >> "${_logInt}"
   touch /run/autoinit.pid
   _msg "Launching a quick dist-upgrade..." >> "${_logInt}"
@@ -667,8 +667,8 @@ _init_offsystemd() {
       _ensure_devuan_base_files
     fi
   fi
-  _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   _msg "Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
   if [ "${_OS_CODE}" = "daedalus" ]; then
     echo " " >> "${_logInt}"
@@ -688,8 +688,8 @@ _init_offsystemd() {
 }
 
 _init_cycle() {
-  _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   _msg "Running _init_cycle procedure..." >> "${_logInt}"
   touch /run/autoinit.pid
   _msg "Your current system is ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
@@ -788,8 +788,8 @@ _init_cycle() {
       fi
     fi
   fi
-  _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   if [ "${_OLD_SYS}" = "Debian" ]; then
     _msg "Time for reboot and next upgrade cycle..." >> "${_logInt}"
     echo " " >> "${_logInt}"
@@ -840,8 +840,8 @@ _init_start() {
 }
 
 _init_launch() {
-  _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   touch /run/autoinit.pid
   if [ ! -e "/root/.autoinit.log" ]; then
     echo "Launching BOA System INIT on ${_OS_DIST}/${_OS_CODE}..."
