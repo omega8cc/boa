@@ -350,7 +350,19 @@ _csf_lfd_install_upgrade() {
       rm -f /etc/init.d/{csf,lfd}
       rm -rf /etc/csf
     else
+      _CSF_ITD=$(/usr/sbin/csf --version 2>&1 \
+        | tr -d "\n" \
+        | tr -d "v" \
+        | cut -d"-" -f1 \
+        | awk '{ print $2}' 2>&1)
+      if [ "${_CSF_ITD}" = "${_CSF_VRN}" ]; then
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "INFO: Installed CSF/LFD version ${_CSF_ITD}, OK"
+        fi
       else
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "INFO: Installed CSF/LFD version ${_CSF_ITD}, upgrade required"
+        fi
         _CSF_MODE=upgrade
         _csf_install
         _csf_lfd_gateway_allow
