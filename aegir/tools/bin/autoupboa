@@ -391,7 +391,42 @@ if [ "${_TIME}" = "1200" ] || [ "${_MINUTE}" = "00" ]; then
   _send_boa_system_report
 fi
 
-_linode_vm_postinstall() {
+_check_system_manufacturer() {
+  # Extract manufacturer string
+  _SYS_MANUFACTURER_RAW=$(dmidecode -s system-manufacturer 2>/dev/null)
+
+  # Trim leading/trailing whitespace, convert spaces to underscores
+  _SYS_MANUFACTURER_CLEAN=$(printf "%s" "${_SYS_MANUFACTURER_RAW}" \
+    | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -e 's/[[:space:]]\+/_/g')
+
+  # Normalise: keep only A-Za-z0-9_
+  _SYS_MANUFACTURER=$(printf "%s" "${_SYS_MANUFACTURER_CLEAN}" | tr -cd 'A-Za-z0-9_')
+
+  # Enforce max length with safe underscore-aware truncation
+  _MAX_LEN=32
+  if [ "${#_SYS_MANUFACTURER}" -gt "${_MAX_LEN}" ]; then
+    _CUT=$(printf "%s" "${_SYS_MANUFACTURER}" | cut -c1-"${_MAX_LEN}")
+    _SAFE_CUT=$(printf "%s" "${_CUT}" | sed 's/_[^_]*$//')
+    if [ -n "${_SAFE_CUT}" ]; then
+      _SYS_MANUFACTURER="${_SAFE_CUT}"
+    else
+      _SYS_MANUFACTURER="${_CUT}"
+    fi
+  fi
+
+  # Secondary variable: lowercase
+  _SYS_MANUFACTURER_LC=$(printf "%s" "${_SYS_MANUFACTURER}" | tr 'A-Z' 'a-z')
+
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    echo "_SYS_MANUFACTURER_RAW: ${_SYS_MANUFACTURER_RAW}"
+    echo "_SYS_MANUFACTURER_CLEAN: ${_SYS_MANUFACTURER_CLEAN}"
+    echo "_SYS_MANUFACTURER: ${_SYS_MANUFACTURER}"
+    echo "_SYS_MANUFACTURER_LC: ${_SYS_MANUFACTURER_LC}"
+  fi
+}
+_check_system_manufacturer
+
+_is_protected_run() {
   _protectedRun=FALSE
   _optBin="/opt/local/bin"
   _boaBins="autoinit barracuda boa octopus"
@@ -406,6 +441,35 @@ _linode_vm_postinstall() {
   [ -e "/run/octopus_install_run.pid" ] && _protectedRun=TRUE
   [ -e "/run/boa_run.pid" ] && _protectedRun=TRUE
   [ -e "/run/boa_wait.pid" ] && _protectedRun=TRUE
+}
+
+_generic_vm_postinstall() {
+  _is_protected_run
+  if [ "${_protectedRun}" = "FALSE" ]; then
+    if [ -n "${_SYS_MANUFACTURER_LC}" ]; then
+      if [ -e "/var/aegir/drush" ] \
+        && [ -e "/data/u" ] \
+        && [ -e "/var/xdrago" ]; then
+        if [ "$(boa info | grep -c Percona)" -ge 2 ]; then
+          touch /run/${_SYS_MANUFACTURER_LC}_vm_postinstall.pid
+          chattr +i /run/${_SYS_MANUFACTURER_LC}_vm_postinstall.pid
+          rm -f /run/${_SYS_MANUFACTURER_LC}_vm.pid
+          nohup /opt/local/bin/barracuda up-${_tRee} system noscreen > /dev/null 2>&1 &
+        fi
+      fi
+    fi
+  fi
+}
+if [ -n "${_SYS_MANUFACTURER_LC}" ]; then
+  if [[ ! "${_SYS_MANUFACTURER_LC}" =~ "linode" ]] && [[ ! "${_SYS_MANUFACTURER_LC}" =~ "hetzner" ]]; then
+    if [ -e "/run/${_SYS_MANUFACTURER_LC}_vm.pid" ] && [ ! -e "/run/${_SYS_MANUFACTURER_LC}_vm_postinstall.pid" ]; then
+      _generic_vm_postinstall
+    fi
+  fi
+fi
+
+_linode_vm_postinstall() {
+  _is_protected_run
   if [ "${_protectedRun}" = "FALSE" ]; then
     if dmidecode -s system-manufacturer | grep -i 'Linode' &> /dev/null; then
       if [ -e "/var/aegir/drush" ] \
@@ -422,6 +486,25 @@ _linode_vm_postinstall() {
   fi
 }
 [ -e "/run/linode_vm.pid" ] && [ ! -e "/run/linode_vm_postinstall.pid" ] && _linode_vm_postinstall
+
+_hetzner_vm_postinstall() {
+  _is_protected_run
+  if [ "${_protectedRun}" = "FALSE" ]; then
+    if dmidecode -s system-manufacturer | grep -i 'Hetzner' &> /dev/null; then
+      if [ -e "/var/aegir/drush" ] \
+        && [ -e "/data/u" ] \
+        && [ -e "/var/xdrago" ]; then
+        if [ "$(boa info | grep -c Percona)" -ge 2 ]; then
+          touch /run/hetzner_vm_postinstall.pid
+          chattr +i /run/hetzner_vm_postinstall.pid
+          rm -f /run/hetzner_vm.pid
+          nohup /opt/local/bin/barracuda up-${_tRee} system noscreen > /dev/null 2>&1 &
+        fi
+      fi
+    fi
+  fi
+}
+[ -e "/run/hetzner_vm.pid" ] && [ ! -e "/run/hetzner_vm_postinstall.pid" ] && _hetzner_vm_postinstall
 
 _crontab_update() {
   if [ -e "/etc/crontab" ]; then
