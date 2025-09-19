@@ -1205,10 +1205,6 @@ _php_cli_local_ini_update() {
         _U_INI=${e}
       fi
     done
-    _OPCD="/var/www/phpcache"
-    mkdir -p ${_OPCD}/aegir/aegir.{84,83,82,81,80,74,73,72,71,70,56}
-    chgrp www-data ${_OPCD}/aegir/aegir.{84,83,82,81,80,74,73,72,71,70,56}
-    chmod 770 ${_OPCD}/aegir/aegir.{84,83,82,81,80,74,73,72,71,70,56}
     if [ -e "${_U_II}" ]; then
       _INI="open_basedir = \".: \
         /data/all:           \
@@ -1232,7 +1228,6 @@ _php_cli_local_ini_update() {
         /dev/urandom:        \
         /opt/tmp/make_local: \
         /opt/tools/drush:    \
-        ${_OPCD}/aegir:      \
         /tmp:                \
         /usr/bin:            \
         /usr/local/bin:      \
