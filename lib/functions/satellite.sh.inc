@@ -4176,6 +4176,40 @@ _satellite_if_sql_exception_test() {
   fi
 }
 
+_check_system_manufacturer() {
+  # Extract manufacturer string
+  _SYS_MANUFACTURER_RAW=$(dmidecode -s system-manufacturer 2>/dev/null)
+
+  # Trim leading/trailing whitespace, convert spaces to underscores
+  _SYS_MANUFACTURER_CLEAN=$(printf "%s" "${_SYS_MANUFACTURER_RAW}" \
+    | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -e 's/[[:space:]]\+/_/g')
+
+  # Normalise: keep only A-Za-z0-9_
+  _SYS_MANUFACTURER=$(printf "%s" "${_SYS_MANUFACTURER_CLEAN}" | tr -cd 'A-Za-z0-9_')
+
+  # Enforce max length with safe underscore-aware truncation
+  _MAX_LEN=32
+  if [ "${#_SYS_MANUFACTURER}" -gt "${_MAX_LEN}" ]; then
+    _CUT=$(printf "%s" "${_SYS_MANUFACTURER}" | cut -c1-"${_MAX_LEN}")
+    _SAFE_CUT=$(printf "%s" "${_CUT}" | sed 's/_[^_]*$//')
+    if [ -n "${_SAFE_CUT}" ]; then
+      _SYS_MANUFACTURER="${_SAFE_CUT}"
+    else
+      _SYS_MANUFACTURER="${_CUT}"
+    fi
+  fi
+
+  # Secondary variable: lowercase
+  _SYS_MANUFACTURER_LC=$(printf "%s" "${_SYS_MANUFACTURER}" | tr 'A-Z' 'a-z')
+
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "_SYS_MANUFACTURER_RAW: ${_SYS_MANUFACTURER_RAW}"
+    _msg "_SYS_MANUFACTURER_CLEAN: ${_SYS_MANUFACTURER_CLEAN}"
+    _msg "_SYS_MANUFACTURER: ${_SYS_MANUFACTURER}"
+    _msg "_SYS_MANUFACTURER_LC: ${_SYS_MANUFACTURER_LC}"
+  fi
+}
+
 _satellite_if_running_as_root_octopus() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _satellite_if_running_as_root_octopus"
