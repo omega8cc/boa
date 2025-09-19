@@ -980,7 +980,7 @@ _up_action() {
       echo "_TOMCAT_TO_JETTY=YES" >>                                  ${_barCnf}
     fi
 
-    if [ -e "${_vBs}/${_barName}" ]; then
+    if [ -e "${_vBs}/${_barName}" ] && [ -e "${_vBs}/${_filIncB}" ]; then
       if [ "${_outP}" = "log" ] \
         || [ "${_outP}" = "system" ] \
         || [ "${_outP}" = "disable" ] \
@@ -1105,10 +1105,21 @@ _up_action() {
       fi
     fi
   else
-    echo
-    echo "  ${_vBs}/${_barName} installer not available - try again later"
-    echo "  Make sure that required ${_barCnf} file also exists"
-    echo
+    if [ ! -e "${_vBs}/${_barName}" ]; then
+      echo
+      echo "  ${_vBs}/${_barName} installer not available, exit"
+      echo
+    fi
+    if [ ! -e "${_vBs}/${_filIncB}" ]; then
+      echo
+      echo "  ${_vBs}/${_filIncB} inc file not available, exit"
+      echo
+    fi
+    if [ ! -e "${_barCnf}" ]; then
+      echo
+      echo "  ${_barCnf} file not available, exit"
+      echo
+    fi
     _clean_pid_exit _up_action_a
   fi
 }
@@ -1760,7 +1771,6 @@ _proceed() {
     touch /root/.debug-boa-installer.cnf
     touch /root/.debug-octopus-installer.cnf
   fi
-  [ ! -e "/root/.mysql.yes.new.password.cnf" ] && touch /root/.mysql.yes.new.password.cnf
   if [ -e "/root/.run-to-daedalus.cnf" ] \
     || [ -e "/root/.run-to-chimaera.cnf" ] \
     || [ -e "/root/.run-to-beowulf.cnf" ] \

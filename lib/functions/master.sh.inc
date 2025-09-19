@@ -1020,7 +1020,8 @@ EOFMYSQL
       _msg "FATAL ERROR: Something went wrong, Aegir Master Instance not installed!"
       _msg "HINT: Please check /var/aegir/install.log for details, and then"
       _msg "HINT: run the same install command again to complete installation."
-      touch /root/.force.reinstall.cnf
+      _msg "HINT: You can also enforce installation with empty control file:"
+      _msg "      touch /root/.force.reinstall.cnf -- and then try again."
       _clean_pid_exit _aegir_master_install_upgrade_e
     fi
 
@@ -1204,10 +1205,6 @@ _php_cli_local_ini_update() {
         _U_INI=${e}
       fi
     done
-    _OPCD="/var/www/phpcache"
-    mkdir -p ${_OPCD}/aegir/aegir.{84,83,82,81,80,74,73,72,71,70,56}
-    chgrp www-data ${_OPCD}/aegir/aegir.{84,83,82,81,80,74,73,72,71,70,56}
-    chmod 770 ${_OPCD}/aegir/aegir.{84,83,82,81,80,74,73,72,71,70,56}
     if [ -e "${_U_II}" ]; then
       _INI="open_basedir = \".: \
         /data/all:           \
@@ -1231,7 +1228,6 @@ _php_cli_local_ini_update() {
         /dev/urandom:        \
         /opt/tmp/make_local: \
         /opt/tools/drush:    \
-        ${_OPCD}/aegir:      \
         /tmp:                \
         /usr/bin:            \
         /usr/local/bin:      \

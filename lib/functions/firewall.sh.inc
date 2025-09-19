@@ -131,7 +131,6 @@ _csf_install() {
   ### Fix for iptables paths backward compatibility
   ###
   rm -f ${_pthLog}/lastFire
-  ### from https://download.configserver.com/csf.tgz
   if [ "${_OS_CODE}" = "stretch" ]; then
     _CSF_VRN=13.08
   elif [ "${_OS_CODE}" = "jessie" ]; then
@@ -187,17 +186,19 @@ _csf_install() {
         _msg "TEST: csf/lfd firewall should work fine on this system"
       fi
     fi
-    mv -f /etc/csf/csf.conf \
-      /etc/csf/csf.conf-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
-    cp -af ${_locCnf}/var/csf.conf /etc/csf/csf.conf
-    sed -i "s/notify\@omega8.cc/${_MY_EMAIL}/g" /etc/csf/csf.conf &> /dev/null
-    wait
-    sed -i "s/TCP_IN = \"20,21,22,/TCP_IN = \"20,21,${_SSH_PORT},/g" \
-      /etc/csf/csf.conf &> /dev/null
-    wait
-    sed -i "s/^CC_SRC .*/CC_SRC = \"2\"/g" /etc/csf/csf.conf &> /dev/null
-    wait
-    chmod 600 /etc/csf/csf.conf &> /dev/null
+    if [ "${_CUSTOM_CONFIG_CSF}" = "YES" ]; then
+      mv -f /etc/csf/csf.conf \
+        /etc/csf/csf.conf-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
+      cp -af ${_locCnf}/var/csf.conf /etc/csf/csf.conf
+      sed -i "s/notify\@omega8.cc/${_MY_EMAIL}/g" /etc/csf/csf.conf &> /dev/null
+      wait
+      sed -i "s/TCP_IN = \"20,21,22,/TCP_IN = \"20,21,${_SSH_PORT},/g" \
+        /etc/csf/csf.conf &> /dev/null
+      wait
+      sed -i "s/^CC_SRC .*/CC_SRC = \"2\"/g" /etc/csf/csf.conf &> /dev/null
+      wait
+      chmod 600 /etc/csf/csf.conf &> /dev/null
+    fi
     if [ -e "/etc/ssh/sshd_config" ]; then
       sed -i "s/^Port.*/Port ${_SSH_PORT}/g"  /etc/ssh/sshd_config
       wait
@@ -307,7 +308,9 @@ _csf_lfd_install_upgrade() {
   if [[ "${_XTRAS_LIST}" =~ "ALL" ]] \
     || [[ "${_XTRAS_LIST}" =~ "CSF" ]] \
     || [ "${_CSF_CLSTR}" = "YES" ]; then
-    if [ ! -e "/run/cloud_vhost.pid" ] && [ ! -e "/run/linode_vm.pid" ]; then
+    if [ ! -e "/run/cloud_vhost.pid" ] \
+      && [ ! -e "/run/linode_vm.pid" ] \
+      && [ ! -e "/run/hetzner_vm.pid" ]; then
       if [ ! -e "/usr/sbin/csf" ]; then
         echo " "
         if _prompt_yes_no "Do you want to install csf/lfd firewall?" ; then
@@ -347,9 +350,19 @@ _csf_lfd_install_upgrade() {
       rm -f /etc/init.d/{csf,lfd}
       rm -rf /etc/csf
     else
-      if [ "${_CUSTOM_CONFIG_CSF}" = "YES" ]; then
-        _DO_NOTHING=YES
+      _CSF_ITD=$(/usr/sbin/csf --version 2>&1 \
+        | tr -d "\n" \
+        | tr -d "v" \
+        | cut -d"-" -f1 \
+        | awk '{ print $2}' 2>&1)
+      if [ "${_CSF_ITD}" = "${_CSF_VRN}" ]; then
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "INFO: Installed CSF/LFD version ${_CSF_ITD}, OK"
+        fi
       else
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "INFO: Installed CSF/LFD version ${_CSF_ITD}, upgrade required"
+        fi
         _CSF_MODE=upgrade
         _csf_install
         _csf_lfd_gateway_allow

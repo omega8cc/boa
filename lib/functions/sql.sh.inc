@@ -929,42 +929,6 @@ _install_with_aptitude_sql() {
   if [ -x "/usr/sbin/aa-teardown" ]; then
     _mrun "aa-teardown" 2> /dev/null
   fi
-  if [ -e "/usr/bin/mytop" ]; then
-    _mrun "apt-get remove mytop -y -qq" 2> /dev/null
-    rm -f /usr/bin/mytop
-  fi
-  _MYTOP_REINSTALL=NO
-  _MYTOP_TEST=$(mytop -b 2>&1)
-  if [[ "${_MYTOP_TEST}" =~ "cannot open shared object file" ]] \
-    || [[ "${_MYTOP_TEST}" =~ "you may need to install" ]] \
-    || [[ "${_MYTOP_TEST}" =~ "failed" ]]; then
-    _MYTOP_REINSTALL=YES
-  fi
-  if [ -e "/usr/bin/mysql" ]; then
-    if [ ! -e "/usr/local/bin/mytop" ] || [ "${_MYTOP_REINSTALL}" = "YES" ]; then
-      _msg "INFO: Building MyTop from sources..."
-      _check_mysql_version
-      _apt_clean_update
-      _mrun "${_INSTAPP} libperl-dev" 2> /dev/null
-      _mrun "${_INSTAPP} cpanminus" 2> /dev/null
-      if [ "${_DB_V}" != "5.7" ] || [ "${_SQL_UPGRADE}" = "YES" ]; then
-        _mrun "cpanm DBD::mysql" 2> /dev/null
-        _mrun "cpanm DBI" 2> /dev/null
-        _mrun "cpanm Term::ReadKey" 2> /dev/null
-      else
-        _mrun "cpanm DBD::mysql@4.050" 2> /dev/null
-        _mrun "cpanm Term::ReadKey" 2> /dev/null
-      fi
-      cd /var/opt
-      rm -rf git*
-      _get_dev_src "mytop-1.6.tar.gz"
-      cd /var/opt/mytop-1.6
-      _mrun "perl Makefile.PL" 2> /dev/null
-      _mrun "make -j $(nproc) --quiet" 2> /dev/null
-      _mrun "make --quiet install" 2> /dev/null
-      ldconfig 2> /dev/null
-    fi
-  fi
   if [ "${_DB_SERVER}" = "Percona" ] \
     && [ "${_SQL_FORCE_REINSTALL}" = "YES" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then

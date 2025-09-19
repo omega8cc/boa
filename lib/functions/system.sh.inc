@@ -327,6 +327,42 @@ _count_cpu() {
 }
 
 #
+# Discover system-manufacturer.
+_check_system_manufacturer() {
+  # Extract manufacturer string
+  _SYS_MANUFACTURER_RAW=$(dmidecode -s system-manufacturer 2>/dev/null)
+
+  # Trim leading/trailing whitespace, convert spaces to underscores
+  _SYS_MANUFACTURER_CLEAN=$(printf "%s" "${_SYS_MANUFACTURER_RAW}" \
+    | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -e 's/[[:space:]]\+/_/g')
+
+  # Normalise: keep only A-Za-z0-9_
+  _SYS_MANUFACTURER=$(printf "%s" "${_SYS_MANUFACTURER_CLEAN}" | tr -cd 'A-Za-z0-9_')
+
+  # Enforce max length with safe underscore-aware truncation
+  _MAX_LEN=32
+  if [ "${#_SYS_MANUFACTURER}" -gt "${_MAX_LEN}" ]; then
+    _CUT=$(printf "%s" "${_SYS_MANUFACTURER}" | cut -c1-"${_MAX_LEN}")
+    _SAFE_CUT=$(printf "%s" "${_CUT}" | sed 's/_[^_]*$//')
+    if [ -n "${_SAFE_CUT}" ]; then
+      _SYS_MANUFACTURER="${_SAFE_CUT}"
+    else
+      _SYS_MANUFACTURER="${_CUT}"
+    fi
+  fi
+
+  # Secondary variable: lowercase
+  _SYS_MANUFACTURER_LC=$(printf "%s" "${_SYS_MANUFACTURER}" | tr 'A-Z' 'a-z')
+
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "_SYS_MANUFACTURER_RAW: ${_SYS_MANUFACTURER_RAW}"
+    _msg "_SYS_MANUFACTURER_CLEAN: ${_SYS_MANUFACTURER_CLEAN}"
+    _msg "_SYS_MANUFACTURER: ${_SYS_MANUFACTURER}"
+    _msg "_SYS_MANUFACTURER_LC: ${_SYS_MANUFACTURER_LC}"
+  fi
+}
+
+#
 # Make sure that we are root.
 _if_running_as_root_barracuda() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -346,6 +382,7 @@ _if_running_as_root_barracuda() {
       _apt_clean_update
       ${_INITINS} dmidecode &> /dev/null
     fi
+    _check_system_manufacturer
     # Check for Amazon EC2 in the system manufacturer field
     if dmidecode -s system-manufacturer | grep -i 'Amazon EC2' &> /dev/null; then
       _VMFAMILY="AWS"
@@ -355,6 +392,20 @@ _if_running_as_root_barracuda() {
         || [ ! -e "/data/u" ] \
         || [ ! -e "/var/xdrago" ]; then
         [ ! -e "/run/linode_vm_postinstall.pid" ] && touch /run/linode_vm.pid
+      fi
+    elif dmidecode -s system-manufacturer | grep -i 'Hetzner' &> /dev/null; then
+      if  [ ! -e "/var/aegir/drush" ] \
+        || [ ! -e "/data/u" ] \
+        || [ ! -e "/var/xdrago" ]; then
+        [ ! -e "/run/hetzner_vm_postinstall.pid" ] && touch /run/hetzner_vm.pid
+      fi
+    else
+      if [ -n "${_SYS_MANUFACTURER_LC}" ]; then
+        if  [ ! -e "/var/aegir/drush" ] \
+          || [ ! -e "/data/u" ] \
+          || [ ! -e "/var/xdrago" ]; then
+          [ ! -e "/run/${_SYS_MANUFACTURER_LC}_vm_postinstall.pid" ] && touch /run/${_SYS_MANUFACTURER_LC}_vm.pid
+        fi
       fi
     fi
     _VM_TEST="$(uname -a)"
