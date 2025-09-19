@@ -186,17 +186,19 @@ _csf_install() {
         _msg "TEST: csf/lfd firewall should work fine on this system"
       fi
     fi
-    mv -f /etc/csf/csf.conf \
-      /etc/csf/csf.conf-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
-    cp -af ${_locCnf}/var/csf.conf /etc/csf/csf.conf
-    sed -i "s/notify\@omega8.cc/${_MY_EMAIL}/g" /etc/csf/csf.conf &> /dev/null
-    wait
-    sed -i "s/TCP_IN = \"20,21,22,/TCP_IN = \"20,21,${_SSH_PORT},/g" \
-      /etc/csf/csf.conf &> /dev/null
-    wait
-    sed -i "s/^CC_SRC .*/CC_SRC = \"2\"/g" /etc/csf/csf.conf &> /dev/null
-    wait
-    chmod 600 /etc/csf/csf.conf &> /dev/null
+    if [ "${_CUSTOM_CONFIG_CSF}" = "YES" ]; then
+      mv -f /etc/csf/csf.conf \
+        /etc/csf/csf.conf-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
+      cp -af ${_locCnf}/var/csf.conf /etc/csf/csf.conf
+      sed -i "s/notify\@omega8.cc/${_MY_EMAIL}/g" /etc/csf/csf.conf &> /dev/null
+      wait
+      sed -i "s/TCP_IN = \"20,21,22,/TCP_IN = \"20,21,${_SSH_PORT},/g" \
+        /etc/csf/csf.conf &> /dev/null
+      wait
+      sed -i "s/^CC_SRC .*/CC_SRC = \"2\"/g" /etc/csf/csf.conf &> /dev/null
+      wait
+      chmod 600 /etc/csf/csf.conf &> /dev/null
+    fi
     if [ -e "/etc/ssh/sshd_config" ]; then
       sed -i "s/^Port.*/Port ${_SSH_PORT}/g"  /etc/ssh/sshd_config
       wait
@@ -348,8 +350,6 @@ _csf_lfd_install_upgrade() {
       rm -f /etc/init.d/{csf,lfd}
       rm -rf /etc/csf
     else
-      if [ "${_CUSTOM_CONFIG_CSF}" = "YES" ]; then
-        _DO_NOTHING=YES
       else
         _CSF_MODE=upgrade
         _csf_install
