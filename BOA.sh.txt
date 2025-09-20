@@ -766,6 +766,50 @@ _update_agents() {
     fi
   fi
 
+  if [ -e "/var/xdrago/monitor/check" ] \
+    && [ -d "/var/aegir/drush" ] \
+    && [ ! -e "${_pthCtrl}/backboa.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
+    if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt 0 ]; then
+      echo "The duplicity backup is running!"
+    else
+      if [ -e "${_optBin}/backboa" ]; then
+        mv -f ${_optBin}/backboa ${_optBin}/backboa.old
+      fi
+      curl ${_crlGet} "${_urlHmr}/tools/bin/backboa" -o ${_optBin}/backboa
+      if [ -e "${_optBin}/backboa" ]; then
+        chmod 700 ${_optBin}/backboa
+        chown root:root ${_optBin}/backboa
+        touch ${_pthCtrl}/backboa.sh.ctrl.f99.${_tRee}.${_xSrl}.pid
+      else
+        if [ -e "${_optBin}/backboa.old" ]; then
+          mv -f ${_optBin}/backboa.old ${_optBin}/backboa
+        fi
+      fi
+    fi
+  fi
+
+  if [ -e "/var/xdrago/monitor/check" ] \
+    && [ -d "/var/aegir/drush" ] \
+    && [ ! -e "${_pthCtrl}/duobackboa.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
+    if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt 0 ]; then
+      echo "The duplicity backup is running!"
+    else
+      if [ -e "${_optBin}/duobackboa" ]; then
+        mv -f ${_optBin}/duobackboa ${_optBin}/duobackboa.old
+      fi
+      curl ${_crlGet} "${_urlHmr}/tools/bin/duobackboa" -o ${_optBin}/duobackboa
+      if [ -e "${_optBin}/duobackboa" ]; then
+        chmod 700 ${_optBin}/duobackboa
+        chown root:root ${_optBin}/duobackboa
+        touch ${_pthCtrl}/duobackboa.sh.ctrl.f99.${_tRee}.${_xSrl}.pid
+      else
+        if [ -e "${_optBin}/duobackboa.old" ]; then
+          mv -f ${_optBin}/duobackboa.old ${_optBin}/duobackboa
+        fi
+      fi
+    fi
+  fi
+
   if [ -e "/root/.remote_backups/schedule/backup_schedule.txt" ]; then
     _BROKEN_UPDATE_TEST=$(grep "Under Construction" /root/.remote_backups/run/*.sh 2>&1)
     if [ ! -z "${_BROKEN_UPDATE_TEST}" ]; then
@@ -3654,50 +3698,52 @@ _update_boa_tools() {
   fi
   mkdir -p ${_optBin}
   _boaBins="aptcleanup \
-           autobeowulf \
-           autochimaera \
-           autodaedalus \
-           autoinit \
-           autoupboa \
-           backchain \
-           barracuda \
-           boa \
-           codebasecheck \
-           copydbackup \
-           dcysetup \
-           fancynow \
-           ffmirror \
-           killer \
-           memorytuner \
-           mergecsf \
-           multiback \
-           mybackup \
-           mycnfup \
-           mysqltuner5 \
-           mysqltuner8 \
-           octopus \
-           perftest \
-           randpass \
-           setprio \
-           smtpgapps \
-           sqlclean \
-           sqlmagic \
-           syncpass \
-           synproxy \
-           synproxy_hook_fix \
-           synproxy_monitor \
-           synproxy_reassert \
-           synproxy_rollback \
-           synproxy_snapshot \
-           synproxy_status \
-           thinkdifferent \
-           verifyvhostsdns \
-           vhostcheck \
-           vmnetfix \
-           weblogx \
-           websh \
-           xboa \
-           xcopy"
+            autobeowulf \
+            autochimaera \
+            autodaedalus \
+            autoinit \
+            autoupboa \
+            backboa \
+            backchain \
+            barracuda \
+            boa \
+            codebasecheck \
+            copydbackup \
+            dcysetup \
+            duobackboa \
+            fancynow \
+            ffmirror \
+            killer \
+            memorytuner \
+            mergecsf \
+            multiback \
+            mybackup \
+            mycnfup \
+            mysqltuner5 \
+            mysqltuner8 \
+            octopus \
+            perftest \
+            randpass \
+            setprio \
+            smtpgapps \
+            sqlclean \
+            sqlmagic \
+            syncpass \
+            synproxy \
+            synproxy_hook_fix \
+            synproxy_monitor \
+            synproxy_reassert \
+            synproxy_rollback \
+            synproxy_snapshot \
+            synproxy_status \
+            thinkdifferent \
+            verifyvhostsdns \
+            vhostcheck \
+            vmnetfix \
+            weblogx \
+            websh \
+            xboa \
+            xcopy"
   for _cbn in ${_boaBins}; do
     if [ -e "${_optBin}/${_cbn}" ]; then
       if [ `ps aux | grep -v "grep" | grep --count "/${_cbn}"` -gt 0 ]; then
@@ -3755,16 +3801,6 @@ _update_boa_tools() {
     if [ ! -e "${_usrBin}/mybackup" ] && [ -e "${_optBin}/mybackup" ]; then
       ln -s ${_optBin}/mybackup ${_usrBin}/mybackup
     fi
-  fi
-
-  [ -e "/root/.backboa.autoupdate" ] && rm -f /root/.backboa.autoupdate
-  if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt 0 ]; then
-    echo "The duplicity backup is running!"
-  else
-    rm -f ${_optBin}/{backboa,duobackboa}
-    curl ${_crlGet} "${_urlHmr}/${_tBn}/backboa"      -o ${_optBin}/backboa
-    curl ${_crlGet} "${_urlHmr}/${_tBn}/duobackboa"   -o ${_optBin}/duobackboa
-    chmod 700 ${_optBin}/{backboa,duobackboa}
   fi
 
   echo "=== BOA executables permissions setup ==="
