@@ -108,7 +108,15 @@ _if_allow_aegir_queue() {
 
 ###-------------SYSTEM-----------------###
 
-if [ -e "/run/boa_wait.pid" ] \
+_SQLBACKUP_RUNNING=NO
+if (( $(pgrep -fc 'mysql_backup.sh') > 0 )); then
+  _SQLBACKUP_RUNNING=YES
+elif (( $(pgrep -fc 'mysql_cluster_backup.sh') > 0 )); then
+  _SQLBACKUP_RUNNING=YES
+fi
+
+if [ "${_SQLBACKUP_RUNNING}" = "TRUE" ] \
+  || [ -e "/run/boa_wait.pid" ] \
   || [ -e "/run/boa_cron_wait.pid" ]; then
   if [ ! -e "/root/.force.queue.runner.cnf" ]; then
     touch /var/log/boa/wait-runner.pid
