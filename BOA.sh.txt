@@ -823,6 +823,28 @@ _update_agents() {
 
   if [ -e "/root/.remote_backups/schedule/backup_schedule.txt" ] \
     && [ -d "/var/aegir/drush" ] \
+    && [ ! -e "${_pthCtrl}/dcysetup.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
+    if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt 0 ]; then
+      echo "The duplicity backup is running!"
+    else
+      if [ -e "${_optBin}/dcysetup" ]; then
+        mv -f ${_optBin}/dcysetup ${_optBin}/dcysetup.old
+      fi
+      curl ${_crlGet} "${_urlHmr}/tools/bin/dcysetup" -o ${_optBin}/dcysetup
+      if [ -e "${_optBin}/dcysetup" ]; then
+        chmod 700 ${_optBin}/dcysetup
+        chown root:root ${_optBin}/dcysetup
+        touch ${_pthCtrl}/dcysetup.sh.ctrl.f99.${_tRee}.${_xSrl}.pid
+      else
+        if [ -e "${_optBin}/dcysetup.old" ]; then
+          mv -f ${_optBin}/dcysetup.old ${_optBin}/dcysetup
+        fi
+      fi
+    fi
+  fi
+
+  if [ -e "/root/.remote_backups/schedule/backup_schedule.txt" ] \
+    && [ -d "/var/aegir/drush" ] \
     && [ ! -e "${_pthCtrl}/multiback.sh.ctrl.f37.${_tRee}.${_xSrl}.pid" ]; then
     if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt 0 ]; then
       echo "The duplicity backup is running!"
