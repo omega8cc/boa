@@ -3653,8 +3653,8 @@ _update_boa_tools() {
     touch ${_pthLog}/updateFx30.ctrl.${_tRee}.${_xSrl}.pid
   fi
   mkdir -p ${_optBin}
-  _boaBins="autobeowulf \
-           aptcleanup \
+  _boaBins="aptcleanup \
+           autobeowulf \
            autochimaera \
            autodaedalus \
            autoinit \
