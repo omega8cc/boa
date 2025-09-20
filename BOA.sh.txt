@@ -47,7 +47,7 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 export _tRee=pro
 export _xSrl=570proT07
 export _rLsn="BOA-5.7.12"
-export _bTs=570v39
+export _bTs=570v41
 
 ###
 ### Avoid too many questions
@@ -1005,7 +1005,7 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/mysql.sh.ctrl.f89.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/mysql.sh.ctrl.f88.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/mysql.sh /var/xdrago/monitor/check/mysql.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/mysql.sh" -o /var/xdrago/monitor/check/mysql.sh
     if [ -e "/var/xdrago/monitor/check/mysql.sh" ]; then
@@ -1024,7 +1024,7 @@ _update_agents() {
       fi
       chmod 700 /var/xdrago/monitor/check/mysql.sh
       chown root:root /var/xdrago/monitor/check/mysql.sh
-      touch ${_pthLog}/mysql.sh.ctrl.f89.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/mysql.sh.ctrl.f88.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/monitor/check/mysql.sh.old /var/xdrago/monitor/check/mysql.sh
     fi
@@ -1314,13 +1314,13 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/runner.sh.ctrl.f94.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/runner.sh.ctrl.f93.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/runner.sh /var/xdrago/runner.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/runner.sh" -o /var/xdrago/runner.sh
     if [ -e "/var/xdrago/runner.sh" ]; then
       chmod 700 /var/xdrago/runner.sh
       chown root:root /var/xdrago/runner.sh
-      touch ${_pthLog}/runner.sh.ctrl.f94.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/runner.sh.ctrl.f93.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/runner.sh.old /var/xdrago/runner.sh
     fi
@@ -3634,7 +3634,7 @@ _if_boa_key_tools_update_allowed() {
 
 _update_boa_tools() {
   mkdir -p ${_usrBin}
-  if [ -e "${_pthLog}" ] && [ ! -e "${_pthLog}/updateFx28.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+  if [ -e "${_pthLog}" ] && [ ! -e "${_pthLog}/updateFx30.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     _fxPp="fix-drupal-platform-permissions.sh"
     _fxSp="fix-drupal-site-permissions.sh"
     _fxPo="fix-drupal-platform-ownership.sh"
@@ -3650,10 +3650,11 @@ _update_boa_tools() {
     chmod 700 ${_usrBin}/${_fxPo}
     chmod 700 ${_usrBin}/${_fxSo}
     chmod 700 ${_usrBin}/${_fxLo}
-    touch ${_pthLog}/updateFx28.ctrl.${_tRee}.${_xSrl}.pid
+    touch ${_pthLog}/updateFx30.ctrl.${_tRee}.${_xSrl}.pid
   fi
   mkdir -p ${_optBin}
   _boaBins="autobeowulf \
+           aptcleanup \
            autochimaera \
            autodaedalus \
            autoinit \
@@ -3692,6 +3693,7 @@ _update_boa_tools() {
            thinkdifferent \
            verifyvhostsdns \
            vhostcheck \
+           vmnetfix \
            weblogx \
            websh \
            xboa \
@@ -3730,13 +3732,16 @@ _update_boa_tools() {
     fi
   done
 
-  if [ ! -e "/data/u" ] && [ -e "${_optBin}/killer" ] && [ ! -e "${_usrBin}/websh" ]; then
-    rm -f ${_usrBin}/{autoinit*,barracuda*,boa*,killer*,octopus*,websh*,backchain*}
+  if [ ! -e "/data/u" ] && [ -e "${_optBin}/killer" ] && [ ! -e "${_usrBin}/vmnetfix" ]; then
+    rm -f ${_usrBin}/{aptcleanup*,autoinit*,backchain*,barracuda*,boa*,killer*,octopus*,vmnetfix*,websh*}
+    ln -s ${_optBin}/aptcleanup  ${_usrBin}/aptcleanup
     ln -s ${_optBin}/autoinit    ${_usrBin}/autoinit
+    ln -s ${_optBin}/backchain   ${_usrBin}/backchain
     ln -s ${_optBin}/barracuda   ${_usrBin}/barracuda
     ln -s ${_optBin}/boa         ${_usrBin}/boa
     ln -s ${_optBin}/killer      ${_usrBin}/killer
     ln -s ${_optBin}/octopus     ${_usrBin}/octopus
+    ln -s ${_optBin}/vmnetfix    ${_usrBin}/vmnetfix
     ln -s ${_optBin}/websh       ${_usrBin}/websh
   fi
 
@@ -3762,12 +3767,41 @@ _update_boa_tools() {
     chmod 700 ${_optBin}/{backboa,duobackboa}
   fi
 
-  chmod 700 ${_optBin}/{autoinit,autodaedalus,autochimaera,autobeowulf,autoupboa,verifyvhostsdns,perftest,mergecsf}
-  chmod 700 ${_optBin}/{barracuda,boa,ffmirror,killer,octopus,syncpass,xboa,xcopy,weblogx,sqlclean}
-  chmod 700 ${_optBin}/{fancynow,codebasecheck,vhostcheck,memorytuner,mysqltuner5,mysqltuner8,mycnfup}
+  echo "=== BOA executables permissions setup ==="
+  echo "Last updated: $(date)"
+  echo "Groups are organized by function."
+
+  # _AUTO (700): automatic install/upgrade helpers
+  chmod 700 ${_optBin}/{autobeowulf,autochimaera,autodaedalus,autoinit,autoupboa}
+
+  # _BACKUP (700): backup helpers
+  chmod 700 ${_optBin}/{backboa,copydbackup,dcysetup,duobackboa,multiback}
+
+  # _CORE (700): core BOA tools
+  chmod 700 ${_optBin}/{barracuda,boa,ffmirror,killer,octopus}
+  chmod 700 ${_optBin}/{syncpass,weblogx,xboa,xcopy}
+
+  # _DB (700): performance and DB tuners
+  chmod 700 ${_optBin}/{memorytuner,mycnfup,mysqltuner5,mysqltuner8,perftest}
+
+  # _MAIL (700): mail + priority tools
+  chmod 700 ${_optBin}/{setprio,smtpgapps}
+
+  # _NET (700): network protection
   chmod 700 ${_optBin}/synproxy*
-  chmod 700 ${_optBin}/{dcysetup,multiback,copydbackup,backboa,duobackboa,smtpgapps,setprio}
-  chmod 755 ${_optBin}/{randpass,sqlmagic,thinkdifferent,websh,mybackup,backchain}
+
+  # _SYS (700): system utilities
+  chmod 700 ${_optBin}/{mergecsf,vmnetfix,fancynow,codebasecheck}
+
+  # _SYS (700): cleanup tools
+  chmod 700 ${_optBin}/{aptcleanup,sqlclean,verifyvhostsdns,vhostcheck}
+
+  # _MISC (755): misc user-space utilities
+  chmod 755 ${_optBin}/{backchain,mybackup,randpass,sqlmagic,thinkdifferent,websh}
+
+  echo "Permissions applied successfully"
+  echo "=== End of BOA executables permissions setup ==="
+
 }
 
 _if_update_boa_key_tools_only() {
