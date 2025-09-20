@@ -1,0 +1,386 @@
+#!/bin/bash
+
+#
+# Detect and quarantine unexpected vendor APT files/dirs into /var/backups.
+# Default behavior: keep only standard APT structure and Debian keyrings;
+# quarantine vendor sources/preferences and any non-standard subdirs (e.g. /etc/apt/mirrors)
+# while preserving DigitalOcean droplet-agent sources; if droplet-agent
+# is installed, create a SysV init script and restrict its repo via pinning.
+#
+
+export HOME=/root
+export SHELL=/bin/bash
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+
+# --- Config
+
+_DEBUG_MODE="NO"        # YES/NO — prints extra messages
+_DRY_RUN="NO"           # YES/NO — report what would happen without moving anything
+_APT_ROOT="/etc/apt"
+_BACKUP_ROOT="/var/backups"
+
+# Treat ONLY the following as "expected" top-level entries in /etc/apt.
+# Anything else (dirs/files) will be quarantined (e.g., "mirrors").
+_EXPECTED_TOP_DIRS=(
+  "apt.conf.d"
+  "auth.conf.d"
+  "keyrings"
+  "preferences.d"
+  "sources.list.d"
+  "trusted.gpg.d"
+  "listchanges.conf.d"
+
+)
+_EXPECTED_TOP_FILES=(
+  "sources.list"
+  "listchanges.conf"
+)
+
+# Keep-globs: any path (relative to /etc/apt) matching one of these globs will be kept in place.
+# By default we keep Debian key material and the two top-level config files; we MOVE:
+#   - everything under sources.list.d (both *.list and *.sources),
+#   - everything under preferences.d (vendor pins),
+#   - any non-standard top-level dirs (e.g., mirrors) and their contents.
+_KEEP_GLOBS_REL=(
+  "trusted.gpg.d/*.asc"
+  "trusted.gpg.d/*.gpg"
+  "trusted.gpg.d/*.gpg~"
+  "keyrings/*.gpg"
+  "keyrings/*.asc"
+  "listchanges.conf"
+  "listchanges.conf.d/*"
+  "sources.list"
+  "apt.conf.d/*"
+  "auth.conf.d/*"
+)
+
+# DigitalOcean / droplet-agent preservation policy:
+# AUTO -> preserve if agent is installed; YES -> always preserve; NO -> quarantine
+_PRESERVE_DO_POLICY="AUTO"
+_VENDOR_DO_PATTERNS=( "digitalocean" "droplet" "droplet-agent" "do-agent" )
+
+# Where to write our APT pin that restricts DO origin to droplet-agent only
+_DO_PIN_FILE="${_APT_ROOT}/preferences.d/99-droplet-agent-restrict.pref"
+
+# --- Helpers -------------------------------------------------------------------
+_dt() {
+  date +%Y%m%d-%H%M%S
+}
+
+_msg() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    printf '%s %s\n' "$(_dt)" "$*"
+  fi
+}
+
+_err() {
+  printf 'ERROR: %s\n' "$*" >&2
+}
+
+# --- DO agent detection & policy ----------------------------------------------
+_do_agent_installed() {
+  dpkg-query -W -f='${Status}\n' droplet-agent 2>/dev/null | grep -q 'install ok installed' && return 0
+  [ -x /usr/bin/droplet-agent ] && return 0
+  [ -x /usr/local/bin/droplet-agent ] && return 0
+  [ -x /opt/digitalocean/droplet-agent/droplet-agent ] && return 0
+  [ -x /opt/digitalocean/droplet-agent/bin/droplet-agent ] && return 0
+  return 1
+}
+
+_should_preserve_do() {
+  case "${_PRESERVE_DO_POLICY}" in
+    YES) printf 'YES'; return 0 ;;
+    NO)  printf 'NO';  return 0 ;;
+    AUTO)
+      if _do_agent_installed; then printf 'YES'; else printf 'NO'; fi
+      return 0
+      ;;
+  esac
+  printf 'NO'
+}
+
+# --- Path classification -------------------------------------------------------
+_is_member() {
+  _ITEM="$1"; shift
+  for _E in "$@"; do
+    if [ "${_ITEM}" = "${_E}" ]; then return 0; fi
+  done
+  return 1
+}
+
+_is_do_vendor_related() {
+  # path or contents mention DO/droplet
+  _ABS="$1"
+  _REL="${_ABS#${_APT_ROOT}/}"
+
+  for _P in "${_VENDOR_DO_PATTERNS[@]}"; do
+    case "${_REL}" in *${_P}*) return 0 ;; esac
+  done
+
+  if [ -f "${_ABS}" ]; then
+    if grep -qiE 'digitalocean|droplet(-agent)?|do-agent' "${_ABS}" 2>/dev/null; then
+      return 0
+    fi
+  fi
+  return 1
+}
+
+_keep_match() {
+  # Return 0 (keep) if matches any allowed criteria; 1 otherwise
+  _ABS="$1"
+  _REL="${_ABS#${_APT_ROOT}/}"
+
+  # Always keep top-level expected files
+  for _F in "${_EXPECTED_TOP_FILES[@]}"; do
+    if [ "${_REL}" = "${_F}" ]; then return 0; fi
+  done
+
+  # Keep-globs (relative)
+  for _G in "${_KEEP_GLOBS_REL[@]}"; do
+    case "${_REL}" in ${_G}) return 0 ;; esac
+  done
+
+  # Preserve DO vendor files per policy
+  if [ "$(_should_preserve_do)" = "YES" ] && _is_do_vendor_related "${_ABS}"; then
+    return 0
+  fi
+
+  return 1
+}
+
+# --- Quarantine machinery ------------------------------------------------------
+_ensure_backup_dir() {
+  if [ -z "${_BACKUP_DIR}" ]; then
+    _STAMP="$(_dt)"
+    _BACKUP_DIR="${_BACKUP_ROOT}/apt-vendor-${_STAMP}"
+    _LOG_FILE="${_BACKUP_DIR}/moved.log"
+    if [ "${_DRY_RUN}" = "NO" ]; then
+      mkdir -p "${_BACKUP_DIR}"
+      : > "${_LOG_FILE}"
+    fi
+    _msg "Backup dir: ${_BACKUP_DIR}"
+  fi
+}
+
+_move_path() {
+  _SRC="$1"
+  _ensure_backup_dir
+  _REL="${_SRC#${_APT_ROOT}/}"
+  _DEST_DIR="${_BACKUP_DIR}/etc/apt/$(dirname "${_REL}")"
+  _DEST="${_BACKUP_DIR}/etc/apt/${_REL}"
+
+  if [ "${_DRY_RUN}" = "YES" ]; then
+    printf '[DRY-RUN] Would move: %s -> %s\n' "${_SRC}" "${_DEST}"
+    return 0
+  fi
+
+  mkdir -p "${_DEST_DIR}"
+  # Use 'mv -T' to avoid merging directories unexpectedly (busybox note: if unavailable, fallback)
+  if mv -T "${_SRC}" "${_DEST}" 2>/dev/null; then
+    :
+  else
+    # Fallback if -T unsupported
+    mv "${_SRC}" "${_DEST}"
+  fi
+  printf '%s -> %s\n' "${_SRC}" "${_DEST}" >> "${_LOG_FILE}"
+}
+
+_quarantine_path() {
+  _PATH="$1"
+  if _keep_match "${_PATH}"; then
+    _msg "Keeping (allowed): ${_PATH#${_APT_ROOT}/}"
+    return 0
+  fi
+  _move_path "${_PATH}"
+}
+
+_scan_expected_dirs() {
+  for _DIR in "${_EXPECTED_TOP_DIRS[@]}"; do
+    _ABS_DIR="${_APT_ROOT}/${_DIR}"
+    if [ -d "${_ABS_DIR}" ]; then
+      # shellcheck disable=SC2045
+      for _ITEM in $(ls -A "${_ABS_DIR}" 2>/dev/null); do
+        _ABS_ITEM="${_ABS_DIR}/${_ITEM}"
+        _quarantine_path "${_ABS_ITEM}"
+      done
+    fi
+  done
+}
+
+_scan_unexpected_top() {
+  # shellcheck disable=SC2045
+  for _ITEM in $(ls -A "${_APT_ROOT}" 2>/dev/null); do
+    if _is_member "${_ITEM}" "${_EXPECTED_TOP_FILES[@]}" || _is_member "${_ITEM}" "${_EXPECTED_TOP_DIRS[@]}"; then
+      _msg "Expected top: ${_ITEM}"
+      continue
+    fi
+    _quarantine_path "${_APT_ROOT}/${_ITEM}"
+  done
+}
+
+# --- DO agent SysV init & APT pin ---------------------------------------------
+_write_do_init_if_missing() {
+  # Create /etc/init.d/droplet-agent if agent installed and init missing
+  if ! _do_agent_installed; then
+    _msg "droplet-agent not installed; skipping init creation"
+    return 0
+  fi
+  if [ -x /etc/init.d/droplet-agent ]; then
+    _msg "droplet-agent init already present"
+    return 0
+  fi
+
+  if [ "${_DRY_RUN}" = "YES" ]; then
+    printf '[DRY-RUN] Would write /etc/init.d/droplet-agent and enable it\n'
+    return 0
+  fi
+
+  cat > /etc/init.d/droplet-agent <<'INIT_EOF'
+#!/usr/bin/env bash
+### BEGIN INIT INFO
+# Provides:          droplet-agent
+# Required-Start:    $remote_fs $syslog $network
+# Required-Stop:     $remote_fs $syslog $network
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: DigitalOcean Droplet Agent
+### END INIT INFO
+
+_PATHS="/usr/bin/droplet-agent /usr/local/bin/droplet-agent /opt/digitalocean/droplet-agent/bin/droplet-agent /opt/digitalocean/droplet-agent/droplet-agent"
+_DAEMON=""
+_NAME="droplet-agent"
+_DESC="DigitalOcean Droplet Agent"
+_PIDFILE="/var/run/${_NAME}.pid"
+_USER="root"
+_NICE="0"
+
+_for_each_path() {
+  for _P in ${_PATHS}; do
+    if [ -x "${_P}" ]; then _DAEMON="${_P}"; return 0; fi
+  done
+  return 1
+}
+
+_do_start() {
+  if [ -z "${_DAEMON}" ] && ! _for_each_path; then
+    echo "${_DESC}: binary not found"; return 1
+  fi
+  start-stop-daemon --start --quiet --background \
+    --make-pidfile --pidfile "${_PIDFILE}" \
+    --chuid "${_USER}" --nicelevel "${_NICE}" \
+    --exec "${_DAEMON}" -- || return 1
+  return 0
+}
+
+_do_stop() {
+  if [ -f "${_PIDFILE}" ]; then
+    start-stop-daemon --stop --quiet --pidfile "${_PIDFILE}" --retry=TERM/15/KILL/5
+    rm -f "${_PIDFILE}" 2>/dev/null || true
+    return 0
+  fi
+  pkill -f "${_NAME}" 2>/dev/null || true
+  return 0
+}
+
+_do_status() {
+  if [ -f "${_PIDFILE}" ] && ps -p "$(cat "${_PIDFILE}" 2>/dev/null)" >/dev/null 2>&1; then
+    echo "${_DESC} is running (pid $(cat "${_PIDFILE}"))"
+    return 0
+  fi
+  pgrep -f "${_NAME}" >/dev/null 2>&1 && { echo "${_DESC} seems running (no pidfile)"; return 0; }
+  echo "${_DESC} is not running"
+  return 3
+}
+
+case "$1" in
+  start)   _do_start ;;
+  stop)    _do_stop ;;
+  restart) _do_stop; _do_start ;;
+  status)  _do_status ;;
+  *) echo "Usage: $0 {start|stop|restart|status}"; exit 2 ;;
+esac
+INIT_EOF
+
+  chmod 0755 /etc/init.d/droplet-agent
+  update-rc.d droplet-agent defaults >/dev/null 2>&1 || true
+  service droplet-agent start >/dev/null 2>&1 || true
+  _msg "droplet-agent init created, enabled, and started"
+}
+
+_write_do_restriction_pin() {
+  # Restrict DO origin to droplet-agent only; block everything else by default
+  if [ "${_DRY_RUN}" = "YES" ]; then
+    printf '[DRY-RUN] Would write %s\n' "${_DO_PIN_FILE}"
+    return 0
+  fi
+
+  mkdir -p "${_APT_ROOT}/preferences.d"
+  cat > "${_DO_PIN_FILE}" <<'PIN_EOF'
+Package: droplet-agent*
+Pin: origin repos-droplet.digitalocean.com
+Pin-Priority: 500
+
+Package: *
+Pin: origin repos-droplet.digitalocean.com
+Pin-Priority: 1
+PIN_EOF
+  chmod 0644 "${_DO_PIN_FILE}"
+  _msg "DO APT pin written: ${_DO_PIN_FILE}"
+}
+
+# --- Main ----------------------------------------------------------------------
+_main() {
+  # Parse args
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --debug) _DEBUG_MODE="YES" ;;
+      --dry-run) _DRY_RUN="YES" ;;
+      --preserve-do) _PRESERVE_DO_POLICY="YES" ;;
+      --drop-do) _PRESERVE_DO_POLICY="NO" ;;
+      -h|--help) _usage; exit 0 ;;
+      *) _err "Unknown option: $1"; _usage; exit 2 ;;
+    esac
+    shift
+  done
+
+  if [ "$(id -u)" -ne 0 ]; then
+    _err "Please run as root."
+    exit 1
+  fi
+  if [ ! -d "${_APT_ROOT}" ]; then
+    _err "APT root not found: ${_APT_ROOT}"
+    exit 1
+  fi
+
+  _msg "Policy for DO preservation: ${_PRESERVE_DO_POLICY} -> $(_should_preserve_do)"
+
+  # Phase 0: If policy resolves to YES, ensure we won't quarantine DO files.
+  # (Handled dynamically in _keep_match)
+
+  # Phase 1: Quarantine unexpected top-level entries
+  _scan_unexpected_top
+
+  # Phase 2: Within expected dirs, quarantine items not matching keep globs/vendor rules
+  _scan_expected_dirs
+
+  # Phase 3: If we preserved DO agent (either AUTO+installed or forced YES),
+  #          ensure it keeps working under Devuan:
+  if [ "$(_should_preserve_do)" = "YES" ]; then
+    _write_do_init_if_missing
+    _write_do_restriction_pin
+  fi
+
+  if [ "${_DRY_RUN}" = "YES" ]; then
+    printf 'Dry-run complete. No changes made.\n'
+  else
+    if [ -n "${_BACKUP_DIR}" ]; then
+      printf 'Quarantine complete. Backup: %s\n' "${_BACKUP_DIR}"
+      [ -n "${_LOG_FILE}" ] && printf 'Log: %s\n' "${_LOG_FILE}"
+    else
+      printf 'Nothing to quarantine. System appears clean.\n'
+    fi
+  fi
+}
+
+_main "$@"
+exit 0
