@@ -113,7 +113,7 @@ _check_root() {
     if [ ! -e "/dev/fd" ]; then
       if [ -e "/proc/self/fd" ]; then
         rm -rf /dev/fd
-        ln -s /proc/self/fd /dev/fd
+        ln -sfn /proc/self/fd /dev/fd
       fi
     fi
     [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
@@ -2343,7 +2343,7 @@ _upgrade_host() {
 
     if [ ! -e "/usr/etc/vservers/.defaults/apps/vunify/hash/root" ]; then
       mkdir -p /usr/etc/vservers/.defaults/apps/vunify/hash /vservers/.hash
-      ln -s /vservers/.hash /usr/etc/vservers/.defaults/apps/vunify/hash/root
+      ln -sfn /vservers/.hash /usr/etc/vservers/.defaults/apps/vunify/hash/root
     fi
   fi
 

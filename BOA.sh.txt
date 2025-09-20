@@ -518,40 +518,40 @@ _if_fix_iptables_symlinks() {
   ### Fix for iptables paths backward compatibility
   ###
   if [ -x "/sbin/iptables" ] && [ ! -e "/usr/sbin/iptables" ]; then
-    ln -s /sbin/iptables /usr/sbin/iptables
+    ln -sfn /sbin/iptables /usr/sbin/iptables
   fi
   if [ -x "/usr/sbin/iptables" ] && [ ! -e "/sbin/iptables" ]; then
-    ln -s /usr/sbin/iptables /sbin/iptables
+    ln -sfn /usr/sbin/iptables /sbin/iptables
   fi
   if [ -x "/sbin/iptables-save" ] && [ ! -e "/usr/sbin/iptables-save" ]; then
-    ln -s /sbin/iptables-save /usr/sbin/iptables-save
+    ln -sfn /sbin/iptables-save /usr/sbin/iptables-save
   fi
   if [ -x "/usr/sbin/iptables-save" ] && [ ! -e "/sbin/iptables-save" ]; then
-    ln -s /usr/sbin/iptables-save /sbin/iptables-save
+    ln -sfn /usr/sbin/iptables-save /sbin/iptables-save
   fi
   if [ -x "/sbin/iptables-restore" ] && [ ! -e "/usr/sbin/iptables-restore" ]; then
-    ln -s /sbin/iptables-restore /usr/sbin/iptables-restore
+    ln -sfn /sbin/iptables-restore /usr/sbin/iptables-restore
   fi
   if [ -x "/usr/sbin/iptables-restore" ] && [ ! -e "/sbin/iptables-restore" ]; then
-    ln -s /usr/sbin/iptables-restore /sbin/iptables-restore
+    ln -sfn /usr/sbin/iptables-restore /sbin/iptables-restore
   fi
   if [ -x "/sbin/ip6tables" ] && [ ! -e "/usr/sbin/ip6tables" ]; then
-    ln -s /sbin/ip6tables /usr/sbin/ip6tables
+    ln -sfn /sbin/ip6tables /usr/sbin/ip6tables
   fi
   if [ -x "/usr/sbin/ip6tables" ] && [ ! -e "/sbin/ip6tables" ]; then
-    ln -s /usr/sbin/ip6tables /sbin/ip6tables
+    ln -sfn /usr/sbin/ip6tables /sbin/ip6tables
   fi
   if [ -x "/sbin/ip6tables-save" ] && [ ! -e "/usr/sbin/ip6tables-save" ]; then
-    ln -s /sbin/ip6tables-save /usr/sbin/ip6tables-save
+    ln -sfn /sbin/ip6tables-save /usr/sbin/ip6tables-save
   fi
   if [ -x "/usr/sbin/ip6tables-save" ] && [ ! -e "/sbin/ip6tables-save" ]; then
-    ln -s /usr/sbin/ip6tables-save /sbin/ip6tables-save
+    ln -sfn /usr/sbin/ip6tables-save /sbin/ip6tables-save
   fi
   if [ -x "/sbin/ip6tables-restore" ] && [ ! -e "/usr/sbin/ip6tables-restore" ]; then
-    ln -s /sbin/ip6tables-restore /usr/sbin/ip6tables-restore
+    ln -sfn /sbin/ip6tables-restore /usr/sbin/ip6tables-restore
   fi
   if [ -x "/usr/sbin/ip6tables-restore" ] && [ ! -e "/sbin/ip6tables-restore" ]; then
-    ln -s /usr/sbin/ip6tables-restore /sbin/ip6tables-restore
+    ln -sfn /usr/sbin/ip6tables-restore /sbin/ip6tables-restore
   fi
   ###
   ### Fix for iptables paths backward compatibility
@@ -1286,7 +1286,7 @@ _update_agents() {
       _CV_SYMLINK=$(echo -n ${_CV_SYMLINK} | tr -d "\n" 2>&1)
       if [ "${_CV_SYMLINK}" != "/usr/local/bin/cv.phar" ]; then
         rm -f /usr/bin/cv
-        ln -s /usr/local/bin/cv.phar /usr/bin/cv
+        ln -sfn /usr/local/bin/cv.phar /usr/bin/cv
         touch ${_pthLog}/cv-phar-symlink.ctrl.${_tRee}.${_xSrl}.pid
       fi
     fi
@@ -1301,8 +1301,8 @@ _update_agents() {
       if [ "${_DRUSH_SYMLINK}" != "/opt/tools/drush/8/drush/drush.php" ]; then
         rm -f /usr/bin/drush8
         rm -f /usr/bin/drush
-        ln -s /opt/tools/drush/8/drush/drush.php /usr/bin/drush8
-        ln -s /opt/tools/drush/8/drush/drush.php /usr/bin/drush
+        ln -sfn /opt/tools/drush/8/drush/drush.php /usr/bin/drush8
+        ln -sfn /opt/tools/drush/8/drush/drush.php /usr/bin/drush
         touch ${_pthLog}/drush8-classic-symlink.ctrl.${_tRee}.${_xSrl}.pid
       fi
     fi
@@ -3398,7 +3398,7 @@ _fix_newrelic() {
   if [ -e "${_PHP_EXT_DIR_74}" ] \
     && [ -e "${_NR_SO}" ] \
     && [ ! -e "${_PHP_EXT_DIR_74}/newrelic.so" ]; then
-    ln -s ${_NR_SO} ${_PHP_EXT_DIR_74}/newrelic.so
+    ln -sfn ${_NR_SO} ${_PHP_EXT_DIR_74}/newrelic.so
     service php74-fpm reload
   fi
 
@@ -3802,26 +3802,26 @@ _update_boa_tools() {
 
   if [ ! -e "/data/u" ] && [ -e "${_optBin}/killer" ] && [ ! -e "${_usrBin}/vmnetfix" ]; then
     rm -f ${_usrBin}/{aptcleanup*,autoinit*,backchain*,barracuda*,boa*,killer*,octopus*,vmnetfix*,websh*}
-    ln -s ${_optBin}/aptcleanup  ${_usrBin}/aptcleanup
-    ln -s ${_optBin}/autoinit    ${_usrBin}/autoinit
-    ln -s ${_optBin}/backchain   ${_usrBin}/backchain
-    ln -s ${_optBin}/barracuda   ${_usrBin}/barracuda
-    ln -s ${_optBin}/boa         ${_usrBin}/boa
-    ln -s ${_optBin}/killer      ${_usrBin}/killer
-    ln -s ${_optBin}/octopus     ${_usrBin}/octopus
-    ln -s ${_optBin}/vmnetfix    ${_usrBin}/vmnetfix
-    ln -s ${_optBin}/websh       ${_usrBin}/websh
+    ln -sfn ${_optBin}/aptcleanup  ${_usrBin}/aptcleanup
+    ln -sfn ${_optBin}/autoinit    ${_usrBin}/autoinit
+    ln -sfn ${_optBin}/backchain   ${_usrBin}/backchain
+    ln -sfn ${_optBin}/barracuda   ${_usrBin}/barracuda
+    ln -sfn ${_optBin}/boa         ${_usrBin}/boa
+    ln -sfn ${_optBin}/killer      ${_usrBin}/killer
+    ln -sfn ${_optBin}/octopus     ${_usrBin}/octopus
+    ln -sfn ${_optBin}/vmnetfix    ${_usrBin}/vmnetfix
+    ln -sfn ${_optBin}/websh       ${_usrBin}/websh
   fi
 
   if [ -e "/data/u" ]; then
     if [ ! -e "${_usrBin}/dcysetup" ] && [ -e "${_optBin}/dcysetup" ]; then
-      ln -s ${_optBin}/dcysetup ${_usrBin}/dcysetup
+      ln -sfn ${_optBin}/dcysetup ${_usrBin}/dcysetup
     fi
     if [ ! -e "${_usrBin}/multiback" ] && [ -e "${_optBin}/multiback" ]; then
-      ln -s ${_optBin}/multiback ${_usrBin}/multiback
+      ln -sfn ${_optBin}/multiback ${_usrBin}/multiback
     fi
     if [ ! -e "${_usrBin}/mybackup" ] && [ -e "${_optBin}/mybackup" ]; then
-      ln -s ${_optBin}/mybackup ${_usrBin}/mybackup
+      ln -sfn ${_optBin}/mybackup ${_usrBin}/mybackup
     fi
   fi
 
@@ -4522,7 +4522,7 @@ if [ "$(id -u)" -eq 0 ]; then
   if [ ! -e "/dev/fd" ]; then
     if [ -e "/proc/self/fd" ]; then
       rm -rf /dev/fd
-      ln -s /proc/self/fd /dev/fd
+      ln -sfn /proc/self/fd /dev/fd
     fi
   fi
   if [ "${_BOA_KEY_TOOLS_UPDATE_ALLOWED}" = "YES" ]; then
