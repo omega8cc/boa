@@ -3654,6 +3654,7 @@ _update_boa_tools() {
   fi
   mkdir -p ${_optBin}
   _boaBins="autobeowulf \
+           aptcleanup \
            autochimaera \
            autodaedalus \
            autoinit \
@@ -3692,6 +3693,7 @@ _update_boa_tools() {
            thinkdifferent \
            verifyvhostsdns \
            vhostcheck \
+           vmnetfix \
            weblogx \
            websh \
            xboa \
@@ -3730,13 +3732,16 @@ _update_boa_tools() {
     fi
   done
 
-  if [ ! -e "/data/u" ] && [ -e "${_optBin}/killer" ] && [ ! -e "${_usrBin}/websh" ]; then
-    rm -f ${_usrBin}/{autoinit*,barracuda*,boa*,killer*,octopus*,websh*,backchain*}
+  if [ ! -e "/data/u" ] && [ -e "${_optBin}/killer" ] && [ ! -e "${_usrBin}/vmnetfix" ]; then
+    rm -f ${_usrBin}/{aptcleanup*,autoinit*,backchain*,barracuda*,boa*,killer*,octopus*,vmnetfix*,websh*}
+    ln -s ${_optBin}/aptcleanup  ${_usrBin}/aptcleanup
     ln -s ${_optBin}/autoinit    ${_usrBin}/autoinit
+    ln -s ${_optBin}/backchain   ${_usrBin}/backchain
     ln -s ${_optBin}/barracuda   ${_usrBin}/barracuda
     ln -s ${_optBin}/boa         ${_usrBin}/boa
     ln -s ${_optBin}/killer      ${_usrBin}/killer
     ln -s ${_optBin}/octopus     ${_usrBin}/octopus
+    ln -s ${_optBin}/vmnetfix    ${_usrBin}/vmnetfix
     ln -s ${_optBin}/websh       ${_usrBin}/websh
   fi
 
@@ -3762,12 +3767,41 @@ _update_boa_tools() {
     chmod 700 ${_optBin}/{backboa,duobackboa}
   fi
 
-  chmod 700 ${_optBin}/{autoinit,autodaedalus,autochimaera,autobeowulf,autoupboa,verifyvhostsdns,perftest,mergecsf}
-  chmod 700 ${_optBin}/{barracuda,boa,ffmirror,killer,octopus,syncpass,xboa,xcopy,weblogx,sqlclean}
-  chmod 700 ${_optBin}/{fancynow,codebasecheck,vhostcheck,memorytuner,mysqltuner5,mysqltuner8,mycnfup}
+  echo "=== BOA executables permissions setup ==="
+  echo "Last updated: $(date)"
+  echo "Groups are organized by function."
+
+  # _AUTO (700): automatic install/upgrade helpers
+  chmod 700 ${_optBin}/{autobeowulf,autochimaera,autodaedalus,autoinit,autoupboa}
+
+  # _BACKUP (700): backup helpers
+  chmod 700 ${_optBin}/{backboa,copydbackup,dcysetup,duobackboa,multiback}
+
+  # _CORE (700): core BOA tools
+  chmod 700 ${_optBin}/{barracuda,boa,ffmirror,killer,octopus}
+  chmod 700 ${_optBin}/{syncpass,weblogx,xboa,xcopy}
+
+  # _DB (700): performance and DB tuners
+  chmod 700 ${_optBin}/{memorytuner,mycnfup,mysqltuner5,mysqltuner8,perftest}
+
+  # _MAIL (700): mail + priority tools
+  chmod 700 ${_optBin}/{setprio,smtpgapps}
+
+  # _NET (700): network protection
   chmod 700 ${_optBin}/synproxy*
-  chmod 700 ${_optBin}/{dcysetup,multiback,copydbackup,backboa,duobackboa,smtpgapps,setprio}
-  chmod 755 ${_optBin}/{randpass,sqlmagic,thinkdifferent,websh,mybackup,backchain}
+
+  # _SYS (700): system utilities
+  chmod 700 ${_optBin}/{mergecsf,vmnetfix,fancynow,codebasecheck}
+
+  # _SYS (700): cleanup tools
+  chmod 700 ${_optBin}/{aptcleanup,sqlclean,verifyvhostsdns,vhostcheck}
+
+  # _MISC (755): misc user-space utilities
+  chmod 755 ${_optBin}/{backchain,mybackup,randpass,sqlmagic,thinkdifferent,websh}
+
+  echo "Permissions applied successfully"
+  echo "=== End of BOA executables permissions setup ==="
+
 }
 
 _if_update_boa_key_tools_only() {
