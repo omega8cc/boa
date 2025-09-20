@@ -1,0 +1,261 @@
+#!/bin/bash
+
+#
+# Prepare persistent Devuan networking for ALL interfaces,
+# with forced DNS and /32-safe default route handling.
+#
+# Default behavior:
+#   - Disable cloud-init networking (use --preserve-cloud-init to keep it).
+#   - Enumerate all non-lo IFs; for IFs with IPv4 -> static (primary + extras),
+#     for IFs without IPv4 -> DHCP.
+#   - Default-route IF gets gateway + dns-nameservers.
+#   - /32 or off-link GW -> add onlink default route via post-up/pre-down.
+#   - Always replace /etc/resolv.conf with a REAL file using FORCED DNS (deduped).
+#
+# Usage:
+#   vmnetfix [--debug] [--dry-run] [--test-now]
+#            [--disable-cloud-init | --preserve-cloud-init]
+#            [--dns "1.1.1.1 9.9.9.9"]
+#
+
+export HOME=/root
+export SHELL=/bin/bash
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+
+_DEBUG_MODE="NO"
+_DRY_RUN="NO"
+_TEST_NOW="NO"
+_DISABLE_CLOUD_INIT="YES"   # default: we disable CI networking unless preserved
+_FORCE_DNS_LIST="1.1.1.1 9.9.9.9"  # hardcoded, override with --dns
+
+_dt() { date +%Y%m%d-%H%M%S; }
+_msg() { if [ "${_DEBUG_MODE}" = "YES" ]; then printf '%s %s\n' "$(_dt)" "$*"; fi; }
+_err() { printf 'ERROR: %s\n' "$*" >&2; }
+_need_root() { if [ "$(id -u)" -ne 0 ]; then _err "Please run as root."; exit 1; fi; }
+_cmd_exists() { command -v "$1" >/dev/null 2>&1; }
+
+_parse_args() {
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --debug) _DEBUG_MODE="YES" ;;
+      --dry-run) _DRY_RUN="YES" ;;
+      --test-now) _TEST_NOW="YES" ;;
+      --disable-cloud-init) _DISABLE_CLOUD_INIT="YES" ;;
+      --preserve-cloud-init) _DISABLE_CLOUD_INIT="NO" ;;
+      --dns) shift; _FORCE_DNS_LIST="$1" ;;
+      *) _err "Unknown option: $1"; exit 2 ;;
+    esac
+    shift
+  done
+}
+
+_backup_file() {
+  _FILE="$1"
+  if [ -f "${_FILE}" ] || [ -L "${_FILE}" ]; then
+    cp -a "${_FILE}" "${_FILE}.bak.$(_dt)"
+    _msg "Backup saved: ${_FILE}.bak.$(_dt)"
+  fi
+}
+
+_rfc1918() {
+  _IP="$1"
+  case "${_IP}" in
+    10.*|192.168.*|172.16.*|172.17.*|172.18.*|172.19.*|172.2[0-9].*|172.3[0-1].*) printf 'YES'; return 0 ;;
+  esac
+  printf 'NO'
+}
+
+_cidr_prefix() { printf '%s\n' "${1#*/}"; }
+
+_is_gw_onlink() {
+  _IF="$1"; _GW="$2"
+  ip route get "${_GW}" 2>/dev/null | grep -q "dev ${_IF}"
+}
+
+_list_ifaces() {
+  ls -1 /sys/class/net 2>/dev/null | awk '$0!="lo"{print}'
+}
+
+_iface_v4_list() { ip -o -4 addr show dev "$1" scope global 2>/dev/null | awk '{print $4}'; }
+_iface_v6_list() { ip -o -6 addr show dev "$1" scope global 2>/dev/null | awk '{print $4}'; }
+
+_default_route_if() { ip -4 route show default 2>/dev/null | awk '{for(i=1;i<=NF;i++){if($i=="dev"){print $(i+1); exit}}}'; }
+_default_gw_v4() { ip -4 route show default 2>/dev/null | awk '{print $3; exit}'; }
+
+_dedupe_words() {
+  # echo unique words in original order
+  _SEEN=""
+  for _W in $*; do
+    case " ${_SEEN} " in
+      *" ${_W} "*) : ;;
+      *) _SEEN="${_SEEN} ${_W}" ;;
+    esac
+  done
+  printf '%s\n' "$(echo "${_SEEN}" | sed 's/^ *//')"
+}
+
+_collect_forced_dns() {
+  # Do NOT read provider resolv.conf; always use forced DNS (dedup).
+  _dedupe_words ${_FORCE_DNS_LIST}
+}
+
+_ensure_ifupdown() {
+  if _cmd_exists ifup; then _msg "ifup/ifdown present."; return 0; fi
+  if [ "${_DRY_RUN}" = "YES" ]; then printf 'DRY-RUN: would install ifupdown2/ifupdown\n'; return 0; fi
+  apt-get update -y || true
+  apt-get install -y ifupdown2 || apt-get install -y ifupdown
+}
+
+_ensure_dhcp_client() {
+  if _cmd_exists dhclient || _cmd_exists udhcpc || _cmd_exists dhcpcd; then return 0; fi
+  if [ "${_DRY_RUN}" = "YES" ]; then printf 'DRY-RUN: would install isc-dhcp-client\n'; return 0; fi
+  apt-get install -y isc-dhcp-client || true
+}
+
+_disable_cloudinit_networking() {
+  [ "${_DISABLE_CLOUD_INIT}" = "YES" ] || return 0
+  if [ "${_DRY_RUN}" = "YES" ]; then printf 'DRY-RUN: would write 99-disable-network-config.cfg\n'; return 0; fi
+  mkdir -p /etc/cloud/cloud.cfg.d
+  printf 'network: {config: disabled}\n' > /etc/cloud/cloud.cfg.d/99-disable-network-config.cfg
+  _msg "cloud-init networking disabled."
+}
+
+_fix_resolv_conf() {
+  _DNS_LIST="$1"
+  if [ "${_DRY_RUN}" = "YES" ]; then printf 'DRY-RUN: would write resolv.conf: %s\n' "${_DNS_LIST}"; return 0; fi
+  if [ -L /etc/resolv.conf ]; then rm -f /etc/resolv.conf; fi
+  : > /etc/resolv.conf
+  for _NS in ${_DNS_LIST}; do printf 'nameserver %s\n' "${_NS}" >> /etc/resolv.conf; done
+  _msg "resolv.conf written."
+}
+
+_pick_primary_v4_for_if() {
+  # Sets globals: _PRIMARY_V4, _OTHERS_V4
+  _IF="$1"
+  _PRIMARY_V4=""
+  _OTHERS_V4=""
+  _ALL_V4="$(_iface_v4_list "${_IF}")"
+  for _CIDR in ${_ALL_V4}; do
+    _IP="${_CIDR%/*}"
+    if [ -z "${_PRIMARY_V4}" ]; then _PRIMARY_V4="${_CIDR}"; fi
+    if [ "$(_rfc1918 "${_IP}")" = "NO" ]; then _PRIMARY_V4="${_CIDR}"; fi
+  done
+  for _CIDR in ${_ALL_V4}; do
+    [ "${_CIDR}" = "${_PRIMARY_V4}" ] || _OTHERS_V4="${_OTHERS_V4} ${_CIDR}"
+  done
+  _OTHERS_V4="$(echo "${_OTHERS_V4}" | sed 's/^ *//')"
+}
+
+_write_interfaces_all() {
+  _DEF_IF="$1"
+  _GW4="$2"
+  _DNS="$3"
+
+  if [ "${_DRY_RUN}" = "YES" ]; then printf 'DRY-RUN: would write /etc/network/interfaces for all IFs\n'; return 0; fi
+
+  _backup_file /etc/network/interfaces
+  {
+    printf 'auto lo\niface lo inet loopback\n\n'
+    for _IF in $(_list_ifaces); do
+      printf 'allow-hotplug %s\n' "${_IF}"
+      _ALL_V4="$(_iface_v4_list "${_IF}")"
+
+      if [ -n "${_ALL_V4}" ]; then
+        _pick_primary_v4_for_if "${_IF}"
+        _PRIMARY="${_PRIMARY_V4}"
+        _OTHERS="${_OTHERS_V4}"
+
+        printf 'iface %s inet static\n' "${_IF}"
+        printf '  address %s\n' "${_PRIMARY}"
+
+        if [ "${_IF}" = "${_DEF_IF}" ] && [ -n "${_GW4}" ]; then
+          _PFX="$(_cidr_prefix "${_PRIMARY}")"
+          if _is_gw_onlink "${_IF}" "${_GW4}" && [ "${_PFX}" != "32" ]; then
+            printf '  gateway %s\n' "${_GW4}"
+          else
+            # /32 or off-link default GW: add explicit onlink route on up
+            printf '  post-up ip route add %s dev %s || true\n' "${_GW4}" "${_IF}"
+            printf '  post-up ip route replace default via %s dev %s onlink || true\n' "${_GW4}" "${_IF}"
+            printf '  pre-down ip route del default via %s dev %s || true\n' "${_GW4}" "${_IF}"
+            printf '  pre-down ip route del %s dev %s || true\n' "${_GW4}" "${_IF}"
+          fi
+          if [ -n "${_DNS}" ]; then
+            printf '  dns-nameservers'
+            for _NS in ${_DNS}; do printf ' %s' "${_NS}"; done
+            printf '\n'
+          fi
+        fi
+
+        for _CID in ${_OTHERS}; do
+          printf '  post-up ip addr add %s dev %s || true\n' "${_CID}" "${_IF}"
+          printf '  pre-down ip addr del %s dev %s || true\n' "${_CID}" "${_IF}"
+        done
+
+      else
+        # No IPv4 -> use DHCP so it can come up later if available
+        printf 'iface %s inet dhcp\n' "${_IF}"
+      fi
+
+      _V6_LIST="$(_iface_v6_list "${_IF}")"
+      if [ -n "${_V6_LIST}" ]; then
+        _V6_PRIMARY="$(printf '%s\n' "${_V6_LIST}" | awk 'NR==1{print}')"
+        printf '\niface %s inet6 static\n' "${_IF}"
+        printf '  address %s\n' "${_V6_PRIMARY}"
+      fi
+      printf '\n'
+    done
+
+    # If preserving cloud-init, include interfaces.d at the end to allow vendor snippets.
+    if [ "${_DISABLE_CLOUD_INIT}" = "NO" ]; then
+      printf 'source /etc/network/interfaces.d/*\n'
+    fi
+  } > /etc/network/interfaces
+
+  _msg "Wrote /etc/network/interfaces for all interfaces."
+}
+
+_enable_boot_services() {
+  if [ "${_DRY_RUN}" = "YES" ]; then printf 'DRY-RUN: would enable networking/ssh on boot\n'; return 0; fi
+  update-rc.d networking defaults >/dev/null 2>&1 || true
+  update-rc.d ssh defaults >/dev/null 2>&1 || true
+}
+
+_ephemeral_bringup_all() {
+  [ "${_TEST_NOW}" = "YES" ] || return 0
+  for _IF in $(_list_ifaces); do
+    ip link set "${_IF}" up || true
+    if ! ip -o -4 addr show dev "${_IF}" scope global >/dev/null 2>&1; then
+      if _cmd_exists dhclient; then dhclient -1 "${_IF}" || true; fi
+      if _cmd_exists udhcpc;  then udhcpc -n -q -i "${_IF}" || true; fi
+      if _cmd_exists dhcpcd;  then dhcpcd -n "${_IF}" || true; fi
+    fi
+  done
+}
+
+_main() {
+  _need_root
+  _parse_args "$@"
+
+  _ensure_ifupdown
+  _ensure_dhcp_client
+
+  _DEF_IF="$(_default_route_if)"
+  _GW4="$(_default_gw_v4)"
+  _DNS="$(_collect_forced_dns)"
+  _msg "Default IF: ${_DEF_IF}  GW4: ${_GW4}  DNS(forced): ${_DNS}"
+
+  [ "${_DISABLE_CLOUD_INIT}" = "YES" ] && _disable_cloudinit_networking
+
+  _write_interfaces_all "${_DEF_IF}" "${_GW4}" "${_DNS}"
+  _fix_resolv_conf "${_DNS}"
+  _enable_boot_services
+  _ephemeral_bringup_all
+
+  if [ "${_DRY_RUN}" = "YES" ]; then
+    printf 'DRY-RUN complete. No files changed.\n'
+  else
+    printf 'Networking prepared for all interfaces. Safe to reboot.\n'
+  fi
+}
+
+_main "$@"
