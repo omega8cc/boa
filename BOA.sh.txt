@@ -768,6 +768,50 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -d "/var/aegir/drush" ] \
+    && [ ! -e "${_pthCtrl}/vmnetfix.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
+    if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt 0 ]; then
+      echo "The duplicity backup is running!"
+    else
+      if [ -e "${_optBin}/vmnetfix" ]; then
+        mv -f ${_optBin}/vmnetfix ${_optBin}/vmnetfix.old
+      fi
+      curl ${_crlGet} "${_urlHmr}/tools/bin/vmnetfix" -o ${_optBin}/vmnetfix
+      if [ -e "${_optBin}/vmnetfix" ]; then
+        chmod 700 ${_optBin}/vmnetfix
+        chown root:root ${_optBin}/vmnetfix
+        touch ${_pthCtrl}/vmnetfix.sh.ctrl.f99.${_tRee}.${_xSrl}.pid
+      else
+        if [ -e "${_optBin}/vmnetfix.old" ]; then
+          mv -f ${_optBin}/vmnetfix.old ${_optBin}/vmnetfix
+        fi
+      fi
+    fi
+  fi
+
+  if [ -e "/var/xdrago/monitor/check" ] \
+    && [ -d "/var/aegir/drush" ] \
+    && [ ! -e "${_pthCtrl}/aptcleanup.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
+    if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt 0 ]; then
+      echo "The duplicity backup is running!"
+    else
+      if [ -e "${_optBin}/aptcleanup" ]; then
+        mv -f ${_optBin}/aptcleanup ${_optBin}/aptcleanup.old
+      fi
+      curl ${_crlGet} "${_urlHmr}/tools/bin/aptcleanup" -o ${_optBin}/aptcleanup
+      if [ -e "${_optBin}/aptcleanup" ]; then
+        chmod 700 ${_optBin}/aptcleanup
+        chown root:root ${_optBin}/aptcleanup
+        touch ${_pthCtrl}/aptcleanup.sh.ctrl.f99.${_tRee}.${_xSrl}.pid
+      else
+        if [ -e "${_optBin}/aptcleanup.old" ]; then
+          mv -f ${_optBin}/aptcleanup.old ${_optBin}/aptcleanup
+        fi
+      fi
+    fi
+  fi
+
+  if [ -e "/var/xdrago/monitor/check" ] \
+    && [ -d "/var/aegir/drush" ] \
     && [ ! -e "${_pthCtrl}/backboa.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
     if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt 0 ]; then
       echo "The duplicity backup is running!"
