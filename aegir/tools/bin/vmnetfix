@@ -493,6 +493,12 @@ _ephemeral_static_up() {
   fi
 }
 
+_unload_bonding_if_unused() {
+  lsmod | grep -q '^bonding' || return 0
+  ip -o -4 addr show | grep -q ' bond[0-9]\+ ' && return 0
+  modprobe -r bonding 2>/dev/null || true
+}
+
 _ephemeral_bringup_all() {
   [ "${_TEST_NOW}" = "YES" ] || return 0
   for _IF in $(_list_ifaces); do
@@ -676,6 +682,7 @@ _main() {
       _write_networking_init_if_missing
       _ensure_networking_exec_and_runlevels
       _install_boot_guard
+      _unload_bonding_if_unused
       _ephemeral_bringup_all
       _enforce_dns_always
       printf 'Full fix applied. Safe to reboot.\n'
@@ -722,6 +729,7 @@ _main() {
         _write_networking_init_if_missing
         _ensure_networking_exec_and_runlevels
         _install_boot_guard
+        _unload_bonding_if_unused
         _ephemeral_bringup_all
         _enforce_dns_always
         printf 'Remediation applied. Safe to reboot.\n'
