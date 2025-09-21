@@ -1,14 +1,17 @@
 #!/bin/bash
 
 #
-# Make Devuan networking survive reboot after upgrade from Debian.
+# vmnetfix — Make Devuan networking survive reboot after upgrade from Debian.
 #
 # Behavior (AUTO by default):
-#   • If existing config looks sane, only ensure the missing /etc/init.d/networking
-#     (needed with ifupdown2) and ALWAYS enforce /etc/resolv.conf (forced DNS).
+#   • If existing config looks sane, only ensure init wiring (networking start at boot),
+#     install a boot-time route guard, and ALWAYS enforce /etc/resolv.conf (forced DNS).
 #   • Otherwise perform full remediation: optionally disable cloud-init networking,
 #     write /etc/network/interfaces from live values (handles /32 off-link GW via onlink),
-#     enforce /etc/resolv.conf, and try a live test.
+#     sanitize stray/bogus stanzas (bonding etc.), enforce /etc/resolv.conf, and test now.
+#   • DigitalOcean-aware: uses metadata for GW/netmask if missing; prefers public NIC.
+#   • Legacy DO layout auto-switch: if the file uses alias syntax (eth0:1 etc.), install
+#     classic ifupdown (non-interactive) and keep its canonical /etc/init.d/networking.
 #
 # Usage:
 #   vmnetfix [--debug] [--dry-run] [--test-now]
