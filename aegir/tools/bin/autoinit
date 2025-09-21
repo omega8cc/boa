@@ -492,6 +492,21 @@ _if_remove_conflicting_sources() {
   fi
 }
 
+_prefer_devuan_repositories() {
+  # Prefer Devuan; force base-files from Devuan (handles lower version vs Debian).
+  mkdir -p /etc/apt/preferences.d
+  cat >/etc/apt/preferences.d/99-prefer-devuan <<'EOF'
+Package: *
+Pin: release o=Devuan
+Pin-Priority: 700
+
+Package: base-files
+Pin: release o=Devuan
+Pin-Priority: 1001
+EOF
+  /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
+}
+
 _init_prepare() {
   if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
     && [ -e "/etc/apt/apt.conf.d" ]; then
@@ -759,6 +774,7 @@ _init_cycle() {
       rm -f /etc/apt/apt.conf
     fi
     _if_remove_conflicting_sources
+    _prefer_devuan_repositories
     /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
     /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
     if [ "${_OLD_SYS}" = "Debian" ]; then
