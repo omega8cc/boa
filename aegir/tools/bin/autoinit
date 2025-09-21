@@ -524,6 +524,8 @@ _init_prepare() {
       sed -i "s/.*killer.*//gi" /etc/crontab &> /dev/null
       echo "*/1 *   * * *   root    bash /opt/local/bin/killer" >> /etc/crontab
     fi
+    _msg "Update networking if needed with vmnetfix..." >> "${_logInt}"
+    /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
     _msg "Time for reboot and next upgrade cycle..." >> "${_logInt}"
     echo " " >> "${_logInt}"
     rm -f /run/autoinit.pid
@@ -576,6 +578,8 @@ _init_prepare() {
       fi
       [ "${_AUTO_MODE}" = "full" ] && _install_apparmor_utils
       touch ${_initFile}
+      _msg "Update networking if needed with vmnetfix..." >> "${_logInt}"
+      /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
       _msg "Time for reboot and next upgrade cycle..." >> "${_logInt}"
       echo " " >> "${_logInt}"
       rm -f /run/autoinit.pid
@@ -672,11 +676,15 @@ _init_offsystemd() {
   _msg "Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
   if [ "${_OS_CODE}" = "daedalus" ]; then
     echo " " >> "${_logInt}"
+    _msg "Update networking if needed with vmnetfix..." >> "${_logInt}"
+    /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
     _msg "Time for reboot and then you can run boa install" >> "${_logInt}"
     rm -f /root/.init-to-devuan-ctrl.cnf
     sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
     _if_launch_boa_install
   else
+    _msg "Update networking if needed with vmnetfix..." >> "${_logInt}"
+    /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
     _msg "Time for reboot and next upgrade cycle..." >> "${_logInt}"
   fi
   echo " " >> "${_logInt}"
@@ -793,8 +801,8 @@ _init_cycle() {
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   if [ "${_OLD_SYS}" = "Debian" ]; then
-    _msg "Update networking if needed with vmnetfix" >> "${_logInt}"
-    /opt/local/bin/vmnetfix >> "${_logSlt}"
+    _msg "Update networking if needed with vmnetfix..." >> "${_logInt}"
+    /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
     _msg "Time for reboot and next upgrade cycle..." >> "${_logInt}"
     echo " " >> "${_logInt}"
     touch /root/.run-cycle-devuan-init.cnf
@@ -807,12 +815,16 @@ _init_cycle() {
       _msg "Running APT Cleanup with aptcleanup --preserve-do" >> "${_logInt}"
       /opt/local/bin/aptcleanup --preserve-do >> "${_logSlt}"
       _msg "Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
+      _msg "Update networking if needed with vmnetfix..." >> "${_logInt}"
+      /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
       _msg "Time for the last reboot and then you can run boa install" >> "${_logInt}"
       rm -f /root/.init-to-devuan-ctrl.cnf
       sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
       _if_launch_boa_install
     else
       _msg "Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
+      _msg "Update networking if needed with vmnetfix..." >> "${_logInt}"
+      /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
       _msg "Time for reboot and next upgrade cycle..." >> "${_logInt}"
     fi
     echo " " >> "${_logInt}"
