@@ -766,7 +766,7 @@ _update_agents() {
     fi
   fi
 
-  if [ ! -e "${_pthCtrl}/vmnetfix.sh.ctrl.f97.${_tRee}.${_xSrl}.pid" ]; then
+  if [ ! -e "${_pthLog}/vmnetfix.sh.ctrl.f97.${_tRee}.${_xSrl}.pid" ]; then
     if [ `ps aux | grep -v "grep" | grep --count "vmnetfix"` -gt 0 ]; then
       echo "The vmnetfix is running!"
     else
@@ -784,7 +784,7 @@ _update_agents() {
       if [ -e "${_optBin}/vmnetfix" ]; then
         chmod 700 ${_optBin}/vmnetfix
         chown root:root ${_optBin}/vmnetfix
-        touch ${_pthCtrl}/vmnetfix.sh.ctrl.f97.${_tRee}.${_xSrl}.pid
+        touch ${_pthLog}/vmnetfix.sh.ctrl.f97.${_tRee}.${_xSrl}.pid
       else
         if [ -e "${_optBin}/vmnetfix.old" ]; then
           mv -f ${_optBin}/vmnetfix.old ${_optBin}/vmnetfix
@@ -793,7 +793,7 @@ _update_agents() {
     fi
   fi
 
-  if [ ! -e "${_pthCtrl}/aptcleanup.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
+  if [ ! -e "${_pthLog}/aptcleanup.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
     if [ `ps aux | grep -v "grep" | grep --count "aptcleanup"` -gt 0 ]; then
       echo "The aptcleanup is running!"
     else
@@ -804,7 +804,7 @@ _update_agents() {
       if [ -e "${_optBin}/aptcleanup" ]; then
         chmod 700 ${_optBin}/aptcleanup
         chown root:root ${_optBin}/aptcleanup
-        touch ${_pthCtrl}/aptcleanup.sh.ctrl.f99.${_tRee}.${_xSrl}.pid
+        touch ${_pthLog}/aptcleanup.sh.ctrl.f99.${_tRee}.${_xSrl}.pid
       else
         if [ -e "${_optBin}/aptcleanup.old" ]; then
           mv -f ${_optBin}/aptcleanup.old ${_optBin}/aptcleanup
@@ -815,7 +815,7 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthCtrl}/backboa.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/backboa.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
     if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt 0 ]; then
       echo "The duplicity backup is running!"
     else
@@ -826,7 +826,7 @@ _update_agents() {
       if [ -e "${_optBin}/backboa" ]; then
         chmod 700 ${_optBin}/backboa
         chown root:root ${_optBin}/backboa
-        touch ${_pthCtrl}/backboa.sh.ctrl.f99.${_tRee}.${_xSrl}.pid
+        touch ${_pthLog}/backboa.sh.ctrl.f99.${_tRee}.${_xSrl}.pid
       else
         if [ -e "${_optBin}/backboa.old" ]; then
           mv -f ${_optBin}/backboa.old ${_optBin}/backboa
@@ -837,7 +837,7 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthCtrl}/duobackboa.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/duobackboa.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
     if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt 0 ]; then
       echo "The duplicity backup is running!"
     else
@@ -848,7 +848,7 @@ _update_agents() {
       if [ -e "${_optBin}/duobackboa" ]; then
         chmod 700 ${_optBin}/duobackboa
         chown root:root ${_optBin}/duobackboa
-        touch ${_pthCtrl}/duobackboa.sh.ctrl.f99.${_tRee}.${_xSrl}.pid
+        touch ${_pthLog}/duobackboa.sh.ctrl.f99.${_tRee}.${_xSrl}.pid
       else
         if [ -e "${_optBin}/duobackboa.old" ]; then
           mv -f ${_optBin}/duobackboa.old ${_optBin}/duobackboa
@@ -1553,7 +1553,7 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthCtrl}/autoupboa.ctrl.f98.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/autoupboa.ctrl.f98.${_tRee}.${_xSrl}.pid" ]; then
     if [ `ps aux | grep -v "grep" | grep --count "autoupboa"` -gt 0 ]; then
       echo "The autoupboa is running!"
     else
@@ -1564,7 +1564,7 @@ _update_agents() {
       if [ -e "${_optBin}/autoupboa" ]; then
         chmod 700 ${_optBin}/autoupboa
         chown root:root ${_optBin}/autoupboa
-        touch ${_pthCtrl}/autoupboa.ctrl.f98.${_tRee}.${_xSrl}.pid
+        touch ${_pthLog}/autoupboa.ctrl.f98.${_tRee}.${_xSrl}.pid
       else
         if [ -e "${_optBin}/autoupboa.old" ]; then
           mv -f ${_optBin}/autoupboa.old ${_optBin}/autoupboa
