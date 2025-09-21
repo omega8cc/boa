@@ -522,7 +522,7 @@ load_config() {
     mkdir -p "${ACCOUNTDIR}"
     if [[ -n "${OLDCA}" ]] && [[ -e "${ACCOUNTDIR}/${OLDCAHASH}" ]]; then
       echo "! Reusing account from ${OLDCA}"
-      ln -s "${OLDCAHASH}" "${ACCOUNTDIR}/${CAHASH}"
+      ln -sfn "${OLDCAHASH}" "${ACCOUNTDIR}/${CAHASH}"
     else
       mkdir "${ACCOUNTDIR}/${CAHASH}"
     fi
