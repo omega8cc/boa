@@ -265,6 +265,11 @@ _ensure_dhcp_client() {
   _noninteractive_apt install -y isc-dhcp-client || true
 }
 
+_ensure_sysv_prereqs() {
+  # Some upgrades trip over insserv virtuals; keep this tiny and safe
+  _noninteractive_apt install -y initscripts sysv-rc startpar insserv || true
+}
+
 # ----------------------------- Init hook (ifupdown2) ---------------------------
 
 _write_networking_init_if_missing() {
@@ -600,6 +605,7 @@ _main() {
   _need_root
   _parse_args "$@"
 
+  _ensure_sysv_prereqs
   _ensure_ifupdown
   _ensure_dhcp_client
   _switch_to_ifupdown_when_legacy_detected
