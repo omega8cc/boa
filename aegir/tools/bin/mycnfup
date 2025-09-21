@@ -292,7 +292,7 @@ _check_root() {
     if [ ! -e "/dev/fd" ]; then
       if [ -e "/proc/self/fd" ]; then
         rm -rf /dev/fd
-        ln -s /proc/self/fd /dev/fd
+        ln -sfn /proc/self/fd /dev/fd
       fi
     fi
     _VM_TEST="$(uname -a)"
