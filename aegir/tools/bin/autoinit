@@ -116,8 +116,7 @@ _check_root() {
     exit 1
   fi
 }
-_check_root
-cd /root/
+
 ###
 ### Only one allowed
 ###
@@ -137,8 +136,10 @@ _msg() {
   echo "AutoInit v.${_tRee} [$(date +%T)] ==> $*"
 }
 
+###
+### Mode selection
+###
 _check_set_mode() {
-  # --- Mode selection -------------------------------------------------
   # Usage: autoinit [minimal|full]
   # Default: "minimal". Persisted across reboots via cron argument.
   if [ -z "${_AUTO_MODE}" ]; then
@@ -152,6 +153,9 @@ _check_set_mode() {
   _msg "Mode selected: ${_AUTO_MODE}" >> "${_logInt}"
 }
 
+###
+### Check Manufacturer Compatibility
+###
 _check_manufacturer_compatibility() {
   # Install dmidecode of not present
   if ! command -v dmidecode &> /dev/null; then
@@ -185,20 +189,22 @@ _check_manufacturer_compatibility() {
     exit 1
   fi
 }
-_check_manufacturer_compatibility
 
-if [ "${_tRee}" = "dev" ]; then
-  touch /root/.debug-boa-installer.cnf
-  touch /root/.debug-octopus-installer.cnf
-fi
+###
+### Check Aegir
+###
+_check_aegir() {
+  if [ -e "/var/aegir" ]; then
+    echo
+    echo "ERROR: This script can not be used once BOA is installed"
+    echo
+    exit 1
+  fi
+}
 
-if [ -e "/var/aegir" ]; then
-  echo
-  echo "ERROR: This script can not be used once BOA is installed"
-  echo
-  exit 1
-fi
-
+###
+### Fix locales
+###
 _locales_check_fix_early() {
   _isLoc=$(which locale 2>&1)
   if [ ! -x "${_isLoc}" ] || [ -z "${_isLoc}" ]; then
@@ -294,6 +300,9 @@ _locales_check_fix_early() {
   fi
 }
 
+###
+### Check cron
+###
 _cron_check_install_early() {
   _isCrn=$(which cron 2>&1)
   if [ ! -x "${_isCrn}" ] || [ -z "${_isCrn}" ]; then
@@ -302,17 +311,9 @@ _cron_check_install_early() {
   fi
 }
 
-if [ -e "/run/autoinit.pid" ]; then
-  echo " " >> "${_logSlt}"
-  _msg "The /run/autoinit.pid is blocking this run..." >> "${_logSlt}"
-  echo " " >> "${_logSlt}"
-  exit 1
-else
-  _check_set_mode
-  _locales_check_fix_early
-  _cron_check_install_early
-fi
-
+###
+### Should we launch boa install?
+###
 _if_launch_boa_install() {
   _BOA_LOGFILE="/root/.boa.install.command.cnf"
   if [[ -s "${_BOA_LOGFILE}" ]]; then
@@ -334,6 +335,9 @@ _if_launch_boa_install() {
   fi
 }
 
+###
+### Disable AppArmor
+###
 _disable_apparmor_utils() {
   if [ -e "/etc/apparmor.d" ] && [ -e "/var/cache/apparmor" ]; then
     rm -rf /var/cache/apparmor/* >> "${_logSlt}"
@@ -352,6 +356,9 @@ _disable_apparmor_utils() {
   [ ! -e "/root/.disable.apparmor.cnf" ] && touch /root/.disable.apparmor.cnf
 }
 
+###
+### Install AppArmor
+###
 _install_apparmor_utils() {
   _isAppArmorRevFile="/sys/kernel/security/apparmor/revision"
   _isAppArmorGrubFile="/etc/default/grub.d/apparmor.cfg"
@@ -390,6 +397,9 @@ _install_apparmor_utils() {
   fi
 }
 
+###
+### Grub and Ifnames
+###
 _ifnames_grub_check_sync() {
   _IS_IFACE=$(ip a 2>&1)
   _ADD_GRUB_CMD=""
@@ -495,6 +505,9 @@ _ifnames_grub_check_sync() {
   fi
 }
 
+###
+### APT sources cleanup
+###
 _if_remove_conflicting_sources() {
   _SRC_TEST=$(ls -la /etc/apt/sources.list.d/* 2>&1)
   if [[ ! "${_SRC_TEST}" =~ "No such file" ]]; then
@@ -503,6 +516,9 @@ _if_remove_conflicting_sources() {
   fi
 }
 
+###
+### Prefer Devuan APT sources
+###
 _prefer_devuan_repositories() {
   # Prefer Devuan; force base-files from Devuan (handles lower version vs Debian).
   mkdir -p /etc/apt/preferences.d
@@ -518,6 +534,9 @@ EOF
   /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
 }
 
+###
+### Prepare system
+###
 _init_prepare() {
   if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
     && [ -e "/etc/apt/apt.conf.d" ]; then
@@ -556,8 +575,6 @@ _init_prepare() {
       sed -i "s/.*killer.*//gi" /etc/crontab &> /dev/null
       echo "*/1 *   * * *   root    bash /opt/local/bin/killer" >> /etc/crontab
     fi
-    _msg "Update networking if needed with vmnetfix..." >> "${_logInt}"
-    /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
     _msg "Time for reboot and next upgrade cycle..." >> "${_logInt}"
     echo " " >> "${_logInt}"
     rm -f /run/autoinit.pid
@@ -565,7 +582,7 @@ _init_prepare() {
     wait
     exit 0
   else
-    if [ ! -x "/usr/bin/aptitude" ] || [ ! -x "/usr/bin/cc" ]; then
+    if [ ! -x "/usr/bin/aptitude" ]; then
       echo "Running _init_prepare procedure B..."
       touch /run/autoinit.pid
       /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
@@ -610,8 +627,6 @@ _init_prepare() {
       fi
       [ "${_AUTO_MODE}" = "full" ] && _install_apparmor_utils
       touch ${_initFile}
-      _msg "Update networking if needed with vmnetfix..." >> "${_logInt}"
-      /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
       _msg "Time for reboot and next upgrade cycle..." >> "${_logInt}"
       echo " " >> "${_logInt}"
       rm -f /run/autoinit.pid
@@ -622,20 +637,9 @@ _init_prepare() {
   fi
 }
 
-_init_info() {
-  echo "Running _init_prepare procedure, please wait..."
-  sleep 3
-  echo "The system will reboot and continue several times..."
-  sleep 3
-  echo "until it is ugraded to latest Devuan/daedalus version."
-  sleep 3
-  echo "Once all upgrades are complete, you can run boa install"
-  sleep 3
-  echo "Let's go! It will take only ten minutes max!"
-  sleep 3
-  echo "..."
-}
-
+###
+### Ensure Devuan base-files
+###
 _ensure_devuan_base_files() {
   # Ensure Devuan base-files is applied so /etc/os-release reflects Devuan/daedalus
   _msg "Ensuring Devuan base-files is applied (force-confnew)" >> "${_logInt}"
@@ -660,6 +664,9 @@ _ensure_devuan_base_files() {
   fi
 }
 
+###
+### Remove and block systemd
+###
 _init_offsystemd() {
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
@@ -727,6 +734,9 @@ _init_offsystemd() {
   exit 0
 }
 
+###
+### Init cycle procedure
+###
 _init_cycle() {
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
@@ -871,15 +881,38 @@ _init_cycle() {
   fi
 }
 
+###
+### Display welcome info
+###
+_init_info() {
+  echo "Running _init_prepare procedure, please wait..."
+  sleep 3
+  echo "The system will reboot and continue several times..."
+  sleep 3
+  echo "until it is ugraded to latest Devuan/daedalus version."
+  sleep 3
+  echo "Once all upgrades are complete, you can run boa install"
+  sleep 3
+  echo "Let's go! It will take only ten minutes max!"
+  sleep 3
+  echo "..."
+}
+
+###
+### Init info or prepare
+###
 _init_conf() {
   if [ ! -e "${_initFile}" ]; then
-    if [ ! -x "/usr/bin/cc" ]; then
+    if [ ! -x "/usr/bin/aptitude" ]; then
       _init_info
     fi
     _init_prepare &> /dev/null
   fi
 }
 
+###
+### Init start
+###
 _init_start() {
   _init_conf
   if [ -e "${_initFile}" ]; then
@@ -891,6 +924,9 @@ _init_start() {
   fi
 }
 
+###
+### Init launch
+###
 _init_launch() {
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
@@ -903,9 +939,31 @@ _init_launch() {
   _init_start
 }
 
-if [ ! -e "/run/autoinit.pid" ]; then
+### ---------------------------- Prepare for _init_launch
+_check_root
 _if_too_many "autoinit"
+_check_aegir
+_check_manufacturer_compatibility
+cd /root/
+
+### ---------------------------- Auto-enable debug on dev
+if [ "${_tRee}" = "dev" ]; then
+  [ ! -e "/root/.debug-boa-installer.cnf" ] && touch /root/.debug-boa-installer.cnf
+  [ ! -e "/root/.debug-octopus-installer.cnf" ] && touch /root/.debug-octopus-installer.cnf
+fi
+
+### ---------------------------- Extra protection with pid file
+if [ -e "/run/autoinit.pid" ]; then
+  echo " " >> "${_logSlt}"
+  _msg "The /run/autoinit.pid is blocking this run..." >> "${_logSlt}"
+  echo " " >> "${_logSlt}"
+  exit 1
+else
+  ### -------------------------- Let's go!
   _init_launch
+  _check_set_mode
+  _locales_check_fix_early
+  _cron_check_install_early
 fi
 
 exit 0
