@@ -112,11 +112,12 @@ _default_route_if() { ip -4 route show default 2>/dev/null | awk '{for(i=1;i<=NF
 _default_gw_v4()    { ip -4 route show default 2>/dev/null | awk '{print $3; exit}'; }
 _live_v4_list_if()  { ip -o -4 addr show dev "$1" scope global 2>/dev/null | awk '{print $4}'; }
 _live_v4_cidr()     { _live_v4_list_if "$1" | head -n1; }
-_live_public_if()   {
-  for i in $(ls -1 /sys/class/net | awk '$0!="lo"'); do
-    ip -o -4 addr show dev "$i" scope global | awk '{print $4}' | while read -r c; do
-      ip4="${c%/*}"
-      case "$ip4" in 10.*|192.168.*|172.1[6-9].*|172.2[0-9].*|172.3[0-1].*) : ;; *) echo "$i"; return 0 ;; esac
+
+_live_public_if() {
+  for _I in $(ls -1 /sys/class/net 2>/dev/null | awk '$0!="lo"'); do
+    ip -o -4 addr show dev "$_I" scope global | awk '{print $4}' | while read -r _C; do
+      _IP="${_C%/*}"
+      case "${_IP}" in 10.*|192.168.*|172.1[16-9].*|172.2[0-9].*|172.3[0-1].*) : ;; *) printf '%s\n' "$_I"; return 0 ;; esac
     done
   done
 }
