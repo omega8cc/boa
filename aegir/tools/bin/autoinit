@@ -185,8 +185,10 @@ _check_set_mode() {
       full)      _AUTO_MODE="full" ;;
     esac
   fi
-  touch /root/.mode.selected.${_AUTO_MODE}.info
-  chattr +i /root/.mode.selected.${_AUTO_MODE}.info
+  if [ ! -e "/root/.mode.selected.${_AUTO_MODE}.info" ]; then
+    touch /root/.mode.selected.${_AUTO_MODE}.info
+    chattr +i /root/.mode.selected.${_AUTO_MODE}.info
+  fi
   _msg "Mode selected: ${_AUTO_MODE}" >> "${_logInt}"
 }
 
