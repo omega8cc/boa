@@ -77,6 +77,15 @@ _err() {
   printf 'ERROR: %s\n' "$*" >&2
 }
 
+_if_too_many() {
+  # Ensure not too many instances are running
+  if (( $(pgrep -fc '$1') > 1 )); then
+    echo "Too many $1 running $(date)" >> /var/log/boa/too.many.log
+    echo "The $1 is running! Bye."
+    exit 1
+  fi
+}
+
 # --- DO agent detection & policy ----------------------------------------------
 _do_agent_installed() {
   dpkg-query -W -f='${Status}\n' droplet-agent 2>/dev/null | grep -q 'install ok installed' && return 0
@@ -351,6 +360,8 @@ _main() {
     _err "APT root not found: ${_APT_ROOT}"
     exit 1
   fi
+
+  _if_too_many "aptcleanup"
 
   _msg "Policy for DO preservation: ${_PRESERVE_DO_POLICY} -> $(_should_preserve_do)"
 
