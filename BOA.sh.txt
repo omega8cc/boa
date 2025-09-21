@@ -788,11 +788,9 @@ _update_agents() {
     fi
   fi
 
-  if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthCtrl}/aptcleanup.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
-    if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt 0 ]; then
-      echo "The duplicity backup is running!"
+  if [ ! -e "${_pthCtrl}/aptcleanup.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
+    if [ `ps aux | grep -v "grep" | grep --count "aptcleanup"` -gt 0 ]; then
+      echo "The aptcleanup is running!"
     else
       if [ -e "${_optBin}/aptcleanup" ]; then
         mv -f ${_optBin}/aptcleanup ${_optBin}/aptcleanup.old
