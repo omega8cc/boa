@@ -140,7 +140,6 @@ _check_set_mode() {
   chattr +i /root/.mode.selected.${_AUTO_MODE}.info
   _msg "Mode selected: ${_AUTO_MODE}" >> "${_logInt}"
 }
-_check_set_mode
 
 _check_manufacturer_compatibility() {
   # Install dmidecode of not present
@@ -283,7 +282,6 @@ _locales_check_fix_early() {
     printf "\n" >> /root/.bashrc
   fi
 }
-_locales_check_fix_early
 
 _cron_check_install_early() {
   _isCrn=$(which cron 2>&1)
@@ -292,13 +290,16 @@ _cron_check_install_early() {
     ${_INITINS} cron &> /dev/null
   fi
 }
-_cron_check_install_early
 
 if [ -e "/run/autoinit.pid" ]; then
   echo " " >> "${_logSlt}"
   _msg "The /run/autoinit.pid is blocking this run..." >> "${_logSlt}"
   echo " " >> "${_logSlt}"
   exit 1
+else
+  _check_set_mode
+  _locales_check_fix_early
+  _cron_check_install_early
 fi
 
 _if_launch_boa_install() {
