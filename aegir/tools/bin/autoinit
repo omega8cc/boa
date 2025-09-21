@@ -941,6 +941,7 @@ _init_info() {
 _init_conf() {
   if [ ! -e "${_initFile}" ]; then
     if [ ! -x "/usr/bin/aptitude" ]; then
+      _check_manufacturer_compatibility
       _init_info
     fi
     _init_prepare &> /dev/null
@@ -979,7 +980,6 @@ _init_launch() {
 ### ---------------------------- Prepare for _init_launch
 _check_root
 _check_aegir
-_check_manufacturer_compatibility
 _single_instance_lock
 cd /root/
 
