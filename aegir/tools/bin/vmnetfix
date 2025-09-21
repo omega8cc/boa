@@ -72,6 +72,21 @@ _dedupe_words() {
   printf '%s\n' "$(echo "${_SEEN}" | sed 's/^ *//')"
 }
 
+_ensure_networking_exec_and_runlevels() {
+  # Ensure /etc/init.d/networking is executable and runlevels match the LSB header.
+  if [ -f /etc/init.d/networking ]; then
+    chmod 0755 /etc/init.d/networking || true
+  fi
+  # Make any dpkg-old copy non-executable so insserv doesn't get confused
+  chmod 0644 /etc/init.d/networking.dpkg-old 2>/dev/null || true
+
+  # Reset symlinks to header defaults (fixes "overrides LSB defaults (S)" warnings)
+  update-rc.d -f networking remove >/dev/null 2>&1 || true
+  insserv -r networking >/dev/null 2>&1 || true
+  update-rc.d networking defaults >/dev/null 2>&1 || true
+  insserv -v networking >/dev/null 2>&1 || true
+}
+
 # ----------------------------- Detection --------------------------------------
 
 _ifup_variant() {
@@ -538,6 +553,7 @@ _main() {
   case "${_MODE}" in
     init-only)
       _write_networking_init_if_missing
+      _ensure_networking_exec_and_runlevels
       _install_boot_guard
       _enforce_dns_always
       printf 'Init-only mode: boot hook + guard ensured; DNS enforced. No config changes.\n'
@@ -560,6 +576,7 @@ _main() {
       _write_interfaces_all "${_DEF}" "${_GW}" "${_DNS}"
       _fix_resolv_conf "${_DNS}"
       _write_networking_init_if_missing
+      _ensure_networking_exec_and_runlevels
       _install_boot_guard
       _ephemeral_bringup_all
       _enforce_dns_always
@@ -570,6 +587,7 @@ _main() {
       if _config_is_sane; then
         _msg "AUTO: config looks sane — only adding boot hook + guard."
         _write_networking_init_if_missing
+        _ensure_networking_exec_and_runlevels
         _install_boot_guard
         _enforce_dns_always
         printf 'Config sane. Boot hook + guard ensured; DNS enforced. No config changes.\n'
@@ -603,6 +621,7 @@ _main() {
         _write_interfaces_all "${_DEF}" "${_GW}" "${_DNS}"
         _fix_resolv_conf "${_DNS}"
         _write_networking_init_if_missing
+        _ensure_networking_exec_and_runlevels
         _install_boot_guard
         _ephemeral_bringup_all
         _enforce_dns_always
