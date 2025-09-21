@@ -82,6 +82,15 @@ _noninteractive_apt() {
           -o Dpkg::Options::="--force-confnew" "$@"
 }
 
+_if_too_many() {
+  # Ensure not too many instances are running
+  if (( $(pgrep -fc '$1') > 1 )); then
+    echo "Too many $1 running $(date)" >> /var/log/boa/too.many.log
+    echo "The $1 is running! Bye."
+    exit 1
+  fi
+}
+
 # ----------------------------- Detection --------------------------------------
 
 _ifup_variant() {
@@ -643,6 +652,7 @@ _switch_to_ifupdown_when_legacy_detected() {
 
 _main() {
   _need_root
+  _if_too_many "vmnetfix"
   _parse_args "$@"
 
   _ensure_sysv_prereqs
