@@ -353,10 +353,30 @@ EOF
   _msg "Installed if-up guard"
 }
 
-# ----------------------------- Writers & tests ---------------------------------
+# ----------------------------- Interface filters -------------------------------
 
-_list_ifaces()   { ls -1 /sys/class/net 2>/dev/null | awk '$0!="lo"{print}'; }
+_is_dir_netdev() { _IF="$1"; [ -d "/sys/class/net/${_IF}" ] && ip -o link show dev "${_IF}" >/dev/null 2>&1; }
+
+_is_pseudo_if() {
+  case "$1" in
+    lo|bonding_masters|*:*|docker*|veth*|br*|virbr*|tun*|tap*|wg*|tailscale*|zt*|nlmon*|ifb*|gre*|gretap*|erspan*|sit*|ip6tnl*|tunl*) return 0 ;;
+    bond*) return 0 ;;  # treat as pseudo unless it already has live IPv4 (writer handles)
+  esac
+  return 1
+}
+
+_list_ifaces() {
+  for _IF in $(ls -1 /sys/class/net 2>/dev/null); do
+    [ "$_IF" = "lo" ] && continue
+    _is_dir_netdev "$_IF" || continue
+    _is_pseudo_if "$_IF" && continue
+    printf '%s\n' "$_IF"
+  done
+}
+
 _iface_v6_list() { ip -o -6 addr show dev "$1" scope global 2>/dev/null | awk '{print $4}'; }
+
+# ----------------------------- Writers & tests ---------------------------------
 
 _pick_primary_v4_for_if() {
   # Sets globals: _PRIMARY_V4, _OTHERS_V4 (space-separated), prefer public IP
@@ -417,8 +437,8 @@ _write_interfaces_all() {
         done
 
       else
-        # No IPv4 -> use DHCP so it can come up later if available
-        echo "iface ${_IF} inet dhcp"
+        # No live IPv4 -> do not emit a DHCP stanza; leave it unmanaged.
+        true
       fi
 
       _V6_LIST="$(_iface_v6_list "${_IF}")"
