@@ -78,40 +78,51 @@ _err() {
 }
 
 ###
-### Atomic lock/unlock to prevent TOCTOU race
+### Atomic unlock to prevent TOCTOU race
 ###
-_manage_single_lock() {
-  _SELF_NAME="${_SELF_NAME:-$(basename "$0")}"
-  for _L in "/opt/local/bin/lock.inc" "/opt/local/lib/lock.inc"; do
-    [ -r "$_L" ] && . "$_L" && break
-  done
-  if [ -n "${_SINGLE_INSTANCE_LIB_VER:-}" ] && command -v _single_instance_lock >/dev/null 2>&1; then
-    # use shared lock if available
-    _single_instance_lock
+_single_instance_unlock() {
+  _FD="$1"; _PATH="$2"
+  if command -v flock >/dev/null 2>&1; then
+    flock -u "${_FD}" 2>/dev/null || true
+    eval "exec ${_FD}>&-"
+    rm -f "${_PATH}" 2>/dev/null || true
   else
-    # -------- legacy one-slot guard ---------
-    # allow up to ONE concurrent worker; exit the 2nd+
-    # Robustly match only the real worker:
-    #  - direct exec:  "/full/path/script"
-    #  - via bash:     "bash /full/path/script"
-    _ABS="$(readlink -f "$0" 2>/dev/null || realpath "$0" 2>/dev/null || echo "$0")"
-    # escape regex specials for pgrep
-    _PAT="$(printf '%s' "$_ABS" | sed 's/[.[\*^$(){}+?\\|]/\\&/g')"
-    # Count only lines that contain our absolute path, *and* either begin with bash+path or path at a word boundary.
-    # This avoids counting the wrapper like '/bin/dash -c bash /path/script …' twice.
-    _CNT=$(
-      ps ax -o pid= -o args= \
-        | awk -v P="$_PAT" '
-            $0 ~ ("(^|[[:space:]]|/)bash[[:space:]]+" P "([[:space:]]|$)") ||
-            $0 ~ ("(^|[[:space:]])" P "([[:space:]]|$)")
-          ' \
-        | wc -l
-    )
-    if [ "${_CNT:-0}" -gt 1 ]; then
-      mkdir -p /var/log/boa 2>/dev/null || true
-      echo "Too many ${_SELF_NAME} running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
+    rm -rf "${_PATH}" 2>/dev/null || true
+  fi
+}
+
+###
+### Atomic lock to prevent TOCTOU race
+###
+_single_instance_lock() {
+  # Ensure not too many instances are running
+  # usage: _single_instance_lock [lockfile_path] [fd]
+  # default lock: /run/<script>.lock (falls back to /var/run or /tmp)
+  _SELF_NAME="${_SELF_NAME:-$(basename "$0")}"
+  _LOCK_FD="${2:-9}"
+  if [ -n "${1:-}" ]; then
+    _LOCK_PATH="$1"
+  else
+    _DIR="/run"; [ -w "$_DIR" ] || _DIR="/var/run"; [ -w "$_DIR" ] || _DIR="/tmp"
+    _LOCK_PATH="${_DIR}/${_SELF_NAME%.sh}.lock"
+  fi
+
+  if command -v flock >/dev/null 2>&1; then
+    eval "exec ${_LOCK_FD}>\"${_LOCK_PATH}\""
+    if ! flock -n "${_LOCK_FD}"; then
+      echo "${_SELF_NAME}: another instance is running; exiting."
       exit 0
     fi
+    printf '%s\n' "$$" 1>&"${_LOCK_FD}" 2>/dev/null || true   # optional: PID note
+    trap "_single_instance_unlock ${_LOCK_FD} '${_LOCK_PATH}'" EXIT INT TERM HUP
+  else
+    # mkdir is atomic; directory presence == lock held
+    if ! mkdir "${_LOCK_PATH}" 2>/dev/null; then
+      echo "${_SELF_NAME}: another instance is running; exiting."
+      exit 0
+    fi
+    echo "$$" > "${_LOCK_PATH}/pid" 2>/dev/null || true
+    trap "rm -rf '${_LOCK_PATH}'" EXIT INT TERM HUP
   fi
 }
 
@@ -390,7 +401,7 @@ _main() {
     exit 1
   fi
 
-  _manage_single_lock
+  _single_instance_lock
 
   _msg "Policy for DO preservation: ${_PRESERVE_DO_POLICY} -> $(_should_preserve_do)"
 
