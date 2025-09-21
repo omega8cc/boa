@@ -739,8 +739,8 @@ _init_cycle() {
     /usr/bin/apt-get upgrade ${_nrmUpArg} >> "${_logSlt}"
   fi
   if [ ! -z "${_NEW_OS_CODE}" ] && [ ! -z "${_NEW_SYS}" ]; then
-    _msg "Running APT Cleanup with aptcleanup --preserve-do" >> "${_logInt}"
-    /opt/local/bin/aptcleanup --preserve-do >> "${_logSlt}"
+    _msg "Running APT Cleanup with aptcleanup --drop-do" >> "${_logInt}"
+    /opt/local/bin/aptcleanup --drop-do >> "${_logSlt}"
     _msg "Launching a quick upgrade to ${_NEW_SYS}/${_NEW_OS_CODE}" >> "${_logInt}"
     _aptLiSys="/etc/apt/sources.list"
     _TGT_MRR="deb.devuan.org/merged"
@@ -818,8 +818,8 @@ _init_cycle() {
     exit 0
   else
     if [ "${_OS_CODE}" = "daedalus" ]; then
-      _msg "Running APT Cleanup with aptcleanup --preserve-do" >> "${_logInt}"
-      /opt/local/bin/aptcleanup --preserve-do >> "${_logSlt}"
+      _msg "Running APT Cleanup with aptcleanup --drop-do" >> "${_logInt}"
+      /opt/local/bin/aptcleanup --drop-do >> "${_logSlt}"
       _msg "Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
       _msg "Update networking if needed with vmnetfix..." >> "${_logInt}"
       /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
