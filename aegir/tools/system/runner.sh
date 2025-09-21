@@ -115,6 +115,17 @@ elif (( $(pgrep -fc 'mysql_cluster_backup.sh') > 0 )); then
   _SQLBACKUP_RUNNING=YES
 fi
 
+# Get total RAM in MB
+_TOTAL_RAM_MB=$(free -m | awk '/^Mem:/ {print $2}')
+
+# Compare with 4096 MB (4 GB)
+if [ "${_TOTAL_RAM_MB}" -le 4096 ]; then
+  if [ ! -e "/root/.slow.cron.cnf" ]; then
+    echo SLOW > /root/.slow.cron.cnf
+    chattr +i /root/.slow.cron.cnf
+  fi
+fi
+
 if [ "${_SQLBACKUP_RUNNING}" = "TRUE" ] \
   || [ -e "/run/boa_wait.pid" ] \
   || [ -e "/run/boa_cron_wait.pid" ]; then
