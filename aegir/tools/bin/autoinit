@@ -793,8 +793,8 @@ _init_cycle() {
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   if [ "${_OLD_SYS}" = "Debian" ]; then
-    _msg "Update networking if needed with vmnetfix --preserve-cloud-init" >> "${_logInt}"
-    /opt/local/bin/vmnetfix --preserve-cloud-init >> "${_logSlt}"
+    _msg "Update networking if needed with vmnetfix" >> "${_logInt}"
+    /opt/local/bin/vmnetfix >> "${_logSlt}"
     _msg "Time for reboot and next upgrade cycle..." >> "${_logInt}"
     echo " " >> "${_logInt}"
     touch /root/.run-cycle-devuan-init.cnf
