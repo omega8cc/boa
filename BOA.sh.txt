@@ -688,6 +688,8 @@ _update_agents() {
     [ ! -e "/var/xdrago/monitor/check" ] && mkdir -p /var/xdrago/monitor/check
     [ ! -e "/var/xdrago/monitor/log" ] && mkdir -p /var/xdrago/monitor/log
 
+    [ ! -e "${_optBin}/lock.inc" ] && rm -f ${_pthLog}/*.ctrl.*.pid
+
     [ ! -e "/var/xdrago/checksql.pl" ] && rm -f ${_pthLog}/checksql.pl.ctrl.*.pid
     [ ! -e "/var/xdrago/clear.sh" ] && rm -f ${_pthLog}/clear.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/daily.sh" ] && rm -f ${_pthLog}/daily.sh.ctrl.*.pid
