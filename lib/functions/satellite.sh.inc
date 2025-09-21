@@ -2269,17 +2269,17 @@ _satellite_manage_o_contrib() {
   fi
   mkdir -p ${_D}/000/modules
   rm -f ${_D}/000/modules/o_contrib_eleven
-  ln -s ${_CORE}/o_contrib_eleven ${_D}/000/modules/o_contrib_eleven
+  ln -sfn ${_CORE}/o_contrib_eleven ${_D}/000/modules/o_contrib_eleven
   rm -f ${_D}/000/modules/o_contrib_ten
-  ln -s ${_CORE}/o_contrib_ten ${_D}/000/modules/o_contrib_ten
+  ln -sfn ${_CORE}/o_contrib_ten ${_D}/000/modules/o_contrib_ten
   rm -f ${_D}/000/modules/o_contrib_nine
-  ln -s ${_CORE}/o_contrib_nine ${_D}/000/modules/o_contrib_nine
+  ln -sfn ${_CORE}/o_contrib_nine ${_D}/000/modules/o_contrib_nine
   rm -f ${_D}/000/modules/o_contrib_eight
-  ln -s ${_CORE}/o_contrib_eight ${_D}/000/modules/o_contrib_eight
+  ln -sfn ${_CORE}/o_contrib_eight ${_D}/000/modules/o_contrib_eight
   rm -f ${_D}/000/modules/o_contrib_seven
-  ln -s ${_CORE}/o_contrib_seven ${_D}/000/modules/o_contrib_seven
+  ln -sfn ${_CORE}/o_contrib_seven ${_D}/000/modules/o_contrib_seven
   rm -f ${_D}/000/modules/o_contrib
-  ln -s ${_CORE}/o_contrib ${_D}/000/modules/o_contrib
+  ln -sfn ${_CORE}/o_contrib ${_D}/000/modules/o_contrib
   if [ "${_STATUS}" != "INIT" ]; then
     _satellite_check_fix_o_contrib
   fi
@@ -6224,7 +6224,7 @@ _satellite_child_b_redis_enable_finalize() {
     if [ -e "/data/all/000/modules/redis_edge" ]; then
       mkdir -p ${_HM_ROOT}/modules/o_contrib_seven
       rm -f ${_HM_ROOT}/modules/o_contrib_seven/{redis_edge,redis}
-      ln -s /data/all/000/modules/redis_edge \
+      ln -sfn /data/all/000/modules/redis_edge \
         ${_HM_ROOT}/modules/o_contrib_seven/redis_edge
     fi
   fi
