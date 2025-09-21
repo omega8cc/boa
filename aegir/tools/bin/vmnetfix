@@ -549,8 +549,8 @@ _choose_candidate_if() {
   # Prefer public IF with IPv4, else any IF with IPv4
   _PUB="$(_live_public_if)"
   [ -n "${_PUB}" ] && { printf '%s\n' "${_PUB}"; return 0; }
-  for i in $(_list_ifaces); do
-    if [ -n "$(_live_v4_cidr "$i")" ]; then printf '%s\n' "$i"; return 0; fi
+  for _I in $(_list_ifaces); do
+    if [ -n "$(_live_v4_cidr "${_I}")" ]; then printf '%s\n' "${_I}"; return 0; fi
   done
   printf '%s\n' ""
 }
