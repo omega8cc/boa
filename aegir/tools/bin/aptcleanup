@@ -132,7 +132,7 @@ _do_agent_installed() {
   dpkg-query -W -f='${Status}\n' droplet-agent 2>/dev/null | grep -q 'install ok installed' && return 0
   [ -x /usr/bin/droplet-agent ] && return 0
   [ -x /usr/local/bin/droplet-agent ] && return 0
-  [ -x /opt/digitalocean/droplet-agent/droplet-agent ] && return 0
+  [ -x /opt/digitalocean/bin/droplet-agent ] && return 0
   [ -x /opt/digitalocean/droplet-agent/bin/droplet-agent ] && return 0
   return 1
 }
@@ -296,7 +296,7 @@ _write_do_init_if_missing() {
 # Short-Description: DigitalOcean Droplet Agent
 ### END INIT INFO
 
-_PATHS="/usr/bin/droplet-agent /usr/local/bin/droplet-agent /opt/digitalocean/droplet-agent/bin/droplet-agent /opt/digitalocean/droplet-agent/droplet-agent"
+_PATHS="/usr/bin/droplet-agent /usr/local/bin/droplet-agent /opt/digitalocean/bin/droplet-agent /opt/digitalocean/droplet-agent/droplet-agent"
 _DAEMON=""
 _NAME="droplet-agent"
 _DESC="DigitalOcean Droplet Agent"
