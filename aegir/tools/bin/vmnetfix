@@ -648,6 +648,8 @@ _main() {
   _ensure_sysv_prereqs
   _ensure_ifupdown
   _ensure_dhcp_client
+
+  # If the current file looks like legacy DO alias layout, switch to classic ifupdown first.
   _switch_to_ifupdown_when_legacy_detected
 
   _DEF="$(_default_route_if)"; _GW="$(_default_gw_v4)"; _LIVE="$(_live_v4_cidr "${_DEF}")"
@@ -690,7 +692,7 @@ _main() {
       ;;
     auto|*)
       if _config_is_sane; then
-        _msg "AUTO: config looks sane — only adding boot hook + guard."
+        _msg "AUTO: config looks sane — ensuring boot hook + guard + DNS."
         _write_networking_init_if_missing
         _ensure_networking_exec_and_runlevels
         _install_boot_guard
