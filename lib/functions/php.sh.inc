@@ -1822,15 +1822,15 @@ _install_php_multi() {
   if [ -x "/opt/php$1/bin/php" ]; then
     rm -f /usr/bin/php
     rm -f /usr/bin/php-cli
-    ln -s /opt/php$1/bin/php /usr/bin/php
-    ln -s /opt/php$1/bin/php /usr/bin/php-cli
+    ln -sfn /opt/php$1/bin/php /usr/bin/php
+    ln -sfn /opt/php$1/bin/php /usr/bin/php-cli
     if [ -x "/opt/php$1/bin/phpize" ]; then
       rm -f /usr/bin/phpize
-      ln -s /opt/php$1/bin/phpize /usr/bin/phpize
+      ln -sfn /opt/php$1/bin/phpize /usr/bin/phpize
     fi
     if [ -x "/opt/php$1/bin/php-config" ]; then
       rm -f /usr/bin/php-config
-      ln -s /opt/php$1/bin/php-config /usr/bin/php-config
+      ln -sfn /opt/php$1/bin/php-config /usr/bin/php-config
     fi
     _T_PHP_VRN="${_PHP_VERSION}"
     _T_PHP_PTH="/opt/php$1/bin"
@@ -2797,16 +2797,16 @@ _switch_php_cli() {
     if [ -x "/opt/php$1/bin/php" ]; then
       rm -f /usr/bin/php
       rm -f /usr/bin/php-cli
-      ln -s /opt/php$1/bin/php /usr/bin/php
-      ln -s /opt/php$1/bin/php /usr/bin/php-cli
+      ln -sfn /opt/php$1/bin/php /usr/bin/php
+      ln -sfn /opt/php$1/bin/php /usr/bin/php-cli
     fi
     if [ -x "/opt/php$1/bin/phpize" ]; then
       rm -f /usr/bin/phpize
-      ln -s /opt/php$1/bin/phpize /usr/bin/phpize
+      ln -sfn /opt/php$1/bin/phpize /usr/bin/phpize
     fi
     if [ -x "/opt/php$1/bin/php-config" ]; then
       rm -f /usr/bin/php-config
-      ln -s /opt/php$1/bin/php-config /usr/bin/php-config
+      ln -sfn /opt/php$1/bin/php-config /usr/bin/php-config
     fi
   fi
 }
