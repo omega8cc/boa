@@ -258,17 +258,16 @@ _ensure_sysv_prereqs() {
 # ----------------------------- Init hook (ifupdown2) ---------------------------
 
 _write_networking_init_if_missing() {
-  # For ifupdown2 only; add minimal boot hook if missing.
-  [ "$(_ifup_variant)" = "ifupdown2" ] || { _msg "ifup variant not ifupdown2 — no networking init needed."; return 0; }
+  # For ifupdown2 only; add minimal boot hook if missing, with safe LSB headers.
+  [ "$(_ifup_variant)" = "ifupdown2" ] || { _msg "ifup variant not ifupdown2 — no networking shim needed."; return 0; }
   if [ -x "/etc/init.d/networking" ]; then
     _msg "/etc/init.d/networking already present."
-    chmod 0755 /etc/init.d/networking
+    chmod 0755 /etc/init.d/networking || true
     update-rc.d networking defaults >/dev/null 2>&1 || true
-    _msg "Enabled /etc/init.d/networking for ifupdown2."
     return 0
   fi
   if [ "${_DRY_RUN}" = "YES" ]; then
-    printf '[DRY-RUN] Would create /etc/init.d/networking and enable it\n'
+    printf '[DRY-RUN] Would create /etc/init.d/networking (ifupdown2 shim) and enable it\n'
     return 0
   fi
   cat >/etc/init.d/networking <<'EOF'
@@ -280,20 +279,21 @@ _write_networking_init_if_missing() {
 # Should-Stop:       $remote_fs $syslog
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
-# Short-Description: Bring up/down networking via ifup/ifdown
+# Short-Description: Bring up/down networking via ifup/ifdown (ifupdown2)
 ### END INIT INFO
-_PATH_IFUP="$(command -v ifup || true)"; _PATH_IFDOWN="$(command -v ifdown || true)"
-_cleanup(){ rm -f /run/network/ifupdown2/ifupdown2.lock 2>/dev/null || true; }
-_start(){ _cleanup; [ -x "$_PATH_IFUP" ] && "$_PATH_IFUP" -a || true; }
-_stop(){  [ -x "$_PATH_IFDOWN" ] && "$_PATH_IFDOWN" -a || true; }
-case "$1" in start) _start;; stop) _stop;; restart|force-reload) _stop; _start;; status) ip -br a; ip r;; *) echo "Usage: $0 {start|stop|restart|force-reload|status}"; exit 2;; esac
+_L(){ rm -f /run/network/ifupdown2/ifupdown2.lock 2>/dev/null || true; }
+U="$(command -v ifup || true)"; D="$(command -v ifdown || true)"
+start(){ _L; [ -x "$U" ] && "$U" -a || true; }
+stop(){  [ -x "$D" ] && "$D" -a || true; }
+case "$1" in start) start;; stop) stop;; restart|force-reload) stop; start;; status) ip -br a; ip r;; *) echo "Usage: $0 {start|stop|restart|force-reload|status}"; exit 2;; esac
 EOF
   # minimal sysv prerequisites so insserv has the virtual facilities it expects
   dpkg -s initscripts >/dev/null 2>&1 || _noninteractive_apt install -y initscripts
   dpkg -s sysv-rc     >/dev/null 2>&1 || _noninteractive_apt install -y sysv-rc startpar insserv
   chmod 0755 /etc/init.d/networking
   update-rc.d networking defaults >/dev/null 2>&1 || true
-  _msg "Created and enabled /etc/init.d/networking for ifupdown2."
+  _msg "Created and enabled /etc/init.d/networking shim for ifupdown2."
+}
 
 _ensure_networking_exec_and_runlevels() {
   # Ensure /etc/init.d/networking is executable and runlevels match the LSB header.
