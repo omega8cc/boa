@@ -459,6 +459,21 @@ _write_interfaces_all() {
   _msg "Wrote /etc/network/interfaces"
 }
 
+_sanitize_interfaces_file() {
+  # Remove stray bond/bonding_masters blocks (idempotent)
+  [ -f /etc/network/interfaces ] || return 0
+  if [ "${_DRY_RUN}" = "YES" ]; then
+    echo '[DRY-RUN] Would sanitize bonding stanzas in /etc/network/interfaces'
+    return 0
+  fi
+  sed -i \
+    -e '/^allow-hotplug[[:space:]]\+bonding_masters$/,/^$/d' \
+    -e '/^iface[[:space:]]\+bonding_masters[[:space:]]\+inet[[:space:]]/,/^$/d' \
+    -e '/^allow-hotplug[[:space:]]\+bond[0-9]\+$/,/^$/d' \
+    -e '/^iface[[:space:]]\+bond[0-9]\+[[:space:]]\+inet[[:space:]]/,/^$/d' \
+    /etc/network/interfaces
+}
+
 _ephemeral_static_up() {
   # Apply an immediate static config: address CIDR + default via GW (onlink safe)
   _IF="$1"; _CIDR="$2"; _GW="$3"
@@ -655,6 +670,7 @@ _main() {
       _ephemeral_static_up "${_DEF}" "${_LIVE}" "${_GW}"
 
       _DNS="$(_collect_forced_dns)"
+      _sanitize_interfaces_file
       _write_interfaces_all "${_DEF}" "${_GW}" "${_DNS}"
       _fix_resolv_conf "${_DNS}"
       _write_networking_init_if_missing
@@ -700,6 +716,7 @@ _main() {
         _ephemeral_static_up "${_DEF}" "${_LIVE}" "${_GW}"
 
         _DNS="$(_collect_forced_dns)"
+        _sanitize_interfaces_file
         _write_interfaces_all "${_DEF}" "${_GW}" "${_DNS}"
         _fix_resolv_conf "${_DNS}"
         _write_networking_init_if_missing
