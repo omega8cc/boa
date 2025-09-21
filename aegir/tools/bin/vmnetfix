@@ -549,6 +549,47 @@ _find_prefix_for_if() {
   printf '%s\n' ""
 }
 
+# ----------------------- ifupdown2 -> ifupdown --------------------------------
+
+_has_legacy_alias_layout() {
+  # Detect classic alias syntax and dotted-decimal netmasks used by DO vanilla.
+  # Returns 0 (true) if legacy layout is present.
+  grep -Esq '^[[:space:]]*auto[[:space:]]+[a-z0-9]+:[0-9]+' /etc/network/interfaces 2>/dev/null && return 0
+  grep -Esq '^[[:space:]]*iface[[:space:]]+[a-z0-9]+:[0-9]+' /etc/network/interfaces 2>/dev/null && return 0
+  grep -Esq '^[[:space:]]*netmask[[:space:]]+[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' /etc/network/interfaces 2>/dev/null && return 0
+  grep -Esq '^[[:space:]]*broadcast[[:space:]]+[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' /etc/network/interfaces 2>/dev/null && return 0
+  grep -Esq 'post-up[[:space:]]+if(up|config)[[:space:]]+[a-z0-9]+:[0-9]+' /etc/network/interfaces 2>/dev/null && return 0
+  return 1
+}
+
+_switch_to_ifupdown_when_legacy_detected() {
+  # If ifupdown2 is installed AND legacy layout is present, switch to classic ifupdown.
+  _cmd_exists ifup || true  # for logging consistency
+  dpkg -s ifupdown2 >/dev/null 2>&1 || return 0
+  _has_legacy_alias_layout || return 0
+
+  _msg "Legacy alias/DO layout detected; switching from ifupdown2 -> ifupdown."
+
+  if [ "${_DRY_RUN}" = "YES" ]; then
+    echo "[DRY-RUN] _noninteractive_apt install -y ifupdown (replaces ifupdown2)"
+    echo "[DRY-RUN] update-rc.d networking defaults; insserv -v networking"
+    return 0
+  fi
+
+  apt-get update -y || true
+  # ifupdown conflicts with ifupdown2; this will replace it cleanly
+  _noninteractive_apt install -y ifupdown || { _err "ifupdown install failed"; return 1; }
+
+  # Ensure the canonical init script is enabled and ordered
+  _ensure_networking_exec_and_runlevels
+
+  # Clear any ifupdown2 lock left around and start networking now
+  rm -f /run/network/ifupdown2/ifupdown2.lock 2>/dev/null || true
+  service networking restart >/dev/null 2>&1 || /etc/init.d/networking start >/dev/null 2>&1 || true
+
+  _msg "Switched to classic ifupdown and refreshed networking."
+}
+
 # ----------------------------- Main flow --------------------------------------
 
 _main() {
@@ -557,6 +598,7 @@ _main() {
 
   _ensure_ifupdown
   _ensure_dhcp_client
+  _switch_to_ifupdown_when_legacy_detected
 
   _DEF="$(_default_route_if)"; _GW="$(_default_gw_v4)"; _LIVE="$(_live_v4_cidr "${_DEF}")"
   _msg "Default IF: ${_DEF:-<none>}  GW4: ${_GW:-<none>}  LIVE: ${_LIVE:-<none>}"
