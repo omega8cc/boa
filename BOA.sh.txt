@@ -766,6 +766,26 @@ _update_agents() {
     fi
   fi
 
+  if [ ! -e "${_pthLog}/lock.inc.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
+    if [ `ps aux | grep -v "grep" | grep --count "foobar"` -gt 0 ]; then
+      echo "The foobar is running!"
+    else
+      if [ -e "${_optBin}/lock.inc" ]; then
+        mv -f ${_optBin}/lock.inc ${_optBin}/lock.inc.old
+      fi
+      curl ${_crlGet} "${_urlHmr}/tools/bin/lock.inc" -o ${_optBin}/lock.inc
+      if [ -e "${_optBin}/lock.inc" ]; then
+        chmod 700 ${_optBin}/lock.inc
+        chown root:root ${_optBin}/lock.inc
+        touch ${_pthLog}/lock.inc.sh.ctrl.f99.${_tRee}.${_xSrl}.pid
+      else
+        if [ -e "${_optBin}/lock.inc.old" ]; then
+          mv -f ${_optBin}/lock.inc.old ${_optBin}/lock.inc
+        fi
+      fi
+    fi
+  fi
+
   if [ ! -e "${_pthLog}/vmnetfix.sh.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
     if [ `ps aux | grep -v "grep" | grep --count "vmnetfix"` -gt 0 ]; then
       echo "The vmnetfix is running!"
@@ -3783,6 +3803,7 @@ _update_boa_tools() {
             fancynow \
             ffmirror \
             killer \
+            lock.inc \
             memorytuner \
             mergecsf \
             multiback \
@@ -3884,7 +3905,7 @@ _update_boa_tools() {
 
   # _CORE (700): core BOA tools
   chmod 700 ${_optBin}/{barracuda,boa,ffmirror,killer,octopus}
-  chmod 700 ${_optBin}/{syncpass,weblogx,xboa,xcopy}
+  chmod 700 ${_optBin}/{syncpass,weblogx,xboa,xcopy,lock.inc}
 
   # _DB (700): performance and DB tuners
   chmod 700 ${_optBin}/{memorytuner,mycnfup,mysqltuner5,mysqltuner8,perftest}
