@@ -144,7 +144,7 @@ _check_set_mode() {
 _check_manufacturer_compatibility() {
   # Install dmidecode of not present
   if ! command -v dmidecode &> /dev/null; then
-    /usr/bin/apt-get update --allow-insecure-repositories &> /dev/null
+    /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
     ${_INITINS} dmidecode &> /dev/null
   fi
   # Check if dmidecode is available
@@ -191,7 +191,7 @@ fi
 _locales_check_fix_early() {
   _isLoc=$(which locale 2>&1)
   if [ ! -x "${_isLoc}" ] || [ -z "${_isLoc}" ]; then
-    apt-get update --allow-insecure-repositories -qq &> /dev/null
+    /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
     ${_INITINS} locales &> /dev/null
     [ "${_AUTO_MODE}" = "full" ] && ${_INITINS} locales-all &> /dev/null
   fi
@@ -286,7 +286,7 @@ _locales_check_fix_early() {
 _cron_check_install_early() {
   _isCrn=$(which cron 2>&1)
   if [ ! -x "${_isCrn}" ] || [ -z "${_isCrn}" ]; then
-    apt-get update --allow-insecure-repositories -qq &> /dev/null
+    /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
     ${_INITINS} cron &> /dev/null
   fi
 }
@@ -660,7 +660,7 @@ _init_offsystemd() {
     echo -e 'Package: systemd\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/offsystemd
     echo -e '\n\nPackage: *systemd*\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/offsystemd
   fi
-  /usr/bin/apt-get update --allow-insecure-repositories -qq >> "${_logSlt}"
+  /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
   /usr/bin/apt-get dist-upgrade ${_dstUpArg} >> "${_logSlt}"
   /usr/bin/apt-get dist-upgrade ${_dstUpArg} >> "${_logSlt}"
   [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
@@ -750,7 +750,7 @@ _init_cycle() {
     exit 1
   fi
   if [ "${_OLD_SYS}" = "Devuan" ]; then
-    /usr/bin/apt-get update --allow-insecure-repositories -qq >> "${_logSlt}"
+    /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
     /usr/bin/apt-get upgrade ${_nrmUpArg} >> "${_logSlt}"
   fi
   if [ ! -z "${_NEW_OS_CODE}" ] && [ ! -z "${_NEW_SYS}" ]; then
@@ -781,6 +781,7 @@ _init_cycle() {
       ${_INITINS} devuan-keyring >> "${_logSlt}"
       ${_INITINS} devuan-keyring >> "${_logSlt}"
     else
+      /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
       /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
     fi
     /usr/bin/apt-get upgrade ${_dstUpArg} >> "${_logSlt}"
