@@ -281,8 +281,9 @@ _write_networking_init_if_missing() {
 #!/usr/bin/env bash
 ### BEGIN INIT INFO
 # Provides:          networking
-# Required-Start:    $remote_fs $syslog $local_fs
-# Required-Stop:     $remote_fs $syslog $local_fs
+# Required-Start:    $remote_fs $syslog
+# Required-Stop:
+# Should-Stop:       $remote_fs $syslog
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
 # Short-Description: Bring up/down networking via ifup/ifdown
