@@ -621,7 +621,7 @@ _init_prepare() {
     wait
     exit 0
   else
-    if [ ! -x "/usr/bin/aptitude" ]; then
+    if [ ! -x "/usr/bin/mc" ]; then
       echo "Running _init_prepare procedure B..."
       touch /run/autoinit.pid
       /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
@@ -652,6 +652,7 @@ _init_prepare() {
       ${_INITINS} aptitude >> "${_logSlt}"
       ${_INITINS} cron     >> "${_logSlt}"
       ${_INITINS} curl     >> "${_logSlt}"
+      ${_INITINS} mc       >> "${_logSlt}"
       if [ "${_AUTO_MODE}" = "full" ]; then
         ${_INITINS} build-essential   >> "${_logSlt}"
         ${_INITINS} git               >> "${_logSlt}"
@@ -942,7 +943,7 @@ _init_info() {
 ###
 _init_conf() {
   if [ ! -e "${_initFile}" ]; then
-    if [ ! -x "/usr/bin/aptitude" ]; then
+    if [ ! -x "/usr/bin/mc" ]; then
       _check_manufacturer_compatibility
       _init_info
     fi
