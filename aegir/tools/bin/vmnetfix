@@ -72,6 +72,13 @@ _dedupe_words() {
   printf '%s\n' "$(echo "${_SEEN}" | sed 's/^ *//')"
 }
 
+_noninteractive_apt() {
+  # usage: _noninteractive_apt install -y pkg1 pkg2 ...
+  DEBIAN_FRONTEND=noninteractive \
+  apt-get -o Dpkg::Options::="--force-confdef" \
+          -o Dpkg::Options::="--force-confnew" "$@"
+}
+
 _ensure_networking_exec_and_runlevels() {
   # Ensure /etc/init.d/networking is executable and runlevels match the LSB header.
   if [ -f /etc/init.d/networking ]; then
@@ -242,7 +249,7 @@ _ensure_ifupdown() {
     return 0
   fi
   apt-get update -y || true
-  apt-get install -y ifupdown2 || apt-get install -y ifupdown
+  _noninteractive_apt install -y ifupdown2 || _noninteractive_apt install -y ifupdown
 }
 
 _ensure_dhcp_client() {
@@ -251,7 +258,7 @@ _ensure_dhcp_client() {
     echo 'DRY-RUN: would install isc-dhcp-client'
     return 0
   fi
-  apt-get install -y isc-dhcp-client || true
+  _noninteractive_apt install -y isc-dhcp-client || true
 }
 
 # ----------------------------- Init hook (ifupdown2) ---------------------------
@@ -286,6 +293,9 @@ _start(){ _cleanup; [ -x "$_PATH_IFUP" ] && "$_PATH_IFUP" -a || true; }
 _stop(){  [ -x "$_PATH_IFDOWN" ] && "$_PATH_IFDOWN" -a || true; }
 case "$1" in start) _start;; stop) _stop;; restart|force-reload) _stop; _start;; status) ip -br a; ip r;; *) echo "Usage: $0 {start|stop|restart|force-reload|status}"; exit 2;; esac
 EOF
+  # minimal sysv prerequisites so insserv has the virtual facilities it expects
+  dpkg -s initscripts >/dev/null 2>&1 || _noninteractive_apt install -y initscripts
+  dpkg -s sysv-rc     >/dev/null 2>&1 || _noninteractive_apt install -y sysv-rc startpar insserv
   chmod 0755 /etc/init.d/networking
   update-rc.d networking defaults >/dev/null 2>&1 || true
   _msg "Created and enabled /etc/init.d/networking for ifupdown2."
