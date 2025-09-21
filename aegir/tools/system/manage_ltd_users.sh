@@ -1371,7 +1371,7 @@ _site_socket_inc_gen() {
   _hmstCli=$(echo -n ${_hmstCli} | tr -d "\n" 2>&1)
 
   if [ ! -e "${_hmstAls}" ]; then
-    ln -s ${_dscUsr}/.drush/hostmaster.alias.drushrc.php ${_hmstAls}
+    ln -sfn ${_dscUsr}/.drush/hostmaster.alias.drushrc.php ${_hmstAls}
   fi
 
   _PLACEHOLDER_TEST=$(grep "place.holder.dont.remove" ${_mltFpm} 2>&1)

@@ -1617,10 +1617,10 @@ _fix_expected_symlinks() {
   if [ ! -e "${_Plr}/js.php" ] && [ -e "${_Plr}" ]; then
     if [ -e "${_Plr}/modules/o_contrib_seven" ] \
       && [ -e "${_O_CONTRIB_SEVEN}/js/js.php" ]; then
-      ln -s ${_O_CONTRIB_SEVEN}/js/js.php ${_Plr}/js.php &> /dev/null
+      ln -sfn ${_O_CONTRIB_SEVEN}/js/js.php ${_Plr}/js.php &> /dev/null
     elif [ -e "${_Plr}/modules/o_contrib" ] \
       && [ -e "${_O_CONTRIB}/js/js.php" ]; then
-      ln -s ${_O_CONTRIB}/js/js.php ${_Plr}/js.php &> /dev/null
+      ln -sfn ${_O_CONTRIB}/js/js.php ${_Plr}/js.php &> /dev/null
     fi
   fi
 }
