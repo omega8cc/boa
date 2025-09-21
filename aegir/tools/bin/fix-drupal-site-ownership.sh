@@ -70,7 +70,7 @@ if [ -e "${site_path}/../sites/default/default.services.yml" ]; then
   fi
 fi
 if [ -e "${site_path}/modules/services.yml" ] && [ ! -e "${site_path}/services.yml" ]; then
-  ln -s ${site_path}/modules/services.yml ${site_path}/services.yml
+  ln -sfn ${site_path}/modules/services.yml ${site_path}/services.yml
 fi
 
 cd ${site_path}

@@ -489,7 +489,7 @@ _create_d6_symlinks() {
   fi
   if [ ! -L "${_OCTO_PLPATH}/profiles" ] && [ -d "${_SHRD_PLPATH}/profiles" ]; then
     rm -rf ${_OCTO_PLPATH}/profiles
-    ln -s ${_SHRD_PLPATH}/profiles ${_OCTO_PLPATH}/profiles
+    ln -sfn ${_SHRD_PLPATH}/profiles ${_OCTO_PLPATH}/profiles
   fi
 }
 
@@ -515,7 +515,7 @@ _create_d7_symlinks() {
   fi
   if [ ! -L "${_OCTO_PLPATH}/profiles" ] && [ -d "${_SHRD_PLPATH}/profiles" ]; then
     rm -rf ${_OCTO_PLPATH}/profiles
-    ln -s ${_SHRD_PLPATH}/profiles ${_OCTO_PLPATH}/profiles
+    ln -sfn ${_SHRD_PLPATH}/profiles ${_OCTO_PLPATH}/profiles
   fi
 }
 
@@ -550,7 +550,7 @@ _create_distro_d7_symlinks() {
   fi
   if [ ! -L "${_OCTO_PLPATH}/profiles" ] && [ -d "${_SHRD_PLPATH}/profiles" ]; then
     rm -rf ${_OCTO_PLPATH}/profiles
-    ln -s ${_SHRD_PLPATH}/profiles ${_OCTO_PLPATH}/profiles
+    ln -sfn ${_SHRD_PLPATH}/profiles ${_OCTO_PLPATH}/profiles
   fi
 }
 
@@ -599,8 +599,8 @@ _prepare_drupal6_core() {
     patch -p0 < ${_pthPch}/taxonomy-6.26.patch &> /dev/null
     rm -f ${_D6_CORE_DIR}/modules/taxonomy/taxonomy.module.orig
     rm -f modules/o_contrib
-    ln -s ${_CORE}/o_contrib modules/o_contrib
-    ln -s ${_CORE}/o_contrib/js/js.php js.php
+    ln -sfn ${_CORE}/o_contrib modules/o_contrib
+    ln -sfn ${_CORE}/o_contrib/js/js.php js.php
     cp -af ${_CORE}/o_contrib/image/image.imagemagick.inc includes/
     cp -af ${_CORE}/o_contrib/boost/stats/boost_stats.php ./ &> /dev/null
     rm -rf ${_D6_CORE_DIR}/scripts
@@ -630,8 +630,8 @@ _prepare_drupal7_core() {
     patch -p0 < ${_pthPch}/taxonomy-7.12.patch &> /dev/null
     rm -f ${_D7_CORE_DIR}/modules/taxonomy/taxonomy.module.orig
     rm -f modules/o_contrib_seven
-    ln -s ${_CORE}/o_contrib_seven modules/o_contrib_seven
-    ln -s ${_CORE}/o_contrib_seven/js/js.php js.php
+    ln -sfn ${_CORE}/o_contrib_seven modules/o_contrib_seven
+    ln -sfn ${_CORE}/o_contrib_seven/js/js.php js.php
     rm -rf ${_D7_CORE_DIR}/scripts
     cd ${_D7_CORE_DIR}/themes
     _get_dev_contrib "rubik-7.x-4.4.tar.gz"
