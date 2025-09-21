@@ -82,21 +82,6 @@ _noninteractive_apt() {
           -o Dpkg::Options::="--force-confnew" "$@"
 }
 
-_ensure_networking_exec_and_runlevels() {
-  # Ensure /etc/init.d/networking is executable and runlevels match the LSB header.
-  if [ -f /etc/init.d/networking ]; then
-    chmod 0755 /etc/init.d/networking || true
-  fi
-  # Make any dpkg-old copy non-executable so insserv doesn't get confused
-  chmod 0644 /etc/init.d/networking.dpkg-old 2>/dev/null || true
-
-  # Reset symlinks to header defaults (fixes "overrides LSB defaults (S)" warnings)
-  update-rc.d -f networking remove >/dev/null 2>&1 || true
-  insserv -r networking >/dev/null 2>&1 || true
-  update-rc.d networking defaults >/dev/null 2>&1 || true
-  insserv -v networking >/dev/null 2>&1 || true
-}
-
 # ----------------------------- Detection --------------------------------------
 
 _ifup_variant() {
@@ -309,6 +294,20 @@ EOF
   chmod 0755 /etc/init.d/networking
   update-rc.d networking defaults >/dev/null 2>&1 || true
   _msg "Created and enabled /etc/init.d/networking for ifupdown2."
+
+_ensure_networking_exec_and_runlevels() {
+  # Ensure /etc/init.d/networking is executable and runlevels match the LSB header.
+  if [ -f /etc/init.d/networking ]; then
+    chmod 0755 /etc/init.d/networking || true
+  fi
+  # Make any dpkg-old copy non-executable so insserv doesn't get confused
+  chmod 0644 /etc/init.d/networking.dpkg-old 2>/dev/null || true
+
+  # Reset symlinks to header defaults (fixes "overrides LSB defaults (S)" warnings)
+  update-rc.d -f networking remove >/dev/null 2>&1 || true
+  insserv -r networking >/dev/null 2>&1 || true
+  update-rc.d networking defaults >/dev/null 2>&1 || true
+  insserv -v networking >/dev/null 2>&1 || true
 }
 
 # ----------------------------- Boot guard (route sanity) -----------------------
