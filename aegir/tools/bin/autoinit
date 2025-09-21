@@ -91,6 +91,11 @@ if [ -z "${TERM+x}" ]; then
 fi
 
 ###
+### The lock is always cleared even if apt bails
+###
+trap 'rm -f /run/autoinit.pid' EXIT
+
+###
 ### Only root allowed
 ###
 _check_root() {
