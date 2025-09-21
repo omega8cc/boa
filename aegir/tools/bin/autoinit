@@ -118,6 +118,17 @@ _check_root() {
 }
 _check_root
 cd /root/
+###
+### Only one allowed
+###
+_if_too_many() {
+  # Ensure not too many instances are running
+  if (( $(pgrep -fc '$1') > 1 )); then
+    echo "Too many $1 running $(date)" >> /var/log/boa/too.many.log
+    echo "The $1 is running! Bye."
+    exit 1
+  fi
+}
 
 ###
 ### Noticeable messages
@@ -893,6 +904,7 @@ _init_launch() {
 }
 
 if [ ! -e "/run/autoinit.pid" ]; then
+_if_too_many "autoinit"
   _init_launch
 fi
 
