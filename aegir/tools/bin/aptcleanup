@@ -77,12 +77,53 @@ _err() {
   printf 'ERROR: %s\n' "$*" >&2
 }
 
-_if_too_many() {
+
+###
+### Atomic unlock to prevent TOCTOU race
+###
+_single_instance_unlock() {
+  _FD="$1"; _PATH="$2"
+  if command -v flock >/dev/null 2>&1; then
+    flock -u "${_FD}" 2>/dev/null || true
+    eval "exec ${_FD}>&-"
+    rm -f "${_PATH}" 2>/dev/null || true
+  else
+    rm -rf "${_PATH}" 2>/dev/null || true
+  fi
+}
+
+###
+### Atomic lock to prevent TOCTOU race
+###
+_single_instance_lock() {
   # Ensure not too many instances are running
-  if (( $(pgrep -fc '$1') > 1 )); then
-    echo "Too many $1 running $(date)" >> /var/log/boa/too.many.log
-    echo "The $1 is running! Bye."
-    exit 1
+  # usage: _single_instance_lock [lockfile_path] [fd]
+  # default lock: /run/<script>.lock (falls back to /var/run or /tmp)
+  _SELF_NAME="${_SELF_NAME:-$(basename "$0")}"
+  _LOCK_FD="${2:-9}"
+  if [ -n "${1:-}" ]; then
+    _LOCK_PATH="$1"
+  else
+    _DIR="/run"; [ -w "$_DIR" ] || _DIR="/var/run"; [ -w "$_DIR" ] || _DIR="/tmp"
+    _LOCK_PATH="${_DIR}/${_SELF_NAME%.sh}.lock"
+  fi
+
+  if command -v flock >/dev/null 2>&1; then
+    eval "exec ${_LOCK_FD}>\"${_LOCK_PATH}\""
+    if ! flock -n "${_LOCK_FD}"; then
+      echo "${_SELF_NAME}: another instance is running; exiting."
+      exit 0
+    fi
+    printf '%s\n' "$$" 1>&"${_LOCK_FD}" 2>/dev/null || true   # optional: PID note
+    trap "_single_instance_unlock ${_LOCK_FD} '${_LOCK_PATH}'" EXIT INT TERM HUP
+  else
+    # mkdir is atomic; directory presence == lock held
+    if ! mkdir "${_LOCK_PATH}" 2>/dev/null; then
+      echo "${_SELF_NAME}: another instance is running; exiting."
+      exit 0
+    fi
+    echo "$$" > "${_LOCK_PATH}/pid" 2>/dev/null || true
+    trap "rm -rf '${_LOCK_PATH}'" EXIT INT TERM HUP
   fi
 }
 
@@ -361,7 +402,7 @@ _main() {
     exit 1
   fi
 
-  _if_too_many "aptcleanup"
+  _single_instance_lock
 
   _msg "Policy for DO preservation: ${_PRESERVE_DO_POLICY} -> $(_should_preserve_do)"
 
