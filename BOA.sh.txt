@@ -4649,6 +4649,13 @@ if [ "$(id -u)" -eq 0 ]; then
 
   _find_correct_ip
 
+  [ ! -e "/var/aegir/drush" ] && _locales_check_fix_early
+  _os_detection_minimal
+  _find_fast_mirror_early
+  if command -v curl &> /dev/null; then
+    _verify_boa_keys
+  fi
+
   ### Prefer Devuan apt sources
   if [ -d "/var/aegir" ] && [ ! -e "/etc/apt/preferences.d/99-prefer-devuan" ]; then
     if grep -qi 'ID=devuan' /etc/os-release 2>/dev/null; then
@@ -4662,13 +4669,6 @@ if [ "$(id -u)" -eq 0 ]; then
     if [ ! -e "${_bLogA}" ] && [ ! -e "${_bLogB}" ]; then
       _backup_waiting_notify
     fi
-  fi
-
-  [ ! -e "/var/aegir/drush" ] && _locales_check_fix_early
-  _os_detection_minimal
-  _find_fast_mirror_early
-  if command -v curl &> /dev/null; then
-    _verify_boa_keys
   fi
 
   ### Make local OpenSSL new/legacy ssl/certs symlinked to system ssl/certs
