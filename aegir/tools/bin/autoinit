@@ -884,8 +884,8 @@ _init_cycle() {
     exit 0
   else
     if [ "${_OS_CODE}" = "daedalus" ]; then
-      _msg "Running APT Cleanup with aptcleanup --drop-do" >> "${_logInt}"
-      /opt/local/bin/aptcleanup --drop-do >> "${_logSlt}"
+      _msg "Running APT Cleanup with aptcleanup" >> "${_logInt}"
+      /opt/local/bin/aptcleanup >> "${_logSlt}"
       _msg "Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
       _msg "Update networking if needed with vmnetfix..." >> "${_logInt}"
       /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
