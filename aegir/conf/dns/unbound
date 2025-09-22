@@ -18,7 +18,7 @@ HELPER="/usr/libexec/unbound-helper"
 
 test -x $DAEMON || exit 0
 
-export PATH=/bin:/usr/bin:/sbin:/usr/sbin
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 
 . /lib/lsb/init-functions
 

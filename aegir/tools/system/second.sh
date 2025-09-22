@@ -3,7 +3,7 @@
 # Environment setup
 export HOME=/root
 export SHELL=/bin/bash
-export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 
 # Paths
 _pthOml="/var/log/boa/high.load.incident.log"
