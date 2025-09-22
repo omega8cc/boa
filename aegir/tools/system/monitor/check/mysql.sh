@@ -235,12 +235,12 @@ _mysql_is_locked() {
 
   if [ -n "${_OCT_NR}" ] && [ "${_OCT_NR}" -ge 1 ]; then
     if [ "${_OCT_NR}" -ge 6 ]; then
-      _MULTI_MX=$(( _OCT_NR / 2 ))
+      _MULTI_MX=$(( _OCT_NR * 3 ))
     else
-      _MULTI_MX=$(( _OCT_NR * 2 ))
+      _MULTI_MX=$(( _OCT_NR * 5 ))
     fi
     if [ "${_OCT_NR}" -lt 4 ]; then
-      _MULTI_MX=$(( _OCT_NR + 3 ))
+      _MULTI_MX=$(( _OCT_NR + 10 ))
     fi
   fi
 
