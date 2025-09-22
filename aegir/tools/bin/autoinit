@@ -545,17 +545,6 @@ _ifnames_grub_check_sync() {
 }
 
 ###
-### APT sources cleanup
-###
-_if_remove_conflicting_sources() {
-  _SRC_TEST=$(ls -la /etc/apt/sources.list.d/* 2>&1)
-  if [[ ! "${_SRC_TEST}" =~ "No such file" ]]; then
-    _msg "Removing conflicting sources from /etc/apt/sources.list.d on this system" >> "${_logInt}"
-    mv -f /etc/apt/sources.list.d/* /var/backups/
-  fi
-}
-
-###
 ### Prefer Devuan APT sources
 ###
 _prefer_devuan_repositories() {
@@ -834,7 +823,6 @@ _init_cycle() {
     if [ -e "/etc/apt/apt.conf" ]; then
       rm -f /etc/apt/apt.conf
     fi
-    _if_remove_conflicting_sources
     _prefer_devuan_repositories
     /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
     /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
