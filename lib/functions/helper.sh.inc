@@ -576,10 +576,15 @@ _virt_detection() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _virt_detection"
   fi
-  _VIRT_TOOL=$(which virt-what 2> /dev/null)
+  _VIRT_TOOL=$(which virt-what)
   if [ -x "${_VIRT_TOOL}" ]; then
-    _VIRT_TEST=$(virt-what 2> /dev/null)
+    _VIRT_TEST=$(virt-what)
     _VIRT_TEST=$(echo -n ${_VIRT_TEST} | fmt -su -w 2500 2>&1)
+    if [[ "${_VIRT_TEST}" =~ "program not found" ]]; then
+      _msg "ERROR: virt-what says: ${_VIRT_TEST}"
+      _msg "ERROR: virt-what detection fails for unknown reason, exit"
+      _clean_pid_exit _virt_detection
+    fi
     if [ ! -e "/root/.allow.any.virt.cnf" ]; then
       if [ -e "/proc/self/status" ]; then
         _VS_GUEST_TEST=$(grep -E "VxID:[[:space:]]*[0-9]{2,}$" /proc/self/status 2> /dev/null)
