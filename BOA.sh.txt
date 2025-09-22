@@ -4831,7 +4831,9 @@ if [ "$(id -u)" -eq 0 ]; then
     service cron reload &> /dev/null
   fi
   if [ "${_SCREEN_INIT}" = "YES" ]; then
-    clear
+    if [ "${_DEBUG_MODE}" != "YES" ]; then
+      clear
+    fi
     echo
     echo "The system is ready for BOA installation!"
     echo
