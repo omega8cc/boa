@@ -558,6 +558,49 @@ _if_fix_iptables_symlinks() {
   ###
 }
 
+
+###
+### Fix VM system detection
+###
+_fix_virt_what() {
+  _VIRT_TEST=$(which virt-what)
+  if [ -n "${_VIRT_TEST}" ] && [ -x "${_VIRT_TEST}" ]; then
+    _SHELL_TEST_A=$(grep -I -o "\#\!.*/usr/bin/sh" ${_VIRT_TEST} 2>&1)
+    _SHELL_TEST_B=$(grep -I -o "\#\!.*/bin/sh" ${_VIRT_TEST} 2>&1)
+    if [[ "${_SHELL_TEST_A}" =~ "/usr/bin/sh" ]]; then
+      sed -i "s/\/usr\/bin\/sh/\/bin\/dash/g" ${_VIRT_TEST}
+    fi
+    if [[ "${_SHELL_TEST_B}" =~ "/bin/sh" ]]; then
+      sed -i "s/\/bin\/sh/\/bin\/dash/g" ${_VIRT_TEST}
+    fi
+    if [ -x "/usr/libexec/virt-what-cpuid-helper" ] \
+      && [ ! -L "/usr/sbin/virt-what-cpuid-helper" ]; then
+      echo "INFO: virt-what tool requires small update, fixing..."
+      ln -sfn /usr/libexec/virt-what-cpuid-helper /usr/sbin/virt-what-cpuid-helper
+    fi
+  fi
+}
+
+###
+### Fix or install VM system detection
+###
+_fix_or_install_virt_what() {
+  _VIRT_TEST=$(which virt-what)
+  if [ -n "${_VIRT_TEST}" ] && [ -x "${_VIRT_TEST}" ]; then
+    _fix_virt_what
+  else
+    echo "INFO: installing required virt-what tool ..."
+    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
+      && [ -e "/etc/apt/apt.conf.d" ]; then
+      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
+    fi
+    _apt_clean_update
+    apt-get install virt-what ${_aptYesUnth}
+    wait
+    _fix_virt_what
+  fi
+}
+
 ###
 ### Make local OpenSSL new/legacy ssl/certs symlinked to system ssl/certs
 ###
@@ -4302,15 +4345,6 @@ _boa_setup() {
 
   _if_clean_boa_env
 
-  _VIRT_TEST=$(which virt-what 2> /dev/null)
-  if [ ! -x "${_VIRT_TEST}" ]; then
-    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
-      && [ -e "/etc/apt/apt.conf.d" ]; then
-      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
-    fi
-    _apt_clean_update
-    apt-get install virt-what ${_aptYesUnth}
-  fi
   _LSB_TEST=$(which lsb_release 2> /dev/null)
   if [ ! -x "${_LSB_TEST}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
@@ -4320,6 +4354,10 @@ _boa_setup() {
     _apt_clean_update
     apt-get install lsb-release ${_aptYesUnth}
   fi
+
+  ### Fix or install VM system detection
+  _fix_or_install_virt_what
+
   _BOA_TOOLS_UPDATE=NO
   if [ -e "${_pthLog}" ] && [ ! -e "${_pthLog}/updateBOAtools.${_bTs}.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     _BOA_TOOLS_UPDATE=YES
@@ -4489,6 +4527,9 @@ if [ "$(id -u)" -eq 0 ]; then
   if [ -d "/var/aegir" ]; then
     _fix_sync_system_ssl_certs
   fi
+
+  ### Fix VM system detection
+  _fix_or_install_virt_what
 
   ### Fix Solr 4/7/9 conflicting ports
   if [ -d "/var/aegir" ]; then
