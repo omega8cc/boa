@@ -558,6 +558,111 @@ _if_fix_iptables_symlinks() {
   ###
 }
 
+# --- internal: print message only in debug mode
+_msg() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    echo "[virt-what-fix] $*"
+  fi
+}
+
+# --- internal: run virt-what under strace and parse the helper's exec path
+_discover_with_strace() {
+  local _path_found=""
+  if ! command -v strace >/dev/null 2>&1; then
+    _msg "strace not available, skipping strace-based discovery"
+    echo ""
+    return 0
+  fi
+  # We extend PATH *temporarily* with likely libexec dirs so the helper can execute;
+  # strace will capture the exact execve() path it used.
+  PATH="${PATH}:${_CANDIDATE_PATHS}" strace -f -qq -e trace=execve -o "${_TRACE}" virt-what >/dev/null 2>&1
+  # Example line to parse:
+  # execve("/usr/lib/x86_64-linux-gnu/virt-what-cpuid-helper", ["virt-what-cpuid-helper"], ...) = 0
+  if [ -s "${_TRACE}" ]; then
+    _path_found=$(awk -v n="${_HELPER_NAME}" '
+      /execve\("/ {
+        # pull the first quoted string after execve("
+        match($0, /execve\("([^"]+)"/, m)
+        if (m[1] ~ ("/" n "$")) { print m[1]; exit }
+      }' "${_TRACE}")
+  fi
+  rm -f "${_TRACE}"
+  if [ -n "${_path_found}" ] && [ -x "${_path_found}" ]; then
+    _msg "strace discovered helper at: ${_path_found}"
+    echo "${_path_found}"
+    return 0
+  fi
+  _msg "strace discovery failed"
+  echo ""
+  return 0
+}
+
+# --- internal: dpkg-based discovery (Debian/Devuan)
+_discover_with_dpkg() {
+  local _p=""
+  if command -v dpkg >/dev/null 2>&1; then
+    _p=$(dpkg -L virt-what 2>/dev/null | grep -E "/${_HELPER_NAME}$" | head -n1)
+    if [ -n "${_p}" ] && [ -x "${_p}" ]; then
+      _msg "dpkg discovered helper at: ${_p}"
+      echo "${_p}"
+      return 0
+    fi
+  fi
+  echo ""
+  return 0
+}
+
+# --- internal: filesystem search fallback (bounded)
+_discover_with_find() {
+  local _p=""
+  # Keep it bounded to /usr to stay fast/noisy-free.
+  _p=$(find /usr -maxdepth 4 -type f -name "${_HELPER_NAME}" 2>/dev/null | head -n1)
+  if [ -n "${_p}" ] && [ -x "${_p}" ]; then
+    _msg "find discovered helper at: ${_p}"
+    echo "${_p}"
+    return 0
+  fi
+  echo ""
+  return 0
+}
+
+# --- main: ensure symlink
+_ensure_virt_what_helper_symlink() {
+  # If the symlink already exists and is working, nothing to do.
+  if [ -L "${_SYMLINK}" ] && [ -x "${_SYMLINK}" ] && [ -e "$(readlink -f "${_SYMLINK}")" ]; then
+    _msg "Symlink already present and valid: ${_SYMLINK} -> $(readlink -f "${_SYMLINK}")"
+    return 0
+  fi
+
+  local _helper_path=""
+  _helper_path="$(_discover_with_strace)"
+  if [ -z "${_helper_path}" ]; then
+    _helper_path="$(_discover_with_dpkg)"
+  fi
+  if [ -z "${_helper_path}" ]; then
+    _helper_path="$(_discover_with_find)"
+  fi
+
+  if [ -z "${_helper_path}" ]; then
+    echo "ERROR: Could not locate ${_HELPER_NAME} anywhere under /usr." 1>&2
+    return 1
+  fi
+
+  # Safety: if a non-symlink file already exists at the target, back it up once.
+  if [ -e "${_SYMLINK}" ] && [ ! -L "${_SYMLINK}" ]; then
+    _msg "Backing up existing non-symlink at ${_SYMLINK} to ${_SYMLINK}.orig"
+    mv -f "${_SYMLINK}" "${_SYMLINK}.orig"
+  fi
+
+  ln -sfn "${_helper_path}" "${_SYMLINK}"
+  if [ -x "${_SYMLINK}" ]; then
+    _msg "Symlink created: ${_SYMLINK} -> ${_helper_path}"
+    return 0
+  else
+    echo "ERROR: Failed to create working symlink ${_SYMLINK} -> ${_helper_path}" 1>&2
+    return 2
+  fi
+}
 
 ###
 ### Fix VM system detection
@@ -573,10 +678,18 @@ _fix_virt_what() {
     if [[ "${_SHELL_TEST_B}" =~ "/bin/sh" ]]; then
       sed -i "s/\/bin\/sh/\/bin\/dash/g" ${_VIRT_TEST}
     fi
-    if [ -x "/usr/libexec/virt-what-cpuid-helper" ] \
-      && [ ! -L "/usr/sbin/virt-what-cpuid-helper" ]; then
+    _HELPER_NAME="virt-what-cpuid-helper"
+    _SYMLINK="/usr/sbin/${_HELPER_NAME}"
+    _TRACE="/tmp/virtwhat.$$.strace"
+    # Extra dirs we temporarily expose to PATH so virt-what can exec the helper for strace discovery
+    _CANDIDATE_PATHS="/usr/libexec:/usr/lib/x86_64-linux-gnu:/usr/lib64/virt-what:/usr/lib/virt-what"
+    if [ ! -e "${_SYMLINK}" ]; then
       echo "INFO: virt-what tool requires small update, fixing..."
-      ln -sfn /usr/libexec/virt-what-cpuid-helper /usr/sbin/virt-what-cpuid-helper
+      if ! command -v strace &> /dev/null; then
+        _apt_clean_update
+        apt-get install strace ${_aptYesUnth}
+      fi
+      _ensure_virt_what_helper_symlink
     fi
   fi
 }
