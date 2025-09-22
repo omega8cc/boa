@@ -558,6 +558,24 @@ _if_fix_iptables_symlinks() {
   ###
 }
 
+###
+### Prefer Devuan APT sources
+###
+_prefer_devuan_repositories() {
+  # Prefer Devuan; force base-files from Devuan (handles lower version vs Debian).
+  mkdir -p /etc/apt/preferences.d
+  cat >/etc/apt/preferences.d/99-prefer-devuan <<'EOF'
+Package: *
+Pin: release o=Devuan
+Pin-Priority: 700
+
+Package: base-files
+Pin: release o=Devuan
+Pin-Priority: 1001
+EOF
+  _apt_clean_update
+}
+
 # --- internal: print message only in debug mode
 _msg() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -4630,6 +4648,13 @@ _backup_waiting_notify() {
 if [ "$(id -u)" -eq 0 ]; then
 
   _find_correct_ip
+
+  ### Prefer Devuan apt sources
+  if [ -d "/var/aegir" ] && [ ! -e "/etc/apt/preferences.d/99-prefer-devuan" ]; then
+    if grep -qi 'ID=devuan' /etc/os-release 2>/dev/null; then
+      _prefer_devuan_repositories
+    fi
+  fi
 
   if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt 0 ]; then
     _bLogA="/var/backups/multiback_waiting_queue.log"
