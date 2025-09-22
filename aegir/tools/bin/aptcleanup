@@ -42,22 +42,41 @@ _EXPECTED_TOP_FILES=(
 #   - everything under preferences.d (vendor pins),
 #   - any non-standard top-level dirs (e.g., mirrors) and their contents.
 _KEEP_GLOBS_REL=(
+  "apt.conf.d/*"
+  "auth.conf.d/*"
+  "keyrings/*.asc"
+  "keyrings/*.gpg"
+  "listchanges.conf.d/*"
+  "listchanges.conf"
+  "preferences.d/00percona.pref"
+  "preferences.d/99-droplet-agent-restrict.pref"
+  "preferences.d/99-prefer-devuan"
+  "preferences.d/fuse"
+  "preferences.d/libldap"
+  "preferences.d/makedev"
+  "preferences.d/mariadb-common"
+  "preferences.d/nginx-common"
+  "preferences.d/offsystemd"
+  "preferences.d/percona-release"
+  "preferences.d/udev"
+  "sources.list.d/backports.list"
+  "sources.list.d/bullseye.list"
+  "sources.list.d/chimaera.list"
+  "sources.list.d/ffmpeg.list"
+  "sources.list.d/newrelic.list"
+  "sources.list.d/nodesource.list"
+  "sources.list.d/percona-release.list"
+  "sources.list.d/webmin.list"
+  "sources.list"
   "trusted.gpg.d/*.asc"
   "trusted.gpg.d/*.gpg"
   "trusted.gpg.d/*.gpg~"
-  "keyrings/*.gpg"
-  "keyrings/*.asc"
-  "listchanges.conf"
-  "listchanges.conf.d/*"
-  "sources.list"
-  "apt.conf.d/*"
-  "auth.conf.d/*"
 )
 
 # DigitalOcean / droplet-agent preservation policy:
 # AUTO -> preserve if agent is installed; YES -> always preserve; NO -> quarantine
 _PRESERVE_DO_POLICY="AUTO"
-_VENDOR_DO_PATTERNS=( "digitalocean" "droplet" "droplet-agent" "do-agent" )
+_VENDOR_DO_PATTERNS=( "droplet-agent-restrict" "droplet-agent.list")
 
 # Where to write our APT pin that restricts DO origin to droplet-agent only
 _DO_PIN_FILE="${_APT_ROOT}/preferences.d/99-droplet-agent-restrict.pref"
@@ -167,7 +186,7 @@ _is_do_vendor_related() {
   done
 
   if [ -f "${_ABS}" ]; then
-    if grep -qiE 'digitalocean|droplet(-agent)?|do-agent' "${_ABS}" 2>/dev/null; then
+    if grep -qiE 'droplet-agent-restrict|droplet-agent.list' "${_ABS}" 2>/dev/null; then
       return 0
     fi
   fi

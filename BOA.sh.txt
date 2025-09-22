@@ -1001,7 +1001,7 @@ _update_agents() {
     fi
   fi
 
-  if [ ! -e "${_pthLog}/aptcleanup.sh.ctrl.f98.${_tRee}.${_xSrl}.pid" ]; then
+  if [ ! -e "${_pthLog}/aptcleanup.sh.ctrl.f97.${_tRee}.${_xSrl}.pid" ]; then
     if [ `ps aux | grep -v "grep" | grep --count "aptcleanup"` -gt 0 ]; then
       echo "The aptcleanup is running!"
     else
@@ -1012,7 +1012,7 @@ _update_agents() {
       if [ -e "${_optBin}/aptcleanup" ]; then
         chmod 700 ${_optBin}/aptcleanup
         chown root:root ${_optBin}/aptcleanup
-        touch ${_pthLog}/aptcleanup.sh.ctrl.f98.${_tRee}.${_xSrl}.pid
+        touch ${_pthLog}/aptcleanup.sh.ctrl.f97.${_tRee}.${_xSrl}.pid
       else
         if [ -e "${_optBin}/aptcleanup.old" ]; then
           mv -f ${_optBin}/aptcleanup.old ${_optBin}/aptcleanup
