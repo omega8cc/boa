@@ -50,27 +50,12 @@ _manage_single_lock() {
     # use shared lock if available
     _single_instance_lock
   else
-    # -------- legacy one-slot guard ---------
-    # allow up to ONE concurrent worker; exit the 2nd+
-    # Robustly match only the real worker:
-    #  - direct exec:  "/full/path/script"
-    #  - via bash:     "bash /full/path/script"
-    _ABS="$(readlink -f "$0" 2>/dev/null || realpath "$0" 2>/dev/null || echo "$0")"
-    # escape regex specials for pgrep
-    _PAT="$(printf '%s' "$_ABS" | sed 's/[.[\*^$(){}+?\\|]/\\&/g')"
-    # Count only lines that contain our absolute path, *and* either begin with bash+path or path at a word boundary.
-    # This avoids counting the wrapper like '/bin/dash -c bash /path/script …' twice.
-    _CNT=$(
-      ps ax -o pid= -o args= \
-        | awk -v P="$_PAT" '
-            $0 ~ ("(^|[[:space:]]|/)bash[[:space:]]+" P "([[:space:]]|$)") ||
-            $0 ~ ("(^|[[:space:]])" P "([[:space:]]|$)")
-          ' \
-        | wc -l
-    )
-    if [ "${_CNT:-0}" -gt 1 ]; then
-      mkdir -p /var/log/boa 2>/dev/null || true
-      echo "Too many ${_SELF_NAME} running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
+    # -------- legacy pgrep guard ---------
+    # Exit if more than 2 instances of this script are running
+    _SCRIPT=$(basename "$0")
+    _CNT=$(pgrep -fc "[${_SCRIPT:0:1}]${_SCRIPT:1}")
+    if (( _CNT > 2 )); then
+      echo "Too many ${_SCRIPT} running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
       exit 0
     fi
   fi
