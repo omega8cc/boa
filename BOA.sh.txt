@@ -558,6 +558,26 @@ _if_fix_iptables_symlinks() {
   ###
 }
 
+###
+### Make local OpenSSL new/legacy ssl/certs symlinked to system ssl/certs
+###
+_fix_sync_system_ssl_certs() {
+  if [ -e "/etc/ssl/certs/ca-certificates.crt" ] \
+    && [ ! -e "/usr/local/ssl3/.old-certs" ] \
+    && [ -d "/usr/local/ssl3/certs" ] \
+    && [ ! -L "/usr/local/ssl3/certs" ]; then
+    mv -f /usr/local/ssl3/certs /usr/local/ssl3/.old-certs
+    ln -sfn /etc/ssl/certs /usr/local/ssl3/certs
+  fi
+  if [ -e "/etc/ssl/certs/ca-certificates.crt" ] \
+    && [ ! -e "/usr/local/ssl/.old-certs" ] \
+    && [ -d "/usr/local/ssl/certs" ] \
+    && [ ! -L "/usr/local/ssl/certs" ]; then
+    mv -f /usr/local/ssl/certs /usr/local/ssl/.old-certs
+    ln -sfn /etc/ssl/certs /usr/local/ssl/certs
+  fi
+}
+
 _update_agents() {
 
   _if_hosted_sys
@@ -4463,6 +4483,11 @@ if [ "$(id -u)" -eq 0 ]; then
   _find_fast_mirror_early
   if command -v curl &> /dev/null; then
     _verify_boa_keys
+  fi
+
+  ### Make local OpenSSL new/legacy ssl/certs symlinked to system ssl/certs
+  if [ -d "/var/aegir" ]; then
+    _fix_sync_system_ssl_certs
   fi
 
   ### Fix Solr 4/7/9 conflicting ports

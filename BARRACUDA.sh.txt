@@ -376,6 +376,7 @@ if [ "${_STATUS}" = "INIT" ] || [ ! -x "/usr/local/ssl/bin/openssl" ]; then
   fi
   touch ${_LC_SSL_CTRL}
   _if_ssl_install_src
+  _sync_system_ssl_certs
   _ssl_paths_sync
   _ssl_crypto_lib_fix
   _curl_install_src
@@ -424,6 +425,7 @@ fi
 ###
 if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ] || [ ! -x "/usr/local/ssl3/bin/openssl" ]; then
   _if_ssl_install_src
+  _sync_system_ssl_certs
   _ssl_paths_sync
   _ssl_crypto_lib_fix
   _curl_install_src
