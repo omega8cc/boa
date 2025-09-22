@@ -4666,6 +4666,7 @@ if [ "$(id -u)" -eq 0 ]; then
   ### Fix VM system detection
   _fix_or_install_virt_what
 
+  ### Notify if multiback backups seem to run for too long
   if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt 0 ]; then
     _bLogA="/var/backups/multiback_waiting_queue.log"
     _bLogB="/var/backups/tmp_multiback_waiting_queue.log"
