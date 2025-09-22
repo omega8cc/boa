@@ -4663,6 +4663,9 @@ if [ "$(id -u)" -eq 0 ]; then
     fi
   fi
 
+  ### Fix VM system detection
+  _fix_or_install_virt_what
+
   if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt 0 ]; then
     _bLogA="/var/backups/multiback_waiting_queue.log"
     _bLogB="/var/backups/tmp_multiback_waiting_queue.log"
@@ -4675,9 +4678,6 @@ if [ "$(id -u)" -eq 0 ]; then
   if [ -d "/var/aegir" ]; then
     _fix_sync_system_ssl_certs
   fi
-
-  ### Fix VM system detection
-  _fix_or_install_virt_what
 
   ### Fix Solr 4/7/9 conflicting ports
   if [ -d "/var/aegir" ]; then
