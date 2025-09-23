@@ -4450,6 +4450,28 @@ _check_and_move() {
 }
 
 #
+# Make local OpenSSL new/legacy ssl/certs symlinked to system ssl/certs
+_sync_system_ssl_certs() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _sync_system_ssl_certs"
+  fi
+  if [ -e "/etc/ssl/certs/ca-certificates.crt" ] \
+    && [ ! -e "/usr/local/ssl3/.old-certs" ] \
+    && [ -d "/usr/local/ssl3/certs" ] \
+    && [ ! -L "/usr/local/ssl3/certs" ]; then
+    mv -f /usr/local/ssl3/certs /usr/local/ssl3/.old-certs
+    ln -sfn /etc/ssl/certs /usr/local/ssl3/certs
+  fi
+  if [ -e "/etc/ssl/certs/ca-certificates.crt" ] \
+    && [ ! -e "/usr/local/ssl/.old-certs" ] \
+    && [ -d "/usr/local/ssl/certs" ] \
+    && [ ! -L "/usr/local/ssl/certs" ]; then
+    mv -f /usr/local/ssl/certs /usr/local/ssl/.old-certs
+    ln -sfn /etc/ssl/certs /usr/local/ssl/certs
+  fi
+}
+
+#
 # Install cURL from sources.
 _curl_install_src() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -6125,6 +6147,7 @@ _if_post_major_os_upgrade() {
       _SSL_FORCE_REINSTALL=YES
       _if_reinstall_curl_src
       _if_ssl_install_src
+      _sync_system_ssl_certs
       _ssl_paths_sync
       _ssl_crypto_lib_fix
       _curl_install_src
@@ -6812,6 +6835,7 @@ _if_major_os_upgrade() {
       _php_libs_fix
       _if_reinstall_curl_src
       _if_ssl_install_src
+      _sync_system_ssl_certs
       _ssl_paths_sync
       _ssl_crypto_lib_fix
       _curl_install_src

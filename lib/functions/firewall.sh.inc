@@ -223,7 +223,7 @@ _csf_install() {
         _msg "TEST: csf/lfd firewall should work fine on this system"
       fi
     fi
-    if [ "${_CUSTOM_CONFIG_CSF}" = "YES" ]; then
+    if [ -n "${_CUSTOM_CONFIG_CSF}" ] && [ "${_CUSTOM_CONFIG_CSF}" != "YES" ]; then
       mv -f /etc/csf/csf.conf \
         /etc/csf/csf.conf-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
       cp -af ${_locCnf}/var/csf.conf /etc/csf/csf.conf
