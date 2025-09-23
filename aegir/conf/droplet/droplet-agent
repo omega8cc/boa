@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+### BEGIN INIT INFO
+# Provides:          droplet-agent
+# Required-Start:    $remote_fs $syslog $network
+# Required-Stop:     $remote_fs $syslog $network
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: DigitalOcean Droplet Agent
+### END INIT INFO
+
+_PATHS="/usr/bin/droplet-agent /usr/local/bin/droplet-agent /opt/digitalocean/bin/droplet-agent /opt/digitalocean/droplet-agent/droplet-agent"
+_DAEMON=""
+_NAME="droplet-agent"
+_DESC="DigitalOcean Droplet Agent"
+_PIDFILE="/var/run/${_NAME}.pid"
+_USER="root"
+_NICE="0"
+
+_for_each_path() {
+  for _P in ${_PATHS}; do
+    if [ -x "${_P}" ]; then _DAEMON="${_P}"; return 0; fi
+  done
+  return 1
+}
+
+_do_start() {
+  if [ -z "${_DAEMON}" ] && ! _for_each_path; then
+    echo "${_DESC}: binary not found"; return 1
+  fi
+  start-stop-daemon --start --quiet --background \
+    --make-pidfile --pidfile "${_PIDFILE}" \
+    --chuid "${_USER}" --nicelevel "${_NICE}" \
+    --exec "${_DAEMON}" -- || return 1
+  return 0
+}
+
+_do_stop() {
+  if [ -f "${_PIDFILE}" ]; then
+    start-stop-daemon --stop --quiet --pidfile "${_PIDFILE}" --retry=TERM/15/KILL/5
+    rm -f "${_PIDFILE}" 2>/dev/null || true
+    return 0
+  fi
+  pkill -f "${_NAME}" 2>/dev/null || true
+  return 0
+}
+
+_do_status() {
+  if [ -f "${_PIDFILE}" ] && ps -p "$(cat "${_PIDFILE}" 2>/dev/null)" >/dev/null 2>&1; then
+    echo "${_DESC} is running (pid $(cat "${_PIDFILE}"))"
+    return 0
+  fi
+  pgrep -f "${_NAME}" >/dev/null 2>&1 && { echo "${_DESC} seems running (no pidfile)"; return 0; }
+  echo "${_DESC} is not running"
+  return 3
+}
+
+case "$1" in
+  start)   _do_start ;;
+  stop)    _do_stop ;;
+  restart) _do_stop; _do_start ;;
+  status)  _do_status ;;
+  *) echo "Usage: $0 {start|stop|restart|status}"; exit 2 ;;
+esac
