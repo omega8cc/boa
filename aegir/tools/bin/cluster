@@ -1506,7 +1506,6 @@ tmp_table_size          = 1024M
 max_heap_table_size     = 1024M
 low_priority_updates    = 1
 concurrent_insert       = 2
-userstat                = 1
 #max_tmp_tables          = 16384
 server-id               = '${_inc}'
 #myisam-recover-options  = BACKUP
