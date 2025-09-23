@@ -3,8 +3,8 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
-export _tRee=dev
-export _xSrl=570devT07
+export _tRee=lts
+export _xSrl=570ltsT07
 
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
@@ -739,7 +739,7 @@ not secure codebase, even if it was not affected by Drupageddon bug
 directly.
 
 Please be a good web citizen and upgrade to latest Drupal core provided
-by BOA-5.7.12-dev. As a bonus, you will be able to speed up your sites
+by BOA-5.7.12-lts. As a bonus, you will be able to speed up your sites
 considerably by switching PHP-FPM to 8.3
 
 We recommend to follow this upgrade how-to:
@@ -823,7 +823,7 @@ not secure codebase, even if it was not affected by Drupageddon bug
 directly.
 
 Please be a good web citizen and upgrade to latest Drupal core provided
-by BOA-5.7.12-dev. As a bonus, you will be able to speed up your sites
+by BOA-5.7.12-lts. As a bonus, you will be able to speed up your sites
 considerably by switching PHP-FPM to 8.3
 
 We recommend to follow this upgrade how-to:

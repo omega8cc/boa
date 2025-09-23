@@ -3,7 +3,7 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
-export _tRee=dev
+export _tRee=lts
 
 _aptAllow="--allow-unauthenticated"
 _aptYesUnth="-y ${_aptAllow}"
