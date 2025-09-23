@@ -842,6 +842,17 @@ _apt_clean_update_no_releaseinfo_change() {
   _mrun "apt-get update -qq" 2> /dev/null
 }
 
+_turn_on_password_update() {
+  if [ -e "/root/.mysql.no.new.password.cnf" ]; then
+    chattr -i /root/.mysql.no.new.password.cnf
+    rm -f /root/.mysql.no.new.password.cnf
+  fi
+  if [ ! -e "/root/.mysql.yes.new.password.cnf" ]; then
+    touch /root/.mysql.yes.new.password.cnf
+    chattr +i /root/.mysql.yes.new.password.cnf
+  fi
+}
+
 _os_detection() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _os_detection"
@@ -867,8 +878,10 @@ _os_detection() {
     _NGINX_SPDY=YES
     if [ "${_DB_SERIES}" = "8.4" ]; then
       _DBS_VRN="${_PERCONA_8_4_VRN}"
+      _turn_on_password_update
     elif [ "${_DB_SERIES}" = "8.3" ]; then
       _DBS_VRN="${_PERCONA_8_3_VRN}"
+      _turn_on_password_update
     elif [ "${_DB_SERIES}" = "8.0" ]; then
       _DBS_VRN="${_PERCONA_8_0_VRN}"
     elif [ "${_DB_SERIES}" = "5.7" ]; then
