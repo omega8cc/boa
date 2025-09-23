@@ -43,7 +43,7 @@
 
 export HOME=/root
 export SHELL=/bin/bash
-export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 export _tRee=dev
 export _xSrl=570devT07
 export _rLsn="BOA-5.7.12"
@@ -558,6 +558,210 @@ _if_fix_iptables_symlinks() {
   ###
 }
 
+###
+### Prefer Devuan APT sources
+###
+_prefer_devuan_repositories() {
+  # Prefer Devuan; force base-files from Devuan (handles lower version vs Debian).
+  mkdir -p /etc/apt/preferences.d
+  cat >/etc/apt/preferences.d/99-prefer-devuan <<'EOF'
+Package: *
+Pin: release o=Devuan
+Pin-Priority: 700
+
+Package: base-files
+Pin: release o=Devuan
+Pin-Priority: 1001
+EOF
+  _apt_clean_update
+}
+
+# --- internal: print message only in debug mode
+_msg() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    echo "[virt-what-fix] $*"
+  fi
+}
+
+# --- internal: run virt-what under strace and parse the helper's exec path
+_discover_with_strace() {
+  local _path_found=""
+  if ! command -v strace >/dev/null 2>&1; then
+    _msg "strace not available, skipping strace-based discovery"
+    echo ""
+    return 0
+  fi
+  # Temporarily extend PATH so virt-what can exec the helper for strace to see.
+  PATH="${PATH}:${_CANDIDATE_PATHS}" strace -f -qq -e trace=execve -o "${_TRACE}" virt-what >/dev/null 2>&1
+
+  # mawk-safe parsing: pull the first quoted arg from execve("…") and check suffix
+  if [ -s "${_TRACE}" ]; then
+    _path_found=$(
+      awk -v n="${_HELPER_NAME}" '
+        /execve\("/ {
+          # Find start of execve(" then extract up to next quote
+          i = index($0, "execve(\"")
+          if (i) {
+            s = substr($0, i + 8)         # after execve("
+            j = index(s, "\"")
+            if (j) {
+              p = substr(s, 1, j - 1)     # the path inside quotes
+              if (p ~ ("/" n "$")) { print p; exit }
+            }
+          }
+        }
+      ' "${_TRACE}"
+    )
+  fi
+  rm -f "${_TRACE}"
+
+  if [ -n "${_path_found}" ] && [ -x "${_path_found}" ]; then
+    _msg "strace discovered helper at: ${_path_found}"
+    echo "${_path_found}"
+    return 0
+  fi
+  _msg "strace discovery failed"
+  echo ""
+  return 0
+}
+
+# --- internal: dpkg-based discovery (Debian/Devuan)
+_discover_with_dpkg() {
+  local _p=""
+  if command -v dpkg >/dev/null 2>&1; then
+    _p=$(dpkg -L virt-what 2>/dev/null | grep -E "/${_HELPER_NAME}$" | head -n1)
+    if [ -n "${_p}" ] && [ -x "${_p}" ]; then
+      _msg "dpkg discovered helper at: ${_p}"
+      echo "${_p}"
+      return 0
+    fi
+  fi
+  echo ""
+  return 0
+}
+
+# --- internal: filesystem search fallback (bounded)
+_discover_with_find() {
+  local _p=""
+  # Keep it bounded to /usr to stay fast/noisy-free.
+  _p=$(find /usr -maxdepth 4 -type f -name "${_HELPER_NAME}" 2>/dev/null | head -n1)
+  if [ -n "${_p}" ] && [ -x "${_p}" ]; then
+    _msg "find discovered helper at: ${_p}"
+    echo "${_p}"
+    return 0
+  fi
+  echo ""
+  return 0
+}
+
+# --- main: ensure symlink
+_ensure_virt_what_helper_symlink() {
+  # If the symlink already exists and is working, nothing to do.
+  if [ -L "${_SYMLINK}" ] && [ -x "${_SYMLINK}" ] && [ -e "$(readlink -f "${_SYMLINK}")" ]; then
+    _msg "Symlink already present and valid: ${_SYMLINK} -> $(readlink -f "${_SYMLINK}")"
+    return 0
+  fi
+
+  local _helper_path=""
+  _helper_path="$(_discover_with_strace)"
+  if [ -z "${_helper_path}" ]; then
+    _helper_path="$(_discover_with_dpkg)"
+  fi
+  if [ -z "${_helper_path}" ]; then
+    _helper_path="$(_discover_with_find)"
+  fi
+
+  if [ -z "${_helper_path}" ]; then
+    echo "ERROR: Could not locate ${_HELPER_NAME} anywhere under /usr." 1>&2
+    return 1
+  fi
+
+  # Safety: if a non-symlink file already exists at the target, back it up once.
+  if [ -e "${_SYMLINK}" ] && [ ! -L "${_SYMLINK}" ]; then
+    _msg "Backing up existing non-symlink at ${_SYMLINK} to ${_SYMLINK}.orig"
+    mv -f "${_SYMLINK}" "${_SYMLINK}.orig"
+  fi
+
+  ln -sfn "${_helper_path}" "${_SYMLINK}"
+  if [ -x "${_SYMLINK}" ]; then
+    _msg "Symlink created: ${_SYMLINK} -> ${_helper_path}"
+    return 0
+  else
+    echo "ERROR: Failed to create working symlink ${_SYMLINK} -> ${_helper_path}" 1>&2
+    return 2
+  fi
+}
+
+###
+### Fix VM system detection
+###
+_fix_virt_what() {
+  _VIRT_TEST=$(which virt-what)
+  if [ -n "${_VIRT_TEST}" ] && [ -x "${_VIRT_TEST}" ]; then
+    _SHELL_TEST_A=$(grep -I -o "\#\!.*/usr/bin/sh" ${_VIRT_TEST} 2>&1)
+    _SHELL_TEST_B=$(grep -I -o "\#\!.*/bin/sh" ${_VIRT_TEST} 2>&1)
+    if [[ "${_SHELL_TEST_A}" =~ "/usr/bin/sh" ]]; then
+      sed -i "s/\/usr\/bin\/sh/\/bin\/dash/g" ${_VIRT_TEST}
+    fi
+    if [[ "${_SHELL_TEST_B}" =~ "/bin/sh" ]]; then
+      sed -i "s/\/bin\/sh/\/bin\/dash/g" ${_VIRT_TEST}
+    fi
+    _HELPER_NAME="virt-what-cpuid-helper"
+    _SYMLINK="/usr/sbin/${_HELPER_NAME}"
+    _TRACE="/tmp/virtwhat.$$.strace"
+    # Extra dirs we temporarily expose to PATH so virt-what can exec the helper for strace discovery
+    _CANDIDATE_PATHS="/usr/libexec:/usr/lib/x86_64-linux-gnu:/usr/lib64/virt-what:/usr/lib/virt-what"
+    if [ ! -e "${_SYMLINK}" ]; then
+      echo "INFO: virt-what tool requires small update, fixing..."
+      if ! command -v strace &> /dev/null; then
+        _apt_clean_update
+        apt-get install strace ${_aptYesUnth}
+      fi
+      _ensure_virt_what_helper_symlink
+    fi
+  fi
+}
+
+###
+### Fix or install VM system detection
+###
+_fix_or_install_virt_what() {
+  _VIRT_TEST=$(which virt-what)
+  if [ -n "${_VIRT_TEST}" ] && [ -x "${_VIRT_TEST}" ]; then
+    _fix_virt_what
+  else
+    echo "INFO: installing required virt-what tool ..."
+    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
+      && [ -e "/etc/apt/apt.conf.d" ]; then
+      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
+    fi
+    _apt_clean_update
+    apt-get install virt-what ${_aptYesUnth}
+    wait
+    _fix_virt_what
+  fi
+}
+
+###
+### Make local OpenSSL new/legacy ssl/certs symlinked to system ssl/certs
+###
+_fix_sync_system_ssl_certs() {
+  if [ -e "/etc/ssl/certs/ca-certificates.crt" ] \
+    && [ ! -e "/usr/local/ssl3/.old-certs" ] \
+    && [ -d "/usr/local/ssl3/certs" ] \
+    && [ ! -L "/usr/local/ssl3/certs" ]; then
+    mv -f /usr/local/ssl3/certs /usr/local/ssl3/.old-certs
+    ln -sfn /etc/ssl/certs /usr/local/ssl3/certs
+  fi
+  if [ -e "/etc/ssl/certs/ca-certificates.crt" ] \
+    && [ ! -e "/usr/local/ssl/.old-certs" ] \
+    && [ -d "/usr/local/ssl/certs" ] \
+    && [ ! -L "/usr/local/ssl/certs" ]; then
+    mv -f /usr/local/ssl/certs /usr/local/ssl/.old-certs
+    ln -sfn /etc/ssl/certs /usr/local/ssl/certs
+  fi
+}
+
 _update_agents() {
 
   _if_hosted_sys
@@ -688,6 +892,8 @@ _update_agents() {
     [ ! -e "/var/xdrago/monitor/check" ] && mkdir -p /var/xdrago/monitor/check
     [ ! -e "/var/xdrago/monitor/log" ] && mkdir -p /var/xdrago/monitor/log
 
+    [ ! -e "${_optBin}/lock.inc" ] && rm -f ${_pthLog}/*.ctrl.*.pid
+
     [ ! -e "/var/xdrago/checksql.pl" ] && rm -f ${_pthLog}/checksql.pl.ctrl.*.pid
     [ ! -e "/var/xdrago/clear.sh" ] && rm -f ${_pthLog}/clear.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/daily.sh" ] && rm -f ${_pthLog}/daily.sh.ctrl.*.pid
@@ -766,7 +972,27 @@ _update_agents() {
     fi
   fi
 
-  if [ ! -e "${_pthLog}/vmnetfix.sh.ctrl.f97.${_tRee}.${_xSrl}.pid" ]; then
+  if [ ! -e "${_pthLog}/lock.inc.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
+    if [ `ps aux | grep -v "grep" | grep --count "foobar"` -gt 0 ]; then
+      echo "The foobar is running!"
+    else
+      if [ -e "${_optBin}/lock.inc" ]; then
+        mv -f ${_optBin}/lock.inc ${_optBin}/lock.inc.old
+      fi
+      curl ${_crlGet} "${_urlHmr}/tools/bin/lock.inc" -o ${_optBin}/lock.inc
+      if [ -e "${_optBin}/lock.inc" ]; then
+        chmod 700 ${_optBin}/lock.inc
+        chown root:root ${_optBin}/lock.inc
+        touch ${_pthLog}/lock.inc.sh.ctrl.f99.${_tRee}.${_xSrl}.pid
+      else
+        if [ -e "${_optBin}/lock.inc.old" ]; then
+          mv -f ${_optBin}/lock.inc.old ${_optBin}/lock.inc
+        fi
+      fi
+    fi
+  fi
+
+  if [ ! -e "${_pthLog}/vmnetfix.sh.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
     if [ `ps aux | grep -v "grep" | grep --count "vmnetfix"` -gt 0 ]; then
       echo "The vmnetfix is running!"
     else
@@ -784,7 +1010,7 @@ _update_agents() {
       if [ -e "${_optBin}/vmnetfix" ]; then
         chmod 700 ${_optBin}/vmnetfix
         chown root:root ${_optBin}/vmnetfix
-        touch ${_pthLog}/vmnetfix.sh.ctrl.f97.${_tRee}.${_xSrl}.pid
+        touch ${_pthLog}/vmnetfix.sh.ctrl.f95.${_tRee}.${_xSrl}.pid
       else
         if [ -e "${_optBin}/vmnetfix.old" ]; then
           mv -f ${_optBin}/vmnetfix.old ${_optBin}/vmnetfix
@@ -793,7 +1019,7 @@ _update_agents() {
     fi
   fi
 
-  if [ ! -e "${_pthLog}/aptcleanup.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
+  if [ ! -e "${_pthLog}/aptcleanup.sh.ctrl.f97.${_tRee}.${_xSrl}.pid" ]; then
     if [ `ps aux | grep -v "grep" | grep --count "aptcleanup"` -gt 0 ]; then
       echo "The aptcleanup is running!"
     else
@@ -804,7 +1030,7 @@ _update_agents() {
       if [ -e "${_optBin}/aptcleanup" ]; then
         chmod 700 ${_optBin}/aptcleanup
         chown root:root ${_optBin}/aptcleanup
-        touch ${_pthLog}/aptcleanup.sh.ctrl.f99.${_tRee}.${_xSrl}.pid
+        touch ${_pthLog}/aptcleanup.sh.ctrl.f97.${_tRee}.${_xSrl}.pid
       else
         if [ -e "${_optBin}/aptcleanup.old" ]; then
           mv -f ${_optBin}/aptcleanup.old ${_optBin}/aptcleanup
@@ -1118,7 +1344,7 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/mysql.sh.ctrl.f88.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/mysql.sh.ctrl.f89.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/mysql.sh /var/xdrago/monitor/check/mysql.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/mysql.sh" -o /var/xdrago/monitor/check/mysql.sh
     if [ -e "/var/xdrago/monitor/check/mysql.sh" ]; then
@@ -1137,7 +1363,7 @@ _update_agents() {
       fi
       chmod 700 /var/xdrago/monitor/check/mysql.sh
       chown root:root /var/xdrago/monitor/check/mysql.sh
-      touch ${_pthLog}/mysql.sh.ctrl.f88.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/mysql.sh.ctrl.f89.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/monitor/check/mysql.sh.old /var/xdrago/monitor/check/mysql.sh
     fi
@@ -1469,13 +1695,13 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/ip_access.sh.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/ip_access.sh.ctrl.f94.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/ip_access.sh /var/xdrago/ip_access.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/ip_access.sh" -o /var/xdrago/ip_access.sh
     if [ -e "/var/xdrago/ip_access.sh" ]; then
       chmod 700 /var/xdrago/ip_access.sh
       chown root:root /var/xdrago/ip_access.sh
-      touch ${_pthLog}/ip_access.sh.ctrl.f95.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/ip_access.sh.ctrl.f94.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/ip_access.sh.old /var/xdrago/ip_access.sh
     fi
@@ -3783,6 +4009,7 @@ _update_boa_tools() {
             fancynow \
             ffmirror \
             killer \
+            lock.inc \
             memorytuner \
             mergecsf \
             multiback \
@@ -3884,7 +4111,7 @@ _update_boa_tools() {
 
   # _CORE (700): core BOA tools
   chmod 700 ${_optBin}/{barracuda,boa,ffmirror,killer,octopus}
-  chmod 700 ${_optBin}/{syncpass,weblogx,xboa,xcopy}
+  chmod 700 ${_optBin}/{syncpass,weblogx,xboa,xcopy,lock.inc}
 
   # _DB (700): performance and DB tuners
   chmod 700 ${_optBin}/{memorytuner,mycnfup,mysqltuner5,mysqltuner8,perftest}
@@ -4259,15 +4486,6 @@ _boa_setup() {
 
   _if_clean_boa_env
 
-  _VIRT_TEST=$(which virt-what 2> /dev/null)
-  if [ ! -x "${_VIRT_TEST}" ]; then
-    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
-      && [ -e "/etc/apt/apt.conf.d" ]; then
-      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
-    fi
-    _apt_clean_update
-    apt-get install virt-what ${_aptYesUnth}
-  fi
   _LSB_TEST=$(which lsb_release 2> /dev/null)
   if [ ! -x "${_LSB_TEST}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
@@ -4277,6 +4495,10 @@ _boa_setup() {
     _apt_clean_update
     apt-get install lsb-release ${_aptYesUnth}
   fi
+
+  ### Fix or install VM system detection
+  _fix_or_install_virt_what
+
   _BOA_TOOLS_UPDATE=NO
   if [ -e "${_pthLog}" ] && [ ! -e "${_pthLog}/updateBOAtools.${_bTs}.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     _BOA_TOOLS_UPDATE=YES
@@ -4427,6 +4649,24 @@ if [ "$(id -u)" -eq 0 ]; then
 
   _find_correct_ip
 
+  [ ! -e "/var/aegir/drush" ] && _locales_check_fix_early
+  _os_detection_minimal
+  _find_fast_mirror_early
+  if command -v curl &> /dev/null; then
+    _verify_boa_keys
+  fi
+
+  ### Prefer Devuan apt sources
+  if [ -d "/var/aegir" ] && [ ! -e "/etc/apt/preferences.d/99-prefer-devuan" ]; then
+    if grep -qi 'ID=devuan' /etc/os-release 2>/dev/null; then
+      _prefer_devuan_repositories
+    fi
+  fi
+
+  ### Fix VM system detection
+  _fix_or_install_virt_what
+
+  ### Notify if multiback backups seem to run for too long
   if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt 0 ]; then
     _bLogA="/var/backups/multiback_waiting_queue.log"
     _bLogB="/var/backups/tmp_multiback_waiting_queue.log"
@@ -4435,11 +4675,9 @@ if [ "$(id -u)" -eq 0 ]; then
     fi
   fi
 
-  [ ! -e "/var/aegir/drush" ] && _locales_check_fix_early
-  _os_detection_minimal
-  _find_fast_mirror_early
-  if command -v curl &> /dev/null; then
-    _verify_boa_keys
+  ### Make local OpenSSL new/legacy ssl/certs symlinked to system ssl/certs
+  if [ -d "/var/aegir" ]; then
+    _fix_sync_system_ssl_certs
   fi
 
   ### Fix Solr 4/7/9 conflicting ports
@@ -4629,7 +4867,9 @@ if [ "$(id -u)" -eq 0 ]; then
     service cron reload &> /dev/null
   fi
   if [ "${_SCREEN_INIT}" = "YES" ]; then
-    clear
+    if [ "${_DEBUG_MODE}" != "YES" ]; then
+      clear
+    fi
     echo
     echo "The system is ready for BOA installation!"
     echo
