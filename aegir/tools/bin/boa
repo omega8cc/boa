@@ -148,6 +148,13 @@ _not_supported_virt() {
   _clean_pid_exit _not_supported_virt_a
 }
 
+# --- internal: print message only in debug mode
+_msg() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    echo "[virt-what-fix] $*"
+  fi
+}
+
 # --- internal: run virt-what under strace and parse the helper's exec path
 _discover_with_strace() {
   local _path_found=""
