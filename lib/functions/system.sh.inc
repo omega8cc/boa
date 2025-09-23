@@ -2751,12 +2751,12 @@ _mytop_install() {
       _mrun "${_INSTAPP} libperl-dev" 2> /dev/null
       _mrun "${_INSTAPP} cpanminus" 2> /dev/null
       if [ "${_DB_V}" != "5.7" ] || [ "${_SQL_UPGRADE}" = "YES" ]; then
-        _mrun "cpanm DBD::mysql" 2> /dev/null
-        _mrun "cpanm DBI" 2> /dev/null
-        _mrun "cpanm Term::ReadKey" 2> /dev/null
+        _mrun "cpanm DBD::mysql --force" 2> /dev/null
+        _mrun "cpanm DBI --force" 2> /dev/null
+        _mrun "cpanm Term::ReadKey --force" 2> /dev/null
       else
-        _mrun "cpanm DBD::mysql@4.050" 2> /dev/null
-        _mrun "cpanm Term::ReadKey" 2> /dev/null
+        _mrun "cpanm DBD::mysql@4.050 --force" 2> /dev/null
+        _mrun "cpanm Term::ReadKey --force" 2> /dev/null
       fi
       cd /var/opt
       rm -rf git*
