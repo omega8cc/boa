@@ -7,40 +7,40 @@ _if_fix_iptables_symlinks() {
   ### Fix for iptables paths backward compatibility
   ###
   if [ -x "/sbin/iptables" ] && [ ! -e "/usr/sbin/iptables" ]; then
-    ln -s /sbin/iptables /usr/sbin/iptables
+    ln -sfn /sbin/iptables /usr/sbin/iptables
   fi
   if [ -x "/usr/sbin/iptables" ] && [ ! -e "/sbin/iptables" ]; then
-    ln -s /usr/sbin/iptables /sbin/iptables
+    ln -sfn /usr/sbin/iptables /sbin/iptables
   fi
   if [ -x "/sbin/iptables-save" ] && [ ! -e "/usr/sbin/iptables-save" ]; then
-    ln -s /sbin/iptables-save /usr/sbin/iptables-save
+    ln -sfn /sbin/iptables-save /usr/sbin/iptables-save
   fi
   if [ -x "/usr/sbin/iptables-save" ] && [ ! -e "/sbin/iptables-save" ]; then
-    ln -s /usr/sbin/iptables-save /sbin/iptables-save
+    ln -sfn /usr/sbin/iptables-save /sbin/iptables-save
   fi
   if [ -x "/sbin/iptables-restore" ] && [ ! -e "/usr/sbin/iptables-restore" ]; then
-    ln -s /sbin/iptables-restore /usr/sbin/iptables-restore
+    ln -sfn /sbin/iptables-restore /usr/sbin/iptables-restore
   fi
   if [ -x "/usr/sbin/iptables-restore" ] && [ ! -e "/sbin/iptables-restore" ]; then
-    ln -s /usr/sbin/iptables-restore /sbin/iptables-restore
+    ln -sfn /usr/sbin/iptables-restore /sbin/iptables-restore
   fi
   if [ -x "/sbin/ip6tables" ] && [ ! -e "/usr/sbin/ip6tables" ]; then
-    ln -s /sbin/ip6tables /usr/sbin/ip6tables
+    ln -sfn /sbin/ip6tables /usr/sbin/ip6tables
   fi
   if [ -x "/usr/sbin/ip6tables" ] && [ ! -e "/sbin/ip6tables" ]; then
-    ln -s /usr/sbin/ip6tables /sbin/ip6tables
+    ln -sfn /usr/sbin/ip6tables /sbin/ip6tables
   fi
   if [ -x "/sbin/ip6tables-save" ] && [ ! -e "/usr/sbin/ip6tables-save" ]; then
-    ln -s /sbin/ip6tables-save /usr/sbin/ip6tables-save
+    ln -sfn /sbin/ip6tables-save /usr/sbin/ip6tables-save
   fi
   if [ -x "/usr/sbin/ip6tables-save" ] && [ ! -e "/sbin/ip6tables-save" ]; then
-    ln -s /usr/sbin/ip6tables-save /sbin/ip6tables-save
+    ln -sfn /usr/sbin/ip6tables-save /sbin/ip6tables-save
   fi
   if [ -x "/sbin/ip6tables-restore" ] && [ ! -e "/usr/sbin/ip6tables-restore" ]; then
-    ln -s /sbin/ip6tables-restore /usr/sbin/ip6tables-restore
+    ln -sfn /sbin/ip6tables-restore /usr/sbin/ip6tables-restore
   fi
   if [ -x "/usr/sbin/ip6tables-restore" ] && [ ! -e "/sbin/ip6tables-restore" ]; then
-    ln -s /usr/sbin/ip6tables-restore /sbin/ip6tables-restore
+    ln -sfn /usr/sbin/ip6tables-restore /sbin/ip6tables-restore
   fi
   ###
   ### Fix for iptables paths backward compatibility
@@ -3473,8 +3473,8 @@ _drush_system_install_update() {
     if [ -x "/opt/tools/drush/8/drush/drush.php" ]; then
       rm -f /usr/bin/drush8
       rm -f /usr/bin/drush
-      ln -s /opt/tools/drush/8/drush/drush.php /usr/bin/drush8
-      ln -s /opt/tools/drush/8/drush/drush.php /usr/bin/drush
+      ln -sfn /opt/tools/drush/8/drush/drush.php /usr/bin/drush8
+      ln -sfn /opt/tools/drush/8/drush/drush.php /usr/bin/drush
     else
       _msg "FAIL: Drush ${_DRUSH_EIGHT_VRN} installation failed!"
     fi
@@ -4446,6 +4446,28 @@ _check_and_move() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "CLNP: Only the allowed version (${_allowedFile}) is present in ${_dir}"
     fi
+  fi
+}
+
+#
+# Make local OpenSSL new/legacy ssl/certs symlinked to system ssl/certs
+_sync_system_ssl_certs() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _sync_system_ssl_certs"
+  fi
+  if [ -e "/etc/ssl/certs/ca-certificates.crt" ] \
+    && [ ! -e "/usr/local/ssl3/.old-certs" ] \
+    && [ -d "/usr/local/ssl3/certs" ] \
+    && [ ! -L "/usr/local/ssl3/certs" ]; then
+    mv -f /usr/local/ssl3/certs /usr/local/ssl3/.old-certs
+    ln -sfn /etc/ssl/certs /usr/local/ssl3/certs
+  fi
+  if [ -e "/etc/ssl/certs/ca-certificates.crt" ] \
+    && [ ! -e "/usr/local/ssl/.old-certs" ] \
+    && [ -d "/usr/local/ssl/certs" ] \
+    && [ ! -L "/usr/local/ssl/certs" ]; then
+    mv -f /usr/local/ssl/certs /usr/local/ssl/.old-certs
+    ln -sfn /etc/ssl/certs /usr/local/ssl/certs
   fi
 }
 
@@ -6125,6 +6147,7 @@ _if_post_major_os_upgrade() {
       _SSL_FORCE_REINSTALL=YES
       _if_reinstall_curl_src
       _if_ssl_install_src
+      _sync_system_ssl_certs
       _ssl_paths_sync
       _ssl_crypto_lib_fix
       _curl_install_src
@@ -6812,6 +6835,7 @@ _if_major_os_upgrade() {
       _php_libs_fix
       _if_reinstall_curl_src
       _if_ssl_install_src
+      _sync_system_ssl_certs
       _ssl_paths_sync
       _ssl_crypto_lib_fix
       _curl_install_src
@@ -7630,7 +7654,7 @@ _php_libs_fix() {
       fi
       if [ ! -e "/usr/include/curl/curl.h" ] \
         && [ -e "/usr/include/x86_64-linux-gnu/curl/curl.h" ]; then
-        ln -s /usr/include/x86_64-linux-gnu/curl /usr/include/curl
+        ln -sfn /usr/include/x86_64-linux-gnu/curl /usr/include/curl
       fi
       if [ ! -e "/usr/include/gmp.h" ] \
         && [ -e "/usr/include/x86_64-linux-gnu/gmp.h" ]; then

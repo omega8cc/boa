@@ -1,6 +1,8 @@
 #!/bin/bash
 
 # Define the file paths
+_aegir_health_check="/var/aegir/config/includes/nginx_vhost_common.conf"
+_drush_health_check="/var/aegir/drush/drush"
 _ctrl_dir="/var/aegir/control/ip"
 _input_file="${_ctrl_dir}/access.txt"
 _nginx_access_path="/var/aegir/config/includes/ip_access"
@@ -14,6 +16,11 @@ _server_ip_file="/root/.found_correct_ipv4.cnf"
 # Regular expression for validating IPv4 addresses and site names
 _ipv4_regex="^([0-9]{1,3}\.){3}[0-9]{1,3}$"
 _site_name_regex="^([a-zA-Z0-9_-]+\.)*[a-zA-Z0-9_-]+\.[a-zA-Z]{2,}$"
+
+if [[ ! -f "${_aegir_health_check}" ]] || [[ ! -x "${_drush_health_check}" ]]; then
+  echo "Server is not ready yet. Exiting."
+  exit 1
+fi
 
 # Ensure the ctrl, output and backup directories exist
 mkdir -p "${_backup_dir}"

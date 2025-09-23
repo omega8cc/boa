@@ -2,7 +2,7 @@
 
 export HOME=/root
 export SHELL=/bin/bash
-export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 
 _TODAY=$(date +%y%m%d)
 export _TODAY=${_TODAY//[^0-9]/}
@@ -148,11 +148,183 @@ _not_supported_virt() {
   _clean_pid_exit _not_supported_virt_a
 }
 
+# --- internal: print message only in debug mode
+_msg() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    echo "[virt-what-fix] $*"
+  fi
+}
+
+# --- internal: run virt-what under strace and parse the helper's exec path
+_discover_with_strace() {
+  local _path_found=""
+  if ! command -v strace >/dev/null 2>&1; then
+    _msg "strace not available, skipping strace-based discovery"
+    echo ""
+    return 0
+  fi
+  # Temporarily extend PATH so virt-what can exec the helper for strace to see.
+  PATH="${PATH}:${_CANDIDATE_PATHS}" strace -f -qq -e trace=execve -o "${_TRACE}" virt-what >/dev/null 2>&1
+
+  # mawk-safe parsing: pull the first quoted arg from execve("…") and check suffix
+  if [ -s "${_TRACE}" ]; then
+    _path_found=$(
+      awk -v n="${_HELPER_NAME}" '
+        /execve\("/ {
+          # Find start of execve(" then extract up to next quote
+          i = index($0, "execve(\"")
+          if (i) {
+            s = substr($0, i + 8)         # after execve("
+            j = index(s, "\"")
+            if (j) {
+              p = substr(s, 1, j - 1)     # the path inside quotes
+              if (p ~ ("/" n "$")) { print p; exit }
+            }
+          }
+        }
+      ' "${_TRACE}"
+    )
+  fi
+  rm -f "${_TRACE}"
+
+  if [ -n "${_path_found}" ] && [ -x "${_path_found}" ]; then
+    _msg "strace discovered helper at: ${_path_found}"
+    echo "${_path_found}"
+    return 0
+  fi
+  _msg "strace discovery failed"
+  echo ""
+  return 0
+}
+
+# --- internal: dpkg-based discovery (Debian/Devuan)
+_discover_with_dpkg() {
+  local _p=""
+  if command -v dpkg >/dev/null 2>&1; then
+    _p=$(dpkg -L virt-what 2>/dev/null | grep -E "/${_HELPER_NAME}$" | head -n1)
+    if [ -n "${_p}" ] && [ -x "${_p}" ]; then
+      _msg "dpkg discovered helper at: ${_p}"
+      echo "${_p}"
+      return 0
+    fi
+  fi
+  echo ""
+  return 0
+}
+
+# --- internal: filesystem search fallback (bounded)
+_discover_with_find() {
+  local _p=""
+  # Keep it bounded to /usr to stay fast/noisy-free.
+  _p=$(find /usr -maxdepth 4 -type f -name "${_HELPER_NAME}" 2>/dev/null | head -n1)
+  if [ -n "${_p}" ] && [ -x "${_p}" ]; then
+    _msg "find discovered helper at: ${_p}"
+    echo "${_p}"
+    return 0
+  fi
+  echo ""
+  return 0
+}
+
+# --- main: ensure symlink
+_ensure_virt_what_helper_symlink() {
+  # If the symlink already exists and is working, nothing to do.
+  if [ -L "${_SYMLINK}" ] && [ -x "${_SYMLINK}" ] && [ -e "$(readlink -f "${_SYMLINK}")" ]; then
+    _msg "Symlink already present and valid: ${_SYMLINK} -> $(readlink -f "${_SYMLINK}")"
+    return 0
+  fi
+
+  local _helper_path=""
+  _helper_path="$(_discover_with_strace)"
+  if [ -z "${_helper_path}" ]; then
+    _helper_path="$(_discover_with_dpkg)"
+  fi
+  if [ -z "${_helper_path}" ]; then
+    _helper_path="$(_discover_with_find)"
+  fi
+
+  if [ -z "${_helper_path}" ]; then
+    echo "ERROR: Could not locate ${_HELPER_NAME} anywhere under /usr." 1>&2
+    return 1
+  fi
+
+  # Safety: if a non-symlink file already exists at the target, back it up once.
+  if [ -e "${_SYMLINK}" ] && [ ! -L "${_SYMLINK}" ]; then
+    _msg "Backing up existing non-symlink at ${_SYMLINK} to ${_SYMLINK}.orig"
+    mv -f "${_SYMLINK}" "${_SYMLINK}.orig"
+  fi
+
+  ln -sfn "${_helper_path}" "${_SYMLINK}"
+  if [ -x "${_SYMLINK}" ]; then
+    _msg "Symlink created: ${_SYMLINK} -> ${_helper_path}"
+    return 0
+  else
+    echo "ERROR: Failed to create working symlink ${_SYMLINK} -> ${_helper_path}" 1>&2
+    return 2
+  fi
+}
+
+###
+### Fix VM system detection
+###
+_fix_virt_what() {
+  _VIRT_TEST=$(which virt-what)
+  if [ -n "${_VIRT_TEST}" ] && [ -x "${_VIRT_TEST}" ]; then
+    _SHELL_TEST_A=$(grep -I -o "\#\!.*/usr/bin/sh" ${_VIRT_TEST} 2>&1)
+    _SHELL_TEST_B=$(grep -I -o "\#\!.*/bin/sh" ${_VIRT_TEST} 2>&1)
+    if [[ "${_SHELL_TEST_A}" =~ "/usr/bin/sh" ]]; then
+      sed -i "s/\/usr\/bin\/sh/\/bin\/dash/g" ${_VIRT_TEST}
+    fi
+    if [[ "${_SHELL_TEST_B}" =~ "/bin/sh" ]]; then
+      sed -i "s/\/bin\/sh/\/bin\/dash/g" ${_VIRT_TEST}
+    fi
+    _HELPER_NAME="virt-what-cpuid-helper"
+    _SYMLINK="/usr/sbin/${_HELPER_NAME}"
+    _TRACE="/tmp/virtwhat.$$.strace"
+    # Extra dirs we temporarily expose to PATH so virt-what can exec the helper for strace discovery
+    _CANDIDATE_PATHS="/usr/libexec:/usr/lib/x86_64-linux-gnu:/usr/lib64/virt-what:/usr/lib/virt-what"
+    if [ ! -e "${_SYMLINK}" ]; then
+      echo "INFO: virt-what tool requires small update, fixing..."
+      if ! command -v strace &> /dev/null; then
+        _apt_clean_update
+        apt-get install strace ${_aptYesUnth}
+      fi
+      _ensure_virt_what_helper_symlink
+    fi
+  fi
+}
+
+###
+### Fix or install VM system detection
+###
+_fix_or_install_virt_what() {
+  _VIRT_TEST=$(which virt-what)
+  if [ -n "${_VIRT_TEST}" ] && [ -x "${_VIRT_TEST}" ]; then
+    _fix_virt_what
+  else
+    echo "INFO: installing required virt-what tool ..."
+    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
+      && [ -e "/etc/apt/apt.conf.d" ]; then
+      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
+    fi
+    _apt_clean_update
+    apt-get install virt-what ${_aptYesUnth}
+    wait
+    _fix_virt_what
+  fi
+}
+
 _check_virt() {
-  _VIRT_TOOL=$(which virt-what 2> /dev/null)
+  _fix_or_install_virt_what
+  _VIRT_TOOL=$(which virt-what)
   if [ -x "${_VIRT_TOOL}" ]; then
-    _VIRT_TEST=$(virt-what 2> /dev/null)
+    _VIRT_TEST=$(virt-what)
     _VIRT_TEST=$(echo -n ${_VIRT_TEST} | fmt -su -w 2500 2>&1)
+    if [[ "${_VIRT_TEST}" =~ "program not found" ]]; then
+      echo "ERROR: virt-what says: ${_VIRT_TEST}"
+      echo "ERROR: virt-what detection fails for unknown reason, exit"
+      _clean_pid_exit _check_virt
+    fi
     if [ ! -e "/root/.allow.any.virt.cnf" ]; then
       if [ -e "/proc/self/status" ]; then
         _VS_GUEST_TEST=$(grep -E "VxID:[[:space:]]*[0-9]{2,}$" /proc/self/status 2> /dev/null)
@@ -1512,40 +1684,40 @@ _if_fix_iptables_symlinks() {
   ### Fix for iptables paths backward compatibility
   ###
   if [ -x "/sbin/iptables" ] && [ ! -e "/usr/sbin/iptables" ]; then
-    ln -s /sbin/iptables /usr/sbin/iptables
+    ln -sfn /sbin/iptables /usr/sbin/iptables
   fi
   if [ -x "/usr/sbin/iptables" ] && [ ! -e "/sbin/iptables" ]; then
-    ln -s /usr/sbin/iptables /sbin/iptables
+    ln -sfn /usr/sbin/iptables /sbin/iptables
   fi
   if [ -x "/sbin/iptables-save" ] && [ ! -e "/usr/sbin/iptables-save" ]; then
-    ln -s /sbin/iptables-save /usr/sbin/iptables-save
+    ln -sfn /sbin/iptables-save /usr/sbin/iptables-save
   fi
   if [ -x "/usr/sbin/iptables-save" ] && [ ! -e "/sbin/iptables-save" ]; then
-    ln -s /usr/sbin/iptables-save /sbin/iptables-save
+    ln -sfn /usr/sbin/iptables-save /sbin/iptables-save
   fi
   if [ -x "/sbin/iptables-restore" ] && [ ! -e "/usr/sbin/iptables-restore" ]; then
-    ln -s /sbin/iptables-restore /usr/sbin/iptables-restore
+    ln -sfn /sbin/iptables-restore /usr/sbin/iptables-restore
   fi
   if [ -x "/usr/sbin/iptables-restore" ] && [ ! -e "/sbin/iptables-restore" ]; then
-    ln -s /usr/sbin/iptables-restore /sbin/iptables-restore
+    ln -sfn /usr/sbin/iptables-restore /sbin/iptables-restore
   fi
   if [ -x "/sbin/ip6tables" ] && [ ! -e "/usr/sbin/ip6tables" ]; then
-    ln -s /sbin/ip6tables /usr/sbin/ip6tables
+    ln -sfn /sbin/ip6tables /usr/sbin/ip6tables
   fi
   if [ -x "/usr/sbin/ip6tables" ] && [ ! -e "/sbin/ip6tables" ]; then
-    ln -s /usr/sbin/ip6tables /sbin/ip6tables
+    ln -sfn /usr/sbin/ip6tables /sbin/ip6tables
   fi
   if [ -x "/sbin/ip6tables-save" ] && [ ! -e "/usr/sbin/ip6tables-save" ]; then
-    ln -s /sbin/ip6tables-save /usr/sbin/ip6tables-save
+    ln -sfn /sbin/ip6tables-save /usr/sbin/ip6tables-save
   fi
   if [ -x "/usr/sbin/ip6tables-save" ] && [ ! -e "/sbin/ip6tables-save" ]; then
-    ln -s /usr/sbin/ip6tables-save /sbin/ip6tables-save
+    ln -sfn /usr/sbin/ip6tables-save /sbin/ip6tables-save
   fi
   if [ -x "/sbin/ip6tables-restore" ] && [ ! -e "/usr/sbin/ip6tables-restore" ]; then
-    ln -s /sbin/ip6tables-restore /usr/sbin/ip6tables-restore
+    ln -sfn /sbin/ip6tables-restore /usr/sbin/ip6tables-restore
   fi
   if [ -x "/usr/sbin/ip6tables-restore" ] && [ ! -e "/sbin/ip6tables-restore" ]; then
-    ln -s /usr/sbin/ip6tables-restore /sbin/ip6tables-restore
+    ln -sfn /usr/sbin/ip6tables-restore /sbin/ip6tables-restore
   fi
   ###
   ### Fix for iptables paths backward compatibility
@@ -1643,7 +1815,7 @@ _check_root() {
     if [ ! -e "/dev/fd" ]; then
       if [ -e "/proc/self/fd" ]; then
         rm -rf /dev/fd
-        ln -s /proc/self/fd /dev/fd
+        ln -sfn /proc/self/fd /dev/fd
       fi
     fi
     sed -i "s/^127.0.0.1.*/127.0.0.1 localhost/g" /etc/hosts
@@ -1748,10 +1920,15 @@ _check_root() {
 _display_version() {
   if [ "$(id -u)" -eq 0 ]; then
     _HOST_INFO=$(dmidecode -s system-manufacturer 2>&1)
-    _VIRT_TOOL=$(which virt-what 2> /dev/null)
+    _VIRT_TOOL=$(which virt-what)
     if [ -x "${_VIRT_TOOL}" ]; then
-      _VIRT_TEST=$(virt-what 2> /dev/null)
+      _VIRT_TEST=$(virt-what)
       _VIRT_TEST=$(echo -n ${_VIRT_TEST} | fmt -su -w 2500 2>&1)
+      if [[ "${_VIRT_TEST}" =~ "program not found" ]]; then
+        echo "ERROR: virt-what says: ${_VIRT_TEST}"
+        echo "ERROR: virt-what detection fails for unknown reason, exit"
+        _clean_pid_exit _display_version
+      fi
       if [ ! -e "/root/.allow.any.virt.cnf" ]; then
         if [ -e "/proc/self/status" ]; then
           _VS_GUEST_TEST=$(grep -E "VxID:[[:space:]]*[0-9]{2,}$" /proc/self/status 2> /dev/null)

@@ -6,7 +6,7 @@ BOA stands for Barracuda, Octopus, and Ægir—a high-performance LEMP stack sup
 
 Ægir, named after the Norse god of the sea, is an open-source hosting system for managing multiple Drupal sites. The name Ægir was chosen to reflect the relationship between Drupal's water drop logo, symbolizing individual sites, and Ægir's role as the god of the ocean, representing the hosting of many Drupal sites together. It automates tasks such as site installation, upgrades, and maintenance, making your life easier.
 
-**Announcement from Omega8.cc team**: [**The Future of Aegir 3 is Bryght!**](https://github.com/omega8cc/boa/tree/5.x-dev/ANNOUNCEMENT.md)
+**Announcement from Omega8.cc team**: [**The Future of Aegir 3 is Bryght!**](https://github.com/omega8cc/boa/tree/5.x-lts/ANNOUNCEMENT.md)
 
 ### Key Features of Ægir:
 

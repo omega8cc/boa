@@ -2,7 +2,7 @@
 
 export HOME=/root
 export SHELL=/bin/bash
-export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 export _tRee=lts
 export _xSrl=570ltsT07
 
@@ -113,7 +113,7 @@ _check_root() {
     if [ ! -e "/dev/fd" ]; then
       if [ -e "/proc/self/fd" ]; then
         rm -rf /dev/fd
-        ln -s /proc/self/fd /dev/fd
+        ln -sfn /proc/self/fd /dev/fd
       fi
     fi
     [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
@@ -1961,6 +1961,45 @@ _upgrade_db_cluster() {
   echo "All DB nodes updated!"
 }
 
+# Ensure /usr/sbin/ipset and /sbin/ipset both resolve to the actual ipset binary.
+_ensure_ipset_symlinks() {
+  _IPSET_REAL="$(command -v ipset 2>/dev/null || true)"
+  if [ -z "${_IPSET_REAL}" ]; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      echo "ipset not installed; skipping symlink fixes"
+    fi
+    return 0
+  fi
+
+  # Resolve through any intermediate symlinks.
+  if [ -L "${_IPSET_REAL}" ]; then
+    _IPSET_REAL="$(readlink -f "${_IPSET_REAL}")"
+  fi
+
+  for _CAND in /usr/sbin/ipset /sbin/ipset; do
+    _PARENT="$(dirname "${_CAND}")"
+    [ -d "${_PARENT}" ] || mkdir -p "${_PARENT}"
+
+    # If the candidate *is* the real file, nothing to do.
+    if [ "${_CAND}" = "${_IPSET_REAL}" ]; then
+      continue
+    fi
+
+    # If it exists, check whether it already resolves to the right target.
+    if [ -e "${_CAND}" ] || [ -L "${_CAND}" ]; then
+      _TARGET="$(readlink -f "${_CAND}" 2>/dev/null || true)"
+      if [ "${_TARGET}" = "${_IPSET_REAL}" ]; then
+        continue
+      fi
+    fi
+
+    ln -sfn "${_IPSET_REAL}" "${_CAND}"
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      echo "Linked ${_CAND} -> ${_IPSET_REAL}"
+    fi
+  done
+}
+
 _install_host() {
 
   _CUSTOM_DNS_TEST=$(grep 8.8.8.8 /etc/resolv.conf 2>&1)
@@ -2038,12 +2077,7 @@ _install_host() {
   ${_INSTAPP} iptables
   ${_INSTAPP} ipset
 
-  if [ -x "/sbin/ipset" ] && [ ! -e "/usr/sbin/ipset" ]; then
-    ln -s /sbin/ipset /usr/sbin/ipset
-  fi
-  if [ -x "/usr/sbin/ipset" ] && [ ! -e "/sbin/ipset" ]; then
-    ln -s /usr/sbin/ipset /sbin/ipset
-  fi
+  _ensure_ipset_symlinks
 
   echo "Setting hostname to ${_hst}"
   echo ${_hst} > /etc/hostname
@@ -2309,7 +2343,7 @@ _upgrade_host() {
 
     if [ ! -e "/usr/etc/vservers/.defaults/apps/vunify/hash/root" ]; then
       mkdir -p /usr/etc/vservers/.defaults/apps/vunify/hash /vservers/.hash
-      ln -s /vservers/.hash /usr/etc/vservers/.defaults/apps/vunify/hash/root
+      ln -sfn /vservers/.hash /usr/etc/vservers/.defaults/apps/vunify/hash/root
     fi
   fi
 

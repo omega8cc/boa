@@ -12,7 +12,7 @@
 
 # Author: Ondrej Sury <ondrej@debian.org>
 
-PATH=/sbin:/usr/sbin:/bin:/usr/bin
+PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 DESC="PHP5 FastCGI Process Manager"
 NAME=php5-fpm
 DAEMON=/usr/sbin/$NAME
