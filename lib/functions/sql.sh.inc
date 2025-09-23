@@ -392,7 +392,14 @@ _sql_conf_update() {
     if [ "${_CUSTOM_CONFIG_SQL}" = "YES" ]; then
       _DO_NOTHING=YES
     else
-      # Determine the Percona version (assuming _DB_V is set to the version number, e.g., "5.7" or "8.0")
+      # Determine the Percona version (assuming _DB_V is set to the version number, e.g., "5.7" or "8.0" or "8.4")
+      if [ "${_DB_V}" = "8.4" ]; then
+        # Enable legacy mysql_native_password for Percona 8.4
+        sed -i -E \
+          -e "s/^#?\s*mysql_native_password\s*=.*/mysql_native_password=ON/" \
+          -e "s/^(\s*)#\s*(mysql_native_password.*=.*)/\1\2/" \
+          /etc/mysql/my.cnf &> /dev/null
+      fi
       if [ "${_DB_V}" = "5.7" ]; then
         # Disable performance_schema for Percona 5.7
         sed -i -E \
