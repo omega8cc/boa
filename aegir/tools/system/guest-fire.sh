@@ -2,7 +2,7 @@
 
 export HOME=/root
 export SHELL=/bin/bash
-export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 
 # Protect from high load due to csf loop/flood
 _csf_flood_guard() {
@@ -36,12 +36,29 @@ _csf_flood_guard() {
 }
 [ ! -e "/run/water.pid" ] && _csf_flood_guard
 
-# Exit if more than 2 instances of the script are running
-if (( $(pgrep -fc 'guest-fire.sh') > 2 )); then
-  # Optional: Log too many instances
-  echo "Too many guest-fire.sh running $(date)" >> /var/log/boa/too.many.log
-  exit 0
-fi
+###
+### Atomic lock/unlock to prevent TOCTOU race
+###
+_manage_single_lock() {
+  _SELF_NAME="${_SELF_NAME:-$(basename "$0")}"
+  for _L in "/opt/local/bin/lock.inc" "/opt/local/lib/lock.inc"; do
+    [ -r "$_L" ] && . "$_L" && break
+  done
+  if [ -n "${_SINGLE_INSTANCE_LIB_VER:-}" ] && command -v _single_instance_lock >/dev/null 2>&1; then
+    # use shared lock if available
+    _single_instance_lock
+  else
+    # -------- legacy pgrep guard ---------
+    # Exit if more than 2 instances of this script are running
+    _SCRIPT=$(basename "$0")
+    _CNT=$(pgrep -fc "[${_SCRIPT:0:1}]${_SCRIPT:1}")
+    if (( _CNT > 2 )); then
+      echo "Too many ${_SCRIPT} running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
+      exit 0
+    fi
+  fi
+}
+_manage_single_lock
 
 # ----------------------------
 # Configuration Section
