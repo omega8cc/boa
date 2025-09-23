@@ -179,14 +179,6 @@ _single_instance_lock() {
 _check_set_mode() {
   # Usage: autoinit [minimal|full]
   # Default: "minimal". Persisted across reboots via cron argument.
-  # Install dmidecode of not present
-  if ! command -v dmidecode &> /dev/null; then
-    /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
-    ${_INITINS} dmidecode &> /dev/null
-  fi
-  if dmidecode -s system-manufacturer | grep -i 'Linode' &> /dev/null; then
-    _AUTO_MODE="full"
-  fi
   if [ -z "${_AUTO_MODE}" ]; then
     case "${1:-minimal}" in
       minimal|*) _AUTO_MODE="minimal" ;;
@@ -204,6 +196,11 @@ _check_set_mode() {
 ### Check Manufacturer Compatibility
 ###
 _check_manufacturer_compatibility() {
+  # Install dmidecode of not present
+  if ! command -v dmidecode &> /dev/null; then
+    /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
+    ${_INITINS} dmidecode &> /dev/null
+  fi
   # Check if dmidecode is available
   _DMI_TEST=$(which dmidecode 2>&1)
   if [ -x "${_DMI_TEST}" ]; then
