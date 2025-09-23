@@ -54,6 +54,7 @@ foreach $COMMAND (sort keys %li_cnt) {
   if ($COMMAND =~ /lsyncd/) {$lsyncdlives = "YES"; $lsyncdsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /sshd/) {$sshdlives = "YES"; $sshdsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /proxysql/) {$pxydlives = "YES"; $pxydsumar = $li_cnt{$COMMAND};}
+  if ($COMMAND =~ /droplet/) {$dpltlives = "YES"; $dpltsumar = $li_cnt{$COMMAND};}
 }
 foreach $X (sort keys %li_cnt) {
   if ($X =~ /php84/) {$php84lives = "YES";}
@@ -120,6 +121,7 @@ print "\n $xinetdsumar Xinetd procs\t\tGLOBAL" if ($xinetdlives);
 print "\n $lsyncdsumar Lsyncd procs\t\tGLOBAL" if ($lsyncdlives);
 print "\n $sshdsumar SSHd procs\t\tGLOBAL" if ($sshdlives);
 print "\n $pxydsumar PxySQL procs\t\tGLOBAL" if ($pxydlives);
+print "\n $dpltsumar Droplet procs\t\tGLOBAL" if ($dpltlives);
 print "\n";
 
 system("csf -e") if (!$lfdsumar && -f "/etc/init.d/lfd");
@@ -128,6 +130,8 @@ system("service jenkins restart") if (!$jenkinssumar && -f "/etc/init.d/jenkins"
 system("service bind9 restart") if (!$namedsumar && -f "/etc/init.d/bind9");
 system("service ssh restart") if (!$sshdsumar && -f "/etc/init.d/ssh");
 system("service proxysql restart") if (!$pxydsumar && -f "/etc/init.d/proxysql");
+system("service droplet-agent restart") if (!$dpltsumar && -f "/etc/init.d/droplet-agent");
+system("service droplet-agent restart") if (!-f "/run/droplet-agent.pid" && -f "/etc/init.d/droplet-agent");
 
 if (-e "/usr/sbin/unbound" && !$unboundsumar) {
   if (-e "/etc/resolvconf/update.d/unbound") {

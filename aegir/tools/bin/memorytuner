@@ -2,7 +2,7 @@
 
 export HOME=/root
 export SHELL=/bin/bash
-export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 
 # Ensure the script is run with root privileges
 if [ "$EUID" -ne 0 ]; then

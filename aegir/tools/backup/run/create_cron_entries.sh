@@ -2,7 +2,7 @@
 
 export HOME=/root
 export SHELL=/bin/bash
-export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 
 # Configurable in /root/.barracuda.cnf interval in minutes between backup cycles
 _BACKUP_INTERVAL=360
@@ -61,7 +61,7 @@ _generate_wrapper_script() {
 # Environment setup
 export HOME=/root
 export SHELL=/bin/bash
-export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 
 # File paths
 _SCHEDULE_FILE="/root/.remote_backups/schedule/backup_schedule.txt"

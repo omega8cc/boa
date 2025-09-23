@@ -66,7 +66,7 @@
 
 export HOME=/root
 export SHELL=/bin/bash
-export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 export _tRee=lts
 
 ###
@@ -91,28 +91,9 @@ if [ -z "${TERM+x}" ]; then
 fi
 
 ###
-### Only root allowed
+### The lock is always cleared even if apt bails
 ###
-_check_root() {
-  if [ "$(id -u)" -eq 0 ]; then
-    [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
-  else
-    echo "ERROR: This script should be run as a root user"
-    exit 1
-  fi
-  _DF_TEST=$(df -kTh / -l \
-    | grep '/' \
-    | sed 's/\%//g' \
-    | awk '{print $6}' >> "${_logSlt}")
-  _DF_TEST=${_DF_TEST//[^0-9]/}
-  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt 90 ]; then
-    echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
-    echo "ERROR: We can not proceed until it is below 90/100"
-    exit 1
-  fi
-}
-_check_root
-cd /root/
+trap 'rm -f /run/autoinit.pid' EXIT
 
 ###
 ### Noticeable messages
@@ -121,8 +102,81 @@ _msg() {
   echo "AutoInit v.${_tRee} [$(date +%T)] ==> $*"
 }
 
+###
+### Only root allowed
+###
+_check_root() {
+  if [ "$(id -u)" -eq 0 ]; then
+    [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
+  else
+    _msg "ERROR: This script should be run as a root user"
+    exit 1
+  fi
+  _DF_TEST=$(df -kTh / -l \
+    | grep '/' \
+    | sed 's/\%//g' \
+    | awk '{print $6}' >> "${_logSlt}")
+  _DF_TEST=${_DF_TEST//[^0-9]/}
+  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt 90 ]; then
+    _msg "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
+    _msg "ERROR: We can not proceed until it is below 90/100"
+    exit 1
+  fi
+}
+
+###
+### Atomic unlock to prevent TOCTOU race
+###
+_single_instance_unlock() {
+  _FD="$1"; _PATH="$2"
+  if command -v flock >/dev/null 2>&1; then
+    flock -u "${_FD}" 2>/dev/null || true
+    eval "exec ${_FD}>&-"
+    rm -f "${_PATH}" 2>/dev/null || true
+  else
+    rm -rf "${_PATH}" 2>/dev/null || true
+  fi
+}
+
+###
+### Atomic lock to prevent TOCTOU race
+###
+_single_instance_lock() {
+  # Ensure not too many instances are running
+  # usage: _single_instance_lock [lockfile_path] [fd]
+  # default lock: /run/<script>.lock (falls back to /var/run or /tmp)
+  _SELF_NAME="${_SELF_NAME:-$(basename "$0")}"
+  _LOCK_FD="${2:-9}"
+  if [ -n "${1:-}" ]; then
+    _LOCK_PATH="$1"
+  else
+    _DIR="/run"; [ -w "$_DIR" ] || _DIR="/var/run"; [ -w "$_DIR" ] || _DIR="/tmp"
+    _LOCK_PATH="${_DIR}/${_SELF_NAME%.sh}.lock"
+  fi
+
+  if command -v flock >/dev/null 2>&1; then
+    eval "exec ${_LOCK_FD}>\"${_LOCK_PATH}\""
+    if ! flock -n "${_LOCK_FD}"; then
+      echo "${_SELF_NAME}: another instance is running; exiting."
+      exit 0
+    fi
+    printf '%s\n' "$$" 1>&"${_LOCK_FD}" 2>/dev/null || true   # optional: PID note
+    trap "_single_instance_unlock ${_LOCK_FD} '${_LOCK_PATH}'" EXIT INT TERM HUP
+  else
+    # mkdir is atomic; directory presence == lock held
+    if ! mkdir "${_LOCK_PATH}" 2>/dev/null; then
+      echo "${_SELF_NAME}: another instance is running; exiting."
+      exit 0
+    fi
+    echo "$$" > "${_LOCK_PATH}/pid" 2>/dev/null || true
+    trap "rm -rf '${_LOCK_PATH}'" EXIT INT TERM HUP
+  fi
+}
+
+###
+### Mode selection
+###
 _check_set_mode() {
-  # --- Mode selection -------------------------------------------------
   # Usage: autoinit [minimal|full]
   # Default: "minimal". Persisted across reboots via cron argument.
   if [ -z "${_AUTO_MODE}" ]; then
@@ -131,16 +185,20 @@ _check_set_mode() {
       full)      _AUTO_MODE="full" ;;
     esac
   fi
-  touch /root/.mode.selected.${_AUTO_MODE}.info
-  chattr +i /root/.mode.selected.${_AUTO_MODE}.info
+  if [ ! -e "/root/.mode.selected.${_AUTO_MODE}.info" ]; then
+    touch /root/.mode.selected.${_AUTO_MODE}.info
+    chattr +i /root/.mode.selected.${_AUTO_MODE}.info
+  fi
   _msg "Mode selected: ${_AUTO_MODE}" >> "${_logInt}"
 }
-_check_set_mode
 
+###
+### Check Manufacturer Compatibility
+###
 _check_manufacturer_compatibility() {
   # Install dmidecode of not present
   if ! command -v dmidecode &> /dev/null; then
-    /usr/bin/apt-get update --allow-insecure-repositories &> /dev/null
+    /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
     ${_INITINS} dmidecode &> /dev/null
   fi
   # Check if dmidecode is available
@@ -170,24 +228,26 @@ _check_manufacturer_compatibility() {
     exit 1
   fi
 }
-_check_manufacturer_compatibility
 
-if [ "${_tRee}" = "dev" ]; then
-  touch /root/.debug-boa-installer.cnf
-  touch /root/.debug-octopus-installer.cnf
-fi
+###
+### Check Aegir
+###
+_check_aegir() {
+  if [ -e "/var/aegir" ]; then
+    echo
+    echo "ERROR: This script can not be used once BOA is installed"
+    echo
+    exit 1
+  fi
+}
 
-if [ -e "/var/aegir" ]; then
-  echo
-  echo "ERROR: This script can not be used once BOA is installed"
-  echo
-  exit 1
-fi
-
+###
+### Fix locales
+###
 _locales_check_fix_early() {
   _isLoc=$(which locale 2>&1)
   if [ ! -x "${_isLoc}" ] || [ -z "${_isLoc}" ]; then
-    apt-get update --allow-insecure-repositories -qq &> /dev/null
+    /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
     ${_INITINS} locales &> /dev/null
     [ "${_AUTO_MODE}" = "full" ] && ${_INITINS} locales-all &> /dev/null
   fi
@@ -278,24 +338,21 @@ _locales_check_fix_early() {
     printf "\n" >> /root/.bashrc
   fi
 }
-_locales_check_fix_early
 
+###
+### Check cron
+###
 _cron_check_install_early() {
   _isCrn=$(which cron 2>&1)
   if [ ! -x "${_isCrn}" ] || [ -z "${_isCrn}" ]; then
-    apt-get update --allow-insecure-repositories -qq &> /dev/null
+    /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
     ${_INITINS} cron &> /dev/null
   fi
 }
-_cron_check_install_early
 
-if [ -e "/run/autoinit.pid" ]; then
-  echo " " >> "${_logSlt}"
-  _msg "The /run/autoinit.pid is blocking this run..." >> "${_logSlt}"
-  echo " " >> "${_logSlt}"
-  exit 1
-fi
-
+###
+### Should we launch boa install?
+###
 _if_launch_boa_install() {
   _BOA_LOGFILE="/root/.boa.install.command.cnf"
   if [[ -s "${_BOA_LOGFILE}" ]]; then
@@ -317,6 +374,9 @@ _if_launch_boa_install() {
   fi
 }
 
+###
+### Disable AppArmor
+###
 _disable_apparmor_utils() {
   if [ -e "/etc/apparmor.d" ] && [ -e "/var/cache/apparmor" ]; then
     rm -rf /var/cache/apparmor/* >> "${_logSlt}"
@@ -335,6 +395,9 @@ _disable_apparmor_utils() {
   [ ! -e "/root/.disable.apparmor.cnf" ] && touch /root/.disable.apparmor.cnf
 }
 
+###
+### Install AppArmor
+###
 _install_apparmor_utils() {
   _isAppArmorRevFile="/sys/kernel/security/apparmor/revision"
   _isAppArmorGrubFile="/etc/default/grub.d/apparmor.cfg"
@@ -373,6 +436,9 @@ _install_apparmor_utils() {
   fi
 }
 
+###
+### Grub and Ifnames
+###
 _ifnames_grub_check_sync() {
   _IS_IFACE=$(ip a 2>&1)
   _ADD_GRUB_CMD=""
@@ -478,14 +544,27 @@ _ifnames_grub_check_sync() {
   fi
 }
 
-_if_remove_conflicting_sources() {
-  _SRC_TEST=$(ls -la /etc/apt/sources.list.d/* 2>&1)
-  if [[ ! "${_SRC_TEST}" =~ "No such file" ]]; then
-    _msg "Removing conflicting sources from /etc/apt/sources.list.d on this system" >> "${_logInt}"
-    mv -f /etc/apt/sources.list.d/* /var/backups/
-  fi
+###
+### Prefer Devuan APT sources
+###
+_prefer_devuan_repositories() {
+  # Prefer Devuan; force base-files from Devuan (handles lower version vs Debian).
+  mkdir -p /etc/apt/preferences.d
+  cat >/etc/apt/preferences.d/99-prefer-devuan <<'EOF'
+Package: *
+Pin: release o=Devuan
+Pin-Priority: 700
+
+Package: base-files
+Pin: release o=Devuan
+Pin-Priority: 1001
+EOF
+  /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
 }
 
+###
+### Prepare system
+###
 _init_prepare() {
   if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
     && [ -e "/etc/apt/apt.conf.d" ]; then
@@ -531,7 +610,7 @@ _init_prepare() {
     wait
     exit 0
   else
-    if [ ! -x "/usr/bin/aptitude" ] || [ ! -x "/usr/bin/cc" ]; then
+    if [ ! -x "/usr/bin/mc" ]; then
       echo "Running _init_prepare procedure B..."
       touch /run/autoinit.pid
       /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
@@ -562,6 +641,7 @@ _init_prepare() {
       ${_INITINS} aptitude >> "${_logSlt}"
       ${_INITINS} cron     >> "${_logSlt}"
       ${_INITINS} curl     >> "${_logSlt}"
+      ${_INITINS} mc       >> "${_logSlt}"
       if [ "${_AUTO_MODE}" = "full" ]; then
         ${_INITINS} build-essential   >> "${_logSlt}"
         ${_INITINS} git               >> "${_logSlt}"
@@ -586,20 +666,9 @@ _init_prepare() {
   fi
 }
 
-_init_info() {
-  echo "Running _init_prepare procedure, please wait..."
-  sleep 3
-  echo "The system will reboot and continue several times..."
-  sleep 3
-  echo "until it is ugraded to latest Devuan/daedalus version."
-  sleep 3
-  echo "Once all upgrades are complete, you can run boa install"
-  sleep 3
-  echo "Let's go! It will take only ten minutes max!"
-  sleep 3
-  echo "..."
-}
-
+###
+### Ensure Devuan base-files
+###
 _ensure_devuan_base_files() {
   # Ensure Devuan base-files is applied so /etc/os-release reflects Devuan/daedalus
   _msg "Ensuring Devuan base-files is applied (force-confnew)" >> "${_logInt}"
@@ -624,6 +693,9 @@ _ensure_devuan_base_files() {
   fi
 }
 
+###
+### Remove and block systemd
+###
 _init_offsystemd() {
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
@@ -635,7 +707,7 @@ _init_offsystemd() {
     echo -e 'Package: systemd\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/offsystemd
     echo -e '\n\nPackage: *systemd*\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/offsystemd
   fi
-  /usr/bin/apt-get update --allow-insecure-repositories -qq >> "${_logSlt}"
+  /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
   /usr/bin/apt-get dist-upgrade ${_dstUpArg} >> "${_logSlt}"
   /usr/bin/apt-get dist-upgrade ${_dstUpArg} >> "${_logSlt}"
   [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
@@ -672,11 +744,15 @@ _init_offsystemd() {
   _msg "Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
   if [ "${_OS_CODE}" = "daedalus" ]; then
     echo " " >> "${_logInt}"
+    _msg "Update networking if needed with vmnetfix..." >> "${_logInt}"
+    /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
     _msg "Time for reboot and then you can run boa install" >> "${_logInt}"
     rm -f /root/.init-to-devuan-ctrl.cnf
     sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
     _if_launch_boa_install
   else
+    _msg "Update networking if needed with vmnetfix..." >> "${_logInt}"
+    /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
     _msg "Time for reboot and next upgrade cycle..." >> "${_logInt}"
   fi
   echo " " >> "${_logInt}"
@@ -687,6 +763,9 @@ _init_offsystemd() {
   exit 0
 }
 
+###
+### Init cycle procedure
+###
 _init_cycle() {
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
@@ -721,12 +800,12 @@ _init_cycle() {
     exit 1
   fi
   if [ "${_OLD_SYS}" = "Devuan" ]; then
-    /usr/bin/apt-get update --allow-insecure-repositories -qq >> "${_logSlt}"
+    /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
     /usr/bin/apt-get upgrade ${_nrmUpArg} >> "${_logSlt}"
   fi
   if [ ! -z "${_NEW_OS_CODE}" ] && [ ! -z "${_NEW_SYS}" ]; then
-    _msg "Running APT Cleanup with aptcleanup --preserve-do" >> "${_logInt}"
-    /opt/local/bin/aptcleanup --preserve-do >> "${_logSlt}"
+    _msg "Running APT Cleanup with aptcleanup" >> "${_logInt}"
+    /opt/local/bin/aptcleanup >> "${_logSlt}"
     _msg "Launching a quick upgrade to ${_NEW_SYS}/${_NEW_OS_CODE}" >> "${_logInt}"
     _aptLiSys="/etc/apt/sources.list"
     _TGT_MRR="deb.devuan.org/merged"
@@ -744,13 +823,14 @@ _init_cycle() {
     if [ -e "/etc/apt/apt.conf" ]; then
       rm -f /etc/apt/apt.conf
     fi
-    _if_remove_conflicting_sources
+    _prefer_devuan_repositories
     /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
     /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
     if [ "${_OLD_SYS}" = "Debian" ]; then
       ${_INITINS} devuan-keyring >> "${_logSlt}"
       ${_INITINS} devuan-keyring >> "${_logSlt}"
     else
+      /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
       /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
     fi
     /usr/bin/apt-get upgrade ${_dstUpArg} >> "${_logSlt}"
@@ -793,8 +873,8 @@ _init_cycle() {
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   if [ "${_OLD_SYS}" = "Debian" ]; then
-    _msg "Update networking if needed with vmnetfix" >> "${_logInt}"
-    /opt/local/bin/vmnetfix >> "${_logSlt}"
+    _msg "Update networking if needed with vmnetfix..." >> "${_logInt}"
+    /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
     _msg "Time for reboot and next upgrade cycle..." >> "${_logInt}"
     echo " " >> "${_logInt}"
     touch /root/.run-cycle-devuan-init.cnf
@@ -804,15 +884,19 @@ _init_cycle() {
     exit 0
   else
     if [ "${_OS_CODE}" = "daedalus" ]; then
-      _msg "Running APT Cleanup with aptcleanup --preserve-do" >> "${_logInt}"
-      /opt/local/bin/aptcleanup --preserve-do >> "${_logSlt}"
+      _msg "Running APT Cleanup with aptcleanup" >> "${_logInt}"
+      /opt/local/bin/aptcleanup >> "${_logSlt}"
       _msg "Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
+      _msg "Update networking if needed with vmnetfix..." >> "${_logInt}"
+      /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
       _msg "Time for the last reboot and then you can run boa install" >> "${_logInt}"
       rm -f /root/.init-to-devuan-ctrl.cnf
       sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
       _if_launch_boa_install
     else
       _msg "Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
+      _msg "Update networking if needed with vmnetfix..." >> "${_logInt}"
+      /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
       _msg "Time for reboot and next upgrade cycle..." >> "${_logInt}"
     fi
     echo " " >> "${_logInt}"
@@ -825,15 +909,39 @@ _init_cycle() {
   fi
 }
 
+###
+### Display welcome info
+###
+_init_info() {
+  echo "Running _init_prepare procedure, please wait..."
+  sleep 3
+  echo "The system will reboot and continue several times..."
+  sleep 3
+  echo "until it is ugraded to latest Devuan/daedalus version."
+  sleep 3
+  echo "Once all upgrades are complete, you can run boa install"
+  sleep 3
+  echo "Let's go! It will take only ten minutes max!"
+  sleep 3
+  echo "..."
+}
+
+###
+### Init info or prepare
+###
 _init_conf() {
   if [ ! -e "${_initFile}" ]; then
-    if [ ! -x "/usr/bin/cc" ]; then
+    if [ ! -x "/usr/bin/mc" ]; then
+      _check_manufacturer_compatibility
       _init_info
     fi
     _init_prepare &> /dev/null
   fi
 }
 
+###
+### Init start
+###
 _init_start() {
   _init_conf
   if [ -e "${_initFile}" ]; then
@@ -845,6 +953,9 @@ _init_start() {
   fi
 }
 
+###
+### Init launch
+###
 _init_launch() {
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
@@ -857,8 +968,30 @@ _init_launch() {
   _init_start
 }
 
-if [ ! -e "/run/autoinit.pid" ]; then
+### ---------------------------- Prepare for _init_launch
+_check_root
+_check_aegir
+_single_instance_lock
+cd /root/
+
+### ---------------------------- Auto-enable debug on dev
+if [ "${_tRee}" = "dev" ]; then
+  [ ! -e "/root/.debug-boa-installer.cnf" ] && touch /root/.debug-boa-installer.cnf
+  [ ! -e "/root/.debug-octopus-installer.cnf" ] && touch /root/.debug-octopus-installer.cnf
+fi
+
+### ---------------------------- Extra protection with pid file
+if [ -e "/run/autoinit.pid" ]; then
+  echo " " >> "${_logSlt}"
+  _msg "The /run/autoinit.pid is blocking this run..." >> "${_logSlt}"
+  echo " " >> "${_logSlt}"
+  exit 1
+else
+  ### -------------------------- Let's go!
   _init_launch
+  _check_set_mode
+  _locales_check_fix_early
+  _cron_check_install_early
 fi
 
 exit 0

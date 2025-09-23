@@ -2,7 +2,7 @@
 
 export HOME=/root
 export SHELL=/bin/bash
-export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 
 # Script to merge CSF configuration files from /etc/csf and /var/backups/*/csf/
 # It merges csf.ignore, csf.allow, and csf.deny files, removes duplicates, and ignores commented lines.

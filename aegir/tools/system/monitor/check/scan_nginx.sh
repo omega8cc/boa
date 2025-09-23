@@ -4,12 +4,29 @@
 # Script to Monitor and Block Suspicious NGINX Activity
 # ==============================
 
-# Exit if more than 2 instances of the script are running
-if (( $(pgrep -fc 'scan_nginx.sh') > 2 )); then
-  # Optional: Log too many instances
-  echo "Too many scan_nginx.sh running $(date)" >> /var/log/boa/too.many.log
-  exit 0
-fi
+###
+### Atomic lock/unlock to prevent TOCTOU race
+###
+_manage_single_lock() {
+  _SELF_NAME="${_SELF_NAME:-$(basename "$0")}"
+  for _L in "/opt/local/bin/lock.inc" "/opt/local/lib/lock.inc"; do
+    [ -r "$_L" ] && . "$_L" && break
+  done
+  if [ -n "${_SINGLE_INSTANCE_LIB_VER:-}" ] && command -v _single_instance_lock >/dev/null 2>&1; then
+    # use shared lock if available
+    _single_instance_lock
+  else
+    # -------- legacy pgrep guard ---------
+    # Exit if more than 2 instances of this script are running
+    _SCRIPT=$(basename "$0")
+    _CNT=$(pgrep -fc "[${_SCRIPT:0:1}]${_SCRIPT:1}")
+    if (( _CNT > 2 )); then
+      echo "Too many ${_SCRIPT} running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
+      exit 0
+    fi
+  fi
+}
+_manage_single_lock
 
 # ==============================
 # Configuration and Environment
