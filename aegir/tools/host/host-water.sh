@@ -2,7 +2,7 @@
 
 export HOME=/root
 export SHELL=/bin/bash
-export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 
 _whitelist_ip_pingdom() {
   if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then

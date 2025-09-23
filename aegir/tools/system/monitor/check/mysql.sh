@@ -2,7 +2,7 @@
 
 export HOME=/root
 export SHELL=/bin/bash
-export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 
 _pthOml="/var/log/boa/mysql.incident.log"
 
@@ -49,10 +49,29 @@ export _LOAD_THRESHOLD=${_LOAD_THRESHOLD//[^0-9.]/}
 export _THREAD_THRESHOLD=${_THREAD_THRESHOLD//[^0-9]/}
 : "${_THREAD_THRESHOLD:=99}" # Example: More than 99 MySQL threads
 
-if (( $(pgrep -fc 'mysql.sh') > 2 )); then
-  echo "Too many mysql.sh running $(date)" >> /var/log/boa/too.many.log
-  exit 0
-fi
+###
+### Atomic lock/unlock to prevent TOCTOU race
+###
+_manage_single_lock() {
+  _SELF_NAME="${_SELF_NAME:-$(basename "$0")}"
+  for _L in "/opt/local/bin/lock.inc" "/opt/local/lib/lock.inc"; do
+    [ -r "$_L" ] && . "$_L" && break
+  done
+  if [ -n "${_SINGLE_INSTANCE_LIB_VER:-}" ] && command -v _single_instance_lock >/dev/null 2>&1; then
+    # use shared lock if available
+    _single_instance_lock
+  else
+    # -------- legacy pgrep guard ---------
+    # Exit if more than 2 instances of this script are running
+    _SCRIPT=$(basename "$0")
+    _CNT=$(pgrep -fc "[${_SCRIPT:0:1}]${_SCRIPT:1}")
+    if (( _CNT > 2 )); then
+      echo "Too many ${_SCRIPT} running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
+      exit 0
+    fi
+  fi
+}
+_manage_single_lock
 
 _incident_email_report() {
   if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "YES" ]; then
@@ -210,8 +229,39 @@ _mysql_high_load() {
   fi
 }
 
+
+_mysql_is_locked() {
+  _OCT_NR=$(ls /data/disk | wc -l)
+
+  if [ -n "${_OCT_NR}" ] && [ "${_OCT_NR}" -ge 1 ]; then
+    if [ "${_OCT_NR}" -ge 6 ]; then
+      _MULTI_MX=$(( _OCT_NR * 3 ))
+    else
+      _MULTI_MX=$(( _OCT_NR * 5 ))
+    fi
+    if [ "${_OCT_NR}" -lt 4 ]; then
+      _MULTI_MX=$(( _OCT_NR + 10 ))
+    fi
+  fi
+
+  if (( $(pgrep -fc 'aegir.sh') > ${_MULTI_MX} )); then
+    if (( $(pgrep -fc 'mysql_backup.sh') > 0 )); then
+      kill -9 $(ps aux | grep '[m]ydumper' | awk '{print $2}') &> /dev/null
+      _incident_email_report "TOO MANY ($(pgrep -fc 'aegir.sh') aegir.sh required killing mydumper"
+    fi
+  fi
+  if (( $(pgrep -fc 'drush.php') > ${_MULTI_MX} )); then
+    if (( $(pgrep -fc 'mysql_backup.sh') > 0 )); then
+      kill -9 $(ps aux | grep '[m]ydumper' | awk '{print $2}') &> /dev/null
+      kill -9 $(ps aux | grep '[d]rush.php' | awk '{print $2}') &> /dev/null
+      _incident_email_report "TOO MANY ($(pgrep -fc 'drush.php') drush.php required killing mydumper"
+    fi
+  fi
+}
+
 _mysql_high_load
 _sql_busy_detection
+_mysql_is_locked
 
 perl /var/xdrago/monitor/check/sqlcheck.pl &
 

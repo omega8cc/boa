@@ -1,14 +1,17 @@
 #!/bin/bash
 
 #
-# Make Devuan networking survive reboot after upgrade from Debian.
+# vmnetfix — Make Devuan networking survive reboot after upgrade from Debian.
 #
 # Behavior (AUTO by default):
-#   • If existing config looks sane, only ensure the missing /etc/init.d/networking
-#     (needed with ifupdown2) and ALWAYS enforce /etc/resolv.conf (forced DNS).
+#   • If existing config looks sane, only ensure init wiring (networking start at boot),
+#     install a boot-time route guard, and ALWAYS enforce /etc/resolv.conf (forced DNS).
 #   • Otherwise perform full remediation: optionally disable cloud-init networking,
 #     write /etc/network/interfaces from live values (handles /32 off-link GW via onlink),
-#     enforce /etc/resolv.conf, and try a live test.
+#     sanitize stray/bogus stanzas (bonding etc.), enforce /etc/resolv.conf, and test now.
+#   • DigitalOcean-aware: uses metadata for GW/netmask if missing; prefers public NIC.
+#   • Legacy DO layout auto-switch: if the file uses alias syntax (eth0:1 etc.), install
+#     classic ifupdown (non-interactive) and keep its canonical /etc/init.d/networking.
 #
 # Usage:
 #   vmnetfix [--debug] [--dry-run] [--test-now]
@@ -19,7 +22,7 @@
 
 export HOME=/root
 export SHELL=/bin/bash
-export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 
 _DEBUG_MODE="NO"
 _DRY_RUN="NO"
@@ -72,6 +75,62 @@ _dedupe_words() {
   printf '%s\n' "$(echo "${_SEEN}" | sed 's/^ *//')"
 }
 
+_noninteractive_apt() {
+  # usage: _noninteractive_apt install -y pkg1 pkg2 ...
+  DEBIAN_FRONTEND=noninteractive \
+  apt-get -o Dpkg::Options::="--force-confdef" \
+          -o Dpkg::Options::="--force-confnew" "$@"
+}
+
+###
+### Atomic unlock to prevent TOCTOU race
+###
+_single_instance_unlock() {
+  _FD="$1"; _PATH="$2"
+  if command -v flock >/dev/null 2>&1; then
+    flock -u "${_FD}" 2>/dev/null || true
+    eval "exec ${_FD}>&-"
+    rm -f "${_PATH}" 2>/dev/null || true
+  else
+    rm -rf "${_PATH}" 2>/dev/null || true
+  fi
+}
+
+###
+### Atomic lock to prevent TOCTOU race
+###
+_single_instance_lock() {
+  # Ensure not too many instances are running
+  # usage: _single_instance_lock [lockfile_path] [fd]
+  # default lock: /run/<script>.lock (falls back to /var/run or /tmp)
+  _SELF_NAME="${_SELF_NAME:-$(basename "$0")}"
+  _LOCK_FD="${2:-9}"
+  if [ -n "${1:-}" ]; then
+    _LOCK_PATH="$1"
+  else
+    _DIR="/run"; [ -w "$_DIR" ] || _DIR="/var/run"; [ -w "$_DIR" ] || _DIR="/tmp"
+    _LOCK_PATH="${_DIR}/${_SELF_NAME%.sh}.lock"
+  fi
+
+  if command -v flock >/dev/null 2>&1; then
+    eval "exec ${_LOCK_FD}>\"${_LOCK_PATH}\""
+    if ! flock -n "${_LOCK_FD}"; then
+      echo "${_SELF_NAME}: another instance is running; exiting."
+      exit 0
+    fi
+    printf '%s\n' "$$" 1>&"${_LOCK_FD}" 2>/dev/null || true   # optional: PID note
+    trap "_single_instance_unlock ${_LOCK_FD} '${_LOCK_PATH}'" EXIT INT TERM HUP
+  else
+    # mkdir is atomic; directory presence == lock held
+    if ! mkdir "${_LOCK_PATH}" 2>/dev/null; then
+      echo "${_SELF_NAME}: another instance is running; exiting."
+      exit 0
+    fi
+    echo "$$" > "${_LOCK_PATH}/pid" 2>/dev/null || true
+    trap "rm -rf '${_LOCK_PATH}'" EXIT INT TERM HUP
+  fi
+}
+
 # ----------------------------- Detection --------------------------------------
 
 _ifup_variant() {
@@ -85,8 +144,17 @@ _ifup_variant() {
 
 _default_route_if() { ip -4 route show default 2>/dev/null | awk '{for(i=1;i<=NF;i++) if ($i=="dev"){print $(i+1); exit}}'; }
 _default_gw_v4()    { ip -4 route show default 2>/dev/null | awk '{print $3; exit}'; }
-_live_v4_cidr()     { ip -o -4 addr show dev "$1" scope global 2>/dev/null | awk '{print $4}' | head -n1; }
-_cidr_prefix()      { printf '%s\n' "${1#*/}"; }
+_live_v4_list_if()  { ip -o -4 addr show dev "$1" scope global 2>/dev/null | awk '{print $4}'; }
+_live_v4_cidr()     { _live_v4_list_if "$1" | head -n1; }
+
+_live_public_if() {
+  for _I in $(ls -1 /sys/class/net 2>/dev/null | awk '$0!="lo"'); do
+    ip -o -4 addr show dev "$_I" scope global | awk '{print $4}' | while read -r _C; do
+      _IP="${_C%/*}"
+      case "${_IP}" in 10.*|192.168.*|172.1[16-9].*|172.2[0-9].*|172.3[0-1].*) : ;; *) printf '%s\n' "$_I"; return 0 ;; esac
+    done
+  done
+}
 
 _has_ci_dhcp_for_if() {
   _IF="$1"
@@ -112,7 +180,6 @@ _iface_static_match_live() {
 }
 
 _iface_has_onlink_default_helpers() {
-  # Accept either a gateway line or an onlink 'post-up ip route replace default ... onlink'
   _IF="$1"; _GW="$2"
   [ -f /etc/network/interfaces ] || return 1
   grep -qsE "^[[:space:]]*gateway[[:space:]]+${_GW}\b" /etc/network/interfaces && return 0
@@ -120,40 +187,50 @@ _iface_has_onlink_default_helpers() {
   return 1
 }
 
-# ----------------------------- Networking utils --------------------------------
+# ----------------------------- IP math & helpers -------------------------------
 
+_cidr_prefix() { printf '%s\n' "${1#*/}"; }
 _rfc1918() { case "$1" in 10.*|192.168.*|172.1[6-9].*|172.2[0-9].*|172.3[0-1].*) printf YES;; *) printf NO;; esac; }
-_is_gw_onlink() { ip route get "$2" 2>/dev/null | grep -q "dev $1"; }
-_gw_reachable() { ping -c1 -w4 "$1" >/dev/null 2>&1; }
 
-_list_ifaces()   { ls -1 /sys/class/net 2>/dev/null | awk '$0!="lo"{print}'; }
-_iface_v4_list() { ip -o -4 addr show dev "$1" scope global 2>/dev/null | awk '{print $4}'; }
-_iface_v6_list() { ip -o -6 addr show dev "$1" scope global 2>/dev/null | awk '{print $4}'; }
+_ip_to_int() { IFS=. read -r a b c d <<EOF
+$1
+EOF
+printf '%u\n' "$(( (a<<24) + (b<<16) + (c<<8) + d ))"; }
+_int_to_ip() { i="$1"; printf '%d.%d.%d.%d\n' $(( (i>>24)&255 )) $(( (i>>16)&255 )) $(( (i>>8)&255 )) $(( i&255 )); }
+_prefix_to_mask() { p="$1"; m=$(( (0xFFFFFFFF << (32-p)) & 0xFFFFFFFF )); _int_to_ip "$m"; }
+_mask_to_prefix() { IFS=. read -r a b c d <<EOF
+$1
+EOF
+for o in $a $b $c $d; do case "$o" in 255) n=$((n+8));; 254) n=$((n+7));; 252) n=$((n+6));; 248) n=$((n+5));; 240) n=$((n+4));; 224) n=$((n+3));; 192) n=$((n+2));; 128) n=$((n+1));; 0) :;; *) n=-1;; esac; done; printf '%s\n' "${n:-0}"; }
 
-_pick_primary_v4_for_if() {
-  # Sets globals: _PRIMARY_V4, _OTHERS_V4 (space-separated), prefer public IP
-  _IF="$1"; _PRIMARY_V4=""; _OTHERS_V4=""
-  _ALL_V4="$(_iface_v4_list "${_IF}")"
-  for _CIDR in ${_ALL_V4}; do
-    _IP="${_CIDR%/*}"
-    [ -z "${_PRIMARY_V4}" ] && _PRIMARY_V4="${_CIDR}"
-    [ "$(_rfc1918 "${_IP}")" = "NO" ] && _PRIMARY_V4="${_CIDR}"
-  done
-  for _CIDR in ${_ALL_V4}; do
-    [ "${_CIDR}" = "${_PRIMARY_V4}" ] && continue
-    _OTHERS_V4="${_OTHERS_V4} ${_CIDR}"
-  done
-  _OTHERS_V4="${_OTHERS_V4# }"
+_calc_base_plus_one() { ip="$1"; pfx="$2"; mask="$(_prefix_to_mask "$pfx")"; ipi="$(_ip_to_int "$ip")"; mi="$(_ip_to_int "$mask")"; base=$(( ipi & mi )); _int_to_ip $(( base + 1 )); }
+
+# ----------------------------- Metadata (DigitalOcean) -------------------------
+
+_do_meta_get() {
+  _URL="$1"
+  if _cmd_exists curl; then curl -fs --max-time 2 "${_URL}"
+  elif _cmd_exists wget; then wget -qO- "${_URL}"
+  else return 1
+  fi
+}
+
+_do_meta_gateway_for_if() {
+  _IF="$1"
+  ip route replace 169.254.169.254 dev "${_IF}" 2>/dev/null || true
+  _do_meta_get "http://169.254.169.254/metadata/v1/interfaces/public/0/ipv4/gateway"
+}
+
+_do_meta_netmask_for_if() {
+  _IF="$1"
+  ip route replace 169.254.169.254 dev "${_IF}" 2>/dev/null || true
+  _do_meta_get "http://169.254.169.254/metadata/v1/interfaces/public/0/ipv4/netmask"
 }
 
 # ----------------------------- DNS enforcement ---------------------------------
 
 _collect_forced_dns() {
-  # dedupe words, preserve order
-  _SEEN=""
-  for _W in ${_FORCE_DNS_LIST}; do
-    case " ${_SEEN} " in *" ${_W} "*) : ;; *) _SEEN="${_SEEN} ${_W}" ;; esac
-  done
+  _SEEN=""; for _W in ${_FORCE_DNS_LIST}; do case " ${_SEEN} " in *" ${_W} "*) : ;; *) _SEEN="${_SEEN} ${_W}" ;; esac; done
   printf '%s\n' "${_SEEN# }"
 }
 
@@ -171,7 +248,6 @@ _fix_resolv_conf() {
 }
 
 _install_dhclient_dns_block() {
-  # Prevent dhclient from overwriting resolv.conf on any interface.
   if [ "${_DRY_RUN}" = "YES" ]; then
     printf '[DRY-RUN] Would install dhclient enter-hook to block resolv.conf changes\n'
     return 0
@@ -211,7 +287,7 @@ _ensure_ifupdown() {
     return 0
   fi
   apt-get update -y || true
-  apt-get install -y ifupdown2 || apt-get install -y ifupdown
+  _noninteractive_apt install -y ifupdown2 || _noninteractive_apt install -y ifupdown
 }
 
 _ensure_dhcp_client() {
@@ -220,51 +296,152 @@ _ensure_dhcp_client() {
     echo 'DRY-RUN: would install isc-dhcp-client'
     return 0
   fi
-  apt-get install -y isc-dhcp-client || true
+  _noninteractive_apt install -y isc-dhcp-client || true
 }
 
-_enable_boot_services() {
-  # If we ever want to ensure ssh too; currently networking init handles itself.
-  :
+_ensure_sysv_prereqs() {
+  # Some upgrades trip over insserv virtuals; keep this tiny and safe
+  _noninteractive_apt install -y initscripts sysv-rc startpar insserv || true
 }
 
 # ----------------------------- Init hook (ifupdown2) ---------------------------
 
 _write_networking_init_if_missing() {
-  # For ifupdown2 only; add minimal boot hook if missing.
-  [ "$(_ifup_variant)" = "ifupdown2" ] || { _msg "ifup variant not ifupdown2 — no networking init needed."; return 0; }
+  # For ifupdown2 only; add minimal boot hook if missing, with safe LSB headers.
+  [ "$(_ifup_variant)" = "ifupdown2" ] || { _msg "ifup variant not ifupdown2 — no networking shim needed."; return 0; }
   if [ -x "/etc/init.d/networking" ]; then
     _msg "/etc/init.d/networking already present."
-    chmod 0755 /etc/init.d/networking
+    chmod 0755 /etc/init.d/networking || true
     update-rc.d networking defaults >/dev/null 2>&1 || true
-    _msg "Enabled /etc/init.d/networking for ifupdown2."
     return 0
   fi
   if [ "${_DRY_RUN}" = "YES" ]; then
-    printf '[DRY-RUN] Would create /etc/init.d/networking and enable it\n'
+    printf '[DRY-RUN] Would create /etc/init.d/networking (ifupdown2 shim) and enable it\n'
     return 0
   fi
   cat >/etc/init.d/networking <<'EOF'
 #!/usr/bin/env bash
 ### BEGIN INIT INFO
 # Provides:          networking
-# Required-Start:    $remote_fs $syslog $local_fs
-# Required-Stop:     $remote_fs $syslog $local_fs
+# Required-Start:    $remote_fs $syslog
+# Required-Stop:
+# Should-Stop:       $remote_fs $syslog
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
-# Short-Description: Bring up/down networking via ifup/ifdown
+# Short-Description: Bring up/down networking via ifup/ifdown (ifupdown2)
 ### END INIT INFO
-_PATH_IFUP="$(command -v ifup || true)"; _PATH_IFDOWN="$(command -v ifdown || true)"
-_start(){ [ -x "$_PATH_IFUP" ] && "$_PATH_IFUP" -a || true; }
-_stop(){  [ -x "$_PATH_IFDOWN" ] && "$_PATH_IFDOWN" -a || true; }
-case "$1" in start) _start;; stop) _stop;; restart|force-reload) _stop; _start;; status) ip -br a; ip r;; *) echo "Usage: $0 {start|stop|restart|force-reload|status}"; exit 2;; esac
+_L(){ rm -f /run/network/ifupdown2/ifupdown2.lock 2>/dev/null || true; }
+U="$(command -v ifup || true)"; D="$(command -v ifdown || true)"
+start(){ _L; [ -x "$U" ] && "$U" -a || true; }
+stop(){  [ -x "$D" ] && "$D" -a || true; }
+case "$1" in start) start;; stop) stop;; restart|force-reload) stop; start;; status) ip -br a; ip r;; *) echo "Usage: $0 {start|stop|restart|force-reload|status}"; exit 2;; esac
 EOF
+  # minimal sysv prerequisites so insserv has the virtual facilities it expects
+  dpkg -s initscripts >/dev/null 2>&1 || _noninteractive_apt install -y initscripts
+  dpkg -s sysv-rc     >/dev/null 2>&1 || _noninteractive_apt install -y sysv-rc startpar insserv
   chmod 0755 /etc/init.d/networking
   update-rc.d networking defaults >/dev/null 2>&1 || true
-  _msg "Created and enabled /etc/init.d/networking for ifupdown2."
+  _msg "Created and enabled /etc/init.d/networking shim for ifupdown2."
 }
 
+_ensure_networking_exec_and_runlevels() {
+  # Ensure /etc/init.d/networking is executable and runlevels match the LSB header.
+  if [ -f /etc/init.d/networking ]; then
+    chmod 0755 /etc/init.d/networking || true
+  fi
+  # Make any dpkg-old copy non-executable so insserv doesn't get confused
+  chmod 0644 /etc/init.d/networking.dpkg-old 2>/dev/null || true
+
+  # Reset symlinks to header defaults (fixes "overrides LSB defaults (S)" warnings)
+  update-rc.d -f networking remove >/dev/null 2>&1 || true
+  insserv -r networking >/dev/null 2>&1 || true
+  update-rc.d networking defaults >/dev/null 2>&1 || true
+  insserv -v networking >/dev/null 2>&1 || true
+}
+
+# ----------------------------- Boot guard (route sanity) -----------------------
+
+_install_boot_guard() {
+  # Runs on each ifup; ensures default route exists (handles /32/off-link).
+  if [ "${_DRY_RUN}" = "YES" ]; then
+    echo '[DRY-RUN] Would install /etc/network/if-up.d/99-vmnetfix-guard'
+    return 0
+  fi
+  mkdir -p /etc/network/if-up.d
+  cat > /etc/network/if-up.d/99-vmnetfix-guard <<'EOF'
+#!/bin/sh
+# vmnetfix guard: ensure default route for $IFACE (handles /32/off-link GWs).
+[ "$IFACE" = "lo" ] && exit 0
+
+# If a default route already points via this IFACE, nothing to do.
+DEFDEV="$(ip -4 route show default 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i=="dev"){print $(i+1); exit}}')"
+[ -n "$DEFDEV" ] && [ "$DEFDEV" != "$IFACE" ] && exit 0
+
+# Read gateway for this IFACE from /etc/network/interfaces (if any).
+GW="$(awk -v IFACE="$IFACE" 'BEGIN{inif=0}
+  /^[[:space:]]*iface[[:space:]]+/ { inif=($2==IFACE && $3=="inet") }
+  inif && /^[[:space:]]*gateway[[:space:]]+/ { print $2; exit }' /etc/network/interfaces 2>/dev/null)"
+
+[ -z "$GW" ] && exit 0
+
+CIDR="$(ip -o -4 addr show dev "$IFACE" scope global 2>/dev/null | awk '{print $4}' | head -n1)"
+PFX="${CIDR#*/}"
+
+# If gateway is on-link (and not /32), a regular default route suffices.
+if ip route get "$GW" 2>/dev/null | grep -q "dev $IFACE" && [ "$PFX" != "32" ]; then
+  ip route replace default via "$GW" dev "$IFACE" >/dev/null 2>&1 || true
+  exit 0
+fi
+
+# Otherwise add a host route to the GW and set an onlink default.
+ip route add "$GW" dev "$IFACE" >/dev/null 2>&1 || true
+ip route replace default via "$GW" dev "$IFACE" onlink >/dev/null 2>&1 || true
+exit 0
+EOF
+  chmod 0755 /etc/network/if-up.d/99-vmnetfix-guard
+  _msg "Installed if-up guard"
+}
+
+# ----------------------------- Interface filters -------------------------------
+
+_is_dir_netdev() { _IF="$1"; [ -d "/sys/class/net/${_IF}" ] && ip -o link show dev "${_IF}" >/dev/null 2>&1; }
+
+_is_pseudo_if() {
+  case "$1" in
+    lo|bonding_masters|*:*|docker*|veth*|br*|virbr*|tun*|tap*|wg*|tailscale*|zt*|nlmon*|ifb*|gre*|gretap*|erspan*|sit*|ip6tnl*|tunl*) return 0 ;;
+    bond*) return 0 ;;  # treat as pseudo unless it already has live IPv4 (writer handles)
+  esac
+  return 1
+}
+
+_list_ifaces() {
+  for _IF in $(ls -1 /sys/class/net 2>/dev/null); do
+    [ "$_IF" = "lo" ] && continue
+    _is_dir_netdev "$_IF" || continue
+    _is_pseudo_if "$_IF" && continue
+    printf '%s\n' "$_IF"
+  done
+}
+
+_iface_v6_list() { ip -o -6 addr show dev "$1" scope global 2>/dev/null | awk '{print $4}'; }
+
 # ----------------------------- Writers & tests ---------------------------------
+
+_pick_primary_v4_for_if() {
+  # Sets globals: _PRIMARY_V4, _OTHERS_V4 (space-separated), prefer public IP
+  _IF="$1"; _PRIMARY_V4=""; _OTHERS_V4=""
+  _ALL_V4="$(_live_v4_list_if "${_IF}")"
+  for _CIDR in ${_ALL_V4}; do
+    _IP="${_CIDR%/*}"
+    [ -z "${_PRIMARY_V4}" ] && _PRIMARY_V4="${_CIDR}"
+    [ "$(_rfc1918 "${_IP}")" = "NO" ] && _PRIMARY_V4="${_CIDR}"
+  done
+  for _CIDR in ${_ALL_V4}; do
+    [ "${_CIDR}" = "${_PRIMARY_V4}" ] && continue
+    _OTHERS_V4="${_OTHERS_V4} ${_CIDR}"
+  done
+  _OTHERS_V4="${_OTHERS_V4# }"
+}
 
 _write_interfaces_all() {
   _DEF="$1"; _GW="$2"; _DNS="$3"
@@ -280,7 +457,7 @@ _write_interfaces_all() {
     for _IF in $(_list_ifaces); do
       echo "allow-hotplug ${_IF}"
 
-      _ALL="$(_iface_v4_list "${_IF}")"
+      _ALL="$(_live_v4_list_if "${_IF}")"
       if [ -n "${_ALL}" ]; then
         _pick_primary_v4_for_if "${_IF}"
         _PRIMARY="${_PRIMARY_V4}"
@@ -291,7 +468,7 @@ _write_interfaces_all() {
 
         if [ "${_IF}" = "${_DEF}" ] && [ -n "${_GW}" ]; then
           _PFX="$(_cidr_prefix "${_PRIMARY}")"
-          if _is_gw_onlink "${_IF}" "${_GW}" && [ "${_PFX}" != "32" ]; then
+          if ip route get "${_GW}" 2>/dev/null | grep -q "dev ${_IF}" && [ "${_PFX}" != "32" ]; then
             echo "  gateway ${_GW}"
           else
             # /32 or off-link default GW: add explicit onlink route on up
@@ -309,8 +486,8 @@ _write_interfaces_all() {
         done
 
       else
-        # No IPv4 -> use DHCP so it can come up later if available
-        echo "iface ${_IF} inet dhcp"
+        # No live IPv4 -> do not emit a DHCP stanza; leave it unmanaged.
+        true
       fi
 
       _V6_LIST="$(_iface_v6_list "${_IF}")"
@@ -331,6 +508,46 @@ _write_interfaces_all() {
   _msg "Wrote /etc/network/interfaces"
 }
 
+_sanitize_interfaces_file() {
+  # Remove stray bond/bonding_masters blocks (idempotent)
+  [ -f /etc/network/interfaces ] || return 0
+  if [ "${_DRY_RUN}" = "YES" ]; then
+    echo '[DRY-RUN] Would sanitize bonding stanzas in /etc/network/interfaces'
+    return 0
+  fi
+  sed -i \
+    -e '/^allow-hotplug[[:space:]]\+bonding_masters$/,/^$/d' \
+    -e '/^iface[[:space:]]\+bonding_masters[[:space:]]\+inet[[:space:]]/,/^$/d' \
+    -e '/^allow-hotplug[[:space:]]\+bond[0-9]\+$/,/^$/d' \
+    -e '/^iface[[:space:]]\+bond[0-9]\+[[:space:]]\+inet[[:space:]]/,/^$/d' \
+    /etc/network/interfaces
+}
+
+_ephemeral_static_up() {
+  # Apply an immediate static config: address CIDR + default via GW (onlink safe)
+  _IF="$1"; _CIDR="$2"; _GW="$3"
+  if [ "${_DRY_RUN}" = "YES" ]; then
+    printf '[DRY-RUN] Would apply ephemeral static on %s: %s via %s\n' "$_IF" "$_CIDR" "$_GW"
+    return 0
+  fi
+  ip addr flush dev "${_IF}" || true
+  ip link set "${_IF}" up || true
+  ip addr add "${_CIDR}" dev "${_IF}" || true
+  _PFX="$(_cidr_prefix "${_CIDR}")"
+  if [ "${_PFX}" = "32" ]; then
+    ip route add "${_GW}" dev "${_IF}" 2>/dev/null || true
+    ip route replace default via "${_GW}" dev "${_IF}" onlink || true
+  else
+    ip route replace default via "${_GW}" dev "${_IF}" || true
+  fi
+}
+
+_unload_bonding_if_unused() {
+  lsmod | grep -q '^bonding' || return 0
+  ip -o -4 addr show | grep -q ' bond[0-9]\+ ' && return 0
+  modprobe -r bonding 2>/dev/null || true
+}
+
 _ephemeral_bringup_all() {
   [ "${_TEST_NOW}" = "YES" ] || return 0
   for _IF in $(_list_ifaces); do
@@ -341,7 +558,7 @@ _ephemeral_bringup_all() {
   done
   # Non-fatal reachability check for default GW
   _DEF="$(_default_route_if)"; _GW="$(_default_gw_v4)"
-  [ -n "${_DEF}" ] && [ -n "${_GW}" ] && _gw_reachable "${_GW}" && _msg "GW reachable in test." || _msg "GW not reachable in test."
+  [ -n "${_DEF}" ] && [ -n "${_GW}" ] && ping -c1 -w4 "${_GW}" >/dev/null 2>&1 && _msg "GW reachable in test." || _msg "GW not reachable in test."
 }
 
 # ----------------------------- Sanity classifier -------------------------------
@@ -351,20 +568,20 @@ _config_is_sane() {
   # 1) default route & IF exist, and
   # 2a) cloud-init DHCP manages that IF, or
   # 2b) interfaces has matching static stanza (and for /32, has onlink helpers).
-  _DEF="$(_default_route_if)"; _GW="$(_default_gw_v4)"
-  [ -n "${_DEF}" ] || { _msg "No default IF -> not sane"; return 1; }
+  _DEF_IF="$(_default_route_if)"; _GW="$(_default_gw_v4)"
+  [ -n "${_DEF_IF}" ] || { _msg "No default IF -> not sane"; return 1; }
   [ -n "${_GW}" ]  || { _msg "No default GW -> not sane"; return 1; }
-  _LIVE="$(_live_v4_cidr "${_DEF}")"; [ -n "${_LIVE}" ] || { _msg "No live IPv4 -> not sane"; return 1; }
+  _LIVE="$(_live_v4_cidr "${_DEF_IF}")"; [ -n "${_LIVE}" ] || { _msg "No live IPv4 -> not sane"; return 1; }
 
-  if _has_ci_dhcp_for_if "${_DEF}"; then
-    _msg "cloud-init DHCP on ${_DEF} with default route — sane."
+  if _has_ci_dhcp_for_if "${_DEF_IF}"; then
+    _msg "cloud-init DHCP on ${_DEF_IF} with default route — sane."
     return 0
   fi
 
-  if _iface_static_match_live "${_DEF}" "${_LIVE}"; then
+  if _iface_static_match_live "${_DEF_IF}" "${_LIVE}"; then
     _PFX="$(_cidr_prefix "${_LIVE}")"
     if [ "${_PFX}" = "32" ]; then
-      _iface_has_onlink_default_helpers "${_DEF}" "$(_default_gw_v4)" && { _msg "Static /32 with onlink helpers — sane."; return 0; }
+      _iface_has_onlink_default_helpers "${_DEF_IF}" "$(_default_gw_v4)" && { _msg "Static /32 with onlink helpers — sane."; return 0; }
       _msg "Static /32 missing onlink helpers — not sane."; return 1
     fi
     _msg "Static matches live — sane."
@@ -375,31 +592,149 @@ _config_is_sane() {
   return 1
 }
 
+# ----------------------------- Fallback derivation -----------------------------
+
+_choose_candidate_if() {
+  # Prefer public IF with IPv4, else any IF with IPv4
+  _PUB="$(_live_public_if)"
+  [ -n "${_PUB}" ] && { printf '%s\n' "${_PUB}"; return 0; }
+  for _I in $(_list_ifaces); do
+    if [ -n "$(_live_v4_cidr "${_I}")" ]; then printf '%s\n' "${_I}"; return 0; fi
+  done
+  printf '%s\n' ""
+}
+
+_find_gateway_for_if() {
+  _IF="$1"
+  # 1) Current default
+  _GW="$(_default_gw_v4)"; [ -n "${_GW}" ] && { printf '%s\n' "${_GW}"; return 0; }
+
+  # 2) Look in /etc/network/interfaces*
+  if [ -f /etc/network/interfaces ]; then
+    _GW="$(awk -v IFACE="${_IF}" '
+      BEGIN{inif=0}
+      /^[[:space:]]*iface[[:space:]]+/ { inif=($2==IFACE && $3=="inet") }
+      inif && /^[[:space:]]*gateway[[:space:]]+/ { print $2; exit }
+    ' /etc/network/interfaces)"
+    [ -n "${_GW}" ] && { printf '%s\n' "${_GW}"; return 0; }
+  fi
+
+  # 3) DigitalOcean metadata
+  _GW="$(_do_meta_gateway_for_if "${_IF}")"
+  [ -n "${_GW}" ] && { printf '%s\n' "${_GW}"; return 0; }
+
+  # 4) Guess base+1 from live CIDR
+  _CIDR="$(_live_v4_cidr "${_IF}")"
+  if [ -n "${_CIDR}" ]; then
+    _IP="${_CIDR%/*}"; _PFX="${_CIDR#*/}"
+    _GW="$(_calc_base_plus_one "${_IP}" "${_PFX}")"
+    printf '%s\n' "${_GW}"
+    return 0
+  fi
+
+  printf '%s\n' ""
+}
+
+_find_prefix_for_if() {
+  _IF="$1"
+  _CIDR="$(_live_v4_cidr "${_IF}")"
+  if [ -n "${_CIDR}" ]; then printf '%s\n' "${_CIDR#*/}"; return 0; fi
+
+  # From DO metadata (netmask -> prefix)
+  _NM="$(_do_meta_netmask_for_if "${_IF}")"
+  if [ -n "${_NM}" ]; then _mask_to_prefix "${_NM}"; return 0; fi
+
+  printf '%s\n' ""
+}
+
+# ----------------------- ifupdown2 -> ifupdown --------------------------------
+
+_has_legacy_alias_layout() {
+  # Detect classic alias syntax and dotted-decimal netmasks used by DO vanilla.
+  # Returns 0 (true) if legacy layout is present.
+  grep -Esq '^[[:space:]]*auto[[:space:]]+[a-z0-9]+:[0-9]+' /etc/network/interfaces 2>/dev/null && return 0
+  grep -Esq '^[[:space:]]*iface[[:space:]]+[a-z0-9]+:[0-9]+' /etc/network/interfaces 2>/dev/null && return 0
+  grep -Esq '^[[:space:]]*netmask[[:space:]]+[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' /etc/network/interfaces 2>/dev/null && return 0
+  grep -Esq '^[[:space:]]*broadcast[[:space:]]+[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' /etc/network/interfaces 2>/dev/null && return 0
+  grep -Esq 'post-up[[:space:]]+if(up|config)[[:space:]]+[a-z0-9]+:[0-9]+' /etc/network/interfaces 2>/dev/null && return 0
+  return 1
+}
+
+_switch_to_ifupdown_when_legacy_detected() {
+  # If ifupdown2 is installed AND legacy layout is present, switch to classic ifupdown.
+  _cmd_exists ifup || true  # for logging consistency
+  dpkg -s ifupdown2 >/dev/null 2>&1 || return 0
+  _has_legacy_alias_layout || return 0
+
+  _msg "Legacy alias/DO layout detected; switching from ifupdown2 -> ifupdown."
+
+  if [ "${_DRY_RUN}" = "YES" ]; then
+    echo "[DRY-RUN] _noninteractive_apt install -y ifupdown (replaces ifupdown2)"
+    echo "[DRY-RUN] update-rc.d networking defaults; insserv -v networking"
+    return 0
+  fi
+
+  apt-get update -y || true
+  # ifupdown conflicts with ifupdown2; this will replace it cleanly
+  _noninteractive_apt install -y ifupdown || { _err "ifupdown install failed"; return 1; }
+
+  # Ensure the canonical init script is enabled and ordered
+  _ensure_networking_exec_and_runlevels
+
+  # Clear any ifupdown2 lock left around and start networking now
+  rm -f /run/network/ifupdown2/ifupdown2.lock 2>/dev/null || true
+  service networking restart >/dev/null 2>&1 || /etc/init.d/networking start >/dev/null 2>&1 || true
+
+  _msg "Switched to classic ifupdown and refreshed networking."
+}
+
 # ----------------------------- Main flow --------------------------------------
 
 _main() {
   _need_root
+  _single_instance_lock
   _parse_args "$@"
 
+  _ensure_sysv_prereqs
   _ensure_ifupdown
   _ensure_dhcp_client
 
+  # If the current file looks like legacy DO alias layout, switch to classic ifupdown first.
+  _switch_to_ifupdown_when_legacy_detected
+
   _DEF="$(_default_route_if)"; _GW="$(_default_gw_v4)"; _LIVE="$(_live_v4_cidr "${_DEF}")"
-  _msg "Default IF: ${_DEF}  GW4: ${_GW}  LIVE: ${_LIVE}"
+  _msg "Default IF: ${_DEF:-<none>}  GW4: ${_GW:-<none>}  LIVE: ${_LIVE:-<none>}"
 
   case "${_MODE}" in
     init-only)
       _write_networking_init_if_missing
+      _ensure_networking_exec_and_runlevels
+      _install_boot_guard
       _enforce_dns_always
-      printf 'Init-only mode: boot hook ensured; DNS enforced. No config changes.\n'
+      printf 'Init-only mode: boot hook + guard ensured; DNS enforced. No config changes.\n'
       exit 0
       ;;
     full)
       [ "${_DISABLE_CLOUD_INIT}" = "YES" ] && _disable_cloudinit_networking
+      # Derive defaults if missing
+      [ -z "${_DEF}" ] && _DEF="$(_choose_candidate_if)"
+      [ -z "${_LIVE}" ] && _LIVE="$(_live_v4_cidr "${_DEF}")"
+      [ -z "${_GW}" ] && _GW="$(_find_gateway_for_if "${_DEF}")"
+      _PFX="$(_cidr_prefix "${_LIVE}")"
+      [ -z "${_PFX}" ] && _PFX="$(_find_prefix_for_if "${_DEF}")"
+      [ -z "${_DEF}${_LIVE}${_GW}${_PFX}" ] && { _err "Cannot derive interface/gateway/prefix."; exit 1; }
+
+      # Apply ephemeral static now (so this session has networking)
+      _ephemeral_static_up "${_DEF}" "${_LIVE}" "${_GW}"
+
       _DNS="$(_collect_forced_dns)"
+      _sanitize_interfaces_file
       _write_interfaces_all "${_DEF}" "${_GW}" "${_DNS}"
       _fix_resolv_conf "${_DNS}"
       _write_networking_init_if_missing
+      _ensure_networking_exec_and_runlevels
+      _install_boot_guard
+      _unload_bonding_if_unused
       _ephemeral_bringup_all
       _enforce_dns_always
       printf 'Full fix applied. Safe to reboot.\n'
@@ -407,18 +742,46 @@ _main() {
       ;;
     auto|*)
       if _config_is_sane; then
-        _msg "AUTO: config looks sane — only adding boot hook."
+        _msg "AUTO: config looks sane — ensuring boot hook + guard + DNS."
         _write_networking_init_if_missing
+        _ensure_networking_exec_and_runlevels
+        _install_boot_guard
         _enforce_dns_always
-        printf 'Config sane. Boot hook ensured; DNS enforced. No config changes.\n'
+        printf 'Config sane. Boot hook + guard ensured; DNS enforced. No config changes.\n'
         exit 0
       else
-        _msg "AUTO: config NOT sane — performing full remediation."
+        _msg "AUTO: config NOT sane — performing remediation."
+
         [ "${_DISABLE_CLOUD_INIT}" = "YES" ] && _disable_cloudinit_networking
+
+        # Pick an interface: prefer public IPv4 if default missing
+        [ -z "${_DEF}" ] && _DEF="$(_choose_candidate_if)"
+        [ -z "${_DEF}" ] && { _err "No candidate interface with IPv4 found."; exit 1; }
+
+        # Live CIDR & prefix
+        _LIVE="$(_live_v4_cidr "${_DEF}")"
+        _PFX="$(_cidr_prefix "${_LIVE}")"
+        [ -z "${_PFX}" ] && _PFX="$(_find_prefix_for_if "${_DEF}")"
+
+        # Gateway
+        _GW="$(_find_gateway_for_if "${_DEF}")"
+
+        if [ -z "${_LIVE}" ] || [ -z "${_GW}" ]; then
+          _err "Insufficient data (LIVE=${_LIVE:-none} GW=${_GW:-none}). Cannot fix safely."
+          exit 1
+        fi
+
+        # Bring up now (ephemeral) so we immediately regain connectivity
+        _ephemeral_static_up "${_DEF}" "${_LIVE}" "${_GW}"
+
         _DNS="$(_collect_forced_dns)"
+        _sanitize_interfaces_file
         _write_interfaces_all "${_DEF}" "${_GW}" "${_DNS}"
         _fix_resolv_conf "${_DNS}"
         _write_networking_init_if_missing
+        _ensure_networking_exec_and_runlevels
+        _install_boot_guard
+        _unload_bonding_if_unused
         _ephemeral_bringup_all
         _enforce_dns_always
         printf 'Remediation applied. Safe to reboot.\n'
@@ -429,3 +792,4 @@ _main() {
 }
 
 _main "$@"
+exit 0

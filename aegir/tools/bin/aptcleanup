@@ -10,7 +10,7 @@
 
 export HOME=/root
 export SHELL=/bin/bash
-export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 
 # --- Config
 
@@ -42,22 +42,41 @@ _EXPECTED_TOP_FILES=(
 #   - everything under preferences.d (vendor pins),
 #   - any non-standard top-level dirs (e.g., mirrors) and their contents.
 _KEEP_GLOBS_REL=(
+  "apt.conf.d/*"
+  "auth.conf.d/*"
+  "keyrings/*.asc"
+  "keyrings/*.gpg"
+  "listchanges.conf.d/*"
+  "listchanges.conf"
+  "preferences.d/00percona.pref"
+  "preferences.d/99-droplet-agent-restrict.pref"
+  "preferences.d/99-prefer-devuan"
+  "preferences.d/fuse"
+  "preferences.d/libldap"
+  "preferences.d/makedev"
+  "preferences.d/mariadb-common"
+  "preferences.d/nginx-common"
+  "preferences.d/offsystemd"
+  "preferences.d/percona-release"
+  "preferences.d/udev"
+  "sources.list.d/backports.list"
+  "sources.list.d/bullseye.list"
+  "sources.list.d/chimaera.list"
+  "sources.list.d/ffmpeg.list"
+  "sources.list.d/newrelic.list"
+  "sources.list.d/nodesource.list"
+  "sources.list.d/percona-release.list"
+  "sources.list.d/webmin.list"
+  "sources.list"
   "trusted.gpg.d/*.asc"
   "trusted.gpg.d/*.gpg"
   "trusted.gpg.d/*.gpg~"
-  "keyrings/*.gpg"
-  "keyrings/*.asc"
-  "listchanges.conf"
-  "listchanges.conf.d/*"
-  "sources.list"
-  "apt.conf.d/*"
-  "auth.conf.d/*"
 )
 
 # DigitalOcean / droplet-agent preservation policy:
 # AUTO -> preserve if agent is installed; YES -> always preserve; NO -> quarantine
 _PRESERVE_DO_POLICY="AUTO"
-_VENDOR_DO_PATTERNS=( "digitalocean" "droplet" "droplet-agent" "do-agent" )
+_VENDOR_DO_PATTERNS=( "droplet-agent-restrict" "droplet-agent.list")
 
 # Where to write our APT pin that restricts DO origin to droplet-agent only
 _DO_PIN_FILE="${_APT_ROOT}/preferences.d/99-droplet-agent-restrict.pref"
@@ -77,12 +96,61 @@ _err() {
   printf 'ERROR: %s\n' "$*" >&2
 }
 
+###
+### Atomic unlock to prevent TOCTOU race
+###
+_single_instance_unlock() {
+  _FD="$1"; _PATH="$2"
+  if command -v flock >/dev/null 2>&1; then
+    flock -u "${_FD}" 2>/dev/null || true
+    eval "exec ${_FD}>&-"
+    rm -f "${_PATH}" 2>/dev/null || true
+  else
+    rm -rf "${_PATH}" 2>/dev/null || true
+  fi
+}
+
+###
+### Atomic lock to prevent TOCTOU race
+###
+_single_instance_lock() {
+  # Ensure not too many instances are running
+  # usage: _single_instance_lock [lockfile_path] [fd]
+  # default lock: /run/<script>.lock (falls back to /var/run or /tmp)
+  _SELF_NAME="${_SELF_NAME:-$(basename "$0")}"
+  _LOCK_FD="${2:-9}"
+  if [ -n "${1:-}" ]; then
+    _LOCK_PATH="$1"
+  else
+    _DIR="/run"; [ -w "$_DIR" ] || _DIR="/var/run"; [ -w "$_DIR" ] || _DIR="/tmp"
+    _LOCK_PATH="${_DIR}/${_SELF_NAME%.sh}.lock"
+  fi
+
+  if command -v flock >/dev/null 2>&1; then
+    eval "exec ${_LOCK_FD}>\"${_LOCK_PATH}\""
+    if ! flock -n "${_LOCK_FD}"; then
+      echo "${_SELF_NAME}: another instance is running; exiting."
+      exit 0
+    fi
+    printf '%s\n' "$$" 1>&"${_LOCK_FD}" 2>/dev/null || true   # optional: PID note
+    trap "_single_instance_unlock ${_LOCK_FD} '${_LOCK_PATH}'" EXIT INT TERM HUP
+  else
+    # mkdir is atomic; directory presence == lock held
+    if ! mkdir "${_LOCK_PATH}" 2>/dev/null; then
+      echo "${_SELF_NAME}: another instance is running; exiting."
+      exit 0
+    fi
+    echo "$$" > "${_LOCK_PATH}/pid" 2>/dev/null || true
+    trap "rm -rf '${_LOCK_PATH}'" EXIT INT TERM HUP
+  fi
+}
+
 # --- DO agent detection & policy ----------------------------------------------
 _do_agent_installed() {
   dpkg-query -W -f='${Status}\n' droplet-agent 2>/dev/null | grep -q 'install ok installed' && return 0
   [ -x /usr/bin/droplet-agent ] && return 0
   [ -x /usr/local/bin/droplet-agent ] && return 0
-  [ -x /opt/digitalocean/droplet-agent/droplet-agent ] && return 0
+  [ -x /opt/digitalocean/bin/droplet-agent ] && return 0
   [ -x /opt/digitalocean/droplet-agent/bin/droplet-agent ] && return 0
   return 1
 }
@@ -118,7 +186,7 @@ _is_do_vendor_related() {
   done
 
   if [ -f "${_ABS}" ]; then
-    if grep -qiE 'digitalocean|droplet(-agent)?|do-agent' "${_ABS}" 2>/dev/null; then
+    if grep -qiE 'droplet-agent-restrict|droplet-agent.list' "${_ABS}" 2>/dev/null; then
       return 0
     fi
   fi
@@ -246,7 +314,7 @@ _write_do_init_if_missing() {
 # Short-Description: DigitalOcean Droplet Agent
 ### END INIT INFO
 
-_PATHS="/usr/bin/droplet-agent /usr/local/bin/droplet-agent /opt/digitalocean/droplet-agent/bin/droplet-agent /opt/digitalocean/droplet-agent/droplet-agent"
+_PATHS="/usr/bin/droplet-agent /usr/local/bin/droplet-agent /opt/digitalocean/bin/droplet-agent /opt/digitalocean/droplet-agent/droplet-agent"
 _DAEMON=""
 _NAME="droplet-agent"
 _DESC="DigitalOcean Droplet Agent"
@@ -351,6 +419,8 @@ _main() {
     _err "APT root not found: ${_APT_ROOT}"
     exit 1
   fi
+
+  _single_instance_lock
 
   _msg "Policy for DO preservation: ${_PRESERVE_DO_POLICY} -> $(_should_preserve_do)"
 
