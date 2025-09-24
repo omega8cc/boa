@@ -447,7 +447,7 @@ _generic_vm_postinstall() {
   _is_protected_run
   if [ "${_protectedRun}" = "FALSE" ]; then
     if [ -n "${_SYS_MANUFACTURER_LC}" ]; then
-      if [ -e "/var/aegir/drush" ] \
+      if [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
         && [ -e "/data/u" ] \
         && [ -e "/var/xdrago" ]; then
         if [ "$(boa info | grep -c Percona)" -ge 2 ]; then
@@ -472,7 +472,7 @@ _linode_vm_postinstall() {
   _is_protected_run
   if [ "${_protectedRun}" = "FALSE" ]; then
     if dmidecode -s system-manufacturer | grep -i 'Linode' &> /dev/null; then
-      if [ -e "/var/aegir/drush" ] \
+      if [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
         && [ -e "/data/u" ] \
         && [ -e "/var/xdrago" ]; then
         if [ "$(boa info | grep -c Percona)" -ge 2 ]; then
@@ -491,7 +491,7 @@ _hetzner_vm_postinstall() {
   _is_protected_run
   if [ "${_protectedRun}" = "FALSE" ]; then
     if dmidecode -s system-manufacturer | grep -i 'Hetzner' &> /dev/null; then
-      if [ -e "/var/aegir/drush" ] \
+      if [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
         && [ -e "/data/u" ] \
         && [ -e "/var/xdrago" ]; then
         if [ "$(boa info | grep -c Percona)" -ge 2 ]; then
@@ -620,7 +620,7 @@ if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
   _apt_clean_update
 fi
 
-if [ -e "/var/aegir/drush" ]; then
+if [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ]; then
   if [ ! -e "${_LOCK_DOS_CONFIG}" ]; then
     if [ ! -e "${_LOCK_DOS_PID}" ]; then
       # Update variables
@@ -816,7 +816,7 @@ if [ -e "/var/aegir/drush" ]; then
     [ -e "/root/.run.example.report.cnf" ] && rm -f /root/.run.example.report.cnf
     [ -e "/var/xdrago/weekly.sh" ] && rm -f /var/xdrago/weekly.sh
     if [ ! -e "/root/.dev.server.cnf" ] \
-      && [ -e "/var/aegir/drush" ] \
+      && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
       && [ -e "/data/all/000" ]; then
       [ -e "/root/.debug-boa-installer.cnf" ] && rm -f /root/.debug-boa-installer.cnf
       [ -e "/root/.debug-octopus-installer.cnf" ] && rm -f /root/.debug-octopus-installer.cnf

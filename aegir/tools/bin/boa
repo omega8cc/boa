@@ -387,7 +387,7 @@ _check_virt() {
 
 _system_check_ready() {
   if [ ! -e "/etc/nginx" ] \
-    || [ ! -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ] \
+    || [ ! -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
     || [ ! -e "/etc/mysql" ] \
     || [ ! -e "/var/lib/mysql/mysql" ]; then
     echo "ERROR: Please install complete BOA system before trying"
@@ -407,7 +407,7 @@ _system_check_clean() {
   if [ -e "/etc/nginx" ] \
     || [ -e "/etc/mysql" ] \
     || [ -e "/var/lib/mysql/mysql" ] \
-    || [ -e "/var/aegir/.drush" ]; then
+    || [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ]; then
     echo
     echo "ERROR: BOA requires minimal supported OS with no services installed."
     echo
@@ -1634,10 +1634,10 @@ _if_reinstall_curl() {
   if [[ ! "${_isCurl}" =~ "OpenSSL" ]] \
     || [[ "${_isCurl}" =~ "libcurl.so.4" ]] \
     || [ -z "${_isCurl}" ]; then
-    if [ -e "/var/aegir/drush" ]; then
+    if [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ]; then
       echo "OOPS: cURL is broken!"
     fi
-    if [ ! -e "/var/aegir/drush" ]; then
+    if [ ! -e "/var/aegir/config/includes/nginx_vhost_common.conf" ]; then
       if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
         && [ -e "/etc/apt/apt.conf.d" ]; then
         echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff

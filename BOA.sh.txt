@@ -395,14 +395,16 @@ _verify_boa_keys() {
         echo "Your system requires valid license for access to ${_rLsn}-${_tRee}"
         echo "Please visit https://omega8.cc/licenses to purchase your own"
         echo
-        if [ -e "/var/aegir/drush/vendor" ] && [ ! -e "/var/aegir/key/barracuda_key.txt" ]; then
+        if [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
+          && [ ! -e "/var/aegir/key/barracuda_key.txt" ]; then
           mkdir -p /var/aegir/key
           cat /var/opt/_encN_local.${_encName}.tmp > /var/aegir/key/barracuda_key.txt
         fi
         rm -f /var/opt/_encN*
         exit 0
       else
-        if [ -e "/var/aegir/drush/vendor" ] && [ ! -e "/var/aegir/key/barracuda_key.txt" ]; then
+        if [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
+          && [ ! -e "/var/aegir/key/barracuda_key.txt" ]; then
           mkdir -p /var/aegir/key
           cat /var/opt/_encN_local.${_encName}.tmp > /var/aegir/key/barracuda_key.txt
         fi
@@ -772,7 +774,7 @@ _update_agents() {
   fi
 
   if [ "${_VMFAMILY}" = "HOSTED" ] \
-    && [ -e "/var/aegir/drush" ] \
+    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
     && [ -d "/data/u" ] \
     && [ -e "/var/xdrago" ]; then
     [ ! -e "/root/.fast.cron.cnf" ] && echo ON > /root/.fast.cron.cnf
@@ -879,7 +881,7 @@ _update_agents() {
   fi
 
 
-  if [ -e "/var/aegir/drush" ]; then
+  if [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ]; then
 
     _pthCtrl="/root/.remote_backups/ctrl"
     if [ "${_tRee}" = "pro" ] || [ "${_tRee}" = "dev" ]; then
@@ -1289,7 +1291,7 @@ _update_agents() {
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/drush" ] \
+    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
     && [ ! -e "${_pthLog}/scan_nginx.sh.ctrl.f89.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/scan_nginx.sh /var/xdrago/monitor/check/scan_nginx.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/scan_nginx.sh" -o /var/xdrago/monitor/check/scan_nginx.sh
@@ -1329,7 +1331,7 @@ _update_agents() {
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/drush" ] \
+    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
     && [ ! -e "${_pthLog}/java.sh.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/java.sh /var/xdrago/monitor/check/java.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/java.sh" -o /var/xdrago/monitor/check/java.sh
@@ -1343,7 +1345,7 @@ _update_agents() {
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/drush" ] \
+    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
     && [ ! -e "${_pthLog}/mysql.sh.ctrl.f89.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/mysql.sh /var/xdrago/monitor/check/mysql.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/mysql.sh" -o /var/xdrago/monitor/check/mysql.sh
@@ -1370,7 +1372,7 @@ _update_agents() {
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/drush" ] \
+    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
     && [ ! -e "${_pthLog}/nginx.sh.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/nginx.sh /var/xdrago/monitor/check/nginx.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/nginx.sh" -o /var/xdrago/monitor/check/nginx.sh
@@ -1384,7 +1386,7 @@ _update_agents() {
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/drush" ] \
+    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
     && [ ! -e "${_pthLog}/php.sh.ctrl.f92.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/php.sh /var/xdrago/monitor/check/php.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/php.sh" -o /var/xdrago/monitor/check/php.sh
@@ -1398,7 +1400,7 @@ _update_agents() {
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/drush" ] \
+    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
     && [ ! -e "${_pthLog}/valkey.sh.ctrl.f93.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/valkey.sh /var/xdrago/monitor/check/valkey.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/valkey.sh" -o /var/xdrago/monitor/check/valkey.sh
@@ -1412,7 +1414,7 @@ _update_agents() {
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/drush" ] \
+    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
     && [ ! -e "${_pthLog}/redis.sh.ctrl.f94.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/redis.sh /var/xdrago/monitor/check/redis.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/redis.sh" -o /var/xdrago/monitor/check/redis.sh
@@ -1426,7 +1428,7 @@ _update_agents() {
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/drush" ] \
+    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
     && [ ! -e "${_pthLog}/system.sh.ctrl.f86.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/system.sh /var/xdrago/monitor/check/system.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/system.sh" -o /var/xdrago/monitor/check/system.sh
@@ -1440,7 +1442,7 @@ _update_agents() {
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/drush" ] \
+    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
     && [ ! -e "${_pthLog}/unbound.sh.ctrl.f91.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/unbound.sh /var/xdrago/monitor/check/unbound.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/unbound.sh" -o /var/xdrago/monitor/check/unbound.sh
@@ -1454,7 +1456,7 @@ _update_agents() {
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/drush" ] \
+    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
     && [ ! -e "${_pthLog}/escapecheck.pl.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/escapecheck.pl /var/xdrago/monitor/check/escapecheck.pl.old
     curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/escapecheck.pl" -o /var/xdrago/monitor/check/escapecheck.pl
@@ -1468,7 +1470,7 @@ _update_agents() {
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/drush" ] \
+    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
     && [ ! -e "${_pthLog}/hackcheck.pl.ctrl.f94.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/hackcheck.pl /var/xdrago/monitor/check/hackcheck.pl.old
     curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/hackcheck.pl" -o /var/xdrago/monitor/check/hackcheck.pl
@@ -1482,7 +1484,7 @@ _update_agents() {
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/drush" ] \
+    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
     && [ ! -e "${_pthLog}/hackftp.pl.ctrl.f94.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/hackftp.pl /var/xdrago/monitor/check/hackftp.pl.old
     curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/hackftp.pl" -o /var/xdrago/monitor/check/hackftp.pl
@@ -1496,7 +1498,7 @@ _update_agents() {
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/drush" ] \
+    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
     && [ ! -e "${_pthLog}/locked_java.pl.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/locked_java.pl /var/xdrago/monitor/check/locked_java.pl.old
     curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/locked_java.pl" -o /var/xdrago/monitor/check/locked_java.pl
@@ -1510,7 +1512,7 @@ _update_agents() {
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/drush" ] \
+    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
     && [ ! -e "${_pthLog}/locked_nginx.pl.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/locked_nginx.pl /var/xdrago/monitor/check/locked_nginx.pl.old
     curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/locked_nginx.pl" -o /var/xdrago/monitor/check/locked_nginx.pl
@@ -1524,7 +1526,7 @@ _update_agents() {
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/drush" ] \
+    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
     && [ ! -e "${_pthLog}/segfault_alert.pl.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/segfault_alert.pl /var/xdrago/monitor/check/segfault_alert.pl.old
     curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/segfault_alert.pl" -o /var/xdrago/monitor/check/segfault_alert.pl
@@ -1538,7 +1540,7 @@ _update_agents() {
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/drush" ] \
+    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
     && [ ! -e "${_pthLog}/sqlcheck.pl.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/sqlcheck.pl /var/xdrago/monitor/check/sqlcheck.pl.old
     curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/sqlcheck.pl" -o /var/xdrago/monitor/check/sqlcheck.pl
@@ -1582,7 +1584,7 @@ _update_agents() {
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/drush" ] \
+    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
     && [ ! -e "${_pthLog}/clean-boa-env.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /etc/init.d/clean-boa-env /var/xdrago/clean-boa-env.old
     curl ${_crlGet} "${_urlHmr}/conf/var/clean-boa-env" -o /etc/init.d/clean-boa-env
@@ -1596,7 +1598,7 @@ _update_agents() {
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/drush" ] \
+    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
     && [ ! -e "${_pthLog}/mysql_backup.sh.ctrl.f93.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/mysql_backup.sh /var/xdrago/mysql_backup.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/mysql_backup.sh" -o /var/xdrago/mysql_backup.sh
@@ -1610,7 +1612,7 @@ _update_agents() {
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/drush" ] \
+    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
     && [ ! -e "${_pthLog}/unbound-helper.ctrl.f95.${_xSrl}.pid" ]; then
     mv -f /usr/libexec/unbound-helper /usr/libexec/unbound-helper.old
     curl ${_crlGet} "${_urlHmr}/conf/dns/unbound-helper" -o /usr/libexec/unbound-helper
@@ -1624,7 +1626,7 @@ _update_agents() {
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/drush" ] \
+    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
     && [ ! -e "${_pthLog}/mysql_cleanup.sh.ctrl.f94.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/mysql_cleanup.sh /var/xdrago/mysql_cleanup.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/mysql_cleanup.sh" -o /var/xdrago/mysql_cleanup.sh
@@ -1638,7 +1640,7 @@ _update_agents() {
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/drush" ] \
+    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
     && [ ! -e "${_pthLog}/mysql_cluster_backup.sh.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/mysql_cluster_backup.sh /var/xdrago/mysql_cluster_backup.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/mysql_cluster_backup.sh" -o /var/xdrago/mysql_cluster_backup.sh
@@ -1652,7 +1654,7 @@ _update_agents() {
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/drush" ] \
+    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
     && [ ! -e "${_pthLog}/runner.sh.ctrl.f93.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/runner.sh /var/xdrago/runner.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/runner.sh" -o /var/xdrago/runner.sh
@@ -1666,7 +1668,7 @@ _update_agents() {
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/drush" ] \
+    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
     && [ ! -e "${_pthLog}/minute.sh.ctrl.f94.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/minute.sh /var/xdrago/minute.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/minute.sh" -o /var/xdrago/minute.sh
@@ -1680,7 +1682,7 @@ _update_agents() {
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/drush" ] \
+    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
     && [ ! -e "${_pthLog}/second.sh.ctrl.f93.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/second.sh /var/xdrago/second.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/second.sh" -o /var/xdrago/second.sh
@@ -1694,7 +1696,7 @@ _update_agents() {
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/drush" ] \
+    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
     && [ ! -e "${_pthLog}/ip_access.sh.ctrl.f94.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/ip_access.sh /var/xdrago/ip_access.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/ip_access.sh" -o /var/xdrago/ip_access.sh
@@ -1708,7 +1710,7 @@ _update_agents() {
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/drush" ] \
+    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
     && [ ! -e "${_pthLog}/move_sql.sh.ctrl.f92.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/move_sql.sh /var/xdrago/move_sql.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/move_sql.sh" -o /var/xdrago/move_sql.sh
@@ -1722,7 +1724,7 @@ _update_agents() {
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/drush" ] \
+    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
     && [ ! -e "${_pthLog}/mysql_repair.sh.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/mysql_repair.sh /var/xdrago/mysql_repair.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/mysql_repair.sh" -o /var/xdrago/mysql_repair.sh
@@ -1736,7 +1738,7 @@ _update_agents() {
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/drush" ] \
+    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
     && [ ! -e "${_pthLog}/purge_binlogs.sh.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/purge_binlogs.sh /var/xdrago/purge_binlogs.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/purge_binlogs.sh" -o /var/xdrago/purge_binlogs.sh
@@ -1750,7 +1752,7 @@ _update_agents() {
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/drush" ] \
+    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
     && [ ! -e "${_pthLog}/checksql.pl.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/checksql.pl /var/xdrago/checksql.pl.old
     curl ${_crlGet} "${_urlHmr}/tools/system/checksql.pl" -o /var/xdrago/checksql.pl
@@ -1764,7 +1766,7 @@ _update_agents() {
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/drush" ] \
+    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
     && [ ! -e "${_pthLog}/clear.sh.ctrl.f86.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/clear.sh /var/xdrago/clear.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/clear.sh" -o /var/xdrago/clear.sh
@@ -1800,7 +1802,7 @@ _update_agents() {
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/drush" ] \
+    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
     && [ ! -e "${_pthLog}/daily.sh.ctrl.f79.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/daily.sh /var/xdrago/daily.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/daily.sh" -o /var/xdrago/daily.sh
@@ -1814,7 +1816,7 @@ _update_agents() {
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/drush" ] \
+    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
     && [ ! -e "${_pthLog}/graceful.sh.ctrl.f90.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/graceful.sh /var/xdrago/graceful.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/graceful.sh" -o /var/xdrago/graceful.sh
@@ -1828,7 +1830,7 @@ _update_agents() {
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/drush" ] \
+    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
     && [ ! -e "${_pthLog}/usage.sh.ctrl.f85.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/usage.sh /var/xdrago/usage.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/usage.sh" -o /var/xdrago/usage.sh
@@ -1842,7 +1844,7 @@ _update_agents() {
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/drush" ] \
+    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
     && [ ! -e "${_pthLog}/manage_ltd_users.sh.ctrl.f76.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/manage_ltd_users.sh /var/xdrago/manage_ltd_users.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/manage_ltd_users.sh" \
@@ -1858,7 +1860,7 @@ _update_agents() {
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/drush" ] \
+    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
     && [ ! -e "${_pthLog}/manage_solr_config.sh.ctrl.f92.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/manage_solr_config.sh /var/xdrago/manage_solr_config.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/manage_solr_config.sh" \
@@ -1874,7 +1876,7 @@ _update_agents() {
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/drush" ] \
+    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
     && [ ! -e "${_pthLog}/proc_num_ctrl.pl.ctrl.f92.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/proc_num_ctrl.pl /var/xdrago/proc_num_ctrl.pl.old
     curl ${_crlGet} "${_urlHmr}/tools/system/proc_num_ctrl.pl" \
@@ -1889,7 +1891,7 @@ _update_agents() {
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/drush" ] \
+    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
     && [ ! -e "${_pthLog}/fast_shutdown.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     sed -i "s/.*opcache.fast_shutdown.*//g" /opt/etc/fpm/fpm-pool-commo*.conf
     _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
@@ -1908,7 +1910,7 @@ _update_agents() {
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/drush" ] \
+    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
     && [ -x "/usr/sbin/csf" ] \
     && [ -e "/etc/csf/csf.deny" ] \
     && [ ! -e "${_pthLog}/guest-fire.sh.ctrl.f94.${_tRee}.${_xSrl}.pid" ]; then
@@ -1926,7 +1928,7 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/xdrago" ] \
-    && [ -e "/var/aegir/drush" ] \
+    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
     && [ -x "/usr/sbin/csf" ] \
     && [ -e "/etc/csf/csf.deny" ] \
     && [ ! -e "${_pthLog}/guest-water.sh.ctrl.f94.${_tRee}.${_xSrl}.pid" ]; then
@@ -1943,7 +1945,7 @@ _update_agents() {
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/drush" ] \
+    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
     && [ ! -e "${_pthLog}/scan_nginx.pl.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
     [ ! -d "/var/xdrago/monitor/log" ] && mkdir -p /var/xdrago/monitor/log
     mv -f /var/xdrago/monitor/check/scan_nginx.pl /var/xdrago/monitor/check/scan_nginx.pl.old
@@ -1982,7 +1984,7 @@ _update_agents() {
 
   if [ -x "/opt/tools/drush/8/drush/drush.php" ] \
     && [ -e "/var/xdrago" ] \
-    && [ -e "/var/aegir/drush" ] \
+    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
     && [ ! -e "${_pthLog}/lshell.ctrl.f92.${_tRee}.${_xSrl}.pid" ]; then
     if [ -z "${_CUSTOM_CONFIG_LSHELL}" ] \
       || [ "${_CUSTOM_CONFIG_LSHELL}" = "NO" ]; then
@@ -2001,7 +2003,7 @@ _update_agents() {
 
   if [ -x "/opt/tools/drush/8/drush/drush.php" ] \
     && [ -e "/var/xdrago" ] \
-    && [ -e "/var/aegir/drush" ]; then
+    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ]; then
     _BROKEN_UPDATE_TEST=$(grep "Under Construction" /var/xdrago/conf/fpm-pool* 2>&1)
     if [ ! -z "${_BROKEN_UPDATE_TEST}" ]; then
       rm -f /var/xdrago/conf/fpm-pool*
@@ -2042,7 +2044,7 @@ _update_agents() {
 
   if [ -x "/opt/tools/drush/8/drush/drush.php" ] \
     && [ -e "/var/xdrago" ] \
-    && [ -e "/var/aegir/drush" ] \
+    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
     && [ ! -e "${_pthLog}/common.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/conf/fpm-pool-common.conf /var/xdrago/conf/fpm-pool-common.conf.old
     curl ${_crlGet} "${_urlHmr}/conf/php/fpm-pool-common.conf" \
@@ -2059,7 +2061,7 @@ _update_agents() {
 
   if [ -x "/opt/tools/drush/8/drush/drush.php" ] \
     && [ -e "/var/xdrago" ] \
-    && [ -e "/var/aegir/drush" ] \
+    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
     && [ ! -e "${_pthLog}/legacy.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/conf/fpm-pool-common-legacy.conf /var/xdrago/conf/fpm-pool-common-legacy.conf.old
     curl ${_crlGet} "${_urlHmr}/conf/php/fpm-pool-common-legacy.conf" \
@@ -2076,7 +2078,7 @@ _update_agents() {
 
   if [ -x "/opt/tools/drush/8/drush/drush.php" ] \
     && [ -e "/var/xdrago" ] \
-    && [ -e "/var/aegir/drush" ] \
+    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
     && [ ! -e "${_pthLog}/modern.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/conf/fpm-pool-common-modern.conf /var/xdrago/conf/fpm-pool-common-modern.conf.old
     curl ${_crlGet} "${_urlHmr}/conf/php/fpm-pool-common-modern.conf" \
@@ -2093,7 +2095,7 @@ _update_agents() {
 
   if [ -x "/opt/tools/drush/8/drush/drush.php" ] \
     && [ -e "/var/xdrago" ] \
-    && [ -e "/var/aegir/drush" ] \
+    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
     && [ ! -e "${_pthLog}/multi.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/conf/fpm-pool-foo-multi.conf /var/xdrago/conf/fpm-pool-foo-multi.conf.old
     curl ${_crlGet} "${_urlHmr}/conf/php/fpm-pool-foo-multi.conf" \
@@ -2109,7 +2111,7 @@ _update_agents() {
 
   if [ -e "/opt/tools/drush" ] \
     && [ -e "/var/xdrago" ] \
-    && [ -e "/var/aegir/drush" ] \
+    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
     && [ ! -e "${_pthLog}/single.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/conf/fpm-pool-foo.conf /var/xdrago/conf/fpm-pool-foo.conf.old
     curl ${_crlGet} "${_urlHmr}/conf/php/fpm-pool-foo.conf" \
@@ -2153,7 +2155,7 @@ _update_agents() {
 
   if [ -e "/opt/tools/drush" ] \
     && [ -e "/var/xdrago" ] \
-    && [ -e "/var/aegir/drush" ] \
+    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
     && [ -d "/data/u" ] \
     && [ ! -e "${_pthLog}/dispatch.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     sed -i "s/.*cache.*//g; s/.*cc drush.*//g; s/ *$//g; /^$/d" /data/disk/*/aegir.sh
@@ -2259,7 +2261,7 @@ _update_agents() {
           || [ -e "${_pthSysUsr}/log/proxied.pid" ] \
           || [ ! -e "${_pthSysUsr}/static/control/cli.info" ]; then
           if [ -e "/var/xdrago/run-${_tUsr}" ] \
-            && [ -e "/var/aegir/drush" ]; then
+            && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ]; then
             if [ ! -e "/var/backups/off-run" ]; then
               mkdir -p /var/backups/off-run/
             fi
@@ -2287,7 +2289,7 @@ _update_agents() {
             fi
           done
           if [ ! -e "${_dscUsr}/static/control/fpm.info" ] \
-            && [ -e "/var/aegir/drush" ]; then
+            && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ]; then
             if [ -n "${_useFpm}" ]; then
               echo ${_useFpm} > ${_dscUsr}/static/control/fpm.info
               chown ${_tUsr}.ftp:${_usrGroup} ${_dscUsr}/static/control/fpm.info
@@ -2295,7 +2297,7 @@ _update_agents() {
             fi
           fi
           if [ ! -e "${_dscUsr}/static/control/cli.info" ] \
-            && [ -e "/var/aegir/drush" ]; then
+            && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ]; then
             if [ -e "${_dscUsr}/static/control/fpm.info" ]; then
               cp -af ${_dscUsr}/static/control/fpm.info ${_dscUsr}/static/control/cli.info
             else
@@ -2360,7 +2362,7 @@ _update_agents() {
     && [ -e "${_provLeIncFull}" ] \
     && [ -e "${_hoLeIncFull}" ] \
     && [ -e "/var/xdrago" ] \
-    && [ -e "/var/aegir/drush" ] \
+    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
     && [ -d "/data/u" ] \
     && [ ! -e "${_pthLog}/hosting_le_vt.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     _leBasePath="profiles/hostmaster/modules/aegir/hosting_le"
@@ -2462,7 +2464,7 @@ _update_agents() {
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/drush" ] \
+    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
     && [ ! -e "${_pthLog}/websh.ctrl.f73.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /opt/local/bin/websh /var/xdrago/websh.sh.old
     curl ${_crlGet} "${_urlHmr}/helpers/websh.sh.txt" -o /opt/local/bin/websh
@@ -2489,7 +2491,7 @@ _update_agents() {
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/drush" ] \
+    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
     && [ ! -x "/etc/cron.hourly/systemtime" ] \
     && [ ! -e "${_pthLog}/systemtime.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
     curl ${_crlGet} "${_urlHmr}/helpers/systemtime" -o /etc/cron.hourly/systemtime
@@ -2738,7 +2740,7 @@ _fix_core_dgd() {
 
   # SA-CORE D8 patch
   if [ -e "/var/xdrago" ] \
-    && [ -e "/var/aegir/drush" ] \
+    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
     && [ ! -e "${_saQPatch}" ]; then
     mkdir -p /var/xdrago/conf
     curl ${_crlGet} "${_urlHmr}/patches/8-core/${_saQCoreS}.patch" -o ${_saQPatch}
@@ -2746,7 +2748,7 @@ _fix_core_dgd() {
 
   # SA-CORE D7 patch
   if [ -e "/var/xdrago" ] \
-    && [ -e "/var/aegir/drush" ] \
+    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
     && [ ! -e "${_saPatch}" ]; then
     mkdir -p /var/xdrago/conf
     curl ${_crlGet} "${_urlHmr}/patches/7-core/${_saCoreS}.patch" -o ${_saPatch}
@@ -2754,7 +2756,7 @@ _fix_core_dgd() {
 
   # SA-CORE D6 patch
   # if [ -e "/var/xdrago" ] \
-  #   && [ -e "/var/aegir/drush" ] \
+  #   && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
 	#   && [ ! -e "${_saXPatch}" ]; then
 	#   mkdir -p /var/xdrago/conf
 	#   curl ${_crlGet} "${_urlHmr}/patches/6-core/${_saXCoreS}.patch" -o ${_saXPatch}
@@ -2762,7 +2764,7 @@ _fix_core_dgd() {
 
   # SA-CORE for Octopus hostmaster platforms
   if [ -e "/var/xdrago" ] \
-    && [ -e "/var/aegir/drush" ] \
+    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
     && [ -d "/data/u" ] \
     && [ -e "${_saPatch}" ]; then
     if [ -d "/data/all" ] \
@@ -2784,7 +2786,7 @@ _fix_core_dgd() {
 
   # SA-CORE for Barracuda hostmaster platforms
   if [ -e "/var/xdrago" ] \
-    && [ -e "/var/aegir/drush" ] \
+    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
     && [ -e "${_saPatch}" ]; then
     if [ -d "/data/all" ] \
       && [ ! -e "${_pthLog}/hostmaster-barracuda-${_saCoreN}-fixed-d7.log" ]; then
@@ -2817,7 +2819,7 @@ _fix_core_dgd() {
 
   # SA-CORE for built-in D7 platforms
   if [ -e "/var/xdrago" ] \
-    && [ -e "/var/aegir/drush" ] \
+    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
     && [ -e "${_saPatch}" ] \
     && [ ! -e "${_pthLog}/${_saCoreN}-fixed-d7.log" ]; then
     if [ -d "/data/all/000/core" ]; then
@@ -2839,7 +2841,7 @@ _fix_core_dgd() {
 
   # SA-CORE for ancient D7 platforms
   if [ -e "/var/xdrago" ] \
-    && [ -e "/var/aegir/drush" ] \
+    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
     && [ -e "${_saPatch}" ]; then
     if [ -d "/data/all" ] \
       && [ ! -e "${_pthLog}/legacy-${_saCoreN}-fixed-d7.log" ]; then
@@ -2873,7 +2875,7 @@ _fix_core_dgd() {
 
   # SA-CORE for custom D7 platforms
   if [ -e "/var/xdrago" ] \
-    && [ -e "/var/aegir/drush" ] \
+    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
     && [ -e "${_saPatch}" ]; then
     if [ -d "/data/u" ] \
       && [ ! -e "${_pthLog}/batch-custom-${_saCoreN}-fixed-d7.log" ]; then
@@ -2949,7 +2951,7 @@ _fix_core_dgd() {
 
   # SA-CORE for D8 platforms in ~/static
   if [ -e "/var/xdrago" ] \
-    && [ -e "/var/aegir/drush" ] \
+    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
     && [ -e "${_saQPatch}" ]; then
     if [ -d "/data/u" ] \
       && [ ! -e "${_pthLog}/batch-custom-${_saQCoreN}-fixed-d8.log" ]; then
@@ -3025,7 +3027,7 @@ _fix_core_dgd() {
 
   # SA-CORE for built-in D6 platforms
   if [ -e "/var/xdrago" ] \
-    && [ -e "/var/aegir/drush" ] \
+    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
     && [ -e "${_saXPatch}" ] \
     && [ ! -e "${_pthLog}/${_saXCoreN}-finally-fixed-d6.log" ]; then
     if [ -d "/data/all/000/core" ]; then
@@ -3047,7 +3049,7 @@ _fix_core_dgd() {
 
   # SA-CORE for ancient D6 platforms
   if [ -e "/var/xdrago" ] \
-    && [ -e "/var/aegir/drush" ] \
+    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
     && [ -e "${_saXPatch}" ]; then
     if [ -d "/data/all" ] \
       && [ ! -e "${_pthLog}/legacy-${_saXCoreN}-finally-fixed-d6.log" ]; then
@@ -3081,7 +3083,7 @@ _fix_core_dgd() {
 
   # SA-CORE for custom D6 platforms
   if [ -e "/var/xdrago" ] \
-    && [ -e "/var/aegir/drush" ] \
+    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
     && [ -e "${_saXPatch}" ]; then
     if [ -d "/data/u" ] \
       && [ ! -e "${_pthLog}/batch-custom-${_saXCoreN}-finally-fixed-d6.log" ]; then
@@ -3579,7 +3581,7 @@ _fix_wkhtml() {
 
 _fix_eldir() {
   if [ -e "/var/xdrago" ] \
-    && [ -e "/var/aegir/drush" ] \
+    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
     && [ ! -e "${_eldirP}" ]; then
     mkdir -p /var/xdrago/conf
     curl ${_crlGet} "${_urlHmr}/patches/${_eldirF}" -o ${_eldirP}
@@ -3804,7 +3806,7 @@ _if_reinstall_curl() {
   [ "${_OS_CODE}" = "jessie" ] && _CURL_VRN=7.71.1
   [ "${_OS_CODE}" = "stretch" ] && _CURL_VRN=8.2.1
 
-  if [ -e "/var/aegir/drush" ] \
+  if [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
     && [ "${_OS_CODE}" != "jessie" ] \
     && [ "${_OS_CODE}" != "stretch" ]; then
 
@@ -3859,7 +3861,7 @@ _if_reinstall_curl() {
     || [ "${_ifAnySymlinksCleaned}" = "YES" ] \
     || [ "${_ifAnyFilesCleaned}" = "YES" ] \
     || [ "${_CURL_INSTALL_REQUIRED}" = "YES" ]; then
-    if [ -e "/var/aegir/drush" ]; then
+    if [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ]; then
       echo "OOPS: cURL is broken! Re-installing.."
     fi
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
@@ -3873,10 +3875,10 @@ _if_reinstall_curl() {
     apt-get install libssl-dev ${_aptYesUnth} -qq 2> /dev/null
     apt-get install libc-client2007e libc-client2007e-dev ${_aptYesUnth}-qq 2> /dev/null
     apt-get build-dep curl ${_aptYesUnth} 2> /dev/null
-    if [ ! -e "/var/aegir/drush" ]; then
+    if [ ! -e "/var/aegir/config/includes/nginx_vhost_common.conf" ]; then
       apt-get install curl --reinstall ${_aptYesUnth} -qq 2> /dev/null
     fi
-    if [ -e "/var/aegir/drush" ]; then
+    if [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ]; then
       echo "INFO: Installing curl from sources..."
       mkdir -p /var/opt
       rm -rf /var/opt/curl*
@@ -3910,7 +3912,7 @@ _if_reinstall_curl() {
         ldconfig 2> /dev/null
       fi
     fi
-    if [ -x "/usr/local/bin/curl" ] && [ -e "/var/aegir/drush" ]; then
+    if [ -x "/usr/local/bin/curl" ] && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ]; then
       _CURL_ITD=$(/usr/local/bin/curl --version 2>&1 \
         | tr -d "\n" \
         | cut -d" " -f2 \
@@ -4357,7 +4359,7 @@ _if_update_boa_key_tools_only() {
       _BOA_TOOLS_UPDATE=YES
     fi
   fi
-  [ ! -e "/var/aegir/drush" ] && _BOA_TOOLS_UPDATE=YES
+  [ ! -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] && _BOA_TOOLS_UPDATE=YES
   if [ "${_BOA_TOOLS_UPDATE}" = "YES" ]; then
     _update_boa_tools
     [ -e "${_pthLog}" ] && rm -f ${_pthLog}/updateBOAtools*.pid
@@ -4407,7 +4409,7 @@ _boa_setup() {
     _check_dns_settings
   fi
 
-  if [ -e "/var/aegir/drush" ]; then
+  if [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ]; then
     [ ! -e "/run/unbound" ] && mkdir -p /run/unbound
     [ -e "/run/unbound" ] && chown -R unbound:unbound /run/unbound
     if [ -x "/usr/sbin/unbound-control" ] \
@@ -4448,7 +4450,7 @@ _boa_setup() {
 
   _apt_clean_update
 
-  if [ ! -e "/var/aegir/drush" ] && [ ! -e "/var/xdrago/manage_solr_config.sh" ]; then
+  if [ ! -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] && [ ! -e "/var/xdrago/manage_solr_config.sh" ]; then
 #     apt-get remove unscd -y --purge --auto-remove -qq &> /dev/null
 #     apt-get remove dbus -y --purge --auto-remove -qq &> /dev/null
 #     if [ -e "/usr/share/dbus-1" ]; then
@@ -4503,7 +4505,7 @@ _boa_setup() {
   if [ -e "${_pthLog}" ] && [ ! -e "${_pthLog}/updateBOAtools.${_bTs}.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     _BOA_TOOLS_UPDATE=YES
   fi
-  [ ! -e "/var/aegir/drush" ] && _BOA_TOOLS_UPDATE=YES
+  [ ! -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] && _BOA_TOOLS_UPDATE=YES
   if [ "${_BOA_TOOLS_UPDATE}" = "YES" ]; then
     _update_boa_tools
     [ -e "${_pthLog}" ] && rm -f ${_pthLog}/updateBOAtools*.pid
@@ -4649,7 +4651,7 @@ if [ "$(id -u)" -eq 0 ]; then
 
   _find_correct_ip
 
-  [ ! -e "/var/aegir/drush" ] && _locales_check_fix_early
+  [ ! -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] && _locales_check_fix_early
   _os_detection_minimal
   _find_fast_mirror_early
   if command -v curl &> /dev/null; then

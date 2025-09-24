@@ -23,7 +23,7 @@ _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
 _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
 _aptLiSys="/etc/apt/sources.list"
 
-if [ -e "/var/aegir/drush" ]; then
+if [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ]; then
   _DPKG_CNF="confold"
 else
   _DPKG_CNF="confnew"
@@ -37,7 +37,7 @@ _INSTAPP="/usr/bin/aptitude -f -y -q \
   -o Dpkg::Options::=--force-confdef \
   -o Dpkg::Options::=--force-${_DPKG_CNF} install"
 
-if [ ! -e "/var/aegir/drush" ]; then
+if [ ! -e "/var/aegir/config/includes/nginx_vhost_common.conf" ]; then
   _INSTAPP="${_INSTALL_DIST}"
 fi
 
