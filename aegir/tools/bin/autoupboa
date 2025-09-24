@@ -424,7 +424,6 @@ _check_system_manufacturer() {
     echo "_SYS_MANUFACTURER_LC: ${_SYS_MANUFACTURER_LC}"
   fi
 }
-_check_system_manufacturer
 
 _is_protected_run() {
   _protectedRun=FALSE
@@ -446,65 +445,31 @@ _is_protected_run() {
 _generic_vm_postinstall() {
   _is_protected_run
   if [ "${_protectedRun}" = "FALSE" ]; then
-    if [ -n "${_SYS_MANUFACTURER_LC}" ]; then
-      if [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
-        && [ -e "/data/u" ] \
-        && [ -e "/var/xdrago" ]; then
-        if [ "$(boa info | grep -c Percona)" -ge 2 ]; then
-          touch /run/${_SYS_MANUFACTURER_LC}_vm_postinstall.pid
-          chattr +i /run/${_SYS_MANUFACTURER_LC}_vm_postinstall.pid
-          rm -f /run/${_SYS_MANUFACTURER_LC}_vm.pid
-          nohup /opt/local/bin/barracuda up-${_tRee} system noscreen > /dev/null 2>&1 &
-        fi
-      fi
+    rm -f /run/${_SYS_MANUFACTURER_LC}_vm.pid
+    nohup /opt/local/bin/barracuda up-${_tRee} system noscreen > /dev/null 2>&1 &
+  fi
+}
+
+_status_vm_postinstall() {
+  _check_system_manufacturer
+  if [ "$(boa info | grep -c Percona)" -lt 3 ] || [ ! -e "/usr/sbin/csf" ]; then
+    _NEEDS_UPGRADE=YES
+    [ -n "${_SYS_MANUFACTURER_LC}" ] && _generic_vm_postinstall
+  else
+    _NEEDS_UPGRADE=NO
+    if [ ! -e "/run/${_SYS_MANUFACTURER_LC}_vm.pid" ] \
+      && [ ! -e "/run/${_SYS_MANUFACTURER_LC}_vm_postinstall.pid" ]; then
+      touch /run/${_SYS_MANUFACTURER_LC}_vm_postinstall.pid
+      chattr +i /run/${_SYS_MANUFACTURER_LC}_vm_postinstall.pid
     fi
   fi
 }
-if [ -n "${_SYS_MANUFACTURER_LC}" ]; then
-  if [[ ! "${_SYS_MANUFACTURER_LC}" =~ "linode" ]] && [[ ! "${_SYS_MANUFACTURER_LC}" =~ "hetzner" ]]; then
-    if [ -e "/run/${_SYS_MANUFACTURER_LC}_vm.pid" ] && [ ! -e "/run/${_SYS_MANUFACTURER_LC}_vm_postinstall.pid" ]; then
-      _generic_vm_postinstall
-    fi
-  fi
+
+if [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
+  && [ -e "/data/u" ] \
+  && [ -e "/var/xdrago" ]; then
+  _status_vm_postinstall
 fi
-
-_linode_vm_postinstall() {
-  _is_protected_run
-  if [ "${_protectedRun}" = "FALSE" ]; then
-    if dmidecode -s system-manufacturer | grep -i 'Linode' &> /dev/null; then
-      if [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
-        && [ -e "/data/u" ] \
-        && [ -e "/var/xdrago" ]; then
-        if [ "$(boa info | grep -c Percona)" -ge 2 ]; then
-          touch /run/linode_vm_postinstall.pid
-          chattr +i /run/linode_vm_postinstall.pid
-          rm -f /run/linode_vm.pid
-          nohup /opt/local/bin/barracuda up-${_tRee} system noscreen > /dev/null 2>&1 &
-        fi
-      fi
-    fi
-  fi
-}
-[ -e "/run/linode_vm.pid" ] && [ ! -e "/run/linode_vm_postinstall.pid" ] && _linode_vm_postinstall
-
-_hetzner_vm_postinstall() {
-  _is_protected_run
-  if [ "${_protectedRun}" = "FALSE" ]; then
-    if dmidecode -s system-manufacturer | grep -i 'Hetzner' &> /dev/null; then
-      if [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
-        && [ -e "/data/u" ] \
-        && [ -e "/var/xdrago" ]; then
-        if [ "$(boa info | grep -c Percona)" -ge 2 ]; then
-          touch /run/hetzner_vm_postinstall.pid
-          chattr +i /run/hetzner_vm_postinstall.pid
-          rm -f /run/hetzner_vm.pid
-          nohup /opt/local/bin/barracuda up-${_tRee} system noscreen > /dev/null 2>&1 &
-        fi
-      fi
-    fi
-  fi
-}
-[ -e "/run/hetzner_vm.pid" ] && [ ! -e "/run/hetzner_vm_postinstall.pid" ] && _hetzner_vm_postinstall
 
 _crontab_update() {
   if [ -e "/etc/crontab" ]; then
