@@ -177,19 +177,19 @@ _single_instance_lock() {
 ### Mode selection
 ###
 _check_set_mode() {
-  # Usage: autoinit [minimal|full]
+  # Usage: autoinit [minimal|full] [vanilla|classic|predictable]
   # Default: "minimal". Persisted across reboots via cron argument.
-  if [ -z "${_AUTO_MODE}" ]; then
+  if [ -z "${_SET_MODE}" ]; then
     case "${1:-minimal}" in
-      minimal|*) _AUTO_MODE="minimal" ;;
-      full)      _AUTO_MODE="full" ;;
+      minimal|*) _SET_MODE="minimal" ;;
+      full)      _SET_MODE="full" ;;
     esac
   fi
-  if [ ! -e "/root/.mode.selected.${_AUTO_MODE}.info" ]; then
-    touch /root/.mode.selected.${_AUTO_MODE}.info
-    chattr +i /root/.mode.selected.${_AUTO_MODE}.info
+  if [ ! -e "/root/.mode.selected.${_SET_MODE}.cnf" ]; then
+    touch /root/.mode.selected.${_SET_MODE}.cnf
+    chattr +i /root/.mode.selected.${_SET_MODE}.cnf
   fi
-  _msg "Mode selected: ${_AUTO_MODE}" >> "${_logInt}"
+  _msg "Mode selected: ${_SET_MODE}" >> "${_logInt}"
 }
 
 ###
@@ -270,7 +270,7 @@ _locales_check_fix_early() {
   if [ ! -x "${_isLoc}" ] || [ -z "${_isLoc}" ]; then
     /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
     ${_INITINS} locales &> /dev/null
-    [ "${_AUTO_MODE}" = "full" ] && ${_INITINS} locales-all &> /dev/null
+    [ "${_SET_MODE}" = "full" ] && ${_INITINS} locales-all &> /dev/null
   fi
   _LOC_TEST=$(locale 2>&1)
   if [[ "${_LOC_TEST}" =~ LANG=.*UTF-8 ]]; then
@@ -461,6 +461,23 @@ _install_apparmor_utils() {
 ### Grub and Ifnames
 ###
 _ifnames_grub_check_sync() {
+
+  _USE_NINC=NO
+  _NEW_GRUB=DEMO
+
+  if [ -e "/root/.ignore.ifnames.cnf" ]; then
+    return 1  # Exit the function but continue the script
+  else
+    [ -e "/root/.ninc.selected.predictable.cnf" ] && _USE_NINC=predictable && _NEW_GRUB=LIVE
+    [ -e "/root/.ninc.selected.classic.cnf" ]     && _USE_NINC=classic     && _NEW_GRUB=LIVE
+    [ -e "/root/.ninc.selected.auto.cnf" ]        && _USE_NINC=auto        && _NEW_GRUB=LIVE
+    [ -e "/root/.ninc.selected.vanilla.cnf" ]     && _USE_NINC=vanilla
+  fi
+
+  if [ "${_USE_NINC}" = "vanilla" ] || [ "${_USE_NINC}" = "NO" ]; then
+    return 1  # Exit the function but continue the script
+  fi
+
   _IS_IFACE=$(ip a 2>&1)
   _ADD_GRUB_CMD=""
   _GRUB_FILE="/etc/default/grub"
@@ -509,12 +526,6 @@ _ifnames_grub_check_sync() {
       _append_grub_cmd_option "biosdevname=1"
     fi
 
-    if [ -e "/root/.auto.config.ifnames.grub.cnf" ] && [ ! -e "/root/.ignore.ifnames.cnf" ]; then
-      _NEW_GRUB=LIVE
-    else
-      _NEW_GRUB=DEMO
-    fi
-
     if [[ -n "${_ADD_GRUB_CMD}" ]]; then
       # Backup the GRUB file
       cp "${_GRUB_FILE}" "${_GRUB_FILE}.bak"
@@ -538,18 +549,24 @@ _ifnames_grub_check_sync() {
       echo " " >> "${_logInt}"
       if [[ "${_NEW_GRUB}" == "LIVE" ]]; then
         # Update the GRUB file
+        _msg "GRUB: Networking Interface Naming Convention selected: ${_USE_NINC}" >> "${_logInt}"
         _msg "GRUB: Update in the LIVE MODE" >> "${_logInt}"
         sed -i "s|^GRUB_CMDLINE_LINUX=.*|${_NEW_GRUB_CMDLINE_LINUX}|" "${_GRUB_FILE}"
         _msg "GRUB_CMDLINE_LINUX has been updated with ${_UPDATED_CMDLINE}" >> "${_logInt}"
       elif [[ "${_NEW_GRUB}" == "DEMO" ]]; then
         # Demo info
+        _msg "GRUB: Networking Interface Naming Convention selected: ${_USE_NINC}" >> "${_logInt}"
         _msg "GRUB: Update in the DEMO MODE" >> "${_logInt}"
-        _msg "GRUB_CMDLINE_LINUX would be updated with ${_UPDATED_CMDLINE}" >> "${_logInt}"
         echo " " >> "${_logInt}"
-        _msg "GRUB: Update in the LIVE MODE needs presence of control file:" >> "${_logInt}"
-        _msg "GRUB   /root/.auto.config.ifnames.grub.cnf" >> "${_logInt}"
+        _msg "GRUB_CMDLINE_LINUX would be updated with:" >> "${_logInt}"
+        _msg "   ${_UPDATED_CMDLINE}" >> "${_logInt}"
         echo " " >> "${_logInt}"
-        _msg "GRUB: Ensure that the file /root/.ignore.ifnames.cnf does not exist." >> "${_logInt}"
+        _msg "GRUB: Update in the LIVE MODE requires presence of control file:" >> "${_logInt}"
+        _msg "   /root/.ninc.selected.auto.cnf" >> "${_logInt}"
+        echo " "
+        _msg "GRUB: Note that this extra control file must not exist:" >> "${_logInt}"
+        _msg "   /root/.ignore.ifnames.cnf" >> "${_logInt}"
+        echo " " >> "${_logInt}"
         _msg "GRUB: This requirement serves as a double-check to confirm" >> "${_logInt}"
         _msg "GRUB: that you are aware of and agree to auto-update GRUB configuration." >> "${_logInt}"
         _msg "GRUB: Incorrect GRUB settings can render your virtual machine unbootable" >> "${_logInt}"
@@ -612,14 +629,17 @@ _init_prepare() {
     echo "Dir::Etc::SourceList \"/etc/apt/sources.list\";" >> /opt/apt/apt.conf.noi.nrml
   fi
 
-  [ "${_AUTO_MODE}" = "full" ] && _ifnames_grub_check_sync
+  ###
+  ### Grub and Ifnames
+  ###
+  _ifnames_grub_check_sync
 
   if [[ -n "${_ADD_GRUB_CMD}" ]] && [[ "${_NEW_GRUB}" == "LIVE" ]]; then
     echo "Running _init_prepare procedure A..."
     touch /run/autoinit.pid
     update-grub >> "${_logSlt}"
     sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
-    echo "*/1 *   * * *   root    bash /opt/local/bin/autoinit ${_AUTO_MODE}" >> /etc/crontab
+    echo "*/1 *   * * *   root    bash /opt/local/bin/autoinit ${_SET_MODE} ${_USE_NINC}" >> /etc/crontab
     if [ -x "/opt/local/bin/killer" ]; then
       sed -i "s/.*killer.*//gi" /etc/crontab &> /dev/null
       echo "*/1 *   * * *   root    bash /opt/local/bin/killer" >> /etc/crontab
@@ -640,7 +660,7 @@ _init_prepare() {
       _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
       _msg "We need to install some tools early..." >> "${_logInt}"
       /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
-      if [ "${_AUTO_MODE}" = "full" ] && [ "${_VMFAMILY}" != "AWS" ]; then
+      if [ "${_SET_MODE}" = "full" ] && [ "${_VMFAMILY}" != "AWS" ]; then
         /usr/bin/apt-get remove chrony -y --purge --auto-remove -qq >> "${_logSlt}"
         _INITD_TEST=$(ls -la /etc/init.d/*cloud* 2>&1)
         _aptAkamaiLst="/etc/apt/sources.list.d/akamai-linux-team.list"
@@ -663,19 +683,19 @@ _init_prepare() {
       ${_INITINS} cron     >> "${_logSlt}"
       ${_INITINS} curl     >> "${_logSlt}"
       ${_INITINS} mc       >> "${_logSlt}"
-      if [ "${_AUTO_MODE}" = "full" ]; then
+      if [ "${_SET_MODE}" = "full" ]; then
         ${_INITINS} build-essential   >> "${_logSlt}"
         ${_INITINS} git               >> "${_logSlt}"
         ${_INITINS} libgd-dev         >> "${_logSlt}"
         ${_INITINS} libmagickwand-dev >> "${_logSlt}"
       fi
       sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
-      echo "*/1 *   * * *   root    bash /opt/local/bin/autoinit ${_AUTO_MODE}" >> /etc/crontab
+      echo "*/1 *   * * *   root    bash /opt/local/bin/autoinit ${_SET_MODE} ${_USE_NINC}" >> /etc/crontab
       if [ -x "/opt/local/bin/killer" ]; then
         sed -i "s/.*killer.*//gi" /etc/crontab &> /dev/null
         echo "*/1 *   * * *   root    bash /opt/local/bin/killer" >> /etc/crontab
       fi
-      [ "${_AUTO_MODE}" = "full" ] && _install_apparmor_utils
+      [ "${_SET_MODE}" = "full" ] && _install_apparmor_utils
       touch ${_initFile}
       _msg "Time for reboot and next upgrade cycle..." >> "${_logInt}"
       echo " " >> "${_logInt}"

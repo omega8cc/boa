@@ -69,6 +69,23 @@ _apt_clean_update() {
 }
 
 _ifnames_grub_check_sync() {
+
+  _USE_NINC=NO
+  _NEW_GRUB=DEMO
+
+  if [ -e "/root/.ignore.ifnames.cnf" ]; then
+    return 1  # Exit the function but continue the script
+  else
+    [ -e "/root/.ninc.selected.predictable.cnf" ] && _USE_NINC=predictable && _NEW_GRUB=LIVE
+    [ -e "/root/.ninc.selected.classic.cnf" ]     && _USE_NINC=classic     && _NEW_GRUB=LIVE
+    [ -e "/root/.ninc.selected.auto.cnf" ]        && _USE_NINC=auto        && _NEW_GRUB=LIVE
+    [ -e "/root/.ninc.selected.vanilla.cnf" ]     && _USE_NINC=vanilla
+  fi
+
+  if [ "${_USE_NINC}" = "vanilla" ] || [ "${_USE_NINC}" = "NO" ]; then
+    return 1  # Exit the function but continue the script
+  fi
+
   _IS_IFACE=$(ip a 2>&1)
   _ADD_GRUB_CMD=""
   _GRUB_FILE="/etc/default/grub"
@@ -117,12 +134,6 @@ _ifnames_grub_check_sync() {
       _append_grub_cmd_option "biosdevname=1"
     fi
 
-    if [ -e "/root/.auto.config.ifnames.grub.cnf" ] && [ ! -e "/root/.ignore.ifnames.cnf" ]; then
-      _NEW_GRUB=LIVE
-    else
-      _NEW_GRUB=DEMO
-    fi
-
     if [[ -n "${_ADD_GRUB_CMD}" ]]; then
       # Backup the GRUB file
       cp "${_GRUB_FILE}" "${_GRUB_FILE}.bak"
@@ -146,18 +157,24 @@ _ifnames_grub_check_sync() {
       echo " "
       if [[ "${_NEW_GRUB}" == "LIVE" ]]; then
         # Update the GRUB file
+        echo "GRUB: Networking Interface Naming Convention selected: ${_USE_NINC}"
         echo "GRUB: Update in the LIVE MODE"
         sed -i "s|^GRUB_CMDLINE_LINUX=.*|${_NEW_GRUB_CMDLINE_LINUX}|" "${_GRUB_FILE}"
         echo "GRUB_CMDLINE_LINUX has been updated with ${_UPDATED_CMDLINE}"
       elif [[ "${_NEW_GRUB}" == "DEMO" ]]; then
         # Demo info
+        echo "GRUB: Networking Interface Naming Convention selected: ${_USE_NINC}"
         echo "GRUB: Update in the DEMO MODE"
-        echo "GRUB_CMDLINE_LINUX would be updated with ${_UPDATED_CMDLINE}"
         echo " "
-        echo "GRUB: Update in the LIVE MODE needs presence of control file:"
-        echo "GRUB   /root/.auto.config.ifnames.grub.cnf"
+        echo "GRUB_CMDLINE_LINUX would be updated with:"
+        echo "   ${_UPDATED_CMDLINE}"
         echo " "
-        echo "GRUB: Ensure that the file /root/.ignore.ifnames.cnf does not exist."
+        echo "GRUB: Update in the LIVE MODE requires presence of control file:"
+        echo "   /root/.ninc.selected.auto.cnf"
+        echo " "
+        echo "GRUB: Note that this extra control file must not exist:"
+        echo "   /root/.ignore.ifnames.cnf"
+        echo " "
         echo "GRUB: This requirement serves as a double-check to confirm"
         echo "GRUB: that you are aware of and agree to auto-update GRUB configuration."
         echo "GRUB: Incorrect GRUB settings can render your virtual machine unbootable"
