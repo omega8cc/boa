@@ -951,14 +951,17 @@ EOFMYSQL
       su -s /bin/bash - aegir -c "/bin/bash ${AegirSetupM} ${_THIS_FRONT} \
         --http_service_type='nginx' \
         --aegir_db_host='${_THIS_DB_HOST}' \
-        --client_email='${_MY_EMAIL}' -y -d"
+        --client_email='${_MY_EMAIL}' -y -d" \
+      2>&1 | tee /var/aegir/install.log
     else
       su -s /bin/bash - aegir -c "/bin/bash ${AegirSetupM} ${_THIS_FRONT} \
         --http_service_type='nginx' \
         --aegir_db_host='${_THIS_DB_HOST}' \
-        --client_email='${_MY_EMAIL}' -y >/var/aegir/install.log 2>&1"
+        --client_email='${_MY_EMAIL}' -y" \
+      >/var/aegir/install.log 2>&1
     fi
     wait
+
     if [ -e "/opt/tmp/status-AegirSetupM-FAIL" ]; then
       _msg "FATAL ERROR: AegirSetupM installer failed"
       _msg "FATAL ERROR: Aborting Barracuda installer NOW!"

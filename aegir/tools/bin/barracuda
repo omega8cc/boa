@@ -1056,7 +1056,7 @@ _up_action() {
           wait
           sed -i "s/^_AEGIR_UP.*/_AEGIR_UPGRADE_ONLY=NO/g"            ${_barCnf}
           wait
-          bash ${_vBs}/${_barName} >${_UP_LOG} 2>&1
+          bash ${_vBs}/${_barName} 2>&1 | tee ${_UP_LOG}
           wait
           _check_report
         elif [ "${_outP}" = "aegir" ]; then
@@ -1068,7 +1068,7 @@ _up_action() {
           wait
           sed -i "s/^_AEGIR_UP.*/_AEGIR_UPGRADE_ONLY=YES/g"           ${_barCnf}
           wait
-          bash ${_vBs}/${_barName} >${_UP_LOG} 2>&1
+          bash ${_vBs}/${_barName} 2>&1 | tee ${_UP_LOG}
           wait
           _check_report
         elif [ "${_outP}" = "enable" ] || [ "${_outP}" = "disable" ]; then
@@ -1081,7 +1081,7 @@ _up_action() {
             echo "_PHP_IDLE=OFF"                                   >> ${_barCnf}
             wait
           fi
-          bash ${_vBs}/${_barName}
+          bash ${_vBs}/${_barName} 2>&1 | tee ${_UP_LOG}
           wait
         fi
       else
@@ -1117,7 +1117,7 @@ _up_action() {
             wait
           fi
         fi
-        bash ${_vBs}/${_barName}
+        bash ${_vBs}/${_barName} 2>&1 | tee ${_UP_LOG}
         wait
       fi
     fi

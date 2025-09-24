@@ -956,7 +956,7 @@ _octopus_install() {
       if [ "${_outP}" = "logged" ] || [ "${_outP}" = "onlylogged" ]; then
         bash ${_vBs}/${_octName} >${_IN_OCTOPUS_LOG} 2>&1
       else
-        bash ${_vBs}/${_octName}
+        bash ${_vBs}/${_octName} 2>&1 | tee ${_IN_OCTOPUS_LOG}
       fi
       wait
     fi
@@ -1159,7 +1159,7 @@ _barracuda_install() {
       if [ "${_outP}" = "logged" ] || [ "${_outP}" = "onlylogged" ]; then
         bash ${_vBs}/${_barName} >${_IN_BARRACUDA_LOG} 2>&1
       else
-        bash ${_vBs}/${_barName}
+        bash ${_vBs}/${_barName} 2>&1 | tee ${_IN_BARRACUDA_LOG}
       fi
       wait
     fi

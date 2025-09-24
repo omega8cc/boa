@@ -5408,7 +5408,8 @@ _satellite_child_b_aegir_build() {
         --root=${_HM_ROOT} \
         --script_user=${_USER} \
         --web_group=${_WEBG} \
-        --version=${_AEGIR_VERSION} -y -d
+        --version=${_AEGIR_VERSION} -y -d \
+      2>&1 | tee ${_ROOT}/log/install.log
     else
       ${_DRUSHCMD} hostmaster-install ${_DOMAIN} \
         --aegir_db_host=${_THIS_DB_HOST} \
@@ -5422,7 +5423,8 @@ _satellite_child_b_aegir_build() {
         --root=${_HM_ROOT} \
         --script_user=${_USER} \
         --web_group=${_WEBG} \
-        --version=${_AEGIR_VERSION} -y >${_ROOT}/log/install.log 2>&1
+        --version=${_AEGIR_VERSION} -y \
+      >${_ROOT}/log/install.log 2>&1
     fi
     rm -rf ${_HM_ROOT}/profiles/{default,standard,minimal,testing}
     cd ${_HM_ROOT}
