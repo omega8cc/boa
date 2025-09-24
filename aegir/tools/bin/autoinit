@@ -193,6 +193,27 @@ _check_set_mode() {
 }
 
 ###
+### Networking Interface Naming Convention
+###
+_network_interface_naming_convention() {
+  # Usage: autoinit [minimal|full] [vanilla|classic|predictable]
+  # Default: "vanilla". Persisted across reboots via cron argument.
+  if [ -z "${_SET_NINC}" ]; then
+    case "${2:-vanilla}" in
+      vanilla|*)   _SET_NINC="vanilla" ;;
+      auto)        _SET_NINC="auto" ;;
+      classic)     _SET_NINC="classic" ;;
+      predictable) _SET_NINC="predictable" ;;
+    esac
+  fi
+  if [ ! -e "/root/.ninc.selected.${_SET_NINC}.cnf" ]; then
+    touch /root/.ninc.selected.${_SET_NINC}.cnf
+    chattr +i /root/.ninc.selected.${_SET_NINC}.cnf
+  fi
+  _msg "Networking Interface Naming Convention selected: ${_SET_NINC}" >> "${_logInt}"
+}
+
+###
 ### Check Manufacturer Compatibility
 ###
 _check_manufacturer_compatibility() {
@@ -990,6 +1011,7 @@ else
   ### -------------------------- Let's go!
   _init_launch
   _check_set_mode
+  _network_interface_naming_convention
   _locales_check_fix_early
   _cron_check_install_early
 fi
