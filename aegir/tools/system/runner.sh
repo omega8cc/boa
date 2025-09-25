@@ -134,6 +134,7 @@ fi
 if [ "${_SQLBACKUP_RUNNING}" = "TRUE" ] \
   || [ "${_DAILY_RUNNING}" = "TRUE" ] \
   || [ -e "/run/boa_wait.pid" ] \
+  || [ -e "/run/boa_run.pid" ] \
   || [ -e "/run/boa_cron_wait.pid" ]; then
   if [ ! -e "/root/.force.queue.runner.cnf" ]; then
     touch /var/log/boa/wait-runner.pid
