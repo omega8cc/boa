@@ -718,10 +718,6 @@ _find_fast_mirror_cnf() {
   if [ -e "/root/.dev.server.cnf" ]; then
     echo "PROC: _find_fast_mirror_cnf in octopus"
   fi
-  if [ -x "/usr/sbin/unbound-control" ] \
-    && [ -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
-    unbound-control reload &> /dev/null
-  fi
   _isNetc=$(which netcat 2>&1)
   if [ ! -x "${_isNetc}" ] || [ -z "${_isNetc}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
