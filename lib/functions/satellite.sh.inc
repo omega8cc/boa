@@ -4219,7 +4219,7 @@ _satellite_if_running_as_root_octopus() {
     chmod a+w /dev/null
     _check_system_manufacturer
     if [ -n "${_SYS_MANUFACTURER_LC}" ]; then
-      if  [ ! -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
+      if  [ ! -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
         || [ ! -e "/data/u" ] \
         || [ ! -e "/var/xdrago" ]; then
         [ ! -e "/run/${_SYS_MANUFACTURER_LC}_vm_postinstall.pid" ] && touch /run/${_SYS_MANUFACTURER_LC}_vm.pid
