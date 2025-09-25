@@ -213,7 +213,7 @@ system("service php70-fpm start") if ((!$php70lives || !$fpmsumar || !-f "/run/p
 system("service php56-fpm start") if ((!$php56lives || !$fpmsumar || !-f "/run/php56-fpm.pid") && -f "/etc/init.d/php56-fpm");
 
 
-if (!-f "/root/.run-to-daedalus.cnf" && !-f "/root/.run-to-chimaera.cnf" && !-f "/root/.run-to-beowulf.cnf") {
+if (!-f "/run/boa_run.pid" && !-f "/run/boa_wait.pid" && !-f "/root/.run-to-daedalus.cnf" && !-f "/root/.run-to-chimaera.cnf" && !-f "/root/.run-to-beowulf.cnf") {
   system("service jetty7 start") if (!$jetty7sumar && -f "/etc/init.d/jetty7");
   system("service jetty8 start") if (!$jetty8sumar && -f "/etc/init.d/jetty8");
   system("service jetty9 start") if (!$jetty9sumar && -f "/etc/init.d/jetty9");
