@@ -70,7 +70,7 @@ _apt_clean_update() {
 }
 
 _check_manufacturer_compatibility() {
-  # Install dmidecode of not present
+  # Install dmidecode if not present
   if ! command -v dmidecode &> /dev/null; then
     /usr/bin/apt-get update &> /dev/null
     ${_INITINS} dmidecode &> /dev/null
