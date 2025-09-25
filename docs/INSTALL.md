@@ -7,6 +7,35 @@
 - Don't run any system updates or modifications before installing BOA.
 - Please read [docs/NOTES.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/NOTES.md) for other related details.
 
+# IMPORTANT INFORMATION ON BOA INSTALLATION PROCEDURES CHAIN
+
+   **Don't reboot your VM until all procedures are finalized, including post-install auto-upgrades.**
+
+   When invoked via `boa` command, it will run installation is several steps, automatically:
+
+   1. The `autoinit` phase to upgrade vendor provided OS to Devuan Daedalus
+   2. The `barracuda install` phase to install BOA system and Aegir Master
+   3. The `barracuda upgrade` phase to complete system installation
+   4. The `octopus install` phase to install your first Aegir Satellite
+   5. The `octopus upgrade` phase to enable Let's Encrypt certificate for your Aegir
+   6. The `barracuda upgrade` phase again to install CSF firewall and DNS cache
+
+   **NOTE!** While steps 2-5 will be visible to you in your SSH terminal (unless you will use silent mode explained further below), the last step will happen within 30 minutes launched from cron in the background, so it's important that you don't reboot and don't use the installed Aegir before the last step is complete.
+
+   **But how you will know it's ready?** Once all procedures are finalized you will see **three (3) lines** reported by this command:
+
+   ```sh
+   boa info | grep -c Percona
+   ```
+
+   **REMEMBER: don't reboot your VM until all procedures are finalized, including post-install auto-upgrades.**
+
+   Now it's safe and recommended to reboot your server to make sure it's running correct installed Linux kernel supplied by Devuan -- either via your vendor control panel or directly via accelerated system reboot:
+
+   ```sh
+   boa reboot
+   ```
+
 # Installing BOA System on a Public Server/VPS
 
 1. Configure your domain DNS to point its wildcard-enabled A record to your server IP address, and make sure it propagated on the Internet by trying `host server.mydomain.org` or `getent hosts server.mydomain.org` command on any other server/system.
