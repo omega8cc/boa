@@ -91,6 +91,10 @@ _find_correct_ip() {
       echo ${_LOC_IP} > /root/.found_correct_ipv4.cnf
     fi
   fi
+  if grep -qE "${_LOC_IP}\s" /etc/hosts; then
+    cp -af /etc/hosts /etc/.was.hosts
+    sed -i "s/^${_LOC_IP}.*//g" /etc/hosts
+  fi
 }
 
 #
@@ -4219,7 +4223,7 @@ _satellite_if_running_as_root_octopus() {
     chmod a+w /dev/null
     _check_system_manufacturer
     if [ -n "${_SYS_MANUFACTURER_LC}" ]; then
-      if  [ ! -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
+      if  [ ! -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
         || [ ! -e "/data/u" ] \
         || [ ! -e "/var/xdrago" ]; then
         [ ! -e "/run/${_SYS_MANUFACTURER_LC}_vm_postinstall.pid" ] && touch /run/${_SYS_MANUFACTURER_LC}_vm.pid

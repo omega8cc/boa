@@ -1202,7 +1202,7 @@ _INITINS="/usr/bin/apt-get ${_aptAllow} -y install"
 _INSTALL_DIST="/usr/bin/apt-get ${_dstUpArg} install"
 _INSTALL_NRML="/usr/bin/apt-get ${_nrmUpArg} install"
 _aptYesUnth="-y ${_aptAllow}"
-if [ ! -e "/var/aegir/config/includes/nginx_vhost_common.conf" ]; then
+if [ ! -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
   _INSTAPP="${_INSTALL_DIST}"
 fi
 
@@ -1327,7 +1327,7 @@ _verify_boa_keys() {
         echo "Your system requires valid license for upgrade to ${_rLsn}-${_tRee}"
         echo "Please visit https://omega8.cc/licenses to purchase your own"
         echo
-        if [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
+        if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
           && [ ! -e "/var/aegir/key/barracuda_key.txt" ]; then
           mkdir -p /var/aegir/key
           cat /var/opt/_encN_local.${_encName}.tmp > /var/aegir/key/barracuda_key.txt
@@ -1335,7 +1335,7 @@ _verify_boa_keys() {
         rm -f /var/opt/_encN*
         _clean_pid_exit _verify_boa_keys_a
       else
-        if [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
+        if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
           && [ ! -e "/var/aegir/key/barracuda_key.txt" ]; then
           mkdir -p /var/aegir/key
           cat /var/opt/_encN_local.${_encName}.tmp > /var/aegir/key/barracuda_key.txt
@@ -1411,7 +1411,7 @@ _download_helpers_libs() {
   mkdir -p /opt/tmp
   cd /opt/tmp
   rm -rf /opt/tmp/boa
-  if [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ]; then
+  if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     _GIT_VRN=2.45.2
     _isGit=$(which git 2>&1)
     _GIT_INSTALL=NO
@@ -1532,7 +1532,7 @@ _download_helpers_libs() {
   cp -af ${_bldPth}/aegir/helpers/apt.conf.noi.dist /opt/apt/
   #
   # Create tmp stuff
-  if [ ! -e "/var/aegir/config/includes/nginx_vhost_common.conf" ]; then
+  if [ ! -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     _LOG=${_vBs}/barracuda-install-${_NOW}.log
   else
     _LOG=${_vBs}/barracuda-upgrade-${_NOW}.log
