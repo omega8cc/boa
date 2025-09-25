@@ -250,7 +250,8 @@ _syslog_giant_log_detection() {
 }
 
 _gpg_too_many_instances_detection() {
-  if [ `ps aux | grep -v "grep" | grep --count "gpg-agent"` -gt 5 ]; then
+  _CNT=$(pgrep -fc "[g]pg-agent")
+  if (( _CNT > 5 )); then
     _thisErrLog="$(date) Too many gpg-agent processes killed"
     echo ${_thisErrLog} >> /var/log/boa/gpg-agent-count.kill.log
     kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
@@ -262,7 +263,8 @@ _gpg_too_many_instances_detection() {
 }
 
 _dirmngr_too_many_instances_detection() {
-  if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt 5 ]; then
+  _CNT=$(pgrep -fc "[d]irmngr")
+  if (( _CNT > 5 )); then
     _thisErrLog="$(date) Too many dirmngr processes killed"
     echo ${_thisErrLog} >> /var/log/boa/dirmngr-count.kill.log
     kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
