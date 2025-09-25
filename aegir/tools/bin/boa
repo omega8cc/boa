@@ -798,7 +798,28 @@ _send_report() {
   fi
 }
 
+_check_s_nail() {
+  # Check if postfix is available
+  if ! command -v postfix &> /dev/null; then
+    /usr/bin/apt-get update &> /dev/null
+    ${_INITINS} postfix postfix-pcre &> /dev/null
+  fi
+  # Install s-nail if not present
+  if ! command -v s-nail &> /dev/null; then
+    /usr/bin/apt-get update &> /dev/null
+    ${_INITINS} s-nail &> /dev/null
+  fi
+  if ! command -v s-nail &> /dev/null; then
+    return 1  # Exit the function but continue the script
+  else
+    return 0
+  fi
+}
+
 _send_errors() {
+  if ! _check_s_nail; then
+    return 1  # Exit the function but continue the script
+  fi
   if [ -e "${_IN_BARRACUDA_LOG}" ]; then
     _THIS_LOG="${_IN_BARRACUDA_LOG}"
     _RS="Barracuda"
