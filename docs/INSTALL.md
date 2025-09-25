@@ -5,6 +5,7 @@
 - BOA requires minimal, supported OS, with no web/sql services installed.
 - Don't run any installer via sudo. You must be logged in as root directly.
 - Don't run any system updates or modifications before installing BOA.
+- Please read [docs/NOTES.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/NOTES.md) for other related details.
 
 # Installing BOA System on a Public Server/VPS
 
@@ -16,7 +17,6 @@
 
    You **don't** need to configure your hostname (on the server) before running BOA installer, since BOA will do that for you, automatically.
 
-2. Please read [docs/NOTES.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/NOTES.md) for other related details.
 
 3. Download and run BOA Meta Installers.
 
