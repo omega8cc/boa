@@ -47,7 +47,7 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 export _tRee=lts
 export _xSrl=570ltsT07
 export _rLsn="BOA-5.7.12"
-export _bTs=570v41
+export _bTs=570v43
 
 ###
 ### Avoid too many questions
@@ -207,6 +207,10 @@ _fix_dns_settings() {
       rm -f /etc/resolv.conf
       cp -a ${_vBs}/resolv.conf.tmp /etc/resolv.conf
     fi
+  fi
+  if [ -x "/usr/sbin/unbound-control" ] \
+    && [ -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
+    unbound-control reload &> /dev/null
   fi
 }
 
@@ -912,7 +916,10 @@ _update_agents() {
     [ ! -e "/var/xdrago/monitor/check" ] && mkdir -p /var/xdrago/monitor/check
     [ ! -e "/var/xdrago/monitor/log" ] && mkdir -p /var/xdrago/monitor/log
 
-    [ ! -e "${_optBin}/lock.inc" ] && rm -f ${_pthLog}/*.ctrl.*.pid
+    if [ ! -e "${_pthLog}/.force.f99.${_tRee}.${_xSrl}.ctrl" ]; then
+      rm -f ${_pthLog}/*.ctrl.*.pid
+      touch ${_pthLog}/.force.f99.${_tRee}.${_xSrl}.ctrl
+    fi
 
     [ ! -e "/var/xdrago/checksql.pl" ] && rm -f ${_pthLog}/checksql.pl.ctrl.*.pid
     [ ! -e "/var/xdrago/clear.sh" ] && rm -f ${_pthLog}/clear.sh.ctrl.*.pid
@@ -1062,7 +1069,8 @@ _update_agents() {
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -d "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/backboa.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
-    if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt 0 ]; then
+    _CNT=$(pgrep -fc "[d]uplicity")
+    if (( _CNT > 0 )); then
       echo "The duplicity backup is running!"
     else
       if [ -e "${_optBin}/backboa" ]; then
@@ -1084,7 +1092,8 @@ _update_agents() {
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -d "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/duobackboa.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
-    if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt 0 ]; then
+    _CNT=$(pgrep -fc "[d]uplicity")
+    if (( _CNT > 0 )); then
       echo "The duplicity backup is running!"
     else
       if [ -e "${_optBin}/duobackboa" ]; then
@@ -1117,7 +1126,8 @@ _update_agents() {
   if [ -e "/root/.remote_backups/schedule/backup_schedule.txt" ] \
     && [ -d "/var/aegir/drush" ] \
     && [ ! -e "${_pthCtrl}/dcysetup.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
-    if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt 0 ]; then
+    _CNT=$(pgrep -fc "[d]uplicity")
+    if (( _CNT > 0 )); then
       echo "The duplicity backup is running!"
     else
       if [ -e "${_optBin}/dcysetup" ]; then
@@ -1139,7 +1149,8 @@ _update_agents() {
   if [ -e "/root/.remote_backups/schedule/backup_schedule.txt" ] \
     && [ -d "/var/aegir/drush" ] \
     && [ ! -e "${_pthCtrl}/multiback.sh.ctrl.f37.${_tRee}.${_xSrl}.pid" ]; then
-    if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt 0 ]; then
+    _CNT=$(pgrep -fc "[d]uplicity")
+    if (( _CNT > 0 )); then
       echo "The duplicity backup is running!"
     else
       if [ -e "${_optBin}/multiback" ]; then
@@ -1161,7 +1172,8 @@ _update_agents() {
   if [ -e "/root/.remote_backups/schedule/backup_schedule.txt" ] \
     && [ -d "/var/aegir/drush" ] \
     && [ ! -e "${_pthCtrl}/mybackup.sh.ctrl.f37.${_tRee}.${_xSrl}.pid" ]; then
-    if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt 0 ]; then
+    _CNT=$(pgrep -fc "[d]uplicity")
+    if (( _CNT > 0 )); then
       echo "The duplicity backup is running!"
     else
       if [ -e "${_optBin}/mybackup" ]; then
@@ -1461,13 +1473,13 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/unbound.sh.ctrl.f91.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/unbound.sh.ctrl.f90.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/unbound.sh /var/xdrago/monitor/check/unbound.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/unbound.sh" -o /var/xdrago/monitor/check/unbound.sh
     if [ -e "/var/xdrago/monitor/check/unbound.sh" ]; then
       chmod 700 /var/xdrago/monitor/check/unbound.sh
       chown root:root /var/xdrago/monitor/check/unbound.sh
-      touch ${_pthLog}/unbound.sh.ctrl.f91.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/unbound.sh.ctrl.f90.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/monitor/check/unbound.sh.old /var/xdrago/monitor/check/unbound.sh
     fi
@@ -1895,14 +1907,14 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/proc_num_ctrl.pl.ctrl.f91.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/proc_num_ctrl.pl.ctrl.f90.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/proc_num_ctrl.pl /var/xdrago/proc_num_ctrl.pl.old
     curl ${_crlGet} "${_urlHmr}/tools/system/proc_num_ctrl.pl" \
       -o /var/xdrago/proc_num_ctrl.pl
     if [ -e "/var/xdrago/proc_num_ctrl.pl" ]; then
       chmod 700 /var/xdrago/proc_num_ctrl.pl
       chown root:root /var/xdrago/proc_num_ctrl.pl
-      touch ${_pthLog}/proc_num_ctrl.pl.ctrl.f91.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/proc_num_ctrl.pl.ctrl.f90.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/proc_num_ctrl.pl.old /var/xdrago/proc_num_ctrl.pl
     fi
@@ -2524,7 +2536,8 @@ _update_agents() {
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -d "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/synproxy.ctrl.f93.${_tRee}.${_xSrl}.pid" ]; then
-    if [ `ps aux | grep -v "grep" | grep --count "synproxy_rollback"` -gt 0 ]; then
+    _CNT=$(pgrep -fc "[s]ynproxy_rollback")
+    if (( _CNT > 0 )); then
       echo "The synproxy_rollback is running!"
     else
       if [ -e "${_optBin}/synproxy" ]; then
@@ -2546,7 +2559,8 @@ _update_agents() {
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -d "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/synproxy_rollback.ctrl.f94.${_tRee}.${_xSrl}.pid" ]; then
-    if [ `ps aux | grep -v "grep" | grep --count "synproxy_rollback"` -gt 0 ]; then
+    _CNT=$(pgrep -fc "[s]ynproxy_rollback")
+    if (( _CNT > 0 )); then
       echo "The synproxy_rollback is running!"
     else
       if [ -e "${_optBin}/synproxy_rollback" ]; then
@@ -2568,7 +2582,8 @@ _update_agents() {
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -d "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/synproxy_reassert.ctrl.f88.${_tRee}.${_xSrl}.pid" ]; then
-    if [ `ps aux | grep -v "grep" | grep --count "synproxy_rollback"` -gt 0 ]; then
+    _CNT=$(pgrep -fc "[s]ynproxy_rollback")
+    if (( _CNT > 0 )); then
       echo "The synproxy_rollback is running!"
     else
       if [ -e "${_optBin}/synproxy_reassert" ]; then
@@ -2590,7 +2605,8 @@ _update_agents() {
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -d "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/synproxy_hook_fix.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
-    if [ `ps aux | grep -v "grep" | grep --count "synproxy_rollback"` -gt 0 ]; then
+    _CNT=$(pgrep -fc "[s]ynproxy_rollback")
+    if (( _CNT > 0 )); then
       echo "The synproxy_rollback is running!"
     else
       if [ -e "${_optBin}/synproxy_hook_fix" ]; then
@@ -2612,7 +2628,8 @@ _update_agents() {
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -d "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/synproxy_snapshot.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
-    if [ `ps aux | grep -v "grep" | grep --count "synproxy_rollback"` -gt 0 ]; then
+    _CNT=$(pgrep -fc "[s]ynproxy_rollback")
+    if (( _CNT > 0 )); then
       echo "The synproxy_rollback is running!"
     else
       if [ -e "${_optBin}/synproxy_snapshot" ]; then
@@ -2634,7 +2651,8 @@ _update_agents() {
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -d "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/synproxy_status.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
-    if [ `ps aux | grep -v "grep" | grep --count "synproxy_rollback"` -gt 0 ]; then
+    _CNT=$(pgrep -fc "[s]ynproxy_rollback")
+    if (( _CNT > 0 )); then
       echo "The synproxy_rollback is running!"
     else
       if [ -e "${_optBin}/synproxy_status" ]; then
@@ -2656,7 +2674,8 @@ _update_agents() {
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -d "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/synproxy_monitor.ctrl.f98.${_tRee}.${_xSrl}.pid" ]; then
-    if [ `ps aux | grep -v "grep" | grep --count "synproxy_rollback"` -gt 0 ]; then
+    _CNT=$(pgrep -fc "[s]ynproxy_rollback")
+    if (( _CNT > 0 )); then
       echo "The synproxy_rollback is running!"
     else
       if [ -e "${_optBin}/synproxy_monitor" ]; then
@@ -4205,12 +4224,6 @@ _if_update_boa_key_tools_only() {
   wait
 
   _check_dns_settings
-
-  if [ -x "/usr/sbin/unbound-control" ] \
-    && [ -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
-    unbound-control reload &> /dev/null
-  fi
-
   _if_reinstall_curl
 
   _CURL_TEST=$(curl -L -k -s \
@@ -4664,7 +4677,8 @@ if [ "$(id -u)" -eq 0 ]; then
   _fix_or_install_virt_what
 
   ### Notify if multiback backups seem to run for too long
-  if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt 0 ]; then
+  _CNT=$(pgrep -fc "[d]uplicity")
+  if (( _CNT > 0 )); then
     _bLogA="/var/backups/multiback_waiting_queue.log"
     _bLogB="/var/backups/tmp_multiback_waiting_queue.log"
     if [ ! -e "${_bLogA}" ] && [ ! -e "${_bLogB}" ]; then
@@ -4749,6 +4763,8 @@ if [ "$(id -u)" -eq 0 ]; then
 
   if [ -x "/usr/sbin/unbound" ] \
     && [ ! -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
+    touch /run/wait-unbound.pid
+    sleep 3
     mkdir -p /etc/resolvconf/run/interface
     echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.unbound
     resolvconf -u &> /dev/null
@@ -4759,6 +4775,8 @@ if [ "$(id -u)" -eq 0 ]; then
     service unbound restart &> /dev/null
     wait
     unbound-control reload &> /dev/null
+    sleep 3
+    rm -f /run/wait-unbound.pid
   fi
 
   if [ ! -e "/data/all/cpuinfo" ]; then
