@@ -993,10 +993,11 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     fi
   fi
 
-  _IS_PROCTRL_RUNNING=$(ps aux | grep '[p]roc_num_ctrl.cgi' | awk '{print $2}' 2>&1)
+  _IS_PROCTRL_RUNNING=$(ps aux | grep '[p]roc_num_ctrl.pl' | awk '{print $2}' 2>&1)
   if [ ! -z "${_IS_PROCTRL_RUNNING}" ]; then
-    if [ `ps aux | grep -v "grep" | grep --count "proc_num_ctrl.pl"` -gt 1 ]; then
-      kill -9 $(ps aux | grep '[p]roc_num_ctrl.cgi' | awk '{print $2}') &> /dev/null
+    _CNT=$(pgrep -fc "[p]roc_num_ctrl.pl")
+    if (( _CNT > 1 )); then
+      kill -9 $(ps aux | grep '[p]roc_num_ctrl.pl' | awk '{print $2}') &> /dev/null
       touch /var/log/boa/.proc_num_ctrl.${_tRee}.${_xSrl}.pid
     fi
   fi
