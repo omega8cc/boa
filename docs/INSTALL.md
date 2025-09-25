@@ -7,7 +7,7 @@
 - Don't run any system updates or modifications before installing BOA.
 - Please read [docs/NOTES.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/NOTES.md) for other related details.
 
-# IMPORTANT INFORMATION ON BOA INSTALLATION PROCEDURES CHAIN
+# BOA Installation Procedures Chain
 
    **Don't reboot your VM until all procedures are finalized, including post-install auto-upgrades.**
 

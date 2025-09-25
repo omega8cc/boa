@@ -335,23 +335,14 @@ _if_hosted_sys() {
 _fix_dns_settings() {
   mkdir -p ${_vBs}
   rm -f ${_vBs}/resolv.conf.tmp
-  if [ -e "/etc/resolv.conf" ]; then
-    if [ -L "/etc/resolv.conf" ]; then
-      _rslvT="$(readlink -n /etc/resolv.conf)"
-      if [ ! -e "${_rslvT}" ]; then
-        rm -f /etc/resolv.conf
-      fi
+  if ! grep -qE "9.9.9.9\s" /etc/resolv.conf; then
+    echo "### BOA-DNS-Config ###" > ${_vBs}/resolv.conf.tmp
+    if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
+      echo "nameserver 127.0.0.1" > ${_vBs}/resolv.conf.tmp
     fi
-    if [ -e "/etc/resolv.conf" ]; then
-      cp -a /etc/resolv.conf ${_vBs}/resolv.conf.tmp
-    fi
-  fi
-  if [ ! -e "${_vBs}/resolv.conf.tmp" ]; then
-    echo "nameserver 127.0.0.1" > ${_vBs}/resolv.conf.tmp
     echo "nameserver 1.1.1.1" >> ${_vBs}/resolv.conf.tmp
-    echo "nameserver 1.0.0.1" >> ${_vBs}/resolv.conf.tmp
     echo "nameserver 8.8.8.8" >> ${_vBs}/resolv.conf.tmp
-    echo "nameserver 8.8.4.4" >> ${_vBs}/resolv.conf.tmp
+    echo "nameserver 9.9.9.9" >> ${_vBs}/resolv.conf.tmp
   fi
   if [ ! -e "${_vBs}/resolv.conf.vanilla" ]; then
     for _Pre in `ls -la ${_vBs}/resolv.conf.pre-*`; do
@@ -384,13 +375,28 @@ _fix_dns_settings() {
 }
 
 _check_dns_settings() {
+  if [ -L "/etc/resolv.conf" ]; then
+    _fix_dns_settings
+    return 1  # Exit the function but continue the script
+  fi
   if [ -e "/root/.use.default.nameservers.cnf" ]; then
+    if [ -e "/root/.use.local.nameservers.cnf" ]; then
+      rm -f /root/.use.local.nameservers.cnf
+    fi
     _USE_DEFAULT_DNS=YES
+    if ! grep -qE "9.9.9.9\s" /etc/resolv.conf; then
+      _fix_dns_settings
+      return 1  # Exit the function but continue the script
+    fi
   fi
   if [ -e "/root/.use.local.nameservers.cnf" ]; then
     _USE_PROVIDER_DNS=YES
   else
     _REMOTE_DNS_TEST=$(host files.aegir.cc 1.1.1.1 -w 10 2>&1)
+    if ! grep -qE "9.9.9.9\s" /etc/resolv.conf; then
+      _fix_dns_settings
+      return 1  # Exit the function but continue the script
+    fi
   fi
   if [[ "${_REMOTE_DNS_TEST}" =~ "no servers could be reached" ]] \
     || [[ "${_REMOTE_DNS_TEST}" =~ "Host files.aegir.cc not found" ]] \
@@ -1453,20 +1459,7 @@ _if_reinstall_curl() {
 }
 
 _check_dns_curl() {
-  if [ ! -f "/etc/resolv.conf" ]; then
-    rm -f /etc/resolv.conf
-    echo "nameserver 127.0.0.1" > /etc/resolv.conf
-    if [ -e "${_vBs}/resolv.conf.vanilla" ]; then
-      cat ${_vBs}/resolv.conf.vanilla >> /etc/resolv.conf
-    fi
-    echo "nameserver 1.1.1.1" >> /etc/resolv.conf
-    echo "nameserver 1.0.0.1" >> /etc/resolv.conf
-    echo "nameserver 8.8.8.8" >> /etc/resolv.conf
-    echo "nameserver 8.8.4.4" >> /etc/resolv.conf
-    _check_dns_settings
-  else
-    _check_dns_settings
-  fi
+  _check_dns_settings
   if [ -x "/usr/sbin/unbound-control" ] \
     && [ -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
     unbound-control reload &> /dev/null
