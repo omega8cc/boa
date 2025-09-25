@@ -4,28 +4,16 @@ export _tRee=pro
 #
 # Fix DNS settings.
 _fix_dns_settings() {
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "PROC: _fix_dns_settings"
-  fi
   mkdir -p ${_vBs}
   rm -f ${_vBs}/resolv.conf.tmp
-  if [ -e "/etc/resolv.conf" ]; then
-    if [ -L "/etc/resolv.conf" ]; then
-      _rslvT="$(readlink -n /etc/resolv.conf)"
-      if [ ! -e "${_rslvT}" ]; then
-        rm -f /etc/resolv.conf
-      fi
+  if ! grep -qE "9.9.9.9\s" /etc/resolv.conf; then
+    echo "### BOA-DNS-Config ###" > ${_vBs}/resolv.conf.tmp
+    if [ -x "/usr/sbin/unbound" ] && [ -e "/run/unbound/unbound.pid" ]; then
+      echo "nameserver 127.0.0.1" > ${_vBs}/resolv.conf.tmp
     fi
-    if [ -e "/etc/resolv.conf" ]; then
-      cp -a /etc/resolv.conf ${_vBs}/resolv.conf.tmp
-    fi
-  fi
-  if [ ! -e "${_vBs}/resolv.conf.tmp" ]; then
-    echo "nameserver 127.0.0.1" > ${_vBs}/resolv.conf.tmp
     echo "nameserver 1.1.1.1" >> ${_vBs}/resolv.conf.tmp
-    echo "nameserver 1.0.0.1" >> ${_vBs}/resolv.conf.tmp
     echo "nameserver 8.8.8.8" >> ${_vBs}/resolv.conf.tmp
-    echo "nameserver 8.8.4.4" >> ${_vBs}/resolv.conf.tmp
+    echo "nameserver 9.9.9.9" >> ${_vBs}/resolv.conf.tmp
   fi
   if [ ! -e "${_vBs}/resolv.conf.vanilla" ]; then
     for _Pre in `ls -la ${_vBs}/resolv.conf.pre-*`; do
@@ -60,16 +48,28 @@ _fix_dns_settings() {
 #
 # Check DNS settings.
 _check_dns_settings() {
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "PROC: _check_dns_settings"
+  if [ -L "/etc/resolv.conf" ]; then
+    _fix_dns_settings
+    return 1  # Exit the function but continue the script
   fi
   if [ -e "/root/.use.default.nameservers.cnf" ]; then
+    if [ -e "/root/.use.local.nameservers.cnf" ]; then
+      rm -f /root/.use.local.nameservers.cnf
+    fi
     _USE_DEFAULT_DNS=YES
+    if ! grep -qE "9.9.9.9\s" /etc/resolv.conf; then
+      _fix_dns_settings
+      return 1  # Exit the function but continue the script
+    fi
   fi
   if [ -e "/root/.use.local.nameservers.cnf" ]; then
     _USE_PROVIDER_DNS=YES
   else
-    _REMOTE_DNS_TEST=$(host -s files.aegir.cc 1.1.1.1 -w 10 2>&1)
+    _REMOTE_DNS_TEST=$(host files.aegir.cc 1.1.1.1 -w 10 2>&1)
+    if ! grep -qE "9.9.9.9\s" /etc/resolv.conf; then
+      _fix_dns_settings
+      return 1  # Exit the function but continue the script
+    fi
   fi
   if [[ "${_REMOTE_DNS_TEST}" =~ "no servers could be reached" ]] \
     || [[ "${_REMOTE_DNS_TEST}" =~ "Host files.aegir.cc not found" ]] \
@@ -80,7 +80,7 @@ _check_dns_settings() {
       || [ ! -e "${_vBs}/resolv.conf.vanilla" ]; then
       _fix_dns_settings
       if [ -e "/etc/init.d/postfix" ]; then
-        _mrun "service postfix restart" 2> /dev/null
+        service postfix restart &> /dev/null
       fi
     fi
   fi
@@ -175,9 +175,10 @@ _find_correct_ip() {
       echo ${_LOC_IP} > /root/.found_correct_ipv4.cnf
     fi
   fi
-  if grep -qE "${_LOC_IP}\s" /etc/hosts; then
+  if [ -n "${_LOC_IP}" ] && grep -qE "${_LOC_IP}\s" /etc/hosts; then
     cp -af /etc/hosts /etc/.was.hosts
     sed -i "s/^${_LOC_IP}.*//g" /etc/hosts
+    [ -x "/etc/init.d/unbound" ] && service unbound restart &> /dev/null
   fi
 }
 
@@ -408,9 +409,8 @@ _dns_unbound_install_upgrade() {
     if [ "${_USE_PROVIDER_DNS}" != "YES" ]; then
       rm -f /etc/resolv.conf
       echo "nameserver 1.1.1.1" > /etc/resolv.conf
-      echo "nameserver 1.0.0.1" >> /etc/resolv.conf
       echo "nameserver 8.8.8.8" >> /etc/resolv.conf
-      echo "nameserver 8.8.4.4" >> /etc/resolv.conf
+      echo "nameserver 9.9.9.9" >> /etc/resolv.conf
     fi
     _apt_clean_update
     [ -e "/usr/etc/unbound/unbound.pid" ] && _isUnbndFix=YES
@@ -430,9 +430,8 @@ _dns_unbound_install_upgrade() {
     if [ "${_USE_PROVIDER_DNS}" != "YES" ]; then
       rm -f /etc/resolv.conf
       echo "nameserver 1.1.1.1" > /etc/resolv.conf
-      echo "nameserver 1.0.0.1" >> /etc/resolv.conf
       echo "nameserver 8.8.8.8" >> /etc/resolv.conf
-      echo "nameserver 8.8.4.4" >> /etc/resolv.conf
+      echo "nameserver 9.9.9.9" >> /etc/resolv.conf
     fi
     if [ -x "/usr/sbin/aa-teardown" ]; then
       _mrun "aa-teardown" 2> /dev/null
@@ -496,20 +495,18 @@ _dns_unbound_install_upgrade() {
     _RESOLV_LOC=$(grep "nameserver 127.0.0.1" /etc/resolv.conf 2>&1)
     _RESOLV_ELN=$(grep "nameserver 1.1.1.1" /etc/resolv.conf 2>&1)
     _RESOLV_EGT=$(grep "nameserver 8.8.8.8" /etc/resolv.conf 2>&1)
+    _RESOLV_NIN=$(grep "nameserver 9.9.9.9" /etc/resolv.conf 2>&1)
     if [[ "${_RESOLV_LOC}" =~ "nameserver 127.0.0.1" ]] \
       && [[ "${_RESOLV_ELN}" =~ "nameserver 1.1.1.1" ]] \
-      && [[ "${_RESOLV_EGT}" =~ "nameserver 8.8.8.8" ]]; then
+      && [[ "${_RESOLV_EGT}" =~ "nameserver 8.8.8.8" ]] \
+      && [[ "${_RESOLV_EGT}" =~ "nameserver 9.9.9.9" ]]; then
       _DO_NOTHING=YES
     else
       rm -f /etc/resolv.conf
       echo "nameserver 127.0.0.1" > /etc/resolv.conf
-      if [ -e "${_vBs}/resolv.conf.vanilla" ]; then
-        cat ${_vBs}/resolv.conf.vanilla >> /etc/resolv.conf
-      fi
       echo "nameserver 1.1.1.1" >> /etc/resolv.conf
-      echo "nameserver 1.0.0.1" >> /etc/resolv.conf
       echo "nameserver 8.8.8.8" >> /etc/resolv.conf
-      echo "nameserver 8.8.4.4" >> /etc/resolv.conf
+      echo "nameserver 9.9.9.9" >> /etc/resolv.conf
       [ -e "/etc/resolvconf/update.d/unbound" ] && chmod -x /etc/resolvconf/update.d/unbound
       killall -9 unbound &> /dev/null
       _mrun "service unbound restart" 2> /dev/null
@@ -520,13 +517,9 @@ _dns_unbound_install_upgrade() {
   if [ ! -f "/etc/resolv.conf" ]; then
     rm -f /etc/resolv.conf
     echo "nameserver 127.0.0.1" > /etc/resolv.conf
-    if [ -e "${_vBs}/resolv.conf.vanilla" ]; then
-      cat ${_vBs}/resolv.conf.vanilla >> /etc/resolv.conf
-    fi
     echo "nameserver 1.1.1.1" >> /etc/resolv.conf
-    echo "nameserver 1.0.0.1" >> /etc/resolv.conf
     echo "nameserver 8.8.8.8" >> /etc/resolv.conf
-    echo "nameserver 8.8.4.4" >> /etc/resolv.conf
+    echo "nameserver 9.9.9.9" >> /etc/resolv.conf
     [ -e "/etc/resolvconf/update.d/unbound" ] && chmod -x /etc/resolvconf/update.d/unbound
     killall -9 unbound &> /dev/null
     _mrun "service unbound restart" 2> /dev/null
