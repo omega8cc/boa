@@ -342,9 +342,9 @@ _csf_lfd_install_upgrade() {
   if [[ "${_XTRAS_LIST}" =~ "ALL" ]] \
     || [[ "${_XTRAS_LIST}" =~ "CSF" ]] \
     || [ "${_CSF_CLSTR}" = "YES" ]; then
+    _check_system_manufacturer
     if [ ! -e "/run/cloud_vhost.pid" ] \
-      && [ ! -e "/run/linode_vm.pid" ] \
-      && [ ! -e "/run/hetzner_vm.pid" ]; then
+      && [ ! -e "/run/${_SYS_MANUFACTURER_LC}_vm.pid" ]; then
       if [ ! -e "/usr/sbin/csf" ]; then
         echo " "
         if _prompt_yes_no "Do you want to install csf/lfd firewall?" ; then

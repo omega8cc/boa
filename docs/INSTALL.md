@@ -1,9 +1,40 @@
 # Preparations Before Installing BOA
 
-- Add your SSH keys to your VPS root-- BOA will disable password for root over SSH.
+- Make sure that IPv6 is not activated -- it's not supported yet, so BOA will disable it anyway.
+- Add your SSH keys to your VPS root -- BOA will disable password for root over SSH.
 - BOA requires minimal, supported OS, with no web/sql services installed.
 - Don't run any installer via sudo. You must be logged in as root directly.
 - Don't run any system updates or modifications before installing BOA.
+- Please read [docs/NOTES.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/NOTES.md) for other related details.
+
+# IMPORTANT INFORMATION ON BOA INSTALLATION PROCEDURES CHAIN
+
+   **Don't reboot your VM until all procedures are finalized, including post-install auto-upgrades.**
+
+   When invoked via `boa` command, it will run installation is several steps, automatically:
+
+   1. The `autoinit` phase to upgrade vendor provided OS to Devuan Daedalus
+   2. The `barracuda install` phase to install BOA system and Aegir Master
+   3. The `barracuda upgrade` phase to complete system installation
+   4. The `octopus install` phase to install your first Aegir Satellite
+   5. The `octopus upgrade` phase to enable Let's Encrypt certificate for your Aegir
+   6. The `barracuda upgrade` phase again to install CSF firewall and DNS cache
+
+   **NOTE!** While steps 2-5 will be visible to you in your SSH terminal (unless you will use silent mode explained further below), the last step will happen within 30 minutes launched from cron in the background, so it's important that you don't reboot and don't use the installed Aegir before the last step is complete.
+
+   **But how you will know it's ready?** Once all procedures are finalized you will see **three (3) lines** reported by this command:
+
+   ```sh
+   boa info | grep -c Percona
+   ```
+
+   **REMEMBER: don't reboot your VM until all procedures are finalized, including post-install auto-upgrades.**
+
+   Now it's safe and recommended to reboot your server to make sure it's running correct installed Linux kernel supplied by Devuan -- either via your vendor control panel or directly via accelerated system reboot:
+
+   ```sh
+   boa reboot
+   ```
 
 # Installing BOA System on a Public Server/VPS
 
@@ -13,9 +44,12 @@
 
    **NOTE!** You shouldn't use anything like "mydomain.org" as your hostname. It should be some **subdomain**, like "server.mydomain.org".
 
-   You **don't** need to configure your hostname (on the server) before running BOA installer, since BOA will do that for you, automatically.
+2. Configure your permanent hostname on the server before running BOA installer, even if BOA will do that for you, automatically. We recommend this step in case the host/vendor VM enforces some placeholder hostname via cloud-init or other tools on reboot.
 
-2. Please read [docs/NOTES.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/NOTES.md) for other related details.
+   ```sh
+   hostname -b server.mydomain.org
+   echo server.mydomain.org > /etc/hostname
+   ```
 
 3. Download and run BOA Meta Installers.
 
@@ -147,6 +181,26 @@
      ```
 
    **NOTE:** Since BOA no longer installs all bundled Ægir platforms during initial system installation, you will need to add some keywords to `~/static/control/platforms.info` and run Octopus upgrade to have these platforms added as explained in the docs you can find in the file `~/static/control/README.txt` within your Octopus account or online at [docs/PLATFORMS.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/PLATFORMS.md)
+
+# Post-install auto-upgrade and reboot
+
+   **Don't reboot your VM until all procedures are finalized, including post-install auto-upgrades.**
+
+   When invoked via `boa` command, it will run installation is several steps, automatically.
+
+   **But how you will know it's ready?** Once all procedures are finalized you will see **three (3) lines** reported by this command:
+
+   ```sh
+   boa info | grep -c Percona
+   ```
+
+   **REMEMBER: don't reboot your VM until all procedures are finalized, including post-install auto-upgrades.**
+
+   Now it's safe and recommended to reboot your server to make sure it's running correct installed Linux kernel supplied by Devuan -- either via your vendor control panel or directly via accelerated system reboot:
+
+   ```sh
+   boa reboot
+   ```
 
 # Installing More Octopus Instances
 
