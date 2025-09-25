@@ -4762,6 +4762,8 @@ if [ "$(id -u)" -eq 0 ]; then
 
   if [ -x "/usr/sbin/unbound" ] \
     && [ ! -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
+    touch /run/wait-unbound.pid
+    sleep 3
     mkdir -p /etc/resolvconf/run/interface
     echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.unbound
     resolvconf -u &> /dev/null
@@ -4772,6 +4774,8 @@ if [ "$(id -u)" -eq 0 ]; then
     service unbound restart &> /dev/null
     wait
     unbound-control reload &> /dev/null
+    sleep 3
+    rm -f /run/wait-unbound.pid
   fi
 
   if [ ! -e "/data/all/cpuinfo" ]; then
