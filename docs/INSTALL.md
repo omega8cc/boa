@@ -5,7 +5,7 @@
 - BOA requires minimal, supported OS, with no web/sql services installed.
 - Don't run any installer via sudo. You must be logged in as root directly.
 - Don't run any system updates or modifications before installing BOA.
-- Please read [docs/NOTES.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/NOTES.md) for other related details.
+- Please read [docs/NOTES.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/NOTES.md) for other related details.
 
 # IMPORTANT INFORMATION ON BOA INSTALLATION PROCEDURES CHAIN
 
@@ -180,7 +180,7 @@
      boa in-lts public server.mydomain.org my@email system
      ```
 
-   **NOTE:** Since BOA no longer installs all bundled Ægir platforms during initial system installation, you will need to add some keywords to `~/static/control/platforms.info` and run Octopus upgrade to have these platforms added as explained in the docs you can find in the file `~/static/control/README.txt` within your Octopus account or online at [docs/PLATFORMS.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/PLATFORMS.md)
+   **NOTE:** Since BOA no longer installs all bundled Ægir platforms during initial system installation, you will need to add some keywords to `~/static/control/platforms.info` and run Octopus upgrade to have these platforms added as explained in the docs you can find in the file `~/static/control/README.txt` within your Octopus account or online at [docs/PLATFORMS.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/PLATFORMS.md)
 
 # Post-install auto-upgrade and reboot
 
@@ -218,7 +218,7 @@ boa in-octopus my@email o2 lts silent
 
 # Installing BOA System on Localhost (needs testing)
 
-1. Please read [docs/NOTES.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/NOTES.md).
+1. Please read [docs/NOTES.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/NOTES.md).
 
 2. Download and run BOA Meta Installers.
 
