@@ -1084,7 +1084,7 @@ _ssl_gen() {
   elif [ ! -e "/var/xdrago/conf/ssl_proxy.conf" ]; then
     echo "file /var/xdrago/conf/ssl_proxy.conf does not exist"
     exit 1
-  elif [ ! -e "/var/aegir/config/includes/nginx_vhost_common.conf" ]; then
+  elif [ ! -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     echo "vms ${_vms} aegir master not ready"
     exit 1
   else

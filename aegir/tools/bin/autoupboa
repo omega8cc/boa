@@ -475,7 +475,7 @@ _status_vm_postinstall() {
   fi
 }
 
-if [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
+if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
   && [ -e "/data/u" ] \
   && [ -e "/var/xdrago" ]; then
   _status_vm_postinstall
@@ -595,7 +595,7 @@ if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
   _apt_clean_update
 fi
 
-if [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ]; then
+if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
   if [ ! -e "${_LOCK_DOS_CONFIG}" ]; then
     if [ ! -e "${_LOCK_DOS_PID}" ]; then
       # Update variables
@@ -791,7 +791,7 @@ if [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ]; then
     [ -e "/root/.run.example.report.cnf" ] && rm -f /root/.run.example.report.cnf
     [ -e "/var/xdrago/weekly.sh" ] && rm -f /var/xdrago/weekly.sh
     if [ ! -e "/root/.dev.server.cnf" ] \
-      && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
+      && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
       && [ -e "/data/all/000" ]; then
       [ -e "/root/.debug-boa-installer.cnf" ] && rm -f /root/.debug-boa-installer.cnf
       [ -e "/root/.debug-octopus-installer.cnf" ] && rm -f /root/.debug-octopus-installer.cnf
