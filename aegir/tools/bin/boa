@@ -35,6 +35,8 @@ if [[ "${_VM_TEST}" =~ "-beng" ]]; then
 fi
 _INITINS="/usr/bin/apt-get ${_aptAllow} -y install"
 
+_DEBUG_MODE=$([ -e "/root/.debug-barracuda-installer.cnf" ] && echo "YES" || echo "NO")
+
 ###
 ### Avoid too many questions
 ###
