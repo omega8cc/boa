@@ -1,6 +1,7 @@
 # Preparations Before Installing BOA
 
 - Add your SSH keys to your VPS root-- BOA will disable password for root over SSH.
+- Make sure that IPv6 is not activated -- it's not supported yet, so BOA will disable it anyway.
 - BOA requires minimal, supported OS, with no web/sql services installed.
 - Don't run any installer via sudo. You must be logged in as root directly.
 - Don't run any system updates or modifications before installing BOA.
