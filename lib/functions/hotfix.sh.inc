@@ -7,13 +7,13 @@ _fix_core_dgd() {
   # https://www.drupal.org/SA-CORE-2014-005
   # sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g" /root/.barracuda.cnf
   if [ -e "/var/xdrago" ] \
-    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
+    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
     && [ ! -e "${_saPatch}" ]; then
     mkdir -p /var/xdrago/conf
     cp -a ${_bldPth}/aegir/patches/7-core/${_saCoreS}.patch -o ${_saPatch}
   fi
   if [ -e "/var/xdrago" ] \
-    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
+    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
     && [ -e "${_saPatch}" ] \
     && [ ! -e "${_pthLog}/${_saCoreN}-fixed-d7.log" ]; then
     if [ -d "/data/all/000/core" ]; then
@@ -34,7 +34,7 @@ _fix_core_dgd() {
   fi
   # https://www.drupal.org/SA-CORE-2014-005 for ancient platforms
   if [ -e "/var/xdrago" ] \
-    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
+    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
     && [ -e "${_saPatch}" ]; then
     if [ -d "/data/all" ] \
       && [ ! -e "${_pthLog}/legacy-${_saCoreN}-fixed-d7.log" ]; then
@@ -67,7 +67,7 @@ _fix_core_dgd() {
   fi
   # https://www.drupal.org/SA-CORE-2014-005 for custom platforms
   if [ -e "/var/xdrago" ] \
-    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
+    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
     && [ -e "${_saPatch}" ]; then
     if [ -d "/data/u" ] \
       && [ ! -e "${_pthLog}/batch-custom-${_saCoreN}-fixed-d7.log" ]; then
