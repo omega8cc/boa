@@ -43,6 +43,10 @@ _fix_dns_settings() {
       cp -a ${_vBs}/resolv.conf.tmp /etc/resolv.conf
     fi
   fi
+  if [ -x "/usr/sbin/unbound-control" ] \
+    && [ -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
+    unbound-control reload &> /dev/null
+  fi
 }
 
 #
@@ -499,7 +503,7 @@ _dns_unbound_install_upgrade() {
     if [[ "${_RESOLV_LOC}" =~ "nameserver 127.0.0.1" ]] \
       && [[ "${_RESOLV_ELN}" =~ "nameserver 1.1.1.1" ]] \
       && [[ "${_RESOLV_EGT}" =~ "nameserver 8.8.8.8" ]] \
-      && [[ "${_RESOLV_EGT}" =~ "nameserver 9.9.9.9" ]]; then
+      && [[ "${_RESOLV_NIN}" =~ "nameserver 9.9.9.9" ]]; then
       _DO_NOTHING=YES
     else
       rm -f /etc/resolv.conf

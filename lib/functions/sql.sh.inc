@@ -52,12 +52,14 @@ _if_sql_keyring_apt_update() {
         curl -fsSL ${_urlDev}/percona-key.gpg | ${_GPG} --dearmor -o /etc/apt/keyrings/percona.gpg
       fi
       chmod 644 /etc/apt/keyrings/percona.gpg
-      if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt 5 ]; then
+      _CNT=$(pgrep -fc "[d]irmngr")
+      if (( _CNT > 5 )); then
         kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
         echo "$(date) Too many dirmngr processes killed" >> \
           /var/log/boa/dirmngr-count.kill.log
       fi
-      if [ `ps aux | grep -v "grep" | grep --count "gpg-agent"` -gt 5 ]; then
+      _CNT=$(pgrep -fc "[g]pg-agent")
+      if (( _CNT > 5 )); then
         kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
         echo "$(date) Too many gpg-agent processes killed" >> \
           /var/log/boa/gpg-agent-count.kill.log
