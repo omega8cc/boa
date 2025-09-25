@@ -82,8 +82,7 @@ by the BOA install and upgrade tools exclusively.
  @=> /root/.use.local.nameservers.cnf
 
   This file, if exists, allows to use original (or custom) nameservers provided
-  on the system install by your hosting provider. It will auto-configure
-  unbound server to use these IPs instead of public Cloudflare DNS servers.
+  on the system install by your hosting provider.
 
   It depends on existence of another file with custom name servers to use
   listed, one per line: /var/backups/resolv.conf.vanilla -- for example:
@@ -95,8 +94,8 @@ by the BOA install and upgrade tools exclusively.
 
  @=> /root/.use.default.nameservers.cnf
 
-  This file, if exists, allows to revert unbound cache server configuration
-  to use Cloudflare DNS again (which is BOA default).
+  This file, if exists, allows to revert BOA DNS cache configuration
+  to use Unbound server and Cloudflare/Cleaner/Google DNS again (default).
 
   Note that to restore default DNS cache configuration on barracuda upgrade,
   you must delete the /root/.use.local.nameservers.cnf file, if still exists.

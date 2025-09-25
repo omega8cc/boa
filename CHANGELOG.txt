@@ -721,7 +721,7 @@
     * Launch daily.sh automatically after barracuda upgrade
     * Lshell 0.9.18.10
     * MySecureShell master-29-06-2024
-    * New Relic 11.0.0.13
+    * New Relic 19.9.9.93
     * New Relic no longer supports PHP 5.6
     * Nginx 1.27.0
     * Nginx: http2 is now a separate directive
