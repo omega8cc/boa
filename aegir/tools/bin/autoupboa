@@ -446,7 +446,14 @@ _generic_vm_postinstall() {
   _is_protected_run
   if [ "${_protectedRun}" = "FALSE" ]; then
     rm -f /run/${_SYS_MANUFACTURER_LC}_vm.pid
-    nohup /opt/local/bin/barracuda up-${_tRee} system noscreen > /dev/null 2>&1 &
+    _TODAY=$(date +%y%m%d)
+    _TODAY=${_TODAY//[^0-9]/}
+    _NOW=$(date +%y%m%d-%H%M%S)
+    _NOW=${_NOW//[^0-9-]/}
+    _vBs="/var/backups"
+    _LOG_UP_DIR="${_vBs}/reports/up/$(basename "$0")/${_TODAY}"
+    _UP_BARRACUDA_LOG="${_LOG_UP_DIR}/$(basename "$0")-up-barracuda-${_NOW}.log"
+    nohup /opt/local/bin/barracuda up-${_tRee} system noscreen >${_UP_BARRACUDA_LOG} 2>&1 &
   fi
 }
 

@@ -23,9 +23,11 @@ _pthIncB="lib/settings/${_filIncB}"
 _pthIncO="lib/settings/${_filIncO}"
 _vBs="/var/backups"
 
-_LOG_DIR="${_vBs}/reports/in/$(basename "$0")/${_TODAY}"
-_IN_BARRACUDA_LOG="${_LOG_DIR}/$(basename "$0")-in-barracuda-${_NOW}.log"
-_IN_OCTOPUS_LOG="${_LOG_DIR}/$(basename "$0")-in-octopus-${_NOW}.log"
+_LOG_IN_DIR="${_vBs}/reports/in/$(basename "$0")/${_TODAY}"
+_IN_BARRACUDA_LOG="${_LOG_IN_DIR}/$(basename "$0")-in-barracuda-${_NOW}.log"
+_IN_OCTOPUS_LOG="${_LOG_IN_DIR}/$(basename "$0")-in-octopus-${_NOW}.log"
+_LOG_UP_DIR="${_vBs}/reports/up/$(basename "$0")/${_TODAY}"
+
 _VMFAMILY=XEN
 _VM_TEST="$(uname -a)"
 if [[ "${_VM_TEST}" =~ "-beng" ]]; then
@@ -1190,7 +1192,8 @@ _init_start() {
   else
     touch /run/boa_run.pid
     touch /run/boa_wait.pid
-    mkdir -p ${_LOG_DIR}
+    mkdir -p ${_LOG_IN_DIR}
+    mkdir -p ${_LOG_UP_DIR}
     cd ${_vBs}
     rm -f ${_vBs}/*.sh.cnf*
     rm -f ${_vBs}/BARRACUDA.sh*
@@ -1513,10 +1516,10 @@ _init_setup() {
       echo
       echo "Time for a quick barracuda system upgrade to complete installation"
       echo
-      /opt/local/bin/barracuda up-${_tRee} system noscreen
+      /opt/local/bin/barracuda up-${_tRee} system noscreen 2>&1 | tee ${_UP_BARRACUDA_LOG}
       wait
     else
-      /opt/local/bin/barracuda up-${_tRee} system noscreen > /dev/null 2>&1
+      /opt/local/bin/barracuda up-${_tRee} system noscreen >${_UP_BARRACUDA_LOG} 2>&1
       wait
     fi
   fi
@@ -1575,11 +1578,14 @@ _init_setup() {
     echo "Bye!"
     echo
     if [ ! -e "/root/.dont.upgrade.octopus.on.install.cnf" ]; then
+      _NOW=$(date +%y%m%d-%H%M%S)
+      _NOW=${_NOW//[^0-9-]/}
+      _UP_OCTOPUS_LOG="${_LOG_UP_DIR}/$(basename "$0")-up-octopus-${_NOW}.log"
       rm -rf /data/disk/${_usEr}/.tmp/cache
       if [ "${_OCTOPUS_ONLY}" = "YES" ]; then
-        nohup /opt/local/bin/octopus up-${_tRee} ${_usEr} force log noscreen > /dev/null 2>&1 &
+        nohup /opt/local/bin/octopus up-${_tRee} ${_usEr} force log noscreen >${_UP_OCTOPUS_LOG} 2>&1 &
       else
-        /opt/local/bin/octopus up-${_tRee} ${_usEr} force log noscreen > /dev/null 2>&1
+        /opt/local/bin/octopus up-${_tRee} ${_usEr} force log noscreen 2>&1 | tee ${_UP_OCTOPUS_LOG}
       fi
     fi
     sleep 1
