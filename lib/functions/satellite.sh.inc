@@ -4218,25 +4218,11 @@ _satellite_if_running_as_root_octopus() {
   if [ "$(id -u)" -eq 0 ]; then
     chmod a+w /dev/null
     _check_system_manufacturer
-    if dmidecode -s system-manufacturer | grep -i 'Linode' &> /dev/null; then
-      if  [ ! -e "/var/aegir/drush" ] \
+    if [ -n "${_SYS_MANUFACTURER_LC}" ]; then
+      if  [ ! -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
         || [ ! -e "/data/u" ] \
         || [ ! -e "/var/xdrago" ]; then
-        [ ! -e "/run/linode_vm_postinstall.pid" ] && touch /run/linode_vm.pid
-      fi
-    elif dmidecode -s system-manufacturer | grep -i 'Hetzner' &> /dev/null; then
-      if  [ ! -e "/var/aegir/drush" ] \
-        || [ ! -e "/data/u" ] \
-        || [ ! -e "/var/xdrago" ]; then
-        [ ! -e "/run/hetzner_vm_postinstall.pid" ] && touch /run/hetzner_vm.pid
-      fi
-    else
-      if [ -n "${_SYS_MANUFACTURER_LC}" ]; then
-        if  [ ! -e "/var/aegir/drush" ] \
-          || [ ! -e "/data/u" ] \
-          || [ ! -e "/var/xdrago" ]; then
-          [ ! -e "/run/${_SYS_MANUFACTURER_LC}_vm_postinstall.pid" ] && touch /run/${_SYS_MANUFACTURER_LC}_vm.pid
-        fi
+        [ ! -e "/run/${_SYS_MANUFACTURER_LC}_vm_postinstall.pid" ] && touch /run/${_SYS_MANUFACTURER_LC}_vm.pid
       fi
     fi
   else
@@ -5408,7 +5394,8 @@ _satellite_child_b_aegir_build() {
         --root=${_HM_ROOT} \
         --script_user=${_USER} \
         --web_group=${_WEBG} \
-        --version=${_AEGIR_VERSION} -y -d
+        --version=${_AEGIR_VERSION} -y -d \
+      2>&1 | tee ${_ROOT}/log/install.log
     else
       ${_DRUSHCMD} hostmaster-install ${_DOMAIN} \
         --aegir_db_host=${_THIS_DB_HOST} \
@@ -5422,7 +5409,8 @@ _satellite_child_b_aegir_build() {
         --root=${_HM_ROOT} \
         --script_user=${_USER} \
         --web_group=${_WEBG} \
-        --version=${_AEGIR_VERSION} -y >${_ROOT}/log/install.log 2>&1
+        --version=${_AEGIR_VERSION} -y \
+      >${_ROOT}/log/install.log 2>&1
     fi
     rm -rf ${_HM_ROOT}/profiles/{default,standard,minimal,testing}
     cd ${_HM_ROOT}

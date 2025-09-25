@@ -951,14 +951,17 @@ EOFMYSQL
       su -s /bin/bash - aegir -c "/bin/bash ${AegirSetupM} ${_THIS_FRONT} \
         --http_service_type='nginx' \
         --aegir_db_host='${_THIS_DB_HOST}' \
-        --client_email='${_MY_EMAIL}' -y -d"
+        --client_email='${_MY_EMAIL}' -y -d" \
+      2>&1 | tee /var/aegir/install.log
     else
       su -s /bin/bash - aegir -c "/bin/bash ${AegirSetupM} ${_THIS_FRONT} \
         --http_service_type='nginx' \
         --aegir_db_host='${_THIS_DB_HOST}' \
-        --client_email='${_MY_EMAIL}' -y >/var/aegir/install.log 2>&1"
+        --client_email='${_MY_EMAIL}' -y" \
+      >/var/aegir/install.log 2>&1
     fi
     wait
+
     if [ -e "/opt/tmp/status-AegirSetupM-FAIL" ]; then
       _msg "FATAL ERROR: AegirSetupM installer failed"
       _msg "FATAL ERROR: Aborting Barracuda installer NOW!"
@@ -967,7 +970,7 @@ EOFMYSQL
       touch /opt/tmp/status-Barracuda-FAIL
       _clean_pid_exit _aegir_master_install_upgrade_d
     fi
-    if [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ]; then
+    if [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ]; then
       _THIS_HM_ROOT=$(cat /var/aegir/.drush/hostmaster.alias.drushrc.php \
         | grep "root'" \
         | cut -d: -f2 \
@@ -998,7 +1001,7 @@ EOFMYSQL
     sleep 5
     su -s /bin/bash - aegir -c "drush8 @hostmaster hosting-tasks --force" &> /dev/null
     wait
-    if [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ]; then
+    if [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ]; then
       _THIS_HM_ROOT=$(cat /var/aegir/.drush/hostmaster.alias.drushrc.php \
         | grep "root'" \
         | cut -d: -f2 \
