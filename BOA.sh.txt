@@ -47,7 +47,7 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 export _tRee=dev
 export _xSrl=570devT07
 export _rLsn="BOA-5.7.12"
-export _bTs=570v41
+export _bTs=570v43
 
 ###
 ### Avoid too many questions
@@ -207,6 +207,10 @@ _fix_dns_settings() {
       rm -f /etc/resolv.conf
       cp -a ${_vBs}/resolv.conf.tmp /etc/resolv.conf
     fi
+  fi
+  if [ -x "/usr/sbin/unbound-control" ] \
+    && [ -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
+    unbound-control reload &> /dev/null
   fi
 }
 
@@ -4220,12 +4224,6 @@ _if_update_boa_key_tools_only() {
   wait
 
   _check_dns_settings
-
-  if [ -x "/usr/sbin/unbound-control" ] \
-    && [ -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
-    unbound-control reload &> /dev/null
-  fi
-
   _if_reinstall_curl
 
   _CURL_TEST=$(curl -L -k -s \

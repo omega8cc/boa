@@ -43,6 +43,10 @@ _fix_dns_settings() {
       cp -a ${_vBs}/resolv.conf.tmp /etc/resolv.conf
     fi
   fi
+  if [ -x "/usr/sbin/unbound-control" ] \
+    && [ -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
+    unbound-control reload &> /dev/null
+  fi
 }
 
 #
