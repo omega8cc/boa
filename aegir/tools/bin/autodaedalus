@@ -137,7 +137,7 @@ _msg() {
 }
 
 _check_manufacturer_compatibility() {
-  # Install dmidecode of not present
+  # Install dmidecode if not present
   if ! command -v dmidecode &> /dev/null; then
     /usr/bin/apt-get update --allow-insecure-repositories &> /dev/null
     ${_INITINS} dmidecode &> /dev/null
@@ -319,7 +319,7 @@ _if_remove_cloud_utils() {
   fi
 }
 if [ "${_VMFAMILY}" != "AWS" ]; then
-  [ -e "/root/.mode.selected.full.info" ] && _if_remove_cloud_utils
+  [ -e "/root/.mode.selected.full.cnf" ] && _if_remove_cloud_utils
 fi
 
 _if_clean_boa_env() {

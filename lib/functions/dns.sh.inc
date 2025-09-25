@@ -866,7 +866,7 @@ EOF
     _THISHOST="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
     _THISHOST=${_THISHOST//[^a-zA-Z0-9-.]/}
     _THISHOST=$(echo -n ${_THISHOST} | tr A-Z a-z 2>&1)
-    if [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ]; then
+    if [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ]; then
       _THIS_FRONT=$(cat /var/aegir/.drush/hostmaster.alias.drushrc.php \
         | grep "uri'" \
         | cut -d: -f2 \
