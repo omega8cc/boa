@@ -2,7 +2,7 @@
 
 export HOME=/root
 export SHELL=/bin/bash
-export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 export _tRee=pro
 
 _aptAllow="--allow-unauthenticated"
@@ -152,10 +152,10 @@ _if_reinstall_curl_src() {
     apt-get install libssl-dev ${_aptYesUnth} -qq 2> /dev/null
     apt-get install libc-client2007e libc-client2007e-dev ${_aptYesUnth} -qq 2> /dev/null
     apt-get build-dep curl -y 2> /dev/null
-    if [ ! -e "/var/aegir/drush" ]; then
+    if [ ! -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
       apt-get install curl --reinstall ${_aptYesUnth} -qq 2> /dev/null
     fi
-    if [ -e "/var/aegir/drush" ]; then
+    if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
       echo "INFO: Installing curl from sources..."
       mkdir -p /var/opt
       rm -rf /var/opt/curl*

@@ -2,7 +2,7 @@
 
 export HOME=/root
 export SHELL=/bin/bash
-export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 export _tRee=pro
 export _xSrl=570proT07
 
@@ -424,7 +424,6 @@ _check_system_manufacturer() {
     echo "_SYS_MANUFACTURER_LC: ${_SYS_MANUFACTURER_LC}"
   fi
 }
-_check_system_manufacturer
 
 _is_protected_run() {
   _protectedRun=FALSE
@@ -446,65 +445,41 @@ _is_protected_run() {
 _generic_vm_postinstall() {
   _is_protected_run
   if [ "${_protectedRun}" = "FALSE" ]; then
-    if [ -n "${_SYS_MANUFACTURER_LC}" ]; then
-      if [ -e "/var/aegir/drush" ] \
-        && [ -e "/data/u" ] \
-        && [ -e "/var/xdrago" ]; then
-        if [ "$(boa info | grep -c Percona)" -ge 2 ]; then
-          touch /run/${_SYS_MANUFACTURER_LC}_vm_postinstall.pid
-          chattr +i /run/${_SYS_MANUFACTURER_LC}_vm_postinstall.pid
-          rm -f /run/${_SYS_MANUFACTURER_LC}_vm.pid
-          nohup /opt/local/bin/barracuda up-${_tRee} system noscreen > /dev/null 2>&1 &
-        fi
-      fi
+    rm -f /run/${_SYS_MANUFACTURER_LC}_vm.pid
+    _TODAY=$(date +%y%m%d)
+    _TODAY=${_TODAY//[^0-9]/}
+    _NOW=$(date +%y%m%d-%H%M%S)
+    _NOW=${_NOW//[^0-9-]/}
+    _vBs="/var/backups"
+    _LOG_UP_DIR="${_vBs}/reports/up/$(basename "$0")/${_TODAY}"
+    _UP_BARRACUDA_LOG="${_LOG_UP_DIR}/$(basename "$0")-up-barracuda-${_NOW}.log"
+    mkdir -p ${_LOG_UP_DIR}
+    nohup /opt/local/bin/barracuda up-${_tRee} system noscreen >${_UP_BARRACUDA_LOG} 2>&1 &
+  fi
+}
+
+_status_vm_postinstall() {
+  _check_system_manufacturer
+  if [ "$(boa info | grep -c Percona)" -lt 3 ] || [ ! -e "/usr/sbin/csf" ]; then
+    _NEEDS_UPGRADE=YES
+    echo "A _NEEDS_UPGRADE is ${_NEEDS_UPGRADE}"
+    [ -n "${_SYS_MANUFACTURER_LC}" ] && _generic_vm_postinstall
+  else
+    _NEEDS_UPGRADE=NO
+    echo "B _NEEDS_UPGRADE is ${_NEEDS_UPGRADE}"
+    if [ ! -e "/run/${_SYS_MANUFACTURER_LC}_vm.pid" ] \
+      && [ ! -e "/run/${_SYS_MANUFACTURER_LC}_vm_postinstall.pid" ]; then
+      touch /run/${_SYS_MANUFACTURER_LC}_vm_postinstall.pid
+      chattr +i /run/${_SYS_MANUFACTURER_LC}_vm_postinstall.pid
     fi
   fi
 }
-if [ -n "${_SYS_MANUFACTURER_LC}" ]; then
-  if [[ ! "${_SYS_MANUFACTURER_LC}" =~ "linode" ]] && [[ ! "${_SYS_MANUFACTURER_LC}" =~ "hetzner" ]]; then
-    if [ -e "/run/${_SYS_MANUFACTURER_LC}_vm.pid" ] && [ ! -e "/run/${_SYS_MANUFACTURER_LC}_vm_postinstall.pid" ]; then
-      _generic_vm_postinstall
-    fi
-  fi
+
+if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
+  && [ -e "/data/u" ] \
+  && [ -e "/var/xdrago" ]; then
+  _status_vm_postinstall
 fi
-
-_linode_vm_postinstall() {
-  _is_protected_run
-  if [ "${_protectedRun}" = "FALSE" ]; then
-    if dmidecode -s system-manufacturer | grep -i 'Linode' &> /dev/null; then
-      if [ -e "/var/aegir/drush" ] \
-        && [ -e "/data/u" ] \
-        && [ -e "/var/xdrago" ]; then
-        if [ "$(boa info | grep -c Percona)" -ge 2 ]; then
-          touch /run/linode_vm_postinstall.pid
-          chattr +i /run/linode_vm_postinstall.pid
-          rm -f /run/linode_vm.pid
-          nohup /opt/local/bin/barracuda up-${_tRee} system noscreen > /dev/null 2>&1 &
-        fi
-      fi
-    fi
-  fi
-}
-[ -e "/run/linode_vm.pid" ] && [ ! -e "/run/linode_vm_postinstall.pid" ] && _linode_vm_postinstall
-
-_hetzner_vm_postinstall() {
-  _is_protected_run
-  if [ "${_protectedRun}" = "FALSE" ]; then
-    if dmidecode -s system-manufacturer | grep -i 'Hetzner' &> /dev/null; then
-      if [ -e "/var/aegir/drush" ] \
-        && [ -e "/data/u" ] \
-        && [ -e "/var/xdrago" ]; then
-        if [ "$(boa info | grep -c Percona)" -ge 2 ]; then
-          touch /run/hetzner_vm_postinstall.pid
-          chattr +i /run/hetzner_vm_postinstall.pid
-          rm -f /run/hetzner_vm.pid
-          nohup /opt/local/bin/barracuda up-${_tRee} system noscreen > /dev/null 2>&1 &
-        fi
-      fi
-    fi
-  fi
-}
-[ -e "/run/hetzner_vm.pid" ] && [ ! -e "/run/hetzner_vm_postinstall.pid" ] && _hetzner_vm_postinstall
 
 _crontab_update() {
   if [ -e "/etc/crontab" ]; then
@@ -620,7 +595,7 @@ if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
   _apt_clean_update
 fi
 
-if [ -e "/var/aegir/drush" ]; then
+if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
   if [ ! -e "${_LOCK_DOS_CONFIG}" ]; then
     if [ ! -e "${_LOCK_DOS_PID}" ]; then
       # Update variables
@@ -816,7 +791,7 @@ if [ -e "/var/aegir/drush" ]; then
     [ -e "/root/.run.example.report.cnf" ] && rm -f /root/.run.example.report.cnf
     [ -e "/var/xdrago/weekly.sh" ] && rm -f /var/xdrago/weekly.sh
     if [ ! -e "/root/.dev.server.cnf" ] \
-      && [ -e "/var/aegir/drush" ] \
+      && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
       && [ -e "/data/all/000" ]; then
       [ -e "/root/.debug-boa-installer.cnf" ] && rm -f /root/.debug-boa-installer.cnf
       [ -e "/root/.debug-octopus-installer.cnf" ] && rm -f /root/.debug-octopus-installer.cnf
@@ -893,40 +868,40 @@ if [ -e "/var/aegir/drush" ]; then
   ### Fix for iptables paths backward compatibility
   ###
   if [ -x "/sbin/iptables" ] && [ ! -e "/usr/sbin/iptables" ]; then
-    ln -s /sbin/iptables /usr/sbin/iptables
+    ln -sfn /sbin/iptables /usr/sbin/iptables
   fi
   if [ -x "/usr/sbin/iptables" ] && [ ! -e "/sbin/iptables" ]; then
-    ln -s /usr/sbin/iptables /sbin/iptables
+    ln -sfn /usr/sbin/iptables /sbin/iptables
   fi
   if [ -x "/sbin/iptables-save" ] && [ ! -e "/usr/sbin/iptables-save" ]; then
-    ln -s /sbin/iptables-save /usr/sbin/iptables-save
+    ln -sfn /sbin/iptables-save /usr/sbin/iptables-save
   fi
   if [ -x "/usr/sbin/iptables-save" ] && [ ! -e "/sbin/iptables-save" ]; then
-    ln -s /usr/sbin/iptables-save /sbin/iptables-save
+    ln -sfn /usr/sbin/iptables-save /sbin/iptables-save
   fi
   if [ -x "/sbin/iptables-restore" ] && [ ! -e "/usr/sbin/iptables-restore" ]; then
-    ln -s /sbin/iptables-restore /usr/sbin/iptables-restore
+    ln -sfn /sbin/iptables-restore /usr/sbin/iptables-restore
   fi
   if [ -x "/usr/sbin/iptables-restore" ] && [ ! -e "/sbin/iptables-restore" ]; then
-    ln -s /usr/sbin/iptables-restore /sbin/iptables-restore
+    ln -sfn /usr/sbin/iptables-restore /sbin/iptables-restore
   fi
   if [ -x "/sbin/ip6tables" ] && [ ! -e "/usr/sbin/ip6tables" ]; then
-    ln -s /sbin/ip6tables /usr/sbin/ip6tables
+    ln -sfn /sbin/ip6tables /usr/sbin/ip6tables
   fi
   if [ -x "/usr/sbin/ip6tables" ] && [ ! -e "/sbin/ip6tables" ]; then
-    ln -s /usr/sbin/ip6tables /sbin/ip6tables
+    ln -sfn /usr/sbin/ip6tables /sbin/ip6tables
   fi
   if [ -x "/sbin/ip6tables-save" ] && [ ! -e "/usr/sbin/ip6tables-save" ]; then
-    ln -s /sbin/ip6tables-save /usr/sbin/ip6tables-save
+    ln -sfn /sbin/ip6tables-save /usr/sbin/ip6tables-save
   fi
   if [ -x "/usr/sbin/ip6tables-save" ] && [ ! -e "/sbin/ip6tables-save" ]; then
-    ln -s /usr/sbin/ip6tables-save /sbin/ip6tables-save
+    ln -sfn /usr/sbin/ip6tables-save /sbin/ip6tables-save
   fi
   if [ -x "/sbin/ip6tables-restore" ] && [ ! -e "/usr/sbin/ip6tables-restore" ]; then
-    ln -s /sbin/ip6tables-restore /usr/sbin/ip6tables-restore
+    ln -sfn /sbin/ip6tables-restore /usr/sbin/ip6tables-restore
   fi
   if [ -x "/usr/sbin/ip6tables-restore" ] && [ ! -e "/sbin/ip6tables-restore" ]; then
-    ln -s /usr/sbin/ip6tables-restore /sbin/ip6tables-restore
+    ln -sfn /usr/sbin/ip6tables-restore /sbin/ip6tables-restore
   fi
   ###
   ### Fix for iptables paths backward compatibility
@@ -963,7 +938,7 @@ if [ -e "/var/aegir/drush" ]; then
     if [ -f "/usr/bin/curl" ]; then
       mv -f /usr/bin/curl /usr/bin/legacy-curl
     fi
-    ln -s /usr/local/bin/curl /usr/bin/curl
+    ln -sfn /usr/local/bin/curl /usr/bin/curl
     touch /var/log/boa/.curl_ctrl.${_tRee}.${_xSrl}.pid
   fi
 

@@ -3,7 +3,7 @@
 # Environment setup
 export HOME=/root
 export SHELL=/bin/bash
-export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 
 # Function to check if the script is run as root
 _check_root() {
@@ -168,7 +168,9 @@ _graceful_action() {
   nice -n -5 service nginx reload
 
   # Restart Solr and Jetty servers if not under high traffic
-  if [ ! -e "/root/.giant_traffic.cnf" ] && [ ! -e "/root/.high_traffic.cnf" ]; then
+  if [ ! -e "/run/boa_run.pid" ] \
+    && [ ! -e "/root/.giant_traffic.cnf" ] \
+    && [ ! -e "/root/.high_traffic.cnf" ]; then
     echo "INFO: Solr and Jetty servers will be restarted in 60 seconds"
     touch /run/boa_wait.pid
     sleep 60

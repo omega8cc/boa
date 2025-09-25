@@ -7,40 +7,40 @@ _if_fix_iptables_symlinks() {
   ### Fix for iptables paths backward compatibility
   ###
   if [ -x "/sbin/iptables" ] && [ ! -e "/usr/sbin/iptables" ]; then
-    ln -s /sbin/iptables /usr/sbin/iptables
+    ln -sfn /sbin/iptables /usr/sbin/iptables
   fi
   if [ -x "/usr/sbin/iptables" ] && [ ! -e "/sbin/iptables" ]; then
-    ln -s /usr/sbin/iptables /sbin/iptables
+    ln -sfn /usr/sbin/iptables /sbin/iptables
   fi
   if [ -x "/sbin/iptables-save" ] && [ ! -e "/usr/sbin/iptables-save" ]; then
-    ln -s /sbin/iptables-save /usr/sbin/iptables-save
+    ln -sfn /sbin/iptables-save /usr/sbin/iptables-save
   fi
   if [ -x "/usr/sbin/iptables-save" ] && [ ! -e "/sbin/iptables-save" ]; then
-    ln -s /usr/sbin/iptables-save /sbin/iptables-save
+    ln -sfn /usr/sbin/iptables-save /sbin/iptables-save
   fi
   if [ -x "/sbin/iptables-restore" ] && [ ! -e "/usr/sbin/iptables-restore" ]; then
-    ln -s /sbin/iptables-restore /usr/sbin/iptables-restore
+    ln -sfn /sbin/iptables-restore /usr/sbin/iptables-restore
   fi
   if [ -x "/usr/sbin/iptables-restore" ] && [ ! -e "/sbin/iptables-restore" ]; then
-    ln -s /usr/sbin/iptables-restore /sbin/iptables-restore
+    ln -sfn /usr/sbin/iptables-restore /sbin/iptables-restore
   fi
   if [ -x "/sbin/ip6tables" ] && [ ! -e "/usr/sbin/ip6tables" ]; then
-    ln -s /sbin/ip6tables /usr/sbin/ip6tables
+    ln -sfn /sbin/ip6tables /usr/sbin/ip6tables
   fi
   if [ -x "/usr/sbin/ip6tables" ] && [ ! -e "/sbin/ip6tables" ]; then
-    ln -s /usr/sbin/ip6tables /sbin/ip6tables
+    ln -sfn /usr/sbin/ip6tables /sbin/ip6tables
   fi
   if [ -x "/sbin/ip6tables-save" ] && [ ! -e "/usr/sbin/ip6tables-save" ]; then
-    ln -s /sbin/ip6tables-save /usr/sbin/ip6tables-save
+    ln -sfn /sbin/ip6tables-save /usr/sbin/ip6tables-save
   fi
   if [ -x "/usr/sbin/ip6tables-save" ] && [ ! -e "/sbin/ip6tables-save" ]; then
-    ln -s /usr/sbin/ip6tables-save /sbin/ip6tables-save
+    ln -sfn /usr/sbin/ip6tables-save /sbin/ip6tables-save
   fi
   if [ -x "/sbin/ip6tables-restore" ] && [ ! -e "/usr/sbin/ip6tables-restore" ]; then
-    ln -s /sbin/ip6tables-restore /usr/sbin/ip6tables-restore
+    ln -sfn /sbin/ip6tables-restore /usr/sbin/ip6tables-restore
   fi
   if [ -x "/usr/sbin/ip6tables-restore" ] && [ ! -e "/sbin/ip6tables-restore" ]; then
-    ln -s /usr/sbin/ip6tables-restore /sbin/ip6tables-restore
+    ln -sfn /usr/sbin/ip6tables-restore /sbin/ip6tables-restore
   fi
   ###
   ### Fix for iptables paths backward compatibility
@@ -73,10 +73,10 @@ _if_reinstall_curl_src() {
     apt-get install libssl-dev ${_aptYesUnth} -qq 2> /dev/null
     apt-get install libc-client2007e libc-client2007e-dev ${_aptYesUnth} -qq 2> /dev/null
     apt-get build-dep curl ${_aptYesUnth} 2> /dev/null
-    if [ ! -e "/var/aegir/drush" ]; then
+    if [ ! -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
       apt-get install curl --reinstall ${_aptYesUnth} -qq 2> /dev/null
     fi
-    if [ -e "/var/aegir/drush" ]; then
+    if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
       _msg "INFO: Installing curl from sources..."
       mkdir -p /var/opt
       rm -rf /var/opt/curl*
@@ -383,30 +383,16 @@ _if_running_as_root_barracuda() {
       ${_INITINS} dmidecode &> /dev/null
     fi
     _check_system_manufacturer
+    if [ -n "${_SYS_MANUFACTURER_LC}" ]; then
+      if  [ ! -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
+        || [ ! -e "/data/u" ] \
+        || [ ! -e "/var/xdrago" ]; then
+        [ ! -e "/run/${_SYS_MANUFACTURER_LC}_vm_postinstall.pid" ] && touch /run/${_SYS_MANUFACTURER_LC}_vm.pid
+      fi
+    fi
     # Check for Amazon EC2 in the system manufacturer field
     if dmidecode -s system-manufacturer | grep -i 'Amazon EC2' &> /dev/null; then
       _VMFAMILY="AWS"
-    fi
-    if dmidecode -s system-manufacturer | grep -i 'Linode' &> /dev/null; then
-      if  [ ! -e "/var/aegir/drush" ] \
-        || [ ! -e "/data/u" ] \
-        || [ ! -e "/var/xdrago" ]; then
-        [ ! -e "/run/linode_vm_postinstall.pid" ] && touch /run/linode_vm.pid
-      fi
-    elif dmidecode -s system-manufacturer | grep -i 'Hetzner' &> /dev/null; then
-      if  [ ! -e "/var/aegir/drush" ] \
-        || [ ! -e "/data/u" ] \
-        || [ ! -e "/var/xdrago" ]; then
-        [ ! -e "/run/hetzner_vm_postinstall.pid" ] && touch /run/hetzner_vm.pid
-      fi
-    else
-      if [ -n "${_SYS_MANUFACTURER_LC}" ]; then
-        if  [ ! -e "/var/aegir/drush" ] \
-          || [ ! -e "/data/u" ] \
-          || [ ! -e "/var/xdrago" ]; then
-          [ ! -e "/run/${_SYS_MANUFACTURER_LC}_vm_postinstall.pid" ] && touch /run/${_SYS_MANUFACTURER_LC}_vm.pid
-        fi
-      fi
     fi
     _VM_TEST="$(uname -a)"
     if [[ "${_VM_TEST}" =~ "-beng" ]]; then
@@ -1706,7 +1692,7 @@ _php_if_versions_cleanup_cnf() {
       sleep 3
       _msg "HINT: the cleanup will not work until you install Octopus instance"
     fi
-    if [ ! -e "/var/aegir/drush/vendor" ]; then
+    if [ ! -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
       _AUTO_PHP_CLEANUP=NO
       _msg "ALRT: Your Aegir Master Instance looks broken!"
       sleep 8
@@ -2751,12 +2737,12 @@ _mytop_install() {
       _mrun "${_INSTAPP} libperl-dev" 2> /dev/null
       _mrun "${_INSTAPP} cpanminus" 2> /dev/null
       if [ "${_DB_V}" != "5.7" ] || [ "${_SQL_UPGRADE}" = "YES" ]; then
-        _mrun "cpanm DBD::mysql" 2> /dev/null
-        _mrun "cpanm DBI" 2> /dev/null
-        _mrun "cpanm Term::ReadKey" 2> /dev/null
+        _mrun "cpanm DBD::mysql --force" 2> /dev/null
+        _mrun "cpanm DBI --force" 2> /dev/null
+        _mrun "cpanm Term::ReadKey --force" 2> /dev/null
       else
-        _mrun "cpanm DBD::mysql@4.050" 2> /dev/null
-        _mrun "cpanm Term::ReadKey" 2> /dev/null
+        _mrun "cpanm DBD::mysql@4.050 --force" 2> /dev/null
+        _mrun "cpanm Term::ReadKey --force" 2> /dev/null
       fi
       cd /var/opt
       rm -rf git*
@@ -2833,7 +2819,7 @@ _run_aptitude_full_upgrade() {
   fi
   _mrun "apt-get remove percona-release -y -qq" 2> /dev/null
   _apt_clean_update
-  if [ -e "/var/aegir/drush" ]; then
+  if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     _DPKG_CNF="confold"
   else
     _DPKG_CNF="confnew"
@@ -3473,8 +3459,8 @@ _drush_system_install_update() {
     if [ -x "/opt/tools/drush/8/drush/drush.php" ]; then
       rm -f /usr/bin/drush8
       rm -f /usr/bin/drush
-      ln -s /opt/tools/drush/8/drush/drush.php /usr/bin/drush8
-      ln -s /opt/tools/drush/8/drush/drush.php /usr/bin/drush
+      ln -sfn /opt/tools/drush/8/drush/drush.php /usr/bin/drush8
+      ln -sfn /opt/tools/drush/8/drush/drush.php /usr/bin/drush
     else
       _msg "FAIL: Drush ${_DRUSH_EIGHT_VRN} installation failed!"
     fi
@@ -4446,6 +4432,28 @@ _check_and_move() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "CLNP: Only the allowed version (${_allowedFile}) is present in ${_dir}"
     fi
+  fi
+}
+
+#
+# Make local OpenSSL new/legacy ssl/certs symlinked to system ssl/certs
+_sync_system_ssl_certs() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _sync_system_ssl_certs"
+  fi
+  if [ -e "/etc/ssl/certs/ca-certificates.crt" ] \
+    && [ ! -e "/usr/local/ssl3/.old-certs" ] \
+    && [ -d "/usr/local/ssl3/certs" ] \
+    && [ ! -L "/usr/local/ssl3/certs" ]; then
+    mv -f /usr/local/ssl3/certs /usr/local/ssl3/.old-certs
+    ln -sfn /etc/ssl/certs /usr/local/ssl3/certs
+  fi
+  if [ -e "/etc/ssl/certs/ca-certificates.crt" ] \
+    && [ ! -e "/usr/local/ssl/.old-certs" ] \
+    && [ -d "/usr/local/ssl/certs" ] \
+    && [ ! -L "/usr/local/ssl/certs" ]; then
+    mv -f /usr/local/ssl/certs /usr/local/ssl/.old-certs
+    ln -sfn /etc/ssl/certs /usr/local/ssl/certs
   fi
 }
 
@@ -5706,7 +5714,7 @@ _basic_packages_install_on_init() {
     _msg "PROC: _basic_packages_install_on_init"
   fi
   _apt_clean_update
-  if [ ! -e "/var/aegir/drush" ] && [ ! -e "/var/xdrago/manage_solr_config.sh" ]; then
+  if [ ! -e "/var/aegir/.drush/hm.alias.drushrc.php" ] && [ ! -e "/var/xdrago/manage_solr_config.sh" ]; then
 #     _mrun "apt-get remove unscd -y --purge --auto-remove -qq" 2> /dev/null
 #     _mrun "apt-get remove dbus -y --purge --auto-remove -qq" 2> /dev/null
 #     if [ -e "/usr/share/dbus-1" ]; then
@@ -6125,6 +6133,7 @@ _if_post_major_os_upgrade() {
       _SSL_FORCE_REINSTALL=YES
       _if_reinstall_curl_src
       _if_ssl_install_src
+      _sync_system_ssl_certs
       _ssl_paths_sync
       _ssl_crypto_lib_fix
       _curl_install_src
@@ -6812,6 +6821,7 @@ _if_major_os_upgrade() {
       _php_libs_fix
       _if_reinstall_curl_src
       _if_ssl_install_src
+      _sync_system_ssl_certs
       _ssl_paths_sync
       _ssl_crypto_lib_fix
       _curl_install_src
@@ -7071,7 +7081,7 @@ _sys_packages_update() {
   fi
   _webmin_apt_update
   _apt_clean_update
-  if [ -e "/var/aegir/drush" ]; then
+  if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     _DPKG_CNF="confold"
   else
     _DPKG_CNF="confnew"
@@ -7630,7 +7640,7 @@ _php_libs_fix() {
       fi
       if [ ! -e "/usr/include/curl/curl.h" ] \
         && [ -e "/usr/include/x86_64-linux-gnu/curl/curl.h" ]; then
-        ln -s /usr/include/x86_64-linux-gnu/curl /usr/include/curl
+        ln -sfn /usr/include/x86_64-linux-gnu/curl /usr/include/curl
       fi
       if [ ! -e "/usr/include/gmp.h" ] \
         && [ -e "/usr/include/x86_64-linux-gnu/gmp.h" ]; then
@@ -7919,7 +7929,7 @@ _xdrago_install_upgrade() {
   fi
   cd /var
   if [ -d "/var/xdrago/conf" ] \
-    && [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ]; then
+    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: Upgrading a few more tools..."
     fi

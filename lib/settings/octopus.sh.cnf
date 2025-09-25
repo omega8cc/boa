@@ -795,14 +795,16 @@ _verify_boa_keys() {
         echo "Your system requires valid license for upgrade to ${_rLsn}-${_tRee}"
         echo "Please visit https://omega8.cc/licenses to purchase your own"
         echo
-        if [ -e "/var/aegir/drush/vendor" ] && [ ! -e "/var/aegir/key/barracuda_key.txt" ]; then
+        if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
+          && [ ! -e "/var/aegir/key/barracuda_key.txt" ]; then
           mkdir -p /var/aegir/key
           cat /var/opt/_encN_local.${_encName}.tmp > /var/aegir/key/barracuda_key.txt
         fi
         rm -f /var/opt/_encN*
         _clean_pid_exit _verify_boa_keys_a
       else
-        if [ -e "/var/aegir/drush/vendor" ] && [ ! -e "/var/aegir/key/barracuda_key.txt" ]; then
+        if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
+          && [ ! -e "/var/aegir/key/barracuda_key.txt" ]; then
           mkdir -p /var/aegir/key
           cat /var/opt/_encN_local.${_encName}.tmp > /var/aegir/key/barracuda_key.txt
         fi
@@ -877,7 +879,7 @@ _download_helpers_libs() {
   mkdir -p /opt/tmp
   cd /opt/tmp
   rm -rf /opt/tmp/boa
-  if [ -e "/var/aegir/drush" ]; then
+  if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     _GIT_VRN=2.45.2
     _isGit=$(which git 2>&1)
     _GIT_INSTALL=NO
@@ -998,7 +1000,7 @@ _download_helpers_libs() {
   cp -af ${_bldPth}/aegir/helpers/apt.conf.noi.dist /opt/apt/
   #
   # Create tmp stuff
-  if [ ! -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ]; then
+  if [ ! -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     _LOG=${_vBs}/octopus-install-${_NOW}.log
   else
     _LOG=${_vBs}/octopus-upgrade-${_NOW}.log

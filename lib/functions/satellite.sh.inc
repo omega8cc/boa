@@ -91,6 +91,10 @@ _find_correct_ip() {
       echo ${_LOC_IP} > /root/.found_correct_ipv4.cnf
     fi
   fi
+  if grep -qE "${_LOC_IP}\s" /etc/hosts; then
+    cp -af /etc/hosts /etc/.was.hosts
+    sed -i "s/^${_LOC_IP}.*//g" /etc/hosts
+  fi
 }
 
 #
@@ -2269,17 +2273,17 @@ _satellite_manage_o_contrib() {
   fi
   mkdir -p ${_D}/000/modules
   rm -f ${_D}/000/modules/o_contrib_eleven
-  ln -s ${_CORE}/o_contrib_eleven ${_D}/000/modules/o_contrib_eleven
+  ln -sfn ${_CORE}/o_contrib_eleven ${_D}/000/modules/o_contrib_eleven
   rm -f ${_D}/000/modules/o_contrib_ten
-  ln -s ${_CORE}/o_contrib_ten ${_D}/000/modules/o_contrib_ten
+  ln -sfn ${_CORE}/o_contrib_ten ${_D}/000/modules/o_contrib_ten
   rm -f ${_D}/000/modules/o_contrib_nine
-  ln -s ${_CORE}/o_contrib_nine ${_D}/000/modules/o_contrib_nine
+  ln -sfn ${_CORE}/o_contrib_nine ${_D}/000/modules/o_contrib_nine
   rm -f ${_D}/000/modules/o_contrib_eight
-  ln -s ${_CORE}/o_contrib_eight ${_D}/000/modules/o_contrib_eight
+  ln -sfn ${_CORE}/o_contrib_eight ${_D}/000/modules/o_contrib_eight
   rm -f ${_D}/000/modules/o_contrib_seven
-  ln -s ${_CORE}/o_contrib_seven ${_D}/000/modules/o_contrib_seven
+  ln -sfn ${_CORE}/o_contrib_seven ${_D}/000/modules/o_contrib_seven
   rm -f ${_D}/000/modules/o_contrib
-  ln -s ${_CORE}/o_contrib ${_D}/000/modules/o_contrib
+  ln -sfn ${_CORE}/o_contrib ${_D}/000/modules/o_contrib
   if [ "${_STATUS}" != "INIT" ]; then
     _satellite_check_fix_o_contrib
   fi
@@ -4218,25 +4222,11 @@ _satellite_if_running_as_root_octopus() {
   if [ "$(id -u)" -eq 0 ]; then
     chmod a+w /dev/null
     _check_system_manufacturer
-    if dmidecode -s system-manufacturer | grep -i 'Linode' &> /dev/null; then
-      if  [ ! -e "/var/aegir/drush" ] \
+    if [ -n "${_SYS_MANUFACTURER_LC}" ]; then
+      if  [ ! -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
         || [ ! -e "/data/u" ] \
         || [ ! -e "/var/xdrago" ]; then
-        [ ! -e "/run/linode_vm_postinstall.pid" ] && touch /run/linode_vm.pid
-      fi
-    elif dmidecode -s system-manufacturer | grep -i 'Hetzner' &> /dev/null; then
-      if  [ ! -e "/var/aegir/drush" ] \
-        || [ ! -e "/data/u" ] \
-        || [ ! -e "/var/xdrago" ]; then
-        [ ! -e "/run/hetzner_vm_postinstall.pid" ] && touch /run/hetzner_vm.pid
-      fi
-    else
-      if [ -n "${_SYS_MANUFACTURER_LC}" ]; then
-        if  [ ! -e "/var/aegir/drush" ] \
-          || [ ! -e "/data/u" ] \
-          || [ ! -e "/var/xdrago" ]; then
-          [ ! -e "/run/${_SYS_MANUFACTURER_LC}_vm_postinstall.pid" ] && touch /run/${_SYS_MANUFACTURER_LC}_vm.pid
-        fi
+        [ ! -e "/run/${_SYS_MANUFACTURER_LC}_vm_postinstall.pid" ] && touch /run/${_SYS_MANUFACTURER_LC}_vm.pid
       fi
     fi
   else
@@ -5408,7 +5398,8 @@ _satellite_child_b_aegir_build() {
         --root=${_HM_ROOT} \
         --script_user=${_USER} \
         --web_group=${_WEBG} \
-        --version=${_AEGIR_VERSION} -y -d
+        --version=${_AEGIR_VERSION} -y -d \
+      2>&1 | tee ${_ROOT}/log/install.log
     else
       ${_DRUSHCMD} hostmaster-install ${_DOMAIN} \
         --aegir_db_host=${_THIS_DB_HOST} \
@@ -5422,7 +5413,8 @@ _satellite_child_b_aegir_build() {
         --root=${_HM_ROOT} \
         --script_user=${_USER} \
         --web_group=${_WEBG} \
-        --version=${_AEGIR_VERSION} -y >${_ROOT}/log/install.log 2>&1
+        --version=${_AEGIR_VERSION} -y \
+      >${_ROOT}/log/install.log 2>&1
     fi
     rm -rf ${_HM_ROOT}/profiles/{default,standard,minimal,testing}
     cd ${_HM_ROOT}
@@ -6224,7 +6216,7 @@ _satellite_child_b_redis_enable_finalize() {
     if [ -e "/data/all/000/modules/redis_edge" ]; then
       mkdir -p ${_HM_ROOT}/modules/o_contrib_seven
       rm -f ${_HM_ROOT}/modules/o_contrib_seven/{redis_edge,redis}
-      ln -s /data/all/000/modules/redis_edge \
+      ln -sfn /data/all/000/modules/redis_edge \
         ${_HM_ROOT}/modules/o_contrib_seven/redis_edge
     fi
   fi

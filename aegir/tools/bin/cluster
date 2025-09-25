@@ -2,7 +2,7 @@
 
 export HOME=/root
 export SHELL=/bin/bash
-export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 export _tRee=pro
 export _xSrl=570proT07
 
@@ -23,7 +23,7 @@ _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
 _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
 _aptLiSys="/etc/apt/sources.list"
 
-if [ -e "/var/aegir/drush" ]; then
+if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
   _DPKG_CNF="confold"
 else
   _DPKG_CNF="confnew"
@@ -37,7 +37,7 @@ _INSTAPP="/usr/bin/aptitude -f -y -q \
   -o Dpkg::Options::=--force-confdef \
   -o Dpkg::Options::=--force-${_DPKG_CNF} install"
 
-if [ ! -e "/var/aegir/drush" ]; then
+if [ ! -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
   _INSTAPP="${_INSTALL_DIST}"
 fi
 
@@ -113,7 +113,7 @@ _check_root() {
     if [ ! -e "/dev/fd" ]; then
       if [ -e "/proc/self/fd" ]; then
         rm -rf /dev/fd
-        ln -s /proc/self/fd /dev/fd
+        ln -sfn /proc/self/fd /dev/fd
       fi
     fi
     [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
@@ -210,6 +210,23 @@ _check_no_systemd() {
 }
 
 _ifnames_grub_check_sync() {
+
+  _USE_NINC=NO
+  _NEW_GRUB=DEMO
+
+  if [ -e "/root/.ignore.ifnames.cnf" ]; then
+    return 1  # Exit the function but continue the script
+  else
+    [ -e "/root/.ninc.selected.predictable.cnf" ] && _USE_NINC=predictable && _NEW_GRUB=LIVE
+    [ -e "/root/.ninc.selected.classic.cnf" ]     && _USE_NINC=classic     && _NEW_GRUB=LIVE
+    [ -e "/root/.ninc.selected.auto.cnf" ]        && _USE_NINC=auto        && _NEW_GRUB=LIVE
+    [ -e "/root/.ninc.selected.vanilla.cnf" ]     && _USE_NINC=vanilla
+  fi
+
+  if [ "${_USE_NINC}" = "vanilla" ] || [ "${_USE_NINC}" = "NO" ]; then
+    return 1  # Exit the function but continue the script
+  fi
+
   _IS_IFACE=$(ip a 2>&1)
   _ADD_GRUB_CMD=""
   _GRUB_FILE="/etc/default/grub"
@@ -258,12 +275,6 @@ _ifnames_grub_check_sync() {
       _append_grub_cmd_option "biosdevname=1"
     fi
 
-    if [ -e "/root/.auto.config.ifnames.grub.cnf" ] && [ ! -e "/root/.ignore.ifnames.cnf" ]; then
-      _NEW_GRUB=LIVE
-    else
-      _NEW_GRUB=DEMO
-    fi
-
     if [[ -n "${_ADD_GRUB_CMD}" ]]; then
       # Backup the GRUB file
       cp "${_GRUB_FILE}" "${_GRUB_FILE}.bak"
@@ -287,18 +298,24 @@ _ifnames_grub_check_sync() {
       echo " "
       if [[ "${_NEW_GRUB}" == "LIVE" ]]; then
         # Update the GRUB file
+        echo "GRUB: Networking Interface Naming Convention selected: ${_USE_NINC}"
         echo "GRUB: Update in the LIVE MODE"
         sed -i "s|^GRUB_CMDLINE_LINUX=.*|${_NEW_GRUB_CMDLINE_LINUX}|" "${_GRUB_FILE}"
         echo "GRUB_CMDLINE_LINUX has been updated with ${_UPDATED_CMDLINE}"
       elif [[ "${_NEW_GRUB}" == "DEMO" ]]; then
         # Demo info
+        echo "GRUB: Networking Interface Naming Convention selected: ${_USE_NINC}"
         echo "GRUB: Update in the DEMO MODE"
-        echo "GRUB_CMDLINE_LINUX would be updated with ${_UPDATED_CMDLINE}"
         echo " "
-        echo "GRUB: Update in the LIVE MODE needs presence of control file:"
-        echo "GRUB   /root/.auto.config.ifnames.grub.cnf"
+        echo "GRUB_CMDLINE_LINUX would be updated with:"
+        echo "   ${_UPDATED_CMDLINE}"
         echo " "
-        echo "GRUB: Ensure that the file /root/.ignore.ifnames.cnf does not exist."
+        echo "GRUB: Update in the LIVE MODE requires presence of control file:"
+        echo "   /root/.ninc.selected.auto.cnf"
+        echo " "
+        echo "GRUB: Note that this extra control file must not exist:"
+        echo "   /root/.ignore.ifnames.cnf"
+        echo " "
         echo "GRUB: This requirement serves as a double-check to confirm"
         echo "GRUB: that you are aware of and agree to auto-update GRUB configuration."
         echo "GRUB: Incorrect GRUB settings can render your virtual machine unbootable"
@@ -1506,7 +1523,6 @@ tmp_table_size          = 1024M
 max_heap_table_size     = 1024M
 low_priority_updates    = 1
 concurrent_insert       = 2
-userstat                = 1
 #max_tmp_tables          = 16384
 server-id               = '${_inc}'
 #myisam-recover-options  = BACKUP
@@ -1961,6 +1977,45 @@ _upgrade_db_cluster() {
   echo "All DB nodes updated!"
 }
 
+# Ensure /usr/sbin/ipset and /sbin/ipset both resolve to the actual ipset binary.
+_ensure_ipset_symlinks() {
+  _IPSET_REAL="$(command -v ipset 2>/dev/null || true)"
+  if [ -z "${_IPSET_REAL}" ]; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      echo "ipset not installed; skipping symlink fixes"
+    fi
+    return 0
+  fi
+
+  # Resolve through any intermediate symlinks.
+  if [ -L "${_IPSET_REAL}" ]; then
+    _IPSET_REAL="$(readlink -f "${_IPSET_REAL}")"
+  fi
+
+  for _CAND in /usr/sbin/ipset /sbin/ipset; do
+    _PARENT="$(dirname "${_CAND}")"
+    [ -d "${_PARENT}" ] || mkdir -p "${_PARENT}"
+
+    # If the candidate *is* the real file, nothing to do.
+    if [ "${_CAND}" = "${_IPSET_REAL}" ]; then
+      continue
+    fi
+
+    # If it exists, check whether it already resolves to the right target.
+    if [ -e "${_CAND}" ] || [ -L "${_CAND}" ]; then
+      _TARGET="$(readlink -f "${_CAND}" 2>/dev/null || true)"
+      if [ "${_TARGET}" = "${_IPSET_REAL}" ]; then
+        continue
+      fi
+    fi
+
+    ln -sfn "${_IPSET_REAL}" "${_CAND}"
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      echo "Linked ${_CAND} -> ${_IPSET_REAL}"
+    fi
+  done
+}
+
 _install_host() {
 
   _CUSTOM_DNS_TEST=$(grep 8.8.8.8 /etc/resolv.conf 2>&1)
@@ -2038,12 +2093,7 @@ _install_host() {
   ${_INSTAPP} iptables
   ${_INSTAPP} ipset
 
-  if [ -x "/sbin/ipset" ] && [ ! -e "/usr/sbin/ipset" ]; then
-    ln -s /sbin/ipset /usr/sbin/ipset
-  fi
-  if [ -x "/usr/sbin/ipset" ] && [ ! -e "/sbin/ipset" ]; then
-    ln -s /usr/sbin/ipset /sbin/ipset
-  fi
+  _ensure_ipset_symlinks
 
   echo "Setting hostname to ${_hst}"
   echo ${_hst} > /etc/hostname
@@ -2309,7 +2359,7 @@ _upgrade_host() {
 
     if [ ! -e "/usr/etc/vservers/.defaults/apps/vunify/hash/root" ]; then
       mkdir -p /usr/etc/vservers/.defaults/apps/vunify/hash /vservers/.hash
-      ln -s /vservers/.hash /usr/etc/vservers/.defaults/apps/vunify/hash/root
+      ln -sfn /vservers/.hash /usr/etc/vservers/.defaults/apps/vunify/hash/root
     fi
   fi
 

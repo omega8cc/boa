@@ -2,7 +2,7 @@
 
 export HOME=/root
 export SHELL=/bin/bash
-export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 export _tRee=pro
 
 _H_USER=EDIT_USER
@@ -105,7 +105,15 @@ _if_octopus_upgrade() {
   if [ -e "${_plCtr}" ] && [ -e "${_upCtr}" ]; then
     rm -f ${_upCtr}
     [ -e "/root/.silent.update.cnf" ] && rm -f /root/.silent.update.cnf
-    bash /opt/local/bin/octopus up-${_tRee} ${_H_USER} force log noscreen
+    _TODAY=$(date +%y%m%d)
+    _TODAY=${_TODAY//[^0-9]/}
+    _NOW=$(date +%y%m%d-%H%M%S)
+    _NOW=${_NOW//[^0-9-]/}
+    _vBs="/var/backups"
+    _LOG_UP_DIR="${_vBs}/reports/up/$(basename "$0")/${_TODAY}"
+    _UP_OCTOPUS_LOG="${_LOG_UP_DIR}/$(basename "$0")-up-octopus-${_NOW}.log"
+    mkdir -p ${_LOG_UP_DIR}
+    nohup /opt/local/bin/octopus up-${_tRee} ${_H_USER} force log noscreen >${_UP_OCTOPUS_LOG} 2>&1 &
   fi
 }
 

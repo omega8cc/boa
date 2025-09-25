@@ -60,6 +60,46 @@ _fix_lfd_whitelist() {
 }
 
 #
+# Ensure /usr/sbin/ipset and /sbin/ipset both resolve to the actual ipset binary.
+_ensure_ipset_symlinks() {
+  _IPSET_REAL="$(command -v ipset 2>/dev/null || true)"
+  if [ -z "${_IPSET_REAL}" ]; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "ipset not installed; skipping symlink fixes"
+    fi
+    return 0
+  fi
+
+  # Resolve through any intermediate symlinks.
+  if [ -L "${_IPSET_REAL}" ]; then
+    _IPSET_REAL="$(readlink -f "${_IPSET_REAL}")"
+  fi
+
+  for _CAND in /usr/sbin/ipset /sbin/ipset; do
+    _PARENT="$(dirname "${_CAND}")"
+    [ -d "${_PARENT}" ] || mkdir -p "${_PARENT}"
+
+    # If the candidate *is* the real file, nothing to do.
+    if [ "${_CAND}" = "${_IPSET_REAL}" ]; then
+      continue
+    fi
+
+    # If it exists, check whether it already resolves to the right target.
+    if [ -e "${_CAND}" ] || [ -L "${_CAND}" ]; then
+      _TARGET="$(readlink -f "${_CAND}" 2>/dev/null || true)"
+      if [ "${_TARGET}" = "${_IPSET_REAL}" ]; then
+        continue
+      fi
+    fi
+
+    ln -sfn "${_IPSET_REAL}" "${_CAND}"
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "Linked ${_CAND} -> ${_IPSET_REAL}"
+    fi
+  done
+}
+
+#
 # install csf/lfd firewall
 _csf_install() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -82,50 +122,47 @@ _csf_install() {
     fi
     _mrun "apt-get install ipset ${_aptYesUnth}" 2> /dev/null
   fi
-  if [ -x "/sbin/ipset" ] && [ ! -e "/usr/sbin/ipset" ]; then
-    ln -s /sbin/ipset /usr/sbin/ipset
-  fi
-  if [ -x "/usr/sbin/ipset" ] && [ ! -e "/sbin/ipset" ]; then
-    ln -s /usr/sbin/ipset /sbin/ipset
-  fi
+
+  _ensure_ipset_symlinks
+
   ###
   ### Fix for iptables paths backward compatibility
   ###
   if [ -x "/sbin/iptables" ] && [ ! -e "/usr/sbin/iptables" ]; then
-    ln -s /sbin/iptables /usr/sbin/iptables
+    ln -sfn /sbin/iptables /usr/sbin/iptables
   fi
   if [ -x "/usr/sbin/iptables" ] && [ ! -e "/sbin/iptables" ]; then
-    ln -s /usr/sbin/iptables /sbin/iptables
+    ln -sfn /usr/sbin/iptables /sbin/iptables
   fi
   if [ -x "/sbin/iptables-save" ] && [ ! -e "/usr/sbin/iptables-save" ]; then
-    ln -s /sbin/iptables-save /usr/sbin/iptables-save
+    ln -sfn /sbin/iptables-save /usr/sbin/iptables-save
   fi
   if [ -x "/usr/sbin/iptables-save" ] && [ ! -e "/sbin/iptables-save" ]; then
-    ln -s /usr/sbin/iptables-save /sbin/iptables-save
+    ln -sfn /usr/sbin/iptables-save /sbin/iptables-save
   fi
   if [ -x "/sbin/iptables-restore" ] && [ ! -e "/usr/sbin/iptables-restore" ]; then
-    ln -s /sbin/iptables-restore /usr/sbin/iptables-restore
+    ln -sfn /sbin/iptables-restore /usr/sbin/iptables-restore
   fi
   if [ -x "/usr/sbin/iptables-restore" ] && [ ! -e "/sbin/iptables-restore" ]; then
-    ln -s /usr/sbin/iptables-restore /sbin/iptables-restore
+    ln -sfn /usr/sbin/iptables-restore /sbin/iptables-restore
   fi
   if [ -x "/sbin/ip6tables" ] && [ ! -e "/usr/sbin/ip6tables" ]; then
-    ln -s /sbin/ip6tables /usr/sbin/ip6tables
+    ln -sfn /sbin/ip6tables /usr/sbin/ip6tables
   fi
   if [ -x "/usr/sbin/ip6tables" ] && [ ! -e "/sbin/ip6tables" ]; then
-    ln -s /usr/sbin/ip6tables /sbin/ip6tables
+    ln -sfn /usr/sbin/ip6tables /sbin/ip6tables
   fi
   if [ -x "/sbin/ip6tables-save" ] && [ ! -e "/usr/sbin/ip6tables-save" ]; then
-    ln -s /sbin/ip6tables-save /usr/sbin/ip6tables-save
+    ln -sfn /sbin/ip6tables-save /usr/sbin/ip6tables-save
   fi
   if [ -x "/usr/sbin/ip6tables-save" ] && [ ! -e "/sbin/ip6tables-save" ]; then
-    ln -s /usr/sbin/ip6tables-save /sbin/ip6tables-save
+    ln -sfn /usr/sbin/ip6tables-save /sbin/ip6tables-save
   fi
   if [ -x "/sbin/ip6tables-restore" ] && [ ! -e "/usr/sbin/ip6tables-restore" ]; then
-    ln -s /sbin/ip6tables-restore /usr/sbin/ip6tables-restore
+    ln -sfn /sbin/ip6tables-restore /usr/sbin/ip6tables-restore
   fi
   if [ -x "/usr/sbin/ip6tables-restore" ] && [ ! -e "/sbin/ip6tables-restore" ]; then
-    ln -s /usr/sbin/ip6tables-restore /sbin/ip6tables-restore
+    ln -sfn /usr/sbin/ip6tables-restore /sbin/ip6tables-restore
   fi
   ###
   ### Fix for iptables paths backward compatibility
@@ -186,7 +223,7 @@ _csf_install() {
         _msg "TEST: csf/lfd firewall should work fine on this system"
       fi
     fi
-    if [ "${_CUSTOM_CONFIG_CSF}" = "YES" ]; then
+    if [ -n "${_CUSTOM_CONFIG_CSF}" ] && [ "${_CUSTOM_CONFIG_CSF}" != "YES" ]; then
       mv -f /etc/csf/csf.conf \
         /etc/csf/csf.conf-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
       cp -af ${_locCnf}/var/csf.conf /etc/csf/csf.conf
@@ -299,18 +336,15 @@ _csf_lfd_install_upgrade() {
     fi
     _mrun "apt-get install ipset ${_aptYesUnth}" 2> /dev/null
   fi
-  if [ -x "/sbin/ipset" ] && [ ! -e "/usr/sbin/ipset" ]; then
-    ln -s /sbin/ipset /usr/sbin/ipset
-  fi
-  if [ -x "/usr/sbin/ipset" ] && [ ! -e "/sbin/ipset" ]; then
-    ln -s /usr/sbin/ipset /sbin/ipset
-  fi
+
+  _ensure_ipset_symlinks
+
   if [[ "${_XTRAS_LIST}" =~ "ALL" ]] \
     || [[ "${_XTRAS_LIST}" =~ "CSF" ]] \
     || [ "${_CSF_CLSTR}" = "YES" ]; then
+    _check_system_manufacturer
     if [ ! -e "/run/cloud_vhost.pid" ] \
-      && [ ! -e "/run/linode_vm.pid" ] \
-      && [ ! -e "/run/hetzner_vm.pid" ]; then
+      && [ ! -e "/run/${_SYS_MANUFACTURER_LC}_vm.pid" ]; then
       if [ ! -e "/usr/sbin/csf" ]; then
         echo " "
         if _prompt_yes_no "Do you want to install csf/lfd firewall?" ; then

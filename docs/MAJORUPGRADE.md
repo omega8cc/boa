@@ -69,8 +69,6 @@ You can easily upgrade your BOA system from any supported Debian or Devuan versi
 
 The key difference between classic and modern automated procedures is that the automated procedure supports upgrades only to Chimaera or Daedalus, while the classic procedure allows you to select the target system flavor and version according to your preference. However, we do not recommend running BOA on Debian anymore, as it is no longer regularly tested.
 
-**NOTE:** Only systems running Percona 5.7 are currently supported.
-
 Please follow the required steps closely!
 
 First, update your BOA Meta Installers with:

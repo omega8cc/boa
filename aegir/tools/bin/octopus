@@ -2,7 +2,7 @@
 
 export HOME=/root
 export SHELL=/bin/bash
-export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 
 _TODAY=$(date +%y%m%d)
 export _TODAY=${_TODAY//[^0-9]/}
@@ -727,7 +727,7 @@ _up_action_all() {
         else
           sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=NO/g"                   ${_octCnf}
           wait
-          _up_one
+          _up_one 2>&1 | tee ${_UP_LOG}
         fi
         _n=$((RANDOM%9+2))
         echo "Waiting ${_n} seconds..."
@@ -803,7 +803,7 @@ _up_action_one() {
       else
         sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=NO/g"                     ${_octCnf}
         wait
-        _up_one
+        _up_one 2>&1 | tee ${_UP_LOG}
       fi
       sleep 3
       rm -f ${_vBs}/${_tocName}
@@ -939,10 +939,10 @@ _if_reinstall_curl() {
     apt-get install libssl-dev ${_aptYesUnth} -qq 2> /dev/null
     apt-get install libc-client2007e libc-client2007e-dev ${_aptYesUnth}-qq 2> /dev/null
     apt-get build-dep curl ${_aptYesUnth} 2> /dev/null
-    if [ ! -e "/var/aegir/drush" ]; then
+    if [ ! -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
       apt-get install curl --reinstall ${_aptYesUnth} -qq 2> /dev/null
     fi
-    if [ -e "/var/aegir/drush" ]; then
+    if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
       echo "INFO: Installing curl from sources..."
       mkdir -p /var/opt
       rm -rf /var/opt/curl*

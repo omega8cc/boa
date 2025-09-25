@@ -54,6 +54,7 @@ foreach $COMMAND (sort keys %li_cnt) {
   if ($COMMAND =~ /lsyncd/) {$lsyncdlives = "YES"; $lsyncdsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /sshd/) {$sshdlives = "YES"; $sshdsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /proxysql/) {$pxydlives = "YES"; $pxydsumar = $li_cnt{$COMMAND};}
+  if ($COMMAND =~ /droplet/) {$dpltlives = "YES"; $dpltsumar = $li_cnt{$COMMAND};}
 }
 foreach $X (sort keys %li_cnt) {
   if ($X =~ /php84/) {$php84lives = "YES";}
@@ -120,6 +121,7 @@ print "\n $xinetdsumar Xinetd procs\t\tGLOBAL" if ($xinetdlives);
 print "\n $lsyncdsumar Lsyncd procs\t\tGLOBAL" if ($lsyncdlives);
 print "\n $sshdsumar SSHd procs\t\tGLOBAL" if ($sshdlives);
 print "\n $pxydsumar PxySQL procs\t\tGLOBAL" if ($pxydlives);
+print "\n $dpltsumar Droplet procs\t\tGLOBAL" if ($dpltlives);
 print "\n";
 
 system("csf -e") if (!$lfdsumar && -f "/etc/init.d/lfd");
@@ -128,6 +130,8 @@ system("service jenkins restart") if (!$jenkinssumar && -f "/etc/init.d/jenkins"
 system("service bind9 restart") if (!$namedsumar && -f "/etc/init.d/bind9");
 system("service ssh restart") if (!$sshdsumar && -f "/etc/init.d/ssh");
 system("service proxysql restart") if (!$pxydsumar && -f "/etc/init.d/proxysql");
+system("service droplet-agent restart") if (!$dpltsumar && -f "/etc/init.d/droplet-agent");
+system("service droplet-agent restart") if (!-f "/run/droplet-agent.pid" && -f "/etc/init.d/droplet-agent");
 
 if (-e "/usr/sbin/unbound" && !$unboundsumar) {
   if (-e "/etc/resolvconf/update.d/unbound") {
@@ -209,7 +213,7 @@ system("service php70-fpm start") if ((!$php70lives || !$fpmsumar || !-f "/run/p
 system("service php56-fpm start") if ((!$php56lives || !$fpmsumar || !-f "/run/php56-fpm.pid") && -f "/etc/init.d/php56-fpm");
 
 
-if (!-f "/root/.run-to-daedalus.cnf" && !-f "/root/.run-to-chimaera.cnf" && !-f "/root/.run-to-beowulf.cnf") {
+if (!-f "/run/boa_run.pid" && !-f "/run/boa_wait.pid" && !-f "/root/.run-to-daedalus.cnf" && !-f "/root/.run-to-chimaera.cnf" && !-f "/root/.run-to-beowulf.cnf") {
   system("service jetty7 start") if (!$jetty7sumar && -f "/etc/init.d/jetty7");
   system("service jetty8 start") if (!$jetty8sumar && -f "/etc/init.d/jetty8");
   system("service jetty9 start") if (!$jetty9sumar && -f "/etc/init.d/jetty9");

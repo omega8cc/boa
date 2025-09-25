@@ -2,7 +2,7 @@
 
 export HOME=/root
 export SHELL=/bin/bash
-export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 export _tRee=pro
 export _xSrl=570proT07
 
@@ -1259,7 +1259,7 @@ _ssl_gen() {
   elif [ ! -e "/var/xdrago/conf/ssl_proxy.conf" ]; then
     echo "file /var/xdrago/conf/ssl_proxy.conf does not exist"
     exit 1
-  elif [ ! -e "/var/aegir/config/server_master/nginx/pre.d" ]; then
+  elif [ ! -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     echo "vms ${_vms} aegir master not ready"
     exit 1
   else
@@ -1274,7 +1274,7 @@ _check_root() {
     if [ ! -e "/dev/fd" ]; then
       if [ -e "/proc/self/fd" ]; then
         rm -rf /dev/fd
-        ln -s /proc/self/fd /dev/fd
+        ln -sfn /proc/self/fd /dev/fd
       fi
     fi
     if [ -e "/root/.barracuda.cnf" ]; then

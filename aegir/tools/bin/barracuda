@@ -2,7 +2,7 @@
 
 export HOME=/root
 export SHELL=/bin/bash
-export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 
 _TODAY=$(date +%y%m%d)
 export _TODAY=${_TODAY//[^0-9]/}
@@ -69,6 +69,23 @@ _apt_clean_update() {
 }
 
 _ifnames_grub_check_sync() {
+
+  _USE_NINC=NO
+  _NEW_GRUB=DEMO
+
+  if [ -e "/root/.ignore.ifnames.cnf" ]; then
+    return 1  # Exit the function but continue the script
+  else
+    [ -e "/root/.ninc.selected.predictable.cnf" ] && _USE_NINC=predictable && _NEW_GRUB=LIVE
+    [ -e "/root/.ninc.selected.classic.cnf" ]     && _USE_NINC=classic     && _NEW_GRUB=LIVE
+    [ -e "/root/.ninc.selected.auto.cnf" ]        && _USE_NINC=auto        && _NEW_GRUB=LIVE
+    [ -e "/root/.ninc.selected.vanilla.cnf" ]     && _USE_NINC=vanilla
+  fi
+
+  if [ "${_USE_NINC}" = "vanilla" ] || [ "${_USE_NINC}" = "NO" ]; then
+    return 1  # Exit the function but continue the script
+  fi
+
   _IS_IFACE=$(ip a 2>&1)
   _ADD_GRUB_CMD=""
   _GRUB_FILE="/etc/default/grub"
@@ -117,12 +134,6 @@ _ifnames_grub_check_sync() {
       _append_grub_cmd_option "biosdevname=1"
     fi
 
-    if [ -e "/root/.auto.config.ifnames.grub.cnf" ] && [ ! -e "/root/.ignore.ifnames.cnf" ]; then
-      _NEW_GRUB=LIVE
-    else
-      _NEW_GRUB=DEMO
-    fi
-
     if [[ -n "${_ADD_GRUB_CMD}" ]]; then
       # Backup the GRUB file
       cp "${_GRUB_FILE}" "${_GRUB_FILE}.bak"
@@ -146,18 +157,24 @@ _ifnames_grub_check_sync() {
       echo " "
       if [[ "${_NEW_GRUB}" == "LIVE" ]]; then
         # Update the GRUB file
+        echo "GRUB: Networking Interface Naming Convention selected: ${_USE_NINC}"
         echo "GRUB: Update in the LIVE MODE"
         sed -i "s|^GRUB_CMDLINE_LINUX=.*|${_NEW_GRUB_CMDLINE_LINUX}|" "${_GRUB_FILE}"
         echo "GRUB_CMDLINE_LINUX has been updated with ${_UPDATED_CMDLINE}"
       elif [[ "${_NEW_GRUB}" == "DEMO" ]]; then
         # Demo info
+        echo "GRUB: Networking Interface Naming Convention selected: ${_USE_NINC}"
         echo "GRUB: Update in the DEMO MODE"
-        echo "GRUB_CMDLINE_LINUX would be updated with ${_UPDATED_CMDLINE}"
         echo " "
-        echo "GRUB: Update in the LIVE MODE needs presence of control file:"
-        echo "GRUB   /root/.auto.config.ifnames.grub.cnf"
+        echo "GRUB_CMDLINE_LINUX would be updated with:"
+        echo "   ${_UPDATED_CMDLINE}"
         echo " "
-        echo "GRUB: Ensure that the file /root/.ignore.ifnames.cnf does not exist."
+        echo "GRUB: Update in the LIVE MODE requires presence of control file:"
+        echo "   /root/.ninc.selected.auto.cnf"
+        echo " "
+        echo "GRUB: Note that this extra control file must not exist:"
+        echo "   /root/.ignore.ifnames.cnf"
+        echo " "
         echo "GRUB: This requirement serves as a double-check to confirm"
         echo "GRUB: that you are aware of and agree to auto-update GRUB configuration."
         echo "GRUB: Incorrect GRUB settings can render your virtual machine unbootable"
@@ -1011,7 +1028,7 @@ _up_action() {
         fi
         if [ "${_outP}" = "system" ]; then
           touch /run/boa_system_wait.pid
-          if [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
+          if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
             && [ -d "/var/aegir/config/server_master/nginx/subdir.d" ]; then
             sed -i "s/^_SYSTEM_UP.*/_SYSTEM_UP_ONLY=YES/g"   ${_vBs}/${_filIncB}
             wait
@@ -1039,7 +1056,7 @@ _up_action() {
           wait
           sed -i "s/^_AEGIR_UP.*/_AEGIR_UPGRADE_ONLY=NO/g"            ${_barCnf}
           wait
-          bash ${_vBs}/${_barName} >${_UP_LOG} 2>&1
+          bash ${_vBs}/${_barName} 2>&1 | tee ${_UP_LOG}
           wait
           _check_report
         elif [ "${_outP}" = "aegir" ]; then
@@ -1051,7 +1068,7 @@ _up_action() {
           wait
           sed -i "s/^_AEGIR_UP.*/_AEGIR_UPGRADE_ONLY=YES/g"           ${_barCnf}
           wait
-          bash ${_vBs}/${_barName} >${_UP_LOG} 2>&1
+          bash ${_vBs}/${_barName} 2>&1 | tee ${_UP_LOG}
           wait
           _check_report
         elif [ "${_outP}" = "enable" ] || [ "${_outP}" = "disable" ]; then
@@ -1064,7 +1081,7 @@ _up_action() {
             echo "_PHP_IDLE=OFF"                                   >> ${_barCnf}
             wait
           fi
-          bash ${_vBs}/${_barName}
+          bash ${_vBs}/${_barName} 2>&1 | tee ${_UP_LOG}
           wait
         fi
       else
@@ -1100,7 +1117,7 @@ _up_action() {
             wait
           fi
         fi
-        bash ${_vBs}/${_barName}
+        bash ${_vBs}/${_barName} 2>&1 | tee ${_UP_LOG}
         wait
       fi
     fi
@@ -1163,40 +1180,40 @@ _if_fix_iptables_symlinks() {
   ### Fix for iptables paths backward compatibility
   ###
   if [ -x "/sbin/iptables" ] && [ ! -e "/usr/sbin/iptables" ]; then
-    ln -s /sbin/iptables /usr/sbin/iptables
+    ln -sfn /sbin/iptables /usr/sbin/iptables
   fi
   if [ -x "/usr/sbin/iptables" ] && [ ! -e "/sbin/iptables" ]; then
-    ln -s /usr/sbin/iptables /sbin/iptables
+    ln -sfn /usr/sbin/iptables /sbin/iptables
   fi
   if [ -x "/sbin/iptables-save" ] && [ ! -e "/usr/sbin/iptables-save" ]; then
-    ln -s /sbin/iptables-save /usr/sbin/iptables-save
+    ln -sfn /sbin/iptables-save /usr/sbin/iptables-save
   fi
   if [ -x "/usr/sbin/iptables-save" ] && [ ! -e "/sbin/iptables-save" ]; then
-    ln -s /usr/sbin/iptables-save /sbin/iptables-save
+    ln -sfn /usr/sbin/iptables-save /sbin/iptables-save
   fi
   if [ -x "/sbin/iptables-restore" ] && [ ! -e "/usr/sbin/iptables-restore" ]; then
-    ln -s /sbin/iptables-restore /usr/sbin/iptables-restore
+    ln -sfn /sbin/iptables-restore /usr/sbin/iptables-restore
   fi
   if [ -x "/usr/sbin/iptables-restore" ] && [ ! -e "/sbin/iptables-restore" ]; then
-    ln -s /usr/sbin/iptables-restore /sbin/iptables-restore
+    ln -sfn /usr/sbin/iptables-restore /sbin/iptables-restore
   fi
   if [ -x "/sbin/ip6tables" ] && [ ! -e "/usr/sbin/ip6tables" ]; then
-    ln -s /sbin/ip6tables /usr/sbin/ip6tables
+    ln -sfn /sbin/ip6tables /usr/sbin/ip6tables
   fi
   if [ -x "/usr/sbin/ip6tables" ] && [ ! -e "/sbin/ip6tables" ]; then
-    ln -s /usr/sbin/ip6tables /sbin/ip6tables
+    ln -sfn /usr/sbin/ip6tables /sbin/ip6tables
   fi
   if [ -x "/sbin/ip6tables-save" ] && [ ! -e "/usr/sbin/ip6tables-save" ]; then
-    ln -s /sbin/ip6tables-save /usr/sbin/ip6tables-save
+    ln -sfn /sbin/ip6tables-save /usr/sbin/ip6tables-save
   fi
   if [ -x "/usr/sbin/ip6tables-save" ] && [ ! -e "/sbin/ip6tables-save" ]; then
-    ln -s /usr/sbin/ip6tables-save /sbin/ip6tables-save
+    ln -sfn /usr/sbin/ip6tables-save /sbin/ip6tables-save
   fi
   if [ -x "/sbin/ip6tables-restore" ] && [ ! -e "/usr/sbin/ip6tables-restore" ]; then
-    ln -s /sbin/ip6tables-restore /usr/sbin/ip6tables-restore
+    ln -sfn /sbin/ip6tables-restore /usr/sbin/ip6tables-restore
   fi
   if [ -x "/usr/sbin/ip6tables-restore" ] && [ ! -e "/sbin/ip6tables-restore" ]; then
-    ln -s /usr/sbin/ip6tables-restore /sbin/ip6tables-restore
+    ln -sfn /usr/sbin/ip6tables-restore /sbin/ip6tables-restore
   fi
   ###
   ### Fix for iptables paths backward compatibility
@@ -1386,10 +1403,10 @@ _if_reinstall_curl() {
     apt-get install libssl-dev ${_aptYesUnth} -qq 2> /dev/null
     apt-get install libc-client2007e libc-client2007e-dev ${_aptYesUnth} -qq 2> /dev/null
     apt-get build-dep curl ${_aptYesUnth} 2> /dev/null
-    if [ ! -e "/var/aegir/drush" ]; then
+    if [ ! -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
       apt-get install curl --reinstall ${_aptYesUnth} -qq 2> /dev/null
     fi
-    if [ -e "/var/aegir/drush" ]; then
+    if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
       echo "INFO: Installing curl from sources..."
       mkdir -p /var/opt
       rm -rf /var/opt/curl*
@@ -1579,7 +1596,7 @@ _check_root() {
     if [ ! -e "/dev/fd" ]; then
       if [ -e "/proc/self/fd" ]; then
         rm -rf /dev/fd
-        ln -s /proc/self/fd /dev/fd
+        ln -sfn /proc/self/fd /dev/fd
       fi
     fi
     [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
@@ -1795,7 +1812,7 @@ _proceed() {
 }
 
 _check_manufacturer_compatibility() {
-  # Install dmidecode of not present
+  # Install dmidecode if not present
   if ! command -v dmidecode &> /dev/null; then
     /usr/bin/apt-get update &> /dev/null
     ${_INITINS} dmidecode &> /dev/null
