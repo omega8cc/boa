@@ -106,13 +106,9 @@ _unbound_check_fix() {
     else
       rm -f /etc/resolv.conf
       echo "nameserver 127.0.0.1" > /etc/resolv.conf
-      if [ -e "${_vBs}/resolv.conf.vanilla" ]; then
-        cat ${_vBs}/resolv.conf.vanilla >> /etc/resolv.conf
-      fi
       echo "nameserver 1.1.1.1" >> /etc/resolv.conf
-      echo "nameserver 1.0.0.1" >> /etc/resolv.conf
       echo "nameserver 8.8.8.8" >> /etc/resolv.conf
-      echo "nameserver 8.8.4.4" >> /etc/resolv.conf
+      echo "nameserver 9.9.9.9" >> /etc/resolv.conf
       [ -e "/etc/resolvconf/update.d/unbound" ] && chmod -x /etc/resolvconf/update.d/unbound
       killall -9 unbound &> /dev/null
       service unbound restart &> /dev/null
