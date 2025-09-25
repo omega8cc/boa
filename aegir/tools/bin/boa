@@ -1077,7 +1077,12 @@ _barracuda_install() {
       wait
     fi
 
-    [ ! -z "${_fQdn}" ] && export _EASY_HOSTNAME=${_fQdn}
+    if [ ! -z "${_fQdn}" ]; then
+      export _EASY_HOSTNAME=${_fQdn}
+      hostname -b ${_fQdn} ### force our custom FQDN/local hostname
+      echo "${_fQdn}" > /etc/hostname
+      echo "${_fQdn}" > /etc/mailname
+    fi
 
     if [ -n "${_eXtr}" ] \
       && [ -e "${_vBs}/${_filIncB}" ] \
