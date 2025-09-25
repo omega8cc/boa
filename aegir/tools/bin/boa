@@ -23,9 +23,11 @@ _pthIncB="lib/settings/${_filIncB}"
 _pthIncO="lib/settings/${_filIncO}"
 _vBs="/var/backups"
 
-_LOG_DIR="${_vBs}/reports/in/$(basename "$0")/${_TODAY}"
-_IN_BARRACUDA_LOG="${_LOG_DIR}/$(basename "$0")-in-barracuda-${_NOW}.log"
-_IN_OCTOPUS_LOG="${_LOG_DIR}/$(basename "$0")-in-octopus-${_NOW}.log"
+_LOG_IN_DIR="${_vBs}/reports/in/$(basename "$0")/${_TODAY}"
+_IN_BARRACUDA_LOG="${_LOG_IN_DIR}/$(basename "$0")-in-barracuda-${_NOW}.log"
+_IN_OCTOPUS_LOG="${_LOG_IN_DIR}/$(basename "$0")-in-octopus-${_NOW}.log"
+_LOG_UP_DIR="${_vBs}/reports/up/$(basename "$0")/${_TODAY}"
+
 _VMFAMILY=XEN
 _VM_TEST="$(uname -a)"
 if [[ "${_VM_TEST}" =~ "-beng" ]]; then
@@ -68,7 +70,7 @@ _apt_clean_update() {
 }
 
 _check_manufacturer_compatibility() {
-  # Install dmidecode of not present
+  # Install dmidecode if not present
   if ! command -v dmidecode &> /dev/null; then
     /usr/bin/apt-get update &> /dev/null
     ${_INITINS} dmidecode &> /dev/null
@@ -387,7 +389,7 @@ _check_virt() {
 
 _system_check_ready() {
   if [ ! -e "/etc/nginx" ] \
-    || [ ! -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ] \
+    || [ ! -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
     || [ ! -e "/etc/mysql" ] \
     || [ ! -e "/var/lib/mysql/mysql" ]; then
     echo "ERROR: Please install complete BOA system before trying"
@@ -407,7 +409,7 @@ _system_check_clean() {
   if [ -e "/etc/nginx" ] \
     || [ -e "/etc/mysql" ] \
     || [ -e "/var/lib/mysql/mysql" ] \
-    || [ -e "/var/aegir/.drush" ]; then
+    || [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ]; then
     echo
     echo "ERROR: BOA requires minimal supported OS with no services installed."
     echo
@@ -427,6 +429,23 @@ _system_check_clean() {
 }
 
 _ifnames_grub_check_sync() {
+
+  _USE_NINC=NO
+  _NEW_GRUB=DEMO
+
+  if [ -e "/root/.ignore.ifnames.cnf" ]; then
+    return 1  # Exit the function but continue the script
+  else
+    [ -e "/root/.ninc.selected.predictable.cnf" ] && _USE_NINC=predictable && _NEW_GRUB=LIVE
+    [ -e "/root/.ninc.selected.classic.cnf" ]     && _USE_NINC=classic     && _NEW_GRUB=LIVE
+    [ -e "/root/.ninc.selected.auto.cnf" ]        && _USE_NINC=auto        && _NEW_GRUB=LIVE
+    [ -e "/root/.ninc.selected.vanilla.cnf" ]     && _USE_NINC=vanilla
+  fi
+
+  if [ "${_USE_NINC}" = "vanilla" ] || [ "${_USE_NINC}" = "NO" ]; then
+    return 1  # Exit the function but continue the script
+  fi
+
   _IS_IFACE=$(ip a 2>&1)
   _ADD_GRUB_CMD=""
   _GRUB_FILE="/etc/default/grub"
@@ -475,12 +494,6 @@ _ifnames_grub_check_sync() {
       _append_grub_cmd_option "biosdevname=1"
     fi
 
-    if [ -e "/root/.auto.config.ifnames.grub.cnf" ] && [ ! -e "/root/.ignore.ifnames.cnf" ]; then
-      _NEW_GRUB=LIVE
-    else
-      _NEW_GRUB=DEMO
-    fi
-
     if [[ -n "${_ADD_GRUB_CMD}" ]]; then
       # Backup the GRUB file
       cp "${_GRUB_FILE}" "${_GRUB_FILE}.bak"
@@ -504,18 +517,24 @@ _ifnames_grub_check_sync() {
       echo " "
       if [[ "${_NEW_GRUB}" == "LIVE" ]]; then
         # Update the GRUB file
+        echo "GRUB: Networking Interface Naming Convention selected: ${_USE_NINC}"
         echo "GRUB: Update in the LIVE MODE"
         sed -i "s|^GRUB_CMDLINE_LINUX=.*|${_NEW_GRUB_CMDLINE_LINUX}|" "${_GRUB_FILE}"
         echo "GRUB_CMDLINE_LINUX has been updated with ${_UPDATED_CMDLINE}"
       elif [[ "${_NEW_GRUB}" == "DEMO" ]]; then
         # Demo info
+        echo "GRUB: Networking Interface Naming Convention selected: ${_USE_NINC}"
         echo "GRUB: Update in the DEMO MODE"
-        echo "GRUB_CMDLINE_LINUX would be updated with ${_UPDATED_CMDLINE}"
         echo " "
-        echo "GRUB: Update in the LIVE MODE needs presence of control file:"
-        echo "GRUB   /root/.auto.config.ifnames.grub.cnf"
+        echo "GRUB_CMDLINE_LINUX would be updated with:"
+        echo "   ${_UPDATED_CMDLINE}"
         echo " "
-        echo "GRUB: Ensure that the file /root/.ignore.ifnames.cnf does not exist."
+        echo "GRUB: Update in the LIVE MODE requires presence of control file:"
+        echo "   /root/.ninc.selected.auto.cnf"
+        echo " "
+        echo "GRUB: Note that this extra control file must not exist:"
+        echo "   /root/.ignore.ifnames.cnf"
+        echo " "
         echo "GRUB: This requirement serves as a double-check to confirm"
         echo "GRUB: that you are aware of and agree to auto-update GRUB configuration."
         echo "GRUB: Incorrect GRUB settings can render your virtual machine unbootable"
@@ -779,6 +798,50 @@ _send_report() {
   fi
 }
 
+_check_s_nail() {
+  # Check if postfix is available
+  if ! command -v postfix &> /dev/null; then
+    /usr/bin/apt-get update &> /dev/null
+    ${_INITINS} postfix postfix-pcre &> /dev/null
+  fi
+  # Install s-nail if not present
+  if ! command -v s-nail &> /dev/null; then
+    /usr/bin/apt-get update &> /dev/null
+    ${_INITINS} s-nail &> /dev/null
+  fi
+  if ! command -v s-nail &> /dev/null; then
+    return 1  # Exit the function but continue the script
+  else
+    return 0
+  fi
+}
+
+_send_errors() {
+  if ! _check_s_nail; then
+    return 1  # Exit the function but continue the script
+  fi
+  if [ -e "${_IN_BARRACUDA_LOG}" ]; then
+    _THIS_LOG="${_IN_BARRACUDA_LOG}"
+    _RS="Barracuda"
+  elif [ -e "${_IN_OCTOPUS_LOG}" ]; then
+    _THIS_LOG="${_IN_OCTOPUS_LOG}"
+    _RS="Octopus"
+  fi
+  _MY_EMAIL="${_eMal}"
+  _if_hosted_sys
+  if [ "${_hostedSys}" = "YES" ]; then
+    _MY_EMAIL="$(basename "$0")@omega8.cc"
+  fi
+  if [ ! -z "${_MY_EMAIL}" ]; then
+    _repSub="FAILED ${_RS} installation"
+    _repSub="REPORT: ${_repSub} on ${_hName}"
+    _repSub=$(echo -n ${_repSub} | fmt -su -w 2500 2>&1)
+    _if_extended_report
+    cat ${_THIS_LOG} | s-nail -s "${_repSub} at ${_NOW}" ${_MY_EMAIL}
+    echo "${_repSub} sent to ${_MY_EMAIL}"
+  fi
+}
+
 _octopus_install() {
   if [ -e "${_vBs}/${_octName}" ] && [ -e "${_vBs}/${_filIncO}" ]; then
     if [ -z "${_usEr}" ]; then
@@ -939,7 +1002,7 @@ _octopus_install() {
       if [ "${_outP}" = "logged" ] || [ "${_outP}" = "onlylogged" ]; then
         bash ${_vBs}/${_octName} >${_IN_OCTOPUS_LOG} 2>&1
       else
-        bash ${_vBs}/${_octName}
+        bash ${_vBs}/${_octName} 2>&1 | tee ${_IN_OCTOPUS_LOG}
       fi
       wait
     fi
@@ -1142,7 +1205,7 @@ _barracuda_install() {
       if [ "${_outP}" = "logged" ] || [ "${_outP}" = "onlylogged" ]; then
         bash ${_vBs}/${_barName} >${_IN_BARRACUDA_LOG} 2>&1
       else
-        bash ${_vBs}/${_barName}
+        bash ${_vBs}/${_barName} 2>&1 | tee ${_IN_BARRACUDA_LOG}
       fi
       wait
     fi
@@ -1173,7 +1236,8 @@ _init_start() {
   else
     touch /run/boa_run.pid
     touch /run/boa_wait.pid
-    mkdir -p ${_LOG_DIR}
+    mkdir -p ${_LOG_IN_DIR}
+    mkdir -p ${_LOG_UP_DIR}
     cd ${_vBs}
     rm -f ${_vBs}/*.sh.cnf*
     rm -f ${_vBs}/BARRACUDA.sh*
@@ -1492,14 +1556,24 @@ _init_setup() {
     _OCTOPUS_ONLY=YES
   else
     _barracuda_install
+    if [ ! -e "/var/aegir/config/includes/nginx_vhost_common.conf" ]; then
+      echo "ERROR: Barracuda install failed, we can not continue"
+      echo "ERROR: Please examine available logs for possible culprit"
+      echo "LOG TO CHECK: ${_IN_BARRACUDA_LOG}"
+      _send_errors
+      _clean_pid_exit _barracuda_install
+    fi
+    _NOW=$(date +%y%m%d-%H%M%S)
+    _NOW=${_NOW//[^0-9-]/}
+    _UP_BARRACUDA_LOG="${_LOG_UP_DIR}/$(basename "$0")-up-barracuda-${_NOW}.log"
     if [ "${_outP}" = "verbose" ]; then
       echo
       echo "Time for a quick barracuda system upgrade to complete installation"
       echo
-      /opt/local/bin/barracuda up-${_tRee} system noscreen
+      /opt/local/bin/barracuda up-${_tRee} system noscreen 2>&1 | tee ${_UP_BARRACUDA_LOG}
       wait
     else
-      /opt/local/bin/barracuda up-${_tRee} system noscreen > /dev/null 2>&1
+      /opt/local/bin/barracuda up-${_tRee} system noscreen >${_UP_BARRACUDA_LOG} 2>&1
       wait
     fi
   fi
@@ -1507,7 +1581,16 @@ _init_setup() {
     [ ! -e "/run/octopus_install_run.pid" ] && touch /run/octopus_install_run.pid
     sleep 3
     _octopus_install
-    rm -rf /data/disk/${_usEr}/.tmp/cache
+    if [ ! -e "/data/disk/${_usEr}/config/includes/nginx_vhost_common.conf" ] \
+      || [ ! -e "/data/disk/${_usEr}/log/octopus_log.txt" ]; then
+      echo "ERROR: Octopus install failed, we can not continue"
+      echo "ERROR: Please examine available logs for possible culprit"
+      echo "LOG TO CHECK: ${_IN_OCTOPUS_LOG}"
+      _send_errors
+      _clean_pid_exit _octopus_install
+    else
+      rm -rf /data/disk/${_usEr}/.tmp/cache
+    fi
   fi
   if [ "${_outP}" = "logged" ]; then
     _send_report
@@ -1558,11 +1641,14 @@ _init_setup() {
     echo "Bye!"
     echo
     if [ ! -e "/root/.dont.upgrade.octopus.on.install.cnf" ]; then
+      _NOW=$(date +%y%m%d-%H%M%S)
+      _NOW=${_NOW//[^0-9-]/}
+      _UP_OCTOPUS_LOG="${_LOG_UP_DIR}/$(basename "$0")-up-octopus-${_NOW}.log"
       rm -rf /data/disk/${_usEr}/.tmp/cache
       if [ "${_OCTOPUS_ONLY}" = "YES" ]; then
-        nohup /opt/local/bin/octopus up-${_tRee} ${_usEr} force log noscreen > /dev/null 2>&1 &
+        nohup /opt/local/bin/octopus up-${_tRee} ${_usEr} force log noscreen >${_UP_OCTOPUS_LOG} 2>&1 &
       else
-        /opt/local/bin/octopus up-${_tRee} ${_usEr} force log noscreen > /dev/null 2>&1
+        /opt/local/bin/octopus up-${_tRee} ${_usEr} force log noscreen 2>&1 | tee ${_UP_OCTOPUS_LOG}
       fi
     fi
     sleep 1
@@ -1617,10 +1703,10 @@ _if_reinstall_curl() {
   if [[ ! "${_isCurl}" =~ "OpenSSL" ]] \
     || [[ "${_isCurl}" =~ "libcurl.so.4" ]] \
     || [ -z "${_isCurl}" ]; then
-    if [ -e "/var/aegir/drush" ]; then
+    if [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ]; then
       echo "OOPS: cURL is broken!"
     fi
-    if [ ! -e "/var/aegir/drush" ]; then
+    if [ ! -e "/var/aegir/config/includes/nginx_vhost_common.conf" ]; then
       if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
         && [ -e "/etc/apt/apt.conf.d" ]; then
         echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff

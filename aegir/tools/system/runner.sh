@@ -115,6 +115,11 @@ elif (( $(pgrep -fc 'mysql_cluster_backup.sh') > 0 )); then
   _SQLBACKUP_RUNNING=YES
 fi
 
+_DAILY_RUNNING=NO
+if (( $(pgrep -fc 'daily.sh') > 0 )); then
+  _DAILY_RUNNING=YES
+fi
+
 # Get total RAM in MB
 _TOTAL_RAM_MB=$(free -m | awk '/^Mem:/ {print $2}')
 
@@ -127,7 +132,9 @@ if [ "${_TOTAL_RAM_MB}" -le 4096 ]; then
 fi
 
 if [ "${_SQLBACKUP_RUNNING}" = "TRUE" ] \
+  || [ "${_DAILY_RUNNING}" = "TRUE" ] \
   || [ -e "/run/boa_wait.pid" ] \
+  || [ -e "/run/boa_run.pid" ] \
   || [ -e "/run/boa_cron_wait.pid" ]; then
   if [ ! -e "/root/.force.queue.runner.cnf" ]; then
     touch /var/log/boa/wait-runner.pid

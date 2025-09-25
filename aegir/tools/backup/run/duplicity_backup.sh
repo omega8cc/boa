@@ -50,14 +50,16 @@ _verify_boa_keys() {
         echo "Your system requires valid license to use this function"
         echo "Please visit https://omega8.cc/licenses to purchase your own"
         echo
-        if [ -e "/var/aegir/drush/vendor" ] && [ ! -e "/var/aegir/key/barracuda_key.txt" ]; then
+        if [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
+          && [ ! -e "/var/aegir/key/barracuda_key.txt" ]; then
           mkdir -p /var/aegir/key
           cat /var/opt/_encN_local.${_encName}.tmp > /var/aegir/key/barracuda_key.txt
         fi
         rm -f /var/opt/_encN*
         exit 0
       else
-        if [ -e "/var/aegir/drush/vendor" ] && [ ! -e "/var/aegir/key/barracuda_key.txt" ]; then
+        if [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
+          && [ ! -e "/var/aegir/key/barracuda_key.txt" ]; then
           mkdir -p /var/aegir/key
           cat /var/opt/_encN_local.${_encName}.tmp > /var/aegir/key/barracuda_key.txt
         fi
