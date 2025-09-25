@@ -453,6 +453,7 @@ _generic_vm_postinstall() {
     _vBs="/var/backups"
     _LOG_UP_DIR="${_vBs}/reports/up/$(basename "$0")/${_TODAY}"
     _UP_BARRACUDA_LOG="${_LOG_UP_DIR}/$(basename "$0")-up-barracuda-${_NOW}.log"
+    mkdir -p ${_LOG_UP_DIR}
     nohup /opt/local/bin/barracuda up-${_tRee} system noscreen >${_UP_BARRACUDA_LOG} 2>&1 &
   fi
 }
@@ -461,9 +462,11 @@ _status_vm_postinstall() {
   _check_system_manufacturer
   if [ "$(boa info | grep -c Percona)" -lt 3 ] || [ ! -e "/usr/sbin/csf" ]; then
     _NEEDS_UPGRADE=YES
+    echo "A _NEEDS_UPGRADE is ${_NEEDS_UPGRADE}"
     [ -n "${_SYS_MANUFACTURER_LC}" ] && _generic_vm_postinstall
   else
     _NEEDS_UPGRADE=NO
+    echo "B _NEEDS_UPGRADE is ${_NEEDS_UPGRADE}"
     if [ ! -e "/run/${_SYS_MANUFACTURER_LC}_vm.pid" ] \
       && [ ! -e "/run/${_SYS_MANUFACTURER_LC}_vm_postinstall.pid" ]; then
       touch /run/${_SYS_MANUFACTURER_LC}_vm_postinstall.pid
