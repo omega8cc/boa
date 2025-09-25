@@ -133,7 +133,7 @@ system("service proxysql restart") if (!$pxydsumar && -f "/etc/init.d/proxysql")
 system("service droplet-agent restart") if (!$dpltsumar && -f "/etc/init.d/droplet-agent");
 system("service droplet-agent restart") if (!-f "/run/droplet-agent.pid" && -f "/etc/init.d/droplet-agent");
 
-if (-e "/usr/sbin/unbound" && !$unboundsumar) {
+if (!-f "/run/wait-unbound.pid" && -e "/usr/sbin/unbound" && !$unboundsumar) {
   if (-e "/etc/resolvconf/update.d/unbound") {
     system("chmod -x /etc/resolvconf/update.d/unbound");
   }

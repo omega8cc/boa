@@ -823,12 +823,14 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     else
       [ -e "/root/.pause_tasks_maint.cnf" ] && rm -f /root/.pause_tasks_maint.cnf
       [ -e "/root/.restrict_this_vm.cnf" ] && rm -f /root/.restrict_this_vm.cnf
-      if [ `ps aux | grep -v "grep" | grep --count "gpg-agent"` -gt 5 ]; then
+      _CNT=$(pgrep -fc "[g]pg-agent")
+      if (( _CNT > 5 )); then
         kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
         echo "$(date) Too many gpg-agent processes killed" >> \
           /var/log/boa/gpg-agent-count.kill.log
       fi
-      if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt 5 ]; then
+      _CNT=$(pgrep -fc "[d]irmngr")
+      if (( _CNT > 5 )); then
         kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
         echo "$(date) Too many dirmngr processes killed" >> \
           /var/log/boa/dirmngr-count.kill.log
@@ -966,7 +968,8 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
 
   _IS_MOVESQL_RUNNING=$(ps aux | grep '[m]ove_sql.sh' | awk '{print $2}' 2>&1)
   if [ ! -z "${_IS_MOVESQL_RUNNING}" ]; then
-    if [ `ps aux | grep -v "grep" | grep --count "move_sql.sh"` -gt 2 ]; then
+    _CNT=$(pgrep -fc "[m]ove_sql.sh")
+    if (( _CNT > 2 )); then
       kill -9 $(ps aux | grep '[m]ove_sql.sh' | awk '{print $2}') &> /dev/null
       rm -f /run/mysql_restart_running.pid
       rm -f /run/boa_wait.pid
@@ -977,7 +980,8 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
 
   _IS_SQLCLEANUP_RUNNING=$(ps aux | grep '[m]ysql_cleanup.sh' | awk '{print $2}' 2>&1)
   if [ ! -z "${_IS_SQLCLEANUP_RUNNING}" ]; then
-    if [ `ps aux | grep -v "grep" | grep --count "mysql_cleanup.sh"` -gt 2 ]; then
+    _CNT=$(pgrep -fc "[m]ysql_cleanup.sh")
+    if (( _CNT > 2 )); then
       kill -9 $(ps aux | grep '[m]ysql_cleanup.sh' | awk '{print $2}') &> /dev/null
       rm -f /run/mysql_backup_running.pid
       rm -f /var/log/boa/.sqlcleanup_ctrl*
@@ -987,16 +991,18 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
 
   _IS_SOLRSTART_RUNNING=$(ps aux | grep '[s]olr start' | awk '{print $2}' 2>&1)
   if [ ! -z "${_IS_SOLRSTART_RUNNING}" ]; then
-    if [ `ps aux | grep -v "grep" | grep --count "solr start"` -gt 2 ]; then
+    _CNT=$(pgrep -fc "[s]olr start")
+    if (( _CNT > 2 )); then
       kill -9 $(ps aux | grep '[s]olr start' | awk '{print $2}') &> /dev/null
       touch /var/log/boa/.solr_start_ctrl.${_tRee}.${_xSrl}.pid
     fi
   fi
 
-  _IS_PROCTRL_RUNNING=$(ps aux | grep '[p]roc_num_ctrl.cgi' | awk '{print $2}' 2>&1)
+  _IS_PROCTRL_RUNNING=$(ps aux | grep '[p]roc_num_ctrl.pl' | awk '{print $2}' 2>&1)
   if [ ! -z "${_IS_PROCTRL_RUNNING}" ]; then
-    if [ `ps aux | grep -v "grep" | grep --count "proc_num_ctrl.pl"` -gt 1 ]; then
-      kill -9 $(ps aux | grep '[p]roc_num_ctrl.cgi' | awk '{print $2}') &> /dev/null
+    _CNT=$(pgrep -fc "[p]roc_num_ctrl.pl")
+    if (( _CNT > 1 )); then
+      kill -9 $(ps aux | grep '[p]roc_num_ctrl.pl' | awk '{print $2}') &> /dev/null
       touch /var/log/boa/.proc_num_ctrl.${_tRee}.${_xSrl}.pid
     fi
   fi
@@ -1007,7 +1013,8 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
 
   _IS_SQLBACKUP_RUNNING=$(ps aux | grep '[m]ysql_backup.sh' | awk '{print $2}' 2>&1)
   if [ ! -z "${_IS_SQLBACKUP_RUNNING}" ]; then
-    if [ `ps aux | grep -v "grep" | grep --count "mysql_backup.sh"` -gt 2 ]; then
+    _CNT=$(pgrep -fc "[m]ysql_backup.sh")
+    if (( _CNT > 2 )); then
       kill -9 $(ps aux | grep '[m]ysql_backup.sh' | awk '{print $2}') &> /dev/null
       kill -9 $(ps aux | grep '[m]ydumper' | awk '{print $2}') &> /dev/null
       kill -9 $(ps aux | grep '[u]sage.sh' | awk '{print $2}') &> /dev/null

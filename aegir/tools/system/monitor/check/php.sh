@@ -94,7 +94,8 @@ _fpm_forced_restart() {
 }
 
 _fpm_duplicate_instances_detection() {
-  if [ `ps aux | grep -v "grep" | grep --count "php-fpm: master process"` -gt 11 ]; then
+  _CNT=$(pgrep -fc "[p]hp-fpm: master process")
+  if (( _CNT > 11 )); then
     _thisErrLog="$(date) Too many PHP-FPM master processes killed"
     echo ${_thisErrLog} >> ${_pthOml}
     _fpm_forced_restart "Too many PHP-FPM master"
