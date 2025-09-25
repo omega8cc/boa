@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Define the file paths
-_aegir_health_check="/var/aegir/config/includes/nginx_vhost_common.conf"
+_aegir_health_check="/var/aegir/.drush/hm.alias.drushrc.php"
 _drush_health_check="/var/aegir/drush/drush"
 _ctrl_dir="/var/aegir/control/ip"
 _input_file="${_ctrl_dir}/access.txt"
