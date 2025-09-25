@@ -91,9 +91,10 @@ _find_correct_ip() {
       echo ${_LOC_IP} > /root/.found_correct_ipv4.cnf
     fi
   fi
-  if grep -qE "${_LOC_IP}\s" /etc/hosts; then
+  if [ -n "${_LOC_IP}" ] && grep -qE "${_LOC_IP}\s" /etc/hosts; then
     cp -af /etc/hosts /etc/.was.hosts
     sed -i "s/^${_LOC_IP}.*//g" /etc/hosts
+    [ -x "/etc/init.d/unbound" ] && service unbound restart &> /dev/null
   fi
 }
 
