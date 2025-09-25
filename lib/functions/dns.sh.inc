@@ -175,6 +175,10 @@ _find_correct_ip() {
       echo ${_LOC_IP} > /root/.found_correct_ipv4.cnf
     fi
   fi
+  if grep -qE "${_LOC_IP}\s" /etc/hosts; then
+    cp -af /etc/hosts /etc/.was.hosts
+    sed -i "s/^${_LOC_IP}.*//g" /etc/hosts
+  fi
 }
 
 #
@@ -866,8 +870,8 @@ EOF
     _THISHOST="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
     _THISHOST=${_THISHOST//[^a-zA-Z0-9-.]/}
     _THISHOST=$(echo -n ${_THISHOST} | tr A-Z a-z 2>&1)
-    if [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ]; then
-      _THIS_FRONT=$(cat /var/aegir/.drush/hostmaster.alias.drushrc.php \
+    if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
+      _THIS_FRONT=$(cat /var/aegir/.drush/hm.alias.drushrc.php \
         | grep "uri'" \
         | cut -d: -f2 \
         | awk '{ print $3}' \
