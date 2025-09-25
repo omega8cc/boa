@@ -44,8 +44,12 @@
 
    **NOTE!** You shouldn't use anything like "mydomain.org" as your hostname. It should be some **subdomain**, like "server.mydomain.org".
 
-   You **don't** need to configure your hostname (on the server) before running BOA installer, since BOA will do that for you, automatically.
+2. Configure your permanent hostname on the server before running BOA installer, even if BOA will do that for you, automatically. We recommend this step in case the host/vendor VM enforces some placeholder hostname via cloud-init or other tools on reboot.
 
+   ```sh
+   hostname -b server.mydomain.org
+   echo server.mydomain.org > /etc/hostname
+   ```
 
 3. Download and run BOA Meta Installers.
 
