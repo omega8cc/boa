@@ -6296,20 +6296,6 @@ _if_major_os_upgrade() {
       rm -f /root/.big_hop_on_major_os_upgrade.info
     fi
     _check_dns_settings
-    if [ "${_USE_PROVIDER_DNS}" != "YES" ]; then
-      if [ -e "/etc/resolv.conf" ]; then
-        mv -f /etc/resolv.conf /etc/resolv.conf.pre-dist-upgrade
-      fi
-      rm -f /etc/resolv.conf
-  	  echo "nameserver 127.0.0.1" > /etc/resolv.conf
-      echo "nameserver 1.1.1.1" >> /etc/resolv.conf
-      echo "nameserver 1.0.0.1" >> /etc/resolv.conf
-  	  echo "nameserver 8.8.8.8" >> /etc/resolv.conf
-  	  echo "nameserver 8.8.4.4" >> /etc/resolv.conf
-      if [ -e "/etc/resolv.conf.pre-dist-upgrade" ]; then
-        cat /etc/resolv.conf.pre-dist-upgrade >> /etc/resolv.conf
-      fi
-    fi
     rm -f ${_pthLog}/ruby-sys-clean-reload.log
     mv -f /var/xdrago /var/xdrago_wait &> /dev/null
     rm -f ${_mtrNgx}/pre.d/nginx_speed_purge.conf
