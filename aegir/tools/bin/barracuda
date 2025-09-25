@@ -1562,9 +1562,30 @@ _csf_check_fix() {
   fi
 }
 
+#
+# Find correct IP.
+_find_correct_ip() {
+  if [ -e "/root/.found_correct_ipv4.cnf" ]; then
+    _LOC_IP=$(cat /root/.found_correct_ipv4.cnf 2>/dev/null | tr -d '\n')
+  else
+    _LOC_IP=$(curl ${_crlGet} https://api.ipify.org | sed 's/[^0-9\.]//g')
+    if [ -z "${_LOC_IP}" ]; then
+      _LOC_IP=$(curl ${_crlGet} http://ipv4.icanhazip.com | sed 's/[^0-9\.]//g')
+    fi
+    if [ ! -z "${_LOC_IP}" ]; then
+      echo ${_LOC_IP} > /root/.found_correct_ipv4.cnf
+    fi
+  fi
+  if [ -n "${_LOC_IP}" ] && grep -qE "${_LOC_IP}\s" /etc/hosts; then
+    cp -af /etc/hosts /etc/.was.hosts
+    sed -i "s/^${_LOC_IP}.*//g" /etc/hosts
+  fi
+}
+
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
+    _find_correct_ip
     _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
 
     # Sanitize to allow only digits and minus sign
