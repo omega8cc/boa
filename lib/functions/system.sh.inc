@@ -73,10 +73,10 @@ _if_reinstall_curl_src() {
     apt-get install libssl-dev ${_aptYesUnth} -qq 2> /dev/null
     apt-get install libc-client2007e libc-client2007e-dev ${_aptYesUnth} -qq 2> /dev/null
     apt-get build-dep curl ${_aptYesUnth} 2> /dev/null
-    if [ ! -e "/var/aegir/config/includes/nginx_vhost_common.conf" ]; then
+    if [ ! -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
       apt-get install curl --reinstall ${_aptYesUnth} -qq 2> /dev/null
     fi
-    if [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ]; then
+    if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
       _msg "INFO: Installing curl from sources..."
       mkdir -p /var/opt
       rm -rf /var/opt/curl*
@@ -384,7 +384,7 @@ _if_running_as_root_barracuda() {
     fi
     _check_system_manufacturer
     if [ -n "${_SYS_MANUFACTURER_LC}" ]; then
-      if  [ ! -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
+      if  [ ! -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
         || [ ! -e "/data/u" ] \
         || [ ! -e "/var/xdrago" ]; then
         [ ! -e "/run/${_SYS_MANUFACTURER_LC}_vm_postinstall.pid" ] && touch /run/${_SYS_MANUFACTURER_LC}_vm.pid
@@ -1692,7 +1692,7 @@ _php_if_versions_cleanup_cnf() {
       sleep 3
       _msg "HINT: the cleanup will not work until you install Octopus instance"
     fi
-    if [ ! -e "/var/aegir/config/includes/nginx_vhost_common.conf" ]; then
+    if [ ! -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
       _AUTO_PHP_CLEANUP=NO
       _msg "ALRT: Your Aegir Master Instance looks broken!"
       sleep 8
@@ -2819,7 +2819,7 @@ _run_aptitude_full_upgrade() {
   fi
   _mrun "apt-get remove percona-release -y -qq" 2> /dev/null
   _apt_clean_update
-  if [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ]; then
+  if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     _DPKG_CNF="confold"
   else
     _DPKG_CNF="confnew"
@@ -5714,7 +5714,7 @@ _basic_packages_install_on_init() {
     _msg "PROC: _basic_packages_install_on_init"
   fi
   _apt_clean_update
-  if [ ! -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] && [ ! -e "/var/xdrago/manage_solr_config.sh" ]; then
+  if [ ! -e "/var/aegir/.drush/hm.alias.drushrc.php" ] && [ ! -e "/var/xdrago/manage_solr_config.sh" ]; then
 #     _mrun "apt-get remove unscd -y --purge --auto-remove -qq" 2> /dev/null
 #     _mrun "apt-get remove dbus -y --purge --auto-remove -qq" 2> /dev/null
 #     if [ -e "/usr/share/dbus-1" ]; then
@@ -7081,7 +7081,7 @@ _sys_packages_update() {
   fi
   _webmin_apt_update
   _apt_clean_update
-  if [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ]; then
+  if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     _DPKG_CNF="confold"
   else
     _DPKG_CNF="confnew"
@@ -7929,7 +7929,7 @@ _xdrago_install_upgrade() {
   fi
   cd /var
   if [ -d "/var/xdrago/conf" ] \
-    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ]; then
+    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: Upgrading a few more tools..."
     fi
