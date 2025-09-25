@@ -395,7 +395,7 @@ _mode_detection() {
   fi
     [ -e "/root/.use.curl.from.packages.cnf" ] && chattr -i /root/.use.curl.from.packages.cnf
     [ -e "/root/.use.curl.from.packages.cnf" ] && rm -f /root/.use.curl.from.packages.cnf
-  if [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
+  if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
     && [ ! -e "/lib/systemd/systemd" ]; then
     _STATUS=UPGRADE
     _msg "MODE: UPGRADE"
@@ -481,7 +481,7 @@ _mode_detection() {
   else
     _USE_AEGIR_VER=STATIC
   fi
-  if [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ]; then
+  if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     _DPKG_CNF="confold"
   else
     _DPKG_CNF="confnew"
@@ -513,7 +513,7 @@ _mode_detection() {
     -o Dpkg::Options::=--force-confdef \
     -o Dpkg::Options::=--force-${_DPKG_CNF} remove"
 
-  if [ ! -e "/var/aegir/config/includes/nginx_vhost_common.conf" ]; then
+  if [ ! -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     _INSTAPP="${_INSTALL_DIST}"
     _RMAPP="apt-get -y -qq remove"
   fi

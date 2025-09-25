@@ -970,7 +970,7 @@ EOFMYSQL
       touch /opt/tmp/status-Barracuda-FAIL
       _clean_pid_exit _aegir_master_install_upgrade_d
     fi
-    if [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ]; then
+    if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
       _THIS_HM_ROOT=$(cat /var/aegir/.drush/hostmaster.alias.drushrc.php \
         | grep "root'" \
         | cut -d: -f2 \
@@ -1001,7 +1001,7 @@ EOFMYSQL
     sleep 5
     su -s /bin/bash - aegir -c "drush8 @hostmaster hosting-tasks --force" &> /dev/null
     wait
-    if [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ]; then
+    if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
       _THIS_HM_ROOT=$(cat /var/aegir/.drush/hostmaster.alias.drushrc.php \
         | grep "root'" \
         | cut -d: -f2 \
