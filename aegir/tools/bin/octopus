@@ -170,6 +170,10 @@ _fix_dns_settings() {
       cp -a ${_vBs}/resolv.conf.tmp /etc/resolv.conf
     fi
   fi
+  if [ -x "/usr/sbin/unbound-control" ] \
+    && [ -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
+    unbound-control reload &> /dev/null
+  fi
 }
 
 _check_dns_settings() {
@@ -1003,10 +1007,6 @@ _if_reinstall_curl() {
 
 _check_dns_curl() {
   _check_dns_settings
-  if [ -x "/usr/sbin/unbound-control" ] \
-    && [ -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
-    unbound-control reload &> /dev/null
-  fi
   _find_fast_mirror_early
   _if_reinstall_curl
   _CURL_TEST=$(curl -L -k -s \

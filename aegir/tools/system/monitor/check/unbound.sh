@@ -75,6 +75,8 @@ _unbound_check_fix() {
 
   if [ -x "/usr/sbin/unbound" ] \
     && [ ! -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
+    touch /run/wait-unbound.pid
+    sleep 3
     mkdir -p /etc/resolvconf/run/interface
     echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.unbound
     [ -e "/etc/resolvconf/update.d/unbound" ] && chmod -x /etc/resolvconf/update.d/unbound
@@ -83,16 +85,22 @@ _unbound_check_fix() {
     service unbound restart &> /dev/null
     wait
     unbound-control reload &> /dev/null
+    sleep 3
+    rm -f /run/wait-unbound.pid
   fi
   if [ -e "/etc/resolv.conf" ]; then
     _RESOLV_LOC=$(grep "nameserver 127.0.0.1" /etc/resolv.conf 2>&1)
     _RESOLV_ELN=$(grep "nameserver 1.1.1.1" /etc/resolv.conf 2>&1)
     _RESOLV_EGT=$(grep "nameserver 8.8.8.8" /etc/resolv.conf 2>&1)
+    _RESOLV_NIN=$(grep "nameserver 9.9.9.9" /etc/resolv.conf 2>&1)
     if [[ "${_RESOLV_LOC}" =~ "nameserver 127.0.0.1" ]] \
       && [[ "${_RESOLV_ELN}" =~ "nameserver 1.1.1.1" ]] \
-      && [[ "${_RESOLV_EGT}" =~ "nameserver 8.8.8.8" ]]; then
+      && [[ "${_RESOLV_EGT}" =~ "nameserver 8.8.8.8" ]] \
+      && [[ "${_RESOLV_NIN}" =~ "nameserver 9.9.9.9" ]]; then
       _THIS_DNS_TEST=$(host files.aegir.cc 127.0.0.1 -w 3 2>&1)
       if [[ "${_THIS_DNS_TEST}" =~ "no servers could be reached" ]]; then
+        touch /run/wait-unbound.pid
+        sleep 3
         service unbound stop &> /dev/null
         sleep 1
         killall -9 unbound &> /dev/null
@@ -102,8 +110,12 @@ _unbound_check_fix() {
         elif [ -e "/var/xdrago_wait/proc_num_ctrl.pl" ]; then
           perl /var/xdrago_wait/proc_num_ctrl.pl &
         fi
+        sleep 3
+        rm -f /run/wait-unbound.pid
       fi
     else
+      touch /run/wait-unbound.pid
+      sleep 3
       rm -f /etc/resolv.conf
       echo "nameserver 127.0.0.1" > /etc/resolv.conf
       echo "nameserver 1.1.1.1" >> /etc/resolv.conf
@@ -114,15 +126,22 @@ _unbound_check_fix() {
       service unbound restart &> /dev/null
       wait
       unbound-control reload &> /dev/null
+      sleep 3
+      rm -f /run/wait-unbound.pid
     fi
   fi
-  if [ `ps aux | grep -v "grep" | grep --count "/usr/sbin/unbound"` -gt 1 ]; then
+  _CNT=$(pgrep -fc "[u]sr/sbin/unbound")
+  if (( _CNT > 1 )); then
+    touch /run/wait-unbound.pid
+    sleep 3
     kill -9 $(ps aux | grep '[u]sr/sbin/unbound' | awk '{print $2}') &> /dev/null
-    service unbound start &> /dev/null
+    service unbound restart &> /dev/null
     wait
-    echo "$(date) Too many Unbound processes killed" >> ${_pthOml}
+    echo "$(date) Too many Unbound processes killed (count=${_CNT})" >> ${_pthOml}
     _incident_email_report "Too many Unbound processes"
     echo >> ${_pthOml}
+    sleep 3
+    rm -f /run/wait-unbound.pid
   fi
 }
 
