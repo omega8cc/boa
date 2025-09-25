@@ -182,6 +182,26 @@
 
    **NOTE:** Since BOA no longer installs all bundled Ægir platforms during initial system installation, you will need to add some keywords to `~/static/control/platforms.info` and run Octopus upgrade to have these platforms added as explained in the docs you can find in the file `~/static/control/README.txt` within your Octopus account or online at [docs/PLATFORMS.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/PLATFORMS.md)
 
+# Post-install auto-upgrade and reboot
+
+   **Don't reboot your VM until all procedures are finalized, including post-install auto-upgrades.**
+
+   When invoked via `boa` command, it will run installation is several steps, automatically.
+
+   **But how you will know it's ready?** Once all procedures are finalized you will see **three (3) lines** reported by this command:
+
+   ```sh
+   boa info | grep -c Percona
+   ```
+
+   **REMEMBER: don't reboot your VM until all procedures are finalized, including post-install auto-upgrades.**
+
+   Now it's safe and recommended to reboot your server to make sure it's running correct installed Linux kernel supplied by Devuan -- either via your vendor control panel or directly via accelerated system reboot:
+
+   ```sh
+   boa reboot
+   ```
+
 # Installing More Octopus Instances
 
 You can add more Octopus instances easily:
