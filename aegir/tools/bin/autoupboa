@@ -7,6 +7,27 @@ export _tRee=dev
 export _xSrl=570devT07
 
 _barCnf="/root/.barracuda.cnf"
+_crlGet="-L --max-redirs 3 -k -s --retry 9 --retry-delay 9 -A iCab"
+
+#
+# Find correct IP.
+_find_correct_ip() {
+  if [ -e "/root/.found_correct_ipv4.cnf" ]; then
+    _LOC_IP=$(cat /root/.found_correct_ipv4.cnf 2>/dev/null | tr -d '\n')
+  else
+    _LOC_IP=$(curl ${_crlGet} https://api.ipify.org | sed 's/[^0-9\.]//g')
+    if [ -z "${_LOC_IP}" ]; then
+      _LOC_IP=$(curl ${_crlGet} http://ipv4.icanhazip.com | sed 's/[^0-9\.]//g')
+    fi
+    if [ ! -z "${_LOC_IP}" ]; then
+      echo ${_LOC_IP} > /root/.found_correct_ipv4.cnf
+    fi
+  fi
+  if [ -n "${_LOC_IP}" ] && grep -qE "${_LOC_IP}\s" /etc/hosts; then
+    cp -af /etc/hosts /etc/.was.hosts
+    sed -i "s/^${_LOC_IP}.*//g" /etc/hosts
+  fi
+}
 
 # Function to calculate RAM usage percentage as an integer
 _calculate_ram_usage_percent() {
@@ -59,7 +80,6 @@ _turn_off_apparmor() {
 [ ! -e "/root/.keep_apparmor_on.cnf" ] && [ -e "/lib/apparmor/apparmor.systemd" ] && _turn_off_apparmor
 
 # Define default values
-_hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
 _DEFAULT_CPU_CRIT_RATIO="6.1"
 _DEFAULT_CPU_MAX_RATIO="4.1"
 _DEFAULT_CPU_TASK_RATIO="3.1"
@@ -356,6 +376,8 @@ _NOW=$(date +%y%m%d-%H%M%S)
 _NOW=${_NOW//[^0-9-]/}
 
 _if_hosted_sys() {
+  _find_correct_ip
+  _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
   if [ -e "/root/.host8.cnf" ] \
     || [[ "${_hName}" =~ ".aegir.cc"($) ]]; then
     _hostedSys=YES
