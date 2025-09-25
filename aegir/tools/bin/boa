@@ -798,6 +798,29 @@ _send_report() {
   fi
 }
 
+_send_errors() {
+  if [ -e "${_IN_BARRACUDA_LOG}" ]; then
+    _THIS_LOG="${_IN_BARRACUDA_LOG}"
+    _RS="Barracuda"
+  elif [ -e "${_IN_OCTOPUS_LOG}" ]; then
+    _THIS_LOG="${_IN_OCTOPUS_LOG}"
+    _RS="Octopus"
+  fi
+  _MY_EMAIL="${_eMal}"
+  _if_hosted_sys
+  if [ "${_hostedSys}" = "YES" ]; then
+    _MY_EMAIL="$(basename "$0")@omega8.cc"
+  fi
+  if [ ! -z "${_MY_EMAIL}" ]; then
+    _repSub="FAILED ${_RS} installation"
+    _repSub="REPORT: ${_repSub} on ${_hName}"
+    _repSub=$(echo -n ${_repSub} | fmt -su -w 2500 2>&1)
+    _if_extended_report
+    cat ${_THIS_LOG} | s-nail -s "${_repSub} at ${_NOW}" ${_MY_EMAIL}
+    echo "${_repSub} sent to ${_MY_EMAIL}"
+  fi
+}
+
 _octopus_install() {
   if [ -e "${_vBs}/${_octName}" ] && [ -e "${_vBs}/${_filIncO}" ]; then
     if [ -z "${_usEr}" ]; then
@@ -1512,6 +1535,16 @@ _init_setup() {
     _OCTOPUS_ONLY=YES
   else
     _barracuda_install
+    if [ ! -e "/var/aegir/config/includes/nginx_vhost_common.conf" ]; then
+      echo "ERROR: Barracuda install failed, we can not continue"
+      echo "ERROR: Please examine available logs for possible culprit"
+      echo "LOG TO CHECK: ${_IN_BARRACUDA_LOG}"
+      _send_errors
+      _clean_pid_exit _barracuda_install
+    fi
+    _NOW=$(date +%y%m%d-%H%M%S)
+    _NOW=${_NOW//[^0-9-]/}
+    _UP_BARRACUDA_LOG="${_LOG_UP_DIR}/$(basename "$0")-up-barracuda-${_NOW}.log"
     if [ "${_outP}" = "verbose" ]; then
       echo
       echo "Time for a quick barracuda system upgrade to complete installation"
@@ -1527,7 +1560,16 @@ _init_setup() {
     [ ! -e "/run/octopus_install_run.pid" ] && touch /run/octopus_install_run.pid
     sleep 3
     _octopus_install
-    rm -rf /data/disk/${_usEr}/.tmp/cache
+    if [ ! -e "/data/disk/${_usEr}/config/includes/nginx_vhost_common.conf" ] \
+      || [ ! -e "/data/disk/${_usEr}/log/octopus_log.txt" ]; then
+      echo "ERROR: Octopus install failed, we can not continue"
+      echo "ERROR: Please examine available logs for possible culprit"
+      echo "LOG TO CHECK: ${_IN_OCTOPUS_LOG}"
+      _send_errors
+      _clean_pid_exit _octopus_install
+    else
+      rm -rf /data/disk/${_usEr}/.tmp/cache
+    fi
   fi
   if [ "${_outP}" = "logged" ]; then
     _send_report
