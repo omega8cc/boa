@@ -73,10 +73,10 @@ _if_reinstall_curl_src() {
     apt-get install libssl-dev ${_aptYesUnth} -qq 2> /dev/null
     apt-get install libc-client2007e libc-client2007e-dev ${_aptYesUnth} -qq 2> /dev/null
     apt-get build-dep curl ${_aptYesUnth} 2> /dev/null
-    if [ ! -e "/var/aegir/drush" ]; then
+    if [ ! -e "/var/aegir/config/includes/nginx_vhost_common.conf" ]; then
       apt-get install curl --reinstall ${_aptYesUnth} -qq 2> /dev/null
     fi
-    if [ -e "/var/aegir/drush" ]; then
+    if [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ]; then
       _msg "INFO: Installing curl from sources..."
       mkdir -p /var/opt
       rm -rf /var/opt/curl*
@@ -383,30 +383,16 @@ _if_running_as_root_barracuda() {
       ${_INITINS} dmidecode &> /dev/null
     fi
     _check_system_manufacturer
+    if [ -n "${_SYS_MANUFACTURER_LC}" ]; then
+      if  [ ! -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
+        || [ ! -e "/data/u" ] \
+        || [ ! -e "/var/xdrago" ]; then
+        [ ! -e "/run/${_SYS_MANUFACTURER_LC}_vm_postinstall.pid" ] && touch /run/${_SYS_MANUFACTURER_LC}_vm.pid
+      fi
+    fi
     # Check for Amazon EC2 in the system manufacturer field
     if dmidecode -s system-manufacturer | grep -i 'Amazon EC2' &> /dev/null; then
       _VMFAMILY="AWS"
-    fi
-    if dmidecode -s system-manufacturer | grep -i 'Linode' &> /dev/null; then
-      if  [ ! -e "/var/aegir/drush" ] \
-        || [ ! -e "/data/u" ] \
-        || [ ! -e "/var/xdrago" ]; then
-        [ ! -e "/run/linode_vm_postinstall.pid" ] && touch /run/linode_vm.pid
-      fi
-    elif dmidecode -s system-manufacturer | grep -i 'Hetzner' &> /dev/null; then
-      if  [ ! -e "/var/aegir/drush" ] \
-        || [ ! -e "/data/u" ] \
-        || [ ! -e "/var/xdrago" ]; then
-        [ ! -e "/run/hetzner_vm_postinstall.pid" ] && touch /run/hetzner_vm.pid
-      fi
-    else
-      if [ -n "${_SYS_MANUFACTURER_LC}" ]; then
-        if  [ ! -e "/var/aegir/drush" ] \
-          || [ ! -e "/data/u" ] \
-          || [ ! -e "/var/xdrago" ]; then
-          [ ! -e "/run/${_SYS_MANUFACTURER_LC}_vm_postinstall.pid" ] && touch /run/${_SYS_MANUFACTURER_LC}_vm.pid
-        fi
-      fi
     fi
     _VM_TEST="$(uname -a)"
     if [[ "${_VM_TEST}" =~ "-beng" ]]; then
@@ -1706,7 +1692,7 @@ _php_if_versions_cleanup_cnf() {
       sleep 3
       _msg "HINT: the cleanup will not work until you install Octopus instance"
     fi
-    if [ ! -e "/var/aegir/drush/vendor" ]; then
+    if [ ! -e "/var/aegir/config/includes/nginx_vhost_common.conf" ]; then
       _AUTO_PHP_CLEANUP=NO
       _msg "ALRT: Your Aegir Master Instance looks broken!"
       sleep 8
@@ -2833,7 +2819,7 @@ _run_aptitude_full_upgrade() {
   fi
   _mrun "apt-get remove percona-release -y -qq" 2> /dev/null
   _apt_clean_update
-  if [ -e "/var/aegir/drush" ]; then
+  if [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ]; then
     _DPKG_CNF="confold"
   else
     _DPKG_CNF="confnew"
@@ -5728,7 +5714,7 @@ _basic_packages_install_on_init() {
     _msg "PROC: _basic_packages_install_on_init"
   fi
   _apt_clean_update
-  if [ ! -e "/var/aegir/drush" ] && [ ! -e "/var/xdrago/manage_solr_config.sh" ]; then
+  if [ ! -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] && [ ! -e "/var/xdrago/manage_solr_config.sh" ]; then
 #     _mrun "apt-get remove unscd -y --purge --auto-remove -qq" 2> /dev/null
 #     _mrun "apt-get remove dbus -y --purge --auto-remove -qq" 2> /dev/null
 #     if [ -e "/usr/share/dbus-1" ]; then
@@ -7095,7 +7081,7 @@ _sys_packages_update() {
   fi
   _webmin_apt_update
   _apt_clean_update
-  if [ -e "/var/aegir/drush" ]; then
+  if [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ]; then
     _DPKG_CNF="confold"
   else
     _DPKG_CNF="confnew"
@@ -7943,7 +7929,7 @@ _xdrago_install_upgrade() {
   fi
   cd /var
   if [ -d "/var/xdrago/conf" ] \
-    && [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ]; then
+    && [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: Upgrading a few more tools..."
     fi
