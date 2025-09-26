@@ -6,7 +6,7 @@ export _tRee=lts
 _fix_dns_settings() {
   mkdir -p ${_vBs}
   rm -f ${_vBs}/resolv.conf.tmp
-  if ! grep -qE "9.9.9.9\s" /etc/resolv.conf; then
+  if ! grep -q "9.9.9.9" /etc/resolv.conf; then
     echo "### BOA-DNS-Config ###" > ${_vBs}/resolv.conf.tmp
     if [ -x "/usr/sbin/unbound" ] && [ -e "/run/unbound/unbound.pid" ]; then
       echo "nameserver 127.0.0.1" > ${_vBs}/resolv.conf.tmp
@@ -61,7 +61,7 @@ _check_dns_settings() {
       rm -f /root/.use.local.nameservers.cnf
     fi
     _USE_DEFAULT_DNS=YES
-    if ! grep -qE "9.9.9.9\s" /etc/resolv.conf; then
+    if ! grep -q "9.9.9.9" /etc/resolv.conf; then
       _fix_dns_settings
       return 1  # Exit the function but continue the script
     fi
@@ -70,7 +70,7 @@ _check_dns_settings() {
     _USE_PROVIDER_DNS=YES
   else
     _REMOTE_DNS_TEST=$(host files.aegir.cc 1.1.1.1 -w 10 2>&1)
-    if ! grep -qE "9.9.9.9\s" /etc/resolv.conf; then
+    if ! grep -q "9.9.9.9" /etc/resolv.conf; then
       _fix_dns_settings
       return 1  # Exit the function but continue the script
     fi
