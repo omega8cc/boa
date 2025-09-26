@@ -139,7 +139,6 @@ if (!-f "/run/wait-unbound.pid" && -f "/etc/init.d/unbound") {
       system("chmod -x /etc/resolvconf/update.d/unbound");
     }
     system("service unbound restart");
-    system("unbound-control reload");
   }
 }
 
