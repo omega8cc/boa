@@ -2181,7 +2181,7 @@ _install_host() {
       _CNT=$(pgrep -fc "[d]irmngr")
       if (( _CNT > 5 )); then
         kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
-        echo "$(date) Too many dirmngr processes killed" >> \
+        echo "$(date) Too many dirmngr processes killed (count=${_CNT})" >> \
           /var/log/boa/dirmngr-count.kill.log
       fi
     done
