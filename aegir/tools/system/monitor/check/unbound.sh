@@ -138,7 +138,7 @@ _unbound_check_fix() {
     service unbound restart &> /dev/null
     wait
     echo "$(date) Too many Unbound processes killed (count=${_CNT})" >> ${_pthOml}
-    _incident_email_report "Too many Unbound processes"
+    _incident_email_report "Too many Unbound processes (count=${_CNT})"
     echo >> ${_pthOml}
     sleep 3
     rm -f /run/wait-unbound.pid
