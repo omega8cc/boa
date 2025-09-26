@@ -4412,10 +4412,6 @@ _boa_setup() {
   if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     [ ! -e "/run/unbound" ] && mkdir -p /run/unbound
     [ -e "/run/unbound" ] && chown -R unbound:unbound /run/unbound
-    if [ -x "/usr/sbin/unbound-control" ] \
-      && [ -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
-      unbound-control reload &> /dev/null
-    fi
   fi
 
   if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
