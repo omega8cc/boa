@@ -209,7 +209,7 @@ if (!$nginxsumar && -f "/etc/init.d/nginx") {
   `echo "$timedate KILL START nginx" >> /var/log/boa/nginx.kill-start.log`;
 }
 
-if ($fpmsumar > 11 ) {
+if ($fpmsumar && $fpmsumar > 11 ) {
   $timedate=`date +%y%m%d-%H%M%S`;
   chomp($timedate);
   system("killall -9 php-fpm");
