@@ -19,9 +19,8 @@ _MY_EMAIL="notify@omega8.cc"
 ### enabled, as listed below. Supported
 ### options and associated settings:
 ###
-###  NO (requires manual configuration)
-###  LOCAL (experimental for local testing)
 ###  PUBLIC (default)
+###  LOCAL (experimental for local testing)
 ###
 _EASY_SETUP=PUBLIC
 
