@@ -8,6 +8,8 @@ $ENV{'PATH'} = '/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin
 use warnings;
 use File::Spec;
 
+my $run_to_files = [ "/root/.run-to-daedalus.cnf", "/root/.run-to-chimaera.cnf", "/root/.run-to-beowulf.cnf", "/run/boa_run.pid", "/run/boa_wait.pid" ];
+
 ###
 ### System Services Monitor running every 5 seconds
 ###
@@ -126,14 +128,16 @@ print "\n $pxydsumar PxySQL procs\t\tGLOBAL" if ($pxydlives);
 print "\n $dpltsumar Droplet procs\t\tGLOBAL" if ($dpltlives);
 print "\n";
 
-system("csf -e") if (!$lfdsumar && -f "/etc/init.d/lfd");
-system("service lfd start") if (!$lfdsumar && -f "/etc/init.d/lfd");
-system("service jenkins restart") if (!$jenkinssumar && -f "/etc/init.d/jenkins");
-system("service bind9 restart") if (!$namedsumar && -f "/etc/init.d/bind9");
 system("service ssh restart") if (!$sshdsumar && -f "/etc/init.d/ssh");
-system("service proxysql restart") if (!$pxydsumar && -f "/etc/init.d/proxysql");
-system("service droplet-agent restart") if (!$dpltsumar && -f "/etc/init.d/droplet-agent");
-system("service droplet-agent restart") if (!-f "/run/droplet-agent.pid" && -f "/etc/init.d/droplet-agent");
+
+if (!any_file_exists($run_to_files)) {
+  system("csf -e") if (!$lfdsumar && -f "/etc/init.d/lfd");
+  system("service lfd start") if (!$lfdsumar && -f "/etc/init.d/lfd");
+  system("service bind9 restart") if (!$namedsumar && -f "/etc/init.d/bind9");
+  system("service proxysql restart") if (!$pxydsumar && -f "/etc/init.d/proxysql");
+  system("service droplet-agent restart") if (!$dpltsumar && -f "/etc/init.d/droplet-agent");
+  system("service droplet-agent restart") if (!-f "/run/droplet-agent.pid" && -f "/etc/init.d/droplet-agent");
+}
 
 if (!-f "/run/wait-unbound.pid" && -f "/etc/init.d/unbound") {
   if (!-f "/run/unbound/unbound.pid" || !-e "/run/unbound/unbound.ctl") {
@@ -190,7 +194,7 @@ if (-f "/etc/init.d/redis-server") {
   system("service redis-server restart") if (!-f "/run/redis/redis.pid");
 }
 
-if (!-f "/root/.run-to-daedalus.cnf" && !-f "/root/.run-to-chimaera.cnf" && !-f "/root/.run-to-beowulf.cnf") {
+if (!any_file_exists($run_to_files)) {
   system("service newrelic-daemon restart") if (!$newrelicdaemonsumar && -f "/etc/init.d/newrelic-daemon");
   system("service newrelic-sysmond restart") if (!$newrelicsysmondsumar && -f "/etc/init.d/newrelic-sysmond" && -f "/root/.enable.newrelic.sysmond.cnf");
   system("service newrelic-sysmond stop") if ($newrelicsysmondsumar && -f "/etc/init.d/newrelic-sysmond" && !-f "/root/.enable.newrelic.sysmond.cnf");
@@ -224,7 +228,7 @@ system("service php70-fpm start") if ((!$php70lives || !$fpmsumar || !-f "/run/p
 system("service php56-fpm start") if ((!$php56lives || !$fpmsumar || !-f "/run/php56-fpm.pid") && -f "/etc/init.d/php56-fpm");
 
 
-if (!-f "/run/boa_run.pid" && !-f "/run/boa_wait.pid" && !-f "/root/.run-to-daedalus.cnf" && !-f "/root/.run-to-chimaera.cnf" && !-f "/root/.run-to-beowulf.cnf") {
+if (!any_file_exists($run_to_files)) {
   system("service jetty7 start") if (!$jetty7sumar && -f "/etc/init.d/jetty7");
   system("service jetty8 start") if (!$jetty8sumar && -f "/etc/init.d/jetty8");
   system("service jetty9 start") if (!$jetty9sumar && -f "/etc/init.d/jetty9");
@@ -283,7 +287,6 @@ elsif (-f "/etc/init.d/inetutils-syslogd") {
 my $allow_conf   = "/root/.allow.clamav.cnf";
 my $deny_conf    = "/root/.deny.clamav.cnf";
 my $data_dir     = "/data/u";
-my $run_to_files = [ "/root/.run-to-daedalus.cnf", "/root/.run-to-chimaera.cnf", "/root/.run-to-beowulf.cnf" ];
 my $freshclam_pid = "/run/clamav/freshclam.pid";
 my $clamd_pid     = "/run/clamav/clamd.pid";
 my $freshclam_service = "/etc/init.d/clamav-freshclam";
