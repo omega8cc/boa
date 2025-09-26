@@ -222,8 +222,9 @@ _if_fix_dhcp() {
 }
 
 _cron_duplicate_instances_detection() {
-  if [ `ps aux | grep -v "grep" | grep --count "/usr/sbin/cron"` -gt 1 ]; then
-    _thisErrLog="$(date) Too many Cron instances running killed"
+  _CNT=$(pgrep -fc "[u]sr/sbin/cron")
+  if (( _CNT > 1 )); then
+    _thisErrLog="$(date) Too many Cron instances running killed (count=${_CNT})"
     echo ${_thisErrLog} >> /var/log/boa/cron-count.kill.log
     killall -9 cron &> /dev/null
     service cron start &> /dev/null
