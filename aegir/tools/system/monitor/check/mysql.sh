@@ -163,9 +163,15 @@ _mysql_proc_kill() {
 }
 
 _mysql_proc_control() {
+  # Control file to enable _SQLMONITOR
+  if [ -e "/root/.mysqladmin.monitor.cnf" ]; then
+    _SQLMONITOR=YES
+  fi
+
   # Log the MySQL process list if _SQLMONITOR is enabled
   if [[ "${_SQLMONITOR}" == "YES" ]]; then
-    mysqladmin -u root proc -v >> /var/log/boa/mysqladmin.monitor.log
+    echo "$(date 2>&1)" >> /var/xdrago/log/mysqladmin.monitor.log
+    echo "$(mysqladmin -u root proc -v 2>&1)" >> /var/xdrago/log/mysqladmin.monitor.log
   fi
 
   # Default TTL _limit in seconds (can be adjusted)
