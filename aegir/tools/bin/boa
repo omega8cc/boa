@@ -2119,8 +2119,14 @@ _display_time() {
   local _pidfile=$2
 
   if [ ! -f "${_pidfile}" ]; then
-    _not_running_services+=("  _XSE ${_service} is not running (PID file not found).")
-    return
+    if [ "${_service}" = "jenkins" ] && [ ! -e "/var/lib/jenkins" ]; then
+      return
+    elif [ "${_service}" = "solr4" ] && [ ! -e "/opt/solr4/solr.xml" ]; then
+      return
+    else
+      _not_running_services+=("  _XSE ${_service} is not running (PID file not found).")
+      return
+    fi
   fi
 
   # Get the PID from the PID file
@@ -2128,8 +2134,14 @@ _display_time() {
 
   # Check if the process is running
   if ! ps -p "${_pid}" > /dev/null 2>&1; then
-    _not_running_services+=("  _XSE ${_service} is not running (stale PID file).")
-    return
+    if [ "${_service}" = "jenkins" ] && [ ! -e "/var/lib/jenkins" ]; then
+      return
+    elif [ "${_service}" = "solr4" ] && [ ! -e "/opt/solr4/solr.xml" ]; then
+      return
+    else
+      _not_running_services+=("  _XSE ${_service} is not running (stale PID file).")
+      return
+    fi
   fi
 
   # Get the current time and the PID file modification time in seconds since epoch
@@ -2548,11 +2560,7 @@ _display_info() {
         echo "  _XSE Not running services:"
         echo
         for _service in "${_not_running_services[@]}"; do
-          if [ "${_service}" = "jenkins" ] && [ -e "/var/lib/jenkins" ]; then
-            echo "${_service}"
-          else
-            echo "${_service}"
-          fi
+          echo "${_service}"
         done
       fi
       echo
