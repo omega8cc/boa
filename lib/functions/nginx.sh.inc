@@ -672,11 +672,6 @@ _nginx_config_update_fix() {
   fi
   if [ "${_STATUS}" = "INIT" ]; then
     _mrun "service cron start" 2> /dev/null
-    if [ "${_EASY_SETUP}" = "NO" ]; then
-      echo " "
-      _msg "Now waiting 2 minutes before restarting Nginx..."
-      _mrun "sleep 111"
-    fi
     _force_advanced_nginx_config
     _mrun "sleep 8"
     _mrun "service nginx restart" 2> /dev/null
