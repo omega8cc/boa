@@ -96,9 +96,9 @@ _fpm_forced_restart() {
 _fpm_duplicate_instances_detection() {
   _CNT=$(pgrep -fc "[p]hp-fpm: master process")
   if (( _CNT > 11 )); then
-    _thisErrLog="$(date) Too many PHP-FPM master processes killed"
+    _thisErrLog="$(date) Too many PHP-FPM master processes killed (count=${_CNT})"
     echo ${_thisErrLog} >> ${_pthOml}
-    _fpm_forced_restart "Too many PHP-FPM master"
+    _fpm_forced_restart "Too many PHP-FPM master (count=${_CNT})"
   fi
 }
 
