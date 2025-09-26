@@ -41,6 +41,7 @@ foreach $COMMAND (sort keys %li_cnt) {
   if ($COMMAND =~ /dhcpcd/) {$dhcpcdlives = "YES"; $dhcpcdsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /nginx:/) {$nginxlives = "YES"; $nginxsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /sbin\/unbound/) {$unboundlives = "YES"; $unboundsumar = $li_cnt{$COMMAND};}
+  if ($COMMAND =~ /sbin\/vnstatd/) {$vnstatdlives = "YES"; $vnstatdsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /php-cgi/) {$phplives = "YES"; $phpsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /php-fpm:/) {$fpmlives = "YES"; $fpmsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /lib\/postfix/) {$postfixlives = "YES"; $postfixsumar = $li_cnt{$COMMAND};}
@@ -105,6 +106,7 @@ print "\n $ftpsumar FTP procs\t\tGLOBAL" if ($ftplives);
 print "\n $mysqlsumar MySQL procs\t\tGLOBAL" if ($mysqlives);
 print "\n $nginxsumar Nginx procs\t\tGLOBAL" if ($nginxlives);
 print "\n $unboundsumar DNS procs\t\tGLOBAL" if ($unboundlives);
+print "\n $vnstatdsumar Vnstat procs\t\tGLOBAL" if ($vnstatdlives);
 print "\n $phpsumar PHP procs\t\tGLOBAL" if ($phplives);
 print "\n $postfixsumar Postfix procs\tGLOBAL" if ($postfixlives);
 print "\n $valkeysumar Valkey procs\t\tGLOBAL" if ($valkeylives);
@@ -149,10 +151,16 @@ if (!-f "/run/wait-unbound.pid" && -f "/etc/init.d/unbound") {
 }
 
 if (!-f "/run/boa_run.pid" && !-f "/run/boa_wait.pid" && -f "/etc/init.d/jenkins") {
-  if (!$jenkinssumar || !-f "/run/jenkins/jenkins.pid");
+  if (!-f "/run/jenkins/jenkins.pid") {
     system("killall -9 java");
     sleep(2);
     system("service jenkins restart");
+  }
+}
+
+if (!-f "/run/boa_run.pid" && !-f "/run/boa_wait.pid" && -f "/etc/init.d/vnstat") {
+  if (!-f "/run/vnstat/vnstat.pid") {
+    system("service vnstat restart");
   }
 }
 
@@ -209,7 +217,7 @@ if (!$nginxsumar && -f "/etc/init.d/nginx") {
   `echo "$timedate KILL START nginx" >> /var/log/boa/nginx.kill-start.log`;
 }
 
-if ($fpmsumar > 11 ) {
+if ($fpmsumar && $fpmsumar > 11 ) {
   $timedate=`date +%y%m%d-%H%M%S`;
   chomp($timedate);
   system("killall -9 php-fpm");
