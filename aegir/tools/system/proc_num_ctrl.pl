@@ -133,12 +133,14 @@ system("service proxysql restart") if (!$pxydsumar && -f "/etc/init.d/proxysql")
 system("service droplet-agent restart") if (!$dpltsumar && -f "/etc/init.d/droplet-agent");
 system("service droplet-agent restart") if (!-f "/run/droplet-agent.pid" && -f "/etc/init.d/droplet-agent");
 
-if (!-f "/run/wait-unbound.pid" && -e "/usr/sbin/unbound" && !$unboundsumar) {
-  if (-e "/etc/resolvconf/update.d/unbound") {
-    system("chmod -x /etc/resolvconf/update.d/unbound");
+if (!-f "/run/wait-unbound.pid" && -f "/etc/init.d/unbound") {
+  if (!-f "/run/unbound/unbound.pid" || !-e "/run/unbound/unbound.ctl") {
+    if (-e "/etc/resolvconf/update.d/unbound") {
+      system("chmod -x /etc/resolvconf/update.d/unbound");
+    }
+    system("service unbound restart");
+    system("unbound-control reload");
   }
-  system("service unbound restart");
-  system("unbound-control reload");
 }
 
 if ((!$mysqlsumar || $mysqlsumar > 150) && !-f "/run/mysql_restart_running.pid" && !-f "/run/boa_run.pid" && !-f "/root/.remote.db.cnf") {
