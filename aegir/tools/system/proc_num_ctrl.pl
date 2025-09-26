@@ -31,28 +31,28 @@ foreach $USER (sort keys %li_cnt) {
 foreach $COMMAND (sort keys %li_cnt) {
   if ($COMMAND =~ /lfd/) {$lfdlives = "YES"; $lfdsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /named/) {$namedlives = "YES"; $namedsumar = $li_cnt{$COMMAND};}
-  if ($COMMAND =~ /clamd/) {$clamdlives = "YES"; $clamdsumar = $li_cnt{$COMMAND};}
-  if ($COMMAND =~ /freshclam/) {$freshclamlives = "YES"; $freshclamsumar = $li_cnt{$COMMAND};}
+  if ($COMMAND =~ /sbin\/clamd/) {$clamdlives = "YES"; $clamdsumar = $li_cnt{$COMMAND};}
+  if ($COMMAND =~ /bin\/freshclam/) {$freshclamlives = "YES"; $freshclamsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /buagent/) {$buagentlives = "YES"; $buagentsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /collectd/) {$collectdlives = "YES"; $collectdsumar = $li_cnt{$COMMAND};}
-  if ($COMMAND =~ /dhcpcd-bin/) {$dhcpcdlives = "YES"; $dhcpcdsumar = $li_cnt{$COMMAND};}
-  if ($COMMAND =~ /nginx/) {$nginxlives = "YES"; $nginxsumar = $li_cnt{$COMMAND};}
-  if ($COMMAND =~ /unbound/) {$unboundlives = "YES"; $unboundsumar = $li_cnt{$COMMAND};}
+  if ($COMMAND =~ /dhclient/) {$dhcpcdlives = "YES"; $dhcpcdsumar = $li_cnt{$COMMAND};}
+  if ($COMMAND =~ /nginx:/) {$nginxlives = "YES"; $nginxsumar = $li_cnt{$COMMAND};}
+  if ($COMMAND =~ /sbin\/unbound/) {$unboundlives = "YES"; $unboundsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /php-cgi/) {$phplives = "YES"; $phpsumar = $li_cnt{$COMMAND};}
-  if ($COMMAND =~ /php-fpm/) {$fpmlives = "YES"; $fpmsumar = $li_cnt{$COMMAND};}
-  if ($COMMAND =~ /postfix/) {$postfixlives = "YES"; $postfixsumar = $li_cnt{$COMMAND};}
+  if ($COMMAND =~ /php-fpm:/) {$fpmlives = "YES"; $fpmsumar = $li_cnt{$COMMAND};}
+  if ($COMMAND =~ /lib\/postfix/) {$postfixlives = "YES"; $postfixsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /pure-ftpd/) {$ftplives = "YES"; $ftpsumar = $li_cnt{$COMMAND};}
-  if ($COMMAND =~ /jenkins/) {$jenkinslives = "YES"; $jenkinssumar = $li_cnt{$COMMAND};}
-  if ($COMMAND =~ /valkey-server/) {$valkeylives = "YES"; $valkeysumar = $li_cnt{$COMMAND};}
-  if ($COMMAND =~ /redis-server/) {$redislives = "YES"; $redissumar = $li_cnt{$COMMAND};}
-  if ($COMMAND =~ /newrelic-daemon/) {$newrelicdaemonlives = "YES"; $newrelicdaemonsumar = $li_cnt{$COMMAND};}
+  if ($COMMAND =~ /java\/jenkins/) {$jenkinslives = "YES"; $jenkinssumar = $li_cnt{$COMMAND};}
+  if ($COMMAND =~ /bin\/valkey-server/) {$valkeylives = "YES"; $valkeysumar = $li_cnt{$COMMAND};}
+  if ($COMMAND =~ /bin\/redis-server/) {$redislives = "YES"; $redissumar = $li_cnt{$COMMAND};}
+  if ($COMMAND =~ /bin\/newrelic-daemon/) {$newrelicdaemonlives = "YES"; $newrelicdaemonsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /nrsysmond/) {$newrelicsysmondlives = "YES"; $newrelicsysmondsumar = $li_cnt{$COMMAND};}
-  if ($COMMAND =~ /rsyslogd/) {$rsyslogdlives = "YES"; $rsyslogdsumar = $li_cnt{$COMMAND};}
+  if ($COMMAND =~ /sbin\/rsyslogd/) {$rsyslogdlives = "YES"; $rsyslogdsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /sbin\/syslogd/ && -f "/run/syslogd.pid") {$sysklogdlives = "YES"; $sysklogdsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /sbin\/syslogd/ && -f "/run/syslog.pid") {$syslogdlives = "YES"; $syslogdsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /xinetd/) {$xinetdlives = "YES"; $xinetdsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /lsyncd/) {$lsyncdlives = "YES"; $lsyncdsumar = $li_cnt{$COMMAND};}
-  if ($COMMAND =~ /sshd/) {$sshdlives = "YES"; $sshdsumar = $li_cnt{$COMMAND};}
+  if ($COMMAND =~ /sshd:/) {$sshdlives = "YES"; $sshdsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /proxysql/) {$pxydlives = "YES"; $pxydsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /droplet/) {$dpltlives = "YES"; $dpltsumar = $li_cnt{$COMMAND};}
 }
@@ -133,12 +133,14 @@ system("service proxysql restart") if (!$pxydsumar && -f "/etc/init.d/proxysql")
 system("service droplet-agent restart") if (!$dpltsumar && -f "/etc/init.d/droplet-agent");
 system("service droplet-agent restart") if (!-f "/run/droplet-agent.pid" && -f "/etc/init.d/droplet-agent");
 
-if (!-f "/run/wait-unbound.pid" && -e "/usr/sbin/unbound" && !$unboundsumar) {
-  if (-e "/etc/resolvconf/update.d/unbound") {
-    system("chmod -x /etc/resolvconf/update.d/unbound");
+if (!-f "/run/wait-unbound.pid" && -f "/etc/init.d/unbound") {
+  if (!-f "/run/unbound/unbound.pid" || !-e "/run/unbound/unbound.ctl") {
+    if (-e "/etc/resolvconf/update.d/unbound") {
+      system("chmod -x /etc/resolvconf/update.d/unbound");
+    }
+    system("service unbound restart");
+    system("unbound-control reload");
   }
-  system("service unbound restart");
-  system("unbound-control reload");
 }
 
 if ((!$mysqlsumar || $mysqlsumar > 150) && !-f "/run/mysql_restart_running.pid" && !-f "/run/boa_run.pid" && !-f "/root/.remote.db.cnf") {
@@ -191,7 +193,7 @@ if (!$nginxsumar && -f "/etc/init.d/nginx") {
   system("service nginx start");
   $timedate=`date +%y%m%d-%H%M%S`;
   chomp($timedate);
-  `echo "$timedate KILL START $nginxsumar" >> /var/log/boa/nginx.kill-start.log`;
+  `echo "$timedate KILL START nginx" >> /var/log/boa/nginx.kill-start.log`;
 }
 
 if ($fpmsumar > 11 ) {
