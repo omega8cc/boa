@@ -149,7 +149,7 @@ if (!-f "/run/wait-unbound.pid" && -f "/etc/init.d/unbound") {
 }
 
 if (!-f "/run/boa_run.pid" && !-f "/run/boa_wait.pid" && -f "/etc/init.d/jenkins") {
-  if (!$jenkinssumar || !-f "/run/jenkins/jenkins.pid");
+  if (!-f "/run/jenkins/jenkins.pid") {
     system("killall -9 java");
     sleep(2);
     system("service jenkins restart");
