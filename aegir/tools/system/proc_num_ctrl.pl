@@ -35,7 +35,8 @@ foreach $COMMAND (sort keys %li_cnt) {
   if ($COMMAND =~ /bin\/freshclam/) {$freshclamlives = "YES"; $freshclamsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /buagent/) {$buagentlives = "YES"; $buagentsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /collectd/) {$collectdlives = "YES"; $collectdsumar = $li_cnt{$COMMAND};}
-  if ($COMMAND =~ /dhclient/) {$dhcpcdlives = "YES"; $dhcpcdsumar = $li_cnt{$COMMAND};}
+  if ($COMMAND =~ /dhclient/) {$dhclientlives = "YES"; $dhclientsumar = $li_cnt{$COMMAND};}
+  if ($COMMAND =~ /dhcpcd/) {$dhcpcdlives = "YES"; $dhcpcdsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /nginx:/) {$nginxlives = "YES"; $nginxsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /sbin\/unbound/) {$unboundlives = "YES"; $unboundsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /php-cgi/) {$phplives = "YES"; $phpsumar = $li_cnt{$COMMAND};}
@@ -84,6 +85,7 @@ print "\n $clamdsumar Clamd procs\t\tGLOBAL" if ($clamdlives);
 print "\n $freshclamsumar Freshclam\t\tGLOBAL" if ($freshclamlives);
 print "\n $buagentsumar Backup procs\t\tGLOBAL" if ($buagentlives);
 print "\n $collectdsumar Collectd\t\tGLOBAL" if ($collectdlives);
+print "\n $dhclientsumar DHCP procs\t\tGLOBAL" if ($dhclientlives);
 print "\n $dhcpcdsumar DHCP procs\t\tGLOBAL" if ($dhcpcdlives);
 print "\n $fpmsumar FPM procs\t\tGLOBAL" if ($fpmlives);
 print "\n 1 FPM84 procs\t\tGLOBAL" if ($php84lives);
