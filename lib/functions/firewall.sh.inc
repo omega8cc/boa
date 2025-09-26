@@ -340,8 +340,7 @@ _csf_lfd_install_upgrade() {
   _ensure_ipset_symlinks
 
   if [[ "${_XTRAS_LIST}" =~ "ALL" ]] \
-    || [[ "${_XTRAS_LIST}" =~ "CSF" ]] \
-    || [ "${_CSF_CLSTR}" = "YES" ]; then
+    || [[ "${_XTRAS_LIST}" =~ "CSF" ]]; then
     _check_system_manufacturer
     if [ ! -e "/run/cloud_vhost.pid" ] \
       && [ ! -e "/run/${_SYS_MANUFACTURER_LC}_vm.pid" ]; then
@@ -361,8 +360,7 @@ _csf_lfd_install_upgrade() {
   if [ -x "/usr/sbin/csf" ] \
     || [ -e "/usr/sbin/lfd" ] \
     || [ -e "/etc/cron.d/lfd" ]; then
-    if [ "${_CSF_COMPATIBILITY}" = "NO" ] \
-      || [ "${_CSF_CLSTR}" = "NO" ]; then
+    if [ "${_CSF_COMPATIBILITY}" = "NO" ]; then
       _REMOVE_CSF=YES
     elif [ "${_VMFAMILY}" = "VS" ] \
       && [ ! -e "/boot/grub/grub.cfg" ] \

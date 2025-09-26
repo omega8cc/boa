@@ -568,8 +568,10 @@ _guard_stats() {
 
 _whitelist_ip_dns() {
   csf -tr 1.1.1.1
+  csf -tr 8.8.8.8
   csf -tr 9.9.9.9
   csf -dr 1.1.1.1
+  csf -dr 8.8.8.8
   csf -dr 9.9.9.9
   [ -e "/etc/csf/csfpost.d/synproxy.sh" ] && synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
   sed -i "s/.*1.1.1.1.*//g"  /etc/csf/csf.allow
@@ -579,8 +581,8 @@ _whitelist_ip_dns() {
   sed -i "s/.*9.9.9.9.*//g"  /etc/csf/csf.allow
   sed -i "s/.*9.9.9.9.*//g"  /etc/csf/csf.ignore
   echo "tcp|out|d=53|d=1.1.1.1 # Cloudflare DNS" >> /etc/csf/csf.allow
-  echo "tcp|out|d=53|d=9.9.9.9 # Cleaner DNS" >> /etc/csf/csf.allow
   echo "tcp|out|d=53|d=8.8.8.8 # Google DNS" >> /etc/csf/csf.allow
+  echo "tcp|out|d=53|d=9.9.9.9 # Cleaner DNS" >> /etc/csf/csf.allow
   sed -i "/^$/d" /etc/csf/csf.ignore
   sed -i "/^$/d" /etc/csf/csf.allow
 }
