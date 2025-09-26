@@ -1,0 +1,187 @@
+#!/bin/bash
+
+set -euo pipefail
+
+# === Config ===
+_RESOLV_TARGET_CONTENT=$'nameserver 127.0.0.1\nnameserver 1.1.1.1\nnameserver 8.8.8.8\nnameserver 9.9.9.9\n'
+_DEBUG_MODE="${_DEBUG_MODE:-NO}"
+
+# === Internals ===
+_DHCLIENT_CONF="/etc/dhcp/dhclient.conf"
+_DHCLIENT_HOOK="/etc/dhcp/dhclient-enter-hooks.d/nodnsupdate"
+_DHCPCD_CONF="/etc/dhcpcd.conf"
+_NM_CONF="/etc/NetworkManager/NetworkManager.conf"
+_RESOLV="/etc/resolv.conf"
+
+_msg() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    echo "[dns-lock] $*"
+  fi
+}
+
+_backup_file() {
+  if [ -f "$1" ]; then
+    cp -a "$1" "$1.bak.$(date +%s)"
+    _msg "Backup: $1 -> $1.bak.TIMESTAMP"
+  fi
+}
+
+_detect_client() {
+  # Returns via echo one of: dhclient, dhcpcd, networkmanager, none
+  if pgrep -x dhclient >/dev/null 2>&1; then
+    echo "dhclient"; return
+  fi
+  if pgrep -x dhcpcd >/dev/null 2>&1; then
+    echo "dhcpcd"; return
+  fi
+  if pgrep -x NetworkManager >/dev/null 2>&1; then
+    echo "networkmanager"; return
+  fi
+  echo "none"
+}
+
+_configure_dhclient() {
+  _msg "Configuring ISC dhclient to ignore DNS"
+  if [ -f "${_DHCLIENT_CONF}" ]; then
+    _backup_file "${_DHCLIENT_CONF}"
+    # Replace entire request block with a DNS-free version
+    awk '
+      BEGIN{inreq=0}
+      /^request[[:space:]]/{
+        inreq=1
+        print "request subnet-mask, broadcast-address, time-offset, routers,"
+        print "        domain-name, host-name,"
+        print "        interface-mtu,"
+        print "        rfc3442-classless-static-routes, ntp-servers;"
+        while (inreq && getline){ if ($0 ~ /;/){ inreq=0; break } }
+        next
+      }
+      { print }
+    ' "${_DHCLIENT_CONF}.bak."* | tail -n +1 > "${_DHCLIENT_CONF}" 2>/dev/null || \
+    awk '
+      BEGIN{inreq=0}
+      /^request[[:space:]]/{
+        inreq=1
+        print "request subnet-mask, broadcast-address, time-offset, routers,"
+        print "        domain-name, host-name,"
+        print "        interface-mtu,"
+        print "        rfc3442-classless-static-routes, ntp-servers;"
+        while (inreq && getline){ if ($0 ~ /;/){ inreq=0; break } }
+        next
+      }
+      { print }
+    ' "${_DHCLIENT_CONF}.bak.$(ls -1t ${_DHCLIENT_CONF}.bak.* 2>/dev/null | head -n1 | xargs -r basename)" > "${_DHCLIENT_CONF}" 2>/dev/null || true
+
+    # If awk path above failed (no earlier .bak match), do in-place from current file
+    if ! grep -q "rfc3442-classless-static-routes, ntp-servers;" "${_DHCLIENT_CONF}" 2>/dev/null; then
+      awk '
+        BEGIN{inreq=0}
+        /^request[[:space:]]/{
+          inreq=1
+          print "request subnet-mask, broadcast-address, time-offset, routers,"
+          print "        domain-name, host-name,"
+          print "        interface-mtu,"
+          print "        rfc3442-classless-static-routes, ntp-servers;"
+          while (inreq && getline){ if ($0 ~ /;/){ inreq=0; break } }
+          next
+        }
+        { print }
+      ' "${_DHCLIENT_CONF}.bak.$(date +%s)" 2>/dev/null || true
+    fi
+  fi
+
+  # Belt-and-suspenders: no-op the make_resolv_conf hook
+  mkdir -p "$(dirname "${_DHCLIENT_HOOK}")"
+  cat > "${_DHCLIENT_HOOK}" <<'EOF'
+#!/bin/dash
+# Prevent dhclient from overwriting /etc/resolv.conf
+make_resolv_conf() { :; }
+EOF
+  chmod +x "${_DHCLIENT_HOOK}"
+
+  # Renew lease
+  if command -v dhclient >/dev/null 2>&1; then
+    dhclient -r || true
+    dhclient || true
+  fi
+}
+
+_configure_dhcpcd() {
+  _msg "Configuring dhcpcd to ignore resolv.conf"
+  if [ -f "${_DHCPCD_CONF}" ]; then
+    _backup_file "${_DHCPCD_CONF}"
+  fi
+  touch "${_DHCPCD_CONF}"
+  if ! grep -qE '^[[:space:]]*nohook[[:space:]]+resolv\.conf' "${_DHCPCD_CONF}"; then
+    echo "nohook resolv.conf" >> "${_DHCPCD_CONF}"
+  fi
+  if command -v dhcpcd >/dev/null 2>&1; then
+    dhcpcd -k || true
+    dhcpcd || true
+  fi
+}
+
+_configure_nm() {
+  _msg "Configuring NetworkManager to not manage DNS"
+  if [ -f "${_NM_CONF}" ]; then
+    _backup_file "${_NM_CONF}"
+  else
+    mkdir -p "$(dirname "${_NM_CONF}")"
+    touch "${_NM_CONF}"
+  fi
+  if grep -q '^\[main\]' "${_NM_CONF}" 2>/dev/null; then
+    # Replace or add dns=none under [main]
+    awk '
+      BEGIN{inmain=0}
+      /^\[main\]/ {print; inmain=1; next}
+      /^\[/ && $0 !~ /^\[main\]/ { if(inmain){print "dns=none"; inmain=0}; print; next}
+      { if(inmain && $0 ~ /^dns=/){ next } print }
+      END{ if(inmain){print "dns=none"} }
+    ' "${_NM_CONF}" > "${_NM_CONF}.new" && mv -f "${_NM_CONF}.new" "${_NM_CONF}"
+  else
+    cat > "${_NM_CONF}" <<'EOF'
+[main]
+dns=none
+EOF
+  fi
+  service network-manager restart 2>/dev/null || true
+}
+
+_finalize_resolv() {
+  # Ensure /etc/resolv.conf is a regular file with target content
+  if [ -L "${_RESOLV}" ]; then
+    _msg "Replacing symlinked /etc/resolv.conf with a plain file"
+    _backup_file "${_RESOLV}"
+    rm -f "${_RESOLV}"
+  fi
+  if [ -e "${_RESOLV}" ]; then
+    _backup_file "${_RESOLV}"
+    rm -f "${_RESOLV}"
+  fi
+  printf "%s" "${_RESOLV_TARGET_CONTENT}" > "${_RESOLV}"
+  chmod 0644 "${_RESOLV}"
+  _msg "Wrote static ${_RESOLV} pointing to 127.0.0.1"
+}
+
+_main() {
+  _msg "Detecting DHCP/DNS manager…"
+  _CLIENT="$(_detect_client)"
+  _msg "Detected: ${_CLIENT}"
+
+  case "${_CLIENT}" in
+    dhclient)        _configure_dhclient ;;
+    dhcpcd)          _configure_dhcpcd ;;
+    networkmanager)  _configure_nm ;;
+    none)            _msg "No active dhcp client detected; proceeding to finalize resolv.conf" ;;
+  esac
+
+  # Keep resolvconf installed if you want; it won’t get DNS from DHCP anymore.
+  _finalize_resolv
+
+  _msg "Verification:"
+  _msg "ls -l /etc/resolv.conf -> $(ls -l /etc/resolv.conf 2>/dev/null || echo missing)"
+  _msg "Current nameservers:"
+  _msg "$(grep -E '^(domain|search|nameserver|options)' /etc/resolv.conf || true)"
+}
+
+_main "$@"
