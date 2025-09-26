@@ -84,7 +84,7 @@ print "\n $clamdsumar Clamd procs\t\tGLOBAL" if ($clamdlives);
 print "\n $freshclamsumar Freshclam\t\tGLOBAL" if ($freshclamlives);
 print "\n $buagentsumar Backup procs\t\tGLOBAL" if ($buagentlives);
 print "\n $collectdsumar Collectd\t\tGLOBAL" if ($collectdlives);
-print "\n $dhcpcdsumar dhcpcd procs\t\tGLOBAL" if ($dhcpcdlives);
+print "\n $dhcpcdsumar DHCP procs\t\tGLOBAL" if ($dhcpcdlives);
 print "\n $fpmsumar FPM procs\t\tGLOBAL" if ($fpmlives);
 print "\n 1 FPM84 procs\t\tGLOBAL" if ($php84lives);
 print "\n 1 FPM83 procs\t\tGLOBAL" if ($php83lives);
