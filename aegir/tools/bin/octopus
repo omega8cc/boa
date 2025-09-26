@@ -202,16 +202,8 @@ _check_dns_settings() {
   fi
   if [[ "${_REMOTE_DNS_TEST}" =~ "no servers could be reached" ]] \
     || [[ "${_REMOTE_DNS_TEST}" =~ "Host files.aegir.cc not found" ]] \
-    || [ "${_USE_DEFAULT_DNS}" = "YES" ] \
     || [ "${_USE_PROVIDER_DNS}" = "YES" ]; then
-    if [ "${_USE_DEFAULT_DNS}" = "YES" ] \
-      || [ "${_USE_PROVIDER_DNS}" = "YES" ] \
-      || [ ! -e "${_vBs}/resolv.conf.vanilla" ]; then
-      _fix_dns_settings
-      if [ -e "/etc/init.d/postfix" ]; then
-        service postfix restart &> /dev/null
-      fi
-    fi
+    _fix_dns_settings
   fi
 }
 
