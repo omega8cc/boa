@@ -47,7 +47,7 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 export _tRee=dev
 export _xSrl=570devT07
 export _rLsn="BOA-5.7.12"
-export _bTs=570v43
+export _bTs=570v45
 
 ###
 ### Avoid too many questions
@@ -4036,6 +4036,7 @@ _update_boa_tools() {
             codebasecheck \
             copydbackup \
             dcysetup \
+            dhcpfix \
             duobackboa \
             fancynow \
             ffmirror \
@@ -4106,12 +4107,13 @@ _update_boa_tools() {
   done
 
   if [ ! -e "/data/u" ] && [ -e "${_optBin}/killer" ] && [ ! -e "${_usrBin}/vmnetfix" ]; then
-    rm -f ${_usrBin}/{aptcleanup*,autoinit*,backchain*,barracuda*,boa*,killer*,octopus*,vmnetfix*,websh*}
+    rm -f ${_usrBin}/{aptcleanup*,autoinit*,backchain*,barracuda*,boa*,dhcpfix*,killer*,octopus*,vmnetfix*,websh*}
     ln -sfn ${_optBin}/aptcleanup  ${_usrBin}/aptcleanup
     ln -sfn ${_optBin}/autoinit    ${_usrBin}/autoinit
     ln -sfn ${_optBin}/backchain   ${_usrBin}/backchain
     ln -sfn ${_optBin}/barracuda   ${_usrBin}/barracuda
     ln -sfn ${_optBin}/boa         ${_usrBin}/boa
+    ln -sfn ${_optBin}/dhcpfix     ${_usrBin}/dhcpfix
     ln -sfn ${_optBin}/killer      ${_usrBin}/killer
     ln -sfn ${_optBin}/octopus     ${_usrBin}/octopus
     ln -sfn ${_optBin}/vmnetfix    ${_usrBin}/vmnetfix
@@ -4154,7 +4156,7 @@ _update_boa_tools() {
   chmod 700 ${_optBin}/synproxy*
 
   # _SYS (700): system utilities
-  chmod 700 ${_optBin}/{mergecsf,vmnetfix,fancynow,codebasecheck}
+  chmod 700 ${_optBin}/{dhcpfix,mergecsf,vmnetfix,fancynow,codebasecheck}
 
   # _SYS (700): cleanup tools
   chmod 700 ${_optBin}/{aptcleanup,sqlclean,verifyvhostsdns,vhostcheck}
