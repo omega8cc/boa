@@ -245,10 +245,12 @@ if ($mysqlsumar > 0 ) {
  `mysqladmin -u root flush-hosts &> /dev/null`;
   print "\n MySQL hosts flushed...\n";
 }
-if ($dhcpcdlives) {
-  $thishostname=`cat /etc/hostname`;
-  chomp($thishostname);
-  system("hostname -b $thishostname");
+if ($dhcpcdlives || $dhclientlives) {
+  chomp(my $wanted = `cat /etc/hostname`);
+  chomp(my $current = `hostname`);
+  if ($current ne $wanted) {
+    system("hostname", "-b", $wanted);
+  }
 }
 if (-f "/etc/init.d/rsyslog") {
   if (!$rsyslogdsumar || !-f "/run/rsyslogd.pid") {
