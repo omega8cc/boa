@@ -105,7 +105,6 @@ print "\n $nginxsumar Nginx procs\t\tGLOBAL" if ($nginxlives);
 print "\n $unboundsumar DNS procs\t\tGLOBAL" if ($unboundlives);
 print "\n $phpsumar PHP procs\t\tGLOBAL" if ($phplives);
 print "\n $postfixsumar Postfix procs\tGLOBAL" if ($postfixlives);
-print "\n $jenkinssumar Jenkins procs\t\tGLOBAL" if ($jenkinslives);
 print "\n $valkeysumar Valkey procs\t\tGLOBAL" if ($valkeylives);
 print "\n $redissumar Redis procs\t\tGLOBAL" if ($redislives);
 print "\n $newrelicdaemonsumar New Relic Apps\tGLOBAL" if ($newrelicdaemonlives);
@@ -115,6 +114,7 @@ print "\n $jetty8sumar Jetty8 procs\t\tGLOBAL" if ($jetty8lives);
 print "\n $jetty9sumar Jetty9 procs\t\tGLOBAL" if ($jetty9lives);
 print "\n $solr7sumar Solr7 procs\t\tGLOBAL" if ($solr7lives);
 print "\n $solr9sumar Solr9 procs\t\tGLOBAL" if ($solr9lives);
+print "\n $jenkinssumar Jenkins procs\t\tGLOBAL" if ($jenkinslives);
 print "\n $rsyslogdsumar Syslog procs\t\tGLOBAL" if ($rsyslogdlives);
 print "\n $sysklogdsumar Syslog procs\t\tGLOBAL" if ($sysklogdlives);
 print "\n $syslogdsumar Syslog procs\t\tGLOBAL" if ($syslogdlives);
@@ -141,6 +141,14 @@ if (!-f "/run/wait-unbound.pid" && -f "/etc/init.d/unbound") {
       system("chmod -x /etc/resolvconf/update.d/unbound");
     }
     system("service unbound restart");
+  }
+}
+
+if (!-f "/run/boa_run.pid" && !-f "/run/boa_wait.pid" && -f "/etc/init.d/jenkins") {
+  if (!$jenkinssumar || !-f "/run/jenkins/jenkins.pid");
+    system("killall -9 java");
+    sleep(2);
+    system("service jenkins restart");
   }
 }
 
