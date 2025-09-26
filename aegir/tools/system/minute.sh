@@ -64,10 +64,11 @@ _second_flood_guard() {
   _thisCountSec=`ps aux | grep -v "grep" | grep -v "null" | grep --count "/second.sh"`
   if [ "${_thisCountSec}" -gt 4 ]; then
     echo "$(date) Too many ${_thisCountSec} second.sh processes killed" >> \
-      /var/log/sec-count.kill.log
+      /var/log/boa/sec-count.kill.log
     kill -9 $(ps aux | grep '[s]econd.sh' | awk '{print $2}') &> /dev/null
   fi
 }
+[ -e "/var/log/sec-count.kill.log" ] && mv -f /var/log/sec-count.kill.log /var/log/boa/
 [ ! -e "/run/boa_run.pid" ] && _second_flood_guard
 
 echo DONE!
