@@ -243,9 +243,10 @@ if (!any_file_exists($run_to_files)) {
 $ftpdinit="/usr/local/sbin/pure-config.pl";
 $ftpdconf="/usr/local/etc/pure-ftpd.conf";
 $ftpdbind="/usr/local/sbin/pure-ftpd";
+$ftpdpid="/run/pure-ftpd.pid";
 
-if (-f "$ftpdbind" && -f "$ftpdconf") {
-  if (!$ftpsumar) {
+if (-f "$ftpdbind" && -f "$ftpdconf" && !any_file_exists($run_to_files)) {
+  if (!$ftpsumar || !-f "$ftpdpid") {
     if (-f "$ftpdinit") { system("$ftpdinit $ftpdconf"); }
     else { system("$ftpdbind $ftpdconf"); }
   }
