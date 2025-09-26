@@ -170,8 +170,21 @@ _mysql_proc_control() {
 
   # Log the MySQL process list if _SQLMONITOR is enabled
   if [[ "${_SQLMONITOR}" == "YES" ]]; then
+    [ -e "/root/.nodebug_slow_query.pid" ] && rm -f /root/.nodebug_slow_query.pid
+    if [ ! -e "/root/.debug_slow_query.pid" ]; then
+      touch /root/.debug_slow_query.pid
+      mysql -u root -e "SET GLOBAL slow_query_log = 'ON';" &> /dev/null
+      mysql -u root -e "SET GLOBAL long_query_time = 5;" &> /dev/null
+      mysql -u root -e "SET GLOBAL slow_query_log_file = '/var/log/mysql/sql-slow-query.log';" &> /dev/null
+    fi
     echo "$(date 2>&1)" >> /var/xdrago/log/mysqladmin.monitor.log
     echo "$(mysqladmin -u root proc -v 2>&1)" >> /var/xdrago/log/mysqladmin.monitor.log
+  else
+    [ -e "/root/.debug_slow_query.pid" ] && rm -f /root/.debug_slow_query.pid
+    if [ ! -e "/root/.nodebug_slow_query.pid" ]; then
+      mysql -u root -e "SET GLOBAL slow_query_log = 'OFF';" &> /dev/null
+      touch /root/.nodebug_slow_query.pid
+    fi
   fi
 
   # Default TTL _limit in seconds (can be adjusted)
