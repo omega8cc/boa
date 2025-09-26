@@ -227,9 +227,9 @@ _cron_duplicate_instances_detection() {
     echo ${_thisErrLog} >> /var/log/boa/cron-count.kill.log
     killall -9 cron &> /dev/null
     service cron start &> /dev/null
-    _thisErrLog="$(date) Too many Cron instances, service restarted"
+    _thisErrLog="$(date) Too many Cron instances, service restarted (count=${_CNT})"
     echo ${_thisErrLog} >> ${_pthOml}
-    _incident_email_report "Too many Cron instances, service restarted"
+    _incident_email_report "Too many Cron instances, service restarted (count=${_CNT})"
     echo >> ${_pthOml}
   fi
 }
@@ -252,12 +252,12 @@ _syslog_giant_log_detection() {
 _gpg_too_many_instances_detection() {
   _CNT=$(pgrep -fc "[g]pg-agent")
   if (( _CNT > 5 )); then
-    _thisErrLog="$(date) Too many gpg-agent processes killed"
+    _thisErrLog="$(date) Too many gpg-agent processes killed (count=${_CNT})"
     echo ${_thisErrLog} >> /var/log/boa/gpg-agent-count.kill.log
     kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
-    _thisErrLog="$(date) Too many gpg-agent processes killed"
+    _thisErrLog="$(date) Too many gpg-agent processes killed (count=${_CNT})"
     echo ${_thisErrLog} >> ${_pthOml}
-    _incident_email_report "Too many gpg-agent processes killed"
+    _incident_email_report "Too many gpg-agent processes killed (count=${_CNT})"
     echo >> ${_pthOml}
   fi
 }
@@ -265,12 +265,12 @@ _gpg_too_many_instances_detection() {
 _dirmngr_too_many_instances_detection() {
   _CNT=$(pgrep -fc "[d]irmngr")
   if (( _CNT > 5 )); then
-    _thisErrLog="$(date) Too many dirmngr processes killed"
+    _thisErrLog="$(date) Too many dirmngr processes killed (count=${_CNT})"
     echo ${_thisErrLog} >> /var/log/boa/dirmngr-count.kill.log
     kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
-    _thisErrLog="$(date) Too many dirmngr processes killed"
+    _thisErrLog="$(date) Too many dirmngr processes killed (count=${_CNT})"
     echo ${_thisErrLog} >> ${_pthOml}
-    _incident_email_report "Too many dirmngr processes killed"
+    _incident_email_report "Too many dirmngr processes killed (count=${_CNT})"
     echo >> ${_pthOml}
   fi
 }
