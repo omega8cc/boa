@@ -81,7 +81,7 @@ _unbound_check_fix() {
     echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.unbound
     [ -e "/etc/resolvconf/update.d/unbound" ] && chmod -x /etc/resolvconf/update.d/unbound
     resolvconf -u &> /dev/null
-    killall -9 unbound &> /dev/null
+    pkill -u unbound -x unbound &> /dev/null
     service unbound restart &> /dev/null
     wait
     unbound-control reload &> /dev/null
@@ -103,7 +103,7 @@ _unbound_check_fix() {
         sleep 3
         service unbound stop &> /dev/null
         sleep 1
-        killall -9 unbound &> /dev/null
+        pkill -u unbound -x unbound &> /dev/null
         renice ${_B_NICE} -p $$ &> /dev/null
         if [ -e "/var/xdrago/proc_num_ctrl.pl" ]; then
           perl /var/xdrago/proc_num_ctrl.pl &
@@ -122,7 +122,7 @@ _unbound_check_fix() {
       echo "nameserver 8.8.8.8" >> /etc/resolv.conf
       echo "nameserver 9.9.9.9" >> /etc/resolv.conf
       [ -e "/etc/resolvconf/update.d/unbound" ] && chmod -x /etc/resolvconf/update.d/unbound
-      killall -9 unbound &> /dev/null
+      pkill -u unbound -x unbound &> /dev/null
       service unbound restart &> /dev/null
       wait
       unbound-control reload &> /dev/null

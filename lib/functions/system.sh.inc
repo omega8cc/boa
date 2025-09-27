@@ -5218,7 +5218,7 @@ _if_enforce_apparmor_profiles() {
         elif [ -e "/etc/init.d/redis-server" ]; then
           _mrun "service redis-server reload" 2> /dev/null
         fi
-        _mrun "killall unbound" 2> /dev/null
+        _mrun "pkill -u unbound -x unbound" 2> /dev/null
         _mrun "killall pure-ftpd" 2> /dev/null
         _mrun "killall rsyslogd" 2> /dev/null
         _mrun "service rsyslog restart" 2> /dev/null

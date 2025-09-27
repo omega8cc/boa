@@ -4766,7 +4766,7 @@ if [ "$(id -u)" -eq 0 ]; then
     [ -e "/etc/resolvconf/update.d/unbound" ] && chmod -x /etc/resolvconf/update.d/unbound
     [ ! -e "/run/unbound" ] && mkdir -p /run/unbound
     [ -e "/run/unbound" ] && chown -R unbound:unbound /run/unbound
-    killall -9 unbound &> /dev/null
+    pkill -u unbound -x unbound &> /dev/null
     service unbound restart &> /dev/null
     wait
     unbound-control reload &> /dev/null
