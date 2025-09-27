@@ -979,11 +979,11 @@ _update_agents() {
         mv /root/.remote_backups/schedule/backup_schedule.txt-off /root/.remote_backups/schedule/backup_schedule.txt
       fi
     fi
-    if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt 0 ] \
-      && [ `ps aux | grep -v "grep" | grep --count "dcysetup"` -lt 1 ] \
-      && [ `ps aux | grep -v "grep" | grep --count "mybackup"` -lt 1 ] \
-      && [ `ps aux | grep -v "grep" | grep --count "multiback"` -lt 1 ]; then
-      kill -9 $(ps aux | grep '[d]uplicity' | awk '{print $2}') &> /dev/null
+    if [ "$(pgrep -fc duplicity)" -gt 0 ] \
+      && [ "$(pgrep -fc dcysetup)" -lt 1 ] \
+      && [ "$(pgrep -fc mybackup)" -lt 1 ] \
+      && [ "$(pgrep -fc multiback)" -lt 1 ]; then
+      kill -9 $(pgrep -f duplicity) &>/dev/null
       rm -rf /tmp/duplicity*
       rm -rf /root/.cache/duplicity/*/duplicity-*tempdir
       rm -f /root/.cache/duplicity/*/lockfile
