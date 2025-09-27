@@ -672,7 +672,7 @@ _aptAllow="--allow-unauthenticated"
 _aptYesUnth="-y ${_aptAllow}"
 
 export _tRee=lts
-export _xSrl=570ltsT07
+export _xSrl=570ltsT09
 
 
 ###
