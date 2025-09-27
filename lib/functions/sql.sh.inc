@@ -1262,6 +1262,8 @@ _db_server_install() {
           cp -af ${_myCnf} ${_preCnf}
         fi
         _diffMyTest=$(diff -w -B \
+          -I mysql_native_password \
+          -I userstat \
           -I innodb_buffer_pool_size \
           -I innodb_buffer_pool_instances \
           -I innodb_page_cleaners \
