@@ -64,7 +64,7 @@ _manage_single_lock() {
     # -------- legacy pgrep guard ---------
     # Exit if more than 2 instances of this script are running
     _SCRIPT=$(basename "$0")
-    _CNT=$(pgrep -fc "[${_SCRIPT:0:1}]${_SCRIPT:1}")
+    _CNT=$(pgrep -fc ${_SCRIPT})
     if (( _CNT > 2 )); then
       echo "Too many ${_SCRIPT} running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
       exit 0
@@ -266,17 +266,17 @@ _mysql_is_locked() {
     fi
   fi
 
-  if (( $(pgrep -fc 'aegir.sh') > ${_MULTI_MX} )); then
-    if (( $(pgrep -fc 'mysql_backup.sh') > 0 )); then
+  if (( $(pgrep -fc aegir.sh) > ${_MULTI_MX} )); then
+    if (( $(pgrep -fc mysql_backup.sh) > 0 )); then
       kill -9 $(ps aux | grep '[m]ydumper' | awk '{print $2}') &> /dev/null
-      _incident_email_report "TOO MANY ($(pgrep -fc 'aegir.sh') aegir.sh required killing mydumper"
+      _incident_email_report "TOO MANY ($(pgrep -fc aegir.sh) aegir.sh required killing mydumper"
     fi
   fi
-  if (( $(pgrep -fc 'drush.php') > ${_MULTI_MX} )); then
-    if (( $(pgrep -fc 'mysql_backup.sh') > 0 )); then
+  if (( $(pgrep -fc drush.php) > ${_MULTI_MX} )); then
+    if (( $(pgrep -fc mysql_backup.sh) > 0 )); then
       kill -9 $(ps aux | grep '[m]ydumper' | awk '{print $2}') &> /dev/null
       kill -9 $(ps aux | grep '[d]rush.php' | awk '{print $2}') &> /dev/null
-      _incident_email_report "TOO MANY ($(pgrep -fc 'drush.php') drush.php required killing mydumper"
+      _incident_email_report "TOO MANY ($(pgrep -fc drush.php) drush.php required killing mydumper"
     fi
   fi
 }

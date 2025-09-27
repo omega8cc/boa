@@ -453,7 +453,7 @@ _is_protected_run() {
   _boaBins="autoinit barracuda boa octopus"
   for _cbn in ${_boaBins}; do
     if [ -e "${_optBin}/${_cbn}" ]; then
-      _CNT=$(pgrep -fc "[l]ocal/bin/${_cbn}")
+      _CNT=$(pgrep -fc /local/bin/${_cbn})
       if (( _CNT > 0 )); then
         echo "The ${_cbn} is running!"
         _protectedRun=TRUE
@@ -824,13 +824,13 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     else
       [ -e "/root/.pause_tasks_maint.cnf" ] && rm -f /root/.pause_tasks_maint.cnf
       [ -e "/root/.restrict_this_vm.cnf" ] && rm -f /root/.restrict_this_vm.cnf
-      _CNT=$(pgrep -fc "[g]pg-agent")
+      _CNT=$(pgrep -fc gpg-agent)
       if (( _CNT > 5 )); then
         kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
         echo "$(date) Too many gpg-agent processes killed (count=${_CNT})" >> \
           /var/log/boa/gpg-agent-count.kill.log
       fi
-      _CNT=$(pgrep -fc "[d]irmngr")
+      _CNT=$(pgrep -fc dirmngr)
       if (( _CNT > 5 )); then
         kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
         echo "$(date) Too many dirmngr processes killed (count=${_CNT})" >> \
@@ -969,7 +969,7 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
 
   _IS_MOVESQL_RUNNING=$(ps aux | grep '[m]ove_sql.sh' | awk '{print $2}' 2>&1)
   if [ ! -z "${_IS_MOVESQL_RUNNING}" ]; then
-    _CNT=$(pgrep -fc "[m]ove_sql.sh")
+    _CNT=$(pgrep -fc move_sql.sh)
     if (( _CNT > 2 )); then
       kill -9 $(ps aux | grep '[m]ove_sql.sh' | awk '{print $2}') &> /dev/null
       rm -f /run/mysql_restart_running.pid
@@ -981,7 +981,7 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
 
   _IS_SQLCLEANUP_RUNNING=$(ps aux | grep '[m]ysql_cleanup.sh' | awk '{print $2}' 2>&1)
   if [ ! -z "${_IS_SQLCLEANUP_RUNNING}" ]; then
-    _CNT=$(pgrep -fc "[m]ysql_cleanup.sh")
+    _CNT=$(pgrep -fc mysql_cleanup.sh)
     if (( _CNT > 2 )); then
       kill -9 $(ps aux | grep '[m]ysql_cleanup.sh' | awk '{print $2}') &> /dev/null
       rm -f /run/mysql_backup_running.pid
@@ -992,7 +992,7 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
 
   _IS_SOLRSTART_RUNNING=$(ps aux | grep '[s]olr start' | awk '{print $2}' 2>&1)
   if [ ! -z "${_IS_SOLRSTART_RUNNING}" ]; then
-    _CNT=$(pgrep -fc "[s]olr start")
+    _CNT=$(pgrep -fc "solr start")
     if (( _CNT > 2 )); then
       kill -9 $(ps aux | grep '[s]olr start' | awk '{print $2}') &> /dev/null
       touch /var/log/boa/.solr_start_ctrl.${_tRee}.${_xSrl}.pid
@@ -1001,7 +1001,7 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
 
   _IS_PROCTRL_RUNNING=$(ps aux | grep '[p]roc_num_ctrl.pl' | awk '{print $2}' 2>&1)
   if [ ! -z "${_IS_PROCTRL_RUNNING}" ]; then
-    _CNT=$(pgrep -fc "[p]roc_num_ctrl.pl")
+    _CNT=$(pgrep -fc proc_num_ctrl.pl)
     if (( _CNT > 1 )); then
       kill -9 $(ps aux | grep '[p]roc_num_ctrl.pl' | awk '{print $2}') &> /dev/null
       touch /var/log/boa/.proc_num_ctrl.${_tRee}.${_xSrl}.pid
@@ -1014,7 +1014,7 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
 
   _IS_SQLBACKUP_RUNNING=$(ps aux | grep '[m]ysql_backup.sh' | awk '{print $2}' 2>&1)
   if [ ! -z "${_IS_SQLBACKUP_RUNNING}" ]; then
-    _CNT=$(pgrep -fc "[m]ysql_backup.sh")
+    _CNT=$(pgrep -fc mysql_backup.sh)
     if (( _CNT > 2 )); then
       kill -9 $(ps aux | grep '[m]ysql_backup.sh' | awk '{print $2}') &> /dev/null
       kill -9 $(ps aux | grep '[m]ydumper' | awk '{print $2}') &> /dev/null

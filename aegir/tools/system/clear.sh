@@ -286,7 +286,7 @@ if [ -e "/root/.remote_backups/schedule/backup_schedule.txt" ]; then
     rm -f /root/.remote_backups/paths/.*
     [ -x "/usr/local/bin/dcysetup" ] && bash /usr/local/bin/dcysetup update &> /dev/null
   fi
-  _CNT=$(pgrep -fc "[d]uplicity")
+  _CNT=$(pgrep -fc duplicity)
   if (( _CNT > 0 )); then
     echo "[$(date)] Active duplicity process detected, will try again later..." >> /var/log/mybackup_waiting_queue.log
   else

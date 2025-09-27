@@ -35,7 +35,7 @@ _manage_single_lock() {
     # -------- legacy pgrep guard ---------
     # Exit if more than 2 instances of this script are running
     _SCRIPT=$(basename "$0")
-    _CNT=$(pgrep -fc "[${_SCRIPT:0:1}]${_SCRIPT:1}")
+    _CNT=$(pgrep -fc ${_SCRIPT})
     if (( _CNT > 2 )); then
       echo "Too many ${_SCRIPT} running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
       exit 0
@@ -120,7 +120,7 @@ _system_oom_detection() {
     if [ "${_RAM_PCT_FREE}" -le 5 ]; then
       _oom_critical_restart "RAM ${_RAM_PCT_FREE}/${_RAM_TOTAL}"
     elif [ "${_RAM_PCT_FREE}" -le 10 ]; then
-      _CNT=$(pgrep -fc "[w]khtmltopdf")
+      _CNT=$(pgrep -fc wkhtmltopdf)
       if (( _CNT > 2 )); then
         _wkhtmltopdf_php_cli_oom_kill "RAM ${_RAM_PCT_FREE}/${_RAM_TOTAL}"
       fi
@@ -223,7 +223,7 @@ _if_fix_dhcp() {
 }
 
 _cron_duplicate_instances_detection() {
-  _CNT=$(pgrep -fc "[u]sr/sbin/cron")
+  _CNT=$(pgrep -fc /usr/sbin/cron)
   if (( _CNT > 1 )); then
     _thisErrLog="$(date) Too many Cron instances running killed (count=${_CNT})"
     echo ${_thisErrLog} >> /var/log/boa/cron-count.kill.log
@@ -252,7 +252,7 @@ _syslog_giant_log_detection() {
 }
 
 _gpg_too_many_instances_detection() {
-  _CNT=$(pgrep -fc "[g]pg-agent")
+  _CNT=$(pgrep -fc gpg-agent)
   if (( _CNT > 5 )); then
     _thisErrLog="$(date) Too many gpg-agent processes killed (count=${_CNT})"
     echo ${_thisErrLog} >> /var/log/boa/gpg-agent-count.kill.log
@@ -265,7 +265,7 @@ _gpg_too_many_instances_detection() {
 }
 
 _dirmngr_too_many_instances_detection() {
-  _CNT=$(pgrep -fc "[d]irmngr")
+  _CNT=$(pgrep -fc dirmngr)
   if (( _CNT > 5 )); then
     _thisErrLog="$(date) Too many dirmngr processes killed (count=${_CNT})"
     echo ${_thisErrLog} >> /var/log/boa/dirmngr-count.kill.log

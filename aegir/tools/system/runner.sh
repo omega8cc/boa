@@ -109,14 +109,14 @@ _if_allow_aegir_queue() {
 ###-------------SYSTEM-----------------###
 
 _SQLBACKUP_RUNNING=NO
-if (( $(pgrep -fc 'mysql_backup.sh') > 0 )); then
+if (( $(pgrep -fc mysql_backup.sh) > 0 )); then
   _SQLBACKUP_RUNNING=YES
-elif (( $(pgrep -fc 'mysql_cluster_backup.sh') > 0 )); then
+elif (( $(pgrep -fc mysql_cluster_backup.sh) > 0 )); then
   _SQLBACKUP_RUNNING=YES
 fi
 
 _DAILY_RUNNING=NO
-if (( $(pgrep -fc 'daily.sh') > 0 )); then
+if (( $(pgrep -fc daily.sh) > 0 )); then
   _DAILY_RUNNING=YES
 fi
 

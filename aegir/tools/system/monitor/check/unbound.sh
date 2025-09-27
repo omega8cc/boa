@@ -52,7 +52,7 @@ _manage_single_lock() {
     # -------- legacy pgrep guard ---------
     # Exit if more than 2 instances of this script are running
     _SCRIPT=$(basename "$0")
-    _CNT=$(pgrep -fc "[${_SCRIPT:0:1}]${_SCRIPT:1}")
+    _CNT=$(pgrep -fc ${_SCRIPT})
     if (( _CNT > 2 )); then
       echo "Too many ${_SCRIPT} running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
       exit 0
@@ -130,7 +130,7 @@ _unbound_check_fix() {
       rm -f /run/wait-unbound.pid
     fi
   fi
-  _CNT=$(pgrep -fc "[u]sr/sbin/unbound")
+  _CNT=$(pgrep -fc /usr/sbin/unbound)
   if (( _CNT > 1 )); then
     touch /run/wait-unbound.pid
     sleep 3
