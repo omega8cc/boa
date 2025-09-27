@@ -120,7 +120,8 @@ _system_oom_detection() {
     if [ "${_RAM_PCT_FREE}" -le 5 ]; then
       _oom_critical_restart "RAM ${_RAM_PCT_FREE}/${_RAM_TOTAL}"
     elif [ "${_RAM_PCT_FREE}" -le 10 ]; then
-      if [ `ps aux | grep -v "grep" | grep --count "wkhtmltopdf"` -gt 2 ]; then
+      _CNT=$(pgrep -fc "[w]khtmltopdf")
+      if (( _CNT > 2 )); then
         _wkhtmltopdf_php_cli_oom_kill "RAM ${_RAM_PCT_FREE}/${_RAM_TOTAL}"
       fi
     fi

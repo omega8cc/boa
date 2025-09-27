@@ -4074,7 +4074,8 @@ _update_boa_tools() {
             xcopy"
   for _cbn in ${_boaBins}; do
     if [ -e "${_optBin}/${_cbn}" ]; then
-      if [ `ps aux | grep -v "grep" | grep --count "/${_cbn}"` -gt 0 ]; then
+      _CNT=$(pgrep -fc "[l]ocal/bin/${_cbn}")
+      if (( _CNT > 0 )); then
         echo "The ${_cbn} is running!"
       else
         if [ "${_cbn}" = "weblogx" ] \
