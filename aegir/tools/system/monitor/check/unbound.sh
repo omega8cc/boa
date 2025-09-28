@@ -134,7 +134,7 @@ _unbound_check_fix() {
   if (( _CNT > 1 )); then
     touch /run/wait-unbound.pid
     sleep 3
-    kill -9 $(ps aux | grep '[u]sr/sbin/unbound' | awk '{print $2}') &> /dev/null
+    pkill -u unbound -x unbound &> /dev/null
     service unbound restart &> /dev/null
     wait
     echo "$(date) Too many Unbound processes killed (count=${_CNT})" >> ${_pthOml}

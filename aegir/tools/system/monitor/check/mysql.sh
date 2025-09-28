@@ -268,14 +268,14 @@ _mysql_is_locked() {
 
   if (( $(pgrep -fc aegir.sh) > ${_MULTI_MX} )); then
     if (( $(pgrep -fc mysql_backup.sh) > 0 )); then
-      kill -9 $(ps aux | grep '[m]ydumper' | awk '{print $2}') &> /dev/null
+      pkill -9 -f mydumper
       _incident_email_report "TOO MANY ($(pgrep -fc aegir.sh) aegir.sh required killing mydumper"
     fi
   fi
   if (( $(pgrep -fc drush.php) > ${_MULTI_MX} )); then
     if (( $(pgrep -fc mysql_backup.sh) > 0 )); then
-      kill -9 $(ps aux | grep '[m]ydumper' | awk '{print $2}') &> /dev/null
-      kill -9 $(ps aux | grep '[d]rush.php' | awk '{print $2}') &> /dev/null
+      pkill -9 -f mydumper
+      pkill -9 -f drush.php
       _incident_email_report "TOO MANY ($(pgrep -fc drush.php) drush.php required killing mydumper"
     fi
   fi

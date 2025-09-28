@@ -280,7 +280,7 @@ _satellite_remove_web_user() {
       chattr -i /home/${_WEB}/.drush/
     fi
     mkdir -p ${_vBs}/zombie/deleted
-    kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
+    pkill -9 -f gpg-agent
     deluser --remove-home --backup-to ${_vBs}/zombie/deleted ${_WEB} &> /dev/null
     if [ -d "/home/${_WEB}/" ]; then
       rm -rf /home/${_WEB}/ &> /dev/null

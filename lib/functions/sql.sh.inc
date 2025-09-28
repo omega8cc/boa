@@ -54,13 +54,13 @@ _if_sql_keyring_apt_update() {
       chmod 644 /etc/apt/keyrings/percona.gpg
       _CNT=$(pgrep -fc dirmngr)
       if (( _CNT > 5 )); then
-        kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
+        pkill -9 -f dirmngr
         echo "$(date) Too many dirmngr processes killed (count=${_CNT})" >> \
           /var/log/boa/dirmngr-count.kill.log
       fi
       _CNT=$(pgrep -fc gpg-agent)
       if (( _CNT > 5 )); then
-        kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
+        pkill -9 -f gpg-agent
         echo "$(date) Too many gpg-agent processes killed (count=${_CNT})" >> \
           /var/log/boa/gpg-agent-count.kill.log
       fi

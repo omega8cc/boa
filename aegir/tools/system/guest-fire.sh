@@ -10,7 +10,7 @@ _csf_flood_guard() {
   if [ ! -e "/run/boa_run.pid" ] && [ ${_thisCountCsf} -gt 4 ]; then
     echo "$(date) Too many ${_thisCountCsf} csf processes killed" >> \
       /var/log/boa/csf-count.kill.log
-    kill -9 $(ps aux | grep '[c]sf' | awk '{print $2}') &> /dev/null
+    pkill -9 -f csf
     csf -tf
     wait
     csf -df
@@ -24,13 +24,13 @@ _csf_flood_guard() {
     wait
     csf -df
     wait
-    kill -9 $(ps aux | grep '[f]ire.sh' | awk '{print $2}') &> /dev/null
+    pkill -9 -f fire.sh
   elif [ ! -e "/run/boa_run.pid" ] && [ ${_thisCountFire} -gt 7 ]; then
     echo "$(date) Too many ${_thisCountFire} fire.sh processes killed" >> \
       /var/log/boa/fire-count.kill.log
     csf -tf
     wait
-    kill -9 $(ps aux | grep '[f]ire.sh' | awk '{print $2}') &> /dev/null
+    pkill -9 -f fire.sh
   fi
   [ -e "/etc/csf/csfpost.d/synproxy.sh" ] && synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
 }

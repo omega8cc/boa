@@ -1928,7 +1928,7 @@ _if_php_idle_on_off() {
     [ -e "/root/.allow-php-multi-install-cleanup.cnf" ] && rm -f /root/.allow-php-multi-install-cleanup.cnf
     rm -f /var/log/boa/._php_libs_fix_*.pid
     touch /root/.proxy.cnf
-    kill -9 $(ps aux | grep '[s]econd.sh' | awk '{print $2}') &> /dev/null
+    pkill -9 -f second.sh
     sleep 5
     _php_not_used_enable_again
     sed -i "s/^_PHP_IDLE.*//g" ${_barCnf}
@@ -1948,7 +1948,7 @@ _if_php_idle_on_off() {
     exit 0
   elif [ "${_PHP_IDLE}" = "OFF" ]; then
     touch /root/.proxy.cnf
-    kill -9 $(ps aux | grep '[s]econd.sh' | awk '{print $2}') &> /dev/null
+    pkill -9 -f second.sh
     sleep 5
     touch /root/.allow-php-multi-install-cleanup.cnf
     _php_if_versions_cleanup_cnf
@@ -3773,8 +3773,7 @@ _sshd_install_src() {
       rm -f ${_OLD_SYSCONFDIR}/ssh*
       rm -f ${_OLD_SYSCONFDIR}/moduli*
     fi
-    # killall -9 sshd-session &> /dev/null
-    kill -9 $(ps aux | grep '[s]tartups' | awk '{print $2}') &> /dev/null
+    pkill -9 -f /usr/sbin/sshd || true
     _mrun "service ssh start" 2> /dev/null
   fi
   _SSH_FORCE_REINSTALL=NO
@@ -5552,7 +5551,7 @@ _finale() {
     chmod 700 /etc/csf/csfpost.sh
     _mrun "service lfd stop" 2> /dev/null
     wait
-    kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
+    pkill -9 -f ConfigServer
     killall sleep &> /dev/null
     rm -f /etc/csf/csf.error
     csf -x  &> /dev/null
@@ -6305,7 +6304,7 @@ _if_major_os_upgrade() {
     if [ -e "/etc/default/tomcat" ] && [ -e "/etc/init.d/tomcat" ]; then
       _mrun "service tomcat stop" 2> /dev/null
       mv /etc/init.d/tomcat /etc/init.d/offtomcat
-      kill -9 $(ps aux | grep '[t]omcat' | awk '{print $2}') &> /dev/null
+      pkill -9 -f tomcat
     fi
     _apt_clean_update_no_releaseinfo_change
 #     _mrun "apt-get remove dbus -y --purge --auto-remove -qq" 2> /dev/null
@@ -8803,35 +8802,35 @@ _initd_update() {
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: Restarting Solr 9"
       fi
-      kill -9 $(ps aux | grep '[s]olr9' | awk '{print $2}') &> /dev/null
+      pkill -9 -f solr9
       _mrun "service solr9 start" 2> /dev/null
     fi
     if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: Restarting Solr 7"
       fi
-      kill -9 $(ps aux | grep '[s]olr7' | awk '{print $2}') &> /dev/null
+      pkill -9 -f solr7
       _mrun "service solr7 start" 2> /dev/null
     fi
     if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: Restarting Jetty 9"
       fi
-      kill -9 $(ps aux | grep '[j]etty9' | awk '{print $2}') &> /dev/null
+      pkill -9 -f jetty9
       _mrun "service jetty9 start" 2> /dev/null
     fi
     if [ -e "/etc/default/jetty8" ] && [ -e "/etc/init.d/jetty8" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: Restarting Jetty 8"
       fi
-      kill -9 $(ps aux | grep '[j]etty8' | awk '{print $2}') &> /dev/null
+      pkill -9 -f jetty8
       _mrun "service jetty8 start" 2> /dev/null
     fi
     if [ -e "/etc/default/jetty7" ] && [ -e "/etc/init.d/jetty7" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: Restarting Jetty 7"
       fi
-      kill -9 $(ps aux | grep '[j]etty7' | awk '{print $2}') &> /dev/null
+      pkill -9 -f jetty7
       _mrun "service jetty7 start" 2> /dev/null
     fi
     if [ ! -e "/run/aegir_upgrade.pid" ]; then
@@ -8912,35 +8911,35 @@ _initd_update() {
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: Restarting Solr 9"
       fi
-      kill -9 $(ps aux | grep '[s]olr9' | awk '{print $2}') &> /dev/null
+      pkill -9 -f solr9
       _mrun "service solr9 start" 2> /dev/null
     fi
     if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: Restarting Solr 7"
       fi
-      kill -9 $(ps aux | grep '[s]olr7' | awk '{print $2}') &> /dev/null
+      pkill -9 -f solr7
       _mrun "service solr7 start" 2> /dev/null
     fi
     if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: Restarting Jetty 9"
       fi
-      kill -9 $(ps aux | grep '[j]etty9' | awk '{print $2}') &> /dev/null
+      pkill -9 -f jetty9
       _mrun "service jetty9 start" 2> /dev/null
     fi
     if [ -e "/etc/default/jetty8" ] && [ -e "/etc/init.d/jetty8" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: Restarting Jetty 8"
       fi
-      kill -9 $(ps aux | grep '[j]etty8' | awk '{print $2}') &> /dev/null
+      pkill -9 -f jetty8
       _mrun "service jetty8 start" 2> /dev/null
     fi
     if [ -e "/etc/default/jetty7" ] && [ -e "/etc/init.d/jetty7" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: Restarting Jetty 7"
       fi
-      kill -9 $(ps aux | grep '[j]etty7' | awk '{print $2}') &> /dev/null
+      pkill -9 -f jetty7
       _mrun "service jetty7 start" 2> /dev/null
     fi
     if [ ! -e "/run/aegir_upgrade.pid" ] \

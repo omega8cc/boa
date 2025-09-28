@@ -424,7 +424,7 @@ _mode_detection() {
         ### mv -f /root/.my.pass.txt ${_ZOMBIE_HOME}/ &> /dev/null
         cp -af /etc/sudoers ${_ZOMBIE_HOME}/ &> /dev/null
         sed -i "s/^aegir.*//g" /etc/sudoers &> /dev/null
-        kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
+        pkill -9 -f gpg-agent
         deluser aegir &> /dev/null
         rm -f /usr/bin/drush
       else
@@ -475,7 +475,7 @@ _mode_detection() {
   fi
   [ -e "/root/.use.curl.from.packages.cnf" ] && chattr -i /root/.use.curl.from.packages.cnf
   [ -e "/root/.use.curl.from.packages.cnf" ] && rm -f /root/.use.curl.from.packages.cnf
-  kill -9 $(ps aux | grep '[s]ystemd-udevd' | awk '{print $2}') &> /dev/null
+  pkill -9 -f systemd-udevd
   if [ "${_AEGIR_VERSION}" != "static" ]; then
     _USE_AEGIR_VER=SRC
   else

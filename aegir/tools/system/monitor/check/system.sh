@@ -56,7 +56,7 @@ _wkhtmltopdf_php_cli_oom_kill() {
   touch /run/boa_run.pid
   echo "$(date) OOM $1 wkhtmltopdf/php-cli detected" >> ${_pthOml}
   sleep 3
-  kill -9 $(ps aux | grep '[w]khtmltopdf' | awk '{print $2}') &> /dev/null
+  pkill -9 -f wkhtmltopdf
   echo "$(date) OOM wkhtmltopdf killed" >> ${_pthOml}
   killall -9 sleep &> /dev/null
   killall -9 php
@@ -71,27 +71,27 @@ _wkhtmltopdf_php_cli_oom_kill() {
 _oom_critical_restart() {
   touch /run/boa_run.pid
   echo "$(date) OOM $1 detected" >> ${_pthOml}
-  kill -9 $(ps aux | grep '[w]khtmltopdf' | awk '{print $2}') &> /dev/null
+  pkill -9 -f wkhtmltopdf
   echo "$(date) OOM wkhtmltopdf killed" >> ${_pthOml}
   killall -9 sleep &> /dev/null
   killall -9 php
   echo "$(date) OOM php-cli killed" >> ${_pthOml}
   mv -f /var/log/nginx/error.log /var/log/nginx/$(date +%y%m%d-%H%M)-error.log
-  kill -9 $(ps aux | grep '[n]ginx' | awk '{print $2}') &> /dev/null
+  pkill -9 -f nginx
   echo "$(date) OOM nginx killed" >> ${_pthOml}
-  kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}') &> /dev/null
+  pkill -9 -f php-fpm
   echo "$(date) OOM php-fpm killed" >> ${_pthOml}
-  kill -9 $(ps aux | grep '[j]ava' | awk '{print $2}') &> /dev/null
+  pkill -9 -f java
   echo "$(date) OOM solr/jetty killed" >> ${_pthOml}
-  kill -9 $(ps aux | grep '[n]ewrelic-daemon' | awk '{print $2}') &> /dev/null
+  pkill -9 -f newrelic-daemon
   echo "$(date) OOM newrelic-daemon killed" >> ${_pthOml}
   if [ -e "/etc/init.d/valkey-server" ]; then
     rm -f /var/lib/valkey/*
-    kill -9 $(ps aux | grep '[v]alkey-server' | awk '{print $2}') &> /dev/null
+    pkill -9 -f valkey-server
     echo "$(date) OOM valkey-server killed" >> ${_pthOml}
   elif [ -e "/etc/init.d/redis-server" ]; then
     rm -f /var/lib/redis/*
-    kill -9 $(ps aux | grep '[r]edis-server' | awk '{print $2}') &> /dev/null
+    pkill -9 -f redis-server
     echo "$(date) OOM redis-server killed" >> ${_pthOml}
   fi
   bash /var/xdrago/move_sql.sh
@@ -160,8 +160,7 @@ _if_fix_locked_sshd() {
   _SSH_LOG="/var/log/auth.log"
   if [ `tail --lines=10 ${_SSH_LOG} \
     | grep --count "error: Bind to port 22"` -gt 0 ]; then
-    kill -9 sshd &> /dev/null
-    kill -9 $(ps aux | grep '[s]tartups' | awk '{print $2}') &> /dev/null
+    pkill -9 -f /usr/sbin/sshd || true
     service ssh start
     _thisErrLog="$(date) SSHD BIND error detected, service restarted"
     echo ${_thisErrLog} >> ${_pthOml}
@@ -256,7 +255,7 @@ _gpg_too_many_instances_detection() {
   if (( _CNT > 5 )); then
     _thisErrLog="$(date) Too many gpg-agent processes killed (count=${_CNT})"
     echo ${_thisErrLog} >> /var/log/boa/gpg-agent-count.kill.log
-    kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
+    pkill -9 -f gpg-agent
     _thisErrLog="$(date) Too many gpg-agent processes killed (count=${_CNT})"
     echo ${_thisErrLog} >> ${_pthOml}
     _incident_email_report "Too many gpg-agent processes killed (count=${_CNT})"
@@ -269,7 +268,7 @@ _dirmngr_too_many_instances_detection() {
   if (( _CNT > 5 )); then
     _thisErrLog="$(date) Too many dirmngr processes killed (count=${_CNT})"
     echo ${_thisErrLog} >> /var/log/boa/dirmngr-count.kill.log
-    kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
+    pkill -9 -f dirmngr
     _thisErrLog="$(date) Too many dirmngr processes killed (count=${_CNT})"
     echo ${_thisErrLog} >> ${_pthOml}
     _incident_email_report "Too many dirmngr processes killed (count=${_CNT})"

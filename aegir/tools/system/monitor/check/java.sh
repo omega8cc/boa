@@ -72,7 +72,7 @@ _incident_email_report() {
 _jetty_restart() {
   touch /run/boa_wait.pid
   sleep 3
-  kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}') &> /dev/null
+  pkill -9 -f jetty
   rm -f /var/log/jetty{7,8,9}/*
   renice ${_B_NICE} -p $$ &> /dev/null
   if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
