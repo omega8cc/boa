@@ -5072,20 +5072,20 @@ _satellite_display_url_finalize() {
       _AEGIR_LOGIN_URL=$(tail --lines=11 ${_ROOT}/log/install.log | grep --text "^http:" 2>&1)
       if [ ! -z "${_AEGIR_LOGIN_URL}" ]; then
         echo " "
-        _msg "INFO: Congratulations, Aegir have been installed successfully!"
-        _msg "NOTE! Please wait 2 min before visiting Aegir at:"
-        echo " "
-        _msg "LINK: ${_AEGIR_LOGIN_URL}"
-        echo " "
-        _msg "NOTE! The initial one-time login link will no longer work."
-        sleep 3
-        _msg "To access your Octopus Aegir control panel after the procedure is finished..."
-        _msg "...please generate a new link by running the following command:"
-        sleep 3
-        echo " "
-        echo "  su -s /bin/bash ${_USER} -c \"drush @hm uli\""
-        echo " "
-        sleep 3
+        _msg "INFO: Congratulations, Aegir Satellite have been installed successfully!"
+#         _msg "NOTE! Please wait 2 min before visiting Aegir at:"
+#         echo " "
+#         _msg "LINK: ${_AEGIR_LOGIN_URL}"
+#         echo " "
+#         _msg "NOTE! The initial one-time login link will no longer work."
+#         sleep 3
+#         _msg "To access your Octopus Aegir control panel after the procedure is finished..."
+#         _msg "...please generate a new link by running the following command:"
+#         sleep 3
+#         echo " "
+#         echo "  su -s /bin/bash ${_USER} -c \"drush @hm uli\""
+#         echo " "
+#         sleep 3
       else
         _msg "ALRT! Something went wrong"
         _msg "ALRT! Please check the install log for details:"

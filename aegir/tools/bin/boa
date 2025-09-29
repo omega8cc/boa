@@ -1645,16 +1645,10 @@ _init_setup() {
       echo "This process will take a few minutes and will run in the background."
       sleep 3
     fi
-    echo "NOTE! The initial one-time login link will no longer work."
-    sleep 3
-    echo "To access your Aegir control panel after the procedure is finished..."
-    echo "...please generate a new link by running the following command:"
-    sleep 3
-    echo
-    echo "  su -s /bin/bash ${_usEr} -c \"drush @hm uli\""
-    echo
-    sleep 3
-    echo "Bye!"
+#     echo "NOTE! The initial one-time login link will no longer work!"
+#     echo "Please wait until the procesure is complete."
+#     echo "Then generate a new link once you see the instructions below."
+#     sleep 3
     echo
     if [ ! -e "/root/.dont.upgrade.octopus.on.install.cnf" ]; then
       _NOW=$(date +%y%m%d-%H%M%S)
@@ -1662,6 +1656,14 @@ _init_setup() {
       _UP_OCTOPUS_LOG="${_LOG_UP_DIR}/$(basename "$0")-up-octopus-${_NOW}.log"
       rm -rf /data/disk/${_usEr}/.tmp/cache
       if [ "${_OCTOPUS_ONLY}" = "YES" ]; then
+#         echo "Launching octopus up-${_tRee} ${_usEr} in the background now..."
+#         echo
+#         echo "Please wait a few minutes before generating one-time login link!"
+#         echo
+#         echo "  su -s /bin/bash ${_usEr} -c \"drush @hm uli\""
+#         echo
+#         echo "Enjoy!"
+#         echo
         nohup /opt/local/bin/octopus up-${_tRee} ${_usEr} force log noscreen >${_UP_OCTOPUS_LOG} 2>&1 &
       else
         /opt/local/bin/octopus up-${_tRee} ${_usEr} force log noscreen 2>&1 | tee ${_UP_OCTOPUS_LOG}
