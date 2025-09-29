@@ -1666,7 +1666,47 @@ _init_setup() {
 #         echo
         nohup /opt/local/bin/octopus up-${_tRee} ${_usEr} force log noscreen >${_UP_OCTOPUS_LOG} 2>&1 &
       else
+        echo "Launching octopus up-${_tRee} ${_usEr} now..."
         /opt/local/bin/octopus up-${_tRee} ${_usEr} force log noscreen 2>&1 | tee ${_UP_OCTOPUS_LOG}
+        echo "Checking LE setup status..."
+        _LE="/data/disk/${_usEr}/log/letsencrypt-*.log"
+        _LE_IF=$(ls ${_LE} | wc -l)
+        if [ -n "${_LE_IF}" ] && [ "${_LE_IF}" -ge 1 ]; then
+          if [ "$(grep -c Done ${_LE})" -ge 3 ]; then
+            _UP_OCTOPUS_AGAIN=NO
+          else
+            _UP_OCTOPUS_AGAIN=YES
+          fi
+        else
+          _UP_OCTOPUS_AGAIN=YES
+        fi
+        if [ "${_UP_OCTOPUS_AGAIN}" = "YES" ]; then
+          echo "Octopus LE setup status: NOT READY!"
+          echo "Launching another octopus upgrade to fix LE..."
+          _UP_OCTOPUS_AGAIN_LOG="${_LOG_UP_DIR}/$(basename "$0")-up-again-octopus-${_NOW}.log"
+          /opt/local/bin/octopus up-${_tRee} ${_usEr} force log noscreen 2>&1 | tee ${_UP_OCTOPUS_AGAIN_LOG}
+          _LE_IF=
+          _LE_IF=$(ls ${_LE} | wc -l)
+          if [ -n "${_LE_IF}" ] && [ "${_LE_IF}" -ge 1 ]; then
+            if [ "$(grep -c Done ${_LE})" -ge 3 ]; then
+              echo "Octopus LE setup status: OK!"
+              echo
+              echo "You can generate one-time login link now:"
+              echo
+              echo "  su -s /bin/bash ${_usEr} -c \"drush @hm uli\""
+              echo
+              echo "Enjoy!"
+            fi
+          fi
+        else
+          echo "Octopus LE setup status: OK!"
+          echo
+          echo "You can generate one-time login link now:"
+          echo
+          echo "  su -s /bin/bash ${_usEr} -c \"drush @hm uli\""
+          echo
+          echo "Enjoy!"
+        fi
       fi
     fi
     sleep 1
