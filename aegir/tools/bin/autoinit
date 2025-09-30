@@ -655,7 +655,6 @@ _init_prepare() {
   _ifnames_grub_check_sync
 
   if [[ -n "${_ADD_GRUB_CMD}" ]] && [[ "${_NEW_GRUB}" == "LIVE" ]]; then
-    echo "Running _init_prepare procedure A..."
     touch /run/autoinit.pid
     update-grub >> "${_logSlt}"
     sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
@@ -672,7 +671,6 @@ _init_prepare() {
     exit 0
   else
     if [ ! -x "/usr/bin/mc" ]; then
-      echo "Running _init_prepare procedure B..."
       touch /run/autoinit.pid
       /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
       ${_INITINS} lsb-release >> "${_logSlt}"
@@ -765,7 +763,6 @@ _ensure_devuan_base_files() {
 _init_offsystemd() {
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
-  _msg "Running _init_offsystemd procedure..." >> "${_logInt}"
   touch /run/autoinit.pid
   _msg "_init_offsystemd ==> Launching a quick dist-upgrade..." >> "${_logInt}"
   if [ ! -e "/etc/apt/preferences.d/offsystemd" ]; then
@@ -838,7 +835,6 @@ _init_offsystemd() {
 _init_cycle() {
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
-  _msg "Running _init_cycle procedure..." >> "${_logInt}"
   touch /run/autoinit.pid
   _msg "_init_cycle ==> Your current system is ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
   echo " " >> "${_logInt}"
@@ -873,7 +869,7 @@ _init_cycle() {
     /usr/bin/apt-get upgrade ${_nrmUpArg} >> "${_logSlt}"
   fi
   if [ ! -z "${_NEW_OS_CODE}" ] && [ ! -z "${_NEW_SYS}" ]; then
-    _msg "_init_cycle ==> Running APT Cleanup with aptcleanup" >> "${_logInt}"
+    _msg "_init_cycle ==> Running APT Cleanup..." >> "${_logInt}"
     /opt/local/bin/aptcleanup >> "${_logSlt}"
     wait
     _msg "_init_cycle ==> Launching a quick upgrade to ${_NEW_SYS}/${_NEW_OS_CODE}" >> "${_logInt}"
@@ -960,7 +956,7 @@ _init_cycle() {
       _msg "_init_cycle ==> Update networking if needed with vmnetfix..." >> "${_logInt}"
       /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
       wait
-      _msg "_init_cycle ==> Running APT Cleanup with aptcleanup" >> "${_logInt}"
+      _msg "_init_cycle ==> Running APT Cleanup.." >> "${_logInt}"
       /opt/local/bin/aptcleanup >> "${_logSlt}"
       wait
       _msg "_init_cycle ==> The system is now ready for boa install" >> "${_logInt}"
@@ -988,8 +984,6 @@ _init_cycle() {
 ### Display welcome info
 ###
 _init_info() {
-  echo "Running _init_prepare procedure, please wait..."
-  sleep 3
   echo "_init_info ==> The system will reboot and continue several times..."
   sleep 3
   echo "_init_info ==> until it is ugraded to latest Devuan/daedalus version."
