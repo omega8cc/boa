@@ -52,7 +52,7 @@ _manage_single_lock() {
     # -------- legacy pgrep guard ---------
     # Exit if more than 2 instances of this script are running
     _SCRIPT=$(basename "$0")
-    _CNT=$(pgrep -fc "[${_SCRIPT:0:1}]${_SCRIPT:1}")
+    _CNT=$(pgrep -fc ${_SCRIPT})
     if (( _CNT > 2 )); then
       echo "Too many ${_SCRIPT} running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
       exit 0
@@ -72,7 +72,7 @@ _incident_email_report() {
 _jetty_restart() {
   touch /run/boa_wait.pid
   sleep 3
-  kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}') &> /dev/null
+  pkill -9 -f jetty
   rm -f /var/log/jetty{7,8,9}/*
   renice ${_B_NICE} -p $$ &> /dev/null
   if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then

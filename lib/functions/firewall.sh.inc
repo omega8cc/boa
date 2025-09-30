@@ -248,8 +248,7 @@ _csf_install() {
       sed -i "s/^#TCPKeepAlive.*/TCPKeepAlive yes/g" /etc/ssh/sshd_config
       wait
     fi
-    # killall -9 sshd-session &> /dev/null
-    kill -9 $(ps aux | grep '[s]tartups' | awk '{print $2}') &> /dev/null
+    pkill -9 -f /usr/sbin/sshd || true
     _mrun "service ssh start" 2> /dev/null
     if [ "${_CSF_MODE}" = "install" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -370,7 +369,7 @@ _csf_lfd_install_upgrade() {
     if [ "${_REMOVE_CSF}" = "YES" ]; then
       _mrun "service lfd stop" 2> /dev/null
       wait
-      kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
+      pkill -9 -f ConfigServer
       killall sleep &> /dev/null
       rm -f /etc/csf/csf.error
       csf -x &> /dev/null
@@ -413,7 +412,7 @@ _csf_lfd_install_upgrade() {
         rm -f ${_pthLog}/lastFire
         _mrun "service lfd stop" 2> /dev/null
         wait
-        kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
+        pkill -9 -f ConfigServer
         killall sleep &> /dev/null
         rm -f /etc/csf/csf.error
         if [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then

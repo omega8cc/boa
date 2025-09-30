@@ -658,7 +658,7 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
     wait
   fi
 
-  kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
+  pkill -9 -f ConfigServer
   killall sleep &> /dev/null
   rm -f /etc/csf/csf.error
   if [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
@@ -699,7 +699,7 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
   rm -f /var/xdrago/monitor/log/web.log
   rm -f /var/xdrago/monitor/log/ftp.log
 
-  kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
+  pkill -9 -f ConfigServer
   killall sleep &> /dev/null
   rm -f /etc/csf/csf.error
   service lfd restart
