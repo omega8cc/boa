@@ -109,7 +109,7 @@ _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
     [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
   else
-    _msg "ERROR: This script should be run as a root user"
+    _msg "_check_root ==> ERROR: This script should be run as a root user"
     exit 1
   fi
   _DF_TEST=$(df -kTh / -l \
@@ -118,8 +118,8 @@ _check_root() {
     | awk '{print $6}' >> "${_logSlt}")
   _DF_TEST=${_DF_TEST//[^0-9]/}
   if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt 90 ]; then
-    _msg "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
-    _msg "ERROR: We can not proceed until it is below 90/100"
+    _msg "_check_root ==> ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
+    _msg "_check_root ==> ERROR: We can not proceed until it is below 90/100"
     exit 1
   fi
 }
@@ -189,7 +189,7 @@ _check_set_mode() {
     touch /root/.mode.selected.${_SET_MODE}.cnf
     chattr +i /root/.mode.selected.${_SET_MODE}.cnf
   fi
-  _msg "Mode selected: ${_SET_MODE}" >> "${_logInt}"
+  _msg "_check_set_mode ==> Mode selected: ${_SET_MODE}" >> "${_logInt}"
 }
 
 ###
@@ -210,7 +210,7 @@ _network_interface_naming_convention() {
     touch /root/.ninc.selected.${_SET_NINC}.cnf
     chattr +i /root/.ninc.selected.${_SET_NINC}.cnf
   fi
-  _msg "Networking Interface Naming Convention selected: ${_SET_NINC}" >> "${_logInt}"
+  _msg "_network_interface_naming_convention ==> NINC selected: ${_SET_NINC}" >> "${_logInt}"
 }
 
 ###
@@ -232,20 +232,20 @@ _check_manufacturer_compatibility() {
   # Check for Amazon EC2 in the system manufacturer field
   if dmidecode -s system-manufacturer | grep -i 'Amazon EC2' &> /dev/null; then
     _VMFAMILY="AWS"
-    _msg "Not supported environment detected: ${_HOST_INFO}" >> "${_logInt}"
-    _msg "Please check https://bit.ly/boa-caveats" >> "${_logInt}"
-    _msg "Bye!" >> "${_logInt}"
-    echo "Not supported environment detected: ${_HOST_INFO}"
-    echo "Please check https://bit.ly/boa-caveats"
-    echo "Bye!"
+    _msg "_check_manufacturer_compatibility ==> Not supported environment detected: ${_HOST_INFO}" >> "${_logInt}"
+    _msg "_check_manufacturer_compatibility ==> Please check https://bit.ly/boa-caveats" >> "${_logInt}"
+    _msg "_check_manufacturer_compatibility ==> Bye!" >> "${_logInt}"
+    echo "_check_manufacturer_compatibility ==> Not supported environment detected: ${_HOST_INFO}"
+    echo "_check_manufacturer_compatibility ==> Please check https://bit.ly/boa-caveats"
+    echo "_check_manufacturer_compatibility ==> Bye!"
     exit 1
   elif [[ "${_HOST_INFO}" =~ "Unknown" ]] || [ -z "${_HOST_INFO}" ]; then
-    _msg "Mysterious environment: ${_HOST_INFO}" >> "${_logInt}"
-    _msg "Please check https://bit.ly/boa-caveats" >> "${_logInt}"
-    _msg "Bye!" >> "${_logInt}"
-    echo "Mysterious environment: ${_HOST_INFO}"
-    echo "Please check https://bit.ly/boa-caveats"
-    echo "Bye!"
+    _msg "_check_manufacturer_compatibility ==> Mysterious environment: ${_HOST_INFO}" >> "${_logInt}"
+    _msg "_check_manufacturer_compatibility ==> Please check https://bit.ly/boa-caveats" >> "${_logInt}"
+    _msg "_check_manufacturer_compatibility ==> Bye!" >> "${_logInt}"
+    echo "_check_manufacturer_compatibility ==> Mysterious environment: ${_HOST_INFO}"
+    echo "_check_manufacturer_compatibility ==> Please check https://bit.ly/boa-caveats"
+    echo "_check_manufacturer_compatibility ==> Bye!"
     exit 1
   fi
 }
@@ -256,7 +256,7 @@ _check_manufacturer_compatibility() {
 _check_aegir() {
   if [ -e "/var/aegir" ]; then
     echo
-    echo "ERROR: This script can not be used once BOA is installed"
+    echo "_check_aegir ==> ERROR: This script can not be used once BOA is installed"
     echo
     exit 1
   fi
@@ -407,7 +407,7 @@ _if_launch_boa_install() {
     fi
     if [[ "${_BOA_COMMAND}" =~ "boa in-lts" ]] \
       || [[ "${_BOA_COMMAND}" =~ "boa in-dev" ]]; then
-      _msg "Time for ${_BOA_INSTALL_COMMAND} noscreen" >> "${_logInt}"
+      _msg "_if_launch_boa_install ==> Time for ${_BOA_INSTALL_COMMAND} noscreen" >> "${_logInt}"
       eval "${_BOA_INSTALL_COMMAND} noscreen"
       wait
       mv -f ${_BOA_LOGFILE} /var/backups/
@@ -456,7 +456,7 @@ _install_apparmor_utils() {
     || [ -z "${_isAppArmorComplain}" ] \
     || [ -z "${_isAppArmorStatus}" ] \
     || [ "${_isAppArmorGrub}" = "NO" ]; then
-    _msg "Installing AppArmor Tools early..." >> "${_logInt}"
+    _msg "_install_apparmor_utils ==> Installing AppArmor Tools early..." >> "${_logInt}"
     echo " " >> "${_logInt}"
     ${_INITINS} auditd \
       apparmor \
@@ -505,18 +505,18 @@ _ifnames_grub_check_sync() {
   if [ -e "${_GRUB_FILE}" ]; then
     if echo "${_IS_IFACE}" | grep -qE "eth[0-9]+"; then
       _USE_IFNAMES="CLASSIC"
-      _msg "GRUB: Classic ethX interface naming found." >> "${_logInt}"
+      _msg "_ifnames_grub_check_sync ==> GRUB: Classic ethX interface naming found." >> "${_logInt}"
     elif echo "${_IS_IFACE}" | grep -qE "(ens|enp|eno|wlp|wlo)[0-9]+:"; then
       _USE_IFNAMES="PREDICTABLE"
-      _msg "GRUB: Predictable (ensX, enpX, enoX, wlpX, wloX) interface naming found." >> "${_logInt}"
+      _msg "_ifnames_grub_check_sync ==> GRUB: Predictable (ensX, enpX, enoX, wlpX, wloX) interface naming found." >> "${_logInt}"
     else
       _USE_IFNAMES="DONTMODIFY"
-      _msg "GRUB: config exists, but no recognized network interface naming found." >> "${_logInt}"
+      _msg "_ifnames_grub_check_sync ==> GRUB: config exists, but no recognized network interface naming found." >> "${_logInt}"
     fi
 
     # Extract the current GRUB_CMDLINE_LINUX line
     _GRUB_CMDLINE_LINUX=$(grep -E "^GRUB_CMDLINE_LINUX=" "${_GRUB_FILE}")
-    _msg "GRUB: Current config is ${_GRUB_CMDLINE_LINUX}" >> "${_logInt}"
+    _msg "_ifnames_grub_check_sync ==> GRUB: Current config is ${_GRUB_CMDLINE_LINUX}" >> "${_logInt}"
 
     # Initialize variables to check for existing options
     _SYS_NET_IFNAMES=$(echo "${_GRUB_CMDLINE_LINUX}" | grep -o "net.ifnames=[01]")
@@ -569,36 +569,36 @@ _ifnames_grub_check_sync() {
       echo " " >> "${_logInt}"
       if [[ "${_NEW_GRUB}" == "LIVE" ]]; then
         # Update the GRUB file
-        _msg "GRUB: Networking Interface Naming Convention selected: ${_USE_NINC}" >> "${_logInt}"
-        _msg "GRUB: Update in the LIVE MODE" >> "${_logInt}"
+        _msg "_ifnames_grub_check_sync ==> GRUB: Networking Interface Naming Convention selected: ${_USE_NINC}" >> "${_logInt}"
+        _msg "_ifnames_grub_check_sync ==> GRUB: Update in the LIVE MODE" >> "${_logInt}"
         sed -i "s|^GRUB_CMDLINE_LINUX=.*|${_NEW_GRUB_CMDLINE_LINUX}|" "${_GRUB_FILE}"
-        _msg "GRUB_CMDLINE_LINUX has been updated with ${_UPDATED_CMDLINE}" >> "${_logInt}"
+        _msg "_ifnames_grub_check_sync ==> GRUB_CMDLINE_LINUX has been updated with ${_UPDATED_CMDLINE}" >> "${_logInt}"
       elif [[ "${_NEW_GRUB}" == "DEMO" ]]; then
         # Demo info
-        _msg "GRUB: Networking Interface Naming Convention selected: ${_USE_NINC}" >> "${_logInt}"
-        _msg "GRUB: Update in the DEMO MODE" >> "${_logInt}"
+        _msg "_ifnames_grub_check_sync ==> GRUB: Networking Interface Naming Convention selected: ${_USE_NINC}" >> "${_logInt}"
+        _msg "_ifnames_grub_check_sync ==> GRUB: Update in the DEMO MODE" >> "${_logInt}"
         echo " " >> "${_logInt}"
-        _msg "GRUB_CMDLINE_LINUX would be updated with:" >> "${_logInt}"
+        _msg "_ifnames_grub_check_sync ==> GRUB_CMDLINE_LINUX would be updated with:" >> "${_logInt}"
         _msg "   ${_UPDATED_CMDLINE}" >> "${_logInt}"
         echo " " >> "${_logInt}"
-        _msg "GRUB: Update in the LIVE MODE requires presence of control file:" >> "${_logInt}"
+        _msg "_ifnames_grub_check_sync ==> GRUB: Update in the LIVE MODE requires presence of control file:" >> "${_logInt}"
         _msg "   /root/.ninc.selected.auto.cnf" >> "${_logInt}"
         echo " "
-        _msg "GRUB: Note that this extra control file must not exist:" >> "${_logInt}"
+        _msg "_ifnames_grub_check_sync ==> GRUB: Note that this extra control file must not exist:" >> "${_logInt}"
         _msg "   /root/.ignore.ifnames.cnf" >> "${_logInt}"
         echo " " >> "${_logInt}"
-        _msg "GRUB: This requirement serves as a double-check to confirm" >> "${_logInt}"
-        _msg "GRUB: that you are aware of and agree to auto-update GRUB configuration." >> "${_logInt}"
-        _msg "GRUB: Incorrect GRUB settings can render your virtual machine unbootable" >> "${_logInt}"
-        _msg "GRUB: necessitating a rescue operation using a CD-ROM or ISO image." >> "${_logInt}"
-        _msg "GRUB: For this reason, running BOA directly on physical hardware (bare metal) is not supported" >> "${_logInt}"
+        _msg "_ifnames_grub_check_sync ==> GRUB: This requirement serves as a double-check to confirm" >> "${_logInt}"
+        _msg "_ifnames_grub_check_sync ==> GRUB: that you are aware of and agree to auto-update GRUB configuration." >> "${_logInt}"
+        _msg "_ifnames_grub_check_sync ==> GRUB: Incorrect GRUB settings can render your virtual machine unbootable" >> "${_logInt}"
+        _msg "_ifnames_grub_check_sync ==> GRUB: necessitating a rescue operation using a CD-ROM or ISO image." >> "${_logInt}"
+        _msg "_ifnames_grub_check_sync ==> GRUB: For this reason, running BOA directly on physical hardware (bare metal) is not supported" >> "${_logInt}"
         echo " " >> "${_logInt}"
-        _msg "GRUB: NEVER USE LIVE MODE IF YOU ARE NOT SURE IF YOU NEED IT" >> "${_logInt}"
+        _msg "_ifnames_grub_check_sync ==> GRUB: NEVER USE LIVE MODE IF YOU ARE NOT SURE IF YOU NEED IT" >> "${_logInt}"
       fi
       echo " " >> "${_logInt}"
     fi
   else
-    _msg "GRUB config does not exist." >> "${_logInt}"
+    _msg "_ifnames_grub_check_sync ==> GRUB config does not exist." >> "${_logInt}"
   fi
 }
 
@@ -664,7 +664,7 @@ _init_prepare() {
       sed -i "s/.*killer.*//gi" /etc/crontab &> /dev/null
       echo "*/1 *   * * *   root    bash /opt/local/bin/killer" >> /etc/crontab
     fi
-    _msg "Time for reboot and next upgrade cycle..." >> "${_logInt}"
+    _msg "_init_prepare ==> Time for reboot and next upgrade cycle..." >> "${_logInt}"
     echo " " >> "${_logInt}"
     rm -f /run/autoinit.pid
     shutdown -r now
@@ -678,7 +678,7 @@ _init_prepare() {
       ${_INITINS} lsb-release >> "${_logSlt}"
       _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
       _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
-      _msg "We need to install some tools early..." >> "${_logInt}"
+      _msg "_init_prepare ==> We need to install some tools early..." >> "${_logInt}"
       /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
       if [ "${_SET_MODE}" = "full" ] && [ "${_VMFAMILY}" != "AWS" ]; then
         /usr/bin/apt-get remove chrony -y --purge --auto-remove -qq >> "${_logSlt}"
@@ -722,7 +722,7 @@ _init_prepare() {
       fi
       [ "${_SET_MODE}" = "full" ] && _install_apparmor_utils
       touch ${_initFile}
-      _msg "Time for reboot and next upgrade cycle..." >> "${_logInt}"
+      _msg "_init_prepare ==> Time for reboot and next upgrade cycle..." >> "${_logInt}"
       echo " " >> "${_logInt}"
       rm -f /run/autoinit.pid
       shutdown -r now
@@ -737,7 +737,7 @@ _init_prepare() {
 ###
 _ensure_devuan_base_files() {
   # Ensure Devuan base-files is applied so /etc/os-release reflects Devuan/daedalus
-  _msg "Ensuring Devuan base-files is applied (force-confnew)" >> "${_logInt}"
+  _msg "_ensure_devuan_base_files ==> Ensuring Devuan base-files is applied (force-confnew)" >> "${_logInt}"
   _BF_CANDIDATE=$(apt-cache policy base-files 2>/dev/null | awk '/Candidate: /{print $2; exit}')
   _APTOPTS="-o Dpkg::Options::=--force-confnew \
             -o Dpkg::Options::=--force-overwrite \
@@ -767,7 +767,7 @@ _init_offsystemd() {
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   _msg "Running _init_offsystemd procedure..." >> "${_logInt}"
   touch /run/autoinit.pid
-  _msg "Launching a quick dist-upgrade..." >> "${_logInt}"
+  _msg "_init_offsystemd ==> Launching a quick dist-upgrade..." >> "${_logInt}"
   if [ ! -e "/etc/apt/preferences.d/offsystemd" ]; then
     rm -f /etc/apt/preferences.d/systemd
     echo -e 'Package: systemd\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/offsystemd
@@ -787,42 +787,42 @@ _init_offsystemd() {
     _needsBaseFilesUpdate=NO
     # Check if /etc/os-release mentions 'daedalus'
     if grep -i 'daedalus' /etc/os-release &> /dev/null; then
-      _msg "The /etc/os-release already mentions daedalus" >> "${_logInt}"
+      _msg "_init_offsystemd ==> The /etc/os-release already mentions daedalus" >> "${_logInt}"
     else
-      _msg "The /etc/os-release doesn't mention daedalus yet" >> "${_logInt}"
+      _msg "_init_offsystemd ==> The /etc/os-release doesn't mention daedalus yet" >> "${_logInt}"
       _needsBaseFilesUpdate=YES
     fi
     # Check if apt policy for base-files mentions 'daedalus'
     if apt policy base-files | grep -i 'daedalus' &> /dev/null; then
-      _msg "The apt policy base-files already mentions daedalus" >> "${_logInt}"
+      _msg "_init_offsystemd ==> The apt policy base-files already mentions daedalus" >> "${_logInt}"
     else
-      _msg "The apt policy base-files doesn't mention daedalus yet" >> "${_logInt}"
+      _msg "_init_offsystemd ==> The apt policy base-files doesn't mention daedalus yet" >> "${_logInt}"
       _needsBaseFilesUpdate=YES
     fi
     # If any of the above checks require an update, perform the upgrade
     if [ "${_needsBaseFilesUpdate}" = "YES" ]; then
-      _msg "Upgrading base-files from Devuan repository (dynamic candidate)" >> "${_logInt}"
+      _msg "_init_offsystemd ==> Upgrading base-files from Devuan repository (dynamic candidate)" >> "${_logInt}"
       _ensure_devuan_base_files
     fi
   fi
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
-  _msg "Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
+  _msg "_init_offsystemd ==> Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
   if [ "${_OS_CODE}" = "daedalus" ]; then
     _check_no_systemd
     echo " " >> "${_logInt}"
-    _msg "Update networking if needed with vmnetfix..." >> "${_logInt}"
+    _msg "_init_offsystemd ==> Update networking if needed with vmnetfix..." >> "${_logInt}"
     /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
-    _msg "Time for reboot and then you can run boa install" >> "${_logInt}"
     wait
+    _msg "_init_offsystemd ==> The system is now ready for boa install" >> "${_logInt}"
     rm -f /root/.init-to-devuan-ctrl.cnf
     sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
     _if_launch_boa_install
   else
-    _msg "Update networking if needed with vmnetfix..." >> "${_logInt}"
+    _msg "_init_offsystemd ==> Update networking if needed with vmnetfix..." >> "${_logInt}"
     /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
-    _msg "Time for reboot and next upgrade cycle..." >> "${_logInt}"
     wait
+    _msg "_init_offsystemd ==> Time for reboot and next upgrade cycle..." >> "${_logInt}"
   fi
   echo " " >> "${_logInt}"
   touch /root/.run-offsystemd-devuan-init.cnf
@@ -840,7 +840,7 @@ _init_cycle() {
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   _msg "Running _init_cycle procedure..." >> "${_logInt}"
   touch /run/autoinit.pid
-  _msg "Your current system is ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
+  _msg "_init_cycle ==> Your current system is ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
   echo " " >> "${_logInt}"
   _NEW_SYS=Devuan
   _OLD_SYS=Devuan
@@ -863,8 +863,8 @@ _init_cycle() {
     _NEW_OS_CODE=
     _NEW_SYS=
   else
-    _msg "This procedure does not support ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
-    _msg "Bye!" >> "${_logInt}"
+    _msg "_init_cycle ==> This procedure does not support ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
+    _msg "_init_cycle ==> Bye!" >> "${_logInt}"
     echo " " >> "${_logInt}"
     exit 1
   fi
@@ -873,10 +873,10 @@ _init_cycle() {
     /usr/bin/apt-get upgrade ${_nrmUpArg} >> "${_logSlt}"
   fi
   if [ ! -z "${_NEW_OS_CODE}" ] && [ ! -z "${_NEW_SYS}" ]; then
-    _msg "Running APT Cleanup with aptcleanup" >> "${_logInt}"
+    _msg "_init_cycle ==> Running APT Cleanup with aptcleanup" >> "${_logInt}"
     /opt/local/bin/aptcleanup >> "${_logSlt}"
-    _msg "Launching a quick upgrade to ${_NEW_SYS}/${_NEW_OS_CODE}" >> "${_logInt}"
     wait
+    _msg "_init_cycle ==> Launching a quick upgrade to ${_NEW_SYS}/${_NEW_OS_CODE}" >> "${_logInt}"
     _aptLiSys="/etc/apt/sources.list"
     _TGT_MRR="deb.devuan.org/merged"
     echo "## DEVUAN MAIN REPOSITORIES" > ${_aptLiSys}
@@ -920,21 +920,21 @@ _init_cycle() {
       /usr/bin/apt-get autoclean -y -qq >> "${_logSlt}"
       if [ -e "/root/.top-daedalus.cnf" ]; then
         if cat /etc/os-release | grep -i 'daedalus' &> /dev/null; then
-          _msg "The /etc/os-release already mentions daedalus" >> "${_logInt}"
+          _msg "_init_cycle ==> The /etc/os-release already mentions daedalus" >> "${_logInt}"
           _needsBaseFilesUpdate=NO
         else
-          _msg "The /etc/os-release doesn't mention daedalus yet" >> "${_logInt}"
+          _msg "_init_cycle ==> The /etc/os-release doesn't mention daedalus yet" >> "${_logInt}"
           _needsBaseFilesUpdate=YES
         fi
         if apt policy base-files | grep -i 'daedalus' &> /dev/null; then
-          _msg "The apt policy base-files already mentions daedalus" >> "${_logInt}"
+          _msg "_init_cycle ==> The apt policy base-files already mentions daedalus" >> "${_logInt}"
           _needsBaseFilesUpdate=NO
         else
-          _msg "The apt policy base-files doesn't mention daedalus yet" >> "${_logInt}"
+          _msg "_init_cycle ==> The apt policy base-files doesn't mention daedalus yet" >> "${_logInt}"
           _needsBaseFilesUpdate=YES
         fi
         if [ "${_needsBaseFilesUpdate}" = "YES" ]; then
-          _msg "Upgrading base-files from Devuan repository (dynamic candidate)" >> "${_logInt}"
+          _msg "_init_cycle ==> Upgrading base-files from Devuan repository (dynamic candidate)" >> "${_logInt}"
           _ensure_devuan_base_files
         fi
       fi
@@ -943,10 +943,10 @@ _init_cycle() {
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   if [ "${_OLD_SYS}" = "Debian" ]; then
-    _msg "Update networking if needed with vmnetfix..." >> "${_logInt}"
+    _msg "_init_cycle ==> Update networking if needed with vmnetfix..." >> "${_logInt}"
     /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
-    _msg "Time for reboot and next upgrade cycle..." >> "${_logInt}"
     wait
+    _msg "_init_cycle ==> Time for reboot and next upgrade cycle..." >> "${_logInt}"
     echo " " >> "${_logInt}"
     touch /root/.run-cycle-devuan-init.cnf
     rm -f /run/autoinit.pid
@@ -955,24 +955,24 @@ _init_cycle() {
     exit 0
   else
     if [ "${_OS_CODE}" = "daedalus" ]; then
-      _msg "Running APT Cleanup with aptcleanup" >> "${_logInt}"
-      /opt/local/bin/aptcleanup >> "${_logSlt}"
-      _msg "Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
-      _msg "Update networking if needed with vmnetfix..." >> "${_logInt}"
       _check_no_systemd
+      _msg "_init_cycle ==> Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
+      _msg "_init_cycle ==> Update networking if needed with vmnetfix..." >> "${_logInt}"
       /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
-      _msg "Time for the last reboot and then you can run boa install" >> "${_logInt}"
       wait
+      _msg "_init_cycle ==> Running APT Cleanup with aptcleanup" >> "${_logInt}"
+      /opt/local/bin/aptcleanup >> "${_logSlt}"
       wait
+      _msg "_init_cycle ==> The system is now ready for boa install" >> "${_logInt}"
       rm -f /root/.init-to-devuan-ctrl.cnf
       sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
       _if_launch_boa_install
     else
-      _msg "Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
-      _msg "Update networking if needed with vmnetfix..." >> "${_logInt}"
+      _msg "_init_cycle ==> Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
+      _msg "_init_cycle ==> Update networking if needed with vmnetfix..." >> "${_logInt}"
       /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
-      _msg "Time for reboot and next upgrade cycle..." >> "${_logInt}"
       wait
+      _msg "_init_cycle ==> Time for reboot and next upgrade cycle..." >> "${_logInt}"
     fi
     echo " " >> "${_logInt}"
     touch /root/.run-cycle-devuan-init.cnf
@@ -990,13 +990,13 @@ _init_cycle() {
 _init_info() {
   echo "Running _init_prepare procedure, please wait..."
   sleep 3
-  echo "The system will reboot and continue several times..."
+  echo "_init_info ==> The system will reboot and continue several times..."
   sleep 3
-  echo "until it is ugraded to latest Devuan/daedalus version."
+  echo "_init_info ==> until it is ugraded to latest Devuan/daedalus version."
   sleep 3
-  echo "Once all upgrades are complete, you can run boa install"
+  echo "_init_info ==> Once all upgrades are complete, you can run boa install"
   sleep 3
-  echo "Let's go! It will take only ten minutes max!"
+  echo "_init_info ==> Let's go! It will take only ten minutes max!"
   sleep 3
   echo "..."
 }
@@ -1038,8 +1038,8 @@ _init_launch() {
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   touch /run/autoinit.pid
   if [ ! -e "/root/.autoinit.log" ]; then
-    echo "Launching BOA System INIT on ${_OS_DIST}/${_OS_CODE}..."
-    _msg "Launching BOA System INIT on ${_OS_DIST}/${_OS_CODE}..." >> "${_logInt}"
+    echo "_init_launch ==> Launching BOA System INIT on ${_OS_DIST}/${_OS_CODE}..."
+    _msg "_init_launch ==> Launching BOA System INIT on ${_OS_DIST}/${_OS_CODE}..." >> "${_logInt}"
   fi
   sleep 15
   _init_start
