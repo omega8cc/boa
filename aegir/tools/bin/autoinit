@@ -176,7 +176,7 @@ _single_instance_lock() {
 ###
 ### Mode selection
 ###
-_check_set_mode() {
+_check_mode() {
   # Usage: autoinit [minimal|full] [vanilla|classic|predictable]
   # Default: "minimal". Persisted across reboots via cron argument.
   if [ -z "${_SET_MODE}" ]; then
@@ -189,13 +189,13 @@ _check_set_mode() {
     touch /root/.mode.selected.${_SET_MODE}.cnf
     chattr +i /root/.mode.selected.${_SET_MODE}.cnf
   fi
-  _msg "_check_set_mode ==> Mode selected: ${_SET_MODE}" >> "${_logInt}"
+  _msg "_check_mode ==> Mode selected: ${_SET_MODE}" >> "${_logInt}"
 }
 
 ###
 ### Networking Interface Naming Convention
 ###
-_network_interface_naming_convention() {
+_check_ninc() {
   # Usage: autoinit [minimal|full] [vanilla|classic|predictable]
   # Default: "vanilla". Persisted across reboots via cron argument.
   if [ -z "${_SET_NINC}" ]; then
@@ -210,13 +210,13 @@ _network_interface_naming_convention() {
     touch /root/.ninc.selected.${_SET_NINC}.cnf
     chattr +i /root/.ninc.selected.${_SET_NINC}.cnf
   fi
-  _msg "_network_interface_naming_convention ==> NINC selected: ${_SET_NINC}" >> "${_logInt}"
+  _msg "_check_ninc ==> NINC selected: ${_SET_NINC}" >> "${_logInt}"
 }
 
 ###
 ### Check Manufacturer Compatibility
 ###
-_check_manufacturer_compatibility() {
+_check_mnfr() {
   # Install dmidecode if not present
   if ! command -v dmidecode &> /dev/null; then
     /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
@@ -232,20 +232,20 @@ _check_manufacturer_compatibility() {
   # Check for Amazon EC2 in the system manufacturer field
   if dmidecode -s system-manufacturer | grep -i 'Amazon EC2' &> /dev/null; then
     _VMFAMILY="AWS"
-    _msg "_check_manufacturer_compatibility ==> Not supported environment detected: ${_HOST_INFO}" >> "${_logInt}"
-    _msg "_check_manufacturer_compatibility ==> Please check https://bit.ly/boa-caveats" >> "${_logInt}"
-    _msg "_check_manufacturer_compatibility ==> Bye!" >> "${_logInt}"
-    echo "_check_manufacturer_compatibility ==> Not supported environment detected: ${_HOST_INFO}"
-    echo "_check_manufacturer_compatibility ==> Please check https://bit.ly/boa-caveats"
-    echo "_check_manufacturer_compatibility ==> Bye!"
+    _msg "_check_mnfr ==> Not supported environment detected: ${_HOST_INFO}" >> "${_logInt}"
+    _msg "_check_mnfr ==> Please check https://bit.ly/boa-caveats" >> "${_logInt}"
+    _msg "_check_mnfr ==> Bye!" >> "${_logInt}"
+    echo "_check_mnfr ==> Not supported environment detected: ${_HOST_INFO}"
+    echo "_check_mnfr ==> Please check https://bit.ly/boa-caveats"
+    echo "_check_mnfr ==> Bye!"
     exit 1
   elif [[ "${_HOST_INFO}" =~ "Unknown" ]] || [ -z "${_HOST_INFO}" ]; then
-    _msg "_check_manufacturer_compatibility ==> Mysterious environment: ${_HOST_INFO}" >> "${_logInt}"
-    _msg "_check_manufacturer_compatibility ==> Please check https://bit.ly/boa-caveats" >> "${_logInt}"
-    _msg "_check_manufacturer_compatibility ==> Bye!" >> "${_logInt}"
-    echo "_check_manufacturer_compatibility ==> Mysterious environment: ${_HOST_INFO}"
-    echo "_check_manufacturer_compatibility ==> Please check https://bit.ly/boa-caveats"
-    echo "_check_manufacturer_compatibility ==> Bye!"
+    _msg "_check_mnfr ==> Mysterious environment: ${_HOST_INFO}" >> "${_logInt}"
+    _msg "_check_mnfr ==> Please check https://bit.ly/boa-caveats" >> "${_logInt}"
+    _msg "_check_mnfr ==> Bye!" >> "${_logInt}"
+    echo "_check_mnfr ==> Mysterious environment: ${_HOST_INFO}"
+    echo "_check_mnfr ==> Please check https://bit.ly/boa-caveats"
+    echo "_check_mnfr ==> Bye!"
     exit 1
   fi
 }
@@ -277,7 +277,6 @@ _check_no_systemd() {
       _msg "_check_no_systemd ==> HINT: Please remove it manually and reboot" >> "${_logInt}"
       _msg "_check_no_systemd ==> HINT:   apt-get purge systemd libnss-systemd -y" >> "${_logInt}"
       _msg "_check_no_systemd ==> HINT: After reboot install boa as usual" >> "${_logInt}"
-      exit 1
     fi
   fi
 }
@@ -439,7 +438,7 @@ _disable_apparmor_utils() {
 ###
 ### Install AppArmor
 ###
-_install_apparmor_utils() {
+_install_apparmor() {
   _isAppArmorRevFile="/sys/kernel/security/apparmor/revision"
   _isAppArmorGrubFile="/etc/default/grub.d/apparmor.cfg"
   _isAppArmorComplain=$(which aa-complain 2>&1)
@@ -456,7 +455,7 @@ _install_apparmor_utils() {
     || [ -z "${_isAppArmorComplain}" ] \
     || [ -z "${_isAppArmorStatus}" ] \
     || [ "${_isAppArmorGrub}" = "NO" ]; then
-    _msg "_install_apparmor_utils ==> Installing AppArmor Tools early..." >> "${_logInt}"
+    _msg "_install_apparmor ==> Installing AppArmor Tools early..." >> "${_logInt}"
     echo " " >> "${_logInt}"
     ${_INITINS} auditd \
       apparmor \
@@ -480,7 +479,7 @@ _install_apparmor_utils() {
 ###
 ### Grub and Ifnames
 ###
-_ifnames_grub_check_sync() {
+_ifnames_grub() {
 
   _USE_NINC=NO
   _NEW_GRUB=DEMO
@@ -505,18 +504,18 @@ _ifnames_grub_check_sync() {
   if [ -e "${_GRUB_FILE}" ]; then
     if echo "${_IS_IFACE}" | grep -qE "eth[0-9]+"; then
       _USE_IFNAMES="CLASSIC"
-      _msg "_ifnames_grub_check_sync ==> GRUB: Classic ethX interface naming found." >> "${_logInt}"
+      _msg "_ifnames_grub ==> GRUB: Classic ethX interface naming found." >> "${_logInt}"
     elif echo "${_IS_IFACE}" | grep -qE "(ens|enp|eno|wlp|wlo)[0-9]+:"; then
       _USE_IFNAMES="PREDICTABLE"
-      _msg "_ifnames_grub_check_sync ==> GRUB: Predictable (ensX, enpX, enoX, wlpX, wloX) interface naming found." >> "${_logInt}"
+      _msg "_ifnames_grub ==> GRUB: Predictable (ensX, enpX, enoX, wlpX, wloX) interface naming found." >> "${_logInt}"
     else
       _USE_IFNAMES="DONTMODIFY"
-      _msg "_ifnames_grub_check_sync ==> GRUB: config exists, but no recognized network interface naming found." >> "${_logInt}"
+      _msg "_ifnames_grub ==> GRUB: config exists, but no recognized network interface naming found." >> "${_logInt}"
     fi
 
     # Extract the current GRUB_CMDLINE_LINUX line
     _GRUB_CMDLINE_LINUX=$(grep -E "^GRUB_CMDLINE_LINUX=" "${_GRUB_FILE}")
-    _msg "_ifnames_grub_check_sync ==> GRUB: Current config is ${_GRUB_CMDLINE_LINUX}" >> "${_logInt}"
+    _msg "_ifnames_grub ==> GRUB: Current config is ${_GRUB_CMDLINE_LINUX}" >> "${_logInt}"
 
     # Initialize variables to check for existing options
     _SYS_NET_IFNAMES=$(echo "${_GRUB_CMDLINE_LINUX}" | grep -o "net.ifnames=[01]")
@@ -569,36 +568,36 @@ _ifnames_grub_check_sync() {
       echo " " >> "${_logInt}"
       if [[ "${_NEW_GRUB}" == "LIVE" ]]; then
         # Update the GRUB file
-        _msg "_ifnames_grub_check_sync ==> GRUB: Networking Interface Naming Convention selected: ${_USE_NINC}" >> "${_logInt}"
-        _msg "_ifnames_grub_check_sync ==> GRUB: Update in the LIVE MODE" >> "${_logInt}"
+        _msg "_ifnames_grub ==> GRUB: Networking Interface Naming Convention selected: ${_USE_NINC}" >> "${_logInt}"
+        _msg "_ifnames_grub ==> GRUB: Update in the LIVE MODE" >> "${_logInt}"
         sed -i "s|^GRUB_CMDLINE_LINUX=.*|${_NEW_GRUB_CMDLINE_LINUX}|" "${_GRUB_FILE}"
-        _msg "_ifnames_grub_check_sync ==> GRUB_CMDLINE_LINUX has been updated with ${_UPDATED_CMDLINE}" >> "${_logInt}"
+        _msg "_ifnames_grub ==> GRUB_CMDLINE_LINUX has been updated with ${_UPDATED_CMDLINE}" >> "${_logInt}"
       elif [[ "${_NEW_GRUB}" == "DEMO" ]]; then
         # Demo info
-        _msg "_ifnames_grub_check_sync ==> GRUB: Networking Interface Naming Convention selected: ${_USE_NINC}" >> "${_logInt}"
-        _msg "_ifnames_grub_check_sync ==> GRUB: Update in the DEMO MODE" >> "${_logInt}"
+        _msg "_ifnames_grub ==> GRUB: Networking Interface Naming Convention selected: ${_USE_NINC}" >> "${_logInt}"
+        _msg "_ifnames_grub ==> GRUB: Update in the DEMO MODE" >> "${_logInt}"
         echo " " >> "${_logInt}"
-        _msg "_ifnames_grub_check_sync ==> GRUB_CMDLINE_LINUX would be updated with:" >> "${_logInt}"
+        _msg "_ifnames_grub ==> GRUB_CMDLINE_LINUX would be updated with:" >> "${_logInt}"
         _msg "   ${_UPDATED_CMDLINE}" >> "${_logInt}"
         echo " " >> "${_logInt}"
-        _msg "_ifnames_grub_check_sync ==> GRUB: Update in the LIVE MODE requires presence of control file:" >> "${_logInt}"
+        _msg "_ifnames_grub ==> GRUB: Update in the LIVE MODE requires presence of control file:" >> "${_logInt}"
         _msg "   /root/.ninc.selected.auto.cnf" >> "${_logInt}"
         echo " "
-        _msg "_ifnames_grub_check_sync ==> GRUB: Note that this extra control file must not exist:" >> "${_logInt}"
+        _msg "_ifnames_grub ==> GRUB: Note that this extra control file must not exist:" >> "${_logInt}"
         _msg "   /root/.ignore.ifnames.cnf" >> "${_logInt}"
         echo " " >> "${_logInt}"
-        _msg "_ifnames_grub_check_sync ==> GRUB: This requirement serves as a double-check to confirm" >> "${_logInt}"
-        _msg "_ifnames_grub_check_sync ==> GRUB: that you are aware of and agree to auto-update GRUB configuration." >> "${_logInt}"
-        _msg "_ifnames_grub_check_sync ==> GRUB: Incorrect GRUB settings can render your virtual machine unbootable" >> "${_logInt}"
-        _msg "_ifnames_grub_check_sync ==> GRUB: necessitating a rescue operation using a CD-ROM or ISO image." >> "${_logInt}"
-        _msg "_ifnames_grub_check_sync ==> GRUB: For this reason, running BOA directly on physical hardware (bare metal) is not supported" >> "${_logInt}"
+        _msg "_ifnames_grub ==> GRUB: This requirement serves as a double-check to confirm" >> "${_logInt}"
+        _msg "_ifnames_grub ==> GRUB: that you are aware of and agree to auto-update GRUB configuration." >> "${_logInt}"
+        _msg "_ifnames_grub ==> GRUB: Incorrect GRUB settings can render your virtual machine unbootable" >> "${_logInt}"
+        _msg "_ifnames_grub ==> GRUB: necessitating a rescue operation using a CD-ROM or ISO image." >> "${_logInt}"
+        _msg "_ifnames_grub ==> GRUB: For this reason, running BOA directly on physical hardware (bare metal) is not supported" >> "${_logInt}"
         echo " " >> "${_logInt}"
-        _msg "_ifnames_grub_check_sync ==> GRUB: NEVER USE LIVE MODE IF YOU ARE NOT SURE IF YOU NEED IT" >> "${_logInt}"
+        _msg "_ifnames_grub ==> GRUB: NEVER USE LIVE MODE IF YOU ARE NOT SURE IF YOU NEED IT" >> "${_logInt}"
       fi
       echo " " >> "${_logInt}"
     fi
   else
-    _msg "_ifnames_grub_check_sync ==> GRUB config does not exist." >> "${_logInt}"
+    _msg "_ifnames_grub ==> GRUB config does not exist." >> "${_logInt}"
   fi
 }
 
@@ -652,7 +651,7 @@ _init_prepare() {
   ###
   ### Grub and Ifnames
   ###
-  _ifnames_grub_check_sync
+  _ifnames_grub
 
   if [[ -n "${_ADD_GRUB_CMD}" ]] && [[ "${_NEW_GRUB}" == "LIVE" ]]; then
     touch /run/autoinit.pid
@@ -718,7 +717,7 @@ _init_prepare() {
         sed -i "s/.*killer.*//gi" /etc/crontab &> /dev/null
         echo "*/1 *   * * *   root    bash /opt/local/bin/killer" >> /etc/crontab
       fi
-      [ "${_SET_MODE}" = "full" ] && _install_apparmor_utils
+      [ "${_SET_MODE}" = "full" ] && _install_apparmor
       touch ${_initFile}
       _msg "_init_prepare ==> Time for reboot and next upgrade cycle..." >> "${_logInt}"
       echo " " >> "${_logInt}"
@@ -733,9 +732,9 @@ _init_prepare() {
 ###
 ### Ensure Devuan base-files
 ###
-_ensure_devuan_base_files() {
+_ensure_devuan_bf() {
   # Ensure Devuan base-files is applied so /etc/os-release reflects Devuan/daedalus
-  _msg "_ensure_devuan_base_files ==> Ensuring Devuan base-files is applied (force-confnew)" >> "${_logInt}"
+  _msg "_ensure_devuan_bf ==> Ensuring Devuan base-files is applied (force-confnew)" >> "${_logInt}"
   _BF_CANDIDATE=$(apt-cache policy base-files 2>/dev/null | awk '/Candidate: /{print $2; exit}')
   _APTOPTS="-o Dpkg::Options::=--force-confnew \
             -o Dpkg::Options::=--force-overwrite \
@@ -799,7 +798,7 @@ _init_offsystemd() {
     # If any of the above checks require an update, perform the upgrade
     if [ "${_needsBaseFilesUpdate}" = "YES" ]; then
       _msg "_init_offsystemd ==> Upgrading base-files from Devuan repository (dynamic candidate)" >> "${_logInt}"
-      _ensure_devuan_base_files
+      _ensure_devuan_bf
     fi
   fi
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
@@ -931,7 +930,7 @@ _init_cycle() {
         fi
         if [ "${_needsBaseFilesUpdate}" = "YES" ]; then
           _msg "_init_cycle ==> Upgrading base-files from Devuan repository (dynamic candidate)" >> "${_logInt}"
-          _ensure_devuan_base_files
+          _ensure_devuan_bf
         fi
       fi
     fi
@@ -1001,7 +1000,7 @@ _init_info() {
 _init_conf() {
   if [ ! -e "${_initFile}" ]; then
     if [ ! -x "/usr/bin/mc" ]; then
-      _check_manufacturer_compatibility
+      _check_mnfr
       _init_info
     fi
     _init_prepare &> /dev/null
@@ -1040,8 +1039,8 @@ _init_launch() {
   _UPTIME=$(uptime)
   _msg "_init_launch ==> Date/Time: ${_TIME_IS}" >> "${_logInt}"
   _msg "_init_launch ==> Uptime: ${_UPTIME}" >> "${_logInt}"
-  _check_set_mode
-  _network_interface_naming_convention
+  _check_mode
+  _check_ninc
   _locales_check_fix_early
   _cron_check_install_early
   _init_start
