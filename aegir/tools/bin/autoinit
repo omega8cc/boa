@@ -814,6 +814,7 @@ _init_offsystemd() {
     _msg "Update networking if needed with vmnetfix..." >> "${_logInt}"
     /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
     _msg "Time for reboot and then you can run boa install" >> "${_logInt}"
+    wait
     rm -f /root/.init-to-devuan-ctrl.cnf
     sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
     _if_launch_boa_install
@@ -821,6 +822,7 @@ _init_offsystemd() {
     _msg "Update networking if needed with vmnetfix..." >> "${_logInt}"
     /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
     _msg "Time for reboot and next upgrade cycle..." >> "${_logInt}"
+    wait
   fi
   echo " " >> "${_logInt}"
   touch /root/.run-offsystemd-devuan-init.cnf
@@ -874,6 +876,7 @@ _init_cycle() {
     _msg "Running APT Cleanup with aptcleanup" >> "${_logInt}"
     /opt/local/bin/aptcleanup >> "${_logSlt}"
     _msg "Launching a quick upgrade to ${_NEW_SYS}/${_NEW_OS_CODE}" >> "${_logInt}"
+    wait
     _aptLiSys="/etc/apt/sources.list"
     _TGT_MRR="deb.devuan.org/merged"
     echo "## DEVUAN MAIN REPOSITORIES" > ${_aptLiSys}
@@ -943,6 +946,7 @@ _init_cycle() {
     _msg "Update networking if needed with vmnetfix..." >> "${_logInt}"
     /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
     _msg "Time for reboot and next upgrade cycle..." >> "${_logInt}"
+    wait
     echo " " >> "${_logInt}"
     touch /root/.run-cycle-devuan-init.cnf
     rm -f /run/autoinit.pid
@@ -958,6 +962,8 @@ _init_cycle() {
       _check_no_systemd
       /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
       _msg "Time for the last reboot and then you can run boa install" >> "${_logInt}"
+      wait
+      wait
       rm -f /root/.init-to-devuan-ctrl.cnf
       sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
       _if_launch_boa_install
@@ -966,6 +972,7 @@ _init_cycle() {
       _msg "Update networking if needed with vmnetfix..." >> "${_logInt}"
       /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
       _msg "Time for reboot and next upgrade cycle..." >> "${_logInt}"
+      wait
     fi
     echo " " >> "${_logInt}"
     touch /root/.run-cycle-devuan-init.cnf
