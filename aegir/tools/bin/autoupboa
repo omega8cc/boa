@@ -82,8 +82,8 @@ _turn_off_apparmor() {
 # Define default values
 _DEFAULT_CPU_CRIT_RATIO="6.1"
 _DEFAULT_CPU_MAX_RATIO="4.1"
-_DEFAULT_CPU_TASK_RATIO="3.1"
-_DEFAULT_CPU_SPIDER_RATIO="2.1"
+_DEFAULT_CPU_TASK_RATIO="1.4"
+_DEFAULT_CPU_SPIDER_RATIO="1.1"
 _LOCK_CPU_CONFIG="/root/.lock.cpu.update.f98.cnf"
 _UPDATE_CPU_PID="/var/log/boa/.update_conf_variable.ctrl.f98.${_tRee}.${_xSrl}.pid"
 
