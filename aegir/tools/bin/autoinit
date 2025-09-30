@@ -263,6 +263,26 @@ _check_aegir() {
 }
 
 ###
+### Check Systemd
+###
+_check_no_systemd() {
+  if [ -e "/lib/systemd/systemd" ]; then
+    ${_INITINS} eudev sysvinit-core -qq >> "${_logSlt}"
+    /usr/bin/apt-get -f install ${_aptAllow} -y -qq >> "${_logSlt}"
+    /usr/bin/apt-get remove systemd -y --purge --auto-remove --allow-remove-essential -qq >> "${_logSlt}"
+    /usr/bin/apt-get remove libnss-systemd -y --purge --auto-remove --allow-remove-essential -qq >> "${_logSlt}"
+    /usr/bin/apt-get remove systemd-sysv -y --purge --auto-remove --allow-remove-essential -qq >> "${_logSlt}"
+    if [ -e "/lib/systemd/systemd" ]; then
+      _msg "_check_no_systemd ==> ERRR: Systemd still not removed cleanly" >> "${_logInt}"
+      _msg "_check_no_systemd ==> HINT: Please remove it manually and reboot" >> "${_logInt}"
+      _msg "_check_no_systemd ==> HINT:   apt-get purge systemd libnss-systemd -y" >> "${_logInt}"
+      _msg "_check_no_systemd ==> HINT: After reboot install boa as usual" >> "${_logInt}"
+      exit 1
+    fi
+  fi
+}
+
+###
 ### Fix locales
 ###
 _locales_check_fix_early() {
@@ -789,6 +809,7 @@ _init_offsystemd() {
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   _msg "Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
   if [ "${_OS_CODE}" = "daedalus" ]; then
+    _check_no_systemd
     echo " " >> "${_logInt}"
     _msg "Update networking if needed with vmnetfix..." >> "${_logInt}"
     /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
@@ -934,6 +955,7 @@ _init_cycle() {
       /opt/local/bin/aptcleanup >> "${_logSlt}"
       _msg "Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
       _msg "Update networking if needed with vmnetfix..." >> "${_logInt}"
+      _check_no_systemd
       /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
       _msg "Time for the last reboot and then you can run boa install" >> "${_logInt}"
       rm -f /root/.init-to-devuan-ctrl.cnf
