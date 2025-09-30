@@ -1042,6 +1042,10 @@ _init_launch() {
     _msg "_init_launch ==> Launching BOA System INIT on ${_OS_DIST}/${_OS_CODE}..." >> "${_logInt}"
   fi
   sleep 15
+  _check_set_mode
+  _network_interface_naming_convention
+  _locales_check_fix_early
+  _cron_check_install_early
   _init_start
 }
 
@@ -1066,10 +1070,6 @@ if [ -e "/run/autoinit.pid" ]; then
 else
   ### -------------------------- Let's go!
   _init_launch
-  _check_set_mode
-  _network_interface_naming_convention
-  _locales_check_fix_early
-  _cron_check_install_early
 fi
 
 exit 0
