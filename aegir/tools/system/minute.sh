@@ -68,8 +68,41 @@ _second_flood_guard() {
     pkill -9 -f second.sh
   fi
 }
+
+# Protect from high load due to csf loop/flood
+_csf_flood_guard() {
+  _thisCountCsf=$(pgrep -fc /csf)
+  if [ ! -e "/run/boa_run.pid" ] && [ ${_thisCountCsf} -gt 4 ]; then
+    echo "$(date) Too many ${_thisCountCsf} csf processes killed" >> \
+      /var/log/boa/csf-count.kill.log
+    pkill -9 -f csf
+    csf -tf
+    wait
+    csf -df
+    wait
+  fi
+  _thisCountFire=$(pgrep -fc /var/xdrago/guest-fire.sh)
+  if [ ! -e "/run/boa_run.pid" ] && [ ${_thisCountFire} -gt 9 ]; then
+    echo "$(date) Too many ${_thisCountFire} fire.sh processes killed and rules purged" >> \
+      /var/log/boa/fire-purge.kill.log
+    csf -tf
+    wait
+    csf -df
+    wait
+    pkill -9 -f fire.sh
+  elif [ ! -e "/run/boa_run.pid" ] && [ ${_thisCountFire} -gt 7 ]; then
+    echo "$(date) Too many ${_thisCountFire} fire.sh processes killed" >> \
+      /var/log/boa/fire-count.kill.log
+    csf -tf
+    wait
+    pkill -9 -f fire.sh
+  fi
+  [ -e "/etc/csf/csfpost.d/synproxy.sh" ] && synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
+}
+
 [ -e "/var/log/sec-count.kill.log" ] && mv -f /var/log/sec-count.kill.log /var/log/boa/
 [ ! -e "/run/boa_run.pid" ] && _second_flood_guard
+[ ! -e "/run/water.pid" ] && _csf_flood_guard
 
 echo DONE!
 exit 0
