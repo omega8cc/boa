@@ -271,8 +271,7 @@ _if_fix_locked_sshd() {
   _SSH_LOG="/var/log/auth.log"
   if [ `tail --lines=30 ${_SSH_LOG} \
     | grep --count "error: Bind to port 22"` -gt 0 ]; then
-    # killall -9 sshd-session
-    kill -9 $(ps aux | grep '[s]tartups' | awk '{print $2}')
+    pkill -9 -f /usr/sbin/sshd || true
     service ssh start
   fi
 }
@@ -286,7 +285,7 @@ if [ -e "/root/.remote_backups/schedule/backup_schedule.txt" ]; then
     rm -f /root/.remote_backups/paths/.*
     [ -x "/usr/local/bin/dcysetup" ] && bash /usr/local/bin/dcysetup update &> /dev/null
   fi
-  _CNT=$(pgrep -fc "[d]uplicity")
+  _CNT=$(pgrep -fc duplicity)
   if (( _CNT > 0 )); then
     echo "[$(date)] Active duplicity process detected, will try again later..." >> /var/log/mybackup_waiting_queue.log
   else

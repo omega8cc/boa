@@ -52,7 +52,7 @@ _manage_single_lock() {
     # -------- legacy pgrep guard ---------
     # Exit if more than 2 instances of this script are running
     _SCRIPT=$(basename "$0")
-    _CNT=$(pgrep -fc "[${_SCRIPT:0:1}]${_SCRIPT:1}")
+    _CNT=$(pgrep -fc ${_SCRIPT})
     if (( _CNT > 2 )); then
       echo "Too many ${_SCRIPT} running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
       exit 0
@@ -77,7 +77,7 @@ _fpm_forced_restart() {
   _NOW=${_NOW//[^0-9-]/}
   mkdir -p /var/backups/php-logs/${_NOW}/
   mv -f /var/log/php/* /var/backups/php-logs/${_NOW}/
-  kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}') &> /dev/null
+  pkill -9 -f php-fpm
   renice ${_B_NICE} -p $$ &> /dev/null
   _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
@@ -94,7 +94,7 @@ _fpm_forced_restart() {
 }
 
 _fpm_duplicate_instances_detection() {
-  _CNT=$(pgrep -fc "[p]hp-fpm: master process")
+  _CNT=$(pgrep -fc "php-fpm: master process")
   if (( _CNT > 11 )); then
     _thisErrLog="$(date) Too many PHP-FPM master processes killed (count=${_CNT})"
     echo ${_thisErrLog} >> ${_pthOml}

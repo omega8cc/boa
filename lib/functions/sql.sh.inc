@@ -52,15 +52,15 @@ _if_sql_keyring_apt_update() {
         curl -fsSL ${_urlDev}/percona-key.gpg | ${_GPG} --dearmor -o /etc/apt/keyrings/percona.gpg
       fi
       chmod 644 /etc/apt/keyrings/percona.gpg
-      _CNT=$(pgrep -fc "[d]irmngr")
+      _CNT=$(pgrep -fc dirmngr)
       if (( _CNT > 5 )); then
-        kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
+        pkill -9 -f dirmngr
         echo "$(date) Too many dirmngr processes killed (count=${_CNT})" >> \
           /var/log/boa/dirmngr-count.kill.log
       fi
-      _CNT=$(pgrep -fc "[g]pg-agent")
+      _CNT=$(pgrep -fc gpg-agent)
       if (( _CNT > 5 )); then
-        kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
+        pkill -9 -f gpg-agent
         echo "$(date) Too many gpg-agent processes killed (count=${_CNT})" >> \
           /var/log/boa/gpg-agent-count.kill.log
       fi
@@ -1262,6 +1262,8 @@ _db_server_install() {
           cp -af ${_myCnf} ${_preCnf}
         fi
         _diffMyTest=$(diff -w -B \
+          -I mysql_native_password \
+          -I userstat \
           -I innodb_buffer_pool_size \
           -I innodb_buffer_pool_instances \
           -I innodb_page_cleaners \

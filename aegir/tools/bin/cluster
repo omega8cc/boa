@@ -748,7 +748,7 @@ _if_firewall_update() {
     fi
     sysctl -p /etc/sysctl.conf
     cd
-    kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
+    pkill -9 -f ConfigServer
     killall sleep &> /dev/null
     rm -f /etc/csf/csf.error
     if [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
@@ -1651,7 +1651,7 @@ _install_db_cluster() {
   fi
   service lfd stop
   wait
-  kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
+  pkill -9 -f ConfigServer
   killall sleep &> /dev/null
   rm -f /etc/csf/csf.error
   if [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
@@ -2178,9 +2178,9 @@ _install_host() {
       wget ${_wgetGet} http://repo.psand.net/pubkey.txt
       _KEYS_SERVER_TEST=$(grep GnuPG pubkey.txt 2>&1)
       sleep 2
-      _CNT=$(pgrep -fc "[d]irmngr")
+      _CNT=$(pgrep -fc dirmngr)
       if (( _CNT > 5 )); then
-        kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
+        pkill -9 -f dirmngr
         echo "$(date) Too many dirmngr processes killed (count=${_CNT})" >> \
           /var/log/boa/dirmngr-count.kill.log
       fi
