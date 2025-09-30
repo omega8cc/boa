@@ -1668,6 +1668,7 @@ _init_setup() {
       else
         echo "Launching octopus up-${_tRee} ${_usEr} now..."
         /opt/local/bin/octopus up-${_tRee} ${_usEr} force log noscreen 2>&1 | tee ${_UP_OCTOPUS_LOG}
+        wait
         echo "Checking LE setup status..."
         _LE="/data/disk/${_usEr}/log/letsencrypt-*.log"
         _LE_IF=$(ls ${_LE} | wc -l)
@@ -1685,6 +1686,7 @@ _init_setup() {
           echo "Launching another octopus upgrade to fix LE..."
           _UP_OCTOPUS_AGAIN_LOG="${_LOG_UP_DIR}/$(basename "$0")-up-again-octopus-${_NOW}.log"
           /opt/local/bin/octopus up-${_tRee} ${_usEr} force log noscreen 2>&1 | tee ${_UP_OCTOPUS_AGAIN_LOG}
+          wait
           _LE_IF=
           _LE_IF=$(ls ${_LE} | wc -l)
           if [ -n "${_LE_IF}" ] && [ "${_LE_IF}" -ge 1 ]; then
