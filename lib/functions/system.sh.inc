@@ -8135,10 +8135,14 @@ _if_drupal_patches_update() {
     _msg "PROC: _if_drupal_patches_update"
   fi
   if [ -e "/var/xdrago" ]; then
-    if [ ! -e "/data/conf/patches/ctrl.f96.${_tRee}.${_xSrl}.pid" ]; then
-      _set_drupal_patches_paths
+    _BROKEN_UPDATE_TEST_A=$(grep "Under Construction" /data/conf/patches/* 2>&1)
+    _BROKEN_UPDATE_TEST_B=$(grep "404 Not Found" /data/conf/patches/* 2>&1)
+    if [ ! -z "${_BROKEN_UPDATE_TEST_A}" ] \
+      || [ ! -z "${_BROKEN_UPDATE_TEST_B}" ] \
+      || [ ! -e "/data/conf/patches/ctrl.f96.${_tRee}.${_xSrl}.pid" ]; then
       mkdir -p /data/conf/patches
       rm -f /data/conf/patches/*
+      _set_drupal_patches_paths
       _update_patches_drupal_ten
       _update_patches_drupal_eleven
       touch /data/conf/patches/ctrl.f96.${_tRee}.${_xSrl}.pid

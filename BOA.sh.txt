@@ -3623,7 +3623,11 @@ _fix_eldir() {
 
 _if_drupal_patches_update() {
   if [ -e "/var/xdrago" ]; then
-    if [ ! -e "/data/conf/patches/ctrl.f96.${_tRee}.${_xSrl}.pid" ]; then
+    _BROKEN_UPDATE_TEST_A=$(grep "Under Construction" /data/conf/patches/* 2>&1)
+    _BROKEN_UPDATE_TEST_B=$(grep "404 Not Found" /data/conf/patches/* 2>&1)
+    if [ ! -z "${_BROKEN_UPDATE_TEST_A}" ] \
+      || [ ! -z "${_BROKEN_UPDATE_TEST_B}" ] \
+      || [ ! -e "/data/conf/patches/ctrl.f96.${_tRee}.${_xSrl}.pid" ]; then
       mkdir -p /data/conf/patches
       rm -f /data/conf/patches/*
       touch /data/conf/patches/ctrl.f96.${_tRee}.${_xSrl}.pid
