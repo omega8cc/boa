@@ -100,9 +100,14 @@ _csf_flood_guard() {
   [ -e "/etc/csf/csfpost.d/synproxy.sh" ] && synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
 }
 
+[ ! -d "/var/log/boa" ] && mkdir -p /var/log/boa
 [ -e "/var/log/sec-count.kill.log" ] && mv -f /var/log/sec-count.kill.log /var/log/boa/
+[ -e "/var/log/csf-count.kill.log" ] && mv -f /var/log/csf-count.kill.log /var/log/boa/
+[ -e "/var/log/fire-purge.kill.log" ] && mv -f /var/log/fire-purge.kill.log /var/log/boa/
+[ -e "/var/log/fire-count.kill.log" ] && mv -f /var/log/fire-count.kill.log /var/log/boa/
+
 [ ! -e "/run/boa_run.pid" ] && _second_flood_guard
-[ ! -e "/run/water.pid" ] && _csf_flood_guard
+[ -x "/usr/sbin/csf" ] && [ ! -e "/run/water.pid" ] && _csf_flood_guard
 
 echo DONE!
 exit 0

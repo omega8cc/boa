@@ -201,9 +201,6 @@ _guest_guard() {
 
 # Main execution
 if [ -x "/usr/sbin/csf" ]; then
-  [ -e "/var/log/csf-count.kill.log" ] && mv -f /var/log/csf-count.kill.log /var/log/boa/
-  [ -e "/var/log/fire-purge.kill.log" ] && mv -f /var/log/fire-purge.kill.log /var/log/boa/
-  [ -e "/var/log/fire-count.kill.log" ] && mv -f /var/log/fire-count.kill.log /var/log/boa/
   # Main execution
   for _iteration in {1..3}; do
     echo "----------------------------"
