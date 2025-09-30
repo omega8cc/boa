@@ -260,8 +260,8 @@ _if_disable_not_used_services() {
       update-rc.d -f clamav-freshclam remove &> /dev/null
       mv -f /etc/init.d/clamav-freshclam /var/backups/
     fi
-    kill -9 $(ps aux | grep '[c]lamd' | awk '{print $2}') &> /dev/null
-    kill -9 $(ps aux | grep '[f]reshclam' | awk '{print $2}') &> /dev/null
+    pkill -9 -f clamd
+    pkill -9 -f freshclam
     rm -f /run/clamav/*
   fi
 
@@ -281,8 +281,8 @@ _if_disable_not_used_services() {
       update-rc.d -f jetty9 remove &> /dev/null
       mv -f /etc/init.d/jetty9 /var/backups/
     fi
-    kill -9 $(ps aux | grep '[a]vahi-daemon' | awk '{print $2}') &> /dev/null
-    kill -9 $(ps aux | grep '[j]ava' | awk '{print $2}') &> /dev/null
+    pkill -9 -f avahi-daemon
+    pkill -9 -f java
   fi
 
   if [ -e "/root/.deny.jetty9.cnf" ]; then
@@ -290,8 +290,8 @@ _if_disable_not_used_services() {
       _clearSwap=YES
       update-rc.d -f jetty9 remove &> /dev/null
       mv -f /etc/init.d/jetty9 /var/backups/
-      kill -9 $(ps aux | grep '[a]vahi-daemon' | awk '{print $2}') &> /dev/null
-      kill -9 $(ps aux | grep '[j]ava' | awk '{print $2}') &> /dev/null
+      pkill -9 -f avahi-daemon
+      pkill -9 -f java
     fi
   fi
 
@@ -300,8 +300,8 @@ _if_disable_not_used_services() {
       _clearSwap=YES
       update-rc.d -f solr7 remove &> /dev/null
       mv -f /etc/init.d/solr7 /var/backups/
-      kill -9 $(ps aux | grep '[a]vahi-daemon' | awk '{print $2}') &> /dev/null
-      kill -9 $(ps aux | grep '[j]ava' | awk '{print $2}') &> /dev/null
+      pkill -9 -f avahi-daemon
+      pkill -9 -f java
     fi
   fi
 
@@ -310,8 +310,8 @@ _if_disable_not_used_services() {
       _clearSwap=YES
       update-rc.d -f solr9 remove &> /dev/null
       mv -f /etc/init.d/solr9 /var/backups/
-      kill -9 $(ps aux | grep '[a]vahi-daemon' | awk '{print $2}') &> /dev/null
-      kill -9 $(ps aux | grep '[j]ava' | awk '{print $2}') &> /dev/null
+      pkill -9 -f avahi-daemon
+      pkill -9 -f java
     fi
   fi
 
@@ -453,7 +453,8 @@ _is_protected_run() {
   _boaBins="autoinit barracuda boa octopus"
   for _cbn in ${_boaBins}; do
     if [ -e "${_optBin}/${_cbn}" ]; then
-      if [ `ps aux | grep -v "grep" | grep --count "/${_cbn}"` -gt 0 ]; then
+      _CNT=$(pgrep -fc /local/bin/${_cbn})
+      if (( _CNT > 0 )); then
         echo "The ${_cbn} is running!"
         _protectedRun=TRUE
       fi
@@ -823,15 +824,15 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     else
       [ -e "/root/.pause_tasks_maint.cnf" ] && rm -f /root/.pause_tasks_maint.cnf
       [ -e "/root/.restrict_this_vm.cnf" ] && rm -f /root/.restrict_this_vm.cnf
-      _CNT=$(pgrep -fc "[g]pg-agent")
+      _CNT=$(pgrep -fc gpg-agent)
       if (( _CNT > 5 )); then
-        kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
+        pkill -9 -f gpg-agent
         echo "$(date) Too many gpg-agent processes killed (count=${_CNT})" >> \
           /var/log/boa/gpg-agent-count.kill.log
       fi
-      _CNT=$(pgrep -fc "[d]irmngr")
+      _CNT=$(pgrep -fc dirmngr)
       if (( _CNT > 5 )); then
-        kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
+        pkill -9 -f dirmngr
         echo "$(date) Too many dirmngr processes killed (count=${_CNT})" >> \
           /var/log/boa/dirmngr-count.kill.log
       fi
@@ -968,9 +969,9 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
 
   _IS_MOVESQL_RUNNING=$(ps aux | grep '[m]ove_sql.sh' | awk '{print $2}' 2>&1)
   if [ ! -z "${_IS_MOVESQL_RUNNING}" ]; then
-    _CNT=$(pgrep -fc "[m]ove_sql.sh")
+    _CNT=$(pgrep -fc move_sql.sh)
     if (( _CNT > 2 )); then
-      kill -9 $(ps aux | grep '[m]ove_sql.sh' | awk '{print $2}') &> /dev/null
+      pkill -9 -f move_sql.sh
       rm -f /run/mysql_restart_running.pid
       rm -f /run/boa_wait.pid
       rm -f /var/log/boa/.move_sql_ctrl*
@@ -980,9 +981,9 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
 
   _IS_SQLCLEANUP_RUNNING=$(ps aux | grep '[m]ysql_cleanup.sh' | awk '{print $2}' 2>&1)
   if [ ! -z "${_IS_SQLCLEANUP_RUNNING}" ]; then
-    _CNT=$(pgrep -fc "[m]ysql_cleanup.sh")
+    _CNT=$(pgrep -fc mysql_cleanup.sh)
     if (( _CNT > 2 )); then
-      kill -9 $(ps aux | grep '[m]ysql_cleanup.sh' | awk '{print $2}') &> /dev/null
+      pkill -9 -f mysql_cleanup.sh
       rm -f /run/mysql_backup_running.pid
       rm -f /var/log/boa/.sqlcleanup_ctrl*
       touch /var/log/boa/.sqlcleanup_ctrl.${_tRee}.${_xSrl}.pid
@@ -991,18 +992,18 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
 
   _IS_SOLRSTART_RUNNING=$(ps aux | grep '[s]olr start' | awk '{print $2}' 2>&1)
   if [ ! -z "${_IS_SOLRSTART_RUNNING}" ]; then
-    _CNT=$(pgrep -fc "[s]olr start")
+    _CNT=$(pgrep -fc "solr start")
     if (( _CNT > 2 )); then
-      kill -9 $(ps aux | grep '[s]olr start' | awk '{print $2}') &> /dev/null
+      pkill -9 -f 'solr start'
       touch /var/log/boa/.solr_start_ctrl.${_tRee}.${_xSrl}.pid
     fi
   fi
 
   _IS_PROCTRL_RUNNING=$(ps aux | grep '[p]roc_num_ctrl.pl' | awk '{print $2}' 2>&1)
   if [ ! -z "${_IS_PROCTRL_RUNNING}" ]; then
-    _CNT=$(pgrep -fc "[p]roc_num_ctrl.pl")
+    _CNT=$(pgrep -fc proc_num_ctrl.pl)
     if (( _CNT > 1 )); then
-      kill -9 $(ps aux | grep '[p]roc_num_ctrl.pl' | awk '{print $2}') &> /dev/null
+      pkill -9 -f proc_num_ctrl.pl
       touch /var/log/boa/.proc_num_ctrl.${_tRee}.${_xSrl}.pid
     fi
   fi
@@ -1013,12 +1014,12 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
 
   _IS_SQLBACKUP_RUNNING=$(ps aux | grep '[m]ysql_backup.sh' | awk '{print $2}' 2>&1)
   if [ ! -z "${_IS_SQLBACKUP_RUNNING}" ]; then
-    _CNT=$(pgrep -fc "[m]ysql_backup.sh")
+    _CNT=$(pgrep -fc mysql_backup.sh)
     if (( _CNT > 2 )); then
-      kill -9 $(ps aux | grep '[m]ysql_backup.sh' | awk '{print $2}') &> /dev/null
-      kill -9 $(ps aux | grep '[m]ydumper' | awk '{print $2}') &> /dev/null
-      kill -9 $(ps aux | grep '[u]sage.sh' | awk '{print $2}') &> /dev/null
-      kill -9 $(ps aux | grep '[r]unner.sh' | awk '{print $2}') &> /dev/null
+      pkill -9 -f mysql_backup.sh
+      pkill -9 -f mydumper
+      pkill -9 -f usage.sh
+      pkill -9 -f runner.sh
       rm -f /run/boa_sql_backup.pid
       rm -f /run/mysql_backup_running.pid
       rm -f /run/boa_wait.pid
