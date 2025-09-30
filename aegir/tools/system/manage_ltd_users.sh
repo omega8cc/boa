@@ -498,7 +498,7 @@ _kill_zombies() {
         if [ ! -L "${_SEC_SYM}" ] || [ ! -e "${_SEC_DIR}" ] \
           || [ ! -e "/home/${_usrParent}.ftp/users/${_Existing}" ]; then
           mkdir -p /var/backups/zombie/deleted/${_NOW}
-          kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
+          pkill -9 -f gpg-agent
           _disable_chattr ${_Existing}
           rm -rf /home/${_Existing}/.gnupg
           deluser \
@@ -1326,7 +1326,7 @@ _satellite_remove_web_user() {
       if [ -d "/home/${_WEB}/.drush/" ]; then
         chattr -i /home/${_WEB}/.drush/
       fi
-      kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
+      pkill -9 -f gpg-agent
       deluser \
         --remove-home \
         --backup-to /var/backups/zombie/deleted ${_WEB} &> /dev/null

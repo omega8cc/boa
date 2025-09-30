@@ -116,7 +116,7 @@ _stop_sql() {
     echo "Waiting for PHP-FPM graceful shutdown..."
     sleep 1
   done
-  kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}') &> /dev/null
+  pkill -9 -f php-fpm
   echo "PHP-FPM stopped"
 
   _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}')

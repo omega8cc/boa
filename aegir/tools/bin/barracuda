@@ -1160,7 +1160,7 @@ _up_start() {
     touch /run/boa_run.pid
     touch /run/boa_wait.pid
     [ -e "/tmp/aegir_backup_mode.txt" ] && rm -f /tmp/aegir_backup_mode.txt
-    #kill -9 $(ps aux | grep '[d]aily.sh' | awk '{print $2}') &> /dev/null
+    #pkill -9 -f daily.sh
     #rm -f /run/*daily*.pid
     mkdir -p ${_LOG_DIR}
     cd ${_vBs}
@@ -1257,7 +1257,7 @@ _up_finish() {
     chmod 700 /etc/csf/csfpost.sh
     service lfd stop &> /dev/null
     wait
-    kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
+    pkill -9 -f ConfigServer
     killall sleep &> /dev/null
     rm -f /etc/csf/csf.error
     csf -x  &> /dev/null
@@ -1488,7 +1488,7 @@ _csf_check_fix() {
     csf -a 172.105.168.103 ao.files.aegir.cc &> /dev/null
     service lfd stop &> /dev/null
     wait
-    kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
+    pkill -9 -f ConfigServer
     killall sleep &> /dev/null
     rm -f /etc/csf/csf.error
     csf -x  &> /dev/null
