@@ -1647,14 +1647,15 @@ _init_setup() {
         /opt/local/bin/octopus up-${_tRee} ${_usEr} force log noscreen 2>&1 | tee ${_UP_OCTOPUS_LOG}
         wait
         echo "Checking LE setup status..."
-        _LE="/data/disk/${_usEr}/log/letsencrypt-*.log"
-        _LE_IF=$(ls ${_LE} | wc -l)
-        if [ -n "${_LE_IF}" ] && [ "${_LE_IF}" -ge 1 ]; then
-          if [ "$(grep -c Done ${_LE})" -ge 3 ]; then
-            _UP_OCTOPUS_AGAIN=NO
-          else
-            _UP_OCTOPUS_AGAIN=YES
-          fi
+        if [ -e "${_usEr}/log/domain.txt" ]; then
+          _hmFront=$(cat ${_usEr}/log/domain.txt 2>&1)
+          _hmFront=$(echo -n ${_hmFront} | tr -d "\n" 2>&1)
+        fi
+        _leRoot="/data/disk/${_usEr}/tools/le"
+        _leCrtPath="${_leRoot}/certs/${_hmFront}"
+        if [ -e "${_leCrtPath}/fullchain.pem" ] \
+          || [ -e "${_leCrtPath}/cert.pem" ]; then
+          _UP_OCTOPUS_AGAIN=NO
         else
           _UP_OCTOPUS_AGAIN=YES
         fi
@@ -1664,21 +1665,25 @@ _init_setup() {
           _UP_OCTOPUS_AGAIN_LOG="${_LOG_UP_DIR}/$(basename "$0")-up-again-octopus-${_NOW}.log"
           /opt/local/bin/octopus up-${_tRee} ${_usEr} force log noscreen 2>&1 | tee ${_UP_OCTOPUS_AGAIN_LOG}
           wait
-          _LE_IF=
-          _LE_IF=$(ls ${_LE} | wc -l)
-          if [ -n "${_LE_IF}" ] && [ "${_LE_IF}" -ge 1 ]; then
-            if [ "$(grep -c Done ${_LE})" -ge 3 ]; then
-              echo "Octopus LE setup status: OK!"
-              echo
-              echo "You can generate one-time login link now:"
-              echo
-              echo "  su -s /bin/bash ${_usEr} -c \"drush @hm uli\""
-              echo
-              echo "Enjoy!"
-            fi
+          echo "Checking LE setup status..."
+          if [ -e "${_usEr}/log/domain.txt" ]; then
+            _hmFront=$(cat ${_usEr}/log/domain.txt 2>&1)
+            _hmFront=$(echo -n ${_hmFront} | tr -d "\n" 2>&1)
+          fi
+          _leRoot="/data/disk/${_usEr}/tools/le"
+          _leCrtPath="${_leRoot}/certs/${_hmFront}"
+          if [ -e "${_leCrtPath}/fullchain.pem" ] \
+            || [ -e "${_leCrtPath}/cert.pem" ]; then
+            echo "Octopus LE setup status: OK!"
+            echo
+            echo "You can generate one-time login link now:"
+            echo
+            echo "  su -s /bin/bash ${_usEr} -c \"drush @hm uli\""
+            echo
+            echo "Enjoy!"
           fi
         else
-          echo "Octopus LE setup status: OK!"
+          echo "Octopus LE setup status: READY!"
           echo
           echo "You can generate one-time login link now:"
           echo
