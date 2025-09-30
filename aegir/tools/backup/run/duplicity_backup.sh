@@ -182,7 +182,7 @@ _waiting_notify() {
   fi
 }
 
-_CNT=$(pgrep -fc "[d]uplicity")
+_CNT=$(pgrep -fc duplicity)
 if (( _CNT > 0 )); then
   echo "[$(date)] Active duplicity process detected, will try again later..." >> /var/log/mybackup_waiting_queue.log
   _waiting_notify

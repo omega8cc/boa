@@ -88,14 +88,14 @@ _graceful_action() {
   # Restart syslog service
   echo "Restarting syslog service..."
   if [ -e "/etc/init.d/rsyslog" ]; then
-    pkill -9 rsyslogd &> /dev/null
-    service rsyslog start &> /dev/null
+    pkill -9 rsyslogd
+    service rsyslog start
   elif [ -e "/etc/init.d/sysklogd" ]; then
-    pkill -9 sysklogd &> /dev/null
-    service sysklogd start &> /dev/null
+    pkill -9 sysklogd
+    service sysklogd start
   elif [ -e "/etc/init.d/inetutils-syslogd" ]; then
-    pkill -9 syslogd &> /dev/null
-    service inetutils-syslogd start &> /dev/null
+    pkill -9 syslogd
+    service inetutils-syslogd start
   fi
 
   # Clean up old log files
@@ -183,7 +183,7 @@ _graceful_action() {
       nice -n 0 service solr7 restart
     fi
     echo "Stopping any running Jetty processes..."
-    pkill -9 -f jetty &> /dev/null
+    pkill -9 -f jetty
     rm -rf /tmp/{drush*,pear,jetty*}
     rm -f /var/log/jetty{7,8,9}/*
     echo "Starting Jetty services..."

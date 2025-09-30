@@ -979,11 +979,11 @@ _update_agents() {
         mv /root/.remote_backups/schedule/backup_schedule.txt-off /root/.remote_backups/schedule/backup_schedule.txt
       fi
     fi
-    if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt 0 ] \
-      && [ `ps aux | grep -v "grep" | grep --count "dcysetup"` -lt 1 ] \
-      && [ `ps aux | grep -v "grep" | grep --count "mybackup"` -lt 1 ] \
-      && [ `ps aux | grep -v "grep" | grep --count "multiback"` -lt 1 ]; then
-      kill -9 $(ps aux | grep '[d]uplicity' | awk '{print $2}') &> /dev/null
+    if [ "$(pgrep -fc duplicity)" -gt 0 ] \
+      && [ "$(pgrep -fc dcysetup)" -lt 1 ] \
+      && [ "$(pgrep -fc mybackup)" -lt 1 ] \
+      && [ "$(pgrep -fc multiback)" -lt 1 ]; then
+      pkill -9 -f duplicity
       rm -rf /tmp/duplicity*
       rm -rf /root/.cache/duplicity/*/duplicity-*tempdir
       rm -f /root/.cache/duplicity/*/lockfile
@@ -992,7 +992,8 @@ _update_agents() {
   fi
 
   if [ ! -e "${_pthLog}/lock.inc.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
-    if [ `ps aux | grep -v "grep" | grep --count "foobar"` -gt 0 ]; then
+    _CNT=$(pgrep -fc foobar)
+    if (( _CNT > 0 )); then
       echo "The foobar is running!"
     else
       if [ -e "${_optBin}/lock.inc" ]; then
@@ -1012,7 +1013,8 @@ _update_agents() {
   fi
 
   if [ ! -e "${_pthLog}/vmnetfix.sh.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
-    if [ `ps aux | grep -v "grep" | grep --count "vmnetfix"` -gt 0 ]; then
+    _CNT=$(pgrep -fc vmnetfix)
+    if (( _CNT > 0 )); then
       echo "The vmnetfix is running!"
     else
       if [ ! -e "/etc/init.d/networking" ]; then
@@ -1039,7 +1041,8 @@ _update_agents() {
   fi
 
   if [ ! -e "${_pthLog}/aptcleanup.sh.ctrl.f97.${_tRee}.${_xSrl}.pid" ]; then
-    if [ `ps aux | grep -v "grep" | grep --count "aptcleanup"` -gt 0 ]; then
+    _CNT=$(pgrep -fc aptcleanup)
+    if (( _CNT > 0 )); then
       echo "The aptcleanup is running!"
     else
       if [ -e "${_optBin}/aptcleanup" ]; then
@@ -1061,7 +1064,7 @@ _update_agents() {
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -d "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/backboa.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
-    _CNT=$(pgrep -fc "[d]uplicity")
+    _CNT=$(pgrep -fc duplicity)
     if (( _CNT > 0 )); then
       echo "The duplicity backup is running!"
     else
@@ -1084,7 +1087,7 @@ _update_agents() {
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -d "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/duobackboa.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
-    _CNT=$(pgrep -fc "[d]uplicity")
+    _CNT=$(pgrep -fc duplicity)
     if (( _CNT > 0 )); then
       echo "The duplicity backup is running!"
     else
@@ -1118,7 +1121,7 @@ _update_agents() {
   if [ -e "/root/.remote_backups/schedule/backup_schedule.txt" ] \
     && [ -d "/var/aegir/drush" ] \
     && [ ! -e "${_pthCtrl}/dcysetup.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
-    _CNT=$(pgrep -fc "[d]uplicity")
+    _CNT=$(pgrep -fc duplicity)
     if (( _CNT > 0 )); then
       echo "The duplicity backup is running!"
     else
@@ -1141,7 +1144,7 @@ _update_agents() {
   if [ -e "/root/.remote_backups/schedule/backup_schedule.txt" ] \
     && [ -d "/var/aegir/drush" ] \
     && [ ! -e "${_pthCtrl}/multiback.sh.ctrl.f37.${_tRee}.${_xSrl}.pid" ]; then
-    _CNT=$(pgrep -fc "[d]uplicity")
+    _CNT=$(pgrep -fc duplicity)
     if (( _CNT > 0 )); then
       echo "The duplicity backup is running!"
     else
@@ -1164,7 +1167,7 @@ _update_agents() {
   if [ -e "/root/.remote_backups/schedule/backup_schedule.txt" ] \
     && [ -d "/var/aegir/drush" ] \
     && [ ! -e "${_pthCtrl}/mybackup.sh.ctrl.f37.${_tRee}.${_xSrl}.pid" ]; then
-    _CNT=$(pgrep -fc "[d]uplicity")
+    _CNT=$(pgrep -fc duplicity)
     if (( _CNT > 0 )); then
       echo "The duplicity backup is running!"
     else
@@ -1804,7 +1807,8 @@ _update_agents() {
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -d "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/autoupboa.ctrl.f98.${_tRee}.${_xSrl}.pid" ]; then
-    if [ `ps aux | grep -v "grep" | grep --count "autoupboa"` -gt 0 ]; then
+    _CNT=$(pgrep -fc autoupboa)
+    if (( _CNT > 0 )); then
       echo "The autoupboa is running!"
     else
       if [ -e "${_optBin}/autoupboa" ]; then
@@ -1899,14 +1903,14 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/proc_num_ctrl.pl.ctrl.f86.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/proc_num_ctrl.pl.ctrl.f85.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/proc_num_ctrl.pl /var/xdrago/proc_num_ctrl.pl.old
     curl ${_crlGet} "${_urlHmr}/tools/system/proc_num_ctrl.pl" \
       -o /var/xdrago/proc_num_ctrl.pl
     if [ -e "/var/xdrago/proc_num_ctrl.pl" ]; then
       chmod 700 /var/xdrago/proc_num_ctrl.pl
       chown root:root /var/xdrago/proc_num_ctrl.pl
-      touch ${_pthLog}/proc_num_ctrl.pl.ctrl.f86.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/proc_num_ctrl.pl.ctrl.f85.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/proc_num_ctrl.pl.old /var/xdrago/proc_num_ctrl.pl
     fi
@@ -2528,7 +2532,7 @@ _update_agents() {
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -d "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/synproxy.ctrl.f93.${_tRee}.${_xSrl}.pid" ]; then
-    _CNT=$(pgrep -fc "[s]ynproxy_rollback")
+    _CNT=$(pgrep -fc synproxy_rollback)
     if (( _CNT > 0 )); then
       echo "The synproxy_rollback is running!"
     else
@@ -2551,7 +2555,7 @@ _update_agents() {
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -d "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/synproxy_rollback.ctrl.f94.${_tRee}.${_xSrl}.pid" ]; then
-    _CNT=$(pgrep -fc "[s]ynproxy_rollback")
+    _CNT=$(pgrep -fc synproxy_rollback)
     if (( _CNT > 0 )); then
       echo "The synproxy_rollback is running!"
     else
@@ -2574,7 +2578,7 @@ _update_agents() {
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -d "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/synproxy_reassert.ctrl.f88.${_tRee}.${_xSrl}.pid" ]; then
-    _CNT=$(pgrep -fc "[s]ynproxy_rollback")
+    _CNT=$(pgrep -fc synproxy_rollback)
     if (( _CNT > 0 )); then
       echo "The synproxy_rollback is running!"
     else
@@ -2597,7 +2601,7 @@ _update_agents() {
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -d "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/synproxy_hook_fix.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
-    _CNT=$(pgrep -fc "[s]ynproxy_rollback")
+    _CNT=$(pgrep -fc synproxy_rollback)
     if (( _CNT > 0 )); then
       echo "The synproxy_rollback is running!"
     else
@@ -2620,7 +2624,7 @@ _update_agents() {
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -d "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/synproxy_snapshot.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
-    _CNT=$(pgrep -fc "[s]ynproxy_rollback")
+    _CNT=$(pgrep -fc synproxy_rollback)
     if (( _CNT > 0 )); then
       echo "The synproxy_rollback is running!"
     else
@@ -2643,7 +2647,7 @@ _update_agents() {
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -d "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/synproxy_status.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
-    _CNT=$(pgrep -fc "[s]ynproxy_rollback")
+    _CNT=$(pgrep -fc synproxy_rollback)
     if (( _CNT > 0 )); then
       echo "The synproxy_rollback is running!"
     else
@@ -2666,7 +2670,7 @@ _update_agents() {
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -d "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/synproxy_monitor.ctrl.f98.${_tRee}.${_xSrl}.pid" ]; then
-    _CNT=$(pgrep -fc "[s]ynproxy_rollback")
+    _CNT=$(pgrep -fc synproxy_rollback)
     if (( _CNT > 0 )); then
       echo "The synproxy_rollback is running!"
     else
@@ -3410,7 +3414,7 @@ _fix_log4j_solr7() {
       echo "LOG4J_FORMAT_MSG_NO_LOOKUPS=true" >> /etc/default/solr7.in.sh
     fi
     if [[ ! "${_RESULT_LOG4J}" =~ "LOG4J" ]] || [ ! -z "${_DO_SOLR_RESTART}" ]; then
-      #kill -9 $(ps aux | grep '[s]olr7' | awk '{print $2}') &> /dev/null
+      #pkill -9 -f solr7
       service solr7 restart &> /dev/null
     fi
   fi
@@ -3619,7 +3623,11 @@ _fix_eldir() {
 
 _if_drupal_patches_update() {
   if [ -e "/var/xdrago" ]; then
-    if [ ! -e "/data/conf/patches/ctrl.f96.${_tRee}.${_xSrl}.pid" ]; then
+    _BROKEN_UPDATE_TEST_A=$(grep "Under Construction" /data/conf/patches/* 2>&1)
+    _BROKEN_UPDATE_TEST_B=$(grep "404 Not Found" /data/conf/patches/* 2>&1)
+    if [ ! -z "${_BROKEN_UPDATE_TEST_A}" ] \
+      || [ ! -z "${_BROKEN_UPDATE_TEST_B}" ] \
+      || [ ! -e "/data/conf/patches/ctrl.f96.${_tRee}.${_xSrl}.pid" ]; then
       mkdir -p /data/conf/patches
       rm -f /data/conf/patches/*
       touch /data/conf/patches/ctrl.f96.${_tRee}.${_xSrl}.pid
@@ -4074,11 +4082,12 @@ _update_boa_tools() {
             xcopy"
   for _cbn in ${_boaBins}; do
     if [ -e "${_optBin}/${_cbn}" ]; then
-      if [ `ps aux | grep -v "grep" | grep --count "/${_cbn}"` -gt 0 ]; then
+      _CNT=$(pgrep -fc /local/bin/${_cbn})
+      if (( _CNT > 0 )); then
         echo "The ${_cbn} is running!"
       else
-        if [ "${_cbn}" = "weblogx" ] \
-          && [ `ps aux | grep -v "grep" | grep --count "/daily.sh"` -gt 0 ]; then
+        _CNT=$(pgrep -fc /var/xdrago/daily.sh)
+        if [ "${_cbn}" = "weblogx" ] && (( _CNT > 0 )); then
           echo "The ${_cbn} and daily.sh is running!"
         else
           rm -f ${_optBin}/${_cbn}.new
@@ -4667,7 +4676,7 @@ if [ "$(id -u)" -eq 0 ]; then
   _fix_or_install_virt_what
 
   ### Notify if multiback backups seem to run for too long
-  _CNT=$(pgrep -fc "[d]uplicity")
+  _CNT=$(pgrep -fc duplicity)
   if (( _CNT > 0 )); then
     _bLogA="/var/backups/multiback_waiting_queue.log"
     _bLogB="/var/backups/tmp_multiback_waiting_queue.log"
@@ -4761,7 +4770,7 @@ if [ "$(id -u)" -eq 0 ]; then
     [ -e "/etc/resolvconf/update.d/unbound" ] && chmod -x /etc/resolvconf/update.d/unbound
     [ ! -e "/run/unbound" ] && mkdir -p /run/unbound
     [ -e "/run/unbound" ] && chown -R unbound:unbound /run/unbound
-    killall -9 unbound &> /dev/null
+    pkill -u unbound -x unbound &> /dev/null
     service unbound restart &> /dev/null
     wait
     unbound-control reload &> /dev/null
