@@ -61,7 +61,7 @@ bash /var/xdrago/monitor/check/system.sh &
 bash /var/xdrago/monitor/check/java.sh &
 
 _second_flood_guard() {
-  _thisCountSec=`ps aux | grep -v "grep" | grep -v "null" | grep --count "/second.sh"`
+  _thisCountSec=$(pgrep -fc /var/xdrago/second.sh)
   if [ "${_thisCountSec}" -gt 4 ]; then
     echo "$(date) Too many ${_thisCountSec} second.sh processes killed" >> \
       /var/log/boa/sec-count.kill.log
