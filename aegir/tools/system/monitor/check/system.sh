@@ -35,7 +35,7 @@ _manage_single_lock() {
     # -------- legacy pgrep guard ---------
     # Exit if more than 2 instances of this script are running
     _SCRIPT=$(basename "$0")
-    _CNT=$(pgrep -fc "[${_SCRIPT:0:1}]${_SCRIPT:1}")
+    _CNT=$(pgrep -fc ${_SCRIPT})
     if (( _CNT > 2 )); then
       echo "Too many ${_SCRIPT} running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
       exit 0
@@ -56,7 +56,7 @@ _wkhtmltopdf_php_cli_oom_kill() {
   touch /run/boa_run.pid
   echo "$(date) OOM $1 wkhtmltopdf/php-cli detected" >> ${_pthOml}
   sleep 3
-  kill -9 $(ps aux | grep '[w]khtmltopdf' | awk '{print $2}') &> /dev/null
+  pkill -9 -f wkhtmltopdf
   echo "$(date) OOM wkhtmltopdf killed" >> ${_pthOml}
   killall -9 sleep &> /dev/null
   killall -9 php
@@ -71,27 +71,27 @@ _wkhtmltopdf_php_cli_oom_kill() {
 _oom_critical_restart() {
   touch /run/boa_run.pid
   echo "$(date) OOM $1 detected" >> ${_pthOml}
-  kill -9 $(ps aux | grep '[w]khtmltopdf' | awk '{print $2}') &> /dev/null
+  pkill -9 -f wkhtmltopdf
   echo "$(date) OOM wkhtmltopdf killed" >> ${_pthOml}
   killall -9 sleep &> /dev/null
   killall -9 php
   echo "$(date) OOM php-cli killed" >> ${_pthOml}
   mv -f /var/log/nginx/error.log /var/log/nginx/$(date +%y%m%d-%H%M)-error.log
-  kill -9 $(ps aux | grep '[n]ginx' | awk '{print $2}') &> /dev/null
+  pkill -9 -f nginx
   echo "$(date) OOM nginx killed" >> ${_pthOml}
-  kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}') &> /dev/null
+  pkill -9 -f php-fpm
   echo "$(date) OOM php-fpm killed" >> ${_pthOml}
-  kill -9 $(ps aux | grep '[j]ava' | awk '{print $2}') &> /dev/null
+  pkill -9 -f java
   echo "$(date) OOM solr/jetty killed" >> ${_pthOml}
-  kill -9 $(ps aux | grep '[n]ewrelic-daemon' | awk '{print $2}') &> /dev/null
+  pkill -9 -f newrelic-daemon
   echo "$(date) OOM newrelic-daemon killed" >> ${_pthOml}
   if [ -e "/etc/init.d/valkey-server" ]; then
     rm -f /var/lib/valkey/*
-    kill -9 $(ps aux | grep '[v]alkey-server' | awk '{print $2}') &> /dev/null
+    pkill -9 -f valkey-server
     echo "$(date) OOM valkey-server killed" >> ${_pthOml}
   elif [ -e "/etc/init.d/redis-server" ]; then
     rm -f /var/lib/redis/*
-    kill -9 $(ps aux | grep '[r]edis-server' | awk '{print $2}') &> /dev/null
+    pkill -9 -f redis-server
     echo "$(date) OOM redis-server killed" >> ${_pthOml}
   fi
   bash /var/xdrago/move_sql.sh
@@ -120,7 +120,8 @@ _system_oom_detection() {
     if [ "${_RAM_PCT_FREE}" -le 5 ]; then
       _oom_critical_restart "RAM ${_RAM_PCT_FREE}/${_RAM_TOTAL}"
     elif [ "${_RAM_PCT_FREE}" -le 10 ]; then
-      if [ `ps aux | grep -v "grep" | grep --count "wkhtmltopdf"` -gt 2 ]; then
+      _CNT=$(pgrep -fc wkhtmltopdf)
+      if (( _CNT > 2 )); then
         _wkhtmltopdf_php_cli_oom_kill "RAM ${_RAM_PCT_FREE}/${_RAM_TOTAL}"
       fi
     fi
@@ -159,8 +160,7 @@ _if_fix_locked_sshd() {
   _SSH_LOG="/var/log/auth.log"
   if [ `tail --lines=10 ${_SSH_LOG} \
     | grep --count "error: Bind to port 22"` -gt 0 ]; then
-    kill -9 sshd &> /dev/null
-    kill -9 $(ps aux | grep '[s]tartups' | awk '{print $2}') &> /dev/null
+    pkill -9 -f /usr/sbin/sshd || true
     service ssh start
     _thisErrLog="$(date) SSHD BIND error detected, service restarted"
     echo ${_thisErrLog} >> ${_pthOml}
@@ -222,7 +222,7 @@ _if_fix_dhcp() {
 }
 
 _cron_duplicate_instances_detection() {
-  _CNT=$(pgrep -fc "[u]sr/sbin/cron")
+  _CNT=$(pgrep -fc /usr/sbin/cron)
   if (( _CNT > 1 )); then
     _thisErrLog="$(date) Too many Cron instances running killed (count=${_CNT})"
     echo ${_thisErrLog} >> /var/log/boa/cron-count.kill.log
@@ -251,11 +251,11 @@ _syslog_giant_log_detection() {
 }
 
 _gpg_too_many_instances_detection() {
-  _CNT=$(pgrep -fc "[g]pg-agent")
+  _CNT=$(pgrep -fc gpg-agent)
   if (( _CNT > 5 )); then
     _thisErrLog="$(date) Too many gpg-agent processes killed (count=${_CNT})"
     echo ${_thisErrLog} >> /var/log/boa/gpg-agent-count.kill.log
-    kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
+    pkill -9 -f gpg-agent
     _thisErrLog="$(date) Too many gpg-agent processes killed (count=${_CNT})"
     echo ${_thisErrLog} >> ${_pthOml}
     _incident_email_report "Too many gpg-agent processes killed (count=${_CNT})"
@@ -264,11 +264,11 @@ _gpg_too_many_instances_detection() {
 }
 
 _dirmngr_too_many_instances_detection() {
-  _CNT=$(pgrep -fc "[d]irmngr")
+  _CNT=$(pgrep -fc dirmngr)
   if (( _CNT > 5 )); then
     _thisErrLog="$(date) Too many dirmngr processes killed (count=${_CNT})"
     echo ${_thisErrLog} >> /var/log/boa/dirmngr-count.kill.log
-    kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
+    pkill -9 -f dirmngr
     _thisErrLog="$(date) Too many dirmngr processes killed (count=${_CNT})"
     echo ${_thisErrLog} >> ${_pthOml}
     _incident_email_report "Too many dirmngr processes killed (count=${_CNT})"

@@ -33,7 +33,7 @@ _manage_single_lock() {
     # -------- legacy pgrep guard ---------
     # Exit if more than 2 instances of this script are running
     _SCRIPT=$(basename "$0")
-    _CNT=$(pgrep -fc "[${_SCRIPT:0:1}]${_SCRIPT:1}")
+    _CNT=$(pgrep -fc ${_SCRIPT})
     if (( _CNT > 2 )); then
       echo "Too many ${_SCRIPT} running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
       exit 0
@@ -65,7 +65,7 @@ _second_flood_guard() {
   if [ "${_thisCountSec}" -gt 4 ]; then
     echo "$(date) Too many ${_thisCountSec} second.sh processes killed" >> \
       /var/log/boa/sec-count.kill.log
-    kill -9 $(ps aux | grep '[s]econd.sh' | awk '{print $2}') &> /dev/null
+    pkill -9 -f second.sh
   fi
 }
 [ -e "/var/log/sec-count.kill.log" ] && mv -f /var/log/sec-count.kill.log /var/log/boa/
