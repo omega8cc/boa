@@ -967,7 +967,7 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     touch /var/log/boa/.curl_ctrl.${_tRee}.${_xSrl}.pid
   fi
 
-  _IS_MOVESQL_RUNNING=$(ps aux | grep '[m]ove_sql.sh' | awk '{print $2}' 2>&1)
+  _IS_MOVESQL_RUNNING=$(pgrep -f move_sql.sh)
   if [ ! -z "${_IS_MOVESQL_RUNNING}" ]; then
     _CNT=$(pgrep -fc move_sql.sh)
     if (( _CNT > 2 )); then
@@ -979,7 +979,7 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     fi
   fi
 
-  _IS_SQLCLEANUP_RUNNING=$(ps aux | grep '[m]ysql_cleanup.sh' | awk '{print $2}' 2>&1)
+  _IS_SQLCLEANUP_RUNNING=$(pgrep -f mysql_cleanup.sh)
   if [ ! -z "${_IS_SQLCLEANUP_RUNNING}" ]; then
     _CNT=$(pgrep -fc mysql_cleanup.sh)
     if (( _CNT > 2 )); then
@@ -990,7 +990,7 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     fi
   fi
 
-  _IS_SOLRSTART_RUNNING=$(ps aux | grep '[s]olr start' | awk '{print $2}' 2>&1)
+  _IS_SOLRSTART_RUNNING=$(pgrep -f 'solr start')
   if [ ! -z "${_IS_SOLRSTART_RUNNING}" ]; then
     _CNT=$(pgrep -fc "solr start")
     if (( _CNT > 2 )); then
@@ -999,7 +999,7 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     fi
   fi
 
-  _IS_PROCTRL_RUNNING=$(ps aux | grep '[p]roc_num_ctrl.pl' | awk '{print $2}' 2>&1)
+  _IS_PROCTRL_RUNNING=$(pgrep -f proc_num_ctrl.pl)
   if [ ! -z "${_IS_PROCTRL_RUNNING}" ]; then
     _CNT=$(pgrep -fc proc_num_ctrl.pl)
     if (( _CNT > 1 )); then
@@ -1012,7 +1012,7 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
   rm -f /run/solr-jetty.pid
   rm -f /run/fmp_wait.pid
 
-  _IS_SQLBACKUP_RUNNING=$(ps aux | grep '[m]ysql_backup.sh' | awk '{print $2}' 2>&1)
+  _IS_SQLBACKUP_RUNNING=$(pgrep -f mysql_backup.sh)
   if [ ! -z "${_IS_SQLBACKUP_RUNNING}" ]; then
     _CNT=$(pgrep -fc mysql_backup.sh)
     if (( _CNT > 2 )); then

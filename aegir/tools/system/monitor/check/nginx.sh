@@ -122,7 +122,7 @@ _nginx_heatlh_check_fix() {
   _NGINX_PROCESSES=$(ps aux | grep 'nginx: ' | grep -v 'grep')
   # Check for multiple master processes (shouldn't happen)
   if [ "${_NGINX_RESTARTED}" = false ]; then
-    _MASTER_COUNT=$(echo "${_NGINX_PROCESSES}" | grep 'nginx: master process' | wc -l)
+    _MASTER_COUNT=$(pgrep -fc 'nginx: master process')
     if [ "${_MASTER_COUNT}" -gt 1 ]; then
       echo "Multiple Nginx master processes detected. Possible stuck processes."
       echo "$(date) NGX multiple master processes detected" >> ${_pthOml}
