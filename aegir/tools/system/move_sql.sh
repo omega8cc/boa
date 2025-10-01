@@ -60,7 +60,7 @@ _start_sql() {
   _check_running
   _create_locks
 
-  _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}')
+  _IS_MYSQLD_RUNNING=$(pgrep -f mysqld)
   if [ ! -z "${_IS_MYSQLD_RUNNING}" ]; then
     echo "MySQLD already running?"
     echo "Nothing to do. Bye!"
@@ -79,7 +79,7 @@ _start_sql() {
   service mysql start &> /dev/null
   while [ -z "${_IS_MYSQLD_RUNNING}" ] \
     || [ ! -e "/run/mysqld/mysqld.sock" ]; do
-    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}')
+    _IS_MYSQLD_RUNNING=$(pgrep -f mysqld)
     echo "Waiting for MySQLD graceful start..."
     sleep 3
   done
@@ -97,7 +97,7 @@ _stop_sql() {
   echo "Stopping Nginx now..."
   service nginx stop &> /dev/null
   until [ -z "${_IS_NGINX_RUNNING}" ]; do
-    _IS_NGINX_RUNNING=$(ps aux | grep '[n]ginx' | awk '{print $2}' 2>&1)
+    _IS_NGINX_RUNNING=$(pgrep -f 'nginx: ')
     echo "Waiting for Nginx graceful shutdown..."
     sleep 1
   done
@@ -112,14 +112,14 @@ _stop_sql() {
     fi
   done
   until [ -z "${_IS_FPM_RUNNING}" ]; do
-    _IS_FPM_RUNNING=$(ps aux | grep '[p]hp-fpm' | awk '{print $2}' 2>&1)
+    _IS_FPM_RUNNING=$(pgrep -f 'php-fpm: ')
     echo "Waiting for PHP-FPM graceful shutdown..."
     sleep 1
   done
   pkill -9 -f php-fpm
   echo "PHP-FPM stopped"
 
-  _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}')
+  _IS_MYSQLD_RUNNING=$(pgrep -f mysqld)
   if [ ! -z "${_IS_MYSQLD_RUNNING}" ]; then
     _DBS_TEST=$(which mysql 2>&1)
     if [ ! -z "${_DBS_TEST}" ]; then
@@ -160,7 +160,7 @@ _stop_sql() {
   fi
 
   until [ -z "${_IS_MYSQLD_RUNNING}" ]; do
-    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}')
+    _IS_MYSQLD_RUNNING=$(pgrep -f mysqld)
     echo "Waiting for MySQLD graceful shutdown..."
     sleep 3
   done

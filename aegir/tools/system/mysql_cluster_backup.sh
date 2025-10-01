@@ -30,7 +30,7 @@ _check_root
 [ ! -e "/root/.my.cluster_write_node.txt" ] && exit 0
 [ ! -e "/root/.my.cluster_root_pwd.txt" ] && exit 0
 
-_IS_SQLBACKUP_RUNNING=$(ps aux | grep '[m]ysql_backup.sh' | awk '{print $2}' 2>&1)
+_IS_SQLBACKUP_RUNNING=$(pgrep -f mysql_backup.sh)
 if [ ! -z "${_IS_SQLBACKUP_RUNNING}" ]; then
   exit 0
 fi
@@ -119,10 +119,10 @@ _remove_locks() {
 }
 
 _check_running() {
-  _IS_PROXYSQL_RUNNING=$(ps aux | grep '[p]roxysql' | awk '{print $2}' 2>&1)
+  _IS_PROXYSQL_RUNNING=$(pgrep -f proxysql)
   while [ -z "${_IS_PROXYSQL_RUNNING}" ] \
     || [ ! -e "/var/lib/proxysql/proxysql.pid" ]; do
-    _IS_PROXYSQL_RUNNING=$(ps aux | grep '[p]roxysql' | awk '{print $2}' 2>&1)
+    _IS_PROXYSQL_RUNNING=$(pgrep -f proxysql)
     echo "Waiting for ProxySQL availability..."
     sleep 3
   done
