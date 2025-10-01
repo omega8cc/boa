@@ -6,7 +6,6 @@
 
 - **ADM**: Adminer DB Manager (installed by default)
 - **CSF**: Firewall (installed by default)
-- **CSS**: Ruby Gems for Compass + NPM for Gulp/Bower (requires /root/.allow.node.lshell.cnf)
 - **FTP**: Pure-FTPd server with forced FTPS (installed by default)
 - **IMG**: Image Optimize binaries: `advdef`, `advpng`, `jpegoptim`, `jpegtran`, `optipng`, `pngcrush`, `pngquant` (installed by default)
 
@@ -15,7 +14,9 @@
 - **BND**: Bind9 DNS Server (deprecated)
 - **BZR**: Bazaar
 - **CGP**: Collectd Graph Panel
+- **CSS**: Ruby Gems for Compass
 - **FMG**: FFmpeg support (deprecated)
+- **NPM**: NPM for Gulp/Bower (requires also /root/.allow.node.lshell.cnf)
 - **SR4**: Apache Solr 4 with Jetty 9
 - **SR7**: Apache Solr 7
 - **SR9**: Apache Solr 9
@@ -29,11 +30,9 @@ _XTRAS_LIST="ALL"
 _XTRAS_LIST="ALL SR9"
 ```
 
-**NOTE**: listed below `_XTRAS_LIST` array is the default minimal set installed both for `PUBLIC` and `LOCAL` mode, but `PUBLIC` mode is automatically extended to include also `CSF` firewall so it doesn't matter if you have `ALL` or `CSF` keywords listed in the `_XTRAS_LIST` array in your system `/root/.barracuda.cnf` file -- all four (`ADM` `FTP` `IMG` `CSF`) will be installed automatically. The only optional xtra add-on which is not added without `ALL` wildcard present in the `_XTRAS_LIST` is `CSS` -- Ruby Gems for Compass + NPM for Gulp/Bower.
+**NOTE**: The `_XTRAS_LIST` array is by default empty for `PUBLIC` and `LOCAL` mode, but `LOCAL` mode is automatically extended to include also `ADM` Adminer, while `PUBLIC` mode is automatically extended to include also `CSF` firewall so it doesn't matter if you have `ALL` or `CSF` keywords listed in the `_XTRAS_LIST` array in your system `/root/.barracuda.cnf` file -- CSF/LFD will be installed automatically.
 
-```
-_XTRAS_LIST="ADM FTP IMG"
-```
+**NOTE**: The only optional xtra add-on which requires special attention is `NPM` for Gulp/Bower--it requires presence of `/root/.allow.node.lshell.cnf` control file, because **Node should NOT be installed on system with not trusted/shared accounts**.
 
 - Removing any item from this list once it is already installed, will NOT uninstall anything.
 
