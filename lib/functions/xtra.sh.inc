@@ -392,8 +392,7 @@ _if_install_node() {
     _msg "PROC: _if_install_node"
   fi
   if [ -e "/root/.allow.node.lshell.cnf" ]; then
-    if [[ "${_XTRAS_LIST}" =~ "ALL" ]] \
-      || [[ "${_XTRAS_LIST}" =~ "CSS" ]]; then
+    if [[ "${_XTRAS_LIST}" =~ "NPM" ]]; then
       _NODE_INSTALL=NO
       _isNode=$(which node 2>&1)
       if [ -x "${_isNode}" ]; then
@@ -464,8 +463,7 @@ _if_install_ruby() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _if_install_ruby"
   fi
-  if [[ "${_XTRAS_LIST}" =~ "ALL" ]] \
-    || [[ "${_XTRAS_LIST}" =~ "CSS" ]]; then
+  if [[ "${_XTRAS_LIST}" =~ "CSS" ]]; then
     _RUBY_INSTALL_SCR=NO
     _isRuby=$(which ruby 2>&1)
     if [ -x "${_isRuby}" ]; then
