@@ -405,6 +405,9 @@ _mode_detection() {
       || [ -e "/root/.host8.cnf" ]; then
       _XTRAS_LIST="${_XTRAS_LIST} CSF"
     fi
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "XTRA: ${_XTRAS_LIST}"
+    fi
   elif [ -e "/lib/systemd/systemd" ]; then
     _msg "FATAL ERROR: Something went wrong because /lib/systemd/systemd still exists, exit"
     _clean_pid_exit _mode_detection_a
@@ -472,6 +475,9 @@ _mode_detection() {
       _MY_OWNIP="${_THISHTIP}"
     fi
     _barracuda_cnf
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "XTRA: ${_XTRAS_LIST}"
+    fi
   fi
   [ -e "/root/.use.curl.from.packages.cnf" ] && chattr -i /root/.use.curl.from.packages.cnf
   [ -e "/root/.use.curl.from.packages.cnf" ] && rm -f /root/.use.curl.from.packages.cnf
