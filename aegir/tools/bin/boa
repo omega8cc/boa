@@ -1653,8 +1653,10 @@ _init_setup() {
         fi
         _leRoot="/data/disk/${_usEr}/tools/le"
         _leCrtPath="${_leRoot}/certs/${_hmFront}"
+        _lePxyPath="/var/aegir/config/server_master/nginx/pre.d/z_${_hmFront}_ssl_proxy.conf"
         if [ -e "${_leCrtPath}/fullchain.pem" ] \
-          || [ -e "${_leCrtPath}/cert.pem" ]; then
+          || [ -e "${_leCrtPath}/cert.pem" ] \
+          || [ -e "${_lePxyPath}" ]; then
           _UP_OCTOPUS_AGAIN=NO
         else
           _UP_OCTOPUS_AGAIN=YES
@@ -1672,8 +1674,10 @@ _init_setup() {
           fi
           _leRoot="/data/disk/${_usEr}/tools/le"
           _leCrtPath="${_leRoot}/certs/${_hmFront}"
+          _lePxyPath="/var/aegir/config/server_master/nginx/pre.d/z_${_hmFront}_ssl_proxy.conf"
           if [ -e "${_leCrtPath}/fullchain.pem" ] \
-            || [ -e "${_leCrtPath}/cert.pem" ]; then
+            || [ -e "${_leCrtPath}/cert.pem" ] \
+            || [ -e "${_lePxyPath}" ]; then
             echo "Octopus LE setup status: OK!"
             echo
             echo "You can generate one-time login link now:"
