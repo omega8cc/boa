@@ -1,47 +1,26 @@
 
 export _tRee=lts
 
+_vBs="/var/backups"
+
 #
 # Fix DNS settings.
 _fix_dns_settings() {
-  mkdir -p ${_vBs}
+  [ ! -d "${_vBs}" ] && mkdir -p ${_vBs}
   rm -f ${_vBs}/resolv.conf.tmp
-  if ! grep -q "9.9.9.9" /etc/resolv.conf; then
+  if ! grep -q "BOA-DNS-Config" /etc/resolv.conf; then
     echo "### BOA-DNS-Config ###" > ${_vBs}/resolv.conf.tmp
     if [ -x "/usr/sbin/unbound" ] && [ -e "/run/unbound/unbound.pid" ]; then
-      echo "nameserver 127.0.0.1" > ${_vBs}/resolv.conf.tmp
+      echo "nameserver 127.0.0.1" >> ${_vBs}/resolv.conf.tmp
     fi
     echo "nameserver 1.1.1.1" >> ${_vBs}/resolv.conf.tmp
     echo "nameserver 8.8.8.8" >> ${_vBs}/resolv.conf.tmp
     echo "nameserver 9.9.9.9" >> ${_vBs}/resolv.conf.tmp
   fi
-  if [ ! -e "${_vBs}/resolv.conf.vanilla" ]; then
-    for _Pre in `ls -la ${_vBs}/resolv.conf.pre-*`; do
-      if [ -e "${_Pre}" ] && [ -f "${_Pre}" ] && [ ! -L "${_Pre}" ]; then
-        cp -a ${_Pre} ${_vBs}/resolv.conf.vanilla
-      fi
-    done
-  fi
-  if [ ! -e "${_vBs}/resolv.conf.vanilla" ] \
-    && [ -e "${_vBs}/resolv.conf.tmp" ]; then
-    if [ "${_USE_DEFAULT_DNS}" != "YES" ]; then
-      rm -f /etc/resolv.conf
-      cp -a ${_vBs}/resolv.conf.tmp /etc/resolv.conf
-      cp -a ${_vBs}/resolv.conf.tmp ${_vBs}/resolv.conf.vanilla
-    fi
-  fi
-  sed -i "/^$/d" ${_vBs}/resolv.conf.vanilla &> /dev/null
-  if [ -e "${_vBs}/resolv.conf.vanilla" ]; then
-    if [ "${_USE_DEFAULT_DNS}" != "YES" ]; then
-      rm -f /etc/resolv.conf
-      cp -a ${_vBs}/resolv.conf.vanilla /etc/resolv.conf
-    fi
-  else
-    if [ -e "${_vBs}/resolv.conf.tmp" ] \
-      && [ "${_USE_DEFAULT_DNS}" != "YES" ]; then
-      rm -f /etc/resolv.conf
-      cp -a ${_vBs}/resolv.conf.tmp /etc/resolv.conf
-    fi
+  if [ -e "${_vBs}/resolv.conf.tmp" ]; then
+    rm -f /etc/resolv.conf
+    cp -a ${_vBs}/resolv.conf.tmp /etc/resolv.conf
+    cp -a ${_vBs}/resolv.conf.tmp ${_vBs}/resolv.conf.vanilla
   fi
   if [ -x "/usr/sbin/unbound-control" ] \
     && [ -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
@@ -61,7 +40,7 @@ _check_dns_settings() {
       rm -f /root/.use.local.nameservers.cnf
     fi
     _USE_DEFAULT_DNS=YES
-    if ! grep -q "9.9.9.9" /etc/resolv.conf; then
+    if ! grep -q "BOA-DNS-Config" /etc/resolv.conf; then
       _fix_dns_settings
       return 1  # Exit the function but continue the script
     fi
@@ -70,7 +49,7 @@ _check_dns_settings() {
     _USE_PROVIDER_DNS=YES
   else
     _REMOTE_DNS_TEST=$(host files.aegir.cc 1.1.1.1 -w 10 2>&1)
-    if ! grep -q "9.9.9.9" /etc/resolv.conf; then
+    if ! grep -q "BOA-DNS-Config" /etc/resolv.conf; then
       _fix_dns_settings
       return 1  # Exit the function but continue the script
     fi
@@ -404,7 +383,8 @@ _dns_unbound_install_upgrade() {
     _fix_dns_settings
     if [ "${_USE_PROVIDER_DNS}" != "YES" ]; then
       rm -f /etc/resolv.conf
-      echo "nameserver 1.1.1.1" > /etc/resolv.conf
+      echo "### BOA-DNS-Config ###" > /etc/resolv.conf
+      echo "nameserver 1.1.1.1" >> /etc/resolv.conf
       echo "nameserver 8.8.8.8" >> /etc/resolv.conf
       echo "nameserver 9.9.9.9" >> /etc/resolv.conf
     fi
@@ -425,7 +405,8 @@ _dns_unbound_install_upgrade() {
     _mrun "apt-get remove resolvconf -y --purge --auto-remove -qq" 2> /dev/null
     if [ "${_USE_PROVIDER_DNS}" != "YES" ]; then
       rm -f /etc/resolv.conf
-      echo "nameserver 1.1.1.1" > /etc/resolv.conf
+      echo "### BOA-DNS-Config ###" > /etc/resolv.conf
+      echo "nameserver 1.1.1.1" >> /etc/resolv.conf
       echo "nameserver 8.8.8.8" >> /etc/resolv.conf
       echo "nameserver 9.9.9.9" >> /etc/resolv.conf
     fi
@@ -499,7 +480,8 @@ _dns_unbound_install_upgrade() {
       _DO_NOTHING=YES
     else
       rm -f /etc/resolv.conf
-      echo "nameserver 127.0.0.1" > /etc/resolv.conf
+      echo "### BOA-DNS-Config ###" > /etc/resolv.conf
+      echo "nameserver 127.0.0.1" >> /etc/resolv.conf
       echo "nameserver 1.1.1.1" >> /etc/resolv.conf
       echo "nameserver 8.8.8.8" >> /etc/resolv.conf
       echo "nameserver 9.9.9.9" >> /etc/resolv.conf
@@ -512,7 +494,8 @@ _dns_unbound_install_upgrade() {
   fi
   if [ ! -f "/etc/resolv.conf" ]; then
     rm -f /etc/resolv.conf
-    echo "nameserver 127.0.0.1" > /etc/resolv.conf
+    echo "### BOA-DNS-Config ###" > /etc/resolv.conf
+    echo "nameserver 127.0.0.1" >> /etc/resolv.conf
     echo "nameserver 1.1.1.1" >> /etc/resolv.conf
     echo "nameserver 8.8.8.8" >> /etc/resolv.conf
     echo "nameserver 9.9.9.9" >> /etc/resolv.conf

@@ -29,7 +29,7 @@ _check_root
 [ -e "/root/.proxy.cnf" ] && exit 0
 [ -e "/root/.pause_heavy_tasks_maint.cnf" ] && exit 0
 
-_IS_SQLBACKUP_RUNNING=$(ps aux | grep '[m]ysql_cluster_backup.sh' | awk '{print $2}' 2>&1)
+_IS_SQLBACKUP_RUNNING=$(pgrep -f mysql_cluster_backup.sh)
 if [ ! -z "${_IS_SQLBACKUP_RUNNING}" ]; then
   exit 0
 fi
@@ -130,7 +130,7 @@ _remove_locks() {
 _check_running() {
   while [ -z "${_IS_MYSQLD_RUNNING}" ] \
     || [ ! -e "/run/mysqld/mysqld.sock" ]; do
-    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}')
+    _IS_MYSQLD_RUNNING=$(pgrep -f mysqld)
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       echo "INFO: Waiting for MySQLD availability..."
     fi
