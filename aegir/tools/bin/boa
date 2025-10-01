@@ -1647,8 +1647,8 @@ _init_setup() {
         /opt/local/bin/octopus up-${_tRee} ${_usEr} force log noscreen 2>&1 | tee ${_UP_OCTOPUS_LOG}
         wait
         echo "Checking LE setup status..."
-        if [ -e "${_usEr}/log/domain.txt" ]; then
-          _hmFront=$(cat ${_usEr}/log/domain.txt 2>&1)
+        if [ -e "/data/disk/${_usEr}/log/domain.txt" ]; then
+          _hmFront=$(cat /data/disk/${_usEr}/log/domain.txt 2>&1)
           _hmFront=$(echo -n ${_hmFront} | tr -d "\n" 2>&1)
         fi
         _leRoot="/data/disk/${_usEr}/tools/le"
@@ -1666,8 +1666,8 @@ _init_setup() {
           /opt/local/bin/octopus up-${_tRee} ${_usEr} force log noscreen 2>&1 | tee ${_UP_OCTOPUS_AGAIN_LOG}
           wait
           echo "Checking LE setup status..."
-          if [ -e "${_usEr}/log/domain.txt" ]; then
-            _hmFront=$(cat ${_usEr}/log/domain.txt 2>&1)
+          if [ -e "/data/disk/${_usEr}/log/domain.txt" ]; then
+            _hmFront=$(cat /data/disk/${_usEr}/log/domain.txt 2>&1)
             _hmFront=$(echo -n ${_hmFront} | tr -d "\n" 2>&1)
           fi
           _leRoot="/data/disk/${_usEr}/tools/le"
