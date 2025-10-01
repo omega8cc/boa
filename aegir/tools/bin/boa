@@ -1685,6 +1685,11 @@ _init_setup() {
             echo "  su -s /bin/bash ${_usEr} -c \"drush @hm uli\""
             echo
             echo "Enjoy!"
+          else
+            echo "Octopus LE setup status: STILL NOT READY!"
+            echo "Please run another upgrade with:"
+            echo "  octopus up-${_tRee} ${_usEr} force"
+            echo "Bye!"
           fi
         else
           echo "Octopus LE setup status: READY!"
