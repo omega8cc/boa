@@ -484,7 +484,8 @@ if [ "${_LTD_GID}" = "www-data users" ] \
       echo
       exit 1
     fi
-    if [[ "${2}" =~ "drush" ]] \
+    if [[ $(whoami) == *.ftp ]] \
+      || [[ "${2}" =~ "drush" ]] \
       || [[ "${2}" =~ "mysql " ]]; then
       _IN_PATH=YES
       _INTERNAL=YES
