@@ -422,6 +422,7 @@ _if_install_node() {
           curl -sL https://deb.nodesource.com/setup_22.x | sudo -E bash -
         fi
         _mrun "${_INSTAPP} nodejs" 2> /dev/null
+        _mrun "${_INSTAPP} npm" 2> /dev/null
       fi
       [ ! -d "/opt/user/npm" ] && mkdir -p /opt/user/npm
       chown root:root /opt/user/npm
@@ -431,6 +432,7 @@ _if_install_node() {
     _isNode=$(which node 2>&1)
     if [ -x "${_isNode}" ]; then
       _mrun "apt-get remove nodejs -y --purge --auto-remove -qq" 2> /dev/null
+      _mrun "apt-get remove npm -y --purge --auto-remove -qq" 2> /dev/null
     fi
   fi
 }
