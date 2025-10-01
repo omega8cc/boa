@@ -403,7 +403,7 @@ _mode_detection() {
     touch /run/boa_wait.pid
     if [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ]; then
-      _XTRAS_LIST="ADM CSF FTP IMG"
+      _XTRAS_LIST="${_XTRAS_LIST} CSF"
     fi
   elif [ -e "/lib/systemd/systemd" ]; then
     _msg "FATAL ERROR: Something went wrong because /lib/systemd/systemd still exists, exit"
@@ -450,7 +450,7 @@ _mode_detection() {
     fi
     if [ "${_EASY_SETUP}" = "LOCAL" ]; then
       _msg "INFO: Localhost Setup Mode Active"
-      _XTRAS_LIST="ADM"
+      _XTRAS_LIST="${_XTRAS_LIST} ADM"
       _AUTOPILOT=YES
       _SSH_PORT=22
       _DNS_SETUP_TEST=NO
@@ -459,10 +459,10 @@ _mode_detection() {
       _LOCAL_NETWORK_HN="aegir.local"
     elif [ "${_EASY_SETUP}" = "PUBLIC" ]; then
       _msg "INFO: Public Setup Mode Active"
-      _XTRAS_LIST="ADM CSF FTP IMG"
+      _XTRAS_LIST="${_XTRAS_LIST} CSF"
       _if_hosted_sys
       if [ "${_hostedSys}" = "YES" ]; then
-        _XTRAS_LIST="ADM CSF FTP IMG"
+        _XTRAS_LIST="${_XTRAS_LIST} CSF"
       fi
       _AUTOPILOT=YES
       _SSH_PORT=22
