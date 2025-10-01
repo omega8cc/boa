@@ -484,8 +484,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
       echo
       exit 1
     fi
-    if [[ "${2}" =~ "set -m;" ]] \
-      || [[ "${2}" =~ "drush" ]] \
+    if [[ "${2}" =~ "drush" ]] \
       || [[ "${2}" =~ "mysql " ]]; then
       _IN_PATH=YES
       _INTERNAL=YES
@@ -681,33 +680,33 @@ if [ "${_LTD_GID}" = "www-data users" ] \
             fi
           elif [[ "${_ARGS}" =~ "cc drush" ]] \
             || [[ "${_ARGS}" =~ "cr drush" ]] \
+            || [[ "${_ARGS}" =~ "drush --version" ]] \
             || [[ "${_ARGS}" =~ "drush aliases" ]] \
-            || [[ "${_ARGS}" =~ "drush sa" ]] \
-            || [[ "${_ARGS}" =~ "set -m; drush8 --version" ]] \
-            || [[ "${_ARGS}" =~ "set -m; drush8 help" ]] \
-            || [[ "${_ARGS}" =~ "drush8 dl" ]] \
-            || [[ "${_ARGS}" =~ "drush8 pm-download" ]] \
-            || [[ "${_ARGS}" =~ "drush8 aliases" ]] \
-            || [[ "${_ARGS}" =~ "drush8 sa" ]] \
-            || [[ "${_ARGS}" =~ "set -m; drush10 --version" ]] \
-            || [[ "${_ARGS}" =~ "set -m; drush10 help" ]] \
-            || [[ "${_ARGS}" =~ "drush10 aliases" ]] \
-            || [[ "${_ARGS}" =~ "drush10 sa" ]] \
-            || [[ "${_ARGS}" =~ "set -m; drush11 --version" ]] \
-            || [[ "${_ARGS}" =~ "set -m; drush11 help" ]] \
-            || [[ "${_ARGS}" =~ "drush11 aliases" ]] \
-            || [[ "${_ARGS}" =~ "drush11 sa" ]] \
-            || [[ "${_ARGS}" =~ "set -m; vendor/drush/drush/drush.php --version" ]] \
-            || [[ "${_ARGS}" =~ "set -m; vendor/drush/drush/drush.php help" ]] \
-            || [[ "${_ARGS}" =~ "set -m; vendor/bin/drush --version" ]] \
-            || [[ "${_ARGS}" =~ "set -m; vendor/bin/drush help" ]] \
-            || [[ "${_ARGS}" =~ "set -m; drush --version" ]] \
-            || [[ "${_ARGS}" =~ "set -m; drush help" ]] \
             || [[ "${_ARGS}" =~ "drush dl" ]] \
-            || [[ "${_ARGS}" =~ "drush pm-download" ]]; then
+            || [[ "${_ARGS}" =~ "drush help" ]] \
+            || [[ "${_ARGS}" =~ "drush sa" ]] \
+            || [[ "${_ARGS}" =~ "drush10 --version" ]] \
+            || [[ "${_ARGS}" =~ "drush10 aliases" ]] \
+            || [[ "${_ARGS}" =~ "drush10 help" ]] \
+            || [[ "${_ARGS}" =~ "drush10 sa" ]] \
+            || [[ "${_ARGS}" =~ "drush11 --version" ]] \
+            || [[ "${_ARGS}" =~ "drush11 aliases" ]] \
+            || [[ "${_ARGS}" =~ "drush11 help" ]] \
+            || [[ "${_ARGS}" =~ "drush11 sa" ]] \
+            || [[ "${_ARGS}" =~ "drush8 --version" ]] \
+            || [[ "${_ARGS}" =~ "drush8 aliases" ]] \
+            || [[ "${_ARGS}" =~ "drush8 dl" ]] \
+            || [[ "${_ARGS}" =~ "drush8 help" ]] \
+            || [[ "${_ARGS}" =~ "drush8 pm-download" ]] \
+            || [[ "${_ARGS}" =~ "drush8 sa" ]] \
+            || [[ "${_ARGS}" =~ "drush pm-download" ]] \
+            || [[ "${_ARGS}" =~ "vendor/bin/drush --version" ]] \
+            || [[ "${_ARGS}" =~ "vendor/bin/drush help" ]] \
+            || [[ "${_ARGS}" =~ "vendor/drush/drush/drush.php --version" ]] \
+            || [[ "${_ARGS}" =~ "vendor/drush/drush/drush.php help" ]]; then
             _CORRECT=YES
           else
-            if [[ "${_ARGS}" =~ "set -m; drush" ]] \
+            if [[ $(whoami) == *.ftp ]] \
               && [ ! -f "${_PWD}/settings.php" ]; then
               echo
               echo " This drush command can not be run in ${_PWD}"
@@ -895,7 +894,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
     || [[ "${_LTD_GID}" =~ "rvm ltd-shell"($) ]] \
     || [[ "${_LTD_GID}" =~ "ltd-shell rvm"($) ]]; then
     if [[ "${_ARGS}" =~ "*" ]]; then
-      if [[ "${_ARGS}" =~ "set -m; " ]]; then
+      if [[ $(whoami) == *.ftp ]]; then
         _SILENT=YES
       else
         if [[ "${_ARGS}" =~ "__build__" ]] \
@@ -945,7 +944,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
   fi
   if [ "${_IN_PATH}" = "YES" ]; then
     if [ -x "/usr/local/bin/ruby" ] && [ -x "/usr/local/bin/gem" ]; then
-      if [[ "${_ARGS}" =~ "set -m; " ]] || [ ! -z "${SSH_CLIENT}" ]; then
+      if [[ $(whoami) == *.ftp ]] || [ ! -z "${SSH_CLIENT}" ]; then
         _RUBY_ALLOW=YES
       fi
     fi
@@ -957,7 +956,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
       fi
     fi
     if [ -x "/usr/bin/npm" ] && [ -e "/home/${USER}/.npmrc" ]; then
-      if [[ "${_ARGS}" =~ "set -m; " ]] || [ ! -z "${SSH_CLIENT}" ]; then
+      if [[ $(whoami) == *.ftp ]] || [ ! -z "${SSH_CLIENT}" ]; then
         _NPM_ALLOW=YES
       fi
     fi
