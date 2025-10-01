@@ -40,7 +40,7 @@ _manage_single_lock() {
     # -------- legacy pgrep guard ---------
     # Exit if more than 2 instances of this script are running
     _SCRIPT=$(basename "$0")
-    _CNT=$(pgrep -fc "[${_SCRIPT:0:1}]${_SCRIPT:1}")
+    _CNT=$(pgrep -fc ${_SCRIPT})
     if (( _CNT > 2 )); then
       echo "Too many ${_SCRIPT} running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
       exit 0
@@ -49,7 +49,7 @@ _manage_single_lock() {
 }
 _manage_single_lock
 
-_IS_SQLBACKUP_RUNNING=$(ps aux | grep '[m]ysql_backup.sh' | awk '{print $2}' 2>&1)
+_IS_SQLBACKUP_RUNNING=$(pgrep -f mysql_backup.sh)
 if [ ! -z "${_IS_SQLBACKUP_RUNNING}" ]; then
   echo "Ooops, another mysql procedure/backup is running at the moment"
   exit 0
@@ -106,7 +106,7 @@ _remove_locks() {
 _check_running() {
   while [ -z "${_IS_MYSQLD_RUNNING}" ] \
     || [ ! -e "/run/mysqld/mysqld.sock" ]; do
-    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}')
+    _IS_MYSQLD_RUNNING=$(pgrep -f mysqld)
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       echo "INFO: Waiting for MySQLD availability..."
     fi

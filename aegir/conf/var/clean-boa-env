@@ -165,9 +165,9 @@ case "$1" in
       && [[ "${_REBOOT_TWO_TEST}" =~ "No such file" ]]; then
       service cron stop &> /dev/null
       killall cron &> /dev/null
-      kill -9 $(ps aux | grep '[s]econd.sh' | awk '{print $2}') &> /dev/null
-      kill -9 $(ps aux | grep '[r]unner.sh' | awk '{print $2}') &> /dev/null
-      kill -9 $(ps aux | grep '[m]inute.sh' | awk '{print $2}') &> /dev/null
+      pkill -9 -f second.sh
+      pkill -9 -f runner.sh
+      pkill -9 -f minute.sh
       echo "Cron has been stopped"
       echo "Now waiting 60 seconds for any running tasks to complete"
       sleep 55
@@ -179,24 +179,24 @@ case "$1" in
           update-rc.d -f clamav-freshclam remove &> /dev/null
         fi
       fi
-      kill -9 $(ps aux | grep '[a]vahi-daemon' | awk '{print $2}') &> /dev/null
-      kill -9 $(ps aux | grep '[c]lamd' | awk '{print $2}') &> /dev/null
-      kill -9 $(ps aux | grep '[f]reshclam' | awk '{print $2}') &> /dev/null
-      kill -9 $(ps aux | grep '[j]ava' | awk '{print $2}') &> /dev/null
+      pkill -9 -f avahi-daemon
+      pkill -9 -f clamd
+      pkill -9 -f freshclam
+      pkill -9 -f java
       rm -f /run/clamav/*
       echo "Java/Solr/Clamav have been stopped"
       sleep 5
       service nginx stop &> /dev/null
       killall nginx &> /dev/null
       killall php &> /dev/null
-      kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}') &> /dev/null
+      pkill -9 -f php-fpm
       echo "Nginx, PHP-CLI and PHP-FPM have been stopped"
       csf -df &> /dev/null
       csf -tf &> /dev/null
       echo "Firewall has been purged"
       if [ -e "/root/.my.pass.txt" ]; then
         _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
-        _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}')
+        _IS_MYSQLD_RUNNING=$(pgrep -f mysqld)
         if [ ! -z "${_IS_MYSQLD_RUNNING}" ] && [ ! -z "${_SQL_PSWD}" ]; then
           echo "Preparing MySQLD for quick shutdown..."
           _DBS_TEST=$(which mysql 2>&1)

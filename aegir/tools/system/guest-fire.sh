@@ -4,38 +4,6 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 
-# Protect from high load due to csf loop/flood
-_csf_flood_guard() {
-  _thisCountCsf=`ps aux | grep -v "grep" | grep -v "null" | grep --count "/csf"`
-  if [ ! -e "/run/boa_run.pid" ] && [ ${_thisCountCsf} -gt 4 ]; then
-    echo "$(date) Too many ${_thisCountCsf} csf processes killed" >> \
-      /var/log/boa/csf-count.kill.log
-    kill -9 $(ps aux | grep '[c]sf' | awk '{print $2}') &> /dev/null
-    csf -tf
-    wait
-    csf -df
-    wait
-  fi
-  _thisCountFire=`ps aux | grep -v "grep" | grep -v "null" | grep --count "fire.sh"`
-  if [ ! -e "/run/boa_run.pid" ] && [ ${_thisCountFire} -gt 9 ]; then
-    echo "$(date) Too many ${_thisCountFire} fire.sh processes killed and rules purged" >> \
-      /var/log/boa/fire-purge.kill.log
-    csf -tf
-    wait
-    csf -df
-    wait
-    kill -9 $(ps aux | grep '[f]ire.sh' | awk '{print $2}') &> /dev/null
-  elif [ ! -e "/run/boa_run.pid" ] && [ ${_thisCountFire} -gt 7 ]; then
-    echo "$(date) Too many ${_thisCountFire} fire.sh processes killed" >> \
-      /var/log/boa/fire-count.kill.log
-    csf -tf
-    wait
-    kill -9 $(ps aux | grep '[f]ire.sh' | awk '{print $2}') &> /dev/null
-  fi
-  [ -e "/etc/csf/csfpost.d/synproxy.sh" ] && synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
-}
-[ ! -e "/run/water.pid" ] && _csf_flood_guard
-
 ###
 ### Atomic lock/unlock to prevent TOCTOU race
 ###
@@ -51,7 +19,7 @@ _manage_single_lock() {
     # -------- legacy pgrep guard ---------
     # Exit if more than 2 instances of this script are running
     _SCRIPT=$(basename "$0")
-    _CNT=$(pgrep -fc "[${_SCRIPT:0:1}]${_SCRIPT:1}")
+    _CNT=$(pgrep -fc ${_SCRIPT})
     if (( _CNT > 2 )); then
       echo "Too many ${_SCRIPT} running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
       exit 0
@@ -233,9 +201,6 @@ _guest_guard() {
 
 # Main execution
 if [ -x "/usr/sbin/csf" ]; then
-  [ -e "/var/log/csf-count.kill.log" ] && mv -f /var/log/csf-count.kill.log /var/log/boa/
-  [ -e "/var/log/fire-purge.kill.log" ] && mv -f /var/log/fire-purge.kill.log /var/log/boa/
-  [ -e "/var/log/fire-count.kill.log" ] && mv -f /var/log/fire-count.kill.log /var/log/boa/
   # Main execution
   for _iteration in {1..3}; do
     echo "----------------------------"

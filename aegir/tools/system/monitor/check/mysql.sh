@@ -64,7 +64,7 @@ _manage_single_lock() {
     # -------- legacy pgrep guard ---------
     # Exit if more than 2 instances of this script are running
     _SCRIPT=$(basename "$0")
-    _CNT=$(pgrep -fc "[${_SCRIPT:0:1}]${_SCRIPT:1}")
+    _CNT=$(pgrep -fc ${_SCRIPT})
     if (( _CNT > 2 )); then
       echo "Too many ${_SCRIPT} running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
       exit 0
@@ -127,7 +127,7 @@ _sql_busy_detection() {
   if [ -e "${_SQL_LOG}" ]; then
     if [ `tail --lines=333 ${_SQL_LOG} \
       | grep --count "Too many connections"` -gt 111 ]; then
-      _IS_PROVISION_RUNNING=$(ps aux | grep '[p]rovision' | awk '{print $2}' 2>&1)
+      _IS_PROVISION_RUNNING=$(pgrep -f provision)
       if [ -z "${_IS_PROVISION_RUNNING}" ]; then
         _sql_restart "BUSY MySQL"
       fi
@@ -135,7 +135,7 @@ _sql_busy_detection() {
   fi
   if [ -e "/root/.instant.busy.mysql.action.cnf" ]; then
     _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
-    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}')
+    _IS_MYSQLD_RUNNING=$(pgrep -f mysqld)
     if [ ! -z "${_IS_MYSQLD_RUNNING}" ] && [ ! -z "${_SQL_PSWD}" ]; then
       _MYSQL_CONN_TEST=$(mysql -u root -e "status" 2>&1)
       echo _MYSQL_CONN_TEST ${_MYSQL_CONN_TEST}
@@ -266,17 +266,17 @@ _mysql_is_locked() {
     fi
   fi
 
-  if (( $(pgrep -fc 'aegir.sh') > ${_MULTI_MX} )); then
-    if (( $(pgrep -fc 'mysql_backup.sh') > 0 )); then
-      kill -9 $(ps aux | grep '[m]ydumper' | awk '{print $2}') &> /dev/null
-      _incident_email_report "TOO MANY ($(pgrep -fc 'aegir.sh') aegir.sh required killing mydumper"
+  if (( $(pgrep -fc aegir.sh) > ${_MULTI_MX} )); then
+    if (( $(pgrep -fc mysql_backup.sh) > 0 )); then
+      pkill -9 -f mydumper
+      _incident_email_report "TOO MANY ($(pgrep -fc aegir.sh) aegir.sh required killing mydumper"
     fi
   fi
-  if (( $(pgrep -fc 'drush.php') > ${_MULTI_MX} )); then
-    if (( $(pgrep -fc 'mysql_backup.sh') > 0 )); then
-      kill -9 $(ps aux | grep '[m]ydumper' | awk '{print $2}') &> /dev/null
-      kill -9 $(ps aux | grep '[d]rush.php' | awk '{print $2}') &> /dev/null
-      _incident_email_report "TOO MANY ($(pgrep -fc 'drush.php') drush.php required killing mydumper"
+  if (( $(pgrep -fc drush.php) > ${_MULTI_MX} )); then
+    if (( $(pgrep -fc mysql_backup.sh) > 0 )); then
+      pkill -9 -f mydumper
+      pkill -9 -f drush.php
+      _incident_email_report "TOO MANY ($(pgrep -fc drush.php) drush.php required killing mydumper"
     fi
   fi
 }

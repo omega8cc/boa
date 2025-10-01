@@ -52,7 +52,7 @@ _manage_single_lock() {
     # -------- legacy pgrep guard ---------
     # Exit if more than 2 instances of this script are running
     _SCRIPT=$(basename "$0")
-    _CNT=$(pgrep -fc "[${_SCRIPT:0:1}]${_SCRIPT:1}")
+    _CNT=$(pgrep -fc ${_SCRIPT})
     if (( _CNT > 2 )); then
       echo "Too many ${_SCRIPT} running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
       exit 0
@@ -81,7 +81,7 @@ _unbound_check_fix() {
     echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.unbound
     [ -e "/etc/resolvconf/update.d/unbound" ] && chmod -x /etc/resolvconf/update.d/unbound
     resolvconf -u &> /dev/null
-    killall -9 unbound &> /dev/null
+    pkill -u unbound -x unbound &> /dev/null
     service unbound restart &> /dev/null
     wait
     unbound-control reload &> /dev/null
@@ -103,7 +103,7 @@ _unbound_check_fix() {
         sleep 3
         service unbound stop &> /dev/null
         sleep 1
-        killall -9 unbound &> /dev/null
+        pkill -u unbound -x unbound &> /dev/null
         renice ${_B_NICE} -p $$ &> /dev/null
         if [ -e "/var/xdrago/proc_num_ctrl.pl" ]; then
           perl /var/xdrago/proc_num_ctrl.pl &
@@ -117,12 +117,13 @@ _unbound_check_fix() {
       touch /run/wait-unbound.pid
       sleep 3
       rm -f /etc/resolv.conf
-      echo "nameserver 127.0.0.1" > /etc/resolv.conf
+      echo "### BOA-DNS-Config ###" > /etc/resolv.conf
+      echo "nameserver 127.0.0.1" >> /etc/resolv.conf
       echo "nameserver 1.1.1.1" >> /etc/resolv.conf
       echo "nameserver 8.8.8.8" >> /etc/resolv.conf
       echo "nameserver 9.9.9.9" >> /etc/resolv.conf
       [ -e "/etc/resolvconf/update.d/unbound" ] && chmod -x /etc/resolvconf/update.d/unbound
-      killall -9 unbound &> /dev/null
+      pkill -u unbound -x unbound &> /dev/null
       service unbound restart &> /dev/null
       wait
       unbound-control reload &> /dev/null
@@ -130,11 +131,11 @@ _unbound_check_fix() {
       rm -f /run/wait-unbound.pid
     fi
   fi
-  _CNT=$(pgrep -fc "[u]sr/sbin/unbound")
+  _CNT=$(pgrep -fc /usr/sbin/unbound)
   if (( _CNT > 1 )); then
     touch /run/wait-unbound.pid
     sleep 3
-    kill -9 $(ps aux | grep '[u]sr/sbin/unbound' | awk '{print $2}') &> /dev/null
+    pkill -u unbound -x unbound &> /dev/null
     service unbound restart &> /dev/null
     wait
     echo "$(date) Too many Unbound processes killed (count=${_CNT})" >> ${_pthOml}

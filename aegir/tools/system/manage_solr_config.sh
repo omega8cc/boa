@@ -326,7 +326,7 @@ _add_solr() {
         wait
         sed -i "/^$/d" ${_SOLR_BASE}/solr.xml &> /dev/null
         wait
-        kill -9 $(ps aux | grep '[j]etty9' | awk '{print $2}') &> /dev/null
+        pkill -9 -f jetty9
         service jetty9 start &> /dev/null
       fi
       echo "New Solr ${3} with ${1} for ${2} added"
@@ -388,7 +388,7 @@ _delete_solr() {
       wait
       rm -rf ${1}
       rm -f ${_Dir}/solr.php
-      kill -9 $(ps aux | grep '[j]etty9' | awk '{print $2}') &> /dev/null
+      pkill -9 -f jetty9
       service jetty9 start &> /dev/null
     fi
     echo "Deleted Solr core in ${1}"
@@ -626,7 +626,7 @@ _get_load() {
 
 _load_control() {
   [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
-  : "${_CPU_TASK_RATIO:=3.1}"
+  : "${_CPU_TASK_RATIO:=1.4}"
   _CPU_TASK_RATIO="$(_sanitize_number "${_CPU_TASK_RATIO}")"
   _O_LOAD_MAX=$(echo "${_CPU_TASK_RATIO} * 100" | bc -l)
   _get_load

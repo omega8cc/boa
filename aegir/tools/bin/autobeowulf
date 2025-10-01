@@ -203,9 +203,9 @@ _faster_reboot() {
   _msg "Faster reboot prepare..." >> "${_logAbf}"
   service cron stop &> /dev/null
   killall cron &> /dev/null
-  kill -9 $(ps aux | grep '[s]econd.sh' | awk '{print $2}') &> /dev/null
-  kill -9 $(ps aux | grep '[m]inute.sh' | awk '{print $2}') &> /dev/null
-  kill -9 $(ps aux | grep '[r]unner.sh' | awk '{print $2}') &> /dev/null
+  pkill -9 -f second.sh
+  pkill -9 -f minute.sh
+  pkill -9 -f runner.sh
   _msg "Cron has been stopped" >> "${_logAbf}"
   _msg "Now waiting 60 seconds for any running tasks to complete" >> "${_logAbf}"
   sleep 55
@@ -217,23 +217,23 @@ _faster_reboot() {
       update-rc.d -f clamav-freshclam remove &> /dev/null
     fi
   fi
-  kill -9 $(ps aux | grep '[a]vahi-daemon' | awk '{print $2}') &> /dev/null
-  kill -9 $(ps aux | grep '[c]lamd' | awk '{print $2}') &> /dev/null
-  kill -9 $(ps aux | grep '[f]reshclam' | awk '{print $2}') &> /dev/null
-  kill -9 $(ps aux | grep '[j]ava' | awk '{print $2}') &> /dev/null
+  pkill -9 -f avahi-daemon
+  pkill -9 -f clamd
+  pkill -9 -f freshclam
+  pkill -9 -f java
   rm -f /run/clamav/*
   _msg "Java/Solr/Clamav have been stopped" >> "${_logAbf}"
   service nginx stop &> /dev/null
   killall nginx &> /dev/null
   killall php &> /dev/null
-  kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}') &> /dev/null
+  pkill -9 -f php-fpm
   _msg "Nginx, PHP-CLI and PHP-FPM have been stopped" >> "${_logAbf}"
   csf -df &> /dev/null
   csf -tf &> /dev/null
   _msg "Firewall has been purged" >> "${_logAbf}"
   if [ -e "/root/.my.pass.txt" ]; then
     _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
-    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}')
+    _IS_MYSQLD_RUNNING=$(pgrep -f mysqld)
     if [ ! -z "${_IS_MYSQLD_RUNNING}" ] && [ ! -z "${_SQL_PSWD}" ]; then
       _msg "Preparing MySQLD for quick shutdown..." >> "${_logAbf}"
       mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null

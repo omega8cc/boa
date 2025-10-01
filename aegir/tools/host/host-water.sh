@@ -624,7 +624,7 @@ if [ -e "/vservers" ] \
     sed -i "/^$/d" /etc/csf/csf.deny
   fi
 
-  kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
+  pkill -9 -f ConfigServer
   killall sleep &> /dev/null
   rm -f /etc/csf/csf.error
   if [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
@@ -666,7 +666,7 @@ if [ -e "/vservers" ] \
   rm -f /vservers/*/var/xdrago/monitor/log/web.log
   rm -f /vservers/*/var/xdrago/monitor/log/ftp.log
 
-  kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
+  pkill -9 -f ConfigServer
   killall sleep &> /dev/null
   rm -f /etc/csf/csf.error
   service lfd restart
