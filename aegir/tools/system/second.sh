@@ -36,7 +36,7 @@ _manage_single_lock() {
 _manage_single_lock
 
 # Set default values
-: "${_CPU_SPIDER_RATIO:=2.1}"
+: "${_CPU_SPIDER_RATIO:=1.1}"
 : "${_CPU_MAX_RATIO:=4.1}"
 : "${_CPU_CRIT_RATIO:=6.1}"
 : "${_INCIDENT_REPORT:=YES}"
