@@ -61,7 +61,7 @@ _get_load() {
 
 _load_control() {
   [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
-  : "${_CPU_TASK_RATIO:=3.1}"
+  : "${_CPU_TASK_RATIO:=1.4}"
   _CPU_TASK_RATIO="$(_sanitize_number "${_CPU_TASK_RATIO}")"
   _O_LOAD_MAX=$(echo "${_CPU_TASK_RATIO} * 100" | bc -l)
   _get_load
@@ -141,8 +141,7 @@ if [ "${_SQLBACKUP_RUNNING}" = "TRUE" ] \
     echo "Another BOA task is running, we will try again later..."
     exit 0
   fi
-elif [ "$(ps aux | grep -v "grep" \
-  | grep --count "n7 bash.*runner")" -gt 8 ]; then
+elif [ "$(pgrep -fc 'n7 bash /var/xdrago/runner.sh')" -gt 8 ]; then
   if [ ! -e "/root/.force.queue.runner.cnf" ]; then
     touch /var/log/boa/wait-runner.pid
     echo "Too many Aegir tasks running now, we will try again later..."

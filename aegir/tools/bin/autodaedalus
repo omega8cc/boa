@@ -231,7 +231,7 @@ _faster_reboot() {
   _msg "Firewall has been purged" >> "${_logAds}"
   if [ -e "/root/.my.pass.txt" ]; then
     _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
-    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}')
+    _IS_MYSQLD_RUNNING=$(pgrep -f mysqld)
     if [ ! -z "${_IS_MYSQLD_RUNNING}" ] && [ ! -z "${_SQL_PSWD}" ]; then
       _msg "Preparing MySQLD for quick shutdown..." >> "${_logAds}"
       mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
