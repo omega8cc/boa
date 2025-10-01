@@ -676,44 +676,21 @@ _satellite_check_id() {
 }
 
 _fix_dns_settings() {
-  mkdir -p ${_vBs}
+  [ ! -d "${_vBs}" ] && mkdir -p ${_vBs}
   rm -f ${_vBs}/resolv.conf.tmp
-  if ! grep -q "9.9.9.9" /etc/resolv.conf; then
+  if ! grep -q "BOA-DNS-Config" /etc/resolv.conf; then
     echo "### BOA-DNS-Config ###" > ${_vBs}/resolv.conf.tmp
     if [ -x "/usr/sbin/unbound" ] && [ -e "/run/unbound/unbound.pid" ]; then
-      echo "nameserver 127.0.0.1" > ${_vBs}/resolv.conf.tmp
+      echo "nameserver 127.0.0.1" >> ${_vBs}/resolv.conf.tmp
     fi
     echo "nameserver 1.1.1.1" >> ${_vBs}/resolv.conf.tmp
     echo "nameserver 8.8.8.8" >> ${_vBs}/resolv.conf.tmp
     echo "nameserver 9.9.9.9" >> ${_vBs}/resolv.conf.tmp
   fi
-  if [ ! -e "${_vBs}/resolv.conf.vanilla" ]; then
-    for _Pre in `ls -la ${_vBs}/resolv.conf.pre-*`; do
-      if [ -e "${_Pre}" ] && [ -f "${_Pre}" ] && [ ! -L "${_Pre}" ]; then
-        cp -a ${_Pre} ${_vBs}/resolv.conf.vanilla
-      fi
-    done
-  fi
-  if [ ! -e "${_vBs}/resolv.conf.vanilla" ] \
-    && [ -e "${_vBs}/resolv.conf.tmp" ]; then
-    if [ "${_USE_DEFAULT_DNS}" != "YES" ]; then
-      rm -f /etc/resolv.conf
-      cp -a ${_vBs}/resolv.conf.tmp /etc/resolv.conf
-      cp -a ${_vBs}/resolv.conf.tmp ${_vBs}/resolv.conf.vanilla
-    fi
-  fi
-  sed -i "/^$/d" ${_vBs}/resolv.conf.vanilla &> /dev/null
-  if [ -e "${_vBs}/resolv.conf.vanilla" ]; then
-    if [ "${_USE_DEFAULT_DNS}" != "YES" ]; then
-      rm -f /etc/resolv.conf
-      cp -a ${_vBs}/resolv.conf.vanilla /etc/resolv.conf
-    fi
-  else
-    if [ -e "${_vBs}/resolv.conf.tmp" ] \
-      && [ "${_USE_DEFAULT_DNS}" != "YES" ]; then
-      rm -f /etc/resolv.conf
-      cp -a ${_vBs}/resolv.conf.tmp /etc/resolv.conf
-    fi
+  if [ -e "${_vBs}/resolv.conf.tmp" ]; then
+    rm -f /etc/resolv.conf
+    cp -a ${_vBs}/resolv.conf.tmp /etc/resolv.conf
+    cp -a ${_vBs}/resolv.conf.tmp ${_vBs}/resolv.conf.vanilla
   fi
   if [ -x "/usr/sbin/unbound-control" ] \
     && [ -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
@@ -731,7 +708,7 @@ _check_dns_settings() {
       rm -f /root/.use.local.nameservers.cnf
     fi
     _USE_DEFAULT_DNS=YES
-    if ! grep -q "9.9.9.9" /etc/resolv.conf; then
+    if ! grep -q "BOA-DNS-Config" /etc/resolv.conf; then
       _fix_dns_settings
       return 1  # Exit the function but continue the script
     fi
@@ -740,7 +717,7 @@ _check_dns_settings() {
     _USE_PROVIDER_DNS=YES
   else
     _REMOTE_DNS_TEST=$(host files.aegir.cc 1.1.1.1 -w 10 2>&1)
-    if ! grep -q "9.9.9.9" /etc/resolv.conf; then
+    if ! grep -q "BOA-DNS-Config" /etc/resolv.conf; then
       _fix_dns_settings
       return 1  # Exit the function but continue the script
     fi
@@ -1668,15 +1645,19 @@ _init_setup() {
       else
         echo "Launching octopus up-${_tRee} ${_usEr} now..."
         /opt/local/bin/octopus up-${_tRee} ${_usEr} force log noscreen 2>&1 | tee ${_UP_OCTOPUS_LOG}
+        wait
         echo "Checking LE setup status..."
-        _LE="/data/disk/${_usEr}/log/letsencrypt-*.log"
-        _LE_IF=$(ls ${_LE} | wc -l)
-        if [ -n "${_LE_IF}" ] && [ "${_LE_IF}" -ge 1 ]; then
-          if [ "$(grep -c Done ${_LE})" -ge 3 ]; then
-            _UP_OCTOPUS_AGAIN=NO
-          else
-            _UP_OCTOPUS_AGAIN=YES
-          fi
+        if [ -e "/data/disk/${_usEr}/log/domain.txt" ]; then
+          _hmFront=$(cat /data/disk/${_usEr}/log/domain.txt 2>&1)
+          _hmFront=$(echo -n ${_hmFront} | tr -d "\n" 2>&1)
+        fi
+        _leRoot="/data/disk/${_usEr}/tools/le"
+        _leCrtPath="${_leRoot}/certs/${_hmFront}"
+        _lePxyPath="/var/aegir/config/server_master/nginx/pre.d/z_${_hmFront}_ssl_proxy.conf"
+        if [ -e "${_leCrtPath}/fullchain.pem" ] \
+          || [ -e "${_leCrtPath}/cert.pem" ] \
+          || [ -e "${_lePxyPath}" ]; then
+          _UP_OCTOPUS_AGAIN=NO
         else
           _UP_OCTOPUS_AGAIN=YES
         fi
@@ -1685,21 +1666,33 @@ _init_setup() {
           echo "Launching another octopus upgrade to fix LE..."
           _UP_OCTOPUS_AGAIN_LOG="${_LOG_UP_DIR}/$(basename "$0")-up-again-octopus-${_NOW}.log"
           /opt/local/bin/octopus up-${_tRee} ${_usEr} force log noscreen 2>&1 | tee ${_UP_OCTOPUS_AGAIN_LOG}
-          _LE_IF=
-          _LE_IF=$(ls ${_LE} | wc -l)
-          if [ -n "${_LE_IF}" ] && [ "${_LE_IF}" -ge 1 ]; then
-            if [ "$(grep -c Done ${_LE})" -ge 3 ]; then
-              echo "Octopus LE setup status: OK!"
-              echo
-              echo "You can generate one-time login link now:"
-              echo
-              echo "  su -s /bin/bash ${_usEr} -c \"drush @hm uli\""
-              echo
-              echo "Enjoy!"
-            fi
+          wait
+          echo "Checking LE setup status..."
+          if [ -e "/data/disk/${_usEr}/log/domain.txt" ]; then
+            _hmFront=$(cat /data/disk/${_usEr}/log/domain.txt 2>&1)
+            _hmFront=$(echo -n ${_hmFront} | tr -d "\n" 2>&1)
+          fi
+          _leRoot="/data/disk/${_usEr}/tools/le"
+          _leCrtPath="${_leRoot}/certs/${_hmFront}"
+          _lePxyPath="/var/aegir/config/server_master/nginx/pre.d/z_${_hmFront}_ssl_proxy.conf"
+          if [ -e "${_leCrtPath}/fullchain.pem" ] \
+            || [ -e "${_leCrtPath}/cert.pem" ] \
+            || [ -e "${_lePxyPath}" ]; then
+            echo "Octopus LE setup status: OK!"
+            echo
+            echo "You can generate one-time login link now:"
+            echo
+            echo "  su -s /bin/bash ${_usEr} -c \"drush @hm uli\""
+            echo
+            echo "Enjoy!"
+          else
+            echo "Octopus LE setup status: STILL NOT READY!"
+            echo "Please run another upgrade with:"
+            echo "  octopus up-${_tRee} ${_usEr} force"
+            echo "Bye!"
           fi
         else
-          echo "Octopus LE setup status: OK!"
+          echo "Octopus LE setup status: READY!"
           echo
           echo "You can generate one-time login link now:"
           echo

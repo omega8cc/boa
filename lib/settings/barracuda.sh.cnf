@@ -156,7 +156,7 @@ _PHP_CLI_VERSION=8.3
 ###
 ### ADM --- Adminer DB Manager (installed by default)
 ### CSF --- Firewall (installed by default)
-### CSS --- Ruby Gems for Compass + NPM for Gulp/Bower
+### CSS --- Ruby Gems for Compass + NPM for Gulp/Bower (requires /root/.allow.node.lshell.cnf)
 ### FTP --- Pure-FTPd server with forced FTPS (installed by default)
 ### IMG --- Image Optimize binaries (installed by default)
 ###
@@ -969,13 +969,13 @@ _USE_MYSQLTUNER=NO
 ### Set max 1 min load per CPU core before blocking
 ### spiders temporarily, until the load stabilizes.
 ###
-_CPU_SPIDER_RATIO=2.1
+_CPU_SPIDER_RATIO=1.1
 
 ###
 ### Define max 1 min load per CPU core before
 ### launching task queue for Octopus instances.
 ###
-_CPU_TASK_RATIO=3.1
+_CPU_TASK_RATIO=1.4
 
 ###
 ### Set max 1 min load per CPU core before disabling

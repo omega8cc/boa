@@ -47,7 +47,7 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 export _tRee=lts
 export _xSrl=570ltsT09
 export _rLsn="BOA-5.7.12"
-export _bTs=570v47
+export _bTs=570v49
 
 ###
 ### Avoid too many questions
@@ -169,44 +169,21 @@ _find_correct_ip() {
 }
 
 _fix_dns_settings() {
-  mkdir -p ${_vBs}
+  [ ! -d "${_vBs}" ] && mkdir -p ${_vBs}
   rm -f ${_vBs}/resolv.conf.tmp
-  if ! grep -q "9.9.9.9" /etc/resolv.conf; then
+  if ! grep -q "BOA-DNS-Config" /etc/resolv.conf; then
     echo "### BOA-DNS-Config ###" > ${_vBs}/resolv.conf.tmp
     if [ -x "/usr/sbin/unbound" ] && [ -e "/run/unbound/unbound.pid" ]; then
-      echo "nameserver 127.0.0.1" > ${_vBs}/resolv.conf.tmp
+      echo "nameserver 127.0.0.1" >> ${_vBs}/resolv.conf.tmp
     fi
     echo "nameserver 1.1.1.1" >> ${_vBs}/resolv.conf.tmp
     echo "nameserver 8.8.8.8" >> ${_vBs}/resolv.conf.tmp
     echo "nameserver 9.9.9.9" >> ${_vBs}/resolv.conf.tmp
   fi
-  if [ ! -e "${_vBs}/resolv.conf.vanilla" ]; then
-    for _Pre in `ls -la ${_vBs}/resolv.conf.pre-*`; do
-      if [ -e "${_Pre}" ] && [ -f "${_Pre}" ] && [ ! -L "${_Pre}" ]; then
-        cp -a ${_Pre} ${_vBs}/resolv.conf.vanilla
-      fi
-    done
-  fi
-  if [ ! -e "${_vBs}/resolv.conf.vanilla" ] \
-    && [ -e "${_vBs}/resolv.conf.tmp" ]; then
-    if [ "${_USE_DEFAULT_DNS}" != "YES" ]; then
-      rm -f /etc/resolv.conf
-      cp -a ${_vBs}/resolv.conf.tmp /etc/resolv.conf
-      cp -a ${_vBs}/resolv.conf.tmp ${_vBs}/resolv.conf.vanilla
-    fi
-  fi
-  sed -i "/^$/d" ${_vBs}/resolv.conf.vanilla &> /dev/null
-  if [ -e "${_vBs}/resolv.conf.vanilla" ]; then
-    if [ "${_USE_DEFAULT_DNS}" != "YES" ]; then
-      rm -f /etc/resolv.conf
-      cp -a ${_vBs}/resolv.conf.vanilla /etc/resolv.conf
-    fi
-  else
-    if [ -e "${_vBs}/resolv.conf.tmp" ] \
-      && [ "${_USE_DEFAULT_DNS}" != "YES" ]; then
-      rm -f /etc/resolv.conf
-      cp -a ${_vBs}/resolv.conf.tmp /etc/resolv.conf
-    fi
+  if [ -e "${_vBs}/resolv.conf.tmp" ]; then
+    rm -f /etc/resolv.conf
+    cp -a ${_vBs}/resolv.conf.tmp /etc/resolv.conf
+    cp -a ${_vBs}/resolv.conf.tmp ${_vBs}/resolv.conf.vanilla
   fi
   if [ -x "/usr/sbin/unbound-control" ] \
     && [ -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
@@ -224,7 +201,7 @@ _check_dns_settings() {
       rm -f /root/.use.local.nameservers.cnf
     fi
     _USE_DEFAULT_DNS=YES
-    if ! grep -q "9.9.9.9" /etc/resolv.conf; then
+    if ! grep -q "BOA-DNS-Config" /etc/resolv.conf; then
       _fix_dns_settings
       return 1  # Exit the function but continue the script
     fi
@@ -233,7 +210,7 @@ _check_dns_settings() {
     _USE_PROVIDER_DNS=YES
   else
     _REMOTE_DNS_TEST=$(host files.aegir.cc 1.1.1.1 -w 10 2>&1)
-    if ! grep -q "9.9.9.9" /etc/resolv.conf; then
+    if ! grep -q "BOA-DNS-Config" /etc/resolv.conf; then
       _fix_dns_settings
       return 1  # Exit the function but continue the script
     fi
@@ -1371,7 +1348,7 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/mysql.sh.ctrl.f86.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/mysql.sh.ctrl.f85.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/mysql.sh /var/xdrago/monitor/check/mysql.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/mysql.sh" -o /var/xdrago/monitor/check/mysql.sh
     if [ -e "/var/xdrago/monitor/check/mysql.sh" ]; then
@@ -1390,7 +1367,7 @@ _update_agents() {
       fi
       chmod 700 /var/xdrago/monitor/check/mysql.sh
       chown root:root /var/xdrago/monitor/check/mysql.sh
-      touch ${_pthLog}/mysql.sh.ctrl.f86.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/mysql.sh.ctrl.f85.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/monitor/check/mysql.sh.old /var/xdrago/monitor/check/mysql.sh
     fi
@@ -1398,13 +1375,13 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/nginx.sh.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/nginx.sh.ctrl.f94.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/nginx.sh /var/xdrago/monitor/check/nginx.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/nginx.sh" -o /var/xdrago/monitor/check/nginx.sh
     if [ -e "/var/xdrago/monitor/check/nginx.sh" ]; then
       chmod 700 /var/xdrago/monitor/check/nginx.sh
       chown root:root /var/xdrago/monitor/check/nginx.sh
-      touch ${_pthLog}/nginx.sh.ctrl.f95.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/nginx.sh.ctrl.f94.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/monitor/check/nginx.sh.old /var/xdrago/monitor/check/nginx.sh
     fi
@@ -1624,13 +1601,13 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/mysql_backup.sh.ctrl.f93.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/mysql_backup.sh.ctrl.f92.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/mysql_backup.sh /var/xdrago/mysql_backup.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/mysql_backup.sh" -o /var/xdrago/mysql_backup.sh
     if [ -e "/var/xdrago/mysql_backup.sh" ]; then
       chmod 700 /var/xdrago/mysql_backup.sh
       chown root:root /var/xdrago/mysql_backup.sh
-      touch ${_pthLog}/mysql_backup.sh.ctrl.f93.${_xSrl}.pid
+      touch ${_pthLog}/mysql_backup.sh.ctrl.f92.${_xSrl}.pid
     else
       mv -f /var/xdrago/mysql_backup.sh.old /var/xdrago/mysql_backup.sh
     fi
@@ -1652,13 +1629,13 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/mysql_cleanup.sh.ctrl.f94.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/mysql_cleanup.sh.ctrl.f92.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/mysql_cleanup.sh /var/xdrago/mysql_cleanup.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/mysql_cleanup.sh" -o /var/xdrago/mysql_cleanup.sh
     if [ -e "/var/xdrago/mysql_cleanup.sh" ]; then
       chmod 700 /var/xdrago/mysql_cleanup.sh
       chown root:root /var/xdrago/mysql_cleanup.sh
-      touch ${_pthLog}/mysql_cleanup.sh.ctrl.f94.${_xSrl}.pid
+      touch ${_pthLog}/mysql_cleanup.sh.ctrl.f92.${_xSrl}.pid
     else
       mv -f /var/xdrago/mysql_cleanup.sh.old /var/xdrago/mysql_cleanup.sh
     fi
@@ -1666,13 +1643,13 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/mysql_cluster_backup.sh.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/mysql_cluster_backup.sh.ctrl.f93.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/mysql_cluster_backup.sh /var/xdrago/mysql_cluster_backup.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/mysql_cluster_backup.sh" -o /var/xdrago/mysql_cluster_backup.sh
     if [ -e "/var/xdrago/mysql_cluster_backup.sh" ]; then
       chmod 700 /var/xdrago/mysql_cluster_backup.sh
       chown root:root /var/xdrago/mysql_cluster_backup.sh
-      touch ${_pthLog}/mysql_cluster_backup.sh.ctrl.f95.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/mysql_cluster_backup.sh.ctrl.f93.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/mysql_cluster_backup.sh.old /var/xdrago/mysql_cluster_backup.sh
     fi
@@ -1680,13 +1657,13 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/runner.sh.ctrl.f92.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/runner.sh.ctrl.f91.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/runner.sh /var/xdrago/runner.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/runner.sh" -o /var/xdrago/runner.sh
     if [ -e "/var/xdrago/runner.sh" ]; then
       chmod 700 /var/xdrago/runner.sh
       chown root:root /var/xdrago/runner.sh
-      touch ${_pthLog}/runner.sh.ctrl.f92.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/runner.sh.ctrl.f91.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/runner.sh.old /var/xdrago/runner.sh
     fi
@@ -1694,13 +1671,13 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/minute.sh.ctrl.f94.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/minute.sh.ctrl.f93.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/minute.sh /var/xdrago/minute.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/minute.sh" -o /var/xdrago/minute.sh
     if [ -e "/var/xdrago/minute.sh" ]; then
       chmod 700 /var/xdrago/minute.sh
       chown root:root /var/xdrago/minute.sh
-      touch ${_pthLog}/minute.sh.ctrl.f94.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/minute.sh.ctrl.f93.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/minute.sh.old /var/xdrago/minute.sh
     fi
@@ -1736,13 +1713,13 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/move_sql.sh.ctrl.f92.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/move_sql.sh.ctrl.f91.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/move_sql.sh /var/xdrago/move_sql.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/move_sql.sh" -o /var/xdrago/move_sql.sh
     if [ -e "/var/xdrago/move_sql.sh" ]; then
       chmod 700 /var/xdrago/move_sql.sh
       chown root:root /var/xdrago/move_sql.sh
-      touch ${_pthLog}/move_sql.sh.ctrl.f92.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/move_sql.sh.ctrl.f91.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/move_sql.sh.old /var/xdrago/move_sql.sh
     fi
@@ -1939,14 +1916,14 @@ _update_agents() {
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
     && [ -x "/usr/sbin/csf" ] \
     && [ -e "/etc/csf/csf.deny" ] \
-    && [ ! -e "${_pthLog}/guest-fire.sh.ctrl.f94.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/guest-fire.sh.ctrl.f93.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/guest-fire.sh /var/xdrago/guest-fire.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/guest-fire.sh" \
       -o /var/xdrago/guest-fire.sh
     if [ -e "/var/xdrago/guest-fire.sh" ]; then
       chmod 700 /var/xdrago/guest-fire.sh
       chown root:root /var/xdrago/guest-fire.sh
-      touch ${_pthLog}/guest-fire.sh.ctrl.f94.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/guest-fire.sh.ctrl.f93.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/guest-fire.sh.old /var/xdrago/guest-fire.sh
     fi
