@@ -2158,6 +2158,8 @@ _display_time() {
       return
     elif [ "${_service}" = "solr4" ] && [ ! -e "/opt/solr4/solr.xml" ]; then
       return
+    elif [ "${_service}" = "pure-ftpd" ] && [ ! -e "/usr/local/sbin/pure-ftpd" ]; then
+      return
     else
       _not_running_services+=("  _XSE ${_service} is not running (PID file not found).")
       return
@@ -2172,6 +2174,8 @@ _display_time() {
     if [ "${_service}" = "jenkins" ] && [ ! -e "/var/lib/jenkins" ]; then
       return
     elif [ "${_service}" = "solr4" ] && [ ! -e "/opt/solr4/solr.xml" ]; then
+      return
+    elif [ "${_service}" = "pure-ftpd" ] && [ ! -e "/usr/local/sbin/pure-ftpd" ]; then
       return
     else
       _not_running_services+=("  _XSE ${_service} is not running (stale PID file).")
