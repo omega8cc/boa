@@ -780,7 +780,7 @@ _update_agents() {
       && [[ ! "${_PrTestCluster}" =~ "CLUSTER" ]]; then
       [ ! -e "/root/.fast.cron.cnf" ] && echo ${InTest} > /root/.fast.cron.cnf
       [ -e "/root/.hr.monitor.cnf" ] && rm -f /root/.hr.monitor.cnf
-      [ -e "/root/.slow.cron.cnf" ] && rm -f /root/.slow.cron.cnf
+      [ -e "/root/.slow.cron.cnf" ] && [ ! -e "/root/.slow.cron.cnf.protected" ] && rm -f /root/.slow.cron.cnf
       [ -e "/root/.tg.cnf" ] && rm -f /root/.tg.cnf
       mysql -u root -e "SET GLOBAL max_connect_errors = 555;"
       mysql -u root -e "SET GLOBAL max_connections = 111;"
@@ -790,7 +790,7 @@ _update_agents() {
     if [ "${InTest}" -ge 9 ] && [ "${InTest}" -le 50 ]; then
       [ ! -e "/root/.fast.cron.cnf" ] && echo ${InTest} > /root/.fast.cron.cnf
       [ -e "/root/.hr.monitor.cnf" ] && rm -f /root/.hr.monitor.cnf
-      [ -e "/root/.slow.cron.cnf" ] && rm -f /root/.slow.cron.cnf
+      [ -e "/root/.slow.cron.cnf" ] && [ ! -e "/root/.slow.cron.cnf.protected" ] && rm -f /root/.slow.cron.cnf
       [ -e "/root/.tg.cnf" ] && rm -f /root/.tg.cnf
       mysql -u root -e "SET GLOBAL max_connect_errors = 777;"
       mysql -u root -e "SET GLOBAL max_connections = 555;"
@@ -811,7 +811,7 @@ _update_agents() {
       [ ! -e "/root/.tg.cnf" ] && echo ${InTest} > /root/.tg.cnf
       [ ! -e "/root/.fast.cron.cnf" ] && echo ${InTest} > /root/.fast.cron.cnf
       [ -e "/root/.hr.monitor.cnf" ] && rm -f /root/.hr.monitor.cnf
-      [ -e "/root/.slow.cron.cnf" ] && rm -f /root/.slow.cron.cnf
+      [ -e "/root/.slow.cron.cnf" ] && [ ! -e "/root/.slow.cron.cnf.protected" ] && rm -f /root/.slow.cron.cnf
       mysql -u root -e "SET GLOBAL max_connect_errors = 555;"
       mysql -u root -e "SET GLOBAL max_connections = 333;"
       mysql -u root -e "SET GLOBAL max_user_connections = 111;"
@@ -821,7 +821,7 @@ _update_agents() {
       [ ! -e "/root/.tg.cnf" ] && echo ${InTest} > /root/.tg.cnf
       [ ! -e "/root/.fast.cron.cnf" ] && echo ${InTest} > /root/.fast.cron.cnf
       [ -e "/root/.hr.monitor.cnf" ] && rm -f /root/.hr.monitor.cnf
-      [ -e "/root/.slow.cron.cnf" ] && rm -f /root/.slow.cron.cnf
+      [ -e "/root/.slow.cron.cnf" ] && [ ! -e "/root/.slow.cron.cnf.protected" ] && rm -f /root/.slow.cron.cnf
       mysql -u root -e "SET GLOBAL max_connect_errors = 777;"
       mysql -u root -e "SET GLOBAL max_connections = 555;"
       mysql -u root -e "SET GLOBAL max_user_connections = 333;"
@@ -831,7 +831,7 @@ _update_agents() {
       [ ! -e "/root/.tg.cnf" ] && echo ${InTest} > /root/.tg.cnf
       [ ! -e "/root/.fast.cron.cnf" ] && echo ${InTest} > /root/.fast.cron.cnf
       [ -e "/root/.hr.monitor.cnf" ] && rm -f /root/.hr.monitor.cnf
-      [ -e "/root/.slow.cron.cnf" ] && rm -f /root/.slow.cron.cnf
+      [ -e "/root/.slow.cron.cnf" ] && [ ! -e "/root/.slow.cron.cnf.protected" ] && rm -f /root/.slow.cron.cnf
       mysql -u root -e "SET GLOBAL max_connect_errors = 999;"
       mysql -u root -e "SET GLOBAL max_connections = 777;"
       mysql -u root -e "SET GLOBAL max_user_connections = 555;"
