@@ -151,11 +151,11 @@ _nginx_high_load_on() {
   mv -f /data/conf/nginx_high_load_off.conf /data/conf/nginx_high_load.conf
   service nginx reload &> /dev/null
   local _log_message
-  _log_message="$(date) nginx_high_load_on ${_load_period} Load: ${_current_load}%"
+  _log_message="$(date) Enabled Spider Protection ${_load_period} Load: ${_current_load}%"
   echo "${_log_message}" >> "${_pthOml}"
-  local _subject="Enabled Spider Protection - ${_load_period} Load ${_current_load}% exceeded Spider Protection Threshold ${_threshold}%"
-  _incident_email_report "${_log_message}" "${_subject}" "INFO"
-  echo >> "${_pthOml}"
+# local _subject="Enabled Spider Protection - ${_load_period} Load ${_current_load}% exceeded Spider Protection Threshold ${_threshold}%"
+# _incident_email_report "${_log_message}" "${_subject}" "INFO"
+# echo >> "${_pthOml}"
   echo "Action Taken: Enabled protection from spiders (nginx high load configuration applied)."
 }
 
@@ -164,11 +164,11 @@ _nginx_high_load_off() {
   mv -f /data/conf/nginx_high_load.conf /data/conf/nginx_high_load_off.conf
   service nginx reload &> /dev/null
   local _log_message
-  _log_message="$(date) nginx_high_load_off Load: ${_O_LOAD}%"
+  _log_message="$(date) Disabled Spider Protection Load: ${_O_LOAD}%"
   echo "${_log_message}" >> "${_pthOml}"
-  local _subject="Disabled Spider Protection - Load decreased below Spider Protection Threshold ${_CPU_SPIDER_THRESHOLD}%"
-  _incident_email_report "${_log_message}" "${_subject}" "INFO"
-  echo >> "${_pthOml}"
+# local _subject="Disabled Spider Protection - Load decreased below Spider Protection Threshold ${_CPU_SPIDER_THRESHOLD}%"
+# _incident_email_report "${_log_message}" "${_subject}" "INFO"
+# echo >> "${_pthOml}"
   echo "Action Taken: Disabled protection from spiders (nginx high load configuration removed)."
 }
 
