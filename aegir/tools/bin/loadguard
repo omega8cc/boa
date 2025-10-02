@@ -1,0 +1,372 @@
+#!/bin/bash
+
+###
+### CPU-scaled load tiers + action hooks
+###
+
+export HOME=/root
+export SHELL=/bin/bash
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
+export _tRee=dev
+export _xSrl=570devT09
+
+[ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
+
+# ===== Config (ratios per CPU) =====
+: "${_CPU_CRIT_RATIO:=6.1}"    # CRIT: pause web + kill long procs + block spiders
+: "${_CPU_MAX_RATIO:=4.1}"     # MAX:  pause web + block spiders
+: "${_CPU_TASK_RATIO:=1.4}"    # TASK: skip backend tasks (but web OK)
+: "${_CPU_SPIDER_RATIO:=1.1}"  # SPIDER: allow web; block spiders only
+
+# Which loads to use for decisions (1m is reactive, 5m guards sustained)
+: "${_USE_1M:=YES}"
+: "${_USE_5M:=YES}"
+
+# Optional iowait relaxation (don’t overreact to D-state spikes)
+: "${_IOWAIT_RELAX_THRESHOLD:=10.0}"   # percent
+: "${_IOWAIT_RELAX_FACTOR:=1.15}"
+
+# Hysteresis to avoid flapping (resume/unblock below this fraction of threshold)
+: "${_RESUME_FRACTION:=0.80}"
+
+# State paths (adjust if you want)
+: "${_LOAD_GUARD_STATE:=/var/run/load_guard.state}"
+: "${_SPIDER_BLOCK_FLAG:=/var/run/spiders.blocked}"
+
+# Debug
+: "${_DEBUG_MODE:=NO}"
+
+###
+### Atomic lock/unlock to prevent TOCTOU race
+###
+_manage_single_lock() {
+  _SELF_NAME="${_SELF_NAME:-$(basename "$0")}"
+  for _L in "/opt/local/bin/lock.inc" "/opt/local/lib/lock.inc"; do
+    [ -r "$_L" ] && . "$_L" && break
+  done
+  if [ -n "${_SINGLE_INSTANCE_LIB_VER:-}" ] && command -v _single_instance_lock >/dev/null 2>&1; then
+    # use shared lock if available
+    _single_instance_lock
+  else
+    # -------- legacy pgrep guard ---------
+    # Exit if more than 2 instances of this script are running
+    _SCRIPT=$(basename "$0")
+    _CNT=$(pgrep -fc ${_SCRIPT})
+    if (( _CNT > 2 )); then
+      echo "Too many ${_SCRIPT} running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
+      exit 0
+    fi
+  fi
+}
+_manage_single_lock
+
+###
+### Sanitize email report variable
+###
+_INCIDENT_REPORT="${_INCIDENT_REPORT^^}"
+case "${_INCIDENT_REPORT}" in
+  "YES"|"NO"|"VERBOSE")
+    ;;
+  *)
+    _INCIDENT_REPORT="YES"
+    ;;
+esac
+
+###
+### Function to send incident email report
+###
+_incident_email_report() {
+  local _message="$1"
+  local _subject="$2"
+  local _incident_level="$3"  # "ALERT" or "INFO"
+  if [ -n "${_MY_EMAIL}" ]; then
+    local _send_email=false
+    if [ "${_INCIDENT_REPORT}" = "VERBOSE" ]; then
+      _send_email=true
+    elif [ "${_INCIDENT_REPORT}" = "YES" ]; then
+      if [ "${_incident_level}" = "ALERT" ]; then
+        _send_email=true
+      fi
+    fi
+    if [ "${_send_email}" = true ]; then
+      _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
+      echo "Sending Incident Report Email on $(date)" >> "${_pthOml}"
+      s-nail -s "Incident Report on ${_hName}: ${_subject}" "${_MY_EMAIL}" < "${_pthOml}"
+    fi
+  fi
+}
+
+###
+### Function to control processes
+###
+_proc_control() {
+  echo "Running process control..."
+  renice "${_B_NICE}" -p $$ &> /dev/null
+  if [ -e "/var/xdrago/proc_num_ctrl.pl" ]; then
+    perl /var/xdrago/proc_num_ctrl.pl &
+  elif [ -e "/var/xdrago_wait/proc_num_ctrl.pl" ]; then
+    perl /var/xdrago_wait/proc_num_ctrl.pl &
+  fi
+  touch /var/log/boa/proc_num_ctrl.done.pid
+  echo "Process control done."
+}
+
+###
+### Function to terminate long-running processes
+###
+_terminate_processes() {
+  local _current_load="$1"
+  local _threshold="$2"
+  local _load_period="$3"
+  if [ ! -e "/run/boa_run.pid" ]; then
+    killall -9 php drush.php wget curl &> /dev/null
+    local _log_message
+    _log_message="$(date) System Load ${_current_load}% (${_load_period}) - PHP/Wget/cURL terminated"
+    echo "${_log_message}" >> "${_pthOml}"
+    local _subject="Processes Terminated - ${_load_period} Load ${_current_load}% exceeded Critical Load Threshold ${_threshold}%"
+    _incident_email_report "${_log_message}" "${_subject}" "ALERT"
+    echo >> "${_pthOml}"
+    echo "Action Taken: Long-running processes terminated due to critical load."
+  fi
+}
+
+# ===== Internals =====
+_CPU_NR=1 _L1=0 _L5=0 _L15=0 _IOWAIT_PCT=0
+
+_count_cpu() {
+  _CPU_NR="$( (command -v nproc >/dev/null 2>&1 && nproc --all) || grep -cE '^processor' /proc/cpuinfo 2>/dev/null || echo 1 )"
+  _CPU_NR="${_CPU_NR//[^0-9]/}"
+  [ -z "${_CPU_NR}" ] && _CPU_NR=1
+  [ "${_CPU_NR}" -lt 1 ] && _CPU_NR=1
+  if [ "${_DEBUG_MODE}" = "YES" ]; then echo "DBG: CPUs=${_CPU_NR}"; fi
+}
+
+_get_loads() {
+  read -r _L1 _L5 _L15 _rest < /proc/loadavg
+  if [ "${_DEBUG_MODE}" = "YES" ]; then echo "DBG: load 1/5/15 = ${_L1}/${_L5}/${_L15}"; fi
+}
+
+_get_iowait_pct() {
+  if ! head -n1 /proc/stat >/dev/null 2>&1; then _IOWAIT_PCT="0"; return; fi
+  read -r _ _u1 _n1 _s1 _i1 _w1 _irq1 _sirq1 _st1 _g1 _gn1 < /proc/stat
+  sleep 0.2
+  read -r _ _u2 _n2 _s2 _i2 _w2 _irq2 _sirq2 _st2 _g2 _gn2 < /proc/stat
+  _TOTAL=$(( (_u2-_u1)+(_n2-_n1)+(_s2-_s1)+(_i2-_i1)+(_w2-_w1)+(_irq2-_irq1)+(_sirq2-_sirq1)+(_st2-_st1) ))
+  [ "${_TOTAL}" -le 0 ] && { _IOWAIT_PCT="0"; return; }
+  _IOWAIT_PCT="$(awk -v w="$((_w2-_w1))" -v t="${_TOTAL}" 'BEGIN{printf "%.1f",(w/t)*100}')"
+  if [ "${_DEBUG_MODE}" = "YES" ]; then echo "DBG: iowait%≈${_IOWAIT_PCT}"; fi
+}
+
+# Scale a ratio (float) by CPUs → absolute load ceiling
+# $1 = ratio
+_ratio_limit() { awk -v c="${_CPU_NR}" -v r="$1" 'BEGIN{printf "%.3f", c*r}'; }
+
+# Float compare helpers (returns shell 0 when TRUE)
+# $1 op $2  (op in >, >=, <, <=)
+_fcmp() { awk -v a="$1" -v b="$3" "BEGIN{exit ! (a $2 b)}"; }
+
+# ===== Decision engine =====
+# Sets: _LOAD_TIER to one of CRIT|MAX|TASK|SPIDER|OK
+# Also sets absolute thresholds used (for logs): _TH_CRIT,_TH_MAX,_TH_TASK,_TH_SPIDER
+_load_eval() {
+  _count_cpu
+  _get_loads
+  _get_iowait_pct
+
+  _TH_CRIT="$(_ratio_limit "${_CPU_CRIT_RATIO}")"
+  _TH_MAX="$(_ratio_limit "${_CPU_MAX_RATIO}")"
+  _TH_TASK="$(_ratio_limit "${_CPU_TASK_RATIO}")"
+  _TH_SPIDER="$(_ratio_limit "${_CPU_SPIDER_RATIO}")"
+
+  # Optional relaxation on iowait
+  awk -v i="${_IOWAIT_PCT}" -v th="${_IOWAIT_RELAX_THRESHOLD}" 'BEGIN{exit (i>=th)?0:1}'
+  if [ $? -eq 0 ]; then
+    _TH_CRIT="$(awk -v v="${_TH_CRIT}" -v f="${_IOWAIT_RELAX_FACTOR}" 'BEGIN{printf "%.3f",v*f}')"
+    _TH_MAX="$(awk -v v="${_TH_MAX}" -v f="${_IOWAIT_RELAX_FACTOR}" 'BEGIN{printf "%.3f",v*f}')"
+    _TH_TASK="$(awk -v v="${_TH_TASK}" -v f="${_IOWAIT_RELAX_FACTOR}" 'BEGIN{printf "%.3f",v*f}')"
+    _TH_SPIDER="$(awk -v v="${_TH_SPIDER}" -v f="${_IOWAIT_RELAX_FACTOR}" 'BEGIN{printf "%.3f",v*f}')"
+    [ "${_DEBUG_MODE}" = "YES" ] && echo "DBG: thresholds relaxed due to iowait≥${_IOWAIT_RELAX_THRESHOLD}%"
+  fi
+
+  # Pick governing load(s)
+  _TRIP=0
+  if [ "${_USE_1M}" = "YES" ]; then _G1="${_L1}"; else _G1="0"; fi
+  if [ "${_USE_5M}" = "YES" ]; then _G5="${_L5}"; else _G5="0"; fi
+  # decide tier by descending severity; any governing load breaching sets the tier
+  if _fcmp "${_G1}" ">" "${_TH_CRIT}" || _fcmp "${_G5}" ">" "${_TH_CRIT}"; then
+    _LOAD_TIER="CRIT"
+  elif _fcmp "${_G1}" ">" "${_TH_MAX}" || _fcmp "${_G5}" ">" "${_TH_MAX}"; then
+    _LOAD_TIER="MAX"
+  elif _fcmp "${_G1}" ">" "${_TH_TASK}" || _fcmp "${_G5}" ">" "${_TH_TASK}"; then
+    _LOAD_TIER="TASK"
+  elif _fcmp "${_G1}" ">" "${_TH_SPIDER}" || _fcmp "${_G5}" ">" "${_TH_SPIDER}"; then
+    _LOAD_TIER="SPIDER"
+  else
+    _LOAD_TIER="OK"
+  fi
+
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    echo "DBG: thresholds SPIDER=${_TH_SPIDER} TASK=${_TH_TASK} MAX=${_TH_MAX} CRIT=${_TH_CRIT}"
+    echo "DBG: tier=${_LOAD_TIER} (1m=${_L1}, 5m=${_L5}, CPUs=${_CPU_NR})"
+  fi
+}
+
+# ===== Action hooks (customize to your stack) =====
+# These default to NOOPs except for simple examples; replace with your own logic.
+
+# Web Services to pause or enable
+_WEB_SERVICES=(
+  "nginx"
+  "php84-fpm"
+  "php83-fpm"
+  "php82-fpm"
+  "php81-fpm"
+  "php80-fpm"
+  "php74-fpm"
+  "php73-fpm"
+  "php72-fpm"
+  "php71-fpm"
+  "php70-fpm"
+  "php56-fpm"
+)
+
+_action_pause_web() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then echo "DBG: Pausing web services"; fi
+  for _svc in "${_WEB_SERVICES[@]}"; do
+    if [ -x "/etc/init.d/${_svc}" ]; then /etc/init.d/"${_svc}" stop >/dev/null 2>&1 || true; fi
+  done
+  echo "WEB SERVICES PAUSED" > "${_LOAD_GUARD_STATE}"
+}
+
+_action_resume_web_if_safe() {
+  # resume only when below hysteresis of MAX threshold
+  _resume_th="$(awk -v v="${_TH_MAX}" -v f="${_RESUME_FRACTION}" 'BEGIN{printf "%.3f", v*f}')"
+  if _fcmp "${_L1}" "<" "${_resume_th}" && _fcmp "${_L5}" "<" "${_resume_th}"; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then echo "DBG: Resuming web services"; fi
+    for _svc in "${_WEB_SERVICES[@]}"; do
+      if [ -x "/etc/init.d/${_svc}" ]; then /etc/init.d/"${_svc}" start >/dev/null 2>&1 || true; fi
+    done
+    echo "WEB SERVICES RUNNING" > "${_LOAD_GUARD_STATE}"
+  else
+    [ "${_DEBUG_MODE}" = "YES" ] && echo "DBG: Keeping web paused (above resume threshold)"
+  fi
+}
+
+# Kill long-running user processes (configurable)
+# Configure: users to target and min runtime in seconds
+: "${_KILL_PROCS:=php,drush.php,wget,curl}" # comma-separated
+: "${_KILL_MIN_RUNTIME:=900}"               # 15 minutes
+
+_action_kill_long_user_procs() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    echo "DBG: Killing procs runtime>=${_KILL_MIN_RUNTIME}s for procs=${_KILL_PROCS}"
+  fi
+  IFS=',' read -r -a _PROCS_ARR <<< "${_KILL_PROCS}"
+  for _process in "${_PROCS_ARR[@]}"; do
+    ps -eo etimes,user,pid,comm --no-headers \
+      | awk -v p="${_process}" -v min="${_KILL_MIN_RUNTIME}" '$1>=min && $4==p {print $3}' \
+      | while read -r _pid; do
+          kill -TERM "${_pid}" 2>/dev/null || true
+          sleep 2
+          kill -KILL "${_pid}" 2>/dev/null || true
+        done
+  done
+}
+
+_action_block_spiders() {
+  # Example: drop a flag your Nginx/CF logic understands
+  [ ! -e "${_SPIDER_BLOCK_FLAG}" ] && touch "${_SPIDER_BLOCK_FLAG}"
+  if [ "${_DEBUG_MODE}" = "YES" ]; then echo "DBG: Spiders blocked (flag on)"; fi
+}
+
+_action_unblock_spiders_if_safe() {
+  _resume_th="$(awk -v v="${_TH_SPIDER}" -v f="${_RESUME_FRACTION}" 'BEGIN{printf "%.3f", v*f}')"
+  if _fcmp "${_L1}" "<" "${_resume_th}" && _fcmp "${_L5}" "<" "${_resume_th}"; then
+    [ -e "${_SPIDER_BLOCK_FLAG}" ] && rm -f "${_SPIDER_BLOCK_FLAG}"
+    if [ "${_DEBUG_MODE}" = "YES" ]; then echo "DBG: Spiders unblocked (flag off)"; fi
+  else
+    [ "${_DEBUG_MODE}" = "YES" ] && echo "DBG: Keeping spiders blocked"
+  fi
+}
+
+# ===== Public helpers for other scripts =====
+_ok_to_run_proc_control() {
+  _load_eval
+  # Auto-healing allowed only in tiers OK and SPIDER
+  if [ "${_LOAD_TIER}" = "OK" ] || [ "${_LOAD_TIER}" = "SPIDER" ]; then
+    return 0
+  fi
+  return 1
+}
+
+_ok_to_run_backend_tasks() {
+  _load_eval
+  # Backend tasks allowed only in tiers OK and SPIDER
+  if [ "${_LOAD_TIER}" = "OK" ] || [ "${_LOAD_TIER}" = "SPIDER" ]; then
+    return 0
+  fi
+  return 1
+}
+
+_ok_to_allow_spiders() {
+  _load_eval
+  # Spiders allowed only in OK
+  [ "${_LOAD_TIER}" = "OK" ] && return 0 || return 1
+}
+
+# ===== Controller (optional cron/loop entrypoint) =====
+# Call this periodically from cron to enforce policy system-wide.
+_enforce_load_policy() {
+  _load_eval
+
+  case "${_LOAD_TIER}" in
+    CRIT)
+      _action_block_spiders
+      _action_pause_web
+      [ ! -e "/run/boa_run.pid" ] && _action_kill_long_user_procs
+      ;;
+    MAX)
+      _action_block_spiders
+      _action_pause_web
+      ;;
+    TASK)
+      _action_block_spiders
+      _action_resume_web_if_safe   # might already be running; hysteresis protects
+      ;;
+    SPIDER)
+      _action_block_spiders
+      _action_resume_web_if_safe
+      ;;
+    OK)
+      _action_unblock_spiders_if_safe
+      _action_resume_web_if_safe
+      ;;
+  esac
+
+  # Optional: export a simple status line for logs/monitoring
+  echo "LOADGUARD tier=${_LOAD_TIER} l1=${_L1} l5=${_L5} cpus=${_CPU_NR}"
+}
+
+# ===== Usage examples =====
+# System-wide guard via cron (every minute)
+#   * * * * * root /bin/bash /opt/local/bin/loadguard enforce >/var/log/boa/load_guard.log 2>&1
+#
+# Gate Aegir backend runner
+# Decide whether to run _proc_control
+if _ok_to_run_backend_tasks; then
+  nohup ionice -c2 -n7 nice -n5 bash /var/xdrago/runner.sh > /dev/null 2>&1 &
+  _proc_control
+else
+  [ "${_DEBUG_MODE}" = "YES" ] && echo "DBG: Skipping backend tasks due to load"
+fi
+
+# Simple CLI
+case "$1" in
+  enforce) _enforce_load_policy ;;
+  ok-tasks) _ok_to_run_backend_tasks ;;
+  ok-spiders) _ok_to_allow_spiders ;;
+  *)
+    echo "Usage: $0 {enforce|ok-tasks|ok-spiders}"
+    exit 2
+    ;;
+esac
