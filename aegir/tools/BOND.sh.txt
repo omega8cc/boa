@@ -1911,7 +1911,6 @@ if _prompt_yes_no "${_tPrmt}?" ; then
     _mrun "sleep 30"
   fi
   _msg "INFO: Tuning in progress, please wait..."
-  [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
   _restore_default_php
   _php_conf_update
   _tune_php
@@ -1928,7 +1927,6 @@ else
     service cron stop &> /dev/null
     _mrun "sleep 30"
   fi
-  [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
   _restore_default_php
   _php_conf_update
   _restore_default_sql

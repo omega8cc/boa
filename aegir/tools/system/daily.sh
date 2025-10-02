@@ -2864,7 +2864,6 @@ _get_load() {
 }
 
 _load_control() {
-  [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
   : "${_CPU_TASK_RATIO:=1.4}"
   [ -e "/root/.force.sites.verify.cnf" ] && _CPU_TASK_RATIO=2.1
   _CPU_TASK_RATIO="$(_sanitize_number "${_CPU_TASK_RATIO}")"
@@ -2948,7 +2947,6 @@ _cleanup_weblogx() {
 
 _incident_email_report() {
   if [ -e "/root/.barracuda.cnf" ]; then
-    source /root/.barracuda.cnf
     _thisEmail="${_MY_EMAIL}"
     export _INCIDENT_REPORT=${_INCIDENT_REPORT//[^A-Z]/}
     : "${_INCIDENT_REPORT:=YES}"

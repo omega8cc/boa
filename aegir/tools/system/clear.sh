@@ -223,7 +223,6 @@ _check_dns_curl() {
 
 if [ ! -e "/run/boa_run.pid" ]; then
   _check_dns_curl
-  [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
   rm -f /tmp/*error*
   wget -qO- http://${_USE_MIR}/versions/${_tRee}/boa/BOA.sh.txt | bash
   wait
