@@ -703,6 +703,7 @@ _get_load() {
 }
 
 _load_control() {
+  # shellcheck disable=SC1091
   [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
   : "${_CPU_TASK_RATIO:=1.4}"
   _CPU_TASK_RATIO="$(_sanitize_number "${_CPU_TASK_RATIO}")"

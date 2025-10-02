@@ -6,6 +6,7 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 
 [ -e "/root/.proxy.cnf" ] && exit 0
 
+# shellcheck disable=SC1091
 [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
 
     # Sanitize to allow only digits and minus sign

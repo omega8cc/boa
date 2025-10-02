@@ -3024,7 +3024,10 @@ _daily_action() {
             su -s /bin/bash - ${_HM_U} -c "drush10 site:alias-convert ~/.drush/sites --yes" &> /dev/null
             wait
           fi
-          source /root/.${_HM_U}.octopus.cnf
+
+          # shellcheck disable=SC1091
+          [ -e "/root/.${_HM_U}.octopus.cnf" ] && source /root/.${_HM_U}.octopus.cnf
+
           _DEL_OLD_EMPTY_PLATFORMS=${_DEL_OLD_EMPTY_PLATFORMS//[^0-9]/}
           _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
           _MY_EMAIL=${_MY_EMAIL//\\\@/\@}
@@ -3240,6 +3243,7 @@ fi
 mkdir -p /var/log/boa/daily
 mkdir -p /var/log/boa/le
 #
+# shellcheck disable=SC1091
 [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
 #
 _find_fast_mirror_early

@@ -1984,9 +1984,10 @@ _manage_user() {
           rm -f ${_dscUsr}/tools/le/.ctrl/ssl-demo-mode.pid
         fi
       fi
-      if [ -e "/root/.${_USER}.octopus.cnf" ]; then
-        source /root/.${_USER}.octopus.cnf
-      fi
+
+      # shellcheck disable=SC1091
+      [ -e "/root/.${_USER}.octopus.cnf" ] && source /root/.${_USER}.octopus.cnf
+
       _THIS_HM_PLR=$(cat ${_dscUsr}/.drush/hostmaster.alias.drushrc.php \
         | grep "root'" \
         | cut -d: -f2 \

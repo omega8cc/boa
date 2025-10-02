@@ -268,6 +268,7 @@ _check_root() {
     echo "22 22   * * *   root    du -s /var/lib/mysql/* > /root/.du.sql" >> /etc/crontab
     sed -i "/^$/d"  /etc/crontab
     grep du.sql /etc/crontab
+    # shellcheck disable=SC1091
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
     _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
 

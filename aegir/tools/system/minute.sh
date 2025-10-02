@@ -9,6 +9,7 @@ _oldOml="/var/log/boa/oom.incident.old.log"
 
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
+    # shellcheck disable=SC1091
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
     chmod a+w /dev/null
   else

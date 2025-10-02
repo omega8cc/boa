@@ -573,9 +573,9 @@ _check_all() {
 }
 
 _check_config_cluster() {
-  if [ -e "/root/.cluster.cnf" ]; then
-    source /root/.cluster.cnf
-  fi
+
+  # shellcheck disable=SC1091
+  [ -e "/root/.cluster.cnf" ] && source /root/.cluster.cnf
 
   _CLUSTER_PREFIX="${_CLUSTER_PREFIX//[^a-z0-9]/}"
   _CLUSTER_PREFIX="$(echo -n ${_CLUSTER_PREFIX} | tr A-Z a-z 2>&1)"

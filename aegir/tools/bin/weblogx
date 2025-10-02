@@ -16,6 +16,7 @@ _sPmrs="https://raw.githubusercontent.com/matomo-org/referrer-spam-blacklist/mas
 
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
+    # shellcheck disable=SC1091
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
     ionice -c2 -n7 -p $$
     renice 19 -p $$

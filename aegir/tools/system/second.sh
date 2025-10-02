@@ -42,9 +42,8 @@ _manage_single_lock
 : "${_INCIDENT_REPORT:=YES}"
 
 # Source configuration file to override defaults
-if [ -e "/root/.barracuda.cnf" ]; then
-  source /root/.barracuda.cnf
-fi
+# shellcheck disable=SC1091
+[ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
 
     # Sanitize to allow only digits and minus sign
     export _B_NICE=${_B_NICE//[^0-9-]/}

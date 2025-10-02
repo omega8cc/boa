@@ -859,9 +859,8 @@ _migrate_init() {
           touch ${_USR}/log/transferred.pid
         fi
       else
-        if [ -e "/root/.${_oct}.octopus.cnf" ]; then
-          source /root/.${_oct}.octopus.cnf
-        fi
+        # shellcheck disable=SC1091
+        [ -e "/root/.${_oct}.octopus.cnf" ] && source /root/.${_oct}.octopus.cnf
         ### We are using max verbose mode by default
         _migrate_prepare
           ### _NOW=$(date +%y%m%d-%H%M)
@@ -1102,22 +1101,21 @@ _check_root() {
         ln -sfn /proc/self/fd /dev/fd
       fi
     fi
-    if [ -e "/root/.barracuda.cnf" ]; then
-      source /root/.barracuda.cnf
-      _ADM_EMAIL=${_MY_EMAIL//\\\@/\@}
-      _BCC_EMAIL=${_MY_EMAIL//\\\@/\@}
-      if [ "${_THIS_DB_HOST}" = "localhost" ] \
-        || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
-        _SQL_CONNECT=localhost
-      elif [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
-        || [ "${_THIS_DB_HOST}" = "PROXYSQL" ]; then
-        _SQL_CONNECT=127.0.0.1
-      else
-        _SQL_CONNECT="${_THIS_DB_HOST}"
-      fi
-      if [ "${_THIS_DB_HOST}" = "${_MY_OWNIP}" ]; then
-        _SQL_CONNECT=localhost
-      fi
+    # shellcheck disable=SC1091
+    [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
+    _ADM_EMAIL=${_MY_EMAIL//\\\@/\@}
+    _BCC_EMAIL=${_MY_EMAIL//\\\@/\@}
+    if [ "${_THIS_DB_HOST}" = "localhost" ] \
+      || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
+      _SQL_CONNECT=localhost
+    elif [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
+      || [ "${_THIS_DB_HOST}" = "PROXYSQL" ]; then
+      _SQL_CONNECT=127.0.0.1
+    else
+      _SQL_CONNECT="${_THIS_DB_HOST}"
+    fi
+    if [ "${_THIS_DB_HOST}" = "${_MY_OWNIP}" ]; then
+      _SQL_CONNECT=localhost
     fi
     _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
   else

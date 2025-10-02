@@ -59,6 +59,7 @@ echo "INFO: Waiting ${_n} seconds on $(date) before running backup..."
 sleep ${_n}
 echo "INFO: Starting backup on $(date)"
 
+# shellcheck disable=SC1091
 [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
 
     # Sanitize to allow only digits and minus sign

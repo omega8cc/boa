@@ -10,6 +10,7 @@ _VALIDATION_LOG_FILE="/var/log/backup_validation_issues.log"
 
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
+    # shellcheck disable=SC1091
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
     export _INCIDENT_REPORT=${_INCIDENT_REPORT//[^A-Z]/}
     : "${_INCIDENT_REPORT:=YES}"

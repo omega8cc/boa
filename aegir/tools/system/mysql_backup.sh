@@ -65,6 +65,7 @@ fi
 
 echo "INFO: Starting dbs backup on $(date)"
 
+# shellcheck disable=SC1091
 [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
 
     # Sanitize to allow only digits and minus sign

@@ -11,7 +11,9 @@ _wgetGet="--max-redirect=3 --no-check-certificate -q --tries=9 --wait=9 --user-a
 
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
+    # shellcheck disable=SC1091
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
+
     # Sanitize to allow only digits and minus sign
     export _B_NICE=${_B_NICE//[^0-9-]/}
 

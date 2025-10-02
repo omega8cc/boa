@@ -11,6 +11,7 @@ _check_root() {
     echo "ERROR: This script should be run as root"
     exit 1
   else
+    # shellcheck disable=SC1091
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
     # Sanitize to allow only digits and minus sign
     export _B_NICE=${_B_NICE//[^0-9-]/}
