@@ -153,7 +153,7 @@ _find_correct_ip() {
   if [ -n "${_LOC_IP}" ] && grep -qE "${_LOC_IP}\s" /etc/hosts; then
     cp -af /etc/hosts /etc/.was.hosts
     sed -i "s/^${_LOC_IP}.*//g" /etc/hosts
-    [ -x "/etc/init.d/unbound" ] && service unbound restart &> /dev/null
+    [ -x "/etc/init.d/unbound" ] && service unbound restart && wait &> /dev/null
   fi
 }
 
@@ -569,6 +569,7 @@ _dns_unbound_install_upgrade() {
     chmod 755 /etc/init.d/unbound
     _mrun "update-rc.d unbound defaults" 2> /dev/null
     _mrun "service unbound reload" 2> /dev/null
+    wait
   fi
   if [ -x "${_isUnbnd}" ] \
     && [ "${_isUnbndFix}" = "NO" ] \

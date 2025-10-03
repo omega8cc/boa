@@ -2874,6 +2874,7 @@ _php_upgrade_all() {
       fi
       _php_multi_update "${e}"
       _mrun "service php${e}-fpm reload" 2> /dev/null
+      wait
       _PHP_VERSION=""
       _T_PHP_VRN=""
       _T_PHP_PTH=""

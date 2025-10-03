@@ -48,6 +48,7 @@ _clean_pid_exit() {
   [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
   [ -e "/tmp/aegir_backup_mode.txt" ] && rm -f /tmp/aegir_backup_mode.txt
   service cron start &> /dev/null
+  wait
   exit 1
 }
 
@@ -1300,6 +1301,7 @@ _up_finish() {
   fi
   if [ -e "/etc/init.d/postfix" ]; then
     service postfix restart &> /dev/null
+    wait
   fi
   if [ "$(boa info | grep -c Percona)" -ge 3 ] || [ -e "/usr/sbin/csf" ]; then
     # Execute the daily.sh and exit
@@ -1693,6 +1695,7 @@ _check_root() {
     wait
     if [ -e "/etc/init.d/postfix" ]; then
       service postfix restart &> /dev/null
+      wait
     fi
   else
     echo "ERROR: This script should be run as a root user"

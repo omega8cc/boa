@@ -72,6 +72,7 @@ _forced_redis_password_update() {
   fi
   if [ "${_FORCE_REDIS_RESTART}" = "YES" ]; then
     _mrun "service redis-server reload" 2> /dev/null
+    wait
   fi
 }
 #
@@ -308,6 +309,7 @@ _install_redis_src() {
   _redis_password_update
   touch ${_pthLog}/redis-${_REDIS_VRN}-${_xSrl}-${_X_VERSION}.log
   _mrun "service redis-server reload" 2> /dev/null
+  wait
 }
 
 _redis_install_upgrade() {

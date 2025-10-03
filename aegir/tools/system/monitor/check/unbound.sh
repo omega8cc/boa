@@ -187,6 +187,7 @@ CONF
 
   unbound-checkconf "${_MAIN_CONF}"
   service unbound reload
+  wait
 
   if dig @127.0.0.1 api.sendgrid.com | grep -q 'status: NXDOMAIN'; then
     echo "OK: NXDOMAIN for api.sendgrid.com"
@@ -208,6 +209,7 @@ _unbound_check_nomail() {
     _isActiveCtrl=$(unbound-control list_local_zones | grep -E 'sendgrid' 2>&1)
     if [[ ! "${_isActiveCtrl}" =~ "sendgrid" ]]; then
       service unbound reload &> /dev/null
+      wait
     fi
   fi
 }

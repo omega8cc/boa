@@ -84,6 +84,7 @@ _fpm_forced_restart() {
   for e in ${_PHP_V}; do
     if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
       service php${e}-fpm start
+      wait
     fi
   done
   _incident_email_report "PHP $1"

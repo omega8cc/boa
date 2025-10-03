@@ -164,7 +164,7 @@ _find_correct_ip() {
   if [ -n "${_LOC_IP}" ] && grep -qE "${_LOC_IP}\s" /etc/hosts; then
     cp -af /etc/hosts /etc/.was.hosts
     sed -i "s/^${_LOC_IP}.*//g" /etc/hosts
-    [ -x "/etc/init.d/unbound" ] && service unbound restart &> /dev/null
+    [ -x "/etc/init.d/unbound" ] && service unbound restart && wait &> /dev/null
   fi
 }
 
@@ -1901,6 +1901,7 @@ _update_agents() {
     for e in ${_PHP_V}; do
       if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
         service php${e}-fpm reload &> /dev/null
+        wait
       fi
     done
     _PHP_V="55 54 53"
@@ -2147,6 +2148,7 @@ _update_agents() {
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
           service php${e}-fpm reload &> /dev/null
+          wait
         fi
       done
     else
@@ -2502,6 +2504,7 @@ _update_agents() {
       chmod 755 /etc/cron.hourly/systemtime
       chown root:root /etc/cron.hourly/systemtime
       service cron restart
+      wait
       touch ${_pthLog}/systemtime.ctrl.f95.${_tRee}.${_xSrl}.pid
     fi
   fi
@@ -3393,6 +3396,7 @@ _fix_log4j_solr7() {
     if [[ ! "${_RESULT_LOG4J}" =~ "LOG4J" ]] || [ ! -z "${_DO_SOLR_RESTART}" ]; then
       #pkill -9 -f solr7
       service solr7 restart &> /dev/null
+      wait
     fi
   fi
 }
@@ -3522,6 +3526,7 @@ _fix_sftp_server() {
       echo "Subsystem sftp /usr/lib/openssh/sftp-server -u 0002" >> /etc/ssh/sshd_config
       sed -i "/^$/d" /etc/ssh/sshd_config
       service ssh restart 2> /dev/null
+      wait
     fi
   fi
 }
@@ -3689,6 +3694,7 @@ _fix_newrelic() {
     && [ ! -e "${_PHP_EXT_DIR_74}/newrelic.so" ]; then
     ln -sfn ${_NR_SO} ${_PHP_EXT_DIR_74}/newrelic.so
     service php74-fpm reload
+    wait
   fi
 
   _PHP_EXT_DIR_71="/opt/php71/lib/php/extensions/no-debug-non-zts-20160303"
@@ -3698,6 +3704,7 @@ _fix_newrelic() {
     && [ -L "${_PHP_EXT_DIR_71}/newrelic.so" ]; then
     rm -f ${_PHP_EXT_DIR_71}/newrelic.so
     service php71-fpm reload
+    wait
   fi
 
   _PHP_EXT_DIR_70="/opt/php70/lib/php/extensions/no-debug-non-zts-20151012"
@@ -3707,6 +3714,7 @@ _fix_newrelic() {
     && [ -L "${_PHP_EXT_DIR_70}/newrelic.so" ]; then
     rm -f ${_PHP_EXT_DIR_70}/newrelic.so
     service php70-fpm reload
+    wait
   fi
 
   _PHP_EXT_DIR_56="/opt/php56/lib/php/extensions/no-debug-non-zts-20131226"
@@ -3716,6 +3724,7 @@ _fix_newrelic() {
     && [ -L "${_PHP_EXT_DIR_56}/newrelic.so" ]; then
     rm -f ${_PHP_EXT_DIR_56}/newrelic.so
     service php56-fpm reload
+    wait
   fi
 }
 
@@ -4574,6 +4583,7 @@ _sysctl_update() {
         echo ULIMIT=\"-n 524288\" >> /etc/default/nginx
         ulimit -n 524288 &> /dev/null
         service nginx restart &> /dev/null
+        wait
       fi
     fi
     if [ -e "/etc/security/limits.d" ] \
@@ -4594,15 +4604,20 @@ _sysctl_update() {
       echo "@www-data hard nofile 524288" >> /etc/security/limits.d/www.conf
       if [ -e "/etc/init.d/valkey-server" ]; then
         service valkey-server restart &> /dev/null
+        wait
       elif [ -e "/etc/init.d/redis-server" ]; then
         service redis-server restart &> /dev/null
+        wait
       fi
       service nginx restart &> /dev/null
+      wait
       service ssh restart &> /dev/null
+      wait
       _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
           service php${e}-fpm reload &> /dev/null
+          wait
         fi
       done
     fi
@@ -4856,6 +4871,7 @@ if [ "$(id -u)" -eq 0 ]; then
   fi
   if [ ! -e "/root/.upstart.cnf" ]; then
     service cron reload &> /dev/null
+    wait
   fi
   if [ "${_SCREEN_INIT}" = "YES" ]; then
     if [ "${_DEBUG_MODE}" != "YES" ]; then
