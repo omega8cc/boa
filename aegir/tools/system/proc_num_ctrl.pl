@@ -133,12 +133,6 @@ if (!any_file_exists($run_to_files)) {
   system("service droplet-agent restart") if (!-f "/run/droplet-agent.pid" && -f "/etc/init.d/droplet-agent");
 }
 
-if (!-f "/run/boa_run.pid" && !-f "/run/boa_wait.pid" && -f "/etc/init.d/vnstat") {
-  if (!-f "/run/vnstat/vnstat.pid") {
-    system("service vnstat restart");
-  }
-}
-
 if (-f "/etc/init.d/valkey-server") {
   if (!-d "/run/valkey") {
     system("mkdir -p /run/valkey");

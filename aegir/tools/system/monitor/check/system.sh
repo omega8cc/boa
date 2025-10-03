@@ -278,6 +278,20 @@ _dirmngr_too_many_instances_detection() {
   fi
 }
 
+_vnstat_health_check_fix() {
+  if [ -x "/etc/init.d/vnstat" ]; then
+    if ! pgrep -f /usr/sbin/vnstatd \
+      || [ ! -e "/run/vnstat/vnstat.pid" ]; then
+      service vnstat restart
+      wait
+      _thisErrLog="$(date) VNStat Monitor was down, restarted"
+      echo ${_thisErrLog} >> ${_pthOml}
+      _incident_email_report "VNStat Monitor was down, restarted"
+      echo >> ${_pthOml}
+    fi
+  fi
+}
+
 _lfd_health_check_fix() {
   if [ -x "/etc/init.d/lfd" ]; then
     if ! pgrep -f lfd \
@@ -327,6 +341,7 @@ _syslog_giant_log_detection
 [ "${_ALLOW_CTRL}" = "YES" ] && _optimize_ram
 [ "${_ALLOW_CTRL}" = "YES" ] && _system_oom_detection
 [ "${_ALLOW_CTRL}" = "YES" ] && _lfd_health_check_fix
+[ "${_ALLOW_CTRL}" = "YES" ] && _vnstat_health_check_fix
 [ "${_ALLOW_CTRL}" = "YES" ] && _gpg_too_many_instances_detection
 [ "${_ALLOW_CTRL}" = "YES" ] && _dirmngr_too_many_instances_detection
 
