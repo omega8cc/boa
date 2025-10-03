@@ -145,18 +145,6 @@ if (!any_file_exists($run_to_files)) {
   system("service lsyncd start") if (!$lsyncdsumar && -f "/etc/init.d/lsyncd");
 }
 
-$ftpdinit="/usr/local/sbin/pure-config.pl";
-$ftpdconf="/usr/local/etc/pure-ftpd.conf";
-$ftpdbind="/usr/local/sbin/pure-ftpd";
-$ftpdpid="/run/pure-ftpd.pid";
-
-if (-f "$ftpdbind" && -f "$ftpdconf" && !any_file_exists($run_to_files)) {
-  if (!$ftpsumar || !-f "$ftpdpid") {
-    system("killall -9 pure-ftpd");
-    if (-f "$ftpdinit") { system("$ftpdinit $ftpdconf"); }
-    else { system("$ftpdbind $ftpdconf"); }
-  }
-}
 if ($dhcpcdlives || $dhclientlives) {
   chomp(my $wanted = `cat /etc/hostname`);
   chomp(my $current = `hostname`);

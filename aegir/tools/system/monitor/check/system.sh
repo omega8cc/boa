@@ -278,6 +278,36 @@ _dirmngr_too_many_instances_detection() {
   fi
 }
 
+_ftpd_health_check_fix() {
+  _ftpd_init="/usr/local/sbin/pure-config.pl"
+  _ftpd_conf="/usr/local/etc/pure-ftpd.conf"
+  _ftpd_bind="/usr/local/sbin/pure-ftpd"
+  _ftpd_pid="/run/pure-ftpd.pid"
+  _ftpd_restarted=NO
+  if [ -x "/usr/local/sbin/pure-ftpd" ] \
+    || [ -x "/usr/local/sbin/pure-config.pl" ]; then
+    if ! pgrep -f pure-ftpd \
+      || [ ! -e "/run/pure-ftpd.pid" ]; then
+      if [ -e "${_ftpd_conf}" ]; then
+        pkill -9 -f pure-ftpd || true
+        if [ -x "${_ftpd_init}" ]; then
+          ${_ftpd_init} ${_ftpd_conf}
+          _ftpd_restarted=YES
+        elif [ -x "${_ftpd_bind}" ]; then
+          ${_ftpd_bind} ${_ftpd_conf}
+          _ftpd_restarted=YES
+        fi
+        if [ "${_ftpd_restarted}" = "YES" ]; then
+          _thisErrLog="$(date) FTPS Server was down, restarted"
+          echo ${_thisErrLog} >> ${_pthOml}
+          _incident_email_report "FTPS Server was down, restarted"
+          echo >> ${_pthOml}
+        fi
+      fi
+    fi
+  fi
+}
+
 _postfix_health_check_fix() {
   if [ -x "/etc/init.d/postfix" ]; then
     if ! pgrep -f /usr/lib/postfix \
@@ -356,6 +386,7 @@ _syslog_giant_log_detection
 [ "${_ALLOW_CTRL}" = "YES" ] && _optimize_ram
 [ "${_ALLOW_CTRL}" = "YES" ] && _system_oom_detection
 [ "${_ALLOW_CTRL}" = "YES" ] && _lfd_health_check_fix
+[ "${_ALLOW_CTRL}" = "YES" ] && _ftpd_health_check_fix
 [ "${_ALLOW_CTRL}" = "YES" ] && _vnstat_health_check_fix
 [ "${_ALLOW_CTRL}" = "YES" ] && _gpg_too_many_instances_detection
 [ "${_ALLOW_CTRL}" = "YES" ] && _dirmngr_too_many_instances_detection
