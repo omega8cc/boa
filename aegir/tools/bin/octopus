@@ -51,6 +51,7 @@ _clean_pid_exit() {
   [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
   [ -e "/tmp/aegir_backup_mode.txt" ] && rm -f /tmp/aegir_backup_mode.txt
   service cron start &> /dev/null
+  wait
   exit 1
 }
 
@@ -83,7 +84,7 @@ _if_hosted_sys() {
 _check_sql_running() {
   while [ -z "${_IS_MYSQLD_RUNNING}" ] \
     || [ ! -e "/run/mysqld/mysqld.sock" ]; do
-    _IS_MYSQLD_RUNNING=$(pgrep -f mysqld)
+    _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
     echo "INFO: Waiting for MySQLD availability..."
     sleep 3
   done
@@ -109,7 +110,7 @@ _check_sql_access() {
     echo " "
     _clean_pid_exit _check_sql_access_b
   else
-    _IS_MYSQLD_RUNNING=$(pgrep -f mysqld)
+    _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
     if [ -z "${_IS_MYSQLD_RUNNING}" ]; then
       echo "ALERT: SQL server on this system is not running at all."
       echo "ALERT: Please fix this before trying again, giving up."
@@ -645,8 +646,7 @@ _get_load() {
 }
 
 _load_control() {
-  [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
-  : "${_CPU_TASK_RATIO:=1.4}"
+  : "${_CPU_TASK_RATIO:=2.1}"
   _CPU_TASK_RATIO="$(_sanitize_number "${_CPU_TASK_RATIO}")"
   _O_LOAD_MAX=$(echo "${_CPU_TASK_RATIO} * 100" | bc -l)
   _get_load
@@ -903,7 +903,7 @@ _find_fast_mirror_early() {
 }
 
 _if_reinstall_curl() {
-  _CURL_VRN=8.14.1
+  _CURL_VRN=8.16.0
   if ! command -v lsb_release &> /dev/null; then
     apt-get update -qq &> /dev/null
     apt-get install lsb-release ${_aptYesUnth} -qq &> /dev/null
@@ -1099,6 +1099,7 @@ _find_correct_ip() {
 
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
+    # shellcheck disable=SC1091
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
     _find_correct_ip
     _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"

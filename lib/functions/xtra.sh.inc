@@ -212,6 +212,7 @@ _fix_collectd_rrd_syslog_flood() {
       echo "        IgnoreSelected true" >> ${_COLLECTD_CNF}
       echo "</Plugin>"                   >> ${_COLLECTD_CNF}
       _mrun "service collectd restart" 2> /dev/null
+      wait
     fi
   fi
 }
@@ -235,6 +236,7 @@ _fix_collectd_nginx() {
       sed -i "s/^#LoadPlugin nginx/LoadPlugin nginx/g"        ${_COLLECTD_CNF}
       wait
       _mrun "service collectd restart" 2> /dev/null
+      wait
     fi
   fi
 }
@@ -372,6 +374,7 @@ _if_install_bind() {
         cp -af ${_locCnf}/var/named.conf.options /etc/bind/named.conf.options
         sed -i "s/127.0.1.1/${_THISHTIP}/g" /etc/bind/named.conf.options &> /dev/null
         _mrun "service bind9 restart" 2> /dev/null
+        wait
         if [ ! -e "/etc/init.d/bind" ]; then
           ln -sfn /etc/init.d/bind9 /etc/init.d/bind
         fi

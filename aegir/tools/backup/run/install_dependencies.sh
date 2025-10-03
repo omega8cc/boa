@@ -23,6 +23,7 @@ _check_root() {
     renice 0 -p $$
     chmod a+w /dev/null
     [ -e "/root/.gnupg" ] && chmod 700 /root/.gnupg
+    # shellcheck disable=SC1091
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
   else
     echo "ERROR: This script should be run as a root user"
