@@ -271,7 +271,7 @@ _ftpd_health_check_fix() {
   _ftpd_restarted=NO
   if [ -x "/usr/local/sbin/pure-ftpd" ] \
     || [ -x "/usr/local/sbin/pure-config.pl" ]; then
-    if ! pgrep -f pure-ftpd \
+    if ! pgrep -f -q pure-ftpd \
       || [ ! -e "/run/pure-ftpd.pid" ]; then
       if [ -e "${_ftpd_conf}" ]; then
         pkill -9 -f pure-ftpd || true
@@ -295,7 +295,7 @@ _ftpd_health_check_fix() {
 
 _postfix_health_check_fix() {
   if [ -x "/etc/init.d/postfix" ]; then
-    if ! pgrep -f /usr/lib/postfix \
+    if ! pgrep -f -q /usr/lib/postfix \
       || [ ! -e "/var/spool/postfix/pid/master.pid" ]; then
       service postfix restart
       wait
@@ -309,7 +309,7 @@ _postfix_health_check_fix() {
 
 _vnstat_health_check_fix() {
   if [ -x "/etc/init.d/vnstat" ]; then
-    if ! pgrep -f /usr/sbin/vnstatd \
+    if ! pgrep -f -q /usr/sbin/vnstatd \
       || [ ! -e "/run/vnstat/vnstat.pid" ]; then
       service vnstat restart
       wait
@@ -323,7 +323,7 @@ _vnstat_health_check_fix() {
 
 _lfd_health_check_fix() {
   if [ -x "/etc/init.d/lfd" ]; then
-    if ! pgrep -f lfd \
+    if ! pgrep -f -q lfd \
       || [ ! -e "/run/lfd.pid" ]; then
       service lfd start
       wait
@@ -353,7 +353,7 @@ _if_fix_locked_sshd() {
 
 _sshd_health_check_fix() {
   if [ -x "/etc/init.d/ssh" ]; then
-    if ! pgrep -f /usr/sbin/sshd \
+    if ! pgrep -f -q /usr/sbin/sshd \
       || [ ! -e "/run/sshd.pid" ]; then
       service ssh start
       wait
@@ -383,7 +383,7 @@ _clamav_health_check_fix() {
     && [ -e "${_clamd_service}" ] \
     && [ -e "${_freshclam_service}" ]; then
     if [ -x "/etc/init.d/clamav-daemon" ]; then
-      if ! pgrep -f /usr/sbin/clamd \
+      if ! pgrep -f -q /usr/sbin/clamd \
         || [ ! -e "/run/clamav/clamd.pid" ]; then
         pkill -9 -f /usr/sbin/clamd || true
         service clamav-daemon start
@@ -395,7 +395,7 @@ _clamav_health_check_fix() {
       fi
     fi
     if [ -x "/etc/init.d/clamav-freshclam" ]; then
-      if ! pgrep -f /usr/bin/freshclam \
+      if ! pgrep -f -q /usr/bin/freshclam \
         || [ ! -e "/run/clamav/freshclam.pid" ]; then
         pkill -9 -f /usr/bin/freshclam || true
         service clamav-freshclam start
@@ -412,7 +412,7 @@ _clamav_health_check_fix() {
 
 _rsyslog_health_check_fix() {
   if [ -x "/etc/init.d/rsyslog" ]; then
-    if ! pgrep -f /usr/sbin/rsyslogd \
+    if ! pgrep -f -q /usr/sbin/rsyslogd \
       || [ ! -e "/run/rsyslogd.pid" ]; then
       pkill -9 -f /usr/sbin/rsyslogd || true
       service rsyslog restart

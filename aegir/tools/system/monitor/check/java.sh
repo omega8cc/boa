@@ -124,7 +124,7 @@ _jetty_listen_conflict_detection() {
 }
 
 _jenkins_health_check_fix() {
-  if ! pgrep -f java/jenkins \
+  if ! pgrep -f -q java/jenkins \
     || [ ! -e "/run/jenkins/jenkins.pid" ]; then
     killall -9 java
     sleep 3
@@ -139,7 +139,7 @@ _jenkins_health_check_fix() {
 
 _solr_health_check_fix() {
   if [ -x "/etc/init.d/solr9" ]; then
-    if ! pgrep -f /var/solr9 \
+    if ! pgrep -f -q /var/solr9 \
       || [ ! -e "/var/solr9/solr-9099.pid" ]; then
       service solr9 restart
       wait
@@ -150,7 +150,7 @@ _solr_health_check_fix() {
     fi
   fi
   if [ -x "/etc/init.d/solr7" ]; then
-    if ! pgrep -f /var/solr7 \
+    if ! pgrep -f -q /var/solr7 \
       || [ ! -e "/var/solr7/solr-9077.pid" ]; then
       service solr7 restart
       wait
@@ -161,7 +161,7 @@ _solr_health_check_fix() {
     fi
   fi
   if [ -x "/etc/init.d/jetty9" ]; then
-    if ! pgrep -f /opt/jetty9 \
+    if ! pgrep -f -q /opt/jetty9 \
       || [ ! -e "/run/jetty9.pid" ]; then
       service jetty9 restart
       wait

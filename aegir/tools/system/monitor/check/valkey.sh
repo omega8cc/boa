@@ -156,7 +156,7 @@ _if_valkey_restart() {
 }
 
 _valkey_health_check_fix() {
-  if ! pgrep -f /usr/bin/valkey-server \
+  if ! pgrep -f -q /usr/bin/valkey-server \
     || [ ! -e "/run/valkey/valkey.sock" ] \
     || [ ! -e "/run/valkey/valkey.pid" ]; then
     mkdir -p /run/valkey
