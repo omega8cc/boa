@@ -145,7 +145,7 @@ _unbound_check_fix() {
     sleep 3
     rm -f /run/wait-unbound.pid
   elif (( _CNT < 1 )); then
-    [ -e "/etc/init.d/unbound" ] && service unbound restart &> /dev/null
+    [ -x "/etc/init.d/unbound" ] && service unbound restart && wait &> /dev/null
   fi
 }
 
