@@ -345,9 +345,9 @@ _if_fix_locked_sshd() {
     pkill -9 -f /usr/sbin/sshd || true
     service ssh start
     wait
-    _thisErrLog="$(date) SSHD BIND error detected, service restarted"
+    _thisErrLog="$(date) SSHD BIND PORT error, service will be restarted"
     echo ${_thisErrLog} >> ${_pthOml}
-    _incident_email_report "SSHD BIND error detected, service restarted"
+    _incident_email_report "SSHD BIND PORT error, service will be restarted"
     echo >> ${_pthOml}
   fi
 }
