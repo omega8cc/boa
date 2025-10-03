@@ -49,17 +49,17 @@ if [ -e "${_pthOml}" ] && [ ! -e "${_oldOml}" ]; then
   mv -f ${_pthOml} ${_oldOml}
 fi
 
-bash /var/xdrago/monitor/check/nginx.sh &
-bash /var/xdrago/monitor/check/php.sh &
+nohup /var/xdrago/monitor/check/system.sh > /dev/null 2>&1 &
+nohup /var/xdrago/monitor/check/unbound.sh > /dev/null 2>&1 &
 if [ -e "/etc/init.d/valkey-server" ]; then
-  bash /var/xdrago/monitor/check/valkey.sh &
+  nohup /var/xdrago/monitor/check/valkey.sh > /dev/null 2>&1 &
 elif [ -e "/etc/init.d/redis-server" ]; then
-  bash /var/xdrago/monitor/check/redis.sh &
+  nohup /var/xdrago/monitor/check/redis.sh > /dev/null 2>&1 &
 fi
-bash /var/xdrago/monitor/check/mysql.sh &
-bash /var/xdrago/monitor/check/unbound.sh &
-bash /var/xdrago/monitor/check/system.sh &
-bash /var/xdrago/monitor/check/java.sh &
+nohup /var/xdrago/monitor/check/mysql.sh > /dev/null 2>&1 &
+nohup /var/xdrago/monitor/check/php.sh > /dev/null 2>&1 &
+nohup /var/xdrago/monitor/check/nginx.sh > /dev/null 2>&1 &
+nohup /var/xdrago/monitor/check/java.sh > /dev/null 2>&1 &
 
 _second_flood_guard() {
   _thisCountSec=$(pgrep -fc /var/xdrago/second.sh)
