@@ -152,12 +152,6 @@ if ($dhcpcdlives || $dhclientlives) {
     system("hostname", "-b", $wanted);
   }
 }
-if (-f "/etc/init.d/rsyslog") {
-  if (!$rsyslogdsumar || !-f "/run/rsyslogd.pid") {
-    system("killall -9 rsyslogd");
-    system("service rsyslog restart");
-  }
-}
 elsif (-f "/etc/init.d/sysklogd") {
   if (!$sysklogdsumar || !-f "/run/syslogd.pid") {
     system("killall -9 sysklogd");

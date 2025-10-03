@@ -366,7 +366,23 @@ _sshd_health_check_fix() {
   fi
 }
 
+_rsyslog_health_check_fix() {
+  if [ -x "/etc/init.d/rsyslog" ]; then
+    if ! pgrep -f /usr/sbin/rsyslogd \
+      || [ ! -e "/run/rsyslogd.pid" ]; then
+      pkill -9 -f /usr/sbin/rsyslogd || true
+      service rsyslog restart
+      wait
+      _thisErrLog="$(date) Rsyslog was down, restarted"
+      echo ${_thisErrLog} >> ${_pthOml}
+      _incident_email_report "Rsyslog was down, restarted"
+      echo >> ${_pthOml}
+    fi
+  fi
+}
+
 _sshd_health_check_fix
+_rsyslog_health_check_fix
 _postfix_health_check_fix
 if [ -e "/run/boa_sql_backup.pid" ] \
   || [ -e "/run/boa_sql_cluster_backup.pid" ] \
