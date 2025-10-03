@@ -1038,6 +1038,27 @@ _update_agents() {
     fi
   fi
 
+  if [ ! -e "${_pthLog}/loadguard.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
+    _CNT=$(pgrep -fc xloadguard)
+    if (( _CNT > 0 )); then
+      echo "The xloadguard is running!"
+    else
+      if [ -e "${_optBin}/loadguard" ]; then
+        mv -f ${_optBin}/loadguard ${_optBin}/loadguard.old
+      fi
+      curl ${_crlGet} "${_urlHmr}/tools/bin/loadguard" -o ${_optBin}/loadguard
+      if [ -e "${_optBin}/loadguard" ]; then
+        chmod 700 ${_optBin}/loadguard
+        chown root:root ${_optBin}/loadguard
+        touch ${_pthLog}/loadguard.sh.ctrl.f99.${_tRee}.${_xSrl}.pid
+      else
+        if [ -e "${_optBin}/loadguard.old" ]; then
+          mv -f ${_optBin}/loadguard.old ${_optBin}/loadguard
+        fi
+      fi
+    fi
+  fi
+
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -d "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/backboa.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
@@ -4049,6 +4070,7 @@ _update_boa_tools() {
             fancynow \
             ffmirror \
             killer \
+            loadguard \
             lock.inc \
             memorytuner \
             mergecsf \
@@ -4116,7 +4138,7 @@ _update_boa_tools() {
   done
 
   if [ ! -e "/data/u" ] && [ -e "${_optBin}/killer" ] && [ ! -e "${_usrBin}/vmnetfix" ]; then
-    rm -f ${_usrBin}/{aptcleanup*,autoinit*,backchain*,barracuda*,boa*,dhcpfix*,killer*,octopus*,vmnetfix*,websh*}
+    rm -f ${_usrBin}/{aptcleanup*,autoinit*,backchain*,barracuda*,boa*,dhcpfix*,killer*,loadguard*,octopus*,vmnetfix*,websh*}
     ln -sfn ${_optBin}/aptcleanup  ${_usrBin}/aptcleanup
     ln -sfn ${_optBin}/autoinit    ${_usrBin}/autoinit
     ln -sfn ${_optBin}/backchain   ${_usrBin}/backchain
@@ -4124,6 +4146,7 @@ _update_boa_tools() {
     ln -sfn ${_optBin}/boa         ${_usrBin}/boa
     ln -sfn ${_optBin}/dhcpfix     ${_usrBin}/dhcpfix
     ln -sfn ${_optBin}/killer      ${_usrBin}/killer
+    ln -sfn ${_optBin}/loadguard   ${_usrBin}/loadguard
     ln -sfn ${_optBin}/octopus     ${_usrBin}/octopus
     ln -sfn ${_optBin}/vmnetfix    ${_usrBin}/vmnetfix
     ln -sfn ${_optBin}/websh       ${_usrBin}/websh
@@ -4153,7 +4176,7 @@ _update_boa_tools() {
 
   # _CORE (700): core BOA tools
   chmod 700 ${_optBin}/{barracuda,boa,ffmirror,killer,octopus}
-  chmod 700 ${_optBin}/{syncpass,weblogx,xboa,xcopy,lock.inc}
+  chmod 700 ${_optBin}/{syncpass,weblogx,xboa,xcopy,loadguard,lock.inc}
 
   # _DB (700): performance and DB tuners
   chmod 700 ${_optBin}/{memorytuner,mycnfup,mysqltuner5,mysqltuner8,perftest}
