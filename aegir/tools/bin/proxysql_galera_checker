@@ -506,6 +506,7 @@ function combine_ip_port_into_address()
 function upgrade_scheduler(){
   log $LINENO "**** Scheduler upgrade started ****"
   if [[ -f /etc/proxysql-admin.cnf ]]; then
+    # shellcheck disable=SC1091
     source /etc/proxysql-admin.cnf
   else
     error $LINENO "Assert! proxysql-admin configuration file : /etc/proxysql-admin.cnf does not exist, Terminating!"

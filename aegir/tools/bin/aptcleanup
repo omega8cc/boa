@@ -372,6 +372,7 @@ INIT_EOF
   chmod 0755 /etc/init.d/droplet-agent
   update-rc.d droplet-agent defaults >/dev/null 2>&1 || true
   service droplet-agent start >/dev/null 2>&1 || true
+  wait
   _msg "droplet-agent init created, enabled, and started"
 }
 

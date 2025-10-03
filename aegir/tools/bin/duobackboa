@@ -67,6 +67,7 @@ _wgetGet="--max-redirect=3 --no-check-certificate -q --tries=9 --wait=9 --user-a
 _aptAllow="--allow-unauthenticated"
 _aptYesUnth="-y ${_aptAllow}"
 
+# shellcheck disable=SC1091
 [ -e "/root/.duobackboa.cnf" ] && source /root/.duobackboa.cnf
 
 export _INCIDENT_REPORT=${_INCIDENT_REPORT//[^A-Z]/}

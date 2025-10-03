@@ -209,12 +209,15 @@ _clean_pid_exit() {
   [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
   [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
   service cron start &> /dev/null
+  wait
   exit 1
 }
 
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
+    # shellcheck disable=SC1091
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
+
     # Sanitize to allow only digits and minus sign
     export _B_NICE=${_B_NICE//[^0-9-]/}
 
@@ -270,7 +273,7 @@ _if_hosted_sys() {
 _check_sql_running() {
   while [ -z "${_IS_MYSQLD_RUNNING}" ] \
     || [ ! -e "/run/mysqld/mysqld.sock" ]; do
-    _IS_MYSQLD_RUNNING=$(pgrep -f mysqld)
+    _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
     echo "INFO: Waiting for MySQLD availability..."
     sleep 3
   done
@@ -297,7 +300,7 @@ _check_sql_access() {
     echo " "
     _clean_pid_exit _check_sql_access_b
   else
-    _IS_MYSQLD_RUNNING=$(pgrep -f mysqld)
+    _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
     if [ -z "${_IS_MYSQLD_RUNNING}" ]; then
       echo "ALERT: SQL server on this system is not running at all."
       echo "ALERT: Please fix this before trying again, giving up."
@@ -1005,7 +1008,7 @@ _innodb_log_file_size_update() {
   elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 5.7." ]]; then
     _DB_V=5.7
   fi
-  _IS_MYSQLD_RUNNING=$(pgrep -f mysqld)
+  _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
   if [ ! -z "${_IS_MYSQLD_RUNNING}" ] && [ "${_DB_V}" = "5.7" ]; then
     _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
     mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
@@ -1035,6 +1038,7 @@ _innodb_log_file_size_update() {
   fi
   if [ ! -e "/run/mysqld/mysqld.sock" ]; then
     service mysql start &> /dev/null
+    wait
   fi
 }
 #
@@ -1087,6 +1091,7 @@ _restore_default_sql() {
     if [ "${_DB_BINARY_LOG}" = "NO" ]; then
       # Purge binlogs
       bash /var/xdrago/purge_binlogs.sh &> /dev/null
+      wait
       # Remove cron jobs related to purge_binlogs
       sed -i -e "/purge_binlogs/d" -e "/^$/d" /var/spool/cron/crontabs/root &> /dev/null
       # Disable binary logging
@@ -1180,15 +1185,19 @@ _restart_services() {
   for e in ${_PHP_V}; do
     if [ -e "/etc/init.d/php${e}-fpm" ]; then
       service php${e}-fpm reload &> /dev/null
+      wait
     fi
   done
   bash /var/xdrago/move_sql.sh &> /dev/null
   wait
   service nginx reload &> /dev/null
+  wait
   if [ -e "/etc/init.d/valkey-server" ]; then
     service valkey-server reload &> /dev/null
+    wait
   elif [ -e "/etc/init.d/redis-server" ]; then
     service redis-server reload &> /dev/null
+    wait
   fi
   if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
     if [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
@@ -1264,10 +1273,11 @@ _tune_web_server_config() {
 _check_mysqld_running() {
   while [ -z "${_IS_MYSQLD_RUNNING}" ] \
     || [ ! -e "/run/mysqld/mysqld.sock" ]; do
-    _IS_MYSQLD_RUNNING=$(pgrep -f mysqld)
+    _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
     _msg "INFO: Waiting for MySQLD availability before _tune_sql_memory_limits..."
     sleep 5
     service mysql start &> /dev/null
+    wait
   done
 }
 #
@@ -1909,7 +1919,6 @@ if _prompt_yes_no "${_tPrmt}?" ; then
     _mrun "sleep 30"
   fi
   _msg "INFO: Tuning in progress, please wait..."
-  [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
   _restore_default_php
   _php_conf_update
   _tune_php
@@ -1926,7 +1935,6 @@ else
     service cron stop &> /dev/null
     _mrun "sleep 30"
   fi
-  [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
   _restore_default_php
   _php_conf_update
   _restore_default_sql
@@ -1940,6 +1948,7 @@ rm -rf /opt/tmp/*
 [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
 if [ ! -e "/root/.upstart.cnf" ]; then
   service cron start &> /dev/null
+  wait
 fi
 if [ "${_DEBUG_MODE}" = "YES" ]; then
   _msg "INFO: Cron started again"
