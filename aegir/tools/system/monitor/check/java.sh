@@ -140,7 +140,42 @@ _jenkins_health_check_fix() {
   fi
 }
 
+_solr_health_check_fix() {
+  if [ -x "/etc/init.d/solr9" ]; then
+    if ! pgrep -f /var/solr9 \
+      || [ ! -e "/var/solr9/solr-9099.pid" ]; then
+      service solr9 restart
+      wait
+      _thisErrLog="$(date) Solr9 Server was down, started"
+      echo ${_thisErrLog} >> ${_pthOml}
+      _incident_email_report "Solr9 Server was down, started"
+      echo >> ${_pthOml}
+    fi
+  fi
+  if [ -x "/etc/init.d/solr7" ]; then
+    if ! pgrep -f /var/solr7 \
+      || [ ! -e "/var/solr7/solr-9077.pid" ]; then
+      service solr7 restart
+      wait
+      _thisErrLog="$(date) Solr7 Server was down, started"
+      echo ${_thisErrLog} >> ${_pthOml}
+      _incident_email_report "Solr7 Server was down, started"
+      echo >> ${_pthOml}
+    fi
+  fi
+  if [ -x "/etc/init.d/jetty9" ]; then
+    if ! pgrep -f /opt/jetty9 \
+      || [ ! -e "/run/jetty9.pid" ]; then
+      service jetty9 restart
+      wait
+      _thisErrLog="$(date) Solr4 Server was down, started"
+      echo ${_thisErrLog} >> ${_pthOml}
+      _incident_email_report "Solr4 Server was down, started"
+      echo >> ${_pthOml}
+    fi
+  fi
   [ ! -e "/run/boa_run.pid" ] && [ -x "/etc/init.d/jenkins" ] && _jenkins_health_check_fix
+  [ ! -e "/run/boa_run.pid" ] && _solr_health_check_fix
 fi
 
 echo DONE!
