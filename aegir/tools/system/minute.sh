@@ -9,6 +9,7 @@ _oldOml="/var/log/boa/oom.incident.old.log"
 
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
+    # shellcheck disable=SC1091
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
     chmod a+w /dev/null
   else
@@ -47,18 +48,6 @@ _manage_single_lock
 if [ -e "${_pthOml}" ] && [ ! -e "${_oldOml}" ]; then
   mv -f ${_pthOml} ${_oldOml}
 fi
-
-bash /var/xdrago/monitor/check/nginx.sh &
-bash /var/xdrago/monitor/check/php.sh &
-if [ -e "/etc/init.d/valkey-server" ]; then
-  bash /var/xdrago/monitor/check/valkey.sh &
-elif [ -e "/etc/init.d/redis-server" ]; then
-  bash /var/xdrago/monitor/check/redis.sh &
-fi
-bash /var/xdrago/monitor/check/mysql.sh &
-bash /var/xdrago/monitor/check/unbound.sh &
-bash /var/xdrago/monitor/check/system.sh &
-bash /var/xdrago/monitor/check/java.sh &
 
 _second_flood_guard() {
   _thisCountSec=$(pgrep -fc /var/xdrago/second.sh)
@@ -100,6 +89,21 @@ _csf_flood_guard() {
   [ -e "/etc/csf/csfpost.d/synproxy.sh" ] && synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
 }
 
+_launch_auto_healing() {
+  nohup /var/xdrago/monitor/check/system.sh > /dev/null 2>&1 &
+  nohup /var/xdrago/monitor/check/unbound.sh > /dev/null 2>&1 &
+  if [ -e "/etc/init.d/valkey-server" ]; then
+    nohup /var/xdrago/monitor/check/valkey.sh > /dev/null 2>&1 &
+  elif [ -e "/etc/init.d/redis-server" ]; then
+    nohup /var/xdrago/monitor/check/redis.sh > /dev/null 2>&1 &
+  fi
+  nohup /var/xdrago/monitor/check/mysql.sh > /dev/null 2>&1 &
+  nohup /var/xdrago/monitor/check/php.sh > /dev/null 2>&1 &
+  nohup /var/xdrago/monitor/check/nginx.sh > /dev/null 2>&1 &
+  nohup /var/xdrago/monitor/check/nginx_guard.sh > /dev/null 2>&1 &
+  nohup /var/xdrago/monitor/check/java.sh > /dev/null 2>&1 &
+}
+
 [ ! -d "/var/log/boa" ] && mkdir -p /var/log/boa
 [ -e "/var/log/sec-count.kill.log" ] && mv -f /var/log/sec-count.kill.log /var/log/boa/
 [ -e "/var/log/csf-count.kill.log" ] && mv -f /var/log/csf-count.kill.log /var/log/boa/
@@ -108,6 +112,15 @@ _csf_flood_guard() {
 
 [ ! -e "/run/boa_run.pid" ] && _second_flood_guard
 [ -x "/usr/sbin/csf" ] && [ ! -e "/run/water.pid" ] && _csf_flood_guard
+[ -e "/run/wait-unbound.pid" ] && rm -f /run/wait-unbound.pid
+
+# Main execution
+for _iteration in {1..9}; do
+  echo "----------------------------"
+  echo "Iteration ${_iteration}:"
+  _launch_auto_healing
+  sleep 5
+done
 
 echo DONE!
 exit 0

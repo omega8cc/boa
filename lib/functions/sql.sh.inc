@@ -282,7 +282,7 @@ _innodb_log_file_size_update() {
   mysql -u root -e "SET GLOBAL innodb_fast_shutdown = 0;" &> /dev/null
   _mrun "bash /var/xdrago/move_sql.sh stop" &> /dev/null
   wait
-  _IS_MYSQLD_RUNNING=$(pgrep -f mysqld)
+  _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
   if [ -z "${_IS_MYSQLD_RUNNING}" ]; then
     mkdir -p ${_vBs}/old-sql-ib-log-${_NOW}
     _mrun "sleep 1"
@@ -327,7 +327,7 @@ _innodb_log_file_size_update() {
     _mrun "bash /var/xdrago/move_sql.sh stop" &> /dev/null
     wait
     _mrun "sleep 180"
-    _IS_MYSQLD_RUNNING=$(pgrep -f mysqld)
+    _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
     if [ -z "${_IS_MYSQLD_RUNNING}" ]; then
       mkdir -p ${_vBs}/old-sql-ib-log-${_NOW}
       _mrun "sleep 1"
@@ -460,6 +460,7 @@ _sql_conf_update() {
     if [ "${_DB_BINARY_LOG}" = "NO" ]; then
       # Purge binlogs
       bash /var/xdrago/purge_binlogs.sh &> /dev/null
+      wait
       # Remove cron jobs related to purge_binlogs
       sed -i -e "/purge_binlogs/d" -e "/^$/d" /var/spool/cron/crontabs/root &> /dev/null
       # Disable binary logging
@@ -551,7 +552,7 @@ _check_mysqld_running() {
   fi
   while [ -z "${_IS_MYSQLD_RUNNING}" ] \
     || [ ! -e "/run/mysqld/mysqld.sock" ]; do
-    _IS_MYSQLD_RUNNING=$(pgrep -f mysqld)
+    _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: Waiting for MySQLD availability before _tune_sql_memory_limits..."
     fi

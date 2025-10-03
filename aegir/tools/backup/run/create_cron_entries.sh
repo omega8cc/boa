@@ -34,11 +34,13 @@ _check_root() {
     echo "ERROR: We can not proceed until it is below 90/100"
     exit 1
   fi
-  [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
-  export _BACKUP_INTERVAL=${_BACKUP_INTERVAL//[^0-9]/}
-  : "${_BACKUP_INTERVAL:=360}"
 }
 _check_root
+
+# shellcheck disable=SC1091
+[ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
+export _BACKUP_INTERVAL=${_BACKUP_INTERVAL//[^0-9]/}
+: "${_BACKUP_INTERVAL:=360}"
 
 # Ensure global run directory exists and is owned by root
 mkdir -p "${_WRAPPER_DIR}"

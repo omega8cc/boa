@@ -328,6 +328,7 @@ _add_solr() {
         wait
         pkill -9 -f jetty9
         service jetty9 start &> /dev/null
+        wait
       fi
       echo "New Solr ${3} with ${1} for ${2} added"
     fi
@@ -390,6 +391,7 @@ _delete_solr() {
       rm -f ${_Dir}/solr.php
       pkill -9 -f jetty9
       service jetty9 start &> /dev/null
+      wait
     fi
     echo "Deleted Solr core in ${1}"
   fi
@@ -625,8 +627,9 @@ _get_load() {
 }
 
 _load_control() {
+  # shellcheck disable=SC1091
   [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
-  : "${_CPU_TASK_RATIO:=1.4}"
+  : "${_CPU_TASK_RATIO:=2.1}"
   _CPU_TASK_RATIO="$(_sanitize_number "${_CPU_TASK_RATIO}")"
   _O_LOAD_MAX=$(echo "${_CPU_TASK_RATIO} * 100" | bc -l)
   _get_load
@@ -799,10 +802,9 @@ _start_up() {
         echo "load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}"
         echo "User ${_usEr}"
         mkdir -p ${_usEr}/log/ctrl
-        if [ -e "/root/.${_HM_U}.octopus.cnf" ]; then
-          source /root/.${_HM_U}.octopus.cnf
-          _MY_EMAIL=${_MY_EMAIL//\\\@/\@}
-        fi
+        # shellcheck disable=SC1091
+        [ -e "/root/.${_HM_U}.octopus.cnf" ] && source /root/.${_HM_U}.octopus.cnf
+        _MY_EMAIL=${_MY_EMAIL//\\\@/\@}
         _check_sites_list
       fi
     fi

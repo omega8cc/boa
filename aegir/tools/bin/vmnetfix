@@ -684,6 +684,7 @@ _switch_to_ifupdown_when_legacy_detected() {
   # Clear any ifupdown2 lock left around and start networking now
   rm -f /run/network/ifupdown2/ifupdown2.lock 2>/dev/null || true
   service networking restart >/dev/null 2>&1 || /etc/init.d/networking start >/dev/null 2>&1 || true
+  wait
 
   _msg "Switched to classic ifupdown and refreshed networking."
 }

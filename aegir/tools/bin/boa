@@ -51,6 +51,7 @@ _clean_pid_exit() {
   [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
   [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
   service cron start &> /dev/null
+  wait
   exit 1
 }
 
@@ -2148,6 +2149,11 @@ _display_version() {
   fi
 }
 
+# Function to remove whitespace
+_sanitize_pid() {
+  echo "$1" | sed 's/[^0-9]//g'
+}
+
 # Function to display time in appropriate units
 _display_time() {
   local _service=$1
@@ -2158,6 +2164,18 @@ _display_time() {
       return
     elif [ "${_service}" = "solr4" ] && [ ! -e "/opt/solr4/solr.xml" ]; then
       return
+    elif [ "${_service}" = "pure-ftpd" ] && [ ! -e "/usr/local/sbin/pure-ftpd" ]; then
+      return
+    elif [ "${_service}" = "php74-fpm" ] && [ ! -e "/opt/php74/bin/php" ]; then
+      return
+    elif [ "${_service}" = "php81-fpm" ] && [ ! -e "/opt/php81/bin/php" ]; then
+      return
+    elif [ "${_service}" = "php82-fpm" ] && [ ! -e "/opt/php82/bin/php" ]; then
+      return
+    elif [ "${_service}" = "php83-fpm" ] && [ ! -e "/opt/php83/bin/php" ]; then
+      return
+    elif [ "${_service}" = "php84-fpm" ] && [ ! -e "/opt/php84/bin/php" ]; then
+      return
     else
       _not_running_services+=("  _XSE ${_service} is not running (PID file not found).")
       return
@@ -2166,12 +2184,25 @@ _display_time() {
 
   # Get the PID from the PID file
   _pid=$(cat "${_pidfile}")
+  _pid=$(_sanitize_pid "${_pid}" 2>&1)
 
   # Check if the process is running
   if ! ps -p "${_pid}" > /dev/null 2>&1; then
     if [ "${_service}" = "jenkins" ] && [ ! -e "/var/lib/jenkins" ]; then
       return
     elif [ "${_service}" = "solr4" ] && [ ! -e "/opt/solr4/solr.xml" ]; then
+      return
+    elif [ "${_service}" = "pure-ftpd" ] && [ ! -e "/usr/local/sbin/pure-ftpd" ]; then
+      return
+    elif [ "${_service}" = "php74-fpm" ] && [ ! -e "/opt/php74/bin/php" ]; then
+      return
+    elif [ "${_service}" = "php81-fpm" ] && [ ! -e "/opt/php81/bin/php" ]; then
+      return
+    elif [ "${_service}" = "php82-fpm" ] && [ ! -e "/opt/php82/bin/php" ]; then
+      return
+    elif [ "${_service}" = "php83-fpm" ] && [ ! -e "/opt/php83/bin/php" ]; then
+      return
+    elif [ "${_service}" = "php84-fpm" ] && [ ! -e "/opt/php84/bin/php" ]; then
       return
     else
       _not_running_services+=("  _XSE ${_service} is not running (stale PID file).")
@@ -2536,6 +2567,7 @@ _display_info() {
       _services_order=(
         "sshd"
         "crond"
+        "postfix"
         "nginx"
         "php74-fpm"
         "php81-fpm"
@@ -2558,6 +2590,7 @@ _display_info() {
       declare -A _services=(
         ["sshd"]="/run/sshd.pid"
         ["crond"]="/run/crond.pid"
+        ["postfix"]="/var/spool/postfix/pid/master.pid"
         ["nginx"]="/run/nginx.pid"
         ["php74-fpm"]="/run/php74-fpm.pid"
         ["php81-fpm"]="/run/php81-fpm.pid"
