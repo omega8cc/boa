@@ -11,30 +11,6 @@ _pthOml="/var/log/boa/high.load.incident.log"
 # Exit if proxy config exists
 [ -e "/root/.proxy.cnf" ] && exit 0
 
-###
-### Atomic lock/unlock to prevent TOCTOU race
-###
-_manage_single_lock() {
-  _SELF_NAME="${_SELF_NAME:-$(basename "$0")}"
-  for _L in "/opt/local/bin/lock.inc" "/opt/local/lib/lock.inc"; do
-    [ -r "$_L" ] && . "$_L" && break
-  done
-  if [ -n "${_SINGLE_INSTANCE_LIB_VER:-}" ] && command -v _single_instance_lock >/dev/null 2>&1; then
-    # use shared lock if available
-    _single_instance_lock
-  else
-    # -------- legacy pgrep guard ---------
-    # Exit if more than 2 instances of this script are running
-    _SCRIPT=$(basename "$0")
-    _CNT=$(pgrep -fc ${_SCRIPT})
-    if (( _CNT > 2 )); then
-      echo "Too many ${_SCRIPT} running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
-      exit 0
-    fi
-  fi
-}
-_manage_single_lock
-
 # Set default values
 : "${_CPU_SPIDER_RATIO:=1.1}"
 : "${_CPU_MAX_RATIO:=4.1}"
@@ -85,8 +61,33 @@ esac
 _CPU_COUNT=$(nproc)
 [ -z "${_CPU_COUNT}" ] && _CPU_COUNT=1
 
+###
+### Atomic lock/unlock to prevent TOCTOU race
+###
+_manage_single_lock() {
+  _SELF_NAME="${_SELF_NAME:-$(basename "$0")}"
+  for _L in "/opt/local/bin/lock.inc" "/opt/local/lib/lock.inc"; do
+    [ -r "$_L" ] && . "$_L" && break
+  done
+  if [ -n "${_SINGLE_INSTANCE_LIB_VER:-}" ] && command -v _single_instance_lock >/dev/null 2>&1; then
+    # use shared lock if available
+    _single_instance_lock
+  else
+    # -------- legacy pgrep guard ---------
+    # Exit if more than 2 instances of this script are running
+    _SCRIPT=$(basename "$0")
+    _CNT=$(pgrep -fc ${_SCRIPT})
+    if (( _CNT > 2 )); then
+      echo "Too many ${_SCRIPT} running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
+      exit 0
+    fi
+  fi
+}
+_manage_single_lock
+
 # Function to send incident email report
 _incident_email_report() {
+  if ! _check_uptime_grace_period >/dev/null; then return 1; fi
   local _message="$1"
   local _subject="$2"
   local _incident_level="$3"  # "ALERT" or "INFO"
