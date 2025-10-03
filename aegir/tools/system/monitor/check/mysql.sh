@@ -289,7 +289,7 @@ _mysql_flush_hosts() {
 }
 
 _mysql_health_check_fix() {
-  if ! pgrep -f -q /usr/sbin/mysqld \
+  if ! pgrep -f /usr/sbin/mysqld \
     || [ ! -e "/run/mysqld/mysqld.sock" ] \
     || [ ! -e "/run/mysqld/mysqld.pid" ]; then
     _sql_restart "DOWN MySQL"

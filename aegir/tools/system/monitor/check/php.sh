@@ -165,7 +165,7 @@ _fpm_health_check_fix() {
       echo "Pgrep is ${_TestPhp}"
       echo "Socket is $(ls -la "/run/www${e}.fpm.socket" 2>/dev/null || echo 'missing')"
       echo "PID is $(cat "/run/php${e}-fpm.pid" 2>/dev/null || echo 'missing')"
-      if ! pgrep -f -q "${_pat}" \
+      if ! pgrep -f "${_pat}" \
         || [ ! -S "/run/www${e}.fpm.socket" ] \
         || [ ! -s "/run/php${e}-fpm.pid" ]; then
         : > /run/fmp_wait.pid

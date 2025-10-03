@@ -153,7 +153,7 @@ _if_redis_restart() {
 }
 
 _redis_health_check_fix() {
-  if ! pgrep -f -q /usr/bin/redis-server \
+  if ! pgrep -f /usr/bin/redis-server \
     || [ ! -e "/run/redis/redis.sock" ] \
     || [ ! -e "/run/redis/redis.pid" ]; then
     mkdir -p /run/redis
