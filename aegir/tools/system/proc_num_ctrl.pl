@@ -13,10 +13,6 @@ my $run_to_files = [ "/root/.run-to-daedalus.cnf", "/root/.run-to-chimaera.cnf",
 ###
 ### System Services Monitor running every 5 seconds
 ###
-if (!-d "/run/mysqld") {
-  system("mkdir -p /run/mysqld");
-  system("chown -R mysql:root /run/mysqld");
-}
 &cpu_count_load;
 &global_action;
 $sumar = 0;
@@ -164,10 +160,6 @@ if (!-f "/run/boa_run.pid" && !-f "/run/boa_wait.pid" && -f "/etc/init.d/vnstat"
   }
 }
 
-if ((!$mysqlsumar || $mysqlsumar > 150) && !-f "/run/mysql_restart_running.pid" && !-f "/run/boa_run.pid" && !-f "/root/.remote.db.cnf") {
-  system("bash /var/xdrago/move_sql.sh");
-}
-
 if (-f "/etc/init.d/valkey-server") {
   if (!-d "/run/valkey") {
     system("mkdir -p /run/valkey");
@@ -259,13 +251,6 @@ if (-f "$ftpdbind" && -f "$ftpdconf" && !any_file_exists($run_to_files)) {
     if (-f "$ftpdinit") { system("$ftpdinit $ftpdconf"); }
     else { system("$ftpdbind $ftpdconf"); }
   }
-}
-
-if ($mysqlsumar > 0 ) {
-  $mysqlrootpass=`cat /root/.my.pass.txt`;
-  chomp($mysqlrootpass);
- `mysqladmin -u root flush-hosts &> /dev/null`;
-  print "\n MySQL hosts flushed...\n";
 }
 if ($dhcpcdlives || $dhclientlives) {
   chomp(my $wanted = `cat /etc/hostname`);
