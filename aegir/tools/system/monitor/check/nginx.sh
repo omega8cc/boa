@@ -180,32 +180,33 @@ _if_nginx_restart() {
   fi
 }
 
-_nginx_bind_check_fix
-_nginx_oom_detection
-[ -d "/data/u" ] && _if_nginx_restart
+if [ ! -e "/run/max_load.pid" ] && [ ! -e "/run/critical_load.pid" ]; then
+  _nginx_bind_check_fix
+  _nginx_oom_detection
   _nginx_health_check_fix
+  [ -d "/data/u" ] && _if_nginx_restart
 
-if [ ! -e "/root/.high_traffic.cnf" ] \
-  && [ ! -e "/root/.giant_traffic.cnf" ]; then
-  perl ${_monPath}/locked_nginx.pl &
-fi
+  if [ ! -e "/root/.high_traffic.cnf" ] \
+    && [ ! -e "/root/.giant_traffic.cnf" ]; then
+    perl ${_monPath}/locked_nginx.pl &
+  fi
 
-# Reload nginx if access log is missing or empty
-[ -s /var/log/nginx/access.log ] || service nginx reload
+  # Reload nginx if access log is missing or empty
+  [ -s /var/log/nginx/access.log ] || service nginx reload && wait
 
-# Main execution
-if [ -f "${_monPath}/scan_nginx.sh" ]; then
-  for _iteration in {1..4}; do
-    bash ${_monPath}/scan_nginx.sh &
-    sleep 12
-  done
-elif [ -f "${_monPath}/scan_nginx.pl" ]; then
-  for _iteration in {1..10}; do
-    perl ${_monPath}/scan_nginx.pl &
-    sleep 5
-  done
+  # Main execution
+  if [ -f "${_monPath}/scan_nginx.sh" ]; then
+    for _iteration in {1..4}; do
+      bash ${_monPath}/scan_nginx.sh &
+      sleep 12
+    done
+  elif [ -f "${_monPath}/scan_nginx.pl" ]; then
+    for _iteration in {1..10}; do
+      perl ${_monPath}/scan_nginx.pl &
+      sleep 5
+    done
+  fi
 fi
 
 echo "Done!"
 exit 0
-

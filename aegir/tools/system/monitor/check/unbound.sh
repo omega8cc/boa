@@ -70,7 +70,7 @@ _incident_email_report() {
   fi
 }
 
-_unbound_check_fix() {
+_unbound_config_fix() {
 
   [ ! -e "/usr/etc/unbound/unbound.conf.d" ] && mkdir -p /usr/etc/unbound/unbound.conf.d
 
@@ -246,11 +246,11 @@ else
   _ALLOW_CTRL=YES
 fi
 
-[ "${_ALLOW_CTRL}" = "YES" ] && _unbound_check_fix
-
-### Check and modify and reload if needed
-_unbound_check_nomail
+if [ -x "/usr/sbin/unbound" ] && [ ! -e "/run/wait-unbound.pid" ]; then
+  [ "${_ALLOW_CTRL}" = "YES" ] && _unbound_config_fix
+  [ "${_ALLOW_CTRL}" = "YES" ] && _unbound_check_nomail
   _unbound_health_check_fix
+fi
 
 echo DONE!
 exit 0

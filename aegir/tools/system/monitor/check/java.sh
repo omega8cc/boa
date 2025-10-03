@@ -123,9 +123,6 @@ _jetty_listen_conflict_detection() {
   fi
 }
 
-if [ ! -e "/root/.high_traffic.cnf" ] \
-  && [ ! -e "/root/.giant_traffic.cnf" ]; then
-  perl /var/xdrago/monitor/check/locked_java.pl &
 _jenkins_health_check_fix() {
   if ! pgrep -f java/jenkins \
     || [ ! -e "/run/jenkins/jenkins.pid" ]; then
@@ -174,10 +171,17 @@ _solr_health_check_fix() {
       echo >> ${_pthOml}
     fi
   fi
+}
+
+if [ ! -e "/run/max_load.pid" ] && [ ! -e "/run/critical_load.pid" ]; then
   [ ! -e "/run/boa_run.pid" ] && [ -x "/etc/init.d/jenkins" ] && _jenkins_health_check_fix
   [ ! -e "/run/boa_run.pid" ] && _solr_health_check_fix
+  [ ! -e "/run/boa_run.pid" ] && _jetty_listen_conflict_detection
+  if [ ! -e "/root/.high_traffic.cnf" ] \
+    && [ ! -e "/root/.giant_traffic.cnf" ]; then
+    perl /var/xdrago/monitor/check/locked_java.pl &
+  fi
 fi
 
 echo DONE!
 exit 0
-

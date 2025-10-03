@@ -55,15 +55,13 @@ _incident_email_report() {
 
 _wkhtmltopdf_php_cli_oom_kill() {
   touch /run/boa_run.pid
-  echo "$(date) OOM $1 wkhtmltopdf/php-cli detected" >> ${_pthOml}
+  echo "$(date) OOM $1 wkhtmltopdf detected" >> ${_pthOml}
   sleep 3
   pkill -9 -f wkhtmltopdf
   echo "$(date) OOM wkhtmltopdf killed" >> ${_pthOml}
   killall -9 sleep &> /dev/null
-  killall -9 php
-  echo "$(date) OOM php-cli killed" >> ${_pthOml}
-  echo "$(date) OOM wkhtmltopdf/php-cli incident response completed" >> ${_pthOml}
-  _incident_email_report "OOM $1 wkhtmltopdf/php-cli"
+  echo "$(date) OOM wkhtmltopdf incident response completed" >> ${_pthOml}
+  _incident_email_report "OOM $1 wkhtmltopdf"
   echo >> ${_pthOml}
   [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
   exit 0
@@ -154,19 +152,6 @@ _optimize_ram() {
   _check_system_ram
   if [ "${_ram_usage_percent}" -gt 90 ]; then
     sync && echo 3 | sudo tee /proc/sys/vm/drop_caches
-  fi
-}
-
-_if_fix_locked_sshd() {
-  _SSH_LOG="/var/log/auth.log"
-  if [ `tail --lines=10 ${_SSH_LOG} \
-    | grep --count "error: Bind to port 22"` -gt 0 ]; then
-    pkill -9 -f /usr/sbin/sshd || true
-    service ssh start
-    _thisErrLog="$(date) SSHD BIND error detected, service restarted"
-    echo ${_thisErrLog} >> ${_pthOml}
-    _incident_email_report "SSHD BIND error detected, service restarted"
-    echo >> ${_pthOml}
   fi
 }
 
@@ -352,6 +337,20 @@ _lfd_health_check_fix() {
   fi
 }
 
+_if_fix_locked_sshd() {
+  _SSH_LOG="/var/log/auth.log"
+  if [ `tail --lines=10 ${_SSH_LOG} \
+    | grep --count "error: Bind to port 22"` -gt 0 ]; then
+    pkill -9 -f /usr/sbin/sshd || true
+    service ssh start
+    wait
+    _thisErrLog="$(date) SSHD BIND error detected, service restarted"
+    echo ${_thisErrLog} >> ${_pthOml}
+    _incident_email_report "SSHD BIND error detected, service restarted"
+    echo >> ${_pthOml}
+  fi
+}
+
 _sshd_health_check_fix() {
   if [ -x "/etc/init.d/ssh" ]; then
     if ! pgrep -f /usr/sbin/sshd \
@@ -427,8 +426,13 @@ _rsyslog_health_check_fix() {
 }
 
 _sshd_health_check_fix
+_if_fix_locked_sshd
+_if_fix_dhcp
 _rsyslog_health_check_fix
 _postfix_health_check_fix
+_cron_duplicate_instances_detection
+_syslog_giant_log_detection
+
 if [ -e "/run/boa_sql_backup.pid" ] \
   || [ -e "/run/boa_sql_cluster_backup.pid" ] \
   || [ -e "/run/boa_run.pid" ] \
@@ -438,11 +442,6 @@ if [ -e "/run/boa_sql_backup.pid" ] \
 else
   _ALLOW_CTRL=YES
 fi
-
-_if_fix_locked_sshd
-_if_fix_dhcp
-_cron_duplicate_instances_detection
-_syslog_giant_log_detection
 
 [ "${_ALLOW_CTRL}" = "YES" ] && _optimize_ram
 [ "${_ALLOW_CTRL}" = "YES" ] && _system_oom_detection

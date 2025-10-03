@@ -112,7 +112,7 @@ _redis_bind_check_fix() {
     | grep --count "Address already in use"` -gt 0 ]; then
     _thisErrLog="$(date) RedisException BIND detected, service will be restarted"
     echo ${_thisErrLog} >> ${_pthOml}
-    _redis_restart "Redis BIND"
+    _redis_restart "RedisException BIND"
   fi
 }
 
@@ -121,7 +121,7 @@ _redis_connection_check_fix() {
     | grep --count "RedisException: Connection refused"` -gt 19 ]; then
     _thisErrLog="$(date) RedisException Connection refused detected, service will be restarted"
     echo ${_thisErrLog} >> ${_pthOml}
-    _redis_restart "Redis REFUSED"
+    _redis_restart "RedisException REFUSED"
   fi
 }
 
@@ -130,7 +130,7 @@ _redis_slow_check_fix() {
     | grep --count "PhpRedis.php"` -gt 19 ]; then
     _thisErrLog="$(date) Slow PhpRedis detected, service will be restarted"
     echo ${_thisErrLog} >> ${_pthOml}
-    _redis_restart "Redis SLOW"
+    _redis_restart "RedisException SLOW"
   fi
 }
 
@@ -171,12 +171,15 @@ else
   _ALLOW_CTRL=YES
 fi
 
-[ "${_ALLOW_CTRL}" = "YES" ] && _redis_slow_check_fix
-[ "${_ALLOW_CTRL}" = "YES" ] && _redis_connection_check_fix
-[ "${_ALLOW_CTRL}" = "YES" ] && _redis_bind_check_fix
-[ "${_ALLOW_CTRL}" = "YES" ] && [ -d "/data/u" ] && _if_redis_restart
+if [ ! -e "/run/max_load.pid" ] && [ ! -e "/run/critical_load.pid" ]; then
+  if [ -x "/etc/init.d/redis-server" ]; then
+    [ "${_ALLOW_CTRL}" = "YES" ] && _redis_slow_check_fix
+    [ "${_ALLOW_CTRL}" = "YES" ] && _redis_connection_check_fix
+    [ "${_ALLOW_CTRL}" = "YES" ] && _redis_bind_check_fix
+    [ "${_ALLOW_CTRL}" = "YES" ] && [ -d "/data/u" ] && _if_redis_restart
     _redis_health_check_fix
+  fi
+fi
 
 echo DONE!
 exit 0
-

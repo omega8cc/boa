@@ -188,17 +188,18 @@ if [ ! -e "/var/tmp/fpm" ]; then
   chmod 777 /var/tmp/fpm
 fi
 
-_fpm_duplicate_instances_detection
-_fpm_giant_log_detection
-_fpm_listen_conflict_detection
-_fpm_proc_max_detection
-_fpm_sockets_healing
-_fpm_fastcgi_temp
-
-if [ ! -e "/root/.high_traffic.cnf" ] \
-  && [ ! -e "/root/.giant_traffic.cnf" ]; then
-  perl /var/xdrago/monitor/check/segfault_alert.pl &
+if [ ! -e "/run/max_load.pid" ] && [ ! -e "/run/critical_load.pid" ]; then
+  _fpm_duplicate_instances_detection
+  _fpm_listen_conflict_detection
+  _fpm_proc_max_detection
+  _fpm_sockets_healing
+  _fpm_fastcgi_temp
+  _fpm_giant_log_detection
   _fpm_health_check_fix
+  if [ ! -e "/root/.high_traffic.cnf" ] \
+    && [ ! -e "/root/.giant_traffic.cnf" ]; then
+    perl /var/xdrago/monitor/check/segfault_alert.pl &
+  fi
 fi
 
 echo DONE!

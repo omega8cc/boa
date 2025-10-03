@@ -112,7 +112,7 @@ _valkey_bind_check_fix() {
     | grep --count "Address already in use"` -gt 0 ]; then
     _thisErrLog="$(date) ValkeyException BIND detected, service will be restarted"
     echo ${_thisErrLog} >> ${_pthOml}
-    _valkey_restart "Valkey BIND"
+    _valkey_restart "ValkeyException BIND"
   fi
 }
 
@@ -121,7 +121,7 @@ _valkey_connection_check_fix() {
     | grep --count "ValkeyException: Connection refused"` -gt 19 ]; then
     _thisErrLog="$(date) ValkeyException Connection refused detected, service will be restarted"
     echo ${_thisErrLog} >> ${_pthOml}
-    _valkey_restart "Valkey REFUSED"
+    _valkey_restart "ValkeyException REFUSED"
   fi
 }
 
@@ -130,7 +130,7 @@ _valkey_slow_check_fix() {
     | grep --count "PhpValkey.php"` -gt 19 ]; then
     _thisErrLog="$(date) Slow PhpValkey detected, service will be restarted"
     echo ${_thisErrLog} >> ${_pthOml}
-    _valkey_restart "Valkey SLOW"
+    _valkey_restart "ValkeyException SLOW"
   fi
 }
 
@@ -138,13 +138,16 @@ _if_valkey_restart() {
   _PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
   _PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
   _PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
-  ReTest=$(ls /data/disk/*/static/control/run-valkey-restart.pid | wc -l 2>&1)
+  VkTest=$(ls /data/disk/*/static/control/run-valkey-restart.pid | wc -l 2>&1)
+  ReTest=$(ls /data/disk/*/static/control/run-redis-restart.pid | wc -l 2>&1)
   if [[ "${_PrTestPower}" =~ "POWER" ]] \
     || [[ "${_PrTestPhantom}" =~ "PHANTOM" ]] \
     || [[ "${_PrTestCluster}" =~ "CLUSTER" ]] \
-    || [ -e "/root/.allow.valkey.restart.cnf" ]; then
-    if [ "${ReTest}" -ge 1 ]; then
+    || [ -e "/root/.allow.valkey.restart.cnf" ] \
+    || [ -e "/root/.allow.redis.restart.cnf" ]; then
+    if [ "${VkTest}" -ge 1 ] || [ "${ReTest}" -ge 1 ]; then
       rm -f /data/disk/*/static/control/run-valkey-restart.pid
+      rm -f /data/disk/*/static/control/run-redis-restart.pid
       _thisErrLog="$(date) Valkey Server Restart Requested"
       echo ${_thisErrLog} >> ${_pthOml}
       _valkey_restart "Valkey Server Restart Requested"
@@ -171,12 +174,15 @@ else
   _ALLOW_CTRL=YES
 fi
 
-[ "${_ALLOW_CTRL}" = "YES" ] && _valkey_slow_check_fix
-[ "${_ALLOW_CTRL}" = "YES" ] && _valkey_connection_check_fix
-[ "${_ALLOW_CTRL}" = "YES" ] && _valkey_bind_check_fix
-[ "${_ALLOW_CTRL}" = "YES" ] && [ -d "/data/u" ] && _if_valkey_restart
+if [ ! -e "/run/max_load.pid" ] && [ ! -e "/run/critical_load.pid" ]; then
+  if [ -x "/etc/init.d/valkey-server" ]; then
+    [ "${_ALLOW_CTRL}" = "YES" ] && _valkey_slow_check_fix
+    [ "${_ALLOW_CTRL}" = "YES" ] && _valkey_connection_check_fix
+    [ "${_ALLOW_CTRL}" = "YES" ] && _valkey_bind_check_fix
+    [ "${_ALLOW_CTRL}" = "YES" ] && [ -d "/data/u" ] && _if_valkey_restart
     _valkey_health_check_fix
+  fi
+fi
 
 echo DONE!
 exit 0
-
