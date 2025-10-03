@@ -31,8 +31,8 @@ _MY_EMAIL="my@email" #---------- System admin email address
 ###
 _CPU_CRIT_RATIO=6.1 #----------- Max load per CPU core before killing PHP/Drush
 _CPU_MAX_RATIO=4.1 #------------ Max load per CPU core before disabling Nginx
+_CPU_TASK_RATIO=2.1 #----------- Max load per CPU core to launch tasks queue
 _CPU_SPIDER_RATIO=1.1 #--------- Max load per CPU core before blocking spiders
-_CPU_TASK_RATIO=1.4 #----------- Max load per CPU core to launch tasks queue
 ###
 _CUSTOM_COLLATION_SQL= #-------- By default on the DB server: utf8mb4_unicode_ci
 _DB_BINARY_LOG=NO #------------- Allows to enable binary logging when YES
