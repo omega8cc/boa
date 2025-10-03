@@ -143,9 +143,9 @@ _solr_health_check_fix() {
       || [ ! -e "/var/solr9/solr-9099.pid" ]; then
       service solr9 restart
       wait
-      _thisErrLog="$(date) Solr9 Server DOWN"
+      _thisErrLog="$(date) Solr9 Server was down, started"
       echo ${_thisErrLog} >> ${_pthOml}
-      _incident_email_report "Solr9 Server DOWN"
+      _incident_email_report "Solr9 Server was down, started"
       echo >> ${_pthOml}
     fi
   fi
@@ -154,9 +154,9 @@ _solr_health_check_fix() {
       || [ ! -e "/var/solr7/solr-9077.pid" ]; then
       service solr7 restart
       wait
-      _thisErrLog="$(date) Solr7 Server DOWN"
+      _thisErrLog="$(date) Solr7 Server was down, started"
       echo ${_thisErrLog} >> ${_pthOml}
-      _incident_email_report "Solr7 Server DOWN"
+      _incident_email_report "Solr7 Server was down, started"
       echo >> ${_pthOml}
     fi
   fi
@@ -165,9 +165,9 @@ _solr_health_check_fix() {
       || [ ! -e "/run/jetty9.pid" ]; then
       service jetty9 restart
       wait
-      _thisErrLog="$(date) Solr4 Server DOWN"
+      _thisErrLog="$(date) Solr4 Server was down, started"
       echo ${_thisErrLog} >> ${_pthOml}
-      _incident_email_report "Solr4 Server DOWN"
+      _incident_email_report "Solr4 Server was down, started"
       echo >> ${_pthOml}
     fi
   fi
