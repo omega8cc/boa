@@ -137,7 +137,6 @@ if (!any_file_exists($run_to_files)) {
   system("service newrelic-daemon restart") if (!$newrelicdaemonsumar && -f "/etc/init.d/newrelic-daemon");
   system("service newrelic-sysmond restart") if (!$newrelicsysmondsumar && -f "/etc/init.d/newrelic-sysmond" && -f "/root/.enable.newrelic.sysmond.cnf");
   system("service newrelic-sysmond stop") if ($newrelicsysmondsumar && -f "/etc/init.d/newrelic-sysmond" && !-f "/root/.enable.newrelic.sysmond.cnf");
-  system("service postfix restart") if (!$postfixsumar && -f "/etc/init.d/postfix");
 }
 
 if (!$nginxsumar && -f "/etc/init.d/nginx") {
@@ -176,7 +175,6 @@ if (!any_file_exists($run_to_files)) {
   system("service collectd start") if (!$collectdsumar && -f "/etc/init.d/collectd");
   system("service xinetd start") if (!$xinetdsumar && -f "/etc/init.d/xinetd");
   system("service lsyncd start") if (!$lsyncdsumar && -f "/etc/init.d/lsyncd");
-  system("service postfix restart") if (!-f "/var/spool/postfix/pid/master.pid");
 }
 
 $ftpdinit="/usr/local/sbin/pure-config.pl";

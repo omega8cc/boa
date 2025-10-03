@@ -278,6 +278,20 @@ _dirmngr_too_many_instances_detection() {
   fi
 }
 
+_postfix_health_check_fix() {
+  if [ -x "/etc/init.d/postfix" ]; then
+    if ! pgrep -f /usr/lib/postfix \
+      || [ ! -e "/var/spool/postfix/pid/master.pid" ]; then
+      service postfix restart
+      wait
+      _thisErrLog="$(date) Postfix Server was down, restarted"
+      echo ${_thisErrLog} >> ${_pthOml}
+      _incident_email_report "Postfix Server was down, restarted"
+      echo >> ${_pthOml}
+    fi
+  fi
+}
+
 _vnstat_health_check_fix() {
   if [ -x "/etc/init.d/vnstat" ]; then
     if ! pgrep -f /usr/sbin/vnstatd \
@@ -323,6 +337,7 @@ _sshd_health_check_fix() {
 }
 
 _sshd_health_check_fix
+_postfix_health_check_fix
 if [ -e "/run/boa_sql_backup.pid" ] \
   || [ -e "/run/boa_sql_cluster_backup.pid" ] \
   || [ -e "/run/boa_run.pid" ] \
