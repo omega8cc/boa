@@ -366,6 +366,51 @@ _sshd_health_check_fix() {
   fi
 }
 
+_clamav_health_check_fix() {
+  # Define file paths as variables
+  _allow_conf="/root/.allow.clamav.cnf"
+  _deny_conf="/root/.deny.clamav.cnf"
+  _data_dir="/data/u"
+  _freshclam_pid="/run/clamav/freshclam.pid"
+  _clamd_pid="/run/clamav/clamd.pid"
+  _clamd_service="/etc/init.d/clamav-daemon"
+  _freshclam_service="/etc/init.d/clamav-freshclam"
+  if [ -e "/run/max_load.pid" ] || [ -e "/run/critical_load.pid" ]; then
+    return 1  # Exit the function but continue the script
+  fi
+  if [ -e "${_allow_conf}" ] \
+    && [ ! -e "${_deny_conf}" ] \
+    && [ -e "${_data_dir}" ] \
+    && [ -e "${_clamd_service}" ] \
+    && [ -e "${_freshclam_service}" ]; then
+    if [ -x "/etc/init.d/clamav-daemon" ]; then
+      if ! pgrep -f /usr/sbin/clamd \
+        || [ ! -e "/run/clamav/clamd.pid" ]; then
+        pkill -9 -f /usr/sbin/clamd || true
+        service clamav-daemon start
+        wait
+        _thisErrLog="$(date) Clamav was down, started"
+        echo ${_thisErrLog} >> ${_pthOml}
+        _incident_email_report "Clamav was down, started"
+        echo >> ${_pthOml}
+      fi
+    fi
+    if [ -x "/etc/init.d/clamav-freshclam" ]; then
+      if ! pgrep -f /usr/bin/freshclam \
+        || [ ! -e "/run/clamav/freshclam.pid" ]; then
+        pkill -9 -f /usr/bin/freshclam || true
+        service clamav-freshclam start
+        wait
+        sleep 15
+        _thisErrLog="$(date) Freshclam was down, started"
+        echo ${_thisErrLog} >> ${_pthOml}
+        _incident_email_report "Freshclam was down, started"
+        echo >> ${_pthOml}
+      fi
+    fi
+  fi
+}
+
 _rsyslog_health_check_fix() {
   if [ -x "/etc/init.d/rsyslog" ]; then
     if ! pgrep -f /usr/sbin/rsyslogd \
@@ -406,6 +451,7 @@ _syslog_giant_log_detection
 [ "${_ALLOW_CTRL}" = "YES" ] && _vnstat_health_check_fix
 [ "${_ALLOW_CTRL}" = "YES" ] && _gpg_too_many_instances_detection
 [ "${_ALLOW_CTRL}" = "YES" ] && _dirmngr_too_many_instances_detection
+[ "${_ALLOW_CTRL}" = "YES" ] && _clamav_health_check_fix
 
 echo DONE!
 exit 0

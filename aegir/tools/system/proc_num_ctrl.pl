@@ -165,40 +165,6 @@ elsif (-f "/etc/init.d/inetutils-syslogd") {
   }
 }
 
-# Define file paths as variables for easy modification and clarity
-my $allow_conf   = "/root/.allow.clamav.cnf";
-my $deny_conf    = "/root/.deny.clamav.cnf";
-my $data_dir     = "/data/u";
-my $freshclam_pid = "/run/clamav/freshclam.pid";
-my $clamd_pid     = "/run/clamav/clamd.pid";
-my $freshclam_service = "/etc/init.d/clamav-freshclam";
-my $clamd_service     = "/etc/init.d/clamav-daemon";
-
-# Check if all conditions are met
-if (-f $allow_conf && !-f $deny_conf && -d $data_dir && !any_file_exists($run_to_files)) {
-  restart_service('freshclam', $freshclam_pid, $freshclam_service) if !$freshclamsumar;
-  restart_service('clamd', $clamd_pid, $clamd_service) if !$clamdsumar;
-}
-
-sub any_file_exists {
-  my ($files) = @_;
-  for my $file (@$files) {
-    return 1 if -f $file;
-  }
-  return 0;
-}
-
-sub restart_service {
-  my ($service_name, $pid_file, $service_script) = @_;
-  if (!-f $pid_file && -f $service_script) {
-    my $kill_command = "killall -9 $service_name";
-    system($kill_command) == 0 or warn "Failed to kill $service_name: $!";
-    my $start_command = "$service_script start";
-    system($start_command) == 0 or warn "Failed to start $service_name: $!";
-    sleep(9) if $service_name eq 'freshclam'; # Add a delay if restarting freshclam
-  }
-}
-
 exit;
 
 #############################################################################
