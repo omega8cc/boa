@@ -216,7 +216,6 @@ _unbound_check_nomail() {
 
 _unbound_health_check_fix() {
   if ! pgrep -f /usr/sbin/unbound \
-    || /run/unbound \
     || [ ! -e "/run/unbound/unbound.pid" ]; then
     touch /run/wait-unbound.pid
     sleep 3

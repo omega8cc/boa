@@ -175,12 +175,13 @@ else
 fi
 
 if [ ! -e "/run/max_load.pid" ] && [ ! -e "/run/critical_load.pid" ]; then
-  if [ -x "/etc/init.d/valkey-server" ]; then
+  if [ -x "/etc/init.d/valkey-server" ] \
+    && [ -x "/usr/bin/valkey-server" ]; then
+    _valkey_health_check_fix
     [ "${_ALLOW_CTRL}" = "YES" ] && _valkey_slow_check_fix
     [ "${_ALLOW_CTRL}" = "YES" ] && _valkey_connection_check_fix
     [ "${_ALLOW_CTRL}" = "YES" ] && _valkey_bind_check_fix
     [ "${_ALLOW_CTRL}" = "YES" ] && [ -d "/data/u" ] && _if_valkey_restart
-    _valkey_health_check_fix
   fi
 fi
 
