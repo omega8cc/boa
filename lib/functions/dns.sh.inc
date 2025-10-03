@@ -453,7 +453,7 @@ _dns_unbound_install_upgrade() {
     mkdir -p /etc/resolvconf/run/interface
     echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.unbound
     resolvconf -u &> /dev/null
-    [ -e "/etc/resolvconf/update.d/unbound" ] && chmod -x /etc/resolvconf/update.d/unbound
+    [ -e "/etc/resolvconf/update.d/unbound" ] && chmod 644 /etc/resolvconf/update.d/unbound
     pkill -u unbound -x unbound &> /dev/null
     _mrun "service unbound restart" 2> /dev/null
     wait
@@ -485,7 +485,7 @@ _dns_unbound_install_upgrade() {
       echo "nameserver 1.1.1.1" >> /etc/resolv.conf
       echo "nameserver 8.8.8.8" >> /etc/resolv.conf
       echo "nameserver 9.9.9.9" >> /etc/resolv.conf
-      [ -e "/etc/resolvconf/update.d/unbound" ] && chmod -x /etc/resolvconf/update.d/unbound
+      [ -e "/etc/resolvconf/update.d/unbound" ] && chmod 644 /etc/resolvconf/update.d/unbound
       pkill -u unbound -x unbound &> /dev/null
       _mrun "service unbound restart" 2> /dev/null
       wait
@@ -499,7 +499,7 @@ _dns_unbound_install_upgrade() {
     echo "nameserver 1.1.1.1" >> /etc/resolv.conf
     echo "nameserver 8.8.8.8" >> /etc/resolv.conf
     echo "nameserver 9.9.9.9" >> /etc/resolv.conf
-    [ -e "/etc/resolvconf/update.d/unbound" ] && chmod -x /etc/resolvconf/update.d/unbound
+    [ -e "/etc/resolvconf/update.d/unbound" ] && chmod 644 /etc/resolvconf/update.d/unbound
     pkill -u unbound -x unbound &> /dev/null
     _mrun "service unbound restart" 2> /dev/null
     wait
@@ -556,7 +556,7 @@ _dns_unbound_install_upgrade() {
       killall -9 pdnsd &> /dev/null
       mv -f ${_isPdnsd} /var/backups
     fi
-    [ -e "/etc/resolvconf/update.d/unbound" ] && chmod -x /etc/resolvconf/update.d/unbound
+    [ -e "/etc/resolvconf/update.d/unbound" ] && chmod 644 /etc/resolvconf/update.d/unbound
     pkill -u unbound -x unbound &> /dev/null
     _mrun "service unbound restart" 2> /dev/null
     wait
@@ -575,7 +575,7 @@ _dns_unbound_install_upgrade() {
     && [ "${_isUnbndFix}" = "NO" ] \
     && [ -e "/etc/resolvconf/interface-order" ]; then
     sed -i "s/pdnsd/unbound/g" /etc/resolvconf/interface-order
-    [ -e "/etc/resolvconf/update.d/unbound" ] && chmod -x /etc/resolvconf/update.d/unbound
+    [ -e "/etc/resolvconf/update.d/unbound" ] && chmod 644 /etc/resolvconf/update.d/unbound
     pkill -u unbound -x unbound &> /dev/null
     _mrun "service unbound restart" 2> /dev/null
     wait
