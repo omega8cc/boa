@@ -172,12 +172,13 @@ else
 fi
 
 if [ ! -e "/run/max_load.pid" ] && [ ! -e "/run/critical_load.pid" ]; then
-  if [ -x "/etc/init.d/redis-server" ]; then
+  if [ -x "/etc/init.d/redis-server" ] \
+    && [ -x "/usr/bin/redis-server" ]; then
+    _redis_health_check_fix
     [ "${_ALLOW_CTRL}" = "YES" ] && _redis_slow_check_fix
     [ "${_ALLOW_CTRL}" = "YES" ] && _redis_connection_check_fix
     [ "${_ALLOW_CTRL}" = "YES" ] && _redis_bind_check_fix
     [ "${_ALLOW_CTRL}" = "YES" ] && [ -d "/data/u" ] && _if_redis_restart
-    _redis_health_check_fix
   fi
 fi
 
