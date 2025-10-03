@@ -2161,6 +2161,16 @@ _display_time() {
       return
     elif [ "${_service}" = "pure-ftpd" ] && [ ! -e "/usr/local/sbin/pure-ftpd" ]; then
       return
+    elif [ "${_service}" = "php74-fpm" ] && [ ! -e "/opt/php74/bin/php" ]; then
+      return
+    elif [ "${_service}" = "php81-fpm" ] && [ ! -e "/opt/php81/bin/php" ]; then
+      return
+    elif [ "${_service}" = "php82-fpm" ] && [ ! -e "/opt/php82/bin/php" ]; then
+      return
+    elif [ "${_service}" = "php83-fpm" ] && [ ! -e "/opt/php83/bin/php" ]; then
+      return
+    elif [ "${_service}" = "php84-fpm" ] && [ ! -e "/opt/php84/bin/php" ]; then
+      return
     else
       _not_running_services+=("  _XSE ${_service} is not running (PID file not found).")
       return
@@ -2177,6 +2187,16 @@ _display_time() {
     elif [ "${_service}" = "solr4" ] && [ ! -e "/opt/solr4/solr.xml" ]; then
       return
     elif [ "${_service}" = "pure-ftpd" ] && [ ! -e "/usr/local/sbin/pure-ftpd" ]; then
+      return
+    elif [ "${_service}" = "php74-fpm" ] && [ ! -e "/opt/php74/bin/php" ]; then
+      return
+    elif [ "${_service}" = "php81-fpm" ] && [ ! -e "/opt/php81/bin/php" ]; then
+      return
+    elif [ "${_service}" = "php82-fpm" ] && [ ! -e "/opt/php82/bin/php" ]; then
+      return
+    elif [ "${_service}" = "php83-fpm" ] && [ ! -e "/opt/php83/bin/php" ]; then
+      return
+    elif [ "${_service}" = "php84-fpm" ] && [ ! -e "/opt/php84/bin/php" ]; then
       return
     else
       _not_running_services+=("  _XSE ${_service} is not running (stale PID file).")
