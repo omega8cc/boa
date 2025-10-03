@@ -278,6 +278,21 @@ _dirmngr_too_many_instances_detection() {
   fi
 }
 
+_sshd_health_check_fix() {
+  if [ -x "/etc/init.d/ssh" ]; then
+    if ! pgrep -f /usr/sbin/sshd \
+      || [ ! -e "/run/sshd.pid" ]; then
+      service ssh start
+      wait
+      _thisErrLog="$(date) SSHD Server was down, started"
+      echo ${_thisErrLog} >> ${_pthOml}
+      _incident_email_report "SSHD Server was down, started"
+      echo >> ${_pthOml}
+    fi
+  fi
+}
+
+_sshd_health_check_fix
 if [ -e "/run/boa_sql_backup.pid" ] \
   || [ -e "/run/boa_sql_cluster_backup.pid" ] \
   || [ -e "/run/boa_run.pid" ] \

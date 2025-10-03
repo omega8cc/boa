@@ -126,8 +126,6 @@ print "\n $pxydsumar PxySQL procs\t\tGLOBAL" if ($pxydlives);
 print "\n $dpltsumar Droplet procs\t\tGLOBAL" if ($dpltlives);
 print "\n";
 
-system("service ssh restart") if (!$sshdsumar && -f "/etc/init.d/ssh");
-
 if (!any_file_exists($run_to_files)) {
   system("csf -e") if (!$lfdsumar && -f "/etc/init.d/lfd");
   system("service lfd start") if (!$lfdsumar && -f "/etc/init.d/lfd");
