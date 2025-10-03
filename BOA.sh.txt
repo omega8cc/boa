@@ -1375,13 +1375,13 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/nginx.sh.ctrl.f93.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/nginx.sh.ctrl.f92.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/nginx.sh /var/xdrago/monitor/check/nginx.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/nginx.sh" -o /var/xdrago/monitor/check/nginx.sh
     if [ -e "/var/xdrago/monitor/check/nginx.sh" ]; then
       chmod 700 /var/xdrago/monitor/check/nginx.sh
       chown root:root /var/xdrago/monitor/check/nginx.sh
-      touch ${_pthLog}/nginx.sh.ctrl.f93.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/nginx.sh.ctrl.f92.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/monitor/check/nginx.sh.old /var/xdrago/monitor/check/nginx.sh
     fi
