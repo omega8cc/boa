@@ -124,9 +124,9 @@ _nginx_health_check_fix() {
       pkill -9 -f nginx: || true
       service nginx restart
       wait
-      _thisErrLog="$(date) Nginx Server was down, restarted"
+      _thisErrLog="$(date) Nginx DOWN"
       echo ${_thisErrLog} >> ${_pthOml}
-      _incident_email_report "Nginx Server was down, restarted"
+      _incident_email_report "Nginx DOWN"
       echo >> ${_pthOml}
     fi
   fi
@@ -139,7 +139,7 @@ _nginx_health_check_fix() {
     _MASTER_COUNT=$(pgrep -fc 'nginx: master process')
     if [ "${_MASTER_COUNT}" -gt 1 ]; then
       echo "Multiple (${_MASTER_COUNT}) Nginx master processes detected. Possible stuck processes."
-      echo "$(date) NGX multiple (${_MASTER_COUNT}) master processes detected" >> ${_pthOml}
+      echo "$(date) NGX multiple (${_MASTER_COUNT}) master processes" >> ${_pthOml}
       _restart_nginx "_MASTER_COUNT ${_MASTER_COUNT}"
     fi
   fi
