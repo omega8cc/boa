@@ -64,3 +64,23 @@ _single_instance_lock() {
     trap "rm -rf '${_LOCK_PATH}'" EXIT INT TERM HUP
   fi
 }
+
+###
+### Prevent a flood of alerts on services up/down status if uptime < 15 minutes
+###
+### Usage: in any _send_email function add at the top this line
+###        to exit/disable that function but continue the script:
+###
+###        if ! _check_uptime_grace_period >/dev/null; then return 1; fi
+###
+_check_uptime_grace_period() {
+  _UPTIME_MIN=$(awk '{print int($1/60)}' /proc/uptime 2>/dev/null)
+  if [ "${_UPTIME_MIN}" -lt 15 ]; then
+    export _INCIDENT_REPORT=NO
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      echo "Skipping alerts: system uptime ${_UPTIME_MIN} min < 15 min threshold."
+    fi
+    return 1
+  fi
+  return 0
+}
