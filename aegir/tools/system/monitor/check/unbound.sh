@@ -232,9 +232,9 @@ _unbound_health_check_fix() {
     unbound-control reload &> /dev/null
     sleep 3
     rm -f /run/wait-unbound.pid
-    _thisErrLog="$(date) Unbound Server DOWN"
+    _thisErrLog="$(date) Unbound Server was down, restarted"
     echo ${_thisErrLog} >> ${_pthOml}
-    _incident_email_report "Unbound Server DOWN"
+    _incident_email_report "Unbound Server was down, restarted"
     echo >> ${_pthOml}
   fi
 }
