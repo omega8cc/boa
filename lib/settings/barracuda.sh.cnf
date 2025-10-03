@@ -950,24 +950,6 @@ _DB_BINARY_LOG=NO
 _USE_MYSQLTUNER=NO
 
 ###
-### Set max 1 min load per CPU core before blocking
-### spiders temporarily, until the load stabilizes.
-###
-_CPU_SPIDER_RATIO=1.1
-
-###
-### Define max 1 min load per CPU core before
-### launching task queue for Octopus instances.
-###
-_CPU_TASK_RATIO=1.4
-
-###
-### Set max 1 min load per CPU core before disabling
-### Nginx temporarily, until the load stabilizes.
-###
-_CPU_MAX_RATIO=4.1
-
-###
 ### Set max 1 min load per CPU core before killing
 ### all running PHP, Drush, Wget and Curl processes
 ### until the load stabilizes.
@@ -978,6 +960,24 @@ _CPU_MAX_RATIO=4.1
 ### in the last minute is higher than 3.1
 ###
 _CPU_CRIT_RATIO=6.1
+
+###
+### Set max 1 min load per CPU core before disabling
+### Nginx temporarily, until the load stabilizes.
+###
+_CPU_MAX_RATIO=4.1
+
+###
+### Define max 1 min load per CPU core before
+### launching task queue for Octopus instances.
+###
+_CPU_TASK_RATIO=2.1
+
+###
+### Set max 1 min load per CPU core before blocking
+### spiders temporarily, until the load stabilizes.
+###
+_CPU_SPIDER_RATIO=1.1
 
 ###
 ### Default number of access.log lines to check.

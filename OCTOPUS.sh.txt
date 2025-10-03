@@ -71,7 +71,7 @@ export _SMALLCORE10_3_V=10.3.14
 export _SMALLCORE10_4_V=10.4.8
 export _SMALLCORE10_5_V=10.5.1
 export _SMALLCORE6_V=6.60.1
-export _SMALLCORE7_V=7.103.2
+export _SMALLCORE7_V=7.105.1
 export _SMALLCORE9_V=9.5.11
 
 ###
@@ -187,6 +187,7 @@ _clean_pid_exit() {
   [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
   [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
   service cron start &> /dev/null
+  wait
   exit 1
 }
 

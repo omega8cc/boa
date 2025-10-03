@@ -8,6 +8,7 @@ _pthOml="/var/log/boa/java.incident.log"
 
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
+    # shellcheck disable=SC1091
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
     chmod a+w /dev/null
   else
@@ -17,22 +18,22 @@ _check_root() {
 }
 _check_root
 
-    # Sanitize to allow only digits and minus sign
-    export _B_NICE=${_B_NICE//[^0-9-]/}
+# Sanitize to allow only digits and minus sign
+export _B_NICE=${_B_NICE//[^0-9-]/}
 
-    # Validate and set default if necessary
-    if ! [[ "$_B_NICE" =~ ^-?[0-9]+$ ]]; then
-      _B_NICE=0
-    fi
+# Validate and set default if necessary
+if ! [[ "$_B_NICE" =~ ^-?[0-9]+$ ]]; then
+  _B_NICE=0
+fi
 
-    # Clamp the value within -20 to 19
-    if (( _B_NICE < -20 )); then
-      _B_NICE=-20
-    elif (( _B_NICE > 19 )); then
-      _B_NICE=19
-    fi
+# Clamp the value within -20 to 19
+if (( _B_NICE < -20 )); then
+  _B_NICE=-20
+elif (( _B_NICE > 19 )); then
+  _B_NICE=19
+fi
 
-    renice ${_B_NICE} -p $$ &> /dev/null
+renice ${_B_NICE} -p $$ &> /dev/null
 
 export _INCIDENT_REPORT=${_INCIDENT_REPORT//[^A-Z]/}
 : "${_INCIDENT_REPORT:=YES}"
@@ -122,11 +123,65 @@ _jetty_listen_conflict_detection() {
   fi
 }
 
-if [ ! -e "/root/.high_traffic.cnf" ] \
-  && [ ! -e "/root/.giant_traffic.cnf" ]; then
-  perl /var/xdrago/monitor/check/locked_java.pl &
+_jenkins_health_check_fix() {
+  if ! pgrep -f java/jenkins \
+    || [ ! -e "/run/jenkins/jenkins.pid" ]; then
+    killall -9 java
+    sleep 3
+    service jenkins restart
+    wait
+    _thisErrLog="$(date) Jenkins Server was down, started"
+    echo ${_thisErrLog} >> ${_pthOml}
+    _incident_email_report "Jenkins Server was down, started"
+    echo >> ${_pthOml}
+  fi
+}
+
+_solr_health_check_fix() {
+  if [ -x "/etc/init.d/solr9" ]; then
+    if ! pgrep -f /var/solr9 \
+      || [ ! -e "/var/solr9/solr-9099.pid" ]; then
+      service solr9 restart
+      wait
+      _thisErrLog="$(date) Solr9 Server was down, started"
+      echo ${_thisErrLog} >> ${_pthOml}
+      _incident_email_report "Solr9 Server was down, started"
+      echo >> ${_pthOml}
+    fi
+  fi
+  if [ -x "/etc/init.d/solr7" ]; then
+    if ! pgrep -f /var/solr7 \
+      || [ ! -e "/var/solr7/solr-9077.pid" ]; then
+      service solr7 restart
+      wait
+      _thisErrLog="$(date) Solr7 Server was down, started"
+      echo ${_thisErrLog} >> ${_pthOml}
+      _incident_email_report "Solr7 Server was down, started"
+      echo >> ${_pthOml}
+    fi
+  fi
+  if [ -x "/etc/init.d/jetty9" ]; then
+    if ! pgrep -f /opt/jetty9 \
+      || [ ! -e "/run/jetty9.pid" ]; then
+      service jetty9 restart
+      wait
+      _thisErrLog="$(date) Solr4 Server was down, started"
+      echo ${_thisErrLog} >> ${_pthOml}
+      _incident_email_report "Solr4 Server was down, started"
+      echo >> ${_pthOml}
+    fi
+  fi
+}
+
+if [ ! -e "/run/max_load.pid" ] && [ ! -e "/run/critical_load.pid" ]; then
+  [ ! -e "/run/boa_run.pid" ] && [ -x "/etc/init.d/jenkins" ] && _jenkins_health_check_fix
+  [ ! -e "/run/boa_run.pid" ] && _solr_health_check_fix
+  [ ! -e "/run/boa_run.pid" ] && _jetty_listen_conflict_detection
+  if [ ! -e "/root/.high_traffic.cnf" ] \
+    && [ ! -e "/root/.giant_traffic.cnf" ]; then
+    perl /var/xdrago/monitor/check/locked_java.pl &
+  fi
 fi
 
 echo DONE!
 exit 0
-

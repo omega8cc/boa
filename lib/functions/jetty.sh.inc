@@ -126,6 +126,7 @@ _if_install_solr_jetty() {
   if [ "${_UP_JDK}" = "YES" ] && [ -e "/etc/init.d/${_N_SOLR}" ]; then
     _msg "INFO: Solr 9 restart in progress - required after java upgrade"
     _mrun "service ${_N_SOLR} restart" 2> /dev/null
+    wait
     _msg "INFO: Solr 9 restart completed"
   fi
 
@@ -235,6 +236,7 @@ _if_install_solr_jetty() {
   if [ "${_UP_JDK}" = "YES" ] && [ -e "/etc/init.d/${_N_SOLR}" ]; then
     _msg "INFO: Solr 7 restart in progress - required after java upgrade"
     _mrun "service ${_N_SOLR} restart" 2> /dev/null
+    wait
     _msg "INFO: Solr 7 restart completed"
   fi
 

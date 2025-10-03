@@ -11,7 +11,9 @@ _wgetGet="--max-redirect=3 --no-check-certificate -q --tries=9 --wait=9 --user-a
 
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
+    # shellcheck disable=SC1091
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
+
     # Sanitize to allow only digits and minus sign
     export _B_NICE=${_B_NICE//[^0-9-]/}
 
@@ -129,7 +131,7 @@ _find_fast_mirror_early() {
 }
 
 _if_reinstall_curl_src() {
-  _CURL_VRN=8.14.1
+  _CURL_VRN=8.16.0
   if ! command -v lsb_release &> /dev/null; then
     apt-get update -qq &> /dev/null
     apt-get install lsb-release ${_aptYesUnth} -qq &> /dev/null
@@ -221,7 +223,6 @@ _check_dns_curl() {
 
 if [ ! -e "/run/boa_run.pid" ]; then
   _check_dns_curl
-  [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
   rm -f /tmp/*error*
   wget -qO- http://${_USE_MIR}/versions/${_tRee}/boa/BOA.sh.txt | bash
   wait
@@ -273,6 +274,7 @@ _if_fix_locked_sshd() {
     | grep --count "error: Bind to port 22"` -gt 0 ]; then
     pkill -9 -f /usr/sbin/sshd || true
     service ssh start
+    wait
   fi
 }
 _if_fix_locked_sshd

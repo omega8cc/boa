@@ -8,6 +8,7 @@ _pthOml="/var/log/boa/redis.incident.log"
 
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
+    # shellcheck disable=SC1091
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
     chmod a+w /dev/null
   else
@@ -17,22 +18,22 @@ _check_root() {
 }
 _check_root
 
-    # Sanitize to allow only digits and minus sign
-    export _B_NICE=${_B_NICE//[^0-9-]/}
+# Sanitize to allow only digits and minus sign
+export _B_NICE=${_B_NICE//[^0-9-]/}
 
-    # Validate and set default if necessary
-    if ! [[ "$_B_NICE" =~ ^-?[0-9]+$ ]]; then
-      _B_NICE=0
-    fi
+# Validate and set default if necessary
+if ! [[ "$_B_NICE" =~ ^-?[0-9]+$ ]]; then
+  _B_NICE=0
+fi
 
-    # Clamp the value within -20 to 19
-    if (( _B_NICE < -20 )); then
-      _B_NICE=-20
-    elif (( _B_NICE > 19 )); then
-      _B_NICE=19
-    fi
+# Clamp the value within -20 to 19
+if (( _B_NICE < -20 )); then
+  _B_NICE=-20
+elif (( _B_NICE > 19 )); then
+  _B_NICE=19
+fi
 
-    renice ${_B_NICE} -p $$ &> /dev/null
+renice ${_B_NICE} -p $$ &> /dev/null
 
 export _INCIDENT_REPORT=${_INCIDENT_REPORT//[^A-Z]/}
 : "${_INCIDENT_REPORT:=YES}"
@@ -79,6 +80,7 @@ _fpm_reload() {
   for e in ${_PHP_V}; do
     if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
       service php${e}-fpm reload
+      wait
     fi
   done
   echo "$(date) $1 incident PHP-FPM reloaded" >> ${_pthOml}
@@ -110,7 +112,7 @@ _redis_bind_check_fix() {
     | grep --count "Address already in use"` -gt 0 ]; then
     _thisErrLog="$(date) RedisException BIND detected, service will be restarted"
     echo ${_thisErrLog} >> ${_pthOml}
-    _redis_restart "Redis BIND"
+    _redis_restart "RedisException BIND"
   fi
 }
 
@@ -119,7 +121,7 @@ _redis_connection_check_fix() {
     | grep --count "RedisException: Connection refused"` -gt 19 ]; then
     _thisErrLog="$(date) RedisException Connection refused detected, service will be restarted"
     echo ${_thisErrLog} >> ${_pthOml}
-    _redis_restart "Redis REFUSED"
+    _redis_restart "RedisException REFUSED"
   fi
 }
 
@@ -128,7 +130,7 @@ _redis_slow_check_fix() {
     | grep --count "PhpRedis.php"` -gt 19 ]; then
     _thisErrLog="$(date) Slow PhpRedis detected, service will be restarted"
     echo ${_thisErrLog} >> ${_pthOml}
-    _redis_restart "Redis SLOW"
+    _redis_restart "RedisException SLOW"
   fi
 }
 
@@ -150,6 +152,18 @@ _if_redis_restart() {
   fi
 }
 
+_redis_health_check_fix() {
+  if ! pgrep -f /usr/bin/redis-server \
+    || [ ! -e "/run/redis/redis.sock" ] \
+    || [ ! -e "/run/redis/redis.pid" ]; then
+    mkdir -p /run/redis
+    chown -R redis:redis /run/redis
+    _thisErrLog="$(date) Redis Server was down, restarted"
+    echo ${_thisErrLog} >> ${_pthOml}
+    _redis_restart "Redis Server was down, restarted"
+  fi
+}
+
 if [ -e "/run/boa_run.pid" ] \
   || [ -e "/run/boa_wait.pid" ]; then
   _ALLOW_CTRL=NO
@@ -157,11 +171,15 @@ else
   _ALLOW_CTRL=YES
 fi
 
-[ "${_ALLOW_CTRL}" = "YES" ] && _redis_slow_check_fix
-[ "${_ALLOW_CTRL}" = "YES" ] && _redis_connection_check_fix
-[ "${_ALLOW_CTRL}" = "YES" ] && _redis_bind_check_fix
-[ "${_ALLOW_CTRL}" = "YES" ] && [ -d "/data/u" ] && _if_redis_restart
+if [ ! -e "/run/max_load.pid" ] && [ ! -e "/run/critical_load.pid" ]; then
+  if [ -x "/etc/init.d/redis-server" ]; then
+    [ "${_ALLOW_CTRL}" = "YES" ] && _redis_slow_check_fix
+    [ "${_ALLOW_CTRL}" = "YES" ] && _redis_connection_check_fix
+    [ "${_ALLOW_CTRL}" = "YES" ] && _redis_bind_check_fix
+    [ "${_ALLOW_CTRL}" = "YES" ] && [ -d "/data/u" ] && _if_redis_restart
+    _redis_health_check_fix
+  fi
+fi
 
 echo DONE!
 exit 0
-
