@@ -296,23 +296,27 @@ _mysql_health_check_fix() {
   fi
 }
 
-if (( $(pgrep -fc mydumper) > 0 )) && (( $(pgrep -fc mysql_backup.sh) > 0 )); then
-  sleep 5
-  _if_mydumper_is_locked
-fi
+### Main start here
 
-_mysql_high_load
-_sql_busy_detection
-
-if [ ! -e "/run/max_load.pid" ] && [ ! -e "/run/critical_load.pid" ]; then
-  _mysql_health_check_fix
-fi
-
-if [ ! -e "/run/boa_run.pid" ] \
+if [ -x "/etc/init.d/mysql" ] \
+  && [ -x "/usr/sbin/mysqld" ] \
+  && [ ! -e "/run/boa_run.pid" ] \
   && [ ! -e "/run/max_load.pid" ] \
   && [ ! -e "/run/critical_load.pid" ] \
   && [ ! -e "/run/mysql_restart_running.pid" ]; then
+  _mysql_health_check_fix
+fi
+
+if [ -x "/etc/init.d/mysql" ] \
+  && pgrep -f /usr/sbin/mysqld \
+  && [ ! -e "/run/mysql_restart_running.pid" ]; then
+  _mysql_high_load
+  _sql_busy_detection
   _mysql_flush_hosts
+  if (( $(pgrep -fc mydumper) > 0 )) && (( $(pgrep -fc mysql_backup.sh) > 0 )); then
+    sleep 5
+    _if_mydumper_is_locked
+  fi
   perl /var/xdrago/monitor/check/sqlcheck.pl &
 fi
 
