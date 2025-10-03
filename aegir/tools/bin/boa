@@ -2149,6 +2149,11 @@ _display_version() {
   fi
 }
 
+# Function to remove whitespace
+_sanitize_pid() {
+  echo "$1" | sed 's/[^0-9]//g'
+}
+
 # Function to display time in appropriate units
 _display_time() {
   local _service=$1
@@ -2179,6 +2184,7 @@ _display_time() {
 
   # Get the PID from the PID file
   _pid=$(cat "${_pidfile}")
+  _pid=$(_sanitize_pid "${_pid}" 2>&1)
 
   # Check if the process is running
   if ! ps -p "${_pid}" > /dev/null 2>&1; then
