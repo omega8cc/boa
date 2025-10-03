@@ -152,6 +152,18 @@ _if_redis_restart() {
   fi
 }
 
+_redis_health_check_fix() {
+  if ! pgrep -f /usr/bin/redis-server \
+    || [ ! -e "/run/redis/redis.sock" ] \
+    || [ ! -e "/run/redis/redis.pid" ]; then
+    mkdir -p /run/redis
+    chown -R redis:redis /run/redis
+    _thisErrLog="$(date) Redis Server was down, restarted"
+    echo ${_thisErrLog} >> ${_pthOml}
+    _redis_restart "Redis Server was down, restarted"
+  fi
+}
+
 if [ -e "/run/boa_run.pid" ] \
   || [ -e "/run/boa_wait.pid" ]; then
   _ALLOW_CTRL=NO
@@ -163,6 +175,7 @@ fi
 [ "${_ALLOW_CTRL}" = "YES" ] && _redis_connection_check_fix
 [ "${_ALLOW_CTRL}" = "YES" ] && _redis_bind_check_fix
 [ "${_ALLOW_CTRL}" = "YES" ] && [ -d "/data/u" ] && _if_redis_restart
+    _redis_health_check_fix
 
 echo DONE!
 exit 0

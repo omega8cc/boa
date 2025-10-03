@@ -133,23 +133,6 @@ if (!any_file_exists($run_to_files)) {
   system("service droplet-agent restart") if (!-f "/run/droplet-agent.pid" && -f "/etc/init.d/droplet-agent");
 }
 
-if (-f "/etc/init.d/redis-server") {
-  if (!-d "/run/redis") {
-    system("mkdir -p /run/redis");
-    system("chown -R redis:redis /run/redis");
-  }
-  if (!$redissumar) {
-    system("service redis-server start");
-  }
-  local(@RSARR)=`grep -e redis_client_socket /data/conf/global.inc`;
-  foreach $line (@RSARR) {
-    if ($line =~ /redis_client_socket/) {$redissocket = "YES";}
-  }
-  system("service redis-server restart") if (!-e "/run/redis/redis.sock" && $redissocket);
-  sleep(2);
-  system("service redis-server restart") if (!-f "/run/redis/redis.pid");
-}
-
 if (!any_file_exists($run_to_files)) {
   system("service newrelic-daemon restart") if (!$newrelicdaemonsumar && -f "/etc/init.d/newrelic-daemon");
   system("service newrelic-sysmond restart") if (!$newrelicsysmondsumar && -f "/etc/init.d/newrelic-sysmond" && -f "/root/.enable.newrelic.sysmond.cnf");
