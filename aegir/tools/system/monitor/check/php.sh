@@ -156,6 +156,33 @@ _fpm_fastcgi_temp() {
   fi
 }
 
+_fpm_health_check_fix() {
+  _thisErrLog=
+  _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
+  for e in ${_PHP_V}; do
+    if [ -e "/etc/init.d/php${e}-fpm" ] && [ -x "/opt/php${e}/bin/php" ]; then
+      if ! pgrep -f 'php-fpm: master process.*/opt/php${e}/etc/php${e}-fpm.conf' \
+        || [ ! -e "/run/www${e}.fpm.socket" ] \
+        || [ ! -e "/run/php${e}-fpm.pid" ]; then
+        touch /run/fmp_wait.pid
+        touch /run/restarting_fmp_wait.pid
+        sleep 1
+        service php${e}-fpm restart
+        wait
+        _thisErrLog="$(date) PHP-FPM ${e} was down, restarted"
+        echo ${_thisErrLog} >> ${_pthOml}
+        sleep 1
+        rm -f /run/fmp_wait.pid
+        rm -f /run/restarting_fmp_wait.pid
+      fi
+    fi
+  done
+  if [ -n "${_thisErrLog}" ]; then
+    _incident_email_report "PHP-FPM was down, restarted"
+    echo >> ${_pthOml}
+  fi
+}
+
 if [ ! -e "/var/tmp/fpm" ]; then
   mkdir -p /var/tmp/fpm
   chmod 777 /var/tmp/fpm
@@ -171,6 +198,7 @@ _fpm_fastcgi_temp
 if [ ! -e "/root/.high_traffic.cnf" ] \
   && [ ! -e "/root/.giant_traffic.cnf" ]; then
   perl /var/xdrago/monitor/check/segfault_alert.pl &
+  _fpm_health_check_fix
 fi
 
 echo DONE!

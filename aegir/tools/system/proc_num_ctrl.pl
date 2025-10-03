@@ -139,25 +139,6 @@ if (!any_file_exists($run_to_files)) {
   system("service newrelic-sysmond stop") if ($newrelicsysmondsumar && -f "/etc/init.d/newrelic-sysmond" && !-f "/root/.enable.newrelic.sysmond.cnf");
 }
 
-if ($fpmsumar && $fpmsumar > 11 ) {
-  $timedate=`date +%y%m%d-%H%M%S`;
-  chomp($timedate);
-  system("killall -9 php-fpm");
-  `echo "$timedate KILL FPM $fpmsumar" >> /var/log/boa/fpm.kill-all.log`;
-}
-system("service php84-fpm start") if ((!$php84lives || !$fpmsumar || !-f "/run/php84-fpm.pid") && -f "/etc/init.d/php84-fpm");
-system("service php83-fpm start") if ((!$php83lives || !$fpmsumar || !-f "/run/php83-fpm.pid") && -f "/etc/init.d/php83-fpm");
-system("service php82-fpm start") if ((!$php82lives || !$fpmsumar || !-f "/run/php82-fpm.pid") && -f "/etc/init.d/php82-fpm");
-system("service php81-fpm start") if ((!$php81lives || !$fpmsumar || !-f "/run/php81-fpm.pid") && -f "/etc/init.d/php81-fpm");
-system("service php80-fpm start") if ((!$php80lives || !$fpmsumar || !-f "/run/php80-fpm.pid") && -f "/etc/init.d/php80-fpm");
-system("service php74-fpm start") if ((!$php74lives || !$fpmsumar || !-f "/run/php74-fpm.pid") && -f "/etc/init.d/php74-fpm");
-system("service php73-fpm start") if ((!$php73lives || !$fpmsumar || !-f "/run/php73-fpm.pid") && -f "/etc/init.d/php73-fpm");
-system("service php72-fpm start") if ((!$php72lives || !$fpmsumar || !-f "/run/php72-fpm.pid") && -f "/etc/init.d/php72-fpm");
-system("service php71-fpm start") if ((!$php71lives || !$fpmsumar || !-f "/run/php71-fpm.pid") && -f "/etc/init.d/php71-fpm");
-system("service php70-fpm start") if ((!$php70lives || !$fpmsumar || !-f "/run/php70-fpm.pid") && -f "/etc/init.d/php70-fpm");
-system("service php56-fpm start") if ((!$php56lives || !$fpmsumar || !-f "/run/php56-fpm.pid") && -f "/etc/init.d/php56-fpm");
-
-
 if (!any_file_exists($run_to_files)) {
   system("service jetty7 start") if (!$jetty7sumar && -f "/etc/init.d/jetty7");
   system("service jetty8 start") if (!$jetty8sumar && -f "/etc/init.d/jetty8");
