@@ -42,26 +42,25 @@ _manage_single_lock
 : "${_INCIDENT_REPORT:=YES}"
 
 # Source configuration file to override defaults
-if [ -e "/root/.barracuda.cnf" ]; then
-  source /root/.barracuda.cnf
+# shellcheck disable=SC1091
+[ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
+
+# Sanitize to allow only digits and minus sign
+export _B_NICE=${_B_NICE//[^0-9-]/}
+
+# Validate and set default if necessary
+if ! [[ "$_B_NICE" =~ ^-?[0-9]+$ ]]; then
+  _B_NICE=0
 fi
 
-    # Sanitize to allow only digits and minus sign
-    export _B_NICE=${_B_NICE//[^0-9-]/}
+# Clamp the value within -20 to 19
+if (( _B_NICE < -20 )); then
+  _B_NICE=-20
+elif (( _B_NICE > 19 )); then
+  _B_NICE=19
+fi
 
-    # Validate and set default if necessary
-    if ! [[ "$_B_NICE" =~ ^-?[0-9]+$ ]]; then
-      _B_NICE=0
-    fi
-
-    # Clamp the value within -20 to 19
-    if (( _B_NICE < -20 )); then
-      _B_NICE=-20
-    elif (( _B_NICE > 19 )); then
-      _B_NICE=19
-    fi
-
-    renice ${_B_NICE} -p $$ &> /dev/null
+renice ${_B_NICE} -p $$ &> /dev/null
 
 # Sanitize numeric variables (allow digits and decimal point)
 _sanitize_number() {
@@ -151,12 +150,13 @@ _nginx_high_load_on() {
   local _load_period="$3"
   mv -f /data/conf/nginx_high_load_off.conf /data/conf/nginx_high_load.conf
   service nginx reload &> /dev/null
+  wait
   local _log_message
-  _log_message="$(date) nginx_high_load_on ${_load_period} Load: ${_current_load}%"
+  _log_message="$(date) Enabled Spider Protection ${_load_period} Load: ${_current_load}%"
   echo "${_log_message}" >> "${_pthOml}"
-  local _subject="Enabled Spider Protection - ${_load_period} Load ${_current_load}% exceeded Spider Protection Threshold ${_threshold}%"
-  _incident_email_report "${_log_message}" "${_subject}" "INFO"
-  echo >> "${_pthOml}"
+# local _subject="Enabled Spider Protection - ${_load_period} Load ${_current_load}% exceeded Spider Protection Threshold ${_threshold}%"
+# _incident_email_report "${_log_message}" "${_subject}" "INFO"
+# echo >> "${_pthOml}"
   echo "Action Taken: Enabled protection from spiders (nginx high load configuration applied)."
 }
 
@@ -164,12 +164,13 @@ _nginx_high_load_on() {
 _nginx_high_load_off() {
   mv -f /data/conf/nginx_high_load.conf /data/conf/nginx_high_load_off.conf
   service nginx reload &> /dev/null
+  wait
   local _log_message
-  _log_message="$(date) nginx_high_load_off Load: ${_O_LOAD}%"
+  _log_message="$(date) Disabled Spider Protection Load: ${_O_LOAD}%"
   echo "${_log_message}" >> "${_pthOml}"
-  local _subject="Disabled Spider Protection - Load decreased below Spider Protection Threshold ${_CPU_SPIDER_THRESHOLD}%"
-  _incident_email_report "${_log_message}" "${_subject}" "INFO"
-  echo >> "${_pthOml}"
+# local _subject="Disabled Spider Protection - Load decreased below Spider Protection Threshold ${_CPU_SPIDER_THRESHOLD}%"
+# _incident_email_report "${_log_message}" "${_subject}" "INFO"
+# echo >> "${_pthOml}"
   echo "Action Taken: Disabled protection from spiders (nginx high load configuration removed)."
 }
 
@@ -216,6 +217,10 @@ _load_control() {
 
   # Check for critical load to terminate processes and hold services
   if awk "BEGIN {exit !(${_O_LOAD} > ${_CPU_CRIT_THRESHOLD} || ${_F_LOAD} > ${_CPU_CRIT_THRESHOLD})}"; then
+    touch /run/critical_load.pid
+    [ -e "/run/max_load.pid" ] && rm -f /run/max_load.pid
+    [ -e "/run/normal_load.pid" ] && rm -f /run/normal_load.pid
+    [ -e "/run/spider_load.pid" ] && rm -f /run/spider_load.pid
     echo "Load exceeds critical threshold. Terminating processes and pausing web services."
     _limits_exceeded=true
     _skip_proc_control=true
@@ -230,6 +235,10 @@ _load_control() {
     _hold_services "${_current_load}" "${_CPU_MAX_THRESHOLD}" "${_load_period}"
   # Check for max load to hold services
   elif awk "BEGIN {exit !(${_O_LOAD} > ${_CPU_MAX_THRESHOLD} || ${_F_LOAD} > ${_CPU_MAX_THRESHOLD})}"; then
+    touch /run/max_load.pid
+    [ -e "/run/critical_load.pid" ] && rm -f /run/critical_load.pid
+    [ -e "/run/normal_load.pid" ] && rm -f /run/normal_load.pid
+    [ -e "/run/spider_load.pid" ] && rm -f /run/spider_load.pid
     echo "Load exceeds max threshold. Pausing web services."
     _limits_exceeded=true
     _skip_proc_control=true
@@ -243,6 +252,10 @@ _load_control() {
     _hold_services "${_current_load}" "${_CPU_MAX_THRESHOLD}" "${_load_period}"
   # Check for spider protection threshold
   elif awk "BEGIN {exit !(${_O_LOAD} > ${_CPU_SPIDER_THRESHOLD} && ${_O_LOAD} <= ${_CPU_MAX_THRESHOLD})}"; then
+    touch /run/spider_load.pid
+    [ -e "/run/critical_load.pid" ] && rm -f /run/critical_load.pid
+    [ -e "/run/max_load.pid" ] && rm -f /run/max_load.pid
+    [ -e "/run/normal_load.pid" ] && rm -f /run/normal_load.pid
     echo "Load exceeds spider protection threshold but below max threshold."
     _limits_exceeded=true
     # Do not set _skip_proc_control to true here
@@ -252,6 +265,10 @@ _load_control() {
       _nginx_high_load_on "${_current_load}" "${_CPU_SPIDER_THRESHOLD}" "${_load_period}"
     fi
   elif awk "BEGIN {exit !(${_F_LOAD} > ${_CPU_SPIDER_THRESHOLD} && ${_F_LOAD} <= ${_CPU_MAX_THRESHOLD})}"; then
+    touch /run/spider_load.pid
+    [ -e "/run/critical_load.pid" ] && rm -f /run/critical_load.pid
+    [ -e "/run/max_load.pid" ] && rm -f /run/max_load.pid
+    [ -e "/run/normal_load.pid" ] && rm -f /run/normal_load.pid
     echo "Load exceeds spider protection threshold but below max threshold."
     _limits_exceeded=true
     # Do not set _skip_proc_control to true here
@@ -261,6 +278,10 @@ _load_control() {
       _nginx_high_load_on "${_current_load}" "${_CPU_SPIDER_THRESHOLD}" "${_load_period}"
     fi
   else
+    touch /run/normal_load.pid
+    [ -e "/run/critical_load.pid" ] && rm -f /run/critical_load.pid
+    [ -e "/run/max_load.pid" ] && rm -f /run/max_load.pid
+    [ -e "/run/spider_load.pid" ] && rm -f /run/spider_load.pid
     # If load is below spider protection threshold, disable spider protection if it's enabled
     if [ -e "/data/conf/nginx_high_load.conf" ] && \
        awk "BEGIN {exit !(${_O_LOAD} <= ${_CPU_SPIDER_THRESHOLD} && ${_F_LOAD} <= ${_CPU_SPIDER_THRESHOLD})}"; then

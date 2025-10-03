@@ -9,6 +9,7 @@ _monPath="/var/xdrago/monitor/check"
 
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
+    # shellcheck disable=SC1091
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
     chmod a+w /dev/null
   else
@@ -18,22 +19,22 @@ _check_root() {
 }
 _check_root
 
-    # Sanitize to allow only digits and minus sign
-    export _B_NICE=${_B_NICE//[^0-9-]/}
+# Sanitize to allow only digits and minus sign
+export _B_NICE=${_B_NICE//[^0-9-]/}
 
-    # Validate and set default if necessary
-    if ! [[ "$_B_NICE" =~ ^-?[0-9]+$ ]]; then
-      _B_NICE=0
-    fi
+# Validate and set default if necessary
+if ! [[ "$_B_NICE" =~ ^-?[0-9]+$ ]]; then
+  _B_NICE=0
+fi
 
-    # Clamp the value within -20 to 19
-    if (( _B_NICE < -20 )); then
-      _B_NICE=-20
-    elif (( _B_NICE > 19 )); then
-      _B_NICE=19
-    fi
+# Clamp the value within -20 to 19
+if (( _B_NICE < -20 )); then
+  _B_NICE=-20
+elif (( _B_NICE > 19 )); then
+  _B_NICE=19
+fi
 
-    renice ${_B_NICE} -p $$ &> /dev/null
+renice ${_B_NICE} -p $$ &> /dev/null
 
 export _INCIDENT_REPORT=${_INCIDENT_REPORT//[^A-Z]/}
 : "${_INCIDENT_REPORT:=YES}"
@@ -115,7 +116,20 @@ _nginx_bind_check_fix() {
   fi
 }
 
-_nginx_heatlh_check_fix() {
+_nginx_health_check_fix() {
+  # Standard check first
+  if [ -x "/etc/init.d/nginx" ]; then
+    if ! pgrep -f 'nginx: master process' \
+      || [ ! -e "/run/nginx.pid" ]; then
+      pkill -9 -f nginx: || true
+      service nginx restart
+      wait
+      _thisErrLog="$(date) Nginx Server was down, restarted"
+      echo ${_thisErrLog} >> ${_pthOml}
+      _incident_email_report "Nginx Server was down, restarted"
+      echo >> ${_pthOml}
+    fi
+  fi
   # Initialize a flag to indicate whether Nginx service has been restarted
   _NGINX_RESTARTED=false
   # Check if Nginx is running and capture the process details
@@ -179,32 +193,12 @@ _if_nginx_restart() {
   fi
 }
 
-_nginx_bind_check_fix
-_nginx_oom_detection
-_nginx_heatlh_check_fix
-[ -d "/data/u" ] && _if_nginx_restart
-
-if [ ! -e "/root/.high_traffic.cnf" ] \
-  && [ ! -e "/root/.giant_traffic.cnf" ]; then
-  perl ${_monPath}/locked_nginx.pl &
-fi
-
-# Reload nginx if access log is missing or empty
-[ -s /var/log/nginx/access.log ] || service nginx reload
-
-# Main execution
-if [ -f "${_monPath}/scan_nginx.sh" ]; then
-  for _iteration in {1..4}; do
-    bash ${_monPath}/scan_nginx.sh &
-    sleep 12
-  done
-elif [ -f "${_monPath}/scan_nginx.pl" ]; then
-  for _iteration in {1..10}; do
-    perl ${_monPath}/scan_nginx.pl &
-    sleep 5
-  done
+if [ ! -e "/run/max_load.pid" ] && [ ! -e "/run/critical_load.pid" ]; then
+  _nginx_bind_check_fix
+  _nginx_oom_detection
+  _nginx_health_check_fix
+  [ -d "/data/u" ] && _if_nginx_restart
 fi
 
 echo "Done!"
 exit 0
-

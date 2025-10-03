@@ -2864,9 +2864,8 @@ _get_load() {
 }
 
 _load_control() {
-  [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
-  : "${_CPU_TASK_RATIO:=1.4}"
-  [ -e "/root/.force.sites.verify.cnf" ] && _CPU_TASK_RATIO=2.1
+  : "${_CPU_TASK_RATIO:=2.1}"
+  [ -e "/root/.force.sites.verify.cnf" ] && _CPU_TASK_RATIO=3.1
   _CPU_TASK_RATIO="$(_sanitize_number "${_CPU_TASK_RATIO}")"
   _O_LOAD_MAX=$(echo "${_CPU_TASK_RATIO} * 100" | bc -l)
   _get_load
@@ -2948,7 +2947,6 @@ _cleanup_weblogx() {
 
 _incident_email_report() {
   if [ -e "/root/.barracuda.cnf" ]; then
-    source /root/.barracuda.cnf
     _thisEmail="${_MY_EMAIL}"
     export _INCIDENT_REPORT=${_INCIDENT_REPORT//[^A-Z]/}
     : "${_INCIDENT_REPORT:=YES}"
@@ -3024,7 +3022,10 @@ _daily_action() {
             su -s /bin/bash - ${_HM_U} -c "drush10 site:alias-convert ~/.drush/sites --yes" &> /dev/null
             wait
           fi
-          source /root/.${_HM_U}.octopus.cnf
+
+          # shellcheck disable=SC1091
+          [ -e "/root/.${_HM_U}.octopus.cnf" ] && source /root/.${_HM_U}.octopus.cnf
+
           _DEL_OLD_EMPTY_PLATFORMS=${_DEL_OLD_EMPTY_PLATFORMS//[^0-9]/}
           _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
           _MY_EMAIL=${_MY_EMAIL//\\\@/\@}
@@ -3240,6 +3241,7 @@ fi
 mkdir -p /var/log/boa/daily
 mkdir -p /var/log/boa/le
 #
+# shellcheck disable=SC1091
 [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
 #
 _find_fast_mirror_early
@@ -3436,6 +3438,7 @@ else
       sed -i "s/TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf
     fi
     service nginx reload
+    wait
   fi
 fi
 

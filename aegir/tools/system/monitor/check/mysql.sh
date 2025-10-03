@@ -8,6 +8,7 @@ _pthOml="/var/log/boa/mysql.incident.log"
 
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
+    # shellcheck disable=SC1091
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
     chmod a+w /dev/null
   else
@@ -17,22 +18,22 @@ _check_root() {
 }
 _check_root
 
-    # Sanitize to allow only digits and minus sign
-    export _B_NICE=${_B_NICE//[^0-9-]/}
+# Sanitize to allow only digits and minus sign
+export _B_NICE=${_B_NICE//[^0-9-]/}
 
-    # Validate and set default if necessary
-    if ! [[ "$_B_NICE" =~ ^-?[0-9]+$ ]]; then
-      _B_NICE=0
-    fi
+# Validate and set default if necessary
+if ! [[ "$_B_NICE" =~ ^-?[0-9]+$ ]]; then
+  _B_NICE=0
+fi
 
-    # Clamp the value within -20 to 19
-    if (( _B_NICE < -20 )); then
-      _B_NICE=-20
-    elif (( _B_NICE > 19 )); then
-      _B_NICE=19
-    fi
+# Clamp the value within -20 to 19
+if (( _B_NICE < -20 )); then
+  _B_NICE=-20
+elif (( _B_NICE > 19 )); then
+  _B_NICE=19
+fi
 
-    renice ${_B_NICE} -p $$ &> /dev/null
+renice ${_B_NICE} -p $$ &> /dev/null
 
 export _SQL_MAX_TTL=${_SQL_MAX_TTL//[^0-9]/}
 : "${_SQL_MAX_TTL:=3600}"
@@ -97,13 +98,17 @@ _redis_cold_restart() {
 
 _sql_restart() {
   touch /run/boa_run.pid
+  if [ ! -d "/run/mysqld" ]; then
+    mkdir -p /run/mysqld
+    chown -R mysql:root /run/mysqld
+  fi
   sleep 3
   echo "$(date) $1 incident detected" >> ${_pthOml}
   killall sleep &> /dev/null
   killall php
   bash /var/xdrago/move_sql.sh
   wait
-  echo "$(date) $1 incident Percona MySQL server restarted" >> ${_pthOml}
+  echo "$(date) $1 incident Percona server restarted" >> ${_pthOml}
   if [ -e "/var/lib/valkey" ]; then
     _valkey_cold_restart
     echo "$(date) $1 incident Valkey server restarted" >> ${_pthOml}
@@ -135,7 +140,7 @@ _sql_busy_detection() {
   fi
   if [ -e "/root/.instant.busy.mysql.action.cnf" ]; then
     _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
-    _IS_MYSQLD_RUNNING=$(pgrep -f mysqld)
+    _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
     if [ ! -z "${_IS_MYSQLD_RUNNING}" ] && [ ! -z "${_SQL_PSWD}" ]; then
       _MYSQL_CONN_TEST=$(mysql -u root -e "status" 2>&1)
       echo _MYSQL_CONN_TEST ${_MYSQL_CONN_TEST}
@@ -251,10 +256,8 @@ _mysql_high_load() {
   fi
 }
 
-
-_mysql_is_locked() {
+_if_mydumper_is_locked() {
   _OCT_NR=$(ls /data/disk | wc -l)
-
   if [ -n "${_OCT_NR}" ] && [ "${_OCT_NR}" -ge 1 ]; then
     if [ "${_OCT_NR}" -ge 6 ]; then
       _MULTI_MX=$(( _OCT_NR * 3 ))
@@ -265,27 +268,53 @@ _mysql_is_locked() {
       _MULTI_MX=$(( _OCT_NR + 10 ))
     fi
   fi
-
   if (( $(pgrep -fc aegir.sh) > ${_MULTI_MX} )); then
-    if (( $(pgrep -fc mysql_backup.sh) > 0 )); then
-      pkill -9 -f mydumper
-      _incident_email_report "TOO MANY ($(pgrep -fc aegir.sh) aegir.sh required killing mydumper"
-    fi
+    _incident_email_report "TOO MANY ($(pgrep -fc aegir.sh) aegir.sh required killing mydumper"
+    pkill -f mydumper
+    pkill -f aegir.sh
   fi
   if (( $(pgrep -fc drush.php) > ${_MULTI_MX} )); then
-    if (( $(pgrep -fc mysql_backup.sh) > 0 )); then
-      pkill -9 -f mydumper
-      pkill -9 -f drush.php
-      _incident_email_report "TOO MANY ($(pgrep -fc drush.php) drush.php required killing mydumper"
-    fi
+    _incident_email_report "TOO MANY ($(pgrep -fc drush.php) drush.php required killing mydumper"
+    pkill -f mydumper
+    pkill -f drush.php
   fi
 }
 
+_mysql_flush_hosts() {
+  if pgrep -f /usr/sbin/mysqld \
+    && [ -e "/run/mysqld/mysqld.sock" ] \
+    && [ -e "/run/mysqld/mysqld.pid" ]; then
+    mysqladmin -u root flush-hosts &> /dev/null
+  fi
+}
+
+_mysql_health_check_fix() {
+  if ! pgrep -f /usr/sbin/mysqld \
+    || [ ! -e "/run/mysqld/mysqld.sock" ] \
+    || [ ! -e "/run/mysqld/mysqld.pid" ]; then
+    _sql_restart "DOWN MySQL"
+  fi
+}
+
+if (( $(pgrep -fc mydumper) > 0 )) && (( $(pgrep -fc mysql_backup.sh) > 0 )); then
+  sleep 5
+  _if_mydumper_is_locked
+fi
+
 _mysql_high_load
 _sql_busy_detection
-_mysql_is_locked
 
-perl /var/xdrago/monitor/check/sqlcheck.pl &
+if [ ! -e "/run/max_load.pid" ] && [ ! -e "/run/critical_load.pid" ]; then
+  _mysql_health_check_fix
+fi
+
+if [ ! -e "/run/boa_run.pid" ] \
+  && [ ! -e "/run/max_load.pid" ] \
+  && [ ! -e "/run/critical_load.pid" ] \
+  && [ ! -e "/run/mysql_restart_running.pid" ]; then
+  _mysql_flush_hosts
+  perl /var/xdrago/monitor/check/sqlcheck.pl &
+fi
 
 if [ -e "/run/boa_sql_backup.pid" ] \
   || [ -e "/run/boa_sql_cluster_backup.pid" ] \
@@ -297,13 +326,15 @@ else
   _SQL_CTRL=YES
 fi
 
-[ "${_SQL_CTRL}" = "YES" ] && _mysql_proc_control "${_SQL_MAX_TTL}"
-sleep 15
-[ "${_SQL_CTRL}" = "YES" ] && _mysql_proc_control "${_SQL_MAX_TTL}"
-sleep 15
-[ "${_SQL_CTRL}" = "YES" ] && _mysql_proc_control "${_SQL_MAX_TTL}"
-sleep 15
-[ "${_SQL_CTRL}" = "YES" ] && _mysql_proc_control "${_SQL_MAX_TTL}"
+if [ ! -e "/run/max_load.pid" ] && [ ! -e "/run/critical_load.pid" ]; then
+  [ "${_SQL_CTRL}" = "YES" ] && _mysql_proc_control "${_SQL_MAX_TTL}"
+  sleep 15
+  [ "${_SQL_CTRL}" = "YES" ] && _mysql_proc_control "${_SQL_MAX_TTL}"
+  sleep 15
+  [ "${_SQL_CTRL}" = "YES" ] && _mysql_proc_control "${_SQL_MAX_TTL}"
+  sleep 15
+  [ "${_SQL_CTRL}" = "YES" ] && _mysql_proc_control "${_SQL_MAX_TTL}"
+fi
 
 echo DONE!
 exit 0
