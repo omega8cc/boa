@@ -2561,6 +2561,7 @@ _display_info() {
       _services_order=(
         "sshd"
         "crond"
+        "postfix"
         "nginx"
         "php74-fpm"
         "php81-fpm"
@@ -2583,6 +2584,7 @@ _display_info() {
       declare -A _services=(
         ["sshd"]="/run/sshd.pid"
         ["crond"]="/run/crond.pid"
+        ["postfix"]="/var/spool/postfix/pid/master.pid"
         ["nginx"]="/run/nginx.pid"
         ["php74-fpm"]="/run/php74-fpm.pid"
         ["php81-fpm"]="/run/php81-fpm.pid"
