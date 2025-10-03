@@ -110,7 +110,7 @@ _valkey_restart() {
 _valkey_bind_check_fix() {
   if [ `tail --lines=8 /var/log/valkey/valkey-server.log \
     | grep --count "Address already in use"` -gt 0 ]; then
-    _thisErrLog="$(date) ValkeyException BIND detected, service will be restarted"
+    _thisErrLog="$(date) ValkeyException BIND PORT"
     echo ${_thisErrLog} >> ${_pthOml}
     _valkey_restart "ValkeyException BIND"
   fi
@@ -119,7 +119,7 @@ _valkey_bind_check_fix() {
 _valkey_connection_check_fix() {
   if [ `tail --lines=500 /var/log/php/error_log_* \
     | grep --count "ValkeyException: Connection refused"` -gt 19 ]; then
-    _thisErrLog="$(date) ValkeyException Connection refused detected, service will be restarted"
+    _thisErrLog="$(date) ValkeyException Connection refused"
     echo ${_thisErrLog} >> ${_pthOml}
     _valkey_restart "ValkeyException REFUSED"
   fi
@@ -127,8 +127,8 @@ _valkey_connection_check_fix() {
 
 _valkey_slow_check_fix() {
   if [ `tail --lines=500 /var/log/php/fpm-*-slow.log \
-    | grep --count "PhpValkey.php"` -gt 19 ]; then
-    _thisErrLog="$(date) Slow PhpValkey detected, service will be restarted"
+    | grep --count "PhpRedis.php"` -gt 19 ]; then
+    _thisErrLog="$(date) Slow PhpRedis"
     echo ${_thisErrLog} >> ${_pthOml}
     _valkey_restart "ValkeyException SLOW"
   fi
@@ -161,9 +161,9 @@ _valkey_health_check_fix() {
     || [ ! -e "/run/valkey/valkey.pid" ]; then
     mkdir -p /run/valkey
     chown -R valkey:valkey /run/valkey
-    _thisErrLog="$(date) Valkey Server was down, restarted"
+    _thisErrLog="$(date) ValkeyException DOWN"
     echo ${_thisErrLog} >> ${_pthOml}
-    _valkey_restart "Valkey Server was down, restarted"
+    _valkey_restart "ValkeyException DOWN"
   fi
 }
 

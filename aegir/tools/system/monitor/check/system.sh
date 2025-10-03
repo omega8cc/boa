@@ -283,9 +283,9 @@ _ftpd_health_check_fix() {
           _ftpd_restarted=YES
         fi
         if [ "${_ftpd_restarted}" = "YES" ]; then
-          _thisErrLog="$(date) FTPS Server was down, restarted"
+          _thisErrLog="$(date) FTPS Server DOWN"
           echo ${_thisErrLog} >> ${_pthOml}
-          _incident_email_report "FTPS Server was down, restarted"
+          _incident_email_report "FTPS Server DOWN"
           echo >> ${_pthOml}
         fi
       fi
@@ -299,9 +299,9 @@ _postfix_health_check_fix() {
       || [ ! -e "/var/spool/postfix/pid/master.pid" ]; then
       service postfix restart
       wait
-      _thisErrLog="$(date) Postfix Server was down, restarted"
+      _thisErrLog="$(date) Postfix Server DOWN"
       echo ${_thisErrLog} >> ${_pthOml}
-      _incident_email_report "Postfix Server was down, restarted"
+      _incident_email_report "Postfix Server DOWN"
       echo >> ${_pthOml}
     fi
   fi
@@ -313,9 +313,9 @@ _vnstat_health_check_fix() {
       || [ ! -e "/run/vnstat/vnstat.pid" ]; then
       service vnstat restart
       wait
-      _thisErrLog="$(date) VNStat Monitor was down, restarted"
+      _thisErrLog="$(date) VNStat Monitor DOWN"
       echo ${_thisErrLog} >> ${_pthOml}
-      _incident_email_report "VNStat Monitor was down, restarted"
+      _incident_email_report "VNStat Monitor DOWN"
       echo >> ${_pthOml}
     fi
   fi
@@ -329,9 +329,9 @@ _lfd_health_check_fix() {
       wait
       csf -e
       wait
-      _thisErrLog="$(date) LDF Monitor was down, started"
+      _thisErrLog="$(date) LFD Monitor DOWN"
       echo ${_thisErrLog} >> ${_pthOml}
-      _incident_email_report "LDF Monitor was down, started"
+      _incident_email_report "LFD Monitor DOWN"
       echo >> ${_pthOml}
     fi
   fi
@@ -344,9 +344,9 @@ _if_fix_locked_sshd() {
     pkill -9 -f /usr/sbin/sshd || true
     service ssh start
     wait
-    _thisErrLog="$(date) SSHD BIND error detected, service restarted"
+    _thisErrLog="$(date) SSHD BIND PORT"
     echo ${_thisErrLog} >> ${_pthOml}
-    _incident_email_report "SSHD BIND error detected, service restarted"
+    _incident_email_report "SSHD BIND PORT"
     echo >> ${_pthOml}
   fi
 }
@@ -357,9 +357,9 @@ _sshd_health_check_fix() {
       || [ ! -e "/run/sshd.pid" ]; then
       service ssh start
       wait
-      _thisErrLog="$(date) SSHD Server was down, started"
+      _thisErrLog="$(date) SSHD Server DOWN"
       echo ${_thisErrLog} >> ${_pthOml}
-      _incident_email_report "SSHD Server was down, started"
+      _incident_email_report "SSHD Server DOWN"
       echo >> ${_pthOml}
     fi
   fi
@@ -417,9 +417,9 @@ _rsyslog_health_check_fix() {
       pkill -9 -f /usr/sbin/rsyslogd || true
       service rsyslog restart
       wait
-      _thisErrLog="$(date) Rsyslog was down, restarted"
+      _thisErrLog="$(date) Rsyslog DOWN"
       echo ${_thisErrLog} >> ${_pthOml}
-      _incident_email_report "Rsyslog was down, restarted"
+      _incident_email_report "Rsyslog DOWN"
       echo >> ${_pthOml}
     fi
   fi
