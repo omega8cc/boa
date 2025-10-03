@@ -38,6 +38,18 @@ export _xSrl=570devT09
 : "${_DEBUG_MODE:=NO}"
 
 ###
+### Sanitize email report variable
+###
+_INCIDENT_REPORT="${_INCIDENT_REPORT^^}"
+case "${_INCIDENT_REPORT}" in
+  "YES"|"NO"|"VERBOSE")
+    ;;
+  *)
+    _INCIDENT_REPORT="YES"
+    ;;
+esac
+
+###
 ### Atomic lock/unlock to prevent TOCTOU race
 ###
 _manage_single_lock() {
@@ -62,21 +74,10 @@ _manage_single_lock() {
 _manage_single_lock
 
 ###
-### Sanitize email report variable
-###
-_INCIDENT_REPORT="${_INCIDENT_REPORT^^}"
-case "${_INCIDENT_REPORT}" in
-  "YES"|"NO"|"VERBOSE")
-    ;;
-  *)
-    _INCIDENT_REPORT="YES"
-    ;;
-esac
-
-###
 ### Function to send incident email report
 ###
 _incident_email_report() {
+  if ! _check_uptime_grace_period >/dev/null; then return 1; fi
   local _message="$1"
   local _subject="$2"
   local _incident_level="$3"  # "ALERT" or "INFO"
