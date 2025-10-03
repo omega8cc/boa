@@ -110,6 +110,8 @@ _csf_flood_guard() {
 [ ! -e "/run/boa_run.pid" ] && _second_flood_guard
 [ -x "/usr/sbin/csf" ] && [ ! -e "/run/water.pid" ] && _csf_flood_guard
 
+[ -e "/run/wait-unbound.pid" ] && rm -f /run/wait-unbound.pid
+
 echo DONE!
 exit 0
 
