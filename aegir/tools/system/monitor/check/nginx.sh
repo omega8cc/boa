@@ -116,7 +116,7 @@ _nginx_bind_check_fix() {
   fi
 }
 
-_nginx_heatlh_check_fix() {
+_nginx_health_check_fix() {
   # Initialize a flag to indicate whether Nginx service has been restarted
   _NGINX_RESTARTED=false
   # Check if Nginx is running and capture the process details
@@ -182,8 +182,8 @@ _if_nginx_restart() {
 
 _nginx_bind_check_fix
 _nginx_oom_detection
-_nginx_heatlh_check_fix
 [ -d "/data/u" ] && _if_nginx_restart
+  _nginx_health_check_fix
 
 if [ ! -e "/root/.high_traffic.cnf" ] \
   && [ ! -e "/root/.giant_traffic.cnf" ]; then

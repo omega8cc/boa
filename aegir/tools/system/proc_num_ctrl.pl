@@ -139,14 +139,6 @@ if (!any_file_exists($run_to_files)) {
   system("service newrelic-sysmond stop") if ($newrelicsysmondsumar && -f "/etc/init.d/newrelic-sysmond" && !-f "/root/.enable.newrelic.sysmond.cnf");
 }
 
-if (!$nginxsumar && -f "/etc/init.d/nginx") {
-  system("killall -9 nginx");
-  system("service nginx start");
-  $timedate=`date +%y%m%d-%H%M%S`;
-  chomp($timedate);
-  `echo "$timedate KILL START nginx" >> /var/log/boa/nginx.kill-start.log`;
-}
-
 if ($fpmsumar && $fpmsumar > 11 ) {
   $timedate=`date +%y%m%d-%H%M%S`;
   chomp($timedate);
