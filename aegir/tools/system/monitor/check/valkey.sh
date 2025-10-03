@@ -110,7 +110,7 @@ _valkey_restart() {
 _valkey_bind_check_fix() {
   if [ `tail --lines=8 /var/log/valkey/valkey-server.log \
     | grep --count "Address already in use"` -gt 0 ]; then
-    _thisErrLog="$(date) ValkeyException BIND PORT"
+    _thisErrLog="$(date) ValkeyException BIND detected, service will be restarted"
     echo ${_thisErrLog} >> ${_pthOml}
     _valkey_restart "ValkeyException BIND"
   fi
@@ -119,7 +119,7 @@ _valkey_bind_check_fix() {
 _valkey_connection_check_fix() {
   if [ `tail --lines=500 /var/log/php/error_log_* \
     | grep --count "ValkeyException: Connection refused"` -gt 19 ]; then
-    _thisErrLog="$(date) ValkeyException Connection refused"
+    _thisErrLog="$(date) ValkeyException Connection refused detected, service will be restarted"
     echo ${_thisErrLog} >> ${_pthOml}
     _valkey_restart "ValkeyException REFUSED"
   fi
@@ -161,9 +161,9 @@ _valkey_health_check_fix() {
     || [ ! -e "/run/valkey/valkey.pid" ]; then
     mkdir -p /run/valkey
     chown -R valkey:valkey /run/valkey
-    _thisErrLog="$(date) ValkeyException DOWN"
+    _thisErrLog="$(date) Valkey Server was down, restarted"
     echo ${_thisErrLog} >> ${_pthOml}
-    _valkey_restart "ValkeyException DOWN"
+    _valkey_restart "Valkey Server was down, restarted"
   fi
 }
 
@@ -175,12 +175,13 @@ else
 fi
 
 if [ ! -e "/run/max_load.pid" ] && [ ! -e "/run/critical_load.pid" ]; then
-  if [ -x "/etc/init.d/valkey-server" ]; then
+  if [ -x "/etc/init.d/valkey-server" ] \
+    && [ -x "/usr/bin/valkey-server" ]; then
+    _valkey_health_check_fix
     [ "${_ALLOW_CTRL}" = "YES" ] && _valkey_slow_check_fix
     [ "${_ALLOW_CTRL}" = "YES" ] && _valkey_connection_check_fix
     [ "${_ALLOW_CTRL}" = "YES" ] && _valkey_bind_check_fix
     [ "${_ALLOW_CTRL}" = "YES" ] && [ -d "/data/u" ] && _if_valkey_restart
-    _valkey_health_check_fix
   fi
 fi
 

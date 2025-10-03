@@ -216,7 +216,6 @@ _unbound_check_nomail() {
 
 _unbound_health_check_fix() {
   if ! pgrep -f /usr/sbin/unbound \
-    || /run/unbound \
     || [ ! -e "/run/unbound/unbound.pid" ]; then
     touch /run/wait-unbound.pid
     sleep 3
@@ -232,9 +231,9 @@ _unbound_health_check_fix() {
     unbound-control reload &> /dev/null
     sleep 3
     rm -f /run/wait-unbound.pid
-    _thisErrLog="$(date) Unbound Server DOWN"
+    _thisErrLog="$(date) Unbound Server was down, restarted"
     echo ${_thisErrLog} >> ${_pthOml}
-    _incident_email_report "Unbound Server DOWN"
+    _incident_email_report "Unbound Server was down, restarted"
     echo >> ${_pthOml}
   fi
 }
