@@ -117,6 +117,19 @@ _nginx_bind_check_fix() {
 }
 
 _nginx_health_check_fix() {
+  # Standard check first
+  if [ -x "/etc/init.d/nginx" ]; then
+    if ! pgrep -f 'nginx: master process' \
+      || [ ! -e "/run/nginx.pid" ]; then
+      pkill -9 -f nginx: || true
+      service nginx restart
+      wait
+      _thisErrLog="$(date) Nginx Server was down, restarted"
+      echo ${_thisErrLog} >> ${_pthOml}
+      _incident_email_report "Nginx Server was down, restarted"
+      echo >> ${_pthOml}
+    fi
+  fi
   # Initialize a flag to indicate whether Nginx service has been restarted
   _NGINX_RESTARTED=false
   # Check if Nginx is running and capture the process details
