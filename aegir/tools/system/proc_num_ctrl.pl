@@ -133,23 +133,6 @@ if (!any_file_exists($run_to_files)) {
   system("service droplet-agent restart") if (!-f "/run/droplet-agent.pid" && -f "/etc/init.d/droplet-agent");
 }
 
-if (-f "/etc/init.d/valkey-server") {
-  if (!-d "/run/valkey") {
-    system("mkdir -p /run/valkey");
-    system("chown -R valkey:valkey /run/valkey");
-  }
-  if (!$valkeysumar) {
-    system("service valkey-server start");
-  }
-  local(@RSARR)=`grep -e redis_client_socket /data/conf/global.inc`;
-  foreach $line (@RSARR) {
-    if ($line =~ /redis_client_socket/) {$valkeysocket = "YES";}
-  }
-  system("service valkey-server restart") if (!-e "/run/valkey/valkey.sock" && $valkeysocket);
-  sleep(2);
-  system("service valkey-server restart") if (!-f "/run/valkey/valkey.pid");
-}
-
 if (-f "/etc/init.d/redis-server") {
   if (!-d "/run/redis") {
     system("mkdir -p /run/redis");

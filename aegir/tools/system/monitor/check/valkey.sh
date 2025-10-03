@@ -152,6 +152,18 @@ _if_valkey_restart() {
   fi
 }
 
+_valkey_health_check_fix() {
+  if ! pgrep -f /usr/bin/valkey-server \
+    || [ ! -e "/run/valkey/valkey.sock" ] \
+    || [ ! -e "/run/valkey/valkey.pid" ]; then
+    mkdir -p /run/valkey
+    chown -R valkey:valkey /run/valkey
+    _thisErrLog="$(date) Valkey Server was down, restarted"
+    echo ${_thisErrLog} >> ${_pthOml}
+    _valkey_restart "Valkey Server was down, restarted"
+  fi
+}
+
 if [ -e "/run/boa_run.pid" ] \
   || [ -e "/run/boa_wait.pid" ]; then
   _ALLOW_CTRL=NO
@@ -163,6 +175,7 @@ fi
 [ "${_ALLOW_CTRL}" = "YES" ] && _valkey_connection_check_fix
 [ "${_ALLOW_CTRL}" = "YES" ] && _valkey_bind_check_fix
 [ "${_ALLOW_CTRL}" = "YES" ] && [ -d "/data/u" ] && _if_valkey_restart
+    _valkey_health_check_fix
 
 echo DONE!
 exit 0
