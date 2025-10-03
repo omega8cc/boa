@@ -33,10 +33,10 @@ _free_memory() {
 
 _create_locks() {
   echo "Creating locks..."
-  touch /run/boa_wait.pid
-  touch /run/fmp_wait.pid
-  touch /run/restarting_fmp_wait.pid
-  touch /run/mysql_restart_running.pid
+  : > /run/boa_wait.pid
+  : > /run/fmp_wait.pid
+  : > /run/restarting_fmp_wait.pid
+  : > /run/mysql_restart_running.pid
   _free_memory
 }
 

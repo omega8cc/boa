@@ -71,8 +71,8 @@ _incident_email_report() {
 }
 
 _fpm_forced_restart() {
-  touch /run/fmp_wait.pid
-  touch /run/restarting_fmp_wait.pid
+  : > /run/fmp_wait.pid
+  : > /run/restarting_fmp_wait.pid
   sleep 3
   _NOW=$(date +%y%m%d-%H%M%S)
   _NOW=${_NOW//[^0-9-]/}
@@ -90,8 +90,7 @@ _fpm_forced_restart() {
   _incident_email_report "PHP $1"
   echo >> ${_pthOml}
   sleep 3
-  rm -f /run/fmp_wait.pid
-  rm -f /run/restarting_fmp_wait.pid
+  rm -f /run/fmp_wait.pid /run/restarting_fmp_wait.pid
   exit 0
 }
 
@@ -161,19 +160,23 @@ _fpm_health_check_fix() {
   _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     if [ -e "/etc/init.d/php${e}-fpm" ] && [ -x "/opt/php${e}/bin/php" ]; then
-      if ! pgrep -f 'php-fpm: master process.*/opt/php${e}/etc/php${e}-fpm.conf' \
-        || [ ! -e "/run/www${e}.fpm.socket" ] \
-        || [ ! -e "/run/php${e}-fpm.pid" ]; then
-        touch /run/fmp_wait.pid
-        touch /run/restarting_fmp_wait.pid
+      _pat="php-fpm: master process.*/opt/php${e}/etc/php${e}-fpm.conf"
+      _TestPhp="$(pgrep -f "${_pat}")"
+      echo "Pgrep is ${_TestPhp}"
+      echo "Socket is $(ls -la "/run/www${e}.fpm.socket" 2>/dev/null || echo 'missing')"
+      echo "PID is $(cat "/run/php${e}-fpm.pid" 2>/dev/null || echo 'missing')"
+      if ! pgrep -f -q "${_pat}" \
+        || [ ! -S "/run/www${e}.fpm.socket" ] \
+        || [ ! -s "/run/php${e}-fpm.pid" ]; then
+        : > /run/fmp_wait.pid
+        : > /run/restarting_fmp_wait.pid
         sleep 1
-        service php${e}-fpm restart
+        service "php${e}-fpm" restart
         wait
         _thisErrLog="$(date) PHP-FPM ${e} was down, restarted"
         echo ${_thisErrLog} >> ${_pthOml}
         sleep 1
-        rm -f /run/fmp_wait.pid
-        rm -f /run/restarting_fmp_wait.pid
+        rm -f /run/fmp_wait.pid /run/restarting_fmp_wait.pid
       fi
     fi
   done
