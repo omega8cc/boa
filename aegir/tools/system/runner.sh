@@ -139,7 +139,7 @@ fi
 if [ "$(pgrep -fc 'n7 bash /var/xdrago/runner.sh')" -gt 8 ] \
   || [ "${_SQLBACKUP_RUNNING}" = "TRUE" ] \
   || [ "${_DAILY_RUNNING}" = "TRUE" ] \
-  || [ -e "/run/mysql_restart_running.pid" ]
+  || [ -e "/run/mysql_restart_running.pid" ] \
   || [ -e "/run/boa_sql_cluster_backup.pid" ] \
   || [ -e "/run/boa_wait.pid" ] \
   || [ -e "/run/boa_run.pid" ] \
