@@ -8,6 +8,7 @@ _pthOml="/var/log/boa/php.incident.log"
 
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
+    # shellcheck disable=SC1091
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
     chmod a+w /dev/null
   else
@@ -17,22 +18,22 @@ _check_root() {
 }
 _check_root
 
-    # Sanitize to allow only digits and minus sign
-    export _B_NICE=${_B_NICE//[^0-9-]/}
+# Sanitize to allow only digits and minus sign
+export _B_NICE=${_B_NICE//[^0-9-]/}
 
-    # Validate and set default if necessary
-    if ! [[ "$_B_NICE" =~ ^-?[0-9]+$ ]]; then
-      _B_NICE=0
-    fi
+# Validate and set default if necessary
+if ! [[ "$_B_NICE" =~ ^-?[0-9]+$ ]]; then
+  _B_NICE=0
+fi
 
-    # Clamp the value within -20 to 19
-    if (( _B_NICE < -20 )); then
-      _B_NICE=-20
-    elif (( _B_NICE > 19 )); then
-      _B_NICE=19
-    fi
+# Clamp the value within -20 to 19
+if (( _B_NICE < -20 )); then
+  _B_NICE=-20
+elif (( _B_NICE > 19 )); then
+  _B_NICE=19
+fi
 
-    renice ${_B_NICE} -p $$ &> /dev/null
+renice ${_B_NICE} -p $$ &> /dev/null
 
 export _INCIDENT_REPORT=${_INCIDENT_REPORT//[^A-Z]/}
 : "${_INCIDENT_REPORT:=YES}"
@@ -70,8 +71,8 @@ _incident_email_report() {
 }
 
 _fpm_forced_restart() {
-  touch /run/fmp_wait.pid
-  touch /run/restarting_fmp_wait.pid
+  : > /run/fmp_wait.pid
+  : > /run/restarting_fmp_wait.pid
   sleep 3
   _NOW=$(date +%y%m%d-%H%M%S)
   _NOW=${_NOW//[^0-9-]/}
@@ -83,13 +84,13 @@ _fpm_forced_restart() {
   for e in ${_PHP_V}; do
     if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
       service php${e}-fpm start
+      wait
     fi
   done
   _incident_email_report "PHP $1"
   echo >> ${_pthOml}
   sleep 3
-  rm -f /run/fmp_wait.pid
-  rm -f /run/restarting_fmp_wait.pid
+  rm -f /run/fmp_wait.pid /run/restarting_fmp_wait.pid
   exit 0
 }
 
@@ -115,7 +116,7 @@ _fpm_listen_conflict_detection() {
   if [ -e "/var/log/php" ]; then
     if [ `tail --lines=500 /var/log/php/php*-fpm-error.log \
       | grep --count "already listen on"` -gt 0 ]; then
-      _thisErrLog="$(date) FPM instances conflict detected, service will be restarted"
+      _thisErrLog="$(date) FPM instances conflict"
       echo ${_thisErrLog} >> ${_pthOml}
       _fpm_forced_restart "FPM instances conflict"
     fi
@@ -125,7 +126,7 @@ _fpm_listen_conflict_detection() {
 _fpm_proc_max_detection() {
   if [ `tail --lines=500 /var/log/php/php*-fpm-error.log \
     | grep --count "process.max"` -gt 0 ]; then
-    _thisErrLog="$(date) Too many running FPM childs detected, service will be restarted"
+    _thisErrLog="$(date) Too many running FPM childs"
     echo ${_thisErrLog} >> ${_pthOml}
     _fpm_forced_restart "Too many running FPM childs"
   fi
@@ -134,7 +135,7 @@ _fpm_proc_max_detection() {
 _fpm_sockets_healing() {
   if [ `tail --lines=500 /var/log/php/php*-fpm-error.log \
     | grep --count "Address already in use"` -gt 0 ]; then
-    _thisErrLog="$(date) FPM Sockets conflict detected, service will be restarted"
+    _thisErrLog="$(date) FPM Sockets conflict"
     echo ${_thisErrLog} >> ${_pthOml}
     _fpm_forced_restart "FPM Sockets conflict"
   fi
@@ -154,21 +155,54 @@ _fpm_fastcgi_temp() {
   fi
 }
 
+_fpm_health_check_fix() {
+  _thisErrLog=
+  _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
+  for e in ${_PHP_V}; do
+    if [ -e "/etc/init.d/php${e}-fpm" ] && [ -x "/opt/php${e}/bin/php" ]; then
+      _pat="php-fpm: master process.*/opt/php${e}/etc/php${e}-fpm.conf"
+      _TestPhp="$(pgrep -f "${_pat}")"
+      echo "Pgrep is ${_TestPhp}"
+      echo "Socket is $(ls -la "/run/www${e}.fpm.socket" 2>/dev/null || echo 'missing')"
+      echo "PID is $(cat "/run/php${e}-fpm.pid" 2>/dev/null || echo 'missing')"
+      if ! pgrep -f "${_pat}" \
+        || [ ! -S "/run/www${e}.fpm.socket" ] \
+        || [ ! -s "/run/php${e}-fpm.pid" ]; then
+        : > /run/fmp_wait.pid
+        : > /run/restarting_fmp_wait.pid
+        sleep 1
+        service "php${e}-fpm" restart
+        wait
+        _thisErrLog="$(date) PHP-FPM ${e} DOWN"
+        echo ${_thisErrLog} >> ${_pthOml}
+        sleep 1
+        rm -f /run/fmp_wait.pid /run/restarting_fmp_wait.pid
+      fi
+    fi
+  done
+  if [ -n "${_thisErrLog}" ]; then
+    _incident_email_report "PHP-FPM DOWN"
+    echo >> ${_pthOml}
+  fi
+}
+
 if [ ! -e "/var/tmp/fpm" ]; then
   mkdir -p /var/tmp/fpm
   chmod 777 /var/tmp/fpm
 fi
 
-_fpm_duplicate_instances_detection
-_fpm_giant_log_detection
-_fpm_listen_conflict_detection
-_fpm_proc_max_detection
-_fpm_sockets_healing
-_fpm_fastcgi_temp
-
-if [ ! -e "/root/.high_traffic.cnf" ] \
-  && [ ! -e "/root/.giant_traffic.cnf" ]; then
-  perl /var/xdrago/monitor/check/segfault_alert.pl &
+if [ ! -e "/run/max_load.pid" ] && [ ! -e "/run/critical_load.pid" ]; then
+  _fpm_duplicate_instances_detection
+  _fpm_listen_conflict_detection
+  _fpm_proc_max_detection
+  _fpm_sockets_healing
+  _fpm_fastcgi_temp
+  _fpm_giant_log_detection
+  _fpm_health_check_fix
+  if [ ! -e "/root/.high_traffic.cnf" ] \
+    && [ ! -e "/root/.giant_traffic.cnf" ]; then
+    perl /var/xdrago/monitor/check/segfault_alert.pl &
+  fi
 fi
 
 echo DONE!

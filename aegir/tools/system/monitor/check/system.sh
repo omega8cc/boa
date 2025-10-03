@@ -8,6 +8,7 @@ _pthOml="/var/log/boa/system.incident.log"
 
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
+    # shellcheck disable=SC1091
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
     chmod a+w /dev/null
   else
@@ -54,15 +55,13 @@ _incident_email_report() {
 
 _wkhtmltopdf_php_cli_oom_kill() {
   touch /run/boa_run.pid
-  echo "$(date) OOM $1 wkhtmltopdf/php-cli detected" >> ${_pthOml}
+  echo "$(date) OOM $1 wkhtmltopdf detected" >> ${_pthOml}
   sleep 3
   pkill -9 -f wkhtmltopdf
   echo "$(date) OOM wkhtmltopdf killed" >> ${_pthOml}
   killall -9 sleep &> /dev/null
-  killall -9 php
-  echo "$(date) OOM php-cli killed" >> ${_pthOml}
-  echo "$(date) OOM wkhtmltopdf/php-cli incident response completed" >> ${_pthOml}
-  _incident_email_report "OOM $1 wkhtmltopdf/php-cli"
+  echo "$(date) OOM wkhtmltopdf incident response completed" >> ${_pthOml}
+  _incident_email_report "OOM $1 wkhtmltopdf"
   echo >> ${_pthOml}
   [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
   exit 0
@@ -156,19 +155,6 @@ _optimize_ram() {
   fi
 }
 
-_if_fix_locked_sshd() {
-  _SSH_LOG="/var/log/auth.log"
-  if [ `tail --lines=10 ${_SSH_LOG} \
-    | grep --count "error: Bind to port 22"` -gt 0 ]; then
-    pkill -9 -f /usr/sbin/sshd || true
-    service ssh start
-    _thisErrLog="$(date) SSHD BIND error detected, service restarted"
-    echo ${_thisErrLog} >> ${_pthOml}
-    _incident_email_report "SSHD BIND error detected, service restarted"
-    echo >> ${_pthOml}
-  fi
-}
-
 _if_fix_dhcp() {
   # Determine the correct log file
   if [ -e "/var/log/daemon.log" ]; then
@@ -228,6 +214,7 @@ _cron_duplicate_instances_detection() {
     echo ${_thisErrLog} >> /var/log/boa/cron-count.kill.log
     killall -9 cron &> /dev/null
     service cron start &> /dev/null
+    wait
     _thisErrLog="$(date) Too many Cron instances, service restarted (count=${_CNT})"
     echo ${_thisErrLog} >> ${_pthOml}
     _incident_email_report "Too many Cron instances, service restarted (count=${_CNT})"
@@ -276,6 +263,176 @@ _dirmngr_too_many_instances_detection() {
   fi
 }
 
+_ftpd_health_check_fix() {
+  _ftpd_init="/usr/local/sbin/pure-config.pl"
+  _ftpd_conf="/usr/local/etc/pure-ftpd.conf"
+  _ftpd_bind="/usr/local/sbin/pure-ftpd"
+  _ftpd_pid="/run/pure-ftpd.pid"
+  _ftpd_restarted=NO
+  if [ -x "/usr/local/sbin/pure-ftpd" ] \
+    || [ -x "/usr/local/sbin/pure-config.pl" ]; then
+    if ! pgrep -f pure-ftpd \
+      || [ ! -e "/run/pure-ftpd.pid" ]; then
+      if [ -e "${_ftpd_conf}" ]; then
+        pkill -9 -f pure-ftpd || true
+        if [ -x "${_ftpd_init}" ]; then
+          ${_ftpd_init} ${_ftpd_conf}
+          _ftpd_restarted=YES
+        elif [ -x "${_ftpd_bind}" ]; then
+          ${_ftpd_bind} ${_ftpd_conf}
+          _ftpd_restarted=YES
+        fi
+        if [ "${_ftpd_restarted}" = "YES" ]; then
+          _thisErrLog="$(date) FTPS Server DOWN"
+          echo ${_thisErrLog} >> ${_pthOml}
+          _incident_email_report "FTPS Server DOWN"
+          echo >> ${_pthOml}
+        fi
+      fi
+    fi
+  fi
+}
+
+_postfix_health_check_fix() {
+  if [ -x "/etc/init.d/postfix" ]; then
+    if ! pgrep -f /usr/lib/postfix \
+      || [ ! -e "/var/spool/postfix/pid/master.pid" ]; then
+      service postfix restart
+      wait
+      _thisErrLog="$(date) Postfix Server DOWN"
+      echo ${_thisErrLog} >> ${_pthOml}
+      _incident_email_report "Postfix Server DOWN"
+      echo >> ${_pthOml}
+    fi
+  fi
+}
+
+_vnstat_health_check_fix() {
+  if [ -x "/etc/init.d/vnstat" ]; then
+    if ! pgrep -f /usr/sbin/vnstatd \
+      || [ ! -e "/run/vnstat/vnstat.pid" ]; then
+      service vnstat restart
+      wait
+      _thisErrLog="$(date) VNStat Monitor DOWN"
+      echo ${_thisErrLog} >> ${_pthOml}
+      _incident_email_report "VNStat Monitor DOWN"
+      echo >> ${_pthOml}
+    fi
+  fi
+}
+
+_lfd_health_check_fix() {
+  if [ -x "/etc/init.d/lfd" ]; then
+    if ! pgrep -f lfd \
+      || [ ! -e "/run/lfd.pid" ]; then
+      service lfd start
+      wait
+      csf -e
+      wait
+      _thisErrLog="$(date) LFD Monitor DOWN"
+      echo ${_thisErrLog} >> ${_pthOml}
+      _incident_email_report "LFD Monitor DOWN"
+      echo >> ${_pthOml}
+    fi
+  fi
+}
+
+_if_fix_locked_sshd() {
+  _SSH_LOG="/var/log/auth.log"
+  if [ `tail --lines=10 ${_SSH_LOG} \
+    | grep --count "error: Bind to port 22"` -gt 0 ]; then
+    pkill -9 -f /usr/sbin/sshd || true
+    service ssh start
+    wait
+    _thisErrLog="$(date) SSHD BIND PORT"
+    echo ${_thisErrLog} >> ${_pthOml}
+    _incident_email_report "SSHD BIND PORT"
+    echo >> ${_pthOml}
+  fi
+}
+
+_sshd_health_check_fix() {
+  if [ -x "/etc/init.d/ssh" ]; then
+    if ! pgrep -f /usr/sbin/sshd \
+      || [ ! -e "/run/sshd.pid" ]; then
+      service ssh start
+      wait
+      _thisErrLog="$(date) SSHD Server DOWN"
+      echo ${_thisErrLog} >> ${_pthOml}
+      _incident_email_report "SSHD Server DOWN"
+      echo >> ${_pthOml}
+    fi
+  fi
+}
+
+_clamav_health_check_fix() {
+  # Define file paths as variables
+  _allow_conf="/root/.allow.clamav.cnf"
+  _deny_conf="/root/.deny.clamav.cnf"
+  _data_dir="/data/u"
+  _freshclam_pid="/run/clamav/freshclam.pid"
+  _clamd_pid="/run/clamav/clamd.pid"
+  _clamd_service="/etc/init.d/clamav-daemon"
+  _freshclam_service="/etc/init.d/clamav-freshclam"
+  if [ -e "/run/max_load.pid" ] || [ -e "/run/critical_load.pid" ]; then
+    return 1  # Exit the function but continue the script
+  fi
+  if [ -e "${_allow_conf}" ] \
+    && [ ! -e "${_deny_conf}" ] \
+    && [ -e "${_data_dir}" ] \
+    && [ -e "${_clamd_service}" ] \
+    && [ -e "${_freshclam_service}" ]; then
+    if [ -x "/etc/init.d/clamav-daemon" ]; then
+      if ! pgrep -f /usr/sbin/clamd \
+        || [ ! -e "/run/clamav/clamd.pid" ]; then
+        pkill -9 -f /usr/sbin/clamd || true
+        service clamav-daemon start
+        wait
+        _thisErrLog="$(date) Clamav was down, started"
+        echo ${_thisErrLog} >> ${_pthOml}
+        _incident_email_report "Clamav was down, started"
+        echo >> ${_pthOml}
+      fi
+    fi
+    if [ -x "/etc/init.d/clamav-freshclam" ]; then
+      if ! pgrep -f /usr/bin/freshclam \
+        || [ ! -e "/run/clamav/freshclam.pid" ]; then
+        pkill -9 -f /usr/bin/freshclam || true
+        service clamav-freshclam start
+        wait
+        sleep 15
+        _thisErrLog="$(date) Freshclam was down, started"
+        echo ${_thisErrLog} >> ${_pthOml}
+        _incident_email_report "Freshclam was down, started"
+        echo >> ${_pthOml}
+      fi
+    fi
+  fi
+}
+
+_rsyslog_health_check_fix() {
+  if [ -x "/etc/init.d/rsyslog" ]; then
+    if ! pgrep -f /usr/sbin/rsyslogd \
+      || [ ! -e "/run/rsyslogd.pid" ]; then
+      pkill -9 -f /usr/sbin/rsyslogd || true
+      service rsyslog restart
+      wait
+      _thisErrLog="$(date) Rsyslog DOWN"
+      echo ${_thisErrLog} >> ${_pthOml}
+      _incident_email_report "Rsyslog DOWN"
+      echo >> ${_pthOml}
+    fi
+  fi
+}
+
+_sshd_health_check_fix
+_if_fix_locked_sshd
+_if_fix_dhcp
+_rsyslog_health_check_fix
+_postfix_health_check_fix
+_cron_duplicate_instances_detection
+_syslog_giant_log_detection
+
 if [ -e "/run/boa_sql_backup.pid" ] \
   || [ -e "/run/boa_sql_cluster_backup.pid" ] \
   || [ -e "/run/boa_run.pid" ] \
@@ -286,15 +443,14 @@ else
   _ALLOW_CTRL=YES
 fi
 
-_if_fix_locked_sshd
-_if_fix_dhcp
-_cron_duplicate_instances_detection
-_syslog_giant_log_detection
-
 [ "${_ALLOW_CTRL}" = "YES" ] && _optimize_ram
 [ "${_ALLOW_CTRL}" = "YES" ] && _system_oom_detection
+[ "${_ALLOW_CTRL}" = "YES" ] && _lfd_health_check_fix
+[ "${_ALLOW_CTRL}" = "YES" ] && _ftpd_health_check_fix
+[ "${_ALLOW_CTRL}" = "YES" ] && _vnstat_health_check_fix
 [ "${_ALLOW_CTRL}" = "YES" ] && _gpg_too_many_instances_detection
 [ "${_ALLOW_CTRL}" = "YES" ] && _dirmngr_too_many_instances_detection
+[ "${_ALLOW_CTRL}" = "YES" ] && _clamav_health_check_fix
 
 echo DONE!
 exit 0

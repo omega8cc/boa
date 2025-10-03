@@ -8,6 +8,7 @@ _pthOml="/var/log/boa/unbound.incident.log"
 
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
+    # shellcheck disable=SC1091
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
     chmod a+w /dev/null
   else
@@ -17,22 +18,22 @@ _check_root() {
 }
 _check_root
 
-    # Sanitize to allow only digits and minus sign
-    export _B_NICE=${_B_NICE//[^0-9-]/}
+# Sanitize to allow only digits and minus sign
+export _B_NICE=${_B_NICE//[^0-9-]/}
 
-    # Validate and set default if necessary
-    if ! [[ "$_B_NICE" =~ ^-?[0-9]+$ ]]; then
-      _B_NICE=0
-    fi
+# Validate and set default if necessary
+if ! [[ "$_B_NICE" =~ ^-?[0-9]+$ ]]; then
+  _B_NICE=0
+fi
 
-    # Clamp the value within -20 to 19
-    if (( _B_NICE < -20 )); then
-      _B_NICE=-20
-    elif (( _B_NICE > 19 )); then
-      _B_NICE=19
-    fi
+# Clamp the value within -20 to 19
+if (( _B_NICE < -20 )); then
+  _B_NICE=-20
+elif (( _B_NICE > 19 )); then
+  _B_NICE=19
+fi
 
-    renice ${_B_NICE} -p $$ &> /dev/null
+renice ${_B_NICE} -p $$ &> /dev/null
 
 export _INCIDENT_REPORT=${_INCIDENT_REPORT//[^A-Z]/}
 : "${_INCIDENT_REPORT:=YES}"
@@ -69,7 +70,7 @@ _incident_email_report() {
   fi
 }
 
-_unbound_check_fix() {
+_unbound_config_fix() {
 
   [ ! -e "/usr/etc/unbound/unbound.conf.d" ] && mkdir -p /usr/etc/unbound/unbound.conf.d
 
@@ -79,7 +80,7 @@ _unbound_check_fix() {
     sleep 3
     mkdir -p /etc/resolvconf/run/interface
     echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.unbound
-    [ -e "/etc/resolvconf/update.d/unbound" ] && chmod -x /etc/resolvconf/update.d/unbound
+    [ -e "/etc/resolvconf/update.d/unbound" ] && chmod 644 /etc/resolvconf/update.d/unbound
     resolvconf -u &> /dev/null
     pkill -u unbound -x unbound &> /dev/null
     service unbound restart &> /dev/null
@@ -122,7 +123,7 @@ _unbound_check_fix() {
       echo "nameserver 1.1.1.1" >> /etc/resolv.conf
       echo "nameserver 8.8.8.8" >> /etc/resolv.conf
       echo "nameserver 9.9.9.9" >> /etc/resolv.conf
-      [ -e "/etc/resolvconf/update.d/unbound" ] && chmod -x /etc/resolvconf/update.d/unbound
+      [ -e "/etc/resolvconf/update.d/unbound" ] && chmod 644 /etc/resolvconf/update.d/unbound
       pkill -u unbound -x unbound &> /dev/null
       service unbound restart &> /dev/null
       wait
@@ -144,7 +145,7 @@ _unbound_check_fix() {
     sleep 3
     rm -f /run/wait-unbound.pid
   elif (( _CNT < 1 )); then
-    [ -e "/etc/init.d/unbound" ] && service unbound restart &> /dev/null
+    [ -x "/etc/init.d/unbound" ] && service unbound restart && wait &> /dev/null
   fi
 }
 
@@ -186,6 +187,7 @@ CONF
 
   unbound-checkconf "${_MAIN_CONF}"
   service unbound reload
+  wait
 
   if dig @127.0.0.1 api.sendgrid.com | grep -q 'status: NXDOMAIN'; then
     echo "OK: NXDOMAIN for api.sendgrid.com"
@@ -207,7 +209,33 @@ _unbound_check_nomail() {
     _isActiveCtrl=$(unbound-control list_local_zones | grep -E 'sendgrid' 2>&1)
     if [[ ! "${_isActiveCtrl}" =~ "sendgrid" ]]; then
       service unbound reload &> /dev/null
+      wait
     fi
+  fi
+}
+
+_unbound_health_check_fix() {
+  if ! pgrep -f /usr/sbin/unbound \
+    || /run/unbound \
+    || [ ! -e "/run/unbound/unbound.pid" ]; then
+    touch /run/wait-unbound.pid
+    sleep 3
+    [ ! -e "/run/unbound" ] && mkdir -p /run/unbound
+    chown -R unbound:unbound /run/unbound
+    mkdir -p /etc/resolvconf/run/interface
+    echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.unbound
+    [ -e "/etc/resolvconf/update.d/unbound" ] && chmod 644 /etc/resolvconf/update.d/unbound
+    resolvconf -u &> /dev/null
+    pkill -u unbound -x unbound &> /dev/null
+    service unbound restart &> /dev/null
+    wait
+    unbound-control reload &> /dev/null
+    sleep 3
+    rm -f /run/wait-unbound.pid
+    _thisErrLog="$(date) Unbound Server DOWN"
+    echo ${_thisErrLog} >> ${_pthOml}
+    _incident_email_report "Unbound Server DOWN"
+    echo >> ${_pthOml}
   fi
 }
 
@@ -218,10 +246,11 @@ else
   _ALLOW_CTRL=YES
 fi
 
-[ "${_ALLOW_CTRL}" = "YES" ] && _unbound_check_fix
-
-### Check and modify and reload if needed
-_unbound_check_nomail
+if [ -x "/usr/sbin/unbound" ] && [ ! -e "/run/wait-unbound.pid" ]; then
+  [ "${_ALLOW_CTRL}" = "YES" ] && _unbound_config_fix
+  [ "${_ALLOW_CTRL}" = "YES" ] && _unbound_check_nomail
+  _unbound_health_check_fix
+fi
 
 echo DONE!
 exit 0

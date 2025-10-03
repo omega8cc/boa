@@ -164,7 +164,7 @@ _find_correct_ip() {
   if [ -n "${_LOC_IP}" ] && grep -qE "${_LOC_IP}\s" /etc/hosts; then
     cp -af /etc/hosts /etc/.was.hosts
     sed -i "s/^${_LOC_IP}.*//g" /etc/hosts
-    [ -x "/etc/init.d/unbound" ] && service unbound restart &> /dev/null
+    [ -x "/etc/init.d/unbound" ] && service unbound restart && wait &> /dev/null
   fi
 }
 
@@ -780,7 +780,7 @@ _update_agents() {
       && [[ ! "${_PrTestCluster}" =~ "CLUSTER" ]]; then
       [ ! -e "/root/.fast.cron.cnf" ] && echo ${InTest} > /root/.fast.cron.cnf
       [ -e "/root/.hr.monitor.cnf" ] && rm -f /root/.hr.monitor.cnf
-      [ -e "/root/.slow.cron.cnf" ] && rm -f /root/.slow.cron.cnf
+      [ -e "/root/.slow.cron.cnf" ] && [ ! -e "/root/.slow.cron.cnf.protected" ] && rm -f /root/.slow.cron.cnf
       [ -e "/root/.tg.cnf" ] && rm -f /root/.tg.cnf
       mysql -u root -e "SET GLOBAL max_connect_errors = 555;"
       mysql -u root -e "SET GLOBAL max_connections = 111;"
@@ -790,7 +790,7 @@ _update_agents() {
     if [ "${InTest}" -ge 9 ] && [ "${InTest}" -le 50 ]; then
       [ ! -e "/root/.fast.cron.cnf" ] && echo ${InTest} > /root/.fast.cron.cnf
       [ -e "/root/.hr.monitor.cnf" ] && rm -f /root/.hr.monitor.cnf
-      [ -e "/root/.slow.cron.cnf" ] && rm -f /root/.slow.cron.cnf
+      [ -e "/root/.slow.cron.cnf" ] && [ ! -e "/root/.slow.cron.cnf.protected" ] && rm -f /root/.slow.cron.cnf
       [ -e "/root/.tg.cnf" ] && rm -f /root/.tg.cnf
       mysql -u root -e "SET GLOBAL max_connect_errors = 777;"
       mysql -u root -e "SET GLOBAL max_connections = 555;"
@@ -811,7 +811,7 @@ _update_agents() {
       [ ! -e "/root/.tg.cnf" ] && echo ${InTest} > /root/.tg.cnf
       [ ! -e "/root/.fast.cron.cnf" ] && echo ${InTest} > /root/.fast.cron.cnf
       [ -e "/root/.hr.monitor.cnf" ] && rm -f /root/.hr.monitor.cnf
-      [ -e "/root/.slow.cron.cnf" ] && rm -f /root/.slow.cron.cnf
+      [ -e "/root/.slow.cron.cnf" ] && [ ! -e "/root/.slow.cron.cnf.protected" ] && rm -f /root/.slow.cron.cnf
       mysql -u root -e "SET GLOBAL max_connect_errors = 555;"
       mysql -u root -e "SET GLOBAL max_connections = 333;"
       mysql -u root -e "SET GLOBAL max_user_connections = 111;"
@@ -821,7 +821,7 @@ _update_agents() {
       [ ! -e "/root/.tg.cnf" ] && echo ${InTest} > /root/.tg.cnf
       [ ! -e "/root/.fast.cron.cnf" ] && echo ${InTest} > /root/.fast.cron.cnf
       [ -e "/root/.hr.monitor.cnf" ] && rm -f /root/.hr.monitor.cnf
-      [ -e "/root/.slow.cron.cnf" ] && rm -f /root/.slow.cron.cnf
+      [ -e "/root/.slow.cron.cnf" ] && [ ! -e "/root/.slow.cron.cnf.protected" ] && rm -f /root/.slow.cron.cnf
       mysql -u root -e "SET GLOBAL max_connect_errors = 777;"
       mysql -u root -e "SET GLOBAL max_connections = 555;"
       mysql -u root -e "SET GLOBAL max_user_connections = 333;"
@@ -831,7 +831,7 @@ _update_agents() {
       [ ! -e "/root/.tg.cnf" ] && echo ${InTest} > /root/.tg.cnf
       [ ! -e "/root/.fast.cron.cnf" ] && echo ${InTest} > /root/.fast.cron.cnf
       [ -e "/root/.hr.monitor.cnf" ] && rm -f /root/.hr.monitor.cnf
-      [ -e "/root/.slow.cron.cnf" ] && rm -f /root/.slow.cron.cnf
+      [ -e "/root/.slow.cron.cnf" ] && [ ! -e "/root/.slow.cron.cnf.protected" ] && rm -f /root/.slow.cron.cnf
       mysql -u root -e "SET GLOBAL max_connect_errors = 999;"
       mysql -u root -e "SET GLOBAL max_connections = 777;"
       mysql -u root -e "SET GLOBAL max_user_connections = 555;"
@@ -885,9 +885,9 @@ _update_agents() {
     [ ! -e "/var/xdrago/monitor/check" ] && mkdir -p /var/xdrago/monitor/check
     [ ! -e "/var/xdrago/monitor/log" ] && mkdir -p /var/xdrago/monitor/log
 
-    if [ ! -e "${_pthLog}/.force.f98.${_tRee}.${_xSrl}.ctrl" ]; then
+    if [ ! -e "${_pthLog}/.force.f95.${_tRee}.${_xSrl}.ctrl" ]; then
       rm -f ${_pthLog}/*.ctrl.*.pid
-      touch ${_pthLog}/.force.f98.${_tRee}.${_xSrl}.ctrl
+      touch ${_pthLog}/.force.f95.${_tRee}.${_xSrl}.ctrl
     fi
 
     [ ! -e "/var/xdrago/checksql.pl" ] && rm -f ${_pthLog}/checksql.pl.ctrl.*.pid
@@ -1375,15 +1375,29 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/nginx.sh.ctrl.f94.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/nginx.sh.ctrl.f92.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/nginx.sh /var/xdrago/monitor/check/nginx.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/nginx.sh" -o /var/xdrago/monitor/check/nginx.sh
     if [ -e "/var/xdrago/monitor/check/nginx.sh" ]; then
       chmod 700 /var/xdrago/monitor/check/nginx.sh
       chown root:root /var/xdrago/monitor/check/nginx.sh
-      touch ${_pthLog}/nginx.sh.ctrl.f94.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/nginx.sh.ctrl.f92.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/monitor/check/nginx.sh.old /var/xdrago/monitor/check/nginx.sh
+    fi
+  fi
+
+  if [ -e "/var/xdrago/monitor/check" ] \
+    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
+    && [ ! -e "${_pthLog}/nginx_guard.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
+    mv -f /var/xdrago/monitor/check/nginx_guard.sh /var/xdrago/monitor/check/nginx_guard.sh.old
+    curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/nginx_guard.sh" -o /var/xdrago/monitor/check/nginx_guard.sh
+    if [ -e "/var/xdrago/monitor/check/nginx_guard.sh" ]; then
+      chmod 700 /var/xdrago/monitor/check/nginx_guard.sh
+      chown root:root /var/xdrago/monitor/check/nginx_guard.sh
+      touch ${_pthLog}/nginx_guard.sh.ctrl.f99.${_tRee}.${_xSrl}.pid
+    else
+      mv -f /var/xdrago/monitor/check/nginx_guard.sh.old /var/xdrago/monitor/check/nginx_guard.sh
     fi
   fi
 
@@ -1403,13 +1417,13 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/valkey.sh.ctrl.f93.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/valkey.sh.ctrl.f92.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/valkey.sh /var/xdrago/monitor/check/valkey.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/valkey.sh" -o /var/xdrago/monitor/check/valkey.sh
     if [ -e "/var/xdrago/monitor/check/valkey.sh" ]; then
       chmod 700 /var/xdrago/monitor/check/valkey.sh
       chown root:root /var/xdrago/monitor/check/valkey.sh
-      touch ${_pthLog}/valkey.sh.ctrl.f93.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/valkey.sh.ctrl.f92.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/monitor/check/valkey.sh.old /var/xdrago/monitor/check/valkey.sh
     fi
@@ -1657,13 +1671,13 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/runner.sh.ctrl.f91.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/runner.sh.ctrl.f90.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/runner.sh /var/xdrago/runner.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/runner.sh" -o /var/xdrago/runner.sh
     if [ -e "/var/xdrago/runner.sh" ]; then
       chmod 700 /var/xdrago/runner.sh
       chown root:root /var/xdrago/runner.sh
-      touch ${_pthLog}/runner.sh.ctrl.f91.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/runner.sh.ctrl.f90.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/runner.sh.old /var/xdrago/runner.sh
     fi
@@ -1671,13 +1685,13 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/minute.sh.ctrl.f93.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/minute.sh.ctrl.f91.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/minute.sh /var/xdrago/minute.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/minute.sh" -o /var/xdrago/minute.sh
     if [ -e "/var/xdrago/minute.sh" ]; then
       chmod 700 /var/xdrago/minute.sh
       chown root:root /var/xdrago/minute.sh
-      touch ${_pthLog}/minute.sh.ctrl.f93.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/minute.sh.ctrl.f91.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/minute.sh.old /var/xdrago/minute.sh
     fi
@@ -1685,13 +1699,13 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/second.sh.ctrl.f93.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/second.sh.ctrl.f92.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/second.sh /var/xdrago/second.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/second.sh" -o /var/xdrago/second.sh
     if [ -e "/var/xdrago/second.sh" ]; then
       chmod 700 /var/xdrago/second.sh
       chown root:root /var/xdrago/second.sh
-      touch ${_pthLog}/second.sh.ctrl.f93.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/second.sh.ctrl.f92.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/second.sh.old /var/xdrago/second.sh
     fi
@@ -1880,14 +1894,14 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/proc_num_ctrl.pl.ctrl.f85.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/proc_num_ctrl.pl.ctrl.f84.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/proc_num_ctrl.pl /var/xdrago/proc_num_ctrl.pl.old
     curl ${_crlGet} "${_urlHmr}/tools/system/proc_num_ctrl.pl" \
       -o /var/xdrago/proc_num_ctrl.pl
     if [ -e "/var/xdrago/proc_num_ctrl.pl" ]; then
       chmod 700 /var/xdrago/proc_num_ctrl.pl
       chown root:root /var/xdrago/proc_num_ctrl.pl
-      touch ${_pthLog}/proc_num_ctrl.pl.ctrl.f85.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/proc_num_ctrl.pl.ctrl.f84.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/proc_num_ctrl.pl.old /var/xdrago/proc_num_ctrl.pl
     fi
@@ -1901,6 +1915,7 @@ _update_agents() {
     for e in ${_PHP_V}; do
       if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
         service php${e}-fpm reload &> /dev/null
+        wait
       fi
     done
     _PHP_V="55 54 53"
@@ -2147,6 +2162,7 @@ _update_agents() {
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
           service php${e}-fpm reload &> /dev/null
+          wait
         fi
       done
     else
@@ -2502,6 +2518,7 @@ _update_agents() {
       chmod 755 /etc/cron.hourly/systemtime
       chown root:root /etc/cron.hourly/systemtime
       service cron restart
+      wait
       touch ${_pthLog}/systemtime.ctrl.f95.${_tRee}.${_xSrl}.pid
     fi
   fi
@@ -3393,6 +3410,7 @@ _fix_log4j_solr7() {
     if [[ ! "${_RESULT_LOG4J}" =~ "LOG4J" ]] || [ ! -z "${_DO_SOLR_RESTART}" ]; then
       #pkill -9 -f solr7
       service solr7 restart &> /dev/null
+      wait
     fi
   fi
 }
@@ -3522,6 +3540,7 @@ _fix_sftp_server() {
       echo "Subsystem sftp /usr/lib/openssh/sftp-server -u 0002" >> /etc/ssh/sshd_config
       sed -i "/^$/d" /etc/ssh/sshd_config
       service ssh restart 2> /dev/null
+      wait
     fi
   fi
 }
@@ -3689,6 +3708,7 @@ _fix_newrelic() {
     && [ ! -e "${_PHP_EXT_DIR_74}/newrelic.so" ]; then
     ln -sfn ${_NR_SO} ${_PHP_EXT_DIR_74}/newrelic.so
     service php74-fpm reload
+    wait
   fi
 
   _PHP_EXT_DIR_71="/opt/php71/lib/php/extensions/no-debug-non-zts-20160303"
@@ -3698,6 +3718,7 @@ _fix_newrelic() {
     && [ -L "${_PHP_EXT_DIR_71}/newrelic.so" ]; then
     rm -f ${_PHP_EXT_DIR_71}/newrelic.so
     service php71-fpm reload
+    wait
   fi
 
   _PHP_EXT_DIR_70="/opt/php70/lib/php/extensions/no-debug-non-zts-20151012"
@@ -3707,6 +3728,7 @@ _fix_newrelic() {
     && [ -L "${_PHP_EXT_DIR_70}/newrelic.so" ]; then
     rm -f ${_PHP_EXT_DIR_70}/newrelic.so
     service php70-fpm reload
+    wait
   fi
 
   _PHP_EXT_DIR_56="/opt/php56/lib/php/extensions/no-debug-non-zts-20131226"
@@ -3716,6 +3738,7 @@ _fix_newrelic() {
     && [ -L "${_PHP_EXT_DIR_56}/newrelic.so" ]; then
     rm -f ${_PHP_EXT_DIR_56}/newrelic.so
     service php56-fpm reload
+    wait
   fi
 }
 
@@ -3809,7 +3832,7 @@ _check_and_move() {
 }
 
 _if_reinstall_curl() {
-  _CURL_VRN=8.14.1
+  _CURL_VRN=8.16.0
   _CURL_INSTALL_REQUIRED=NO
   if ! command -v lsb_release &> /dev/null; then
     apt-get update -qq &> /dev/null
@@ -4574,6 +4597,7 @@ _sysctl_update() {
         echo ULIMIT=\"-n 524288\" >> /etc/default/nginx
         ulimit -n 524288 &> /dev/null
         service nginx restart &> /dev/null
+        wait
       fi
     fi
     if [ -e "/etc/security/limits.d" ] \
@@ -4594,15 +4618,20 @@ _sysctl_update() {
       echo "@www-data hard nofile 524288" >> /etc/security/limits.d/www.conf
       if [ -e "/etc/init.d/valkey-server" ]; then
         service valkey-server restart &> /dev/null
+        wait
       elif [ -e "/etc/init.d/redis-server" ]; then
         service redis-server restart &> /dev/null
+        wait
       fi
       service nginx restart &> /dev/null
+      wait
       service ssh restart &> /dev/null
+      wait
       _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
           service php${e}-fpm reload &> /dev/null
+          wait
         fi
       done
     fi
@@ -4744,7 +4773,7 @@ if [ "$(id -u)" -eq 0 ]; then
     mkdir -p /etc/resolvconf/run/interface
     echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.unbound
     resolvconf -u &> /dev/null
-    [ -e "/etc/resolvconf/update.d/unbound" ] && chmod -x /etc/resolvconf/update.d/unbound
+    [ -e "/etc/resolvconf/update.d/unbound" ] && chmod 644 /etc/resolvconf/update.d/unbound
     [ ! -e "/run/unbound" ] && mkdir -p /run/unbound
     [ -e "/run/unbound" ] && chown -R unbound:unbound /run/unbound
     pkill -u unbound -x unbound &> /dev/null
@@ -4856,6 +4885,7 @@ if [ "$(id -u)" -eq 0 ]; then
   fi
   if [ ! -e "/root/.upstart.cnf" ]; then
     service cron reload &> /dev/null
+    wait
   fi
   if [ "${_SCREEN_INIT}" = "YES" ]; then
     if [ "${_DEBUG_MODE}" != "YES" ]; then
