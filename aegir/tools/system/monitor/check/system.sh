@@ -278,6 +278,22 @@ _dirmngr_too_many_instances_detection() {
   fi
 }
 
+_lfd_health_check_fix() {
+  if [ -x "/etc/init.d/lfd" ]; then
+    if ! pgrep -f lfd \
+      || [ ! -e "/run/lfd.pid" ]; then
+      service lfd start
+      wait
+      csf -e
+      wait
+      _thisErrLog="$(date) LDF Monitor was down, started"
+      echo ${_thisErrLog} >> ${_pthOml}
+      _incident_email_report "LDF Monitor was down, started"
+      echo >> ${_pthOml}
+    fi
+  fi
+}
+
 _sshd_health_check_fix() {
   if [ -x "/etc/init.d/ssh" ]; then
     if ! pgrep -f /usr/sbin/sshd \
@@ -310,6 +326,7 @@ _syslog_giant_log_detection
 
 [ "${_ALLOW_CTRL}" = "YES" ] && _optimize_ram
 [ "${_ALLOW_CTRL}" = "YES" ] && _system_oom_detection
+[ "${_ALLOW_CTRL}" = "YES" ] && _lfd_health_check_fix
 [ "${_ALLOW_CTRL}" = "YES" ] && _gpg_too_many_instances_detection
 [ "${_ALLOW_CTRL}" = "YES" ] && _dirmngr_too_many_instances_detection
 

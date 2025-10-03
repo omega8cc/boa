@@ -127,8 +127,6 @@ print "\n $dpltsumar Droplet procs\t\tGLOBAL" if ($dpltlives);
 print "\n";
 
 if (!any_file_exists($run_to_files)) {
-  system("csf -e") if (!$lfdsumar && -f "/etc/init.d/lfd");
-  system("service lfd start") if (!$lfdsumar && -f "/etc/init.d/lfd");
   system("service bind9 restart") if (!$namedsumar && -f "/etc/init.d/bind9");
   system("service proxysql restart") if (!$pxydsumar && -f "/etc/init.d/proxysql");
   system("service droplet-agent restart") if (!$dpltsumar && -f "/etc/init.d/droplet-agent");
