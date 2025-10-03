@@ -127,8 +127,8 @@ _valkey_connection_check_fix() {
 
 _valkey_slow_check_fix() {
   if [ `tail --lines=500 /var/log/php/fpm-*-slow.log \
-    | grep --count "PhpValkey.php"` -gt 19 ]; then
-    _thisErrLog="$(date) Slow PhpValkey detected, service will be restarted"
+    | grep --count "PhpRedis.php"` -gt 19 ]; then
+    _thisErrLog="$(date) Slow PhpRedis"
     echo ${_thisErrLog} >> ${_pthOml}
     _valkey_restart "ValkeyException SLOW"
   fi
