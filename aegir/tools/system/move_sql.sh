@@ -61,7 +61,7 @@ _start_sql() {
   _check_running
   _create_locks
 
-  _IS_MYSQLD_RUNNING=$(pgrep -f mysqld)
+  _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
   if [ ! -z "${_IS_MYSQLD_RUNNING}" ]; then
     echo "MySQLD already running?"
     echo "Nothing to do. Bye!"
@@ -80,7 +80,7 @@ _start_sql() {
   service mysql start &> /dev/null
   while [ -z "${_IS_MYSQLD_RUNNING}" ] \
     || [ ! -e "/run/mysqld/mysqld.sock" ]; do
-    _IS_MYSQLD_RUNNING=$(pgrep -f mysqld)
+    _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
     echo "Waiting for MySQLD graceful start..."
     sleep 3
   done
@@ -120,7 +120,7 @@ _stop_sql() {
   pkill -9 -f php-fpm
   echo "PHP-FPM stopped"
 
-  _IS_MYSQLD_RUNNING=$(pgrep -f mysqld)
+  _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
   if [ ! -z "${_IS_MYSQLD_RUNNING}" ]; then
     _DBS_TEST=$(which mysql 2>&1)
     if [ ! -z "${_DBS_TEST}" ]; then
@@ -161,7 +161,7 @@ _stop_sql() {
   fi
 
   until [ -z "${_IS_MYSQLD_RUNNING}" ]; do
-    _IS_MYSQLD_RUNNING=$(pgrep -f mysqld)
+    _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
     echo "Waiting for MySQLD graceful shutdown..."
     sleep 3
   done
