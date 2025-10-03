@@ -165,6 +165,14 @@ elsif (-f "/etc/init.d/inetutils-syslogd") {
   }
 }
 
+sub any_file_exists {
+  my ($files) = @_;
+  for my $file (@$files) {
+    return 1 if -f $file;
+  }
+  return 0;
+}
+
 exit;
 
 #############################################################################
