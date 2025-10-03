@@ -100,6 +100,7 @@ _launch_auto_healing() {
   nohup /var/xdrago/monitor/check/mysql.sh > /dev/null 2>&1 &
   nohup /var/xdrago/monitor/check/php.sh > /dev/null 2>&1 &
   nohup /var/xdrago/monitor/check/nginx.sh > /dev/null 2>&1 &
+  nohup /var/xdrago/monitor/check/nginx_guard.sh > /dev/null 2>&1 &
   nohup /var/xdrago/monitor/check/java.sh > /dev/null 2>&1 &
 }
 

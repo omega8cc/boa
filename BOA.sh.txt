@@ -1389,6 +1389,20 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
+    && [ ! -e "${_pthLog}/nginx_guard.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
+    mv -f /var/xdrago/monitor/check/nginx_guard.sh /var/xdrago/monitor/check/nginx_guard.sh.old
+    curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/nginx_guard.sh" -o /var/xdrago/monitor/check/nginx_guard.sh
+    if [ -e "/var/xdrago/monitor/check/nginx_guard.sh" ]; then
+      chmod 700 /var/xdrago/monitor/check/nginx_guard.sh
+      chown root:root /var/xdrago/monitor/check/nginx_guard.sh
+      touch ${_pthLog}/nginx_guard.sh.ctrl.f99.${_tRee}.${_xSrl}.pid
+    else
+      mv -f /var/xdrago/monitor/check/nginx_guard.sh.old /var/xdrago/monitor/check/nginx_guard.sh
+    fi
+  fi
+
+  if [ -e "/var/xdrago/monitor/check" ] \
+    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
     && [ ! -e "${_pthLog}/php.sh.ctrl.f92.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/php.sh /var/xdrago/monitor/check/php.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/php.sh" -o /var/xdrago/monitor/check/php.sh
@@ -1671,13 +1685,13 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/minute.sh.ctrl.f92.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/minute.sh.ctrl.f91.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/minute.sh /var/xdrago/minute.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/minute.sh" -o /var/xdrago/minute.sh
     if [ -e "/var/xdrago/minute.sh" ]; then
       chmod 700 /var/xdrago/minute.sh
       chown root:root /var/xdrago/minute.sh
-      touch ${_pthLog}/minute.sh.ctrl.f92.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/minute.sh.ctrl.f91.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/minute.sh.old /var/xdrago/minute.sh
     fi
