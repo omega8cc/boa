@@ -133,15 +133,6 @@ if (!any_file_exists($run_to_files)) {
   system("service droplet-agent restart") if (!-f "/run/droplet-agent.pid" && -f "/etc/init.d/droplet-agent");
 }
 
-if (!-f "/run/wait-unbound.pid" && -f "/etc/init.d/unbound") {
-  if (!-f "/run/unbound/unbound.pid" || !-e "/run/unbound/unbound.ctl") {
-    if (-e "/etc/resolvconf/update.d/unbound") {
-      system("chmod -x /etc/resolvconf/update.d/unbound");
-    }
-    system("service unbound restart");
-  }
-}
-
 if (!-f "/run/boa_run.pid" && !-f "/run/boa_wait.pid" && -f "/etc/init.d/jenkins") {
   if (!-f "/run/jenkins/jenkins.pid") {
     system("killall -9 java");

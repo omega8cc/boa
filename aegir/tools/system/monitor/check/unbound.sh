@@ -214,6 +214,31 @@ _unbound_check_nomail() {
   fi
 }
 
+_unbound_health_check_fix() {
+  if ! pgrep -f /usr/sbin/unbound \
+    || /run/unbound \
+    || [ ! -e "/run/unbound/unbound.pid" ]; then
+    touch /run/wait-unbound.pid
+    sleep 3
+    [ ! -e "/run/unbound" ] && mkdir -p /run/unbound
+    chown -R unbound:unbound /run/unbound
+    mkdir -p /etc/resolvconf/run/interface
+    echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.unbound
+    [ -e "/etc/resolvconf/update.d/unbound" ] && chmod 644 /etc/resolvconf/update.d/unbound
+    resolvconf -u &> /dev/null
+    pkill -u unbound -x unbound &> /dev/null
+    service unbound restart &> /dev/null
+    wait
+    unbound-control reload &> /dev/null
+    sleep 3
+    rm -f /run/wait-unbound.pid
+    _thisErrLog="$(date) Unbound Server was down, restarted"
+    echo ${_thisErrLog} >> ${_pthOml}
+    _incident_email_report "Unbound Server was down, restarted"
+    echo >> ${_pthOml}
+  fi
+}
+
 if [ -e "/run/boa_run.pid" ] \
   || [ -e "/run/boa_wait.pid" ]; then
   _ALLOW_CTRL=NO
@@ -225,6 +250,7 @@ fi
 
 ### Check and modify and reload if needed
 _unbound_check_nomail
+  _unbound_health_check_fix
 
 echo DONE!
 exit 0
