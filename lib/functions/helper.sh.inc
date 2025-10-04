@@ -367,6 +367,23 @@ _normalize_ip_name_variables() {
   fi
 }
 
+_dedup_xtras_list() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _dedup_xtras_list"
+  fi
+  if [ -n "${_XTRAS_LIST}" ]; then
+    local _w _u
+    _w="$(printf '%s\n' "${_XTRAS_LIST}" | xargs -n1 | wc -l)"
+    _u="$(printf '%s\n' "${_XTRAS_LIST}" | xargs -n1 | sort -u | wc -l)"
+    if [ "${_w}" -ne "${_u}" ]; then
+      _XTRAS_LIST="$(printf '%s\n' "${_XTRAS_LIST}" | xargs -n1 | sort -u | xargs)"
+      if [ -n "${_XTRAS_LIST}" ] && [ -e "${_barCnf}" ]; then
+        sed -i "s/^_XTRAS_LIST=.*/_XTRAS_LIST=\"${_XTRAS_LIST}\"/g" ${_barCnf}
+      fi
+    fi
+  fi
+}
+
 _mode_detection() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _mode_detection"
@@ -377,11 +394,18 @@ _mode_detection() {
     && [ ! -e "/lib/systemd/systemd" ]; then
     _STATUS=UPGRADE
     _msg "MODE: UPGRADE"
+    _dedup_xtras_list
     _barracuda_cnf
     touch /run/boa_wait.pid
     if [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ]; then
-      _XTRAS_LIST="${_XTRAS_LIST} CSF"
+      if [[ ! " ${_XTRAS_LIST} " =~ (^|[[:space:]])CSF([[:space:]]|$) ]]; then
+        if [ -n "${_XTRAS_LIST}" ]; then
+          _XTRAS_LIST="${_XTRAS_LIST} CSF"
+        else
+          _XTRAS_LIST="CSF"
+        fi
+      fi
     fi
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "XTRA: ${_XTRAS_LIST}"
@@ -431,7 +455,13 @@ _mode_detection() {
     fi
     if [ "${_EASY_SETUP}" = "LOCAL" ]; then
       _msg "INFO: Localhost Setup Mode Active"
-      _XTRAS_LIST="${_XTRAS_LIST} ADM"
+      if [[ ! " ${_XTRAS_LIST} " =~ (^|[[:space:]])ADM([[:space:]]|$) ]]; then
+        if [ -n "${_XTRAS_LIST}" ]; then
+          _XTRAS_LIST="${_XTRAS_LIST} ADM"
+        else
+          _XTRAS_LIST="ADM"
+        fi
+      fi
       _AUTOPILOT=YES
       _SSH_PORT=22
       _DNS_SETUP_TEST=NO
@@ -440,10 +470,22 @@ _mode_detection() {
       _LOCAL_NETWORK_HN="aegir.local"
     elif [ "${_EASY_SETUP}" = "PUBLIC" ]; then
       _msg "INFO: Public Setup Mode Active"
-      _XTRAS_LIST="${_XTRAS_LIST} CSF"
+      if [[ ! " ${_XTRAS_LIST} " =~ (^|[[:space:]])CSF([[:space:]]|$) ]]; then
+        if [ -n "${_XTRAS_LIST}" ]; then
+          _XTRAS_LIST="${_XTRAS_LIST} CSF"
+        else
+          _XTRAS_LIST="CSF"
+        fi
+      fi
       _if_hosted_sys
       if [ "${_hostedSys}" = "YES" ]; then
-        _XTRAS_LIST="${_XTRAS_LIST} CSF"
+        if [[ ! " ${_XTRAS_LIST} " =~ (^|[[:space:]])FOO([[:space:]]|$) ]]; then
+          if [ -n "${_XTRAS_LIST}" ]; then
+            _XTRAS_LIST="${_XTRAS_LIST} FOO"
+          else
+            _XTRAS_LIST="FOO"
+          fi
+        fi
       fi
       _AUTOPILOT=YES
       _SSH_PORT=22
