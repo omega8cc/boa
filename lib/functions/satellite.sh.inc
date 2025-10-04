@@ -4178,7 +4178,9 @@ _satellite_if_sql_exception_test() {
     || [ ! -e "/run/mysqld/mysqld.sock" ]; then
     _msg "ALRT! ${_DB_SERVER} server not running properly!"
     _msg "EXIT: We can't proceed and will exit now"
-    _msg "HINT: Please check ${_LOG} for more information,"
+    _msg "HINT: Please check for more information two log files:"
+    _msg "INFO:   ${_LOG_INFO}"
+    _msg "ERRR:   ${_LOG_ERRR}"
     _msg "HINT: (re)start ${_DB_SERVER} server, then run the installer again"
     _msg "Bye"
     _clean_pid_exit _satellite_if_sql_exception_test_a

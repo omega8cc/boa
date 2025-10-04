@@ -997,12 +997,14 @@ _download_helpers_libs() {
   #
   # Create tmp stuff
   if [ ! -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
-    _LOG=${_vBs}/octopus-install-${_NOW}.log
+    export _LOG_INFO=${_vBs}/octopus-install-${_NOW}.log
+    export _LOG_ERRR=${_vBs}/octopus-install-errors-${_NOW}.log
   else
-    _LOG=${_vBs}/octopus-upgrade-${_NOW}.log
+    export _LOG_INFO=${_vBs}/octopus-upgrade-${_NOW}.log
+    export _LOG_ERRR=${_vBs}/octopus-upgrade-errors-${_NOW}.log
   fi
-  touch ${_LOG}
-  chmod 646 ${_LOG}
+  touch ${_LOG_INFO} ${_LOG_ERRR}
+  chmod 646 ${_LOG_INFO} ${_LOG_ERRR}
   mkdir -p /var/opt
   rm -rf /var/opt/*
   _SRCDIR="/opt/tmp/files"

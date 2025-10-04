@@ -107,49 +107,14 @@ _not_supported_os() {
   _clean_pid_exit _not_supported_os_a
 }
 
-###
-### Small spinner
-###
-_mrun() {
-  CMD="$1"
-  touch busy
-  if [ "${_SPINNER}" = "YES" ]; then
-    bash ${_SRCDIR}/spinner busy &
-  fi
-  if ${CMD} >> ${_LOG}; then
-    rm busy
-    sleep 1
-    return 0
-  fi
-}
-
 #
-# Silent runner.
-_st_runner() {
-  CMD="$1"
-  touch busy
-  if [ "${_SPINNER}" = "YES" ]; then
-    bash ${_SRCDIR}/spinner busy &
-  fi
-  if ${CMD} >> ${_LOG}; then
-    rm busy
-    sleep 1
-    return 0
-  else
-    rm busy
-    sleep 1
-    echo "${CMD} failed.  Error (if any): $?"
-    echo " "
-    echo "Displaying the last 15 lines of logfile"
-    echo "  ${_LOG}"
-    echo "to help troubleshoot this problem"
-    echo " "
-    echo "If you see any error with advice to run 'dpkg --configure --force-all -a'"
-    echo "run this command with default answer, then run this installer again"
-    echo " "
-    tail -15 ${_LOG}
-    return 1
-  fi
+# Show only errors and write everything to separate logs.
+_mrun() {
+  # stdout -> info log
+  # stderr -> shown + error log
+  "$@" \
+    > >(tee -a "${_LOG_INFO}" > /dev/null) \
+    2> >(tee -a "${_LOG_ERRR}" >&2)
 }
 
 #
@@ -808,8 +773,9 @@ _virt_detection() {
       fi
       _msg "VIRT: This system is supported: ${_VIRT_IS}"
       echo
-      _msg "HINT: Command to run in another terminal window to watch details"
-      _msg "CMND: tail -f ${_LOG}"
+      _msg "HINT: Commands to run in another terminal window to watch details"
+      _msg "INFO: tail -f ${_LOG_INFO}"
+      _msg "ERRR: tail -f ${_LOG_ERRR}"
     else
       if [ -z "${_VIRT_TEST}" ] || [ "${_VIRT_TEST}" = "0" ]; then
         _VIRT_TEST="unknown / not a virtual machine"

@@ -1519,12 +1519,14 @@ _download_helpers_libs() {
   #
   # Create tmp stuff
   if [ ! -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
-    _LOG=${_vBs}/barracuda-install-${_NOW}.log
+    export _LOG_INFO=${_vBs}/barracuda-install-${_NOW}.log
+    export _LOG_ERRR=${_vBs}/barracuda-install-errors-${_NOW}.log
   else
-    _LOG=${_vBs}/barracuda-upgrade-${_NOW}.log
+    export _LOG_INFO=${_vBs}/barracuda-upgrade-${_NOW}.log
+    export _LOG_ERRR=${_vBs}/barracuda-upgrade-errors-${_NOW}.log
   fi
-  touch ${_LOG}
-  chmod 600 ${_LOG}
+  touch ${_LOG_INFO} ${_LOG_ERRR}
+  chmod 600 ${_LOG_INFO} ${_LOG_ERRR}
   mkdir -p /var/opt
   rm -rf /var/opt/*
   _SRCDIR="/opt/tmp/files"
