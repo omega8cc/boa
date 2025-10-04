@@ -5639,6 +5639,26 @@ _pkg_installed() {
   dpkg-query -W -f='${Status}' "$1" 2>/dev/null | grep -qx 'install ok installed'
 }
 
+_run_xtrabackup_cleanup() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _run_xtrabackup_cleanup"
+  fi
+  # Check for installed Percona XtraBackup packages and remove them
+  local _PKG
+  for _PKG in percona-xtrabackup-24 percona-xtrabackup-80 percona-xtrabackup-84; do
+    if _pkg_installed "${_PKG}"; then
+      _mrun "apt-get remove ${_PKG} -y --purge --auto-remove -qq"
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        _msg "Package ${_PKG} removed as requested."
+      fi
+    else
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        _msg "Package ${_PKG} not installed, skipping."
+      fi
+    fi
+  done
+}
+
 _run_aptitude_deps_install() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _run_aptitude_deps_install"
@@ -5658,7 +5678,7 @@ _run_aptitude_deps_install() {
   fi
   _msg "WAIT: This may take a while, please wait..."
   _apt_clean_update
-  _mrun "apt-get remove percona-xtrabackup-24 -y --purge --auto-remove -qq"
+  _run_xtrabackup_cleanup
   _mrun "apt-get autoremove -y"
   _mrun "${_INSTAPP} build-essential libsasl2-modules"
   _mrun "${_INSTAPP} time vim cvs makepasswd"
