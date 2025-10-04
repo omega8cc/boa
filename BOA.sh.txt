@@ -1038,6 +1038,27 @@ _update_agents() {
     fi
   fi
 
+  if [ ! -e "${_pthLog}/loadguard.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
+    _CNT=$(pgrep -fc xloadguard)
+    if (( _CNT > 0 )); then
+      echo "The xloadguard is running!"
+    else
+      if [ -e "${_optBin}/loadguard" ]; then
+        mv -f ${_optBin}/loadguard ${_optBin}/loadguard.old
+      fi
+      curl ${_crlGet} "${_urlHmr}/tools/bin/loadguard" -o ${_optBin}/loadguard
+      if [ -e "${_optBin}/loadguard" ]; then
+        chmod 700 ${_optBin}/loadguard
+        chown root:root ${_optBin}/loadguard
+        touch ${_pthLog}/loadguard.sh.ctrl.f99.${_tRee}.${_xSrl}.pid
+      else
+        if [ -e "${_optBin}/loadguard.old" ]; then
+          mv -f ${_optBin}/loadguard.old ${_optBin}/loadguard
+        fi
+      fi
+    fi
+  fi
+
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -d "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/backboa.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
@@ -1294,19 +1315,19 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/scan_nginx.sh.ctrl.f89.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/scan_nginx.sh.ctrl.f88.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/scan_nginx.sh /var/xdrago/monitor/check/scan_nginx.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/scan_nginx.sh" -o /var/xdrago/monitor/check/scan_nginx.sh
     if [ -e "/var/xdrago/monitor/check/scan_nginx.sh" ]; then
       chmod 700 /var/xdrago/monitor/check/scan_nginx.sh
       chown root:root /var/xdrago/monitor/check/scan_nginx.sh
-      touch ${_pthLog}/scan_nginx.sh.ctrl.f89.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/scan_nginx.sh.ctrl.f88.${_tRee}.${_xSrl}.pid
       if [ ! -e "/var/xdrago/monitor/log/.scan_nginx_arch.${_xSrl}.pid" ]; then
         if [ -e "/var/xdrago/monitor/scan_nginx.archive.log" ]; then
-          mv -f /var/xdrago/monitor/scan_nginx.archive.log /var/xdrago/monitor/log/.scan_nginx_legacy.archive.f89.${_tRee}.${_xSrl}.log
+          mv -f /var/xdrago/monitor/scan_nginx.archive.log /var/xdrago/monitor/log/.scan_nginx_legacy.archive.f88.${_tRee}.${_xSrl}.log
         fi
         if [ -e "/var/xdrago/monitor/log/scan_nginx.archive.log" ]; then
-          mv -f /var/xdrago/monitor/log/scan_nginx.archive.log /var/xdrago/monitor/log/scan_nginx.archive.f89.${_tRee}.${_xSrl}.log
+          mv -f /var/xdrago/monitor/log/scan_nginx.archive.log /var/xdrago/monitor/log/scan_nginx.archive.f88.${_tRee}.${_xSrl}.log
         fi
         rm -f /var/xdrago/monitor/log/.scan_nginx_arch*.pid
         touch /var/xdrago/monitor/log/.scan_nginx_arch.${_xSrl}.pid
@@ -1316,10 +1337,10 @@ _update_agents() {
       fi
       if [ ! -e "/var/xdrago/monitor/log/.hackcheck.arch.${_xSrl}.pid" ]; then
         if [ -e "/var/xdrago/monitor/hackcheck.archive.log" ]; then
-          mv -f /var/xdrago/monitor/hackcheck.archive.log /var/xdrago/monitor/log/.scan_nginx_legacy.archive.f89.${_tRee}.${_xSrl}.log
+          mv -f /var/xdrago/monitor/hackcheck.archive.log /var/xdrago/monitor/log/.scan_nginx_legacy.archive.f88.${_tRee}.${_xSrl}.log
         fi
         if [ -e "/var/xdrago/monitor/log/hackcheck.archive.log" ]; then
-          mv -f /var/xdrago/monitor/log/hackcheck.archive.log /var/xdrago/monitor/log/hackcheck.archive.f89.${_tRee}.${_xSrl}.log
+          mv -f /var/xdrago/monitor/log/hackcheck.archive.log /var/xdrago/monitor/log/hackcheck.archive.f88.${_tRee}.${_xSrl}.log
         fi
         rm -f /var/xdrago/monitor/log/.hackcheck.arch*.pid
         touch /var/xdrago/monitor/log/.hackcheck.arch.${_xSrl}.pid
@@ -1755,13 +1776,13 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/purge_binlogs.sh.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/purge_binlogs.sh.ctrl.f94.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/purge_binlogs.sh /var/xdrago/purge_binlogs.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/purge_binlogs.sh" -o /var/xdrago/purge_binlogs.sh
     if [ -e "/var/xdrago/purge_binlogs.sh" ]; then
       chmod 700 /var/xdrago/purge_binlogs.sh
       chown root:root /var/xdrago/purge_binlogs.sh
-      touch ${_pthLog}/purge_binlogs.sh.ctrl.f95.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/purge_binlogs.sh.ctrl.f94.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/purge_binlogs.sh.old /var/xdrago/purge_binlogs.sh
     fi
@@ -1931,14 +1952,14 @@ _update_agents() {
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
     && [ -x "/usr/sbin/csf" ] \
     && [ -e "/etc/csf/csf.deny" ] \
-    && [ ! -e "${_pthLog}/guest-fire.sh.ctrl.f93.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/guest-fire.sh.ctrl.f92.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/guest-fire.sh /var/xdrago/guest-fire.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/guest-fire.sh" \
       -o /var/xdrago/guest-fire.sh
     if [ -e "/var/xdrago/guest-fire.sh" ]; then
       chmod 700 /var/xdrago/guest-fire.sh
       chown root:root /var/xdrago/guest-fire.sh
-      touch ${_pthLog}/guest-fire.sh.ctrl.f93.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/guest-fire.sh.ctrl.f92.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/guest-fire.sh.old /var/xdrago/guest-fire.sh
     fi
@@ -2000,10 +2021,13 @@ _update_agents() {
     fi
   fi
 
+  if ! grep -q "whoami" /var/xdrago/conf/lshell.conf; then
+    rm -f ${_pthLog}/lshell.ctrl.*
+  fi
   if [ -x "/opt/tools/drush/8/drush/drush.php" ] \
     && [ -e "/var/xdrago" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/lshell.ctrl.f92.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/lshell.ctrl.f91.${_tRee}.${_xSrl}.pid" ]; then
     if [ -z "${_CUSTOM_CONFIG_LSHELL}" ] \
       || [ "${_CUSTOM_CONFIG_LSHELL}" = "NO" ]; then
       mv -f /var/xdrago/conf/lshell.conf /var/xdrago/conf/lshell.conf.old
@@ -2012,7 +2036,7 @@ _update_agents() {
       if [ -e "/var/xdrago/conf/lshell.conf" ]; then
         chmod 644 /var/xdrago/conf/lshell.conf
         chown root:root /var/xdrago/conf/lshell.conf
-        touch ${_pthLog}/lshell.ctrl.f92.${_tRee}.${_xSrl}.pid
+        touch ${_pthLog}/lshell.ctrl.f91.${_tRee}.${_xSrl}.pid
       else
         mv -f /var/xdrago/conf/lshell.conf.old /var/xdrago/conf/lshell.conf
       fi
@@ -2482,9 +2506,12 @@ _update_agents() {
     touch ${_pthLog}/hosting_le_vt.ctrl.${_tRee}.${_xSrl}.pid
   fi
 
+  if ! grep -q "defunct" /opt/local/bin/websh; then
+    rm -f ${_pthLog}/websh.ctrl.*
+  fi
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/websh.ctrl.f73.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/websh.ctrl.f72.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /opt/local/bin/websh /var/xdrago/websh.sh.old
     curl ${_crlGet} "${_urlHmr}/helpers/websh.sh.txt" -o /opt/local/bin/websh
     if [ -e "/opt/local/bin/websh" ] \
@@ -2492,7 +2519,7 @@ _update_agents() {
       chmod 755 /opt/local/bin/websh
       chown root:root /opt/local/bin/websh
       [ -x "/bin/websh" ] && [ ! -L "/bin/websh" ] && ln -sfn /opt/local/bin/websh /bin/websh
-      touch ${_pthLog}/websh.ctrl.f73.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/websh.ctrl.f72.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/websh.sh.old /opt/local/bin/websh
     fi
@@ -4049,6 +4076,7 @@ _update_boa_tools() {
             fancynow \
             ffmirror \
             killer \
+            loadguard \
             lock.inc \
             memorytuner \
             mergecsf \
@@ -4116,7 +4144,7 @@ _update_boa_tools() {
   done
 
   if [ ! -e "/data/u" ] && [ -e "${_optBin}/killer" ] && [ ! -e "${_usrBin}/vmnetfix" ]; then
-    rm -f ${_usrBin}/{aptcleanup*,autoinit*,backchain*,barracuda*,boa*,dhcpfix*,killer*,octopus*,vmnetfix*,websh*}
+    rm -f ${_usrBin}/{aptcleanup*,autoinit*,backchain*,barracuda*,boa*,dhcpfix*,killer*,loadguard*,octopus*,vmnetfix*,websh*}
     ln -sfn ${_optBin}/aptcleanup  ${_usrBin}/aptcleanup
     ln -sfn ${_optBin}/autoinit    ${_usrBin}/autoinit
     ln -sfn ${_optBin}/backchain   ${_usrBin}/backchain
@@ -4124,6 +4152,7 @@ _update_boa_tools() {
     ln -sfn ${_optBin}/boa         ${_usrBin}/boa
     ln -sfn ${_optBin}/dhcpfix     ${_usrBin}/dhcpfix
     ln -sfn ${_optBin}/killer      ${_usrBin}/killer
+    ln -sfn ${_optBin}/loadguard   ${_usrBin}/loadguard
     ln -sfn ${_optBin}/octopus     ${_usrBin}/octopus
     ln -sfn ${_optBin}/vmnetfix    ${_usrBin}/vmnetfix
     ln -sfn ${_optBin}/websh       ${_usrBin}/websh
@@ -4153,7 +4182,7 @@ _update_boa_tools() {
 
   # _CORE (700): core BOA tools
   chmod 700 ${_optBin}/{barracuda,boa,ffmirror,killer,octopus}
-  chmod 700 ${_optBin}/{syncpass,weblogx,xboa,xcopy,lock.inc}
+  chmod 700 ${_optBin}/{syncpass,weblogx,xboa,xcopy,loadguard,lock.inc}
 
   # _DB (700): performance and DB tuners
   chmod 700 ${_optBin}/{memorytuner,mycnfup,mysqltuner5,mysqltuner8,perftest}
@@ -4906,8 +4935,8 @@ if [ "$(id -u)" -eq 0 ]; then
     echo
     if [ -x "/usr/sbin/aa-teardown" ]; then
       aa-teardown &> /dev/null
+      wait
     fi
-    sleep 8
   else
     exit 0
   fi

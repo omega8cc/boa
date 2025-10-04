@@ -133,7 +133,6 @@ export _DISTRO_ROOT="${_ROOT}/distro/${_DISTRO}"
 export _PREV_HM_ROOT="${_ROOT}/aegir/distro/${_LAST_HMR}"
 export _D="/data/all"
 export _SRCDIR="/opt/tmp/files"
-export _LOG="/var/backups/octopus-${_USER}-${_NOW}.log"
 
 if [ "${_PHP_CLI_VERSION}" = "8.4" ] \
   && [ -x "/opt/php84/bin/php" ]; then
