@@ -5631,6 +5631,14 @@ _finale() {
   _msg "BYE!"
 }
 
+_pkg_installed() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _pkg_installed"
+  fi
+  # Return 0 if package is installed, 1 otherwise.
+  dpkg-query -W -f='${Status}' "$1" 2>/dev/null | grep -qx 'install ok installed'
+}
+
 _run_aptitude_deps_install() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _run_aptitude_deps_install"
