@@ -13,16 +13,6 @@ _check_root() {
     echo "ERROR: This script should be run as a root user"
     exit 1
   fi
-  _DF_TEST=$(df -kTh / -l \
-    | grep '/' \
-    | sed 's/\%//g' \
-    | awk '{print $6}' 2> /dev/null)
-  _DF_TEST=${_DF_TEST//[^0-9]/}
-  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt 90 ]; then
-    echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
-    echo "ERROR: We can not proceed until it is below 90/100"
-    exit 1
-  fi
 }
 _check_root
 
@@ -93,14 +83,58 @@ _load_control() {
   _get_load
 }
 
+# How many hours of binlogs to keep
+: "${_BINLOG_KEEP_HOURS:=1}"
+
+_detect_mysql_major() {
+  # Returns "5" or "8" for Percona/MySQL variants
+  _VER_RAW="$(mysql -Nse "SELECT VERSION();" 2>/dev/null | head -n1)"
+  # Examples: 5.7.44-48, 8.0.36-28, 8.4.6-6
+  _MYSQL_MAJOR="$(printf '%s' "${_VER_RAW}" | awk -F. '{print $1}')"
+  printf '%s' "${_MYSQL_MAJOR:-8}"
+}
+
+_purge_binlogs() {
+  # Optional safety: skip if binary logging is off
+  _LOG_BIN="$(mysql -Nse "SHOW VARIABLES LIKE 'log_bin';" 2>/dev/null | awk '{print $2}')"
+  if [ "${_LOG_BIN}" != "ON" ]; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      echo "log_bin=OFF — nothing to purge"
+    fi
+    return 0
+  fi
+
+  # Compute cutoff as a literal timestamp (local time)
+  # For UTC, use: date -u -d "${_BINLOG_KEEP_HOURS} hour ago" '+%F %T'
+  _CUTOFF="$(date -d "${_BINLOG_KEEP_HOURS} hour ago" '+%F %T')"
+
+  _MAJOR="$(_detect_mysql_major)"
+
+  if [ "${_MAJOR}" -ge 8 ]; then
+    # Percona/MySQL 8.x — needs a literal and 'BINARY'
+    _SQL="PURGE BINARY LOGS BEFORE '${_CUTOFF}';"
+  else
+    # MySQL/Percona 5.7 — still okay to use BINARY + literal (portable),
+    # but if we prefer the legacy style, we could keep MASTER/DATE_SUB.
+    _SQL="PURGE BINARY LOGS BEFORE '${_CUTOFF}';"
+    # Legacy equivalent we had (not used now):
+    # _SQL=\"PURGE MASTER LOGS BEFORE DATE_SUB(NOW(), INTERVAL ${_BINLOG_KEEP_HOURS} HOUR);\"
+  fi
+
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    echo "Purging binlogs older than ${_CUTOFF} (keeping ~${_BINLOG_KEEP_HOURS}h)"
+    echo "SQL> ${_SQL}"
+  fi
+
+  mysql -e "${_SQL}"
+}
+
 _purge_action() {
   _count_cpu
   _load_control
   if (( $(echo "${_O_LOAD} < ${_O_LOAD_MAX}" | bc -l) )); then
     echo load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}
-/usr/bin/mysql mysql<<EOFMYSQL
-PURGE MASTER LOGS BEFORE DATE_SUB( NOW( ), INTERVAL 1 HOUR);
-EOFMYSQL
+    _purge_binlogs
     touch /var/log/boa/purge_binlogs.done
   fi
 }
