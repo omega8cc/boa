@@ -4929,8 +4929,8 @@ if [ "$(id -u)" -eq 0 ]; then
     echo
     if [ -x "/usr/sbin/aa-teardown" ]; then
       aa-teardown &> /dev/null
+      wait
     fi
-    sleep 8
   else
     exit 0
   fi
