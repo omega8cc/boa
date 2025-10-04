@@ -14,7 +14,7 @@ _check_mysql_version() {
     _DB_V=5.7
   fi
   if [ -x "/usr/sbin/aa-teardown" ]; then
-    _mrun "aa-teardown" 2> /dev/null
+    _mrun "aa-teardown"
   fi
 }
 
@@ -280,12 +280,12 @@ _innodb_log_file_size_update() {
   fi
   _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
   mysql -u root -e "SET GLOBAL innodb_fast_shutdown = 0;" &> /dev/null
-  _mrun "bash /var/xdrago/move_sql.sh stop" &> /dev/null
+  _mrun "bash /var/xdrago/move_sql.sh stop"
   wait
   _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
   if [ -z "${_IS_MYSQLD_RUNNING}" ]; then
     mkdir -p ${_vBs}/old-sql-ib-log-${_NOW}
-    _mrun "sleep 1"
+    sleep 1
     mv -f /var/lib/mysql/ib_logfile0 ${_vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
     mv -f /var/lib/mysql/ib_logfile1 ${_vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
     if [ "${_DB_V}" = "5.7" ] || [ "${_DB_SERIES}" = "5.7" ]; then
@@ -320,17 +320,17 @@ _innodb_log_file_size_update() {
         echo "innodb_redo_log_capacity    = ${_INNODB_REDO_LOG_CAPACITY_MB}" > /root/.my.innodb_redo_log_capacity.txt
       fi
     fi
-    _mrun "bash /var/xdrago/move_sql.sh start" &> /dev/null
+    _mrun "bash /var/xdrago/move_sql.sh start"
     wait
   else
     _msg "INFO: Waiting 180s for ${_DB_SERVER} clean shutdown..."
-    _mrun "bash /var/xdrago/move_sql.sh stop" &> /dev/null
+    _mrun "bash /var/xdrago/move_sql.sh stop"
     wait
-    _mrun "sleep 180"
+    sleep 180
     _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
     if [ -z "${_IS_MYSQLD_RUNNING}" ]; then
       mkdir -p ${_vBs}/old-sql-ib-log-${_NOW}
-      _mrun "sleep 1"
+      sleep 1
       mv -f /var/lib/mysql/ib_logfile0 ${_vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
       mv -f /var/lib/mysql/ib_logfile1 ${_vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
       if [ "${_DB_V}" = "5.7" ] || [ "${_DB_SERIES}" = "5.7" ]; then
@@ -365,7 +365,7 @@ _innodb_log_file_size_update() {
           echo "innodb_redo_log_capacity    = ${_INNODB_REDO_LOG_CAPACITY_MB}" > /root/.my.innodb_redo_log_capacity.txt
         fi
       fi
-      _mrun "bash /var/xdrago/move_sql.sh start" &> /dev/null
+      _mrun "bash /var/xdrago/move_sql.sh start"
       wait
     else
       if [ "${_DB_V}" != "5.7" ] || [ "${_SQL_UPGRADE}" = "YES" ]; then
@@ -373,7 +373,7 @@ _innodb_log_file_size_update() {
       else
         _msg "WARN: ${_DB_SERVER} refused to stop, InnoDB log file size not updated"
       fi
-      _mrun "sleep 5"
+      sleep 5
     fi
   fi
 }
@@ -548,7 +548,7 @@ _check_mysqld_running() {
     _msg "PROC: _check_mysqld_running"
   fi
   if [ -x "/usr/sbin/aa-teardown" ]; then
-    _mrun "aa-teardown" 2> /dev/null
+    _mrun "aa-teardown"
   fi
   while [ -z "${_IS_MYSQLD_RUNNING}" ] \
     || [ ! -e "/run/mysqld/mysqld.sock" ]; do
@@ -794,7 +794,7 @@ _prep_for_install_db_sql() {
     _msg "PROC: _prep_for_install_db_sql"
   fi
   if [ -x "/usr/sbin/aa-teardown" ]; then
-    _mrun "aa-teardown" 2> /dev/null
+    _mrun "aa-teardown"
   fi
 
   # Create the mysql group if it doesn't exist
@@ -865,7 +865,7 @@ _prep_for_install_db_sql() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "INFO: Installing software-properties-common dirmngr..."
   fi
-  _st_runner "${_INSTAPP} software-properties-common dirmngr" 2> /dev/null
+  _mrun "${_INSTAPP} software-properties-common dirmngr"
 
   _msg "INFO: Installing ${_DB_SERVER} ${_DBS_VRN} in ${_OS_DIST}/${_OS_CODE}"
 
@@ -876,7 +876,7 @@ _prep_for_install_db_sql() {
   _sql_strict_upgrade_path
 
   if [ -e "/usr/bin/mytop" ]; then
-    _mrun "apt-get remove mytop -y --purge --auto-remove -qq" 2> /dev/null
+    _mrun "apt-get remove mytop -y --purge --auto-remove -qq"
     rm -f /usr/bin/mytop
   fi
 
@@ -893,7 +893,7 @@ _prep_for_install_db_sql() {
     if [ "${_SQL_FORCE_REINSTALL}" = "YES" ] \
       || [ "${_ALL_FORCE_REINSTALL}" = "YES" ]; then
       mkdir -p ${_vBs}/old-sql-ib-log-${_NOW}
-      _mrun "sleep 1"
+      sleep 1
       mv -f /var/lib/mysql/ib_logfile0 ${_vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
       mv -f /var/lib/mysql/ib_logfile1 ${_vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
       mv -f /var/lib/mysql/aria_log.00000001 ${_vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
@@ -928,16 +928,16 @@ _install_with_aptitude_sql() {
   fi
   _prep_for_install_db_sql
   if [ "${_SQL_SCR}" = "APT" ]; then
-    _st_runner "${_INSTAPP} ${_SQLDEB}" 2> /dev/null
-    _st_runner "${_INSTAPP} ${_SQLADD}" 2> /dev/null
-    _st_runner "${_INSTAPP} ${_SQLXTR}" 2> /dev/null
-    _st_runner "${_INSTAPP} ${_SQLDEB}" 2> /dev/null
+    _mrun "${_INSTAPP} ${_SQLDEB}"
+    _mrun "${_INSTAPP} ${_SQLADD}"
+    _mrun "${_INSTAPP} ${_SQLXTR}"
+    _mrun "${_INSTAPP} ${_SQLDEB}"
   elif [ "${_SQL_SCR}" = "GIT" ]; then
     ### TBD -- only for testing
-    _st_runner "${_INSTAPP} ${_SQLXTR}" 2> /dev/null
+    _mrun "${_INSTAPP} ${_SQLXTR}"
   fi
   if [ -x "/usr/sbin/aa-teardown" ]; then
-    _mrun "aa-teardown" 2> /dev/null
+    _mrun "aa-teardown"
   fi
   if [ "${_DB_SERVER}" = "Percona" ] \
     && [ "${_SQL_FORCE_REINSTALL}" = "YES" ]; then
@@ -946,14 +946,14 @@ _install_with_aptitude_sql() {
     fi
     rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
     _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
-    _mrun "mysqlcheck -u root -A --auto-repair --silent" &> /dev/null
+    _mrun "mysqlcheck -u root -A --auto-repair --silent"
     _check_mysql_version
     if [ "${_DB_V}" = "5.7" ]; then
-      _mrun "mysql_upgrade -u root --force" &> /dev/null
+      _mrun "mysql_upgrade -u root --force"
       mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN default_role;" &> /dev/null
       mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN is_role;" &> /dev/null
       mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN max_statement_time;" &> /dev/null
-      _mrun "mysql_upgrade -u root --force" &> /dev/null
+      _mrun "mysql_upgrade -u root --force"
     fi
   fi
   usermod -aG users mysql
@@ -1201,7 +1201,7 @@ _db_server_install() {
         chmod +x /bin/systemctl
         [ -e "${_locCnf}/var/mysql" ] && cp -af ${_locCnf}/var/mysql /etc/init.d/mysql
         chmod 755 /etc/init.d/mysql
-        _mrun "update-rc.d mysql defaults" 2> /dev/null
+        _mrun "update-rc.d mysql defaults"
       fi
       _sql_conf_update
       if [ ! -e "/root/.proxy.cnf" ]; then
@@ -1213,11 +1213,11 @@ _db_server_install() {
           rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
           if [ -x "/usr/bin/mysql_upgrade" ]; then
             _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
-            _mrun "mysql_upgrade -u root --force" &> /dev/null
+            _mrun "mysql_upgrade -u root --force"
           fi
         fi
       fi
-      _st_runner "apt-get autoclean -y" &> /dev/null
+      _mrun "apt-get autoclean -y"
       _apt_clean_update
       if [ -e "/etc/mysql/my.cnf" ]; then
         sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf &> /dev/null
@@ -1236,7 +1236,7 @@ _db_server_install() {
         sed -i "s/.*language/#language/g" /etc/mysql/my.cnf &> /dev/null
       fi
       _CUSTOM_CONFIG_SQL=NO
-      _mrun "sleep 8"
+      sleep 8
       _DB_SERVER_TEST=$(mysql -V 2>&1)
       if [[ "${_DB_SERVER_TEST}" =~ "Distrib ${_DB_SERIES}." ]]; then
         _check_mysql_version
@@ -1247,8 +1247,8 @@ _db_server_install() {
           rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
           if [ -x "/usr/bin/mysql_upgrade" ]; then
             _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
-            _mrun "mysql_upgrade -u root --force" &> /dev/null
-            _mrun "mysql_upgrade -u root --force" &> /dev/null
+            _mrun "mysql_upgrade -u root --force"
+            _mrun "mysql_upgrade -u root --force"
           fi
         fi
       fi
@@ -1303,7 +1303,7 @@ _db_server_install() {
             _msg "INFO: Restarting ${_DB_SERVER} server..."
           fi
           mysql -u root -e "INSTALL SONAME 'ha_archive';" &> /dev/null
-          _mrun "bash /var/xdrago/move_sql.sh" &> /dev/null
+          _mrun "bash /var/xdrago/move_sql.sh"
           wait
           _msg "INFO: ${_DB_SERVER} server restart completed"
           _myRstrd=YES
@@ -1338,9 +1338,9 @@ _db_server_install() {
       fi
       [ -e "/bin/systemctl" ] && rm /bin/systemctl
       if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
-        _mrun "csf -e" &> /dev/null
+        _mrun "csf -e"
         wait
-        _mrun "service lfd start" 2> /dev/null
+        _mrun "service lfd start"
         wait
         ### Linux kernel TCP SACK CVEs mitigation
         ### CVE-2019-11477 SACK Panic
@@ -1592,9 +1592,9 @@ _sql_root_credentials_update() {
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "INFO: Restarting ${_DB_SERVER} server..."
         fi
-        _mrun "bash /var/xdrago/move_sql.sh" &> /dev/null
+        _mrun "bash /var/xdrago/move_sql.sh"
         wait
-        mysql -u root -e "INSTALL SONAME 'ha_archive';" &> /dev/null
+        mysql -u root -e "INSTALL SONAME 'ha_archive';"
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "INFO: ${_DB_SERVER} setup completed"
           _msg "INFO: You can now log in as root by typing just 'mysql'"

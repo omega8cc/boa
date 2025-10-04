@@ -157,8 +157,7 @@ fi
 _verbose_log() {
   local _reason="${1}"
   local _message="${2}"
-  local _timestamp
-  local _log_file
+  local _log_file="/dev/null"
 
   # Define log file paths
   local _general_log="/var/log/scan_nginx_debug.log"

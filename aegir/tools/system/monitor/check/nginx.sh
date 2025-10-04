@@ -101,7 +101,7 @@ _nginx_oom_detection() {
   if [ -e "/var/log/nginx/error.log" ]; then
     if [ `tail --lines=500 /var/log/nginx/error.log \
       | grep --count "Cannot allocate memory"` -gt 0 ]; then
-      _thisErrLog="$(date) Nginx OOM"
+      _thisErrLog="$(date) Nginx OOM error"
       echo ${_thisErrLog} >> ${_pthOml}
       _restart_nginx "Nginx OOM"
     fi
@@ -111,9 +111,9 @@ _nginx_oom_detection() {
 _nginx_bind_check_fix() {
   if [ `tail --lines=8 /var/log/nginx/error.log \
     | grep --count "Address already in use"` -gt 0 ]; then
-    _thisErrLog="$(date) Nginx BIND"
+    _thisErrLog="$(date) Nginx BIND PORT error, service will be restarted"
     echo ${_thisErrLog} >> ${_pthOml}
-    _restart_nginx "Nginx BIND"
+    _restart_nginx "Nginx BIND PORT error"
   fi
 }
 
