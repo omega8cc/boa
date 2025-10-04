@@ -934,7 +934,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
         _SILENT=YES
         ####
         #### The [[ $(whoami) == *.ftp ]] ### OK for Drush and Drupal
-        #### The [[ "${_ARGS}" =~ "set -m; " ]] ### Legacy method
+        #### The [[ "${_ARGS}" =~ "set -m; " ]] ### Legacy defunct method
         ####
       else
         if [[ "${_ARGS}" =~ "__build__" ]] \
