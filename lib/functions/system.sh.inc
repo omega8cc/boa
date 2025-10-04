@@ -6295,8 +6295,9 @@ _if_major_os_upgrade() {
     sleep 10
     _msg "INFO: ${_MSG_LOC} upgrade in progress..."
     echo
-    _msg "HINT: Command to run in another terminal window to watch details"
-    _msg "CMND: tail -f ${_LOG}"
+    _msg "HINT: Commands to run in another terminal window to watch details"
+    _msg "INFO: tail -f ${_LOG_INFO}"
+    _msg "ERRR: tail -f ${_LOG_ERRR}"
     echo
     touch /root/.skip-aegir-master-upgrade.cnf
     if [ -e "/root/.run_post_major_os_upgrade.info" ]; then
