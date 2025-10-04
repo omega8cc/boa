@@ -1531,11 +1531,6 @@ _download_helpers_libs() {
   mkdir -p ${_SRCDIR}
   cd ${_SRCDIR}
   #
-  # Get spinner
-  rm -f spinner*
-  cp -af ${_bldPth}/aegir/helpers/spinner ./
-  chmod +x spinner &> /dev/null
-  #
   # Get axelerator
   if [ ! -e "/usr/bin/aptitude-fast" ]; then
     git clone ${_gitHub}/apt-fast.git /opt/tmp/apt-fast &> /dev/null
