@@ -509,7 +509,7 @@ _aegir_master_upgrade() {
     if [ -x "/usr/bin/mysql_upgrade" ]; then
       _check_mysql_version
       if [ "${_DB_V}" = "5.7" ]; then
-        _mrun "mysql_upgrade -u root --force" &> /dev/null
+        _mrun "mysql_upgrade -u root --force"
       fi
     fi
     if [ -e "/var/aegir/use_proxysql.txt" ]; then
@@ -724,7 +724,9 @@ _aegir_master_install_upgrade() {
       || [ ! -e "/run/mysqld/mysqld.sock" ]; then
       _msg "ALRT! ${_DB_SERVER} server not running properly!"
       _msg "EXIT: We can't proceed and will exit now"
-      _msg "HINT: Please check ${_LOG} for more information,"
+      _msg "HINT: Please check for more information two log files:"
+      _msg "INFO:   ${_LOG_INFO}"
+      _msg "ERRR:   ${_LOG_ERRR}"
       _msg "HINT: (re)start ${_DB_SERVER} server, then run the installer again"
       _msg "Bye"
       [ -e "/root/.my.pass.txt" ] && rm -f /root/.my.pass.txt
@@ -1066,7 +1068,7 @@ EOFMYSQL
       mv -f /etc/nginx/nginx.conf /etc/nginx/nginx.conf-old &> /dev/null
       cp -af ${_locCnf}/nginx/nginx.conf /etc/nginx/nginx.conf
     fi
-    _mrun "service nginx reload" 2> /dev/null
+    _mrun "service nginx reload"
     wait
     _msg "INFO: Aegir Master Instance installed"
   else
@@ -1103,7 +1105,9 @@ EOFMYSQL
         || [ ! -e "/run/mysqld/mysqld.sock" ]; then
         _msg "ALRT! ${_DB_SERVER} server not running properly!"
         _msg "EXIT: We can't proceed and will exit now"
-        _msg "HINT: Please check ${_LOG} for more information,"
+        _msg "HINT: Please check for more information two log files:"
+        _msg "INFO:   ${_LOG_INFO}"
+        _msg "ERRR:   ${_LOG_ERRR}"
         _msg "HINT: (re)start ${_DB_SERVER} server, then run the installer again"
         _msg "Bye"
         _clean_pid_exit _aegir_master_install_upgrade_g
@@ -1125,8 +1129,8 @@ _if_upgrade_only_aegir_master() {
       _php_cli_cron_update
       _aegir_master_upgrade
       _php_cli_cron_update
-      _mrun "sleep 8"
-      _mrun "service nginx reload" 2> /dev/null
+      sleep 8
+      _mrun "service nginx reload"
       wait
       _finale
       exit 0
@@ -1140,7 +1144,7 @@ _aegir_master_display_login_link() {
   fi
   if [ "${_STATUS}" = "INIT" ]; then
     if [ "${_EASY_SETUP}" != "LOCAL" ]; then
-      _mrun "bash /usr/sbin/apticron" &> /dev/null
+      _mrun "bash /usr/sbin/apticron"
     fi
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _DO_NOTHING=YES

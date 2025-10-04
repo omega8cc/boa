@@ -41,9 +41,8 @@ _if_install_bzr() {
       elif [ -x "${_isPythonTwo}" ]; then
         _usePyth=python2
       fi
-      _mrun "${_usePyth} setup.py --quiet install build_ext -\
-        -allow-python-fallback" 2> /dev/null
-      _mrun "make -j $(nproc) --quiet" 2> /dev/null
+      _mrun "${_usePyth} setup.py --quiet install build_ext --allow-python-fallback"
+      _mrun "make -j $(nproc) --quiet"
       touch ${_pthLog}/bzr-${_BZR_VRN}.log
       mkdir -p /root/.bazaar
       echo ignore_missing_extensions=True > /root/.bazaar/bazaar.conf
@@ -211,7 +210,7 @@ _fix_collectd_rrd_syslog_flood() {
       echo "        FSType \"rootfs\""   >> ${_COLLECTD_CNF}
       echo "        IgnoreSelected true" >> ${_COLLECTD_CNF}
       echo "</Plugin>"                   >> ${_COLLECTD_CNF}
-      _mrun "service collectd restart" 2> /dev/null
+      _mrun "service collectd restart"
       wait
     fi
   fi
@@ -235,7 +234,7 @@ _fix_collectd_nginx() {
       echo "</Plugin>"                                     >> ${_COLLECTD_CNF}
       sed -i "s/^#LoadPlugin nginx/LoadPlugin nginx/g"        ${_COLLECTD_CNF}
       wait
-      _mrun "service collectd restart" 2> /dev/null
+      _mrun "service collectd restart"
       wait
     fi
   fi
@@ -255,7 +254,7 @@ _if_install_collectd() {
         if _prompt_yes_no "Do you want to install Collectd Graph Panel?" ; then
           true
           _msg "INFO: Installing Collectd Graph Panel..."
-          _st_runner "${_INSTAPP} collectd" 2> /dev/null
+          _mrun "${_INSTAPP} collectd"
           rm -rf /var/www/cgp
           cd /var/www
           _get_dev_arch "cgp-${_CGP_VRN}.tar.gz"
@@ -275,7 +274,7 @@ _if_install_collectd() {
           wait
           sed -i "s/cgp_name/cgp.${_THIS_FRONT}/g"           ${_CGP_VHOST}
           wait
-          _mrun "update-rc.d collectd defaults" 2> /dev/null
+          _mrun "update-rc.d collectd defaults"
           touch ${_pthLog}/cgp-${_CGP_VRN}.sync-new-ip-access.log
           _msg "INFO: Collectd Graph Panel installed"
         else
@@ -289,7 +288,7 @@ _if_install_collectd() {
     && [ ! -e "/boot/grub/grub.cfg" ] \
     && [ ! -e "/boot/grub/menu.lst" ]; then
     rm -f ${_mtrNgx}/vhost.d/cgp*
-    _mrun "apt-get remove collectd -y --purge --auto-remove -qq" 2> /dev/null
+    _mrun "apt-get remove collectd -y --purge --auto-remove -qq"
     rm -rf /var/www/cgp
   fi
   if [ -d "/var/www/cgp" ]; then
@@ -341,10 +340,10 @@ _if_install_webmin() {
         rm -f jcameron-key.gpg*
         touch ${_pthLog}/webmin_update_apt_src.log
         _apt_clean_update
-        _st_runner "${_INSTAPP} webmin \
-                             libxml-simple-perl \
-                             libcrypt-ssleay-perl" 2> /dev/null
-        _mrun "update-rc.d webmin defaults" 2> /dev/null
+        _mrun "${_INSTAPP} webmin \
+               libxml-simple-perl \
+               libcrypt-ssleay-perl"
+        _mrun "update-rc.d webmin defaults"
         _msg "INFO: Webmin Control Panel installed"
       else
         _msg "INFO: Webmin Control Panel installation skipped"
@@ -368,12 +367,12 @@ _if_install_bind() {
           _find_correct_ip
           _THISHTIP="${_LOC_IP}"
         fi
-        _st_runner "${_INSTAPP} bind9" 2> /dev/null
+        _mrun "${_INSTAPP} bind9"
         cp -af /etc/bind/named.conf.options \
           ${_vBs}/named.conf.options.pre-${_xSrl}-${_X_VERSION}-${_NOW}
         cp -af ${_locCnf}/var/named.conf.options /etc/bind/named.conf.options
         sed -i "s/127.0.1.1/${_THISHTIP}/g" /etc/bind/named.conf.options &> /dev/null
-        _mrun "service bind9 restart" 2> /dev/null
+        _mrun "service bind9 restart"
         wait
         if [ ! -e "/etc/init.d/bind" ]; then
           ln -sfn /etc/init.d/bind9 /etc/init.d/bind
@@ -424,8 +423,8 @@ _if_install_node() {
         else
           curl -sL https://deb.nodesource.com/setup_22.x | sudo -E bash -
         fi
-        _mrun "${_INSTAPP} nodejs" 2> /dev/null
-        _mrun "${_INSTAPP} npm" 2> /dev/null
+        _mrun "${_INSTAPP} nodejs"
+        _mrun "${_INSTAPP} npm"
       fi
       [ ! -d "/opt/user/npm" ] && mkdir -p /opt/user/npm
       chown root:root /opt/user/npm
@@ -434,8 +433,8 @@ _if_install_node() {
   else
     _isNode=$(which node 2>&1)
     if [ -x "${_isNode}" ]; then
-      _mrun "apt-get remove nodejs -y --purge --auto-remove -qq" 2> /dev/null
-      _mrun "apt-get remove npm -y --purge --auto-remove -qq" 2> /dev/null
+      _mrun "apt-get remove nodejs -y --purge --auto-remove -qq"
+      _mrun "apt-get remove npm -y --purge --auto-remove -qq"
     fi
   fi
 }
@@ -499,9 +498,9 @@ _if_install_ruby() {
         rm -rf ruby*
         _get_dev_src "ruby-${_RUBY_VRN}.tar.gz"
         cd /var/opt/ruby-${_RUBY_VRN}
-        _mrun "bash ./configure" 2> /dev/null
-        _mrun "make -j $(nproc)" 2> /dev/null
-        _mrun "make install" 2> /dev/null
+        _mrun "bash ./configure"
+        _mrun "make -j $(nproc)"
+        _mrun "make install"
         ldconfig 2> /dev/null
         _isRuby=$(which ruby 2>&1)
         if [ -x "${_isRuby}" ]; then
@@ -566,9 +565,9 @@ _if_install_ffmpeg() {
           echo "deb http://www.deb-multimedia.org buster-backports main" >> /etc/apt/sources.list.d/ffmpeg.list
         fi
         _apt_clean_update
-        _st_runner "apt-get install deb-multimedia-keyring ${_aptYesUnth}" 2> /dev/null
+        _mrun "apt-get install deb-multimedia-keyring ${_aptYesUnth}"
         _apt_clean_update
-        _st_runner "${_INSTAPP} ffmpeg" 2> /dev/null
+        _mrun "${_INSTAPP} ffmpeg"
         _msg "INFO: FFmpeg installed"
       else
         _msg "INFO: FFmpeg installation skipped"

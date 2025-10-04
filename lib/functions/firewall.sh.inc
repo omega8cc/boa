@@ -120,7 +120,7 @@ _csf_install() {
     if [ -L "/usr/sbin/ipset" ]; then
       rm -f /usr/sbin/ipset
     fi
-    _mrun "apt-get install ipset ${_aptYesUnth}" 2> /dev/null
+    _mrun "apt-get install ipset ${_aptYesUnth}"
   fi
 
   _ensure_ipset_symlinks
@@ -175,7 +175,7 @@ _csf_install() {
   fi
   _get_dev_src "csf-${_CSF_VRN}.tgz"
   cd csf
-  _mrun "sh install.sh" 2> /dev/null
+  _mrun "sh install.sh"
   _NFTABLES_TEST=$(iptables -V)
   if [[ "${_NFTABLES_TEST}" =~ "nf_tables" ]]; then
     if [ -e "/usr/sbin/iptables-legacy" ]; then
@@ -249,7 +249,7 @@ _csf_install() {
       wait
     fi
     pkill -9 -f /usr/sbin/sshd || true
-    _mrun "service ssh start" 2> /dev/null
+    _mrun "service ssh start"
     if [ "${_CSF_MODE}" = "install" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: csf/lfd firewall installed"
@@ -333,7 +333,7 @@ _csf_lfd_install_upgrade() {
     if [ -L "/usr/sbin/ipset" ]; then
       rm -f /usr/sbin/ipset
     fi
-    _mrun "apt-get install ipset ${_aptYesUnth}" 2> /dev/null
+    _mrun "apt-get install ipset ${_aptYesUnth}"
   fi
 
   _ensure_ipset_symlinks
@@ -367,15 +367,15 @@ _csf_lfd_install_upgrade() {
       _REMOVE_CSF=YES
     fi
     if [ "${_REMOVE_CSF}" = "YES" ]; then
-      _mrun "service lfd stop" 2> /dev/null
+      _mrun "service lfd stop"
       wait
       pkill -9 -f ConfigServer
       killall sleep &> /dev/null
       rm -f /etc/csf/csf.error
       csf -x &> /dev/null
       wait
-      _mrun "update-rc.d -f csf remove" 2> /dev/null
-      _mrun "update-rc.d -f lfd remove" 2> /dev/null
+      _mrun "update-rc.d -f csf remove"
+      _mrun "update-rc.d -f lfd remove"
       rm -f /etc/cron.d/{csf,lfd}*
       rm -f /usr/sbin/{csf,lfd}
       rm -f /etc/init.d/{csf,lfd}
@@ -410,7 +410,7 @@ _csf_lfd_install_upgrade() {
       fi
       if [ -e "${_pthLog}/lastFire" ]; then
         rm -f ${_pthLog}/lastFire
-        _mrun "service lfd stop" 2> /dev/null
+        _mrun "service lfd stop"
         wait
         pkill -9 -f ConfigServer
         killall sleep &> /dev/null
