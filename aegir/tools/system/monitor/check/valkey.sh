@@ -111,16 +111,16 @@ _valkey_restart() {
 _valkey_bind_check_fix() {
   if [ `tail --lines=8 /var/log/valkey/valkey-server.log \
     | grep --count "Address already in use"` -gt 0 ]; then
-    _thisErrLog="$(date) ValkeyException BIND detected, service will be restarted"
+    _thisErrLog="$(date) ValkeyException BIND PORT error, service will be restarted"
     echo ${_thisErrLog} >> ${_pthOml}
-    _valkey_restart "ValkeyException BIND"
+    _valkey_restart "ValkeyException BIND PORT"
   fi
 }
 
 _valkey_connection_check_fix() {
   if [ `tail --lines=500 /var/log/php/error_log_* \
     | grep --count "ValkeyException: Connection refused"` -gt 19 ]; then
-    _thisErrLog="$(date) ValkeyException Connection refused detected, service will be restarted"
+    _thisErrLog="$(date) ValkeyException Connection refused, service will be restarted"
     echo ${_thisErrLog} >> ${_pthOml}
     _valkey_restart "ValkeyException REFUSED"
   fi
@@ -129,7 +129,7 @@ _valkey_connection_check_fix() {
 _valkey_slow_check_fix() {
   if [ `tail --lines=500 /var/log/php/fpm-*-slow.log \
     | grep --count "PhpRedis.php"` -gt 19 ]; then
-    _thisErrLog="$(date) Slow PhpRedis"
+    _thisErrLog="$(date) Slow PhpRedis, service will be restarted"
     echo ${_thisErrLog} >> ${_pthOml}
     _valkey_restart "ValkeyException SLOW"
   fi

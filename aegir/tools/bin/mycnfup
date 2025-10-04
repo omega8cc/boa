@@ -890,7 +890,7 @@ _innodb_log_file_size_update() {
     _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
     if [ -z "${_IS_MYSQLD_RUNNING}" ]; then
       mkdir -p ${_vBs}/old-sql-ib-log-${_NOW}
-      _mrun "sleep 1"
+      sleep 1
       mv -f /var/lib/mysql/ib_logfile0 ${_vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
       mv -f /var/lib/mysql/ib_logfile1 ${_vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
       if [ "${_DB_V}" = "5.7" ]; then

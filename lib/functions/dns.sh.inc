@@ -331,16 +331,16 @@ _install_unbound_src() {
       --prefix=/usr \
       --with-libevent \
       --with-pidfile=/run/unbound/unbound.pid \
-      --with-ssl=/usr/local/ssl3" 2> /dev/null
+      --with-ssl=/usr/local/ssl3"
   elif [ -e "/usr/local/ssl/" ]; then
     _mrun "bash ./configure \
       --prefix=/usr \
       --with-libevent \
       --with-pidfile=/run/unbound/unbound.pid \
-      --with-ssl=/usr/local/ssl" 2> /dev/null
+      --with-ssl=/usr/local/ssl"
   fi
-  _mrun "make -j $(nproc) --quiet" 2> /dev/null
-  _mrun "make --quiet install" 2> /dev/null
+  _mrun "make -j $(nproc) --quiet"
+  _mrun "make --quiet install"
 }
 
 #
@@ -391,18 +391,18 @@ _dns_unbound_install_upgrade() {
     _apt_clean_update
     [ -e "/usr/etc/unbound/unbound.pid" ] && _isUnbndFix=YES
     if [ "${_isUnbndFix}" = "YES" ]; then
-      _mrun "apt-get remove unbound -y --purge --auto-remove -qq" 2> /dev/null
-      _mrun "apt-get remove unbound-anchor -y --purge --auto-remove -qq" 2> /dev/null
-      _mrun "apt-get remove unbound-host -y --purge --auto-remove -qq" 2> /dev/null
-      _mrun "apt-get remove dns-root-data -y --purge --auto-remove -qq" 2> /dev/null
+      _mrun "apt-get remove unbound -y --purge --auto-remove -qq"
+      _mrun "apt-get remove unbound-anchor -y --purge --auto-remove -qq"
+      _mrun "apt-get remove unbound-host -y --purge --auto-remove -qq"
+      _mrun "apt-get remove dns-root-data -y --purge --auto-remove -qq"
       rm -rf /etc/unbound
       rm -rf /usr/etc/unbound
     fi
-    _mrun "apt-get remove resolvconf -y --purge --auto-remove -qq" 2> /dev/null
+    _mrun "apt-get remove resolvconf -y --purge --auto-remove -qq"
     rm -rf /lib/init/rw/resolvconf
     rm -rf /run/resolvconf
     rm -rf /etc/resolvconf
-    _mrun "apt-get remove resolvconf -y --purge --auto-remove -qq" 2> /dev/null
+    _mrun "apt-get remove resolvconf -y --purge --auto-remove -qq"
     if [ "${_USE_PROVIDER_DNS}" != "YES" ]; then
       rm -f /etc/resolv.conf
       echo "### BOA-DNS-Config ###" > /etc/resolv.conf
@@ -411,16 +411,16 @@ _dns_unbound_install_upgrade() {
       echo "nameserver 9.9.9.9" >> /etc/resolv.conf
     fi
     if [ -x "/usr/sbin/aa-teardown" ]; then
-      _mrun "aa-teardown" 2> /dev/null
+      _mrun "aa-teardown"
     fi
-    _mrun "${_INSTAPP} libevent-dev" 2> /dev/null
-    _mrun "${_INSTAPP} resolvconf" 2> /dev/null
-    _mrun "${_INSTAPP} unbound" 2> /dev/null
-    _mrun "${_INSTAPP} unbound-anchor" 2> /dev/null
-    _mrun "${_INSTAPP} unbound-host" 2> /dev/null
-    _mrun "${_INSTAPP} dns-root-data" 2> /dev/null
+    _mrun "${_INSTAPP} libevent-dev"
+    _mrun "${_INSTAPP} resolvconf"
+    _mrun "${_INSTAPP} unbound"
+    _mrun "${_INSTAPP} unbound-anchor"
+    _mrun "${_INSTAPP} unbound-host"
+    _mrun "${_INSTAPP} dns-root-data"
     if [ -x "/usr/sbin/aa-teardown" ]; then
-      _mrun "aa-teardown" 2> /dev/null
+      _mrun "aa-teardown"
     fi
     ###
     [ ! -e "/run/unbound" ] && mkdir -p /run/unbound
@@ -431,10 +431,10 @@ _dns_unbound_install_upgrade() {
     [ ! -e "/var/lib/unbound/" ] && mkdir -p /var/lib/unbound/
     [ -e "/usr/share/dns/" ] && cp -a /usr/share/dns/* /var/lib/unbound/
     [ -e "/var/lib/unbound/" ] && chown -R unbound:unbound /var/lib/unbound
-    [ ! -e "/etc/unbound/unbound_control.key" ] && _mrun "unbound-control-setup" 2> /dev/null
+    [ ! -e "/etc/unbound/unbound_control.key" ] && _mrun "unbound-control-setup"
     cp -af ${_locCnf}/dns/unbound /etc/init.d/unbound
     chmod 755 /etc/init.d/unbound
-    _mrun "update-rc.d unbound defaults" 2> /dev/null
+    _mrun "update-rc.d unbound defaults"
     ###
     if [ -e "/etc/apparmor.d" ] && [ ! -e "/etc/apparmor.d/usr.sbin.unbound" ]; then
       cat ${_locCnf}/apparmor/usr.sbin.unbound > /etc/apparmor.d/usr.sbin.unbound
@@ -454,8 +454,8 @@ _dns_unbound_install_upgrade() {
     echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.unbound
     resolvconf -u &> /dev/null
     [ -e "/etc/resolvconf/update.d/unbound" ] && chmod 644 /etc/resolvconf/update.d/unbound
-    pkill -u unbound -x unbound &> /dev/null
-    _mrun "service unbound restart" 2> /dev/null
+    _mrun "pkill -u unbound -x unbound"
+    _mrun "service unbound restart"
     wait
   fi
   _check_dns_settings
@@ -486,10 +486,10 @@ _dns_unbound_install_upgrade() {
       echo "nameserver 8.8.8.8" >> /etc/resolv.conf
       echo "nameserver 9.9.9.9" >> /etc/resolv.conf
       [ -e "/etc/resolvconf/update.d/unbound" ] && chmod 644 /etc/resolvconf/update.d/unbound
-      pkill -u unbound -x unbound &> /dev/null
-      _mrun "service unbound restart" 2> /dev/null
+      _mrun "pkill -u unbound -x unbound"
+      _mrun "service unbound restart"
       wait
-      unbound-control reload &> /dev/null
+      _mrun "unbound-control reload"
     fi
   fi
   if [ ! -f "/etc/resolv.conf" ]; then
@@ -500,15 +500,15 @@ _dns_unbound_install_upgrade() {
     echo "nameserver 8.8.8.8" >> /etc/resolv.conf
     echo "nameserver 9.9.9.9" >> /etc/resolv.conf
     [ -e "/etc/resolvconf/update.d/unbound" ] && chmod 644 /etc/resolvconf/update.d/unbound
-    pkill -u unbound -x unbound &> /dev/null
-    _mrun "service unbound restart" 2> /dev/null
+    _mrun "pkill -u unbound -x unbound"
+    _mrun "service unbound restart"
     wait
-    unbound-control reload &> /dev/null
+    _mrun "unbound-control reload"
   fi
   if [ -e "/etc/NetworkManager/NetworkManager.conf" ]; then
     sed -i "s/^dns=.*/dns=unbound/g" \
       /etc/NetworkManager/NetworkManager.conf &> /dev/null
-    _mrun "service network-manager restart" 2> /dev/null
+    _mrun "service network-manager restart"
   fi
   if [ -x "${_isUnbnd}" ] && [ "${_isUnbndFix}" = "NO" ]; then
     _UNBOUND_V_ITD=$(${_isUnbnd} -V 2>&1 \
@@ -551,14 +551,14 @@ _dns_unbound_install_upgrade() {
   if [ "${_isUnbndFix}" = "NO" ] || [ "${_killPdnsd}" = "YES" ]; then
     _isPdnsd=$(which pdnsd 2>&1)
     if [ -x "${_isPdnsd}" ]; then
-      _mrun "service pdnsd stop" 2> /dev/null
-      _mrun "update-rc.d -f pdnsd remove" 2> /dev/null
-      killall -9 pdnsd &> /dev/null
+      _mrun "service pdnsd stop"
+      _mrun "update-rc.d -f pdnsd remove"
+      _mrun "killall -9 pdnsd"
       mv -f ${_isPdnsd} /var/backups
     fi
     [ -e "/etc/resolvconf/update.d/unbound" ] && chmod 644 /etc/resolvconf/update.d/unbound
-    pkill -u unbound -x unbound &> /dev/null
-    _mrun "service unbound restart" 2> /dev/null
+    _mrun "pkill -u unbound -x unbound"
+    _mrun "service unbound restart"
     wait
   fi
   [ -e "/etc/default/unbound" ] && _isNxdEtc=$(grep "always_nxdomain" /etc/default/unbound 2>&1)
@@ -567,8 +567,8 @@ _dns_unbound_install_upgrade() {
     && [[ ! "${_isIntUnb}" =~ "apply_ci_nomail" ]]; then
     cp -af ${_locCnf}/dns/unbound /etc/init.d/unbound
     chmod 755 /etc/init.d/unbound
-    _mrun "update-rc.d unbound defaults" 2> /dev/null
-    _mrun "service unbound reload" 2> /dev/null
+    _mrun "update-rc.d unbound defaults"
+    _mrun "service unbound reload"
     wait
   fi
   if [ -x "${_isUnbnd}" ] \
@@ -576,8 +576,8 @@ _dns_unbound_install_upgrade() {
     && [ -e "/etc/resolvconf/interface-order" ]; then
     sed -i "s/pdnsd/unbound/g" /etc/resolvconf/interface-order
     [ -e "/etc/resolvconf/update.d/unbound" ] && chmod 644 /etc/resolvconf/update.d/unbound
-    pkill -u unbound -x unbound &> /dev/null
-    _mrun "service unbound restart" 2> /dev/null
+    _mrun "pkill -u unbound -x unbound"
+    _mrun "service unbound restart"
     wait
   fi
 }
