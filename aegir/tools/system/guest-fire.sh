@@ -53,8 +53,7 @@ fi
 _verbose_log() {
   _reason="${1}"
   _message="${2}"
-  _timestamp
-  _log_file
+  _log_file="/dev/null"
 
   # Define log file paths
   _csf_dry_log="/var/log/csf_dry_debug.log"
