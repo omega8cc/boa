@@ -111,16 +111,16 @@ _redis_restart() {
 _redis_bind_check_fix() {
   if [ `tail --lines=8 /var/log/redis/redis-server.log \
     | grep --count "Address already in use"` -gt 0 ]; then
-    _thisErrLog="$(date) RedisException BIND detected, service will be restarted"
+    _thisErrLog="$(date) RedisException BIND PORT error, service will be restarted"
     echo ${_thisErrLog} >> ${_pthOml}
-    _redis_restart "RedisException BIND"
+    _redis_restart "RedisException BIND PORT"
   fi
 }
 
 _redis_connection_check_fix() {
   if [ `tail --lines=500 /var/log/php/error_log_* \
     | grep --count "RedisException: Connection refused"` -gt 19 ]; then
-    _thisErrLog="$(date) RedisException Connection refused detected, service will be restarted"
+    _thisErrLog="$(date) RedisException Connection refused, service will be restarted"
     echo ${_thisErrLog} >> ${_pthOml}
     _redis_restart "RedisException REFUSED"
   fi
@@ -129,7 +129,7 @@ _redis_connection_check_fix() {
 _redis_slow_check_fix() {
   if [ `tail --lines=500 /var/log/php/fpm-*-slow.log \
     | grep --count "PhpRedis.php"` -gt 19 ]; then
-    _thisErrLog="$(date) Slow PhpRedis detected, service will be restarted"
+    _thisErrLog="$(date) Slow PhpRedis, service will be restarted"
     echo ${_thisErrLog} >> ${_pthOml}
     _redis_restart "RedisException SLOW"
   fi

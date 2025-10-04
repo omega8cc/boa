@@ -258,7 +258,7 @@ _os_detection_minimal
 _apt_clean_update() {
   #apt-get clean -qq 2> /dev/null
   #rm -rf /var/lib/apt/lists/* &> /dev/null
-  _mrun "${_APT_UPDATE} -qq" 2> /dev/null
+  ${_APT_UPDATE} -qq
 }
 
 _if_hosted_sys() {
@@ -351,20 +351,6 @@ else
     esac
   done
 fi
-}
-#
-# Small spinner.
-_mrun() {
-  CMD="$1"
-  touch busy
-  if [ "${_SPINNER}" = "YES" ]; then
-    bash ${_SRCDIR}/spinner busy &
-  fi
-  if ${CMD} >> ${_LOG}; then
-    rm busy
-    sleep 1
-    return 0
-  fi
 }
 #
 # Count system CPUs.
@@ -1022,19 +1008,19 @@ _innodb_log_file_size_update() {
     fi
     mysql -u root -e "SET GLOBAL innodb_fast_shutdown = 0;" &> /dev/null
   fi
-  _mrun "service mysql stop" 2> /dev/null
+  service mysql stop
   echo "Waiting 15 seconds..."
-  _mrun "sleep 15"
+  sleep 15
   if [ ! -e "/run/mysqld/mysqld.sock" ] \
     && [ ! -e "/run/mysqld/mysqld.pid" ]; then
     mkdir -p ${_vBs}/old-sql-ib-log-${_NOW}
-    _mrun "sleep 5"
+    sleep 5
     mv -f /var/lib/mysql/ib_logfile0 ${_vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
     mv -f /var/lib/mysql/ib_logfile1 ${_vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
     sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
     wait
     echo "Waiting 15 seconds..."
-    _mrun "sleep 15"
+    sleep 15
   fi
   if [ ! -e "/run/mysqld/mysqld.sock" ]; then
     service mysql start &> /dev/null
@@ -1154,7 +1140,7 @@ _restore_default_nginx() {
   fi
   su -s /bin/bash - aegir -c "drush8 @server_master provision-verify" &> /dev/null
   wait
-  _mrun "sleep 8"
+  sleep 8
 }
 #
 _tune_nginx() {
@@ -1878,12 +1864,6 @@ else
   _BOA_REPO_NAME="boa"
 fi
 #
-# Get spinner
-cd ${_SRCDIR}
-rm -f spinner*
-cp -af ${_bldPth}/aegir/helpers/spinner ./
-chmod +x spinner &> /dev/null
-#
 # Create tmp stuff
 _LOG=/var/backups/bond-${_NOW}.log
 #
@@ -1916,7 +1896,7 @@ if _prompt_yes_no "${_tPrmt}?" ; then
   if [ ! -e "/root/.upstart.cnf" ]; then
     _msg "INFO: We will stop cron and then wait 30 seconds..."
     service cron stop &> /dev/null
-    _mrun "sleep 30"
+    sleep 30
   fi
   _msg "INFO: Tuning in progress, please wait..."
   _restore_default_php
@@ -1933,7 +1913,7 @@ else
   if [ ! -e "/root/.upstart.cnf" ]; then
     _msg "INFO: We will stop cron and then wait 30 seconds..."
     service cron stop &> /dev/null
-    _mrun "sleep 30"
+    sleep 30
   fi
   _restore_default_php
   _php_conf_update

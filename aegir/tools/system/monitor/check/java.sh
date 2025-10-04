@@ -101,7 +101,7 @@ _jetty_listen_conflict_detection() {
   if [ -e "/var/log/jetty9" ]; then
     if [ `tail --lines=500 /var/log/jetty9/*stderrout.log \
       | grep --count "Address already in use"` -gt 0 ]; then
-      _thisErrLog="$(date) Address already in use for jetty9"
+      _thisErrLog="$(date) BIND PORT error jetty9, service will be restarted"
       echo ${_thisErrLog} >> ${_pthOml}
       _jetty_restart "jetty9 zombie"
     fi
@@ -109,7 +109,7 @@ _jetty_listen_conflict_detection() {
   if [ -e "/var/log/jetty8" ]; then
     if [ `tail --lines=500 /var/log/jetty8/*stderrout.log \
       | grep --count "Address already in use"` -gt 0 ]; then
-      _thisErrLog="$(date) Address already in use for jetty8"
+      _thisErrLog="$(date) BIND PORT error jetty8, service will be restarted"
       echo ${_thisErrLog} >> ${_pthOml}
       _jetty_restart "jetty8 zombie"
     fi
@@ -117,7 +117,7 @@ _jetty_listen_conflict_detection() {
   if [ -e "/var/log/jetty7" ]; then
     if [ `tail --lines=500 /var/log/jetty7/*stderrout.log \
       | grep --count "Address already in use"` -gt 0 ]; then
-      _thisErrLog="$(date) Address already in use for jetty7"
+      _thisErrLog="$(date) BIND PORT error jetty7, service will be restarted"
       echo ${_thisErrLog} >> ${_pthOml}
       _jetty_restart "jetty7 zombie"
     fi
