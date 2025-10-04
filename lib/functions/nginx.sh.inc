@@ -68,7 +68,7 @@ _force_advanced_nginx_config() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: Generating DH parameters, 2048 bit..."
     fi
-    _mrun "openssl dhparam -out /etc/ssl/private/nginx-wild-ssl.dhp 2048" 2> /dev/null
+    _mrun "openssl dhparam -out /etc/ssl/private/nginx-wild-ssl.dhp 2048"
     wait
   fi
   cp -af ${_locCnf}/nginx/nginx_compact_include.conf ${_mtrInc}/nginx_compact_include.conf
@@ -260,7 +260,7 @@ _nginx_clean_legacy_config() {
       wait
     fi
   fi
-  _mrun "service nginx reload" 2> /dev/null
+  _mrun "service nginx reload"
   wait
 }
 
@@ -509,11 +509,11 @@ _nginx_install_upgrade() {
       --without-mail_smtp_module \
       --with-openssl=/var/opt/openssl-${_OPENSSL_NEW_VRN} \
       --with-debug ${_NGINX_EXTRA}" 2> /dev/null
-    _mrun "make -j $(nproc)" 2> /dev/null
-    _mrun "make install" 2> /dev/null
+    _mrun "make -j $(nproc)"
+    _mrun "make install"
     ldconfig 2> /dev/null
     _nginx_clean_legacy_config
-    _mrun "service nginx quietupgrade" 2> /dev/null
+    _mrun "service nginx quietupgrade"
     wait
     _NGINX_INSTALL_REQUIRED=NO
   fi
@@ -571,14 +571,14 @@ _nginx_initd_check() {
   fi
   if [[ "${_X_INIT_TEST_A}" =~ ULIMIT ]] && [[ "${_X_INIT_TEST_B}" =~ Giedymin ]]; then
     chmod 755 /etc/init.d/nginx &> /dev/null
-    _mrun "update-rc.d nginx defaults" 2> /dev/null
+    _mrun "update-rc.d nginx defaults"
   else
     mv -f /etc/init.d/nginx \
       ${_vBs}/nginx-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
     cp -af ${_locCnf}/nginx/nginx /etc/init.d/nginx
     chmod 755 /etc/init.d/nginx &> /dev/null
-    _mrun "update-rc.d nginx defaults" 2> /dev/null
-    _mrun "service nginx start" 2> /dev/null
+    _mrun "update-rc.d nginx defaults"
+    _mrun "service nginx start"
   fi
 }
 
@@ -603,7 +603,7 @@ _nginx_mime_check_fix() {
     rm -f /etc/nginx/sites-enabled/default
     rm -f /etc/nginx/modules-enabled/*
     if [ ! -e "/run/aegir_upgrade.pid" ]; then
-      _mrun "service nginx reload" 2> /dev/null
+      _mrun "service nginx reload"
       wait
     fi
   fi
@@ -641,7 +641,7 @@ _nginx_wildcard_ssl_install() {
     elif [ -e "/etc/init.d/redis-server" ]; then
       _redis_password_update
     fi
-    _mrun "service nginx quietupgrade" 2> /dev/null
+    _mrun "service nginx quietupgrade"
     wait
   else
     _WILD_SSL_PROXY_UP=NO
@@ -675,10 +675,10 @@ _nginx_config_update_fix() {
     _msg "PROC: _nginx_config_update_fix"
   fi
   if [ "${_STATUS}" = "INIT" ]; then
-    _mrun "service cron start" 2> /dev/null
+    _mrun "service cron start"
     _force_advanced_nginx_config
-    _mrun "sleep 8"
-    _mrun "service nginx restart" 2> /dev/null
+    sleep 8
+    _mrun "service nginx restart"
     wait
   else
     if [ -e "/var/aegir/config" ]; then
@@ -988,7 +988,7 @@ _nginx_config_update_fix() {
       && [ -e "/root/.local.IP.list" ]; then
       _master_fix_multi_ip_cron_access
     fi
-    _mrun "service nginx reload" 2> /dev/null
+    _mrun "service nginx reload"
     wait
   fi
 }

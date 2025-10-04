@@ -467,11 +467,11 @@ _satellite_tune_fpm_config() {
     fi
     if [ ! -z "${_PHP_OLD_SV}" ] \
       && [ -e "/etc/init.d/php${_PHP_OLD_SV}-fpm" ]; then
-      _mrun "service php${_PHP_OLD_SV}-fpm reload" 2> /dev/null
+      _mrun "service php${_PHP_OLD_SV}-fpm reload"
       wait
     fi
     if [ -e "/etc/init.d/php${_PHP_SV}-fpm" ]; then
-      _mrun "service php${_PHP_SV}-fpm reload" 2> /dev/null
+      _mrun "service php${_PHP_SV}-fpm reload"
       wait
     fi
   fi
@@ -3048,7 +3048,7 @@ _satellite_run_post_install() {
     rm -rf ${_HM_ROOT}/scripts
     rm -f ${_HM_ROOT}/themes/README.txt
     rm -f ${_HM_ROOT}/*.txt
-    _mrun "service nginx reload" 2> /dev/null
+    _mrun "service nginx reload"
     wait
     cd ${_HM_ROOT}
     cp -af /opt/tmp/boa/aegir/conf/tpl/robots.txt ./
@@ -4111,7 +4111,7 @@ _satellite_make() {
       _satellite_tune_fpm_config
     fi
     _satellite_force_advanced_nginx_config
-    _mrun "service nginx reload" 2> /dev/null
+    _mrun "service nginx reload"
     wait
   fi
 }
@@ -4861,7 +4861,7 @@ _satellite_letsencrypt_vhost_sync() {
     service nginx reload
     wait
   else
-    _mrun "service nginx reload" 2> /dev/null
+    _mrun "service nginx reload"
     wait
   fi
 }
@@ -4888,7 +4888,7 @@ _satellite_letsencrypt_vhost_setup() {
         service nginx reload
         wait
       else
-        _mrun "service nginx reload" 2> /dev/null
+        _mrun "service nginx reload"
         wait
       fi
     fi
@@ -4917,7 +4917,7 @@ _satellite_letsencrypt_vhost_setup() {
             bash /opt/local/bin/xboa ssl-gen
             wait
           else
-            _mrun "bash /opt/local/bin/xboa ssl-gen" &> /dev/null
+            _mrun "bash /opt/local/bin/xboa ssl-gen"
             wait
           fi
           if [ -e "${_Ssl}" ]; then
@@ -4934,7 +4934,7 @@ _satellite_letsencrypt_vhost_setup() {
           bash /opt/local/bin/xboa ssl-gen
           wait
         else
-          _mrun "bash /opt/local/bin/xboa ssl-gen" &> /dev/null
+          _mrun "bash /opt/local/bin/xboa ssl-gen"
           wait
         fi
         if [ -e "${_Ssl}" ]; then
@@ -4991,19 +4991,19 @@ _satellite_batch_cleanup() {
     if [ ! -f "${_D}/permissions-fix-${_xSrl}-${_X_VERSION}-${_TODAY}.info" ]; then
       find ${_D}/000 -type d -exec chmod 0755 {} \; &> /dev/null
       find ${_D}/000 -type f -exec chmod 0644 {} \; &> /dev/null
-      _mrun "chmod 755 ${_D}/*/*/profiles" &> /dev/null
-      _mrun "chmod 02775 ${_D}/*/*/sites/all/{modules,libraries,themes}" &> /dev/null
-      _mrun "chmod 02775 ${_D}/000/core/*/sites/all/{modules,libraries,themes}" &> /dev/null
-      _mrun "chown -R root:root ${_D}" &> /dev/null
-      _mrun "chown -R root:users ${_D}/*/*/sites" &> /dev/null
+      _mrun "chmod 755 ${_D}/*/*/profiles"
+      _mrun "chmod 02775 ${_D}/*/*/sites/all/{modules,libraries,themes}"
+      _mrun "chmod 02775 ${_D}/000/core/*/sites/all/{modules,libraries,themes}"
+      _mrun "chown -R root:root ${_D}"
+      _mrun "chown -R root:users ${_D}/*/*/sites"
       echo fixed > ${_D}/permissions-fix-${_xSrl}-${_X_VERSION}-${_TODAY}.info
     fi
     chown root:root ${_D} &> /dev/null
     chown root:root ${_CORE} &> /dev/null
-    _mrun "chown -R root:root /data/conf" &> /dev/null
-    _mrun "chown -R root:root ${_CORE}/o_contrib" &> /dev/null
-    _mrun "chown -R root:root ${_CORE}/o_contrib_seven" &> /dev/null
-    _mrun "chown -R root:root ${_D}/000" &> /dev/null
+    _mrun "chown -R root:root /data/conf"
+    _mrun "chown -R root:root ${_CORE}/o_contrib"
+    _mrun "chown -R root:root ${_CORE}/o_contrib_seven"
+    _mrun "chown -R root:root ${_D}/000"
     find /data/conf -type d -exec chmod 0755 {} \; &> /dev/null
     find /data/conf -type f -exec chmod 0644 {} \; &> /dev/null
     chown root:root /opt/tmp &> /dev/null
@@ -5014,19 +5014,19 @@ _satellite_batch_cleanup() {
     if [ ! -f "/data/disk/all/permissions-fix-${_xSrl}-${_X_VERSION}-${_TODAY}.info" ]; then
       find /data/disk/all/000 -type d -exec chmod 0755 {} \; &> /dev/null
       find /data/disk/all/000 -type f -exec chmod 0644 {} \; &> /dev/null
-      _mrun "chmod 755 /data/disk/all/*/*/profiles" &> /dev/null
-      _mrun "chmod 02775 /data/disk/all/*/*/sites/all/{modules,libraries,themes}" &> /dev/null
-      _mrun "chmod 02775 /data/disk/all/000/core/*/sites/all/{modules,libraries,themes}" &> /dev/null
-      _mrun "chown -R root:root /data/disk/all" &> /dev/null
-      _mrun "chown -R root:users /data/disk/all/*/*/sites" &> /dev/null
+      _mrun "chmod 755 /data/disk/all/*/*/profiles"
+      _mrun "chmod 02775 /data/disk/all/*/*/sites/all/{modules,libraries,themes}"
+      _mrun "chmod 02775 /data/disk/all/000/core/*/sites/all/{modules,libraries,themes}"
+      _mrun "chown -R root:root /data/disk/all"
+      _mrun "chown -R root:users /data/disk/all/*/*/sites"
       echo fixed > /data/disk/all/permissions-fix-${_xSrl}-${_X_VERSION}-${_TODAY}.info
     fi
     chown root:root /data/disk/all &> /dev/null
     chown root:root ${_CORE} &> /dev/null
-    _mrun "chown -R root:root /data/conf" &> /dev/null
-    _mrun "chown -R root:root ${_CORE}/o_contrib" &> /dev/null
-    _mrun "chown -R root:root ${_CORE}/o_contrib_seven" &> /dev/null
-    _mrun "chown -R root:root /data/disk/all/000" &> /dev/null
+    _mrun "chown -R root:root /data/conf"
+    _mrun "chown -R root:root ${_CORE}/o_contrib"
+    _mrun "chown -R root:root ${_CORE}/o_contrib_seven"
+    _mrun "chown -R root:root /data/disk/all/000"
     find /data/conf -type d -exec chmod 0755 {} \; &> /dev/null
     find /data/conf -type f -exec chmod 0644 {} \; &> /dev/null
     chown root:root /opt/tmp &> /dev/null
@@ -5114,7 +5114,7 @@ _satellite_display_url_finalize() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "${_STATUS} A: Starting the cron now"
     fi
-    _mrun "service cron start" 2> /dev/null
+    _mrun "service cron start"
   fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "${_STATUS} A: All done!"

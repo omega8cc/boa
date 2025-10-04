@@ -805,13 +805,13 @@ _os_detection_minimal() {
 _apt_clean_update() {
   #apt-get clean -qq 2> /dev/null
   #rm -rf /var/lib/apt/lists/* &> /dev/null
-  _mrun "${_APT_UPDATE} -qq" 2> /dev/null
+  _mrun "${_APT_UPDATE} -qq"
 }
 
 _apt_clean_update_no_releaseinfo_change() {
   #apt-get clean -qq 2> /dev/null
   #rm -rf /var/lib/apt/lists/* &> /dev/null
-  _mrun "apt-get update -qq" 2> /dev/null
+  _mrun "apt-get update -qq"
 }
 
 _turn_on_password_update() {
@@ -1119,11 +1119,11 @@ _turn_off_apparmor_in_octopus() {
       _msg "ARMR: Turning off AppArmor temporarily..."
     fi
     rm -rf /var/cache/apparmor/*
-    _mrun "apparmor_parser -r /etc/apparmor.d/*" 2> /dev/null
-    _mrun "aa-complain /etc/apparmor.d/*" 2> /dev/null
-    _mrun "service apparmor stop" 2> /dev/null
-    _mrun "aa-teardown" 2> /dev/null
-    _mrun "service auditd stop" 2> /dev/null
+    _mrun "apparmor_parser -r /etc/apparmor.d/*"
+    _mrun "aa-complain /etc/apparmor.d/*"
+    _mrun "service apparmor stop"
+    _mrun "aa-teardown"
+    _mrun "service auditd stop"
     touch /root/.turn_off_apparmor_in_octopus.cnf
   fi
 }
