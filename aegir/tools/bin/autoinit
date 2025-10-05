@@ -931,8 +931,6 @@ _init_cycle() {
       /usr/bin/apt-get -f install ${_aptAllow} -y -qq >> "${_logSlt}"
     else
       [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
-      /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
-      /usr/bin/dpkg --configure -a >> "${_logSlt}"
       /usr/bin/apt-get dist-upgrade ${_dstUpArg} >> "${_logSlt}"
       /usr/bin/apt-get dist-upgrade ${_dstUpArg} >> "${_logSlt}"
       /usr/bin/apt-get -f install ${_aptAllow} -y -qq >> "${_logSlt}"
@@ -942,11 +940,6 @@ _init_cycle() {
       [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
       /usr/bin/apt-get autoremove --purge -y -qq >> "${_logSlt}"
       /usr/bin/apt-get autoclean -y -qq >> "${_logSlt}"
-      /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
-      /usr/bin/dpkg --configure -a >> "${_logSlt}"
-      /usr/bin/apt-get upgrade ${_nrmUpArg} >> "${_logSlt}"
-      /usr/bin/dpkg --configure -a >> "${_logSlt}"
-      /usr/bin/apt-get -f install ${_aptAllow} -y -qq >> "${_logSlt}"
       if [ -e "/root/.top-daedalus.cnf" ]; then
         if cat /etc/os-release | grep -i 'daedalus' &> /dev/null; then
           _msg "_init_cycle ==> The /etc/os-release already mentions daedalus" >> "${_logInt}"
