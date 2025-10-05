@@ -397,11 +397,11 @@ _dns_unbound_install_upgrade() {
         if _pkg_installed "${_PKG}"; then
           _mrun "apt-get remove ${_PKG} -y --purge --auto-remove -qq"
           if [ "${_DEBUG_MODE}" = "YES" ]; then
-            _msg "Package ${_PKG} removed as requested."
+            _msg "PCKG: ${_PKG} removed as requested."
           fi
         else
           if [ "${_DEBUG_MODE}" = "YES" ]; then
-            _msg "Package ${_PKG} not installed, skipping."
+            _msg "PCKG: ${_PKG} not installed, skipping."
           fi
         fi
       done
