@@ -128,7 +128,6 @@ _find_fast_mirror_early() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     _apt_clean_update
-    apt-get install netcat ${_aptYesUnth}
     apt-get install netcat-traditional ${_aptYesUnth}
     wait
   fi
