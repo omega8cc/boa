@@ -85,7 +85,6 @@ _find_fast_mirror_early() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     [ ! -e "/run/clear_m.pid" ] && _apt_clean_update
-    apt-get install netcat ${_aptYesUnth} 2> /dev/null
     apt-get install netcat-traditional ${_aptYesUnth} 2> /dev/null
     wait
   fi
