@@ -108,7 +108,7 @@ _not_supported_os() {
 }
 
 #
-# Show only clean _msg and write details and errors to separate logs.
+# Show only errors and write everything to separate logs.
 _mrun() {
   # Accept everything as one shell command string:
   #      _mrun "${_INSTAPP} xfonts-75dpi xfonts-base"
@@ -126,7 +126,7 @@ _mrun() {
   # stderr -> shown live AND appended to error log
   bash -o pipefail -c -- "${_cmd}" \
     > >(tee -a "${_LOG_INFO}" >/dev/null) \
-    2> >(tee -a "${_LOG_ERRR}" >/dev/null)
+    2> >(tee -a "${_LOG_ERRR}" >&2)
   return $?
 }
 
