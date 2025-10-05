@@ -824,6 +824,14 @@ _init_offsystemd() {
     _msg "_init_offsystemd ==> Update networking if needed with vmnetfix..." >> "${_logInt}"
     /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
     wait
+    _msg "_init_offsystemd ==> Final OS post-upgrade to ${_OS_DIST}/${_OS_CODE} procedure..." >> "${_logInt}"
+    /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
+    /usr/bin/dpkg --configure -a >> "${_logSlt}"
+    /usr/bin/apt-get upgrade ${_nrmUpArg} >> "${_logSlt}"
+    /usr/bin/apt-get dist-upgrade ${_dstUpArg} >> "${_logSlt}"
+    /usr/bin/apt-get upgrade ${_nrmUpArg} >> "${_logSlt}"
+    /usr/bin/apt-get -f install ${_aptAllow} -y -qq >> "${_logSlt}"
+    /usr/bin/dpkg --configure -a >> "${_logSlt}"
     _msg "_init_offsystemd ==> The system is now ready for boa install" >> "${_logInt}"
     rm -f /root/.init-to-devuan-ctrl.cnf
     sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
