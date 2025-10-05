@@ -5744,7 +5744,7 @@ _run_aptitude_deps_install() {
       _mrun "${_INSTAPP} ncal"
     fi
   done
-  _mrun "${_INSTAPP} netcat libzip-dev libwww-perl"
+  _mrun "${_INSTAPP} libzip-dev libwww-perl"
   _mrun "${_INSTAPP} libfontconfig1 libfreetype6 libfreetype6-dev"
   _mrun "${_INSTAPP} libfribidi0 libgeoip-dev libgeoip1 libgmp3-dev"
   _mrun "${_INSTAPP} libonig-dev libpq5 libxml2-dev libxpm4"
@@ -5849,7 +5849,6 @@ _basic_packages_install_on_init() {
       _locales_check_fix
       _mrun "${_INITINS} lsb-release"
       _mrun "${_INITINS} dnsutils"
-      _mrun "${_INITINS} netcat"
       _mrun "${_INITINS} netcat-traditional"
       _mrun "${_INITINS} aptitude"
       _mrun "${_INITINS} curl"
@@ -7339,7 +7338,7 @@ _sys_packages_install() {
     else
       _APT_XTRA="nginx"
     fi
-    _APT_ELSE="netcat nginx"
+    _APT_ELSE="netcat-traditional nginx"
   else
     _APT_ITEM=$(dpkg --get-selections | grep openjdk-6-jdk | grep install 2>&1)
     if [[ "${_APT_ITEM}" =~ "install" ]]; then
