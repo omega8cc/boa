@@ -5703,8 +5703,8 @@ _run_aptitude_deps_install() {
   fi
   _mrun "${_INSTAPP} sysstat telnet cron gnupg2 gnupg"
   _mrun "${_INSTAPP} zip unzip unrtf wdiff pwgen flex re2c"
-  _mrun "${_INSTAPP} rsync strace ntpdate python-dev"
-  _mrun "${_INSTAPP} mc whois zlib1g zlib1g-dev librsync-dev"
+  _mrun "${_INSTAPP} rsync strace ntpdate librsync-dev"
+  _mrun "${_INSTAPP} mc whois zlib1g zlib1g-dev"
   _mrun "${_INSTAPP} sqlite3 libsqlite3-dev s4cmd"
   _mrun "${_INSTAPP} ssh ssl-cert libpam-umask shtool"
   _mrun "${_INSTAPP} xml-core xml2 xpdf libtool rrdtool"
