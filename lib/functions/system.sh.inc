@@ -557,7 +557,6 @@ _sftp_ftps_modern_fix() {
       touch ${_pthLog}/mss-build-${_MSS_VRN}-${_xSrl}-${_X_VERSION}.log
       cp -af ${_locCnf}/var/sftp_config /etc/ssh/sftp_config
       _mrun "service ssh restart"
-      wait
       _MSS_BUILD=YES
     fi
   fi
@@ -582,7 +581,6 @@ _sftp_ftps_modern_fix() {
   if [ ! -e "${_pthLog}/fixed-sftp-idle.log" ]; then
     sed -i "s/IdleTimeOut.*/IdleTimeOut            15m/g" /etc/ssh/sftp_config &> /dev/null
     _mrun "service ssh restart"
-    wait
     touch ${_pthLog}/fixed-sftp-idle.log
   fi
 }
@@ -2793,18 +2791,14 @@ _run_apt_get_dist_upgrade() {
   ### Reload key services if needed early
   if [ -e "/etc/init.d/valkey-server" ]; then
     _mrun "service valkey-server reload"
-    wait
   elif [ -e "/etc/init.d/redis-server" ]; then
     _mrun "service redis-server reload"
-    wait
   fi
   _mrun "service nginx reload"
-  wait
   _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
       _mrun "service php${e}-fpm reload"
-      wait
     fi
   done
   if [ -e "/var/xdrago/proc_num_ctrl.pl" ]; then
@@ -3756,7 +3750,6 @@ _sshd_install_src() {
     _mrun "make install"
     ldconfig 2> /dev/null
     _mrun "service ssh restart"
-    wait
     if [[ ! "${_SSH_GET_DPKG}" =~ "hold" ]]; then
       aptitude hold openssh-server &> /dev/null
       aptitude hold openssh-client &> /dev/null
@@ -5253,16 +5246,13 @@ _if_enforce_apparmor_profiles() {
         wait
         if [ -e "/etc/init.d/valkey-server" ]; then
           _mrun "service valkey-server reload"
-          wait
         elif [ -e "/etc/init.d/redis-server" ]; then
           _mrun "service redis-server reload"
-          wait
         fi
         _mrun "pkill -u unbound -x unbound"
         _mrun "killall pure-ftpd"
         _mrun "killall rsyslogd"
         _mrun "service rsyslog restart"
-        wait
       fi
     fi
   fi
@@ -5353,11 +5343,9 @@ _sync_apparmor_profiles() {
         _mrun "rm -rf /var/cache/apparmor/*"
         if [ -x "/etc/init.d/apparmor" ]; then
           _mrun "service apparmor restart"
-          wait
         fi
         if [ -x "/etc/init.d/auditd" ]; then
           _mrun "service auditd restart"
-          wait
         fi
         _mrun "apparmor_parser -r /etc/apparmor.d/*"
         _mrun "aa-complain /etc/apparmor.d/*"
@@ -5368,11 +5356,9 @@ _sync_apparmor_profiles() {
         _mrun "rm -rf /var/cache/apparmor/*"
         if [ -x "/etc/init.d/apparmor" ]; then
           _mrun "service apparmor restart"
-          wait
         fi
         if [ -x "/etc/init.d/auditd" ]; then
           _mrun "service auditd restart"
-          wait
         fi
         _mrun "apparmor_parser -r /etc/apparmor.d/*"
         _mrun "aa-enforce /etc/apparmor.d/*"
@@ -5596,17 +5582,14 @@ _finale() {
     echo "iptables -t raw -A OUTPUT -p tcp --dport 21 -j CT --helper ftp" >> /etc/csf/csfpost.sh
     chmod 700 /etc/csf/csfpost.sh
     _mrun "service lfd stop"
-    wait
     pkill -9 -f ConfigServer
     killall sleep &> /dev/null
     rm -f /etc/csf/csf.error
     csf -x  &> /dev/null
-    wait
     _mrun "service clean-boa-env start"
-    wait
     _if_fix_iptables_symlinks
     ### csf -uf &> /dev/null
-    wait
+    ### wait
     _NFTABLES_TEST=$(iptables -V)
     if [[ "${_NFTABLES_TEST}" =~ "nf_tables" ]]; then
       if [ -e "/usr/sbin/iptables-legacy" ]; then
@@ -5623,9 +5606,7 @@ _finale() {
       fi
     fi
     csf -e  &> /dev/null
-    wait
     sed -i "s/.*DHCP.*//g" /etc/csf/csf.allow
-    wait
     sed -i "/^$/d" /etc/csf/csf.allow
     if [ -e "/var/log/daemon.log" ]; then
       _DHCP_LOG="/var/log/daemon.log"
@@ -5642,7 +5623,6 @@ _finale() {
     done
     if [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
       csf -ra &> /dev/null
-      wait
       synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
     else
       csf -r &> /dev/null
@@ -6035,7 +6015,6 @@ _if_proxysql_update() {
             _msg "INFO: Restarting ProxySQL server..."
           fi
           _mrun "service proxysql restart"
-          wait
           mysql -uadmin -p`cat /root/.my.proxysql_adm_pwd.txt` -h127.0.0.1 -P6032 -e "SELECT * FROM scheduler\G"
           mysql -uadmin -p`cat /root/.my.proxysql_adm_pwd.txt` -h127.0.0.1 -P6032 -e "SELECT * FROM mysql_servers;"
         else
@@ -6175,18 +6154,14 @@ _if_post_major_os_upgrade() {
     ### Reload key services if needed early
     if [ -e "/etc/init.d/valkey-server" ]; then
       _mrun "service valkey-server reload"
-      wait
     elif [ -e "/etc/init.d/redis-server" ]; then
       _mrun "service redis-server reload"
-      wait
     fi
     _mrun "service nginx reload"
-    wait
     _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
       if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
         _mrun "service php${e}-fpm reload"
-        wait
       fi
     done
     if [ -e "/var/xdrago/proc_num_ctrl.pl" ]; then
@@ -6899,18 +6874,14 @@ _if_major_os_upgrade() {
     ### Reload key services if needed early
     if [ -e "/etc/init.d/valkey-server" ]; then
       _mrun "service valkey-server reload"
-      wait
     elif [ -e "/etc/init.d/redis-server" ]; then
       _mrun "service redis-server reload"
-      wait
     fi
     _mrun "service nginx reload"
-    wait
     _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
       if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
         _mrun "service php${e}-fpm reload"
-        wait
       fi
     done
     if [ -e "/var/xdrago/proc_num_ctrl.pl" ]; then
@@ -7883,7 +7854,6 @@ _if_install_vnstat() {
       _mrun "killall vnstatd"
       touch ${_pthLog}/vnstat-${_VNSTAT_VRN}.log
       _mrun "service vnstat restart"
-      wait
     fi
   fi
   if [ -e "/etc/init.d/vnstat" ] \
@@ -7899,7 +7869,6 @@ _if_install_vnstat() {
   if [ -e "/usr/etc/vnstat.conf" ]; then
     sed -i "s/^MaxBandwidth.*/MaxBandwidth 1000/g" /usr/etc/vnstat.conf
     _mrun "service vnstat restart"
-    wait
   fi
 }
 
@@ -8341,7 +8310,6 @@ _pam_umask_check_fix() {
     echo "Subsystem sftp /usr/lib/openssh/sftp-server -u 0002" >> /etc/ssh/sshd_config
     sed -i "/^$/d" /etc/ssh/sshd_config
     _mrun "service ssh restart"
-    wait
   fi
 }
 
@@ -8625,7 +8593,6 @@ _newrelic_check_fix() {
     sed -i "s/^loglevel=.*/loglevel=error/g" ${_NEWRELIC_APP_CFG} &> /dev/null
     wait
     _mrun "service newrelic-daemon restart"
-    wait
   else
     if [ -e "/etc/init.d/newrelic-daemon" ] \
       || [ -e "/etc/init.d/newrelic-sysmond" ]; then
@@ -8662,10 +8629,8 @@ _newrelic_check_fix() {
     wait
     if [ -e "/root/.enable.newrelic.sysmond.cnf" ]; then
       _mrun "service newrelic-sysmond restart"
-      wait
     else
       _mrun "service newrelic-sysmond stop"
-      wait
     fi
   fi
 }
@@ -8793,7 +8758,6 @@ _sshd_armour() {
     if [ -e "/etc/ssh/ssh_config" ]; then
       grep -q '^[^#]*GSSAPIAuthentication' /etc/ssh/ssh_config && sed -i '/^[^#]*GSSAPIAuthentication/s/^/#/' /etc/ssh/ssh_config
       _mrun "service ssh restart"
-      wait
     fi
     if [ "${_SSH_ARMOUR}" = "NO" ] \
       || [ -z "${_SSH_ARMOUR}" ]; then
@@ -8895,7 +8859,6 @@ _sshd_armour() {
           cp -af ${_SYSCONFDIR}/moduli ${_SYSCONFDIR}/.moduli_bak
           cp -af /var/opt/moduli-2048 ${_SYSCONFDIR}/moduli
           _mrun "service ssh restart"
-          wait
         fi
       fi
       _SSH_KEXALGO_TEST=$(grep "KexAlgorithms" /etc/ssh/ssh_config 2>&1)
@@ -8934,7 +8897,6 @@ _sshd_armour() {
       fi
     fi
     _mrun "service ssh restart"
-    wait
   fi
 }
 
@@ -8970,7 +8932,6 @@ _initd_update() {
       echo "UsePAM no" >> /etc/ssh/sshd_config
     fi
     _mrun "service ssh restart"
-    wait
     _tune_memory_limits
     if [ -x "/etc/init.d/solr9" ] && [ -e "/etc/default/solr9.in.sh" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -9079,7 +9040,6 @@ _initd_update() {
     sed -i "/^$/d" /etc/ssh/sshd_config
     wait
     _mrun "service ssh restart"
-    wait
     _fix_on_upgrade
     _tune_memory_limits
     if [ -x "/etc/init.d/solr9" ] && [ -e "/etc/default/solr9.in.sh" ]; then
@@ -9125,13 +9085,11 @@ _initd_update() {
           _msg "INFO: Reloading Valkey, PHP-FPM and Nginx..."
         fi
         _mrun "service valkey-server reload"
-        wait
       elif [ -e "/etc/init.d/redis-server" ]; then
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "INFO: Reloading Redis, PHP-FPM and Nginx..."
         fi
         _mrun "service redis-server reload"
-        wait
       fi
       _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
@@ -9142,11 +9100,9 @@ _initd_update() {
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
           _mrun "service php${e}-fpm reload"
-          wait
         fi
       done
       _mrun "service nginx quietupgrade"
-      wait
       _DB_SERVER_TEST=$(mysql -V 2>&1)
       if [[ "${_DB_SERVER_TEST}" =~ "Distrib ${_DB_SERIES}." ]]; then
         _check_mysql_version
@@ -9319,7 +9275,6 @@ _sysctl_update() {
         echo ULIMIT=\"-n 524288\" >> /etc/default/nginx
         ulimit -n 524288 &> /dev/null
         service nginx restart &> /dev/null
-        wait
       fi
     fi
     if [ -e "/etc/security/limits.d" ] \
@@ -9342,20 +9297,15 @@ _sysctl_update() {
       echo "@www-data hard nofile 524288" >> /etc/security/limits.d/www.conf
       if [ -e "/etc/init.d/valkey-server" ]; then
         _mrun "service valkey-server restart"
-        wait
       elif [ -e "/etc/init.d/redis-server" ]; then
         _mrun "service redis-server restart"
-        wait
       fi
       _mrun "service nginx restart"
-      wait
       _mrun "service ssh restart"
-      wait
       _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
           _mrun "service php${e}-fpm reload"
-          wait
         fi
       done
     fi
@@ -9437,7 +9387,6 @@ _rsyslog_config_update() {
     chmod 640 /var/log/mysql-notices.log
     chown root:adm /var/log/mysql-notices.log
     _mrun "service rsyslog restart"
-    wait
   fi
 }
 

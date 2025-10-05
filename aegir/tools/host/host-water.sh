@@ -629,7 +629,6 @@ if [ -e "/vservers" ] \
   rm -f /etc/csf/csf.error
   if [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
     csf -ra &> /dev/null
-    wait
     synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
   else
     csf -r &> /dev/null
@@ -670,7 +669,6 @@ if [ -e "/vservers" ] \
   killall sleep &> /dev/null
   rm -f /etc/csf/csf.error
   service lfd restart
-  wait
   sed -i "s/.*DHCP.*//g" /etc/csf/csf.allow
   wait
   sed -i "/^$/d" /etc/csf/csf.allow
@@ -689,7 +687,6 @@ if [ -e "/vservers" ] \
   done
   if [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
     csf -ra &> /dev/null
-    wait
     synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
   else
     csf -r &> /dev/null

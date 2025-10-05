@@ -193,7 +193,6 @@ _if_fix_dhcp() {
       # Reload the firewall
       if [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
         csf -ra &> /dev/null
-        wait
         synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
       else
         csf -r &> /dev/null
@@ -326,9 +325,7 @@ _lfd_health_check_fix() {
     if ! pgrep -f lfd \
       || [ ! -e "/run/lfd.pid" ]; then
       service lfd start
-      wait
       csf -e
-      wait
       _thisErrLog="$(date) LDF Monitor was down, started"
       echo ${_thisErrLog} >> ${_pthOml}
       _incident_email_report "LDF Monitor was down, started"

@@ -752,7 +752,6 @@ _if_firewall_update() {
     rm -f /etc/csf/csf.error
     if [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
       csf -ra &> /dev/null
-      wait
       synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
     else
       csf -r &> /dev/null
@@ -1649,13 +1648,11 @@ _install_db_cluster() {
     echo "${_WEB_NODE_IP} # Web Cluster Node" >> /etc/csf/csf.ignore
   fi
   service lfd stop
-  wait
   pkill -9 -f ConfigServer
   killall sleep &> /dev/null
   rm -f /etc/csf/csf.error
   if [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
     csf -ra &> /dev/null
-    wait
     synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
   else
     csf -r &> /dev/null

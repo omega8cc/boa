@@ -80,7 +80,7 @@ if [ ! -e "/run/max_load.pid" ] && [ ! -e "/run/critical_load.pid" ]; then
   fi
 
   # Reload nginx if access log is missing or empty
-  [ -s /var/log/nginx/access.log ] || service nginx reload && wait
+  [ -s /var/log/nginx/access.log ] || service nginx reload
 
   # Main execution
   if [ -f "${_monPath}/scan_nginx.sh" ]; then

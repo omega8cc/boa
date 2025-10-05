@@ -1859,17 +1859,14 @@ _csf_check_fix() {
     csf -a 172.233.219.37  us.files.aegir.cc &> /dev/null
     csf -a 172.105.168.103 ao.files.aegir.cc &> /dev/null
     service lfd stop &> /dev/null
-    wait
     pkill -9 -f ConfigServer
     killall sleep &> /dev/null
     rm -f /etc/csf/csf.error
     csf -x  &> /dev/null
-    wait
     service clean-boa-env start &> /dev/null
-    wait
     _if_fix_iptables_symlinks
     ### csf -uf &> /dev/null
-    wait
+    ### wait
     _NFTABLES_TEST=$(iptables -V)
     if [[ "${_NFTABLES_TEST}" =~ "nf_tables" ]]; then
       if [ -e "/usr/sbin/iptables-legacy" ]; then
@@ -1886,9 +1883,7 @@ _csf_check_fix() {
       fi
     fi
     csf -e  &> /dev/null
-    wait
     sed -i "s/.*DHCP.*//g" /etc/csf/csf.allow
-    wait
     sed -i "/^$/d" /etc/csf/csf.allow
     if [ -e "/var/log/daemon.log" ]; then
       _DHCP_LOG="/var/log/daemon.log"
@@ -1904,7 +1899,6 @@ _csf_check_fix() {
       fi
     done
     service lfd start &> /dev/null
-    wait
     ### Linux kernel TCP SACK CVEs mitigation
     ### CVE-2019-11477 SACK Panic
     ### CVE-2019-11478 SACK Slowness

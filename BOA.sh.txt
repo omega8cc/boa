@@ -4305,10 +4305,9 @@ _if_update_boa_key_tools_only() {
     _CSF_TEST=$(which csf 2> /dev/null)
     if [ -x "${_CSF_TEST}" ]; then
       service clean-boa-env start &> /dev/null
-      wait
       _if_fix_iptables_symlinks
       ### csf -uf
-      wait
+      ### wait
       _NFTABLES_TEST=$(iptables -V)
       if [[ "${_NFTABLES_TEST}" =~ "nf_tables" ]]; then
         if [ -e "/usr/sbin/iptables-legacy" ]; then
@@ -4342,7 +4341,6 @@ _if_update_boa_key_tools_only() {
       done
       if [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
         csf -ra &> /dev/null
-        wait
         synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
       else
         csf -r &> /dev/null
@@ -4368,10 +4366,9 @@ _if_update_boa_key_tools_only() {
     if [[ ! ${_CC_SRC_TEST} =~ CC_SRC\ =\ \"2\" ]]; then
       echo _CC_SRC_TEST 2 is "${_CC_SRC_TEST}"
       service clean-boa-env start &> /dev/null
-      wait
       _if_fix_iptables_symlinks
       ### csf -uf
-      wait
+      ### wait
       _NFTABLES_TEST=$(iptables -V)
       if [[ "${_NFTABLES_TEST}" =~ "nf_tables" ]]; then
         if [ -e "/usr/sbin/iptables-legacy" ]; then
@@ -4392,7 +4389,6 @@ _if_update_boa_key_tools_only() {
       sed -i "s/^AUTO_UPDATES .*/AUTO_UPDATES = \"0\"/g" /etc/csf/csf.conf
       if [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
         csf -ra &> /dev/null
-        wait
         synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
       else
         csf -r &> /dev/null
@@ -4796,8 +4792,6 @@ if [ "$(id -u)" -eq 0 ]; then
     [ -e "/run/unbound" ] && chown -R unbound:unbound /run/unbound
     pkill -u unbound -x unbound &> /dev/null
     service unbound restart &> /dev/null
-    wait
-    unbound-control reload &> /dev/null
     sleep 3
     rm -f /run/wait-unbound.pid
   fi
@@ -4923,7 +4917,6 @@ if [ "$(id -u)" -eq 0 ]; then
     echo
     if [ -x "/usr/sbin/aa-teardown" ]; then
       aa-teardown &> /dev/null
-      wait
     fi
   else
     exit 0

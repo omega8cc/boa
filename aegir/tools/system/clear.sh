@@ -103,7 +103,6 @@ _find_fast_mirror_early() {
         csf -a 172.105.168.103 ao.files.aegir.cc &> /dev/null
         if [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
           csf -ra &> /dev/null
-          wait
           synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
         else
           csf -r &> /dev/null
