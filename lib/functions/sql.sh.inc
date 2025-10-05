@@ -876,7 +876,9 @@ _prep_for_install_db_sql() {
   _sql_strict_upgrade_path
 
   if [ -e "/usr/bin/mytop" ]; then
-    _mrun "apt-get remove mytop -y --purge --auto-remove -qq"
+    if dpkg-query -W -f='${Status}' mytop 2>/dev/null | grep -q "install ok installed"; then
+      _mrun "apt-get remove mytop -y --purge --auto-remove -qq"
+    fi
     rm -f /usr/bin/mytop
   fi
 
@@ -1302,7 +1304,6 @@ _db_server_install() {
           if [ "${_DEBUG_MODE}" = "YES" ]; then
             _msg "INFO: Restarting ${_DB_SERVER} server..."
           fi
-          mysql -u root -e "INSTALL SONAME 'ha_archive';" &> /dev/null
           _mrun "bash /var/xdrago/move_sql.sh"
           wait
           _msg "INFO: ${_DB_SERVER} server restart completed"
@@ -1594,7 +1595,6 @@ _sql_root_credentials_update() {
         fi
         _mrun "bash /var/xdrago/move_sql.sh"
         wait
-        mysql -u root -e "INSTALL SONAME 'ha_archive';"
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "INFO: ${_DB_SERVER} setup completed"
           _msg "INFO: You can now log in as root by typing just 'mysql'"
