@@ -671,7 +671,12 @@ _init_prepare() {
   else
     if [ ! -x "/usr/bin/mc" ]; then
       touch /run/autoinit.pid
+      _msg "_init_prepare ==> Let's update existing system first..." >> "${_logInt}"
       /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
+      /usr/bin/apt-get upgrade ${_nrmUpArg} >> "${_logSlt}"
+      dpkg --configure -a || true >> "${_logSlt}"
+      dpkg --configure -a || true >> "${_logSlt}"
+      /usr/bin/apt-get -f install ${_aptAllow} -y -qq >> "${_logSlt}"
       ${_INITINS} lsb-release >> "${_logSlt}"
       _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
       _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
