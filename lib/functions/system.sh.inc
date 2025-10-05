@@ -3845,11 +3845,11 @@ _install_magick_src() {
       if _pkg_installed "${_PKG}"; then
         _mrun "apt-get remove ${_PKG} -y --purge --auto-remove -qq"
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "Package ${_PKG} removed as requested."
+          _msg "PCKG: ${_PKG} removed as requested."
         fi
       else
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "Package ${_PKG} not installed, skipping."
+          _msg "PCKG: ${_PKG} not installed, skipping."
         fi
       fi
     done
@@ -5678,11 +5678,11 @@ _run_xtrabackup_cleanup() {
     if _pkg_installed "${_PKG}"; then
       _mrun "apt-get remove ${_PKG} -y --purge --auto-remove -qq"
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        _msg "Package ${_PKG} removed as requested."
+        _msg "PCKG: ${_PKG} removed as requested."
       fi
     else
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        _msg "Package ${_PKG} not installed, skipping."
+        _msg "PCKG: ${_PKG} not installed, skipping."
       fi
     fi
   done
@@ -5763,11 +5763,11 @@ _run_aptitude_deps_install() {
       if _pkg_installed "${_PKG}"; then
         _mrun "apt-get remove ${_PKG} -y --purge --auto-remove -qq"
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "Package ${_PKG} removed as requested."
+          _msg "PCKG: ${_PKG} removed as requested."
         fi
       else
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "Package ${_PKG} not installed, skipping."
+          _msg "PCKG: ${_PKG} not installed, skipping."
         fi
       fi
     done
@@ -6402,11 +6402,11 @@ _if_major_os_upgrade() {
       if _pkg_installed "${_PKG}"; then
         _mrun "apt-get remove ${_PKG} -y --purge --auto-remove -qq"
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "Package ${_PKG} removed as requested."
+          _msg "PCKG: ${_PKG} removed as requested."
         fi
       else
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "Package ${_PKG} not installed, skipping."
+          _msg "PCKG: ${_PKG} not installed, skipping."
         fi
       fi
     done
@@ -6416,11 +6416,11 @@ _if_major_os_upgrade() {
       if _pkg_installed "${_PKG}"; then
         _mrun "apt-get remove --purge ${_PKG} -y -qq"
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "Package ${_PKG} removed as requested."
+          _msg "PCKG: ${_PKG} removed as requested."
         fi
       else
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "Package ${_PKG} not installed, skipping."
+          _msg "PCKG: ${_PKG} not installed, skipping."
         fi
       fi
     done
@@ -6454,11 +6454,11 @@ _if_major_os_upgrade() {
       if _pkg_installed "${_PKG}"; then
         _mrun "apt-get remove ${_PKG} -y -qq"
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "Package ${_PKG} removed as requested."
+          _msg "PCKG: ${_PKG} removed as requested."
         fi
       else
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "Package ${_PKG} not installed, skipping."
+          _msg "PCKG: ${_PKG} not installed, skipping."
         fi
       fi
     done
@@ -6503,11 +6503,11 @@ _if_major_os_upgrade() {
       if _pkg_installed "${_PKG}"; then
         _mrun "apt-get remove ${_PKG} -y --purge --auto-remove -qq"
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "Package ${_PKG} removed as requested."
+          _msg "PCKG: ${_PKG} removed as requested."
         fi
       else
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "Package ${_PKG} not installed, skipping."
+          _msg "PCKG: ${_PKG} not installed, skipping."
         fi
       fi
     done
@@ -6517,11 +6517,11 @@ _if_major_os_upgrade() {
       if _pkg_installed "${_PKG}"; then
         _mrun "apt-get remove ${_PKG} -y --purge --auto-remove -qq"
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "Package ${_PKG} removed as requested."
+          _msg "PCKG: ${_PKG} removed as requested."
         fi
       else
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "Package ${_PKG} not installed, skipping."
+          _msg "PCKG: ${_PKG} not installed, skipping."
         fi
       fi
     done
@@ -6819,11 +6819,11 @@ _if_major_os_upgrade() {
           if _pkg_installed "${_PKG}"; then
             _mrun "apt-get remove ${_PKG} -y -qq"
             if [ "${_DEBUG_MODE}" = "YES" ]; then
-              _msg "Package ${_PKG} removed as requested."
+              _msg "PCKG: ${_PKG} removed as requested."
             fi
           else
             if [ "${_DEBUG_MODE}" = "YES" ]; then
-              _msg "Package ${_PKG} not installed, skipping."
+              _msg "PCKG: ${_PKG} not installed, skipping."
             fi
           fi
         done
@@ -7407,7 +7407,7 @@ _sys_packages_install() {
     else
       _APT_XTRA=""
     fi
-    _APT_ELSE="netcat netcat-traditional"
+    _APT_ELSE="netcat-traditional"
     _apt_clean_update
     _mrun "service nginx start"
     ###
@@ -7416,11 +7416,11 @@ _sys_packages_install() {
       if _pkg_installed "${_PKG}"; then
         _mrun "apt-get remove ${_PKG} -y -qq"
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "Package ${_PKG} removed as requested."
+          _msg "PCKG: ${_PKG} removed as requested."
         fi
       else
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "Package ${_PKG} not installed, skipping."
+          _msg "PCKG: ${_PKG} not installed, skipping."
         fi
       fi
     done
@@ -7460,11 +7460,11 @@ _sys_packages_install() {
       if _pkg_installed "${_PKG}"; then
         _mrun "apt-get remove --purge ${_PKG} -y -qq"
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "Package ${_PKG} removed as requested."
+          _msg "PCKG: ${_PKG} removed as requested."
         fi
       else
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "Package ${_PKG} not installed, skipping."
+          _msg "PCKG: ${_PKG} not installed, skipping."
         fi
       fi
     done
