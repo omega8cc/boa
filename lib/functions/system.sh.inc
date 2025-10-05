@@ -52,8 +52,8 @@ _if_fix_iptables_symlinks() {
 _if_reinstall_curl_src() {
   _CURL_VRN=8.16.0
   if ! command -v lsb_release &> /dev/null; then
-    apt-get update -qq &> /dev/null
-    apt-get install lsb-release ${_aptYesUnth} -qq &> /dev/null
+    _mrun "apt-get update -qq"
+    _mrun "apt-get install lsb-release ${_aptYesUnth} -qq"
   fi
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   [ "${_OS_CODE}" = "wheezy" ] && _CURL_VRN=7.50.1
@@ -68,13 +68,16 @@ _if_reinstall_curl_src() {
     fi
     echo "curl install" | dpkg --set-selections 2> /dev/null
     _apt_clean_update
-    apt-get remove libssl1.0-dev -y --purge --auto-remove -qq 2> /dev/null
-    apt-get autoremove -y 2> /dev/null
-    apt-get install libssl-dev ${_aptYesUnth} -qq 2> /dev/null
-    apt-get install libc-client2007e libc-client2007e-dev ${_aptYesUnth} -qq 2> /dev/null
-    apt-get build-dep curl ${_aptYesUnth} 2> /dev/null
+    # Check for libssl1.0-dev and remove conditionally
+    if dpkg-query -W -f='${Status}' libssl1.0-dev 2>/dev/null | grep -q "install ok installed"; then
+      _mrun "apt-get remove libssl1.0-dev -y --purge --auto-remove -qq"
+    fi
+    _mrun "apt-get autoremove -y"
+    _mrun "apt-get install libssl-dev ${_aptYesUnth} -qq"
+    _mrun "apt-get install libc-client2007e libc-client2007e-dev ${_aptYesUnth} -qq"
+    _mrun "apt-get build-dep curl ${_aptYesUnth}"
     if [ ! -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
-      apt-get install curl --reinstall ${_aptYesUnth} -qq 2> /dev/null
+      _mrun "apt-get install curl --reinstall ${_aptYesUnth} -qq"
     fi
     if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
       _msg "INFO: Installing curl from sources..."
