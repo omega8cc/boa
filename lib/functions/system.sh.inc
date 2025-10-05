@@ -103,12 +103,12 @@ _if_reinstall_curl_src() {
       if [ -e "${_PKG_CONFIG_PATH}" ] \
         && [ -e "/var/opt/curl-${_CURL_VRN}" ]; then
         cd /var/opt/curl-${_CURL_VRN}
-        LIBS="-ldl -lpthread" PKG_CONFIG_PATH="${_PKG_CONFIG_PATH}" ./configure \
+        _mrun "LIBS=\"-ldl -lpthread\" PKG_CONFIG_PATH=\"${_PKG_CONFIG_PATH}\" ./configure \
           --with-openssl \
           --with-zlib=/usr \
-          --prefix=/usr/local &> /dev/null
-        make -j $(nproc) --quiet &> /dev/null
-        make --quiet install &> /dev/null
+          --prefix=/usr/local"
+        _mrun "make -j $(nproc) --quiet"
+        _mrun "make --quiet install"
         ldconfig 2> /dev/null
       fi
     fi
@@ -3729,14 +3729,14 @@ _sshd_install_src() {
     rm -rf openssh*
     _get_dev_src "openssh-${_OPENSSH_VRN}.tar.gz"
     cd /var/opt/openssh-${_OPENSSH_VRN}
-    LIBS="-ldl -lpthread" PKG_CONFIG_PATH="${_PKG_CONFIG_PATH}" ./configure \
+    _mrun "LIBS=\"-ldl -lpthread\" PKG_CONFIG_PATH=\"${_PKG_CONFIG_PATH}\" ./configure \
       --with-ssl-dir=${_SSL_PATH} \
       --with-privsep-path=/var/lib/sshd/ \
       --sysconfdir=${_SYSCONFDIR} \
       --prefix=${_PREFIX_SSH} \
       --without-openssl-header-check \
       --with-md5-passwords \
-      --with-pam &> /dev/null
+      --with-pam"
     _mrun "make -j $(nproc)"
     _mrun "make install"
     ldconfig 2> /dev/null
@@ -4666,10 +4666,10 @@ _curl_install_src() {
         _PKG_CONFIG_PATH="${_SSL_LIB_PATH}/pkgconfig"
         if [ -e "${_PKG_CONFIG_PATH}" ]; then
           cd /var/opt/curl-${_CURL_VRN}
-          LIBS="-ldl -lpthread" PKG_CONFIG_PATH="${_PKG_CONFIG_PATH}" ./configure \
+          _mrun "LIBS=\"-ldl -lpthread\" PKG_CONFIG_PATH=\"${_PKG_CONFIG_PATH}\" ./configure \
             --with-openssl \
             --with-zlib=/usr \
-            --prefix=/usr/local &> /dev/null
+            --prefix=/usr/local"
           _mrun "make -j $(nproc)"
           _mrun "make install"
           ldconfig 2> /dev/null
@@ -8452,12 +8452,12 @@ _if_install_ftpd() {
       _get_dev_src "pure-ftpd-${_PURE_FTPD_VRN}.tar.gz"
       cd pure-ftpd-${_PURE_FTPD_VRN}
       bash autogen.sh &> /dev/null
-      LIBS="-ldl -lpthread" PKG_CONFIG_PATH="/usr/local/ssl3/lib64/pkgconfig" ./configure \
+      _mrun "LIBS=\"-ldl -lpthread\" PKG_CONFIG_PATH=\"/usr/local/ssl3/lib64/pkgconfig\" ./configure \
         --oldincludedir=/usr/local/ssl3/include \
         --includedir=/usr/local/ssl3/include \
         --with-everything --with-virtualchroot \
         --without-humor --with-tls --with-diraliases --with-pam \
-        --with-certfile=/etc/ssl/private/pure-ftpd.pem &> /dev/null
+        --with-certfile=/etc/ssl/private/pure-ftpd.pem"
       _mrun "make -j $(nproc) --quiet"
       _mrun "make --quiet install"
       cd /usr/local/sbin/

@@ -1767,7 +1767,7 @@ _install_php_multi() {
       _msg "INFO: ${_DISPLAY_PHP_EXTRA}"
     fi
   fi
-  LIBS="-ldl -lpthread" PKG_CONFIG_PATH="${_PKG_CONFIG_PATH}" ./configure \
+  _mrun "LIBS=\"-ldl -lpthread\" PKG_CONFIG_PATH=\"${_PKG_CONFIG_PATH}\" ./configure \
                 --prefix=/opt/php$1 \
                 --enable-fpm \
                 --enable-bcmath \
@@ -1786,7 +1786,7 @@ _install_php_multi() {
                 --with-xsl \
                 --with-zlib \
                 --with-bz2 \
-                ${_PHP_EXTRA} &> /dev/null
+                ${_PHP_EXTRA}"
   if [ -e "/var/opt/php-${_PHP_VERSION}/Makefile" ]; then
     _msg "INFO: Building PHP ${_PHP_VERSION} part 3/3"
     _msg "WAIT: This may take a while, please wait..."
@@ -1800,7 +1800,7 @@ _install_php_multi() {
     sleep 60
     _msg "INFO: Building PHP ${_PHP_VERSION} part 2/3 (again)"
     _mrun "make clean"
-    LIBS="-ldl -lpthread" PKG_CONFIG_PATH="${_PKG_CONFIG_PATH}" ./configure \
+    _mrun "LIBS=\"-ldl -lpthread\" PKG_CONFIG_PATH=\"${_PKG_CONFIG_PATH}\" ./configure \
                 --prefix=/opt/php$1 \
                 --enable-fpm \
                 --enable-bcmath \
@@ -1818,7 +1818,7 @@ _install_php_multi() {
                 --with-pear \
                 --with-xsl \
                 --with-zlib \
-                ${_PHP_EXTRA} 2> /dev/null
+                ${_PHP_EXTRA}"
     if [ -f "/var/opt/php-${_PHP_VERSION}/Makefile" ]; then
       sed -i "s/^EXTRA_LIBS = \-lcrypt/EXTRA_LIBS = \-llber \-lcrypt/g" /var/opt/php-${_PHP_VERSION}/Makefile
       _msg "INFO: Building PHP ${_PHP_VERSION} part 3/3 (again)"
