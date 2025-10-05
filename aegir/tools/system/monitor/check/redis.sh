@@ -81,7 +81,6 @@ _fpm_reload() {
   for e in ${_PHP_V}; do
     if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
       service php${e}-fpm reload
-      wait
     fi
   done
   echo "$(date) $1 incident PHP-FPM reloaded" >> ${_pthOml}

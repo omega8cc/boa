@@ -460,7 +460,6 @@ _sql_conf_update() {
     if [ "${_DB_BINARY_LOG}" = "NO" ]; then
       # Purge binlogs
       bash /var/xdrago/purge_binlogs.sh &> /dev/null
-      wait
       # Remove cron jobs related to purge_binlogs
       sed -i -e "/purge_binlogs/d" -e "/^$/d" /var/spool/cron/crontabs/root &> /dev/null
       # Disable binary logging

@@ -215,7 +215,6 @@ _cron_duplicate_instances_detection() {
     echo ${_thisErrLog} >> /var/log/boa/cron-count.kill.log
     killall -9 cron &> /dev/null
     service cron start &> /dev/null
-    wait
     _thisErrLog="$(date) Too many Cron instances, service restarted (count=${_CNT})"
     echo ${_thisErrLog} >> ${_pthOml}
     _incident_email_report "Too many Cron instances, service restarted (count=${_CNT})"

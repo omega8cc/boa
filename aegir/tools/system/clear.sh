@@ -276,7 +276,6 @@ _if_fix_locked_sshd() {
     | grep --count "error: Bind to port 22"` -gt 0 ]; then
     pkill -9 -f /usr/sbin/sshd || true
     service ssh start
-    wait
   fi
 }
 _if_fix_locked_sshd
