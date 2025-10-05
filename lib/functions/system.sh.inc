@@ -4615,7 +4615,10 @@ _curl_install_src() {
         echo "curl install" | dpkg --set-selections &> /dev/null
         if [ -z "${_CURL_ALREADY_REBUILT}" ]; then
           _apt_clean_update
-          _mrun "apt-get remove libssl1.0-dev -y --purge --auto-remove -qq"
+          # Check for libssl1.0-dev and remove conditionally
+          if dpkg-query -W -f='${Status}' libssl1.0-dev 2>/dev/null | grep -q "install ok installed"; then
+            _mrun "apt-get remove libssl1.0-dev -y --purge --auto-remove -qq"
+          fi
           _mrun "apt-get autoremove -y"
           _mrun "${_INSTAPP} libssl-dev"
           _mrun "${_INSTAPP} libc-client2007e libc-client2007e-dev"
@@ -4625,7 +4628,10 @@ _curl_install_src() {
       fi
     else
       _apt_clean_update
-      _mrun "apt-get remove libssl1.0-dev -y --purge --auto-remove -qq"
+      # Check for libssl1.0-dev and remove conditionally
+      if dpkg-query -W -f='${Status}' libssl1.0-dev 2>/dev/null | grep -q "install ok installed"; then
+        _mrun "apt-get remove libssl1.0-dev -y --purge --auto-remove -qq"
+      fi
       _mrun "apt-get autoremove -y"
       _mrun "${_INSTAPP} libssl-dev"
       _mrun "${_INSTAPP} libc-client2007e libc-client2007e-dev"
