@@ -7407,7 +7407,7 @@ _sys_packages_install() {
     else
       _APT_XTRA=""
     fi
-    _APT_ELSE="netcat netcat-traditional"
+    _APT_ELSE="netcat-traditional"
     _apt_clean_update
     _mrun "service nginx start"
     ###
