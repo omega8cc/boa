@@ -5688,7 +5688,10 @@ _run_aptitude_deps_install() {
     _mrun "apt-get build-dep curl -y"
     _mrun "${_INSTAPP} curl"
   fi
-  _mrun "apt-get remove libssl1.0-dev -y --purge --auto-remove -qq"
+  # Check for libssl1.0-dev and remove conditionally
+  if dpkg-query -W -f='${Status}' libssl1.0-dev 2>/dev/null | grep -q "install ok installed"; then
+    _mrun "apt-get remove libssl1.0-dev -y --purge --auto-remove -qq"
+  fi
   _mrun "${_INSTAPP} libssl-dev"
   _mrun "${_INSTAPP} libc-client2007e libc-client2007e-dev"
   _mrun "${_INSTAPP} mcrypt libc-client-dev"
