@@ -9114,7 +9114,6 @@ _initd_update() {
           if [ "${_DEBUG_MODE}" = "YES" ]; then
             _msg "INFO: Restarting ${_DB_SERVER} server..."
           fi
-          mysql -u root -e "INSTALL SONAME 'ha_archive';" &> /dev/null
           _mrun "bash /var/xdrago/move_sql.sh"
           wait
           _msg "INFO: ${_DB_SERVER} server restart completed"
