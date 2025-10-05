@@ -220,6 +220,7 @@ _check_mnfr() {
   # Install dmidecode if not present
   if ! command -v dmidecode &> /dev/null; then
     /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
+    /usr/bin/dpkg --configure -a >> "${_logSlt}"
     ${_INITINS} dmidecode &> /dev/null
   fi
   # Check if dmidecode is available
@@ -288,6 +289,7 @@ _locales_check_fix_early() {
   _isLoc=$(which locale 2>&1)
   if [ ! -x "${_isLoc}" ] || [ -z "${_isLoc}" ]; then
     /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
+    /usr/bin/dpkg --configure -a >> "${_logSlt}"
     ${_INITINS} locales &> /dev/null
     [ "${_SET_MODE}" = "full" ] && ${_INITINS} locales-all &> /dev/null
   fi
@@ -386,6 +388,7 @@ _cron_check_install_early() {
   _isCrn=$(which cron 2>&1)
   if [ ! -x "${_isCrn}" ] || [ -z "${_isCrn}" ]; then
     /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
+    /usr/bin/dpkg --configure -a >> "${_logSlt}"
     ${_INITINS} cron &> /dev/null
   fi
 }
@@ -617,6 +620,7 @@ Pin: release o=Devuan
 Pin-Priority: 1001
 EOF
   /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
+  /usr/bin/dpkg --configure -a >> "${_logSlt}"
 }
 
 ###
@@ -671,12 +675,21 @@ _init_prepare() {
   else
     if [ ! -x "/usr/bin/mc" ]; then
       touch /run/autoinit.pid
+      _msg "_init_prepare ==> Let's update existing system first..." >> "${_logInt}"
+      if pgrep -f unattended-upgrades >/dev/null 2>&1; then
+        pkill -9 -f unattended-upgrades
+      fi
       /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
+      /usr/bin/dpkg --configure -a >> "${_logSlt}"
+      /usr/bin/apt-get upgrade ${_nrmUpArg} >> "${_logSlt}"
+      /usr/bin/dpkg --configure -a >> "${_logSlt}"
+      /usr/bin/apt-get -f install ${_aptAllow} -y -qq >> "${_logSlt}"
       ${_INITINS} lsb-release >> "${_logSlt}"
       _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
       _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
       _msg "_init_prepare ==> We need to install some tools early..." >> "${_logInt}"
       /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
+      /usr/bin/dpkg --configure -a >> "${_logSlt}"
       if [ "${_SET_MODE}" = "full" ] && [ "${_VMFAMILY}" != "AWS" ]; then
         /usr/bin/apt-get remove chrony -y --purge --auto-remove -qq >> "${_logSlt}"
         _INITD_TEST=$(ls -la /etc/init.d/*cloud* 2>&1)
@@ -770,6 +783,7 @@ _init_offsystemd() {
     echo -e '\n\nPackage: *systemd*\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/offsystemd
   fi
   /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
+  /usr/bin/dpkg --configure -a >> "${_logSlt}"
   /usr/bin/apt-get dist-upgrade ${_dstUpArg} >> "${_logSlt}"
   /usr/bin/apt-get dist-upgrade ${_dstUpArg} >> "${_logSlt}"
   [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
@@ -865,6 +879,7 @@ _init_cycle() {
   fi
   if [ "${_OLD_SYS}" = "Devuan" ]; then
     /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
+    /usr/bin/dpkg --configure -a >> "${_logSlt}"
     /usr/bin/apt-get upgrade ${_nrmUpArg} >> "${_logSlt}"
   fi
   if [ ! -z "${_NEW_OS_CODE}" ] && [ ! -z "${_NEW_SYS}" ]; then
@@ -890,13 +905,17 @@ _init_cycle() {
     fi
     _prefer_devuan_repositories
     /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
+    /usr/bin/dpkg --configure -a >> "${_logSlt}"
     /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
+    /usr/bin/dpkg --configure -a >> "${_logSlt}"
     if [ "${_OLD_SYS}" = "Debian" ]; then
       ${_INITINS} devuan-keyring >> "${_logSlt}"
       ${_INITINS} devuan-keyring >> "${_logSlt}"
     else
       /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
+      /usr/bin/dpkg --configure -a >> "${_logSlt}"
       /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
+      /usr/bin/dpkg --configure -a >> "${_logSlt}"
     fi
     /usr/bin/apt-get upgrade ${_dstUpArg} >> "${_logSlt}"
     if [ "${_OLD_SYS}" = "Debian" ]; then
@@ -1030,6 +1049,9 @@ _init_launch() {
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   touch /run/autoinit.pid
+  if pgrep -f unattended-upgrades >/dev/null 2>&1; then
+    pkill -9 -f unattended-upgrades
+  fi
   if [ ! -e "/root/.autoinit.log" ]; then
     echo "_init_launch ==> Launching BOA System INIT on ${_OS_DIST}/${_OS_CODE}..."
     _msg "_init_launch ==> Launching BOA System INIT on ${_OS_DIST}/${_OS_CODE}..." >> "${_logInt}"

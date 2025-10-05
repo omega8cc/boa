@@ -1595,9 +1595,21 @@ _install_php_multi() {
   if [[ "${_PHP_EXTRA_CONF}" =~ "--with-tidy" ]] \
     && [ ! -e "${_pthLog}/libtidy-${_LIB_TIDY_VRN}.log" ]; then
     if [ -e "/usr/lib/libtidy.so" ]; then
-      _mrun "apt-get remove libtidy-dev -y --purge --auto-remove -qq"
-      _mrun "apt-get remove libtidy-0.99-0 -y --purge --auto-remove -qq"
-      _mrun "apt-get remove tidy -y --purge --auto-remove -qq"
+      ###
+      local _PKG
+      for _PKG in libtidy-dev libtidy-0.99-0 tidy; do
+        if _pkg_installed "${_PKG}"; then
+          _mrun "apt-get remove ${_PKG} -y --purge --auto-remove -qq"
+          if [ "${_DEBUG_MODE}" = "YES" ]; then
+            _msg "Package ${_PKG} removed as requested."
+          fi
+        else
+          if [ "${_DEBUG_MODE}" = "YES" ]; then
+            _msg "Package ${_PKG} not installed, skipping."
+          fi
+        fi
+      done
+      ###
     fi
     cd /var/opt
     rm -rf tidy*
@@ -1767,7 +1779,7 @@ _install_php_multi() {
       _msg "INFO: ${_DISPLAY_PHP_EXTRA}"
     fi
   fi
-  LIBS="-ldl -lpthread" PKG_CONFIG_PATH="${_PKG_CONFIG_PATH}" ./configure \
+  _mrun "LIBS=\"-ldl -lpthread\" PKG_CONFIG_PATH=\"${_PKG_CONFIG_PATH}\" ./configure \
                 --prefix=/opt/php$1 \
                 --enable-fpm \
                 --enable-bcmath \
@@ -1786,7 +1798,7 @@ _install_php_multi() {
                 --with-xsl \
                 --with-zlib \
                 --with-bz2 \
-                ${_PHP_EXTRA} &> /dev/null
+                ${_PHP_EXTRA}"
   if [ -e "/var/opt/php-${_PHP_VERSION}/Makefile" ]; then
     _msg "INFO: Building PHP ${_PHP_VERSION} part 3/3"
     _msg "WAIT: This may take a while, please wait..."
@@ -1800,7 +1812,7 @@ _install_php_multi() {
     sleep 60
     _msg "INFO: Building PHP ${_PHP_VERSION} part 2/3 (again)"
     _mrun "make clean"
-    LIBS="-ldl -lpthread" PKG_CONFIG_PATH="${_PKG_CONFIG_PATH}" ./configure \
+    _mrun "LIBS=\"-ldl -lpthread\" PKG_CONFIG_PATH=\"${_PKG_CONFIG_PATH}\" ./configure \
                 --prefix=/opt/php$1 \
                 --enable-fpm \
                 --enable-bcmath \
@@ -1818,7 +1830,7 @@ _install_php_multi() {
                 --with-pear \
                 --with-xsl \
                 --with-zlib \
-                ${_PHP_EXTRA} 2> /dev/null
+                ${_PHP_EXTRA}"
     if [ -f "/var/opt/php-${_PHP_VERSION}/Makefile" ]; then
       sed -i "s/^EXTRA_LIBS = \-lcrypt/EXTRA_LIBS = \-llber \-lcrypt/g" /var/opt/php-${_PHP_VERSION}/Makefile
       _msg "INFO: Building PHP ${_PHP_VERSION} part 3/3 (again)"
@@ -2904,7 +2916,12 @@ _php_install_upgrade() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: Checking if PHP upgrade is available"
     fi
-    _mrun "apt-get remove php5-sasl php5-suhosin -y --purge --auto-remove -qq"
+    if dpkg-query -W -f='${Status}' php5-sasl 2>/dev/null | grep -q "install ok installed"; then
+      _mrun "apt-get remove php5-sasl -y --purge --auto-remove -qq"
+    fi
+    if dpkg-query -W -f='${Status}' php5-suhosin 2>/dev/null | grep -q "install ok installed"; then
+      _mrun "apt-get remove php5-suhosin -y --purge --auto-remove -qq"
+    fi
   fi
   if [[ "${_PHP_MULTI_INSTALL}" =~ "5.6" ]] \
     && [ ! -x "/opt/php56/bin/php" ]; then
@@ -3118,9 +3135,21 @@ _php_check_if_rebuild() {
     _apt_clean_update
     _mrun "${_INSTAPP} libonig-dev"
     if [ -e "/usr/lib/libtidy.so" ]; then
-      _mrun "apt-get remove libtidy-dev -y --purge --auto-remove -qq"
-      _mrun "apt-get remove libtidy-0.99-0 -y --purge --auto-remove -qq"
-      _mrun "apt-get remove tidy -y --purge --auto-remove -qq"
+      ###
+      local _PKG
+      for _PKG in libtidy-dev libtidy-0.99-0 tidy; do
+        if _pkg_installed "${_PKG}"; then
+          _mrun "apt-get remove ${_PKG} -y --purge --auto-remove -qq"
+          if [ "${_DEBUG_MODE}" = "YES" ]; then
+            _msg "Package ${_PKG} removed as requested."
+          fi
+        else
+          if [ "${_DEBUG_MODE}" = "YES" ]; then
+            _msg "Package ${_PKG} not installed, skipping."
+          fi
+        fi
+      done
+      ###
     fi
     cd /var/opt
     rm -rf tidy*

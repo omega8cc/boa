@@ -391,18 +391,33 @@ _dns_unbound_install_upgrade() {
     _apt_clean_update
     [ -e "/usr/etc/unbound/unbound.pid" ] && _isUnbndFix=YES
     if [ "${_isUnbndFix}" = "YES" ]; then
-      _mrun "apt-get remove unbound -y --purge --auto-remove -qq"
-      _mrun "apt-get remove unbound-anchor -y --purge --auto-remove -qq"
-      _mrun "apt-get remove unbound-host -y --purge --auto-remove -qq"
-      _mrun "apt-get remove dns-root-data -y --purge --auto-remove -qq"
+      ###
+      local _PKG
+      for _PKG in unbound unbound-anchor unbound-host dns-root-data; do
+        if _pkg_installed "${_PKG}"; then
+          _mrun "apt-get remove ${_PKG} -y --purge --auto-remove -qq"
+          if [ "${_DEBUG_MODE}" = "YES" ]; then
+            _msg "Package ${_PKG} removed as requested."
+          fi
+        else
+          if [ "${_DEBUG_MODE}" = "YES" ]; then
+            _msg "Package ${_PKG} not installed, skipping."
+          fi
+        fi
+      done
+      ###
       rm -rf /etc/unbound
       rm -rf /usr/etc/unbound
     fi
-    _mrun "apt-get remove resolvconf -y --purge --auto-remove -qq"
+    if dpkg-query -W -f='${Status}' resolvconf 2>/dev/null | grep -q "install ok installed"; then
+      _mrun "apt-get remove resolvconf -y --purge --auto-remove -qq"
+    fi
     rm -rf /lib/init/rw/resolvconf
     rm -rf /run/resolvconf
     rm -rf /etc/resolvconf
-    _mrun "apt-get remove resolvconf -y --purge --auto-remove -qq"
+    if dpkg-query -W -f='${Status}' resolvconf 2>/dev/null | grep -q "install ok installed"; then
+      _mrun "apt-get remove resolvconf -y --purge --auto-remove -qq"
+    fi
     if [ "${_USE_PROVIDER_DNS}" != "YES" ]; then
       rm -f /etc/resolv.conf
       echo "### BOA-DNS-Config ###" > /etc/resolv.conf
