@@ -123,7 +123,7 @@ _mrun() {
     return $?
   fi
   # stdout -> info log (silent on console)
-  # stderr -> error log (silent on console)
+  # stderr -> shown live AND appended to error log
   bash -o pipefail -c -- "${_cmd}" \
     > >(tee -a "${_LOG_INFO}" >/dev/null) \
     2> >(tee -a "${_LOG_ERRR}" >/dev/null)
