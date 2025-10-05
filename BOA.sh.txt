@@ -4020,7 +4020,9 @@ _if_reinstall_curl() {
           && [ -d "/usr/include/x86_64-linux-gnu/curl" ] \
           && [ ! -L "/usr/include/x86_64-linux-gnu/curl" ]; then
           _apt_clean_update
-          apt-get remove libcurl4-openssl-dev -y --purge --auto-remove -qq 2> /dev/null
+          if dpkg-query -W -f='${Status}' libcurl4-openssl-dev 2>/dev/null | grep -q "install ok installed"; then
+            apt-get remove libcurl4-openssl-dev -y --purge --auto-remove -qq 2> /dev/null
+          fi
           ln -sfn /usr/local/include/curl /usr/include/x86_64-linux-gnu/curl
           ldconfig 2> /dev/null
         fi

@@ -2,6 +2,14 @@
 export _tRee=dev
 export _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
 
+_pkg_installed() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _pkg_installed"
+  fi
+  # Return 0 if package is installed, 1 otherwise.
+  dpkg-query -W -f='${Status}' "$1" 2>/dev/null | grep -qx 'install ok installed'
+}
+
 _if_fix_iptables_symlinks() {
   ###
   ### Fix for iptables paths backward compatibility
@@ -2826,7 +2834,10 @@ _run_aptitude_full_upgrade() {
     echo "percona-release hold" | dpkg --set-selections &> /dev/null
     _apt_clean_update
   fi
-  _mrun "apt-get remove percona-release -y -qq"
+  # Check for percona-release and remove conditionally
+  if dpkg-query -W -f='${Status}' percona-release 2>/dev/null | grep -q "install ok installed"; then
+    _mrun "apt-get remove percona-release -y -qq"
+  fi
   _apt_clean_update
   if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     _DPKG_CNF="confold"
@@ -2856,8 +2867,12 @@ _do_install_latest_git() {
       _mrun "apt-get install libcurl4 -y ${_aptAllow}"
       _mrun "apt-get install libcurl4-openssl-dev -y ${_aptAllow}"
       _mrun "apt-get install libcurl4-gnutls-dev -y ${_aptAllow}"
-      _mrun "apt-get remove git-core -y --purge --auto-remove"
-      _mrun "apt-get remove git -y --purge --auto-remove"
+      if dpkg-query -W -f='${Status}' git-core 2>/dev/null | grep -q "install ok installed"; then
+        _mrun "apt-get remove git-core -y --purge --auto-remove"
+      fi
+      if dpkg-query -W -f='${Status}' git 2>/dev/null | grep -q "install ok installed"; then
+        _mrun "apt-get remove git -y --purge --auto-remove"
+      fi
     fi
     mkdir -p /var/opt
     rm -rf /var/opt/git*
@@ -3824,10 +3839,21 @@ _install_magick_src() {
       && [ -e "/etc/ImageMagick" ]; then
         cp -a /etc/ImageMagick /etc/.ImageMagick
     fi
-    _mrun "apt-get remove imagemagick -y --purge --auto-remove -qq"
-    _mrun "apt-get remove libmagickwand-dev -y --purge --auto-remove -qq"
-    _mrun "apt-get remove graphviz -y --purge --auto-remove -qq"
-    _mrun "apt-get remove libgraphviz-dev -y --purge --auto-remove -qq"
+    ###
+    local _PKG
+    for _PKG in imagemagick libmagickwand-dev graphviz libgraphviz-dev; do
+      if _pkg_installed "${_PKG}"; then
+        _mrun "apt-get remove ${_PKG} -y --purge --auto-remove -qq"
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "Package ${_PKG} removed as requested."
+        fi
+      else
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "Package ${_PKG} not installed, skipping."
+        fi
+      fi
+    done
+    ###
     _mrun "make --quiet install"
     ldconfig 2> /dev/null
     if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -4716,7 +4742,9 @@ _curl_install_src() {
         && [ -e "/usr/local/include/curl/easy.h" ] \
         && [ -d "/usr/include/x86_64-linux-gnu/curl" ] \
         && [ ! -L "/usr/include/x86_64-linux-gnu/curl" ]; then
-        _mrun "apt-get remove libcurl4-openssl-dev -y --purge --auto-remove -qq"
+        if dpkg-query -W -f='${Status}' libcurl4-openssl-dev 2>/dev/null | grep -q "install ok installed"; then
+          _mrun "apt-get remove libcurl4-openssl-dev -y --purge --auto-remove -qq"
+        fi
         ln -sfn /usr/local/include/curl /usr/include/x86_64-linux-gnu/curl
         ldconfig 2> /dev/null
       fi
@@ -5640,14 +5668,6 @@ _finale() {
   _msg "BYE!"
 }
 
-_pkg_installed() {
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "PROC: _pkg_installed"
-  fi
-  # Return 0 if package is installed, 1 otherwise.
-  dpkg-query -W -f='${Status}' "$1" 2>/dev/null | grep -qx 'install ok installed'
-}
-
 _run_xtrabackup_cleanup() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _run_xtrabackup_cleanup"
@@ -5737,9 +5757,21 @@ _run_aptitude_deps_install() {
   _mrun "${_INSTAPP} python3-full python3-dev python3-debian python3-magic"
   if [ -e "/root/.dont.use.fancy.bash.login.cnf" ] \
     && [ -e "/usr/bin/screenfetch" ]; then
-    _mrun "apt-get remove toilet -y --purge --auto-remove -qq"
-    _mrun "apt-get remove figlet -y --purge --auto-remove -qq"
-    _mrun "apt-get remove screenfetch -y --purge --auto-remove -qq"
+    ###
+    local _PKG
+    for _PKG in toilet figlet screenfetch; do
+      if _pkg_installed "${_PKG}"; then
+        _mrun "apt-get remove ${_PKG} -y --purge --auto-remove -qq"
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "Package ${_PKG} removed as requested."
+        fi
+      else
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "Package ${_PKG} not installed, skipping."
+        fi
+      fi
+    done
+    ###
   else
     _mrun "${_INSTAPP} toilet figlet screenfetch"
   fi
@@ -5907,7 +5939,9 @@ _if_proxysql_update() {
         _apt_clean_update
         _mrun "${_INSTAPP} sysbench"
         _mrun "${_INSTAPP} debconf-utils"
-        _mrun "apt-get remove proxysql -y --purge --auto-remove -qq"
+        if dpkg-query -W -f='${Status}' proxysql 2>/dev/null | grep -q "install ok installed"; then
+          _mrun "apt-get remove proxysql -y --purge --auto-remove -qq"
+        fi
         _apt_clean_update
         _mrun "${_INSTAPP} proxysql"
       fi
@@ -6362,16 +6396,39 @@ _if_major_os_upgrade() {
       pkill -9 -f tomcat
     fi
     _apt_clean_update_no_releaseinfo_change
+    ###
+    local _PKG
+    for _PKG in collectd libc-client2007b-dev; do
+      if _pkg_installed "${_PKG}"; then
+        _mrun "apt-get remove ${_PKG} -y --purge --auto-remove -qq"
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "Package ${_PKG} removed as requested."
+        fi
+      else
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "Package ${_PKG} not installed, skipping."
+        fi
+      fi
+    done
+    ###
+    local _PKG
+    for _PKG in libmariadb3 mariadb-common mailutils; do
+      if _pkg_installed "${_PKG}"; then
+        _mrun "apt-get remove --purge ${_PKG} -y -qq"
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "Package ${_PKG} removed as requested."
+        fi
+      else
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "Package ${_PKG} not installed, skipping."
+        fi
+      fi
+    done
+    ###
 #     _mrun "apt-get remove dbus -y --purge --auto-remove -qq"
 #     if [ -e "/usr/share/dbus-1" ]; then
 #       rm -f /usr/share/dbus-1/*/*freedesktop*
 #     fi
-    _mrun "apt-get remove collectd -y --purge --auto-remove -qq"
-    _mrun "apt-get remove libc-client2007b-dev -y --purge --auto-remove -qq"
-    ###
-    _mrun "apt-get remove --purge libmariadb3 -y -qq"
-    _mrun "apt-get remove --purge mariadb-common -y -qq"
-    _mrun "apt-get remove --purge mailutils -y -qq"
     ###
     ### Make sure that mariadb related packages are locked in apt.
     if [ ! -e "/etc/apt/preferences.d/mariadb-common" ]; then
@@ -6392,11 +6449,19 @@ _if_major_os_upgrade() {
       _apt_clean_update_no_releaseinfo_change
     fi
     ###
-    _mrun "apt-get remove nginx-extras -y -qq"
-    _mrun "apt-get remove nginx -y -qq"
-    _mrun "apt-get remove nginx-common -y -qq"
-    _mrun "apt-get remove nginx-full -y -qq"
-    _mrun "apt-get remove percona-release -y -qq"
+    local _PKG
+    for _PKG in nginx-extras nginx nginx-common nginx-full percona-release; do
+      if _pkg_installed "${_PKG}"; then
+        _mrun "apt-get remove ${_PKG} -y -qq"
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "Package ${_PKG} removed as requested."
+        fi
+      else
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "Package ${_PKG} not installed, skipping."
+        fi
+      fi
+    done
     ###
     ### Make sure that nginx packages are locked in apt.
     if [ ! -e "/etc/apt/preferences.d/nginx-common" ]; then
@@ -6432,29 +6497,35 @@ _if_major_os_upgrade() {
       touch /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini}
       touch /etc/php5/conf.d/{redis.ini,suhosin.ini,newrelic.ini}
     fi
-    _mrun "apt-get remove php5 \
-                         php5-cgi \
-                         php5-curl \
-                         php5-fpm \
-                         php5-gd \
-                         php5-geoip \
-                         php5-gmp \
-                         php5-imagick \
-                         php5-imap \
-                         php5-ldap \
-                         php5-mcrypt \
-                         php5-memcache \
-                         php5-mysql \
-                         php5-sqlite \
-                         php5-xmlrpc \
-                         php5-xsl      -y --purge --auto-remove -qq"
-    _mrun "apt-get remove phpunit       -y --purge --auto-remove -qq"
-    _mrun "apt-get remove php-pear      -y --purge --auto-remove -qq"
-    _mrun "apt-get remove php-benchmark -y --purge --auto-remove -qq"
-    _mrun "apt-get remove php5-cli      -y --purge --auto-remove -qq"
-    _mrun "apt-get remove php5-common   -y --purge --auto-remove -qq"
-    _mrun "apt-get remove php5-apc      -y --purge --auto-remove -qq"
-    _mrun "apt-get remove php-apc       -y --purge --auto-remove -qq"
+    ###
+    local _PKG
+    for _PKG in php5 php5-cgi php5-curl php5-fpm php5-gd php5-geoip php5-gmp php5-imagick php5-imap php5-ldap php5-mcrypt php5-memcache php5-mysql php5-sqlite php5-xmlrpc php5-xsl; do
+      if _pkg_installed "${_PKG}"; then
+        _mrun "apt-get remove ${_PKG} -y --purge --auto-remove -qq"
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "Package ${_PKG} removed as requested."
+        fi
+      else
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "Package ${_PKG} not installed, skipping."
+        fi
+      fi
+    done
+    ###
+    local _PKG
+    for _PKG in phpunit php-pear php-benchmark php5-cli php5-common php5-apc php-apc; do
+      if _pkg_installed "${_PKG}"; then
+        _mrun "apt-get remove ${_PKG} -y --purge --auto-remove -qq"
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "Package ${_PKG} removed as requested."
+        fi
+      else
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "Package ${_PKG} not installed, skipping."
+        fi
+      fi
+    done
+    ###
     if [ "${_LOC_OS_CODE}" = "jessie" ]; then
       _mrun "apt-get remove gnome-tweak-tool -y --purge --auto-remove -qq"
     fi
@@ -6742,9 +6813,21 @@ _if_major_os_upgrade() {
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "TRCK: Removing libldap packages for a clean start"
         fi
-        _mrun "apt-get remove libldap-common -y -qq"
-        _mrun "apt-get remove libldap2-dev -y -qq"
-        _mrun "apt-get remove libldap-dev -y -qq"
+        ###
+        local _PKG
+        for _PKG in libldap-common libldap2-dev libldap-dev; do
+          if _pkg_installed "${_PKG}"; then
+            _mrun "apt-get remove ${_PKG} -y -qq"
+            if [ "${_DEBUG_MODE}" = "YES" ]; then
+              _msg "Package ${_PKG} removed as requested."
+            fi
+          else
+            if [ "${_DEBUG_MODE}" = "YES" ]; then
+              _msg "Package ${_PKG} not installed, skipping."
+            fi
+          fi
+        done
+        ###
         _apt_clean_update
         ###
         if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -7327,12 +7410,20 @@ _sys_packages_install() {
     _APT_ELSE="netcat netcat-traditional"
     _apt_clean_update
     _mrun "service nginx start"
-    _mrun "apt-get remove nginx-extras -y -qq"
-    _mrun "apt-get remove nginx -y -qq"
-    _mrun "apt-get remove nginx-common -y -qq"
-    _mrun "apt-get remove nginx-full -y -qq"
-    _mrun "apt-get remove redis-server -y -qq"
-    _mrun "apt-get remove percona-release -y -qq"
+    ###
+    local _PKG
+    for _PKG in nginx-extras nginx nginx-common nginx-full redis-server percona-release; do
+      if _pkg_installed "${_PKG}"; then
+        _mrun "apt-get remove ${_PKG} -y -qq"
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "Package ${_PKG} removed as requested."
+        fi
+      else
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "Package ${_PKG} not installed, skipping."
+        fi
+      fi
+    done
     ###
     ### Make sure that nginx packages are locked in apt.
     if [ ! -e "/etc/apt/preferences.d/nginx-common" ]; then
@@ -7364,9 +7455,19 @@ _sys_packages_install() {
       _apt_clean_update
     fi
     ###
-    _mrun "apt-get remove --purge libmariadb3 -y -qq"
-    _mrun "apt-get remove --purge mariadb-common -y -qq"
-    _mrun "apt-get remove --purge mailutils -y -qq"
+    local _PKG
+    for _PKG in libmariadb3 mariadb-common mailutils; do
+      if _pkg_installed "${_PKG}"; then
+        _mrun "apt-get remove --purge ${_PKG} -y -qq"
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "Package ${_PKG} removed as requested."
+        fi
+      else
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "Package ${_PKG} not installed, skipping."
+        fi
+      fi
+    done
     ###
     ### Make sure that mariadb related packages are locked in apt.
     if [ ! -e "/etc/apt/preferences.d/mariadb-common" ]; then

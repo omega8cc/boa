@@ -897,14 +897,22 @@ _download_helpers_libs() {
           apt-get install libcurl4 ${_aptYesUnth} -qq 2> /dev/null
           apt-get install libcurl4-openssl-dev ${_aptYesUnth} -qq 2> /dev/null
           apt-get install libcurl4-gnutls-dev ${_aptYesUnth} -qq 2> /dev/null
-          apt-get remove git-core -y --purge --auto-remove -qq 2> /dev/null
-          apt-get remove git -y --purge --auto-remove -qq 2> /dev/null
+          if dpkg-query -W -f='${Status}' git-core 2>/dev/null | grep -q "install ok installed"; then
+            apt-get remove git-core -y --purge --auto-remove -qq 2> /dev/null
+          fi
+          if dpkg-query -W -f='${Status}' git 2>/dev/null | grep -q "install ok installed"; then
+            apt-get remove git -y --purge --auto-remove -qq 2> /dev/null
+          fi
         else
           apt-get install libcurl4 ${_aptYesUnth} -qq &> /dev/null
           apt-get install libcurl4-openssl-dev ${_aptYesUnth} -qq &> /dev/null
           apt-get install libcurl4-gnutls-dev ${_aptYesUnth} -qq &> /dev/null
-          apt-get remove git-core -y --purge --auto-remove -qq &> /dev/null
-          apt-get remove git -y --purge --auto-remove -qq &> /dev/null
+          if dpkg-query -W -f='${Status}' git-core 2>/dev/null | grep -q "install ok installed"; then
+            apt-get remove git-core -y --purge --auto-remove -qq &> /dev/null
+          fi
+          if dpkg-query -W -f='${Status}' git 2>/dev/null | grep -q "install ok installed"; then
+            apt-get remove git -y --purge --auto-remove -qq &> /dev/null
+          fi
         fi
       fi
       mkdir -p /var/opt

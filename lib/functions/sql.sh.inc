@@ -876,7 +876,9 @@ _prep_for_install_db_sql() {
   _sql_strict_upgrade_path
 
   if [ -e "/usr/bin/mytop" ]; then
-    _mrun "apt-get remove mytop -y --purge --auto-remove -qq"
+    if dpkg-query -W -f='${Status}' mytop 2>/dev/null | grep -q "install ok installed"; then
+      _mrun "apt-get remove mytop -y --purge --auto-remove -qq"
+    fi
     rm -f /usr/bin/mytop
   fi
 
