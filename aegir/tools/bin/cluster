@@ -2077,7 +2077,7 @@ _install_host() {
   ${_INSTAPP} locales
   ${_INSTAPP} lsb-release
   ${_INSTAPP} dnsutils
-  ${_INSTAPP} netcat
+  ${_INSTAPP} netcat-traditional
   ${_INSTAPP} curl
   ${_INSTAPP} wget
   ${_INSTAPP} libwww-perl
