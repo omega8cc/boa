@@ -48,7 +48,6 @@ _clean_pid_exit() {
   [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
   [ -e "/tmp/aegir_backup_mode.txt" ] && rm -f /tmp/aegir_backup_mode.txt
   service cron start &> /dev/null
-  wait
   exit 1
 }
 
@@ -1234,17 +1233,14 @@ _up_finish() {
     echo "iptables -t raw -A OUTPUT -p tcp --dport 21 -j CT --helper ftp" >> /etc/csf/csfpost.sh
     chmod 700 /etc/csf/csfpost.sh
     service lfd stop &> /dev/null
-    wait
     pkill -9 -f ConfigServer
     killall sleep &> /dev/null
     rm -f /etc/csf/csf.error
     csf -x  &> /dev/null
-    wait
     service clean-boa-env start &> /dev/null
-    wait
     _if_fix_iptables_symlinks
     ### csf -uf &> /dev/null
-    wait
+    ### wait
     _NFTABLES_TEST=$(iptables -V)
     if [[ "${_NFTABLES_TEST}" =~ "nf_tables" ]]; then
       if [ -e "/usr/sbin/iptables-legacy" ]; then
@@ -1261,9 +1257,7 @@ _up_finish() {
       fi
     fi
     csf -e &> /dev/null
-    wait
     sed -i "s/.*DHCP.*//g" /etc/csf/csf.allow
-    wait
     sed -i "/^$/d" /etc/csf/csf.allow
     if [ -e "/var/log/daemon.log" ]; then
       _DHCP_LOG="/var/log/daemon.log"
@@ -1280,7 +1274,6 @@ _up_finish() {
     done
     if [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
       csf -ra &> /dev/null
-      wait
       synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
     else
       csf -r &> /dev/null
@@ -1301,7 +1294,6 @@ _up_finish() {
   fi
   if [ -e "/etc/init.d/postfix" ]; then
     service postfix restart &> /dev/null
-    wait
   fi
   if [ "$(boa info | grep -c Percona)" -ge 3 ] || [ -e "/usr/sbin/csf" ]; then
     # Execute the daily.sh and exit
@@ -1470,17 +1462,14 @@ _csf_check_fix() {
     csf -a 172.233.219.37  us.files.aegir.cc &> /dev/null
     csf -a 172.105.168.103 ao.files.aegir.cc &> /dev/null
     service lfd stop &> /dev/null
-    wait
     pkill -9 -f ConfigServer
     killall sleep &> /dev/null
     rm -f /etc/csf/csf.error
     csf -x  &> /dev/null
-    wait
     service clean-boa-env start &> /dev/null
-    wait
     _if_fix_iptables_symlinks
     ### csf -uf &> /dev/null
-    wait
+    ### wait
     _NFTABLES_TEST=$(iptables -V)
     if [[ "${_NFTABLES_TEST}" =~ "nf_tables" ]]; then
       if [ -e "/usr/sbin/iptables-legacy" ]; then
@@ -1497,7 +1486,6 @@ _csf_check_fix() {
       fi
     fi
     csf -e &> /dev/null
-    wait
     sed -i "s/.*DHCP.*//g" /etc/csf/csf.allow
     wait
     sed -i "/^$/d" /etc/csf/csf.allow
@@ -1516,7 +1504,6 @@ _csf_check_fix() {
     done
     if [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
       csf -ra &> /dev/null
-      wait
       synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
     else
       csf -r &> /dev/null
@@ -1697,7 +1684,6 @@ _check_root() {
     wait
     if [ -e "/etc/init.d/postfix" ]; then
       service postfix restart &> /dev/null
-      wait
     fi
   else
     echo "ERROR: This script should be run as a root user"

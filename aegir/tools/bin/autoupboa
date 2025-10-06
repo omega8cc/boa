@@ -733,7 +733,6 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
       done
       if [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
         csf -ra &> /dev/null
-        wait
         synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
       else
         csf -r &> /dev/null
@@ -864,7 +863,6 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
       rm -f /var/log/boa/.*etc_crontab_update_dev_ctrl*
       _crontab_cleanup
       service cron restart
-      wait
       touch /var/log/boa/.etc_crontab_update_dev_ctrl_f009.${_tRee}.${_xSrl}.pid
     fi
   else
@@ -877,7 +875,6 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
         _crontab_cleanup
       fi
       service cron restart
-      wait
       touch /var/log/boa/.etc_crontab_update_prod_ctrl_f009.${_tRee}.${_xSrl}.pid
     fi
   fi
@@ -956,7 +953,6 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     service site24x7monagent stop
     wait
     service site24x7monagent start
-    wait
     rm -f /var/log/boa/.site24x7monagent*
     touch /var/log/boa/.site24x7monagent_ctrl.${_tRee}.${_xSrl}.pid
   fi
