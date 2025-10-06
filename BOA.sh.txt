@@ -1058,6 +1058,27 @@ _update_agents() {
     fi
   fi
 
+  if [ ! -e "${_pthLog}/webserver.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
+    _CNT=$(pgrep -fc xwebserver)
+    if (( _CNT > 0 )); then
+      echo "The xwebserver is running!"
+    else
+      if [ -e "${_optBin}/webserver" ]; then
+        mv -f ${_optBin}/webserver ${_optBin}/webserver.old
+      fi
+      curl ${_crlGet} "${_urlHmr}/tools/bin/webserver" -o ${_optBin}/webserver
+      if [ -e "${_optBin}/webserver" ]; then
+        chmod 700 ${_optBin}/webserver
+        chown root:root ${_optBin}/webserver
+        touch ${_pthLog}/webserver.sh.ctrl.f99.${_tRee}.${_xSrl}.pid
+      else
+        if [ -e "${_optBin}/webserver.old" ]; then
+          mv -f ${_optBin}/webserver.old ${_optBin}/webserver
+        fi
+      fi
+    fi
+  fi
+
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -d "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/backboa.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
@@ -4100,6 +4121,7 @@ _update_boa_tools() {
             vhostcheck \
             vmnetfix \
             weblogx \
+            webserver \
             websh \
             xboa \
             xcopy"
@@ -4139,7 +4161,7 @@ _update_boa_tools() {
   done
 
   if [ ! -e "/data/u" ] && [ -e "${_optBin}/killer" ] && [ ! -e "${_usrBin}/vmnetfix" ]; then
-    rm -f ${_usrBin}/{aptcleanup*,autoinit*,backchain*,barracuda*,boa*,dhcpfix*,killer*,loadguard*,octopus*,vmnetfix*,websh*}
+    rm -f ${_usrBin}/{aptcleanup*,autoinit*,backchain*,barracuda*,boa*,dhcpfix*,killer*,loadguard*,octopus*,vmnetfix*,webserver*,websh*}
     ln -sfn ${_optBin}/aptcleanup  ${_usrBin}/aptcleanup
     ln -sfn ${_optBin}/autoinit    ${_usrBin}/autoinit
     ln -sfn ${_optBin}/backchain   ${_usrBin}/backchain
@@ -4150,6 +4172,7 @@ _update_boa_tools() {
     ln -sfn ${_optBin}/loadguard   ${_usrBin}/loadguard
     ln -sfn ${_optBin}/octopus     ${_usrBin}/octopus
     ln -sfn ${_optBin}/vmnetfix    ${_usrBin}/vmnetfix
+    ln -sfn ${_optBin}/webserver   ${_usrBin}/webserver
     ln -sfn ${_optBin}/websh       ${_usrBin}/websh
   fi
 
@@ -4176,7 +4199,7 @@ _update_boa_tools() {
   chmod 700 ${_optBin}/{backboa,copydbackup,dcysetup,duobackboa,multiback}
 
   # _CORE (700): core BOA tools
-  chmod 700 ${_optBin}/{barracuda,boa,ffmirror,killer,octopus}
+  chmod 700 ${_optBin}/{barracuda,boa,ffmirror,killer,octopus,webserver}
   chmod 700 ${_optBin}/{syncpass,weblogx,xboa,xcopy,loadguard,lock.inc}
 
   # _DB (700): performance and DB tuners
