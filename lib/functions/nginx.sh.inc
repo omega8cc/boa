@@ -261,7 +261,6 @@ _nginx_clean_legacy_config() {
     fi
   fi
   _mrun "service nginx reload"
-  wait
 }
 
 #
@@ -514,7 +513,6 @@ _nginx_install_upgrade() {
     ldconfig 2> /dev/null
     _nginx_clean_legacy_config
     _mrun "service nginx quietupgrade"
-    wait
     _NGINX_INSTALL_REQUIRED=NO
   fi
   if [ ! -L "/usr/bin/nginx" ]; then
@@ -604,7 +602,6 @@ _nginx_mime_check_fix() {
     rm -f /etc/nginx/modules-enabled/*
     if [ ! -e "/run/aegir_upgrade.pid" ]; then
       _mrun "service nginx reload"
-      wait
     fi
   fi
 }
@@ -642,7 +639,6 @@ _nginx_wildcard_ssl_install() {
       _redis_password_update
     fi
     _mrun "service nginx quietupgrade"
-    wait
   else
     _WILD_SSL_PROXY_UP=NO
     _HTTP3_TEST=$(grep http3 ${_WILD_SSL_VHOST} 2>&1)
@@ -679,7 +675,6 @@ _nginx_config_update_fix() {
     _force_advanced_nginx_config
     sleep 8
     _mrun "service nginx restart"
-    wait
   else
     if [ -e "/var/aegir/config" ]; then
       sed -i "s/.*ssl .*on;//g" /var/aegir/config/server_*/nginx/vhost.d/* &> /dev/null
@@ -989,6 +984,5 @@ _nginx_config_update_fix() {
       _master_fix_multi_ip_cron_access
     fi
     _mrun "service nginx reload"
-    wait
   fi
 }

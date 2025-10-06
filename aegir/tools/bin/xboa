@@ -1042,7 +1042,6 @@ _migrate_init() {
           ### _migrate_prepare >/var/log/boa/migrate/migrate-${_oct}-${_cmd}-${_NOW}.log 2>&1
         if [ "${_cmd}" = "proxy" ]; then
           service nginx reload
-          wait
           _send_notice_migration_complete
           echo COMPLETE > ${_USR}/log/proxied.pid
         fi
@@ -1063,30 +1062,24 @@ _post_mig() {
     if [ -x "/etc/init.d/solr9" ] && [ -e "/etc/default/solr9.in.sh" ]; then
       pkill -9 -f solr9
       service solr9 start
-      wait
     fi
     if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
       pkill -9 -f solr7
       service solr7 start
-      wait
     fi
     pkill -9 -f jetty
     rm -rf /tmp/{drush*,pear,jetty*}
     rm -f /var/log/jetty{7,8,9}/*
     if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
       service jetty9 start
-      wait
     fi
     if [ -e "/etc/default/jetty8" ] && [ -e "/etc/init.d/jetty8" ]; then
       service jetty8 start
-      wait
     fi
     if [ -e "/etc/default/jetty7" ] && [ -e "/etc/init.d/jetty7" ]; then
       service jetty7 start
-      wait
     fi
     service nginx reload
-    wait
     [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
     if [ ! -e "/var/xdrago/runner.sh" ] && [ -e "/var/xdrago/.runner.sh.off" ]; then
       mv -f /var/xdrago/.runner.sh.off /var/xdrago/runner.sh
@@ -1249,7 +1242,6 @@ _sub_ssl_gen() {
       ###
       echo OK created ${_Ssl}
       service nginx reload
-      wait
     else
       echo some variables missing in the record: $p
     fi

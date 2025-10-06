@@ -3437,7 +3437,6 @@ else
       sed -i "s/TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf
     fi
     service nginx reload
-    wait
   fi
 fi
 

@@ -164,7 +164,7 @@ _find_correct_ip() {
   if [ -n "${_LOC_IP}" ] && grep -qE "${_LOC_IP}\s" /etc/hosts; then
     cp -af /etc/hosts /etc/.was.hosts
     sed -i "s/^${_LOC_IP}.*//g" /etc/hosts
-    [ -x "/etc/init.d/unbound" ] && service unbound restart && wait &> /dev/null
+    [ -x "/etc/init.d/unbound" ] && service unbound restart &> /dev/null
   fi
 }
 
@@ -1935,7 +1935,6 @@ _update_agents() {
     for e in ${_PHP_V}; do
       if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
         service php${e}-fpm reload &> /dev/null
-        wait
       fi
     done
     _PHP_V="55 54 53"
@@ -2185,7 +2184,6 @@ _update_agents() {
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
           service php${e}-fpm reload &> /dev/null
-          wait
         fi
       done
     else
@@ -2544,7 +2542,6 @@ _update_agents() {
       chmod 755 /etc/cron.hourly/systemtime
       chown root:root /etc/cron.hourly/systemtime
       service cron restart
-      wait
       touch ${_pthLog}/systemtime.ctrl.f95.${_tRee}.${_xSrl}.pid
     fi
   fi
@@ -3436,7 +3433,6 @@ _fix_log4j_solr7() {
     if [[ ! "${_RESULT_LOG4J}" =~ "LOG4J" ]] || [ ! -z "${_DO_SOLR_RESTART}" ]; then
       #pkill -9 -f solr7
       service solr7 restart &> /dev/null
-      wait
     fi
   fi
 }
@@ -3566,7 +3562,6 @@ _fix_sftp_server() {
       echo "Subsystem sftp /usr/lib/openssh/sftp-server -u 0002" >> /etc/ssh/sshd_config
       sed -i "/^$/d" /etc/ssh/sshd_config
       service ssh restart 2> /dev/null
-      wait
     fi
   fi
 }
@@ -3734,7 +3729,6 @@ _fix_newrelic() {
     && [ ! -e "${_PHP_EXT_DIR_74}/newrelic.so" ]; then
     ln -sfn ${_NR_SO} ${_PHP_EXT_DIR_74}/newrelic.so
     service php74-fpm reload
-    wait
   fi
 
   _PHP_EXT_DIR_71="/opt/php71/lib/php/extensions/no-debug-non-zts-20160303"
@@ -3744,7 +3738,6 @@ _fix_newrelic() {
     && [ -L "${_PHP_EXT_DIR_71}/newrelic.so" ]; then
     rm -f ${_PHP_EXT_DIR_71}/newrelic.so
     service php71-fpm reload
-    wait
   fi
 
   _PHP_EXT_DIR_70="/opt/php70/lib/php/extensions/no-debug-non-zts-20151012"
@@ -3754,7 +3747,6 @@ _fix_newrelic() {
     && [ -L "${_PHP_EXT_DIR_70}/newrelic.so" ]; then
     rm -f ${_PHP_EXT_DIR_70}/newrelic.so
     service php70-fpm reload
-    wait
   fi
 
   _PHP_EXT_DIR_56="/opt/php56/lib/php/extensions/no-debug-non-zts-20131226"
@@ -3764,7 +3756,6 @@ _fix_newrelic() {
     && [ -L "${_PHP_EXT_DIR_56}/newrelic.so" ]; then
     rm -f ${_PHP_EXT_DIR_56}/newrelic.so
     service php56-fpm reload
-    wait
   fi
 }
 
@@ -4314,10 +4305,9 @@ _if_update_boa_key_tools_only() {
     _CSF_TEST=$(which csf 2> /dev/null)
     if [ -x "${_CSF_TEST}" ]; then
       service clean-boa-env start &> /dev/null
-      wait
       _if_fix_iptables_symlinks
       ### csf -uf
-      wait
+      ### wait
       _NFTABLES_TEST=$(iptables -V)
       if [[ "${_NFTABLES_TEST}" =~ "nf_tables" ]]; then
         if [ -e "/usr/sbin/iptables-legacy" ]; then
@@ -4351,7 +4341,6 @@ _if_update_boa_key_tools_only() {
       done
       if [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
         csf -ra &> /dev/null
-        wait
         synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
       else
         csf -r &> /dev/null
@@ -4377,10 +4366,9 @@ _if_update_boa_key_tools_only() {
     if [[ ! ${_CC_SRC_TEST} =~ CC_SRC\ =\ \"2\" ]]; then
       echo _CC_SRC_TEST 2 is "${_CC_SRC_TEST}"
       service clean-boa-env start &> /dev/null
-      wait
       _if_fix_iptables_symlinks
       ### csf -uf
-      wait
+      ### wait
       _NFTABLES_TEST=$(iptables -V)
       if [[ "${_NFTABLES_TEST}" =~ "nf_tables" ]]; then
         if [ -e "/usr/sbin/iptables-legacy" ]; then
@@ -4401,7 +4389,6 @@ _if_update_boa_key_tools_only() {
       sed -i "s/^AUTO_UPDATES .*/AUTO_UPDATES = \"0\"/g" /etc/csf/csf.conf
       if [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
         csf -ra &> /dev/null
-        wait
         synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
       else
         csf -r &> /dev/null
@@ -4630,7 +4617,6 @@ _sysctl_update() {
         echo ULIMIT=\"-n 524288\" >> /etc/default/nginx
         ulimit -n 524288 &> /dev/null
         service nginx restart &> /dev/null
-        wait
       fi
     fi
     if [ -e "/etc/security/limits.d" ] \
@@ -4651,20 +4637,15 @@ _sysctl_update() {
       echo "@www-data hard nofile 524288" >> /etc/security/limits.d/www.conf
       if [ -e "/etc/init.d/valkey-server" ]; then
         service valkey-server restart &> /dev/null
-        wait
       elif [ -e "/etc/init.d/redis-server" ]; then
         service redis-server restart &> /dev/null
-        wait
       fi
       service nginx restart &> /dev/null
-      wait
       service ssh restart &> /dev/null
-      wait
       _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
           service php${e}-fpm reload &> /dev/null
-          wait
         fi
       done
     fi
@@ -4811,8 +4792,6 @@ if [ "$(id -u)" -eq 0 ]; then
     [ -e "/run/unbound" ] && chown -R unbound:unbound /run/unbound
     pkill -u unbound -x unbound &> /dev/null
     service unbound restart &> /dev/null
-    wait
-    unbound-control reload &> /dev/null
     sleep 3
     rm -f /run/wait-unbound.pid
   fi
@@ -4918,7 +4897,6 @@ if [ "$(id -u)" -eq 0 ]; then
   fi
   if [ ! -e "/root/.upstart.cnf" ]; then
     service cron reload &> /dev/null
-    wait
   fi
   if [ "${_SCREEN_INIT}" = "YES" ]; then
     if [ "${_DEBUG_MODE}" != "YES" ]; then
@@ -4939,7 +4917,6 @@ if [ "$(id -u)" -eq 0 ]; then
     echo
     if [ -x "/usr/sbin/aa-teardown" ]; then
       aa-teardown &> /dev/null
-      wait
     fi
   else
     exit 0

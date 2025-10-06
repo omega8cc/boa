@@ -153,7 +153,7 @@ _find_correct_ip() {
   if [ -n "${_LOC_IP}" ] && grep -qE "${_LOC_IP}\s" /etc/hosts; then
     cp -af /etc/hosts /etc/.was.hosts
     sed -i "s/^${_LOC_IP}.*//g" /etc/hosts
-    [ -x "/etc/init.d/unbound" ] && service unbound restart && wait &> /dev/null
+    [ -x "/etc/init.d/unbound" ] && service unbound restart &> /dev/null
   fi
 }
 
@@ -392,7 +392,6 @@ _dns_unbound_install_upgrade() {
     [ -e "/usr/etc/unbound/unbound.pid" ] && _isUnbndFix=YES
     if [ "${_isUnbndFix}" = "YES" ]; then
       ###
-      local _PKG
       for _PKG in unbound unbound-anchor unbound-host dns-root-data; do
         if _pkg_installed "${_PKG}"; then
           _mrun "apt-get remove ${_PKG} -y --purge --auto-remove -qq"
@@ -471,7 +470,6 @@ _dns_unbound_install_upgrade() {
     [ -e "/etc/resolvconf/update.d/unbound" ] && chmod 644 /etc/resolvconf/update.d/unbound
     _mrun "pkill -u unbound -x unbound"
     _mrun "service unbound restart"
-    wait
   fi
   _check_dns_settings
   if [ "${_USE_PROVIDER_DNS}" = "YES" ] \
@@ -503,7 +501,6 @@ _dns_unbound_install_upgrade() {
       [ -e "/etc/resolvconf/update.d/unbound" ] && chmod 644 /etc/resolvconf/update.d/unbound
       _mrun "pkill -u unbound -x unbound"
       _mrun "service unbound restart"
-      wait
       _mrun "unbound-control reload"
     fi
   fi
@@ -517,7 +514,6 @@ _dns_unbound_install_upgrade() {
     [ -e "/etc/resolvconf/update.d/unbound" ] && chmod 644 /etc/resolvconf/update.d/unbound
     _mrun "pkill -u unbound -x unbound"
     _mrun "service unbound restart"
-    wait
     _mrun "unbound-control reload"
   fi
   if [ -e "/etc/NetworkManager/NetworkManager.conf" ]; then
@@ -574,7 +570,6 @@ _dns_unbound_install_upgrade() {
     [ -e "/etc/resolvconf/update.d/unbound" ] && chmod 644 /etc/resolvconf/update.d/unbound
     _mrun "pkill -u unbound -x unbound"
     _mrun "service unbound restart"
-    wait
   fi
   [ -e "/etc/default/unbound" ] && _isNxdEtc=$(grep "always_nxdomain" /etc/default/unbound 2>&1)
   [ -e "/etc/init.d/unbound" ] && _isIntUnb=$(grep "apply_ci_nomail" /etc/init.d/unbound 2>&1)
@@ -584,7 +579,6 @@ _dns_unbound_install_upgrade() {
     chmod 755 /etc/init.d/unbound
     _mrun "update-rc.d unbound defaults"
     _mrun "service unbound reload"
-    wait
   fi
   if [ -x "${_isUnbnd}" ] \
     && [ "${_isUnbndFix}" = "NO" ] \
@@ -593,7 +587,6 @@ _dns_unbound_install_upgrade() {
     [ -e "/etc/resolvconf/update.d/unbound" ] && chmod 644 /etc/resolvconf/update.d/unbound
     _mrun "pkill -u unbound -x unbound"
     _mrun "service unbound restart"
-    wait
   fi
 }
 

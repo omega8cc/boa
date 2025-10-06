@@ -460,7 +460,6 @@ _sql_conf_update() {
     if [ "${_DB_BINARY_LOG}" = "NO" ]; then
       # Purge binlogs
       bash /var/xdrago/purge_binlogs.sh &> /dev/null
-      wait
       # Remove cron jobs related to purge_binlogs
       sed -i -e "/purge_binlogs/d" -e "/^$/d" /var/spool/cron/crontabs/root &> /dev/null
       # Disable binary logging
@@ -1340,9 +1339,7 @@ _db_server_install() {
       [ -e "/bin/systemctl" ] && rm /bin/systemctl
       if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
         _mrun "csf -e"
-        wait
         _mrun "service lfd start"
-        wait
         ### Linux kernel TCP SACK CVEs mitigation
         ### CVE-2019-11477 SACK Panic
         ### CVE-2019-11478 SACK Slowness
