@@ -874,7 +874,7 @@ _download_helpers_libs() {
   cd /opt/tmp
   rm -rf /opt/tmp/boa
   if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
-    _GIT_VRN=2.45.2
+    _GIT_VRN=2.51.0
     _isGit=$(which git 2>&1)
     _GIT_INSTALL=NO
     _GIT_V=$(git --version 2>&1 \
