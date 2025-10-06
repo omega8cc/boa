@@ -642,7 +642,6 @@ _start_sql() {
   else
     _MASTER_START=NO
     service mysql start
-    wait
   fi
   while [ -z "${_IS_MYSQLD_RUNNING}" ] \
     || [ ! -e "/run/mysqld/mysqld.sock" ]; do

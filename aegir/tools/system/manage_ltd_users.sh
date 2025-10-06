@@ -1127,7 +1127,6 @@ _disable_newrelic() {
       wait
       if [ "$3" = "1" ] && [ -e "/etc/init.d/php$1-fpm" ]; then
         service php$1-fpm reload &> /dev/null
-        wait
       fi
     fi
   fi
@@ -1161,7 +1160,6 @@ _enable_newrelic() {
         fi
         if [ "$3" = "1" ] && [ -e "/etc/init.d/php$1-fpm" ]; then
           service php$1-fpm reload &> /dev/null
-          wait
         fi
       fi
     fi
@@ -1465,7 +1463,6 @@ _site_socket_inc_gen() {
       cp -af ${_mltFpm} ${_preFpm}
       ### reload nginx
       service nginx reload &> /dev/null
-      wait
     fi
   else
     if [ -f "${_mltNgx}" ]; then
@@ -1594,7 +1591,6 @@ _switch_php() {
           rm -f ${_dscUsr}/config/server_master/nginx/post.d/fpm_include_*
           rm -f ${_dscUsr}/static/control/.multi-fpm*.pid
           service nginx reload &> /dev/null
-          wait
         fi
       fi
 
@@ -1788,9 +1784,7 @@ _switch_php() {
             chmod 770 /var/www/phpcache/${_USER}/${_POOL}
 
             [ -e "/etc/init.d/php${_PHP_OLD_SV}-fpm" ] && service php${_PHP_OLD_SV}-fpm reload &> /dev/null
-            wait
             [ -e "/etc/init.d/php${m}-fpm" ] && service php${m}-fpm reload &> /dev/null
-            wait
           fi
         done
       fi

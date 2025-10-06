@@ -328,7 +328,6 @@ _add_solr() {
         wait
         pkill -9 -f jetty9
         service jetty9 start &> /dev/null
-        wait
       fi
       echo "New Solr ${3} with ${1} for ${2} added"
     fi
@@ -391,7 +390,6 @@ _delete_solr() {
       rm -f ${_Dir}/solr.php
       pkill -9 -f jetty9
       service jetty9 start &> /dev/null
-      wait
     fi
     echo "Deleted Solr core in ${1}"
   fi

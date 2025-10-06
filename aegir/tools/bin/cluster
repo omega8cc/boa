@@ -71,7 +71,6 @@ _clean_pid_exit() {
   echo "REASON ${1} on $(date)" >> /root/.cluster.exit.exceptions.log
   rm -f /run/cluster_run.pid
   service cron start
-  wait
   exit 1
 }
 
@@ -753,7 +752,6 @@ _if_firewall_update() {
     rm -f /etc/csf/csf.error
     if [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
       csf -ra &> /dev/null
-      wait
       synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
     else
       csf -r &> /dev/null
@@ -1090,7 +1088,6 @@ Dir::Etc::SourceList "/etc/apt/sources.list";
       cat /vservers/${_idn}/var/lib/proxysql/pxc_test_proxysql_galera_check.log
       echo "INFO: Restarting ProxySQL server..."
       vserver ${_idn} exec service proxysql restart
-      wait
       _pxyCmd="SELECT * FROM runtime_scheduler\\G"
       ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "${_pxyCtx} -e \"${_pxyCmd}\""
       _pxyCmd="SELECT * FROM mysql_servers;"
@@ -1651,13 +1648,11 @@ _install_db_cluster() {
     echo "${_WEB_NODE_IP} # Web Cluster Node" >> /etc/csf/csf.ignore
   fi
   service lfd stop
-  wait
   pkill -9 -f ConfigServer
   killall sleep &> /dev/null
   rm -f /etc/csf/csf.error
   if [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
     csf -ra &> /dev/null
-    wait
     synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
   else
     csf -r &> /dev/null
@@ -2145,7 +2140,6 @@ _install_host() {
 
   echo "Restarting sshd..."
   service ssh restart
-  wait
 
   echo "Checking if sshd listens on expected port..."
   _TEST_SSHD=$(netstat -l -n | grep 24 2>&1)
@@ -2309,9 +2303,7 @@ _upgrade_host() {
     ${_INSTAPP} linux-base
     echo "OPTIONS=\"--hintpolicy=ignore\"" >> /etc/default/irqbalance
     service irqbalance stop
-    wait
     service irqbalance start
-    wait
 
     echo "Installing vserver tools..."
     apt-get remove util-vserver -y --purge --auto-remove -qq
@@ -2352,11 +2344,8 @@ _upgrade_host() {
     update-rc.d vprocunhide defaults
     update-rc.d vservers-default defaults
     service vprocunhide start
-    wait
     service util-vserver start
-    wait
     service vservers-default start
-    wait
 
     echo "Updating vserver defaults..."
     echo "none  /proc     proc    defaults        0 0" >/usr/share/util-vserver/defaults/fstab
@@ -2390,10 +2379,8 @@ _upgrade_host() {
     sed -i "s/^MaxBandwidth.*/MaxBandwidth 1000/g" /etc/vnstat.conf
   fi
   service vnstat start
-  wait
   killall vnstatd
   service vnstat restart
-  wait
 
   if [ ! -e "/usr/local/sbin/vserver-autostart" ] \
     || [ "${_thisMode}" = "UPGRADE" ]; then
@@ -2418,7 +2405,6 @@ _upgrade_host() {
     apt-get remove exim -y --purge --auto-remove -qq
     apt-get autoremove -y
     service postfix restart
-    wait
   fi
 
   echo "Updating packages on this system..."

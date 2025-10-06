@@ -117,17 +117,12 @@ _mrun() {
   if [ -z "${_cmd}" ]; then
     return 0
   fi
-  if [ -n "${_ULTRA_VERBOSE_MODE}" ] \
-    && [ "${_ULTRA_VERBOSE_MODE}" = "YES" ]; then
-    bash -o pipefail -c -- "${_cmd}"
-    return $?
-  fi
   # stdout -> info log (silent on console)
   # stderr -> error log (silent on console)
-  bash -o pipefail -c -- "${_cmd}" \
+  bash -c -- "${_cmd}" \
     > >(tee -a "${_LOG_INFO}" >/dev/null) \
     2> >(tee -a "${_LOG_ERRR}" >/dev/null)
-  return $?
+  return 0
 }
 
 #

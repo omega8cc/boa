@@ -1069,7 +1069,6 @@ EOFMYSQL
       cp -af ${_locCnf}/nginx/nginx.conf /etc/nginx/nginx.conf
     fi
     _mrun "service nginx reload"
-    wait
     _msg "INFO: Aegir Master Instance installed"
   else
     if [ "${_tRee}" = "lts" ]; then
@@ -1131,7 +1130,6 @@ _if_upgrade_only_aegir_master() {
       _php_cli_cron_update
       sleep 8
       _mrun "service nginx reload"
-      wait
       _finale
       exit 0
     fi
