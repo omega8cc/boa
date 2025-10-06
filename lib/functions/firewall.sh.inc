@@ -312,7 +312,6 @@ _csf_lfd_gateway_allow() {
     fi
     if [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
       csf -ra &> /dev/null
-      wait
       synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
     else
       csf -r &> /dev/null
@@ -368,12 +367,10 @@ _csf_lfd_install_upgrade() {
     fi
     if [ "${_REMOVE_CSF}" = "YES" ]; then
       _mrun "service lfd stop"
-      wait
       pkill -9 -f ConfigServer
       killall sleep &> /dev/null
       rm -f /etc/csf/csf.error
       csf -x &> /dev/null
-      wait
       _mrun "update-rc.d -f csf remove"
       _mrun "update-rc.d -f lfd remove"
       rm -f /etc/cron.d/{csf,lfd}*
@@ -411,13 +408,11 @@ _csf_lfd_install_upgrade() {
       if [ -e "${_pthLog}/lastFire" ]; then
         rm -f ${_pthLog}/lastFire
         _mrun "service lfd stop"
-        wait
         pkill -9 -f ConfigServer
         killall sleep &> /dev/null
         rm -f /etc/csf/csf.error
         if [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
           csf -ra &> /dev/null
-          wait
           synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
         else
           csf -r &> /dev/null

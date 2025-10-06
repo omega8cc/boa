@@ -1248,7 +1248,6 @@ _find_fast_mirror_cnf() {
     fi
     _apt_clean_update
     apt-get install netcat-traditional ${_aptYesUnth} 2> /dev/null
-    wait
   fi
   _ffMirr=$(which ffmirror 2>&1)
   if [ -x "${_ffMirr}" ]; then

@@ -1596,7 +1596,6 @@ _install_php_multi() {
     && [ ! -e "${_pthLog}/libtidy-${_LIB_TIDY_VRN}.log" ]; then
     if [ -e "/usr/lib/libtidy.so" ]; then
       ###
-      local _PKG
       for _PKG in libtidy-dev libtidy-0.99-0 tidy; do
         if _pkg_installed "${_PKG}"; then
           _mrun "apt-get remove ${_PKG} -y --purge --auto-remove -qq"
@@ -2886,7 +2885,6 @@ _php_upgrade_all() {
       fi
       _php_multi_update "${e}"
       _mrun "service php${e}-fpm reload"
-      wait
       _PHP_VERSION=""
       _T_PHP_VRN=""
       _T_PHP_PTH=""
@@ -3136,7 +3134,6 @@ _php_check_if_rebuild() {
     _mrun "${_INSTAPP} libonig-dev"
     if [ -e "/usr/lib/libtidy.so" ]; then
       ###
-      local _PKG
       for _PKG in libtidy-dev libtidy-0.99-0 tidy; do
         if _pkg_installed "${_PKG}"; then
           _mrun "apt-get remove ${_PKG} -y --purge --auto-remove -qq"

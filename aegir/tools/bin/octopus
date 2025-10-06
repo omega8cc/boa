@@ -51,7 +51,6 @@ _clean_pid_exit() {
   [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
   [ -e "/tmp/aegir_backup_mode.txt" ] && rm -f /tmp/aegir_backup_mode.txt
   service cron start &> /dev/null
-  wait
   exit 1
 }
 

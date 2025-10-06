@@ -94,7 +94,7 @@ _find_correct_ip() {
   if [ -n "${_LOC_IP}" ] && grep -qE "${_LOC_IP}\s" /etc/hosts; then
     cp -af /etc/hosts /etc/.was.hosts
     sed -i "s/^${_LOC_IP}.*//g" /etc/hosts
-    [ -x "/etc/init.d/unbound" ] && service unbound restart && wait &> /dev/null
+    [ -x "/etc/init.d/unbound" ] && service unbound restart &> /dev/null
   fi
 }
 
@@ -468,11 +468,9 @@ _satellite_tune_fpm_config() {
     if [ ! -z "${_PHP_OLD_SV}" ] \
       && [ -e "/etc/init.d/php${_PHP_OLD_SV}-fpm" ]; then
       _mrun "service php${_PHP_OLD_SV}-fpm reload"
-      wait
     fi
     if [ -e "/etc/init.d/php${_PHP_SV}-fpm" ]; then
       _mrun "service php${_PHP_SV}-fpm reload"
-      wait
     fi
   fi
 }
@@ -3049,7 +3047,6 @@ _satellite_run_post_install() {
     rm -f ${_HM_ROOT}/themes/README.txt
     rm -f ${_HM_ROOT}/*.txt
     _mrun "service nginx reload"
-    wait
     cd ${_HM_ROOT}
     cp -af /opt/tmp/boa/aegir/conf/tpl/robots.txt ./
     cd ${_ROOT}
@@ -4112,7 +4109,6 @@ _satellite_make() {
     fi
     _satellite_force_advanced_nginx_config
     _mrun "service nginx reload"
-    wait
   fi
 }
 
@@ -4859,10 +4855,8 @@ _satellite_letsencrypt_vhost_sync() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "${_STATUS} A: Reloading Nginx..."
     service nginx reload
-    wait
   else
     _mrun "service nginx reload"
-    wait
   fi
 }
 
@@ -4886,10 +4880,8 @@ _satellite_letsencrypt_vhost_setup() {
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "${_STATUS} A: Reloading Nginx..."
         service nginx reload
-        wait
       else
         _mrun "service nginx reload"
-        wait
       fi
     fi
   fi
@@ -5827,10 +5819,8 @@ _satellite_child_b_aegir_health_check() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "${_STATUS} B: Reloading Nginx..."
       sudo /etc/init.d/nginx reload
-      wait
     else
       sudo /etc/init.d/nginx reload &> /dev/null
-      wait
     fi
   else
     _msg "${_STATUS} B: FATAL ERROR: Required file does not exist:"
