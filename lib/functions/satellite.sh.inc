@@ -4032,6 +4032,9 @@ _satellite_make() {
   chmod 700 /var/xdrago/run-${_USER} &> /dev/null
   chmod 700 ${_bldPth}/aegir/scripts/* &> /dev/null
 
+  ### Make sure that required web services are up and running
+  _mrun "webserver up"
+
   ###
   _AegirSetupA="${_bldPth}/aegir/scripts/AegirSetupA.sh.txt"
   bash ${_AegirSetupA} ${_USER}
