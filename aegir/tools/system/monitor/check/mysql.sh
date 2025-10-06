@@ -18,6 +18,9 @@ _check_root() {
 }
 _check_root
 
+# Run only on fully installed system
+[ ! -x "/usr/sbin/csf" ] && exit 0
+
 # Sanitize to allow only digits and minus sign
 export _B_NICE=${_B_NICE//[^0-9-]/}
 
