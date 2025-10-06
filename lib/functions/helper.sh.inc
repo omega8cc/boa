@@ -828,9 +828,11 @@ _virt_detection() {
       fi
       _msg "VIRT: This system is supported: ${_VIRT_IS}"
       echo
-      _msg "HINT: Commands to run in another terminal window to watch details"
-      _msg "INFO: tail -f ${_LOG_INFO}"
-      _msg "ERRR: tail -f ${_LOG_ERRR}"
+      if [ -n "${_LOG_INFO}" ] && [ -n "${_LOG_ERRR}" ]; then
+        _msg "HINT: Commands to run in another terminal window to watch details"
+        _msg "INFO: tail -f ${_LOG_INFO}"
+        _msg "ERRR: tail -f ${_LOG_ERRR}"
+      fi
     else
       if [ -z "${_VIRT_TEST}" ] || [ "${_VIRT_TEST}" = "0" ]; then
         _VIRT_TEST="unknown / not a virtual machine"
