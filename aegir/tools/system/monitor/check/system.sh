@@ -310,7 +310,7 @@ _postfix_health_check_fix() {
 }
 
 _vnstat_health_check_fix() {
-  if [ -x "/etc/init.d/vnstat" ]; then
+  if [ -x "/etc/init.d/vnstat" ] && [ ! -e "/run/vnstat.pid" ]; then
     if ! pgrep -f /usr/sbin/vnstatd \
       || [ ! -e "/run/vnstat/vnstat.pid" ]; then
       service vnstat restart
