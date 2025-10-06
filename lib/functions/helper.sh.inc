@@ -119,9 +119,14 @@ _mrun() {
   fi
   # stdout -> info log (silent on console)
   # stderr -> error log (silent on console)
-  bash -c -- "${_cmd}" \
-    > >(tee -a "${_LOG_INFO}" >/dev/null) \
-    2> >(tee -a "${_LOG_ERRR}" >/dev/null)
+  if [ -n "${_LOG_INFO}" ] && [ -n "${_LOG_ERRR}" ]; then
+    bash -c -- "${_cmd}" \
+      > >(tee -a "${_LOG_INFO}" >/dev/null) \
+      2> >(tee -a "${_LOG_ERRR}" >/dev/null)
+  else
+    # silent output + no logging
+    bash -c -- "${_cmd}" &> /dev/null
+  fi
   return 0
 }
 
