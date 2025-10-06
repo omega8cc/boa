@@ -153,7 +153,6 @@ _install_dependencies() {
   fi
   echo "Dependencies installed successfully."
   service cron start
-  wait
 }
 
 # Function to perform setup (initial configuration)
