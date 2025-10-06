@@ -18,6 +18,9 @@ _check_root() {
 }
 _check_root
 
+# Run only on fully installed system
+[ ! -x "/usr/sbin/csf" ] && exit 0
+
 export _INCIDENT_REPORT=${_INCIDENT_REPORT//[^A-Z]/}
 : "${_INCIDENT_REPORT:=YES}"
 

@@ -75,7 +75,9 @@ _single_instance_lock() {
 ###
 _check_uptime_grace_period() {
   _UPTIME_MIN=$(awk '{print int($1/60)}' /proc/uptime 2>/dev/null)
-  if [ "${_UPTIME_MIN}" -lt 15 ]; then
+  if [ "${_UPTIME_MIN}" -lt 15 ] \
+    || [ ! -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
+    || [ ! -x "/usr/sbin/csf" ]; then
     export _INCIDENT_REPORT=NO
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       echo "Skipping alerts: system uptime ${_UPTIME_MIN} min < 15 min threshold."
