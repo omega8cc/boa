@@ -392,7 +392,6 @@ _dns_unbound_install_upgrade() {
     [ -e "/usr/etc/unbound/unbound.pid" ] && _isUnbndFix=YES
     if [ "${_isUnbndFix}" = "YES" ]; then
       ###
-      local _PKG
       for _PKG in unbound unbound-anchor unbound-host dns-root-data; do
         if _pkg_installed "${_PKG}"; then
           _mrun "apt-get remove ${_PKG} -y --purge --auto-remove -qq"

@@ -3833,7 +3833,6 @@ _install_magick_src() {
         cp -a /etc/ImageMagick /etc/.ImageMagick
     fi
     ###
-    local _PKG
     for _PKG in imagemagick libmagickwand-dev graphviz libgraphviz-dev; do
       if _pkg_installed "${_PKG}"; then
         _mrun "apt-get remove ${_PKG} -y --purge --auto-remove -qq"
@@ -5653,7 +5652,6 @@ _run_xtrabackup_cleanup() {
     _msg "PROC: _run_xtrabackup_cleanup"
   fi
   # Check for installed Percona XtraBackup packages and remove them
-  local _PKG
   for _PKG in percona-xtrabackup-24 percona-xtrabackup-80 percona-xtrabackup-84; do
     if _pkg_installed "${_PKG}"; then
       _mrun "apt-get remove ${_PKG} -y --purge --auto-remove -qq"
@@ -5738,7 +5736,6 @@ _run_aptitude_deps_install() {
   if [ -e "/root/.dont.use.fancy.bash.login.cnf" ] \
     && [ -e "/usr/bin/screenfetch" ]; then
     ###
-    local _PKG
     for _PKG in toilet figlet screenfetch; do
       if _pkg_installed "${_PKG}"; then
         _mrun "apt-get remove ${_PKG} -y --purge --auto-remove -qq"
@@ -6371,7 +6368,6 @@ _if_major_os_upgrade() {
     fi
     _apt_clean_update_no_releaseinfo_change
     ###
-    local _PKG
     for _PKG in collectd libc-client2007b-dev; do
       if _pkg_installed "${_PKG}"; then
         _mrun "apt-get remove ${_PKG} -y --purge --auto-remove -qq"
@@ -6385,7 +6381,6 @@ _if_major_os_upgrade() {
       fi
     done
     ###
-    local _PKG
     for _PKG in libmariadb3 mariadb-common mailutils; do
       if _pkg_installed "${_PKG}"; then
         _mrun "apt-get remove --purge ${_PKG} -y -qq"
@@ -6423,7 +6418,6 @@ _if_major_os_upgrade() {
       _apt_clean_update_no_releaseinfo_change
     fi
     ###
-    local _PKG
     for _PKG in nginx-extras nginx nginx-common nginx-full percona-release; do
       if _pkg_installed "${_PKG}"; then
         _mrun "apt-get remove ${_PKG} -y -qq"
@@ -6472,7 +6466,6 @@ _if_major_os_upgrade() {
       touch /etc/php5/conf.d/{redis.ini,suhosin.ini,newrelic.ini}
     fi
     ###
-    local _PKG
     for _PKG in php5 php5-cgi php5-curl php5-fpm php5-gd php5-geoip php5-gmp php5-imagick php5-imap php5-ldap php5-mcrypt php5-memcache php5-mysql php5-sqlite php5-xmlrpc php5-xsl; do
       if _pkg_installed "${_PKG}"; then
         _mrun "apt-get remove ${_PKG} -y --purge --auto-remove -qq"
@@ -6486,7 +6479,6 @@ _if_major_os_upgrade() {
       fi
     done
     ###
-    local _PKG
     for _PKG in phpunit php-pear php-benchmark php5-cli php5-common php5-apc php-apc; do
       if _pkg_installed "${_PKG}"; then
         _mrun "apt-get remove ${_PKG} -y --purge --auto-remove -qq"
@@ -6788,7 +6780,6 @@ _if_major_os_upgrade() {
           _msg "TRCK: Removing libldap packages for a clean start"
         fi
         ###
-        local _PKG
         for _PKG in libldap-common libldap2-dev libldap-dev; do
           if _pkg_installed "${_PKG}"; then
             _mrun "apt-get remove ${_PKG} -y -qq"
@@ -7381,7 +7372,6 @@ _sys_packages_install() {
     _apt_clean_update
     _mrun "service nginx start"
     ###
-    local _PKG
     for _PKG in nginx-extras nginx nginx-common nginx-full redis-server percona-release; do
       if _pkg_installed "${_PKG}"; then
         _mrun "apt-get remove ${_PKG} -y -qq"
@@ -7425,7 +7415,6 @@ _sys_packages_install() {
       _apt_clean_update
     fi
     ###
-    local _PKG
     for _PKG in libmariadb3 mariadb-common mailutils; do
       if _pkg_installed "${_PKG}"; then
         _mrun "apt-get remove --purge ${_PKG} -y -qq"
