@@ -1175,12 +1175,12 @@ _turn_off_apparmor_in_octopus() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "ARMR: Turning off AppArmor temporarily..."
     fi
-    rm -rf /var/cache/apparmor/*
-    _mrun "apparmor_parser -r /etc/apparmor.d/*"
-    _mrun "aa-complain /etc/apparmor.d/*"
-    _mrun "service apparmor stop"
-    _mrun "aa-teardown"
-    _mrun "service auditd stop"
+    rm -rf /var/cache/apparmor/* &> /dev/null
+    apparmor_parser -r /etc/apparmor.d/* &> /dev/null
+    aa-complain /etc/apparmor.d/* &> /dev/null
+    service apparmor stop &> /dev/null
+    aa-teardown &> /dev/null
+    service auditd stop &> /dev/null
     touch /root/.turn_off_apparmor_in_octopus.cnf
   fi
 }
