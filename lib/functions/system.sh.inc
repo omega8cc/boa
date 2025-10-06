@@ -5637,6 +5637,10 @@ _finale() {
       fi
     fi
   fi
+  _CNT=$(pgrep -fc 'tee -a /var/backups/barracuda')
+  if (( _CNT > 1 )); then
+    pkill -f 'tee -a /var/backups/barracuda'
+  fi
   cd /
   chmod 711 bin boot data dev emul etc home lib lib64 lib32 media mnt opt \
     sbin selinux srv sys usr var share run &> /dev/null
