@@ -1555,6 +1555,11 @@ _init_setup() {
       echo "LOG TO CHECK: ${_IN_BARRACUDA_LOG}"
       _send_errors
       _clean_pid_exit _barracuda_install
+    else
+      _CNT=$(pgrep -fc 'tee -a /var/backups/barracuda-install')
+      if (( _CNT > 1 )); then
+        pkill -f 'tee -a /var/backups/barracuda-install'
+      fi
     fi
     _NOW=$(date +%y%m%d-%H%M%S)
     _NOW=${_NOW//[^0-9-]/}
