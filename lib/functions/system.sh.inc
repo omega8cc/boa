@@ -7813,7 +7813,12 @@ _if_install_vnstat() {
     _msg "PROC: _if_install_vnstat"
   fi
   if [ ! -e "/run/cloud_vhost.pid" ]; then
+    _VNSTAT_ITD=$(vnstat --version 2>&1 \
+      | tr -d "\n" \
+      | cut -d" " -f2 \
+      | awk '{ print $1}' 2>&1)
     if [ ! -e "${_pthLog}/vnstat-${_VNSTAT_VRN}.log" ] \
+      || [ "${_VNSTAT_ITD}" != "${_VNSTAT_VRN}" ] \
       || [ ! -e "/usr/bin/vnstat" ] \
       || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
