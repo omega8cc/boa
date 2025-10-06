@@ -139,7 +139,7 @@ _UNBOUND_VRN=1.23.1
 _UPROGRESS_LEGACY_VRN=1.0.3.1
 _UPROGRESS_SEVEN_VRN=2.0.1.6
 _UPROGRESS_EIGHT_VRN=2.0.2
-_VNSTAT_VRN=2.7
+_VNSTAT_VRN=2.13
 _WKHTMLTOX_VRN=12.6-1
 _YAML_PHP_LEGACY_VRN=1.3.2
 _YAML_PHP_SEVENO_VRN=2.1.0
@@ -214,6 +214,10 @@ _clean_pid_exit() {
   [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
   [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
   service cron start &> /dev/null
+  _CNT=$(pgrep -fc 'tee -a /var/backups/barracuda')
+  if (( _CNT > 1 )); then
+    pkill -f 'tee -a /var/backups/barracuda'
+  fi
   exit 1
 }
 

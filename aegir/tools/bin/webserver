@@ -1,0 +1,130 @@
+#!/bin/bash
+
+export HOME=/root
+export SHELL=/bin/bash
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
+
+_pthOml="/var/log/boa/php.incident.log"
+
+_check_root() {
+  if [ "$(id -u)" -eq 0 ]; then
+    # shellcheck disable=SC1091
+    [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
+    chmod a+w /dev/null
+  else
+    echo "ERROR: This script should be run as a root user"
+    exit 1
+  fi
+}
+_check_root
+
+# Sanitize to allow only digits and minus sign
+export _B_NICE=${_B_NICE//[^0-9-]/}
+
+# Validate and set default if necessary
+if ! [[ "$_B_NICE" =~ ^-?[0-9]+$ ]]; then
+  _B_NICE=0
+fi
+
+# Clamp the value within -20 to 19
+if (( _B_NICE < -20 )); then
+  _B_NICE=-20
+elif (( _B_NICE > 19 )); then
+  _B_NICE=19
+fi
+
+renice ${_B_NICE} -p $$ &> /dev/null
+
+export _INCIDENT_REPORT=${_INCIDENT_REPORT//[^A-Z]/}
+: "${_INCIDENT_REPORT:=YES}"
+
+###
+### Atomic lock/unlock to prevent TOCTOU race
+###
+_manage_single_lock() {
+  _SELF_NAME="${_SELF_NAME:-$(basename "$0")}"
+  for _L in "/opt/local/bin/lock.inc" "/opt/local/lib/lock.inc"; do
+    [ -r "$_L" ] && . "$_L" && break
+  done
+  if [ -n "${_SINGLE_INSTANCE_LIB_VER:-}" ] && command -v _single_instance_lock >/dev/null 2>&1; then
+    # use shared lock if available
+    _single_instance_lock
+  else
+    # -------- legacy pgrep guard ---------
+    # Exit if more than 2 instances of this script are running
+    _SCRIPT=$(basename "$0")
+    _CNT=$(pgrep -fc ${_SCRIPT})
+    if (( _CNT > 2 )); then
+      echo "Too many ${_SCRIPT} running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
+      exit 0
+    fi
+  fi
+}
+_manage_single_lock
+
+_valkey_health_check_fix() {
+  if ! pgrep -f /usr/bin/valkey-server \
+    || [ ! -e "/run/valkey/valkey.sock" ] \
+    || [ ! -e "/run/valkey/valkey.pid" ]; then
+    mkdir -p /run/valkey
+    chown -R valkey:valkey /run/valkey
+    killall -9 valkey-server &> /dev/null
+    rm -f /var/lib/valkey/*
+    service valkey-server restart
+    wait
+  fi
+}
+
+_fpm_health_check_fix() {
+  _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
+  for e in ${_PHP_V}; do
+    if [ -x "/etc/init.d/php${e}-fpm" ] && [ -x "/opt/php${e}/bin/php" ]; then
+      _pat="php-fpm: master process.*/opt/php${e}/etc/php${e}-fpm.conf"
+      _TestPhp="$(pgrep -f "${_pat}")"
+      if ! pgrep -f "${_pat}" \
+        || [ ! -S "/run/www${e}.fpm.socket" ] \
+        || [ ! -s "/run/php${e}-fpm.pid" ]; then
+        : > /run/fmp_wait.pid
+        : > /run/restarting_fmp_wait.pid
+        sleep 1
+        service "php${e}-fpm" restart
+        wait
+        sleep 1
+        rm -f /run/fmp_wait.pid /run/restarting_fmp_wait.pid
+      fi
+    fi
+  done
+}
+
+_nginx_health_check_fix() {
+  if [ -x "/etc/init.d/nginx" ]; then
+    if ! pgrep -f 'nginx: master process' \
+      || [ ! -e "/run/nginx.pid" ]; then
+      pkill -9 -f nginx: || true
+      service nginx restart
+      wait
+    fi
+  fi
+}
+
+_web_up() {
+  if [ ! -e "/var/tmp/fpm" ]; then
+    mkdir -p /var/tmp/fpm
+    chmod 777 /var/tmp/fpm
+  fi
+  _valkey_health_check_fix
+  _fpm_health_check_fix
+  _nginx_health_check_fix
+}
+
+# Simple CLI
+case "$1" in
+  enforce) _web_up ;;
+  up) _web_up ;;
+  *)
+    echo "Usage: $0 {enforce|up}"
+    exit 2
+    ;;
+esac
+
+exit 0
