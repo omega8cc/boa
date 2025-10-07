@@ -2036,8 +2036,8 @@ _barracuda_cnf() {
     echo "###"                                                >> ${_barCnf}
     echo "_CPU_CRIT_RATIO=${_CPU_CRIT_RATIO}"                 >> ${_barCnf}
     echo "_CPU_MAX_RATIO=${_CPU_MAX_RATIO}"                   >> ${_barCnf}
-    echo "_CPU_SPIDER_RATIO=${_CPU_SPIDER_RATIO}"             >> ${_barCnf}
     echo "_CPU_TASK_RATIO=${_CPU_TASK_RATIO}"                 >> ${_barCnf}
+    echo "_CPU_SPIDER_RATIO=${_CPU_SPIDER_RATIO}"             >> ${_barCnf}
 
     echo "###"                                                >> ${_barCnf}
     echo "_CUSTOM_COLLATION_SQL=${_CUSTOM_COLLATION_SQL}"     >> ${_barCnf}
