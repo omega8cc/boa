@@ -51,10 +51,6 @@ _clean_pid_exit() {
   [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
   [ -e "/tmp/aegir_backup_mode.txt" ] && rm -f /tmp/aegir_backup_mode.txt
   service cron start &> /dev/null
-  _CNT=$(pgrep -fc 'tee -a /var/backups/octopus')
-  if (( _CNT > 1 )); then
-    pkill -f 'tee -a /var/backups/octopus'
-  fi
   exit 1
 }
 
@@ -856,10 +852,6 @@ _up_finish() {
   if [ -e "/opt/local/bin/php" ] || [ -e "/usr/local/bin/php" ]; then
     rm -f /opt/local/bin/php
     rm -f /usr/local/bin/php
-  fi
-  _CNT=$(pgrep -fc 'tee -a /var/backups/octopus')
-  if (( _CNT > 1 )); then
-    pkill -f 'tee -a /var/backups/octopus'
   fi
   if [ -d "/data/u" ]; then
     rm -rf /opt/tmp/*
