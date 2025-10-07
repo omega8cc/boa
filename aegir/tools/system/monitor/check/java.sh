@@ -148,18 +148,18 @@ _solr_health_check_fix() {
       service solr9 restart
       wait
       _thisErrLog="$(date) Solr9 Server was down, started"
-      echo "${_thisErrLog}" >> "${_pthOml}"
+      echo "${_thisErrLog}" >> ${_pthOml}
       _incident_email_report "Solr9 Server was down, started"
-      echo >> "${_pthOml}"
+      echo >> ${_pthOml}
     else
       _pid="$(cat "${_pidfile}" 2>/dev/null | sed 's/[^0-9]//g')"
       if [ -n "${_pid}" ] && ! ps -p "${_pid}" >/dev/null 2>&1; then
         service solr9 restart
         wait
         _thisErrLog="$(date) Solr9 stale PID detected, restarted"
-        echo "${_thisErrLog}" >> "${_pthOml}"
+        echo "${_thisErrLog}" >> ${_pthOml}
         _incident_email_report "Solr9 stale PID detected, restarted"
-        echo >> "${_pthOml}"
+        echo >> ${_pthOml}
       fi
     fi
   fi
@@ -169,18 +169,18 @@ _solr_health_check_fix() {
       service solr7 restart
       wait
       _thisErrLog="$(date) Solr7 Server was down, started"
-      echo "${_thisErrLog}" >> "${_pthOml}"
+      echo "${_thisErrLog}" >> ${_pthOml}
       _incident_email_report "Solr7 Server was down, started"
-      echo >> "${_pthOml}"
+      echo >> ${_pthOml}
     else
       _pid="$(cat "${_pidfile}" 2>/dev/null | sed 's/[^0-9]//g')"
       if [ -n "${_pid}" ] && ! ps -p "${_pid}" >/dev/null 2>&1; then
         service solr7 restart
         wait
         _thisErrLog="$(date) Solr7 stale PID detected, restarted"
-        echo "${_thisErrLog}" >> "${_pthOml}"
+        echo "${_thisErrLog}" >> ${_pthOml}
         _incident_email_report "Solr7 stale PID detected, restarted"
-        echo >> "${_pthOml}"
+        echo >> ${_pthOml}
       fi
     fi
   fi
@@ -190,18 +190,18 @@ _solr_health_check_fix() {
       service jetty9 restart
       wait
       _thisErrLog="$(date) Solr4 Server was down, started"
-      echo "${_thisErrLog}" >> "${_pthOml}"
+      echo "${_thisErrLog}" >> ${_pthOml}
       _incident_email_report "Solr4 Server was down, started"
-      echo >> "${_pthOml}"
+      echo >> ${_pthOml}
     else
       _pid="$(cat "${_pidfile}" 2>/dev/null | sed 's/[^0-9]//g')"
       if [ -n "${_pid}" ] && ! ps -p "${_pid}" >/dev/null 2>&1; then
         service jetty9 restart
         wait
         _thisErrLog="$(date) Solr4 stale PID detected, restarted"
-        echo "${_thisErrLog}" >> "${_pthOml}"
+        echo "${_thisErrLog}" >> ${_pthOml}
         _incident_email_report "Solr4 stale PID detected, restarted"
-        echo >> "${_pthOml}"
+        echo >> ${_pthOml}
       fi
     fi
   fi
