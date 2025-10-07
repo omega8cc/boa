@@ -1002,15 +1002,8 @@ _download_helpers_libs() {
   cp -af ${_bldPth}/aegir/helpers/apt.conf.noi.dist /opt/apt/
   #
   # Create tmp stuff
-  if [ ! -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
-    export _LOG_INFO=${_vBs}/octopus-install-${_NOW}.log
-    export _LOG_ERRR=${_vBs}/octopus-install-errors-${_NOW}.log
-  else
-    export _LOG_INFO=${_vBs}/octopus-upgrade-${_NOW}.log
-    export _LOG_ERRR=${_vBs}/octopus-upgrade-errors-${_NOW}.log
-  fi
-  touch ${_LOG_INFO} ${_LOG_ERRR}
-  chmod 646 ${_LOG_INFO} ${_LOG_ERRR}
+  export _LOG_INFO=""
+  export _LOG_ERRR=""
   mkdir -p /var/opt
   rm -rf /var/opt/*
   _SRCDIR="/opt/tmp/files"

@@ -56,13 +56,9 @@ _clean_pid_exit() {
   rm -f ${_vBs}/OCTOPUS.sh*
   rm -f ${_vBs}/BARRACUDA.sh*
   service cron start &> /dev/null
-  _CNT=$(pgrep -fc 'tee -a /var/backups/barracuda')
+  _CNT=$(pgrep -fc 'tee -a /var/backups/barracuda-')
   if (( _CNT > 1 )); then
-    pkill -f 'tee -a /var/backups/barracuda'
-  fi
-  _CNT=$(pgrep -fc 'tee -a /var/backups/octopus')
-  if (( _CNT > 1 )); then
-    pkill -f 'tee -a /var/backups/octopus'
+    pkill -f 'tee -a /var/backups/barracuda-'
   fi
   exit 1
 }
@@ -1569,9 +1565,9 @@ _init_setup() {
       _send_errors
       _clean_pid_exit _barracuda_install
     else
-      _CNT=$(pgrep -fc 'tee -a /var/backups/barracuda')
+      _CNT=$(pgrep -fc 'tee -a /var/backups/barracuda-')
       if (( _CNT > 1 )); then
-        pkill -f 'tee -a /var/backups/barracuda'
+        pkill -f 'tee -a /var/backups/barracuda-'
       fi
     fi
     _NOW=$(date +%y%m%d-%H%M%S)
@@ -1600,10 +1596,6 @@ _init_setup() {
       _send_errors
       _clean_pid_exit _octopus_install
     else
-      _CNT=$(pgrep -fc 'tee -a /var/backups/octopus')
-      if (( _CNT > 1 )); then
-        pkill -f 'tee -a /var/backups/octopus'
-      fi
       rm -rf /data/disk/${_usEr}/.tmp/cache
     fi
   fi
@@ -1663,10 +1655,6 @@ _init_setup() {
 #         echo
 #         echo "Enjoy!"
 #         echo
-        _CNT=$(pgrep -fc 'tee -a /var/backups/octopus')
-        if (( _CNT > 1 )); then
-          pkill -f 'tee -a /var/backups/octopus'
-        fi
         nohup /opt/local/bin/octopus up-${_tRee} ${_usEr} force log noscreen >${_UP_OCTOPUS_LOG} 2>&1 &
       else
         echo "Launching octopus up-${_tRee} ${_usEr} now..."
@@ -1690,10 +1678,6 @@ _init_setup() {
         if [ "${_UP_OCTOPUS_AGAIN}" = "YES" ]; then
           echo "Octopus LE setup status: NOT READY!"
           echo "Launching another octopus upgrade to fix LE..."
-          _CNT=$(pgrep -fc 'tee -a /var/backups/octopus')
-          if (( _CNT > 1 )); then
-            pkill -f 'tee -a /var/backups/octopus'
-          fi
           _UP_OCTOPUS_AGAIN_LOG="${_LOG_UP_DIR}/$(basename "$0")-up-again-octopus-${_NOW}.log"
           /opt/local/bin/octopus up-${_tRee} ${_usEr} force log noscreen 2>&1 | tee ${_UP_OCTOPUS_AGAIN_LOG}
           wait

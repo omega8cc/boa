@@ -422,18 +422,18 @@ _if_launch_boa_install() {
 ###
 _disable_apparmor_utils() {
   if [ -e "/etc/apparmor.d" ] && [ -e "/var/cache/apparmor" ]; then
-    rm -rf /var/cache/apparmor/* >> "${_logSlt}"
-    apparmor_parser -r /etc/apparmor.d/* >> "${_logSlt}"
-    aa-complain /etc/apparmor.d/* >> "${_logSlt}"
+    rm -rf /var/cache/apparmor/* &> /dev/null
+    apparmor_parser -r /etc/apparmor.d/* &> /dev/null
+    aa-complain /etc/apparmor.d/* &> /dev/null
   fi
   if [ -x "/etc/init.d/apparmor" ]; then
-    service apparmor stop >> "${_logSlt}"
-    update-rc.d -f apparmor remove >> "${_logSlt}"
-    service auditd stop >> "${_logSlt}"
-    update-rc.d -f auditd remove >> "${_logSlt}"
+    service apparmor stop &> /dev/null
+    update-rc.d -f apparmor remove &> /dev/null
+    service auditd stop &> /dev/null
+    update-rc.d -f auditd remove &> /dev/null
   fi
   if [ -x "/usr/sbin/aa-teardown" ]; then
-    aa-teardown >> "${_logSlt}"
+    aa-teardown &> /dev/null
   fi
   [ ! -e "/root/.disable.apparmor.cnf" ] && touch /root/.disable.apparmor.cnf
 }

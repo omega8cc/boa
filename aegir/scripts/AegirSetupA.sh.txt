@@ -128,7 +128,6 @@ _HM_ROOT="${_ROOT}/aegir/distro/${_HM_DISTRO}"
 _DISTRO_ROOT="${_ROOT}/distro/${_DISTRO}"
 _D="/data/all"
 _SRCDIR="/opt/tmp/files"
-_LOG="/var/backups/octopus-${_USER}-${_NOW}.log"
 if [ "${_PHP_CLI_VERSION}" = "8.4" ] \
   && [ -x "/opt/php84/bin/php" ]; then
   _T_CLI=/opt/php84/bin

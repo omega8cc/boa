@@ -68,14 +68,14 @@ _turn_off_apparmor() {
   sed -i "s/\/usr\/bin\/sh/\/bin\/bash/g" /lib/apparmor/profile-load
   sed -i "s/\/bin\/sh/\/bin\/bash/g" /lib/apparmor/profile-load
   # Disable Apparmor
-  rm -rf /var/cache/apparmor/*
-  rm -f /etc/apparmor.d/*~
-  apparmor_parser -r /etc/apparmor.d/* 2> /dev/null
-  rm -f /etc/apparmor.d/*~
-  aa-complain /etc/apparmor.d/* 2> /dev/null
-  service apparmor stop 2> /dev/null
-  aa-teardown 2> /dev/null
-  service auditd stop 2> /dev/null
+  rm -rf /var/cache/apparmor/* &> /dev/null
+  rm -f /etc/apparmor.d/*~ &> /dev/null
+  apparmor_parser -r /etc/apparmor.d/* &> /dev/null
+  rm -f /etc/apparmor.d/*~ &> /dev/null
+  aa-complain /etc/apparmor.d/* &> /dev/null
+  service apparmor stop &> /dev/null
+  aa-teardown &> /dev/null
+  service auditd stop &> /dev/null
 }
 [ ! -e "/root/.keep_apparmor_on.cnf" ] && [ -e "/lib/apparmor/apparmor.systemd" ] && _turn_off_apparmor
 
