@@ -173,7 +173,7 @@ _if_fix_dhcp() {
     count=$(tail -n 3 "${_DHCP_LOG}" | grep -c "dhclient:.*Failed")
 
     # Debugging: Log the count value
-    [ "$count" -gt 0 ] && echo "DHCP failure count: $count" >> "${_pthOml}"
+    [ "$count" -gt 0 ] && echo "DHCP failure count: $count" >> ${_pthOml}
 
     # Proceed only if there is at least one failure
     if [ "$count" -gt 0 ]; then
@@ -203,9 +203,9 @@ _if_fix_dhcp() {
 
       # Log the error and send an email report
       _thisErrLog="$(date) DHCP error detected, firewall updated"
-      echo "${_thisErrLog}" >> "${_pthOml}"
+      echo "${_thisErrLog}" >> ${_pthOml}
       _incident_email_report "DHCP error detected, firewall updated"
-      echo >> "${_pthOml}"
+      echo >> ${_pthOml}
     fi
   fi
 }

@@ -105,8 +105,8 @@ _incident_email_report() {
 
     if [ "${_send_email}" = true ]; then
       _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
-      echo "Sending Incident Report Email on $(date)" >> "${_pthOml}"
-      s-nail -s "Incident Report on ${_hName}: ${_subject}" "${_MY_EMAIL}" < "${_pthOml}"
+      echo "Sending Incident Report Email on $(date)" >> ${_pthOml}
+      s-nail -s "Incident Report on ${_hName}: ${_subject}" "${_MY_EMAIL}" < ${_pthOml}
     fi
   fi
 }
@@ -120,10 +120,10 @@ _hold_services() {
   killall -9 php-fpm
   local _log_message
   _log_message="$(date) System Load ${_current_load}% (${_load_period}) - Web Server Paused"
-  echo "${_log_message}" >> "${_pthOml}"
+  echo "${_log_message}" >> ${_pthOml}
   local _subject="Web Services Paused - ${_load_period} Load ${_current_load}% exceeded Max Load Threshold ${_threshold}%"
   _incident_email_report "${_log_message}" "${_subject}" "ALERT"
-  echo >> "${_pthOml}"
+  echo >> ${_pthOml}
   echo "Action Taken: Web services paused due to high load."
 }
 
@@ -136,10 +136,10 @@ _terminate_processes() {
     killall -9 php drush.php wget curl &> /dev/null
     local _log_message
     _log_message="$(date) System Load ${_current_load}% (${_load_period}) - PHP/Wget/cURL terminated"
-    echo "${_log_message}" >> "${_pthOml}"
+    echo "${_log_message}" >> ${_pthOml}
     local _subject="Processes Terminated - ${_load_period} Load ${_current_load}% exceeded Critical Load Threshold ${_threshold}%"
     _incident_email_report "${_log_message}" "${_subject}" "ALERT"
-    echo >> "${_pthOml}"
+    echo >> ${_pthOml}
     echo "Action Taken: Long-running processes terminated due to critical load."
   fi
 }
@@ -153,10 +153,10 @@ _nginx_high_load_on() {
   service nginx reload &> /dev/null
   local _log_message
   _log_message="$(date) Enabled Spider Protection ${_load_period} Load: ${_current_load}%"
-  echo "${_log_message}" >> "${_pthOml}"
+  echo "${_log_message}" >> ${_pthOml}
 # local _subject="Enabled Spider Protection - ${_load_period} Load ${_current_load}% exceeded Spider Protection Threshold ${_threshold}%"
 # _incident_email_report "${_log_message}" "${_subject}" "INFO"
-# echo >> "${_pthOml}"
+# echo >> ${_pthOml}
   echo "Action Taken: Enabled protection from spiders (nginx high load configuration applied)."
 }
 
@@ -166,10 +166,10 @@ _nginx_high_load_off() {
   service nginx reload &> /dev/null
   local _log_message
   _log_message="$(date) Disabled Spider Protection Load: ${_O_LOAD}%"
-  echo "${_log_message}" >> "${_pthOml}"
+  echo "${_log_message}" >> ${_pthOml}
 # local _subject="Disabled Spider Protection - Load decreased below Spider Protection Threshold ${_CPU_SPIDER_THRESHOLD}%"
 # _incident_email_report "${_log_message}" "${_subject}" "INFO"
-# echo >> "${_pthOml}"
+# echo >> ${_pthOml}
   echo "Action Taken: Disabled protection from spiders (nginx high load configuration removed)."
 }
 

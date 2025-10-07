@@ -425,7 +425,7 @@ _dns_unbound_install_upgrade() {
       echo "nameserver 9.9.9.9" >> /etc/resolv.conf
     fi
     if [ -x "/usr/sbin/aa-teardown" ]; then
-      _mrun "aa-teardown"
+      aa-teardown &> /dev/null
     fi
     _mrun "${_INSTAPP} libevent-dev"
     _mrun "${_INSTAPP} resolvconf"
@@ -434,7 +434,7 @@ _dns_unbound_install_upgrade() {
     _mrun "${_INSTAPP} unbound-host"
     _mrun "${_INSTAPP} dns-root-data"
     if [ -x "/usr/sbin/aa-teardown" ]; then
-      _mrun "aa-teardown"
+      aa-teardown &> /dev/null
     fi
     ###
     [ ! -e "/run/unbound" ] && mkdir -p /run/unbound
