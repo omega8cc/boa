@@ -5208,12 +5208,12 @@ _turn_off_apparmor_temporarily() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "ARMR: Turning off AppArmor temporarily..."
     fi
-    rm -rf /var/cache/apparmor/*
-    _mrun "apparmor_parser -r /etc/apparmor.d/*"
-    _mrun "aa-complain /etc/apparmor.d/*"
-    _mrun "service apparmor stop"
-    _mrun "aa-teardown"
-    _mrun "service auditd stop"
+    rm -rf /var/cache/apparmor/* &> /dev/null
+    apparmor_parser -r /etc/apparmor.d/* &> /dev/null
+    aa-complain /etc/apparmor.d/* &> /dev/null
+    service apparmor stop &> /dev/null
+    aa-teardown &> /dev/null
+    service auditd stop &> /dev/null
   fi
 }
 
@@ -5336,28 +5336,28 @@ _sync_apparmor_profiles() {
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "ARMR: Activating AppArmor in the complain mode"
         fi
-        _mrun "rm -rf /var/cache/apparmor/*"
+        rm -rf /var/cache/apparmor/* &> /dev/null
         if [ -x "/etc/init.d/apparmor" ]; then
-          _mrun "service apparmor restart"
+          service apparmor restart &> /dev/null
         fi
         if [ -x "/etc/init.d/auditd" ]; then
-          _mrun "service auditd restart"
+          service auditd restart &> /dev/null
         fi
-        _mrun "apparmor_parser -r /etc/apparmor.d/*"
-        _mrun "aa-complain /etc/apparmor.d/*"
+        apparmor_parser -r /etc/apparmor.d/* &> /dev/null
+        aa-complain /etc/apparmor.d/* &> /dev/null
       elif [ -e "/root/.enforce.apparmor.cnf" ]; then
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "ARMR: Activating AppArmor in the enforced mode"
         fi
-        _mrun "rm -rf /var/cache/apparmor/*"
+        rm -rf /var/cache/apparmor/* &> /dev/null
         if [ -x "/etc/init.d/apparmor" ]; then
-          _mrun "service apparmor restart"
+          service apparmor restart &> /dev/null
         fi
         if [ -x "/etc/init.d/auditd" ]; then
-          _mrun "service auditd restart"
+          service auditd restart &> /dev/null
         fi
-        _mrun "apparmor_parser -r /etc/apparmor.d/*"
-        _mrun "aa-enforce /etc/apparmor.d/*"
+        apparmor_parser -r /etc/apparmor.d/* &> /dev/null
+        aa-enforce /etc/apparmor.d/* &> /dev/null
         if [ "${_OS_CODE}" != "stretch" ] && [ "${_OS_CODE}" != "jessie" ]; then
           _if_enforce_apparmor_profiles
         fi
@@ -5367,19 +5367,19 @@ _sync_apparmor_profiles() {
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "ARMR: Deactivating AppArmor using aa-teardown"
         fi
-        _mrun "rm -rf /var/cache/apparmor/*"
-        _mrun "apparmor_parser -r /etc/apparmor.d/*"
-        _mrun "aa-complain /etc/apparmor.d/*"
+        rm -rf /var/cache/apparmor/* &> /dev/null
+        apparmor_parser -r /etc/apparmor.d/* &> /dev/null
+        aa-complain /etc/apparmor.d/* &> /dev/null
         if [ -x "/etc/init.d/apparmor" ]; then
-          _mrun "service apparmor stop"
-          _mrun "update-rc.d -f apparmor remove"
+          service apparmor stop &> /dev/null
+          update-rc.d -f apparmor remove &> /dev/null
         fi
         if [ -x "/etc/init.d/auditd" ]; then
-          _mrun "service auditd stop"
-          _mrun "update-rc.d -f auditd remove"
+          service auditd stop &> /dev/null
+          update-rc.d -f auditd remove &> /dev/null
         fi
         if [ -x "/usr/sbin/aa-teardown" ]; then
-          _mrun "aa-teardown"
+          aa-teardown &> /dev/null
         fi
       fi
     fi
@@ -5637,9 +5637,9 @@ _finale() {
       fi
     fi
   fi
-  _CNT=$(pgrep -fc 'tee -a /var/backups/barracuda')
+  _CNT=$(pgrep -fc 'tee -a /var/backups/barracuda-')
   if (( _CNT > 1 )); then
-    pkill -f 'tee -a /var/backups/barracuda'
+    pkill -f 'tee -a /var/backups/barracuda-'
   fi
   cd /
   chmod 711 bin boot data dev emul etc home lib lib64 lib32 media mnt opt \

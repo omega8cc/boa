@@ -141,8 +141,6 @@ if [ "$(pgrep -fc 'n7 bash /var/xdrago/runner.sh')" -gt 8 ] \
   || [ "${_DAILY_RUNNING}" = "TRUE" ] \
   || [ -e "/run/mysql_restart_running.pid" ] \
   || [ -e "/run/boa_sql_cluster_backup.pid" ] \
-  || [ -e "/run/boa_wait.pid" ] \
-  || [ -e "/run/boa_run.pid" ] \
   || [ -e "/run/boa_cron_wait.pid" ]; then
   touch /var/log/boa/wait-runner.pid
   echo "Another BOA task is running, we will try again later..."

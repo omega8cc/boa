@@ -187,10 +187,6 @@ _clean_pid_exit() {
   [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
   [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
   service cron start &> /dev/null
-  _CNT=$(pgrep -fc 'tee -a /var/backups/octopus')
-  if (( _CNT > 1 )); then
-    pkill -f 'tee -a /var/backups/octopus'
-  fi
   exit 1
 }
 

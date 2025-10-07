@@ -119,9 +119,14 @@ _mrun() {
   fi
   # stdout -> info log (silent on console)
   # stderr -> error log (silent on console)
-  bash -c -- "${_cmd}" \
-    > >(tee -a "${_LOG_INFO}" >/dev/null) \
-    2> >(tee -a "${_LOG_ERRR}" >/dev/null)
+  if [ -n "${_LOG_INFO}" ] && [ -n "${_LOG_ERRR}" ]; then
+    bash -c -- "${_cmd}" \
+      > >(tee -a "${_LOG_INFO}" >/dev/null) \
+      2> >(tee -a "${_LOG_ERRR}" >/dev/null)
+  else
+    # silent output + no logging
+    bash -c -- "${_cmd}" &> /dev/null
+  fi
   return 0
 }
 
@@ -823,9 +828,11 @@ _virt_detection() {
       fi
       _msg "VIRT: This system is supported: ${_VIRT_IS}"
       echo
-      _msg "HINT: Commands to run in another terminal window to watch details"
-      _msg "INFO: tail -f ${_LOG_INFO}"
-      _msg "ERRR: tail -f ${_LOG_ERRR}"
+      if [ -n "${_LOG_INFO}" ] && [ -n "${_LOG_ERRR}" ]; then
+        _msg "HINT: Commands to run in another terminal window to watch details"
+        _msg "INFO: tail -f ${_LOG_INFO}"
+        _msg "ERRR: tail -f ${_LOG_ERRR}"
+      fi
     else
       if [ -z "${_VIRT_TEST}" ] || [ "${_VIRT_TEST}" = "0" ]; then
         _VIRT_TEST="unknown / not a virtual machine"
@@ -1168,12 +1175,12 @@ _turn_off_apparmor_in_octopus() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "ARMR: Turning off AppArmor temporarily..."
     fi
-    rm -rf /var/cache/apparmor/*
-    _mrun "apparmor_parser -r /etc/apparmor.d/*"
-    _mrun "aa-complain /etc/apparmor.d/*"
-    _mrun "service apparmor stop"
-    _mrun "aa-teardown"
-    _mrun "service auditd stop"
+    rm -rf /var/cache/apparmor/* &> /dev/null
+    apparmor_parser -r /etc/apparmor.d/* &> /dev/null
+    aa-complain /etc/apparmor.d/* &> /dev/null
+    service apparmor stop &> /dev/null
+    aa-teardown &> /dev/null
+    service auditd stop &> /dev/null
     touch /root/.turn_off_apparmor_in_octopus.cnf
   fi
 }

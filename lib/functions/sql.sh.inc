@@ -14,7 +14,7 @@ _check_mysql_version() {
     _DB_V=5.7
   fi
   if [ -x "/usr/sbin/aa-teardown" ]; then
-    _mrun "aa-teardown"
+    aa-teardown &> /dev/null
   fi
 }
 
@@ -547,7 +547,7 @@ _check_mysqld_running() {
     _msg "PROC: _check_mysqld_running"
   fi
   if [ -x "/usr/sbin/aa-teardown" ]; then
-    _mrun "aa-teardown"
+    aa-teardown &> /dev/null
   fi
   while [ -z "${_IS_MYSQLD_RUNNING}" ] \
     || [ ! -e "/run/mysqld/mysqld.sock" ]; do
@@ -793,7 +793,7 @@ _prep_for_install_db_sql() {
     _msg "PROC: _prep_for_install_db_sql"
   fi
   if [ -x "/usr/sbin/aa-teardown" ]; then
-    _mrun "aa-teardown"
+    aa-teardown &> /dev/null
   fi
 
   # Create the mysql group if it doesn't exist
@@ -938,7 +938,7 @@ _install_with_aptitude_sql() {
     _mrun "${_INSTAPP} ${_SQLXTR}"
   fi
   if [ -x "/usr/sbin/aa-teardown" ]; then
-    _mrun "aa-teardown"
+    aa-teardown &> /dev/null
   fi
   if [ "${_DB_SERVER}" = "Percona" ] \
     && [ "${_SQL_FORCE_REINSTALL}" = "YES" ]; then
