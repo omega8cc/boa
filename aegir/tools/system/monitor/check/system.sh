@@ -22,7 +22,7 @@ _check_root
 [ ! -x "/usr/sbin/csf" ] && exit 0
 
 export _INCIDENT_REPORT=${_INCIDENT_REPORT//[^A-Z]/}
-: "${_INCIDENT_REPORT:=YES}"
+: "${_INCIDENT_REPORT:=NO}"
 
 ###
 ### Atomic lock/unlock to prevent TOCTOU race

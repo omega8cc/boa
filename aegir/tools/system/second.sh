@@ -16,7 +16,7 @@ _pthOml="/var/log/boa/high.load.incident.log"
 : "${_CPU_MAX_RATIO:=4.1}"
 : "${_CPU_TASK_RATIO:=3.1}"
 : "${_CPU_SPIDER_RATIO:=2.1}"
-: "${_INCIDENT_REPORT:=YES}"
+: "${_INCIDENT_REPORT:=NO}"
 
 # Source configuration file to override defaults
 # shellcheck disable=SC1091
@@ -54,7 +54,7 @@ case "${_INCIDENT_REPORT}" in
   "YES"|"NO"|"VERBOSE")
     ;;
   *)
-    _INCIDENT_REPORT="YES"
+    _INCIDENT_REPORT="NO"
     ;;
 esac
 

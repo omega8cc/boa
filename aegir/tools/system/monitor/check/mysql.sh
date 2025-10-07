@@ -45,7 +45,7 @@ export _SQL_LOW_MAX_TTL=${_SQL_LOW_MAX_TTL//[^0-9]/}
 : "${_SQL_LOW_MAX_TTL:=60}"
 
 export _INCIDENT_REPORT=${_INCIDENT_REPORT//[^A-Z]/}
-: "${_INCIDENT_REPORT:=YES}"
+: "${_INCIDENT_REPORT:=NO}"
 
 export _LOAD_THRESHOLD=${_LOAD_THRESHOLD//[^0-9.]/}
 : "${_LOAD_THRESHOLD:=33.0}" # Example: 1-minute load above 33 indicates high load

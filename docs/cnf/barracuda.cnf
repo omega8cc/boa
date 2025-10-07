@@ -26,7 +26,7 @@ _XTRAS_LIST="" #---------------- See docs/NOTES.md for details on add-ons
 ###
 _AUTOPILOT=NO #----------------- Allows to skip all Yes/No questions when YES
 _DEBUG_MODE=NO #---------------- Allows to enable verbose BOA mode when YES
-_INCIDENT_REPORT=YES #---------- Allows to disable incident reports when NO
+_INCIDENT_REPORT=NO #----------- Allows to enable incident reports when YES
 _MY_EMAIL="my@email" #---------- System admin email address
 ###
 _CPU_CRIT_RATIO=6.1 #----------- Max load per CPU core before killing PHP/Drush

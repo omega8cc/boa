@@ -2948,7 +2948,7 @@ _incident_email_report() {
   if [ -e "/root/.barracuda.cnf" ]; then
     _thisEmail="${_MY_EMAIL}"
     export _INCIDENT_REPORT=${_INCIDENT_REPORT//[^A-Z]/}
-    : "${_INCIDENT_REPORT:=YES}"
+    : "${_INCIDENT_REPORT:=NO}"
   fi
   if [ -n "${_thisEmail}" ] && [ "${_INCIDENT_REPORT}" = "YES" ]; then
     echo "Sending Incident Report Email on $(date)" >> ${_thisLog}

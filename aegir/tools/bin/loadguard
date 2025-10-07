@@ -48,7 +48,7 @@ case "${_INCIDENT_REPORT}" in
   "YES"|"NO"|"VERBOSE")
     ;;
   *)
-    _INCIDENT_REPORT="YES"
+    _INCIDENT_REPORT="NO"
     ;;
 esac
 

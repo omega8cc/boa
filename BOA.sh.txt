@@ -4680,7 +4680,7 @@ _sysctl_update() {
 _backup_waiting_notify() {
   [ -e "${_barCnf}" ] && source ${_barCnf}
   _INCIDENT_REPORT=${_INCIDENT_REPORT//[^A-Z]/}
-  : "${_INCIDENT_REPORT:=YES}"
+  : "${_INCIDENT_REPORT:=NO}"
   _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
   _templog="${_bLogB}"
   cat /root/.remote_backups/schedule/backup_schedule.txt > ${_templog}
