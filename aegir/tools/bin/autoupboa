@@ -504,6 +504,17 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
   _status_vm_postinstall
 fi
 
+_crontab_monitor_cleanup() {
+  if [ -e "/etc/crontab" ] && [ -e "/var/xdrago/monitor/log" ] && [ -e "/etc/csf" ]; then
+    if ! grep -q "/var/xdrago/monitor/log" /etc/crontab; then
+      echo "*/15 *  * * *   root    rm -f /var/xdrago/monitor/log/web.log >/dev/null 2>&1" >> /etc/crontab
+      echo "*/15 *  * * *   root    rm -f /var/xdrago/monitor/log/ssh.log >/dev/null 2>&1" >> /etc/crontab
+      echo "*/15 *  * * *   root    rm -f /var/xdrago/monitor/log/ftp.log >/dev/null 2>&1" >> /etc/crontab
+    fi
+  fi
+}
+_crontab_monitor_cleanup
+
 _crontab_update() {
   if [ -e "/etc/crontab" ]; then
     sed -i "s/.*xdrago.*//gi" /etc/crontab &> /dev/null
@@ -517,11 +528,9 @@ _crontab_update() {
     if [ "${_ADD_XTRA}" = "YES" ]; then
       echo "*/19 *  * * *   root    bash /var/xdrago/clear.sh >/dev/null 2>&1" >> /etc/crontab
     fi
-    if [ -e "/etc/csf" ]; then
-      echo "*/15 *  * * *   root    rm -f /var/xdrago/monitor/log/web.log >/dev/null 2>&1" >> /etc/crontab
-      echo "*/15 *  * * *   root    rm -f /var/xdrago/monitor/log/ssh.log >/dev/null 2>&1" >> /etc/crontab
-      echo "*/15 *  * * *   root    rm -f /var/xdrago/monitor/log/ftp.log >/dev/null 2>&1" >> /etc/crontab
-    fi
+
+    _crontab_monitor_cleanup
+
     sed -i "/^$/d" /etc/crontab &> /dev/null
     wait
 
@@ -576,11 +585,9 @@ _crontab_cleanup() {
     if [ "${_ADD_XTRA}" = "YES" ]; then
       echo "*/19 *  * * *   root    bash /var/xdrago/clear.sh >/dev/null 2>&1" >> /etc/crontab
     fi
-    if [ -e "/etc/csf" ]; then
-      echo "*/15 *  * * *   root    rm -f /var/xdrago/monitor/log/web.log >/dev/null 2>&1" >> /etc/crontab
-      echo "*/15 *  * * *   root    rm -f /var/xdrago/monitor/log/ssh.log >/dev/null 2>&1" >> /etc/crontab
-      echo "*/15 *  * * *   root    rm -f /var/xdrago/monitor/log/ftp.log >/dev/null 2>&1" >> /etc/crontab
-    fi
+
+    _crontab_monitor_cleanup
+
     sed -i "/^$/d" /etc/crontab &> /dev/null
     wait
     echo Cron Cleanup Completed
