@@ -12,9 +12,10 @@ _pthOml="/var/log/boa/high.load.incident.log"
 [ -e "/root/.proxy.cnf" ] && exit 0
 
 # Set default values
-: "${_CPU_SPIDER_RATIO:=1.1}"
-: "${_CPU_MAX_RATIO:=4.1}"
 : "${_CPU_CRIT_RATIO:=6.1}"
+: "${_CPU_MAX_RATIO:=4.1}"
+: "${_CPU_TASK_RATIO:=3.1}"
+: "${_CPU_SPIDER_RATIO:=2.1}"
 : "${_INCIDENT_REPORT:=YES}"
 
 # Source configuration file to override defaults

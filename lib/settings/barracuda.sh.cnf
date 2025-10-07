@@ -971,13 +971,13 @@ _CPU_MAX_RATIO=4.1
 ### Define max 1 min load per CPU core before
 ### launching task queue for Octopus instances.
 ###
-_CPU_TASK_RATIO=2.1
+_CPU_TASK_RATIO=3.1
 
 ###
 ### Set max 1 min load per CPU core before blocking
 ### spiders temporarily, until the load stabilizes.
 ###
-_CPU_SPIDER_RATIO=1.1
+_CPU_SPIDER_RATIO=2.1
 
 ###
 ### Default number of access.log lines to check.
