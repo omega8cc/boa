@@ -91,7 +91,7 @@ _incident_email_report() {
   if ! _check_uptime_grace_period >/dev/null; then return 1; fi
   local _message="$1"
   local _subject="$2"
-  local _incident_level="$3"  # "ALERT" or "INFO"
+  local _lvl="$2"  # "ALERT" or "INFO"
 
   if [ -n "${_MY_EMAIL}" ]; then
     local _send_email=false
@@ -99,7 +99,7 @@ _incident_email_report() {
     if [ "${_INCIDENT_REPORT}" = "VERBOSE" ]; then
       _send_email=true
     elif [ "${_INCIDENT_REPORT}" = "YES" ]; then
-      if [ "${_incident_level}" = "ALERT" ]; then
+      if [ "${_lvl}" = "ALERT" ]; then
         _send_email=true
       fi
     fi
