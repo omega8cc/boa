@@ -620,7 +620,7 @@ if [ -e "/var/log/boa" ] && [ -e "/var/xdrago" ]; then
   if [ ! -z "${_BROKEN_UPDATE_TEST}" ]; then
     rm -f /var/log/boa/*.pid
   fi
-  _BROKEN_UPDATE_TEST=$(grep "404 Not Found" /var/xdrago/* 2>&1)
+  _BROKEN_UPDATE_TEST=$(grep "404 Not Found" /var/xdrago/*.sh 2>&1)
   if [ ! -z "${_BROKEN_UPDATE_TEST}" ]; then
     rm -f /var/log/boa/*.pid
   fi
