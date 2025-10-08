@@ -26,7 +26,7 @@ _pthOml="/var/log/boa/high.load.incident.log"
 export _B_NICE=${_B_NICE//[^0-9-]/}
 
 # Validate and set default if necessary
-if ! [[ "$_B_NICE" =~ ^-?[0-9]+$ ]]; then
+if ! [[ "${_B_NICE}" =~ ^-?[0-9]+$ ]]; then
   _B_NICE=0
 fi
 
