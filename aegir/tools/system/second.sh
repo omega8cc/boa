@@ -5,22 +5,31 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 
-# Paths
-_pthOml="/var/log/boa/high.load.incident.log"
-
 # Exit if proxy config exists
 [ -e "/root/.proxy.cnf" ] && exit 0
 
-# Set default values
-: "${_CPU_CRIT_RATIO:=6.1}"
-: "${_CPU_MAX_RATIO:=4.1}"
-: "${_CPU_TASK_RATIO:=3.1}"
-: "${_CPU_SPIDER_RATIO:=2.1}"
-: "${_INCIDENT_REPORT:=NO}"
-
-# Source configuration file to override defaults
 # shellcheck disable=SC1091
 [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
+
+# Sanitize numeric variables (allow digits and decimal point)
+_sanitize_number() {
+  echo "$1" | sed 's/[^0-9.]//g'
+}
+
+# Paths
+_pthOml="/var/log/boa/high.load.incident.log"
+
+# Load _RATIO defaults + sanitize
+_CPU_CRIT_RATIO="$(_sanitize_number "${_CPU_CRIT_RATIO}")"
+_CPU_MAX_RATIO="$(_sanitize_number "${_CPU_MAX_RATIO}")"
+_CPU_TASK_RATIO="$(_sanitize_number "${_CPU_TASK_RATIO}")"
+_CPU_SPIDER_RATIO="$(_sanitize_number "${_CPU_SPIDER_RATIO}")"
+
+# ===== Config (ratios per CPU) =====
+: "${_CPU_CRIT_RATIO:=6.1}"    # CRIT: pause web + kill long procs + block spiders
+: "${_CPU_MAX_RATIO:=4.1}"     # MAX:  pause web + block spiders
+: "${_CPU_TASK_RATIO:=3.1}"    # TASK: skip backend tasks (but web OK)
+: "${_CPU_SPIDER_RATIO:=2.1}"  # SPIDER: allow web; block spiders only
 
 # Sanitize to allow only digits and minus sign
 export _B_NICE=${_B_NICE//[^0-9-]/}
@@ -38,25 +47,6 @@ elif (( _B_NICE > 19 )); then
 fi
 
 renice ${_B_NICE} -p $$ &> /dev/null
-
-# Sanitize numeric variables (allow digits and decimal point)
-_sanitize_number() {
-  echo "$1" | sed 's/[^0-9.]//g'
-}
-
-_CPU_SPIDER_RATIO="$(_sanitize_number "${_CPU_SPIDER_RATIO}")"
-_CPU_MAX_RATIO="$(_sanitize_number "${_CPU_MAX_RATIO}")"
-_CPU_CRIT_RATIO="$(_sanitize_number "${_CPU_CRIT_RATIO}")"
-
-# Sanitize email report variable
-_INCIDENT_REPORT="${_INCIDENT_REPORT^^}"
-case "${_INCIDENT_REPORT}" in
-  "YES"|"NO"|"VERBOSE")
-    ;;
-  *)
-    _INCIDENT_REPORT="NO"
-    ;;
-esac
 
 # Get CPU count
 _CPU_COUNT=$(nproc)
@@ -337,4 +327,3 @@ done
 
 echo "Done!"
 exit 0
-

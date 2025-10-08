@@ -16,6 +16,20 @@ export _xSrl=570devT09
 # shellcheck disable=SC1091
 [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
 
+# Sanitize numeric variables (allow digits and decimal point)
+_sanitize_number() {
+  echo "$1" | sed 's/[^0-9.]//g'
+}
+
+# Paths
+_pthOml="/var/log/boa/high.load.incident.log"
+
+# Load _RATIO defaults + sanitize
+_CPU_CRIT_RATIO="$(_sanitize_number "${_CPU_CRIT_RATIO}")"
+_CPU_MAX_RATIO="$(_sanitize_number "${_CPU_MAX_RATIO}")"
+_CPU_TASK_RATIO="$(_sanitize_number "${_CPU_TASK_RATIO}")"
+_CPU_SPIDER_RATIO="$(_sanitize_number "${_CPU_SPIDER_RATIO}")"
+
 # ===== Config (ratios per CPU) =====
 : "${_CPU_CRIT_RATIO:=6.1}"    # CRIT: pause web + kill long procs + block spiders
 : "${_CPU_MAX_RATIO:=4.1}"     # MAX:  pause web + block spiders
