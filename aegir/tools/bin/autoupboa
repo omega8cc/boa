@@ -495,6 +495,14 @@ _status_vm_postinstall() {
       touch /run/${_SYS_MANUFACTURER_LC}_vm_postinstall.pid
       chattr +i /run/${_SYS_MANUFACTURER_LC}_vm_postinstall.pid
     fi
+    if [ ! -e "/run/reset_no_new_password.pid" ]; then
+      # Re-enable default MySQL/Valkey/Redis password update logic once
+      [ -e "/root/.mysql.no.new.password.cnf" ]  && rm -f /root/.mysql.no.new.password.cnf
+      [ -e "/root/.valkey.no.new.password.cnf" ] && rm -f /root/.valkey.no.new.password.cnf
+      [ -e "/root/.redis.no.new.password.cnf" ]  && rm -f /root/.redis.no.new.password.cnf
+      touch /run/reset_no_new_password.pid
+      chattr +i /run/reset_no_new_password.pid
+    fi
   fi
 }
 
