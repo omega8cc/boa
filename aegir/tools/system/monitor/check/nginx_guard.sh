@@ -39,9 +39,6 @@ fi
 
 renice ${_B_NICE} -p $$ &> /dev/null
 
-export _INCIDENT_REPORT=${_INCIDENT_REPORT//[^A-Z]/}
-: "${_INCIDENT_REPORT:=NO}"
-
 ###
 ### Atomic lock/unlock to prevent TOCTOU race
 ###
