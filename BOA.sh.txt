@@ -74,6 +74,7 @@ _xpthLog="/var/xdrago/log"
 _pthLog="/var/log/boa"
 _tBn="tools/bin"
 _vBs="/var/backups"
+_boaToolsPid="${_pthLog}/updateBOAtools.${_bTs}.ctrl.${_tRee}.${_xSrl}.pid"
 #
 if [ ! -e "${_pthLog}/.migrated.txt" ] && [ -d "${_xpthLog}" ]; then
   mkdir -p "${_pthLog}"
@@ -4432,7 +4433,7 @@ _if_update_boa_key_tools_only() {
   _BOA_TOOLS_UPDATE=NO
   if [ -e "${_pthLog}" ]; then
     if [ ! -x "/opt/local/bin/xcopy" ] \
-      || [ ! -e "${_pthLog}/updateBOAtools.${_bTs}.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+      || [ ! -e "${_boaToolsPid}" ]; then
       _BOA_TOOLS_UPDATE=YES
     fi
   fi
@@ -4440,7 +4441,7 @@ _if_update_boa_key_tools_only() {
   if [ "${_BOA_TOOLS_UPDATE}" = "YES" ]; then
     _update_boa_tools
     [ -e "${_pthLog}" ] && rm -f ${_pthLog}/updateBOAtools*.pid
-    [ -e "${_pthLog}" ] && touch ${_pthLog}/updateBOAtools.${_bTs}.ctrl.${_tRee}.${_xSrl}.pid
+    [ -e "${_pthLog}" ] && touch ${_boaToolsPid}
     if [ "${1}" = "verbose" ] || [ -z "${1}" ]; then
       echo
       echo "BOA Meta Installers setup completed"
@@ -4563,14 +4564,14 @@ _boa_setup() {
   _fix_or_install_virt_what
 
   _BOA_TOOLS_UPDATE=NO
-  if [ -e "${_pthLog}" ] && [ ! -e "${_pthLog}/updateBOAtools.${_bTs}.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+  if [ -e "${_pthLog}" ] && [ ! -e "${_boaToolsPid}" ]; then
     _BOA_TOOLS_UPDATE=YES
   fi
   [ ! -e "/var/aegir/.drush/hm.alias.drushrc.php" ] && _BOA_TOOLS_UPDATE=YES
   if [ "${_BOA_TOOLS_UPDATE}" = "YES" ]; then
     _update_boa_tools
     [ -e "${_pthLog}" ] && rm -f ${_pthLog}/updateBOAtools*.pid
-    [ -e "${_pthLog}" ] && touch ${_pthLog}/updateBOAtools.${_bTs}.ctrl.${_tRee}.${_xSrl}.pid
+    [ -e "${_pthLog}" ] && touch ${_boaToolsPid}
     echo
     echo "BOA Meta Installers setup completed"
     echo "Please check INSTALL.md and UPGRADE.md at https://github.com/omega8cc/boa"
