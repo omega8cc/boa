@@ -468,7 +468,7 @@ _is_protected_run() {
 _generic_vm_postinstall() {
   _is_protected_run
   if [ "${_protectedRun}" = "FALSE" ]; then
-    rm -f /run/${_SYS_MANUFACTURER_LC}_vm.pid
+    rm -f /var/log/boa/${_SYS_MANUFACTURER_LC}_vm.pid
     _TODAY=$(date +%y%m%d)
     _TODAY=${_TODAY//[^0-9]/}
     _NOW=$(date +%y%m%d-%H%M%S)
@@ -483,6 +483,17 @@ _generic_vm_postinstall() {
 
 _status_vm_postinstall() {
   _check_system_manufacturer
+  _VM_N_PID="/var/log/boa/${_SYS_MANUFACTURER_LC}_vm.pid"
+  _VM_N_SYS="/var/log/boa/${_SYS_MANUFACTURER_LC}_vm_postinstall.pid"
+  _VM_O_PID="/run/${_SYS_MANUFACTURER_LC}_vm.pid"
+  _VM_O_SYS="/run/${_SYS_MANUFACTURER_LC}_vm_postinstall.pid"
+  if [ -e "${_VM_O_PID}" ] && [ ! -e "${_VM_N_PID}" ]; then
+    touch ${_VM_N_PID}
+  fi
+  if [ -e "${_VM_O_SYS}" ] && [ ! -e "${_VM_N_SYS}" ]; then
+    touch ${_VM_N_SYS}
+    chattr +i ${_VM_N_SYS}
+  fi
   if [ "$(boa info | grep -c Percona)" -lt 3 ] || [ ! -e "/usr/sbin/csf" ]; then
     _NEEDS_UPGRADE=YES
     echo "A _NEEDS_UPGRADE is ${_NEEDS_UPGRADE}"
@@ -490,18 +501,17 @@ _status_vm_postinstall() {
   else
     _NEEDS_UPGRADE=NO
     echo "B _NEEDS_UPGRADE is ${_NEEDS_UPGRADE}"
-    if [ ! -e "/run/${_SYS_MANUFACTURER_LC}_vm.pid" ] \
-      && [ ! -e "/run/${_SYS_MANUFACTURER_LC}_vm_postinstall.pid" ]; then
-      touch /run/${_SYS_MANUFACTURER_LC}_vm_postinstall.pid
-      chattr +i /run/${_SYS_MANUFACTURER_LC}_vm_postinstall.pid
+    if [ ! -e "${_VM_N_PID}" ] && [ ! -e "${_VM_N_SYS}" ]; then
+      touch ${_VM_N_SYS}
+      chattr +i ${_VM_N_SYS}
     fi
-    if [ ! -e "/run/reset_no_new_password.pid" ]; then
+    if [ ! -e "/var/log/boa/reset_no_new_password.pid" ]; then
       # Re-enable default MySQL/Valkey/Redis password update logic once
       [ -e "/root/.mysql.no.new.password.cnf" ]  && rm -f /root/.mysql.no.new.password.cnf
       [ -e "/root/.valkey.no.new.password.cnf" ] && rm -f /root/.valkey.no.new.password.cnf
       [ -e "/root/.redis.no.new.password.cnf" ]  && rm -f /root/.redis.no.new.password.cnf
-      touch /run/reset_no_new_password.pid
-      chattr +i /run/reset_no_new_password.pid
+      touch /var/log/boa/reset_no_new_password.pid
+      chattr +i /var/log/boa/reset_no_new_password.pid
     fi
   fi
 }
