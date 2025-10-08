@@ -426,6 +426,7 @@ _clamav_health_check_fix() {
         pkill -9 -f /usr/sbin/clamd || true
         service clamav-daemon start
         wait
+        sleep 5
         _thisErrLog="$(date) Clamav was down, started"
         echo ${_thisErrLog} >> ${_pthOml}
         _incident_email_report "Clamav was down, started"
