@@ -4744,10 +4744,15 @@ if [ "$(id -u)" -eq 0 ]; then
   ### Fix VM system detection
   _fix_or_install_virt_what
 
+  if [ -e "${_barCnf}" ]; then
+    source ${_barCnf}
     _normalize_incident_report
+  fi
+
   ### Notify if multiback backups seem to run for too long
-  _CNT=$(pgrep -fc duplicity)
-  if (( _CNT > 0 )); then
+  _DCY=$(pgrep -fc duplicity)
+  _MLT=$(pgrep -fc multiback)
+  if (( _DCY > 0 )) && (( _MLT > 0 )); then
     _bLogA="/var/backups/multiback_waiting_queue.log"
     _bLogB="/var/backups/tmp_multiback_waiting_queue.log"
     if [ ! -e "${_bLogA}" ] && [ ! -e "${_bLogB}" ]; then
@@ -4855,9 +4860,6 @@ if [ "$(id -u)" -eq 0 ]; then
   if [ "${_BOA_KEY_TOOLS_UPDATE_ALLOWED}" = "YES" ] \
     && [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
     && [ -e "/var/xdrago" ]; then
-    if [ -e "${_barCnf}" ]; then
-      source ${_barCnf}
-    fi
     if [ ! -z "${_SKYNET_MODE}" ] && [ "${_SKYNET_MODE}" = "OFF" ]; then
       if [ -n "${SSH_TTY+x}" ]; then
         echo "STATUS: Skynet Agent is Inactive!"
