@@ -102,6 +102,35 @@ _incident_email_report() {
         _send_email=true
       fi
     fi
+###
+### Load + normalize _INCIDENT_REPORT
+###
+### Legacy values:
+###   NO  becomes OFF (see below)
+###   YES becomes MINI (see below)
+###
+### Current values:
+###   OFF  == Total silence, no email alerts
+###   ALL  == Very noisy, good for debugging
+###   MINI == Only the most important alerts (default)
+###   CRIT == Only critical if _lvl=ALERT
+###
+_normalize_incident_report() {
+  : "${_INCIDENT_REPORT:=CRIT}"
+  _INCIDENT_REPORT="${_INCIDENT_REPORT^^}"
+  _INCIDENT_REPORT="${_INCIDENT_REPORT//[^A-Z]/}"
+  ###
+  ### Map legacy + validate
+  ###
+  case "${_INCIDENT_REPORT}" in
+    NO)   _INCIDENT_REPORT="OFF"  ;;
+    YES)  _INCIDENT_REPORT="CRIT" ;;
+    MINI) _INCIDENT_REPORT="CRIT" ;;
+    OFF|ALL|CRIT) : ;;
+    *)    _INCIDENT_REPORT="CRIT" ;;
+  esac
+}
+_normalize_incident_report
 
     if [ "${_send_email}" = true ]; then
       _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"

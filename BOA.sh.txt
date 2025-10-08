@@ -4676,11 +4676,37 @@ _sysctl_update() {
   fi
 }
 
+###
+### Load + normalize _INCIDENT_REPORT
+###
+### Legacy values:
+###   NO  becomes OFF (see below)
+###   YES becomes MINI (see below)
+###
+### Current values:
+###   OFF  == Total silence, no email alerts
+###   ALL  == Very noisy, good for debugging
+###   MINI == Only the most important alerts (default)
+###   CRIT == Only critical if _lvl=ALERT
+###
+_normalize_incident_report() {
+  : "${_INCIDENT_REPORT:=MINI}"
+  _INCIDENT_REPORT="${_INCIDENT_REPORT^^}"
+  _INCIDENT_REPORT="${_INCIDENT_REPORT//[^A-Z]/}"
+  ###
+  ### Map legacy + validate
+  ###
+  case "${_INCIDENT_REPORT}" in
+    NO)   _INCIDENT_REPORT="OFF"  ;;
+    YES)  _INCIDENT_REPORT="MINI" ;;
+    OFF|ALL|MINI|CRIT) : ;;
+    *)    _INCIDENT_REPORT="MINI" ;;
+  esac
+}
+
 # Function to notify about still running backup
 _backup_waiting_notify() {
   [ -e "${_barCnf}" ] && source ${_barCnf}
-  _INCIDENT_REPORT=${_INCIDENT_REPORT//[^A-Z]/}
-  : "${_INCIDENT_REPORT:=NO}"
   _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
   _templog="${_bLogB}"
   cat /root/.remote_backups/schedule/backup_schedule.txt > ${_templog}
@@ -4718,6 +4744,7 @@ if [ "$(id -u)" -eq 0 ]; then
   ### Fix VM system detection
   _fix_or_install_virt_what
 
+    _normalize_incident_report
   ### Notify if multiback backups seem to run for too long
   _CNT=$(pgrep -fc duplicity)
   if (( _CNT > 0 )); then

@@ -12,11 +12,38 @@ _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
     # shellcheck disable=SC1091
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
-    export _INCIDENT_REPORT=${_INCIDENT_REPORT//[^A-Z]/}
-    : "${_INCIDENT_REPORT:=NO}"
   fi
 }
 _check_root
+
+###
+### Load + normalize _INCIDENT_REPORT
+###
+### Legacy values:
+###   NO  becomes OFF (see below)
+###   YES becomes MINI (see below)
+###
+### Current values:
+###   OFF  == Total silence, no email alerts
+###   ALL  == Very noisy, good for debugging
+###   MINI == Only the most important alerts (default)
+###   CRIT == Only critical if _lvl=ALERT
+###
+_normalize_incident_report() {
+  : "${_INCIDENT_REPORT:=MINI}"
+  _INCIDENT_REPORT="${_INCIDENT_REPORT^^}"
+  _INCIDENT_REPORT="${_INCIDENT_REPORT//[^A-Z]/}"
+  ###
+  ### Map legacy + validate
+  ###
+  case "${_INCIDENT_REPORT}" in
+    NO)   _INCIDENT_REPORT="OFF"  ;;
+    YES)  _INCIDENT_REPORT="MINI" ;;
+    OFF|ALL|MINI|CRIT) : ;;
+    *)    _INCIDENT_REPORT="MINI" ;;
+  esac
+}
+_normalize_incident_report
 
 # Function to generate passphrase for user level backups
 _generate_user_secret_file() {
