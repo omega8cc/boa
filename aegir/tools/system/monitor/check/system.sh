@@ -367,9 +367,9 @@ _lfd_health_check_fix() {
       || [ ! -e "/run/lfd.pid" ]; then
       service lfd start
       csf -e
-      _thisErrLog="$(date) LDF Monitor was down, started"
+      _thisErrLog="$(date) LFD Monitor was down, started"
       echo ${_thisErrLog} >> ${_pthOml}
-      _incident_email_report "LDF Monitor was down, started"
+      _incident_email_report "LFD Monitor was down, started"
       echo >> ${_pthOml}
     fi
   fi

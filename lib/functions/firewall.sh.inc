@@ -285,7 +285,7 @@ _add_ip_if_missing() {
   fi
 }
 
-# Function to add an Gateway IP to allowed and ignored by CSF/LDF
+# Function to add an Gateway IP to allowed and ignored by CSF/LFD
 _csf_lfd_gateway_allow() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _csf_lfd_gateway_allow"
