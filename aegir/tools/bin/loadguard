@@ -97,24 +97,20 @@ _normalize_incident_report
 ### Function to send incident email report
 ###
 _incident_email_report() {
-  if ! _check_uptime_grace_period >/dev/null; then return 1; fi
-  local _subject="$1"
-  local _lvl="$2"  # "ALERT" or "INFO"
-  if [ -n "${_MY_EMAIL}" ]; then
-    local _send_email=false
-    if [ "${_INCIDENT_REPORT}" = "VERBOSE" ]; then
-      _send_email=true
-    elif [ "${_INCIDENT_REPORT}" = "YES" ]; then
-    fi
-    if [ "${_lvl}" = "ALERT" ]; then
-      _send_email=true
-    fi
-    if [ "${_send_email}" = true ]; then
-      _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
-      echo "Sending Incident Report Email on $(date)" >> ${_pthOml}
-      s-nail -s "Incident Report on ${_hName}: ${_subject}" "${_MY_EMAIL}" < ${_pthOml}
-    fi
-  fi
+  _check_uptime_grace_period >/dev/null || return 1
+  local _subject="${1:-(no subject)}"
+  local _lvl="${2:-INFO}"
+  _lvl="${_lvl^^}"
+  [ -n "${_MY_EMAIL}" ] || return 1
+  # Decide if we should send
+  case "${_INCIDENT_REPORT}" in
+    OFF)  return 1 ;;                            # always veto
+    CRIT) [ "${_lvl}" = "ALERT" ] || return 1 ;; # veto unless ALERT
+    ALL|MINI) : ;;                               # allow
+  esac
+  _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
+  echo "Sending Incident Report Email on $(date)" >> ${_pthOml}
+  s-nail -s "Incident Report on ${_hName}: ${_subject}" "${_MY_EMAIL}" < ${_pthOml}
 }
 
 ###

@@ -75,13 +75,24 @@ _normalize_incident_report() {
 }
 _normalize_incident_report
 
+###
+### Function to send incident email report
+###
 _incident_email_report() {
-  if ! _check_uptime_grace_period >/dev/null; then return 1; fi
-  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "YES" ]; then
-    _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
-    echo "Sending Incident Report Email on $(date)" >> ${_pthOml}
-    s-nail -s "Incident Report: ${1} on ${_hName} at $(date)" ${_MY_EMAIL} < ${_pthOml}
-  fi
+  _check_uptime_grace_period >/dev/null || return 1
+  local _subject="${1:-(no subject)}"
+  local _lvl="${2:-INFO}"
+  _lvl="${_lvl^^}"
+  [ -n "${_MY_EMAIL}" ] || return 1
+  # Decide if we should send
+  case "${_INCIDENT_REPORT}" in
+    OFF)  return 1 ;;                            # always veto
+    CRIT) [ "${_lvl}" = "ALERT" ] || return 1 ;; # veto unless ALERT
+    ALL) : ;;                                    # allow
+  esac
+  _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
+  echo "Sending Incident Report Email on $(date)" >> ${_pthOml}
+  s-nail -s "Incident Report on ${_hName}: ${_subject}" "${_MY_EMAIL}" < ${_pthOml}
 }
 
 _wkhtmltopdf_php_cli_oom_kill() {
