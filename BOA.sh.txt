@@ -4718,7 +4718,6 @@ _normalize_incident_report() {
 
 # Function to notify about still running backup
 _backup_waiting_notify() {
-  [ -e "${_barCnf}" ] && source ${_barCnf}
   _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
   _templog="${_bLogB}"
   cat /root/.remote_backups/schedule/backup_schedule.txt > ${_templog}
