@@ -967,7 +967,11 @@ _update_agents() {
     fi
   fi
 
-  if [ ! -e "${_pthLog}/lock.inc.sh.ctrl.f98.${_tRee}.${_xSrl}.pid" ]; then
+  if ! grep -q "OFF" ${_optBin}/lock.inc; then
+    rm -f ${_pthLog}/lock.inc.sh.ctrl.*
+  fi
+  if [ ! -e "${_optBin}/lock.inc" ] \
+    || [ ! -e "${_pthLog}/lock.inc.sh.ctrl.f98.${_tRee}.${_xSrl}.pid" ]; then
     _CNT=$(pgrep -fc foobar)
     if (( _CNT > 0 )); then
       echo "The foobar is running!"
