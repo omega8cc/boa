@@ -1135,16 +1135,25 @@ _PHP_FPM_WORKERS=AUTO
 _SPEED_VALID_MAX=3600
 
 ###
-### When set to YES it will start sending
+### Can be completely silenced by setting to OFF or NO
+###
+### When set to ALL it will start sending
 ### many e-mail reports on various incidents
 ### detected and handled by auto-healing.
 ###
-### Turned globally off by default.
+### Minimalized globally with MINI by default.
 ###
-### Some critical messages may be sent even with
-### this setting turned off (default).
+### Legacy values:
+###   NO  becomes OFF (see below)
+###   YES becomes MINI (see below)
 ###
-_INCIDENT_REPORT=NO
+### Current values:
+###   OFF  == Total silence, no email alerts
+###   ALL  == Very noisy, good for debugging
+###   MINI == Only the most important alerts (default)
+###   CRIT == Only critical if _lvl=ALERT
+###
+_INCIDENT_REPORT=MINI
 
 ###
 ### Max TTL for mysql process per user (seconds)
