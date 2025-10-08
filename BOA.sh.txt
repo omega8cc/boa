@@ -992,7 +992,8 @@ _update_agents() {
     fi
   fi
 
-  if [ ! -e "${_pthLog}/vmnetfix.sh.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
+  if [ ! -e "${_optBin}/vmnetfix" ] \
+    || [ ! -e "${_pthLog}/vmnetfix.sh.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
     _CNT=$(pgrep -fc vmnetfix)
     if (( _CNT > 0 )); then
       echo "The vmnetfix is running!"
@@ -1020,7 +1021,8 @@ _update_agents() {
     fi
   fi
 
-  if [ ! -e "${_pthLog}/aptcleanup.sh.ctrl.f97.${_tRee}.${_xSrl}.pid" ]; then
+  if [ ! -e "${_optBin}/aptcleanup" ] \
+    || [ ! -e "${_pthLog}/aptcleanup.sh.ctrl.f97.${_tRee}.${_xSrl}.pid" ]; then
     _CNT=$(pgrep -fc aptcleanup)
     if (( _CNT > 0 )); then
       echo "The aptcleanup is running!"
@@ -1041,7 +1043,8 @@ _update_agents() {
     fi
   fi
 
-  if [ ! -e "${_pthLog}/loadguard.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
+  if [ ! -e "${_optBin}/loadguard" ] \
+    || [ ! -e "${_pthLog}/loadguard.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
     _CNT=$(pgrep -fc xloadguard)
     if (( _CNT > 0 )); then
       echo "The xloadguard is running!"
@@ -1062,7 +1065,8 @@ _update_agents() {
     fi
   fi
 
-  if [ ! -e "${_pthLog}/webserver.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
+  if [ ! -e "${_optBin}/webserver" ] \
+    || [ ! -e "${_pthLog}/webserver.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
     _CNT=$(pgrep -fc xwebserver)
     if (( _CNT > 0 )); then
       echo "The xwebserver is running!"
@@ -1432,6 +1436,9 @@ _update_agents() {
     fi
   fi
 
+  if [ ! -e "/var/xdrago/monitor/check/nginx_guard.sh" ]; then
+    rm -f ${_pthLog}/nginx_guard.sh.ctrl.*
+  fi
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
     && [ ! -e "${_pthLog}/nginx_guard.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
