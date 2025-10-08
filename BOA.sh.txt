@@ -4717,7 +4717,7 @@ _backup_waiting_notify() {
   ls -laR /root/.cache/duplicity >> ${_templog}
   grep "Out of memory: Killed process.*duplicity" /var/log/iptables.log >> ${_templog}
   boa info  >> ${_templog}
-  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "YES" ]; then
+  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" != "OFF" ]; then
     s-nail -s "Multiback Waiting Report for [${_hName}] on $(date)" ${_MY_EMAIL} < ${_templog}
   fi
 }

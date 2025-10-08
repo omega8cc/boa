@@ -599,7 +599,7 @@ _backup() {
     _remove_older_than
     _collection_status
   fi
-  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "YES" ]; then
+  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" != "OFF" ]; then
     echo "Sending email report on $(date)" >> ${_LOGFILE}
     s-nail -s "Daily backup: ${_MODE} ${_HST} $(date)" ${_MY_EMAIL} < ${_LOGFILE}
   fi

@@ -65,7 +65,7 @@ _log_issue() {
   local _file=$2
   local _message=$3
   echo "[$(date)] Validation issue: [${_type}] in file: [${_file}] with error: ${_message}" >> "${_VALIDATION_LOG_FILE}"
-  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "YES" ]; then
+  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "ALL" ]; then
     # Alert the admin
     echo "Sending Backup Validation Alert to ${_MY_EMAIL} on $(date)" >> ${_VALIDATION_LOG_FILE}
     s-nail -s "Backup Validation Alert for [$(hostname)] on $(date)" ${_MY_EMAIL} < ${_VALIDATION_LOG_FILE}

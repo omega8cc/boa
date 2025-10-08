@@ -205,7 +205,7 @@ _waiting_notify() {
   ls -laR /root/.cache/duplicity >> ${_templog}
   grep "Out of memory: Killed process.*duplicity" /var/log/iptables.log >> ${_templog}
   boa info  >> ${_templog}
-  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "YES" ]; then
+  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "ALL" ]; then
     s-nail -s "Multiback Waiting Report for [${_hName}] on $(date)" ${_MY_EMAIL} < ${_templog}
   fi
 }
@@ -283,7 +283,7 @@ _log_issue() {
   local _file=$2
   local _message=$3
   echo "[$(date)] Validation issue type: [${_type}] in file: [${_file}] with error: ${_message}" >> "${_VALIDATION_LOG_FILE}"
-  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "YES" ]; then
+  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "ALL" ]; then
     # Alert the admin
     boa info  >> ${_LOGFILE}
     echo "Sending Backup Validation Alert to ${_MY_EMAIL} on $(date)" >> ${_LOGFILE}
@@ -761,7 +761,7 @@ _backup() {
   _check_if_repair
   _weekly_cleanup
   _check_if_worked_cleanly_or_log_err
-  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "YES" ]; then
+  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" != "OFF" ]; then
     boa info  >> ${_LOGFILE}
     echo "Sending email report on $(date)" >> ${_LOGFILE}
     echo >> ${_LOGFILE}

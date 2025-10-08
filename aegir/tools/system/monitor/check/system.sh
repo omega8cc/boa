@@ -128,7 +128,7 @@ _oom_critical_restart() {
   wait
   echo "$(date) OOM Percona MySQL Server restarted" >> ${_pthOml}
   echo "$(date) OOM incident response completed" >> ${_pthOml}
-  _incident_email_report "OOM $1 system"
+  _incident_email_report "OOM $1 system" "ALERT"
   echo >> ${_pthOml}
   [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
   exit 0

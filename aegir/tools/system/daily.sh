@@ -2975,13 +2975,12 @@ _cleanup_weblogx() {
 
 _incident_email_report() {
   if [ -e "/root/.barracuda.cnf" ]; then
-    _thisEmail="${_MY_EMAIL}"
     export _INCIDENT_REPORT=${_INCIDENT_REPORT//[^A-Z]/}
-    : "${_INCIDENT_REPORT:=NO}"
+    : "${_INCIDENT_REPORT:=MINI}"
   fi
-  if [ -n "${_thisEmail}" ] && [ "${_INCIDENT_REPORT}" = "YES" ]; then
+  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" != "OFF" ]; then
     echo "Sending Incident Report Email on $(date)" >> ${_thisLog}
-    s-nail -s "Incident Report during daily.sh: ${1} on ${_hName} at $(date)" ${_thisEmail} < ${_thisLog}
+    s-nail -s "Incident Report during daily.sh: ${1} on ${_hName} at $(date)" ${_MY_EMAIL} < ${_thisLog}
   fi
 }
 

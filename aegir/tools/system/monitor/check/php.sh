@@ -93,7 +93,7 @@ _normalize_incident_report
 
 _incident_email_report() {
   if ! _check_uptime_grace_period >/dev/null; then return 1; fi
-  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "YES" ]; then
+  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" != "OFF" ]; then
     _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
     echo "Sending Incident Report Email on $(date)" >> ${_pthOml}
     s-nail -s "Incident Report: ${1} on ${_hName} at $(date)" ${_MY_EMAIL} < ${_pthOml}
