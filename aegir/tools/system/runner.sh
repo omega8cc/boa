@@ -132,6 +132,9 @@ if [ "${_TOTAL_RAM_MB}" -le 4096 ]; then
   if [ ! -e "/root/.slow.cron.cnf" ]; then
     echo SLOW > /root/.slow.cron.cnf
     chattr +i /root/.slow.cron.cnf
+  fi
+  if [ ! -e "/root/.slow.cron.cnf.protected" ] \
+    && [ -e "/root/.slow.cron.cnf" ]; then
     echo SLOW > /root/.slow.cron.cnf.protected
   fi
 fi
