@@ -262,10 +262,9 @@ _unbound_duplicate_fix() {
 }
 
 _unbound_health_check_fix() {
+  _unbound_check_cooldown_status
   if ! pgrep -f /usr/sbin/unbound \
     || [ ! -e "/run/unbound/unbound.pid" ]; then
-    : "${_UNBOUND_COOLDOWN_SECS:=10}"
-    _cd="/run/unbound-monitor.cooldown"
     _now=$(date +%s)
     if [ -s "${_cd}" ]; then
       _ts=$(cat "${_cd}" 2>/dev/null | tr -d '\n')
@@ -275,7 +274,7 @@ _unbound_health_check_fix() {
       fi
     fi
     [ ! -e "/run/unbound" ] && mkdir -p /run/unbound
-    chown -R unbound:unbound /run/unbound
+    [ -e "/run/unbound" ] && chown -R unbound:unbound /run/unbound
     mkdir -p /etc/resolvconf/run/interface
     echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.unbound
     [ -e "/etc/resolvconf/update.d/unbound" ] && chmod 644 /etc/resolvconf/update.d/unbound
@@ -285,6 +284,7 @@ _unbound_health_check_fix() {
     echo ${_thisErrLog} >> ${_pthOml}
     _incident_email_report "Unbound Server was down, restarted"
     echo >> ${_pthOml}
+    exit 0
   fi
 }
 
@@ -295,9 +295,9 @@ else
   _ALLOW_CTRL=YES
 fi
 
-  [ "${_ALLOW_CTRL}" = "YES" ] && _unbound_config_fix
 if [ -x "/usr/sbin/unbound" ]; then
   [ "${_ALLOW_CTRL}" = "YES" ] && _unbound_check_nomail
+  [ "${_ALLOW_CTRL}" = "YES" ] && _unbound_config_fix
   _unbound_health_check_fix
   _unbound_duplicate_fix
 fi
