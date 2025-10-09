@@ -111,7 +111,6 @@ _unbound_restart_with_cooldown() {
 
 _unbound_config_fix() {
 
-  [ ! -e "/usr/etc/unbound/unbound.conf.d" ] && mkdir -p /usr/etc/unbound/unbound.conf.d
 
   if [ -x "/usr/sbin/unbound" ] \
     && [ ! -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
@@ -235,6 +234,7 @@ CONF
 }
 
 _unbound_check_nomail() {
+  [ ! -e "/usr/etc/unbound/unbound.conf.d" ] && mkdir -p /usr/etc/unbound/unbound.conf.d
   [ -e "/etc/default/unbound" ] && _isNxdEtc=$(grep "always_nxdomain" /etc/default/unbound 2>&1)
   [ -e "/etc/init.d/unbound" ] && _isIntUnb=$(grep "apply_ci_nomail" /etc/init.d/unbound 2>&1)
   if [[ "${_isNxdEtc}" =~ "always_nxdomain" ]] \
