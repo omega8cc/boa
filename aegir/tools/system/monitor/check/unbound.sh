@@ -108,7 +108,7 @@ _unbound_restart_with_cooldown() {
   service unbound restart &> /dev/null
   wait
   echo "$(date) INFO: Unbound killed and restarted" >> ${_pthOml}
-  date +%s > "${_UNBOUND_CD}"
+  date +%s > "${_cd}"
   sleep 3
 }
 
