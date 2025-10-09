@@ -6162,11 +6162,6 @@ _if_post_major_os_upgrade() {
         _mrun "service php${e}-fpm reload"
       fi
     done
-    if [ -e "/var/xdrago/proc_num_ctrl.pl" ]; then
-      perl /var/xdrago/proc_num_ctrl.pl &
-    elif [ -e "/var/xdrago_wait/proc_num_ctrl.pl" ]; then
-      perl /var/xdrago_wait/proc_num_ctrl.pl &
-    fi
 
     _REBUILD_SRC_ON_AUTO_NOW=YES
     if [ -e "/root/.run-to-daedalus.cnf" ] \
