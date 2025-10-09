@@ -888,7 +888,7 @@ EOF
     * Your server VENDOR is ${_VENDOR}
     * Your server IP address is ${_THISHTIP}
     * Your server HOSTNAME is ${_THISHOST}
-    * Your Master Aegir URL is https://${_THIS_FRONT}
+    * Your Aegir Master URL is https://${_THIS_FRONT}
 EOF
       echo " "
     fi
