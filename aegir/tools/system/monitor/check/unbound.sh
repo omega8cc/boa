@@ -100,6 +100,15 @@ _incident_email_report() {
   fi
 }
 
+_unbound_restart_with_cooldown() {
+  pkill -u unbound -x unbound &> /dev/null
+  service unbound restart &> /dev/null
+  wait
+  echo "$(date) INFO: Unbound killed and restarted" >> ${_pthOml}
+  date +%s > "${_UNBOUND_CD}"
+  sleep 3
+}
+
 _unbound_config_fix() {
 
   [ ! -e "/usr/etc/unbound/unbound.conf.d" ] && mkdir -p /usr/etc/unbound/unbound.conf.d
