@@ -5,27 +5,37 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 
-# Paths
-_pthOml="/var/log/boa/high.load.incident.log"
-
 # Exit if proxy config exists
 [ -e "/root/.proxy.cnf" ] && exit 0
 
-# Set default values
-: "${_CPU_SPIDER_RATIO:=1.1}"
-: "${_CPU_MAX_RATIO:=4.1}"
-: "${_CPU_CRIT_RATIO:=6.1}"
-: "${_INCIDENT_REPORT:=YES}"
-
-# Source configuration file to override defaults
 # shellcheck disable=SC1091
 [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
+
+# Sanitize numeric variables (allow digits and decimal point)
+_sanitize_number() {
+  echo "$1" | sed 's/[^0-9.]//g'
+}
+
+# Paths
+_pthOml="/var/log/boa/high.load.incident.log"
+
+# Load _RATIO defaults + sanitize
+_CPU_CRIT_RATIO="$(_sanitize_number "${_CPU_CRIT_RATIO}")"
+_CPU_MAX_RATIO="$(_sanitize_number "${_CPU_MAX_RATIO}")"
+_CPU_TASK_RATIO="$(_sanitize_number "${_CPU_TASK_RATIO}")"
+_CPU_SPIDER_RATIO="$(_sanitize_number "${_CPU_SPIDER_RATIO}")"
+
+# ===== Config (ratios per CPU) =====
+: "${_CPU_CRIT_RATIO:=6.1}"    # CRIT: pause web + kill long procs + block spiders
+: "${_CPU_MAX_RATIO:=4.1}"     # MAX:  pause web + block spiders
+: "${_CPU_TASK_RATIO:=3.1}"    # TASK: skip backend tasks (but web OK)
+: "${_CPU_SPIDER_RATIO:=2.1}"  # SPIDER: allow web; block spiders only
 
 # Sanitize to allow only digits and minus sign
 export _B_NICE=${_B_NICE//[^0-9-]/}
 
 # Validate and set default if necessary
-if ! [[ "$_B_NICE" =~ ^-?[0-9]+$ ]]; then
+if ! [[ "${_B_NICE}" =~ ^-?[0-9]+$ ]]; then
   _B_NICE=0
 fi
 
@@ -37,25 +47,6 @@ elif (( _B_NICE > 19 )); then
 fi
 
 renice ${_B_NICE} -p $$ &> /dev/null
-
-# Sanitize numeric variables (allow digits and decimal point)
-_sanitize_number() {
-  echo "$1" | sed 's/[^0-9.]//g'
-}
-
-_CPU_SPIDER_RATIO="$(_sanitize_number "${_CPU_SPIDER_RATIO}")"
-_CPU_MAX_RATIO="$(_sanitize_number "${_CPU_MAX_RATIO}")"
-_CPU_CRIT_RATIO="$(_sanitize_number "${_CPU_CRIT_RATIO}")"
-
-# Sanitize email report variable
-_INCIDENT_REPORT="${_INCIDENT_REPORT^^}"
-case "${_INCIDENT_REPORT}" in
-  "YES"|"NO"|"VERBOSE")
-    ;;
-  *)
-    _INCIDENT_REPORT="YES"
-    ;;
-esac
 
 # Get CPU count
 _CPU_COUNT=$(nproc)
@@ -85,30 +76,54 @@ _manage_single_lock() {
 }
 _manage_single_lock
 
-# Function to send incident email report
+###
+### Load + normalize _INCIDENT_REPORT
+###
+### Legacy values:
+###   NO  becomes OFF (see below)
+###   YES becomes MINI (see below)
+###
+### Current values:
+###   OFF  == Total silence, no email alerts
+###   ALL  == Very noisy, good for debugging
+###   MINI == Only the most important alerts (default)
+###   CRIT == Only critical if _lvl=ALERT
+###
+_normalize_incident_report() {
+  : "${_INCIDENT_REPORT:=CRIT}"
+  _INCIDENT_REPORT="${_INCIDENT_REPORT^^}"
+  _INCIDENT_REPORT="${_INCIDENT_REPORT//[^A-Z]/}"
+  ###
+  ### Map legacy + validate
+  ###
+  case "${_INCIDENT_REPORT}" in
+    NO)   _INCIDENT_REPORT="OFF"  ;;
+    YES)  _INCIDENT_REPORT="CRIT" ;;
+    MINI) _INCIDENT_REPORT="CRIT" ;;
+    OFF|ALL|CRIT) : ;;
+    *)    _INCIDENT_REPORT="CRIT" ;;
+  esac
+}
+_normalize_incident_report
+
+###
+### Function to send incident email report
+###
 _incident_email_report() {
-  if ! _check_uptime_grace_period >/dev/null; then return 1; fi
-  local _message="$1"
-  local _subject="$2"
-  local _incident_level="$3"  # "ALERT" or "INFO"
-
-  if [ -n "${_MY_EMAIL}" ]; then
-    local _send_email=false
-
-    if [ "${_INCIDENT_REPORT}" = "VERBOSE" ]; then
-      _send_email=true
-    elif [ "${_INCIDENT_REPORT}" = "YES" ]; then
-      if [ "${_incident_level}" = "ALERT" ]; then
-        _send_email=true
-      fi
-    fi
-
-    if [ "${_send_email}" = true ]; then
-      _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
-      echo "Sending Incident Report Email on $(date)" >> ${_pthOml}
-      s-nail -s "Incident Report on ${_hName}: ${_subject}" "${_MY_EMAIL}" < ${_pthOml}
-    fi
-  fi
+  _check_uptime_grace_period >/dev/null || return 1
+  local _subject="${1:-(no subject)}"
+  local _lvl="${2:-INFO}"
+  _lvl="${_lvl^^}"
+  [ -n "${_MY_EMAIL}" ] || return 1
+  # Decide if we should send
+  case "${_INCIDENT_REPORT}" in
+    OFF)  return 1 ;;                            # always veto
+    CRIT) [ "${_lvl}" = "ALERT" ] || return 1 ;; # veto unless ALERT
+    ALL) : ;;                                    # allow
+  esac
+  _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
+  echo "Sending Incident Report Email on $(date)" >> ${_pthOml}
+  s-nail -s "Incident Report on ${_hName}: ${_subject}" "${_MY_EMAIL}" < ${_pthOml}
 }
 
 # Function to pause web services
@@ -122,7 +137,7 @@ _hold_services() {
   _log_message="$(date) System Load ${_current_load}% (${_load_period}) - Web Server Paused"
   echo "${_log_message}" >> ${_pthOml}
   local _subject="Web Services Paused - ${_load_period} Load ${_current_load}% exceeded Max Load Threshold ${_threshold}%"
-  _incident_email_report "${_log_message}" "${_subject}" "ALERT"
+  _incident_email_report "${_subject}" "ALERT"
   echo >> ${_pthOml}
   echo "Action Taken: Web services paused due to high load."
 }
@@ -138,7 +153,7 @@ _terminate_processes() {
     _log_message="$(date) System Load ${_current_load}% (${_load_period}) - PHP/Wget/cURL terminated"
     echo "${_log_message}" >> ${_pthOml}
     local _subject="Processes Terminated - ${_load_period} Load ${_current_load}% exceeded Critical Load Threshold ${_threshold}%"
-    _incident_email_report "${_log_message}" "${_subject}" "ALERT"
+    _incident_email_report "${_subject}" "ALERT"
     echo >> ${_pthOml}
     echo "Action Taken: Long-running processes terminated due to critical load."
   fi
@@ -155,7 +170,7 @@ _nginx_high_load_on() {
   _log_message="$(date) Enabled Spider Protection ${_load_period} Load: ${_current_load}%"
   echo "${_log_message}" >> ${_pthOml}
 # local _subject="Enabled Spider Protection - ${_load_period} Load ${_current_load}% exceeded Spider Protection Threshold ${_threshold}%"
-# _incident_email_report "${_log_message}" "${_subject}" "INFO"
+# _incident_email_report "${_subject}" "INFO"
 # echo >> ${_pthOml}
   echo "Action Taken: Enabled protection from spiders (nginx high load configuration applied)."
 }
@@ -168,7 +183,7 @@ _nginx_high_load_off() {
   _log_message="$(date) Disabled Spider Protection Load: ${_O_LOAD}%"
   echo "${_log_message}" >> ${_pthOml}
 # local _subject="Disabled Spider Protection - Load decreased below Spider Protection Threshold ${_CPU_SPIDER_THRESHOLD}%"
-# _incident_email_report "${_log_message}" "${_subject}" "INFO"
+# _incident_email_report "${_subject}" "INFO"
 # echo >> ${_pthOml}
   echo "Action Taken: Disabled protection from spiders (nginx high load configuration removed)."
 }
@@ -312,4 +327,3 @@ done
 
 echo "Done!"
 exit 0
-
