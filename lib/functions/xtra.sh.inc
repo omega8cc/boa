@@ -244,7 +244,7 @@ _if_install_collectd() {
   fi
   if [[ "${_XTRAS_LIST}" =~ "CGP" ]]; then
     _CGP_VHOST="${_mtrNgx}/vhost.d/cgp.${_THIS_FRONT}"
-    if [ ! -e "/run/cloud_vhost.pid" ]; then
+    if [ ! -e "/var/log/boa/cloud_vhost.pid" ]; then
       if [ ! -d "/var/www/cgp" ] \
         || [ ! -f "${_CGP_VHOST}" ] \
         || [ ! -f "${_pthLog}/cgp-${_CGP_VRN}.sync-new-ip-access.log" ]; then
@@ -311,7 +311,7 @@ _if_install_webmin() {
     _msg "PROC: _if_install_webmin"
   fi
   if [[ "${_XTRAS_LIST}" =~ "WMN" ]]; then
-    if [ ! -d "/etc/webmin" ] && [ ! -e "/run/cloud_vhost.pid" ]; then
+    if [ ! -d "/etc/webmin" ] && [ ! -e "/var/log/boa/cloud_vhost.pid" ]; then
       if [ -x "/usr/bin/gpg2" ]; then
         _GPG=gpg2
       else

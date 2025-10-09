@@ -2175,7 +2175,19 @@ _display_time() {
       return
     elif [ "${_service}" = "pure-ftpd" ] && [ ! -e "/usr/local/sbin/pure-ftpd" ]; then
       return
+    elif [ "${_service}" = "php56-fpm" ] && [ ! -e "/opt/php56/bin/php" ]; then
+      return
+    elif [ "${_service}" = "php70-fpm" ] && [ ! -e "/opt/php70/bin/php" ]; then
+      return
+    elif [ "${_service}" = "php71-fpm" ] && [ ! -e "/opt/php71/bin/php" ]; then
+      return
+    elif [ "${_service}" = "php72-fpm" ] && [ ! -e "/opt/php72/bin/php" ]; then
+      return
+    elif [ "${_service}" = "php73-fpm" ] && [ ! -e "/opt/php73/bin/php" ]; then
+      return
     elif [ "${_service}" = "php74-fpm" ] && [ ! -e "/opt/php74/bin/php" ]; then
+      return
+    elif [ "${_service}" = "php80-fpm" ] && [ ! -e "/opt/php80/bin/php" ]; then
       return
     elif [ "${_service}" = "php81-fpm" ] && [ ! -e "/opt/php81/bin/php" ]; then
       return
@@ -2203,7 +2215,19 @@ _display_time() {
       return
     elif [ "${_service}" = "pure-ftpd" ] && [ ! -e "/usr/local/sbin/pure-ftpd" ]; then
       return
+    elif [ "${_service}" = "php56-fpm" ] && [ ! -e "/opt/php56/bin/php" ]; then
+      return
+    elif [ "${_service}" = "php70-fpm" ] && [ ! -e "/opt/php70/bin/php" ]; then
+      return
+    elif [ "${_service}" = "php71-fpm" ] && [ ! -e "/opt/php71/bin/php" ]; then
+      return
+    elif [ "${_service}" = "php72-fpm" ] && [ ! -e "/opt/php72/bin/php" ]; then
+      return
+    elif [ "${_service}" = "php73-fpm" ] && [ ! -e "/opt/php73/bin/php" ]; then
+      return
     elif [ "${_service}" = "php74-fpm" ] && [ ! -e "/opt/php74/bin/php" ]; then
+      return
+    elif [ "${_service}" = "php80-fpm" ] && [ ! -e "/opt/php80/bin/php" ]; then
       return
     elif [ "${_service}" = "php81-fpm" ] && [ ! -e "/opt/php81/bin/php" ]; then
       return
@@ -2578,7 +2602,13 @@ _display_info() {
         "crond"
         "postfix"
         "nginx"
+        "php56-fpm"
+        "php70-fpm"
+        "php71-fpm"
+        "php72-fpm"
+        "php73-fpm"
         "php74-fpm"
+        "php80-fpm"
         "php81-fpm"
         "php82-fpm"
         "php83-fpm"
@@ -2601,7 +2631,13 @@ _display_info() {
         ["crond"]="/run/crond.pid"
         ["postfix"]="/var/spool/postfix/pid/master.pid"
         ["nginx"]="/run/nginx.pid"
+        ["php56-fpm"]="/run/php56-fpm.pid"
+        ["php70-fpm"]="/run/php70-fpm.pid"
+        ["php71-fpm"]="/run/php71-fpm.pid"
+        ["php72-fpm"]="/run/php72-fpm.pid"
+        ["php73-fpm"]="/run/php73-fpm.pid"
         ["php74-fpm"]="/run/php74-fpm.pid"
+        ["php80-fpm"]="/run/php80-fpm.pid"
         ["php81-fpm"]="/run/php81-fpm.pid"
         ["php82-fpm"]="/run/php82-fpm.pid"
         ["php83-fpm"]="/run/php83-fpm.pid"

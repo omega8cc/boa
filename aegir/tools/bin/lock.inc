@@ -82,7 +82,7 @@ _check_uptime_grace_period() {
     || [ -e "/run/octopus_install_run.pid" ] \
     || [ -e "/run/boa_run.pid" ] \
     || [ -e "/run/boa_wait.pid" ]; then
-    export _INCIDENT_REPORT=NO
+    export _INCIDENT_REPORT=OFF
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       echo "Skipping alerts: system uptime ${_UPTIME_MIN} min < 15 min threshold."
     fi
