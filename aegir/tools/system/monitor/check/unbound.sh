@@ -112,65 +112,71 @@ _unbound_restart_with_cooldown() {
   sleep 3
 }
 
+_unbound_check_cooldown_status() {
+  # Check cooldown status
+  _in_unbound_cooldown=false
+  if [ -s "${_cd}" ]; then
+    _cd_now=$(date +%s)
+    _cd_ts=$(cat "${_cd}" 2>/dev/null | tr -d '\n')
+    if [ -n "${_cd_ts}" ] && [ $((_cd_now - _cd_ts)) -lt "${_UNBOUND_COOLDOWN_SECS}" ]; then
+      _in_unbound_cooldown=true
+    fi
+  fi
+}
+
 _unbound_config_fix() {
-
-
+  _unbound_check_cooldown_status
+  # Check if resolvconf interface is ready for Unbound
   if [ -x "/usr/sbin/unbound" ] \
     && [ ! -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
-    mkdir -p /etc/resolvconf/run/interface
-    echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.unbound
-    [ -e "/etc/resolvconf/update.d/unbound" ] && chmod 644 /etc/resolvconf/update.d/unbound
-    resolvconf -u &> /dev/null
-    pkill -u unbound -x unbound &> /dev/null
-    service unbound restart &> /dev/null
-    wait
-    unbound-control reload &> /dev/null
+    # === cooldown-wrapped restart ===
+    if [ "${_in_unbound_cooldown}" = "true" ]; then
+      echo "$(date) INFO: Unbound restart skipped (cooldown active)" >> ${_pthOml}
+    else
+      mkdir -p /etc/resolvconf/run/interface
+      echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.unbound
+      [ -e "/etc/resolvconf/update.d/unbound" ] && chmod 644 /etc/resolvconf/update.d/unbound
+      resolvconf -u &> /dev/null
+      _unbound_restart_with_cooldown
+      echo "$(date) INFO: Unbound restarted after resolvconf interface update" >> ${_pthOml}
+      echo >> ${_pthOml}
+      exit 0
+    fi
   fi
+  # Confirm that DNS requests are working
   if [ -e "/etc/resolv.conf" ]; then
     _RESOLV_LOC=$(grep "nameserver 127.0.0.1" /etc/resolv.conf 2>&1)
-    _RESOLV_ELN=$(grep "nameserver 1.1.1.1" /etc/resolv.conf 2>&1)
-    _RESOLV_EGT=$(grep "nameserver 8.8.8.8" /etc/resolv.conf 2>&1)
-    _RESOLV_NIN=$(grep "nameserver 9.9.9.9" /etc/resolv.conf 2>&1)
-    if [[ "${_RESOLV_LOC}" =~ "nameserver 127.0.0.1" ]] \
-      && [[ "${_RESOLV_ELN}" =~ "nameserver 1.1.1.1" ]] \
-      && [[ "${_RESOLV_EGT}" =~ "nameserver 8.8.8.8" ]] \
-      && [[ "${_RESOLV_NIN}" =~ "nameserver 9.9.9.9" ]]; then
-      _THIS_DNS_TEST=$(host files.aegir.cc 127.0.0.1 -w 3 2>&1)
+    if [[ "${_RESOLV_LOC}" =~ "nameserver 127.0.0.1" ]]; then
+      _THIS_DNS_TEST=$(host files.aegir.cc 127.0.0.1 -w 8 2>&1)
       if [[ "${_THIS_DNS_TEST}" =~ "no servers could be reached" ]]; then
-        service unbound stop &> /dev/null
-        sleep 1
-        pkill -u unbound -x unbound &> /dev/null
-        renice ${_B_NICE} -p $$ &> /dev/null
-        if [ -e "/var/xdrago/proc_num_ctrl.pl" ]; then
-          perl /var/xdrago/proc_num_ctrl.pl &
-        elif [ -e "/var/xdrago_wait/proc_num_ctrl.pl" ]; then
-          perl /var/xdrago_wait/proc_num_ctrl.pl &
+        if [ "${_in_unbound_cooldown}" = "true" ]; then
+          echo "$(date) INFO: Unbound restart skipped (cooldown active)" >> ${_pthOml}
+        else
+          _unbound_restart_with_cooldown
+          echo "$(date) INFO: Unbound restarted after DNS check failed" >> ${_pthOml}
+          echo >> ${_pthOml}
+          exit 0
         fi
       fi
     else
-      rm -f /etc/resolv.conf
-      echo "### BOA-DNS-Config ###" > /etc/resolv.conf
-      echo "nameserver 127.0.0.1" >> /etc/resolv.conf
-      echo "nameserver 1.1.1.1" >> /etc/resolv.conf
-      echo "nameserver 8.8.8.8" >> /etc/resolv.conf
-      echo "nameserver 9.9.9.9" >> /etc/resolv.conf
-      [ -e "/etc/resolvconf/update.d/unbound" ] && chmod 644 /etc/resolvconf/update.d/unbound
-      pkill -u unbound -x unbound &> /dev/null
-      service unbound restart &> /dev/null
-      wait
-      unbound-control reload &> /dev/null
+      if ! grep -q "BOA-DNS-Config" /etc/resolv.conf; then
+        rm -f /etc/resolv.conf
+        echo "### BOA-DNS-Config ###" > /etc/resolv.conf
+        echo "nameserver 127.0.0.1" >> /etc/resolv.conf
+        echo "nameserver 1.1.1.1" >> /etc/resolv.conf
+        echo "nameserver 8.8.8.8" >> /etc/resolv.conf
+        echo "nameserver 9.9.9.9" >> /etc/resolv.conf
+        [ -e "/etc/resolvconf/update.d/unbound" ] && chmod 644 /etc/resolvconf/update.d/unbound
+        if [ "${_in_unbound_cooldown}" = "true" ]; then
+          echo "$(date) INFO: Unbound restart skipped (cooldown active)" >> ${_pthOml}
+        else
+          _unbound_restart_with_cooldown
+          echo "$(date) INFO: Unbound restarted after /etc/resolv.conf update" >> ${_pthOml}
+          echo >> ${_pthOml}
+          exit 0
+        fi
+      fi
     fi
-  fi
-  _CNT=$(pgrep -fc /usr/sbin/unbound)
-  if (( _CNT > 1 )); then
-    pkill -u unbound -x unbound &> /dev/null
-    service unbound restart &> /dev/null
-    wait
-    echo "$(date) Too many Unbound processes killed (count=${_CNT})" >> ${_pthOml}
-    _incident_email_report "Too many Unbound processes (count=${_CNT})"
-    echo >> ${_pthOml}
-  elif (( _CNT < 1 )); then
-    [ -x "/etc/init.d/unbound" ] && service unbound restart &> /dev/null
   fi
 }
 
