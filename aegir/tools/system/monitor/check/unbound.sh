@@ -117,8 +117,6 @@ _unbound_config_fix() {
 
   if [ -x "/usr/sbin/unbound" ] \
     && [ ! -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
-    touch /run/wait-unbound.pid
-    sleep 3
     mkdir -p /etc/resolvconf/run/interface
     echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.unbound
     [ -e "/etc/resolvconf/update.d/unbound" ] && chmod 644 /etc/resolvconf/update.d/unbound
@@ -127,8 +125,6 @@ _unbound_config_fix() {
     service unbound restart &> /dev/null
     wait
     unbound-control reload &> /dev/null
-    sleep 3
-    rm -f /run/wait-unbound.pid
   fi
   if [ -e "/etc/resolv.conf" ]; then
     _RESOLV_LOC=$(grep "nameserver 127.0.0.1" /etc/resolv.conf 2>&1)
@@ -141,8 +137,6 @@ _unbound_config_fix() {
       && [[ "${_RESOLV_NIN}" =~ "nameserver 9.9.9.9" ]]; then
       _THIS_DNS_TEST=$(host files.aegir.cc 127.0.0.1 -w 3 2>&1)
       if [[ "${_THIS_DNS_TEST}" =~ "no servers could be reached" ]]; then
-        touch /run/wait-unbound.pid
-        sleep 3
         service unbound stop &> /dev/null
         sleep 1
         pkill -u unbound -x unbound &> /dev/null
@@ -152,12 +146,8 @@ _unbound_config_fix() {
         elif [ -e "/var/xdrago_wait/proc_num_ctrl.pl" ]; then
           perl /var/xdrago_wait/proc_num_ctrl.pl &
         fi
-        sleep 3
-        rm -f /run/wait-unbound.pid
       fi
     else
-      touch /run/wait-unbound.pid
-      sleep 3
       rm -f /etc/resolv.conf
       echo "### BOA-DNS-Config ###" > /etc/resolv.conf
       echo "nameserver 127.0.0.1" >> /etc/resolv.conf
@@ -169,22 +159,16 @@ _unbound_config_fix() {
       service unbound restart &> /dev/null
       wait
       unbound-control reload &> /dev/null
-      sleep 3
-      rm -f /run/wait-unbound.pid
     fi
   fi
   _CNT=$(pgrep -fc /usr/sbin/unbound)
   if (( _CNT > 1 )); then
-    touch /run/wait-unbound.pid
-    sleep 3
     pkill -u unbound -x unbound &> /dev/null
     service unbound restart &> /dev/null
     wait
     echo "$(date) Too many Unbound processes killed (count=${_CNT})" >> ${_pthOml}
     _incident_email_report "Too many Unbound processes (count=${_CNT})"
     echo >> ${_pthOml}
-    sleep 3
-    rm -f /run/wait-unbound.pid
   elif (( _CNT < 1 )); then
     [ -x "/etc/init.d/unbound" ] && service unbound restart &> /dev/null
   fi
@@ -267,8 +251,6 @@ _unbound_health_check_fix() {
         return 0
       fi
     fi
-    touch /run/wait-unbound.pid
-    sleep 3
     [ ! -e "/run/unbound" ] && mkdir -p /run/unbound
     chown -R unbound:unbound /run/unbound
     mkdir -p /etc/resolvconf/run/interface
@@ -290,8 +272,8 @@ else
   _ALLOW_CTRL=YES
 fi
 
-if [ -x "/usr/sbin/unbound" ] && [ ! -e "/run/wait-unbound.pid" ]; then
   [ "${_ALLOW_CTRL}" = "YES" ] && _unbound_config_fix
+if [ -x "/usr/sbin/unbound" ]; then
   [ "${_ALLOW_CTRL}" = "YES" ] && _unbound_check_nomail
   _unbound_health_check_fix
 fi
