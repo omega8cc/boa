@@ -438,7 +438,7 @@ _dns_unbound_install_upgrade() {
     fi
     ###
     [ ! -e "/run/unbound" ] && mkdir -p /run/unbound
-    chown -R unbound:unbound /run/unbound
+    [ -e "/run/unbound" ] && chown -R unbound:unbound /run/unbound
     [ ! -e "/var/log/unbound/" ] && mkdir -p /var/log/unbound/
     touch /var/log/unbound/unbound.log
     chown -R unbound:unbound /var/log/unbound
