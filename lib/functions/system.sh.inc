@@ -9264,7 +9264,7 @@ _sysctl_update() {
         wait
         echo ULIMIT=\"-n 524288\" >> /etc/default/nginx
         ulimit -n 524288 &> /dev/null
-        service nginx restart &> /dev/null
+        _mrun "service nginx restart"
       fi
     fi
     if [ -e "/etc/security/limits.d" ] \

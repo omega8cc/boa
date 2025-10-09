@@ -4856,7 +4856,7 @@ _satellite_letsencrypt_vhost_sync() {
   fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "${_STATUS} A: Reloading Nginx..."
-    service nginx reload
+    _mrun "service nginx reload"
   else
     _mrun "service nginx reload"
   fi
@@ -4881,7 +4881,7 @@ _satellite_letsencrypt_vhost_setup() {
       _ifvHst="NO"
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "${_STATUS} A: Reloading Nginx..."
-        service nginx reload
+        _mrun "service nginx reload"
       else
         _mrun "service nginx reload"
       fi
