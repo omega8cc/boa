@@ -380,8 +380,20 @@ _lfd_health_check_fix() {
   if [ -x "/etc/init.d/lfd" ]; then
     if ! pgrep -f lfd \
       || [ ! -e "/run/lfd.pid" ]; then
+      : "${_LFD_COOLDOWN_SECS:=10}"
+      _cd="/run/lfd-monitor.cooldown"
+      _now=$(date +%s)
+      if [ -s "${_cd}" ]; then
+        _ts=$(cat "${_cd}" 2>/dev/null | tr -d '\n')
+        if [ -n "${_ts}" ] && [ $((_now - _ts)) -lt "${_LFD_COOLDOWN_SECS}" ]; then
+          echo "$(date) INFO: LFD unhealthy but in cooldown; skipping start" >> ${_pthOml}
+          return 0
+        fi
+      fi
       service lfd start
       csf -e
+      # Set cooldown timestamp after attempting recovery
+      date +%s > "${_cd}"
       _thisErrLog="$(date) LFD Monitor was down, started"
       echo ${_thisErrLog} >> ${_pthOml}
       _incident_email_report "LFD Monitor was down, started"
