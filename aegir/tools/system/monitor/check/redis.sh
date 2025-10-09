@@ -177,7 +177,7 @@ _redis_bind_check_fix() {
     sleep 2
     _hits2=$(tail -n 8 /var/log/redis/redis-server.log 2>/dev/null | egrep -ci "Address already in use")
     if [ "${_hits2}" -gt 0 ] && [ ! -S "/run/redis/redis.sock" ]; then
-      : "${_REDIS_COOLDOWN_SECS:10}"
+      : "${_REDIS_COOLDOWN_SECS:=10}"
       _now=$(date +%s)
       if [ -s "${_cd}" ]; then
         _ts=$(tr -d '\n' < "${_cd}")
@@ -199,7 +199,7 @@ _redis_connection_check_fix() {
     sleep 2
     _hits2=$(tail -n 500 /var/log/php/error_log_* 2>/dev/null | egrep -ci "RedisException: Connection refused")
     if [ "${_hits2}" -gt 19 ]; then
-      : "${_REDIS_COOLDOWN_SECS:10}"
+      : "${_REDIS_COOLDOWN_SECS:=10}"
       _now=$(date +%s)
       if [ -s "${_cd}" ]; then
         _ts=$(tr -d '\n' < "${_cd}")
@@ -221,7 +221,7 @@ _redis_slow_check_fix() {
     sleep 2
     _hits2=$(tail -n 500 /var/log/php/fpm-*-slow.log 2>/dev/null | egrep -ci "PhpRedis.php")
     if [ "${_hits2}" -gt 19 ]; then
-      : "${_REDIS_COOLDOWN_SECS:10}"
+      : "${_REDIS_COOLDOWN_SECS:=10}"
       _now=$(date +%s)
       if [ -s "${_cd}" ]; then
         _ts=$(tr -d '\n' < "${_cd}")
@@ -248,7 +248,7 @@ _if_redis_restart() {
     || [ -e "/root/.allow.redis.restart.cnf" ] \
     || [ -e "/root/.allow.redis.restart.cnf" ]; then
     if [ "${_VkTest}" -ge 1 ] || [ "${_ReTest}" -ge 1 ]; then
-      : "${_REDIS_COOLDOWN_SECS:10}"
+      : "${_REDIS_COOLDOWN_SECS:=10}"
       _now=$(date +%s)
       if [ -s "${_cd}" ]; then
         _ts=$(tr -d '\n' < "${_cd}")
@@ -291,7 +291,7 @@ _redis_health_check_fix() {
   fi
 
   if ! ${_ok_proc} || ! ${_ok_ping}; then
-    : "${_REDIS_COOLDOWN_SECS:10}"
+    : "${_REDIS_COOLDOWN_SECS:=10}"
     _now=$(date +%s)
     if [ -s "${_cd}" ]; then
       _ts=$(tr -d '\n' < "${_cd}")

@@ -166,7 +166,7 @@ _graceful_action() {
 
   # Reload nginx service
   echo "Reloading nginx service..."
-  nice -n -5 service nginx reload
+  service nginx reload
 
   # Restart Solr and Jetty servers if not under high traffic
   if [ ! -e "/run/boa_run.pid" ] \
@@ -202,11 +202,11 @@ _graceful_action() {
     touch /run/speed_cleanup.pid
     echo " " >> /var/log/nginx/speed_cleanup.log
     sed -i "s/levels=2:2:2/levels=2:2/g" /var/aegir/config/server_master/nginx.conf
-    nice -n -5 service nginx reload &> /dev/null
+    service nginx reload &> /dev/null
     echo "speed_purge start $(date)" >> /var/log/nginx/speed_cleanup.log
     nice -n 9 ionice -c2 -n7 find /var/lib/nginx/speed/ -mtime +1 -exec rm -rf {} \; &> /dev/null
     echo "speed_purge complete $(date)" >> /var/log/nginx/speed_cleanup.log
-    nice -n -5 service nginx reload &> /dev/null
+    service nginx reload &> /dev/null
     rm -f /run/speed_cleanup.pid
   fi
 
