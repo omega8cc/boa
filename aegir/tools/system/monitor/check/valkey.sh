@@ -5,6 +5,7 @@ export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 
 _pthOml="/var/log/boa/valkey.incident.log"
+_cd="/run/valkey-monitor.cooldown"
 
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
@@ -100,7 +101,37 @@ _incident_email_report() {
   fi
 }
 
+_valkey_ping_ok() {
+  # Check if Valkey responds to PING (authenticated or NOAUTH)
+  _sock="/run/valkey/valkey.sock"
+  _cli="/usr/bin/valkey-cli"
+  _pass_file="/root/.valkey.pass.txt"
+  _out=
+  _pass=
+  if [ ! -x "${_cli}" ]; then
+    return 1
+  fi
+  if [ -r "${_pass_file}" ]; then
+    _pass="$(head -n1 "${_pass_file}" 2>/dev/null | tr -d '\r\n')"
+  fi
+  if [ -n "${_pass}" ]; then
+    _out="$(${_cli} -s "${_sock}" -a "${_pass}" ping 2>&1)"
+  else
+    _out="$(${_cli} -s "${_sock}" ping 2>&1)"
+  fi
+  if echo "${_out}" | grep -qi '^PONG$'; then
+    return 0
+  fi
+  if echo "${_out}" | grep -qi 'NOAUTH'; then
+    return 0
+  fi
+  return 1
+}
+
 _fpm_reload() {
+  : > /run/fmp_wait.pid
+  : > /run/restarting_fmp_wait.pid
+  sleep 3
   _NOW=$(date +%y%m%d-%H%M%S)
   _NOW=${_NOW//[^0-9-]/}
   mkdir -p /var/backups/php-logs/${_NOW}/
@@ -113,6 +144,8 @@ _fpm_reload() {
     fi
   done
   echo "$(date) $1 incident PHP-FPM reloaded" >> ${_pthOml}
+  sleep 1
+  rm -f /run/fmp_wait.pid /run/restarting_fmp_wait.pid
 }
 
 _valkey_restart() {
@@ -130,6 +163,7 @@ _valkey_restart() {
     _fpm_reload "$1"
   fi
   echo "$(date) $1 incident response completed" >> ${_pthOml}
+  date +%s > "${_cd}"
   _incident_email_report "$1"
   echo >> ${_pthOml}
   [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
@@ -137,29 +171,68 @@ _valkey_restart() {
 }
 
 _valkey_bind_check_fix() {
-  if [ `tail --lines=8 /var/log/valkey/valkey-server.log \
-    | grep --count "Address already in use"` -gt 0 ]; then
-    _thisErrLog="$(date) ValkeyException BIND PORT error, service will be restarted"
-    echo ${_thisErrLog} >> ${_pthOml}
-    _valkey_restart "ValkeyException BIND PORT"
+  # Bind/socket/address-in-use issues → verify twice; restart only if socket missing
+  _hits=$(tail -n 8 /var/log/valkey/valkey-server.log 2>/dev/null | egrep -ci "Address already in use")
+  if [ "${_hits}" -gt 0 ]; then
+    sleep 2
+    _hits2=$(tail -n 8 /var/log/valkey/valkey-server.log 2>/dev/null | egrep -ci "Address already in use")
+    if [ "${_hits2}" -gt 0 ] && [ ! -S "/run/valkey/valkey.sock" ]; then
+      : "${_VALKEY_COOLDOWN_SECS:10}"
+      _now=$(date +%s)
+      if [ -s "${_cd}" ]; then
+        _ts=$(tr -d '\n' < "${_cd}")
+        if [ -n "${_ts}" ] && [ $((_now - _ts)) -lt "${_VALKEY_COOLDOWN_SECS}" ]; then
+          echo "$(date) INFO: Valkey bind/socket conflict but in cooldown; skipping restart" >> ${_pthOml}
+          return 0
+        fi
+      fi
+      echo "$(date) Valkey bind/socket conflict; restarting" >> ${_pthOml}
+      _valkey_restart "ValkeyException BIND PORT"
+    fi
   fi
 }
 
 _valkey_connection_check_fix() {
-  if [ `tail --lines=500 /var/log/php/error_log_* \
-    | grep --count "ValkeyException: Connection refused"` -gt 19 ]; then
-    _thisErrLog="$(date) ValkeyException Connection refused, service will be restarted"
-    echo ${_thisErrLog} >> ${_pthOml}
-    _valkey_restart "ValkeyException REFUSED"
+  # Sustained connection/backlog issues → verify twice; cooldown then restart
+  _hits=$(tail -n 500 /var/log/php/error_log_* 2>/dev/null | egrep -ci "RedisException: Connection refused")
+  if [ "${_hits}" -gt 19 ]; then
+    sleep 2
+    _hits2=$(tail -n 500 /var/log/php/error_log_* 2>/dev/null | egrep -ci "RedisException: Connection refused")
+    if [ "${_hits2}" -gt 19 ]; then
+      : "${_VALKEY_COOLDOWN_SECS:10}"
+      _now=$(date +%s)
+      if [ -s "${_cd}" ]; then
+        _ts=$(tr -d '\n' < "${_cd}")
+        if [ -n "${_ts}" ] && [ $((_now - _ts)) -lt "${_VALKEY_COOLDOWN_SECS}" ]; then
+          echo "$(date) INFO: Valkey connection issues but in cooldown; skipping restart" >> ${_pthOml}
+          return 0
+        fi
+      fi
+      echo "$(date) Valkey sustained connection issues (${_hits2} hits) — restart" >> ${_pthOml}
+      _valkey_restart "ValkeyException REFUSED"
+    fi
   fi
 }
 
 _valkey_slow_check_fix() {
-  if [ `tail --lines=500 /var/log/php/fpm-*-slow.log \
-    | grep --count "PhpRedis.php"` -gt 19 ]; then
-    _thisErrLog="$(date) Slow PhpRedis, service will be restarted"
-    echo ${_thisErrLog} >> ${_pthOml}
-    _valkey_restart "ValkeyException SLOW"
+  # Sustained latency/slowlog/accept issues → verify twice; cooldown then restart
+  _hits=$(tail -n 500 /var/log/php/fpm-*-slow.log 2>/dev/null | egrep -ci "PhpRedis.php")
+  if [ "${_hits}" -gt 19 ]; then
+    sleep 2
+    _hits2=$(tail -n 500 /var/log/php/fpm-*-slow.log 2>/dev/null | egrep -ci "PhpRedis.php")
+    if [ "${_hits2}" -gt 19 ]; then
+      : "${_VALKEY_COOLDOWN_SECS:10}"
+      _now=$(date +%s)
+      if [ -s "${_cd}" ]; then
+        _ts=$(tr -d '\n' < "${_cd}")
+        if [ -n "${_ts}" ] && [ $((_now - _ts)) -lt "${_VALKEY_COOLDOWN_SECS}" ]; then
+          echo "$(date) INFO: Valkey latency symptoms but in cooldown; skipping restart" >> ${_pthOml}
+          return 0
+        fi
+      fi
+      echo "$(date) Valkey sustained latency symptoms (${_hits2} hits) — restart" >> ${_pthOml}
+      _valkey_restart "ValkeyException SLOW"
+    fi
   fi
 }
 
@@ -167,14 +240,23 @@ _if_valkey_restart() {
   _PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
   _PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
   _PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
-  VkTest=$(ls /data/disk/*/static/control/run-valkey-restart.pid | wc -l 2>&1)
-  ReTest=$(ls /data/disk/*/static/control/run-redis-restart.pid | wc -l 2>&1)
+  _VkTest=$(ls /data/disk/*/static/control/run-valkey-restart.pid | wc -l 2>&1)
+  _ReTest=$(ls /data/disk/*/static/control/run-redis-restart.pid | wc -l 2>&1)
   if [[ "${_PrTestPower}" =~ "POWER" ]] \
     || [[ "${_PrTestPhantom}" =~ "PHANTOM" ]] \
     || [[ "${_PrTestCluster}" =~ "CLUSTER" ]] \
     || [ -e "/root/.allow.valkey.restart.cnf" ] \
     || [ -e "/root/.allow.redis.restart.cnf" ]; then
-    if [ "${VkTest}" -ge 1 ] || [ "${ReTest}" -ge 1 ]; then
+    if [ "${_VkTest}" -ge 1 ] || [ "${_ReTest}" -ge 1 ]; then
+      : "${_VALKEY_COOLDOWN_SECS:10}"
+      _now=$(date +%s)
+      if [ -s "${_cd}" ]; then
+        _ts=$(tr -d '\n' < "${_cd}")
+        if [ -n "${_ts}" ] && [ $((_now - _ts)) -lt "${_VALKEY_COOLDOWN_SECS}" ]; then
+          echo "$(date) INFO: Valkey restart requested but in cooldown; skipped" >> ${_pthOml}
+          return 0
+        fi
+      fi
       rm -f /data/disk/*/static/control/run-valkey-restart.pid
       rm -f /data/disk/*/static/control/run-redis-restart.pid
       _thisErrLog="$(date) Valkey Server Restart Requested"
@@ -185,14 +267,65 @@ _if_valkey_restart() {
 }
 
 _valkey_health_check_fix() {
-  if ! pgrep -f /usr/bin/valkey-server \
-    || [ ! -e "/run/valkey/valkey.sock" ] \
-    || [ ! -e "/run/valkey/valkey.pid" ]; then
-    mkdir -p /run/valkey
-    chown -R valkey:valkey /run/valkey
-    _thisErrLog="$(date) Valkey Server was down, restarted"
-    echo ${_thisErrLog} >> ${_pthOml}
-    _valkey_restart "Valkey Server was down, restarted"
+
+  # Double-check health: process + socket PING
+  _ok_proc=false
+  _ok_ping=false
+
+  pgrep -f "/usr/bin/valkey-server" >/dev/null 2>&1 && _ok_proc=true
+  if [ -x "/usr/bin/valkey-cli" ]; then
+    if _valkey_ping_ok; then
+      _ok_ping=true
+    fi
+  fi
+
+  if ! ${_ok_proc} || ! ${_ok_ping}; then
+    sleep 2
+    _ok_proc=false; _ok_ping=false
+    pgrep -f "/usr/bin/valkey-server" >/dev/null 2>&1 && _ok_proc=true
+    if [ -x "/usr/bin/valkey-cli" ]; then
+      if _valkey_ping_ok; then
+        _ok_ping=true
+      fi
+    fi
+  fi
+
+  if ! ${_ok_proc} || ! ${_ok_ping}; then
+    : "${_VALKEY_COOLDOWN_SECS:10}"
+    _now=$(date +%s)
+    if [ -s "${_cd}" ]; then
+      _ts=$(tr -d '\n' < "${_cd}")
+      if [ -n "${_ts}" ] && [ $((_now - _ts)) -lt "${_VALKEY_COOLDOWN_SECS}" ]; then
+        echo "$(date) INFO: Valkey unhealthy but in cooldown; skipping restart" >> ${_pthOml}
+        return 0
+      fi
+    fi
+
+    echo "$(date) Valkey health failed (proc=${_ok_proc} ping=${_ok_ping}) — restart" >> ${_pthOml}
+    service valkey-server restart
+    wait
+    sleep 1
+
+    # Post-restart verification
+    _ok_proc=false; _ok_ping=false
+    pgrep -f "/usr/bin/valkey-server" >/dev/null 2>&1 && _ok_proc=true
+    if [ -x "/usr/bin/valkey-cli" ]; then
+      if _valkey_ping_ok; then
+        _ok_ping=true
+      fi
+    fi
+
+    date +%s > "${_cd}"
+
+    if ${_ok_proc} && ${_ok_ping}; then
+      echo "$(date) Valkey was down, restarted" >> ${_pthOml}
+      _incident_email_report "Valkey was down, restarted"
+      echo >> ${_pthOml}
+      exit 0
+    else
+      echo "$(date) Valkey still unhealthy after restart; forced stop/start" >> ${_pthOml}
+      _valkey_restart "Valkey required stop/start after failed restart"
+    fi
   fi
 }
 
