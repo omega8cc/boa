@@ -18,7 +18,7 @@ _check_root() {
     export _B_NICE=${_B_NICE//[^0-9-]/}
 
     # Validate and set default if necessary
-    if ! [[ "$_B_NICE" =~ ^-?[0-9]+$ ]]; then
+    if ! [[ "${_B_NICE}" =~ ^-?[0-9]+$ ]]; then
       _B_NICE=0
     fi
 
@@ -103,7 +103,6 @@ _find_fast_mirror_early() {
         csf -a 172.105.168.103 ao.files.aegir.cc &> /dev/null
         if [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
           csf -ra &> /dev/null
-          wait
           synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
         else
           csf -r &> /dev/null
@@ -276,7 +275,6 @@ _if_fix_locked_sshd() {
     | grep --count "error: Bind to port 22"` -gt 0 ]; then
     pkill -9 -f /usr/sbin/sshd || true
     service ssh start
-    wait
   fi
 }
 _if_fix_locked_sshd

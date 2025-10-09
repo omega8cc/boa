@@ -145,7 +145,6 @@ dns=none
 EOF
   fi
   service network-manager restart 2>/dev/null || true
-  wait
 }
 
 _finalize_resolv() {

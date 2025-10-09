@@ -18,11 +18,14 @@ _check_root() {
 }
 _check_root
 
+# Run only on fully installed system
+[ ! -x "/usr/sbin/csf" ] && exit 0
+
 # Sanitize to allow only digits and minus sign
 export _B_NICE=${_B_NICE//[^0-9-]/}
 
 # Validate and set default if necessary
-if ! [[ "$_B_NICE" =~ ^-?[0-9]+$ ]]; then
+if ! [[ "${_B_NICE}" =~ ^-?[0-9]+$ ]]; then
   _B_NICE=0
 fi
 
@@ -40,9 +43,6 @@ export _SQL_MAX_TTL=${_SQL_MAX_TTL//[^0-9]/}
 
 export _SQL_LOW_MAX_TTL=${_SQL_LOW_MAX_TTL//[^0-9]/}
 : "${_SQL_LOW_MAX_TTL:=60}"
-
-export _INCIDENT_REPORT=${_INCIDENT_REPORT//[^A-Z]/}
-: "${_INCIDENT_REPORT:=YES}"
 
 export _LOAD_THRESHOLD=${_LOAD_THRESHOLD//[^0-9.]/}
 : "${_LOAD_THRESHOLD:=33.0}" # Example: 1-minute load above 33 indicates high load
@@ -74,9 +74,38 @@ _manage_single_lock() {
 }
 _manage_single_lock
 
+###
+### Load + normalize _INCIDENT_REPORT
+###
+### Legacy values:
+###   NO  becomes OFF (see below)
+###   YES becomes MINI (see below)
+###
+### Current values:
+###   OFF  == Total silence, no email alerts
+###   ALL  == Very noisy, good for debugging
+###   MINI == Only the most important alerts (default)
+###   CRIT == Only critical if _lvl=ALERT
+###
+_normalize_incident_report() {
+  : "${_INCIDENT_REPORT:=MINI}"
+  _INCIDENT_REPORT="${_INCIDENT_REPORT^^}"
+  _INCIDENT_REPORT="${_INCIDENT_REPORT//[^A-Z]/}"
+  ###
+  ### Map legacy + validate
+  ###
+  case "${_INCIDENT_REPORT}" in
+    NO)   _INCIDENT_REPORT="OFF"  ;;
+    YES)  _INCIDENT_REPORT="MINI" ;;
+    OFF|ALL|MINI|CRIT) : ;;
+    *)    _INCIDENT_REPORT="MINI" ;;
+  esac
+}
+_normalize_incident_report
+
 _incident_email_report() {
   if ! _check_uptime_grace_period >/dev/null; then return 1; fi
-  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "YES" ]; then
+  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" != "OFF" ]; then
     _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
     echo "Sending Incident Report Email on $(date)" >> ${_pthOml}
     s-nail -s "Incident Report: ${1} on ${_hName} at $(date)" ${_MY_EMAIL} < ${_pthOml}

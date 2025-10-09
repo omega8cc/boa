@@ -88,7 +88,6 @@ _forced_valkey_password_update() {
   fi
   if [ "${_FORCE_VALKEY_RESTART}" = "YES" ]; then
     _mrun "service valkey-server restart"
-    wait
   fi
 }
 #
@@ -317,7 +316,6 @@ _install_valkey_src() {
   touch ${_pthLog}/valkey-${_VALKEY_VRN}-${_xSrl}-${_X_VERSION}.log
   _disable_redis
   _mrun "service valkey-server restart"
-  wait
 }
 
 _valkey_install_upgrade() {

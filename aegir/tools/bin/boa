@@ -50,8 +50,16 @@ _clean_pid_exit() {
   echo "REASON ${1} on $(date)" >> /root/.boa.exit.exceptions.log
   [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
   [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
+  [ -e "/run/octopus_install_run.pid" ] && rm -f /run/octopus_install_run.pid
+  [ -e "/tmp/aegir_backup_mode.txt" ] && rm -f /tmp/aegir_backup_mode.txt
+  rm -f ${_vBs}/*.sh.cnf*
+  rm -f ${_vBs}/OCTOPUS.sh*
+  rm -f ${_vBs}/BARRACUDA.sh*
   service cron start &> /dev/null
-  wait
+  _CNT=$(pgrep -fc 'tee -a /var/backups/barracuda-')
+  if (( _CNT > 1 )); then
+    pkill -f 'tee -a /var/backups/barracuda-'
+  fi
   exit 1
 }
 
@@ -1556,6 +1564,11 @@ _init_setup() {
       echo "LOG TO CHECK: ${_IN_BARRACUDA_LOG}"
       _send_errors
       _clean_pid_exit _barracuda_install
+    else
+      _CNT=$(pgrep -fc 'tee -a /var/backups/barracuda-')
+      if (( _CNT > 1 )); then
+        pkill -f 'tee -a /var/backups/barracuda-'
+      fi
     fi
     _NOW=$(date +%y%m%d-%H%M%S)
     _NOW=${_NOW//[^0-9-]/}
@@ -1860,17 +1873,14 @@ _csf_check_fix() {
     csf -a 172.233.219.37  us.files.aegir.cc &> /dev/null
     csf -a 172.105.168.103 ao.files.aegir.cc &> /dev/null
     service lfd stop &> /dev/null
-    wait
     pkill -9 -f ConfigServer
     killall sleep &> /dev/null
     rm -f /etc/csf/csf.error
     csf -x  &> /dev/null
-    wait
     service clean-boa-env start &> /dev/null
-    wait
     _if_fix_iptables_symlinks
     ### csf -uf &> /dev/null
-    wait
+    ### wait
     _NFTABLES_TEST=$(iptables -V)
     if [[ "${_NFTABLES_TEST}" =~ "nf_tables" ]]; then
       if [ -e "/usr/sbin/iptables-legacy" ]; then
@@ -1887,9 +1897,7 @@ _csf_check_fix() {
       fi
     fi
     csf -e  &> /dev/null
-    wait
     sed -i "s/.*DHCP.*//g" /etc/csf/csf.allow
-    wait
     sed -i "/^$/d" /etc/csf/csf.allow
     if [ -e "/var/log/daemon.log" ]; then
       _DHCP_LOG="/var/log/daemon.log"
@@ -1905,7 +1913,6 @@ _csf_check_fix() {
       fi
     done
     service lfd start &> /dev/null
-    wait
     ### Linux kernel TCP SACK CVEs mitigation
     ### CVE-2019-11477 SACK Panic
     ### CVE-2019-11478 SACK Slowness
@@ -2168,7 +2175,19 @@ _display_time() {
       return
     elif [ "${_service}" = "pure-ftpd" ] && [ ! -e "/usr/local/sbin/pure-ftpd" ]; then
       return
+    elif [ "${_service}" = "php56-fpm" ] && [ ! -e "/opt/php56/bin/php" ]; then
+      return
+    elif [ "${_service}" = "php70-fpm" ] && [ ! -e "/opt/php70/bin/php" ]; then
+      return
+    elif [ "${_service}" = "php71-fpm" ] && [ ! -e "/opt/php71/bin/php" ]; then
+      return
+    elif [ "${_service}" = "php72-fpm" ] && [ ! -e "/opt/php72/bin/php" ]; then
+      return
+    elif [ "${_service}" = "php73-fpm" ] && [ ! -e "/opt/php73/bin/php" ]; then
+      return
     elif [ "${_service}" = "php74-fpm" ] && [ ! -e "/opt/php74/bin/php" ]; then
+      return
+    elif [ "${_service}" = "php80-fpm" ] && [ ! -e "/opt/php80/bin/php" ]; then
       return
     elif [ "${_service}" = "php81-fpm" ] && [ ! -e "/opt/php81/bin/php" ]; then
       return
@@ -2196,7 +2215,19 @@ _display_time() {
       return
     elif [ "${_service}" = "pure-ftpd" ] && [ ! -e "/usr/local/sbin/pure-ftpd" ]; then
       return
+    elif [ "${_service}" = "php56-fpm" ] && [ ! -e "/opt/php56/bin/php" ]; then
+      return
+    elif [ "${_service}" = "php70-fpm" ] && [ ! -e "/opt/php70/bin/php" ]; then
+      return
+    elif [ "${_service}" = "php71-fpm" ] && [ ! -e "/opt/php71/bin/php" ]; then
+      return
+    elif [ "${_service}" = "php72-fpm" ] && [ ! -e "/opt/php72/bin/php" ]; then
+      return
+    elif [ "${_service}" = "php73-fpm" ] && [ ! -e "/opt/php73/bin/php" ]; then
+      return
     elif [ "${_service}" = "php74-fpm" ] && [ ! -e "/opt/php74/bin/php" ]; then
+      return
+    elif [ "${_service}" = "php80-fpm" ] && [ ! -e "/opt/php80/bin/php" ]; then
       return
     elif [ "${_service}" = "php81-fpm" ] && [ ! -e "/opt/php81/bin/php" ]; then
       return
@@ -2571,7 +2602,13 @@ _display_info() {
         "crond"
         "postfix"
         "nginx"
+        "php56-fpm"
+        "php70-fpm"
+        "php71-fpm"
+        "php72-fpm"
+        "php73-fpm"
         "php74-fpm"
+        "php80-fpm"
         "php81-fpm"
         "php82-fpm"
         "php83-fpm"
@@ -2594,7 +2631,13 @@ _display_info() {
         ["crond"]="/run/crond.pid"
         ["postfix"]="/var/spool/postfix/pid/master.pid"
         ["nginx"]="/run/nginx.pid"
+        ["php56-fpm"]="/run/php56-fpm.pid"
+        ["php70-fpm"]="/run/php70-fpm.pid"
+        ["php71-fpm"]="/run/php71-fpm.pid"
+        ["php72-fpm"]="/run/php72-fpm.pid"
+        ["php73-fpm"]="/run/php73-fpm.pid"
         ["php74-fpm"]="/run/php74-fpm.pid"
+        ["php80-fpm"]="/run/php80-fpm.pid"
         ["php81-fpm"]="/run/php81-fpm.pid"
         ["php82-fpm"]="/run/php82-fpm.pid"
         ["php83-fpm"]="/run/php83-fpm.pid"
