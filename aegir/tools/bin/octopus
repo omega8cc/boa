@@ -51,7 +51,6 @@ _clean_pid_exit() {
   [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
   [ -e "/tmp/aegir_backup_mode.txt" ] && rm -f /tmp/aegir_backup_mode.txt
   service cron start &> /dev/null
-  wait
   exit 1
 }
 
@@ -646,7 +645,7 @@ _get_load() {
 }
 
 _load_control() {
-  : "${_CPU_TASK_RATIO:=2.1}"
+  : "${_CPU_TASK_RATIO:=3.1}"
   _CPU_TASK_RATIO="$(_sanitize_number "${_CPU_TASK_RATIO}")"
   _O_LOAD_MAX=$(echo "${_CPU_TASK_RATIO} * 100" | bc -l)
   _get_load
@@ -854,7 +853,9 @@ _up_finish() {
     rm -f /opt/local/bin/php
     rm -f /usr/local/bin/php
   fi
-  rm -rf /opt/tmp/*
+  if [ -d "/data/u" ]; then
+    rm -rf /opt/tmp/*
+  fi
   echo
   echo OCTOPUS upgrade completed
   echo Bye
@@ -1109,7 +1110,7 @@ _check_root() {
     export _B_NICE=${_B_NICE//[^0-9-]/}
 
     # Validate and set default if necessary
-    if ! [[ "$_B_NICE" =~ ^-?[0-9]+$ ]]; then
+    if ! [[ "${_B_NICE}" =~ ^-?[0-9]+$ ]]; then
       _B_NICE=0
     fi
 

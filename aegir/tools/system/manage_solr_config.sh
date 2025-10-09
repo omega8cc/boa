@@ -328,7 +328,6 @@ _add_solr() {
         wait
         pkill -9 -f jetty9
         service jetty9 start &> /dev/null
-        wait
       fi
       echo "New Solr ${3} with ${1} for ${2} added"
     fi
@@ -391,7 +390,6 @@ _delete_solr() {
       rm -f ${_Dir}/solr.php
       pkill -9 -f jetty9
       service jetty9 start &> /dev/null
-      wait
     fi
     echo "Deleted Solr core in ${1}"
   fi
@@ -629,7 +627,7 @@ _get_load() {
 _load_control() {
   # shellcheck disable=SC1091
   [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
-  : "${_CPU_TASK_RATIO:=2.1}"
+  : "${_CPU_TASK_RATIO:=3.1}"
   _CPU_TASK_RATIO="$(_sanitize_number "${_CPU_TASK_RATIO}")"
   _O_LOAD_MAX=$(echo "${_CPU_TASK_RATIO} * 100" | bc -l)
   _get_load

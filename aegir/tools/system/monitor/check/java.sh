@@ -18,11 +18,14 @@ _check_root() {
 }
 _check_root
 
+# Run only on fully installed system
+[ ! -x "/usr/sbin/csf" ] && exit 0
+
 # Sanitize to allow only digits and minus sign
 export _B_NICE=${_B_NICE//[^0-9-]/}
 
 # Validate and set default if necessary
-if ! [[ "$_B_NICE" =~ ^-?[0-9]+$ ]]; then
+if ! [[ "${_B_NICE}" =~ ^-?[0-9]+$ ]]; then
   _B_NICE=0
 fi
 
@@ -34,9 +37,6 @@ elif (( _B_NICE > 19 )); then
 fi
 
 renice ${_B_NICE} -p $$ &> /dev/null
-
-export _INCIDENT_REPORT=${_INCIDENT_REPORT//[^A-Z]/}
-: "${_INCIDENT_REPORT:=YES}"
 
 ###
 ### Atomic lock/unlock to prevent TOCTOU race
@@ -62,9 +62,38 @@ _manage_single_lock() {
 }
 _manage_single_lock
 
+###
+### Load + normalize _INCIDENT_REPORT
+###
+### Legacy values:
+###   NO  becomes OFF (see below)
+###   YES becomes MINI (see below)
+###
+### Current values:
+###   OFF  == Total silence, no email alerts
+###   ALL  == Very noisy, good for debugging
+###   MINI == Only the most important alerts (default)
+###   CRIT == Only critical if _lvl=ALERT
+###
+_normalize_incident_report() {
+  : "${_INCIDENT_REPORT:=MINI}"
+  _INCIDENT_REPORT="${_INCIDENT_REPORT^^}"
+  _INCIDENT_REPORT="${_INCIDENT_REPORT//[^A-Z]/}"
+  ###
+  ### Map legacy + validate
+  ###
+  case "${_INCIDENT_REPORT}" in
+    NO)   _INCIDENT_REPORT="OFF"  ;;
+    YES)  _INCIDENT_REPORT="MINI" ;;
+    OFF|ALL|MINI|CRIT) : ;;
+    *)    _INCIDENT_REPORT="MINI" ;;
+  esac
+}
+_normalize_incident_report
+
 _incident_email_report() {
   if ! _check_uptime_grace_period >/dev/null; then return 1; fi
-  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "YES" ]; then
+  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "ALL" ]; then
     _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
     echo "Sending Incident Report Email on $(date)" >> ${_pthOml}
     s-nail -s "Incident Report: ${1} on ${_hName} at $(date)" ${_MY_EMAIL} < ${_pthOml}
@@ -140,36 +169,66 @@ _jenkins_health_check_fix() {
 
 _solr_health_check_fix() {
   if [ -x "/etc/init.d/solr9" ]; then
-    if ! pgrep -f /var/solr9 \
-      || [ ! -e "/var/solr9/solr-9099.pid" ]; then
+    _pidfile="/var/solr9/solr-9099.pid"
+    if ! pgrep -f /var/solr9 || [ ! -e "${_pidfile}" ]; then
       service solr9 restart
       wait
       _thisErrLog="$(date) Solr9 Server was down, started"
-      echo ${_thisErrLog} >> ${_pthOml}
+      echo "${_thisErrLog}" >> ${_pthOml}
       _incident_email_report "Solr9 Server was down, started"
       echo >> ${_pthOml}
+    else
+      _pid="$(cat "${_pidfile}" 2>/dev/null | sed 's/[^0-9]//g')"
+      if [ -n "${_pid}" ] && ! ps -p "${_pid}" >/dev/null 2>&1; then
+        service solr9 restart
+        wait
+        _thisErrLog="$(date) Solr9 stale PID detected, restarted"
+        echo "${_thisErrLog}" >> ${_pthOml}
+        _incident_email_report "Solr9 stale PID detected, restarted"
+        echo >> ${_pthOml}
+      fi
     fi
   fi
   if [ -x "/etc/init.d/solr7" ]; then
-    if ! pgrep -f /var/solr7 \
-      || [ ! -e "/var/solr7/solr-9077.pid" ]; then
+    _pidfile="/var/solr7/solr-9077.pid"
+    if ! pgrep -f /var/solr7 || [ ! -e "${_pidfile}" ]; then
       service solr7 restart
       wait
       _thisErrLog="$(date) Solr7 Server was down, started"
-      echo ${_thisErrLog} >> ${_pthOml}
+      echo "${_thisErrLog}" >> ${_pthOml}
       _incident_email_report "Solr7 Server was down, started"
       echo >> ${_pthOml}
+    else
+      _pid="$(cat "${_pidfile}" 2>/dev/null | sed 's/[^0-9]//g')"
+      if [ -n "${_pid}" ] && ! ps -p "${_pid}" >/dev/null 2>&1; then
+        service solr7 restart
+        wait
+        _thisErrLog="$(date) Solr7 stale PID detected, restarted"
+        echo "${_thisErrLog}" >> ${_pthOml}
+        _incident_email_report "Solr7 stale PID detected, restarted"
+        echo >> ${_pthOml}
+      fi
     fi
   fi
   if [ -x "/etc/init.d/jetty9" ]; then
-    if ! pgrep -f /opt/jetty9 \
-      || [ ! -e "/run/jetty9.pid" ]; then
+    _pidfile="/run/jetty9.pid"
+    if ! pgrep -f /opt/jetty9 || [ ! -e "${_pidfile}" ]; then
       service jetty9 restart
       wait
       _thisErrLog="$(date) Solr4 Server was down, started"
-      echo ${_thisErrLog} >> ${_pthOml}
+      echo "${_thisErrLog}" >> ${_pthOml}
       _incident_email_report "Solr4 Server was down, started"
       echo >> ${_pthOml}
+    else
+      _pid="$(cat "${_pidfile}" 2>/dev/null | sed 's/[^0-9]//g')"
+      if [ -n "${_pid}" ] && ! ps -p "${_pid}" >/dev/null 2>&1; then
+        service jetty9 restart
+        wait
+        _thisErrLog="$(date) Solr4 stale PID detected, restarted"
+        echo "${_thisErrLog}" >> ${_pthOml}
+        _incident_email_report "Solr4 stale PID detected, restarted"
+        echo >> ${_pthOml}
+      fi
     fi
   fi
 }

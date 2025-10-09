@@ -13,7 +13,7 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 export _B_NICE=${_B_NICE//[^0-9-]/}
 
 # Validate and set default if necessary
-if ! [[ "$_B_NICE" =~ ^-?[0-9]+$ ]]; then
+if ! [[ "${_B_NICE}" =~ ^-?[0-9]+$ ]]; then
   _B_NICE=0
 fi
 

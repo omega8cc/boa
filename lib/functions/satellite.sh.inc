@@ -94,7 +94,7 @@ _find_correct_ip() {
   if [ -n "${_LOC_IP}" ] && grep -qE "${_LOC_IP}\s" /etc/hosts; then
     cp -af /etc/hosts /etc/.was.hosts
     sed -i "s/^${_LOC_IP}.*//g" /etc/hosts
-    [ -x "/etc/init.d/unbound" ] && service unbound restart && wait &> /dev/null
+    [ -x "/etc/init.d/unbound" ] && service unbound restart &> /dev/null
   fi
 }
 
@@ -468,11 +468,9 @@ _satellite_tune_fpm_config() {
     if [ ! -z "${_PHP_OLD_SV}" ] \
       && [ -e "/etc/init.d/php${_PHP_OLD_SV}-fpm" ]; then
       _mrun "service php${_PHP_OLD_SV}-fpm reload"
-      wait
     fi
     if [ -e "/etc/init.d/php${_PHP_SV}-fpm" ]; then
       _mrun "service php${_PHP_SV}-fpm reload"
-      wait
     fi
   fi
 }
@@ -3049,7 +3047,6 @@ _satellite_run_post_install() {
     rm -f ${_HM_ROOT}/themes/README.txt
     rm -f ${_HM_ROOT}/*.txt
     _mrun "service nginx reload"
-    wait
     cd ${_HM_ROOT}
     cp -af /opt/tmp/boa/aegir/conf/tpl/robots.txt ./
     cd ${_ROOT}
@@ -4035,6 +4032,9 @@ _satellite_make() {
   chmod 700 /var/xdrago/run-${_USER} &> /dev/null
   chmod 700 ${_bldPth}/aegir/scripts/* &> /dev/null
 
+  ### Make sure that required web services are up and running
+  _mrun "webserver up"
+
   ###
   _AegirSetupA="${_bldPth}/aegir/scripts/AegirSetupA.sh.txt"
   bash ${_AegirSetupA} ${_USER}
@@ -4112,7 +4112,6 @@ _satellite_make() {
     fi
     _satellite_force_advanced_nginx_config
     _mrun "service nginx reload"
-    wait
   fi
 }
 
@@ -4178,9 +4177,6 @@ _satellite_if_sql_exception_test() {
     || [ ! -e "/run/mysqld/mysqld.sock" ]; then
     _msg "ALRT! ${_DB_SERVER} server not running properly!"
     _msg "EXIT: We can't proceed and will exit now"
-    _msg "HINT: Please check for more information two log files:"
-    _msg "INFO:   ${_LOG_INFO}"
-    _msg "ERRR:   ${_LOG_ERRR}"
     _msg "HINT: (re)start ${_DB_SERVER} server, then run the installer again"
     _msg "Bye"
     _clean_pid_exit _satellite_if_sql_exception_test_a
@@ -4233,7 +4229,9 @@ _satellite_if_running_as_root_octopus() {
       if  [ ! -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
         || [ ! -e "/data/u" ] \
         || [ ! -e "/var/xdrago" ]; then
-        [ ! -e "/run/${_SYS_MANUFACTURER_LC}_vm_postinstall.pid" ] && touch /run/${_SYS_MANUFACTURER_LC}_vm.pid
+        if [ ! -e "/var/log/boa/${_SYS_MANUFACTURER_LC}_vm_postinstall.pid" ]; then
+          touch /var/log/boa/${_SYS_MANUFACTURER_LC}_vm.pid
+        fi
       fi
     fi
   else
@@ -4859,10 +4857,8 @@ _satellite_letsencrypt_vhost_sync() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "${_STATUS} A: Reloading Nginx..."
     service nginx reload
-    wait
   else
     _mrun "service nginx reload"
-    wait
   fi
 }
 
@@ -4886,10 +4882,8 @@ _satellite_letsencrypt_vhost_setup() {
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "${_STATUS} A: Reloading Nginx..."
         service nginx reload
-        wait
       else
         _mrun "service nginx reload"
-        wait
       fi
     fi
   fi
@@ -5827,10 +5821,8 @@ _satellite_child_b_aegir_health_check() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "${_STATUS} B: Reloading Nginx..."
       sudo /etc/init.d/nginx reload
-      wait
     else
       sudo /etc/init.d/nginx reload &> /dev/null
-      wait
     fi
   else
     _msg "${_STATUS} B: FATAL ERROR: Required file does not exist:"

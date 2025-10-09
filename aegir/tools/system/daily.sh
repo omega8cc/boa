@@ -48,6 +48,35 @@ _sanitize_number() {
   echo "$1" | sed 's/[^0-9.]//g'
 }
 
+###
+### Load + normalize _INCIDENT_REPORT
+###
+### Legacy values:
+###   NO  becomes OFF (see below)
+###   YES becomes MINI (see below)
+###
+### Current values:
+###   OFF  == Total silence, no email alerts
+###   ALL  == Very noisy, good for debugging
+###   MINI == Only the most important alerts (default)
+###   CRIT == Only critical if _lvl=ALERT
+###
+_normalize_incident_report() {
+  : "${_INCIDENT_REPORT:=MINI}"
+  _INCIDENT_REPORT="${_INCIDENT_REPORT^^}"
+  _INCIDENT_REPORT="${_INCIDENT_REPORT//[^A-Z]/}"
+  ###
+  ### Map legacy + validate
+  ###
+  case "${_INCIDENT_REPORT}" in
+    NO)   _INCIDENT_REPORT="OFF"  ;;
+    YES)  _INCIDENT_REPORT="MINI" ;;
+    OFF|ALL|MINI|CRIT) : ;;
+    *)    _INCIDENT_REPORT="MINI" ;;
+  esac
+}
+_normalize_incident_report
+
 _os_detection_minimal() {
   _APT_UPDATE="apt-get update"
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
@@ -2863,8 +2892,8 @@ _get_load() {
 }
 
 _load_control() {
-  : "${_CPU_TASK_RATIO:=2.1}"
-  [ -e "/root/.force.sites.verify.cnf" ] && _CPU_TASK_RATIO=3.1
+  : "${_CPU_TASK_RATIO:=3.1}"
+  [ -e "/root/.force.sites.verify.cnf" ] && _CPU_TASK_RATIO=4.1
   _CPU_TASK_RATIO="$(_sanitize_number "${_CPU_TASK_RATIO}")"
   _O_LOAD_MAX=$(echo "${_CPU_TASK_RATIO} * 100" | bc -l)
   _get_load
@@ -2946,13 +2975,12 @@ _cleanup_weblogx() {
 
 _incident_email_report() {
   if [ -e "/root/.barracuda.cnf" ]; then
-    _thisEmail="${_MY_EMAIL}"
     export _INCIDENT_REPORT=${_INCIDENT_REPORT//[^A-Z]/}
-    : "${_INCIDENT_REPORT:=YES}"
+    : "${_INCIDENT_REPORT:=MINI}"
   fi
-  if [ -n "${_thisEmail}" ] && [ "${_INCIDENT_REPORT}" = "YES" ]; then
+  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" != "OFF" ]; then
     echo "Sending Incident Report Email on $(date)" >> ${_thisLog}
-    s-nail -s "Incident Report during daily.sh: ${1} on ${_hName} at $(date)" ${_thisEmail} < ${_thisLog}
+    s-nail -s "Incident Report during daily.sh: ${1} on ${_hName} at $(date)" ${_MY_EMAIL} < ${_thisLog}
   fi
 }
 
@@ -3437,7 +3465,6 @@ else
       sed -i "s/TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf
     fi
     service nginx reload
-    wait
   fi
 fi
 

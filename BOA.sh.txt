@@ -47,7 +47,7 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 export _tRee=lts
 export _xSrl=570ltsT09
 export _rLsn="BOA-5.7.12"
-export _bTs=570v49
+export _bTs=570v51
 
 ###
 ### Avoid too many questions
@@ -74,6 +74,7 @@ _xpthLog="/var/xdrago/log"
 _pthLog="/var/log/boa"
 _tBn="tools/bin"
 _vBs="/var/backups"
+_boaToolsPid="${_pthLog}/updateBOAtools.${_bTs}.ctrl.${_tRee}.${_xSrl}.pid"
 #
 if [ ! -e "${_pthLog}/.migrated.txt" ] && [ -d "${_xpthLog}" ]; then
   mkdir -p "${_pthLog}"
@@ -164,7 +165,7 @@ _find_correct_ip() {
   if [ -n "${_LOC_IP}" ] && grep -qE "${_LOC_IP}\s" /etc/hosts; then
     cp -af /etc/hosts /etc/.was.hosts
     sed -i "s/^${_LOC_IP}.*//g" /etc/hosts
-    [ -x "/etc/init.d/unbound" ] && service unbound restart && wait &> /dev/null
+    [ -x "/etc/init.d/unbound" ] && service unbound restart &> /dev/null
   fi
 }
 
@@ -884,9 +885,9 @@ _update_agents() {
     [ ! -e "/var/xdrago/monitor/check" ] && mkdir -p /var/xdrago/monitor/check
     [ ! -e "/var/xdrago/monitor/log" ] && mkdir -p /var/xdrago/monitor/log
 
-    if [ ! -e "${_pthLog}/.force.f94.${_tRee}.${_xSrl}.ctrl" ]; then
+    if [ ! -e "${_pthLog}/.force.f93.${_tRee}.${_xSrl}.ctrl" ]; then
       rm -f ${_pthLog}/*.ctrl.*.pid
-      touch ${_pthLog}/.force.f94.${_tRee}.${_xSrl}.ctrl
+      touch ${_pthLog}/.force.f93.${_tRee}.${_xSrl}.ctrl
     fi
 
     [ ! -e "/var/xdrago/checksql.pl" ] && rm -f ${_pthLog}/checksql.pl.ctrl.*.pid
@@ -967,7 +968,11 @@ _update_agents() {
     fi
   fi
 
-  if [ ! -e "${_pthLog}/lock.inc.sh.ctrl.f98.${_tRee}.${_xSrl}.pid" ]; then
+  if ! grep -q "OFF" ${_optBin}/lock.inc; then
+    rm -f ${_pthLog}/lock.inc.sh.ctrl.*
+  fi
+  if [ ! -e "${_optBin}/lock.inc" ] \
+    || [ ! -e "${_pthLog}/lock.inc.sh.ctrl.f98.${_tRee}.${_xSrl}.pid" ]; then
     _CNT=$(pgrep -fc foobar)
     if (( _CNT > 0 )); then
       echo "The foobar is running!"
@@ -988,7 +993,8 @@ _update_agents() {
     fi
   fi
 
-  if [ ! -e "${_pthLog}/vmnetfix.sh.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
+  if [ ! -e "${_optBin}/vmnetfix" ] \
+    || [ ! -e "${_pthLog}/vmnetfix.sh.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
     _CNT=$(pgrep -fc vmnetfix)
     if (( _CNT > 0 )); then
       echo "The vmnetfix is running!"
@@ -1016,7 +1022,8 @@ _update_agents() {
     fi
   fi
 
-  if [ ! -e "${_pthLog}/aptcleanup.sh.ctrl.f97.${_tRee}.${_xSrl}.pid" ]; then
+  if [ ! -e "${_optBin}/aptcleanup" ] \
+    || [ ! -e "${_pthLog}/aptcleanup.sh.ctrl.f97.${_tRee}.${_xSrl}.pid" ]; then
     _CNT=$(pgrep -fc aptcleanup)
     if (( _CNT > 0 )); then
       echo "The aptcleanup is running!"
@@ -1037,7 +1044,8 @@ _update_agents() {
     fi
   fi
 
-  if [ ! -e "${_pthLog}/loadguard.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
+  if [ ! -e "${_optBin}/loadguard" ] \
+    || [ ! -e "${_pthLog}/loadguard.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
     _CNT=$(pgrep -fc xloadguard)
     if (( _CNT > 0 )); then
       echo "The xloadguard is running!"
@@ -1053,6 +1061,28 @@ _update_agents() {
       else
         if [ -e "${_optBin}/loadguard.old" ]; then
           mv -f ${_optBin}/loadguard.old ${_optBin}/loadguard
+        fi
+      fi
+    fi
+  fi
+
+  if [ ! -e "${_optBin}/webserver" ] \
+    || [ ! -e "${_pthLog}/webserver.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
+    _CNT=$(pgrep -fc xwebserver)
+    if (( _CNT > 0 )); then
+      echo "The xwebserver is running!"
+    else
+      if [ -e "${_optBin}/webserver" ]; then
+        mv -f ${_optBin}/webserver ${_optBin}/webserver.old
+      fi
+      curl ${_crlGet} "${_urlHmr}/tools/bin/webserver" -o ${_optBin}/webserver
+      if [ -e "${_optBin}/webserver" ]; then
+        chmod 700 ${_optBin}/webserver
+        chown root:root ${_optBin}/webserver
+        touch ${_pthLog}/webserver.sh.ctrl.f99.${_tRee}.${_xSrl}.pid
+      else
+        if [ -e "${_optBin}/webserver.old" ]; then
+          mv -f ${_optBin}/webserver.old ${_optBin}/webserver
         fi
       fi
     fi
@@ -1354,13 +1384,13 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/java.sh.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/java.sh.ctrl.f94.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/java.sh /var/xdrago/monitor/check/java.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/java.sh" -o /var/xdrago/monitor/check/java.sh
     if [ -e "/var/xdrago/monitor/check/java.sh" ]; then
       chmod 700 /var/xdrago/monitor/check/java.sh
       chown root:root /var/xdrago/monitor/check/java.sh
-      touch ${_pthLog}/java.sh.ctrl.f95.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/java.sh.ctrl.f94.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/monitor/check/java.sh.old /var/xdrago/monitor/check/java.sh
     fi
@@ -1407,6 +1437,9 @@ _update_agents() {
     fi
   fi
 
+  if [ ! -e "/var/xdrago/monitor/check/nginx_guard.sh" ]; then
+    rm -f ${_pthLog}/nginx_guard.sh.ctrl.*
+  fi
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
     && [ ! -e "${_pthLog}/nginx_guard.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
@@ -1423,13 +1456,13 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/php.sh.ctrl.f92.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/php.sh.ctrl.f91.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/php.sh /var/xdrago/monitor/check/php.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/php.sh" -o /var/xdrago/monitor/check/php.sh
     if [ -e "/var/xdrago/monitor/check/php.sh" ]; then
       chmod 700 /var/xdrago/monitor/check/php.sh
       chown root:root /var/xdrago/monitor/check/php.sh
-      touch ${_pthLog}/php.sh.ctrl.f92.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/php.sh.ctrl.f91.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/monitor/check/php.sh.old /var/xdrago/monitor/check/php.sh
     fi
@@ -1437,13 +1470,13 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/valkey.sh.ctrl.f91.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/valkey.sh.ctrl.f90.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/valkey.sh /var/xdrago/monitor/check/valkey.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/valkey.sh" -o /var/xdrago/monitor/check/valkey.sh
     if [ -e "/var/xdrago/monitor/check/valkey.sh" ]; then
       chmod 700 /var/xdrago/monitor/check/valkey.sh
       chown root:root /var/xdrago/monitor/check/valkey.sh
-      touch ${_pthLog}/valkey.sh.ctrl.f91.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/valkey.sh.ctrl.f90.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/monitor/check/valkey.sh.old /var/xdrago/monitor/check/valkey.sh
     fi
@@ -1451,13 +1484,13 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/redis.sh.ctrl.f93.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/redis.sh.ctrl.f92.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/redis.sh /var/xdrago/monitor/check/redis.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/redis.sh" -o /var/xdrago/monitor/check/redis.sh
     if [ -e "/var/xdrago/monitor/check/redis.sh" ]; then
       chmod 700 /var/xdrago/monitor/check/redis.sh
       chown root:root /var/xdrago/monitor/check/redis.sh
-      touch ${_pthLog}/redis.sh.ctrl.f93.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/redis.sh.ctrl.f92.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/monitor/check/redis.sh.old /var/xdrago/monitor/check/redis.sh
     fi
@@ -1465,13 +1498,13 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/system.sh.ctrl.f86.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/system.sh.ctrl.f85.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/system.sh /var/xdrago/monitor/check/system.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/system.sh" -o /var/xdrago/monitor/check/system.sh
     if [ -e "/var/xdrago/monitor/check/system.sh" ]; then
       chmod 700 /var/xdrago/monitor/check/system.sh
       chown root:root /var/xdrago/monitor/check/system.sh
-      touch ${_pthLog}/system.sh.ctrl.f86.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/system.sh.ctrl.f85.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/monitor/check/system.sh.old /var/xdrago/monitor/check/system.sh
     fi
@@ -1691,13 +1724,13 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/runner.sh.ctrl.f89.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/runner.sh.ctrl.f88.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/runner.sh /var/xdrago/runner.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/runner.sh" -o /var/xdrago/runner.sh
     if [ -e "/var/xdrago/runner.sh" ]; then
       chmod 700 /var/xdrago/runner.sh
       chown root:root /var/xdrago/runner.sh
-      touch ${_pthLog}/runner.sh.ctrl.f89.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/runner.sh.ctrl.f88.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/runner.sh.old /var/xdrago/runner.sh
     fi
@@ -1935,7 +1968,6 @@ _update_agents() {
     for e in ${_PHP_V}; do
       if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
         service php${e}-fpm reload &> /dev/null
-        wait
       fi
     done
     _PHP_V="55 54 53"
@@ -2185,7 +2217,6 @@ _update_agents() {
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
           service php${e}-fpm reload &> /dev/null
-          wait
         fi
       done
     else
@@ -2544,7 +2575,6 @@ _update_agents() {
       chmod 755 /etc/cron.hourly/systemtime
       chown root:root /etc/cron.hourly/systemtime
       service cron restart
-      wait
       touch ${_pthLog}/systemtime.ctrl.f95.${_tRee}.${_xSrl}.pid
     fi
   fi
@@ -3436,7 +3466,6 @@ _fix_log4j_solr7() {
     if [[ ! "${_RESULT_LOG4J}" =~ "LOG4J" ]] || [ ! -z "${_DO_SOLR_RESTART}" ]; then
       #pkill -9 -f solr7
       service solr7 restart &> /dev/null
-      wait
     fi
   fi
 }
@@ -3566,7 +3595,6 @@ _fix_sftp_server() {
       echo "Subsystem sftp /usr/lib/openssh/sftp-server -u 0002" >> /etc/ssh/sshd_config
       sed -i "/^$/d" /etc/ssh/sshd_config
       service ssh restart 2> /dev/null
-      wait
     fi
   fi
 }
@@ -3734,7 +3762,6 @@ _fix_newrelic() {
     && [ ! -e "${_PHP_EXT_DIR_74}/newrelic.so" ]; then
     ln -sfn ${_NR_SO} ${_PHP_EXT_DIR_74}/newrelic.so
     service php74-fpm reload
-    wait
   fi
 
   _PHP_EXT_DIR_71="/opt/php71/lib/php/extensions/no-debug-non-zts-20160303"
@@ -3744,7 +3771,6 @@ _fix_newrelic() {
     && [ -L "${_PHP_EXT_DIR_71}/newrelic.so" ]; then
     rm -f ${_PHP_EXT_DIR_71}/newrelic.so
     service php71-fpm reload
-    wait
   fi
 
   _PHP_EXT_DIR_70="/opt/php70/lib/php/extensions/no-debug-non-zts-20151012"
@@ -3754,7 +3780,6 @@ _fix_newrelic() {
     && [ -L "${_PHP_EXT_DIR_70}/newrelic.so" ]; then
     rm -f ${_PHP_EXT_DIR_70}/newrelic.so
     service php70-fpm reload
-    wait
   fi
 
   _PHP_EXT_DIR_56="/opt/php56/lib/php/extensions/no-debug-non-zts-20131226"
@@ -3764,7 +3789,6 @@ _fix_newrelic() {
     && [ -L "${_PHP_EXT_DIR_56}/newrelic.so" ]; then
     rm -f ${_PHP_EXT_DIR_56}/newrelic.so
     service php56-fpm reload
-    wait
   fi
 }
 
@@ -4109,6 +4133,7 @@ _update_boa_tools() {
             vhostcheck \
             vmnetfix \
             weblogx \
+            webserver \
             websh \
             xboa \
             xcopy"
@@ -4148,7 +4173,7 @@ _update_boa_tools() {
   done
 
   if [ ! -e "/data/u" ] && [ -e "${_optBin}/killer" ] && [ ! -e "${_usrBin}/vmnetfix" ]; then
-    rm -f ${_usrBin}/{aptcleanup*,autoinit*,backchain*,barracuda*,boa*,dhcpfix*,killer*,loadguard*,octopus*,vmnetfix*,websh*}
+    rm -f ${_usrBin}/{aptcleanup*,autoinit*,backchain*,barracuda*,boa*,dhcpfix*,killer*,loadguard*,octopus*,vmnetfix*,webserver*,websh*}
     ln -sfn ${_optBin}/aptcleanup  ${_usrBin}/aptcleanup
     ln -sfn ${_optBin}/autoinit    ${_usrBin}/autoinit
     ln -sfn ${_optBin}/backchain   ${_usrBin}/backchain
@@ -4159,6 +4184,7 @@ _update_boa_tools() {
     ln -sfn ${_optBin}/loadguard   ${_usrBin}/loadguard
     ln -sfn ${_optBin}/octopus     ${_usrBin}/octopus
     ln -sfn ${_optBin}/vmnetfix    ${_usrBin}/vmnetfix
+    ln -sfn ${_optBin}/webserver   ${_usrBin}/webserver
     ln -sfn ${_optBin}/websh       ${_usrBin}/websh
   fi
 
@@ -4185,7 +4211,7 @@ _update_boa_tools() {
   chmod 700 ${_optBin}/{backboa,copydbackup,dcysetup,duobackboa,multiback}
 
   # _CORE (700): core BOA tools
-  chmod 700 ${_optBin}/{barracuda,boa,ffmirror,killer,octopus}
+  chmod 700 ${_optBin}/{barracuda,boa,ffmirror,killer,octopus,webserver}
   chmod 700 ${_optBin}/{syncpass,weblogx,xboa,xcopy,loadguard,lock.inc}
 
   # _DB (700): performance and DB tuners
@@ -4314,10 +4340,9 @@ _if_update_boa_key_tools_only() {
     _CSF_TEST=$(which csf 2> /dev/null)
     if [ -x "${_CSF_TEST}" ]; then
       service clean-boa-env start &> /dev/null
-      wait
       _if_fix_iptables_symlinks
       ### csf -uf
-      wait
+      ### wait
       _NFTABLES_TEST=$(iptables -V)
       if [[ "${_NFTABLES_TEST}" =~ "nf_tables" ]]; then
         if [ -e "/usr/sbin/iptables-legacy" ]; then
@@ -4351,7 +4376,6 @@ _if_update_boa_key_tools_only() {
       done
       if [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
         csf -ra &> /dev/null
-        wait
         synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
       else
         csf -r &> /dev/null
@@ -4377,10 +4401,9 @@ _if_update_boa_key_tools_only() {
     if [[ ! ${_CC_SRC_TEST} =~ CC_SRC\ =\ \"2\" ]]; then
       echo _CC_SRC_TEST 2 is "${_CC_SRC_TEST}"
       service clean-boa-env start &> /dev/null
-      wait
       _if_fix_iptables_symlinks
       ### csf -uf
-      wait
+      ### wait
       _NFTABLES_TEST=$(iptables -V)
       if [[ "${_NFTABLES_TEST}" =~ "nf_tables" ]]; then
         if [ -e "/usr/sbin/iptables-legacy" ]; then
@@ -4401,7 +4424,6 @@ _if_update_boa_key_tools_only() {
       sed -i "s/^AUTO_UPDATES .*/AUTO_UPDATES = \"0\"/g" /etc/csf/csf.conf
       if [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
         csf -ra &> /dev/null
-        wait
         synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
       else
         csf -r &> /dev/null
@@ -4411,7 +4433,7 @@ _if_update_boa_key_tools_only() {
   _BOA_TOOLS_UPDATE=NO
   if [ -e "${_pthLog}" ]; then
     if [ ! -x "/opt/local/bin/xcopy" ] \
-      || [ ! -e "${_pthLog}/updateBOAtools.${_bTs}.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+      || [ ! -e "${_boaToolsPid}" ]; then
       _BOA_TOOLS_UPDATE=YES
     fi
   fi
@@ -4419,7 +4441,7 @@ _if_update_boa_key_tools_only() {
   if [ "${_BOA_TOOLS_UPDATE}" = "YES" ]; then
     _update_boa_tools
     [ -e "${_pthLog}" ] && rm -f ${_pthLog}/updateBOAtools*.pid
-    [ -e "${_pthLog}" ] && touch ${_pthLog}/updateBOAtools.${_bTs}.ctrl.${_tRee}.${_xSrl}.pid
+    [ -e "${_pthLog}" ] && touch ${_boaToolsPid}
     if [ "${1}" = "verbose" ] || [ -z "${1}" ]; then
       echo
       echo "BOA Meta Installers setup completed"
@@ -4542,14 +4564,14 @@ _boa_setup() {
   _fix_or_install_virt_what
 
   _BOA_TOOLS_UPDATE=NO
-  if [ -e "${_pthLog}" ] && [ ! -e "${_pthLog}/updateBOAtools.${_bTs}.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+  if [ -e "${_pthLog}" ] && [ ! -e "${_boaToolsPid}" ]; then
     _BOA_TOOLS_UPDATE=YES
   fi
   [ ! -e "/var/aegir/.drush/hm.alias.drushrc.php" ] && _BOA_TOOLS_UPDATE=YES
   if [ "${_BOA_TOOLS_UPDATE}" = "YES" ]; then
     _update_boa_tools
     [ -e "${_pthLog}" ] && rm -f ${_pthLog}/updateBOAtools*.pid
-    [ -e "${_pthLog}" ] && touch ${_pthLog}/updateBOAtools.${_bTs}.ctrl.${_tRee}.${_xSrl}.pid
+    [ -e "${_pthLog}" ] && touch ${_boaToolsPid}
     echo
     echo "BOA Meta Installers setup completed"
     echo "Please check INSTALL.md and UPGRADE.md at https://github.com/omega8cc/boa"
@@ -4630,7 +4652,6 @@ _sysctl_update() {
         echo ULIMIT=\"-n 524288\" >> /etc/default/nginx
         ulimit -n 524288 &> /dev/null
         service nginx restart &> /dev/null
-        wait
       fi
     fi
     if [ -e "/etc/security/limits.d" ] \
@@ -4651,20 +4672,15 @@ _sysctl_update() {
       echo "@www-data hard nofile 524288" >> /etc/security/limits.d/www.conf
       if [ -e "/etc/init.d/valkey-server" ]; then
         service valkey-server restart &> /dev/null
-        wait
       elif [ -e "/etc/init.d/redis-server" ]; then
         service redis-server restart &> /dev/null
-        wait
       fi
       service nginx restart &> /dev/null
-      wait
       service ssh restart &> /dev/null
-      wait
       _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
           service php${e}-fpm reload &> /dev/null
-          wait
         fi
       done
     fi
@@ -4672,11 +4688,36 @@ _sysctl_update() {
   fi
 }
 
+###
+### Load + normalize _INCIDENT_REPORT
+###
+### Legacy values:
+###   NO  becomes OFF (see below)
+###   YES becomes MINI (see below)
+###
+### Current values:
+###   OFF  == Total silence, no email alerts
+###   ALL  == Very noisy, good for debugging
+###   MINI == Only the most important alerts (default)
+###   CRIT == Only critical if _lvl=ALERT
+###
+_normalize_incident_report() {
+  : "${_INCIDENT_REPORT:=MINI}"
+  _INCIDENT_REPORT="${_INCIDENT_REPORT^^}"
+  _INCIDENT_REPORT="${_INCIDENT_REPORT//[^A-Z]/}"
+  ###
+  ### Map legacy + validate
+  ###
+  case "${_INCIDENT_REPORT}" in
+    NO)   _INCIDENT_REPORT="OFF"  ;;
+    YES)  _INCIDENT_REPORT="MINI" ;;
+    OFF|ALL|MINI|CRIT) : ;;
+    *)    _INCIDENT_REPORT="MINI" ;;
+  esac
+}
+
 # Function to notify about still running backup
 _backup_waiting_notify() {
-  [ -e "${_barCnf}" ] && source ${_barCnf}
-  _INCIDENT_REPORT=${_INCIDENT_REPORT//[^A-Z]/}
-  : "${_INCIDENT_REPORT:=YES}"
   _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
   _templog="${_bLogB}"
   cat /root/.remote_backups/schedule/backup_schedule.txt > ${_templog}
@@ -4687,7 +4728,7 @@ _backup_waiting_notify() {
   ls -laR /root/.cache/duplicity >> ${_templog}
   grep "Out of memory: Killed process.*duplicity" /var/log/iptables.log >> ${_templog}
   boa info  >> ${_templog}
-  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "YES" ]; then
+  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" != "OFF" ]; then
     s-nail -s "Multiback Waiting Report for [${_hName}] on $(date)" ${_MY_EMAIL} < ${_templog}
   fi
 }
@@ -4714,9 +4755,15 @@ if [ "$(id -u)" -eq 0 ]; then
   ### Fix VM system detection
   _fix_or_install_virt_what
 
+  if [ -e "${_barCnf}" ]; then
+    source ${_barCnf}
+    _normalize_incident_report
+  fi
+
   ### Notify if multiback backups seem to run for too long
-  _CNT=$(pgrep -fc duplicity)
-  if (( _CNT > 0 )); then
+  _DCY=$(pgrep -fc duplicity)
+  _MLT=$(pgrep -fc multiback)
+  if (( _DCY > 0 )) && (( _MLT > 0 )); then
     _bLogA="/var/backups/multiback_waiting_queue.log"
     _bLogB="/var/backups/tmp_multiback_waiting_queue.log"
     if [ ! -e "${_bLogA}" ] && [ ! -e "${_bLogB}" ]; then
@@ -4811,8 +4858,6 @@ if [ "$(id -u)" -eq 0 ]; then
     [ -e "/run/unbound" ] && chown -R unbound:unbound /run/unbound
     pkill -u unbound -x unbound &> /dev/null
     service unbound restart &> /dev/null
-    wait
-    unbound-control reload &> /dev/null
     sleep 3
     rm -f /run/wait-unbound.pid
   fi
@@ -4826,9 +4871,6 @@ if [ "$(id -u)" -eq 0 ]; then
   if [ "${_BOA_KEY_TOOLS_UPDATE_ALLOWED}" = "YES" ] \
     && [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
     && [ -e "/var/xdrago" ]; then
-    if [ -e "${_barCnf}" ]; then
-      source ${_barCnf}
-    fi
     if [ ! -z "${_SKYNET_MODE}" ] && [ "${_SKYNET_MODE}" = "OFF" ]; then
       if [ -n "${SSH_TTY+x}" ]; then
         echo "STATUS: Skynet Agent is Inactive!"
@@ -4918,7 +4960,6 @@ if [ "$(id -u)" -eq 0 ]; then
   fi
   if [ ! -e "/root/.upstart.cnf" ]; then
     service cron reload &> /dev/null
-    wait
   fi
   if [ "${_SCREEN_INIT}" = "YES" ]; then
     if [ "${_DEBUG_MODE}" != "YES" ]; then
@@ -4939,7 +4980,6 @@ if [ "$(id -u)" -eq 0 ]; then
     echo
     if [ -x "/usr/sbin/aa-teardown" ]; then
       aa-teardown &> /dev/null
-      wait
     fi
   else
     exit 0

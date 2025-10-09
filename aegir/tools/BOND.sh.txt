@@ -209,7 +209,6 @@ _clean_pid_exit() {
   [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
   [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
   service cron start &> /dev/null
-  wait
   exit 1
 }
 
@@ -222,7 +221,7 @@ _check_root() {
     export _B_NICE=${_B_NICE//[^0-9-]/}
 
     # Validate and set default if necessary
-    if ! [[ "$_B_NICE" =~ ^-?[0-9]+$ ]]; then
+    if ! [[ "${_B_NICE}" =~ ^-?[0-9]+$ ]]; then
       _B_NICE=0
     fi
 
@@ -1023,7 +1022,6 @@ _innodb_log_file_size_update() {
   fi
   if [ ! -e "/run/mysqld/mysqld.sock" ]; then
     service mysql start &> /dev/null
-    wait
   fi
 }
 #
@@ -1076,7 +1074,6 @@ _restore_default_sql() {
     if [ "${_DB_BINARY_LOG}" = "NO" ]; then
       # Purge binlogs
       bash /var/xdrago/purge_binlogs.sh &> /dev/null
-      wait
       # Remove cron jobs related to purge_binlogs
       sed -i -e "/purge_binlogs/d" -e "/^$/d" /var/spool/cron/crontabs/root &> /dev/null
       # Disable binary logging
@@ -1170,24 +1167,19 @@ _restart_services() {
   for e in ${_PHP_V}; do
     if [ -e "/etc/init.d/php${e}-fpm" ]; then
       service php${e}-fpm reload &> /dev/null
-      wait
     fi
   done
   bash /var/xdrago/move_sql.sh &> /dev/null
   wait
   service nginx reload &> /dev/null
-  wait
   if [ -e "/etc/init.d/valkey-server" ]; then
     service valkey-server reload &> /dev/null
-    wait
   elif [ -e "/etc/init.d/redis-server" ]; then
     service redis-server reload &> /dev/null
-    wait
   fi
   if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
     if [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
       csf -ra &> /dev/null
-      wait
       synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
     else
       csf -r &> /dev/null
@@ -1262,7 +1254,6 @@ _check_mysqld_running() {
     _msg "INFO: Waiting for MySQLD availability before _tune_sql_memory_limits..."
     sleep 5
     service mysql start &> /dev/null
-    wait
   done
 }
 #
@@ -1927,7 +1918,6 @@ rm -rf /opt/tmp/*
 [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
 if [ ! -e "/root/.upstart.cnf" ]; then
   service cron start &> /dev/null
-  wait
 fi
 if [ "${_DEBUG_MODE}" = "YES" ]; then
   _msg "INFO: Cron started again"

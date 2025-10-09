@@ -18,8 +18,8 @@ _check_root() {
 }
 _check_root
 
-export _INCIDENT_REPORT=${_INCIDENT_REPORT//[^A-Z]/}
-: "${_INCIDENT_REPORT:=YES}"
+# Run only on fully installed system
+[ ! -x "/usr/sbin/csf" ] && exit 0
 
 ###
 ### Atomic lock/unlock to prevent TOCTOU race
@@ -45,13 +45,54 @@ _manage_single_lock() {
 }
 _manage_single_lock
 
+###
+### Load + normalize _INCIDENT_REPORT
+###
+### Legacy values:
+###   NO  becomes OFF (see below)
+###   YES becomes MINI (see below)
+###
+### Current values:
+###   OFF  == Total silence, no email alerts
+###   ALL  == Very noisy, good for debugging
+###   MINI == Only the most important alerts (default)
+###   CRIT == Only critical if _lvl=ALERT
+###
+_normalize_incident_report() {
+  : "${_INCIDENT_REPORT:=CRIT}"
+  _INCIDENT_REPORT="${_INCIDENT_REPORT^^}"
+  _INCIDENT_REPORT="${_INCIDENT_REPORT//[^A-Z]/}"
+  ###
+  ### Map legacy + validate
+  ###
+  case "${_INCIDENT_REPORT}" in
+    NO)   _INCIDENT_REPORT="OFF"  ;;
+    YES)  _INCIDENT_REPORT="CRIT" ;;
+    MINI) _INCIDENT_REPORT="CRIT" ;;
+    OFF|ALL|CRIT) : ;;
+    *)    _INCIDENT_REPORT="CRIT" ;;
+  esac
+}
+_normalize_incident_report
+
+###
+### Function to send incident email report
+###
 _incident_email_report() {
-  if ! _check_uptime_grace_period >/dev/null; then return 1; fi
-  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "YES" ]; then
-    _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
-    echo "Sending Incident Report Email on $(date)" >> ${_pthOml}
-    s-nail -s "Incident Report: ${1} on ${_hName} at $(date)" ${_MY_EMAIL} < ${_pthOml}
-  fi
+  _check_uptime_grace_period >/dev/null || return 1
+  local _subject="${1:-(no subject)}"
+  local _lvl="${2:-INFO}"
+  _lvl="${_lvl^^}"
+  [ -n "${_MY_EMAIL}" ] || return 1
+  # Decide if we should send
+  case "${_INCIDENT_REPORT}" in
+    OFF)  return 1 ;;                            # always veto
+    CRIT) [ "${_lvl}" = "ALERT" ] || return 1 ;; # veto unless ALERT
+    ALL) : ;;                                    # allow
+  esac
+  _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
+  echo "Sending Incident Report Email on $(date)" >> ${_pthOml}
+  s-nail -s "Incident Report on ${_hName}: ${_subject}" "${_MY_EMAIL}" < ${_pthOml}
 }
 
 _wkhtmltopdf_php_cli_oom_kill() {
@@ -98,7 +139,7 @@ _oom_critical_restart() {
   wait
   echo "$(date) OOM Percona MySQL Server restarted" >> ${_pthOml}
   echo "$(date) OOM incident response completed" >> ${_pthOml}
-  _incident_email_report "OOM $1 system"
+  _incident_email_report "OOM $1 system" "ALERT"
   echo >> ${_pthOml}
   [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
   exit 0
@@ -170,7 +211,7 @@ _if_fix_dhcp() {
     count=$(tail -n 3 "${_DHCP_LOG}" | grep -c "dhclient:.*Failed")
 
     # Debugging: Log the count value
-    [ "$count" -gt 0 ] && echo "DHCP failure count: $count" >> "${_pthOml}"
+    [ "$count" -gt 0 ] && echo "DHCP failure count: $count" >> ${_pthOml}
 
     # Proceed only if there is at least one failure
     if [ "$count" -gt 0 ]; then
@@ -193,7 +234,6 @@ _if_fix_dhcp() {
       # Reload the firewall
       if [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
         csf -ra &> /dev/null
-        wait
         synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
       else
         csf -r &> /dev/null
@@ -201,9 +241,9 @@ _if_fix_dhcp() {
 
       # Log the error and send an email report
       _thisErrLog="$(date) DHCP error detected, firewall updated"
-      echo "${_thisErrLog}" >> "${_pthOml}"
+      echo "${_thisErrLog}" >> ${_pthOml}
       _incident_email_report "DHCP error detected, firewall updated"
-      echo >> "${_pthOml}"
+      echo >> ${_pthOml}
     fi
   fi
 }
@@ -215,7 +255,6 @@ _cron_duplicate_instances_detection() {
     echo ${_thisErrLog} >> /var/log/boa/cron-count.kill.log
     killall -9 cron &> /dev/null
     service cron start &> /dev/null
-    wait
     _thisErrLog="$(date) Too many Cron instances, service restarted (count=${_CNT})"
     echo ${_thisErrLog} >> ${_pthOml}
     _incident_email_report "Too many Cron instances, service restarted (count=${_CNT})"
@@ -309,7 +348,7 @@ _postfix_health_check_fix() {
 }
 
 _vnstat_health_check_fix() {
-  if [ -x "/etc/init.d/vnstat" ]; then
+  if [ -x "/etc/init.d/vnstat" ] && [ ! -e "/run/vnstat.pid" ]; then
     if ! pgrep -f /usr/sbin/vnstatd \
       || [ ! -e "/run/vnstat/vnstat.pid" ]; then
       service vnstat restart
@@ -327,12 +366,10 @@ _lfd_health_check_fix() {
     if ! pgrep -f lfd \
       || [ ! -e "/run/lfd.pid" ]; then
       service lfd start
-      wait
       csf -e
-      wait
-      _thisErrLog="$(date) LDF Monitor was down, started"
+      _thisErrLog="$(date) LFD Monitor was down, started"
       echo ${_thisErrLog} >> ${_pthOml}
-      _incident_email_report "LDF Monitor was down, started"
+      _incident_email_report "LFD Monitor was down, started"
       echo >> ${_pthOml}
     fi
   fi
@@ -389,6 +426,7 @@ _clamav_health_check_fix() {
         pkill -9 -f /usr/sbin/clamd || true
         service clamav-daemon start
         wait
+        sleep 5
         _thisErrLog="$(date) Clamav was down, started"
         echo ${_thisErrLog} >> ${_pthOml}
         _incident_email_report "Clamav was down, started"

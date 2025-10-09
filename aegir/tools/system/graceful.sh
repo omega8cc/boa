@@ -17,7 +17,7 @@ _check_root() {
     export _B_NICE=${_B_NICE//[^0-9-]/}
 
     # Validate and set default if necessary
-    if ! [[ "$_B_NICE" =~ ^-?[0-9]+$ ]]; then
+    if ! [[ "${_B_NICE}" =~ ^-?[0-9]+$ ]]; then
       _B_NICE=0
     fi
 
@@ -91,15 +91,12 @@ _graceful_action() {
   if [ -e "/etc/init.d/rsyslog" ]; then
     pkill -9 rsyslogd
     service rsyslog start
-    wait
   elif [ -e "/etc/init.d/sysklogd" ]; then
     pkill -9 sysklogd
     service sysklogd start
-    wait
   elif [ -e "/etc/init.d/inetutils-syslogd" ]; then
     pkill -9 syslogd
     service inetutils-syslogd start
-    wait
   fi
 
   # Clean up old log files
@@ -170,7 +167,6 @@ _graceful_action() {
   # Reload nginx service
   echo "Reloading nginx service..."
   nice -n -5 service nginx reload
-  wait
 
   # Restart Solr and Jetty servers if not under high traffic
   if [ ! -e "/run/boa_run.pid" ] \
@@ -182,21 +178,19 @@ _graceful_action() {
     if [ -x "/etc/init.d/solr9" ] && [ -e "/etc/default/solr9.in.sh" ]; then
       echo "Restarting Solr 9..."
       nice -n 0 service solr9 restart
-      wait
     fi
     if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
       echo "Restarting Solr 7..."
       nice -n 0 service solr7 restart
-      wait
     fi
     echo "Stopping any running Jetty processes..."
     pkill -9 -f jetty
     rm -rf /tmp/{drush*,pear,jetty*}
     rm -f /var/log/jetty{7,8,9}/*
     echo "Starting Jetty services..."
-    [ -e "/etc/init.d/jetty9" ] && service jetty9 start && wait
-    [ -e "/etc/init.d/jetty8" ] && service jetty8 start && wait
-    [ -e "/etc/init.d/jetty7" ] && service jetty7 start && wait
+    [ -e "/etc/init.d/jetty9" ] && service jetty9 start
+    [ -e "/etc/init.d/jetty8" ] && service jetty8 start
+    [ -e "/etc/init.d/jetty7" ] && service jetty7 start
     [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
     echo "INFO: Solr and Jetty servers restarted successfully"
   fi
@@ -209,12 +203,10 @@ _graceful_action() {
     echo " " >> /var/log/nginx/speed_cleanup.log
     sed -i "s/levels=2:2:2/levels=2:2/g" /var/aegir/config/server_master/nginx.conf
     nice -n -5 service nginx reload &> /dev/null
-    wait
     echo "speed_purge start $(date)" >> /var/log/nginx/speed_cleanup.log
     nice -n 9 ionice -c2 -n7 find /var/lib/nginx/speed/ -mtime +1 -exec rm -rf {} \; &> /dev/null
     echo "speed_purge complete $(date)" >> /var/log/nginx/speed_cleanup.log
     nice -n -5 service nginx reload &> /dev/null
-    wait
     rm -f /run/speed_cleanup.pid
   fi
 

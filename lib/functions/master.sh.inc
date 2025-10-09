@@ -613,6 +613,9 @@ _aegir_master_upgrade() {
     _hostmaster_frontend_dbpass_sync
     _master_download_for_local_build
 
+    ### Make sure that required web services are up and running
+    _mrun "webserver up"
+
     ###
     AegirUpgrade="${_bldPth}/aegir/scripts/AegirUpgrade.sh.txt"
     su -s /bin/bash - aegir -c "/bin/bash ${AegirUpgrade} aegir"
@@ -943,7 +946,11 @@ EOFMYSQL
     echo "_xSrl=\"${_xSrl}\""                           >> ${_vBs}/${_filIncB}
     echo "_X_VERSION=\"${_X_VERSION}\""                 >> ${_vBs}/${_filIncB}
 
+    ###  Download Drupal core and modules
     _master_download_for_local_build
+
+    ### Make sure that required web services are up and running
+    _mrun "webserver up"
 
     ###
     AegirSetupM="${_bldPth}/aegir/scripts/AegirSetupM.sh.txt"
@@ -1069,7 +1076,6 @@ EOFMYSQL
       cp -af ${_locCnf}/nginx/nginx.conf /etc/nginx/nginx.conf
     fi
     _mrun "service nginx reload"
-    wait
     _msg "INFO: Aegir Master Instance installed"
   else
     if [ "${_tRee}" = "lts" ]; then
@@ -1131,7 +1137,6 @@ _if_upgrade_only_aegir_master() {
       _php_cli_cron_update
       sleep 8
       _mrun "service nginx reload"
-      wait
       _finale
       exit 0
     fi
