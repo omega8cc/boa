@@ -251,14 +251,29 @@ _if_fix_dhcp() {
 _cron_duplicate_instances_detection() {
   _CNT=$(pgrep -fc /usr/sbin/cron)
   if (( _CNT > 1 )); then
-    _thisErrLog="$(date) Too many Cron instances running killed (count=${_CNT})"
-    echo ${_thisErrLog} >> /var/log/boa/cron-count.kill.log
-    killall -9 cron &> /dev/null
-    service cron start &> /dev/null
-    _thisErrLog="$(date) Too many Cron instances, service restarted (count=${_CNT})"
-    echo ${_thisErrLog} >> ${_pthOml}
-    _incident_email_report "Too many Cron instances, service restarted (count=${_CNT})"
-    echo >> ${_pthOml}
+    # Double-check after a short grace to avoid flapping
+    sleep 2
+    _CNT2=$(pgrep -fc /usr/sbin/cron)
+    if (( _CNT2 > 1 )); then
+      : "${_CRON_COOLDOWN_SECS:=10}"
+      _cd="/run/cron-monitor.cooldown"
+      _now=$(date +%s)
+      if [ -s "${_cd}" ]; then
+        _ts=$(cat "${_cd}" 2>/dev/null | tr -d '\n')
+        if [ -n "${_ts}" ] && [ $((_now - _ts)) -lt "${_CRON_COOLDOWN_SECS}" ]; then
+          echo "$(date) INFO: Cron duplicates detected but in cooldown; skipping restart" >> ${_pthOml}
+          return 0
+        fi
+      fi
+      killall -9 cron &> /dev/null
+      service cron start &> /dev/null
+      # Cooldown stamp
+      date +%s > "${_cd}"
+      _thisErrLog="$(date) Too many Cron instances, service restarted (count=${_CNT2})"
+      echo ${_thisErrLog} >> ${_pthOml}
+      _incident_email_report "Too many Cron instances, service restarted (count=${_CNT2})"
+      echo >> ${_pthOml}
+    fi
   fi
 }
 
