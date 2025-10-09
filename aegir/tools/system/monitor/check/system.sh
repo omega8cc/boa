@@ -352,12 +352,28 @@ _postfix_health_check_fix() {
   if [ -x "/etc/init.d/postfix" ]; then
     if ! pgrep -f /usr/lib/postfix \
       || [ ! -e "/var/spool/postfix/pid/master.pid" ]; then
-      service postfix restart
-      wait
-      _thisErrLog="$(date) Postfix Server was down, restarted"
-      echo ${_thisErrLog} >> ${_pthOml}
-      _incident_email_report "Postfix Server was down, restarted"
-      echo >> ${_pthOml}
+      # Double-check after a short grace
+      sleep 2
+      if ! pgrep -f /usr/lib/postfix \
+        || [ ! -e "/var/spool/postfix/pid/master.pid" ]; then
+        : "${_POSTFIX_COOLDOWN_SECS:=10}"
+        _cd="/run/postfix-monitor.cooldown"
+        _now=$(date +%s)
+        if [ -s "${_cd}" ]; then
+          _ts=$(cat "${_cd}" 2>/dev/null | tr -d '\n')
+          if [ -n "${_ts}" ] && [ $((_now - _ts)) -lt "${_POSTFIX_COOLDOWN_SECS}" ]; then
+            echo "$(date) INFO: Postfix unhealthy but in cooldown; skipping restart" >> ${_pthOml}
+            return 0
+          fi
+        fi
+        service postfix restart
+        wait
+        date +%s > "${_cd}"
+        _thisErrLog="$(date) Postfix Server was down, restarted"
+        echo ${_thisErrLog} >> ${_pthOml}
+        _incident_email_report "Postfix Server was down, restarted"
+        echo >> ${_pthOml}
+      fi
     fi
   fi
 }
