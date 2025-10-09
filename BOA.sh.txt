@@ -4865,22 +4865,6 @@ if [ "$(id -u)" -eq 0 ]; then
     rmmod dccp_probe &> /dev/null
   fi
 
-  if [ -x "/usr/sbin/unbound" ] \
-    && [ ! -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
-    touch /run/wait-unbound.pid
-    sleep 3
-    mkdir -p /etc/resolvconf/run/interface
-    echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.unbound
-    resolvconf -u &> /dev/null
-    [ -e "/etc/resolvconf/update.d/unbound" ] && chmod 644 /etc/resolvconf/update.d/unbound
-    [ ! -e "/run/unbound" ] && mkdir -p /run/unbound
-    [ -e "/run/unbound" ] && chown -R unbound:unbound /run/unbound
-    pkill -u unbound -x unbound &> /dev/null
-    service unbound restart &> /dev/null
-    sleep 3
-    rm -f /run/wait-unbound.pid
-  fi
-
   if [ ! -e "/data/all/cpuinfo" ]; then
     _count_cpu
   fi
