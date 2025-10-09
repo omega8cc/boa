@@ -438,7 +438,7 @@ _dns_unbound_install_upgrade() {
     fi
     ###
     [ ! -e "/run/unbound" ] && mkdir -p /run/unbound
-    chown -R unbound:unbound /run/unbound
+    [ -e "/run/unbound" ] && chown -R unbound:unbound /run/unbound
     [ ! -e "/var/log/unbound/" ] && mkdir -p /var/log/unbound/
     touch /var/log/unbound/unbound.log
     chown -R unbound:unbound /var/log/unbound
@@ -501,7 +501,6 @@ _dns_unbound_install_upgrade() {
       [ -e "/etc/resolvconf/update.d/unbound" ] && chmod 644 /etc/resolvconf/update.d/unbound
       _mrun "pkill -u unbound -x unbound"
       _mrun "service unbound restart"
-      _mrun "unbound-control reload"
     fi
   fi
   if [ ! -f "/etc/resolv.conf" ]; then
@@ -514,7 +513,6 @@ _dns_unbound_install_upgrade() {
     [ -e "/etc/resolvconf/update.d/unbound" ] && chmod 644 /etc/resolvconf/update.d/unbound
     _mrun "pkill -u unbound -x unbound"
     _mrun "service unbound restart"
-    _mrun "unbound-control reload"
   fi
   if [ -e "/etc/NetworkManager/NetworkManager.conf" ]; then
     sed -i "s/^dns=.*/dns=unbound/g" \
@@ -833,14 +831,23 @@ EOF
       _msg "INFO: DNS test: OK"
     fi
     echo " "
-    _msg "INSTALL START -> checkpoint: "
-    cat <<EOF
+    : "${_DISPLAY_CHECKPOINT:YES}"
+    if [ "${_DISPLAY_CHECKPOINT}" = "YES" ]; then
+      _find_server_city
+      [ -z "${_LOC_CITY}" ] && _LOC_CITY="Cicely"
+      _VENDOR="$(dmidecode -s system-manufacturer 2>&1)"
+      [ -z "${_VENDOR}" ] && _VENDOR="Maurice Minnifield"
+      _msg "INSTALL START -> checkpoint: "
+      cat <<EOF
 
-    * Your email address is ${_MY_EMAIL}
-    * Your IP address is ${_THISHTIP}
-    * Your hostname is ${_THISHOST}
+      * Your sysadmin EMAIL address is ${_MY_EMAIL}
+      * Your server CITY is ${_LOC_CITY}
+      * Your server VENDOR is ${_VENDOR}
+      * Your server IP address is ${_THISHTIP}
+      * Your server HOSTNAME is ${_THISHOST}
 EOF
-    echo " "
+      echo " "
+    fi
     if _prompt_yes_no "Do you want to proceed with the install?" ; then
       true
     else
@@ -864,24 +871,30 @@ EOF
       _msg "Please specify your working Aegir domain as a value of _MY_FRONT"
       _clean_pid_exit _check_ip_hostname_e
     fi
-    if [ "${_DEBUG_MODE}" = "YES" ]; then
+    : "${_DISPLAY_CHECKPOINT:YES}"
+    if [ "${_DISPLAY_CHECKPOINT}" = "YES" ]; then
+      _find_server_city
+      [ -z "${_LOC_CITY}" ] && _LOC_CITY="Cicely"
+      _VENDOR="$(dmidecode -s system-manufacturer 2>&1)"
+      [ -z "${_VENDOR}" ] && _VENDOR="Maurice Minnifield"
       echo " "
       _msg "UPGRADE START -> checkpoint: "
       cat <<EOF
 
-    * Your email address is ${_MY_EMAIL}
-    * Your server hostname is ${_THISHOST}
-    * Your Aegir control panel URL is https://${_THIS_FRONT}
+    * Your sysadmin EMAIL address is ${_MY_EMAIL}
+    * Your server CITY is ${_LOC_CITY}
+    * Your server VENDOR is ${_VENDOR}
+    * Your server IP address is ${_THISHTIP}
+    * Your server HOSTNAME is ${_THISHOST}
+    * Your Aegir Master URL is https://${_THIS_FRONT}
 EOF
       echo " "
     fi
-    if [ "${_DEBUG_MODE}" = "YES" ]; then
-      if _prompt_yes_no "Do you want to proceed with the upgrade?" ; then
-        true
-      else
-        echo "Upgrade aborted by you"
-        _clean_pid_exit _check_ip_hostname_f
-      fi
+    if _prompt_yes_no "Do you want to proceed with the upgrade?" ; then
+      true
+    else
+      echo "Upgrade aborted by you"
+      _clean_pid_exit _check_ip_hostname_f
     fi
   fi
 }
