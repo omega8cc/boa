@@ -275,14 +275,7 @@ _unbound_health_check_fix() {
     echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.unbound
     [ -e "/etc/resolvconf/update.d/unbound" ] && chmod 644 /etc/resolvconf/update.d/unbound
     resolvconf -u &> /dev/null
-    pkill -u unbound -x unbound &> /dev/null
-    service unbound restart &> /dev/null
-    wait
-    unbound-control reload &> /dev/null
-    sleep 3
-    rm -f /run/wait-unbound.pid
-    # Set cooldown timestamp after attempting recovery
-    date +%s > "${_cd}"
+    _unbound_restart_with_cooldown
     _thisErrLog="$(date) Unbound Server was down, restarted"
     echo ${_thisErrLog} >> ${_pthOml}
     _incident_email_report "Unbound Server was down, restarted"
