@@ -285,7 +285,7 @@ _add_ip_if_missing() {
   fi
 }
 
-# Function to add an Gateway IP to allowed and ignored by CSF/LDF
+# Function to add an Gateway IP to allowed and ignored by CSF/LFD
 _csf_lfd_gateway_allow() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _csf_lfd_gateway_allow"
@@ -340,8 +340,8 @@ _csf_lfd_install_upgrade() {
   if [[ "${_XTRAS_LIST}" =~ "ALL" ]] \
     || [[ "${_XTRAS_LIST}" =~ "CSF" ]]; then
     _check_system_manufacturer
-    if [ ! -e "/run/cloud_vhost.pid" ] \
-      && [ ! -e "/run/${_SYS_MANUFACTURER_LC}_vm.pid" ]; then
+    if [ ! -e "/var/log/boa/cloud_vhost.pid" ] \
+      && [ ! -e "/var/log/boa/${_SYS_MANUFACTURER_LC}_vm.pid" ]; then
       if [ ! -e "/usr/sbin/csf" ]; then
         echo " "
         if _prompt_yes_no "Do you want to install csf/lfd firewall?" ; then

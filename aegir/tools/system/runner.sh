@@ -63,7 +63,7 @@ _get_load() {
 _load_control() {
   # shellcheck disable=SC1091
   [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
-  : "${_CPU_TASK_RATIO:=2.1}"
+  : "${_CPU_TASK_RATIO:=3.1}"
   _CPU_TASK_RATIO="$(_sanitize_number "${_CPU_TASK_RATIO}")"
   _O_LOAD_MAX=$(echo "${_CPU_TASK_RATIO} * 100" | bc -l)
   _get_load
@@ -132,6 +132,9 @@ if [ "${_TOTAL_RAM_MB}" -le 4096 ]; then
   if [ ! -e "/root/.slow.cron.cnf" ]; then
     echo SLOW > /root/.slow.cron.cnf
     chattr +i /root/.slow.cron.cnf
+  fi
+  if [ ! -e "/root/.slow.cron.cnf.protected" ] \
+    && [ -e "/root/.slow.cron.cnf" ]; then
     echo SLOW > /root/.slow.cron.cnf.protected
   fi
 fi

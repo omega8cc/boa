@@ -4229,7 +4229,9 @@ _satellite_if_running_as_root_octopus() {
       if  [ ! -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
         || [ ! -e "/data/u" ] \
         || [ ! -e "/var/xdrago" ]; then
-        [ ! -e "/run/${_SYS_MANUFACTURER_LC}_vm_postinstall.pid" ] && touch /run/${_SYS_MANUFACTURER_LC}_vm.pid
+        if [ ! -e "/var/log/boa/${_SYS_MANUFACTURER_LC}_vm_postinstall.pid" ]; then
+          touch /var/log/boa/${_SYS_MANUFACTURER_LC}_vm.pid
+        fi
       fi
     fi
   else
