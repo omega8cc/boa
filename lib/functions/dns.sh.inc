@@ -501,7 +501,6 @@ _dns_unbound_install_upgrade() {
       [ -e "/etc/resolvconf/update.d/unbound" ] && chmod 644 /etc/resolvconf/update.d/unbound
       _mrun "pkill -u unbound -x unbound"
       _mrun "service unbound restart"
-      _mrun "unbound-control reload"
     fi
   fi
   if [ ! -f "/etc/resolv.conf" ]; then
@@ -514,7 +513,6 @@ _dns_unbound_install_upgrade() {
     [ -e "/etc/resolvconf/update.d/unbound" ] && chmod 644 /etc/resolvconf/update.d/unbound
     _mrun "pkill -u unbound -x unbound"
     _mrun "service unbound restart"
-    _mrun "unbound-control reload"
   fi
   if [ -e "/etc/NetworkManager/NetworkManager.conf" ]; then
     sed -i "s/^dns=.*/dns=unbound/g" \
