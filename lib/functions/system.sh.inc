@@ -395,7 +395,9 @@ _if_running_as_root_barracuda() {
       if  [ ! -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
         || [ ! -e "/data/u" ] \
         || [ ! -e "/var/xdrago" ]; then
-        [ ! -e "/run/${_SYS_MANUFACTURER_LC}_vm_postinstall.pid" ] && touch /run/${_SYS_MANUFACTURER_LC}_vm.pid
+        if [ ! -e "/var/log/boa/${_SYS_MANUFACTURER_LC}_vm_postinstall.pid" ]; then
+          touch /var/log/boa/${_SYS_MANUFACTURER_LC}_vm.pid
+        fi
       fi
     fi
     # Check for Amazon EC2 in the system manufacturer field
@@ -405,7 +407,7 @@ _if_running_as_root_barracuda() {
     _VM_TEST="$(uname -a)"
     if [[ "${_VM_TEST}" =~ "-beng" ]]; then
       _VMFAMILY="VS"
-      touch /run/cloud_vhost.pid
+      touch /var/log/boa/cloud_vhost.pid
       if [ ! -e "/etc/apt/preferences.d/fuse" ]; then
         mkdir -p /etc/apt/preferences.d/
         echo -e 'Package: fuse\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/fuse
@@ -2036,8 +2038,8 @@ _barracuda_cnf() {
     echo "###"                                                >> ${_barCnf}
     echo "_CPU_CRIT_RATIO=${_CPU_CRIT_RATIO}"                 >> ${_barCnf}
     echo "_CPU_MAX_RATIO=${_CPU_MAX_RATIO}"                   >> ${_barCnf}
-    echo "_CPU_SPIDER_RATIO=${_CPU_SPIDER_RATIO}"             >> ${_barCnf}
     echo "_CPU_TASK_RATIO=${_CPU_TASK_RATIO}"                 >> ${_barCnf}
+    echo "_CPU_SPIDER_RATIO=${_CPU_SPIDER_RATIO}"             >> ${_barCnf}
 
     echo "###"                                                >> ${_barCnf}
     echo "_CUSTOM_COLLATION_SQL=${_CUSTOM_COLLATION_SQL}"     >> ${_barCnf}
@@ -7812,7 +7814,7 @@ _if_install_vnstat() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _if_install_vnstat"
   fi
-  if [ ! -e "/run/cloud_vhost.pid" ]; then
+  if [ ! -e "/var/log/boa/cloud_vhost.pid" ]; then
     _VNSTAT_ITD=$(vnstat --version 2>&1 \
       | tr -d "\n" \
       | cut -d" " -f2 \

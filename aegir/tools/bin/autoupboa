@@ -82,8 +82,8 @@ _turn_off_apparmor() {
 # Define default values
 _DEFAULT_CPU_CRIT_RATIO="6.1"
 _DEFAULT_CPU_MAX_RATIO="4.1"
-_DEFAULT_CPU_TASK_RATIO="2.1"
-_DEFAULT_CPU_SPIDER_RATIO="1.1"
+_DEFAULT_CPU_TASK_RATIO="3.1"
+_DEFAULT_CPU_SPIDER_RATIO="2.1"
 _LOCK_CPU_CONFIG="/root/.lock.cpu.update.f98.cnf"
 _UPDATE_CPU_PID="/var/log/boa/.update_conf_variable.ctrl.f98.${_tRee}.${_xSrl}.pid"
 
@@ -468,7 +468,7 @@ _is_protected_run() {
 _generic_vm_postinstall() {
   _is_protected_run
   if [ "${_protectedRun}" = "FALSE" ]; then
-    rm -f /run/${_SYS_MANUFACTURER_LC}_vm.pid
+    rm -f /var/log/boa/${_SYS_MANUFACTURER_LC}_vm.pid
     _TODAY=$(date +%y%m%d)
     _TODAY=${_TODAY//[^0-9]/}
     _NOW=$(date +%y%m%d-%H%M%S)
@@ -483,6 +483,17 @@ _generic_vm_postinstall() {
 
 _status_vm_postinstall() {
   _check_system_manufacturer
+  _VM_N_PID="/var/log/boa/${_SYS_MANUFACTURER_LC}_vm.pid"
+  _VM_N_SYS="/var/log/boa/${_SYS_MANUFACTURER_LC}_vm_postinstall.pid"
+  _VM_O_PID="/run/${_SYS_MANUFACTURER_LC}_vm.pid"
+  _VM_O_SYS="/run/${_SYS_MANUFACTURER_LC}_vm_postinstall.pid"
+  if [ -e "${_VM_O_PID}" ] && [ ! -e "${_VM_N_PID}" ]; then
+    touch ${_VM_N_PID}
+  fi
+  if [ -e "${_VM_O_SYS}" ] && [ ! -e "${_VM_N_SYS}" ]; then
+    touch ${_VM_N_SYS}
+    chattr +i ${_VM_N_SYS}
+  fi
   if [ "$(boa info | grep -c Percona)" -lt 3 ] || [ ! -e "/usr/sbin/csf" ]; then
     _NEEDS_UPGRADE=YES
     echo "A _NEEDS_UPGRADE is ${_NEEDS_UPGRADE}"
@@ -490,10 +501,17 @@ _status_vm_postinstall() {
   else
     _NEEDS_UPGRADE=NO
     echo "B _NEEDS_UPGRADE is ${_NEEDS_UPGRADE}"
-    if [ ! -e "/run/${_SYS_MANUFACTURER_LC}_vm.pid" ] \
-      && [ ! -e "/run/${_SYS_MANUFACTURER_LC}_vm_postinstall.pid" ]; then
-      touch /run/${_SYS_MANUFACTURER_LC}_vm_postinstall.pid
-      chattr +i /run/${_SYS_MANUFACTURER_LC}_vm_postinstall.pid
+    if [ ! -e "${_VM_N_PID}" ] && [ ! -e "${_VM_N_SYS}" ]; then
+      touch ${_VM_N_SYS}
+      chattr +i ${_VM_N_SYS}
+    fi
+    if [ ! -e "/var/log/boa/reset_no_new_password.pid" ]; then
+      # Re-enable default MySQL/Valkey/Redis password update logic once
+      [ -e "/root/.mysql.no.new.password.cnf" ]  && rm -f /root/.mysql.no.new.password.cnf
+      [ -e "/root/.valkey.no.new.password.cnf" ] && rm -f /root/.valkey.no.new.password.cnf
+      [ -e "/root/.redis.no.new.password.cnf" ]  && rm -f /root/.redis.no.new.password.cnf
+      touch /var/log/boa/reset_no_new_password.pid
+      chattr +i /var/log/boa/reset_no_new_password.pid
     fi
   fi
 }
@@ -503,6 +521,17 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
   && [ -e "/var/xdrago" ]; then
   _status_vm_postinstall
 fi
+
+_crontab_monitor_cleanup() {
+  if [ -e "/etc/crontab" ] && [ -e "/var/xdrago/monitor/log" ] && [ -e "/etc/csf" ]; then
+    if ! grep -q "/var/xdrago/monitor/log" /etc/crontab; then
+      echo "*/15 *  * * *   root    rm -f /var/xdrago/monitor/log/web.log >/dev/null 2>&1" >> /etc/crontab
+      echo "*/15 *  * * *   root    rm -f /var/xdrago/monitor/log/ssh.log >/dev/null 2>&1" >> /etc/crontab
+      echo "*/15 *  * * *   root    rm -f /var/xdrago/monitor/log/ftp.log >/dev/null 2>&1" >> /etc/crontab
+    fi
+  fi
+}
+_crontab_monitor_cleanup
 
 _crontab_update() {
   if [ -e "/etc/crontab" ]; then
@@ -517,11 +546,9 @@ _crontab_update() {
     if [ "${_ADD_XTRA}" = "YES" ]; then
       echo "*/19 *  * * *   root    bash /var/xdrago/clear.sh >/dev/null 2>&1" >> /etc/crontab
     fi
-    if [ -e "/etc/csf" ]; then
-      echo "*/15 *  * * *   root    rm -f /var/xdrago/monitor/log/web.log >/dev/null 2>&1" >> /etc/crontab
-      echo "*/15 *  * * *   root    rm -f /var/xdrago/monitor/log/ssh.log >/dev/null 2>&1" >> /etc/crontab
-      echo "*/15 *  * * *   root    rm -f /var/xdrago/monitor/log/ftp.log >/dev/null 2>&1" >> /etc/crontab
-    fi
+
+    _crontab_monitor_cleanup
+
     sed -i "/^$/d" /etc/crontab &> /dev/null
     wait
 
@@ -576,11 +603,9 @@ _crontab_cleanup() {
     if [ "${_ADD_XTRA}" = "YES" ]; then
       echo "*/19 *  * * *   root    bash /var/xdrago/clear.sh >/dev/null 2>&1" >> /etc/crontab
     fi
-    if [ -e "/etc/csf" ]; then
-      echo "*/15 *  * * *   root    rm -f /var/xdrago/monitor/log/web.log >/dev/null 2>&1" >> /etc/crontab
-      echo "*/15 *  * * *   root    rm -f /var/xdrago/monitor/log/ssh.log >/dev/null 2>&1" >> /etc/crontab
-      echo "*/15 *  * * *   root    rm -f /var/xdrago/monitor/log/ftp.log >/dev/null 2>&1" >> /etc/crontab
-    fi
+
+    _crontab_monitor_cleanup
+
     sed -i "/^$/d" /etc/crontab &> /dev/null
     wait
     echo Cron Cleanup Completed
@@ -590,8 +615,12 @@ _crontab_cleanup() {
 [ -e "/root/.use.curl.from.packages.cnf" ] && chattr -i /root/.use.curl.from.packages.cnf
 [ -e "/root/.use.curl.from.packages.cnf" ] && rm -f /root/.use.curl.from.packages.cnf
 
-if [ -e "/var/log/boa" ]; then
+if [ -e "/var/log/boa" ] && [ -e "/var/xdrago" ]; then
   _BROKEN_UPDATE_TEST=$(grep "Under Construction" /var/xdrago/*.sh 2>&1)
+  if [ ! -z "${_BROKEN_UPDATE_TEST}" ]; then
+    rm -f /var/log/boa/*.pid
+  fi
+  _BROKEN_UPDATE_TEST=$(grep "404 Not Found" /var/xdrago/*.sh 2>&1)
   if [ ! -z "${_BROKEN_UPDATE_TEST}" ]; then
     rm -f /var/log/boa/*.pid
   fi

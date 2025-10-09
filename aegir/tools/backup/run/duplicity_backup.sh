@@ -114,6 +114,34 @@ _optimize_ram() {
   swapon -a
 }
 
+###
+### Load + normalize _INCIDENT_REPORT
+###
+### Legacy values:
+###   NO  becomes OFF (see below)
+###   YES becomes MINI (see below)
+###
+### Current values:
+###   OFF  == Total silence, no email alerts
+###   ALL  == Very noisy, good for debugging
+###   MINI == Only the most important alerts (default)
+###   CRIT == Only critical if _lvl=ALERT
+###
+_normalize_incident_report() {
+  : "${_INCIDENT_REPORT:=MINI}"
+  _INCIDENT_REPORT="${_INCIDENT_REPORT^^}"
+  _INCIDENT_REPORT="${_INCIDENT_REPORT//[^A-Z]/}"
+  ###
+  ### Map legacy + validate
+  ###
+  case "${_INCIDENT_REPORT}" in
+    NO)   _INCIDENT_REPORT="OFF"  ;;
+    YES)  _INCIDENT_REPORT="MINI" ;;
+    OFF|ALL|MINI|CRIT) : ;;
+    *)    _INCIDENT_REPORT="MINI" ;;
+  esac
+}
+
 # Function to verify root access
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
@@ -137,8 +165,6 @@ _check_root() {
   fi
   # shellcheck disable=SC1091
   [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
-  export _INCIDENT_REPORT=${_INCIDENT_REPORT//[^A-Z]/}
-  : "${_INCIDENT_REPORT:=YES}"
   _AWS_VLV=${_AWS_VLV//[^a-z]/}
   if [ -z "${_AWS_VLV}" ]; then
     _AWS_VLV="warning"
@@ -154,6 +180,7 @@ _check_root() {
   fi
 }
 _check_root
+_normalize_incident_report
 _optimize_ram
 _if_hosted_sys
 _verify_boa_keys
@@ -178,7 +205,7 @@ _waiting_notify() {
   ls -laR /root/.cache/duplicity >> ${_templog}
   grep "Out of memory: Killed process.*duplicity" /var/log/iptables.log >> ${_templog}
   boa info  >> ${_templog}
-  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "YES" ]; then
+  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "ALL" ]; then
     s-nail -s "Multiback Waiting Report for [${_hName}] on $(date)" ${_MY_EMAIL} < ${_templog}
   fi
 }
@@ -256,7 +283,7 @@ _log_issue() {
   local _file=$2
   local _message=$3
   echo "[$(date)] Validation issue type: [${_type}] in file: [${_file}] with error: ${_message}" >> "${_VALIDATION_LOG_FILE}"
-  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "YES" ]; then
+  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "ALL" ]; then
     # Alert the admin
     boa info  >> ${_LOGFILE}
     echo "Sending Backup Validation Alert to ${_MY_EMAIL} on $(date)" >> ${_LOGFILE}
@@ -734,7 +761,7 @@ _backup() {
   _check_if_repair
   _weekly_cleanup
   _check_if_worked_cleanly_or_log_err
-  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "YES" ]; then
+  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" != "OFF" ]; then
     boa info  >> ${_LOGFILE}
     echo "Sending email report on $(date)" >> ${_LOGFILE}
     echo >> ${_LOGFILE}
