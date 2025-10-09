@@ -1074,19 +1074,17 @@ _tune_memory_limits() {
 #
 # Find server city.
 _find_server_city() {
-  if [ ! -e "/root/.dont.use.fancy.bash.login.cnf" ]; then
-    if [ -e "/root/.found_correct_city.cnf" ]; then
-      _LOC_CITY=$(cat /root/.found_correct_city.cnf 2>/dev/null | tr -d '\n')
-    else
-      if [ -e "/root/.found_correct_ipv4.cnf" ]; then
-        _LOC_IP=$(cat /root/.found_correct_ipv4.cnf 2>/dev/null | tr -d '\n')
-        _LOC_CITY=$(curl ${_crlGet} ipinfo.io/${_LOC_IP}/city 2>&1)
-        _LOC_CITY=$(echo -n ${_LOC_CITY} | tr -d "\n" 2>&1)
-      fi
-      if [ ! -z "${_LOC_CITY}" ]; then
-        _LOC_CITY=$(echo "${_LOC_CITY}" | tr ' ' '+' 2>&1)
-        echo ${_LOC_CITY} > /root/.found_correct_city.cnf
-      fi
+  if [ -e "/root/.found_correct_city.cnf" ]; then
+    _LOC_CITY=$(cat /root/.found_correct_city.cnf 2>/dev/null | tr -d '\n')
+  else
+    if [ -e "/root/.found_correct_ipv4.cnf" ]; then
+      _LOC_IP=$(cat /root/.found_correct_ipv4.cnf 2>/dev/null | tr -d '\n')
+      _LOC_CITY=$(curl ${_crlGet} ipinfo.io/${_LOC_IP}/city 2>&1)
+      _LOC_CITY=$(echo -n ${_LOC_CITY} | tr -d "\n" 2>&1)
+    fi
+    if [ ! -z "${_LOC_CITY}" ]; then
+      _LOC_CITY=$(echo "${_LOC_CITY}" | tr ' ' '+' 2>&1)
+      echo ${_LOC_CITY} > /root/.found_correct_city.cnf
     fi
   fi
 }
@@ -6164,11 +6162,6 @@ _if_post_major_os_upgrade() {
         _mrun "service php${e}-fpm reload"
       fi
     done
-    if [ -e "/var/xdrago/proc_num_ctrl.pl" ]; then
-      perl /var/xdrago/proc_num_ctrl.pl &
-    elif [ -e "/var/xdrago_wait/proc_num_ctrl.pl" ]; then
-      perl /var/xdrago_wait/proc_num_ctrl.pl &
-    fi
 
     _REBUILD_SRC_ON_AUTO_NOW=YES
     if [ -e "/root/.run-to-daedalus.cnf" ] \
@@ -9271,7 +9264,7 @@ _sysctl_update() {
         wait
         echo ULIMIT=\"-n 524288\" >> /etc/default/nginx
         ulimit -n 524288 &> /dev/null
-        service nginx restart &> /dev/null
+        _mrun "service nginx restart"
       fi
     fi
     if [ -e "/etc/security/limits.d" ] \
