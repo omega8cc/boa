@@ -245,6 +245,16 @@ _unbound_check_nomail() {
 _unbound_health_check_fix() {
   if ! pgrep -f /usr/sbin/unbound \
     || [ ! -e "/run/unbound/unbound.pid" ]; then
+    : "${_UNBOUND_COOLDOWN_SECS:=10}"
+    _cd="/run/unbound-monitor.cooldown"
+    _now=$(date +%s)
+    if [ -s "${_cd}" ]; then
+      _ts=$(cat "${_cd}" 2>/dev/null | tr -d '\n')
+      if [ -n "${_ts}" ] && [ $((_now - _ts)) -lt "${_UNBOUND_COOLDOWN_SECS}" ]; then
+        echo "$(date) INFO: Unbound unhealthy but in cooldown; skipping restart" >> ${_pthOml}
+        return 0
+      fi
+    fi
     touch /run/wait-unbound.pid
     sleep 3
     [ ! -e "/run/unbound" ] && mkdir -p /run/unbound
@@ -259,6 +269,8 @@ _unbound_health_check_fix() {
     unbound-control reload &> /dev/null
     sleep 3
     rm -f /run/wait-unbound.pid
+    # Set cooldown timestamp after attempting recovery
+    date +%s > "${_cd}"
     _thisErrLog="$(date) Unbound Server was down, restarted"
     echo ${_thisErrLog} >> ${_pthOml}
     _incident_email_report "Unbound Server was down, restarted"
