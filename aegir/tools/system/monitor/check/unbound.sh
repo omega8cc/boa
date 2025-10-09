@@ -244,6 +244,23 @@ _unbound_check_nomail() {
   fi
 }
 
+_unbound_duplicate_fix() {
+  _unbound_check_cooldown_status
+  # Detect duplicate/multiple unbound masters and restart if needed
+  _CNT=$(pgrep -fc "/usr/sbin/unbound")
+  if (( _CNT > 1 )); then
+    # === cooldown-wrapped restart ===
+    if [ "${_in_unbound_cooldown}" = "true" ]; then
+      echo "$(date) INFO: Unbound duplicate-masters restart skipped (cooldown active)" >> ${_pthOml}
+    else
+      _unbound_restart_with_cooldown
+      echo "$(date) INFO: Too many Unbound processes killed and service restarted (count=${_CNT})" >> ${_pthOml}
+      echo >> ${_pthOml}
+      exit 0
+    fi
+  fi
+}
+
 _unbound_health_check_fix() {
   if ! pgrep -f /usr/sbin/unbound \
     || [ ! -e "/run/unbound/unbound.pid" ]; then
@@ -282,6 +299,7 @@ fi
 if [ -x "/usr/sbin/unbound" ]; then
   [ "${_ALLOW_CTRL}" = "YES" ] && _unbound_check_nomail
   _unbound_health_check_fix
+  _unbound_duplicate_fix
 fi
 
 echo DONE!
