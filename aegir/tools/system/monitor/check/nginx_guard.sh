@@ -19,11 +19,14 @@ _check_root() {
 }
 _check_root
 
+# Run only on fully installed system
+[ ! -x "/usr/sbin/csf" ] && exit 0
+
 # Sanitize to allow only digits and minus sign
 export _B_NICE=${_B_NICE//[^0-9-]/}
 
 # Validate and set default if necessary
-if ! [[ "$_B_NICE" =~ ^-?[0-9]+$ ]]; then
+if ! [[ "${_B_NICE}" =~ ^-?[0-9]+$ ]]; then
   _B_NICE=0
 fi
 
@@ -35,9 +38,6 @@ elif (( _B_NICE > 19 )); then
 fi
 
 renice ${_B_NICE} -p $$ &> /dev/null
-
-export _INCIDENT_REPORT=${_INCIDENT_REPORT//[^A-Z]/}
-: "${_INCIDENT_REPORT:=YES}"
 
 ###
 ### Atomic lock/unlock to prevent TOCTOU race
@@ -62,15 +62,6 @@ _manage_single_lock() {
   fi
 }
 _manage_single_lock
-
-_incident_email_report() {
-  if ! _check_uptime_grace_period >/dev/null; then return 1; fi
-  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "YES" ]; then
-    _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
-    echo "Sending Incident Report Email on $(date)" >> ${_pthOml}
-    s-nail -s "Incident Report: ${1} on ${_hName} at $(date)" ${_MY_EMAIL} < ${_pthOml}
-  fi
-}
 
 if [ ! -e "/run/max_load.pid" ] && [ ! -e "/run/critical_load.pid" ]; then
 

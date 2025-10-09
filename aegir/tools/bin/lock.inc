@@ -75,8 +75,14 @@ _single_instance_lock() {
 ###
 _check_uptime_grace_period() {
   _UPTIME_MIN=$(awk '{print int($1/60)}' /proc/uptime 2>/dev/null)
-  if [ "${_UPTIME_MIN}" -lt 15 ]; then
-    export _INCIDENT_REPORT=NO
+  if [ "${_UPTIME_MIN}" -lt 15 ] \
+    || [ ! -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
+    || [ ! -x "/usr/sbin/csf" ] \
+    || [ ! -e "/run/lfd.pid" ] \
+    || [ -e "/run/octopus_install_run.pid" ] \
+    || [ -e "/run/boa_run.pid" ] \
+    || [ -e "/run/boa_wait.pid" ]; then
+    export _INCIDENT_REPORT=OFF
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       echo "Skipping alerts: system uptime ${_UPTIME_MIN} min < 15 min threshold."
     fi

@@ -48,6 +48,10 @@ _clean_pid_exit() {
   [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
   [ -e "/tmp/aegir_backup_mode.txt" ] && rm -f /tmp/aegir_backup_mode.txt
   service cron start &> /dev/null
+  _CNT=$(pgrep -fc 'tee -a /var/backups/barracuda-')
+  if (( _CNT > 1 )); then
+    pkill -f 'tee -a /var/backups/barracuda-'
+  fi
   exit 1
 }
 
@@ -1292,6 +1296,10 @@ _up_finish() {
       fi
     fi
   fi
+  _CNT=$(pgrep -fc 'tee -a /var/backups/barracuda-')
+  if (( _CNT > 1 )); then
+    pkill -f 'tee -a /var/backups/barracuda-'
+  fi
   if [ -e "/etc/init.d/postfix" ]; then
     service postfix restart &> /dev/null
   fi
@@ -1555,7 +1563,7 @@ _check_root() {
     export _B_NICE=${_B_NICE//[^0-9-]/}
 
     # Validate and set default if necessary
-    if ! [[ "$_B_NICE" =~ ^-?[0-9]+$ ]]; then
+    if ! [[ "${_B_NICE}" =~ ^-?[0-9]+$ ]]; then
       _B_NICE=0
     fi
 

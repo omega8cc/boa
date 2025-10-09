@@ -4032,6 +4032,9 @@ _satellite_make() {
   chmod 700 /var/xdrago/run-${_USER} &> /dev/null
   chmod 700 ${_bldPth}/aegir/scripts/* &> /dev/null
 
+  ### Make sure that required web services are up and running
+  _mrun "webserver up"
+
   ###
   _AegirSetupA="${_bldPth}/aegir/scripts/AegirSetupA.sh.txt"
   bash ${_AegirSetupA} ${_USER}
@@ -4174,9 +4177,6 @@ _satellite_if_sql_exception_test() {
     || [ ! -e "/run/mysqld/mysqld.sock" ]; then
     _msg "ALRT! ${_DB_SERVER} server not running properly!"
     _msg "EXIT: We can't proceed and will exit now"
-    _msg "HINT: Please check for more information two log files:"
-    _msg "INFO:   ${_LOG_INFO}"
-    _msg "ERRR:   ${_LOG_ERRR}"
     _msg "HINT: (re)start ${_DB_SERVER} server, then run the installer again"
     _msg "Bye"
     _clean_pid_exit _satellite_if_sql_exception_test_a
@@ -4229,7 +4229,9 @@ _satellite_if_running_as_root_octopus() {
       if  [ ! -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
         || [ ! -e "/data/u" ] \
         || [ ! -e "/var/xdrago" ]; then
-        [ ! -e "/run/${_SYS_MANUFACTURER_LC}_vm_postinstall.pid" ] && touch /run/${_SYS_MANUFACTURER_LC}_vm.pid
+        if [ ! -e "/var/log/boa/${_SYS_MANUFACTURER_LC}_vm_postinstall.pid" ]; then
+          touch /var/log/boa/${_SYS_MANUFACTURER_LC}_vm.pid
+        fi
       fi
     fi
   else

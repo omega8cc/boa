@@ -971,13 +971,13 @@ _CPU_MAX_RATIO=4.1
 ### Define max 1 min load per CPU core before
 ### launching task queue for Octopus instances.
 ###
-_CPU_TASK_RATIO=2.1
+_CPU_TASK_RATIO=3.1
 
 ###
 ### Set max 1 min load per CPU core before blocking
 ### spiders temporarily, until the load stabilizes.
 ###
-_CPU_SPIDER_RATIO=1.1
+_CPU_SPIDER_RATIO=2.1
 
 ###
 ### Default number of access.log lines to check.
@@ -1135,11 +1135,25 @@ _PHP_FPM_WORKERS=AUTO
 _SPEED_VALID_MAX=3600
 
 ###
-### When set to NO it will stop sending
-### e-mail reports on various incidents
+### Can be completely silenced by setting to OFF or NO
+###
+### When set to ALL it will start sending
+### many e-mail reports on various incidents
 ### detected and handled by auto-healing.
 ###
-_INCIDENT_REPORT=YES
+### Minimalized globally with MINI by default.
+###
+### Legacy values:
+###   NO  becomes OFF (see below)
+###   YES becomes MINI (see below)
+###
+### Current values:
+###   OFF  == Total silence, no email alerts
+###   ALL  == Very noisy, good for debugging
+###   MINI == Only the most important alerts (default)
+###   CRIT == Only critical if _lvl=ALERT
+###
+_INCIDENT_REPORT=MINI
 
 ###
 ### Max TTL for mysql process per user (seconds)
@@ -1396,7 +1410,7 @@ _download_helpers_libs() {
   cd /opt/tmp
   rm -rf /opt/tmp/boa
   if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
-    _GIT_VRN=2.45.2
+    _GIT_VRN=2.51.0
     _isGit=$(which git 2>&1)
     _GIT_INSTALL=NO
     _GIT_V=$(git --version 2>&1 \

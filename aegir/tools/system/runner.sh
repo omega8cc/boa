@@ -63,7 +63,7 @@ _get_load() {
 _load_control() {
   # shellcheck disable=SC1091
   [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
-  : "${_CPU_TASK_RATIO:=2.1}"
+  : "${_CPU_TASK_RATIO:=3.1}"
   _CPU_TASK_RATIO="$(_sanitize_number "${_CPU_TASK_RATIO}")"
   _O_LOAD_MAX=$(echo "${_CPU_TASK_RATIO} * 100" | bc -l)
   _get_load
@@ -132,6 +132,9 @@ if [ "${_TOTAL_RAM_MB}" -le 4096 ]; then
   if [ ! -e "/root/.slow.cron.cnf" ]; then
     echo SLOW > /root/.slow.cron.cnf
     chattr +i /root/.slow.cron.cnf
+  fi
+  if [ ! -e "/root/.slow.cron.cnf.protected" ] \
+    && [ -e "/root/.slow.cron.cnf" ]; then
     echo SLOW > /root/.slow.cron.cnf.protected
   fi
 fi
@@ -141,8 +144,6 @@ if [ "$(pgrep -fc 'n7 bash /var/xdrago/runner.sh')" -gt 8 ] \
   || [ "${_DAILY_RUNNING}" = "TRUE" ] \
   || [ -e "/run/mysql_restart_running.pid" ] \
   || [ -e "/run/boa_sql_cluster_backup.pid" ] \
-  || [ -e "/run/boa_wait.pid" ] \
-  || [ -e "/run/boa_run.pid" ] \
   || [ -e "/run/boa_cron_wait.pid" ]; then
   touch /var/log/boa/wait-runner.pid
   echo "Another BOA task is running, we will try again later..."
