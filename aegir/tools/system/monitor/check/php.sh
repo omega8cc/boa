@@ -38,6 +38,8 @@ fi
 
 renice ${_B_NICE} -p $$ &> /dev/null
 
+: "${_FPM_COOLDOWN_SECS:=15}"
+
 ###
 ### Atomic lock/unlock to prevent TOCTOU race
 ###
@@ -234,14 +236,13 @@ _fpm_health_check_fix() {
       fi
 
       if ! ${_ok_master} || ! ${_ok_socket} || ! ${_ok_pid}; then
-        # Per-version cooldown: /run/php<ver>-fpm.cooldown (10 seconds default)
+        # Per-version cooldown: /run/php<ver>-fpm.cooldown (15 seconds default)
         _cd="/run/php${e}-fpm.cooldown"
         _now=$(date +%s)
         if [ -s "${_cd}" ]; then
           _ts=$(cat "${_cd}" 2>/dev/null | tr -d '\n')
           if [ -n "${_ts}" ]; then
             _delta=$(( _now - _ts ))
-            : "${_FPM_COOLDOWN_SECS:=10}"
             if [ "${_delta}" -lt "${_FPM_COOLDOWN_SECS}" ]; then
               echo "$(date) INFO: php${e}-fpm unhealthy but in cooldown (${_delta}s < ${_FPM_COOLDOWN_SECS}s); skipping restart" >> ${_pthOml}
               continue

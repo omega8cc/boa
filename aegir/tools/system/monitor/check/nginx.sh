@@ -39,6 +39,9 @@ fi
 
 renice ${_B_NICE} -p $$ &> /dev/null
 
+_cd="/run/nginx-monitor.cooldown"
+: "${_NGINX_COOLDOWN_SECS:=15}"
+
 ###
 ### Atomic lock/unlock to prevent TOCTOU race
 ###
@@ -200,8 +203,6 @@ _nginx_if_up_check_fix() {
       sleep 2
       if ! pgrep -f 'nginx: master process' \
         || [ ! -e "/run/nginx.pid" ]; then
-        : "${_NGINX_COOLDOWN_SECS:=10}"
-        _cd="/run/nginx-monitor.cooldown"
         _now=$(date +%s)
         if [ -s "${_cd}" ]; then
           _ts=$(cat "${_cd}" 2>/dev/null | tr -d '\n')

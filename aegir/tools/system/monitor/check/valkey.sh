@@ -39,6 +39,8 @@ fi
 
 renice ${_B_NICE} -p $$ &> /dev/null
 
+: "${_VALKEY_COOLDOWN_SECS:=15}"
+
 ###
 ### Atomic lock/unlock to prevent TOCTOU race
 ###
@@ -177,7 +179,6 @@ _valkey_bind_check_fix() {
     sleep 2
     _hits2=$(tail -n 8 /var/log/valkey/valkey-server.log 2>/dev/null | egrep -ci "Address already in use")
     if [ "${_hits2}" -gt 0 ] && [ ! -S "/run/valkey/valkey.sock" ]; then
-      : "${_VALKEY_COOLDOWN_SECS:=10}"
       _now=$(date +%s)
       if [ -s "${_cd}" ]; then
         _ts=$(tr -d '\n' < "${_cd}")
@@ -199,7 +200,6 @@ _valkey_connection_check_fix() {
     sleep 2
     _hits2=$(tail -n 500 /var/log/php/error_log_* 2>/dev/null | egrep -ci "RedisException: Connection refused")
     if [ "${_hits2}" -gt 19 ]; then
-      : "${_VALKEY_COOLDOWN_SECS:=10}"
       _now=$(date +%s)
       if [ -s "${_cd}" ]; then
         _ts=$(tr -d '\n' < "${_cd}")
@@ -221,7 +221,6 @@ _valkey_slow_check_fix() {
     sleep 2
     _hits2=$(tail -n 500 /var/log/php/fpm-*-slow.log 2>/dev/null | egrep -ci "PhpRedis.php")
     if [ "${_hits2}" -gt 19 ]; then
-      : "${_VALKEY_COOLDOWN_SECS:=10}"
       _now=$(date +%s)
       if [ -s "${_cd}" ]; then
         _ts=$(tr -d '\n' < "${_cd}")
@@ -248,7 +247,6 @@ _if_valkey_restart() {
     || [ -e "/root/.allow.valkey.restart.cnf" ] \
     || [ -e "/root/.allow.redis.restart.cnf" ]; then
     if [ "${_VkTest}" -ge 1 ] || [ "${_ReTest}" -ge 1 ]; then
-      : "${_VALKEY_COOLDOWN_SECS:=10}"
       _now=$(date +%s)
       if [ -s "${_cd}" ]; then
         _ts=$(tr -d '\n' < "${_cd}")
@@ -291,7 +289,6 @@ _valkey_health_check_fix() {
   fi
 
   if ! ${_ok_proc} || ! ${_ok_ping}; then
-    : "${_VALKEY_COOLDOWN_SECS:=10}"
     _now=$(date +%s)
     if [ -s "${_cd}" ]; then
       _ts=$(tr -d '\n' < "${_cd}")

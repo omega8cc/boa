@@ -21,6 +21,10 @@ _check_root
 # Run only on fully installed system
 [ ! -e "/var/log/boa/reset_no_new_password.pid" ] && exit 0
 
+: "${_CRON_COOLDOWN_SECS:=15}"
+: "${_POSTFIX_COOLDOWN_SECS:=15}"
+: "${_LFD_COOLDOWN_SECS:=15}"
+
 ###
 ### Atomic lock/unlock to prevent TOCTOU race
 ###
@@ -255,7 +259,6 @@ _cron_duplicate_instances_detection() {
     sleep 2
     _CNT2=$(pgrep -fc /usr/sbin/cron)
     if (( _CNT2 > 1 )); then
-      : "${_CRON_COOLDOWN_SECS:=10}"
       _cd="/run/cron-monitor.cooldown"
       _now=$(date +%s)
       if [ -s "${_cd}" ]; then
@@ -352,7 +355,6 @@ _postfix_health_check_fix() {
       sleep 2
       if ! pgrep -f /usr/lib/postfix \
         || [ ! -e "/var/spool/postfix/pid/master.pid" ]; then
-        : "${_POSTFIX_COOLDOWN_SECS:=10}"
         _cd="/run/postfix-monitor.cooldown"
         _now=$(date +%s)
         if [ -s "${_cd}" ]; then
@@ -392,7 +394,6 @@ _lfd_health_check_fix() {
   if [ -x "/etc/init.d/lfd" ]; then
     if ! pgrep -f lfd \
       || [ ! -e "/run/lfd.pid" ]; then
-      : "${_LFD_COOLDOWN_SECS:=10}"
       _cd="/run/lfd-monitor.cooldown"
       _now=$(date +%s)
       if [ -s "${_cd}" ]; then

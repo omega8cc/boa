@@ -38,8 +38,8 @@ fi
 
 renice ${_B_NICE} -p $$ &> /dev/null
 
-: "${_UNBOUND_COOLDOWN_SECS:=10}"
 _cd="/run/unbound-monitor.cooldown"
+: "${_UNBOUND_COOLDOWN_SECS:=15}"
 
 ###
 ### Atomic lock/unlock to prevent TOCTOU race
@@ -243,23 +243,6 @@ _unbound_check_nomail() {
   fi
 }
 
-_unbound_duplicate_fix() {
-  _unbound_check_cooldown_status
-  # Detect duplicate/multiple unbound masters and restart if needed
-  _CNT=$(pgrep -fc "/usr/sbin/unbound")
-  if (( _CNT > 1 )); then
-    # === cooldown-wrapped restart ===
-    if [ "${_in_unbound_cooldown}" = "true" ]; then
-      echo "$(date) INFO: Unbound duplicate-masters restart skipped (cooldown active)" >> ${_pthOml}
-    else
-      _unbound_restart_with_cooldown
-      echo "$(date) INFO: Too many Unbound processes killed and service restarted (count=${_CNT})" >> ${_pthOml}
-      echo >> ${_pthOml}
-      exit 0
-    fi
-  fi
-}
-
 _unbound_health_check_fix() {
   _unbound_check_cooldown_status
   if ! pgrep -f /usr/sbin/unbound \
@@ -287,17 +270,27 @@ _unbound_health_check_fix() {
   fi
 }
 
-if [ -e "/run/boa_run.pid" ] \
-  || [ -e "/run/boa_wait.pid" ]; then
-  _ALLOW_CTRL=NO
-else
-  _ALLOW_CTRL=YES
-fi
+_unbound_duplicate_fix() {
+  _unbound_check_cooldown_status
+  # Detect duplicate/multiple unbound masters and restart if needed
+  _CNT=$(pgrep -fc "/usr/sbin/unbound")
+  if (( _CNT > 1 )); then
+    # === cooldown-wrapped restart ===
+    if [ "${_in_unbound_cooldown}" = "true" ]; then
+      echo "$(date) INFO: Unbound duplicate-masters restart skipped (cooldown active)" >> ${_pthOml}
+    else
+      _unbound_restart_with_cooldown
+      echo "$(date) INFO: Too many Unbound processes killed and service restarted (count=${_CNT})" >> ${_pthOml}
+      echo >> ${_pthOml}
+      exit 0
+    fi
+  fi
+}
 
-if [ -x "/usr/sbin/unbound" ]; then
-  [ "${_ALLOW_CTRL}" = "YES" ] && _unbound_check_nomail
-  [ "${_ALLOW_CTRL}" = "YES" ] && _unbound_config_fix
+if [ -x "/etc/init.d/unbound" ] && [ -x "/usr/sbin/unbound" ]; then
   [ ! -e "/usr/etc/unbound/unbound.conf.d" ] && mkdir -p /usr/etc/unbound/unbound.conf.d
+  _unbound_config_fix
+  _unbound_check_nomail
   _unbound_health_check_fix
   _unbound_duplicate_fix
 fi
