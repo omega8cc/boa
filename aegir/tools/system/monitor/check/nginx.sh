@@ -5,7 +5,6 @@ export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 
 _pthOml="/var/log/boa/nginx.incident.log"
-_monPath="/var/xdrago/monitor/check"
 
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
