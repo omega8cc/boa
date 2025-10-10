@@ -844,11 +844,11 @@ EOF
       _msg "INSTALL START -> checkpoint: "
       cat <<EOF
 
-      * Your sysadmin EMAIL address is ${_MY_EMAIL}
-      * Your server CITY is ${_LOC_CITY}
-      * Your server VENDOR is ${_VENDOR}
+      * Your sysadmin Email address is ${_MY_EMAIL}
+      * Your server City is ${_LOC_CITY}
+      * Your server Vendor is ${_VENDOR}
       * Your server IP address is ${_THISHTIP}
-      * Your server HOSTNAME is ${_THISHOST}
+      * Your server Hostname is ${_THISHOST}
 EOF
       echo " "
     fi
@@ -889,11 +889,11 @@ EOF
       _msg "UPGRADE START -> checkpoint: "
       cat <<EOF
 
-    * Your sysadmin EMAIL address is ${_MY_EMAIL}
-    * Your server CITY is ${_LOC_CITY}
-    * Your server VENDOR is ${_VENDOR}
+    * Your sysadmin Email address is ${_MY_EMAIL}
+    * Your server City is ${_LOC_CITY}
+    * Your server Vendor is ${_VENDOR}
     * Your server IP address is ${_THISHTIP}
-    * Your server HOSTNAME is ${_THISHOST}
+    * Your server Hostname is ${_THISHOST}
     * Your Aegir Master URL is https://${_THIS_FRONT}
 EOF
       echo " "
