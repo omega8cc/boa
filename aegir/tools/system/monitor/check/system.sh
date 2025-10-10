@@ -295,8 +295,6 @@ _syslog_giant_log_detection() {
 _gpg_too_many_instances_detection() {
   _CNT=$(pgrep -fc gpg-agent)
   if (( _CNT > 5 )); then
-    _thisErrLog="$(date) Too many gpg-agent processes killed (count=${_CNT})"
-    echo ${_thisErrLog} >> /var/log/boa/gpg-agent-count.kill.log
     pkill -9 -f gpg-agent
     _thisErrLog="$(date) Too many gpg-agent processes killed (count=${_CNT})"
     echo ${_thisErrLog} >> ${_pthOml}
@@ -308,8 +306,6 @@ _gpg_too_many_instances_detection() {
 _dirmngr_too_many_instances_detection() {
   _CNT=$(pgrep -fc dirmngr)
   if (( _CNT > 5 )); then
-    _thisErrLog="$(date) Too many dirmngr processes killed (count=${_CNT})"
-    echo ${_thisErrLog} >> /var/log/boa/dirmngr-count.kill.log
     pkill -9 -f dirmngr
     _thisErrLog="$(date) Too many dirmngr processes killed (count=${_CNT})"
     echo ${_thisErrLog} >> ${_pthOml}
