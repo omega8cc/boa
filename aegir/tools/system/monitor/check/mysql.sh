@@ -298,15 +298,24 @@ _if_mydumper_is_locked() {
       _MULTI_MX=$(( _OCT_NR + 10 ))
     fi
   fi
-  if (( $(pgrep -fc aegir.sh) > ${_MULTI_MX} )); then
-    _incident_email_report "TOO MANY ($(pgrep -fc aegir.sh) aegir.sh required killing mydumper"
-    pkill -f mydumper
-    pkill -f aegir.sh
-  fi
-  if (( $(pgrep -fc drush.php) > ${_MULTI_MX} )); then
-    _incident_email_report "TOO MANY ($(pgrep -fc drush.php) drush.php required killing mydumper"
-    pkill -f mydumper
-    pkill -f drush.php
+  _AR_C="$(pgrep -fc aegir.sh)"
+  _DR_C="$(pgrep -fc drush.php)"
+  _MD_C="$(pgrep -fc mydumper)"
+  if [ "${_MD_C}" -gt 0 ]; then
+    if [ "${_AR_C}" -gt "${_MULTI_MX}" ]; then
+      pkill -f mydumper
+      pkill -f aegir.sh
+      echo "$(date) TOO MANY (${_AR_C}) aegir.sh required killing mydumper" >> ${_pthOml}
+      echo >> ${_pthOml}
+      _incident_email_report "TOO MANY (${_AR_C}) aegir.sh required killing mydumper"
+    fi
+    if [ "${_DR_C}" -gt "${_MULTI_MX}" ]; then
+      pkill -f mydumper
+      pkill -f drush.php
+      echo "$(date) TOO MANY (${_DR_C}) drush.php required killing mydumper" >> ${_pthOml}
+      echo >> ${_pthOml}
+      _incident_email_report "TOO MANY (${_DR_C}) drush.php required killing mydumper"
+    fi
   fi
 }
 
