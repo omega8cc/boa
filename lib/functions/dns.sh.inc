@@ -833,6 +833,10 @@ EOF
     echo " "
     : "${_DISPLAY_CHECKPOINT:=YES}"
     if [ "${_DISPLAY_CHECKPOINT}" = "YES" ]; then
+      if [ -z "${_THISHTIP}" ]; then
+        _find_correct_ip
+        _THISHTIP="${_LOC_IP}"
+      fi
       _find_server_city
       [ -z "${_LOC_CITY}" ] && _LOC_CITY="Cicely"
       _VENDOR="$(dmidecode -s system-manufacturer 2>&1)"
@@ -840,11 +844,11 @@ EOF
       _msg "INSTALL START -> checkpoint: "
       cat <<EOF
 
-      * Your sysadmin EMAIL address is ${_MY_EMAIL}
-      * Your server CITY is ${_LOC_CITY}
-      * Your server VENDOR is ${_VENDOR}
+      * Your sysadmin Email address is ${_MY_EMAIL}
+      * Your server City is ${_LOC_CITY}
+      * Your server Vendor is ${_VENDOR}
       * Your server IP address is ${_THISHTIP}
-      * Your server HOSTNAME is ${_THISHOST}
+      * Your server Hostname is ${_THISHOST}
 EOF
       echo " "
     fi
@@ -873,6 +877,10 @@ EOF
     fi
     : "${_DISPLAY_CHECKPOINT:=YES}"
     if [ "${_DISPLAY_CHECKPOINT}" = "YES" ]; then
+      if [ -z "${_THISHTIP}" ]; then
+        _find_correct_ip
+        _THISHTIP="${_LOC_IP}"
+      fi
       _find_server_city
       [ -z "${_LOC_CITY}" ] && _LOC_CITY="Cicely"
       _VENDOR="$(dmidecode -s system-manufacturer 2>&1)"
@@ -881,11 +889,11 @@ EOF
       _msg "UPGRADE START -> checkpoint: "
       cat <<EOF
 
-    * Your sysadmin EMAIL address is ${_MY_EMAIL}
-    * Your server CITY is ${_LOC_CITY}
-    * Your server VENDOR is ${_VENDOR}
+    * Your sysadmin Email address is ${_MY_EMAIL}
+    * Your server City is ${_LOC_CITY}
+    * Your server Vendor is ${_VENDOR}
     * Your server IP address is ${_THISHTIP}
-    * Your server HOSTNAME is ${_THISHOST}
+    * Your server Hostname is ${_THISHOST}
     * Your Aegir Master URL is https://${_THIS_FRONT}
 EOF
       echo " "
