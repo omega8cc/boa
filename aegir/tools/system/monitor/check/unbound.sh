@@ -227,7 +227,6 @@ CONF
 }
 
 _unbound_check_nomail() {
-  [ ! -e "/usr/etc/unbound/unbound.conf.d" ] && mkdir -p /usr/etc/unbound/unbound.conf.d
   [ -e "/etc/default/unbound" ] && _isNxdEtc=$(grep "always_nxdomain" /etc/default/unbound 2>&1)
   [ -e "/etc/init.d/unbound" ] && _isIntUnb=$(grep "apply_ci_nomail" /etc/init.d/unbound 2>&1)
   if [[ "${_isNxdEtc}" =~ "always_nxdomain" ]] \
@@ -298,6 +297,7 @@ fi
 if [ -x "/usr/sbin/unbound" ]; then
   [ "${_ALLOW_CTRL}" = "YES" ] && _unbound_check_nomail
   [ "${_ALLOW_CTRL}" = "YES" ] && _unbound_config_fix
+  [ ! -e "/usr/etc/unbound/unbound.conf.d" ] && mkdir -p /usr/etc/unbound/unbound.conf.d
   _unbound_health_check_fix
   _unbound_duplicate_fix
 fi
