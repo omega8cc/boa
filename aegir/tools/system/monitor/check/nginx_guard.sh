@@ -63,11 +63,27 @@ _manage_single_lock() {
 }
 _manage_single_lock
 
+###
+### Fire-and-forget launcher, cron-safe and interactive-safe
+###
+_spawn_detached() {
+  _cmd="$1"
+  if command -v nohup >/dev/null 2>&1; then
+    nohup bash -c "${_cmd}" >/dev/null 2>&1 &
+  elif command -v setsid >/dev/null 2>&1; then
+    setsid bash -c "${_cmd}" >/dev/null 2>&1 &
+  else
+    ( bash -c "${_cmd}" >/dev/null 2>&1 ) &
+  fi
+  # If interactive shell, drop it from the job table to mimic cron behavior
+  if [[ "$-" == *i* ]]; then disown; fi
+}
+
 if [ ! -e "/run/max_load.pid" ] && [ ! -e "/run/critical_load.pid" ]; then
 
   if [ ! -e "/root/.high_traffic.cnf" ] \
     && [ ! -e "/root/.giant_traffic.cnf" ]; then
-    perl ${_monPath}/locked_nginx.pl &
+    _spawn_detached 'perl ${_monPath}/locked_nginx.pl'
   fi
 
   # Reload nginx if access log is missing or empty
@@ -81,7 +97,7 @@ if [ ! -e "/run/max_load.pid" ] && [ ! -e "/run/critical_load.pid" ]; then
     done
   elif [ -f "${_monPath}/scan_nginx.pl" ]; then
     for _iteration in {1..10}; do
-      perl ${_monPath}/scan_nginx.pl &
+      _spawn_detached 'perl ${_monPath}/scan_nginx.pl'
       sleep 5
     done
   fi
