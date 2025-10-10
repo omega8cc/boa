@@ -765,6 +765,27 @@ _install_php_extensions() {
     fi
   fi
   ###--------------------###
+  if [ "$1" = "56" ]; then
+    _USE_IGBINARY="${_PHP_IGBINARY_TWO}"
+  else
+    _USE_IGBINARY="${_PHP_IGBINARY_THREE}"
+  fi
+  _msg "INFO: Installing igbinary ${_USE_IGBINARY} for PHP ${_T_PHP_VRN}..."
+  cd /var/opt
+  rm -rf igbinary*
+  _get_dev_src "igbinary-${_USE_IGBINARY}.tgz"
+  cd /var/opt/igbinary-${_USE_IGBINARY}
+  _mrun "${_T_PHP_PTH}/phpize"
+  _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
+  _mrun "make -j $(nproc) --quiet"
+  _mrun "make --quiet install"
+  ldconfig 2> /dev/null
+  if [ ! -e "${_THIS_PHP_EXT_DIR}/igbinary.so" ]; then
+    _msg "WARN: Installing igbinary for PHP ${_T_PHP_VRN} failed!"
+  else
+    touch ${_pthLog}/igbinary-${_USE_IGBINARY}-${_T_PHP_VRN}.log
+  fi
+  ###--------------------###
   _USE_PHPREDIS=
   _PHPREDIS_BUILD=
   if [ "$1" = "56" ]; then
@@ -805,27 +826,6 @@ _install_php_extensions() {
     _msg "WARN: Installing PhpRedis for PHP ${_T_PHP_VRN} failed!"
   else
     touch ${_pthLog}/phpredis-update-${_USE_PHPREDIS}-${_T_PHP_VRN}.log
-  fi
-  ###--------------------###
-  if [ "$1" = "56" ]; then
-    _USE_IGBINARY="${_PHP_IGBINARY_TWO}"
-  else
-    _USE_IGBINARY="${_PHP_IGBINARY_THREE}"
-  fi
-  _msg "INFO: Installing igbinary ${_USE_IGBINARY} for PHP ${_T_PHP_VRN}..."
-  cd /var/opt
-  rm -rf igbinary*
-  _get_dev_src "igbinary-${_USE_IGBINARY}.tgz"
-  cd /var/opt/igbinary-${_USE_IGBINARY}
-  _mrun "${_T_PHP_PTH}/phpize"
-  _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
-  _mrun "make -j $(nproc) --quiet"
-  _mrun "make --quiet install"
-  ldconfig 2> /dev/null
-  if [ ! -e "${_THIS_PHP_EXT_DIR}/igbinary.so" ]; then
-    _msg "WARN: Installing igbinary for PHP ${_T_PHP_VRN} failed!"
-  else
-    touch ${_pthLog}/igbinary-${_USE_IGBINARY}-${_T_PHP_VRN}.log
   fi
   ###--------------------###
   if [ "$1" != "56" ] && [ "$1" != "70" ] && [ "$1" != "71" ] && [ "$1" != "84" ]; then
@@ -1150,6 +1150,30 @@ _php_extensions_update() {
     fi
   fi
   ###--------------------###
+  if [ "$1" = "56" ]; then
+    _USE_IGBINARY="${_PHP_IGBINARY_TWO}"
+  else
+    _USE_IGBINARY="${_PHP_IGBINARY_THREE}"
+  fi
+  if [ ! -e "${_THIS_PHP_EXT_DIR}/igbinary.so" ] \
+    || [ ! -e "${_pthLog}/igbinary-${_USE_IGBINARY}-${_T_PHP_VRN}.log" ]; then
+    _msg "INFO: Installing Igbinary ${_USE_IGBINARY} upgrade for PHP ${_T_PHP_VRN}..."
+    cd /var/opt
+    rm -rf igbinary*
+    _get_dev_src "igbinary-${_USE_IGBINARY}.tgz"
+    cd /var/opt/igbinary-${_USE_IGBINARY}
+    _mrun "${_T_PHP_PTH}/phpize"
+    _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
+    _mrun "make -j $(nproc) --quiet"
+    _mrun "make --quiet install"
+    ldconfig 2> /dev/null
+    if [ ! -e "${_THIS_PHP_EXT_DIR}/igbinary.so" ]; then
+      _msg "WARN: Installing Igbinary for PHP ${_T_PHP_VRN} failed!"
+    else
+      touch ${_pthLog}/igbinary-${_USE_IGBINARY}-${_T_PHP_VRN}.log
+    fi
+  fi
+  ###--------------------###
   _USE_PHPREDIS=
   _PHPREDIS_BUILD=
   if [ "$1" = "56" ]; then
@@ -1192,30 +1216,6 @@ _php_extensions_update() {
       _msg "WARN: Installing PhpRedis for PHP ${_T_PHP_VRN} failed!"
     else
       touch ${_pthLog}/phpredis-update-${_USE_PHPREDIS}-${_T_PHP_VRN}.log
-    fi
-  fi
-  ###--------------------###
-  if [ "$1" = "56" ]; then
-    _USE_IGBINARY="${_PHP_IGBINARY_TWO}"
-  else
-    _USE_IGBINARY="${_PHP_IGBINARY_THREE}"
-  fi
-  if [ ! -e "${_THIS_PHP_EXT_DIR}/igbinary.so" ] \
-    || [ ! -e "${_pthLog}/igbinary-${_USE_IGBINARY}-${_T_PHP_VRN}.log" ]; then
-    _msg "INFO: Installing Igbinary ${_USE_IGBINARY} upgrade for PHP ${_T_PHP_VRN}..."
-    cd /var/opt
-    rm -rf igbinary*
-    _get_dev_src "igbinary-${_USE_IGBINARY}.tgz"
-    cd /var/opt/igbinary-${_USE_IGBINARY}
-    _mrun "${_T_PHP_PTH}/phpize"
-    _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
-    _mrun "make -j $(nproc) --quiet"
-    _mrun "make --quiet install"
-    ldconfig 2> /dev/null
-    if [ ! -e "${_THIS_PHP_EXT_DIR}/igbinary.so" ]; then
-      _msg "WARN: Installing Igbinary for PHP ${_T_PHP_VRN} failed!"
-    else
-      touch ${_pthLog}/igbinary-${_USE_IGBINARY}-${_T_PHP_VRN}.log
     fi
   fi
   ###--------------------###
