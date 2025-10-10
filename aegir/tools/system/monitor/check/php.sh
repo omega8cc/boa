@@ -286,6 +286,20 @@ _fpm_health_check_fix() {
   fi
 }
 
+# Fire-and-forget launcher, cron-safe and interactive-safe
+_spawn_detached() {
+  _cmd="$1"
+  if command -v nohup >/dev/null 2>&1; then
+    nohup bash -c "${_cmd}" >/dev/null 2>&1 &
+  elif command -v setsid >/dev/null 2>&1; then
+    setsid bash -c "${_cmd}" >/dev/null 2>&1 &
+  else
+    ( bash -c "${_cmd}" >/dev/null 2>&1 ) &
+  fi
+  # If interactive shell, drop it from the job table to mimic cron behavior
+  if [[ "$-" == *i* ]]; then disown; fi
+}
+
 if [ ! -e "/var/tmp/fpm" ]; then
   mkdir -p /var/tmp/fpm
   chmod 777 /var/tmp/fpm
@@ -301,7 +315,7 @@ if [ ! -e "/run/max_load.pid" ] && [ ! -e "/run/critical_load.pid" ]; then
   _fpm_health_check_fix
   if [ ! -e "/root/.high_traffic.cnf" ] \
     && [ ! -e "/root/.giant_traffic.cnf" ]; then
-    perl /var/xdrago/monitor/check/segfault_alert.pl &
+    _spawn_detached 'perl /var/xdrago/monitor/check/segfault_alert.pl'
   fi
 fi
 
