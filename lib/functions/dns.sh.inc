@@ -838,6 +838,7 @@ EOF
         _THISHTIP="${_LOC_IP}"
       fi
       _find_server_city
+      [ -n "${_LOC_CITY}" ] && _LOC_CITY="$(echo "${_LOC_CITY}" | tr '+' ' ')"
       [ -z "${_LOC_CITY}" ] && _LOC_CITY="Cicely"
       _VENDOR="$(dmidecode -s system-manufacturer 2>&1)"
       [ -z "${_VENDOR}" ] && _VENDOR="Maurice Minnifield"
@@ -882,6 +883,7 @@ EOF
         _THISHTIP="${_LOC_IP}"
       fi
       _find_server_city
+      [ -n "${_LOC_CITY}" ] && _LOC_CITY="$(echo "${_LOC_CITY}" | tr '+' ' ')"
       [ -z "${_LOC_CITY}" ] && _LOC_CITY="Cicely"
       _VENDOR="$(dmidecode -s system-manufacturer 2>&1)"
       [ -z "${_VENDOR}" ] && _VENDOR="Maurice Minnifield"
