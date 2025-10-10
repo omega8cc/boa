@@ -831,7 +831,7 @@ EOF
       _msg "INFO: DNS test: OK"
     fi
     echo " "
-    : "${_DISPLAY_CHECKPOINT:YES}"
+    : "${_DISPLAY_CHECKPOINT:=YES}"
     if [ "${_DISPLAY_CHECKPOINT}" = "YES" ]; then
       _find_server_city
       [ -z "${_LOC_CITY}" ] && _LOC_CITY="Cicely"
@@ -871,7 +871,7 @@ EOF
       _msg "Please specify your working Aegir domain as a value of _MY_FRONT"
       _clean_pid_exit _check_ip_hostname_e
     fi
-    : "${_DISPLAY_CHECKPOINT:YES}"
+    : "${_DISPLAY_CHECKPOINT:=YES}"
     if [ "${_DISPLAY_CHECKPOINT}" = "YES" ]; then
       _find_server_city
       [ -z "${_LOC_CITY}" ] && _LOC_CITY="Cicely"
