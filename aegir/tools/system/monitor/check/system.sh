@@ -19,7 +19,7 @@ _check_root() {
 _check_root
 
 # Run only on fully installed system
-[ ! -x "/usr/sbin/csf" ] && exit 0
+[ ! -e "/var/log/boa/reset_no_new_password.pid" ] && exit 0
 
 ###
 ### Atomic lock/unlock to prevent TOCTOU race
