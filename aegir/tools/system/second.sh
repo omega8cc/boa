@@ -327,14 +327,14 @@ _load_control() {
 }
 
 # Main execution
-for _iteration in {1..9}; do
+for _iteration in {1..5}; do
   echo "----------------------------"
   echo "Iteration ${_iteration}:"
   _load_control
-  sleep 5
   _spawn_detached 'perl /var/xdrago/monitor/check/hackcheck.pl'
   _spawn_detached 'perl /var/xdrago/monitor/check/hackftp.pl'
   _spawn_detached 'perl /var/xdrago/monitor/check/escapecheck.pl'
+  sleep 10
 done
 
 echo "Done!"
