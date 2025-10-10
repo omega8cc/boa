@@ -2813,6 +2813,7 @@ _run_apt_get_dist_upgrade() {
       _mrun "service php${e}-fpm reload"
     fi
   done
+  nohup /var/xdrago/minute.sh > /dev/null 2>&1 &
   if [ -e "/var/xdrago/proc_num_ctrl.pl" ]; then
     _spawn_detached 'perl /var/xdrago/proc_num_ctrl.pl'
   fi
@@ -6884,6 +6885,7 @@ _if_major_os_upgrade() {
         _mrun "service php${e}-fpm reload"
       fi
     done
+    nohup /var/xdrago/minute.sh > /dev/null 2>&1 &
     if [ -e "/var/xdrago/proc_num_ctrl.pl" ]; then
       _spawn_detached 'perl /var/xdrago/proc_num_ctrl.pl'
     fi
