@@ -833,6 +833,10 @@ EOF
     echo " "
     : "${_DISPLAY_CHECKPOINT:=YES}"
     if [ "${_DISPLAY_CHECKPOINT}" = "YES" ]; then
+      if [ -z "${_THISHTIP}" ]; then
+        _find_correct_ip
+        _THISHTIP="${_LOC_IP}"
+      fi
       _find_server_city
       [ -z "${_LOC_CITY}" ] && _LOC_CITY="Cicely"
       _VENDOR="$(dmidecode -s system-manufacturer 2>&1)"
@@ -873,6 +877,10 @@ EOF
     fi
     : "${_DISPLAY_CHECKPOINT:=YES}"
     if [ "${_DISPLAY_CHECKPOINT}" = "YES" ]; then
+      if [ -z "${_THISHTIP}" ]; then
+        _find_correct_ip
+        _THISHTIP="${_LOC_IP}"
+      fi
       _find_server_city
       [ -z "${_LOC_CITY}" ] && _LOC_CITY="Cicely"
       _VENDOR="$(dmidecode -s system-manufacturer 2>&1)"
