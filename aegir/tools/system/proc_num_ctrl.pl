@@ -123,7 +123,7 @@ print "\n $xinetdsumar Xinetd procs\t\tGLOBAL" if ($xinetdlives);
 print "\n $lsyncdsumar Lsyncd procs\t\tGLOBAL" if ($lsyncdlives);
 print "\n $sshdsumar SSHd procs\t\tGLOBAL" if ($sshdlives);
 print "\n $pxydsumar PxySQL procs\t\tGLOBAL" if ($pxydlives);
-print "\n $dpltsumar Droplet procs\t\tGLOBAL" if ($dpltlives);
+print "\n $dpltsumar Droplet procs\tGLOBAL" if ($dpltlives);
 print "\n";
 
 if (!any_file_exists($run_to_files)) {
