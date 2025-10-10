@@ -2765,6 +2765,21 @@ _mytop_install() {
 }
 
 #
+# Fire-and-forget launcher, cron-safe and interactive-safe
+_spawn_detached() {
+  _cmd="$1"
+  if command -v nohup >/dev/null 2>&1; then
+    nohup bash -c "${_cmd}" >/dev/null 2>&1 &
+  elif command -v setsid >/dev/null 2>&1; then
+    setsid bash -c "${_cmd}" >/dev/null 2>&1 &
+  else
+    ( bash -c "${_cmd}" >/dev/null 2>&1 ) &
+  fi
+  # If interactive shell, drop it from the job table to mimic cron behavior
+  if [[ "$-" == *i* ]]; then disown; fi
+}
+
+#
 # Running apt-get full-dist-upgrade.
 _run_apt_get_dist_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -2798,10 +2813,9 @@ _run_apt_get_dist_upgrade() {
       _mrun "service php${e}-fpm reload"
     fi
   done
+  nohup /var/xdrago/minute.sh > /dev/null 2>&1 &
   if [ -e "/var/xdrago/proc_num_ctrl.pl" ]; then
-    perl /var/xdrago/proc_num_ctrl.pl &
-  elif [ -e "/var/xdrago_wait/proc_num_ctrl.pl" ]; then
-    perl /var/xdrago_wait/proc_num_ctrl.pl &
+    _spawn_detached 'perl /var/xdrago/proc_num_ctrl.pl'
   fi
 }
 
@@ -6871,10 +6885,9 @@ _if_major_os_upgrade() {
         _mrun "service php${e}-fpm reload"
       fi
     done
+    nohup /var/xdrago/minute.sh > /dev/null 2>&1 &
     if [ -e "/var/xdrago/proc_num_ctrl.pl" ]; then
-      perl /var/xdrago/proc_num_ctrl.pl &
-    elif [ -e "/var/xdrago_wait/proc_num_ctrl.pl" ]; then
-      perl /var/xdrago_wait/proc_num_ctrl.pl &
+      _spawn_detached 'perl /var/xdrago/proc_num_ctrl.pl'
     fi
     ### Add info file to keep major OS upgrades track.
     touch /root/.${_LOC_OS_CODE}_to_${_NEW_OS_CODE}_major_os_upgrade.info
