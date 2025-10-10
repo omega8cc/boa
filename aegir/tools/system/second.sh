@@ -188,14 +188,26 @@ _nginx_high_load_off() {
   echo "Action Taken: Disabled protection from spiders (nginx high load configuration removed)."
 }
 
+# Fire-and-forget launcher, cron-safe and interactive-safe
+_spawn_detached() {
+  _cmd="$1"
+  if command -v nohup >/dev/null 2>&1; then
+    nohup bash -c "${_cmd}" >/dev/null 2>&1 &
+  elif command -v setsid >/dev/null 2>&1; then
+    setsid bash -c "${_cmd}" >/dev/null 2>&1 &
+  else
+    ( bash -c "${_cmd}" >/dev/null 2>&1 ) &
+  fi
+  # If interactive shell, drop it from the job table to mimic cron behavior
+  if [[ "$-" == *i* ]]; then disown; fi
+}
+
 # Function to control processes
 _proc_control() {
   echo "Running process control..."
   renice "${_B_NICE}" -p $$ &> /dev/null
   if [ -e "/var/xdrago/proc_num_ctrl.pl" ]; then
-    perl /var/xdrago/proc_num_ctrl.pl &
-  elif [ -e "/var/xdrago_wait/proc_num_ctrl.pl" ]; then
-    perl /var/xdrago_wait/proc_num_ctrl.pl &
+    _spawn_detached 'perl /var/xdrago/proc_num_ctrl.pl'
   fi
   touch /var/log/boa/proc_num_ctrl.done.pid
   echo "Process control done."
@@ -315,14 +327,14 @@ _load_control() {
 }
 
 # Main execution
-for _iteration in {1..9}; do
+for _iteration in {1..5}; do
   echo "----------------------------"
   echo "Iteration ${_iteration}:"
-  perl /var/xdrago/monitor/check/hackcheck.pl &
-  perl /var/xdrago/monitor/check/hackftp.pl &
-  perl /var/xdrago/monitor/check/escapecheck.pl &
   _load_control
-  sleep 5
+  _spawn_detached 'perl /var/xdrago/monitor/check/hackcheck.pl'
+  _spawn_detached 'perl /var/xdrago/monitor/check/hackftp.pl'
+  _spawn_detached 'perl /var/xdrago/monitor/check/escapecheck.pl'
+  sleep 10
 done
 
 echo "Done!"
