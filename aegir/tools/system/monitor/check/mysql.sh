@@ -19,7 +19,7 @@ _check_root() {
 _check_root
 
 # Run only on fully installed system
-[ ! -x "/usr/sbin/csf" ] && exit 0
+[ ! -e "/var/log/boa/reset_no_new_password.pid" ] && exit 0
 
 # Sanitize to allow only digits and minus sign
 export _B_NICE=${_B_NICE//[^0-9-]/}
@@ -298,15 +298,24 @@ _if_mydumper_is_locked() {
       _MULTI_MX=$(( _OCT_NR + 10 ))
     fi
   fi
-  if (( $(pgrep -fc aegir.sh) > ${_MULTI_MX} )); then
-    _incident_email_report "TOO MANY ($(pgrep -fc aegir.sh) aegir.sh required killing mydumper"
-    pkill -f mydumper
-    pkill -f aegir.sh
-  fi
-  if (( $(pgrep -fc drush.php) > ${_MULTI_MX} )); then
-    _incident_email_report "TOO MANY ($(pgrep -fc drush.php) drush.php required killing mydumper"
-    pkill -f mydumper
-    pkill -f drush.php
+  _AR_C="$(pgrep -fc aegir.sh)"
+  _DR_C="$(pgrep -fc drush.php)"
+  _MD_C="$(pgrep -fc mydumper)"
+  if [ "${_MD_C}" -gt 0 ]; then
+    if [ "${_AR_C}" -gt "${_MULTI_MX}" ]; then
+      pkill -f mydumper
+      pkill -f aegir.sh
+      echo "$(date) TOO MANY (${_AR_C}) aegir.sh required killing mydumper" >> ${_pthOml}
+      echo >> ${_pthOml}
+      _incident_email_report "TOO MANY (${_AR_C}) aegir.sh required killing mydumper"
+    fi
+    if [ "${_DR_C}" -gt "${_MULTI_MX}" ]; then
+      pkill -f mydumper
+      pkill -f drush.php
+      echo "$(date) TOO MANY (${_DR_C}) drush.php required killing mydumper" >> ${_pthOml}
+      echo >> ${_pthOml}
+      _incident_email_report "TOO MANY (${_DR_C}) drush.php required killing mydumper"
+    fi
   fi
 }
 
@@ -324,6 +333,20 @@ _mysql_health_check_fix() {
     || [ ! -e "/run/mysqld/mysqld.pid" ]; then
     _sql_restart "DOWN MySQL"
   fi
+}
+
+# Fire-and-forget launcher, cron-safe and interactive-safe
+_spawn_detached() {
+  _cmd="$1"
+  if command -v nohup >/dev/null 2>&1; then
+    nohup bash -c "${_cmd}" >/dev/null 2>&1 &
+  elif command -v setsid >/dev/null 2>&1; then
+    setsid bash -c "${_cmd}" >/dev/null 2>&1 &
+  else
+    ( bash -c "${_cmd}" >/dev/null 2>&1 ) &
+  fi
+  # If interactive shell, drop it from the job table to mimic cron behavior
+  if [[ "$-" == *i* ]]; then disown; fi
 }
 
 ### Main start here
@@ -347,7 +370,7 @@ if [ -x "/etc/init.d/mysql" ] \
     sleep 5
     _if_mydumper_is_locked
   fi
-  perl /var/xdrago/monitor/check/sqlcheck.pl &
+  _spawn_detached 'perl /var/xdrago/monitor/check/sqlcheck.pl'
 fi
 
 if [ -e "/run/boa_sql_backup.pid" ] \

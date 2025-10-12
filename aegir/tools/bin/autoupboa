@@ -517,6 +517,7 @@ _status_vm_postinstall() {
 }
 
 if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
+  && [ ! -e "/var/log/boa/reset_no_new_password.pid" ] \
   && [ -e "/data/u" ] \
   && [ -e "/var/xdrago" ]; then
   _status_vm_postinstall

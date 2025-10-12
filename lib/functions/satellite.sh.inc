@@ -94,6 +94,7 @@ _find_correct_ip() {
   if [ -n "${_LOC_IP}" ] && grep -qE "${_LOC_IP}\s" /etc/hosts; then
     cp -af /etc/hosts /etc/.was.hosts
     sed -i "s/^${_LOC_IP}.*//g" /etc/hosts
+    [ -x "/etc/init.d/unbound" ] && [ ! -e "/usr/etc/unbound/unbound.conf.d" ] && mkdir -p /usr/etc/unbound/unbound.conf.d
     [ -x "/etc/init.d/unbound" ] && service unbound restart &> /dev/null
   fi
 }
@@ -4856,7 +4857,7 @@ _satellite_letsencrypt_vhost_sync() {
   fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "${_STATUS} A: Reloading Nginx..."
-    service nginx reload
+    _mrun "service nginx reload"
   else
     _mrun "service nginx reload"
   fi
@@ -4881,7 +4882,7 @@ _satellite_letsencrypt_vhost_setup() {
       _ifvHst="NO"
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "${_STATUS} A: Reloading Nginx..."
-        service nginx reload
+        _mrun "service nginx reload"
       else
         _mrun "service nginx reload"
       fi
