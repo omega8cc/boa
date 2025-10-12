@@ -2038,6 +2038,16 @@ _barracuda_cnf() {
 
     _php_multi_uniq
 
+    _ffList="/var/log/boa/devaun-fast-mirrors-list.txt"
+    _BROKEN_FF=$(grep "planetcobalt" ${_ffList} 2>&1)
+    if [ ! -e "${_ffList}" ] || [[ ! "${_BROKEN_FF}" =~ "planetcobalt" ]]; then
+      _ffDevuan=$(which ffdevuan 2>&1)
+      if [ -x "${_ffDevuan}" ]; then
+        bash ${_ffDevuan} >> "${_logSlt}"
+        wait
+      fi
+    fi
+
     if [ -z "${_LOCAL_DEVUAN_MIRROR}" ] \
       || [ "${_LOCAL_DEVUAN_MIRROR}" = "deb.devuan.org" ] \
       || [ "${_LOCAL_DEVUAN_MIRROR}" = "https://mirrors.dotsrc.org/devuan" ] \
@@ -2673,6 +2683,16 @@ _barracuda_cnf() {
     fi
     if [ -e "${_barCnf}" ]; then
       source ${_barCnf}
+    fi
+
+    _ffList="/var/log/boa/devaun-fast-mirrors-list.txt"
+    _BROKEN_FF=$(grep "planetcobalt" ${_ffList} 2>&1)
+    if [ ! -e "${_ffList}" ] || [[ ! "${_BROKEN_FF}" =~ "planetcobalt" ]]; then
+      _ffDevuan=$(which ffdevuan 2>&1)
+      if [ -x "${_ffDevuan}" ]; then
+        bash ${_ffDevuan} >> "${_logSlt}"
+        wait
+      fi
     fi
 
     if [ -z "${_LOCAL_DEVUAN_MIRROR}" ] \
