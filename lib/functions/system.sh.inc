@@ -2036,6 +2036,17 @@ _barracuda_cnf() {
 
     _php_multi_uniq
 
+    if [ -z "${_LOCAL_DEVUAN_MIRROR}" ] \
+      || [ "${_LOCAL_DEVUAN_MIRROR}" = "deb.devuan.org" ]; then
+      _DVN_MRR="$(_find_fast_devuan_mirror)"
+	  if [ -n "${_DVN_MRR}" ]; then
+	    _devM="${_DVN_MRR}"
+	  else
+	    _devM="deb.devuan.org/merged"
+	  fi
+	  _LOCAL_DEVUAN_MIRROR="${_devM}"
+    fi
+
     if [ -z "${_LOCAL_DEBIAN_MIRROR}" ]; then
       _debM="deb.debian.org"
       _LOCAL_DEBIAN_MIRROR="${_debM}"
@@ -2179,11 +2190,6 @@ _barracuda_cnf() {
     sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                   ${_barCnf}
     wait
     sed -i "s/^_FORCE_GIT_.*/_FORCE_GIT_MIRROR=\"\"/g"           ${_barCnf}
-    wait
-
-    _devM="deb.devuan.org"
-
-    sed -i "s/^_LOCAL_DEVUAN_.*/_LOCAL_DEVUAN_MIRROR=${_devM}/g" ${_barCnf}
     wait
     sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"     ${_barCnf}
     wait
@@ -2580,11 +2586,6 @@ _barracuda_cnf() {
     ### Force latest OpenSSH from sources on supported systems
     sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"     ${_barCnf}
     wait
-
-    _devM="deb.devuan.org"
-
-    sed -i "s/^_LOCAL_DEVUAN_.*/_LOCAL_DEVUAN_MIRROR=${_devM}/g" ${_barCnf}
-    wait
     sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                   ${_barCnf}
     wait
     sed -i "s/^_FORCE_GIT_.*/_FORCE_GIT_MIRROR=\"\"/g"           ${_barCnf}
@@ -2668,6 +2669,19 @@ _barracuda_cnf() {
     fi
     if [ -e "${_barCnf}" ]; then
       source ${_barCnf}
+    fi
+
+    if [ -z "${_LOCAL_DEVUAN_MIRROR}" ] \
+      || [ "${_LOCAL_DEVUAN_MIRROR}" = "deb.devuan.org" ]; then
+      _DVN_MRR="$(_find_fast_devuan_mirror)"
+	  if [ -n "${_DVN_MRR}" ]; then
+	    _devM="${_DVN_MRR}"
+	  else
+	    _devM="deb.devuan.org/merged"
+	  fi
+	  _LOCAL_DEVUAN_MIRROR="${_devM}"
+      sed -i "s/^_LOCAL_DEV.*/_LOCAL_DEVUAN_MIRROR=${_devM}/g"   ${_barCnf}
+      wait
     fi
 
     if [ -z "${_LOCAL_DEBIAN_MIRROR}" ]; then

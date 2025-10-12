@@ -457,7 +457,7 @@ _SSH_PORT=22
 ### to use reliable mirrors you know,
 ### or leave default values.
 ###
-_LOCAL_DEVUAN_MIRROR=deb.devuan.org
+_LOCAL_DEVUAN_MIRROR=""
 _LOCAL_DEBIAN_MIRROR=""
 
 
