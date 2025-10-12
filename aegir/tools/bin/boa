@@ -2441,6 +2441,7 @@ _display_info() {
       _CCC=$(grep _CUSTOM_CONFIG_CSF ${_barCnf} 2>&1)
       _CCL=$(grep _CUSTOM_CONFIG_LSHELL ${_barCnf} 2>&1)
       _CCV=$(grep _CUSTOM_CONFIG_VALKEY ${_barCnf} 2>&1)
+      _CCR=$(grep _CUSTOM_CONFIG_REDIS ${_barCnf} 2>&1)
       _CCS=$(grep _CUSTOM_CONFIG_SQL ${_barCnf} 2>&1)
       _DBG=$(grep _DEBUG_MODE ${_barCnf} 2>&1)
       _DBS=$(grep _DB_SERIES ${_barCnf} 2>&1)
@@ -2533,6 +2534,7 @@ _display_info() {
       [ ! -z "${_CCC}" ] && echo "  _CCC ${_CCC}"
       [ ! -z "${_CCL}" ] && echo "  _CCL ${_CCL}"
       [ ! -z "${_CCV}" ] && echo "  _CCV ${_CCV}"
+      [ ! -z "${_CCR}" ] && echo "  _CCV ${_CCR}"
       [ ! -z "${_CCS}" ] && echo "  _CCS ${_CCS}"
       [ ! -z "${_DBG}" ] && echo "  _DBG ${_DBG}"
       [ ! -z "${_DBS}" ] && echo "  _DBS ${_DBS}"

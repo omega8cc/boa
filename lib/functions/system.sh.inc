@@ -2143,7 +2143,8 @@ _barracuda_cnf() {
     echo "###"                                                >> ${_barCnf}
     echo "_CUSTOM_CONFIG_CSF=${_CUSTOM_CONFIG_CSF}"           >> ${_barCnf}
     echo "_CUSTOM_CONFIG_LSHELL=${_CUSTOM_CONFIG_LSHELL}"     >> ${_barCnf}
-    echo "_CUSTOM_CONFIG_VALKEY=${_CUSTOM_CONFIG_VALKEY}"       >> ${_barCnf}
+    echo "_CUSTOM_CONFIG_VALKEY=${_CUSTOM_CONFIG_VALKEY}"     >> ${_barCnf}
+    echo "_CUSTOM_CONFIG_REDIS=${_CUSTOM_CONFIG_REDIS}"       >> ${_barCnf}
     echo "_CUSTOM_CONFIG_SQL=${_CUSTOM_CONFIG_SQL}"           >> ${_barCnf}
 
     echo "###"                                                >> ${_barCnf}
@@ -2403,6 +2404,11 @@ _barracuda_cnf() {
     _CUSTOM_CONFIG_VALKEY_TEST=$(grep _CUSTOM_CONFIG_VALKEY ${_barCnf} 2>&1)
     if [[ ! "${_CUSTOM_CONFIG_VALKEY_TEST}" =~ "_CUSTOM_CONFIG_VALKEY" ]]; then
       echo "_CUSTOM_CONFIG_VALKEY=${_CUSTOM_CONFIG_VALKEY}" >> ${_barCnf}
+    fi
+
+    _CUSTOM_CONFIG_REDIS_TEST=$(grep _CUSTOM_CONFIG_REDIS ${_barCnf} 2>&1)
+    if [[ ! "${_CUSTOM_CONFIG_REDIS_TEST}" =~ "_CUSTOM_CONFIG_REDIS" ]]; then
+      echo "_CUSTOM_CONFIG_REDIS=${_CUSTOM_CONFIG_REDIS}" >> ${_barCnf}
     fi
 
     _NEWRELIC_KEY_TEST=$(grep _NEWRELIC_KEY ${_barCnf} 2>&1)
