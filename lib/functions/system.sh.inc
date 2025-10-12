@@ -2037,7 +2037,7 @@ _barracuda_cnf() {
     _php_multi_uniq
 
     if [ -z "${_LOCAL_DEVUAN_MIRROR}" ] \
-      || [ "${_LOCAL_DEVUAN_MIRROR}" = "deb.devuan.org" ]
+      || [ "${_LOCAL_DEVUAN_MIRROR}" = "deb.devuan.org" ] \
       || [[ ! "${_LOCAL_DEVUAN_MIRROR}" =~ "http" ]]; then
       _DVN_MRR="$(_find_fast_devuan_mirror)"
 	  if [ -n "${_DVN_MRR}" ]; then
@@ -2673,7 +2673,7 @@ _barracuda_cnf() {
     fi
 
     if [ -z "${_LOCAL_DEVUAN_MIRROR}" ] \
-      || [ "${_LOCAL_DEVUAN_MIRROR}" = "deb.devuan.org" ]
+      || [ "${_LOCAL_DEVUAN_MIRROR}" = "deb.devuan.org" ] \
       || [[ ! "${_LOCAL_DEVUAN_MIRROR}" =~ "http" ]]; then
       _DVN_MRR="$(_find_fast_devuan_mirror)"
 	  if [ -n "${_DVN_MRR}" ]; then
