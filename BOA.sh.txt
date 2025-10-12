@@ -1154,7 +1154,7 @@ _update_agents() {
 
   if [ ! -e "${_optBin}/barracuda" ] \
     || [ ! -e "${_pthLog}/barracuda.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
-    _CNT=$(pgrep -fc barracuda)
+    _CNT=$(pgrep -fc /local/bin/barracuda)
     if (( _CNT > 0 )); then
       echo "The barracuda is running!"
     else
@@ -1176,7 +1176,7 @@ _update_agents() {
 
   if [ ! -e "${_optBin}/octopus" ] \
     || [ ! -e "${_pthLog}/octopus.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
-    _CNT=$(pgrep -fc octopus)
+    _CNT=$(pgrep -fc /local/bin/octopus)
     if (( _CNT > 0 )); then
       echo "The octopus is running!"
     else
