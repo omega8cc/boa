@@ -2036,6 +2036,11 @@ _barracuda_cnf() {
 
     _php_multi_uniq
 
+    if [ -z "${_LOCAL_DEBIAN_MIRROR}" ]; then
+      _debM="deb.debian.org"
+      _LOCAL_DEBIAN_MIRROR="${_debM}"
+    fi
+
     _msg "INFO: Creating your ${_barCnf} config file"
     sleep 1
     echo "###"                                                 > ${_barCnf}
@@ -2090,8 +2095,8 @@ _barracuda_cnf() {
     echo "_DNS_SETUP_TEST=${_DNS_SETUP_TEST}"                 >> ${_barCnf}
     echo "_EXTRA_PACKAGES=${_EXTRA_PACKAGES}"                 >> ${_barCnf}
     echo "_FORCE_GIT_MIRROR=\"${_FORCE_GIT_MIRROR}\""         >> ${_barCnf}
-    echo "_LOCAL_DEBIAN_MIRROR=${_LOCAL_DEBIAN_MIRROR}"       >> ${_barCnf}
     echo "_LOCAL_DEVUAN_MIRROR=${_LOCAL_DEVUAN_MIRROR}"       >> ${_barCnf}
+    echo "_LOCAL_DEBIAN_MIRROR=${_LOCAL_DEBIAN_MIRROR}"       >> ${_barCnf}
     echo "_NEWRELIC_KEY=${_NEWRELIC_KEY}"                     >> ${_barCnf}
 
     echo "###"                                                >> ${_barCnf}
@@ -2177,11 +2182,8 @@ _barracuda_cnf() {
     wait
 
     _devM="deb.devuan.org"
-    _debM="deb.debian.org"
 
     sed -i "s/^_LOCAL_DEVUAN_.*/_LOCAL_DEVUAN_MIRROR=${_devM}/g" ${_barCnf}
-    wait
-    sed -i "s/^_LOCAL_DEBIAN_.*/_LOCAL_DEBIAN_MIRROR=${_debM}/g" ${_barCnf}
     wait
     sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"     ${_barCnf}
     wait
@@ -2580,13 +2582,9 @@ _barracuda_cnf() {
     wait
 
     _devM="deb.devuan.org"
-    _debM="deb.debian.org"
 
     sed -i "s/^_LOCAL_DEVUAN_.*/_LOCAL_DEVUAN_MIRROR=${_devM}/g" ${_barCnf}
     wait
-    sed -i "s/^_LOCAL_DEBIAN_.*/_LOCAL_DEBIAN_MIRROR=${_debM}/g" ${_barCnf}
-    wait
-
     sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                   ${_barCnf}
     wait
     sed -i "s/^_FORCE_GIT_.*/_FORCE_GIT_MIRROR=\"\"/g"           ${_barCnf}
@@ -2670,6 +2668,13 @@ _barracuda_cnf() {
     fi
     if [ -e "${_barCnf}" ]; then
       source ${_barCnf}
+    fi
+
+    if [ -z "${_LOCAL_DEBIAN_MIRROR}" ]; then
+      _debM="deb.debian.org"
+      _LOCAL_DEBIAN_MIRROR="${_debM}"
+      sed -i "s/^_LOCAL_DEB.*/_LOCAL_DEBIAN_MIRROR=${_debM}/g"   ${_barCnf}
+      wait
     fi
 
     if [ "${_DB_SERVER}" = "Percona" ]; then
