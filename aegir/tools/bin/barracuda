@@ -1557,6 +1557,18 @@ _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
     # shellcheck disable=SC1091
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
+
+    #
+    # Protect from any barracuda updates when _SKYNET_MODE=OFF
+    if [ ! -z "${_SKYNET_MODE}" ] && [ "${_SKYNET_MODE}" = "OFF" ]; then
+      echo
+      echo "  Sorry, with _SKYNET_MODE=OFF barracuda can not upgrade your system."
+      echo "  To upgrade please turn _SKYNET_MODE=ON, wait 10 minutes and then try again"
+      echo "  Bye!"
+      echo
+      _clean_pid_exit _check_root
+    fi
+
     _find_correct_ip
     _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
 
