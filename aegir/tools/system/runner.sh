@@ -69,18 +69,29 @@ _load_control() {
   _get_load
 }
 
+_if_accelerated_queue() {
+  if [ -e "/run/octopus_install_run.pid" ]; then
+    _ACCELERATED=YES
+  elif [ -e "/run/boa_wait.pid" ]; then
+    _ACCELERATED=NONE
+  else
+    _ACCELERATED=NORMAL
+  fi
+}
+
 _runner_action() {
-  for Runner in $(find /var/xdrago -maxdepth 1 -mindepth 1 -type f \
+  for _Runner in $(find /var/xdrago -maxdepth 1 -mindepth 1 -type f \
     | grep run- \
     | uniq \
     | sort); do
     _count_cpu
     _load_control
     if (( $(echo "${_O_LOAD} < ${_O_LOAD_MAX}" | bc -l) )); then
-      echo "Load is ${_O_LOAD}% (below max load ${_O_LOAD_MAX}%). Running ${Runner}"
-      if [ ! -e "/run/boa_wait.pid" ]; then
-        echo "Running ${Runner}"
-        bash "${Runner}"
+      echo "Load is ${_O_LOAD}% (below max load ${_O_LOAD_MAX}%). Running ${_Runner}"
+      _if_accelerated_queue
+      if [ "${_ACCELERATED}" = "YES" ] || [ "${_ACCELERATED}" = "NORMAL" ]; then
+        echo "Running ${_Runner}"
+        bash "${_Runner}"
         _n=$((RANDOM % 9 + 2))
         echo "Waiting ${_n} sec"
         sleep "${_n}"

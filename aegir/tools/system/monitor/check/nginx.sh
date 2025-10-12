@@ -5,7 +5,6 @@ export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 
 _pthOml="/var/log/boa/nginx.incident.log"
-_monPath="/var/xdrago/monitor/check"
 
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
@@ -20,7 +19,7 @@ _check_root() {
 _check_root
 
 # Run only on fully installed system
-[ ! -x "/usr/sbin/csf" ] && exit 0
+[ ! -e "/var/log/boa/reset_no_new_password.pid" ] && exit 0
 
 # Sanitize to allow only digits and minus sign
 export _B_NICE=${_B_NICE//[^0-9-]/}
@@ -38,6 +37,9 @@ elif (( _B_NICE > 19 )); then
 fi
 
 renice ${_B_NICE} -p $$ &> /dev/null
+
+_cd="/run/nginx-monitor.cooldown"
+: "${_NGINX_COOLDOWN_SECS:=15}"
 
 ###
 ### Atomic lock/unlock to prevent TOCTOU race
@@ -107,9 +109,8 @@ _restart_nginx() {
   echo "$(date) NGX $1 detected" >> ${_pthOml}
   mv -f /var/log/nginx/error.log /var/log/nginx/$(date +%y%m%d-%H%M)-error.log
   echo "Killing all Nginx processes and restarting Nginx..."
-  killall -9 nginx
-  wait
-  service nginx start
+  pkill -9 -f nginx: || true
+  service nginx restart
   wait
   if pidof nginx > /dev/null; then
     echo "Nginx service restarted successfully."
@@ -147,19 +148,6 @@ _nginx_bind_check_fix() {
 }
 
 _nginx_health_check_fix() {
-  # Standard check first
-  if [ -x "/etc/init.d/nginx" ]; then
-    if ! pgrep -f 'nginx: master process' \
-      || [ ! -e "/run/nginx.pid" ]; then
-      pkill -9 -f nginx: || true
-      service nginx restart
-      wait
-      _thisErrLog="$(date) Nginx Server was down, restarted"
-      echo ${_thisErrLog} >> ${_pthOml}
-      _incident_email_report "Nginx Server was down, restarted"
-      echo >> ${_pthOml}
-    fi
-  fi
   # Initialize a flag to indicate whether Nginx service has been restarted
   _NGINX_RESTARTED=false
   # Check if Nginx is running and capture the process details
@@ -205,6 +193,39 @@ _nginx_health_check_fix() {
   fi
 }
 
+_nginx_if_up_check_fix() {
+  # Standard check first
+  if [ -x "/etc/init.d/nginx" ]; then
+    if ! pgrep -f 'nginx: master process' \
+      || [ ! -e "/run/nginx.pid" ]; then
+      # Double-check after a short grace to avoid flapping
+      sleep 3
+      if ! pgrep -f 'nginx: master process' \
+        || [ ! -e "/run/nginx.pid" ]; then
+        _now=$(date +%s)
+        if [ -s "${_cd}" ]; then
+          _ts=$(cat "${_cd}" 2>/dev/null | tr -d '\n')
+          if [ -n "${_ts}" ] && [ $((_now - _ts)) -lt "${_NGINX_COOLDOWN_SECS}" ]; then
+            echo "$(date) INFO: Nginx unhealthy but in cooldown; skipping restart" >> ${_pthOml}
+            return 0
+          fi
+        fi
+        pkill -9 -f nginx: || true
+        mv -f /var/log/nginx/error.log /var/log/nginx/$(date +%y%m%d-%H%M)-error.log
+        service nginx restart
+        wait
+        # Stamp cooldown after attempting recovery
+        date +%s > "${_cd}"
+        _thisErrLog="$(date) Nginx Server was down, restarted"
+        echo ${_thisErrLog} >> ${_pthOml}
+        _incident_email_report "Nginx Server was down, restarted"
+        echo >> ${_pthOml}
+        ecit 0
+      fi
+    fi
+  fi
+}
+
 _if_nginx_restart() {
   _PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
   _PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
@@ -224,6 +245,7 @@ _if_nginx_restart() {
 }
 
 if [ ! -e "/run/max_load.pid" ] && [ ! -e "/run/critical_load.pid" ]; then
+  _nginx_if_up_check_fix
   _nginx_bind_check_fix
   _nginx_oom_detection
   _nginx_health_check_fix

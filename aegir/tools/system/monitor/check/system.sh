@@ -19,7 +19,11 @@ _check_root() {
 _check_root
 
 # Run only on fully installed system
-[ ! -x "/usr/sbin/csf" ] && exit 0
+[ ! -e "/var/log/boa/reset_no_new_password.pid" ] && exit 0
+
+: "${_CRON_COOLDOWN_SECS:=15}"
+: "${_POSTFIX_COOLDOWN_SECS:=15}"
+: "${_LFD_COOLDOWN_SECS:=15}"
 
 ###
 ### Atomic lock/unlock to prevent TOCTOU race
@@ -251,14 +255,28 @@ _if_fix_dhcp() {
 _cron_duplicate_instances_detection() {
   _CNT=$(pgrep -fc /usr/sbin/cron)
   if (( _CNT > 1 )); then
-    _thisErrLog="$(date) Too many Cron instances running killed (count=${_CNT})"
-    echo ${_thisErrLog} >> /var/log/boa/cron-count.kill.log
-    killall -9 cron &> /dev/null
-    service cron start &> /dev/null
-    _thisErrLog="$(date) Too many Cron instances, service restarted (count=${_CNT})"
-    echo ${_thisErrLog} >> ${_pthOml}
-    _incident_email_report "Too many Cron instances, service restarted (count=${_CNT})"
-    echo >> ${_pthOml}
+    # Double-check after a short grace to avoid flapping
+    sleep 3
+    _CNT2=$(pgrep -fc /usr/sbin/cron)
+    if (( _CNT2 > 1 )); then
+      _cd="/run/cron-monitor.cooldown"
+      _now=$(date +%s)
+      if [ -s "${_cd}" ]; then
+        _ts=$(cat "${_cd}" 2>/dev/null | tr -d '\n')
+        if [ -n "${_ts}" ] && [ $((_now - _ts)) -lt "${_CRON_COOLDOWN_SECS}" ]; then
+          echo "$(date) INFO: Cron duplicates detected but in cooldown; skipping restart" >> ${_pthOml}
+          return 0
+        fi
+      fi
+      killall -9 cron &> /dev/null
+      service cron start &> /dev/null
+      # Cooldown stamp
+      date +%s > "${_cd}"
+      _thisErrLog="$(date) Too many Cron instances, service restarted (count=${_CNT2})"
+      echo ${_thisErrLog} >> ${_pthOml}
+      _incident_email_report "Too many Cron instances, service restarted (count=${_CNT2})"
+      echo >> ${_pthOml}
+    fi
   fi
 }
 
@@ -280,8 +298,6 @@ _syslog_giant_log_detection() {
 _gpg_too_many_instances_detection() {
   _CNT=$(pgrep -fc gpg-agent)
   if (( _CNT > 5 )); then
-    _thisErrLog="$(date) Too many gpg-agent processes killed (count=${_CNT})"
-    echo ${_thisErrLog} >> /var/log/boa/gpg-agent-count.kill.log
     pkill -9 -f gpg-agent
     _thisErrLog="$(date) Too many gpg-agent processes killed (count=${_CNT})"
     echo ${_thisErrLog} >> ${_pthOml}
@@ -293,8 +309,6 @@ _gpg_too_many_instances_detection() {
 _dirmngr_too_many_instances_detection() {
   _CNT=$(pgrep -fc dirmngr)
   if (( _CNT > 5 )); then
-    _thisErrLog="$(date) Too many dirmngr processes killed (count=${_CNT})"
-    echo ${_thisErrLog} >> /var/log/boa/dirmngr-count.kill.log
     pkill -9 -f dirmngr
     _thisErrLog="$(date) Too many dirmngr processes killed (count=${_CNT})"
     echo ${_thisErrLog} >> ${_pthOml}
@@ -337,12 +351,27 @@ _postfix_health_check_fix() {
   if [ -x "/etc/init.d/postfix" ]; then
     if ! pgrep -f /usr/lib/postfix \
       || [ ! -e "/var/spool/postfix/pid/master.pid" ]; then
-      service postfix restart
-      wait
-      _thisErrLog="$(date) Postfix Server was down, restarted"
-      echo ${_thisErrLog} >> ${_pthOml}
-      _incident_email_report "Postfix Server was down, restarted"
-      echo >> ${_pthOml}
+      # Double-check after a short grace
+      sleep 2
+      if ! pgrep -f /usr/lib/postfix \
+        || [ ! -e "/var/spool/postfix/pid/master.pid" ]; then
+        _cd="/run/postfix-monitor.cooldown"
+        _now=$(date +%s)
+        if [ -s "${_cd}" ]; then
+          _ts=$(cat "${_cd}" 2>/dev/null | tr -d '\n')
+          if [ -n "${_ts}" ] && [ $((_now - _ts)) -lt "${_POSTFIX_COOLDOWN_SECS}" ]; then
+            echo "$(date) INFO: Postfix unhealthy but in cooldown; skipping restart" >> ${_pthOml}
+            return 0
+          fi
+        fi
+        service postfix restart
+        wait
+        date +%s > "${_cd}"
+        _thisErrLog="$(date) Postfix Server was down, restarted"
+        echo ${_thisErrLog} >> ${_pthOml}
+        _incident_email_report "Postfix Server was down, restarted"
+        echo >> ${_pthOml}
+      fi
     fi
   fi
 }
@@ -365,8 +394,19 @@ _lfd_health_check_fix() {
   if [ -x "/etc/init.d/lfd" ]; then
     if ! pgrep -f lfd \
       || [ ! -e "/run/lfd.pid" ]; then
+      _cd="/run/lfd-monitor.cooldown"
+      _now=$(date +%s)
+      if [ -s "${_cd}" ]; then
+        _ts=$(cat "${_cd}" 2>/dev/null | tr -d '\n')
+        if [ -n "${_ts}" ] && [ $((_now - _ts)) -lt "${_LFD_COOLDOWN_SECS}" ]; then
+          echo "$(date) INFO: LFD unhealthy but in cooldown; skipping start" >> ${_pthOml}
+          return 0
+        fi
+      fi
       service lfd start
       csf -e
+      # Set cooldown timestamp after attempting recovery
+      date +%s > "${_cd}"
       _thisErrLog="$(date) LFD Monitor was down, started"
       echo ${_thisErrLog} >> ${_pthOml}
       _incident_email_report "LFD Monitor was down, started"

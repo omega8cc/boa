@@ -19,7 +19,7 @@ _check_root() {
 _check_root
 
 # Run only on fully installed system
-[ ! -x "/usr/sbin/csf" ] && exit 0
+[ ! -e "/var/log/boa/reset_no_new_password.pid" ] && exit 0
 
 # Sanitize to allow only digits and minus sign
 export _B_NICE=${_B_NICE//[^0-9-]/}
@@ -37,6 +37,8 @@ elif (( _B_NICE > 19 )); then
 fi
 
 renice ${_B_NICE} -p $$ &> /dev/null
+
+: "${_FPM_COOLDOWN_SECS:=15}"
 
 ###
 ### Atomic lock/unlock to prevent TOCTOU race
@@ -234,14 +236,13 @@ _fpm_health_check_fix() {
       fi
 
       if ! ${_ok_master} || ! ${_ok_socket} || ! ${_ok_pid}; then
-        # Per-version cooldown: /run/php<ver>-fpm.cooldown (30 seconds default)
+        # Per-version cooldown: /run/php<ver>-fpm.cooldown (15 seconds default)
         _cd="/run/php${e}-fpm.cooldown"
         _now=$(date +%s)
         if [ -s "${_cd}" ]; then
           _ts=$(cat "${_cd}" 2>/dev/null | tr -d '\n')
           if [ -n "${_ts}" ]; then
             _delta=$(( _now - _ts ))
-            : "${_FPM_COOLDOWN_SECS:=30}"
             if [ "${_delta}" -lt "${_FPM_COOLDOWN_SECS}" ]; then
               echo "$(date) INFO: php${e}-fpm unhealthy but in cooldown (${_delta}s < ${_FPM_COOLDOWN_SECS}s); skipping restart" >> ${_pthOml}
               continue
@@ -286,6 +287,20 @@ _fpm_health_check_fix() {
   fi
 }
 
+# Fire-and-forget launcher, cron-safe and interactive-safe
+_spawn_detached() {
+  _cmd="$1"
+  if command -v nohup >/dev/null 2>&1; then
+    nohup bash -c "${_cmd}" >/dev/null 2>&1 &
+  elif command -v setsid >/dev/null 2>&1; then
+    setsid bash -c "${_cmd}" >/dev/null 2>&1 &
+  else
+    ( bash -c "${_cmd}" >/dev/null 2>&1 ) &
+  fi
+  # If interactive shell, drop it from the job table to mimic cron behavior
+  if [[ "$-" == *i* ]]; then disown; fi
+}
+
 if [ ! -e "/var/tmp/fpm" ]; then
   mkdir -p /var/tmp/fpm
   chmod 777 /var/tmp/fpm
@@ -301,7 +316,7 @@ if [ ! -e "/run/max_load.pid" ] && [ ! -e "/run/critical_load.pid" ]; then
   _fpm_health_check_fix
   if [ ! -e "/root/.high_traffic.cnf" ] \
     && [ ! -e "/root/.giant_traffic.cnf" ]; then
-    perl /var/xdrago/monitor/check/segfault_alert.pl &
+    _spawn_detached 'perl /var/xdrago/monitor/check/segfault_alert.pl'
   fi
 fi
 
