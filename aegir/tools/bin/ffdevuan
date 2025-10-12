@@ -160,9 +160,12 @@ _quick_probe_release() {
 _render_sources_list_for_mirror() {
   _fullbase="$1"; _suite="${2:-${_SUITE_DEFAULT}}"
   _src_list="/var/log/boa/${_suite}_fast_apt_sources.txt"
-  printf 'deb %s %s main\n'         "${_fullbase}" "${_suite}" >> "${_src_list}"
+  printf 'deb %s %s main\n'         "${_fullbase}" "${_suite}" > "${_src_list}"
+  wait
   printf 'deb %s %s-updates main\n' "${_fullbase}" "${_suite}" >> "${_src_list}"
+  wait
   printf 'deb %s %s-security main\n'"${_fullbase}" "${_suite}" >> "${_src_list}"
+  wait
   echo "Auto-generated list for ${_suite} in ${_src_list}"
   echo
   echo "==="
