@@ -3572,26 +3572,35 @@ _sources_list_update() {
     mv -f ${_aptLiSys} \
       ${_vBs}/sources.list-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
     if [ "${_OS_DIST}" = "Devuan" ]; then
-	  if [ -z "${_LOCAL_DEVUAN_MIRROR}" ]; then
-		_MIRROR=deb.devuan.org
-	  else
-		_MIRROR=${_LOCAL_DEVUAN_MIRROR}
-	  fi
+      if [ "${_OS_CODE}" = "beowulf" ]; then
+        _MIRROR="archive.devuan.org/merged"
+      elif [ -n "${_LOCAL_DEVUAN_MIRROR}" ]; then
+        _MIRROR="${_LOCAL_DEVUAN_MIRROR}"
+      else
+        _DVN_MRR="$(_find_fast_devuan_mirror)"
+        if [ -n "${_DVN_MRR}" ]; then
+          _MIRROR="${_DVN_MRR}"
+        else
+          _MIRROR="deb.devuan.org/merged"
+        fi
+      fi
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: We will use ${_OS_DIST} mirror ${_MIRROR}"
       fi
       cd /var/opt
       echo "## DEVUAN MAIN REPOSITORIES" > ${_aptLiSys}
-      echo "deb http://${_MIRROR}/merged ${_OS_CODE} main" >> ${_aptLiSys}
-      echo "deb-src http://${_MIRROR}/merged ${_OS_CODE} main" >> ${_aptLiSys}
+      echo "deb http://${_MIRROR} ${_OS_CODE} main" >> ${_aptLiSys}
+      echo "deb-src http://${_MIRROR} ${_OS_CODE} main" >> ${_aptLiSys}
       echo "" >> ${_aptLiSys}
-	  echo "## MAJOR BUG FIX UPDATES produced after the final release" >> ${_aptLiSys}
-	  echo "deb http://${_MIRROR}/merged ${_OS_CODE}-updates main" >> ${_aptLiSys}
-	  echo "deb-src http://${_MIRROR}/merged ${_OS_CODE}-updates main" >> ${_aptLiSys}
-	  echo "" >> ${_aptLiSys}
+      if [ "${_OS_CODE}" != "beowulf" ]; then
+        echo "## MAJOR BUG FIX UPDATES produced after the final release" >> ${_aptLiSys}
+        echo "deb http://${_MIRROR} ${_OS_CODE}-updates main" >> ${_aptLiSys}
+        echo "deb-src http://${_MIRROR} ${_OS_CODE}-updates main" >> ${_aptLiSys}
+        echo "" >> ${_aptLiSys}
+      fi
       echo "## DEVUAN SECURITY UPDATES" >> ${_aptLiSys}
-      echo "deb http://${_MIRROR}/merged ${_OS_CODE}-security main" >> ${_aptLiSys}
-      echo "deb-src http://${_MIRROR}/merged ${_OS_CODE}-security main" >> ${_aptLiSys}
+      echo "deb http://${_MIRROR} ${_OS_CODE}-security main" >> ${_aptLiSys}
+      echo "deb-src http://${_MIRROR} ${_OS_CODE}-security main" >> ${_aptLiSys}
     elif [ "${_OS_DIST}" = "Debian" ]; then
       _MIRROR_CHECK=NO
       if [ "${_OS_CODE}" = "deprecated" ]; then
@@ -6618,15 +6627,28 @@ _if_major_os_upgrade() {
     ###
     ### Switching system gears on the fly.
     if [ "${_TGT_OSN}" = "Devuan" ]; then
-      _TGT_MRR="deb.devuan.org/merged"
+      if [ "${_OS_CODE}" = "beowulf" ]; then
+        _TGT_MRR="archive.devuan.org/merged"
+      elif [ -n "${_LOCAL_DEVUAN_MIRROR}" ]; then
+        _TGT_MRR="${_LOCAL_DEVUAN_MIRROR}"
+      else
+        _DVN_MRR="$(_find_fast_devuan_mirror)"
+        if [ -n "${_DVN_MRR}" ]; then
+          _TGT_MRR="${_DVN_MRR}"
+        else
+          _TGT_MRR="deb.devuan.org/merged"
+        fi
+      fi
       echo "## DEVUAN MAIN REPOSITORIES" > ${_aptLiSys}
       echo "deb http://${_TGT_MRR} ${_NEW_OS_CODE} main" >> ${_aptLiSys}
       echo "deb-src http://${_TGT_MRR} ${_NEW_OS_CODE} main" >> ${_aptLiSys}
       echo "" >> ${_aptLiSys}
-      echo "## MAJOR BUG FIX UPDATES produced after the final release" >> ${_aptLiSys}
-      echo "deb http://${_TGT_MRR} ${_NEW_OS_CODE}-updates main" >> ${_aptLiSys}
-      echo "deb-src http://${_TGT_MRR} ${_NEW_OS_CODE}-updates main" >> ${_aptLiSys}
-      echo "" >> ${_aptLiSys}
+      if [ "${_NEW_OS_CODE}" != "beowulf" ]; then
+        echo "## MAJOR BUG FIX UPDATES produced after the final release" >> ${_aptLiSys}
+        echo "deb http://${_TGT_MRR} ${_NEW_OS_CODE}-updates main" >> ${_aptLiSys}
+        echo "deb-src http://${_TGT_MRR} ${_NEW_OS_CODE}-updates main" >> ${_aptLiSys}
+        echo "" >> ${_aptLiSys}
+      fi
       echo "## DEVUAN SECURITY UPDATES" >> ${_aptLiSys}
       echo "deb http://${_TGT_MRR} ${_NEW_OS_CODE}-security main" >> ${_aptLiSys}
       echo "deb-src http://${_TGT_MRR} ${_NEW_OS_CODE}-security main" >> ${_aptLiSys}
@@ -6844,17 +6866,27 @@ _if_major_os_upgrade() {
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "TRCK: Installing now libldap packages from Chimaera"
         fi
+        if [ -n "${_LOCAL_DEVUAN_MIRROR}" ]; then
+          _MIRROR="${_LOCAL_DEVUAN_MIRROR}"
+        else
+          _DVN_MRR="$(_find_fast_devuan_mirror)"
+          if [ -n "${_DVN_MRR}" ]; then
+            _MIRROR="${_DVN_MRR}"
+          else
+            _MIRROR="deb.devuan.org/merged"
+          fi
+        fi
         echo "## DEVUAN MAIN REPOSITORIES" > /etc/apt/sources.list.d/chimaera.list
-        echo "deb http://deb.devuan.org/merged chimaera main" >> /etc/apt/sources.list.d/chimaera.list
-        echo "deb-src http://deb.devuan.org/merged chimaera main" >> /etc/apt/sources.list.d/chimaera.list
+        echo "deb http://${_MIRROR} chimaera main" >> /etc/apt/sources.list.d/chimaera.list
+        echo "deb-src http://${_MIRROR} chimaera main" >> /etc/apt/sources.list.d/chimaera.list
         echo "" >> /etc/apt/sources.list.d/chimaera.list
         echo "## MAJOR BUG FIX UPDATES produced after the final release" >> /etc/apt/sources.list.d/chimaera.list
-        echo "deb http://deb.devuan.org/merged chimaera-updates main" >> /etc/apt/sources.list.d/chimaera.list
-        echo "deb-src http://deb.devuan.org/merged chimaera-updates main" >> /etc/apt/sources.list.d/chimaera.list
+        echo "deb http://${_MIRROR} chimaera-updates main" >> /etc/apt/sources.list.d/chimaera.list
+        echo "deb-src http://${_MIRROR} chimaera-updates main" >> /etc/apt/sources.list.d/chimaera.list
         echo "" >> /etc/apt/sources.list.d/chimaera.list
         echo "## DEVUAN SECURITY UPDATES" >> /etc/apt/sources.list.d/chimaera.list
-        echo "deb http://deb.devuan.org/merged chimaera-security main" >> /etc/apt/sources.list.d/chimaera.list
-        echo "deb-src http://deb.devuan.org/merged chimaera-security main" >> /etc/apt/sources.list.d/chimaera.list
+        echo "deb http://${_MIRROR} chimaera-security main" >> /etc/apt/sources.list.d/chimaera.list
+        echo "deb-src http://${_MIRROR} chimaera-security main" >> /etc/apt/sources.list.d/chimaera.list
         echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
         _apt_clean_update
         _mrun "apt-get install -t chimaera libldap-common ${_aptYesUnth}"
@@ -7320,17 +7352,27 @@ _sys_packages_install() {
       elif [ "${_OS_CODE}" = "daedalus" ]; then
         _APT_XTRA="openjdk-17-jre-headless ca-certificates-java nginx"
         if [ ! -x "/usr/lib/jvm/java-11-openjdk-amd64/bin/java" ]; then
+          if [ -n "${_LOCAL_DEVUAN_MIRROR}" ]; then
+            _MIRROR="${_LOCAL_DEVUAN_MIRROR}"
+          else
+            _DVN_MRR="$(_find_fast_devuan_mirror)"
+            if [ -n "${_DVN_MRR}" ]; then
+              _MIRROR="${_DVN_MRR}"
+            else
+              _MIRROR="deb.devuan.org/merged"
+            fi
+          fi
           echo "## DEVUAN MAIN REPOSITORIES" > /etc/apt/sources.list.d/chimaera.list
-          echo "deb http://deb.devuan.org/merged chimaera main" >> /etc/apt/sources.list.d/chimaera.list
-          echo "deb-src http://deb.devuan.org/merged chimaera main" >> /etc/apt/sources.list.d/chimaera.list
+          echo "deb http://${_MIRROR} chimaera main" >> /etc/apt/sources.list.d/chimaera.list
+          echo "deb-src http://${_MIRROR} chimaera main" >> /etc/apt/sources.list.d/chimaera.list
           echo "" >> /etc/apt/sources.list.d/chimaera.list
           echo "## MAJOR BUG FIX UPDATES produced after the final release" >> /etc/apt/sources.list.d/chimaera.list
-          echo "deb http://deb.devuan.org/merged chimaera-updates main" >> /etc/apt/sources.list.d/chimaera.list
-          echo "deb-src http://deb.devuan.org/merged chimaera-updates main" >> /etc/apt/sources.list.d/chimaera.list
+          echo "deb http://${_MIRROR} chimaera-updates main" >> /etc/apt/sources.list.d/chimaera.list
+          echo "deb-src http://${_MIRROR} chimaera-updates main" >> /etc/apt/sources.list.d/chimaera.list
           echo "" >> /etc/apt/sources.list.d/chimaera.list
           echo "## DEVUAN SECURITY UPDATES" >> /etc/apt/sources.list.d/chimaera.list
-          echo "deb http://deb.devuan.org/merged chimaera-security main" >> /etc/apt/sources.list.d/chimaera.list
-          echo "deb-src http://deb.devuan.org/merged chimaera-security main" >> /etc/apt/sources.list.d/chimaera.list
+          echo "deb http://${_MIRROR} chimaera-security main" >> /etc/apt/sources.list.d/chimaera.list
+          echo "deb-src http://${_MIRROR} chimaera-security main" >> /etc/apt/sources.list.d/chimaera.list
           echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
           _apt_clean_update
           if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -7388,17 +7430,27 @@ _sys_packages_install() {
           _JAVA_TEST=$(/usr/lib/jvm/java-11-openjdk-amd64/bin/java --version 2>&1)
         fi
         if [ ! -x "/usr/lib/jvm/java-11-openjdk-amd64/bin/java" ] || [[ ! "${_JAVA_TEST}" =~ "openjdk 11.0.24" ]]; then
+          if [ -n "${_LOCAL_DEVUAN_MIRROR}" ]; then
+            _MIRROR="${_LOCAL_DEVUAN_MIRROR}"
+          else
+            _DVN_MRR="$(_find_fast_devuan_mirror)"
+            if [ -n "${_DVN_MRR}" ]; then
+              _MIRROR="${_DVN_MRR}"
+            else
+              _MIRROR="deb.devuan.org/merged"
+            fi
+          fi
           echo "## DEVUAN MAIN REPOSITORIES" > /etc/apt/sources.list.d/chimaera.list
-          echo "deb http://deb.devuan.org/merged chimaera main" >> /etc/apt/sources.list.d/chimaera.list
-          echo "deb-src http://deb.devuan.org/merged chimaera main" >> /etc/apt/sources.list.d/chimaera.list
+          echo "deb http://${_MIRROR} chimaera main" >> /etc/apt/sources.list.d/chimaera.list
+          echo "deb-src http://${_MIRROR} chimaera main" >> /etc/apt/sources.list.d/chimaera.list
           echo "" >> /etc/apt/sources.list.d/chimaera.list
           echo "## MAJOR BUG FIX UPDATES produced after the final release" >> /etc/apt/sources.list.d/chimaera.list
-          echo "deb http://deb.devuan.org/merged chimaera-updates main" >> /etc/apt/sources.list.d/chimaera.list
-          echo "deb-src http://deb.devuan.org/merged chimaera-updates main" >> /etc/apt/sources.list.d/chimaera.list
+          echo "deb http://${_MIRROR} chimaera-updates main" >> /etc/apt/sources.list.d/chimaera.list
+          echo "deb-src http://${_MIRROR} chimaera-updates main" >> /etc/apt/sources.list.d/chimaera.list
           echo "" >> /etc/apt/sources.list.d/chimaera.list
           echo "## DEVUAN SECURITY UPDATES" >> /etc/apt/sources.list.d/chimaera.list
-          echo "deb http://deb.devuan.org/merged chimaera-security main" >> /etc/apt/sources.list.d/chimaera.list
-          echo "deb-src http://deb.devuan.org/merged chimaera-security main" >> /etc/apt/sources.list.d/chimaera.list
+          echo "deb http://${_MIRROR} chimaera-security main" >> /etc/apt/sources.list.d/chimaera.list
+          echo "deb-src http://${_MIRROR} chimaera-security main" >> /etc/apt/sources.list.d/chimaera.list
           echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
           _apt_clean_update
           if [ "${_DEBUG_MODE}" = "YES" ]; then

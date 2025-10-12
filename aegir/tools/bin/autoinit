@@ -933,15 +933,23 @@ _init_cycle() {
     wait
     _msg "_init_cycle ==> Launching a quick upgrade to ${_NEW_SYS}/${_NEW_OS_CODE}" >> "${_logInt}"
     _aptLiSys="/etc/apt/sources.list"
-    _TGT_MRR="deb.devuan.org/merged"
+    if [ "${_NEW_OS_CODE}" = "beowulf" ]; then
+      _TGT_MRR="archive.devuan.org/merged"
+    else
+      _TGT_MRR=$(_find_fast_devuan_mirror)
+    fi
+    : "${_TGT_MRR:=mirrors.dotsrc.org/devuan}"
+    _msg "_init_cycle ==> Using Devuan mirror: ${_TGT_MRR}" >> "${_logInt}"
     echo "## DEVUAN MAIN REPOSITORIES" > ${_aptLiSys}
     echo "deb http://${_TGT_MRR} ${_NEW_OS_CODE} main" >> ${_aptLiSys}
     echo "deb-src http://${_TGT_MRR} ${_NEW_OS_CODE} main" >> ${_aptLiSys}
     echo "" >> ${_aptLiSys}
-    echo "## MAJOR BUG FIX UPDATES produced after the final release" >> ${_aptLiSys}
-    echo "deb http://${_TGT_MRR} ${_NEW_OS_CODE}-updates main" >> ${_aptLiSys}
-    echo "deb-src http://${_TGT_MRR} ${_NEW_OS_CODE}-updates main" >> ${_aptLiSys}
-    echo "" >> ${_aptLiSys}
+    if [ "${_NEW_OS_CODE}" != "beowulf" ]; then
+      echo "## MAJOR BUG FIX UPDATES produced after the final release" >> ${_aptLiSys}
+      echo "deb http://${_TGT_MRR} ${_NEW_OS_CODE}-updates main" >> ${_aptLiSys}
+      echo "deb-src http://${_TGT_MRR} ${_NEW_OS_CODE}-updates main" >> ${_aptLiSys}
+      echo "" >> ${_aptLiSys}
+    fi
     echo "## DEVUAN SECURITY UPDATES" >> ${_aptLiSys}
     echo "deb http://${_TGT_MRR} ${_NEW_OS_CODE}-security main" >> ${_aptLiSys}
     echo "deb-src http://${_TGT_MRR} ${_NEW_OS_CODE}-security main" >> ${_aptLiSys}
