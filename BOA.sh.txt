@@ -1130,6 +1130,28 @@ _update_agents() {
     fi
   fi
 
+  if [ ! -e "${_optBin}/barracuda" ] \
+    || [ ! -e "${_pthLog}/barracuda.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
+    _CNT=$(pgrep -fc barracuda)
+    if (( _CNT > 0 )); then
+      echo "The barracuda is running!"
+    else
+      if [ -e "${_optBin}/barracuda" ]; then
+        mv -f ${_optBin}/barracuda ${_optBin}/barracuda.old
+      fi
+      curl ${_crlGet} "${_urlHmr}/tools/bin/barracuda" -o ${_optBin}/barracuda
+      if [ -e "${_optBin}/barracuda" ]; then
+        chmod 700 ${_optBin}/barracuda
+        chown root:root ${_optBin}/barracuda
+        touch ${_pthLog}/barracuda.sh.ctrl.f99.${_tRee}.${_xSrl}.pid
+      else
+        if [ -e "${_optBin}/barracuda.old" ]; then
+          mv -f ${_optBin}/barracuda.old ${_optBin}/barracuda
+        fi
+      fi
+    fi
+  fi
+
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -d "/var/aegir/drush" ] \
     && [ ! -e "${_pthLog}/backboa.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
