@@ -874,15 +874,15 @@ _find_fast_devuan_mirror() {
         _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _USE_MIR="${_CHECK_MIRROR}"
-        [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="mirrors.dotsrc.org/devuan"
+        [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="https://mirrors.dotsrc.org/devuan"
       else
-        _USE_MIR="mirrors.dotsrc.org/devuan"
+        _USE_MIR="https://mirrors.dotsrc.org/devuan"
       fi
     else
-      _USE_MIR="mirrors.dotsrc.org/devuan"
+      _USE_MIR="https://mirrors.dotsrc.org/devuan"
     fi
   else
-    _USE_MIR="mirrors.dotsrc.org/devuan"
+    _USE_MIR="https://mirrors.dotsrc.org/devuan"
   fi
   echo "${_USE_MIR}"
 }
