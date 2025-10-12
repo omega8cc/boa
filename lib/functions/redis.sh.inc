@@ -82,7 +82,7 @@ _fix_redis_mode() {
   fi
   mkdir -p /run/redis
   chown redis:redis /run/redis
-  if [ "${_CUSTOM_CONFIG_REDIS}" = "NO" ]; then
+  if [ "${_CUSTOM_CONFIG_REDIS}" = "NO" ] || [ -z "${_CUSTOM_CONFIG_REDIS}" ]; then
     _REDIS_LISTEN_MODE=SOCKET
     if [ "${_REDIS_LISTEN_MODE}" = "SOCKET" ]; then
       if [ -e "/data/conf/global/global-redis.inc" ]; then
@@ -288,6 +288,7 @@ _install_redis_src() {
   if [ -e "/etc/redis/redis.conf" ] && [ "${_STATUS}" = "UPGRADE" ]; then
     _if_hosted_sys
     if [ "${_CUSTOM_CONFIG_REDIS}" = "NO" ] \
+      || [ -z "${_CUSTOM_CONFIG_REDIS}" ] \
       || [ "${_hostedSys}" = "YES" ]; then
       if [ "${_CUSTOM_CONFIG_REDIS}" = "YES" ]; then
         _DO_NOTHING=YES
