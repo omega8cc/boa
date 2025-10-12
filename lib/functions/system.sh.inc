@@ -7,6 +7,42 @@ _pkg_installed() {
   dpkg-query -W -f='${Status}' "$1" 2>/dev/null | grep -qx 'install ok installed'
 }
 
+###
+### Find the best Devuan APT sources mirror
+###
+_find_fast_devuan_mirror() {
+  _ffDevuan=$(which ffdevuan 2>&1)
+  if [ -x "${_ffDevuan}" ]; then
+    bash ${_ffDevuan} &> /dev/null
+    wait
+  fi
+  _ffMirr=$(which ffmirror 2>&1)
+  if [ -x "${_ffMirr}" ]; then
+    _ffList="/var/log/boa/devaun-mirrors-list.txt"
+    if [ ! -e "${_ffList}" ]; then
+      echo "mirrors.dotsrc.org/devuan"  > ${_ffList}
+      echo "mirror.akardam.net/devuan" >> ${_ffList}
+      echo "mirror.hootsoftware.com/devuan" >> ${_ffList}
+    fi
+    if [ -e "${_ffList}" ]; then
+      _BROKEN_FFMIRR_TEST=$(grep "stuff" ${_ffMirr} 2>&1)
+      if [[ "${_BROKEN_FFMIRR_TEST}" =~ "stuff" ]]; then
+        _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
+        _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
+        _USE_MIR="${_CHECK_MIRROR}"
+        [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="mirrors.dotsrc.org/devuan"
+      else
+        _USE_MIR="mirrors.dotsrc.org/devuan"
+      fi
+    else
+      _USE_MIR="mirrors.dotsrc.org/devuan"
+    fi
+  else
+    _USE_MIR="mirrors.dotsrc.org/devuan"
+  fi
+  echo "${_USE_MIR}"
+}
+
 _if_fix_iptables_symlinks() {
   ###
   ### Fix for iptables paths backward compatibility
