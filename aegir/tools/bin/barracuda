@@ -468,7 +468,6 @@ _if_extended_report() {
 
 _send_report() {
   if [ -e "${_barCnf}" ]; then
-    source ${_barCnf}
     _if_hosted_sys
     if [ "${_hostedSys}" = "YES" ]; then
       _MY_EMAIL="$(basename "$0")@omega8.cc"
@@ -486,7 +485,6 @@ _send_report() {
 
 _send_alert() {
   if [ -e "${_barCnf}" ]; then
-    source ${_barCnf}
     _if_hosted_sys
     if [ "${_hostedSys}" = "YES" ]; then
       _MY_EMAIL="$(basename "$0")@omega8.cc"
@@ -1719,9 +1717,6 @@ _check_root() {
     echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
     echo "ERROR: We can not proceed until it is below 90/100"
     _clean_pid_exit _check_root_b
-  fi
-  if [ -e "${_barCnf}" ]; then
-    source ${_barCnf}
   fi
 }
 
