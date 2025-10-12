@@ -20,7 +20,7 @@ _check_root() {
 _check_root
 
 # Run only on fully installed system
-[ ! -x "/usr/sbin/csf" ] && exit 0
+[ ! -e "/var/log/boa/reset_no_new_password.pid" ] && exit 0
 
 # Sanitize to allow only digits and minus sign
 export _B_NICE=${_B_NICE//[^0-9-]/}
@@ -38,6 +38,8 @@ elif (( _B_NICE > 19 )); then
 fi
 
 renice ${_B_NICE} -p $$ &> /dev/null
+
+: "${_REDIS_COOLDOWN_SECS:=15}"
 
 ###
 ### Atomic lock/unlock to prevent TOCTOU race
@@ -177,7 +179,6 @@ _redis_bind_check_fix() {
     sleep 2
     _hits2=$(tail -n 8 /var/log/redis/redis-server.log 2>/dev/null | egrep -ci "Address already in use")
     if [ "${_hits2}" -gt 0 ] && [ ! -S "/run/redis/redis.sock" ]; then
-      : "${_REDIS_COOLDOWN_SECS:=10}"
       _now=$(date +%s)
       if [ -s "${_cd}" ]; then
         _ts=$(tr -d '\n' < "${_cd}")
@@ -199,7 +200,6 @@ _redis_connection_check_fix() {
     sleep 2
     _hits2=$(tail -n 500 /var/log/php/error_log_* 2>/dev/null | egrep -ci "RedisException: Connection refused")
     if [ "${_hits2}" -gt 19 ]; then
-      : "${_REDIS_COOLDOWN_SECS:=10}"
       _now=$(date +%s)
       if [ -s "${_cd}" ]; then
         _ts=$(tr -d '\n' < "${_cd}")
@@ -221,7 +221,6 @@ _redis_slow_check_fix() {
     sleep 2
     _hits2=$(tail -n 500 /var/log/php/fpm-*-slow.log 2>/dev/null | egrep -ci "PhpRedis.php")
     if [ "${_hits2}" -gt 19 ]; then
-      : "${_REDIS_COOLDOWN_SECS:=10}"
       _now=$(date +%s)
       if [ -s "${_cd}" ]; then
         _ts=$(tr -d '\n' < "${_cd}")
@@ -248,7 +247,6 @@ _if_redis_restart() {
     || [ -e "/root/.allow.redis.restart.cnf" ] \
     || [ -e "/root/.allow.redis.restart.cnf" ]; then
     if [ "${_VkTest}" -ge 1 ] || [ "${_ReTest}" -ge 1 ]; then
-      : "${_REDIS_COOLDOWN_SECS:=10}"
       _now=$(date +%s)
       if [ -s "${_cd}" ]; then
         _ts=$(tr -d '\n' < "${_cd}")
@@ -291,7 +289,6 @@ _redis_health_check_fix() {
   fi
 
   if ! ${_ok_proc} || ! ${_ok_ping}; then
-    : "${_REDIS_COOLDOWN_SECS:=10}"
     _now=$(date +%s)
     if [ -s "${_cd}" ]; then
       _ts=$(tr -d '\n' < "${_cd}")
@@ -304,7 +301,7 @@ _redis_health_check_fix() {
     echo "$(date) Redis health failed (proc=${_ok_proc} ping=${_ok_ping}) — restart" >> ${_pthOml}
     service redis-server restart
     wait
-    sleep 1
+    sleep 3
 
     # Post-restart verification
     _ok_proc=false; _ok_ping=false

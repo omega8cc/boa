@@ -5,7 +5,6 @@ export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 
 _pthOml="/var/log/boa/nginx.incident.log"
-_monPath="/var/xdrago/monitor/check"
 
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
@@ -20,7 +19,7 @@ _check_root() {
 _check_root
 
 # Run only on fully installed system
-[ ! -x "/usr/sbin/csf" ] && exit 0
+[ ! -e "/var/log/boa/reset_no_new_password.pid" ] && exit 0
 
 # Sanitize to allow only digits and minus sign
 export _B_NICE=${_B_NICE//[^0-9-]/}
@@ -38,6 +37,9 @@ elif (( _B_NICE > 19 )); then
 fi
 
 renice ${_B_NICE} -p $$ &> /dev/null
+
+_cd="/run/nginx-monitor.cooldown"
+: "${_NGINX_COOLDOWN_SECS:=15}"
 
 ###
 ### Atomic lock/unlock to prevent TOCTOU race
@@ -197,11 +199,9 @@ _nginx_if_up_check_fix() {
     if ! pgrep -f 'nginx: master process' \
       || [ ! -e "/run/nginx.pid" ]; then
       # Double-check after a short grace to avoid flapping
-      sleep 2
+      sleep 3
       if ! pgrep -f 'nginx: master process' \
         || [ ! -e "/run/nginx.pid" ]; then
-        : "${_NGINX_COOLDOWN_SECS:=10}"
-        _cd="/run/nginx-monitor.cooldown"
         _now=$(date +%s)
         if [ -s "${_cd}" ]; then
           _ts=$(cat "${_cd}" 2>/dev/null | tr -d '\n')

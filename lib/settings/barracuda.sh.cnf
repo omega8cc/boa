@@ -438,8 +438,11 @@ _SSH_PORT=22
 ### mirror you know is the best / the fastest
 ### in your server location. For example:
 ###
-### _LOCAL_DEVUAN_MIRROR=devuan.keff.org
-### _LOCAL_DEBIAN_MIRROR=ftp.au.debian.org
+### _LOCAL_DEVUAN_MIRROR=http://devuan.keff.org
+### _LOCAL_DEBIAN_MIRROR=http://ftp.au.debian.org
+###
+### Note that your custom mirror address MUST
+### include the protocol it supports, http/https
 ###
 ### To search for the fastest mirror around
 ### the globe, use empty variables:
@@ -457,8 +460,8 @@ _SSH_PORT=22
 ### to use reliable mirrors you know,
 ### or leave default values.
 ###
-_LOCAL_DEVUAN_MIRROR=deb.devuan.org
-_LOCAL_DEBIAN_MIRROR=deb.debian.org
+_LOCAL_DEVUAN_MIRROR=""
+_LOCAL_DEBIAN_MIRROR=""
 
 
 ###----------------------------------------###
@@ -845,6 +848,7 @@ _EXTRA_PACKAGES=""
 _CUSTOM_CONFIG_CSF=NO
 _CUSTOM_CONFIG_LSHELL=NO
 _CUSTOM_CONFIG_VALKEY=NO
+_CUSTOM_CONFIG_REDIS=NO
 _CUSTOM_CONFIG_SQL=NO
 
 ###
@@ -1275,6 +1279,7 @@ _find_fast_mirror_cnf() {
     if [ -e "${_ffList}" ]; then
       _BROKEN_FFMIRR_TEST=$(grep "stuff" ${_ffMirr} 2>&1)
       if [[ "${_BROKEN_FFMIRR_TEST}" =~ "stuff" ]]; then
+        _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _USE_MIR="${_CHECK_MIRROR}"
         [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.aegir.cc"
