@@ -2043,7 +2043,7 @@ _barracuda_cnf() {
     if [ ! -e "${_ffList}" ] || [[ ! "${_BROKEN_FF}" =~ "planetcobalt" ]]; then
       _ffDevuan=$(which ffdevuan 2>&1)
       if [ -x "${_ffDevuan}" ]; then
-        bash ${_ffDevuan} >> "${_logSlt}"
+        bash ${_ffDevuan} &> /dev/null
         wait
       fi
     fi
@@ -2690,7 +2690,7 @@ _barracuda_cnf() {
     if [ ! -e "${_ffList}" ] || [[ ! "${_BROKEN_FF}" =~ "planetcobalt" ]]; then
       _ffDevuan=$(which ffdevuan 2>&1)
       if [ -x "${_ffDevuan}" ]; then
-        bash ${_ffDevuan} >> "${_logSlt}"
+        bash ${_ffDevuan} &> /dev/null
         wait
       fi
     fi
