@@ -153,6 +153,7 @@ _find_correct_ip() {
   if [ -n "${_LOC_IP}" ] && grep -qE "${_LOC_IP}\s" /etc/hosts; then
     cp -af /etc/hosts /etc/.was.hosts
     sed -i "s/^${_LOC_IP}.*//g" /etc/hosts
+    [ -x "/etc/init.d/unbound" ] && [ ! -e "/usr/etc/unbound/unbound.conf.d" ] && mkdir -p /usr/etc/unbound/unbound.conf.d
     [ -x "/etc/init.d/unbound" ] && service unbound restart &> /dev/null
   fi
 }
@@ -359,6 +360,7 @@ _dns_unbound_install_upgrade() {
     _isUnbndFix=YES
   else
     _isUnbndFix=NO
+    [ -x "/etc/init.d/unbound" ] && [ ! -e "/usr/etc/unbound/unbound.conf.d" ] && mkdir -p /usr/etc/unbound/unbound.conf.d
     _isUnbndBr=$(service unbound restart 2>&1)
     [[ "${_isUnbndBr}" =~ "fatal error" ]] && _isUnbndFix=YES
     [[ "${_isUnbndBr}" =~ "not found" ]] && _isUnbndFix=YES
@@ -468,6 +470,7 @@ _dns_unbound_install_upgrade() {
     echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.unbound
     resolvconf -u &> /dev/null
     [ -e "/etc/resolvconf/update.d/unbound" ] && chmod 644 /etc/resolvconf/update.d/unbound
+    [ -x "/etc/init.d/unbound" ] && [ ! -e "/usr/etc/unbound/unbound.conf.d" ] && mkdir -p /usr/etc/unbound/unbound.conf.d
     _mrun "pkill -u unbound -x unbound"
     _mrun "service unbound restart"
   fi
@@ -499,6 +502,7 @@ _dns_unbound_install_upgrade() {
       echo "nameserver 8.8.8.8" >> /etc/resolv.conf
       echo "nameserver 9.9.9.9" >> /etc/resolv.conf
       [ -e "/etc/resolvconf/update.d/unbound" ] && chmod 644 /etc/resolvconf/update.d/unbound
+      [ -x "/etc/init.d/unbound" ] && [ ! -e "/usr/etc/unbound/unbound.conf.d" ] && mkdir -p /usr/etc/unbound/unbound.conf.d
       _mrun "pkill -u unbound -x unbound"
       _mrun "service unbound restart"
     fi
@@ -511,6 +515,7 @@ _dns_unbound_install_upgrade() {
     echo "nameserver 8.8.8.8" >> /etc/resolv.conf
     echo "nameserver 9.9.9.9" >> /etc/resolv.conf
     [ -e "/etc/resolvconf/update.d/unbound" ] && chmod 644 /etc/resolvconf/update.d/unbound
+    [ -x "/etc/init.d/unbound" ] && [ ! -e "/usr/etc/unbound/unbound.conf.d" ] && mkdir -p /usr/etc/unbound/unbound.conf.d
     _mrun "pkill -u unbound -x unbound"
     _mrun "service unbound restart"
   fi

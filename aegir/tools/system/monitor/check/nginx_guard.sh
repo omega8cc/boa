@@ -4,7 +4,6 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 
-_pthOml="/var/log/boa/nginx.incident.log"
 _monPath="/var/xdrago/monitor/check"
 
 _check_root() {
@@ -20,7 +19,7 @@ _check_root() {
 _check_root
 
 # Run only on fully installed system
-[ ! -x "/usr/sbin/csf" ] && exit 0
+[ ! -e "/var/log/boa/reset_no_new_password.pid" ] && exit 0
 
 # Sanitize to allow only digits and minus sign
 export _B_NICE=${_B_NICE//[^0-9-]/}
@@ -63,25 +62,41 @@ _manage_single_lock() {
 }
 _manage_single_lock
 
-if [ ! -e "/run/max_load.pid" ] && [ ! -e "/run/critical_load.pid" ]; then
-
-  if [ ! -e "/root/.high_traffic.cnf" ] \
-    && [ ! -e "/root/.giant_traffic.cnf" ]; then
-    perl ${_monPath}/locked_nginx.pl &
+###
+### Fire-and-forget launcher, cron-safe and interactive-safe
+###
+_spawn_detached() {
+  _cmd="$1"
+  if command -v nohup >/dev/null 2>&1; then
+    nohup bash -c "${_cmd}" >/dev/null 2>&1 &
+  elif command -v setsid >/dev/null 2>&1; then
+    setsid bash -c "${_cmd}" >/dev/null 2>&1 &
+  else
+    ( bash -c "${_cmd}" >/dev/null 2>&1 ) &
   fi
+  # If interactive shell, drop it from the job table to mimic cron behavior
+  if [[ "$-" == *i* ]]; then disown; fi
+}
+
+if [ ! -e "/run/max_load.pid" ] && [ ! -e "/run/critical_load.pid" ]; then
 
   # Reload nginx if access log is missing or empty
   [ -s /var/log/nginx/access.log ] || service nginx reload
 
+  if [ ! -e "/root/.high_traffic.cnf" ] \
+    && [ ! -e "/root/.giant_traffic.cnf" ]; then
+    _spawn_detached 'perl ${_monPath}/locked_nginx.pl'
+  fi
+
   # Main execution
   if [ -f "${_monPath}/scan_nginx.sh" ]; then
     for _iteration in {1..4}; do
-      bash ${_monPath}/scan_nginx.sh &
+      nohup ${_monPath}/scan_nginx.sh > /dev/null 2>&1 &
       sleep 12
     done
   elif [ -f "${_monPath}/scan_nginx.pl" ]; then
     for _iteration in {1..10}; do
-      perl ${_monPath}/scan_nginx.pl &
+      _spawn_detached 'perl ${_monPath}/scan_nginx.pl'
       sleep 5
     done
   fi
