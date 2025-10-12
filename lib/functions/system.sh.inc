@@ -2916,6 +2916,15 @@ _run_aptitude_full_upgrade() {
   else
     _DPKG_CNF="confnew"
   fi
+  _UPGRADE_HELD="${_INSTALL_NRML} --only-upgrade --allow-change-held-packages"
+  _IF_KEY_HOLD=$(apt-mark showhold | xargs -r apt list --upgradable -a 2>&1)
+  if [[ "${_IF_KEY_HOLD}" =~ "openssl/" ]] \
+    || [[ "${_IF_KEY_HOLD}" =~ "curl/" ]]; then
+    _mrun "${_UPGRADE_HELD} openssl libcurl4 curl"
+  fi
+  if [[ "${_IF_KEY_HOLD}" =~ "openssh" ]]; then
+    _mrun "${_UPGRADE_HELD} ssh openssh-client openssh-server openssh-sftp-server"
+  fi
   _mrun "apt-get --fix-broken install -y"
   _mrun "dpkg --configure --force-all -a"
   _mrun "aptitude full-upgrade -f -y -q \
