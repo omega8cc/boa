@@ -135,7 +135,7 @@ _check_root() {
         exit 1
       fi
       echo
-      if [ "${_OS_CODE}" = "stretch" ] || [ "${_OS_CODE}" = "jessie" ]; then
+      if [ "${_OS_CODE}" = "buster" ] || [ "${_OS_CODE}" = "stretch" ] || [ "${_OS_CODE}" = "jessie" ]; then
         _APT_MIRROR="archive.debian.org/debian"
         _APT_REPSRC="${_OS_CODE}-backports"
         _SEC_MIRROR="archive.debian.org/debian-security"
@@ -2032,7 +2032,7 @@ _install_host() {
 
   cat /etc/apt/sources.list
   echo
-  if [ "${_OS_CODE}" = "stretch" ] || [ "${_OS_CODE}" = "jessie" ]; then
+  if [ "${_OS_CODE}" = "buster" ] || [ "${_OS_CODE}" = "stretch" ] || [ "${_OS_CODE}" = "jessie" ]; then
     _APT_MIRROR="archive.debian.org/debian"
     _APT_REPSRC="${_OS_CODE}-backports"
     _SEC_MIRROR="archive.debian.org/debian-security"

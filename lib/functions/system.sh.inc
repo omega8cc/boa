@@ -3678,7 +3678,7 @@ _sources_list_update() {
         _msg "INFO: We will use ${_OS_DIST} mirror ${_MIRROR}"
       fi
       cd /var/opt
-      if [ "${_OS_CODE}" = "stretch" ] || [ "${_OS_CODE}" = "jessie" ]; then
+      if [ "${_OS_CODE}" = "buster" ] || [ "${_OS_CODE}" = "stretch" ] || [ "${_OS_CODE}" = "jessie" ]; then
         _APT_MIRROR="archive.debian.org/debian"
         _APT_REPSRC="${_OS_CODE}-backports"
         _SEC_MIRROR="archive.debian.org/debian-security"
