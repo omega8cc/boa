@@ -2917,7 +2917,7 @@ _run_aptitude_full_upgrade() {
     _DPKG_CNF="confnew"
   fi
   _UPGRADE_HELD="${_INSTALL_NRML} --only-upgrade --allow-change-held-packages"
-  _IF_KEY_HOLD=$(apt-mark showhold | xargs -r apt list --upgradable -a 2>&1)
+  _IF_KEY_HOLD="$(apt-mark showhold | xargs -r apt list --upgradable -a 2>&1)"
   if [[ "${_IF_KEY_HOLD}" =~ "openssl/" ]] \
     || [[ "${_IF_KEY_HOLD}" =~ "curl/" ]]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
