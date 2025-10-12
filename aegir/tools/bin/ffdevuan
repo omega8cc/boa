@@ -50,7 +50,7 @@ _PROBE_TIMEOUT="${_PROBE_TIMEOUT:-5}"  # seconds per probe
 _BLACKLISTED_MIRRORS="${_BLACKLISTED_MIRRORS:-mirror.abmanagement.al}"
 
 # Output: flat list for ffmirror tester (one URL per line)
-_FF_LIST="${_FF_LIST:-/var/log/boa/devaun-mirrors-list.txt}"
+_FF_LIST="${_FF_LIST:-/var/log/boa/devaun-fast-mirrors-list.txt}"
 
 # Curl commands
 _CURL="curl -fsSL"

@@ -1087,7 +1087,7 @@ _update_agents() {
   fi
 
   if [ ! -e "${_optBin}/ffdevuan" ] \
-    || [ ! -e "${_pthLog}/ffdevuan.sh.ctrl.f96.${_tRee}.${_xSrl}.pid" ]; then
+    || [ ! -e "${_pthLog}/ffdevuan.sh.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
     _CNT=$(pgrep -fc xffdevuan)
     if (( _CNT > 0 )); then
       echo "The xffdevuan is running!"
@@ -1099,7 +1099,7 @@ _update_agents() {
       if [ -e "${_optBin}/ffdevuan" ]; then
         chmod 700 ${_optBin}/ffdevuan
         chown root:root ${_optBin}/ffdevuan
-        touch ${_pthLog}/ffdevuan.sh.ctrl.f96.${_tRee}.${_xSrl}.pid
+        touch ${_pthLog}/ffdevuan.sh.ctrl.f95.${_tRee}.${_xSrl}.pid
       else
         if [ -e "${_optBin}/ffdevuan.old" ]; then
           mv -f ${_optBin}/ffdevuan.old ${_optBin}/ffdevuan
