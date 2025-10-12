@@ -1085,6 +1085,28 @@ _update_agents() {
     fi
   fi
 
+  if [ ! -e "${_optBin}/ffdevuan" ] \
+    || [ ! -e "${_pthLog}/ffdevuan.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
+    _CNT=$(pgrep -fc xffdevuan)
+    if (( _CNT > 0 )); then
+      echo "The xffdevuan is running!"
+    else
+      if [ -e "${_optBin}/ffdevuan" ]; then
+        mv -f ${_optBin}/ffdevuan ${_optBin}/ffdevuan.old
+      fi
+      curl ${_crlGet} "${_urlHmr}/tools/bin/ffdevuan" -o ${_optBin}/ffdevuan
+      if [ -e "${_optBin}/ffdevuan" ]; then
+        chmod 700 ${_optBin}/ffdevuan
+        chown root:root ${_optBin}/ffdevuan
+        touch ${_pthLog}/ffdevuan.sh.ctrl.f99.${_tRee}.${_xSrl}.pid
+      else
+        if [ -e "${_optBin}/ffdevuan.old" ]; then
+          mv -f ${_optBin}/ffdevuan.old ${_optBin}/ffdevuan
+        fi
+      fi
+    fi
+  fi
+
   if [ ! -e "${_optBin}/webserver" ] \
     || [ ! -e "${_pthLog}/webserver.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
     _CNT=$(pgrep -fc xwebserver)
@@ -4121,6 +4143,7 @@ _update_boa_tools() {
             dhcpfix \
             duobackboa \
             fancynow \
+            ffdevuan \
             ffmirror \
             killer \
             loadguard \
@@ -4230,7 +4253,7 @@ _update_boa_tools() {
   chmod 700 ${_optBin}/{backboa,copydbackup,dcysetup,duobackboa,multiback}
 
   # _CORE (700): core BOA tools
-  chmod 700 ${_optBin}/{barracuda,boa,ffmirror,killer,octopus,webserver}
+  chmod 700 ${_optBin}/{barracuda,boa,ffdevuan,ffmirror,killer,octopus,webserver}
   chmod 700 ${_optBin}/{syncpass,weblogx,xboa,xcopy,loadguard,lock.inc}
 
   # _DB (700): performance and DB tuners
