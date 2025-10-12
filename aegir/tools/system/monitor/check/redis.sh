@@ -301,7 +301,7 @@ _redis_health_check_fix() {
     echo "$(date) Redis health failed (proc=${_ok_proc} ping=${_ok_ping}) — restart" >> ${_pthOml}
     service redis-server restart
     wait
-    sleep 1
+    sleep 3
 
     # Post-restart verification
     _ok_proc=false; _ok_ping=false

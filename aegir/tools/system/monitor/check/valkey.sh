@@ -301,7 +301,7 @@ _valkey_health_check_fix() {
     echo "$(date) Valkey health failed (proc=${_ok_proc} ping=${_ok_ping}) — restart" >> ${_pthOml}
     service valkey-server restart
     wait
-    sleep 1
+    sleep 3
 
     # Post-restart verification
     _ok_proc=false; _ok_ping=false

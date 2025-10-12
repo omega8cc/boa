@@ -199,7 +199,7 @@ _nginx_if_up_check_fix() {
     if ! pgrep -f 'nginx: master process' \
       || [ ! -e "/run/nginx.pid" ]; then
       # Double-check after a short grace to avoid flapping
-      sleep 2
+      sleep 3
       if ! pgrep -f 'nginx: master process' \
         || [ ! -e "/run/nginx.pid" ]; then
         _now=$(date +%s)

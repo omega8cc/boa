@@ -256,7 +256,7 @@ _cron_duplicate_instances_detection() {
   _CNT=$(pgrep -fc /usr/sbin/cron)
   if (( _CNT > 1 )); then
     # Double-check after a short grace to avoid flapping
-    sleep 2
+    sleep 3
     _CNT2=$(pgrep -fc /usr/sbin/cron)
     if (( _CNT2 > 1 )); then
       _cd="/run/cron-monitor.cooldown"
