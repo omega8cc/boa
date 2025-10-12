@@ -1976,6 +1976,7 @@ _if_php_idle_on_off() {
     sleep 5
     _php_not_used_enable_again
     sed -i "s/^_PHP_IDLE.*//g" ${_barCnf}
+    wait
     [ -e "/root/.proxy.cnf" ] && rm -f /root/.proxy.cnf
     _php_install_deps
     _php_libs_fix
@@ -1997,6 +1998,7 @@ _if_php_idle_on_off() {
     touch /root/.allow-php-multi-install-cleanup.cnf
     _php_if_versions_cleanup_cnf
     sed -i "s/^_PHP_IDLE.*//g" ${_barCnf}
+    wait
     [ -e "/root/.proxy.cnf" ] && rm -f /root/.proxy.cnf
     if [ -e "/root/.run-to-daedalus.cnf" ] \
       || [ -e "/root/.run-to-chimaera.cnf" ] \
@@ -2689,7 +2691,9 @@ _barracuda_cnf() {
       _DBS_VRN="${_PERCONA_5_7_VRN}"
       if [ -e "${_barCnf}" ]; then
         sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g" ${_barCnf}
+        wait
         sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g" ${_barCnf}
+        wait
       fi
     fi
 
