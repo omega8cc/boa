@@ -2040,6 +2040,7 @@ _barracuda_cnf() {
 
     if [ -z "${_LOCAL_DEVUAN_MIRROR}" ] \
       || [ "${_LOCAL_DEVUAN_MIRROR}" = "deb.devuan.org" ] \
+      || [ "${_LOCAL_DEVUAN_MIRROR}" = "https://mirrors.dotsrc.org/devuan" ] \
       || [[ ! "${_LOCAL_DEVUAN_MIRROR}" =~ "http" ]]; then
       _DVN_MRR="$(_find_fast_devuan_mirror)"
 	  if [ -n "${_DVN_MRR}" ]; then
@@ -2676,6 +2677,7 @@ _barracuda_cnf() {
 
     if [ -z "${_LOCAL_DEVUAN_MIRROR}" ] \
       || [ "${_LOCAL_DEVUAN_MIRROR}" = "deb.devuan.org" ] \
+      || [ "${_LOCAL_DEVUAN_MIRROR}" = "https://mirrors.dotsrc.org/devuan" ] \
       || [[ ! "${_LOCAL_DEVUAN_MIRROR}" =~ "http" ]]; then
       _DVN_MRR="$(_find_fast_devuan_mirror)"
 	  if [ -n "${_DVN_MRR}" ]; then
