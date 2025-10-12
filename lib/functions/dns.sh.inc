@@ -153,6 +153,7 @@ _find_correct_ip() {
   if [ -n "${_LOC_IP}" ] && grep -qE "${_LOC_IP}\s" /etc/hosts; then
     cp -af /etc/hosts /etc/.was.hosts
     sed -i "s/^${_LOC_IP}.*//g" /etc/hosts
+    [ -x "/etc/init.d/unbound" ] && [ ! -e "/usr/etc/unbound/unbound.conf.d" ] && mkdir -p /usr/etc/unbound/unbound.conf.d
     [ -x "/etc/init.d/unbound" ] && service unbound restart &> /dev/null
   fi
 }
@@ -359,6 +360,7 @@ _dns_unbound_install_upgrade() {
     _isUnbndFix=YES
   else
     _isUnbndFix=NO
+    [ -x "/etc/init.d/unbound" ] && [ ! -e "/usr/etc/unbound/unbound.conf.d" ] && mkdir -p /usr/etc/unbound/unbound.conf.d
     _isUnbndBr=$(service unbound restart 2>&1)
     [[ "${_isUnbndBr}" =~ "fatal error" ]] && _isUnbndFix=YES
     [[ "${_isUnbndBr}" =~ "not found" ]] && _isUnbndFix=YES
@@ -438,7 +440,7 @@ _dns_unbound_install_upgrade() {
     fi
     ###
     [ ! -e "/run/unbound" ] && mkdir -p /run/unbound
-    chown -R unbound:unbound /run/unbound
+    [ -e "/run/unbound" ] && chown -R unbound:unbound /run/unbound
     [ ! -e "/var/log/unbound/" ] && mkdir -p /var/log/unbound/
     touch /var/log/unbound/unbound.log
     chown -R unbound:unbound /var/log/unbound
@@ -468,6 +470,7 @@ _dns_unbound_install_upgrade() {
     echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.unbound
     resolvconf -u &> /dev/null
     [ -e "/etc/resolvconf/update.d/unbound" ] && chmod 644 /etc/resolvconf/update.d/unbound
+    [ -x "/etc/init.d/unbound" ] && [ ! -e "/usr/etc/unbound/unbound.conf.d" ] && mkdir -p /usr/etc/unbound/unbound.conf.d
     _mrun "pkill -u unbound -x unbound"
     _mrun "service unbound restart"
   fi
@@ -499,9 +502,9 @@ _dns_unbound_install_upgrade() {
       echo "nameserver 8.8.8.8" >> /etc/resolv.conf
       echo "nameserver 9.9.9.9" >> /etc/resolv.conf
       [ -e "/etc/resolvconf/update.d/unbound" ] && chmod 644 /etc/resolvconf/update.d/unbound
+      [ -x "/etc/init.d/unbound" ] && [ ! -e "/usr/etc/unbound/unbound.conf.d" ] && mkdir -p /usr/etc/unbound/unbound.conf.d
       _mrun "pkill -u unbound -x unbound"
       _mrun "service unbound restart"
-      _mrun "unbound-control reload"
     fi
   fi
   if [ ! -f "/etc/resolv.conf" ]; then
@@ -512,9 +515,9 @@ _dns_unbound_install_upgrade() {
     echo "nameserver 8.8.8.8" >> /etc/resolv.conf
     echo "nameserver 9.9.9.9" >> /etc/resolv.conf
     [ -e "/etc/resolvconf/update.d/unbound" ] && chmod 644 /etc/resolvconf/update.d/unbound
+    [ -x "/etc/init.d/unbound" ] && [ ! -e "/usr/etc/unbound/unbound.conf.d" ] && mkdir -p /usr/etc/unbound/unbound.conf.d
     _mrun "pkill -u unbound -x unbound"
     _mrun "service unbound restart"
-    _mrun "unbound-control reload"
   fi
   if [ -e "/etc/NetworkManager/NetworkManager.conf" ]; then
     sed -i "s/^dns=.*/dns=unbound/g" \
@@ -833,14 +836,28 @@ EOF
       _msg "INFO: DNS test: OK"
     fi
     echo " "
-    _msg "INSTALL START -> checkpoint: "
-    cat <<EOF
+    : "${_DISPLAY_CHECKPOINT:=YES}"
+    if [ "${_DISPLAY_CHECKPOINT}" = "YES" ]; then
+      if [ -z "${_THISHTIP}" ]; then
+        _find_correct_ip
+        _THISHTIP="${_LOC_IP}"
+      fi
+      _find_server_city
+      [ -n "${_LOC_CITY}" ] && _LOC_CITY="$(echo "${_LOC_CITY}" | tr '+' ' ')"
+      [ -z "${_LOC_CITY}" ] && _LOC_CITY="Cicely"
+      _VENDOR="$(dmidecode -s system-manufacturer 2>&1)"
+      [ -z "${_VENDOR}" ] && _VENDOR="Maurice Minnifield"
+      _msg "INSTALL START -> checkpoint: "
+      cat <<EOF
 
-    * Your email address is ${_MY_EMAIL}
-    * Your IP address is ${_THISHTIP}
-    * Your hostname is ${_THISHOST}
+      * Your sysadmin Email address is ${_MY_EMAIL}
+      * Your server City is ${_LOC_CITY}
+      * Your server Vendor is ${_VENDOR}
+      * Your server IP address is ${_THISHTIP}
+      * Your server Hostname is ${_THISHOST}
 EOF
-    echo " "
+      echo " "
+    fi
     if _prompt_yes_no "Do you want to proceed with the install?" ; then
       true
     else
@@ -864,24 +881,35 @@ EOF
       _msg "Please specify your working Aegir domain as a value of _MY_FRONT"
       _clean_pid_exit _check_ip_hostname_e
     fi
-    if [ "${_DEBUG_MODE}" = "YES" ]; then
+    : "${_DISPLAY_CHECKPOINT:=YES}"
+    if [ "${_DISPLAY_CHECKPOINT}" = "YES" ]; then
+      if [ -z "${_THISHTIP}" ]; then
+        _find_correct_ip
+        _THISHTIP="${_LOC_IP}"
+      fi
+      _find_server_city
+      [ -n "${_LOC_CITY}" ] && _LOC_CITY="$(echo "${_LOC_CITY}" | tr '+' ' ')"
+      [ -z "${_LOC_CITY}" ] && _LOC_CITY="Cicely"
+      _VENDOR="$(dmidecode -s system-manufacturer 2>&1)"
+      [ -z "${_VENDOR}" ] && _VENDOR="Maurice Minnifield"
       echo " "
       _msg "UPGRADE START -> checkpoint: "
       cat <<EOF
 
-    * Your email address is ${_MY_EMAIL}
-    * Your server hostname is ${_THISHOST}
-    * Your Aegir control panel URL is https://${_THIS_FRONT}
+    * Your sysadmin Email address is ${_MY_EMAIL}
+    * Your server City is ${_LOC_CITY}
+    * Your server Vendor is ${_VENDOR}
+    * Your server IP address is ${_THISHTIP}
+    * Your server Hostname is ${_THISHOST}
+    * Your Aegir Master URL is https://${_THIS_FRONT}
 EOF
       echo " "
     fi
-    if [ "${_DEBUG_MODE}" = "YES" ]; then
-      if _prompt_yes_no "Do you want to proceed with the upgrade?" ; then
-        true
-      else
-        echo "Upgrade aborted by you"
-        _clean_pid_exit _check_ip_hostname_f
-      fi
+    if _prompt_yes_no "Do you want to proceed with the upgrade?" ; then
+      true
+    else
+      echo "Upgrade aborted by you"
+      _clean_pid_exit _check_ip_hostname_f
     fi
   fi
 }
