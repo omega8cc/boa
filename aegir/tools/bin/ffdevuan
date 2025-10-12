@@ -274,7 +274,7 @@ printf '%s\n' "${_ACCEPTED_URLS}" | LC_ALL=C sort -u > "${_FF_LIST}"
 
 if [ -s "${_FF_LIST}" ]; then
   echo "OK: wrote $(wc -l < "${_FF_LIST}") mirrors to ${_FF_LIST}"
-  ecit 0
+  exit 0
 else
   echo "No mirrors matched given policy."
   exit 1
