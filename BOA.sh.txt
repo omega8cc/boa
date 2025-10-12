@@ -4901,10 +4901,14 @@ if [ "$(id -u)" -eq 0 ]; then
     && [ -e "/var/xdrago" ]; then
     if [ ! -z "${_SKYNET_MODE}" ] && [ "${_SKYNET_MODE}" = "OFF" ]; then
       if [ -n "${SSH_TTY+x}" ]; then
-        echo "STATUS: Skynet Agent is Inactive!"
-        echo "STATUS: Please remove the _SKYNET_MODE=OFF line from"
-        echo "STATUS: ${_barCnf} to enable me again."
+        echo
+        echo "STATUS: BOA Skynet Agent is Inactive!"
+        echo
+        echo "HINT: Please remove the _SKYNET_MODE=OFF line from"
+        echo "HINT: ${_barCnf} to enable me again."
+        echo
         echo "NOTE: Critically important BOA tools will be still updated"
+        echo
         _if_update_boa_key_tools_only verbose
         exit 0
       else
@@ -4913,9 +4917,12 @@ if [ "$(id -u)" -eq 0 ]; then
       fi
     else
       if [ -n "${SSH_TTY+x}" ]; then
-        echo "STATUS: Skynet Agent is Active, OK!"
-        echo "STATUS: You can add the _SKYNET_MODE=OFF line in"
-        echo "STATUS: ${_barCnf} to disable me, if needed."
+        echo
+        echo "STATUS: BOA Skynet Agent is Active, OK!"
+        echo
+        echo "HINT: You can add the _SKYNET_MODE=OFF line in"
+        echo "HINT: ${_barCnf} to disable me, if needed."
+        echo
       fi
     fi
   else
