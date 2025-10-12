@@ -172,9 +172,8 @@ _graceful_action() {
   if [ ! -e "/run/boa_run.pid" ] \
     && [ ! -e "/root/.giant_traffic.cnf" ] \
     && [ ! -e "/root/.high_traffic.cnf" ]; then
-    echo "INFO: Solr and Jetty servers will be restarted in 60 seconds"
-    touch /run/boa_wait.pid
-    sleep 60
+    echo "INFO: Solr and Jetty servers will be restarted in 10 seconds"
+    sleep 10
     if [ -x "/etc/init.d/solr9" ] && [ -e "/etc/default/solr9.in.sh" ]; then
       echo "Restarting Solr 9..."
       nice -n 0 service solr9 restart
@@ -191,7 +190,6 @@ _graceful_action() {
     [ -e "/etc/init.d/jetty9" ] && service jetty9 start
     [ -e "/etc/init.d/jetty8" ] && service jetty8 start
     [ -e "/etc/init.d/jetty7" ] && service jetty7 start
-    [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
     echo "INFO: Solr and Jetty servers restarted successfully"
   fi
 
