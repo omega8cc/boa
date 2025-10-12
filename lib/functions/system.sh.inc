@@ -2680,14 +2680,14 @@ _barracuda_cnf() {
 	    _devM="deb.devuan.org/merged"
 	  fi
 	  _LOCAL_DEVUAN_MIRROR="${_devM}"
-      sed -i "s/^_LOCAL_DEV.*/_LOCAL_DEVUAN_MIRROR=${_devM}/g"   ${_barCnf}
+      sed -i "s|^_LOCAL_DEV.*|_LOCAL_DEVUAN_MIRROR=${_devM}|"    ${_barCnf}
       wait
     fi
 
     if [ -z "${_LOCAL_DEBIAN_MIRROR}" ]; then
       _debM="deb.debian.org"
       _LOCAL_DEBIAN_MIRROR="${_debM}"
-      sed -i "s/^_LOCAL_DEB.*/_LOCAL_DEBIAN_MIRROR=${_debM}/g"   ${_barCnf}
+      sed -i "s|^_LOCAL_DEB.*|_LOCAL_DEBIAN_MIRROR=${_debM}|"    ${_barCnf}
       wait
     fi
 
