@@ -2920,9 +2920,15 @@ _run_aptitude_full_upgrade() {
   _IF_KEY_HOLD=$(apt-mark showhold | xargs -r apt list --upgradable -a 2>&1)
   if [[ "${_IF_KEY_HOLD}" =~ "openssl/" ]] \
     || [[ "${_IF_KEY_HOLD}" =~ "curl/" ]]; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: Upgrade normally held openssl and curl packages"
+    fi
     _mrun "${_UPGRADE_HELD} openssl libcurl4 curl"
   fi
   if [[ "${_IF_KEY_HOLD}" =~ "openssh" ]]; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: Upgrade normally held openssh packages"
+    fi
     _mrun "${_UPGRADE_HELD} ssh openssh-client openssh-server openssh-sftp-server"
   fi
   _mrun "apt-get --fix-broken install -y"
