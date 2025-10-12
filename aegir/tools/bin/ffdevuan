@@ -71,7 +71,7 @@ _convert_bandwidth_to_mbps() {
   _bw_norm="$(printf '%s' "${_bw_raw}" | tr '[:upper:]' '[:lower:]' | tr -d ' ')"
 
   case "${_bw_norm}" in
-    *nolimit*|*unlimit*|*fewgb*|*10gbe*|*10gbit*|*10g/*|*10g/s*|*20g*|*25g*|*26g*)
+    *nolimit*|*unlimit*|*fewgb*|*10g*|*20g*|*26g*)
       echo 10000; return 0 ;;
   esac
 
@@ -154,24 +154,6 @@ _quick_probe_release() {
   _suite="${2:-${_SUITE_DEFAULT}}"
   ${_CURL} --max-time "${_PROBE_TIMEOUT}" -r 0-0 \
     "${_fullbase}/dists/${_suite}/Release" >/dev/null 2>&1
-}
-
-# Render apt sources lines for the given base (already includes proper root)
-_render_sources_list_for_mirror() {
-  _fullbase="$1"; _suite="${2:-${_SUITE_DEFAULT}}"
-  _src_list="/var/log/boa/${_suite}_fast_apt_sources.txt"
-  printf 'deb %s %s main\n'         "${_fullbase}" "${_suite}" > "${_src_list}"
-  wait
-  printf 'deb %s %s-updates main\n' "${_fullbase}" "${_suite}" >> "${_src_list}"
-  wait
-  printf 'deb %s %s-security main\n'"${_fullbase}" "${_suite}" >> "${_src_list}"
-  wait
-  echo "Auto-generated list for ${_suite} in ${_src_list}"
-  echo
-  echo "==="
-  cat "${_src_list}"
-  echo "==="
-  echo
 }
 
 # ===== Fetch the mirror list =================================================
@@ -292,14 +274,8 @@ printf '%s\n' "${_ACCEPTED_URLS}" | LC_ALL=C sort -u > "${_FF_LIST}"
 
 if [ -s "${_FF_LIST}" ]; then
   echo "OK: wrote $(wc -l < "${_FF_LIST}") mirrors to ${_FF_LIST}"
-  echo
-  echo "Example /etc/apt/sources.list entries for fastest candidate:"
-  _FIRST="$(head -n1 "${_FF_LIST}")"
-  _render_sources_list_for_mirror "${_FIRST}" "${_SUITE_DEFAULT}"
-  echo
-  echo "Tip: export _BLACKLISTED_MIRRORS=\"mirror.abmanagement.al,example.bad.tld\" to hard-exclude."
+  ecit 0
 else
   echo "No mirrors matched given policy."
-  echo "Adjust thresholds, e.g.: _MIN_MBPS=${_MIN_MBPS} _REJECT_IF_BW_NONE=${_REJECT_IF_BW_NONE} _REQUIRE_HTTPS=${_REQUIRE_HTTPS} _REQUIRE_QUICK_PROBE=${_REQUIRE_QUICK_PROBE}"
   exit 1
 fi
