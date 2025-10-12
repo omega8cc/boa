@@ -95,6 +95,7 @@ _STRONG_PASSWORDS=YES #--------- Configurable length: 32-128, YES (64), NO (32)
 _CUSTOM_CONFIG_CSF=NO #--------- Protects custom CSF config when YES
 _CUSTOM_CONFIG_LSHELL=NO #------ Protects custom Limited Shell config when YES
 _CUSTOM_CONFIG_VALKEY=NO #------ Protects custom Valkey config when YES
+_CUSTOM_CONFIG_REDIS=NO #------- Protects custom Redis config when YES
 _CUSTOM_CONFIG_SQL=NO #--------- Protects custom SQL config when YES
 ###
 _AEGIR_UPGRADE_ONLY=NO #-------- Managed on the fly with 'aegir' keyword

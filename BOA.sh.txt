@@ -183,6 +183,7 @@ _find_correct_ip() {
   if [ -n "${_LOC_IP}" ] && grep -qE "${_LOC_IP}\s" /etc/hosts; then
     cp -af /etc/hosts /etc/.was.hosts
     sed -i "s/^${_LOC_IP}.*//g" /etc/hosts
+    [ -x "/etc/init.d/unbound" ] && [ ! -e "/usr/etc/unbound/unbound.conf.d" ] && mkdir -p /usr/etc/unbound/unbound.conf.d
     [ -x "/etc/init.d/unbound" ] && service unbound restart &> /dev/null
   fi
 }
@@ -263,6 +264,7 @@ _find_fast_mirror_early() {
     if [ -e "${_ffList}" ]; then
       _BROKEN_FFMIRR_TEST=$(grep "stuff" ${_ffMirr} 2>&1)
       if [[ "${_BROKEN_FFMIRR_TEST}" =~ "stuff" ]]; then
+        _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _USE_MIR="${_CHECK_MIRROR}"
         [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.aegir.cc"
@@ -1079,6 +1081,28 @@ _update_agents() {
       else
         if [ -e "${_optBin}/loadguard.old" ]; then
           mv -f ${_optBin}/loadguard.old ${_optBin}/loadguard
+        fi
+      fi
+    fi
+  fi
+
+  if [ ! -e "${_optBin}/ffdevuan" ] \
+    || [ ! -e "${_pthLog}/ffdevuan.sh.ctrl.f96.${_tRee}.${_xSrl}.pid" ]; then
+    _CNT=$(pgrep -fc xffdevuan)
+    if (( _CNT > 0 )); then
+      echo "The xffdevuan is running!"
+    else
+      if [ -e "${_optBin}/ffdevuan" ]; then
+        mv -f ${_optBin}/ffdevuan ${_optBin}/ffdevuan.old
+      fi
+      curl ${_crlGet} "${_urlHmr}/tools/bin/ffdevuan" -o ${_optBin}/ffdevuan
+      if [ -e "${_optBin}/ffdevuan" ]; then
+        chmod 700 ${_optBin}/ffdevuan
+        chown root:root ${_optBin}/ffdevuan
+        touch ${_pthLog}/ffdevuan.sh.ctrl.f96.${_tRee}.${_xSrl}.pid
+      else
+        if [ -e "${_optBin}/ffdevuan.old" ]; then
+          mv -f ${_optBin}/ffdevuan.old ${_optBin}/ffdevuan
         fi
       fi
     fi
@@ -4120,6 +4144,7 @@ _update_boa_tools() {
             dhcpfix \
             duobackboa \
             fancynow \
+            ffdevuan \
             ffmirror \
             killer \
             loadguard \
@@ -4229,7 +4254,7 @@ _update_boa_tools() {
   chmod 700 ${_optBin}/{backboa,copydbackup,dcysetup,duobackboa,multiback}
 
   # _CORE (700): core BOA tools
-  chmod 700 ${_optBin}/{barracuda,boa,ffmirror,killer,octopus,webserver}
+  chmod 700 ${_optBin}/{barracuda,boa,ffdevuan,ffmirror,killer,octopus,webserver}
   chmod 700 ${_optBin}/{syncpass,weblogx,xboa,xcopy,loadguard,lock.inc}
 
   # _DB (700): performance and DB tuners
