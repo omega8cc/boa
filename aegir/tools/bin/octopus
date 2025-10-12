@@ -186,7 +186,6 @@ _check_dns_settings() {
 
 _send_report() {
   if [ -e "${_barCnf}" ]; then
-    source ${_barCnf}
     _if_hosted_sys
     if [ "${_hostedSys}" = "YES" ]; then
       _MY_EMAIL="$(basename "$0")@omega8.cc"
@@ -203,7 +202,6 @@ _send_report() {
 
 _send_alert() {
   if [ -e "${_barCnf}" ]; then
-    source ${_barCnf}
     _if_hosted_sys
     if [ "${_hostedSys}" = "YES" ]; then
       _MY_EMAIL="$(basename "$0")@omega8.cc"
