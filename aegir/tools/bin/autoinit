@@ -864,9 +864,9 @@ _find_fast_devuan_mirror() {
     _ffList="/var/log/boa/devaun-mirrors-list.txt"
     mkdir -p /var/log/boa/
     if [ ! -e "${_ffList}" ]; then
-      echo "mirrors.dotsrc.org/devuan"  > ${_ffList}
-      echo "mirror.akardam.net/devuan" >> ${_ffList}
-      echo "mirror.hootsoftware.com/devuan" >> ${_ffList}
+      echo "https://mirrors.dotsrc.org/devuan"  > ${_ffList}
+      echo "https://mirror.akardam.net/devuan" >> ${_ffList}
+      echo "https://mirror.hootsoftware.com/devuan" >> ${_ffList}
     fi
     if [ -e "${_ffList}" ]; then
       _BROKEN_FFMIRR_TEST=$(grep "stuff" ${_ffMirr} 2>&1)
@@ -934,25 +934,25 @@ _init_cycle() {
     _msg "_init_cycle ==> Launching a quick upgrade to ${_NEW_SYS}/${_NEW_OS_CODE}" >> "${_logInt}"
     _aptLiSys="/etc/apt/sources.list"
     if [ "${_NEW_OS_CODE}" = "beowulf" ]; then
-      _TGT_MRR="archive.devuan.org/merged"
+      _TGT_MRR="http://archive.devuan.org/merged"
     else
       _TGT_MRR=$(_find_fast_devuan_mirror)
     fi
     : "${_TGT_MRR:=mirrors.dotsrc.org/devuan}"
     _msg "_init_cycle ==> Using Devuan mirror: ${_TGT_MRR}" >> "${_logInt}"
     echo "## DEVUAN MAIN REPOSITORIES" > ${_aptLiSys}
-    echo "deb http://${_TGT_MRR} ${_NEW_OS_CODE} main" >> ${_aptLiSys}
-    echo "deb-src http://${_TGT_MRR} ${_NEW_OS_CODE} main" >> ${_aptLiSys}
+    echo "deb ${_TGT_MRR} ${_NEW_OS_CODE} main" >> ${_aptLiSys}
+    echo "deb-src ${_TGT_MRR} ${_NEW_OS_CODE} main" >> ${_aptLiSys}
     echo "" >> ${_aptLiSys}
     if [ "${_NEW_OS_CODE}" != "beowulf" ]; then
       echo "## MAJOR BUG FIX UPDATES produced after the final release" >> ${_aptLiSys}
-      echo "deb http://${_TGT_MRR} ${_NEW_OS_CODE}-updates main" >> ${_aptLiSys}
-      echo "deb-src http://${_TGT_MRR} ${_NEW_OS_CODE}-updates main" >> ${_aptLiSys}
+      echo "deb ${_TGT_MRR} ${_NEW_OS_CODE}-updates main" >> ${_aptLiSys}
+      echo "deb-src ${_TGT_MRR} ${_NEW_OS_CODE}-updates main" >> ${_aptLiSys}
       echo "" >> ${_aptLiSys}
     fi
     echo "## DEVUAN SECURITY UPDATES" >> ${_aptLiSys}
-    echo "deb http://${_TGT_MRR} ${_NEW_OS_CODE}-security main" >> ${_aptLiSys}
-    echo "deb-src http://${_TGT_MRR} ${_NEW_OS_CODE}-security main" >> ${_aptLiSys}
+    echo "deb ${_TGT_MRR} ${_NEW_OS_CODE}-security main" >> ${_aptLiSys}
+    echo "deb-src ${_TGT_MRR} ${_NEW_OS_CODE}-security main" >> ${_aptLiSys}
     if [ -e "/etc/apt/apt.conf" ]; then
       rm -f /etc/apt/apt.conf
     fi

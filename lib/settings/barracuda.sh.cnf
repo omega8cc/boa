@@ -438,8 +438,11 @@ _SSH_PORT=22
 ### mirror you know is the best / the fastest
 ### in your server location. For example:
 ###
-### _LOCAL_DEVUAN_MIRROR=devuan.keff.org
-### _LOCAL_DEBIAN_MIRROR=ftp.au.debian.org
+### _LOCAL_DEVUAN_MIRROR=http://devuan.keff.org
+### _LOCAL_DEBIAN_MIRROR=http://ftp.au.debian.org
+###
+### Note that your custom mirror address MUST
+### include the protocol it supports, http/https
 ###
 ### To search for the fastest mirror around
 ### the globe, use empty variables:
