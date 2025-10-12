@@ -1559,11 +1559,18 @@ _check_root() {
     #
     # Protect from any barracuda updates when _SKYNET_MODE=OFF
     if [ ! -z "${_SKYNET_MODE}" ] && [ "${_SKYNET_MODE}" = "OFF" ]; then
-      echo
-      echo "  Sorry, with _SKYNET_MODE=OFF barracuda can not upgrade your system."
-      echo "  To upgrade please turn _SKYNET_MODE=ON, wait 10 minutes and then try again"
-      echo "  Bye!"
-      echo
+      if [ -n "${SSH_TTY+x}" ]; then
+        echo
+        echo "STATUS: BOA Skynet Agent is Inactive!"
+        echo
+        echo "NOTE: With _SKYNET_MODE=OFF barracuda can not upgrade your system."
+        echo
+        echo "HINT: Please remove the _SKYNET_MODE=OFF line from"
+        echo "HINT: ${_barCnf} to enable it."
+        echo "HINT: Wait 10 minutes before trying barracuda upgrade again."
+        echo "Bye!"
+        echo
+      fi
       _clean_pid_exit _check_root
     fi
 
