@@ -18,27 +18,29 @@ _find_fast_devuan_mirror() {
   fi
   _ffMirr=$(which ffmirror 2>&1)
   if [ -x "${_ffMirr}" ]; then
-    _ffList="/var/log/boa/devaun-mirrors-list.txt"
-    if [ ! -e "${_ffList}" ]; then
-      echo "https://mirrors.dotsrc.org/devuan"  > ${_ffList}
-      echo "https://mirror.akardam.net/devuan" >> ${_ffList}
-      echo "https://mirror.hootsoftware.com/devuan" >> ${_ffList}
+    _ffList="/var/log/boa/devaun-fast-mirrors-list.txt"
+    _BROKEN_FFLIST=$(grep "merged" ${_ffMirr} 2>&1)
+    if [ ! -e "${_ffList}" ] || [[ ! "${_BROKEN_FFLIST}" =~ "merged" ]]; then
+      echo "https://mirrors.dotsrc.org/devuan/merged"  > ${_ffList}
+      echo "https://mirror.akardam.net/devuan/merged" >> ${_ffList}
+      echo "https://mirror.hootsoftware.com/devuan/merged" >> ${_ffList}
     fi
     if [ -e "${_ffList}" ]; then
       _BROKEN_FFMIRR_TEST=$(grep "stuff" ${_ffMirr} 2>&1)
-      if [[ "${_BROKEN_FFMIRR_TEST}" =~ "stuff" ]]; then
+      if [[ "${_BROKEN_FFMIRR_TEST}" =~ "stuff" ]] \
+        || [[ ! "${_BROKEN_FFLIST}" =~ "merged" ]]; then
         _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _USE_MIR="${_CHECK_MIRROR}"
-        [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="https://mirrors.dotsrc.org/devuan"
+        [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="https://mirrors.dotsrc.org/devuan/merged"
       else
-        _USE_MIR="https://mirrors.dotsrc.org/devuan"
+        _USE_MIR="https://mirrors.dotsrc.org/devuan/merged"
       fi
     else
-      _USE_MIR="https://mirrors.dotsrc.org/devuan"
+      _USE_MIR="https://mirrors.dotsrc.org/devuan/merged"
     fi
   else
-    _USE_MIR="https://mirrors.dotsrc.org/devuan"
+    _USE_MIR="https://mirrors.dotsrc.org/devuan/merged"
   fi
   echo "${_USE_MIR}"
 }
@@ -2917,7 +2919,7 @@ _run_aptitude_full_upgrade() {
     _DPKG_CNF="confnew"
   fi
   _UPGRADE_HELD="${_INSTALL_NRML} --only-upgrade --allow-change-held-packages"
-  _IF_KEY_HOLD=$(apt-mark showhold | xargs -r apt list --upgradable -a 2>&1)
+  _IF_KEY_HOLD="$(apt-mark showhold | xargs -r apt list --upgradable -a 2>&1)"
   if [[ "${_IF_KEY_HOLD}" =~ "openssl/" ]] \
     || [[ "${_IF_KEY_HOLD}" =~ "curl/" ]]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
