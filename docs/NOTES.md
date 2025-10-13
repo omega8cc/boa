@@ -4,10 +4,10 @@
 
 ### Xtras Included with "ALL" Wildcard:
 
-- **ADM**: Adminer DB Manager (installed by default)
-- **CSF**: Firewall (installed by default)
-- **FTP**: Pure-FTPd server with forced FTPS (installed by default)
-- **IMG**: Image Optimize binaries: `advdef`, `advpng`, `jpegoptim`, `jpegtran`, `optipng`, `pngcrush`, `pngquant` (installed by default)
+- **ADM**: Adminer DB Manager (installed by default in LOCAL mode)
+- **CSF**: Firewall (installed by default in PUBLIC mode)
+- **FTP**: Pure-FTPd server with forced FTPS
+- **IMG**: Image Optimize binaries: `advdef`, `advpng`, `jpegoptim`, `jpegtran`, `optipng`, `pngcrush`, `pngquant`
 
 ### Xtras Which Need to be Listed Explicitly:
 
