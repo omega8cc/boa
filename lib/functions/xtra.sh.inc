@@ -418,9 +418,9 @@ _if_install_node() {
         rm -f ${_nSrg}
         _apt_clean_update
         if [ "${_OS_CODE}" = "stretch" ] || [ "${_OS_CODE}" = "jessie" ]; then
-          curl -sL https://deb.nodesource.com/setup_16.x | sudo -E bash -
+          _mrun "curl -sL https://deb.nodesource.com/setup_16.x | sudo -E bash -"
         else
-          curl -fsSL https://deb.nodesource.com/setup_22.x | sudo bash -
+          _mrun "curl -fsSL https://deb.nodesource.com/setup_22.x | sudo bash -"
         fi
         if [ -e "${_nSrc}" ]; then
           if grep -q "nodistro" "${_nSrc}"; then
