@@ -8265,7 +8265,9 @@ _xdrago_install_upgrade() {
     if [ ! -z "${_NGINX_DOS_IGNORE}" ]; then
       _NGINX_DOS_IGNORE=${_NGINX_DOS_IGNORE//[^a-zA-Z0-9|-]/}
       if [ ! -z "${_NGINX_DOS_IGNORE}" ]; then
-        _msg "INFO: Configured _NGINX_DOS_IGNORE: ${_NGINX_DOS_IGNORE}"
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "INFO: Configured _NGINX_DOS_IGNORE: ${_NGINX_DOS_IGNORE}"
+        fi
         sed -i "s/dontcount/${_NGINX_DOS_IGNORE}/g" \
           /var/xdrago/monitor/check/scan_nginx.pl &> /dev/null
         wait
@@ -8344,7 +8346,9 @@ _xdrago_install_upgrade() {
     if [ ! -z "${_NGINX_DOS_IGNORE}" ]; then
       _NGINX_DOS_IGNORE=${_NGINX_DOS_IGNORE//[^a-zA-Z0-9|-]/}
       if [ ! -z "${_NGINX_DOS_IGNORE}" ]; then
-        _msg "INFO: Configured _NGINX_DOS_IGNORE: ${_NGINX_DOS_IGNORE}"
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "INFO: Configured _NGINX_DOS_IGNORE: ${_NGINX_DOS_IGNORE}"
+        fi
         sed -i "s/dontcount/${_NGINX_DOS_IGNORE}/g" \
           /var/xdrago/monitor/check/scan_nginx.pl &> /dev/null
         wait
