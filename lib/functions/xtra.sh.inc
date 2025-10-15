@@ -491,7 +491,6 @@ _if_install_ruby() {
       || [ ! -e "/usr/local/lib/ruby/gems/3.3.0" ] \
       || [ ! -x "/usr/local/bin/ruby" ] \
       || [ ! -x "/usr/local/bin/gem" ]; then
-      echo " "
       if _prompt_yes_no "Do you want to ${_L_ST} Ruby ${_RUBY_VRN} from sources?" ; then
         true
         _msg "INFO: Installing Ruby ${_RUBY_VRN} from sources..."
