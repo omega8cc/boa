@@ -452,18 +452,18 @@ _if_install_ruby_gems() {
     && [ ! -e "/usr/local/lib/ruby/gems/3.3.0/gems/oily_png-1.1.1" ] \
     && [ -x "/usr/local/bin/ruby" ] \
     && [ -x "/usr/local/bin/gem" ]; then
-    gem update --system
-    gem install --conservative bundler
-    gem install --conservative bluecloth
-    gem install --conservative eventmachine
-    gem install --conservative ffi
-    gem install --version 1.9.3 ffi
-    gem install --version 1.9.18 ffi
-    gem install --conservative hitimes
-    gem install --conservative http_parser.rb
-    gem install --conservative oily_png
-    gem install --version 1.1.1 oily_png
-    gem install --conservative yajl-ruby
+    _mrun "gem update --system"
+    _mrun "gem install --conservative bundler"
+    _mrun "gem install --conservative bluecloth"
+    _mrun "gem install --conservative eventmachine"
+    _mrun "gem install --conservative ffi"
+    _mrun "gem install --version 1.9.3 ffi"
+    _mrun "gem install --version 1.9.18 ffi"
+    _mrun "gem install --conservative hitimes"
+    _mrun "gem install --conservative http_parser.rb"
+    _mrun "gem install --conservative oily_png"
+    _mrun "gem install --version 1.1.1 oily_png"
+    _mrun "gem install --conservative yajl-ruby"
   fi
 }
 
