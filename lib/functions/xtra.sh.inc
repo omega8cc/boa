@@ -452,7 +452,9 @@ _if_install_ruby_gems() {
     && [ ! -e "/usr/local/lib/ruby/gems/3.3.0/gems/oily_png-1.1.1" ] \
     && [ -x "/usr/local/bin/ruby" ] \
     && [ -x "/usr/local/bin/gem" ]; then
+    _msg "INFO: Running Ruby system update..."
     _mrun "gem update --system"
+    _msg "INFO: Installing Ruby gems from sources..."
     _mrun "gem install --conservative bundler"
     _mrun "gem install --conservative bluecloth"
     _mrun "gem install --conservative eventmachine"
