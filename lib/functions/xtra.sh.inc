@@ -412,16 +412,23 @@ _if_install_node() {
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "INFO: Node ${_NODE_VRN} ${_L_ST}"
         fi
-        rm -f /etc/apt/sources.list.d/nodesource.list
-        rm -f /usr/share/keyrings/nodesource.gpg
+        _nSrc="/etc/apt/sources.list.d/nodesource.list"
+        _nSrg="/usr/share/keyrings/nodesource.gpg"
+        rm -f ${_nSrc}
+        rm -f ${_nSrg}
         _apt_clean_update
         if [ "${_OS_CODE}" = "stretch" ] || [ "${_OS_CODE}" = "jessie" ]; then
           curl -sL https://deb.nodesource.com/setup_16.x | sudo -E bash -
         else
-          curl -sL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+          curl -fsSL https://deb.nodesource.com/setup_22.x | sudo bash -
         fi
-        _mrun "${_INSTAPP} nodejs"
-        _mrun "${_INSTAPP} npm"
+        if [ -e "${_nSrc}" ]; then
+          if grep -q "nodistro" "${_nSrc}"; then
+            _apt_clean_update
+            _mrun "${_INSTAPP} nodejs/nodistro"
+            _mrun "${_INSTAPP} npm/nodistro"
+          fi
+        fi
       fi
       [ ! -d "/opt/user/npm" ] && mkdir -p /opt/user/npm
       chown root:root /opt/user/npm
