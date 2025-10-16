@@ -8378,7 +8378,9 @@ _xdrago_install_upgrade() {
     if [ ! -z "${_NGINX_DOS_STOP}" ]; then
       _NGINX_DOS_STOP=${_NGINX_DOS_STOP//[^a-zA-Z0-9|-]/}
       if [ ! -z "${_NGINX_DOS_STOP}" ]; then
-        _msg "INFO: Configured _NGINX_DOS_STOP: ${_NGINX_DOS_STOP}"
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "INFO: Configured _NGINX_DOS_STOP: ${_NGINX_DOS_STOP}"
+        fi
         sed -i "s/foobar/${_NGINX_DOS_STOP}/g" \
           /var/xdrago/monitor/check/scan_nginx.pl &> /dev/null
         wait
