@@ -864,7 +864,11 @@ _prep_for_install_db_sql() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "INFO: Installing software-properties-common dirmngr..."
   fi
-  _mrun "${_INSTAPP} software-properties-common dirmngr"
+  for _PKG in software-properties-common dirmngr; do
+    if ! _pkg_installed "${_PKG}"; then
+      _mrun "${_INSTAPP} ${_PKG}"
+    fi
+  done
 
   _msg "INFO: Installing ${_DB_SERVER} ${_DBS_VRN} in ${_OS_DIST}/${_OS_CODE}"
 

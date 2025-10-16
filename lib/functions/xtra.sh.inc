@@ -252,7 +252,11 @@ _if_install_collectd() {
         if _prompt_yes_no "Do you want to install Collectd Graph Panel?" ; then
           true
           _msg "INFO: Installing Collectd Graph Panel..."
-          _mrun "${_INSTAPP} collectd"
+          for _PKG in collectd; do
+            if ! _pkg_installed "${_PKG}"; then
+              _mrun "${_INSTAPP} ${_PKG}"
+            fi
+          done
           rm -rf /var/www/cgp
           cd /var/www
           _get_dev_arch "cgp-${_CGP_VRN}.tar.gz"
@@ -338,9 +342,11 @@ _if_install_webmin() {
         rm -f jcameron-key.gpg*
         touch ${_pthLog}/webmin_update_apt_src.log
         _apt_clean_update
-        _mrun "${_INSTAPP} webmin \
-               libxml-simple-perl \
-               libcrypt-ssleay-perl"
+        for _PKG in webmin libxml-simple-perl libcrypt-ssleay-perl; do
+          if ! _pkg_installed "${_PKG}"; then
+            _mrun "${_INSTAPP} ${_PKG}"
+          fi
+        done
         _mrun "update-rc.d webmin defaults"
         _msg "INFO: Webmin Control Panel installed"
       else
@@ -365,7 +371,11 @@ _if_install_bind() {
           _find_correct_ip
           _THISHTIP="${_LOC_IP}"
         fi
-        _mrun "${_INSTAPP} bind9"
+        for _PKG in bind9; do
+          if ! _pkg_installed "${_PKG}"; then
+            _mrun "${_INSTAPP} ${_PKG}"
+          fi
+        done
         cp -af /etc/bind/named.conf.options \
           ${_vBs}/named.conf.options.pre-${_xSrl}-${_X_VERSION}-${_NOW}
         cp -af ${_locCnf}/var/named.conf.options /etc/bind/named.conf.options
@@ -412,16 +422,26 @@ _if_install_node() {
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "INFO: Node ${_NODE_VRN} ${_L_ST}"
         fi
-        rm -f /etc/apt/sources.list.d/nodesource.list
-        rm -f /usr/share/keyrings/nodesource.gpg
+        _nSrc="/etc/apt/sources.list.d/nodesource.list"
+        _nSrg="/usr/share/keyrings/nodesource.gpg"
+        rm -f ${_nSrc}
+        rm -f ${_nSrg}
         _apt_clean_update
         if [ "${_OS_CODE}" = "stretch" ] || [ "${_OS_CODE}" = "jessie" ]; then
-          curl -sL https://deb.nodesource.com/setup_16.x | sudo -E bash -
+          _mrun "curl -sL https://deb.nodesource.com/setup_16.x | sudo -E bash -"
         else
-          curl -sL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+          _mrun "curl -fsSL https://deb.nodesource.com/setup_22.x | sudo bash -"
         fi
-        _mrun "${_INSTAPP} nodejs"
-        _mrun "${_INSTAPP} npm"
+        if [ -e "${_nSrc}" ]; then
+          if grep -q "nodistro" "${_nSrc}"; then
+            _apt_clean_update
+            for _PKG in nodejs; do
+              if ! _pkg_installed "${_PKG}"; then
+                _mrun "${_INSTAPP} ${_PKG}/nodistro"
+              fi
+            done
+          fi
+        fi
       fi
       [ ! -d "/opt/user/npm" ] && mkdir -p /opt/user/npm
       chown root:root /opt/user/npm
@@ -445,18 +465,20 @@ _if_install_ruby_gems() {
     && [ ! -e "/usr/local/lib/ruby/gems/3.3.0/gems/oily_png-1.1.1" ] \
     && [ -x "/usr/local/bin/ruby" ] \
     && [ -x "/usr/local/bin/gem" ]; then
-    gem update --system
-    gem install --conservative bundler
-    gem install --conservative bluecloth
-    gem install --conservative eventmachine
-    gem install --conservative ffi
-    gem install --version 1.9.3 ffi
-    gem install --version 1.9.18 ffi
-    gem install --conservative hitimes
-    gem install --conservative http_parser.rb
-    gem install --conservative oily_png
-    gem install --version 1.1.1 oily_png
-    gem install --conservative yajl-ruby
+    _msg "INFO: Running Ruby system update..."
+    _mrun "gem update --system"
+    _msg "INFO: Installing Ruby gems from sources..."
+    _mrun "gem install --conservative bundler"
+    _mrun "gem install --conservative bluecloth"
+    _mrun "gem install --conservative eventmachine"
+    _mrun "gem install --conservative ffi"
+    _mrun "gem install --version 1.9.3 ffi"
+    _mrun "gem install --version 1.9.18 ffi"
+    _mrun "gem install --conservative hitimes"
+    _mrun "gem install --conservative http_parser.rb"
+    _mrun "gem install --conservative oily_png"
+    _mrun "gem install --version 1.1.1 oily_png"
+    _mrun "gem install --conservative yajl-ruby"
   fi
 }
 
@@ -484,7 +506,6 @@ _if_install_ruby() {
       || [ ! -e "/usr/local/lib/ruby/gems/3.3.0" ] \
       || [ ! -x "/usr/local/bin/ruby" ] \
       || [ ! -x "/usr/local/bin/gem" ]; then
-      echo " "
       if _prompt_yes_no "Do you want to ${_L_ST} Ruby ${_RUBY_VRN} from sources?" ; then
         true
         _msg "INFO: Installing Ruby ${_RUBY_VRN} from sources..."
@@ -564,7 +585,11 @@ _if_install_ffmpeg() {
         _apt_clean_update
         _mrun "apt-get install deb-multimedia-keyring ${_aptYesUnth}"
         _apt_clean_update
-        _mrun "${_INSTAPP} ffmpeg"
+        for _PKG in ffmpeg; do
+          if ! _pkg_installed "${_PKG}"; then
+            _mrun "${_INSTAPP} ${_PKG}"
+          fi
+        done
         _msg "INFO: FFmpeg installed"
       else
         _msg "INFO: FFmpeg installation skipped"

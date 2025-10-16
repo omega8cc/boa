@@ -14,7 +14,7 @@ DAEMON=/usr/sbin/mysqld
 MYSQL_OPTS=""
 
 # PID file location
-PIDFILE=/var/run/mysqld/mysqld.pid
+PIDFILE=/run/mysqld/mysqld.pid
 
 # Configuration file location
 MYCNF=/etc/mysql/my.cnf
@@ -24,8 +24,8 @@ LOGFILE=/var/log/mysql/mysql.log
 ERRORLOG=/var/log/mysql/error.log
 
 # Ensure the Percona MySQL directory exists
-[ -d /var/run/mysqld ] || mkdir -p /var/run/mysqld
-chown mysql:mysql /var/run/mysqld
+[ -d /run/mysqld ] || mkdir -p /run/mysqld
+chown mysql:mysql /run/mysqld
 
 # Start Percona MySQL Server
 start_mysql() {

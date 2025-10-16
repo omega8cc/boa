@@ -9,6 +9,24 @@ export _xSrl=570proT09
 _barCnf="/root/.barracuda.cnf"
 _crlGet="-L --max-redirs 3 -k -s --retry 9 --retry-delay 9 -A iCab"
 
+_check_root() {
+  if [ "$(id -u)" -eq 0 ]; then
+    # shellcheck disable=SC1091
+    [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
+    chmod a+w /dev/null
+  else
+    echo "ERROR: This script should be run as a root user"
+    exit 1
+  fi
+}
+_check_root
+
+#
+# Protect from any autoupboa updates when _SKYNET_MODE=OFF
+if [ ! -z "${_SKYNET_MODE}" ] && [ "${_SKYNET_MODE}" = "OFF" ]; then
+  exit 0
+fi
+
 #
 # Find correct IP.
 _find_correct_ip() {
@@ -341,7 +359,6 @@ _apt_clean_update() {
 
 _system_hostname_check_fix() {
   if [ -e "${_barCnf}" ]; then
-    source ${_barCnf}
     if [ ! -z "${_MY_HOSTN}" ]; then
       _diffHostTest=$(diff -w -B /etc/hostname /etc/mailname 2>&1)
       if [ -z "${_diffHostTest}" ]; then
