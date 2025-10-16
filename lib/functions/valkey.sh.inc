@@ -5,7 +5,7 @@ _update_valkey_init() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _update_valkey_init"
   fi
-  if ! grep -q "/run/valkey" /etc/init.d/valkey-server; then
+  if ! grep -q "mkdir" /etc/init.d/valkey-server; then
     cp -af ${_locCnf}/valkey/valkey-server /etc/init.d/valkey-server
     chmod 755 /etc/init.d/valkey-server &> /dev/null
     _mrun "update-rc.d valkey-server defaults"
