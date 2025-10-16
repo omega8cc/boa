@@ -4372,7 +4372,7 @@ _ssl_install_src() {
       no-ssl3 \
       zlib-dynamic \
       enable-ec_nistp_64_gcc_128 \
-      ${_SSL_BUILD_ARGS}" 2> /dev/null
+      ${_SSL_BUILD_ARGS}"
     if [ "${_patchMakefile}" = "YES" ]; then
       sed -i "s/install_docs:.*/install_docs:/g" /var/opt/openssl-${_OPENSSL_BUILD_VRN}/Makefile
     fi
@@ -6291,11 +6291,9 @@ _ensure_devuan_base_files() {
             -o Dpkg::Options::=--force-overwrite \
             -o Dpkg::Options::=--force-confdef"
   if [ ! -z "${_BF_CANDIDATE}" ]; then
-    _mrun "apt-get ${_aptAllow} -y ${_APTOPTS} install \
-    base-files="${_BF_CANDIDATE}" --allow-downgrades" 2> /dev/null
+    _mrun "apt-get ${_aptAllow} -y ${_APTOPTS} install base-files="${_BF_CANDIDATE}" --allow-downgrades"
   else
-    _mrun "apt-get ${_aptAllow} -y ${_APTOPTS} install \
-    base-files --allow-downgrades" 2> /dev/null
+    _mrun "apt-get ${_aptAllow} -y ${_APTOPTS} install base-files --allow-downgrades"
   fi
   # If /etc/os-release still says Debian, try to refresh from the installed base-files
   if grep -qi 'ID=debian' /etc/os-release 2>/dev/null; then
