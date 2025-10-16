@@ -507,7 +507,7 @@ _nginx_install_upgrade() {
       --without-mail_pop3_module \
       --without-mail_smtp_module \
       --with-openssl=/var/opt/openssl-${_OPENSSL_NEW_VRN} \
-      --with-debug ${_NGINX_EXTRA}" 2> /dev/null
+      --with-debug ${_NGINX_EXTRA}"
     _mrun "make -j $(nproc)"
     _mrun "make install"
     ldconfig 2> /dev/null

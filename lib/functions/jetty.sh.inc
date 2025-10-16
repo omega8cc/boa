@@ -146,7 +146,11 @@ _if_install_solr_jetty() {
       echo "deb http://archive.debian.org/debian jessie-backports main" > /etc/apt/sources.list.d/backports.list
       echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
       _apt_clean_update
-      _mrun "${_INSTAPP} -t jessie-backports openjdk-8-jre-headless ca-certificates-java"
+      for _PKG in openjdk-8-jre-headless ca-certificates-java; do
+        if ! _pkg_installed "${_PKG}"; then
+          _mrun "${_INSTAPP} -t jessie-backports ${_PKG}"
+        fi
+      done
       _java_check_fix
     fi
   fi
@@ -340,7 +344,7 @@ _if_install_solr_jetty() {
         echo "JETTY_USER=jetty9 # Run as this user" >> /etc/default/jetty9
         echo "JETTY_HOME=/opt/jetty9 # Home directory" >> /etc/default/jetty9
         echo "JETTY_LOGS=/var/log/jetty9 # Logs directory" >> /etc/default/jetty9
-        echo "JETTY_RUN=/var/run # Run directory" >> /etc/default/jetty9
+        echo "JETTY_RUN=/run # Run directory" >> /etc/default/jetty9
         echo "JETTY_PID=\$JETTY_RUN/jetty9.pid # Pid file" >> /etc/default/jetty9
         echo "JAVA_OPTIONS=\"-Xms64m -Xmx128m -Djava.awt.headless=true \
           -Dsolr.solr.home=/opt/solr4 \$JAVA_OPTIONS\" \
@@ -395,7 +399,7 @@ _if_install_solr_jetty() {
       echo "JETTY_USER=jetty9 # Run as this user" >> /etc/default/jetty9
       echo "JETTY_HOME=/opt/jetty9 # Home directory" >> /etc/default/jetty9
       echo "JETTY_LOGS=/var/log/jetty9 # Logs directory" >> /etc/default/jetty9
-      echo "JETTY_RUN=/var/run # Run directory" >> /etc/default/jetty9
+      echo "JETTY_RUN=/run # Run directory" >> /etc/default/jetty9
       echo "JETTY_PID=\$JETTY_RUN/jetty9.pid # Pid file" >> /etc/default/jetty9
       echo "JAVA_OPTIONS=\"-Xms64m -Xmx128m \
         -Djava.awt.headless=true \
@@ -530,7 +534,7 @@ _if_install_solr_jetty() {
         echo "JETTY_USER=jetty8 # Run as this user" >> /etc/default/jetty8
         echo "JETTY_HOME=/opt/jetty8 # Home directory" >> /etc/default/jetty8
         echo "JETTY_LOGS=/var/log/jetty8 # Logs directory" >> /etc/default/jetty8
-        echo "JETTY_RUN=/var/run # Run directory" >> /etc/default/jetty8
+        echo "JETTY_RUN=/run # Run directory" >> /etc/default/jetty8
         echo "JETTY_PID=\$JETTY_RUN/jetty8.pid # Pid file" >> /etc/default/jetty8
         echo "JAVA_OPTIONS=\"-Xms64m -Xmx128m \
           -Djava.awt.headless=true \
@@ -661,7 +665,7 @@ _if_install_solr_jetty() {
         echo "JETTY_USER=jetty7 # Run as this user" >> /etc/default/jetty7
         echo "JETTY_HOME=/opt/jetty7 # Home directory" >> /etc/default/jetty7
         echo "JETTY_LOGS=/var/log/jetty7 # Logs directory" >> /etc/default/jetty7
-        echo "JETTY_RUN=/var/run # Run directory" >> /etc/default/jetty7
+        echo "JETTY_RUN=/run # Run directory" >> /etc/default/jetty7
         echo "JETTY_PID=\$JETTY_RUN/jetty7.pid # Pid file" >> /etc/default/jetty7
         echo "JAVA_OPTIONS=\"-Xms64m -Xmx128m \
           -Djava.awt.headless=true \

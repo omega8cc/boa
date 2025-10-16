@@ -83,7 +83,7 @@ DAEMON=/usr/sbin/nginx
 PS="nginx"
 PIDNAME="nginx"                     #lets you do $PS-slave
 PIDFILE=$PIDNAME.pid                #pid file
-PIDSPATH=/var/run                   #default pid location, you should change it
+PIDSPATH=/run                       #default pid location, you should change it
 
 DESCRIPTION="Nginx Server..."
 
