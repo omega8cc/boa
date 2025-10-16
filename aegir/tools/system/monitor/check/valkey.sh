@@ -19,6 +19,9 @@ _check_root() {
 }
 _check_root
 
+[ ! -e "/run/valkey" ] && mkdir -p /run/valkey
+[ -e "/run/valkey" ] && chown -R valkey:valkey /run/valkey
+
 # Run only on fully installed system
 [ ! -e "/var/log/boa/reset_no_new_password.pid" ] && exit 0
 

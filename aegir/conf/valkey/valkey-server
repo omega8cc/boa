@@ -21,6 +21,9 @@ PIDFILE=/run/valkey/valkey.pid
 
 test -x $DAEMON || exit 0
 
+[ ! -e "/run/valkey" ] && mkdir -p /run/valkey
+[ -e "/run/valkey" ] && chown -R valkey:valkey /run/valkey
+
 set -e
 
 maxclients=$(awk '/^[ \t]*maxclients[ \t]/ { print $2 }' /etc/valkey/valkey.conf)
