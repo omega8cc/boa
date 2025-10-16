@@ -1136,7 +1136,11 @@ _locales_check_fix() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _locales_check_fix"
   fi
-  _mrun "${_INITINS} locales"
+  for _PKG in locales; do
+    if ! _pkg_installed "${_PKG}"; then
+      _mrun "${_INSTAPP} ${_PKG}"
+    fi
+  done
   if [ -e "/etc/ssh/sshd_config" ]; then
     _SSH_LC_TEST=$(grep "^AcceptEnv LANG LC_" /etc/ssh/sshd_config 2>&1)
     if [[ "${_SSH_LC_TEST}" =~ "AcceptEnv LANG LC_" ]]; then
@@ -5914,7 +5918,11 @@ _run_aptitude_deps_install() {
     _OS_LIST="daedalus chimaera bullseye bookworm"
     for e in ${_OS_LIST}; do
       if [ "${e}" = "${_OS_CODE}" ]; then
-        _mrun "${_INSTAPP} ncal"
+        for _PKG in ncal; do
+          if ! _pkg_installed "${_PKG}"; then
+            _mrun "${_INSTAPP} ${_PKG}"
+          fi
+        done
       fi
     done
     for _PKG in libzip-dev libwww-perl libfontconfig1 libfreetype6 libfreetype6-dev; do
