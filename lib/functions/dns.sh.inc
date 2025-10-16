@@ -429,12 +429,11 @@ _dns_unbound_install_upgrade() {
     if [ -x "/usr/sbin/aa-teardown" ]; then
       aa-teardown &> /dev/null
     fi
-    _mrun "${_INSTAPP} libevent-dev"
-    _mrun "${_INSTAPP} resolvconf"
-    _mrun "${_INSTAPP} unbound"
-    _mrun "${_INSTAPP} unbound-anchor"
-    _mrun "${_INSTAPP} unbound-host"
-    _mrun "${_INSTAPP} dns-root-data"
+    for _PKG in libevent-dev resolvconf unbound unbound-anchor unbound-host dns-root-data; do
+      if ! _pkg_installed "${_PKG}"; then
+        _mrun "${_INSTAPP} ${_PKG}"
+      fi
+    done
     if [ -x "/usr/sbin/aa-teardown" ]; then
       aa-teardown &> /dev/null
     fi

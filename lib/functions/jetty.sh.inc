@@ -146,7 +146,11 @@ _if_install_solr_jetty() {
       echo "deb http://archive.debian.org/debian jessie-backports main" > /etc/apt/sources.list.d/backports.list
       echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
       _apt_clean_update
-      _mrun "${_INSTAPP} -t jessie-backports openjdk-8-jre-headless ca-certificates-java"
+      for _PKG in openjdk-8-jre-headless ca-certificates-java; do
+        if ! _pkg_installed "${_PKG}"; then
+          _mrun "${_INSTAPP} -t jessie-backports ${_PKG}"
+        fi
+      done
       _java_check_fix
     fi
   fi

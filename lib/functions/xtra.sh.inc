@@ -252,7 +252,11 @@ _if_install_collectd() {
         if _prompt_yes_no "Do you want to install Collectd Graph Panel?" ; then
           true
           _msg "INFO: Installing Collectd Graph Panel..."
-          _mrun "${_INSTAPP} collectd"
+          for _PKG in collectd; do
+            if ! _pkg_installed "${_PKG}"; then
+              _mrun "${_INSTAPP} ${_PKG}"
+            fi
+          done
           rm -rf /var/www/cgp
           cd /var/www
           _get_dev_arch "cgp-${_CGP_VRN}.tar.gz"
@@ -338,9 +342,11 @@ _if_install_webmin() {
         rm -f jcameron-key.gpg*
         touch ${_pthLog}/webmin_update_apt_src.log
         _apt_clean_update
-        _mrun "${_INSTAPP} webmin \
-               libxml-simple-perl \
-               libcrypt-ssleay-perl"
+        for _PKG in webmin libxml-simple-perl libcrypt-ssleay-perl; do
+          if ! _pkg_installed "${_PKG}"; then
+            _mrun "${_INSTAPP} ${_PKG}"
+          fi
+        done
         _mrun "update-rc.d webmin defaults"
         _msg "INFO: Webmin Control Panel installed"
       else
@@ -365,7 +371,11 @@ _if_install_bind() {
           _find_correct_ip
           _THISHTIP="${_LOC_IP}"
         fi
-        _mrun "${_INSTAPP} bind9"
+        for _PKG in bind9; do
+          if ! _pkg_installed "${_PKG}"; then
+            _mrun "${_INSTAPP} ${_PKG}"
+          fi
+        done
         cp -af /etc/bind/named.conf.options \
           ${_vBs}/named.conf.options.pre-${_xSrl}-${_X_VERSION}-${_NOW}
         cp -af ${_locCnf}/var/named.conf.options /etc/bind/named.conf.options
@@ -572,7 +582,11 @@ _if_install_ffmpeg() {
         _apt_clean_update
         _mrun "apt-get install deb-multimedia-keyring ${_aptYesUnth}"
         _apt_clean_update
-        _mrun "${_INSTAPP} ffmpeg"
+        for _PKG in ffmpeg; do
+          if ! _pkg_installed "${_PKG}"; then
+            _mrun "${_INSTAPP} ${_PKG}"
+          fi
+        done
         _msg "INFO: FFmpeg installed"
       else
         _msg "INFO: FFmpeg installation skipped"

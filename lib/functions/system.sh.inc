@@ -2833,8 +2833,11 @@ _mytop_install() {
       _msg "INFO: Building MyTop from sources..."
       _check_mysql_version
       _apt_clean_update
-      _mrun "${_INSTAPP} libperl-dev"
-      _mrun "${_INSTAPP} cpanminus"
+      for _PKG in libperl-dev cpanminus; do
+        if ! _pkg_installed "${_PKG}"; then
+          _mrun "${_INSTAPP} ${_PKG}"
+        fi
+      done
       if [ "${_DB_V}" != "5.7" ] || [ "${_SQL_UPGRADE}" = "YES" ]; then
         _mrun "cpanm DBD::mysql --force"
         _mrun "cpanm DBI --force"
@@ -3188,36 +3191,45 @@ _php_install_deps() {
   fi
   ###--------------------###
   _apt_clean_update
-  _mrun "${_INSTAPP} cmake"
-  _mrun "${_INSTAPP} lbzip2"
-  _mrun "${_INSTAPP} zstd"
+
+  for _PKG in cmake lbzip2 zstd libavif-dev libgd-dev libgd3 libjpeg-dev libjpeg62 libkrb5-dev; do
+    if ! _pkg_installed "${_PKG}"; then
+      _mrun "${_INSTAPP} ${_PKG}"
+    fi
+  done
+
   if [ ! -e "/usr/local/include/curl/curl.h" ] \
     && [ ! -e "/usr/local/include/curl/easy.h" ]; then
-    _mrun "${_INSTAPP} libcurl4-openssl-dev"
+    if ! _pkg_installed "libcurl4-openssl-dev"; then
+      for _PKG in libcurl4-openssl-dev; do
+        if ! _pkg_installed "${_PKG}"; then
+          _mrun "${_INSTAPP} ${_PKG}"
+        fi
+      done
+    fi
   fi
-  _mrun "${_INSTAPP} libavif-dev"
-  _mrun "${_INSTAPP} libgd-dev"
-  _mrun "${_INSTAPP} libgd3"
-  _mrun "${_INSTAPP} libjpeg-dev"
-  _mrun "${_INSTAPP} libjpeg62"
-  _mrun "${_INSTAPP} libkrb5-dev"
-  _mrun "${_INSTAPP} liblzf-dev"
-  _mrun "${_INSTAPP} libmagickwand-dev"
-  _mrun "${_INSTAPP} libonig-dev"
-  _mrun "${_INSTAPP} libsodium-dev"
-  _mrun "${_INSTAPP} libwebp-dev"
-  _mrun "${_INSTAPP} libxpm-dev"
-  _mrun "${_INSTAPP} libzip-dev"
+
+  for _PKG in liblzf-dev libmagickwand-dev libonig-dev libsodium-dev libwebp-dev libxpm-dev libzip-dev; do
+    if ! _pkg_installed "${_PKG}"; then
+      _mrun "${_INSTAPP} ${_PKG}"
+    fi
+  done
+
   if [ "${_OS_CODE}" = "daedalus" ] \
     || [ "${_OS_CODE}" = "bookworm" ]; then
     if [ ! -e "/root/.rebuild_src_on_auto_before_reboot.info" ]; then
-      _mrun "${_INSTAPP} libldap-common"
-      _mrun "${_INSTAPP} libldap-dev"
-      _mrun "${_INSTAPP} libldap2-dev"
+      for _PKG in libldap-common libldap-dev libldap2-dev; do
+        if ! _pkg_installed "${_PKG}"; then
+          _mrun "${_INSTAPP} ${_PKG}"
+        fi
+      done
     fi
   else
-    _mrun "${_INSTAPP} libldap-common"
-    _mrun "${_INSTAPP} libldap2-dev"
+    for _PKG in libldap-common libldap2-dev; do
+      if ! _pkg_installed "${_PKG}"; then
+        _mrun "${_INSTAPP} ${_PKG}"
+      fi
+    done
   fi
   if [ "${_OS_CODE}" = "jessie" ]; then
     _install_icu_jessie
@@ -3297,7 +3309,11 @@ _if_install_wkhtmltox() {
       _msg "INFO: Installing wkhtmltopdf from ${_OS_CODE} packages..."
     fi
     _apt_clean_update
-    _mrun "${_INSTAPP} gdebi-core xfonts-75dpi xfonts-base fonts-thai-tlwg wkhtmltopdf"
+    for _PKG in gdebi-core xfonts-75dpi xfonts-base fonts-thai-tlwg wkhtmltopdf; do
+      if ! _pkg_installed "${_PKG}"; then
+        _mrun "${_INSTAPP} ${_PKG}"
+      fi
+    done
   fi
   _WOX_ITD=$(wkhtmltopdf --version 2>&1 \
     | tr -d "\n" \
@@ -3341,7 +3357,11 @@ _if_install_wkhtmltox() {
     mkdir -p /var/opt/
     cd /var/opt/
     rm -rf /var/opt/wkhtmltox*
-    _mrun "${_INSTAPP} xfonts-75dpi xfonts-base"
+    for _PKG in xfonts-75dpi xfonts-base; do
+      if ! _pkg_installed "${_PKG}"; then
+        _mrun "${_INSTAPP} ${_PKG}"
+      fi
+    done
     _get_dev_src "wkhtmltox_${_WKHTMLTOX_VRN}.${_WKHTML_SYS_RV}_amd64.deb.gz" 2> /dev/null
     _mrun "gdebi -n /var/opt/wkhtmltox_${_WKHTMLTOX_VRN}.${_WKHTML_SYS_RV}_amd64.deb"
     _mrun "apt-get install -f -y"
@@ -4767,8 +4787,11 @@ _curl_install_src() {
             _mrun "apt-get remove libssl1.0-dev -y --purge --auto-remove -qq"
           fi
           _mrun "apt-get autoremove -y"
-          _mrun "${_INSTAPP} libssl-dev"
-          _mrun "${_INSTAPP} libc-client2007e libc-client2007e-dev"
+          for _PKG in libssl-dev libc-client2007e libc-client2007e-dev; do
+            if ! _pkg_installed "${_PKG}"; then
+              _mrun "${_INSTAPP} ${_PKG}"
+            fi
+          done
           _mrun "apt-get build-dep curl -y"
           _mrun "${_INSTAPP} curl"
         fi
@@ -4780,8 +4803,11 @@ _curl_install_src() {
         _mrun "apt-get remove libssl1.0-dev -y --purge --auto-remove -qq"
       fi
       _mrun "apt-get autoremove -y"
-      _mrun "${_INSTAPP} libssl-dev"
-      _mrun "${_INSTAPP} libc-client2007e libc-client2007e-dev"
+      for _PKG in libssl-dev libc-client2007e libc-client2007e-dev; do
+        if ! _pkg_installed "${_PKG}"; then
+          _mrun "${_INSTAPP} ${_PKG}"
+        fi
+      done
       _mrun "apt-get build-dep curl -y"
       cd /var/opt
       rm -rf curl*
@@ -5544,11 +5570,11 @@ _if_install_apparmor() {
       _msg "ARMR: Use 'boa reboot' command for optimized reboot"
       _msg "WAIT: This may take a while, please wait..."
     fi
-    _mrun "${_INSTAPP} auditd \
-      apparmor \
-      apparmor-utils \
-      apparmor-notify \
-      apparmor-profiles" 2> /dev/null
+    for _PKG in auditd apparmor apparmor-utils apparmor-notify apparmor-profiles; do
+      if ! _pkg_installed "${_PKG}"; then
+        _mrun "${_INSTAPP} ${_PKG}"
+      fi
+    done
     mkdir -p /etc/default/grub.d
     echo 'GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT apparmor=1 security=apparmor"' \
       | tee ${_isAppArmorGrubFile} &> /dev/null
@@ -5826,10 +5852,16 @@ _run_aptitude_deps_install() {
     _apt_clean_update
     _run_xtrabackup_cleanup
     _mrun "apt-get autoremove -y"
-    _mrun "${_INSTAPP} build-essential libsasl2-modules"
-    _mrun "${_INSTAPP} time vim cvs makepasswd"
-    _mrun "${_INSTAPP} man-db dnsutils sudo symlinks iptables"
-    _mrun "${_INSTAPP} autoconf automake autotools-dev m4 bc"
+    for _PKG in build-essential libsasl2-modules time vim cvs makepasswd; do
+      if ! _pkg_installed "${_PKG}"; then
+        _mrun "${_INSTAPP} ${_PKG}"
+      fi
+    done
+    for _PKG in man-db dnsutils sudo symlinks iptables autoconf automake autotools-dev m4 bc; do
+      if ! _pkg_installed "${_PKG}"; then
+        _mrun "${_INSTAPP} ${_PKG}"
+      fi
+    done
     if [ ! -x "/usr/local/bin/curl" ]; then
       _mrun "apt-get build-dep curl -y"
       _mrun "${_INSTAPP} curl"
@@ -5838,40 +5870,81 @@ _run_aptitude_deps_install() {
     if dpkg-query -W -f='${Status}' libssl1.0-dev 2>/dev/null | grep -q "install ok installed"; then
       _mrun "apt-get remove libssl1.0-dev -y --purge --auto-remove -qq"
     fi
-    _mrun "${_INSTAPP} libssl-dev"
-    _mrun "${_INSTAPP} libc-client2007e libc-client2007e-dev"
-    _mrun "${_INSTAPP} mcrypt libc-client-dev"
+    for _PKG in libssl-dev libc-client2007e libc-client2007e-dev mcrypt libc-client-dev; do
+      if ! _pkg_installed "${_PKG}"; then
+        _mrun "${_INSTAPP} ${_PKG}"
+      fi
+    done
     if [ "${_OS_DIST}" = "Devuan" ]; then
-      _mrun "${_INSTAPP} apticron aptitude apt-listchanges"
+      for _PKG in apticron aptitude apt-listchanges; do
+        if ! _pkg_installed "${_PKG}"; then
+          _mrun "${_INSTAPP} ${_PKG}"
+        fi
+      done
     else
-      _mrun "${_INSTAPP} apticron aptitude"
+      for _PKG in apticron aptitude; do
+        if ! _pkg_installed "${_PKG}"; then
+          _mrun "${_INSTAPP} ${_PKG}"
+        fi
+      done
       _mrun "dpkg --remove --force-remove-reinstreq apt-listchanges"
     fi
-    _mrun "${_INSTAPP} sysstat telnet cron gnupg2 gnupg"
-    _mrun "${_INSTAPP} zip unzip unrtf wdiff pwgen flex re2c"
-    _mrun "${_INSTAPP} rsync strace ntpdate librsync-dev"
-    _mrun "${_INSTAPP} mc whois zlib1g zlib1g-dev"
-    _mrun "${_INSTAPP} sqlite3 libsqlite3-dev s4cmd"
-    _mrun "${_INSTAPP} ssh ssl-cert libpam-umask shtool"
-    _mrun "${_INSTAPP} xml-core xml2 xpdf libtool rrdtool"
-    _mrun "${_INSTAPP} ncurses-dev ncurses-term sipcalc"
+    for _PKG in sysstat telnet cron gnupg2 gnupg zip unzip unrtf wdiff pwgen flex re2c; do
+      if ! _pkg_installed "${_PKG}"; then
+        _mrun "${_INSTAPP} ${_PKG}"
+      fi
+    done
+    for _PKG in rsync strace ntpdate librsync-dev mc whois zlib1g zlib1g-dev sqlite3 libsqlite3-dev; do
+      if ! _pkg_installed "${_PKG}"; then
+        _mrun "${_INSTAPP} ${_PKG}"
+      fi
+    done
+    for _PKG in s4cmd ssh ssl-cert libpam-umask shtool xml-core xml2 xpdf libtool rrdtool; do
+      if ! _pkg_installed "${_PKG}"; then
+        _mrun "${_INSTAPP} ${_PKG}"
+      fi
+    done
+    for _PKG in ncurses-dev ncurses-term sipcalc; do
+      if ! _pkg_installed "${_PKG}"; then
+        _mrun "${_INSTAPP} ${_PKG}"
+      fi
+    done
     _OS_LIST="daedalus chimaera bullseye bookworm"
     for e in ${_OS_LIST}; do
       if [ "${e}" = "${_OS_CODE}" ]; then
         _mrun "${_INSTAPP} ncal"
       fi
     done
-    _mrun "${_INSTAPP} libzip-dev libwww-perl"
-    _mrun "${_INSTAPP} libfontconfig1 libfreetype6 libfreetype6-dev"
-    _mrun "${_INSTAPP} libfribidi0 libgeoip-dev libgeoip1 libgmp3-dev"
-    _mrun "${_INSTAPP} libonig-dev libpq5 libxml2-dev libxpm4"
-    _mrun "${_INSTAPP} libxslt-dev libxslt1-dev libxslt1.1 subversion"
-    _mrun "${_INSTAPP} libaprutil1 libapr1 ldap-utils ipset"
-    _mrun "${_INSTAPP} pdftk patchutils p7zip-full fontconfig-config"
-    _mrun "${_INSTAPP} bison catdoc cython3 geoip-database gettext"
-    _mrun "${_INSTAPP} clamav clamav-base clamav-daemon clamdscan"
-    _mrun "${_INSTAPP} ghostscript htop lemon lftp nano"
-    _mrun "${_INSTAPP} python3-full python3-dev python3-debian python3-magic"
+    for _PKG in libzip-dev libwww-perl libfontconfig1 libfreetype6 libfreetype6-dev; do
+      if ! _pkg_installed "${_PKG}"; then
+        _mrun "${_INSTAPP} ${_PKG}"
+      fi
+    done
+    for _PKG in libfribidi0 libgeoip-dev libgeoip1 libgmp3-dev libonig-dev libpq5 libxml2-dev libxpm4; do
+      if ! _pkg_installed "${_PKG}"; then
+        _mrun "${_INSTAPP} ${_PKG}"
+      fi
+    done
+    for _PKG in libxslt-dev libxslt1-dev libxslt1.1 subversion libaprutil1 libapr1 ldap-utils ipset; do
+      if ! _pkg_installed "${_PKG}"; then
+        _mrun "${_INSTAPP} ${_PKG}"
+      fi
+    done
+    for _PKG in pdftk patchutils p7zip-full fontconfig-config bison catdoc cython3 geoip-database gettext; do
+      if ! _pkg_installed "${_PKG}"; then
+        _mrun "${_INSTAPP} ${_PKG}"
+      fi
+    done
+    for _PKG in clamav clamav-base clamav-daemon clamdscan ghostscript htop lemon lftp nano; do
+      if ! _pkg_installed "${_PKG}"; then
+        _mrun "${_INSTAPP} ${_PKG}"
+      fi
+    done
+    for _PKG in python3-full python3-dev python3-debian python3-magic; do
+      if ! _pkg_installed "${_PKG}"; then
+        _mrun "${_INSTAPP} ${_PKG}"
+      fi
+    done
   fi
   if [ -e "/root/.dont.use.fancy.bash.login.cnf" ] \
     && [ -e "/usr/bin/screenfetch" ]; then
@@ -5890,7 +5963,11 @@ _run_aptitude_deps_install() {
     done
     ###
   else
-    _mrun "${_INSTAPP} toilet figlet screenfetch"
+    for _PKG in toilet figlet screenfetch; do
+      if ! _pkg_installed "${_PKG}"; then
+        _mrun "${_INSTAPP} ${_PKG}"
+      fi
+    done
   fi
   if [ "${_UPGRADE_MODE}" = "FULL" ]; then
     _fix_postfix
@@ -6055,8 +6132,11 @@ _if_proxysql_update() {
       else
         _msg "INFO: Running ProxySQL re-install to ${_PXC_VRN}..."
         _apt_clean_update
-        _mrun "${_INSTAPP} sysbench"
-        _mrun "${_INSTAPP} debconf-utils"
+        for _PKG in sysbench debconf-utils; do
+          if ! _pkg_installed "${_PKG}"; then
+            _mrun "${_INSTAPP} ${_PKG}"
+          fi
+        done
         if dpkg-query -W -f='${Status}' proxysql 2>/dev/null | grep -q "install ok installed"; then
           _mrun "apt-get remove proxysql -y --purge --auto-remove -qq"
         fi
@@ -6066,9 +6146,11 @@ _if_proxysql_update() {
       _isPxy=$(which proxysql 2>&1)
       if [ ! -x "${_isPxy}" ]; then
         _apt_clean_update
-        _mrun "${_INSTAPP} sysbench"
-        _mrun "${_INSTAPP} debconf-utils"
-        _mrun "${_INSTAPP} proxysql"
+        for _PKG in sysbench debconf-utils proxysql; do
+          if ! _pkg_installed "${_PKG}"; then
+            _mrun "${_INSTAPP} ${_PKG}"
+          fi
+        done
       else
         _mrun "apt-get install --only-upgrade ${_nrmUpArg} proxysql"
       fi
@@ -8054,17 +8136,30 @@ _install_myquick_src() {
       _msg "INFO: Building MyQuick ${_MYQUICK_VRN_FIVE} from sources..."
     fi
     _apt_clean_update
-    _mrun "${_INSTAPP} cmake"
-    _mrun "${_INSTAPP} libssl-dev"
-#     _mrun "${_INSTAPP} libcurl4"
-#     _mrun "${_INSTAPP} libcurl4-gnutls-dev"
+    for _PKG in cmake libssl-dev; do
+      if ! _pkg_installed "${_PKG}"; then
+        _mrun "${_INSTAPP} ${_PKG}"
+      fi
+    done
     if [ "${_DB_SERVER}" = "Percona" ]; then
       if [ "${_DB_SERIES}" = "5.7" ]; then
-        _mrun "${_INSTAPP} libperconaserverclient20 libperconaserverclient20-dev"
+        for _PKG in libperconaserverclient20 libperconaserverclient20-dev; do
+          if ! _pkg_installed "${_PKG}"; then
+            _mrun "${_INSTAPP} ${_PKG}"
+          fi
+        done
       elif [ "${_DB_SERIES}" = "8.0" ]; then
-        _mrun "${_INSTAPP} libperconaserverclient21 libperconaserverclient21-dev"
+        for _PKG in libperconaserverclient21 libperconaserverclient21-dev; do
+          if ! _pkg_installed "${_PKG}"; then
+            _mrun "${_INSTAPP} ${_PKG}"
+          fi
+        done
       else
-        _mrun "${_INSTAPP} libperconaserverclient22 libperconaserverclient22-dev"
+        for _PKG in libperconaserverclient22 libperconaserverclient22-dev; do
+          if ! _pkg_installed "${_PKG}"; then
+            _mrun "${_INSTAPP} ${_PKG}"
+          fi
+        done
       fi
     fi
     ldconfig 2> /dev/null
@@ -8590,7 +8685,11 @@ _lshell_install_upgrade() {
       _msg "INFO: Installing Limited Shell ${_LSHELL_VRN}..."
     fi
     _apt_clean_update
-    _mrun "${_INSTAPP} python3-pip"
+    for _PKG in python3-pip; do
+      if ! _pkg_installed "${_PKG}"; then
+        _mrun "${_INSTAPP} ${_PKG}"
+      fi
+    done
     if [ -x "/usr/bin/pip3" ]; then
       _usePip=/usr/bin/pip3
     elif [ -x "/usr/local/bin/pip3" ]; then
