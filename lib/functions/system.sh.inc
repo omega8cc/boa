@@ -7073,8 +7073,11 @@ _if_major_os_upgrade() {
         echo "deb-src ${_MIRROR} chimaera-security main" >> /etc/apt/sources.list.d/chimaera.list
         echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
         _apt_clean_update
-        _mrun "apt-get install -t chimaera libldap-common ${_aptYesUnth}"
-        _mrun "apt-get install -t chimaera libldap2-dev ${_aptYesUnth}"
+        for _PKG in libldap-common libldap2-dev; do
+          if ! _pkg_installed "${_PKG}"; then
+            _mrun "apt-get install -t chimaera ${_PKG} ${_aptYesUnth}"
+          fi
+        done
         ###
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "TRCK: Locking libldap packages to prevent upgrade on Daedalus"
@@ -7454,17 +7457,17 @@ _sys_packages_update() {
       touch /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini}
       touch /etc/php5/conf.d/{redis.ini,suhosin.ini,newrelic.ini}
     fi
-    for _PKG in php5 php5-cgi php5-curl php5-fpm php5-gd php5-geoip php5-gmp php5-imagick php5-imap; do
+    for _PKG in php5 php5-cgi php5-curl php5-fpm php5-gd php5-geoip php5-gmp php5-imagick php5-imap php5-ldap; do
       if _pkg_installed "${_PKG}"; then
         _mrun "${_RMAPP} ${_PKG}"
       fi
     done
-    for _PKG in php5-ldap php5-mcrypt php5-memcache php5-mysql php5-sqlite php5-xmlrpc php5-xsl; do
+    for _PKG in php5-mcrypt php5-memcache php5-mysql php5-sqlite php5-xmlrpc php5-xsl phpunit php-pear; do
       if _pkg_installed "${_PKG}"; then
         _mrun "${_RMAPP} ${_PKG}"
       fi
     done
-    for _PKG in phpunit php-pear php-benchmark php5-cli php5-common php5-apc php-apc apache2.2-common apache2.2-bin; do
+    for _PKG in php-benchmark php5-cli php5-common php5-apc php-apc apache2.2-common apache2.2-bin; do
       if _pkg_installed "${_PKG}"; then
         _mrun "${_RMAPP} ${_PKG}"
       fi

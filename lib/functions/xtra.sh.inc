@@ -435,8 +435,11 @@ _if_install_node() {
         if [ -e "${_nSrc}" ]; then
           if grep -q "nodistro" "${_nSrc}"; then
             _apt_clean_update
-            _mrun "${_INSTAPP} nodejs/nodistro"
-            _mrun "${_INSTAPP} npm/nodistro"
+            for _PKG in nodejs; do
+              if ! _pkg_installed "${_PKG}"; then
+                _mrun "${_INSTAPP} ${_PKG}/nodistro"
+              fi
+            done
           fi
         fi
       fi
