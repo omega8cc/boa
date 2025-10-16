@@ -5891,7 +5891,7 @@ _run_aptitude_deps_install() {
       done
       _mrun "dpkg --remove --force-remove-reinstreq apt-listchanges"
     fi
-    for _PKG in sysstat telnet cron gnupg2 gnupg zip unzip unrtf wdiff pwgen flex re2c; do
+    for _PKG in sysstat telnet cron gnupg2 gnupg zip unzip unrtf wdiff pwgen flex re2c lsof; do
       if ! _pkg_installed "${_PKG}"; then
         _mrun "${_INSTAPP} ${_PKG}"
       fi
@@ -7456,7 +7456,6 @@ _sys_packages_update() {
     _mrun "${_RMAPP} php-apc"
     _mrun "${_RMAPP} apache2.2-common"
     _mrun "${_RMAPP} apache2.2-bin"
-    _mrun "aptitude install lsof -y --allow-untrusted"
     if [ -e "/etc/php5/conf.d" ]; then
       rm -f /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini}
       rm -f /etc/php5/conf.d/{redis.ini,suhosin.ini,newrelic.ini}
