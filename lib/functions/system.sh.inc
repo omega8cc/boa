@@ -7446,28 +7446,21 @@ _sys_packages_update() {
       touch /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini}
       touch /etc/php5/conf.d/{redis.ini,suhosin.ini,newrelic.ini}
     fi
-    _mrun "${_RMAPP} php5 \
-      php5-cgi \
-      php5-curl \
-      php5-fpm \
-      php5-gd \
-      php5-geoip \
-      php5-gmp \
-      php5-imagick \
-      php5-imap \
-      php5-ldap \
-      php5-mcrypt \
-      php5-memcache \
-      php5-mysql \
-      php5-sqlite \
-      php5-xmlrpc \
-      php5-xsl"
-    _mrun "${_RMAPP} phpunit php-pear php-benchmark"
-    _mrun "${_RMAPP} php5-cli php5-common"
-    _mrun "${_RMAPP} php5-apc"
-    _mrun "${_RMAPP} php-apc"
-    _mrun "${_RMAPP} apache2.2-common"
-    _mrun "${_RMAPP} apache2.2-bin"
+    for _PKG in php5 php5-cgi php5-curl php5-fpm php5-gd php5-geoip php5-gmp php5-imagick php5-imap; do
+      if _pkg_installed "${_PKG}"; then
+        _mrun "${_RMAPP} ${_PKG}"
+      fi
+    done
+    for _PKG in php5-ldap php5-mcrypt php5-memcache php5-mysql php5-sqlite php5-xmlrpc php5-xsl; do
+      if _pkg_installed "${_PKG}"; then
+        _mrun "${_RMAPP} ${_PKG}"
+      fi
+    done
+    for _PKG in phpunit php-pear php-benchmark php5-cli php5-common php5-apc php-apc apache2.2-common apache2.2-bin; do
+      if _pkg_installed "${_PKG}"; then
+        _mrun "${_RMAPP} ${_PKG}"
+      fi
+    done
     if [ -e "/etc/php5/conf.d" ]; then
       rm -f /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini}
       rm -f /etc/php5/conf.d/{redis.ini,suhosin.ini,newrelic.ini}
