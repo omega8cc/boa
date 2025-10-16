@@ -67,7 +67,7 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 
 # File paths
 _SCHEDULE_FILE="/root/.remote_backups/schedule/backup_schedule.txt"
-_PID_DIR="/var/run"
+_PID_DIR="/run"
 _LOGFILE="/var/log/backup_runtime.log"
 
 # Function to create PID file
@@ -93,7 +93,7 @@ _remove_pid_file() {
 
 # Function to remove stale multiback PID file
 _remove_stale_multiback_pid() {
-  _multiback_pidfile="/var/run/duplicity_${_service}_${_user}.pid"
+  _multiback_pidfile="/run/duplicity_${_service}_${_user}.pid"
   if [ -f "${_multiback_pidfile}" ]; then
     _old_pid=$(cat "${_multiback_pidfile}")
     if [ -n "${_old_pid}" ] && ! kill -0 "${_old_pid}" 2>/dev/null; then

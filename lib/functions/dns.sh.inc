@@ -429,24 +429,23 @@ _dns_unbound_install_upgrade() {
     if [ -x "/usr/sbin/aa-teardown" ]; then
       aa-teardown &> /dev/null
     fi
-    _mrun "${_INSTAPP} libevent-dev"
-    _mrun "${_INSTAPP} resolvconf"
-    _mrun "${_INSTAPP} unbound"
-    _mrun "${_INSTAPP} unbound-anchor"
-    _mrun "${_INSTAPP} unbound-host"
-    _mrun "${_INSTAPP} dns-root-data"
+    for _PKG in libevent-dev resolvconf unbound unbound-anchor unbound-host dns-root-data; do
+      if ! _pkg_installed "${_PKG}"; then
+        _mrun "${_INSTAPP} ${_PKG}"
+      fi
+    done
     if [ -x "/usr/sbin/aa-teardown" ]; then
       aa-teardown &> /dev/null
     fi
     ###
-    [ ! -e "/run/unbound" ] && mkdir -p /run/unbound
-    [ -e "/run/unbound" ] && chown -R unbound:unbound /run/unbound
-    [ ! -e "/var/log/unbound/" ] && mkdir -p /var/log/unbound/
+    [ -d /run/unbound ] || mkdir -p /run/unbound
+    [ -d /run/unbound ] && chown -R unbound:unbound /run/unbound
+    [ -d /var/log/unbound ] || mkdir -p /var/log/unbound/
     touch /var/log/unbound/unbound.log
     chown -R unbound:unbound /var/log/unbound
-    [ ! -e "/var/lib/unbound/" ] && mkdir -p /var/lib/unbound/
-    [ -e "/usr/share/dns/" ] && cp -a /usr/share/dns/* /var/lib/unbound/
-    [ -e "/var/lib/unbound/" ] && chown -R unbound:unbound /var/lib/unbound
+    [ -d /var/lib/unbound ] || mkdir -p /var/lib/unbound/
+    [ -d /usr/share/dns ] && cp -a /usr/share/dns/* /var/lib/unbound/
+    [ -d /var/lib/unbound ] && chown -R unbound:unbound /var/lib/unbound
     [ ! -e "/etc/unbound/unbound_control.key" ] && _mrun "unbound-control-setup"
     cp -af ${_locCnf}/dns/unbound /etc/init.d/unbound
     chmod 755 /etc/init.d/unbound

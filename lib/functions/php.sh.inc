@@ -953,7 +953,11 @@ _install_php_extensions() {
       _msg "INFO: Building GEOS extension ${_GEOS_VRN} for PHP ${_T_PHP_VRN} from sources..."
       if [ ! -e "${_pthLog}/geos-${_xSrl}-${_X_VERSION}.log" ]; then
         _apt_clean_update
-        _mrun "${_INSTAPP} libgeos-dev libgeos-c1"
+        for _PKG in libgeos-dev libgeos-c1; do
+          if ! _pkg_installed "${_PKG}"; then
+            _mrun "${_INSTAPP} ${_PKG}"
+          fi
+        done
         touch ${_pthLog}/geos-${_xSrl}-${_X_VERSION}.log
       fi
       cd /var/opt
@@ -1023,7 +1027,11 @@ _install_php_extensions() {
   fi
   if [ ! -e "${_pthLog}/libmagickwand-dev-${_IMAGICK_VRN}-rebuild.log" ]; then
     _apt_clean_update
-    _mrun "${_INSTAPP} libmagickwand-dev"
+    for _PKG in libmagickwand-dev; do
+      if ! _pkg_installed "${_PKG}"; then
+        _mrun "${_INSTAPP} ${_PKG}"
+      fi
+    done
     touch ${_pthLog}/libmagickwand-dev-${_IMAGICK_VRN}-rebuild.log
   fi
   cd /var/opt
@@ -1373,7 +1381,11 @@ _php_extensions_update() {
       _msg "INFO: Building GEOS ${_GEOS_VRN} upgrade for PHP ${_T_PHP_VRN} from sources..."
       if [ ! -e "${_pthLog}/geos-${_xSrl}-${_X_VERSION}.log" ]; then
         _apt_clean_update
-        _mrun "${_INSTAPP} libgeos-dev libgeos-c1"
+        for _PKG in libgeos-dev libgeos-c1; do
+          if ! _pkg_installed "${_PKG}"; then
+            _mrun "${_INSTAPP} ${_PKG}"
+          fi
+        done
         touch ${_pthLog}/geos-${_xSrl}-${_X_VERSION}.log
       fi
       cd /var/opt
@@ -1450,7 +1462,11 @@ _php_extensions_update() {
     fi
     if [ ! -e "${_pthLog}/libmagickwand-dev-${_IMAGICK_VRN}-rebuild.log" ]; then
       _apt_clean_update
-      _mrun "${_INSTAPP} libmagickwand-dev"
+      for _PKG in libmagickwand-dev; do
+        if ! _pkg_installed "${_PKG}"; then
+          _mrun "${_INSTAPP} ${_PKG}"
+        fi
+      done
       touch ${_pthLog}/libmagickwand-dev-${_IMAGICK_VRN}-rebuild.log
     fi
     cd /var/opt
@@ -1591,7 +1607,11 @@ _install_php_multi() {
   ###--------------------###
   _msg "INFO: Building PHP ${_PHP_VERSION} from sources..."
   _apt_clean_update
-  _mrun "${_INSTAPP} libonig-dev"
+  for _PKG in libonig-dev; do
+    if ! _pkg_installed "${_PKG}"; then
+      _mrun "${_INSTAPP} ${_PKG}"
+    fi
+  done
   if [[ "${_PHP_EXTRA_CONF}" =~ "--with-tidy" ]] \
     && [ ! -e "${_pthLog}/libtidy-${_LIB_TIDY_VRN}.log" ]; then
     if [ -e "/usr/lib/libtidy.so" ]; then
@@ -1613,7 +1633,11 @@ _install_php_multi() {
     cd /var/opt
     rm -rf tidy*
     _apt_clean_update
-    _mrun "${_INSTAPP} cmake"
+    for _PKG in cmake; do
+      if ! _pkg_installed "${_PKG}"; then
+        _mrun "${_INSTAPP} ${_PKG}"
+      fi
+    done
     _get_dev_src "tidy-html5-${_LIB_TIDY_VRN}.tar.gz"
     cd tidy-html5-${_LIB_TIDY_VRN}/build/cmake
     _mrun "cmake ../.. -DCMAKE_INSTALL_PREFIX=/usr/"
@@ -3131,7 +3155,11 @@ _php_check_if_rebuild() {
   if [[ "${_PHP_EXTRA_CONF}" =~ "--with-tidy" ]] \
     && [ ! -e "${_pthLog}/libtidy-${_LIB_TIDY_VRN}.log" ]; then
     _apt_clean_update
-    _mrun "${_INSTAPP} libonig-dev"
+    for _PKG in libonig-dev; do
+      if ! _pkg_installed "${_PKG}"; then
+        _mrun "${_INSTAPP} ${_PKG}"
+      fi
+    done
     if [ -e "/usr/lib/libtidy.so" ]; then
       ###
       for _PKG in libtidy-dev libtidy-0.99-0 tidy; do
@@ -3151,7 +3179,11 @@ _php_check_if_rebuild() {
     cd /var/opt
     rm -rf tidy*
     _apt_clean_update
-    _mrun "${_INSTAPP} cmake"
+    for _PKG in cmake; do
+      if ! _pkg_installed "${_PKG}"; then
+        _mrun "${_INSTAPP} ${_PKG}"
+      fi
+    done
     _get_dev_src "tidy-html5-${_LIB_TIDY_VRN}.tar.gz"
     cd tidy-html5-${_LIB_TIDY_VRN}/build/cmake
     _mrun "cmake ../.. -DCMAKE_INSTALL_PREFIX=/usr/"

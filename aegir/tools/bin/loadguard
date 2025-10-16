@@ -49,8 +49,8 @@ _CPU_SPIDER_RATIO="$(_sanitize_number "${_CPU_SPIDER_RATIO}")"
 : "${_RESUME_FRACTION:=0.80}"
 
 # State paths (adjust if you want)
-: "${_LOAD_GUARD_STATE:=/var/run/load_guard.state}"
-: "${_SPIDER_BLOCK_FLAG:=/var/run/spiders.blocked}"
+: "${_LOAD_GUARD_STATE:=/run/load_guard.state}"
+: "${_SPIDER_BLOCK_FLAG:=/run/spiders.blocked}"
 
 # Debug
 : "${_DEBUG_MODE:=NO}"

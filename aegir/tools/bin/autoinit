@@ -144,13 +144,13 @@ _single_instance_unlock() {
 _single_instance_lock() {
   # Ensure not too many instances are running
   # usage: _single_instance_lock [lockfile_path] [fd]
-  # default lock: /run/<script>.lock (falls back to /var/run or /tmp)
+  # default lock: /run/<script>.lock (falls back to /run or /tmp)
   _SELF_NAME="${_SELF_NAME:-$(basename "$0")}"
   _LOCK_FD="${2:-9}"
   if [ -n "${1:-}" ]; then
     _LOCK_PATH="$1"
   else
-    _DIR="/run"; [ -w "$_DIR" ] || _DIR="/var/run"; [ -w "$_DIR" ] || _DIR="/tmp"
+    _DIR="/run"; [ -w "$_DIR" ] || _DIR="/run"; [ -w "$_DIR" ] || _DIR="/tmp"
     _LOCK_PATH="${_DIR}/${_SELF_NAME%.sh}.lock"
   fi
 
