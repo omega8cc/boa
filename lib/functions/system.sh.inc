@@ -426,7 +426,7 @@ _if_running_as_root_barracuda() {
     # Check if dmidecode is available
     if ! command -v dmidecode &> /dev/null; then
       _apt_clean_update
-      ${_INITINS} dmidecode &> /dev/null
+      _mrun "${_INITINS} dmidecode"
     fi
     _check_system_manufacturer
     if [ -n "${_SYS_MANUFACTURER_LC}" ]; then
@@ -789,7 +789,7 @@ _tune_memory_limits() {
   # Check if dmidecode is available
   if ! command -v dmidecode &> /dev/null; then
     _apt_clean_update
-    ${_INITINS} dmidecode &> /dev/null
+    _mrun "${_INITINS} dmidecode"
   fi
   # Check for Amazon EC2 in the system manufacturer field
   if dmidecode -s system-manufacturer | grep -i 'Amazon EC2' &> /dev/null; then
@@ -1133,7 +1133,7 @@ _locales_check_fix() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _locales_check_fix"
   fi
-  ${_INITINS} locales &> /dev/null
+  _mrun "${_INITINS} locales"
   if [ -e "/etc/ssh/sshd_config" ]; then
     _SSH_LC_TEST=$(grep "^AcceptEnv LANG LC_" /etc/ssh/sshd_config 2>&1)
     if [[ "${_SSH_LC_TEST}" =~ "AcceptEnv LANG LC_" ]]; then
@@ -9407,12 +9407,12 @@ _sysctl_update() {
   # Check if conntrack is available
   if ! command -v conntrack &> /dev/null; then
     _apt_clean_update
-    ${_INITINS} conntrack &> /dev/null
+    _mrun "${_INITINS} conntrack"
   fi
   # Check if tcpdump is available
   if ! command -v tcpdump &> /dev/null; then
     _apt_clean_update
-    ${_INITINS} tcpdump &> /dev/null
+    _mrun "${_INITINS} tcpdump"
   fi
   if [ ! -e "/root/.no.sysctl.update.cnf" ] \
     && [ ! -e "${_pthLog}/sysctl.conf-${_xSrl}-${_X_VERSION}-${_NOW}.log" ]; then
