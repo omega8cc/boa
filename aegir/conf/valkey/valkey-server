@@ -21,8 +21,8 @@ PIDFILE=/run/valkey/valkey.pid
 
 test -x $DAEMON || exit 0
 
-[ ! -e "/run/valkey" ] && mkdir -p /run/valkey
-[ -e "/run/valkey" ] && chown -R valkey:valkey /run/valkey
+[ -d /run/valkey ] || mkdir -p /run/valkey
+[ -d /run/valkey ] && chown -R valkey:valkey /run/valkey
 
 set -e
 
