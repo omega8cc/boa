@@ -18,27 +18,29 @@ _find_fast_devuan_mirror() {
   fi
   _ffMirr=$(which ffmirror 2>&1)
   if [ -x "${_ffMirr}" ]; then
-    _ffList="/var/log/boa/devaun-mirrors-list.txt"
-    if [ ! -e "${_ffList}" ]; then
-      echo "https://mirrors.dotsrc.org/devuan"  > ${_ffList}
-      echo "https://mirror.akardam.net/devuan" >> ${_ffList}
-      echo "https://mirror.hootsoftware.com/devuan" >> ${_ffList}
+    _ffList="/var/log/boa/devaun-fast-mirrors-list.txt"
+    _BROKEN_FFLIST=$(grep "merged" ${_ffMirr} 2>&1)
+    if [ ! -e "${_ffList}" ] || [[ ! "${_BROKEN_FFLIST}" =~ "merged" ]]; then
+      echo "https://mirrors.dotsrc.org/devuan/merged"  > ${_ffList}
+      echo "https://mirror.akardam.net/devuan/merged" >> ${_ffList}
+      echo "https://mirror.hootsoftware.com/devuan/merged" >> ${_ffList}
     fi
     if [ -e "${_ffList}" ]; then
       _BROKEN_FFMIRR_TEST=$(grep "stuff" ${_ffMirr} 2>&1)
-      if [[ "${_BROKEN_FFMIRR_TEST}" =~ "stuff" ]]; then
+      if [[ "${_BROKEN_FFMIRR_TEST}" =~ "stuff" ]] \
+        || [[ ! "${_BROKEN_FFLIST}" =~ "merged" ]]; then
         _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _USE_MIR="${_CHECK_MIRROR}"
-        [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="mirrors.dotsrc.org/devuan"
+        [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="https://mirrors.dotsrc.org/devuan/merged"
       else
-        _USE_MIR="mirrors.dotsrc.org/devuan"
+        _USE_MIR="https://mirrors.dotsrc.org/devuan/merged"
       fi
     else
-      _USE_MIR="mirrors.dotsrc.org/devuan"
+      _USE_MIR="https://mirrors.dotsrc.org/devuan/merged"
     fi
   else
-    _USE_MIR="mirrors.dotsrc.org/devuan"
+    _USE_MIR="https://mirrors.dotsrc.org/devuan/merged"
   fi
   echo "${_USE_MIR}"
 }
@@ -91,6 +93,9 @@ _if_fix_iptables_symlinks() {
 #
 # Re-install curl if broken.
 _if_reinstall_curl_src() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _if_reinstall_curl_src"
+  fi
   _CURL_VRN=8.16.0
   if ! command -v lsb_release &> /dev/null; then
     _mrun "apt-get update -qq"
@@ -198,14 +203,14 @@ _systemd_remove_apt_cmd() {
 #
 # Detect and prepare for major OS upgrade.
 _define_loc_osr() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _define_loc_osr"
+  fi
   _apt_clean_update_no_releaseinfo_change
   _mrun "apt-get upgrade ${_nrmUpArg}"
   _mrun "apt-get install lsb-release ${_nrmUpArg}"
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "PROC: _define_loc_osr"
-  fi
   _LOC_OS_CODE=
   _NEW_OS_CODE=
   _TGT_OSN=
@@ -424,7 +429,7 @@ _if_running_as_root_barracuda() {
     # Check if dmidecode is available
     if ! command -v dmidecode &> /dev/null; then
       _apt_clean_update
-      ${_INITINS} dmidecode &> /dev/null
+      _mrun "${_INITINS} dmidecode"
     fi
     _check_system_manufacturer
     if [ -n "${_SYS_MANUFACTURER_LC}" ]; then
@@ -787,7 +792,7 @@ _tune_memory_limits() {
   # Check if dmidecode is available
   if ! command -v dmidecode &> /dev/null; then
     _apt_clean_update
-    ${_INITINS} dmidecode &> /dev/null
+    _mrun "${_INITINS} dmidecode"
   fi
   # Check for Amazon EC2 in the system manufacturer field
   if dmidecode -s system-manufacturer | grep -i 'Amazon EC2' &> /dev/null; then
@@ -1131,7 +1136,11 @@ _locales_check_fix() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _locales_check_fix"
   fi
-  ${_INITINS} locales &> /dev/null
+  for _PKG in locales; do
+    if ! _pkg_installed "${_PKG}"; then
+      _mrun "${_INSTAPP} ${_PKG}"
+    fi
+  done
   if [ -e "/etc/ssh/sshd_config" ]; then
     _SSH_LC_TEST=$(grep "^AcceptEnv LANG LC_" /etc/ssh/sshd_config 2>&1)
     if [[ "${_SSH_LC_TEST}" =~ "AcceptEnv LANG LC_" ]]; then
@@ -2036,8 +2045,19 @@ _barracuda_cnf() {
 
     _php_multi_uniq
 
+    _ffList="/var/log/boa/devaun-fast-mirrors-list.txt"
+    _BROKEN_FF=$(grep "planetcobalt" ${_ffList} 2>&1)
+    if [ ! -e "${_ffList}" ] || [[ ! "${_BROKEN_FF}" =~ "planetcobalt" ]]; then
+      _ffDevuan=$(which ffdevuan 2>&1)
+      if [ -x "${_ffDevuan}" ]; then
+        bash ${_ffDevuan} &> /dev/null
+        wait
+      fi
+    fi
+
     if [ -z "${_LOCAL_DEVUAN_MIRROR}" ] \
       || [ "${_LOCAL_DEVUAN_MIRROR}" = "deb.devuan.org" ] \
+      || [ "${_LOCAL_DEVUAN_MIRROR}" = "https://mirrors.dotsrc.org/devuan" ] \
       || [[ ! "${_LOCAL_DEVUAN_MIRROR}" =~ "http" ]]; then
       _DVN_MRR="$(_find_fast_devuan_mirror)"
 	  if [ -n "${_DVN_MRR}" ]; then
@@ -2672,8 +2692,19 @@ _barracuda_cnf() {
       source ${_barCnf}
     fi
 
+    _ffList="/var/log/boa/devaun-fast-mirrors-list.txt"
+    _BROKEN_FF=$(grep "planetcobalt" ${_ffList} 2>&1)
+    if [ ! -e "${_ffList}" ] || [[ ! "${_BROKEN_FF}" =~ "planetcobalt" ]]; then
+      _ffDevuan=$(which ffdevuan 2>&1)
+      if [ -x "${_ffDevuan}" ]; then
+        bash ${_ffDevuan} &> /dev/null
+        wait
+      fi
+    fi
+
     if [ -z "${_LOCAL_DEVUAN_MIRROR}" ] \
       || [ "${_LOCAL_DEVUAN_MIRROR}" = "deb.devuan.org" ] \
+      || [ "${_LOCAL_DEVUAN_MIRROR}" = "https://mirrors.dotsrc.org/devuan" ] \
       || [[ ! "${_LOCAL_DEVUAN_MIRROR}" =~ "http" ]]; then
       _DVN_MRR="$(_find_fast_devuan_mirror)"
 	  if [ -n "${_DVN_MRR}" ]; then
@@ -2809,8 +2840,11 @@ _mytop_install() {
       _msg "INFO: Building MyTop from sources..."
       _check_mysql_version
       _apt_clean_update
-      _mrun "${_INSTAPP} libperl-dev"
-      _mrun "${_INSTAPP} cpanminus"
+      for _PKG in libperl-dev cpanminus; do
+        if ! _pkg_installed "${_PKG}"; then
+          _mrun "${_INSTAPP} ${_PKG}"
+        fi
+      done
       if [ "${_DB_V}" != "5.7" ] || [ "${_SQL_UPGRADE}" = "YES" ]; then
         _mrun "cpanm DBD::mysql --force"
         _mrun "cpanm DBI --force"
@@ -2917,12 +2951,18 @@ _run_aptitude_full_upgrade() {
     _DPKG_CNF="confnew"
   fi
   _UPGRADE_HELD="${_INSTALL_NRML} --only-upgrade --allow-change-held-packages"
-  _IF_KEY_HOLD=$(apt-mark showhold | xargs -r apt list --upgradable -a 2>&1)
+  _IF_KEY_HOLD="$(apt-mark showhold | xargs -r apt list --upgradable -a 2>&1)"
   if [[ "${_IF_KEY_HOLD}" =~ "openssl/" ]] \
     || [[ "${_IF_KEY_HOLD}" =~ "curl/" ]]; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: Upgrade normally held openssl and curl packages"
+    fi
     _mrun "${_UPGRADE_HELD} openssl libcurl4 curl"
   fi
   if [[ "${_IF_KEY_HOLD}" =~ "openssh" ]]; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: Upgrade normally held openssh packages"
+    fi
     _mrun "${_UPGRADE_HELD} ssh openssh-client openssh-server openssh-sftp-server"
   fi
   _mrun "apt-get --fix-broken install -y"
@@ -3158,36 +3198,45 @@ _php_install_deps() {
   fi
   ###--------------------###
   _apt_clean_update
-  _mrun "${_INSTAPP} cmake"
-  _mrun "${_INSTAPP} lbzip2"
-  _mrun "${_INSTAPP} zstd"
+
+  for _PKG in cmake lbzip2 zstd libavif-dev libgd-dev libgd3 libjpeg-dev libjpeg62 libkrb5-dev; do
+    if ! _pkg_installed "${_PKG}"; then
+      _mrun "${_INSTAPP} ${_PKG}"
+    fi
+  done
+
   if [ ! -e "/usr/local/include/curl/curl.h" ] \
     && [ ! -e "/usr/local/include/curl/easy.h" ]; then
-    _mrun "${_INSTAPP} libcurl4-openssl-dev"
+    if ! _pkg_installed "libcurl4-openssl-dev"; then
+      for _PKG in libcurl4-openssl-dev; do
+        if ! _pkg_installed "${_PKG}"; then
+          _mrun "${_INSTAPP} ${_PKG}"
+        fi
+      done
+    fi
   fi
-  _mrun "${_INSTAPP} libavif-dev"
-  _mrun "${_INSTAPP} libgd-dev"
-  _mrun "${_INSTAPP} libgd3"
-  _mrun "${_INSTAPP} libjpeg-dev"
-  _mrun "${_INSTAPP} libjpeg62"
-  _mrun "${_INSTAPP} libkrb5-dev"
-  _mrun "${_INSTAPP} liblzf-dev"
-  _mrun "${_INSTAPP} libmagickwand-dev"
-  _mrun "${_INSTAPP} libonig-dev"
-  _mrun "${_INSTAPP} libsodium-dev"
-  _mrun "${_INSTAPP} libwebp-dev"
-  _mrun "${_INSTAPP} libxpm-dev"
-  _mrun "${_INSTAPP} libzip-dev"
+
+  for _PKG in liblzf-dev libmagickwand-dev libonig-dev libsodium-dev libwebp-dev libxpm-dev libzip-dev; do
+    if ! _pkg_installed "${_PKG}"; then
+      _mrun "${_INSTAPP} ${_PKG}"
+    fi
+  done
+
   if [ "${_OS_CODE}" = "daedalus" ] \
     || [ "${_OS_CODE}" = "bookworm" ]; then
     if [ ! -e "/root/.rebuild_src_on_auto_before_reboot.info" ]; then
-      _mrun "${_INSTAPP} libldap-common"
-      _mrun "${_INSTAPP} libldap-dev"
-      _mrun "${_INSTAPP} libldap2-dev"
+      for _PKG in libldap-common libldap-dev libldap2-dev; do
+        if ! _pkg_installed "${_PKG}"; then
+          _mrun "${_INSTAPP} ${_PKG}"
+        fi
+      done
     fi
   else
-    _mrun "${_INSTAPP} libldap-common"
-    _mrun "${_INSTAPP} libldap2-dev"
+    for _PKG in libldap-common libldap2-dev; do
+      if ! _pkg_installed "${_PKG}"; then
+        _mrun "${_INSTAPP} ${_PKG}"
+      fi
+    done
   fi
   if [ "${_OS_CODE}" = "jessie" ]; then
     _install_icu_jessie
@@ -3267,7 +3316,11 @@ _if_install_wkhtmltox() {
       _msg "INFO: Installing wkhtmltopdf from ${_OS_CODE} packages..."
     fi
     _apt_clean_update
-    _mrun "${_INSTAPP} gdebi-core xfonts-75dpi xfonts-base fonts-thai-tlwg wkhtmltopdf"
+    for _PKG in gdebi-core xfonts-75dpi xfonts-base fonts-thai-tlwg wkhtmltopdf; do
+      if ! _pkg_installed "${_PKG}"; then
+        _mrun "${_INSTAPP} ${_PKG}"
+      fi
+    done
   fi
   _WOX_ITD=$(wkhtmltopdf --version 2>&1 \
     | tr -d "\n" \
@@ -3311,7 +3364,11 @@ _if_install_wkhtmltox() {
     mkdir -p /var/opt/
     cd /var/opt/
     rm -rf /var/opt/wkhtmltox*
-    _mrun "${_INSTAPP} xfonts-75dpi xfonts-base"
+    for _PKG in xfonts-75dpi xfonts-base; do
+      if ! _pkg_installed "${_PKG}"; then
+        _mrun "${_INSTAPP} ${_PKG}"
+      fi
+    done
     _get_dev_src "wkhtmltox_${_WKHTMLTOX_VRN}.${_WKHTML_SYS_RV}_amd64.deb.gz" 2> /dev/null
     _mrun "gdebi -n /var/opt/wkhtmltox_${_WKHTMLTOX_VRN}.${_WKHTML_SYS_RV}_amd64.deb"
     _mrun "apt-get install -f -y"
@@ -4322,7 +4379,7 @@ _ssl_install_src() {
       no-ssl3 \
       zlib-dynamic \
       enable-ec_nistp_64_gcc_128 \
-      ${_SSL_BUILD_ARGS}" 2> /dev/null
+      ${_SSL_BUILD_ARGS}"
     if [ "${_patchMakefile}" = "YES" ]; then
       sed -i "s/install_docs:.*/install_docs:/g" /var/opt/openssl-${_OPENSSL_BUILD_VRN}/Makefile
     fi
@@ -4581,7 +4638,6 @@ _curl_install_src() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _curl_install_src"
   fi
-
   if ! command -v lsb_release &> /dev/null; then
     apt-get update -qq &> /dev/null
     apt-get install lsb-release ${_aptYesUnth} -qq &> /dev/null
@@ -4737,8 +4793,11 @@ _curl_install_src() {
             _mrun "apt-get remove libssl1.0-dev -y --purge --auto-remove -qq"
           fi
           _mrun "apt-get autoremove -y"
-          _mrun "${_INSTAPP} libssl-dev"
-          _mrun "${_INSTAPP} libc-client2007e libc-client2007e-dev"
+          for _PKG in libssl-dev libc-client2007e libc-client2007e-dev; do
+            if ! _pkg_installed "${_PKG}"; then
+              _mrun "${_INSTAPP} ${_PKG}"
+            fi
+          done
           _mrun "apt-get build-dep curl -y"
           _mrun "${_INSTAPP} curl"
         fi
@@ -4750,8 +4809,11 @@ _curl_install_src() {
         _mrun "apt-get remove libssl1.0-dev -y --purge --auto-remove -qq"
       fi
       _mrun "apt-get autoremove -y"
-      _mrun "${_INSTAPP} libssl-dev"
-      _mrun "${_INSTAPP} libc-client2007e libc-client2007e-dev"
+      for _PKG in libssl-dev libc-client2007e libc-client2007e-dev; do
+        if ! _pkg_installed "${_PKG}"; then
+          _mrun "${_INSTAPP} ${_PKG}"
+        fi
+      done
       _mrun "apt-get build-dep curl -y"
       cd /var/opt
       rm -rf curl*
@@ -5514,11 +5576,11 @@ _if_install_apparmor() {
       _msg "ARMR: Use 'boa reboot' command for optimized reboot"
       _msg "WAIT: This may take a while, please wait..."
     fi
-    _mrun "${_INSTAPP} auditd \
-      apparmor \
-      apparmor-utils \
-      apparmor-notify \
-      apparmor-profiles" 2> /dev/null
+    for _PKG in auditd apparmor apparmor-utils apparmor-notify apparmor-profiles; do
+      if ! _pkg_installed "${_PKG}"; then
+        _mrun "${_INSTAPP} ${_PKG}"
+      fi
+    done
     mkdir -p /etc/default/grub.d
     echo 'GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT apparmor=1 security=apparmor"' \
       | tee ${_isAppArmorGrubFile} &> /dev/null
@@ -5770,69 +5832,130 @@ _run_aptitude_deps_install() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _run_aptitude_deps_install"
   fi
+  : "${_UPGRADE_MODE:=FAST}"
+  if [ "${_STATUS}" = "INIT" ]; then
+    _UPGRADE_MODE=FULL
+  fi
   _if_to_do_fix
-  if [ "${_OS_DIST}" = "Devuan" ]; then
-    ${_INITINS} devuan-keyring &> /dev/null
-    ${_INITINS} devuan-keyring &> /dev/null
-  elif [ "${_OS_DIST}" = "Debian" ]; then
-    ${_INITINS} debian-keyring debian-archive-keyring &> /dev/null
-    ${_INITINS} debian-keyring debian-archive-keyring &> /dev/null
+  if [ "${_UPGRADE_MODE}" = "FULL" ]; then
+    if [ "${_OS_DIST}" = "Devuan" ]; then
+      _mrun "${_INITINS} devuan-keyring"
+      _mrun "${_INITINS} devuan-keyring"
+    elif [ "${_OS_DIST}" = "Debian" ]; then
+      _mrun "${_INITINS} debian-keyring debian-archive-keyring"
+      _mrun "${_INITINS} debian-keyring debian-archive-keyring"
+    fi
   fi
   if [ "${_STATUS}" = "INIT" ]; then
     _msg "INFO: Installing a large list of libraries and tools..."
   elif [ "${_STATUS}" = "UPGRADE" ]; then
-    _msg "INFO: Upgrading a large list of libraries and tools..."
-  fi
-  _msg "WAIT: This may take a while, please wait..."
-  _apt_clean_update
-  _run_xtrabackup_cleanup
-  _mrun "apt-get autoremove -y"
-  _mrun "${_INSTAPP} build-essential libsasl2-modules"
-  _mrun "${_INSTAPP} time vim cvs makepasswd"
-  _mrun "${_INSTAPP} man-db dnsutils sudo symlinks iptables"
-  _mrun "${_INSTAPP} autoconf automake autotools-dev m4 bc"
-  if [ ! -x "/usr/local/bin/curl" ]; then
-    _mrun "apt-get build-dep curl -y"
-    _mrun "${_INSTAPP} curl"
-  fi
-  # Check for libssl1.0-dev and remove conditionally
-  if dpkg-query -W -f='${Status}' libssl1.0-dev 2>/dev/null | grep -q "install ok installed"; then
-    _mrun "apt-get remove libssl1.0-dev -y --purge --auto-remove -qq"
-  fi
-  _mrun "${_INSTAPP} libssl-dev"
-  _mrun "${_INSTAPP} libc-client2007e libc-client2007e-dev"
-  _mrun "${_INSTAPP} mcrypt libc-client-dev"
-  if [ "${_OS_DIST}" = "Devuan" ]; then
-    _mrun "${_INSTAPP} apticron aptitude apt-listchanges"
-  else
-    _mrun "${_INSTAPP} apticron aptitude"
-    _mrun "dpkg --remove --force-remove-reinstreq apt-listchanges"
-  fi
-  _mrun "${_INSTAPP} sysstat telnet cron gnupg2 gnupg"
-  _mrun "${_INSTAPP} zip unzip unrtf wdiff pwgen flex re2c"
-  _mrun "${_INSTAPP} rsync strace ntpdate librsync-dev"
-  _mrun "${_INSTAPP} mc whois zlib1g zlib1g-dev"
-  _mrun "${_INSTAPP} sqlite3 libsqlite3-dev s4cmd"
-  _mrun "${_INSTAPP} ssh ssl-cert libpam-umask shtool"
-  _mrun "${_INSTAPP} xml-core xml2 xpdf libtool rrdtool"
-  _mrun "${_INSTAPP} ncurses-dev ncurses-term sipcalc"
-  _OS_LIST="daedalus chimaera bullseye bookworm"
-  for e in ${_OS_LIST}; do
-    if [ "${e}" = "${_OS_CODE}" ]; then
-      _mrun "${_INSTAPP} ncal"
+    if [ "${_UPGRADE_MODE}" = "FULL" ]; then
+      _msg "INFO: Upgrading a large list of libraries and tools..."
     fi
-  done
-  _mrun "${_INSTAPP} libzip-dev libwww-perl"
-  _mrun "${_INSTAPP} libfontconfig1 libfreetype6 libfreetype6-dev"
-  _mrun "${_INSTAPP} libfribidi0 libgeoip-dev libgeoip1 libgmp3-dev"
-  _mrun "${_INSTAPP} libonig-dev libpq5 libxml2-dev libxpm4"
-  _mrun "${_INSTAPP} libxslt-dev libxslt1-dev libxslt1.1 subversion"
-  _mrun "${_INSTAPP} libaprutil1 libapr1 ldap-utils ipset"
-  _mrun "${_INSTAPP} pdftk patchutils p7zip-full fontconfig-config"
-  _mrun "${_INSTAPP} bison catdoc cython3 geoip-database gettext"
-  _mrun "${_INSTAPP} clamav clamav-base clamav-daemon clamdscan"
-  _mrun "${_INSTAPP} ghostscript htop lemon lftp nano"
-  _mrun "${_INSTAPP} python3-full python3-dev python3-debian python3-magic"
+  fi
+  if [ "${_UPGRADE_MODE}" = "FULL" ]; then
+    _msg "WAIT: This may take a while, please wait..."
+    _apt_clean_update
+    _run_xtrabackup_cleanup
+    _mrun "apt-get autoremove -y"
+    for _PKG in build-essential libsasl2-modules time vim cvs makepasswd; do
+      if ! _pkg_installed "${_PKG}"; then
+        _mrun "${_INSTAPP} ${_PKG}"
+      fi
+    done
+    for _PKG in man-db dnsutils sudo symlinks iptables autoconf automake autotools-dev m4 bc; do
+      if ! _pkg_installed "${_PKG}"; then
+        _mrun "${_INSTAPP} ${_PKG}"
+      fi
+    done
+    if [ ! -x "/usr/local/bin/curl" ]; then
+      _mrun "apt-get build-dep curl -y"
+      _mrun "${_INSTAPP} curl"
+    fi
+    # Check for libssl1.0-dev and remove conditionally
+    if dpkg-query -W -f='${Status}' libssl1.0-dev 2>/dev/null | grep -q "install ok installed"; then
+      _mrun "apt-get remove libssl1.0-dev -y --purge --auto-remove -qq"
+    fi
+    for _PKG in libssl-dev libc-client2007e libc-client2007e-dev mcrypt libc-client-dev; do
+      if ! _pkg_installed "${_PKG}"; then
+        _mrun "${_INSTAPP} ${_PKG}"
+      fi
+    done
+    if [ "${_OS_DIST}" = "Devuan" ]; then
+      for _PKG in apticron aptitude apt-listchanges; do
+        if ! _pkg_installed "${_PKG}"; then
+          _mrun "${_INSTAPP} ${_PKG}"
+        fi
+      done
+    else
+      for _PKG in apticron aptitude; do
+        if ! _pkg_installed "${_PKG}"; then
+          _mrun "${_INSTAPP} ${_PKG}"
+        fi
+      done
+      _mrun "dpkg --remove --force-remove-reinstreq apt-listchanges"
+    fi
+    for _PKG in sysstat telnet cron gnupg2 gnupg zip unzip unrtf wdiff pwgen flex re2c lsof; do
+      if ! _pkg_installed "${_PKG}"; then
+        _mrun "${_INSTAPP} ${_PKG}"
+      fi
+    done
+    for _PKG in rsync strace ntpdate librsync-dev mc whois zlib1g zlib1g-dev sqlite3 libsqlite3-dev; do
+      if ! _pkg_installed "${_PKG}"; then
+        _mrun "${_INSTAPP} ${_PKG}"
+      fi
+    done
+    for _PKG in s4cmd ssh ssl-cert libpam-umask shtool xml-core xml2 xpdf libtool rrdtool; do
+      if ! _pkg_installed "${_PKG}"; then
+        _mrun "${_INSTAPP} ${_PKG}"
+      fi
+    done
+    for _PKG in ncurses-dev ncurses-term sipcalc; do
+      if ! _pkg_installed "${_PKG}"; then
+        _mrun "${_INSTAPP} ${_PKG}"
+      fi
+    done
+    _OS_LIST="daedalus chimaera bullseye bookworm"
+    for e in ${_OS_LIST}; do
+      if [ "${e}" = "${_OS_CODE}" ]; then
+        for _PKG in ncal; do
+          if ! _pkg_installed "${_PKG}"; then
+            _mrun "${_INSTAPP} ${_PKG}"
+          fi
+        done
+      fi
+    done
+    for _PKG in libzip-dev libwww-perl libfontconfig1 libfreetype6 libfreetype6-dev; do
+      if ! _pkg_installed "${_PKG}"; then
+        _mrun "${_INSTAPP} ${_PKG}"
+      fi
+    done
+    for _PKG in libfribidi0 libgeoip-dev libgeoip1 libgmp3-dev libonig-dev libpq5 libxml2-dev libxpm4; do
+      if ! _pkg_installed "${_PKG}"; then
+        _mrun "${_INSTAPP} ${_PKG}"
+      fi
+    done
+    for _PKG in libxslt-dev libxslt1-dev libxslt1.1 subversion libaprutil1 libapr1 ldap-utils ipset; do
+      if ! _pkg_installed "${_PKG}"; then
+        _mrun "${_INSTAPP} ${_PKG}"
+      fi
+    done
+    for _PKG in pdftk patchutils p7zip-full fontconfig-config bison catdoc cython3 geoip-database gettext; do
+      if ! _pkg_installed "${_PKG}"; then
+        _mrun "${_INSTAPP} ${_PKG}"
+      fi
+    done
+    for _PKG in clamav clamav-base clamav-daemon clamdscan ghostscript htop lemon lftp nano; do
+      if ! _pkg_installed "${_PKG}"; then
+        _mrun "${_INSTAPP} ${_PKG}"
+      fi
+    done
+    for _PKG in python3-full python3-dev python3-debian python3-magic; do
+      if ! _pkg_installed "${_PKG}"; then
+        _mrun "${_INSTAPP} ${_PKG}"
+      fi
+    done
+  fi
   if [ -e "/root/.dont.use.fancy.bash.login.cnf" ] \
     && [ -e "/usr/bin/screenfetch" ]; then
     ###
@@ -5850,19 +5973,25 @@ _run_aptitude_deps_install() {
     done
     ###
   else
-    _mrun "${_INSTAPP} toilet figlet screenfetch"
+    for _PKG in toilet figlet screenfetch; do
+      if ! _pkg_installed "${_PKG}"; then
+        _mrun "${_INSTAPP} ${_PKG}"
+      fi
+    done
   fi
-  _fix_postfix
-  _mrun "${_INSTAPP} ${_MAILSERV}"
-  _mrun "${_INSTAPP} ${_APT_XTRA}"
-  _mrun "${_INSTAPP} ${_EXTRA_LIB_APT}"
-  _mrun "${_INSTAPP} ${_EXTRA_PACKAGES}"
-  _mrun "${_INSTAPP} ${_SYSLOGD}"
-  _EXTRA_APT="tree"
-  _mrun "apt-get install ${_EXTRA_APT} ${_nrmUpArg}"
-  if [ -e "/etc/init.d/php5-fpm" ]; then
-    _mrun "service php5-fpm stop"
-    _mrun "update-rc.d -f php5-fpm remove"
+  if [ "${_UPGRADE_MODE}" = "FULL" ]; then
+    _fix_postfix
+    _mrun "${_INSTAPP} ${_MAILSERV}"
+    _mrun "${_INSTAPP} ${_APT_XTRA}"
+    _mrun "${_INSTAPP} ${_EXTRA_LIB_APT}"
+    _mrun "${_INSTAPP} ${_EXTRA_PACKAGES}"
+    _mrun "${_INSTAPP} ${_SYSLOGD}"
+    _EXTRA_APT="tree"
+    _mrun "apt-get install ${_EXTRA_APT} ${_nrmUpArg}"
+    if [ -e "/etc/init.d/php5-fpm" ]; then
+      _mrun "service php5-fpm stop"
+      _mrun "update-rc.d -f php5-fpm remove"
+    fi
   fi
 }
 
@@ -6013,8 +6142,11 @@ _if_proxysql_update() {
       else
         _msg "INFO: Running ProxySQL re-install to ${_PXC_VRN}..."
         _apt_clean_update
-        _mrun "${_INSTAPP} sysbench"
-        _mrun "${_INSTAPP} debconf-utils"
+        for _PKG in sysbench debconf-utils; do
+          if ! _pkg_installed "${_PKG}"; then
+            _mrun "${_INSTAPP} ${_PKG}"
+          fi
+        done
         if dpkg-query -W -f='${Status}' proxysql 2>/dev/null | grep -q "install ok installed"; then
           _mrun "apt-get remove proxysql -y --purge --auto-remove -qq"
         fi
@@ -6024,9 +6156,11 @@ _if_proxysql_update() {
       _isPxy=$(which proxysql 2>&1)
       if [ ! -x "${_isPxy}" ]; then
         _apt_clean_update
-        _mrun "${_INSTAPP} sysbench"
-        _mrun "${_INSTAPP} debconf-utils"
-        _mrun "${_INSTAPP} proxysql"
+        for _PKG in sysbench debconf-utils proxysql; do
+          if ! _pkg_installed "${_PKG}"; then
+            _mrun "${_INSTAPP} ${_PKG}"
+          fi
+        done
       else
         _mrun "apt-get install --only-upgrade ${_nrmUpArg} proxysql"
       fi
@@ -6167,11 +6301,9 @@ _ensure_devuan_base_files() {
             -o Dpkg::Options::=--force-overwrite \
             -o Dpkg::Options::=--force-confdef"
   if [ ! -z "${_BF_CANDIDATE}" ]; then
-    _mrun "apt-get ${_aptAllow} -y ${_APTOPTS} install \
-    base-files="${_BF_CANDIDATE}" --allow-downgrades" 2> /dev/null
+    _mrun "apt-get ${_aptAllow} -y ${_APTOPTS} install base-files="${_BF_CANDIDATE}" --allow-downgrades"
   else
-    _mrun "apt-get ${_aptAllow} -y ${_APTOPTS} install \
-    base-files --allow-downgrades" 2> /dev/null
+    _mrun "apt-get ${_aptAllow} -y ${_APTOPTS} install base-files --allow-downgrades"
   fi
   # If /etc/os-release still says Debian, try to refresh from the installed base-files
   if grep -qi 'ID=debian' /etc/os-release 2>/dev/null; then
@@ -6561,7 +6693,19 @@ _if_major_os_upgrade() {
       touch /etc/php5/conf.d/{redis.ini,suhosin.ini,newrelic.ini}
     fi
     ###
-    for _PKG in php5 php5-cgi php5-curl php5-fpm php5-gd php5-geoip php5-gmp php5-imagick php5-imap php5-ldap php5-mcrypt php5-memcache php5-mysql php5-sqlite php5-xmlrpc php5-xsl; do
+    for _PKG in php5 php5-cgi php5-curl php5-fpm php5-gd php5-geoip php5-gmp php5-imagick php5-imap; do
+      if _pkg_installed "${_PKG}"; then
+        _mrun "apt-get remove ${_PKG} -y --purge --auto-remove -qq"
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "PCKG: ${_PKG} removed as requested."
+        fi
+      else
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "PCKG: ${_PKG} not installed, skipping."
+        fi
+      fi
+    done
+    for _PKG in php5-ldap php5-mcrypt php5-memcache php5-mysql php5-sqlite php5-xmlrpc php5-xsl; do
       if _pkg_installed "${_PKG}"; then
         _mrun "apt-get remove ${_PKG} -y --purge --auto-remove -qq"
         if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -6929,8 +7073,11 @@ _if_major_os_upgrade() {
         echo "deb-src ${_MIRROR} chimaera-security main" >> /etc/apt/sources.list.d/chimaera.list
         echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
         _apt_clean_update
-        _mrun "apt-get install -t chimaera libldap-common ${_aptYesUnth}"
-        _mrun "apt-get install -t chimaera libldap2-dev ${_aptYesUnth}"
+        for _PKG in libldap-common libldap2-dev; do
+          if ! _pkg_installed "${_PKG}"; then
+            _mrun "apt-get install -t chimaera ${_PKG} ${_aptYesUnth}"
+          fi
+        done
         ###
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "TRCK: Locking libldap packages to prevent upgrade on Daedalus"
@@ -7310,29 +7457,21 @@ _sys_packages_update() {
       touch /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini}
       touch /etc/php5/conf.d/{redis.ini,suhosin.ini,newrelic.ini}
     fi
-    _mrun "${_RMAPP} php5 \
-      php5-cgi \
-      php5-curl \
-      php5-fpm \
-      php5-gd \
-      php5-geoip \
-      php5-gmp \
-      php5-imagick \
-      php5-imap \
-      php5-ldap \
-      php5-mcrypt \
-      php5-memcache \
-      php5-mysql \
-      php5-sqlite \
-      php5-xmlrpc \
-      php5-xsl"
-    _mrun "${_RMAPP} phpunit php-pear php-benchmark"
-    _mrun "${_RMAPP} php5-cli php5-common"
-    _mrun "${_RMAPP} php5-apc"
-    _mrun "${_RMAPP} php-apc"
-    _mrun "${_RMAPP} apache2.2-common"
-    _mrun "${_RMAPP} apache2.2-bin"
-    _mrun "aptitude install lsof -y --allow-untrusted"
+    for _PKG in php5 php5-cgi php5-curl php5-fpm php5-gd php5-geoip php5-gmp php5-imagick php5-imap php5-ldap; do
+      if _pkg_installed "${_PKG}"; then
+        _mrun "${_RMAPP} ${_PKG}"
+      fi
+    done
+    for _PKG in php5-mcrypt php5-memcache php5-mysql php5-sqlite php5-xmlrpc php5-xsl phpunit php-pear; do
+      if _pkg_installed "${_PKG}"; then
+        _mrun "${_RMAPP} ${_PKG}"
+      fi
+    done
+    for _PKG in php-benchmark php5-cli php5-common php5-apc php-apc apache2.2-common apache2.2-bin; do
+      if _pkg_installed "${_PKG}"; then
+        _mrun "${_RMAPP} ${_PKG}"
+      fi
+    done
     if [ -e "/etc/php5/conf.d" ]; then
       rm -f /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini}
       rm -f /etc/php5/conf.d/{redis.ini,suhosin.ini,newrelic.ini}
@@ -8012,17 +8151,30 @@ _install_myquick_src() {
       _msg "INFO: Building MyQuick ${_MYQUICK_VRN_FIVE} from sources..."
     fi
     _apt_clean_update
-    _mrun "${_INSTAPP} cmake"
-    _mrun "${_INSTAPP} libssl-dev"
-#     _mrun "${_INSTAPP} libcurl4"
-#     _mrun "${_INSTAPP} libcurl4-gnutls-dev"
+    for _PKG in cmake libssl-dev; do
+      if ! _pkg_installed "${_PKG}"; then
+        _mrun "${_INSTAPP} ${_PKG}"
+      fi
+    done
     if [ "${_DB_SERVER}" = "Percona" ]; then
       if [ "${_DB_SERIES}" = "5.7" ]; then
-        _mrun "${_INSTAPP} libperconaserverclient20 libperconaserverclient20-dev"
+        for _PKG in libperconaserverclient20 libperconaserverclient20-dev; do
+          if ! _pkg_installed "${_PKG}"; then
+            _mrun "${_INSTAPP} ${_PKG}"
+          fi
+        done
       elif [ "${_DB_SERIES}" = "8.0" ]; then
-        _mrun "${_INSTAPP} libperconaserverclient21 libperconaserverclient21-dev"
+        for _PKG in libperconaserverclient21 libperconaserverclient21-dev; do
+          if ! _pkg_installed "${_PKG}"; then
+            _mrun "${_INSTAPP} ${_PKG}"
+          fi
+        done
       else
-        _mrun "${_INSTAPP} libperconaserverclient22 libperconaserverclient22-dev"
+        for _PKG in libperconaserverclient22 libperconaserverclient22-dev; do
+          if ! _pkg_installed "${_PKG}"; then
+            _mrun "${_INSTAPP} ${_PKG}"
+          fi
+        done
       fi
     fi
     ldconfig 2> /dev/null
@@ -8226,7 +8378,9 @@ _xdrago_install_upgrade() {
     if [ ! -z "${_NGINX_DOS_STOP}" ]; then
       _NGINX_DOS_STOP=${_NGINX_DOS_STOP//[^a-zA-Z0-9|-]/}
       if [ ! -z "${_NGINX_DOS_STOP}" ]; then
-        _msg "INFO: Configured _NGINX_DOS_STOP: ${_NGINX_DOS_STOP}"
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "INFO: Configured _NGINX_DOS_STOP: ${_NGINX_DOS_STOP}"
+        fi
         sed -i "s/foobar/${_NGINX_DOS_STOP}/g" \
           /var/xdrago/monitor/check/scan_nginx.pl &> /dev/null
         wait
@@ -8235,7 +8389,9 @@ _xdrago_install_upgrade() {
     if [ ! -z "${_NGINX_DOS_IGNORE}" ]; then
       _NGINX_DOS_IGNORE=${_NGINX_DOS_IGNORE//[^a-zA-Z0-9|-]/}
       if [ ! -z "${_NGINX_DOS_IGNORE}" ]; then
-        _msg "INFO: Configured _NGINX_DOS_IGNORE: ${_NGINX_DOS_IGNORE}"
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "INFO: Configured _NGINX_DOS_IGNORE: ${_NGINX_DOS_IGNORE}"
+        fi
         sed -i "s/dontcount/${_NGINX_DOS_IGNORE}/g" \
           /var/xdrago/monitor/check/scan_nginx.pl &> /dev/null
         wait
@@ -8314,7 +8470,9 @@ _xdrago_install_upgrade() {
     if [ ! -z "${_NGINX_DOS_IGNORE}" ]; then
       _NGINX_DOS_IGNORE=${_NGINX_DOS_IGNORE//[^a-zA-Z0-9|-]/}
       if [ ! -z "${_NGINX_DOS_IGNORE}" ]; then
-        _msg "INFO: Configured _NGINX_DOS_IGNORE: ${_NGINX_DOS_IGNORE}"
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "INFO: Configured _NGINX_DOS_IGNORE: ${_NGINX_DOS_IGNORE}"
+        fi
         sed -i "s/dontcount/${_NGINX_DOS_IGNORE}/g" \
           /var/xdrago/monitor/check/scan_nginx.pl &> /dev/null
         wait
@@ -8544,7 +8702,11 @@ _lshell_install_upgrade() {
       _msg "INFO: Installing Limited Shell ${_LSHELL_VRN}..."
     fi
     _apt_clean_update
-    _mrun "${_INSTAPP} python3-pip"
+    for _PKG in python3-pip; do
+      if ! _pkg_installed "${_PKG}"; then
+        _mrun "${_INSTAPP} ${_PKG}"
+      fi
+    done
     if [ -x "/usr/bin/pip3" ]; then
       _usePip=/usr/bin/pip3
     elif [ -x "/usr/local/bin/pip3" ]; then
@@ -9361,12 +9523,12 @@ _sysctl_update() {
   # Check if conntrack is available
   if ! command -v conntrack &> /dev/null; then
     _apt_clean_update
-    ${_INITINS} conntrack &> /dev/null
+    _mrun "${_INITINS} conntrack"
   fi
   # Check if tcpdump is available
   if ! command -v tcpdump &> /dev/null; then
     _apt_clean_update
-    ${_INITINS} tcpdump &> /dev/null
+    _mrun "${_INITINS} tcpdump"
   fi
   if [ ! -e "/root/.no.sysctl.update.cnf" ] \
     && [ ! -e "${_pthLog}/sysctl.conf-${_xSrl}-${_X_VERSION}-${_NOW}.log" ]; then

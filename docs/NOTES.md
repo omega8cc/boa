@@ -4,10 +4,10 @@
 
 ### Xtras Included with "ALL" Wildcard:
 
-- **ADM**: Adminer DB Manager (installed by default)
-- **CSF**: Firewall (installed by default)
-- **FTP**: Pure-FTPd server with forced FTPS (installed by default)
-- **IMG**: Image Optimize binaries: `advdef`, `advpng`, `jpegoptim`, `jpegtran`, `optipng`, `pngcrush`, `pngquant` (installed by default)
+- **ADM**: Adminer DB Manager (installed by default in LOCAL mode)
+- **CSF**: Firewall (installed by default in PUBLIC mode)
+- **FTP**: Pure-FTPd server with forced FTPS
+- **IMG**: Image Optimize binaries: `advdef`, `advpng`, `jpegoptim`, `jpegtran`, `optipng`, `pngcrush`, `pngquant`
 
 ### Xtras Which Need to be Listed Explicitly:
 
@@ -27,7 +27,7 @@
 ```
 _XTRAS_LIST=""
 _XTRAS_LIST="ALL"
-_XTRAS_LIST="ALL SR9"
+_XTRAS_LIST="ALL SR9 CSS NPM"
 ```
 
 **NOTE**: The `_XTRAS_LIST` array is by default empty for `PUBLIC` and `LOCAL` mode, but `LOCAL` mode is automatically extended to include also `ADM` Adminer, while `PUBLIC` mode is automatically extended to include also `CSF` firewall so it doesn't matter if you have `ALL` or `CSF` keywords listed in the `_XTRAS_LIST` array in your system `/root/.barracuda.cnf` file -- CSF/LFD will be installed automatically.

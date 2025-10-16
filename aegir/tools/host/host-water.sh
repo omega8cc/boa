@@ -434,7 +434,7 @@ _guard_stats() {
     if [ ! -e "${i}/${_FX}" ] && [ -e "${i}/${_FA}" ]; then
       mv -f ${i}/${_FA} ${i}/${_FX}
     fi
-    if [ -e "${i}/${_HA}" ] && [ -e "/usr/var/run${i}" ]; then
+    if [ -e "${i}/${_HA}" ] && [ -e "/usr/run${i}" ]; then
       for _IP in `cat ${i}/${_HA} | cut -d '#' -f1 | sort | uniq`; do
         _IP_RV=
         _NR_TEST="0"
@@ -477,7 +477,7 @@ _guard_stats() {
         [ -e "/etc/csf/csfpost.d/synproxy.sh" ] && synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
       done
     fi
-    if [ -e "${i}/${_WA}" ] && [ -e "/usr/var/run${i}" ]; then
+    if [ -e "${i}/${_WA}" ] && [ -e "/usr/run${i}" ]; then
       for _IP in `cat ${i}/${_WA} | cut -d '#' -f1 | sort | uniq`; do
         _IP_RV=
         _NR_TEST="0"
@@ -520,7 +520,7 @@ _guard_stats() {
         [ -e "/etc/csf/csfpost.d/synproxy.sh" ] && synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
       done
     fi
-    if [ -e "${i}/${_FA}" ] && [ -e "/usr/var/run${i}" ]; then
+    if [ -e "${i}/${_FA}" ] && [ -e "/usr/run${i}" ]; then
       for _IP in `cat ${i}/${_FA} | cut -d '#' -f1 | sort | uniq`; do
         _IP_RV=
         _NR_TEST="0"

@@ -468,7 +468,6 @@ _if_extended_report() {
 
 _send_report() {
   if [ -e "${_barCnf}" ]; then
-    source ${_barCnf}
     _if_hosted_sys
     if [ "${_hostedSys}" = "YES" ]; then
       _MY_EMAIL="$(basename "$0")@omega8.cc"
@@ -486,7 +485,6 @@ _send_report() {
 
 _send_alert() {
   if [ -e "${_barCnf}" ]; then
-    source ${_barCnf}
     _if_hosted_sys
     if [ "${_hostedSys}" = "YES" ]; then
       _MY_EMAIL="$(basename "$0")@omega8.cc"
@@ -1557,6 +1555,25 @@ _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
     # shellcheck disable=SC1091
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
+
+    #
+    # Protect from any barracuda updates when _SKYNET_MODE=OFF
+    if [ ! -z "${_SKYNET_MODE}" ] && [ "${_SKYNET_MODE}" = "OFF" ]; then
+      if [ -n "${SSH_TTY+x}" ]; then
+        echo
+        echo "STATUS: BOA Skynet Agent is Inactive!"
+        echo
+        echo "NOTE: With _SKYNET_MODE=OFF barracuda can not upgrade your system."
+        echo
+        echo "HINT: Please remove the _SKYNET_MODE=OFF line from"
+        echo "HINT: ${_barCnf} to enable it."
+        echo "HINT: Wait 10 minutes before trying barracuda upgrade again."
+        echo "Bye!"
+        echo
+      fi
+      _clean_pid_exit _check_root
+    fi
+
     _find_correct_ip
     _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
 
@@ -1707,9 +1724,6 @@ _check_root() {
     echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
     echo "ERROR: We can not proceed until it is below 90/100"
     _clean_pid_exit _check_root_b
-  fi
-  if [ -e "${_barCnf}" ]; then
-    source ${_barCnf}
   fi
 }
 

@@ -1087,7 +1087,7 @@ _update_agents() {
   fi
 
   if [ ! -e "${_optBin}/ffdevuan" ] \
-    || [ ! -e "${_pthLog}/ffdevuan.sh.ctrl.f96.${_tRee}.${_xSrl}.pid" ]; then
+    || [ ! -e "${_pthLog}/ffdevuan.sh.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
     _CNT=$(pgrep -fc xffdevuan)
     if (( _CNT > 0 )); then
       echo "The xffdevuan is running!"
@@ -1099,7 +1099,7 @@ _update_agents() {
       if [ -e "${_optBin}/ffdevuan" ]; then
         chmod 700 ${_optBin}/ffdevuan
         chown root:root ${_optBin}/ffdevuan
-        touch ${_pthLog}/ffdevuan.sh.ctrl.f96.${_tRee}.${_xSrl}.pid
+        touch ${_pthLog}/ffdevuan.sh.ctrl.f95.${_tRee}.${_xSrl}.pid
       else
         if [ -e "${_optBin}/ffdevuan.old" ]; then
           mv -f ${_optBin}/ffdevuan.old ${_optBin}/ffdevuan
@@ -1125,6 +1125,72 @@ _update_agents() {
       else
         if [ -e "${_optBin}/webserver.old" ]; then
           mv -f ${_optBin}/webserver.old ${_optBin}/webserver
+        fi
+      fi
+    fi
+  fi
+
+  if [ ! -e "${_optBin}/boa" ] \
+    || [ ! -e "${_pthLog}/boa.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
+    _CNT=$(pgrep -fc /local/bin/boa)
+    if (( _CNT > 0 )); then
+      echo "The boa is running!"
+    else
+      if [ -e "${_optBin}/boa" ]; then
+        mv -f ${_optBin}/boa ${_optBin}/boa.old
+      fi
+      curl ${_crlGet} "${_urlHmr}/tools/bin/boa" -o ${_optBin}/boa
+      if [ -e "${_optBin}/boa" ]; then
+        chmod 700 ${_optBin}/boa
+        chown root:root ${_optBin}/boa
+        touch ${_pthLog}/boa.sh.ctrl.f99.${_tRee}.${_xSrl}.pid
+      else
+        if [ -e "${_optBin}/boa.old" ]; then
+          mv -f ${_optBin}/boa.old ${_optBin}/boa
+        fi
+      fi
+    fi
+  fi
+
+  if [ ! -e "${_optBin}/barracuda" ] \
+    || [ ! -e "${_pthLog}/barracuda.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
+    _CNT=$(pgrep -fc /local/bin/barracuda)
+    if (( _CNT > 0 )); then
+      echo "The barracuda is running!"
+    else
+      if [ -e "${_optBin}/barracuda" ]; then
+        mv -f ${_optBin}/barracuda ${_optBin}/barracuda.old
+      fi
+      curl ${_crlGet} "${_urlHmr}/tools/bin/barracuda" -o ${_optBin}/barracuda
+      if [ -e "${_optBin}/barracuda" ]; then
+        chmod 700 ${_optBin}/barracuda
+        chown root:root ${_optBin}/barracuda
+        touch ${_pthLog}/barracuda.sh.ctrl.f99.${_tRee}.${_xSrl}.pid
+      else
+        if [ -e "${_optBin}/barracuda.old" ]; then
+          mv -f ${_optBin}/barracuda.old ${_optBin}/barracuda
+        fi
+      fi
+    fi
+  fi
+
+  if [ ! -e "${_optBin}/octopus" ] \
+    || [ ! -e "${_pthLog}/octopus.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
+    _CNT=$(pgrep -fc /local/bin/octopus)
+    if (( _CNT > 0 )); then
+      echo "The octopus is running!"
+    else
+      if [ -e "${_optBin}/octopus" ]; then
+        mv -f ${_optBin}/octopus ${_optBin}/octopus.old
+      fi
+      curl ${_crlGet} "${_urlHmr}/tools/bin/octopus" -o ${_optBin}/octopus
+      if [ -e "${_optBin}/octopus" ]; then
+        chmod 700 ${_optBin}/octopus
+        chown root:root ${_optBin}/octopus
+        touch ${_pthLog}/octopus.sh.ctrl.f99.${_tRee}.${_xSrl}.pid
+      else
+        if [ -e "${_optBin}/octopus.old" ]; then
+          mv -f ${_optBin}/octopus.old ${_optBin}/octopus
         fi
       fi
     fi
@@ -1512,13 +1578,13 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/valkey.sh.ctrl.f90.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/valkey.sh.ctrl.f89.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/valkey.sh /var/xdrago/monitor/check/valkey.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/valkey.sh" -o /var/xdrago/monitor/check/valkey.sh
     if [ -e "/var/xdrago/monitor/check/valkey.sh" ]; then
       chmod 700 /var/xdrago/monitor/check/valkey.sh
       chown root:root /var/xdrago/monitor/check/valkey.sh
-      touch ${_pthLog}/valkey.sh.ctrl.f90.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/valkey.sh.ctrl.f89.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/monitor/check/valkey.sh.old /var/xdrago/monitor/check/valkey.sh
     fi
@@ -1526,13 +1592,13 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/redis.sh.ctrl.f92.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/redis.sh.ctrl.f91.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/redis.sh /var/xdrago/monitor/check/redis.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/redis.sh" -o /var/xdrago/monitor/check/redis.sh
     if [ -e "/var/xdrago/monitor/check/redis.sh" ]; then
       chmod 700 /var/xdrago/monitor/check/redis.sh
       chown root:root /var/xdrago/monitor/check/redis.sh
-      touch ${_pthLog}/redis.sh.ctrl.f92.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/redis.sh.ctrl.f91.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/monitor/check/redis.sh.old /var/xdrago/monitor/check/redis.sh
     fi
@@ -1554,13 +1620,13 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/unbound.sh.ctrl.f88.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/unbound.sh.ctrl.f87.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/unbound.sh /var/xdrago/monitor/check/unbound.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/unbound.sh" -o /var/xdrago/monitor/check/unbound.sh
     if [ -e "/var/xdrago/monitor/check/unbound.sh" ]; then
       chmod 700 /var/xdrago/monitor/check/unbound.sh
       chown root:root /var/xdrago/monitor/check/unbound.sh
-      touch ${_pthLog}/unbound.sh.ctrl.f88.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/unbound.sh.ctrl.f87.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/monitor/check/unbound.sh.old /var/xdrago/monitor/check/unbound.sh
     fi
@@ -1878,13 +1944,13 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/clear.sh.ctrl.f86.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/clear.sh.ctrl.f85.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/clear.sh /var/xdrago/clear.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/clear.sh" -o /var/xdrago/clear.sh
     if [ -e "/var/xdrago/clear.sh" ]; then
       chmod 700 /var/xdrago/clear.sh
       chown root:root /var/xdrago/clear.sh
-      touch ${_pthLog}/clear.sh.ctrl.f86.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/clear.sh.ctrl.f85.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/clear.sh.old /var/xdrago/clear.sh
     fi
@@ -1892,7 +1958,7 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/autoupboa.ctrl.f98.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/autoupboa.ctrl.f97.${_tRee}.${_xSrl}.pid" ]; then
     _CNT=$(pgrep -fc autoupboa)
     if (( _CNT > 0 )); then
       echo "The autoupboa is running!"
@@ -1904,7 +1970,7 @@ _update_agents() {
       if [ -e "${_optBin}/autoupboa" ]; then
         chmod 700 ${_optBin}/autoupboa
         chown root:root ${_optBin}/autoupboa
-        touch ${_pthLog}/autoupboa.ctrl.f98.${_tRee}.${_xSrl}.pid
+        touch ${_pthLog}/autoupboa.ctrl.f97.${_tRee}.${_xSrl}.pid
       else
         if [ -e "${_optBin}/autoupboa.old" ]; then
           mv -f ${_optBin}/autoupboa.old ${_optBin}/autoupboa
@@ -4519,8 +4585,8 @@ _boa_setup() {
   _check_dns_settings
 
   if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
-    [ ! -e "/run/unbound" ] && mkdir -p /run/unbound
-    [ -e "/run/unbound" ] && chown -R unbound:unbound /run/unbound
+    [ -d /run/unbound ] || mkdir -p /run/unbound
+    [ -d /run/unbound ] && chown -R unbound:unbound /run/unbound
   fi
 
   if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
@@ -4901,10 +4967,14 @@ if [ "$(id -u)" -eq 0 ]; then
     && [ -e "/var/xdrago" ]; then
     if [ ! -z "${_SKYNET_MODE}" ] && [ "${_SKYNET_MODE}" = "OFF" ]; then
       if [ -n "${SSH_TTY+x}" ]; then
-        echo "STATUS: Skynet Agent is Inactive!"
-        echo "STATUS: Please remove the _SKYNET_MODE=OFF line from"
-        echo "STATUS: ${_barCnf} to enable me again."
+        echo
+        echo "STATUS: BOA Skynet Agent is Inactive!"
+        echo
+        echo "HINT: Please remove the _SKYNET_MODE=OFF line from"
+        echo "HINT: ${_barCnf} to enable me again."
+        echo
         echo "NOTE: Critically important BOA tools will be still updated"
+        echo
         _if_update_boa_key_tools_only verbose
         exit 0
       else
@@ -4913,9 +4983,12 @@ if [ "$(id -u)" -eq 0 ]; then
       fi
     else
       if [ -n "${SSH_TTY+x}" ]; then
-        echo "STATUS: Skynet Agent is Active, OK!"
-        echo "STATUS: You can add the _SKYNET_MODE=OFF line in"
-        echo "STATUS: ${_barCnf} to disable me, if needed."
+        echo
+        echo "STATUS: BOA Skynet Agent is Active, OK!"
+        echo
+        echo "HINT: You can add the _SKYNET_MODE=OFF line in"
+        echo "HINT: ${_barCnf} to disable me, if needed."
+        echo
       fi
     fi
   else
