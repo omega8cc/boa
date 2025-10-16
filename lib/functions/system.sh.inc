@@ -93,6 +93,9 @@ _if_fix_iptables_symlinks() {
 #
 # Re-install curl if broken.
 _if_reinstall_curl_src() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _if_reinstall_curl_src"
+  fi
   _CURL_VRN=8.16.0
   if ! command -v lsb_release &> /dev/null; then
     _mrun "apt-get update -qq"
@@ -200,14 +203,14 @@ _systemd_remove_apt_cmd() {
 #
 # Detect and prepare for major OS upgrade.
 _define_loc_osr() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _define_loc_osr"
+  fi
   _apt_clean_update_no_releaseinfo_change
   _mrun "apt-get upgrade ${_nrmUpArg}"
   _mrun "apt-get install lsb-release ${_nrmUpArg}"
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "PROC: _define_loc_osr"
-  fi
   _LOC_OS_CODE=
   _NEW_OS_CODE=
   _TGT_OSN=
@@ -4631,7 +4634,6 @@ _curl_install_src() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _curl_install_src"
   fi
-
   if ! command -v lsb_release &> /dev/null; then
     apt-get update -qq &> /dev/null
     apt-get install lsb-release ${_aptYesUnth} -qq &> /dev/null
