@@ -6685,7 +6685,19 @@ _if_major_os_upgrade() {
       touch /etc/php5/conf.d/{redis.ini,suhosin.ini,newrelic.ini}
     fi
     ###
-    for _PKG in php5 php5-cgi php5-curl php5-fpm php5-gd php5-geoip php5-gmp php5-imagick php5-imap php5-ldap php5-mcrypt php5-memcache php5-mysql php5-sqlite php5-xmlrpc php5-xsl; do
+    for _PKG in php5 php5-cgi php5-curl php5-fpm php5-gd php5-geoip php5-gmp php5-imagick php5-imap; do
+      if _pkg_installed "${_PKG}"; then
+        _mrun "apt-get remove ${_PKG} -y --purge --auto-remove -qq"
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "PCKG: ${_PKG} removed as requested."
+        fi
+      else
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "PCKG: ${_PKG} not installed, skipping."
+        fi
+      fi
+    done
+    for _PKG in php5-ldap php5-mcrypt php5-memcache php5-mysql php5-sqlite php5-xmlrpc php5-xsl; do
       if _pkg_installed "${_PKG}"; then
         _mrun "apt-get remove ${_PKG} -y --purge --auto-remove -qq"
         if [ "${_DEBUG_MODE}" = "YES" ]; then
