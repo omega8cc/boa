@@ -5800,69 +5800,79 @@ _run_aptitude_deps_install() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _run_aptitude_deps_install"
   fi
+  : "${_UPGRADE_MODE:=FAST}"
+  if [ "${_STATUS}" = "INIT" ]; then
+    _UPGRADE_MODE=FULL
+  fi
   _if_to_do_fix
-  if [ "${_OS_DIST}" = "Devuan" ]; then
-    ${_INITINS} devuan-keyring &> /dev/null
-    ${_INITINS} devuan-keyring &> /dev/null
-  elif [ "${_OS_DIST}" = "Debian" ]; then
-    ${_INITINS} debian-keyring debian-archive-keyring &> /dev/null
-    ${_INITINS} debian-keyring debian-archive-keyring &> /dev/null
+  if [ "${_UPGRADE_MODE}" = "FULL" ]; then
+    if [ "${_OS_DIST}" = "Devuan" ]; then
+      _mrun "${_INITINS} devuan-keyring"
+      _mrun "${_INITINS} devuan-keyring"
+    elif [ "${_OS_DIST}" = "Debian" ]; then
+      _mrun "${_INITINS} debian-keyring debian-archive-keyring"
+      _mrun "${_INITINS} debian-keyring debian-archive-keyring"
+    fi
   fi
   if [ "${_STATUS}" = "INIT" ]; then
     _msg "INFO: Installing a large list of libraries and tools..."
   elif [ "${_STATUS}" = "UPGRADE" ]; then
-    _msg "INFO: Upgrading a large list of libraries and tools..."
-  fi
-  _msg "WAIT: This may take a while, please wait..."
-  _apt_clean_update
-  _run_xtrabackup_cleanup
-  _mrun "apt-get autoremove -y"
-  _mrun "${_INSTAPP} build-essential libsasl2-modules"
-  _mrun "${_INSTAPP} time vim cvs makepasswd"
-  _mrun "${_INSTAPP} man-db dnsutils sudo symlinks iptables"
-  _mrun "${_INSTAPP} autoconf automake autotools-dev m4 bc"
-  if [ ! -x "/usr/local/bin/curl" ]; then
-    _mrun "apt-get build-dep curl -y"
-    _mrun "${_INSTAPP} curl"
-  fi
-  # Check for libssl1.0-dev and remove conditionally
-  if dpkg-query -W -f='${Status}' libssl1.0-dev 2>/dev/null | grep -q "install ok installed"; then
-    _mrun "apt-get remove libssl1.0-dev -y --purge --auto-remove -qq"
-  fi
-  _mrun "${_INSTAPP} libssl-dev"
-  _mrun "${_INSTAPP} libc-client2007e libc-client2007e-dev"
-  _mrun "${_INSTAPP} mcrypt libc-client-dev"
-  if [ "${_OS_DIST}" = "Devuan" ]; then
-    _mrun "${_INSTAPP} apticron aptitude apt-listchanges"
-  else
-    _mrun "${_INSTAPP} apticron aptitude"
-    _mrun "dpkg --remove --force-remove-reinstreq apt-listchanges"
-  fi
-  _mrun "${_INSTAPP} sysstat telnet cron gnupg2 gnupg"
-  _mrun "${_INSTAPP} zip unzip unrtf wdiff pwgen flex re2c"
-  _mrun "${_INSTAPP} rsync strace ntpdate librsync-dev"
-  _mrun "${_INSTAPP} mc whois zlib1g zlib1g-dev"
-  _mrun "${_INSTAPP} sqlite3 libsqlite3-dev s4cmd"
-  _mrun "${_INSTAPP} ssh ssl-cert libpam-umask shtool"
-  _mrun "${_INSTAPP} xml-core xml2 xpdf libtool rrdtool"
-  _mrun "${_INSTAPP} ncurses-dev ncurses-term sipcalc"
-  _OS_LIST="daedalus chimaera bullseye bookworm"
-  for e in ${_OS_LIST}; do
-    if [ "${e}" = "${_OS_CODE}" ]; then
-      _mrun "${_INSTAPP} ncal"
+    if [ "${_UPGRADE_MODE}" = "FULL" ]; then
+      _msg "INFO: Upgrading a large list of libraries and tools..."
     fi
-  done
-  _mrun "${_INSTAPP} libzip-dev libwww-perl"
-  _mrun "${_INSTAPP} libfontconfig1 libfreetype6 libfreetype6-dev"
-  _mrun "${_INSTAPP} libfribidi0 libgeoip-dev libgeoip1 libgmp3-dev"
-  _mrun "${_INSTAPP} libonig-dev libpq5 libxml2-dev libxpm4"
-  _mrun "${_INSTAPP} libxslt-dev libxslt1-dev libxslt1.1 subversion"
-  _mrun "${_INSTAPP} libaprutil1 libapr1 ldap-utils ipset"
-  _mrun "${_INSTAPP} pdftk patchutils p7zip-full fontconfig-config"
-  _mrun "${_INSTAPP} bison catdoc cython3 geoip-database gettext"
-  _mrun "${_INSTAPP} clamav clamav-base clamav-daemon clamdscan"
-  _mrun "${_INSTAPP} ghostscript htop lemon lftp nano"
-  _mrun "${_INSTAPP} python3-full python3-dev python3-debian python3-magic"
+  fi
+  if [ "${_UPGRADE_MODE}" = "FULL" ]; then
+    _msg "WAIT: This may take a while, please wait..."
+    _apt_clean_update
+    _run_xtrabackup_cleanup
+    _mrun "apt-get autoremove -y"
+    _mrun "${_INSTAPP} build-essential libsasl2-modules"
+    _mrun "${_INSTAPP} time vim cvs makepasswd"
+    _mrun "${_INSTAPP} man-db dnsutils sudo symlinks iptables"
+    _mrun "${_INSTAPP} autoconf automake autotools-dev m4 bc"
+    if [ ! -x "/usr/local/bin/curl" ]; then
+      _mrun "apt-get build-dep curl -y"
+      _mrun "${_INSTAPP} curl"
+    fi
+    # Check for libssl1.0-dev and remove conditionally
+    if dpkg-query -W -f='${Status}' libssl1.0-dev 2>/dev/null | grep -q "install ok installed"; then
+      _mrun "apt-get remove libssl1.0-dev -y --purge --auto-remove -qq"
+    fi
+    _mrun "${_INSTAPP} libssl-dev"
+    _mrun "${_INSTAPP} libc-client2007e libc-client2007e-dev"
+    _mrun "${_INSTAPP} mcrypt libc-client-dev"
+    if [ "${_OS_DIST}" = "Devuan" ]; then
+      _mrun "${_INSTAPP} apticron aptitude apt-listchanges"
+    else
+      _mrun "${_INSTAPP} apticron aptitude"
+      _mrun "dpkg --remove --force-remove-reinstreq apt-listchanges"
+    fi
+    _mrun "${_INSTAPP} sysstat telnet cron gnupg2 gnupg"
+    _mrun "${_INSTAPP} zip unzip unrtf wdiff pwgen flex re2c"
+    _mrun "${_INSTAPP} rsync strace ntpdate librsync-dev"
+    _mrun "${_INSTAPP} mc whois zlib1g zlib1g-dev"
+    _mrun "${_INSTAPP} sqlite3 libsqlite3-dev s4cmd"
+    _mrun "${_INSTAPP} ssh ssl-cert libpam-umask shtool"
+    _mrun "${_INSTAPP} xml-core xml2 xpdf libtool rrdtool"
+    _mrun "${_INSTAPP} ncurses-dev ncurses-term sipcalc"
+    _OS_LIST="daedalus chimaera bullseye bookworm"
+    for e in ${_OS_LIST}; do
+      if [ "${e}" = "${_OS_CODE}" ]; then
+        _mrun "${_INSTAPP} ncal"
+      fi
+    done
+    _mrun "${_INSTAPP} libzip-dev libwww-perl"
+    _mrun "${_INSTAPP} libfontconfig1 libfreetype6 libfreetype6-dev"
+    _mrun "${_INSTAPP} libfribidi0 libgeoip-dev libgeoip1 libgmp3-dev"
+    _mrun "${_INSTAPP} libonig-dev libpq5 libxml2-dev libxpm4"
+    _mrun "${_INSTAPP} libxslt-dev libxslt1-dev libxslt1.1 subversion"
+    _mrun "${_INSTAPP} libaprutil1 libapr1 ldap-utils ipset"
+    _mrun "${_INSTAPP} pdftk patchutils p7zip-full fontconfig-config"
+    _mrun "${_INSTAPP} bison catdoc cython3 geoip-database gettext"
+    _mrun "${_INSTAPP} clamav clamav-base clamav-daemon clamdscan"
+    _mrun "${_INSTAPP} ghostscript htop lemon lftp nano"
+    _mrun "${_INSTAPP} python3-full python3-dev python3-debian python3-magic"
+  fi
   if [ -e "/root/.dont.use.fancy.bash.login.cnf" ] \
     && [ -e "/usr/bin/screenfetch" ]; then
     ###
@@ -5882,17 +5892,19 @@ _run_aptitude_deps_install() {
   else
     _mrun "${_INSTAPP} toilet figlet screenfetch"
   fi
-  _fix_postfix
-  _mrun "${_INSTAPP} ${_MAILSERV}"
-  _mrun "${_INSTAPP} ${_APT_XTRA}"
-  _mrun "${_INSTAPP} ${_EXTRA_LIB_APT}"
-  _mrun "${_INSTAPP} ${_EXTRA_PACKAGES}"
-  _mrun "${_INSTAPP} ${_SYSLOGD}"
-  _EXTRA_APT="tree"
-  _mrun "apt-get install ${_EXTRA_APT} ${_nrmUpArg}"
-  if [ -e "/etc/init.d/php5-fpm" ]; then
-    _mrun "service php5-fpm stop"
-    _mrun "update-rc.d -f php5-fpm remove"
+  if [ "${_UPGRADE_MODE}" = "FULL" ]; then
+    _fix_postfix
+    _mrun "${_INSTAPP} ${_MAILSERV}"
+    _mrun "${_INSTAPP} ${_APT_XTRA}"
+    _mrun "${_INSTAPP} ${_EXTRA_LIB_APT}"
+    _mrun "${_INSTAPP} ${_EXTRA_PACKAGES}"
+    _mrun "${_INSTAPP} ${_SYSLOGD}"
+    _EXTRA_APT="tree"
+    _mrun "apt-get install ${_EXTRA_APT} ${_nrmUpArg}"
+    if [ -e "/etc/init.d/php5-fpm" ]; then
+      _mrun "service php5-fpm stop"
+      _mrun "update-rc.d -f php5-fpm remove"
+    fi
   fi
 }
 
