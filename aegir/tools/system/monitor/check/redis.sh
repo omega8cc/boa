@@ -19,6 +19,9 @@ _check_root() {
 }
 _check_root
 
+[ -d /run/redis ] || mkdir -p /run/redis
+[ -d /run/redis ] && chown -R redis:redis /run/redis
+
 # Run only on fully installed system
 [ ! -e "/var/log/boa/reset_no_new_password.pid" ] && exit 0
 
