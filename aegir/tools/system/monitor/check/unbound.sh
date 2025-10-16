@@ -255,8 +255,8 @@ _unbound_health_check_fix() {
         return 0
       fi
     fi
-    [ ! -e "/run/unbound" ] && mkdir -p /run/unbound
-    [ -e "/run/unbound" ] && chown -R unbound:unbound /run/unbound
+    [ -d /run/unbound ] || mkdir -p /run/unbound
+    [ -d /run/unbound ] && chown -R unbound:unbound /run/unbound
     mkdir -p /etc/resolvconf/run/interface
     echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.unbound
     [ -e "/etc/resolvconf/update.d/unbound" ] && chmod 644 /etc/resolvconf/update.d/unbound

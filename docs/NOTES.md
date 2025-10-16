@@ -27,7 +27,7 @@
 ```
 _XTRAS_LIST=""
 _XTRAS_LIST="ALL"
-_XTRAS_LIST="ALL SR9"
+_XTRAS_LIST="ALL SR9 CSS NPM"
 ```
 
 **NOTE**: The `_XTRAS_LIST` array is by default empty for `PUBLIC` and `LOCAL` mode, but `LOCAL` mode is automatically extended to include also `ADM` Adminer, while `PUBLIC` mode is automatically extended to include also `CSF` firewall so it doesn't matter if you have `ALL` or `CSF` keywords listed in the `_XTRAS_LIST` array in your system `/root/.barracuda.cnf` file -- CSF/LFD will be installed automatically.

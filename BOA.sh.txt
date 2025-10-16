@@ -1578,13 +1578,13 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/valkey.sh.ctrl.f90.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/valkey.sh.ctrl.f89.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/valkey.sh /var/xdrago/monitor/check/valkey.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/valkey.sh" -o /var/xdrago/monitor/check/valkey.sh
     if [ -e "/var/xdrago/monitor/check/valkey.sh" ]; then
       chmod 700 /var/xdrago/monitor/check/valkey.sh
       chown root:root /var/xdrago/monitor/check/valkey.sh
-      touch ${_pthLog}/valkey.sh.ctrl.f90.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/valkey.sh.ctrl.f89.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/monitor/check/valkey.sh.old /var/xdrago/monitor/check/valkey.sh
     fi
@@ -1592,13 +1592,13 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/redis.sh.ctrl.f92.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/redis.sh.ctrl.f91.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/redis.sh /var/xdrago/monitor/check/redis.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/redis.sh" -o /var/xdrago/monitor/check/redis.sh
     if [ -e "/var/xdrago/monitor/check/redis.sh" ]; then
       chmod 700 /var/xdrago/monitor/check/redis.sh
       chown root:root /var/xdrago/monitor/check/redis.sh
-      touch ${_pthLog}/redis.sh.ctrl.f92.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/redis.sh.ctrl.f91.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/monitor/check/redis.sh.old /var/xdrago/monitor/check/redis.sh
     fi
@@ -1620,13 +1620,13 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/unbound.sh.ctrl.f88.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/unbound.sh.ctrl.f87.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/unbound.sh /var/xdrago/monitor/check/unbound.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/unbound.sh" -o /var/xdrago/monitor/check/unbound.sh
     if [ -e "/var/xdrago/monitor/check/unbound.sh" ]; then
       chmod 700 /var/xdrago/monitor/check/unbound.sh
       chown root:root /var/xdrago/monitor/check/unbound.sh
-      touch ${_pthLog}/unbound.sh.ctrl.f88.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/unbound.sh.ctrl.f87.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/monitor/check/unbound.sh.old /var/xdrago/monitor/check/unbound.sh
     fi
@@ -4585,8 +4585,8 @@ _boa_setup() {
   _check_dns_settings
 
   if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
-    [ ! -e "/run/unbound" ] && mkdir -p /run/unbound
-    [ -e "/run/unbound" ] && chown -R unbound:unbound /run/unbound
+    [ -d /run/unbound ] || mkdir -p /run/unbound
+    [ -d /run/unbound ] && chown -R unbound:unbound /run/unbound
   fi
 
   if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \

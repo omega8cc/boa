@@ -267,7 +267,7 @@ _remove_pid_file() {
 _remove_stale_multiback_pid() {
   local _service=$1
   local _user=$2
-  _multiback_pidfile="/var/run/duplicity_${_service}_${_user}.pid"
+  _multiback_pidfile="/run/duplicity_${_service}_${_user}.pid"
   if [ -f "${_multiback_pidfile}" ]; then
     _old_pid=$(cat "${_multiback_pidfile}")
     if [ -n "${_old_pid}" ] && ! kill -0 "${_old_pid}" 2>/dev/null; then
@@ -979,7 +979,7 @@ export _USER=$3
 export _RESTORE_TARGET="${4:-/var/backups/restored/}"
 export _RESTORE_PATH="${5:-}"
 export _RESTORE_TIME="${6:-}"
-export _PIDFILE="/var/run/duplicity_${_SERVICE}_${_USER}.pid"
+export _PIDFILE="/run/duplicity_${_SERVICE}_${_USER}.pid"
 # Default values
 export _DEFAULT_KEEP_WITHIN="3M"            # Default: 3 month
 export _DEFAULT_FULL_BACKUP_FREQUENCY="28D" # Default: 28 days

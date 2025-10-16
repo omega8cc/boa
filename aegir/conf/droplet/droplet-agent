@@ -12,7 +12,7 @@ _PATHS="/usr/bin/droplet-agent /usr/local/bin/droplet-agent /opt/digitalocean/bi
 _DAEMON=""
 _NAME="droplet-agent"
 _DESC="DigitalOcean Droplet Agent"
-_PIDFILE="/var/run/${_NAME}.pid"
+_PIDFILE="/run/${_NAME}.pid"
 _USER="root"
 _NICE="0"
 
