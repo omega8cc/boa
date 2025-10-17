@@ -1325,6 +1325,11 @@ _barracuda_cnf_cleanup() {
   ###
   ### legacy config cleanup start
   ###
+  _LOCAL_UBUNTU_MIRROR_TEST=$(grep _LOCAL_UBUNTU_MIRROR ${_barCnf} 2>&1)
+  if [[ "${_LOCAL_UBUNTU_MIRROR_TEST}" =~ "_LOCAL_UBUNTU_MIRROR" ]]; then
+    sed -i "s/^_LOCAL_UBUNTU_MIRROR.*//g" ${_barCnf}
+    wait
+  fi
   _DB_ENGINE_TEST=$(grep _DB_ENGINE ${_barCnf} 2>&1)
   if [[ "${_DB_ENGINE_TEST}" =~ "_DB_ENGINE" ]]; then
     sed -i "s/^_DB_ENGINE.*//g" ${_barCnf}
@@ -2589,6 +2594,11 @@ _barracuda_cnf() {
     _DB_SERIES_TEST=$(grep _DB_SERIES ${_barCnf} 2>&1)
     if [[ ! "${_DB_SERIES_TEST}" =~ "_DB_SERIES" ]]; then
       echo "_DB_SERIES=${_DB_SERIES}" >> ${_barCnf}
+    fi
+
+    _LOCAL_DEVUAN_MIRROR_TEST=$(grep _LOCAL_DEVUAN_MIRROR ${_barCnf} 2>&1)
+    if [[ ! "${_LOCAL_DEVUAN_MIRROR_TEST}" =~ "_LOCAL_DEVUAN_MIRROR" ]]; then
+      echo "_LOCAL_DEVUAN_MIRROR=${_LOCAL_DEVUAN_MIRROR}" >> ${_barCnf}
     fi
 
     if [ -e "/etc/init.d/tomcat" ]; then
