@@ -2591,6 +2591,11 @@ _barracuda_cnf() {
       echo "_DB_SERIES=${_DB_SERIES}" >> ${_barCnf}
     fi
 
+    _LOCAL_DEVUAN_MIRROR_TEST=$(grep _LOCAL_DEVUAN_MIRROR ${_barCnf} 2>&1)
+    if [[ ! "${_LOCAL_DEVUAN_MIRROR_TEST}" =~ "_LOCAL_DEVUAN_MIRROR" ]]; then
+      echo "_LOCAL_DEVUAN_MIRROR=${_LOCAL_DEVUAN_MIRROR}" >> ${_barCnf}
+    fi
+
     if [ -e "/etc/init.d/tomcat" ]; then
       echo "_TOMCAT_TO_JETTY=YES" >> ${_barCnf}
     fi
