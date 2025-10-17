@@ -11,12 +11,14 @@ _wgetGet="--max-redirect=3 --no-check-certificate -q --tries=9 --wait=9 --user-a
 
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
+    # shellcheck disable=SC1091
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
+
     # Sanitize to allow only digits and minus sign
     export _B_NICE=${_B_NICE//[^0-9-]/}
 
     # Validate and set default if necessary
-    if ! [[ "$_B_NICE" =~ ^-?[0-9]+$ ]]; then
+    if ! [[ "${_B_NICE}" =~ ^-?[0-9]+$ ]]; then
       _B_NICE=0
     fi
 
@@ -60,6 +62,7 @@ _FIVE_MINUTES=$(date --date '5 minutes ago' +"%Y-%m-%d %H:%M:%S")
 find /run/solr_jetty.pid -mtime +0 -type f -not -newermt "${_FIVE_MINUTES}" -exec rm -rf {} \; &> /dev/null
 find /run/fmp_wait.pid -mtime +0 -type f -not -newermt "${_FIVE_MINUTES}" -exec rm -rf {} \; &> /dev/null
 find /run/restarting_fmp_wait.pid  -mtime +0 -type f -not -newermt "${_FIVE_MINUTES}" -exec rm -rf {} \; &> /dev/null
+find /run/boa_cron_wait.pid  -mtime +0 -type f -not -newermt "${_FIVE_MINUTES}" -exec rm -rf {} \; &> /dev/null
 
 _ONE_HOUR=$(date --date '1 hour ago' +"%Y-%m-%d %H:%M:%S")
 find /run/mysql_restart_running.pid -mtime +0 -type f -not -newermt "${_ONE_HOUR}" -exec rm -rf {} \; &> /dev/null
@@ -83,7 +86,6 @@ _find_fast_mirror_early() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     [ ! -e "/run/clear_m.pid" ] && _apt_clean_update
-    apt-get install netcat ${_aptYesUnth} 2> /dev/null
     apt-get install netcat-traditional ${_aptYesUnth} 2> /dev/null
     wait
   fi
@@ -102,7 +104,6 @@ _find_fast_mirror_early() {
         csf -a 172.105.168.103 ao.files.aegir.cc &> /dev/null
         if [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
           csf -ra &> /dev/null
-          wait
           synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
         else
           csf -r &> /dev/null
@@ -112,6 +113,7 @@ _find_fast_mirror_early() {
     if [ -e "${_ffList}" ]; then
       _BROKEN_FFMIRR_TEST=$(grep "stuff" ${_ffMirr} 2>&1)
       if [[ "${_BROKEN_FFMIRR_TEST}" =~ "stuff" ]]; then
+        _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _USE_MIR="${_CHECK_MIRROR}"
         [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.aegir.cc"
@@ -129,7 +131,7 @@ _find_fast_mirror_early() {
 }
 
 _if_reinstall_curl_src() {
-  _CURL_VRN=8.14.1
+  _CURL_VRN=8.16.0
   if ! command -v lsb_release &> /dev/null; then
     apt-get update -qq &> /dev/null
     apt-get install lsb-release ${_aptYesUnth} -qq &> /dev/null
@@ -147,7 +149,10 @@ _if_reinstall_curl_src() {
     fi
     echo "curl install" | dpkg --set-selections 2> /dev/null
     [ ! -e "/run/clear_m.pid" ] && _apt_clean_update
-    apt-get remove libssl1.0-dev -y --purge --auto-remove -qq 2> /dev/null
+    # Check for libssl1.0-dev and remove conditionally
+    if dpkg-query -W -f='${Status}' libssl1.0-dev 2>/dev/null | grep -q "install ok installed"; then
+      apt-get remove libssl1.0-dev -y --purge --auto-remove -qq 2>/dev/null
+    fi
     apt-get autoremove -y 2> /dev/null
     apt-get install libssl-dev ${_aptYesUnth} -qq 2> /dev/null
     apt-get install libc-client2007e libc-client2007e-dev ${_aptYesUnth} -qq 2> /dev/null
@@ -221,7 +226,6 @@ _check_dns_curl() {
 
 if [ ! -e "/run/boa_run.pid" ]; then
   _check_dns_curl
-  [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
   rm -f /tmp/*error*
   wget -qO- http://${_USE_MIR}/versions/${_tRee}/boa/BOA.sh.txt | bash
   wait
@@ -271,8 +275,7 @@ _if_fix_locked_sshd() {
   _SSH_LOG="/var/log/auth.log"
   if [ `tail --lines=30 ${_SSH_LOG} \
     | grep --count "error: Bind to port 22"` -gt 0 ]; then
-    # killall -9 sshd-session
-    kill -9 $(ps aux | grep '[s]tartups' | awk '{print $2}')
+    pkill -9 -f /usr/sbin/sshd || true
     service ssh start
   fi
 }
@@ -286,7 +289,7 @@ if [ -e "/root/.remote_backups/schedule/backup_schedule.txt" ]; then
     rm -f /root/.remote_backups/paths/.*
     [ -x "/usr/local/bin/dcysetup" ] && bash /usr/local/bin/dcysetup update &> /dev/null
   fi
-  _CNT=$(pgrep -fc "[d]uplicity")
+  _CNT=$(pgrep -fc duplicity)
   if (( _CNT > 0 )); then
     echo "[$(date)] Active duplicity process detected, will try again later..." >> /var/log/mybackup_waiting_queue.log
   else

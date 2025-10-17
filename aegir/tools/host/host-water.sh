@@ -434,7 +434,7 @@ _guard_stats() {
     if [ ! -e "${i}/${_FX}" ] && [ -e "${i}/${_FA}" ]; then
       mv -f ${i}/${_FA} ${i}/${_FX}
     fi
-    if [ -e "${i}/${_HA}" ] && [ -e "/usr/var/run${i}" ]; then
+    if [ -e "${i}/${_HA}" ] && [ -e "/usr/run${i}" ]; then
       for _IP in `cat ${i}/${_HA} | cut -d '#' -f1 | sort | uniq`; do
         _IP_RV=
         _NR_TEST="0"
@@ -477,7 +477,7 @@ _guard_stats() {
         [ -e "/etc/csf/csfpost.d/synproxy.sh" ] && synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
       done
     fi
-    if [ -e "${i}/${_WA}" ] && [ -e "/usr/var/run${i}" ]; then
+    if [ -e "${i}/${_WA}" ] && [ -e "/usr/run${i}" ]; then
       for _IP in `cat ${i}/${_WA} | cut -d '#' -f1 | sort | uniq`; do
         _IP_RV=
         _NR_TEST="0"
@@ -520,7 +520,7 @@ _guard_stats() {
         [ -e "/etc/csf/csfpost.d/synproxy.sh" ] && synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
       done
     fi
-    if [ -e "${i}/${_FA}" ] && [ -e "/usr/var/run${i}" ]; then
+    if [ -e "${i}/${_FA}" ] && [ -e "/usr/run${i}" ]; then
       for _IP in `cat ${i}/${_FA} | cut -d '#' -f1 | sort | uniq`; do
         _IP_RV=
         _NR_TEST="0"
@@ -624,12 +624,11 @@ if [ -e "/vservers" ] \
     sed -i "/^$/d" /etc/csf/csf.deny
   fi
 
-  kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
+  pkill -9 -f ConfigServer
   killall sleep &> /dev/null
   rm -f /etc/csf/csf.error
   if [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
     csf -ra &> /dev/null
-    wait
     synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
   else
     csf -r &> /dev/null
@@ -666,11 +665,10 @@ if [ -e "/vservers" ] \
   rm -f /vservers/*/var/xdrago/monitor/log/web.log
   rm -f /vservers/*/var/xdrago/monitor/log/ftp.log
 
-  kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
+  pkill -9 -f ConfigServer
   killall sleep &> /dev/null
   rm -f /etc/csf/csf.error
   service lfd restart
-  wait
   sed -i "s/.*DHCP.*//g" /etc/csf/csf.allow
   wait
   sed -i "/^$/d" /etc/csf/csf.allow
@@ -689,7 +687,6 @@ if [ -e "/vservers" ] \
   done
   if [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
     csf -ra &> /dev/null
-    wait
     synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
   else
     csf -r &> /dev/null

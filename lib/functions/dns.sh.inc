@@ -1,47 +1,26 @@
 
 export _tRee=pro
 
+_vBs="/var/backups"
+
 #
 # Fix DNS settings.
 _fix_dns_settings() {
-  mkdir -p ${_vBs}
+  [ ! -d "${_vBs}" ] && mkdir -p ${_vBs}
   rm -f ${_vBs}/resolv.conf.tmp
-  if ! grep -q "9.9.9.9" /etc/resolv.conf; then
+  if ! grep -q "BOA-DNS-Config" /etc/resolv.conf; then
     echo "### BOA-DNS-Config ###" > ${_vBs}/resolv.conf.tmp
     if [ -x "/usr/sbin/unbound" ] && [ -e "/run/unbound/unbound.pid" ]; then
-      echo "nameserver 127.0.0.1" > ${_vBs}/resolv.conf.tmp
+      echo "nameserver 127.0.0.1" >> ${_vBs}/resolv.conf.tmp
     fi
     echo "nameserver 1.1.1.1" >> ${_vBs}/resolv.conf.tmp
     echo "nameserver 8.8.8.8" >> ${_vBs}/resolv.conf.tmp
     echo "nameserver 9.9.9.9" >> ${_vBs}/resolv.conf.tmp
   fi
-  if [ ! -e "${_vBs}/resolv.conf.vanilla" ]; then
-    for _Pre in `ls -la ${_vBs}/resolv.conf.pre-*`; do
-      if [ -e "${_Pre}" ] && [ -f "${_Pre}" ] && [ ! -L "${_Pre}" ]; then
-        cp -a ${_Pre} ${_vBs}/resolv.conf.vanilla
-      fi
-    done
-  fi
-  if [ ! -e "${_vBs}/resolv.conf.vanilla" ] \
-    && [ -e "${_vBs}/resolv.conf.tmp" ]; then
-    if [ "${_USE_DEFAULT_DNS}" != "YES" ]; then
-      rm -f /etc/resolv.conf
-      cp -a ${_vBs}/resolv.conf.tmp /etc/resolv.conf
-      cp -a ${_vBs}/resolv.conf.tmp ${_vBs}/resolv.conf.vanilla
-    fi
-  fi
-  sed -i "/^$/d" ${_vBs}/resolv.conf.vanilla &> /dev/null
-  if [ -e "${_vBs}/resolv.conf.vanilla" ]; then
-    if [ "${_USE_DEFAULT_DNS}" != "YES" ]; then
-      rm -f /etc/resolv.conf
-      cp -a ${_vBs}/resolv.conf.vanilla /etc/resolv.conf
-    fi
-  else
-    if [ -e "${_vBs}/resolv.conf.tmp" ] \
-      && [ "${_USE_DEFAULT_DNS}" != "YES" ]; then
-      rm -f /etc/resolv.conf
-      cp -a ${_vBs}/resolv.conf.tmp /etc/resolv.conf
-    fi
+  if [ -e "${_vBs}/resolv.conf.tmp" ]; then
+    rm -f /etc/resolv.conf
+    cp -a ${_vBs}/resolv.conf.tmp /etc/resolv.conf
+    cp -a ${_vBs}/resolv.conf.tmp ${_vBs}/resolv.conf.vanilla
   fi
   if [ -x "/usr/sbin/unbound-control" ] \
     && [ -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
@@ -61,7 +40,7 @@ _check_dns_settings() {
       rm -f /root/.use.local.nameservers.cnf
     fi
     _USE_DEFAULT_DNS=YES
-    if ! grep -q "9.9.9.9" /etc/resolv.conf; then
+    if ! grep -q "BOA-DNS-Config" /etc/resolv.conf; then
       _fix_dns_settings
       return 1  # Exit the function but continue the script
     fi
@@ -70,7 +49,7 @@ _check_dns_settings() {
     _USE_PROVIDER_DNS=YES
   else
     _REMOTE_DNS_TEST=$(host files.aegir.cc 1.1.1.1 -w 10 2>&1)
-    if ! grep -q "9.9.9.9" /etc/resolv.conf; then
+    if ! grep -q "BOA-DNS-Config" /etc/resolv.conf; then
       _fix_dns_settings
       return 1  # Exit the function but continue the script
     fi
@@ -174,6 +153,7 @@ _find_correct_ip() {
   if [ -n "${_LOC_IP}" ] && grep -qE "${_LOC_IP}\s" /etc/hosts; then
     cp -af /etc/hosts /etc/.was.hosts
     sed -i "s/^${_LOC_IP}.*//g" /etc/hosts
+    [ -x "/etc/init.d/unbound" ] && [ ! -e "/usr/etc/unbound/unbound.conf.d" ] && mkdir -p /usr/etc/unbound/unbound.conf.d
     [ -x "/etc/init.d/unbound" ] && service unbound restart &> /dev/null
   fi
 }
@@ -352,16 +332,16 @@ _install_unbound_src() {
       --prefix=/usr \
       --with-libevent \
       --with-pidfile=/run/unbound/unbound.pid \
-      --with-ssl=/usr/local/ssl3" 2> /dev/null
+      --with-ssl=/usr/local/ssl3"
   elif [ -e "/usr/local/ssl/" ]; then
     _mrun "bash ./configure \
       --prefix=/usr \
       --with-libevent \
       --with-pidfile=/run/unbound/unbound.pid \
-      --with-ssl=/usr/local/ssl" 2> /dev/null
+      --with-ssl=/usr/local/ssl"
   fi
-  _mrun "make -j $(nproc) --quiet" 2> /dev/null
-  _mrun "make --quiet install" 2> /dev/null
+  _mrun "make -j $(nproc) --quiet"
+  _mrun "make --quiet install"
 }
 
 #
@@ -380,6 +360,7 @@ _dns_unbound_install_upgrade() {
     _isUnbndFix=YES
   else
     _isUnbndFix=NO
+    [ -x "/etc/init.d/unbound" ] && [ ! -e "/usr/etc/unbound/unbound.conf.d" ] && mkdir -p /usr/etc/unbound/unbound.conf.d
     _isUnbndBr=$(service unbound restart 2>&1)
     [[ "${_isUnbndBr}" =~ "fatal error" ]] && _isUnbndFix=YES
     [[ "${_isUnbndBr}" =~ "not found" ]] && _isUnbndFix=YES
@@ -404,56 +385,71 @@ _dns_unbound_install_upgrade() {
     _fix_dns_settings
     if [ "${_USE_PROVIDER_DNS}" != "YES" ]; then
       rm -f /etc/resolv.conf
-      echo "nameserver 1.1.1.1" > /etc/resolv.conf
+      echo "### BOA-DNS-Config ###" > /etc/resolv.conf
+      echo "nameserver 1.1.1.1" >> /etc/resolv.conf
       echo "nameserver 8.8.8.8" >> /etc/resolv.conf
       echo "nameserver 9.9.9.9" >> /etc/resolv.conf
     fi
     _apt_clean_update
     [ -e "/usr/etc/unbound/unbound.pid" ] && _isUnbndFix=YES
     if [ "${_isUnbndFix}" = "YES" ]; then
-      _mrun "apt-get remove unbound -y --purge --auto-remove -qq" 2> /dev/null
-      _mrun "apt-get remove unbound-anchor -y --purge --auto-remove -qq" 2> /dev/null
-      _mrun "apt-get remove unbound-host -y --purge --auto-remove -qq" 2> /dev/null
-      _mrun "apt-get remove dns-root-data -y --purge --auto-remove -qq" 2> /dev/null
+      ###
+      for _PKG in unbound unbound-anchor unbound-host dns-root-data; do
+        if _pkg_installed "${_PKG}"; then
+          _mrun "apt-get remove ${_PKG} -y --purge --auto-remove -qq"
+          if [ "${_DEBUG_MODE}" = "YES" ]; then
+            _msg "PCKG: ${_PKG} removed as requested."
+          fi
+        else
+          if [ "${_DEBUG_MODE}" = "YES" ]; then
+            _msg "PCKG: ${_PKG} not installed, skipping."
+          fi
+        fi
+      done
+      ###
       rm -rf /etc/unbound
       rm -rf /usr/etc/unbound
     fi
-    _mrun "apt-get remove resolvconf -y --purge --auto-remove -qq" 2> /dev/null
+    if dpkg-query -W -f='${Status}' resolvconf 2>/dev/null | grep -q "install ok installed"; then
+      _mrun "apt-get remove resolvconf -y --purge --auto-remove -qq"
+    fi
     rm -rf /lib/init/rw/resolvconf
     rm -rf /run/resolvconf
     rm -rf /etc/resolvconf
-    _mrun "apt-get remove resolvconf -y --purge --auto-remove -qq" 2> /dev/null
+    if dpkg-query -W -f='${Status}' resolvconf 2>/dev/null | grep -q "install ok installed"; then
+      _mrun "apt-get remove resolvconf -y --purge --auto-remove -qq"
+    fi
     if [ "${_USE_PROVIDER_DNS}" != "YES" ]; then
       rm -f /etc/resolv.conf
-      echo "nameserver 1.1.1.1" > /etc/resolv.conf
+      echo "### BOA-DNS-Config ###" > /etc/resolv.conf
+      echo "nameserver 1.1.1.1" >> /etc/resolv.conf
       echo "nameserver 8.8.8.8" >> /etc/resolv.conf
       echo "nameserver 9.9.9.9" >> /etc/resolv.conf
     fi
     if [ -x "/usr/sbin/aa-teardown" ]; then
-      _mrun "aa-teardown" 2> /dev/null
+      aa-teardown &> /dev/null
     fi
-    _mrun "${_INSTAPP} libevent-dev" 2> /dev/null
-    _mrun "${_INSTAPP} resolvconf" 2> /dev/null
-    _mrun "${_INSTAPP} unbound" 2> /dev/null
-    _mrun "${_INSTAPP} unbound-anchor" 2> /dev/null
-    _mrun "${_INSTAPP} unbound-host" 2> /dev/null
-    _mrun "${_INSTAPP} dns-root-data" 2> /dev/null
+    for _PKG in libevent-dev resolvconf unbound unbound-anchor unbound-host dns-root-data; do
+      if ! _pkg_installed "${_PKG}"; then
+        _mrun "${_INSTAPP} ${_PKG}"
+      fi
+    done
     if [ -x "/usr/sbin/aa-teardown" ]; then
-      _mrun "aa-teardown" 2> /dev/null
+      aa-teardown &> /dev/null
     fi
     ###
-    [ ! -e "/run/unbound" ] && mkdir -p /run/unbound
-    chown -R unbound:unbound /run/unbound
-    [ ! -e "/var/log/unbound/" ] && mkdir -p /var/log/unbound/
+    [ -d /run/unbound ] || mkdir -p /run/unbound
+    [ -d /run/unbound ] && chown -R unbound:unbound /run/unbound
+    [ -d /var/log/unbound ] || mkdir -p /var/log/unbound/
     touch /var/log/unbound/unbound.log
     chown -R unbound:unbound /var/log/unbound
-    [ ! -e "/var/lib/unbound/" ] && mkdir -p /var/lib/unbound/
-    [ -e "/usr/share/dns/" ] && cp -a /usr/share/dns/* /var/lib/unbound/
-    [ -e "/var/lib/unbound/" ] && chown -R unbound:unbound /var/lib/unbound
-    [ ! -e "/etc/unbound/unbound_control.key" ] && _mrun "unbound-control-setup" 2> /dev/null
+    [ -d /var/lib/unbound ] || mkdir -p /var/lib/unbound/
+    [ -d /usr/share/dns ] && cp -a /usr/share/dns/* /var/lib/unbound/
+    [ -d /var/lib/unbound ] && chown -R unbound:unbound /var/lib/unbound
+    [ ! -e "/etc/unbound/unbound_control.key" ] && _mrun "unbound-control-setup"
     cp -af ${_locCnf}/dns/unbound /etc/init.d/unbound
     chmod 755 /etc/init.d/unbound
-    _mrun "update-rc.d unbound defaults" 2> /dev/null
+    _mrun "update-rc.d unbound defaults"
     ###
     if [ -e "/etc/apparmor.d" ] && [ ! -e "/etc/apparmor.d/usr.sbin.unbound" ]; then
       cat ${_locCnf}/apparmor/usr.sbin.unbound > /etc/apparmor.d/usr.sbin.unbound
@@ -472,10 +468,10 @@ _dns_unbound_install_upgrade() {
     mkdir -p /etc/resolvconf/run/interface
     echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.unbound
     resolvconf -u &> /dev/null
-    [ -e "/etc/resolvconf/update.d/unbound" ] && chmod -x /etc/resolvconf/update.d/unbound
-    killall -9 unbound &> /dev/null
-    _mrun "service unbound restart" 2> /dev/null
-    wait
+    [ -e "/etc/resolvconf/update.d/unbound" ] && chmod 644 /etc/resolvconf/update.d/unbound
+    [ -x "/etc/init.d/unbound" ] && [ ! -e "/usr/etc/unbound/unbound.conf.d" ] && mkdir -p /usr/etc/unbound/unbound.conf.d
+    _mrun "pkill -u unbound -x unbound"
+    _mrun "service unbound restart"
   fi
   _check_dns_settings
   if [ "${_USE_PROVIDER_DNS}" = "YES" ] \
@@ -499,33 +495,33 @@ _dns_unbound_install_upgrade() {
       _DO_NOTHING=YES
     else
       rm -f /etc/resolv.conf
-      echo "nameserver 127.0.0.1" > /etc/resolv.conf
+      echo "### BOA-DNS-Config ###" > /etc/resolv.conf
+      echo "nameserver 127.0.0.1" >> /etc/resolv.conf
       echo "nameserver 1.1.1.1" >> /etc/resolv.conf
       echo "nameserver 8.8.8.8" >> /etc/resolv.conf
       echo "nameserver 9.9.9.9" >> /etc/resolv.conf
-      [ -e "/etc/resolvconf/update.d/unbound" ] && chmod -x /etc/resolvconf/update.d/unbound
-      killall -9 unbound &> /dev/null
-      _mrun "service unbound restart" 2> /dev/null
-      wait
-      unbound-control reload &> /dev/null
+      [ -e "/etc/resolvconf/update.d/unbound" ] && chmod 644 /etc/resolvconf/update.d/unbound
+      [ -x "/etc/init.d/unbound" ] && [ ! -e "/usr/etc/unbound/unbound.conf.d" ] && mkdir -p /usr/etc/unbound/unbound.conf.d
+      _mrun "pkill -u unbound -x unbound"
+      _mrun "service unbound restart"
     fi
   fi
   if [ ! -f "/etc/resolv.conf" ]; then
     rm -f /etc/resolv.conf
-    echo "nameserver 127.0.0.1" > /etc/resolv.conf
+    echo "### BOA-DNS-Config ###" > /etc/resolv.conf
+    echo "nameserver 127.0.0.1" >> /etc/resolv.conf
     echo "nameserver 1.1.1.1" >> /etc/resolv.conf
     echo "nameserver 8.8.8.8" >> /etc/resolv.conf
     echo "nameserver 9.9.9.9" >> /etc/resolv.conf
-    [ -e "/etc/resolvconf/update.d/unbound" ] && chmod -x /etc/resolvconf/update.d/unbound
-    killall -9 unbound &> /dev/null
-    _mrun "service unbound restart" 2> /dev/null
-    wait
-    unbound-control reload &> /dev/null
+    [ -e "/etc/resolvconf/update.d/unbound" ] && chmod 644 /etc/resolvconf/update.d/unbound
+    [ -x "/etc/init.d/unbound" ] && [ ! -e "/usr/etc/unbound/unbound.conf.d" ] && mkdir -p /usr/etc/unbound/unbound.conf.d
+    _mrun "pkill -u unbound -x unbound"
+    _mrun "service unbound restart"
   fi
   if [ -e "/etc/NetworkManager/NetworkManager.conf" ]; then
     sed -i "s/^dns=.*/dns=unbound/g" \
       /etc/NetworkManager/NetworkManager.conf &> /dev/null
-    _mrun "service network-manager restart" 2> /dev/null
+    _mrun "service network-manager restart"
   fi
   if [ -x "${_isUnbnd}" ] && [ "${_isUnbndFix}" = "NO" ]; then
     _UNBOUND_V_ITD=$(${_isUnbnd} -V 2>&1 \
@@ -568,15 +564,14 @@ _dns_unbound_install_upgrade() {
   if [ "${_isUnbndFix}" = "NO" ] || [ "${_killPdnsd}" = "YES" ]; then
     _isPdnsd=$(which pdnsd 2>&1)
     if [ -x "${_isPdnsd}" ]; then
-      _mrun "service pdnsd stop" 2> /dev/null
-      _mrun "update-rc.d -f pdnsd remove" 2> /dev/null
-      killall -9 pdnsd &> /dev/null
+      _mrun "service pdnsd stop"
+      _mrun "update-rc.d -f pdnsd remove"
+      _mrun "killall -9 pdnsd"
       mv -f ${_isPdnsd} /var/backups
     fi
-    [ -e "/etc/resolvconf/update.d/unbound" ] && chmod -x /etc/resolvconf/update.d/unbound
-    killall -9 unbound &> /dev/null
-    _mrun "service unbound restart" 2> /dev/null
-    wait
+    [ -e "/etc/resolvconf/update.d/unbound" ] && chmod 644 /etc/resolvconf/update.d/unbound
+    _mrun "pkill -u unbound -x unbound"
+    _mrun "service unbound restart"
   fi
   [ -e "/etc/default/unbound" ] && _isNxdEtc=$(grep "always_nxdomain" /etc/default/unbound 2>&1)
   [ -e "/etc/init.d/unbound" ] && _isIntUnb=$(grep "apply_ci_nomail" /etc/init.d/unbound 2>&1)
@@ -584,17 +579,16 @@ _dns_unbound_install_upgrade() {
     && [[ ! "${_isIntUnb}" =~ "apply_ci_nomail" ]]; then
     cp -af ${_locCnf}/dns/unbound /etc/init.d/unbound
     chmod 755 /etc/init.d/unbound
-    _mrun "update-rc.d unbound defaults" 2> /dev/null
-    _mrun "service unbound reload" 2> /dev/null
+    _mrun "update-rc.d unbound defaults"
+    _mrun "service unbound reload"
   fi
   if [ -x "${_isUnbnd}" ] \
     && [ "${_isUnbndFix}" = "NO" ] \
     && [ -e "/etc/resolvconf/interface-order" ]; then
     sed -i "s/pdnsd/unbound/g" /etc/resolvconf/interface-order
-    [ -e "/etc/resolvconf/update.d/unbound" ] && chmod -x /etc/resolvconf/update.d/unbound
-    killall -9 unbound &> /dev/null
-    _mrun "service unbound restart" 2> /dev/null
-    wait
+    [ -e "/etc/resolvconf/update.d/unbound" ] && chmod 644 /etc/resolvconf/update.d/unbound
+    _mrun "pkill -u unbound -x unbound"
+    _mrun "service unbound restart"
   fi
 }
 
@@ -841,14 +835,28 @@ EOF
       _msg "INFO: DNS test: OK"
     fi
     echo " "
-    _msg "INSTALL START -> checkpoint: "
-    cat <<EOF
+    : "${_DISPLAY_CHECKPOINT:=YES}"
+    if [ "${_DISPLAY_CHECKPOINT}" = "YES" ]; then
+      if [ -z "${_THISHTIP}" ]; then
+        _find_correct_ip
+        _THISHTIP="${_LOC_IP}"
+      fi
+      _find_server_city
+      [ -n "${_LOC_CITY}" ] && _LOC_CITY="$(echo "${_LOC_CITY}" | tr '+' ' ')"
+      [ -z "${_LOC_CITY}" ] && _LOC_CITY="Cicely"
+      _VENDOR="$(dmidecode -s system-manufacturer 2>&1)"
+      [ -z "${_VENDOR}" ] && _VENDOR="Maurice Minnifield"
+      _msg "INSTALL START -> checkpoint: "
+      cat <<EOF
 
-    * Your email address is ${_MY_EMAIL}
-    * Your IP address is ${_THISHTIP}
-    * Your hostname is ${_THISHOST}
+      * Your sysadmin Email address is ${_MY_EMAIL}
+      * Your server City is ${_LOC_CITY}
+      * Your server Vendor is ${_VENDOR}
+      * Your server IP address is ${_THISHTIP}
+      * Your server Hostname is ${_THISHOST}
 EOF
-    echo " "
+      echo " "
+    fi
     if _prompt_yes_no "Do you want to proceed with the install?" ; then
       true
     else
@@ -872,24 +880,35 @@ EOF
       _msg "Please specify your working Aegir domain as a value of _MY_FRONT"
       _clean_pid_exit _check_ip_hostname_e
     fi
-    if [ "${_DEBUG_MODE}" = "YES" ]; then
+    : "${_DISPLAY_CHECKPOINT:=YES}"
+    if [ "${_DISPLAY_CHECKPOINT}" = "YES" ]; then
+      if [ -z "${_THISHTIP}" ]; then
+        _find_correct_ip
+        _THISHTIP="${_LOC_IP}"
+      fi
+      _find_server_city
+      [ -n "${_LOC_CITY}" ] && _LOC_CITY="$(echo "${_LOC_CITY}" | tr '+' ' ')"
+      [ -z "${_LOC_CITY}" ] && _LOC_CITY="Cicely"
+      _VENDOR="$(dmidecode -s system-manufacturer 2>&1)"
+      [ -z "${_VENDOR}" ] && _VENDOR="Maurice Minnifield"
       echo " "
       _msg "UPGRADE START -> checkpoint: "
       cat <<EOF
 
-    * Your email address is ${_MY_EMAIL}
-    * Your server hostname is ${_THISHOST}
-    * Your Aegir control panel URL is https://${_THIS_FRONT}
+    * Your sysadmin Email address is ${_MY_EMAIL}
+    * Your server City is ${_LOC_CITY}
+    * Your server Vendor is ${_VENDOR}
+    * Your server IP address is ${_THISHTIP}
+    * Your server Hostname is ${_THISHOST}
+    * Your Aegir Master URL is https://${_THIS_FRONT}
 EOF
       echo " "
     fi
-    if [ "${_DEBUG_MODE}" = "YES" ]; then
-      if _prompt_yes_no "Do you want to proceed with the upgrade?" ; then
-        true
-      else
-        echo "Upgrade aborted by you"
-        _clean_pid_exit _check_ip_hostname_f
-      fi
+    if _prompt_yes_no "Do you want to proceed with the upgrade?" ; then
+      true
+    else
+      echo "Upgrade aborted by you"
+      _clean_pid_exit _check_ip_hostname_f
     fi
   fi
 }

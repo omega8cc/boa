@@ -36,13 +36,13 @@ _single_instance_unlock() {
 _single_instance_lock() {
   # Ensure not too many instances are running
   # usage: _single_instance_lock [lockfile_path] [fd]
-  # default lock: /run/<script>.lock (falls back to /var/run or /tmp)
+  # default lock: /run/<script>.lock (falls back to /run or /tmp)
   _SELF_NAME="${_SELF_NAME:-$(basename "$0")}"
   _LOCK_FD="${2:-9}"
   if [ -n "${1:-}" ]; then
     _LOCK_PATH="$1"
   else
-    _DIR="/run"; [ -w "$_DIR" ] || _DIR="/var/run"; [ -w "$_DIR" ] || _DIR="/tmp"
+    _DIR="/run"; [ -w "$_DIR" ] || _DIR="/run"; [ -w "$_DIR" ] || _DIR="/tmp"
     _LOCK_PATH="${_DIR}/${_SELF_NAME%.sh}.lock"
   fi
 
@@ -63,4 +63,30 @@ _single_instance_lock() {
     echo "$$" > "${_LOCK_PATH}/pid" 2>/dev/null || true
     trap "rm -rf '${_LOCK_PATH}'" EXIT INT TERM HUP
   fi
+}
+
+###
+### Prevent a flood of alerts on services up/down status if uptime < 15 minutes
+###
+### Usage: in any _send_email function add at the top this line
+###        to exit/disable that function but continue the script:
+###
+###        if ! _check_uptime_grace_period >/dev/null; then return 1; fi
+###
+_check_uptime_grace_period() {
+  _UPTIME_MIN=$(awk '{print int($1/60)}' /proc/uptime 2>/dev/null)
+  if [ "${_UPTIME_MIN}" -lt 15 ] \
+    || [ ! -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
+    || [ ! -x "/usr/sbin/csf" ] \
+    || [ ! -e "/run/lfd.pid" ] \
+    || [ -e "/run/octopus_install_run.pid" ] \
+    || [ -e "/run/boa_run.pid" ] \
+    || [ -e "/run/boa_wait.pid" ]; then
+    export _INCIDENT_REPORT=OFF
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      echo "Skipping alerts: system uptime ${_UPTIME_MIN} min < 15 min threshold."
+    fi
+    return 1
+  fi
+  return 0
 }

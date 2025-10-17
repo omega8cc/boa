@@ -18,7 +18,7 @@ chomp($now_is);
 &fpmcheck;
 &javacheck;
 if ($fpm_status ne "CLEAN") {
-  `kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}')`;
+  `pkill -9 -f jetty`;
   system("touch /run/fmp_wait.pid");
   if (-f "/etc/init.d/php84-fpm") {
     `service php84-fpm restart`;
@@ -66,7 +66,7 @@ if ($fpm_status ne "CLEAN") {
   system("rm -f /run/fmp_wait.pid");
 }
 if ($java_status ne "CLEAN") {
-  `kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}')`;
+  `pkill -9 -f jetty`;
   sleep(2);
   if (-f "/etc/default/jetty9" && -f "/etc/init.d/jetty9") {
     `service jetty9 start`;

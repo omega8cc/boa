@@ -125,7 +125,7 @@ _if_install_solr_jetty() {
   fi
   if [ "${_UP_JDK}" = "YES" ] && [ -e "/etc/init.d/${_N_SOLR}" ]; then
     _msg "INFO: Solr 9 restart in progress - required after java upgrade"
-    _mrun "service ${_N_SOLR} restart" 2> /dev/null
+    _mrun "service ${_N_SOLR} restart"
     _msg "INFO: Solr 9 restart completed"
   fi
 
@@ -146,7 +146,11 @@ _if_install_solr_jetty() {
       echo "deb http://archive.debian.org/debian jessie-backports main" > /etc/apt/sources.list.d/backports.list
       echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
       _apt_clean_update
-      _st_runner "${_INSTAPP} -t jessie-backports openjdk-8-jre-headless ca-certificates-java" 2> /dev/null
+      for _PKG in openjdk-8-jre-headless ca-certificates-java; do
+        if ! _pkg_installed "${_PKG}"; then
+          _mrun "${_INSTAPP} -t jessie-backports ${_PKG}"
+        fi
+      done
       _java_check_fix
     fi
   fi
@@ -234,7 +238,7 @@ _if_install_solr_jetty() {
   fi
   if [ "${_UP_JDK}" = "YES" ] && [ -e "/etc/init.d/${_N_SOLR}" ]; then
     _msg "INFO: Solr 7 restart in progress - required after java upgrade"
-    _mrun "service ${_N_SOLR} restart" 2> /dev/null
+    _mrun "service ${_N_SOLR} restart"
     _msg "INFO: Solr 7 restart completed"
   fi
 
@@ -340,7 +344,7 @@ _if_install_solr_jetty() {
         echo "JETTY_USER=jetty9 # Run as this user" >> /etc/default/jetty9
         echo "JETTY_HOME=/opt/jetty9 # Home directory" >> /etc/default/jetty9
         echo "JETTY_LOGS=/var/log/jetty9 # Logs directory" >> /etc/default/jetty9
-        echo "JETTY_RUN=/var/run # Run directory" >> /etc/default/jetty9
+        echo "JETTY_RUN=/run # Run directory" >> /etc/default/jetty9
         echo "JETTY_PID=\$JETTY_RUN/jetty9.pid # Pid file" >> /etc/default/jetty9
         echo "JAVA_OPTIONS=\"-Xms64m -Xmx128m -Djava.awt.headless=true \
           -Dsolr.solr.home=/opt/solr4 \$JAVA_OPTIONS\" \
@@ -356,8 +360,8 @@ _if_install_solr_jetty() {
         sed -i "s/8080/8099/g" /opt/jetty9/bin/jetty.sh &> /dev/null
         ln -sfn /opt/jetty9/bin/jetty.sh /etc/init.d/jetty9 &> /dev/null
         chmod 755 /etc/init.d/jetty9
-        _mrun "update-rc.d jetty9 defaults" 2> /dev/null
-        _mrun "service jetty9 start" 2> /dev/null
+        _mrun "update-rc.d jetty9 defaults"
+        _mrun "service jetty9 start"
         echo ${_SOLR_4_VRN} > ${_SOLR_CTRL}
         _msg "INFO: MultiCore Apache Solr with Jetty ${_R_JETTY} installed"
       else
@@ -367,8 +371,8 @@ _if_install_solr_jetty() {
   fi
   if [ "${_UP_JDK}" = "YES" ] && [ -e "/etc/init.d/jetty9" ]; then
     _msg "INFO: Jetty 9 restart in progress - required after java upgrade"
-    kill -9 $(ps aux | grep '[j]etty9' | awk '{print $2}') &> /dev/null
-    _mrun "service jetty9 star"t 2> /dev/null
+    pkill -9 -f jetty9
+    _mrun "service jetty9 start"
     _msg "INFO: Jetty 9 restart completed"
   fi
   if [ -e "/opt/jetty9/VERSION.txt" ]; then
@@ -395,7 +399,7 @@ _if_install_solr_jetty() {
       echo "JETTY_USER=jetty9 # Run as this user" >> /etc/default/jetty9
       echo "JETTY_HOME=/opt/jetty9 # Home directory" >> /etc/default/jetty9
       echo "JETTY_LOGS=/var/log/jetty9 # Logs directory" >> /etc/default/jetty9
-      echo "JETTY_RUN=/var/run # Run directory" >> /etc/default/jetty9
+      echo "JETTY_RUN=/run # Run directory" >> /etc/default/jetty9
       echo "JETTY_PID=\$JETTY_RUN/jetty9.pid # Pid file" >> /etc/default/jetty9
       echo "JAVA_OPTIONS=\"-Xms64m -Xmx128m \
         -Djava.awt.headless=true \
@@ -412,7 +416,7 @@ _if_install_solr_jetty() {
       _msg "INFO: Upgrading MultiCore Apache Solr with Jetty ${_R_JETTY}..."
       cd /var/opt
       rm -rf jetty-distribution-*
-      kill -9 $(ps aux | grep '[j]etty9' | awk '{print $2}') &> /dev/null
+      pkill -9 -f jetty9
       mv -f /opt/jetty9 ${_vBs}/jetty9-${_xSrl}-${_X_VERSION}-${_NOW}
       _get_dev_arch "jetty-distribution-${_JETTY_9_VRN}.tar.gz"
       mv /var/opt/jetty-distribution-${_JETTY_9_VRN} /opt/jetty9
@@ -448,7 +452,7 @@ _if_install_solr_jetty() {
       cp -af /var/opt/log4j-${_LOGJ4_VRN}/*.jar /opt/jetty9/lib/ext/
       rm -f /opt/jetty9/lib/ext/*sources.jar
       chown -R jetty9:jetty9 /opt/jetty9
-      _mrun "service jetty9 start" 2> /dev/null
+      _mrun "service jetty9 start"
       echo ${_SOLR_4_VRN} > ${_SOLR_CTRL}
       _msg "INFO: MultiCore Apache Solr with Jetty ${_R_JETTY} upgrade completed"
     fi
@@ -530,7 +534,7 @@ _if_install_solr_jetty() {
         echo "JETTY_USER=jetty8 # Run as this user" >> /etc/default/jetty8
         echo "JETTY_HOME=/opt/jetty8 # Home directory" >> /etc/default/jetty8
         echo "JETTY_LOGS=/var/log/jetty8 # Logs directory" >> /etc/default/jetty8
-        echo "JETTY_RUN=/var/run # Run directory" >> /etc/default/jetty8
+        echo "JETTY_RUN=/run # Run directory" >> /etc/default/jetty8
         echo "JETTY_PID=\$JETTY_RUN/jetty8.pid # Pid file" >> /etc/default/jetty8
         echo "JAVA_OPTIONS=\"-Xms64m -Xmx128m \
           -Djava.awt.headless=true \
@@ -539,8 +543,8 @@ _if_install_solr_jetty() {
         sed -i "s/8080/8088/g" /opt/jetty8/bin/jetty.sh &> /dev/null
         ln -sfn /opt/jetty8/bin/jetty.sh /etc/init.d/jetty8 &> /dev/null
         chmod 755 /etc/init.d/jetty8
-        _mrun "update-rc.d jetty8 defaults" 2> /dev/null
-        _mrun "service jetty8 start" 2> /dev/null
+        _mrun "update-rc.d jetty8 defaults"
+        _mrun "service jetty8 start"
         echo ${_JETTY_8_VRN} > ${_JETTY_CTRL}
         echo ${_SOLR_3_VRN}  > ${_SOLR_CTRL}
         _msg "INFO: MultiCore Apache Solr 3 with Jetty 8 installed"
@@ -551,8 +555,8 @@ _if_install_solr_jetty() {
   fi
   if [ "${_UP_JDK}" = "YES" ] && [ -e "/etc/init.d/jetty8" ]; then
     _msg "INFO: Jetty 8 restart in progress - required after java upgrade"
-    kill -9 $(ps aux | grep '[j]etty8' | awk '{print $2}') &> /dev/null
-    _mrun "service jetty8 start" 2> /dev/null
+    pkill -9 -f jetty8
+    _mrun "service jetty8 start"
     _msg "INFO: Jetty 8 restart completed"
   fi
   if [ -e "/opt/jetty8/VERSION.txt" ]; then
@@ -561,7 +565,7 @@ _if_install_solr_jetty() {
       cd /var/opt
       rm -rf jetty-distribution-*
       _get_dev_arch "jetty-distribution-${_JETTY_8_VRN}.tar.gz"
-      kill -9 $(ps aux | grep '[j]etty8' | awk '{print $2}') &> /dev/null
+      pkill -9 -f jetty8
       mv -f /opt/jetty8 ${_vBs}/jetty8-${_xSrl}-${_X_VERSION}-${_NOW}
       mv -f /var/opt/jetty-distribution-${_JETTY_8_VRN} /opt/jetty8
       _get_dev_arch "apache-solr-${_SOLR_3_VRN}.tgz"
@@ -576,7 +580,7 @@ _if_install_solr_jetty() {
       done
       cd /var/opt
       chown -R jetty8:jetty8 /opt/jetty8
-      _mrun "service jetty8 start" 2> /dev/null
+      _mrun "service jetty8 start"
       echo ${_JETTY_8_VRN} > ${_JETTY_CTRL}
       echo ${_SOLR_3_VRN}  > ${_SOLR_CTRL}
       _msg "INFO: MultiCore Apache Solr 3 with Jetty 8 upgrade completed"
@@ -661,7 +665,7 @@ _if_install_solr_jetty() {
         echo "JETTY_USER=jetty7 # Run as this user" >> /etc/default/jetty7
         echo "JETTY_HOME=/opt/jetty7 # Home directory" >> /etc/default/jetty7
         echo "JETTY_LOGS=/var/log/jetty7 # Logs directory" >> /etc/default/jetty7
-        echo "JETTY_RUN=/var/run # Run directory" >> /etc/default/jetty7
+        echo "JETTY_RUN=/run # Run directory" >> /etc/default/jetty7
         echo "JETTY_PID=\$JETTY_RUN/jetty7.pid # Pid file" >> /etc/default/jetty7
         echo "JAVA_OPTIONS=\"-Xms64m -Xmx128m \
           -Djava.awt.headless=true \
@@ -670,8 +674,8 @@ _if_install_solr_jetty() {
         sed -i "s/8080/8077/g" /opt/jetty7/bin/jetty.sh &> /dev/null
         ln -sfn /opt/jetty7/bin/jetty.sh /etc/init.d/jetty7 &> /dev/null
         chmod 755 /etc/init.d/jetty7
-        _mrun "update-rc.d jetty7 defaults" 2> /dev/null
-        _mrun "service jetty7 start" 2> /dev/null
+        _mrun "update-rc.d jetty7 defaults"
+        _mrun "service jetty7 start"
         echo ${_JETTY_7_VRN} > ${_JETTY_CTRL}
         echo ${_SOLR_1_VRN}  > ${_SOLR_CTRL}
         _msg "INFO: MultiCore Apache Solr 1 with Jetty 7 installed"
@@ -682,8 +686,8 @@ _if_install_solr_jetty() {
   fi
   if [ "${_UP_JDK}" = "YES" ] && [ -e "/etc/init.d/jetty7" ]; then
     _msg "INFO: Jetty 7 restart in progress - required after java upgrade"
-    kill -9 $(ps aux | grep '[j]etty7' | awk '{print $2}') &> /dev/null
-    _mrun "service jetty7 start" 2> /dev/null
+    pkill -9 -f jetty7
+    _mrun "service jetty7 start"
     _msg "INFO: Jetty 7 restart completed"
   fi
   if [ "${_TOMCAT_TO_JETTY}" = "YES" ] \
@@ -691,8 +695,8 @@ _if_install_solr_jetty() {
     && [ -e "/etc/default/tomcat" ] \
     && [ -e "/etc/init.d/tomcat" ]; then
     _msg "INFO: Tomcat 6 to Jetty 7 migration for Apache Solr 1 in progress..."
-    _mrun "service tomcat stop" 2> /dev/null
-    _mrun "update-rc.d tomcat remove" 2> /dev/null
+    _mrun "service tomcat stop"
+    _mrun "update-rc.d tomcat remove"
     mv -f /etc/init.d/tomcat /etc/init.d/offtomcat &> /dev/null
     mv -f /opt/solr1/solr.xml /opt/solr1/vanilla-solr.xml
     mv -f /opt/solr/* /opt/solr1/
@@ -708,8 +712,8 @@ _if_install_solr_jetty() {
     sed -i "s/8077/8080/g" \
       /opt/solr1/conf/solrcore.properties &> /dev/null
     _msg "INFO: Jetty 7 restart in progress - required after migration from Tomcat"
-    kill -9 $(ps aux | grep '[j]etty7' | awk '{print $2}') &> /dev/null
-    _mrun "service jetty7 start" 2> /dev/null
+    pkill -9 -f jetty7
+    _mrun "service jetty7 start"
     sed -i "s/^_TOMCAT_TO_JETTY.*//g" ${_barCnf}
     wait
     sed -i "/^$/d" ${_barCnf}
@@ -722,7 +726,7 @@ _if_install_solr_jetty() {
       cd /var/opt
       rm -rf jetty-distribution-*
       _get_dev_arch "jetty-distribution-${_JETTY_7_VRN}.tar.gz"
-      kill -9 $(ps aux | grep '[j]etty7' | awk '{print $2}') &> /dev/null
+      pkill -9 -f jetty7
       mv -f /opt/jetty7 ${_vBs}/jetty7-${_xSrl}-${_X_VERSION}-${_NOW}
       mv -f /var/opt/jetty-distribution-${_JETTY_7_VRN} /opt/jetty7
       _get_dev_arch "apache-solr-${_SOLR_1_VRN}.tgz"
@@ -737,7 +741,7 @@ _if_install_solr_jetty() {
       done
       cd /var/opt
       chown -R jetty7:jetty7 /opt/jetty7
-      _mrun "service jetty7 start" 2> /dev/null
+      _mrun "service jetty7 start"
       echo ${_JETTY_7_VRN} > ${_JETTY_CTRL}
       echo ${_SOLR_1_VRN}  > ${_SOLR_CTRL}
       _msg "INFO: MultiCore Apache Solr 1 with Jetty 7 upgrade completed"

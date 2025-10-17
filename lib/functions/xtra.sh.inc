@@ -41,9 +41,8 @@ _if_install_bzr() {
       elif [ -x "${_isPythonTwo}" ]; then
         _usePyth=python2
       fi
-      _mrun "${_usePyth} setup.py --quiet install build_ext -\
-        -allow-python-fallback" 2> /dev/null
-      _mrun "make -j $(nproc) --quiet" 2> /dev/null
+      _mrun "${_usePyth} setup.py --quiet install build_ext --allow-python-fallback"
+      _mrun "make -j $(nproc) --quiet"
       touch ${_pthLog}/bzr-${_BZR_VRN}.log
       mkdir -p /root/.bazaar
       echo ignore_missing_extensions=True > /root/.bazaar/bazaar.conf
@@ -211,7 +210,7 @@ _fix_collectd_rrd_syslog_flood() {
       echo "        FSType \"rootfs\""   >> ${_COLLECTD_CNF}
       echo "        IgnoreSelected true" >> ${_COLLECTD_CNF}
       echo "</Plugin>"                   >> ${_COLLECTD_CNF}
-      _mrun "service collectd restart" 2> /dev/null
+      _mrun "service collectd restart"
     fi
   fi
 }
@@ -234,7 +233,7 @@ _fix_collectd_nginx() {
       echo "</Plugin>"                                     >> ${_COLLECTD_CNF}
       sed -i "s/^#LoadPlugin nginx/LoadPlugin nginx/g"        ${_COLLECTD_CNF}
       wait
-      _mrun "service collectd restart" 2> /dev/null
+      _mrun "service collectd restart"
     fi
   fi
 }
@@ -245,7 +244,7 @@ _if_install_collectd() {
   fi
   if [[ "${_XTRAS_LIST}" =~ "CGP" ]]; then
     _CGP_VHOST="${_mtrNgx}/vhost.d/cgp.${_THIS_FRONT}"
-    if [ ! -e "/run/cloud_vhost.pid" ]; then
+    if [ ! -e "/var/log/boa/cloud_vhost.pid" ]; then
       if [ ! -d "/var/www/cgp" ] \
         || [ ! -f "${_CGP_VHOST}" ] \
         || [ ! -f "${_pthLog}/cgp-${_CGP_VRN}.sync-new-ip-access.log" ]; then
@@ -253,7 +252,11 @@ _if_install_collectd() {
         if _prompt_yes_no "Do you want to install Collectd Graph Panel?" ; then
           true
           _msg "INFO: Installing Collectd Graph Panel..."
-          _st_runner "${_INSTAPP} collectd" 2> /dev/null
+          for _PKG in collectd; do
+            if ! _pkg_installed "${_PKG}"; then
+              _mrun "${_INSTAPP} ${_PKG}"
+            fi
+          done
           rm -rf /var/www/cgp
           cd /var/www
           _get_dev_arch "cgp-${_CGP_VRN}.tar.gz"
@@ -273,7 +276,7 @@ _if_install_collectd() {
           wait
           sed -i "s/cgp_name/cgp.${_THIS_FRONT}/g"           ${_CGP_VHOST}
           wait
-          _mrun "update-rc.d collectd defaults" 2> /dev/null
+          _mrun "update-rc.d collectd defaults"
           touch ${_pthLog}/cgp-${_CGP_VRN}.sync-new-ip-access.log
           _msg "INFO: Collectd Graph Panel installed"
         else
@@ -287,7 +290,7 @@ _if_install_collectd() {
     && [ ! -e "/boot/grub/grub.cfg" ] \
     && [ ! -e "/boot/grub/menu.lst" ]; then
     rm -f ${_mtrNgx}/vhost.d/cgp*
-    _mrun "apt-get remove collectd -y --purge --auto-remove -qq" 2> /dev/null
+    _mrun "apt-get remove collectd -y --purge --auto-remove -qq"
     rm -rf /var/www/cgp
   fi
   if [ -d "/var/www/cgp" ]; then
@@ -312,7 +315,7 @@ _if_install_webmin() {
     _msg "PROC: _if_install_webmin"
   fi
   if [[ "${_XTRAS_LIST}" =~ "WMN" ]]; then
-    if [ ! -d "/etc/webmin" ] && [ ! -e "/run/cloud_vhost.pid" ]; then
+    if [ ! -d "/etc/webmin" ] && [ ! -e "/var/log/boa/cloud_vhost.pid" ]; then
       if [ -x "/usr/bin/gpg2" ]; then
         _GPG=gpg2
       else
@@ -339,10 +342,12 @@ _if_install_webmin() {
         rm -f jcameron-key.gpg*
         touch ${_pthLog}/webmin_update_apt_src.log
         _apt_clean_update
-        _st_runner "${_INSTAPP} webmin \
-                             libxml-simple-perl \
-                             libcrypt-ssleay-perl" 2> /dev/null
-        _mrun "update-rc.d webmin defaults" 2> /dev/null
+        for _PKG in webmin libxml-simple-perl libcrypt-ssleay-perl; do
+          if ! _pkg_installed "${_PKG}"; then
+            _mrun "${_INSTAPP} ${_PKG}"
+          fi
+        done
+        _mrun "update-rc.d webmin defaults"
         _msg "INFO: Webmin Control Panel installed"
       else
         _msg "INFO: Webmin Control Panel installation skipped"
@@ -366,12 +371,16 @@ _if_install_bind() {
           _find_correct_ip
           _THISHTIP="${_LOC_IP}"
         fi
-        _st_runner "${_INSTAPP} bind9" 2> /dev/null
+        for _PKG in bind9; do
+          if ! _pkg_installed "${_PKG}"; then
+            _mrun "${_INSTAPP} ${_PKG}"
+          fi
+        done
         cp -af /etc/bind/named.conf.options \
           ${_vBs}/named.conf.options.pre-${_xSrl}-${_X_VERSION}-${_NOW}
         cp -af ${_locCnf}/var/named.conf.options /etc/bind/named.conf.options
         sed -i "s/127.0.1.1/${_THISHTIP}/g" /etc/bind/named.conf.options &> /dev/null
-        _mrun "service bind9 restart" 2> /dev/null
+        _mrun "service bind9 restart"
         if [ ! -e "/etc/init.d/bind" ]; then
           ln -sfn /etc/init.d/bind9 /etc/init.d/bind
         fi
@@ -392,8 +401,7 @@ _if_install_node() {
     _msg "PROC: _if_install_node"
   fi
   if [ -e "/root/.allow.node.lshell.cnf" ]; then
-    if [[ "${_XTRAS_LIST}" =~ "ALL" ]] \
-      || [[ "${_XTRAS_LIST}" =~ "CSS" ]]; then
+    if [[ "${_XTRAS_LIST}" =~ "NPM" ]]; then
       _NODE_INSTALL=NO
       _isNode=$(which node 2>&1)
       if [ -x "${_isNode}" ]; then
@@ -414,15 +422,26 @@ _if_install_node() {
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "INFO: Node ${_NODE_VRN} ${_L_ST}"
         fi
-        rm -f /etc/apt/sources.list.d/nodesource.list
-        rm -f /usr/share/keyrings/nodesource.gpg
+        _nSrc="/etc/apt/sources.list.d/nodesource.list"
+        _nSrg="/usr/share/keyrings/nodesource.gpg"
+        rm -f ${_nSrc}
+        rm -f ${_nSrg}
         _apt_clean_update
         if [ "${_OS_CODE}" = "stretch" ] || [ "${_OS_CODE}" = "jessie" ]; then
-          curl -sL https://deb.nodesource.com/setup_16.x | sudo -E bash -
+          _mrun "curl -sL https://deb.nodesource.com/setup_16.x | sudo -E bash -"
         else
-          curl -sL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+          _mrun "curl -fsSL https://deb.nodesource.com/setup_22.x | sudo bash -"
         fi
-        _mrun "${_INSTAPP} nodejs" 2> /dev/null
+        if [ -e "${_nSrc}" ]; then
+          if grep -q "nodistro" "${_nSrc}"; then
+            _apt_clean_update
+            for _PKG in nodejs; do
+              if ! _pkg_installed "${_PKG}"; then
+                _mrun "${_INSTAPP} ${_PKG}/nodistro"
+              fi
+            done
+          fi
+        fi
       fi
       [ ! -d "/opt/user/npm" ] && mkdir -p /opt/user/npm
       chown root:root /opt/user/npm
@@ -431,7 +450,8 @@ _if_install_node() {
   else
     _isNode=$(which node 2>&1)
     if [ -x "${_isNode}" ]; then
-      _mrun "apt-get remove nodejs -y --purge --auto-remove -qq" 2> /dev/null
+      _mrun "apt-get remove nodejs -y --purge --auto-remove -qq"
+      _mrun "apt-get remove npm -y --purge --auto-remove -qq"
     fi
   fi
 }
@@ -445,18 +465,20 @@ _if_install_ruby_gems() {
     && [ ! -e "/usr/local/lib/ruby/gems/3.3.0/gems/oily_png-1.1.1" ] \
     && [ -x "/usr/local/bin/ruby" ] \
     && [ -x "/usr/local/bin/gem" ]; then
-    gem update --system
-    gem install --conservative bundler
-    gem install --conservative bluecloth
-    gem install --conservative eventmachine
-    gem install --conservative ffi
-    gem install --version 1.9.3 ffi
-    gem install --version 1.9.18 ffi
-    gem install --conservative hitimes
-    gem install --conservative http_parser.rb
-    gem install --conservative oily_png
-    gem install --version 1.1.1 oily_png
-    gem install --conservative yajl-ruby
+    _msg "INFO: Running Ruby system update..."
+    _mrun "gem update --system"
+    _msg "INFO: Installing Ruby gems from sources..."
+    _mrun "gem install --conservative bundler"
+    _mrun "gem install --conservative bluecloth"
+    _mrun "gem install --conservative eventmachine"
+    _mrun "gem install --conservative ffi"
+    _mrun "gem install --version 1.9.3 ffi"
+    _mrun "gem install --version 1.9.18 ffi"
+    _mrun "gem install --conservative hitimes"
+    _mrun "gem install --conservative http_parser.rb"
+    _mrun "gem install --conservative oily_png"
+    _mrun "gem install --version 1.1.1 oily_png"
+    _mrun "gem install --conservative yajl-ruby"
   fi
 }
 
@@ -464,8 +486,7 @@ _if_install_ruby() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _if_install_ruby"
   fi
-  if [[ "${_XTRAS_LIST}" =~ "ALL" ]] \
-    || [[ "${_XTRAS_LIST}" =~ "CSS" ]]; then
+  if [[ "${_XTRAS_LIST}" =~ "CSS" ]]; then
     _RUBY_INSTALL_SCR=NO
     _isRuby=$(which ruby 2>&1)
     if [ -x "${_isRuby}" ]; then
@@ -485,7 +506,6 @@ _if_install_ruby() {
       || [ ! -e "/usr/local/lib/ruby/gems/3.3.0" ] \
       || [ ! -x "/usr/local/bin/ruby" ] \
       || [ ! -x "/usr/local/bin/gem" ]; then
-      echo " "
       if _prompt_yes_no "Do you want to ${_L_ST} Ruby ${_RUBY_VRN} from sources?" ; then
         true
         _msg "INFO: Installing Ruby ${_RUBY_VRN} from sources..."
@@ -496,9 +516,9 @@ _if_install_ruby() {
         rm -rf ruby*
         _get_dev_src "ruby-${_RUBY_VRN}.tar.gz"
         cd /var/opt/ruby-${_RUBY_VRN}
-        _mrun "bash ./configure" 2> /dev/null
-        _mrun "make -j $(nproc)" 2> /dev/null
-        _mrun "make install" 2> /dev/null
+        _mrun "bash ./configure"
+        _mrun "make -j $(nproc)"
+        _mrun "make install"
         ldconfig 2> /dev/null
         _isRuby=$(which ruby 2>&1)
         if [ -x "${_isRuby}" ]; then
@@ -563,9 +583,13 @@ _if_install_ffmpeg() {
           echo "deb http://www.deb-multimedia.org buster-backports main" >> /etc/apt/sources.list.d/ffmpeg.list
         fi
         _apt_clean_update
-        _st_runner "apt-get install deb-multimedia-keyring ${_aptYesUnth}" 2> /dev/null
+        _mrun "apt-get install deb-multimedia-keyring ${_aptYesUnth}"
         _apt_clean_update
-        _st_runner "${_INSTAPP} ffmpeg" 2> /dev/null
+        for _PKG in ffmpeg; do
+          if ! _pkg_installed "${_PKG}"; then
+            _mrun "${_INSTAPP} ${_PKG}"
+          fi
+        done
         _msg "INFO: FFmpeg installed"
       else
         _msg "INFO: FFmpeg installation skipped"

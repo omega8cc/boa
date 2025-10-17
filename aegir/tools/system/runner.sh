@@ -28,6 +28,7 @@ _check_root
 
 [ -e "/root/.proxy.cnf" ] && exit 0
 [ -e "/root/.pause_tasks_maint.cnf" ] && exit 0
+[ -e "/run/max_load.pid" ] || [ -e "/run/critical_load.pid" ] && exit 0
 
 _sanitize_number() {
   echo "$1" | sed 's/[^0-9.]//g'
@@ -60,6 +61,7 @@ _get_load() {
 }
 
 _load_control() {
+  # shellcheck disable=SC1091
   [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
   : "${_CPU_TASK_RATIO:=3.1}"
   _CPU_TASK_RATIO="$(_sanitize_number "${_CPU_TASK_RATIO}")"
@@ -67,18 +69,29 @@ _load_control() {
   _get_load
 }
 
+_if_accelerated_queue() {
+  if [ -e "/run/octopus_install_run.pid" ]; then
+    _ACCELERATED=YES
+  elif [ -e "/run/boa_wait.pid" ]; then
+    _ACCELERATED=NONE
+  else
+    _ACCELERATED=NORMAL
+  fi
+}
+
 _runner_action() {
-  for Runner in $(find /var/xdrago -maxdepth 1 -mindepth 1 -type f \
+  for _Runner in $(find /var/xdrago -maxdepth 1 -mindepth 1 -type f \
     | grep run- \
     | uniq \
     | sort); do
     _count_cpu
     _load_control
     if (( $(echo "${_O_LOAD} < ${_O_LOAD_MAX}" | bc -l) )); then
-      echo "Load is ${_O_LOAD}% (below max load ${_O_LOAD_MAX}%). Running ${Runner}"
-      if [ ! -e "/run/boa_wait.pid" ]; then
-        echo "Running ${Runner}"
-        bash "${Runner}"
+      echo "Load is ${_O_LOAD}% (below max load ${_O_LOAD_MAX}%). Running ${_Runner}"
+      _if_accelerated_queue
+      if [ "${_ACCELERATED}" = "YES" ] || [ "${_ACCELERATED}" = "NORMAL" ]; then
+        echo "Running ${_Runner}"
+        bash "${_Runner}"
         _n=$((RANDOM % 9 + 2))
         echo "Waiting ${_n} sec"
         sleep "${_n}"
@@ -95,12 +108,12 @@ _if_allow_aegir_queue() {
   _PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
   _PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
   _PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
-  ReTest=$(ls /data/disk/*/static/control/run-aegir-queue.info | wc -l 2>&1)
+  _ReTest=$(ls /data/disk/*/static/control/run-aegir-queue.info | wc -l 2>&1)
   if [[ "${_PrTestPower}" =~ "POWER" ]] \
     || [[ "${_PrTestPhantom}" =~ "PHANTOM" ]] \
     || [[ "${_PrTestCluster}" =~ "CLUSTER" ]] \
     || [ -e "/root/.allow.aegir.queue.cnf" ]; then
-    if [ "${ReTest}" -ge 1 ]; then
+    if [ "${_ReTest}" -ge 1 ]; then
       _ALLOW_AEGIR_QUEUE=TRUE
     fi
   fi
@@ -109,14 +122,16 @@ _if_allow_aegir_queue() {
 ###-------------SYSTEM-----------------###
 
 _SQLBACKUP_RUNNING=NO
-if (( $(pgrep -fc 'mysql_backup.sh') > 0 )); then
+if (( $(pgrep -fc mysql_backup.sh) > 0 )); then
   _SQLBACKUP_RUNNING=YES
-elif (( $(pgrep -fc 'mysql_cluster_backup.sh') > 0 )); then
+elif (( $(pgrep -fc mysql_cluster_backup.sh) > 0 )); then
+  _SQLBACKUP_RUNNING=YES
+elif (( $(pgrep -fc mydumper) > 0 )); then
   _SQLBACKUP_RUNNING=YES
 fi
 
 _DAILY_RUNNING=NO
-if (( $(pgrep -fc 'daily.sh') > 0 )); then
+if (( $(pgrep -fc daily.sh) > 0 )); then
   _DAILY_RUNNING=YES
 fi
 
@@ -129,25 +144,21 @@ if [ "${_TOTAL_RAM_MB}" -le 4096 ]; then
     echo SLOW > /root/.slow.cron.cnf
     chattr +i /root/.slow.cron.cnf
   fi
+  if [ ! -e "/root/.slow.cron.cnf.protected" ] \
+    && [ -e "/root/.slow.cron.cnf" ]; then
+    echo SLOW > /root/.slow.cron.cnf.protected
+  fi
 fi
 
-if [ "${_SQLBACKUP_RUNNING}" = "TRUE" ] \
+if [ "$(pgrep -fc 'n7 bash /var/xdrago/runner.sh')" -gt 8 ] \
+  || [ "${_SQLBACKUP_RUNNING}" = "TRUE" ] \
   || [ "${_DAILY_RUNNING}" = "TRUE" ] \
-  || [ -e "/run/boa_wait.pid" ] \
-  || [ -e "/run/boa_run.pid" ] \
+  || [ -e "/run/mysql_restart_running.pid" ] \
+  || [ -e "/run/boa_sql_cluster_backup.pid" ] \
   || [ -e "/run/boa_cron_wait.pid" ]; then
-  if [ ! -e "/root/.force.queue.runner.cnf" ]; then
-    touch /var/log/boa/wait-runner.pid
-    echo "Another BOA task is running, we will try again later..."
-    exit 0
-  fi
-elif [ "$(ps aux | grep -v "grep" \
-  | grep --count "n7 bash.*runner")" -gt 8 ]; then
-  if [ ! -e "/root/.force.queue.runner.cnf" ]; then
-    touch /var/log/boa/wait-runner.pid
-    echo "Too many Aegir tasks running now, we will try again later..."
-    exit 0
-  fi
+  touch /var/log/boa/wait-runner.pid
+  echo "Another BOA task is running, we will try again later..."
+  exit 0
 else
   if [ -e "/root/.look.like.jenkins.cnf" ]; then
     _ALLOW_AEGIR_QUEUE=FALSE

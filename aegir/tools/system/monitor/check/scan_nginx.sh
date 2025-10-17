@@ -19,7 +19,7 @@ _manage_single_lock() {
     # -------- legacy pgrep guard ---------
     # Exit if more than 2 instances of this script are running
     _SCRIPT=$(basename "$0")
-    _CNT=$(pgrep -fc "[${_SCRIPT:0:1}]${_SCRIPT:1}")
+    _CNT=$(pgrep -fc ${_SCRIPT})
     if (( _CNT > 2 )); then
       echo "Too many ${_SCRIPT} running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
       exit 0
@@ -157,8 +157,7 @@ fi
 _verbose_log() {
   local _reason="${1}"
   local _message="${2}"
-  local _timestamp
-  local _log_file
+  local _log_file="/dev/null"
 
   # Define log file paths
   local _general_log="/var/log/scan_nginx_debug.log"

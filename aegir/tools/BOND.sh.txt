@@ -214,12 +214,14 @@ _clean_pid_exit() {
 
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
+    # shellcheck disable=SC1091
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
+
     # Sanitize to allow only digits and minus sign
     export _B_NICE=${_B_NICE//[^0-9-]/}
 
     # Validate and set default if necessary
-    if ! [[ "$_B_NICE" =~ ^-?[0-9]+$ ]]; then
+    if ! [[ "${_B_NICE}" =~ ^-?[0-9]+$ ]]; then
       _B_NICE=0
     fi
 
@@ -255,7 +257,7 @@ _os_detection_minimal
 _apt_clean_update() {
   #apt-get clean -qq 2> /dev/null
   #rm -rf /var/lib/apt/lists/* &> /dev/null
-  _mrun "${_APT_UPDATE} -qq" 2> /dev/null
+  ${_APT_UPDATE} -qq
 }
 
 _if_hosted_sys() {
@@ -270,7 +272,7 @@ _if_hosted_sys() {
 _check_sql_running() {
   while [ -z "${_IS_MYSQLD_RUNNING}" ] \
     || [ ! -e "/run/mysqld/mysqld.sock" ]; do
-    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}')
+    _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
     echo "INFO: Waiting for MySQLD availability..."
     sleep 3
   done
@@ -297,7 +299,7 @@ _check_sql_access() {
     echo " "
     _clean_pid_exit _check_sql_access_b
   else
-    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}')
+    _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
     if [ -z "${_IS_MYSQLD_RUNNING}" ]; then
       echo "ALERT: SQL server on this system is not running at all."
       echo "ALERT: Please fix this before trying again, giving up."
@@ -350,20 +352,6 @@ else
 fi
 }
 #
-# Small spinner.
-_mrun() {
-  CMD="$1"
-  touch busy
-  if [ "${_SPINNER}" = "YES" ]; then
-    bash ${_SRCDIR}/spinner busy &
-  fi
-  if ${CMD} >> ${_LOG}; then
-    rm busy
-    sleep 1
-    return 0
-  fi
-}
-#
 # Count system CPUs.
 _count_cpu() {
   _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)
@@ -395,7 +383,6 @@ _find_fast_mirror_early() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     _apt_clean_update
-    apt-get install netcat ${_aptYesUnth} 2> /dev/null
     apt-get install netcat-traditional ${_aptYesUnth} 2> /dev/null
     wait
   fi
@@ -411,6 +398,7 @@ _find_fast_mirror_early() {
     if [ -e "${_ffList}" ]; then
       _BROKEN_FFMIRR_TEST=$(grep "stuff" ${_ffMirr} 2>&1)
       if [[ "${_BROKEN_FFMIRR_TEST}" =~ "stuff" ]]; then
+        _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _USE_MIR="${_CHECK_MIRROR}"
         [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.aegir.cc"
@@ -1005,7 +993,7 @@ _innodb_log_file_size_update() {
   elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 5.7." ]]; then
     _DB_V=5.7
   fi
-  _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}')
+  _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
   if [ ! -z "${_IS_MYSQLD_RUNNING}" ] && [ "${_DB_V}" = "5.7" ]; then
     _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
     mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
@@ -1019,19 +1007,19 @@ _innodb_log_file_size_update() {
     fi
     mysql -u root -e "SET GLOBAL innodb_fast_shutdown = 0;" &> /dev/null
   fi
-  _mrun "service mysql stop" 2> /dev/null
+  service mysql stop
   echo "Waiting 15 seconds..."
-  _mrun "sleep 15"
+  sleep 15
   if [ ! -e "/run/mysqld/mysqld.sock" ] \
     && [ ! -e "/run/mysqld/mysqld.pid" ]; then
     mkdir -p ${_vBs}/old-sql-ib-log-${_NOW}
-    _mrun "sleep 5"
+    sleep 5
     mv -f /var/lib/mysql/ib_logfile0 ${_vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
     mv -f /var/lib/mysql/ib_logfile1 ${_vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
     sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
     wait
     echo "Waiting 15 seconds..."
-    _mrun "sleep 15"
+    sleep 15
   fi
   if [ ! -e "/run/mysqld/mysqld.sock" ]; then
     service mysql start &> /dev/null
@@ -1149,7 +1137,7 @@ _restore_default_nginx() {
   fi
   su -s /bin/bash - aegir -c "drush8 @server_master provision-verify" &> /dev/null
   wait
-  _mrun "sleep 8"
+  sleep 8
 }
 #
 _tune_nginx() {
@@ -1193,7 +1181,6 @@ _restart_services() {
   if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
     if [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
       csf -ra &> /dev/null
-      wait
       synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
     else
       csf -r &> /dev/null
@@ -1264,7 +1251,7 @@ _tune_web_server_config() {
 _check_mysqld_running() {
   while [ -z "${_IS_MYSQLD_RUNNING}" ] \
     || [ ! -e "/run/mysqld/mysqld.sock" ]; do
-    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}')
+    _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
     _msg "INFO: Waiting for MySQLD availability before _tune_sql_memory_limits..."
     sleep 5
     service mysql start &> /dev/null
@@ -1868,12 +1855,6 @@ else
   _BOA_REPO_NAME="boa"
 fi
 #
-# Get spinner
-cd ${_SRCDIR}
-rm -f spinner*
-cp -af ${_bldPth}/aegir/helpers/spinner ./
-chmod +x spinner &> /dev/null
-#
 # Create tmp stuff
 _LOG=/var/backups/bond-${_NOW}.log
 #
@@ -1906,10 +1887,9 @@ if _prompt_yes_no "${_tPrmt}?" ; then
   if [ ! -e "/root/.upstart.cnf" ]; then
     _msg "INFO: We will stop cron and then wait 30 seconds..."
     service cron stop &> /dev/null
-    _mrun "sleep 30"
+    sleep 30
   fi
   _msg "INFO: Tuning in progress, please wait..."
-  [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
   _restore_default_php
   _php_conf_update
   _tune_php
@@ -1924,9 +1904,8 @@ else
   if [ ! -e "/root/.upstart.cnf" ]; then
     _msg "INFO: We will stop cron and then wait 30 seconds..."
     service cron stop &> /dev/null
-    _mrun "sleep 30"
+    sleep 30
   fi
-  [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
   _restore_default_php
   _php_conf_update
   _restore_default_sql

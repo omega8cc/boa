@@ -107,49 +107,27 @@ _not_supported_os() {
   _clean_pid_exit _not_supported_os_a
 }
 
-###
-### Small spinner
-###
-_mrun() {
-  CMD="$1"
-  touch busy
-  if [ "${_SPINNER}" = "YES" ]; then
-    bash ${_SRCDIR}/spinner busy &
-  fi
-  if ${CMD} >> ${_LOG}; then
-    rm busy
-    sleep 1
-    return 0
-  fi
-}
-
 #
-# Silent runner.
-_st_runner() {
-  CMD="$1"
-  touch busy
-  if [ "${_SPINNER}" = "YES" ]; then
-    bash ${_SRCDIR}/spinner busy &
-  fi
-  if ${CMD} >> ${_LOG}; then
-    rm busy
-    sleep 1
+# Show only clean _msg and write details and errors to separate logs.
+_mrun() {
+  # Accept everything as one shell command string:
+  #      _mrun "${_INSTAPP} xfonts-75dpi xfonts-base"
+  #   or _mrun 'apt-get update -qq && dpkg --configure -a || true'
+  local _cmd="$*"
+  if [ -z "${_cmd}" ]; then
     return 0
-  else
-    rm busy
-    sleep 1
-    echo "${CMD} failed.  Error (if any): $?"
-    echo " "
-    echo "Displaying the last 15 lines of logfile"
-    echo "  ${_LOG}"
-    echo "to help troubleshoot this problem"
-    echo " "
-    echo "If you see any error with advice to run 'dpkg --configure --force-all -a'"
-    echo "run this command with default answer, then run this installer again"
-    echo " "
-    tail -15 ${_LOG}
-    return 1
   fi
+  # stdout -> info log (silent on console)
+  # stderr -> error log (silent on console)
+  if [ -n "${_LOG_INFO}" ] && [ -n "${_LOG_ERRR}" ]; then
+    bash -c -- "${_cmd}" \
+      > >(tee -a "${_LOG_INFO}" >/dev/null) \
+      2> >(tee -a "${_LOG_ERRR}" >/dev/null)
+  else
+    # silent output + no logging
+    bash -c -- "${_cmd}" &> /dev/null
+  fi
+  return 0
 }
 
 #
@@ -389,6 +367,23 @@ _normalize_ip_name_variables() {
   fi
 }
 
+_dedup_xtras_list() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _dedup_xtras_list"
+  fi
+  if [ -n "${_XTRAS_LIST}" ]; then
+    local _w _u
+    _w="$(printf '%s\n' "${_XTRAS_LIST}" | xargs -n1 | wc -l)"
+    _u="$(printf '%s\n' "${_XTRAS_LIST}" | xargs -n1 | sort -u | wc -l)"
+    if [ "${_w}" -ne "${_u}" ]; then
+      _XTRAS_LIST="$(printf '%s\n' "${_XTRAS_LIST}" | xargs -n1 | sort -u | xargs)"
+      if [ -n "${_XTRAS_LIST}" ] && [ -e "${_barCnf}" ]; then
+        sed -i "s/^_XTRAS_LIST=.*/_XTRAS_LIST=\"${_XTRAS_LIST}\"/g" ${_barCnf}
+      fi
+    fi
+  fi
+}
+
 _mode_detection() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _mode_detection"
@@ -399,11 +394,21 @@ _mode_detection() {
     && [ ! -e "/lib/systemd/systemd" ]; then
     _STATUS=UPGRADE
     _msg "MODE: UPGRADE"
+    _dedup_xtras_list
     _barracuda_cnf
     touch /run/boa_wait.pid
     if [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ]; then
-      _XTRAS_LIST="ADM CSF FTP IMG"
+      if [[ ! " ${_XTRAS_LIST} " =~ (^|[[:space:]])CSF([[:space:]]|$) ]]; then
+        if [ -n "${_XTRAS_LIST}" ]; then
+          _XTRAS_LIST="${_XTRAS_LIST} CSF"
+        else
+          _XTRAS_LIST="CSF"
+        fi
+      fi
+    fi
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "XTRA: ${_XTRAS_LIST}"
     fi
   elif [ -e "/lib/systemd/systemd" ]; then
     _msg "FATAL ERROR: Something went wrong because /lib/systemd/systemd still exists, exit"
@@ -424,7 +429,7 @@ _mode_detection() {
         ### mv -f /root/.my.pass.txt ${_ZOMBIE_HOME}/ &> /dev/null
         cp -af /etc/sudoers ${_ZOMBIE_HOME}/ &> /dev/null
         sed -i "s/^aegir.*//g" /etc/sudoers &> /dev/null
-        kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
+        pkill -9 -f gpg-agent
         deluser aegir &> /dev/null
         rm -f /usr/bin/drush
       else
@@ -450,7 +455,13 @@ _mode_detection() {
     fi
     if [ "${_EASY_SETUP}" = "LOCAL" ]; then
       _msg "INFO: Localhost Setup Mode Active"
-      _XTRAS_LIST="ADM"
+      if [[ ! " ${_XTRAS_LIST} " =~ (^|[[:space:]])ADM([[:space:]]|$) ]]; then
+        if [ -n "${_XTRAS_LIST}" ]; then
+          _XTRAS_LIST="${_XTRAS_LIST} ADM"
+        else
+          _XTRAS_LIST="ADM"
+        fi
+      fi
       _AUTOPILOT=YES
       _SSH_PORT=22
       _DNS_SETUP_TEST=NO
@@ -459,10 +470,22 @@ _mode_detection() {
       _LOCAL_NETWORK_HN="aegir.local"
     elif [ "${_EASY_SETUP}" = "PUBLIC" ]; then
       _msg "INFO: Public Setup Mode Active"
-      _XTRAS_LIST="ADM CSF FTP IMG"
+      if [[ ! " ${_XTRAS_LIST} " =~ (^|[[:space:]])CSF([[:space:]]|$) ]]; then
+        if [ -n "${_XTRAS_LIST}" ]; then
+          _XTRAS_LIST="${_XTRAS_LIST} CSF"
+        else
+          _XTRAS_LIST="CSF"
+        fi
+      fi
       _if_hosted_sys
       if [ "${_hostedSys}" = "YES" ]; then
-        _XTRAS_LIST="ADM CSF FTP IMG"
+        if [[ ! " ${_XTRAS_LIST} " =~ (^|[[:space:]])FOO([[:space:]]|$) ]]; then
+          if [ -n "${_XTRAS_LIST}" ]; then
+            _XTRAS_LIST="${_XTRAS_LIST} FOO"
+          else
+            _XTRAS_LIST="FOO"
+          fi
+        fi
       fi
       _AUTOPILOT=YES
       _SSH_PORT=22
@@ -472,10 +495,13 @@ _mode_detection() {
       _MY_OWNIP="${_THISHTIP}"
     fi
     _barracuda_cnf
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "XTRA: ${_XTRAS_LIST}"
+    fi
   fi
   [ -e "/root/.use.curl.from.packages.cnf" ] && chattr -i /root/.use.curl.from.packages.cnf
   [ -e "/root/.use.curl.from.packages.cnf" ] && rm -f /root/.use.curl.from.packages.cnf
-  kill -9 $(ps aux | grep '[s]ystemd-udevd' | awk '{print $2}') &> /dev/null
+  pkill -9 -f systemd-udevd
   if [ "${_AEGIR_VERSION}" != "static" ]; then
     _USE_AEGIR_VER=SRC
   else
@@ -802,8 +828,11 @@ _virt_detection() {
       fi
       _msg "VIRT: This system is supported: ${_VIRT_IS}"
       echo
-      _msg "HINT: Command to run in another terminal window to watch details"
-      _msg "CMND: tail -f ${_LOG}"
+      if [ -n "${_LOG_INFO}" ] && [ -n "${_LOG_ERRR}" ]; then
+        _msg "HINT: Commands to run in another terminal window to watch details"
+        _msg "INFO: tail -f ${_LOG_INFO}"
+        _msg "ERRR: tail -f ${_LOG_ERRR}"
+      fi
     else
       if [ -z "${_VIRT_TEST}" ] || [ "${_VIRT_TEST}" = "0" ]; then
         _VIRT_TEST="unknown / not a virtual machine"
@@ -833,13 +862,13 @@ _os_detection_minimal() {
 _apt_clean_update() {
   #apt-get clean -qq 2> /dev/null
   #rm -rf /var/lib/apt/lists/* &> /dev/null
-  _mrun "${_APT_UPDATE} -qq" 2> /dev/null
+  _mrun "${_APT_UPDATE} -qq"
 }
 
 _apt_clean_update_no_releaseinfo_change() {
   #apt-get clean -qq 2> /dev/null
   #rm -rf /var/lib/apt/lists/* &> /dev/null
-  _mrun "apt-get update -qq" 2> /dev/null
+  _mrun "apt-get update -qq"
 }
 
 _turn_on_password_update() {
@@ -1146,12 +1175,12 @@ _turn_off_apparmor_in_octopus() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "ARMR: Turning off AppArmor temporarily..."
     fi
-    rm -rf /var/cache/apparmor/*
-    _mrun "apparmor_parser -r /etc/apparmor.d/*" 2> /dev/null
-    _mrun "aa-complain /etc/apparmor.d/*" 2> /dev/null
-    _mrun "service apparmor stop" 2> /dev/null
-    _mrun "aa-teardown" 2> /dev/null
-    _mrun "service auditd stop" 2> /dev/null
+    rm -rf /var/cache/apparmor/* &> /dev/null
+    apparmor_parser -r /etc/apparmor.d/* &> /dev/null
+    aa-complain /etc/apparmor.d/* &> /dev/null
+    service apparmor stop &> /dev/null
+    aa-teardown &> /dev/null
+    service auditd stop &> /dev/null
     touch /root/.turn_off_apparmor_in_octopus.cnf
   fi
 }

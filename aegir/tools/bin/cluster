@@ -10,7 +10,7 @@ _DB_SERIES=5.7
 _CSF_VRN=15.00
 _PROXYSQL_VRN="1.3.5-debian8_amd64"
 _UTIL_VRN="0.30.216-pre3126"
-_VNSTAT_VRN=2.7
+_VNSTAT_VRN=2.13
 _APT_XTR="-y"
 _aptAllow="--allow-unauthenticated"
 _dstUpArg="-fuy -q ${_aptAllow} --config-file /opt/apt/apt.conf.noi.dist"
@@ -29,8 +29,6 @@ else
   _DPKG_CNF="confnew"
 fi
 
-_INSTALL_DIST="/usr/bin/apt-get ${_dstUpArg} install"
-_INSTALL_NRML="/usr/bin/apt-get ${_nrmUpArg} install"
 _INSTAPP="/usr/bin/aptitude -f -y -q \
   --allow-untrusted \
   -o Dpkg::Options::=--force-confmiss \
@@ -135,7 +133,7 @@ _check_root() {
         exit 1
       fi
       echo
-      if [ "${_OS_CODE}" = "stretch" ] || [ "${_OS_CODE}" = "jessie" ]; then
+      if [ "${_OS_CODE}" = "buster" ] || [ "${_OS_CODE}" = "stretch" ] || [ "${_OS_CODE}" = "jessie" ]; then
         _APT_MIRROR="archive.debian.org/debian"
         _APT_REPSRC="${_OS_CODE}-backports"
         _SEC_MIRROR="archive.debian.org/debian-security"
@@ -573,9 +571,9 @@ _check_all() {
 }
 
 _check_config_cluster() {
-  if [ -e "/root/.cluster.cnf" ]; then
-    source /root/.cluster.cnf
-  fi
+
+  # shellcheck disable=SC1091
+  [ -e "/root/.cluster.cnf" ] && source /root/.cluster.cnf
 
   _CLUSTER_PREFIX="${_CLUSTER_PREFIX//[^a-z0-9]/}"
   _CLUSTER_PREFIX="$(echo -n ${_CLUSTER_PREFIX} | tr A-Z a-z 2>&1)"
@@ -653,7 +651,6 @@ _find_fast_mirror_early() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     _apt_clean_update
-    apt-get install netcat ${_aptYesUnth} 2> /dev/null
     apt-get install netcat-traditional ${_aptYesUnth} 2> /dev/null
     wait
   fi
@@ -669,6 +666,7 @@ _find_fast_mirror_early() {
     if [ -e "${_ffList}" ]; then
       _BROKEN_FFMIRR_TEST=$(grep "stuff" ${_ffMirr} 2>&1)
       if [[ "${_BROKEN_FFMIRR_TEST}" =~ "stuff" ]]; then
+        _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _USE_MIR="${_CHECK_MIRROR}"
         [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.aegir.cc"
@@ -748,12 +746,11 @@ _if_firewall_update() {
     fi
     sysctl -p /etc/sysctl.conf
     cd
-    kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
+    pkill -9 -f ConfigServer
     killall sleep &> /dev/null
     rm -f /etc/csf/csf.error
     if [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
       csf -ra &> /dev/null
-      wait
       synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
     else
       csf -r &> /dev/null
@@ -1650,13 +1647,11 @@ _install_db_cluster() {
     echo "${_WEB_NODE_IP} # Web Cluster Node" >> /etc/csf/csf.ignore
   fi
   service lfd stop
-  wait
-  kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
+  pkill -9 -f ConfigServer
   killall sleep &> /dev/null
   rm -f /etc/csf/csf.error
   if [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
     csf -ra &> /dev/null
-    wait
     synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
   else
     csf -r &> /dev/null
@@ -2035,7 +2030,7 @@ _install_host() {
 
   cat /etc/apt/sources.list
   echo
-  if [ "${_OS_CODE}" = "stretch" ] || [ "${_OS_CODE}" = "jessie" ]; then
+  if [ "${_OS_CODE}" = "buster" ] || [ "${_OS_CODE}" = "stretch" ] || [ "${_OS_CODE}" = "jessie" ]; then
     _APT_MIRROR="archive.debian.org/debian"
     _APT_REPSRC="${_OS_CODE}-backports"
     _SEC_MIRROR="archive.debian.org/debian-security"
@@ -2076,7 +2071,7 @@ _install_host() {
   ${_INSTAPP} locales
   ${_INSTAPP} lsb-release
   ${_INSTAPP} dnsutils
-  ${_INSTAPP} netcat
+  ${_INSTAPP} netcat-traditional
   ${_INSTAPP} curl
   ${_INSTAPP} wget
   ${_INSTAPP} libwww-perl
@@ -2178,9 +2173,9 @@ _install_host() {
       wget ${_wgetGet} http://repo.psand.net/pubkey.txt
       _KEYS_SERVER_TEST=$(grep GnuPG pubkey.txt 2>&1)
       sleep 2
-      _CNT=$(pgrep -fc "[d]irmngr")
+      _CNT=$(pgrep -fc dirmngr)
       if (( _CNT > 5 )); then
-        kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
+        pkill -9 -f dirmngr
         echo "$(date) Too many dirmngr processes killed (count=${_CNT})" >> \
           /var/log/boa/dirmngr-count.kill.log
       fi

@@ -484,7 +484,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
       echo
       exit 1
     fi
-    if [[ "${2}" =~ "set -m;" ]] \
+    if [[ $(whoami) == *.ftp ]] \
       || [[ "${2}" =~ "drush" ]] \
       || [[ "${2}" =~ "mysql " ]]; then
       _IN_PATH=YES
@@ -620,10 +620,18 @@ if [ "${_LTD_GID}" = "www-data users" ] \
             || [[ "${_ARGS}" =~ "drush11 cr drush" ]] \
             || [[ "${_ARGS}" =~ "vendor/drush/drush/drush.php cr drush" ]]; then
             _CORRECT=YES
+            _CORRECT_PWD_R=$(pwd 2>&1)
+            _CORRECT_ARGS_R="${_ARGS}"
+            ### echo _CORRECT_PWD_R is ${_CORRECT_PWD_R}
+            ### echo _CORRECT_ARGS_R is ${_CORRECT_ARGS_R}
           else
             if [[ "${_ARGS}" =~ "make-generate" ]] \
               && [ -f "${_PWD}/settings.php" ]; then
               _CORRECT=YES
+              _CORRECT_PWD_S=$(pwd 2>&1)
+              _CORRECT_ARGS_S="${_ARGS}"
+              ### echo _CORRECT_PWD_S is ${_CORRECT_PWD_S}
+              ### echo _CORRECT_ARGS_S is ${_CORRECT_ARGS_S}
             else
               echo
               echo " This drush command can not be run in ${_PWD}"
@@ -678,52 +686,71 @@ if [ "${_LTD_GID}" = "www-data users" ] \
               exit 0
             else
               _CORRECT=YES
+              ### LSHELL ==> ALL vdrush commands WITH @alias START here
+              ### LSHELL ==> ALL drush8 commands WITH @alias START here
+              _CORRECT_PWD_T=$(pwd 2>&1)
+              _CORRECT_ARGS_T="${_ARGS}"
+              ### echo _CORRECT_PWD_T is ${_CORRECT_PWD_T}
+              ### echo _CORRECT_ARGS_T is ${_CORRECT_ARGS_T}
             fi
+            ### LSHELL ==> BASIC vdrush commands WITH @alias END here
+            ### LSHELL ==> ALL drush8 commands WITH @alias END here
+            ### LSHELL ==> RESPAWNED vdrush commands WITH @alias like updatedb CONTINUE here
+            _CORRECT_PWD_U=$(pwd 2>&1)
+            _CORRECT_ARGS_U="${_ARGS}"
+            ### echo _CORRECT_PWD_U is ${_CORRECT_PWD_U}
+            ### echo _CORRECT_ARGS_U is ${_CORRECT_ARGS_U}
           elif [[ "${_ARGS}" =~ "cc drush" ]] \
             || [[ "${_ARGS}" =~ "cr drush" ]] \
+            || [[ "${_ARGS}" =~ "drush --version" ]] \
             || [[ "${_ARGS}" =~ "drush aliases" ]] \
-            || [[ "${_ARGS}" =~ "drush sa" ]] \
-            || [[ "${_ARGS}" =~ "set -m; drush8 --version" ]] \
-            || [[ "${_ARGS}" =~ "set -m; drush8 help" ]] \
-            || [[ "${_ARGS}" =~ "drush8 dl" ]] \
-            || [[ "${_ARGS}" =~ "drush8 pm-download" ]] \
-            || [[ "${_ARGS}" =~ "drush8 aliases" ]] \
-            || [[ "${_ARGS}" =~ "drush8 sa" ]] \
-            || [[ "${_ARGS}" =~ "set -m; drush10 --version" ]] \
-            || [[ "${_ARGS}" =~ "set -m; drush10 help" ]] \
-            || [[ "${_ARGS}" =~ "drush10 aliases" ]] \
-            || [[ "${_ARGS}" =~ "drush10 sa" ]] \
-            || [[ "${_ARGS}" =~ "set -m; drush11 --version" ]] \
-            || [[ "${_ARGS}" =~ "set -m; drush11 help" ]] \
-            || [[ "${_ARGS}" =~ "drush11 aliases" ]] \
-            || [[ "${_ARGS}" =~ "drush11 sa" ]] \
-            || [[ "${_ARGS}" =~ "set -m; vendor/drush/drush/drush.php --version" ]] \
-            || [[ "${_ARGS}" =~ "set -m; vendor/drush/drush/drush.php help" ]] \
-            || [[ "${_ARGS}" =~ "set -m; vendor/bin/drush --version" ]] \
-            || [[ "${_ARGS}" =~ "set -m; vendor/bin/drush help" ]] \
-            || [[ "${_ARGS}" =~ "set -m; drush --version" ]] \
-            || [[ "${_ARGS}" =~ "set -m; drush help" ]] \
             || [[ "${_ARGS}" =~ "drush dl" ]] \
-            || [[ "${_ARGS}" =~ "drush pm-download" ]]; then
+            || [[ "${_ARGS}" =~ "drush help" ]] \
+            || [[ "${_ARGS}" =~ "drush sa" ]] \
+            || [[ "${_ARGS}" =~ "drush10 --version" ]] \
+            || [[ "${_ARGS}" =~ "drush10 aliases" ]] \
+            || [[ "${_ARGS}" =~ "drush10 help" ]] \
+            || [[ "${_ARGS}" =~ "drush10 sa" ]] \
+            || [[ "${_ARGS}" =~ "drush11 --version" ]] \
+            || [[ "${_ARGS}" =~ "drush11 aliases" ]] \
+            || [[ "${_ARGS}" =~ "drush11 help" ]] \
+            || [[ "${_ARGS}" =~ "drush11 sa" ]] \
+            || [[ "${_ARGS}" =~ "drush8 --version" ]] \
+            || [[ "${_ARGS}" =~ "drush8 aliases" ]] \
+            || [[ "${_ARGS}" =~ "drush8 dl" ]] \
+            || [[ "${_ARGS}" =~ "drush8 help" ]] \
+            || [[ "${_ARGS}" =~ "drush8 pm-download" ]] \
+            || [[ "${_ARGS}" =~ "drush8 sa" ]] \
+            || [[ "${_ARGS}" =~ "drush pm-download" ]] \
+            || [[ "${_ARGS}" =~ "vendor/bin/drush --version" ]] \
+            || [[ "${_ARGS}" =~ "vendor/bin/drush help" ]] \
+            || [[ "${_ARGS}" =~ "/data/disk/" ]] \
+            || [[ "${_ARGS}" =~ "vendor/drush/drush/drush.php --version" ]] \
+            || [[ "${_ARGS}" =~ "vendor/drush/drush/drush.php help" ]]; then
             _CORRECT=YES
+            ### LSHELL ==> RESPAWNED vdrush commands WITH @alias like updatedb END here
+            ### LSHELL ==> Commands like drush11 aliases START and END here
+            _CORRECT_PWD_V=$(pwd 2>&1)
+            _CORRECT_ARGS_V="${_ARGS}"
+            ### echo _CORRECT_PWD_V is ${_CORRECT_PWD_V}
+            ### echo _CORRECT_ARGS_V is ${_CORRECT_ARGS_V}
           else
-            if [[ "${_ARGS}" =~ "set -m; drush" ]] \
-              && [ ! -f "${_PWD}/settings.php" ]; then
-              echo
-              echo " This drush command can not be run in ${_PWD}"
-              echo " Please cd to the valid sites/foo.com directory first"
-              echo " or use a valid @alias, like: drush @foo.com status"
-              echo " Hint: Use 'drush aliases' to display all Drush 8 aliases"
-              echo " Hint: Use 'drush11 aliases' to display all Drush 10+ aliases"
-              echo
-              exit 0
-            elif [ -f "${_PWD}/settings.php" ]; then
+            ### LSHELL ==> ALL drush8 commands WITHOUT @alias START here
+            _CORRECT_PWD_X=$(pwd 2>&1)
+            _CORRECT_ARGS_X="${_ARGS}"
+            ### echo _CORRECT_PWD_X is ${_CORRECT_PWD_X}
+            ### echo _CORRECT_ARGS_X is ${_CORRECT_ARGS_X}
+            if [ -f "${_PWD}/settings.php" ]; then
               if [[ "${_ARGS}" =~ "drush " ]] \
                 || [[ "${_ARGS}" =~ "drush8 " ]] \
                 || [[ "${_ARGS}" =~ "drush10 " ]] \
-                || [[ "${_ARGS}" =~ "drush11 " ]] \
-                || [[ "${_ARGS}" =~ "vendor/drush/drush/drush.php " ]]; then
+                || [[ "${_ARGS}" =~ "drush11 " ]]; then
                 _CORRECT=YES
+                ### LSHELL ==> ALL drush8 commands WITHOUT @alias END here
+                _CORRECT_PWD_Y=$(pwd 2>&1)
+                _CORRECT_ARGS_Y="${_ARGS}"
+                ### echo _CORRECT_PWD_Y is ${_CORRECT_PWD_Y}
+                ### echo _CORRECT_ARGS_Y is ${_CORRECT_ARGS_Y}
               fi
             fi
           fi
@@ -767,6 +794,10 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           echo
           exit 0
         fi
+        _DEBUG_PWD_X=$(pwd 2>&1)
+        _DEBUG_ARGS_X="${_ARGS}"
+        ### echo _DEBUG_PWD_X is ${_DEBUG_PWD_X}
+        ### echo _DEBUG_ARGS_X is ${_DEBUG_ARGS_X}
       fi
       _RAW_IN_PATH=${2//[^a-z/]/}
       if [[ "${2}" =~ (^)"/usr/" ]] \
@@ -858,6 +889,10 @@ if [ "${_LTD_GID}" = "www-data users" ] \
         echo
         exit 0
       fi
+      _DEBUG_PWD_Y=$(pwd 2>&1)
+      _DEBUG_ARGS_Y="${_ARGS}"
+      ### echo _DEBUG_PWD_Y is ${_DEBUG_PWD_Y}
+      ### echo _DEBUG_ARGS_Y is ${_DEBUG_ARGS_Y}
     fi
     if [[ "${1}" =~ (^)"/usr/" ]] \
       || [[ "${1}" =~ (^)"/bin/" ]] \
@@ -895,8 +930,12 @@ if [ "${_LTD_GID}" = "www-data users" ] \
     || [[ "${_LTD_GID}" =~ "rvm ltd-shell"($) ]] \
     || [[ "${_LTD_GID}" =~ "ltd-shell rvm"($) ]]; then
     if [[ "${_ARGS}" =~ "*" ]]; then
-      if [[ "${_ARGS}" =~ "set -m; " ]]; then
+      if [[ $(whoami) == *.ftp ]]; then
         _SILENT=YES
+        ####
+        #### The [[ $(whoami) == *.ftp ]] ### OK for Drush and Drupal
+        #### The [[ "${_ARGS}" =~ "set -m; " ]] ### Legacy defunct method
+        ####
       else
         if [[ "${_ARGS}" =~ "__build__" ]] \
           || [[ "${_ARGS}" =~ "_tmp_" ]] \
@@ -945,7 +984,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
   fi
   if [ "${_IN_PATH}" = "YES" ]; then
     if [ -x "/usr/local/bin/ruby" ] && [ -x "/usr/local/bin/gem" ]; then
-      if [[ "${_ARGS}" =~ "set -m; " ]] || [ ! -z "${SSH_CLIENT}" ]; then
+      if [[ $(whoami) == *.ftp ]] || [ ! -z "${SSH_CLIENT}" ]; then
         _RUBY_ALLOW=YES
       fi
     fi
@@ -957,7 +996,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
       fi
     fi
     if [ -x "/usr/bin/npm" ] && [ -e "/home/${USER}/.npmrc" ]; then
-      if [[ "${_ARGS}" =~ "set -m; " ]] || [ ! -z "${SSH_CLIENT}" ]; then
+      if [[ $(whoami) == *.ftp ]] || [ ! -z "${SSH_CLIENT}" ]; then
         _NPM_ALLOW=YES
       fi
     fi

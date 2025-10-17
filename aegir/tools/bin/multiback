@@ -114,6 +114,34 @@ _optimize_ram() {
   swapon -a
 }
 
+###
+### Load + normalize _INCIDENT_REPORT
+###
+### Legacy values:
+###   NO  becomes OFF (see below)
+###   YES becomes MINI (see below)
+###
+### Current values:
+###   OFF  == Total silence, no email alerts
+###   ALL  == Very noisy, good for debugging
+###   MINI == Only the most important alerts (default)
+###   CRIT == Only critical if _lvl=ALERT
+###
+_normalize_incident_report() {
+  : "${_INCIDENT_REPORT:=MINI}"
+  _INCIDENT_REPORT="${_INCIDENT_REPORT^^}"
+  _INCIDENT_REPORT="${_INCIDENT_REPORT//[^A-Z]/}"
+  ###
+  ### Map legacy + validate
+  ###
+  case "${_INCIDENT_REPORT}" in
+    NO)   _INCIDENT_REPORT="OFF"  ;;
+    YES)  _INCIDENT_REPORT="MINI" ;;
+    OFF|ALL|MINI|CRIT) : ;;
+    *)    _INCIDENT_REPORT="MINI" ;;
+  esac
+}
+
 # Function to verify root access
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
@@ -135,9 +163,8 @@ _check_root() {
     echo "ERROR: We can not proceed until it is below 90/100"
     exit 1
   fi
+  # shellcheck disable=SC1091
   [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
-  export _INCIDENT_REPORT=${_INCIDENT_REPORT//[^A-Z]/}
-  : "${_INCIDENT_REPORT:=YES}"
   _AWS_VLV=${_AWS_VLV//[^a-z]/}
   if [ -z "${_AWS_VLV}" ]; then
     _AWS_VLV="warning"
@@ -153,6 +180,7 @@ _check_root() {
   fi
 }
 _check_root
+_normalize_incident_report
 _optimize_ram
 _if_hosted_sys
 _verify_boa_keys
@@ -177,12 +205,12 @@ _waiting_notify() {
   ls -laR /root/.cache/duplicity >> ${_templog}
   grep "Out of memory: Killed process.*duplicity" /var/log/iptables.log >> ${_templog}
   boa info  >> ${_templog}
-  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "YES" ]; then
+  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "ALL" ]; then
     s-nail -s "Multiback Waiting Report for [${_hName}] on $(date)" ${_MY_EMAIL} < ${_templog}
   fi
 }
 
-_CNT=$(pgrep -fc "[d]uplicity")
+_CNT=$(pgrep -fc duplicity)
 if (( _CNT > 0 )); then
   echo "[$(date)] Active duplicity process detected, will try again later..." >> /var/log/mybackup_waiting_queue.log
   _waiting_notify
@@ -239,7 +267,7 @@ _remove_pid_file() {
 _remove_stale_multiback_pid() {
   local _service=$1
   local _user=$2
-  _multiback_pidfile="/var/run/duplicity_${_service}_${_user}.pid"
+  _multiback_pidfile="/run/duplicity_${_service}_${_user}.pid"
   if [ -f "${_multiback_pidfile}" ]; then
     _old_pid=$(cat "${_multiback_pidfile}")
     if [ -n "${_old_pid}" ] && ! kill -0 "${_old_pid}" 2>/dev/null; then
@@ -255,7 +283,7 @@ _log_issue() {
   local _file=$2
   local _message=$3
   echo "[$(date)] Validation issue type: [${_type}] in file: [${_file}] with error: ${_message}" >> "${_VALIDATION_LOG_FILE}"
-  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "YES" ]; then
+  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "ALL" ]; then
     # Alert the admin
     boa info  >> ${_LOGFILE}
     echo "Sending Backup Validation Alert to ${_MY_EMAIL} on $(date)" >> ${_LOGFILE}
@@ -733,7 +761,7 @@ _backup() {
   _check_if_repair
   _weekly_cleanup
   _check_if_worked_cleanly_or_log_err
-  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "YES" ]; then
+  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" != "OFF" ]; then
     boa info  >> ${_LOGFILE}
     echo "Sending email report on $(date)" >> ${_LOGFILE}
     echo >> ${_LOGFILE}
@@ -951,7 +979,7 @@ export _USER=$3
 export _RESTORE_TARGET="${4:-/var/backups/restored/}"
 export _RESTORE_PATH="${5:-}"
 export _RESTORE_TIME="${6:-}"
-export _PIDFILE="/var/run/duplicity_${_SERVICE}_${_USER}.pid"
+export _PIDFILE="/run/duplicity_${_SERVICE}_${_USER}.pid"
 # Default values
 export _DEFAULT_KEEP_WITHIN="3M"            # Default: 3 month
 export _DEFAULT_FULL_BACKUP_FREQUENCY="28D" # Default: 28 days

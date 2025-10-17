@@ -8,6 +8,7 @@ _pthOml="/var/log/boa/system.incident.log"
 
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
+    # shellcheck disable=SC1091
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
     chmod a+w /dev/null
   else
@@ -17,8 +18,12 @@ _check_root() {
 }
 _check_root
 
-export _INCIDENT_REPORT=${_INCIDENT_REPORT//[^A-Z]/}
-: "${_INCIDENT_REPORT:=YES}"
+# Run only on fully installed system
+[ ! -e "/var/log/boa/reset_no_new_password.pid" ] && exit 0
+
+: "${_CRON_COOLDOWN_SECS:=15}"
+: "${_POSTFIX_COOLDOWN_SECS:=15}"
+: "${_LFD_COOLDOWN_SECS:=15}"
 
 ###
 ### Atomic lock/unlock to prevent TOCTOU race
@@ -35,7 +40,7 @@ _manage_single_lock() {
     # -------- legacy pgrep guard ---------
     # Exit if more than 2 instances of this script are running
     _SCRIPT=$(basename "$0")
-    _CNT=$(pgrep -fc "[${_SCRIPT:0:1}]${_SCRIPT:1}")
+    _CNT=$(pgrep -fc ${_SCRIPT})
     if (( _CNT > 2 )); then
       echo "Too many ${_SCRIPT} running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
       exit 0
@@ -44,25 +49,65 @@ _manage_single_lock() {
 }
 _manage_single_lock
 
+###
+### Load + normalize _INCIDENT_REPORT
+###
+### Legacy values:
+###   NO  becomes OFF (see below)
+###   YES becomes MINI (see below)
+###
+### Current values:
+###   OFF  == Total silence, no email alerts
+###   ALL  == Very noisy, good for debugging
+###   MINI == Only the most important alerts (default)
+###   CRIT == Only critical if _lvl=ALERT
+###
+_normalize_incident_report() {
+  : "${_INCIDENT_REPORT:=CRIT}"
+  _INCIDENT_REPORT="${_INCIDENT_REPORT^^}"
+  _INCIDENT_REPORT="${_INCIDENT_REPORT//[^A-Z]/}"
+  ###
+  ### Map legacy + validate
+  ###
+  case "${_INCIDENT_REPORT}" in
+    NO)   _INCIDENT_REPORT="OFF"  ;;
+    YES)  _INCIDENT_REPORT="CRIT" ;;
+    MINI) _INCIDENT_REPORT="CRIT" ;;
+    OFF|ALL|CRIT) : ;;
+    *)    _INCIDENT_REPORT="CRIT" ;;
+  esac
+}
+_normalize_incident_report
+
+###
+### Function to send incident email report
+###
 _incident_email_report() {
-  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "YES" ]; then
-    _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
-    echo "Sending Incident Report Email on $(date)" >> ${_pthOml}
-    s-nail -s "Incident Report: ${1} on ${_hName} at $(date)" ${_MY_EMAIL} < ${_pthOml}
-  fi
+  _check_uptime_grace_period >/dev/null || return 1
+  local _subject="${1:-(no subject)}"
+  local _lvl="${2:-INFO}"
+  _lvl="${_lvl^^}"
+  [ -n "${_MY_EMAIL}" ] || return 1
+  # Decide if we should send
+  case "${_INCIDENT_REPORT}" in
+    OFF)  return 1 ;;                            # always veto
+    CRIT) [ "${_lvl}" = "ALERT" ] || return 1 ;; # veto unless ALERT
+    ALL) : ;;                                    # allow
+  esac
+  _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
+  echo "Sending Incident Report Email on $(date)" >> ${_pthOml}
+  s-nail -s "Incident Report on ${_hName}: ${_subject}" "${_MY_EMAIL}" < ${_pthOml}
 }
 
 _wkhtmltopdf_php_cli_oom_kill() {
   touch /run/boa_run.pid
-  echo "$(date) OOM $1 wkhtmltopdf/php-cli detected" >> ${_pthOml}
+  echo "$(date) OOM $1 wkhtmltopdf detected" >> ${_pthOml}
   sleep 3
-  kill -9 $(ps aux | grep '[w]khtmltopdf' | awk '{print $2}') &> /dev/null
+  pkill -9 -f wkhtmltopdf
   echo "$(date) OOM wkhtmltopdf killed" >> ${_pthOml}
   killall -9 sleep &> /dev/null
-  killall -9 php
-  echo "$(date) OOM php-cli killed" >> ${_pthOml}
-  echo "$(date) OOM wkhtmltopdf/php-cli incident response completed" >> ${_pthOml}
-  _incident_email_report "OOM $1 wkhtmltopdf/php-cli"
+  echo "$(date) OOM wkhtmltopdf incident response completed" >> ${_pthOml}
+  _incident_email_report "OOM $1 wkhtmltopdf"
   echo >> ${_pthOml}
   [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
   exit 0
@@ -71,34 +116,34 @@ _wkhtmltopdf_php_cli_oom_kill() {
 _oom_critical_restart() {
   touch /run/boa_run.pid
   echo "$(date) OOM $1 detected" >> ${_pthOml}
-  kill -9 $(ps aux | grep '[w]khtmltopdf' | awk '{print $2}') &> /dev/null
+  pkill -9 -f wkhtmltopdf
   echo "$(date) OOM wkhtmltopdf killed" >> ${_pthOml}
   killall -9 sleep &> /dev/null
   killall -9 php
   echo "$(date) OOM php-cli killed" >> ${_pthOml}
   mv -f /var/log/nginx/error.log /var/log/nginx/$(date +%y%m%d-%H%M)-error.log
-  kill -9 $(ps aux | grep '[n]ginx' | awk '{print $2}') &> /dev/null
+  pkill -9 -f nginx
   echo "$(date) OOM nginx killed" >> ${_pthOml}
-  kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}') &> /dev/null
+  pkill -9 -f php-fpm
   echo "$(date) OOM php-fpm killed" >> ${_pthOml}
-  kill -9 $(ps aux | grep '[j]ava' | awk '{print $2}') &> /dev/null
+  pkill -9 -f java
   echo "$(date) OOM solr/jetty killed" >> ${_pthOml}
-  kill -9 $(ps aux | grep '[n]ewrelic-daemon' | awk '{print $2}') &> /dev/null
+  pkill -9 -f newrelic-daemon
   echo "$(date) OOM newrelic-daemon killed" >> ${_pthOml}
   if [ -e "/etc/init.d/valkey-server" ]; then
     rm -f /var/lib/valkey/*
-    kill -9 $(ps aux | grep '[v]alkey-server' | awk '{print $2}') &> /dev/null
+    pkill -9 -f valkey-server
     echo "$(date) OOM valkey-server killed" >> ${_pthOml}
   elif [ -e "/etc/init.d/redis-server" ]; then
     rm -f /var/lib/redis/*
-    kill -9 $(ps aux | grep '[r]edis-server' | awk '{print $2}') &> /dev/null
+    pkill -9 -f redis-server
     echo "$(date) OOM redis-server killed" >> ${_pthOml}
   fi
   bash /var/xdrago/move_sql.sh
   wait
   echo "$(date) OOM Percona MySQL Server restarted" >> ${_pthOml}
   echo "$(date) OOM incident response completed" >> ${_pthOml}
-  _incident_email_report "OOM $1 system"
+  _incident_email_report "OOM $1 system" "ALERT"
   echo >> ${_pthOml}
   [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
   exit 0
@@ -120,7 +165,8 @@ _system_oom_detection() {
     if [ "${_RAM_PCT_FREE}" -le 5 ]; then
       _oom_critical_restart "RAM ${_RAM_PCT_FREE}/${_RAM_TOTAL}"
     elif [ "${_RAM_PCT_FREE}" -le 10 ]; then
-      if [ `ps aux | grep -v "grep" | grep --count "wkhtmltopdf"` -gt 2 ]; then
+      _CNT=$(pgrep -fc wkhtmltopdf)
+      if (( _CNT > 2 )); then
         _wkhtmltopdf_php_cli_oom_kill "RAM ${_RAM_PCT_FREE}/${_RAM_TOTAL}"
       fi
     fi
@@ -155,20 +201,6 @@ _optimize_ram() {
   fi
 }
 
-_if_fix_locked_sshd() {
-  _SSH_LOG="/var/log/auth.log"
-  if [ `tail --lines=10 ${_SSH_LOG} \
-    | grep --count "error: Bind to port 22"` -gt 0 ]; then
-    kill -9 sshd &> /dev/null
-    kill -9 $(ps aux | grep '[s]tartups' | awk '{print $2}') &> /dev/null
-    service ssh start
-    _thisErrLog="$(date) SSHD BIND error detected, service restarted"
-    echo ${_thisErrLog} >> ${_pthOml}
-    _incident_email_report "SSHD BIND error detected, service restarted"
-    echo >> ${_pthOml}
-  fi
-}
-
 _if_fix_dhcp() {
   # Determine the correct log file
   if [ -e "/var/log/daemon.log" ]; then
@@ -183,7 +215,7 @@ _if_fix_dhcp() {
     count=$(tail -n 3 "${_DHCP_LOG}" | grep -c "dhclient:.*Failed")
 
     # Debugging: Log the count value
-    [ "$count" -gt 0 ] && echo "DHCP failure count: $count" >> "${_pthOml}"
+    [ "$count" -gt 0 ] && echo "DHCP failure count: $count" >> ${_pthOml}
 
     # Proceed only if there is at least one failure
     if [ "$count" -gt 0 ]; then
@@ -206,7 +238,6 @@ _if_fix_dhcp() {
       # Reload the firewall
       if [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
         csf -ra &> /dev/null
-        wait
         synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
       else
         csf -r &> /dev/null
@@ -214,24 +245,38 @@ _if_fix_dhcp() {
 
       # Log the error and send an email report
       _thisErrLog="$(date) DHCP error detected, firewall updated"
-      echo "${_thisErrLog}" >> "${_pthOml}"
+      echo "${_thisErrLog}" >> ${_pthOml}
       _incident_email_report "DHCP error detected, firewall updated"
-      echo >> "${_pthOml}"
+      echo >> ${_pthOml}
     fi
   fi
 }
 
 _cron_duplicate_instances_detection() {
-  _CNT=$(pgrep -fc "[u]sr/sbin/cron")
+  _CNT=$(pgrep -fc /usr/sbin/cron)
   if (( _CNT > 1 )); then
-    _thisErrLog="$(date) Too many Cron instances running killed (count=${_CNT})"
-    echo ${_thisErrLog} >> /var/log/boa/cron-count.kill.log
-    killall -9 cron &> /dev/null
-    service cron start &> /dev/null
-    _thisErrLog="$(date) Too many Cron instances, service restarted (count=${_CNT})"
-    echo ${_thisErrLog} >> ${_pthOml}
-    _incident_email_report "Too many Cron instances, service restarted (count=${_CNT})"
-    echo >> ${_pthOml}
+    # Double-check after a short grace to avoid flapping
+    sleep 3
+    _CNT2=$(pgrep -fc /usr/sbin/cron)
+    if (( _CNT2 > 1 )); then
+      _cd="/run/cron-monitor.cooldown"
+      _now=$(date +%s)
+      if [ -s "${_cd}" ]; then
+        _ts=$(cat "${_cd}" 2>/dev/null | tr -d '\n')
+        if [ -n "${_ts}" ] && [ $((_now - _ts)) -lt "${_CRON_COOLDOWN_SECS}" ]; then
+          echo "$(date) INFO: Cron duplicates detected but in cooldown; skipping restart" >> ${_pthOml}
+          return 0
+        fi
+      fi
+      killall -9 cron &> /dev/null
+      service cron start &> /dev/null
+      # Cooldown stamp
+      date +%s > "${_cd}"
+      _thisErrLog="$(date) Too many Cron instances, service restarted (count=${_CNT2})"
+      echo ${_thisErrLog} >> ${_pthOml}
+      _incident_email_report "Too many Cron instances, service restarted (count=${_CNT2})"
+      echo >> ${_pthOml}
+    fi
   fi
 }
 
@@ -251,11 +296,9 @@ _syslog_giant_log_detection() {
 }
 
 _gpg_too_many_instances_detection() {
-  _CNT=$(pgrep -fc "[g]pg-agent")
+  _CNT=$(pgrep -fc gpg-agent)
   if (( _CNT > 5 )); then
-    _thisErrLog="$(date) Too many gpg-agent processes killed (count=${_CNT})"
-    echo ${_thisErrLog} >> /var/log/boa/gpg-agent-count.kill.log
-    kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
+    pkill -9 -f gpg-agent
     _thisErrLog="$(date) Too many gpg-agent processes killed (count=${_CNT})"
     echo ${_thisErrLog} >> ${_pthOml}
     _incident_email_report "Too many gpg-agent processes killed (count=${_CNT})"
@@ -264,17 +307,210 @@ _gpg_too_many_instances_detection() {
 }
 
 _dirmngr_too_many_instances_detection() {
-  _CNT=$(pgrep -fc "[d]irmngr")
+  _CNT=$(pgrep -fc dirmngr)
   if (( _CNT > 5 )); then
-    _thisErrLog="$(date) Too many dirmngr processes killed (count=${_CNT})"
-    echo ${_thisErrLog} >> /var/log/boa/dirmngr-count.kill.log
-    kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
+    pkill -9 -f dirmngr
     _thisErrLog="$(date) Too many dirmngr processes killed (count=${_CNT})"
     echo ${_thisErrLog} >> ${_pthOml}
     _incident_email_report "Too many dirmngr processes killed (count=${_CNT})"
     echo >> ${_pthOml}
   fi
 }
+
+_ftpd_health_check_fix() {
+  _ftpd_init="/usr/local/sbin/pure-config.pl"
+  _ftpd_conf="/usr/local/etc/pure-ftpd.conf"
+  _ftpd_bind="/usr/local/sbin/pure-ftpd"
+  _ftpd_pid="/run/pure-ftpd.pid"
+  _ftpd_restarted=NO
+  if [ -x "/usr/local/sbin/pure-ftpd" ] \
+    || [ -x "/usr/local/sbin/pure-config.pl" ]; then
+    if ! pgrep -f pure-ftpd \
+      || [ ! -e "/run/pure-ftpd.pid" ]; then
+      if [ -e "${_ftpd_conf}" ]; then
+        pkill -9 -f pure-ftpd || true
+        if [ -x "${_ftpd_init}" ]; then
+          ${_ftpd_init} ${_ftpd_conf}
+          _ftpd_restarted=YES
+        elif [ -x "${_ftpd_bind}" ]; then
+          ${_ftpd_bind} ${_ftpd_conf}
+          _ftpd_restarted=YES
+        fi
+        if [ "${_ftpd_restarted}" = "YES" ]; then
+          _thisErrLog="$(date) FTPS Server was down, restarted"
+          echo ${_thisErrLog} >> ${_pthOml}
+          _incident_email_report "FTPS Server was down, restarted"
+          echo >> ${_pthOml}
+        fi
+      fi
+    fi
+  fi
+}
+
+_postfix_health_check_fix() {
+  if [ -x "/etc/init.d/postfix" ]; then
+    if ! pgrep -f /usr/lib/postfix \
+      || [ ! -e "/var/spool/postfix/pid/master.pid" ]; then
+      # Double-check after a short grace
+      sleep 2
+      if ! pgrep -f /usr/lib/postfix \
+        || [ ! -e "/var/spool/postfix/pid/master.pid" ]; then
+        _cd="/run/postfix-monitor.cooldown"
+        _now=$(date +%s)
+        if [ -s "${_cd}" ]; then
+          _ts=$(cat "${_cd}" 2>/dev/null | tr -d '\n')
+          if [ -n "${_ts}" ] && [ $((_now - _ts)) -lt "${_POSTFIX_COOLDOWN_SECS}" ]; then
+            echo "$(date) INFO: Postfix unhealthy but in cooldown; skipping restart" >> ${_pthOml}
+            return 0
+          fi
+        fi
+        service postfix restart
+        wait
+        date +%s > "${_cd}"
+        _thisErrLog="$(date) Postfix Server was down, restarted"
+        echo ${_thisErrLog} >> ${_pthOml}
+        _incident_email_report "Postfix Server was down, restarted"
+        echo >> ${_pthOml}
+      fi
+    fi
+  fi
+}
+
+_vnstat_health_check_fix() {
+  if [ -x "/etc/init.d/vnstat" ] && [ ! -e "/run/vnstat.pid" ]; then
+    if ! pgrep -f /usr/sbin/vnstatd \
+      || [ ! -e "/run/vnstat/vnstat.pid" ]; then
+      service vnstat restart
+      wait
+      _thisErrLog="$(date) VNStat Monitor was down, restarted"
+      echo ${_thisErrLog} >> ${_pthOml}
+      _incident_email_report "VNStat Monitor was down, restarted"
+      echo >> ${_pthOml}
+    fi
+  fi
+}
+
+_lfd_health_check_fix() {
+  if [ -x "/etc/init.d/lfd" ]; then
+    if ! pgrep -f lfd \
+      || [ ! -e "/run/lfd.pid" ]; then
+      _cd="/run/lfd-monitor.cooldown"
+      _now=$(date +%s)
+      if [ -s "${_cd}" ]; then
+        _ts=$(cat "${_cd}" 2>/dev/null | tr -d '\n')
+        if [ -n "${_ts}" ] && [ $((_now - _ts)) -lt "${_LFD_COOLDOWN_SECS}" ]; then
+          echo "$(date) INFO: LFD unhealthy but in cooldown; skipping start" >> ${_pthOml}
+          return 0
+        fi
+      fi
+      service lfd start
+      csf -e
+      # Set cooldown timestamp after attempting recovery
+      date +%s > "${_cd}"
+      _thisErrLog="$(date) LFD Monitor was down, started"
+      echo ${_thisErrLog} >> ${_pthOml}
+      _incident_email_report "LFD Monitor was down, started"
+      echo >> ${_pthOml}
+    fi
+  fi
+}
+
+_if_fix_locked_sshd() {
+  _SSH_LOG="/var/log/auth.log"
+  if [ `tail --lines=10 ${_SSH_LOG} \
+    | grep --count "error: Bind to port 22"` -gt 0 ]; then
+    pkill -9 -f /usr/sbin/sshd || true
+    service ssh start
+    wait
+    _thisErrLog="$(date) SSHD BIND PORT error, service will be restarted"
+    echo ${_thisErrLog} >> ${_pthOml}
+    _incident_email_report "SSHD BIND PORT error, service will be restarted"
+    echo >> ${_pthOml}
+  fi
+}
+
+_sshd_health_check_fix() {
+  if [ -x "/etc/init.d/ssh" ]; then
+    if ! pgrep -f /usr/sbin/sshd \
+      || [ ! -e "/run/sshd.pid" ]; then
+      service ssh start
+      wait
+      _thisErrLog="$(date) SSHD Server was down, started"
+      echo ${_thisErrLog} >> ${_pthOml}
+      _incident_email_report "SSHD Server was down, started"
+      echo >> ${_pthOml}
+    fi
+  fi
+}
+
+_clamav_health_check_fix() {
+  # Define file paths as variables
+  _allow_conf="/root/.allow.clamav.cnf"
+  _deny_conf="/root/.deny.clamav.cnf"
+  _data_dir="/data/u"
+  _freshclam_pid="/run/clamav/freshclam.pid"
+  _clamd_pid="/run/clamav/clamd.pid"
+  _clamd_service="/etc/init.d/clamav-daemon"
+  _freshclam_service="/etc/init.d/clamav-freshclam"
+  if [ -e "/run/max_load.pid" ] || [ -e "/run/critical_load.pid" ]; then
+    return 1  # Exit the function but continue the script
+  fi
+  if [ -e "${_allow_conf}" ] \
+    && [ ! -e "${_deny_conf}" ] \
+    && [ -e "${_data_dir}" ] \
+    && [ -e "${_clamd_service}" ] \
+    && [ -e "${_freshclam_service}" ]; then
+    if [ -x "/etc/init.d/clamav-daemon" ]; then
+      if ! pgrep -f /usr/sbin/clamd \
+        || [ ! -e "/run/clamav/clamd.pid" ]; then
+        pkill -9 -f /usr/sbin/clamd || true
+        service clamav-daemon start
+        wait
+        sleep 5
+        _thisErrLog="$(date) Clamav was down, started"
+        echo ${_thisErrLog} >> ${_pthOml}
+        _incident_email_report "Clamav was down, started"
+        echo >> ${_pthOml}
+      fi
+    fi
+    if [ -x "/etc/init.d/clamav-freshclam" ]; then
+      if ! pgrep -f /usr/bin/freshclam \
+        || [ ! -e "/run/clamav/freshclam.pid" ]; then
+        pkill -9 -f /usr/bin/freshclam || true
+        service clamav-freshclam start
+        wait
+        sleep 15
+        _thisErrLog="$(date) Freshclam was down, started"
+        echo ${_thisErrLog} >> ${_pthOml}
+        _incident_email_report "Freshclam was down, started"
+        echo >> ${_pthOml}
+      fi
+    fi
+  fi
+}
+
+_rsyslog_health_check_fix() {
+  if [ -x "/etc/init.d/rsyslog" ]; then
+    if ! pgrep -f /usr/sbin/rsyslogd \
+      || [ ! -e "/run/rsyslogd.pid" ]; then
+      pkill -9 -f /usr/sbin/rsyslogd || true
+      service rsyslog restart
+      wait
+      _thisErrLog="$(date) Rsyslog was down, restarted"
+      echo ${_thisErrLog} >> ${_pthOml}
+      _incident_email_report "Rsyslog was down, restarted"
+      echo >> ${_pthOml}
+    fi
+  fi
+}
+
+_sshd_health_check_fix
+_if_fix_locked_sshd
+_if_fix_dhcp
+_rsyslog_health_check_fix
+_postfix_health_check_fix
+_cron_duplicate_instances_detection
+_syslog_giant_log_detection
 
 if [ -e "/run/boa_sql_backup.pid" ] \
   || [ -e "/run/boa_sql_cluster_backup.pid" ] \
@@ -286,15 +522,14 @@ else
   _ALLOW_CTRL=YES
 fi
 
-_if_fix_locked_sshd
-_if_fix_dhcp
-_cron_duplicate_instances_detection
-_syslog_giant_log_detection
-
 [ "${_ALLOW_CTRL}" = "YES" ] && _optimize_ram
 [ "${_ALLOW_CTRL}" = "YES" ] && _system_oom_detection
+[ "${_ALLOW_CTRL}" = "YES" ] && _lfd_health_check_fix
+[ "${_ALLOW_CTRL}" = "YES" ] && _ftpd_health_check_fix
+[ "${_ALLOW_CTRL}" = "YES" ] && _vnstat_health_check_fix
 [ "${_ALLOW_CTRL}" = "YES" ] && _gpg_too_many_instances_detection
 [ "${_ALLOW_CTRL}" = "YES" ] && _dirmngr_too_many_instances_detection
+[ "${_ALLOW_CTRL}" = "YES" ] && _clamav_health_check_fix
 
 echo DONE!
 exit 0

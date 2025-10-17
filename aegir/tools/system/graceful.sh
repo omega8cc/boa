@@ -11,12 +11,13 @@ _check_root() {
     echo "ERROR: This script should be run as root"
     exit 1
   else
+    # shellcheck disable=SC1091
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
     # Sanitize to allow only digits and minus sign
     export _B_NICE=${_B_NICE//[^0-9-]/}
 
     # Validate and set default if necessary
-    if ! [[ "$_B_NICE" =~ ^-?[0-9]+$ ]]; then
+    if ! [[ "${_B_NICE}" =~ ^-?[0-9]+$ ]]; then
       _B_NICE=0
     fi
 
@@ -88,14 +89,14 @@ _graceful_action() {
   # Restart syslog service
   echo "Restarting syslog service..."
   if [ -e "/etc/init.d/rsyslog" ]; then
-    pkill -9 rsyslogd &> /dev/null
-    service rsyslog start &> /dev/null
+    pkill -9 rsyslogd
+    service rsyslog start
   elif [ -e "/etc/init.d/sysklogd" ]; then
-    pkill -9 sysklogd &> /dev/null
-    service sysklogd start &> /dev/null
+    pkill -9 sysklogd
+    service sysklogd start
   elif [ -e "/etc/init.d/inetutils-syslogd" ]; then
-    pkill -9 syslogd &> /dev/null
-    service inetutils-syslogd start &> /dev/null
+    pkill -9 syslogd
+    service inetutils-syslogd start
   fi
 
   # Clean up old log files
@@ -165,15 +166,14 @@ _graceful_action() {
 
   # Reload nginx service
   echo "Reloading nginx service..."
-  nice -n -5 service nginx reload
+  service nginx reload
 
   # Restart Solr and Jetty servers if not under high traffic
   if [ ! -e "/run/boa_run.pid" ] \
     && [ ! -e "/root/.giant_traffic.cnf" ] \
     && [ ! -e "/root/.high_traffic.cnf" ]; then
-    echo "INFO: Solr and Jetty servers will be restarted in 60 seconds"
-    touch /run/boa_wait.pid
-    sleep 60
+    echo "INFO: Solr and Jetty servers will be restarted in 10 seconds"
+    sleep 10
     if [ -x "/etc/init.d/solr9" ] && [ -e "/etc/default/solr9.in.sh" ]; then
       echo "Restarting Solr 9..."
       nice -n 0 service solr9 restart
@@ -183,14 +183,13 @@ _graceful_action() {
       nice -n 0 service solr7 restart
     fi
     echo "Stopping any running Jetty processes..."
-    pkill -9 -f jetty &> /dev/null
+    pkill -9 -f jetty
     rm -rf /tmp/{drush*,pear,jetty*}
     rm -f /var/log/jetty{7,8,9}/*
     echo "Starting Jetty services..."
     [ -e "/etc/init.d/jetty9" ] && service jetty9 start
     [ -e "/etc/init.d/jetty8" ] && service jetty8 start
     [ -e "/etc/init.d/jetty7" ] && service jetty7 start
-    [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
     echo "INFO: Solr and Jetty servers restarted successfully"
   fi
 
@@ -201,11 +200,11 @@ _graceful_action() {
     touch /run/speed_cleanup.pid
     echo " " >> /var/log/nginx/speed_cleanup.log
     sed -i "s/levels=2:2:2/levels=2:2/g" /var/aegir/config/server_master/nginx.conf
-    nice -n -5 service nginx reload &> /dev/null
+    service nginx reload &> /dev/null
     echo "speed_purge start $(date)" >> /var/log/nginx/speed_cleanup.log
     nice -n 9 ionice -c2 -n7 find /var/lib/nginx/speed/ -mtime +1 -exec rm -rf {} \; &> /dev/null
     echo "speed_purge complete $(date)" >> /var/log/nginx/speed_cleanup.log
-    nice -n -5 service nginx reload &> /dev/null
+    service nginx reload &> /dev/null
     rm -f /run/speed_cleanup.pid
   fi
 

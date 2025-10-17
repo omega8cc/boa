@@ -6,24 +6,25 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 
 [ -e "/root/.proxy.cnf" ] && exit 0
 
+# shellcheck disable=SC1091
 [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
 
-    # Sanitize to allow only digits and minus sign
-    export _B_NICE=${_B_NICE//[^0-9-]/}
+# Sanitize to allow only digits and minus sign
+export _B_NICE=${_B_NICE//[^0-9-]/}
 
-    # Validate and set default if necessary
-    if ! [[ "$_B_NICE" =~ ^-?[0-9]+$ ]]; then
-      _B_NICE=0
-    fi
+# Validate and set default if necessary
+if ! [[ "${_B_NICE}" =~ ^-?[0-9]+$ ]]; then
+  _B_NICE=0
+fi
 
-    # Clamp the value within -20 to 19
-    if (( _B_NICE < -20 )); then
-      _B_NICE=-20
-    elif (( _B_NICE > 19 )); then
-      _B_NICE=19
-    fi
+# Clamp the value within -20 to 19
+if (( _B_NICE < -20 )); then
+  _B_NICE=-20
+elif (( _B_NICE > 19 )); then
+  _B_NICE=19
+fi
 
-    renice ${_B_NICE} -p $$ &> /dev/null
+renice ${_B_NICE} -p $$ &> /dev/null
 
 _free_memory() {
   echo "Freeing memory..."
@@ -32,10 +33,10 @@ _free_memory() {
 
 _create_locks() {
   echo "Creating locks..."
-  touch /run/boa_wait.pid
-  touch /run/fmp_wait.pid
-  touch /run/restarting_fmp_wait.pid
-  touch /run/mysql_restart_running.pid
+  : > /run/boa_wait.pid
+  : > /run/fmp_wait.pid
+  : > /run/restarting_fmp_wait.pid
+  : > /run/mysql_restart_running.pid
   _free_memory
 }
 
@@ -60,7 +61,7 @@ _start_sql() {
   _check_running
   _create_locks
 
-  _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}')
+  _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
   if [ ! -z "${_IS_MYSQLD_RUNNING}" ]; then
     echo "MySQLD already running?"
     echo "Nothing to do. Bye!"
@@ -79,7 +80,7 @@ _start_sql() {
   service mysql start &> /dev/null
   while [ -z "${_IS_MYSQLD_RUNNING}" ] \
     || [ ! -e "/run/mysqld/mysqld.sock" ]; do
-    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}')
+    _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
     echo "Waiting for MySQLD graceful start..."
     sleep 3
   done
@@ -97,7 +98,7 @@ _stop_sql() {
   echo "Stopping Nginx now..."
   service nginx stop &> /dev/null
   until [ -z "${_IS_NGINX_RUNNING}" ]; do
-    _IS_NGINX_RUNNING=$(ps aux | grep '[n]ginx' | awk '{print $2}' 2>&1)
+    _IS_NGINX_RUNNING=$(pgrep -f 'nginx: ')
     echo "Waiting for Nginx graceful shutdown..."
     sleep 1
   done
@@ -112,14 +113,14 @@ _stop_sql() {
     fi
   done
   until [ -z "${_IS_FPM_RUNNING}" ]; do
-    _IS_FPM_RUNNING=$(ps aux | grep '[p]hp-fpm' | awk '{print $2}' 2>&1)
+    _IS_FPM_RUNNING=$(pgrep -f 'php-fpm: ')
     echo "Waiting for PHP-FPM graceful shutdown..."
     sleep 1
   done
-  kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}') &> /dev/null
+  pkill -9 -f php-fpm
   echo "PHP-FPM stopped"
 
-  _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}')
+  _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
   if [ ! -z "${_IS_MYSQLD_RUNNING}" ]; then
     _DBS_TEST=$(which mysql 2>&1)
     if [ ! -z "${_DBS_TEST}" ]; then
@@ -160,7 +161,7 @@ _stop_sql() {
   fi
 
   until [ -z "${_IS_MYSQLD_RUNNING}" ]; do
-    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}')
+    _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
     echo "Waiting for MySQLD graceful shutdown..."
     sleep 3
   done

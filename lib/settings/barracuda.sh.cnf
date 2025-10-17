@@ -154,18 +154,19 @@ _PHP_CLI_VERSION=8.3
 ###
 ### Xtras included with "ALL" wildcard:
 ###
-### ADM --- Adminer DB Manager (installed by default)
-### CSF --- Firewall (installed by default)
-### CSS --- Ruby Gems for Compass + NPM for Gulp/Bower
-### FTP --- Pure-FTPd server with forced FTPS (installed by default)
-### IMG --- Image Optimize binaries (installed by default)
+### ADM --- Adminer DB Manager (installed by default in LOCAL mode)
+### CSF --- Firewall (installed by default in PUBLIC mode)
+### FTP --- Pure-FTPd server with forced FTPS
+### IMG --- Image Optimize binaries
 ###
 ### Xtras which need to be listed explicitly:
 ###
 ### BND --- Bind9 DNS Server (deprecated)
 ### BZR --- Bazaar
 ### CGP --- Collectd Graph Panel
+### CSS --- Ruby Gems for Compass
 ### FMG --- FFmpeg support (deprecated)
+### NPM --- NPM for Gulp/Bower (requires also /root/.allow.node.lshell.cnf)
 ### SR4 --- Apache Solr 4 with Jetty 9
 ### SR7 --- Apache Solr 7
 ### SR9 --- Apache Solr 9
@@ -175,26 +176,9 @@ _PHP_CLI_VERSION=8.3
 ###
 ### _XTRAS_LIST=""
 ### _XTRAS_LIST="ALL"
-### _XTRAS_LIST="ALL SR9"
+### _XTRAS_LIST="ALL SR9 CSS NPM"
 ###
-### Note that removing any item from this
-### list once it is already installed, will
-### NOT uninstall anything.
-###
-### NOTE that listed below _XTRAS_LIST is the
-### minimal set installed both for PUBLIC
-### and LOCAL mode, but PUBLIC mode is later
-### by default extended to include firewall
-### so it doesn't matter if you have ALL or
-### CSF listed in _XTRAS_LIST array in your
-### system /root/.barracuda.cnf file.
-###
-### This means that the only xtra add-on
-### which is not added without ALL wildcard
-### in the _XTRAS_LIST is CSS -- Ruby Gems
-### for Compass + NPM for Gulp/Bower.
-###
-_XTRAS_LIST="ADM FTP IMG"
+_XTRAS_LIST=""
 
 
 ###----------------------------------------###
@@ -454,8 +438,11 @@ _SSH_PORT=22
 ### mirror you know is the best / the fastest
 ### in your server location. For example:
 ###
-### _LOCAL_DEVUAN_MIRROR=devuan.keff.org
-### _LOCAL_DEBIAN_MIRROR=ftp.au.debian.org
+### _LOCAL_DEVUAN_MIRROR=http://devuan.keff.org
+### _LOCAL_DEBIAN_MIRROR=http://ftp.au.debian.org
+###
+### Note that your custom mirror address MUST
+### include the protocol it supports, http/https
 ###
 ### To search for the fastest mirror around
 ### the globe, use empty variables:
@@ -473,8 +460,8 @@ _SSH_PORT=22
 ### to use reliable mirrors you know,
 ### or leave default values.
 ###
-_LOCAL_DEVUAN_MIRROR=deb.devuan.org
-_LOCAL_DEBIAN_MIRROR=deb.debian.org
+_LOCAL_DEVUAN_MIRROR=""
+_LOCAL_DEBIAN_MIRROR=""
 
 
 ###----------------------------------------###
@@ -861,6 +848,7 @@ _EXTRA_PACKAGES=""
 _CUSTOM_CONFIG_CSF=NO
 _CUSTOM_CONFIG_LSHELL=NO
 _CUSTOM_CONFIG_VALKEY=NO
+_CUSTOM_CONFIG_REDIS=NO
 _CUSTOM_CONFIG_SQL=NO
 
 ###
@@ -966,24 +954,6 @@ _DB_BINARY_LOG=NO
 _USE_MYSQLTUNER=NO
 
 ###
-### Set max 1 min load per CPU core before blocking
-### spiders temporarily, until the load stabilizes.
-###
-_CPU_SPIDER_RATIO=2.1
-
-###
-### Define max 1 min load per CPU core before
-### launching task queue for Octopus instances.
-###
-_CPU_TASK_RATIO=3.1
-
-###
-### Set max 1 min load per CPU core before disabling
-### Nginx temporarily, until the load stabilizes.
-###
-_CPU_MAX_RATIO=4.1
-
-###
 ### Set max 1 min load per CPU core before killing
 ### all running PHP, Drush, Wget and Curl processes
 ### until the load stabilizes.
@@ -994,6 +964,24 @@ _CPU_MAX_RATIO=4.1
 ### in the last minute is higher than 3.1
 ###
 _CPU_CRIT_RATIO=6.1
+
+###
+### Set max 1 min load per CPU core before disabling
+### Nginx temporarily, until the load stabilizes.
+###
+_CPU_MAX_RATIO=4.1
+
+###
+### Define max 1 min load per CPU core before
+### launching task queue for Octopus instances.
+###
+_CPU_TASK_RATIO=3.1
+
+###
+### Set max 1 min load per CPU core before blocking
+### spiders temporarily, until the load stabilizes.
+###
+_CPU_SPIDER_RATIO=2.1
 
 ###
 ### Default number of access.log lines to check.
@@ -1151,11 +1139,25 @@ _PHP_FPM_WORKERS=AUTO
 _SPEED_VALID_MAX=3600
 
 ###
-### When set to NO it will stop sending
-### e-mail reports on various incidents
+### Can be completely silenced by setting to OFF or NO
+###
+### When set to ALL it will start sending
+### many e-mail reports on various incidents
 ### detected and handled by auto-healing.
 ###
-_INCIDENT_REPORT=YES
+### Minimalized globally with MINI by default.
+###
+### Legacy values:
+###   NO  becomes OFF (see below)
+###   YES becomes MINI (see below)
+###
+### Current values:
+###   OFF  == Total silence, no email alerts
+###   ALL  == Very noisy, good for debugging
+###   MINI == Only the most important alerts (default)
+###   CRIT == Only critical if _lvl=ALERT
+###
+_INCIDENT_REPORT=MINI
 
 ###
 ### Max TTL for mysql process per user (seconds)
@@ -1263,9 +1265,7 @@ _find_fast_mirror_cnf() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     _apt_clean_update
-    apt-get install netcat ${_aptYesUnth} 2> /dev/null
     apt-get install netcat-traditional ${_aptYesUnth} 2> /dev/null
-    wait
   fi
   _ffMirr=$(which ffmirror 2>&1)
   if [ -x "${_ffMirr}" ]; then
@@ -1279,6 +1279,7 @@ _find_fast_mirror_cnf() {
     if [ -e "${_ffList}" ]; then
       _BROKEN_FFMIRR_TEST=$(grep "stuff" ${_ffMirr} 2>&1)
       if [[ "${_BROKEN_FFMIRR_TEST}" =~ "stuff" ]]; then
+        _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _USE_MIR="${_CHECK_MIRROR}"
         [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.aegir.cc"
@@ -1414,7 +1415,7 @@ _download_helpers_libs() {
   cd /opt/tmp
   rm -rf /opt/tmp/boa
   if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
-    _GIT_VRN=2.45.2
+    _GIT_VRN=2.51.0
     _isGit=$(which git 2>&1)
     _GIT_INSTALL=NO
     _GIT_V=$(git --version 2>&1 \
@@ -1436,14 +1437,22 @@ _download_helpers_libs() {
           apt-get install libcurl4 ${_aptYesUnth} -qq 2> /dev/null
           apt-get install libcurl4-openssl-dev ${_aptYesUnth} -qq 2> /dev/null
           apt-get install libcurl4-gnutls-dev ${_aptYesUnth} -qq 2> /dev/null
-          apt-get remove git-core -y --purge --auto-remove -qq 2> /dev/null
-          apt-get remove git -y --purge --auto-remove -qq 2> /dev/null
+          if dpkg-query -W -f='${Status}' git-core 2>/dev/null | grep -q "install ok installed"; then
+            apt-get remove git-core -y --purge --auto-remove -qq 2> /dev/null
+          fi
+          if dpkg-query -W -f='${Status}' git 2>/dev/null | grep -q "install ok installed"; then
+            apt-get remove git -y --purge --auto-remove -qq 2> /dev/null
+          fi
         else
           apt-get install libcurl4 ${_aptYesUnth} -qq &> /dev/null
           apt-get install libcurl4-openssl-dev ${_aptYesUnth} -qq &> /dev/null
           apt-get install libcurl4-gnutls-dev ${_aptYesUnth} -qq &> /dev/null
-          apt-get remove git-core -y --purge --auto-remove -qq &> /dev/null
-          apt-get remove git -y --purge --auto-remove -qq &> /dev/null
+          if dpkg-query -W -f='${Status}' git-core 2>/dev/null | grep -q "install ok installed"; then
+            apt-get remove git-core -y --purge --auto-remove -qq &> /dev/null
+          fi
+          if dpkg-query -W -f='${Status}' git 2>/dev/null | grep -q "install ok installed"; then
+            apt-get remove git -y --purge --auto-remove -qq &> /dev/null
+          fi
         fi
       fi
       mkdir -p /var/opt
@@ -1535,22 +1544,19 @@ _download_helpers_libs() {
   #
   # Create tmp stuff
   if [ ! -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
-    _LOG=${_vBs}/barracuda-install-${_NOW}.log
+    export _LOG_INFO=${_vBs}/barracuda-install-${_NOW}.log
+    export _LOG_ERRR=${_vBs}/barracuda-install-errors-${_NOW}.log
   else
-    _LOG=${_vBs}/barracuda-upgrade-${_NOW}.log
+    export _LOG_INFO=${_vBs}/barracuda-upgrade-${_NOW}.log
+    export _LOG_ERRR=${_vBs}/barracuda-upgrade-errors-${_NOW}.log
   fi
-  touch ${_LOG}
-  chmod 600 ${_LOG}
+  touch ${_LOG_INFO} ${_LOG_ERRR}
+  chmod 600 ${_LOG_INFO} ${_LOG_ERRR}
   mkdir -p /var/opt
   rm -rf /var/opt/*
   _SRCDIR="/opt/tmp/files"
   mkdir -p ${_SRCDIR}
   cd ${_SRCDIR}
-  #
-  # Get spinner
-  rm -f spinner*
-  cp -af ${_bldPth}/aegir/helpers/spinner ./
-  chmod +x spinner &> /dev/null
   #
   # Get axelerator
   if [ ! -e "/usr/bin/aptitude-fast" ]; then

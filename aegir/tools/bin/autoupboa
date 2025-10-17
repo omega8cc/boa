@@ -9,6 +9,24 @@ export _xSrl=570proT09
 _barCnf="/root/.barracuda.cnf"
 _crlGet="-L --max-redirs 3 -k -s --retry 9 --retry-delay 9 -A iCab"
 
+_check_root() {
+  if [ "$(id -u)" -eq 0 ]; then
+    # shellcheck disable=SC1091
+    [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
+    chmod a+w /dev/null
+  else
+    echo "ERROR: This script should be run as a root user"
+    exit 1
+  fi
+}
+_check_root
+
+#
+# Protect from any autoupboa updates when _SKYNET_MODE=OFF
+if [ ! -z "${_SKYNET_MODE}" ] && [ "${_SKYNET_MODE}" = "OFF" ]; then
+  exit 0
+fi
+
 #
 # Find correct IP.
 _find_correct_ip() {
@@ -68,14 +86,14 @@ _turn_off_apparmor() {
   sed -i "s/\/usr\/bin\/sh/\/bin\/bash/g" /lib/apparmor/profile-load
   sed -i "s/\/bin\/sh/\/bin\/bash/g" /lib/apparmor/profile-load
   # Disable Apparmor
-  rm -rf /var/cache/apparmor/*
-  rm -f /etc/apparmor.d/*~
-  apparmor_parser -r /etc/apparmor.d/* 2> /dev/null
-  rm -f /etc/apparmor.d/*~
-  aa-complain /etc/apparmor.d/* 2> /dev/null
-  service apparmor stop 2> /dev/null
-  aa-teardown 2> /dev/null
-  service auditd stop 2> /dev/null
+  rm -rf /var/cache/apparmor/* &> /dev/null
+  rm -f /etc/apparmor.d/*~ &> /dev/null
+  apparmor_parser -r /etc/apparmor.d/* &> /dev/null
+  rm -f /etc/apparmor.d/*~ &> /dev/null
+  aa-complain /etc/apparmor.d/* &> /dev/null
+  service apparmor stop &> /dev/null
+  aa-teardown &> /dev/null
+  service auditd stop &> /dev/null
 }
 [ ! -e "/root/.keep_apparmor_on.cnf" ] && [ -e "/lib/apparmor/apparmor.systemd" ] && _turn_off_apparmor
 
@@ -260,8 +278,8 @@ _if_disable_not_used_services() {
       update-rc.d -f clamav-freshclam remove &> /dev/null
       mv -f /etc/init.d/clamav-freshclam /var/backups/
     fi
-    kill -9 $(ps aux | grep '[c]lamd' | awk '{print $2}') &> /dev/null
-    kill -9 $(ps aux | grep '[f]reshclam' | awk '{print $2}') &> /dev/null
+    pkill -9 -f clamd
+    pkill -9 -f freshclam
     rm -f /run/clamav/*
   fi
 
@@ -281,8 +299,8 @@ _if_disable_not_used_services() {
       update-rc.d -f jetty9 remove &> /dev/null
       mv -f /etc/init.d/jetty9 /var/backups/
     fi
-    kill -9 $(ps aux | grep '[a]vahi-daemon' | awk '{print $2}') &> /dev/null
-    kill -9 $(ps aux | grep '[j]ava' | awk '{print $2}') &> /dev/null
+    pkill -9 -f avahi-daemon
+    pkill -9 -f java
   fi
 
   if [ -e "/root/.deny.jetty9.cnf" ]; then
@@ -290,8 +308,8 @@ _if_disable_not_used_services() {
       _clearSwap=YES
       update-rc.d -f jetty9 remove &> /dev/null
       mv -f /etc/init.d/jetty9 /var/backups/
-      kill -9 $(ps aux | grep '[a]vahi-daemon' | awk '{print $2}') &> /dev/null
-      kill -9 $(ps aux | grep '[j]ava' | awk '{print $2}') &> /dev/null
+      pkill -9 -f avahi-daemon
+      pkill -9 -f java
     fi
   fi
 
@@ -300,8 +318,8 @@ _if_disable_not_used_services() {
       _clearSwap=YES
       update-rc.d -f solr7 remove &> /dev/null
       mv -f /etc/init.d/solr7 /var/backups/
-      kill -9 $(ps aux | grep '[a]vahi-daemon' | awk '{print $2}') &> /dev/null
-      kill -9 $(ps aux | grep '[j]ava' | awk '{print $2}') &> /dev/null
+      pkill -9 -f avahi-daemon
+      pkill -9 -f java
     fi
   fi
 
@@ -310,8 +328,8 @@ _if_disable_not_used_services() {
       _clearSwap=YES
       update-rc.d -f solr9 remove &> /dev/null
       mv -f /etc/init.d/solr9 /var/backups/
-      kill -9 $(ps aux | grep '[a]vahi-daemon' | awk '{print $2}') &> /dev/null
-      kill -9 $(ps aux | grep '[j]ava' | awk '{print $2}') &> /dev/null
+      pkill -9 -f avahi-daemon
+      pkill -9 -f java
     fi
   fi
 
@@ -341,7 +359,6 @@ _apt_clean_update() {
 
 _system_hostname_check_fix() {
   if [ -e "${_barCnf}" ]; then
-    source ${_barCnf}
     if [ ! -z "${_MY_HOSTN}" ]; then
       _diffHostTest=$(diff -w -B /etc/hostname /etc/mailname 2>&1)
       if [ -z "${_diffHostTest}" ]; then
@@ -453,7 +470,8 @@ _is_protected_run() {
   _boaBins="autoinit barracuda boa octopus"
   for _cbn in ${_boaBins}; do
     if [ -e "${_optBin}/${_cbn}" ]; then
-      if [ `ps aux | grep -v "grep" | grep --count "/${_cbn}"` -gt 0 ]; then
+      _CNT=$(pgrep -fc /local/bin/${_cbn})
+      if (( _CNT > 0 )); then
         echo "The ${_cbn} is running!"
         _protectedRun=TRUE
       fi
@@ -467,7 +485,7 @@ _is_protected_run() {
 _generic_vm_postinstall() {
   _is_protected_run
   if [ "${_protectedRun}" = "FALSE" ]; then
-    rm -f /run/${_SYS_MANUFACTURER_LC}_vm.pid
+    rm -f /var/log/boa/${_SYS_MANUFACTURER_LC}_vm.pid
     _TODAY=$(date +%y%m%d)
     _TODAY=${_TODAY//[^0-9]/}
     _NOW=$(date +%y%m%d-%H%M%S)
@@ -482,6 +500,17 @@ _generic_vm_postinstall() {
 
 _status_vm_postinstall() {
   _check_system_manufacturer
+  _VM_N_PID="/var/log/boa/${_SYS_MANUFACTURER_LC}_vm.pid"
+  _VM_N_SYS="/var/log/boa/${_SYS_MANUFACTURER_LC}_vm_postinstall.pid"
+  _VM_O_PID="/run/${_SYS_MANUFACTURER_LC}_vm.pid"
+  _VM_O_SYS="/run/${_SYS_MANUFACTURER_LC}_vm_postinstall.pid"
+  if [ -e "${_VM_O_PID}" ] && [ ! -e "${_VM_N_PID}" ]; then
+    touch ${_VM_N_PID}
+  fi
+  if [ -e "${_VM_O_SYS}" ] && [ ! -e "${_VM_N_SYS}" ]; then
+    touch ${_VM_N_SYS}
+    chattr +i ${_VM_N_SYS}
+  fi
   if [ "$(boa info | grep -c Percona)" -lt 3 ] || [ ! -e "/usr/sbin/csf" ]; then
     _NEEDS_UPGRADE=YES
     echo "A _NEEDS_UPGRADE is ${_NEEDS_UPGRADE}"
@@ -489,19 +518,38 @@ _status_vm_postinstall() {
   else
     _NEEDS_UPGRADE=NO
     echo "B _NEEDS_UPGRADE is ${_NEEDS_UPGRADE}"
-    if [ ! -e "/run/${_SYS_MANUFACTURER_LC}_vm.pid" ] \
-      && [ ! -e "/run/${_SYS_MANUFACTURER_LC}_vm_postinstall.pid" ]; then
-      touch /run/${_SYS_MANUFACTURER_LC}_vm_postinstall.pid
-      chattr +i /run/${_SYS_MANUFACTURER_LC}_vm_postinstall.pid
+    if [ ! -e "${_VM_N_PID}" ] && [ ! -e "${_VM_N_SYS}" ]; then
+      touch ${_VM_N_SYS}
+      chattr +i ${_VM_N_SYS}
+    fi
+    if [ ! -e "/var/log/boa/reset_no_new_password.pid" ]; then
+      # Re-enable default MySQL/Valkey/Redis password update logic once
+      [ -e "/root/.mysql.no.new.password.cnf" ]  && rm -f /root/.mysql.no.new.password.cnf
+      [ -e "/root/.valkey.no.new.password.cnf" ] && rm -f /root/.valkey.no.new.password.cnf
+      [ -e "/root/.redis.no.new.password.cnf" ]  && rm -f /root/.redis.no.new.password.cnf
+      touch /var/log/boa/reset_no_new_password.pid
+      chattr +i /var/log/boa/reset_no_new_password.pid
     fi
   fi
 }
 
 if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
+  && [ ! -e "/var/log/boa/reset_no_new_password.pid" ] \
   && [ -e "/data/u" ] \
   && [ -e "/var/xdrago" ]; then
   _status_vm_postinstall
 fi
+
+_crontab_monitor_cleanup() {
+  if [ -e "/etc/crontab" ] && [ -e "/var/xdrago/monitor/log" ] && [ -e "/etc/csf" ]; then
+    if ! grep -q "/var/xdrago/monitor/log" /etc/crontab; then
+      echo "*/15 *  * * *   root    rm -f /var/xdrago/monitor/log/web.log >/dev/null 2>&1" >> /etc/crontab
+      echo "*/15 *  * * *   root    rm -f /var/xdrago/monitor/log/ssh.log >/dev/null 2>&1" >> /etc/crontab
+      echo "*/15 *  * * *   root    rm -f /var/xdrago/monitor/log/ftp.log >/dev/null 2>&1" >> /etc/crontab
+    fi
+  fi
+}
+_crontab_monitor_cleanup
 
 _crontab_update() {
   if [ -e "/etc/crontab" ]; then
@@ -516,11 +564,9 @@ _crontab_update() {
     if [ "${_ADD_XTRA}" = "YES" ]; then
       echo "*/19 *  * * *   root    bash /var/xdrago/clear.sh >/dev/null 2>&1" >> /etc/crontab
     fi
-    if [ -e "/etc/csf" ]; then
-      echo "*/15 *  * * *   root    rm -f /var/xdrago/monitor/log/web.log >/dev/null 2>&1" >> /etc/crontab
-      echo "*/15 *  * * *   root    rm -f /var/xdrago/monitor/log/ssh.log >/dev/null 2>&1" >> /etc/crontab
-      echo "*/15 *  * * *   root    rm -f /var/xdrago/monitor/log/ftp.log >/dev/null 2>&1" >> /etc/crontab
-    fi
+
+    _crontab_monitor_cleanup
+
     sed -i "/^$/d" /etc/crontab &> /dev/null
     wait
 
@@ -575,11 +621,9 @@ _crontab_cleanup() {
     if [ "${_ADD_XTRA}" = "YES" ]; then
       echo "*/19 *  * * *   root    bash /var/xdrago/clear.sh >/dev/null 2>&1" >> /etc/crontab
     fi
-    if [ -e "/etc/csf" ]; then
-      echo "*/15 *  * * *   root    rm -f /var/xdrago/monitor/log/web.log >/dev/null 2>&1" >> /etc/crontab
-      echo "*/15 *  * * *   root    rm -f /var/xdrago/monitor/log/ssh.log >/dev/null 2>&1" >> /etc/crontab
-      echo "*/15 *  * * *   root    rm -f /var/xdrago/monitor/log/ftp.log >/dev/null 2>&1" >> /etc/crontab
-    fi
+
+    _crontab_monitor_cleanup
+
     sed -i "/^$/d" /etc/crontab &> /dev/null
     wait
     echo Cron Cleanup Completed
@@ -589,8 +633,12 @@ _crontab_cleanup() {
 [ -e "/root/.use.curl.from.packages.cnf" ] && chattr -i /root/.use.curl.from.packages.cnf
 [ -e "/root/.use.curl.from.packages.cnf" ] && rm -f /root/.use.curl.from.packages.cnf
 
-if [ -e "/var/log/boa" ]; then
+if [ -e "/var/log/boa" ] && [ -e "/var/xdrago" ]; then
   _BROKEN_UPDATE_TEST=$(grep "Under Construction" /var/xdrago/*.sh 2>&1)
+  if [ ! -z "${_BROKEN_UPDATE_TEST}" ]; then
+    rm -f /var/log/boa/*.pid
+  fi
+  _BROKEN_UPDATE_TEST=$(grep "404 Not Found" /var/xdrago/*.sh 2>&1)
   if [ ! -z "${_BROKEN_UPDATE_TEST}" ]; then
     rm -f /var/log/boa/*.pid
   fi
@@ -732,7 +780,6 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
       done
       if [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
         csf -ra &> /dev/null
-        wait
         synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
       else
         csf -r &> /dev/null
@@ -823,15 +870,15 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     else
       [ -e "/root/.pause_tasks_maint.cnf" ] && rm -f /root/.pause_tasks_maint.cnf
       [ -e "/root/.restrict_this_vm.cnf" ] && rm -f /root/.restrict_this_vm.cnf
-      _CNT=$(pgrep -fc "[g]pg-agent")
+      _CNT=$(pgrep -fc gpg-agent)
       if (( _CNT > 5 )); then
-        kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
+        pkill -9 -f gpg-agent
         echo "$(date) Too many gpg-agent processes killed (count=${_CNT})" >> \
           /var/log/boa/gpg-agent-count.kill.log
       fi
-      _CNT=$(pgrep -fc "[d]irmngr")
+      _CNT=$(pgrep -fc dirmngr)
       if (( _CNT > 5 )); then
-        kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
+        pkill -9 -f dirmngr
         echo "$(date) Too many dirmngr processes killed (count=${_CNT})" >> \
           /var/log/boa/dirmngr-count.kill.log
       fi
@@ -966,11 +1013,11 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     touch /var/log/boa/.curl_ctrl.${_tRee}.${_xSrl}.pid
   fi
 
-  _IS_MOVESQL_RUNNING=$(ps aux | grep '[m]ove_sql.sh' | awk '{print $2}' 2>&1)
+  _IS_MOVESQL_RUNNING=$(pgrep -f move_sql.sh)
   if [ ! -z "${_IS_MOVESQL_RUNNING}" ]; then
-    _CNT=$(pgrep -fc "[m]ove_sql.sh")
+    _CNT=$(pgrep -fc move_sql.sh)
     if (( _CNT > 2 )); then
-      kill -9 $(ps aux | grep '[m]ove_sql.sh' | awk '{print $2}') &> /dev/null
+      pkill -9 -f move_sql.sh
       rm -f /run/mysql_restart_running.pid
       rm -f /run/boa_wait.pid
       rm -f /var/log/boa/.move_sql_ctrl*
@@ -978,31 +1025,31 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     fi
   fi
 
-  _IS_SQLCLEANUP_RUNNING=$(ps aux | grep '[m]ysql_cleanup.sh' | awk '{print $2}' 2>&1)
+  _IS_SQLCLEANUP_RUNNING=$(pgrep -f mysql_cleanup.sh)
   if [ ! -z "${_IS_SQLCLEANUP_RUNNING}" ]; then
-    _CNT=$(pgrep -fc "[m]ysql_cleanup.sh")
+    _CNT=$(pgrep -fc mysql_cleanup.sh)
     if (( _CNT > 2 )); then
-      kill -9 $(ps aux | grep '[m]ysql_cleanup.sh' | awk '{print $2}') &> /dev/null
+      pkill -9 -f mysql_cleanup.sh
       rm -f /run/mysql_backup_running.pid
       rm -f /var/log/boa/.sqlcleanup_ctrl*
       touch /var/log/boa/.sqlcleanup_ctrl.${_tRee}.${_xSrl}.pid
     fi
   fi
 
-  _IS_SOLRSTART_RUNNING=$(ps aux | grep '[s]olr start' | awk '{print $2}' 2>&1)
+  _IS_SOLRSTART_RUNNING=$(pgrep -f 'solr start')
   if [ ! -z "${_IS_SOLRSTART_RUNNING}" ]; then
-    _CNT=$(pgrep -fc "[s]olr start")
+    _CNT=$(pgrep -fc "solr start")
     if (( _CNT > 2 )); then
-      kill -9 $(ps aux | grep '[s]olr start' | awk '{print $2}') &> /dev/null
+      pkill -9 -f 'solr start'
       touch /var/log/boa/.solr_start_ctrl.${_tRee}.${_xSrl}.pid
     fi
   fi
 
-  _IS_PROCTRL_RUNNING=$(ps aux | grep '[p]roc_num_ctrl.pl' | awk '{print $2}' 2>&1)
+  _IS_PROCTRL_RUNNING=$(pgrep -f proc_num_ctrl.pl)
   if [ ! -z "${_IS_PROCTRL_RUNNING}" ]; then
-    _CNT=$(pgrep -fc "[p]roc_num_ctrl.pl")
+    _CNT=$(pgrep -fc proc_num_ctrl.pl)
     if (( _CNT > 1 )); then
-      kill -9 $(ps aux | grep '[p]roc_num_ctrl.pl' | awk '{print $2}') &> /dev/null
+      pkill -9 -f proc_num_ctrl.pl
       touch /var/log/boa/.proc_num_ctrl.${_tRee}.${_xSrl}.pid
     fi
   fi
@@ -1011,14 +1058,14 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
   rm -f /run/solr-jetty.pid
   rm -f /run/fmp_wait.pid
 
-  _IS_SQLBACKUP_RUNNING=$(ps aux | grep '[m]ysql_backup.sh' | awk '{print $2}' 2>&1)
+  _IS_SQLBACKUP_RUNNING=$(pgrep -f mysql_backup.sh)
   if [ ! -z "${_IS_SQLBACKUP_RUNNING}" ]; then
-    _CNT=$(pgrep -fc "[m]ysql_backup.sh")
+    _CNT=$(pgrep -fc mysql_backup.sh)
     if (( _CNT > 2 )); then
-      kill -9 $(ps aux | grep '[m]ysql_backup.sh' | awk '{print $2}') &> /dev/null
-      kill -9 $(ps aux | grep '[m]ydumper' | awk '{print $2}') &> /dev/null
-      kill -9 $(ps aux | grep '[u]sage.sh' | awk '{print $2}') &> /dev/null
-      kill -9 $(ps aux | grep '[r]unner.sh' | awk '{print $2}') &> /dev/null
+      pkill -9 -f mysql_backup.sh
+      pkill -9 -f mydumper
+      pkill -9 -f usage.sh
+      pkill -9 -f runner.sh
       rm -f /run/boa_sql_backup.pid
       rm -f /run/mysql_backup_running.pid
       rm -f /run/boa_wait.pid

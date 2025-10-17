@@ -26,13 +26,13 @@ _XTRAS_LIST="" #---------------- See docs/NOTES.md for details on add-ons
 ###
 _AUTOPILOT=NO #----------------- Allows to skip all Yes/No questions when YES
 _DEBUG_MODE=NO #---------------- Allows to enable verbose BOA mode when YES
-_INCIDENT_REPORT=YES #---------- Allows to disable incident reports when NO
+_INCIDENT_REPORT=MINI #--------- Control incidents reports via OFF/ALL/MINI/CRIT
 _MY_EMAIL="my@email" #---------- System admin email address
 ###
 _CPU_CRIT_RATIO=6.1 #----------- Max load per CPU core before killing PHP/Drush
 _CPU_MAX_RATIO=4.1 #------------ Max load per CPU core before disabling Nginx
-_CPU_SPIDER_RATIO=2.1 #--------- Max load per CPU core before blocking spiders
 _CPU_TASK_RATIO=3.1 #----------- Max load per CPU core to launch tasks queue
+_CPU_SPIDER_RATIO=2.1 #--------- Max load per CPU core before blocking spiders
 ###
 _CUSTOM_COLLATION_SQL= #-------- By default on the DB server: utf8mb4_unicode_ci
 _DB_BINARY_LOG=NO #------------- Allows to enable binary logging when YES
@@ -95,6 +95,7 @@ _STRONG_PASSWORDS=YES #--------- Configurable length: 32-128, YES (64), NO (32)
 _CUSTOM_CONFIG_CSF=NO #--------- Protects custom CSF config when YES
 _CUSTOM_CONFIG_LSHELL=NO #------ Protects custom Limited Shell config when YES
 _CUSTOM_CONFIG_VALKEY=NO #------ Protects custom Valkey config when YES
+_CUSTOM_CONFIG_REDIS=NO #------- Protects custom Redis config when YES
 _CUSTOM_CONFIG_SQL=NO #--------- Protects custom SQL config when YES
 ###
 _AEGIR_UPGRADE_ONLY=NO #-------- Managed on the fly with 'aegir' keyword

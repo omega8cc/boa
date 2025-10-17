@@ -84,7 +84,6 @@ _find_fast_mirror_early() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     _apt_clean_update
-    apt-get install netcat ${_aptYesUnth} 2> /dev/null
     apt-get install netcat-traditional ${_aptYesUnth} 2> /dev/null
     wait
   fi
@@ -100,6 +99,7 @@ _find_fast_mirror_early() {
     if [ -e "${_ffList}" ]; then
       _BROKEN_FFMIRR_TEST=$(grep "stuff" ${_ffMirr} 2>&1)
       if [[ "${_BROKEN_FFMIRR_TEST}" =~ "stuff" ]]; then
+        _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _USE_MIR="${_CHECK_MIRROR}"
         [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.aegir.cc"
@@ -498,7 +498,7 @@ _kill_zombies() {
         if [ ! -L "${_SEC_SYM}" ] || [ ! -e "${_SEC_DIR}" ] \
           || [ ! -e "/home/${_usrParent}.ftp/users/${_Existing}" ]; then
           mkdir -p /var/backups/zombie/deleted/${_NOW}
-          kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
+          pkill -9 -f gpg-agent
           _disable_chattr ${_Existing}
           rm -rf /home/${_Existing}/.gnupg
           deluser \
@@ -1326,7 +1326,7 @@ _satellite_remove_web_user() {
       if [ -d "/home/${_WEB}/.drush/" ]; then
         chattr -i /home/${_WEB}/.drush/
       fi
-      kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
+      pkill -9 -f gpg-agent
       deluser \
         --remove-home \
         --backup-to /var/backups/zombie/deleted ${_WEB} &> /dev/null
@@ -1984,9 +1984,10 @@ _manage_user() {
           rm -f ${_dscUsr}/tools/le/.ctrl/ssl-demo-mode.pid
         fi
       fi
-      if [ -e "/root/.${_USER}.octopus.cnf" ]; then
-        source /root/.${_USER}.octopus.cnf
-      fi
+
+      # shellcheck disable=SC1091
+      [ -e "/root/.${_USER}.octopus.cnf" ] && source /root/.${_USER}.octopus.cnf
+
       _THIS_HM_PLR=$(cat ${_dscUsr}/.drush/hostmaster.alias.drushrc.php \
         | grep "root'" \
         | cut -d: -f2 \

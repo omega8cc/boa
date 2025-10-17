@@ -13,10 +13,6 @@ my $run_to_files = [ "/root/.run-to-daedalus.cnf", "/root/.run-to-chimaera.cnf",
 ###
 ### System Services Monitor running every 5 seconds
 ###
-if (!-d "/run/mysqld") {
-  system("mkdir -p /run/mysqld");
-  system("chown -R mysql:root /run/mysqld");
-}
 &cpu_count_load;
 &global_action;
 $sumar = 0;
@@ -127,156 +123,33 @@ print "\n $xinetdsumar Xinetd procs\t\tGLOBAL" if ($xinetdlives);
 print "\n $lsyncdsumar Lsyncd procs\t\tGLOBAL" if ($lsyncdlives);
 print "\n $sshdsumar SSHd procs\t\tGLOBAL" if ($sshdlives);
 print "\n $pxydsumar PxySQL procs\t\tGLOBAL" if ($pxydlives);
-print "\n $dpltsumar Droplet procs\t\tGLOBAL" if ($dpltlives);
+print "\n $dpltsumar Droplet procs\tGLOBAL" if ($dpltlives);
 print "\n";
 
-system("service ssh restart") if (!$sshdsumar && -f "/etc/init.d/ssh");
-
 if (!any_file_exists($run_to_files)) {
-  system("csf -e") if (!$lfdsumar && -f "/etc/init.d/lfd");
-  system("service lfd start") if (!$lfdsumar && -f "/etc/init.d/lfd");
   system("service bind9 restart") if (!$namedsumar && -f "/etc/init.d/bind9");
   system("service proxysql restart") if (!$pxydsumar && -f "/etc/init.d/proxysql");
   system("service droplet-agent restart") if (!$dpltsumar && -f "/etc/init.d/droplet-agent");
   system("service droplet-agent restart") if (!-f "/run/droplet-agent.pid" && -f "/etc/init.d/droplet-agent");
 }
 
-if (!-f "/run/wait-unbound.pid" && -f "/etc/init.d/unbound") {
-  if (!-f "/run/unbound/unbound.pid" || !-e "/run/unbound/unbound.ctl") {
-    if (-e "/etc/resolvconf/update.d/unbound") {
-      system("chmod -x /etc/resolvconf/update.d/unbound");
-    }
-    system("service unbound restart");
-  }
-}
-
-if (!-f "/run/boa_run.pid" && !-f "/run/boa_wait.pid" && -f "/etc/init.d/jenkins") {
-  if (!-f "/run/jenkins/jenkins.pid") {
-    system("killall -9 java");
-    sleep(2);
-    system("service jenkins restart");
-  }
-}
-
-if (!-f "/run/boa_run.pid" && !-f "/run/boa_wait.pid" && -f "/etc/init.d/vnstat") {
-  if (!-f "/run/vnstat/vnstat.pid") {
-    system("service vnstat restart");
-  }
-}
-
-if ((!$mysqlsumar || $mysqlsumar > 150) && !-f "/run/mysql_restart_running.pid" && !-f "/run/boa_run.pid" && !-f "/root/.remote.db.cnf") {
-  system("bash /var/xdrago/move_sql.sh");
-}
-
-if (-f "/etc/init.d/valkey-server") {
-  if (!-d "/run/valkey") {
-    system("mkdir -p /run/valkey");
-    system("chown -R valkey:valkey /run/valkey");
-  }
-  if (!$valkeysumar) {
-    system("service valkey-server start");
-  }
-  local(@RSARR)=`grep -e redis_client_socket /data/conf/global.inc`;
-  foreach $line (@RSARR) {
-    if ($line =~ /redis_client_socket/) {$valkeysocket = "YES";}
-  }
-  system("service valkey-server restart") if (!-e "/run/valkey/valkey.sock" && $valkeysocket);
-  sleep(2);
-  system("service valkey-server restart") if (!-f "/run/valkey/valkey.pid");
-}
-
-if (-f "/etc/init.d/redis-server") {
-  if (!-d "/run/redis") {
-    system("mkdir -p /run/redis");
-    system("chown -R redis:redis /run/redis");
-  }
-  if (!$redissumar) {
-    system("service redis-server start");
-  }
-  local(@RSARR)=`grep -e redis_client_socket /data/conf/global.inc`;
-  foreach $line (@RSARR) {
-    if ($line =~ /redis_client_socket/) {$redissocket = "YES";}
-  }
-  system("service redis-server restart") if (!-e "/run/redis/redis.sock" && $redissocket);
-  sleep(2);
-  system("service redis-server restart") if (!-f "/run/redis/redis.pid");
-}
-
 if (!any_file_exists($run_to_files)) {
   system("service newrelic-daemon restart") if (!$newrelicdaemonsumar && -f "/etc/init.d/newrelic-daemon");
   system("service newrelic-sysmond restart") if (!$newrelicsysmondsumar && -f "/etc/init.d/newrelic-sysmond" && -f "/root/.enable.newrelic.sysmond.cnf");
   system("service newrelic-sysmond stop") if ($newrelicsysmondsumar && -f "/etc/init.d/newrelic-sysmond" && !-f "/root/.enable.newrelic.sysmond.cnf");
-  system("service postfix restart") if (!$postfixsumar && -f "/etc/init.d/postfix");
 }
-
-if (!$nginxsumar && -f "/etc/init.d/nginx") {
-  system("killall -9 nginx");
-  system("service nginx start");
-  $timedate=`date +%y%m%d-%H%M%S`;
-  chomp($timedate);
-  `echo "$timedate KILL START nginx" >> /var/log/boa/nginx.kill-start.log`;
-}
-
-if ($fpmsumar && $fpmsumar > 11 ) {
-  $timedate=`date +%y%m%d-%H%M%S`;
-  chomp($timedate);
-  system("killall -9 php-fpm");
-  `echo "$timedate KILL FPM $fpmsumar" >> /var/log/boa/fpm.kill-all.log`;
-}
-system("service php84-fpm start") if ((!$php84lives || !$fpmsumar || !-f "/run/php84-fpm.pid") && -f "/etc/init.d/php84-fpm");
-system("service php83-fpm start") if ((!$php83lives || !$fpmsumar || !-f "/run/php83-fpm.pid") && -f "/etc/init.d/php83-fpm");
-system("service php82-fpm start") if ((!$php82lives || !$fpmsumar || !-f "/run/php82-fpm.pid") && -f "/etc/init.d/php82-fpm");
-system("service php81-fpm start") if ((!$php81lives || !$fpmsumar || !-f "/run/php81-fpm.pid") && -f "/etc/init.d/php81-fpm");
-system("service php80-fpm start") if ((!$php80lives || !$fpmsumar || !-f "/run/php80-fpm.pid") && -f "/etc/init.d/php80-fpm");
-system("service php74-fpm start") if ((!$php74lives || !$fpmsumar || !-f "/run/php74-fpm.pid") && -f "/etc/init.d/php74-fpm");
-system("service php73-fpm start") if ((!$php73lives || !$fpmsumar || !-f "/run/php73-fpm.pid") && -f "/etc/init.d/php73-fpm");
-system("service php72-fpm start") if ((!$php72lives || !$fpmsumar || !-f "/run/php72-fpm.pid") && -f "/etc/init.d/php72-fpm");
-system("service php71-fpm start") if ((!$php71lives || !$fpmsumar || !-f "/run/php71-fpm.pid") && -f "/etc/init.d/php71-fpm");
-system("service php70-fpm start") if ((!$php70lives || !$fpmsumar || !-f "/run/php70-fpm.pid") && -f "/etc/init.d/php70-fpm");
-system("service php56-fpm start") if ((!$php56lives || !$fpmsumar || !-f "/run/php56-fpm.pid") && -f "/etc/init.d/php56-fpm");
-
 
 if (!any_file_exists($run_to_files)) {
-  system("service jetty7 start") if (!$jetty7sumar && -f "/etc/init.d/jetty7");
-  system("service jetty8 start") if (!$jetty8sumar && -f "/etc/init.d/jetty8");
-  system("service jetty9 start") if (!$jetty9sumar && -f "/etc/init.d/jetty9");
-  system("service solr7 start") if (!$solr7sumar && -f "/etc/init.d/solr7");
-  system("service solr9 start") if (!$solr9sumar && -f "/etc/init.d/solr9");
   system("service collectd start") if (!$collectdsumar && -f "/etc/init.d/collectd");
   system("service xinetd start") if (!$xinetdsumar && -f "/etc/init.d/xinetd");
   system("service lsyncd start") if (!$lsyncdsumar && -f "/etc/init.d/lsyncd");
-  system("service postfix restart") if (!-f "/var/spool/postfix/pid/master.pid");
 }
 
-$ftpdinit="/usr/local/sbin/pure-config.pl";
-$ftpdconf="/usr/local/etc/pure-ftpd.conf";
-$ftpdbind="/usr/local/sbin/pure-ftpd";
-$ftpdpid="/run/pure-ftpd.pid";
-
-if (-f "$ftpdbind" && -f "$ftpdconf" && !any_file_exists($run_to_files)) {
-  if (!$ftpsumar || !-f "$ftpdpid") {
-    if (-f "$ftpdinit") { system("$ftpdinit $ftpdconf"); }
-    else { system("$ftpdbind $ftpdconf"); }
-  }
-}
-
-if ($mysqlsumar > 0 ) {
-  $mysqlrootpass=`cat /root/.my.pass.txt`;
-  chomp($mysqlrootpass);
- `mysqladmin -u root flush-hosts &> /dev/null`;
-  print "\n MySQL hosts flushed...\n";
-}
 if ($dhcpcdlives || $dhclientlives) {
   chomp(my $wanted = `cat /etc/hostname`);
   chomp(my $current = `hostname`);
   if ($current ne $wanted) {
     system("hostname", "-b", $wanted);
-  }
-}
-if (-f "/etc/init.d/rsyslog") {
-  if (!$rsyslogdsumar || !-f "/run/rsyslogd.pid") {
-    system("killall -9 rsyslogd");
-    system("service rsyslog restart");
   }
 }
 elsif (-f "/etc/init.d/sysklogd") {
@@ -292,38 +165,12 @@ elsif (-f "/etc/init.d/inetutils-syslogd") {
   }
 }
 
-# Define file paths as variables for easy modification and clarity
-my $allow_conf   = "/root/.allow.clamav.cnf";
-my $deny_conf    = "/root/.deny.clamav.cnf";
-my $data_dir     = "/data/u";
-my $freshclam_pid = "/run/clamav/freshclam.pid";
-my $clamd_pid     = "/run/clamav/clamd.pid";
-my $freshclam_service = "/etc/init.d/clamav-freshclam";
-my $clamd_service     = "/etc/init.d/clamav-daemon";
-
-# Check if all conditions are met
-if (-f $allow_conf && !-f $deny_conf && -d $data_dir && !any_file_exists($run_to_files)) {
-  restart_service('freshclam', $freshclam_pid, $freshclam_service) if !$freshclamsumar;
-  restart_service('clamd', $clamd_pid, $clamd_service) if !$clamdsumar;
-}
-
 sub any_file_exists {
   my ($files) = @_;
   for my $file (@$files) {
     return 1 if -f $file;
   }
   return 0;
-}
-
-sub restart_service {
-  my ($service_name, $pid_file, $service_script) = @_;
-  if (!-f $pid_file && -f $service_script) {
-    my $kill_command = "killall -9 $service_name";
-    system($kill_command) == 0 or warn "Failed to kill $service_name: $!";
-    my $start_command = "$service_script start";
-    system($start_command) == 0 or warn "Failed to start $service_name: $!";
-    sleep(9) if $service_name eq 'freshclam'; # Add a delay if restarting freshclam
-  }
 }
 
 exit;

@@ -19,7 +19,7 @@ _manage_single_lock() {
     # -------- legacy pgrep guard ---------
     # Exit if more than 2 instances of this script are running
     _SCRIPT=$(basename "$0")
-    _CNT=$(pgrep -fc "[${_SCRIPT:0:1}]${_SCRIPT:1}")
+    _CNT=$(pgrep -fc ${_SCRIPT})
     if (( _CNT > 2 )); then
       echo "Too many ${_SCRIPT} running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
       exit 0
@@ -37,7 +37,7 @@ _guest_proc_monitor() {
       && [ ! -e "${i}/run/boa_wait.pid" ] \
       && [ ! -e "${i}/run/boa_run.pid" ] \
       && [ ! -e "${i}/run/mysql_restart_running.pid" ] \
-      && [ -e "/usr/var/run${i}" ]; then
+      && [ -e "/usr/run${i}" ]; then
       vserver ${_VS_NAME} exec perl /var/xdrago/proc_num_ctrl.pl &
     fi
   done
@@ -49,7 +49,7 @@ if [ ! -e "/run/fire.pid" ] && [ ! -e "/run/water.pid" ]; then
   touch /run/fire.pid
   echo start $(date)
   for i in `dir -d /vservers/*`; do
-    if [ -e "${i}/var/xdrago/monitor/log/ssh.log" ] && [ -e "/usr/var/run${i}" ]; then
+    if [ -e "${i}/var/xdrago/monitor/log/ssh.log" ] && [ -e "/usr/run${i}" ]; then
       for _IP in `cat ${i}/var/xdrago/monitor/log/ssh.log | cut -d '#' -f1 | sort`; do
         _FW_TEST=
         _FF_TEST=
@@ -71,7 +71,7 @@ if [ ! -e "/run/fire.pid" ] && [ ! -e "/run/water.pid" ]; then
         [ -e "/etc/csf/csfpost.d/synproxy.sh" ] && synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
       done
     fi
-    if [ -e "${i}/var/xdrago/monitor/log/web.log" ] && [ -e "/usr/var/run${i}" ]; then
+    if [ -e "${i}/var/xdrago/monitor/log/web.log" ] && [ -e "/usr/run${i}" ]; then
       for _IP in `cat ${i}/var/xdrago/monitor/log/web.log | cut -d '#' -f1 | sort`; do
         _FW_TEST=
         _FF_TEST=
@@ -93,7 +93,7 @@ if [ ! -e "/run/fire.pid" ] && [ ! -e "/run/water.pid" ]; then
         [ -e "/etc/csf/csfpost.d/synproxy.sh" ] && synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
       done
     fi
-    if [ -e "${i}/var/xdrago/monitor/log/ftp.log" ] && [ -e "/usr/var/run${i}" ]; then
+    if [ -e "${i}/var/xdrago/monitor/log/ftp.log" ] && [ -e "/usr/run${i}" ]; then
       for _IP in `cat ${i}/var/xdrago/monitor/log/ftp.log | cut -d '#' -f1 | sort`; do
         _FW_TEST=
         _FF_TEST=

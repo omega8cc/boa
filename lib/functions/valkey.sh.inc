@@ -1,13 +1,25 @@
 
 #
+# Update Valkey Init.
+_update_valkey_init() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _update_valkey_init"
+  fi
+  if ! grep -q "mkdir" /etc/init.d/valkey-server; then
+    cp -af ${_locCnf}/valkey/valkey-server /etc/init.d/valkey-server
+    chmod 755 /etc/init.d/valkey-server &> /dev/null
+    _mrun "update-rc.d valkey-server defaults"
+  fi
+}
+#
 # Disable Redis.
 _disable_redis() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _disable_redis"
   fi
-  _mrun "service redis-server stop" 2> /dev/null
+  _mrun "service redis-server stop"
   killall -9 redis-server &> /dev/null
-  _mrun "update-rc.d -f redis-server remove" 2> /dev/null
+  _mrun "update-rc.d -f redis-server remove"
   mv -f /etc/init.d/redis-server /etc/init.d/redis-server-off &> /dev/null
   killall -9 redis-server &> /dev/null
   rm -f /run/redis/redis.pid
@@ -87,7 +99,7 @@ _forced_valkey_password_update() {
     chmod 0600 /etc/valkey/valkey.conf
   fi
   if [ "${_FORCE_VALKEY_RESTART}" = "YES" ]; then
-    _mrun "service valkey-server restart" 2> /dev/null
+    _mrun "service valkey-server restart"
   fi
 }
 #
@@ -160,10 +172,10 @@ _fix_valkey_mode() {
               sed -i "s/'127.0.0.1'/'${_VALKEY_LISTEN_MODE}'/g" /data/conf/global.inc &> /dev/null
               wait
             fi
-            _mrun "service valkey-server stop" 2> /dev/null
+            _mrun "service valkey-server stop"
             killall -9 valkey-server &> /dev/null
             rm -rf /var/lib/valkey
-            _mrun "update-rc.d -f valkey-server remove" 2> /dev/null
+            _mrun "update-rc.d -f valkey-server remove"
             mv -f /etc/init.d/valkey-server /etc/init.d/valkey-server-off &> /dev/null
             killall -9 valkey-server &> /dev/null
             rm -f /run/valkey/valkey.pid
@@ -179,10 +191,10 @@ _fix_valkey_mode() {
             sed -i "s/'127.0.0.1'/'${_VALKEY_LISTEN_MODE}'/g" /data/conf/global.inc &> /dev/null
             wait
           fi
-          _mrun "service valkey-server stop" 2> /dev/null
+          _mrun "service valkey-server stop"
           killall -9 valkey-server &> /dev/null
           rm -rf /var/lib/valkey
-          _mrun "update-rc.d -f valkey-server remove" 2> /dev/null
+          _mrun "update-rc.d -f valkey-server remove"
           mv -f /etc/init.d/valkey-server /etc/init.d/valkey-server-off &> /dev/null
           killall -9 valkey-server &> /dev/null
           rm -f /run/valkey/valkey.pid
@@ -270,7 +282,7 @@ _install_valkey_src() {
   fi
   _msg "INFO: Installing Valkey ${_VALKEY_VRN}..."
   if [ ! -e "/var/lib/valkey" ]; then
-    _mrun "adduser --system --group valkey --home /home/valkey" 2> /dev/null
+    _mrun "adduser --system --group valkey --home /home/valkey"
   fi
   cd /var/opt
   rm -rf valkey*
@@ -278,11 +290,11 @@ _install_valkey_src() {
   rm -f /usr/local/bin/valkey*
   rm -f /usr/bin/valkey*
   cd valkey-${_VALKEY_VRN}
-  _mrun "make -j $(nproc) --quiet" 2> /dev/null
-  _mrun "make --quiet PREFIX=/usr install" 2> /dev/null
+  _mrun "make -j $(nproc) --quiet"
+  _mrun "make --quiet PREFIX=/usr install"
   cp -af ${_locCnf}/valkey/valkey-server /etc/init.d/valkey-server
   chmod 755 /etc/init.d/valkey-server &> /dev/null
-  _mrun "update-rc.d valkey-server defaults" 2> /dev/null
+  _mrun "update-rc.d valkey-server defaults"
   mkdir -p /run/valkey
   chown -R valkey:valkey /run/valkey
   mkdir -p /var/log/valkey
@@ -315,7 +327,7 @@ _install_valkey_src() {
   _valkey_password_update
   touch ${_pthLog}/valkey-${_VALKEY_VRN}-${_xSrl}-${_X_VERSION}.log
   _disable_redis
-  _mrun "service valkey-server restart" 2> /dev/null
+  _mrun "service valkey-server restart"
 }
 
 _valkey_install_upgrade() {
@@ -330,7 +342,7 @@ _valkey_install_upgrade() {
     _valkeyCnfTpl="valkey8.conf"
   fi
   if [ ! -e "/var/lib/valkey" ]; then
-    _mrun "adduser --system --group valkey --home /home/valkey" 2> /dev/null
+    _mrun "adduser --system --group valkey --home /home/valkey"
   fi
   mkdir -p /run/valkey
   chown -R valkey:valkey /run/valkey
@@ -399,5 +411,6 @@ _valkey_install_upgrade() {
       _install_valkey_src
     fi
   fi
+  _update_valkey_init
 }
 

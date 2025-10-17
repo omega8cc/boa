@@ -8,6 +8,7 @@ _pthOml="/var/log/boa/php.incident.log"
 
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
+    # shellcheck disable=SC1091
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
     chmod a+w /dev/null
   else
@@ -17,25 +18,27 @@ _check_root() {
 }
 _check_root
 
-    # Sanitize to allow only digits and minus sign
-    export _B_NICE=${_B_NICE//[^0-9-]/}
+# Run only on fully installed system
+[ ! -e "/var/log/boa/reset_no_new_password.pid" ] && exit 0
 
-    # Validate and set default if necessary
-    if ! [[ "$_B_NICE" =~ ^-?[0-9]+$ ]]; then
-      _B_NICE=0
-    fi
+# Sanitize to allow only digits and minus sign
+export _B_NICE=${_B_NICE//[^0-9-]/}
 
-    # Clamp the value within -20 to 19
-    if (( _B_NICE < -20 )); then
-      _B_NICE=-20
-    elif (( _B_NICE > 19 )); then
-      _B_NICE=19
-    fi
+# Validate and set default if necessary
+if ! [[ "${_B_NICE}" =~ ^-?[0-9]+$ ]]; then
+  _B_NICE=0
+fi
 
-    renice ${_B_NICE} -p $$ &> /dev/null
+# Clamp the value within -20 to 19
+if (( _B_NICE < -20 )); then
+  _B_NICE=-20
+elif (( _B_NICE > 19 )); then
+  _B_NICE=19
+fi
 
-export _INCIDENT_REPORT=${_INCIDENT_REPORT//[^A-Z]/}
-: "${_INCIDENT_REPORT:=YES}"
+renice ${_B_NICE} -p $$ &> /dev/null
+
+: "${_FPM_COOLDOWN_SECS:=15}"
 
 ###
 ### Atomic lock/unlock to prevent TOCTOU race
@@ -52,7 +55,7 @@ _manage_single_lock() {
     # -------- legacy pgrep guard ---------
     # Exit if more than 2 instances of this script are running
     _SCRIPT=$(basename "$0")
-    _CNT=$(pgrep -fc "[${_SCRIPT:0:1}]${_SCRIPT:1}")
+    _CNT=$(pgrep -fc ${_SCRIPT})
     if (( _CNT > 2 )); then
       echo "Too many ${_SCRIPT} running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
       exit 0
@@ -61,8 +64,38 @@ _manage_single_lock() {
 }
 _manage_single_lock
 
+###
+### Load + normalize _INCIDENT_REPORT
+###
+### Legacy values:
+###   NO  becomes OFF (see below)
+###   YES becomes MINI (see below)
+###
+### Current values:
+###   OFF  == Total silence, no email alerts
+###   ALL  == Very noisy, good for debugging
+###   MINI == Only the most important alerts (default)
+###   CRIT == Only critical if _lvl=ALERT
+###
+_normalize_incident_report() {
+  : "${_INCIDENT_REPORT:=MINI}"
+  _INCIDENT_REPORT="${_INCIDENT_REPORT^^}"
+  _INCIDENT_REPORT="${_INCIDENT_REPORT//[^A-Z]/}"
+  ###
+  ### Map legacy + validate
+  ###
+  case "${_INCIDENT_REPORT}" in
+    NO)   _INCIDENT_REPORT="OFF"  ;;
+    YES)  _INCIDENT_REPORT="MINI" ;;
+    OFF|ALL|MINI|CRIT) : ;;
+    *)    _INCIDENT_REPORT="MINI" ;;
+  esac
+}
+_normalize_incident_report
+
 _incident_email_report() {
-  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "YES" ]; then
+  if ! _check_uptime_grace_period >/dev/null; then return 1; fi
+  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" != "OFF" ]; then
     _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
     echo "Sending Incident Report Email on $(date)" >> ${_pthOml}
     s-nail -s "Incident Report: ${1} on ${_hName} at $(date)" ${_MY_EMAIL} < ${_pthOml}
@@ -70,14 +103,14 @@ _incident_email_report() {
 }
 
 _fpm_forced_restart() {
-  touch /run/fmp_wait.pid
-  touch /run/restarting_fmp_wait.pid
+  : > /run/fmp_wait.pid
+  : > /run/restarting_fmp_wait.pid
   sleep 3
   _NOW=$(date +%y%m%d-%H%M%S)
   _NOW=${_NOW//[^0-9-]/}
   mkdir -p /var/backups/php-logs/${_NOW}/
   mv -f /var/log/php/* /var/backups/php-logs/${_NOW}/
-  kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}') &> /dev/null
+  pkill -9 -f php-fpm
   renice ${_B_NICE} -p $$ &> /dev/null
   _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
@@ -87,71 +120,185 @@ _fpm_forced_restart() {
   done
   _incident_email_report "PHP $1"
   echo >> ${_pthOml}
-  sleep 3
-  rm -f /run/fmp_wait.pid
-  rm -f /run/restarting_fmp_wait.pid
+  sleep 1
+  rm -f /run/fmp_wait.pid /run/restarting_fmp_wait.pid
   exit 0
 }
 
 _fpm_duplicate_instances_detection() {
-  _CNT=$(pgrep -fc "[p]hp-fpm: master process")
-  if (( _CNT > 11 )); then
-    _thisErrLog="$(date) Too many PHP-FPM master processes killed (count=${_CNT})"
-    echo ${_thisErrLog} >> ${_pthOml}
-    _fpm_forced_restart "Too many PHP-FPM master (count=${_CNT})"
-  fi
+  _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
+  for e in ${_PHP_V}; do
+    # Count masters for this exact conf path
+    _pat="php-fpm: master process.*/opt/php${e}/etc/php${e}-fpm.conf"
+    _cnt=$(pgrep -fc "${_pat}")
+    if (( _cnt > 1 )); then
+      _thisErrLog="$(date) Duplicate master for php${e}-fpm (count=${_cnt})"
+      echo ${_thisErrLog} >> ${_pthOml}
+      service "php${e}-fpm" restart
+      wait
+    fi
+  done
 }
 
 _fpm_giant_log_detection() {
   _PHPLOG_SIZE_TEST=$(du -s -h /var/log/php 2>/dev/null)
-  if [[ "${_PHPLOG_SIZE_TEST}" =~ "G" ]]; then
-    _thisErrLog="$(date) Too big PHP error logs deleted: ${_PHPLOG_SIZE_TEST}"
+  if echo "${_PHPLOG_SIZE_TEST}" | grep -q "G"; then
+    _thisErrLog="$(date) Too big PHP error logs detected: ${_PHPLOG_SIZE_TEST}"
     echo ${_thisErrLog} >> ${_pthOml}
-    _fpm_forced_restart "Too big PHP error logs"
+    # No restart here; health checks will react if needed.
   fi
 }
 
 _fpm_listen_conflict_detection() {
   if [ -e "/var/log/php" ]; then
-    if [ `tail --lines=500 /var/log/php/php*-fpm-error.log \
-      | grep --count "already listen on"` -gt 0 ]; then
-      _thisErrLog="$(date) FPM instances conflict detected, service will be restarted"
-      echo ${_thisErrLog} >> ${_pthOml}
-      _fpm_forced_restart "FPM instances conflict"
+    _hit=$(tail --lines=500 /var/log/php/php*-fpm-error.log 2>/dev/null | grep -c "already listen on")
+    if [ "${_hit}" -gt 0 ]; then
+      sleep 2
+      _hit2=$(tail --lines=500 /var/log/php/php*-fpm-error.log 2>/dev/null | grep -c "already listen on")
+      if [ "${_hit2}" -gt 0 ]; then
+        _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
+        for e in ${_PHP_V}; do
+          if [ ! -S "/run/www${e}.fpm.socket" ]; then
+            _thisErrLog="$(date) FPM listen conflict for php${e}, restarting"
+            echo ${_thisErrLog} >> ${_pthOml}
+            service "php${e}-fpm" restart
+            wait
+          fi
+        done
+      fi
     fi
   fi
 }
 
 _fpm_proc_max_detection() {
-  if [ `tail --lines=500 /var/log/php/php*-fpm-error.log \
-    | grep --count "process.max"` -gt 0 ]; then
-    _thisErrLog="$(date) Too many running FPM childs detected, service will be restarted"
+  _count=$(tail --lines=500 /var/log/php/php*-fpm-error.log 2>/dev/null | grep -c "process.max")
+  if [ "${_count}" -gt 0 ]; then
+    _thisErrLog="$(date) NOTE: process.max reached (${_count} hits). Consider raising pm.max_children"
     echo ${_thisErrLog} >> ${_pthOml}
-    _fpm_forced_restart "Too many running FPM childs"
+    # No restart; capacity signal only.
   fi
 }
 
 _fpm_sockets_healing() {
-  if [ `tail --lines=500 /var/log/php/php*-fpm-error.log \
-    | grep --count "Address already in use"` -gt 0 ]; then
-    _thisErrLog="$(date) FPM Sockets conflict detected, service will be restarted"
-    echo ${_thisErrLog} >> ${_pthOml}
-    _fpm_forced_restart "FPM Sockets conflict"
+  _hit=$(tail --lines=500 /var/log/php/php*-fpm-error.log 2>/dev/null | grep -c "Address already in use")
+  if [ "${_hit}" -gt 0 ]; then
+    sleep 2
+    _hit2=$(tail --lines=500 /var/log/php/php*-fpm-error.log 2>/dev/null | grep -c "Address already in use")
+    if [ "${_hit2}" -gt 0 ]; then
+      _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
+      for e in ${_PHP_V}; do
+        if [ ! -S "/run/www${e}.fpm.socket" ]; then
+          _thisErrLog="$(date) FPM socket conflict sustained for php${e}; restarting"
+          echo ${_thisErrLog} >> ${_pthOml}
+          service "php${e}-fpm" restart
+          wait
+        fi
+      done
+    fi
   fi
 }
 
 _fpm_fastcgi_temp() {
-  _FASTCGI_SIZE_TEST=$(du -s -h /usr/fastcgi_temp/*/*/* | grep G 2>/dev/null)
-  if [[ "${_FASTCGI_SIZE_TEST}" =~ "G" ]]; then
-    rm -f /usr/fastcgi_temp/*/*/*
-    killall -9 nginx
-    killall -9 php-fpm
-    _thisErrLog="$(date) PHP fastcgi_temp too big, cleanup forced"
+  _FASTCGI_SIZE_TEST=$(du -s -h /usr/fastcgi_temp/*/*/* 2>/dev/null | grep G)
+  if [ -n "${_FASTCGI_SIZE_TEST}" ]; then
+    rm -f /usr/fastcgi_temp/*/*/* 2>/dev/null
+    _thisErrLog="$(date) PHP fastcgi_temp too big, cleaned"
     echo ${_thisErrLog} >> ${_pthOml}
     echo "$(date) ${_FASTCGI_SIZE_TEST}" >> ${_pthOml}
-    _incident_email_report "PHP fastcgi_temp too big, cleanup forced"
+    _incident_email_report "PHP fastcgi_temp too big, cleaned"
     echo >> ${_pthOml}
   fi
+}
+
+_fpm_health_check_fix() {
+  _thisErrLog=
+  _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
+  for e in ${_PHP_V}; do
+    if [ -e "/etc/init.d/php${e}-fpm" ] && [ -x "/opt/php${e}/bin/php" ]; then
+      _pat="php-fpm: master process.*/opt/php${e}/etc/php${e}-fpm.conf"
+
+      _ok_master=false
+      _ok_socket=false
+      _ok_pid=false
+
+      # First pass
+      pgrep -f "${_pat}" >/dev/null 2>&1 && _ok_master=true
+      [ -S "/run/www${e}.fpm.socket" ] && _ok_socket=true
+      [ -s "/run/php${e}-fpm.pid" ] && _ok_pid=true
+
+      # Second pass (grace for reloads)
+      if ! ${_ok_master} || ! ${_ok_socket} || ! ${_ok_pid}; then
+        sleep 2
+        _ok_master=false; _ok_socket=false; _ok_pid=false
+        pgrep -f "${_pat}" >/dev/null 2>&1 && _ok_master=true
+        [ -S "/run/www${e}.fpm.socket" ] && _ok_socket=true
+        [ -s "/run/php${e}-fpm.pid" ] && _ok_pid=true
+      fi
+
+      if ! ${_ok_master} || ! ${_ok_socket} || ! ${_ok_pid}; then
+        # Per-version cooldown: /run/php<ver>-fpm.cooldown (15 seconds default)
+        _cd="/run/php${e}-fpm.cooldown"
+        _now=$(date +%s)
+        if [ -s "${_cd}" ]; then
+          _ts=$(cat "${_cd}" 2>/dev/null | tr -d '\n')
+          if [ -n "${_ts}" ]; then
+            _delta=$(( _now - _ts ))
+            if [ "${_delta}" -lt "${_FPM_COOLDOWN_SECS}" ]; then
+              echo "$(date) INFO: php${e}-fpm unhealthy but in cooldown (${_delta}s < ${_FPM_COOLDOWN_SECS}s); skipping restart" >> ${_pthOml}
+              continue
+            fi
+          fi
+        fi
+
+        : > /run/fmp_wait.pid
+        : > /run/restarting_fmp_wait.pid
+
+        echo "$(date) php${e}-fpm health failed (master=${_ok_master} socket=${_ok_socket} pid=${_ok_pid}) — restart" >> ${_pthOml}
+        service "php${e}-fpm" restart
+        wait
+        sleep 1
+
+        # Re-check after restart
+        _ok_master=false; _ok_socket=false; _ok_pid=false
+        pgrep -f "${_pat}" >/dev/null 2>&1 && _ok_master=true
+        [ -S "/run/www${e}.fpm.socket" ] && _ok_socket=true
+        [ -s "/run/php${e}-fpm.pid" ] && _ok_pid=true
+
+        if ${_ok_master} && ${_ok_socket} && ${_ok_pid}; then
+          _thisErrLog="$(date) PHP-FPM ${e} was down, restarted"
+          echo ${_thisErrLog} >> ${_pthOml}
+          date +%s > "${_cd}"
+        else
+          # As last resort: stop/start for only this version
+          echo "$(date) php${e}-fpm still unhealthy after restart; stop/start" >> ${_pthOml}
+          service "php${e}-fpm" stop
+          sleep 1
+          service "php${e}-fpm" start
+          date +%s > "${_cd}"
+        fi
+
+        rm -f /run/fmp_wait.pid /run/restarting_fmp_wait.pid
+      fi
+    fi
+  done
+  if [ -n "${_thisErrLog}" ]; then
+    _incident_email_report "PHP-FPM was down, restarted"
+    echo >> ${_pthOml}
+  fi
+}
+
+# Fire-and-forget launcher, cron-safe and interactive-safe
+_spawn_detached() {
+  _cmd="$1"
+  if command -v nohup >/dev/null 2>&1; then
+    nohup bash -c "${_cmd}" >/dev/null 2>&1 &
+  elif command -v setsid >/dev/null 2>&1; then
+    setsid bash -c "${_cmd}" >/dev/null 2>&1 &
+  else
+    ( bash -c "${_cmd}" >/dev/null 2>&1 ) &
+  fi
+  # If interactive shell, drop it from the job table to mimic cron behavior
+  if [[ "$-" == *i* ]]; then disown; fi
 }
 
 if [ ! -e "/var/tmp/fpm" ]; then
@@ -159,18 +306,19 @@ if [ ! -e "/var/tmp/fpm" ]; then
   chmod 777 /var/tmp/fpm
 fi
 
-_fpm_duplicate_instances_detection
-_fpm_giant_log_detection
-_fpm_listen_conflict_detection
-_fpm_proc_max_detection
-_fpm_sockets_healing
-_fpm_fastcgi_temp
-
-if [ ! -e "/root/.high_traffic.cnf" ] \
-  && [ ! -e "/root/.giant_traffic.cnf" ]; then
-  perl /var/xdrago/monitor/check/segfault_alert.pl &
+if [ ! -e "/run/max_load.pid" ] && [ ! -e "/run/critical_load.pid" ]; then
+  _fpm_duplicate_instances_detection
+  _fpm_listen_conflict_detection
+  _fpm_proc_max_detection
+  _fpm_sockets_healing
+  _fpm_fastcgi_temp
+  _fpm_giant_log_detection
+  _fpm_health_check_fix
+  if [ ! -e "/root/.high_traffic.cnf" ] \
+    && [ ! -e "/root/.giant_traffic.cnf" ]; then
+    _spawn_detached 'perl /var/xdrago/monitor/check/segfault_alert.pl'
+  fi
 fi
 
 echo DONE!
 exit 0
-

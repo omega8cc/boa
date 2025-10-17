@@ -725,9 +725,7 @@ _find_fast_mirror_cnf() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     _apt_clean_update
-    apt-get install netcat ${_aptYesUnth} 2> /dev/null
     apt-get install netcat-traditional ${_aptYesUnth} 2> /dev/null
-    wait
   fi
   _ffMirr=$(which ffmirror 2>&1)
   if [ -x "${_ffMirr}" ]; then
@@ -741,6 +739,7 @@ _find_fast_mirror_cnf() {
     if [ -e "${_ffList}" ]; then
       _BROKEN_FFMIRR_TEST=$(grep "stuff" ${_ffMirr} 2>&1)
       if [[ "${_BROKEN_FFMIRR_TEST}" =~ "stuff" ]]; then
+        _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _USE_MIR="${_CHECK_MIRROR}"
         [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.aegir.cc"
@@ -876,7 +875,7 @@ _download_helpers_libs() {
   cd /opt/tmp
   rm -rf /opt/tmp/boa
   if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
-    _GIT_VRN=2.45.2
+    _GIT_VRN=2.51.0
     _isGit=$(which git 2>&1)
     _GIT_INSTALL=NO
     _GIT_V=$(git --version 2>&1 \
@@ -898,14 +897,22 @@ _download_helpers_libs() {
           apt-get install libcurl4 ${_aptYesUnth} -qq 2> /dev/null
           apt-get install libcurl4-openssl-dev ${_aptYesUnth} -qq 2> /dev/null
           apt-get install libcurl4-gnutls-dev ${_aptYesUnth} -qq 2> /dev/null
-          apt-get remove git-core -y --purge --auto-remove -qq 2> /dev/null
-          apt-get remove git -y --purge --auto-remove -qq 2> /dev/null
+          if dpkg-query -W -f='${Status}' git-core 2>/dev/null | grep -q "install ok installed"; then
+            apt-get remove git-core -y --purge --auto-remove -qq 2> /dev/null
+          fi
+          if dpkg-query -W -f='${Status}' git 2>/dev/null | grep -q "install ok installed"; then
+            apt-get remove git -y --purge --auto-remove -qq 2> /dev/null
+          fi
         else
           apt-get install libcurl4 ${_aptYesUnth} -qq &> /dev/null
           apt-get install libcurl4-openssl-dev ${_aptYesUnth} -qq &> /dev/null
           apt-get install libcurl4-gnutls-dev ${_aptYesUnth} -qq &> /dev/null
-          apt-get remove git-core -y --purge --auto-remove -qq &> /dev/null
-          apt-get remove git -y --purge --auto-remove -qq &> /dev/null
+          if dpkg-query -W -f='${Status}' git-core 2>/dev/null | grep -q "install ok installed"; then
+            apt-get remove git-core -y --purge --auto-remove -qq &> /dev/null
+          fi
+          if dpkg-query -W -f='${Status}' git 2>/dev/null | grep -q "install ok installed"; then
+            apt-get remove git -y --purge --auto-remove -qq &> /dev/null
+          fi
         fi
       fi
       mkdir -p /var/opt
@@ -996,23 +1003,13 @@ _download_helpers_libs() {
   cp -af ${_bldPth}/aegir/helpers/apt.conf.noi.dist /opt/apt/
   #
   # Create tmp stuff
-  if [ ! -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
-    _LOG=${_vBs}/octopus-install-${_NOW}.log
-  else
-    _LOG=${_vBs}/octopus-upgrade-${_NOW}.log
-  fi
-  touch ${_LOG}
-  chmod 646 ${_LOG}
+  export _LOG_INFO=""
+  export _LOG_ERRR=""
   mkdir -p /var/opt
   rm -rf /var/opt/*
   _SRCDIR="/opt/tmp/files"
   mkdir -p ${_SRCDIR}
   cd ${_SRCDIR}
-  #
-  # Get spinner
-  rm -f spinner*
-  cp -af ${_bldPth}/aegir/helpers/spinner ./
-  chmod +x spinner &> /dev/null
   #
   # Get axelerator
   if [ ! -e "/usr/bin/aptitude-fast" ]; then

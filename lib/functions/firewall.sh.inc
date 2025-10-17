@@ -120,7 +120,7 @@ _csf_install() {
     if [ -L "/usr/sbin/ipset" ]; then
       rm -f /usr/sbin/ipset
     fi
-    _mrun "apt-get install ipset ${_aptYesUnth}" 2> /dev/null
+    _mrun "apt-get install ipset ${_aptYesUnth}"
   fi
 
   _ensure_ipset_symlinks
@@ -175,7 +175,7 @@ _csf_install() {
   fi
   _get_dev_src "csf-${_CSF_VRN}.tgz"
   cd csf
-  _mrun "sh install.sh" 2> /dev/null
+  _mrun "sh install.sh"
   _NFTABLES_TEST=$(iptables -V)
   if [[ "${_NFTABLES_TEST}" =~ "nf_tables" ]]; then
     if [ -e "/usr/sbin/iptables-legacy" ]; then
@@ -248,9 +248,8 @@ _csf_install() {
       sed -i "s/^#TCPKeepAlive.*/TCPKeepAlive yes/g" /etc/ssh/sshd_config
       wait
     fi
-    # killall -9 sshd-session &> /dev/null
-    kill -9 $(ps aux | grep '[s]tartups' | awk '{print $2}') &> /dev/null
-    _mrun "service ssh start" 2> /dev/null
+    pkill -9 -f /usr/sbin/sshd || true
+    _mrun "service ssh start"
     if [ "${_CSF_MODE}" = "install" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: csf/lfd firewall installed"
@@ -286,7 +285,7 @@ _add_ip_if_missing() {
   fi
 }
 
-# Function to add an Gateway IP to allowed and ignored by CSF/LDF
+# Function to add an Gateway IP to allowed and ignored by CSF/LFD
 _csf_lfd_gateway_allow() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _csf_lfd_gateway_allow"
@@ -313,7 +312,6 @@ _csf_lfd_gateway_allow() {
     fi
     if [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
       csf -ra &> /dev/null
-      wait
       synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
     else
       csf -r &> /dev/null
@@ -334,7 +332,7 @@ _csf_lfd_install_upgrade() {
     if [ -L "/usr/sbin/ipset" ]; then
       rm -f /usr/sbin/ipset
     fi
-    _mrun "apt-get install ipset ${_aptYesUnth}" 2> /dev/null
+    _mrun "apt-get install ipset ${_aptYesUnth}"
   fi
 
   _ensure_ipset_symlinks
@@ -342,8 +340,8 @@ _csf_lfd_install_upgrade() {
   if [[ "${_XTRAS_LIST}" =~ "ALL" ]] \
     || [[ "${_XTRAS_LIST}" =~ "CSF" ]]; then
     _check_system_manufacturer
-    if [ ! -e "/run/cloud_vhost.pid" ] \
-      && [ ! -e "/run/${_SYS_MANUFACTURER_LC}_vm.pid" ]; then
+    if [ ! -e "/var/log/boa/cloud_vhost.pid" ] \
+      && [ ! -e "/var/log/boa/${_SYS_MANUFACTURER_LC}_vm.pid" ]; then
       if [ ! -e "/usr/sbin/csf" ]; then
         echo " "
         if _prompt_yes_no "Do you want to install csf/lfd firewall?" ; then
@@ -368,15 +366,13 @@ _csf_lfd_install_upgrade() {
       _REMOVE_CSF=YES
     fi
     if [ "${_REMOVE_CSF}" = "YES" ]; then
-      _mrun "service lfd stop" 2> /dev/null
-      wait
-      kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
+      _mrun "service lfd stop"
+      pkill -9 -f ConfigServer
       killall sleep &> /dev/null
       rm -f /etc/csf/csf.error
       csf -x &> /dev/null
-      wait
-      _mrun "update-rc.d -f csf remove" 2> /dev/null
-      _mrun "update-rc.d -f lfd remove" 2> /dev/null
+      _mrun "update-rc.d -f csf remove"
+      _mrun "update-rc.d -f lfd remove"
       rm -f /etc/cron.d/{csf,lfd}*
       rm -f /usr/sbin/{csf,lfd}
       rm -f /etc/init.d/{csf,lfd}
@@ -411,14 +407,12 @@ _csf_lfd_install_upgrade() {
       fi
       if [ -e "${_pthLog}/lastFire" ]; then
         rm -f ${_pthLog}/lastFire
-        _mrun "service lfd stop" 2> /dev/null
-        wait
-        kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
+        _mrun "service lfd stop"
+        pkill -9 -f ConfigServer
         killall sleep &> /dev/null
         rm -f /etc/csf/csf.error
         if [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
           csf -ra &> /dev/null
-          wait
           synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
         else
           csf -r &> /dev/null

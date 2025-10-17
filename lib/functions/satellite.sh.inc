@@ -94,6 +94,7 @@ _find_correct_ip() {
   if [ -n "${_LOC_IP}" ] && grep -qE "${_LOC_IP}\s" /etc/hosts; then
     cp -af /etc/hosts /etc/.was.hosts
     sed -i "s/^${_LOC_IP}.*//g" /etc/hosts
+    [ -x "/etc/init.d/unbound" ] && [ ! -e "/usr/etc/unbound/unbound.conf.d" ] && mkdir -p /usr/etc/unbound/unbound.conf.d
     [ -x "/etc/init.d/unbound" ] && service unbound restart &> /dev/null
   fi
 }
@@ -280,7 +281,7 @@ _satellite_remove_web_user() {
       chattr -i /home/${_WEB}/.drush/
     fi
     mkdir -p ${_vBs}/zombie/deleted
-    kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
+    pkill -9 -f gpg-agent
     deluser --remove-home --backup-to ${_vBs}/zombie/deleted ${_WEB} &> /dev/null
     if [ -d "/home/${_WEB}/" ]; then
       rm -rf /home/${_WEB}/ &> /dev/null
@@ -467,10 +468,10 @@ _satellite_tune_fpm_config() {
     fi
     if [ ! -z "${_PHP_OLD_SV}" ] \
       && [ -e "/etc/init.d/php${_PHP_OLD_SV}-fpm" ]; then
-      _mrun "service php${_PHP_OLD_SV}-fpm reload" 2> /dev/null
+      _mrun "service php${_PHP_OLD_SV}-fpm reload"
     fi
     if [ -e "/etc/init.d/php${_PHP_SV}-fpm" ]; then
-      _mrun "service php${_PHP_SV}-fpm reload" 2> /dev/null
+      _mrun "service php${_PHP_SV}-fpm reload"
     fi
   fi
 }
@@ -3046,7 +3047,7 @@ _satellite_run_post_install() {
     rm -rf ${_HM_ROOT}/scripts
     rm -f ${_HM_ROOT}/themes/README.txt
     rm -f ${_HM_ROOT}/*.txt
-    _mrun "service nginx reload" 2> /dev/null
+    _mrun "service nginx reload"
     cd ${_HM_ROOT}
     cp -af /opt/tmp/boa/aegir/conf/tpl/robots.txt ./
     cd ${_ROOT}
@@ -4032,6 +4033,9 @@ _satellite_make() {
   chmod 700 /var/xdrago/run-${_USER} &> /dev/null
   chmod 700 ${_bldPth}/aegir/scripts/* &> /dev/null
 
+  ### Make sure that required web services are up and running
+  _mrun "webserver up"
+
   ###
   _AegirSetupA="${_bldPth}/aegir/scripts/AegirSetupA.sh.txt"
   bash ${_AegirSetupA} ${_USER}
@@ -4108,7 +4112,7 @@ _satellite_make() {
       _satellite_tune_fpm_config
     fi
     _satellite_force_advanced_nginx_config
-    _mrun "service nginx reload" 2> /dev/null
+    _mrun "service nginx reload"
   fi
 }
 
@@ -4174,7 +4178,6 @@ _satellite_if_sql_exception_test() {
     || [ ! -e "/run/mysqld/mysqld.sock" ]; then
     _msg "ALRT! ${_DB_SERVER} server not running properly!"
     _msg "EXIT: We can't proceed and will exit now"
-    _msg "HINT: Please check ${_LOG} for more information,"
     _msg "HINT: (re)start ${_DB_SERVER} server, then run the installer again"
     _msg "Bye"
     _clean_pid_exit _satellite_if_sql_exception_test_a
@@ -4227,7 +4230,9 @@ _satellite_if_running_as_root_octopus() {
       if  [ ! -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
         || [ ! -e "/data/u" ] \
         || [ ! -e "/var/xdrago" ]; then
-        [ ! -e "/run/${_SYS_MANUFACTURER_LC}_vm_postinstall.pid" ] && touch /run/${_SYS_MANUFACTURER_LC}_vm.pid
+        if [ ! -e "/var/log/boa/${_SYS_MANUFACTURER_LC}_vm_postinstall.pid" ]; then
+          touch /var/log/boa/${_SYS_MANUFACTURER_LC}_vm.pid
+        fi
       fi
     fi
   else
@@ -4852,9 +4857,9 @@ _satellite_letsencrypt_vhost_sync() {
   fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "${_STATUS} A: Reloading Nginx..."
-    service nginx reload
+    _mrun "service nginx reload"
   else
-    _mrun "service nginx reload" 2> /dev/null
+    _mrun "service nginx reload"
   fi
 }
 
@@ -4877,9 +4882,9 @@ _satellite_letsencrypt_vhost_setup() {
       _ifvHst="NO"
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "${_STATUS} A: Reloading Nginx..."
-        service nginx reload
+        _mrun "service nginx reload"
       else
-        _mrun "service nginx reload" 2> /dev/null
+        _mrun "service nginx reload"
       fi
     fi
   fi
@@ -4895,7 +4900,12 @@ _satellite_letsencrypt_vhost_setup() {
         _SQLADMIN_TEST=$(grep sqladmin ${_Ssl} 2>&1)
         _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
         _PHP_CN="www${_PHP_SV}"
-        _FPM_SOCKET_TEST=$(grep "unix:/var/run/${_PHP_CN}.fpm.socket" ${_Ssl} 2>&1)
+        _FPM_SOCKET_VAR=$(grep "unix:/var/run/${_PHP_CN}.fpm.socket" ${_Ssl} 2>&1)
+        _FPM_SOCKET_RUN=$(grep "unix:/run/${_PHP_CN}.fpm.socket" ${_Ssl} 2>&1)
+        if [[ "${_FPM_SOCKET_VAR}" =~ "fpm.socket" ]] \
+          || [[ "${_FPM_SOCKET_RUN}" =~ "fpm.socket" ]]; then
+          _FPM_SOCKET_TEST="fpm.socket"
+        fi
         if [[ ! "${_FPM_SOCKET_TEST}" =~ "fpm.socket" ]] \
           || [[ ! "${_HTTP3_TEST}" =~ "http3" ]] \
           || [[ ! "${_SQLADMIN_TEST}" =~ "sqladmin" ]]; then
@@ -4907,7 +4917,7 @@ _satellite_letsencrypt_vhost_setup() {
             bash /opt/local/bin/xboa ssl-gen
             wait
           else
-            _mrun "bash /opt/local/bin/xboa ssl-gen" &> /dev/null
+            _mrun "bash /opt/local/bin/xboa ssl-gen"
             wait
           fi
           if [ -e "${_Ssl}" ]; then
@@ -4924,7 +4934,7 @@ _satellite_letsencrypt_vhost_setup() {
           bash /opt/local/bin/xboa ssl-gen
           wait
         else
-          _mrun "bash /opt/local/bin/xboa ssl-gen" &> /dev/null
+          _mrun "bash /opt/local/bin/xboa ssl-gen"
           wait
         fi
         if [ -e "${_Ssl}" ]; then
@@ -4981,19 +4991,19 @@ _satellite_batch_cleanup() {
     if [ ! -f "${_D}/permissions-fix-${_xSrl}-${_X_VERSION}-${_TODAY}.info" ]; then
       find ${_D}/000 -type d -exec chmod 0755 {} \; &> /dev/null
       find ${_D}/000 -type f -exec chmod 0644 {} \; &> /dev/null
-      _mrun "chmod 755 ${_D}/*/*/profiles" &> /dev/null
-      _mrun "chmod 02775 ${_D}/*/*/sites/all/{modules,libraries,themes}" &> /dev/null
-      _mrun "chmod 02775 ${_D}/000/core/*/sites/all/{modules,libraries,themes}" &> /dev/null
-      _mrun "chown -R root:root ${_D}" &> /dev/null
-      _mrun "chown -R root:users ${_D}/*/*/sites" &> /dev/null
+      _mrun "chmod 755 ${_D}/*/*/profiles"
+      _mrun "chmod 02775 ${_D}/*/*/sites/all/{modules,libraries,themes}"
+      _mrun "chmod 02775 ${_D}/000/core/*/sites/all/{modules,libraries,themes}"
+      _mrun "chown -R root:root ${_D}"
+      _mrun "chown -R root:users ${_D}/*/*/sites"
       echo fixed > ${_D}/permissions-fix-${_xSrl}-${_X_VERSION}-${_TODAY}.info
     fi
     chown root:root ${_D} &> /dev/null
     chown root:root ${_CORE} &> /dev/null
-    _mrun "chown -R root:root /data/conf" &> /dev/null
-    _mrun "chown -R root:root ${_CORE}/o_contrib" &> /dev/null
-    _mrun "chown -R root:root ${_CORE}/o_contrib_seven" &> /dev/null
-    _mrun "chown -R root:root ${_D}/000" &> /dev/null
+    _mrun "chown -R root:root /data/conf"
+    _mrun "chown -R root:root ${_CORE}/o_contrib"
+    _mrun "chown -R root:root ${_CORE}/o_contrib_seven"
+    _mrun "chown -R root:root ${_D}/000"
     find /data/conf -type d -exec chmod 0755 {} \; &> /dev/null
     find /data/conf -type f -exec chmod 0644 {} \; &> /dev/null
     chown root:root /opt/tmp &> /dev/null
@@ -5004,19 +5014,19 @@ _satellite_batch_cleanup() {
     if [ ! -f "/data/disk/all/permissions-fix-${_xSrl}-${_X_VERSION}-${_TODAY}.info" ]; then
       find /data/disk/all/000 -type d -exec chmod 0755 {} \; &> /dev/null
       find /data/disk/all/000 -type f -exec chmod 0644 {} \; &> /dev/null
-      _mrun "chmod 755 /data/disk/all/*/*/profiles" &> /dev/null
-      _mrun "chmod 02775 /data/disk/all/*/*/sites/all/{modules,libraries,themes}" &> /dev/null
-      _mrun "chmod 02775 /data/disk/all/000/core/*/sites/all/{modules,libraries,themes}" &> /dev/null
-      _mrun "chown -R root:root /data/disk/all" &> /dev/null
-      _mrun "chown -R root:users /data/disk/all/*/*/sites" &> /dev/null
+      _mrun "chmod 755 /data/disk/all/*/*/profiles"
+      _mrun "chmod 02775 /data/disk/all/*/*/sites/all/{modules,libraries,themes}"
+      _mrun "chmod 02775 /data/disk/all/000/core/*/sites/all/{modules,libraries,themes}"
+      _mrun "chown -R root:root /data/disk/all"
+      _mrun "chown -R root:users /data/disk/all/*/*/sites"
       echo fixed > /data/disk/all/permissions-fix-${_xSrl}-${_X_VERSION}-${_TODAY}.info
     fi
     chown root:root /data/disk/all &> /dev/null
     chown root:root ${_CORE} &> /dev/null
-    _mrun "chown -R root:root /data/conf" &> /dev/null
-    _mrun "chown -R root:root ${_CORE}/o_contrib" &> /dev/null
-    _mrun "chown -R root:root ${_CORE}/o_contrib_seven" &> /dev/null
-    _mrun "chown -R root:root /data/disk/all/000" &> /dev/null
+    _mrun "chown -R root:root /data/conf"
+    _mrun "chown -R root:root ${_CORE}/o_contrib"
+    _mrun "chown -R root:root ${_CORE}/o_contrib_seven"
+    _mrun "chown -R root:root /data/disk/all/000"
     find /data/conf -type d -exec chmod 0755 {} \; &> /dev/null
     find /data/conf -type f -exec chmod 0644 {} \; &> /dev/null
     chown root:root /opt/tmp &> /dev/null
@@ -5072,20 +5082,20 @@ _satellite_display_url_finalize() {
       _AEGIR_LOGIN_URL=$(tail --lines=11 ${_ROOT}/log/install.log | grep --text "^http:" 2>&1)
       if [ ! -z "${_AEGIR_LOGIN_URL}" ]; then
         echo " "
-        _msg "INFO: Congratulations, Aegir have been installed successfully!"
-        _msg "NOTE! Please wait 2 min before visiting Aegir at:"
-        echo " "
-        _msg "LINK: ${_AEGIR_LOGIN_URL}"
-        echo " "
-        _msg "NOTE! The initial one-time login link will no longer work."
-        sleep 3
-        _msg "To access your Octopus Aegir control panel after the procedure is finished..."
-        _msg "...please generate a new link by running the following command:"
-        sleep 3
-        echo " "
-        echo "  su -s /bin/bash ${_USER} -c \"drush @hm uli\""
-        echo " "
-        sleep 3
+        _msg "INFO: Congratulations, Aegir Satellite have been installed successfully!"
+#         _msg "NOTE! Please wait 2 min before visiting Aegir at:"
+#         echo " "
+#         _msg "LINK: ${_AEGIR_LOGIN_URL}"
+#         echo " "
+#         _msg "NOTE! The initial one-time login link will no longer work."
+#         sleep 3
+#         _msg "To access your Octopus Aegir control panel after the procedure is finished..."
+#         _msg "...please generate a new link by running the following command:"
+#         sleep 3
+#         echo " "
+#         echo "  su -s /bin/bash ${_USER} -c \"drush @hm uli\""
+#         echo " "
+#         sleep 3
       else
         _msg "ALRT! Something went wrong"
         _msg "ALRT! Please check the install log for details:"
@@ -5104,7 +5114,7 @@ _satellite_display_url_finalize() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "${_STATUS} A: Starting the cron now"
     fi
-    _mrun "service cron start" 2> /dev/null
+    _mrun "service cron start"
   fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "${_STATUS} A: All done!"
@@ -5817,10 +5827,8 @@ _satellite_child_b_aegir_health_check() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "${_STATUS} B: Reloading Nginx..."
       sudo /etc/init.d/nginx reload
-      wait
     else
       sudo /etc/init.d/nginx reload &> /dev/null
-      wait
     fi
   else
     _msg "${_STATUS} B: FATAL ERROR: Required file does not exist:"

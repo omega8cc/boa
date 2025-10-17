@@ -83,7 +83,7 @@ _if_hosted_sys() {
 _check_sql_running() {
   while [ -z "${_IS_MYSQLD_RUNNING}" ] \
     || [ ! -e "/run/mysqld/mysqld.sock" ]; do
-    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}')
+    _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
     echo "INFO: Waiting for MySQLD availability..."
     sleep 3
   done
@@ -109,7 +109,7 @@ _check_sql_access() {
     echo " "
     _clean_pid_exit _check_sql_access_b
   else
-    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}')
+    _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
     if [ -z "${_IS_MYSQLD_RUNNING}" ]; then
       echo "ALERT: SQL server on this system is not running at all."
       echo "ALERT: Please fix this before trying again, giving up."
@@ -131,44 +131,21 @@ _check_sql_access() {
 }
 
 _fix_dns_settings() {
-  mkdir -p ${_vBs}
+  [ ! -d "${_vBs}" ] && mkdir -p ${_vBs}
   rm -f ${_vBs}/resolv.conf.tmp
-  if ! grep -q "9.9.9.9" /etc/resolv.conf; then
+  if ! grep -q "BOA-DNS-Config" /etc/resolv.conf; then
     echo "### BOA-DNS-Config ###" > ${_vBs}/resolv.conf.tmp
     if [ -x "/usr/sbin/unbound" ] && [ -e "/run/unbound/unbound.pid" ]; then
-      echo "nameserver 127.0.0.1" > ${_vBs}/resolv.conf.tmp
+      echo "nameserver 127.0.0.1" >> ${_vBs}/resolv.conf.tmp
     fi
     echo "nameserver 1.1.1.1" >> ${_vBs}/resolv.conf.tmp
     echo "nameserver 8.8.8.8" >> ${_vBs}/resolv.conf.tmp
     echo "nameserver 9.9.9.9" >> ${_vBs}/resolv.conf.tmp
   fi
-  if [ ! -e "${_vBs}/resolv.conf.vanilla" ]; then
-    for _Pre in `ls -la ${_vBs}/resolv.conf.pre-*`; do
-      if [ -e "${_Pre}" ] && [ -f "${_Pre}" ] && [ ! -L "${_Pre}" ]; then
-        cp -a ${_Pre} ${_vBs}/resolv.conf.vanilla
-      fi
-    done
-  fi
-  if [ ! -e "${_vBs}/resolv.conf.vanilla" ] \
-    && [ -e "${_vBs}/resolv.conf.tmp" ]; then
-    if [ "${_USE_DEFAULT_DNS}" != "YES" ]; then
-      rm -f /etc/resolv.conf
-      cp -a ${_vBs}/resolv.conf.tmp /etc/resolv.conf
-      cp -a ${_vBs}/resolv.conf.tmp ${_vBs}/resolv.conf.vanilla
-    fi
-  fi
-  sed -i "/^$/d" ${_vBs}/resolv.conf.vanilla &> /dev/null
-  if [ -e "${_vBs}/resolv.conf.vanilla" ]; then
-    if [ "${_USE_DEFAULT_DNS}" != "YES" ]; then
-      rm -f /etc/resolv.conf
-      cp -a ${_vBs}/resolv.conf.vanilla /etc/resolv.conf
-    fi
-  else
-    if [ -e "${_vBs}/resolv.conf.tmp" ] \
-      && [ "${_USE_DEFAULT_DNS}" != "YES" ]; then
-      rm -f /etc/resolv.conf
-      cp -a ${_vBs}/resolv.conf.tmp /etc/resolv.conf
-    fi
+  if [ -e "${_vBs}/resolv.conf.tmp" ]; then
+    rm -f /etc/resolv.conf
+    cp -a ${_vBs}/resolv.conf.tmp /etc/resolv.conf
+    cp -a ${_vBs}/resolv.conf.tmp ${_vBs}/resolv.conf.vanilla
   fi
   if [ -x "/usr/sbin/unbound-control" ] \
     && [ -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
@@ -186,7 +163,7 @@ _check_dns_settings() {
       rm -f /root/.use.local.nameservers.cnf
     fi
     _USE_DEFAULT_DNS=YES
-    if ! grep -q "9.9.9.9" /etc/resolv.conf; then
+    if ! grep -q "BOA-DNS-Config" /etc/resolv.conf; then
       _fix_dns_settings
       return 1  # Exit the function but continue the script
     fi
@@ -195,7 +172,7 @@ _check_dns_settings() {
     _USE_PROVIDER_DNS=YES
   else
     _REMOTE_DNS_TEST=$(host files.aegir.cc 1.1.1.1 -w 10 2>&1)
-    if ! grep -q "9.9.9.9" /etc/resolv.conf; then
+    if ! grep -q "BOA-DNS-Config" /etc/resolv.conf; then
       _fix_dns_settings
       return 1  # Exit the function but continue the script
     fi
@@ -209,7 +186,6 @@ _check_dns_settings() {
 
 _send_report() {
   if [ -e "${_barCnf}" ]; then
-    source ${_barCnf}
     _if_hosted_sys
     if [ "${_hostedSys}" = "YES" ]; then
       _MY_EMAIL="$(basename "$0")@omega8.cc"
@@ -226,7 +202,6 @@ _send_report() {
 
 _send_alert() {
   if [ -e "${_barCnf}" ]; then
-    source ${_barCnf}
     _if_hosted_sys
     if [ "${_hostedSys}" = "YES" ]; then
       _MY_EMAIL="$(basename "$0")@omega8.cc"
@@ -668,7 +643,6 @@ _get_load() {
 }
 
 _load_control() {
-  [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
   : "${_CPU_TASK_RATIO:=3.1}"
   _CPU_TASK_RATIO="$(_sanitize_number "${_CPU_TASK_RATIO}")"
   _O_LOAD_MAX=$(echo "${_CPU_TASK_RATIO} * 100" | bc -l)
@@ -877,7 +851,9 @@ _up_finish() {
     rm -f /opt/local/bin/php
     rm -f /usr/local/bin/php
   fi
-  rm -rf /opt/tmp/*
+  if [ -d "/data/u" ]; then
+    rm -rf /opt/tmp/*
+  fi
   echo
   echo OCTOPUS upgrade completed
   echo Bye
@@ -893,7 +869,6 @@ _find_fast_mirror_early() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     _apt_clean_update
-    apt-get install netcat ${_aptYesUnth} 2> /dev/null
     apt-get install netcat-traditional ${_aptYesUnth} 2> /dev/null
     wait
   fi
@@ -909,6 +884,7 @@ _find_fast_mirror_early() {
     if [ -e "${_ffList}" ]; then
       _BROKEN_FFMIRR_TEST=$(grep "stuff" ${_ffMirr} 2>&1)
       if [[ "${_BROKEN_FFMIRR_TEST}" =~ "stuff" ]]; then
+        _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _USE_MIR="${_CHECK_MIRROR}"
         [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.aegir.cc"
@@ -926,7 +902,7 @@ _find_fast_mirror_early() {
 }
 
 _if_reinstall_curl() {
-  _CURL_VRN=8.14.1
+  _CURL_VRN=8.16.0
   if ! command -v lsb_release &> /dev/null; then
     apt-get update -qq &> /dev/null
     apt-get install lsb-release ${_aptYesUnth} -qq &> /dev/null
@@ -943,7 +919,10 @@ _if_reinstall_curl() {
     fi
     echo "curl install" | dpkg --set-selections 2> /dev/null
     _apt_clean_update
-    apt-get remove libssl1.0-dev -y --purge --auto-remove -qq 2> /dev/null
+    # Check for libssl1.0-dev and remove conditionally
+    if dpkg-query -W -f='${Status}' libssl1.0-dev 2>/dev/null | grep -q "install ok installed"; then
+      apt-get remove libssl1.0-dev -y --purge --auto-remove -qq 2>/dev/null
+    fi
     apt-get autoremove -y 2> /dev/null
     apt-get install libssl-dev ${_aptYesUnth} -qq 2> /dev/null
     apt-get install libc-client2007e libc-client2007e-dev ${_aptYesUnth}-qq 2> /dev/null
@@ -1122,14 +1101,34 @@ _find_correct_ip() {
 
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
+    # shellcheck disable=SC1091
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
+
+    #
+    # Protect from any octopus updates when _SKYNET_MODE=OFF
+    if [ ! -z "${_SKYNET_MODE}" ] && [ "${_SKYNET_MODE}" = "OFF" ]; then
+      if [ -n "${SSH_TTY+x}" ]; then
+        echo
+        echo "STATUS: BOA Skynet Agent is Inactive!"
+        echo
+        echo "NOTE: With _SKYNET_MODE=OFF octopus can not upgrade your Aegir."
+        echo
+        echo "HINT: Please remove the _SKYNET_MODE=OFF line from"
+        echo "HINT: ${_barCnf} to enable it."
+        echo "HINT: Wait 10 minutes before trying octopus upgrade again."
+        echo "Bye!"
+        echo
+      fi
+      _clean_pid_exit _check_root
+    fi
+
     _find_correct_ip
     _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
     # Sanitize to allow only digits and minus sign
     export _B_NICE=${_B_NICE//[^0-9-]/}
 
     # Validate and set default if necessary
-    if ! [[ "$_B_NICE" =~ ^-?[0-9]+$ ]]; then
+    if ! [[ "${_B_NICE}" =~ ^-?[0-9]+$ ]]; then
       _B_NICE=0
     fi
 

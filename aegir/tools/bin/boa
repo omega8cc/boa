@@ -50,7 +50,16 @@ _clean_pid_exit() {
   echo "REASON ${1} on $(date)" >> /root/.boa.exit.exceptions.log
   [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
   [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
+  [ -e "/run/octopus_install_run.pid" ] && rm -f /run/octopus_install_run.pid
+  [ -e "/tmp/aegir_backup_mode.txt" ] && rm -f /tmp/aegir_backup_mode.txt
+  rm -f ${_vBs}/*.sh.cnf*
+  rm -f ${_vBs}/OCTOPUS.sh*
+  rm -f ${_vBs}/BARRACUDA.sh*
   service cron start &> /dev/null
+  _CNT=$(pgrep -fc 'tee -a /var/backups/barracuda-')
+  if (( _CNT > 1 )); then
+    pkill -f 'tee -a /var/backups/barracuda-'
+  fi
   exit 1
 }
 
@@ -676,44 +685,21 @@ _satellite_check_id() {
 }
 
 _fix_dns_settings() {
-  mkdir -p ${_vBs}
+  [ ! -d "${_vBs}" ] && mkdir -p ${_vBs}
   rm -f ${_vBs}/resolv.conf.tmp
-  if ! grep -q "9.9.9.9" /etc/resolv.conf; then
+  if ! grep -q "BOA-DNS-Config" /etc/resolv.conf; then
     echo "### BOA-DNS-Config ###" > ${_vBs}/resolv.conf.tmp
     if [ -x "/usr/sbin/unbound" ] && [ -e "/run/unbound/unbound.pid" ]; then
-      echo "nameserver 127.0.0.1" > ${_vBs}/resolv.conf.tmp
+      echo "nameserver 127.0.0.1" >> ${_vBs}/resolv.conf.tmp
     fi
     echo "nameserver 1.1.1.1" >> ${_vBs}/resolv.conf.tmp
     echo "nameserver 8.8.8.8" >> ${_vBs}/resolv.conf.tmp
     echo "nameserver 9.9.9.9" >> ${_vBs}/resolv.conf.tmp
   fi
-  if [ ! -e "${_vBs}/resolv.conf.vanilla" ]; then
-    for _Pre in `ls -la ${_vBs}/resolv.conf.pre-*`; do
-      if [ -e "${_Pre}" ] && [ -f "${_Pre}" ] && [ ! -L "${_Pre}" ]; then
-        cp -a ${_Pre} ${_vBs}/resolv.conf.vanilla
-      fi
-    done
-  fi
-  if [ ! -e "${_vBs}/resolv.conf.vanilla" ] \
-    && [ -e "${_vBs}/resolv.conf.tmp" ]; then
-    if [ "${_USE_DEFAULT_DNS}" != "YES" ]; then
-      rm -f /etc/resolv.conf
-      cp -a ${_vBs}/resolv.conf.tmp /etc/resolv.conf
-      cp -a ${_vBs}/resolv.conf.tmp ${_vBs}/resolv.conf.vanilla
-    fi
-  fi
-  sed -i "/^$/d" ${_vBs}/resolv.conf.vanilla &> /dev/null
-  if [ -e "${_vBs}/resolv.conf.vanilla" ]; then
-    if [ "${_USE_DEFAULT_DNS}" != "YES" ]; then
-      rm -f /etc/resolv.conf
-      cp -a ${_vBs}/resolv.conf.vanilla /etc/resolv.conf
-    fi
-  else
-    if [ -e "${_vBs}/resolv.conf.tmp" ] \
-      && [ "${_USE_DEFAULT_DNS}" != "YES" ]; then
-      rm -f /etc/resolv.conf
-      cp -a ${_vBs}/resolv.conf.tmp /etc/resolv.conf
-    fi
+  if [ -e "${_vBs}/resolv.conf.tmp" ]; then
+    rm -f /etc/resolv.conf
+    cp -a ${_vBs}/resolv.conf.tmp /etc/resolv.conf
+    cp -a ${_vBs}/resolv.conf.tmp ${_vBs}/resolv.conf.vanilla
   fi
   if [ -x "/usr/sbin/unbound-control" ] \
     && [ -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
@@ -731,7 +717,7 @@ _check_dns_settings() {
       rm -f /root/.use.local.nameservers.cnf
     fi
     _USE_DEFAULT_DNS=YES
-    if ! grep -q "9.9.9.9" /etc/resolv.conf; then
+    if ! grep -q "BOA-DNS-Config" /etc/resolv.conf; then
       _fix_dns_settings
       return 1  # Exit the function but continue the script
     fi
@@ -740,7 +726,7 @@ _check_dns_settings() {
     _USE_PROVIDER_DNS=YES
   else
     _REMOTE_DNS_TEST=$(host files.aegir.cc 1.1.1.1 -w 10 2>&1)
-    if ! grep -q "9.9.9.9" /etc/resolv.conf; then
+    if ! grep -q "BOA-DNS-Config" /etc/resolv.conf; then
       _fix_dns_settings
       return 1  # Exit the function but continue the script
     fi
@@ -1578,6 +1564,11 @@ _init_setup() {
       echo "LOG TO CHECK: ${_IN_BARRACUDA_LOG}"
       _send_errors
       _clean_pid_exit _barracuda_install
+    else
+      _CNT=$(pgrep -fc 'tee -a /var/backups/barracuda-')
+      if (( _CNT > 1 )); then
+        pkill -f 'tee -a /var/backups/barracuda-'
+      fi
     fi
     _NOW=$(date +%y%m%d-%H%M%S)
     _NOW=${_NOW//[^0-9-]/}
@@ -1645,16 +1636,10 @@ _init_setup() {
       echo "This process will take a few minutes and will run in the background."
       sleep 3
     fi
-    echo "NOTE! The initial one-time login link will no longer work."
-    sleep 3
-    echo "To access your Aegir control panel after the procedure is finished..."
-    echo "...please generate a new link by running the following command:"
-    sleep 3
-    echo
-    echo "  su -s /bin/bash ${_usEr} -c \"drush @hm uli\""
-    echo
-    sleep 3
-    echo "Bye!"
+#     echo "NOTE! The initial one-time login link will no longer work!"
+#     echo "Please wait until the procesure is complete."
+#     echo "Then generate a new link once you see the instructions below."
+#     sleep 3
     echo
     if [ ! -e "/root/.dont.upgrade.octopus.on.install.cnf" ]; then
       _NOW=$(date +%y%m%d-%H%M%S)
@@ -1662,9 +1647,73 @@ _init_setup() {
       _UP_OCTOPUS_LOG="${_LOG_UP_DIR}/$(basename "$0")-up-octopus-${_NOW}.log"
       rm -rf /data/disk/${_usEr}/.tmp/cache
       if [ "${_OCTOPUS_ONLY}" = "YES" ]; then
+#         echo "Launching octopus up-${_tRee} ${_usEr} in the background now..."
+#         echo
+#         echo "Please wait a few minutes before generating one-time login link!"
+#         echo
+#         echo "  su -s /bin/bash ${_usEr} -c \"drush @hm uli\""
+#         echo
+#         echo "Enjoy!"
+#         echo
         nohup /opt/local/bin/octopus up-${_tRee} ${_usEr} force log noscreen >${_UP_OCTOPUS_LOG} 2>&1 &
       else
+        echo "Launching octopus up-${_tRee} ${_usEr} now..."
         /opt/local/bin/octopus up-${_tRee} ${_usEr} force log noscreen 2>&1 | tee ${_UP_OCTOPUS_LOG}
+        wait
+        echo "Checking LE setup status..."
+        if [ -e "/data/disk/${_usEr}/log/domain.txt" ]; then
+          _hmFront=$(cat /data/disk/${_usEr}/log/domain.txt 2>&1)
+          _hmFront=$(echo -n ${_hmFront} | tr -d "\n" 2>&1)
+        fi
+        _leRoot="/data/disk/${_usEr}/tools/le"
+        _leCrtPath="${_leRoot}/certs/${_hmFront}"
+        _lePxyPath="/var/aegir/config/server_master/nginx/pre.d/z_${_hmFront}_ssl_proxy.conf"
+        if [ -e "${_leCrtPath}/fullchain.pem" ] \
+          || [ -e "${_leCrtPath}/cert.pem" ] \
+          || [ -e "${_lePxyPath}" ]; then
+          _UP_OCTOPUS_AGAIN=NO
+        else
+          _UP_OCTOPUS_AGAIN=YES
+        fi
+        if [ "${_UP_OCTOPUS_AGAIN}" = "YES" ]; then
+          echo "Octopus LE setup status: NOT READY!"
+          echo "Launching another octopus upgrade to fix LE..."
+          _UP_OCTOPUS_AGAIN_LOG="${_LOG_UP_DIR}/$(basename "$0")-up-again-octopus-${_NOW}.log"
+          /opt/local/bin/octopus up-${_tRee} ${_usEr} force log noscreen 2>&1 | tee ${_UP_OCTOPUS_AGAIN_LOG}
+          wait
+          echo "Checking LE setup status..."
+          if [ -e "/data/disk/${_usEr}/log/domain.txt" ]; then
+            _hmFront=$(cat /data/disk/${_usEr}/log/domain.txt 2>&1)
+            _hmFront=$(echo -n ${_hmFront} | tr -d "\n" 2>&1)
+          fi
+          _leRoot="/data/disk/${_usEr}/tools/le"
+          _leCrtPath="${_leRoot}/certs/${_hmFront}"
+          _lePxyPath="/var/aegir/config/server_master/nginx/pre.d/z_${_hmFront}_ssl_proxy.conf"
+          if [ -e "${_leCrtPath}/fullchain.pem" ] \
+            || [ -e "${_leCrtPath}/cert.pem" ] \
+            || [ -e "${_lePxyPath}" ]; then
+            echo "Octopus LE setup status: OK!"
+            echo
+            echo "You can generate one-time login link now:"
+            echo
+            echo "  su -s /bin/bash ${_usEr} -c \"drush @hm uli\""
+            echo
+            echo "Enjoy!"
+          else
+            echo "Octopus LE setup status: STILL NOT READY!"
+            echo "Please run another upgrade with:"
+            echo "  octopus up-${_tRee} ${_usEr} force"
+            echo "Bye!"
+          fi
+        else
+          echo "Octopus LE setup status: READY!"
+          echo
+          echo "You can generate one-time login link now:"
+          echo
+          echo "  su -s /bin/bash ${_usEr} -c \"drush @hm uli\""
+          echo
+          echo "Enjoy!"
+        fi
       fi
     fi
     sleep 1
@@ -1682,7 +1731,6 @@ _find_fast_mirror_early() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     _apt_clean_update
-    apt-get install netcat ${_aptYesUnth} 2> /dev/null
     apt-get install netcat-traditional ${_aptYesUnth} 2> /dev/null
     wait
   fi
@@ -1698,6 +1746,7 @@ _find_fast_mirror_early() {
     if [ -e "${_ffList}" ]; then
       _BROKEN_FFMIRR_TEST=$(grep "stuff" ${_ffMirr} 2>&1)
       if [[ "${_BROKEN_FFMIRR_TEST}" =~ "stuff" ]]; then
+        _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _USE_MIR="${_CHECK_MIRROR}"
         [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.aegir.cc"
@@ -1729,7 +1778,10 @@ _if_reinstall_curl() {
       fi
       echo "curl install" | dpkg --set-selections 2> /dev/null
       _apt_clean_update
-      apt-get remove libssl1.0-dev -y --purge --auto-remove -qq 2> /dev/null
+      # Check for libssl1.0-dev and remove conditionally
+      if dpkg-query -W -f='${Status}' libssl1.0-dev 2>/dev/null | grep -q "install ok installed"; then
+        apt-get remove libssl1.0-dev -y --purge --auto-remove -qq 2>/dev/null
+      fi
       apt-get autoremove -y 2> /dev/null
       apt-get install libssl-dev ${_aptYesUnth} -qq 2> /dev/null
       apt-get install libc-client2007e libc-client2007e-dev ${_aptYesUnth} -qq 2> /dev/null
@@ -1822,17 +1874,14 @@ _csf_check_fix() {
     csf -a 172.233.219.37  us.files.aegir.cc &> /dev/null
     csf -a 172.105.168.103 ao.files.aegir.cc &> /dev/null
     service lfd stop &> /dev/null
-    wait
-    kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
+    pkill -9 -f ConfigServer
     killall sleep &> /dev/null
     rm -f /etc/csf/csf.error
     csf -x  &> /dev/null
-    wait
     service clean-boa-env start &> /dev/null
-    wait
     _if_fix_iptables_symlinks
     ### csf -uf &> /dev/null
-    wait
+    ### wait
     _NFTABLES_TEST=$(iptables -V)
     if [[ "${_NFTABLES_TEST}" =~ "nf_tables" ]]; then
       if [ -e "/usr/sbin/iptables-legacy" ]; then
@@ -1849,9 +1898,7 @@ _csf_check_fix() {
       fi
     fi
     csf -e  &> /dev/null
-    wait
     sed -i "s/.*DHCP.*//g" /etc/csf/csf.allow
-    wait
     sed -i "/^$/d" /etc/csf/csf.allow
     if [ -e "/var/log/daemon.log" ]; then
       _DHCP_LOG="/var/log/daemon.log"
@@ -1867,7 +1914,6 @@ _csf_check_fix() {
       fi
     done
     service lfd start &> /dev/null
-    wait
     ### Linux kernel TCP SACK CVEs mitigation
     ### CVE-2019-11477 SACK Panic
     ### CVE-2019-11478 SACK Slowness
@@ -2113,6 +2159,11 @@ _display_version() {
   fi
 }
 
+# Function to remove whitespace
+_sanitize_pid() {
+  echo "$1" | sed 's/[^0-9]//g'
+}
+
 # Function to display time in appropriate units
 _display_time() {
   local _service=$1
@@ -2123,6 +2174,30 @@ _display_time() {
       return
     elif [ "${_service}" = "solr4" ] && [ ! -e "/opt/solr4/solr.xml" ]; then
       return
+    elif [ "${_service}" = "pure-ftpd" ] && [ ! -e "/usr/local/sbin/pure-ftpd" ]; then
+      return
+    elif [ "${_service}" = "php56-fpm" ] && [ ! -e "/opt/php56/bin/php" ]; then
+      return
+    elif [ "${_service}" = "php70-fpm" ] && [ ! -e "/opt/php70/bin/php" ]; then
+      return
+    elif [ "${_service}" = "php71-fpm" ] && [ ! -e "/opt/php71/bin/php" ]; then
+      return
+    elif [ "${_service}" = "php72-fpm" ] && [ ! -e "/opt/php72/bin/php" ]; then
+      return
+    elif [ "${_service}" = "php73-fpm" ] && [ ! -e "/opt/php73/bin/php" ]; then
+      return
+    elif [ "${_service}" = "php74-fpm" ] && [ ! -e "/opt/php74/bin/php" ]; then
+      return
+    elif [ "${_service}" = "php80-fpm" ] && [ ! -e "/opt/php80/bin/php" ]; then
+      return
+    elif [ "${_service}" = "php81-fpm" ] && [ ! -e "/opt/php81/bin/php" ]; then
+      return
+    elif [ "${_service}" = "php82-fpm" ] && [ ! -e "/opt/php82/bin/php" ]; then
+      return
+    elif [ "${_service}" = "php83-fpm" ] && [ ! -e "/opt/php83/bin/php" ]; then
+      return
+    elif [ "${_service}" = "php84-fpm" ] && [ ! -e "/opt/php84/bin/php" ]; then
+      return
     else
       _not_running_services+=("  _XSE ${_service} is not running (PID file not found).")
       return
@@ -2131,12 +2206,37 @@ _display_time() {
 
   # Get the PID from the PID file
   _pid=$(cat "${_pidfile}")
+  _pid=$(_sanitize_pid "${_pid}" 2>&1)
 
   # Check if the process is running
   if ! ps -p "${_pid}" > /dev/null 2>&1; then
     if [ "${_service}" = "jenkins" ] && [ ! -e "/var/lib/jenkins" ]; then
       return
     elif [ "${_service}" = "solr4" ] && [ ! -e "/opt/solr4/solr.xml" ]; then
+      return
+    elif [ "${_service}" = "pure-ftpd" ] && [ ! -e "/usr/local/sbin/pure-ftpd" ]; then
+      return
+    elif [ "${_service}" = "php56-fpm" ] && [ ! -e "/opt/php56/bin/php" ]; then
+      return
+    elif [ "${_service}" = "php70-fpm" ] && [ ! -e "/opt/php70/bin/php" ]; then
+      return
+    elif [ "${_service}" = "php71-fpm" ] && [ ! -e "/opt/php71/bin/php" ]; then
+      return
+    elif [ "${_service}" = "php72-fpm" ] && [ ! -e "/opt/php72/bin/php" ]; then
+      return
+    elif [ "${_service}" = "php73-fpm" ] && [ ! -e "/opt/php73/bin/php" ]; then
+      return
+    elif [ "${_service}" = "php74-fpm" ] && [ ! -e "/opt/php74/bin/php" ]; then
+      return
+    elif [ "${_service}" = "php80-fpm" ] && [ ! -e "/opt/php80/bin/php" ]; then
+      return
+    elif [ "${_service}" = "php81-fpm" ] && [ ! -e "/opt/php81/bin/php" ]; then
+      return
+    elif [ "${_service}" = "php82-fpm" ] && [ ! -e "/opt/php82/bin/php" ]; then
+      return
+    elif [ "${_service}" = "php83-fpm" ] && [ ! -e "/opt/php83/bin/php" ]; then
+      return
+    elif [ "${_service}" = "php84-fpm" ] && [ ! -e "/opt/php84/bin/php" ]; then
       return
     else
       _not_running_services+=("  _XSE ${_service} is not running (stale PID file).")
@@ -2341,6 +2441,7 @@ _display_info() {
       _CCC=$(grep _CUSTOM_CONFIG_CSF ${_barCnf} 2>&1)
       _CCL=$(grep _CUSTOM_CONFIG_LSHELL ${_barCnf} 2>&1)
       _CCV=$(grep _CUSTOM_CONFIG_VALKEY ${_barCnf} 2>&1)
+      _CCR=$(grep _CUSTOM_CONFIG_REDIS ${_barCnf} 2>&1)
       _CCS=$(grep _CUSTOM_CONFIG_SQL ${_barCnf} 2>&1)
       _DBG=$(grep _DEBUG_MODE ${_barCnf} 2>&1)
       _DBS=$(grep _DB_SERIES ${_barCnf} 2>&1)
@@ -2433,6 +2534,7 @@ _display_info() {
       [ ! -z "${_CCC}" ] && echo "  _CCC ${_CCC}"
       [ ! -z "${_CCL}" ] && echo "  _CCL ${_CCL}"
       [ ! -z "${_CCV}" ] && echo "  _CCV ${_CCV}"
+      [ ! -z "${_CCR}" ] && echo "  _CCV ${_CCR}"
       [ ! -z "${_CCS}" ] && echo "  _CCS ${_CCS}"
       [ ! -z "${_DBG}" ] && echo "  _DBG ${_DBG}"
       [ ! -z "${_DBS}" ] && echo "  _DBS ${_DBS}"
@@ -2501,8 +2603,15 @@ _display_info() {
       _services_order=(
         "sshd"
         "crond"
+        "postfix"
         "nginx"
+        "php56-fpm"
+        "php70-fpm"
+        "php71-fpm"
+        "php72-fpm"
+        "php73-fpm"
         "php74-fpm"
+        "php80-fpm"
         "php81-fpm"
         "php82-fpm"
         "php83-fpm"
@@ -2523,8 +2632,15 @@ _display_info() {
       declare -A _services=(
         ["sshd"]="/run/sshd.pid"
         ["crond"]="/run/crond.pid"
+        ["postfix"]="/var/spool/postfix/pid/master.pid"
         ["nginx"]="/run/nginx.pid"
+        ["php56-fpm"]="/run/php56-fpm.pid"
+        ["php70-fpm"]="/run/php70-fpm.pid"
+        ["php71-fpm"]="/run/php71-fpm.pid"
+        ["php72-fpm"]="/run/php72-fpm.pid"
+        ["php73-fpm"]="/run/php73-fpm.pid"
         ["php74-fpm"]="/run/php74-fpm.pid"
+        ["php80-fpm"]="/run/php80-fpm.pid"
         ["php81-fpm"]="/run/php81-fpm.pid"
         ["php82-fpm"]="/run/php82-fpm.pid"
         ["php83-fpm"]="/run/php83-fpm.pid"
@@ -2714,7 +2830,7 @@ _octopus_cleanup() {
             echo "${_usEr}.web:/home/${_usEr}.web" >> ${_zombie_dir}.purge.list
           fi
         done
-        kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
+        pkill -9 -f gpg-agent
         IFS=$'\12'
           for p in $(cat ${_zombie_dir}.purge.list | grep "${_usEr}" 2>&1);do
             _usr_name=`echo $p | cut -d':' -f1 | awk '{ print $1}'`

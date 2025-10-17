@@ -1033,9 +1033,8 @@ _migrate_init() {
           touch ${_USR}/log/transferred.pid
         fi
       else
-        if [ -e "/root/.${_oct}.octopus.cnf" ]; then
-          source /root/.${_oct}.octopus.cnf
-        fi
+        # shellcheck disable=SC1091
+        [ -e "/root/.${_oct}.octopus.cnf" ] && source /root/.${_oct}.octopus.cnf
         ### We are using max verbose mode by default
         _migrate_prepare
           ### _NOW=$(date +%y%m%d-%H%M)
@@ -1061,14 +1060,14 @@ _post_mig() {
   else
     echo Running _post_mig inside vms ${_hName}
     if [ -x "/etc/init.d/solr9" ] && [ -e "/etc/default/solr9.in.sh" ]; then
-      #kill -9 $(ps aux | grep '[s]olr9' | awk '{print $2}') &> /dev/null
-      service solr9 restart
+      pkill -9 -f solr9
+      service solr9 start
     fi
     if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
-      #kill -9 $(ps aux | grep '[s]olr7' | awk '{print $2}') &> /dev/null
-      service solr7 restart
+      pkill -9 -f solr7
+      service solr7 start
     fi
-    kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}') &> /dev/null
+    pkill -9 -f jetty
     rm -rf /tmp/{drush*,pear,jetty*}
     rm -f /var/log/jetty{7,8,9}/*
     if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
@@ -1110,23 +1109,23 @@ _pre_mig() {
     echo Running _pre_mig inside vms ${_hName}
     if [ -e "/var/xdrago/runner.sh" ]; then
       mv -f /var/xdrago/runner.sh /var/xdrago/.runner.sh.off
-      kill -9 $(ps aux | grep '[r]unner' | awk '{print $2}') &> /dev/null
+      pkill -9 -f runner.sh
     fi
     if [ -e "/var/xdrago/daily.sh" ]; then
       mv -f /var/xdrago/daily.sh /var/xdrago/.daily.sh.off
-      kill -9 $(ps aux | grep '[d]aily' | awk '{print $2}') &> /dev/null
+      pkill -9 -f daily.sh
     fi
     if [ -e "/var/xdrago/usage.sh" ]; then
       mv -f /var/xdrago/usage.sh /var/xdrago/.usage.sh.off
-      kill -9 $(ps aux | grep '[w]eekly' | awk '{print $2}') &> /dev/null
+      pkill -9 -f usage.sh
     fi
     if [ -e "/var/xdrago/graceful.sh" ]; then
       mv -f /var/xdrago/graceful.sh /var/xdrago/.graceful.sh.off
-      kill -9 $(ps aux | grep '[g]raceful' | awk '{print $2}') &> /dev/null
+      pkill -9 -f graceful.sh
     fi
     if [ -e "/var/xdrago/manage_ltd_users.sh" ]; then
       mv -f /var/xdrago/manage_ltd_users.sh /var/xdrago/.manage_ltd_users.sh.off
-      kill -9 $(ps aux | grep '[m]anage_ltd_users' | awk '{print $2}') &> /dev/null
+      pkill -9 -f manage_ltd_users.sh
     fi
     if [ "${_hName}" = "${_hst}" ]; then
       echo Preparing source ${_hName} for outgoing migration...
@@ -1277,22 +1276,21 @@ _check_root() {
         ln -sfn /proc/self/fd /dev/fd
       fi
     fi
-    if [ -e "/root/.barracuda.cnf" ]; then
-      source /root/.barracuda.cnf
-      _ADM_EMAIL=${_MY_EMAIL//\\\@/\@}
-      _BCC_EMAIL=${_MY_EMAIL//\\\@/\@}
-      if [ "${_THIS_DB_HOST}" = "localhost" ] \
-        || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
-        _SQL_CONNECT=localhost
-      elif [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
-        || [ "${_THIS_DB_HOST}" = "PROXYSQL" ]; then
-        _SQL_CONNECT=127.0.0.1
-      else
-        _SQL_CONNECT="${_THIS_DB_HOST}"
-      fi
-      if [ "${_THIS_DB_HOST}" = "${_MY_OWNIP}" ]; then
-        _SQL_CONNECT=localhost
-      fi
+    # shellcheck disable=SC1091
+    [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
+    _ADM_EMAIL=${_MY_EMAIL//\\\@/\@}
+    _BCC_EMAIL=${_MY_EMAIL//\\\@/\@}
+    if [ "${_THIS_DB_HOST}" = "localhost" ] \
+      || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
+      _SQL_CONNECT=localhost
+    elif [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
+      || [ "${_THIS_DB_HOST}" = "PROXYSQL" ]; then
+      _SQL_CONNECT=127.0.0.1
+    else
+      _SQL_CONNECT="${_THIS_DB_HOST}"
+    fi
+    if [ "${_THIS_DB_HOST}" = "${_MY_OWNIP}" ]; then
+      _SQL_CONNECT=localhost
     fi
     _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
   else

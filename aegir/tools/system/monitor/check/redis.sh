@@ -5,9 +5,11 @@ export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 
 _pthOml="/var/log/boa/redis.incident.log"
+_cd="/run/redis-monitor.cooldown"
 
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
+    # shellcheck disable=SC1091
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
     chmod a+w /dev/null
   else
@@ -17,25 +19,30 @@ _check_root() {
 }
 _check_root
 
-    # Sanitize to allow only digits and minus sign
-    export _B_NICE=${_B_NICE//[^0-9-]/}
+[ -d /run/redis ] || mkdir -p /run/redis
+[ -d /run/redis ] && chown -R redis:redis /run/redis
 
-    # Validate and set default if necessary
-    if ! [[ "$_B_NICE" =~ ^-?[0-9]+$ ]]; then
-      _B_NICE=0
-    fi
+# Run only on fully installed system
+[ ! -e "/var/log/boa/reset_no_new_password.pid" ] && exit 0
 
-    # Clamp the value within -20 to 19
-    if (( _B_NICE < -20 )); then
-      _B_NICE=-20
-    elif (( _B_NICE > 19 )); then
-      _B_NICE=19
-    fi
+# Sanitize to allow only digits and minus sign
+export _B_NICE=${_B_NICE//[^0-9-]/}
 
-    renice ${_B_NICE} -p $$ &> /dev/null
+# Validate and set default if necessary
+if ! [[ "${_B_NICE}" =~ ^-?[0-9]+$ ]]; then
+  _B_NICE=0
+fi
 
-export _INCIDENT_REPORT=${_INCIDENT_REPORT//[^A-Z]/}
-: "${_INCIDENT_REPORT:=YES}"
+# Clamp the value within -20 to 19
+if (( _B_NICE < -20 )); then
+  _B_NICE=-20
+elif (( _B_NICE > 19 )); then
+  _B_NICE=19
+fi
+
+renice ${_B_NICE} -p $$ &> /dev/null
+
+: "${_REDIS_COOLDOWN_SECS:=15}"
 
 ###
 ### Atomic lock/unlock to prevent TOCTOU race
@@ -52,7 +59,7 @@ _manage_single_lock() {
     # -------- legacy pgrep guard ---------
     # Exit if more than 2 instances of this script are running
     _SCRIPT=$(basename "$0")
-    _CNT=$(pgrep -fc "[${_SCRIPT:0:1}]${_SCRIPT:1}")
+    _CNT=$(pgrep -fc ${_SCRIPT})
     if (( _CNT > 2 )); then
       echo "Too many ${_SCRIPT} running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
       exit 0
@@ -61,15 +68,75 @@ _manage_single_lock() {
 }
 _manage_single_lock
 
+###
+### Load + normalize _INCIDENT_REPORT
+###
+### Legacy values:
+###   NO  becomes OFF (see below)
+###   YES becomes MINI (see below)
+###
+### Current values:
+###   OFF  == Total silence, no email alerts
+###   ALL  == Very noisy, good for debugging
+###   MINI == Only the most important alerts (default)
+###   CRIT == Only critical if _lvl=ALERT
+###
+_normalize_incident_report() {
+  : "${_INCIDENT_REPORT:=MINI}"
+  _INCIDENT_REPORT="${_INCIDENT_REPORT^^}"
+  _INCIDENT_REPORT="${_INCIDENT_REPORT//[^A-Z]/}"
+  ###
+  ### Map legacy + validate
+  ###
+  case "${_INCIDENT_REPORT}" in
+    NO)   _INCIDENT_REPORT="OFF"  ;;
+    YES)  _INCIDENT_REPORT="MINI" ;;
+    OFF|ALL|MINI|CRIT) : ;;
+    *)    _INCIDENT_REPORT="MINI" ;;
+  esac
+}
+_normalize_incident_report
+
 _incident_email_report() {
-  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "YES" ]; then
+  if ! _check_uptime_grace_period >/dev/null; then return 1; fi
+  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" != "OFF" ]; then
     _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
     echo "Sending Incident Report Email on $(date)" >> ${_pthOml}
     s-nail -s "Incident Report: ${1} on ${_hName} at $(date)" ${_MY_EMAIL} < ${_pthOml}
   fi
 }
 
+_redis_ping_ok() {
+  # Check if Redis responds to PING (authenticated or NOAUTH)
+  _sock="/run/redis/redis.sock"
+  _cli="/usr/bin/redis-cli"
+  _pass_file="/root/.redis.pass.txt"
+  _out=
+  _pass=
+  if [ ! -x "${_cli}" ]; then
+    return 1
+  fi
+  if [ -r "${_pass_file}" ]; then
+    _pass="$(head -n1 "${_pass_file}" 2>/dev/null | tr -d '\r\n')"
+  fi
+  if [ -n "${_pass}" ]; then
+    _out="$(${_cli} -s "${_sock}" -a "${_pass}" ping 2>&1)"
+  else
+    _out="$(${_cli} -s "${_sock}" ping 2>&1)"
+  fi
+  if echo "${_out}" | grep -qi '^PONG$'; then
+    return 0
+  fi
+  if echo "${_out}" | grep -qi 'NOAUTH'; then
+    return 0
+  fi
+  return 1
+}
+
 _fpm_reload() {
+  : > /run/fmp_wait.pid
+  : > /run/restarting_fmp_wait.pid
+  sleep 3
   _NOW=$(date +%y%m%d-%H%M%S)
   _NOW=${_NOW//[^0-9-]/}
   mkdir -p /var/backups/php-logs/${_NOW}/
@@ -82,6 +149,8 @@ _fpm_reload() {
     fi
   done
   echo "$(date) $1 incident PHP-FPM reloaded" >> ${_pthOml}
+  sleep 1
+  rm -f /run/fmp_wait.pid /run/restarting_fmp_wait.pid
 }
 
 _redis_restart() {
@@ -99,6 +168,7 @@ _redis_restart() {
     _fpm_reload "$1"
   fi
   echo "$(date) $1 incident response completed" >> ${_pthOml}
+  date +%s > "${_cd}"
   _incident_email_report "$1"
   echo >> ${_pthOml}
   [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
@@ -106,29 +176,65 @@ _redis_restart() {
 }
 
 _redis_bind_check_fix() {
-  if [ `tail --lines=8 /var/log/redis/redis-server.log \
-    | grep --count "Address already in use"` -gt 0 ]; then
-    _thisErrLog="$(date) RedisException BIND detected, service will be restarted"
-    echo ${_thisErrLog} >> ${_pthOml}
-    _redis_restart "Redis BIND"
+  # Bind/socket/address-in-use issues → verify twice; restart only if socket missing
+  _hits=$(tail -n 8 /var/log/redis/redis-server.log 2>/dev/null | egrep -ci "Address already in use")
+  if [ "${_hits}" -gt 0 ]; then
+    sleep 2
+    _hits2=$(tail -n 8 /var/log/redis/redis-server.log 2>/dev/null | egrep -ci "Address already in use")
+    if [ "${_hits2}" -gt 0 ] && [ ! -S "/run/redis/redis.sock" ]; then
+      _now=$(date +%s)
+      if [ -s "${_cd}" ]; then
+        _ts=$(tr -d '\n' < "${_cd}")
+        if [ -n "${_ts}" ] && [ $((_now - _ts)) -lt "${_REDIS_COOLDOWN_SECS}" ]; then
+          echo "$(date) INFO: Redis bind/socket conflict but in cooldown; skipping restart" >> ${_pthOml}
+          return 0
+        fi
+      fi
+      echo "$(date) Redis bind/socket conflict; restarting" >> ${_pthOml}
+      _redis_restart "RedisException BIND PORT"
+    fi
   fi
 }
 
 _redis_connection_check_fix() {
-  if [ `tail --lines=500 /var/log/php/error_log_* \
-    | grep --count "RedisException: Connection refused"` -gt 19 ]; then
-    _thisErrLog="$(date) RedisException Connection refused detected, service will be restarted"
-    echo ${_thisErrLog} >> ${_pthOml}
-    _redis_restart "Redis REFUSED"
+  # Sustained connection/backlog issues → verify twice; cooldown then restart
+  _hits=$(tail -n 500 /var/log/php/error_log_* 2>/dev/null | egrep -ci "RedisException: Connection refused")
+  if [ "${_hits}" -gt 19 ]; then
+    sleep 2
+    _hits2=$(tail -n 500 /var/log/php/error_log_* 2>/dev/null | egrep -ci "RedisException: Connection refused")
+    if [ "${_hits2}" -gt 19 ]; then
+      _now=$(date +%s)
+      if [ -s "${_cd}" ]; then
+        _ts=$(tr -d '\n' < "${_cd}")
+        if [ -n "${_ts}" ] && [ $((_now - _ts)) -lt "${_REDIS_COOLDOWN_SECS}" ]; then
+          echo "$(date) INFO: Redis connection issues but in cooldown; skipping restart" >> ${_pthOml}
+          return 0
+        fi
+      fi
+      echo "$(date) Redis sustained connection issues (${_hits2} hits) — restart" >> ${_pthOml}
+      _redis_restart "RedisException REFUSED"
+    fi
   fi
 }
 
 _redis_slow_check_fix() {
-  if [ `tail --lines=500 /var/log/php/fpm-*-slow.log \
-    | grep --count "PhpRedis.php"` -gt 19 ]; then
-    _thisErrLog="$(date) Slow PhpRedis detected, service will be restarted"
-    echo ${_thisErrLog} >> ${_pthOml}
-    _redis_restart "Redis SLOW"
+  # Sustained latency/slowlog/accept issues → verify twice; cooldown then restart
+  _hits=$(tail -n 500 /var/log/php/fpm-*-slow.log 2>/dev/null | egrep -ci "PhpRedis.php")
+  if [ "${_hits}" -gt 19 ]; then
+    sleep 2
+    _hits2=$(tail -n 500 /var/log/php/fpm-*-slow.log 2>/dev/null | egrep -ci "PhpRedis.php")
+    if [ "${_hits2}" -gt 19 ]; then
+      _now=$(date +%s)
+      if [ -s "${_cd}" ]; then
+        _ts=$(tr -d '\n' < "${_cd}")
+        if [ -n "${_ts}" ] && [ $((_now - _ts)) -lt "${_REDIS_COOLDOWN_SECS}" ]; then
+          echo "$(date) INFO: Redis latency symptoms but in cooldown; skipping restart" >> ${_pthOml}
+          return 0
+        fi
+      fi
+      echo "$(date) Redis sustained latency symptoms (${_hits2} hits) — restart" >> ${_pthOml}
+      _redis_restart "RedisException SLOW"
+    fi
   fi
 }
 
@@ -136,16 +242,89 @@ _if_redis_restart() {
   _PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
   _PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
   _PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
-  ReTest=$(ls /data/disk/*/static/control/run-redis-restart.pid | wc -l 2>&1)
+  _VkTest=$(ls /data/disk/*/static/control/run-redis-restart.pid | wc -l 2>&1)
+  _ReTest=$(ls /data/disk/*/static/control/run-redis-restart.pid | wc -l 2>&1)
   if [[ "${_PrTestPower}" =~ "POWER" ]] \
     || [[ "${_PrTestPhantom}" =~ "PHANTOM" ]] \
     || [[ "${_PrTestCluster}" =~ "CLUSTER" ]] \
+    || [ -e "/root/.allow.redis.restart.cnf" ] \
     || [ -e "/root/.allow.redis.restart.cnf" ]; then
-    if [ "${ReTest}" -ge 1 ]; then
+    if [ "${_VkTest}" -ge 1 ] || [ "${_ReTest}" -ge 1 ]; then
+      _now=$(date +%s)
+      if [ -s "${_cd}" ]; then
+        _ts=$(tr -d '\n' < "${_cd}")
+        if [ -n "${_ts}" ] && [ $((_now - _ts)) -lt "${_REDIS_COOLDOWN_SECS}" ]; then
+          echo "$(date) INFO: Redis restart requested but in cooldown; skipped" >> ${_pthOml}
+          return 0
+        fi
+      fi
+      rm -f /data/disk/*/static/control/run-redis-restart.pid
       rm -f /data/disk/*/static/control/run-redis-restart.pid
       _thisErrLog="$(date) Redis Server Restart Requested"
       echo ${_thisErrLog} >> ${_pthOml}
       _redis_restart "Redis Server Restart Requested"
+    fi
+  fi
+}
+
+_redis_health_check_fix() {
+
+  # Double-check health: process + socket PING
+  _ok_proc=false
+  _ok_ping=false
+
+  pgrep -f "/usr/bin/redis-server" >/dev/null 2>&1 && _ok_proc=true
+  if [ -x "/usr/bin/redis-cli" ]; then
+    if _redis_ping_ok; then
+      _ok_ping=true
+    fi
+  fi
+
+  if ! ${_ok_proc} || ! ${_ok_ping}; then
+    sleep 2
+    _ok_proc=false; _ok_ping=false
+    pgrep -f "/usr/bin/redis-server" >/dev/null 2>&1 && _ok_proc=true
+    if [ -x "/usr/bin/redis-cli" ]; then
+      if _redis_ping_ok; then
+        _ok_ping=true
+      fi
+    fi
+  fi
+
+  if ! ${_ok_proc} || ! ${_ok_ping}; then
+    _now=$(date +%s)
+    if [ -s "${_cd}" ]; then
+      _ts=$(tr -d '\n' < "${_cd}")
+      if [ -n "${_ts}" ] && [ $((_now - _ts)) -lt "${_REDIS_COOLDOWN_SECS}" ]; then
+        echo "$(date) INFO: Redis unhealthy but in cooldown; skipping restart" >> ${_pthOml}
+        return 0
+      fi
+    fi
+
+    echo "$(date) Redis health failed (proc=${_ok_proc} ping=${_ok_ping}) — restart" >> ${_pthOml}
+    service redis-server restart
+    wait
+    sleep 3
+
+    # Post-restart verification
+    _ok_proc=false; _ok_ping=false
+    pgrep -f "/usr/bin/redis-server" >/dev/null 2>&1 && _ok_proc=true
+    if [ -x "/usr/bin/redis-cli" ]; then
+      if _redis_ping_ok; then
+        _ok_ping=true
+      fi
+    fi
+
+    date +%s > "${_cd}"
+
+    if ${_ok_proc} && ${_ok_ping}; then
+      echo "$(date) Redis was down, restarted" >> ${_pthOml}
+      _incident_email_report "Redis was down, restarted"
+      echo >> ${_pthOml}
+      exit 0
+    else
+      echo "$(date) Redis still unhealthy after restart; forced stop/start" >> ${_pthOml}
+      _redis_restart "Redis required stop/start after failed restart"
     fi
   fi
 }
@@ -157,11 +336,16 @@ else
   _ALLOW_CTRL=YES
 fi
 
-[ "${_ALLOW_CTRL}" = "YES" ] && _redis_slow_check_fix
-[ "${_ALLOW_CTRL}" = "YES" ] && _redis_connection_check_fix
-[ "${_ALLOW_CTRL}" = "YES" ] && _redis_bind_check_fix
-[ "${_ALLOW_CTRL}" = "YES" ] && [ -d "/data/u" ] && _if_redis_restart
+if [ ! -e "/run/max_load.pid" ] && [ ! -e "/run/critical_load.pid" ]; then
+  if [ -x "/etc/init.d/redis-server" ] \
+    && [ -x "/usr/bin/redis-server" ]; then
+    _redis_health_check_fix
+    [ "${_ALLOW_CTRL}" = "YES" ] && _redis_slow_check_fix
+    [ "${_ALLOW_CTRL}" = "YES" ] && _redis_connection_check_fix
+    [ "${_ALLOW_CTRL}" = "YES" ] && _redis_bind_check_fix
+    [ "${_ALLOW_CTRL}" = "YES" ] && [ -d "/data/u" ] && _if_redis_restart
+  fi
+fi
 
 echo DONE!
 exit 0
-

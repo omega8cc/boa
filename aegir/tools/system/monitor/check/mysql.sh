@@ -8,6 +8,7 @@ _pthOml="/var/log/boa/mysql.incident.log"
 
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
+    # shellcheck disable=SC1091
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
     chmod a+w /dev/null
   else
@@ -17,31 +18,31 @@ _check_root() {
 }
 _check_root
 
-    # Sanitize to allow only digits and minus sign
-    export _B_NICE=${_B_NICE//[^0-9-]/}
+# Run only on fully installed system
+[ ! -e "/var/log/boa/reset_no_new_password.pid" ] && exit 0
 
-    # Validate and set default if necessary
-    if ! [[ "$_B_NICE" =~ ^-?[0-9]+$ ]]; then
-      _B_NICE=0
-    fi
+# Sanitize to allow only digits and minus sign
+export _B_NICE=${_B_NICE//[^0-9-]/}
 
-    # Clamp the value within -20 to 19
-    if (( _B_NICE < -20 )); then
-      _B_NICE=-20
-    elif (( _B_NICE > 19 )); then
-      _B_NICE=19
-    fi
+# Validate and set default if necessary
+if ! [[ "${_B_NICE}" =~ ^-?[0-9]+$ ]]; then
+  _B_NICE=0
+fi
 
-    renice ${_B_NICE} -p $$ &> /dev/null
+# Clamp the value within -20 to 19
+if (( _B_NICE < -20 )); then
+  _B_NICE=-20
+elif (( _B_NICE > 19 )); then
+  _B_NICE=19
+fi
+
+renice ${_B_NICE} -p $$ &> /dev/null
 
 export _SQL_MAX_TTL=${_SQL_MAX_TTL//[^0-9]/}
 : "${_SQL_MAX_TTL:=3600}"
 
 export _SQL_LOW_MAX_TTL=${_SQL_LOW_MAX_TTL//[^0-9]/}
 : "${_SQL_LOW_MAX_TTL:=60}"
-
-export _INCIDENT_REPORT=${_INCIDENT_REPORT//[^A-Z]/}
-: "${_INCIDENT_REPORT:=YES}"
 
 export _LOAD_THRESHOLD=${_LOAD_THRESHOLD//[^0-9.]/}
 : "${_LOAD_THRESHOLD:=33.0}" # Example: 1-minute load above 33 indicates high load
@@ -64,7 +65,7 @@ _manage_single_lock() {
     # -------- legacy pgrep guard ---------
     # Exit if more than 2 instances of this script are running
     _SCRIPT=$(basename "$0")
-    _CNT=$(pgrep -fc "[${_SCRIPT:0:1}]${_SCRIPT:1}")
+    _CNT=$(pgrep -fc ${_SCRIPT})
     if (( _CNT > 2 )); then
       echo "Too many ${_SCRIPT} running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
       exit 0
@@ -73,8 +74,38 @@ _manage_single_lock() {
 }
 _manage_single_lock
 
+###
+### Load + normalize _INCIDENT_REPORT
+###
+### Legacy values:
+###   NO  becomes OFF (see below)
+###   YES becomes MINI (see below)
+###
+### Current values:
+###   OFF  == Total silence, no email alerts
+###   ALL  == Very noisy, good for debugging
+###   MINI == Only the most important alerts (default)
+###   CRIT == Only critical if _lvl=ALERT
+###
+_normalize_incident_report() {
+  : "${_INCIDENT_REPORT:=MINI}"
+  _INCIDENT_REPORT="${_INCIDENT_REPORT^^}"
+  _INCIDENT_REPORT="${_INCIDENT_REPORT//[^A-Z]/}"
+  ###
+  ### Map legacy + validate
+  ###
+  case "${_INCIDENT_REPORT}" in
+    NO)   _INCIDENT_REPORT="OFF"  ;;
+    YES)  _INCIDENT_REPORT="MINI" ;;
+    OFF|ALL|MINI|CRIT) : ;;
+    *)    _INCIDENT_REPORT="MINI" ;;
+  esac
+}
+_normalize_incident_report
+
 _incident_email_report() {
-  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "YES" ]; then
+  if ! _check_uptime_grace_period >/dev/null; then return 1; fi
+  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" != "OFF" ]; then
     _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
     echo "Sending Incident Report Email on $(date)" >> ${_pthOml}
     s-nail -s "Incident Report: ${1} on ${_hName} at $(date)" ${_MY_EMAIL} < ${_pthOml}
@@ -97,13 +128,17 @@ _redis_cold_restart() {
 
 _sql_restart() {
   touch /run/boa_run.pid
+  if [ ! -d "/run/mysqld" ]; then
+    mkdir -p /run/mysqld
+    chown -R mysql:root /run/mysqld
+  fi
   sleep 3
   echo "$(date) $1 incident detected" >> ${_pthOml}
   killall sleep &> /dev/null
   killall php
   bash /var/xdrago/move_sql.sh
   wait
-  echo "$(date) $1 incident Percona MySQL server restarted" >> ${_pthOml}
+  echo "$(date) $1 incident Percona server restarted" >> ${_pthOml}
   if [ -e "/var/lib/valkey" ]; then
     _valkey_cold_restart
     echo "$(date) $1 incident Valkey server restarted" >> ${_pthOml}
@@ -127,7 +162,7 @@ _sql_busy_detection() {
   if [ -e "${_SQL_LOG}" ]; then
     if [ `tail --lines=333 ${_SQL_LOG} \
       | grep --count "Too many connections"` -gt 111 ]; then
-      _IS_PROVISION_RUNNING=$(ps aux | grep '[p]rovision' | awk '{print $2}' 2>&1)
+      _IS_PROVISION_RUNNING=$(pgrep -f provision)
       if [ -z "${_IS_PROVISION_RUNNING}" ]; then
         _sql_restart "BUSY MySQL"
       fi
@@ -135,7 +170,7 @@ _sql_busy_detection() {
   fi
   if [ -e "/root/.instant.busy.mysql.action.cnf" ]; then
     _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
-    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}')
+    _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
     if [ ! -z "${_IS_MYSQLD_RUNNING}" ] && [ ! -z "${_SQL_PSWD}" ]; then
       _MYSQL_CONN_TEST=$(mysql -u root -e "status" 2>&1)
       echo _MYSQL_CONN_TEST ${_MYSQL_CONN_TEST}
@@ -251,10 +286,8 @@ _mysql_high_load() {
   fi
 }
 
-
-_mysql_is_locked() {
+_if_mydumper_is_locked() {
   _OCT_NR=$(ls /data/disk | wc -l)
-
   if [ -n "${_OCT_NR}" ] && [ "${_OCT_NR}" -ge 1 ]; then
     if [ "${_OCT_NR}" -ge 6 ]; then
       _MULTI_MX=$(( _OCT_NR * 3 ))
@@ -265,27 +298,80 @@ _mysql_is_locked() {
       _MULTI_MX=$(( _OCT_NR + 10 ))
     fi
   fi
-
-  if (( $(pgrep -fc 'aegir.sh') > ${_MULTI_MX} )); then
-    if (( $(pgrep -fc 'mysql_backup.sh') > 0 )); then
-      kill -9 $(ps aux | grep '[m]ydumper' | awk '{print $2}') &> /dev/null
-      _incident_email_report "TOO MANY ($(pgrep -fc 'aegir.sh') aegir.sh required killing mydumper"
+  _AR_C="$(pgrep -fc aegir.sh)"
+  _DR_C="$(pgrep -fc drush.php)"
+  _MD_C="$(pgrep -fc mydumper)"
+  if [ "${_MD_C}" -gt 0 ]; then
+    if [ "${_AR_C}" -gt "${_MULTI_MX}" ]; then
+      pkill -f mydumper
+      pkill -f aegir.sh
+      echo "$(date) TOO MANY (${_AR_C}) aegir.sh required killing mydumper" >> ${_pthOml}
+      echo >> ${_pthOml}
+      _incident_email_report "TOO MANY (${_AR_C}) aegir.sh required killing mydumper"
     fi
-  fi
-  if (( $(pgrep -fc 'drush.php') > ${_MULTI_MX} )); then
-    if (( $(pgrep -fc 'mysql_backup.sh') > 0 )); then
-      kill -9 $(ps aux | grep '[m]ydumper' | awk '{print $2}') &> /dev/null
-      kill -9 $(ps aux | grep '[d]rush.php' | awk '{print $2}') &> /dev/null
-      _incident_email_report "TOO MANY ($(pgrep -fc 'drush.php') drush.php required killing mydumper"
+    if [ "${_DR_C}" -gt "${_MULTI_MX}" ]; then
+      pkill -f mydumper
+      pkill -f drush.php
+      echo "$(date) TOO MANY (${_DR_C}) drush.php required killing mydumper" >> ${_pthOml}
+      echo >> ${_pthOml}
+      _incident_email_report "TOO MANY (${_DR_C}) drush.php required killing mydumper"
     fi
   fi
 }
 
-_mysql_high_load
-_sql_busy_detection
-_mysql_is_locked
+_mysql_flush_hosts() {
+  if pgrep -f /usr/sbin/mysqld \
+    && [ -e "/run/mysqld/mysqld.sock" ] \
+    && [ -e "/run/mysqld/mysqld.pid" ]; then
+    mysqladmin -u root flush-hosts &> /dev/null
+  fi
+}
 
-perl /var/xdrago/monitor/check/sqlcheck.pl &
+_mysql_health_check_fix() {
+  if ! pgrep -f /usr/sbin/mysqld \
+    || [ ! -e "/run/mysqld/mysqld.sock" ] \
+    || [ ! -e "/run/mysqld/mysqld.pid" ]; then
+    _sql_restart "DOWN MySQL"
+  fi
+}
+
+# Fire-and-forget launcher, cron-safe and interactive-safe
+_spawn_detached() {
+  _cmd="$1"
+  if command -v nohup >/dev/null 2>&1; then
+    nohup bash -c "${_cmd}" >/dev/null 2>&1 &
+  elif command -v setsid >/dev/null 2>&1; then
+    setsid bash -c "${_cmd}" >/dev/null 2>&1 &
+  else
+    ( bash -c "${_cmd}" >/dev/null 2>&1 ) &
+  fi
+  # If interactive shell, drop it from the job table to mimic cron behavior
+  if [[ "$-" == *i* ]]; then disown; fi
+}
+
+### Main start here
+
+if [ -x "/etc/init.d/mysql" ] \
+  && [ -x "/usr/sbin/mysqld" ] \
+  && [ ! -e "/run/boa_run.pid" ] \
+  && [ ! -e "/run/max_load.pid" ] \
+  && [ ! -e "/run/critical_load.pid" ] \
+  && [ ! -e "/run/mysql_restart_running.pid" ]; then
+  _mysql_health_check_fix
+fi
+
+if [ -x "/etc/init.d/mysql" ] \
+  && pgrep -f /usr/sbin/mysqld \
+  && [ ! -e "/run/mysql_restart_running.pid" ]; then
+  _mysql_high_load
+  _sql_busy_detection
+  _mysql_flush_hosts
+  if (( $(pgrep -fc mydumper) > 0 )) && (( $(pgrep -fc mysql_backup.sh) > 0 )); then
+    sleep 5
+    _if_mydumper_is_locked
+  fi
+  _spawn_detached 'perl /var/xdrago/monitor/check/sqlcheck.pl'
+fi
 
 if [ -e "/run/boa_sql_backup.pid" ] \
   || [ -e "/run/boa_sql_cluster_backup.pid" ] \
@@ -297,13 +383,15 @@ else
   _SQL_CTRL=YES
 fi
 
-[ "${_SQL_CTRL}" = "YES" ] && _mysql_proc_control "${_SQL_MAX_TTL}"
-sleep 15
-[ "${_SQL_CTRL}" = "YES" ] && _mysql_proc_control "${_SQL_MAX_TTL}"
-sleep 15
-[ "${_SQL_CTRL}" = "YES" ] && _mysql_proc_control "${_SQL_MAX_TTL}"
-sleep 15
-[ "${_SQL_CTRL}" = "YES" ] && _mysql_proc_control "${_SQL_MAX_TTL}"
+if [ ! -e "/run/max_load.pid" ] && [ ! -e "/run/critical_load.pid" ]; then
+  [ "${_SQL_CTRL}" = "YES" ] && _mysql_proc_control "${_SQL_MAX_TTL}"
+  sleep 15
+  [ "${_SQL_CTRL}" = "YES" ] && _mysql_proc_control "${_SQL_MAX_TTL}"
+  sleep 15
+  [ "${_SQL_CTRL}" = "YES" ] && _mysql_proc_control "${_SQL_MAX_TTL}"
+  sleep 15
+  [ "${_SQL_CTRL}" = "YES" ] && _mysql_proc_control "${_SQL_MAX_TTL}"
+fi
 
 echo DONE!
 exit 0
