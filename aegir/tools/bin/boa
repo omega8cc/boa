@@ -2174,6 +2174,10 @@ _display_time() {
       return
     elif [ "${_service}" = "solr4" ] && [ ! -e "/opt/solr4/solr.xml" ]; then
       return
+    elif [ "${_service}" = "solr7" ] && [ ! -e "/var/solr7/logs/solr.log" ]; then
+      return
+    elif [ "${_service}" = "solr9" ] && [ ! -e "/var/solr9/logs/solr.log" ]; then
+      return
     elif [ "${_service}" = "pure-ftpd" ] && [ ! -e "/usr/local/sbin/pure-ftpd" ]; then
       return
     elif [ "${_service}" = "php56-fpm" ] && [ ! -e "/opt/php56/bin/php" ]; then
@@ -2213,6 +2217,10 @@ _display_time() {
     if [ "${_service}" = "jenkins" ] && [ ! -e "/var/lib/jenkins" ]; then
       return
     elif [ "${_service}" = "solr4" ] && [ ! -e "/opt/solr4/solr.xml" ]; then
+      return
+    elif [ "${_service}" = "solr7" ] && [ ! -e "/var/solr7/logs/solr.log" ]; then
+      return
+    elif [ "${_service}" = "solr9" ] && [ ! -e "/var/solr9/logs/solr.log" ]; then
       return
     elif [ "${_service}" = "pure-ftpd" ] && [ ! -e "/usr/local/sbin/pure-ftpd" ]; then
       return
