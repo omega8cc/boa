@@ -109,6 +109,7 @@ _wkhtmltopdf_php_cli_oom_kill() {
   echo "$(date) OOM wkhtmltopdf incident response completed" >> ${_pthOml}
   _incident_email_report "OOM $1 wkhtmltopdf"
   echo >> ${_pthOml}
+  sleep 3
   [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
   exit 0
 }
@@ -116,6 +117,7 @@ _wkhtmltopdf_php_cli_oom_kill() {
 _oom_critical_restart() {
   touch /run/boa_run.pid
   echo "$(date) OOM $1 detected" >> ${_pthOml}
+  sleep 3
   pkill -9 -f wkhtmltopdf
   echo "$(date) OOM wkhtmltopdf killed" >> ${_pthOml}
   killall -9 sleep &> /dev/null
@@ -145,6 +147,7 @@ _oom_critical_restart() {
   echo "$(date) OOM incident response completed" >> ${_pthOml}
   _incident_email_report "OOM $1 system" "ALERT"
   echo >> ${_pthOml}
+  sleep 3
   [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
   exit 0
 }
