@@ -26,6 +26,15 @@ _check_root() {
 }
 _check_root
 
+_disable_master_cron() {
+  _mCronOn="/var/spool/cron/crontabs/aegir"
+  _mCronOff="/var/spool/cron/crontabs/.aegir"
+  if [ -e "${_mCronOn}" ]; then
+    mv -f ${_mCronOn} ${_mCronOff}
+    service cron reload
+  fi
+}
+
 [ -e "/root/.proxy.cnf" ] && exit 0
 [ -e "/root/.pause_tasks_maint.cnf" ] && exit 0
 [ -e "/run/max_load.pid" ] || [ -e "/run/critical_load.pid" ] && exit 0
@@ -160,6 +169,7 @@ if [ "$(pgrep -fc 'n7 bash /var/xdrago/runner.sh')" -gt 8 ] \
   echo "Another BOA task is running, we will try again later..."
   exit 0
 else
+  _disable_master_cron
   if [ -e "/root/.look.like.jenkins.cnf" ]; then
     _ALLOW_AEGIR_QUEUE=FALSE
     _if_allow_aegir_queue
