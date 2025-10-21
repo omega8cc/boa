@@ -39,7 +39,7 @@ fi
 renice ${_B_NICE} -p $$ &> /dev/null
 
 _cd="/run/nginx-monitor.cooldown"
-: "${_NGINX_COOLDOWN_SECS:=15}"
+: "${_NGINX_COOLDOWN_SECS:=30}"
 
 ###
 ### Atomic lock/unlock to prevent TOCTOU race
