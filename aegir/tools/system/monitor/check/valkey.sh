@@ -42,7 +42,7 @@ fi
 
 renice ${_B_NICE} -p $$ &> /dev/null
 
-: "${_VALKEY_COOLDOWN_SECS:=15}"
+: "${_VALKEY_COOLDOWN_SECS:=30}"
 
 ###
 ### Atomic lock/unlock to prevent TOCTOU race

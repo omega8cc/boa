@@ -21,9 +21,9 @@ _check_root
 # Run only on fully installed system
 [ ! -e "/var/log/boa/reset_no_new_password.pid" ] && exit 0
 
-: "${_CRON_COOLDOWN_SECS:=15}"
-: "${_POSTFIX_COOLDOWN_SECS:=15}"
-: "${_LFD_COOLDOWN_SECS:=15}"
+: "${_CRON_COOLDOWN_SECS:=30}"
+: "${_POSTFIX_COOLDOWN_SECS:=30}"
+: "${_LFD_COOLDOWN_SECS:=30}"
 
 ###
 ### Atomic lock/unlock to prevent TOCTOU race
