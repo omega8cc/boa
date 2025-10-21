@@ -90,9 +90,9 @@ if [ ! -e "/run/max_load.pid" ] && [ ! -e "/run/critical_load.pid" ]; then
 
   # Main execution
   if [ -f "${_monPath}/scan_nginx.sh" ]; then
-    for _iteration in {1..4}; do
+    for _iteration in {1..10}; do
       nohup ${_monPath}/scan_nginx.sh > /dev/null 2>&1 &
-      sleep 12
+      sleep 5
     done
   elif [ -f "${_monPath}/scan_nginx.pl" ]; then
     for _iteration in {1..10}; do
