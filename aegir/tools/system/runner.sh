@@ -159,7 +159,13 @@ if [ "${_TOTAL_RAM_MB}" -le 4096 ]; then
   fi
 fi
 
-if [ "$(pgrep -fc 'n7 bash /var/xdrago/runner.sh')" -gt 8 ] \
+if [ -e "/root/.slow.cron.cnf" ]; then
+  _howMany=1
+else
+  _howMany=8
+fi
+
+if [ "$(pgrep -fc 'n7 bash /var/xdrago/runner.sh')" -gt "${_howMany}" ] \
   || [ "${_SQLBACKUP_RUNNING}" = "TRUE" ] \
   || [ "${_DAILY_RUNNING}" = "TRUE" ] \
   || [ -e "/run/mysql_restart_running.pid" ] \
