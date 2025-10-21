@@ -565,15 +565,20 @@ _rsyslog_config_update
 ###
 ### Install or uninstall AppArmor after barracuda install and upgrade
 ###
-if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "UPGRADE" ]; then
+if [ -e "/root/.keep_apparmor_on.cnf" ] && [ ! -e "/root/.deny.apparmor.cnf" ]; then
   [ ! -e "/root/.allow.apparmor.cnf" ] && touch /root/.allow.apparmor.cnf
-  [ -e "/root/.deny.apparmor.cnf" ] && rm -f /root/.allow.apparmor.cnf
   if [ ! -e "/root/.run-to-daedalus.cnf" ] \
     && [ ! -e "/root/.run-to-chimaera.cnf" ] \
     && [ ! -e "/root/.run-to-beowulf.cnf" ]; then
     if [ "${_OS_CODE}" != "stretch" ] && [ "${_OS_CODE}" != "jessie" ]; then
       _if_install_apparmor
     fi
+  fi
+else
+  [ -e "/root/.allow.apparmor.cnf" ] && rm -f /root/.allow.apparmor.cnf
+  [ ! -e "/root/.deny.apparmor.cnf" ] && touch /root/.deny.apparmor.cnf
+  if [ "${_OS_CODE}" != "stretch" ] && [ "${_OS_CODE}" != "jessie" ]; then
+    _if_remove_apparmor
   fi
 fi
 
