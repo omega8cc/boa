@@ -42,7 +42,7 @@ fi
 
 renice ${_B_NICE} -p $$ &> /dev/null
 
-: "${_REDIS_COOLDOWN_SECS:=15}"
+: "${_REDIS_COOLDOWN_SECS:=30}"
 
 ###
 ### Atomic lock/unlock to prevent TOCTOU race

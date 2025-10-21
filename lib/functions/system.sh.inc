@@ -5594,7 +5594,7 @@ _if_install_apparmor() {
     mkdir -p /etc/default/grub.d
     echo 'GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT apparmor=1 security=apparmor"' \
       | tee ${_isAppArmorGrubFile} &> /dev/null
-    update-grub &> /dev/null
+    _mrun "update-grub"
   fi
   _isAppArmOn=N
   if [ -e "/sys/module/apparmor/parameters/enabled" ]; then
@@ -5603,6 +5603,31 @@ _if_install_apparmor() {
   if [ "${_isAppArmOn}" = "Y" ]; then
     _sync_apparmor_profiles
     [ -e "/root/.turn_off_apparmor_in_octopus.cnf" ] && rm -f /root/.turn_off_apparmor_in_octopus.cnf
+  fi
+}
+
+#
+# Remove AppArmor.
+_if_remove_apparmor() {
+  _isAppArmorGrubFile="/etc/default/grub.d/apparmor.cfg"
+  _isApparmor=$(which aa-status)
+  if [ ! -z "${_isApparmor}" ]; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "ARMR: The system AppArmor and auditd will be uninstalled now, however..."
+      _msg "ARMR: ...it will become fully inactive only after you reboot this server"
+      _msg "ARMR: Use 'boa reboot' command for optimized reboot"
+      _msg "WAIT: This may take a while, please wait..."
+    fi
+    _turn_off_apparmor_temporarily
+    for _PKG in auditd apparmor apparmor-utils apparmor-notify apparmor-profiles apparmor-profiles-extra; do
+      if _pkg_installed "${_PKG}"; then
+        _mrun "apt-get remove ${_PKG} -y -qq"
+      fi
+    done
+    mkdir -p /etc/default/grub.d
+    echo 'GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT apparmor=0"' \
+      | tee ${_isAppArmorGrubFile} &> /dev/null
+    _mrun "update-grub"
   fi
 }
 
@@ -9436,7 +9461,6 @@ _initd_update() {
           cp -af ${_myCnf} ${_preCnf}
         fi
         _diffMyTest=$(diff -w -B \
-          -I mysql_native_password \
           -I userstat \
           -I innodb_buffer_pool_size \
           -I innodb_buffer_pool_instances \
@@ -9626,18 +9650,18 @@ _apticron_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _apticron_update"
   fi
-  XPTEMAIL=${_MY_EMAIL//\@/\\\\\@}
+  _XPTEMAIL=${_MY_EMAIL//\@/\\\\\@}
   sed -i "s/notify\@omega8.cc/${_MY_EMAIL}/g"  \
     /etc/csf/csf.conf &> /dev/null
-  sed -i "s/notify\\\@omega8.cc/$XPTEMAIL/g" \
+  sed -i "s/notify\\\@omega8.cc/${_XPTEMAIL}/g" \
     /var/xdrago/checksql.pl
-  sed -i "s/notify\\\@omega8.cc/$XPTEMAIL/g" \
+  sed -i "s/notify\\\@omega8.cc/${_XPTEMAIL}/g" \
     /var/xdrago/daily.sh
-  sed -i "s/notify\\\@omega8.cc/$XPTEMAIL/g" \
+  sed -i "s/notify\\\@omega8.cc/${_XPTEMAIL}/g" \
     /var/xdrago/usage.sh
-  sed -i "s/notify\\\@omega8.cc/$XPTEMAIL/g" \
+  sed -i "s/notify\\\@omega8.cc/${_XPTEMAIL}/g" \
     /var/xdrago/monitor/check/segfault_alert.pl
-  sed -i "s/notify\\\@omega8.cc/$XPTEMAIL/g" \
+  sed -i "s/notify\\\@omega8.cc/${_XPTEMAIL}/g" \
     /var/xdrago/monitor/check/escapecheck.pl
   if [ -e "/usr/sbin/apticron" ]; then
     if [ -e "/etc/apticron/apticron.conf" ]; then
