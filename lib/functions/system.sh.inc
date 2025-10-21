@@ -9650,18 +9650,18 @@ _apticron_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _apticron_update"
   fi
-  XPTEMAIL=${_MY_EMAIL//\@/\\\\\@}
+  _XPTEMAIL=${_MY_EMAIL//\@/\\\\\@}
   sed -i "s/notify\@omega8.cc/${_MY_EMAIL}/g"  \
     /etc/csf/csf.conf &> /dev/null
-  sed -i "s/notify\\\@omega8.cc/$XPTEMAIL/g" \
+  sed -i "s/notify\\\@omega8.cc/${_XPTEMAIL}/g" \
     /var/xdrago/checksql.pl
-  sed -i "s/notify\\\@omega8.cc/$XPTEMAIL/g" \
+  sed -i "s/notify\\\@omega8.cc/${_XPTEMAIL}/g" \
     /var/xdrago/daily.sh
-  sed -i "s/notify\\\@omega8.cc/$XPTEMAIL/g" \
+  sed -i "s/notify\\\@omega8.cc/${_XPTEMAIL}/g" \
     /var/xdrago/usage.sh
-  sed -i "s/notify\\\@omega8.cc/$XPTEMAIL/g" \
+  sed -i "s/notify\\\@omega8.cc/${_XPTEMAIL}/g" \
     /var/xdrago/monitor/check/segfault_alert.pl
-  sed -i "s/notify\\\@omega8.cc/$XPTEMAIL/g" \
+  sed -i "s/notify\\\@omega8.cc/${_XPTEMAIL}/g" \
     /var/xdrago/monitor/check/escapecheck.pl
   if [ -e "/usr/sbin/apticron" ]; then
     if [ -e "/etc/apticron/apticron.conf" ]; then
