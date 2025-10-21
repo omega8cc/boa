@@ -38,7 +38,7 @@ fi
 
 renice ${_B_NICE} -p $$ &> /dev/null
 
-: "${_FPM_COOLDOWN_SECS:=15}"
+: "${_FPM_COOLDOWN_SECS:=30}"
 
 ###
 ### Atomic lock/unlock to prevent TOCTOU race

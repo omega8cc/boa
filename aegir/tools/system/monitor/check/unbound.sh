@@ -39,7 +39,7 @@ fi
 renice ${_B_NICE} -p $$ &> /dev/null
 
 _cd="/run/unbound-monitor.cooldown"
-: "${_UNBOUND_COOLDOWN_SECS:=15}"
+: "${_UNBOUND_COOLDOWN_SECS:=30}"
 
 ###
 ### Atomic lock/unlock to prevent TOCTOU race

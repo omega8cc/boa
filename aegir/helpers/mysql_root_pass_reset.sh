@@ -19,7 +19,22 @@ server:~# mv -f /etc/mysql_pre /etc/mysql
 service mysql stop
 ps axf | grep mysql
 
-mysqld_safe --skip-grant-tables --skip-networking &
+### For Percona 8.0 and 8.4
+/usr/sbin/mysqld \
+  --defaults-file=/etc/mysql/my.cnf \
+  --user=mysql \
+  --skip-grant-tables \
+  --skip-networking \
+  --log-error-verbosity=3 \
+  --daemonize=OFF
+
+### For Percona 5.7
+/usr/sbin/mysqld \
+  --defaults-file=/etc/mysql/my.cnf \
+  --user=mysql \
+  --skip-grant-tables \
+  --skip-networking \
+  --log-warnings=2
 
 server:~# mysql
 FLUSH PRIVILEGES;
