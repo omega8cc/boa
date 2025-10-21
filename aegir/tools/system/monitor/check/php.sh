@@ -159,13 +159,13 @@ _fpm_listen_conflict_detection() {
       sleep 2
       _hit2=$(tail --lines=500 /var/log/php/php*-fpm-error.log 2>/dev/null | grep -c "already listen on")
       if [ "${_hit2}" -gt 0 ]; then
+        mkdir -p /var/backups/php-logs/${_NOW}/
+        mv -f /var/log/php/php*-fpm-error.log /var/backups/php-logs/${_NOW}/
         _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
         for e in ${_PHP_V}; do
           if [ ! -S "/run/www${e}.fpm.socket" ]; then
             _thisErrLog="$(date) FPM listen conflict for php${e}, restarting"
             echo ${_thisErrLog} >> ${_pthOml}
-            mkdir -p /var/backups/php-logs/${_NOW}/
-            mv -f /var/log/php/php${e}-fpm-error.log /var/backups/php-logs/${_NOW}/
             service "php${e}-fpm" restart
             wait
           fi
@@ -190,13 +190,13 @@ _fpm_sockets_healing() {
     sleep 2
     _hit2=$(tail --lines=500 /var/log/php/php*-fpm-error.log 2>/dev/null | grep -c "Address already in use")
     if [ "${_hit2}" -gt 0 ]; then
+      mkdir -p /var/backups/php-logs/${_NOW}/
+      mv -f /var/log/php/php*-fpm-error.log /var/backups/php-logs/${_NOW}/
       _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ ! -S "/run/www${e}.fpm.socket" ]; then
           _thisErrLog="$(date) FPM socket conflict sustained for php${e}; restarting"
           echo ${_thisErrLog} >> ${_pthOml}
-          mkdir -p /var/backups/php-logs/${_NOW}/
-          mv -f /var/log/php/php${e}-fpm-error.log /var/backups/php-logs/${_NOW}/
           service "php${e}-fpm" restart
           wait
         fi
