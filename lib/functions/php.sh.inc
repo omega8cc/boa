@@ -2678,7 +2678,7 @@ _php_deprecated_cleanup() {
   _PHP_V="55 54 53"
   for e in ${_PHP_V}; do
     if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
-      _mrun "service php${e}-fpm force-quit"
+      _mrun "service "php${e}-fpm" force-quit"
       _mrun "update-rc.d -f php${e}-fpm remove"
       mv -f /etc/init.d/php${e}-fpm ${_vBs}/initd-php${e}-fpm
       _msg "INFO: /etc/init.d/php${e}-fpm moved to ${_vBs}/initd-php${e}-fpm"
@@ -2702,7 +2702,7 @@ _php_single_initd_cleanup() {
       _PHP_V="83 82 81 80 74 74 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
-          _mrun "service php${e}-fpm force-quit"
+          _mrun "service "php${e}-fpm" force-quit"
           _mrun "update-rc.d -f php${e}-fpm remove"
           mv -f /etc/init.d/php${e}-fpm ${_vBs}/initd-php${e}-fpm
           _FPM_INITD_CLEANUP=YES
@@ -2715,7 +2715,7 @@ _php_single_initd_cleanup() {
       _PHP_V="84 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
-          _mrun "service php${e}-fpm force-quit"
+          _mrun "service "php${e}-fpm" force-quit"
           _mrun "update-rc.d -f php${e}-fpm remove"
           mv -f /etc/init.d/php${e}-fpm ${_vBs}/initd-php${e}-fpm
           _FPM_INITD_CLEANUP=YES
@@ -2728,7 +2728,7 @@ _php_single_initd_cleanup() {
       _PHP_V="84 83 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
-          _mrun "service php${e}-fpm force-quit"
+          _mrun "service "php${e}-fpm" force-quit"
           _mrun "update-rc.d -f php${e}-fpm remove"
           mv -f /etc/init.d/php${e}-fpm ${_vBs}/initd-php${e}-fpm
           _FPM_INITD_CLEANUP=YES
@@ -2741,7 +2741,7 @@ _php_single_initd_cleanup() {
       _PHP_V="84 83 82 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
-          _mrun "service php${e}-fpm force-quit"
+          _mrun "service "php${e}-fpm" force-quit"
           _mrun "update-rc.d -f php${e}-fpm remove"
           mv -f /etc/init.d/php${e}-fpm ${_vBs}/initd-php${e}-fpm
           _FPM_INITD_CLEANUP=YES
@@ -2754,7 +2754,7 @@ _php_single_initd_cleanup() {
       _PHP_V="84 83 82 81 80 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
-          _mrun "service php${e}-fpm force-quit"
+          _mrun "service "php${e}-fpm" force-quit"
           _mrun "update-rc.d -f php${e}-fpm remove"
           mv -f /etc/init.d/php${e}-fpm ${_vBs}/initd-php${e}-fpm
           _FPM_INITD_CLEANUP=YES
@@ -2908,7 +2908,7 @@ _php_upgrade_all() {
         _check_php_rebuild "${e}"
       fi
       _php_multi_update "${e}"
-      _mrun "service php${e}-fpm reload"
+      _mrun "service "php${e}-fpm" reload"
       _PHP_VERSION=""
       _T_PHP_VRN=""
       _T_PHP_PTH=""
