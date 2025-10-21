@@ -2921,7 +2921,7 @@ _run_apt_get_dist_upgrade() {
   _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
-      _mrun "service php${e}-fpm reload"
+      _mrun "service "php${e}-fpm" reload"
     fi
   done
   nohup /var/xdrago/minute.sh > /dev/null 2>&1 &
@@ -6425,7 +6425,7 @@ _if_post_major_os_upgrade() {
     _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
       if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
-        _mrun "service php${e}-fpm reload"
+        _mrun "service "php${e}-fpm" reload"
       fi
     done
 
@@ -7172,7 +7172,7 @@ _if_major_os_upgrade() {
     _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
       if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
-        _mrun "service php${e}-fpm reload"
+        _mrun "service "php${e}-fpm" reload"
       fi
     done
     nohup /var/xdrago/minute.sh > /dev/null 2>&1 &
@@ -9316,7 +9316,7 @@ _initd_update() {
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
           _mrun "update-rc.d php${e}-fpm defaults"
-          _mrun "service php${e}-fpm start"
+          _mrun "service "php${e}-fpm" start"
         fi
       done
       _mrun "update-rc.d nginx defaults"
@@ -9433,7 +9433,7 @@ _initd_update() {
       done
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
-          _mrun "service php${e}-fpm reload"
+          _mrun "service "php${e}-fpm" reload"
         fi
       done
       _mrun "service nginx quietupgrade"
@@ -9638,7 +9638,7 @@ _sysctl_update() {
       _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
-          _mrun "service php${e}-fpm reload"
+          _mrun "service "php${e}-fpm" reload"
         fi
       done
     fi

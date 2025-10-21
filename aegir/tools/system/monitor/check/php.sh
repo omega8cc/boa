@@ -40,6 +40,9 @@ renice ${_B_NICE} -p $$ &> /dev/null
 
 : "${_FPM_COOLDOWN_SECS:=30}"
 
+_NOW=$(date +%y%m%d-%H%M%S)
+_NOW=${_NOW//[^0-9-]/}
+
 ###
 ### Atomic lock/unlock to prevent TOCTOU race
 ###
@@ -106,8 +109,6 @@ _fpm_forced_restart() {
   : > /run/fmp_wait.pid
   : > /run/restarting_fmp_wait.pid
   sleep 3
-  _NOW=$(date +%y%m%d-%H%M%S)
-  _NOW=${_NOW//[^0-9-]/}
   mkdir -p /var/backups/php-logs/${_NOW}/
   mv -f /var/log/php/* /var/backups/php-logs/${_NOW}/
   pkill -9 -f php-fpm
@@ -115,7 +116,7 @@ _fpm_forced_restart() {
   _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
-      service php${e}-fpm start
+      service "php${e}-fpm" start
     fi
   done
   _incident_email_report "PHP $1"
@@ -134,6 +135,8 @@ _fpm_duplicate_instances_detection() {
     if (( _cnt > 1 )); then
       _thisErrLog="$(date) Duplicate master for php${e}-fpm (count=${_cnt})"
       echo ${_thisErrLog} >> ${_pthOml}
+      mkdir -p /var/backups/php-logs/${_NOW}/
+      mv -f /var/log/php/php${e}-fpm-error.log /var/backups/php-logs/${_NOW}/
       service "php${e}-fpm" restart
       wait
     fi
@@ -161,6 +164,8 @@ _fpm_listen_conflict_detection() {
           if [ ! -S "/run/www${e}.fpm.socket" ]; then
             _thisErrLog="$(date) FPM listen conflict for php${e}, restarting"
             echo ${_thisErrLog} >> ${_pthOml}
+            mkdir -p /var/backups/php-logs/${_NOW}/
+            mv -f /var/log/php/php${e}-fpm-error.log /var/backups/php-logs/${_NOW}/
             service "php${e}-fpm" restart
             wait
           fi
@@ -190,6 +195,8 @@ _fpm_sockets_healing() {
         if [ ! -S "/run/www${e}.fpm.socket" ]; then
           _thisErrLog="$(date) FPM socket conflict sustained for php${e}; restarting"
           echo ${_thisErrLog} >> ${_pthOml}
+          mkdir -p /var/backups/php-logs/${_NOW}/
+          mv -f /var/log/php/php${e}-fpm-error.log /var/backups/php-logs/${_NOW}/
           service "php${e}-fpm" restart
           wait
         fi
@@ -254,6 +261,8 @@ _fpm_health_check_fix() {
         : > /run/restarting_fmp_wait.pid
 
         echo "$(date) php${e}-fpm health failed (master=${_ok_master} socket=${_ok_socket} pid=${_ok_pid}) — restart" >> ${_pthOml}
+        mkdir -p /var/backups/php-logs/${_NOW}/
+        mv -f /var/log/php/php${e}-fpm-error.log /var/backups/php-logs/${_NOW}/
         service "php${e}-fpm" restart
         wait
         sleep 1
@@ -273,6 +282,8 @@ _fpm_health_check_fix() {
           echo "$(date) php${e}-fpm still unhealthy after restart; stop/start" >> ${_pthOml}
           service "php${e}-fpm" stop
           sleep 1
+          mkdir -p /var/backups/php-logs/${_NOW}/
+          mv -f /var/log/php/php${e}-fpm-error.log /var/backups/php-logs/${_NOW}/
           service "php${e}-fpm" start
           date +%s > "${_cd}"
         fi
