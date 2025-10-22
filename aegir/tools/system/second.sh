@@ -254,65 +254,81 @@ _load_control() {
 
   # Check for critical load to terminate processes and hold services
   if awk "BEGIN {exit !(${_O_LOAD} > ${_CPU_CRIT_THRESHOLD} || ${_F_LOAD} > ${_CPU_CRIT_THRESHOLD})}"; then
-    touch /run/critical_load.pid
-    [ -e "/run/max_load.pid" ] && rm -f /run/max_load.pid
-    [ -e "/run/normal_load.pid" ] && rm -f /run/normal_load.pid
-    [ -e "/run/spider_load.pid" ] && rm -f /run/spider_load.pid
-    echo "Load exceeds critical threshold. Terminating processes and pausing web services."
-    _limits_exceeded=true
-    _skip_proc_control=true
-    if awk "BEGIN {exit !(${_O_LOAD} > ${_CPU_CRIT_THRESHOLD})}"; then
-      _current_load="${_O_LOAD}"
-      _load_period="1-minute"
-    else
-      _current_load="${_F_LOAD}"
-      _load_period="5-minute"
+    sleep 9
+    # Sustained critical load → verify twice with brief cooldown then react
+    if awk "BEGIN {exit !(${_O_LOAD} > ${_CPU_CRIT_THRESHOLD} || ${_F_LOAD} > ${_CPU_CRIT_THRESHOLD})}"; then
+      touch /run/critical_load.pid
+      [ -e "/run/max_load.pid" ] && rm -f /run/max_load.pid
+      [ -e "/run/normal_load.pid" ] && rm -f /run/normal_load.pid
+      [ -e "/run/spider_load.pid" ] && rm -f /run/spider_load.pid
+      echo "Load exceeds critical threshold. Terminating processes and pausing web services."
+      _limits_exceeded=true
+      _skip_proc_control=true
+      if awk "BEGIN {exit !(${_O_LOAD} > ${_CPU_CRIT_THRESHOLD})}"; then
+        _current_load="${_O_LOAD}"
+        _load_period="1-minute"
+      else
+        _current_load="${_F_LOAD}"
+        _load_period="5-minute"
+      fi
+      _terminate_processes "${_current_load}" "${_CPU_CRIT_THRESHOLD}" "${_load_period}"
+      _hold_services "${_current_load}" "${_CPU_MAX_THRESHOLD}" "${_load_period}"
     fi
-    _terminate_processes "${_current_load}" "${_CPU_CRIT_THRESHOLD}" "${_load_period}"
-    _hold_services "${_current_load}" "${_CPU_MAX_THRESHOLD}" "${_load_period}"
   # Check for max load to hold services
   elif awk "BEGIN {exit !(${_O_LOAD} > ${_CPU_MAX_THRESHOLD} || ${_F_LOAD} > ${_CPU_MAX_THRESHOLD})}"; then
-    touch /run/max_load.pid
-    [ -e "/run/critical_load.pid" ] && rm -f /run/critical_load.pid
-    [ -e "/run/normal_load.pid" ] && rm -f /run/normal_load.pid
-    [ -e "/run/spider_load.pid" ] && rm -f /run/spider_load.pid
-    echo "Load exceeds max threshold. Pausing web services."
-    _limits_exceeded=true
-    _skip_proc_control=true
-    if awk "BEGIN {exit !(${_O_LOAD} > ${_CPU_MAX_THRESHOLD})}"; then
-      _current_load="${_O_LOAD}"
-      _load_period="1-minute"
-    else
-      _current_load="${_F_LOAD}"
-      _load_period="5-minute"
+    sleep 9
+    # Sustained max load → verify twice with brief cooldown then react
+    if awk "BEGIN {exit !(${_O_LOAD} > ${_CPU_MAX_THRESHOLD} || ${_F_LOAD} > ${_CPU_MAX_THRESHOLD})}"; then
+      touch /run/max_load.pid
+      [ -e "/run/critical_load.pid" ] && rm -f /run/critical_load.pid
+      [ -e "/run/normal_load.pid" ] && rm -f /run/normal_load.pid
+      [ -e "/run/spider_load.pid" ] && rm -f /run/spider_load.pid
+      echo "Load exceeds max threshold. Pausing web services."
+      _limits_exceeded=true
+      _skip_proc_control=true
+      if awk "BEGIN {exit !(${_O_LOAD} > ${_CPU_MAX_THRESHOLD})}"; then
+        _current_load="${_O_LOAD}"
+        _load_period="1-minute"
+      else
+        _current_load="${_F_LOAD}"
+        _load_period="5-minute"
+      fi
+      _hold_services "${_current_load}" "${_CPU_MAX_THRESHOLD}" "${_load_period}"
     fi
-    _hold_services "${_current_load}" "${_CPU_MAX_THRESHOLD}" "${_load_period}"
   # Check for spider protection threshold
   elif awk "BEGIN {exit !(${_O_LOAD} > ${_CPU_SPIDER_THRESHOLD} && ${_O_LOAD} <= ${_CPU_MAX_THRESHOLD})}"; then
-    touch /run/spider_load.pid
-    [ -e "/run/critical_load.pid" ] && rm -f /run/critical_load.pid
-    [ -e "/run/max_load.pid" ] && rm -f /run/max_load.pid
-    [ -e "/run/normal_load.pid" ] && rm -f /run/normal_load.pid
-    echo "Load exceeds spider protection threshold but below max threshold."
-    _limits_exceeded=true
-    # Do not set _skip_proc_control to true here
-    _current_load="${_O_LOAD}"
-    _load_period="1-minute"
-    if [ -e "/data/conf/nginx_high_load_off.conf" ]; then
-      _nginx_high_load_on "${_current_load}" "${_CPU_SPIDER_THRESHOLD}" "${_load_period}"
+    sleep 9
+    # Sustained too high for spiders load → verify twice with brief cooldown then react
+    if awk "BEGIN {exit !(${_O_LOAD} > ${_CPU_SPIDER_THRESHOLD} && ${_O_LOAD} <= ${_CPU_MAX_THRESHOLD})}"; then
+      touch /run/spider_load.pid
+      [ -e "/run/critical_load.pid" ] && rm -f /run/critical_load.pid
+      [ -e "/run/max_load.pid" ] && rm -f /run/max_load.pid
+      [ -e "/run/normal_load.pid" ] && rm -f /run/normal_load.pid
+      echo "Load exceeds spider protection threshold but below max threshold."
+      _limits_exceeded=true
+      # Do not set _skip_proc_control to true here
+      _current_load="${_O_LOAD}"
+      _load_period="1-minute"
+      if [ -e "/data/conf/nginx_high_load_off.conf" ]; then
+        _nginx_high_load_on "${_current_load}" "${_CPU_SPIDER_THRESHOLD}" "${_load_period}"
+      fi
     fi
   elif awk "BEGIN {exit !(${_F_LOAD} > ${_CPU_SPIDER_THRESHOLD} && ${_F_LOAD} <= ${_CPU_MAX_THRESHOLD})}"; then
-    touch /run/spider_load.pid
-    [ -e "/run/critical_load.pid" ] && rm -f /run/critical_load.pid
-    [ -e "/run/max_load.pid" ] && rm -f /run/max_load.pid
-    [ -e "/run/normal_load.pid" ] && rm -f /run/normal_load.pid
-    echo "Load exceeds spider protection threshold but below max threshold."
-    _limits_exceeded=true
-    # Do not set _skip_proc_control to true here
-    _current_load="${_F_LOAD}"
-    _load_period="5-minute"
-    if [ -e "/data/conf/nginx_high_load_off.conf" ]; then
-      _nginx_high_load_on "${_current_load}" "${_CPU_SPIDER_THRESHOLD}" "${_load_period}"
+    sleep 9
+    # Sustained too high for spiders load → verify twice with brief cooldown then react
+    if awk "BEGIN {exit !(${_F_LOAD} > ${_CPU_SPIDER_THRESHOLD} && ${_F_LOAD} <= ${_CPU_MAX_THRESHOLD})}"; then
+      touch /run/spider_load.pid
+      [ -e "/run/critical_load.pid" ] && rm -f /run/critical_load.pid
+      [ -e "/run/max_load.pid" ] && rm -f /run/max_load.pid
+      [ -e "/run/normal_load.pid" ] && rm -f /run/normal_load.pid
+      echo "Load exceeds spider protection threshold but below max threshold."
+      _limits_exceeded=true
+      # Do not set _skip_proc_control to true here
+      _current_load="${_F_LOAD}"
+      _load_period="5-minute"
+      if [ -e "/data/conf/nginx_high_load_off.conf" ]; then
+        _nginx_high_load_on "${_current_load}" "${_CPU_SPIDER_THRESHOLD}" "${_load_period}"
+      fi
     fi
   else
     touch /run/normal_load.pid
@@ -338,14 +354,14 @@ _load_control() {
 }
 
 # Main execution
-for _iteration in {1..5}; do
+for _iteration in {1..3}; do
   echo "----------------------------"
   echo "Iteration ${_iteration}:"
   _load_control
   _spawn_detached 'perl /var/xdrago/monitor/check/hackcheck.pl'
   _spawn_detached 'perl /var/xdrago/monitor/check/hackftp.pl'
   _spawn_detached 'perl /var/xdrago/monitor/check/escapecheck.pl'
-  sleep 10
+  sleep 15
 done
 
 echo "Done!"
