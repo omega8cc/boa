@@ -156,9 +156,14 @@ _nginx_health_check_fix() {
   if [ "${_NGINX_RESTARTED}" = false ]; then
     _MASTER_COUNT=$(pgrep -fc 'nginx: master process')
     if [ "${_MASTER_COUNT}" -gt 1 ]; then
-      echo "Multiple (${_MASTER_COUNT}) Nginx master processes detected. Possible stuck processes."
-      echo "$(date) NGX multiple (${_MASTER_COUNT}) master processes detected" >> ${_pthOml}
-      _restart_nginx "_MASTER_COUNT ${_MASTER_COUNT}"
+      # Double-check after a short grace to avoid flapping
+      sleep 5
+      _MASTER_COUNT=$(pgrep -fc 'nginx: master process')
+      if [ "${_MASTER_COUNT}" -gt 1 ]; then
+        echo "Multiple (${_MASTER_COUNT}) Nginx master processes detected. Possible stuck processes."
+        echo "$(date) NGX multiple (${_MASTER_COUNT}) master processes detected" >> ${_pthOml}
+        _restart_nginx "_MASTER_COUNT ${_MASTER_COUNT}"
+      fi
     fi
   fi
   # Check the state of the master process
