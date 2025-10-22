@@ -21,6 +21,8 @@ _check_root() {
 }
 _check_root
 
+[ -e "/run/nginx.pid" ] && service nginx reload
+
 #
 # Protect from any autoupboa updates when _SKYNET_MODE=OFF
 if [ ! -z "${_SKYNET_MODE}" ] && [ "${_SKYNET_MODE}" = "OFF" ]; then
