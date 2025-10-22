@@ -144,13 +144,13 @@ _single_instance_unlock() {
 _single_instance_lock() {
   # Ensure not too many instances are running
   # usage: _single_instance_lock [lockfile_path] [fd]
-  # default lock: /run/<script>.lock (falls back to /var/run or /tmp)
+  # default lock: /run/<script>.lock (falls back to /run or /tmp)
   _SELF_NAME="${_SELF_NAME:-$(basename "$0")}"
   _LOCK_FD="${2:-9}"
   if [ -n "${1:-}" ]; then
     _LOCK_PATH="$1"
   else
-    _DIR="/run"; [ -w "$_DIR" ] || _DIR="/var/run"; [ -w "$_DIR" ] || _DIR="/tmp"
+    _DIR="/run"; [ -w "$_DIR" ] || _DIR="/run"; [ -w "$_DIR" ] || _DIR="/tmp"
     _LOCK_PATH="${_DIR}/${_SELF_NAME%.sh}.lock"
   fi
 
@@ -861,28 +861,30 @@ _find_fast_devuan_mirror() {
   fi
   _ffMirr=$(which ffmirror 2>&1)
   if [ -x "${_ffMirr}" ]; then
-    _ffList="/var/log/boa/devaun-mirrors-list.txt"
+    _ffList="/var/log/boa/devaun-fast-mirrors-list.txt"
     mkdir -p /var/log/boa/
-    if [ ! -e "${_ffList}" ]; then
-      echo "https://mirrors.dotsrc.org/devuan"  > ${_ffList}
-      echo "https://mirror.akardam.net/devuan" >> ${_ffList}
-      echo "https://mirror.hootsoftware.com/devuan" >> ${_ffList}
+    _BROKEN_FFLIST=$(grep "merged" ${_ffMirr} 2>&1)
+    if [ ! -e "${_ffList}" ] || [[ ! "${_BROKEN_FFLIST}" =~ "merged" ]]; then
+      echo "https://mirrors.dotsrc.org/devuan/merged"  > ${_ffList}
+      echo "https://mirror.akardam.net/devuan/merged" >> ${_ffList}
+      echo "https://mirror.hootsoftware.com/devuan/merged" >> ${_ffList}
     fi
     if [ -e "${_ffList}" ]; then
       _BROKEN_FFMIRR_TEST=$(grep "stuff" ${_ffMirr} 2>&1)
-      if [[ "${_BROKEN_FFMIRR_TEST}" =~ "stuff" ]]; then
+      if [[ "${_BROKEN_FFMIRR_TEST}" =~ "stuff" ]] \
+        || [[ ! "${_BROKEN_FFLIST}" =~ "merged" ]]; then
         _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _USE_MIR="${_CHECK_MIRROR}"
-        [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="mirrors.dotsrc.org/devuan"
+        [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="https://mirrors.dotsrc.org/devuan/merged"
       else
-        _USE_MIR="mirrors.dotsrc.org/devuan"
+        _USE_MIR="https://mirrors.dotsrc.org/devuan/merged"
       fi
     else
-      _USE_MIR="mirrors.dotsrc.org/devuan"
+      _USE_MIR="https://mirrors.dotsrc.org/devuan/merged"
     fi
   else
-    _USE_MIR="mirrors.dotsrc.org/devuan"
+    _USE_MIR="https://mirrors.dotsrc.org/devuan/merged"
   fi
   echo "${_USE_MIR}"
 }
@@ -938,7 +940,7 @@ _init_cycle() {
     else
       _TGT_MRR=$(_find_fast_devuan_mirror)
     fi
-    : "${_TGT_MRR:=https://mirrors.dotsrc.org/devuan}"
+    : "${_TGT_MRR:=https://mirrors.dotsrc.org/devuan/merged}"
     _msg "_init_cycle ==> Using Devuan mirror: ${_TGT_MRR}" >> "${_logInt}"
     echo "## DEVUAN MAIN REPOSITORIES" > ${_aptLiSys}
     echo "deb ${_TGT_MRR} ${_NEW_OS_CODE} main" >> ${_aptLiSys}

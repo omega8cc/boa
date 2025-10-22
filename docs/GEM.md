@@ -19,7 +19,9 @@ If you want to use Ruby Gems or Node/NPM to install Grunt, Gulp, or Bower, and y
 3. Add the control file `~/static/control/compass.info` again and wait (5 minutes max)
 4. Proceed with the further steps as usual.
 
-**NOTE:** On self-hosted BOA, you must add the non-default CSS symbol to the `_XTRAS_LIST` variable in your `/root/.barracuda.cnf` file and then run the `barracuda up-lts system` command before initializing Ruby Gems or NPM support in your limited shell account. This step is automated on BOA managed by Omega8.cc.
+**NOTE on Ruby Gems:** You must add the non-default CSS keyword to the `_XTRAS_LIST` array in your `/root/.barracuda.cnf` file and then run the `barracuda up-lts system` command before initializing Ruby Gems support in your limited shell account.
+
+**NOTE on Node/NPM:** You must add the non-default NPM keyword to the `_XTRAS_LIST` array in your `/root/.barracuda.cnf` file, create empty `/root/.allow.node.lshell.cnf` file and then run the `barracuda up-lts system` command before initializing NPM support in your limited shell account.
 
 Bundler allows you to manage different gem versions per theme, making it a valuable tool for gem installation and management. It's installed for you by default.
 

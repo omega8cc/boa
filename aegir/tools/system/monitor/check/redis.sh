@@ -19,6 +19,9 @@ _check_root() {
 }
 _check_root
 
+[ -d /run/redis ] || mkdir -p /run/redis
+[ -d /run/redis ] && chown -R redis:redis /run/redis
+
 # Run only on fully installed system
 [ ! -e "/var/log/boa/reset_no_new_password.pid" ] && exit 0
 
@@ -39,7 +42,10 @@ fi
 
 renice ${_B_NICE} -p $$ &> /dev/null
 
-: "${_REDIS_COOLDOWN_SECS:=15}"
+: "${_REDIS_COOLDOWN_SECS:=30}"
+
+_NOW=$(date +%y%m%d-%H%M%S)
+_NOW=${_NOW//[^0-9-]/}
 
 ###
 ### Atomic lock/unlock to prevent TOCTOU race
@@ -134,15 +140,13 @@ _fpm_reload() {
   : > /run/fmp_wait.pid
   : > /run/restarting_fmp_wait.pid
   sleep 3
-  _NOW=$(date +%y%m%d-%H%M%S)
-  _NOW=${_NOW//[^0-9-]/}
   mkdir -p /var/backups/php-logs/${_NOW}/
   mv -f /var/log/php/* /var/backups/php-logs/${_NOW}/
   renice ${_B_NICE} -p $$ &> /dev/null
   _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
-      service php${e}-fpm reload
+      service "php${e}-fpm" reload
     fi
   done
   echo "$(date) $1 incident PHP-FPM reloaded" >> ${_pthOml}

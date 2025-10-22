@@ -71,7 +71,7 @@ _LOGJ4_VRN=1.2.17
 _LSHELL_VRN=0.10
 _MAILPARSE_VRN=2.1.6
 _NEW_RELIC_VRN=11.7.0.21
-_NODE_VRN=v22.5.0
+_NODE_VRN=v22.21.0
 _MONGO_VRN=1.6.14
 _MONGODB_VRN=1.2.5
 _MSS_VRN=master-29-06-2024
@@ -565,15 +565,20 @@ _rsyslog_config_update
 ###
 ### Install or uninstall AppArmor after barracuda install and upgrade
 ###
-if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "UPGRADE" ]; then
+if [ -e "/root/.keep_apparmor_on.cnf" ] && [ ! -e "/root/.deny.apparmor.cnf" ]; then
   [ ! -e "/root/.allow.apparmor.cnf" ] && touch /root/.allow.apparmor.cnf
-  [ -e "/root/.deny.apparmor.cnf" ] && rm -f /root/.allow.apparmor.cnf
   if [ ! -e "/root/.run-to-daedalus.cnf" ] \
     && [ ! -e "/root/.run-to-chimaera.cnf" ] \
     && [ ! -e "/root/.run-to-beowulf.cnf" ]; then
     if [ "${_OS_CODE}" != "stretch" ] && [ "${_OS_CODE}" != "jessie" ]; then
       _if_install_apparmor
     fi
+  fi
+else
+  [ -e "/root/.allow.apparmor.cnf" ] && rm -f /root/.allow.apparmor.cnf
+  [ ! -e "/root/.deny.apparmor.cnf" ] && touch /root/.deny.apparmor.cnf
+  if [ "${_OS_CODE}" != "stretch" ] && [ "${_OS_CODE}" != "jessie" ]; then
+    _if_remove_apparmor
   fi
 fi
 

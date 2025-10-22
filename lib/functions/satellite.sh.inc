@@ -4900,7 +4900,12 @@ _satellite_letsencrypt_vhost_setup() {
         _SQLADMIN_TEST=$(grep sqladmin ${_Ssl} 2>&1)
         _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
         _PHP_CN="www${_PHP_SV}"
-        _FPM_SOCKET_TEST=$(grep "unix:/var/run/${_PHP_CN}.fpm.socket" ${_Ssl} 2>&1)
+        _FPM_SOCKET_VAR=$(grep "unix:/var/run/${_PHP_CN}.fpm.socket" ${_Ssl} 2>&1)
+        _FPM_SOCKET_RUN=$(grep "unix:/run/${_PHP_CN}.fpm.socket" ${_Ssl} 2>&1)
+        if [[ "${_FPM_SOCKET_VAR}" =~ "fpm.socket" ]] \
+          || [[ "${_FPM_SOCKET_RUN}" =~ "fpm.socket" ]]; then
+          _FPM_SOCKET_TEST="fpm.socket"
+        fi
         if [[ ! "${_FPM_SOCKET_TEST}" =~ "fpm.socket" ]] \
           || [[ ! "${_HTTP3_TEST}" =~ "http3" ]] \
           || [[ ! "${_SQLADMIN_TEST}" =~ "sqladmin" ]]; then

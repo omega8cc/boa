@@ -864,7 +864,11 @@ _prep_for_install_db_sql() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "INFO: Installing software-properties-common dirmngr..."
   fi
-  _mrun "${_INSTAPP} software-properties-common dirmngr"
+  for _PKG in software-properties-common dirmngr; do
+    if ! _pkg_installed "${_PKG}"; then
+      _mrun "${_INSTAPP} ${_PKG}"
+    fi
+  done
 
   _msg "INFO: Installing ${_DB_SERVER} ${_DBS_VRN} in ${_OS_DIST}/${_OS_CODE}"
 
@@ -1264,7 +1268,6 @@ _db_server_install() {
           cp -af ${_myCnf} ${_preCnf}
         fi
         _diffMyTest=$(diff -w -B \
-          -I mysql_native_password \
           -I userstat \
           -I innodb_buffer_pool_size \
           -I innodb_buffer_pool_instances \

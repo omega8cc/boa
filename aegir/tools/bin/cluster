@@ -29,8 +29,6 @@ else
   _DPKG_CNF="confnew"
 fi
 
-_INSTALL_DIST="/usr/bin/apt-get ${_dstUpArg} install"
-_INSTALL_NRML="/usr/bin/apt-get ${_nrmUpArg} install"
 _INSTAPP="/usr/bin/aptitude -f -y -q \
   --allow-untrusted \
   -o Dpkg::Options::=--force-confmiss \
