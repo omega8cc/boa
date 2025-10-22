@@ -37,7 +37,7 @@ if [[ -e "/root/.debug.monitor.cnf" ]]; then
   set -x
 fi
 
-# Enable strict error handling
+# Enable strict error handling (optional)
 # set -euo pipefail
 
 # Set environment variables
@@ -188,11 +188,9 @@ _verbose_log() {
 # Function to validate IP format
 _validate_ip() {
   local _IP="$1"
-
   # Remove any trailing punctuation (comma, period)
   _IP="${_IP%,}"
   _IP="${_IP%.}"
-
   if [[ "${_IP}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
     # Further validate each octet is between 0 and 255
     IFS='.' read -r _a _b _c _d <<< "${_IP}"
@@ -203,44 +201,7 @@ _validate_ip() {
   return 1
 }
 
-# Function to resolve the real IP address by traversing proxies
-_resolve_real_ip_traversal() {
-  local _VISITOR="$1"
-  local _PROXY1="$2"
-  local _PROXY2="$3"
-  local _PROXY3="$4"
-
-  local _REAL_IP="${_VISITOR}"
-  local _PROXIES_TO_CHECK=()
-
-  # Traverse proxies up to 3 levels
-  for _proxy in "${_PROXY1}" "${_PROXY2}" "${_PROXY3}"; do
-    if [[ "${_IP}" =~ ^(10\.|127\.|169\.254\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.) ]]; then
-      if [[ -n "${_proxy}" ]]; then
-        _PROXIES_TO_CHECK+=("${_REAL_IP}")
-        _REAL_IP="${_proxy}"
-      else
-        break
-      fi
-    else
-      break
-    fi
-  done
-
-  # Final check if the last IP is still private
-  if [[ "${_IP}" =~ ^(10\.|127\.|169\.254\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.) ]]; then
-    _PROXIES_TO_CHECK+=("${_REAL_IP}")
-    _REAL_IP=""
-  fi
-
-  # Return real IP and proxies to check, each on separate lines
-  # _verbose_log "${_REAL_IP}" "_REAL_IP to check"
-  echo "${_REAL_IP}"
-  for _proxy in "${_PROXIES_TO_CHECK[@]}"; do
-    _verbose_log "${_proxy}" "_PROXIES_TO_CHECK"
-    echo "${_proxy}"
-  done
-}
+# NOTE: Removed _resolve_real_ip_traversal function (its logic is inlined in the main loop for performance)
 
 # Function to check if an IP is banned using associative array
 _is_banned_or_allowed() {
@@ -278,9 +239,8 @@ _is_logged_in() {
 # Function to log and block an IP
 _block_ip() {
   local _IP="$1"
-
-  # Append to web.log if not already present
-  if [[ ! -f "/var/xdrago/monitor/log/web.log" ]] || ! grep -q "^${_IP} " "/var/xdrago/monitor/log/web.log"; then
+  # Append to web.log if not already present (use in-memory cache to avoid grep each time)
+  if [[ -z "${_BANNED_IPS["${_IP}"]}" ]]; then
     _verbose_log "${_IP} # [x${_sumar}] ${_TIMES}" "_block_ip"
     echo "${_IP} # [x${_sumar}] ${_TIMES}" >> /var/xdrago/monitor/log/web.log
     echo "${_IP} # [x${_sumar}] ${_TIMES}" >> /var/xdrago/monitor/log/scan_nginx.archive.log
@@ -288,13 +248,10 @@ _block_ip() {
   else
     echo "===[${_sumar}] ${_IP} ALREADY LISTED IN monitor/log/web.log ==="
   fi
-
-  # Add the blocked IP to _BANNED_IPS to prevent duplicates within the same run
+  # Mark IP as banned in this run to prevent duplicate processing
   _BANNED_IPS["${_IP}"]=1
 
-  # Block the IP using csf instantly but only for 15 minutes initially
-  # this can be extended up to 1 hour once guest-fire.sh notices the IP
-  # still present in /var/xdrago/monitor/log/web.log but no longer blocked
+  # Block the IP using csf instantly (temporary block for 15 minutes)
   if [[ -x "/usr/sbin/csf" ]] && [[ -e "/root/.instant.csf.block.cnf" ]]; then
     /usr/sbin/csf -td "${_IP}" 900 -p 80
     /usr/sbin/csf -td "${_IP}" 900 -p 443
@@ -308,17 +265,11 @@ _if_increment_counters() {
     (( _COUNTERS["${_IP}"] += _INC_NR ))
     _verbose_log "Counter++ ${_INC_NR} for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "unknown"
   fi
-  if [[ "${_line}" =~ \"\ 404 ]]; then
+  # Combine checks for HTTP status 400, 404, 403, 500 to increment counters in one go
+  if [[ "${_line}" =~ \"\ (400|404|403|500) ]]; then
+    local _code="${BASH_REMATCH[1]}"
     (( _COUNTERS["${_IP}"] += _INC_NR ))
-    _verbose_log "Counter++ ${_INC_NR} for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "404 flood protection"
-  fi
-  if [[ "${_line}" =~ \"\ 403 ]]; then
-    (( _COUNTERS["${_IP}"] += _INC_NR ))
-    _verbose_log "Counter++ ${_INC_NR} for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "403 flood protection"
-  fi
-  if [[ "${_line}" =~ \"\ 500 ]]; then
-    (( _COUNTERS["${_IP}"] += _INC_NR ))
-    _verbose_log "Counter++ ${_INC_NR} for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "500 flood protection"
+    _verbose_log "Counter++ ${_INC_NR} for IP ${_IP}: ${_COUNTERS["${_IP}"]}" "${_code} flood protection"
   fi
   if [[ "${_line}" =~ wp-(content|admin|includes|json) ]]; then
     (( _COUNTERS["${_IP}"] += _INC_NR ))
@@ -338,9 +289,6 @@ _process_ip() {
   local _IGNORE_ADMIN=0
   local _IGNORE_OTHER=0
 
-  # Debug: Print the value of _COUNT_REF
-  # _verbose_log "${_IP} with counter reference: ${_COUNT_REF}" "_process_ip"
-
   # Validate that _COUNT_REF is a recognized associative array
   if [[ "${_COUNT_REF}" != "_LI_CNT" && "${_COUNT_REF}" != "_PX_CNT" ]]; then
     _verbose_log "Error: _COUNT_REF '${_COUNT_REF}' is not a recognized associative array" "_process_ip"
@@ -358,86 +306,34 @@ _process_ip() {
     return
   fi
 
-  # Skip private and local IPs
+  # Skip private network and localhost IPs immediately
   if [[ "${_IP}" =~ ^(10\.|127\.|169\.254\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.) ]]; then
     _verbose_log "Private IP ${_IP} -- Skipping" "_process_ip"
     echo "Private IP ${_IP} -- Skipping."
     return
   fi
 
-  # Define lines to check
+  # Only examine lines that are GET/HEAD/POST (ignore lines with " 301" redirect)
   if [[ "${_line}" =~ (GET|HEAD|POST) && ! "${_line}" =~ \"\ 301 ]]; then
 
-    # Define admin URIs to ignore
-    if [[ "${_line}" =~ (GET|POST)\ /([a-z]{2}/)?admin/content.*\"\ (200|302) ]]; then
-      _IGNORE_ADMIN=1
-    elif [[ "${_line}" =~ (GET|POST)\ /([a-z]{2}/)?quickedit.*\"\ (200|302) ]]; then
-      _IGNORE_ADMIN=1
-    elif [[ "${_line}" =~ (GET|POST)\ /([a-z]{2}/)?node/add.*\"\ (200|302) ]]; then
-      _IGNORE_ADMIN=1
-    elif [[ "${_line}" =~ (GET|POST)\ /([a-z]{2}/)?node/[0-9]+/edit.*\"\ (200|302) ]]; then
-      _IGNORE_ADMIN=1
-    elif [[ "${_line}" =~ (GET|POST)\ /([a-z]{2}/)?entity_reference_autocomplete.*\"\ (200|302) ]]; then
-      _IGNORE_ADMIN=1
-    elif [[ "${_line}" =~ (GET|POST)\ /([a-z]{2}/)?(hosting|system|admin|app|ckeditor)/.*\"\ (200|302) ]]; then
-      _IGNORE_ADMIN=1
-    elif [[ "${_line}" =~ (GET|POST)\ /([a-z]{2}/)?entity-browser.*\"\ (200|302) ]]; then
-      _IGNORE_ADMIN=1
-    elif [[ "${_line}" =~ (GET|POST)\ /([a-z]{2}/)?contextual/render.*\"\ (200|302) ]]; then
-      _IGNORE_ADMIN=1
-    elif [[ "${_line}" =~ (GET|POST)\ /([a-z]{2}/)?views-bulk-operations.*\"\ (200|302) ]]; then
-      _IGNORE_ADMIN=1
-    elif [[ "${_line}" =~ (GET|POST)\ /([a-z]{2}/)?civicrm.*\"\ (200|302) ]]; then
-      _IGNORE_ADMIN=1
-    elif [[ "${_line}" =~ (GET|POST)\ /([a-z]{2}/)?batch.*\"\ (200|302) ]]; then
-      _IGNORE_ADMIN=1
-    elif [[ "${_line}" =~ (GET|POST)\ /([a-z]{2}/)?media/browser.*\"\ (200|302) ]]; then
+    # Define admin URIs to ignore (combine multiple patterns into one regex for efficiency)
+    if [[ "${_line}" =~ (GET|POST)\ /([a-z]{2}/)?(admin/content|quickedit|node/add|node/[0-9]+/edit|entity_reference_autocomplete|(hosting|system|admin|app|ckeditor)/|entity-browser|contextual/render|views-bulk-operations|civicrm|batch|media/browser).*\"\ (200|302) ]]; then
       _IGNORE_ADMIN=1
     fi
-
+    # If an admin request resulted in a 403 or contains typical WP paths, do not ignore (these might be attacks)
     if [[ "${_line}" =~ (GET|HEAD|POST)\ /.*\"\ 403 ]] || [[ "${_line}" =~ wp-(content|admin|includes|json) ]]; then
       _IGNORE_ADMIN=0
     fi
-
     if [[ "${_IGNORE_ADMIN}" -eq 1 ]]; then
       _verbose_log "Admin URI To Ignore" "${_line}"
       return
     fi
 
-    # Define other patterns to skip
-    if [[ "${_line}" =~ (GET|POST)\ /([a-z]{2}/)?advagg.*\"\ (200|302) ]]; then
-      _IGNORE_OTHER=1
-    elif [[ "${_line}" =~ /files/css/css_ ]]; then
-      _IGNORE_OTHER=1
-    elif [[ "${_line}" =~ /files/js/js_ ]]; then
-      _IGNORE_OTHER=1
-    elif [[ "${_line}" =~ /files/advagg_ ]]; then
-      _IGNORE_OTHER=1
-    elif [[ "${_line}" =~ /files/(imagecache|styles) ]]; then
-      _IGNORE_OTHER=1
-    elif [[ "${_line}" =~ (ajax|autocomplete|shs).*\"\ (200|302) ]]; then
-      _IGNORE_OTHER=1
-    elif [[ "${_line}" =~ (plupload|json|api/rest).*\"\ (200|302) ]]; then
-      _IGNORE_OTHER=1
-    elif [[ "${_line}" =~ GET\ /(filefield/progress|files/progress|file/progress|elfinder/connector).*\"\ (200|302) ]]; then
-      _IGNORE_OTHER=1
-    elif [[ "${_line}" =~ POST\ /js/.*\"\ (200|302) ]]; then
-      _IGNORE_OTHER=1
-    elif [[ "${_line}" =~ /files/media.*\"\ (200|302) ]]; then
-      _IGNORE_OTHER=1
-    elif [[ "${_line}" =~ GET\ /.*\.(mp4|m4a|flv|avi|mpeg|mov|wmv|mp3|ogg|ogv|wav|midi|zip|tar|tgz|rar|dmg|exe|apk|pxl|ipa|jpe?g|gif|png|ico).*\"\ (200|302) ]]; then
-      _IGNORE_OTHER=1
-    elif [[ "${_line}" =~ GET\ /timemachine/[0-9]{4}/.*\"\ (200|302) ]]; then
-      _IGNORE_OTHER=1
-    elif [[ "${_line}" =~ POST\ /.*/cart/checkout.*\"\ (200|302) ]]; then
-      _IGNORE_OTHER=1
-    elif [[ "${_line}" =~ POST\ /.*/embed/preview.*\"\ (200|302) ]]; then
-      _IGNORE_OTHER=1
-    elif [[ "${_line}" =~ files\.aegir\.cc ]]; then
+    # Define other patterns to skip (combined multiple checks into one conditional with OR)
+    if [[ "${_line}" =~ (GET|POST)\ /([a-z]{2}/)?advagg.*\"\ (200|302) || "${_line}" =~ /files/css/css_ || "${_line}" =~ /files/js/js_ || "${_line}" =~ /files/advagg_ || "${_line}" =~ /files/(imagecache|styles) || "${_line}" =~ (ajax|autocomplete|shs).*\"\ (200|302) || "${_line}" =~ (plupload|json|api/rest).*\"\ (200|302) || "${_line}" =~ GET\ /(filefield/progress|files/progress|file/progress|elfinder/connector).*\"\ (200|302) || "${_line}" =~ POST\ /js/.*\"\ (200|302) || "${_line}" =~ /files/media.*\"\ (200|302) || "${_line}" =~ GET\ /.*\.(mp4|m4a|flv|avi|mpeg|mov|wmv|mp3|ogg|ogv|wav|midi|zip|tar|tgz|rar|dmg|exe|apk|pxl|ipa|jpe?g|gif|png|ico).*\"\ (200|302) || "${_line}" =~ GET\ /timemachine/[0-9]{4}/.*\"\ (200|302) || "${_line}" =~ POST\ /.*/(cart/checkout|embed/preview).*\"\ (200|302) || "${_line}" =~ files\.aegir\.cc ]]; then
       _IGNORE_OTHER=1
     fi
-
-    # Exclude based on _NGINX_DOS_IGNORE or default to 'doccomment'
+    # Exclude lines containing configured ignore keywords or default 'doccomment'
     if [[ -n "${_NGINX_DOS_IGNORE}" ]]; then
       if [[ "${_line}" =~ (${_NGINX_DOS_IGNORE}).*\"\ (200|302) ]]; then
         _IGNORE_OTHER=1
@@ -447,25 +343,21 @@ _process_ip() {
         _IGNORE_OTHER=1
       fi
     fi
-
+    # If the request resulted in a 403 or contains WP paths, do not ignore (likely malicious traffic)
     if [[ "${_line}" =~ (GET|HEAD|POST)\ /.*\"\ 403 ]] || [[ "${_line}" =~ wp-(content|admin|includes|json) ]]; then
       _IGNORE_OTHER=0
     fi
-
     if [[ "${_IGNORE_OTHER}" -eq 1 ]]; then
       _verbose_log "Other URI To Ignore" "${_line}"
       return
     fi
 
-    # Check if the IP is present in the csf.allow list early
-    _FF_TEST=$(grep -E "^tcp\|in\|d=80\|s=${_IP}\b" "/etc/csf/csf.allow")
-
-    # Determine if the IP is allowed or needs to be denied early
-    if [[ "${_FF_TEST}" =~ ${_IP} ]]; then
+    # Skip processing if IP is whitelisted in CSF allow list (cached in memory)
+    if [[ -n "${_CSF_ALLOW_IPS["${_IP}"]}" ]]; then
       return
     fi
 
-    # Initialize or increment the counter safely if not excluded
+    # Initialize or increment the counter safely for this IP
     if [[ -v _COUNTERS["${_IP}"] ]]; then
       (( _COUNTERS["${_IP}"]++ ))
     else
@@ -473,11 +365,9 @@ _process_ip() {
     fi
   fi
 
-  # Additional counting based on mode
+  # Additional counting based on mode (only if not ignored by above filters)
   if [[ "${_IGNORE_OTHER}" -eq 0 && "${_IGNORE_ADMIN}" -eq 0 ]]; then
-
     _if_increment_counters
-
     if [[ "${_NGINX_DOS_MODE}" -eq 1 ]]; then
       if [[ "${_line}" =~ POST\ /([a-z]{2}/)?(user|user/(register|pass|login)|node/add) ]]; then
         (( _COUNTERS["${_IP}"] += 5 ))
@@ -509,7 +399,7 @@ _handle_blocking() {
   local -n _COUNTERS=$1
   local _TYPE=$2
 
-  # Debug: Confirm that _COUNTERS is correctly referencing the intended array
+  # Debug: confirm that _COUNTERS is referencing the intended array
   if [[ -n "${1}" && -e "/root/.debug.monitor.cnf" ]]; then
     declare -p _COUNTERS
     echo "DEBUG: _COUNTERS in _handle_blocking is referencing '${1}'"
@@ -518,13 +408,12 @@ _handle_blocking() {
   for _IP in "${!_COUNTERS[@]}"; do
     local _COUNT="${_COUNTERS["${_IP}"]}"
     local _CRITNUMBER="${_NGINX_DOS_LIMIT}"
-    local _MININUMBER=$(( (_CRITNUMBER + 1) / 2 ))  # To handle integer division correctly
+    local _MININUMBER=$(( (_CRITNUMBER + 1) / 2 ))  # handle integer division rounding
 
     if (( _COUNT > _MININUMBER )); then
       if _is_logged_in "${_IP}"; then
         _CRITNUMBER=9999
       fi
-
       if [[ "${_IP}" == "${_MYIP}" ]]; then
         _CRITNUMBER=9998
       fi
@@ -532,12 +421,11 @@ _handle_blocking() {
       echo "===[${_CRITNUMBER}] MAX ${_TYPE} critnumber for ${_IP} ==="
       echo "===[${_COUNT}] COUNTER ${_TYPE} counter for ${_IP} ==="
 
-      # Check if IP is already allowed
+      # Skip blocking if IP is in local allow list
       if _is_allowed_local "${_IP}"; then
         continue
       fi
-
-      # Check if IP is already banned
+      # Skip if IP was already banned/processed
       if _is_banned_or_allowed "${_IP}"; then
         continue
       fi
@@ -555,21 +443,19 @@ _handle_blocking() {
 # Load Banned and Allowed IPs Lists
 # ==============================
 
-# Load banned IPs from web.log into associative array
+# Load banned IPs from web.log into associative array (cache already blocked IPs)
 _WEB_LOG="/var/xdrago/monitor/log/web.log"
 if [[ -e "${_WEB_LOG}" ]]; then
   while IFS= read -r _line; do
-    # Extract IP before any space or comment
-    _ip="${_line%% *}"
-    # Clean IP
-    _ip="${_ip//[^0-9.]/}"
+    _ip="${_line%% *}"               # extract IP (before first space or comment)
+    _ip="${_ip//[^0-9.]/}"           # clean any non-numeric characters from IP
     if [[ -n "${_ip}" ]]; then
       _BANNED_IPS["${_ip}"]=1
     fi
   done < "${_WEB_LOG}"
 fi
 
-# Load allowed local IPs into associative array
+# Load allowed local IPs into associative array (IPs that should not be blocked)
 _LOCAL_IP_LIST="/root/.local.IP.list"
 if [[ -e "${_LOCAL_IP_LIST}" ]]; then
   while IFS= read -r _line; do
@@ -581,13 +467,24 @@ if [[ -e "${_LOCAL_IP_LIST}" ]]; then
   done < "${_LOCAL_IP_LIST}"
 fi
 
+# Load allowed IPs from CSF allow list (for port 80) into memory to avoid repeated grep operations
+declare -A _CSF_ALLOW_IPS
+_CSF_ALLOW_FILE="/etc/csf/csf.allow"
+if [[ -f "${_CSF_ALLOW_FILE}" ]]; then
+  while IFS= read -r _line; do
+    if [[ "${_line}" =~ ^tcp\|in\|d=80\|s=([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)\b ]]; then
+      _ip="${BASH_REMATCH[1]}"
+      _CSF_ALLOW_IPS["${_ip}"]=1
+    fi
+  done < "${_CSF_ALLOW_FILE}"
+fi
+
 # ==============================
 # Load Logged-In IPs
 # ==============================
 
 if command -v who &> /dev/null; then
   while IFS= read -r _logged_ip; do
-    # Validate IP format using the existing function
     if _validate_ip "${_logged_ip}"; then
       _LOGGED_IN_IPS["${_logged_ip}"]=1
     fi
@@ -598,26 +495,46 @@ fi
 # Processing the Access Log
 # ==============================
 
-# Read the access log once using file descriptor 3 for efficiency
-exec 3< <(tail -n "${_NGINX_DOS_LINES}" /var/log/nginx/access.log)
+# Use byte offset tracking to read only new lines since last run (reduces redundant I/O)
+_OFFSET_FILE="/var/log/scan_nginx_lastpos"
+_last_offset=0
+if [[ -f "${_OFFSET_FILE}" ]]; then
+  _last_offset=$(< "${_OFFSET_FILE}")
+fi
+_log_file="/var/log/nginx/access.log"
+_current_size=0
+if [[ -f "${_log_file}" ]]; then
+  _current_size=$(stat -c %s "${_log_file}")
+fi
+if (( _current_size < _last_offset )); then
+  # Log file was rotated or truncated; reset offset to start from beginning
+  _last_offset=0
+fi
+
+if (( _last_offset == 0 )); then
+  # First run or reset: process the last $_NGINX_DOS_LINES lines as a baseline
+  exec 3< <(tail -n "${_NGINX_DOS_LINES}" "${_log_file}")
+else
+  # Process only new log entries since the last recorded byte offset
+  exec 3< <(tail -c +$(( _last_offset + 1 )) "${_log_file}")
+fi
 
 while IFS= read -r _line <&3; do
-  # Extract the first quoted string containing IPs
+  # Extract the first quoted string from the log line (which contains the comma-separated IPs)
   if [[ "${_line}" =~ \"([^\"]*)\" ]]; then
     _ip_str="${BASH_REMATCH[1]}"
   else
     _ip_str=""
   fi
 
-  # Split the IP string by comma and space
+  # Split the IP string by commas and trim spaces
   IFS=',' read -ra _ip_array <<< "${_ip_str}"
-  # Trim spaces around IPs
   for i in "${!_ip_array[@]}"; do
     _ip_array[i]="${_ip_array[i]## }"
     _ip_array[i]="${_ip_array[i]% }"
   done
 
-  # Extract valid IPs using Bash's regex
+  # Collect only valid IPv4 addresses from the IP list
   _IP_LIST=()
   for _ip_candidate in "${_ip_array[@]}"; do
     if [[ "${_ip_candidate}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
@@ -625,49 +542,68 @@ while IFS= read -r _line <&3; do
     fi
   done
 
-  # Debug: Print extracted IPs
+  # Debug: Print extracted IPs if debug mode is enabled
   if [[ -e "/root/.debug.monitor.cnf" ]]; then
     echo "DEBUG: Extracted IPs: ${_IP_LIST[*]}"
   fi
 
-  # Assign visitor IP and up to three proxies
+  # Assign visitor IP and up to three proxy IPs (from X-Forwarded-For or similar header)
   _VISITOR="${_IP_LIST[0]:-}"
   _PROXY1="${_IP_LIST[1]:-}"
   _PROXY2="${_IP_LIST[2]:-}"
   _PROXY3="${_IP_LIST[3]:-}"
 
-  # Resolve real IP and collect proxies to block
-  readarray -t _resolved_ips < <(_resolve_real_ip_traversal "${_VISITOR}" "${_PROXY1}" "${_PROXY2}" "${_PROXY3}")
+  # Resolve the real IP by traversing proxies (inlined to avoid per-line subshell overhead)
+  _REAL_IP="${_VISITOR}"
+  _PROXIES_TO_CHECK=()
+  for _proxy in "${_PROXY1}" "${_PROXY2}" "${_PROXY3}"; do
+    if [[ "${_REAL_IP}" =~ ^(10\.|127\.|169\.254\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.) ]]; then
+      if [[ -n "${_proxy}" ]]; then
+        _PROXIES_TO_CHECK+=("${_REAL_IP}")
+        _REAL_IP="${_proxy}"
+      else
+        break
+      fi
+    else
+      break
+    fi
+  done
+  # If the final resolved IP is still private, treat it as a proxy as well and clear real IP
+  if [[ "${_REAL_IP}" =~ ^(10\.|127\.|169\.254\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.) ]]; then
+    _PROXIES_TO_CHECK+=("${_REAL_IP}")
+    _REAL_IP=""
+  fi
+  _PROXIES_ARRAY=( "${_PROXIES_TO_CHECK[@]}" )
 
-  _REAL_IP="${_resolved_ips[0]:-}"
-  _PROXIES_ARRAY=("${_resolved_ips[@]:1}")
-
-  # Debug: Echo the real visitor and proxy IPs if debug config exists
+  # Debug: Echo the determined real visitor IP and proxy IPs if debug mode is enabled
   if [[ -n "${_REAL_IP}" && -e "/root/.debug.monitor.cnf" ]]; then
     echo "=== checking ${_REAL_IP} / _LI_CNT ==="
   fi
-  for _proxy_ip in "${_PROXIES_ARRAY[@]}"; do
-    if [[ -n "${_proxy_ip}" && -e "/root/.debug.monitor.cnf" ]]; then
-      echo "=== checking ${_proxy_ip} / _PX_CNT ==="
-    fi
-  done
+  if [[ -e "/root/.debug.monitor.cnf" ]]; then
+    for _proxy_ip in "${_PROXIES_ARRAY[@]}"; do
+      [[ -n "${_proxy_ip}" ]] && echo "=== checking ${_proxy_ip} / _PX_CNT ==="
+    done
+  fi
 
-  # Process REAL_IP if exists
+  # Process the real visitor IP (if determined)
   if [[ -n "${_REAL_IP}" ]]; then
     _process_ip "${_REAL_IP}" "_LI_CNT" "${_line}"
   fi
-
-  # Process PROXY_IPs to block
+  # Process each proxy IP (if any were identified as needing blocking)
   for _proxy_ip in "${_PROXIES_ARRAY[@]}"; do
     if [[ -n "${_proxy_ip}" ]]; then
       _process_ip "${_proxy_ip}" "_PX_CNT" "${_line}"
     fi
   done
-
 done
 
-# Close the file descriptor
+# Close the file descriptor for the log input
 exec 3<&-
+
+# Record the new end-of-file offset for next run
+if [[ -f "${_log_file}" ]]; then
+  stat -c %s "${_log_file}" > "${_OFFSET_FILE}"
+fi
 
 # ==============================
 # Execute Blocking Logic
