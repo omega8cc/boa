@@ -7910,8 +7910,6 @@ _sys_packages_install() {
                      gnupg1-curl \
                      libpcre2-dev \
                      libpcre2-posix3 \
-                     libpcre3 \
-                     libpcre3-dev \
                      libpng-dev \
                      libpng16-16 \
                      libtinfo6 \
