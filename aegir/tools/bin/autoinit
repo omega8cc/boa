@@ -994,7 +994,7 @@ _find_fast_devuan_mirror() {
     bash ${_ffDevuan} >> "${_logSlt}"
     wait
   fi
-  _ffMirr=$(which ffmirror 2>&1)
+  _ffMirr=/opt/local/bin/ffmirror
   if [ -x "${_ffMirr}" ]; then
     _ffList="/var/log/boa/devaun-fast-mirrors-list.txt"
     mkdir -p /var/log/boa/

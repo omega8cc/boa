@@ -252,7 +252,7 @@ _find_fast_mirror_early() {
     _apt_clean_update
     apt-get install netcat-traditional ${_aptYesUnth} &> /dev/null
   fi
-  _ffMirr=$(which ffmirror 2>&1)
+  _ffMirr=/opt/local/bin/ffmirror
   if [ -x "${_ffMirr}" ]; then
     _ffList="/var/backups/boa-mirrors-2025-01.txt"
     mkdir -p /var/backups

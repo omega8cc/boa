@@ -16,7 +16,7 @@ _find_fast_devuan_mirror() {
     bash ${_ffDevuan} &> /dev/null
     wait
   fi
-  _ffMirr=$(which ffmirror 2>&1)
+  _ffMirr=/opt/local/bin/ffmirror
   if [ -x "${_ffMirr}" ]; then
     _ffList="/var/log/boa/devaun-fast-mirrors-list.txt"
     _BROKEN_FFLIST=$(grep "merged" ${_ffMirr} 2>&1)
@@ -3805,7 +3805,7 @@ _sources_list_update() {
           _msg "INFO: Now looking for the best/fastest ${_OS_DIST} mirror"
           _msg "INFO: This may take a while, please wait..."
           _hlpPth="/opt/tmp/boa/aegir/helpers"
-          _ffMirr=$(which ffmirror 2>&1)
+          _ffMirr=/opt/local/bin/ffmirror
           _ffList="${_hlpPth}/apt-list-debian.txt"
           if [ -e "${_ffMirr}" ] && [ -e "${_ffList}" ]; then
             _MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
