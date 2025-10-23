@@ -1790,6 +1790,7 @@ _install_php_multi() {
     fi
   fi
   if [ "${_OS_CODE}" != "jessie" ] \
+    && [ "${_OS_CODE}" != "excalibur" ] \
     && [ ! -e "/root/.rebuild_src_on_auto_before_reboot.info" ] \
     && [ ! -e "/root/.skip-aegir-master-upgrade.cnf" ]; then
     _PHP_EXTRA="${_PHP_EXTRA} \
