@@ -5697,6 +5697,9 @@ _if_remove_apparmor() {
     for _PKG in auditd apparmor apparmor-utils apparmor-notify apparmor-profiles apparmor-profiles-extra; do
       if _pkg_installed "${_PKG}"; then
         _mrun "apt-get remove ${_PKG} -y -qq"
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "PCKG: ${_PKG} removed as requested."
+        fi
       fi
     done
     mkdir -p /etc/default/grub.d
