@@ -120,7 +120,6 @@ _if_reinstall_curl_src() {
     fi
     _mrun "apt-get autoremove -y"
     _mrun "apt-get install libssl-dev ${_aptYesUnth} -qq"
-    _mrun "apt-get install libc-client2007e libc-client2007e-dev ${_aptYesUnth} -qq"
     _mrun "apt-get build-dep curl ${_aptYesUnth}"
     if [ ! -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
       _mrun "apt-get install curl --reinstall ${_aptYesUnth} -qq"
@@ -4881,7 +4880,7 @@ _curl_install_src() {
             _mrun "apt-get remove libssl1.0-dev -y --purge --auto-remove -qq"
           fi
           _mrun "apt-get autoremove -y"
-          for _PKG in libssl-dev libc-client2007e libc-client2007e-dev; do
+          for _PKG in libssl-dev; do
             if ! _pkg_installed "${_PKG}"; then
               _mrun "${_INSTAPP} ${_PKG}"
             fi
@@ -4897,7 +4896,7 @@ _curl_install_src() {
         _mrun "apt-get remove libssl1.0-dev -y --purge --auto-remove -qq"
       fi
       _mrun "apt-get autoremove -y"
-      for _PKG in libssl-dev libc-client2007e libc-client2007e-dev; do
+      for _PKG in libssl-dev; do
         if ! _pkg_installed "${_PKG}"; then
           _mrun "${_INSTAPP} ${_PKG}"
         fi
@@ -6749,7 +6748,7 @@ _if_major_os_upgrade() {
     fi
     _apt_clean_update_no_releaseinfo_change
     ###
-    for _PKG in collectd libc-client2007b-dev; do
+    for _PKG in collectd; do
       if _pkg_installed "${_PKG}"; then
         _mrun "apt-get remove ${_PKG} -y --purge --auto-remove -qq"
         if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -7080,7 +7079,9 @@ _if_major_os_upgrade() {
       _mrun "apt-get install collectd ${_dstUpArg}"
     fi
     _mrun "apt-get install lsb-release ${_dstUpArg}"
-    _mrun "apt-get install libc-client2007e-dev ${_dstUpArg}"
+    if [ "${_LOC_OS_CODE}" != "excalibur" ]; then
+      _mrun "apt-get install libc-client2007e-dev ${_dstUpArg}"
+    fi
     ###
     ### Make sure that org.freedesktop.systemd1 was not atempted by dbus.
 #     _mrun "apt-get remove dbus -y --purge --auto-remove -qq"

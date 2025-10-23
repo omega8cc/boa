@@ -1803,7 +1803,6 @@ _if_reinstall_curl() {
       fi
       apt-get autoremove -y 2> /dev/null
       apt-get install libssl-dev ${_aptYesUnth} -qq 2> /dev/null
-      apt-get install libc-client2007e libc-client2007e-dev ${_aptYesUnth} -qq 2> /dev/null
       apt-get build-dep curl ${_aptYesUnth} 2> /dev/null
       apt-get install curl --reinstall ${_aptYesUnth} -qq 2> /dev/null
     fi
