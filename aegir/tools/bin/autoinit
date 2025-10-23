@@ -792,14 +792,10 @@ _switch_to_elogind_stack() {
 
 # Build & install a minimal package that Provides: systemd (so openssh-server stays)
 _install_systemd_dummy() {
-  if dpkg-query -W -f='${Package} ${Provides}\n' systemd-dummy 2>/dev/null | grep -q 'Provides:.*systemd'; then
-    _msg "[init] systemd-dummy already installed" >> "${_logInt}"
-    return 0
-  fi
 
   _msg "[init] Creating minimal systemd-dummy provider" >> "${_logInt}"
   _DROOT="/root/.autoinit-systemd-dummy"
-  mkdir -p "${_DROOT}/DEBIAN" || return 1
+  mkdir -p "${_DROOT}/DEBIAN"
   cat > "${_DROOT}/DEBIAN/control" <<'EOF'
 Package: systemd-dummy
 Version: 1.0
@@ -812,12 +808,12 @@ Description: Dummy package that provides 'systemd' virtual for sysvinit systems
 EOF
 
   dpkg-deb --build "${_DROOT}" >> "${_logSlt}"
+  wait
   ${_INITINS} "${_DROOT}.deb" >> "${_logSlt}"
 
   # sanity check
   if ! dpkg-query -W -f='${Provides}\n' systemd-dummy 2>/dev/null | grep -q 'systemd'; then
     echo "[init][ERROR] systemd-dummy failed to provide 'systemd'" >> "${_logInt}"
-    return 1
   fi
 }
 
@@ -844,11 +840,10 @@ _purge_systemd_keep_ssh() {
   _msg "[init] Simulating 'apt-get remove systemd'" >> "${_logInt}"
   if apt-get -s remove systemd 2>/dev/null | grep -qE 'Remv (openssh-server|ssh)\b'; then
     _msg "[init] APT would remove SSH; installing dummy provider" >> "${_logInt}"
-    _install_systemd_dummy || return 1
+    _install_systemd_dummy
     _msg "[init] Re-simulating removal" >> "${_logInt}"
     if apt-get -s remove systemd 2>/dev/null | grep -qE 'Remv (openssh-server|ssh)\b'; then
       _msg "[init][ERROR] SSH still slated for removal even with systemd-dummy present" >> "${_logInt}"
-      return 1
     fi
   fi
 
@@ -867,11 +862,11 @@ _purge_systemd_keep_ssh() {
 
 # High-level orchestrator to call in the off-systemd phase
 _autoinit_devuan_excalibur_keep_ssh() {
-  _ensure_cron_provider || return 1
-  _switch_to_elogind_stack || return 1
-  _ensure_openssh_server || return 1
+  _ensure_cron_provider
+  _switch_to_elogind_stack
+  _ensure_openssh_server
   _protect_daemons
-  _purge_systemd_keep_ssh || return 1
+  _purge_systemd_keep_ssh
   _msg "[init] systemd purged while keeping openssh-server intact" >> "${_logInt}"
   return 0
 }
