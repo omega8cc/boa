@@ -4078,10 +4078,6 @@ _install_magick_src() {
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "PCKG: ${_PKG} removed as requested."
         fi
-      else
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "PCKG: ${_PKG} not installed, skipping."
-        fi
       fi
     done
     ###
@@ -5934,10 +5930,6 @@ _run_xtrabackup_cleanup() {
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "PCKG: ${_PKG} removed as requested."
       fi
-    else
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        _msg "PCKG: ${_PKG} not installed, skipping."
-      fi
     fi
   done
 }
@@ -6088,10 +6080,6 @@ _run_aptitude_deps_install() {
         _mrun "apt-get remove ${_PKG} -y --purge --auto-remove -qq"
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "PCKG: ${_PKG} removed as requested."
-        fi
-      else
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "PCKG: ${_PKG} not installed, skipping."
         fi
       fi
     done
@@ -6754,10 +6742,6 @@ _if_major_os_upgrade() {
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "PCKG: ${_PKG} removed as requested."
         fi
-      else
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "PCKG: ${_PKG} not installed, skipping."
-        fi
       fi
     done
     ###
@@ -6766,10 +6750,6 @@ _if_major_os_upgrade() {
         _mrun "apt-get remove --purge ${_PKG} -y -qq"
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "PCKG: ${_PKG} removed as requested."
-        fi
-      else
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "PCKG: ${_PKG} not installed, skipping."
         fi
       fi
     done
@@ -6803,10 +6783,6 @@ _if_major_os_upgrade() {
         _mrun "apt-get remove ${_PKG} -y -qq"
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "PCKG: ${_PKG} removed as requested."
-        fi
-      else
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "PCKG: ${_PKG} not installed, skipping."
         fi
       fi
     done
@@ -6852,10 +6828,6 @@ _if_major_os_upgrade() {
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "PCKG: ${_PKG} removed as requested."
         fi
-      else
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "PCKG: ${_PKG} not installed, skipping."
-        fi
       fi
     done
     for _PKG in php5-ldap php5-mcrypt php5-memcache php5-mysql php5-sqlite php5-xmlrpc php5-xsl; do
@@ -6863,10 +6835,6 @@ _if_major_os_upgrade() {
         _mrun "apt-get remove ${_PKG} -y --purge --auto-remove -qq"
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "PCKG: ${_PKG} removed as requested."
-        fi
-      else
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "PCKG: ${_PKG} not installed, skipping."
         fi
       fi
     done
@@ -6876,10 +6844,6 @@ _if_major_os_upgrade() {
         _mrun "apt-get remove ${_PKG} -y --purge --auto-remove -qq"
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "PCKG: ${_PKG} removed as requested."
-        fi
-      else
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "PCKG: ${_PKG} not installed, skipping."
         fi
       fi
     done
@@ -7207,10 +7171,6 @@ _if_major_os_upgrade() {
             _mrun "apt-get remove ${_PKG} -y -qq"
             if [ "${_DEBUG_MODE}" = "YES" ]; then
               _msg "PCKG: ${_PKG} removed as requested."
-            fi
-          else
-            if [ "${_DEBUG_MODE}" = "YES" ]; then
-              _msg "PCKG: ${_PKG} not installed, skipping."
             fi
           fi
         done
@@ -7844,10 +7804,6 @@ _sys_packages_install() {
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "PCKG: ${_PKG} removed as requested."
         fi
-      else
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "PCKG: ${_PKG} not installed, skipping."
-        fi
       fi
     done
     ###
@@ -7886,10 +7842,6 @@ _sys_packages_install() {
         _mrun "apt-get remove --purge ${_PKG} -y -qq"
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "PCKG: ${_PKG} removed as requested."
-        fi
-      else
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "PCKG: ${_PKG} not installed, skipping."
         fi
       fi
     done
