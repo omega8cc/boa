@@ -388,8 +388,8 @@ _mode_detection() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _mode_detection"
   fi
-    [ -e "/root/.use.curl.from.packages.cnf" ] && chattr -i /root/.use.curl.from.packages.cnf
-    [ -e "/root/.use.curl.from.packages.cnf" ] && rm -f /root/.use.curl.from.packages.cnf
+  [ -e "/root/.use.curl.from.packages.cnf" ] && chattr -i /root/.use.curl.from.packages.cnf
+  [ -e "/root/.use.curl.from.packages.cnf" ] && rm -f /root/.use.curl.from.packages.cnf
   if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
     && [ ! -e "/lib/systemd/systemd" ]; then
     _STATUS=UPGRADE
