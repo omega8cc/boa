@@ -718,6 +718,7 @@ _init_prepare() {
       ${_INITINS} net-tools >> "${_logSlt}"
       ${_INITINS} netcat-traditional >> "${_logSlt}"
       ${_INITINS} ntpdate   >> "${_logSlt}"
+      ${_INITINS} ntpsec-ntpdate >> "${_logSlt}"
       if [ "${_SET_MODE}" = "full" ]; then
         ${_INITINS} build-essential   >> "${_logSlt}"
         ${_INITINS} git               >> "${_logSlt}"

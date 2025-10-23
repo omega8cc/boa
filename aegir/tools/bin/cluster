@@ -2082,6 +2082,7 @@ _install_host() {
   ${_INSTAPP} hdparm
   ${_INSTAPP} iotop
   ${_INSTAPP} ntpdate
+  ${_INSTAPP} ntpsec-ntpdate
   ${_INSTAPP} parted
   ${_INSTAPP} build-essential
   ${_INSTAPP} iptables

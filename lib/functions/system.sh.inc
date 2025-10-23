@@ -6010,7 +6010,7 @@ _run_aptitude_deps_install() {
       done
       _mrun "dpkg --remove --force-remove-reinstreq apt-listchanges"
     fi
-    for _PKG in sysstat telnet cron gnupg2 gnupg zip unzip unrtf wdiff pwgen flex re2c lsof; do
+    for _PKG in sysstat telnet cron gnupg2 gnupg zip unzip unrtf wdiff pwgen flex re2c lsof ntpsec-ntpdate; do
       if ! _pkg_installed "${_PKG}"; then
         _mrun "${_INSTAPP} ${_PKG}"
       fi
@@ -6177,6 +6177,7 @@ _basic_packages_install_on_init() {
       _mrun "${_INITINS} hostname"
       _mrun "${_INITINS} net-tools"
       _mrun "${_INITINS} ntpdate"
+      _mrun "${_INITINS} ntpsec-ntpdate"
       touch /root/.step.init.basic.cnf
     fi
   fi
