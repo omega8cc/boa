@@ -853,16 +853,14 @@ _purge_systemd_keep_ssh() {
   fi
 
   _msg "[init] Purging systemd safely" >> "${_logInt}"
-  ${_INITINS} eudev sysvinit-core -qq >> "${_logSlt}"
-  /usr/bin/apt-get -f install ${_aptAllow} -y -qq >> "${_logSlt}"
-  /usr/bin/apt-get remove systemd -y --purge --auto-remove --allow-remove-essential -qq >> "${_logSlt}"
-  /usr/bin/apt-get remove libnss-systemd -y --purge --auto-remove --allow-remove-essential -qq >> "${_logSlt}"
-  /usr/bin/apt-get remove systemd-sysv -y --purge --auto-remove --allow-remove-essential -qq >> "${_logSlt}"
+  /usr/bin/apt-get remove systemd -y --purge --auto-remove -qq >> "${_logSlt}"
+  /usr/bin/apt-get remove libnss-systemd -y --purge --auto-remove -qq >> "${_logSlt}"
+  /usr/bin/apt-get remove systemd-sysv -y --purge --auto-remove -qq >> "${_logSlt}"
 
   # Some builds still leave libsystemd0 behind; elogind step should allow its removal.
   if _pkg_installed "libsystemd0"; then
     _msg "[init] Removing libsystemd0 (elogind present)" >> "${_logInt}"
-    /usr/bin/apt-get remove libsystemd0 -y --purge --auto-remove --allow-remove-essential -qq >> "${_logSlt}"
+    /usr/bin/apt-get remove libsystemd0 -y --purge --auto-remove -qq >> "${_logSlt}"
   fi
 
   # Clean stragglers, but do not autoremove SSH/SFTP bits
