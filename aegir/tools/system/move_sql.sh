@@ -26,6 +26,9 @@ fi
 
 renice ${_B_NICE} -p $$ &> /dev/null
 
+_NOW=$(date +%y%m%d-%H%M%S)
+_NOW=${_NOW//[^0-9-]/}
+
 _free_memory() {
   echo "Freeing memory..."
   sync && echo 3 | sudo tee /proc/sys/vm/drop_caches
@@ -109,7 +112,9 @@ _stop_sql() {
   _PHP_V="84 83 82 81 80 74 73 72 71 70 56 55 54 53"
   for e in ${_PHP_V}; do
     if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
-      service php${e}-fpm force-quit &> /dev/null
+      mkdir -p /var/backups/php-logs/${_NOW}/
+      mv -f /var/log/php/php${e}-fpm-error.log /var/backups/php-logs/${_NOW}/
+      service "php${e}-fpm" force-quit &> /dev/null
     fi
   done
   until [ -z "${_IS_FPM_RUNNING}" ]; do

@@ -213,6 +213,7 @@ sub makeactions {
 
           # Increment counters with proper initialization
           $li_cnt{$VISITOR} = ($li_cnt{$VISITOR} // 0) + $INC_NUMBER if ($block_unknown > 0);
+          $li_cnt{$VISITOR} = ($li_cnt{$VISITOR} // 0) + $INC_NUMBER if ($line =~ /\" 400 /);
           $li_cnt{$VISITOR} = ($li_cnt{$VISITOR} // 0) + $INC_NUMBER if ($line =~ /\" 404 /);
           $li_cnt{$VISITOR} = ($li_cnt{$VISITOR} // 0) + $INC_NUMBER if ($line =~ /\" 403 /);
           $li_cnt{$VISITOR} = ($li_cnt{$VISITOR} // 0) + $INC_NUMBER if ($line =~ /\" 500 /);
@@ -299,6 +300,7 @@ sub makeactions {
 
           # Increment counters with proper initialization
           $px_cnt{$PROXY} = ($px_cnt{$PROXY} // 0) + $INC_NUMBER if ($block_unknown > 0);
+          $px_cnt{$PROXY} = ($px_cnt{$PROXY} // 0) + $INC_NUMBER if ($line =~ /\" 400 /);
           $px_cnt{$PROXY} = ($px_cnt{$PROXY} // 0) + $INC_NUMBER if ($line =~ /\" 404 /);
           $px_cnt{$PROXY} = ($px_cnt{$PROXY} // 0) + $INC_NUMBER if ($line =~ /\" 403 /);
           $px_cnt{$PROXY} = ($px_cnt{$PROXY} // 0) + $INC_NUMBER if ($line =~ /\" 500 /);
