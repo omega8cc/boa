@@ -772,7 +772,7 @@ _ensure_devuan_bf() {
 
 # --- BEGIN: Devuan Excalibur systemd → sysvinit keep-SSH helper ----
 
-_pkg_installed() { dpkg -s "$1" >/dev/null 2>&1; }
+_pkg_installed() { /usr/bin/dpkg -s "$1" >/dev/null 2>&1; }
 
 # Ensure anacron exists to satisfy logrotate alternatives when systemd is gone
 _ensure_cron_provider() {
@@ -780,7 +780,7 @@ _ensure_cron_provider() {
     _msg "[init] Installing anacron as cron provider" >> "${_logInt}"
     ${_INITINS} anacron >> "${_logSlt}"
   fi
-  apt-mark manual anacron >> "${_logSlt}"
+  /usr/bin/apt-mark manual anacron >> "${_logSlt}"
   _cron_check_install_early
 }
 
@@ -807,12 +807,12 @@ Provides: systemd
 Description: Dummy package that provides 'systemd' virtual for sysvinit systems
 EOF
 
-  dpkg-deb --build "${_DROOT}" >> "${_logSlt}"
+  /usr/bin/dpkg-deb --build "${_DROOT}" >> "${_logSlt}"
   wait
   ${_INITINS} "${_DROOT}.deb" >> "${_logSlt}"
 
   # sanity check
-  if ! dpkg-query -W -f='${Provides}\n' systemd-dummy 2>/dev/null | grep 'systemd'; then
+  if ! /usr/bin/dpkg-query -W -f='${Provides}\n' systemd-dummy 2>/dev/null | grep 'systemd'; then
     echo "[init][ERROR] systemd-dummy failed to provide 'systemd'" >> "${_logInt}"
   fi
 }
@@ -820,7 +820,7 @@ EOF
 # Mark critical daemons as manual so metas/solver don't toss them
 _protect_daemons() {
   _msg "[init] Marking core daemons manual: openssh-server, anacron" >> "${_logInt}"
-  apt-mark manual openssh-server anacron >> "${_logSlt}"
+  /usr/bin/apt-mark manual openssh-server anacron >> "${_logSlt}"
 }
 
 # Safety: ensure openssh-server present & configured now
@@ -837,14 +837,18 @@ _ensure_openssh_server() {
 
 # Before real removal, simulate and auto-heal if SSH would be removed.
 _purge_systemd_keep_ssh() {
+
+  _install_systemd_dummy
+
   _msg "[init] Simulating 'apt-get remove systemd'" >> "${_logInt}"
-  if apt-get -s remove systemd 2>/dev/null | grep -E 'Remv (openssh-server|ssh)\b'; then
+  if /usr/bin/apt-get -s remove systemd 2>/dev/null | grep -E 'Remv (openssh-server|ssh)\b'; then
     _msg "[init] APT would remove SSH; installing dummy provider" >> "${_logInt}"
-    _install_systemd_dummy
     _msg "[init] Re-simulating removal" >> "${_logInt}"
-    if apt-get -s remove systemd 2>/dev/null | grep -E 'Remv (openssh-server|ssh)\b'; then
+    if /usr/bin/apt-get -s remove systemd 2>/dev/null | grep -E 'Remv (openssh-server|ssh)\b'; then
       _msg "[init][ERROR] SSH still slated for removal even with systemd-dummy present" >> "${_logInt}"
     fi
+  else
+    _msg "[init] Simulating 'apt-get remove systemd' appeared clean" >> "${_logInt}"
   fi
 
   _msg "[init] Purging systemd safely" >> "${_logInt}"
@@ -857,7 +861,7 @@ _purge_systemd_keep_ssh() {
 
   # Clean stragglers, but do not autoremove SSH/SFTP bits
   _msg "[init] Autoremove harmless leftovers (kept minimal)" >> "${_logInt}"
-  apt-get -y autoremove --purge >> "${_logSlt}"
+  /usr/bin/apt-get -y autoremove --purge >> "${_logSlt}"
 }
 
 # High-level orchestrator to call in the off-systemd phase
