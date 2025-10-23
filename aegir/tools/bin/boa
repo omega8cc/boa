@@ -76,6 +76,7 @@ _os_detection_minimal() {
     && [ -e "/lib/systemd/systemd" ] ; then
     ${_APT_UPDATE} -qq 2> /dev/null
     apt-get remove systemd -y --purge --auto-remove --allow-remove-essential -qq 2> /dev/null
+    apt-get remove stunnel4 -y --purge --auto-remove -qq 2> /dev/null
   fi
 }
 
