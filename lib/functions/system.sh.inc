@@ -5991,11 +5991,21 @@ _run_aptitude_deps_install() {
     if dpkg-query -W -f='${Status}' libssl1.0-dev 2>/dev/null | grep -q "install ok installed"; then
       _mrun "apt-get remove libssl1.0-dev -y --purge --auto-remove -qq"
     fi
-    for _PKG in libssl-dev libc-client2007e libc-client2007e-dev mcrypt libc-client-dev; do
-      if ! _pkg_installed "${_PKG}"; then
-        _mrun "${_INSTAPP} ${_PKG}"
-      fi
-    done
+
+    if [ "${_OS_CODE}" = "excalibur" ]; then
+      for _PKG in libssl-dev mcrypt; do
+        if ! _pkg_installed "${_PKG}"; then
+          _mrun "${_INSTAPP} ${_PKG}"
+        fi
+      done
+    else
+      for _PKG in libssl-dev libc-client2007e libc-client2007e-dev mcrypt libc-client-dev; do
+        if ! _pkg_installed "${_PKG}"; then
+          _mrun "${_INSTAPP} ${_PKG}"
+        fi
+      done
+    fi
+
     if [ "${_OS_DIST}" = "Devuan" ]; then
       for _PKG in apticron aptitude apt-listchanges; do
         if ! _pkg_installed "${_PKG}"; then
@@ -7929,7 +7939,7 @@ _sys_packages_install() {
   fi
 
   if [ "${_OS_CODE}" = "excalibur" ]; then
-    _EXTRA_PACKAGES="autoconf2.72 \
+    _EXTRA_PACKAGES="autoconf2.69 \
                      automake-1.17 \
                      gnupg1-curl \
                      libpcre2-dev \
