@@ -389,7 +389,7 @@ _cron_check_install_early() {
   if [ ! -x "${_isCrn}" ] || [ -z "${_isCrn}" ]; then
     /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
     /usr/bin/dpkg --configure -a >> "${_logSlt}"
-    ${_INITINS} cron &> /dev/null
+    ${_INITINS} cron >> "${_logSlt}"
   fi
 }
 
@@ -769,6 +769,116 @@ _ensure_devuan_bf() {
   fi
 }
 
+
+# --- BEGIN: Devuan Excalibur systemd → sysvinit keep-SSH helper ----
+
+_pkg_installed() { dpkg -s "$1" >/dev/null 2>&1; }
+
+# Ensure anacron exists to satisfy logrotate alternatives when systemd is gone
+_ensure_cron_provider() {
+  if ! _pkg_installed "cron" && ! _pkg_installed "anacron"; then
+    _msg "[init] Installing anacron as cron provider" >> "${_logInt}"
+    ${_INITINS} anacron >> "${_logSlt}"
+  fi
+  apt-mark manual anacron >> "${_logSlt}"
+  _cron_check_install_early
+}
+
+# Install elogind before touching libsystemd0 (Devuan way)
+_switch_to_elogind_stack() {
+  _msg "[init] Installing elogind stack (libelogind0, libpam-elogind, compat)" >> "${_logInt}"
+  ${_INITINS} libelogind0 libpam-elogind libelogind-compat >> "${_logSlt}"
+}
+
+# Build & install a minimal package that Provides: systemd (so openssh-server stays)
+_install_systemd_dummy() {
+  if dpkg-query -W -f='${Package} ${Provides}\n' systemd-dummy 2>/dev/null | grep -q 'Provides:.*systemd'; then
+    _msg "[init] systemd-dummy already installed" >> "${_logInt}"
+    return 0
+  fi
+
+  _msg "[init] Creating minimal systemd-dummy provider" >> "${_logInt}"
+  _DROOT="/root/.autoinit-systemd-dummy"
+  mkdir -p "${_DROOT}/DEBIAN" || return 1
+  cat > "${_DROOT}/DEBIAN/control" <<'EOF'
+Package: systemd-dummy
+Version: 1.0
+Section: base
+Priority: optional
+Architecture: all
+Maintainer: Omega8cc Autoinit <root@localhost>
+Provides: systemd
+Description: Dummy package that provides 'systemd' virtual for sysvinit systems
+EOF
+
+  dpkg-deb --build "${_DROOT}" >> "${_logSlt}"
+  ${_INITINS} "${_DROOT}.deb" >> "${_logSlt}"
+
+  # sanity check
+  if ! dpkg-query -W -f='${Provides}\n' systemd-dummy 2>/dev/null | grep -q 'systemd'; then
+    echo "[init][ERROR] systemd-dummy failed to provide 'systemd'" >> "${_logInt}"
+    return 1
+  fi
+}
+
+# Mark critical daemons as manual so metas/solver don't toss them
+_protect_daemons() {
+  _msg "[init] Marking core daemons manual: openssh-server, anacron" >> "${_logInt}"
+  apt-mark manual openssh-server anacron >> "${_logSlt}"
+}
+
+# Safety: ensure openssh-server present & configured now
+_ensure_openssh_server() {
+  if ! _pkg_installed "openssh-server"; then
+    _msg "[init] Installing openssh-server" >> "${_logInt}"
+    ${_INITINS} openssh-server openssh-sftp-server >> "${_logSlt}"
+  fi
+  # (optional) make sure it is enabled under sysvinit
+  if [ -x "/etc/init.d/ssh" ]; then
+    service ssh status >/dev/null 2>&1 || service ssh start >> "${_logSlt}"
+  fi
+}
+
+# Before real removal, simulate and auto-heal if SSH would be removed.
+_purge_systemd_keep_ssh() {
+  _msg "[init] Simulating 'apt-get remove systemd'" >> "${_logInt}"
+  if apt-get -s remove systemd 2>/dev/null | grep -qE 'Remv (openssh-server|ssh)\b'; then
+    _msg "[init] APT would remove SSH; installing dummy provider" >> "${_logInt}"
+    _install_systemd_dummy || return 1
+    _msg "[init] Re-simulating removal" >> "${_logInt}"
+    if apt-get -s remove systemd 2>/dev/null | grep -qE 'Remv (openssh-server|ssh)\b'; then
+      _msg "[init][ERROR] SSH still slated for removal even with systemd-dummy present" >> "${_logInt}"
+      return 1
+    fi
+  fi
+
+  _msg "[init] Purging systemd safely" >> "${_logInt}"
+  /usr/bin/apt-get -y remove --purge systemd >> "${_logSlt}"
+  # Some builds still leave libsystemd0 behind; elogind step should allow its removal.
+  if _pkg_installed "libsystemd0"; then
+    _msg "[init] Removing libsystemd0 (elogind present)" >> "${_logInt}"
+    /usr/bin/apt-get -y remove --purge libsystemd0 >> "${_logSlt}"
+  fi
+
+  # Clean stragglers, but do not autoremove SSH/SFTP bits
+  _msg "[init] Autoremove harmless leftovers (kept minimal)" >> "${_logInt}"
+  apt-get -y autoremove --purge >> "${_logSlt}"
+}
+
+# High-level orchestrator to call in the off-systemd phase
+_autoinit_devuan_excalibur_keep_ssh() {
+  _ensure_cron_provider || return 1
+  _switch_to_elogind_stack || return 1
+  _ensure_openssh_server || return 1
+  _protect_daemons
+  _purge_systemd_keep_ssh || return 1
+  _msg "[init] systemd purged while keeping openssh-server intact" >> "${_logInt}"
+  return 0
+}
+
+# --- END: Devuan Excalibur systemd → sysvinit keep-SSH helper ----
+
+
 ###
 ### Remove and block systemd
 ###
@@ -787,11 +897,7 @@ _init_offsystemd() {
   /usr/bin/apt-get dist-upgrade ${_dstUpArg} >> "${_logSlt}"
   /usr/bin/apt-get dist-upgrade ${_dstUpArg} >> "${_logSlt}"
   [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
-  /usr/bin/apt-get remove systemd -y --purge --auto-remove --allow-remove-essential -qq >> "${_logSlt}"
-  /usr/bin/apt-get remove libnss-systemd -y --purge --auto-remove --allow-remove-essential -qq >> "${_logSlt}"
-  /usr/bin/apt-get remove systemd-sysv -y --purge --auto-remove --allow-remove-essential -qq >> "${_logSlt}"
-  /usr/bin/apt-get autoremove --purge -y -qq >> "${_logSlt}"
-  /usr/bin/apt-get autoclean -y -qq >> "${_logSlt}"
+
   if [ -e "/root/.top-daedalus.cnf" ]; then
     # Initialize the update flag to NO
     _needsBaseFilesUpdate=NO
@@ -842,7 +948,19 @@ _init_offsystemd() {
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   _msg "_init_offsystemd ==> Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
   if [ "${_OS_CODE}" = "daedalus" ] || [ "${_OS_CODE}" = "excalibur" ]; then
+
+    if [ -e "/root/.top-excalibur.cnf" ]; then
+      _autoinit_devuan_excalibur_keep_ssh
+    else
+      /usr/bin/apt-get remove systemd -y --purge --auto-remove --allow-remove-essential -qq >> "${_logSlt}"
+      /usr/bin/apt-get remove libnss-systemd -y --purge --auto-remove --allow-remove-essential -qq >> "${_logSlt}"
+      /usr/bin/apt-get remove systemd-sysv -y --purge --auto-remove --allow-remove-essential -qq >> "${_logSlt}"
+      /usr/bin/apt-get autoremove --purge -y -qq >> "${_logSlt}"
+      /usr/bin/apt-get autoclean -y -qq >> "${_logSlt}"
+    fi
+
     _check_no_systemd
+
     echo " " >> "${_logInt}"
     _msg "_init_offsystemd ==> Update networking if needed with vmnetfix..." >> "${_logInt}"
     /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
@@ -1106,7 +1224,7 @@ _init_cycle() {
 _init_info() {
   echo "_init_info ==> The system will reboot and continue several times..."
   sleep 3
-  echo "_init_info ==> until it is ugraded to latest Devuan/daedalus version."
+  echo "_init_info ==> until it is ugraded to latest Devuan version."
   sleep 3
   echo "_init_info ==> Once all upgrades are complete, you can run boa install"
   sleep 3
