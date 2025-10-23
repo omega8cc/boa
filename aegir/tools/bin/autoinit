@@ -268,17 +268,13 @@ _check_aegir() {
 ###
 _check_no_systemd() {
   if [ -e "/lib/systemd/systemd" ]; then
-    ${_INITINS} eudev sysvinit-core -qq >> "${_logSlt}"
-    /usr/bin/apt-get -f install ${_aptAllow} -y -qq >> "${_logSlt}"
-    /usr/bin/apt-get remove systemd -y --purge --auto-remove --allow-remove-essential -qq >> "${_logSlt}"
-    /usr/bin/apt-get remove libnss-systemd -y --purge --auto-remove --allow-remove-essential -qq >> "${_logSlt}"
-    /usr/bin/apt-get remove systemd-sysv -y --purge --auto-remove --allow-remove-essential -qq >> "${_logSlt}"
-    if [ -e "/lib/systemd/systemd" ]; then
-      _msg "_check_no_systemd ==> ERRR: Systemd still not removed cleanly" >> "${_logInt}"
-      _msg "_check_no_systemd ==> HINT: Please remove it manually and reboot" >> "${_logInt}"
-      _msg "_check_no_systemd ==> HINT:   apt-get purge systemd libnss-systemd -y" >> "${_logInt}"
-      _msg "_check_no_systemd ==> HINT: After reboot install boa as usual" >> "${_logInt}"
-    fi
+    _msg "_check_no_systemd ==> OOPS: Systemd still not removed cleanly" >> "${_logInt}"
+    _msg "_check_no_systemd ==> INFO: We will reboot and try to remove it again..." >> "${_logInt}"
+    echo " " >> "${_logInt}"
+    rm -f /run/autoinit.pid
+    shutdown -r now
+    wait
+    exit 0
   fi
 }
 
