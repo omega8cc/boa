@@ -1159,6 +1159,7 @@ _barracuda_install() {
     if [ "${_OS_CODE}" = "excalibur" ] \
       && [ "${_eXtr}" != "percona-8.0" ]; then
       sed -i "s/^_DB_SERIES=.*/_DB_SERIES=8.4/g"             ${_vBs}/${_filIncB}
+      wait
     fi
 
     if [ "${_cmNd}" = "in-dev" ] \
