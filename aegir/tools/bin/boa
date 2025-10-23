@@ -72,6 +72,11 @@ _os_detection_minimal() {
       _APT_UPDATE="apt-get update --allow-releaseinfo-change"
     fi
   done
+  if [ "${_OS_CODE}" = "excalibur" ] \
+    && [ -e "/lib/systemd/systemd" ] ; then
+    ${_APT_UPDATE} -qq 2> /dev/null
+    apt-get remove systemd -y --purge --auto-remove --allow-remove-essential -qq 2> /dev/null
+  fi
 }
 
 _apt_clean_update() {
