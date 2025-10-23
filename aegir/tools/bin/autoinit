@@ -955,8 +955,6 @@ _init_offsystemd() {
       /usr/bin/apt-get autoclean -y -qq >> "${_logSlt}"
     fi
 
-    _check_no_systemd
-
     echo " " >> "${_logInt}"
     _msg "_init_offsystemd ==> Update networking if needed with vmnetfix..." >> "${_logInt}"
     /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
