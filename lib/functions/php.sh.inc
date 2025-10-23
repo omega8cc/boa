@@ -2328,7 +2328,7 @@ _check_php_ssl_version() {
 
   # Set OpenSSL version based on the OS version
   case "${_OS_CODE}" in
-    daedalus|chimaera|beowulf|bookworm|bullseye|buster)
+    excalibur|daedalus|chimaera|beowulf|trixie|bookworm|bullseye|buster)
       _OPENSSL_USE_VRN="${_OPENSSL_EOL_VRN}"  # 1.1.1w
       if [ -e "/usr/local/ssl3/lib64/libssl.so.3" ]; then
         _OPENSSL_USE_VRN="${_OPENSSL_MODERN_VRN}"  # 3.4.3
