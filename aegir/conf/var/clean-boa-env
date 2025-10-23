@@ -91,7 +91,11 @@ case "$1" in
         fi
       fi
     done
-    if [ -e "/root/.run-to-daedalus.cnf" ]; then
+    if [ -e "/root/.run-to-excalibur.cnf" ]; then
+      if [ -x "/opt/local/bin/autoexcalibur" ]; then
+        nohup /opt/local/bin/autoexcalibur > /dev/null 2>&1 &
+      fi
+    elif [ -e "/root/.run-to-daedalus.cnf" ]; then
       if [ -x "/opt/local/bin/autodaedalus" ]; then
         nohup /opt/local/bin/autodaedalus > /dev/null 2>&1 &
       fi

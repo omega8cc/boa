@@ -66,7 +66,7 @@ _clean_pid_exit() {
 _os_detection_minimal() {
   _APT_UPDATE="apt-get update"
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
-  _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
+  _OS_LIST="excalibur daedalus chimaera beowulf buster bullseye bookworm trixie"
   for e in ${_OS_LIST}; do
     if [ "${e}" = "${_OS_CODE}" ]; then
       _APT_UPDATE="apt-get update --allow-releaseinfo-change"
@@ -740,14 +740,17 @@ _check_dns_settings() {
 
 _if_extended_report() {
   _EXTENDED=NO
-  if [ -e "/root/.run-to-daedalus.cnf" ] \
+  if [ -e "/root/.run-to-excalibur.cnf" ] \
+    || [ -e "/root/.run-to-daedalus.cnf" ] \
     || [ -e "/root/.run-to-chimaera.cnf" ] \
     || [ -e "/root/.run-to-beowulf.cnf" ] \
     || [ -e "/root/.send-extended-report.cnf" ]; then
     _EXTENDED=YES
   fi
   if [ "${_EXTENDED}" = "YES" ]; then
-    if [ -e "/root/.autodaedalus.log" ]; then
+    if [ -e "/root/.autoexcalibur.log" ]; then
+      cat /root/.autoexcalibur.log >> ${_THIS_LOG}
+    elif [ -e "/root/.autodaedalus.log" ]; then
       cat /root/.autodaedalus.log >> ${_THIS_LOG}
     elif [ -e "/root/.autochimaera.log" ]; then
       cat /root/.autochimaera.log >> ${_THIS_LOG}

@@ -126,7 +126,7 @@ _DEBUG_MODE=$([ -e "/root/.debug-barracuda-installer.cnf" ] && echo "YES" || ech
 _os_detection_minimal() {
   _APT_UPDATE="apt-get update"
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
-  _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
+  _OS_LIST="excalibur daedalus chimaera beowulf buster bullseye bookworm trixie"
   for e in ${_OS_LIST}; do
     if [ "${e}" = "${_OS_CODE}" ]; then
       _APT_UPDATE="apt-get update --allow-releaseinfo-change"
@@ -3622,7 +3622,17 @@ _fix_java_symlinks() {
       echo fixed java symlinks for ${_OS_CODE}
     fi
   fi
-  if [ "${_OS_CODE}" = "daedalus" ] || [ "${_OS_CODE}" = "chimaera" ]; then
+  if [ "${_OS_CODE}" = "excalibur" ] \
+    || [ "${_OS_CODE}" = "daedalus" ] \
+    || [ "${_OS_CODE}" = "chimaera" ]; then
+    if [ ! -e "/usr/lib/jvm/java-21-openjdk" ] \
+      && [ -d "/usr/lib/jvm/java-21-openjdk-amd64" ]; then
+      ln -sfn /usr/lib/jvm/java-21-openjdk-amd64 /usr/lib/jvm/java-21-openjdk
+    fi
+    if [ ! -e "/usr/bin/java21" ] \
+      && [ -e "/usr/lib/jvm/java-21-openjdk-amd64/bin/java" ]; then
+      ln -sfn /usr/lib/jvm/java-21-openjdk-amd64/bin/java /usr/bin/java21
+    fi
     if [ ! -e "/usr/lib/jvm/java-17-openjdk" ] \
       && [ -d "/usr/lib/jvm/java-17-openjdk-amd64" ]; then
       ln -sfn /usr/lib/jvm/java-17-openjdk-amd64 /usr/lib/jvm/java-17-openjdk
@@ -3646,23 +3656,36 @@ _fix_java_symlinks() {
     else
       _LOOK_LIKE_JENKINS=FALSE
     fi
-    if [ "${_LOOK_LIKE_JENKINS}" = "TRUE" ] || [ "${_OS_CODE}" = "daedalus" ]; then
+    if [ "${_LOOK_LIKE_JENKINS}" = "TRUE" ] \
+      || [ "${_OS_CODE}" = "daedalus" ] \
+      || [ "${_OS_CODE}" = "excalibur" ]; then
       if [ -x "/usr/lib/jvm/java-17-openjdk/bin/java" ] \
-        && [ ! -e "/var/log/.fixed-java17-symlinks.log" ]; then
-        if [ -e "/usr/lib/jvm/java-1.17.0-openjdk-amd64" ]; then
+        && [ ! -e "/var/log/boa/.fixed-java17-symlinks.log" ]; then
+        if [ -e "/usr/lib/jvm/java-17-openjdk-amd64" ]; then
           rm -f /usr/lib/jvm/default-java
-          ln -sfn /usr/lib/jvm/java-1.17.0-openjdk-amd64 /usr/lib/jvm/default-java
+          ln -sfn /usr/lib/jvm/java-17-openjdk-amd64 /usr/lib/jvm/default-java
         fi
         ln -sfn /usr/lib/jvm/java-17-openjdk/bin/java /etc/alternatives/java
         ln -sfn /etc/alternatives/java /usr/bin/java
-        touch /var/log/.fixed-java17-symlinks.log
+        touch /var/log/boa/.fixed-java17-symlinks.log
         echo "Fixed Java 17 symlinks for ${_OS_CODE}"
+      fi
+      if [ -x "/usr/lib/jvm/java-21-openjdk/bin/java" ] \
+        && [ ! -e "/var/log/boa/.fixed-java21-symlinks.log" ]; then
+        if [ -e "/usr/lib/jvm/java-21-openjdk-amd64" ]; then
+          rm -f /usr/lib/jvm/default-java
+          ln -sfn /usr/lib/jvm/java-21-openjdk-amd64 /usr/lib/jvm/default-java
+        fi
+        ln -sfn /usr/lib/jvm/java-21-openjdk/bin/java /etc/alternatives/java
+        ln -sfn /etc/alternatives/java /usr/bin/java
+        touch /var/log/boa/.fixed-java21-symlinks.log
+        echo "Fixed Java 21 symlinks for ${_OS_CODE}"
       fi
     else
       if [ -x "/usr/lib/jvm/java-11-openjdk/bin/java" ]; then
-        if [ -e "/usr/lib/jvm/java-1.11.0-openjdk-amd64" ]; then
+        if [ -e "/usr/lib/jvm/java-11-openjdk-amd64" ]; then
           rm -f /usr/lib/jvm/default-java
-          ln -sfn /usr/lib/jvm/java-1.11.0-openjdk-amd64 /usr/lib/jvm/default-java
+          ln -sfn /usr/lib/jvm/java-11-openjdk-amd64 /usr/lib/jvm/default-java
         fi
         if [ ! -e "/usr/bin/java" ] || [ ! -e "/etc/alternatives/java" ]; then
           ln -sfn /usr/lib/jvm/java-11-openjdk/bin/java /etc/alternatives/java
@@ -4164,7 +4187,8 @@ _if_reinstall_curl() {
 }
 
 _if_boa_key_tools_update_allowed() {
-  if [ -e "/root/.run-to-daedalus.cnf" ] \
+  if [ -e "/root/.run-to-excalibur.cnf" ] \
+    || [ -e "/root/.run-to-daedalus.cnf" ] \
     || [ -e "/root/.run-to-chimaera.cnf" ] \
     || [ -e "/root/.run-to-beowulf.cnf" ]; then
     _BOA_KEY_TOOLS_UPDATE_ALLOWED=NO
@@ -4198,6 +4222,7 @@ _update_boa_tools() {
             autobeowulf \
             autochimaera \
             autodaedalus \
+            autoexcalibur \
             autoinit \
             autoupboa \
             backboa \
@@ -4314,7 +4339,7 @@ _update_boa_tools() {
   echo "Groups are organized by function."
 
   # _AUTO (700): automatic install/upgrade helpers
-  chmod 700 ${_optBin}/{autobeowulf,autochimaera,autodaedalus,autoinit,autoupboa}
+  chmod 700 ${_optBin}/{autobeowulf,autochimaera,autodaedalus,autoexcalibur,autoinit,autoupboa}
 
   # _BACKUP (700): backup helpers
   chmod 700 ${_optBin}/{backboa,copydbackup,dcysetup,duobackboa,multiback}

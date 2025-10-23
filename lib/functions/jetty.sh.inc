@@ -77,10 +77,15 @@ _if_install_solr_jetty() {
     fi
   fi
   if [ -e "/etc/default/${_N_SOLR}.in.sh" ]; then
-    _SOLR9_JAVA_TEST=$(grep "BOA ${_xSrl} Path to Java 17 on ${_OS_CODE}" /etc/default/${_N_SOLR}.in.sh 2>&1)
+    if [ "${_OS_CODE}" = "excalibur" ]; then
+      _useJava=21
+    else
+      _useJava=17
+    fi
+    _SOLR9_JAVA_TEST=$(grep "BOA ${_xSrl} Path to Java ${_useJava} on ${_OS_CODE}" /etc/default/${_N_SOLR}.in.sh 2>&1)
     _SOLR9_MODULES_TEST=$(grep "analysis-extras,clustering,extraction,langid,ltr" /etc/default/${_N_SOLR}.in.sh 2>&1)
     _SOLR9_STOP_TEST=$(grep "SOLR_STOP_PORT=19099" /etc/default/${_N_SOLR}.in.sh 2>&1)
-    if [[ "${_SOLR9_JAVA_TEST}" =~ "BOA ${_xSrl} Path to Java 17 on ${_OS_CODE}" ]] \
+    if [[ "${_SOLR9_JAVA_TEST}" =~ "BOA ${_xSrl} Path to Java ${_useJava} on ${_OS_CODE}" ]] \
       && [[ "${_SOLR9_MODULES_TEST}" =~ "analysis-extras,clustering,extraction,langid,ltr" ]] \
       && [[ "${_SOLR9_STOP_TEST}" =~ "SOLR_STOP_PORT=19099" ]]; then
       _DO_NOTHING=YES
@@ -98,16 +103,15 @@ _if_install_solr_jetty() {
       echo "LOG4J_FORMAT_MSG_NO_LOOKUPS=true" >> /etc/default/${_N_SOLR}.in.sh
       echo "SOLR_STOP_PORT=19099" >> /etc/default/${_N_SOLR}.in.sh
       echo "SOLR_STOP_KEY=mycustomkey9" >> /etc/default/${_N_SOLR}.in.sh
-      if [ "${_OS_CODE}" = "chimaera" ]; then
-        echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-17-openjdk\" # BOA ${_xSrl} Path to Java 17" >> \
-          /etc/default/${_N_SOLR}.in.sh
-        echo "SOLR_MODULES=\"analysis-extras,clustering,extraction,langid,ltr\" # Auto-Enable Modules" >> \
-          /etc/default/${_N_SOLR}.in.sh
-      elif [ "${_OS_CODE}" = "daedalus" ]; then
-        echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-17-openjdk\" # BOA ${_xSrl} Path to Java 17" >> \
-          /etc/default/${_N_SOLR}.in.sh
-        echo "SOLR_MODULES=\"analysis-extras,clustering,extraction,langid,ltr\" # Auto-Enable Modules" >> \
-          /etc/default/${_N_SOLR}.in.sh
+      if [ "${_OS_CODE}" = "excalibur" ] \
+        || [ "${_OS_CODE}" = "daedalus" ] \
+        || [ "${_OS_CODE}" = "chimaera" ]; then
+        if [ "${_OS_CODE}" = "excalibur" ]; then
+          echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-21-openjdk\" # BOA ${_xSrl} Path to Java 21" >> /etc/default/${_N_SOLR}.in.sh
+        else
+          echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-17-openjdk\" # BOA ${_xSrl} Path to Java 17" >> /etc/default/${_N_SOLR}.in.sh
+        fi
+        echo "SOLR_MODULES=\"analysis-extras,clustering,extraction,langid,ltr\" # Auto-Enable Modules" >> /etc/default/${_N_SOLR}.in.sh
       fi
     fi
     if [ ! -e "${_SOLR_CTRL}" ]; then
@@ -130,8 +134,7 @@ _if_install_solr_jetty() {
   fi
 
   ###--------------------###
-  if [[ "${_XTRAS_LIST}" =~ "SR7" ]] \
-    || [ "${_hostedSys}" = "YES" ]; then
+  if [[ "${_XTRAS_LIST}" =~ "SR7" ]] && [ "${_OS_CODE}" != "excalibur" ]; then
     if [ -e "/var/solr7/data" ] && [ -L "/var/solr7" ]; then
       _if_fix_solr7_permissions
     fi
@@ -154,8 +157,7 @@ _if_install_solr_jetty() {
       _java_check_fix
     fi
   fi
-  if [[ "${_XTRAS_LIST}" =~ "SR7" ]] \
-    || [ "${_hostedSys}" = "YES" ]; then
+  if [[ "${_XTRAS_LIST}" =~ "SR7" ]] && [ "${_OS_CODE}" != "excalibur" ]; then
     if [ ! -d "${_SOLR_VPATH}" ]; then
       echo " "
       _tPrmt="Do you want to install MultiCore Apache Solr ${_R_SOLR}"
@@ -198,30 +200,10 @@ _if_install_solr_jetty() {
       echo "LOG4J_FORMAT_MSG_NO_LOOKUPS=true" >> /etc/default/${_N_SOLR}.in.sh
       echo "SOLR_STOP_PORT=17077" >> /etc/default/${_N_SOLR}.in.sh
       echo "SOLR_STOP_KEY=mycustomkey7" >> /etc/default/${_N_SOLR}.in.sh
-      if [ "${_OS_CODE}" = "jessie" ]; then
-        echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-8-openjdk/jre\" # BOA ${_xSrl} Path to Java 8" >> \
-          /etc/default/${_N_SOLR}.in.sh
-      elif [ "${_OS_CODE}" = "stretch" ]; then
-        echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-8-openjdk/jre\" # BOA ${_xSrl} Path to Java 8" >> \
-          /etc/default/${_N_SOLR}.in.sh
-      elif [ "${_OS_CODE}" = "buster" ]; then
-        echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-11-openjdk\" # BOA ${_xSrl} Path to Java 11" >> \
-          /etc/default/${_N_SOLR}.in.sh
-      elif [ "${_OS_CODE}" = "bullseye" ]; then
-        echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-11-openjdk\" # BOA ${_xSrl} Path to Java 11" >> \
-          /etc/default/${_N_SOLR}.in.sh
-      elif [ "${_OS_CODE}" = "bookworm" ]; then
-        echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-11-openjdk\" # BOA ${_xSrl} Path to Java 11" >> \
-          /etc/default/${_N_SOLR}.in.sh
-      elif [ "${_OS_CODE}" = "beowulf" ]; then
-        echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-11-openjdk\" # BOA ${_xSrl} Path to Java 11" >> \
-          /etc/default/${_N_SOLR}.in.sh
-      elif [ "${_OS_CODE}" = "chimaera" ]; then
-        echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-11-openjdk\" # BOA ${_xSrl} Path to Java 11" >> \
-          /etc/default/${_N_SOLR}.in.sh
-      elif [ "${_OS_CODE}" = "daedalus" ]; then
-        echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-11-openjdk\" # BOA ${_xSrl} Path to Java 11" >> \
-          /etc/default/${_N_SOLR}.in.sh
+      if [ "${_OS_CODE}" = "stretch" ] || [ "${_OS_CODE}" = "jessie" ]; then
+        echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-8-openjdk/jre\" # BOA ${_xSrl} Path to Java 8" >> /etc/default/${_N_SOLR}.in.sh
+      else
+        echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-11-openjdk\" # BOA ${_xSrl} Path to Java 11" >> /etc/default/${_N_SOLR}.in.sh
       fi
     fi
     if [ ! -e "${_SOLR_CTRL}" ]; then
@@ -251,7 +233,7 @@ _if_install_solr_jetty() {
   else
     _PORT_CTRL="${_JETTY_CTRL}"
   fi
-  if [[ "${_XTRAS_LIST}" =~ "SR4" ]]; then
+  if [[ "${_XTRAS_LIST}" =~ "SR4" ]] && [ "${_OS_CODE}" != "excalibur" ]; then
     if [ ! -d "/opt/solr4" ]; then
       _R_JETTY=9
       echo " "

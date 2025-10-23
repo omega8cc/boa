@@ -317,7 +317,8 @@ _nginx_install_upgrade() {
           _msg "INFO: Nginx forced rebuild to include pseudo-streaming support"
         fi
       fi
-      if [ "${_OS_CODE}" = "daedalus" ] \
+      if [ "${_OS_CODE}" = "excalibur" ] \
+        || [ "${_OS_CODE}" = "daedalus" ] \
         || [ "${_OS_CODE}" = "chimaera" ] \
         || [ "${_OS_CODE}" = "beowulf" ] \
         || [ "${_OS_CODE}" = "bookworm" ] \
@@ -457,7 +458,8 @@ _nginx_install_upgrade() {
     if [ "${_OPENSSL_NEW_VRN}" != "${_OPENSSL_LEGACY_VRN}" ]; then
       _NGINX_EXTRA="--with-http_v3_module ${_NGINX_EXTRA}"
     fi
-    if [ "${_OS_CODE}" = "daedalus" ] \
+    if [ "${_OS_CODE}" = "excalibur" ] \
+      || [ "${_OS_CODE}" = "daedalus" ] \
       || [ "${_OS_CODE}" = "chimaera" ] \
       || [ "${_OS_CODE}" = "beowulf" ] \
       || [ "${_OS_CODE}" = "bookworm" ] \

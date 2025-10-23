@@ -815,10 +815,33 @@ _init_offsystemd() {
       _ensure_devuan_bf
     fi
   fi
+  if [ -e "/root/.top-excalibur.cnf" ]; then
+    # Initialize the update flag to NO
+    _needsBaseFilesUpdate=NO
+    # Check if /etc/os-release mentions 'excalibur'
+    if grep -i 'excalibur' /etc/os-release &> /dev/null; then
+      _msg "_init_offsystemd ==> The /etc/os-release already mentions excalibur" >> "${_logInt}"
+    else
+      _msg "_init_offsystemd ==> The /etc/os-release doesn't mention excalibur yet" >> "${_logInt}"
+      _needsBaseFilesUpdate=YES
+    fi
+    # Check if apt policy for base-files mentions 'excalibur'
+    if apt policy base-files | grep -i 'excalibur' &> /dev/null; then
+      _msg "_init_offsystemd ==> The apt policy base-files already mentions excalibur" >> "${_logInt}"
+    else
+      _msg "_init_offsystemd ==> The apt policy base-files doesn't mention excalibur yet" >> "${_logInt}"
+      _needsBaseFilesUpdate=YES
+    fi
+    # If any of the above checks require an update, perform the upgrade
+    if [ "${_needsBaseFilesUpdate}" = "YES" ]; then
+      _msg "_init_offsystemd ==> Upgrading base-files from Devuan repository (dynamic candidate)" >> "${_logInt}"
+      _ensure_devuan_bf
+    fi
+  fi
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   _msg "_init_offsystemd ==> Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
-  if [ "${_OS_CODE}" = "daedalus" ]; then
+  if [ "${_OS_CODE}" = "daedalus" ] || [ "${_OS_CODE}" = "excalibur" ]; then
     _check_no_systemd
     echo " " >> "${_logInt}"
     _msg "_init_offsystemd ==> Update networking if needed with vmnetfix..." >> "${_logInt}"
@@ -900,9 +923,16 @@ _init_cycle() {
   echo " " >> "${_logInt}"
   _NEW_SYS=Devuan
   _OLD_SYS=Devuan
-  if [ "${_OS_CODE}" = "bookworm" ]; then
+  if [ "${_OS_CODE}" = "trixie" ]; then
+    _NEW_OS_CODE=excalibur
+    _OLD_SYS=Debian
+    [ ! -e "/root/.top-excalibur.cnf" ] && touch /root/.top-excalibur.cnf
+  elif [ "${_OS_CODE}" = "bookworm" ]; then
     _NEW_OS_CODE=daedalus
     _OLD_SYS=Debian
+    [ ! -e "/root/.top-daedalus.cnf" ] && touch /root/.top-daedalus.cnf
+  elif [ "${_OS_CODE}" = "chimaera" ]; then
+    _NEW_OS_CODE=daedalus
     [ ! -e "/root/.top-daedalus.cnf" ] && touch /root/.top-daedalus.cnf
   elif [ "${_OS_CODE}" = "bullseye" ]; then
     _NEW_OS_CODE=chimaera
@@ -912,10 +942,7 @@ _init_cycle() {
     _OLD_SYS=Debian
   elif [ "${_OS_CODE}" = "beowulf" ]; then
     _NEW_OS_CODE=chimaera
-  elif [ "${_OS_CODE}" = "chimaera" ]; then
-    _NEW_OS_CODE=daedalus
-    [ ! -e "/root/.top-daedalus.cnf" ] && touch /root/.top-daedalus.cnf
-  elif [ "${_OS_CODE}" = "daedalus" ]; then
+  elif [ "${_OS_CODE}" = "daedalus" ] || [ "${_OS_CODE}" = "excalibur" ]; then
     _NEW_OS_CODE=
     _NEW_SYS=
   else
@@ -1007,6 +1034,26 @@ _init_cycle() {
           _ensure_devuan_bf
         fi
       fi
+      if [ -e "/root/.top-excalibur.cnf" ]; then
+        if cat /etc/os-release | grep -i 'excalibur' &> /dev/null; then
+          _msg "_init_cycle ==> The /etc/os-release already mentions excalibur" >> "${_logInt}"
+          _needsBaseFilesUpdate=NO
+        else
+          _msg "_init_cycle ==> The /etc/os-release doesn't mention excalibur yet" >> "${_logInt}"
+          _needsBaseFilesUpdate=YES
+        fi
+        if apt policy base-files | grep -i 'excalibur' &> /dev/null; then
+          _msg "_init_cycle ==> The apt policy base-files already mentions excalibur" >> "${_logInt}"
+          _needsBaseFilesUpdate=NO
+        else
+          _msg "_init_cycle ==> The apt policy base-files doesn't mention excalibur yet" >> "${_logInt}"
+          _needsBaseFilesUpdate=YES
+        fi
+        if [ "${_needsBaseFilesUpdate}" = "YES" ]; then
+          _msg "_init_cycle ==> Upgrading base-files from Devuan repository (dynamic candidate)" >> "${_logInt}"
+          _ensure_devuan_bf
+        fi
+      fi
     fi
   fi
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
@@ -1023,7 +1070,7 @@ _init_cycle() {
     wait
     exit 0
   else
-    if [ "${_OS_CODE}" = "daedalus" ]; then
+    if [ "${_OS_CODE}" = "daedalus" ] || [ "${_OS_CODE}" = "excalibur" ]; then
       _check_no_systemd
       _msg "_init_cycle ==> Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
       _msg "_init_cycle ==> Update networking if needed with vmnetfix..." >> "${_logInt}"

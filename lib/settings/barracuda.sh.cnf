@@ -167,8 +167,8 @@ _PHP_CLI_VERSION=8.3
 ### CSS --- Ruby Gems for Compass
 ### FMG --- FFmpeg support (deprecated)
 ### NPM --- NPM for Gulp/Bower (requires also /root/.allow.node.lshell.cnf)
-### SR4 --- Apache Solr 4 with Jetty 9
-### SR7 --- Apache Solr 7
+### SR4 --- Apache Solr 4 with Jetty 9 (not supported on Devuan Excalibur)
+### SR7 --- Apache Solr 7 (not supported on Devuan Excalibur)
 ### SR9 --- Apache Solr 9
 ### WMN --- Webmin Control Panel (deprecated)
 ###
@@ -266,6 +266,12 @@ _BULLSEYE_TO_BOOKWORM=NO
 
 ###
 ### Use YES to run major system upgrade
+### from Debian Bookworm to Debian Trixie.
+###
+_BOOKWORM_TO_TRIXIE=NO
+
+###
+### Use YES to run major system upgrade
 ### from Debian Jessie to Devuan Beowulf.
 ###
 _JESSIE_TO_BEOWULF=NO
@@ -305,6 +311,18 @@ _CHIMAERA_TO_DAEDALUS=NO
 ### from Debian Bookworm to Devuan Daedalus.
 ###
 _BOOKWORM_TO_DAEDALUS=NO
+
+###
+### Use YES to run major system upgrade
+### from Devuan Daedalus to Devuan Excalibur.
+###
+_DAEDALUS_TO_EXCALIBUR=NO
+
+###
+### Use YES to run major system upgrade
+### from Debian Trixie to Devuan Excalibur.
+###
+_TRIXIE_TO_EXCALIBUR=NO
 
 ###
 ### Use YES to run migration from Tomcat 6
@@ -1224,7 +1242,7 @@ _os_detection_minimal() {
   fi
   _APT_UPDATE="apt-get update"
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
-  _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
+  _OS_LIST="excalibur daedalus chimaera beowulf buster bullseye bookworm trixie"
   for e in ${_OS_LIST}; do
     if [ "${e}" = "${_OS_CODE}" ]; then
       _APT_UPDATE="apt-get update --allow-releaseinfo-change"

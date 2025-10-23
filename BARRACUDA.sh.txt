@@ -567,7 +567,8 @@ _rsyslog_config_update
 ###
 if [ -e "/root/.keep_apparmor_on.cnf" ] && [ ! -e "/root/.deny.apparmor.cnf" ]; then
   [ ! -e "/root/.allow.apparmor.cnf" ] && touch /root/.allow.apparmor.cnf
-  if [ ! -e "/root/.run-to-daedalus.cnf" ] \
+  if [ ! -e "/root/.run-to-excalibur.cnf" ] \
+    && [ ! -e "/root/.run-to-daedalus.cnf" ] \
     && [ ! -e "/root/.run-to-chimaera.cnf" ] \
     && [ ! -e "/root/.run-to-beowulf.cnf" ]; then
     if [ "${_OS_CODE}" != "stretch" ] && [ "${_OS_CODE}" != "jessie" ]; then

@@ -565,7 +565,8 @@ _tune_sql_memory_limits() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _tune_sql_memory_limits"
   fi
-  if [ -e "/root/.run-to-daedalus.cnf" ] \
+  if [ -e "/root/.run-to-excalibur.cnf" ] \
+    || [ -e "/root/.run-to-daedalus.cnf" ] \
     || [ -e "/root/.run-to-chimaera.cnf" ] \
     || [ -e "/root/.run-to-beowulf.cnf" ]; then
     _DO_NOTHING=YES
@@ -594,7 +595,8 @@ _tune_sql_memory_limits() {
   # https://raw.githubusercontent.com/major/MySQLTuner-perl/master/mysqltuner.pl
   _pthTun="/var/opt/mysqltuner.pl"
   _outTun="/var/opt/mysqltuner-${_xSrl}-${_X_VERSION}-${_NOW}.txt"
-  if [ -e "/root/.run-to-daedalus.cnf" ] \
+  if [ -e "/root/.run-to-excalibur.cnf" ] \
+    || [ -e "/root/.run-to-daedalus.cnf" ] \
     || [ -e "/root/.run-to-chimaera.cnf" ] \
     || [ -e "/root/.run-to-beowulf.cnf" ]; then
     _USE_MYSQLTUNER=NO
@@ -813,7 +815,9 @@ _prep_for_install_db_sql() {
   [ -e "/var/lib/mysql" ] && chown mysql:mysql /var/lib/mysql
 
   _SQL_SCR=APT
-  if [ "${_OS_CODE}" = "daedalus" ]; then
+  if [ "${_OS_CODE}" = "excalibur" ]; then
+    _SQL_OS_CODE=trixie
+  elif [ "${_OS_CODE}" = "daedalus" ]; then
     _SQL_OS_CODE=bookworm
   elif [ "${_OS_CODE}" = "chimaera" ]; then
     _SQL_OS_CODE=bullseye
@@ -1088,6 +1092,10 @@ _forced_mysql_root_password_update() {
     echo "user=root" >> /root/.my.cnf
     echo "password=${_ESC_PASS}" >> /root/.my.cnf
       echo " " >> /root/.my.cnf
+    echo "[autoexcalibur]" >> /root/.my.cnf
+    echo "user=root" >> /root/.my.cnf
+    echo "password=${_ESC_PASS}" >> /root/.my.cnf
+      echo " " >> /root/.my.cnf
     echo "[autoupboa]" >> /root/.my.cnf
     echo "user=root" >> /root/.my.cnf
     echo "password=${_ESC_PASS}" >> /root/.my.cnf
@@ -1168,7 +1176,9 @@ _db_server_install() {
   fi
   _db_server_apt_cleanup
   _SQL_SCR=APT
-  if [ "${_OS_CODE}" = "daedalus" ]; then
+  if [ "${_OS_CODE}" = "excalibur" ]; then
+    _SQL_OS_CODE=trixie
+  elif [ "${_OS_CODE}" = "daedalus" ]; then
     _SQL_OS_CODE=bookworm
   elif [ "${_OS_CODE}" = "chimaera" ]; then
     _SQL_OS_CODE=bullseye
@@ -1295,7 +1305,8 @@ _db_server_install() {
           _msg "INFO: ${_DB_SERVER} diff3 ${_diffMyTest}"
         fi
       fi
-      if [ ! -e "/root/.run-to-daedalus.cnf" ] \
+      if [ ! -e "/root/.run-to-excalibur.cnf" ] \
+        && [ ! -e "/root/.run-to-daedalus.cnf" ] \
         && [ ! -e "/root/.run-to-chimaera.cnf" ] \
         && [ ! -e "/root/.run-to-beowulf.cnf" ]; then
         _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')

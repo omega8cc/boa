@@ -572,6 +572,9 @@ _if_install_ffmpeg() {
           || [ "${_OS_CODE}" = "jessie" ]; then
           echo "deb http://www.deb-multimedia.org ${_OS_CODE} main non-free" >> /etc/apt/sources.list.d/ffmpeg.list
           echo "deb http://www.deb-multimedia.org ${_OS_CODE}-backports main" >> /etc/apt/sources.list.d/ffmpeg.list
+        elif [ "${_OS_CODE}" = "excalibur" ]; then
+          echo "deb http://www.deb-multimedia.org trixie main non-free" >> /etc/apt/sources.list.d/ffmpeg.list
+          echo "deb http://www.deb-multimedia.org trixie-backports main" >> /etc/apt/sources.list.d/ffmpeg.list
         elif [ "${_OS_CODE}" = "daedalus" ]; then
           echo "deb http://www.deb-multimedia.org bookworm main non-free" >> /etc/apt/sources.list.d/ffmpeg.list
           echo "deb http://www.deb-multimedia.org bookworm-backports main" >> /etc/apt/sources.list.d/ffmpeg.list

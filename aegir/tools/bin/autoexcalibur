@@ -51,15 +51,13 @@
 ###  If reboot worked and there are no issues,
 ###  you are ready for the automated magic...
 ###
-###    $ touch /root/.run-to-beowulf.cnf
+###    $ touch /root/.run-to-excalibur.cnf
 ###    $ service clean-boa-env start
 ###
 ###  Once enabled, the system will launch
 ###  a series of barracuda upgrades/reboots
 ###  until it migrates any supported Debian
-###  version to Devuan Beowulf -- excluding
-###  however Debian Bullseye which can be
-###  upgraded only to Devuan Chimaera.
+###  or Devuan version to Devuan Daedalus.
 ###
 ###  !!! WARNING !!!
 ###
@@ -84,7 +82,7 @@ export _tRee=dev
 export _xSrl=570devT09
 
 _barCnf="/root/.barracuda.cnf"
-_logAbf="/root/.autobeowulf.log"
+_logAds="/root/.autoexcalibur.log"
 
 ###
 ### Avoid too many questions
@@ -135,7 +133,7 @@ fi
 ### Noticeable messages
 ###
 _msg() {
-  echo "AutoBeowulf v.${_tRee} [$(date +%T)] ==> $*"
+  echo "AutoDaedalus v.${_tRee} [$(date +%T)] ==> $*"
 }
 
 _check_manufacturer_compatibility() {
@@ -154,17 +152,17 @@ _check_manufacturer_compatibility() {
   # Check for Amazon EC2 in the system manufacturer field
   if dmidecode -s system-manufacturer | grep -i 'Amazon EC2' &> /dev/null; then
     _VMFAMILY="AWS"
-    _msg "Not supported environment detected: ${_HOST_INFO}" >> "${_logAbf}"
-    _msg "Please check https://bit.ly/boa-caveats" >> "${_logAbf}"
-    _msg "Bye!" >> "${_logAbf}"
+    _msg "Not supported environment detected: ${_HOST_INFO}" >> "${_logAds}"
+    _msg "Please check https://bit.ly/boa-caveats" >> "${_logAds}"
+    _msg "Bye!" >> "${_logAds}"
     echo "Not supported environment detected: ${_HOST_INFO}"
     echo "Please check https://bit.ly/boa-caveats"
     echo "Bye!"
     exit 1
   elif [[ "${_HOST_INFO}" =~ "Unknown" ]] || [ -z "${_HOST_INFO}" ]; then
-    _msg "Mysterious environment: ${_HOST_INFO}" >> "${_logAbf}"
-    _msg "Please check https://bit.ly/boa-caveats" >> "${_logAbf}"
-    _msg "Bye!" >> "${_logAbf}"
+    _msg "Mysterious environment: ${_HOST_INFO}" >> "${_logAds}"
+    _msg "Please check https://bit.ly/boa-caveats" >> "${_logAds}"
+    _msg "Bye!" >> "${_logAds}"
     echo "Mysterious environment: ${_HOST_INFO}"
     echo "Please check https://bit.ly/boa-caveats"
     echo "Bye!"
@@ -190,7 +188,7 @@ _check_mysql_compatibility() {
     _DB_V=UNSUPPORTED
   fi
   if [ "${_DB_V}" = "UNSUPPORTED" ]; then
-    _msg "Not supported DB server detected ${_DB_SERVER_TEST}" >> "${_logAbf}"
+    _msg "Not supported DB server detected ${_DB_SERVER_TEST}" >> "${_logAds}"
     exit 1
   fi
 }
@@ -200,14 +198,14 @@ _check_mysql_compatibility
 ### Faster reboot
 ###
 _faster_reboot() {
-  _msg "Faster reboot prepare..." >> "${_logAbf}"
+  _msg "Faster reboot prepare..." >> "${_logAds}"
   service cron stop &> /dev/null
   killall cron &> /dev/null
   pkill -9 -f second.sh
   pkill -9 -f minute.sh
   pkill -9 -f runner.sh
-  _msg "Cron has been stopped" >> "${_logAbf}"
-  _msg "Now waiting 60 seconds for any running tasks to complete" >> "${_logAbf}"
+  _msg "Cron has been stopped" >> "${_logAds}"
+  _msg "Now waiting 60 seconds for any running tasks to complete" >> "${_logAds}"
   sleep 55
   if [ ! -e "/root/.allow.clamav.cnf" ] || [ -e "/root/.deny.clamav.cnf" ]; then
     if [ -e "/etc/init.d/clamav-daemon" ]; then
@@ -222,20 +220,20 @@ _faster_reboot() {
   pkill -9 -f freshclam
   pkill -9 -f java
   rm -f /run/clamav/*
-  _msg "Java/Solr/Clamav have been stopped" >> "${_logAbf}"
+  _msg "Java/Solr/Clamav have been stopped" >> "${_logAds}"
   service nginx stop &> /dev/null
   killall nginx &> /dev/null
   killall php &> /dev/null
   pkill -9 -f php-fpm
-  _msg "Nginx, PHP-CLI and PHP-FPM have been stopped" >> "${_logAbf}"
+  _msg "Nginx, PHP-CLI and PHP-FPM have been stopped" >> "${_logAds}"
   csf -df &> /dev/null
   csf -tf &> /dev/null
-  _msg "Firewall has been purged" >> "${_logAbf}"
+  _msg "Firewall has been purged" >> "${_logAds}"
   if [ -e "/root/.my.pass.txt" ]; then
     _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
     _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
     if [ ! -z "${_IS_MYSQLD_RUNNING}" ] && [ ! -z "${_SQL_PSWD}" ]; then
-      _msg "Preparing MySQLD for quick shutdown..." >> "${_logAbf}"
+      _msg "Preparing MySQLD for quick shutdown..." >> "${_logAds}"
       mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
       mysql -u root -e "SET GLOBAL innodb_change_buffering = 'none';" &> /dev/null
       mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null
@@ -246,53 +244,50 @@ _faster_reboot() {
         mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_now = ON;" &> /dev/null
       fi
       mysql -u root -e "SET GLOBAL innodb_fast_shutdown = 1;" &> /dev/null
-      _msg "Stopping MySQLD now..." >> "${_logAbf}"
+      _msg "Stopping MySQLD now..." >> "${_logAds}"
       service mysql stop &> /dev/null
       wait
-      _msg "MySQLD stopped" >> "${_logAbf}"
+      _msg "MySQLD stopped" >> "${_logAds}"
     else
-      _msg "MySQLD already stopped" >> "${_logAbf}"
+      _msg "MySQLD already stopped" >> "${_logAds}"
     fi
   fi
-  _msg "Faster reboot done" >> "${_logAbf}"
+  _msg "Faster reboot done" >> "${_logAds}"
 }
 
-if [ ! -e "/root/.run-to-beowulf.cnf" ]; then
-  echo "ERROR: /root/.run-to-beowulf.cnf is required!"
+if [ ! -e "/root/.run-to-excalibur.cnf" ]; then
+  echo "ERROR: /root/.run-to-excalibur.cnf is required!"
   exit 1
 fi
 
 _check_os_compatibility() {
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
-  if [ "${_OS_CODE}" = "beowulf" ] \
-    && [ ! -e "/root/.run-auto-major-os-reboot-beowulf-one.cnf" ] \
-    && [ ! -e "/root/.run-auto-major-os-reboot-beowulf-two.cnf" ]; then
+  if [ "${_OS_CODE}" = "excalibur" ] \
+    && [ ! -e "/root/.run-auto-major-os-reboot-excalibur-one.cnf" ] \
+    && [ ! -e "/root/.run-auto-major-os-reboot-excalibur-two.cnf" ]; then
     echo "This server already runs ${_OS_DIST}/${_OS_CODE}"
     echo "Bye!"
     exit 1
-  elif [ "${_OS_CODE}" = "excalibur" ] \
-    || [ "${_OS_CODE}" = "daedalus" ] \
-    || [ "${_OS_CODE}" = "chimaera" ] \
-    || [ "${_OS_CODE}" = "trixie" ] \
-    || [ "${_OS_CODE}" = "bookworm" ] \
-    || [ "${_OS_CODE}" = "bullseye" ]; then
-    echo "This server already runs newer ${_OS_DIST}/${_OS_CODE}"
-    echo "Bye!"
-    exit 1
   fi
-  if [ "${_OS_CODE}" = "buster" ]; then
-    _NEXT_OS_CODE=beowulf
-  elif [ "${_OS_CODE}" = "stretch" ]; then
-    _NEXT_OS_CODE=beowulf
-  elif [ "${_OS_CODE}" = "jessie" ]; then
-    _NEXT_OS_CODE=beowulf
+  if [ "${_OS_CODE}" = "trixie" ]; then
+    _NEXT_OS_CODE=excalibur
+  elif [ "${_OS_CODE}" = "daedalus" ]; then
+    _NEXT_OS_CODE=excalibur
+  elif [ "${_OS_CODE}" = "chimaera" ]; then
+    _NEXT_OS_CODE=daedalus
+  elif [ "${_OS_CODE}" = "bookworm" ]; then
+    _NEXT_OS_CODE=daedalus
+  elif [ "${_OS_CODE}" = "beowulf" ]; then
+    _NEXT_OS_CODE=chimaera
+  elif [ "${_OS_CODE}" = "bullseye" ]; then
+    _NEXT_OS_CODE=chimaera
   else
-    if [ ! -e "/root/.run-auto-major-os-reboot-beowulf-one.cnf" ] \
-      && [ ! -e "/root/.run-auto-major-os-reboot-beowulf-two.cnf" ]; then
+    if [ ! -e "/root/.run-auto-major-os-reboot-excalibur-one.cnf" ] \
+      && [ ! -e "/root/.run-auto-major-os-reboot-excalibur-two.cnf" ]; then
       echo "This procedure does not support ${_OS_DIST}/${_OS_CODE}"
-      echo "The minimum supported system is Debian/jessie"
-      echo "The maximum supported system is Debian/buster"
+      echo "The minimum supported system is Debian/bullseye"
+      echo "The maximum supported system is Debian/trixie or Devuan/daedalus"
       echo "Bye!"
       exit 1
     fi
@@ -314,7 +309,7 @@ _if_remove_cloud_utils() {
     || [ -e "${_aptAkamaiLst}" ] \
     || [ -e "${_aptCloudInit}" ] \
     || [ -e "${_etcCloudCfgd}" ]; then
-    _msg "Removing problematic cloud-utils detected on this system" >> "${_logAbf}"
+    _msg "Removing problematic cloud-utils detected on this system" >> "${_logAds}"
     /usr/bin/apt-get update --allow-insecure-repositories 2> /dev/null
     /usr/bin/apt-get remove cloud-utils cloud-init -y --purge --auto-remove -qq 2> /dev/null
     /usr/bin/apt-get remove cloud-image-utils cloud-guest-utils -y --purge --auto-remove -qq 2> /dev/null
@@ -380,61 +375,70 @@ _if_fix_dhcp() {
   fi
 }
 
-if [ -e "/root/.run-to-beowulf.cnf" ]; then
-  echo " " >> "${_logAbf}"
-  if [ -e "/root/.run-auto-major-os-reboot-beowulf-one.cnf" ] \
-    || [ -e "/root/.run-auto-major-os-reboot-beowulf-two.cnf" ]; then
-    _msg "Waiting 30 seconds for the system start scripts to finish" >> "${_logAbf}"
+if [ -e "/root/.run-to-excalibur.cnf" ]; then
+  echo " " >> "${_logAds}"
+  if [ -e "/root/.run-auto-major-os-reboot-excalibur-one.cnf" ] \
+    || [ -e "/root/.run-auto-major-os-reboot-excalibur-two.cnf" ]; then
+    _msg "Waiting 30 seconds for the system start scripts to finish" >> "${_logAds}"
     sleep 30
     _if_fix_dhcp
   else
-    _msg "Automatic BOA System Major Upgrade Tool welcomes you aboard!" >> "${_logAbf}"
+    _msg "Automatic BOA System Major Upgrade Tool welcomes you aboard!" >> "${_logAds}"
     sleep 3
     _if_fix_dhcp
   fi
 fi
 
-_AUTO_BEOWULF_TEST=$(grep _AUTO_BEOWULF ${_barCnf} 2>&1)
-if [[ ! "${_AUTO_BEOWULF_TEST}" =~ "_AUTO_BEOWULF" ]]; then
-  echo "_AUTO_BEOWULF=YES" >> ${_barCnf}
+_AUTO_DAEDALUS_TEST=$(grep _AUTO_DAEDALUS ${_barCnf} 2>&1)
+if [[ ! "${_AUTO_DAEDALUS_TEST}" =~ "_AUTO_DAEDALUS" ]]; then
+  echo "_AUTO_DAEDALUS=YES" >> ${_barCnf}
 fi
 
-if [ -e "/root/.run-to-beowulf.cnf" ] \
-  && [ ! -e "/root/.run-auto-major-os-reboot-beowulf-one.cnf" ] \
-  && [ ! -e "/root/.run-auto-major-os-reboot-beowulf-two.cnf" ]; then
-  echo " " >> "${_logAbf}"
-  _msg "Running barracuda php-idle disable to speed up upgrades" >> "${_logAbf}"
-  barracuda php-idle disable >> "${_logAbf}"
+if [ -e "/root/.run-to-excalibur.cnf" ] \
+  && [ ! -e "/root/.run-auto-major-os-reboot-excalibur-one.cnf" ] \
+  && [ ! -e "/root/.run-auto-major-os-reboot-excalibur-two.cnf" ]; then
+  echo " " >> "${_logAds}"
+  _msg "Running barracuda php-idle disable to speed up upgrades" >> "${_logAds}"
+  barracuda php-idle disable >> "${_logAds}"
   wait
-  _msg "The barracuda php-idle disable completed" >> "${_logAbf}"
-  _msg "Launching standard barracuda up-${_tRee} system first" >> "${_logAbf}"
+  _msg "The barracuda php-idle disable completed" >> "${_logAds}"
+  _msg "Launching standard barracuda up-${_tRee} system now" >> "${_logAds}"
   [ -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && rm -f /root/.force.rebuild.src.on.auto.now.cnf
-  /opt/local/bin/barracuda up-${_tRee} system noscreen >> "${_logAbf}"
+  /opt/local/bin/barracuda up-${_tRee} system noscreen >> "${_logAds}"
   wait
-  _msg "The standard barracuda up-${_tRee} system completed" >> "${_logAbf}"
+  _msg "The standard barracuda up-${_tRee} system completed" >> "${_logAds}"
   if [ -e "/root/.latest-barracuda-upgrade-finale.info" ]; then
     _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
     _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
-    if [ "${_OS_CODE}" = "jessie" ]; then
-      echo "_JESSIE_TO_BEOWULF=YES" >> ${_barCnf}
-      _msg "Launching major upgrade from ${_OS_DIST}/${_OS_CODE} to Devuan/beowulf" >> "${_logAbf}"
-    elif [ "${_OS_CODE}" = "stretch" ]; then
-      echo "_STRETCH_TO_BEOWULF=YES" >> ${_barCnf}
-      _msg "Launching major upgrade from ${_OS_DIST}/${_OS_CODE} to Devuan/beowulf" >> "${_logAbf}"
-    elif [ "${_OS_CODE}" = "buster" ]; then
-      echo "_BUSTER_TO_BEOWULF=YES" >> ${_barCnf}
-      _msg "Launching major upgrade from ${_OS_DIST}/${_OS_CODE} to Devuan/beowulf" >> "${_logAbf}"
+    if [ "${_OS_CODE}" = "bullseye" ]; then
+      echo "_BULLSEYE_TO_CHIMAERA=YES" >> ${_barCnf}
+      _msg "Launching major upgrade from ${_OS_DIST}/${_OS_CODE} to Devuan/chimaera" >> "${_logAds}"
+    elif [ "${_OS_CODE}" = "beowulf" ]; then
+      echo "_BEOWULF_TO_CHIMAERA=YES" >> ${_barCnf}
+      _msg "Launching major upgrade from ${_OS_DIST}/${_OS_CODE} to Devuan/chimaera" >> "${_logAds}"
+    elif [ "${_OS_CODE}" = "bookworm" ]; then
+      echo "_BOOKWORM_TO_DAEDALUS=YES" >> ${_barCnf}
+      _msg "Launching major upgrade from ${_OS_DIST}/${_OS_CODE} to Devuan/daedalus" >> "${_logAds}"
+    elif [ "${_OS_CODE}" = "chimaera" ]; then
+      echo "_CHIMAERA_TO_DAEDALUS=YES" >> ${_barCnf}
+      _msg "Launching major upgrade from ${_OS_DIST}/${_OS_CODE} to Devuan/daedalus" >> "${_logAds}"
+    elif [ "${_OS_CODE}" = "trixie" ]; then
+      echo "_TRIXIE_TO_EXCALIBUR=YES" >> ${_barCnf}
+      _msg "Launching major upgrade from ${_OS_DIST}/${_OS_CODE} to Devuan/excalibur" >> "${_logAds}"
+    elif [ "${_OS_CODE}" = "daedalus" ]; then
+      echo "_DAEDALUS_TO_EXCALIBUR=YES" >> ${_barCnf}
+      _msg "Launching major upgrade from ${_OS_DIST}/${_OS_CODE} to Devuan/excalibur" >> "${_logAds}"
     fi
-    _msg "The first stage of major OS upgrade will start now" >> "${_logAbf}"
+    _msg "The first stage of major OS upgrade will start now" >> "${_logAds}"
     [ -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && rm -f /root/.force.rebuild.src.on.auto.now.cnf
-    /opt/local/bin/barracuda up-${_tRee} system noscreen >> "${_logAbf}"
+    /opt/local/bin/barracuda up-${_tRee} system noscreen >> "${_logAds}"
     wait
     if [ -e "/root/.run_post_major_os_upgrade.info" ]; then
-      _msg "The first stage of major OS upgrade completed" >> "${_logAbf}"
-      _msg "The system will reboot now" >> "${_logAbf}"
+      _msg "The first stage of major OS upgrade completed" >> "${_logAds}"
+      _msg "The system will reboot now" >> "${_logAds}"
       rm -f /root/.latest-barracuda-upgrade-finale.info
-      touch /root/.run-auto-major-os-reboot-beowulf-one.cnf
-      update-grub >> "${_logAbf}"
+      touch /root/.run-auto-major-os-reboot-excalibur-one.cnf
+      update-grub >> "${_logAds}"
       _faster_reboot
       shutdown -r now
       wait
@@ -443,49 +447,95 @@ if [ -e "/root/.run-to-beowulf.cnf" ] \
   fi
 fi
 
-if [ -e "/root/.run-to-beowulf.cnf" ] \
-  && [ -e "/root/.run-auto-major-os-reboot-beowulf-one.cnf" ] \
-  && [ ! -e "/root/.run-auto-major-os-reboot-beowulf-two.cnf" ]; then
-  echo " " >> "${_logAbf}"
-  _msg "Launching post-reboot barracuda up-${_tRee} system" >> "${_logAbf}"
-  _msg "to complete the first stage of major OS upgrade" >> "${_logAbf}"
+if [ -e "/root/.run-to-excalibur.cnf" ] \
+  && [ -e "/root/.run-auto-major-os-reboot-excalibur-one.cnf" ] \
+  && [ ! -e "/root/.run-auto-major-os-reboot-excalibur-two.cnf" ]; then
+  echo " " >> "${_logAds}"
+  _msg "Launching post-reboot barracuda up-${_tRee} system" >> "${_logAds}"
+  _msg "to complete the first stage of major OS upgrade" >> "${_logAds}"
   [ -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && rm -f /root/.force.rebuild.src.on.auto.now.cnf
-  /opt/local/bin/barracuda up-${_tRee} system noscreen >> "${_logAbf}"
+  /opt/local/bin/barracuda up-${_tRee} system noscreen >> "${_logAds}"
   wait
-  _msg "The post-reboot barracuda up-${_tRee} system completed" >> "${_logAbf}"
-  echo " " >> "${_logAbf}"
-  if [ -e "/root/.latest-barracuda-upgrade-finale.info" ]; then
-    _msg "The single stage major OS upgrade completed" >> "${_logAbf}"
-    _msg "The system will reboot now for a final upgrade" >> "${_logAbf}"
-    rm -f /root/.latest-barracuda-upgrade-finale.info
-    touch /root/.run-auto-major-os-reboot-beowulf-two.cnf
-    update-grub >> "${_logAbf}"
-    _faster_reboot
-    shutdown -r now
+  _msg "The post-reboot barracuda up-${_tRee} system completed" >> "${_logAds}"
+  echo " " >> "${_logAds}"
+  _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
+  if [ -e "/root/.daedalus_to_excalibur_major_os_upgrade.info" ] \
+    || [ -e "/root/.trixie_to_excalibur_major_os_upgrade.info" ]; then
+    _FURTHER_UPGRADE=NO
+  else
+    _FURTHER_UPGRADE=YES
+  fi
+  if [ "${_FURTHER_UPGRADE}" = "NO" ]; then
+    if [ -e "/root/.latest-barracuda-upgrade-finale.info" ]; then
+      _msg "The single stage major OS upgrade completed" >> "${_logAds}"
+      _msg "The system will reboot now for a final upgrade" >> "${_logAds}"
+      rm -f /root/.latest-barracuda-upgrade-finale.info
+      touch /root/.run-auto-major-os-reboot-excalibur-two.cnf
+      update-grub >> "${_logAds}"
+      _faster_reboot
+      shutdown -r now
+      wait
+      exit 0
+    fi
+  fi
+  if [ "${_OS_CODE}" = "bullseye" ] && [ "${_FURTHER_UPGRADE}" = "YES" ]; then
+    echo "_BULLSEYE_TO_CHIMAERA=YES" >> ${_barCnf}
+    _msg "Launching major upgrade from ${_OS_DIST}/${_OS_CODE} to Devuan/chimaera" >> "${_logAds}"
+  elif [ "${_OS_CODE}" = "beowulf" ] && [ "${_FURTHER_UPGRADE}" = "YES" ]; then
+    echo "_BEOWULF_TO_CHIMAERA=YES" >> ${_barCnf}
+    _msg "Launching major upgrade from ${_OS_DIST}/${_OS_CODE} to Devuan/chimaera" >> "${_logAds}"
+  elif [ "${_OS_CODE}" = "bookworm" ] && [ "${_FURTHER_UPGRADE}" = "YES" ]; then
+    echo "_BOOKWORM_TO_DAEDALUS=YES" >> ${_barCnf}
+    _msg "Launching major upgrade from ${_OS_DIST}/${_OS_CODE} to Devuan/daedalus" >> "${_logAds}"
+  elif [ "${_OS_CODE}" = "chimaera" ] && [ "${_FURTHER_UPGRADE}" = "YES" ]; then
+    echo "_CHIMAERA_TO_DAEDALUS=YES" >> ${_barCnf}
+    _msg "Launching major upgrade from ${_OS_DIST}/${_OS_CODE} to Devuan/daedalus" >> "${_logAds}"
+  elif [ "${_OS_CODE}" = "trixie" ] && [ "${_FURTHER_UPGRADE}" = "YES" ]; then
+    echo "_TRIXIE_TO_EXCALIBUR=YES" >> ${_barCnf}
+    _msg "Launching major upgrade from ${_OS_DIST}/${_OS_CODE} to Devuan/excalibur" >> "${_logAds}"
+  elif [ "${_OS_CODE}" = "daedalus" ] && [ "${_FURTHER_UPGRADE}" = "YES" ]; then
+    echo "_DAEDALUS_TO_EXCALIBUR=YES" >> ${_barCnf}
+    _msg "Launching major upgrade from ${_OS_DIST}/${_OS_CODE} to Devuan/excalibur" >> "${_logAds}"
+  fi
+  if [ "${_FURTHER_UPGRADE}" = "YES" ]; then
+    _msg "The second stage of major OS upgrade will start now" >> "${_logAds}"
+    [ -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && rm -f /root/.force.rebuild.src.on.auto.now.cnf
+    /opt/local/bin/barracuda up-${_tRee} system noscreen >> "${_logAds}"
     wait
-    exit 0
+    if [ -e "/root/.run_post_major_os_upgrade.info" ]; then
+      _msg "The second stage of major OS upgrade completed" >> "${_logAds}"
+      _msg "The system will reboot now" >> "${_logAds}"
+      rm -f /root/.latest-barracuda-upgrade-finale.info
+      touch /root/.run-auto-major-os-reboot-excalibur-two.cnf
+      update-grub >> "${_logAds}"
+      _faster_reboot
+      shutdown -r now
+      wait
+      exit 0
+    fi
   fi
 fi
 
-if [ -e "/root/.run-to-beowulf.cnf" ] \
-  && [ -e "/root/.run-auto-major-os-reboot-beowulf-one.cnf" ] \
-  && [ -e "/root/.run-auto-major-os-reboot-beowulf-two.cnf" ]; then
-  echo " " >> "${_logAbf}"
-  touch /root/.auto-upgraded-to-beowulf.cnf
-  _msg "Launching the final post-second-reboot barracuda up-${_tRee} system" >> "${_logAbf}"
+if [ -e "/root/.run-to-excalibur.cnf" ] \
+  && [ -e "/root/.run-auto-major-os-reboot-excalibur-one.cnf" ] \
+  && [ -e "/root/.run-auto-major-os-reboot-excalibur-two.cnf" ]; then
+  echo " " >> "${_logAds}"
+  touch /root/.auto-upgraded-to-excalibur.cnf
+  _msg "Launching the final post-second-reboot barracuda up-${_tRee} system" >> "${_logAds}"
   [ ! -e "/root/.allow.apparmor.cnf" ] && touch /root/.allow.apparmor.cnf
   [ ! -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && touch /root/.force.rebuild.src.on.auto.now.cnf
-  /opt/local/bin/barracuda up-${_tRee} system noscreen >> "${_logAbf}"
+  /opt/local/bin/barracuda up-${_tRee} system noscreen >> "${_logAds}"
   wait
-  [ -e "/root/.run-to-beowulf.cnf" ] && rm -f /root/.run-to-beowulf.cnf
+  [ -e "/root/.run-to-excalibur.cnf" ] && rm -f /root/.run-to-excalibur.cnf
   [ -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && rm -f /root/.force.rebuild.src.on.auto.now.cnf
-  [ -e "/root/.run-auto-major-os-reboot-beowulf-one.cnf" ] rm -f /root/.run-auto-major-os-reboot-beowulf-one.cnf
-  [ -e "/root/.run-auto-major-os-reboot-beowulf-two.cnf" ] rm -f /root/.run-auto-major-os-reboot-beowulf-two.cnf
-  sed -i "s/^_AUTO_BEOWULF.*//g" /root/.barracuda.cnf
-  _msg "The final post-reboot barracuda up-${_tRee} system completed" >> "${_logAbf}"
-  _msg "That's all folks!" >> "${_logAbf}"
-  _msg "Bye!" >> "${_logAbf}"
-  echo " " >> "${_logAbf}"
+  [ -e "/root/.run-auto-major-os-reboot-excalibur-one.cnf" ] && rm -f /root/.run-auto-major-os-reboot-excalibur-one.cnf
+  [ -e "/root/.run-auto-major-os-reboot-excalibur-two.cnf" ] && rm -f /root/.run-auto-major-os-reboot-excalibur-two.cnf
+  sed -i "s/^_AUTO_DAEDALUS.*//g" /root/.barracuda.cnf
+  _msg "The final post-reboot barracuda up-${_tRee} system completed" >> "${_logAds}"
+  _msg "That's all folks!" >> "${_logAds}"
+  _msg "Bye!" >> "${_logAds}"
+  echo " " >> "${_logAds}"
 fi
 
 exit 0
