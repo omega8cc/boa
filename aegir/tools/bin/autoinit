@@ -268,13 +268,9 @@ _check_aegir() {
 ###
 _check_no_systemd() {
   if [ -e "/lib/systemd/systemd" ]; then
-    _msg "_check_no_systemd ==> OOPS: Systemd still not removed cleanly" >> "${_logInt}"
-    _msg "_check_no_systemd ==> INFO: We will reboot and try to remove it again..." >> "${_logInt}"
     echo " " >> "${_logInt}"
-    rm -f /run/autoinit.pid
-    shutdown -r now
-    wait
-    exit 0
+    _msg "_check_no_systemd ==> OOPS: Systemd still not removed cleanly" >> "${_logInt}"
+    echo " " >> "${_logInt}"
   fi
 }
 
