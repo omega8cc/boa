@@ -6002,14 +6002,14 @@ _run_aptitude_deps_install() {
       _mrun "apt-get remove libssl1.0-dev -y --purge --auto-remove -qq"
     fi
 
-    if [ "${_OS_CODE}" = "excalibur" ]; then
-      for _PKG in libssl-dev mcrypt; do
-        if ! _pkg_installed "${_PKG}"; then
-          _mrun "${_INSTAPP} ${_PKG}"
-        fi
-      done
-    else
-      for _PKG in libssl-dev libc-client2007e libc-client2007e-dev mcrypt libc-client-dev; do
+    for _PKG in libssl-dev mcrypt; do
+      if ! _pkg_installed "${_PKG}"; then
+        _mrun "${_INSTAPP} ${_PKG}"
+      fi
+    done
+
+    if [ "${_OS_CODE}" != "excalibur" ]; then
+      for _PKG in libc-client2007e libc-client2007e-dev; do
         if ! _pkg_installed "${_PKG}"; then
           _mrun "${_INSTAPP} ${_PKG}"
         fi
