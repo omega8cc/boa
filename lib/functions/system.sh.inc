@@ -5977,6 +5977,12 @@ _run_aptitude_deps_install() {
     done
 
     _mrun "apt-get autoremove -y"
+
+    for _PKG in python3-full python3-dev python3-debian python3-magic; do
+      if ! _pkg_installed "${_PKG}"; then
+        _mrun "${_INSTAPP} ${_PKG}"
+      fi
+    done
     for _PKG in build-essential libsasl2-modules time vim cvs makepasswd; do
       if ! _pkg_installed "${_PKG}"; then
         _mrun "${_INSTAPP} ${_PKG}"
@@ -6075,11 +6081,6 @@ _run_aptitude_deps_install() {
       fi
     done
     for _PKG in clamav clamav-base clamav-daemon clamdscan ghostscript htop lemon lftp nano; do
-      if ! _pkg_installed "${_PKG}"; then
-        _mrun "${_INSTAPP} ${_PKG}"
-      fi
-    done
-    for _PKG in python3-full python3-dev python3-debian python3-magic; do
       if ! _pkg_installed "${_PKG}"; then
         _mrun "${_INSTAPP} ${_PKG}"
       fi
