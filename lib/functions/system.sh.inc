@@ -5963,6 +5963,16 @@ _run_aptitude_deps_install() {
     _msg "WAIT: This may take a while, please wait..."
     _apt_clean_update
     _run_xtrabackup_cleanup
+
+    for _PKG in packagekit polkitd software-properties-common python3-software-properties; do
+      if _pkg_installed "${_PKG}"; then
+        _mrun "apt-get remove ${_PKG} -y -qq"
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "PCKG: ${_PKG} removed as requested."
+        fi
+      fi
+    done
+
     _mrun "apt-get autoremove -y"
     for _PKG in build-essential libsasl2-modules time vim cvs makepasswd; do
       if ! _pkg_installed "${_PKG}"; then
@@ -7901,8 +7911,6 @@ _sys_packages_install() {
                      libpng-dev \
                      libpng16-16 \
                      libtinfo6 \
-                     software-properties-common \
-                     python3-software-properties \
                      ${_EXTRA_PACKAGES}"
   elif [ "${_OS_CODE}" = "daedalus" ]; then
     _EXTRA_PACKAGES="autoconf2.69 \
@@ -7916,8 +7924,6 @@ _sys_packages_install() {
                      libpng-dev \
                      libpng16-16 \
                      libtinfo6 \
-                     software-properties-common \
-                     python3-software-properties \
                      ${_EXTRA_PACKAGES}"
   elif [ "${_OS_CODE}" = "chimaera" ]; then
     _EXTRA_PACKAGES="autoconf2.69 \
@@ -7931,7 +7937,6 @@ _sys_packages_install() {
                      libpng-dev \
                      libpng16-16 \
                      libtinfo6 \
-                     software-properties-common \
                      ${_EXTRA_PACKAGES}"
   elif [ "${_OS_CODE}" = "beowulf" ]; then
     _EXTRA_PACKAGES="autoconf2.64 \
@@ -7946,7 +7951,6 @@ _sys_packages_install() {
                      libpng-dev \
                      libpng16-16 \
                      libtinfo6 \
-                     software-properties-common \
                      ttf-dejavu \
                      ttf-dejavu-core \
                      ttf-dejavu-extra \
@@ -7963,8 +7967,6 @@ _sys_packages_install() {
                      libpng-dev \
                      libpng16-16 \
                      libtinfo6 \
-                     software-properties-common \
-                     python3-software-properties \
                      ${_EXTRA_PACKAGES}"
   elif [ "${_OS_CODE}" = "bullseye" ]; then
     _EXTRA_PACKAGES="autoconf2.69 \
@@ -7978,7 +7980,6 @@ _sys_packages_install() {
                      libpng-dev \
                      libpng16-16 \
                      libtinfo6 \
-                     software-properties-common \
                      ${_EXTRA_PACKAGES}"
   elif [ "${_OS_CODE}" = "buster" ]; then
     _EXTRA_PACKAGES="autoconf2.64 \
@@ -7993,7 +7994,6 @@ _sys_packages_install() {
                      libpng-dev \
                      libpng16-16 \
                      libtinfo6 \
-                     software-properties-common \
                      ttf-dejavu \
                      ttf-dejavu-core \
                      ttf-dejavu-extra \
@@ -8009,7 +8009,6 @@ _sys_packages_install() {
                      libpcre3-dev \
                      libpng-dev \
                      libpng16-16 \
-                     software-properties-common \
                      ttf-dejavu \
                      ttf-dejavu-core \
                      ttf-dejavu-extra \
@@ -8028,7 +8027,6 @@ _sys_packages_install() {
                      libpng12-0-dev \
                      libt1-5 \
                      libt1-dev \
-                     python-software-properties \
                      t1lib-bin \
                      ttf-dejavu \
                      ttf-dejavu-core \

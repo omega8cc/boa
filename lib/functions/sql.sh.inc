@@ -866,9 +866,9 @@ _prep_for_install_db_sql() {
   cd /var/opt
 
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "INFO: Installing software-properties-common dirmngr..."
+    _msg "INFO: Installing dirmngr..."
   fi
-  for _PKG in software-properties-common dirmngr; do
+  for _PKG in dirmngr; do
     if ! _pkg_installed "${_PKG}"; then
       _mrun "${_INSTAPP} ${_PKG}"
     fi

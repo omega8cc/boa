@@ -1696,7 +1696,7 @@ _install_db_cluster() {
     vserver ${_idn} exec ${_INSTAPP} debian-keyring
     vserver ${_idn} exec ${_INSTAPP} debian-archive-keyring
   	vserver ${_idn} exec apt-get upgrade -y -qq
-  	vserver ${_idn} exec ${_INSTAPP} software-properties-common dirmngr
+  	vserver ${_idn} exec ${_INSTAPP} dirmngr
     rm -f /vservers/${_idn}/etc/apt/sources.list.d/mariadb*
     rm -f /vservers/${_idn}/etc/apt/sources.list.d/ourdelta*
     rm -f /vservers/${_idn}/etc/apt/sources.list.d/percona*
