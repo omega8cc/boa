@@ -812,7 +812,7 @@ EOF
   ${_INITINS} "${_DROOT}.deb" >> "${_logSlt}"
 
   # sanity check
-  if ! dpkg-query -W -f='${Provides}\n' systemd-dummy 2>/dev/null | grep -q 'systemd'; then
+  if ! dpkg-query -W -f='${Provides}\n' systemd-dummy 2>/dev/null | grep 'systemd'; then
     echo "[init][ERROR] systemd-dummy failed to provide 'systemd'" >> "${_logInt}"
   fi
 }
@@ -838,11 +838,11 @@ _ensure_openssh_server() {
 # Before real removal, simulate and auto-heal if SSH would be removed.
 _purge_systemd_keep_ssh() {
   _msg "[init] Simulating 'apt-get remove systemd'" >> "${_logInt}"
-  if apt-get -s remove systemd 2>/dev/null | grep -qE 'Remv (openssh-server|ssh)\b'; then
+  if apt-get -s remove systemd 2>/dev/null | grep -E 'Remv (openssh-server|ssh)\b'; then
     _msg "[init] APT would remove SSH; installing dummy provider" >> "${_logInt}"
     _install_systemd_dummy
     _msg "[init] Re-simulating removal" >> "${_logInt}"
-    if apt-get -s remove systemd 2>/dev/null | grep -qE 'Remv (openssh-server|ssh)\b'; then
+    if apt-get -s remove systemd 2>/dev/null | grep -E 'Remv (openssh-server|ssh)\b'; then
       _msg "[init][ERROR] SSH still slated for removal even with systemd-dummy present" >> "${_logInt}"
     fi
   fi
