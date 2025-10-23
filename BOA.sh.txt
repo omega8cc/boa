@@ -4306,14 +4306,16 @@ _update_boa_tools() {
     fi
   done
 
-  if [ ! -e "/data/u" ] && [ -e "${_optBin}/killer" ] && [ ! -e "${_usrBin}/vmnetfix" ]; then
-    rm -f ${_usrBin}/{aptcleanup*,autoinit*,backchain*,barracuda*,boa*,dhcpfix*,killer*,loadguard*,octopus*,vmnetfix*,webserver*,websh*}
+  if [ ! -e "/data/u" ] && [ -e "${_optBin}/killer" ] && [ ! -e "${_usrBin}/ffdevuan" ]; then
+    rm -f ${_usrBin}/{aptcleanup*,autoinit*,backchain*,barracuda*,boa*,dhcpfix*,ffdevuan*,ffmirror*,killer*,loadguard*,octopus*,vmnetfix*,webserver*,websh*}
     ln -sfn ${_optBin}/aptcleanup  ${_usrBin}/aptcleanup
     ln -sfn ${_optBin}/autoinit    ${_usrBin}/autoinit
     ln -sfn ${_optBin}/backchain   ${_usrBin}/backchain
     ln -sfn ${_optBin}/barracuda   ${_usrBin}/barracuda
     ln -sfn ${_optBin}/boa         ${_usrBin}/boa
     ln -sfn ${_optBin}/dhcpfix     ${_usrBin}/dhcpfix
+    ln -sfn ${_optBin}/ffdevuan    ${_usrBin}/ffdevuan
+    ln -sfn ${_optBin}/ffmirror    ${_usrBin}/ffmirror
     ln -sfn ${_optBin}/killer      ${_usrBin}/killer
     ln -sfn ${_optBin}/loadguard   ${_usrBin}/loadguard
     ln -sfn ${_optBin}/octopus     ${_usrBin}/octopus
