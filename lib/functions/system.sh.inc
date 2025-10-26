@@ -8368,14 +8368,19 @@ _install_myquick_deb() {
     _msg "PROC: _install_myquick_deb"
   fi
   if [ "${_MYQUICK_SRC_INSTALL_REQUIRED}" = "NO" ]; then
+    if [ "${_USE_CODE}" = "trixie" ]; then
+      _USE_MYQUICK="${_MYQUICK_VRN_LATEST}"
+    else
+      _USE_MYQUICK="${_MYQUICK_VRN_EIGHT}"
+    fi
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      _msg "INFO: Installing MyQuick ${_MYQUICK_VRN_EIGHT} from ${_USE_CODE} packages"
+      _msg "INFO: Installing MyQuick ${_USE_MYQUICK} from ${_USE_CODE} packages"
     fi
     cd /var/opt
     rm -rf mydumper_*
-    _get_dev_arch "mydumper_${_MYQUICK_VRN_EIGHT}.${_USE_CODE}_amd64.deb.gz"
-    if [ -e "/var/opt/mydumper_${_MYQUICK_VRN_EIGHT}.${_USE_CODE}_amd64.deb" ]; then
-      _mrun "dpkg -i mydumper_${_MYQUICK_VRN_EIGHT}.${_USE_CODE}_amd64.deb"
+    _get_dev_arch "mydumper_${_USE_MYQUICK}.${_USE_CODE}_amd64.deb.gz"
+    if [ -e "/var/opt/mydumper_${_USE_MYQUICK}.${_USE_CODE}_amd64.deb" ]; then
+      _mrun "dpkg -i mydumper_${_USE_MYQUICK}.${_USE_CODE}_amd64.deb"
     fi
     if [ -x "/usr/bin/mydumper" ]; then
       [ -e "/usr/local/bin/mydumper" ] && rm -f /usr/local/bin/mydumper
@@ -8394,7 +8399,9 @@ _myquick_install_upgrade() {
     _msg "PROC: _myquick_install_upgrade"
   fi
   _MYQUICK_SRC_INSTALL_REQUIRED=NO
-  if [ "${_SQL_OS_CODE}" = "bookworm" ]; then
+  if [ "${_SQL_OS_CODE}" = "trixie" ]; then
+    _USE_CODE=trixie
+  elif [ "${_SQL_OS_CODE}" = "bookworm" ]; then
     _USE_CODE=bookworm
   elif [ "${_SQL_OS_CODE}" = "bullseye" ]; then
     _USE_CODE=bullseye
