@@ -8372,7 +8372,7 @@ _install_myquick_deb() {
     _msg "PROC: _install_myquick_deb"
   fi
   if [ "${_MYQUICK_SRC_INSTALL_REQUIRED}" = "NO" ]; then
-    if [ "${_OS_CODE}" = "excalibur" ]; then
+    if [ "${_USE_CODE}" = "trixie" ]; then
       _USE_MYQUICK="${_MYQUICK_VRN_LATEST}"
     else
       _USE_MYQUICK="${_MYQUICK_VRN_EIGHT}"
