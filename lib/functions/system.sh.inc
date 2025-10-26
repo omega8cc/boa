@@ -6035,6 +6035,9 @@ _run_aptitude_deps_install() {
         _mrun "${_INSTAPP} ${_PKG}"
       fi
     done
+
+    apt-get remove stunnel4 -y --purge --auto-remove -qq 2> /dev/null
+
     for _PKG in rsync strace librsync-dev mc whois zlib1g zlib1g-dev sqlite3 libsqlite3-dev; do
       if ! _pkg_installed "${_PKG}"; then
         _mrun "${_INSTAPP} ${_PKG}"
