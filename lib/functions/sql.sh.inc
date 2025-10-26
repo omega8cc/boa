@@ -817,7 +817,6 @@ _prep_for_install_db_sql() {
   _SQL_SCR=APT
   if [ "${_OS_CODE}" = "excalibur" ]; then
     _SQL_OS_CODE=trixie
-    _SQL_OS_CODE=bookworm ### Temporary trick
   elif [ "${_OS_CODE}" = "daedalus" ]; then
     _SQL_OS_CODE=bookworm
   elif [ "${_OS_CODE}" = "chimaera" ]; then
@@ -1179,7 +1178,6 @@ _db_server_install() {
   _SQL_SCR=APT
   if [ "${_OS_CODE}" = "excalibur" ]; then
     _SQL_OS_CODE=trixie
-    _SQL_OS_CODE=bookworm ### Temporary trick
   elif [ "${_OS_CODE}" = "daedalus" ]; then
     _SQL_OS_CODE=bookworm
   elif [ "${_OS_CODE}" = "chimaera" ]; then

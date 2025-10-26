@@ -6926,7 +6926,6 @@ _if_major_os_upgrade() {
     _OS_CODE="${_NEW_OS_CODE}"
     if [ "${_OS_CODE}" = "excalibur" ]; then
       _SQL_NEW_OS_CODE=trixie
-      _SQL_NEW_OS_CODE=bookworm ### Temporary trick
     elif [ "${_OS_CODE}" = "daedalus" ]; then
       _SQL_NEW_OS_CODE=bookworm
     elif [ "${_OS_CODE}" = "chimaera" ]; then
