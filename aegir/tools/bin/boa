@@ -1154,11 +1154,12 @@ _barracuda_install() {
 
     ###
     ### Percona SQL server doesn't support Debian Trixie / Devuan Excalibur yet.
-    ### We may need to enforce Percona 8.4 unless 8.0 will be supported too.
+    ### We may need to enforce Percona 8.4 unless 8.0 will be supported too, but
+    ### since we test Percona from Debian Bookworm we need to test Percona 8.0
     ###
     if [ "${_OS_CODE}" = "excalibur" ] \
-      && [ "${_eXtr}" != "percona-8.0" ]; then
-      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=8.4/g"             ${_vBs}/${_filIncB}
+      && [ "${_eXtr}" != "percona-8.4" ]; then
+      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=8.0/g"             ${_vBs}/${_filIncB}
       wait
     fi
 
