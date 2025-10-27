@@ -219,10 +219,6 @@ if [ -e "/run/boa_run.pid" ] || [ -e "/root/.skip_cleanup.cnf" ]; then
   echo "Cleanup skipped due to ongoing operations or configuration settings."
   exit 0
 else
-  echo "Waiting for 60 seconds before starting maintenance tasks..."
-  touch /run/boa_wait.pid
-  sleep 60
   _graceful_action
-  [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
   exit 0
 fi

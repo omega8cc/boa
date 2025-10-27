@@ -396,7 +396,6 @@ _mode_detection() {
     _msg "MODE: UPGRADE"
     _dedup_xtras_list
     _barracuda_cnf
-    touch /run/boa_wait.pid
     if [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ]; then
       if [[ ! " ${_XTRAS_LIST} " =~ (^|[[:space:]])CSF([[:space:]]|$) ]]; then

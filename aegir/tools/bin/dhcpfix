@@ -1,6 +1,7 @@
 #!/bin/bash
 
-set -euo pipefail
+# Enable strict error handling for debugging only
+# set -euo pipefail
 
 # === Config ===
 _RESOLV_TARGET_CONTENT=$'nameserver 127.0.0.1\nnameserver 1.1.1.1\nnameserver 8.8.8.8\nnameserver 9.9.9.9\n'

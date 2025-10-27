@@ -8,7 +8,7 @@ $ENV{'PATH'} = '/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin
 use warnings;
 use File::Spec;
 
-my $run_to_files = [ "/root/.run-to-daedalus.cnf", "/root/.run-to-chimaera.cnf", "/root/.run-to-beowulf.cnf", "/run/boa_run.pid", "/run/boa_wait.pid" ];
+my $run_to_files = [ "/root/.run-to-excalibur.cnf", "/root/.run-to-daedalus.cnf", "/root/.run-to-chimaera.cnf", "/root/.run-to-beowulf.cnf", "/run/boa_run.pid" ];
 
 ###
 ### System Services Monitor running every 5 seconds
