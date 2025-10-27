@@ -2196,7 +2196,6 @@ _THIS_LTD_CONF="/var/backups/ltd/conf/lshell.conf.${_NOW}"
 if [ -e "/run/manage_ruby_users.pid" ] \
   || [ -e "/run/manage_ltd_users.pid" ] \
   || [ -e "/run/boa_run.pid" ] \
-  || [ -e "/run/boa_wait.pid" ] \
   || [ -e "/run/octopus_install_run.pid" ]; then
   touch /var/log/boa/wait-manage-ltd-users.pid
   echo "Another BOA task is running, we have to wait"

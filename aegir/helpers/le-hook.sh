@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # https://github.com/lukas2511/dehydrated/blob/master/docs/examples/hook.sh
 
-set -eu -o pipefail
+# Enable strict error handling for debugging only
+# set -euo pipefail
 
 deploy_challenge() {
 		local DOMAIN="${1}" TOKEN_FILENAME="${2}" TOKEN_VALUE="${3}"

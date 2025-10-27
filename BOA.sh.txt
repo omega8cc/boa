@@ -905,9 +905,9 @@ _update_agents() {
     [ ! -e "/var/xdrago/monitor/check" ] && mkdir -p /var/xdrago/monitor/check
     [ ! -e "/var/xdrago/monitor/log" ] && mkdir -p /var/xdrago/monitor/log
 
-    if [ ! -e "${_pthLog}/.force.f92.${_tRee}.${_xSrl}.ctrl" ]; then
+    if [ ! -e "${_pthLog}/.force.f91.${_tRee}.${_xSrl}.ctrl" ]; then
       rm -f ${_pthLog}/*.ctrl.*.pid
-      touch ${_pthLog}/.force.f92.${_tRee}.${_xSrl}.ctrl
+      touch ${_pthLog}/.force.f91.${_tRee}.${_xSrl}.ctrl
     fi
 
     [ ! -e "/var/xdrago/checksql.pl" ] && rm -f ${_pthLog}/checksql.pl.ctrl.*.pid
@@ -944,9 +944,6 @@ _update_agents() {
     [ ! -e "/var/xdrago/monitor/check/escapecheck.pl" ] && rm -f ${_pthLog}/escapecheck.pl.ctrl.*.pid
     [ ! -e "/var/xdrago/monitor/check/hackcheck.pl" ] && rm -f ${_pthLog}/hackcheck.pl.ctrl.*.pid
     [ ! -e "/var/xdrago/monitor/check/hackftp.pl" ] && rm -f ${_pthLog}/hackftp.pl.ctrl.*.pid
-    [ ! -e "/var/xdrago/monitor/check/locked_java.pl" ] && rm -f ${_pthLog}/locked_java.pl.ctrl.*.pid
-    [ ! -e "/var/xdrago/monitor/check/locked_nginx.pl" ] && rm -f ${_pthLog}/locked_nginx.pl.ctrl.*.pid
-    [ ! -e "/var/xdrago/monitor/check/scan_nginx.pl" ] && rm -f ${_pthLog}/scan_nginx.pl.ctrl.*.pid
     [ ! -e "/var/xdrago/monitor/check/segfault_alert.pl" ] && rm -f ${_pthLog}/segfault_alert.pl.ctrl.*.pid
     [ ! -e "/var/xdrago/monitor/check/sqlcheck.pl" ] && rm -f ${_pthLog}/sqlcheck.pl.ctrl.*.pid
 
@@ -1676,34 +1673,6 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/locked_java.pl.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
-    mv -f /var/xdrago/monitor/check/locked_java.pl /var/xdrago/monitor/check/locked_java.pl.old
-    curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/locked_java.pl" -o /var/xdrago/monitor/check/locked_java.pl
-    if [ -e "/var/xdrago/monitor/check/locked_java.pl" ]; then
-      chmod 700 /var/xdrago/monitor/check/locked_java.pl
-      chown root:root /var/xdrago/monitor/check/locked_java.pl
-      touch ${_pthLog}/locked_java.pl.ctrl.f95.${_tRee}.${_xSrl}.pid
-    else
-      mv -f /var/xdrago/monitor/check/locked_java.pl.old /var/xdrago/monitor/check/locked_java.pl
-    fi
-  fi
-
-  if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/locked_nginx.pl.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
-    mv -f /var/xdrago/monitor/check/locked_nginx.pl /var/xdrago/monitor/check/locked_nginx.pl.old
-    curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/locked_nginx.pl" -o /var/xdrago/monitor/check/locked_nginx.pl
-    if [ -e "/var/xdrago/monitor/check/locked_nginx.pl" ]; then
-      chmod 700 /var/xdrago/monitor/check/locked_nginx.pl
-      chown root:root /var/xdrago/monitor/check/locked_nginx.pl
-      touch ${_pthLog}/locked_nginx.pl.ctrl.f95.${_tRee}.${_xSrl}.pid
-    else
-      mv -f /var/xdrago/monitor/check/locked_nginx.pl.old /var/xdrago/monitor/check/locked_nginx.pl
-    fi
-  fi
-
-  if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
     && [ ! -e "${_pthLog}/segfault_alert.pl.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/monitor/check/segfault_alert.pl /var/xdrago/monitor/check/segfault_alert.pl.old
     curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/segfault_alert.pl" -o /var/xdrago/monitor/check/segfault_alert.pl
@@ -2119,44 +2088,6 @@ _update_agents() {
       touch ${_pthLog}/guest-water.sh.ctrl.f92.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/guest-water.sh.old /var/xdrago/guest-water.sh
-    fi
-  fi
-
-  if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/scan_nginx.pl.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
-    [ ! -d "/var/xdrago/monitor/log" ] && mkdir -p /var/xdrago/monitor/log
-    mv -f /var/xdrago/monitor/check/scan_nginx.pl /var/xdrago/monitor/check/scan_nginx.pl.old
-    curl ${_crlGet} "${_urlHmr}/tools/system/monitor/check/scan_nginx.pl" \
-      -o /var/xdrago/monitor/check/scan_nginx.pl
-    if [ -e "/var/xdrago/monitor/check/scan_nginx.pl" ]; then
-      sed -i "s/default_critnumber =.*/default_critnumber = 399;/g" /var/xdrago/monitor/check/scan_nginx.pl
-      wait
-      sed -i "s/default_lines =.*/default_lines = 1999;/g" /var/xdrago/monitor/check/scan_nginx.pl
-      wait
-      _if_hosted_sys
-      if [ "${_hostedSys}" = "YES" ]; then
-        if [ -z "${_NGINX_DOS_IGNORE}" ]; then
-          _NGINX_DOS_IGNORE="doccomment"
-        fi
-      fi
-      if [ ! -z "${_NGINX_DOS_IGNORE}" ]; then
-        _NGINX_DOS_IGNORE=${_NGINX_DOS_IGNORE//[^a-zA-Z0-9|-]/}
-        sed -i "s/dontcount/${_NGINX_DOS_IGNORE}/g" /var/xdrago/monitor/check/scan_nginx.pl
-        wait
-      fi
-      if [ ! -z "${_NGINX_DOS_STOP}" ]; then
-        _NGINX_DOS_STOP=${_NGINX_DOS_STOP//[^a-zA-Z0-9|-]/}
-        if [ ! -z "${_NGINX_DOS_STOP}" ]; then
-          sed -i "s/foobar/${_NGINX_DOS_STOP}/g" /var/xdrago/monitor/check/scan_nginx.pl
-          wait
-        fi
-      fi
-      chmod 700 /var/xdrago/monitor/check/scan_nginx.pl
-      chown root:root /var/xdrago/monitor/check/scan_nginx.pl
-      touch ${_pthLog}/scan_nginx.pl.ctrl.f95.${_tRee}.${_xSrl}.pid
-    else
-      mv -f /var/xdrago/monitor/check/scan_nginx.pl.old /var/xdrago/monitor/check/scan_nginx.pl
     fi
   fi
 

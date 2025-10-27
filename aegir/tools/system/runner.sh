@@ -81,7 +81,7 @@ _load_control() {
 _if_accelerated_queue() {
   if [ -e "/run/octopus_install_run.pid" ]; then
     _ACCELERATED=YES
-  elif [ -e "/run/boa_wait.pid" ]; then
+  elif [ -e "/run/boa_run.pid" ]; then
     _ACCELERATED=NONE
   else
     _ACCELERATED=NORMAL

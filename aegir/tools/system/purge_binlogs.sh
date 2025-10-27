@@ -139,7 +139,7 @@ _purge_action() {
   fi
 }
 
-if [ -e "/run/boa_wait.pid" ]; then
+if [ -e "/run/boa_run.pid" ]; then
   touch /var/log/boa/wait-purge.pid
   exit 0
 else
