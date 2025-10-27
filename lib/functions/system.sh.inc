@@ -423,7 +423,6 @@ _if_running_as_root_barracuda() {
     rm -rf /tmp/make_tmp*
     rm -f /tmp/pm-updatecode*
     rm -f /tmp/cache.inc*
-    touch /run/boa_run.pid
     mkdir -p ${_pthLog}
     find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -rf {} \; &> /dev/null
     # Check if dmidecode is available
