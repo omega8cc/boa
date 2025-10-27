@@ -8406,32 +8406,6 @@ _xdrago_install_upgrade() {
       fi
     fi
     sed -i "s/^_NGINX_DOS_LIMIT=.*/_NGINX_DOS_LIMIT=${_NGINX_DOS_LIMIT}/g"  ${_barCnf}
-    sed -i "s/default_critnumber =.*/default_critnumber = ${_NGINX_DOS_LIMIT};/g" /var/xdrago/monitor/check/scan_nginx.pl
-    wait
-    sed -i "s/default_lines =.*/default_lines = 1999;/g" /var/xdrago/monitor/check/scan_nginx.pl
-    wait
-    if [ ! -z "${_NGINX_DOS_STOP}" ]; then
-      _NGINX_DOS_STOP=${_NGINX_DOS_STOP//[^a-zA-Z0-9|-]/}
-      if [ ! -z "${_NGINX_DOS_STOP}" ]; then
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "INFO: Configured _NGINX_DOS_STOP: ${_NGINX_DOS_STOP}"
-        fi
-        sed -i "s/foobar/${_NGINX_DOS_STOP}/g" \
-          /var/xdrago/monitor/check/scan_nginx.pl &> /dev/null
-        wait
-      fi
-    fi
-    if [ ! -z "${_NGINX_DOS_IGNORE}" ]; then
-      _NGINX_DOS_IGNORE=${_NGINX_DOS_IGNORE//[^a-zA-Z0-9|-]/}
-      if [ ! -z "${_NGINX_DOS_IGNORE}" ]; then
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "INFO: Configured _NGINX_DOS_IGNORE: ${_NGINX_DOS_IGNORE}"
-        fi
-        sed -i "s/dontcount/${_NGINX_DOS_IGNORE}/g" \
-          /var/xdrago/monitor/check/scan_nginx.pl &> /dev/null
-        wait
-      fi
-    fi
     mv -f /etc/cron.daily/mlocate ${_vBs}/ &> /dev/null
     cp -af /var/xdrago/cron/crontabs/root /var/spool/cron/crontabs/ &> /dev/null
     if [ -e "/var/xdrago/cron/custom.txt" ]; then
@@ -8489,30 +8463,6 @@ _xdrago_install_upgrade() {
       fi
     fi
     sed -i "s/^_NGINX_DOS_LIMIT=.*/_NGINX_DOS_LIMIT=${_NGINX_DOS_LIMIT}/g"  ${_barCnf}
-    sed -i "s/default_critnumber =.*/default_critnumber = ${_NGINX_DOS_LIMIT};/g" /var/xdrago/monitor/check/scan_nginx.pl
-    wait
-    sed -i "s/default_lines =.*/default_lines = 1999;/g" /var/xdrago/monitor/check/scan_nginx.pl
-    wait
-    if [ ! -z "${_NGINX_DOS_STOP}" ]; then
-      _NGINX_DOS_STOP=${_NGINX_DOS_STOP//[^a-zA-Z0-9|-]/}
-      if [ ! -z "${_NGINX_DOS_STOP}" ]; then
-        _msg "INFO: Configured _NGINX_DOS_STOP: ${_NGINX_DOS_STOP}"
-        sed -i "s/foobar/${_NGINX_DOS_STOP}/g" \
-          /var/xdrago/monitor/check/scan_nginx.pl &> /dev/null
-        wait
-      fi
-    fi
-    if [ ! -z "${_NGINX_DOS_IGNORE}" ]; then
-      _NGINX_DOS_IGNORE=${_NGINX_DOS_IGNORE//[^a-zA-Z0-9|-]/}
-      if [ ! -z "${_NGINX_DOS_IGNORE}" ]; then
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "INFO: Configured _NGINX_DOS_IGNORE: ${_NGINX_DOS_IGNORE}"
-        fi
-        sed -i "s/dontcount/${_NGINX_DOS_IGNORE}/g" \
-          /var/xdrago/monitor/check/scan_nginx.pl &> /dev/null
-        wait
-      fi
-    fi
     mv -f /etc/cron.daily/mlocate ${_vBs}/ &> /dev/null
     _if_hosted_sys
     if [ "${_hostedSys}" = "YES" ]; then
