@@ -107,9 +107,9 @@ _restart_nginx() {
   touch /run/boa_run.pid
   sleep 3
   echo "$(date) NGX $1 detected" >> ${_pthOml}
-  mv -f /var/log/nginx/error.log /var/log/nginx/$(date +%y%m%d-%H%M)-error.log
   echo "Killing all Nginx processes and restarting Nginx..."
   pkill -9 -f nginx: || true
+  mv -f /var/log/nginx/error.log /var/log/nginx/$(date +%y%m%d-%H%M)-error.log
   service nginx restart
   wait
   if pidof nginx > /dev/null; then
