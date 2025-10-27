@@ -22,8 +22,6 @@ fi
 
 test -x $DAEMON || exit 0
 
-set -e
-
 . /lib/lsb/init-functions
 
 test_nginx_config() {

@@ -9,7 +9,7 @@ use warnings;
 use File::Spec;
 
 $| = 1;
-if (-f "/run/boa_wait.pid") {exit;}
+if (-f "/run/boa_mysql_auto_healing.pid") {exit;}
 $status="CLEAN";
 $now_is=`date +%b:%d:%H:%M`;
 chomp($now_is);

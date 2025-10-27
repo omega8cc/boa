@@ -201,11 +201,11 @@ _guest_guard() {
 # Main execution
 if [ -x "/usr/sbin/csf" ]; then
   # Main execution
-  for _iteration in {1..3}; do
+  for _iteration in {1..5}; do
     echo "----------------------------"
     echo "Iteration ${_iteration}:"
     [ ! -e "/run/water.pid" ] && _guest_guard
-    sleep 15
+    sleep 10
   done
 fi
 

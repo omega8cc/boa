@@ -704,9 +704,6 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
       _update_conf_variable "_NGINX_DOS_STOP" "${_DEFAULT_NGINX_DOS_STOP}" "${_barCnf}"
       # Update legacy Perl script too
       sed -i "s/^_NGINX_DOS_LIMIT=.*/_NGINX_DOS_LIMIT=399/g"  ${_barCnf}
-      sed -i "s/default_critnumber =.*/default_critnumber = 399;/g" /var/xdrago/monitor/check/scan_nginx.pl
-      wait
-      sed -i "s/default_lines =.*/default_lines = 1999;/g" /var/xdrago/monitor/check/scan_nginx.pl
       rm -f /var/log/boa/.sync_scan_nginx*
       rm -f /var/log/scan_nginx_*
       touch ${_LOCK_DOS_PID}
@@ -1079,8 +1076,6 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     fi
   fi
 
-  rm -f /run/solr_jetty.pid
-  rm -f /run/solr-jetty.pid
   rm -f /run/fmp_wait.pid
 
   _IS_SQLBACKUP_RUNNING=$(pgrep -f mysql_backup.sh)

@@ -102,7 +102,7 @@ _normalize_incident_report
 
 _incident_email_report() {
   if ! _check_uptime_grace_period >/dev/null; then return 1; fi
-  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" != "OFF" ]; then
+  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "ALL" ]; then
     _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
     echo "Sending Incident Report Email on $(date)" >> ${_pthOml}
     s-nail -s "Incident Report: ${1} on ${_hName} at $(date)" ${_MY_EMAIL} < ${_pthOml}
@@ -155,7 +155,7 @@ _fpm_reload() {
 }
 
 _valkey_restart() {
-  touch /run/boa_run.pid
+  touch /run/boa_valkey_auto_healing.pid
   sleep 3
   echo "$(date) $1 incident detected" >> ${_pthOml}
   service valkey-server stop &> /dev/null
@@ -172,7 +172,7 @@ _valkey_restart() {
   date +%s > "${_cd}"
   _incident_email_report "$1"
   echo >> ${_pthOml}
-  [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
+  [ -e "/run/boa_valkey_auto_healing.pid" ] && rm -f /run/boa_valkey_auto_healing.pid
   exit 0
 }
 
@@ -330,8 +330,8 @@ _valkey_health_check_fix() {
   fi
 }
 
-if [ -e "/run/boa_run.pid" ] \
-  || [ -e "/run/boa_wait.pid" ]; then
+if [ -e "/run/boa_valkey_auto_healing.pid" ] \
+  || [ -e "/run/boa_valkey_auto_healing.pid" ]; then
   _ALLOW_CTRL=NO
 else
   _ALLOW_CTRL=YES

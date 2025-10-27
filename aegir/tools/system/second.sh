@@ -131,7 +131,7 @@ _hold_services() {
   local _current_load="$1"
   local _threshold="$2"
   local _load_period="$3"
-  touch /run/boa_run.pid
+  touch /run/boa_second_auto_healing.pid
   sleep 3
   service nginx stop
   _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
@@ -150,7 +150,7 @@ _hold_services() {
   echo >> ${_pthOml}
   echo "Action Taken: Web services paused due to high load."
   sleep 5
-  rm -f /run/boa_run.pid
+  [ -e "/run/boa_second_auto_healing.pid" ] && rm -f /run/boa_second_auto_healing.pid
 }
 
 # Function to terminate long-running processes
@@ -158,16 +158,14 @@ _terminate_processes() {
   local _current_load="$1"
   local _threshold="$2"
   local _load_period="$3"
-  if [ ! -e "/run/boa_run.pid" ]; then
-    killall -9 php drush.php wget curl &> /dev/null
-    local _log_message
-    _log_message="$(date) System Load ${_current_load}% (${_load_period}) - PHP/Wget/cURL terminated"
-    echo "${_log_message}" >> ${_pthOml}
-    local _subject="Processes Terminated - ${_load_period} Load ${_current_load}% exceeded Critical Load Threshold ${_threshold}%"
-    _incident_email_report "${_subject}" "ALERT"
-    echo >> ${_pthOml}
-    echo "Action Taken: Long-running processes terminated due to critical load."
-  fi
+  killall -9 php drush.php wget curl &> /dev/null
+  local _log_message
+  _log_message="$(date) System Load ${_current_load}% (${_load_period}) - PHP/Wget/cURL terminated"
+  echo "${_log_message}" >> ${_pthOml}
+  local _subject="Processes Terminated - ${_load_period} Load ${_current_load}% exceeded Critical Load Threshold ${_threshold}%"
+  _incident_email_report "${_subject}" "ALERT"
+  echo >> ${_pthOml}
+  echo "Action Taken: Long-running processes terminated due to critical load."
 }
 
 # Function to enable nginx high load configuration
@@ -271,8 +269,10 @@ _load_control() {
         _current_load="${_F_LOAD}"
         _load_period="5-minute"
       fi
-      _terminate_processes "${_current_load}" "${_CPU_CRIT_THRESHOLD}" "${_load_period}"
-      _hold_services "${_current_load}" "${_CPU_MAX_THRESHOLD}" "${_load_period}"
+      if [ ! -e "/run/boa_second_auto_healing.pid" ]; then
+        _terminate_processes "${_current_load}" "${_CPU_CRIT_THRESHOLD}" "${_load_period}"
+        _hold_services "${_current_load}" "${_CPU_MAX_THRESHOLD}" "${_load_period}"
+      fi
     fi
   # Check for max load to hold services
   elif awk "BEGIN {exit !(${_O_LOAD} > ${_CPU_MAX_THRESHOLD} || ${_F_LOAD} > ${_CPU_MAX_THRESHOLD})}"; then
@@ -293,7 +293,9 @@ _load_control() {
         _current_load="${_F_LOAD}"
         _load_period="5-minute"
       fi
-      _hold_services "${_current_load}" "${_CPU_MAX_THRESHOLD}" "${_load_period}"
+      if [ ! -e "/run/boa_second_auto_healing.pid" ]; then
+        _hold_services "${_current_load}" "${_CPU_MAX_THRESHOLD}" "${_load_period}"
+      fi
     fi
   # Check for spider protection threshold
   elif awk "BEGIN {exit !(${_O_LOAD} > ${_CPU_SPIDER_THRESHOLD} && ${_O_LOAD} <= ${_CPU_MAX_THRESHOLD})}"; then

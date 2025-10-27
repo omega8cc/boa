@@ -100,22 +100,18 @@ _incident_email_report() {
 }
 
 _wkhtmltopdf_php_cli_oom_kill() {
-  touch /run/boa_run.pid
   echo "$(date) OOM $1 wkhtmltopdf detected" >> ${_pthOml}
-  sleep 3
   pkill -9 -f wkhtmltopdf
   echo "$(date) OOM wkhtmltopdf killed" >> ${_pthOml}
   killall -9 sleep &> /dev/null
   echo "$(date) OOM wkhtmltopdf incident response completed" >> ${_pthOml}
   _incident_email_report "OOM $1 wkhtmltopdf"
   echo >> ${_pthOml}
-  sleep 3
-  [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
   exit 0
 }
 
 _oom_critical_restart() {
-  touch /run/boa_run.pid
+  touch /run/boa_system_auto_healing.pid
   echo "$(date) OOM $1 detected" >> ${_pthOml}
   sleep 3
   pkill -9 -f wkhtmltopdf
@@ -148,7 +144,7 @@ _oom_critical_restart() {
   _incident_email_report "OOM $1 system" "ALERT"
   echo >> ${_pthOml}
   sleep 3
-  [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
+  [ -e "/run/boa_system_auto_healing.pid" ] && rm -f /run/boa_system_auto_healing.pid
   exit 0
 }
 
@@ -515,24 +511,22 @@ _postfix_health_check_fix
 _cron_duplicate_instances_detection
 _syslog_giant_log_detection
 
-if [ -e "/run/boa_sql_backup.pid" ] \
+if [ -e "/run/boa_system_auto_healing.pid" ] \
+  || [ -e "/run/boa_mysql_auto_healing.pid" ] \
   || [ -e "/run/boa_sql_cluster_backup.pid" ] \
-  || [ -e "/run/boa_run.pid" ] \
-  || [ -e "/run/boa_wait.pid" ] \
-  || [ -e "/run/mysql_restart_running.pid" ]; then
-  _ALLOW_CTRL=NO
+  || [ -e "/run/mysql_restart_running.pid" ] \
+  || [ -e "/run/boa_sql_backup.pid" ]; then
+  exit 0
 else
-  _ALLOW_CTRL=YES
+  _optimize_ram
+  _system_oom_detection
+  _lfd_health_check_fix
+  _ftpd_health_check_fix
+  _vnstat_health_check_fix
+  _gpg_too_many_instances_detection
+  _dirmngr_too_many_instances_detection
+  _clamav_health_check_fix
 fi
-
-[ "${_ALLOW_CTRL}" = "YES" ] && _optimize_ram
-[ "${_ALLOW_CTRL}" = "YES" ] && _system_oom_detection
-[ "${_ALLOW_CTRL}" = "YES" ] && _lfd_health_check_fix
-[ "${_ALLOW_CTRL}" = "YES" ] && _ftpd_health_check_fix
-[ "${_ALLOW_CTRL}" = "YES" ] && _vnstat_health_check_fix
-[ "${_ALLOW_CTRL}" = "YES" ] && _gpg_too_many_instances_detection
-[ "${_ALLOW_CTRL}" = "YES" ] && _dirmngr_too_many_instances_detection
-[ "${_ALLOW_CTRL}" = "YES" ] && _clamav_health_check_fix
 
 echo DONE!
 exit 0
