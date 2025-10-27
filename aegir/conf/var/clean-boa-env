@@ -60,9 +60,6 @@ case "$1" in
         fi
       fi
     fi
-    ### service apparmor stop
-    ### service auditd stop
-    ### /usr/sbin/aa-teardown
     _RAM_AUTO_FILE="/sys/devices/system/memory/auto_online_blocks"
     if [ -f "${_RAM_AUTO_FILE}" ]; then
       if grep -qx offline "${_RAM_AUTO_FILE}"; then
@@ -107,36 +104,11 @@ case "$1" in
       fi
     fi
     touch $PIDFILE
-    if [ -e "/run/boa_wait.pid" ]; then
-      [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
-      echo "$NAME 1 done."
-    else
-      echo "$NAME 1 nothing to do."
-    fi
-    if [ -e "/run/boa_run.pid" ]; then
-      [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
-      echo "$NAME 2 done."
-    else
-      echo "$NAME 2 nothing to do."
-    fi
-    if [ -e "/run/manage_ltd_users.pid" ]; then
-      [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
-      echo "$NAME 3 done."
-    else
-      echo "$NAME 3 nothing to do."
-    fi
-    if [ -e "/run/daily-fix.pid" ]; then
-      rm -f /run/daily-fix.pid
-      echo "$NAME 4 done."
-    else
-      echo "$NAME 4 nothing to do."
-    fi
-    if [ -e "/run/boa_cron_wait.pid" ]; then
-      rm -f /run/boa_cron_wait.pid
-      echo "$NAME 5 done."
-    else
-      echo "$NAME 5 nothing to do."
-    fi
+    [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
+    [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
+    [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
+    [ -e "/run/daily-fix.pid" ] && rm -f /run/daily-fix.pid
+    [ -e "/run/boa_cron_wait.pid" ] && rm -f /run/boa_cron_wait.pid
   ;;
   stop)
     echo -n "Stopping $DESC: "
@@ -158,9 +130,6 @@ case "$1" in
         fi
       fi
     fi
-    ### service apparmor stop
-    ### service auditd stop
-    ### /usr/sbin/aa-teardown
     _REBOOT_ONE_TEST=$(ls -la /root/.run-auto-major-os-reboot*-one.cnf 2>&1)
     _REBOOT_TWO_TEST=$(ls -la /root/.run-auto-major-os-reboot*-two.cnf 2>&1)
     if [[ "${_REBOOT_ONE_TEST}" =~ "No such file" ]] \
@@ -233,63 +202,17 @@ case "$1" in
         fi
       fi
     fi
-    if [ -e "/run/boa_wait.pid" ]; then
-      [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
-      echo "$NAME done."
-    else
-      echo "$NAME nothing to do."
-    fi
-    if [ -e "/run/boa_run.pid" ]; then
-      [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
-      echo "$NAME 2 done."
-    else
-      echo "$NAME 2 nothing to do."
-    fi
-    if [ -e "/run/manage_ltd_users.pid" ]; then
-      [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
-      echo "$NAME 3 done."
-    else
-      echo "$NAME 3 nothing to do."
-    fi
-    if [ -e "/run/daily-fix.pid" ]; then
-      rm -f /run/daily-fix.pid
-      echo "$NAME 4 done."
-    else
-      echo "$NAME 4 nothing to do."
-    fi
-    if [ -e "/run/boa_cron_wait.pid" ]; then
-      rm -f /run/boa_cron_wait.pid
-      echo "$NAME 5 done."
-    else
-      echo "$NAME 5 nothing to do."
-    fi
+    [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
+    [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
+    [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
+    [ -e "/run/daily-fix.pid" ] && rm -f /run/daily-fix.pid
+    [ -e "/run/boa_cron_wait.pid" ] && rm -f /run/boa_cron_wait.pid
     rm -f $PIDFILE
   ;;
 
   restart|force-reload)
     ${0} stop
     ${0} start
-  ;;
-
-  status)
-    echo -n "$DESC status: "
-    if [ -x "/usr/sbin/aa-teardown" ]; then
-      service apparmor stop
-      service auditd stop
-      /usr/sbin/aa-teardown
-    fi
-    if [ -e "/run/boa_wait.pid" ]; then
-      echo "fail 1"
-    else
-      echo "OK 1"
-      exit 0
-    fi
-    if [ -e "/run/boa_run.pid" ]; then
-      echo "fail 2"
-    else
-      echo "OK 2"
-      exit 0
-    fi
   ;;
 
   *)
