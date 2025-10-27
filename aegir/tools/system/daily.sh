@@ -3173,7 +3173,7 @@ _daily_action() {
 ###--------------------###
 [ ! -d "/data/u" ] && exit 1
 echo "INFO: Daily maintenance start"
-while [ -e "/run/boa_wait.pid" ]; do
+while [ -e "/run/boa_run.pid" ]; do
   echo "Waiting for BOA queue availability..."
   sleep 5
 done

@@ -13,9 +13,6 @@ $| = 1;
 if (-f "/root/.proxy.cnf") {
   exit;
 }
-if (-f "/run/boa_wait.pid") {
-  exit;
-}
 $mailx_test=`s-nail -V 2>&1`;
 $status="CLEAN";
 $fixfile = "/var/xdrago/acrashsql.sh";
@@ -25,13 +22,11 @@ chomp($server);
 $timedate=`date +%y%m%d-%H%M`;
 chomp($timedate);
 $logfile="/var/log/boa/mysqlcheck.log";
-system("touch /run/boa_wait.pid");
 sleep(90);
 $mysqlrootpass=`cat /root/.my.pass.txt`;
 chomp($mysqlrootpass);
 system("/usr/bin/mysqlcheck -u root -Aa > $logfile");
 &makeactions;
-system("rm -f /run/boa_wait.pid");
 system("touch /var/log/boa/last-run-acrashsql");
 if ($mailx_test =~ /(built for Linux)/i) {
   if ($status ne "CLEAN") {

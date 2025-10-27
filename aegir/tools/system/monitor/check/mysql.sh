@@ -127,7 +127,7 @@ _redis_cold_restart() {
 }
 
 _sql_restart() {
-  touch /run/boa_run.pid
+  touch /run/boa_mysql_auto_healing.pid
   if [ ! -d "/run/mysqld" ]; then
     mkdir -p /run/mysqld
     chown -R mysql:root /run/mysqld
@@ -149,7 +149,7 @@ _sql_restart() {
   echo "$(date) $1 incident response completed" >> ${_pthOml}
   _incident_email_report "$1"
   echo >> ${_pthOml}
-  [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
+  [ -e "/run/boa_mysql_auto_healing.pid" ] && rm -f /run/boa_mysql_auto_healing.pid
   exit 0
 }
 
@@ -353,7 +353,7 @@ _spawn_detached() {
 
 if [ -x "/etc/init.d/mysql" ] \
   && [ -x "/usr/sbin/mysqld" ] \
-  && [ ! -e "/run/boa_run.pid" ] \
+  && [ ! -e "/run/boa_mysql_auto_healing.pid" ] \
   && [ ! -e "/run/max_load.pid" ] \
   && [ ! -e "/run/critical_load.pid" ] \
   && [ ! -e "/run/mysql_restart_running.pid" ]; then
@@ -375,22 +375,20 @@ fi
 
 if [ -e "/run/boa_sql_backup.pid" ] \
   || [ -e "/run/boa_sql_cluster_backup.pid" ] \
-  || [ -e "/run/boa_run.pid" ] \
-  || [ -e "/run/boa_wait.pid" ] \
+  || [ -e "/run/boa_mysql_auto_healing.pid" ] \
   || [ -e "/run/mysql_restart_running.pid" ]; then
   _SQL_CTRL=NO
 else
   _SQL_CTRL=YES
 fi
 
-if [ ! -e "/run/max_load.pid" ] && [ ! -e "/run/critical_load.pid" ]; then
-  [ "${_SQL_CTRL}" = "YES" ] && _mysql_proc_control "${_SQL_MAX_TTL}"
-  sleep 15
-  [ "${_SQL_CTRL}" = "YES" ] && _mysql_proc_control "${_SQL_MAX_TTL}"
-  sleep 15
-  [ "${_SQL_CTRL}" = "YES" ] && _mysql_proc_control "${_SQL_MAX_TTL}"
-  sleep 15
-  [ "${_SQL_CTRL}" = "YES" ] && _mysql_proc_control "${_SQL_MAX_TTL}"
+if [ "${_SQL_CTRL}" = "YES" ] \
+  && [ ! -e "/run/max_load.pid" ] \
+  && [ ! -e "/run/critical_load.pid" ]; then
+  for _iteration in {1..3}; do
+    _mysql_proc_control "${_SQL_MAX_TTL}"
+    sleep 15
+  done
 fi
 
 echo DONE!

@@ -112,7 +112,6 @@ _launch_auto_healing() {
 
 [ ! -e "/run/boa_run.pid" ] && _second_flood_guard
 [ -x "/usr/sbin/csf" ] && [ ! -e "/run/water.pid" ] && _csf_flood_guard
-[ -e "/run/wait-unbound.pid" ] && rm -f /run/wait-unbound.pid
 
 # Main execution
 for _iteration in {1..9}; do
