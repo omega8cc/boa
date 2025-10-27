@@ -37,7 +37,7 @@ if [[ -e "/root/.debug.monitor.cnf" ]]; then
   set -x
 fi
 
-# Enable strict error handling (optional)
+# Enable strict error handling for debugging only
 # set -euo pipefail
 
 # Set environment variables
