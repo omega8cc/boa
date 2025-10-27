@@ -598,7 +598,7 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
 
   _n=$((RANDOM%120+90))
   touch /run/water.pid
-  echo Waiting $n seconds...
+  echo Waiting ${_n} seconds...
   sleep ${_n}
 
   _NOW=$(date +%y%m%d-%H%M%S)
