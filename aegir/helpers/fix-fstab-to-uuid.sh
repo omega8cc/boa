@@ -1,6 +1,7 @@
 #!/bin/bash
 
-set -e
+# Enable strict error handling for debugging only
+# set -euo pipefail
 
 echo "Backing up /etc/fstab to /etc/fstab.bak"
 cp -p /etc/fstab /etc/fstab.bak
