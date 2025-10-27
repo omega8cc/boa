@@ -605,7 +605,7 @@ if [ -e "/vservers" ] \
 
   _n=$((RANDOM%120+90))
   touch /run/water.pid
-  echo Waiting $n seconds...
+  echo Waiting ${_n} seconds...
   sleep ${_n}
 
   _whitelist_ip_dns
