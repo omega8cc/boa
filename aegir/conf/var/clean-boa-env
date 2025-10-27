@@ -15,8 +15,6 @@ NAME=clean-boa-env
 DESC=clean-boa-env
 PIDFILE=/run/clean-boa-env.pid
 
-set -e
-
 case "$1" in
   start)
     echo -n "Starting $DESC: "
