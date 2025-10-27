@@ -480,7 +480,7 @@ _monthly_cleanup() {
     && [ "${_DO_CLEANUP}" = "YES" ]; then
     if [ -e "/root/.randomize_duplicity_full_backup_day.cnf" ]; then
       _n=$((RANDOM%300+8))
-      echo "Waiting $n seconds on $(date) before running cleanup --force" > ${_LOGFILE}
+      echo "Waiting ${_n} seconds on $(date) before running cleanup --force" > ${_LOGFILE}
       sleep ${_n}
     fi
     echo "Running cleanup --force on $(date)" >> ${_LOGFILE}
@@ -540,12 +540,12 @@ _run_backup() {
   if [ -e "/root/.randomize_duplicity_full_backup_day.cnf" ]; then
     if [ ! -e "/root/tmp/home/" ]; then
       _n=$((RANDOM%300+8))
-      echo "Waiting $n seconds on $(date) before running restore home 7D tmp/home" >> ${_LOGFILE}
+      echo "Waiting ${_n} seconds on $(date) before running restore home 7D tmp/home" >> ${_LOGFILE}
       sleep ${_n}
       restore home 7D tmp/home >> ${_LOGFILE}
     fi
     _n=$((RANDOM%300+8))
-    echo "Waiting $n seconds on $(date) before running ${_MODE} backup" >> ${_LOGFILE}
+    echo "Waiting ${_n} seconds on $(date) before running ${_MODE} backup" >> ${_LOGFILE}
     sleep ${_n}
   fi
   echo "Running ${_MODE} backup on $(date)" >> ${_LOGFILE}
@@ -568,7 +568,7 @@ _run_backup() {
 _remove_older_than() {
   if [ -e "/root/.randomize_duplicity_full_backup_day.cnf" ]; then
     _n=$((RANDOM%300+8))
-    echo "Waiting $n seconds on $(date) before running remove-older-than ${_AWS_TTL}" >> ${_LOGFILE}
+    echo "Waiting ${_n} seconds on $(date) before running remove-older-than ${_AWS_TTL}" >> ${_LOGFILE}
     sleep ${_n}
   fi
   echo "Running remove-older-than on $(date)" >> ${_LOGFILE}
@@ -579,7 +579,7 @@ _remove_older_than() {
 _collection_status() {
   if [ -e "/root/.randomize_duplicity_full_backup_day.cnf" ]; then
     _n=$((RANDOM%300+8))
-    echo "Waiting $n seconds on $(date) before running collection-status" >> ${_LOGFILE}
+    echo "Waiting ${_n} seconds on $(date) before running collection-status" >> ${_LOGFILE}
     sleep ${_n}
   fi
   echo "Running collection-status on $(date)" >> ${_LOGFILE}
