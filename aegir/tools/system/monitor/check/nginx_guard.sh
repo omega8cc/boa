@@ -94,11 +94,6 @@ if [ ! -e "/run/max_load.pid" ] && [ ! -e "/run/critical_load.pid" ]; then
       nohup ${_monPath}/scan_nginx.sh > /dev/null 2>&1 &
       sleep 5
     done
-  elif [ -f "${_monPath}/scan_nginx.pl" ]; then
-    for _iteration in {1..10}; do
-      _spawn_detached 'perl ${_monPath}/scan_nginx.pl'
-      sleep 5
-    done
   fi
 fi
 
