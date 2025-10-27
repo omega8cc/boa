@@ -83,20 +83,10 @@ if [ ! -e "/run/max_load.pid" ] && [ ! -e "/run/critical_load.pid" ]; then
   # Reload nginx if access log is missing or empty
   [ -s /var/log/nginx/access.log ] || service nginx reload
 
-  if [ ! -e "/root/.high_traffic.cnf" ] \
-    && [ ! -e "/root/.giant_traffic.cnf" ]; then
-    _spawn_detached 'perl ${_monPath}/locked_nginx.pl'
-  fi
-
   # Main execution
   if [ -f "${_monPath}/scan_nginx.sh" ]; then
     for _iteration in {1..10}; do
       nohup ${_monPath}/scan_nginx.sh > /dev/null 2>&1 &
-      sleep 5
-    done
-  elif [ -f "${_monPath}/scan_nginx.pl" ]; then
-    for _iteration in {1..10}; do
-      _spawn_detached 'perl ${_monPath}/scan_nginx.pl'
       sleep 5
     done
   fi

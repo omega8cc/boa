@@ -101,7 +101,7 @@ _incident_email_report() {
 }
 
 _jetty_restart() {
-  touch /run/boa_wait.pid
+  touch /run/boa_java_auto_healing.pid
   sleep 3
   pkill -9 -f jetty
   rm -f /var/log/jetty{7,8,9}/*
@@ -122,7 +122,7 @@ _jetty_restart() {
   echo ${_thisErrLog} >> ${_pthOml}
   _incident_email_report "$1"
   echo >> ${_pthOml}
-  [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
+  [ -e "/run/boa_java_auto_healing.pid" ] && rm -f /run/boa_java_auto_healing.pid
   exit 0
 }
 
@@ -248,13 +248,9 @@ _spawn_detached() {
 }
 
 if [ ! -e "/run/max_load.pid" ] && [ ! -e "/run/critical_load.pid" ]; then
-  [ ! -e "/run/boa_run.pid" ] && [ -x "/etc/init.d/jenkins" ] && _jenkins_health_check_fix
-  [ ! -e "/run/boa_run.pid" ] && _solr_health_check_fix
-  [ ! -e "/run/boa_run.pid" ] && _jetty_listen_conflict_detection
-  if [ ! -e "/root/.high_traffic.cnf" ] \
-    && [ ! -e "/root/.giant_traffic.cnf" ]; then
-    _spawn_detached 'perl /var/xdrago/monitor/check/locked_java.pl'
-  fi
+  [ ! -e "/run/boa_java_auto_healing.pid" ] && [ -x "/etc/init.d/jenkins" ] && _jenkins_health_check_fix
+  [ ! -e "/run/boa_java_auto_healing.pid" ] && _solr_health_check_fix
+  [ ! -e "/run/boa_java_auto_healing.pid" ] && _jetty_listen_conflict_detection
 fi
 
 echo DONE!

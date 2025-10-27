@@ -698,9 +698,6 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
   rm -f /var/xdrago/monitor/log/web.log
   rm -f /var/xdrago/monitor/log/ftp.log
 
-  touch /run/boa_wait.pid
-  sleep 3
-
   pkill -9 -f ConfigServer
   killall sleep &> /dev/null
   rm -f /etc/csf/csf.error
@@ -748,8 +745,6 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
     fi
   fi
   rm -f /run/water.pid
-  sleep 3
-  rm -f /run/boa_wait.pid
   echo guard fin $(date)
   ntpdate pool.ntp.org > /dev/null 2>&1 &
 fi
