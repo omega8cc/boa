@@ -721,7 +721,7 @@ _mc_panels_ini_update() {
     _msg "PROC: _mc_panels_ini_update"
   fi
   if [ -d "/root/.config/mc" ]; then
-    _SORT_ORDER_TEST=$(grep "sort_order" /root/.config/mc/panels.ini 2>&1)
+    _SORT_ORDER_TEST="$(grep sort_order /root/.config/mc/panels.ini)"
     if [[ ! "${_SORT_ORDER_TEST}" =~ "sort_order" ]]; then
       if [ -e "${_locCnf}/ini/panels.ini" ]; then
         cat ${_locCnf}/ini/panels.ini >> /root/.config/mc/panels.ini
