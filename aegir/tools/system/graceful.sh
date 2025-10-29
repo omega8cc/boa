@@ -185,11 +185,9 @@ _graceful_action() {
     echo "Stopping any running Jetty processes..."
     pkill -9 -f jetty
     rm -rf /tmp/{drush*,pear,jetty*}
-    rm -f /var/log/jetty{7,8,9}/*
+    rm -f /var/log/jetty9/*
     echo "Starting Jetty services..."
     [ -e "/etc/init.d/jetty9" ] && service jetty9 start
-    [ -e "/etc/init.d/jetty8" ] && service jetty8 start
-    [ -e "/etc/init.d/jetty7" ] && service jetty7 start
     echo "INFO: Solr and Jetty servers restarted successfully"
   fi
 

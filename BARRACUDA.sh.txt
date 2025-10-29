@@ -253,7 +253,7 @@ _download_helpers_libs
 ###
 ### Include shared functions
 ###
-_FL="helper dns system sql valkey redis nginx php jetty master xtra firewall hotfix"
+_FL="helper dns system sql valkey redis nginx php solr master xtra firewall hotfix"
 for f in ${_FL}; do
   [ -r "${_libFnc}/${f}.sh.inc" ] || _panic_exit "${f}"
   source "${_libFnc}/${f}.sh.inc"

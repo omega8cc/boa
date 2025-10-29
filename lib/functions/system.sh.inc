@@ -1126,12 +1126,6 @@ _tune_memory_limits() {
   if [ -e "/etc/default/jetty9" ] && [ -e "/opt/solr4" ]; then
     sed -i "s/^JAVA_OPTIONS.*/JAVA_OPTIONS=\"-Xms64m ${_USE_JETTY} -Djava.awt.headless=true -Dsolr.solr.home=\/opt\/solr4 \$JAVA_OPTIONS\" # Options/g" /etc/default/jetty9
   fi
-  if [ -e "/etc/default/jetty8" ] && [ -e "/opt/solr3" ]; then
-    sed -i "s/^JAVA_OPTIONS.*/JAVA_OPTIONS=\"-Xms64m ${_USE_JETTY} -Djava.awt.headless=true -Dsolr.solr.home=\/opt\/solr3 \$JAVA_OPTIONS\" # Options/g" /etc/default/jetty8
-  fi
-  if [ -e "/etc/default/jetty7" ] && [ -e "/opt/solr1" ]; then
-    sed -i "s/^JAVA_OPTIONS.*/JAVA_OPTIONS=\"-Xms64m ${_USE_JETTY} -Djava.awt.headless=true -Dsolr.solr.home=\/opt\/solr1 \$JAVA_OPTIONS\" # Options/g" /etc/default/jetty7
-  fi
 
   _USE_SOLR_MEM=$(( _RAM / 6 ))
   _USE_SOLR="-Xmx${_USE_SOLR_MEM}m"
@@ -9393,20 +9387,6 @@ _initd_update() {
       pkill -9 -f jetty9
       _mrun "service jetty9 start"
     fi
-    if [ -e "/etc/default/jetty8" ] && [ -e "/etc/init.d/jetty8" ]; then
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        _msg "INFO: Restarting Jetty 8"
-      fi
-      pkill -9 -f jetty8
-      _mrun "service jetty8 start"
-    fi
-    if [ -e "/etc/default/jetty7" ] && [ -e "/etc/init.d/jetty7" ]; then
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        _msg "INFO: Restarting Jetty 7"
-      fi
-      pkill -9 -f jetty7
-      _mrun "service jetty7 start"
-    fi
     if [ ! -e "/run/aegir_upgrade.pid" ]; then
       if [ -e "/etc/init.d/valkey-server" ]; then
         _msg "INFO: Starting Valkey, PHP-FPM and Nginx"
@@ -9501,20 +9481,6 @@ _initd_update() {
       fi
       pkill -9 -f jetty9
       _mrun "service jetty9 start"
-    fi
-    if [ -e "/etc/default/jetty8" ] && [ -e "/etc/init.d/jetty8" ]; then
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        _msg "INFO: Restarting Jetty 8"
-      fi
-      pkill -9 -f jetty8
-      _mrun "service jetty8 start"
-    fi
-    if [ -e "/etc/default/jetty7" ] && [ -e "/etc/init.d/jetty7" ]; then
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        _msg "INFO: Restarting Jetty 7"
-      fi
-      pkill -9 -f jetty7
-      _mrun "service jetty7 start"
     fi
     if [ ! -e "/run/aegir_upgrade.pid" ] \
       && [ ! -e "/root/.proxy.cnf" ]; then
