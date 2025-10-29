@@ -40,7 +40,7 @@ _if_solr_nine() {
       _if_fix_solr9_mod
   fi
 
-  local _R_SOLR="9"
+  local _R_SOLR=9
   local _N_SOLR="solr${_R_SOLR}"
   local _SOLR_VPATH="/var/${_N_SOLR}/data"
   local _SOLR_CTRL="/var/${_N_SOLR}/solr-${_SOLR_9_VRN}-version.txt"
@@ -137,7 +137,7 @@ _if_solr_seven() {
     _if_fix_solr7_permissions
   fi
 
-  local _R_SOLR="7"
+  local _R_SOLR=7
   local _N_SOLR="solr${_R_SOLR}"
   local _SOLR_VPATH="/var/${_N_SOLR}/data"
   local _SOLR_CTRL="/var/${_N_SOLR}/solr-${_SOLR_7_VRN}-version.txt"
@@ -210,6 +210,7 @@ _if_solr_four() {
     _msg "PROC: _if_solr_four"
   fi
 
+  local _R_SOLR=4
   local _R_JETTY=9
   local _JETTY_CTRL="/opt/jetty9/jetty-ctrl-${_JETTY_9_VRN}-${_SOLR_4_VRN}-version.txt"
   local _SOLR_CTRL="/opt/jetty9/solr-${_SOLR_4_VRN}-version.txt"
@@ -222,12 +223,12 @@ _if_solr_four() {
 
   if [ ! -d "/opt/solr4" ]; then
     echo " "
-    _tPrmt="Do you want to install MultiCore Apache Solr"
+    _tPrmt="Do you want to install MultiCore Apache Solr ${_R_SOLR}"
     _tPrmt="${_tPrmt} with Jetty ${_R_JETTY}"
     _tPrmt=$(echo -n ${_tPrmt} | fmt -su -w 2500 2>&1)
     if _prompt_yes_no "${_tPrmt}?" ; then
       true
-      _msg "INFO: Installing MultiCore Apache Solr with Jetty ${_R_JETTY}..."
+      _msg "INFO: Installing MultiCore Apache Solr ${_R_SOLR} with Jetty ${_R_JETTY}..."
       cd /var/opt
       rm -rf jetty-distribution-*
       rm -rf /opt/solr4
@@ -323,9 +324,9 @@ _if_solr_four() {
       _mrun "update-rc.d jetty9 defaults"
       _mrun "service jetty9 start"
       echo ${_SOLR_4_VRN} > ${_SOLR_CTRL}
-      _msg "INFO: MultiCore Apache Solr with Jetty ${_R_JETTY} installed"
+      _msg "INFO: MultiCore Apache Solr ${_R_SOLR} with Jetty ${_R_JETTY} installed"
     else
-      _msg "INFO: MultiCore Apache Solr with Jetty ${_R_JETTY} not installed"
+      _msg "INFO: MultiCore Apache Solr ${_R_SOLR} with Jetty ${_R_JETTY} not installed"
     fi
   fi
 
@@ -361,7 +362,7 @@ _if_solr_four() {
       || [ ! -e "/opt/jetty9/lib/ext/log4j-1.2.17.jar" ] \
       || [ ! -e "${_JETTY_CTRL}" ] \
       || [ ! -e "${_SOLR_CTRL}" ]; then
-      _msg "INFO: Upgrading MultiCore Apache Solr with Jetty ${_R_JETTY}..."
+      _msg "INFO: Upgrading MultiCore Apache Solr ${_R_SOLR} with Jetty ${_R_JETTY}..."
       cd /var/opt
       rm -rf jetty-distribution-*
       pkill -9 -f jetty9
@@ -402,7 +403,7 @@ _if_solr_four() {
       chown -R jetty9:jetty9 /opt/jetty9
       _mrun "service jetty9 start"
       echo ${_SOLR_4_VRN} > ${_SOLR_CTRL}
-      _msg "INFO: MultiCore Apache Solr with Jetty ${_R_JETTY} upgrade completed"
+      _msg "INFO: MultiCore Apache Solr ${_R_SOLR} with Jetty ${_R_JETTY} upgrade completed"
     fi
   fi
 }
