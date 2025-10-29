@@ -3415,37 +3415,60 @@ _if_fix_lshell() {
   fi
 }
 
-_fix_stop_solr() {
-  _restartSolr=FALSE
+_fix_start_stop_solr() {
+
   if [ -x "/etc/init.d/solr9" ] && [ -e "/etc/default/solr9.in.sh" ]; then
     _SOLR9_STOP_TEST=$(grep "SOLR_STOP_PORT=19099" /etc/default/solr9.in.sh 2>&1)
-    if [[ ! "${_SOLR9_STOP_TEST}" =~ "SOLR_STOP_PORT=19099" ]]; then
-      sed -i "s/^SOLR_STOP_.*//g" /etc/default/solr9.in.sh
+    _SOLR9_WAIT_TEST=$(grep "SOLR_START_WAIT=" /etc/default/solr9.in.sh 2>&1)
+    if [[ ! "${_SOLR9_STOP_TEST}" =~ "SOLR_STOP_PORT=19099" ]] \
+      || [[ ! "${_SOLR9_WAIT_TEST}" =~ "SOLR_START_WAIT=" ]]; then
+      sed -i "s/^SOLR_STOP_PORT.*//g" /etc/default/solr9.in.sh
+      wait
+      sed -i "s/^SOLR_STOP_KEY.*//g" /etc/default/solr9.in.sh
       wait
       echo "SOLR_STOP_PORT=19099" >> /etc/default/solr9.in.sh
       echo "SOLR_STOP_KEY=mycustomkey9" >> /etc/default/solr9.in.sh
-      _restartSolr=TRUE
+      sed -i "s/.*_WAIT.*//g" /etc/default/solr9.in.sh &> /dev/null
+      wait
+      echo "SOLR_START_WAIT=\"8\"" >> /etc/default/solr9.in.sh
+      echo "SOLR_STOP_WAIT=\"8\"" >> /etc/default/solr9.in.sh
+      echo "SOLR_WAIT_FOR_ZK=\"8\"" >> /etc/default/solr9.in.sh
+      echo "_restartSolr9 at $(date)" >> ${_pthLog}/_fix_start_stop_solr.log
+      service solr9 restart
     fi
   fi
   if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
     _SOLR7_STOP_TEST=$(grep "SOLR_STOP_PORT=17077" /etc/default/solr7.in.sh 2>&1)
-    if [[ ! "${_SOLR7_STOP_TEST}" =~ "SOLR_STOP_PORT=17077" ]]; then
-      sed -i "s/^SOLR_STOP_.*//g" /etc/default/solr7.in.sh
+    _SOLR7_WAIT_TEST=$(grep "SOLR_START_WAIT=" /etc/default/solr7.in.sh 2>&1)
+    if [[ ! "${_SOLR7_STOP_TEST}" =~ "SOLR_STOP_PORT=17077" ]] \
+      || [[ ! "${_SOLR7_WAIT_TEST}" =~ "SOLR_START_WAIT=" ]]; then
+      sed -i "s/^SOLR_STOP_PORT.*//g" /etc/default/solr7.in.sh
+      wait
+      sed -i "s/^SOLR_STOP_KEY.*//g" /etc/default/solr7.in.sh
       wait
       echo "SOLR_STOP_PORT=17077" >> /etc/default/solr7.in.sh
       echo "SOLR_STOP_KEY=mycustomkey7" >> /etc/default/solr7.in.sh
-      _restartSolr=TRUE
+      sed -i "s/.*_WAIT.*//g" /etc/default/solr9.in.sh &> /dev/null
+      wait
+      echo "SOLR_START_WAIT=\"8\"" >> /etc/default/solr7.in.sh
+      echo "SOLR_STOP_WAIT=\"8\"" >> /etc/default/solr7.in.sh
+      echo "SOLR_WAIT_FOR_ZK=\"8\"" >> /etc/default/solr7.in.sh
+      service solr7 restart
+      echo "_restartSolr7 at $(date)" >> ${_pthLog}/_fix_start_stop_solr.log
     fi
   fi
-  _ctrl_jetty_nr=$(ls -la /tmp/jetty-0.0.0.0-8099-solr.war* | wc -l 2>&1)
-  if [[ ! "${_ctrl_jetty_nr}" =~ "No such file" ]] && [ "${_ctrl_jetty_nr}" -gt 8 ]; then
-    _restartSolr=TRUE
-  fi
-  if [ "${_restartSolr}" = "TRUE" ]; then
-    if [ ! -x "/etc/init.d/jenkins" ] && [ ! -e "/var/lib/jenkins" ]; then
-      rm -rf /tmp/jetty-*
-      pkill -9 -f jetty9
-      echo "_restartSolr at $(date)" >> ${_pthLog}/_fix_stop_solr.log
+  if [ -x "/etc/init.d/jetty9" ]; then
+    _restartSolr4=FALSE
+    _ctrl_jetty_nr=$(ls -la /tmp/jetty-0.0.0.0-8099-solr.war* | wc -l 2>&1)
+    if [[ ! "${_ctrl_jetty_nr}" =~ "No such file" ]] && [ "${_ctrl_jetty_nr}" -gt 8 ]; then
+      _restartSolr4=TRUE
+    fi
+    if [ "${_restartSolr4}" = "TRUE" ]; then
+      if [ ! -x "/etc/init.d/jenkins" ] && [ ! -e "/var/lib/jenkins" ]; then
+        find /tmp -mindepth 1 -user jetty9 -exec rm -rf {} + 2>/dev/null
+        pkill -9 -f jetty9
+        echo "_restartSolr4 at $(date)" >> ${_pthLog}/_fix_start_stop_solr.log
+      fi
     fi
   fi
 }
@@ -4845,7 +4868,7 @@ if [ "$(id -u)" -eq 0 ]; then
 
   ### Fix Solr 4/7/9 conflicting ports
   if [ -d "/var/aegir" ]; then
-    [ -e "/opt/solr4/solr.xml" ] && _fix_stop_solr
+    _fix_start_stop_solr
   fi
 
   ### CVE-2021-44228 Log4j 2 Vulnerability
