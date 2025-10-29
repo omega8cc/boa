@@ -3444,7 +3444,7 @@ _fix_stop_solr() {
   if [ "${_restartSolr}" = "TRUE" ]; then
     if [ ! -x "/etc/init.d/jenkins" ] && [ ! -e "/var/lib/jenkins" ]; then
       rm -rf /tmp/jetty-*
-      killall -9 java
+      pkill -9 -f java
       echo "_restartSolr at $(date)" >> ${_pthLog}/_fix_stop_solr.log
     fi
   fi

@@ -183,7 +183,7 @@ _graceful_action() {
       nice -n 0 service solr7 restart
     fi
     echo "Stopping any running Jetty processes..."
-    pkill -9 -f jetty
+    pkill -9 -f jetty9
     rm -rf /tmp/{drush*,pear,jetty*}
     rm -f /var/log/jetty9/*
     echo "Starting Jetty services..."
