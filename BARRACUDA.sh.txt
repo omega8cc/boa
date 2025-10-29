@@ -79,7 +79,7 @@ _MYQUICK_VRN_FIVE=0.11.5-2
 _MYQUICK_VRN_EIGHT=0.16.7-3
 _MYSQLTUNER_VRN=1.9.4
 _NGINX_VRN=1.29.2
-_OPENSSH_VRN=10.0p2
+_OPENSSH_VRN=10.2p1
 _OPENSSL_LEGACY_VRN=1.0.2u
 _OPENSSL_EOL_VRN=1.1.1w
 _OPENSSL_MODERN_VRN=3.4.3
@@ -252,7 +252,7 @@ _download_helpers_libs
 ###
 ### Include shared functions
 ###
-_FL="helper dns system sql valkey redis nginx php jetty master xtra firewall hotfix"
+_FL="helper dns system sql valkey redis nginx php solr master xtra firewall hotfix"
 for f in ${_FL}; do
   [ -r "${_libFnc}/${f}.sh.inc" ] || _panic_exit "${f}"
   source "${_libFnc}/${f}.sh.inc"
@@ -542,7 +542,7 @@ if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "UPGRADE" ]; then
     _if_install_git_src
     _if_install_ffmpeg
     _if_install_bzr
-    [ ! -e "/root/.deny.java.cnf" ] && _if_install_solr_jetty
+    [ ! -e "/root/.deny.java.cnf" ] && _if_install_upgrade_solr
     _if_install_adminer
     _if_install_chive
     _if_install_sqlbuddy
