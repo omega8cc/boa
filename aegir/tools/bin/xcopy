@@ -892,7 +892,7 @@ _post_mig() {
       pkill -9 -f solr7
       service solr7 start
     fi
-    pkill -9 -f jetty
+    pkill -9 -f jetty9
     rm -rf /tmp/{drush*,pear,jetty*}
     rm -f /var/log/jetty9/*
     if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
