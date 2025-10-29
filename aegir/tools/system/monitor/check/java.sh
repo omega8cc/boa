@@ -103,7 +103,7 @@ _incident_email_report() {
 _jetty_restart() {
   touch /run/boa_java_auto_healing.pid
   sleep 3
-  pkill -9 -f jetty
+  pkill -9 -f jetty9
   rm -f /var/log/jetty9/*
   find /tmp -mindepth 1 -user jetty9 -exec rm -rf {} + 2>/dev/null
   renice ${_B_NICE} -p $$ &> /dev/null
@@ -133,7 +133,7 @@ _jetty_listen_conflict_detection() {
 _jenkins_health_check_fix() {
   if ! pgrep -f java/jenkins \
     || [ ! -e "/run/jenkins/jenkins.pid" ]; then
-    killall -9 java
+    pkill -9 -f java
     sleep 3
     service jenkins restart
     wait

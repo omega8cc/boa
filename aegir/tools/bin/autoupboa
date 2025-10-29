@@ -334,7 +334,7 @@ _if_disable_not_used_services() {
       update-rc.d -f jetty9 remove &> /dev/null
       mv -f /etc/init.d/jetty9 /var/backups/
       pkill -9 -f avahi-daemon
-      pkill -9 -f java
+      pkill -9 -f jetty9
     fi
   fi
 
@@ -344,7 +344,7 @@ _if_disable_not_used_services() {
       update-rc.d -f solr7 remove &> /dev/null
       mv -f /etc/init.d/solr7 /var/backups/
       pkill -9 -f avahi-daemon
-      pkill -9 -f java
+      pkill -9 -f solr7
     fi
   fi
 
@@ -354,7 +354,7 @@ _if_disable_not_used_services() {
       update-rc.d -f solr9 remove &> /dev/null
       mv -f /etc/init.d/solr9 /var/backups/
       pkill -9 -f avahi-daemon
-      pkill -9 -f java
+      pkill -9 -f solr9
     fi
   fi
 
