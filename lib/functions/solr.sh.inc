@@ -40,7 +40,7 @@ _if_solr_nine() {
       _if_fix_solr9_mod
   fi
 
-  local _R_SOLR="9"
+  local _R_SOLR=9
   local _N_SOLR="solr${_R_SOLR}"
   local _SOLR_VPATH="/var/${_N_SOLR}/data"
   local _SOLR_CTRL="/var/${_N_SOLR}/solr-${_SOLR_9_VRN}-version.txt"
@@ -101,9 +101,9 @@ _if_solr_nine() {
         || [ "${_OS_CODE}" = "daedalus" ] \
         || [ "${_OS_CODE}" = "chimaera" ]; then
         if [ "${_OS_CODE}" = "excalibur" ]; then
-          echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-21-openjdk\" # BOA ${_xSrl} Path to Java 21" >> /etc/default/${_N_SOLR}.in.sh
+          echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-21-openjdk\" # BOA ${_xSrl} Path to Java 21 on ${_OS_CODE}" >> /etc/default/${_N_SOLR}.in.sh
         else
-          echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-17-openjdk\" # BOA ${_xSrl} Path to Java 17" >> /etc/default/${_N_SOLR}.in.sh
+          echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-17-openjdk\" # BOA ${_xSrl} Path to Java 17 on ${_OS_CODE}" >> /etc/default/${_N_SOLR}.in.sh
         fi
         echo "SOLR_MODULES=\"analysis-extras,clustering,extraction,langid,ltr\" # Auto-Enable Modules" >> /etc/default/${_N_SOLR}.in.sh
       fi
@@ -137,7 +137,7 @@ _if_solr_seven() {
     _if_fix_solr7_permissions
   fi
 
-  local _R_SOLR="7"
+  local _R_SOLR=7
   local _N_SOLR="solr${_R_SOLR}"
   local _SOLR_VPATH="/var/${_N_SOLR}/data"
   local _SOLR_CTRL="/var/${_N_SOLR}/solr-${_SOLR_7_VRN}-version.txt"
@@ -167,9 +167,9 @@ _if_solr_seven() {
   fi
 
   if [ -e "/etc/default/${_N_SOLR}.in.sh" ]; then
-    _SOLR7_JAVA_TEST=$(grep "BOA ${_xSrl} Path to Java 11" /etc/default/${_N_SOLR}.in.sh 2>&1)
+    _SOLR7_JAVA_TEST=$(grep "BOA ${_xSrl} Path to Java 11 on ${_OS_CODE}" /etc/default/${_N_SOLR}.in.sh 2>&1)
     _SOLR7_STOP_TEST=$(grep "SOLR_STOP_PORT=17077" /etc/default/${_N_SOLR}.in.sh 2>&1)
-    if [[ "${_SOLR7_JAVA_TEST}" =~ "BOA ${_xSrl} Path to Java on ${_OS_CODE}" ]] \
+    if [[ "${_SOLR7_JAVA_TEST}" =~ "BOA ${_xSrl} Path to Java 11 on ${_OS_CODE}" ]] \
       && [[ "${_SOLR7_STOP_TEST}" =~ "SOLR_STOP_PORT=17077" ]]; then
       _DO_NOTHING=YES
     else
@@ -184,7 +184,7 @@ _if_solr_seven() {
       echo "LOG4J_FORMAT_MSG_NO_LOOKUPS=true" >> /etc/default/${_N_SOLR}.in.sh
       echo "SOLR_STOP_PORT=17077" >> /etc/default/${_N_SOLR}.in.sh
       echo "SOLR_STOP_KEY=mycustomkey7" >> /etc/default/${_N_SOLR}.in.sh
-      echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-11-openjdk\" # BOA ${_xSrl} Path to Java 11" >> /etc/default/${_N_SOLR}.in.sh
+      echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-11-openjdk\" # BOA ${_xSrl} Path to Java 11 on ${_OS_CODE}" >> /etc/default/${_N_SOLR}.in.sh
     fi
     if [ ! -e "${_SOLR_CTRL}" ]; then
       _msg "INFO: Upgrading MultiCore Apache Solr ${_R_SOLR}..."
@@ -210,6 +210,7 @@ _if_solr_four() {
     _msg "PROC: _if_solr_four"
   fi
 
+  local _R_SOLR=4
   local _R_JETTY=9
   local _JETTY_CTRL="/opt/jetty9/jetty-ctrl-${_JETTY_9_VRN}-${_SOLR_4_VRN}-version.txt"
   local _SOLR_CTRL="/opt/jetty9/solr-${_SOLR_4_VRN}-version.txt"
@@ -222,12 +223,12 @@ _if_solr_four() {
 
   if [ ! -d "/opt/solr4" ]; then
     echo " "
-    _tPrmt="Do you want to install MultiCore Apache Solr"
+    _tPrmt="Do you want to install MultiCore Apache Solr ${_R_SOLR}"
     _tPrmt="${_tPrmt} with Jetty ${_R_JETTY}"
     _tPrmt=$(echo -n ${_tPrmt} | fmt -su -w 2500 2>&1)
     if _prompt_yes_no "${_tPrmt}?" ; then
       true
-      _msg "INFO: Installing MultiCore Apache Solr with Jetty ${_R_JETTY}..."
+      _msg "INFO: Installing MultiCore Apache Solr ${_R_SOLR} with Jetty ${_R_JETTY}..."
       cd /var/opt
       rm -rf jetty-distribution-*
       rm -rf /opt/solr4
@@ -296,9 +297,8 @@ _if_solr_four() {
       chown -R jetty9:jetty9 /opt/solr4
       chown -R jetty9:jetty9 /opt/jetty9
       chown -R jetty9:jetty9 /var/log/jetty9
-      echo "JAVA=/usr/bin/java # Path to Java 1.8" > /etc/default/jetty9
-      echo "JAVA_HOME=/usr/lib/jvm/java-8-openjdk/jre # Path to Java 1.8" >> \
-        /etc/default/jetty9
+      echo "JAVA=/usr/bin/java11 # BOA ${_xSrl} Path to Java 11 on ${_OS_CODE}" > /etc/default/jetty9
+      echo "JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64 # BOA ${_xSrl} Path to Java 11 on ${_OS_CODE}" >> /etc/default/jetty9
       echo "NO_START=0 # Start on boot" >> /etc/default/jetty9
       echo "JETTY_HOST=127.0.0.1 # Listen on localhost" >> /etc/default/jetty9
       echo "JETTY_PORT=8099 # Run on this port" >> /etc/default/jetty9
@@ -324,9 +324,9 @@ _if_solr_four() {
       _mrun "update-rc.d jetty9 defaults"
       _mrun "service jetty9 start"
       echo ${_SOLR_4_VRN} > ${_SOLR_CTRL}
-      _msg "INFO: MultiCore Apache Solr with Jetty ${_R_JETTY} installed"
+      _msg "INFO: MultiCore Apache Solr ${_R_SOLR} with Jetty ${_R_JETTY} installed"
     else
-      _msg "INFO: MultiCore Apache Solr with Jetty ${_R_JETTY} not installed"
+      _msg "INFO: MultiCore Apache Solr ${_R_SOLR} with Jetty ${_R_JETTY} not installed"
     fi
   fi
 
@@ -338,13 +338,10 @@ _if_solr_four() {
   fi
 
   if [ -e "/opt/jetty9/VERSION.txt" ]; then
-    _JETTY9_JAVA_TEST=$(grep "Path to Java 1.8" /etc/default/jetty9 2>&1)
-    if [[ "${_JETTY9_JAVA_TEST}" =~ "Path to Java 1.8" ]]; then
-      _DO_NOTHING=YES
-    else
-      echo "JAVA=/usr/bin/java8 # Path to Java 1.8" > /etc/default/jetty9
-      echo "JAVA_HOME=/usr/lib/jvm/java-8-openjdk/jre # Path to Java 1.8" >> \
-        /etc/default/jetty9
+    _JETTY9_JAVA_TEST=$(grep "BOA ${_xSrl} Path to Java 11 on ${_OS_CODE}" /etc/default/jetty9 2>&1)
+    if [[ ! "${_JETTY9_JAVA_TEST}" =~ "BOA ${_xSrl} Path to Java 11 on ${_OS_CODE}" ]]; then
+      echo "JAVA=/usr/bin/java11 # BOA ${_xSrl} Path to Java 11 on ${_OS_CODE}" > /etc/default/jetty9
+      echo "JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64 # BOA ${_xSrl} Path to Java 11 on ${_OS_CODE}" >> /etc/default/jetty9
       echo "NO_START=0 # Start on boot" >> /etc/default/jetty9
       echo "JETTY_HOST=127.0.0.1 # Listen on localhost" >> /etc/default/jetty9
       echo "JETTY_PORT=8099 # Run on this port" >> /etc/default/jetty9
@@ -365,7 +362,7 @@ _if_solr_four() {
       || [ ! -e "/opt/jetty9/lib/ext/log4j-1.2.17.jar" ] \
       || [ ! -e "${_JETTY_CTRL}" ] \
       || [ ! -e "${_SOLR_CTRL}" ]; then
-      _msg "INFO: Upgrading MultiCore Apache Solr with Jetty ${_R_JETTY}..."
+      _msg "INFO: Upgrading MultiCore Apache Solr ${_R_SOLR} with Jetty ${_R_JETTY}..."
       cd /var/opt
       rm -rf jetty-distribution-*
       pkill -9 -f jetty9
@@ -406,7 +403,7 @@ _if_solr_four() {
       chown -R jetty9:jetty9 /opt/jetty9
       _mrun "service jetty9 start"
       echo ${_SOLR_4_VRN} > ${_SOLR_CTRL}
-      _msg "INFO: MultiCore Apache Solr with Jetty ${_R_JETTY} upgrade completed"
+      _msg "INFO: MultiCore Apache Solr ${_R_SOLR} with Jetty ${_R_JETTY} upgrade completed"
     fi
   fi
 }
@@ -421,16 +418,23 @@ _if_install_upgrade_solr() {
   if [ "${_OS_CODE}" != "excalibur" ]; then
     if [[ "${_XTRAS_LIST}" =~ "SR4" ]] \
       || [ -e "/opt/solr4/solr.xml" ]; then
-      _if_solr_four
+      if [ -e "/usr/bin/java11" ]; then
+        _if_solr_four
+      fi
     fi
     if [[ "${_XTRAS_LIST}" =~ "SR7" ]] \
       || [ -e "/var/solr7/logs/solr.log" ]; then
-      _if_solr_seven
+      if [ -e "/usr/bin/java11" ]; then
+        _if_solr_seven
+      fi
     fi
   fi
   if [[ "${_XTRAS_LIST}" =~ "SR9" ]] \
     || [ ! -e "/var/solr9/logs/solr.log" ] \
     || [ "${_hostedSys}" = "YES" ]; then
-    _if_solr_nine
+    if [ -e "/usr/bin/java17" ] \
+      || [ -e "/usr/bin/java21" ]; then
+      _if_solr_nine
+    fi
   fi
 }
