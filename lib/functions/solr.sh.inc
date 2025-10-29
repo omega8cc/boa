@@ -167,7 +167,7 @@ _if_solr_seven() {
   fi
 
   if [ -e "/etc/default/${_N_SOLR}.in.sh" ]; then
-    _SOLR7_JAVA_TEST=$(grep "BOA ${_xSrl} Path to Java on ${_OS_CODE}" /etc/default/${_N_SOLR}.in.sh 2>&1)
+    _SOLR7_JAVA_TEST=$(grep "BOA ${_xSrl} Path to Java 11" /etc/default/${_N_SOLR}.in.sh 2>&1)
     _SOLR7_STOP_TEST=$(grep "SOLR_STOP_PORT=17077" /etc/default/${_N_SOLR}.in.sh 2>&1)
     if [[ "${_SOLR7_JAVA_TEST}" =~ "BOA ${_xSrl} Path to Java on ${_OS_CODE}" ]] \
       && [[ "${_SOLR7_STOP_TEST}" =~ "SOLR_STOP_PORT=17077" ]]; then
@@ -184,11 +184,7 @@ _if_solr_seven() {
       echo "LOG4J_FORMAT_MSG_NO_LOOKUPS=true" >> /etc/default/${_N_SOLR}.in.sh
       echo "SOLR_STOP_PORT=17077" >> /etc/default/${_N_SOLR}.in.sh
       echo "SOLR_STOP_KEY=mycustomkey7" >> /etc/default/${_N_SOLR}.in.sh
-      if [ "${_OS_CODE}" = "stretch" ] || [ "${_OS_CODE}" = "jessie" ]; then
-        echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-8-openjdk/jre\" # BOA ${_xSrl} Path to Java 8" >> /etc/default/${_N_SOLR}.in.sh
-      else
-        echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-11-openjdk\" # BOA ${_xSrl} Path to Java 11" >> /etc/default/${_N_SOLR}.in.sh
-      fi
+      echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-11-openjdk\" # BOA ${_xSrl} Path to Java 11" >> /etc/default/${_N_SOLR}.in.sh
     fi
     if [ ! -e "${_SOLR_CTRL}" ]; then
       _msg "INFO: Upgrading MultiCore Apache Solr ${_R_SOLR}..."
@@ -300,15 +296,9 @@ _if_solr_four() {
       chown -R jetty9:jetty9 /opt/solr4
       chown -R jetty9:jetty9 /opt/jetty9
       chown -R jetty9:jetty9 /var/log/jetty9
-      if [ "${_OS_CODE}" = "jessie" ]; then
-        echo "JAVA=/usr/bin/java7 # Path to Java 1.7" > /etc/default/jetty9
-        echo "JAVA_HOME=/usr/lib/jvm/java-7-openjdk/jre # Path to Java 1.7" >> \
-          /etc/default/jetty9
-      else
-        echo "JAVA=/usr/bin/java # Path to Java 1.8" > /etc/default/jetty9
-        echo "JAVA_HOME=/usr/lib/jvm/java-8-openjdk/jre # Path to Java 1.8" >> \
-          /etc/default/jetty9
-      fi
+      echo "JAVA=/usr/bin/java # Path to Java 1.8" > /etc/default/jetty9
+      echo "JAVA_HOME=/usr/lib/jvm/java-8-openjdk/jre # Path to Java 1.8" >> \
+        /etc/default/jetty9
       echo "NO_START=0 # Start on boot" >> /etc/default/jetty9
       echo "JETTY_HOST=127.0.0.1 # Listen on localhost" >> /etc/default/jetty9
       echo "JETTY_PORT=8099 # Run on this port" >> /etc/default/jetty9

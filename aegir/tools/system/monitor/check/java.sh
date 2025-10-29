@@ -104,18 +104,10 @@ _jetty_restart() {
   touch /run/boa_java_auto_healing.pid
   sleep 3
   pkill -9 -f jetty
-  rm -f /var/log/jetty{7,8,9}/*
+  rm -f /var/log/jetty9/*
   renice ${_B_NICE} -p $$ &> /dev/null
   if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
     service jetty9 start
-    wait
-  fi
-  if [ -e "/etc/default/jetty8" ] && [ -e "/etc/init.d/jetty8" ]; then
-    service jetty8 start
-    wait
-  fi
-  if [ -e "/etc/default/jetty7" ] && [ -e "/etc/init.d/jetty7" ]; then
-    service jetty7 start
     wait
   fi
   _thisErrLog="$(date) Jetty service has been restarted"
@@ -133,22 +125,6 @@ _jetty_listen_conflict_detection() {
       _thisErrLog="$(date) BIND PORT error jetty9, service will be restarted"
       echo ${_thisErrLog} >> ${_pthOml}
       _jetty_restart "jetty9 zombie"
-    fi
-  fi
-  if [ -e "/var/log/jetty8" ]; then
-    if [ `tail --lines=500 /var/log/jetty8/*stderrout.log \
-      | grep --count "Address already in use"` -gt 0 ]; then
-      _thisErrLog="$(date) BIND PORT error jetty8, service will be restarted"
-      echo ${_thisErrLog} >> ${_pthOml}
-      _jetty_restart "jetty8 zombie"
-    fi
-  fi
-  if [ -e "/var/log/jetty7" ]; then
-    if [ `tail --lines=500 /var/log/jetty7/*stderrout.log \
-      | grep --count "Address already in use"` -gt 0 ]; then
-      _thisErrLog="$(date) BIND PORT error jetty7, service will be restarted"
-      echo ${_thisErrLog} >> ${_pthOml}
-      _jetty_restart "jetty7 zombie"
     fi
   fi
 }
