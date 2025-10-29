@@ -20,8 +20,6 @@ foreach $USER (sort keys %li_cnt) {
   print " $li_cnt{$USER}\t$USER\n";
   $sumar = $sumar + $li_cnt{$USER};
   if ($USER eq "mysql") {$mysqlives = "YES"; $mysqlsumar = $li_cnt{$USER};}
-  if ($USER eq "jetty7") {$jetty7lives = "YES"; $jetty7sumar = $li_cnt{$USER};}
-  if ($USER eq "jetty8") {$jetty8lives = "YES"; $jetty8sumar = $li_cnt{$USER};}
   if ($USER eq "jetty9") {$jetty9lives = "YES"; $jetty9sumar = $li_cnt{$USER};}
   if ($USER eq "solr7") {$solr7lives = "YES"; $solr7sumar = $li_cnt{$USER};}
   if ($USER eq "solr9") {$solr9lives = "YES"; $solr9sumar = $li_cnt{$USER};}
@@ -109,8 +107,6 @@ print "\n $valkeysumar Valkey procs\t\tGLOBAL" if ($valkeylives);
 print "\n $redissumar Redis procs\t\tGLOBAL" if ($redislives);
 print "\n $newrelicdaemonsumar New Relic Apps\tGLOBAL" if ($newrelicdaemonlives);
 print "\n $newrelicsysmondsumar New Relic Server\tGLOBAL" if ($newrelicsysmondlives);
-print "\n $jetty7sumar Jetty7 procs\t\tGLOBAL" if ($jetty7lives);
-print "\n $jetty8sumar Jetty8 procs\t\tGLOBAL" if ($jetty8lives);
 print "\n $jetty9sumar Jetty9 procs\t\tGLOBAL" if ($jetty9lives);
 print "\n $solr7sumar Solr7 procs\t\tGLOBAL" if ($solr7lives);
 print "\n $solr9sumar Solr9 procs\t\tGLOBAL" if ($solr9lives);
