@@ -105,6 +105,7 @@ _jetty_restart() {
   sleep 3
   pkill -9 -f jetty
   rm -f /var/log/jetty9/*
+  find /tmp -mindepth 1 -user jetty9 -exec rm -rf {} + 2>/dev/null
   renice ${_B_NICE} -p $$ &> /dev/null
   if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
     service jetty9 start
@@ -147,6 +148,7 @@ _solr_health_check_fix() {
   if [ -x "/etc/init.d/solr9" ]; then
     _pidfile="/var/solr9/solr-9099.pid"
     if ! pgrep -f /var/solr9 || [ ! -e "${_pidfile}" ]; then
+      find /tmp -mindepth 1 -user solr9 -exec rm -rf {} + 2>/dev/null
       service solr9 restart
       wait
       _thisErrLog="$(date) Solr9 Server was down, started"
@@ -156,6 +158,7 @@ _solr_health_check_fix() {
     else
       _pid="$(cat "${_pidfile}" 2>/dev/null | sed 's/[^0-9]//g')"
       if [ -n "${_pid}" ] && ! ps -p "${_pid}" >/dev/null 2>&1; then
+        find /tmp -mindepth 1 -user solr9 -exec rm -rf {} + 2>/dev/null
         service solr9 restart
         wait
         _thisErrLog="$(date) Solr9 stale PID detected, restarted"
@@ -168,6 +171,7 @@ _solr_health_check_fix() {
   if [ -x "/etc/init.d/solr7" ]; then
     _pidfile="/var/solr7/solr-9077.pid"
     if ! pgrep -f /var/solr7 || [ ! -e "${_pidfile}" ]; then
+      find /tmp -mindepth 1 -user solr7 -exec rm -rf {} + 2>/dev/null
       service solr7 restart
       wait
       _thisErrLog="$(date) Solr7 Server was down, started"
@@ -177,6 +181,7 @@ _solr_health_check_fix() {
     else
       _pid="$(cat "${_pidfile}" 2>/dev/null | sed 's/[^0-9]//g')"
       if [ -n "${_pid}" ] && ! ps -p "${_pid}" >/dev/null 2>&1; then
+        find /tmp -mindepth 1 -user solr7 -exec rm -rf {} + 2>/dev/null
         service solr7 restart
         wait
         _thisErrLog="$(date) Solr7 stale PID detected, restarted"
@@ -189,6 +194,7 @@ _solr_health_check_fix() {
   if [ -x "/etc/init.d/jetty9" ]; then
     _pidfile="/run/jetty9.pid"
     if ! pgrep -f /opt/jetty9 || [ ! -e "${_pidfile}" ]; then
+      find /tmp -mindepth 1 -user jetty9 -exec rm -rf {} + 2>/dev/null
       service jetty9 restart
       wait
       _thisErrLog="$(date) Solr4 Server was down, started"
@@ -198,6 +204,7 @@ _solr_health_check_fix() {
     else
       _pid="$(cat "${_pidfile}" 2>/dev/null | sed 's/[^0-9]//g')"
       if [ -n "${_pid}" ] && ! ps -p "${_pid}" >/dev/null 2>&1; then
+        find /tmp -mindepth 1 -user jetty9 -exec rm -rf {} + 2>/dev/null
         service jetty9 restart
         wait
         _thisErrLog="$(date) Solr4 stale PID detected, restarted"
