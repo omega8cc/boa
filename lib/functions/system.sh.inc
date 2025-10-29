@@ -1145,10 +1145,11 @@ _tune_memory_limits() {
     wait
     sed -i "s/^SOLR_JAVA_MEM=.*/SOLR_JAVA_MEM=\"-Xms64m ${_USE_SOLR}\"/g" /etc/default/solr9.in.sh
     wait
-    sed -i "s/^#SOLR_STOP_WAIT=.*/SOLR_STOP_WAIT=\"8\"/g" /etc/default/solr9.in.sh &> /dev/null
+    sed -i "s/.*_WAIT.*//g" /etc/default/solr9.in.sh &> /dev/null
     wait
-    sed -i "s/^#SOLR_WAIT_FOR_ZK=.*/SOLR_WAIT_FOR_ZK=\"8\"/g" /etc/default/solr9.in.sh &> /dev/null
-    wait
+    echo "SOLR_START_WAIT=\"8\"" >> /etc/default/solr9.in.sh
+    echo "SOLR_STOP_WAIT=\"8\"" >> /etc/default/solr9.in.sh
+    echo "SOLR_WAIT_FOR_ZK=\"8\"" >> /etc/default/solr9.in.sh
   fi
 
   if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
@@ -1158,10 +1159,11 @@ _tune_memory_limits() {
     wait
     sed -i "s/^SOLR_JAVA_MEM=.*/SOLR_JAVA_MEM=\"-Xms64m ${_USE_SOLR}\"/g" /etc/default/solr7.in.sh
     wait
-    sed -i "s/^#SOLR_STOP_WAIT=.*/SOLR_STOP_WAIT=\"8\"/g" /etc/default/solr7.in.sh &> /dev/null
+    sed -i "s/.*_WAIT.*//g" /etc/default/solr7.in.sh &> /dev/null
     wait
-    sed -i "s/^#SOLR_WAIT_FOR_ZK=.*/SOLR_WAIT_FOR_ZK=\"8\"/g" /etc/default/solr7.in.sh &> /dev/null
-    wait
+    echo "SOLR_START_WAIT=\"8\"" >> /etc/default/solr7.in.sh
+    echo "SOLR_STOP_WAIT=\"8\"" >> /etc/default/solr7.in.sh
+    echo "SOLR_WAIT_FOR_ZK=\"8\"" >> /etc/default/solr7.in.sh
   fi
 
   _tune_web_server_config
