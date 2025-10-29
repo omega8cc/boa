@@ -1054,13 +1054,17 @@ _tune_memory_limits() {
     fi
   fi
 
-  _MAX_MEM_REDIS=$(( _RAM / 6 ))
-  _MAX_REDIS="${_MAX_MEM_REDIS}MB"
-  sed -i "s/^maxmemory .*/maxmemory ${_MAX_REDIS}/g" /etc/valkey/valkey.conf &> /dev/null
-  sed -i "s/^maxmemory .*/maxmemory ${_MAX_REDIS}/g" /etc/redis/redis.conf &> /dev/null
+  _MAX_MEM_VALKEY=$(( _RAM / 6 ))
+  _MAX_VALKEY="${_MAX_MEM_VALKEY}MB"
+  if [ -e "/etc/valkey/valkey.conf" ]; then
+    sed -i "s/^maxmemory .*/maxmemory ${_MAX_VALKEY}/g" /etc/valkey/valkey.conf &> /dev/null
+  fi
+  if [ -e "/etc/redis/redis.conf" ]; then
+    sed -i "s/^maxmemory .*/maxmemory ${_MAX_VALKEY}/g" /etc/redis/redis.conf &> /dev/null
+  fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "TUNE: _MAX_MEM_REDIS is ${_MAX_MEM_REDIS}"
-    _msg "TUNE: _MAX_REDIS is ${_MAX_REDIS}"
+    _msg "TUNE: _MAX_MEM_VALKEY is ${_MAX_MEM_VALKEY}"
+    _msg "TUNE: _MAX_VALKEY is ${_MAX_VALKEY}"
   fi
 
   _USE_JETTY_MEM=$(( _RAM / 8 ))
