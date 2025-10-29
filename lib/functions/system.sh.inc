@@ -1085,6 +1085,14 @@ _tune_memory_limits() {
   fi
 
   if [ -x "/etc/init.d/solr9" ] && [ -e "/etc/default/solr9.in.sh" ]; then
+    _SOLR9_STOP_TEST=$(grep "STOP\.PORT=19099" /etc/default/solr9.in.sh 2>&1)
+    if [[ ! "${_SOLR9_STOP_TEST}" =~ "19099" ]]; then
+      sed -i "s/^SOLR_STOP_PORT.*//g" /etc/default/solr9.in.sh
+      wait
+      sed -i "s/^SOLR_STOP_KEY.*//g" /etc/default/solr9.in.sh
+      wait
+      echo "SOLR_OPTS=\"\${SOLR_OPTS} -DSTOP.PORT=19099 -DSTOP.KEY=mycustomkey9\"" >> /etc/default/solr9.in.sh
+    fi
     sed -i "s/^SOLR_HEAP/#SOLR_HEAP/g" /etc/default/solr9.in.sh &> /dev/null
     wait
     sed -i "s/^#SOLR_JAVA_MEM/SOLR_JAVA_MEM/g" /etc/default/solr9.in.sh &> /dev/null
@@ -1099,6 +1107,14 @@ _tune_memory_limits() {
   fi
 
   if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
+    _SOLR7_STOP_TEST=$(grep "STOP\.PORT=17077" /etc/default/solr7.in.sh 2>&1)
+    if [[ ! "${_SOLR7_STOP_TEST}" =~ "17077" ]]; then
+      sed -i "s/^SOLR_STOP_PORT.*//g" /etc/default/solr7.in.sh
+      wait
+      sed -i "s/^SOLR_STOP_KEY.*//g" /etc/default/solr7.in.sh
+      wait
+      echo "SOLR_OPTS=\"\${SOLR_OPTS} -DSTOP.PORT=17077 -DSTOP.KEY=mycustomkey7\"" >> /etc/default/solr7.in.sh
+    fi
     sed -i "s/^SOLR_HEAP/#SOLR_HEAP/g" /etc/default/solr7.in.sh &> /dev/null
     wait
     sed -i "s/^#SOLR_JAVA_MEM/SOLR_JAVA_MEM/g" /etc/default/solr7.in.sh &> /dev/null
