@@ -663,8 +663,12 @@ _mc_panels_ini_update() {
     _msg "PROC: _mc_panels_ini_update"
   fi
   if [ -d "/root/.config/mc" ]; then
-    _SORT_ORDER_TEST="$(grep sort_order /root/.config/mc/panels.ini)"
-    if [[ ! "${_SORT_ORDER_TEST}" =~ "sort_order" ]]; then
+    _SORT_ORDER_TEST=EMPTY
+    if [ -f "/root/.config/mc/panels.ini" ]; then
+      _SORT_ORDER_TEST="$(grep sort_order /root/.config/mc/panels.ini)"
+    fi
+    if [ ! -f "/root/.config/mc/panels.ini" ] \
+      || [[ ! "${_SORT_ORDER_TEST}" =~ "sort_order" ]]; then
       if [ -e "${_locCnf}/ini/panels.ini" ]; then
         cat ${_locCnf}/ini/panels.ini >> /root/.config/mc/panels.ini
       fi
@@ -1050,13 +1054,17 @@ _tune_memory_limits() {
     fi
   fi
 
-  _MAX_MEM_REDIS=$(( _RAM / 6 ))
-  _MAX_REDIS="${_MAX_MEM_REDIS}MB"
-  sed -i "s/^maxmemory .*/maxmemory ${_MAX_REDIS}/g" /etc/valkey/valkey.conf &> /dev/null
-  sed -i "s/^maxmemory .*/maxmemory ${_MAX_REDIS}/g" /etc/redis/redis.conf &> /dev/null
+  _MAX_MEM_VALKEY=$(( _RAM / 6 ))
+  _MAX_VALKEY="${_MAX_MEM_VALKEY}MB"
+  if [ -e "/etc/valkey/valkey.conf" ]; then
+    sed -i "s/^maxmemory .*/maxmemory ${_MAX_VALKEY}/g" /etc/valkey/valkey.conf &> /dev/null
+  fi
+  if [ -e "/etc/redis/redis.conf" ]; then
+    sed -i "s/^maxmemory .*/maxmemory ${_MAX_VALKEY}/g" /etc/redis/redis.conf &> /dev/null
+  fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "TUNE: _MAX_MEM_REDIS is ${_MAX_MEM_REDIS}"
-    _msg "TUNE: _MAX_REDIS is ${_MAX_REDIS}"
+    _msg "TUNE: _MAX_MEM_VALKEY is ${_MAX_MEM_VALKEY}"
+    _msg "TUNE: _MAX_VALKEY is ${_MAX_VALKEY}"
   fi
 
   _USE_JETTY_MEM=$(( _RAM / 8 ))
@@ -1083,10 +1091,11 @@ _tune_memory_limits() {
     wait
     sed -i "s/^SOLR_JAVA_MEM=.*/SOLR_JAVA_MEM=\"-Xms64m ${_USE_SOLR}\"/g" /etc/default/solr9.in.sh
     wait
-    sed -i "s/^#SOLR_STOP_WAIT=.*/SOLR_STOP_WAIT=\"8\"/g" /etc/default/solr9.in.sh &> /dev/null
+    sed -i "s/.*_WAIT.*//g" /etc/default/solr9.in.sh &> /dev/null
     wait
-    sed -i "s/^#SOLR_WAIT_FOR_ZK=.*/SOLR_WAIT_FOR_ZK=\"8\"/g" /etc/default/solr9.in.sh &> /dev/null
-    wait
+    echo "SOLR_START_WAIT=\"8\"" >> /etc/default/solr9.in.sh
+    echo "SOLR_STOP_WAIT=\"8\"" >> /etc/default/solr9.in.sh
+    echo "SOLR_WAIT_FOR_ZK=\"8\"" >> /etc/default/solr9.in.sh
   fi
 
   if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
@@ -1096,10 +1105,11 @@ _tune_memory_limits() {
     wait
     sed -i "s/^SOLR_JAVA_MEM=.*/SOLR_JAVA_MEM=\"-Xms64m ${_USE_SOLR}\"/g" /etc/default/solr7.in.sh
     wait
-    sed -i "s/^#SOLR_STOP_WAIT=.*/SOLR_STOP_WAIT=\"8\"/g" /etc/default/solr7.in.sh &> /dev/null
+    sed -i "s/.*_WAIT.*//g" /etc/default/solr7.in.sh &> /dev/null
     wait
-    sed -i "s/^#SOLR_WAIT_FOR_ZK=.*/SOLR_WAIT_FOR_ZK=\"8\"/g" /etc/default/solr7.in.sh &> /dev/null
-    wait
+    echo "SOLR_START_WAIT=\"8\"" >> /etc/default/solr7.in.sh
+    echo "SOLR_STOP_WAIT=\"8\"" >> /etc/default/solr7.in.sh
+    echo "SOLR_WAIT_FOR_ZK=\"8\"" >> /etc/default/solr7.in.sh
   fi
 
   _tune_web_server_config
