@@ -763,6 +763,8 @@ _global_inc_conf_update() {
   if [ ! -z "${_SPEED_VALID_MAX}" ]; then
     sed -i "s/3600/${_SPEED_VALID_MAX}/g" ${_GL_D}/global-front-end.inc &> /dev/null
   fi
+  cp -af ${_locCnf}/global/global-if-valkey.inc ${_GL_D}/global-if-valkey.inc
+  cp -af ${_locCnf}/global/global-valkey.inc ${_GL_D}/global-valkey.inc
   cp -af ${_locCnf}/global/global-if-redis.inc ${_GL_D}/global-if-redis.inc
   cp -af ${_locCnf}/global/global-redis.inc ${_GL_D}/global-redis.inc
   cp -af ${_locCnf}/global/global-newrelic.inc ${_GL_D}/global-newrelic.inc
