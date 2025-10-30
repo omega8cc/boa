@@ -2922,15 +2922,12 @@ _mytop_install() {
     _mrun "apt-get remove mytop -y -qq"
     rm -f /usr/bin/mytop
   fi
-  _MYTOP_REINSTALL=NO
-  _MYTOP_TEST=$(mytop -b 2>&1)
-  if [[ "${_MYTOP_TEST}" =~ "cannot open shared object file" ]] \
-    || [[ "${_MYTOP_TEST}" =~ "you may need to install" ]] \
-    || [[ "${_MYTOP_TEST}" =~ "failed" ]]; then
-    _MYTOP_REINSTALL=YES
+  _myTopRebuild=NO
+  if [ "${_myTopReinstall}" = "YES" ]; then
+    _myTopRebuild=YES
   fi
   if [ -e "/usr/bin/mysql" ]; then
-    if [ ! -e "/usr/local/bin/mytop" ] || [ "${_MYTOP_REINSTALL}" = "YES" ]; then
+    if [ ! -e "/usr/local/bin/mytop" ] || [ "${_myTopRebuild}" = "YES" ]; then
       _msg "INFO: Building MyTop from sources..."
       _check_mysql_version
       _apt_clean_update
@@ -9558,6 +9555,7 @@ _initd_update() {
       _preCnf="${_vBs}/dragon/t/my.cnf-pre-${_xSrl}-${_X_VERSION}-${_NOW}"
       if [ -f "${_myCnf}" ]; then
         _myCnfUpdate=NO
+        _myTopReinstall=NO
         if [ ! -f "${_preCnf}" ]; then
           mkdir -p ${_vBs}/dragon/t/
           cp -af ${_myCnf} ${_preCnf}
@@ -9578,6 +9576,7 @@ _initd_update() {
           fi
         else
           _myCnfUpdate=YES
+          _myTopReinstall=YES
           # _diffMyTest=$(echo -n ${_diffMyTest} | fmt -su -w 2500)
           if [ "${_DEBUG_MODE}" = "YES" ]; then
             _msg "INFO: ${_DB_SERVER} diff1 ${_diffMyTest}"
@@ -9603,6 +9602,7 @@ _initd_update() {
             _msg "INFO: ${_DB_SERVER} ${_DBS_VRN} already up to date"
           fi
           _myCnfUpdate=YES
+          _myTopReinstall=YES
           if [ "${_DEBUG_MODE}" = "YES" ]; then
             _msg "INFO: ${_DB_SERVER} restart after upgrade forced"
           fi

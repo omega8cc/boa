@@ -1272,6 +1272,7 @@ _db_server_install() {
       _preCnf="${_vBs}/dragon/t/my.cnf-pre-${_xSrl}-${_X_VERSION}-${_NOW}"
       if [ -f "${_myCnf}" ]; then
         _myCnfUpdate=NO
+        _myTopReinstall=NO
         _myRstrd=NO
         if [ ! -f "${_preCnf}" ]; then
           mkdir -p ${_vBs}/dragon/t/
@@ -1288,11 +1289,13 @@ _db_server_install() {
           -I key_buffer_size ${_myCnf} ${_preCnf} 2>&1)
         if [ -z "${_diffMyTest}" ]; then
           _myCnfUpdate=NO
+          _myTopReinstall=NO
           if [ "${_DEBUG_MODE}" = "YES" ]; then
             _msg "INFO: ${_DB_SERVER} diff0 empty"
           fi
         else
           _myCnfUpdate=YES
+          _myTopReinstall=YES
           # _diffMyTest=$(echo -n ${_diffMyTest} | fmt -su -w 2500)
           if [ "${_DEBUG_MODE}" = "YES" ]; then
             _msg "INFO: ${_DB_SERVER} diff1 ${_diffMyTest}"
