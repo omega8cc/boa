@@ -32,13 +32,13 @@ $raw_host      = FALSE;
 $redis_comprs  = FALSE;
 $redis_lock    = FALSE;
 $redis_path    = FALSE;
-$redis_up      = FALSE;
 $site_subdir   = FALSE;
 $use_auto_se   = FALSE;
 $use_cache_ct  = FALSE;
-$use_redis     = FALSE;
+$use_valkey    = FALSE;
 $usr_loc_ini   = FALSE;
 $usr_plr_ini   = FALSE;
+$valkey_up     = FALSE;
 
 
 /**

@@ -85,7 +85,10 @@ _forced_valkey_password_update() {
     fi
   fi
   echo "${_ESC_RPASS}" > /root/.valkey.pass.txt
-  chmod 0600 /root/.valkey.pass.txt &> /dev/null
+  chmod 0600 /root/.valkey.pass.txt
+  [ -d "/data/conf/valkey" ] || mkdir -p /data/conf/valkey
+  cp -af /root/.valkey.pass.txt /data/conf/valkey/pass.inc
+  chmod 0644 /data/conf/valkey/*
   touch ${_pthLog}/sec-valkey-pass-${_xSrl}-${_X_VERSION}-${_NOW}.log
   if [ -e "/etc/valkey/valkey.conf" ]; then
     _FORCE_VALKEY_RESTART=YES
@@ -227,6 +230,38 @@ _valkey_password_update() {
     else
       _RPASS="${_ESC_RPASS}"
     fi
+
+    [ -d "/data/conf/valkey" ] || mkdir -p /data/conf/valkey
+    cp -af /root/.valkey.pass.txt /data/conf/valkey/pass.inc
+    chmod 0644 /data/conf/valkey/*
+
+    if [ -e "/data/conf/global/global-if-valkey.inc" ]; then
+      _VALKEY_PWD_TEST=$(grep "'${_RPASS}'" /data/conf/global/global-if-valkey.inc 2>&1)
+      if [[ "${_VALKEY_PWD_TEST}" =~ "'${_RPASS}'" ]]; then
+        _DO_NOTHING=YES
+      else
+        if [ ! -z "${_RPASS}" ]; then
+          mkdir -p /data/conf
+          cp -af ${_locCnf}/global/global-if-valkey.inc /data/conf/global/global-if-valkey.inc
+          sed -i "s/isfoobared/${_RPASS}/g" /data/conf/global/global-if-valkey.inc &> /dev/null
+          wait
+        fi
+      fi
+    fi
+    if [ -e "/data/conf/global/global-valkey.inc" ]; then
+      _VALKEY_PWD_TEST=$(grep "'${_RPASS}'" /data/conf/global/global-valkey.inc 2>&1)
+      if [[ "${_VALKEY_PWD_TEST}" =~ "'${_RPASS}'" ]]; then
+        _DO_NOTHING=YES
+      else
+        if [ ! -z "${_RPASS}" ]; then
+          mkdir -p /data/conf
+          cp -af ${_locCnf}/global/global-valkey.inc /data/conf/global/global-valkey.inc
+          sed -i "s/isfoobared/${_RPASS}/g" /data/conf/global/global-valkey.inc &> /dev/null
+          wait
+        fi
+      fi
+    fi
+
     if [ -e "/data/conf/global/global-if-redis.inc" ]; then
       _VALKEY_PWD_TEST=$(grep "'${_RPASS}'" /data/conf/global/global-if-redis.inc 2>&1)
       if [[ "${_VALKEY_PWD_TEST}" =~ "'${_RPASS}'" ]]; then
@@ -253,6 +288,7 @@ _valkey_password_update() {
         fi
       fi
     fi
+
     if [ -e "/data/conf/global.inc" ]; then
       _VALKEY_PWD_TEST=$(grep "'${_RPASS}'" /data/conf/global.inc 2>&1)
       if [[ "${_VALKEY_PWD_TEST}" =~ "'${_RPASS}'" ]]; then
