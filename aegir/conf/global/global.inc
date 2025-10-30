@@ -32,13 +32,13 @@ $raw_host      = FALSE;
 $redis_comprs  = FALSE;
 $redis_lock    = FALSE;
 $redis_path    = FALSE;
-$redis_up      = FALSE;
 $site_subdir   = FALSE;
 $use_auto_se   = FALSE;
 $use_cache_ct  = FALSE;
-$use_redis     = FALSE;
+$use_valkey    = FALSE;
 $usr_loc_ini   = FALSE;
 $usr_plr_ini   = FALSE;
+$valkey_up     = FALSE;
 
 
 /**
@@ -159,7 +159,7 @@ if (file_exists('web.config') || file_exists('index.php')) { // Check for the ma
         $drupal_core = '11';
         $drupal_id = 'DXI';
       }
-      $use_redis = TRUE;
+      $use_valkey = TRUE;
     }
     else {
       $backdropcms = TRUE;
@@ -169,12 +169,12 @@ if (file_exists('web.config') || file_exists('index.php')) { // Check for the ma
   elseif (file_exists('modules/path_alias_cache')) {
     $drupal_core = '6';
     $drupal_id = 'DVI';
-    $use_redis = TRUE;
+    $use_valkey = TRUE;
   }
   else {
     $drupal_core = '7';
     $drupal_id = 'DVII';
-    $use_redis = TRUE;
+    $use_valkey = TRUE;
   }
   if ($drupal_id && $is_dev && !$is_backend) {
     header('X-Backend: ' . $drupal_id);
@@ -427,15 +427,15 @@ if (is_array($all_ini) && $is_dev && !$is_backend) {
   if (!$ini_plr_src && !$ini_loc_src) {
     header("X-Ini-Src: BOA-Default");
   }
-  header("X-Ini-Redis-Use-Modern: " . $all_ini['redis_use_modern']);
-  header("X-Ini-Redis-Flush-Forced-Mode: " . $all_ini['redis_flush_forced_mode']);
-  header("X-Ini-Redis-Lock-Enable: " . $all_ini['redis_lock_enable']);
-  header("X-Ini-Redis-Path-Enable: " . $all_ini['redis_path_enable']);
-  header("X-Ini-Redis-Scan-Enable: " . $all_ini['redis_scan_enable']);
-  header("X-Ini-Redis-Old-Nine-Mode: " . $all_ini['redis_old_nine_mode']);
-  header("X-Ini-Redis-Old-Eight-Mode: " . $all_ini['redis_old_eight_mode']);
-  header("X-Ini-Redis-Cache-Disable: " . $all_ini['redis_cache_disable']);
-  header("X-Ini-Redis-Exclude-Bins: " . $all_ini['redis_exclude_bins']);
+  header("X-Ini-Valkey-Use-Modern: " . $all_ini['redis_use_modern']);
+  header("X-Ini-Valkey-Flush-Forced-Mode: " . $all_ini['redis_flush_forced_mode']);
+  header("X-Ini-Valkey-Lock-Enable: " . $all_ini['redis_lock_enable']);
+  header("X-Ini-Valkey-Path-Enable: " . $all_ini['redis_path_enable']);
+  header("X-Ini-Valkey-Scan-Enable: " . $all_ini['redis_scan_enable']);
+  header("X-Ini-Valkey-Old-Nine-Mode: " . $all_ini['redis_old_nine_mode']);
+  header("X-Ini-Valkey-Old-Eight-Mode: " . $all_ini['redis_old_eight_mode']);
+  header("X-Ini-Valkey-Cache-Disable: " . $all_ini['redis_cache_disable']);
+  header("X-Ini-Valkey-Exclude-Bins: " . $all_ini['redis_exclude_bins']);
   header("X-Ini-Speed-Booster-Anon-Cache-Ttl: " . $all_ini['speed_booster_anon_cache_ttl']);
   header("X-Ini-Allow-Anon-Node-Add: " . $all_ini['allow_anon_node_add']);
   header("X-Ini-Enable-NewRelic-Integration: " . $all_ini['enable_newrelic_integration']);
@@ -745,7 +745,7 @@ if ($conf['install_profile'] == 'hostmaster') {
     }
   }
   else {
-    $use_redis = TRUE;
+    $use_valkey = TRUE;
   }
 }
 
@@ -764,43 +764,43 @@ if (isset($_SERVER['SERVER_NAME']) &&
 }
 
 if (isset($_SERVER['SERVER_NAME']) && $all_ini['redis_cache_disable']) {
-  $use_redis = FALSE;
+  $use_valkey = FALSE;
 }
 
 if (!$is_bot && isset($_SERVER['REQUEST_URI']) &&
     preg_match("/noredis=1/", $_SERVER['REQUEST_URI'])) {
-  $use_redis = FALSE;
+  $use_valkey = FALSE;
 }
 
-if ($use_redis && !$is_install && !$custom_cache) {
+if ($use_valkey && !$is_install && !$custom_cache) {
   $redis = new Redis();
   $redis->connect('127.0.0.1', 6379);
   if ($redis->isConnected()) {
     $redis->auth('isfoobared');
     $response = $redis->ping('PONG');
     if ($is_dev && !$is_backend) {
-      header("X-Redis-Response: " . $response);
+      header("X-Valkey-Response: " . $response);
     }
     if (preg_match("/PONG/", $response)) {
-      $redis_up = TRUE;
+      $valkey_up = TRUE;
     }
     else {
       if ($is_dev && !$is_backend) {
-        header("X-Redis-Up: " . $redis_up);
+        header("X-Valkey-Up: " . $valkey_up);
       }
     }
     $redis->close();
   }
 }
 
-if ($redis_up && $use_redis) {
+if ($valkey_up && $use_valkey) {
   if ($is_dev && !$is_backend) {
-    header('X-Allow-Redis: YES');
+    header('X-Allow-Valkey: YES');
   }
 }
 else {
   if ($is_dev && !$is_backend) {
-    header('X-Allow-Redis: NO');
+    header('X-Allow-Valkey: NO');
   }
 }
 
@@ -856,7 +856,7 @@ if ($all_ini['set_composer_manager_vendor_dir'] && !$is_install) {
 }
 
 if ($is_install) {
-  $use_redis = FALSE;
+  $use_valkey = FALSE;
   $da_inc    = FALSE;
 }
 
@@ -1028,7 +1028,7 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) &&
 
   $this_prefix = preg_replace('`^www\.`', '', $_SERVER['SERVER_NAME']) . '_z_';
   if ($is_dev) {
-    header("X-Redis-Prefix: " . $this_prefix);
+    header("X-Valkey-Prefix: " . $this_prefix);
   }
 
   if (isset($_SERVER['REQUEST_TIME']) &&
@@ -1216,9 +1216,9 @@ if (is_readable('/data/conf/override.global.inc')) {
 /**
  * Use Redis caching and lock support only for d6 and d7 profiles
  */
-if ($redis_up && $use_redis && !$custom_cache) {
+if ($valkey_up && $use_valkey && !$custom_cache) {
   $cache_backport = FALSE;
-  $cache_redis = FALSE;
+  $cache_valkey = FALSE;
   $all_ini['redis_use_modern'] = TRUE;
   if ($all_ini['redis_use_modern']) {
     if ($drupal_core >= 8) {
@@ -1239,8 +1239,8 @@ if ($redis_up && $use_redis && !$custom_cache) {
       $redis_dirname = 'redis_edge';
     }
     if ($is_dev && !$is_backend) {
-      header("X-Redis-Version-Is: Modern");
-      header("X-Redis-Dir-Is: " . $redis_dirname);
+      header("X-Valkey-Version-Is: Modern");
+      header("X-Valkey-Dir-Is: " . $redis_dirname);
     }
     if ($all_ini['redis_flush_forced_mode']) {
       if ($drupal_core >= 8) {
@@ -1261,21 +1261,21 @@ if ($redis_up && $use_redis && !$custom_cache) {
       }
       // See http://bit.ly/1drmi35 for more information
       if ($is_dev && !$is_backend) {
-        header("X-Redis-Flush-Forced-Mode: Forced");
+        header("X-Valkey-Flush-Forced-Mode: Forced");
       }
     }
   }
   else {
     $redis_dirname = 'redis';
     if ($is_dev && !$is_backend) {
-      header("X-Redis-Version-Is: Legacy");
-      header("X-Redis-Dir-Is: " . $redis_dirname);
+      header("X-Valkey-Version-Is: Legacy");
+      header("X-Valkey-Dir-Is: " . $redis_dirname);
     }
   }
   if ($drupal_core >= 8) {
     if (file_exists('sites/' . $_SERVER['SERVER_NAME'] . '/.redisLegacyOff')) {
       if ($is_dev && !$is_backend) {
-        header("X-Redis-Off-Ctrl-Exists: .redisLegacyOff");
+        header("X-Valkey-Off-Ctrl-Exists: .redisLegacyOff");
       }
     }
     else {
@@ -1286,7 +1286,7 @@ if ($redis_up && $use_redis && !$custom_cache) {
       }
       else {
         if (is_readable('modules/o_contrib_eight/' . $redis_dirname . '/example.services.yml')) {
-          $cache_redis = TRUE;
+          $cache_valkey = TRUE;
           $example_services_path = 'modules/o_contrib_eight/' . $redis_dirname . '/example.services.yml';
           $cache_gzip_path = 'modules/o_contrib_eight/' . $redis_dirname . '/lib/Redis/CacheCompressed.php';
           if ($is_dev && !$is_backend) {
@@ -1294,14 +1294,14 @@ if ($redis_up && $use_redis && !$custom_cache) {
           }
         }
         if (is_readable('modules/o_contrib_eight/' . $redis_dirname . '/redis.services.yml')) {
-          $cache_redis = TRUE;
+          $cache_valkey = TRUE;
           $redis_services_path = 'modules/o_contrib_eight/' . $redis_dirname . '/redis.services.yml';
           if ($is_dev && !$is_backend) {
-            header("X-Redis-Services-Is-Readable: " . $redis_services_path);
+            header("X-Valkey-Services-Is-Readable: " . $redis_services_path);
           }
         }
         if (is_readable('modules/o_contrib_nine/' . $redis_dirname . '/example.services.yml')) {
-          $cache_redis = TRUE;
+          $cache_valkey = TRUE;
           $example_services_path = 'modules/o_contrib_nine/' . $redis_dirname . '/example.services.yml';
           $cache_gzip_path = 'modules/o_contrib_nine/' . $redis_dirname . '/lib/Redis/CacheCompressed.php';
           if ($is_dev && !$is_backend) {
@@ -1309,14 +1309,14 @@ if ($redis_up && $use_redis && !$custom_cache) {
           }
         }
         if (is_readable('modules/o_contrib_nine/' . $redis_dirname . '/redis.services.yml')) {
-          $cache_redis = TRUE;
+          $cache_valkey = TRUE;
           $redis_services_path = 'modules/o_contrib_nine/' . $redis_dirname . '/redis.services.yml';
           if ($is_dev && !$is_backend) {
-            header("X-Redis-Services-Is-Readable: " . $redis_services_path);
+            header("X-Valkey-Services-Is-Readable: " . $redis_services_path);
           }
         }
         if (is_readable('modules/o_contrib_ten/' . $redis_dirname . '/example.services.yml')) {
-          $cache_redis = TRUE;
+          $cache_valkey = TRUE;
           $example_services_path = 'modules/o_contrib_ten/' . $redis_dirname . '/example.services.yml';
           $cache_gzip_path = 'modules/o_contrib_ten/' . $redis_dirname . '/lib/Redis/CacheCompressed.php';
           if ($is_dev && !$is_backend) {
@@ -1324,14 +1324,14 @@ if ($redis_up && $use_redis && !$custom_cache) {
           }
         }
         if (is_readable('modules/o_contrib_ten/' . $redis_dirname . '/redis.services.yml')) {
-          $cache_redis = TRUE;
+          $cache_valkey = TRUE;
           $redis_services_path = 'modules/o_contrib_ten/' . $redis_dirname . '/redis.services.yml';
           if ($is_dev && !$is_backend) {
-            header("X-Redis-Services-Is-Readable: " . $redis_services_path);
+            header("X-Valkey-Services-Is-Readable: " . $redis_services_path);
           }
         }
         if (is_readable('modules/o_contrib_eleven/' . $redis_dirname . '/example.services.yml')) {
-          $cache_redis = TRUE;
+          $cache_valkey = TRUE;
           $example_services_path = 'modules/o_contrib_eleven/' . $redis_dirname . '/example.services.yml';
           $cache_gzip_path = 'modules/o_contrib_eleven/' . $redis_dirname . '/lib/Redis/CacheCompressed.php';
           if ($is_dev && !$is_backend) {
@@ -1339,10 +1339,10 @@ if ($redis_up && $use_redis && !$custom_cache) {
           }
         }
         if (is_readable('modules/o_contrib_eleven/' . $redis_dirname . '/redis.services.yml')) {
-          $cache_redis = TRUE;
+          $cache_valkey = TRUE;
           $redis_services_path = 'modules/o_contrib_eleven/' . $redis_dirname . '/redis.services.yml';
           if ($is_dev && !$is_backend) {
-            header("X-Redis-Services-Is-Readable: " . $redis_services_path);
+            header("X-Valkey-Services-Is-Readable: " . $redis_services_path);
           }
         }
       }
@@ -1350,14 +1350,14 @@ if ($redis_up && $use_redis && !$custom_cache) {
   }
   elseif ($drupal_core == 7) {
     if (is_readable('modules/o_contrib_seven/' . $redis_dirname . '/redis.autoload.inc')) {
-      $cache_redis = TRUE;
+      $cache_valkey = TRUE;
       $cache_backport = FALSE;
       $cache_redis_path = 'modules/o_contrib_seven/' . $redis_dirname . '/redis.autoload.inc';
       $cache_lock_path = 'modules/o_contrib_seven/' . $redis_dirname . '/redis.lock.inc';
       $cache_path_path = 'modules/o_contrib_seven/' . $redis_dirname . '/redis.path.inc';
       $cache_gzip_path = 'modules/o_contrib_seven/' . $redis_dirname . '/lib/Redis/CacheCompressed.php';
       if ($is_dev && !$is_backend) {
-        header("X-Redis-Autoload-Is-Readable: " . $cache_redis_path);
+        header("X-Valkey-Autoload-Is-Readable: " . $cache_redis_path);
       }
     }
     if ($all_ini['autoslave_enable']) {
@@ -1389,21 +1389,21 @@ if ($redis_up && $use_redis && !$custom_cache) {
       $cache_backport = TRUE;
       $cache_backport_path = 'modules/o_contrib/cache_backport/cache.inc';
       if ($is_dev && !$is_backend) {
-        header("X-Redis-Cache-Backport-Is-Readable: " . $cache_backport_path);
+        header("X-Valkey-Cache-Backport-Is-Readable: " . $cache_backport_path);
       }
     }
     if (is_readable('modules/o_contrib/' . $redis_dirname . '/redis.autoload.inc')) {
-      $cache_redis = TRUE;
+      $cache_valkey = TRUE;
       $cache_redis_path = 'modules/o_contrib/' . $redis_dirname . '/redis.autoload.inc';
       $cache_lock_path = 'modules/o_contrib/' . $redis_dirname . '/redis.lock.inc';
       $cache_path_path = 'modules/o_contrib/' . $redis_dirname . '/redis.path.inc';
       $cache_gzip_path = 'modules/o_contrib/' . $redis_dirname . '/lib/Redis/CacheCompressed.php';
       if ($is_dev && !$is_backend) {
-        header("X-Redis-Autoload-Is-Readable: " . $cache_redis_path);
+        header("X-Valkey-Autoload-Is-Readable: " . $cache_redis_path);
       }
     }
   }
-  if ($cache_redis) {
+  if ($cache_valkey) {
     if ($drupal_core >= 8) {
       if (is_readable('modules/o_contrib_eleven/' . $redis_dirname . '/redis.services.yml')) {
         $class_loader->addPsr4('Drupal\\redis\\', 'modules/o_contrib_eleven/' . $redis_dirname . '/src');
@@ -1480,14 +1480,14 @@ if ($redis_up && $use_redis && !$custom_cache) {
       if (is_readable($cache_lock_path) && $redis_lock) {
         $conf['lock_inc']                       = $cache_lock_path;
         if ($is_dev && !$is_backend) {
-          header("X-Redis-Lock-Is-Readable: " . $cache_lock_path);
+          header("X-Valkey-Lock-Is-Readable: " . $cache_lock_path);
         }
       }
       if (is_readable($cache_path_path) && $redis_path) {
         $conf['path_inc']                       = $cache_path_path;
         $conf['path_alias_admin_blacklist']     = FALSE;
         if ($is_dev && !$is_backend) {
-          header("X-Redis-Path-Is-Readable: " . $cache_path_path);
+          header("X-Valkey-Path-Is-Readable: " . $cache_path_path);
         }
       }
       if ($all_ini['redis_scan_enable']) {
@@ -1559,7 +1559,7 @@ if ($redis_up && $use_redis && !$custom_cache) {
           $conf[$bin_exclude] = 'DrupalDatabaseCache';
         }
         if ($is_dev && !$is_backend) {
-          header("X-Ini-Redis-Exclude-Bin-" . $exclude . ": " . $bin_exclude);
+          header("X-Ini-Valkey-Exclude-Bin-" . $exclude . ": " . $bin_exclude);
         }
       }
     }
