@@ -376,6 +376,9 @@ _valkey_install_upgrade() {
   elif [ "${_VALKEY_MAJOR_RELEASE}" = "8" ]; then
     _VALKEY_VRN=${_VALKEY_EIGHT_VRN}
     _valkeyCnfTpl="valkey8.conf"
+  elif [ "${_VALKEY_MAJOR_RELEASE}" = "9" ]; then
+    _VALKEY_VRN=${_VALKEY_NINE_VRN}
+    _valkeyCnfTpl="valkey9.conf"
   fi
   if [ ! -e "/var/lib/valkey" ]; then
     _mrun "adduser --system --group valkey --home /home/valkey"
