@@ -1308,9 +1308,11 @@ _db_server_install() {
         && [ ! -e "/root/.run-to-chimaera.cnf" ] \
         && [ ! -e "/root/.run-to-beowulf.cnf" ]; then
         _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
-        _myUptime=$(mysqladmin -u root version | grep -i uptime 2>&1)
-        _myUptime=$(echo -n ${_myUptime} | fmt -su -w 2500 2>&1)
-        _msg "INFO: ${_DB_SERVER} ${_myUptime}"
+        if [ "${_myCnfUpdate}" = "NO" ]; then
+          _myUptime=$(mysqladmin -u root version | grep -i uptime 2>&1)
+          _myUptime=$(echo -n ${_myUptime} | fmt -su -w 2500 2>&1)
+          _msg "INFO: ${_DB_SERVER} ${_myUptime}"
+        fi
         if [ "${_myCnfUpdate}" = "YES" ]; then
           if [ "${_DEBUG_MODE}" = "YES" ]; then
             _msg "INFO: Restarting ${_DB_SERVER} server..."
@@ -1577,8 +1579,8 @@ _sql_root_credentials_update() {
           mysql -u root -e "ALTER USER 'root'@'::1' IDENTIFIED WITH caching_sha2_password BY '${_PASWD}';"
           mysql -u root -e "ALTER USER 'root'@'${_MY_OWNIP}' IDENTIFIED WITH caching_sha2_password BY '${_PASWD}';"
         fi
-        mysqladmin -u root flush-privileges
-        mysqladmin -u root flush-hosts
+        mysqladmin -u root flush-privileges &> /dev/null
+        mysqladmin -u root flush-hosts &> /dev/null
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "DAFT: ${_DB_SERVER} PASWD ${_PASWD}"
           mysql -u root -e "SHOW GRANTS FOR 'root'@'localhost';"
@@ -1597,8 +1599,8 @@ _sql_root_credentials_update() {
         else
           sed -i "s/.*skip-name-resolve/#skip-name-resolve/g" /etc/mysql/my.cnf &> /dev/null
         fi
-        mysqladmin -u root flush-privileges
-        mysqladmin -u root flush-hosts
+        mysqladmin -u root flush-privileges &> /dev/null
+        mysqladmin -u root flush-hosts &> /dev/null
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "INFO: Restarting ${_DB_SERVER} server..."
         fi
