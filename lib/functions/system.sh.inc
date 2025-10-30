@@ -5800,7 +5800,8 @@ _finale() {
   apt-get autoclean -y &> /dev/null
   apt-get clean -qq 2> /dev/null
   #rm -rf /var/lib/apt/lists/*
-  mkdir -p /data/conf/arch
+  mkdir -p /data/conf/arch/log
+  chmod 0777 /data/conf/arch/log
   mv -f /data/conf/global.inc-pre* /data/conf/arch/     &> /dev/null
   mv -f /data/conf/global/*inc-pre* /data/conf/arch/    &> /dev/null
   mv -f /data/conf/global.inc-before* /data/conf/arch/  &> /dev/null
