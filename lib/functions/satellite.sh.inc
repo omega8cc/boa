@@ -5054,7 +5054,8 @@ _satellite_batch_cleanup() {
   mv -f ${_ROOT}/backups/registry_rebuild-pre* ${_ROOT}/backups/system/ &> /dev/null
   mv -f ${_ROOT}/backups/safe_cache_form_clear-pre* ${_ROOT}/backups/system/ &> /dev/null
   mv -f ${_ROOT}/backups/mydropwizard-pre* ${_ROOT}/backups/system/ &> /dev/null
-  mkdir -p /data/conf/arch
+  mkdir -p /data/conf/arch/log
+  chmod 0777 /data/conf/arch/log
   mv -f /data/conf/global.inc-pre* /data/conf/arch/ &> /dev/null
   mv -f /data/conf/global/*inc-pre* /data/conf/arch/ &> /dev/null
   mv -f /data/conf/global.inc-before* /data/conf/arch/ &> /dev/null
