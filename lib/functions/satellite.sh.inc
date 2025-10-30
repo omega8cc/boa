@@ -3117,9 +3117,6 @@ _satellite_run_child_c() {
       touch /opt/tmp/status-AegirSetupA-FAIL
       exit 1
     fi
-    if [ -e "/opt/tmp/status-AegirSetupC-runVerify" ]; then
-      _msg "${_STATUS} A: Platforms installed"
-    fi
   else
     if [ "${_HM_ONLY}" = "YES" ]; then
       _DIST_INSTALL=NO
@@ -3144,9 +3141,6 @@ _satellite_run_child_c() {
           touch /opt/tmp/status-AegirSetupA-FAIL
           exit 1
         fi
-        if [ -e "/opt/tmp/status-AegirSetupC-runVerify" ]; then
-          _msg "${_STATUS} A: Platforms installed"
-        fi
       else
         _msg "${_STATUS} A: No new Platforms added this time"
       fi
@@ -3164,29 +3158,6 @@ _satellite_run_child_c() {
     find . -name .DS_Store -exec rm -rf {} \; &> /dev/null
     find . -name "._*" -type f | xargs rm -rf &> /dev/null
     touch ${_CORE}/dot-files-ctrl-${_xSrl}-${_X_VERSION}
-  fi
-}
-
-_satellite_if_legacy_permissions_fix() {
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "PROC: _satellite_if_legacy_permissions_fix"
-    _debug_proc
-  fi
-  if [ -e "/run/aegir_upgrade.pid" ]; then
-    _PLATF_IMP=$(ls -la /data/u \
-      | grep ${_USER} \
-      | cut -d'>' -f2 \
-      | sort \
-      | uniq \
-      | awk '{ print $1}')
-    for _PLATF in ${_PLATF_IMP}; do
-      if [[ "${_PLATF}" =~ "aegir" ]]; then
-        _FOUND_HM=YES
-      else
-        chown -R ${_USER}:www-data ${_PLATF}/sites/*/files &> /dev/null
-        chmod -R 02775 ${_PLATF}/sites/*/files &> /dev/null
-      fi
-    done
   fi
 }
 
@@ -6089,7 +6060,8 @@ _satellite_child_b_aegir_ui_enhance() {
       else
         ${_DRUSHCMD} php-script make_client ${_CLIENT_EMAIL} &> /dev/null
       fi
-      ### rm -f make_client.php
+      rm -f make_client.php
+      rm -f make_platform.php
     else
       ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
         SET status=-2 WHERE publish_path LIKE '%/aegir/distro/%'" &> /dev/null
@@ -6109,6 +6081,8 @@ _satellite_child_b_aegir_ui_enhance() {
         ${_DRUSHCMD} php-script make_home &> /dev/null
         rm -f make_home.php
       fi
+      rm -f make_client.php
+      rm -f make_platform.php
       ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM field_data_body \
         WHERE body_format IS NULL" &> /dev/null
       ${_DRUSHCMD} @hostmaster sqlq "UPDATE field_data_body \
