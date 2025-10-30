@@ -852,9 +852,11 @@ _up_action() {
       wait
       sed -i "s/^_X_VERSION=.*/_X_VERSION=${_rlsE}/g"        ${_vBs}/${_filIncB}
       wait
-      sed -i "s/^_VALKEY_MAJOR_RELEASE=.*/_VALKEY_MAJOR_RELEASE=7/g"  ${_barCnf}
-      wait
-      sed -i "s/^_REDIS_MAJOR_RELEASE=.*/_REDIS_MAJOR_RELEASE=7/g"    ${_barCnf}
+      if [ "${_hostedSys}" = "YES" ]; then
+        sed -i "s/^_VALKEY_MAJOR_.*/_VALKEY_MAJOR_RELEASE=9/g"        ${_barCnf}
+        wait
+      fi
+      sed -i "s/^_REDIS_MAJOR_.*/_REDIS_MAJOR_RELEASE=7/g"            ${_barCnf}
       wait
     else
       sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${_bRnh}/g"      ${_vBs}/${_filIncB}
@@ -1902,12 +1904,12 @@ _set_tree_vars() {
       || [ "${_outP}" = "enable" ] \
       || [ "${_outP}" = "system" ] \
       || [ "${_outP}" = "distro" ]; then
-      export _outP="${_argS}"
+      export _outP="${_argK}"
     else
       export _outP=
-      export _rKey="${_argS}"
-      export _dEbg="${_argT}"
-      export _sQld="${_argF}"
+      export _rKey="${_argK}"
+      export _dEbg="${_argE}"
+      export _sQld="${_argQ}"
     fi
   fi
   if [ "${_cmNd}" = "up-dev" ]; then
@@ -1949,9 +1951,9 @@ export _rKey="$3"
 export _dEbg="$4"
 export _sQld="$5"
 
-export _argS="$2"
-export _argT="$3"
-export _argF="$4"
+export _argK="$2"
+export _argE="$3"
+export _argQ="$4"
 
 _check_root_direct
 _set_tree_vars
