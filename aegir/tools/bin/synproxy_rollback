@@ -17,7 +17,9 @@ _check_root() {
 }
 _check_root
 
-set -euo pipefail
+# Enable strict error handling for debugging only
+# set -euo pipefail
+
 trap '_rc=$?; echo "[ROLLBACK] line ${LINENO}: exit ${_rc}" >&2; exit ${_rc}' ERR
 
 # --- utils ---

@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-set -eo pipefail
+
+# Enable strict error handling for debugging only
+# set -euo pipefail
 
 function vault_upload {
     local DOMAIN="${1}"

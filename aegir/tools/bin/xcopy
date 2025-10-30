@@ -892,17 +892,11 @@ _post_mig() {
       pkill -9 -f solr7
       service solr7 start
     fi
-    pkill -9 -f jetty
+    pkill -9 -f jetty9
     rm -rf /tmp/{drush*,pear,jetty*}
-    rm -f /var/log/jetty{7,8,9}/*
+    rm -f /var/log/jetty9/*
     if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
       service jetty9 start
-    fi
-    if [ -e "/etc/default/jetty8" ] && [ -e "/etc/init.d/jetty8" ]; then
-      service jetty8 start
-    fi
-    if [ -e "/etc/default/jetty7" ] && [ -e "/etc/init.d/jetty7" ]; then
-      service jetty7 start
     fi
     service nginx reload
     [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid

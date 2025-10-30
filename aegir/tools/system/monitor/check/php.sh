@@ -98,32 +98,27 @@ _normalize_incident_report
 
 _incident_email_report() {
   if ! _check_uptime_grace_period >/dev/null; then return 1; fi
-  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" != "OFF" ]; then
+  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "ALL" ]; then
     _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
     echo "Sending Incident Report Email on $(date)" >> ${_pthOml}
     s-nail -s "Incident Report: ${1} on ${_hName} at $(date)" ${_MY_EMAIL} < ${_pthOml}
   fi
 }
 
-_fpm_forced_restart() {
+_fpm_reload() {
   : > /run/fmp_wait.pid
   : > /run/restarting_fmp_wait.pid
   sleep 3
-  mkdir -p /var/backups/php-logs/${_NOW}/
-  mv -f /var/log/php/* /var/backups/php-logs/${_NOW}/
-  pkill -9 -f php-fpm
   renice ${_B_NICE} -p $$ &> /dev/null
   _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
-      service "php${e}-fpm" start
+      service "php${e}-fpm" reload
     fi
   done
-  _incident_email_report "PHP $1"
-  echo >> ${_pthOml}
+  echo "$(date) $1 incident PHP-FPM reloaded" >> ${_pthOml}
   sleep 1
   rm -f /run/fmp_wait.pid /run/restarting_fmp_wait.pid
-  exit 0
 }
 
 _fpm_duplicate_instances_detection() {
@@ -312,12 +307,22 @@ _spawn_detached() {
   if [[ "$-" == *i* ]]; then disown; fi
 }
 
+_fpm_logs_empty() {
+  _LOG_NR=$(ls /var/log/php | wc -l)
+  if [ -n "${_LOG_NR}" ] && [ "${_LOG_NR}" -ge 3 ]; then
+    _LOGS=OK
+  else
+    _fpm_reload "NOLOGS"
+  fi
+}
+
 if [ ! -e "/var/tmp/fpm" ]; then
   mkdir -p /var/tmp/fpm
   chmod 777 /var/tmp/fpm
 fi
 
 if [ ! -e "/run/max_load.pid" ] && [ ! -e "/run/critical_load.pid" ]; then
+  _fpm_logs_empty
   _fpm_duplicate_instances_detection
   _fpm_listen_conflict_detection
   _fpm_proc_max_detection
