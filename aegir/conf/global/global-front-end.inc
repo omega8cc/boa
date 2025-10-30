@@ -69,7 +69,7 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) &&
 
   $this_prefix = preg_replace('`^www\.`', '', $_SERVER['SERVER_NAME']) . '_z_';
   if ($is_dev) {
-    header("X-Redis-Prefix: " . $this_prefix);
+    header("X-Valkey-Prefix: " . $this_prefix);
   }
 
   if (isset($_SERVER['REQUEST_TIME']) &&

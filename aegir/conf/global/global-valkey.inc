@@ -2,7 +2,7 @@
 
 
 /**
- * Use Redis caching and lock support only for d6 and d7 profiles
+ * Use Valkey caching and lock support only for d6 and d7 profiles
  */
 if ($valkey_up && $use_valkey && !$custom_cache) {
   $cache_backport = FALSE;
@@ -33,19 +33,19 @@ if ($valkey_up && $use_valkey && !$custom_cache) {
     if ($all_ini['redis_flush_forced_mode']) {
       if ($drupal_core >= 8) {
         $settings['redis_perm_ttl']                 = 86400; // 24 hours max
-        $settings['redis_flush_mode']               = 1; // Redis default is 0
-        $settings['redis_flush_mode_cache_page']    = 2; // Redis default is 1
-        $settings['redis_flush_mode_cache_block']   = 2; // Redis default is 1
-        $settings['redis_flush_mode_cache_menu']    = 2; // Redis default is 0
-        $settings['redis_flush_mode_cache_metatag'] = 2; // Redis default is 0
+        $settings['redis_flush_mode']               = 1; // Valkey default is 0
+        $settings['redis_flush_mode_cache_page']    = 2; // Valkey default is 1
+        $settings['redis_flush_mode_cache_block']   = 2; // Valkey default is 1
+        $settings['redis_flush_mode_cache_menu']    = 2; // Valkey default is 0
+        $settings['redis_flush_mode_cache_metatag'] = 2; // Valkey default is 0
       }
       else {
         $conf['redis_perm_ttl']                 = 86400; // 24 hours max
-        $conf['redis_flush_mode']               = 1; // Redis default is 0
-        $conf['redis_flush_mode_cache_page']    = 2; // Redis default is 1
-        $conf['redis_flush_mode_cache_block']   = 2; // Redis default is 1
-        $conf['redis_flush_mode_cache_menu']    = 2; // Redis default is 0
-        $conf['redis_flush_mode_cache_metatag'] = 2; // Redis default is 0
+        $conf['redis_flush_mode']               = 1; // Valkey default is 0
+        $conf['redis_flush_mode_cache_page']    = 2; // Valkey default is 1
+        $conf['redis_flush_mode_cache_block']   = 2; // Valkey default is 1
+        $conf['redis_flush_mode_cache_menu']    = 2; // Valkey default is 0
+        $conf['redis_flush_mode_cache_metatag'] = 2; // Valkey default is 0
       }
       // See http://bit.ly/1drmi35 for more information
       if ($is_dev && !$is_backend) {
