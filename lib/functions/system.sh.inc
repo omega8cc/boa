@@ -9423,15 +9423,21 @@ _initd_update() {
         else
           _myCnfUpdate=YES
           # _diffMyTest=$(echo -n ${_diffMyTest} | fmt -su -w 2500)
-          _msg "INFO: ${_DB_SERVER} diff1 ${_diffMyTest}"
+          if [ "${_DEBUG_MODE}" = "YES" ]; then
+            _msg "INFO: ${_DB_SERVER} diff1 ${_diffMyTest}"
+          fi
         fi
         if [[ "${_diffMyTest}" =~ "innodb_buffer_pool_size" ]]; then
           _myCnfUpdate=NO
-          _msg "INFO: ${_DB_SERVER} diff2 ${_diffMyTest}"
+          if [ "${_DEBUG_MODE}" = "YES" ]; then
+            _msg "INFO: ${_DB_SERVER} diff2 ${_diffMyTest}"
+          fi
         fi
         if [[ "${_diffMyTest}" =~ "No such file or directory" ]]; then
           _myCnfUpdate=NO
-          _msg "INFO: ${_DB_SERVER} diff3 ${_diffMyTest}"
+          if [ "${_DEBUG_MODE}" = "YES" ]; then
+            _msg "INFO: ${_DB_SERVER} diff3 ${_diffMyTest}"
+          fi
         fi
       fi
       if [ "${_UP_SQL}" = "YES" ]; then
