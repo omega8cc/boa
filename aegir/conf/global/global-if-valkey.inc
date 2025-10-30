@@ -36,7 +36,7 @@ $flag_file_fallback = '/data/conf/arch/valkey.disabled.flag'; // fallback
 
 /* ---------------- Optional debug log ---------------------------------- */
 // Set to an absolute path to enable lightweight probe logging.
-// Example: '/data/conf/arch/log/valkey-fallback.log'
+// Example: '/var/tmp/fpm/valkey-fallback.log'
 $redis_debug_log    = '';
 
 /* ---------------- Helpers (filesystem only) ---------------------------- */
