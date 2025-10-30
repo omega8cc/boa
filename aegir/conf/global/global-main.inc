@@ -148,7 +148,7 @@ if (!isset($_SERVER['MAIN_SITE_NAME']) && isset($_SERVER['SERVER_NAME'])) {
 
 
 /**
- * Required for proper Redis support on command line / via Drush
+ * Required for proper Valkey/Redis support on command line / via Drush
  */
 if (isset($_SERVER['HTTP_HOST']) && !isset($_SERVER['SERVER_NAME'])) {
   $_SERVER['SERVER_NAME'] = $_SERVER['HTTP_HOST'];
@@ -295,15 +295,15 @@ if (is_array($all_ini) && $is_dev && !$is_backend) {
   if (!$ini_plr_src && !$ini_loc_src) {
     header("X-Ini-Src: BOA-Default");
   }
-  header("X-Ini-Redis-Use-Modern: " . $all_ini['redis_use_modern']);
-  header("X-Ini-Redis-Flush-Forced-Mode: " . $all_ini['redis_flush_forced_mode']);
-  header("X-Ini-Redis-Lock-Enable: " . $all_ini['redis_lock_enable']);
-  header("X-Ini-Redis-Path-Enable: " . $all_ini['redis_path_enable']);
-  header("X-Ini-Redis-Scan-Enable: " . $all_ini['redis_scan_enable']);
-  header("X-Ini-Redis-Old-Nine-Mode: " . $all_ini['redis_old_nine_mode']);
-  header("X-Ini-Redis-Old-Eight-Mode: " . $all_ini['redis_old_eight_mode']);
-  header("X-Ini-Redis-Cache-Disable: " . $all_ini['redis_cache_disable']);
-  header("X-Ini-Redis-Exclude-Bins: " . $all_ini['redis_exclude_bins']);
+  header("X-Ini-Valkey-Use-Modern: " . $all_ini['redis_use_modern']);
+  header("X-Ini-Valkey-Flush-Forced-Mode: " . $all_ini['redis_flush_forced_mode']);
+  header("X-Ini-Valkey-Lock-Enable: " . $all_ini['redis_lock_enable']);
+  header("X-Ini-Valkey-Path-Enable: " . $all_ini['redis_path_enable']);
+  header("X-Ini-Valkey-Scan-Enable: " . $all_ini['redis_scan_enable']);
+  header("X-Ini-Valkey-Old-Nine-Mode: " . $all_ini['redis_old_nine_mode']);
+  header("X-Ini-Valkey-Old-Eight-Mode: " . $all_ini['redis_old_eight_mode']);
+  header("X-Ini-Valkey-Cache-Disable: " . $all_ini['redis_cache_disable']);
+  header("X-Ini-Valkey-Exclude-Bins: " . $all_ini['redis_exclude_bins']);
   header("X-Ini-Speed-Booster-Anon-Cache-Ttl: " . $all_ini['speed_booster_anon_cache_ttl']);
   header("X-Ini-Allow-Anon-Node-Add: " . $all_ini['allow_anon_node_add']);
   header("X-Ini-Enable-NewRelic-Integration: " . $all_ini['enable_newrelic_integration']);

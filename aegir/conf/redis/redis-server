@@ -24,8 +24,6 @@ test -x $DAEMON || exit 0
 [ -d /run/redis ] || mkdir -p /run/redis
 [ -d /run/redis ] && chown -R redis:redis /run/redis
 
-set -e
-
 maxclients=$(awk '/^[ \t]*maxclients[ \t]/ { print $2 }' /etc/redis/redis.conf)
 if [ ! -z "$maxclients" ] && [ "$maxclients" -gt 992 ]; then
   ulimit -n $((maxclients+32))

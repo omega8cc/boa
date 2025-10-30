@@ -423,7 +423,6 @@ _if_running_as_root_barracuda() {
     rm -rf /tmp/make_tmp*
     rm -f /tmp/pm-updatecode*
     rm -f /tmp/cache.inc*
-    touch /run/boa_run.pid
     mkdir -p ${_pthLog}
     find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -rf {} \; &> /dev/null
     # Check if dmidecode is available
@@ -664,8 +663,12 @@ _mc_panels_ini_update() {
     _msg "PROC: _mc_panels_ini_update"
   fi
   if [ -d "/root/.config/mc" ]; then
-    _SORT_ORDER_TEST=$(grep "sort_order" /root/.config/mc/panels.ini 2>&1)
-    if [[ ! "${_SORT_ORDER_TEST}" =~ "sort_order" ]]; then
+    _SORT_ORDER_TEST=EMPTY
+    if [ -f "/root/.config/mc/panels.ini" ]; then
+      _SORT_ORDER_TEST="$(grep sort_order /root/.config/mc/panels.ini)"
+    fi
+    if [ ! -f "/root/.config/mc/panels.ini" ] \
+      || [[ ! "${_SORT_ORDER_TEST}" =~ "sort_order" ]]; then
       if [ -e "${_locCnf}/ini/panels.ini" ]; then
         cat ${_locCnf}/ini/panels.ini >> /root/.config/mc/panels.ini
       fi
@@ -702,6 +705,8 @@ _global_inc_conf_update() {
   if [ ! -z "${_SPEED_VALID_MAX}" ]; then
     sed -i "s/3600/${_SPEED_VALID_MAX}/g" ${_GL_D}/global-front-end.inc &> /dev/null
   fi
+  cp -af ${_locCnf}/global/global-if-valkey.inc ${_GL_D}/global-if-valkey.inc
+  cp -af ${_locCnf}/global/global-valkey.inc ${_GL_D}/global-valkey.inc
   cp -af ${_locCnf}/global/global-if-redis.inc ${_GL_D}/global-if-redis.inc
   cp -af ${_locCnf}/global/global-redis.inc ${_GL_D}/global-redis.inc
   cp -af ${_locCnf}/global/global-newrelic.inc ${_GL_D}/global-newrelic.inc
@@ -1051,13 +1056,17 @@ _tune_memory_limits() {
     fi
   fi
 
-  _MAX_MEM_REDIS=$(( _RAM / 6 ))
-  _MAX_REDIS="${_MAX_MEM_REDIS}MB"
-  sed -i "s/^maxmemory .*/maxmemory ${_MAX_REDIS}/g" /etc/valkey/valkey.conf &> /dev/null
-  sed -i "s/^maxmemory .*/maxmemory ${_MAX_REDIS}/g" /etc/redis/redis.conf &> /dev/null
+  _MAX_MEM_VALKEY=$(( _RAM / 6 ))
+  _MAX_VALKEY="${_MAX_MEM_VALKEY}MB"
+  if [ -e "/etc/valkey/valkey.conf" ]; then
+    sed -i "s/^maxmemory .*/maxmemory ${_MAX_VALKEY}/g" /etc/valkey/valkey.conf &> /dev/null
+  fi
+  if [ -e "/etc/redis/redis.conf" ]; then
+    sed -i "s/^maxmemory .*/maxmemory ${_MAX_VALKEY}/g" /etc/redis/redis.conf &> /dev/null
+  fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "TUNE: _MAX_MEM_REDIS is ${_MAX_MEM_REDIS}"
-    _msg "TUNE: _MAX_REDIS is ${_MAX_REDIS}"
+    _msg "TUNE: _MAX_MEM_VALKEY is ${_MAX_MEM_VALKEY}"
+    _msg "TUNE: _MAX_VALKEY is ${_MAX_VALKEY}"
   fi
 
   _USE_JETTY_MEM=$(( _RAM / 8 ))
@@ -1069,12 +1078,6 @@ _tune_memory_limits() {
   if [ -e "/etc/default/jetty9" ] && [ -e "/opt/solr4" ]; then
     sed -i "s/^JAVA_OPTIONS.*/JAVA_OPTIONS=\"-Xms64m ${_USE_JETTY} -Djava.awt.headless=true -Dsolr.solr.home=\/opt\/solr4 \$JAVA_OPTIONS\" # Options/g" /etc/default/jetty9
   fi
-  if [ -e "/etc/default/jetty8" ] && [ -e "/opt/solr3" ]; then
-    sed -i "s/^JAVA_OPTIONS.*/JAVA_OPTIONS=\"-Xms64m ${_USE_JETTY} -Djava.awt.headless=true -Dsolr.solr.home=\/opt\/solr3 \$JAVA_OPTIONS\" # Options/g" /etc/default/jetty8
-  fi
-  if [ -e "/etc/default/jetty7" ] && [ -e "/opt/solr1" ]; then
-    sed -i "s/^JAVA_OPTIONS.*/JAVA_OPTIONS=\"-Xms64m ${_USE_JETTY} -Djava.awt.headless=true -Dsolr.solr.home=\/opt\/solr1 \$JAVA_OPTIONS\" # Options/g" /etc/default/jetty7
-  fi
 
   _USE_SOLR_MEM=$(( _RAM / 6 ))
   _USE_SOLR="-Xmx${_USE_SOLR_MEM}m"
@@ -1084,29 +1087,49 @@ _tune_memory_limits() {
   fi
 
   if [ -x "/etc/init.d/solr9" ] && [ -e "/etc/default/solr9.in.sh" ]; then
+    _SOLR9_STOP_TEST=$(grep "STOP\.PORT=19099" /etc/default/solr9.in.sh 2>&1)
+    if [[ ! "${_SOLR9_STOP_TEST}" =~ "19099" ]]; then
+      sed -i "s/^SOLR_STOP_PORT.*//g" /etc/default/solr9.in.sh
+      wait
+      sed -i "s/^SOLR_STOP_KEY.*//g" /etc/default/solr9.in.sh
+      wait
+      echo "SOLR_OPTS=\"\$SOLR_OPTS -DSTOP.PORT=19099 -DSTOP.KEY=mycustomkey9\"" >> /etc/default/solr9.in.sh
+    fi
     sed -i "s/^SOLR_HEAP/#SOLR_HEAP/g" /etc/default/solr9.in.sh &> /dev/null
     wait
     sed -i "s/^#SOLR_JAVA_MEM/SOLR_JAVA_MEM/g" /etc/default/solr9.in.sh &> /dev/null
     wait
     sed -i "s/^SOLR_JAVA_MEM=.*/SOLR_JAVA_MEM=\"-Xms64m ${_USE_SOLR}\"/g" /etc/default/solr9.in.sh
     wait
-    sed -i "s/^#SOLR_STOP_WAIT=.*/SOLR_STOP_WAIT=\"8\"/g" /etc/default/solr9.in.sh &> /dev/null
+    sed -i "s/.*_WAIT.*//g" /etc/default/solr9.in.sh &> /dev/null
     wait
-    sed -i "s/^#SOLR_WAIT_FOR_ZK=.*/SOLR_WAIT_FOR_ZK=\"8\"/g" /etc/default/solr9.in.sh &> /dev/null
-    wait
+    echo "SOLR_START_WAIT=\"8\"" >> /etc/default/solr9.in.sh
+    echo "SOLR_STOP_WAIT=\"8\"" >> /etc/default/solr9.in.sh
+    echo "SOLR_WAIT_FOR_ZK=\"8\"" >> /etc/default/solr9.in.sh
+    sed -i "/^$/d" /etc/default/solr9.in.sh
   fi
 
   if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
+    _SOLR7_STOP_TEST=$(grep "STOP\.PORT=17077" /etc/default/solr7.in.sh 2>&1)
+    if [[ ! "${_SOLR7_STOP_TEST}" =~ "17077" ]]; then
+      sed -i "s/^SOLR_STOP_PORT.*//g" /etc/default/solr7.in.sh
+      wait
+      sed -i "s/^SOLR_STOP_KEY.*//g" /etc/default/solr7.in.sh
+      wait
+      echo "SOLR_OPTS=\"\$SOLR_OPTS -DSTOP.PORT=17077 -DSTOP.KEY=mycustomkey7\"" >> /etc/default/solr7.in.sh
+    fi
     sed -i "s/^SOLR_HEAP/#SOLR_HEAP/g" /etc/default/solr7.in.sh &> /dev/null
     wait
     sed -i "s/^#SOLR_JAVA_MEM/SOLR_JAVA_MEM/g" /etc/default/solr7.in.sh &> /dev/null
     wait
     sed -i "s/^SOLR_JAVA_MEM=.*/SOLR_JAVA_MEM=\"-Xms64m ${_USE_SOLR}\"/g" /etc/default/solr7.in.sh
     wait
-    sed -i "s/^#SOLR_STOP_WAIT=.*/SOLR_STOP_WAIT=\"8\"/g" /etc/default/solr7.in.sh &> /dev/null
+    sed -i "s/.*_WAIT.*//g" /etc/default/solr7.in.sh &> /dev/null
     wait
-    sed -i "s/^#SOLR_WAIT_FOR_ZK=.*/SOLR_WAIT_FOR_ZK=\"8\"/g" /etc/default/solr7.in.sh &> /dev/null
-    wait
+    echo "SOLR_START_WAIT=\"8\"" >> /etc/default/solr7.in.sh
+    echo "SOLR_STOP_WAIT=\"8\"" >> /etc/default/solr7.in.sh
+    echo "SOLR_WAIT_FOR_ZK=\"8\"" >> /etc/default/solr7.in.sh
+    sed -i "/^$/d" /etc/default/solr7.in.sh
   fi
 
   _tune_web_server_config
@@ -5699,7 +5722,8 @@ _finale() {
   apt-get autoclean -y &> /dev/null
   apt-get clean -qq 2> /dev/null
   #rm -rf /var/lib/apt/lists/*
-  mkdir -p /data/conf/arch
+  mkdir -p /data/conf/arch/log
+  chmod 0777 /data/conf/arch/log
   mv -f /data/conf/global.inc-pre* /data/conf/arch/     &> /dev/null
   mv -f /data/conf/global/*inc-pre* /data/conf/arch/    &> /dev/null
   mv -f /data/conf/global.inc-before* /data/conf/arch/  &> /dev/null
@@ -8406,32 +8430,6 @@ _xdrago_install_upgrade() {
       fi
     fi
     sed -i "s/^_NGINX_DOS_LIMIT=.*/_NGINX_DOS_LIMIT=${_NGINX_DOS_LIMIT}/g"  ${_barCnf}
-    sed -i "s/default_critnumber =.*/default_critnumber = ${_NGINX_DOS_LIMIT};/g" /var/xdrago/monitor/check/scan_nginx.pl
-    wait
-    sed -i "s/default_lines =.*/default_lines = 1999;/g" /var/xdrago/monitor/check/scan_nginx.pl
-    wait
-    if [ ! -z "${_NGINX_DOS_STOP}" ]; then
-      _NGINX_DOS_STOP=${_NGINX_DOS_STOP//[^a-zA-Z0-9|-]/}
-      if [ ! -z "${_NGINX_DOS_STOP}" ]; then
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "INFO: Configured _NGINX_DOS_STOP: ${_NGINX_DOS_STOP}"
-        fi
-        sed -i "s/foobar/${_NGINX_DOS_STOP}/g" \
-          /var/xdrago/monitor/check/scan_nginx.pl &> /dev/null
-        wait
-      fi
-    fi
-    if [ ! -z "${_NGINX_DOS_IGNORE}" ]; then
-      _NGINX_DOS_IGNORE=${_NGINX_DOS_IGNORE//[^a-zA-Z0-9|-]/}
-      if [ ! -z "${_NGINX_DOS_IGNORE}" ]; then
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "INFO: Configured _NGINX_DOS_IGNORE: ${_NGINX_DOS_IGNORE}"
-        fi
-        sed -i "s/dontcount/${_NGINX_DOS_IGNORE}/g" \
-          /var/xdrago/monitor/check/scan_nginx.pl &> /dev/null
-        wait
-      fi
-    fi
     mv -f /etc/cron.daily/mlocate ${_vBs}/ &> /dev/null
     cp -af /var/xdrago/cron/crontabs/root /var/spool/cron/crontabs/ &> /dev/null
     if [ -e "/var/xdrago/cron/custom.txt" ]; then
@@ -8489,30 +8487,6 @@ _xdrago_install_upgrade() {
       fi
     fi
     sed -i "s/^_NGINX_DOS_LIMIT=.*/_NGINX_DOS_LIMIT=${_NGINX_DOS_LIMIT}/g"  ${_barCnf}
-    sed -i "s/default_critnumber =.*/default_critnumber = ${_NGINX_DOS_LIMIT};/g" /var/xdrago/monitor/check/scan_nginx.pl
-    wait
-    sed -i "s/default_lines =.*/default_lines = 1999;/g" /var/xdrago/monitor/check/scan_nginx.pl
-    wait
-    if [ ! -z "${_NGINX_DOS_STOP}" ]; then
-      _NGINX_DOS_STOP=${_NGINX_DOS_STOP//[^a-zA-Z0-9|-]/}
-      if [ ! -z "${_NGINX_DOS_STOP}" ]; then
-        _msg "INFO: Configured _NGINX_DOS_STOP: ${_NGINX_DOS_STOP}"
-        sed -i "s/foobar/${_NGINX_DOS_STOP}/g" \
-          /var/xdrago/monitor/check/scan_nginx.pl &> /dev/null
-        wait
-      fi
-    fi
-    if [ ! -z "${_NGINX_DOS_IGNORE}" ]; then
-      _NGINX_DOS_IGNORE=${_NGINX_DOS_IGNORE//[^a-zA-Z0-9|-]/}
-      if [ ! -z "${_NGINX_DOS_IGNORE}" ]; then
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "INFO: Configured _NGINX_DOS_IGNORE: ${_NGINX_DOS_IGNORE}"
-        fi
-        sed -i "s/dontcount/${_NGINX_DOS_IGNORE}/g" \
-          /var/xdrago/monitor/check/scan_nginx.pl &> /dev/null
-        wait
-      fi
-    fi
     mv -f /etc/cron.daily/mlocate ${_vBs}/ &> /dev/null
     _if_hosted_sys
     if [ "${_hostedSys}" = "YES" ]; then
@@ -9288,20 +9262,6 @@ _initd_update() {
       pkill -9 -f jetty9
       _mrun "service jetty9 start"
     fi
-    if [ -e "/etc/default/jetty8" ] && [ -e "/etc/init.d/jetty8" ]; then
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        _msg "INFO: Restarting Jetty 8"
-      fi
-      pkill -9 -f jetty8
-      _mrun "service jetty8 start"
-    fi
-    if [ -e "/etc/default/jetty7" ] && [ -e "/etc/init.d/jetty7" ]; then
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        _msg "INFO: Restarting Jetty 7"
-      fi
-      pkill -9 -f jetty7
-      _mrun "service jetty7 start"
-    fi
     if [ ! -e "/run/aegir_upgrade.pid" ]; then
       if [ -e "/etc/init.d/valkey-server" ]; then
         _msg "INFO: Starting Valkey, PHP-FPM and Nginx"
@@ -9396,20 +9356,6 @@ _initd_update() {
       fi
       pkill -9 -f jetty9
       _mrun "service jetty9 start"
-    fi
-    if [ -e "/etc/default/jetty8" ] && [ -e "/etc/init.d/jetty8" ]; then
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        _msg "INFO: Restarting Jetty 8"
-      fi
-      pkill -9 -f jetty8
-      _mrun "service jetty8 start"
-    fi
-    if [ -e "/etc/default/jetty7" ] && [ -e "/etc/init.d/jetty7" ]; then
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        _msg "INFO: Restarting Jetty 7"
-      fi
-      pkill -9 -f jetty7
-      _mrun "service jetty7 start"
     fi
     if [ ! -e "/run/aegir_upgrade.pid" ] \
       && [ ! -e "/root/.proxy.cnf" ]; then

@@ -101,28 +101,21 @@ _incident_email_report() {
 }
 
 _jetty_restart() {
-  touch /run/boa_wait.pid
+  touch /run/boa_java_auto_healing.pid
   sleep 3
-  pkill -9 -f jetty
-  rm -f /var/log/jetty{7,8,9}/*
+  pkill -9 -f jetty9
+  rm -f /var/log/jetty9/*
+  find /tmp -mindepth 1 -user jetty9 -exec rm -rf {} + 2>/dev/null
   renice ${_B_NICE} -p $$ &> /dev/null
   if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
     service jetty9 start
-    wait
-  fi
-  if [ -e "/etc/default/jetty8" ] && [ -e "/etc/init.d/jetty8" ]; then
-    service jetty8 start
-    wait
-  fi
-  if [ -e "/etc/default/jetty7" ] && [ -e "/etc/init.d/jetty7" ]; then
-    service jetty7 start
     wait
   fi
   _thisErrLog="$(date) Jetty service has been restarted"
   echo ${_thisErrLog} >> ${_pthOml}
   _incident_email_report "$1"
   echo >> ${_pthOml}
-  [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
+  [ -e "/run/boa_java_auto_healing.pid" ] && rm -f /run/boa_java_auto_healing.pid
   exit 0
 }
 
@@ -135,28 +128,12 @@ _jetty_listen_conflict_detection() {
       _jetty_restart "jetty9 zombie"
     fi
   fi
-  if [ -e "/var/log/jetty8" ]; then
-    if [ `tail --lines=500 /var/log/jetty8/*stderrout.log \
-      | grep --count "Address already in use"` -gt 0 ]; then
-      _thisErrLog="$(date) BIND PORT error jetty8, service will be restarted"
-      echo ${_thisErrLog} >> ${_pthOml}
-      _jetty_restart "jetty8 zombie"
-    fi
-  fi
-  if [ -e "/var/log/jetty7" ]; then
-    if [ `tail --lines=500 /var/log/jetty7/*stderrout.log \
-      | grep --count "Address already in use"` -gt 0 ]; then
-      _thisErrLog="$(date) BIND PORT error jetty7, service will be restarted"
-      echo ${_thisErrLog} >> ${_pthOml}
-      _jetty_restart "jetty7 zombie"
-    fi
-  fi
 }
 
 _jenkins_health_check_fix() {
   if ! pgrep -f java/jenkins \
     || [ ! -e "/run/jenkins/jenkins.pid" ]; then
-    killall -9 java
+    pkill -9 -f java
     sleep 3
     service jenkins restart
     wait
@@ -171,6 +148,7 @@ _solr_health_check_fix() {
   if [ -x "/etc/init.d/solr9" ]; then
     _pidfile="/var/solr9/solr-9099.pid"
     if ! pgrep -f /var/solr9 || [ ! -e "${_pidfile}" ]; then
+      find /tmp -mindepth 1 -user solr9 -exec rm -rf {} + 2>/dev/null
       service solr9 restart
       wait
       _thisErrLog="$(date) Solr9 Server was down, started"
@@ -180,6 +158,7 @@ _solr_health_check_fix() {
     else
       _pid="$(cat "${_pidfile}" 2>/dev/null | sed 's/[^0-9]//g')"
       if [ -n "${_pid}" ] && ! ps -p "${_pid}" >/dev/null 2>&1; then
+        find /tmp -mindepth 1 -user solr9 -exec rm -rf {} + 2>/dev/null
         service solr9 restart
         wait
         _thisErrLog="$(date) Solr9 stale PID detected, restarted"
@@ -192,6 +171,7 @@ _solr_health_check_fix() {
   if [ -x "/etc/init.d/solr7" ]; then
     _pidfile="/var/solr7/solr-9077.pid"
     if ! pgrep -f /var/solr7 || [ ! -e "${_pidfile}" ]; then
+      find /tmp -mindepth 1 -user solr7 -exec rm -rf {} + 2>/dev/null
       service solr7 restart
       wait
       _thisErrLog="$(date) Solr7 Server was down, started"
@@ -201,6 +181,7 @@ _solr_health_check_fix() {
     else
       _pid="$(cat "${_pidfile}" 2>/dev/null | sed 's/[^0-9]//g')"
       if [ -n "${_pid}" ] && ! ps -p "${_pid}" >/dev/null 2>&1; then
+        find /tmp -mindepth 1 -user solr7 -exec rm -rf {} + 2>/dev/null
         service solr7 restart
         wait
         _thisErrLog="$(date) Solr7 stale PID detected, restarted"
@@ -213,6 +194,7 @@ _solr_health_check_fix() {
   if [ -x "/etc/init.d/jetty9" ]; then
     _pidfile="/run/jetty9.pid"
     if ! pgrep -f /opt/jetty9 || [ ! -e "${_pidfile}" ]; then
+      find /tmp -mindepth 1 -user jetty9 -exec rm -rf {} + 2>/dev/null
       service jetty9 restart
       wait
       _thisErrLog="$(date) Solr4 Server was down, started"
@@ -222,6 +204,7 @@ _solr_health_check_fix() {
     else
       _pid="$(cat "${_pidfile}" 2>/dev/null | sed 's/[^0-9]//g')"
       if [ -n "${_pid}" ] && ! ps -p "${_pid}" >/dev/null 2>&1; then
+        find /tmp -mindepth 1 -user jetty9 -exec rm -rf {} + 2>/dev/null
         service jetty9 restart
         wait
         _thisErrLog="$(date) Solr4 stale PID detected, restarted"
@@ -248,13 +231,9 @@ _spawn_detached() {
 }
 
 if [ ! -e "/run/max_load.pid" ] && [ ! -e "/run/critical_load.pid" ]; then
-  [ ! -e "/run/boa_run.pid" ] && [ -x "/etc/init.d/jenkins" ] && _jenkins_health_check_fix
-  [ ! -e "/run/boa_run.pid" ] && _solr_health_check_fix
-  [ ! -e "/run/boa_run.pid" ] && _jetty_listen_conflict_detection
-  if [ ! -e "/root/.high_traffic.cnf" ] \
-    && [ ! -e "/root/.giant_traffic.cnf" ]; then
-    _spawn_detached 'perl /var/xdrago/monitor/check/locked_java.pl'
-  fi
+  [ ! -e "/run/boa_java_auto_healing.pid" ] && [ -x "/etc/init.d/jenkins" ] && _jenkins_health_check_fix
+  [ ! -e "/run/boa_java_auto_healing.pid" ] && _solr_health_check_fix
+  [ ! -e "/run/boa_java_auto_healing.pid" ] && _jetty_listen_conflict_detection
 fi
 
 echo DONE!

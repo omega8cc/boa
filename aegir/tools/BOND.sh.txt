@@ -173,9 +173,9 @@ _PHP81_VRN=8.1.33
 _PHP82_API=20220829
 _PHP82_VRN=8.2.29
 _PHP83_API=20230831
-_PHP83_VRN=8.3.26
+_PHP83_VRN=8.3.27
 _PHP84_API=20240924
-_PHP84_VRN=8.4.13
+_PHP84_VRN=8.4.14
 
 ###
 ### Helper variables
@@ -1127,8 +1127,6 @@ _tune_sql() {
 #
 _restore_default_nginx() {
   _msg "INFO: Restoring default Nginx configuration"
-  cd /var/xdrago/monitor/check
-  cp -af ${_bldPth}/aegir/tools/system/monitor/check/scan_nginx.pl ./
   if [ -d "${_TUNE_HOSTMASTER}" ]; then
     for _Files in `find ${_TUNE_HOSTMASTER}/config/server_master/nginx/vhost.d -type f`; do
       sed -i "s/#limit_conn /limit_conn /g" ${_Files} &> /dev/null
@@ -1142,8 +1140,6 @@ _restore_default_nginx() {
 #
 _tune_nginx() {
   _msg "INFO: Tuning Nginx configuration"
-  sed -i "s/default_critnumber =.*/default_critnumber = ${_TUNE_NGINX_FIREWALL};/g" /var/xdrago/monitor/check/scan_nginx.pl
-  wait
   sed -i "s/60/${_TUNE_NGINX_TIMEOUT}/g" /var/aegir/config/server_master/nginx.conf    &> /dev/null
   wait
   sed -i "s/300/${_TUNE_NGINX_TIMEOUT}/g" /var/aegir/config/server_master/nginx.conf   &> /dev/null
@@ -1717,24 +1713,16 @@ _tune_memory_limits() {
     wait
   fi
   if [ "${_USE_OPC}" -gt 2048 ]; then
-    _MAX_MEM_REDIS=2048
+    _MAX_MEM_VALKEY=2048
   else
-    _MAX_MEM_REDIS="${_USE_OPC}"
+    _MAX_MEM_VALKEY="${_USE_OPC}"
   fi
-  _MAX_MEM_REDIS="${_MAX_MEM_REDIS}MB"
-  sed -i "s/^maxmemory .*/maxmemory ${_MAX_MEM_REDIS}/g" /etc/valkey/valkey.conf &> /dev/null
-  sed -i "s/^maxmemory .*/maxmemory ${_MAX_MEM_REDIS}/g" /etc/redis/redis.conf &> /dev/null
+  _MAX_MEM_VALKEY="${_MAX_MEM_VALKEY}MB"
+  sed -i "s/^maxmemory .*/maxmemory ${_MAX_MEM_VALKEY}/g" /etc/valkey/valkey.conf &> /dev/null
+  sed -i "s/^maxmemory .*/maxmemory ${_MAX_MEM_VALKEY}/g" /etc/redis/redis.conf &> /dev/null
   wait
   if [ -e "/etc/default/jetty9" ] && [ -e "/opt/solr4" ]; then
     sed -i "s/^JAVA_OPTIONS.*/JAVA_OPTIONS=\"-Xms64m ${_USE_JETTY} -Djava.awt.headless=true -Dsolr.solr.home=\/opt\/solr4 \$JAVA_OPTIONS\" # Options/g" /etc/default/jetty9
-    wait
-  fi
-  if [ -e "/etc/default/jetty8" ] && [ -e "/opt/solr3" ]; then
-    sed -i "s/^JAVA_OPTIONS.*/JAVA_OPTIONS=\"-Xms64m ${_USE_JETTY} -Djava.awt.headless=true -Dsolr.solr.home=\/opt\/solr3 \$JAVA_OPTIONS\" # Options/g" /etc/default/jetty8
-    wait
-  fi
-  if [ -e "/etc/default/jetty7" ] && [ -e "/opt/solr1" ]; then
-    sed -i "s/^JAVA_OPTIONS.*/JAVA_OPTIONS=\"-Xms64m ${_USE_JETTY} -Djava.awt.headless=true -Dsolr.solr.home=\/opt\/solr1 \$JAVA_OPTIONS\" # Options/g" /etc/default/jetty7
     wait
   fi
   _tune_web_server_config
