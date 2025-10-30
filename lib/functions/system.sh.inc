@@ -705,6 +705,8 @@ _global_inc_conf_update() {
   if [ ! -z "${_SPEED_VALID_MAX}" ]; then
     sed -i "s/3600/${_SPEED_VALID_MAX}/g" ${_GL_D}/global-front-end.inc &> /dev/null
   fi
+  cp -af ${_locCnf}/global/global-if-valkey.inc ${_GL_D}/global-if-valkey.inc
+  cp -af ${_locCnf}/global/global-valkey.inc ${_GL_D}/global-valkey.inc
   cp -af ${_locCnf}/global/global-if-redis.inc ${_GL_D}/global-if-redis.inc
   cp -af ${_locCnf}/global/global-redis.inc ${_GL_D}/global-redis.inc
   cp -af ${_locCnf}/global/global-newrelic.inc ${_GL_D}/global-newrelic.inc
@@ -1091,7 +1093,7 @@ _tune_memory_limits() {
       wait
       sed -i "s/^SOLR_STOP_KEY.*//g" /etc/default/solr9.in.sh
       wait
-      echo "SOLR_OPTS=\"\${SOLR_OPTS} -DSTOP.PORT=19099 -DSTOP.KEY=mycustomkey9\"" >> /etc/default/solr9.in.sh
+      echo "SOLR_OPTS=\"\$SOLR_OPTS -DSTOP.PORT=19099 -DSTOP.KEY=mycustomkey9\"" >> /etc/default/solr9.in.sh
     fi
     sed -i "s/^SOLR_HEAP/#SOLR_HEAP/g" /etc/default/solr9.in.sh &> /dev/null
     wait
@@ -1104,6 +1106,7 @@ _tune_memory_limits() {
     echo "SOLR_START_WAIT=\"8\"" >> /etc/default/solr9.in.sh
     echo "SOLR_STOP_WAIT=\"8\"" >> /etc/default/solr9.in.sh
     echo "SOLR_WAIT_FOR_ZK=\"8\"" >> /etc/default/solr9.in.sh
+    sed -i "/^$/d" /etc/default/solr9.in.sh
   fi
 
   if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
@@ -1113,7 +1116,7 @@ _tune_memory_limits() {
       wait
       sed -i "s/^SOLR_STOP_KEY.*//g" /etc/default/solr7.in.sh
       wait
-      echo "SOLR_OPTS=\"\${SOLR_OPTS} -DSTOP.PORT=17077 -DSTOP.KEY=mycustomkey7\"" >> /etc/default/solr7.in.sh
+      echo "SOLR_OPTS=\"\$SOLR_OPTS -DSTOP.PORT=17077 -DSTOP.KEY=mycustomkey7\"" >> /etc/default/solr7.in.sh
     fi
     sed -i "s/^SOLR_HEAP/#SOLR_HEAP/g" /etc/default/solr7.in.sh &> /dev/null
     wait
@@ -1126,6 +1129,7 @@ _tune_memory_limits() {
     echo "SOLR_START_WAIT=\"8\"" >> /etc/default/solr7.in.sh
     echo "SOLR_STOP_WAIT=\"8\"" >> /etc/default/solr7.in.sh
     echo "SOLR_WAIT_FOR_ZK=\"8\"" >> /etc/default/solr7.in.sh
+    sed -i "/^$/d" /etc/default/solr7.in.sh
   fi
 
   _tune_web_server_config
@@ -5718,7 +5722,8 @@ _finale() {
   apt-get autoclean -y &> /dev/null
   apt-get clean -qq 2> /dev/null
   #rm -rf /var/lib/apt/lists/*
-  mkdir -p /data/conf/arch
+  mkdir -p /data/conf/arch/log
+  chmod 0777 /data/conf/arch/log
   mv -f /data/conf/global.inc-pre* /data/conf/arch/     &> /dev/null
   mv -f /data/conf/global/*inc-pre* /data/conf/arch/    &> /dev/null
   mv -f /data/conf/global.inc-before* /data/conf/arch/  &> /dev/null
