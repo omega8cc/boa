@@ -6061,7 +6061,6 @@ _satellite_child_b_aegir_ui_enhance() {
         ${_DRUSHCMD} php-script make_client ${_CLIENT_EMAIL} &> /dev/null
       fi
       rm -f make_client.php
-      rm -f make_platform.php
     else
       ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
         SET status=-2 WHERE publish_path LIKE '%/aegir/distro/%'" &> /dev/null
@@ -6081,8 +6080,6 @@ _satellite_child_b_aegir_ui_enhance() {
         ${_DRUSHCMD} php-script make_home &> /dev/null
         rm -f make_home.php
       fi
-      rm -f make_client.php
-      rm -f make_platform.php
       ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM field_data_body \
         WHERE body_format IS NULL" &> /dev/null
       ${_DRUSHCMD} @hostmaster sqlq "UPDATE field_data_body \

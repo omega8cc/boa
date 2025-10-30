@@ -348,7 +348,6 @@ _save_verify_this_platform() {
       fi
     fi
   fi
-  [ -e "${_THIS_HM}/make_platform.php" ] && rm -f ${_THIS_HM}/make_platform.php
 }
 
 #
@@ -1622,6 +1621,9 @@ if [[ "${_CORE}" =~ "/data/all/" ]]; then
   rm -rf ${_CORE}/*/scripts
   rm -f ${_CORE}/*{.make,.tar,.tar.gz,.zip}
 fi
+[ -e "${_THIS_HM}/make_platform.php" ] && rm -f ${_THIS_HM}/make_platform.php
+[ -e "${_THIS_HM}/make_client.php" ] && rm -f ${_THIS_HM}/make_client.php
+[ -e "${_THIS_HM}/make_home.php" ] && rm -f ${_THIS_HM}/make_home.php
 cd ${_CORE}
 
 ###----------------------------------------###
