@@ -122,7 +122,8 @@ _PHPREDIS_FOUR_VRN=4.3.0
 _PHPREDIS_THREE_VRN=3.1.6
 _PURE_FTPD_VRN=1.0.51
 _PXC_VRN=1.4.16
-_VALKEY_EIGHT_VRN=8.1.3
+_VALKEY_NINE_VRN=9.0.0
+_VALKEY_EIGHT_VRN=8.1.4
 _VALKEY_SEVEN_VRN=7.2.11
 _REDIS_FOUR_VRN=4.0.14
 _REDIS_FIVE_VRN=5.0.9
@@ -471,7 +472,9 @@ if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
   _nginx_install_upgrade
   _nginx_initd_check
   _nginx_mime_check_fix
-  if [ "${_VALKEY_MAJOR_RELEASE}" = "7" ] || [ "${_VALKEY_MAJOR_RELEASE}" = "8" ]; then
+  if [ "${_VALKEY_MAJOR_RELEASE}" = "7" ] \
+    || [ "${_VALKEY_MAJOR_RELEASE}" = "8" ] \
+    || [ "${_VALKEY_MAJOR_RELEASE}" = "9" ]; then
     _valkey_install_upgrade
   else
     _redis_install_upgrade
