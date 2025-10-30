@@ -9613,9 +9613,11 @@ _initd_update() {
         && [ ! -e "/root/.run-to-chimaera.cnf" ] \
         && [ ! -e "/root/.run-to-beowulf.cnf" ]; then
         _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
-        _myUptime=$(mysqladmin -u root version | grep -i uptime 2>&1)
-        _myUptime=$(echo -n ${_myUptime} | fmt -su -w 2500 2>&1)
-        _msg "INFO: ${_DB_SERVER} ${_myUptime}"
+        if [ "${_myCnfUpdate}" = "NO" ]; then
+          _myUptime=$(mysqladmin -u root version | grep -i uptime 2>&1)
+          _myUptime=$(echo -n ${_myUptime} | fmt -su -w 2500 2>&1)
+          _msg "INFO: ${_DB_SERVER} ${_myUptime}"
+        fi
         if [ "${_myRstrd}" = "YES" ]; then
           _myCnfUpdate=NO
           _msg "INFO: ${_DB_SERVER} already restarted!"
