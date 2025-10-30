@@ -79,7 +79,7 @@ _MYQUICK_VRN_FIVE=0.11.5-2
 _MYQUICK_VRN_EIGHT=0.16.7-3
 _MYSQLTUNER_VRN=1.9.4
 _NGINX_VRN=1.29.2
-_OPENSSH_VRN=10.0p2
+_OPENSSH_VRN=10.2p1
 _OPENSSL_LEGACY_VRN=1.0.2u
 _OPENSSL_EOL_VRN=1.1.1w
 _OPENSSL_MODERN_VRN=3.4.3
@@ -107,9 +107,9 @@ _PHP81_VRN=8.1.33
 _PHP82_API=20220829
 _PHP82_VRN=8.2.29
 _PHP83_API=20230831
-_PHP83_VRN=8.3.26
+_PHP83_VRN=8.3.27
 _PHP84_API=20240924
-_PHP84_VRN=8.4.13
+_PHP84_VRN=8.4.14
 _PHP_APCU=5.1.24
 _PHP_IGBINARY_THREE=3.2.15
 _PHP_IGBINARY_TWO=2.0.8
@@ -121,7 +121,8 @@ _PHPREDIS_FOUR_VRN=4.3.0
 _PHPREDIS_THREE_VRN=3.1.6
 _PURE_FTPD_VRN=1.0.51
 _PXC_VRN=1.4.16
-_VALKEY_EIGHT_VRN=8.1.3
+_VALKEY_NINE_VRN=9.0.0
+_VALKEY_EIGHT_VRN=8.1.4
 _VALKEY_SEVEN_VRN=7.2.11
 _REDIS_FOUR_VRN=4.0.14
 _REDIS_FIVE_VRN=5.0.9
@@ -252,7 +253,7 @@ _download_helpers_libs
 ###
 ### Include shared functions
 ###
-_FL="helper dns system sql valkey redis nginx php jetty master xtra firewall hotfix"
+_FL="helper dns system sql valkey redis nginx php solr master xtra firewall hotfix"
 for f in ${_FL}; do
   [ -r "${_libFnc}/${f}.sh.inc" ] || _panic_exit "${f}"
   source "${_libFnc}/${f}.sh.inc"
@@ -470,7 +471,9 @@ if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
   _nginx_install_upgrade
   _nginx_initd_check
   _nginx_mime_check_fix
-  if [ "${_VALKEY_MAJOR_RELEASE}" = "7" ] || [ "${_VALKEY_MAJOR_RELEASE}" = "8" ]; then
+  if [ "${_VALKEY_MAJOR_RELEASE}" = "7" ] \
+    || [ "${_VALKEY_MAJOR_RELEASE}" = "8" ] \
+    || [ "${_VALKEY_MAJOR_RELEASE}" = "9" ]; then
     _valkey_install_upgrade
   else
     _redis_install_upgrade
@@ -542,7 +545,7 @@ if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "UPGRADE" ]; then
     _if_install_git_src
     _if_install_ffmpeg
     _if_install_bzr
-    [ ! -e "/root/.deny.java.cnf" ] && _if_install_solr_jetty
+    [ ! -e "/root/.deny.java.cnf" ] && _if_install_upgrade_solr
     _if_install_adminer
     _if_install_chive
     _if_install_sqlbuddy

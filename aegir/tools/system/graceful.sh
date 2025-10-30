@@ -183,13 +183,11 @@ _graceful_action() {
       nice -n 0 service solr7 restart
     fi
     echo "Stopping any running Jetty processes..."
-    pkill -9 -f jetty
+    pkill -9 -f jetty9
     rm -rf /tmp/{drush*,pear,jetty*}
-    rm -f /var/log/jetty{7,8,9}/*
+    rm -f /var/log/jetty9/*
     echo "Starting Jetty services..."
     [ -e "/etc/init.d/jetty9" ] && service jetty9 start
-    [ -e "/etc/init.d/jetty8" ] && service jetty8 start
-    [ -e "/etc/init.d/jetty7" ] && service jetty7 start
     echo "INFO: Solr and Jetty servers restarted successfully"
   fi
 
@@ -219,10 +217,6 @@ if [ -e "/run/boa_run.pid" ] || [ -e "/root/.skip_cleanup.cnf" ]; then
   echo "Cleanup skipped due to ongoing operations or configuration settings."
   exit 0
 else
-  echo "Waiting for 60 seconds before starting maintenance tasks..."
-  touch /run/boa_wait.pid
-  sleep 60
   _graceful_action
-  [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
   exit 0
 fi
