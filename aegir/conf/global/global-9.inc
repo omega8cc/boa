@@ -46,9 +46,12 @@ if (is_readable('/data/conf/global/global-front-end.inc')) {
 }
 
 /**
- * If include redis
+ * If include valkey/redis
  */
-if (is_readable('/data/conf/global/global-if-redis.inc')) {
+if (is_readable('/data/conf/global/global-if-valkey.inc')) {
+  include_once('/data/conf/global/global-if-valkey.inc');
+}
+elseif (is_readable('/data/conf/global/global-if-redis.inc')) {
   include_once('/data/conf/global/global-if-redis.inc');
 }
 
@@ -60,9 +63,12 @@ if (is_readable('/data/conf/override.global.inc')) {
 }
 
 /**
- * Include redis
+ * Include valkey/redis
  */
-if (is_readable('/data/conf/global/global-redis.inc')) {
+if (is_readable('/data/conf/global/global-valkey.inc')) {
+  include_once('/data/conf/global/global-valkey.inc');
+}
+elseif (is_readable('/data/conf/global/global-redis.inc')) {
   include_once('/data/conf/global/global-redis.inc');
 }
 
