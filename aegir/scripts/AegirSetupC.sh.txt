@@ -255,9 +255,6 @@ fi
 # Prepare for Save & Verify Platforms.
 _prepare_for_save_verify_platforms() {
   _LOCAL_STATUS="NOT_SET"
-  if [ -e "/run/aegir_upgrade.pid" ]; then
-    _LOCAL_STATUS=INIT
-  fi
   if [ "${_LOCAL_STATUS}" = "INIT" ]; then
     _THIS_HM="${_HM_ROOT}/sites/${_DOMAIN}"
   else
