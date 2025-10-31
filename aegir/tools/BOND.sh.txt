@@ -1829,7 +1829,6 @@ else
 fi
 #
 #
-rm -f /run/aegir_upgrade.pid
 rm -f /opt/tmp/testecho*
 _SRCDIR="/opt/tmp/files"
 mkdir -p ${_SRCDIR}
