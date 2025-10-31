@@ -2444,16 +2444,18 @@ _daily_process() {
           | openssl md5 \
           | awk '{ print $2}' \
           | tr -d "\n" 2>&1)
-        _codeBaseCheckDir="${_usEr}/log/ctrl"
-        _codeBaseCheckFile="plr.${_PlrID}.codebasecheck-${_NOW}.info"
-        _codeBaseCheckCtrl="${_codeBaseCheckDir}/${_codeBaseCheckFile}"
-        [ ! -e "${_codeBaseCheckDir}" ] && mkdir "${_codeBaseCheckDir}"
-        if [ -x "/opt/local/bin/codebasecheck" ] \
-          && [ -e "${_codeBaseCheckDir}" ] \
-          && [ ! -e "${_codeBaseCheckCtrl}" ]; then
-          codebasecheck "${_Plr}"
-          wait
-          touch "${_codeBaseCheckCtrl}"
+        if [ -e "/root/.allow-codebasecheck.cnf" ]; then
+          _codeBaseCheckDir="${_usEr}/log/ctrl"
+          _codeBaseCheckFile="plr.${_PlrID}.codebasecheck-${_NOW}.info"
+          _codeBaseCheckCtrl="${_codeBaseCheckDir}/${_codeBaseCheckFile}"
+          [ ! -e "${_codeBaseCheckDir}" ] && mkdir "${_codeBaseCheckDir}"
+          if [ -x "/opt/local/bin/codebasecheck" ] \
+            && [ -e "${_codeBaseCheckDir}" ] \
+            && [ ! -e "${_codeBaseCheckCtrl}" ]; then
+            codebasecheck "${_Plr}"
+            wait
+            touch "${_codeBaseCheckCtrl}"
+          fi
         fi
         _fix_platform_control_files
         _fix_o_contrib_symlink

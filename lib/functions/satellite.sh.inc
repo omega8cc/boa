@@ -3027,9 +3027,6 @@ _satellite_run_post_install() {
     _debug_proc
   fi
   _LOCAL_STATUS="${_STATUS}"
-  if [ -e "/run/aegir_upgrade.pid" ]; then
-    _LOCAL_STATUS=INIT
-  fi
   if [ "${_LOCAL_STATUS}" = "INIT" ]; then
     if [ ! -e "${_ROOT}/config/${_USER}.nginx.conf" ]; then
       rm -f /var/aegir/config/server_master/nginx/platform.d/${_USER}.conf
@@ -3096,9 +3093,6 @@ _satellite_run_child_c() {
     _debug_proc
   fi
   _LOCAL_STATUS="${_STATUS}"
-  if [ -e "/run/aegir_upgrade.pid" ]; then
-    _LOCAL_STATUS=INIT
-  fi
   if [ "${_LOCAL_STATUS}" = "INIT" ]; then
     _DIST_INSTALL=YES
     rm -f /opt/tmp/testecho*
@@ -4416,7 +4410,6 @@ _satellite_check_octopus_vs_barracuda_ver() {
       _clean_pid_exit _satellite_check_octopus_vs_barracuda_ver_d
     fi
   fi
-  rm -f /run/aegir_upgrade.pid
   rm -f /opt/tmp/testecho*
 }
 
@@ -5325,9 +5318,6 @@ _satellite_child_b_aegir_build() {
     _debug_proc
   fi
   _LOCAL_STATUS="${_STATUS}"
-  if [ -e "/run/aegir_upgrade.pid" ]; then
-    _LOCAL_STATUS=INIT
-  fi
   if [ "${_LOCAL_STATUS}" = "INIT" ]; then
     cd ${_ROOT}
     _AGR_PXSWD=$(cat ${_ROOT}/.${_USER}.pass.txt 2>&1)
