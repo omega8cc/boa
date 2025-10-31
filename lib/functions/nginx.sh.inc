@@ -602,7 +602,7 @@ _nginx_mime_check_fix() {
     rm -f /etc/nginx/sites-available/default
     rm -f /etc/nginx/sites-enabled/default
     rm -f /etc/nginx/modules-enabled/*
-    if [ ! -e "/run/aegir_upgrade.pid" ]; then
+    if [ ! -e "/root/.proxy.cnf" ]; then
       _mrun "service nginx reload"
     fi
   fi

@@ -549,7 +549,6 @@ _mode_detection() {
   chmod -R 777 /opt/tmp &> /dev/null
   find /opt/tmp/boa -type d -exec chmod 0755 {} \; &> /dev/null
   find /opt/tmp/boa -type f -exec chmod 0644 {} \; &> /dev/null
-  rm -f /run/aegir_upgrade.pid
   if [ "${_STATUS}" != "UPGRADE" ]; then
     _STRICT_BIN_PERMISSIONS=NO
   fi
