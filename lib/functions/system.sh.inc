@@ -9259,7 +9259,7 @@ _initd_update() {
       pkill -9 -f jetty9
       _mrun "service jetty9 start"
     fi
-    if [ ! -e "/run/aegir_upgrade.pid" ]; then
+    if [ ! -e "/root/.proxy.cnf" ]; then
       if [ -e "/etc/init.d/valkey-server" ]; then
         _msg "INFO: Starting Valkey, PHP-FPM and Nginx"
         _mrun "service valkey-server start"
@@ -9354,8 +9354,7 @@ _initd_update() {
       pkill -9 -f jetty9
       _mrun "service jetty9 start"
     fi
-    if [ ! -e "/run/aegir_upgrade.pid" ] \
-      && [ ! -e "/root/.proxy.cnf" ]; then
+    if [ ! -e "/root/.proxy.cnf" ]; then
       _mrun "update-rc.d -f php5-fpm remove"
       if [ -e "/etc/init.d/valkey-server" ]; then
         if [ "${_DEBUG_MODE}" = "YES" ]; then
