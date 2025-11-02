@@ -852,10 +852,10 @@ _up_action() {
       wait
       sed -i "s/^_X_VERSION=.*/_X_VERSION=${_rlsE}/g"        ${_vBs}/${_filIncB}
       wait
-      if [ "${_hostedSys}" = "YES" ]; then
-        sed -i "s/^_VALKEY_MAJOR_.*/_VALKEY_MAJOR_RELEASE=9/g"        ${_barCnf}
-        wait
-      fi
+#       if [ "${_hostedSys}" = "YES" ]; then
+#         sed -i "s/^_VALKEY_MAJOR_.*/_VALKEY_MAJOR_RELEASE=9/g"        ${_barCnf}
+#         wait
+#       fi
       sed -i "s/^_REDIS_MAJOR_.*/_REDIS_MAJOR_RELEASE=7/g"            ${_barCnf}
       wait
     else
