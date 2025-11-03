@@ -9218,8 +9218,7 @@ _sshd_armour() {
   if [ -e "/etc/ssh/sshd_config" ]; then
     if [ -e "/etc/ssh/ssh_config" ]; then
       grep -q '^[^#]*GSSAPIAuthentication' /etc/ssh/ssh_config && sed -i '/^[^#]*GSSAPIAuthentication/s/^/#/' /etc/ssh/ssh_config
-      _SSH_NO_WARN_TEST=$(grep "WarnWeakCrypto" /etc/ssh/ssh_config 2>&1)
-      if [[ ! "${_SSH_NO_WARN_TEST}" =~ (^)"WarnWeakCrypto no" ]]; then
+      if ! grep -q -E '^\s*WarnWeakCrypto no' /etc/ssh/ssh_config; then
         echo "WarnWeakCrypto no" >> /etc/ssh/ssh_config
       fi
       _mrun "service ssh restart"
