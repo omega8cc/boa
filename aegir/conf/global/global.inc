@@ -717,6 +717,10 @@ if ($conf['install_profile'] == 'hostmaster') {
       $conf['environment_indicator_overwritten_color'] = '#FF69B4'; // Hot Pink
       //$conf['environment_indicator_overwritten_color'] = '#FFC0CB'; // Light Pink
     }
+    else {
+      $conf['environment_indicator_overwritten_name'] = 'Production';
+      $conf['environment_indicator_overwritten_color'] = '#CC0000'; // Red
+    }
     ini_set('session.cookie_lifetime', 0); // Force log-out on browser quit
     header('X-Accel-Expires: 1');
     if (!file_exists('/data/conf/no-https-aegir.inc')) {
