@@ -140,8 +140,6 @@ case "$1" in
       pkill -9 -f runner.sh
       pkill -9 -f minute.sh
       echo "Cron has been stopped"
-      echo "Now waiting 60 seconds for any running tasks to complete"
-      sleep 55
       if [ ! -e "/root/.allow.clamav.cnf" ] || [ -e "/root/.deny.clamav.cnf" ]; then
         if [ -e "/etc/init.d/clamav-daemon" ]; then
           update-rc.d -f clamav-daemon remove &> /dev/null
@@ -156,7 +154,6 @@ case "$1" in
       pkill -9 -f java
       rm -f /run/clamav/*
       echo "Java/Solr/Clamav have been stopped"
-      sleep 5
       service nginx stop &> /dev/null
       killall nginx &> /dev/null
       killall php &> /dev/null
