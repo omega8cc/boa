@@ -1112,12 +1112,21 @@ _init_cycle() {
     fi
     /usr/bin/apt-get upgrade ${_dstUpArg} >> "${_logSlt}"
     if [ "${_OLD_SYS}" = "Debian" ]; then
+      /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
+      /usr/bin/dpkg --configure -a >> "${_logSlt}"
       if [ "${_NEW_OS_CODE}" = "excalibur" ] || [ -e "/root/.top-excalibur.cnf" ]; then
         ${_INITINS} eudev sysvinit-core systemd-sysv- --allow-remove-essential -qq >> "${_logSlt}"
       else
         ${_INITINS} eudev sysvinit-core -qq >> "${_logSlt}"
       fi
       /usr/bin/apt-get -f install ${_aptAllow} -y -qq >> "${_logSlt}"
+      if [ "${_NEW_OS_CODE}" = "excalibur" ] || [ -e "/root/.top-excalibur.cnf" ]; then
+        ${_INITINS} eudev sysvinit-core systemd-sysv- --allow-remove-essential -qq >> "${_logSlt}"
+      else
+        ${_INITINS} eudev sysvinit-core -qq >> "${_logSlt}"
+      fi
+      /usr/bin/apt-get -f install ${_aptAllow} -y -qq >> "${_logSlt}"
+      /usr/bin/dpkg --configure -a >> "${_logSlt}"
     else
       [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
       /usr/bin/apt-get dist-upgrade ${_dstUpArg} >> "${_logSlt}"
