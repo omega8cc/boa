@@ -966,7 +966,6 @@ _init_offsystemd() {
     /usr/bin/dpkg --configure -a >> "${_logSlt}"
     /usr/bin/apt-get upgrade ${_nrmUpArg} >> "${_logSlt}"
     /usr/bin/apt-get dist-upgrade ${_dstUpArg} >> "${_logSlt}"
-    /usr/bin/apt-get upgrade ${_nrmUpArg} >> "${_logSlt}"
     /usr/bin/apt-get -f install ${_aptAllow} -y -qq >> "${_logSlt}"
     /usr/bin/dpkg --configure -a >> "${_logSlt}"
     _msg "_init_offsystemd ==> The system is now ready for boa install" >> "${_logInt}"
@@ -1102,14 +1101,9 @@ _init_cycle() {
     _prefer_devuan_repositories
     /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
     /usr/bin/dpkg --configure -a >> "${_logSlt}"
-    /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
-    /usr/bin/dpkg --configure -a >> "${_logSlt}"
     if [ "${_OLD_SYS}" = "Debian" ]; then
       ${_INITINS} devuan-keyring >> "${_logSlt}"
-      ${_INITINS} devuan-keyring >> "${_logSlt}"
     else
-      /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
-      /usr/bin/dpkg --configure -a >> "${_logSlt}"
       /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
       /usr/bin/dpkg --configure -a >> "${_logSlt}"
     fi
@@ -1124,11 +1118,7 @@ _init_cycle() {
     else
       [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
       /usr/bin/apt-get dist-upgrade ${_dstUpArg} >> "${_logSlt}"
-      /usr/bin/apt-get dist-upgrade ${_dstUpArg} >> "${_logSlt}"
       /usr/bin/apt-get -f install ${_aptAllow} -y -qq >> "${_logSlt}"
-      /usr/bin/apt-get -f install ${_aptAllow} -y -qq >> "${_logSlt}"
-      /usr/bin/apt-get dist-upgrade ${_dstUpArg} >> "${_logSlt}"
-      /usr/bin/apt-get dist-upgrade ${_dstUpArg} >> "${_logSlt}"
       [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
       /usr/bin/apt-get autoremove --purge -y -qq >> "${_logSlt}"
       /usr/bin/apt-get autoclean -y -qq >> "${_logSlt}"
