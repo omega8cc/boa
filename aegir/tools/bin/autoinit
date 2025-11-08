@@ -889,6 +889,9 @@ _init_offsystemd() {
   fi
   /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
   /usr/bin/dpkg --configure -a >> "${_logSlt}"
+  if [ -e "/root/.top-excalibur.cnf" ]; then
+    /usr/bin/apt-get -o Dpkg::Options::="--force-overwrite" install elogind >> "${_logSlt}"
+  fi
   /usr/bin/apt-get dist-upgrade ${_dstUpArg} >> "${_logSlt}"
   /usr/bin/apt-get dist-upgrade ${_dstUpArg} >> "${_logSlt}"
   [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
@@ -1114,7 +1117,11 @@ _init_cycle() {
     fi
     /usr/bin/apt-get upgrade ${_dstUpArg} >> "${_logSlt}"
     if [ "${_OLD_SYS}" = "Debian" ]; then
-      ${_INITINS} eudev sysvinit-core -qq >> "${_logSlt}"
+      if [ "${_NEW_OS_CODE}" = "excalibur" ]; then
+        ${_INITINS} eudev sysvinit-core systemd-sysv- --allow-remove-essential -qq >> "${_logSlt}"
+      else
+        ${_INITINS} eudev sysvinit-core -qq >> "${_logSlt}"
+      fi
       /usr/bin/apt-get -f install ${_aptAllow} -y -qq >> "${_logSlt}"
     else
       [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
