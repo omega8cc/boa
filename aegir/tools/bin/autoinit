@@ -120,6 +120,8 @@ _check_root() {
   if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt 90 ]; then
     _msg "_check_root ==> ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
     _msg "_check_root ==> ERROR: We can not proceed until it is below 90/100"
+    sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
+    sed -i "s/.*killer.*//gi" /etc/crontab &> /dev/null
     exit 1
   fi
 }
@@ -239,6 +241,8 @@ _check_mnfr() {
     echo "_check_mnfr ==> Not supported environment detected: ${_HOST_INFO}"
     echo "_check_mnfr ==> Please check https://bit.ly/boa-caveats"
     echo "_check_mnfr ==> Bye!"
+    sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
+    sed -i "s/.*killer.*//gi" /etc/crontab &> /dev/null
     exit 1
   elif [[ "${_HOST_INFO}" =~ "Unknown" ]] || [ -z "${_HOST_INFO}" ]; then
     _msg "_check_mnfr ==> Mysterious environment: ${_HOST_INFO}" >> "${_logInt}"
@@ -247,6 +251,8 @@ _check_mnfr() {
     echo "_check_mnfr ==> Mysterious environment: ${_HOST_INFO}"
     echo "_check_mnfr ==> Please check https://bit.ly/boa-caveats"
     echo "_check_mnfr ==> Bye!"
+    sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
+    sed -i "s/.*killer.*//gi" /etc/crontab &> /dev/null
     exit 1
   fi
 }
@@ -259,6 +265,7 @@ _check_aegir() {
     echo
     echo "_check_aegir ==> ERROR: This script can not be used once BOA is installed"
     echo
+    sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
     exit 1
   fi
 }
@@ -1064,6 +1071,8 @@ _init_cycle() {
   else
     _msg "_init_cycle ==> This procedure does not support ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
     _msg "_init_cycle ==> Bye!" >> "${_logInt}"
+    sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
+    sed -i "s/.*killer.*//gi" /etc/crontab &> /dev/null
     echo " " >> "${_logInt}"
     exit 1
   fi
