@@ -1087,17 +1087,15 @@ _init_cycle() {
     echo "deb ${_TGT_MRR} ${_NEW_OS_CODE} main" >> ${_aptLiSys}
     echo "deb-src ${_TGT_MRR} ${_NEW_OS_CODE} main" >> ${_aptLiSys}
     echo "" >> ${_aptLiSys}
-    if [ "${_NEW_OS_CODE}" != "beowulf" ] && [ "${_NEW_OS_CODE}" != "excalibur" ]; then
+    if [ "${_NEW_OS_CODE}" != "beowulf" ]; then
       echo "## MAJOR BUG FIX UPDATES produced after the final release" >> ${_aptLiSys}
       echo "deb ${_TGT_MRR} ${_NEW_OS_CODE}-updates main" >> ${_aptLiSys}
       echo "deb-src ${_TGT_MRR} ${_NEW_OS_CODE}-updates main" >> ${_aptLiSys}
       echo "" >> ${_aptLiSys}
     fi
-    if [ "${_NEW_OS_CODE}" != "excalibur" ]; then
-      echo "## DEVUAN SECURITY UPDATES" >> ${_aptLiSys}
-      echo "deb ${_TGT_MRR} ${_NEW_OS_CODE}-security main" >> ${_aptLiSys}
-      echo "deb-src ${_TGT_MRR} ${_NEW_OS_CODE}-security main" >> ${_aptLiSys}
-    fi
+    echo "## DEVUAN SECURITY UPDATES" >> ${_aptLiSys}
+    echo "deb ${_TGT_MRR} ${_NEW_OS_CODE}-security main" >> ${_aptLiSys}
+    echo "deb-src ${_TGT_MRR} ${_NEW_OS_CODE}-security main" >> ${_aptLiSys}
     if [ -e "/etc/apt/apt.conf" ]; then
       rm -f /etc/apt/apt.conf
     fi
