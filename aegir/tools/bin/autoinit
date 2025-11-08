@@ -811,15 +811,24 @@ EOF
 
 # Mark critical daemons as manual so metas/solver don't toss them
 _protect_daemons() {
-  _msg "[init] Marking core daemons manual: openssh-server, anacron" >> "${_logInt}"
-  /usr/bin/apt-mark manual openssh-server anacron >> "${_logSlt}"
+  _msg "[init] Marking core daemons manual: openssh, cron" >> "${_logInt}"
+  /usr/bin/apt-mark manual openssh-server openssh-sftp-server task-ssh-server >> "${_logSlt}"
+  /usr/bin/apt-mark manual cron cron-daemon-common >> "${_logSlt}"
 }
 
 # Safety: ensure openssh-server present & configured now
 _ensure_openssh_server() {
+  if ! _pkg_installed "cron"; then
+    _msg "[init] Installing cron" >> "${_logInt}"
+    ${_INITINS} cron cron-daemon-common >> "${_logSlt}"
+  fi
+  if ! _pkg_installed "opensysusers"; then
+    _msg "[init] Installing opensysusers" >> "${_logInt}"
+    ${_INITINS} opensysusers >> "${_logSlt}"
+  fi
   if ! _pkg_installed "openssh-server"; then
     _msg "[init] Installing openssh-server" >> "${_logInt}"
-    ${_INITINS} openssh-server openssh-sftp-server >> "${_logSlt}"
+    ${_INITINS} openssh-server openssh-sftp-server task-ssh-server >> "${_logSlt}"
   fi
   # (optional) make sure it is enabled under sysvinit
   if [ -x "/etc/init.d/ssh" ]; then
@@ -861,10 +870,11 @@ _purge_systemd_keep_ssh() {
 # High-level orchestrator to call in the off-systemd phase
 _autoinit_devuan_excalibur_keep_ssh() {
   _ensure_cron_provider
-  _switch_to_elogind_stack
+#   _switch_to_elogind_stack
   _ensure_openssh_server
   _protect_daemons
   _purge_systemd_keep_ssh
+  _ensure_openssh_server
   _msg "[init] systemd purged while keeping openssh-server intact" >> "${_logInt}"
   return 0
 }
