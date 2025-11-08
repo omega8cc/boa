@@ -900,10 +900,17 @@ _up_action() {
     ### Force latest OpenSSH from sources on supported systems
     sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"          ${_barCnf}
     wait
-    sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g"           ${_vBs}/${_filIncB}
-    wait
-    sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g"                    ${_barCnf}
-    wait
+    if [ "${_OS_CODE}" = "excalibur" ]; then
+      sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MySQL/g"           ${_vBs}/${_filIncB}
+      wait
+      sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MySQL/g"                    ${_barCnf}
+      wait
+    else
+      sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g"         ${_vBs}/${_filIncB}
+      wait
+      sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g"                  ${_barCnf}
+      wait
+    fi
     if [ "${_sQld}" = "percona-8.4" ] \
       || [ "${_rKey}" = "percona-8.4" ] \
       || [ "${_dEbg}" = "percona-8.4" ] \
@@ -1306,7 +1313,12 @@ _up_finish() {
   if [ -e "/etc/init.d/postfix" ]; then
     service postfix restart &> /dev/null
   fi
-  if [ "$(boa info | grep -c Percona)" -ge 3 ] || [ -e "/usr/sbin/csf" ]; then
+  if [ "${_OS_CODE}" = "excalibur" ]; then
+    _DB_SERVER=MySQL
+  else
+    _DB_SERVER=Percona
+  fi
+  if [ "$(boa info | grep -c ${_DB_SERVER})" -ge 3 ] || [ -e "/usr/sbin/csf" ]; then
     # Execute the daily.sh and exit
     nohup /var/xdrago/daily.sh > /dev/null 2>&1 &
     sleep 1

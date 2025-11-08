@@ -68,27 +68,80 @@ _if_sql_keyring_apt_update() {
     _apt_clean_update
   fi
 
+  if [ "${_DB_SERVER}" = "MySQL" ]; then
+    _SQL_KEYRING_UPDATE=NO
+    if [ -e "/etc/apt/trusted.gpg.d/mysql.gpg" ] \
+      || [ ! -e "/etc/apt/keyrings/mysql.gpg" ] \
+      || [ -e "/etc/apt/trusted.gpg.d/mysql-keyring.gpg~" ]; then
+      _SQL_KEYRING_UPDATE=YES
+    fi
+  fi
+
+  if [ "${_DB_SERVER}" = "MySQL" ] && [ "${_SQL_KEYRING_UPDATE}" = "YES" ]; then
+    if [ ! -e "/etc/apt/keyrings/mysql.gpg" ]; then
+      if [ ! -e "/etc/apt/keyrings" ]; then
+        mkdir -m 0755 -p /etc/apt/keyrings
+      fi
+      if [ -e "/etc/apt/trusted.gpg.d/mysql.gpg" ] \
+        || [ -e "/etc/apt/trusted.gpg.d/mysql-keyring.gpg~" ]; then
+        rm -f /etc/apt/trusted.gpg.d/mysql*
+      fi
+      _MYSQL_KEYS_SIG="B7B3B788A8D3785C"
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        _msg "INFO: Retrieving ${_MYSQL_KEYS_SIG} key..."
+      fi
+      apt-key del ${_MYSQL_KEYS_SIG} &> /dev/null
+      if [ ! -e "/etc/apt/keyrings/mysql.gpg" ]; then
+        curl -fsSL ${_urlDev}/mysql-key.gpg | ${_GPG} --dearmor -o /etc/apt/keyrings/mysql.gpg
+      fi
+      chmod 644 /etc/apt/keyrings/mysql.gpg
+      _CNT=$(pgrep -fc dirmngr)
+      if (( _CNT > 5 )); then
+        pkill -9 -f dirmngr
+        echo "$(date) Too many dirmngr processes killed (count=${_CNT})" >> \
+          /var/log/boa/dirmngr-count.kill.log
+      fi
+      _CNT=$(pgrep -fc gpg-agent)
+      if (( _CNT > 5 )); then
+        pkill -9 -f gpg-agent
+        echo "$(date) Too many gpg-agent processes killed (count=${_CNT})" >> \
+          /var/log/boa/gpg-agent-count.kill.log
+      fi
+    fi
+    _apt_clean_update
+  fi
+
   [ ! -z "${_SQL_NEW_OS_CODE}" ] && _SQL_OS_CODE=${_SQL_NEW_OS_CODE}
 
   if [ "${_DB_V}" = "8.4" ] || [ "${_DB_SERIES}" = "8.4" ]; then
     if [ "${_DB_SERVER}" = "Percona" ]; then
       _DB_SRC="repo.percona.com"
       _percNodot="${_DB_SERIES//./}"
-      _SQL_DEB_SRC_TEST_A=$(grep ${_DB_SRC} \
-        /etc/apt/sources.list.d/percona-release.list 2>&1)
-      _SQL_DEB_SRC_TEST_B=$(grep ${_SQL_OS_CODE} \
-        /etc/apt/sources.list.d/percona-release.list 2>&1)
-      _SQL_DEB_SRC_TEST_C=$(grep ps-${_percNodot}-lts \
-        /etc/apt/sources.list.d/percona-release.list 2>&1)
-      _SQL_DEB_SRC_TEST_D=$(grep ps-8x-innovation \
-        /etc/apt/sources.list.d/percona-release.list 2>&1)
+      _sqlDebVersion="ps-${_percNodot}-lts"
+      _SQL_DEB_SRC_TEST_A=$(grep ${_DB_SRC} /etc/apt/sources.list.d/percona-release.list 2>&1)
+      _SQL_DEB_SRC_TEST_B=$(grep ${_SQL_OS_CODE} /etc/apt/sources.list.d/percona-release.list 2>&1)
+      _SQL_DEB_SRC_TEST_C=$(grep ${_sqlDebVersion} /etc/apt/sources.list.d/percona-release.list 2>&1)
+      _SQL_DEB_SRC_TEST_D=$(grep ps-8x-innovation /etc/apt/sources.list.d/percona-release.list 2>&1)
+    elif [ "${_DB_SERVER}" = "MySQL" ]; then
+      _DB_SRC="repo.mysql.com"
+      _sqlDebVersion="mysql-${_DB_SERIES}-lts"
+      _SQL_DEB_SRC_TEST_A=$(grep ${_DB_SRC} /etc/apt/sources.list.d/mysql.list 2>&1)
+      _SQL_DEB_SRC_TEST_B=$(grep ${_SQL_OS_CODE} /etc/apt/sources.list.d/mysql.list 2>&1)
+      _SQL_DEB_SRC_TEST_C=$(grep ${_sqlDebVersion} /etc/apt/sources.list.d/mysql.list 2>&1)
     fi
     if [[ "${_SQL_DEB_SRC_TEST_A}" =~ "${_DB_SRC}" ]] \
       && [[ "${_SQL_DEB_SRC_TEST_B}" =~ "${_SQL_OS_CODE}" ]] \
-      && [[ "${_SQL_DEB_SRC_TEST_C}" =~ "ps-${_percNodot}-lts" ]] \
-      && [ -e "/etc/apt/keyrings/percona.gpg" ] \
-      && [ -e "/etc/apt/preferences.d/00percona.pref" ]; then
-      _SQL_DEB_SRC_UPDATE=NO
+      && [[ "${_SQL_DEB_SRC_TEST_C}" =~ "${_sqlDebVersion}" ]]; then
+      if [ "${_DB_SERVER}" = "Percona" ]; then
+        if [ -e "/etc/apt/keyrings/percona.gpg" ] \
+          && [ -e "/etc/apt/preferences.d/00percona.pref" ]; then
+          _SQL_DEB_SRC_UPDATE=NO
+        fi
+      else
+        if [ -e "/etc/apt/keyrings/mysql.gpg" ]; then
+          _SQL_DEB_SRC_UPDATE=NO
+        fi
+      fi
     else
       _SQL_DEB_SRC_UPDATE=YES
     fi
@@ -99,14 +152,10 @@ _if_sql_keyring_apt_update() {
     if [ "${_DB_SERVER}" = "Percona" ]; then
       _DB_SRC="repo.percona.com"
       _percNodot="${_DB_SERIES//./}"
-      _SQL_DEB_SRC_TEST_A=$(grep ${_DB_SRC} \
-        /etc/apt/sources.list.d/percona-release.list 2>&1)
-      _SQL_DEB_SRC_TEST_B=$(grep ${_SQL_OS_CODE} \
-        /etc/apt/sources.list.d/percona-release.list 2>&1)
-      _SQL_DEB_SRC_TEST_C=$(grep ps-${_percNodot} \
-        /etc/apt/sources.list.d/percona-release.list 2>&1)
-      _SQL_DEB_SRC_TEST_D=$(grep ps-8x-innovation \
-        /etc/apt/sources.list.d/percona-release.list 2>&1)
+      _SQL_DEB_SRC_TEST_A=$(grep ${_DB_SRC} /etc/apt/sources.list.d/percona-release.list 2>&1)
+      _SQL_DEB_SRC_TEST_B=$(grep ${_SQL_OS_CODE} /etc/apt/sources.list.d/percona-release.list 2>&1)
+      _SQL_DEB_SRC_TEST_C=$(grep ps-${_percNodot} /etc/apt/sources.list.d/percona-release.list 2>&1)
+      _SQL_DEB_SRC_TEST_D=$(grep ps-8x-innovation /etc/apt/sources.list.d/percona-release.list 2>&1)
     fi
     if [[ "${_SQL_DEB_SRC_TEST_A}" =~ "${_DB_SRC}" ]] \
       && [[ "${_SQL_DEB_SRC_TEST_B}" =~ "${_SQL_OS_CODE}" ]] \
@@ -124,21 +173,31 @@ _if_sql_keyring_apt_update() {
     if [ "${_DB_SERVER}" = "Percona" ]; then
       _DB_SRC="repo.percona.com"
       _percNodot="${_DB_SERIES//./}"
-      _SQL_DEB_SRC_TEST_A=$(grep ${_DB_SRC} \
-        /etc/apt/sources.list.d/percona-release.list 2>&1)
-      _SQL_DEB_SRC_TEST_B=$(grep ${_SQL_OS_CODE} \
-        /etc/apt/sources.list.d/percona-release.list 2>&1)
-      _SQL_DEB_SRC_TEST_C=$(grep ps-${_percNodot} \
-        /etc/apt/sources.list.d/percona-release.list 2>&1)
-      _SQL_DEB_SRC_TEST_D=$(grep ps-8x-innovation \
-        /etc/apt/sources.list.d/percona-release.list 2>&1)
+      _sqlDebVersion="ps-${_percNodot}"
+      _SQL_DEB_SRC_TEST_A=$(grep ${_DB_SRC} /etc/apt/sources.list.d/percona-release.list 2>&1)
+      _SQL_DEB_SRC_TEST_B=$(grep ${_SQL_OS_CODE} /etc/apt/sources.list.d/percona-release.list 2>&1)
+      _SQL_DEB_SRC_TEST_C=$(grep ${_sqlDebVersion} /etc/apt/sources.list.d/percona-release.list 2>&1)
+      _SQL_DEB_SRC_TEST_D=$(grep ps-8x-innovation /etc/apt/sources.list.d/percona-release.list 2>&1)
+    elif [ "${_DB_SERVER}" = "MySQL" ]; then
+      _DB_SRC="repo.mysql.com"
+      _sqlDebVersion="mysql-${_DB_SERIES}-lts"
+      _SQL_DEB_SRC_TEST_A=$(grep ${_DB_SRC} /etc/apt/sources.list.d/mysql.list 2>&1)
+      _SQL_DEB_SRC_TEST_B=$(grep ${_SQL_OS_CODE} /etc/apt/sources.list.d/mysql.list 2>&1)
+      _SQL_DEB_SRC_TEST_C=$(grep ${_sqlDebVersion} /etc/apt/sources.list.d/mysql.list 2>&1)
     fi
     if [[ "${_SQL_DEB_SRC_TEST_A}" =~ "${_DB_SRC}" ]] \
       && [[ "${_SQL_DEB_SRC_TEST_B}" =~ "${_SQL_OS_CODE}" ]] \
-      && [[ "${_SQL_DEB_SRC_TEST_C}" =~ "ps-${_percNodot}" ]] \
-      && [ -e "/etc/apt/keyrings/percona.gpg" ] \
-      && [ -e "/etc/apt/preferences.d/00percona.pref" ]; then
-      _SQL_DEB_SRC_UPDATE=NO
+      && [[ "${_SQL_DEB_SRC_TEST_C}" =~ "${_sqlDebVersion}" ]]; then
+      if [ "${_DB_SERVER}" = "Percona" ]; then
+        if [ -e "/etc/apt/keyrings/percona.gpg" ] \
+          && [ -e "/etc/apt/preferences.d/00percona.pref" ]; then
+          _SQL_DEB_SRC_UPDATE=NO
+        fi
+      else
+        if [ -e "/etc/apt/keyrings/mysql.gpg" ]; then
+          _SQL_DEB_SRC_UPDATE=NO
+        fi
+      fi
     else
       _SQL_DEB_SRC_UPDATE=YES
     fi
@@ -152,6 +211,7 @@ _if_sql_keyring_apt_update() {
     rm -f /etc/apt/sources.list.d/ourdelta*
     rm -f /etc/apt/sources.list.d/percona*
     rm -f /etc/apt/sources.list.d/xtrabackup*
+    rm -f /etc/apt/sources.list.d/mysql*
     _percList="/etc/apt/sources.list.d/percona-release.list"
     if [ "${_DB_V}" = "8.4" ] || [ "${_DB_SERIES}" = "8.4" ]; then
       _percRepo="${_DB_SRC}/ps-${_percNodot}-lts/apt"
@@ -202,6 +262,29 @@ _if_sql_keyring_apt_update() {
     fi
     chmod 644 ${_percList}
     echo -e 'Package: *\nPin: release o=Percona Development Team\nPin-Priority: 1001' > /etc/apt/preferences.d/00percona.pref
+    _apt_clean_update
+  fi
+
+  if [ "${_DB_SERVER}" = "MySQL" ] && [ "${_SQL_DEB_SRC_UPDATE}" = "YES" ]; then
+    rm -f /etc/apt/sources.list.d/mariadb*
+    rm -f /etc/apt/sources.list.d/ourdelta*
+    rm -f /etc/apt/sources.list.d/percona*
+    rm -f /etc/apt/sources.list.d/xtrabackup*
+    rm -f /etc/apt/sources.list.d/mysql*
+    _percList="/etc/apt/sources.list.d/mysql-release.list"
+    if [ "${_DB_V}" = "8.4" ] || [ "${_DB_SERIES}" = "8.4" ]; then
+      _percRepo="repo.mysql.com/apt/debian/"
+    fi
+    echo "## MySQL Server APT Repository" > ${_percList}
+    if [ -e "/etc/apt/keyrings/mysql.gpg" ]; then
+      echo "deb [signed-by=/etc/apt/keyrings/mysql.gpg] http://${_percRepo} ${_SQL_OS_CODE} mysql-8.4-lts mysql-tools" >> ${_percList}
+      echo "deb-src [signed-by=/etc/apt/keyrings/mysql.gpg] http://${_percRepo} ${_SQL_OS_CODE} mysql-8.4-lts mysql-tools" >> ${_percList}
+    else
+      echo "deb http://${_percRepo} ${_SQL_OS_CODE} mysql-8.4-lts mysql-tools" >> ${_percList}
+      echo "deb-src http://${_percRepo} ${_SQL_OS_CODE} mysql-8.4-lts mysql-tools" >> ${_percList}
+    fi
+    chmod 644 ${_percList}
+    echo -e 'Package: *\nPin: release o=MySQL Development Team\nPin-Priority: 1001' > /etc/apt/preferences.d/00mysql.pref
     _apt_clean_update
   fi
 }
@@ -917,6 +1000,11 @@ _prep_for_install_db_sql() {
   else
     _SQLDEB="percona-server-server"
   fi
+
+  if [ "${_DB_SERVER}" = "MySQL" ]; then
+    _SQLDEB="mysql-server"
+  fi
+
   _SQLXTR="libdbi-perl"
 
   if [ "${_DB_SERIES}" = "5.7" ]; then
@@ -926,6 +1014,11 @@ _prep_for_install_db_sql() {
   else
     _SQLADD="libperconaserverclient22 libperconaserverclient22-dev"
   fi
+
+  if [ "${_DB_SERVER}" = "MySQL" ]; then
+    _SQLADD="libmysqlclient21"
+  fi
+
 }
 
 _install_with_aptitude_sql() {

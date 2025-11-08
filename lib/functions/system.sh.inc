@@ -2843,6 +2843,18 @@ _barracuda_cnf() {
       fi
     fi
 
+    if [ "${_OS_CODE}" = "excalibur" ]; then
+      _DB_SERVER=MySQL
+      _DB_SERIES=8.4
+      _DBS_VRN="${_PERCONA_8_4_VRN}"
+      if [ -e "${_barCnf}" ]; then
+        sed -i "s/^_DB_SERIES=.*/_DB_SERIES=8.4/g" ${_barCnf}
+        wait
+        sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MySQL/g" ${_barCnf}
+        wait
+      fi
+    fi
+
     if [[ "${_MY_EMAIL}" =~ "omega8.cc" ]]; then
       _if_hosted_sys
       if [ "${_hostedSys}" != "YES" ]; then

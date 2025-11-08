@@ -912,7 +912,14 @@ _os_detection() {
     _not_supported_os
   fi
 
-  _DB_SERVER=Percona
+  if [ "${_OS_CODE}" = "excalibur" ]; then
+    _DB_SERVER=MySQL
+    _DB_SERIES=8.4
+    _DBS_VRN=8.4
+  else
+    _DB_SERVER=Percona
+  fi
+
   _NGINX_FORWARD_SECRECY=YES
   _NGINX_SPDY=YES
   if [ "${_DB_SERIES}" = "8.4" ]; then
