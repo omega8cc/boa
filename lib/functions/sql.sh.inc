@@ -18,6 +18,83 @@ _check_mysql_version() {
   fi
 }
 
+_install_local_ordered() {
+  cd "${_WORK}"
+  _mrun "dpkg -i ./mysql-common_*_amd64.deb"
+  _mrun "dpkg -i ./mysql-community-client-plugins_*_amd64.deb"
+  _mrun "dpkg -i ./libmysqlclient24_*_amd64.deb"
+  _mrun "dpkg -i ./mysql-community-client-core_*_amd64.deb"
+  _mrun "dpkg -i ./mysql-community-client_*_amd64.deb"
+  _mrun "dpkg -i ./mysql-client_*_amd64.deb"
+  _mrun "dpkg -i ./mysql-community-server-core_*_amd64.deb"
+  _mrun "dpkg -i ./mysql-community-server_*_amd64.deb"
+  _mrun "dpkg -i ./mysql-server_*_amd64.deb"
+  _mrun "apt-get -f -y install"
+}
+
+_download_pkg_by_name() {
+  # $1 = package name
+  local _name="$1" _file
+  _file="$(awk -v P="${_name}" '
+    $1=="Package:" && $2==P {f=1}
+    f && $1=="Filename:" {print $2; f=0}
+  ' Packages | tail -n1)"
+  if [ -z "${_file}" ]; then
+    _msg "MSQL: Could not locate package '${_name}' in Packages index"
+  fi
+  local _url="${_BASE_URL}/${_file}"
+  local _base="$(basename "${_file}")"
+  if [ -s "${_base}" ]; then
+    return 0
+  fi
+  _msg "MSQL: Downloading ${_url}"
+  _mrun "wget -q ${_url} -O ${_base}"
+}
+
+_fetch_packages_index() {
+  mkdir -p "${_WORK}"
+  cd "${_WORK}"
+  curl -fsS "${_BASE_URL}/dists/${_SUITE}/${_COMP}/binary-${_ARCH}/Packages" -o Packages
+}
+
+_download_all_mysql_debs() {
+  _fetch_packages_index
+  local _p
+  for _p in ${_PKGS}; do
+    _download_pkg_by_name "${_p}"
+  done
+}
+
+_ensure_base_runtime_deps() {
+  _apt_clean_update
+  _mrun "${_INSTAPP} libmecab2 psmisc libnuma1"
+}
+
+_dpkg_install_mysql() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _dpkg_install_mysql"
+  fi
+  _WORK="/var/backups/mysql84-local"
+  _BASE_URL="http://repo.mysql.com/apt/debian"
+  _SUITE="trixie"
+  _COMP="mysql-8.4-lts"
+  _ARCH="amd64"
+  _PKGS="
+mysql-common
+mysql-community-client-plugins
+libmysqlclient24
+mysql-community-client-core
+mysql-community-client
+mysql-client
+mysql-community-server-core
+mysql-community-server
+mysql-server
+"
+  _ensure_base_runtime_deps
+  _download_all_mysql_debs
+  _install_local_ordered
+}
+
 #
 # Update for keyrings/percona.gpg
 _if_sql_keyring_apt_update() {
@@ -285,6 +362,10 @@ _if_sql_keyring_apt_update() {
     fi
     chmod 644 ${_percList}
     echo -e 'Package: *\nPin: release o=MySQL Development Team\nPin-Priority: 1001' > /etc/apt/preferences.d/00mysql.pref
+    ### Temporary cleanup until MySQL updates gpg keys
+    mv -f ${_percList} /var/backups/
+    mv -f /etc/apt/preferences.d/00mysql.pref /var/backups/
+    mv -f /etc/apt/keyrings/mysql.gpg /var/backups/
     _apt_clean_update
   fi
 }
@@ -909,8 +990,8 @@ _prep_for_install_db_sql() {
   else
     _SQL_OS_CODE="${_OS_CODE}"
   fi
-  if [ "${_SQL_OS_CODE}" = "foobar" ]; then
-    _SQL_SCR=GIT
+  if [ "${_SQL_OS_CODE}" = "trixie" ]; then
+    _SQL_SCR=DPKG
   fi
   _DBS_TEST=$(which mysql 2>&1)
   if [ ! -z "${_DBS_TEST}" ]; then
@@ -1016,7 +1097,7 @@ _prep_for_install_db_sql() {
   fi
 
   if [ "${_DB_SERVER}" = "MySQL" ]; then
-    _SQLADD="libmysqlclient21"
+    _SQLADD="libmysqlclient24"
   fi
 
 }
@@ -1034,8 +1115,8 @@ _install_with_aptitude_sql() {
     _mrun "${_INSTAPP} ${_SQLADD}"
     _mrun "${_INSTAPP} ${_SQLXTR}"
     _mrun "${_INSTAPP} ${_SQLDEB}"
-  elif [ "${_SQL_SCR}" = "GIT" ]; then
-    ### TBD -- only for testing
+  elif [ "${_SQL_SCR}" = "DPKG" ]; then
+    _dpkg_install_mysql
     _mrun "${_INSTAPP} ${_SQLXTR}"
   fi
   if [ -x "/usr/sbin/aa-teardown" ]; then
@@ -1280,8 +1361,8 @@ _db_server_install() {
   else
     _SQL_OS_CODE="${_OS_CODE}"
   fi
-  if [ "${_SQL_OS_CODE}" = "foobar" ]; then
-    _SQL_SCR=GIT
+  if [ "${_SQL_OS_CODE}" = "trixie" ]; then
+    _SQL_SCR=DPKG
   fi
   _THIS_DB_PORT=3306
   if [ -x "/usr/bin/gpg2" ]; then
