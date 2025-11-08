@@ -242,9 +242,7 @@ _remove_systemd() {
     if [ -e "/usr/share/sysvinit/inittab" ]; then
       cp -af /usr/share/sysvinit/inittab /etc/inittab
     fi
-    apt-get remove systemd -y --purge --auto-remove --allow-remove-essential -qq 2> /dev/null
-    apt-get remove libnss-systemd -y --purge --auto-remove --allow-remove-essential -qq 2> /dev/null
-    apt-get remove systemd-sysv -y --purge --auto-remove --allow-remove-essential -qq 2> /dev/null
+    apt-get purge systemd libnss-systemd -y -qq 2> /dev/null
     if [ ! -e "/etc/apt/preferences.d/offsystemd" ]; then
       rm -f /etc/apt/preferences.d/systemd
       echo -e 'Package: systemd\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/offsystemd
@@ -1471,9 +1469,7 @@ _db_head_to_stretch_second() {
         if [ -e "/usr/share/sysvinit/inittab" ]; then
           cp -af /usr/share/sysvinit/inittab /etc/inittab
         fi
-        apt-get remove systemd -y --purge --auto-remove --allow-remove-essential -qq 2> /dev/null
-        apt-get remove libnss-systemd -y --purge --auto-remove --allow-remove-essential -qq 2> /dev/null
-        apt-get remove systemd-sysv -y --purge --auto-remove --allow-remove-essential -qq 2> /dev/null
+        apt-get purge systemd libnss-systemd -y -qq 2> /dev/null
         apt-get autoremove --purge -y -qq 2> /dev/null
         apt-get autoclean -y -qq 2> /dev/null
         if [ ! -e "/etc/apt/preferences.d/offsystemd" ]; then

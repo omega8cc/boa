@@ -2276,9 +2276,7 @@ _upgrade_host() {
         _apt_clean_update
       fi
     fi
-    apt-get remove systemd -y --purge --auto-remove --allow-remove-essential -qq 2> /dev/null
-    apt-get remove libnss-systemd -y --purge --auto-remove --allow-remove-essential -qq 2> /dev/null
-    apt-get remove systemd-sysv -y --purge --auto-remove --allow-remove-essential -qq 2> /dev/null
+    apt-get purge systemd libnss-systemd -y -qq 2> /dev/null
     apt-get autoremove --purge -y -qq 2> /dev/null
     apt-get autoclean -y -qq 2> /dev/null
     echo "sysvinit-core hold" | dpkg --set-selections &> /dev/null

@@ -844,9 +844,7 @@ _purge_systemd_keep_ssh() {
   fi
 
   _msg "[init] Purging systemd safely" >> "${_logInt}"
-  /usr/bin/apt-get remove systemd -y --purge --auto-remove --allow-remove-essential -qq >> "${_logSlt}"
-  /usr/bin/apt-get remove libnss-systemd -y --purge --auto-remove --allow-remove-essential -qq >> "${_logSlt}"
-  /usr/bin/apt-get remove systemd-sysv -y --purge --auto-remove --allow-remove-essential -qq >> "${_logSlt}"
+  /usr/bin/apt-get purge systemd libnss-systemd -y -qq >> "${_logSlt}"
 
   # Some builds still leave libsystemd0 behind; elogind step should allow its removal.
   if _pkg_installed "libsystemd0"; then
@@ -949,9 +947,7 @@ _init_offsystemd() {
     if [ -e "/root/.top-foobar.cnf" ]; then
       _autoinit_devuan_excalibur_keep_ssh
     else
-      /usr/bin/apt-get remove systemd -y --purge --auto-remove --allow-remove-essential -qq >> "${_logSlt}"
-      /usr/bin/apt-get remove libnss-systemd -y --purge --auto-remove --allow-remove-essential -qq >> "${_logSlt}"
-      /usr/bin/apt-get remove systemd-sysv -y --purge --auto-remove --allow-remove-essential -qq >> "${_logSlt}"
+      /usr/bin/apt-get purge systemd libnss-systemd -y -qq >> "${_logSlt}"
       /usr/bin/apt-get autoremove --purge -y -qq >> "${_logSlt}"
       /usr/bin/apt-get autoclean -y -qq >> "${_logSlt}"
     fi

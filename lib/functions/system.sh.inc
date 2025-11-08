@@ -190,9 +190,7 @@ _systemd_remove_apt_cmd() {
     _msg "PROC: _systemd_remove_apt_cmd"
   fi
   _apt_clean_update
-  _mrun "apt-get remove systemd -y --purge --auto-remove --allow-remove-essential -qq"
-  _mrun "apt-get remove libnss-systemd -y --purge --auto-remove --allow-remove-essential -qq"
-  _mrun "apt-get remove systemd-sysv -y --purge --auto-remove --allow-remove-essential -qq"
+  _mrun "apt-get purge systemd libnss-systemd -y -qq"
   _mrun "apt-get autoremove --purge -y --purge --auto-remove -qq"
   _mrun "apt-get autoclean -y --purge --auto-remove -qq"
   _mrun "apt-get autoremove -y --purge --auto-remove -qq"
