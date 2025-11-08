@@ -943,7 +943,7 @@ _init_offsystemd() {
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   _msg "_init_offsystemd ==> Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
   if [ "${_OS_CODE}" = "daedalus" ] || [ "${_OS_CODE}" = "excalibur" ]; then
-    if [ -e "/root/.top-excalibur.cnf" ]; then
+    if [ -e "/root/.top-foobar.cnf" ]; then
       _autoinit_devuan_excalibur_keep_ssh
     else
       /usr/bin/apt-get remove systemd -y --purge --auto-remove --allow-remove-essential -qq >> "${_logSlt}"
