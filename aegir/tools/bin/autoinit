@@ -944,7 +944,7 @@ _init_offsystemd() {
   _msg "_init_offsystemd ==> Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
   if [ "${_OS_CODE}" = "daedalus" ] || [ "${_OS_CODE}" = "excalibur" ]; then
     _msg "_init_offsystemd ==> Removing systemd on ${_OS_CODE}" >> "${_logInt}"
-    if [ -e "/root/.top-foobar.cnf" ]; then
+    if [ -e "/root/.top-excalibur.cnf" ]; then
       _autoinit_devuan_excalibur_keep_ssh
     else
       /usr/bin/apt-get purge systemd libnss-systemd -y -qq >> "${_logSlt}"
