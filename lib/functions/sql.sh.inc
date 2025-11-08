@@ -1374,6 +1374,19 @@ _db_server_install() {
     _db_server_apt_cleanup
     _install_with_aptitude_sql
     _db_server_apt_cleanup
+    [ -e "/etc/mysql/my.cnf" ] && mv -f /etc/mysql/my.cnf /var/backups/package.my.cnf
+    cp -af ${_locCnf}/var/my.cnf.txt /etc/mysql/my.cnf
+    if [ "${_DB_SERIES}" = "8.4" ]; then
+      # Enable legacy mysql_native_password for Percona 8.4
+      sed -i -E \
+        -e "s/^#?\s*mysql_native_password\s*=.*/mysql_native_password=ON/" \
+        -e "s/^(\s*)#\s*(mysql_native_password.*=.*)/\1\2/" \
+        /etc/mysql/my.cnf &> /dev/null
+    fi
+    cp -af ${_locCnf}/var/mysql /etc/init.d/mysql
+    chmod 755 /etc/init.d/mysql
+    _mrun "update-rc.d mysql defaults"
+    _mrun "service mysql start"
   else
     ###
     ### Update keyring and apt if needed
