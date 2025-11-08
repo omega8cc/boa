@@ -662,7 +662,6 @@ _init_prepare() {
     echo " " >> "${_logInt}"
     rm -f /run/autoinit.pid
     shutdown -r now
-    wait
     exit 0
   else
     if [ ! -x "/usr/bin/mc" ]; then
@@ -728,7 +727,6 @@ _init_prepare() {
       echo " " >> "${_logInt}"
       rm -f /run/autoinit.pid
       shutdown -r now
-      wait
       exit 0
     fi
   fi
@@ -982,7 +980,6 @@ _init_offsystemd() {
   touch /root/.run-offsystemd-devuan-init.cnf
   rm -f /run/autoinit.pid
   shutdown -r now
-  wait
   exit 0
 }
 
@@ -1175,7 +1172,6 @@ _init_cycle() {
     touch /root/.run-cycle-devuan-init.cnf
     rm -f /run/autoinit.pid
     shutdown -r now
-    wait
     exit 0
   else
     if [ "${_OS_CODE}" = "daedalus" ] || [ "${_OS_CODE}" = "excalibur" ]; then
@@ -1203,7 +1199,6 @@ _init_cycle() {
     touch /root/.run-cycle-${_OS_CODE}-init.cnf
     rm -f /run/autoinit.pid
     shutdown -r now
-    wait
     exit 0
   fi
 }
