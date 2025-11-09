@@ -66,12 +66,18 @@ _clean_pid_exit() {
 _os_detection_minimal() {
   _APT_UPDATE="apt-get update"
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
-  _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
+  _OS_LIST="excalibur daedalus chimaera beowulf buster bullseye bookworm trixie"
   for e in ${_OS_LIST}; do
     if [ "${e}" = "${_OS_CODE}" ]; then
       _APT_UPDATE="apt-get update --allow-releaseinfo-change"
     fi
   done
+  if [ "${_OS_CODE}" = "excalibur" ] \
+    && [ -e "/lib/systemd/systemd" ] ; then
+    ${_APT_UPDATE} -qq 2> /dev/null
+    apt-get purge systemd libnss-systemd -y -qq 2> /dev/null
+    apt-get remove stunnel4 -y --purge --auto-remove -qq 2> /dev/null
+  fi
 }
 
 _apt_clean_update() {
@@ -740,14 +746,17 @@ _check_dns_settings() {
 
 _if_extended_report() {
   _EXTENDED=NO
-  if [ -e "/root/.run-to-daedalus.cnf" ] \
+  if [ -e "/root/.run-to-excalibur.cnf" ] \
+    || [ -e "/root/.run-to-daedalus.cnf" ] \
     || [ -e "/root/.run-to-chimaera.cnf" ] \
     || [ -e "/root/.run-to-beowulf.cnf" ] \
     || [ -e "/root/.send-extended-report.cnf" ]; then
     _EXTENDED=YES
   fi
   if [ "${_EXTENDED}" = "YES" ]; then
-    if [ -e "/root/.autodaedalus.log" ]; then
+    if [ -e "/root/.autoexcalibur.log" ]; then
+      cat /root/.autoexcalibur.log >> ${_THIS_LOG}
+    elif [ -e "/root/.autodaedalus.log" ]; then
       cat /root/.autodaedalus.log >> ${_THIS_LOG}
     elif [ -e "/root/.autochimaera.log" ]; then
       cat /root/.autochimaera.log >> ${_THIS_LOG}
@@ -1141,6 +1150,16 @@ _barracuda_install() {
         sed -i "s/^_NEWRELIC.*/_NEWRELIC_KEY=\"${_eXtr}\"/g" ${_vBs}/${_filIncB}
         wait
       fi
+    fi
+
+    ###
+    ### Percona SQL server doesn't support Debian Trixie / Devuan Excalibur yet.
+    ### We may need to enforce Percona 8.4 unless 8.0 will be supported too.
+    ###
+    if [ "${_OS_CODE}" = "excalibur" ] \
+      && [ "${_eXtr}" != "percona-8.0" ]; then
+      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=8.4/g"             ${_vBs}/${_filIncB}
+      wait
     fi
 
     if [ "${_cmNd}" = "in-dev" ] \
@@ -1734,7 +1753,7 @@ _find_fast_mirror_early() {
     apt-get install netcat-traditional ${_aptYesUnth} 2> /dev/null
     wait
   fi
-  _ffMirr=$(which ffmirror 2>&1)
+  _ffMirr=/opt/local/bin/ffmirror
   if [ -x "${_ffMirr}" ]; then
     _ffList="/var/backups/boa-mirrors-2025-01.txt"
     mkdir -p /var/backups
@@ -1784,7 +1803,6 @@ _if_reinstall_curl() {
       fi
       apt-get autoremove -y 2> /dev/null
       apt-get install libssl-dev ${_aptYesUnth} -qq 2> /dev/null
-      apt-get install libc-client2007e libc-client2007e-dev ${_aptYesUnth} -qq 2> /dev/null
       apt-get build-dep curl ${_aptYesUnth} 2> /dev/null
       apt-get install curl --reinstall ${_aptYesUnth} -qq 2> /dev/null
     fi

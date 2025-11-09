@@ -1017,7 +1017,9 @@ _install_php_extensions() {
   fi
   ###--------------------###
   _msg "INFO: Installing Imagick ${_IMAGICK_VRN} for PHP ${_T_PHP_VRN}..."
-  if [ "${_OS_CODE}" = "daedalus" ] || [ "${_OS_CODE}" = "chimaera" ]; then
+  if [ "${_OS_CODE}" = "excalibur" ] \
+    || [ "${_OS_CODE}" = "daedalus" ] \
+    || [ "${_OS_CODE}" = "chimaera" ]; then
     if [ -e "/usr/bin/MagickWand-config" ]; then
       mv -f /usr/bin/MagickWand-config /var/backups/usr-bin-MagickWand-config
     fi
@@ -1452,7 +1454,9 @@ _php_extensions_update() {
   if [ ! -e "${_THIS_PHP_EXT_DIR}/imagick.so" ] \
     || [ ! -e "${_pthLog}/imagick-${_IMAGICK_VRN}-${_T_PHP_VRN}.log" ]; then
     _msg "INFO: Installing Imagick ${_IMAGICK_VRN} upgrade for PHP ${_T_PHP_VRN}..."
-    if [ "${_OS_CODE}" = "daedalus" ] || [ "${_OS_CODE}" = "chimaera" ]; then
+    if [ "${_OS_CODE}" = "excalibur" ] \
+      || [ "${_OS_CODE}" = "daedalus" ] \
+      || [ "${_OS_CODE}" = "chimaera" ]; then
       if [ -e "/usr/bin/MagickWand-config" ]; then
         mv -f /usr/bin/MagickWand-config /var/backups/usr-bin-MagickWand-config
       fi
@@ -1622,10 +1626,6 @@ _install_php_multi() {
           if [ "${_DEBUG_MODE}" = "YES" ]; then
             _msg "PCKG: ${_PKG} removed as requested."
           fi
-        else
-          if [ "${_DEBUG_MODE}" = "YES" ]; then
-            _msg "PCKG: ${_PKG} not installed, skipping."
-          fi
         fi
       done
       ###
@@ -1761,7 +1761,8 @@ _install_php_multi() {
   if [ "$1" = "81" ] || [ "$1" = "82" ] || [ "$1" = "83" ] || [ "$1" = "84" ]; then
     _PHP_EXTRA="${_PHP_EXTRA} --with-avif"
   fi
-  if [ "${_OS_CODE}" = "daedalus" ] \
+  if [ "${_OS_CODE}" = "excalibur" ] \
+    || [ "${_OS_CODE}" = "daedalus" ] \
     || [ "${_OS_CODE}" = "chimaera" ] \
     || [ "${_OS_CODE}" = "beowulf" ] \
     || [ "${_OS_CODE}" = "bookworm" ] \
@@ -1785,6 +1786,7 @@ _install_php_multi() {
     fi
   fi
   if [ "${_OS_CODE}" != "jessie" ] \
+    && [ "${_OS_CODE}" != "excalibur" ] \
     && [ ! -e "/root/.rebuild_src_on_auto_before_reboot.info" ] \
     && [ ! -e "/root/.skip-aegir-master-upgrade.cnf" ]; then
     _PHP_EXTRA="${_PHP_EXTRA} \
@@ -2323,7 +2325,7 @@ _check_php_ssl_version() {
 
   # Set OpenSSL version based on the OS version
   case "${_OS_CODE}" in
-    daedalus|chimaera|beowulf|bookworm|bullseye|buster)
+    excalibur|daedalus|chimaera|beowulf|trixie|bookworm|bullseye|buster)
       _OPENSSL_USE_VRN="${_OPENSSL_EOL_VRN}"  # 1.1.1w
       if [ -e "/usr/local/ssl3/lib64/libssl.so.3" ]; then
         _OPENSSL_USE_VRN="${_OPENSSL_MODERN_VRN}"  # 3.4.3
@@ -3167,10 +3169,6 @@ _php_check_if_rebuild() {
           _mrun "apt-get remove ${_PKG} -y --purge --auto-remove -qq"
           if [ "${_DEBUG_MODE}" = "YES" ]; then
             _msg "PCKG: ${_PKG} removed as requested."
-          fi
-        else
-          if [ "${_DEBUG_MODE}" = "YES" ]; then
-            _msg "PCKG: ${_PKG} not installed, skipping."
           fi
         fi
       done
