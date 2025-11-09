@@ -867,15 +867,15 @@ _purge_systemd_keep_ssh() {
   /usr/bin/apt-get purge systemd libnss-systemd -y -qq >> "${_logSlt}"
 
   # Some builds still leave libsystemd0 behind; elogind step should allow its removal.
-  if _pkg_installed "libsystemd0"; then
-    _msg "[init] Removing libsystemd0 (elogind present)" >> "${_logInt}"
-    /usr/bin/apt-get remove libsystemd0 -y --purge --auto-remove -qq >> "${_logSlt}"
-  fi
+#   if _pkg_installed "libsystemd0"; then
+#     _msg "[init] Removing libsystemd0 (elogind present)" >> "${_logInt}"
+#     /usr/bin/apt-get remove libsystemd0 -y --purge --auto-remove -qq >> "${_logSlt}"
+#   fi
 
   # Clean stragglers, but do not autoremove SSH/SFTP bits
-  _msg "[init] Autoremove harmless leftovers (kept minimal)" >> "${_logInt}"
-  /usr/bin/apt-get autoremove --purge -y -qq >> "${_logSlt}"
-  /usr/bin/apt-get autoclean -y -qq >> "${_logSlt}"
+#   _msg "[init] Autoremove harmless leftovers (kept minimal)" >> "${_logInt}"
+#   /usr/bin/apt-get autoremove --purge -y -qq >> "${_logSlt}"
+#   /usr/bin/apt-get autoclean -y -qq >> "${_logSlt}"
 }
 
 # High-level orchestrator to call in the off-systemd phase
@@ -969,9 +969,13 @@ _init_offsystemd() {
       _autoinit_devuan_protect_essential
     else
       _autoinit_devuan_protect_essential
-#       _msg "_init_offsystemd ==> Purging systemd again on ${_OS_CODE}" >> "${_logInt}"
-#       /usr/bin/apt-get purge systemd libnss-systemd -y -qq >> "${_logSlt}"
     fi
+
+    _msg "_init_offsystemd ==> Final cleanup for systemd on ${_OS_CODE}" >> "${_logInt}"
+    /usr/bin/apt-get remove systemd-timesyncd -y -qq >> "${_logSlt}"
+    /usr/bin/apt-get remove systemd-dummy -y -qq >> "${_logSlt}"
+    /usr/bin/apt-get purge systemd libnss-systemd -y -qq >> "${_logSlt}"
+
     echo " " >> "${_logInt}"
     _msg "_init_offsystemd ==> Update networking if needed with vmnetfix..." >> "${_logInt}"
     /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
