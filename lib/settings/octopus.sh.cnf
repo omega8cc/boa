@@ -921,15 +921,21 @@ _download_helpers_libs() {
       _get_dev_src_pre "git-${_GIT_VRN}.tar.gz"
       cd /var/opt/git-${_GIT_VRN}
       if [ -e "/root/.dev.server.cnf" ]; then
+        make clean 2> /dev/null
         make configure 2> /dev/null
         bash ./configure --without-tcltk 2> /dev/null
-        make all -j $(nproc) 2> /dev/null
-        make install 2> /dev/null
+        # Neutralize any injected value, then set a valid compat that matches 3.4.x
+        make CFLAGS+=' -UOPENSSL_API_COMPAT -DOPENSSL_API_COMPAT=0x30400000L' daemon.o V=1 2> /dev/null
+        make CFLAGS+=' -UOPENSSL_API_COMPAT -DOPENSSL_API_COMPAT=0x30400000L' all -j $(nproc) 2> /dev/null
+        make CFLAGS+=' -UOPENSSL_API_COMPAT -DOPENSSL_API_COMPAT=0x30400000L' install 2> /dev/null
       else
+        make clean &> /dev/null
         make configure &> /dev/null
         bash ./configure --without-tcltk &> /dev/null
-        make all -j $(nproc) &> /dev/null
-        make install &> /dev/null
+        # Neutralize any injected value, then set a valid compat that matches 3.4.x
+        make CFLAGS+=' -UOPENSSL_API_COMPAT -DOPENSSL_API_COMPAT=0x30400000L' daemon.o V=1 &> /dev/null
+        make CFLAGS+=' -UOPENSSL_API_COMPAT -DOPENSSL_API_COMPAT=0x30400000L' all -j $(nproc) &> /dev/null
+        make CFLAGS+=' -UOPENSSL_API_COMPAT -DOPENSSL_API_COMPAT=0x30400000L' install &> /dev/null
       fi
       ldconfig 2> /dev/null
       if [ -x "/usr/local/bin/git" ]; then

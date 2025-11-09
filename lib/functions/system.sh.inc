@@ -3101,10 +3101,13 @@ _do_install_latest_git() {
     cd /var/opt
     _get_dev_src "git-${_GIT_VRN}.tar.gz"
     cd /var/opt/git-${_GIT_VRN}
+    _mrun "make clean"
     _mrun "make configure"
     _mrun "bash ./configure --without-tcltk"
-    _mrun "make all -j $(nproc)"
-    _mrun "make install"
+    # Neutralize any injected value, then set a valid compat that matches 3.4.x
+    _mrun "make CFLAGS+=' -UOPENSSL_API_COMPAT -DOPENSSL_API_COMPAT=0x30400000L' daemon.o V=1"
+    _mrun "make CFLAGS+=' -UOPENSSL_API_COMPAT -DOPENSSL_API_COMPAT=0x30400000L' all -j $(nproc)"
+    _mrun "make CFLAGS+=' -UOPENSSL_API_COMPAT -DOPENSSL_API_COMPAT=0x30400000L' install"
     ldconfig 2> /dev/null
     if [ -x "/usr/local/bin/git" ]; then
       if [ -e "/usr/bin/git" ] && [ ! -L "/usr/bin/git" ]; then
