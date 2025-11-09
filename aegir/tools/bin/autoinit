@@ -1265,8 +1265,7 @@ _init_start() {
   _init_conf
   if [ -e "${_initFile}" ]; then
     if [ -e "/root/.run-cycle-devuan-init.cnf" ]; then
-      if [ -e "/lib/systemd/systemd" ] \
-        || [ ! -e "/root/.run-offsystemd-devuan-init.cnf" ]; then
+      if [ ! -e "/root/.run-offsystemd-devuan-init.cnf" ]; then
         _init_offsystemd
       fi
     fi
