@@ -58,7 +58,7 @@ _ICU_LEGACY_VRN=52_2
 _ICU_MODERN_VRN=73-1
 _IMAGE_MAGICK_VRN=7.1.1-7
 _IMAGICK_OLD_VRN=3.1.2
-_IMAGICK_VRN=3.7.0
+_IMAGICK_VRN=3.8.0
 _IONCUBE_VRN=14.0.0
 _JETTY_7_VRN=7.6.17.v20150415
 _JETTY_8_VRN=8.1.17.v20150415
@@ -77,6 +77,7 @@ _MONGODB_VRN=1.2.5
 _MSS_VRN=master-29-06-2024
 _MYQUICK_VRN_FIVE=0.11.5-2
 _MYQUICK_VRN_EIGHT=0.16.7-3
+_MYQUICK_VRN_LATEST=0.20.2-2
 _MYSQLTUNER_VRN=1.9.4
 _NGINX_VRN=1.29.2
 _OPENSSH_VRN=10.2p1
@@ -111,7 +112,7 @@ _PHP83_VRN=8.3.27
 _PHP84_API=20240924
 _PHP84_VRN=8.4.14
 _PHP_APCU=5.1.24
-_PHP_IGBINARY_THREE=3.2.15
+_PHP_IGBINARY_THREE=3.2.16
 _PHP_IGBINARY_TWO=2.0.8
 _PHP_MCRYPT=1.0.7
 _PHPREDIS_SIX_NEW_VRN=6.1.0
@@ -119,7 +120,7 @@ _PHPREDIS_SIX_VRN=6.0.2
 _PHPREDIS_FIVE_VRN=5.3.7
 _PHPREDIS_FOUR_VRN=4.3.0
 _PHPREDIS_THREE_VRN=3.1.6
-_PURE_FTPD_VRN=1.0.51
+_PURE_FTPD_VRN=1.0.52
 _PXC_VRN=1.4.16
 _VALKEY_NINE_VRN=9.0.0
 _VALKEY_EIGHT_VRN=8.1.4
@@ -136,7 +137,7 @@ _SOLR_4_VRN=4.9.1
 _SOLR_7_VRN=7.7.3
 _SOLR_9_VRN=9.8.1
 _TWIGC_VRN=1.24.0
-_UNBOUND_VRN=1.23.1
+_UNBOUND_VRN=1.24.1
 _UPROGRESS_LEGACY_VRN=1.0.3.1
 _UPROGRESS_SEVEN_VRN=2.0.1.6
 _UPROGRESS_EIGHT_VRN=2.0.2
@@ -144,7 +145,7 @@ _VNSTAT_VRN=2.13
 _WKHTMLTOX_VRN=12.6-1
 _YAML_PHP_LEGACY_VRN=1.3.2
 _YAML_PHP_SEVENO_VRN=2.1.0
-_YAML_PHP_MODERN_VRN=2.2.3
+_YAML_PHP_MODERN_VRN=2.2.5
 _ZLIB_VRN=1.3.1
 
 
@@ -570,7 +571,8 @@ _rsyslog_config_update
 ###
 if [ -e "/root/.keep_apparmor_on.cnf" ] && [ ! -e "/root/.deny.apparmor.cnf" ]; then
   [ ! -e "/root/.allow.apparmor.cnf" ] && touch /root/.allow.apparmor.cnf
-  if [ ! -e "/root/.run-to-daedalus.cnf" ] \
+  if [ ! -e "/root/.run-to-excalibur.cnf" ] \
+    && [ ! -e "/root/.run-to-daedalus.cnf" ] \
     && [ ! -e "/root/.run-to-chimaera.cnf" ] \
     && [ ! -e "/root/.run-to-beowulf.cnf" ]; then
     if [ "${_OS_CODE}" != "stretch" ] && [ "${_OS_CODE}" != "jessie" ]; then
