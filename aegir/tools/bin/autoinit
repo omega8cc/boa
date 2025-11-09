@@ -819,7 +819,7 @@ EOF
 # Mark critical daemons as manual so metas/solver don't toss them
 _protect_daemons() {
   _msg "[init] Marking core daemons manual: openssh, cron" >> "${_logInt}"
-  /usr/bin/apt-mark manual openssh-server openssh-sftp-server task-ssh-server >> "${_logSlt}"
+  /usr/bin/apt-mark manual ssh openssh-server openssh-sftp-server task-ssh-server >> "${_logSlt}"
   /usr/bin/apt-mark manual cron cron-daemon-common >> "${_logSlt}"
 }
 
@@ -835,7 +835,11 @@ _ensure_openssh_server() {
   fi
   if ! _pkg_installed "openssh-server"; then
     _msg "[init] Installing openssh-server" >> "${_logInt}"
-    ${_INITINS} openssh-server openssh-sftp-server task-ssh-server >> "${_logSlt}"
+    ${_INITINS} ssh openssh-server openssh-sftp-server task-ssh-server >> "${_logSlt}"
+  fi
+  if ! _pkg_installed "ssh"; then
+    _msg "[init] Installing ssh" >> "${_logInt}"
+    ${_INITINS} ssh openssh-server openssh-sftp-server task-ssh-server >> "${_logSlt}"
   fi
   # (optional) make sure it is enabled under sysvinit
   if [ -x "/etc/init.d/ssh" ]; then
