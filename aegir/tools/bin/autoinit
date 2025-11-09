@@ -959,23 +959,16 @@ _init_offsystemd() {
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   _msg "_init_offsystemd ==> Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
-  if [ "${_OS_CODE}" = "daedalus" ] || [ "${_OS_CODE}" = "excalibur" ]; then
+  if [ -e "/root/.top-daedalus.cnf" ] || [ -e "/root/.top-excalibur.cnf" ]; then
     _msg "_init_offsystemd ==> Removing systemd on ${_OS_CODE}" >> "${_logInt}"
-    if [ -e "/root/.top-daedalus.cnf" ] || [ -e "/root/.top-excalibur.cnf" ]; then
-      if [ "${_OS_CODE}" = "excalibur" ]; then
-        _autoinit_devuan_protect_essential
-      else
-        _autoinit_devuan_protect_essential
-        _msg "_init_offsystemd ==> Removing systemd --allow-remove-essential on ${_OS_CODE}" >> "${_logInt}"
-        /usr/bin/apt-get remove systemd -y --purge --auto-remove --allow-remove-essential -qq >> "${_logSlt}"
-        /usr/bin/apt-get remove libnss-systemd -y --purge --auto-remove --allow-remove-essential -qq >> "${_logSlt}"
-        /usr/bin/apt-get remove systemd-sysv -y --purge --auto-remove --allow-remove-essential -qq >> "${_logSlt}"
-      fi
+    if [ "${_OS_CODE}" = "excalibur" ]; then
+      _autoinit_devuan_protect_essential
     else
-      _msg "_init_offsystemd ==> Purging systemd on ${_OS_CODE}" >> "${_logInt}"
-      /usr/bin/apt-get purge systemd libnss-systemd -y -qq >> "${_logSlt}"
-      /usr/bin/apt-get autoremove --purge -y -qq >> "${_logSlt}"
-      /usr/bin/apt-get autoclean -y -qq >> "${_logSlt}"
+      _autoinit_devuan_protect_essential
+      _msg "_init_offsystemd ==> Removing systemd --allow-remove-essential on ${_OS_CODE}" >> "${_logInt}"
+      /usr/bin/apt-get remove systemd -y --purge --auto-remove --allow-remove-essential -qq >> "${_logSlt}"
+      /usr/bin/apt-get remove libnss-systemd -y --purge --auto-remove --allow-remove-essential -qq >> "${_logSlt}"
+      /usr/bin/apt-get remove systemd-sysv -y --purge --auto-remove --allow-remove-essential -qq >> "${_logSlt}"
     fi
     echo " " >> "${_logInt}"
     _msg "_init_offsystemd ==> Update networking if needed with vmnetfix..." >> "${_logInt}"
