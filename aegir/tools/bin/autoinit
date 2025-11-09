@@ -962,8 +962,17 @@ _init_offsystemd() {
   if [ "${_OS_CODE}" = "daedalus" ] || [ "${_OS_CODE}" = "excalibur" ]; then
     _msg "_init_offsystemd ==> Removing systemd on ${_OS_CODE}" >> "${_logInt}"
     if [ -e "/root/.top-daedalus.cnf" ] || [ -e "/root/.top-excalibur.cnf" ]; then
-      _autoinit_devuan_protect_essential
+      if [ "${_OS_CODE}" = "excalibur" ]; then
+        _autoinit_devuan_protect_essential
+      else
+        _autoinit_devuan_protect_essential
+        _msg "_init_offsystemd ==> Removing systemd --allow-remove-essential on ${_OS_CODE}" >> "${_logInt}"
+        /usr/bin/apt-get remove systemd -y --purge --auto-remove --allow-remove-essential -qq >> "${_logSlt}"
+        /usr/bin/apt-get remove libnss-systemd -y --purge --auto-remove --allow-remove-essential -qq >> "${_logSlt}"
+        /usr/bin/apt-get remove systemd-sysv -y --purge --auto-remove --allow-remove-essential -qq >> "${_logSlt}"
+      fi
     else
+      _msg "_init_offsystemd ==> Purging systemd on ${_OS_CODE}" >> "${_logInt}"
       /usr/bin/apt-get purge systemd libnss-systemd -y -qq >> "${_logSlt}"
       /usr/bin/apt-get autoremove --purge -y -qq >> "${_logSlt}"
       /usr/bin/apt-get autoclean -y -qq >> "${_logSlt}"
