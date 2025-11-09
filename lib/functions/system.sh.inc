@@ -6087,7 +6087,7 @@ _run_aptitude_deps_install() {
         _mrun "${_INSTAPP} ${_PKG}"
       fi
     done
-    _OS_LIST="daedalus chimaera bullseye bookworm"
+    _OS_LIST="excalibur daedalus chimaera bullseye bookworm"
     for e in ${_OS_LIST}; do
       if [ "${e}" = "${_OS_CODE}" ]; then
         for _PKG in ncal; do
