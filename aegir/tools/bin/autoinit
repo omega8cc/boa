@@ -969,8 +969,8 @@ _init_offsystemd() {
       _autoinit_devuan_protect_essential
     else
       _autoinit_devuan_protect_essential
-      _msg "_init_offsystemd ==> Purging systemd again on ${_OS_CODE}" >> "${_logInt}"
-      /usr/bin/apt-get purge systemd libnss-systemd -y -qq >> "${_logSlt}"
+#       _msg "_init_offsystemd ==> Purging systemd again on ${_OS_CODE}" >> "${_logInt}"
+#       /usr/bin/apt-get purge systemd libnss-systemd -y -qq >> "${_logSlt}"
     fi
     echo " " >> "${_logInt}"
     _msg "_init_offsystemd ==> Update networking if needed with vmnetfix..." >> "${_logInt}"
