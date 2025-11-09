@@ -271,8 +271,10 @@ _check_os_compatibility() {
     echo "This server already runs ${_OS_DIST}/${_OS_CODE}"
     echo "Bye!"
     exit 1
-  elif [ "${_OS_CODE}" = "daedalus" ] \
+  elif [ "${_OS_CODE}" = "excalibur" ] \
+    || [ "${_OS_CODE}" = "daedalus" ] \
     || [ "${_OS_CODE}" = "chimaera" ] \
+    || [ "${_OS_CODE}" = "trixie" ] \
     || [ "${_OS_CODE}" = "bookworm" ] \
     || [ "${_OS_CODE}" = "bullseye" ]; then
     echo "This server already runs newer ${_OS_DIST}/${_OS_CODE}"
