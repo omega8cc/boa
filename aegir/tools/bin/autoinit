@@ -1060,11 +1060,14 @@ _init_cycle() {
   elif [ "${_OS_CODE}" = "bullseye" ]; then
     _NEW_OS_CODE=chimaera
     _OLD_SYS=Debian
+    [ ! -e "/root/.top-daedalus.cnf" ] && touch /root/.top-daedalus.cnf
   elif [ "${_OS_CODE}" = "buster" ]; then
     _NEW_OS_CODE=beowulf
     _OLD_SYS=Debian
+    [ ! -e "/root/.top-daedalus.cnf" ] && touch /root/.top-daedalus.cnf
   elif [ "${_OS_CODE}" = "beowulf" ]; then
     _NEW_OS_CODE=chimaera
+    [ ! -e "/root/.top-daedalus.cnf" ] && touch /root/.top-daedalus.cnf
   elif [ "${_OS_CODE}" = "daedalus" ] || [ "${_OS_CODE}" = "excalibur" ]; then
     _NEW_OS_CODE=
     _NEW_SYS=
