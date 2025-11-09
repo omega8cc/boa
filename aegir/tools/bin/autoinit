@@ -894,6 +894,19 @@ _autoinit_devuan_protect_essential() {
 
 
 ###
+### Final procedure to make the system ready
+###
+_init_post_ready() {
+  _msg "_init_post_ready ==> Final OS post-upgrade to ${_OS_DIST}/${_OS_CODE} procedure..." >> "${_logInt}"
+  /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
+  /usr/bin/dpkg --configure -a >> "${_logSlt}"
+  /usr/bin/apt-get upgrade ${_nrmUpArg} >> "${_logSlt}"
+  /usr/bin/apt-get dist-upgrade ${_dstUpArg} >> "${_logSlt}"
+  /usr/bin/apt-get -f install ${_aptAllow} -y -qq >> "${_logSlt}"
+  /usr/bin/dpkg --configure -a >> "${_logSlt}"
+}
+
+###
 ### Remove and block systemd
 ###
 _init_offsystemd() {
@@ -963,40 +976,20 @@ _init_offsystemd() {
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   _msg "_init_offsystemd ==> Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
-  if [ -e "/root/.top-daedalus.cnf" ] || [ -e "/root/.top-excalibur.cnf" ]; then
-    _msg "_init_offsystemd ==> Removing systemd on ${_OS_CODE}" >> "${_logInt}"
-    if [ "${_OS_CODE}" = "excalibur" ]; then
-      _autoinit_devuan_protect_essential
-    else
-      _autoinit_devuan_protect_essential
-    fi
+  _msg "_init_offsystemd ==> Removing systemd on ${_OS_CODE}" >> "${_logInt}"
 
-    _msg "_init_offsystemd ==> Final cleanup for systemd on ${_OS_CODE}" >> "${_logInt}"
-    /usr/bin/apt-get remove systemd-timesyncd -y -qq >> "${_logSlt}"
-    /usr/bin/apt-get remove systemd-dummy -y -qq >> "${_logSlt}"
-    /usr/bin/apt-get purge systemd libnss-systemd -y -qq >> "${_logSlt}"
+  _autoinit_devuan_protect_essential
 
-    echo " " >> "${_logInt}"
-    _msg "_init_offsystemd ==> Update networking if needed with vmnetfix..." >> "${_logInt}"
-    /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
-    wait
-    _msg "_init_offsystemd ==> Final OS post-upgrade to ${_OS_DIST}/${_OS_CODE} procedure..." >> "${_logInt}"
-    /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
-    /usr/bin/dpkg --configure -a >> "${_logSlt}"
-    /usr/bin/apt-get upgrade ${_nrmUpArg} >> "${_logSlt}"
-    /usr/bin/apt-get dist-upgrade ${_dstUpArg} >> "${_logSlt}"
-    /usr/bin/apt-get -f install ${_aptAllow} -y -qq >> "${_logSlt}"
-    /usr/bin/dpkg --configure -a >> "${_logSlt}"
-    _msg "_init_offsystemd ==> The system is now ready for boa install" >> "${_logInt}"
-    rm -f /root/.init-to-devuan-ctrl.cnf
-    sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
-    _if_launch_boa_install
-  else
-    _msg "_init_offsystemd ==> Update networking if needed with vmnetfix..." >> "${_logInt}"
-    /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
-    wait
-    _msg "_init_offsystemd ==> Time for reboot and next upgrade cycle..." >> "${_logInt}"
-  fi
+  _msg "_init_offsystemd ==> Final cleanup for systemd on ${_OS_CODE}" >> "${_logInt}"
+  /usr/bin/apt-get remove systemd-timesyncd -y -qq >> "${_logSlt}"
+  /usr/bin/apt-get remove systemd-dummy -y -qq >> "${_logSlt}"
+  /usr/bin/apt-get purge systemd libnss-systemd -y -qq >> "${_logSlt}"
+
+  echo " " >> "${_logInt}"
+  _msg "_init_offsystemd ==> Update networking if needed with vmnetfix..." >> "${_logInt}"
+  /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
+  wait
+  _msg "_init_offsystemd ==> Time for reboot and next upgrade cycle..." >> "${_logInt}"
   echo " " >> "${_logInt}"
   touch /root/.run-offsystemd-devuan-init.cnf
   rm -f /run/autoinit.pid
@@ -1210,6 +1203,7 @@ _init_cycle() {
     exit 0
   else
     if [ "${_OS_CODE}" = "daedalus" ] || [ "${_OS_CODE}" = "excalibur" ]; then
+      _init_post_ready
       _check_no_systemd
       _msg "_init_cycle ==> Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
       _msg "_init_cycle ==> Update networking if needed with vmnetfix..." >> "${_logInt}"
