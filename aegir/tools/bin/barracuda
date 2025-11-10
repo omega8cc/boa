@@ -978,18 +978,6 @@ _up_action() {
       wait
     fi
 
-    if [ -e "/etc/default/tomcat" ] \
-      && [ -e "/etc/init.d/tomcat" ] \
-      && [ -e "${_barCnf}" ]; then
-      sed -i "s/^_TOMCAT_TO_JETTY=.*/_TOMCAT_TO_JETTY=YES/g" ${_vBs}/${_barName}
-      wait
-      sed -i "s/^_TOMCAT_TO_JETTY.*//g"                               ${_barCnf}
-      wait
-      sed -i "/^$/d"                                                  ${_barCnf}
-      wait
-      echo "_TOMCAT_TO_JETTY=YES" >>                                  ${_barCnf}
-    fi
-
     if [ -e "${_vBs}/${_barName}" ] && [ -e "${_vBs}/${_filIncB}" ]; then
       if [ "${_outP}" = "log" ] \
         || [ "${_outP}" = "system" ] \
