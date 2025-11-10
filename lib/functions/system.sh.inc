@@ -16,7 +16,7 @@ _find_fast_devuan_mirror() {
     bash ${_ffDevuan} &> /dev/null
     wait
   fi
-  _ffMirr=$(which ffmirror 2>&1)
+  _ffMirr=/opt/local/bin/ffmirror
   if [ -x "${_ffMirr}" ]; then
     _ffList="/var/log/boa/devaun-fast-mirrors-list.txt"
     _BROKEN_FFLIST=$(grep "merged" ${_ffMirr} 2>&1)
@@ -120,7 +120,6 @@ _if_reinstall_curl_src() {
     fi
     _mrun "apt-get autoremove -y"
     _mrun "apt-get install libssl-dev ${_aptYesUnth} -qq"
-    _mrun "apt-get install libc-client2007e libc-client2007e-dev ${_aptYesUnth} -qq"
     _mrun "apt-get build-dep curl ${_aptYesUnth}"
     if [ ! -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
       _mrun "apt-get install curl --reinstall ${_aptYesUnth} -qq"
@@ -191,9 +190,7 @@ _systemd_remove_apt_cmd() {
     _msg "PROC: _systemd_remove_apt_cmd"
   fi
   _apt_clean_update
-  _mrun "apt-get remove systemd -y --purge --auto-remove --allow-remove-essential -qq"
-  _mrun "apt-get remove libnss-systemd -y --purge --auto-remove --allow-remove-essential -qq"
-  _mrun "apt-get remove systemd-sysv -y --purge --auto-remove --allow-remove-essential -qq"
+  _mrun "apt-get purge systemd libnss-systemd -y -qq"
   _mrun "apt-get autoremove --purge -y --purge --auto-remove -qq"
   _mrun "apt-get autoclean -y --purge --auto-remove -qq"
   _mrun "apt-get autoremove -y --purge --auto-remove -qq"
@@ -215,6 +212,10 @@ _define_loc_osr() {
   _NEW_OS_CODE=
   _TGT_OSN=
   _MSG_LOC=
+
+  ###
+  ### Debian to Devuan
+  ###
   if [ "${_JESSIE_TO_BEOWULF}" = "YES" ] \
     && [ "${_OS_CODE}" = "jessie" ]; then
     _LOC_OS_CODE=jessie
@@ -236,6 +237,33 @@ _define_loc_osr() {
     _TGT_OSN=Devuan
     _MSG_LOC="Debian Buster to Devuan Beowulf"
   fi
+  if [ "${_BULLSEYE_TO_CHIMAERA}" = "YES" ] \
+    && [ "${_OS_CODE}" = "bullseye" ]; then
+    _LOC_OS_CODE=bullseye
+    _NEW_OS_CODE=chimaera
+    _TGT_OSN=Devuan
+    _MSG_LOC="Debian Bullseye to Devuan Chimaera"
+  fi
+  if [ "${_BOOKWORM_TO_DAEDALUS}" = "YES" ] \
+    && [ "${_OS_CODE}" = "bookworm" ]; then
+    _LOC_OS_CODE=bookworm
+    _NEW_OS_CODE=daedalus
+    _TGT_OSN=Devuan
+    _MSG_LOC="Debian Bookworm to Devuan Daedalus"
+    [ ! -e "/root/.top-daedalus.cnf" ] && touch /root/.top-daedalus.cnf
+  fi
+  if [ "${_TRIXIE_TO_EXCALIBUR}" = "YES" ] \
+    && [ "${_OS_CODE}" = "trixie" ]; then
+    _LOC_OS_CODE=trixie
+    _NEW_OS_CODE=excalibur
+    _TGT_OSN=Devuan
+    _MSG_LOC="Debian Trixie to Devuan Excalibur"
+    [ ! -e "/root/.top-excalibur.cnf" ] && touch /root/.top-excalibur.cnf
+  fi
+
+  ###
+  ### Devuan to Devuan
+  ###
   if [ "${_BEOWULF_TO_CHIMAERA}" = "YES" ] \
     && [ "${_OS_CODE}" = "beowulf" ]; then
     _LOC_OS_CODE=beowulf
@@ -251,20 +279,24 @@ _define_loc_osr() {
     _MSG_LOC="Devuan Chimaera to Devuan Daedalus"
     [ ! -e "/root/.top-daedalus.cnf" ] && touch /root/.top-daedalus.cnf
   fi
-  if [ "${_BULLSEYE_TO_CHIMAERA}" = "YES" ] \
-    && [ "${_OS_CODE}" = "bullseye" ]; then
-    _LOC_OS_CODE=bullseye
-    _NEW_OS_CODE=chimaera
+  if [ "${_DAEDALUS_TO_EXCALIBUR}" = "YES" ] \
+    && [ "${_OS_CODE}" = "daedalus" ]; then
+    _LOC_OS_CODE=daedalus
+    _NEW_OS_CODE=excalibur
     _TGT_OSN=Devuan
-    _MSG_LOC="Debian Bullseye to Devuan Chimaera"
+    _MSG_LOC="Devuan Daedalus to Devuan Excalibur"
+    [ ! -e "/root/.top-excalibur.cnf" ] && touch /root/.top-excalibur.cnf
   fi
-  if [ "${_BOOKWORM_TO_DAEDALUS}" = "YES" ] \
+
+  ###
+  ### Debian to Debian
+  ###
+  if [ "${_BOOKWORM_TO_TRIXIE}" = "YES" ] \
     && [ "${_OS_CODE}" = "bookworm" ]; then
     _LOC_OS_CODE=bookworm
-    _NEW_OS_CODE=daedalus
-    _TGT_OSN=Devuan
-    _MSG_LOC="Debian Bookworm to Devuan Daedalus"
-    [ ! -e "/root/.top-daedalus.cnf" ] && touch /root/.top-daedalus.cnf
+    _NEW_OS_CODE=trixie
+    _TGT_OSN=Debian
+    _MSG_LOC="Debian Bookworm to Debian Trixie"
   fi
   if [ "${_BULLSEYE_TO_BOOKWORM}" = "YES" ] \
     && [ "${_OS_CODE}" = "bullseye" ]; then
@@ -303,6 +335,10 @@ _if_to_do_fix() {
     _msg "PROC: _if_to_do_fix"
   fi
   _DO_FIX=
+
+  ###
+  ### Debian to Devuan
+  ###
   if [ "${_JESSIE_TO_BEOWULF}" = "YES" ] \
     && [ "${_LOC_OS_CODE}" = "jessie" ]; then
     _DO_FIX=YES
@@ -315,6 +351,22 @@ _if_to_do_fix() {
     && [ "${_LOC_OS_CODE}" = "buster" ]; then
     _DO_FIX=YES
   fi
+  if [ "${_BULLSEYE_TO_CHIMAERA}" = "YES" ] \
+    && [ "${_LOC_OS_CODE}" = "bullseye" ]; then
+    _DO_FIX=YES
+  fi
+  if [ "${_BOOKWORM_TO_DAEDALUS}" = "YES" ] \
+    && [ "${_LOC_OS_CODE}" = "bookworm" ]; then
+    _DO_FIX=YES
+  fi
+  if [ "${_TRIXIE_TO_EXCALIBUR}" = "YES" ] \
+    && [ "${_LOC_OS_CODE}" = "trixie" ]; then
+    _DO_FIX=YES
+  fi
+
+  ###
+  ### Devuan to Devuan
+  ###
   if [ "${_BEOWULF_TO_CHIMAERA}" = "YES" ] \
     && [ "${_LOC_OS_CODE}" = "beowulf" ]; then
     _DO_FIX=YES
@@ -323,11 +375,15 @@ _if_to_do_fix() {
     && [ "${_LOC_OS_CODE}" = "chimaera" ]; then
     _DO_FIX=YES
   fi
-  if [ "${_BULLSEYE_TO_CHIMAERA}" = "YES" ] \
-    && [ "${_LOC_OS_CODE}" = "bullseye" ]; then
+  if [ "${_DAEDALUS_TO_EXCALIBUR}" = "YES" ] \
+    && [ "${_LOC_OS_CODE}" = "daedalus" ]; then
     _DO_FIX=YES
   fi
-  if [ "${_BOOKWORM_TO_DAEDALUS}" = "YES" ] \
+
+  ###
+  ### Debian to Debian
+  ###
+  if [ "${_BOOKWORM_TO_TRIXIE}" = "YES" ] \
     && [ "${_LOC_OS_CODE}" = "bookworm" ]; then
     _DO_FIX=YES
   fi
@@ -1754,6 +1810,7 @@ _php_if_versions_cleanup_cnf() {
     _msg "PROC: _php_if_versions_cleanup_cnf"
   fi
   if [ -e "/root/.allow-php-multi-install-cleanup.cnf" ] \
+    || [ -e "/root/.run-to-excalibur.cnf" ] \
     || [ -e "/root/.run-to-daedalus.cnf" ] \
     || [ -e "/root/.run-to-chimaera.cnf" ] \
     || [ -e "/root/.run-to-beowulf.cnf" ]; then
@@ -1804,7 +1861,8 @@ _php_if_versions_cleanup_cnf() {
 
       ### Include only used PHP versions on major automated OS upgrades
       _STRICT_LIMIT_PHP=NO
-      if [ -e "/root/.run-to-daedalus.cnf" ] \
+      if [ -e "/root/.run-to-excalibur.cnf" ] \
+        || [ -e "/root/.run-to-daedalus.cnf" ] \
         || [ -e "/root/.run-to-chimaera.cnf" ] \
         || [ -e "/root/.run-to-beowulf.cnf" ]; then
         _STRICT_LIMIT_PHP=YES
@@ -2037,7 +2095,8 @@ _if_php_idle_on_off() {
     sed -i "s/^_PHP_IDLE.*//g" ${_barCnf}
     wait
     [ -e "/root/.proxy.cnf" ] && rm -f /root/.proxy.cnf
-    if [ -e "/root/.run-to-daedalus.cnf" ] \
+    if [ -e "/root/.run-to-excalibur.cnf" ] \
+      || [ -e "/root/.run-to-daedalus.cnf" ] \
       || [ -e "/root/.run-to-chimaera.cnf" ] \
       || [ -e "/root/.run-to-beowulf.cnf" ]; then
       echo " "
@@ -2782,6 +2841,18 @@ _barracuda_cnf() {
       fi
     fi
 
+    if [ "${_OS_CODE}" = "excalibur" ]; then
+      _DB_SERVER=MySQL
+      _DB_SERIES=8.4
+      _DBS_VRN="${_PERCONA_8_4_VRN}"
+      if [ -e "${_barCnf}" ]; then
+        sed -i "s/^_DB_SERIES=.*/_DB_SERIES=8.4/g" ${_barCnf}
+        wait
+        sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MySQL/g" ${_barCnf}
+        wait
+      fi
+    fi
+
     if [[ "${_MY_EMAIL}" =~ "omega8.cc" ]]; then
       _if_hosted_sys
       if [ "${_hostedSys}" != "YES" ]; then
@@ -2861,15 +2932,12 @@ _mytop_install() {
     _mrun "apt-get remove mytop -y -qq"
     rm -f /usr/bin/mytop
   fi
-  _MYTOP_REINSTALL=NO
-  _MYTOP_TEST=$(mytop -b 2>&1)
-  if [[ "${_MYTOP_TEST}" =~ "cannot open shared object file" ]] \
-    || [[ "${_MYTOP_TEST}" =~ "you may need to install" ]] \
-    || [[ "${_MYTOP_TEST}" =~ "failed" ]]; then
-    _MYTOP_REINSTALL=YES
+  _myTopRebuild=NO
+  if [ "${_myTopReinstall}" = "YES" ]; then
+    _myTopRebuild=YES
   fi
   if [ -e "/usr/bin/mysql" ]; then
-    if [ ! -e "/usr/local/bin/mytop" ] || [ "${_MYTOP_REINSTALL}" = "YES" ]; then
+    if [ ! -e "/usr/local/bin/mytop" ] || [ "${_myTopRebuild}" = "YES" ]; then
       _msg "INFO: Building MyTop from sources..."
       _check_mysql_version
       _apt_clean_update
@@ -3033,10 +3101,13 @@ _do_install_latest_git() {
     cd /var/opt
     _get_dev_src "git-${_GIT_VRN}.tar.gz"
     cd /var/opt/git-${_GIT_VRN}
+    _mrun "make clean"
     _mrun "make configure"
     _mrun "bash ./configure --without-tcltk"
-    _mrun "make all -j $(nproc)"
-    _mrun "make install"
+    # Neutralize any injected value, then set a valid compat that matches 3.4.x
+    _mrun "make CFLAGS+=' -UOPENSSL_API_COMPAT -DOPENSSL_API_COMPAT=0x30400000L' daemon.o V=1"
+    _mrun "make CFLAGS+=' -UOPENSSL_API_COMPAT -DOPENSSL_API_COMPAT=0x30400000L' all -j $(nproc)"
+    _mrun "make CFLAGS+=' -UOPENSSL_API_COMPAT -DOPENSSL_API_COMPAT=0x30400000L' install"
     ldconfig 2> /dev/null
     if [ -x "/usr/local/bin/git" ]; then
       if [ -e "/usr/bin/git" ] && [ ! -L "/usr/bin/git" ]; then
@@ -3122,6 +3193,11 @@ _install_icu_modern() {
     _pthIcuLog="/root/.icu-update-${_ICU_MODERN_VRN}-for-${_OS_CODE}.log"
     _pthIcuLcy="/root/.icu-update-${_ICU_MODERN_VRN}.log"
   fi
+  if [ "${_OS_CODE}" = "excalibur" ] \
+    && [ -e "${_pthIcuLcy}" ] \
+    && [ ! -e "${_pthIcuLog}" ]; then
+    touch ${_pthIcuLog}
+  fi
   if [ "${_OS_CODE}" = "daedalus" ] \
     && [ -e "${_pthIcuLcy}" ] \
     && [ ! -e "${_pthIcuLog}" ]; then
@@ -3179,6 +3255,11 @@ _install_icu_jessie() {
   else
     _pthIcuLog="/root/.icu-update-${_ICU_LEGACY_VRN}-for-${_OS_CODE}.log"
     _pthIcuLcy="/root/.icu-update-${_ICU_LEGACY_VRN}.log"
+  fi
+  if [ "${_OS_CODE}" = "excalibur" ] \
+    && [ -e "${_pthIcuLcy}" ] \
+    && [ ! -e "${_pthIcuLog}" ]; then
+    touch ${_pthIcuLog}
   fi
   if [ "${_OS_CODE}" = "daedalus" ] \
     && [ -e "${_pthIcuLcy}" ] \
@@ -3255,7 +3336,9 @@ _php_install_deps() {
     fi
   done
 
-  if [ "${_OS_CODE}" = "daedalus" ] \
+  if [ "${_OS_CODE}" = "excalibur" ] \
+    || [ "${_OS_CODE}" = "daedalus" ] \
+    || [ "${_OS_CODE}" = "trixie" ] \
     || [ "${_OS_CODE}" = "bookworm" ]; then
     if [ ! -e "/root/.rebuild_src_on_auto_before_reboot.info" ]; then
       for _PKG in libldap-common libldap-dev libldap2-dev; do
@@ -3366,9 +3449,10 @@ _if_install_wkhtmltox() {
     _msg "INFO: Installed wkhtmltopdf version ${_WOX_ITD}"
   fi
 
-  if [ "${_OS_CODE}" = "daedalus" ] \
-    || [ "${_OS_CODE}" = "bookworm" ] \
+  if [ "${_OS_CODE}" = "excalibur" ] \
+    || [ "${_OS_CODE}" = "daedalus" ] \
     || [ "${_OS_CODE}" = "chimaera" ] \
+    || [ "${_OS_CODE}" = "bookworm" ] \
     || [ "${_OS_CODE}" = "bullseye" ]; then
     _WKHTMLTOX_VRN="0.12.6.1-3"
     _WKHTMLTOPDF_VRN="0.12.6.1"
@@ -3385,6 +3469,8 @@ _if_install_wkhtmltox() {
   elif [ "${_OS_CODE}" = "chimaera" ]; then
     _WKHTML_SYS_RV="bullseye"
   elif [ "${_OS_CODE}" = "daedalus" ]; then
+    _WKHTML_SYS_RV="bookworm"
+  elif [ "${_OS_CODE}" = "excalibur" ]; then
     _WKHTML_SYS_RV="bookworm"
   else
     _WKHTML_SYS_RV="${_OS_CODE}"
@@ -3751,7 +3837,7 @@ _sources_list_update() {
           _msg "INFO: Now looking for the best/fastest ${_OS_DIST} mirror"
           _msg "INFO: This may take a while, please wait..."
           _hlpPth="/opt/tmp/boa/aegir/helpers"
-          _ffMirr=$(which ffmirror 2>&1)
+          _ffMirr=/opt/local/bin/ffmirror
           _ffList="${_hlpPth}/apt-list-debian.txt"
           if [ -e "${_ffMirr}" ] && [ -e "${_ffList}" ]; then
             _MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
@@ -4024,10 +4110,6 @@ _install_magick_src() {
         _mrun "apt-get remove ${_PKG} -y --purge --auto-remove -qq"
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "PCKG: ${_PKG} removed as requested."
-        fi
-      else
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "PCKG: ${_PKG} not installed, skipping."
         fi
       fi
     done
@@ -4680,7 +4762,8 @@ _curl_install_src() {
   [ "${_OS_CODE}" = "jessie" ] && _CURL_VRN=7.71.1
   [ "${_OS_CODE}" = "stretch" ] && _CURL_VRN=8.2.1
 
-  if [ "${_OS_CODE}" = "daedalus" ] \
+  if [ "${_OS_CODE}" = "excalibur" ] \
+    || [ "${_OS_CODE}" = "daedalus" ] \
     || [ "${_OS_CODE}" = "chimaera" ] \
     || [ "${_OS_CODE}" = "beowulf" ] \
     || [ "${_OS_CODE}" = "bookworm" ] \
@@ -4826,7 +4909,7 @@ _curl_install_src() {
             _mrun "apt-get remove libssl1.0-dev -y --purge --auto-remove -qq"
           fi
           _mrun "apt-get autoremove -y"
-          for _PKG in libssl-dev libc-client2007e libc-client2007e-dev; do
+          for _PKG in libssl-dev; do
             if ! _pkg_installed "${_PKG}"; then
               _mrun "${_INSTAPP} ${_PKG}"
             fi
@@ -4842,7 +4925,7 @@ _curl_install_src() {
         _mrun "apt-get remove libssl1.0-dev -y --purge --auto-remove -qq"
       fi
       _mrun "apt-get autoremove -y"
-      for _PKG in libssl-dev libc-client2007e libc-client2007e-dev; do
+      for _PKG in libssl-dev; do
         if ! _pkg_installed "${_PKG}"; then
           _mrun "${_INSTAPP} ${_PKG}"
         fi
@@ -5491,7 +5574,8 @@ _sync_apparmor_profiles() {
         cp -af /etc/apparmor.d/*ssh* /etc/apparmor.d/disable/ &> /dev/null
       fi
     fi
-    if [ ! -e "/root/.run-to-daedalus.cnf" ] \
+    if [ ! -e "/root/.run-to-excalibur.cnf" ] \
+      && [ ! -e "/root/.run-to-daedalus.cnf" ] \
       && [ ! -e "/root/.run-to-chimaera.cnf" ] \
       && [ ! -e "/root/.run-to-beowulf.cnf" ]; then
       _msg "WAIT: This may take a while, please wait..."
@@ -5500,7 +5584,8 @@ _sync_apparmor_profiles() {
       _profName=$(echo ${_proFile} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
       if [ ! -z "${_isAppArmorComplain}" ] \
         && [ -x "${_isAppArmorComplain}" ]; then
-        if [ ! -e "/root/.run-to-daedalus.cnf" ] \
+        if [ ! -e "/root/.run-to-excalibur.cnf" ] \
+          && [ ! -e "/root/.run-to-daedalus.cnf" ] \
           && [ ! -e "/root/.run-to-chimaera.cnf" ] \
           && [ ! -e "/root/.run-to-beowulf.cnf" ]; then
           if [ "${_isAppArmOn}" = "Y" ]; then
@@ -5645,6 +5730,9 @@ _if_remove_apparmor() {
     for _PKG in auditd apparmor apparmor-utils apparmor-notify apparmor-profiles apparmor-profiles-extra; do
       if _pkg_installed "${_PKG}"; then
         _mrun "apt-get remove ${_PKG} -y -qq"
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "PCKG: ${_PKG} removed as requested."
+        fi
       fi
     done
     mkdir -p /etc/default/grub.d
@@ -5879,10 +5967,6 @@ _run_xtrabackup_cleanup() {
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "PCKG: ${_PKG} removed as requested."
       fi
-    else
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        _msg "PCKG: ${_PKG} not installed, skipping."
-      fi
     fi
   done
 }
@@ -5916,7 +6000,23 @@ _run_aptitude_deps_install() {
     _msg "WAIT: This may take a while, please wait..."
     _apt_clean_update
     _run_xtrabackup_cleanup
+
+    for _PKG in packagekit polkitd software-properties-common python3-software-properties; do
+      if _pkg_installed "${_PKG}"; then
+        _mrun "apt-get remove ${_PKG} -y -qq"
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "PCKG: ${_PKG} removed as requested."
+        fi
+      fi
+    done
+
     _mrun "apt-get autoremove -y"
+
+    for _PKG in python3-full python3-dev python3-debian python3-magic; do
+      if ! _pkg_installed "${_PKG}"; then
+        _mrun "${_INSTAPP} ${_PKG}"
+      fi
+    done
     for _PKG in build-essential libsasl2-modules time vim cvs makepasswd; do
       if ! _pkg_installed "${_PKG}"; then
         _mrun "${_INSTAPP} ${_PKG}"
@@ -5935,11 +6035,21 @@ _run_aptitude_deps_install() {
     if dpkg-query -W -f='${Status}' libssl1.0-dev 2>/dev/null | grep -q "install ok installed"; then
       _mrun "apt-get remove libssl1.0-dev -y --purge --auto-remove -qq"
     fi
-    for _PKG in libssl-dev libc-client2007e libc-client2007e-dev mcrypt libc-client-dev; do
+
+    for _PKG in libssl-dev mcrypt; do
       if ! _pkg_installed "${_PKG}"; then
         _mrun "${_INSTAPP} ${_PKG}"
       fi
     done
+
+    if [ "${_OS_CODE}" != "excalibur" ]; then
+      for _PKG in libc-client2007e libc-client2007e-dev; do
+        if ! _pkg_installed "${_PKG}"; then
+          _mrun "${_INSTAPP} ${_PKG}"
+        fi
+      done
+    fi
+
     if [ "${_OS_DIST}" = "Devuan" ]; then
       for _PKG in apticron aptitude apt-listchanges; do
         if ! _pkg_installed "${_PKG}"; then
@@ -5959,7 +6069,10 @@ _run_aptitude_deps_install() {
         _mrun "${_INSTAPP} ${_PKG}"
       fi
     done
-    for _PKG in rsync strace ntpdate librsync-dev mc whois zlib1g zlib1g-dev sqlite3 libsqlite3-dev; do
+
+    _mrun "apt-get remove stunnel4 -y --purge --auto-remove -qq"
+
+    for _PKG in rsync strace librsync-dev mc whois zlib1g zlib1g-dev sqlite3 libsqlite3-dev; do
       if ! _pkg_installed "${_PKG}"; then
         _mrun "${_INSTAPP} ${_PKG}"
       fi
@@ -5974,7 +6087,7 @@ _run_aptitude_deps_install() {
         _mrun "${_INSTAPP} ${_PKG}"
       fi
     done
-    _OS_LIST="daedalus chimaera bullseye bookworm"
+    _OS_LIST="excalibur daedalus chimaera bullseye bookworm"
     for e in ${_OS_LIST}; do
       if [ "${e}" = "${_OS_CODE}" ]; then
         for _PKG in ncal; do
@@ -6009,11 +6122,6 @@ _run_aptitude_deps_install() {
         _mrun "${_INSTAPP} ${_PKG}"
       fi
     done
-    for _PKG in python3-full python3-dev python3-debian python3-magic; do
-      if ! _pkg_installed "${_PKG}"; then
-        _mrun "${_INSTAPP} ${_PKG}"
-      fi
-    done
   fi
   if [ -e "/root/.dont.use.fancy.bash.login.cnf" ] \
     && [ -e "/usr/bin/screenfetch" ]; then
@@ -6023,10 +6131,6 @@ _run_aptitude_deps_install() {
         _mrun "apt-get remove ${_PKG} -y --purge --auto-remove -qq"
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "PCKG: ${_PKG} removed as requested."
-        fi
-      else
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "PCKG: ${_PKG} not installed, skipping."
         fi
       fi
     done
@@ -6120,7 +6224,7 @@ _basic_packages_install_on_init() {
       _mrun "${_INITINS} wget"
       _mrun "${_INITINS} hostname"
       _mrun "${_INITINS} net-tools"
-      _mrun "${_INITINS} ntpdate"
+      _mrun "${_INITINS} ntpsec-ntpdate"
       touch /root/.step.init.basic.cnf
     fi
   fi
@@ -6322,7 +6426,8 @@ _if_rebuild_src_on_major_os_upgrade() {
     _msg "PROC: _if_rebuild_src_on_major_os_upgrade"
   fi
   _CHECKS_REMOTE_REPOS=YES
-  if [ -e "/root/.run-to-daedalus.cnf" ] \
+  if [ -e "/root/.run-to-excalibur.cnf" ] \
+    || [ -e "/root/.run-to-daedalus.cnf" ] \
     || [ -e "/root/.run-to-chimaera.cnf" ] \
     || [ -e "/root/.run-to-beowulf.cnf" ]; then
     _CHECKS_REMOTE_REPOS=NO
@@ -6340,7 +6445,8 @@ _if_long_generate_on_major_os_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _if_long_generate_on_major_os_upgrade"
   fi
-  if [ -e "/root/.run-to-daedalus.cnf" ] \
+  if [ -e "/root/.run-to-excalibur.cnf" ] \
+    || [ -e "/root/.run-to-daedalus.cnf" ] \
     || [ -e "/root/.run-to-chimaera.cnf" ] \
     || [ -e "/root/.run-to-beowulf.cnf" ]; then
     _ALLOW_LONG_GENERATE=NO
@@ -6437,6 +6543,31 @@ _if_post_major_os_upgrade() {
       fi
     fi
 
+    ### Update base-files on excalibur if needed
+    if [ -e "/root/.top-excalibur.cnf" ]; then
+      # Initialize the update flag to NO
+      _needsBaseFilesUpdate=NO
+      # Check if /etc/os-release mentions 'excalibur'
+      if grep -i 'excalibur' /etc/os-release &> /dev/null; then
+        _msg "The /etc/os-release already mentions excalibur"
+      else
+        _msg "The /etc/os-release doesn't mention excalibur yet"
+        _needsBaseFilesUpdate=YES
+      fi
+      # Check if apt policy for base-files mentions 'excalibur'
+      if apt policy base-files | grep -i 'excalibur' &> /dev/null; then
+        _msg "The apt policy base-files already mentions excalibur"
+      else
+        _msg "The apt policy base-files doesn't mention excalibur yet"
+        _needsBaseFilesUpdate=YES
+      fi
+      # If any of the above checks require an update, perform the upgrade
+      if [ "${_needsBaseFilesUpdate}" = "YES" ]; then
+        _msg "Upgrading base-files from Devuan repository (dynamic candidate)"
+        _ensure_devuan_base_files
+      fi
+    fi
+
     ### Update rsyslog configuration early
     _rsyslog_config_update
     ### Reload key services if needed early
@@ -6454,7 +6585,8 @@ _if_post_major_os_upgrade() {
     done
 
     _REBUILD_SRC_ON_AUTO_NOW=YES
-    if [ -e "/root/.run-to-daedalus.cnf" ] \
+    if [ -e "/root/.run-to-excalibur.cnf" ] \
+      || [ -e "/root/.run-to-daedalus.cnf" ] \
       || [ -e "/root/.run-to-chimaera.cnf" ] \
       || [ -e "/root/.run-to-beowulf.cnf" ]; then
       _REBUILD_SRC_ON_AUTO_NOW=NO
@@ -6582,7 +6714,8 @@ _if_major_os_upgrade() {
       _barracuda_cnf_cleanup
       _clean_pid_exit _if_major_os_upgrade_a
     fi
-    if [ -e "/root/.run-to-daedalus.cnf" ] \
+    if [ -e "/root/.run-to-excalibur.cnf" ] \
+      || [ -e "/root/.run-to-daedalus.cnf" ] \
       || [ -e "/root/.run-to-chimaera.cnf" ] \
       || [ -e "/root/.run-to-beowulf.cnf" ]; then
       _AUTOPILOT=YES
@@ -6654,15 +6787,11 @@ _if_major_os_upgrade() {
     fi
     _apt_clean_update_no_releaseinfo_change
     ###
-    for _PKG in collectd libc-client2007b-dev; do
+    for _PKG in collectd; do
       if _pkg_installed "${_PKG}"; then
         _mrun "apt-get remove ${_PKG} -y --purge --auto-remove -qq"
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "PCKG: ${_PKG} removed as requested."
-        fi
-      else
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "PCKG: ${_PKG} not installed, skipping."
         fi
       fi
     done
@@ -6672,10 +6801,6 @@ _if_major_os_upgrade() {
         _mrun "apt-get remove --purge ${_PKG} -y -qq"
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "PCKG: ${_PKG} removed as requested."
-        fi
-      else
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "PCKG: ${_PKG} not installed, skipping."
         fi
       fi
     done
@@ -6709,10 +6834,6 @@ _if_major_os_upgrade() {
         _mrun "apt-get remove ${_PKG} -y -qq"
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "PCKG: ${_PKG} removed as requested."
-        fi
-      else
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "PCKG: ${_PKG} not installed, skipping."
         fi
       fi
     done
@@ -6758,10 +6879,6 @@ _if_major_os_upgrade() {
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "PCKG: ${_PKG} removed as requested."
         fi
-      else
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "PCKG: ${_PKG} not installed, skipping."
-        fi
       fi
     done
     for _PKG in php5-ldap php5-mcrypt php5-memcache php5-mysql php5-sqlite php5-xmlrpc php5-xsl; do
@@ -6769,10 +6886,6 @@ _if_major_os_upgrade() {
         _mrun "apt-get remove ${_PKG} -y --purge --auto-remove -qq"
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "PCKG: ${_PKG} removed as requested."
-        fi
-      else
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "PCKG: ${_PKG} not installed, skipping."
         fi
       fi
     done
@@ -6782,10 +6895,6 @@ _if_major_os_upgrade() {
         _mrun "apt-get remove ${_PKG} -y --purge --auto-remove -qq"
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "PCKG: ${_PKG} removed as requested."
-        fi
-      else
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "PCKG: ${_PKG} not installed, skipping."
         fi
       fi
     done
@@ -6849,7 +6958,9 @@ _if_major_os_upgrade() {
       _NEW_OSN=debian
     fi
     _OS_CODE="${_NEW_OS_CODE}"
-    if [ "${_OS_CODE}" = "daedalus" ]; then
+    if [ "${_OS_CODE}" = "excalibur" ]; then
+      _SQL_NEW_OS_CODE=trixie
+    elif [ "${_OS_CODE}" = "daedalus" ]; then
       _SQL_NEW_OS_CODE=bookworm
     elif [ "${_OS_CODE}" = "chimaera" ]; then
       _SQL_NEW_OS_CODE=bullseye
@@ -6983,7 +7094,9 @@ _if_major_os_upgrade() {
       _mrun "apt-get install collectd ${_dstUpArg}"
     fi
     _mrun "apt-get install lsb-release ${_dstUpArg}"
-    _mrun "apt-get install libc-client2007e-dev ${_dstUpArg}"
+    if [ "${_LOC_OS_CODE}" != "excalibur" ]; then
+      _mrun "apt-get install libc-client2007e-dev ${_dstUpArg}"
+    fi
     ###
     ### Make sure that org.freedesktop.systemd1 was not atempted by dbus.
 #     _mrun "apt-get remove dbus -y --purge --auto-remove -qq"
@@ -7043,7 +7156,12 @@ _if_major_os_upgrade() {
     ### Note that Debian to Devuan migration always requires
     ### the key dist-upgrade step to be run AFTER reboot!
     _FORCE_REBUILD_SRC_ON_AUTO_NOW=NO
-    if [ "${_LOC_OS_CODE}" = "bookworm" ] && [ "${_TGT_OSN}" = "Devuan" ]; then
+    if [ "${_LOC_OS_CODE}" = "trixie" ] && [ "${_TGT_OSN}" = "Devuan" ]; then
+      echo
+      _msg "ATTN: NOTE! Debian Trixie to Devuan migration"
+      _msg "ATTN: requires the key dist-upgrade step AFTER reboot, so"
+      _msg "ATTN: you MUST RUN ANOTHER Barracuda upgrade after reboot"
+    elif [ "${_LOC_OS_CODE}" = "bookworm" ] && [ "${_TGT_OSN}" = "Devuan" ]; then
       echo
       _msg "ATTN: NOTE! Debian Bookworm to Devuan migration"
       _msg "ATTN: requires the key dist-upgrade step AFTER reboot, so"
@@ -7078,8 +7196,16 @@ _if_major_os_upgrade() {
       [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
       _mrun "apt-get install lsb-release ${_dstUpArg}"
       ###
-      if [ "${_LOC_OS_CODE}" = "chimaera" ] \
-        && [ "${_NEW_OS_CODE}" = "daedalus" ]; then
+      if [ "${_LOC_OS_CODE}" = "daedalus" ] && [ "${_NEW_OS_CODE}" = "excalibur" ]; then
+        _useFast=daedalus
+        _nextOS=Excalibur
+      elif [ "${_LOC_OS_CODE}" = "chimaera" ] && [ "${_NEW_OS_CODE}" = "daedalus" ]; then
+        _useFast=chimaera
+        _nextOS=Daedalus
+      else
+        _useFast=NO
+      fi
+      if [ "${_useFast}" != "NO" ]; then
         ###
         ### Fix PHP early
         ###
@@ -7097,17 +7223,13 @@ _if_major_os_upgrade() {
             if [ "${_DEBUG_MODE}" = "YES" ]; then
               _msg "PCKG: ${_PKG} removed as requested."
             fi
-          else
-            if [ "${_DEBUG_MODE}" = "YES" ]; then
-              _msg "PCKG: ${_PKG} not installed, skipping."
-            fi
           fi
         done
         ###
         _apt_clean_update
         ###
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "TRCK: Installing now libldap packages from Chimaera"
+          _msg "TRCK: Installing now libldap packages from ${_useFast}"
         fi
         if [ -n "${_LOCAL_DEVUAN_MIRROR}" ]; then
           _MIRROR="${_LOCAL_DEVUAN_MIRROR}"
@@ -7119,27 +7241,27 @@ _if_major_os_upgrade() {
             _MIRROR="http://deb.devuan.org/merged"
           fi
         fi
-        echo "## DEVUAN MAIN REPOSITORIES" > /etc/apt/sources.list.d/chimaera.list
-        echo "deb ${_MIRROR} chimaera main" >> /etc/apt/sources.list.d/chimaera.list
-        echo "deb-src ${_MIRROR} chimaera main" >> /etc/apt/sources.list.d/chimaera.list
-        echo "" >> /etc/apt/sources.list.d/chimaera.list
-        echo "## MAJOR BUG FIX UPDATES produced after the final release" >> /etc/apt/sources.list.d/chimaera.list
-        echo "deb ${_MIRROR} chimaera-updates main" >> /etc/apt/sources.list.d/chimaera.list
-        echo "deb-src ${_MIRROR} chimaera-updates main" >> /etc/apt/sources.list.d/chimaera.list
-        echo "" >> /etc/apt/sources.list.d/chimaera.list
-        echo "## DEVUAN SECURITY UPDATES" >> /etc/apt/sources.list.d/chimaera.list
-        echo "deb ${_MIRROR} chimaera-security main" >> /etc/apt/sources.list.d/chimaera.list
-        echo "deb-src ${_MIRROR} chimaera-security main" >> /etc/apt/sources.list.d/chimaera.list
+        echo "## DEVUAN MAIN REPOSITORIES" > /etc/apt/sources.list.d/${_useFast}.list
+        echo "deb ${_MIRROR} ${_useFast} main" >> /etc/apt/sources.list.d/${_useFast}.list
+        echo "deb-src ${_MIRROR} ${_useFast} main" >> /etc/apt/sources.list.d/${_useFast}.list
+        echo "" >> /etc/apt/sources.list.d/${_useFast}.list
+        echo "## MAJOR BUG FIX UPDATES produced after the final release" >> /etc/apt/sources.list.d/${_useFast}.list
+        echo "deb ${_MIRROR} ${_useFast}-updates main" >> /etc/apt/sources.list.d/${_useFast}.list
+        echo "deb-src ${_MIRROR} ${_useFast}-updates main" >> /etc/apt/sources.list.d/${_useFast}.list
+        echo "" >> /etc/apt/sources.list.d/${_useFast}.list
+        echo "## DEVUAN SECURITY UPDATES" >> /etc/apt/sources.list.d/${_useFast}.list
+        echo "deb ${_MIRROR} ${_useFast}-security main" >> /etc/apt/sources.list.d/${_useFast}.list
+        echo "deb-src ${_MIRROR} ${_useFast}-security main" >> /etc/apt/sources.list.d/${_useFast}.list
         echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
         _apt_clean_update
         for _PKG in libldap-common libldap2-dev; do
           if ! _pkg_installed "${_PKG}"; then
-            _mrun "apt-get install -t chimaera ${_PKG} ${_aptYesUnth}"
+            _mrun "apt-get install -t ${_useFast} ${_PKG} ${_aptYesUnth}"
           fi
         done
         ###
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "TRCK: Locking libldap packages to prevent upgrade on Daedalus"
+          _msg "TRCK: Locking libldap packages to prevent upgrade on ${_nextOS}"
         fi
         ### Make sure that libldap packages are locked in apt.
         echo -e 'Package: libldap-common\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/libldap
@@ -7157,7 +7279,7 @@ _if_major_os_upgrade() {
           echo "libldap-dev hold" | dpkg --set-selections &> /dev/null
           _apt_clean_update
         fi
-        rm -f /etc/apt/sources.list.d/chimaera.list
+        rm -f /etc/apt/sources.list.d/${_useFast}.list
         rm -f /etc/apt/apt.conf
         _apt_clean_update
         ldconfig 2> /dev/null
@@ -7208,7 +7330,8 @@ _if_major_os_upgrade() {
     ### Force NR upgrade
     touch /root/.force.newrelic.update.cnf
     ### Re-install key services early to limit downtime and SSH keys confusion.
-    if [ -e "/root/.run-to-daedalus.cnf" ] \
+    if [ -e "/root/.run-to-excalibur.cnf" ] \
+      || [ -e "/root/.run-to-daedalus.cnf" ] \
       || [ -e "/root/.run-to-chimaera.cnf" ] \
       || [ -e "/root/.run-to-beowulf.cnf" ]; then
       _REBUILD_SRC_ON_AUTO_NOW=NO
@@ -7587,39 +7710,48 @@ _sys_packages_install() {
         _APT_XTRA="openjdk-11-jre-headless ca-certificates-java nginx"
       elif [ "${_OS_CODE}" = "chimaera" ]; then
         _APT_XTRA="openjdk-11-jre-headless openjdk-17-jre-headless ca-certificates-java nginx"
+      elif [ "${_OS_CODE}" = "excalibur" ]; then
+        _APT_XTRA="openjdk-21-jre-headless ca-certificates-java nginx"
       elif [ "${_OS_CODE}" = "daedalus" ]; then
         _APT_XTRA="openjdk-17-jre-headless ca-certificates-java nginx"
-        if [ ! -x "/usr/lib/jvm/java-11-openjdk-amd64/bin/java" ]; then
-          if [ -n "${_LOCAL_DEVUAN_MIRROR}" ]; then
-            _MIRROR="${_LOCAL_DEVUAN_MIRROR}"
-          else
-            _DVN_MRR="$(_find_fast_devuan_mirror)"
-            if [ -n "${_DVN_MRR}" ]; then
-              _MIRROR="${_DVN_MRR}"
+        if [ "${_OS_CODE}" = "excalibur" ]; then
+          _useFast=daedalus
+        elif [ "${_OS_CODE}" = "daedalus" ]; then
+          _useFast=chimaera
+        fi
+        if [ "${_OS_CODE}" = "daedalus" ]; then
+          if [ ! -x "/usr/lib/jvm/java-11-openjdk-amd64/bin/java" ]; then
+            if [ -n "${_LOCAL_DEVUAN_MIRROR}" ]; then
+              _MIRROR="${_LOCAL_DEVUAN_MIRROR}"
             else
-              _MIRROR="http://deb.devuan.org/merged"
+              _DVN_MRR="$(_find_fast_devuan_mirror)"
+              if [ -n "${_DVN_MRR}" ]; then
+                _MIRROR="${_DVN_MRR}"
+              else
+                _MIRROR="http://deb.devuan.org/merged"
+              fi
             fi
+            echo "## DEVUAN MAIN REPOSITORIES" > /etc/apt/sources.list.d/${_useFast}.list
+            echo "deb ${_MIRROR} ${_useFast} main" >> /etc/apt/sources.list.d/${_useFast}.list
+            echo "deb-src ${_MIRROR} ${_useFast} main" >> /etc/apt/sources.list.d/${_useFast}.list
+            echo "" >> /etc/apt/sources.list.d/${_useFast}.list
+            echo "## MAJOR BUG FIX UPDATES produced after the final release" >> /etc/apt/sources.list.d/${_useFast}.list
+            echo "deb ${_MIRROR} ${_useFast}-updates main" >> /etc/apt/sources.list.d/${_useFast}.list
+            echo "deb-src ${_MIRROR} ${_useFast}-updates main" >> /etc/apt/sources.list.d/${_useFast}.list
+            echo "" >> /etc/apt/sources.list.d/${_useFast}.list
+            echo "## DEVUAN SECURITY UPDATES" >> /etc/apt/sources.list.d/${_useFast}.list
+            echo "deb ${_MIRROR} ${_useFast}-security main" >> /etc/apt/sources.list.d/${_useFast}.list
+            echo "deb-src ${_MIRROR} ${_useFast}-security main" >> /etc/apt/sources.list.d/${_useFast}.list
+            echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
+            _apt_clean_update
+            if [ "${_DEBUG_MODE}" = "YES" ]; then
+              _msg "TRCK: Installing now openjdk-11-jre-headless from ${_useFast}"
+            fi
+            _mrun "apt-get install -t ${_useFast} openjdk-11-jre-headless ${_aptYesUnth}"
+            rm -f /etc/apt/sources.list.d/${_useFast}.list
+            rm -f /etc/apt/apt.conf
+            _apt_clean_update
           fi
-          echo "## DEVUAN MAIN REPOSITORIES" > /etc/apt/sources.list.d/chimaera.list
-          echo "deb ${_MIRROR} chimaera main" >> /etc/apt/sources.list.d/chimaera.list
-          echo "deb-src ${_MIRROR} chimaera main" >> /etc/apt/sources.list.d/chimaera.list
-          echo "" >> /etc/apt/sources.list.d/chimaera.list
-          echo "## MAJOR BUG FIX UPDATES produced after the final release" >> /etc/apt/sources.list.d/chimaera.list
-          echo "deb ${_MIRROR} chimaera-updates main" >> /etc/apt/sources.list.d/chimaera.list
-          echo "deb-src ${_MIRROR} chimaera-updates main" >> /etc/apt/sources.list.d/chimaera.list
-          echo "" >> /etc/apt/sources.list.d/chimaera.list
-          echo "## DEVUAN SECURITY UPDATES" >> /etc/apt/sources.list.d/chimaera.list
-          echo "deb ${_MIRROR} chimaera-security main" >> /etc/apt/sources.list.d/chimaera.list
-          echo "deb-src ${_MIRROR} chimaera-security main" >> /etc/apt/sources.list.d/chimaera.list
-          echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
-          _apt_clean_update
-          if [ "${_DEBUG_MODE}" = "YES" ]; then
-            _msg "TRCK: Installing now openjdk-11-jre-headless from Chimaera"
-          fi
-          _mrun "apt-get install -t chimaera openjdk-11-jre-headless ${_aptYesUnth}"
-          rm -f /etc/apt/sources.list.d/chimaera.list
-          rm -f /etc/apt/apt.conf
-          _apt_clean_update
         fi
       fi
     else
@@ -7662,42 +7794,52 @@ _sys_packages_install() {
         _APT_XTRA="openjdk-11-jre-headless ca-certificates-java"
       elif [ "${_OS_CODE}" = "chimaera" ]; then
         _APT_XTRA="openjdk-11-jre-headless openjdk-17-jre-headless ca-certificates-java"
+      elif [ "${_OS_CODE}" = "excalibur" ]; then
+        _APT_XTRA="openjdk-21-jre-headless ca-certificates-java"
       elif [ "${_OS_CODE}" = "daedalus" ]; then
         _APT_XTRA="openjdk-17-jre-headless ca-certificates-java"
-        if [ -x "/usr/lib/jvm/java-11-openjdk-amd64/bin/java" ]; then
-          _JAVA_TEST=$(/usr/lib/jvm/java-11-openjdk-amd64/bin/java --version 2>&1)
+        if [ "${_OS_CODE}" = "excalibur" ]; then
+          _useFast=daedalus
+        elif [ "${_OS_CODE}" = "daedalus" ]; then
+          _useFast=chimaera
         fi
-        if [ ! -x "/usr/lib/jvm/java-11-openjdk-amd64/bin/java" ] || [[ ! "${_JAVA_TEST}" =~ "openjdk 11.0.24" ]]; then
-          if [ -n "${_LOCAL_DEVUAN_MIRROR}" ]; then
-            _MIRROR="${_LOCAL_DEVUAN_MIRROR}"
-          else
-            _DVN_MRR="$(_find_fast_devuan_mirror)"
-            if [ -n "${_DVN_MRR}" ]; then
-              _MIRROR="${_DVN_MRR}"
+        if [ "${_OS_CODE}" = "daedalus" ]; then
+          if [ -x "/usr/lib/jvm/java-11-openjdk-amd64/bin/java" ]; then
+            _JAVA_TEST=$(/usr/lib/jvm/java-11-openjdk-amd64/bin/java --version 2>&1)
+          fi
+          if [ ! -x "/usr/lib/jvm/java-11-openjdk-amd64/bin/java" ] \
+            || [[ ! "${_JAVA_TEST}" =~ "openjdk 11.0.24" ]]; then
+            if [ -n "${_LOCAL_DEVUAN_MIRROR}" ]; then
+              _MIRROR="${_LOCAL_DEVUAN_MIRROR}"
             else
-              _MIRROR="http://deb.devuan.org/merged"
+              _DVN_MRR="$(_find_fast_devuan_mirror)"
+              if [ -n "${_DVN_MRR}" ]; then
+                _MIRROR="${_DVN_MRR}"
+              else
+                _MIRROR="http://deb.devuan.org/merged"
+              fi
             fi
+            echo "## DEVUAN MAIN REPOSITORIES" > /etc/apt/sources.list.d/${_useFast}.list
+            echo "deb ${_MIRROR} ${_useFast} main" >> /etc/apt/sources.list.d/${_useFast}.list
+            echo "deb-src ${_MIRROR} ${_useFast} main" >> /etc/apt/sources.list.d/${_useFast}.list
+            echo "" >> /etc/apt/sources.list.d/${_useFast}.list
+            echo "## MAJOR BUG FIX UPDATES produced after the final release" >> /etc/apt/sources.list.d/${_useFast}.list
+            echo "deb ${_MIRROR} ${_useFast}-updates main" >> /etc/apt/sources.list.d/${_useFast}.list
+            echo "deb-src ${_MIRROR} ${_useFast}-updates main" >> /etc/apt/sources.list.d/${_useFast}.list
+            echo "" >> /etc/apt/sources.list.d/${_useFast}.list
+            echo "## DEVUAN SECURITY UPDATES" >> /etc/apt/sources.list.d/${_useFast}.list
+            echo "deb ${_MIRROR} ${_useFast}-security main" >> /etc/apt/sources.list.d/${_useFast}.list
+            echo "deb-src ${_MIRROR} ${_useFast}-security main" >> /etc/apt/sources.list.d/${_useFast}.list
+            echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
+            _apt_clean_update
+            if [ "${_DEBUG_MODE}" = "YES" ]; then
+              _msg "TRCK: Installing now openjdk-11-jre-headless from ${_useFast}"
+            fi
+            _mrun "apt-get install -t ${_useFast} openjdk-11-jre-headless ${_aptYesUnth}"
+            rm -f /etc/apt/sources.list.d/${_useFast}.list
+            rm -f /etc/apt/apt.conf
+            _apt_clean_update
           fi
-          echo "## DEVUAN MAIN REPOSITORIES" > /etc/apt/sources.list.d/chimaera.list
-          echo "deb ${_MIRROR} chimaera main" >> /etc/apt/sources.list.d/chimaera.list
-          echo "deb-src ${_MIRROR} chimaera main" >> /etc/apt/sources.list.d/chimaera.list
-          echo "" >> /etc/apt/sources.list.d/chimaera.list
-          echo "## MAJOR BUG FIX UPDATES produced after the final release" >> /etc/apt/sources.list.d/chimaera.list
-          echo "deb ${_MIRROR} chimaera-updates main" >> /etc/apt/sources.list.d/chimaera.list
-          echo "deb-src ${_MIRROR} chimaera-updates main" >> /etc/apt/sources.list.d/chimaera.list
-          echo "" >> /etc/apt/sources.list.d/chimaera.list
-          echo "## DEVUAN SECURITY UPDATES" >> /etc/apt/sources.list.d/chimaera.list
-          echo "deb ${_MIRROR} chimaera-security main" >> /etc/apt/sources.list.d/chimaera.list
-          echo "deb-src ${_MIRROR} chimaera-security main" >> /etc/apt/sources.list.d/chimaera.list
-          echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
-          _apt_clean_update
-          if [ "${_DEBUG_MODE}" = "YES" ]; then
-            _msg "TRCK: Installing now openjdk-11-jre-headless from Chimaera"
-          fi
-          _mrun "apt-get install -t chimaera openjdk-11-jre-headless ${_aptYesUnth}"
-          rm -f /etc/apt/sources.list.d/chimaera.list
-          rm -f /etc/apt/apt.conf
-          _apt_clean_update
         fi
       fi
     else
@@ -7712,10 +7854,6 @@ _sys_packages_install() {
         _mrun "apt-get remove ${_PKG} -y -qq"
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "PCKG: ${_PKG} removed as requested."
-        fi
-      else
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "PCKG: ${_PKG} not installed, skipping."
         fi
       fi
     done
@@ -7755,10 +7893,6 @@ _sys_packages_install() {
         _mrun "apt-get remove --purge ${_PKG} -y -qq"
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "PCKG: ${_PKG} removed as requested."
-        fi
-      else
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "PCKG: ${_PKG} not installed, skipping."
         fi
       fi
     done
@@ -7807,7 +7941,17 @@ _sys_packages_install() {
     _SYSLOGD=rsyslog
   fi
 
-  if [ "${_OS_CODE}" = "daedalus" ]; then
+  if [ "${_OS_CODE}" = "excalibur" ]; then
+    _EXTRA_PACKAGES="autoconf2.69 \
+                     automake-1.17 \
+                     gnupg1-curl \
+                     libpcre2-dev \
+                     libpcre2-posix3 \
+                     libpng-dev \
+                     libpng16-16 \
+                     libtinfo6 \
+                     ${_EXTRA_PACKAGES}"
+  elif [ "${_OS_CODE}" = "daedalus" ]; then
     _EXTRA_PACKAGES="autoconf2.69 \
                      automake1.11 \
                      automake-1.16 \
@@ -7819,8 +7963,6 @@ _sys_packages_install() {
                      libpng-dev \
                      libpng16-16 \
                      libtinfo6 \
-                     software-properties-common \
-                     python3-software-properties \
                      ${_EXTRA_PACKAGES}"
   elif [ "${_OS_CODE}" = "chimaera" ]; then
     _EXTRA_PACKAGES="autoconf2.69 \
@@ -7834,7 +7976,6 @@ _sys_packages_install() {
                      libpng-dev \
                      libpng16-16 \
                      libtinfo6 \
-                     software-properties-common \
                      ${_EXTRA_PACKAGES}"
   elif [ "${_OS_CODE}" = "beowulf" ]; then
     _EXTRA_PACKAGES="autoconf2.64 \
@@ -7849,7 +7990,6 @@ _sys_packages_install() {
                      libpng-dev \
                      libpng16-16 \
                      libtinfo6 \
-                     software-properties-common \
                      ttf-dejavu \
                      ttf-dejavu-core \
                      ttf-dejavu-extra \
@@ -7866,8 +8006,6 @@ _sys_packages_install() {
                      libpng-dev \
                      libpng16-16 \
                      libtinfo6 \
-                     software-properties-common \
-                     python3-software-properties \
                      ${_EXTRA_PACKAGES}"
   elif [ "${_OS_CODE}" = "bullseye" ]; then
     _EXTRA_PACKAGES="autoconf2.69 \
@@ -7881,7 +8019,6 @@ _sys_packages_install() {
                      libpng-dev \
                      libpng16-16 \
                      libtinfo6 \
-                     software-properties-common \
                      ${_EXTRA_PACKAGES}"
   elif [ "${_OS_CODE}" = "buster" ]; then
     _EXTRA_PACKAGES="autoconf2.64 \
@@ -7896,7 +8033,6 @@ _sys_packages_install() {
                      libpng-dev \
                      libpng16-16 \
                      libtinfo6 \
-                     software-properties-common \
                      ttf-dejavu \
                      ttf-dejavu-core \
                      ttf-dejavu-extra \
@@ -7912,7 +8048,6 @@ _sys_packages_install() {
                      libpcre3-dev \
                      libpng-dev \
                      libpng16-16 \
-                     software-properties-common \
                      ttf-dejavu \
                      ttf-dejavu-core \
                      ttf-dejavu-extra \
@@ -7931,7 +8066,6 @@ _sys_packages_install() {
                      libpng12-0-dev \
                      libt1-5 \
                      libt1-dev \
-                     python-software-properties \
                      t1lib-bin \
                      ttf-dejavu \
                      ttf-dejavu-core \
@@ -8271,14 +8405,19 @@ _install_myquick_deb() {
     _msg "PROC: _install_myquick_deb"
   fi
   if [ "${_MYQUICK_SRC_INSTALL_REQUIRED}" = "NO" ]; then
+    if [ "${_USE_CODE}" = "trixie" ]; then
+      _USE_MYQUICK="${_MYQUICK_VRN_LATEST}"
+    else
+      _USE_MYQUICK="${_MYQUICK_VRN_EIGHT}"
+    fi
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      _msg "INFO: Installing MyQuick ${_MYQUICK_VRN_EIGHT} from ${_USE_CODE} packages"
+      _msg "INFO: Installing MyQuick ${_USE_MYQUICK} from ${_USE_CODE} packages"
     fi
     cd /var/opt
     rm -rf mydumper_*
-    _get_dev_arch "mydumper_${_MYQUICK_VRN_EIGHT}.${_USE_CODE}_amd64.deb.gz"
-    if [ -e "/var/opt/mydumper_${_MYQUICK_VRN_EIGHT}.${_USE_CODE}_amd64.deb" ]; then
-      _mrun "dpkg -i mydumper_${_MYQUICK_VRN_EIGHT}.${_USE_CODE}_amd64.deb"
+    _get_dev_arch "mydumper_${_USE_MYQUICK}.${_USE_CODE}_amd64.deb.gz"
+    if [ -e "/var/opt/mydumper_${_USE_MYQUICK}.${_USE_CODE}_amd64.deb" ]; then
+      _mrun "dpkg -i mydumper_${_USE_MYQUICK}.${_USE_CODE}_amd64.deb"
     fi
     if [ -x "/usr/bin/mydumper" ]; then
       [ -e "/usr/local/bin/mydumper" ] && rm -f /usr/local/bin/mydumper
@@ -8297,7 +8436,9 @@ _myquick_install_upgrade() {
     _msg "PROC: _myquick_install_upgrade"
   fi
   _MYQUICK_SRC_INSTALL_REQUIRED=NO
-  if [ "${_SQL_OS_CODE}" = "bookworm" ]; then
+  if [ "${_SQL_OS_CODE}" = "trixie" ]; then
+    _USE_CODE=trixie
+  elif [ "${_SQL_OS_CODE}" = "bookworm" ]; then
     _USE_CODE=bookworm
   elif [ "${_SQL_OS_CODE}" = "bullseye" ]; then
     _USE_CODE=bullseye
@@ -8978,7 +9119,17 @@ _java_check_fix() {
     ln -sfn /etc/alternatives/java /usr/bin/java
   fi
 
-  if [ "${_OS_CODE}" = "daedalus" ] || [ "${_OS_CODE}" = "chimaera" ]; then
+  if [ "${_OS_CODE}" = "excalibur" ] \
+    || [ "${_OS_CODE}" = "daedalus" ] \
+    || [ "${_OS_CODE}" = "chimaera" ]; then
+    if [ ! -e "/usr/lib/jvm/java-21-openjdk" ] \
+      && [ -d "/usr/lib/jvm/java-21-openjdk-amd64" ]; then
+      ln -sfn /usr/lib/jvm/java-21-openjdk-amd64 /usr/lib/jvm/java-21-openjdk
+    fi
+    if [ ! -e "/usr/bin/java21" ] \
+      && [ -e "/usr/lib/jvm/java-21-openjdk-amd64/bin/java" ]; then
+      ln -sfn /usr/lib/jvm/java-21-openjdk-amd64/bin/java /usr/bin/java21
+    fi
     if [ ! -e "/usr/lib/jvm/java-17-openjdk" ] \
       && [ -d "/usr/lib/jvm/java-17-openjdk-amd64" ]; then
       ln -sfn /usr/lib/jvm/java-17-openjdk-amd64 /usr/lib/jvm/java-17-openjdk
@@ -9002,25 +9153,40 @@ _java_check_fix() {
     else
       _LOOK_LIKE_JENKINS=FALSE
     fi
-    if [ "${_LOOK_LIKE_JENKINS}" = "TRUE" ] || [ "${_OS_CODE}" = "daedalus" ]; then
+    if [ "${_LOOK_LIKE_JENKINS}" = "TRUE" ] \
+      || [ "${_OS_CODE}" = "daedalus" ] \
+      || [ "${_OS_CODE}" = "excalibur" ]; then
       if [ -x "/usr/lib/jvm/java-17-openjdk/bin/java" ] \
-        && [ ! -e "/var/log/.fixed-java17-symlinks.log" ]; then
-        if [ -e "/usr/lib/jvm/java-1.17.0-openjdk-amd64" ]; then
+        && [ ! -e "/var/log/boa/.fixed-java17-symlinks.log" ]; then
+        if [ -e "/usr/lib/jvm/java-17-openjdk-amd64" ]; then
           rm -f /usr/lib/jvm/default-java
-          ln -sfn /usr/lib/jvm/java-1.17.0-openjdk-amd64 /usr/lib/jvm/default-java
+          ln -sfn /usr/lib/jvm/java-17-openjdk-amd64 /usr/lib/jvm/default-java
         fi
         ln -sfn /usr/lib/jvm/java-17-openjdk/bin/java /etc/alternatives/java
         ln -sfn /etc/alternatives/java /usr/bin/java
-        touch /var/log/.fixed-java17-symlinks.log
+        touch /var/log/boa/.fixed-java17-symlinks.log
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "Fixed Java 17 symlinks for ${_OS_CODE}"
         fi
       fi
+      if [ -x "/usr/lib/jvm/java-21-openjdk/bin/java" ] \
+        && [ ! -e "/var/log/boa/.fixed-java21-symlinks.log" ]; then
+        if [ -e "/usr/lib/jvm/java-21-openjdk-amd64" ]; then
+          rm -f /usr/lib/jvm/default-java
+          ln -sfn /usr/lib/jvm/java-21-openjdk-amd64 /usr/lib/jvm/default-java
+        fi
+        ln -sfn /usr/lib/jvm/java-21-openjdk/bin/java /etc/alternatives/java
+        ln -sfn /etc/alternatives/java /usr/bin/java
+        touch /var/log/boa/.fixed-java21-symlinks.log
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "Fixed Java 21 symlinks for ${_OS_CODE}"
+        fi
+      fi
     else
       if [ -x "/usr/lib/jvm/java-11-openjdk/bin/java" ]; then
-        if [ -e "/usr/lib/jvm/java-1.11.0-openjdk-amd64" ]; then
+        if [ -e "/usr/lib/jvm/java-11-openjdk-amd64" ]; then
           rm -f /usr/lib/jvm/default-java
-          ln -sfn /usr/lib/jvm/java-1.11.0-openjdk-amd64 /usr/lib/jvm/default-java
+          ln -sfn /usr/lib/jvm/java-11-openjdk-amd64 /usr/lib/jvm/default-java
         fi
         if [ ! -e "/usr/bin/java" ] || [ ! -e "/etc/alternatives/java" ]; then
           ln -sfn /usr/lib/jvm/java-11-openjdk/bin/java /etc/alternatives/java
@@ -9040,9 +9206,9 @@ _java_check_fix() {
       && [ -e "/usr/lib/jvm/java-11-openjdk-amd64/bin/java" ]; then
       ln -sfn /usr/lib/jvm/java-11-openjdk-amd64/bin/java /usr/bin/java11
     fi
-    if [ -e "/usr/lib/jvm/java-1.11.0-openjdk-amd64" ]; then
+    if [ -e "/usr/lib/jvm/java-11-openjdk-amd64" ]; then
       rm -f /usr/lib/jvm/default-java
-      ln -sfn /usr/lib/jvm/java-1.11.0-openjdk-amd64 /usr/lib/jvm/default-java
+      ln -sfn /usr/lib/jvm/java-11-openjdk-amd64 /usr/lib/jvm/default-java
     fi
     if [ -x "/usr/lib/jvm/java-11-openjdk/bin/java" ]; then
       ln -sfn /usr/lib/jvm/java-11-openjdk/bin/java /etc/alternatives/java
@@ -9065,6 +9231,9 @@ _sshd_armour() {
   if [ -e "/etc/ssh/sshd_config" ]; then
     if [ -e "/etc/ssh/ssh_config" ]; then
       grep -q '^[^#]*GSSAPIAuthentication' /etc/ssh/ssh_config && sed -i '/^[^#]*GSSAPIAuthentication/s/^/#/' /etc/ssh/ssh_config
+      if ! grep -q -E '^\s*WarnWeakCrypto no' /etc/ssh/ssh_config; then
+        echo "WarnWeakCrypto no" >> /etc/ssh/ssh_config
+      fi
       _mrun "service ssh restart"
     fi
     if [ "${_SSH_ARMOUR}" = "NO" ] \
@@ -9262,7 +9431,7 @@ _initd_update() {
       pkill -9 -f jetty9
       _mrun "service jetty9 start"
     fi
-    if [ ! -e "/run/aegir_upgrade.pid" ]; then
+    if [ ! -e "/root/.proxy.cnf" ]; then
       if [ -e "/etc/init.d/valkey-server" ]; then
         _msg "INFO: Starting Valkey, PHP-FPM and Nginx"
         _mrun "service valkey-server start"
@@ -9357,8 +9526,7 @@ _initd_update() {
       pkill -9 -f jetty9
       _mrun "service jetty9 start"
     fi
-    if [ ! -e "/run/aegir_upgrade.pid" ] \
-      && [ ! -e "/root/.proxy.cnf" ]; then
+    if [ ! -e "/root/.proxy.cnf" ]; then
       _mrun "update-rc.d -f php5-fpm remove"
       if [ -e "/etc/init.d/valkey-server" ]; then
         if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -9402,6 +9570,7 @@ _initd_update() {
       _preCnf="${_vBs}/dragon/t/my.cnf-pre-${_xSrl}-${_X_VERSION}-${_NOW}"
       if [ -f "${_myCnf}" ]; then
         _myCnfUpdate=NO
+        _myTopReinstall=NO
         if [ ! -f "${_preCnf}" ]; then
           mkdir -p ${_vBs}/dragon/t/
           cp -af ${_myCnf} ${_preCnf}
@@ -9422,16 +9591,23 @@ _initd_update() {
           fi
         else
           _myCnfUpdate=YES
+          _myTopReinstall=YES
           # _diffMyTest=$(echo -n ${_diffMyTest} | fmt -su -w 2500)
-          _msg "INFO: ${_DB_SERVER} diff1 ${_diffMyTest}"
+          if [ "${_DEBUG_MODE}" = "YES" ]; then
+            _msg "INFO: ${_DB_SERVER} diff1 ${_diffMyTest}"
+          fi
         fi
         if [[ "${_diffMyTest}" =~ "innodb_buffer_pool_size" ]]; then
           _myCnfUpdate=NO
-          _msg "INFO: ${_DB_SERVER} diff2 ${_diffMyTest}"
+          if [ "${_DEBUG_MODE}" = "YES" ]; then
+            _msg "INFO: ${_DB_SERVER} diff2 ${_diffMyTest}"
+          fi
         fi
         if [[ "${_diffMyTest}" =~ "No such file or directory" ]]; then
           _myCnfUpdate=NO
-          _msg "INFO: ${_DB_SERVER} diff3 ${_diffMyTest}"
+          if [ "${_DEBUG_MODE}" = "YES" ]; then
+            _msg "INFO: ${_DB_SERVER} diff3 ${_diffMyTest}"
+          fi
         fi
       fi
       if [ "${_UP_SQL}" = "YES" ]; then
@@ -9441,18 +9617,22 @@ _initd_update() {
             _msg "INFO: ${_DB_SERVER} ${_DBS_VRN} already up to date"
           fi
           _myCnfUpdate=YES
+          _myTopReinstall=YES
           if [ "${_DEBUG_MODE}" = "YES" ]; then
             _msg "INFO: ${_DB_SERVER} restart after upgrade forced"
           fi
         fi
       fi
-      if [ ! -e "/root/.run-to-daedalus.cnf" ] \
+      if [ ! -e "/root/.run-to-excalibur.cnf" ] \
+        && [ ! -e "/root/.run-to-daedalus.cnf" ] \
         && [ ! -e "/root/.run-to-chimaera.cnf" ] \
         && [ ! -e "/root/.run-to-beowulf.cnf" ]; then
         _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
-        _myUptime=$(mysqladmin -u root version | grep -i uptime 2>&1)
-        _myUptime=$(echo -n ${_myUptime} | fmt -su -w 2500 2>&1)
-        _msg "INFO: ${_DB_SERVER} ${_myUptime}"
+        if [ "${_myCnfUpdate}" = "NO" ]; then
+          _myUptime=$(mysqladmin -u root version | grep -i uptime 2>&1)
+          _myUptime=$(echo -n ${_myUptime} | fmt -su -w 2500 2>&1)
+          _msg "INFO: ${_DB_SERVER} ${_myUptime}"
+        fi
         if [ "${_myRstrd}" = "YES" ]; then
           _myCnfUpdate=NO
           _msg "INFO: ${_DB_SERVER} already restarted!"

@@ -58,7 +58,7 @@ _clean_pid_exit() {
 _os_detection_minimal() {
   _APT_UPDATE="apt-get update"
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
-  _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
+  _OS_LIST="excalibur daedalus chimaera beowulf buster bullseye bookworm trixie"
   for e in ${_OS_LIST}; do
     if [ "${e}" = "${_OS_CODE}" ]; then
       _APT_UPDATE="apt-get update --allow-releaseinfo-change"
@@ -430,14 +430,17 @@ _barracuda_downgrade_protection() {
 
 _if_extended_report() {
   _EXTENDED=NO
-  if [ -e "/root/.run-to-daedalus.cnf" ] \
+  if [ -e "/root/.run-to-excalibur.cnf" ] \
+    || [ -e "/root/.run-to-daedalus.cnf" ] \
     || [ -e "/root/.run-to-chimaera.cnf" ] \
     || [ -e "/root/.run-to-beowulf.cnf" ] \
     || [ -e "/root/.send-extended-report.cnf" ]; then
     _EXTENDED=YES
   fi
   if [ "${_EXTENDED}" = "YES" ]; then
-    if [ -e "/root/.autodaedalus.log" ]; then
+    if [ -e "/root/.autoexcalibur.log" ]; then
+      cat /root/.autoexcalibur.log >> ${_UP_LOG}
+    elif [ -e "/root/.autodaedalus.log" ]; then
       cat /root/.autodaedalus.log >> ${_UP_LOG}
     elif [ -e "/root/.autochimaera.log" ]; then
       cat /root/.autochimaera.log >> ${_UP_LOG}
@@ -852,10 +855,10 @@ _up_action() {
       wait
       sed -i "s/^_X_VERSION=.*/_X_VERSION=${_rlsE}/g"        ${_vBs}/${_filIncB}
       wait
-      if [ "${_hostedSys}" = "YES" ]; then
-        sed -i "s/^_VALKEY_MAJOR_.*/_VALKEY_MAJOR_RELEASE=9/g"        ${_barCnf}
-        wait
-      fi
+#       if [ "${_hostedSys}" = "YES" ]; then
+#         sed -i "s/^_VALKEY_MAJOR_.*/_VALKEY_MAJOR_RELEASE=9/g"        ${_barCnf}
+#         wait
+#       fi
       sed -i "s/^_REDIS_MAJOR_.*/_REDIS_MAJOR_RELEASE=7/g"            ${_barCnf}
       wait
     else
@@ -897,10 +900,17 @@ _up_action() {
     ### Force latest OpenSSH from sources on supported systems
     sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"          ${_barCnf}
     wait
-    sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g"           ${_vBs}/${_filIncB}
-    wait
-    sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g"                    ${_barCnf}
-    wait
+    if [ "${_OS_CODE}" = "excalibur" ]; then
+      sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MySQL/g"           ${_vBs}/${_filIncB}
+      wait
+      sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MySQL/g"                    ${_barCnf}
+      wait
+    else
+      sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g"         ${_vBs}/${_filIncB}
+      wait
+      sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g"                  ${_barCnf}
+      wait
+    fi
     if [ "${_sQld}" = "percona-8.4" ] \
       || [ "${_rKey}" = "percona-8.4" ] \
       || [ "${_dEbg}" = "percona-8.4" ] \
@@ -1303,7 +1313,12 @@ _up_finish() {
   if [ -e "/etc/init.d/postfix" ]; then
     service postfix restart &> /dev/null
   fi
-  if [ "$(boa info | grep -c Percona)" -ge 3 ] || [ -e "/usr/sbin/csf" ]; then
+  if [ "${_OS_CODE}" = "excalibur" ]; then
+    _DB_SERVER=MySQL
+  else
+    _DB_SERVER=Percona
+  fi
+  if [ "$(boa info | grep -c ${_DB_SERVER})" -ge 3 ] || [ -e "/usr/sbin/csf" ]; then
     # Execute the daily.sh and exit
     nohup /var/xdrago/daily.sh > /dev/null 2>&1 &
     sleep 1
@@ -1333,7 +1348,7 @@ _find_fast_mirror_early() {
     apt-get install netcat-traditional ${_aptYesUnth} 2> /dev/null
     wait
   fi
-  _ffMirr=$(which ffmirror 2>&1)
+  _ffMirr=/opt/local/bin/ffmirror
   if [ -x "${_ffMirr}" ]; then
     _ffList="/var/backups/boa-mirrors-2025-01.txt"
     mkdir -p /var/backups
@@ -1387,7 +1402,6 @@ _if_reinstall_curl() {
     fi
     apt-get autoremove -y 2> /dev/null
     apt-get install libssl-dev ${_aptYesUnth} -qq 2> /dev/null
-    apt-get install libc-client2007e libc-client2007e-dev ${_aptYesUnth} -qq 2> /dev/null
     apt-get build-dep curl ${_aptYesUnth} 2> /dev/null
     if [ ! -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
       apt-get install curl --reinstall ${_aptYesUnth} -qq 2> /dev/null
@@ -1790,7 +1804,8 @@ _proceed() {
     touch /root/.debug-boa-installer.cnf
     touch /root/.debug-octopus-installer.cnf
   fi
-  if [ -e "/root/.run-to-daedalus.cnf" ] \
+  if [ -e "/root/.run-to-excalibur.cnf" ] \
+    || [ -e "/root/.run-to-daedalus.cnf" ] \
     || [ -e "/root/.run-to-chimaera.cnf" ] \
     || [ -e "/root/.run-to-beowulf.cnf" ] \
     || [ "${_cmNd}" = "help" ] \
