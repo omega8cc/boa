@@ -1521,12 +1521,6 @@ _barracuda_cnf_cleanup() {
     sed -i "s/^_FULL_FORCE_REINSTALL.*//g" ${_barCnf}
     wait
   fi
-  _TOMCAT_TO_JETTY_TEST=$(grep _TOMCAT_TO_JETTY ${_barCnf} 2>&1)
-  if [[ "${_TOMCAT_TO_JETTY_TEST}" =~ "_TOMCAT_TO_JETTY" ]]; then
-    if [ ! -e "/etc/init.d/tomcat" ]; then
-      sed -i "s/^_TOMCAT_TO_JETTY.*//g" ${_barCnf}
-      wait
-    fi
   fi
   _BOOKWORM_TO_DAEDALUS_TEST=$(grep _BOOKWORM_TO_DAEDALUS ${_barCnf} 2>&1)
   if [[ "${_BOOKWORM_TO_DAEDALUS_TEST}" =~ "_BOOKWORM_TO_DAEDALUS" ]]; then
@@ -2681,10 +2675,6 @@ _barracuda_cnf() {
     _LOCAL_DEVUAN_MIRROR_TEST=$(grep _LOCAL_DEVUAN_MIRROR ${_barCnf} 2>&1)
     if [[ ! "${_LOCAL_DEVUAN_MIRROR_TEST}" =~ "_LOCAL_DEVUAN_MIRROR" ]]; then
       echo "_LOCAL_DEVUAN_MIRROR=${_LOCAL_DEVUAN_MIRROR}" >> ${_barCnf}
-    fi
-
-    if [ -e "/etc/init.d/tomcat" ]; then
-      echo "_TOMCAT_TO_JETTY=YES" >> ${_barCnf}
     fi
 
     sleep 1
@@ -6779,11 +6769,6 @@ _if_major_os_upgrade() {
     rm -f ${_mtrNgx}/pre.d/nginx_speed_purge.conf
     if [ -e "/etc/init.d/bind" ]; then
       rm -f /etc/init.d/bind
-    fi
-    if [ -e "/etc/default/tomcat" ] && [ -e "/etc/init.d/tomcat" ]; then
-      _mrun "service tomcat stop"
-      mv /etc/init.d/tomcat /etc/init.d/offtomcat
-      pkill -9 -f tomcat
     fi
     _apt_clean_update_no_releaseinfo_change
     ###
