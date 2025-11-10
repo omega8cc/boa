@@ -83,12 +83,14 @@ Check out the details in [docs/PROVIDES.md](https://github.com/omega8cc/boa/tree
 
 ### Devuan (recommended)
 
-- Daedalus (fully supported)
+- Excalibur (supported, but only with MySQL 8.4)
+- Daedalus (default, with Percona 5.7, 8.0 or 8.4)
 - Chimaera (supported but upgrade recommended)
 - Beowulf (supported for upgrades)
 
 ### Debian (for migration)
 
+- Trixie (supported only as a base for migration to Devuan)
 - Bookworm (supported only as a base for migration to Devuan)
 - Bullseye (supported only as a base for migration to Devuan)
 - Buster (supported only as a base for migration to Devuan)
