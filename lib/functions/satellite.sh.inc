@@ -3027,9 +3027,6 @@ _satellite_run_post_install() {
     _debug_proc
   fi
   _LOCAL_STATUS="${_STATUS}"
-  if [ -e "/run/aegir_upgrade.pid" ]; then
-    _LOCAL_STATUS=INIT
-  fi
   if [ "${_LOCAL_STATUS}" = "INIT" ]; then
     if [ ! -e "${_ROOT}/config/${_USER}.nginx.conf" ]; then
       rm -f /var/aegir/config/server_master/nginx/platform.d/${_USER}.conf
@@ -3096,9 +3093,6 @@ _satellite_run_child_c() {
     _debug_proc
   fi
   _LOCAL_STATUS="${_STATUS}"
-  if [ -e "/run/aegir_upgrade.pid" ]; then
-    _LOCAL_STATUS=INIT
-  fi
   if [ "${_LOCAL_STATUS}" = "INIT" ]; then
     _DIST_INSTALL=YES
     rm -f /opt/tmp/testecho*
@@ -3116,9 +3110,6 @@ _satellite_run_child_c() {
       _msg "${_STATUS} A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
       touch /opt/tmp/status-AegirSetupA-FAIL
       exit 1
-    fi
-    if [ -e "/opt/tmp/status-AegirSetupC-runVerify" ]; then
-      _msg "${_STATUS} A: Platforms installed"
     fi
   else
     if [ "${_HM_ONLY}" = "YES" ]; then
@@ -3144,9 +3135,6 @@ _satellite_run_child_c() {
           touch /opt/tmp/status-AegirSetupA-FAIL
           exit 1
         fi
-        if [ -e "/opt/tmp/status-AegirSetupC-runVerify" ]; then
-          _msg "${_STATUS} A: Platforms installed"
-        fi
       else
         _msg "${_STATUS} A: No new Platforms added this time"
       fi
@@ -3164,29 +3152,6 @@ _satellite_run_child_c() {
     find . -name .DS_Store -exec rm -rf {} \; &> /dev/null
     find . -name "._*" -type f | xargs rm -rf &> /dev/null
     touch ${_CORE}/dot-files-ctrl-${_xSrl}-${_X_VERSION}
-  fi
-}
-
-_satellite_if_legacy_permissions_fix() {
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "PROC: _satellite_if_legacy_permissions_fix"
-    _debug_proc
-  fi
-  if [ -e "/run/aegir_upgrade.pid" ]; then
-    _PLATF_IMP=$(ls -la /data/u \
-      | grep ${_USER} \
-      | cut -d'>' -f2 \
-      | sort \
-      | uniq \
-      | awk '{ print $1}')
-    for _PLATF in ${_PLATF_IMP}; do
-      if [[ "${_PLATF}" =~ "aegir" ]]; then
-        _FOUND_HM=YES
-      else
-        chown -R ${_USER}:www-data ${_PLATF}/sites/*/files &> /dev/null
-        chmod -R 02775 ${_PLATF}/sites/*/files &> /dev/null
-      fi
-    done
   fi
 }
 
@@ -4445,7 +4410,6 @@ _satellite_check_octopus_vs_barracuda_ver() {
       _clean_pid_exit _satellite_check_octopus_vs_barracuda_ver_d
     fi
   fi
-  rm -f /run/aegir_upgrade.pid
   rm -f /opt/tmp/testecho*
 }
 
@@ -5354,9 +5318,6 @@ _satellite_child_b_aegir_build() {
     _debug_proc
   fi
   _LOCAL_STATUS="${_STATUS}"
-  if [ -e "/run/aegir_upgrade.pid" ]; then
-    _LOCAL_STATUS=INIT
-  fi
   if [ "${_LOCAL_STATUS}" = "INIT" ]; then
     cd ${_ROOT}
     _AGR_PXSWD=$(cat ${_ROOT}/.${_USER}.pass.txt 2>&1)
@@ -6089,7 +6050,7 @@ _satellite_child_b_aegir_ui_enhance() {
       else
         ${_DRUSHCMD} php-script make_client ${_CLIENT_EMAIL} &> /dev/null
       fi
-      ### rm -f make_client.php
+      rm -f make_client.php
     else
       ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
         SET status=-2 WHERE publish_path LIKE '%/aegir/distro/%'" &> /dev/null

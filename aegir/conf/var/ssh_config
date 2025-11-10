@@ -16,9 +16,9 @@
 # list of available options, their meanings and defaults, please see the
 # ssh_config(5) man page.
 
-#Include /etc/ssh/ssh_config.d/*.conf
+Include /etc/ssh/ssh_config.d/*.conf
 
-#Host *
+Host *
 #   ForwardAgent no
 #   ForwardX11 no
 #   ForwardX11Trusted yes
@@ -48,6 +48,6 @@
 #   ProxyCommand ssh -q -W %h:%p gateway.example.com
 #   RekeyLimit 1G 1h
 #   UserKnownHostsFile ~/.ssh/known_hosts.d/%k
-#    SendEnv LANG LC_*
-#    HashKnownHosts yes
-#    GSSAPIAuthentication yes
+    SendEnv LANG LC_*
+    HashKnownHosts yes
+    WarnWeakCrypto no

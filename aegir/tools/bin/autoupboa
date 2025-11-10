@@ -367,7 +367,7 @@ _if_disable_not_used_services
 _os_detection_minimal() {
   _APT_UPDATE="apt-get update"
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
-  _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
+  _OS_LIST="excalibur daedalus chimaera beowulf buster bullseye bookworm trixie"
   for e in ${_OS_LIST}; do
     if [ "${e}" = "${_OS_CODE}" ]; then
       _APT_UPDATE="apt-get update --allow-releaseinfo-change"
@@ -536,7 +536,12 @@ _status_vm_postinstall() {
     touch ${_VM_N_SYS}
     chattr +i ${_VM_N_SYS}
   fi
-  if [ "$(boa info | grep -c Percona)" -lt 3 ] || [ ! -e "/usr/sbin/csf" ]; then
+  if [ "${_OS_CODE}" = "excalibur" ]; then
+    _DB_SERVER=MySQL
+  else
+    _DB_SERVER=Percona
+  fi
+  if [ "$(boa info | grep -c ${_DB_SERVER})" -lt 3 ] || [ ! -e "/usr/sbin/csf" ]; then
     _NEEDS_UPGRADE=YES
     echo "A _NEEDS_UPGRADE is ${_NEEDS_UPGRADE}"
     [ -n "${_SYS_MANUFACTURER_LC}" ] && _generic_vm_postinstall
@@ -814,7 +819,7 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
       touch /var/log/boa/.disabled_modules_fix.${_xSrl}.pid
     fi
 
-    if [ ! -e "/var/log/boa/.custom_percona_forced.${_xSrl}.pid" ]; then
+    if [ "${_OS_CODE}" != "excalibur" ] && [ ! -e "/var/log/boa/.custom_percona_forced.${_xSrl}.pid" ]; then
       _DBS_TEST=$(which mysql 2>&1)
       if [ ! -z "${_DBS_TEST}" ]; then
         _DB_SERVER_TEST=$(mysql -V 2>&1)

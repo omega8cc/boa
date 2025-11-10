@@ -388,8 +388,8 @@ _mode_detection() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _mode_detection"
   fi
-    [ -e "/root/.use.curl.from.packages.cnf" ] && chattr -i /root/.use.curl.from.packages.cnf
-    [ -e "/root/.use.curl.from.packages.cnf" ] && rm -f /root/.use.curl.from.packages.cnf
+  [ -e "/root/.use.curl.from.packages.cnf" ] && chattr -i /root/.use.curl.from.packages.cnf
+  [ -e "/root/.use.curl.from.packages.cnf" ] && rm -f /root/.use.curl.from.packages.cnf
   if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
     && [ ! -e "/lib/systemd/systemd" ]; then
     _STATUS=UPGRADE
@@ -549,7 +549,6 @@ _mode_detection() {
   chmod -R 777 /opt/tmp &> /dev/null
   find /opt/tmp/boa -type d -exec chmod 0755 {} \; &> /dev/null
   find /opt/tmp/boa -type f -exec chmod 0644 {} \; &> /dev/null
-  rm -f /run/aegir_upgrade.pid
   if [ "${_STATUS}" != "UPGRADE" ]; then
     _STRICT_BIN_PERMISSIONS=NO
   fi
@@ -850,7 +849,7 @@ _os_detection_minimal() {
   fi
   _APT_UPDATE="apt-get update"
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
-  _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
+  _OS_LIST="excalibur daedalus chimaera beowulf buster bullseye bookworm trixie"
   for e in ${_OS_LIST}; do
     if [ "${e}" = "${_OS_CODE}" ]; then
       _APT_UPDATE="apt-get update --allow-releaseinfo-change"
@@ -885,72 +884,61 @@ _os_detection() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _os_detection"
   fi
+
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
-  _DB_SERVER=Percona
+
   if [ "${_OS_DIST}" = "Debian" ]; then
-    if [ "${_OS_CODE}" = "bookworm" ]; then
-      _OS_CODE="bookworm"
-    elif [ "${_OS_CODE}" = "bullseye" ]; then
-      _OS_CODE="bullseye"
-    elif [ "${_OS_CODE}" = "buster" ]; then
-      _OS_CODE="buster"
-    elif [ "${_OS_CODE}" = "stretch" ]; then
-      _OS_CODE="stretch"
-    elif [ "${_OS_CODE}" = "jessie" ]; then
-      _OS_CODE="jessie"
+    if [ "${_OS_CODE}" = "trixie" ] \
+      || [ "${_OS_CODE}" = "bookworm" ] \
+      || [ "${_OS_CODE}" = "bullseye" ] \
+      || [ "${_OS_CODE}" = "buster" ] \
+      || [ "${_OS_CODE}" = "stretch" ] \
+      || [ "${_OS_CODE}" = "jessie" ]; then
+      _isSupportedOS=YES
     else
       _not_supported_os
     fi
-    _NGINX_FORWARD_SECRECY=YES
-    _NGINX_SPDY=YES
-    if [ "${_DB_SERIES}" = "8.4" ]; then
-      _DBS_VRN="${_PERCONA_8_4_VRN}"
-      _turn_on_password_update
-    elif [ "${_DB_SERIES}" = "8.3" ]; then
-      _DBS_VRN="${_PERCONA_8_3_VRN}"
-      _turn_on_password_update
-    elif [ "${_DB_SERIES}" = "8.0" ]; then
-      _DBS_VRN="${_PERCONA_8_0_VRN}"
-    elif [ "${_DB_SERIES}" = "5.7" ]; then
-      _DBS_VRN="${_PERCONA_5_7_VRN}"
-    else
-      _DB_SERIES=5.7
-      _DBS_VRN="${_PERCONA_5_7_VRN}"
-    fi
-    _SPINNER=NO
-    _SKIP_LEGACY_PHP=YES
   elif [ "${_OS_DIST}" = "Devuan" ]; then
-    if [ "${_OS_CODE}" = "daedalus" ]; then
-      _OS_CODE="daedalus"
-    elif [ "${_OS_CODE}" = "chimaera" ]; then
-      _OS_CODE="chimaera"
-    elif [ "${_OS_CODE}" = "beowulf" ]; then
-      _OS_CODE="beowulf"
+    if [ "${_OS_CODE}" = "excalibur" ] \
+      || [ "${_OS_CODE}" = "daedalus" ] \
+      || [ "${_OS_CODE}" = "chimaera" ] \
+      || [ "${_OS_CODE}" = "beowulf" ]; then
+      _isSupportedOS=YES
     else
       _not_supported_os
     fi
-    _NGINX_FORWARD_SECRECY=YES
-    _NGINX_SPDY=YES
-    if [ "${_DB_SERIES}" = "8.4" ]; then
-      _DBS_VRN="${_PERCONA_8_4_VRN}"
-      _turn_on_password_update
-    elif [ "${_DB_SERIES}" = "8.3" ]; then
-      _DBS_VRN="${_PERCONA_8_3_VRN}"
-      _turn_on_password_update
-    elif [ "${_DB_SERIES}" = "8.0" ]; then
-      _DBS_VRN="${_PERCONA_8_0_VRN}"
-    elif [ "${_DB_SERIES}" = "5.7" ]; then
-      _DBS_VRN="${_PERCONA_5_7_VRN}"
-    else
-      _DB_SERIES=5.7
-      _DBS_VRN="${_PERCONA_5_7_VRN}"
-    fi
-    _SPINNER=NO
-    _SKIP_LEGACY_PHP=YES
   else
     _not_supported_os
   fi
+
+  if [ "${_OS_CODE}" = "excalibur" ]; then
+    _DB_SERVER=MySQL
+    _DB_SERIES=8.4
+    _DBS_VRN=8.4
+  else
+    _DB_SERVER=Percona
+  fi
+
+  _NGINX_FORWARD_SECRECY=YES
+  _NGINX_SPDY=YES
+  if [ "${_DB_SERIES}" = "8.4" ]; then
+    _DBS_VRN="${_PERCONA_8_4_VRN}"
+    _turn_on_password_update
+  elif [ "${_DB_SERIES}" = "8.3" ]; then
+    _DBS_VRN="${_PERCONA_8_3_VRN}"
+    _turn_on_password_update
+  elif [ "${_DB_SERIES}" = "8.0" ]; then
+    _DBS_VRN="${_PERCONA_8_0_VRN}"
+  elif [ "${_DB_SERIES}" = "5.7" ]; then
+    _DBS_VRN="${_PERCONA_5_7_VRN}"
+  else
+    _DB_SERIES=5.7
+    _DBS_VRN="${_PERCONA_5_7_VRN}"
+  fi
+  _SPINNER=NO
+  _SKIP_LEGACY_PHP=YES
+
   echo " "
   _thiSys="$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)/$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2) $(uname -m)"
   _thiSys="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null) ${_thiSys} PHP ${_PHP_FPM_VERSION}"

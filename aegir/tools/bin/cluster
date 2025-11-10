@@ -75,7 +75,7 @@ _clean_pid_exit() {
 _os_detection_minimal() {
   _APT_UPDATE="apt-get update"
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
-  _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
+  _OS_LIST="excalibur daedalus chimaera beowulf buster bullseye bookworm trixie"
   for e in ${_OS_LIST}; do
     if [ "${e}" = "${_OS_CODE}" ]; then
       _APT_UPDATE="apt-get update --allow-releaseinfo-change"
@@ -654,7 +654,7 @@ _find_fast_mirror_early() {
     apt-get install netcat-traditional ${_aptYesUnth} 2> /dev/null
     wait
   fi
-  _ffMirr=$(which ffmirror 2>&1)
+  _ffMirr=/opt/local/bin/ffmirror
   if [ -x "${_ffMirr}" ]; then
     _ffList="/var/backups/boa-mirrors-2025-01.txt"
     mkdir -p /var/backups
@@ -1608,7 +1608,9 @@ interactive-timeout
 _install_db_cluster() {
   _check_config_cluster
 
-  if [ "${_OS_CODE}" = "daedalus" ]; then
+  if [ "${_OS_CODE}" = "excalibur" ]; then
+    _SQL_OS_CODE=trixie
+  elif [ "${_OS_CODE}" = "daedalus" ]; then
     _SQL_OS_CODE=bookworm
   elif [ "${_OS_CODE}" = "chimaera" ]; then
     _SQL_OS_CODE=bullseye
@@ -1694,7 +1696,7 @@ _install_db_cluster() {
     vserver ${_idn} exec ${_INSTAPP} debian-keyring
     vserver ${_idn} exec ${_INSTAPP} debian-archive-keyring
   	vserver ${_idn} exec apt-get upgrade -y -qq
-  	vserver ${_idn} exec ${_INSTAPP} software-properties-common dirmngr
+  	vserver ${_idn} exec ${_INSTAPP} dirmngr
     rm -f /vservers/${_idn}/etc/apt/sources.list.d/mariadb*
     rm -f /vservers/${_idn}/etc/apt/sources.list.d/ourdelta*
     rm -f /vservers/${_idn}/etc/apt/sources.list.d/percona*
@@ -2079,7 +2081,7 @@ _install_host() {
   ${_INSTAPP} screen
   ${_INSTAPP} hdparm
   ${_INSTAPP} iotop
-  ${_INSTAPP} ntpdate
+  ${_INSTAPP} ntpsec-ntpdate
   ${_INSTAPP} parted
   ${_INSTAPP} build-essential
   ${_INSTAPP} iptables
@@ -2274,9 +2276,7 @@ _upgrade_host() {
         _apt_clean_update
       fi
     fi
-    apt-get remove systemd -y --purge --auto-remove --allow-remove-essential -qq 2> /dev/null
-    apt-get remove libnss-systemd -y --purge --auto-remove --allow-remove-essential -qq 2> /dev/null
-    apt-get remove systemd-sysv -y --purge --auto-remove --allow-remove-essential -qq 2> /dev/null
+    apt-get purge systemd libnss-systemd -y -qq 2> /dev/null
     apt-get autoremove --purge -y -qq 2> /dev/null
     apt-get autoclean -y -qq 2> /dev/null
     echo "sysvinit-core hold" | dpkg --set-selections &> /dev/null

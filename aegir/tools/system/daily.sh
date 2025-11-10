@@ -80,7 +80,7 @@ _normalize_incident_report
 _os_detection_minimal() {
   _APT_UPDATE="apt-get update"
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
-  _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
+  _OS_LIST="excalibur daedalus chimaera beowulf buster bullseye bookworm trixie"
   for e in ${_OS_LIST}; do
     if [ "${e}" = "${_OS_CODE}" ]; then
       _APT_UPDATE="apt-get update --allow-releaseinfo-change"
@@ -115,7 +115,7 @@ _find_fast_mirror_early() {
     apt-get install netcat-traditional ${_aptYesUnth} 2> /dev/null
     wait
   fi
-  _ffMirr=$(which ffmirror 2>&1)
+  _ffMirr=/opt/local/bin/ffmirror
   if [ -x "${_ffMirr}" ]; then
     _ffList="/var/backups/boa-mirrors-2025-01.txt"
     mkdir -p /var/backups
@@ -2444,16 +2444,18 @@ _daily_process() {
           | openssl md5 \
           | awk '{ print $2}' \
           | tr -d "\n" 2>&1)
-        _codeBaseCheckDir="${_usEr}/log/ctrl"
-        _codeBaseCheckFile="plr.${_PlrID}.codebasecheck-${_NOW}.info"
-        _codeBaseCheckCtrl="${_codeBaseCheckDir}/${_codeBaseCheckFile}"
-        [ ! -e "${_codeBaseCheckDir}" ] && mkdir "${_codeBaseCheckDir}"
-        if [ -x "/opt/local/bin/codebasecheck" ] \
-          && [ -e "${_codeBaseCheckDir}" ] \
-          && [ ! -e "${_codeBaseCheckCtrl}" ]; then
-          codebasecheck "${_Plr}"
-          wait
-          touch "${_codeBaseCheckCtrl}"
+        if [ -e "/root/.allow-codebasecheck.cnf" ]; then
+          _codeBaseCheckDir="${_usEr}/log/ctrl"
+          _codeBaseCheckFile="plr.${_PlrID}.codebasecheck-${_NOW}.info"
+          _codeBaseCheckCtrl="${_codeBaseCheckDir}/${_codeBaseCheckFile}"
+          [ ! -e "${_codeBaseCheckDir}" ] && mkdir "${_codeBaseCheckDir}"
+          if [ -x "/opt/local/bin/codebasecheck" ] \
+            && [ -e "${_codeBaseCheckDir}" ] \
+            && [ ! -e "${_codeBaseCheckCtrl}" ]; then
+            codebasecheck "${_Plr}"
+            wait
+            touch "${_codeBaseCheckCtrl}"
+          fi
         fi
         _fix_platform_control_files
         _fix_o_contrib_symlink

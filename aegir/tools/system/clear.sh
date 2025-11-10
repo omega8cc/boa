@@ -41,7 +41,7 @@ _check_root
 _os_detection_minimal() {
   _APT_UPDATE="apt-get update"
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
-  _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
+  _OS_LIST="excalibur daedalus chimaera beowulf buster bullseye bookworm trixie"
   for e in ${_OS_LIST}; do
     if [ "${e}" = "${_OS_CODE}" ]; then
       _APT_UPDATE="apt-get update --allow-releaseinfo-change"
@@ -90,7 +90,7 @@ _find_fast_mirror_early() {
     apt-get install netcat-traditional ${_aptYesUnth} 2> /dev/null
     wait
   fi
-  _ffMirr=$(which ffmirror 2>&1)
+  _ffMirr=/opt/local/bin/ffmirror
   if [ -x "${_ffMirr}" ]; then
     _ffList="/var/backups/boa-mirrors-2025-01.txt"
     mkdir -p /var/backups
@@ -156,7 +156,6 @@ _if_reinstall_curl_src() {
     fi
     apt-get autoremove -y 2> /dev/null
     apt-get install libssl-dev ${_aptYesUnth} -qq 2> /dev/null
-    apt-get install libc-client2007e libc-client2007e-dev ${_aptYesUnth} -qq 2> /dev/null
     apt-get build-dep curl -y 2> /dev/null
     if [ ! -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
       apt-get install curl --reinstall ${_aptYesUnth} -qq 2> /dev/null

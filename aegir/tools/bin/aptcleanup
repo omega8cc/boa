@@ -66,6 +66,7 @@ _KEEP_GLOBS_REL=(
   "sources.list.d/newrelic.list"
   "sources.list.d/nodesource.list"
   "sources.list.d/percona-release.list"
+  "sources.list.d/mysql-release.list"
   "sources.list.d/webmin.list"
   "sources.list"
   "trusted.gpg.d/*.asc"

@@ -105,11 +105,11 @@ _msg() {
 ###
 ### Only root allowed
 ###
-_check_root() {
+_init_root() {
   if [ "$(id -u)" -eq 0 ]; then
     [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
   else
-    _msg "_check_root ==> ERROR: This script should be run as a root user"
+    _msg "[init] root ==> ERROR: This script should be run as a root user"
     exit 1
   fi
   _DF_TEST=$(df -kTh / -l \
@@ -118,8 +118,10 @@ _check_root() {
     | awk '{print $6}' >> "${_logSlt}")
   _DF_TEST=${_DF_TEST//[^0-9]/}
   if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt 90 ]; then
-    _msg "_check_root ==> ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
-    _msg "_check_root ==> ERROR: We can not proceed until it is below 90/100"
+    _msg "[init] root ==> ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
+    _msg "[init] root ==> ERROR: We can not proceed until it is below 90/100"
+    sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
+    sed -i "s/.*killer.*//gi" /etc/crontab &> /dev/null
     exit 1
   fi
 }
@@ -176,7 +178,7 @@ _single_instance_lock() {
 ###
 ### Mode selection
 ###
-_check_mode() {
+_init_mode() {
   # Usage: autoinit [minimal|full] [vanilla|classic|predictable]
   # Default: "minimal". Persisted across reboots via cron argument.
   if [ -z "${_SET_MODE}" ]; then
@@ -189,13 +191,13 @@ _check_mode() {
     touch /root/.mode.selected.${_SET_MODE}.cnf
     chattr +i /root/.mode.selected.${_SET_MODE}.cnf
   fi
-  _msg "_check_mode ==> Mode selected: ${_SET_MODE}" >> "${_logInt}"
+  _msg "[init] mode ==> Mode selected: ${_SET_MODE}" >> "${_logInt}"
 }
 
 ###
 ### Networking Interface Naming Convention
 ###
-_check_ninc() {
+_init_ninc() {
   # Usage: autoinit [minimal|full] [vanilla|classic|predictable]
   # Default: "vanilla". Persisted across reboots via cron argument.
   if [ -z "${_SET_NINC}" ]; then
@@ -210,13 +212,13 @@ _check_ninc() {
     touch /root/.ninc.selected.${_SET_NINC}.cnf
     chattr +i /root/.ninc.selected.${_SET_NINC}.cnf
   fi
-  _msg "_check_ninc ==> NINC selected: ${_SET_NINC}" >> "${_logInt}"
+  _msg "[init] ninc ==> NINC selected: ${_SET_NINC}" >> "${_logInt}"
 }
 
 ###
 ### Check Manufacturer Compatibility
 ###
-_check_mnfr() {
+_init_mnfr() {
   # Install dmidecode if not present
   if ! command -v dmidecode &> /dev/null; then
     /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
@@ -233,20 +235,24 @@ _check_mnfr() {
   # Check for Amazon EC2 in the system manufacturer field
   if dmidecode -s system-manufacturer | grep -i 'Amazon EC2' &> /dev/null; then
     _VMFAMILY="AWS"
-    _msg "_check_mnfr ==> Not supported environment detected: ${_HOST_INFO}" >> "${_logInt}"
-    _msg "_check_mnfr ==> Please check https://bit.ly/boa-caveats" >> "${_logInt}"
-    _msg "_check_mnfr ==> Bye!" >> "${_logInt}"
-    echo "_check_mnfr ==> Not supported environment detected: ${_HOST_INFO}"
-    echo "_check_mnfr ==> Please check https://bit.ly/boa-caveats"
-    echo "_check_mnfr ==> Bye!"
+    _msg "[init] mnfr ==> Not supported environment detected: ${_HOST_INFO}" >> "${_logInt}"
+    _msg "[init] mnfr ==> Please check https://bit.ly/boa-caveats" >> "${_logInt}"
+    _msg "[init] mnfr ==> Bye!" >> "${_logInt}"
+    echo "[init] mnfr ==> Not supported environment detected: ${_HOST_INFO}"
+    echo "[init] mnfr ==> Please check https://bit.ly/boa-caveats"
+    echo "[init] mnfr ==> Bye!"
+    sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
+    sed -i "s/.*killer.*//gi" /etc/crontab &> /dev/null
     exit 1
   elif [[ "${_HOST_INFO}" =~ "Unknown" ]] || [ -z "${_HOST_INFO}" ]; then
-    _msg "_check_mnfr ==> Mysterious environment: ${_HOST_INFO}" >> "${_logInt}"
-    _msg "_check_mnfr ==> Please check https://bit.ly/boa-caveats" >> "${_logInt}"
-    _msg "_check_mnfr ==> Bye!" >> "${_logInt}"
-    echo "_check_mnfr ==> Mysterious environment: ${_HOST_INFO}"
-    echo "_check_mnfr ==> Please check https://bit.ly/boa-caveats"
-    echo "_check_mnfr ==> Bye!"
+    _msg "[init] mnfr ==> Mysterious environment: ${_HOST_INFO}" >> "${_logInt}"
+    _msg "[init] mnfr ==> Please check https://bit.ly/boa-caveats" >> "${_logInt}"
+    _msg "[init] mnfr ==> Bye!" >> "${_logInt}"
+    echo "[init] mnfr ==> Mysterious environment: ${_HOST_INFO}"
+    echo "[init] mnfr ==> Please check https://bit.ly/boa-caveats"
+    echo "[init] mnfr ==> Bye!"
+    sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
+    sed -i "s/.*killer.*//gi" /etc/crontab &> /dev/null
     exit 1
   fi
 }
@@ -254,11 +260,12 @@ _check_mnfr() {
 ###
 ### Check Aegir
 ###
-_check_aegir() {
+_init_aegir() {
   if [ -e "/var/aegir" ]; then
     echo
-    echo "_check_aegir ==> ERROR: This script can not be used once BOA is installed"
+    echo "[init] aegir ==> ERROR: This script can not be used once BOA is installed"
     echo
+    sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
     exit 1
   fi
 }
@@ -266,26 +273,18 @@ _check_aegir() {
 ###
 ### Check Systemd
 ###
-_check_no_systemd() {
+_init_no_systemd() {
   if [ -e "/lib/systemd/systemd" ]; then
-    ${_INITINS} eudev sysvinit-core -qq >> "${_logSlt}"
-    /usr/bin/apt-get -f install ${_aptAllow} -y -qq >> "${_logSlt}"
-    /usr/bin/apt-get remove systemd -y --purge --auto-remove --allow-remove-essential -qq >> "${_logSlt}"
-    /usr/bin/apt-get remove libnss-systemd -y --purge --auto-remove --allow-remove-essential -qq >> "${_logSlt}"
-    /usr/bin/apt-get remove systemd-sysv -y --purge --auto-remove --allow-remove-essential -qq >> "${_logSlt}"
-    if [ -e "/lib/systemd/systemd" ]; then
-      _msg "_check_no_systemd ==> ERRR: Systemd still not removed cleanly" >> "${_logInt}"
-      _msg "_check_no_systemd ==> HINT: Please remove it manually and reboot" >> "${_logInt}"
-      _msg "_check_no_systemd ==> HINT:   apt-get purge systemd libnss-systemd -y" >> "${_logInt}"
-      _msg "_check_no_systemd ==> HINT: After reboot install boa as usual" >> "${_logInt}"
-    fi
+    echo " " >> "${_logInt}"
+    _msg "[init] nosd ==> OOPS: Systemd still not removed cleanly" >> "${_logInt}"
+    echo " " >> "${_logInt}"
   fi
 }
 
 ###
 ### Fix locales
 ###
-_locales_check_fix_early() {
+_init_locales() {
   _isLoc=$(which locale 2>&1)
   if [ ! -x "${_isLoc}" ] || [ -z "${_isLoc}" ]; then
     /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
@@ -384,12 +383,12 @@ _locales_check_fix_early() {
 ###
 ### Check cron
 ###
-_cron_check_install_early() {
+_init_cron() {
   _isCrn=$(which cron 2>&1)
   if [ ! -x "${_isCrn}" ] || [ -z "${_isCrn}" ]; then
     /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
     /usr/bin/dpkg --configure -a >> "${_logSlt}"
-    ${_INITINS} cron &> /dev/null
+    ${_INITINS} cron >> "${_logSlt}"
   fi
 }
 
@@ -666,28 +665,29 @@ _init_prepare() {
       sed -i "s/.*killer.*//gi" /etc/crontab &> /dev/null
       echo "*/1 *   * * *   root    bash /opt/local/bin/killer" >> /etc/crontab
     fi
-    _msg "_init_prepare ==> Time for reboot and next upgrade cycle..." >> "${_logInt}"
+    _msg "[init] prep ==> Time for reboot and next upgrade cycle..." >> "${_logInt}"
     echo " " >> "${_logInt}"
     rm -f /run/autoinit.pid
     shutdown -r now
-    wait
     exit 0
   else
     if [ ! -x "/usr/bin/mc" ]; then
       touch /run/autoinit.pid
-      _msg "_init_prepare ==> Let's update existing system first..." >> "${_logInt}"
-      if pgrep -f unattended-upgrades >/dev/null 2>&1; then
-        pkill -9 -f unattended-upgrades
+      if [ -e "/root/.autoinit-early-upgrade.cnf" ]; then
+        _msg "[init] prep ==> Let's update existing system first..." >> "${_logInt}"
+        if pgrep -f unattended-upgrades >/dev/null 2>&1; then
+          pkill -9 -f unattended-upgrades
+        fi
+        /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
+        /usr/bin/dpkg --configure -a >> "${_logSlt}"
+        /usr/bin/apt-get upgrade ${_nrmUpArg} >> "${_logSlt}"
+        /usr/bin/dpkg --configure -a >> "${_logSlt}"
+        /usr/bin/apt-get -f install ${_aptAllow} -y -qq >> "${_logSlt}"
       fi
-      /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
-      /usr/bin/dpkg --configure -a >> "${_logSlt}"
-      /usr/bin/apt-get upgrade ${_nrmUpArg} >> "${_logSlt}"
-      /usr/bin/dpkg --configure -a >> "${_logSlt}"
-      /usr/bin/apt-get -f install ${_aptAllow} -y -qq >> "${_logSlt}"
       ${_INITINS} lsb-release >> "${_logSlt}"
       _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
       _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
-      _msg "_init_prepare ==> We need to install some tools early..." >> "${_logInt}"
+      _msg "[init] prep ==> We need to install some tools early..." >> "${_logInt}"
       /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
       /usr/bin/dpkg --configure -a >> "${_logSlt}"
       if [ "${_SET_MODE}" = "full" ] && [ "${_VMFAMILY}" != "AWS" ]; then
@@ -716,8 +716,8 @@ _init_prepare() {
       ${_INITINS} hostname  >> "${_logSlt}"
       ${_INITINS} mc        >> "${_logSlt}"
       ${_INITINS} net-tools >> "${_logSlt}"
-      ${_INITINS} netcat-traditional >> "${_logSlt}"
-      ${_INITINS} ntpdate   >> "${_logSlt}"
+      ${_INITINS} netcat-traditional  >> "${_logSlt}"
+      ${_INITINS} ntpsec-ntpdate      >> "${_logSlt}"
       if [ "${_SET_MODE}" = "full" ]; then
         ${_INITINS} build-essential   >> "${_logSlt}"
         ${_INITINS} git               >> "${_logSlt}"
@@ -732,11 +732,10 @@ _init_prepare() {
       fi
       [ "${_SET_MODE}" = "full" ] && _install_apparmor
       touch ${_initFile}
-      _msg "_init_prepare ==> Time for reboot and next upgrade cycle..." >> "${_logInt}"
+      _msg "[init] prep ==> Time for reboot and next upgrade cycle..." >> "${_logInt}"
       echo " " >> "${_logInt}"
       rm -f /run/autoinit.pid
       shutdown -r now
-      wait
       exit 0
     fi
   fi
@@ -769,6 +768,195 @@ _ensure_devuan_bf() {
   fi
 }
 
+
+# --- BEGIN: Devuan Excalibur systemd → sysvinit keep-SSH helper ----
+
+_pkg_installed() { /usr/bin/dpkg -s "$1" >/dev/null 2>&1; }
+
+# Ensure anacron exists to satisfy logrotate alternatives when systemd is gone
+_ensure_cron_provider() {
+  if ! _pkg_installed "cron" && ! _pkg_installed "anacron"; then
+    _msg "[init] Installing anacron as cron provider" >> "${_logInt}"
+    ${_INITINS} anacron >> "${_logSlt}"
+  fi
+  /usr/bin/apt-mark manual anacron >> "${_logSlt}"
+  _init_cron
+}
+
+# Install elogind before touching libsystemd0 (Devuan way)
+_switch_to_elogind_stack() {
+  _msg "[init] Installing elogind stack (libelogind0, libpam-elogind, compat)" >> "${_logInt}"
+  ${_INITINS} libelogind0 libpam-elogind libelogind-compat >> "${_logSlt}"
+}
+
+# Build & install a minimal package that Provides: systemd (so openssh-server stays)
+_install_systemd_dummy() {
+
+  _msg "[init] Creating minimal systemd-dummy provider" >> "${_logInt}"
+  _DROOT="/root/.autoinit-systemd-dummy"
+  mkdir -p "${_DROOT}/DEBIAN"
+  cat > "${_DROOT}/DEBIAN/control" <<'EOF'
+Package: systemd-dummy
+Version: 1.0
+Section: base
+Priority: optional
+Architecture: all
+Maintainer: Omega8cc Autoinit <root@localhost>
+Provides: systemd
+Description: Dummy package that provides 'systemd' virtual for sysvinit systems
+EOF
+
+  /usr/bin/dpkg-deb --build "${_DROOT}" >> "${_logSlt}"
+  wait
+  ${_INITINS} "${_DROOT}.deb" >> "${_logSlt}"
+
+  # sanity check
+  if ! /usr/bin/dpkg-query -W -f='${Provides}\n' systemd-dummy 2>/dev/null | grep 'systemd'; then
+    echo "[init][ERROR] systemd-dummy failed to provide 'systemd'" >> "${_logInt}"
+  fi
+}
+
+# Mark critical daemons as manual so metas/solver don't toss them
+_protect_daemons() {
+  _msg "[init] Marking core daemons manual: openssh, cron" >> "${_logInt}"
+  /usr/bin/apt-mark manual ssh openssh-server openssh-sftp-server task-ssh-server >> "${_logSlt}"
+  /usr/bin/apt-mark manual cron cron-daemon-common >> "${_logSlt}"
+}
+
+# Safety: ensure openssh-server present & configured now
+_ensure_openssh_server() {
+  if ! _pkg_installed "cron"; then
+    _msg "[init] Installing cron" >> "${_logInt}"
+    ${_INITINS} cron cron-daemon-common >> "${_logSlt}"
+  fi
+  if ! _pkg_installed "opensysusers"; then
+    _msg "[init] Installing opensysusers" >> "${_logInt}"
+    ${_INITINS} opensysusers >> "${_logSlt}"
+  fi
+  if ! _pkg_installed "openssh-server"; then
+    _msg "[init] Installing openssh-server" >> "${_logInt}"
+    ${_INITINS} ssh openssh-server openssh-sftp-server task-ssh-server >> "${_logSlt}"
+  fi
+  if ! _pkg_installed "ssh"; then
+    _msg "[init] Installing ssh" >> "${_logInt}"
+    ${_INITINS} ssh openssh-server openssh-sftp-server task-ssh-server >> "${_logSlt}"
+  fi
+  # (optional) make sure it is enabled under sysvinit
+  if [ -x "/etc/init.d/ssh" ]; then
+    service ssh status >/dev/null 2>&1 || service ssh start >> "${_logSlt}"
+  fi
+}
+
+# Before real removal, simulate and auto-heal if SSH would be removed.
+_purge_systemd_keep_ssh() {
+
+  _install_systemd_dummy
+
+  _msg "[init] Simulating 'apt-get remove systemd'" >> "${_logInt}"
+  if /usr/bin/apt-get -s remove systemd 2>/dev/null | grep -E 'Remv (openssh-server|ssh)\b'; then
+    _msg "[init] APT would remove SSH; installing dummy provider" >> "${_logInt}"
+    _msg "[init] Re-simulating removal" >> "${_logInt}"
+    if /usr/bin/apt-get -s remove systemd 2>/dev/null | grep -E 'Remv (openssh-server|ssh)\b'; then
+      _msg "[init][ERROR] SSH still slated for removal even with systemd-dummy present" >> "${_logInt}"
+    fi
+  else
+    _msg "[init] Simulating 'apt-get remove systemd' appeared clean" >> "${_logInt}"
+  fi
+
+  _msg "[init] Purging systemd safely" >> "${_logInt}"
+  /usr/bin/apt-get purge systemd libnss-systemd -y -qq >> "${_logSlt}"
+
+  # Some builds still leave libsystemd0 behind; elogind step should allow its removal.
+#   if _pkg_installed "libsystemd0"; then
+#     _msg "[init] Removing libsystemd0 (elogind present)" >> "${_logInt}"
+#     /usr/bin/apt-get remove libsystemd0 -y --purge --auto-remove -qq >> "${_logSlt}"
+#   fi
+
+  # Clean stragglers, but do not autoremove SSH/SFTP bits
+#   _msg "[init] Autoremove harmless leftovers (kept minimal)" >> "${_logInt}"
+#   /usr/bin/apt-get autoremove --purge -y -qq >> "${_logSlt}"
+#   /usr/bin/apt-get autoclean -y -qq >> "${_logSlt}"
+}
+
+# High-level orchestrator to call in the off-systemd phase
+_autoinit_devuan_protect_essential() {
+  _ensure_cron_provider
+#   _switch_to_elogind_stack
+  _ensure_openssh_server
+  _protect_daemons
+  _purge_systemd_keep_ssh
+  _ensure_openssh_server
+  _msg "[init] systemd purged while keeping openssh-server intact" >> "${_logInt}"
+  return 0
+}
+
+# --- END: Devuan Excalibur systemd → sysvinit keep-SSH helper ----
+
+###
+### Sync base-files if needed
+###
+_init_base_sync() {
+  if [ -e "/root/.top-daedalus.cnf" ]; then
+    # Initialize the update flag to NO
+    _needsBaseFilesUpdate=NO
+    # Check if /etc/os-release mentions 'daedalus'
+    if grep -i 'daedalus' /etc/os-release &> /dev/null; then
+      _msg "[init] base ==> The /etc/os-release already mentions daedalus" >> "${_logInt}"
+    else
+      _msg "[init] base ==> The /etc/os-release doesn't mention daedalus yet" >> "${_logInt}"
+      _needsBaseFilesUpdate=YES
+    fi
+    # Check if apt policy for base-files mentions 'daedalus'
+    if apt policy base-files | grep -i 'daedalus' &> /dev/null; then
+      _msg "[init] base ==> The apt policy base-files already mentions daedalus" >> "${_logInt}"
+    else
+      _msg "[init] base ==> The apt policy base-files doesn't mention daedalus yet" >> "${_logInt}"
+      _needsBaseFilesUpdate=YES
+    fi
+    # If any of the above checks require an update, perform the upgrade
+    if [ "${_needsBaseFilesUpdate}" = "YES" ]; then
+      _msg "[init] base ==> Upgrading base-files from Devuan repository (dynamic candidate)" >> "${_logInt}"
+      _ensure_devuan_bf
+    fi
+  fi
+  if [ -e "/root/.top-excalibur.cnf" ]; then
+    # Initialize the update flag to NO
+    _needsBaseFilesUpdate=NO
+    # Check if /etc/os-release mentions 'excalibur'
+    if grep -i 'excalibur' /etc/os-release &> /dev/null; then
+      _msg "[init] base ==> The /etc/os-release already mentions excalibur" >> "${_logInt}"
+    else
+      _msg "[init] base ==> The /etc/os-release doesn't mention excalibur yet" >> "${_logInt}"
+      _needsBaseFilesUpdate=YES
+    fi
+    # Check if apt policy for base-files mentions 'excalibur'
+    if apt policy base-files | grep -i 'excalibur' &> /dev/null; then
+      _msg "[init] base ==> The apt policy base-files already mentions excalibur" >> "${_logInt}"
+    else
+      _msg "[init] base ==> The apt policy base-files doesn't mention excalibur yet" >> "${_logInt}"
+      _needsBaseFilesUpdate=YES
+    fi
+    # If any of the above checks require an update, perform the upgrade
+    if [ "${_needsBaseFilesUpdate}" = "YES" ]; then
+      _msg "[init] base ==> Upgrading base-files from Devuan repository (dynamic candidate)" >> "${_logInt}"
+      _ensure_devuan_bf
+    fi
+  fi
+}
+
+###
+### Final procedure to make the system ready
+###
+_init_post_ready() {
+  _msg "[init] post ==> Final OS post-upgrade to ${_OS_DIST}/${_OS_CODE} procedure..." >> "${_logInt}"
+  /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
+  /usr/bin/dpkg --configure -a >> "${_logSlt}"
+  /usr/bin/apt-get upgrade ${_nrmUpArg} >> "${_logSlt}"
+  /usr/bin/apt-get dist-upgrade ${_dstUpArg} >> "${_logSlt}"
+  /usr/bin/apt-get -f install ${_aptAllow} -y -qq >> "${_logSlt}"
+  /usr/bin/dpkg --configure -a >> "${_logSlt}"
+}
+
 ###
 ### Remove and block systemd
 ###
@@ -776,7 +964,7 @@ _init_offsystemd() {
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   touch /run/autoinit.pid
-  _msg "_init_offsystemd ==> Launching a quick dist-upgrade..." >> "${_logInt}"
+  _msg "[init] offd ==> Launching a quick dist-upgrade..." >> "${_logInt}"
   if [ ! -e "/etc/apt/preferences.d/offsystemd" ]; then
     rm -f /etc/apt/preferences.d/systemd
     echo -e 'Package: systemd\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/offsystemd
@@ -784,69 +972,34 @@ _init_offsystemd() {
   fi
   /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
   /usr/bin/dpkg --configure -a >> "${_logSlt}"
-  /usr/bin/apt-get dist-upgrade ${_dstUpArg} >> "${_logSlt}"
+  if [ -e "/root/.top-excalibur.cnf" ]; then
+    _msg "[init] offd ==> Installing elogind on ${_OS_CODE} early" >> "${_logInt}"
+    /usr/bin/apt-get -o Dpkg::Options::="--force-overwrite" install elogind >> "${_logSlt}"
+  fi
   /usr/bin/apt-get dist-upgrade ${_dstUpArg} >> "${_logSlt}"
   [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
-  /usr/bin/apt-get remove systemd -y --purge --auto-remove --allow-remove-essential -qq >> "${_logSlt}"
-  /usr/bin/apt-get remove libnss-systemd -y --purge --auto-remove --allow-remove-essential -qq >> "${_logSlt}"
-  /usr/bin/apt-get remove systemd-sysv -y --purge --auto-remove --allow-remove-essential -qq >> "${_logSlt}"
-  /usr/bin/apt-get autoremove --purge -y -qq >> "${_logSlt}"
-  /usr/bin/apt-get autoclean -y -qq >> "${_logSlt}"
-  if [ -e "/root/.top-daedalus.cnf" ]; then
-    # Initialize the update flag to NO
-    _needsBaseFilesUpdate=NO
-    # Check if /etc/os-release mentions 'daedalus'
-    if grep -i 'daedalus' /etc/os-release &> /dev/null; then
-      _msg "_init_offsystemd ==> The /etc/os-release already mentions daedalus" >> "${_logInt}"
-    else
-      _msg "_init_offsystemd ==> The /etc/os-release doesn't mention daedalus yet" >> "${_logInt}"
-      _needsBaseFilesUpdate=YES
-    fi
-    # Check if apt policy for base-files mentions 'daedalus'
-    if apt policy base-files | grep -i 'daedalus' &> /dev/null; then
-      _msg "_init_offsystemd ==> The apt policy base-files already mentions daedalus" >> "${_logInt}"
-    else
-      _msg "_init_offsystemd ==> The apt policy base-files doesn't mention daedalus yet" >> "${_logInt}"
-      _needsBaseFilesUpdate=YES
-    fi
-    # If any of the above checks require an update, perform the upgrade
-    if [ "${_needsBaseFilesUpdate}" = "YES" ]; then
-      _msg "_init_offsystemd ==> Upgrading base-files from Devuan repository (dynamic candidate)" >> "${_logInt}"
-      _ensure_devuan_bf
-    fi
-  fi
+
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
-  _msg "_init_offsystemd ==> Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
-  if [ "${_OS_CODE}" = "daedalus" ]; then
-    _check_no_systemd
-    echo " " >> "${_logInt}"
-    _msg "_init_offsystemd ==> Update networking if needed with vmnetfix..." >> "${_logInt}"
-    /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
-    wait
-    _msg "_init_offsystemd ==> Final OS post-upgrade to ${_OS_DIST}/${_OS_CODE} procedure..." >> "${_logInt}"
-    /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
-    /usr/bin/dpkg --configure -a >> "${_logSlt}"
-    /usr/bin/apt-get upgrade ${_nrmUpArg} >> "${_logSlt}"
-    /usr/bin/apt-get dist-upgrade ${_dstUpArg} >> "${_logSlt}"
-    /usr/bin/apt-get upgrade ${_nrmUpArg} >> "${_logSlt}"
-    /usr/bin/apt-get -f install ${_aptAllow} -y -qq >> "${_logSlt}"
-    /usr/bin/dpkg --configure -a >> "${_logSlt}"
-    _msg "_init_offsystemd ==> The system is now ready for boa install" >> "${_logInt}"
-    rm -f /root/.init-to-devuan-ctrl.cnf
-    sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
-    _if_launch_boa_install
-  else
-    _msg "_init_offsystemd ==> Update networking if needed with vmnetfix..." >> "${_logInt}"
-    /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
-    wait
-    _msg "_init_offsystemd ==> Time for reboot and next upgrade cycle..." >> "${_logInt}"
-  fi
+  _msg "[init] offd ==> Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
+  _msg "[init] offd ==> Removing systemd on ${_OS_CODE}" >> "${_logInt}"
+
+  _autoinit_devuan_protect_essential
+
+  _msg "[init] offd ==> Final cleanup for systemd on ${_OS_CODE}" >> "${_logInt}"
+  /usr/bin/apt-get remove systemd-timesyncd -y -qq >> "${_logSlt}"
+  /usr/bin/apt-get remove systemd-dummy -y -qq >> "${_logSlt}"
+  /usr/bin/apt-get purge systemd libnss-systemd -y -qq >> "${_logSlt}"
+
+  _msg "[init] offd ==> Update networking if needed with vmnetfix..." >> "${_logInt}"
+  /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
+  wait
+
+  _msg "[init] offd ==> Time for reboot and next upgrade cycle..." >> "${_logInt}"
   echo " " >> "${_logInt}"
   touch /root/.run-offsystemd-devuan-init.cnf
   rm -f /run/autoinit.pid
   shutdown -r now
-  wait
   exit 0
 }
 
@@ -859,7 +1012,7 @@ _find_fast_devuan_mirror() {
     bash ${_ffDevuan} >> "${_logSlt}"
     wait
   fi
-  _ffMirr=$(which ffmirror 2>&1)
+  _ffMirr=/opt/local/bin/ffmirror
   if [ -x "${_ffMirr}" ]; then
     _ffList="/var/log/boa/devaun-fast-mirrors-list.txt"
     mkdir -p /var/log/boa/
@@ -896,31 +1049,39 @@ _init_cycle() {
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   touch /run/autoinit.pid
-  _msg "_init_cycle ==> Your current system is ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
-  echo " " >> "${_logInt}"
+  _msg "[init] cycl ==> Your current system is ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
   _NEW_SYS=Devuan
   _OLD_SYS=Devuan
-  if [ "${_OS_CODE}" = "bookworm" ]; then
+  if [ "${_OS_CODE}" = "trixie" ]; then
+    _NEW_OS_CODE=excalibur
+    _OLD_SYS=Debian
+    [ ! -e "/root/.top-excalibur.cnf" ] && touch /root/.top-excalibur.cnf
+  elif [ "${_OS_CODE}" = "bookworm" ]; then
     _NEW_OS_CODE=daedalus
     _OLD_SYS=Debian
+    [ ! -e "/root/.top-daedalus.cnf" ] && touch /root/.top-daedalus.cnf
+  elif [ "${_OS_CODE}" = "chimaera" ]; then
+    _NEW_OS_CODE=daedalus
     [ ! -e "/root/.top-daedalus.cnf" ] && touch /root/.top-daedalus.cnf
   elif [ "${_OS_CODE}" = "bullseye" ]; then
     _NEW_OS_CODE=chimaera
     _OLD_SYS=Debian
+    [ ! -e "/root/.top-daedalus.cnf" ] && touch /root/.top-daedalus.cnf
   elif [ "${_OS_CODE}" = "buster" ]; then
     _NEW_OS_CODE=beowulf
     _OLD_SYS=Debian
+    [ ! -e "/root/.top-daedalus.cnf" ] && touch /root/.top-daedalus.cnf
   elif [ "${_OS_CODE}" = "beowulf" ]; then
     _NEW_OS_CODE=chimaera
-  elif [ "${_OS_CODE}" = "chimaera" ]; then
-    _NEW_OS_CODE=daedalus
     [ ! -e "/root/.top-daedalus.cnf" ] && touch /root/.top-daedalus.cnf
-  elif [ "${_OS_CODE}" = "daedalus" ]; then
+  elif [ "${_OS_CODE}" = "daedalus" ] || [ "${_OS_CODE}" = "excalibur" ]; then
     _NEW_OS_CODE=
     _NEW_SYS=
   else
-    _msg "_init_cycle ==> This procedure does not support ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
-    _msg "_init_cycle ==> Bye!" >> "${_logInt}"
+    _msg "[init] cycl ==> This procedure does not support ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
+    _msg "[init] cycl ==> Bye!" >> "${_logInt}"
+    sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
+    sed -i "s/.*killer.*//gi" /etc/crontab &> /dev/null
     echo " " >> "${_logInt}"
     exit 1
   fi
@@ -930,10 +1091,10 @@ _init_cycle() {
     /usr/bin/apt-get upgrade ${_nrmUpArg} >> "${_logSlt}"
   fi
   if [ ! -z "${_NEW_OS_CODE}" ] && [ ! -z "${_NEW_SYS}" ]; then
-    _msg "_init_cycle ==> Running APT Cleanup..." >> "${_logInt}"
+    _msg "[init] cycl ==> Running APT Cleanup..." >> "${_logInt}"
     /opt/local/bin/aptcleanup >> "${_logSlt}"
     wait
-    _msg "_init_cycle ==> Launching a quick upgrade to ${_NEW_SYS}/${_NEW_OS_CODE}" >> "${_logInt}"
+    _msg "[init] cycl ==> Launching a quick upgrade to ${_NEW_SYS}/${_NEW_OS_CODE}" >> "${_logInt}"
     _aptLiSys="/etc/apt/sources.list"
     if [ "${_NEW_OS_CODE}" = "beowulf" ]; then
       _TGT_MRR="http://archive.devuan.org/merged"
@@ -941,7 +1102,7 @@ _init_cycle() {
       _TGT_MRR=$(_find_fast_devuan_mirror)
     fi
     : "${_TGT_MRR:=https://mirrors.dotsrc.org/devuan/merged}"
-    _msg "_init_cycle ==> Using Devuan mirror: ${_TGT_MRR}" >> "${_logInt}"
+    _msg "[init] cycl ==> Using Devuan mirror: ${_TGT_MRR}" >> "${_logInt}"
     echo "## DEVUAN MAIN REPOSITORIES" > ${_aptLiSys}
     echo "deb ${_TGT_MRR} ${_NEW_OS_CODE} main" >> ${_aptLiSys}
     echo "deb-src ${_TGT_MRR} ${_NEW_OS_CODE} main" >> ${_aptLiSys}
@@ -961,94 +1122,78 @@ _init_cycle() {
     _prefer_devuan_repositories
     /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
     /usr/bin/dpkg --configure -a >> "${_logSlt}"
-    /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
-    /usr/bin/dpkg --configure -a >> "${_logSlt}"
     if [ "${_OLD_SYS}" = "Debian" ]; then
       ${_INITINS} devuan-keyring >> "${_logSlt}"
-      ${_INITINS} devuan-keyring >> "${_logSlt}"
     else
-      /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
-      /usr/bin/dpkg --configure -a >> "${_logSlt}"
       /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
       /usr/bin/dpkg --configure -a >> "${_logSlt}"
     fi
     /usr/bin/apt-get upgrade ${_dstUpArg} >> "${_logSlt}"
     if [ "${_OLD_SYS}" = "Debian" ]; then
-      ${_INITINS} eudev sysvinit-core -qq >> "${_logSlt}"
+      /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
+      /usr/bin/dpkg --configure -a >> "${_logSlt}"
+      if [ "${_NEW_OS_CODE}" = "excalibur" ] || [ -e "/root/.top-excalibur.cnf" ]; then
+        ${_INITINS} eudev sysvinit-core systemd-sysv- --allow-remove-essential -qq >> "${_logSlt}"
+      else
+        ${_INITINS} eudev sysvinit-core -qq >> "${_logSlt}"
+      fi
       /usr/bin/apt-get -f install ${_aptAllow} -y -qq >> "${_logSlt}"
+      if [ "${_NEW_OS_CODE}" = "excalibur" ] || [ -e "/root/.top-excalibur.cnf" ]; then
+        ${_INITINS} eudev sysvinit-core systemd-sysv- --allow-remove-essential -qq >> "${_logSlt}"
+      else
+        ${_INITINS} eudev sysvinit-core -qq >> "${_logSlt}"
+      fi
+      /usr/bin/apt-get -f install ${_aptAllow} -y -qq >> "${_logSlt}"
+      /usr/bin/dpkg --configure -a >> "${_logSlt}"
     else
       [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
       /usr/bin/apt-get dist-upgrade ${_dstUpArg} >> "${_logSlt}"
-      /usr/bin/apt-get dist-upgrade ${_dstUpArg} >> "${_logSlt}"
       /usr/bin/apt-get -f install ${_aptAllow} -y -qq >> "${_logSlt}"
-      /usr/bin/apt-get -f install ${_aptAllow} -y -qq >> "${_logSlt}"
-      /usr/bin/apt-get dist-upgrade ${_dstUpArg} >> "${_logSlt}"
-      /usr/bin/apt-get dist-upgrade ${_dstUpArg} >> "${_logSlt}"
       [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
       /usr/bin/apt-get autoremove --purge -y -qq >> "${_logSlt}"
       /usr/bin/apt-get autoclean -y -qq >> "${_logSlt}"
-      if [ -e "/root/.top-daedalus.cnf" ]; then
-        if cat /etc/os-release | grep -i 'daedalus' &> /dev/null; then
-          _msg "_init_cycle ==> The /etc/os-release already mentions daedalus" >> "${_logInt}"
-          _needsBaseFilesUpdate=NO
-        else
-          _msg "_init_cycle ==> The /etc/os-release doesn't mention daedalus yet" >> "${_logInt}"
-          _needsBaseFilesUpdate=YES
-        fi
-        if apt policy base-files | grep -i 'daedalus' &> /dev/null; then
-          _msg "_init_cycle ==> The apt policy base-files already mentions daedalus" >> "${_logInt}"
-          _needsBaseFilesUpdate=NO
-        else
-          _msg "_init_cycle ==> The apt policy base-files doesn't mention daedalus yet" >> "${_logInt}"
-          _needsBaseFilesUpdate=YES
-        fi
-        if [ "${_needsBaseFilesUpdate}" = "YES" ]; then
-          _msg "_init_cycle ==> Upgrading base-files from Devuan repository (dynamic candidate)" >> "${_logInt}"
-          _ensure_devuan_bf
-        fi
-      fi
     fi
   fi
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   if [ "${_OLD_SYS}" = "Debian" ]; then
-    _msg "_init_cycle ==> Update networking if needed with vmnetfix..." >> "${_logInt}"
+    _msg "[init] cycl ==> Update networking if needed with vmnetfix..." >> "${_logInt}"
     /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
     wait
-    _msg "_init_cycle ==> Time for reboot and next upgrade cycle..." >> "${_logInt}"
+    _msg "[init] cycl ==> Time for reboot and next upgrade cycle..." >> "${_logInt}"
     echo " " >> "${_logInt}"
     touch /root/.run-cycle-devuan-init.cnf
     rm -f /run/autoinit.pid
     shutdown -r now
-    wait
     exit 0
   else
-    if [ "${_OS_CODE}" = "daedalus" ]; then
-      _check_no_systemd
-      _msg "_init_cycle ==> Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
-      _msg "_init_cycle ==> Update networking if needed with vmnetfix..." >> "${_logInt}"
+    if [ "${_OS_CODE}" = "daedalus" ] || [ "${_OS_CODE}" = "excalibur" ]; then
+      _init_base_sync
+      _init_post_ready
+      _init_no_systemd
+      _msg "[init] cycl ==> Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
+      _msg "[init] cycl ==> Update networking if needed with vmnetfix..." >> "${_logInt}"
       /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
       wait
-      _msg "_init_cycle ==> Running APT Cleanup.." >> "${_logInt}"
+      _msg "[init] cycl ==> Running APT Cleanup.." >> "${_logInt}"
       /opt/local/bin/aptcleanup >> "${_logSlt}"
       wait
-      _msg "_init_cycle ==> The system is now ready for boa install" >> "${_logInt}"
+      _msg "[init] cycl ==> The system is now ready for boa install" >> "${_logInt}"
       rm -f /root/.init-to-devuan-ctrl.cnf
       sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
       _if_launch_boa_install
     else
-      _msg "_init_cycle ==> Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
-      _msg "_init_cycle ==> Update networking if needed with vmnetfix..." >> "${_logInt}"
+      _msg "[init] cycl ==> Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
+      _msg "[init] cycl ==> Update networking if needed with vmnetfix..." >> "${_logInt}"
       /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
       wait
-      _msg "_init_cycle ==> Time for reboot and next upgrade cycle..." >> "${_logInt}"
+      _msg "[init] cycl ==> Time for reboot and next upgrade cycle..." >> "${_logInt}"
     fi
     echo " " >> "${_logInt}"
     touch /root/.run-cycle-devuan-init.cnf
     touch /root/.run-cycle-${_OS_CODE}-init.cnf
     rm -f /run/autoinit.pid
     shutdown -r now
-    wait
     exit 0
   fi
 }
@@ -1057,13 +1202,13 @@ _init_cycle() {
 ### Display welcome info
 ###
 _init_info() {
-  echo "_init_info ==> The system will reboot and continue several times..."
+  echo "[init] info ==> The system will reboot and continue several times..."
   sleep 3
-  echo "_init_info ==> until it is ugraded to latest Devuan/daedalus version."
+  echo "[init] info ==> until it is ugraded to latest Devuan version."
   sleep 3
-  echo "_init_info ==> Once all upgrades are complete, you can run boa install"
+  echo "[init] info ==> Once all upgrades are complete, you can run boa install"
   sleep 3
-  echo "_init_info ==> Let's go! It will take only ten minutes max!"
+  echo "[init] info ==> Let's go! It will take only ten minutes max!"
   sleep 3
   echo "..."
 }
@@ -1074,7 +1219,7 @@ _init_info() {
 _init_conf() {
   if [ ! -e "${_initFile}" ]; then
     if [ ! -x "/usr/bin/mc" ]; then
-      _check_mnfr
+      _init_mnfr
       _init_info
     fi
     _init_prepare &> /dev/null
@@ -1088,8 +1233,7 @@ _init_start() {
   _init_conf
   if [ -e "${_initFile}" ]; then
     if [ -e "/root/.run-cycle-devuan-init.cnf" ]; then
-      if [ -e "/lib/systemd/systemd" ] \
-        || [ ! -e "/root/.run-offsystemd-devuan-init.cnf" ]; then
+      if [ ! -e "/root/.run-offsystemd-devuan-init.cnf" ]; then
         _init_offsystemd
       fi
     fi
@@ -1108,24 +1252,24 @@ _init_launch() {
     pkill -9 -f unattended-upgrades
   fi
   if [ ! -e "/root/.autoinit.log" ]; then
-    echo "_init_launch ==> Launching BOA System INIT on ${_OS_DIST}/${_OS_CODE}..."
-    _msg "_init_launch ==> Launching BOA System INIT on ${_OS_DIST}/${_OS_CODE}..." >> "${_logInt}"
+    echo "[init] lnch ==> Launching BOA System INIT on ${_OS_DIST}/${_OS_CODE}..."
+    _msg "[init] lnch ==> Launching BOA System INIT on ${_OS_DIST}/${_OS_CODE}..." >> "${_logInt}"
   fi
   sleep 15
   _TIME_IS=$(date)
   _UPTIME=$(uptime)
-  _msg "_init_launch ==> Date/Time: ${_TIME_IS}" >> "${_logInt}"
-  _msg "_init_launch ==> Uptime: ${_UPTIME}" >> "${_logInt}"
-  _check_mode
-  _check_ninc
-  _locales_check_fix_early
-  _cron_check_install_early
+  _msg "[init] lnch ==> Date/Time: ${_TIME_IS}" >> "${_logInt}"
+  _msg "[init] lnch ==> Uptime: ${_UPTIME}" >> "${_logInt}"
+  _init_mode
+  _init_ninc
+  _init_locales
+  _init_cron
   _init_start
 }
 
 ### ---------------------------- Prepare for _init_launch
-_check_root
-_check_aegir
+_init_root
+_init_aegir
 _single_instance_lock
 cd /root/
 
