@@ -991,10 +991,10 @@ _init_offsystemd() {
   /usr/bin/apt-get remove systemd-dummy -y -qq >> "${_logSlt}"
   /usr/bin/apt-get purge systemd libnss-systemd -y -qq >> "${_logSlt}"
 
-  echo " " >> "${_logInt}"
   _msg "_init_offsystemd ==> Update networking if needed with vmnetfix..." >> "${_logInt}"
   /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
   wait
+
   _msg "_init_offsystemd ==> Time for reboot and next upgrade cycle..." >> "${_logInt}"
   echo " " >> "${_logInt}"
   touch /root/.run-offsystemd-devuan-init.cnf
@@ -1050,7 +1050,6 @@ _init_cycle() {
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   touch /run/autoinit.pid
   _msg "_init_cycle ==> Your current system is ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
-  echo " " >> "${_logInt}"
   _NEW_SYS=Devuan
   _OLD_SYS=Devuan
   if [ "${_OS_CODE}" = "trixie" ]; then
