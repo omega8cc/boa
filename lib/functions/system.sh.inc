@@ -1521,6 +1521,15 @@ _barracuda_cnf_cleanup() {
     sed -i "s/^_FULL_FORCE_REINSTALL.*//g" ${_barCnf}
     wait
   fi
+  _DAEDALUS_TO_EXCALIBUR_TEST=$(grep _DAEDALUS_TO_EXCALIBUR ${_barCnf} 2>&1)
+  if [[ "${_DAEDALUS_TO_EXCALIBUR_TEST}" =~ "_DAEDALUS_TO_EXCALIBUR" ]]; then
+    sed -i "s/^_DAEDALUS_TO_EXCALIBUR.*//g" ${_barCnf}
+    wait
+  fi
+  _TRIXIE_TO_EXCALIBUR_TEST=$(grep _TRIXIE_TO_EXCALIBUR ${_barCnf} 2>&1)
+  if [[ "${_TRIXIE_TO_EXCALIBUR_TEST}" =~ "_TRIXIE_TO_EXCALIBUR" ]]; then
+    sed -i "s/^_TRIXIE_TO_EXCALIBUR.*//g" ${_barCnf}
+    wait
   fi
   _BOOKWORM_TO_DAEDALUS_TEST=$(grep _BOOKWORM_TO_DAEDALUS ${_barCnf} 2>&1)
   if [[ "${_BOOKWORM_TO_DAEDALUS_TEST}" =~ "_BOOKWORM_TO_DAEDALUS" ]]; then
