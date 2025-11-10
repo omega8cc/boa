@@ -320,13 +320,6 @@ _DAEDALUS_TO_EXCALIBUR=NO
 _TRIXIE_TO_EXCALIBUR=NO
 
 ###
-### Use YES to run migration from Tomcat 6
-### to Jetty 7 with Apache Solr 1.4.1
-### See also docs/SOLR.md
-###
-_TOMCAT_TO_JETTY=NO
-
-###
 ### Use YES to enable The Hourly Hot DB Server Backups with Percona XtraBackup
 ###
 ### Once enabled, the system will use XtraBackup to create complete and very
