@@ -1676,6 +1676,8 @@ _init_setup() {
 #         echo
         nohup /opt/local/bin/octopus up-${_tRee} ${_usEr} force log noscreen >${_UP_OCTOPUS_LOG} 2>&1 &
       else
+        echo "Now waiting 5 minutes before running octopus upgrade, please wait..."
+        sleep 300
         echo "Launching octopus up-${_tRee} ${_usEr} now..."
         /opt/local/bin/octopus up-${_tRee} ${_usEr} force log noscreen 2>&1 | tee ${_UP_OCTOPUS_LOG}
         wait
@@ -1696,6 +1698,8 @@ _init_setup() {
         fi
         if [ "${_UP_OCTOPUS_AGAIN}" = "YES" ]; then
           echo "Octopus LE setup status: NOT READY!"
+          echo "Now waiting 5 minutes before trying again, please wait..."
+          sleep 300
           echo "Launching another octopus upgrade to fix LE..."
           _UP_OCTOPUS_AGAIN_LOG="${_LOG_UP_DIR}/$(basename "$0")-up-again-octopus-${_NOW}.log"
           /opt/local/bin/octopus up-${_tRee} ${_usEr} force log noscreen 2>&1 | tee ${_UP_OCTOPUS_AGAIN_LOG}
