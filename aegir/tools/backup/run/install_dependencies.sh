@@ -4,8 +4,8 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 
-_PTN_VRN=3.12.8
 _DCY_VRN=3.0.3.2
+_PTN_VRN=3.13.9
 _DCY_CMD="/usr/local/bin/duplicity"
 
 _crlGet="-L --max-redirs 3 -k -s --retry 9 --retry-delay 9 -A iCab"
