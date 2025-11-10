@@ -81,6 +81,8 @@ Check out the details in [docs/PROVIDES.md](https://github.com/omega8cc/boa/tree
 
 ## Supported Operating Systems
 
+<img width="906" height="672" alt="boa-on-excalibur" src="https://github.com/user-attachments/assets/cdf4f72b-6d7d-4712-895b-46f612be333f" />
+
 ### Devuan (recommended)
 
 - Excalibur (supported, but only with MySQL 8.4)
