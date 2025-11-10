@@ -901,21 +901,21 @@ _init_base_sync() {
     _needsBaseFilesUpdate=NO
     # Check if /etc/os-release mentions 'daedalus'
     if grep -i 'daedalus' /etc/os-release &> /dev/null; then
-      _msg "_init_offsystemd ==> The /etc/os-release already mentions daedalus" >> "${_logInt}"
+      _msg "_init_base_sync ==> The /etc/os-release already mentions daedalus" >> "${_logInt}"
     else
-      _msg "_init_offsystemd ==> The /etc/os-release doesn't mention daedalus yet" >> "${_logInt}"
+      _msg "_init_base_sync ==> The /etc/os-release doesn't mention daedalus yet" >> "${_logInt}"
       _needsBaseFilesUpdate=YES
     fi
     # Check if apt policy for base-files mentions 'daedalus'
     if apt policy base-files | grep -i 'daedalus' &> /dev/null; then
-      _msg "_init_offsystemd ==> The apt policy base-files already mentions daedalus" >> "${_logInt}"
+      _msg "_init_base_sync ==> The apt policy base-files already mentions daedalus" >> "${_logInt}"
     else
-      _msg "_init_offsystemd ==> The apt policy base-files doesn't mention daedalus yet" >> "${_logInt}"
+      _msg "_init_base_sync ==> The apt policy base-files doesn't mention daedalus yet" >> "${_logInt}"
       _needsBaseFilesUpdate=YES
     fi
     # If any of the above checks require an update, perform the upgrade
     if [ "${_needsBaseFilesUpdate}" = "YES" ]; then
-      _msg "_init_offsystemd ==> Upgrading base-files from Devuan repository (dynamic candidate)" >> "${_logInt}"
+      _msg "_init_base_sync ==> Upgrading base-files from Devuan repository (dynamic candidate)" >> "${_logInt}"
       _ensure_devuan_bf
     fi
   fi
@@ -924,21 +924,21 @@ _init_base_sync() {
     _needsBaseFilesUpdate=NO
     # Check if /etc/os-release mentions 'excalibur'
     if grep -i 'excalibur' /etc/os-release &> /dev/null; then
-      _msg "_init_offsystemd ==> The /etc/os-release already mentions excalibur" >> "${_logInt}"
+      _msg "_init_base_sync ==> The /etc/os-release already mentions excalibur" >> "${_logInt}"
     else
-      _msg "_init_offsystemd ==> The /etc/os-release doesn't mention excalibur yet" >> "${_logInt}"
+      _msg "_init_base_sync ==> The /etc/os-release doesn't mention excalibur yet" >> "${_logInt}"
       _needsBaseFilesUpdate=YES
     fi
     # Check if apt policy for base-files mentions 'excalibur'
     if apt policy base-files | grep -i 'excalibur' &> /dev/null; then
-      _msg "_init_offsystemd ==> The apt policy base-files already mentions excalibur" >> "${_logInt}"
+      _msg "_init_base_sync ==> The apt policy base-files already mentions excalibur" >> "${_logInt}"
     else
-      _msg "_init_offsystemd ==> The apt policy base-files doesn't mention excalibur yet" >> "${_logInt}"
+      _msg "_init_base_sync ==> The apt policy base-files doesn't mention excalibur yet" >> "${_logInt}"
       _needsBaseFilesUpdate=YES
     fi
     # If any of the above checks require an update, perform the upgrade
     if [ "${_needsBaseFilesUpdate}" = "YES" ]; then
-      _msg "_init_offsystemd ==> Upgrading base-files from Devuan repository (dynamic candidate)" >> "${_logInt}"
+      _msg "_init_base_sync ==> Upgrading base-files from Devuan repository (dynamic candidate)" >> "${_logInt}"
       _ensure_devuan_bf
     fi
   fi
