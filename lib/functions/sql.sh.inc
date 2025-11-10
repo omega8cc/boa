@@ -18,6 +18,83 @@ _check_mysql_version() {
   fi
 }
 
+_install_local_ordered() {
+  cd "${_WORK}"
+  _mrun "dpkg -i ./mysql-common_*_amd64.deb"
+  _mrun "dpkg -i ./mysql-community-client-plugins_*_amd64.deb"
+  _mrun "dpkg -i ./libmysqlclient24_*_amd64.deb"
+  _mrun "dpkg -i ./mysql-community-client-core_*_amd64.deb"
+  _mrun "dpkg -i ./mysql-community-client_*_amd64.deb"
+  _mrun "dpkg -i ./mysql-client_*_amd64.deb"
+  _mrun "dpkg -i ./mysql-community-server-core_*_amd64.deb"
+  _mrun "dpkg -i ./mysql-community-server_*_amd64.deb"
+  _mrun "dpkg -i ./mysql-server_*_amd64.deb"
+  _mrun "apt-get -f -y install"
+}
+
+_download_pkg_by_name() {
+  # $1 = package name
+  local _name="$1" _file
+  _file="$(awk -v P="${_name}" '
+    $1=="Package:" && $2==P {f=1}
+    f && $1=="Filename:" {print $2; f=0}
+  ' Packages | tail -n1)"
+  if [ -z "${_file}" ]; then
+    _msg "MSQL: Could not locate package '${_name}' in Packages index"
+  fi
+  local _url="${_BASE_URL}/${_file}"
+  local _base="$(basename "${_file}")"
+  if [ -s "${_base}" ]; then
+    return 0
+  fi
+  _msg "MSQL: Downloading ${_url}"
+  _mrun "wget -q ${_url} -O ${_base}"
+}
+
+_fetch_packages_index() {
+  mkdir -p "${_WORK}"
+  cd "${_WORK}"
+  curl -fsS "${_BASE_URL}/dists/${_SUITE}/${_COMP}/binary-${_ARCH}/Packages" -o Packages
+}
+
+_download_all_mysql_debs() {
+  _fetch_packages_index
+  local _p
+  for _p in ${_PKGS}; do
+    _download_pkg_by_name "${_p}"
+  done
+}
+
+_ensure_base_runtime_deps() {
+  _apt_clean_update
+  _mrun "${_INSTAPP} libmecab2 psmisc libnuma1"
+}
+
+_dpkg_install_mysql() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _dpkg_install_mysql"
+  fi
+  _WORK="/var/backups/mysql84-local"
+  _BASE_URL="http://repo.mysql.com/apt/debian"
+  _SUITE="trixie"
+  _COMP="mysql-8.4-lts"
+  _ARCH="amd64"
+  _PKGS="
+mysql-common
+mysql-community-client-plugins
+libmysqlclient24
+mysql-community-client-core
+mysql-community-client
+mysql-client
+mysql-community-server-core
+mysql-community-server
+mysql-server
+"
+  _ensure_base_runtime_deps
+  _download_all_mysql_debs
+  _install_local_ordered
+}
+
 #
 # Update for keyrings/percona.gpg
 _if_sql_keyring_apt_update() {
@@ -68,27 +145,80 @@ _if_sql_keyring_apt_update() {
     _apt_clean_update
   fi
 
+  if [ "${_DB_SERVER}" = "MySQL" ]; then
+    _SQL_KEYRING_UPDATE=NO
+    if [ -e "/etc/apt/trusted.gpg.d/mysql.gpg" ] \
+      || [ ! -e "/etc/apt/keyrings/mysql.gpg" ] \
+      || [ -e "/etc/apt/trusted.gpg.d/mysql-keyring.gpg~" ]; then
+      _SQL_KEYRING_UPDATE=YES
+    fi
+  fi
+
+  if [ "${_DB_SERVER}" = "MySQL" ] && [ "${_SQL_KEYRING_UPDATE}" = "YES" ]; then
+    if [ ! -e "/etc/apt/keyrings/mysql.gpg" ]; then
+      if [ ! -e "/etc/apt/keyrings" ]; then
+        mkdir -m 0755 -p /etc/apt/keyrings
+      fi
+      if [ -e "/etc/apt/trusted.gpg.d/mysql.gpg" ] \
+        || [ -e "/etc/apt/trusted.gpg.d/mysql-keyring.gpg~" ]; then
+        rm -f /etc/apt/trusted.gpg.d/mysql*
+      fi
+      _MYSQL_KEYS_SIG="B7B3B788A8D3785C"
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        _msg "INFO: Retrieving ${_MYSQL_KEYS_SIG} key..."
+      fi
+      apt-key del ${_MYSQL_KEYS_SIG} &> /dev/null
+      if [ ! -e "/etc/apt/keyrings/mysql.gpg" ]; then
+        curl -fsSL ${_urlDev}/mysql-key.gpg | ${_GPG} --dearmor -o /etc/apt/keyrings/mysql.gpg
+      fi
+      chmod 644 /etc/apt/keyrings/mysql.gpg
+      _CNT=$(pgrep -fc dirmngr)
+      if (( _CNT > 5 )); then
+        pkill -9 -f dirmngr
+        echo "$(date) Too many dirmngr processes killed (count=${_CNT})" >> \
+          /var/log/boa/dirmngr-count.kill.log
+      fi
+      _CNT=$(pgrep -fc gpg-agent)
+      if (( _CNT > 5 )); then
+        pkill -9 -f gpg-agent
+        echo "$(date) Too many gpg-agent processes killed (count=${_CNT})" >> \
+          /var/log/boa/gpg-agent-count.kill.log
+      fi
+    fi
+    _apt_clean_update
+  fi
+
   [ ! -z "${_SQL_NEW_OS_CODE}" ] && _SQL_OS_CODE=${_SQL_NEW_OS_CODE}
 
   if [ "${_DB_V}" = "8.4" ] || [ "${_DB_SERIES}" = "8.4" ]; then
     if [ "${_DB_SERVER}" = "Percona" ]; then
       _DB_SRC="repo.percona.com"
       _percNodot="${_DB_SERIES//./}"
-      _SQL_DEB_SRC_TEST_A=$(grep ${_DB_SRC} \
-        /etc/apt/sources.list.d/percona-release.list 2>&1)
-      _SQL_DEB_SRC_TEST_B=$(grep ${_SQL_OS_CODE} \
-        /etc/apt/sources.list.d/percona-release.list 2>&1)
-      _SQL_DEB_SRC_TEST_C=$(grep ps-${_percNodot}-lts \
-        /etc/apt/sources.list.d/percona-release.list 2>&1)
-      _SQL_DEB_SRC_TEST_D=$(grep ps-8x-innovation \
-        /etc/apt/sources.list.d/percona-release.list 2>&1)
+      _sqlDebVersion="ps-${_percNodot}-lts"
+      _SQL_DEB_SRC_TEST_A=$(grep ${_DB_SRC} /etc/apt/sources.list.d/percona-release.list 2>&1)
+      _SQL_DEB_SRC_TEST_B=$(grep ${_SQL_OS_CODE} /etc/apt/sources.list.d/percona-release.list 2>&1)
+      _SQL_DEB_SRC_TEST_C=$(grep ${_sqlDebVersion} /etc/apt/sources.list.d/percona-release.list 2>&1)
+      _SQL_DEB_SRC_TEST_D=$(grep ps-8x-innovation /etc/apt/sources.list.d/percona-release.list 2>&1)
+    elif [ "${_DB_SERVER}" = "MySQL" ]; then
+      _DB_SRC="repo.mysql.com"
+      _sqlDebVersion="mysql-${_DB_SERIES}-lts"
+      _SQL_DEB_SRC_TEST_A=$(grep ${_DB_SRC} /etc/apt/sources.list.d/mysql.list 2>&1)
+      _SQL_DEB_SRC_TEST_B=$(grep ${_SQL_OS_CODE} /etc/apt/sources.list.d/mysql.list 2>&1)
+      _SQL_DEB_SRC_TEST_C=$(grep ${_sqlDebVersion} /etc/apt/sources.list.d/mysql.list 2>&1)
     fi
     if [[ "${_SQL_DEB_SRC_TEST_A}" =~ "${_DB_SRC}" ]] \
       && [[ "${_SQL_DEB_SRC_TEST_B}" =~ "${_SQL_OS_CODE}" ]] \
-      && [[ "${_SQL_DEB_SRC_TEST_C}" =~ "ps-${_percNodot}-lts" ]] \
-      && [ -e "/etc/apt/keyrings/percona.gpg" ] \
-      && [ -e "/etc/apt/preferences.d/00percona.pref" ]; then
-      _SQL_DEB_SRC_UPDATE=NO
+      && [[ "${_SQL_DEB_SRC_TEST_C}" =~ "${_sqlDebVersion}" ]]; then
+      if [ "${_DB_SERVER}" = "Percona" ]; then
+        if [ -e "/etc/apt/keyrings/percona.gpg" ] \
+          && [ -e "/etc/apt/preferences.d/00percona.pref" ]; then
+          _SQL_DEB_SRC_UPDATE=NO
+        fi
+      else
+        if [ -e "/etc/apt/keyrings/mysql.gpg" ]; then
+          _SQL_DEB_SRC_UPDATE=NO
+        fi
+      fi
     else
       _SQL_DEB_SRC_UPDATE=YES
     fi
@@ -99,14 +229,10 @@ _if_sql_keyring_apt_update() {
     if [ "${_DB_SERVER}" = "Percona" ]; then
       _DB_SRC="repo.percona.com"
       _percNodot="${_DB_SERIES//./}"
-      _SQL_DEB_SRC_TEST_A=$(grep ${_DB_SRC} \
-        /etc/apt/sources.list.d/percona-release.list 2>&1)
-      _SQL_DEB_SRC_TEST_B=$(grep ${_SQL_OS_CODE} \
-        /etc/apt/sources.list.d/percona-release.list 2>&1)
-      _SQL_DEB_SRC_TEST_C=$(grep ps-${_percNodot} \
-        /etc/apt/sources.list.d/percona-release.list 2>&1)
-      _SQL_DEB_SRC_TEST_D=$(grep ps-8x-innovation \
-        /etc/apt/sources.list.d/percona-release.list 2>&1)
+      _SQL_DEB_SRC_TEST_A=$(grep ${_DB_SRC} /etc/apt/sources.list.d/percona-release.list 2>&1)
+      _SQL_DEB_SRC_TEST_B=$(grep ${_SQL_OS_CODE} /etc/apt/sources.list.d/percona-release.list 2>&1)
+      _SQL_DEB_SRC_TEST_C=$(grep ps-${_percNodot} /etc/apt/sources.list.d/percona-release.list 2>&1)
+      _SQL_DEB_SRC_TEST_D=$(grep ps-8x-innovation /etc/apt/sources.list.d/percona-release.list 2>&1)
     fi
     if [[ "${_SQL_DEB_SRC_TEST_A}" =~ "${_DB_SRC}" ]] \
       && [[ "${_SQL_DEB_SRC_TEST_B}" =~ "${_SQL_OS_CODE}" ]] \
@@ -124,21 +250,31 @@ _if_sql_keyring_apt_update() {
     if [ "${_DB_SERVER}" = "Percona" ]; then
       _DB_SRC="repo.percona.com"
       _percNodot="${_DB_SERIES//./}"
-      _SQL_DEB_SRC_TEST_A=$(grep ${_DB_SRC} \
-        /etc/apt/sources.list.d/percona-release.list 2>&1)
-      _SQL_DEB_SRC_TEST_B=$(grep ${_SQL_OS_CODE} \
-        /etc/apt/sources.list.d/percona-release.list 2>&1)
-      _SQL_DEB_SRC_TEST_C=$(grep ps-${_percNodot} \
-        /etc/apt/sources.list.d/percona-release.list 2>&1)
-      _SQL_DEB_SRC_TEST_D=$(grep ps-8x-innovation \
-        /etc/apt/sources.list.d/percona-release.list 2>&1)
+      _sqlDebVersion="ps-${_percNodot}"
+      _SQL_DEB_SRC_TEST_A=$(grep ${_DB_SRC} /etc/apt/sources.list.d/percona-release.list 2>&1)
+      _SQL_DEB_SRC_TEST_B=$(grep ${_SQL_OS_CODE} /etc/apt/sources.list.d/percona-release.list 2>&1)
+      _SQL_DEB_SRC_TEST_C=$(grep ${_sqlDebVersion} /etc/apt/sources.list.d/percona-release.list 2>&1)
+      _SQL_DEB_SRC_TEST_D=$(grep ps-8x-innovation /etc/apt/sources.list.d/percona-release.list 2>&1)
+    elif [ "${_DB_SERVER}" = "MySQL" ]; then
+      _DB_SRC="repo.mysql.com"
+      _sqlDebVersion="mysql-${_DB_SERIES}-lts"
+      _SQL_DEB_SRC_TEST_A=$(grep ${_DB_SRC} /etc/apt/sources.list.d/mysql.list 2>&1)
+      _SQL_DEB_SRC_TEST_B=$(grep ${_SQL_OS_CODE} /etc/apt/sources.list.d/mysql.list 2>&1)
+      _SQL_DEB_SRC_TEST_C=$(grep ${_sqlDebVersion} /etc/apt/sources.list.d/mysql.list 2>&1)
     fi
     if [[ "${_SQL_DEB_SRC_TEST_A}" =~ "${_DB_SRC}" ]] \
       && [[ "${_SQL_DEB_SRC_TEST_B}" =~ "${_SQL_OS_CODE}" ]] \
-      && [[ "${_SQL_DEB_SRC_TEST_C}" =~ "ps-${_percNodot}" ]] \
-      && [ -e "/etc/apt/keyrings/percona.gpg" ] \
-      && [ -e "/etc/apt/preferences.d/00percona.pref" ]; then
-      _SQL_DEB_SRC_UPDATE=NO
+      && [[ "${_SQL_DEB_SRC_TEST_C}" =~ "${_sqlDebVersion}" ]]; then
+      if [ "${_DB_SERVER}" = "Percona" ]; then
+        if [ -e "/etc/apt/keyrings/percona.gpg" ] \
+          && [ -e "/etc/apt/preferences.d/00percona.pref" ]; then
+          _SQL_DEB_SRC_UPDATE=NO
+        fi
+      else
+        if [ -e "/etc/apt/keyrings/mysql.gpg" ]; then
+          _SQL_DEB_SRC_UPDATE=NO
+        fi
+      fi
     else
       _SQL_DEB_SRC_UPDATE=YES
     fi
@@ -152,6 +288,7 @@ _if_sql_keyring_apt_update() {
     rm -f /etc/apt/sources.list.d/ourdelta*
     rm -f /etc/apt/sources.list.d/percona*
     rm -f /etc/apt/sources.list.d/xtrabackup*
+    rm -f /etc/apt/sources.list.d/mysql*
     _percList="/etc/apt/sources.list.d/percona-release.list"
     if [ "${_DB_V}" = "8.4" ] || [ "${_DB_SERIES}" = "8.4" ]; then
       _percRepo="${_DB_SRC}/ps-${_percNodot}-lts/apt"
@@ -202,6 +339,33 @@ _if_sql_keyring_apt_update() {
     fi
     chmod 644 ${_percList}
     echo -e 'Package: *\nPin: release o=Percona Development Team\nPin-Priority: 1001' > /etc/apt/preferences.d/00percona.pref
+    _apt_clean_update
+  fi
+
+  if [ "${_DB_SERVER}" = "MySQL" ] && [ "${_SQL_DEB_SRC_UPDATE}" = "YES" ]; then
+    rm -f /etc/apt/sources.list.d/mariadb*
+    rm -f /etc/apt/sources.list.d/ourdelta*
+    rm -f /etc/apt/sources.list.d/percona*
+    rm -f /etc/apt/sources.list.d/xtrabackup*
+    rm -f /etc/apt/sources.list.d/mysql*
+    _percList="/etc/apt/sources.list.d/mysql-release.list"
+    if [ "${_DB_V}" = "8.4" ] || [ "${_DB_SERIES}" = "8.4" ]; then
+      _percRepo="repo.mysql.com/apt/debian/"
+    fi
+    echo "## MySQL Server APT Repository" > ${_percList}
+    if [ -e "/etc/apt/keyrings/mysql.gpg" ]; then
+      echo "deb [signed-by=/etc/apt/keyrings/mysql.gpg] http://${_percRepo} ${_SQL_OS_CODE} mysql-8.4-lts mysql-tools" >> ${_percList}
+      echo "deb-src [signed-by=/etc/apt/keyrings/mysql.gpg] http://${_percRepo} ${_SQL_OS_CODE} mysql-8.4-lts mysql-tools" >> ${_percList}
+    else
+      echo "deb http://${_percRepo} ${_SQL_OS_CODE} mysql-8.4-lts mysql-tools" >> ${_percList}
+      echo "deb-src http://${_percRepo} ${_SQL_OS_CODE} mysql-8.4-lts mysql-tools" >> ${_percList}
+    fi
+    chmod 644 ${_percList}
+    echo -e 'Package: *\nPin: release o=MySQL Development Team\nPin-Priority: 1001' > /etc/apt/preferences.d/00mysql.pref
+    ### Temporary cleanup until MySQL updates gpg keys
+    mv -f ${_percList} /var/backups/
+    mv -f /etc/apt/preferences.d/00mysql.pref /var/backups/
+    mv -f /etc/apt/keyrings/mysql.gpg /var/backups/
     _apt_clean_update
   fi
 }
@@ -565,7 +729,8 @@ _tune_sql_memory_limits() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _tune_sql_memory_limits"
   fi
-  if [ -e "/root/.run-to-daedalus.cnf" ] \
+  if [ -e "/root/.run-to-excalibur.cnf" ] \
+    || [ -e "/root/.run-to-daedalus.cnf" ] \
     || [ -e "/root/.run-to-chimaera.cnf" ] \
     || [ -e "/root/.run-to-beowulf.cnf" ]; then
     _DO_NOTHING=YES
@@ -594,7 +759,8 @@ _tune_sql_memory_limits() {
   # https://raw.githubusercontent.com/major/MySQLTuner-perl/master/mysqltuner.pl
   _pthTun="/var/opt/mysqltuner.pl"
   _outTun="/var/opt/mysqltuner-${_xSrl}-${_X_VERSION}-${_NOW}.txt"
-  if [ -e "/root/.run-to-daedalus.cnf" ] \
+  if [ -e "/root/.run-to-excalibur.cnf" ] \
+    || [ -e "/root/.run-to-daedalus.cnf" ] \
     || [ -e "/root/.run-to-chimaera.cnf" ] \
     || [ -e "/root/.run-to-beowulf.cnf" ]; then
     _USE_MYSQLTUNER=NO
@@ -813,7 +979,9 @@ _prep_for_install_db_sql() {
   [ -e "/var/lib/mysql" ] && chown mysql:mysql /var/lib/mysql
 
   _SQL_SCR=APT
-  if [ "${_OS_CODE}" = "daedalus" ]; then
+  if [ "${_OS_CODE}" = "excalibur" ]; then
+    _SQL_OS_CODE=trixie
+  elif [ "${_OS_CODE}" = "daedalus" ]; then
     _SQL_OS_CODE=bookworm
   elif [ "${_OS_CODE}" = "chimaera" ]; then
     _SQL_OS_CODE=bullseye
@@ -822,8 +990,8 @@ _prep_for_install_db_sql() {
   else
     _SQL_OS_CODE="${_OS_CODE}"
   fi
-  if [ "${_SQL_OS_CODE}" = "foobar" ]; then
-    _SQL_SCR=GIT
+  if [ "${_SQL_OS_CODE}" = "trixie" ]; then
+    _SQL_SCR=DPKG
   fi
   _DBS_TEST=$(which mysql 2>&1)
   if [ ! -z "${_DBS_TEST}" ]; then
@@ -862,9 +1030,9 @@ _prep_for_install_db_sql() {
   cd /var/opt
 
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "INFO: Installing software-properties-common dirmngr..."
+    _msg "INFO: Installing dirmngr..."
   fi
-  for _PKG in software-properties-common dirmngr; do
+  for _PKG in dirmngr; do
     if ! _pkg_installed "${_PKG}"; then
       _mrun "${_INSTAPP} ${_PKG}"
     fi
@@ -913,6 +1081,11 @@ _prep_for_install_db_sql() {
   else
     _SQLDEB="percona-server-server"
   fi
+
+  if [ "${_DB_SERVER}" = "MySQL" ]; then
+    _SQLDEB="mysql-server"
+  fi
+
   _SQLXTR="libdbi-perl"
 
   if [ "${_DB_SERIES}" = "5.7" ]; then
@@ -922,6 +1095,11 @@ _prep_for_install_db_sql() {
   else
     _SQLADD="libperconaserverclient22 libperconaserverclient22-dev"
   fi
+
+  if [ "${_DB_SERVER}" = "MySQL" ]; then
+    _SQLADD="libmysqlclient24"
+  fi
+
 }
 
 _install_with_aptitude_sql() {
@@ -937,8 +1115,8 @@ _install_with_aptitude_sql() {
     _mrun "${_INSTAPP} ${_SQLADD}"
     _mrun "${_INSTAPP} ${_SQLXTR}"
     _mrun "${_INSTAPP} ${_SQLDEB}"
-  elif [ "${_SQL_SCR}" = "GIT" ]; then
-    ### TBD -- only for testing
+  elif [ "${_SQL_SCR}" = "DPKG" ]; then
+    _dpkg_install_mysql
     _mrun "${_INSTAPP} ${_SQLXTR}"
   fi
   if [ -x "/usr/sbin/aa-teardown" ]; then
@@ -1088,6 +1266,10 @@ _forced_mysql_root_password_update() {
     echo "user=root" >> /root/.my.cnf
     echo "password=${_ESC_PASS}" >> /root/.my.cnf
       echo " " >> /root/.my.cnf
+    echo "[autoexcalibur]" >> /root/.my.cnf
+    echo "user=root" >> /root/.my.cnf
+    echo "password=${_ESC_PASS}" >> /root/.my.cnf
+      echo " " >> /root/.my.cnf
     echo "[autoupboa]" >> /root/.my.cnf
     echo "user=root" >> /root/.my.cnf
     echo "password=${_ESC_PASS}" >> /root/.my.cnf
@@ -1168,7 +1350,9 @@ _db_server_install() {
   fi
   _db_server_apt_cleanup
   _SQL_SCR=APT
-  if [ "${_OS_CODE}" = "daedalus" ]; then
+  if [ "${_OS_CODE}" = "excalibur" ]; then
+    _SQL_OS_CODE=trixie
+  elif [ "${_OS_CODE}" = "daedalus" ]; then
     _SQL_OS_CODE=bookworm
   elif [ "${_OS_CODE}" = "chimaera" ]; then
     _SQL_OS_CODE=bullseye
@@ -1177,8 +1361,8 @@ _db_server_install() {
   else
     _SQL_OS_CODE="${_OS_CODE}"
   fi
-  if [ "${_SQL_OS_CODE}" = "foobar" ]; then
-    _SQL_SCR=GIT
+  if [ "${_SQL_OS_CODE}" = "trixie" ]; then
+    _SQL_SCR=DPKG
   fi
   _THIS_DB_PORT=3306
   if [ -x "/usr/bin/gpg2" ]; then
@@ -1190,6 +1374,19 @@ _db_server_install() {
     _db_server_apt_cleanup
     _install_with_aptitude_sql
     _db_server_apt_cleanup
+    [ -e "/etc/mysql/my.cnf" ] && mv -f /etc/mysql/my.cnf /var/backups/package.my.cnf
+    cp -af ${_locCnf}/var/my.cnf.txt /etc/mysql/my.cnf
+    if [ "${_DB_SERIES}" = "8.4" ]; then
+      # Enable legacy mysql_native_password for Percona 8.4
+      sed -i -E \
+        -e "s/^#?\s*mysql_native_password\s*=.*/mysql_native_password=ON/" \
+        -e "s/^(\s*)#\s*(mysql_native_password.*=.*)/\1\2/" \
+        /etc/mysql/my.cnf &> /dev/null
+    fi
+    cp -af ${_locCnf}/var/mysql /etc/init.d/mysql
+    chmod 755 /etc/init.d/mysql
+    _mrun "update-rc.d mysql defaults"
+    _mrun "service mysql start"
   else
     ###
     ### Update keyring and apt if needed
@@ -1262,6 +1459,7 @@ _db_server_install() {
       _preCnf="${_vBs}/dragon/t/my.cnf-pre-${_xSrl}-${_X_VERSION}-${_NOW}"
       if [ -f "${_myCnf}" ]; then
         _myCnfUpdate=NO
+        _myTopReinstall=NO
         _myRstrd=NO
         if [ ! -f "${_preCnf}" ]; then
           mkdir -p ${_vBs}/dragon/t/
@@ -1278,30 +1476,41 @@ _db_server_install() {
           -I key_buffer_size ${_myCnf} ${_preCnf} 2>&1)
         if [ -z "${_diffMyTest}" ]; then
           _myCnfUpdate=NO
+          _myTopReinstall=NO
           if [ "${_DEBUG_MODE}" = "YES" ]; then
             _msg "INFO: ${_DB_SERVER} diff0 empty"
           fi
         else
           _myCnfUpdate=YES
+          _myTopReinstall=YES
           # _diffMyTest=$(echo -n ${_diffMyTest} | fmt -su -w 2500)
-          _msg "INFO: ${_DB_SERVER} diff1 ${_diffMyTest}"
+          if [ "${_DEBUG_MODE}" = "YES" ]; then
+            _msg "INFO: ${_DB_SERVER} diff1 ${_diffMyTest}"
+          fi
         fi
         if [[ "${_diffMyTest}" =~ "innodb_buffer_pool_size" ]]; then
           _myCnfUpdate=NO
-          _msg "INFO: ${_DB_SERVER} diff2 ${_diffMyTest}"
+          if [ "${_DEBUG_MODE}" = "YES" ]; then
+            _msg "INFO: ${_DB_SERVER} diff2 ${_diffMyTest}"
+          fi
         fi
         if [[ "${_diffMyTest}" =~ "No such file or directory" ]]; then
           _myCnfUpdate=NO
-          _msg "INFO: ${_DB_SERVER} diff3 ${_diffMyTest}"
+          if [ "${_DEBUG_MODE}" = "YES" ]; then
+            _msg "INFO: ${_DB_SERVER} diff3 ${_diffMyTest}"
+          fi
         fi
       fi
-      if [ ! -e "/root/.run-to-daedalus.cnf" ] \
+      if [ ! -e "/root/.run-to-excalibur.cnf" ] \
+        && [ ! -e "/root/.run-to-daedalus.cnf" ] \
         && [ ! -e "/root/.run-to-chimaera.cnf" ] \
         && [ ! -e "/root/.run-to-beowulf.cnf" ]; then
         _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
-        _myUptime=$(mysqladmin -u root version | grep -i uptime 2>&1)
-        _myUptime=$(echo -n ${_myUptime} | fmt -su -w 2500 2>&1)
-        _msg "INFO: ${_DB_SERVER} ${_myUptime}"
+        if [ "${_myCnfUpdate}" = "NO" ]; then
+          _myUptime=$(mysqladmin -u root version | grep -i uptime 2>&1)
+          _myUptime=$(echo -n ${_myUptime} | fmt -su -w 2500 2>&1)
+          _msg "INFO: ${_DB_SERVER} ${_myUptime}"
+        fi
         if [ "${_myCnfUpdate}" = "YES" ]; then
           if [ "${_DEBUG_MODE}" = "YES" ]; then
             _msg "INFO: Restarting ${_DB_SERVER} server..."
@@ -1568,8 +1777,8 @@ _sql_root_credentials_update() {
           mysql -u root -e "ALTER USER 'root'@'::1' IDENTIFIED WITH caching_sha2_password BY '${_PASWD}';"
           mysql -u root -e "ALTER USER 'root'@'${_MY_OWNIP}' IDENTIFIED WITH caching_sha2_password BY '${_PASWD}';"
         fi
-        mysqladmin -u root flush-privileges
-        mysqladmin -u root flush-hosts
+        mysqladmin -u root flush-privileges &> /dev/null
+        mysqladmin -u root flush-hosts &> /dev/null
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "DAFT: ${_DB_SERVER} PASWD ${_PASWD}"
           mysql -u root -e "SHOW GRANTS FOR 'root'@'localhost';"
@@ -1588,8 +1797,8 @@ _sql_root_credentials_update() {
         else
           sed -i "s/.*skip-name-resolve/#skip-name-resolve/g" /etc/mysql/my.cnf &> /dev/null
         fi
-        mysqladmin -u root flush-privileges
-        mysqladmin -u root flush-hosts
+        mysqladmin -u root flush-privileges &> /dev/null
+        mysqladmin -u root flush-hosts &> /dev/null
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "INFO: Restarting ${_DB_SERVER} server..."
         fi
