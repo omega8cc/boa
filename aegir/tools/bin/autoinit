@@ -892,41 +892,10 @@ _autoinit_devuan_protect_essential() {
 
 # --- END: Devuan Excalibur systemd → sysvinit keep-SSH helper ----
 
-
 ###
-### Final procedure to make the system ready
+### Sync base-files if needed
 ###
-_init_post_ready() {
-  _msg "_init_post_ready ==> Final OS post-upgrade to ${_OS_DIST}/${_OS_CODE} procedure..." >> "${_logInt}"
-  /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
-  /usr/bin/dpkg --configure -a >> "${_logSlt}"
-  /usr/bin/apt-get upgrade ${_nrmUpArg} >> "${_logSlt}"
-  /usr/bin/apt-get dist-upgrade ${_dstUpArg} >> "${_logSlt}"
-  /usr/bin/apt-get -f install ${_aptAllow} -y -qq >> "${_logSlt}"
-  /usr/bin/dpkg --configure -a >> "${_logSlt}"
-}
-
-###
-### Remove and block systemd
-###
-_init_offsystemd() {
-  _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
-  touch /run/autoinit.pid
-  _msg "_init_offsystemd ==> Launching a quick dist-upgrade..." >> "${_logInt}"
-  if [ ! -e "/etc/apt/preferences.d/offsystemd" ]; then
-    rm -f /etc/apt/preferences.d/systemd
-    echo -e 'Package: systemd\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/offsystemd
-    echo -e '\n\nPackage: *systemd*\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/offsystemd
-  fi
-  /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
-  /usr/bin/dpkg --configure -a >> "${_logSlt}"
-  if [ -e "/root/.top-excalibur.cnf" ]; then
-    _msg "_init_offsystemd ==> Installing elogind on ${_OS_CODE} early" >> "${_logInt}"
-    /usr/bin/apt-get -o Dpkg::Options::="--force-overwrite" install elogind >> "${_logSlt}"
-  fi
-  /usr/bin/apt-get dist-upgrade ${_dstUpArg} >> "${_logSlt}"
-  [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
+_init_base_sync() {
   if [ -e "/root/.top-daedalus.cnf" ]; then
     # Initialize the update flag to NO
     _needsBaseFilesUpdate=NO
@@ -973,6 +942,43 @@ _init_offsystemd() {
       _ensure_devuan_bf
     fi
   fi
+}
+
+###
+### Final procedure to make the system ready
+###
+_init_post_ready() {
+  _msg "_init_post_ready ==> Final OS post-upgrade to ${_OS_DIST}/${_OS_CODE} procedure..." >> "${_logInt}"
+  /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
+  /usr/bin/dpkg --configure -a >> "${_logSlt}"
+  /usr/bin/apt-get upgrade ${_nrmUpArg} >> "${_logSlt}"
+  /usr/bin/apt-get dist-upgrade ${_dstUpArg} >> "${_logSlt}"
+  /usr/bin/apt-get -f install ${_aptAllow} -y -qq >> "${_logSlt}"
+  /usr/bin/dpkg --configure -a >> "${_logSlt}"
+}
+
+###
+### Remove and block systemd
+###
+_init_offsystemd() {
+  _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
+  touch /run/autoinit.pid
+  _msg "_init_offsystemd ==> Launching a quick dist-upgrade..." >> "${_logInt}"
+  if [ ! -e "/etc/apt/preferences.d/offsystemd" ]; then
+    rm -f /etc/apt/preferences.d/systemd
+    echo -e 'Package: systemd\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/offsystemd
+    echo -e '\n\nPackage: *systemd*\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/offsystemd
+  fi
+  /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
+  /usr/bin/dpkg --configure -a >> "${_logSlt}"
+  if [ -e "/root/.top-excalibur.cnf" ]; then
+    _msg "_init_offsystemd ==> Installing elogind on ${_OS_CODE} early" >> "${_logInt}"
+    /usr/bin/apt-get -o Dpkg::Options::="--force-overwrite" install elogind >> "${_logSlt}"
+  fi
+  /usr/bin/apt-get dist-upgrade ${_dstUpArg} >> "${_logSlt}"
+  [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
+
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   _msg "_init_offsystemd ==> Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
@@ -1147,46 +1153,6 @@ _init_cycle() {
       [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
       /usr/bin/apt-get autoremove --purge -y -qq >> "${_logSlt}"
       /usr/bin/apt-get autoclean -y -qq >> "${_logSlt}"
-      if [ -e "/root/.top-daedalus.cnf" ]; then
-        if cat /etc/os-release | grep -i 'daedalus' &> /dev/null; then
-          _msg "_init_cycle ==> The /etc/os-release already mentions daedalus" >> "${_logInt}"
-          _needsBaseFilesUpdate=NO
-        else
-          _msg "_init_cycle ==> The /etc/os-release doesn't mention daedalus yet" >> "${_logInt}"
-          _needsBaseFilesUpdate=YES
-        fi
-        if apt policy base-files | grep -i 'daedalus' &> /dev/null; then
-          _msg "_init_cycle ==> The apt policy base-files already mentions daedalus" >> "${_logInt}"
-          _needsBaseFilesUpdate=NO
-        else
-          _msg "_init_cycle ==> The apt policy base-files doesn't mention daedalus yet" >> "${_logInt}"
-          _needsBaseFilesUpdate=YES
-        fi
-        if [ "${_needsBaseFilesUpdate}" = "YES" ]; then
-          _msg "_init_cycle ==> Upgrading base-files from Devuan repository (dynamic candidate)" >> "${_logInt}"
-          _ensure_devuan_bf
-        fi
-      fi
-      if [ -e "/root/.top-excalibur.cnf" ]; then
-        if cat /etc/os-release | grep -i 'excalibur' &> /dev/null; then
-          _msg "_init_cycle ==> The /etc/os-release already mentions excalibur" >> "${_logInt}"
-          _needsBaseFilesUpdate=NO
-        else
-          _msg "_init_cycle ==> The /etc/os-release doesn't mention excalibur yet" >> "${_logInt}"
-          _needsBaseFilesUpdate=YES
-        fi
-        if apt policy base-files | grep -i 'excalibur' &> /dev/null; then
-          _msg "_init_cycle ==> The apt policy base-files already mentions excalibur" >> "${_logInt}"
-          _needsBaseFilesUpdate=NO
-        else
-          _msg "_init_cycle ==> The apt policy base-files doesn't mention excalibur yet" >> "${_logInt}"
-          _needsBaseFilesUpdate=YES
-        fi
-        if [ "${_needsBaseFilesUpdate}" = "YES" ]; then
-          _msg "_init_cycle ==> Upgrading base-files from Devuan repository (dynamic candidate)" >> "${_logInt}"
-          _ensure_devuan_bf
-        fi
-      fi
     fi
   fi
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
@@ -1203,6 +1169,7 @@ _init_cycle() {
     exit 0
   else
     if [ "${_OS_CODE}" = "daedalus" ] || [ "${_OS_CODE}" = "excalibur" ]; then
+      _init_base_sync
       _init_post_ready
       _check_no_systemd
       _msg "_init_cycle ==> Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
