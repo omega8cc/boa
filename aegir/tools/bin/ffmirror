@@ -15,7 +15,7 @@ while read line; do
   a=${a/./}
 
   # wget stuff
-  wget --spider -q -O /dev/null $line &&
+  wget --spider -q -O /dev/null http://$line &&
      b=$(</proc/uptime) &&
        b=${b%%\ *} &&
          b=${b/./}

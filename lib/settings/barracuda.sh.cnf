@@ -167,8 +167,8 @@ _PHP_CLI_VERSION=8.3
 ### CSS --- Ruby Gems for Compass
 ### FMG --- FFmpeg support (deprecated)
 ### NPM --- NPM for Gulp/Bower (requires also /root/.allow.node.lshell.cnf)
-### SR4 --- Apache Solr 4 with Jetty 9
-### SR7 --- Apache Solr 7
+### SR4 --- Apache Solr 4 with Jetty 9 (not supported on Devuan Excalibur)
+### SR7 --- Apache Solr 7 (not supported on Devuan Excalibur)
 ### SR9 --- Apache Solr 9
 ### WMN --- Webmin Control Panel (deprecated)
 ###
@@ -266,6 +266,12 @@ _BULLSEYE_TO_BOOKWORM=NO
 
 ###
 ### Use YES to run major system upgrade
+### from Debian Bookworm to Debian Trixie.
+###
+_BOOKWORM_TO_TRIXIE=NO
+
+###
+### Use YES to run major system upgrade
 ### from Debian Jessie to Devuan Beowulf.
 ###
 _JESSIE_TO_BEOWULF=NO
@@ -307,6 +313,18 @@ _CHIMAERA_TO_DAEDALUS=NO
 _BOOKWORM_TO_DAEDALUS=NO
 
 ###
+### Use YES to run major system upgrade
+### from Devuan Daedalus to Devuan Excalibur.
+###
+_DAEDALUS_TO_EXCALIBUR=NO
+
+###
+### Use YES to run major system upgrade
+### from Debian Trixie to Devuan Excalibur.
+###
+_TRIXIE_TO_EXCALIBUR=NO
+
+###
 ### Use YES to run migration from Tomcat 6
 ### to Jetty 7 with Apache Solr 1.4.1
 ###
@@ -330,7 +348,7 @@ _DEBUG_MODE=NO
 ### DB SERVER                              ###
 ###----------------------------------------###
 ###
-### Percona only.
+### Percona or MySQL (from Trixie).
 ###
 _DB_SERVER=Percona
 
@@ -345,6 +363,7 @@ _DB_SERVER=Percona
 ### 8.0 (Percona)
 ### 8.3 (Percona)
 ### 8.4 (Percona)
+### 8.4 (MySQL from Trixie)
 ###
 _DB_SERIES=5.7
 
@@ -1224,7 +1243,7 @@ _os_detection_minimal() {
   fi
   _APT_UPDATE="apt-get update"
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
-  _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
+  _OS_LIST="excalibur daedalus chimaera beowulf buster bullseye bookworm trixie"
   for e in ${_OS_LIST}; do
     if [ "${e}" = "${_OS_CODE}" ]; then
       _APT_UPDATE="apt-get update --allow-releaseinfo-change"
@@ -1267,7 +1286,7 @@ _find_fast_mirror_cnf() {
     _apt_clean_update
     apt-get install netcat-traditional ${_aptYesUnth} 2> /dev/null
   fi
-  _ffMirr=$(which ffmirror 2>&1)
+  _ffMirr=/opt/local/bin/ffmirror
   if [ -x "${_ffMirr}" ]; then
     _ffList="/var/backups/boa-mirrors-2025-01.txt"
     mkdir -p /var/backups
@@ -1461,15 +1480,21 @@ _download_helpers_libs() {
       _get_dev_src_pre "git-${_GIT_VRN}.tar.gz"
       cd /var/opt/git-${_GIT_VRN}
       if [ -e "/root/.dev.server.cnf" ]; then
+        make clean 2> /dev/null
         make configure 2> /dev/null
         bash ./configure --without-tcltk 2> /dev/null
-        make all -j $(nproc) 2> /dev/null
-        make install 2> /dev/null
+        # Neutralize any injected value, then set a valid compat that matches 3.4.x
+        make CFLAGS+=' -UOPENSSL_API_COMPAT -DOPENSSL_API_COMPAT=0x30400000L' daemon.o V=1 2> /dev/null
+        make CFLAGS+=' -UOPENSSL_API_COMPAT -DOPENSSL_API_COMPAT=0x30400000L' all -j $(nproc) 2> /dev/null
+        make CFLAGS+=' -UOPENSSL_API_COMPAT -DOPENSSL_API_COMPAT=0x30400000L' install 2> /dev/null
       else
+        make clean &> /dev/null
         make configure &> /dev/null
         bash ./configure --without-tcltk &> /dev/null
-        make all -j $(nproc) &> /dev/null
-        make install &> /dev/null
+        # Neutralize any injected value, then set a valid compat that matches 3.4.x
+        make CFLAGS+=' -UOPENSSL_API_COMPAT -DOPENSSL_API_COMPAT=0x30400000L' daemon.o V=1 &> /dev/null
+        make CFLAGS+=' -UOPENSSL_API_COMPAT -DOPENSSL_API_COMPAT=0x30400000L' all -j $(nproc) &> /dev/null
+        make CFLAGS+=' -UOPENSSL_API_COMPAT -DOPENSSL_API_COMPAT=0x30400000L' install &> /dev/null
       fi
       ldconfig 2> /dev/null
       if [ -x "/usr/local/bin/git" ]; then

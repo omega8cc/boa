@@ -42,9 +42,9 @@ boa reboot
 If the reboot worked and there are no issues, you are ready for the automated magic...
 
 ```sh
-touch /root/.run-to-chimaera.cnf
+touch /root/.run-to-excalibur.cnf (testing)
   or
-touch /root/.run-to-daedalus.cnf
+touch /root/.run-to-daedalus.cnf (recommended)
 
 service clean-boa-env start
 ```
@@ -81,11 +81,13 @@ The procedure discussed above automates major OS upgrades by running them in the
 
 ### Devuan to Devuan Major OS Upgrades
 
+- Devuan Daedalus => upgrade to Excalibur with `_DAEDALUS_TO_EXCALIBUR=YES`
 - Devuan Chimaera => upgrade to Daedalus with `_CHIMAERA_TO_DAEDALUS=YES`
 - Devuan Beowulf => upgrade to Chimaera with `_BEOWULF_TO_CHIMAERA=YES`
 
 ### Debian to Devuan Major OS Upgrades
 
+- Debian 13 Trixie => upgrade to Excalibur with `_TRIXIE_TO_EXCALIBUR=YES`
 - Debian 12 Bookworm => upgrade to Daedalus with `_BOOKWORM_TO_DAEDALUS=YES`
 - Debian 11 Bullseye => upgrade to Chimaera with `_BULLSEYE_TO_CHIMAERA=YES`
 - Debian 10 Buster => upgrade to Beowulf with `_BUSTER_TO_BEOWULF=YES`
@@ -94,6 +96,7 @@ The procedure discussed above automates major OS upgrades by running them in the
 
 ### Debian to Debian Major OS Upgrades
 
+- Debian 12 Bookworm => upgrade to Trixie with `_BOOKWORM_TO_TRIXIE=YES`
 - Debian 11 Bullseye => upgrade to Bookworm with `_BULLSEYE_TO_BOOKWORM=YES`
 - Debian 10 Buster => upgrade to Bullseye with `_BUSTER_TO_BULLSEYE=YES`
 - Debian 9 Stretch => upgrade to Buster with `_STRETCH_TO_BUSTER=YES`

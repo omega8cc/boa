@@ -17,8 +17,8 @@
 - **CSS**: Ruby Gems for Compass
 - **FMG**: FFmpeg support (deprecated)
 - **NPM**: NPM for Gulp/Bower (requires also /root/.allow.node.lshell.cnf)
-- **SR4**: Apache Solr 4 with Jetty 9
-- **SR7**: Apache Solr 7
+- **SR4**: Apache Solr 4 with Jetty 9 (not supported on Devuan Excalibur)
+- **SR7**: Apache Solr 7 (not supported on Devuan Excalibur)
 - **SR9**: Apache Solr 9
 - **WMN**: Webmin Control Panel (deprecated)
 
