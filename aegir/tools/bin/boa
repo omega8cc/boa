@@ -1019,11 +1019,6 @@ _octopus_install() {
         echo "ProxySQL" > /data/conf/clstr.cnf
       fi
     fi
-
-    sed -i "s/^127.0.1.1.*//g" /etc/hosts
-    wait
-    sed -i "/^$/d" /etc/hosts
-    wait
   else
     if [ ! -e "${_vBs}/${_octName}" ]; then
       echo
@@ -1041,8 +1036,6 @@ _octopus_install() {
 
 _barracuda_install() {
   if [ -e "${_vBs}/${_barName}" ] && [ -e "${_vBs}/${_filIncB}" ]; then
-
-    sed -i "s/^127.0.1.1.*//g" /etc/hosts
 
     sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"${_eMal}\"/g"        ${_vBs}/${_filIncB}
     wait
@@ -1992,15 +1985,24 @@ _check_root() {
         ln -sfn /proc/self/fd /dev/fd
       fi
     fi
-    sed -i "s/^127.0.0.1.*/127.0.0.1 localhost/g" /etc/hosts
-    wait
-    sed -i "s/.*files.aegir.cc.*//g" /etc/hosts
-    wait
-    sed -i "s/.*github.*//g" /etc/hosts
-    wait
-    echo >>/etc/hosts
-    sed -i "/^$/d" /etc/hosts
-    wait
+    _EHU=NO
+    if ! grep -q "127.0.0.1 localhost" /etc/hosts; then
+      sed -i "s/^127.0.0.1.*//g" /etc/hosts
+      echo "127.0.0.1 localhost" >> /etc/hosts
+      _EHU=YES
+    fi
+    if grep -q "files.aegir.cc" /etc/hosts; then
+      sed -i "s/.*files.aegir.cc.*//g" /etc/hosts
+      _EHU=YES
+    fi
+    if grep -q "github" /etc/hosts; then
+      sed -i "s/.*github.*//g" /etc/hosts
+      _EHU=YES
+    fi
+    if [ "${_EHU}" = "YES" ]; then
+      echo >>/etc/hosts
+      sed -i "/^$/d" /etc/hosts
+    fi
   else
     echo "ERROR: This script should be run as a root user"
     _clean_pid_exit _check_root_a
