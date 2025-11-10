@@ -695,7 +695,9 @@ _check_ip_hostname() {
           if [ "${_EASY_SETUP}" = "LOCAL" ]; then
             _DO_NOTHING=YES
           else
-            sed -i "s/^${_MY_OWNIP}.*//g" /etc/hosts &> /dev/null
+            if [ -n "${_MY_OWNIP}" ] && grep -qE "${_MY_OWNIP}\s" /etc/hosts; then
+              sed -i "s/^${_MY_OWNIP}.*//g" /etc/hosts &> /dev/null
+            fi
             echo "${_MY_OWNIP} ${_MY_HOSTN} chive.${_MY_HOSTN} sqlbuddy.${_MY_HOSTN} cgp.${_MY_HOSTN} ${_S_E}" >> /etc/hosts
           fi
         fi
