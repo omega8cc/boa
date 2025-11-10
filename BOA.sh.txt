@@ -212,6 +212,24 @@ _fix_dns_settings() {
 }
 
 _check_dns_settings() {
+  _EHU=NO
+  if ! grep -q "127.0.0.1 localhost" /etc/hosts; then
+    sed -i "s/^127.0.0.1.*//g" /etc/hosts
+    echo "127.0.0.1 localhost" >> /etc/hosts
+    _EHU=YES
+  fi
+  if grep -q "files.aegir.cc" /etc/hosts; then
+    sed -i "s/.*files.aegir.cc.*//g" /etc/hosts
+    _EHU=YES
+  fi
+  if grep -q "github" /etc/hosts; then
+    sed -i "s/.*github.*//g" /etc/hosts
+    _EHU=YES
+  fi
+  if [ "${_EHU}" = "YES" ]; then
+    echo >>/etc/hosts
+    sed -i "/^$/d" /etc/hosts
+  fi
   if [ -L "/etc/resolv.conf" ]; then
     _fix_dns_settings
     return 1  # Exit the function but continue the script
@@ -1128,7 +1146,7 @@ _update_agents() {
   fi
 
   if [ ! -e "${_optBin}/boa" ] \
-    || [ ! -e "${_pthLog}/boa.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
+    || [ ! -e "${_pthLog}/boa.sh.ctrl.f98.${_tRee}.${_xSrl}.pid" ]; then
     _CNT=$(pgrep -fc /local/bin/boa)
     if (( _CNT > 0 )); then
       echo "The boa is running!"
@@ -1140,7 +1158,7 @@ _update_agents() {
       if [ -e "${_optBin}/boa" ]; then
         chmod 700 ${_optBin}/boa
         chown root:root ${_optBin}/boa
-        touch ${_pthLog}/boa.sh.ctrl.f99.${_tRee}.${_xSrl}.pid
+        touch ${_pthLog}/boa.sh.ctrl.f98.${_tRee}.${_xSrl}.pid
       else
         if [ -e "${_optBin}/boa.old" ]; then
           mv -f ${_optBin}/boa.old ${_optBin}/boa
@@ -1150,7 +1168,7 @@ _update_agents() {
   fi
 
   if [ ! -e "${_optBin}/barracuda" ] \
-    || [ ! -e "${_pthLog}/barracuda.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
+    || [ ! -e "${_pthLog}/barracuda.sh.ctrl.f98.${_tRee}.${_xSrl}.pid" ]; then
     _CNT=$(pgrep -fc /local/bin/barracuda)
     if (( _CNT > 0 )); then
       echo "The barracuda is running!"
@@ -1162,7 +1180,7 @@ _update_agents() {
       if [ -e "${_optBin}/barracuda" ]; then
         chmod 700 ${_optBin}/barracuda
         chown root:root ${_optBin}/barracuda
-        touch ${_pthLog}/barracuda.sh.ctrl.f99.${_tRee}.${_xSrl}.pid
+        touch ${_pthLog}/barracuda.sh.ctrl.f98.${_tRee}.${_xSrl}.pid
       else
         if [ -e "${_optBin}/barracuda.old" ]; then
           mv -f ${_optBin}/barracuda.old ${_optBin}/barracuda
@@ -4365,13 +4383,6 @@ _ensure_ipset_symlinks() {
 }
 
 _if_update_boa_key_tools_only() {
-  sed -i "s/.*files.aegir.cc.*//g" /etc/hosts
-  wait
-  sed -i "s/.*github.*//g" /etc/hosts
-  wait
-  echo >>/etc/hosts
-  sed -i "/^$/d" /etc/hosts
-  wait
 
   _check_dns_settings
   _if_reinstall_curl
@@ -4553,13 +4564,6 @@ _boa_setup() {
   if [ "${_hostedSys}" = "YES" ]; then
     _VMFAMILY=HOSTED
   fi
-  sed -i "s/.*files.aegir.cc.*//g" /etc/hosts
-  wait
-  sed -i "s/.*github.*//g" /etc/hosts
-  wait
-  echo >>/etc/hosts
-  sed -i "/^$/d" /etc/hosts
-  wait
 
   _check_dns_settings
 

@@ -1703,15 +1703,24 @@ _check_root() {
       echo "devpts          /dev/pts        devpts  rw,noexec,nosuid,gid=5,mode=620 0  0" >> /etc/fstab
       mount -t devpts devpts /dev/pts &> /dev/null
     fi
-    sed -i "s/^127.0.0.1.*/127.0.0.1 localhost/g" /etc/hosts
-    wait
-    sed -i "s/.*files.aegir.cc.*//g" /etc/hosts
-    wait
-    sed -i "s/.*github.*//g" /etc/hosts
-    wait
-    echo >>/etc/hosts
-    sed -i "/^$/d" /etc/hosts
-    wait
+    _EHU=NO
+    if ! grep -q "127.0.0.1 localhost" /etc/hosts; then
+      sed -i "s/^127.0.0.1.*//g" /etc/hosts
+      echo "127.0.0.1 localhost" >> /etc/hosts
+      _EHU=YES
+    fi
+    if grep -q "files.aegir.cc" /etc/hosts; then
+      sed -i "s/.*files.aegir.cc.*//g" /etc/hosts
+      _EHU=YES
+    fi
+    if grep -q "github" /etc/hosts; then
+      sed -i "s/.*github.*//g" /etc/hosts
+      _EHU=YES
+    fi
+    if [ "${_EHU}" = "YES" ]; then
+      echo >>/etc/hosts
+      sed -i "/^$/d" /etc/hosts
+    fi
     if [ -e "/etc/init.d/postfix" ]; then
       service postfix restart &> /dev/null
     fi
