@@ -219,7 +219,8 @@ _python_install_src() {
   echo "Installing pip..."
   _PIP_TEST=$(${_usePip} --version 2>&1)
   if [[ "${_PIP_TEST}" =~ "python 3.11" ]] \
-    || [[ "${_PIP_TEST}" =~ "python 3.12" ]]; then
+    || [[ "${_PIP_TEST}" =~ "python 3.12" ]] \
+    || [[ "${_PIP_TEST}" =~ "python 3.13" ]]; then
     ${_usePip} install --upgrade pip --root-user-action ignore
   else
     ${_usePip} install --upgrade pip
