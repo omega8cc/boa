@@ -80,7 +80,7 @@ find /run/daily-fix.pid -mtime +0 -type f -not -newermt "${_THR_HOURS}" -exec rm
 #
 # Find the fastest mirror.
 _find_fast_mirror_early() {
-  _isNetc=$(which netcat 2>&1)
+  _isNetc="$(which netcat)"
   if [ ! -x "${_isNetc}" ] || [ -z "${_isNetc}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then

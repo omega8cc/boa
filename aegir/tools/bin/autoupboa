@@ -820,7 +820,7 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     fi
 
     if [ "${_OS_CODE}" != "excalibur" ] && [ ! -e "/var/log/boa/.custom_percona_forced.${_xSrl}.pid" ]; then
-      _DBS_TEST=$(which mysql 2>&1)
+      _DBS_TEST="$(which mysql)"
       if [ ! -z "${_DBS_TEST}" ]; then
         _DB_SERVER_TEST=$(mysql -V 2>&1)
       fi

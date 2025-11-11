@@ -350,7 +350,7 @@ _dns_unbound_install_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _dns_unbound_install_upgrade"
   fi
-  _isUnbnd=$(which unbound 2>&1)
+  _isUnbnd="$(which unbound)"
   _isUnbndErr=$(${_isUnbnd} -V 2>&1)
   [ -x "${_isUnbnd}" ] && _isUnbLibvt=$(ldd ${_isUnbnd} | grep libevent 2>&1)
   if [[ "${_isUnbndErr}" =~ "cannot open shared object file" ]] \
@@ -547,7 +547,7 @@ _dns_unbound_install_upgrade() {
   [ -e "/usr/etc/unbound" ] && cp -af /etc/unbound/*.key /usr/etc/unbound/
   [ -e "/usr/etc/unbound" ] && cp -af /etc/unbound/*.pem /usr/etc/unbound/
   [ -e "/usr/etc/unbound" ] && cp -af /etc/unbound/unbound.conf.d/unbound.conf /usr/etc/unbound/
-  _isUnbnd=$(which unbound 2>&1)
+  _isUnbnd="$(which unbound)"
   _isUnbndErr=$(${_isUnbnd} -V 2>&1)
   if [[ "${_isUnbndErr}" =~ "cannot open shared object file" ]] \
     || [[ "${_isUnbndErr}" =~ "No such file or directory" ]] \
@@ -558,7 +558,7 @@ _dns_unbound_install_upgrade() {
   fi
   [ -e "/etc/unbound/unbound.conf.d/remote-control.conf" ] && rm -f /etc/unbound/unbound.conf.d/remote-control.conf
   if [ "${_isUnbndFix}" = "NO" ] || [ "${_killPdnsd}" = "YES" ]; then
-    _isPdnsd=$(which pdnsd 2>&1)
+    _isPdnsd="$(which pdnsd)"
     if [ -x "${_isPdnsd}" ]; then
       _mrun "service pdnsd stop"
       _mrun "update-rc.d -f pdnsd remove"

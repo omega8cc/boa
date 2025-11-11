@@ -34,8 +34,8 @@ _if_install_bzr() {
       rm -rf bzr*
       _get_dev_src "bzr-${_BZR_VRN}.tar.gz"
       cd /var/opt/bzr-${_BZR_VRN}
-      _isPythonTwo=$(which python2 2>&1)
-      _isPythonThree=$(which python3 2>&1)
+      _isPythonTwo="$(which python2)"
+      _isPythonThree="$(which python3)"
       if [ -x "${_isPythonThree}" ]; then
         _usePyth=python3
       elif [ -x "${_isPythonTwo}" ]; then
@@ -403,7 +403,7 @@ _if_install_node() {
   if [ -e "/root/.allow.node.lshell.cnf" ]; then
     if [[ "${_XTRAS_LIST}" =~ "NPM" ]]; then
       _NODE_INSTALL=NO
-      _isNode=$(which node 2>&1)
+      _isNode="$(which node)"
       if [ -x "${_isNode}" ]; then
        _NODE_V=$(${_isNode} --version \
          | cut -d" " -f2 \
@@ -448,7 +448,7 @@ _if_install_node() {
       chmod 1777 /opt/user/npm
     fi
   else
-    _isNode=$(which node 2>&1)
+    _isNode="$(which node)"
     if [ -x "${_isNode}" ]; then
       _mrun "apt-get remove nodejs -y --purge --auto-remove -qq"
       _mrun "apt-get remove npm -y --purge --auto-remove -qq"
@@ -488,7 +488,7 @@ _if_install_ruby() {
   fi
   if [[ "${_XTRAS_LIST}" =~ "CSS" ]]; then
     _RUBY_INSTALL_SCR=NO
-    _isRuby=$(which ruby 2>&1)
+    _isRuby="$(which ruby)"
     if [ -x "${_isRuby}" ]; then
       _RUBY_V=$(${_isRuby} --version \
         | cut -d" " -f2 \
@@ -520,7 +520,7 @@ _if_install_ruby() {
         _mrun "make -j $(nproc)"
         _mrun "make install"
         ldconfig 2> /dev/null
-        _isRuby=$(which ruby 2>&1)
+        _isRuby="$(which ruby)"
         if [ -x "${_isRuby}" ]; then
           _RUBY_V=$(${_isRuby} --version \
             | cut -d" " -f2 \

@@ -84,7 +84,7 @@ _os_detection_minimal() {
 }
 
 _check_mysql_version() {
-  _DBS_TEST=$(which mysql 2>&1)
+  _DBS_TEST="$(which mysql)"
   if [ ! -z "${_DBS_TEST}" ]; then
     _DB_SERVER_TEST=$(mysql -V 2>&1)
   fi
@@ -119,12 +119,12 @@ _check_root() {
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
-    _LSB_TEST=$(which lsb_release 2> /dev/null)
+    _LSB_TEST="$(which lsb_release)"
     if [ ! -x "${_LSB_TEST}" ]; then
       _apt_clean_update
       apt-get install lsb-release ${_aptYesUnth}
     fi
-    _LSB_TEST=$(which lsb_release 2> /dev/null)
+    _LSB_TEST="$(which lsb_release)"
     if [ -x "${_LSB_TEST}" ]; then
       if [ "${_OS_DIST}" = "Devuan" ] || [ "${_OS_DIST}" = "Debian" ]; then
         _SUPPORTED_OS=YES
@@ -644,7 +644,7 @@ _check_config_cluster() {
 }
 
 _find_fast_mirror_early() {
-  _isNetc=$(which netcat 2>&1)
+  _isNetc="$(which netcat)"
   if [ ! -x "${_isNetc}" ] || [ -z "${_isNetc}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
@@ -1382,9 +1382,9 @@ _upgrade_web_node() {
 
 _default_my_cnf_copy() {
 
-  _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)
+  _CPU_INFO="$(grep -c processor /proc/cpuinfo)"
   _CPU_INFO=${_CPU_INFO//[^0-9]/}
-  _NPROC_TEST=$(which nproc 2>&1)
+  _NPROC_TEST="$(which nproc)"
   if [ -z "${_NPROC_TEST}" ]; then
     _CPU_NR="${_CPU_INFO}"
   else

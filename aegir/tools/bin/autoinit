@@ -226,9 +226,9 @@ _init_mnfr() {
     ${_INITINS} dmidecode &> /dev/null
   fi
   # Check if dmidecode is available
-  _DMI_TEST=$(which dmidecode 2>&1)
+  _DMI_TEST="$(which dmidecode)"
   if [ -x "${_DMI_TEST}" ]; then
-    _HOST_INFO=$(dmidecode -s system-manufacturer 2>&1)
+    _HOST_INFO="$(dmidecode -s system-manufacturer)"
   else
     _HOST_INFO="Unknown, dmidecode not available"
   fi
@@ -285,7 +285,7 @@ _init_no_systemd() {
 ### Fix locales
 ###
 _init_locales() {
-  _isLoc=$(which locale 2>&1)
+  _isLoc="$(which locale)"
   if [ ! -x "${_isLoc}" ] || [ -z "${_isLoc}" ]; then
     /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
     /usr/bin/dpkg --configure -a >> "${_logSlt}"
@@ -384,7 +384,7 @@ _init_locales() {
 ### Check cron
 ###
 _init_cron() {
-  _isCrn=$(which cron 2>&1)
+  _isCrn="$(which cron)"
   if [ ! -x "${_isCrn}" ] || [ -z "${_isCrn}" ]; then
     /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
     /usr/bin/dpkg --configure -a >> "${_logSlt}"
@@ -443,11 +443,11 @@ _disable_apparmor_utils() {
 _install_apparmor() {
   _isAppArmorRevFile="/sys/kernel/security/apparmor/revision"
   _isAppArmorGrubFile="/etc/default/grub.d/apparmor.cfg"
-  _isAppArmorComplain=$(which aa-complain 2>&1)
-  _isAppArmorStatus=$(which aa-status 2>&1)
+  _isAppArmorComplain="$(which aa-complain)"
+  _isAppArmorStatus="$(which aa-status)"
   _isAppArmorGrub=NO
   if [ -e "${_isAppArmorGrubFile}" ]; then
-    _GRUB_APPARMOR_TEST=$(grep "apparmor=1 security=apparmor" ${_isAppArmorGrubFile} 2>&1)
+    _GRUB_APPARMOR_TEST=$(grep "apparmor=1 security=apparmor" ${_isAppArmorGrubFile})
     if [[ "${_GRUB_APPARMOR_TEST}" =~ "apparmor=1 security=apparmor" ]]; then
       _isAppArmorGrub=YES
     fi
@@ -1007,7 +1007,7 @@ _init_offsystemd() {
 ### Find the best Devuan APT sources mirror
 ###
 _find_fast_devuan_mirror() {
-  _ffDevuan=$(which ffdevuan 2>&1)
+  _ffDevuan="$(which ffdevuan)"
   if [ -x "${_ffDevuan}" ]; then
     bash ${_ffDevuan} >> "${_logSlt}"
     wait

@@ -1,6 +1,6 @@
 
 _check_mysql_version() {
-  _DBS_TEST=$(which mysql 2>&1)
+  _DBS_TEST="$(which mysql)"
   if [ ! -z "${_DBS_TEST}" ]; then
     _DB_SERVER_TEST=$(mysql -V 2>&1)
   fi
@@ -378,7 +378,7 @@ _sql_strict_upgrade_path() {
   fi
   _SQL_UPGRADE=NO
   _DB_SERVER_TEST=$(mysql -V 2>&1)
-  _DBS_TEST=$(which mysql 2>&1)
+  _DBS_TEST="$(which mysql)"
   if [ ! -z "${_DBS_TEST}" ]; then
     _NOW_DB_V=$(mysql -V 2>&1 \
       | tr -d "\n" \
@@ -993,7 +993,7 @@ _prep_for_install_db_sql() {
   if [ "${_SQL_OS_CODE}" = "trixie" ]; then
     _SQL_SCR=DPKG
   fi
-  _DBS_TEST=$(which mysql 2>&1)
+  _DBS_TEST="$(which mysql)"
   if [ ! -z "${_DBS_TEST}" ]; then
     _NOW_DB_V=$(mysql -V 2>&1 \
       | tr -d "\n" \

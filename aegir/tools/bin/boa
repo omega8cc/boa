@@ -93,9 +93,9 @@ _check_manufacturer_compatibility() {
     ${_INITINS} dmidecode &> /dev/null
   fi
   # Check if dmidecode is available
-  _DMI_TEST=$(which dmidecode 2>&1)
+  _DMI_TEST="$(which dmidecode)"
   if [ -x "${_DMI_TEST}" ]; then
-    _HOST_INFO=$(dmidecode -s system-manufacturer 2>&1)
+    _HOST_INFO="$(dmidecode -s system-manufacturer)"
   else
     _HOST_INFO="Unknown, dmidecode not available"
   fi
@@ -287,7 +287,7 @@ _ensure_virt_what_helper_symlink() {
 ### Fix VM system detection
 ###
 _fix_virt_what() {
-  _VIRT_TEST=$(which virt-what)
+  _VIRT_TEST="$(which virt-what)"
   if [ -n "${_VIRT_TEST}" ] && [ -x "${_VIRT_TEST}" ]; then
     _SHELL_TEST_A=$(grep -I -o "\#\!.*/usr/bin/sh" ${_VIRT_TEST} 2>&1)
     _SHELL_TEST_B=$(grep -I -o "\#\!.*/bin/sh" ${_VIRT_TEST} 2>&1)
@@ -317,7 +317,7 @@ _fix_virt_what() {
 ### Fix or install VM system detection
 ###
 _fix_or_install_virt_what() {
-  _VIRT_TEST=$(which virt-what)
+  _VIRT_TEST="$(which virt-what)"
   if [ -n "${_VIRT_TEST}" ] && [ -x "${_VIRT_TEST}" ]; then
     _fix_virt_what
   else
@@ -335,7 +335,7 @@ _fix_or_install_virt_what() {
 
 _check_virt() {
   _fix_or_install_virt_what
-  _VIRT_TOOL=$(which virt-what)
+  _VIRT_TOOL="$(which virt-what)"
   if [ -x "${_VIRT_TOOL}" ]; then
     _VIRT_TEST=$(virt-what)
     _VIRT_TEST=$(echo -n ${_VIRT_TEST} | fmt -su -w 2500 2>&1)
@@ -1740,7 +1740,7 @@ _init_setup() {
 }
 
 _find_fast_mirror_early() {
-  _isNetc=$(which netcat 2>&1)
+  _isNetc="$(which netcat)"
   if [ ! -x "${_isNetc}" ] || [ -z "${_isNetc}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
@@ -2095,8 +2095,8 @@ _check_root() {
 
 _display_version() {
   if [ "$(id -u)" -eq 0 ]; then
-    _HOST_INFO=$(dmidecode -s system-manufacturer 2>&1)
-    _VIRT_TOOL=$(which virt-what)
+    _HOST_INFO="$(dmidecode -s system-manufacturer)"
+    _VIRT_TOOL="$(which virt-what)"
     if [ -x "${_VIRT_TOOL}" ]; then
       _VIRT_TEST=$(virt-what)
       _VIRT_TEST=$(echo -n ${_VIRT_TEST} | fmt -su -w 2500 2>&1)
@@ -2327,10 +2327,10 @@ _check_system_ram() {
 
 _display_info() {
   if [ "$(id -u)" -eq 0 ]; then
-    _HOST_INFO=$(dmidecode -s system-manufacturer 2>&1)
-    _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)
+    _HOST_INFO="$(dmidecode -s system-manufacturer)"
+    _CPU_INFO="$(grep -c processor /proc/cpuinfo)"
     _CPU_INFO=${_CPU_INFO//[^0-9]/}
-    _NPROC_TEST=$(which nproc 2>&1)
+    _NPROC_TEST="$(which nproc)"
     if [ -z "${_NPROC_TEST}" ]; then
       _CPU_NR="${_CPU_INFO}"
     else
@@ -2419,7 +2419,7 @@ _display_info() {
           | awk '{ print $1}' 2>&1)
       fi
     fi
-    _isLshell=$(which lshell 2>&1)
+    _isLshell="$(which lshell)"
     _LSH=$(${_isLshell} --version 2>&1 \
       | tr -d "\n" \
       | cut -d"-" -f2 \

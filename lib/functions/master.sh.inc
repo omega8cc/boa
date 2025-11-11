@@ -86,8 +86,8 @@ _provision_backend_dbpass_generate() {
         _ESC_PASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
       fi
     fi
-    _isPythonTwo=$(which python2 2>&1)
-    _isPythonThree=$(which python3 2>&1)
+    _isPythonTwo="$(which python2)"
+    _isPythonThree="$(which python3)"
     _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
     if [ -x "${_isPythonThree}" ]; then
       _ENC_PASS=$(python3 -c "import urllib.parse; print(urllib.parse.quote('''${_ESC_PASS}'''))")

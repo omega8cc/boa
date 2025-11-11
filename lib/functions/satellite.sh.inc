@@ -53,9 +53,9 @@ _count_cpu() {
     _msg "PROC: _count_cpu"
     _debug_proc
   fi
-  _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)
+  _CPU_INFO="$(grep -c processor /proc/cpuinfo)"
   _CPU_INFO=${_CPU_INFO//[^0-9]/}
-  _NPROC_TEST=$(which nproc 2>&1)
+  _NPROC_TEST="$(which nproc)"
   if [ -z "${_NPROC_TEST}" ]; then
     _CPU_NR="${_CPU_INFO}"
   else
@@ -2418,8 +2418,8 @@ _provision_backend_dbpass_generate() {
         _ESC_PASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
       fi
     fi
-    _isPythonTwo=$(which python2 2>&1)
-    _isPythonThree=$(which python3 2>&1)
+    _isPythonTwo="$(which python2)"
+    _isPythonThree="$(which python3)"
     _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
     if [ -x "${_isPythonThree}" ]; then
       _ENC_PASS=$(python3 -c "import urllib.parse; print(urllib.parse.quote('''${_ESC_PASS}'''))")

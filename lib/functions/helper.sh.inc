@@ -709,7 +709,7 @@ _ensure_virt_what_helper_symlink() {
 ### Fix VM system detection
 ###
 _fix_virt_what() {
-  _VIRT_TEST=$(which virt-what)
+  _VIRT_TEST="$(which virt-what)"
   if [ -n "${_VIRT_TEST}" ] && [ -x "${_VIRT_TEST}" ]; then
     _SHELL_TEST_A=$(grep -I -o "\#\!.*/usr/bin/sh" ${_VIRT_TEST} 2>&1)
     _SHELL_TEST_B=$(grep -I -o "\#\!.*/bin/sh" ${_VIRT_TEST} 2>&1)
@@ -739,7 +739,7 @@ _fix_virt_what() {
 ### Fix or install VM system detection
 ###
 _fix_or_install_virt_what() {
-  _VIRT_TEST=$(which virt-what)
+  _VIRT_TEST="$(which virt-what)"
   if [ -n "${_VIRT_TEST}" ] && [ -x "${_VIRT_TEST}" ]; then
     _fix_virt_what
   else
@@ -760,7 +760,7 @@ _virt_detection() {
     _msg "PROC: _virt_detection"
   fi
   _fix_or_install_virt_what
-  _VIRT_TOOL=$(which virt-what)
+  _VIRT_TOOL="$(which virt-what)"
   if [ -x "${_VIRT_TOOL}" ]; then
     _VIRT_TEST=$(virt-what)
     _VIRT_TEST=$(echo -n ${_VIRT_TEST} | fmt -su -w 2500 2>&1)

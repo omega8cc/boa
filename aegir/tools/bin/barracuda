@@ -10,28 +10,27 @@ export _TODAY=${_TODAY//[^0-9]/}
 _NOW=$(date +%y%m%d-%H%M%S)
 export _NOW=${_NOW//[^0-9-]/}
 
-_barCnf="/root/.barracuda.cnf"
-_barName="BARRACUDA.sh.txt"
 _crlGet="-L --max-redirs 3 -k -s --retry 9 --retry-delay 9 -A iCab"
 _wgetGet="--max-redirect=3 --no-check-certificate -q --tries=9 --wait=9 --user-agent='iCab'"
 _aptAllow="--allow-unauthenticated"
 _aptYesUnth="-y ${_aptAllow}"
+_INITINS="/usr/bin/apt-get ${_aptAllow} -y install"
+
+_barCnf="/root/.barracuda.cnf"
+_barName="BARRACUDA.sh.txt"
 _filIncB="barracuda.sh.cnf"
-_filIncO="octopus.sh.cnf"
-_octName="OCTOPUS.sh.txt"
-_bldPth="/opt/tmp/boa"
 _pthIncB="lib/settings/${_filIncB}"
-_pthIncO="lib/settings/${_filIncO}"
 _vBs="/var/backups"
+_bldPth="/opt/tmp/boa"
 
 _LOG_DIR="${_vBs}/reports/up/$(basename "$0")/${_TODAY}"
 _UP_LOG="${_LOG_DIR}/$(basename "$0")-up-${_NOW}.log"
+
 _VMFAMILY=XEN
 _VM_TEST="$(uname -a)"
 if [[ "${_VM_TEST}" =~ "-beng" ]]; then
   _VMFAMILY="VS"
 fi
-_INITINS="/usr/bin/apt-get ${_aptAllow} -y install"
 
 ###
 ### Avoid too many questions
@@ -627,7 +626,7 @@ _oops_mysql_exit() {
 
 _mysql_downgrade_protection() {
   _DB_V=""
-  _DBS_TEST=$(which mysql 2>&1)
+  _DBS_TEST="$(which mysql)"
   if [ ! -z "${_DBS_TEST}" ]; then
     _DB_SERVER_TEST=$(mysql -V 2>&1)
   else
@@ -1326,7 +1325,7 @@ _check_etc_apt_preferences() {
 }
 
 _find_fast_mirror_early() {
-  _isNetc=$(which netcat 2>&1)
+  _isNetc="$(which netcat)"
   if [ ! -x "${_isNetc}" ] || [ -z "${_isNetc}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
@@ -1749,7 +1748,7 @@ _check_no_systemd() {
 }
 
 _old_apt_keys_cleanup() {
-  _isAptKey=$(which apt-key 2>&1)
+  _isAptKey="$(which apt-key)"
   if [ -x "${_isAptKey}" ]; then
     _OLD_KEY_KSPLICE_TEST=$(${_isAptKey} list | grep ksplice 2>&1)
     _OLD_KEY_ORACLE_TEST=$(${_isAptKey} list | grep oracle 2>&1)
@@ -1832,9 +1831,9 @@ _check_manufacturer_compatibility() {
     ${_INITINS} dmidecode &> /dev/null
   fi
   # Check if dmidecode is available
-  _DMI_TEST=$(which dmidecode 2>&1)
+  _DMI_TEST="$(which dmidecode)"
   if [ -x "${_DMI_TEST}" ]; then
-    _HOST_INFO=$(dmidecode -s system-manufacturer 2>&1)
+    _HOST_INFO="$(dmidecode -s system-manufacturer)"
   else
     _HOST_INFO="Unknown, dmidecode not available"
   fi

@@ -11,7 +11,7 @@ _pkg_installed() {
 ### Find the best Devuan APT sources mirror
 ###
 _find_fast_devuan_mirror() {
-  _ffDevuan=$(which ffdevuan 2>&1)
+  _ffDevuan="$(which ffdevuan)"
   if [ -x "${_ffDevuan}" ]; then
     bash ${_ffDevuan} &> /dev/null
     wait
@@ -411,9 +411,9 @@ _count_cpu() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _count_cpu"
   fi
-  _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)
+  _CPU_INFO="$(grep -c processor /proc/cpuinfo)"
   _CPU_INFO=${_CPU_INFO//[^0-9]/}
-  _NPROC_TEST=$(which nproc 2>&1)
+  _NPROC_TEST="$(which nproc)"
   if [ -z "${_NPROC_TEST}" ]; then
     _CPU_NR="${_CPU_INFO}"
   else
@@ -2138,7 +2138,7 @@ _barracuda_cnf() {
     _ffList="/var/log/boa/devaun-fast-mirrors-list.txt"
     _BROKEN_FF=$(grep "planetcobalt" ${_ffList} 2>&1)
     if [ ! -e "${_ffList}" ] || [[ ! "${_BROKEN_FF}" =~ "planetcobalt" ]]; then
-      _ffDevuan=$(which ffdevuan 2>&1)
+      _ffDevuan="$(which ffdevuan)"
       if [ -x "${_ffDevuan}" ]; then
         bash ${_ffDevuan} &> /dev/null
         wait
@@ -2786,7 +2786,7 @@ _barracuda_cnf() {
     _ffList="/var/log/boa/devaun-fast-mirrors-list.txt"
     _BROKEN_FF=$(grep "planetcobalt" ${_ffList} 2>&1)
     if [ ! -e "${_ffList}" ] || [[ ! "${_BROKEN_FF}" =~ "planetcobalt" ]]; then
-      _ffDevuan=$(which ffdevuan 2>&1)
+      _ffDevuan="$(which ffdevuan)"
       if [ -x "${_ffDevuan}" ]; then
         bash ${_ffDevuan} &> /dev/null
         wait
@@ -3103,10 +3103,15 @@ _do_install_latest_git() {
     _mrun "make clean"
     _mrun "make configure"
     _mrun "bash ./configure --without-tcltk"
-    # Neutralize any injected value, then set a valid compat that matches 3.4.x
-    _mrun "make CFLAGS+=' -UOPENSSL_API_COMPAT -DOPENSSL_API_COMPAT=0x30400000L' daemon.o V=1"
-    _mrun "make CFLAGS+=' -UOPENSSL_API_COMPAT -DOPENSSL_API_COMPAT=0x30400000L' all -j $(nproc)"
-    _mrun "make CFLAGS+=' -UOPENSSL_API_COMPAT -DOPENSSL_API_COMPAT=0x30400000L' install"
+    if [ "${_OS_CODE}" = "excalibur" ]; then
+      # Neutralize any injected value, then set a valid compat that matches 3.4.x
+      _mrun "make CFLAGS+=' -UOPENSSL_API_COMPAT -DOPENSSL_API_COMPAT=0x30400000L' daemon.o V=1"
+      _mrun "make CFLAGS+=' -UOPENSSL_API_COMPAT -DOPENSSL_API_COMPAT=0x30400000L' all -j $(nproc)"
+      _mrun "make CFLAGS+=' -UOPENSSL_API_COMPAT -DOPENSSL_API_COMPAT=0x30400000L' install"
+    else
+      _mrun "make all -j $(nproc)"
+      _mrun "make install"
+    fi
     ldconfig 2> /dev/null
     if [ -x "/usr/local/bin/git" ]; then
       if [ -e "/usr/bin/git" ] && [ ! -L "/usr/bin/git" ]; then
@@ -3140,6 +3145,14 @@ _if_install_git_src() {
     if [ "${_GIT_V}" != "${_GIT_VRN}" ]; then
       _GIT_INSTALL=YES
     fi
+  fi
+  if [ "${_OS_CODE}" = "excalibur" ]; then
+    _DB_SERVER=MySQL
+  else
+    _DB_SERVER=Percona
+  fi
+  if [ "$(boa info | grep -c ${_DB_SERVER})" -lt 3 ] || [ ! -e "/usr/sbin/csf" ]; then
+    _GIT_INSTALL=NO
   fi
   if [ "${_GIT_INSTALL}" = "YES" ] \
     || [ "${_GIT_FORCE_REINSTALL}" = "YES" ]; then
@@ -3417,7 +3430,7 @@ _if_install_wkhtmltox() {
   fi
   ###--------------------###
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
-  _isWkhtmltox=$(which wkhtmltopdf 2>&1)
+  _isWkhtmltox="$(which wkhtmltopdf)"
   if [ -z "${_isWkhtmltox}" ] \
     || [ ! -e "${_isWkhtmltox}" ] \
     || [ ! -x "/usr/local/bin/wkhtmltopdf" ] \
@@ -5415,7 +5428,7 @@ _strict_bin_permissions() {
     _BACKEND_ITEMS="${_BACKEND_ITEMS} ${_BACKEND_ITEMS_LIST}"
   fi
   for i in ${_BACKEND_ITEMS}; do
-    _BIN_ITEM=$(which $i 2>&1)
+    _BIN_ITEM="$(which ${i})"
     if [ -e "${_BIN_ITEM}" ]; then
       chgrp root ${_BIN_ITEM} &> /dev/null
       chmod 755 ${_BIN_ITEM} &> /dev/null
@@ -5445,7 +5458,7 @@ _strict_bin_permissions() {
                     sftp-who \
                     syncpass"
   for i in ${_PROTECTED_ITEMS}; do
-    _BIN_ITEM=$(which $i 2>&1)
+    _BIN_ITEM="$(which ${i})"
     if [ -e "${_BIN_ITEM}" ]; then
       chown root:root ${_BIN_ITEM} &> /dev/null
       chmod 700 ${_BIN_ITEM} &> /dev/null
@@ -5678,11 +5691,11 @@ _if_install_apparmor() {
   ###--------------------###
   _isAppArmorRevFile="/sys/kernel/security/apparmor/revision"
   _isAppArmorGrubFile="/etc/default/grub.d/apparmor.cfg"
-  _isAppArmorComplain=$(which aa-complain 2>&1)
-  _isAppArmorStatus=$(which aa-status 2>&1)
+  _isAppArmorComplain="$(which aa-complain)"
+  _isAppArmorStatus="$(which aa-status)"
   _isAppArmorGrub=NO
   if [ -e "${_isAppArmorGrubFile}" ]; then
-    _GRUB_APPARMOR_TEST=$(grep "apparmor=1 security=apparmor" ${_isAppArmorGrubFile} 2>&1)
+    _GRUB_APPARMOR_TEST=$(grep "apparmor=1 security=apparmor" ${_isAppArmorGrubFile})
     if [[ "${_GRUB_APPARMOR_TEST}" =~ "apparmor=1 security=apparmor" ]]; then
       _isAppArmorGrub=YES
     fi
@@ -5722,7 +5735,7 @@ _if_install_apparmor() {
 # Remove AppArmor.
 _if_remove_apparmor() {
   _isAppArmorGrubFile="/etc/default/grub.d/apparmor.cfg"
-  _isApparmor=$(which aa-status)
+  _isApparmor="$(which aa-status)"
   if [ ! -z "${_isApparmor}" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "ARMR: The system AppArmor and auditd will be uninstalled now, however..."
@@ -6282,7 +6295,7 @@ _if_proxysql_update() {
     _msg "PROC: _if_proxysql_update"
   fi
   if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
-    _isPxy=$(which proxysql 2>&1)
+    _isPxy="$(which proxysql)"
     _REINSTALL_PXC=NO
     if [ -x "${_isPxy}" ]; then
       _PXY=$(${_isPxy} --version 2>&1 \
@@ -6333,7 +6346,7 @@ _if_proxysql_update() {
         _apt_clean_update
         _mrun "${_INSTAPP} proxysql"
       fi
-      _isPxy=$(which proxysql 2>&1)
+      _isPxy="$(which proxysql)"
       if [ ! -x "${_isPxy}" ]; then
         _apt_clean_update
         for _PKG in sysbench debconf-utils proxysql; do
@@ -8463,7 +8476,7 @@ _myquick_install_upgrade() {
     _MYQUICK_SRC_INSTALL_REQUIRED=YES
   fi
   _check_mysql_version
-  _isMyQuick=$(which mydumper 2>&1)
+  _isMyQuick="$(which mydumper)"
   if [ ! -x "${_isMyQuick}" ] \
     || [ -z "${_isMyQuick}" ]; then
     if [ "${_MYQUICK_SRC_INSTALL_REQUIRED}" = "NO" ]; then
@@ -8522,7 +8535,7 @@ _myquick_install_upgrade() {
         fi
       fi
     fi
-    _isMyQuick=$(which mydumper 2>&1)
+    _isMyQuick="$(which mydumper)"
     if [ ! -e "${_isMyQuick}" ]; then
       _MYQUICK_INSTALL_REQUIRED=YES
       if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -8841,7 +8854,7 @@ _lshell_install_upgrade() {
   _PATH_LSHELL="/usr/local/bin/lshell"
   _LSHELL_CHK_VRN=0.10
   _LSHELL_FORCE_REINSTALL=NO
-  _isLshell=$(which lshell 2>&1)
+  _isLshell="$(which lshell)"
   _LSHELL_ITD=$(${_isLshell} --version 2>&1 \
     | tr -d "\n" \
     | cut -d"-" -f2 \
@@ -9017,7 +9030,7 @@ _newrelic_check_fix() {
     _msg "PROC: _newrelic_check_fix"
   fi
   _NR_FORCE_REINSTALL=NO
-  _NRS_TEST=$(which newrelic-daemon 2>&1)
+  _NRS_TEST="$(which newrelic-daemon)"
   if [ ! -z "${_NRS_TEST}" ]; then
     _NOW_NR_V=$(newrelic-daemon --version 2>&1 \
       | tr -d "\n" \
@@ -9335,7 +9348,7 @@ _sshd_armour() {
         touch /etc/ssh/.ssh_host_rsa_key4096.pid
         _msg "NOTE: You will be asked to accept the new SSH fingerprint the next time you connect"
       fi
-      _isKeyg=$(which ssh-keygen 2>&1)
+      _isKeyg="$(which ssh-keygen)"
       if [ -x "${_isKeyg}" ] \
         && [ -e "${_SYSCONFDIR}/moduli" ] \
         && [ ! -e "${_SYSCONFDIR}/.moduli_bak" ]; then
