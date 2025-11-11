@@ -75,6 +75,7 @@ _pthLog="/var/log/boa"
 _tBn="tools/bin"
 _vBs="/var/backups"
 _boaToolsPid="${_pthLog}/updateBOAtools.${_bTs}.ctrl.${_tRee}.${_xSrl}.pid"
+_INITINS="/usr/bin/apt-get ${_aptAllow} -y install"
 #
 if [ ! -e "${_pthLog}/.migrated.txt" ] && [ -d "${_xpthLog}" ]; then
   mkdir -p "${_pthLog}"
@@ -452,7 +453,6 @@ _verify_boa_keys() {
 _locales_check_fix_early() {
   _isLoc="$(which locale)"
   if [ ! -x "${_isLoc}" ] || [ -z "${_isLoc}" ]; then
-    _INITINS="/usr/bin/apt-get ${_aptAllow} -y install"
     apt-get update -qq &> /dev/null
     ${_INITINS} locales locales-all &> /dev/null
   fi
@@ -4829,6 +4829,11 @@ _backup_waiting_notify() {
 
 ###--------------------###
 if [ "$(id -u)" -eq 0 ]; then
+
+  if ! command -v bc &> /dev/null; then
+    apt-get update -qq &> /dev/null
+    ${_INITINS} bc &> /dev/null
+  fi
 
   _find_correct_ip
   _find_server_city

@@ -710,6 +710,7 @@ _init_prepare() {
         fi
       fi
       ${_INITINS} aptitude  >> "${_logSlt}"
+      ${_INITINS} bc        >> "${_logSlt}"
       ${_INITINS} cron      >> "${_logSlt}"
       ${_INITINS} curl      >> "${_logSlt}"
       ${_INITINS} dnsutils  >> "${_logSlt}"
