@@ -100,7 +100,7 @@ _not_supported_os() {
   echo
   echo "It is not any supported Devuan or Debian version."
   echo
-  echo "You need Devuan Beowulf (recommended) or Debian Buster first."
+  echo "You need Devuan Daedalus (recommended) or Debian Bookworm first."
   echo
   echo "Bye"
   echo

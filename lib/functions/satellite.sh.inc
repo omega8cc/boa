@@ -489,11 +489,11 @@ _satellite_check_id() {
   elif [[ "${_ID_EXISTS}" =~ "${_USER}" ]]; then
     _msg "ERROR: ${_USER} username is already taken"
     _msg "Please choose different _USER"
-    _clean_pid_exit _satellite_check_id_a
+    _clean_pid_exit
   else
     _msg "ERROR: ${_USER} username check failed"
     _msg "Please try different _USER"
-    _clean_pid_exit _satellite_check_id_b
+    _clean_pid_exit
   fi
   if [ "${_USER}" = "admin" ] \
     || [ "${_USER}" = "hostmaster" ] \
@@ -503,20 +503,20 @@ _satellite_check_id() {
     || [ "${_USER}" = "all" ]; then
     _msg "ERROR: ${_USER} is a restricted username"
     _msg "ERROR: Please choose a different _USER"
-    _clean_pid_exit _satellite_check_id_c
+    _clean_pid_exit
   elif [[ "${_USER}" =~ "drupal" ]] \
     || [[ "${_USER}" =~ "drush" ]] \
     || [[ "${_USER}" =~ "sites" ]] \
     || [[ "${_USER}" =~ "default" ]]; then
     _msg "ERROR: ${_USER} includes restricted keyword"
     _msg "ERROR: Please choose a different _USER"
-    _clean_pid_exit _satellite_check_id_d
+    _clean_pid_exit
   fi
   _REGEX="^[[:digit:]]"
   if [[ "${_USER}" =~ "${_REGEX}" ]]; then
     _msg "ERROR: ${_USER} is a wrong username"
     _msg "ERROR: The correct username should start with a letter, not digit"
-    _clean_pid_exit _satellite_check_id_e
+    _clean_pid_exit
   fi
 }
 
@@ -592,7 +592,7 @@ _satellite_cnf() {
       if [ "${_hostedSys}" != "YES" ]; then
         _msg "EXIT: You must enter **your** valid email address"
         _msg "EXIT: in the _MY_EMAIL **and** _CLIENT_EMAIL variables"
-        _clean_pid_exit _satellite_cnf_a
+        _clean_pid_exit
       fi
     fi
     _msg "INFO: Creating your ${_octCnf} config file"
@@ -980,7 +980,7 @@ _satellite_cnf() {
       if [ "${_hostedSys}" != "YES" ]; then
         _msg "EXIT: You must enter **your** valid email address in the"
         _msg "EXIT: _MY_EMAIL variable in the ${_octCnf} file"
-        _clean_pid_exit _satellite_cnf_b
+        _clean_pid_exit
       fi
     fi
     if [ "${_PHP_FPM_VERSION}" = "8.4" ] \
@@ -1111,7 +1111,7 @@ _satellite_cnf() {
     if [ -z "${_PHP_FPM_VERSION}" ] || [ -z "${_PHP_CLI_VERSION}" ]; then
       _msg "EXIT: You must specify already installed PHP version"
       _msg "EXIT: in both _PHP_FPM_VERSION and _PHP_CLI_VERSION"
-      _clean_pid_exit _satellite_cnf_c
+      _clean_pid_exit
     fi
   fi
 
@@ -4203,7 +4203,7 @@ _satellite_if_running_as_root_octopus() {
   else
     _msg "ERROR: This script should be run as a root user"
     _msg "Bye"
-    _clean_pid_exit _satellite_if_running_as_root_octopus_a
+    _clean_pid_exit
   fi
 }
 
@@ -4253,7 +4253,7 @@ _satellite_check_sanitize_domain_name() {
     _msg "ERROR: ${_DOMAIN} is already used on the Aegir Master Instance"
     _msg "Please change the value for _DOMAIN to make it unique"
     _msg "Bye"
-    _clean_pid_exit _satellite_check_sanitize_domain_name_a
+    _clean_pid_exit
   fi
 }
 
@@ -4348,7 +4348,7 @@ _satellite_check_php_compatibility() {
     _msg "Please switch FPM and CLI on ${_USER} to PHP 5.6 or newer"
     _msg "Then please run the octopus upgrade again"
     _msg "Bye"
-    _clean_pid_exit _satellite_check_php_compatibility_a
+    _clean_pid_exit
   fi
 }
 

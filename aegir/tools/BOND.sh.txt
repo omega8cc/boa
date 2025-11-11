@@ -205,7 +205,10 @@ fi
 #
 # Clean pid files on exit.
 _clean_pid_exit() {
-  echo "REASON ${1} on $(date)" >> /root/.bond.sh.exit.exceptions.log
+  if [ -n "${1}" ]; then
+    echo "REASON ${1} on $(date)" >> /root/.bond.sh.exit.exceptions.log
+    [ -e "/opt/tmp/boa" ] && rm -rf /opt/tmp/boa
+  fi
   [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
   [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
   service cron start &> /dev/null
@@ -236,7 +239,7 @@ _check_root() {
     ionice -c2 -n7 -p $$
   else
     echo "ERROR: This script should be run as a root user"
-    _clean_pid_exit _check_root_a
+    _clean_pid_exit
   fi
   _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
 }
@@ -1777,7 +1780,7 @@ _check_git_repos() {
   else
     cat <<EOF
 
-    None of repository servers responded in 8 seconds,
+    None of repository servers responded in 5 seconds,
     so we can't continue this installation.
 
     Please try again later or check if your firewall has port 443 open.
@@ -1809,7 +1812,7 @@ if [ "$(id -u)" -eq 0 ]; then
 else
   _msg "ERROR: This script should be run as a root user"
   _msg "Bye"
-  _clean_pid_exit root_a
+  _clean_pid_exit
 fi
 #
 #

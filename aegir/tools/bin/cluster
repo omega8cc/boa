@@ -66,7 +66,10 @@ _tBn="tools/bin"
 ###-------------SYSTEM-----------------###
 
 _clean_pid_exit() {
-  echo "REASON ${1} on $(date)" >> /root/.cluster.exit.exceptions.log
+  if [ -n "${1}" ]; then
+    echo "REASON ${1} on $(date)" >> /root/.cluster.exit.exceptions.log
+    [ -e "/opt/tmp/boa" ] && rm -rf /opt/tmp/boa
+  fi
   rm -f /run/cluster_run.pid
   service cron start
   exit 1
@@ -203,7 +206,7 @@ _check_no_systemd() {
   if [ -e "/lib/systemd/systemd" ]; then
     echo "ERROR: This script can not be used with systemd"
     echo "ERROR: Please run 'autoinit' first"
-    _clean_pid_exit _check_no_systemd_a_cluster
+    _clean_pid_exit _check_no_systemd
   fi
 }
 
@@ -356,7 +359,7 @@ _check_root_direct() {
     echo "         PermitRootLogin prohibit-password"
     echo "       in the /etc/ssh/sshd_config file"
     echo "Bye"
-    _clean_pid_exit _check_root_direct_a
+    _clean_pid_exit
   fi
 }
 
@@ -408,7 +411,7 @@ _check_root_keys_pwd() {
     echo
     echo "Bye"
     echo
-    _clean_pid_exit _check_root_keys_pwd_a
+    _clean_pid_exit
   fi
 }
 

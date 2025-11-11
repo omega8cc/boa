@@ -120,7 +120,7 @@ _check_git_repos() {
     else
       cat <<EOF
 
-      None of repository servers responded in 8 seconds,
+      None of repository servers responded in 5 seconds,
       so we can't continue this installation.
 
       Please try again later or check if your firewall has port 443 open.

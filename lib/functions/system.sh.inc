@@ -538,7 +538,7 @@ _if_running_as_root_barracuda() {
     sleep 1
   else
     _msg "ERROR: This script should be run as a root user"
-    _clean_pid_exit _if_running_as_root_barracuda_a
+    _clean_pid_exit
   fi
 }
 
@@ -2104,7 +2104,7 @@ _if_php_idle_on_off() {
       || [ -e "/root/.run-to-beowulf.cnf" ]; then
       echo " "
       _msg "Bye"
-      _clean_pid_exit _if_php_idle_on_off_a
+      _clean_pid_exit
     else
       _complete
       exit 0
@@ -7551,7 +7551,7 @@ _if_major_os_upgrade() {
     _msg "Bye"
     touch /root/.latest-barracuda-upgrade-finale.info
     _barracuda_cnf_cleanup
-    _clean_pid_exit _if_major_os_upgrade_f
+    _clean_pid_exit
   fi
 }
 

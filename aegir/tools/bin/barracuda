@@ -42,7 +42,10 @@ if [ -z "${TERM+x}" ]; then
 fi
 
 _clean_pid_exit() {
-  echo "REASON ${1} on $(date)" >> /root/.barracuda.exit.exceptions.log
+  if [ -n "${1}" ]; then
+    echo "REASON ${1} on $(date)" >> /root/.barracuda.exit.exceptions.log
+    [ -e "/opt/tmp/boa" ] && rm -rf /opt/tmp/boa
+  fi
   [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
   [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
   [ -e "/tmp/aegir_backup_mode.txt" ] && rm -f /tmp/aegir_backup_mode.txt
@@ -220,7 +223,7 @@ _check_root_direct() {
     echo "         PermitRootLogin prohibit-password"
     echo "       in the /etc/ssh/sshd_config file"
     echo "Bye"
-    _clean_pid_exit _check_root_direct_a
+    _clean_pid_exit
   fi
 }
 
@@ -272,7 +275,7 @@ _check_root_keys_pwd() {
     echo
     echo "Bye"
     echo
-    _clean_pid_exit _check_root_keys_pwd_a
+    _clean_pid_exit
   fi
 }
 
@@ -1106,18 +1109,20 @@ _up_action() {
       echo
       echo "  ${_vBs}/${_barName} installer not available, exit"
       echo
+      _clean_pid_exit _barName
     fi
     if [ ! -e "${_vBs}/${_filIncB}" ]; then
       echo
       echo "  ${_vBs}/${_filIncB} inc file not available, exit"
       echo
+      _clean_pid_exit _filIncB
     fi
     if [ ! -e "${_barCnf}" ]; then
       echo
       echo "  ${_barCnf} file not available, exit"
       echo
+      _clean_pid_exit _barCnf
     fi
-    _clean_pid_exit _up_action_a
   fi
 }
 
@@ -1428,7 +1433,7 @@ _if_reinstall_curl() {
       _isCurl=$(/usr/local/bin/curl --version 2>&1)
       if [[ ! "${_isCurl}" =~ "OpenSSL" ]] || [ -z "${_isCurl}" ]; then
         echo "ERRR: curl is still broken, please install it and debug manually"
-        _clean_pid_exit
+        _clean_pid_exit _if_reinstall_curl
       else
         echo "GOOD: /usr/local/bin/curl works"
       fi
@@ -1571,7 +1576,7 @@ _check_root() {
         echo "Bye!"
         echo
       fi
-      _clean_pid_exit _check_root
+      _clean_pid_exit
     fi
 
     _find_correct_ip
@@ -1722,7 +1727,7 @@ _check_root() {
     fi
   else
     echo "ERROR: This script should be run as a root user"
-    _clean_pid_exit _check_root_a
+    _clean_pid_exit
   fi
   _DF_TEST=$(df -kTh / -l \
     | grep '/' \
@@ -1732,7 +1737,7 @@ _check_root() {
   if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt 90 ]; then
     echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
     echo "ERROR: We can not proceed until it is below 90/100"
-    _clean_pid_exit _check_root_b
+    _clean_pid_exit
   fi
 }
 
@@ -1740,7 +1745,7 @@ _check_no_systemd() {
   if [ -e "/lib/systemd/systemd" ]; then
     echo "ERROR: This script can not be used with systemd"
     echo "ERROR: Please run 'autoinit' first"
-    _clean_pid_exit _check_no_systemd_a_barracuda
+    _clean_pid_exit _check_no_systemd
   fi
 }
 
@@ -1901,7 +1906,7 @@ _if_display_help() {
     See docs/UPGRADE.md for more details.
 
 EOF
-    _clean_pid_exit _proceed_a
+    _clean_pid_exit
   fi
 }
 
@@ -1940,7 +1945,7 @@ _set_tree_vars() {
       echo "Sorry, you are trying not supported command.."
       echo "Display supported commands with: $(basename "$0") help"
       echo
-      _clean_pid_exit _cmNd_a
+      _clean_pid_exit
     fi
   fi
 

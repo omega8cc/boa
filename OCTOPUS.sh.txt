@@ -183,7 +183,10 @@ fi
 ### Clean pid files on exit
 ###
 _clean_pid_exit() {
-  echo "REASON ${1} on $(date)" >> /root/.octopus.sh.exit.exceptions.log
+  if [ -n "${1}" ]; then
+    echo "REASON ${1} on $(date)" >> /root/.octopus.sh.exit.exceptions.log
+    [ -e "/opt/tmp/boa" ] && rm -rf /opt/tmp/boa
+  fi
   [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
   [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
   service cron start &> /dev/null
