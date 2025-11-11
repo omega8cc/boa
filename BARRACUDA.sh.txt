@@ -248,7 +248,19 @@ _panic_exit() {
 ###
 ### Download helpers and libs
 ###
-_download_helpers_libs
+if [ "${_OS_CODE}" = "excalibur" ]; then
+  _DB_SERVER=MySQL
+else
+  _DB_SERVER=Percona
+fi
+if [ "$(boa info | grep -c ${_DB_SERVER})" -lt 3 ] || [ ! -e "/usr/sbin/csf" ]; then
+  if [ ! -e "${_bldPth}/aegir/helpers/apt.conf.noi.nrml" ] \
+    || [ ! -e "${_bldPth}/aegir/helpers/apt.conf.noi.dist" ]; then
+    _download_helpers_libs
+  fi
+else
+  _download_helpers_libs
+fi
 
 
 ###
