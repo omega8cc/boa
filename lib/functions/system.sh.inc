@@ -4579,7 +4579,11 @@ _if_ssl_install_src() {
     _sslIncludesA=NO
     _sslIncludesB=NO
     _sslIncludes=YES
-    _sslComp=$(nm -D /usr/local/ssl3/lib64/libssl.so.3 | grep -q COMP_get_type && echo "YES" || echo "NO")
+    if [ -e "/usr/local/ssl3/lib64/libssl.so.3" ]; then
+      _sslComp=$(nm -D /usr/local/ssl3/lib64/libssl.so.3 | grep -q COMP_get_type && echo "YES" || echo "NO")
+    else
+      _sslComp=NO
+    fi
     if grep -i 'OPENSSL_NO_DEPRECATED_3_4' ${_sslMacros} &> /dev/null; then
       _sslIncludesA=YES
     fi
