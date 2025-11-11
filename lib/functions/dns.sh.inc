@@ -97,10 +97,10 @@ _check_git_repos() {
       sleep 1
       _GITHUB_WORKS=YES
       _GITLAB_WORKS=YES
-      if ! netcat -w 10 -z github.com 443 ; then
+      if ! timeout 5 bash -c ':</dev/tcp/github.com/443' >/dev/null 2>&1 ; then
         _GITHUB_WORKS=NO
         _msg "WARN: The GitHub master repository server doesn't respond..."
-      elif ! netcat -w 10 -z gitlab.com 443 ; then
+      elif ! timeout 5 bash -c ':</dev/tcp/gitlab.com/443' >/dev/null 2>&1 ; then
         _GITLAB_WORKS=NO
         _msg "WARN: The GitLab mirror repository server doesn't respond..."
       fi
@@ -294,13 +294,13 @@ _check_connection() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _check_connection"
   fi
-  if ! netcat -w 10 -z github.com 443 ; then
+  if ! timeout 5 bash -c ':</dev/tcp/github.com/443' >/dev/null 2>&1 ; then
     _wait_for_connection "2/4"
-    if ! netcat -w 10 -z github.com 443 ; then
+    if ! timeout 5 bash -c ':</dev/tcp/github.com/443' >/dev/null 2>&1 ; then
       _wait_for_connection "3/4"
-      if ! netcat -w 10 -z github.com 443 ; then
+      if ! timeout 5 bash -c ':</dev/tcp/github.com/443' >/dev/null 2>&1 ; then
         _wait_for_connection "4/4"
-        if ! netcat -w 10 -z github.com 443 ; then
+        if ! timeout 5 bash -c ':</dev/tcp/github.com/443' >/dev/null 2>&1 ; then
           echo " "
           _msg "Sorry, I gave up."
           _msg "EXIT on error due to GitHub git server at 443 downtime"
@@ -648,7 +648,7 @@ _check_db_src() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _check_db_src"
   fi
-  if ! netcat -w 14 -z ${_DB_SRC} 80 ; then
+  if ! timeout 10 bash -c ':</dev/tcp/${_DB_SRC}/80' >/dev/null 2>&1 ; then
     echo " "
     _msg "EXIT on error due to ${_DB_SRC} downtime"
     _msg "Please try to run this script again in a few minutes"

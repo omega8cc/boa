@@ -3866,7 +3866,7 @@ _sources_list_update() {
         else
           _MIRROR=${_LOCAL_DEBIAN_MIRROR}
         fi
-        if ! netcat -w 5 -z ${_MIRROR} 80 ; then
+        if ! timeout 5 bash -c ':</dev/tcp/${_MIRROR}/80' >/dev/null 2>&1 ; then
           _msg "INFO: The mirror ${_MIRROR} doesn't respond, let's try default"
           _MIRROR=deb.debian.org
         fi
@@ -8268,7 +8268,7 @@ _smtp_check() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: Checking SMTP connections..."
     fi
-    if ! netcat -w 10 -z smtp.gmail.com 25 ; then
+    if ! timeout 5 bash -c ':</dev/tcp/smtp.gmail.com/25' >/dev/null 2>&1 ; then
       cat <<EOF
 
       Your outgoing SMTP port 25 doesn't work
