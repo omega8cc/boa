@@ -648,9 +648,9 @@ _check_db_src() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _check_db_src"
   fi
-  if ! timeout 10 bash -c ':</dev/tcp/${_DB_SRC}/80' >/dev/null 2>&1 ; then
+  if ! timeout 14 bash -c ':</dev/tcp/repo.percona.com/80' >/dev/null 2>&1 ; then
     echo " "
-    _msg "EXIT on error due to ${_DB_SRC} downtime"
+    _msg "EXIT on error due to repo.percona.com downtime"
     _msg "Please try to run this script again in a few minutes"
     _msg "or better yet, hours"
     _msg "Bye"
