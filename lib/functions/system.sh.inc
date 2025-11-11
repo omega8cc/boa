@@ -4488,8 +4488,6 @@ _ssl_install_src() {
     fi
     _mrun "sh ./config \
       shared \
-      no-comp \
-      no-hw \
       no-ssl3 \
       zlib-dynamic \
       enable-ec_nistp_64_gcc_128 \
@@ -4581,6 +4579,7 @@ _if_ssl_install_src() {
     _sslIncludesA=NO
     _sslIncludesB=NO
     _sslIncludes=YES
+    _sslComp=$(nm -D /usr/local/ssl3/lib64/libssl.so.3 | grep -q COMP_get_type && echo "YES" || echo "NO")
     if grep -i 'OPENSSL_NO_DEPRECATED_3_4' ${_sslMacros} &> /dev/null; then
       _sslIncludesA=YES
     fi
@@ -4591,6 +4590,7 @@ _if_ssl_install_src() {
       _sslIncludes=NO
     fi
     if [ ! -x "${_SSL_MODERN_BINARY}" ] \
+      || [ "${_sslComp}" != "YES" ] \
       || [ "${_sslIncludes}" != "YES" ] \
       || [ "${_SSL_MODERN_ITD}" != "${_OPENSSL_NEW_VRN}" ] \
       || [ ! -L "${_sslSymlink}" ]; then
@@ -4603,6 +4603,7 @@ _if_ssl_install_src() {
         _msg "INFO: _SSL_MODERN_ITD is ${_SSL_MODERN_ITD}"
         _msg "INFO: _OPENSSL_NEW_VRN is ${_OPENSSL_NEW_VRN}"
         _msg "INFO: _sslSymlink is ${_sslSymlink}"
+        _msg "INFO: _sslComp is ${_sslComp}"
       fi
       _SSL_MODERN_INSTALL_REQUIRED=YES
     fi
