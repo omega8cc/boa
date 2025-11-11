@@ -482,7 +482,9 @@ _nginx_install_upgrade() {
       cd /var/opt
       rm -rf openssl*
       _get_dev_src "openssl-${_OPENSSL_NEW_VRN}.tar.gz"
-      sed -i "s/install_docs:.*/install_docs:/g" /var/opt/openssl-${_OPENSSL_NEW_VRN}/Makefile
+      if [ -e "/var/opt/openssl-${_OPENSSL_NEW_VRN}/Makefile" ]; then
+        sed -i "s/install_docs:.*/install_docs:/g" /var/opt/openssl-${_OPENSSL_NEW_VRN}/Makefile
+      fi
     fi
     cd /var/opt/nginx-${_NGINX_VRN}
     _mrun "bash ./configure \
