@@ -6020,7 +6020,7 @@ _run_aptitude_deps_install() {
 
     _mrun "apt-get autoremove -y"
 
-    for _PKG in packagekit polkitd software-properties-common python3-software-properties python3 python3-full; do
+    for _PKG in packagekit polkitd software-properties-common python3-software-properties; do
       if _pkg_installed "${_PKG}"; then
         _mrun "apt-get remove ${_PKG} -y -qq"
         if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -6029,7 +6029,7 @@ _run_aptitude_deps_install() {
       fi
     done
 
-    for _PKG in python3-dev python3-debian python3-magic python3-pip python3-venv python3-setuptools; do
+    for _PKG in python3 python3-full python3-dev python3-debian python3-magic python3-pip python3-venv python3-setuptools; do
       if ! _pkg_installed "${_PKG}"; then
         _mrun "${_INSTAPP} ${_PKG}"
       fi
