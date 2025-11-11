@@ -851,9 +851,6 @@ _up_finish() {
     rm -f /opt/local/bin/php
     rm -f /usr/local/bin/php
   fi
-  if [ -d "/data/u" ]; then
-    rm -rf /opt/tmp/*
-  fi
   echo
   echo OCTOPUS upgrade completed
   echo Bye

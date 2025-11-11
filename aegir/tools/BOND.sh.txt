@@ -1901,8 +1901,6 @@ else
   _restart_services
   _msg "INFO: Tuning stopped and default settings restored"
 fi
-rm -rf /var/opt/*
-rm -rf /opt/tmp/*
 [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
 if [ ! -e "/root/.upstart.cnf" ]; then
   service cron start &> /dev/null

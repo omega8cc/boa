@@ -1275,7 +1275,6 @@ _init_cleanup() {
   rm -f ${_vBs}/*.sh.cnf*
   rm -f ${_vBs}/BARRACUDA.sh*
   rm -f ${_vBs}/OCTOPUS.sh*
-  rm -rf /opt/tmp/*
 }
 
 _init_finish() {
@@ -1288,7 +1287,6 @@ _init_finish() {
   rm -f ${_vBs}/BARRACUDA.sh*
   rm -f ${_vBs}/OCTOPUS.sh*
   echo
-  rm -rf /opt/tmp/*
   echo BOA ${_cmNd} completed
   echo Bye
   echo

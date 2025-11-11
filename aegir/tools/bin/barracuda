@@ -1223,9 +1223,6 @@ _up_finish() {
     service webmin stop &> /dev/null
     service usermin stop &> /dev/null
   fi
-  if [ -d "/data/u" ]; then
-    rm -rf /opt/tmp/*
-  fi
   if [ -x "/usr/sbin/csf" ] \
     && [ -e "/etc/csf/csf.deny" ] \
     && [ ! -x "/etc/csf/csfpost.sh" ]; then
