@@ -1757,10 +1757,10 @@ _check_git_repos() {
     sleep 1
     _GITHUB_WORKS=YES
     _GITLAB_WORKS=YES
-    if ! command nc -4 -w 10 -z github.com 443 >/dev/null 2>&1 ; then
+    if ! command nc -w 10 -z github.com 443 >/dev/null 2>&1 ; then
       _GITHUB_WORKS=NO
       _msg "WARN: The GitHub master repository server doesn't respond..."
-    elif ! command nc -4 -w 10 -z gitlab.com 443 >/dev/null 2>&1 ; then
+    elif ! command nc -w 10 -z gitlab.com 443 >/dev/null 2>&1 ; then
       _GITLAB_WORKS=NO
       _msg "WARN: The GitLab mirror repository server doesn't respond..."
     fi
