@@ -1452,7 +1452,7 @@ _download_helpers_libs() {
     echo "Also, make sure that the outgoing connections via port 443 work"
     echo "Bye"
     echo " "
-    _clean_pid_exit _download_helpers_libs_a
+    _clean_pid_exit _download_helpers_libs_b
   fi
   # Get apt helpers
   rm -f apt.conf.noi*
