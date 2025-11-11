@@ -4174,7 +4174,7 @@ _ssl_crypto_lib_fix() {
       rm -f ${_GNU_LIB_PATH}/libssl.so
       rm -f ${_GNU_LIB_PATH}/libssl.so.1.0.0
       ###
-      rm -f ${_GNU_LIB_PATH}/libssl3.so
+      #rm -f ${_GNU_LIB_PATH}/libssl3.so
       rm -f ${_SSL_LIB_PATH}/libcrypto.so.1.1*
       rm -f ${_SSL_LIB_PATH}/libssl.so.1.1*
       ###
@@ -4235,7 +4235,7 @@ _ssl_crypto_lib_fix() {
       rm -f ${_GNU_LIB_PATH}/libssl.so
       rm -f ${_GNU_LIB_PATH}/libssl.so.1.1
       ###
-      rm -f ${_GNU_LIB_PATH}/libssl3.so
+      #rm -f ${_GNU_LIB_PATH}/libssl3.so
       rm -f ${_SSL_LIB_PATH}/libcrypto.so.1.0.0*
       rm -f ${_SSL_LIB_PATH}/libssl.so.1.0.0*
       ###
@@ -6001,7 +6001,9 @@ _run_aptitude_deps_install() {
     _apt_clean_update
     _run_xtrabackup_cleanup
 
-    for _PKG in packagekit polkitd software-properties-common python3-software-properties; do
+    _mrun "apt-get autoremove -y"
+
+    for _PKG in packagekit polkitd software-properties-common python3-software-properties python3 python3-full; do
       if _pkg_installed "${_PKG}"; then
         _mrun "apt-get remove ${_PKG} -y -qq"
         if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -6010,33 +6012,35 @@ _run_aptitude_deps_install() {
       fi
     done
 
-    _mrun "apt-get autoremove -y"
-
-    for _PKG in python3-full python3-dev python3-debian python3-magic; do
+    for _PKG in python3-dev python3-debian python3-magic python3-pip python3-venv python3-setuptools; do
       if ! _pkg_installed "${_PKG}"; then
         _mrun "${_INSTAPP} ${_PKG}"
       fi
     done
+
     for _PKG in build-essential libsasl2-modules time vim cvs makepasswd; do
       if ! _pkg_installed "${_PKG}"; then
         _mrun "${_INSTAPP} ${_PKG}"
       fi
     done
+
     for _PKG in man-db dnsutils sudo symlinks iptables autoconf automake autotools-dev m4 bc; do
       if ! _pkg_installed "${_PKG}"; then
         _mrun "${_INSTAPP} ${_PKG}"
       fi
     done
+
     if [ ! -x "/usr/local/bin/curl" ]; then
       _mrun "apt-get build-dep curl -y"
       _mrun "${_INSTAPP} curl"
     fi
+
     # Check for libssl1.0-dev and remove conditionally
     if dpkg-query -W -f='${Status}' libssl1.0-dev 2>/dev/null | grep -q "install ok installed"; then
       _mrun "apt-get remove libssl1.0-dev -y --purge --auto-remove -qq"
     fi
 
-    for _PKG in libssl-dev mcrypt; do
+    for _PKG in libssl-dev libssl3 mcrypt; do
       if ! _pkg_installed "${_PKG}"; then
         _mrun "${_INSTAPP} ${_PKG}"
       fi
@@ -6064,6 +6068,7 @@ _run_aptitude_deps_install() {
       done
       _mrun "dpkg --remove --force-remove-reinstreq apt-listchanges"
     fi
+
     for _PKG in sysstat telnet cron gnupg2 gnupg zip unzip unrtf wdiff pwgen flex re2c lsof; do
       if ! _pkg_installed "${_PKG}"; then
         _mrun "${_INSTAPP} ${_PKG}"
@@ -6077,16 +6082,19 @@ _run_aptitude_deps_install() {
         _mrun "${_INSTAPP} ${_PKG}"
       fi
     done
+
     for _PKG in s4cmd ssh ssl-cert libpam-umask shtool xml-core xml2 xpdf libtool rrdtool; do
       if ! _pkg_installed "${_PKG}"; then
         _mrun "${_INSTAPP} ${_PKG}"
       fi
     done
+
     for _PKG in ncurses-dev ncurses-term sipcalc; do
       if ! _pkg_installed "${_PKG}"; then
         _mrun "${_INSTAPP} ${_PKG}"
       fi
     done
+
     _OS_LIST="excalibur daedalus chimaera bullseye bookworm"
     for e in ${_OS_LIST}; do
       if [ "${e}" = "${_OS_CODE}" ]; then
@@ -6097,26 +6105,31 @@ _run_aptitude_deps_install() {
         done
       fi
     done
+
     for _PKG in libzip-dev libwww-perl libfontconfig1 libfreetype6 libfreetype6-dev; do
       if ! _pkg_installed "${_PKG}"; then
         _mrun "${_INSTAPP} ${_PKG}"
       fi
     done
+
     for _PKG in libfribidi0 libgeoip-dev libgeoip1 libgmp3-dev libonig-dev libpq5 libxml2-dev libxpm4; do
       if ! _pkg_installed "${_PKG}"; then
         _mrun "${_INSTAPP} ${_PKG}"
       fi
     done
+
     for _PKG in libxslt-dev libxslt1-dev libxslt1.1 subversion libaprutil1 libapr1 ldap-utils ipset; do
       if ! _pkg_installed "${_PKG}"; then
         _mrun "${_INSTAPP} ${_PKG}"
       fi
     done
+
     for _PKG in pdftk patchutils p7zip-full fontconfig-config bison catdoc cython3 geoip-database gettext; do
       if ! _pkg_installed "${_PKG}"; then
         _mrun "${_INSTAPP} ${_PKG}"
       fi
     done
+
     for _PKG in clamav clamav-base clamav-daemon clamdscan ghostscript htop lemon lftp nano; do
       if ! _pkg_installed "${_PKG}"; then
         _mrun "${_INSTAPP} ${_PKG}"
@@ -8847,7 +8860,7 @@ _lshell_install_upgrade() {
       _msg "INFO: Installing Limited Shell ${_LSHELL_VRN}..."
     fi
     _apt_clean_update
-    for _PKG in python3-pip; do
+    for _PKG in python3-pip python3-setuptools; do
       if ! _pkg_installed "${_PKG}"; then
         _mrun "${_INSTAPP} ${_PKG}"
       fi
