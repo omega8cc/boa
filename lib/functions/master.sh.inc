@@ -956,25 +956,28 @@ EOFMYSQL
     AegirSetupM="${_bldPth}/aegir/scripts/AegirSetupM.sh.txt"
     ###
 
+    touch /var/log/boa/aegir_install.log
+    chown aegir:aegir /var/log/boa/aegir_install.log
+
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       su -s /bin/bash - aegir -c "/bin/bash ${AegirSetupM} ${_THIS_FRONT} \
         --http_service_type='nginx' \
         --aegir_db_host='${_THIS_DB_HOST}' \
         --client_email='${_MY_EMAIL}' -y -d" \
-      2>&1 | tee /var/aegir/install.log
+      2>&1 | tee /var/log/boa/aegir_install.log
     else
       su -s /bin/bash - aegir -c "/bin/bash ${AegirSetupM} ${_THIS_FRONT} \
         --http_service_type='nginx' \
         --aegir_db_host='${_THIS_DB_HOST}' \
         --client_email='${_MY_EMAIL}' -y" \
-      >/var/aegir/install.log 2>&1
+      >/var/log/boa/aegir_install.log 2>&1
     fi
     wait
 
     if [ -e "/opt/tmp/status-AegirSetupM-FAIL" ]; then
       _msg "FATAL ERROR: AegirSetupM installer failed"
       _msg "FATAL ERROR: Aborting Barracuda installer NOW!"
-      _msg "HINT: Please check /var/aegir/install.log"
+      _msg "HINT: Please check /var/log/boa/aegir_install.log"
       _msg "HINT: for more information on errors occured"
       touch /opt/tmp/status-Barracuda-FAIL
       _clean_pid_exit _aegir_master_install_upgrade_d
@@ -1030,7 +1033,7 @@ EOFMYSQL
       [ -e "/root/.force.reinstall.cnf" ] && rm -f /root/.force.reinstall.cnf
     else
       _msg "FATAL ERROR: Something went wrong, Aegir Master Instance not installed!"
-      _msg "HINT: Please check /var/aegir/install.log for details, and then"
+      _msg "HINT: Please check /var/log/boa/aegir_install.log for details, and then"
       _msg "HINT: run the same install command again to complete installation."
       _msg "HINT: You can also enforce installation with empty control file:"
       _msg "      touch /root/.force.reinstall.cnf -- and then try again."
@@ -1154,7 +1157,7 @@ _aegir_master_display_login_link() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _DO_NOTHING=YES
     else
-      _AEGIR_LOGIN_URL=$(tail --lines=11 /var/aegir/install.log | grep --text "^http:" 2>&1)
+      _AEGIR_LOGIN_URL=$(tail --lines=11 /var/log/boa/aegir_install.log | grep --text "^http:" 2>&1)
       if [ ! -z "${_AEGIR_LOGIN_URL}" ]; then
         echo " "
         _msg "INFO: Congratulations, Aegir Master have been installed successfully!"
@@ -1174,7 +1177,7 @@ _aegir_master_display_login_link() {
       else
         _msg "ALRT! Something went wrong"
         _msg "ALRT! Please check the install log for details:"
-        _msg "ALRT! /var/aegir/install.log"
+        _msg "ALRT! /var/log/boa/aegir_install.log"
       fi
     fi
   fi

@@ -434,7 +434,7 @@ _mode_detection() {
       else
         ###--------------------###
         _msg "FATAL ERROR: Something went wrong, Aegir Master exists but looks broken!"
-        _msg "HINT: Please check /var/aegir/install.log for details, and then"
+        _msg "HINT: Please check /var/log/boa/aegir_install.log for details, and then"
         _msg "HINT: run the same install command again to complete installation."
         _msg "HINT: You can also enforce installation with empty control file:"
         _msg "      touch /root/.force.reinstall.cnf -- and then try again."
