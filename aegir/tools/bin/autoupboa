@@ -551,6 +551,7 @@ _status_vm_postinstall() {
     if [ ! -e "${_VM_N_PID}" ] && [ ! -e "${_VM_N_SYS}" ]; then
       touch ${_VM_N_SYS}
       chattr +i ${_VM_N_SYS}
+      rm -rf /opt/tmp/*
     fi
     if [ ! -e "/var/log/boa/reset_no_new_password.pid" ]; then
       # Re-enable default MySQL/Valkey/Redis password update logic once
