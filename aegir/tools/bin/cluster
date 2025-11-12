@@ -68,7 +68,7 @@ _tBn="tools/bin"
 _clean_pid_exit() {
   if [ -n "${1}" ]; then
     echo "REASON ${1} on $(date)" >> /root/.cluster.exit.exceptions.log
-    [ -e "/opt/tmp/boa" ] && rm -rf /opt/tmp/boa
+    [ -e "/opt/tmp/boa" ] && rm -rf /opt/tmp/*
   fi
   rm -f /run/cluster_run.pid
   service cron start

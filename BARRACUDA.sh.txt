@@ -214,7 +214,7 @@ fi
 _clean_pid_exit() {
   if [ -n "${1}" ]; then
     echo "REASON ${1} on $(date)" >> /root/.barracuda.sh.exit.exceptions.log
-    [ -e "/opt/tmp/boa" ] && rm -rf /opt/tmp/boa
+    [ -e "/opt/tmp/boa" ] && rm -rf /opt/tmp/*
   fi
   [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
   [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
