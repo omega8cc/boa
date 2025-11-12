@@ -2798,6 +2798,21 @@ _update_agents() {
   fi
 
   _Dir="/data/all/000/modules"
+  _REDIS_E_VERSION=8.x-1.11.2
+  if [ -e "/var/xdrago/manage_solr_config.sh" ]; then
+    if [ ! -e "${_Dir}/redis_ten_eleven/ver-${_REDIS_E_VERSION}.${_xSrl}.info" ]; then
+      mkdir -p ${_Dir}
+      cd ${_Dir}
+      rm -rf ${_Dir}/redis_ten_eleven
+      _get_dev_contrib "redis_ten_eleven-${_REDIS_E_VERSION}.tar.gz"
+      echo update > ${_Dir}/redis_ten_eleven/ver-${_REDIS_E_VERSION}.${_xSrl}.info
+      find ${_Dir} -type d -exec chmod 0755 {} \; &> /dev/null
+      find ${_Dir} -type f -exec chmod 0644 {} \; &> /dev/null
+      touch ${_pthLog}/redis_ten_eleven.ctrl.${_xSrl}.log
+    fi
+  fi
+
+  _Dir="/data/all/000/modules"
   _REDIS_T_VERSION=8.x-1.8.2
   if [ -e "/var/xdrago/manage_solr_config.sh" ]; then
     if [ ! -e "${_Dir}/redis_nine_ten/ver-${_REDIS_T_VERSION}.${_xSrl}.info" ]; then
