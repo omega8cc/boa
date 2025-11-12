@@ -3936,6 +3936,7 @@ _satellite_make() {
   echo "export _REDIS_L_VERSION=\"${_REDIS_L_VERSION}\""     >> ${_writeTo}
   echo "export _REDIS_N_VERSION=\"${_REDIS_N_VERSION}\""     >> ${_writeTo}
   echo "export _REDIS_T_VERSION=\"${_REDIS_T_VERSION}\""     >> ${_writeTo}
+  echo "export _REDIS_E_VERSION=\"${_REDIS_E_VERSION}\""     >> ${_writeTo}
   echo "export _SERIES_RESULT=\"${_SERIES_RESULT}\""         >> ${_writeTo}
 
   echo "export _SMALLCORE10_0_V=\"${_SMALLCORE10_0_V}\""     >> ${_writeTo}
