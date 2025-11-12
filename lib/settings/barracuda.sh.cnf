@@ -1294,16 +1294,16 @@ _find_fast_mirror_cnf() {
       if [[ "${_BROKEN_FFMIRR_TEST}" =~ "stuff" ]]; then
         _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
-        _USE_MIR="${_CHECK_MIRROR}"
-        [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.aegir.cc"
+        export _USE_MIR="${_CHECK_MIRROR}"
+        [[ "${_USE_MIR}" =~ "printf" ]] && export _USE_MIR="files.aegir.cc"
       else
-        _USE_MIR="files.aegir.cc"
+        export _USE_MIR="files.aegir.cc"
       fi
     else
-      _USE_MIR="files.aegir.cc"
+      export _USE_MIR="files.aegir.cc"
     fi
   else
-    _USE_MIR="files.aegir.cc"
+    export _USE_MIR="files.aegir.cc"
   fi
   export _urlDev="http://${_USE_MIR}/dev"
   export _urlHmr="http://${_USE_MIR}/versions/${_tRee}/boa/aegir"

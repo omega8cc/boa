@@ -31,16 +31,16 @@ _find_fast_devuan_mirror() {
         || [[ ! "${_BROKEN_FFLIST}" =~ "merged" ]]; then
         _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
-        _USE_MIR="${_CHECK_MIRROR}"
-        [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="https://mirrors.dotsrc.org/devuan/merged"
+        export _USE_MIR="${_CHECK_MIRROR}"
+        [[ "${_USE_MIR}" =~ "printf" ]] && export _USE_MIR="https://mirrors.dotsrc.org/devuan/merged"
       else
-        _USE_MIR="https://mirrors.dotsrc.org/devuan/merged"
+        export _USE_MIR="https://mirrors.dotsrc.org/devuan/merged"
       fi
     else
-      _USE_MIR="https://mirrors.dotsrc.org/devuan/merged"
+      export _USE_MIR="https://mirrors.dotsrc.org/devuan/merged"
     fi
   else
-    _USE_MIR="https://mirrors.dotsrc.org/devuan/merged"
+    export _USE_MIR="https://mirrors.dotsrc.org/devuan/merged"
   fi
   echo "${_USE_MIR}"
 }
