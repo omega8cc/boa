@@ -1766,7 +1766,7 @@ _satellite_o_contrib_ten_update_global() {
       && [ ! -e "${i}/o_contrib_ten/update-${_xSrl}-${_X_VERSION}.info" ]; then
       _FORCE_UP_TEN=YES
     elif [ -e "${i}/o_contrib_ten" ] \
-      && [ ! -L "${i}/o_contrib_ten/redis_nine_ten" ]; then
+      && [ ! -L "${i}/o_contrib_ten/redis_ten_eleven" ]; then
       _FORCE_UP_TEN=YES
     else
       _FORCE_UP_TEN=NO
@@ -1785,9 +1785,12 @@ _satellite_o_contrib_ten_update_global() {
       if [ -d "${i}/o_contrib_ten/redis_eight" ]; then
         rm -rf ${i}/o_contrib_ten/redis_eight
       fi
-      if [ -e "${_D}/000/modules/redis_nine_ten" ] \
-        && [ ! -L "${i}/o_contrib_ten/redis_nine_ten" ]; then
-        ln -sfn ${_D}/000/modules/redis_nine_ten ${i}/o_contrib_ten/redis_nine_ten
+      if [ -d "${i}/o_contrib_ten/redis_nine_ten" ]; then
+        rm -rf ${i}/o_contrib_ten/redis_nine_ten
+      fi
+      if [ -e "${_D}/000/modules/redis_ten_eleven" ] \
+        && [ ! -L "${i}/o_contrib_ten/redis_ten_eleven" ]; then
+        ln -sfn ${_D}/000/modules/redis_ten_eleven ${i}/o_contrib_ten/redis_ten_eleven
       fi
       find ${i}/o_contrib_ten -type d -exec chmod 0755 {} \; &> /dev/null
       find ${i}/o_contrib_ten -type f -exec chmod 0644 {} \; &> /dev/null
@@ -1813,7 +1816,7 @@ _satellite_o_contrib_eleven_update_global() {
       && [ ! -e "${i}/o_contrib_eleven/update-${_xSrl}-${_X_VERSION}.info" ]; then
       _FORCE_UP_TEN=YES
     elif [ -e "${i}/o_contrib_eleven" ] \
-      && [ ! -L "${i}/o_contrib_eleven/redis_nine_ten" ]; then
+      && [ ! -L "${i}/o_contrib_eleven/redis_ten_eleven" ]; then
       _FORCE_UP_TEN=YES
     else
       _FORCE_UP_TEN=NO
@@ -1832,9 +1835,12 @@ _satellite_o_contrib_eleven_update_global() {
       if [ -d "${i}/o_contrib_eleven/redis_eight" ]; then
         rm -rf ${i}/o_contrib_eleven/redis_eight
       fi
-      if [ -e "${_D}/000/modules/redis_nine_ten" ] \
-        && [ ! -L "${i}/o_contrib_eleven/redis_nine_ten" ]; then
-        ln -sfn ${_D}/000/modules/redis_nine_ten ${i}/o_contrib_eleven/redis_nine_ten
+      if [ -d "${i}/o_contrib_ten/redis_nine_ten" ]; then
+        rm -rf ${i}/o_contrib_ten/redis_nine_ten
+      fi
+      if [ -e "${_D}/000/modules/redis_ten_eleven" ] \
+        && [ ! -L "${i}/o_contrib_eleven/redis_ten_eleven" ]; then
+        ln -sfn ${_D}/000/modules/redis_ten_eleven ${i}/o_contrib_eleven/redis_ten_eleven
       fi
       find ${i}/o_contrib_eleven -type d -exec chmod 0755 {} \; &> /dev/null
       find ${i}/o_contrib_eleven -type f -exec chmod 0644 {} \; &> /dev/null
@@ -1858,12 +1864,12 @@ _satellite_download_o_contrib_eleven() {
   fi
   _get_dev_contrib "robotstxt-8.x-1.6.tar.gz"
   _get_dev_contrib "readonlymode-8.x-1.3.tar.gz"
-  if [ ! -e "${_D}/000/modules/redis_nine_ten/ver-${_REDIS_T_VERSION}.${_xSrl}.info" ]; then
+  if [ ! -e "${_D}/000/modules/redis_ten_eleven/ver-${_REDIS_E_VERSION}.${_xSrl}.info" ]; then
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
-    rm -rf ${_D}/000/modules/redis_nine_ten
-    _get_dev_contrib "redis_nine_ten-${_REDIS_T_VERSION}.tar.gz"
-    echo update > ${_D}/000/modules/redis_nine_ten/ver-${_REDIS_T_VERSION}.${_xSrl}.info
+    rm -rf ${_D}/000/modules/redis_ten_eleven
+    _get_dev_contrib "redis_ten_eleven-${_REDIS_E_VERSION}.tar.gz"
+    echo update > ${_D}/000/modules/redis_ten_eleven/ver-${_REDIS_E_VERSION}.${_xSrl}.info
   fi
   find ${_D}/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
   find ${_D}/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
@@ -1883,12 +1889,12 @@ _satellite_download_o_contrib_ten() {
   fi
   _get_dev_contrib "robotstxt-8.x-1.6.tar.gz"
   _get_dev_contrib "readonlymode-8.x-1.3.tar.gz"
-  if [ ! -e "${_D}/000/modules/redis_nine_ten/ver-${_REDIS_T_VERSION}.${_xSrl}.info" ]; then
+  if [ ! -e "${_D}/000/modules/redis_ten_eleven/ver-${_REDIS_E_VERSION}.${_xSrl}.info" ]; then
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
-    rm -rf ${_D}/000/modules/redis_nine_ten
-    _get_dev_contrib "redis_nine_ten-${_REDIS_T_VERSION}.tar.gz"
-    echo update > ${_D}/000/modules/redis_nine_ten/ver-${_REDIS_T_VERSION}.${_xSrl}.info
+    rm -rf ${_D}/000/modules/redis_ten_eleven
+    _get_dev_contrib "redis_ten_eleven-${_REDIS_E_VERSION}.tar.gz"
+    echo update > ${_D}/000/modules/redis_ten_eleven/ver-${_REDIS_E_VERSION}.${_xSrl}.info
   fi
   find ${_D}/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
   find ${_D}/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
@@ -2225,6 +2231,13 @@ _satellite_check_fix_o_contrib() {
     rm -rf ${_D}/000/modules/redis_nine_ten
     _get_dev_contrib "redis_nine_ten-${_REDIS_T_VERSION}.tar.gz"
     echo update > ${_D}/000/modules/redis_nine_ten/ver-${_REDIS_T_VERSION}.${_xSrl}.info
+  fi
+  if [ ! -e "${_D}/000/modules/redis_ten_eleven/ver-${_REDIS_E_VERSION}.${_xSrl}.info" ]; then
+    mkdir -p ${_D}/000/modules
+    cd ${_D}/000/modules
+    rm -rf ${_D}/000/modules/redis_ten_eleven
+    _get_dev_contrib "redis_ten_eleven-${_REDIS_E_VERSION}.tar.gz"
+    echo update > ${_D}/000/modules/redis_ten_eleven/ver-${_REDIS_E_VERSION}.${_xSrl}.info
   fi
   find ${_D}/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
   find ${_D}/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
