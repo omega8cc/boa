@@ -138,7 +138,6 @@ _graceful_action() {
 
   chmod 644 /usr/share/GeoIP/*
   cd /
-  rm -rf /opt/tmp
   mkdir -p /opt/tmp
   chmod 777 /opt/tmp
   rm -f /opt/tmp/sess*

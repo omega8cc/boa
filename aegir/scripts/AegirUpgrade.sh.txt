@@ -129,8 +129,8 @@ _gCb="git clone --branch"
 _gitHub="https://github.com/omega8cc"
 _gitLab="https://gitlab.com/omega8cc"
 #
-_urlDev="http://${_USE_MIR}/dev"
-_urlHmr="http://${_USE_MIR}/versions/${_tRee}/boa/aegir"
+export _urlDev="http://${_USE_MIR}/dev"
+export _urlHmr="http://${_USE_MIR}/versions/${_tRee}/boa/aegir"
 
 
 ###---### Local functions

@@ -73,9 +73,9 @@ _apt_clean_update() {
 }
 
 _count_cpu() {
-  _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)
+  _CPU_INFO="$(grep -c processor /proc/cpuinfo)"
   _CPU_INFO=${_CPU_INFO//[^0-9]/}
-  _NPROC_TEST=$(which nproc 2>&1)
+  _NPROC_TEST="$(which nproc)"
   if [ -z "${_NPROC_TEST}" ]; then
     _CPU_NR="${_CPU_INFO}"
   else
@@ -334,12 +334,12 @@ _check_root() {
       echo "DPkg::Pre-Install-Pkgs {\"/usr/sbin/dpkg-preconfigure --apt\";};" >> /opt/apt/apt.conf.noi.nrml
       echo "Dir::Etc::SourceList \"/etc/apt/sources.list\";" >> /opt/apt/apt.conf.noi.nrml
     fi
-    _LSB_TEST=$(which lsb_release 2> /dev/null)
+    _LSB_TEST="$(which lsb_release)"
     if [ ! -x "${_LSB_TEST}" ]; then
       _apt_clean_update
       ${_INSTAPP} lsb-release
     fi
-    _LSB_TEST=$(which lsb_release 2> /dev/null)
+    _LSB_TEST="$(which lsb_release)"
     if [ -x "${_LSB_TEST}" ]; then
       if [ "${_OS_DIST}" != "Debian" ]; then
         echo "ERROR: Not supported OS detected: ${_OS_DIST}/${_OS_CODE}"
@@ -477,7 +477,7 @@ _check_root() {
 [ -e "/root/.proxy.cnf" ] && exit 0
 
 _find_fast_mirror_early() {
-  _isNetc=$(which netcat 2>&1)
+  _isNetc="$(which netcat)"
   if [ ! -x "${_isNetc}" ] || [ -z "${_isNetc}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
@@ -664,7 +664,7 @@ _stop_sql() {
   _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
   if [ ! -z "${_IS_MYSQLD_RUNNING}" ]; then
     echo "Preparing MySQLD for quick shutdown..."
-    _DBS_TEST=$(which mysql 2>&1)
+    _DBS_TEST="$(which mysql)"
     if [ ! -z "${_DBS_TEST}" ]; then
       _DB_SERVER_TEST=$(mysql -V 2>&1)
     fi

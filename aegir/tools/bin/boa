@@ -47,7 +47,10 @@ if [ -z "${TERM+x}" ]; then
 fi
 
 _clean_pid_exit() {
-  echo "REASON ${1} on $(date)" >> /root/.boa.exit.exceptions.log
+  if [ -n "${1}" ]; then
+    echo "REASON ${1} on $(date)" >> /root/.boa.exit.exceptions.log
+    [ -e "/opt/tmp/boa" ] && rm -rf /opt/tmp/*
+  fi
   [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
   [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
   [ -e "/run/octopus_install_run.pid" ] && rm -f /run/octopus_install_run.pid
@@ -93,9 +96,9 @@ _check_manufacturer_compatibility() {
     ${_INITINS} dmidecode &> /dev/null
   fi
   # Check if dmidecode is available
-  _DMI_TEST=$(which dmidecode 2>&1)
+  _DMI_TEST="$(which dmidecode)"
   if [ -x "${_DMI_TEST}" ]; then
-    _HOST_INFO=$(dmidecode -s system-manufacturer 2>&1)
+    _HOST_INFO="$(dmidecode -s system-manufacturer)"
   else
     _HOST_INFO="Unknown, dmidecode not available"
   fi
@@ -118,7 +121,7 @@ _check_no_systemd() {
   if [ -e "/lib/systemd/systemd" ]; then
     echo "ERROR: This script can not be used with systemd"
     echo "ERROR: Please run 'autoinit' first"
-    _clean_pid_exit _check_no_systemd_a_boa
+    _clean_pid_exit _check_no_systemd
   fi
 }
 
@@ -287,7 +290,7 @@ _ensure_virt_what_helper_symlink() {
 ### Fix VM system detection
 ###
 _fix_virt_what() {
-  _VIRT_TEST=$(which virt-what)
+  _VIRT_TEST="$(which virt-what)"
   if [ -n "${_VIRT_TEST}" ] && [ -x "${_VIRT_TEST}" ]; then
     _SHELL_TEST_A=$(grep -I -o "\#\!.*/usr/bin/sh" ${_VIRT_TEST} 2>&1)
     _SHELL_TEST_B=$(grep -I -o "\#\!.*/bin/sh" ${_VIRT_TEST} 2>&1)
@@ -317,7 +320,7 @@ _fix_virt_what() {
 ### Fix or install VM system detection
 ###
 _fix_or_install_virt_what() {
-  _VIRT_TEST=$(which virt-what)
+  _VIRT_TEST="$(which virt-what)"
   if [ -n "${_VIRT_TEST}" ] && [ -x "${_VIRT_TEST}" ]; then
     _fix_virt_what
   else
@@ -335,7 +338,7 @@ _fix_or_install_virt_what() {
 
 _check_virt() {
   _fix_or_install_virt_what
-  _VIRT_TOOL=$(which virt-what)
+  _VIRT_TOOL="$(which virt-what)"
   if [ -x "${_VIRT_TOOL}" ]; then
     _VIRT_TEST=$(virt-what)
     _VIRT_TEST=$(echo -n ${_VIRT_TEST} | fmt -su -w 2500 2>&1)
@@ -594,7 +597,7 @@ _check_root_direct() {
     echo "         PermitRootLogin prohibit-password"
     echo "       in the /etc/ssh/sshd_config file"
     echo "Bye"
-    _clean_pid_exit _check_root_direct_a
+    _clean_pid_exit
   fi
 }
 
@@ -646,7 +649,7 @@ _check_root_keys_pwd() {
     echo
     echo "Bye"
     echo
-    _clean_pid_exit _check_root_keys_pwd_a
+    _clean_pid_exit
   fi
 }
 
@@ -658,11 +661,11 @@ _satellite_check_id() {
   elif [[ "${_ID_EXISTS}" =~ "${_USER}" ]]; then
     echo "ERROR: ${_USER} username is already taken"
     echo "Please choose different username"
-    _clean_pid_exit _satellite_check_id_a
+    _clean_pid_exit
   else
     echo "ERROR: ${_USER} username check failed"
     echo "Please try different username"
-    _clean_pid_exit _satellite_check_id_b
+    _clean_pid_exit
   fi
   if [ "${_USER}" = "admin" ] \
     || [ "${_USER}" = "hostmaster" ] \
@@ -672,7 +675,7 @@ _satellite_check_id() {
     || [ "${_USER}" = "all" ]; then
     echo "ERROR: ${_USER} is a restricted username, \
       please choose different _USER"
-    _clean_pid_exit _satellite_check_id_c
+    _clean_pid_exit
   elif [[ "${_USER}" =~ "aegir" ]] \
     || [[ "${_USER}" =~ "drupal" ]] \
     || [[ "${_USER}" =~ "drush" ]] \
@@ -680,13 +683,13 @@ _satellite_check_id() {
     || [[ "${_USER}" =~ "default" ]]; then
     echo "ERROR: ${_USER} includes restricted keyword, \
       please choose different _USER"
-    _clean_pid_exit _satellite_check_id_d
+    _clean_pid_exit
   fi
   _REGEX="^[[:digit:]]"
   if [[ "${_USER}" =~ "${_REGEX}" ]]; then
     echo "ERROR: ${_USER} is a wrong username, \
       it should start with a letter, not digit"
-    _clean_pid_exit _satellite_check_id_e
+    _clean_pid_exit
   fi
 }
 
@@ -1024,13 +1027,14 @@ _octopus_install() {
       echo
       echo "${_vBs}/${_octName} installer not available, exit"
       echo
+      _clean_pid_exit _octName
     fi
     if [ ! -e "${_vBs}/${_filIncO}" ]; then
       echo
       echo "${_vBs}/${_filIncO} inc file not available, exit"
       echo
+      _clean_pid_exit _filIncO
     fi
-    _clean_pid_exit _octopus_install_a
   fi
 }
 
@@ -1226,11 +1230,12 @@ _barracuda_install() {
   else
     if [ ! -e "${_vBs}/${_barName}" ]; then
       echo "${_vBs}/${_barName} installer not available, exit"
+      _clean_pid_exit _barName
     fi
     if [ ! -e "${_vBs}/${_filIncB}" ]; then
       echo "${_vBs}/${_filIncB} inc file not available, exit"
+      _clean_pid_exit _filIncB
     fi
-    _clean_pid_exit _barracuda_install_a
   fi
 }
 
@@ -1275,7 +1280,6 @@ _init_cleanup() {
   rm -f ${_vBs}/*.sh.cnf*
   rm -f ${_vBs}/BARRACUDA.sh*
   rm -f ${_vBs}/OCTOPUS.sh*
-  rm -rf /opt/tmp/*
 }
 
 _init_finish() {
@@ -1288,7 +1292,6 @@ _init_finish() {
   rm -f ${_vBs}/BARRACUDA.sh*
   rm -f ${_vBs}/OCTOPUS.sh*
   echo
-  rm -rf /opt/tmp/*
   echo BOA ${_cmNd} completed
   echo Bye
   echo
@@ -1740,7 +1743,7 @@ _init_setup() {
 }
 
 _find_fast_mirror_early() {
-  _isNetc=$(which netcat 2>&1)
+  _isNetc="$(which netcat)"
   if [ ! -x "${_isNetc}" ] || [ -z "${_isNetc}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
@@ -1764,19 +1767,19 @@ _find_fast_mirror_early() {
       if [[ "${_BROKEN_FFMIRR_TEST}" =~ "stuff" ]]; then
         _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
-        _USE_MIR="${_CHECK_MIRROR}"
-        [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.aegir.cc"
+        export _USE_MIR="${_CHECK_MIRROR}"
+        [[ "${_USE_MIR}" =~ "printf" ]] && export _USE_MIR="files.aegir.cc"
       else
-        _USE_MIR="files.aegir.cc"
+        export _USE_MIR="files.aegir.cc"
       fi
     else
-      _USE_MIR="files.aegir.cc"
+      export _USE_MIR="files.aegir.cc"
     fi
   else
-    _USE_MIR="files.aegir.cc"
+    export _USE_MIR="files.aegir.cc"
   fi
-  _urlDev="http://${_USE_MIR}/dev"
-  _urlHmr="http://${_USE_MIR}/versions/${_tRee}/boa/aegir"
+  export _urlDev="http://${_USE_MIR}/dev"
+  export _urlHmr="http://${_USE_MIR}/versions/${_tRee}/boa/aegir"
 }
 
 _if_reinstall_curl() {
@@ -1806,7 +1809,7 @@ _if_reinstall_curl() {
     _isCurl=$(curl --version 2>&1)
     if [[ ! "${_isCurl}" =~ "OpenSSL" ]] || [ -z "${_isCurl}" ]; then
       echo "ERRR: curl is still broken, please install it and debug manually"
-      _clean_pid_exit
+      _clean_pid_exit _if_reinstall_curl
     fi
   fi
 }
@@ -2005,7 +2008,7 @@ _check_root() {
     fi
   else
     echo "ERROR: This script should be run as a root user"
-    _clean_pid_exit _check_root_a
+    _clean_pid_exit
   fi
   _DF_TEST=$(df -kTh / -l \
     | grep '/' \
@@ -2015,7 +2018,7 @@ _check_root() {
   if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt 90 ]; then
     echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
     echo "ERROR: We can not proceed until it is below 90/100"
-    _clean_pid_exit _check_root_b
+    _clean_pid_exit
   fi
   if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
     && [ -e "/etc/apt/apt.conf.d" ]; then
@@ -2095,8 +2098,8 @@ _check_root() {
 
 _display_version() {
   if [ "$(id -u)" -eq 0 ]; then
-    _HOST_INFO=$(dmidecode -s system-manufacturer 2>&1)
-    _VIRT_TOOL=$(which virt-what)
+    _HOST_INFO="$(dmidecode -s system-manufacturer)"
+    _VIRT_TOOL="$(which virt-what)"
     if [ -x "${_VIRT_TOOL}" ]; then
       _VIRT_TEST=$(virt-what)
       _VIRT_TEST=$(echo -n ${_VIRT_TEST} | fmt -su -w 2500 2>&1)
@@ -2327,10 +2330,10 @@ _check_system_ram() {
 
 _display_info() {
   if [ "$(id -u)" -eq 0 ]; then
-    _HOST_INFO=$(dmidecode -s system-manufacturer 2>&1)
-    _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)
+    _HOST_INFO="$(dmidecode -s system-manufacturer)"
+    _CPU_INFO="$(grep -c processor /proc/cpuinfo)"
     _CPU_INFO=${_CPU_INFO//[^0-9]/}
-    _NPROC_TEST=$(which nproc 2>&1)
+    _NPROC_TEST="$(which nproc)"
     if [ -z "${_NPROC_TEST}" ]; then
       _CPU_NR="${_CPU_INFO}"
     else
@@ -2419,7 +2422,7 @@ _display_info() {
           | awk '{ print $1}' 2>&1)
       fi
     fi
-    _isLshell=$(which lshell 2>&1)
+    _isLshell="$(which lshell)"
     _LSH=$(${_isLshell} --version 2>&1 \
       | tr -d "\n" \
       | cut -d"-" -f2 \
@@ -2979,7 +2982,7 @@ _if_display_help() {
     See docs/INSTALL.md for more details.
 
 EOF
-    _clean_pid_exit _cmNd_a
+    _clean_pid_exit
 
   fi
 }
@@ -3091,7 +3094,7 @@ case "$1" in
               echo "Sorry, you are trying not supported command.."
               echo "Display supported commands with: $(basename "$0") help"
               echo
-              _clean_pid_exit _cmNd_a
+              _clean_pid_exit
   ;;
 esac
 
