@@ -232,8 +232,8 @@ else
   _DB_SERVER=Percona
 fi
 if [ "$(boa info | grep -c ${_DB_SERVER})" -lt 3 ] || [ ! -e "/usr/sbin/csf" ]; then
-  if [ ! -e "${_bldPth}/aegir/helpers/apt.conf.noi.nrml" ] \
-    || [ ! -e "${_bldPth}/aegir/helpers/apt.conf.noi.dist" ]; then
+  if [ ! -e "/opt/tmp/boa/aegir/helpers/apt.conf.noi.nrml" ] \
+    || [ ! -e "/opt/tmp/boa/aegir/helpers/apt.conf.noi.dist" ]; then
     _download_helpers_libs
   fi
 else
