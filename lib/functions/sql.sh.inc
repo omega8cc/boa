@@ -622,26 +622,19 @@ _sql_conf_update() {
     /etc/mysql/my.cnf &> /dev/null
   if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ]; then
     if [ "${_DB_BINARY_LOG}" = "NO" ]; then
-      # Purge binlogs
-      bash /var/xdrago/purge_binlogs.sh &> /dev/null
-      # Remove cron jobs related to purge_binlogs
-      sed -i -e "/purge_binlogs/d" -e "/^$/d" /var/spool/cron/crontabs/root &> /dev/null
       # Disable binary logging
       sed -i \
         -e "s/^\s*\(log_bin\s*=.*\)/#\1/" \
         -e "s/^\s*#\s*\(skip-log-bin\)/\1/" \
-        -e "s/^\s*\(expire_logs_days\s*=.*\)/#\1/" \
         -e "s/^\s*\(max_binlog_size\s*=.*\)/#\1/" \
         -e "s/^\s*\(binlog_row_image\s*=.*\)/#\1/" \
         -e "s/^\s*\(binlog_format\s*=.*\)/#\1/" \
         /etc/mysql/my.cnf &> /dev/null
-
     elif [ "${_DB_BINARY_LOG}" = "YES" ]; then
       # Enable binary logging
       sed -i \
         -e "s/^\s*#\s*\(log_bin\s*=.*\)/\1/" \
         -e "s/^\s*\(skip-log-bin\)/#\1/" \
-        -e "s/^\s*#\s*\(expire_logs_days\s*=.*\)/\1/" \
         -e "s/^\s*#\s*\(max_binlog_size\s*=.*\)/\1/" \
         -e "s/^\s*#\s*\(binlog_row_image\s*=.*\)/\1/" \
         -e "s/^\s*#\s*\(binlog_format\s*=.*\)/\1/" \
