@@ -551,7 +551,10 @@ _status_vm_postinstall() {
     if [ ! -e "${_VM_N_PID}" ] && [ ! -e "${_VM_N_SYS}" ]; then
       touch ${_VM_N_SYS}
       chattr +i ${_VM_N_SYS}
-      rm -rf /opt/tmp/*
+      _is_protected_run
+      if [ "${_protectedRun}" = "FALSE" ]; then
+        rm -rf /opt/tmp/*
+      fi
     fi
     if [ ! -e "/var/log/boa/reset_no_new_password.pid" ]; then
       # Re-enable default MySQL/Valkey/Redis password update logic once
@@ -564,11 +567,29 @@ _status_vm_postinstall() {
   fi
 }
 
+_opt_tmp_cleanup() {
+  _is_protected_run
+  if [ "${_protectedRun}" = "FALSE" ]; then
+    _OLD_FOUND="NO"
+    # Detect anything in /opt/tmp/boa older than 24 hours
+    if find /opt/tmp/boa -mindepth 1 -mtime +0 -print -quit 2>/dev/null | grep -q .; then
+      _OLD_FOUND="YES"
+    fi
+    if [ "${_OLD_FOUND}" = "YES" ]; then
+      # Remove everything under /opt/tmp safely
+      rm -rf /opt/tmp/*
+    fi
+  fi
+}
+
 if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-  && [ ! -e "/var/log/boa/reset_no_new_password.pid" ] \
   && [ -e "/data/u" ] \
   && [ -e "/var/xdrago" ]; then
-  _status_vm_postinstall
+  if [ ! -e "/var/log/boa/reset_no_new_password.pid" ] \
+    _status_vm_postinstall
+  else
+    _opt_tmp_cleanup
+  fi
 fi
 
 _crontab_monitor_cleanup() {
