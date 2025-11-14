@@ -9,6 +9,8 @@ _check_root() {
     ionice -c2 -n7 -p $$
     renice 19 -p $$
     chmod a+w /dev/null
+    # shellcheck disable=SC1091
+    [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
   else
     echo "ERROR: This script should be run as a root user"
     exit 1
@@ -18,6 +20,10 @@ _check_root
 
 [ -e "/root/.proxy.cnf" ] && exit 0
 [ -e "/root/.pause_tasks_maint.cnf" ] && exit 0
+
+if [ -z "${_DB_BINARY_LOG}" ] || [ "${_DB_BINARY_LOG}" != "YES" ]; then
+  exit 0
+fi
 
 ###
 ### Atomic lock/unlock to prevent TOCTOU race
@@ -84,7 +90,7 @@ _load_control() {
 }
 
 # How many hours of binlogs to keep
-: "${_BINLOG_KEEP_HOURS:=1}"
+: "${_BINLOG_KEEP_HOURS:=24}"
 
 _detect_mysql_major() {
   # Returns "5" or "8" for Percona/MySQL variants
