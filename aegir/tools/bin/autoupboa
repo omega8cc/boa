@@ -585,7 +585,7 @@ _opt_tmp_cleanup() {
 if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
   && [ -e "/data/u" ] \
   && [ -e "/var/xdrago" ]; then
-  if [ ! -e "/var/log/boa/reset_no_new_password.pid" ] \
+  if [ ! -e "/var/log/boa/reset_no_new_password.pid" ]; then
     _status_vm_postinstall
   else
     _opt_tmp_cleanup
