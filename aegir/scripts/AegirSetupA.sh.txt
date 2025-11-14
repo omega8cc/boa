@@ -207,8 +207,9 @@ else
   _DB_SERVER=Percona
 fi
 if [ "$(boa info | grep -c ${_DB_SERVER})" -lt 3 ] || [ ! -e "/usr/sbin/csf" ]; then
-  if [ ! -e "/opt/tmp/make_local/hosting/db_server/hosting_db_server.info" ] \
-    || [ ! -e "/opt/tmp/make_local/hostmaster/drupal-org.make" ]; then
+  if [ ! -e "/opt/tmp/make_local/hostmaster/hostmaster.make" ] \
+    || [ ! -e "/opt/tmp/make_local/hosting/server/hosting_server.install" ] \
+    || [ ! -e "/opt/tmp/make_local/drupal/includes/database/mysql/schema.inc" ]; then
     _satellite_download_for_local_build
   fi
 else
