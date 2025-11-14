@@ -8609,9 +8609,6 @@ _xdrago_install_upgrade() {
       wait
       sed -i "s/rotate 1/rotate 7/g" /etc/logrotate.d/nginx &> /dev/null
       wait
-      sed -i "s/INTERVAL 1 HOUR/INTERVAL 15 MINUTE/g" \
-        /var/xdrago/purge_binlogs.sh &> /dev/null
-      wait
     fi
     if [ -e "/root/.debug.cnf" ] && [ ! -e "/root/.default.cnf" ]; then
       _DO_NOTHING=YES
