@@ -80,7 +80,7 @@ find /run/daily-fix.pid -mtime +0 -type f -not -newermt "${_THR_HOURS}" -exec rm
 #
 # Find the fastest mirror.
 _find_fast_mirror_early() {
-  _isNetc=$(which netcat 2>&1)
+  _isNetc="$(which netcat)"
   if [ ! -x "${_isNetc}" ] || [ -z "${_isNetc}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
@@ -219,7 +219,6 @@ _check_dns_curl() {
       _if_reinstall_curl_src
     else
       echo "ERROR: ${_USE_MIR} is not available, please try later"
-      _clean_pid_exit _check_dns_curl_clear_a
     fi
   fi
 }

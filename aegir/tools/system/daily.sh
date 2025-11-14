@@ -105,7 +105,7 @@ _if_hosted_sys() {
 }
 
 _find_fast_mirror_early() {
-  _isNetc=$(which netcat 2>&1)
+  _isNetc="$(which netcat)"
   if [ ! -x "${_isNetc}" ] || [ -z "${_isNetc}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
@@ -2373,7 +2373,7 @@ _if_gen_goaccess() {
   _PrTestCluster=$(grep "CLUSTER" /root/.${_HM_U}.octopus.cnf 2>&1)
   if [[ "${_PrTestPhantom}" =~ "PHANTOM" ]] \
     || [[ "${_PrTestCluster}" =~ "CLUSTER" ]]; then
-    _isWblgx=$(which weblogx 2>&1)
+    _isWblgx="$(which weblogx)"
     if [ -x "${_isWblgx}" ]; then
       ${_isWblgx} --site="${1}" --env="${_HM_U}"
       wait
@@ -2867,9 +2867,9 @@ _purge_cruft_machine() {
 }
 
 _count_cpu() {
-  _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)
+  _CPU_INFO="$(grep -c processor /proc/cpuinfo)"
   _CPU_INFO=${_CPU_INFO//[^0-9]/}
-  _NPROC_TEST=$(which nproc 2>&1)
+  _NPROC_TEST="$(which nproc)"
   if [ -z "${_NPROC_TEST}" ]; then
     _CPU_NR="${_CPU_INFO}"
   else

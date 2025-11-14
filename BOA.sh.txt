@@ -75,6 +75,7 @@ _pthLog="/var/log/boa"
 _tBn="tools/bin"
 _vBs="/var/backups"
 _boaToolsPid="${_pthLog}/updateBOAtools.${_bTs}.ctrl.${_tRee}.${_xSrl}.pid"
+_INITINS="/usr/bin/apt-get ${_aptAllow} -y install"
 #
 if [ ! -e "${_pthLog}/.migrated.txt" ] && [ -d "${_xpthLog}" ]; then
   mkdir -p "${_pthLog}"
@@ -261,7 +262,7 @@ _check_dns_settings() {
 }
 
 _find_fast_mirror_early() {
-  _isNetc=$(which netcat 2>&1)
+  _isNetc="$(which netcat)"
   if [ ! -x "${_isNetc}" ] || [ -z "${_isNetc}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
@@ -450,9 +451,8 @@ _verify_boa_keys() {
 }
 
 _locales_check_fix_early() {
-  _isLoc=$(which locale 2>&1)
+  _isLoc="$(which locale)"
   if [ ! -x "${_isLoc}" ] || [ -z "${_isLoc}" ]; then
-    _INITINS="/usr/bin/apt-get ${_aptAllow} -y install"
     apt-get update -qq &> /dev/null
     ${_INITINS} locales locales-all &> /dev/null
   fi
@@ -727,7 +727,7 @@ _ensure_virt_what_helper_symlink() {
 ### Fix VM system detection
 ###
 _fix_virt_what() {
-  _VIRT_TEST=$(which virt-what)
+  _VIRT_TEST="$(which virt-what)"
   if [ -n "${_VIRT_TEST}" ] && [ -x "${_VIRT_TEST}" ]; then
     _SHELL_TEST_A=$(grep -I -o "\#\!.*/usr/bin/sh" ${_VIRT_TEST} 2>&1)
     _SHELL_TEST_B=$(grep -I -o "\#\!.*/bin/sh" ${_VIRT_TEST} 2>&1)
@@ -757,7 +757,7 @@ _fix_virt_what() {
 ### Fix or install VM system detection
 ###
 _fix_or_install_virt_what() {
-  _VIRT_TEST=$(which virt-what)
+  _VIRT_TEST="$(which virt-what)"
   if [ -n "${_VIRT_TEST}" ] && [ -x "${_VIRT_TEST}" ]; then
     _fix_virt_what
   else
@@ -1945,7 +1945,7 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -d "/var/aegir/drush" ] \
-    && [ ! -e "${_pthLog}/autoupboa.ctrl.f96.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/autoupboa.ctrl.f94.${_tRee}.${_xSrl}.pid" ]; then
     _CNT=$(pgrep -fc autoupboa)
     if (( _CNT > 0 )); then
       echo "The autoupboa is running!"
@@ -1957,7 +1957,7 @@ _update_agents() {
       if [ -e "${_optBin}/autoupboa" ]; then
         chmod 700 ${_optBin}/autoupboa
         chown root:root ${_optBin}/autoupboa
-        touch ${_pthLog}/autoupboa.ctrl.f96.${_tRee}.${_xSrl}.pid
+        touch ${_pthLog}/autoupboa.ctrl.f94.${_tRee}.${_xSrl}.pid
       else
         if [ -e "${_optBin}/autoupboa.old" ]; then
           mv -f ${_optBin}/autoupboa.old ${_optBin}/autoupboa
@@ -2258,9 +2258,9 @@ _update_agents() {
   if [ -e "/etc/ImageMagick-6/policy.xml" ] \
     && [ -e "/var/xdrago" ] \
     && [ ! -e "${_pthLog}/policymap-hf-06.ctrl.${_tRee}.${_xSrl}.pid" ]; then
-    IsCurlBin=$(which curl 2>&1)
-    chmod 755 ${IsCurlBin} &> /dev/null
-    chgrp root ${IsCurlBin} &> /dev/null
+    _isCurlBin="$(which curl)"
+    chmod 755 ${_isCurlBin} &> /dev/null
+    chgrp root ${_isCurlBin} &> /dev/null
     cp -af /etc/ImageMagick-6/policy.xml /var/xdrago/conf/etc-ImageMagick-6-policy.xml.hf-06.old
     rm -f /var/xdrago/conf/etc-ImageMagick-6-policy.xml
     curl ${_crlGet} "${_urlHmr}/conf/etc/etc-ImageMagick-6-policy.xml" \
@@ -2798,7 +2798,22 @@ _update_agents() {
   fi
 
   _Dir="/data/all/000/modules"
-  _REDIS_T_VERSION=8.x-1.11.1
+  _REDIS_E_VERSION=8.x-1.11.2
+  if [ -e "/var/xdrago/manage_solr_config.sh" ]; then
+    if [ ! -e "${_Dir}/redis_ten_eleven/ver-${_REDIS_E_VERSION}.${_xSrl}.info" ]; then
+      mkdir -p ${_Dir}
+      cd ${_Dir}
+      rm -rf ${_Dir}/redis_ten_eleven
+      _get_dev_contrib "redis_ten_eleven-${_REDIS_E_VERSION}.tar.gz"
+      echo update > ${_Dir}/redis_ten_eleven/ver-${_REDIS_E_VERSION}.${_xSrl}.info
+      find ${_Dir} -type d -exec chmod 0755 {} \; &> /dev/null
+      find ${_Dir} -type f -exec chmod 0644 {} \; &> /dev/null
+      touch ${_pthLog}/redis_ten_eleven.ctrl.${_xSrl}.log
+    fi
+  fi
+
+  _Dir="/data/all/000/modules"
+  _REDIS_T_VERSION=8.x-1.8.2
   if [ -e "/var/xdrago/manage_solr_config.sh" ]; then
     if [ ! -e "${_Dir}/redis_nine_ten/ver-${_REDIS_T_VERSION}.${_xSrl}.info" ]; then
       mkdir -p ${_Dir}
@@ -3366,7 +3381,7 @@ _if_fix_lshell() {
   _PATH_LSHELL="${_usrBin}/lshell"
   _LSHELL_CHK_VRN=0.10
   _LSHELL_FORCE_REINSTALL=NO
-  _isLshell=$(which lshell 2>&1)
+  _isLshell="$(which lshell)"
   _LSHELL_ITD=$(${_isLshell} --version 2>&1 \
     | tr -d "\n" \
     | cut -d"-" -f2 \
@@ -4404,7 +4419,7 @@ _if_update_boa_key_tools_only() {
   else
     _urlHmr="http://${_USE_MIR}/versions/${_tRee}/boa/aegir"
   fi
-  _LSB_TEST=$(which lsb_release 2> /dev/null)
+  _LSB_TEST="$(which lsb_release)"
   if [ ! -x "${_LSB_TEST}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
@@ -4413,7 +4428,7 @@ _if_update_boa_key_tools_only() {
     _apt_clean_update
     apt-get install lsb-release ${_aptYesUnth} &> /dev/null
   fi
-  _IPSET_TEST=$(which ipset 2> /dev/null)
+  _IPSET_TEST="$(which ipset)"
   if [ ! -x "${_IPSET_TEST}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
@@ -4438,7 +4453,7 @@ _if_update_boa_key_tools_only() {
     echo "iptables -t raw -A PREROUTING -p tcp --dport 21 -j CT --helper ftp" >> /etc/csf/csfpost.sh
     echo "iptables -t raw -A OUTPUT -p tcp --dport 21 -j CT --helper ftp" >> /etc/csf/csfpost.sh
     chmod 700 /etc/csf/csfpost.sh
-    _CSF_TEST=$(which csf 2> /dev/null)
+    _CSF_TEST="$(which csf)"
     if [ -x "${_CSF_TEST}" ]; then
       service clean-boa-env start &> /dev/null
       _if_fix_iptables_symlinks
@@ -4644,7 +4659,7 @@ _boa_setup() {
 
   _if_clean_boa_env
 
-  _LSB_TEST=$(which lsb_release 2> /dev/null)
+  _LSB_TEST="$(which lsb_release)"
   if [ ! -x "${_LSB_TEST}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
@@ -4675,9 +4690,9 @@ _boa_setup() {
 }
 
 _count_cpu() {
-  _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)
+  _CPU_INFO="$(grep -c processor /proc/cpuinfo)"
   _CPU_INFO=${_CPU_INFO//[^0-9]/}
-  _NPROC_TEST=$(which nproc 2>&1)
+  _NPROC_TEST="$(which nproc)"
   if [ -z "${_NPROC_TEST}" ]; then
     _CPU_NR="${_CPU_INFO}"
   else
@@ -4830,6 +4845,11 @@ _backup_waiting_notify() {
 ###--------------------###
 if [ "$(id -u)" -eq 0 ]; then
 
+  if ! command -v bc &> /dev/null; then
+    apt-get update -qq &> /dev/null
+    ${_INITINS} bc &> /dev/null
+  fi
+
   _find_correct_ip
   _find_server_city
 
@@ -4904,7 +4924,7 @@ if [ "$(id -u)" -eq 0 ]; then
   # fi
 
   ### Block known attackers IPs
-  _CSF_TEST=$(which csf 2> /dev/null)
+  _CSF_TEST="$(which csf)"
   if [ -x "${_CSF_TEST}" ]; then
     _IP_BLOCK="185.206.225.30 185.253.97.238"
     for _IP in ${_IP_BLOCK}; do
