@@ -90,7 +90,7 @@ _load_control() {
 }
 
 # How many hours of binlogs to keep
-: "${_BINLOG_KEEP_HOURS:=1}"
+: "${_BINLOG_KEEP_HOURS:=24}"
 
 _detect_mysql_major() {
   # Returns "5" or "8" for Percona/MySQL variants
