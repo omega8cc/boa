@@ -841,7 +841,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           _IN_PATH=NO
         fi
       else
-        _WHICH_TEST=$(which $2 2>&1)
+        _WHICH_TEST="$(which ${2})"
         if [[ "${_WHICH_TEST}" =~ (^)"/usr/" ]] \
           || [[ "${_WHICH_TEST}" =~ (^)"/bin/" ]] \
           || [[ "${_WHICH_TEST}" =~ (^)"/opt/" ]]; then
@@ -913,7 +913,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
         _IN_PATH=NO
       fi
     else
-      _WHICH_TEST=$(which ${1} 2>&1)
+      _WHICH_TEST="$(which ${1})"
       if [[ "${_WHICH_TEST}" =~ (^)"/usr/" ]] \
         || [[ "${_WHICH_TEST}" =~ (^)"/bin/" ]] \
         || [[ "${_WHICH_TEST}" =~ (^)"/opt/" ]]; then

@@ -127,7 +127,7 @@ _stop_sql() {
 
   _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
   if [ ! -z "${_IS_MYSQLD_RUNNING}" ]; then
-    _DBS_TEST=$(which mysql 2>&1)
+    _DBS_TEST="$(which mysql)"
     if [ ! -z "${_DBS_TEST}" ]; then
       _DB_SERVER_TEST=$(mysql -V 2>&1)
     fi
