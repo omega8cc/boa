@@ -100,7 +100,7 @@ _not_supported_os() {
   echo
   echo "It is not any supported Devuan or Debian version."
   echo
-  echo "You need Devuan Beowulf (recommended) or Debian Buster first."
+  echo "You need Devuan Daedalus (recommended) or Debian Bookworm first."
   echo
   echo "Bye"
   echo
@@ -434,7 +434,7 @@ _mode_detection() {
       else
         ###--------------------###
         _msg "FATAL ERROR: Something went wrong, Aegir Master exists but looks broken!"
-        _msg "HINT: Please check /var/aegir/install.log for details, and then"
+        _msg "HINT: Please check /var/log/boa/aegir_install.log for details, and then"
         _msg "HINT: run the same install command again to complete installation."
         _msg "HINT: You can also enforce installation with empty control file:"
         _msg "      touch /root/.force.reinstall.cnf -- and then try again."
@@ -709,7 +709,7 @@ _ensure_virt_what_helper_symlink() {
 ### Fix VM system detection
 ###
 _fix_virt_what() {
-  _VIRT_TEST=$(which virt-what)
+  _VIRT_TEST="$(which virt-what)"
   if [ -n "${_VIRT_TEST}" ] && [ -x "${_VIRT_TEST}" ]; then
     _SHELL_TEST_A=$(grep -I -o "\#\!.*/usr/bin/sh" ${_VIRT_TEST} 2>&1)
     _SHELL_TEST_B=$(grep -I -o "\#\!.*/bin/sh" ${_VIRT_TEST} 2>&1)
@@ -739,7 +739,7 @@ _fix_virt_what() {
 ### Fix or install VM system detection
 ###
 _fix_or_install_virt_what() {
-  _VIRT_TEST=$(which virt-what)
+  _VIRT_TEST="$(which virt-what)"
   if [ -n "${_VIRT_TEST}" ] && [ -x "${_VIRT_TEST}" ]; then
     _fix_virt_what
   else
@@ -760,7 +760,7 @@ _virt_detection() {
     _msg "PROC: _virt_detection"
   fi
   _fix_or_install_virt_what
-  _VIRT_TOOL=$(which virt-what)
+  _VIRT_TOOL="$(which virt-what)"
   if [ -x "${_VIRT_TOOL}" ]; then
     _VIRT_TEST=$(virt-what)
     _VIRT_TEST=$(echo -n ${_VIRT_TEST} | fmt -su -w 2500 2>&1)

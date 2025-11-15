@@ -11,7 +11,7 @@ _pkg_installed() {
 ### Find the best Devuan APT sources mirror
 ###
 _find_fast_devuan_mirror() {
-  _ffDevuan=$(which ffdevuan 2>&1)
+  _ffDevuan="$(which ffdevuan)"
   if [ -x "${_ffDevuan}" ]; then
     bash ${_ffDevuan} &> /dev/null
     wait
@@ -31,16 +31,16 @@ _find_fast_devuan_mirror() {
         || [[ ! "${_BROKEN_FFLIST}" =~ "merged" ]]; then
         _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
-        _USE_MIR="${_CHECK_MIRROR}"
-        [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="https://mirrors.dotsrc.org/devuan/merged"
+        export _USE_MIR="${_CHECK_MIRROR}"
+        [[ "${_USE_MIR}" =~ "printf" ]] && export _USE_MIR="https://mirrors.dotsrc.org/devuan/merged"
       else
-        _USE_MIR="https://mirrors.dotsrc.org/devuan/merged"
+        export _USE_MIR="https://mirrors.dotsrc.org/devuan/merged"
       fi
     else
-      _USE_MIR="https://mirrors.dotsrc.org/devuan/merged"
+      export _USE_MIR="https://mirrors.dotsrc.org/devuan/merged"
     fi
   else
-    _USE_MIR="https://mirrors.dotsrc.org/devuan/merged"
+    export _USE_MIR="https://mirrors.dotsrc.org/devuan/merged"
   fi
   echo "${_USE_MIR}"
 }
@@ -411,9 +411,9 @@ _count_cpu() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _count_cpu"
   fi
-  _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)
+  _CPU_INFO="$(grep -c processor /proc/cpuinfo)"
   _CPU_INFO=${_CPU_INFO//[^0-9]/}
-  _NPROC_TEST=$(which nproc 2>&1)
+  _NPROC_TEST="$(which nproc)"
   if [ -z "${_NPROC_TEST}" ]; then
     _CPU_NR="${_CPU_INFO}"
   else
@@ -538,7 +538,7 @@ _if_running_as_root_barracuda() {
     sleep 1
   else
     _msg "ERROR: This script should be run as a root user"
-    _clean_pid_exit _if_running_as_root_barracuda_a
+    _clean_pid_exit
   fi
 }
 
@@ -2104,7 +2104,7 @@ _if_php_idle_on_off() {
       || [ -e "/root/.run-to-beowulf.cnf" ]; then
       echo " "
       _msg "Bye"
-      _clean_pid_exit _if_php_idle_on_off_a
+      _clean_pid_exit
     else
       _complete
       exit 0
@@ -2138,7 +2138,7 @@ _barracuda_cnf() {
     _ffList="/var/log/boa/devaun-fast-mirrors-list.txt"
     _BROKEN_FF=$(grep "planetcobalt" ${_ffList} 2>&1)
     if [ ! -e "${_ffList}" ] || [[ ! "${_BROKEN_FF}" =~ "planetcobalt" ]]; then
-      _ffDevuan=$(which ffdevuan 2>&1)
+      _ffDevuan="$(which ffdevuan)"
       if [ -x "${_ffDevuan}" ]; then
         bash ${_ffDevuan} &> /dev/null
         wait
@@ -2786,7 +2786,7 @@ _barracuda_cnf() {
     _ffList="/var/log/boa/devaun-fast-mirrors-list.txt"
     _BROKEN_FF=$(grep "planetcobalt" ${_ffList} 2>&1)
     if [ ! -e "${_ffList}" ] || [[ ! "${_BROKEN_FF}" =~ "planetcobalt" ]]; then
-      _ffDevuan=$(which ffdevuan 2>&1)
+      _ffDevuan="$(which ffdevuan)"
       if [ -x "${_ffDevuan}" ]; then
         bash ${_ffDevuan} &> /dev/null
         wait
@@ -3103,10 +3103,15 @@ _do_install_latest_git() {
     _mrun "make clean"
     _mrun "make configure"
     _mrun "bash ./configure --without-tcltk"
-    # Neutralize any injected value, then set a valid compat that matches 3.4.x
-    _mrun "make CFLAGS+=' -UOPENSSL_API_COMPAT -DOPENSSL_API_COMPAT=0x30400000L' daemon.o V=1"
-    _mrun "make CFLAGS+=' -UOPENSSL_API_COMPAT -DOPENSSL_API_COMPAT=0x30400000L' all -j $(nproc)"
-    _mrun "make CFLAGS+=' -UOPENSSL_API_COMPAT -DOPENSSL_API_COMPAT=0x30400000L' install"
+    if [ "${_OS_CODE}" = "excalibur" ]; then
+      # Neutralize any injected value, then set a valid compat that matches 3.4.x
+      _mrun "make CFLAGS+=' -UOPENSSL_API_COMPAT -DOPENSSL_API_COMPAT=0x30400000L' daemon.o V=1"
+      _mrun "make CFLAGS+=' -UOPENSSL_API_COMPAT -DOPENSSL_API_COMPAT=0x30400000L' all -j $(nproc)"
+      _mrun "make CFLAGS+=' -UOPENSSL_API_COMPAT -DOPENSSL_API_COMPAT=0x30400000L' install"
+    else
+      _mrun "make all -j $(nproc)"
+      _mrun "make install"
+    fi
     ldconfig 2> /dev/null
     if [ -x "/usr/local/bin/git" ]; then
       if [ -e "/usr/bin/git" ] && [ ! -L "/usr/bin/git" ]; then
@@ -3140,6 +3145,14 @@ _if_install_git_src() {
     if [ "${_GIT_V}" != "${_GIT_VRN}" ]; then
       _GIT_INSTALL=YES
     fi
+  fi
+  if [ "${_OS_CODE}" = "excalibur" ]; then
+    _DB_SERVER=MySQL
+  else
+    _DB_SERVER=Percona
+  fi
+  if [ "$(boa info | grep -c ${_DB_SERVER})" -lt 3 ] || [ ! -e "/usr/sbin/csf" ]; then
+    _GIT_INSTALL=NO
   fi
   if [ "${_GIT_INSTALL}" = "YES" ] \
     || [ "${_GIT_FORCE_REINSTALL}" = "YES" ]; then
@@ -3417,7 +3430,7 @@ _if_install_wkhtmltox() {
   fi
   ###--------------------###
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
-  _isWkhtmltox=$(which wkhtmltopdf 2>&1)
+  _isWkhtmltox="$(which wkhtmltopdf)"
   if [ -z "${_isWkhtmltox}" ] \
     || [ ! -e "${_isWkhtmltox}" ] \
     || [ ! -x "/usr/local/bin/wkhtmltopdf" ] \
@@ -3853,7 +3866,7 @@ _sources_list_update() {
         else
           _MIRROR=${_LOCAL_DEBIAN_MIRROR}
         fi
-        if ! netcat -w 5 -z ${_MIRROR} 80 ; then
+        if ! command nc -w 10 -z ${_MIRROR} 80 >/dev/null 2>&1 ; then
           _msg "INFO: The mirror ${_MIRROR} doesn't respond, let's try default"
           _MIRROR=deb.debian.org
         fi
@@ -4579,7 +4592,11 @@ _if_ssl_install_src() {
     _sslIncludesA=NO
     _sslIncludesB=NO
     _sslIncludes=YES
-    _sslComp=$(nm -D /usr/local/ssl3/lib64/libssl.so.3 | grep -q COMP_get_type && echo "YES" || echo "NO")
+    if [ -e "/usr/local/ssl3/lib64/libssl.so.3" ]; then
+      _sslComp=$(nm -D /usr/local/ssl3/lib64/libssl.so.3 | grep -q COMP_get_type && echo "YES" || echo "NO")
+    else
+      _sslComp=NO
+    fi
     if grep -i 'OPENSSL_NO_DEPRECATED_3_4' ${_sslMacros} &> /dev/null; then
       _sslIncludesA=YES
     fi
@@ -5411,7 +5428,7 @@ _strict_bin_permissions() {
     _BACKEND_ITEMS="${_BACKEND_ITEMS} ${_BACKEND_ITEMS_LIST}"
   fi
   for i in ${_BACKEND_ITEMS}; do
-    _BIN_ITEM=$(which $i 2>&1)
+    _BIN_ITEM="$(which ${i})"
     if [ -e "${_BIN_ITEM}" ]; then
       chgrp root ${_BIN_ITEM} &> /dev/null
       chmod 755 ${_BIN_ITEM} &> /dev/null
@@ -5441,7 +5458,7 @@ _strict_bin_permissions() {
                     sftp-who \
                     syncpass"
   for i in ${_PROTECTED_ITEMS}; do
-    _BIN_ITEM=$(which $i 2>&1)
+    _BIN_ITEM="$(which ${i})"
     if [ -e "${_BIN_ITEM}" ]; then
       chown root:root ${_BIN_ITEM} &> /dev/null
       chmod 700 ${_BIN_ITEM} &> /dev/null
@@ -5674,11 +5691,11 @@ _if_install_apparmor() {
   ###--------------------###
   _isAppArmorRevFile="/sys/kernel/security/apparmor/revision"
   _isAppArmorGrubFile="/etc/default/grub.d/apparmor.cfg"
-  _isAppArmorComplain=$(which aa-complain 2>&1)
-  _isAppArmorStatus=$(which aa-status 2>&1)
+  _isAppArmorComplain="$(which aa-complain)"
+  _isAppArmorStatus="$(which aa-status)"
   _isAppArmorGrub=NO
   if [ -e "${_isAppArmorGrubFile}" ]; then
-    _GRUB_APPARMOR_TEST=$(grep "apparmor=1 security=apparmor" ${_isAppArmorGrubFile} 2>&1)
+    _GRUB_APPARMOR_TEST=$(grep "apparmor=1 security=apparmor" ${_isAppArmorGrubFile})
     if [[ "${_GRUB_APPARMOR_TEST}" =~ "apparmor=1 security=apparmor" ]]; then
       _isAppArmorGrub=YES
     fi
@@ -5718,7 +5735,7 @@ _if_install_apparmor() {
 # Remove AppArmor.
 _if_remove_apparmor() {
   _isAppArmorGrubFile="/etc/default/grub.d/apparmor.cfg"
-  _isApparmor=$(which aa-status)
+  _isApparmor="$(which aa-status)"
   if [ ! -z "${_isApparmor}" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "ARMR: The system AppArmor and auditd will be uninstalled now, however..."
@@ -6003,7 +6020,7 @@ _run_aptitude_deps_install() {
 
     _mrun "apt-get autoremove -y"
 
-    for _PKG in packagekit polkitd software-properties-common python3-software-properties python3 python3-full; do
+    for _PKG in packagekit polkitd software-properties-common python3-software-properties; do
       if _pkg_installed "${_PKG}"; then
         _mrun "apt-get remove ${_PKG} -y -qq"
         if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -6012,7 +6029,7 @@ _run_aptitude_deps_install() {
       fi
     done
 
-    for _PKG in python3-dev python3-debian python3-magic python3-pip python3-venv python3-setuptools; do
+    for _PKG in python3 python3-full python3-dev python3-debian python3-magic python3-pip python3-venv python3-setuptools; do
       if ! _pkg_installed "${_PKG}"; then
         _mrun "${_INSTAPP} ${_PKG}"
       fi
@@ -6278,7 +6295,7 @@ _if_proxysql_update() {
     _msg "PROC: _if_proxysql_update"
   fi
   if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
-    _isPxy=$(which proxysql 2>&1)
+    _isPxy="$(which proxysql)"
     _REINSTALL_PXC=NO
     if [ -x "${_isPxy}" ]; then
       _PXY=$(${_isPxy} --version 2>&1 \
@@ -6329,7 +6346,7 @@ _if_proxysql_update() {
         _apt_clean_update
         _mrun "${_INSTAPP} proxysql"
       fi
-      _isPxy=$(which proxysql 2>&1)
+      _isPxy="$(which proxysql)"
       if [ ! -x "${_isPxy}" ]; then
         _apt_clean_update
         for _PKG in sysbench debconf-utils proxysql; do
@@ -7534,7 +7551,7 @@ _if_major_os_upgrade() {
     _msg "Bye"
     touch /root/.latest-barracuda-upgrade-finale.info
     _barracuda_cnf_cleanup
-    _clean_pid_exit _if_major_os_upgrade_f
+    _clean_pid_exit
   fi
 }
 
@@ -8251,7 +8268,7 @@ _smtp_check() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: Checking SMTP connections..."
     fi
-    if ! netcat -w 10 -z smtp.gmail.com 25 ; then
+    if ! command nc -w 10 -z smtp.gmail.com 25 >/dev/null 2>&1 ; then
       cat <<EOF
 
       Your outgoing SMTP port 25 doesn't work
@@ -8459,7 +8476,7 @@ _myquick_install_upgrade() {
     _MYQUICK_SRC_INSTALL_REQUIRED=YES
   fi
   _check_mysql_version
-  _isMyQuick=$(which mydumper 2>&1)
+  _isMyQuick="$(which mydumper)"
   if [ ! -x "${_isMyQuick}" ] \
     || [ -z "${_isMyQuick}" ]; then
     if [ "${_MYQUICK_SRC_INSTALL_REQUIRED}" = "NO" ]; then
@@ -8518,7 +8535,7 @@ _myquick_install_upgrade() {
         fi
       fi
     fi
-    _isMyQuick=$(which mydumper 2>&1)
+    _isMyQuick="$(which mydumper)"
     if [ ! -e "${_isMyQuick}" ]; then
       _MYQUICK_INSTALL_REQUIRED=YES
       if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -8591,9 +8608,6 @@ _xdrago_install_upgrade() {
       sed -i "s/rotate 52/rotate 7/g" /etc/logrotate.d/nginx &> /dev/null
       wait
       sed -i "s/rotate 1/rotate 7/g" /etc/logrotate.d/nginx &> /dev/null
-      wait
-      sed -i "s/INTERVAL 1 HOUR/INTERVAL 15 MINUTE/g" \
-        /var/xdrago/purge_binlogs.sh &> /dev/null
       wait
     fi
     if [ -e "/root/.debug.cnf" ] && [ ! -e "/root/.default.cnf" ]; then
@@ -8837,7 +8851,7 @@ _lshell_install_upgrade() {
   _PATH_LSHELL="/usr/local/bin/lshell"
   _LSHELL_CHK_VRN=0.10
   _LSHELL_FORCE_REINSTALL=NO
-  _isLshell=$(which lshell 2>&1)
+  _isLshell="$(which lshell)"
   _LSHELL_ITD=$(${_isLshell} --version 2>&1 \
     | tr -d "\n" \
     | cut -d"-" -f2 \
@@ -9013,7 +9027,7 @@ _newrelic_check_fix() {
     _msg "PROC: _newrelic_check_fix"
   fi
   _NR_FORCE_REINSTALL=NO
-  _NRS_TEST=$(which newrelic-daemon 2>&1)
+  _NRS_TEST="$(which newrelic-daemon)"
   if [ ! -z "${_NRS_TEST}" ]; then
     _NOW_NR_V=$(newrelic-daemon --version 2>&1 \
       | tr -d "\n" \
@@ -9331,7 +9345,7 @@ _sshd_armour() {
         touch /etc/ssh/.ssh_host_rsa_key4096.pid
         _msg "NOTE: You will be asked to accept the new SSH fingerprint the next time you connect"
       fi
-      _isKeyg=$(which ssh-keygen 2>&1)
+      _isKeyg="$(which ssh-keygen)"
       if [ -x "${_isKeyg}" ] \
         && [ -e "${_SYSCONFDIR}/moduli" ] \
         && [ ! -e "${_SYSCONFDIR}/.moduli_bak" ]; then

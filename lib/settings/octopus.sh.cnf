@@ -718,7 +718,7 @@ _find_fast_mirror_cnf() {
   if [ -e "/root/.dev.server.cnf" ]; then
     echo "PROC: _find_fast_mirror_cnf in octopus"
   fi
-  _isNetc=$(which netcat 2>&1)
+  _isNetc="$(which netcat)"
   if [ ! -x "${_isNetc}" ] || [ -z "${_isNetc}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
@@ -741,19 +741,19 @@ _find_fast_mirror_cnf() {
       if [[ "${_BROKEN_FFMIRR_TEST}" =~ "stuff" ]]; then
         _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
-        _USE_MIR="${_CHECK_MIRROR}"
-        [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.aegir.cc"
+        export _USE_MIR="${_CHECK_MIRROR}"
+        [[ "${_USE_MIR}" =~ "printf" ]] && export _USE_MIR="files.aegir.cc"
       else
-        _USE_MIR="files.aegir.cc"
+        export _USE_MIR="files.aegir.cc"
       fi
     else
-      _USE_MIR="files.aegir.cc"
+      export _USE_MIR="files.aegir.cc"
     fi
   else
-    _USE_MIR="files.aegir.cc"
+    export _USE_MIR="files.aegir.cc"
   fi
-  _urlDev="http://${_USE_MIR}/dev"
-  _urlHmr="http://${_USE_MIR}/versions/${_tRee}/boa/aegir"
+  export _urlDev="http://${_USE_MIR}/dev"
+  export _urlHmr="http://${_USE_MIR}/versions/${_tRee}/boa/aegir"
 }
 
 
@@ -874,120 +874,22 @@ _download_helpers_libs() {
   mkdir -p /opt/tmp
   cd /opt/tmp
   rm -rf /opt/tmp/boa
-  if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
-    _GIT_VRN=2.51.0
-    _isGit=$(which git 2>&1)
-    _GIT_INSTALL=NO
-    _GIT_V=$(git --version 2>&1 \
-      | cut -d" " -f3 \
-      | awk '{ print $1}' 2>&1)
-    if [ ! -z "${_GIT_V}" ]; then
-      if [ "${_GIT_V}" != "${_GIT_VRN}" ]; then
-        _GIT_INSTALL=YES
-      fi
-    fi
-    if [ "${_GIT_INSTALL}" = "YES" ] \
-      || [ ! -x "${_isGit}" ] \
-      || [ -z "${_isGit}" ]; then
-      echo "INFO: Building Git ${_GIT_VRN} from sources..."
-      echo "WAIT: This may take a while, please wait..."
-      if [ ! -x "/usr/local/bin/git" ]; then
-        _apt_clean_update
-        if [ -e "/root/.dev.server.cnf" ]; then
-          apt-get install libcurl4 ${_aptYesUnth} -qq 2> /dev/null
-          apt-get install libcurl4-openssl-dev ${_aptYesUnth} -qq 2> /dev/null
-          apt-get install libcurl4-gnutls-dev ${_aptYesUnth} -qq 2> /dev/null
-          if dpkg-query -W -f='${Status}' git-core 2>/dev/null | grep -q "install ok installed"; then
-            apt-get remove git-core -y --purge --auto-remove -qq 2> /dev/null
-          fi
-          if dpkg-query -W -f='${Status}' git 2>/dev/null | grep -q "install ok installed"; then
-            apt-get remove git -y --purge --auto-remove -qq 2> /dev/null
-          fi
-        else
-          apt-get install libcurl4 ${_aptYesUnth} -qq &> /dev/null
-          apt-get install libcurl4-openssl-dev ${_aptYesUnth} -qq &> /dev/null
-          apt-get install libcurl4-gnutls-dev ${_aptYesUnth} -qq &> /dev/null
-          if dpkg-query -W -f='${Status}' git-core 2>/dev/null | grep -q "install ok installed"; then
-            apt-get remove git-core -y --purge --auto-remove -qq &> /dev/null
-          fi
-          if dpkg-query -W -f='${Status}' git 2>/dev/null | grep -q "install ok installed"; then
-            apt-get remove git -y --purge --auto-remove -qq &> /dev/null
-          fi
-        fi
-      fi
-      mkdir -p /var/opt
-      rm -rf /var/opt/git*
-      cd /var/opt
-      _get_dev_src_pre "git-${_GIT_VRN}.tar.gz"
-      cd /var/opt/git-${_GIT_VRN}
-      if [ -e "/root/.dev.server.cnf" ]; then
-        make clean 2> /dev/null
-        make configure 2> /dev/null
-        bash ./configure --without-tcltk 2> /dev/null
-        # Neutralize any injected value, then set a valid compat that matches 3.4.x
-        make CFLAGS+=' -UOPENSSL_API_COMPAT -DOPENSSL_API_COMPAT=0x30400000L' daemon.o V=1 2> /dev/null
-        make CFLAGS+=' -UOPENSSL_API_COMPAT -DOPENSSL_API_COMPAT=0x30400000L' all -j $(nproc) 2> /dev/null
-        make CFLAGS+=' -UOPENSSL_API_COMPAT -DOPENSSL_API_COMPAT=0x30400000L' install 2> /dev/null
-      else
-        make clean &> /dev/null
-        make configure &> /dev/null
-        bash ./configure --without-tcltk &> /dev/null
-        # Neutralize any injected value, then set a valid compat that matches 3.4.x
-        make CFLAGS+=' -UOPENSSL_API_COMPAT -DOPENSSL_API_COMPAT=0x30400000L' daemon.o V=1 &> /dev/null
-        make CFLAGS+=' -UOPENSSL_API_COMPAT -DOPENSSL_API_COMPAT=0x30400000L' all -j $(nproc) &> /dev/null
-        make CFLAGS+=' -UOPENSSL_API_COMPAT -DOPENSSL_API_COMPAT=0x30400000L' install &> /dev/null
-      fi
-      ldconfig 2> /dev/null
-      if [ -x "/usr/local/bin/git" ]; then
-        if [ -e "/usr/bin/git" ] && [ ! -L "/usr/bin/git" ]; then
-          mv -f /usr/bin/git /usr/bin/git-old
-        fi
-        ln -sfn /usr/local/bin/git /usr/bin/git
-      fi
-      cd /var/opt
-      echo "git hold" | dpkg --set-selections &> /dev/null
-      echo "git-core hold" | dpkg --set-selections &> /dev/null
-      echo "git-man hold" | dpkg --set-selections &> /dev/null
-    fi
-    _isGit=$(which git 2>&1)
-    _gCb="${_isGit} clone --branch"
-    if [ -e "/root/.dev.server.cnf" ]; then
-      echo "Running ${_gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git ${_bldPth}"
-      if [ -x "${_isGit}" ]; then
-        ${_gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git ${_bldPth}
-      else
-        echo "ERROR: ${_isGit} is probably broken"
-      fi
-    else
-      ${_gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git ${_bldPth} &> /dev/null
-    fi
-  else
+  _isGit="$(which git)"
+  if [ -z "${_isGit}" ] || [ ! -x "${_isGit}" ]; then
     _apt_clean_update
-    if [ -e "/root/.dev.server.cnf" ]; then
-#       apt-get install libcurl4 ${_aptYesUnth} -qq 2> /dev/null
-#       apt-get install libcurl4-openssl-dev ${_aptYesUnth} -qq 2> /dev/null
-#       apt-get install libcurl4-gnutls-dev ${_aptYesUnth} -qq 2> /dev/null
-      apt-get install git-core ${_aptYesUnth} -qq 2> /dev/null
-      apt-get install git ${_aptYesUnth} -qq 2> /dev/null
-    else
-#       apt-get install libcurl4 ${_aptYesUnth} -qq &> /dev/null
-#       apt-get install libcurl4-openssl-dev ${_aptYesUnth} -qq &> /dev/null
-#       apt-get install libcurl4-gnutls-dev ${_aptYesUnth} -qq &> /dev/null
-      apt-get install git-core ${_aptYesUnth} -qq &> /dev/null
-      apt-get install git ${_aptYesUnth} -qq &> /dev/null
-    fi
-    _isGit=$(which git 2>&1)
-    _gCb="${_isGit} clone --branch"
-    if [ -e "/root/.dev.server.cnf" ]; then
-      echo "Running ${_gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git ${_bldPth}"
-      if [ -x "${_isGit}" ]; then
-        ${_gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git ${_bldPth}
-      else
-        echo "ERROR: ${_isGit} is probably broken"
-      fi
-    else
-      ${_gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git ${_bldPth} &> /dev/null
-    fi
+    echo "git-core install" | dpkg --set-selections &> /dev/null
+    echo "git install" | dpkg --set-selections &> /dev/null
+    apt-get install git-core ${_aptYesUnth} -qq &> /dev/null
+    apt-get install git ${_aptYesUnth} -qq &> /dev/null
+    _isGit="$(which git)"
+  fi
+  _gCb="${_isGit} clone --branch"
+  if [ -x "${_isGit}" ]; then
+    ${_gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git ${_bldPth} &> /dev/null
+  else
+    echo "ERROR: ${_isGit} is missing or broken, exit now"
+    echo "Bye"
+    _clean_pid_exit _download_helpers_libs_a
   fi
   #
   if [ ! -e "${_bldPth}/aegir/helpers/apt.conf.noi.nrml" ] \
@@ -998,7 +900,7 @@ _download_helpers_libs() {
     echo "Also, make sure that the outgoing connections via port 443 work"
     echo "Bye"
     echo " "
-    _clean_pid_exit _download_helpers_libs_a
+    _clean_pid_exit _download_helpers_libs_b
   fi
   # Get apt helper
   rm -f apt.conf.noi*

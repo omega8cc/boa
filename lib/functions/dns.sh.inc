@@ -97,10 +97,10 @@ _check_git_repos() {
       sleep 1
       _GITHUB_WORKS=YES
       _GITLAB_WORKS=YES
-      if ! netcat -w 10 -z github.com 443 ; then
+      if ! command nc -w 10 -z github.com 443 >/dev/null 2>&1 ; then
         _GITHUB_WORKS=NO
         _msg "WARN: The GitHub master repository server doesn't respond..."
-      elif ! netcat -w 10 -z gitlab.com 443 ; then
+      elif ! command nc -w 10 -z gitlab.com 443 >/dev/null 2>&1 ; then
         _GITLAB_WORKS=NO
         _msg "WARN: The GitLab mirror repository server doesn't respond..."
       fi
@@ -120,7 +120,7 @@ _check_git_repos() {
     else
       cat <<EOF
 
-      None of repository servers responded in 8 seconds,
+      None of repository servers responded in 5 seconds,
       so we can't continue this installation.
 
       Please try again later or check if your firewall has port 443 open.
@@ -294,13 +294,13 @@ _check_connection() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _check_connection"
   fi
-  if ! netcat -w 10 -z github.com 443 ; then
+  if ! command nc -w 10 -z github.com 443 >/dev/null 2>&1 ; then
     _wait_for_connection "2/4"
-    if ! netcat -w 10 -z github.com 443 ; then
+    if ! command nc -w 10 -z github.com 443 >/dev/null 2>&1 ; then
       _wait_for_connection "3/4"
-      if ! netcat -w 10 -z github.com 443 ; then
+      if ! command nc -w 10 -z github.com 443 >/dev/null 2>&1 ; then
         _wait_for_connection "4/4"
-        if ! netcat -w 10 -z github.com 443 ; then
+        if ! command nc -w 10 -z github.com 443 >/dev/null 2>&1 ; then
           echo " "
           _msg "Sorry, I gave up."
           _msg "EXIT on error due to GitHub git server at 443 downtime"
@@ -350,7 +350,7 @@ _dns_unbound_install_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _dns_unbound_install_upgrade"
   fi
-  _isUnbnd=$(which unbound 2>&1)
+  _isUnbnd="$(which unbound)"
   _isUnbndErr=$(${_isUnbnd} -V 2>&1)
   [ -x "${_isUnbnd}" ] && _isUnbLibvt=$(ldd ${_isUnbnd} | grep libevent 2>&1)
   if [[ "${_isUnbndErr}" =~ "cannot open shared object file" ]] \
@@ -547,7 +547,7 @@ _dns_unbound_install_upgrade() {
   [ -e "/usr/etc/unbound" ] && cp -af /etc/unbound/*.key /usr/etc/unbound/
   [ -e "/usr/etc/unbound" ] && cp -af /etc/unbound/*.pem /usr/etc/unbound/
   [ -e "/usr/etc/unbound" ] && cp -af /etc/unbound/unbound.conf.d/unbound.conf /usr/etc/unbound/
-  _isUnbnd=$(which unbound 2>&1)
+  _isUnbnd="$(which unbound)"
   _isUnbndErr=$(${_isUnbnd} -V 2>&1)
   if [[ "${_isUnbndErr}" =~ "cannot open shared object file" ]] \
     || [[ "${_isUnbndErr}" =~ "No such file or directory" ]] \
@@ -558,7 +558,7 @@ _dns_unbound_install_upgrade() {
   fi
   [ -e "/etc/unbound/unbound.conf.d/remote-control.conf" ] && rm -f /etc/unbound/unbound.conf.d/remote-control.conf
   if [ "${_isUnbndFix}" = "NO" ] || [ "${_killPdnsd}" = "YES" ]; then
-    _isPdnsd=$(which pdnsd 2>&1)
+    _isPdnsd="$(which pdnsd)"
     if [ -x "${_isPdnsd}" ]; then
       _mrun "service pdnsd stop"
       _mrun "update-rc.d -f pdnsd remove"
@@ -648,9 +648,9 @@ _check_db_src() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _check_db_src"
   fi
-  if ! netcat -w 14 -z ${_DB_SRC} 80 ; then
+  if ! command nc -w 10 -z repo.percona.com 443 >/dev/null 2>&1 ; then
     echo " "
-    _msg "EXIT on error due to ${_DB_SRC} downtime"
+    _msg "EXIT on error due to repo.percona.com downtime"
     _msg "Please try to run this script again in a few minutes"
     _msg "or better yet, hours"
     _msg "Bye"

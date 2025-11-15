@@ -69,7 +69,7 @@ _apt_clean_update() {
 }
 
 _find_fast_mirror_early() {
-  _isNetc=$(which netcat 2>&1)
+  _isNetc="$(which netcat)"
   if [ ! -x "${_isNetc}" ] || [ -z "${_isNetc}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
@@ -167,7 +167,7 @@ _install_goaccess() {
 }
 
 _if_install() {
-  _isGoacs=$(which goaccess 2>&1)
+  _isGoacs="$(which goaccess)"
   if [ ! -x "${_isGoacs}" ] \
     || [ -z "${_isGoacs}" ]; then
     _install_goaccess

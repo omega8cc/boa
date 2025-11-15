@@ -340,7 +340,7 @@ if (preg_match("/^\/cron\.php/", $_SERVER['REQUEST_URI']) ||
 
 
 /**
- * Required for proper Redis support on command line / via Drush
+ * Required for proper Valkey support on command line / via Drush
  */
 if (isset($_SERVER['HTTP_HOST']) && !isset($_SERVER['SERVER_NAME'])) {
   $_SERVER['SERVER_NAME'] = $_SERVER['HTTP_HOST'];
@@ -567,7 +567,7 @@ if (!$is_backend) {
       unset($config['system.performance']['js']['preprocess']);   // Stop hardcoding JS aggregation
       if (is_readable('sites/' . $_SERVER['SERVER_NAME'] . '/files/development.services.yml')) {
         //
-        // This file, if exists, disables Redis on the fly!
+        // This file, if exists, disables Valkey on the fly!
         //
         $settings['container_yamls'][] = 'sites/' . $_SERVER['SERVER_NAME'] . '/files/development.services.yml';
         //
@@ -767,45 +767,194 @@ if (isset($_SERVER['SERVER_NAME']) &&
   }
 }
 
-if (isset($_SERVER['SERVER_NAME']) && $all_ini['redis_cache_disable']) {
-  $use_valkey = FALSE;
+/* ---------------- Feature switch -------------------------------------- */
+if ($drupal_core >= 6) {
+  $use_valkey = TRUE;
 }
 
-if (!$is_bot && isset($_SERVER['REQUEST_URI']) &&
-    preg_match("/noredis=1/", $_SERVER['REQUEST_URI'])) {
-  $use_valkey = FALSE;
+if (isset($_SERVER['SERVER_NAME'])) {
+  if ($all_ini['valkey_cache_disable'] || $all_ini['redis_cache_disable']) {
+    $use_valkey = FALSE;
+  }
 }
 
-if ($use_valkey && !$is_install && !$custom_cache) {
-  $redis = new Redis();
-  $redis->connect('127.0.0.1', 6379);
-  if ($redis->isConnected()) {
-    $redis->auth('isfoobared');
-    $response = $redis->ping('PONG');
-    if ($is_dev && !$is_backend) {
-      header("X-Valkey-Response: " . $response);
+if (!$is_bot && isset($_SERVER['REQUEST_URI'])) {
+  if (preg_match("/noredis=1/", $_SERVER['REQUEST_URI'])) {
+    $use_valkey = FALSE;
+  }
+}
+
+/* ---------------- Defaults -------------------------------------------- */
+$valkey_up = FALSE;
+
+/* ---------------- Connection targets ---------------------------------- */
+$valkey_socket_path = '/run/valkey/valkey.sock';
+$valkey_host        = '127.0.0.1';
+$valkey_port        = 6379;
+$valkey_pass_file   = '/data/conf/valkey/pass.inc';
+
+/* ---------------- Timeouts & backoff ---------------------------------- */
+$connect_timeout_s  = 0.2;   // short and non-blocking feel
+$read_timeout_s     = 0.2;   // keep calls snappy
+$backoff_ttl_s      = 60;    // do not retry within this window after a failure
+$flag_dir_run       = '/var/tmp/fpm';
+$flag_file_fallback = '/data/conf/arch/valkey.disabled.flag'; // fallback
+
+/* ---------------- Optional debug log ---------------------------------- */
+// Set to an absolute path to enable lightweight probe logging.
+// Example: '/var/tmp/fpm/valkey-fallback.log'
+$redis_debug_log    = '';
+
+/* ---------------- Helpers (filesystem only) ---------------------------- */
+function _valkey_backoff_flag_path($flag_dir_run, $fallback) {
+  $path = $fallback;
+  if (is_dir($flag_dir_run)) {
+    if (is_writable($flag_dir_run)) {
+      $path = rtrim($flag_dir_run, '/').'/valkey.disabled.flag';
     }
-    if (preg_match("/PONG/", $response)) {
-      $valkey_up = TRUE;
+  }
+  return $path;
+}
+
+function _valkey_backoff_is_active($flag_path, $ttl) {
+  $active = FALSE;
+  if (is_file($flag_path)) {
+    $age = time() - @filemtime($flag_path);
+    if ($age >= 0 && $age < $ttl) {
+      $active = TRUE;
     }
-    else {
-      if ($is_dev && !$is_backend) {
-        header("X-Valkey-Up: " . $valkey_up);
+  }
+  return $active;
+}
+
+function _valkey_backoff_touch($flag_path) {
+  @touch($flag_path);
+}
+
+function _valkey_backoff_clear($flag_path) {
+  if (is_file($flag_path)) {
+    @unlink($flag_path);
+  }
+}
+
+function _valkey_dbg_write($log_path, $line) {
+  if (!empty($log_path)) {
+    $msg = date('c').' '.$line."\n";
+    @file_put_contents($log_path, $msg, FILE_APPEND);
+  }
+}
+
+/* ------------------- Probe Valkey once with guard --------------------- */
+$flag_path = _valkey_backoff_flag_path($flag_dir_run, $flag_file_fallback);
+$skip_probe = _valkey_backoff_is_active($flag_path, $backoff_ttl_s);
+
+if ($use_valkey) {
+  if (!$skip_probe) {
+    if (class_exists('Redis')) {
+      $r = new Redis();
+      $connected = FALSE;
+      $last_reason = 'init';
+
+      // Try socket first.
+      if (!empty($valkey_socket_path) && @is_readable($valkey_socket_path)) {
+        try {
+          $connected = $r->connect($valkey_socket_path);
+        } catch (Exception $e) {
+          $connected = FALSE;
+          $last_reason = 'connect-socket-exception';
+        }
       }
+
+      // Fallback to TCP.
+      if (!$connected) {
+        try {
+          $connected = $r->connect($valkey_host, $valkey_port, $connect_timeout_s);
+        } catch (Exception $e) {
+          $connected = FALSE;
+          $last_reason = 'connect-tcp-exception';
+        }
+      }
+
+      if ($connected) {
+        if (defined('Redis::OPT_READ_TIMEOUT')) {
+          $r->setOption(Redis::OPT_READ_TIMEOUT, $read_timeout_s);
+        }
+
+        // Authenticate if password file exists.
+        $auth_pass = 'isfoobared';
+        if (is_file($valkey_pass_file)) {
+          $auth_pass = trim((string) @file_get_contents($valkey_pass_file));
+        }
+        if ($auth_pass !== '') {
+          try {
+            if (!$r->auth($auth_pass)) {
+              $connected = FALSE;
+              $last_reason = 'auth-failed';
+            }
+          } catch (Exception $e) {
+            $connected = FALSE;
+            $last_reason = 'auth-exception';
+          }
+        }
+
+        // Verify ping.
+        if ($connected) {
+          try {
+            $pong = $r->ping();
+            if ((is_string($pong) && stripos($pong, 'PONG') !== FALSE) || $pong === TRUE) {
+              $valkey_up = TRUE;
+            } else {
+              $valkey_up = FALSE;
+              $last_reason = 'ping-not-ok';
+            }
+          } catch (Exception $e) {
+            $valkey_up = FALSE;
+            $last_reason = 'ping-exception';
+          }
+        }
+
+        if ($valkey_up) {
+          _valkey_backoff_clear($flag_path);
+          _valkey_dbg_write($redis_debug_log, 'VALKEY UP action=clear flag='.$flag_path.' reason=ok');
+        } else {
+          _valkey_backoff_touch($flag_path);
+          _valkey_dbg_write($redis_debug_log, 'VALKEY DOWN action=touch flag='.$flag_path.' reason='.(string) $last_reason);
+        }
+
+        try {
+          $r->close();
+        } catch (Exception $e) {
+          // ignore
+        }
+      } else {
+        _valkey_backoff_touch($flag_path);
+        _valkey_dbg_write($redis_debug_log, 'VALKEY DOWN action=touch flag='.$flag_path.' reason='.(string) $last_reason);
+      }
+    } else {
+      // phpredis extension not available.
+      $valkey_up = FALSE;
+      _valkey_backoff_touch($flag_path);
+      _valkey_dbg_write($redis_debug_log, 'VALKEY DOWN action=touch flag='.$flag_path.' reason=no-phpredis');
     }
-    $redis->close();
+  } else {
+    $valkey_up = FALSE;
+    _valkey_dbg_write($redis_debug_log, 'VALKEY SKIP reason=backoff-active flag='.$flag_path);
   }
 }
 
-if ($valkey_up && $use_valkey) {
-  if ($is_dev && !$is_backend) {
-    header('X-Allow-Valkey: YES');
+/* ---------------- Diagnostics & final guard ---------------------------- */
+if (!empty($is_dev)) {
+  if (empty($is_backend)) {
+    if ($use_valkey && $valkey_up) {
+      header('X-Allow-Valkey: YES');
+    } else {
+      header('X-Allow-Valkey: NO');
+    }
   }
 }
-else {
-  if ($is_dev && !$is_backend) {
-    header('X-Allow-Valkey: NO');
-  }
+
+if (!empty($is_install)) {
+  $use_valkey = FALSE;
 }
 
 if ($all_ini['auto_detect_domain_access_integration']) {
@@ -859,8 +1008,7 @@ if ($all_ini['set_composer_manager_vendor_dir'] && !$is_install) {
   }
 }
 
-if ($is_install) {
-  $use_valkey = FALSE;
+if (!empty($is_install)) {
   $da_inc    = FALSE;
 }
 
@@ -1231,7 +1379,12 @@ if ($valkey_up && $use_valkey && !$custom_cache) {
         $redis_dirname = 'redis_compr';
         $redis_comprs = TRUE;
       }
-      if ($drupal_core == 9 || $drupal_core == 10 || $drupal_core == 11) {
+      if ($drupal_core == 10 || $drupal_core == 11) {
+        $redis_dirname = 'redis_ten_eleven';
+        $redis_legacy_dirname = 'redis_nine_ten';
+        $redis_comprs = TRUE;
+      }
+      elseif ($drupal_core == 9) {
         $redis_dirname = 'redis_nine_ten';
         $redis_comprs = TRUE;
         if ($all_ini['redis_old_nine_mode']) {
@@ -1249,19 +1402,19 @@ if ($valkey_up && $use_valkey && !$custom_cache) {
     if ($all_ini['redis_flush_forced_mode']) {
       if ($drupal_core >= 8) {
         $settings['redis_perm_ttl']                 = 86400; // 24 hours max
-        $settings['redis_flush_mode']               = 1; // Redis default is 0
-        $settings['redis_flush_mode_cache_page']    = 2; // Redis default is 1
-        $settings['redis_flush_mode_cache_block']   = 2; // Redis default is 1
-        $settings['redis_flush_mode_cache_menu']    = 2; // Redis default is 0
-        $settings['redis_flush_mode_cache_metatag'] = 2; // Redis default is 0
+        $settings['redis_flush_mode']               = 1; // Valkey default is 0
+        $settings['redis_flush_mode_cache_page']    = 2; // Valkey default is 1
+        $settings['redis_flush_mode_cache_block']   = 2; // Valkey default is 1
+        $settings['redis_flush_mode_cache_menu']    = 2; // Valkey default is 0
+        $settings['redis_flush_mode_cache_metatag'] = 2; // Valkey default is 0
       }
       else {
         $conf['redis_perm_ttl']                 = 86400; // 24 hours max
-        $conf['redis_flush_mode']               = 1; // Redis default is 0
-        $conf['redis_flush_mode_cache_page']    = 2; // Redis default is 1
-        $conf['redis_flush_mode_cache_block']   = 2; // Redis default is 1
-        $conf['redis_flush_mode_cache_menu']    = 2; // Redis default is 0
-        $conf['redis_flush_mode_cache_metatag'] = 2; // Redis default is 0
+        $conf['redis_flush_mode']               = 1; // Valkey default is 0
+        $conf['redis_flush_mode_cache_page']    = 2; // Valkey default is 1
+        $conf['redis_flush_mode_cache_block']   = 2; // Valkey default is 1
+        $conf['redis_flush_mode_cache_menu']    = 2; // Valkey default is 0
+        $conf['redis_flush_mode_cache_metatag'] = 2; // Valkey default is 0
       }
       // See http://bit.ly/1drmi35 for more information
       if ($is_dev && !$is_backend) {
@@ -1289,64 +1442,78 @@ if ($valkey_up && $use_valkey && !$custom_cache) {
         }
       }
       else {
-        if (is_readable('modules/o_contrib_eight/' . $redis_dirname . '/example.services.yml')) {
-          $cache_valkey = TRUE;
-          $example_services_path = 'modules/o_contrib_eight/' . $redis_dirname . '/example.services.yml';
-          $cache_gzip_path = 'modules/o_contrib_eight/' . $redis_dirname . '/lib/Redis/CacheCompressed.php';
-          if ($is_dev && !$is_backend) {
-            header("X-Example-Services-Is-Readable: " . $example_services_path);
+        if (is_readable('modules/o_contrib_ten')) {
+          if (is_readable('modules/o_contrib_ten/' . $redis_dirname . '/redis.services.yml')) {
+            $use_redis_dirname = $redis_dirname;
+          }
+          elseif (is_readable('modules/o_contrib_ten/' . $redis_legacy_dirname . '/redis.services.yml')) {
+            $use_redis_dirname = $redis_legacy_dirname;
+          }
+          if (is_readable('modules/o_contrib_ten/' . $use_redis_dirname . '/example.services.yml')) {
+            $cache_valkey = TRUE;
+            $example_failover_path = 'modules/o_contrib_ten/' . $use_redis_dirname . '/example.failover.services.yml';
+            $example_services_path = 'modules/o_contrib_ten/' . $use_redis_dirname . '/example.services.yml';
+            $cache_gzip_path = 'modules/o_contrib_ten/' . $use_redis_dirname . '/lib/Redis/CacheCompressed.php';
+          }
+          if (is_readable('modules/o_contrib_ten/' . $use_redis_dirname . '/redis.services.yml')) {
+            $cache_valkey = TRUE;
+            $redis_services_path = 'modules/o_contrib_ten/' . $use_redis_dirname . '/redis.services.yml';
+            if ($is_dev && !$is_backend) {
+              header("X-Valkey-Services-Is-Readable: " . $redis_services_path);
+            }
           }
         }
-        if (is_readable('modules/o_contrib_eight/' . $redis_dirname . '/redis.services.yml')) {
-          $cache_valkey = TRUE;
-          $redis_services_path = 'modules/o_contrib_eight/' . $redis_dirname . '/redis.services.yml';
-          if ($is_dev && !$is_backend) {
-            header("X-Valkey-Services-Is-Readable: " . $redis_services_path);
+        elseif (is_readable('modules/o_contrib_eleven')) {
+          if (is_readable('modules/o_contrib_eleven/' . $redis_dirname . '/redis.services.yml')) {
+            $use_redis_dirname = $redis_dirname;
+          }
+          elseif (is_readable('modules/o_contrib_eleven/' . $redis_legacy_dirname . '/redis.services.yml')) {
+            $use_redis_dirname = $redis_legacy_dirname;
+          }
+          if (is_readable('modules/o_contrib_eleven/' . $use_redis_dirname . '/example.services.yml')) {
+            $cache_valkey = TRUE;
+            $example_failover_path = 'modules/o_contrib_eleven/' . $use_redis_dirname . '/example.failover.services.yml';
+            $example_services_path = 'modules/o_contrib_eleven/' . $use_redis_dirname . '/example.services.yml';
+            $cache_gzip_path = 'modules/o_contrib_eleven/' . $use_redis_dirname . '/lib/Redis/CacheCompressed.php';
+          }
+          if (is_readable('modules/o_contrib_eleven/' . $use_redis_dirname . '/redis.services.yml')) {
+            $cache_valkey = TRUE;
+            $redis_services_path = 'modules/o_contrib_eleven/' . $use_redis_dirname . '/redis.services.yml';
+            if ($is_dev && !$is_backend) {
+              header("X-Valkey-Services-Is-Readable: " . $redis_services_path);
+            }
           }
         }
-        if (is_readable('modules/o_contrib_nine/' . $redis_dirname . '/example.services.yml')) {
-          $cache_valkey = TRUE;
-          $example_services_path = 'modules/o_contrib_nine/' . $redis_dirname . '/example.services.yml';
-          $cache_gzip_path = 'modules/o_contrib_nine/' . $redis_dirname . '/lib/Redis/CacheCompressed.php';
-          if ($is_dev && !$is_backend) {
-            header("X-Example-Services-Is-Readable: " . $example_services_path);
+        elseif (is_readable('modules/o_contrib_nine')) {
+          if (is_readable('modules/o_contrib_nine/' . $redis_dirname . '/example.services.yml')) {
+            $cache_valkey = TRUE;
+            $example_failover_path = 'modules/o_contrib_nine/' . $redis_dirname . '/example.failover.services.yml';
+            $example_services_path = 'modules/o_contrib_nine/' . $redis_dirname . '/example.services.yml';
+            $cache_gzip_path = 'modules/o_contrib_nine/' . $redis_dirname . '/lib/Redis/CacheCompressed.php';
+          }
+          if (is_readable('modules/o_contrib_nine/' . $redis_dirname . '/redis.services.yml')) {
+            $cache_valkey = TRUE;
+            $redis_services_path = 'modules/o_contrib_nine/' . $redis_dirname . '/redis.services.yml';
+            if ($is_dev && !$is_backend) {
+              header("X-Valkey-Services-Is-Readable: " . $redis_services_path);
+            }
           }
         }
-        if (is_readable('modules/o_contrib_nine/' . $redis_dirname . '/redis.services.yml')) {
-          $cache_valkey = TRUE;
-          $redis_services_path = 'modules/o_contrib_nine/' . $redis_dirname . '/redis.services.yml';
-          if ($is_dev && !$is_backend) {
-            header("X-Valkey-Services-Is-Readable: " . $redis_services_path);
+        elseif (is_readable('modules/o_contrib_eight')) {
+          if (is_readable('modules/o_contrib_eight/' . $redis_dirname . '/example.services.yml')) {
+            $cache_valkey = TRUE;
+            $example_services_path = 'modules/o_contrib_eight/' . $redis_dirname . '/example.services.yml';
+            $cache_gzip_path = 'modules/o_contrib_eight/' . $redis_dirname . '/lib/Redis/CacheCompressed.php';
+            if ($is_dev && !$is_backend) {
+              header("X-Example-Services-Is-Readable: " . $example_services_path);
+            }
           }
-        }
-        if (is_readable('modules/o_contrib_ten/' . $redis_dirname . '/example.services.yml')) {
-          $cache_valkey = TRUE;
-          $example_services_path = 'modules/o_contrib_ten/' . $redis_dirname . '/example.services.yml';
-          $cache_gzip_path = 'modules/o_contrib_ten/' . $redis_dirname . '/lib/Redis/CacheCompressed.php';
-          if ($is_dev && !$is_backend) {
-            header("X-Example-Services-Is-Readable: " . $example_services_path);
-          }
-        }
-        if (is_readable('modules/o_contrib_ten/' . $redis_dirname . '/redis.services.yml')) {
-          $cache_valkey = TRUE;
-          $redis_services_path = 'modules/o_contrib_ten/' . $redis_dirname . '/redis.services.yml';
-          if ($is_dev && !$is_backend) {
-            header("X-Valkey-Services-Is-Readable: " . $redis_services_path);
-          }
-        }
-        if (is_readable('modules/o_contrib_eleven/' . $redis_dirname . '/example.services.yml')) {
-          $cache_valkey = TRUE;
-          $example_services_path = 'modules/o_contrib_eleven/' . $redis_dirname . '/example.services.yml';
-          $cache_gzip_path = 'modules/o_contrib_eleven/' . $redis_dirname . '/lib/Redis/CacheCompressed.php';
-          if ($is_dev && !$is_backend) {
-            header("X-Example-Services-Is-Readable: " . $example_services_path);
-          }
-        }
-        if (is_readable('modules/o_contrib_eleven/' . $redis_dirname . '/redis.services.yml')) {
-          $cache_valkey = TRUE;
-          $redis_services_path = 'modules/o_contrib_eleven/' . $redis_dirname . '/redis.services.yml';
-          if ($is_dev && !$is_backend) {
-            header("X-Valkey-Services-Is-Readable: " . $redis_services_path);
+          if (is_readable('modules/o_contrib_eight/' . $redis_dirname . '/redis.services.yml')) {
+            $cache_valkey = TRUE;
+            $redis_services_path = 'modules/o_contrib_eight/' . $redis_dirname . '/redis.services.yml';
+            if ($is_dev && !$is_backend) {
+              header("X-Valkey-Services-Is-Readable: " . $redis_services_path);
+            }
           }
         }
       }

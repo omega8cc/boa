@@ -53,9 +53,9 @@ _count_cpu() {
     _msg "PROC: _count_cpu"
     _debug_proc
   fi
-  _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)
+  _CPU_INFO="$(grep -c processor /proc/cpuinfo)"
   _CPU_INFO=${_CPU_INFO//[^0-9]/}
-  _NPROC_TEST=$(which nproc 2>&1)
+  _NPROC_TEST="$(which nproc)"
   if [ -z "${_NPROC_TEST}" ]; then
     _CPU_NR="${_CPU_INFO}"
   else
@@ -489,11 +489,11 @@ _satellite_check_id() {
   elif [[ "${_ID_EXISTS}" =~ "${_USER}" ]]; then
     _msg "ERROR: ${_USER} username is already taken"
     _msg "Please choose different _USER"
-    _clean_pid_exit _satellite_check_id_a
+    _clean_pid_exit
   else
     _msg "ERROR: ${_USER} username check failed"
     _msg "Please try different _USER"
-    _clean_pid_exit _satellite_check_id_b
+    _clean_pid_exit
   fi
   if [ "${_USER}" = "admin" ] \
     || [ "${_USER}" = "hostmaster" ] \
@@ -503,20 +503,20 @@ _satellite_check_id() {
     || [ "${_USER}" = "all" ]; then
     _msg "ERROR: ${_USER} is a restricted username"
     _msg "ERROR: Please choose a different _USER"
-    _clean_pid_exit _satellite_check_id_c
+    _clean_pid_exit
   elif [[ "${_USER}" =~ "drupal" ]] \
     || [[ "${_USER}" =~ "drush" ]] \
     || [[ "${_USER}" =~ "sites" ]] \
     || [[ "${_USER}" =~ "default" ]]; then
     _msg "ERROR: ${_USER} includes restricted keyword"
     _msg "ERROR: Please choose a different _USER"
-    _clean_pid_exit _satellite_check_id_d
+    _clean_pid_exit
   fi
   _REGEX="^[[:digit:]]"
   if [[ "${_USER}" =~ "${_REGEX}" ]]; then
     _msg "ERROR: ${_USER} is a wrong username"
     _msg "ERROR: The correct username should start with a letter, not digit"
-    _clean_pid_exit _satellite_check_id_e
+    _clean_pid_exit
   fi
 }
 
@@ -592,7 +592,7 @@ _satellite_cnf() {
       if [ "${_hostedSys}" != "YES" ]; then
         _msg "EXIT: You must enter **your** valid email address"
         _msg "EXIT: in the _MY_EMAIL **and** _CLIENT_EMAIL variables"
-        _clean_pid_exit _satellite_cnf_a
+        _clean_pid_exit
       fi
     fi
     _msg "INFO: Creating your ${_octCnf} config file"
@@ -980,7 +980,7 @@ _satellite_cnf() {
       if [ "${_hostedSys}" != "YES" ]; then
         _msg "EXIT: You must enter **your** valid email address in the"
         _msg "EXIT: _MY_EMAIL variable in the ${_octCnf} file"
-        _clean_pid_exit _satellite_cnf_b
+        _clean_pid_exit
       fi
     fi
     if [ "${_PHP_FPM_VERSION}" = "8.4" ] \
@@ -1111,7 +1111,7 @@ _satellite_cnf() {
     if [ -z "${_PHP_FPM_VERSION}" ] || [ -z "${_PHP_CLI_VERSION}" ]; then
       _msg "EXIT: You must specify already installed PHP version"
       _msg "EXIT: in both _PHP_FPM_VERSION and _PHP_CLI_VERSION"
-      _clean_pid_exit _satellite_cnf_c
+      _clean_pid_exit
     fi
   fi
 
@@ -1766,7 +1766,7 @@ _satellite_o_contrib_ten_update_global() {
       && [ ! -e "${i}/o_contrib_ten/update-${_xSrl}-${_X_VERSION}.info" ]; then
       _FORCE_UP_TEN=YES
     elif [ -e "${i}/o_contrib_ten" ] \
-      && [ ! -L "${i}/o_contrib_ten/redis_nine_ten" ]; then
+      && [ ! -L "${i}/o_contrib_ten/redis_ten_eleven" ]; then
       _FORCE_UP_TEN=YES
     else
       _FORCE_UP_TEN=NO
@@ -1785,9 +1785,12 @@ _satellite_o_contrib_ten_update_global() {
       if [ -d "${i}/o_contrib_ten/redis_eight" ]; then
         rm -rf ${i}/o_contrib_ten/redis_eight
       fi
-      if [ -e "${_D}/000/modules/redis_nine_ten" ] \
-        && [ ! -L "${i}/o_contrib_ten/redis_nine_ten" ]; then
-        ln -sfn ${_D}/000/modules/redis_nine_ten ${i}/o_contrib_ten/redis_nine_ten
+      if [ -d "${i}/o_contrib_ten/redis_nine_ten" ]; then
+        rm -rf ${i}/o_contrib_ten/redis_nine_ten
+      fi
+      if [ -e "${_D}/000/modules/redis_ten_eleven" ] \
+        && [ ! -L "${i}/o_contrib_ten/redis_ten_eleven" ]; then
+        ln -sfn ${_D}/000/modules/redis_ten_eleven ${i}/o_contrib_ten/redis_ten_eleven
       fi
       find ${i}/o_contrib_ten -type d -exec chmod 0755 {} \; &> /dev/null
       find ${i}/o_contrib_ten -type f -exec chmod 0644 {} \; &> /dev/null
@@ -1813,7 +1816,7 @@ _satellite_o_contrib_eleven_update_global() {
       && [ ! -e "${i}/o_contrib_eleven/update-${_xSrl}-${_X_VERSION}.info" ]; then
       _FORCE_UP_TEN=YES
     elif [ -e "${i}/o_contrib_eleven" ] \
-      && [ ! -L "${i}/o_contrib_eleven/redis_nine_ten" ]; then
+      && [ ! -L "${i}/o_contrib_eleven/redis_ten_eleven" ]; then
       _FORCE_UP_TEN=YES
     else
       _FORCE_UP_TEN=NO
@@ -1832,9 +1835,12 @@ _satellite_o_contrib_eleven_update_global() {
       if [ -d "${i}/o_contrib_eleven/redis_eight" ]; then
         rm -rf ${i}/o_contrib_eleven/redis_eight
       fi
-      if [ -e "${_D}/000/modules/redis_nine_ten" ] \
-        && [ ! -L "${i}/o_contrib_eleven/redis_nine_ten" ]; then
-        ln -sfn ${_D}/000/modules/redis_nine_ten ${i}/o_contrib_eleven/redis_nine_ten
+      if [ -d "${i}/o_contrib_ten/redis_nine_ten" ]; then
+        rm -rf ${i}/o_contrib_ten/redis_nine_ten
+      fi
+      if [ -e "${_D}/000/modules/redis_ten_eleven" ] \
+        && [ ! -L "${i}/o_contrib_eleven/redis_ten_eleven" ]; then
+        ln -sfn ${_D}/000/modules/redis_ten_eleven ${i}/o_contrib_eleven/redis_ten_eleven
       fi
       find ${i}/o_contrib_eleven -type d -exec chmod 0755 {} \; &> /dev/null
       find ${i}/o_contrib_eleven -type f -exec chmod 0644 {} \; &> /dev/null
@@ -1858,12 +1864,12 @@ _satellite_download_o_contrib_eleven() {
   fi
   _get_dev_contrib "robotstxt-8.x-1.6.tar.gz"
   _get_dev_contrib "readonlymode-8.x-1.3.tar.gz"
-  if [ ! -e "${_D}/000/modules/redis_nine_ten/ver-${_REDIS_T_VERSION}.${_xSrl}.info" ]; then
+  if [ ! -e "${_D}/000/modules/redis_ten_eleven/ver-${_REDIS_E_VERSION}.${_xSrl}.info" ]; then
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
-    rm -rf ${_D}/000/modules/redis_nine_ten
-    _get_dev_contrib "redis_nine_ten-${_REDIS_T_VERSION}.tar.gz"
-    echo update > ${_D}/000/modules/redis_nine_ten/ver-${_REDIS_T_VERSION}.${_xSrl}.info
+    rm -rf ${_D}/000/modules/redis_ten_eleven
+    _get_dev_contrib "redis_ten_eleven-${_REDIS_E_VERSION}.tar.gz"
+    echo update > ${_D}/000/modules/redis_ten_eleven/ver-${_REDIS_E_VERSION}.${_xSrl}.info
   fi
   find ${_D}/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
   find ${_D}/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
@@ -1883,12 +1889,12 @@ _satellite_download_o_contrib_ten() {
   fi
   _get_dev_contrib "robotstxt-8.x-1.6.tar.gz"
   _get_dev_contrib "readonlymode-8.x-1.3.tar.gz"
-  if [ ! -e "${_D}/000/modules/redis_nine_ten/ver-${_REDIS_T_VERSION}.${_xSrl}.info" ]; then
+  if [ ! -e "${_D}/000/modules/redis_ten_eleven/ver-${_REDIS_E_VERSION}.${_xSrl}.info" ]; then
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
-    rm -rf ${_D}/000/modules/redis_nine_ten
-    _get_dev_contrib "redis_nine_ten-${_REDIS_T_VERSION}.tar.gz"
-    echo update > ${_D}/000/modules/redis_nine_ten/ver-${_REDIS_T_VERSION}.${_xSrl}.info
+    rm -rf ${_D}/000/modules/redis_ten_eleven
+    _get_dev_contrib "redis_ten_eleven-${_REDIS_E_VERSION}.tar.gz"
+    echo update > ${_D}/000/modules/redis_ten_eleven/ver-${_REDIS_E_VERSION}.${_xSrl}.info
   fi
   find ${_D}/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
   find ${_D}/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
@@ -2226,6 +2232,13 @@ _satellite_check_fix_o_contrib() {
     _get_dev_contrib "redis_nine_ten-${_REDIS_T_VERSION}.tar.gz"
     echo update > ${_D}/000/modules/redis_nine_ten/ver-${_REDIS_T_VERSION}.${_xSrl}.info
   fi
+  if [ ! -e "${_D}/000/modules/redis_ten_eleven/ver-${_REDIS_E_VERSION}.${_xSrl}.info" ]; then
+    mkdir -p ${_D}/000/modules
+    cd ${_D}/000/modules
+    rm -rf ${_D}/000/modules/redis_ten_eleven
+    _get_dev_contrib "redis_ten_eleven-${_REDIS_E_VERSION}.tar.gz"
+    echo update > ${_D}/000/modules/redis_ten_eleven/ver-${_REDIS_E_VERSION}.${_xSrl}.info
+  fi
   find ${_D}/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
   find ${_D}/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
 }
@@ -2418,8 +2431,8 @@ _provision_backend_dbpass_generate() {
         _ESC_PASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
       fi
     fi
-    _isPythonTwo=$(which python2 2>&1)
-    _isPythonThree=$(which python3 2>&1)
+    _isPythonTwo="$(which python2)"
+    _isPythonThree="$(which python3)"
     _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
     if [ -x "${_isPythonThree}" ]; then
       _ENC_PASS=$(python3 -c "import urllib.parse; print(urllib.parse.quote('''${_ESC_PASS}'''))")
@@ -4204,7 +4217,7 @@ _satellite_if_running_as_root_octopus() {
   else
     _msg "ERROR: This script should be run as a root user"
     _msg "Bye"
-    _clean_pid_exit _satellite_if_running_as_root_octopus_a
+    _clean_pid_exit
   fi
 }
 
@@ -4254,7 +4267,7 @@ _satellite_check_sanitize_domain_name() {
     _msg "ERROR: ${_DOMAIN} is already used on the Aegir Master Instance"
     _msg "Please change the value for _DOMAIN to make it unique"
     _msg "Bye"
-    _clean_pid_exit _satellite_check_sanitize_domain_name_a
+    _clean_pid_exit
   fi
 }
 
@@ -4349,7 +4362,7 @@ _satellite_check_php_compatibility() {
     _msg "Please switch FPM and CLI on ${_USER} to PHP 5.6 or newer"
     _msg "Then please run the octopus upgrade again"
     _msg "Bye"
-    _clean_pid_exit _satellite_check_php_compatibility_a
+    _clean_pid_exit
   fi
 }
 
