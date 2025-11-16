@@ -205,7 +205,10 @@ fi
 #
 # Clean pid files on exit.
 _clean_pid_exit() {
-  echo "REASON ${1} on $(date)" >> /root/.bond.sh.exit.exceptions.log
+  if [ -n "${1}" ]; then
+    echo "REASON ${1} on $(date)" >> /root/.bond.sh.exit.exceptions.log
+    [ -e "/opt/tmp/boa" ] && rm -rf /opt/tmp/*
+  fi
   [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
   [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
   service cron start &> /dev/null
@@ -236,7 +239,7 @@ _check_root() {
     ionice -c2 -n7 -p $$
   else
     echo "ERROR: This script should be run as a root user"
-    _clean_pid_exit _check_root_a
+    _clean_pid_exit
   fi
   _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
 }
@@ -354,9 +357,9 @@ fi
 #
 # Count system CPUs.
 _count_cpu() {
-  _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)
+  _CPU_INFO="$(grep -c processor /proc/cpuinfo)"
   _CPU_INFO=${_CPU_INFO//[^0-9]/}
-  _NPROC_TEST=$(which nproc 2>&1)
+  _NPROC_TEST="$(which nproc)"
   if [ -z "${_NPROC_TEST}" ]; then
     _CPU_NR="${_CPU_INFO}"
   else
@@ -376,7 +379,7 @@ _count_cpu() {
 #
 # Find the fastest mirror.
 _find_fast_mirror_early() {
-  _isNetc=$(which netcat 2>&1)
+  _isNetc="$(which netcat)"
   if [ ! -x "${_isNetc}" ] || [ -z "${_isNetc}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
@@ -980,7 +983,7 @@ _tune_php() {
 # Update innodb_log_file_size.
 _innodb_log_file_size_update() {
   _msg "INFO: InnoDB log file will be set to ${_INNODB_LOG_FILE_SIZE_MB}..."
-  _DBS_TEST=$(which mysql 2>&1)
+  _DBS_TEST="$(which mysql)"
   if [ ! -z "${_DBS_TEST}" ]; then
     _DB_SERVER_TEST=$(mysql -V 2>&1)
   fi
@@ -1073,15 +1076,10 @@ _restore_default_sql() {
   wait
   if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ]; then
     if [ "${_DB_BINARY_LOG}" = "NO" ]; then
-      # Purge binlogs
-      bash /var/xdrago/purge_binlogs.sh &> /dev/null
-      # Remove cron jobs related to purge_binlogs
-      sed -i -e "/purge_binlogs/d" -e "/^$/d" /var/spool/cron/crontabs/root &> /dev/null
       # Disable binary logging
       sed -i \
         -e "s/^\s*\(log_bin\s*=.*\)/#\1/" \
         -e "s/^\s*#\s*\(skip-log-bin\)/\1/" \
-        -e "s/^\s*\(expire_logs_days\s*=.*\)/#\1/" \
         -e "s/^\s*\(max_binlog_size\s*=.*\)/#\1/" \
         -e "s/^\s*\(binlog_row_image\s*=.*\)/#\1/" \
         -e "s/^\s*\(binlog_format\s*=.*\)/#\1/" \
@@ -1091,7 +1089,6 @@ _restore_default_sql() {
       sed -i \
         -e "s/^\s*#\s*\(log_bin\s*=.*\)/\1/" \
         -e "s/^\s*\(skip-log-bin\)/#\1/" \
-        -e "s/^\s*#\s*\(expire_logs_days\s*=.*\)/\1/" \
         -e "s/^\s*#\s*\(max_binlog_size\s*=.*\)/\1/" \
         -e "s/^\s*#\s*\(binlog_row_image\s*=.*\)/\1/" \
         -e "s/^\s*#\s*\(binlog_format\s*=.*\)/\1/" \
@@ -1387,9 +1384,9 @@ _tune_memory_limits() {
   if dmidecode -s system-manufacturer | grep -i 'Amazon EC2' &> /dev/null; then
     _VMFAMILY="AWS"
   fi
-  _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)
+  _CPU_INFO="$(grep -c processor /proc/cpuinfo)"
   _CPU_INFO=${_CPU_INFO//[^0-9]/}
-  _NPROC_TEST=$(which nproc 2>&1)
+  _NPROC_TEST="$(which nproc)"
   if [ -z "${_NPROC_TEST}" ]; then
     _CPU_NR="${_CPU_INFO}"
   else
@@ -1754,10 +1751,10 @@ _check_git_repos() {
     sleep 1
     _GITHUB_WORKS=YES
     _GITLAB_WORKS=YES
-    if ! netcat -w 10 -z github.com 443 ; then
+    if ! command nc -w 10 -z github.com 443 >/dev/null 2>&1 ; then
       _GITHUB_WORKS=NO
       _msg "WARN: The GitHub master repository server doesn't respond..."
-    elif ! netcat -w 10 -z gitlab.com 443 ; then
+    elif ! command nc -w 10 -z gitlab.com 443 >/dev/null 2>&1 ; then
       _GITLAB_WORKS=NO
       _msg "WARN: The GitLab mirror repository server doesn't respond..."
     fi
@@ -1777,7 +1774,7 @@ _check_git_repos() {
   else
     cat <<EOF
 
-    None of repository servers responded in 8 seconds,
+    None of repository servers responded in 5 seconds,
     so we can't continue this installation.
 
     Please try again later or check if your firewall has port 443 open.
@@ -1809,7 +1806,7 @@ if [ "$(id -u)" -eq 0 ]; then
 else
   _msg "ERROR: This script should be run as a root user"
   _msg "Bye"
-  _clean_pid_exit root_a
+  _clean_pid_exit
 fi
 #
 #
@@ -1901,8 +1898,6 @@ else
   _restart_services
   _msg "INFO: Tuning stopped and default settings restored"
 fi
-rm -rf /var/opt/*
-rm -rf /opt/tmp/*
 [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
 if [ ! -e "/root/.upstart.cnf" ]; then
   service cron start &> /dev/null

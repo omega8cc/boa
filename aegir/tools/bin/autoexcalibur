@@ -57,7 +57,7 @@
 ###  Once enabled, the system will launch
 ###  a series of barracuda upgrades/reboots
 ###  until it migrates any supported Debian
-###  or Devuan version to Devuan Daedalus.
+###  or Devuan version to Devuan Excalibur.
 ###
 ###  !!! WARNING !!!
 ###
@@ -133,7 +133,7 @@ fi
 ### Noticeable messages
 ###
 _msg() {
-  echo "AutoDaedalus v.${_tRee} [$(date +%T)] ==> $*"
+  echo "AutoExcalibur v.${_tRee} [$(date +%T)] ==> $*"
 }
 
 _check_manufacturer_compatibility() {
@@ -143,9 +143,9 @@ _check_manufacturer_compatibility() {
     ${_INITINS} dmidecode &> /dev/null
   fi
   # Check if dmidecode is available
-  _DMI_TEST=$(which dmidecode 2>&1)
+  _DMI_TEST="$(which dmidecode)"
   if [ -x "${_DMI_TEST}" ]; then
-    _HOST_INFO=$(dmidecode -s system-manufacturer 2>&1)
+    _HOST_INFO="$(dmidecode -s system-manufacturer)"
   else
     _HOST_INFO="Unknown, dmidecode not available"
   fi
@@ -172,7 +172,7 @@ _check_manufacturer_compatibility() {
 _check_manufacturer_compatibility
 
 _check_mysql_compatibility() {
-  _DBS_TEST=$(which mysql 2>&1)
+  _DBS_TEST="$(which mysql)"
   if [ ! -z "${_DBS_TEST}" ]; then
     _DB_SERVER_TEST=$(mysql -V 2>&1)
   fi
@@ -389,9 +389,9 @@ if [ -e "/root/.run-to-excalibur.cnf" ]; then
   fi
 fi
 
-_AUTO_DAEDALUS_TEST=$(grep _AUTO_DAEDALUS ${_barCnf} 2>&1)
-if [[ ! "${_AUTO_DAEDALUS_TEST}" =~ "_AUTO_DAEDALUS" ]]; then
-  echo "_AUTO_DAEDALUS=YES" >> ${_barCnf}
+_AUTO_EXCALIBUR_TEST=$(grep _AUTO_EXCALIBUR ${_barCnf} 2>&1)
+if [[ ! "${_AUTO_EXCALIBUR_TEST}" =~ "_AUTO_EXCALIBUR" ]]; then
+  echo "_AUTO_EXCALIBUR=YES" >> ${_barCnf}
 fi
 
 if [ -e "/root/.run-to-excalibur.cnf" ] \
@@ -531,7 +531,7 @@ if [ -e "/root/.run-to-excalibur.cnf" ] \
   [ -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && rm -f /root/.force.rebuild.src.on.auto.now.cnf
   [ -e "/root/.run-auto-major-os-reboot-excalibur-one.cnf" ] && rm -f /root/.run-auto-major-os-reboot-excalibur-one.cnf
   [ -e "/root/.run-auto-major-os-reboot-excalibur-two.cnf" ] && rm -f /root/.run-auto-major-os-reboot-excalibur-two.cnf
-  sed -i "s/^_AUTO_DAEDALUS.*//g" /root/.barracuda.cnf
+  sed -i "s/^_AUTO_EXCALIBUR.*//g" /root/.barracuda.cnf
   _msg "The final post-reboot barracuda up-${_tRee} system completed" >> "${_logAds}"
   _msg "That's all folks!" >> "${_logAds}"
   _msg "Bye!" >> "${_logAds}"
