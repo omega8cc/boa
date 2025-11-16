@@ -240,7 +240,6 @@ _backup_this_database_with_mydumper() {
     --rows=50000 \
     --build-empty-files \
     --threads=4 \
-    --less-locking \
     --long-query-guard=900 \
     --verbose=1
 }
