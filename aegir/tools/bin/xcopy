@@ -290,7 +290,6 @@ EOFMYSQL
           --rows=50000 \
           --build-empty-files \
           --threads=4 \
-          --less-locking \
           --long-query-guard=900 \
           --clear \
           --verbose=1
