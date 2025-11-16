@@ -1926,20 +1926,20 @@ _set_tree_vars() {
     fi
   fi
   if [ "${_cmNd}" = "up-dev" ]; then
-    _tRee=dev
+    export _tRee=dev
     _ifnames_grub_check_sync
   elif [ "${_cmNd}" = "up-pro" ]; then
-    _tRee=pro
+    export _tRee=pro
     _ifnames_grub_check_sync
   elif [ "${_cmNd}" = "up-lts" ]; then
-    _tRee=lts
+    export _tRee=lts
     _ifnames_grub_check_sync
   else
     if [ "${_cmNd}" = "php-idle" ] \
       || [ "${_cmNd}" = "help" ] \
       || [ "${_cmNd}" = "info" ] \
       || [ "${_cmNd}" = "up-distro" ]; then
-      _tRee=lts
+      export _tRee=lts
     else
       echo
       echo "Sorry, you are trying not supported command.."
