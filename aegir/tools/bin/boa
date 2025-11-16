@@ -1401,11 +1401,11 @@ _init_setup() {
       echo
     fi
     if [ "${_eXtr}" = "dev" ]; then
-      _tRee=dev
+      export _tRee=dev
     elif [ "${_eXtr}" = "pro" ]; then
-      _tRee=pro
+      export _tRee=pro
     elif [ "${_eXtr}" = "lts" ]; then
-      _tRee=lts
+      export _tRee=lts
     fi
   fi
 
@@ -3017,7 +3017,7 @@ case "$1" in
               [[ ! "${_ARGS}" =~ noscreen ]] && _if_start_screen
               _octopus_cleanup
   ;;
-  in-lts)     _tRee=lts
+  in-lts)     export _tRee=lts
               _cmNd="$1"
               _kiNd="$2"
               _fQdn="$3"
@@ -3036,7 +3036,7 @@ case "$1" in
               [[ "${_ARGS}" =~ noscreen ]] && _BOA_COMMAND=$(echo "${_BOA_COMMAND}" | sed -E "s/noscreen//g")
               _init_setup
   ;;
-  in-dev)     _tRee=dev
+  in-dev)     export _tRee=dev
               _cmNd="$1"
               _kiNd="$2"
               _fQdn="$3"
