@@ -1,6 +1,6 @@
 
 _check_mysql_version() {
-  _DBS_TEST=$(which mysql 2>&1)
+  _DBS_TEST="$(which mysql)"
   if [ ! -z "${_DBS_TEST}" ]; then
     _DB_SERVER_TEST=$(mysql -V 2>&1)
   fi
@@ -378,7 +378,7 @@ _sql_strict_upgrade_path() {
   fi
   _SQL_UPGRADE=NO
   _DB_SERVER_TEST=$(mysql -V 2>&1)
-  _DBS_TEST=$(which mysql 2>&1)
+  _DBS_TEST="$(which mysql)"
   if [ ! -z "${_DBS_TEST}" ]; then
     _NOW_DB_V=$(mysql -V 2>&1 \
       | tr -d "\n" \
@@ -622,26 +622,19 @@ _sql_conf_update() {
     /etc/mysql/my.cnf &> /dev/null
   if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ]; then
     if [ "${_DB_BINARY_LOG}" = "NO" ]; then
-      # Purge binlogs
-      bash /var/xdrago/purge_binlogs.sh &> /dev/null
-      # Remove cron jobs related to purge_binlogs
-      sed -i -e "/purge_binlogs/d" -e "/^$/d" /var/spool/cron/crontabs/root &> /dev/null
       # Disable binary logging
       sed -i \
         -e "s/^\s*\(log_bin\s*=.*\)/#\1/" \
         -e "s/^\s*#\s*\(skip-log-bin\)/\1/" \
-        -e "s/^\s*\(expire_logs_days\s*=.*\)/#\1/" \
         -e "s/^\s*\(max_binlog_size\s*=.*\)/#\1/" \
         -e "s/^\s*\(binlog_row_image\s*=.*\)/#\1/" \
         -e "s/^\s*\(binlog_format\s*=.*\)/#\1/" \
         /etc/mysql/my.cnf &> /dev/null
-
     elif [ "${_DB_BINARY_LOG}" = "YES" ]; then
       # Enable binary logging
       sed -i \
         -e "s/^\s*#\s*\(log_bin\s*=.*\)/\1/" \
         -e "s/^\s*\(skip-log-bin\)/#\1/" \
-        -e "s/^\s*#\s*\(expire_logs_days\s*=.*\)/\1/" \
         -e "s/^\s*#\s*\(max_binlog_size\s*=.*\)/\1/" \
         -e "s/^\s*#\s*\(binlog_row_image\s*=.*\)/\1/" \
         -e "s/^\s*#\s*\(binlog_format\s*=.*\)/\1/" \
@@ -993,7 +986,7 @@ _prep_for_install_db_sql() {
   if [ "${_SQL_OS_CODE}" = "trixie" ]; then
     _SQL_SCR=DPKG
   fi
-  _DBS_TEST=$(which mysql 2>&1)
+  _DBS_TEST="$(which mysql)"
   if [ ! -z "${_DBS_TEST}" ]; then
     _NOW_DB_V=$(mysql -V 2>&1 \
       | tr -d "\n" \

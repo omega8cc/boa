@@ -46,7 +46,10 @@ _sanitize_number() {
 }
 
 _clean_pid_exit() {
-  echo "REASON ${1} on $(date)" >> /root/.octopus.exit.exceptions.log
+  if [ -n "${1}" ]; then
+    echo "REASON ${1} on $(date)" >> /root/.octopus.exit.exceptions.log
+    [ -e "/opt/tmp/boa" ] && rm -rf /opt/tmp/*
+  fi
   [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
   [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
   [ -e "/tmp/aegir_backup_mode.txt" ] && rm -f /tmp/aegir_backup_mode.txt
@@ -611,15 +614,15 @@ _up_one() {
         echo "${_octCnf} file not available, exit"
         echo
       fi
-      _clean_pid_exit _up_one_a
+      _clean_pid_exit
     fi
   fi
 }
 
 _count_cpu() {
-  _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)
+  _CPU_INFO="$(grep -c processor /proc/cpuinfo)"
   _CPU_INFO=${_CPU_INFO//[^0-9]/}
-  _NPROC_TEST=$(which nproc 2>&1)
+  _NPROC_TEST="$(which nproc)"
   if [ -z "${_NPROC_TEST}" ]; then
     _CPU_NR="${_CPU_INFO}"
   else
@@ -851,9 +854,6 @@ _up_finish() {
     rm -f /opt/local/bin/php
     rm -f /usr/local/bin/php
   fi
-  if [ -d "/data/u" ]; then
-    rm -rf /opt/tmp/*
-  fi
   echo
   echo OCTOPUS upgrade completed
   echo Bye
@@ -862,7 +862,7 @@ _up_finish() {
 }
 
 _find_fast_mirror_early() {
-  _isNetc=$(which netcat 2>&1)
+  _isNetc="$(which netcat)"
   if [ ! -x "${_isNetc}" ] || [ -z "${_isNetc}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
@@ -886,19 +886,19 @@ _find_fast_mirror_early() {
       if [[ "${_BROKEN_FFMIRR_TEST}" =~ "stuff" ]]; then
         _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
-        _USE_MIR="${_CHECK_MIRROR}"
-        [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.aegir.cc"
+        export _USE_MIR="${_CHECK_MIRROR}"
+        [[ "${_USE_MIR}" =~ "printf" ]] && export _USE_MIR="files.aegir.cc"
       else
-        _USE_MIR="files.aegir.cc"
+        export _USE_MIR="files.aegir.cc"
       fi
     else
-      _USE_MIR="files.aegir.cc"
+      export _USE_MIR="files.aegir.cc"
     fi
   else
-    _USE_MIR="files.aegir.cc"
+    export _USE_MIR="files.aegir.cc"
   fi
-  _urlDev="http://${_USE_MIR}/dev"
-  _urlHmr="http://${_USE_MIR}/versions/${_tRee}/boa/aegir"
+  export _urlDev="http://${_USE_MIR}/dev"
+  export _urlHmr="http://${_USE_MIR}/versions/${_tRee}/boa/aegir"
 }
 
 _if_reinstall_curl() {
@@ -967,7 +967,7 @@ _if_reinstall_curl() {
       _isCurl=$(/usr/local/bin/curl --version 2>&1)
       if [[ ! "${_isCurl}" =~ "OpenSSL" ]] || [ -z "${_isCurl}" ]; then
         echo "ERRR: curl is still broken, please install it and debug manually"
-        _clean_pid_exit
+        _clean_pid_exit _if_reinstall_curl
       else
         echo "GOOD: /usr/local/bin/curl works"
       fi
@@ -1022,7 +1022,7 @@ _check_root_direct() {
     echo "         PermitRootLogin prohibit-password"
     echo "       in the /etc/ssh/sshd_config file"
     echo "Bye"
-    _clean_pid_exit _check_root_direct_a
+    _clean_pid_exit
   fi
 }
 
@@ -1074,7 +1074,7 @@ _check_root_keys_pwd() {
     echo
     echo "Bye"
     echo
-    _clean_pid_exit _check_root_keys_pwd_a
+    _clean_pid_exit
   fi
 }
 
@@ -1118,7 +1118,7 @@ _check_root() {
         echo "Bye!"
         echo
       fi
-      _clean_pid_exit _check_root
+      _clean_pid_exit
     fi
 
     _find_correct_ip
@@ -1142,7 +1142,7 @@ _check_root() {
     ionice -c2 -n7 -p $$
   else
     echo "ERROR: This script should be run as a root user"
-    _clean_pid_exit _check_root_a
+    _clean_pid_exit
   fi
   _DF_TEST=$(df -kTh / -l \
     | grep '/' \
@@ -1152,7 +1152,7 @@ _check_root() {
   if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt 90 ]; then
     echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
     echo "ERROR: We can not proceed until it is below 90/100"
-    _clean_pid_exit _check_root_b
+    _clean_pid_exit
   fi
 }
 
@@ -1160,7 +1160,7 @@ _check_no_systemd() {
   if [ -e "/lib/systemd/systemd" ]; then
     echo "ERROR: This script can not be used with systemd"
     echo "ERROR: Please run 'autoinit' first"
-    _clean_pid_exit _check_no_systemd_a_octopus
+    _clean_pid_exit _check_no_systemd
   fi
 }
 
@@ -1209,7 +1209,7 @@ _if_display_help() {
     See docs/UPGRADE.md for more details.
 
 EOF
-    _clean_pid_exit _cmNd_a
+    _clean_pid_exit
   fi
 }
 
@@ -1233,19 +1233,19 @@ _up_proceed() {
     _check_sql_access
   fi
   if [ "${_cmNd}" = "up-dev" ]; then
-    _tRee=dev
+    export _tRee=dev
   elif [ "${_cmNd}" = "up-pro" ]; then
-    _tRee=pro
+    export _tRee=pro
   elif [ "${_cmNd}" = "up-lts" ]; then
-    _tRee=lts
+    export _tRee=lts
   elif [ "${_cmNd}" = "help" ] || [ "${_cmNd}" = "info" ]; then
-    _tRee=pro
+    export _tRee=pro
   else
     echo
     echo "Sorry, you are trying not supported command.."
     echo "Display supported commands with: $(basename "$0") help"
     echo
-    _clean_pid_exit _up_proceed_a
+    _clean_pid_exit
   fi
 
   export _tRee="${_tRee}"

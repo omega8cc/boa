@@ -100,8 +100,8 @@ fi
 ###
 ### More helper variables
 ###
-_urlDev="http://${_USE_MIR}/dev"
-_urlHmr="http://${_USE_MIR}/versions/${_tRee}/boa/aegir"
+export _urlDev="http://${_USE_MIR}/dev"
+export _urlHmr="http://${_USE_MIR}/versions/${_tRee}/boa/aegir"
 
 
 ###
@@ -201,7 +201,20 @@ _satellite_hot_sauce_check
 _satellite_add_user_dirs
 _satellite_prepare_child_scripts
 _satellite_run_pre_install
-_satellite_download_for_local_build
+if [ "${_OS_CODE}" = "excalibur" ]; then
+  _DB_SERVER=MySQL
+else
+  _DB_SERVER=Percona
+fi
+if [ "$(boa info | grep -c ${_DB_SERVER})" -lt 3 ] || [ ! -e "/usr/sbin/csf" ]; then
+  if [ ! -e "/opt/tmp/make_local/hostmaster/hostmaster.make" ] \
+    || [ ! -e "/opt/tmp/make_local/hosting/server/hosting_server.install" ] \
+    || [ ! -e "/opt/tmp/make_local/drupal/includes/database/mysql/schema.inc" ]; then
+    _satellite_download_for_local_build
+  fi
+else
+  _satellite_download_for_local_build
+fi
 _satellite_run_child_b
 
 
