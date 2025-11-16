@@ -212,7 +212,10 @@ fi
 ### Clean pid files on exit
 ###
 _clean_pid_exit() {
-  echo "REASON ${1} on $(date)" >> /root/.barracuda.sh.exit.exceptions.log
+  if [ -n "${1}" ]; then
+    echo "REASON ${1} on $(date)" >> /root/.barracuda.sh.exit.exceptions.log
+    [ -e "/opt/tmp/boa" ] && rm -rf /opt/tmp/*
+  fi
   [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
   [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
   service cron start &> /dev/null
@@ -248,7 +251,19 @@ _panic_exit() {
 ###
 ### Download helpers and libs
 ###
-_download_helpers_libs
+if [ "${_OS_CODE}" = "excalibur" ]; then
+  _DB_SERVER=MySQL
+else
+  _DB_SERVER=Percona
+fi
+if [ "$(boa info | grep -c ${_DB_SERVER})" -lt 3 ] || [ ! -e "/usr/sbin/csf" ]; then
+  if [ ! -e "/opt/tmp/boa/aegir/helpers/apt.conf.noi.nrml" ] \
+    || [ ! -e "/opt/tmp/boa/aegir/helpers/apt.conf.noi.dist" ]; then
+    _download_helpers_libs
+  fi
+else
+  _download_helpers_libs
+fi
 
 
 ###

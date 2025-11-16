@@ -4,8 +4,8 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 
-_PTN_VRN=3.12.8
-_DCY_VRN=3.0.3.2
+_PTN_VRN=3.13.9
+_DCY_VRN=3.0.6
 _DCY_CMD="/usr/local/bin/duplicity"
 
 _crlGet="-L --max-redirs 3 -k -s --retry 9 --retry-delay 9 -A iCab"
@@ -61,7 +61,7 @@ _os_detection_minimal() {
 }
 
 _find_fast_mirror_early() {
-  _isNetc=$(which netcat 2>&1)
+  _isNetc="$(which netcat)"
   if [ ! -x "${_isNetc}" ] || [ -z "${_isNetc}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
@@ -219,7 +219,8 @@ _python_install_src() {
   echo "Installing pip..."
   _PIP_TEST=$(${_usePip} --version 2>&1)
   if [[ "${_PIP_TEST}" =~ "python 3.11" ]] \
-    || [[ "${_PIP_TEST}" =~ "python 3.12" ]]; then
+    || [[ "${_PIP_TEST}" =~ "python 3.12" ]] \
+    || [[ "${_PIP_TEST}" =~ "python 3.13" ]]; then
     ${_usePip} install --upgrade pip --root-user-action ignore
   else
     ${_usePip} install --upgrade pip

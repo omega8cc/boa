@@ -48,8 +48,8 @@ if [ ! -x "/usr/local/ssl3/bin/openssl" ]; then
   exit 1
 fi
 
-_PTN_VRN=3.12.8
-_DCY_VRN=3.0.3.2
+_PTN_VRN=3.13.9
+_DCY_VRN=3.0.6
 _LOGPTH="/var/log/boa"
 _NOW=$(date +%y%m%d-%H%M%S)
 _NOW=${_NOW//[^0-9-]/}
@@ -147,7 +147,7 @@ _check_vps() {
 _check_vps
 
 _find_fast_mirror_early() {
-  _isNetc=$(which netcat 2>&1)
+  _isNetc="$(which netcat)"
   if [ ! -x "${_isNetc}" ] || [ -z "${_isNetc}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then

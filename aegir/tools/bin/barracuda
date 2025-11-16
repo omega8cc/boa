@@ -10,28 +10,27 @@ export _TODAY=${_TODAY//[^0-9]/}
 _NOW=$(date +%y%m%d-%H%M%S)
 export _NOW=${_NOW//[^0-9-]/}
 
-_barCnf="/root/.barracuda.cnf"
-_barName="BARRACUDA.sh.txt"
 _crlGet="-L --max-redirs 3 -k -s --retry 9 --retry-delay 9 -A iCab"
 _wgetGet="--max-redirect=3 --no-check-certificate -q --tries=9 --wait=9 --user-agent='iCab'"
 _aptAllow="--allow-unauthenticated"
 _aptYesUnth="-y ${_aptAllow}"
+_INITINS="/usr/bin/apt-get ${_aptAllow} -y install"
+
+_barCnf="/root/.barracuda.cnf"
+_barName="BARRACUDA.sh.txt"
 _filIncB="barracuda.sh.cnf"
-_filIncO="octopus.sh.cnf"
-_octName="OCTOPUS.sh.txt"
-_bldPth="/opt/tmp/boa"
 _pthIncB="lib/settings/${_filIncB}"
-_pthIncO="lib/settings/${_filIncO}"
 _vBs="/var/backups"
+_bldPth="/opt/tmp/boa"
 
 _LOG_DIR="${_vBs}/reports/up/$(basename "$0")/${_TODAY}"
 _UP_LOG="${_LOG_DIR}/$(basename "$0")-up-${_NOW}.log"
+
 _VMFAMILY=XEN
 _VM_TEST="$(uname -a)"
 if [[ "${_VM_TEST}" =~ "-beng" ]]; then
   _VMFAMILY="VS"
 fi
-_INITINS="/usr/bin/apt-get ${_aptAllow} -y install"
 
 ###
 ### Avoid too many questions
@@ -43,7 +42,10 @@ if [ -z "${TERM+x}" ]; then
 fi
 
 _clean_pid_exit() {
-  echo "REASON ${1} on $(date)" >> /root/.barracuda.exit.exceptions.log
+  if [ -n "${1}" ]; then
+    echo "REASON ${1} on $(date)" >> /root/.barracuda.exit.exceptions.log
+    [ -e "/opt/tmp/boa" ] && rm -rf /opt/tmp/*
+  fi
   [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
   [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
   [ -e "/tmp/aegir_backup_mode.txt" ] && rm -f /tmp/aegir_backup_mode.txt
@@ -221,7 +223,7 @@ _check_root_direct() {
     echo "         PermitRootLogin prohibit-password"
     echo "       in the /etc/ssh/sshd_config file"
     echo "Bye"
-    _clean_pid_exit _check_root_direct_a
+    _clean_pid_exit
   fi
 }
 
@@ -273,7 +275,7 @@ _check_root_keys_pwd() {
     echo
     echo "Bye"
     echo
-    _clean_pid_exit _check_root_keys_pwd_a
+    _clean_pid_exit
   fi
 }
 
@@ -627,7 +629,7 @@ _oops_mysql_exit() {
 
 _mysql_downgrade_protection() {
   _DB_V=""
-  _DBS_TEST=$(which mysql 2>&1)
+  _DBS_TEST="$(which mysql)"
   if [ ! -z "${_DBS_TEST}" ]; then
     _DB_SERVER_TEST=$(mysql -V 2>&1)
   else
@@ -978,18 +980,6 @@ _up_action() {
       wait
     fi
 
-    if [ -e "/etc/default/tomcat" ] \
-      && [ -e "/etc/init.d/tomcat" ] \
-      && [ -e "${_barCnf}" ]; then
-      sed -i "s/^_TOMCAT_TO_JETTY=.*/_TOMCAT_TO_JETTY=YES/g" ${_vBs}/${_barName}
-      wait
-      sed -i "s/^_TOMCAT_TO_JETTY.*//g"                               ${_barCnf}
-      wait
-      sed -i "/^$/d"                                                  ${_barCnf}
-      wait
-      echo "_TOMCAT_TO_JETTY=YES" >>                                  ${_barCnf}
-    fi
-
     if [ -e "${_vBs}/${_barName}" ] && [ -e "${_vBs}/${_filIncB}" ]; then
       if [ "${_outP}" = "log" ] \
         || [ "${_outP}" = "system" ] \
@@ -1119,18 +1109,20 @@ _up_action() {
       echo
       echo "  ${_vBs}/${_barName} installer not available, exit"
       echo
+      _clean_pid_exit _barName
     fi
     if [ ! -e "${_vBs}/${_filIncB}" ]; then
       echo
       echo "  ${_vBs}/${_filIncB} inc file not available, exit"
       echo
+      _clean_pid_exit _filIncB
     fi
     if [ ! -e "${_barCnf}" ]; then
       echo
       echo "  ${_barCnf} file not available, exit"
       echo
+      _clean_pid_exit _barCnf
     fi
-    _clean_pid_exit _up_action_a
   fi
 }
 
@@ -1236,9 +1228,6 @@ _up_finish() {
     service webmin stop &> /dev/null
     service usermin stop &> /dev/null
   fi
-  if [ -d "/data/u" ]; then
-    rm -rf /opt/tmp/*
-  fi
   if [ -x "/usr/sbin/csf" ] \
     && [ -e "/etc/csf/csf.deny" ] \
     && [ ! -x "/etc/csf/csfpost.sh" ]; then
@@ -1338,7 +1327,7 @@ _check_etc_apt_preferences() {
 }
 
 _find_fast_mirror_early() {
-  _isNetc=$(which netcat 2>&1)
+  _isNetc="$(which netcat)"
   if [ ! -x "${_isNetc}" ] || [ -z "${_isNetc}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
@@ -1362,19 +1351,19 @@ _find_fast_mirror_early() {
       if [[ "${_BROKEN_FFMIRR_TEST}" =~ "stuff" ]]; then
         _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
-        _USE_MIR="${_CHECK_MIRROR}"
-        [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.aegir.cc"
+        export _USE_MIR="${_CHECK_MIRROR}"
+        [[ "${_USE_MIR}" =~ "printf" ]] && export _USE_MIR="files.aegir.cc"
       else
-        _USE_MIR="files.aegir.cc"
+        export _USE_MIR="files.aegir.cc"
       fi
     else
-      _USE_MIR="files.aegir.cc"
+      export _USE_MIR="files.aegir.cc"
     fi
   else
-    _USE_MIR="files.aegir.cc"
+    export _USE_MIR="files.aegir.cc"
   fi
-  _urlDev="http://${_USE_MIR}/dev"
-  _urlHmr="http://${_USE_MIR}/versions/${_tRee}/boa/aegir"
+  export _urlDev="http://${_USE_MIR}/dev"
+  export _urlHmr="http://${_USE_MIR}/versions/${_tRee}/boa/aegir"
 }
 
 _if_reinstall_curl() {
@@ -1444,7 +1433,7 @@ _if_reinstall_curl() {
       _isCurl=$(/usr/local/bin/curl --version 2>&1)
       if [[ ! "${_isCurl}" =~ "OpenSSL" ]] || [ -z "${_isCurl}" ]; then
         echo "ERRR: curl is still broken, please install it and debug manually"
-        _clean_pid_exit
+        _clean_pid_exit _if_reinstall_curl
       else
         echo "GOOD: /usr/local/bin/curl works"
       fi
@@ -1587,7 +1576,7 @@ _check_root() {
         echo "Bye!"
         echo
       fi
-      _clean_pid_exit _check_root
+      _clean_pid_exit
     fi
 
     _find_correct_ip
@@ -1715,21 +1704,30 @@ _check_root() {
       echo "devpts          /dev/pts        devpts  rw,noexec,nosuid,gid=5,mode=620 0  0" >> /etc/fstab
       mount -t devpts devpts /dev/pts &> /dev/null
     fi
-    sed -i "s/^127.0.0.1.*/127.0.0.1 localhost/g" /etc/hosts
-    wait
-    sed -i "s/.*files.aegir.cc.*//g" /etc/hosts
-    wait
-    sed -i "s/.*github.*//g" /etc/hosts
-    wait
-    echo >>/etc/hosts
-    sed -i "/^$/d" /etc/hosts
-    wait
+    _EHU=NO
+    if ! grep -q "127.0.0.1 localhost" /etc/hosts; then
+      sed -i "s/^127.0.0.1.*//g" /etc/hosts
+      echo "127.0.0.1 localhost" >> /etc/hosts
+      _EHU=YES
+    fi
+    if grep -q "files.aegir.cc" /etc/hosts; then
+      sed -i "s/.*files.aegir.cc.*//g" /etc/hosts
+      _EHU=YES
+    fi
+    if grep -q "github" /etc/hosts; then
+      sed -i "s/.*github.*//g" /etc/hosts
+      _EHU=YES
+    fi
+    if [ "${_EHU}" = "YES" ]; then
+      echo >>/etc/hosts
+      sed -i "/^$/d" /etc/hosts
+    fi
     if [ -e "/etc/init.d/postfix" ]; then
       service postfix restart &> /dev/null
     fi
   else
     echo "ERROR: This script should be run as a root user"
-    _clean_pid_exit _check_root_a
+    _clean_pid_exit
   fi
   _DF_TEST=$(df -kTh / -l \
     | grep '/' \
@@ -1739,7 +1737,7 @@ _check_root() {
   if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt 90 ]; then
     echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
     echo "ERROR: We can not proceed until it is below 90/100"
-    _clean_pid_exit _check_root_b
+    _clean_pid_exit
   fi
 }
 
@@ -1747,12 +1745,12 @@ _check_no_systemd() {
   if [ -e "/lib/systemd/systemd" ]; then
     echo "ERROR: This script can not be used with systemd"
     echo "ERROR: Please run 'autoinit' first"
-    _clean_pid_exit _check_no_systemd_a_barracuda
+    _clean_pid_exit _check_no_systemd
   fi
 }
 
 _old_apt_keys_cleanup() {
-  _isAptKey=$(which apt-key 2>&1)
+  _isAptKey="$(which apt-key)"
   if [ -x "${_isAptKey}" ]; then
     _OLD_KEY_KSPLICE_TEST=$(${_isAptKey} list | grep ksplice 2>&1)
     _OLD_KEY_ORACLE_TEST=$(${_isAptKey} list | grep oracle 2>&1)
@@ -1835,9 +1833,9 @@ _check_manufacturer_compatibility() {
     ${_INITINS} dmidecode &> /dev/null
   fi
   # Check if dmidecode is available
-  _DMI_TEST=$(which dmidecode 2>&1)
+  _DMI_TEST="$(which dmidecode)"
   if [ -x "${_DMI_TEST}" ]; then
-    _HOST_INFO=$(dmidecode -s system-manufacturer 2>&1)
+    _HOST_INFO="$(dmidecode -s system-manufacturer)"
   else
     _HOST_INFO="Unknown, dmidecode not available"
   fi
@@ -1908,7 +1906,7 @@ _if_display_help() {
     See docs/UPGRADE.md for more details.
 
 EOF
-    _clean_pid_exit _proceed_a
+    _clean_pid_exit
   fi
 }
 
@@ -1928,26 +1926,26 @@ _set_tree_vars() {
     fi
   fi
   if [ "${_cmNd}" = "up-dev" ]; then
-    _tRee=dev
+    export _tRee=dev
     _ifnames_grub_check_sync
   elif [ "${_cmNd}" = "up-pro" ]; then
-    _tRee=pro
+    export _tRee=pro
     _ifnames_grub_check_sync
   elif [ "${_cmNd}" = "up-lts" ]; then
-    _tRee=lts
+    export _tRee=lts
     _ifnames_grub_check_sync
   else
     if [ "${_cmNd}" = "php-idle" ] \
       || [ "${_cmNd}" = "help" ] \
       || [ "${_cmNd}" = "info" ] \
       || [ "${_cmNd}" = "up-distro" ]; then
-      _tRee=dev
+      export _tRee=dev
     else
       echo
       echo "Sorry, you are trying not supported command.."
       echo "Display supported commands with: $(basename "$0") help"
       echo
-      _clean_pid_exit _cmNd_a
+      _clean_pid_exit
     fi
   fi
 

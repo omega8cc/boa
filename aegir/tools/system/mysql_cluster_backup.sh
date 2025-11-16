@@ -240,7 +240,6 @@ _backup_this_database_with_mydumper() {
     --rows=50000 \
     --build-empty-files \
     --threads=4 \
-    --less-locking \
     --long-query-guard=900 \
     --verbose=1
 }
@@ -289,7 +288,7 @@ _compress_backup() {
 [ ! -a ${_SAVELOCATION} ] && mkdir -p ${_SAVELOCATION};
 
 _check_mysql_version() {
-  _DBS_TEST=$(which mysql 2>&1)
+  _DBS_TEST="$(which mysql)"
   if [ ! -z "${_DBS_TEST}" ]; then
     _DB_SERVER_TEST=$(mysql -V 2>&1)
   fi

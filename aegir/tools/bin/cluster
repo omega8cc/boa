@@ -66,7 +66,10 @@ _tBn="tools/bin"
 ###-------------SYSTEM-----------------###
 
 _clean_pid_exit() {
-  echo "REASON ${1} on $(date)" >> /root/.cluster.exit.exceptions.log
+  if [ -n "${1}" ]; then
+    echo "REASON ${1} on $(date)" >> /root/.cluster.exit.exceptions.log
+    [ -e "/opt/tmp/boa" ] && rm -rf /opt/tmp/*
+  fi
   rm -f /run/cluster_run.pid
   service cron start
   exit 1
@@ -84,7 +87,7 @@ _os_detection_minimal() {
 }
 
 _check_mysql_version() {
-  _DBS_TEST=$(which mysql 2>&1)
+  _DBS_TEST="$(which mysql)"
   if [ ! -z "${_DBS_TEST}" ]; then
     _DB_SERVER_TEST=$(mysql -V 2>&1)
   fi
@@ -119,12 +122,12 @@ _check_root() {
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
-    _LSB_TEST=$(which lsb_release 2> /dev/null)
+    _LSB_TEST="$(which lsb_release)"
     if [ ! -x "${_LSB_TEST}" ]; then
       _apt_clean_update
       apt-get install lsb-release ${_aptYesUnth}
     fi
-    _LSB_TEST=$(which lsb_release 2> /dev/null)
+    _LSB_TEST="$(which lsb_release)"
     if [ -x "${_LSB_TEST}" ]; then
       if [ "${_OS_DIST}" = "Devuan" ] || [ "${_OS_DIST}" = "Debian" ]; then
         _SUPPORTED_OS=YES
@@ -203,7 +206,7 @@ _check_no_systemd() {
   if [ -e "/lib/systemd/systemd" ]; then
     echo "ERROR: This script can not be used with systemd"
     echo "ERROR: Please run 'autoinit' first"
-    _clean_pid_exit _check_no_systemd_a_cluster
+    _clean_pid_exit _check_no_systemd
   fi
 }
 
@@ -356,7 +359,7 @@ _check_root_direct() {
     echo "         PermitRootLogin prohibit-password"
     echo "       in the /etc/ssh/sshd_config file"
     echo "Bye"
-    _clean_pid_exit _check_root_direct_a
+    _clean_pid_exit
   fi
 }
 
@@ -408,7 +411,7 @@ _check_root_keys_pwd() {
     echo
     echo "Bye"
     echo
-    _clean_pid_exit _check_root_keys_pwd_a
+    _clean_pid_exit
   fi
 }
 
@@ -644,7 +647,7 @@ _check_config_cluster() {
 }
 
 _find_fast_mirror_early() {
-  _isNetc=$(which netcat 2>&1)
+  _isNetc="$(which netcat)"
   if [ ! -x "${_isNetc}" ] || [ -z "${_isNetc}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
@@ -1382,9 +1385,9 @@ _upgrade_web_node() {
 
 _default_my_cnf_copy() {
 
-  _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)
+  _CPU_INFO="$(grep -c processor /proc/cpuinfo)"
   _CPU_INFO=${_CPU_INFO//[^0-9]/}
-  _NPROC_TEST=$(which nproc 2>&1)
+  _NPROC_TEST="$(which nproc)"
   if [ -z "${_NPROC_TEST}" ]; then
     _CPU_NR="${_CPU_INFO}"
   else
@@ -1529,8 +1532,7 @@ open_files_limit        = 294912
 innodb_autoinc_lock_mode= 2
 group_concat_max_len    = 10000
 skip-log-bin
-#log_bin                 = mysql-bin
-#expire_logs_days        = 7
+#log_bin                 = ON
 #max_binlog_size         = 256M
 #binlog_row_image        = minimal
 #binlog_format           = ROW
