@@ -7833,7 +7833,7 @@ _sys_packages_install() {
             _JAVA_TEST=$(/usr/lib/jvm/java-11-openjdk-amd64/bin/java --version 2>&1)
           fi
           if [ ! -x "/usr/lib/jvm/java-11-openjdk-amd64/bin/java" ] \
-            || [[ ! "${_JAVA_TEST}" =~ "openjdk 11.0.24" ]]; then
+            || [[ ! "${_JAVA_TEST}" =~ "openjdk 11.0.29" ]]; then
             if [ -n "${_LOCAL_DEVUAN_MIRROR}" ]; then
               _MIRROR="${_LOCAL_DEVUAN_MIRROR}"
             else
