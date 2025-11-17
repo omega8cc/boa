@@ -2,6 +2,10 @@
 
 BOA stands for Barracuda, Octopus, and Ægir—a high-performance LEMP stack supporting Drupal from Pressflow 6 to the latest Drupal 11, as well as Backdrop CMS and Grav CMS (soon).
 
+## 30 Years of Heritage
+
+We are unique within the hosting industry for many important reasons. Our 15 years of Ægir-based hosting, plus earlier experience with Adgrafix (the first company to offer a control panel for website management in 1995), have helped shape what makes us different today. We take **Open Source seriously** — it’s not a buzzword for us. It’s about freedom from corporate control. Here's a short look back at our 15-year Ægir journey and 19 years with Drupal. [Read the full story!](https://github.com/omega8cc/boa/tree/5.x-dev/DIFFERENT30Y.md)
+
 ## What is Ægir?
 
 Ægir, named after the Norse god of the sea, is an open-source hosting system for managing multiple Drupal sites. The name Ægir was chosen to reflect the relationship between Drupal's water drop logo, symbolizing individual sites, and Ægir's role as the god of the ocean, representing the hosting of many Drupal sites together. It automates tasks such as site installation, upgrades, and maintenance, making your life easier.
