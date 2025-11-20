@@ -6181,10 +6181,6 @@ _run_aptitude_deps_install() {
     _mrun "${_INSTAPP} ${_SYSLOGD}"
     _EXTRA_APT="tree"
     _mrun "apt-get install ${_EXTRA_APT} ${_nrmUpArg}"
-    if [ -e "/etc/init.d/php5-fpm" ]; then
-      _mrun "service php5-fpm stop"
-      _mrun "update-rc.d -f php5-fpm remove"
-    fi
   fi
 }
 
@@ -6892,37 +6888,6 @@ _if_major_os_upgrade() {
       echo "percona-release hold" | dpkg --set-selections &> /dev/null
       _apt_clean_update
     fi
-    ###
-    if [ -e "/etc/php5/conf.d" ]; then
-      touch /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini}
-      touch /etc/php5/conf.d/{redis.ini,suhosin.ini,newrelic.ini}
-    fi
-    ###
-    for _PKG in php5 php5-cgi php5-curl php5-fpm php5-gd php5-geoip php5-gmp php5-imagick php5-imap; do
-      if _pkg_installed "${_PKG}"; then
-        _mrun "apt-get remove ${_PKG} -y --purge --auto-remove -qq"
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "PCKG: ${_PKG} removed as requested."
-        fi
-      fi
-    done
-    for _PKG in php5-ldap php5-mcrypt php5-memcache php5-mysql php5-sqlite php5-xmlrpc php5-xsl; do
-      if _pkg_installed "${_PKG}"; then
-        _mrun "apt-get remove ${_PKG} -y --purge --auto-remove -qq"
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "PCKG: ${_PKG} removed as requested."
-        fi
-      fi
-    done
-    ###
-    for _PKG in phpunit php-pear php-benchmark php5-cli php5-common php5-apc php-apc; do
-      if _pkg_installed "${_PKG}"; then
-        _mrun "apt-get remove ${_PKG} -y --purge --auto-remove -qq"
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "PCKG: ${_PKG} removed as requested."
-        fi
-      fi
-    done
     ###
     if [ "${_LOC_OS_CODE}" = "jessie" ]; then
       _mrun "apt-get remove gnome-tweak-tool -y --purge --auto-remove -qq"
@@ -7660,29 +7625,6 @@ _sys_packages_update() {
     _mrun "apt-get autoclean -y"
   else
     echo "gnupg-curl install" | dpkg --set-selections &> /dev/null
-    if [ -e "/etc/php5/conf.d" ]; then
-      touch /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini}
-      touch /etc/php5/conf.d/{redis.ini,suhosin.ini,newrelic.ini}
-    fi
-    for _PKG in php5 php5-cgi php5-curl php5-fpm php5-gd php5-geoip php5-gmp php5-imagick php5-imap php5-ldap; do
-      if _pkg_installed "${_PKG}"; then
-        _mrun "${_RMAPP} ${_PKG}"
-      fi
-    done
-    for _PKG in php5-mcrypt php5-memcache php5-mysql php5-sqlite php5-xmlrpc php5-xsl phpunit php-pear; do
-      if _pkg_installed "${_PKG}"; then
-        _mrun "${_RMAPP} ${_PKG}"
-      fi
-    done
-    for _PKG in php-benchmark php5-cli php5-common php5-apc php-apc apache2.2-common apache2.2-bin; do
-      if _pkg_installed "${_PKG}"; then
-        _mrun "${_RMAPP} ${_PKG}"
-      fi
-    done
-    if [ -e "/etc/php5/conf.d" ]; then
-      rm -f /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini}
-      rm -f /etc/php5/conf.d/{redis.ini,suhosin.ini,newrelic.ini}
-    fi
     rm -f /var/lib/mysql/debian-*.flag &> /dev/null
     _UP_JDK=NO
     _UP_LNX=NO
@@ -7703,9 +7645,6 @@ _sys_packages_install() {
     _msg "INFO: Installing required libraries and tools..."
   else
     _msg "INFO: Upgrading required libraries and tools..."
-    if [ ! -e "/etc/init.d/php5-fpm" ]; then
-      cp -af ${_locCnf}/php/php5-fpm-init-vanilla /etc/init.d/php5-fpm
-    fi
   fi
   if [ "${_STATUS}" = "INIT" ]; then
     _if_hosted_sys
@@ -9463,7 +9402,6 @@ _initd_update() {
         _msg "INFO: Starting Redis, PHP-FPM and Nginx"
         _mrun "service redis-server start"
       fi
-      _mrun "update-rc.d -f php5-fpm remove"
       _mrun "update-rc.d cron defaults"
       _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
@@ -9551,7 +9489,6 @@ _initd_update() {
       _mrun "service jetty9 start"
     fi
     if [ ! -e "/root/.proxy.cnf" ]; then
-      _mrun "update-rc.d -f php5-fpm remove"
       if [ -e "/etc/init.d/valkey-server" ]; then
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "INFO: Reloading Valkey, PHP-FPM and Nginx..."
