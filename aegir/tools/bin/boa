@@ -998,6 +998,8 @@ _octopus_install() {
         _USE_PHP=8.1
       elif [ -x "/opt/php84/bin/php" ]; then
         _USE_PHP=8.4
+      elif [ -x "/opt/php85/bin/php" ]; then
+        _USE_PHP=8.5
       elif [ -x "/opt/php74/bin/php" ]; then
         _USE_PHP=7.4
       fi
@@ -1078,7 +1080,9 @@ _barracuda_install() {
       && [ -e "${_vBs}/${_filIncB}" ] \
       && [ -e "${_vBs}/${_filIncO}" ]; then
       if [ -n "${_eXtr}" ]; then
-        if [ "${_eXtr}" = "php-84" ] || [ "${_eXtr}" = "php-8.4" ]; then
+        if [ "${_eXtr}" = "php-85" ] || [ "${_eXtr}" = "php-8.5" ]; then
+          _pI=8.5
+        elif [ "${_eXtr}" = "php-84" ] || [ "${_eXtr}" = "php-8.4" ]; then
           _pI=8.4
         elif [ "${_eXtr}" = "php-83" ] || [ "${_eXtr}" = "php-8.3" ]; then
           _pI=8.3
@@ -1108,9 +1112,9 @@ _barracuda_install() {
         || [ "${_eXtr}" = "php-max" ]; then
         sed -i "s/^_PHP_SINGLE_.*/_PHP_SINGLE_INSTALL=/g"    ${_vBs}/${_filIncB}
         if [ "${_eXtr}" = "php-max" ]; then
-          _pA="5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2 8.3 8.4"
+          _pA="5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2 8.3 8.4 8.5"
         else
-          _pA="7.4 8.1 8.2 8.3 8.4"
+          _pA="7.4 8.1 8.2 8.3 8.4 8.5"
         fi
         _pI=8.3
         sed -i "s/^_PHP_M.*/_PHP_MULTI_INSTALL=\"${_pA}\"/g" ${_vBs}/${_filIncB}
@@ -2227,6 +2231,8 @@ _display_time() {
       return
     elif [ "${_service}" = "php84-fpm" ] && [ ! -e "/opt/php84/bin/php" ]; then
       return
+    elif [ "${_service}" = "php85-fpm" ] && [ ! -e "/opt/php85/bin/php" ]; then
+      return
     else
       _not_running_services+=("  _XSE ${_service} is not running (PID file not found).")
       return
@@ -2270,6 +2276,8 @@ _display_time() {
     elif [ "${_service}" = "php83-fpm" ] && [ ! -e "/opt/php83/bin/php" ]; then
       return
     elif [ "${_service}" = "php84-fpm" ] && [ ! -e "/opt/php84/bin/php" ]; then
+      return
+    elif [ "${_service}" = "php85-fpm" ] && [ ! -e "/opt/php85/bin/php" ]; then
       return
     else
       _not_running_services+=("  _XSE ${_service} is not running (stale PID file).")
@@ -2649,6 +2657,7 @@ _display_info() {
         "php82-fpm"
         "php83-fpm"
         "php84-fpm"
+        "php85-fpm"
         "mysql"
         "valkey"
         "jenkins"
@@ -2678,6 +2687,7 @@ _display_info() {
         ["php82-fpm"]="/run/php82-fpm.pid"
         ["php83-fpm"]="/run/php83-fpm.pid"
         ["php84-fpm"]="/run/php84-fpm.pid"
+        ["php85-fpm"]="/run/php85-fpm.pid"
         ["mysql"]="/run/mysqld/mysqld.pid"
         ["valkey"]="/run/valkey/valkey.pid"
         ["jenkins"]="/run/jenkins/jenkins.pid"
@@ -2850,7 +2860,7 @@ _octopus_cleanup() {
         echo "${_usEr}:/data/disk/${_usEr}" > ${_zombie_dir}.purge.list
         echo "${_usEr}.ftp:/home/${_usEr}.ftp" >> ${_zombie_dir}.purge.list
         echo "${_usEr}.web:/home/${_usEr}.web" >> ${_zombie_dir}.purge.list
-        _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
+        _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
         for e in ${_PHP_V}; do
           if [ -e "/opt/php${e}/etc/pool.d/${_usEr}.${e}.conf" ] \
             || [ -e "/home/${_usEr}.${e}.web" ]; then
@@ -2960,8 +2970,8 @@ _if_display_help() {
     {extra}
       license <------ valid new relic license key
       php-8.3 <------ enable single-PHP mode (8.1 or 8.2 or 8.3 or 8.4 or 7.4)
-      php-min <------ install PHP 8.1, 8.2, 8.3, 8.4, 7.4, use 8.3 by default (php-all)
-      php-max <------ install PHP 8.0, 8.1, 8.2, 8.3, 8.4, 7.4, 7.3, 7.2, 7.1, 7.0, 5.6
+      php-min <------ install PHP 8.1-8.5, 7.4, use 8.3 by default (php-all)
+      php-max <------ install PHP 8.0-8.5, 7.0-7.4, 5.6
       nodns <-------- disable DNS/SMTP checks on the fly
       percona-8.0 <-- specify Percona version to use (5.7, 8.0, 8.4)
 

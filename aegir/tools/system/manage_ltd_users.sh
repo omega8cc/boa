@@ -198,7 +198,7 @@ _enable_chattr() {
 
     _CHECK_USE_PHP_CLI=$(grep "/opt/php" \
       ${_dscUsr}/tools/drush/drush.php 2>&1)
-    _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
+    _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
       if [[ "${_CHECK_USE_PHP_CLI}" =~ "php${e}" ]] \
         && [ ! -e "${_U_HD}/.ctrl.php${e}.${_xSrl}.pid" ]; then
@@ -221,7 +221,9 @@ _enable_chattr() {
         _CHECK_USE_PHP_CLI=$(grep "/opt/php" \
           ${_dscUsr}/tools/drush/drush.php 2>&1)
         echo "_CHECK_USE_PHP_CLI is ${_CHECK_USE_PHP_CLI} for $1 at ${_USER}"
-        if [[ "${_CHECK_USE_PHP_CLI}" =~ "php84" ]]; then
+        if [[ "${_CHECK_USE_PHP_CLI}" =~ "php85" ]]; then
+          _USE_PHP_CLI=8.5
+        elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php84" ]]; then
           _USE_PHP_CLI=8.4
         elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php83" ]]; then
           _USE_PHP_CLI=8.3
@@ -246,7 +248,10 @@ _enable_chattr() {
         fi
       fi
       echo _USE_PHP_CLI is ${_USE_PHP_CLI} for $1
-      if [ "${_USE_PHP_CLI}" = "8.4" ]; then
+      if [ "${_USE_PHP_CLI}" = "8.5" ]; then
+        cp -af /opt/php85/lib/php.ini ${_U_II}
+        _U_INI=85
+      elif [ "${_USE_PHP_CLI}" = "8.4" ]; then
         cp -af /opt/php84/lib/php.ini ${_U_II}
         _U_INI=84
       elif [ "${_USE_PHP_CLI}" = "8.3" ]; then
@@ -297,6 +302,7 @@ _enable_chattr() {
           /opt/php82:       \
           /opt/php83:       \
           /opt/php84:       \
+          /opt/php85:       \
           /opt/tika:        \
           /opt/tika7:       \
           /opt/tika8:       \
@@ -835,7 +841,7 @@ _php_cli_local_ini_update() {
   _U_II="${_U_HD}/php.ini"
   _PHP_CLI_UPDATE=NO
   _CHECK_USE_PHP_CLI=$(grep "/opt/php" ${_DRUSH_FILE} 2>&1)
-  _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
+  _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     if [[ "${_CHECK_USE_PHP_CLI}" =~ "php${e}" ]] \
       && [ ! -e "${_U_HD}/.ctrl.php${e}.${_xSrl}.pid" ]; then
@@ -857,7 +863,10 @@ _php_cli_local_ini_update() {
     chattr -i ${_U_II}
     rm -f ${_U_HD}/.ctrl.php*
     rm -f ${_U_II}
-    if [[ "${_CHECK_USE_PHP_CLI}" =~ "php84" ]]; then
+    if [[ "${_CHECK_USE_PHP_CLI}" =~ "php85" ]]; then
+      cp -af /opt/php85/lib/php.ini ${_U_II}
+      _U_INI=85
+    elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php84" ]]; then
       cp -af /opt/php84/lib/php.ini ${_U_II}
       _U_INI=84
     elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php83" ]]; then
@@ -908,6 +917,7 @@ _php_cli_local_ini_update() {
         /opt/php82:          \
         /opt/php83:          \
         /opt/php84:          \
+        /opt/php85:          \
         /opt/tika:           \
         /opt/tika7:          \
         /opt/tika8:          \
@@ -949,7 +959,10 @@ _php_cli_drush_update() {
   else
     _DRUSH_FILE="${_dscUsr}/tools/drush/drush.php"
   fi
-  if [ "${_T_CLI_VRN}" = "8.4" ] && [ -x "/opt/php84/bin/php" ]; then
+  if [ "${_T_CLI_VRN}" = "8.5" ] && [ -x "/opt/php85/bin/php" ]; then
+    sed -i "s/^#\!\/.*/#\!\/opt\/php85\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
+    _T_CLI=/opt/php85/bin
+  elif [ "${_T_CLI_VRN}" = "8.4" ] && [ -x "/opt/php84/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php84\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
     _T_CLI=/opt/php84/bin
   elif [ "${_T_CLI_VRN}" = "8.3" ] && [ -x "/opt/php83/bin/php" ]; then
@@ -1211,7 +1224,10 @@ _satellite_web_user_update() {
       if [ ! -z "${_T_PV}" ] && [ -e "/opt/php${_T_PV}/etc/php${_T_PV}.ini" ]; then
         cp -af /opt/php${_T_PV}/etc/php${_T_PV}.ini ${_T_II}
       else
-        if [ -e "/opt/php84/etc/php84.ini" ]; then
+        if [ -e "/opt/php85/etc/php85.ini" ]; then
+          cp -af /opt/php85/etc/php85.ini ${_T_II}
+          _T_PV=85
+        elif [ -e "/opt/php84/etc/php84.ini" ]; then
           cp -af /opt/php84/etc/php84.ini ${_T_II}
           _T_PV=84
         elif [ -e "/opt/php83/etc/php83.ini" ]; then
@@ -1264,6 +1280,7 @@ _satellite_web_user_update() {
           /opt/php82:     \
           /opt/php83:     \
           /opt/php84:     \
+          /opt/php85:     \
           /opt/tika:      \
           /opt/tika7:     \
           /opt/tika8:     \
@@ -1382,11 +1399,13 @@ _site_socket_inc_gen() {
     wait
     sed -i "s/^place.holder.dont.remove .*//g" ${_mltFpm}
     wait
-    _PHP_V="84 83 82 81 74"
+    _PHP_V="85 84 83 82 81 74"
     _phpFnd=NO
     for e in ${_PHP_V}; do
       if [ -x "/opt/php${e}/bin/php" ] && [ "${_phpFnd}" = "NO" ]; then
-        if [ "${e}" = "84" ]; then
+        if [ "${e}" = "85" ]; then
+          _phpDot=8.5
+        elif [ "${e}" = "84" ]; then
           _phpDot=8.4
         elif [ "${e}" = "83" ]; then
           _phpDot=8.3
@@ -1409,7 +1428,10 @@ _site_socket_inc_gen() {
     _mltFpmUpdateForce=YES
   fi
 
-  if [ -x "/opt/php84/bin/php" ] && [ ! -e "/home/${_USER}.84.web" ]; then
+  if [ -x "/opt/php85/bin/php" ] && [ ! -e "/home/${_USER}.85.web" ]; then
+    rm -f /data/disk/${_USER}/config/server_master/nginx/post.d/fpm_include_default.inc
+    _mltFpmUpdateForce=YES
+  elif [ -x "/opt/php84/bin/php" ] && [ ! -e "/home/${_USER}.84.web" ]; then
     rm -f /data/disk/${_USER}/config/server_master/nginx/post.d/fpm_include_default.inc
     _mltFpmUpdateForce=YES
   elif [ -x "/opt/php83/bin/php" ] && [ ! -e "/home/${_USER}.83.web" ]; then
@@ -1503,6 +1525,7 @@ _switch_php() {
     # Convert shorthand versions (e.g. "83" to "8.3")
     fix_version_format() {
       case "$1" in
+        85) echo "8.5";;
         84) echo "8.4";;
         83) echo "8.3";;
         82) echo "8.2";;
@@ -1533,6 +1556,7 @@ _switch_php() {
 
       # Define fallback chains for PHP versions
       declare -A fallback=(
+        ["8.5"]="8.4 8.3 8.2"
         ["8.4"]="8.3 8.2 8.1"
         ["8.3"]="8.2 8.1"
         ["8.2"]="8.1 8.3"
@@ -1603,6 +1627,7 @@ _switch_php() {
 
       # Define fallback chains for PHP-FPM versions (same as CLI)
       declare -A fpm_fallback=(
+        ["8.5"]="8.4 8.3 8.2"
         ["8.4"]="8.3 8.2 8.1"
         ["8.3"]="8.2 8.1"
         ["8.2"]="8.1 8.3"
@@ -1708,7 +1733,7 @@ _switch_php() {
             fi
             if [ -e "/home/${_WEB}/.drush/php.ini" ]; then
               _OLD_PHP_IN_USE=$(grep "/lib/php" /home/${_WEB}/.drush/php.ini 2>&1)
-              _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
+              _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
               for e in ${_PHP_V}; do
                 if [[ "${_OLD_PHP_IN_USE}" =~ "php${e}" ]]; then
                   if [ "${e}" != "${m}" ] || [ ! -e "/home/${_WEB}/.drush/.ctrl.php${m}.${_xSrl}.pid" ]; then
