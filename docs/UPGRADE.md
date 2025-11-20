@@ -123,13 +123,11 @@ octopus up-lts all platforms
 
 ## NOTE on Percona SQL Server versions management
 
-You can upgrade Percona from default 5.7 to 8.0, or once you run 8.0 to 8.3 or 8.4 LTS during `barracuda` upgrade with commands like:
+You can upgrade Percona from default 5.7 to 8.0, or once you run 8.0 to 8.4 LTS during `barracuda` upgrade with commands like:
 
 `barracuda up-lts percona-8.0` -- upgrades Percona from 5.7 to 8.0 (production ready)
 
-`barracuda up-lts percona-8.3` -- upgrades Percona from 8.x to 8.3 (experimental, do not use in production)
-
-`barracuda up-lts percona-8.4` -- upgrades Percona from 8.x to 8.4 (experimental, do not use in production)
+`barracuda up-lts percona-8.4` -- upgrades Percona from 8.0 to 8.4 (production ready)
 
 ## NOTE on PHP versions management
 

@@ -637,8 +637,6 @@ _mysql_downgrade_protection() {
   fi
   if [[ "${_DB_SERVER_TEST}" =~ "Ver 8.4." ]]; then
     _DB_V=8.4
-  elif [[ "${_DB_SERVER_TEST}" =~ "Ver 8.3." ]]; then
-    _DB_V=8.3
   elif [[ "${_DB_SERVER_TEST}" =~ "Ver 8.0." ]]; then
     _DB_V=8.0
   elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 5.7." ]]; then
@@ -651,7 +649,9 @@ _mysql_downgrade_protection() {
 _up_action() {
   if [ -e "${_vBs}/${_barName}" ] && [ -e "${_barCnf}" ]; then
     if [ ! -z "${_rKey}" ]; then
-      if [ "${_rKey}" = "php-84" ] || [ "${_rKey}" = "php-8.4" ]; then
+      if [ "${_rKey}" = "php-85" ] || [ "${_rKey}" = "php-8.5" ]; then
+        _phpS="8.5"
+      elif [ "${_rKey}" = "php-84" ] || [ "${_rKey}" = "php-8.4" ]; then
         _phpS="8.4"
       elif [ "${_rKey}" = "php-83" ] || [ "${_rKey}" = "php-8.3" ]; then
         _phpS="8.3"
@@ -920,14 +920,6 @@ _up_action() {
       if [[ "${_DB_V}" =~ 8.3 || "${_DB_V}" =~ 8.0 || "${_DB_V}" =~ 5.7 ]]; then
         sed -i "s/^_DB_SERIES=.*/_DB_SERIES=8.4/g" ${_vBs}/${_filIncB}
         sed -i "s/^_DB_SERIES=.*/_DB_SERIES=8.4/g" ${_barCnf}
-      fi
-    elif [ "${_sQld}" = "percona-8.3" ] \
-      || [ "${_rKey}" = "percona-8.3" ] \
-      || [ "${_dEbg}" = "percona-8.3" ] \
-      || [ -e "/root/.percona.8.3.cnf" ]; then
-      if [[ "${_DB_V}" =~ 8.0 || "${_DB_V}" =~ 5.7 ]]; then
-        sed -i "s/^_DB_SERIES=.*/_DB_SERIES=8.3/g" ${_vBs}/${_filIncB}
-        sed -i "s/^_DB_SERIES=.*/_DB_SERIES=8.3/g" ${_barCnf}
       fi
     elif [ "${_sQld}" = "percona-8.0" ] \
       || [ "${_rKey}" = "percona-8.0" ] \
@@ -1901,7 +1893,7 @@ _if_display_help() {
       php-min <------ install PHP 8.1, 8.2, 8.3, 8.4, 7.4, use 8.3 by default (php-all)
       php-max <------ install PHP 8.0, 8.1, 8.2, 8.3, 8.4, 7.4, 7.3, 7.2, 7.1, 7.0, 5.6
       nodns <-------- disable DNS/SMTP checks on the fly
-      percona-8.0 <-- specify Percona version to use (5.7, 8.0, 8.3, 8.4)
+      percona-8.0 <-- specify Percona version to use (5.7, 8.0, 8.4)
 
     See docs/UPGRADE.md for more details.
 
