@@ -3874,6 +3874,15 @@ _fix_hosting_le() {
 }
 
 _fix_newrelic() {
+  _PHP_EXT_DIR_84="/opt/php84/lib/php/extensions/no-debug-non-zts-20240924"
+  _NR_SO="/usr/lib/newrelic-php5/agent/x64/newrelic-20240924.so"
+  if [ -e "${_PHP_EXT_DIR_84}" ] \
+    && [ -e "${_NR_SO}" ] \
+    && [ ! -e "${_PHP_EXT_DIR_84}/newrelic.so" ]; then
+    ln -sfn ${_NR_SO} ${_PHP_EXT_DIR_84}/newrelic.so
+    service php84-fpm reload
+  fi
+
   _PHP_EXT_DIR_74="/opt/php74/lib/php/extensions/no-debug-non-zts-20190902"
   _NR_SO="/usr/lib/newrelic-php5/agent/x64/newrelic-20190902.so"
   if [ -e "${_PHP_EXT_DIR_74}" ] \
