@@ -1789,6 +1789,7 @@ _install_php_multi() {
   fi
   if [ "${_OS_CODE}" != "jessie" ] \
     && [ "${_OS_CODE}" != "excalibur" ] \
+    && [ "$1" != "85" ] \
     && [ ! -e "/root/.rebuild_src_on_auto_before_reboot.info" ] \
     && [ ! -e "/root/.skip-aegir-master-upgrade.cnf" ]; then
     _PHP_EXTRA="${_PHP_EXTRA} \
@@ -1796,7 +1797,9 @@ _install_php_multi() {
                 --with-imap-ssl \
                 --with-kerberos"
   fi
-  _PHP_EXTRA="${_PHP_EXTRA} --enable-opcache"
+  if [ "$1" != "85" ]; then
+    _PHP_EXTRA="${_PHP_EXTRA} --with-pear --enable-opcache"
+  fi
   if [ ! -z "${_PHP_EXTRA}" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       echo "${_PHP_EXTRA}" | fmt -su -w 2500 > /var/backups/php_extra_${_PHP_VERSION}.txt
@@ -1821,7 +1824,6 @@ _install_php_multi() {
                 --with-mysql-sock=/run/mysqld/mysqld.sock \
                 --with-mysqli=mysqlnd \
                 --with-pdo-mysql=mysqlnd \
-                --with-pear \
                 --with-xsl \
                 --with-zlib \
                 --with-bz2 \
@@ -1854,7 +1856,6 @@ _install_php_multi() {
                 --with-mysql-sock=/run/mysqld/mysqld.sock \
                 --with-mysqli=mysqlnd \
                 --with-pdo-mysql=mysqlnd \
-                --with-pear \
                 --with-xsl \
                 --with-zlib \
                 ${_PHP_EXTRA}"
