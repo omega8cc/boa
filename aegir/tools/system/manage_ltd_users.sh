@@ -1666,7 +1666,7 @@ _switch_php() {
       _FMP_D_INC="${_dscUsr}/config/server_master/nginx/post.d/fpm_include_default.inc"
 
       if [ "${_PHP_FPM_MULTI}" = "YES" ] && [ -d "${_dscUsr}/tools/le" ]; then
-        _PHP_M_V="84 83 82 81 80 74 73 72 71 70 56"
+        _PHP_M_V="85 84 83 82 81 80 74 73 72 71 70 56"
         _D_POOL="${_USER}.${_PHP_SV}"
         if [ ! -e "${_FMP_D_INC}" ]; then
           echo "set \$user_socket \"${_D_POOL}\";" > ${_FMP_D_INC}
@@ -1702,7 +1702,7 @@ _switch_php() {
 
         # Update or create special system user if needed
         if [ "${_PHP_FPM_MULTI}" = "YES" ] && [ -d "${_dscUsr}/tools/le" ]; then
-          _PHP_M_V="84 83 82 81 80 74 73 72 71 70 56"
+          _PHP_M_V="85 84 83 82 81 80 74 73 72 71 70 56"
           _D_POOL="${_USER}.${_PHP_SV}"
           if [ ! -e "${_FMP_D_INC}" ] && [ -e "/run/${_D_POOL}.fpm.socket" ] && [ -x "/opt/php${_PHP_SV}/bin/php" ]; then
             echo "set \$user_socket \"${_D_POOL}\";" > ${_FMP_D_INC}
@@ -1751,7 +1751,7 @@ _switch_php() {
 
         # Cleanup old pool files and set up new pools
         if [ "${_PHP_FPM_MULTI}" = "YES" ] && [ -d "${_dscUsr}/tools/le" ]; then
-          _PHP_M_V="84 83 82 81 80 74 73 72 71 70 56"
+          _PHP_M_V="85 84 83 82 81 80 74 73 72 71 70 56"
           rm -f /opt/php*/etc/pool.d/${_USER}.conf
         else
           _PHP_M_V="${_PHP_SV}"
@@ -2036,7 +2036,7 @@ _manage_user() {
           fi
         fi
         if [ -f "${_dscUsr}/static/control/multi-fpm.info" ]; then
-          _PHP_M_V="84 83 82 81 80 74 73 72 71 70 56"
+          _PHP_M_V="85 84 83 82 81 80 74 73 72 71 70 56"
           for m in ${_PHP_M_V}; do
             if [ -x "/opt/php${m}/bin/php" ] \
               && [ -e "/opt/php${m}/etc/pool.d/${_USER}.${m}.conf" ]; then
