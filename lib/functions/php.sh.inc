@@ -1778,7 +1778,7 @@ _install_php_multi() {
         patch -p1 < ${_bldPth}/aegir/patches/${_patchFile} &> /dev/null
       fi
     fi
-    if [ "$1" != "81" ] && [ "$1" != "82" ] && [ "$1" != "83" ] && [ "$1" != "84" ]; then
+    if [ "$1" != "81" ] && [ "$1" != "82" ] && [ "$1" != "83" ] && [ "$1" != "84" ] && [ "$1" != "85" ]; then
       _patchFile="php-8.1-openssl3.patch"
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         patch -p1 < ${_bldPth}/aegir/patches/${_patchFile}
