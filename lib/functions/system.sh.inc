@@ -2138,8 +2138,8 @@ _barracuda_cnf() {
     _php_multi_uniq
 
     _ffList="/var/log/boa/devaun-fast-mirrors-list.txt"
-    _BROKEN_FF=$(grep "planetcobalt" ${_ffList} 2>&1)
-    if [ ! -e "${_ffList}" ] || [[ ! "${_BROKEN_FF}" =~ "planetcobalt" ]]; then
+    _BROKEN_FF=$(grep "devuan/merged" ${_ffList} 2>&1)
+    if [ ! -e "${_ffList}" ] || [[ ! "${_BROKEN_FF}" =~ "devuan/merged" ]]; then
       _ffDevuan="$(which ffdevuan)"
       if [ -x "${_ffDevuan}" ]; then
         bash ${_ffDevuan} &> /dev/null
@@ -2786,8 +2786,8 @@ _barracuda_cnf() {
     fi
 
     _ffList="/var/log/boa/devaun-fast-mirrors-list.txt"
-    _BROKEN_FF=$(grep "planetcobalt" ${_ffList} 2>&1)
-    if [ ! -e "${_ffList}" ] || [[ ! "${_BROKEN_FF}" =~ "planetcobalt" ]]; then
+    _BROKEN_FF=$(grep "devuan/merged" ${_ffList} 2>&1)
+    if [ ! -e "${_ffList}" ] || [[ ! "${_BROKEN_FF}" =~ "devuan/merged" ]]; then
       _ffDevuan="$(which ffdevuan)"
       if [ -x "${_ffDevuan}" ]; then
         bash ${_ffDevuan} &> /dev/null
