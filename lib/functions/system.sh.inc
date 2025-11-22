@@ -3789,17 +3789,28 @@ _sources_list_update() {
     mv -f ${_aptLiSys} \
       ${_vBs}/sources.list-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
     if [ "${_OS_DIST}" = "Devuan" ]; then
-      if [ "${_OS_CODE}" = "beowulf" ]; then
-        _MIRROR="http://archive.devuan.org/merged"
-      elif [ -n "${_LOCAL_DEVUAN_MIRROR}" ]; then
-        _MIRROR="${_LOCAL_DEVUAN_MIRROR}"
+      _TEST_MIRROR="$(_find_fast_devuan_mirror)"
+      if [ -n "${_LOCAL_DEVUAN_MIRROR}" ] && [ -n "${_TEST_MIRROR}" ]; then
+        if [ "${_LOCAL_DEVUAN_MIRROR}" = "${_TEST_MIRROR}" ]; then
+          export _MIRROR="${_LOCAL_DEVUAN_MIRROR}"
+          export _LOCAL_DEVUAN_MIRROR="${_LOCAL_DEVUAN_MIRROR}"
+        else
+          export _MIRROR="${_TEST_MIRROR}"
+          export _LOCAL_DEVUAN_MIRROR="${_TEST_MIRROR}"
+          sed -i "s|^_LOCAL_DEV.*|_LOCAL_DEVUAN_MIRROR=${_TEST_MIRROR}|" ${_barCnf}
+        fi
       else
         _DVN_MRR="$(_find_fast_devuan_mirror)"
         if [ -n "${_DVN_MRR}" ]; then
-          _MIRROR="${_DVN_MRR}"
+          export _MIRROR="${_DVN_MRR}"
+          export _LOCAL_DEVUAN_MIRROR="${_DVN_MRR}"
+          sed -i "s|^_LOCAL_DEV.*|_LOCAL_DEVUAN_MIRROR=${_MIRROR}|" ${_barCnf}
         else
-          _MIRROR="http://deb.devuan.org/merged"
+          export _MIRROR="http://deb.devuan.org/merged"
         fi
+      fi
+      if [ "${_OS_CODE}" = "beowulf" ]; then
+        export _MIRROR="http://archive.devuan.org/merged"
       fi
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: We will use ${_OS_DIST} mirror ${_MIRROR}"
