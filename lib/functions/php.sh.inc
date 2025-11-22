@@ -767,13 +767,19 @@ _install_php_extensions() {
   ###--------------------###
   if [ "$1" = "56" ]; then
     _USE_IGBINARY="${_PHP_IGBINARY_TWO}"
+  elif [ "$1" = "85" ]; then
+    _USE_IGBINARY="${_PHP_IGBINARY_EIGHT_FIVE}"
   else
     _USE_IGBINARY="${_PHP_IGBINARY_THREE}"
   fi
   _msg "INFO: Installing igbinary ${_USE_IGBINARY} for PHP ${_T_PHP_VRN}..."
   cd /var/opt
   rm -rf igbinary*
-  _get_dev_src "igbinary-${_USE_IGBINARY}.tgz"
+  if [ "$1" = "85" ]; then
+    _get_dev_src "igbinary-${_USE_IGBINARY}.tar.gz"
+  else
+    _get_dev_src "igbinary-${_USE_IGBINARY}.tgz"
+  fi
   cd /var/opt/igbinary-${_USE_IGBINARY}
   _mrun "${_T_PHP_PTH}/phpize"
   _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
@@ -1163,6 +1169,8 @@ _php_extensions_update() {
   ###--------------------###
   if [ "$1" = "56" ]; then
     _USE_IGBINARY="${_PHP_IGBINARY_TWO}"
+  elif [ "$1" = "85" ]; then
+    _USE_IGBINARY="${_PHP_IGBINARY_EIGHT_FIVE}"
   else
     _USE_IGBINARY="${_PHP_IGBINARY_THREE}"
   fi
@@ -1171,7 +1179,11 @@ _php_extensions_update() {
     _msg "INFO: Installing Igbinary ${_USE_IGBINARY} upgrade for PHP ${_T_PHP_VRN}..."
     cd /var/opt
     rm -rf igbinary*
-    _get_dev_src "igbinary-${_USE_IGBINARY}.tgz"
+    if [ "$1" = "85" ]; then
+      _get_dev_src "igbinary-${_USE_IGBINARY}.tar.gz"
+    else
+      _get_dev_src "igbinary-${_USE_IGBINARY}.tgz"
+    fi
     cd /var/opt/igbinary-${_USE_IGBINARY}
     _mrun "${_T_PHP_PTH}/phpize"
     _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
