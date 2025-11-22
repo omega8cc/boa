@@ -2927,6 +2927,8 @@ _php_upgrade_all() {
         _PHP_VERSION="${_PHP83_VRN}"
       elif [ "${e}" = "84" ]; then
         _PHP_VERSION="${_PHP84_VRN}"
+      elif [ "${e}" = "85" ]; then
+        _PHP_VERSION="${_PHP85_VRN}"
       fi
       _PHP_BIN_BROKEN=NO
       _BROKEN_LIBCURL_TEST=""
