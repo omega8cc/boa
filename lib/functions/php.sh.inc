@@ -1026,39 +1026,41 @@ _install_php_extensions() {
     fi
   fi
   ###--------------------###
-  _msg "INFO: Installing Imagick ${_IMAGICK_VRN} for PHP ${_T_PHP_VRN}..."
-  if [ "${_OS_CODE}" = "excalibur" ] \
-    || [ "${_OS_CODE}" = "daedalus" ] \
-    || [ "${_OS_CODE}" = "chimaera" ]; then
-    if [ -e "/usr/bin/MagickWand-config" ]; then
-      mv -f /usr/bin/MagickWand-config /var/backups/usr-bin-MagickWand-config
-    fi
-    if [ -e "/usr/local/bin/MagickWand-config" ]; then
-      mv -f /usr/local/bin/MagickWand-config /var/backups/usr-local-bin-MagickWand-config
-    fi
-  fi
-  if [ ! -e "${_pthLog}/libmagickwand-dev-${_IMAGICK_VRN}-rebuild.log" ]; then
-    _apt_clean_update
-    for _PKG in libmagickwand-dev; do
-      if ! _pkg_installed "${_PKG}"; then
-        _mrun "${_INSTAPP} ${_PKG}"
+  if [ "$1" != "85" ]; then
+    _msg "INFO: Installing Imagick ${_IMAGICK_VRN} for PHP ${_T_PHP_VRN}..."
+    if [ "${_OS_CODE}" = "excalibur" ] \
+      || [ "${_OS_CODE}" = "daedalus" ] \
+      || [ "${_OS_CODE}" = "chimaera" ]; then
+      if [ -e "/usr/bin/MagickWand-config" ]; then
+        mv -f /usr/bin/MagickWand-config /var/backups/usr-bin-MagickWand-config
       fi
-    done
-    touch ${_pthLog}/libmagickwand-dev-${_IMAGICK_VRN}-rebuild.log
-  fi
-  cd /var/opt
-  rm -rf imagick*
-  _get_dev_src "imagick-${_IMAGICK_VRN}.tgz"
-  cd /var/opt/imagick-${_IMAGICK_VRN}
-  _mrun "${_T_PHP_PTH}/phpize"
-  _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
-  _mrun "make -j $(nproc) --quiet"
-  _mrun "make --quiet install"
-  ldconfig 2> /dev/null
-  if [ ! -e "${_THIS_PHP_EXT_DIR}/imagick.so" ]; then
-    _msg "WARN: Installing Imagick for PHP ${_T_PHP_VRN} failed!"
-  else
-    touch ${_pthLog}/imagick-${_IMAGICK_VRN}-${_T_PHP_VRN}.log
+      if [ -e "/usr/local/bin/MagickWand-config" ]; then
+        mv -f /usr/local/bin/MagickWand-config /var/backups/usr-local-bin-MagickWand-config
+      fi
+    fi
+    if [ ! -e "${_pthLog}/libmagickwand-dev-${_IMAGICK_VRN}-rebuild.log" ]; then
+      _apt_clean_update
+      for _PKG in libmagickwand-dev; do
+        if ! _pkg_installed "${_PKG}"; then
+          _mrun "${_INSTAPP} ${_PKG}"
+        fi
+      done
+      touch ${_pthLog}/libmagickwand-dev-${_IMAGICK_VRN}-rebuild.log
+    fi
+    cd /var/opt
+    rm -rf imagick*
+    _get_dev_src "imagick-${_IMAGICK_VRN}.tgz"
+    cd /var/opt/imagick-${_IMAGICK_VRN}
+    _mrun "${_T_PHP_PTH}/phpize"
+    _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
+    _mrun "make -j $(nproc) --quiet"
+    _mrun "make --quiet install"
+    ldconfig 2> /dev/null
+    if [ ! -e "${_THIS_PHP_EXT_DIR}/imagick.so" ]; then
+      _msg "WARN: Installing Imagick for PHP ${_T_PHP_VRN} failed!"
+    else
+      touch ${_pthLog}/imagick-${_IMAGICK_VRN}-${_T_PHP_VRN}.log
+    fi
   fi
   ###--------------------###
   if [ "$1" = "56" ]; then
@@ -1471,41 +1473,43 @@ _php_extensions_update() {
     fi
   fi
   ###--------------------###
-  if [ ! -e "${_THIS_PHP_EXT_DIR}/imagick.so" ] \
-    || [ ! -e "${_pthLog}/imagick-${_IMAGICK_VRN}-${_T_PHP_VRN}.log" ]; then
-    _msg "INFO: Installing Imagick ${_IMAGICK_VRN} upgrade for PHP ${_T_PHP_VRN}..."
-    if [ "${_OS_CODE}" = "excalibur" ] \
-      || [ "${_OS_CODE}" = "daedalus" ] \
-      || [ "${_OS_CODE}" = "chimaera" ]; then
-      if [ -e "/usr/bin/MagickWand-config" ]; then
-        mv -f /usr/bin/MagickWand-config /var/backups/usr-bin-MagickWand-config
-      fi
-      if [ -e "/usr/local/bin/MagickWand-config" ]; then
-        mv -f /usr/local/bin/MagickWand-config /var/backups/usr-local-bin-MagickWand-config
-      fi
-    fi
-    if [ ! -e "${_pthLog}/libmagickwand-dev-${_IMAGICK_VRN}-rebuild.log" ]; then
-      _apt_clean_update
-      for _PKG in libmagickwand-dev; do
-        if ! _pkg_installed "${_PKG}"; then
-          _mrun "${_INSTAPP} ${_PKG}"
+  if [ "$1" != "85" ]; then
+    if [ ! -e "${_THIS_PHP_EXT_DIR}/imagick.so" ] \
+      || [ ! -e "${_pthLog}/imagick-${_IMAGICK_VRN}-${_T_PHP_VRN}.log" ]; then
+      _msg "INFO: Installing Imagick ${_IMAGICK_VRN} upgrade for PHP ${_T_PHP_VRN}..."
+      if [ "${_OS_CODE}" = "excalibur" ] \
+        || [ "${_OS_CODE}" = "daedalus" ] \
+        || [ "${_OS_CODE}" = "chimaera" ]; then
+        if [ -e "/usr/bin/MagickWand-config" ]; then
+          mv -f /usr/bin/MagickWand-config /var/backups/usr-bin-MagickWand-config
         fi
-      done
-      touch ${_pthLog}/libmagickwand-dev-${_IMAGICK_VRN}-rebuild.log
-    fi
-    cd /var/opt
-    rm -rf imagick*
-    _get_dev_src "imagick-${_IMAGICK_VRN}.tgz"
-    cd /var/opt/imagick-${_IMAGICK_VRN}
-    _mrun "${_T_PHP_PTH}/phpize"
-    _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
-    _mrun "make -j $(nproc) --quiet"
-    _mrun "make --quiet install"
-    ldconfig 2> /dev/null
-    if [ ! -e "${_THIS_PHP_EXT_DIR}/imagick.so" ]; then
-      _msg "WARN: Installing Imagick for PHP ${_T_PHP_VRN} failed!"
-    else
-      touch ${_pthLog}/imagick-${_IMAGICK_VRN}-${_T_PHP_VRN}.log
+        if [ -e "/usr/local/bin/MagickWand-config" ]; then
+          mv -f /usr/local/bin/MagickWand-config /var/backups/usr-local-bin-MagickWand-config
+        fi
+      fi
+      if [ ! -e "${_pthLog}/libmagickwand-dev-${_IMAGICK_VRN}-rebuild.log" ]; then
+        _apt_clean_update
+        for _PKG in libmagickwand-dev; do
+          if ! _pkg_installed "${_PKG}"; then
+            _mrun "${_INSTAPP} ${_PKG}"
+          fi
+        done
+        touch ${_pthLog}/libmagickwand-dev-${_IMAGICK_VRN}-rebuild.log
+      fi
+      cd /var/opt
+      rm -rf imagick*
+      _get_dev_src "imagick-${_IMAGICK_VRN}.tgz"
+      cd /var/opt/imagick-${_IMAGICK_VRN}
+      _mrun "${_T_PHP_PTH}/phpize"
+      _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
+      _mrun "make -j $(nproc) --quiet"
+      _mrun "make --quiet install"
+      ldconfig 2> /dev/null
+      if [ ! -e "${_THIS_PHP_EXT_DIR}/imagick.so" ]; then
+        _msg "WARN: Installing Imagick for PHP ${_T_PHP_VRN} failed!"
+      else
+        touch ${_pthLog}/imagick-${_IMAGICK_VRN}-${_T_PHP_VRN}.log
+      fi
     fi
   fi
   ###--------------------###
