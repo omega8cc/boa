@@ -801,13 +801,13 @@ _install_php_extensions() {
     _USE_PHPREDIS="${_PHPREDIS_FIVE_VRN}"
     _PHPREDIS_BUILD="--enable-redis-igbinary --enable-redis-lzf"
   elif [ "$1" = "72" ] || [ "$1" = "73" ]; then
-    _USE_PHPREDIS="${_PHPREDIS_SIX_VRN}"
+    _USE_PHPREDIS="${_PHPREDIS_SIX_LEGACY_VRN}"
     _PHPREDIS_BUILD="--enable-redis-igbinary --enable-redis-lzf"
   elif [ "$1" = "85" ]; then
     _USE_PHPREDIS="${_PHPREDIS_SIX_LATEST_VRN}"
     _PHPREDIS_BUILD="--enable-redis-igbinary --enable-redis-lzf"
   else
-    _USE_PHPREDIS="${_PHPREDIS_SIX_NEW_VRN}"
+    _USE_PHPREDIS="${_PHPREDIS_SIX_MODERN_VRN}"
     _PHPREDIS_BUILD="--enable-redis-igbinary --enable-redis-lzf"
   fi
   _msg "INFO: Installing PhpRedis ${_USE_PHPREDIS} for PHP ${_T_PHP_VRN}..."
@@ -1209,13 +1209,13 @@ _php_extensions_update() {
     _USE_PHPREDIS="${_PHPREDIS_FIVE_VRN}"
     _PHPREDIS_BUILD="--enable-redis-igbinary --enable-redis-lzf"
   elif [ "$1" = "72" ] || [ "$1" = "73" ]; then
-    _USE_PHPREDIS="${_PHPREDIS_SIX_VRN}"
+    _USE_PHPREDIS="${_PHPREDIS_SIX_LEGACY_VRN}"
     _PHPREDIS_BUILD="--enable-redis-igbinary --enable-redis-lzf"
   elif [ "$1" = "85" ]; then
     _USE_PHPREDIS="${_PHPREDIS_SIX_LATEST_VRN}"
     _PHPREDIS_BUILD="--enable-redis-igbinary --enable-redis-lzf"
   else
-    _USE_PHPREDIS="${_PHPREDIS_SIX_NEW_VRN}"
+    _USE_PHPREDIS="${_PHPREDIS_SIX_MODERN_VRN}"
     _PHPREDIS_BUILD="--enable-redis-igbinary --enable-redis-lzf"
   fi
   if [ ! -e "${_THIS_PHP_EXT_DIR}/redis.so" ] \
