@@ -3782,19 +3782,7 @@ _sources_list_update() {
   apt-get clean -qq 2> /dev/null
   #rm -rf /var/lib/apt/lists/*
   ###--------------------###
-  if [ -e "${_pthLog}/apt-deb-src-updates-${_xSrl}.txt" ] \
-    || [ -e "/var/log/apt-deb-src-updates-${_xSrl}.txt" ]; then
-    _APT_SOURCES_REWRITE=NO
-    if [ ! -z "${_LOCAL_DEVUAN_MIRROR}" ]; then
-      _APT_SOURCES_REWRITE=YES
-    fi
-    if [ ! -z "${_LOCAL_DEBIAN_MIRROR}" ]; then
-      _APT_SOURCES_REWRITE=YES
-    fi
-  else
-    _APT_SOURCES_REWRITE=YES
-  fi
-  if [ "${_APT_SOURCES_REWRITE}" = "YES" ]; then
+  if [ -e "${_aptLiSys}" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: Updating packages sources list..."
     fi
