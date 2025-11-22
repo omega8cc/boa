@@ -7254,6 +7254,7 @@ _if_major_os_upgrade() {
         for _PKG in libldap-common libldap2-dev; do
           if ! _pkg_installed "${_PKG}"; then
             _mrun "apt-get install -t ${_useFast} ${_PKG} ${_aptYesUnth}"
+            _mrun "apt-get install -t ${_useFast}-security ${_PKG} ${_aptYesUnth}"
           fi
         done
         ###
@@ -7719,6 +7720,7 @@ _sys_packages_install() {
               _msg "TRCK: Installing now openjdk-11-jre-headless from ${_useFast}"
             fi
             _mrun "apt-get install -t ${_useFast} openjdk-11-jre-headless ${_aptYesUnth}"
+            _mrun "apt-get install -t ${_useFast}-security openjdk-11-jre-headless ${_aptYesUnth}"
             rm -f /etc/apt/sources.list.d/${_useFast}.list
             rm -f /etc/apt/apt.conf
             _apt_clean_update
@@ -7807,6 +7809,7 @@ _sys_packages_install() {
               _msg "TRCK: Installing now openjdk-11-jre-headless from ${_useFast}"
             fi
             _mrun "apt-get install -t ${_useFast} openjdk-11-jre-headless ${_aptYesUnth}"
+            _mrun "apt-get install -t ${_useFast}-security openjdk-11-jre-headless ${_aptYesUnth}"
             rm -f /etc/apt/sources.list.d/${_useFast}.list
             rm -f /etc/apt/apt.conf
             _apt_clean_update
