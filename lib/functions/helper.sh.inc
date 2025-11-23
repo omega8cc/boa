@@ -1128,15 +1128,12 @@ _barracuda_log_update() {
   _BARRACUDA_VERSION_INFO="$(date) / \
     $(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2).$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2) \
     $(uname -m) ${_VIRT_IS} / \
-    Aegir ${_AEGIR_VERSION} / \
-    Barracuda ${_X_VERSION}${_LOG_GIT_MIRROR} / \
+    ${_X_VERSION}-${_xSrl} / \
     Nginx ${_NGINX_VRN} / \
     PHP-MI ${_PHP_MULTI_INSTALL} / \
-    PHP-SE ${_PHP_SINGLE_INSTALL} / \
     FPM ${_PHP_FPM_VERSION} / \
     CLI ${_PHP_CLI_VERSION} / \
-    ${_DB_SERVER}-${_LOG_DB_V} \
-    ${_LOG_DB_HOST}"
+    ${_DB_SERVER}-${_LOG_DB_V}"
 
   echo "${_BARRACUDA_VERSION_INFO}" | fmt -su -w 2500 >> /var/log/barracuda_log.txt
   echo "${_BARRACUDA_VERSION_INFO}" | fmt -su -w 2500 >> ${_vBs}/barracuda_log.txt
