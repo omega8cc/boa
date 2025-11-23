@@ -506,7 +506,7 @@ _fix_php_ini_mongo_all() {
 _apply_php_ini_fixes() {
   local e="${1}"
 
-  if [ "${e}" != "56" ]; then
+  if [ "${e}" -gt 56 ]; then
     _fix_php_ini_apcu "${e}"
   fi
 
