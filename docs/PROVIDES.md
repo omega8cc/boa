@@ -2,7 +2,7 @@
 
 **Included/Enabled by Default** (See [docs/NOTES.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/NOTES.md) for details)
 
-1. PHP-FPM versions 8.4/3/2/1/0, 7.4/3/2/1/0, and 5.6, configurable per site.
+1. PHP-FPM versions 8.5/4/3/2/1/0, 7.4/3/2/1/0, and 5.6, configurable per site.
 2. Latest release of Percona 5.7, 8.0 or 8.4 database server with Adminer manager.
 2. Latest release of MySQL 8.4 database server on Devuan Excalibur.
 3. All libraries and tools required to install and run the Nginx-based Ægir system.

@@ -129,7 +129,10 @@ _DISTRO_ROOT="${_ROOT}/distro/${_DISTRO}"
 _PREV_HM_ROOT="${_ROOT}/aegir/distro/${_LAST_HMR}"
 _D="/data/all"
 _SRCDIR="/opt/tmp/files"
-if [ "${_PHP_CLI_VERSION}" = "8.4" ] \
+if [ "${_PHP_CLI_VERSION}" = "8.5" ] \
+  && [ -x "/opt/php85/bin/php" ]; then
+  _T_CLI=/opt/php85/bin
+elif [ "${_PHP_CLI_VERSION}" = "8.4" ] \
   && [ -x "/opt/php84/bin/php" ]; then
   _T_CLI=/opt/php84/bin
 elif [ "${_PHP_CLI_VERSION}" = "8.3" ] \

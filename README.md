@@ -4,7 +4,7 @@ BOA stands for Barracuda, Octopus, and Ægir—a high-performance LEMP stack sup
 
 ## 30 Years of Heritage
 
-We are unique within the hosting industry for many important reasons. Our 15 years of Ægir-based hosting, plus earlier experience with Adgrafix (the first company to offer a control panel for website management in 1995), have helped shape what makes us different today. We take **Open Source seriously** — it’s not a buzzword for us. It’s about freedom from corporate control. Here's a short look back at our 15-year Ægir journey and 19 years with Drupal. [Read the full story!](https://github.com/omega8cc/boa/tree/5.x-dev/DIFFERENT30Y.md)
+We are unique within the hosting industry for many important reasons. Our 15 years of Ægir-based hosting, plus earlier experience with Adgrafix (the first company to offer a control panel for website management in 1995), have helped shape what makes us different today. We take **Open Source seriously** — it’s not a buzzword for us. It’s about freedom from corporate control. Here's a short look back at our 15-year Ægir journey and 19 years with Drupal. [**Read the full story!**](https://github.com/omega8cc/boa/tree/5.x-pro/DIFFERENT30Y.md)
 
 ## What is Ægir?
 
@@ -35,7 +35,7 @@ Octopus is a smart system designed to manage multiple Ægir instances within Bar
 
 **BOA** remains a **Free/Libre Open Source Project**. While all of **BOA** code is **Free/Libre Open Source**, only the **BOA LTS** branch and **Ægir** are available without any cost or restrictions.
 
-Check out the details in [DUALLICENSE.md](https://github.com/omega8cc/boa/tree/5.x-pro/DUALLICENSE.md).
+Check out the details in [**DUALLICENSE.md**](https://github.com/omega8cc/boa/tree/5.x-pro/DUALLICENSE.md).
 
 ## BOA Priorities
 
@@ -55,7 +55,7 @@ Leverage one Ægir Master Instance and multiple Satellite Instances. Use Satelli
 
 ## Bug Reporting
 
-Follow the guidelines in [docs/CONTRIBUTING.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/CONTRIBUTING.md).
+Follow the guidelines in [**docs/CONTRIBUTING.md**](https://github.com/omega8cc/boa/tree/5.x-pro/docs/CONTRIBUTING.md).
 
 ## Requirements
 
@@ -69,7 +69,7 @@ Follow the guidelines in [docs/CONTRIBUTING.md](https://github.com/omega8cc/boa/
 
 ## Provided Services and Features
 
-Check out the details in [docs/PROVIDES.md](https://github.com/omega8cc/boa/tree/5.x-pro/docs/PROVIDES.md).
+Check out the details in [**docs/PROVIDES.md**](https://github.com/omega8cc/boa/tree/5.x-pro/docs/PROVIDES.md).
 
 ## Supported Virtualization Systems
 
@@ -105,7 +105,7 @@ Check out the details in [docs/PROVIDES.md](https://github.com/omega8cc/boa/tree
 
 ## Project Roadmap
 
-Check out the details in [ROADMAP](https://github.com/omega8cc/boa/tree/5.x-pro/ROADMAP.md)
+Check out the details in [**ROADMAP.md**](https://github.com/omega8cc/boa/tree/5.x-pro/ROADMAP.md)
 
 ## Documentation and Templates
 
@@ -153,19 +153,19 @@ Check out the details in [ROADMAP](https://github.com/omega8cc/boa/tree/5.x-pro/
 
 ## Useful Links
 
-- BOA User Handbook (legacy): [Learn BOA](https://learn.omega8.cc/library/good-to-know)
-- Ægir Docs (legacy): [Ægir Project](https://docs.aegirproject.org)
+- BOA User Handbook (legacy): [**Learn BOA**](https://learn.omega8.cc/library/good-to-know)
+- Ægir Docs (legacy): [**Ægir Project**](https://docs.aegirproject.org)
 
 ## Maintainers
 
-BOA is maintained by [Omega8.cc](https://omega8.cc/about).
+BOA is maintained by [**Omega8.cc**](https://omega8.cc/about).
 
 ## Credits
 
-Thanks to the Ægir Project founders and developers. [Ægir Team](https://docs.aegirproject.org/community/core-team/).
+Thanks to the Ægir Project founders and developers. [**Ægir Team**](https://docs.aegirproject.org/community/core-team/).
 
 ## Support
 
-Support BOA development by purchasing a commercial license or using Omega8.cc hosted services. Check out [Omega8.cc](https://omega8.cc/compare) for more info.
+Support BOA development by purchasing a commercial license or using Omega8.cc hosted services. Check out [**Omega8.cc**](https://omega8.cc/compare) for more info.
 
 Thank you for supporting BOA!
