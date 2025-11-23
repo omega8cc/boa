@@ -1209,7 +1209,7 @@ _BOA_REPO_NAME="boa"
 _BOA_REPO_GIT_URL="${_gitHub}"
 
 export _tRee=lts
-export _xSrl=570ltsT09
+export _xSrl=570ltsT11
 
 
 ###
