@@ -109,7 +109,7 @@ _stop_sql() {
   echo "Nginx stopped"
 
   echo "Stopping all PHP-FPM instances now..."
-  _PHP_V="84 83 82 81 80 74 73 72 71 70 56 55 54 53"
+  _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56 55 54 53"
   for e in ${_PHP_V}; do
     if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
       mkdir -p /var/backups/php-logs/${_NOW}/
@@ -133,8 +133,6 @@ _stop_sql() {
     fi
     if [[ "${_DB_SERVER_TEST}" =~ "Ver 8.4." ]]; then
       _DB_V=8.4
-    elif [[ "${_DB_SERVER_TEST}" =~ "Ver 8.3." ]]; then
-      _DB_V=8.3
     elif [[ "${_DB_SERVER_TEST}" =~ "Ver 8.0." ]]; then
       _DB_V=8.0
     elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 5.7." ]]; then

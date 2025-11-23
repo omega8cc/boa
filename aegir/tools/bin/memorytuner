@@ -234,6 +234,7 @@ declare -A _services_pidfiles=(
   ["php82-fpm"]="/run/php82-fpm.pid"
   ["php83-fpm"]="/run/php83-fpm.pid"
   ["php84-fpm"]="/run/php84-fpm.pid"
+  ["php85-fpm"]="/run/php85-fpm.pid"
   ["redis"]="/run/redis/redis.pid"
   ["java"]="/var/solr9/solr-9099.pid"
 )
@@ -246,6 +247,7 @@ declare -A _service_estimated_mem_mb=(
   ["php82-fpm"]=200
   ["php83-fpm"]=200
   ["php84-fpm"]=200
+  ["php85-fpm"]=200
   ["redis"]=200
   ["java"]=100
 )

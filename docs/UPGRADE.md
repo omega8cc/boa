@@ -123,13 +123,11 @@ octopus up-lts all platforms
 
 ## NOTE on Percona SQL Server versions management
 
-You can upgrade Percona from default 5.7 to 8.0, or once you run 8.0 to 8.3 or 8.4 LTS during `barracuda` upgrade with commands like:
+You can upgrade Percona from default 5.7 to 8.0, or once you run 8.0 to 8.4 LTS during `barracuda` upgrade with commands like:
 
 `barracuda up-lts percona-8.0` -- upgrades Percona from 5.7 to 8.0 (production ready)
 
-`barracuda up-lts percona-8.3` -- upgrades Percona from 8.x to 8.3 (experimental, do not use in production)
-
-`barracuda up-lts percona-8.4` -- upgrades Percona from 8.x to 8.4 (experimental, do not use in production)
+`barracuda up-lts percona-8.4` -- upgrades Percona from 8.0 to 8.4 (production ready)
 
 ## NOTE on PHP versions management
 
@@ -143,7 +141,7 @@ You can install or modify PHP versions active on your system during `barracuda` 
 
 `barracuda up-lts php-max` -- installs all supported versions if not installed before
 
-`barracuda up-lts php-min` -- installs PHP 8.4, 8.3, 8.2, 8.1, 7.4, and uses 8.3 by default
+`barracuda up-lts php-min` -- installs PHP 8.5, 8.4, 8.3, 8.2, 8.1, 7.4, and uses 8.3 by default
 
 If you wish to define your own set of installed PHP versions, you can do so by modifying variables in the `/root/.barracuda.cnf` file before running the upgrade, where you can find `_PHP_MULTI_INSTALL`, `_PHP_CLI_VERSION`, and `_PHP_FPM_VERSION` -- note that the `_PHP_SINGLE_INSTALL` variable must be set empty to not override other related variables.
 
