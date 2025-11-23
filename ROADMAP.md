@@ -28,6 +28,7 @@ Certain planned features are likely to be exclusive to **BOA PRO**, as indicated
 
 ## IN PROGRESS
 
+- **PHP 8.5 Support**: Enhancing performance and supporting twelve PHP versions (PRO/LTS)
 - **Backdrop CMS Support**: Implement Backdrop CMS as a supported platform (PRO/LTS)
 - **Grav CMS Support**: Introduce support for Grav CMS (command line only) (PRO/LTS)
 - **Import from Classic Ægir**: Extend xboa to import from remote classic Ægir servers using Nginx or Apache (PRO/LTS)

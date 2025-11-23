@@ -1588,9 +1588,9 @@ if ($valkey_up && $use_valkey && !$custom_cache) {
       $settings['cache_prefix']                  = $this_prefix;
       $settings['cache']['default']              = 'cache.backend.redis';
       if (!is_readable('/data/conf/clstr.cnf')) {
-        $settings['cache']['bins']['bootstrap']  = 'cache.backend.database';
-        $settings['cache']['bins']['discovery']  = 'cache.backend.database';
-        $settings['cache']['bins']['config']     = 'cache.backend.database';
+        $settings['cache']['bins']['bootstrap']  = 'cache.backend.chainedfast';
+        $settings['cache']['bins']['discovery']  = 'cache.backend.chainedfast';
+        $settings['cache']['bins']['config']     = 'cache.backend.chainedfast';
       }
       $settings['container_yamls'][]             = $example_services_path;
       $settings['container_yamls'][]             = $redis_services_path;
