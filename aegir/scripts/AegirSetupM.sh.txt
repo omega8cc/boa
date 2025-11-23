@@ -83,7 +83,10 @@ done
 if [ "${_THIS_DB_HOST}" = "FQDN" ]; then
   _THIS_DB_HOST="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
 fi
-if [ "${_PHP_CLI_VERSION}" = "8.4" ] \
+if [ "${_PHP_CLI_VERSION}" = "8.5" ] \
+  && [ -x "/opt/php85/bin/php" ]; then
+  _T_CLI=/opt/php85/bin
+elif [ "${_PHP_CLI_VERSION}" = "8.4" ] \
   && [ -x "/opt/php84/bin/php" ]; then
   _T_CLI=/opt/php84/bin
 elif [ "${_PHP_CLI_VERSION}" = "8.3" ] \
@@ -125,7 +128,11 @@ _php_cli_drush_update() {
   else
     _DRUSH_FILE="${_ROOT}/drush/drush.php"
   fi
-  if [ "${_PHP_CLI_VERSION}" = "8.4" ] \
+  if [ "${_PHP_CLI_VERSION}" = "8.5" ] \
+    && [ -x "/opt/php85/bin/php" ]; then
+    sed -i "s/^#\!\/.*/#\!\/opt\/php85\/bin\/php/g" \
+      ${_DRUSH_FILE} &> /dev/null
+  elif [ "${_PHP_CLI_VERSION}" = "8.4" ] \
     && [ -x "/opt/php84/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php84\/bin\/php/g" \
       ${_DRUSH_FILE} &> /dev/null
