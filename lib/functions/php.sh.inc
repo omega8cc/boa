@@ -505,7 +505,7 @@ _apply_php_ini_fixes() {
     _fix_php_ini_apcu "${e}"
   fi
 
-  if [ "${e}" != "56" ] && [ "${e}" != "70" ] && [ "${e}" != "71" ]; then
+  if [ "${e}" -gt 71 ]; then
     _fix_php_ini_mcrypt "${e}"
   fi
 
@@ -741,7 +741,7 @@ _install_php_extensions() {
     _msg "PROC: _install_php_extensions $1"
   fi
   ###--------------------###
-  if [ "$1" != "56" ]; then
+  if [ "$1" != 56 ]; then
     _msg "INFO: Installing APCu ${_PHP_APCU} for PHP ${_T_PHP_VRN}..."
     cd /var/opt
     rm -rf apcu*
@@ -831,7 +831,7 @@ _install_php_extensions() {
     touch ${_pthLog}/phpredis-update-${_USE_PHPREDIS}-${_T_PHP_VRN}.log
   fi
   ###--------------------###
-  if [ "$1" != "56" ] && [ "$1" != "70" ] && [ "$1" != "71" ]; then
+  if [ "$1" -gt 71 ]; then
     _msg "INFO: Installing MCRYPT ${_PHP_MCRYPT} for PHP ${_T_PHP_VRN}..."
     cd /var/opt
     rm -rf mcrypt*
@@ -865,15 +865,7 @@ _install_php_extensions() {
     else
       touch ${_pthLog}/f_uploadprogress-${_UPROGRESS_LEGACY_VRN}-${_T_PHP_VRN}.log
     fi
-  elif [ "$1" = "72" ] \
-    || [ "$1" = "73" ] \
-    || [ "$1" = "74" ] \
-    || [ "$1" = "80" ] \
-    || [ "$1" = "81" ] \
-    || [ "$1" = "82" ] \
-    || [ "$1" = "83" ] \
-    || [ "$1" = "84" ] \
-    || [ "$1" = "85" ]; then
+  elif [ "$1" -gt 71 ]; then
     _msg "INFO: Installing UploadProgress ${_UPROGRESS_EIGHT_VRN} for PHP ${_T_PHP_VRN}..."
     cd /var/opt
     rm -rf uploadprogress*
@@ -907,29 +899,31 @@ _install_php_extensions() {
     fi
   fi
   ###--------------------###
-  cd /var/opt
-  rm -rf pecl-jsmin*
-  if [ "$1" = "56" ]; then
-    _msg "INFO: Installing JSMin ${_JSMIN_PHP_LEGACY_VRN} for PHP ${_T_PHP_VRN}..."
-    _get_dev_src "pecl-jsmin-${_JSMIN_PHP_LEGACY_VRN}.tar.gz"
-    cd /var/opt/pecl-jsmin-${_JSMIN_PHP_LEGACY_VRN}
-  else
-    _msg "INFO: Installing JSMin ${_JSMIN_PHP_MODERN_VRN} for PHP ${_T_PHP_VRN}..."
-    _get_dev_src "pecl-jsmin-${_JSMIN_PHP_MODERN_VRN}.tar.gz"
-    cd /var/opt/pecl-jsmin-${_JSMIN_PHP_MODERN_VRN}
-  fi
-  _mrun "${_T_PHP_PTH}/phpize"
-  _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
-  _mrun "make -j $(nproc) --quiet"
-  _mrun "make --quiet install"
-  ldconfig 2> /dev/null
-  if [ ! -e "${_THIS_PHP_EXT_DIR}/jsmin.so" ]; then
-    _msg "WARN: Installing JSMin for PHP ${_T_PHP_VRN} failed!"
-  else
+  if [ "$1" -lt 80 ]; then
+    cd /var/opt
+    rm -rf pecl-jsmin*
     if [ "$1" = "56" ]; then
-      touch ${_pthLog}/php-pecl-jsmin-${_JSMIN_PHP_LEGACY_VRN}-${_T_PHP_VRN}.log
+      _msg "INFO: Installing JSMin ${_JSMIN_PHP_LEGACY_VRN} for PHP ${_T_PHP_VRN}..."
+      _get_dev_src "pecl-jsmin-${_JSMIN_PHP_LEGACY_VRN}.tar.gz"
+      cd /var/opt/pecl-jsmin-${_JSMIN_PHP_LEGACY_VRN}
     else
-      touch ${_pthLog}/php-pecl-jsmin-${_JSMIN_PHP_MODERN_VRN}-${_T_PHP_VRN}.log
+      _msg "INFO: Installing JSMin ${_JSMIN_PHP_MODERN_VRN} for PHP ${_T_PHP_VRN}..."
+      _get_dev_src "pecl-jsmin-${_JSMIN_PHP_MODERN_VRN}.tar.gz"
+      cd /var/opt/pecl-jsmin-${_JSMIN_PHP_MODERN_VRN}
+    fi
+    _mrun "${_T_PHP_PTH}/phpize"
+    _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
+    _mrun "make -j $(nproc) --quiet"
+    _mrun "make --quiet install"
+    ldconfig 2> /dev/null
+    if [ ! -e "${_THIS_PHP_EXT_DIR}/jsmin.so" ]; then
+      _msg "WARN: Installing JSMin for PHP ${_T_PHP_VRN} failed!"
+    else
+      if [ "$1" = "56" ]; then
+        touch ${_pthLog}/php-pecl-jsmin-${_JSMIN_PHP_LEGACY_VRN}-${_T_PHP_VRN}.log
+      else
+        touch ${_pthLog}/php-pecl-jsmin-${_JSMIN_PHP_MODERN_VRN}-${_T_PHP_VRN}.log
+      fi
     fi
   fi
 
@@ -1020,7 +1014,7 @@ _install_php_extensions() {
     fi
   fi
   ###--------------------###
-  if [ "$1" != "85" ]; then
+  if [ "$1" != 85 ]; then
     _msg "INFO: Installing Imagick ${_IMAGICK_VRN} for PHP ${_T_PHP_VRN}..."
     if [ "${_OS_CODE}" = "excalibur" ] \
       || [ "${_OS_CODE}" = "daedalus" ] \
@@ -1145,7 +1139,7 @@ _php_extensions_update() {
     _msg "PROC: _php_extensions_update $1"
   fi
   ###--------------------###
-  if [ "$1" != "56" ]; then
+  if [ "$1" != 56 ]; then
     if [ ! -e "${_THIS_PHP_EXT_DIR}/apcu.so" ] \
       || [ ! -e "${_pthLog}/apcu-${_PHP_APCU}-${_T_PHP_VRN}.log" ]; then
       _msg "INFO: Installing APCu ${_PHP_APCU} upgrade for PHP ${_T_PHP_VRN}..."
@@ -1244,7 +1238,7 @@ _php_extensions_update() {
     fi
   fi
   ###--------------------###
-  if [ "$1" != "56" ] && [ "$1" != "70" ] && [ "$1" != "71" ]; then
+  if [ "$1" -gt 71 ]; then
     if [ ! -e "${_THIS_PHP_EXT_DIR}/mcrypt.so" ] \
       || [ ! -e "${_pthLog}/mcrypt-${_PHP_MCRYPT}-${_T_PHP_VRN}.log" ]; then
       _msg "INFO: Installing MCRYPT ${_PHP_MCRYPT} upgrade for PHP ${_T_PHP_VRN}..."
@@ -1332,42 +1326,44 @@ _php_extensions_update() {
     fi
   fi
   ###--------------------###
-  if [ "$1" = "56" ]; then
-    if [ ! -e "${_THIS_PHP_EXT_DIR}/jsmin.so" ] \
-      || [ ! -e "${_pthLog}/php-pecl-jsmin-${_JSMIN_PHP_LEGACY_VRN}-${_T_PHP_VRN}.log" ]; then
-      _msg "INFO: Installing JSMin ${_JSMIN_PHP_LEGACY_VRN} upgrade for PHP ${_T_PHP_VRN}..."
-      cd /var/opt
-      rm -rf pecl-jsmin*
-      _get_dev_src "pecl-jsmin-${_JSMIN_PHP_LEGACY_VRN}.tar.gz"
-      cd /var/opt/pecl-jsmin-${_JSMIN_PHP_LEGACY_VRN}
-      _mrun "${_T_PHP_PTH}/phpize"
-      _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
-      _mrun "make -j $(nproc) --quiet"
-      _mrun "make --quiet install"
-      ldconfig 2> /dev/null
-      if [ ! -e "${_THIS_PHP_EXT_DIR}/jsmin.so" ]; then
-        _msg "WARN: Installing JSMin for PHP ${_T_PHP_VRN} failed!"
-      else
-        touch ${_pthLog}/php-pecl-jsmin-${_JSMIN_PHP_LEGACY_VRN}-${_T_PHP_VRN}.log
+  if [ "$1" -lt 80 ]; then
+    if [ "$1" = "56" ]; then
+      if [ ! -e "${_THIS_PHP_EXT_DIR}/jsmin.so" ] \
+        || [ ! -e "${_pthLog}/php-pecl-jsmin-${_JSMIN_PHP_LEGACY_VRN}-${_T_PHP_VRN}.log" ]; then
+        _msg "INFO: Installing JSMin ${_JSMIN_PHP_LEGACY_VRN} upgrade for PHP ${_T_PHP_VRN}..."
+        cd /var/opt
+        rm -rf pecl-jsmin*
+        _get_dev_src "pecl-jsmin-${_JSMIN_PHP_LEGACY_VRN}.tar.gz"
+        cd /var/opt/pecl-jsmin-${_JSMIN_PHP_LEGACY_VRN}
+        _mrun "${_T_PHP_PTH}/phpize"
+        _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
+        _mrun "make -j $(nproc) --quiet"
+        _mrun "make --quiet install"
+        ldconfig 2> /dev/null
+        if [ ! -e "${_THIS_PHP_EXT_DIR}/jsmin.so" ]; then
+          _msg "WARN: Installing JSMin for PHP ${_T_PHP_VRN} failed!"
+        else
+          touch ${_pthLog}/php-pecl-jsmin-${_JSMIN_PHP_LEGACY_VRN}-${_T_PHP_VRN}.log
+        fi
       fi
-    fi
-  else
-    if [ ! -e "${_THIS_PHP_EXT_DIR}/jsmin.so" ] \
-      || [ ! -e "${_pthLog}/php-pecl-jsmin-${_JSMIN_PHP_MODERN_VRN}-${_T_PHP_VRN}.log" ]; then
-      _msg "INFO: Installing JSMin ${_JSMIN_PHP_MODERN_VRN} upgrade for PHP ${_T_PHP_VRN}..."
-      cd /var/opt
-      rm -rf pecl-jsmin*
-      _get_dev_src "pecl-jsmin-${_JSMIN_PHP_MODERN_VRN}.tar.gz"
-      cd /var/opt/pecl-jsmin-${_JSMIN_PHP_MODERN_VRN}
-      _mrun "${_T_PHP_PTH}/phpize"
-      _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
-      _mrun "make -j $(nproc) --quiet"
-      _mrun "make --quiet install"
-      ldconfig 2> /dev/null
-      if [ ! -e "${_THIS_PHP_EXT_DIR}/jsmin.so" ]; then
-        _msg "WARN: Installing JSMin for PHP ${_T_PHP_VRN} failed!"
-      else
-        touch ${_pthLog}/php-pecl-jsmin-${_JSMIN_PHP_MODERN_VRN}-${_T_PHP_VRN}.log
+    else
+      if [ ! -e "${_THIS_PHP_EXT_DIR}/jsmin.so" ] \
+        || [ ! -e "${_pthLog}/php-pecl-jsmin-${_JSMIN_PHP_MODERN_VRN}-${_T_PHP_VRN}.log" ]; then
+        _msg "INFO: Installing JSMin ${_JSMIN_PHP_MODERN_VRN} upgrade for PHP ${_T_PHP_VRN}..."
+        cd /var/opt
+        rm -rf pecl-jsmin*
+        _get_dev_src "pecl-jsmin-${_JSMIN_PHP_MODERN_VRN}.tar.gz"
+        cd /var/opt/pecl-jsmin-${_JSMIN_PHP_MODERN_VRN}
+        _mrun "${_T_PHP_PTH}/phpize"
+        _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
+        _mrun "make -j $(nproc) --quiet"
+        _mrun "make --quiet install"
+        ldconfig 2> /dev/null
+        if [ ! -e "${_THIS_PHP_EXT_DIR}/jsmin.so" ]; then
+          _msg "WARN: Installing JSMin for PHP ${_T_PHP_VRN} failed!"
+        else
+          touch ${_pthLog}/php-pecl-jsmin-${_JSMIN_PHP_MODERN_VRN}-${_T_PHP_VRN}.log
+        fi
       fi
     fi
   fi
@@ -1446,7 +1442,7 @@ _php_extensions_update() {
       fi
     fi
   fi
-  if [ "$1" != "56" ] \
+  if [ "$1" != 56 ] \
     && [ ! -e "${_pthLog}/php-mongodb-${_MONGODB_VRN}-${_T_PHP_VRN}.log" ]; then
     if [ "${_PHP_MONGODB}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "MNG" ]]; then
       _msg "INFO: Installing MongoDB ${_MONGO_VRN} PHP driver upgrade for PHP ${_T_PHP_VRN}..."
@@ -1467,7 +1463,7 @@ _php_extensions_update() {
     fi
   fi
   ###--------------------###
-  if [ "$1" != "85" ]; then
+  if [ "$1" != 85 ]; then
     if [ ! -e "${_THIS_PHP_EXT_DIR}/imagick.so" ] \
       || [ ! -e "${_pthLog}/imagick-${_IMAGICK_VRN}-${_T_PHP_VRN}.log" ]; then
       _msg "INFO: Installing Imagick ${_IMAGICK_VRN} upgrade for PHP ${_T_PHP_VRN}..."
@@ -1754,7 +1750,7 @@ _install_php_multi() {
   if [ "${_OS_CODE}" != "jessie" ]; then
     _NEW_SNFR="${_NEW_SNFR} --with-sodium"
   fi
-  if [ "$1" = "74" ] || [ "$1" = "80" ] || [ "$1" = "81" ] || [ "$1" = "82" ] || [ "$1" = "83" ] || [ "$1" = "84" ] || [ "$1" = "85" ]; then
+  if [ "$1" -gt 73 ]; then
     _PHP_EXTRA=$(echo "${_PHP_EXTRA}" | sed "s/--with-freetype-dir=\/usr//g" 2>&1)
     _PHP_EXTRA="${_PHP_EXTRA} ${_NEW_SNFR}"
   elif [ "$1" = "73" ]; then
@@ -1776,7 +1772,7 @@ _install_php_multi() {
       fi
     fi
   fi
-  if [ "$1" = "81" ] || [ "$1" = "82" ] || [ "$1" = "83" ] || [ "$1" = "84" ] || [ "$1" = "85" ]; then
+  if [ "$1" -gt 80 ]; then
     _PHP_EXTRA="${_PHP_EXTRA} --with-avif"
   fi
   if [ "${_OS_CODE}" = "excalibur" ] \
@@ -1786,7 +1782,7 @@ _install_php_multi() {
     || [ "${_OS_CODE}" = "bookworm" ] \
     || [ "${_OS_CODE}" = "bullseye" ] \
     || [ "${_OS_CODE}" = "buster" ]; then
-    if [ "$1" = "56" ] || [ "$1" = "70" ] || [ "$1" = "71" ] || [ "$1" = "72" ] || [ "$1" = "73" ]; then
+    if [ "$1" -lt 74 ]; then
       _patchFile="freetype.patch"
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         patch -p1 < ${_bldPth}/aegir/patches/${_patchFile}
@@ -1794,7 +1790,7 @@ _install_php_multi() {
         patch -p1 < ${_bldPth}/aegir/patches/${_patchFile} &> /dev/null
       fi
     fi
-    if [ "$1" != "81" ] && [ "$1" != "82" ] && [ "$1" != "83" ] && [ "$1" != "84" ] && [ "$1" != "85" ]; then
+    if [ "$1" -lt 81 ]; then
       _patchFile="php-8.1-openssl3.patch"
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         patch -p1 < ${_bldPth}/aegir/patches/${_patchFile}
@@ -1805,7 +1801,7 @@ _install_php_multi() {
   fi
   if [ "${_OS_CODE}" != "jessie" ] \
     && [ "${_OS_CODE}" != "excalibur" ] \
-    && [ "$1" != "85" ] \
+    && [ "$1" != 85 ] \
     && [ ! -e "/root/.rebuild_src_on_auto_before_reboot.info" ] \
     && [ ! -e "/root/.skip-aegir-master-upgrade.cnf" ]; then
     _PHP_EXTRA="${_PHP_EXTRA} \
@@ -1813,7 +1809,7 @@ _install_php_multi() {
                 --with-imap-ssl \
                 --with-kerberos"
   fi
-  if [ "$1" != "85" ]; then
+  if [ "$1" != 85 ]; then
     _PHP_EXTRA="${_PHP_EXTRA} --with-pear --enable-opcache"
   fi
   if [ ! -z "${_PHP_EXTRA}" ]; then
