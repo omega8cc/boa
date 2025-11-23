@@ -512,7 +512,7 @@ _apply_php_ini_fixes() {
     _fix_php_ini_mcrypt "${e}"
   fi
 
-  if [ "${e}" = "56" ]; then
+  if [ "${e}" = 56 ]; then
     _fix_php_ini_mailparse "${e}"
     _fix_php_ini_twig "${e}"
   fi
@@ -2920,29 +2920,29 @@ _php_upgrade_all() {
   fi
   for e in ${_PHP_V}; do
     if [ -x "/opt/php${e}/bin/php" ]; then
-      if [ "${e}" = "56" ]; then
+      if [ "${e}" = 56 ]; then
         _PHP_VERSION="${_PHP56_VRN}"
-      elif [ "${e}" = "70" ]; then
+      elif [ "${e}" = 70 ]; then
         _PHP_VERSION="${_PHP70_VRN}"
-      elif [ "${e}" = "71" ]; then
+      elif [ "${e}" = 71 ]; then
         _PHP_VERSION="${_PHP71_VRN}"
-      elif [ "${e}" = "72" ]; then
+      elif [ "${e}" = 72 ]; then
         _PHP_VERSION="${_PHP72_VRN}"
-      elif [ "${e}" = "73" ]; then
+      elif [ "${e}" = 73 ]; then
         _PHP_VERSION="${_PHP73_VRN}"
-      elif [ "${e}" = "74" ]; then
+      elif [ "${e}" = 74 ]; then
         _PHP_VERSION="${_PHP74_VRN}"
-      elif [ "${e}" = "80" ]; then
+      elif [ "${e}" = 80 ]; then
         _PHP_VERSION="${_PHP80_VRN}"
-      elif [ "${e}" = "81" ]; then
+      elif [ "${e}" = 81 ]; then
         _PHP_VERSION="${_PHP81_VRN}"
-      elif [ "${e}" = "82" ]; then
+      elif [ "${e}" = 82 ]; then
         _PHP_VERSION="${_PHP82_VRN}"
-      elif [ "${e}" = "83" ]; then
+      elif [ "${e}" = 83 ]; then
         _PHP_VERSION="${_PHP83_VRN}"
-      elif [ "${e}" = "84" ]; then
+      elif [ "${e}" = 84 ]; then
         _PHP_VERSION="${_PHP84_VRN}"
-      elif [ "${e}" = "85" ]; then
+      elif [ "${e}" = 85 ]; then
         _PHP_VERSION="${_PHP85_VRN}"
       fi
       _PHP_BIN_BROKEN=NO

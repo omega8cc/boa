@@ -1403,17 +1403,17 @@ _site_socket_inc_gen() {
     _phpFnd=NO
     for e in ${_PHP_V}; do
       if [ -x "/opt/php${e}/bin/php" ] && [ "${_phpFnd}" = "NO" ]; then
-        if [ "${e}" = "85" ]; then
+        if [ "${e}" = 85 ]; then
           _phpDot=8.5
-        elif [ "${e}" = "84" ]; then
+        elif [ "${e}" = 84 ]; then
           _phpDot=8.4
-        elif [ "${e}" = "83" ]; then
+        elif [ "${e}" = 83 ]; then
           _phpDot=8.3
-        elif [ "${e}" = "82" ]; then
+        elif [ "${e}" = 82 ]; then
           _phpDot=8.2
-        elif [ "${e}" = "81" ]; then
+        elif [ "${e}" = 81 ]; then
           _phpDot=8.1
-        elif [ "${e}" = "74" ]; then
+        elif [ "${e}" = 74 ]; then
           _phpDot=7.4
         fi
         echo "place.holder.dont.remove ${_phpDot}" >> ${_mltFpm}
