@@ -304,6 +304,7 @@ _fix_php_ini_opcache_all() {
   for e in ${_PHP_V}; do
     _P_API=
     case "${e}" in
+      85) _P_API="${_PHP85_API}" ;;
       84) _P_API="${_PHP84_API}" ;;
       83) _P_API="${_PHP83_API}" ;;
       82) _P_API="${_PHP82_API}" ;;
@@ -358,6 +359,7 @@ _fix_php_ini_tet_all() {
     for e in ${_PHP_V}; do
       _P_API=
       case "${e}" in
+        85) _P_API="${_PHP85_API}" ;;
         84) _P_API="${_PHP84_API}" ;;
         83) _P_API="${_PHP83_API}" ;;
         82) _P_API="${_PHP82_API}" ;;
@@ -375,7 +377,8 @@ _fix_php_ini_tet_all() {
       _TET_BASE="/opt/php${e}/lib/php/extensions/no-debug-non-zts"
       _TET_SO="${_TET_BASE}-${_P_API}/php_tet.so"
       if [ ! -e "${_TET_SO}" ]; then
-        if [[ "${e}" =~ "84" ]] \
+        if [[ "${e}" =~ "85" ]] \
+          || [[ "${e}" =~ "84" ]] \
           || [[ "${e}" =~ "83" ]] \
           || [[ "${e}" =~ "82" ]] \
           || [[ "${e}" =~ "81" ]] \
