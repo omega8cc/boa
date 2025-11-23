@@ -376,7 +376,7 @@ _up_mode() {
 _satellite_check_strict_php_cli() {
   _PHP_CLI=$(grep "/opt/php" ${_usEr}/tools/drush/drush.php 2>&1)
   if [ "${_OS_CODE}" != "stretch" ] && [ "${_OS_CODE}" != "jessie" ]; then
-    if [[ ! "${_PHP_CLI}" =~ php8[1-4] ]] && [[ ! "${_PHP_CLI}" =~ php74 ]]; then
+    if [[ ! "${_PHP_CLI}" =~ php8[1-5] ]] && [[ ! "${_PHP_CLI}" =~ php74 ]]; then
       echo
       echo "NOTE: This Aegir version requires at least PHP 7.4 during upgrade."
       echo "NOTE: It will be reconfigured on the fly now, but you can change it"
