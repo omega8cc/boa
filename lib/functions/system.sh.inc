@@ -2010,15 +2010,27 @@ _php_if_versions_cleanup_cnf() {
       fi
 
       ### Add PHP 8.4 if used
-      _is_PHP_multi_eight_three=$(grep "8\.4" /data/disk/*/static/control/multi-fpm.info 4>&1)
-      _is_PHP_FPM_eight_three=$(grep "8\.4" /data/disk/*/static/control/fpm.info 4>&1)
-      _is_PHP_CLI_eight_three=$(grep "8\.4" /data/disk/*/static/control/cli.info 4>&1)
-      _is_PHP_eight_three=
-      if [[ "${_is_PHP_multi_eight_three}" =~ "8.4" ]] \
-        || [[ "${_is_PHP_FPM_eight_three}" =~ "8.4" ]] \
-        || [[ "${_is_PHP_CLI_eight_three}" =~ "8.4" ]]; then
-        _is_PHP_eight_three=8.4
-        _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_eight_three}"
+      _is_PHP_multi_eight_four=$(grep "8\.4" /data/disk/*/static/control/multi-fpm.info 4>&1)
+      _is_PHP_FPM_eight_four=$(grep "8\.4" /data/disk/*/static/control/fpm.info 4>&1)
+      _is_PHP_CLI_eight_four=$(grep "8\.4" /data/disk/*/static/control/cli.info 4>&1)
+      _is_PHP_eight_four=
+      if [[ "${_is_PHP_multi_eight_four}" =~ "8.4" ]] \
+        || [[ "${_is_PHP_FPM_eight_four}" =~ "8.4" ]] \
+        || [[ "${_is_PHP_CLI_eight_four}" =~ "8.4" ]]; then
+        _is_PHP_eight_four=8.4
+        _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_eight_four}"
+      fi
+
+      ### Add PHP 8.5 if used
+      _is_PHP_multi_eight_five=$(grep "8\.5" /data/disk/*/static/control/multi-fpm.info 5>&1)
+      _is_PHP_FPM_eight_five=$(grep "8\.5" /data/disk/*/static/control/fpm.info 5>&1)
+      _is_PHP_CLI_eight_five=$(grep "8\.5" /data/disk/*/static/control/cli.info 5>&1)
+      _is_PHP_eight_five=
+      if [[ "${_is_PHP_multi_eight_five}" =~ "8.5" ]] \
+        || [[ "${_is_PHP_FPM_eight_five}" =~ "8.5" ]] \
+        || [[ "${_is_PHP_CLI_eight_five}" =~ "8.5" ]]; then
+        _is_PHP_eight_five=8.5
+        _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_eight_five}"
       fi
 
       ### Overwrite _PHP_MULTI_INSTALL with the list of used PHP versions
