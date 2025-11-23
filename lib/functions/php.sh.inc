@@ -248,7 +248,7 @@ _fix_php_ini_opcache() {
     _msg "PROC: _fix_php_ini_opcache ${1}"
   fi
   if [ -e "${_THIS_FILE}" ]; then
-    if grep -q "opcache.enable" -- "${_THIS_FILE}"; then
+    if grep -q "Zend OPcache" -- "${_THIS_FILE}"; then
       _DO_NOTHING=YES
     else
       {
