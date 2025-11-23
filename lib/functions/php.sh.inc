@@ -528,11 +528,11 @@ _apply_php_ini_fixes() {
       ;;
   esac
 
-  case "${e}" in
-    84|85)
-      _remove_php_ini_mcrypt "${e}"
-      ;;
-  esac
+#   case "${e}" in
+#     84|85)
+#       _remove_php_ini_mcrypt "${e}"
+#       ;;
+#   esac
 
   _fix_php_ini_igbinary "${e}"
   _fix_php_ini_redis "${e}"
