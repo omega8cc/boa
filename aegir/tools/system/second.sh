@@ -134,7 +134,7 @@ _hold_services() {
   touch /run/boa_second_auto_healing.pid
   sleep 3
   service nginx stop
-  _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
+  _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
       service php${e}-fpm force-quit

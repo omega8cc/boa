@@ -263,6 +263,7 @@ _load_eval() {
 # Web Services to pause or enable
 _WEB_SERVICES=(
   "nginx"
+  "php85-fpm"
   "php84-fpm"
   "php83-fpm"
   "php82-fpm"
