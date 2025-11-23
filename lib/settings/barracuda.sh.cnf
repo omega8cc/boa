@@ -75,7 +75,7 @@ _EASY_HOSTNAME="wildcard-enabled-hostname"
 ### which are used to define version to be
 ### used by Master or Satellite Instance.
 ###
-_PHP_MULTI_INSTALL="7.4 8.1 8.2 8.3 8.4"
+_PHP_MULTI_INSTALL="7.4 8.1 8.2 8.3 8.4 8.5"
 
 
 ###----------------------------------------###
@@ -355,7 +355,6 @@ _DB_SERVER=Percona
 ###
 ### 5.7 (Percona)
 ### 8.0 (Percona)
-### 8.3 (Percona)
 ### 8.4 (Percona)
 ### 8.4 (MySQL from Trixie)
 ###

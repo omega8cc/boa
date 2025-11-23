@@ -19,7 +19,7 @@ _find_fast_devuan_mirror() {
   _ffMirr=/opt/local/bin/ffmirror
   if [ -x "${_ffMirr}" ]; then
     _ffList="/var/log/boa/devaun-fast-mirrors-list.txt"
-    _BROKEN_FFLIST=$(grep "merged" ${_ffMirr} 2>&1)
+    _BROKEN_FFLIST=$(grep "merged" ${_ffList} 2>&1)
     if [ ! -e "${_ffList}" ] || [[ ! "${_BROKEN_FFLIST}" =~ "merged" ]]; then
       echo "https://mirrors.dotsrc.org/devuan/merged"  > ${_ffList}
       echo "https://mirror.akardam.net/devuan/merged" >> ${_ffList}
@@ -977,6 +977,7 @@ _tune_memory_limits() {
         else
           _L_NGX_WRKS=${_NGINX_WORKERS}
         fi
+        sed -i "s/64000/128000/g"  /opt/php85/etc/php85.ini &> /dev/null
         sed -i "s/64000/128000/g"  /opt/php84/etc/php84.ini &> /dev/null
         sed -i "s/64000/128000/g"  /opt/php83/etc/php83.ini &> /dev/null
         sed -i "s/64000/128000/g"  /opt/php82/etc/php82.ini &> /dev/null
@@ -1065,7 +1066,7 @@ _tune_memory_limits() {
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ]; then
     sed -i "s/395/${_USE_FPM}/g" /opt/etc/fpm/fpm-pool-commo*.conf &> /dev/null
   fi
-  _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
+  _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     if [ -e "/opt/php${e}/etc/php${e}.ini" ]; then
       sed -i "s/395/${_USE_FPM}/g" /opt/php${e}/etc/php${e}.ini &> /dev/null
@@ -1845,7 +1846,8 @@ _php_if_versions_cleanup_cnf() {
   if [ "${_AUTO_PHP_CLEANUP}" = "YES" ]; then
     ### Make sure that _PHP_SINGLE_INSTALL takes precedence
     if [ ! -z "${_PHP_SINGLE_INSTALL}" ]; then
-      if [ "${_PHP_SINGLE_INSTALL}" = "8.4" ] \
+      if [ "${_PHP_SINGLE_INSTALL}" = "8.5" ] \
+        || [ "${_PHP_SINGLE_INSTALL}" = "8.4" ] \
         || [ "${_PHP_SINGLE_INSTALL}" = "8.3" ] \
         || [ "${_PHP_SINGLE_INSTALL}" = "8.2" ] \
         || [ "${_PHP_SINGLE_INSTALL}" = "8.1" ] \
@@ -2136,8 +2138,8 @@ _barracuda_cnf() {
     _php_multi_uniq
 
     _ffList="/var/log/boa/devaun-fast-mirrors-list.txt"
-    _BROKEN_FF=$(grep "planetcobalt" ${_ffList} 2>&1)
-    if [ ! -e "${_ffList}" ] || [[ ! "${_BROKEN_FF}" =~ "planetcobalt" ]]; then
+    _BROKEN_FF=$(grep "devuan/merged" ${_ffList} 2>&1)
+    if [ ! -e "${_ffList}" ] || [[ ! "${_BROKEN_FF}" =~ "devuan/merged" ]]; then
       _ffDevuan="$(which ffdevuan)"
       if [ -x "${_ffDevuan}" ]; then
         bash ${_ffDevuan} &> /dev/null
@@ -2784,8 +2786,8 @@ _barracuda_cnf() {
     fi
 
     _ffList="/var/log/boa/devaun-fast-mirrors-list.txt"
-    _BROKEN_FF=$(grep "planetcobalt" ${_ffList} 2>&1)
-    if [ ! -e "${_ffList}" ] || [[ ! "${_BROKEN_FF}" =~ "planetcobalt" ]]; then
+    _BROKEN_FF=$(grep "devuan/merged" ${_ffList} 2>&1)
+    if [ ! -e "${_ffList}" ] || [[ ! "${_BROKEN_FF}" =~ "devuan/merged" ]]; then
       _ffDevuan="$(which ffdevuan)"
       if [ -x "${_ffDevuan}" ]; then
         bash ${_ffDevuan} &> /dev/null
@@ -2820,8 +2822,6 @@ _barracuda_cnf() {
         _DBS_VRN="${_PERCONA_5_7_VRN}"
       elif [ "${_DB_SERIES}" = "8.0" ]; then
         _DBS_VRN="${_PERCONA_8_0_VRN}"
-      elif [ "${_DB_SERIES}" = "8.3" ]; then
-        _DBS_VRN="${_PERCONA_8_3_VRN}"
       elif [ "${_DB_SERIES}" = "8.4" ]; then
         _DBS_VRN="${_PERCONA_8_4_VRN}"
       else
@@ -2863,7 +2863,8 @@ _barracuda_cnf() {
 
     ### Make sure that _PHP_SINGLE_INSTALL takes precedence
     if [ ! -z "${_PHP_SINGLE_INSTALL}" ]; then
-      if [ "${_PHP_SINGLE_INSTALL}" = "8.4" ] \
+      if [ "${_PHP_SINGLE_INSTALL}" = "8.5" ] \
+        || [ "${_PHP_SINGLE_INSTALL}" = "8.4" ] \
         || [ "${_PHP_SINGLE_INSTALL}" = "8.3" ] \
         || [ "${_PHP_SINGLE_INSTALL}" = "8.2" ] \
         || [ "${_PHP_SINGLE_INSTALL}" = "8.1" ] \
@@ -3008,7 +3009,7 @@ _run_apt_get_dist_upgrade() {
     _mrun "service redis-server reload"
   fi
   _mrun "service nginx reload"
-  _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
+  _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
       _mrun "service php${e}-fpm reload"
@@ -3781,36 +3782,35 @@ _sources_list_update() {
   apt-get clean -qq 2> /dev/null
   #rm -rf /var/lib/apt/lists/*
   ###--------------------###
-  if [ -e "${_pthLog}/apt-deb-src-updates-${_xSrl}.txt" ] \
-    || [ -e "/var/log/apt-deb-src-updates-${_xSrl}.txt" ]; then
-    _APT_SOURCES_REWRITE=NO
-    if [ ! -z "${_LOCAL_DEVUAN_MIRROR}" ]; then
-      _APT_SOURCES_REWRITE=YES
-    fi
-    if [ ! -z "${_LOCAL_DEBIAN_MIRROR}" ]; then
-      _APT_SOURCES_REWRITE=YES
-    fi
-  else
-    _APT_SOURCES_REWRITE=YES
-  fi
-  if [ "${_APT_SOURCES_REWRITE}" = "YES" ]; then
+  if [ -e "${_aptLiSys}" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: Updating packages sources list..."
     fi
     mv -f ${_aptLiSys} \
       ${_vBs}/sources.list-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
     if [ "${_OS_DIST}" = "Devuan" ]; then
-      if [ "${_OS_CODE}" = "beowulf" ]; then
-        _MIRROR="http://archive.devuan.org/merged"
-      elif [ -n "${_LOCAL_DEVUAN_MIRROR}" ]; then
-        _MIRROR="${_LOCAL_DEVUAN_MIRROR}"
+      _TEST_MIRROR="$(_find_fast_devuan_mirror)"
+      if [ -n "${_LOCAL_DEVUAN_MIRROR}" ] && [ -n "${_TEST_MIRROR}" ]; then
+        if [ "${_LOCAL_DEVUAN_MIRROR}" = "${_TEST_MIRROR}" ]; then
+          export _MIRROR="${_LOCAL_DEVUAN_MIRROR}"
+          export _LOCAL_DEVUAN_MIRROR="${_LOCAL_DEVUAN_MIRROR}"
+        else
+          export _MIRROR="${_TEST_MIRROR}"
+          export _LOCAL_DEVUAN_MIRROR="${_TEST_MIRROR}"
+          sed -i "s|^_LOCAL_DEV.*|_LOCAL_DEVUAN_MIRROR=${_TEST_MIRROR}|" ${_barCnf}
+        fi
       else
         _DVN_MRR="$(_find_fast_devuan_mirror)"
         if [ -n "${_DVN_MRR}" ]; then
-          _MIRROR="${_DVN_MRR}"
+          export _MIRROR="${_DVN_MRR}"
+          export _LOCAL_DEVUAN_MIRROR="${_DVN_MRR}"
+          sed -i "s|^_LOCAL_DEV.*|_LOCAL_DEVUAN_MIRROR=${_MIRROR}|" ${_barCnf}
         else
-          _MIRROR="http://deb.devuan.org/merged"
+          export _MIRROR="http://deb.devuan.org/merged"
         fi
+      fi
+      if [ "${_OS_CODE}" = "beowulf" ]; then
+        export _MIRROR="http://archive.devuan.org/merged"
       fi
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: We will use ${_OS_DIST} mirror ${_MIRROR}"
@@ -5122,6 +5122,7 @@ _switch_to_dash() {
                   /opt/php82/bin \
                   /opt/php83/bin \
                   /opt/php84/bin \
+                  /opt/php85/bin \
                   /sbin \
                   /usr/bin \
                   /usr/lib/ConsoleKit/run-session.d \
@@ -5206,6 +5207,7 @@ _switch_to_bash() {
                   /opt/php82/bin \
                   /opt/php83/bin \
                   /opt/php84/bin \
+                  /opt/php85/bin \
                   /sbin \
                   /usr/bin \
                   /usr/lib/ConsoleKit/run-session.d \
@@ -5275,6 +5277,7 @@ _strict_bin_permissions() {
               /opt/php82/bin \
               /opt/php83/bin \
               /opt/php84/bin \
+              /opt/php85/bin \
               /sbin \
               /usr/bin \
               /usr/local/bin \
@@ -6181,10 +6184,6 @@ _run_aptitude_deps_install() {
     _mrun "${_INSTAPP} ${_SYSLOGD}"
     _EXTRA_APT="tree"
     _mrun "apt-get install ${_EXTRA_APT} ${_nrmUpArg}"
-    if [ -e "/etc/init.d/php5-fpm" ]; then
-      _mrun "service php5-fpm stop"
-      _mrun "update-rc.d -f php5-fpm remove"
-    fi
   fi
 }
 
@@ -6607,7 +6606,7 @@ _if_post_major_os_upgrade() {
       _mrun "service redis-server reload"
     fi
     _mrun "service nginx reload"
-    _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
+    _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
       if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
         _mrun "service php${e}-fpm reload"
@@ -6692,6 +6691,10 @@ _if_post_major_os_upgrade() {
       if [ -x "/opt/php84/bin/php" ]; then
         _PHP_VERSION="${_PHP84_VRN}"
         _install_php_multi "84"
+      fi
+      if [ -x "/opt/php85/bin/php" ]; then
+        _PHP_VERSION="${_PHP85_VRN}"
+        _install_php_multi "85"
       fi
       _PHP_VERSION=""
       _T_PHP_VRN=""
@@ -6892,37 +6895,6 @@ _if_major_os_upgrade() {
       echo "percona-release hold" | dpkg --set-selections &> /dev/null
       _apt_clean_update
     fi
-    ###
-    if [ -e "/etc/php5/conf.d" ]; then
-      touch /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini}
-      touch /etc/php5/conf.d/{redis.ini,suhosin.ini,newrelic.ini}
-    fi
-    ###
-    for _PKG in php5 php5-cgi php5-curl php5-fpm php5-gd php5-geoip php5-gmp php5-imagick php5-imap; do
-      if _pkg_installed "${_PKG}"; then
-        _mrun "apt-get remove ${_PKG} -y --purge --auto-remove -qq"
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "PCKG: ${_PKG} removed as requested."
-        fi
-      fi
-    done
-    for _PKG in php5-ldap php5-mcrypt php5-memcache php5-mysql php5-sqlite php5-xmlrpc php5-xsl; do
-      if _pkg_installed "${_PKG}"; then
-        _mrun "apt-get remove ${_PKG} -y --purge --auto-remove -qq"
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "PCKG: ${_PKG} removed as requested."
-        fi
-      fi
-    done
-    ###
-    for _PKG in phpunit php-pear php-benchmark php5-cli php5-common php5-apc php-apc; do
-      if _pkg_installed "${_PKG}"; then
-        _mrun "apt-get remove ${_PKG} -y --purge --auto-remove -qq"
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "PCKG: ${_PKG} removed as requested."
-        fi
-      fi
-    done
     ###
     if [ "${_LOC_OS_CODE}" = "jessie" ]; then
       _mrun "apt-get remove gnome-tweak-tool -y --purge --auto-remove -qq"
@@ -7282,6 +7254,7 @@ _if_major_os_upgrade() {
         for _PKG in libldap-common libldap2-dev; do
           if ! _pkg_installed "${_PKG}"; then
             _mrun "apt-get install -t ${_useFast} ${_PKG} ${_aptYesUnth}"
+            _mrun "apt-get install -t ${_useFast}-security ${_PKG} ${_aptYesUnth}"
           fi
         done
         ###
@@ -7340,7 +7313,7 @@ _if_major_os_upgrade() {
       _mrun "service redis-server reload"
     fi
     _mrun "service nginx reload"
-    _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
+    _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
       if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
         _mrun "service php${e}-fpm reload"
@@ -7660,29 +7633,6 @@ _sys_packages_update() {
     _mrun "apt-get autoclean -y"
   else
     echo "gnupg-curl install" | dpkg --set-selections &> /dev/null
-    if [ -e "/etc/php5/conf.d" ]; then
-      touch /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini}
-      touch /etc/php5/conf.d/{redis.ini,suhosin.ini,newrelic.ini}
-    fi
-    for _PKG in php5 php5-cgi php5-curl php5-fpm php5-gd php5-geoip php5-gmp php5-imagick php5-imap php5-ldap; do
-      if _pkg_installed "${_PKG}"; then
-        _mrun "${_RMAPP} ${_PKG}"
-      fi
-    done
-    for _PKG in php5-mcrypt php5-memcache php5-mysql php5-sqlite php5-xmlrpc php5-xsl phpunit php-pear; do
-      if _pkg_installed "${_PKG}"; then
-        _mrun "${_RMAPP} ${_PKG}"
-      fi
-    done
-    for _PKG in php-benchmark php5-cli php5-common php5-apc php-apc apache2.2-common apache2.2-bin; do
-      if _pkg_installed "${_PKG}"; then
-        _mrun "${_RMAPP} ${_PKG}"
-      fi
-    done
-    if [ -e "/etc/php5/conf.d" ]; then
-      rm -f /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini}
-      rm -f /etc/php5/conf.d/{redis.ini,suhosin.ini,newrelic.ini}
-    fi
     rm -f /var/lib/mysql/debian-*.flag &> /dev/null
     _UP_JDK=NO
     _UP_LNX=NO
@@ -7703,9 +7653,6 @@ _sys_packages_install() {
     _msg "INFO: Installing required libraries and tools..."
   else
     _msg "INFO: Upgrading required libraries and tools..."
-    if [ ! -e "/etc/init.d/php5-fpm" ]; then
-      cp -af ${_locCnf}/php/php5-fpm-init-vanilla /etc/init.d/php5-fpm
-    fi
   fi
   if [ "${_STATUS}" = "INIT" ]; then
     _if_hosted_sys
@@ -7773,6 +7720,7 @@ _sys_packages_install() {
               _msg "TRCK: Installing now openjdk-11-jre-headless from ${_useFast}"
             fi
             _mrun "apt-get install -t ${_useFast} openjdk-11-jre-headless ${_aptYesUnth}"
+            _mrun "apt-get install -t ${_useFast}-security openjdk-11-jre-headless ${_aptYesUnth}"
             rm -f /etc/apt/sources.list.d/${_useFast}.list
             rm -f /etc/apt/apt.conf
             _apt_clean_update
@@ -7861,6 +7809,7 @@ _sys_packages_install() {
               _msg "TRCK: Installing now openjdk-11-jre-headless from ${_useFast}"
             fi
             _mrun "apt-get install -t ${_useFast} openjdk-11-jre-headless ${_aptYesUnth}"
+            _mrun "apt-get install -t ${_useFast}-security openjdk-11-jre-headless ${_aptYesUnth}"
             rm -f /etc/apt/sources.list.d/${_useFast}.list
             rm -f /etc/apt/apt.conf
             _apt_clean_update
@@ -9463,9 +9412,8 @@ _initd_update() {
         _msg "INFO: Starting Redis, PHP-FPM and Nginx"
         _mrun "service redis-server start"
       fi
-      _mrun "update-rc.d -f php5-fpm remove"
       _mrun "update-rc.d cron defaults"
-      _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
+      _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
           _mrun "update-rc.d php${e}-fpm defaults"
@@ -9551,7 +9499,6 @@ _initd_update() {
       _mrun "service jetty9 start"
     fi
     if [ ! -e "/root/.proxy.cnf" ]; then
-      _mrun "update-rc.d -f php5-fpm remove"
       if [ -e "/etc/init.d/valkey-server" ]; then
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "INFO: Reloading Valkey, PHP-FPM and Nginx..."
@@ -9563,7 +9510,7 @@ _initd_update() {
         fi
         _mrun "service redis-server reload"
       fi
-      _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
+      _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
           _mrun "update-rc.d php${e}-fpm defaults"
@@ -9785,7 +9732,7 @@ _sysctl_update() {
       fi
       _mrun "service nginx restart"
       _mrun "service ssh restart"
-      _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
+      _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
           _mrun "service php${e}-fpm reload"

@@ -693,7 +693,10 @@ _php_cli_cron_update() {
     | tee -a /var/spool/cron/crontabs/aegir >/dev/null 2>&1
   fi
   if [ -e "/var/spool/cron/crontabs/aegir" ]; then
-    if [ "${_PHP_CLI_VERSION}" = "8.4" ] && [ -x "/opt/php84/bin/php" ]; then
+    if [ "${_PHP_CLI_VERSION}" = "8.5" ] && [ -x "/opt/php85/bin/php" ]; then
+      sed -i "s/^PATH=.*/PATH=\/opt\/php85\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
+        /var/spool/cron/crontabs/aegir &> /dev/null
+    elif [ "${_PHP_CLI_VERSION}" = "8.4" ] && [ -x "/opt/php84/bin/php" ]; then
       sed -i "s/^PATH=.*/PATH=\/opt\/php84\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
         /var/spool/cron/crontabs/aegir &> /dev/null
     elif [ "${_PHP_CLI_VERSION}" = "8.3" ] && [ -x "/opt/php83/bin/php" ]; then
@@ -1197,7 +1200,7 @@ _php_cli_local_ini_update() {
   _U_II="${_U_HD}/php.ini"
   _PHP_CLI_UPDATE=NO
   _CHECK_USE_PHP_CLI=$(grep "/opt/php" ${_DRUSH_FILE} 2>&1)
-  _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
+  _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     if [[ "${_CHECK_USE_PHP_CLI}" =~ "php${e}" ]] \
       && [ ! -e "${_U_HD}/.ctrl.php${e}.${_xSrl}.pid" ]; then
@@ -1215,7 +1218,7 @@ _php_cli_local_ini_update() {
     mkdir -p ${_U_HD}
     rm -f ${_U_HD}/.ctrl.php*
     rm -f ${_U_II}
-    _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
+    _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
       if [[ "${_CHECK_USE_PHP_CLI}" =~ "php${e}" ]]; then
         cp -af /opt/php${e}/lib/php.ini ${_U_II}
@@ -1238,6 +1241,7 @@ _php_cli_local_ini_update() {
         /opt/php82:          \
         /opt/php83:          \
         /opt/php84:          \
+        /opt/php85:          \
         /opt/tika:           \
         /opt/tika7:          \
         /opt/tika8:          \

@@ -47,7 +47,9 @@ _download_pkg_by_name() {
   if [ -s "${_base}" ]; then
     return 0
   fi
-  _msg "MSQL: Downloading ${_url}"
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "MSQL: Downloading ${_url}"
+  fi
   _mrun "wget -q ${_url} -O ${_base}"
 }
 
