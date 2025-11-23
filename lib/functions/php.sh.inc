@@ -242,19 +242,21 @@ _fix_php_ini_newrelic_all() {
 }
 
 #
-# Fix FMP php.ini file to add opcache.so
+# Fix FMP php.ini file to add opcache configuration
 _fix_php_ini_opcache() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "PROC: _fix_php_ini_opcache $1"
+    _msg "PROC: _fix_php_ini_opcache ${1}"
   fi
   if [ -e "${_THIS_FILE}" ]; then
-    if grep -q "opcache.so" -- "${_THIS_FILE}"; then
+    if grep -q "opcache.enable" -- "${_THIS_FILE}"; then
       _DO_NOTHING=YES
     else
       {
         echo
         echo "; Zend OPcache"
-        echo "zend_extension=\"${_OPCACHE_SO}\""
+        if [ "${1}" -lt 85 ]; then
+          echo "zend_extension=\"${_OPCACHE_SO}\""
+        fi
         echo "opcache.enable=1"
         echo "opcache.memory_consumption=181"
         echo "opcache.revalidate_freq=60"
@@ -265,7 +267,7 @@ _fix_php_ini_opcache() {
           80|74|73|72|71|70|56)
             echo "opcache.interned_strings_buffer=32"
             ;;
-          81|82|83|84)
+          81|82|83|84|85)
             echo "opcache.interned_strings_buffer=128"
             ;;
           *)
