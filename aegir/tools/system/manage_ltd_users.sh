@@ -1556,7 +1556,7 @@ _switch_php() {
 
       # Define fallback chains for PHP versions
       declare -A fallback=(
-        ["8.5"]="8.4 8.3 8.2"
+        ["8.5"]="8.4 8.3 8.2 8.1"
         ["8.4"]="8.3 8.2 8.1"
         ["8.3"]="8.2 8.1"
         ["8.2"]="8.1 8.3"
@@ -1627,7 +1627,7 @@ _switch_php() {
 
       # Define fallback chains for PHP-FPM versions (same as CLI)
       declare -A fpm_fallback=(
-        ["8.5"]="8.4 8.3 8.2"
+        ["8.5"]="8.4 8.3 8.2 8.1"
         ["8.4"]="8.3 8.2 8.1"
         ["8.3"]="8.2 8.1"
         ["8.2"]="8.1 8.3"
