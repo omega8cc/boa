@@ -4,7 +4,7 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 export _tRee=lts
-export _xSrl=570ltsT09
+export _xSrl=570ltsT11
 
 _DB_SERIES=5.7
 _CSF_VRN=15.00
