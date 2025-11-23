@@ -36,7 +36,7 @@ _CPU_SPIDER_RATIO=2.1 #--------- Max load per CPU core before blocking spiders
 ###
 _CUSTOM_COLLATION_SQL= #-------- By default on the DB server: utf8mb4_unicode_ci
 _DB_BINARY_LOG=NO #------------- Allows to enable binary logging when YES
-_DB_SERIES=5.7 #---------------- Supported values: 5.7 8.0 8.3 8.4
+_DB_SERIES=5.7 #---------------- Supported values: 5.7 8.0 8.4
 _DB_SERVER=Percona #------------ Install Percona or MySQL Server (8.4 from Trixie)
 _SQL_LOW_MAX_TTL=60 #----------- Max TTL for mysql process per problematic user
 _SQL_MAX_TTL=3600 #------------- Max TTL for mysql process per user (seconds)
@@ -77,7 +77,7 @@ _PHP_FPM_WORKERS=AUTO #--------- Allows to override AUTO with a valid integer
 _PHP_GEOS=NO #------------------ Installs GEOS for all PHP versions when YES
 _PHP_IONCUBE=NO #--------------- Installs ionCube for all PHP versions when YES
 _PHP_MONGODB=NO #--------------- Installs MONGODB for all PHP versions when YES
-_PHP_MULTI_INSTALL="8.3 7.4" #-- PHP versions to install 8.4/3/2/1/0 7.4/3/2/1/0 5.6
+_PHP_MULTI_INSTALL="8.3 7.4" #-- PHP versions to install 8.5/4/3/2/1/0 7.4/3/2/1/0 5.6
 _PHP_SINGLE_INSTALL="" #-------- Allows to force single PHP version, like: 8.3
 ###
 _VALKEY_LISTEN_MODE=SOCKET #---- Valkey listen mode: SOCKET (recommended) or PORT

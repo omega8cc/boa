@@ -925,9 +925,6 @@ _os_detection() {
   if [ "${_DB_SERIES}" = "8.4" ]; then
     _DBS_VRN="${_PERCONA_8_4_VRN}"
     _turn_on_password_update
-  elif [ "${_DB_SERIES}" = "8.3" ]; then
-    _DBS_VRN="${_PERCONA_8_3_VRN}"
-    _turn_on_password_update
   elif [ "${_DB_SERIES}" = "8.0" ]; then
     _DBS_VRN="${_PERCONA_8_0_VRN}"
   elif [ "${_DB_SERIES}" = "5.7" ]; then
