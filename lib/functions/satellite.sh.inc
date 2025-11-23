@@ -716,6 +716,8 @@ _satellite_cnf() {
             _PHP_FPM_VERSION=8.3
           elif [ -x "/opt/php82/bin/php" ]; then
             _PHP_FPM_VERSION=8.2
+          elif [ -x "/opt/php81/bin/php" ]; then
+            _PHP_FPM_VERSION=8.1
           fi
         elif [ "${_PHP_FPM_VERSION}" = "8.4" ] \
           && [ ! -x "/opt/php84/bin/php" ]; then
@@ -826,6 +828,8 @@ _satellite_cnf() {
             _PHP_CLI_VERSION=8.3
           elif [ -x "/opt/php82/bin/php" ]; then
             _PHP_CLI_VERSION=8.2
+          elif [ -x "/opt/php81/bin/php" ]; then
+            _PHP_CLI_VERSION=8.1
           fi
         elif [ "${_PHP_CLI_VERSION}" = "8.4" ] \
           && [ ! -x "/opt/php84/bin/php" ]; then
