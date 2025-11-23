@@ -168,11 +168,12 @@ _fix_php_ini_apcu() {
       echo " "                  >> ${_THIS_FILE}
       echo "; APCu"             >> ${_THIS_FILE}
       echo "extension=apcu.so"  >> ${_THIS_FILE}
+      echo "apc.enable_cli=1"   >> ${_THIS_FILE}
       echo "apc.gc_ttl=300"     >> ${_THIS_FILE}
       echo "apc.shm_segments=1" >> ${_THIS_FILE}
-      echo "apc.shm_size=128M"  >> ${_THIS_FILE}
-      echo "apc.slam_defense=1" >> ${_THIS_FILE}
-      echo "apc.ttl=60"         >> ${_THIS_FILE}
+      echo "apc.shm_size=256M"  >> ${_THIS_FILE}
+      echo "apc.slam_defense=0" >> ${_THIS_FILE}
+      echo "apc.ttl=0"          >> ${_THIS_FILE}
       echo ";"                  >> ${_THIS_FILE}
     fi
   fi
