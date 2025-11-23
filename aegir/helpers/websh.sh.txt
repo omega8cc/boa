@@ -409,7 +409,7 @@ check_php_cli_version() {
   fi
   ### echo CHK 1 _PHP_CLI is ${_PHP_CLI}
 
-  _PHP_V="56 70 71 72 73 74 80 81 82 83 84"
+  _PHP_V="56 70 71 72 73 74 80 81 82 83 84 85"
   for e in ${_PHP_V}; do
     if [[ "${_PHP_CLI}" =~ "php${e}" ]] && [ -x "/opt/php${e}/bin/php" ]; then
       DRUSH_PHP="/opt/php${e}/bin/php"
@@ -523,7 +523,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
             _DEST_DRUSH="/usr/bin/drush10"
           fi
           if [[ ! "${HOME}" =~ (^)"/data/disk/" ]]; then
-            _PHP_V="74 80 81 82 83 84"
+            _PHP_V="74 80 81 82 83 84 85"
             for e in ${_PHP_V}; do
               if [ -e "${_DRUSH_CLI_CTRL}/php${e}.info" ] && [ -x "/opt/php${e}/bin/php" ]; then
                 DRUSH_PHP="/opt/php${e}/bin/php"
@@ -556,6 +556,8 @@ if [ "${_LTD_GID}" = "www-data users" ] \
             echo "  ${_DRUSH_CLI_CTRL}/php83.info"
             echo "  or"
             echo "  ${_DRUSH_CLI_CTRL}/php84.info"
+            echo "  or"
+            echo "  ${_DRUSH_CLI_CTRL}/php85.info"
             echo
             echo "  NOTE: If you create more than one,"
             echo "        the highest version wins."
@@ -585,7 +587,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
             ### echo INF 1 _DEST_DRUSH is ${_DEST_DRUSH}
           fi
           if [[ ! "${HOME}" =~ (^)"/data/disk/" ]] && [ "${_IS_JENKINS}" = "FALSE" ]; then
-            _PHP_V="56 70 71 72 73 74 80 81 82 83 84"
+            _PHP_V="56 70 71 72 73 74 80 81 82 83 84 85"
             for e in ${_PHP_V}; do
               if [ -e "${_DRUSH_CLI_CTRL}/php${e}.info" ] && [ -x "/opt/php${e}/bin/php" ]; then
                 DRUSH_PHP="/opt/php${e}/bin/php"
@@ -961,6 +963,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           || [[ "${_ARGS}" =~ "php82 " ]] \
           || [[ "${_ARGS}" =~ "php83 " ]] \
           || [[ "${_ARGS}" =~ "php84 " ]] \
+          || [[ "${_ARGS}" =~ "php85 " ]] \
           || [[ "${_ARGS}" =~ "unzip " ]] \
           || [[ "${_ARGS}" =~ "rename " ]] \
           || [[ "${_ARGS}" =~ "rrdtool " ]] \

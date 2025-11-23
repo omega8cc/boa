@@ -55,6 +55,7 @@ foreach $COMMAND (sort keys %li_cnt) {
   if ($COMMAND =~ /droplet/) {$dpltlives = "YES"; $dpltsumar = $li_cnt{$COMMAND};}
 }
 foreach $X (sort keys %li_cnt) {
+  if ($X =~ /php85/) {$php85lives = "YES";}
   if ($X =~ /php84/) {$php84lives = "YES";}
   if ($X =~ /php83/) {$php83lives = "YES";}
   if ($X =~ /php82/) {$php82lives = "YES";}
@@ -85,6 +86,7 @@ print "\n $collectdsumar Collectd\t\tGLOBAL" if ($collectdlives);
 print "\n $dhclientsumar DHCP procs\t\tGLOBAL" if ($dhclientlives);
 print "\n $dhcpcdsumar DHCP procs\t\tGLOBAL" if ($dhcpcdlives);
 print "\n $fpmsumar FPM procs\t\tGLOBAL" if ($fpmlives);
+print "\n 1 FPM85 procs\t\tGLOBAL" if ($php85lives);
 print "\n 1 FPM84 procs\t\tGLOBAL" if ($php84lives);
 print "\n 1 FPM83 procs\t\tGLOBAL" if ($php83lives);
 print "\n 1 FPM82 procs\t\tGLOBAL" if ($php82lives);
