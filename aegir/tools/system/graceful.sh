@@ -82,6 +82,16 @@ _optimize_ram() {
 _graceful_action() {
   echo "Starting system maintenance tasks..."
 
+  # Update Devuan mirrors daily
+  _ffDevuan="$(which ffdevuan)"
+  _pthLog="/var/log/boa/ffdevuan.update.log"
+  if [ -x "${_ffDevuan}" ]; then
+    bash ${_ffDevuan} >> ${_pthLog}
+    wait
+    echo "Devuan Mirrors Updated on [$(date)]" >> ${_pthLog}
+    echo >> ${_pthLog}
+  fi
+
   # Clean up postfix queue to get rid of bounced emails
   echo "Cleaning up postfix queue..."
   postsuper -d ALL &> /dev/null

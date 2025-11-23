@@ -1875,13 +1875,13 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/move_sql.sh.ctrl.f91.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/move_sql.sh.ctrl.f90.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/move_sql.sh /var/xdrago/move_sql.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/move_sql.sh" -o /var/xdrago/move_sql.sh
     if [ -e "/var/xdrago/move_sql.sh" ]; then
       chmod 700 /var/xdrago/move_sql.sh
       chown root:root /var/xdrago/move_sql.sh
-      touch ${_pthLog}/move_sql.sh.ctrl.f91.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/move_sql.sh.ctrl.f90.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/move_sql.sh.old /var/xdrago/move_sql.sh
     fi
@@ -1982,13 +1982,13 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/graceful.sh.ctrl.f88.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/graceful.sh.ctrl.f87.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/graceful.sh /var/xdrago/graceful.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/graceful.sh" -o /var/xdrago/graceful.sh
     if [ -e "/var/xdrago/graceful.sh" ]; then
       chmod 700 /var/xdrago/graceful.sh
       chown root:root /var/xdrago/graceful.sh
-      touch ${_pthLog}/graceful.sh.ctrl.f88.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/graceful.sh.ctrl.f87.${_tRee}.${_xSrl}.pid
     else
       mv -f /var/xdrago/graceful.sh.old /var/xdrago/graceful.sh
     fi
@@ -2010,14 +2010,14 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/manage_ltd_users.sh.ctrl.f76.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/manage_ltd_users.sh.ctrl.f75.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/manage_ltd_users.sh /var/xdrago/manage_ltd_users.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/manage_ltd_users.sh" \
       -o /var/xdrago/manage_ltd_users.sh
     if [ -e "/var/xdrago/manage_ltd_users.sh" ]; then
       chmod 700 /var/xdrago/manage_ltd_users.sh
       chown root:root /var/xdrago/manage_ltd_users.sh
-      touch ${_pthLog}/manage_ltd_users.sh.ctrl.f76.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/manage_ltd_users.sh.ctrl.f75.${_tRee}.${_xSrl}.pid
       [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
     else
       mv -f /var/xdrago/manage_ltd_users.sh.old /var/xdrago/manage_ltd_users.sh
@@ -2059,7 +2059,7 @@ _update_agents() {
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
     && [ ! -e "${_pthLog}/fast_shutdown.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     sed -i "s/.*opcache.fast_shutdown.*//g" /opt/etc/fpm/fpm-pool-commo*.conf
-    _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
+    _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
       if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
         service "php${e}-fpm" reload &> /dev/null
@@ -2270,7 +2270,7 @@ _update_agents() {
       chmod 644 /etc/ImageMagick-6/policy.xml
       chown root:root /etc/ImageMagick-6/policy.xml
       touch ${_pthLog}/policymap-hf-06.ctrl.${_tRee}.${_xSrl}.pid
-      _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
+      _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
           service "php${e}-fpm" reload &> /dev/null
@@ -2406,7 +2406,7 @@ _update_agents() {
           else
             sed -i "s/args.*q=/args ~* \"foobaroff=/g" ${_ngxCnf}
           fi
-          for _version in 81 82 83 84 74; do
+          for _version in 81 82 83 84 85 74; do
             if [ -x "/opt/php${_version}/bin/php" ]; then
               if [ "${_version}" = "74" ]; then
                 _useCli="7.4"
@@ -3874,6 +3874,15 @@ _fix_hosting_le() {
 }
 
 _fix_newrelic() {
+  _PHP_EXT_DIR_84="/opt/php84/lib/php/extensions/no-debug-non-zts-20240924"
+  _NR_SO="/usr/lib/newrelic-php5/agent/x64/newrelic-20240924.so"
+  if [ -e "${_PHP_EXT_DIR_84}" ] \
+    && [ -e "${_NR_SO}" ] \
+    && [ ! -e "${_PHP_EXT_DIR_84}/newrelic.so" ]; then
+    ln -sfn ${_NR_SO} ${_PHP_EXT_DIR_84}/newrelic.so
+    service php84-fpm reload
+  fi
+
   _PHP_EXT_DIR_74="/opt/php74/lib/php/extensions/no-debug-non-zts-20190902"
   _NR_SO="/usr/lib/newrelic-php5/agent/x64/newrelic-20190902.so"
   if [ -e "${_PHP_EXT_DIR_74}" ] \
@@ -4786,7 +4795,7 @@ _sysctl_update() {
       fi
       service nginx restart &> /dev/null
       service ssh restart &> /dev/null
-      _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
+      _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
           service "php${e}-fpm" reload &> /dev/null
