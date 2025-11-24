@@ -759,8 +759,6 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     fi
 
     if [ -e "/etc/apticron/apticron.conf" ]; then
-      sed -i "s/^# be something like.*/# be something like ${_MY_EMAIL}/g" \
-        /etc/apticron/apticron.conf
       _APTICRON_TEST=$(grep "omega8" /etc/apticron/apticron.conf 2>&1)
       if [[ "${_APTICRON_TEST}" =~ "omega8" ]]; then
         _AUTO_UP=YES

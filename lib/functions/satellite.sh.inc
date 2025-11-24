@@ -3780,7 +3780,7 @@ _satellite_prepare_setup_email_tpl() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "${_STATUS} A: Preparing setupmail.txt"
     fi
-    _AT_CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
+    _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
     _MY_EMAIL=${_MY_EMAIL//\\\@/\@}
     if [ -e "${_ROOT}/log/setupmail.txt" ] \
       || [ -e "${_ROOT}/log/legacy_setupmail.txt" ] \
@@ -3843,7 +3843,7 @@ _satellite_send_welcome_email() {
       if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
         cat ${_ROOT}/log/setupmail.txt \
           | sed "s/[\~]//g" \
-          | s-nail -b ${_MY_EMAIL} -s "${_Q}" ${_AT_CLIENT_EMAIL}
+          | s-nail -b ${_MY_EMAIL} -s "${_Q}" ${_CLIENT_EMAIL}
       fi
     fi
   else
@@ -3858,13 +3858,13 @@ _satellite_send_welcome_email() {
         if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
           cat ${_ROOT}/log/upgrademail.txt \
             | sed "s/[\~]//g" \
-            | s-nail -b ${_MY_EMAIL} -s "${_Q}" ${_AT_CLIENT_EMAIL}
+            | s-nail -b ${_MY_EMAIL} -s "${_Q}" ${_CLIENT_EMAIL}
         fi
       else
         if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
           cat ${_ROOT}/log/setupmail.txt \
             | sed "s/[\~]//g" \
-            | s-nail -b ${_MY_EMAIL} -s "${_Q}" ${_AT_CLIENT_EMAIL}
+            | s-nail -b ${_MY_EMAIL} -s "${_Q}" ${_CLIENT_EMAIL}
         fi
       fi
     else
@@ -4749,9 +4749,6 @@ EOF
       echo " "
     fi
   fi
-
-  ### _MY_EMAIL=${_MY_EMAIL//\@/\\\@}
-  ### _CLIENT_EMAIL=${_CLIENT_EMAIL//\@/\\\@}
 
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "8s before we will continue..."

@@ -2377,7 +2377,7 @@ _barracuda_cnf() {
     fi
     _if_hosted_sys
     if [ "${_hostedSys}" = "YES" ]; then
-      sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"notify\@omega8.cc\"/g" ${_barCnf}
+      sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"notify@omega8.cc\"/g" ${_barCnf}
       wait
     fi
   else
@@ -2780,7 +2780,7 @@ _barracuda_cnf() {
 
     _if_hosted_sys
     if [ "${_hostedSys}" = "YES" ]; then
-      sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"notify\@omega8.cc\"/g" ${_barCnf}
+      sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"notify@omega8.cc\"/g" ${_barCnf}
       wait
     fi
 
