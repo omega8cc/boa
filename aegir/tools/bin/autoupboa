@@ -423,6 +423,7 @@ _if_hosted_sys() {
   if [ -e "/root/.host8.cnf" ] \
     || [[ "${_hName}" =~ ".aegir.cc"($) ]]; then
     _hostedSys=YES
+    [ -e "/root/.auto.up.cnf" ] || touch /root/.auto.up.cnf
   else
     _hostedSys=NO
   fi
