@@ -22,10 +22,24 @@ $logfile="/var/log/boa/last-shell-escape-log";
 `rm -f $logfile`;
 &makeactions;
 if ($status ne "CLEAN") {
+  my $email;
+  if (open my $fh, '<', '/root/.barracuda.cnf') {
+    while (<$fh>) {
+      if (/^\s*_MY_EMAIL\s*=\s*(\S+)/) {
+        $email = $1;
+        last;
+      }
+    }
+    close $fh;
+  }
+  $email =~ s/\\+@/@/g;
   $mailx_test=`s-nail -V 2>&1`;
-  if ($mailx_test =~ /(built for Linux)/i) {
+  if ($email && $mailx_test =~ /(built for Linux)/i) {
     if ($status ne "CLEAN") {
-      `cat $logfile | s-nail -s "Shell Escape Alert [$server] $now_is" notify\@omega8.cc`;
+      system('s-nail',
+        '-s', "Shell Escape Alert [$server] $now_is",
+        $email,
+        '<', $logfile);
     }
   }
 }
