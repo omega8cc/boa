@@ -2978,6 +2978,9 @@ _cleanup_weblogx() {
 
 _incident_email_report() {
   if [ -e "/root/.barracuda.cnf" ]; then
+    _MY_EMAIL=
+    # shellcheck disable=SC1091
+    source /root/.barracuda.cnf
     export _INCIDENT_REPORT=${_INCIDENT_REPORT//[^A-Z]/}
     : "${_INCIDENT_REPORT:=MINI}"
   fi
@@ -3053,25 +3056,55 @@ _daily_action() {
             wait
           fi
 
+          _MY_OCTO_EMAIL=
+          _CLIENT_EMAIL=
+          _MY_EMAIL=
+
           # shellcheck disable=SC1091
           [ -e "/root/.${_HM_U}.octopus.cnf" ] && source /root/.${_HM_U}.octopus.cnf
 
+          [ -n "${_MY_OCTO_EMAIL}" ] && _MY_OCTO_EMAIL=${_MY_OCTO_EMAIL//\\\@/\@}
+          [ -n "${_CLIENT_EMAIL}" ] && _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
+          [ -n "${_MY_EMAIL}" ] && _MY_EMAIL=${_MY_EMAIL//\\\@/\@}
+
+          _MY_OCTO_EMAIL_TEST=$(grep "^_MY_OCTO_EMAIL=" /root/.${_HM_U}.octopus.cnf 2>&1)
+          _MY_EMAIL_TEST=$(grep "^_MY_EMAIL=" /root/.${_HM_U}.octopus.cnf 2>&1)
+
+          if [[ ! "${_MY_OCTO_EMAIL_TEST}" =~ "_MY_OCTO_EMAIL" ]] \
+            && [[ "${_MY_EMAIL_TEST}" =~ "_MY_EMAIL" ]] \
+            && [ -n "${_MY_EMAIL}" ]; then
+            _MY_OCTO_EMAIL="${_MY_EMAIL}"
+            sed -i "s/^_MY_EMAIL=.*/_MY_OCTO_EMAIL=\"${_MY_EMAIL}\"/g" /root/.${_HM_U}.octopus.cnf
+            _MY_EMAIL=
+          fi
+
+          if [ ! -z "${_CLIENT_EMAIL}" ] \
+            && [[ ! "${_CLIENT_EMAIL}" =~ "${_MY_OCTO_EMAIL}" ]]; then
+            _ALRT_EMAIL="${_CLIENT_EMAIL}"
+          else
+            _ALRT_EMAIL="${_MY_OCTO_EMAIL}"
+          fi
+
+          if [ "${_hostedSys}" = "YES" ]; then
+            _BCC_EMAIL="omega8cc@gmail.com"
+          else
+            _BCC_EMAIL="${_MY_OCTO_EMAIL}"
+          fi
+
           _DEL_OLD_EMPTY_PLATFORMS=${_DEL_OLD_EMPTY_PLATFORMS//[^0-9]/}
-          _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
-          _MY_EMAIL=${_MY_EMAIL//\\\@/\@}
+
           if [ -e "${_usEr}/log/email.txt" ]; then
             _F_CLIENT_EMAIL=$(cat ${_usEr}/log/email.txt 2>&1)
             _F_CLIENT_EMAIL=$(echo -n ${_F_CLIENT_EMAIL} | tr -d "\n" 2>&1)
             _F_CLIENT_EMAIL=${_F_CLIENT_EMAIL//\\\@/\@}
           fi
+
           if [ ! -z "${_F_CLIENT_EMAIL}" ]; then
-            _CLIENT_EMAIL_TEST=$(grep "^_CLIENT_EMAIL=\"${_F_CLIENT_EMAIL}\"" \
-              /root/.${_HM_U}.octopus.cnf 2>&1)
+            _CLIENT_EMAIL_TEST=$(grep "^_CLIENT_EMAIL=\"${_F_CLIENT_EMAIL}\"" /root/.${_HM_U}.octopus.cnf 2>&1)
             if [[ "${_CLIENT_EMAIL_TEST}" =~ "${_F_CLIENT_EMAIL}" ]]; then
               _DO_NOTHING=YES
             else
-              sed -i "s/^_CLIENT_EMAIL=.*/_CLIENT_EMAIL=\"${_F_CLIENT_EMAIL}\"/g" \
-                /root/.${_HM_U}.octopus.cnf
+              sed -i "s/^_CLIENT_EMAIL=.*/_CLIENT_EMAIL=\"${_F_CLIENT_EMAIL}\"/g" /root/.${_HM_U}.octopus.cnf
               wait
               _CLIENT_EMAIL=${_F_CLIENT_EMAIL}
             fi
@@ -3293,16 +3326,13 @@ if [ -e "/opt/tmp/barracuda-release.txt" ]; then
   _X_VERSION=$(cat /opt/tmp/barracuda-release.txt 2>&1)
   _VERSIONS_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
   if [ ! -z "${_X_VERSION}" ]; then
-    _MY_EMAIL=${_MY_EMAIL//\\\@/\@}
-    if [[ "${_MY_EMAIL}" =~ "omega8.cc" ]]; then
-      _MY_EMAIL="notify@omega8.cc"
-    fi
+    _MY_OCTO_EMAIL=${_MY_OCTO_EMAIL//\\\@/\@}
     if [[ "${_VERSIONS_TEST}" =~ "${_X_VERSION}" ]]; then
       _VERSIONS_TEST_RESULT=OK
       echo "INFO: Version test result: OK"
     else
       sT="release available, upgrade now!"
-      cat <<EOF | s-nail -s "New ${_X_VERSION} ${sT}" ${_MY_EMAIL}
+      cat <<EOF | s-nail -s "New ${_X_VERSION} ${sT}" ${_MY_OCTO_EMAIL}
 
  There is new ${_X_VERSION} release available!
 

@@ -587,12 +587,12 @@ _satellite_cnf() {
     _debug_proc
   fi
   if [ ! -e "${_octCnf}" ]; then
-    if [[ "${_MY_EMAIL}" =~ "omega8.cc" ]] \
+    if [[ "${_MY_OCTO_EMAIL}" =~ "omega8.cc" ]] \
       || [[ "${_CLIENT_EMAIL}" =~ "omega8.cc" ]]; then
       _if_hosted_sys
       if [ "${_hostedSys}" != "YES" ]; then
         _msg "EXIT: You must enter **your** valid email address"
-        _msg "EXIT: in the _MY_EMAIL **and** _CLIENT_EMAIL variables"
+        _msg "EXIT: in the _MY_OCTO_EMAIL **and** _CLIENT_EMAIL variables"
         _clean_pid_exit
       fi
     fi
@@ -603,7 +603,7 @@ _satellite_cnf() {
     echo "### Octopus version ${_X_VERSION}"                    >> ${_octCnf}
     echo "###"                                                  >> ${_octCnf}
     echo "_USER=\"${_USER}\""                                   >> ${_octCnf}
-    echo "_MY_EMAIL=\"${_MY_EMAIL}\""                           >> ${_octCnf}
+    echo "_MY_OCTO_EMAIL=\"${_MY_OCTO_EMAIL}\""                 >> ${_octCnf}
     echo "_PLATFORMS_LIST=\"${_PLATFORMS_LIST}\""               >> ${_octCnf}
     echo "_AUTOPILOT=${_AUTOPILOT}"                             >> ${_octCnf}
     echo "_HM_ONLY=${_HM_ONLY}"                                 >> ${_octCnf}
@@ -1000,11 +1000,11 @@ _satellite_cnf() {
         _msg "NOTE! Default Platforms List: ${_PLATFORMS_LIST}"
       fi
     fi
-    if [[ "${_MY_EMAIL}" =~ "omega8.cc" ]]; then
+    if [[ "${_MY_OCTO_EMAIL}" =~ "omega8.cc" ]]; then
       _if_hosted_sys
       if [ "${_hostedSys}" != "YES" ]; then
         _msg "EXIT: You must enter **your** valid email address in the"
-        _msg "EXIT: _MY_EMAIL variable in the ${_octCnf} file"
+        _msg "EXIT: _MY_OCTO_EMAIL variable in the ${_octCnf} file"
         _clean_pid_exit
       fi
     fi
@@ -3780,8 +3780,8 @@ _satellite_prepare_setup_email_tpl() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "${_STATUS} A: Preparing setupmail.txt"
     fi
-    _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
-    _MY_EMAIL=${_MY_EMAIL//\\\@/\@}
+    [ -n "${_MY_OCTO_EMAIL}" ] && _MY_OCTO_EMAIL=${_MY_OCTO_EMAIL//\\\@/\@}
+    [ -n "${_CLIENT_EMAIL}" ] && _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
     if [ -e "${_ROOT}/log/setupmail.txt" ] \
       || [ -e "${_ROOT}/log/legacy_setupmail.txt" ] \
       || [ -e "${_ROOT}/log/latest_setupmail.txt" ]; then
@@ -3843,7 +3843,7 @@ _satellite_send_welcome_email() {
       if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
         cat ${_ROOT}/log/setupmail.txt \
           | sed "s/[\~]//g" \
-          | s-nail -b ${_MY_EMAIL} -s "${_Q}" ${_CLIENT_EMAIL}
+          | s-nail -b ${_MY_OCTO_EMAIL} -s "${_Q}" ${_CLIENT_EMAIL}
       fi
     fi
   else
@@ -3858,13 +3858,13 @@ _satellite_send_welcome_email() {
         if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
           cat ${_ROOT}/log/upgrademail.txt \
             | sed "s/[\~]//g" \
-            | s-nail -b ${_MY_EMAIL} -s "${_Q}" ${_CLIENT_EMAIL}
+            | s-nail -b ${_MY_OCTO_EMAIL} -s "${_Q}" ${_CLIENT_EMAIL}
         fi
       else
         if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
           cat ${_ROOT}/log/setupmail.txt \
             | sed "s/[\~]//g" \
-            | s-nail -b ${_MY_EMAIL} -s "${_Q}" ${_CLIENT_EMAIL}
+            | s-nail -b ${_MY_OCTO_EMAIL} -s "${_Q}" ${_CLIENT_EMAIL}
         fi
       fi
     else
@@ -3975,7 +3975,7 @@ _satellite_make() {
   echo "export _LAST_ALL=\"${_LAST_ALL}\""                   >> ${_writeTo}
   echo "export _LAST_HMR=\"${_LAST_HMR}\""                   >> ${_writeTo}
   echo "export _LASTNUM=\"${_LASTNUM}\""                     >> ${_writeTo}
-  echo "export _MY_EMAIL=\"${_MY_EMAIL}\""                   >> ${_writeTo}
+  echo "export _MY_OCTO_EMAIL=\"${_MY_OCTO_EMAIL}\""         >> ${_writeTo}
   echo "export _MY_OWNIP=\"${_MY_OWNIP}\""                   >> ${_writeTo}
   echo "export _NOW=\"${_NOW}\""                             >> ${_writeTo}
   echo "export _OS_CODE=\"${_OS_CODE}\""                     >> ${_writeTo}
@@ -4714,7 +4714,7 @@ _satellite_checkpoint() {
     _optInf="${_CLIENT_OPTION} / ${_CLIENT_SUBSCR} / ${_CLIENT_CORES} C"
     cat <<EOF
 
-    * Your email address is ${_MY_EMAIL}
+    * Your email address is ${_MY_OCTO_EMAIL}
     * Your client email address is ${_CLIENT_EMAIL}
     * Your Aegir control panel for this instance will be available at:
         https://${_DOMAIN}
@@ -5418,7 +5418,7 @@ _satellite_child_b_aegir_build() {
         --aegir_db_user=${_USE_DB_USER} \
         --aegir_host=${_USE_AEGIR_HOST} \
         --aegir_root=${_ROOT} \
-        --client_email=${_MY_EMAIL} \
+        --client_email=${_MY_OCTO_EMAIL} \
         --http_service_type=nginx \
         --root=${_HM_ROOT} \
         --script_user=${_USER} \
@@ -5433,7 +5433,7 @@ _satellite_child_b_aegir_build() {
         --aegir_db_user=${_USE_DB_USER} \
         --aegir_host=${_USE_AEGIR_HOST} \
         --aegir_root=${_ROOT} \
-        --client_email=${_MY_EMAIL} \
+        --client_email=${_MY_OCTO_EMAIL} \
         --http_service_type=nginx \
         --root=${_HM_ROOT} \
         --script_user=${_USER} \
@@ -6079,7 +6079,7 @@ _satellite_child_b_aegir_ui_enhance() {
     if [ "${_LOCAL_STATUS}" = "INIT" ]; then
       pBy="Octopus System powered by Barracuda"
       ${_DRUSHCMD} @hostmaster ${_vSet} site_name "${pBy}" &> /dev/null
-      ${_DRUSHCMD} @hostmaster ${_vSet} site_mail "${_MY_EMAIL}" &> /dev/null
+      ${_DRUSHCMD} @hostmaster ${_vSet} site_mail "${_MY_OCTO_EMAIL}" &> /dev/null
       cp -af /opt/tmp/boa/aegir/helpers/make_home.php.txt ./
       mv -f make_home.php.txt make_home.php &> /dev/null
       ${_DRUSHCMD} php-script make_home &> /dev/null
