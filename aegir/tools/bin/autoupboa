@@ -858,30 +858,61 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     _AUTO_UP_DAY=
   fi
 
-  if [ -e "/root/.my.cluster_root_pwd.txt" ] || [ -e "/root/.turn.off.auto.update.cnf" ]; then
+  _LOCK_FILE="/root/.turn.off.auto.update.cnf"
+  _LOCK_STATE_FILE="/var/log/boa/.etc_crontab_lock_state.${_tRee}.${_xSrl}.txt"
+
+  # Determine current lock state (LOCK if the file exists, otherwise UNLOCK)
+  if [ -e "${_LOCK_FILE}" ]; then
+    _LOCK_STATE="LOCK"
+  else
+    _LOCK_STATE="UNLOCK"
+  fi
+
+  # Previous lock state (if any)
+  _LOCK_STATE_PREV=
+  if [ -e "${_LOCK_STATE_FILE}" ]; then
+    _LOCK_STATE_PREV=$(cat "${_LOCK_STATE_FILE}" 2>/dev/null)
+  fi
+
+  # If lock state changed (file created or removed) => ignore 2nd-level PID once
+  if [ "${_LOCK_STATE}" != "${_LOCK_STATE_PREV}" ]; then
+    rm -f /var/log/boa/.etc_crontab_update_dev_ctrl*.pid
+    rm -f /var/log/boa/.etc_crontab_update_prod_ctrl*.pid
+    echo "${_LOCK_STATE}" > "${_LOCK_STATE_FILE}"
+  fi
+
+  # First-level guard: cluster root pwd or lock disables auto updates
+  if [ -e "/root/.my.cluster_root_pwd.txt" ] || [ -e "${_LOCK_FILE}" ]; then
+    if [ -e "/var/log/boa/.etc_crontab_allow.pid" ]; then
+      rm -f /var/log/boa/.etc_crontab_allow.pid
+    fi
     _AUTO_UP_WEEKLY=
     _AUTO_UP_MONTH=
     _AUTO_UP_DAY=
+  else
+    if [ ! -e "/var/log/boa/.etc_crontab_allow.pid" ]; then
+      touch /var/log/boa/.etc_crontab_allow.pid
+    fi
   fi
 
+  # Second-level: per-tree PID; only cleared once when lock toggles
   if [ -e "/root/.dev.server.cnf" ]; then
-    if [ ! -e "/var/log/boa/.etc_crontab_update_dev_ctrl_f009.${_tRee}.${_xSrl}.pid" ]; then
-      rm -f /var/log/boa/.*etc_crontab_update_dev_ctrl*
+    if [ ! -e "/var/log/boa/.etc_crontab_update_dev_ctrl_f011.${_tRee}.${_xSrl}.pid" ]; then
+      rm -f /var/log/boa/.etc_crontab_update_dev_ctrl*.pid
       _crontab_cleanup
       service cron restart
-      touch /var/log/boa/.etc_crontab_update_dev_ctrl_f009.${_tRee}.${_xSrl}.pid
+      touch "/var/log/boa/.etc_crontab_update_dev_ctrl_f011.${_tRee}.${_xSrl}.pid"
     fi
   else
-    if [ ! -e "/var/log/boa/.etc_crontab_update_prod_ctrl_f009.${_tRee}.${_xSrl}.pid" ]; then
-      rm -f /var/log/boa/.*etc_crontab_update_prod_ctrl*
-      if [ ! -z "${_AUTO_UP_MONTH}" ] \
-        && [ ! -z "${_AUTO_UP_DAY}" ]; then
+    if [ ! -e "/var/log/boa/.etc_crontab_update_prod_ctrl_f011.${_tRee}.${_xSrl}.pid" ]; then
+      rm -f /var/log/boa/.etc_crontab_update_prod_ctrl*.pid
+      if [ -n "${_AUTO_UP_MONTH}" ] && [ -n "${_AUTO_UP_DAY}" ]; then
         _crontab_update
       else
         _crontab_cleanup
       fi
       service cron restart
-      touch /var/log/boa/.etc_crontab_update_prod_ctrl_f009.${_tRee}.${_xSrl}.pid
+      touch "/var/log/boa/.etc_crontab_update_prod_ctrl_f011.${_tRee}.${_xSrl}.pid"
     fi
   fi
 
