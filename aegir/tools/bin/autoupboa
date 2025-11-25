@@ -758,24 +758,6 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
       [ -z "${_AUTO_OCT_UP_HOUR}" ] && _AUTO_OCT_UP_HOUR=1
       [ -z "${_AUTO_OCT_UP_MINUTE}" ] && _AUTO_OCT_UP_MINUTE=15
     fi
-
-    if [ -e "/etc/apticron/apticron.conf" ]; then
-      _APTICRON_TEST=$(grep "omega8" /etc/apticron/apticron.conf 2>&1)
-      if [[ "${_APTICRON_TEST}" =~ "omega8" ]]; then
-        _AUTO_UP=YES
-      fi
-    fi
-    if [[ "${_MY_EMAIL}" =~ "omega8" ]]; then
-      _AUTO_UP=YES
-    fi
-    if [ "${_AUTO_UP}" = "YES" ]; then
-      if [ ! -e "/root/.auto.up.cnf" ] || [ ! -e "/root/.host8.cnf" ]; then
-        touch /root/.auto.up.cnf
-        touch /root/.host8.cnf
-      fi
-    else
-      [ -e "/root/.auto.up.cnf" ] && rm -f /root/.auto.up.cnf
-    fi
   fi
   _if_hosted_sys
   if [ "${_hostedSys}" = "YES" ]; then
