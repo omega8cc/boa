@@ -656,24 +656,6 @@ _sql_convert() {
 }
 
 _send_shutdown_notice() {
-  _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
-  _MY_EMAIL=${_MY_EMAIL//\\\@/\@}
-  if [[ "${_MY_EMAIL}" =~ "omega8.cc" ]]; then
-    _MY_EMAIL="support@omega8.cc"
-  fi
-  if [ ! -z "${_CLIENT_EMAIL}" ] \
-    && [[ ! "${_CLIENT_EMAIL}" =~ "${_MY_EMAIL}" ]]; then
-    _ALRT_EMAIL="${_CLIENT_EMAIL}"
-  else
-    _ALRT_EMAIL="${_MY_EMAIL}"
-  fi
-  _if_hosted_sys
-  if [ "${_hostedSys}" = "YES" ]; then
-    _BCC_EMAIL="omega8cc@gmail.com"
-  else
-    _BCC_EMAIL="${_MY_EMAIL}"
-  fi
-  _MAILX_TEST=$(s-nail -V 2>&1)
   if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
   cat <<EOF | s-nail -b ${_BCC_EMAIL} \
     -s "ALERT! Shutdown of Hacked ${_Dom} Site on ${_hName}" \
@@ -716,24 +698,6 @@ EOF
 }
 
 _send_hacked_alert() {
-  _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
-  _MY_EMAIL=${_MY_EMAIL//\\\@/\@}
-  if [[ "${_MY_EMAIL}" =~ "omega8.cc" ]]; then
-    _MY_EMAIL="support@omega8.cc"
-  fi
-  if [ ! -z "${_CLIENT_EMAIL}" ] \
-    && [[ ! "${_CLIENT_EMAIL}" =~ "${_MY_EMAIL}" ]]; then
-    _ALRT_EMAIL="${_CLIENT_EMAIL}"
-  else
-    _ALRT_EMAIL="${_MY_EMAIL}"
-  fi
-  _if_hosted_sys
-  if [ "${_hostedSys}" = "YES" ]; then
-    _BCC_EMAIL="omega8cc@gmail.com"
-  else
-    _BCC_EMAIL="${_MY_EMAIL}"
-  fi
-  _MAILX_TEST=$(s-nail -V 2>&1)
   if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
   cat <<EOF | s-nail -b ${_BCC_EMAIL} \
     -s "URGENT: The ${_Dom} site on ${_hName} has been HACKED!" \
@@ -788,24 +752,6 @@ EOF
 }
 
 _send_core_alert() {
-  _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
-  _MY_EMAIL=${_MY_EMAIL//\\\@/\@}
-  if [[ "${_MY_EMAIL}" =~ "omega8.cc" ]]; then
-    _MY_EMAIL="support@omega8.cc"
-  fi
-  if [ ! -z "${_CLIENT_EMAIL}" ] \
-    && [[ ! "${_CLIENT_EMAIL}" =~ "${_MY_EMAIL}" ]]; then
-    _ALRT_EMAIL="${_CLIENT_EMAIL}"
-  else
-    _ALRT_EMAIL="${_MY_EMAIL}"
-  fi
-  _if_hosted_sys
-  if [ "${_hostedSys}" = "YES" ]; then
-    _BCC_EMAIL="omega8cc@gmail.com"
-  else
-    _BCC_EMAIL="${_MY_EMAIL}"
-  fi
-  _MAILX_TEST=$(s-nail -V 2>&1)
   if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
   cat <<EOF | s-nail -b ${_BCC_EMAIL} \
     -s "URGENT: The ${_Dom} site on ${_hName} runs on not secure Drupal core!" \
@@ -920,7 +866,7 @@ _check_site_status_with_drush8() {
           else
             echo "ALERT: THIS SITE HAS BEEN HACKED! ${_Dir}"
             _DETECTED="${_DGDD_T}"
-            if [ ! -z "${_MY_EMAIL}" ]; then
+            if [ -n "${_ALRT_EMAIL}" ]; then
               if [[ "${_DGDD_T}" =~ "Role \"megauser\" discovered" ]] \
                 || [[ "${_DGDD_T}" =~ "User \"drupaldev\" discovered" ]] \
                 || [[ "${_DGDD_T}" =~ "User \"owned\" discovered" ]] \
@@ -948,7 +894,7 @@ _check_site_status_with_drush8() {
             echo "ALERT: THIS SITE HAS BEEN HACKED! ${_Dir}"
             _DETECTED="file_put_contents as access_callback detected \
               in menu_router table"
-            if [ ! -z "${_MY_EMAIL}" ]; then
+            if [ -n "${_ALRT_EMAIL}" ]; then
               _send_hacked_alert
             fi
           fi
@@ -958,7 +904,7 @@ _check_site_status_with_drush8() {
           if [[ "${_DGMR_TEST}" =~ "assert" ]]; then
             echo "ALERT: THIS SITE HAS BEEN HACKED! ${_Dir}"
             _DETECTED="assert as access_callback detected in menu_router table"
-            if [ ! -z "${_MY_EMAIL}" ]; then
+            if [ -n "${_ALRT_EMAIL}" ]; then
               _send_hacked_alert
             fi
           fi
@@ -1544,7 +1490,6 @@ _if_site_db_conversion() {
       _SQL_CONVERT=myisam
     fi
   fi
-  _if_hosted_sys
   if [ "${_hostedSys}" = "YES" ]; then
     _DENY_SQL_CONVERT=YES
     _SQL_CONVERT=
@@ -2581,7 +2526,6 @@ _check_old_empty_hostmaster_platforms() {
 	&& [ ! -z "${_DEL_OLD_EMPTY_PLATFORMS}" ]; then
 	_DO_NOTHING=YES
   else
-    _if_hosted_sys
     if [ "${_hostedSys}" = "YES" ]; then
 	  _DEL_OLD_EMPTY_PLATFORMS="3"
 	else
@@ -2629,7 +2573,6 @@ _delete_this_platform() {
 }
 
 _check_old_empty_platforms() {
-  _if_hosted_sys
   if [ "${_hostedSys}" = "YES" ]; then
     if [[ "${_hName}" =~ "demo.aegir.cc" ]] \
       || [ -e "${_usEr}/static/control/platforms.info" ]; then
@@ -2692,7 +2635,6 @@ _purge_cruft_machine() {
     _PURGE_BACKUPS="${_DEL_OLD_BACKUPS}"
   else
     _PURGE_BACKUPS="14"
-    _if_hosted_sys
     if [ "${_hostedSys}" = "YES" ]; then
       _PURGE_BACKUPS="7"
     fi
@@ -3171,7 +3113,6 @@ _daily_action() {
         _run_drush8_hmr_cmd "sqlq \"UPDATE hosting_platform \
           SET status=1 WHERE publish_path LIKE '${_THIS_HM_PLR}'\""
         _purge_cruft_machine
-        _if_hosted_sys
         if [ "${_hostedSys}" = "YES" ]; then
           rm -rf ${_usEr}/clients/admin &> /dev/null
           rm -rf ${_usEr}/clients/omega8ccgmailcom &> /dev/null
@@ -3356,6 +3297,8 @@ if [ -e "/run/daily-fix.pid" ]; then
   exit 1
 else
   touch /run/daily-fix.pid
+  _MAILX_TEST=$(s-nail -V 2>&1)
+  _if_hosted_sys
   if [ -z "${_PERMISSIONS_FIX}" ]; then
     _PERMISSIONS_FIX=YES
   fi
@@ -3541,7 +3484,6 @@ find /var/backups/ltd/*/* -mtime +0 -type f -exec rm -rf {} \; &> /dev/null
 find /var/backups/solr/*/* -mtime +0 -type f -exec rm -rf {} \; &> /dev/null
 find /var/backups/jetty* -mtime +0 -exec rm -rf {} \; &> /dev/null
 find /var/backups/dragon/* -mtime +7 -exec rm -rf {} \; &> /dev/null
-_if_hosted_sys
 if [ "${_hostedSys}" = "YES" ]; then
   if [ -d "/var/backups/codebases-cleanup" ]; then
     find /var/backups/codebases-cleanup/* -mtime +7 -exec rm -rf {} \; &> /dev/null
