@@ -126,7 +126,6 @@ _read_account_data() {
 }
 
 _send_notice_php() {
-  _MY_EMAIL="support@omega8.cc"
   _BCC_EMAIL="omega8cc@gmail.com"
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
   _MAILX_TEST=$(s-nail -V 2>&1)
@@ -190,7 +189,6 @@ _detect_deprecated_php() {
 }
 
 _send_notice_core() {
-  _MY_EMAIL="support@omega8.cc"
   _BCC_EMAIL="omega8cc@gmail.com"
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
   _MAILX_TEST=$(s-nail -V 2>&1)
@@ -378,7 +376,6 @@ _send_notice_sql() {
     _SQL_LIM=${_SQL_MIN_LIMIT}
     _SQL_NOW=${_SumDatH}
   fi
-  _MY_EMAIL="billing@omega8.cc"
   _BCC_EMAIL="omega8cc@gmail.com"
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
   _MAILX_TEST=$(s-nail -V 2>&1)
@@ -431,7 +428,6 @@ EOF
 }
 
 _send_notice_disk() {
-  _MY_EMAIL="billing@omega8.cc"
   _BCC_EMAIL="omega8cc@gmail.com"
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
   _MAILX_TEST=$(s-nail -V 2>&1)
@@ -469,7 +465,6 @@ EOF
 
 
 _send_notice_gprd() {
-  _MY_EMAIL="support@omega8.cc"
   _BCC_EMAIL="omega8cc@gmail.com"
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
   _MAILX_TEST=$(s-nail -V 2>&1)

@@ -423,6 +423,7 @@ _if_hosted_sys() {
   if [ -e "/root/.host8.cnf" ] \
     || [[ "${_hName}" =~ ".aegir.cc"($) ]]; then
     _hostedSys=YES
+    [ -e "/root/.auto.up.cnf" ] || touch /root/.auto.up.cnf
   else
     _hostedSys=NO
   fi
@@ -757,31 +758,11 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
       [ -z "${_AUTO_OCT_UP_HOUR}" ] && _AUTO_OCT_UP_HOUR=1
       [ -z "${_AUTO_OCT_UP_MINUTE}" ] && _AUTO_OCT_UP_MINUTE=15
     fi
-
-    if [ -e "/etc/apticron/apticron.conf" ]; then
-      sed -i "s/^# be something like.*/# be something like ${_MY_EMAIL}/g" \
-        /etc/apticron/apticron.conf
-      _APTICRON_TEST=$(grep "omega8" /etc/apticron/apticron.conf 2>&1)
-      if [[ "${_APTICRON_TEST}" =~ "omega8" ]]; then
-        _AUTO_UP=YES
-      fi
-    fi
-    if [[ "${_MY_EMAIL}" =~ "omega8" ]]; then
-      _AUTO_UP=YES
-    fi
-    if [ "${_AUTO_UP}" = "YES" ]; then
-      if [ ! -e "/root/.auto.up.cnf" ] || [ ! -e "/root/.host8.cnf" ]; then
-        touch /root/.auto.up.cnf
-        touch /root/.host8.cnf
-      fi
-    else
-      [ -e "/root/.auto.up.cnf" ] && rm -f /root/.auto.up.cnf
-    fi
   fi
-  _if_hosted_sys
-  if [ "${_hostedSys}" = "YES" ]; then
 
-    [ ! -e "/root/.turn.off.auto.update.cnf" ] && touch /root/.turn.off.auto.update.cnf
+  _if_hosted_sys
+
+  if [ "${_hostedSys}" = "YES" ]; then
 
   	if [[ "${_hName}" =~ ^(lcy1.ao.|lcy15.uk.) ]]; then
   	  _DONT_TOUCH=OK
@@ -841,52 +822,6 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
       touch /var/log/boa/.disabled_modules_fix.${_xSrl}.pid
     fi
 
-    if [ "${_OS_CODE}" != "excalibur" ] && [ ! -e "/var/log/boa/.custom_percona_forced.${_xSrl}.pid" ]; then
-      _DBS_TEST="$(which mysql)"
-      if [ ! -z "${_DBS_TEST}" ]; then
-        _DB_SERVER_TEST=$(mysql -V 2>&1)
-      fi
-      _DB_V=
-      if [[ "${_DB_SERVER_TEST}" =~ "Ver 8.4." ]]; then
-        _DB_V=8.4
-      elif [[ "${_DB_SERVER_TEST}" =~ "Ver 8.0." ]]; then
-        _DB_V=8.0
-      elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 5.7." ]]; then
-        _DB_V=5.7
-      fi
-      if [[ ! "${_DB_SERVER}" =~ "Percona" ]] || [ -z "${_DB_V}" ]; then
-        sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g"  ${_barCnf}
-        sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g"  ${_barCnf}
-      elif [ ! -z "${_DB_V}" ] && [ "${_DB_V}" = "5.7" ]; then
-        _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
-        _CHECK_EXISTS=$(mysql -u root -e "SELECT EXISTS(SELECT 1 FROM mysql.user WHERE user = 'drandom_2test')" | grep "0" 2>&1)
-        if [[ "${_CHECK_EXISTS}" =~ "0" ]]; then
-          _CHECK_REPAIR=$(mysql -u root -e "CREATE USER IF NOT EXISTS 'drandom_2test'@'localhost';" 2>&1)
-          if [ "${_DEBUG_MODE}" = "YES" ]; then
-            echo _CHECK_REPAIR 1 ${_CHECK_REPAIR}
-          fi
-          if [[ "${_CHECK_REPAIR}" =~ "corrupted" ]]; then
-            mysqlcheck -u root -A --auto-repair --silent
-            mysql_upgrade -u root --force
-            mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN default_role;"
-            mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN is_role;"
-            mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN max_statement_time;"
-            mysql_upgrade -u root --force
-          fi
-          _CHECK_REPAIR=$(mysql -u root -e "CREATE USER IF NOT EXISTS 'drandom_2test'@'localhost';" 2>&1)
-          if [ "${_DEBUG_MODE}" = "YES" ]; then
-            echo _CHECK_REPAIR 2 ${_CHECK_REPAIR}
-          fi
-        fi
-        mysql -u root -e "SET GLOBAL innodb_flush_log_at_trx_commit=2;" &> /dev/null
-        mysql -u root -e "SET GLOBAL innodb_flush_log_at_timeout=5;" &> /dev/null
-        mysql -u root -e "SET GLOBAL innodb_stats_on_metadata=0;" &> /dev/null
-      fi
-      sed -i "s/^_USE_MYSQLTUNER=.*/_USE_MYSQLTUNER=NO/g"  ${_barCnf}
-      rm -f /etc/mysql/conf.d/mysqldump.cnf
-      touch /var/log/boa/.custom_percona_forced.${_xSrl}.pid
-    fi
-
     _AUTO_PHP="php-min"
     _AUTO_VER="${_tRee}"
     _AUTO_UP_WEEKLY=7
@@ -897,38 +832,15 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     _AUTO_OCT_UP_HOUR=4
     _AUTO_OCT_UP_MINUTE=10
 
-    #if [ ! -e "/root/.silent.update.cnf" ]; then
-    #  touch /root/.silent.update.cnf
-    #fi
-    [ -e " /root/.my.optimize.cnf" ] && rm -f /root/.my.optimize.cnf
-    [ -e "/root/.pause_tasks_maint.cnf" ] && rm -f /root/.pause_tasks_maint.cnf
+    [ -e "/root/.my.optimize.cnf" ] && rm -f /root/.my.optimize.cnf
     [ -e "/root/.restrict_this_vm.cnf" ] && rm -f /root/.restrict_this_vm.cnf
     [ -e "/root/.force.sites.verify.cnf" ] && rm -f /root/.force.sites.verify.cnf
     [ -e "/root/.run.example.report.cnf" ] && rm -f /root/.run.example.report.cnf
     [ -e "/var/xdrago/weekly.sh" ] && rm -f /var/xdrago/weekly.sh
-    if [ ! -e "/root/.dev.server.cnf" ] \
-      && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-      && [ -e "/data/all/000" ]; then
-      [ -e "/root/.debug-boa-installer.cnf" ] && rm -f /root/.debug-boa-installer.cnf
-      [ -e "/root/.debug-octopus-installer.cnf" ] && rm -f /root/.debug-octopus-installer.cnf
-    fi
     if [ -e "/run/boa_run.pid" ]; then
       touch /root/.pause_tasks_maint.cnf
     else
       [ -e "/root/.pause_tasks_maint.cnf" ] && rm -f /root/.pause_tasks_maint.cnf
-      [ -e "/root/.restrict_this_vm.cnf" ] && rm -f /root/.restrict_this_vm.cnf
-      _CNT=$(pgrep -fc gpg-agent)
-      if (( _CNT > 5 )); then
-        pkill -9 -f gpg-agent
-        echo "$(date) Too many gpg-agent processes killed (count=${_CNT})" >> \
-          /var/log/boa/gpg-agent-count.kill.log
-      fi
-      _CNT=$(pgrep -fc dirmngr)
-      if (( _CNT > 5 )); then
-        pkill -9 -f dirmngr
-        echo "$(date) Too many dirmngr processes killed (count=${_CNT})" >> \
-          /var/log/boa/dirmngr-count.kill.log
-      fi
     fi
     if [ -e "/root/.restrict_this_vm.cnf" ]; then
       killall -9 rsync

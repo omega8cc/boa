@@ -177,6 +177,19 @@ sub find_domain
 #############################################################################
 sub _send_alert
 {
+  my $email;
+  my $cmail;
+  my $this_email;
+  if (open my $fh, '<', '/root/.barracuda.cnf') {
+    while (<$fh>) {
+      if (/^\s*_MY_EMAIL\s*=\s*(\S+)/) {
+        $email = $1;
+        last;
+      }
+    }
+    close $fh;
+  }
+  $email =~ s/\\+@/@/g;
   $this_email="/data/disk/$rx/log/email.txt";
   if (-f "$this_email") {
     open (FILE,"<$this_email");
@@ -185,17 +198,13 @@ sub _send_alert
     }
     close (FILE);
     chomp ($cmail);
-    print "\ncmail===[$cmail]===\n";
-  }
-  else {
-    $cmail="notify\@omega8.cc";
-    print "\nlmail___[$cmail]___\n";
+    $cmail =~ s/\\+@/@/g;
   }
   $mailx_test=`s-nail -V 2>&1`;
   $t=`date +%y%m%d-%H%M`;
   chomp($t);
-  if ($mailx_test =~ /(built for Linux)/i) {
-    `cat $this_path | s-nail -b notify\@omega8.cc -s "PHP Segfault Alert for [$dx] at [$s] on $t" $cmail`;
+  if ($email && $cmail && $mailx_test =~ /(built for Linux)/i) {
+    `cat $this_path | s-nail -b $email -s "PHP Segfault Alert for [$dx] at [$s] on $t" $cmail`;
   }
   `cat /var/xdrago/monitor/log/$this_filename.log >> /var/xdrago/monitor/log/$this_filename.archive.log`;
   `rm -f /var/xdrago/monitor/log/$this_filename.log`;

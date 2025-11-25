@@ -656,24 +656,6 @@ _sql_convert() {
 }
 
 _send_shutdown_notice() {
-  _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
-  _MY_EMAIL=${_MY_EMAIL//\\\@/\@}
-  if [[ "${_MY_EMAIL}" =~ "omega8.cc" ]]; then
-    _MY_EMAIL="support@omega8.cc"
-  fi
-  if [ ! -z "${_CLIENT_EMAIL}" ] \
-    && [[ ! "${_CLIENT_EMAIL}" =~ "${_MY_EMAIL}" ]]; then
-    _ALRT_EMAIL="${_CLIENT_EMAIL}"
-  else
-    _ALRT_EMAIL="${_MY_EMAIL}"
-  fi
-  _if_hosted_sys
-  if [ "${_hostedSys}" = "YES" ]; then
-    _BCC_EMAIL="omega8cc@gmail.com"
-  else
-    _BCC_EMAIL="${_MY_EMAIL}"
-  fi
-  _MAILX_TEST=$(s-nail -V 2>&1)
   if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
   cat <<EOF | s-nail -b ${_BCC_EMAIL} \
     -s "ALERT! Shutdown of Hacked ${_Dom} Site on ${_hName}" \
@@ -716,24 +698,6 @@ EOF
 }
 
 _send_hacked_alert() {
-  _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
-  _MY_EMAIL=${_MY_EMAIL//\\\@/\@}
-  if [[ "${_MY_EMAIL}" =~ "omega8.cc" ]]; then
-    _MY_EMAIL="support@omega8.cc"
-  fi
-  if [ ! -z "${_CLIENT_EMAIL}" ] \
-    && [[ ! "${_CLIENT_EMAIL}" =~ "${_MY_EMAIL}" ]]; then
-    _ALRT_EMAIL="${_CLIENT_EMAIL}"
-  else
-    _ALRT_EMAIL="${_MY_EMAIL}"
-  fi
-  _if_hosted_sys
-  if [ "${_hostedSys}" = "YES" ]; then
-    _BCC_EMAIL="omega8cc@gmail.com"
-  else
-    _BCC_EMAIL="${_MY_EMAIL}"
-  fi
-  _MAILX_TEST=$(s-nail -V 2>&1)
   if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
   cat <<EOF | s-nail -b ${_BCC_EMAIL} \
     -s "URGENT: The ${_Dom} site on ${_hName} has been HACKED!" \
@@ -788,24 +752,6 @@ EOF
 }
 
 _send_core_alert() {
-  _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
-  _MY_EMAIL=${_MY_EMAIL//\\\@/\@}
-  if [[ "${_MY_EMAIL}" =~ "omega8.cc" ]]; then
-    _MY_EMAIL="support@omega8.cc"
-  fi
-  if [ ! -z "${_CLIENT_EMAIL}" ] \
-    && [[ ! "${_CLIENT_EMAIL}" =~ "${_MY_EMAIL}" ]]; then
-    _ALRT_EMAIL="${_CLIENT_EMAIL}"
-  else
-    _ALRT_EMAIL="${_MY_EMAIL}"
-  fi
-  _if_hosted_sys
-  if [ "${_hostedSys}" = "YES" ]; then
-    _BCC_EMAIL="omega8cc@gmail.com"
-  else
-    _BCC_EMAIL="${_MY_EMAIL}"
-  fi
-  _MAILX_TEST=$(s-nail -V 2>&1)
   if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
   cat <<EOF | s-nail -b ${_BCC_EMAIL} \
     -s "URGENT: The ${_Dom} site on ${_hName} runs on not secure Drupal core!" \
@@ -920,7 +866,7 @@ _check_site_status_with_drush8() {
           else
             echo "ALERT: THIS SITE HAS BEEN HACKED! ${_Dir}"
             _DETECTED="${_DGDD_T}"
-            if [ ! -z "${_MY_EMAIL}" ]; then
+            if [ -n "${_ALRT_EMAIL}" ]; then
               if [[ "${_DGDD_T}" =~ "Role \"megauser\" discovered" ]] \
                 || [[ "${_DGDD_T}" =~ "User \"drupaldev\" discovered" ]] \
                 || [[ "${_DGDD_T}" =~ "User \"owned\" discovered" ]] \
@@ -948,7 +894,7 @@ _check_site_status_with_drush8() {
             echo "ALERT: THIS SITE HAS BEEN HACKED! ${_Dir}"
             _DETECTED="file_put_contents as access_callback detected \
               in menu_router table"
-            if [ ! -z "${_MY_EMAIL}" ]; then
+            if [ -n "${_ALRT_EMAIL}" ]; then
               _send_hacked_alert
             fi
           fi
@@ -958,7 +904,7 @@ _check_site_status_with_drush8() {
           if [[ "${_DGMR_TEST}" =~ "assert" ]]; then
             echo "ALERT: THIS SITE HAS BEEN HACKED! ${_Dir}"
             _DETECTED="assert as access_callback detected in menu_router table"
-            if [ ! -z "${_MY_EMAIL}" ]; then
+            if [ -n "${_ALRT_EMAIL}" ]; then
               _send_hacked_alert
             fi
           fi
@@ -1544,7 +1490,6 @@ _if_site_db_conversion() {
       _SQL_CONVERT=myisam
     fi
   fi
-  _if_hosted_sys
   if [ "${_hostedSys}" = "YES" ]; then
     _DENY_SQL_CONVERT=YES
     _SQL_CONVERT=
@@ -2581,7 +2526,6 @@ _check_old_empty_hostmaster_platforms() {
 	&& [ ! -z "${_DEL_OLD_EMPTY_PLATFORMS}" ]; then
 	_DO_NOTHING=YES
   else
-    _if_hosted_sys
     if [ "${_hostedSys}" = "YES" ]; then
 	  _DEL_OLD_EMPTY_PLATFORMS="3"
 	else
@@ -2629,7 +2573,6 @@ _delete_this_platform() {
 }
 
 _check_old_empty_platforms() {
-  _if_hosted_sys
   if [ "${_hostedSys}" = "YES" ]; then
     if [[ "${_hName}" =~ "demo.aegir.cc" ]] \
       || [ -e "${_usEr}/static/control/platforms.info" ]; then
@@ -2692,7 +2635,6 @@ _purge_cruft_machine() {
     _PURGE_BACKUPS="${_DEL_OLD_BACKUPS}"
   else
     _PURGE_BACKUPS="14"
-    _if_hosted_sys
     if [ "${_hostedSys}" = "YES" ]; then
       _PURGE_BACKUPS="7"
     fi
@@ -2978,6 +2920,9 @@ _cleanup_weblogx() {
 
 _incident_email_report() {
   if [ -e "/root/.barracuda.cnf" ]; then
+    _MY_EMAIL=
+    # shellcheck disable=SC1091
+    source /root/.barracuda.cnf
     export _INCIDENT_REPORT=${_INCIDENT_REPORT//[^A-Z]/}
     : "${_INCIDENT_REPORT:=MINI}"
   fi
@@ -3053,25 +2998,55 @@ _daily_action() {
             wait
           fi
 
+          _MY_OCTO_EMAIL=
+          _CLIENT_EMAIL=
+          _MY_EMAIL=
+
           # shellcheck disable=SC1091
           [ -e "/root/.${_HM_U}.octopus.cnf" ] && source /root/.${_HM_U}.octopus.cnf
 
+          [ -n "${_MY_OCTO_EMAIL}" ] && _MY_OCTO_EMAIL=${_MY_OCTO_EMAIL//\\\@/\@}
+          [ -n "${_CLIENT_EMAIL}" ] && _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
+          [ -n "${_MY_EMAIL}" ] && _MY_EMAIL=${_MY_EMAIL//\\\@/\@}
+
+          _MY_OCTO_EMAIL_TEST=$(grep "^_MY_OCTO_EMAIL=" /root/.${_HM_U}.octopus.cnf 2>&1)
+          _MY_EMAIL_TEST=$(grep "^_MY_EMAIL=" /root/.${_HM_U}.octopus.cnf 2>&1)
+
+          if [[ ! "${_MY_OCTO_EMAIL_TEST}" =~ "_MY_OCTO_EMAIL" ]] \
+            && [[ "${_MY_EMAIL_TEST}" =~ "_MY_EMAIL" ]] \
+            && [ -n "${_MY_EMAIL}" ]; then
+            _MY_OCTO_EMAIL="${_MY_EMAIL}"
+            sed -i "s/^_MY_EMAIL=.*/_MY_OCTO_EMAIL=\"${_MY_EMAIL}\"/g" /root/.${_HM_U}.octopus.cnf
+            _MY_EMAIL=
+          fi
+
+          if [ ! -z "${_CLIENT_EMAIL}" ] \
+            && [[ ! "${_CLIENT_EMAIL}" =~ "${_MY_OCTO_EMAIL}" ]]; then
+            _ALRT_EMAIL="${_CLIENT_EMAIL}"
+          else
+            _ALRT_EMAIL="${_MY_OCTO_EMAIL}"
+          fi
+
+          if [ "${_hostedSys}" = "YES" ]; then
+            _BCC_EMAIL="omega8cc@gmail.com"
+          else
+            _BCC_EMAIL="${_MY_OCTO_EMAIL}"
+          fi
+
           _DEL_OLD_EMPTY_PLATFORMS=${_DEL_OLD_EMPTY_PLATFORMS//[^0-9]/}
-          _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
-          _MY_EMAIL=${_MY_EMAIL//\\\@/\@}
+
           if [ -e "${_usEr}/log/email.txt" ]; then
             _F_CLIENT_EMAIL=$(cat ${_usEr}/log/email.txt 2>&1)
             _F_CLIENT_EMAIL=$(echo -n ${_F_CLIENT_EMAIL} | tr -d "\n" 2>&1)
             _F_CLIENT_EMAIL=${_F_CLIENT_EMAIL//\\\@/\@}
           fi
+
           if [ ! -z "${_F_CLIENT_EMAIL}" ]; then
-            _CLIENT_EMAIL_TEST=$(grep "^_CLIENT_EMAIL=\"${_F_CLIENT_EMAIL}\"" \
-              /root/.${_HM_U}.octopus.cnf 2>&1)
+            _CLIENT_EMAIL_TEST=$(grep "^_CLIENT_EMAIL=\"${_F_CLIENT_EMAIL}\"" /root/.${_HM_U}.octopus.cnf 2>&1)
             if [[ "${_CLIENT_EMAIL_TEST}" =~ "${_F_CLIENT_EMAIL}" ]]; then
               _DO_NOTHING=YES
             else
-              sed -i "s/^_CLIENT_EMAIL=.*/_CLIENT_EMAIL=\"${_F_CLIENT_EMAIL}\"/g" \
-                /root/.${_HM_U}.octopus.cnf
+              sed -i "s/^_CLIENT_EMAIL=.*/_CLIENT_EMAIL=\"${_F_CLIENT_EMAIL}\"/g" /root/.${_HM_U}.octopus.cnf
               wait
               _CLIENT_EMAIL=${_F_CLIENT_EMAIL}
             fi
@@ -3138,7 +3113,6 @@ _daily_action() {
         _run_drush8_hmr_cmd "sqlq \"UPDATE hosting_platform \
           SET status=1 WHERE publish_path LIKE '${_THIS_HM_PLR}'\""
         _purge_cruft_machine
-        _if_hosted_sys
         if [ "${_hostedSys}" = "YES" ]; then
           rm -rf ${_usEr}/clients/admin &> /dev/null
           rm -rf ${_usEr}/clients/omega8ccgmailcom &> /dev/null
@@ -3293,16 +3267,13 @@ if [ -e "/opt/tmp/barracuda-release.txt" ]; then
   _X_VERSION=$(cat /opt/tmp/barracuda-release.txt 2>&1)
   _VERSIONS_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
   if [ ! -z "${_X_VERSION}" ]; then
-    _MY_EMAIL=${_MY_EMAIL//\\\@/\@}
-    if [[ "${_MY_EMAIL}" =~ "omega8.cc" ]]; then
-      _MY_EMAIL="notify@omega8.cc"
-    fi
+    _MY_OCTO_EMAIL=${_MY_OCTO_EMAIL//\\\@/\@}
     if [[ "${_VERSIONS_TEST}" =~ "${_X_VERSION}" ]]; then
       _VERSIONS_TEST_RESULT=OK
       echo "INFO: Version test result: OK"
     else
       sT="release available, upgrade now!"
-      cat <<EOF | s-nail -s "New ${_X_VERSION} ${sT}" ${_MY_EMAIL}
+      cat <<EOF | s-nail -s "New ${_X_VERSION} ${sT}" ${_MY_OCTO_EMAIL}
 
  There is new ${_X_VERSION} release available!
 
@@ -3326,6 +3297,8 @@ if [ -e "/run/daily-fix.pid" ]; then
   exit 1
 else
   touch /run/daily-fix.pid
+  _MAILX_TEST=$(s-nail -V 2>&1)
+  _if_hosted_sys
   if [ -z "${_PERMISSIONS_FIX}" ]; then
     _PERMISSIONS_FIX=YES
   fi
@@ -3511,7 +3484,6 @@ find /var/backups/ltd/*/* -mtime +0 -type f -exec rm -rf {} \; &> /dev/null
 find /var/backups/solr/*/* -mtime +0 -type f -exec rm -rf {} \; &> /dev/null
 find /var/backups/jetty* -mtime +0 -exec rm -rf {} \; &> /dev/null
 find /var/backups/dragon/* -mtime +7 -exec rm -rf {} \; &> /dev/null
-_if_hosted_sys
 if [ "${_hostedSys}" = "YES" ]; then
   if [ -d "/var/backups/codebases-cleanup" ]; then
     find /var/backups/codebases-cleanup/* -mtime +7 -exec rm -rf {} \; &> /dev/null
