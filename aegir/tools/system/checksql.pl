@@ -28,13 +28,30 @@ chomp($mysqlrootpass);
 system("/usr/bin/mysqlcheck -u root -Aa > $logfile");
 &makeactions;
 system("touch /var/log/boa/last-run-acrashsql");
-if ($mailx_test =~ /(built for Linux)/i) {
+my $email;
+if (open my $fh, '<', '/root/.barracuda.cnf') {
+  while (<$fh>) {
+    if (/^\s*_MY_EMAIL\s*=\s*(\S+)/) {
+      $email = $1;
+      last;
+    }
+  }
+  close $fh;
+}
+$email =~ s/\\+@/@/g;
+if ($email && $mailx_test =~ /(built for Linux)/i) {
   if ($status ne "CLEAN") {
-    system("cat $logfile | s-nail -s \"SQL check ERROR [$server] $timedate\" notify\@omega8.cc");
-    system("bash $fixfile | s-nail -s \"SQL REPAIR done [$server] $timedate\" notify\@omega8.cc");
+    system('s-nail',
+      '-s', "SQL check ERROR [$server] $timedate",
+      $email,
+      '<', $logfile);
+    system("bash $fixfile | s-nail -s \"SQL REPAIR done [$server] $timedate\" $email");
   }
   if ($status ne "ERROR") {
-    system("cat $logfile | s-nail -s \"SQL check CLEAN [$server] $timedate\" notify\@omega8.cc");
+    system('s-nail',
+      '-s', "SQL check CLEAN [$server] $timedate",
+      $email,
+      '<', $logfile);
   }
 }
 system("rm -f $logfile");

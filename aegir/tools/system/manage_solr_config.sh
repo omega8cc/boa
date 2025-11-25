@@ -802,7 +802,6 @@ _start_up() {
         mkdir -p ${_usEr}/log/ctrl
         # shellcheck disable=SC1091
         [ -e "/root/.${_HM_U}.octopus.cnf" ] && source /root/.${_HM_U}.octopus.cnf
-        _MY_EMAIL=${_MY_EMAIL//\\\@/\@}
         _check_sites_list
       fi
     fi

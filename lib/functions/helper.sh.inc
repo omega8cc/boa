@@ -396,14 +396,11 @@ _mode_detection() {
     _msg "MODE: UPGRADE"
     _dedup_xtras_list
     _barracuda_cnf
-    if [ -e "/root/.auto.up.cnf" ] \
-      || [ -e "/root/.host8.cnf" ]; then
-      if [[ ! " ${_XTRAS_LIST} " =~ (^|[[:space:]])CSF([[:space:]]|$) ]]; then
-        if [ -n "${_XTRAS_LIST}" ]; then
-          _XTRAS_LIST="${_XTRAS_LIST} CSF"
-        else
-          _XTRAS_LIST="CSF"
-        fi
+    if [[ ! " ${_XTRAS_LIST} " =~ (^|[[:space:]])CSF([[:space:]]|$) ]]; then
+      if [ -n "${_XTRAS_LIST}" ]; then
+        _XTRAS_LIST="${_XTRAS_LIST} CSF"
+      else
+        _XTRAS_LIST="CSF"
       fi
     fi
     if [ "${_DEBUG_MODE}" = "YES" ]; then
