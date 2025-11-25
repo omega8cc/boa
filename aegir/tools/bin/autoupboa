@@ -868,23 +868,21 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     _LOCK_STATE="UNLOCK"
   fi
 
+  # Previous lock state (if any)
   _LOCK_STATE_PREV=
   if [ -e "${_LOCK_STATE_FILE}" ]; then
     _LOCK_STATE_PREV=$(cat "${_LOCK_STATE_FILE}" 2>/dev/null)
   fi
 
-  # If lock state has changed (file created or removed), drop PID(s)
-  # so the crontab logic will run once again ignoring previous PID protection.
+  # If lock state changed (file created or removed) => ignore 2nd-level PID once
   if [ "${_LOCK_STATE}" != "${_LOCK_STATE_PREV}" ]; then
     rm -f /var/log/boa/.etc_crontab_update_dev_ctrl*.pid
     rm -f /var/log/boa/.etc_crontab_update_prod_ctrl*.pid
     echo "${_LOCK_STATE}" > "${_LOCK_STATE_FILE}"
   fi
 
-  # First-level guard: cluster root password or global lock disables auto updates
+  # First-level guard: cluster root pwd or lock disables auto updates
   if [ -e "/root/.my.cluster_root_pwd.txt" ] || [ -e "${_LOCK_FILE}" ]; then
-    rm -f /var/log/boa/.etc_crontab_update_dev_ctrl*.pid
-    rm -f /var/log/boa/.etc_crontab_update_prod_ctrl*.pid
     if [ -e "/var/log/boa/.etc_crontab_allow.pid" ]; then
       rm -f /var/log/boa/.etc_crontab_allow.pid
     fi
@@ -897,25 +895,24 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     fi
   fi
 
-  # Second-level: per-tree unique PID; may have been removed above on lock toggle
+  # Second-level: per-tree PID; only cleared once when lock toggles
   if [ -e "/root/.dev.server.cnf" ]; then
     if [ ! -e "/var/log/boa/.etc_crontab_update_dev_ctrl_f011.${_tRee}.${_xSrl}.pid" ]; then
       rm -f /var/log/boa/.etc_crontab_update_dev_ctrl*.pid
       _crontab_cleanup
       service cron restart
-      touch /var/log/boa/.etc_crontab_update_dev_ctrl_f011.${_tRee}.${_xSrl}.pid
+      touch "/var/log/boa/.etc_crontab_update_dev_ctrl_f011.${_tRee}.${_xSrl}.pid"
     fi
   else
     if [ ! -e "/var/log/boa/.etc_crontab_update_prod_ctrl_f011.${_tRee}.${_xSrl}.pid" ]; then
       rm -f /var/log/boa/.etc_crontab_update_prod_ctrl*.pid
-      if [ ! -z "${_AUTO_UP_MONTH}" ] \
-        && [ ! -z "${_AUTO_UP_DAY}" ]; then
+      if [ -n "${_AUTO_UP_MONTH}" ] && [ -n "${_AUTO_UP_DAY}" ]; then
         _crontab_update
       else
         _crontab_cleanup
       fi
       service cron restart
-      touch /var/log/boa/.etc_crontab_update_prod_ctrl_f011.${_tRee}.${_xSrl}.pid
+      touch "/var/log/boa/.etc_crontab_update_prod_ctrl_f011.${_tRee}.${_xSrl}.pid"
     fi
   fi
 
