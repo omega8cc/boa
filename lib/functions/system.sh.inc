@@ -2377,7 +2377,7 @@ _barracuda_cnf() {
     fi
     _if_hosted_sys
     if [ "${_hostedSys}" = "YES" ]; then
-      sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"notify\@omega8.cc\"/g" ${_barCnf}
+      sed -i 's~^_MY_EMAIL=.*~_MY_EMAIL="notify@omega8.cc"~'          ${_barCnf}
       wait
     fi
   else
@@ -2780,7 +2780,7 @@ _barracuda_cnf() {
 
     _if_hosted_sys
     if [ "${_hostedSys}" = "YES" ]; then
-      sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"notify\@omega8.cc\"/g" ${_barCnf}
+      sed -i 's~^_MY_EMAIL=.*~_MY_EMAIL="notify@omega8.cc"~'          ${_barCnf}
       wait
     fi
 
@@ -9759,50 +9759,23 @@ _apticron_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _apticron_update"
   fi
-  _XPTEMAIL=${_MY_EMAIL//\@/\\\\\@}
-  sed -i "s/notify\@omega8.cc/${_MY_EMAIL}/g"  \
-    /etc/csf/csf.conf &> /dev/null
-  sed -i "s/notify\\\@omega8.cc/${_XPTEMAIL}/g" \
-    /var/xdrago/checksql.pl
-  sed -i "s/notify\\\@omega8.cc/${_XPTEMAIL}/g" \
-    /var/xdrago/daily.sh
-  sed -i "s/notify\\\@omega8.cc/${_XPTEMAIL}/g" \
-    /var/xdrago/usage.sh
-  sed -i "s/notify\\\@omega8.cc/${_XPTEMAIL}/g" \
-    /var/xdrago/monitor/check/segfault_alert.pl
-  sed -i "s/notify\\\@omega8.cc/${_XPTEMAIL}/g" \
-    /var/xdrago/monitor/check/escapecheck.pl
+  _aPc="/etc/apticron/apticron.conf"
   if [ -e "/usr/sbin/apticron" ]; then
-    if [ -e "/etc/apticron/apticron.conf" ]; then
-      _APTICRON_TEST=$(grep "NOTIFY_HOLDS" /etc/apticron/apticron.conf 2>&1)
+    if [ -e "/usr/lib/apticron/apticron.conf" ] && [ ! -e "${_aPc}" ]; then
+      cp -a /usr/lib/apticron/apticron.conf ${_aPc}
+    fi
+    if [ -e "${_aPc}" ]; then
+      _APTICRON_TEST=$(grep "NOTIFY_HOLDS" ${_aPc} 2>&1)
       if [[ "${_APTICRON_TEST}" =~ "NOTIFY_HOLDS" ]]; then
-        sed -i "s/^# NOTIFY_HOLDS=\"0\"/NOTIFY_HOLDS=\"0\"/g" \
-          /etc/apticron/apticron.conf
-        wait
-        sed -i "s/notify\@omega8.cc/${_MY_EMAIL}/g" \
-          /etc/apticron/apticron.conf
-        wait
-        sed -i "s/root/${_MY_EMAIL}/g" \
-          /etc/apticron/apticron.conf
-        wait
-        sed -i "s/^# be something like.*/# be something like ${_MY_EMAIL}/g" \
-          /etc/apticron/apticron.conf
-        wait
+        sed -i "s/^NOTIFY_HOLDS=.*/NOTIFY_HOLDS=\"0\"/g" ${_aPc}
+        sed -i "s/notify@omega8.cc/${_MY_EMAIL}/g" ${_aPc}
+        sed -i "s/^EMAIL=.*/EMAIL="${_MY_EMAIL}"/g" ${_aPc}
       else
         _mrun "apt-get remove apticron -y --purge --auto-remove -qq"
         _mrun "apt-get install apticron ${_aptYesUnth}"
-        sed -i "s/^# NOTIFY_HOLDS=\"0\"/NOTIFY_HOLDS=\"0\"/g" \
-          /etc/apticron/apticron.conf
-        wait
-        sed -i "s/notify\@omega8.cc/${_MY_EMAIL}/g" \
-          /etc/apticron/apticron.conf
-        wait
-        sed -i "s/root/${_MY_EMAIL}/g" \
-          /etc/apticron/apticron.conf
-        wait
-        sed -i "s/^# be something like.*/# be something like ${_MY_EMAIL}/g" \
-          /etc/apticron/apticron.conf
-        wait
+        sed -i "s/^NOTIFY_HOLDS=.*/NOTIFY_HOLDS=\"0\"/g" ${_aPc}
+        sed -i "s/notify@omega8.cc/${_MY_EMAIL}/g" ${_aPc}
+        sed -i "s/^EMAIL=.*/EMAIL="${_MY_EMAIL}"/g" ${_aPc}
       fi
     fi
     _barUpv="${_tRee}"

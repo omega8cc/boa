@@ -751,7 +751,7 @@ _install_php_extensions() {
     _msg "INFO: Installing APCu ${_PHP_APCU} for PHP ${_T_PHP_VRN}..."
     cd /var/opt
     rm -rf apcu*
-    _get_dev_src "apcu-${_PHP_APCU}.tar.gz"
+    _get_dev_src "apcu-${_PHP_APCU}.tgz"
     cd /var/opt/apcu-${_PHP_APCU}
     _mrun "${_T_PHP_PTH}/phpize"
     _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
@@ -1151,7 +1151,7 @@ _php_extensions_update() {
       _msg "INFO: Installing APCu ${_PHP_APCU} upgrade for PHP ${_T_PHP_VRN}..."
       cd /var/opt
       rm -rf apcu*
-      _get_dev_src "apcu-${_PHP_APCU}.tar.gz"
+      _get_dev_src "apcu-${_PHP_APCU}.tgz"
       cd /var/opt/apcu-${_PHP_APCU}
       _mrun "${_T_PHP_PTH}/phpize"
       _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
