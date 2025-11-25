@@ -759,10 +759,10 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
       [ -z "${_AUTO_OCT_UP_MINUTE}" ] && _AUTO_OCT_UP_MINUTE=15
     fi
   fi
-  _if_hosted_sys
-  if [ "${_hostedSys}" = "YES" ]; then
 
-    [ ! -e "/root/.turn.off.auto.update.cnf" ] && touch /root/.turn.off.auto.update.cnf
+  _if_hosted_sys
+
+  if [ "${_hostedSys}" = "YES" ]; then
 
   	if [[ "${_hName}" =~ ^(lcy1.ao.|lcy15.uk.) ]]; then
   	  _DONT_TOUCH=OK
