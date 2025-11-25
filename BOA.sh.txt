@@ -878,9 +878,9 @@ _update_agents() {
     mysql -u root -e "SET GLOBAL optimizer_switch='derived_merge=off';"
     mysql -u root -e "SET GLOBAL sort_buffer_size = 262144;"
     if [ -e "/root/.tg.cnf" ]; then
-      if [ ! -e "/root/.fixed_fpm_workers.pid" ]; then
+      if [ ! -e "/root/.fixed_fpm_workers.cnf" ]; then
         sed -i "s/^_PHP_FPM_WORKERS=.*/_PHP_FPM_WORKERS=100/g" ${_barCnf}
-        touch /root/.fixed_fpm_workers.pid
+        touch /root/.fixed_fpm_workers.cnf
       fi
     fi
     if [ ! -e "/root/.high_traffic.cnf" ]; then
