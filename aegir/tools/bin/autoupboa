@@ -859,6 +859,7 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
   fi
 
   if [ -e "/root/.my.cluster_root_pwd.txt" ] || [ -e "/root/.turn.off.auto.update.cnf" ]; then
+    rm -f /var/log/boa/.*etc_crontab_update_*
     _AUTO_UP_WEEKLY=
     _AUTO_UP_MONTH=
     _AUTO_UP_DAY=
