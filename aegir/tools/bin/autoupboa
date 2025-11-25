@@ -822,52 +822,6 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
       touch /var/log/boa/.disabled_modules_fix.${_xSrl}.pid
     fi
 
-    if [ "${_OS_CODE}" != "excalibur" ] && [ ! -e "/var/log/boa/.custom_percona_forced.${_xSrl}.pid" ]; then
-      _DBS_TEST="$(which mysql)"
-      if [ ! -z "${_DBS_TEST}" ]; then
-        _DB_SERVER_TEST=$(mysql -V 2>&1)
-      fi
-      _DB_V=
-      if [[ "${_DB_SERVER_TEST}" =~ "Ver 8.4." ]]; then
-        _DB_V=8.4
-      elif [[ "${_DB_SERVER_TEST}" =~ "Ver 8.0." ]]; then
-        _DB_V=8.0
-      elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 5.7." ]]; then
-        _DB_V=5.7
-      fi
-      if [[ ! "${_DB_SERVER}" =~ "Percona" ]] || [ -z "${_DB_V}" ]; then
-        sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g"  ${_barCnf}
-        sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g"  ${_barCnf}
-      elif [ ! -z "${_DB_V}" ] && [ "${_DB_V}" = "5.7" ]; then
-        _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
-        _CHECK_EXISTS=$(mysql -u root -e "SELECT EXISTS(SELECT 1 FROM mysql.user WHERE user = 'drandom_2test')" | grep "0" 2>&1)
-        if [[ "${_CHECK_EXISTS}" =~ "0" ]]; then
-          _CHECK_REPAIR=$(mysql -u root -e "CREATE USER IF NOT EXISTS 'drandom_2test'@'localhost';" 2>&1)
-          if [ "${_DEBUG_MODE}" = "YES" ]; then
-            echo _CHECK_REPAIR 1 ${_CHECK_REPAIR}
-          fi
-          if [[ "${_CHECK_REPAIR}" =~ "corrupted" ]]; then
-            mysqlcheck -u root -A --auto-repair --silent
-            mysql_upgrade -u root --force
-            mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN default_role;"
-            mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN is_role;"
-            mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN max_statement_time;"
-            mysql_upgrade -u root --force
-          fi
-          _CHECK_REPAIR=$(mysql -u root -e "CREATE USER IF NOT EXISTS 'drandom_2test'@'localhost';" 2>&1)
-          if [ "${_DEBUG_MODE}" = "YES" ]; then
-            echo _CHECK_REPAIR 2 ${_CHECK_REPAIR}
-          fi
-        fi
-        mysql -u root -e "SET GLOBAL innodb_flush_log_at_trx_commit=2;" &> /dev/null
-        mysql -u root -e "SET GLOBAL innodb_flush_log_at_timeout=5;" &> /dev/null
-        mysql -u root -e "SET GLOBAL innodb_stats_on_metadata=0;" &> /dev/null
-      fi
-      sed -i "s/^_USE_MYSQLTUNER=.*/_USE_MYSQLTUNER=NO/g"  ${_barCnf}
-      rm -f /etc/mysql/conf.d/mysqldump.cnf
-      touch /var/log/boa/.custom_percona_forced.${_xSrl}.pid
-    fi
-
     _AUTO_PHP="php-min"
     _AUTO_VER="${_tRee}"
     _AUTO_UP_WEEKLY=7
