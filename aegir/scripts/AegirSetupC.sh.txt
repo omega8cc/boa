@@ -788,7 +788,7 @@ _create_drupal_basic_version() {
     _get_core_ext "${drupal_version}.tar.gz"
     mv -f "${drupal_version}" "${_SHRD_PLNAME}"
     if [ "$version" = "9" ]; then
-      cd "${_SHRD_PLNAME}"
+      cd "${_pthDst}/${_SHRD_PLNAME}/web"
       _rename_drupal9_profiles
     fi
   fi
