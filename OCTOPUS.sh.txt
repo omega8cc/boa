@@ -64,8 +64,8 @@ export _REDIS_E_VERSION=8.x-1.11.2
 ### Drupal Core Versions
 ###
 
-export _SMALLCORE11_2_V=11.2.2
 export _SMALLCORE11_1_V=11.1.9
+export _SMALLCORE11_2_V=11.2.8
 export _SMALLCORE10_0_V=10.0.11
 export _SMALLCORE10_1_V=10.1.8
 export _SMALLCORE10_2_V=10.2.12
