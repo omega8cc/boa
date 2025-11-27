@@ -243,7 +243,7 @@ _if_redis_restart() {
   _PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
   _PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
   _PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
-  _VkTest=$(ls /data/disk/*/static/control/run-redis-restart.pid | wc -l 2>&1)
+  _VkTest=$(ls /data/disk/*/static/control/run-valkey-restart.pid | wc -l 2>&1)
   _ReTest=$(ls /data/disk/*/static/control/run-redis-restart.pid | wc -l 2>&1)
   if [[ "${_PrTestPower}" =~ "POWER" ]] \
     || [[ "${_PrTestPhantom}" =~ "PHANTOM" ]] \
@@ -259,7 +259,7 @@ _if_redis_restart() {
           return 0
         fi
       fi
-      rm -f /data/disk/*/static/control/run-redis-restart.pid
+      rm -f /data/disk/*/static/control/run-valkey-restart.pid
       rm -f /data/disk/*/static/control/run-redis-restart.pid
       _thisErrLog="$(date) Redis Server Restart Requested"
       echo ${_thisErrLog} >> ${_pthOml}
