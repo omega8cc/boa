@@ -17,6 +17,7 @@ On hosted BOA contact your host if you need any legacy PHP installed again.
 - [Drupal CMS 11.2.2](https://new.drupal.org/drupal-cms) (11.2.2)
 - [Sector 11.0.x-dev](https://drupal.org/project/sector) (11.2.0)
 - [Thunder 8.2.1](https://drupal.org/project/thunder) (11.2.2)
+- [Drupal 11.1.9](https://drupal.org/project/drupal/releases/11.1.9)
 
 ## Drupal 10
 
@@ -77,6 +78,10 @@ This file, if it exists and contains a list of symbols used to define supported 
 - `DE2` — Drupal 11.2 prod/stage/dev
 - `SCR` — Sector
 - `THR` — Thunder
+
+### Drupal 11.1
+
+- `DE1` — Drupal 11.1 prod/stage/dev
 
 ### Drupal 10.5
 

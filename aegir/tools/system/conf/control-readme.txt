@@ -227,6 +227,10 @@
 # SCR — Sector
 # THR — Thunder
 
+### Drupal 11.1
+#
+# DE1 — Drupal 11.1 prod/stage/dev
+
 ### Drupal 10.5
 #
 # DX5 — Drupal 10.5 prod/stage/dev

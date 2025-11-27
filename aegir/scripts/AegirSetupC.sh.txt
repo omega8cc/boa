@@ -825,6 +825,9 @@ _create_drupal_core_basic() {
     "DX5")
       _create_drupal_basic_version "10_5"
       ;;
+    "DE1")
+      _create_drupal_basic_version "11_1"
+      ;;
     "DE2")
       _create_drupal_basic_version "11_2"
       ;;
@@ -864,6 +867,7 @@ declare -A _distros_names=(
   ["DX3"]="Drupal"
   ["DX4"]="Drupal"
   ["DX5"]="Drupal"
+  ["DE1"]="Drupal"
   ["DE2"]="Drupal"
 )
 
@@ -897,6 +901,7 @@ declare -A _distros_versions=(
   ["DX3"]="${_SMALLCORE10_3_V}"
   ["DX4"]="${_SMALLCORE10_4_V}"
   ["DX5"]="${_SMALLCORE10_5_V}"
+  ["DE1"]="${_SMALLCORE11_1_V}"
   ["DE2"]="${_SMALLCORE11_2_V}"
 )
 
@@ -930,6 +935,7 @@ declare -A _distros_drupal_cores=(
   ["DX3"]="${_SMALLCORE10_3_V}"
   ["DX4"]="${_SMALLCORE10_4_V}"
   ["DX5"]="${_SMALLCORE10_5_V}"
+  ["DE1"]="${_SMALLCORE11_1_V}"
   ["DE2"]="${_SMALLCORE11_2_V}"
 )
 
@@ -963,6 +969,7 @@ declare -A _distros_profiles_names=(
   ["DX3"]="standard"
   ["DX4"]="standard"
   ["DX5"]="standard"
+  ["DE1"]="standard"
   ["DE2"]="standard"
 )
 
@@ -996,6 +1003,7 @@ declare -A _distros_profiles_paths=(
   ["DX3"]="/"
   ["DX4"]="/"
   ["DX5"]="/"
+  ["DE1"]="/"
   ["DE2"]="/"
 )
 
@@ -1029,6 +1037,7 @@ declare -A _distros_web_dirs=(
   ["DX3"]="/web"
   ["DX4"]="/web"
   ["DX5"]="/web"
+  ["DE1"]="/web"
   ["DE2"]="/web"
 )
 
@@ -1062,6 +1071,7 @@ declare -A _distros_urls=(
   ["DX3"]="${_urlPrt}/drupal/releases/${_SMALLCORE10_3_V}"
   ["DX4"]="${_urlPrt}/drupal/releases/${_SMALLCORE10_4_V}"
   ["DX5"]="${_urlPrt}/drupal/releases/${_SMALLCORE10_5_V}"
+  ["DE1"]="${_urlPrt}/drupal/releases/${_SMALLCORE11_1_V}"
   ["DE2"]="${_urlPrt}/drupal/releases/${_SMALLCORE11_2_V}"
 )
 
@@ -1095,6 +1105,7 @@ declare -A _distros_php_versions=(
   ["DX3"]="8.3"
   ["DX4"]="8.3"
   ["DX5"]="8.3"
+  ["DE1"]="8.4"
   ["DE2"]="8.4"
 )
 
@@ -1457,6 +1468,10 @@ _d_core_platform_install() {
     _CORE_DEV="${_DRUPAL11_2_D}"
     _CORE_STG="${_DRUPAL11_2_S}"
     _CORE_PRD="${_DRUPAL11_2_P}"
+  elif [ "${1}" = "DE1" ]; then
+    _CORE_DEV="${_DRUPAL11_1_D}"
+    _CORE_STG="${_DRUPAL11_1_S}"
+    _CORE_PRD="${_DRUPAL11_1_P}"
   elif [ "${1}" = "DX5" ]; then
     _CORE_DEV="${_DRUPAL10_5_D}"
     _CORE_STG="${_DRUPAL10_5_S}"
