@@ -13,10 +13,10 @@ On hosted BOA contact your host if you need any legacy PHP installed again.
 ## Drupal 11
 
 - [Commerce v.3](https://github.com/centarro/commerce-kickstart-project) (11.2.2)
-- [Drupal 11.2.2](https://drupal.org/project/drupal/releases/11.2.2)
 - [Drupal CMS 11.2.2](https://new.drupal.org/drupal-cms) (11.2.2)
 - [Sector 11.0.x-dev](https://drupal.org/project/sector) (11.2.0)
 - [Thunder 8.2.1](https://drupal.org/project/thunder) (11.2.2)
+- [Drupal 11.2.8](https://drupal.org/project/drupal/releases/11.2.8)
 - [Drupal 11.1.9](https://drupal.org/project/drupal/releases/11.1.9)
 
 ## Drupal 10
@@ -26,8 +26,8 @@ On hosted BOA contact your host if you need any legacy PHP installed again.
 - [Drupal 10.1.8](https://drupal.org/project/drupal/releases/10.1.8)
 - [Drupal 10.2.12](https://drupal.org/project/drupal/releases/10.2.12)
 - [Drupal 10.3.14](https://drupal.org/project/drupal/releases/10.3.14)
-- [Drupal 10.4.8](https://drupal.org/project/drupal/releases/10.4.8)
-- [Drupal 10.5.1](https://drupal.org/project/drupal/releases/10.5.1)
+- [Drupal 10.4.9](https://drupal.org/project/drupal/releases/10.4.9)
+- [Drupal 10.5.6](https://drupal.org/project/drupal/releases/10.5.6)
 - [DXPR Marketing 10.3.0](https://drupal.org/project/dxpr_marketing_cms) (10.3.6)
 - [EzContent 2.2.15](https://drupal.org/project/ezcontent) (10.3.6)
 - [farmOS 3.3.1](https://drupal.org/project/farm) (10.3.6)
