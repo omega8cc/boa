@@ -64,13 +64,14 @@ export _REDIS_E_VERSION=8.x-1.11.2
 ### Drupal Core Versions
 ###
 
-export _SMALLCORE11_2_V=11.2.2
+export _SMALLCORE11_1_V=11.1.9
+export _SMALLCORE11_2_V=11.2.8
 export _SMALLCORE10_0_V=10.0.11
 export _SMALLCORE10_1_V=10.1.8
 export _SMALLCORE10_2_V=10.2.12
 export _SMALLCORE10_3_V=10.3.14
-export _SMALLCORE10_4_V=10.4.8
-export _SMALLCORE10_5_V=10.5.1
+export _SMALLCORE10_4_V=10.4.9
+export _SMALLCORE10_5_V=10.5.6
 export _SMALLCORE6_V=6.60.1
 export _SMALLCORE7_V=7.105.1
 export _SMALLCORE9_V=9.5.11
@@ -88,6 +89,7 @@ export _DRUPAL10_2="drupal-${_SMALLCORE10_2_V}"
 export _DRUPAL10_3="drupal-${_SMALLCORE10_3_V}"
 export _DRUPAL10_4="drupal-${_SMALLCORE10_4_V}"
 export _DRUPAL10_5="drupal-${_SMALLCORE10_5_V}"
+export _DRUPAL11_1="drupal-${_SMALLCORE11_1_V}"
 export _DRUPAL11_2="drupal-${_SMALLCORE11_2_V}"
 
 export _DRUPAL6_D="${_DRUPAL6}-dev"
@@ -129,6 +131,10 @@ export _DRUPAL10_5_S="${_DRUPAL10_5}-stage"
 export _DRUPAL11_2_D="${_DRUPAL11_2}-dev"
 export _DRUPAL11_2_P="${_DRUPAL11_2}-prod"
 export _DRUPAL11_2_S="${_DRUPAL11_2}-stage"
+
+export _DRUPAL11_1_D="${_DRUPAL11_1}-dev"
+export _DRUPAL11_1_P="${_DRUPAL11_1}-prod"
+export _DRUPAL11_1_S="${_DRUPAL11_1}-stage"
 
 export _SPINNER=NO
 export _T_BUILD=SRC
