@@ -12,11 +12,12 @@ On hosted BOA contact your host if you need any legacy PHP installed again.
 
 ## Drupal 11
 
-- [Commerce v.3](https://github.com/centarro/commerce-kickstart-project) (11.2.2)
-- [Drupal 11.2.2](https://drupal.org/project/drupal/releases/11.2.2)
-- [Drupal CMS 11.2.2](https://new.drupal.org/drupal-cms) (11.2.2)
-- [Sector 11.0.x-dev](https://drupal.org/project/sector) (11.2.0)
-- [Thunder 8.2.1](https://drupal.org/project/thunder) (11.2.2)
+- [Commerce 3.2.0](https://github.com/centarro/commerce-kickstart-project) (11.2.8)
+- [Drupal 11.1.9](https://drupal.org/project/drupal/releases/11.1.9)
+- [Drupal 11.2.8](https://drupal.org/project/drupal/releases/11.2.8)
+- [Drupal CMS 1.2.8](https://new.drupal.org/drupal-cms) (11.2.8)
+- [Sector 11.0.x-dev](https://drupal.org/project/sector) (11.2.8)
+- [Thunder 8.2.6](https://drupal.org/project/thunder) (11.2.8)
 
 ## Drupal 10
 
@@ -25,17 +26,17 @@ On hosted BOA contact your host if you need any legacy PHP installed again.
 - [Drupal 10.1.8](https://drupal.org/project/drupal/releases/10.1.8)
 - [Drupal 10.2.12](https://drupal.org/project/drupal/releases/10.2.12)
 - [Drupal 10.3.14](https://drupal.org/project/drupal/releases/10.3.14)
-- [Drupal 10.4.8](https://drupal.org/project/drupal/releases/10.4.8)
-- [Drupal 10.5.1](https://drupal.org/project/drupal/releases/10.5.1)
+- [Drupal 10.4.9](https://drupal.org/project/drupal/releases/10.4.9)
+- [Drupal 10.5.6](https://drupal.org/project/drupal/releases/10.5.6)
 - [DXPR Marketing 10.3.0](https://drupal.org/project/dxpr_marketing_cms) (10.3.6)
 - [EzContent 2.2.15](https://drupal.org/project/ezcontent) (10.3.6)
-- [farmOS 3.3.1](https://drupal.org/project/farm) (10.3.6)
-- [LocalGov 3.1.5](https://drupal.org/project/localgov) (10.5.1)
-- [OpenCulturas 2.2.1](https://drupal.org/project/openculturas) (10.3.6)
+- [farmOS 3.4.6](https://drupal.org/project/farm) (10.4.9)
+- [LocalGov 3.3.1](https://drupal.org/project/localgov) (10.5.6)
+- [OpenCulturas 2.5.4](https://drupal.org/project/openculturas) (10.5.6)
 - [OpenFed 12.2.4](https://drupal.org/project/openfed) (10.2.10)
 - [Social 12.4.5](https://drupal.org/project/social) (10.2.10)
-- [Varbase 10.0.6](https://drupal.org/project/varbase) (10.5.1)
-- [Varbase 9.1.10](https://drupal.org/project/varbase) (10.5.1)
+- [Varbase 10.0.8](https://drupal.org/project/varbase) (10.5.6)
+- [Varbase 9.1.12](https://drupal.org/project/varbase) (10.5.2)
 
 ## Drupal 9
 
@@ -78,24 +79,28 @@ This file, if it exists and contains a list of symbols used to define supported 
 - `SCR` — Sector
 - `THR` — Thunder
 
+### Drupal 11.1
+
+- `DE1` — Drupal 11.1 prod/stage/dev
+
 ### Drupal 10.5
 
 - `DX5` — Drupal 10.5 prod/stage/dev
 - `LGV` — LocalGov
+- `OCS` — OpenCulturas
 - `VB9` — Varbase 9
 - `VBX` — Varbase 10
 
 ### Drupal 10.4
 
 - `DX4` — Drupal 10.4 prod/stage/dev
+- `FOS` — farmOS
 
 ### Drupal 10.3
 
 - `DX3` — Drupal 10.3 prod/stage/dev
 - `DXP` — DXPR Marketing
 - `EZC` — EzContent
-- `FOS` — farmOS
-- `OCS` — OpenCulturas
 
 ### Drupal 10.2
 
