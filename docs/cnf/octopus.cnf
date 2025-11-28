@@ -211,13 +211,13 @@ so both can be used as default versions in the Aegir PHP configuration files:
 ### Drupal 10.4
 #
 # DX4 — Drupal 10.4 prod/stage/dev
+# FOS — farmOS
 
 ### Drupal 10.3
 #
 # DX3 — Drupal 10.3 prod/stage/dev
 # DXP — DXPR Marketing
 # EZC — EzContent
-# FOS — farmOS
 # OCS — OpenCulturas
 
 ### Drupal 10.2

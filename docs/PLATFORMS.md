@@ -30,9 +30,9 @@ On hosted BOA contact your host if you need any legacy PHP installed again.
 - [Drupal 10.5.6](https://drupal.org/project/drupal/releases/10.5.6)
 - [DXPR Marketing 10.3.0](https://drupal.org/project/dxpr_marketing_cms) (10.3.6)
 - [EzContent 2.2.15](https://drupal.org/project/ezcontent) (10.3.6)
-- [farmOS 3.3.1](https://drupal.org/project/farm) (10.3.6)
 - [LocalGov 3.1.5](https://drupal.org/project/localgov) (10.5.1)
 - [OpenCulturas 2.2.1](https://drupal.org/project/openculturas) (10.3.6)
+- [farmOS 3.4.6](https://drupal.org/project/farm) (10.4.9)
 - [OpenFed 12.2.4](https://drupal.org/project/openfed) (10.2.10)
 - [Social 12.4.5](https://drupal.org/project/social) (10.2.10)
 - [Varbase 10.0.6](https://drupal.org/project/varbase) (10.5.1)
@@ -93,13 +93,13 @@ This file, if it exists and contains a list of symbols used to define supported 
 ### Drupal 10.4
 
 - `DX4` — Drupal 10.4 prod/stage/dev
+- `FOS` — farmOS
 
 ### Drupal 10.3
 
 - `DX3` — Drupal 10.3 prod/stage/dev
 - `DXP` — DXPR Marketing
 - `EZC` — EzContent
-- `FOS` — farmOS
 - `OCS` — OpenCulturas
 
 ### Drupal 10.2
