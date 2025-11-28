@@ -64,24 +64,28 @@ _PHP_CLI_VERSION=8.3
 # SCR — Sector
 # THR — Thunder
 
+### Drupal 11.1
+#
+# DE1 — Drupal 11.1 prod/stage/dev
+
 ### Drupal 10.5
 #
 # DX5 — Drupal 10.5 prod/stage/dev
 # LGV — LocalGov
+# OCS — OpenCulturas
 # VB9 — Varbase 9
 # VBX — Varbase 10
 
 ### Drupal 10.4
 #
 # DX4 — Drupal 10.4 prod/stage/dev
+# FOS — farmOS
 
 ### Drupal 10.3
 #
 # DX3 — Drupal 10.3 prod/stage/dev
 # DXP — DXPR Marketing
 # EZC — EzContent
-# FOS — farmOS
-# OCS — OpenCulturas
 
 ### Drupal 10.2
 #
