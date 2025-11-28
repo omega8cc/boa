@@ -117,6 +117,7 @@ Check out the details in [**ROADMAP.md**](https://github.com/omega8cc/boa/tree/5
 - INI configuration per platform: [docs/ini/platform/INI.md](https://github.com/omega8cc/boa/tree/5.x-lts/docs/ini/platform/INI.md)
 - Configuration Templates: [docs/cnf/barracuda.cnf](https://github.com/omega8cc/boa/tree/5.x-lts/docs/cnf/barracuda.cnf), [docs/cnf/octopus.cnf](https://github.com/omega8cc/boa/tree/5.x-lts/docs/cnf/octopus.cnf)
 - System Control Files Index: [docs/ctrl/system.ctrl](https://github.com/omega8cc/boa/tree/5.x-lts/docs/ctrl/system.ctrl)
+- How we build newer codebases for testing: [docs/BUILDTESTS.md](https://github.com/omega8cc/boa/tree/5.x-lts/docs/BUILDTESTS.md)
 
 ## Documentation for BOA PRO
 
