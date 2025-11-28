@@ -235,6 +235,7 @@
 #
 # DX5 — Drupal 10.5 prod/stage/dev
 # LGV — LocalGov
+# OCS — OpenCulturas
 # VB9 — Varbase 9
 # VBX — Varbase 10
 
@@ -248,7 +249,6 @@
 # DX3 — Drupal 10.3 prod/stage/dev
 # DXP — DXPR Marketing
 # EZC — EzContent
-# OCS — OpenCulturas
 
 ### Drupal 10.2
 #
