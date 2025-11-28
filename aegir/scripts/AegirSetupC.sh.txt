@@ -788,7 +788,7 @@ _create_drupal_basic_version() {
     _get_core_ext "${drupal_version}.tar.gz"
     mv -f "${drupal_version}" "${_SHRD_PLNAME}"
     if [ "$version" = "9" ]; then
-      cd "${_SHRD_PLNAME}"
+      cd "${_pthDst}/${_SHRD_PLNAME}/web"
       _rename_drupal9_profiles
     fi
   fi
@@ -824,6 +824,9 @@ _create_drupal_core_basic() {
       ;;
     "DX5")
       _create_drupal_basic_version "10_5"
+      ;;
+    "DE1")
+      _create_drupal_basic_version "11_1"
       ;;
     "DE2")
       _create_drupal_basic_version "11_2"
@@ -864,30 +867,31 @@ declare -A _distros_names=(
   ["DX3"]="Drupal"
   ["DX4"]="Drupal"
   ["DX5"]="Drupal"
+  ["DE1"]="Drupal"
   ["DE2"]="Drupal"
 )
 
 # Define distros versions for configuration
 declare -A _distros_versions=(
-  ["CMS"]="cms"
+  ["CMS"]="1.2.8"
   ["CK1"]="2.77"
   ["CK2"]="2.40"
-  ["CK3"]="3.1.0"
+  ["CK3"]="3.2.0"
   ["DXP"]="10.3.0"
   ["EZC"]="2.2.15"
-  ["FOS"]="3.3.1"
-  ["LGV"]="3.1.5"
-  ["OCS"]="2.2.1"
+  ["FOS"]="3.4.6"
+  ["LGV"]="3.3.1"
+  ["OCS"]="2.5.4"
   ["OFD"]="12.2.4"
   ["OLS"]="2.0.0"
   ["OPG"]="3.1.0"
   ["SCR"]="11.0.x-dev"
   ["SOC"]="12.4.5"
-  ["THR"]="8.2.1"
+  ["THR"]="8.2.6"
   ["UC6"]="2.15"
   ["UC7"]="3.13"
-  ["VB9"]="9.1.10"
-  ["VBX"]="10.0.6"
+  ["VB9"]="9.1.12"
+  ["VBX"]="10.0.8"
   ["DL6"]="${_SMALLCORE6_V}"
   ["DL7"]="${_SMALLCORE7_V}"
   ["DL9"]="${_SMALLCORE9_V}"
@@ -897,6 +901,7 @@ declare -A _distros_versions=(
   ["DX3"]="${_SMALLCORE10_3_V}"
   ["DX4"]="${_SMALLCORE10_4_V}"
   ["DX5"]="${_SMALLCORE10_5_V}"
+  ["DE1"]="${_SMALLCORE11_1_V}"
   ["DE2"]="${_SMALLCORE11_2_V}"
 )
 
@@ -908,9 +913,9 @@ declare -A _distros_drupal_cores=(
   ["CK3"]="${_SMALLCORE11_2_V}"
   ["DXP"]="10.3.6"
   ["EZC"]="10.3.6"
-  ["FOS"]="10.3.6"
+  ["FOS"]="${_SMALLCORE10_4_V}"
   ["LGV"]="${_SMALLCORE10_5_V}"
-  ["OCS"]="10.3.6"
+  ["OCS"]="${_SMALLCORE10_5_V}"
   ["OFD"]="10.2.10"
   ["OLS"]="${_SMALLCORE9_V}"
   ["OPG"]="${_SMALLCORE9_V}"
@@ -919,7 +924,7 @@ declare -A _distros_drupal_cores=(
   ["THR"]="${_SMALLCORE11_2_V}"
   ["UC6"]="${_SMALLCORE6_V}"
   ["UC7"]="${_SMALLCORE7_V}"
-  ["VB9"]="${_SMALLCORE10_5_V}"
+  ["VB9"]="10.5.2"
   ["VBX"]="${_SMALLCORE10_5_V}"
   ["DL6"]="${_SMALLCORE6_V}"
   ["DL7"]="${_SMALLCORE7_V}"
@@ -930,6 +935,7 @@ declare -A _distros_drupal_cores=(
   ["DX3"]="${_SMALLCORE10_3_V}"
   ["DX4"]="${_SMALLCORE10_4_V}"
   ["DX5"]="${_SMALLCORE10_5_V}"
+  ["DE1"]="${_SMALLCORE11_1_V}"
   ["DE2"]="${_SMALLCORE11_2_V}"
 )
 
@@ -963,6 +969,7 @@ declare -A _distros_profiles_names=(
   ["DX3"]="standard"
   ["DX4"]="standard"
   ["DX5"]="standard"
+  ["DE1"]="standard"
   ["DE2"]="standard"
 )
 
@@ -996,6 +1003,7 @@ declare -A _distros_profiles_paths=(
   ["DX3"]="/"
   ["DX4"]="/"
   ["DX5"]="/"
+  ["DE1"]="/"
   ["DE2"]="/"
 )
 
@@ -1029,6 +1037,7 @@ declare -A _distros_web_dirs=(
   ["DX3"]="/web"
   ["DX4"]="/web"
   ["DX5"]="/web"
+  ["DE1"]="/web"
   ["DE2"]="/web"
 )
 
@@ -1062,6 +1071,7 @@ declare -A _distros_urls=(
   ["DX3"]="${_urlPrt}/drupal/releases/${_SMALLCORE10_3_V}"
   ["DX4"]="${_urlPrt}/drupal/releases/${_SMALLCORE10_4_V}"
   ["DX5"]="${_urlPrt}/drupal/releases/${_SMALLCORE10_5_V}"
+  ["DE1"]="${_urlPrt}/drupal/releases/${_SMALLCORE11_1_V}"
   ["DE2"]="${_urlPrt}/drupal/releases/${_SMALLCORE11_2_V}"
 )
 
@@ -1095,6 +1105,7 @@ declare -A _distros_php_versions=(
   ["DX3"]="8.3"
   ["DX4"]="8.3"
   ["DX5"]="8.3"
+  ["DE1"]="8.4"
   ["DE2"]="8.4"
 )
 
@@ -1457,6 +1468,10 @@ _d_core_platform_install() {
     _CORE_DEV="${_DRUPAL11_2_D}"
     _CORE_STG="${_DRUPAL11_2_S}"
     _CORE_PRD="${_DRUPAL11_2_P}"
+  elif [ "${1}" = "DE1" ]; then
+    _CORE_DEV="${_DRUPAL11_1_D}"
+    _CORE_STG="${_DRUPAL11_1_S}"
+    _CORE_PRD="${_DRUPAL11_1_P}"
   elif [ "${1}" = "DX5" ]; then
     _CORE_DEV="${_DRUPAL10_5_D}"
     _CORE_STG="${_DRUPAL10_5_S}"
