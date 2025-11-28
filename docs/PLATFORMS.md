@@ -12,13 +12,13 @@ On hosted BOA contact your host if you need any legacy PHP installed again.
 
 ## Drupal 11
 
-- [Thunder 8.2.1](https://drupal.org/project/thunder) (11.2.2)
 - [Drupal 11.2.8](https://drupal.org/project/drupal/releases/11.2.8)
 - [Commerce 3.2.0](https://github.com/centarro/commerce-kickstart-project) (11.2.8)
 - [Drupal 11.1.9](https://drupal.org/project/drupal/releases/11.1.9)
 - [Drupal 11.2.8](https://drupal.org/project/drupal/releases/11.2.8)
 - [Drupal CMS 1.2.8](https://new.drupal.org/drupal-cms) (11.2.8)
 - [Sector 11.0.x-dev](https://drupal.org/project/sector) (11.2.8)
+- [Thunder 8.2.6](https://drupal.org/project/thunder) (11.2.8)
 
 ## Drupal 10
 
