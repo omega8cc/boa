@@ -161,4 +161,8 @@ o3x@modern:~/static/november-26$
 
 Use paths like `november-26/thunder-8.2.6-11.2.8` and run tests for sites install, clone and migration.
 
+## Notes on non-standard issues
+
+Some codebases need manual fixes after the build. For example `openculturas` has wrong installation profile directory tree structure by default and doesn't have required `sites/example.sites.php` file, which needs to be copied there manually before you can install sites.
+
 
