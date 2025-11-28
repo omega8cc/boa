@@ -36,7 +36,7 @@ On hosted BOA contact your host if you need any legacy PHP installed again.
 - [OpenFed 12.2.4](https://drupal.org/project/openfed) (10.2.10)
 - [Social 12.4.5](https://drupal.org/project/social) (10.2.10)
 - [Varbase 10.0.6](https://drupal.org/project/varbase) (10.5.1)
-- [Varbase 9.1.10](https://drupal.org/project/varbase) (10.5.1)
+- [Varbase 9.1.12](https://drupal.org/project/varbase) (10.5.2)
 
 ## Drupal 9
 
