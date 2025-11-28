@@ -10,13 +10,15 @@
 
 ## Visit for latest versions check
 
-https://www.drupal.org/project/commerce
-https://www.drupal.org/project/farm
-https://www.drupal.org/project/localgov
-https://www.drupal.org/project/openculturas
-https://www.drupal.org/project/sector
-https://www.drupal.org/project/thunder
-https://www.drupal.org/project/varbase
+```sh
+  https://www.drupal.org/project/commerce
+  https://www.drupal.org/project/farm
+  https://www.drupal.org/project/localgov
+  https://www.drupal.org/project/openculturas
+  https://www.drupal.org/project/sector
+  https://www.drupal.org/project/thunder
+  https://www.drupal.org/project/varbase
+```
 
 ## Build them one by one and document results
 
@@ -103,6 +105,7 @@ vanilla    # composer create-project drupal/recommended-project:10.3.14 drupal-1
            # cd ~/static/november-26/drupal-10.3.14
            # composer require drush/drush
            # (10.3.14)
+```
 
 ```sh
 vanilla    # composer create-project drupal/recommended-project:10.4.9 drupal-10.4.9 --no-dev --no-interaction
