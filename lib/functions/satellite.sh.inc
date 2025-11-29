@@ -2170,7 +2170,7 @@ _satellite_check_fix_o_contrib() {
     _debug_proc
   fi
   if [ -e "${_CORE}/o_contrib_eleven" ]; then
-    if [ ! -d "${_CORE}/o_contrib_eleven/redis_nine_ten" ] \
+    if [ ! -d "${_CORE}/o_contrib_eleven/redis_ten_eleven" ] \
       || [ -e "${_CORE}/o_contrib_eleven/advagg" ] \
       || [ "${_O_CONTRIB_FORCED_UP}" = "YES" ]; then
       _msg "${_STATUS} A: Running o_contrib_eleven forced upgrade..."
@@ -2180,7 +2180,6 @@ _satellite_check_fix_o_contrib() {
       cd ${_CORE}/o_contrib_eleven
     fi
   fi
-
   if [ -e "${_CORE}/o_contrib_ten" ]; then
     if [ ! -d "${_CORE}/o_contrib_ten/redis_nine_ten" ] \
       || [ -e "${_CORE}/o_contrib_ten/advagg" ] \
@@ -3961,6 +3960,11 @@ _satellite_make() {
   echo "export _DRUPAL10_5_D=\"${_DRUPAL10_5}-dev\""         >> ${_writeTo}
   echo "export _DRUPAL10_5_P=\"${_DRUPAL10_5}-prod\""        >> ${_writeTo}
   echo "export _DRUPAL10_5_S=\"${_DRUPAL10_5}-stage\""       >> ${_writeTo}
+
+  echo "export _DRUPAL11_1=\"${_DRUPAL11_1}\""               >> ${_writeTo}
+  echo "export _DRUPAL11_1_D=\"${_DRUPAL11_1}-dev\""         >> ${_writeTo}
+  echo "export _DRUPAL11_1_P=\"${_DRUPAL11_1}-prod\""        >> ${_writeTo}
+  echo "export _DRUPAL11_1_S=\"${_DRUPAL11_1}-stage\""       >> ${_writeTo}
 
   echo "export _DRUPAL11_2=\"${_DRUPAL11_2}\""               >> ${_writeTo}
   echo "export _DRUPAL11_2_D=\"${_DRUPAL11_2}-dev\""         >> ${_writeTo}
