@@ -3833,9 +3833,9 @@ _satellite_send_welcome_email() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "${_STATUS} A: Sending setup email on init..."
     fi
-    TIME=$(date)
-    _Q="Your Aegir Install on ${TIME} [${_USER}]"
-    echo ${TIME} > ${_ROOT}/log/date-init.txt
+    _TIME=$(date)
+    _Q="Your Aegir Install on ${_TIME} [${_USER}]"
+    echo ${_TIME} > ${_ROOT}/log/date-init.txt
     if [ -e "${_ROOT}/log/setupmail.txt" ] \
       || [ -e "${_ROOT}/log/legacy_setupmail.txt" ] \
       || [ -e "${_ROOT}/log/latest_setupmail.txt" ]; then
@@ -3850,9 +3850,9 @@ _satellite_send_welcome_email() {
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "${_STATUS} A: Resending setup email on upgrade..."
       fi
-      TIME=$(date)
+      _TIME=$(date)
       _Q="[${_X_VERSION}] Aegir Upgrade [${_USER}]"
-      echo ${TIME} > ${_ROOT}/log/date-upgrade-${_THIS_CORE}.txt
+      echo ${_TIME} > ${_ROOT}/log/date-upgrade-${_THIS_CORE}.txt
       if [ -e "${_ROOT}/log/upgrademail.txt" ]; then
         if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
           cat ${_ROOT}/log/upgrademail.txt \
