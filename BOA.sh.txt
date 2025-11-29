@@ -1057,6 +1057,28 @@ _update_agents() {
     fi
   fi
 
+  if [ ! -e "${_optBin}/autosymlink" ] \
+    || [ ! -e "${_pthLog}/autosymlink.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
+    _CNT=$(pgrep -fc autosymlink)
+    if (( _CNT > 0 )); then
+      echo "The autosymlink is running!"
+    else
+      if [ -e "${_optBin}/autosymlink" ]; then
+        mv -f ${_optBin}/autosymlink ${_optBin}/autosymlink.old
+      fi
+      curl ${_crlGet} "${_urlHmr}/tools/bin/autosymlink" -o ${_optBin}/autosymlink
+      if [ -e "${_optBin}/autosymlink" ]; then
+        chmod 700 ${_optBin}/autosymlink
+        chown root:root ${_optBin}/autosymlink
+        touch ${_pthLog}/autosymlink.sh.ctrl.f99.${_tRee}.${_xSrl}.pid
+      else
+        if [ -e "${_optBin}/autosymlink.old" ]; then
+          mv -f ${_optBin}/autosymlink.old ${_optBin}/autosymlink
+        fi
+      fi
+    fi
+  fi
+
   if [ ! -e "${_optBin}/aptcleanup" ] \
     || [ ! -e "${_pthLog}/aptcleanup.sh.ctrl.f97.${_tRee}.${_xSrl}.pid" ]; then
     _CNT=$(pgrep -fc aptcleanup)
@@ -4220,6 +4242,7 @@ _update_boa_tools() {
             autodaedalus \
             autoexcalibur \
             autoinit \
+            autosymlink \
             autoupboa \
             backboa \
             backchain \
@@ -4359,7 +4382,7 @@ _update_boa_tools() {
   chmod 700 ${_optBin}/{dhcpfix,mergecsf,vmnetfix,fancynow,codebasecheck}
 
   # _SYS (700): cleanup tools
-  chmod 700 ${_optBin}/{aptcleanup,sqlclean,verifyvhostsdns,vhostcheck}
+  chmod 700 ${_optBin}/{aptcleanup,autosymlink,sqlclean,verifyvhostsdns,vhostcheck}
 
   # _MISC (755): misc user-space utilities
   chmod 755 ${_optBin}/{backchain,mybackup,randpass,sqlmagic,thinkdifferent,websh}
