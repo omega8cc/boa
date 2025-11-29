@@ -1,0 +1,538 @@
+#!/bin/bash
+
+#
+# Sites Files Auto Symlink
+#
+# Modes:
+#   DRY     (default) : no changes, only show + log actions, and record if run is CLEAN
+#   LIVE    (live)    : apply changes, per-site confirmation
+#   BATCH   (batch)   : apply changes for all sites without confirmation,
+#                       allowed only after a CLEAN DRY run
+#   REPORT  (report)  : read-only report of shared files/private symlinks
+#
+
+export HOME=/root
+export SHELL=/bin/bash
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
+
+_check_root() {
+  if [ "$(id -u)" -ne 0 ]; then
+    echo "ERROR: This script should be run as a root user"
+    exit 1
+  fi
+}
+_check_root
+
+_MODE="DRY"
+case "$1" in
+  live|LIVE|--live)
+    _MODE="LIVE"
+    ;;
+  batch|BATCH|--batch)
+    _MODE="BATCH"
+    ;;
+  report|REPORT|--report)
+    _MODE="REPORT"
+    ;;
+esac
+
+_LOG_DIR="/var/log/boa"
+_LOG_FILE="${_LOG_DIR}/autosymlink.log"
+
+if [ ! -d "${_LOG_DIR}" ]; then
+  mkdir -p "${_LOG_DIR}"
+fi
+
+_STATE_FILE="${_LOG_DIR}/autosymlink.state"
+
+# Flags used only during DRY mode
+_DRY_HAS_ERRORS="NO"
+_DRY_HAS_EDGE_CASES="NO"
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+_log() {
+  # Single place to log + print
+  # Arguments: message...
+  _NOW=$(date "+%Y-%m-%d %H:%M:%S")
+  echo "${_NOW} $*" | tee -a "${_LOG_FILE}"
+}
+
+_write_state() {
+  # Write a small state file with mode + status
+  # Args: 1: status (CLEAN / NOT_CLEAN / BATCH / etc.)
+  #       2: mode   (DRY / LIVE / BATCH / REPORT)
+  _STATUS="$1"
+  _MODE_SAVED="$2"
+  _TS=$(date "+%Y-%m-%d %H:%M:%S")
+  {
+    echo "LAST_MODE=${_MODE_SAVED}"
+    echo "LAST_STATUS=${_STATUS}"
+    echo "LAST_TS=${_TS}"
+  } > "${_STATE_FILE}"
+}
+
+_require_clean_dry_run_or_exit() {
+  # For BATCH mode: ensure a CLEAN DRY run was executed just before.
+  if [ ! -f "${_STATE_FILE}" ]; then
+    _log "[ERROR] Batch mode requires a prior CLEAN DRY-RUN, but no state file found: ${_STATE_FILE}"
+    exit 1
+  fi
+
+  _LAST_MODE=$(grep '^LAST_MODE=' "${_STATE_FILE}" 2>/dev/null | head -n 1 | cut -d= -f2-)
+  _LAST_STATUS=$(grep '^LAST_STATUS=' "${_STATE_FILE}" 2>/dev/null | head -n 1 | cut -d= -f2-)
+  _LAST_TS=$(grep '^LAST_TS=' "${_STATE_FILE}" 2>/dev/null | head -n 1 | cut -d= -f2-)
+
+  if [ -z "${_LAST_MODE}" ] || [ -z "${_LAST_STATUS}" ]; then
+    _log "[ERROR] State file ${_STATE_FILE} is incomplete. Run DRY-RUN again before using batch mode."
+    exit 1
+  fi
+
+  if [ "${_LAST_MODE}" != "DRY" ] || [ "${_LAST_STATUS}" != "CLEAN" ]; then
+    _log "[ERROR] Batch mode requires last run to be DRY and CLEAN, but got LAST_MODE='${_LAST_MODE}', LAST_STATUS='${_LAST_STATUS}' (at ${_LAST_TS})."
+    _log "[ERROR] Please run this script in DRY-RUN mode again and ensure no edge cases/errors appear."
+    exit 1
+  fi
+
+  _log "[INFO] Batch mode: confirmed last run was CLEAN DRY-RUN at ${_LAST_TS}."
+  # Invalidate the CLEAN DRY status immediately so another batch cannot reuse it.
+  _write_state "BATCH" "BATCH"
+}
+
+_finalize_dry_run_state() {
+  # Evaluate DRY flags and write state
+  if [ "${_DRY_HAS_ERRORS}" = "NO" ] && [ "${_DRY_HAS_EDGE_CASES}" = "NO" ]; then
+    _log "[DRY] CLEAN: no edge cases or errors found. Batch LIVE mode is now allowed."
+    _write_state "CLEAN" "DRY"
+  else
+    _log "[DRY] NOT CLEAN: edge cases and/or errors detected. Batch LIVE mode is NOT allowed."
+    _write_state "NOT_CLEAN" "DRY"
+  fi
+}
+
+_get_site_path() {
+  # Extracts site_path from a Drush alias file.
+  # Usage: _get_site_path "/path/to/file.alias.drushrc.php"
+  _ALIAS_FILE="$1"
+
+  if [ ! -f "${_ALIAS_FILE}" ]; then
+    echo ""
+    return
+  fi
+
+  # Expect line like:
+  # 'site_path' => '/data/disk/oXXX/static/.../sites/example.com',
+  _LINE=$(grep -E "'site_path'\s*=>" "${_ALIAS_FILE}" 2>/dev/null | head -n 1)
+
+  if [ -z "${_LINE}" ]; then
+    echo ""
+    return
+  fi
+
+  # Split by single quote and take the path part
+  _SITE_PATH=$(printf '%s\n' "${_LINE}" | awk -F"'" '{print $4}')
+  echo "${_SITE_PATH}"
+}
+
+_ask_confirm_site() {
+  # Ask once per site if we should perform the prepared actions.
+  # Expects "yes" or "Y" (case-insensitive).
+  _SITE_NAME="$1"
+
+  echo
+  echo "READY TO APPLY CHANGES FOR SITE: ${_SITE_NAME}"
+  printf "Type 'yes' or 'Y' to proceed, anything else to skip: "
+  read _ANSWER
+
+  case "${_ANSWER}" in
+    y|Y|yes|Yes|YES)
+      return 0
+      ;;
+    *)
+      _log "[LIVE] Skipping changes for site: ${_SITE_NAME}"
+      return 1
+      ;;
+  esac
+}
+
+_make_unique_target() {
+  # Ensure the given path becomes unique by renaming the existing
+  # file/dir/symlink to PATH-<timestamp>-<pid>-<random>
+  _TARGET="$1"
+
+  if [ ! -e "${_TARGET}" ] && [ ! -L "${_TARGET}" ]; then
+    return
+  fi
+
+  _SUFFIX="$(date +%Y%m%d-%H%M%S)-$$-${RANDOM}"
+  _NEW_TARGET="${_TARGET}-${_SUFFIX}"
+
+  _log "[APPLY] Target exists, renaming: ${_TARGET} -> ${_NEW_TARGET}"
+  mv "${_TARGET}" "${_NEW_TARGET}"
+}
+
+_check_symlink_sharing() {
+  # Args:
+  #   1: path to symlink (e.g. /.../sites/example.com/files)
+  #   2: type: "files" or "private"
+  #   3: site name (e.g. example.com)
+  #   4: account dir (/data/disk/o1)
+  _PATH="$1"
+  _TYPE="$2"
+  _SITE_NAME="$3"
+  _ACCOUNT_DIR="$4"
+
+  if [ ! -L "${_PATH}" ]; then
+    return
+  fi
+
+  _LINK_TARGET=$(readlink "${_PATH}")
+
+  if [ -z "${_LINK_TARGET}" ]; then
+    _log "[WARN] ${_TYPE} symlink for site ${_SITE_NAME} is empty or broken: ${_PATH}"
+    if [ "${_MODE}" = "DRY" ]; then
+      _DRY_HAS_ERRORS="YES"
+    fi
+    return
+  fi
+
+  # Expect something like /data/disk/o1/static/files/OTHER-SITE/files[/...]
+  case "${_LINK_TARGET}" in
+    *"/static/files/"*/"${_TYPE}"|*"/static/files/"*/"${_TYPE}/"|*"/static/files/"*/"${_TYPE}/"* )
+      _AFTER="${_LINK_TARGET#*/static/files/}"
+      _TARGET_SITE_NAME="${_AFTER%%/*}"
+      ;;
+    *)
+      # Unknown layout; in REPORT we just note it, in DRY we treat as edge case.
+      if [ "${_MODE}" = "REPORT" ]; then
+        _log "[REPORT] ${_TYPE} symlink for site ${_SITE_NAME} has non-standard target: ${_LINK_TARGET}"
+        return
+      fi
+      _log "[WARN] ${_TYPE} symlink for site ${_SITE_NAME} points to unknown pattern: ${_LINK_TARGET} – skipping"
+      if [ "${_MODE}" = "DRY" ]; then
+        _DRY_HAS_EDGE_CASES="YES"
+      fi
+      return
+      ;;
+  esac
+
+  # REPORT mode: just classify and exit.
+  if [ "${_MODE}" = "REPORT" ]; then
+    if [ "${_TARGET_SITE_NAME}" = "${_SITE_NAME}" ]; then
+      # Proper, non-shared symlink.
+      _log "[REPORT] ${_TYPE} symlink for site ${_SITE_NAME} → self (${_TARGET_SITE_NAME}), OK, target='${_LINK_TARGET}'"
+      return
+    fi
+
+    _CONTROL_DIR="${_ACCOUNT_DIR}/static/control"
+    _SHARE_THIS="${_CONTROL_DIR}/share.files.${_SITE_NAME}.info"
+    _SHARE_TARGET="${_CONTROL_DIR}/share.files.${_TARGET_SITE_NAME}.info"
+
+    _INTENT="ACCIDENTAL"
+    if [ -f "${_SHARE_THIS}" ] || [ -f "${_SHARE_TARGET}" ]; then
+      _INTENT="INTENTIONAL"
+    fi
+
+    _log "[REPORT] ${_TYPE} symlink for site ${_SITE_NAME} → ${_TARGET_SITE_NAME} (${_INTENT}), target='${_LINK_TARGET}'"
+    return
+  fi
+
+  # For non-REPORT modes, continue with normal sharing logic.
+
+  if [ "${_TARGET_SITE_NAME}" = "${_SITE_NAME}" ]; then
+    return
+  fi
+
+  _CONTROL_DIR="${_ACCOUNT_DIR}/static/control"
+  _SHARE_THIS="${_CONTROL_DIR}/share.files.${_SITE_NAME}.info"
+  _SHARE_TARGET="${_CONTROL_DIR}/share.files.${_TARGET_SITE_NAME}.info"
+
+  if [ -f "${_SHARE_THIS}" ] || [ -f "${_SHARE_TARGET}" ]; then
+    _log "[INFO] ${_TYPE} symlink for site ${_SITE_NAME} intentionally shares with ${_TARGET_SITE_NAME} (control file present) – leaving as is"
+    return
+  fi
+
+  _NEW_TARGET_BASE="${_ACCOUNT_DIR}/static/files/${_SITE_NAME}"
+  _ORIGINAL_TOP="${_ACCOUNT_DIR}/static/files/${_TARGET_SITE_NAME}/${_TYPE}"
+  _NEW_TARGET="${_NEW_TARGET_BASE}/${_TYPE}"
+
+  _log "[INFO] ${_TYPE} symlink for site ${_SITE_NAME} currently points to ${_LINK_TARGET} (owned by ${_TARGET_SITE_NAME})"
+  _log "[PLAN] Break sharing: copy from ${_ORIGINAL_TOP} to ${_NEW_TARGET} and update symlink at ${_PATH}"
+
+  if [ "${_MODE}" = "DRY" ]; then
+    if [ ! -d "${_ORIGINAL_TOP}" ]; then
+      _log "[WARN] Original ${_TYPE} directory not found at ${_ORIGINAL_TOP} – would fail breaking sharing"
+      _DRY_HAS_ERRORS="YES"
+    fi
+    return
+  fi
+
+  if [ ! -d "${_ORIGINAL_TOP}" ]; then
+    _log "[WARN] Original ${_TYPE} directory not found at ${_ORIGINAL_TOP} – cannot break sharing for ${_SITE_NAME}"
+    return
+  fi
+
+  if [ -e "${_NEW_TARGET_BASE}" ] && [ ! -d "${_NEW_TARGET_BASE}" ]; then
+    _make_unique_target "${_NEW_TARGET_BASE}"
+  fi
+
+  if [ ! -d "${_NEW_TARGET_BASE}" ]; then
+    _log "[APPLY] Creating directory: ${_NEW_TARGET_BASE}"
+    mkdir -p "${_NEW_TARGET_BASE}"
+  fi
+
+  if [ -e "${_NEW_TARGET}" ] || [ -L "${_NEW_TARGET}" ]; then
+    _make_unique_target "${_NEW_TARGET}"
+  fi
+
+  _log "[APPLY] Copying ${_ORIGINAL_TOP} -> ${_NEW_TARGET}"
+  mkdir -p "${_NEW_TARGET}"
+  rsync -a "${_ORIGINAL_TOP}/" "${_NEW_TARGET}/"
+
+  _log "[APPLY] Updating symlink: ${_PATH} -> ${_NEW_TARGET}"
+  rm -f "${_PATH}"
+  ln -s "${_NEW_TARGET}" "${_PATH}"
+}
+
+_process_site() {
+  # Handle single site for given account.
+  # Args:
+  #   1: account name (e.g. o1)
+  #   2: account dir (e.g. /data/disk/o1)
+  #   3: site name (e.g. example.com)
+  #   4: alias file (e.g. /data/disk/o1/.drush/example.com.alias.drushrc.php)
+  _ACCOUNT_NAME="$1"
+  _ACCOUNT_DIR="$2"
+  _SITE_NAME="$3"
+  _ALIAS_FILE="$4"
+
+  _SITE_PATH=$(_get_site_path "${_ALIAS_FILE}")
+
+  if [ -z "${_SITE_PATH}" ]; then
+    _log "[WARN] No site_path found for ${_SITE_NAME} in ${_ALIAS_FILE} – skipping"
+    if [ "${_MODE}" = "DRY" ]; then
+      _DRY_HAS_ERRORS="YES"
+    fi
+    return
+  fi
+
+  if [ ! -d "${_SITE_PATH}" ]; then
+    _log "[WARN] site_path directory does not exist for ${_SITE_NAME}: ${_SITE_PATH} – skipping"
+    if [ "${_MODE}" = "DRY" ]; then
+      _DRY_HAS_ERRORS="YES"
+    fi
+    return
+  fi
+
+  _FILES_PATH="${_SITE_PATH}/files"
+  _PRIVATE_PATH="${_SITE_PATH}/private"
+
+  _TARGET_BASE="${_ACCOUNT_DIR}/static/files/${_SITE_NAME}"
+  _DO_FILES_CONVERT="NO"
+  _DO_PRIVATE_CONVERT="NO"
+
+  # Decide what needs to be done for files/
+  if [ -d "${_FILES_PATH}" ] && [ ! -L "${_FILES_PATH}" ]; then
+    _DO_FILES_CONVERT="YES"
+  fi
+
+  # Decide what needs to be done for private/
+  if [ -d "${_PRIVATE_PATH}" ] && [ ! -L "${_PRIVATE_PATH}" ]; then
+    _DO_PRIVATE_CONVERT="YES"
+  fi
+
+  # site_path/private may not exist in older sites, so that's fine.
+  if [ "${_DO_FILES_CONVERT}" != "YES" ] && [ "${_DO_PRIVATE_CONVERT}" != "YES" ]; then
+    _log "[INFO] Nothing to do for site ${_SITE_NAME} (files/private already symlinks or absent)"
+    return
+  fi
+
+  _log "------------------------------------------------------------------"
+  _log "[INFO] Site: ${_SITE_NAME}"
+  _log "[INFO] Alias: ${_ALIAS_FILE}"
+  _log "[INFO] site_path: ${_SITE_PATH}"
+
+  # REPORT mode: only look at existing symlink sharing and return.
+  if [ "${_MODE}" = "REPORT" ]; then
+    _check_symlink_sharing "${_FILES_PATH}" "files" "${_SITE_NAME}" "${_ACCOUNT_DIR}"
+    _check_symlink_sharing "${_PRIVATE_PATH}" "private" "${_SITE_NAME}" "${_ACCOUNT_DIR}"
+    return
+  fi
+
+  # --- Normal modes (DRY / LIVE / BATCH) ---
+
+  if [ "${_DO_FILES_CONVERT}" = "YES" ]; then
+    if [ -e "${_TARGET_BASE}/files" ] || [ -L "${_TARGET_BASE}/files" ]; then
+      _log "[PLAN] Existing target will be renamed before move: ${_TARGET_BASE}/files -> ${_TARGET_BASE}/files-<hashstring>"
+      if [ "${_MODE}" = "DRY" ]; then
+        _DRY_HAS_EDGE_CASES="YES"
+      fi
+    fi
+    _log "[PLAN] Move directory: ${_FILES_PATH} -> ${_TARGET_BASE}/files"
+    _log "[PLAN] Symlink: ${_FILES_PATH} -> ${_TARGET_BASE}/files"
+  fi
+
+  if [ "${_DO_PRIVATE_CONVERT}" = "YES" ]; then
+    if [ -e "${_TARGET_BASE}/private" ] || [ -L "${_TARGET_BASE}/private" ]; then
+      _log "[PLAN] Existing target will be renamed before move: ${_TARGET_BASE}/private -> ${_TARGET_BASE}/private-<hashstring>"
+      if [ "${_MODE}" = "DRY" ]; then
+        _DRY_HAS_EDGE_CASES="YES"
+      fi
+    fi
+    _log "[PLAN] Move directory: ${_PRIVATE_PATH} -> ${_TARGET_BASE}/private"
+    _log "[PLAN] Symlink: ${_PRIVATE_PATH} -> ${_TARGET_BASE}/private"
+  fi
+
+  if [ "${_MODE}" = "DRY" ]; then
+    if [ "${_DO_FILES_CONVERT}" = "YES" ] || [ "${_DO_PRIVATE_CONVERT}" = "YES" ]; then
+      _log "[DRY] DRY-RUN mode – conversion planned for ${_SITE_NAME}, no changes applied"
+    fi
+  else
+    # LIVE and BATCH
+    if [ "${_DO_FILES_CONVERT}" = "YES" ] || [ "${_DO_PRIVATE_CONVERT}" = "YES" ]; then
+      if [ "${_MODE}" = "LIVE" ]; then
+        if ! _ask_confirm_site "${_SITE_NAME}"; then
+          _log "[LIVE] Skipping conversion for site: ${_SITE_NAME}"
+        else
+          if [ -e "${_TARGET_BASE}" ] && [ ! -d "${_TARGET_BASE}" ]; then
+            _make_unique_target "${_TARGET_BASE}"
+          fi
+          if [ ! -d "${_TARGET_BASE}" ]; then
+            _log "[APPLY] Creating directory: ${_TARGET_BASE}"
+            mkdir -p "${_TARGET_BASE}"
+          fi
+
+          if [ "${_DO_FILES_CONVERT}" = "YES" ]; then
+            if [ -e "${_TARGET_BASE}/files" ] || [ -L "${_TARGET_BASE}/files" ]; then
+              _make_unique_target "${_TARGET_BASE}/files"
+            fi
+            _log "[APPLY] Moving: ${_FILES_PATH} -> ${_TARGET_BASE}/files"
+            mv "${_FILES_PATH}" "${_TARGET_BASE}/files"
+            _log "[APPLY] Creating symlink: ${_FILES_PATH} -> ${_TARGET_BASE}/files"
+            ln -s "${_TARGET_BASE}/files" "${_FILES_PATH}"
+          fi
+
+          if [ "${_DO_PRIVATE_CONVERT}" = "YES" ]; then
+            if [ -e "${_TARGET_BASE}/private" ] || [ -L "${_TARGET_BASE}/private" ]; then
+              _make_unique_target "${_TARGET_BASE}/private"
+            fi
+            _log "[APPLY] Moving: ${_PRIVATE_PATH} -> ${_TARGET_BASE}/private"
+            mv "${_PRIVATE_PATH}" "${_TARGET_BASE}/private"
+            _log "[APPLY] Creating symlink: ${_PRIVATE_PATH} -> ${_TARGET_BASE}/private"
+            ln -s "${_TARGET_BASE}/private" "${_PRIVATE_PATH}"
+          fi
+        fi
+      else
+        # BATCH (no per-site confirmation)
+        if [ -e "${_TARGET_BASE}" ] && [ ! -d "${_TARGET_BASE}" ]; then
+          _make_unique_target "${_TARGET_BASE}"
+        fi
+        if [ ! -d "${_TARGET_BASE}" ]; then
+          _log "[APPLY] Creating directory: ${_TARGET_BASE}"
+          mkdir -p "${_TARGET_BASE}"
+        fi
+
+        if [ "${_DO_FILES_CONVERT}" = "YES" ]; then
+          if [ -e "${_TARGET_BASE}/files" ] || [ -L "${_TARGET_BASE}/files" ]; then
+            _make_unique_target "${_TARGET_BASE}/files"
+          fi
+          _log "[APPLY] Moving: ${_FILES_PATH} -> ${_TARGET_BASE}/files"
+          mv "${_FILES_PATH}" "${_TARGET_BASE}/files"
+          _log "[APPLY] Creating symlink: ${_FILES_PATH} -> ${_TARGET_BASE}/files"
+          ln -s "${_TARGET_BASE}/files" "${_FILES_PATH}"
+        fi
+
+        if [ "${_DO_PRIVATE_CONVERT}" = "YES" ]; then
+          if [ -e "${_TARGET_BASE}/private" ] || [ -L "${_TARGET_BASE}/private" ]; then
+            _make_unique_target "${_TARGET_BASE}/private"
+          fi
+          _log "[APPLY] Moving: ${_PRIVATE_PATH} -> ${_TARGET_BASE}/private"
+          mv "${_PRIVATE_PATH}" "${_TARGET_BASE}/private"
+          _log "[APPLY] Creating symlink: ${_PRIVATE_PATH} -> ${_TARGET_BASE}/private"
+          ln -s "${_TARGET_BASE}/private" "${_PRIVATE_PATH}"
+        fi
+      fi
+    fi
+  fi
+
+  # Now handle shared symlink detection/fix for files/private
+  _check_symlink_sharing "${_FILES_PATH}" "files" "${_SITE_NAME}" "${_ACCOUNT_DIR}"
+  _check_symlink_sharing "${_PRIVATE_PATH}" "private" "${_SITE_NAME}" "${_ACCOUNT_DIR}"
+}
+
+_process_account() {
+  # Handle one /data/disk/* account.
+  # Arg: account dir (/data/disk/o1)
+  _ACCOUNT_DIR="$1"
+  _ACCOUNT_NAME=$(basename "${_ACCOUNT_DIR}")
+
+  # Ignore /data/disk/arch/
+  if [ "${_ACCOUNT_NAME}" = "arch" ]; then
+    return
+  fi
+
+  _VHOST_DIR="${_ACCOUNT_DIR}/config/server_master/nginx/vhost.d"
+  _DRUSH_DIR="${_ACCOUNT_DIR}/.drush"
+
+  if [ ! -d "${_VHOST_DIR}" ]; then
+    return
+  fi
+
+  if [ ! -d "${_DRUSH_DIR}" ]; then
+    return
+  fi
+
+  _log "=================================================================="
+  _log "[INFO] Processing account: ${_ACCOUNT_NAME} (${_ACCOUNT_DIR})"
+
+  # Iterate Drush aliases, use base name as site name, match with vhost.
+  for _ALIAS_FILE in "${_DRUSH_DIR}"/*.alias.drushrc.php; do
+    if [ ! -f "${_ALIAS_FILE}" ]; then
+      continue
+    fi
+
+    _ALIAS_BASENAME=$(basename "${_ALIAS_FILE}")
+    # Strip .alias.drushrc.php
+    _SITE_NAME=${_ALIAS_BASENAME%.alias.drushrc.php}
+
+    _VHOST_FILE="${_VHOST_DIR}/${_SITE_NAME}"
+
+    # Proceed only for valid vhost/drush-alias pairs
+    if [ ! -f "${_VHOST_FILE}" ]; then
+      continue
+    fi
+
+    _process_site "${_ACCOUNT_NAME}" "${_ACCOUNT_DIR}" "${_SITE_NAME}" "${_ALIAS_FILE}"
+  done
+}
+
+_main() {
+  _log "=================================================================="
+  if [ "${_MODE}" = "LIVE" ]; then
+    _log "[START] autosymlink running in LIVE mode (per-site confirmation required)"
+  elif [ "${_MODE}" = "BATCH" ]; then
+    _log "[START] autosymlink running in BATCH mode (no per-site confirmation)"
+    _require_clean_dry_run_or_exit
+  elif [ "${_MODE}" = "REPORT" ]; then
+    _log "[START] autosymlink running in REPORT mode (read-only, no changes)"
+  else
+    _log "[START] autosymlink running in DRY-RUN mode (no changes will be made)"
+  fi
+
+  for _ACCOUNT_DIR in /data/disk/*; do
+    if [ ! -d "${_ACCOUNT_DIR}" ] || [ ! -e "${_ACCOUNT_DIR}/tools/drush" ]; then
+      continue
+    fi
+    _process_account "${_ACCOUNT_DIR}"
+  done
+
+  if [ "${_MODE}" = "DRY" ]; then
+    _finalize_dry_run_state
+  fi
+
+  _log "[DONE] autosymlink finished"
+}
+
+_main "$@"
