@@ -2170,7 +2170,7 @@ _satellite_check_fix_o_contrib() {
     _debug_proc
   fi
   if [ -e "${_CORE}/o_contrib_eleven" ]; then
-    if [ ! -d "${_CORE}/o_contrib_eleven/redis_nine_ten" ] \
+    if [ ! -d "${_CORE}/o_contrib_eleven/redis_ten_eleven" ] \
       || [ -e "${_CORE}/o_contrib_eleven/advagg" ] \
       || [ "${_O_CONTRIB_FORCED_UP}" = "YES" ]; then
       _msg "${_STATUS} A: Running o_contrib_eleven forced upgrade..."
@@ -2180,7 +2180,6 @@ _satellite_check_fix_o_contrib() {
       cd ${_CORE}/o_contrib_eleven
     fi
   fi
-
   if [ -e "${_CORE}/o_contrib_ten" ]; then
     if [ ! -d "${_CORE}/o_contrib_ten/redis_nine_ten" ] \
       || [ -e "${_CORE}/o_contrib_ten/advagg" ] \
