@@ -872,7 +872,7 @@ _octopus_install() {
         else
           _lml="${_MY_OCTO_EMAIL}"
           if [ ! -z "${_lml}" ]; then
-            sed -i 's~^_MY_OCTO.*~_MY_OCTO_EMAIL="${_lml}"~' ${_vBs}/${_octName}
+            sed -i "s~^_MY_OC.*~_MY_OCTO_EMAIL=\"${_lml}\"~" ${_vBs}/${_octName}
             wait
           else
             sed -i 's~^_MY_OCTO.*~_MY_OCTO_EMAIL="root"~'    ${_vBs}/${_octName}
@@ -905,10 +905,10 @@ _octopus_install() {
         wait
       fi
     else
-      sed -i 's~^_MY_OCTOPU.*~_MY_OCTO_EMAIL="${_eMal}"~'    ${_vBs}/${_octName}
+      sed -i "s~^_MY_OCTOPU=.*~_MY_OCTO_EMAIL=\"${_eMal}\"~" ${_vBs}/${_octName}
       wait
     fi
-    sed -i 's~^_CLIENT_EMAIL=.*~_CLIENT_EMAIL="${_eMal}"~'   ${_vBs}/${_octName}
+    sed -i "s~^_CLIENT_EMAIL=.*~_CLIENT_EMAIL=\"${_eMal}\"~" ${_vBs}/${_octName}
     wait
     sed -i "s/^_USER=.*/_USER=${_usEr}/g"                    ${_vBs}/${_octName}
     wait
@@ -1044,7 +1044,7 @@ _octopus_install() {
 _barracuda_install() {
   if [ -e "${_vBs}/${_barName}" ] && [ -e "${_vBs}/${_filIncB}" ]; then
 
-    sed -i 's~^_MY_EMAIL=.*~_MY_EMAIL="${_eMal}"~'           ${_vBs}/${_filIncB}
+    sed -i "s~^_MY_EMAIL=.*~_MY_EMAIL=\"${_eMal}\"~"         ${_vBs}/${_filIncB}
     wait
     sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"               ${_vBs}/${_filIncB}
     wait
