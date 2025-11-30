@@ -3,8 +3,8 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
-export _tRee=dev
-export _xSrl=585devT00
+export _tRee=pro
+export _xSrl=585proT00
 
 _DB_SERIES=5.7
 _CSF_VRN=15.00
