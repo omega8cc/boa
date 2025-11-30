@@ -3,7 +3,7 @@
 ### Stable BOA-5.8.5-pro/lts - 30 Years of Heritage Edition
 ### Date: Mon Dec 1 09:58:58 AM AEDT 2025 in Sydney
 ### Welcome Devuan Excalibur and PHP 8.5
-### 1092 commits since BOA-5.8.5-pro
+### 1092 commits since BOA-5.7.12-pro
 ###
 
 @=> 30 Years of Heritage -- Why We’re Different
