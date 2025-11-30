@@ -4747,7 +4747,7 @@ EOF
 EOF
     else
       echo " "
-      _thiSys="$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)/$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2) $(uname -m)"
+      _thiSys="${_OS_DIST}.${_OS_CODE}"
       _msg "This Octopus System is ${_thiSys}"
       _msg "This Octopus PHP FPM/CLI version is ${_PHP_FPM_VERSION}/${_PHP_CLI_VERSION}"
       _msg "This Octopus URL address is ${_DOMAIN}"
@@ -4983,10 +4983,10 @@ _satellite_log_update() {
     echo ${_F_TIME} > ${_ROOT}/log/date-upgrade-${_THIS_CORE}.txt
   fi
   _OCTOPUS_VERSION_INFO="${_F_TIME} / \
-    ${_OS_DIST}.${_OS_CODE} $(uname -m) \
-    / Octopus ${_X_VERSION}-${_xSrl} \
-    / FPM ${_PHP_FPM_VERSION} \
-    / CLI ${_PHP_CLI_VERSION}"
+    ${_OS_DIST}.${_OS_CODE} / \
+    Octopus ${_X_VERSION}-${_xSrl} / \
+    FPM ${_PHP_FPM_VERSION} / \
+    CLI ${_PHP_CLI_VERSION}"
   echo "${_OCTOPUS_VERSION_INFO}" | fmt -su -w 2500 >> \
     ${_ROOT}/log/octopus_log.txt
   if [ "${_DEBUG_MODE}" = "YES" ]; then
