@@ -111,7 +111,7 @@
     * Add dhcpfix tool used to fix vendor-specific forced-dns issues if needed
     * Add Droplet Agent to auto-healing
     * Add environment_indicator to Aegir hostmaster control panel
-    * Add ffdevuan tool to update the list of reliable ad fastest mirrors
+    * Add ffdevuan tool to update the list of reliable and fastest mirrors
     * Add instant SQL fallback for Valkey/Redis to global-valkey.inc
     * Add loadguard as future auto-healing orchestrator for testing
     * Add new dedicated tools: aptcleanup and vmnetfix in autoinit
@@ -206,6 +206,7 @@
     * New Relic 12.2.0.27
     * Nginx 1.29.1
     * Nginx 1.29.3
+    * Node v22.20.0
     * Node v22.21.0
     * OpenCulturas 2.5.4 with core 10.5.6
     * Openjdk 11.0.29
@@ -214,10 +215,12 @@
     * PHP 8.3.24
     * PHP 8.3.25
     * PHP 8.3.26
+    * PHP 8.3.27
     * PHP 8.3.28
     * PHP 8.4.11
     * PHP 8.4.12
     * PHP 8.4.13
+    * PHP 8.4.14
     * PHP 8.4.15
     * PHP APCu 5.1.27
     * PHP igbinary 3.2.16
@@ -231,6 +234,7 @@
     * REDIS integration module 8.x-1.11.2 for Drupal 11.x
     * Sector 11.0.x-dev with core 11.2.8
     * Thunder 8.2.6 with core 11.2.8
+    * Unbound 1.24.1
     * Unbound 1.24.2
     * Valkey 7.2.11
     * Valkey 9.0.0
