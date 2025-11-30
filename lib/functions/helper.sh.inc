@@ -934,8 +934,8 @@ _os_detection() {
   _SKIP_LEGACY_PHP=YES
 
   echo " "
-  _thiSys="$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)/$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2) $(uname -m)"
-  _thiSys="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null) ${_thiSys} PHP ${_PHP_FPM_VERSION}"
+  _thiSys="${_OS_DIST}/${_OS_CODE}"
+  _thiSys="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null) ${_thiSys}"
   _msg "Aegir on ${_thiSys}"
   echo " "
 }
@@ -1123,9 +1123,9 @@ _barracuda_log_update() {
       | sed "s/[\,']//g" 2>&1)
   fi
   _BARRACUDA_VERSION_INFO="$(date) / \
-    $(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2).$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2) \
-    $(uname -m) ${_VIRT_IS} / \
-    ${_X_VERSION}-${_xSrl} / \
+    ${_OS_DIST}.${_OS_CODE} / \
+    ${_VIRT_IS} / \
+    Barracuda ${_X_VERSION}-${_xSrl} / \
     Nginx ${_NGINX_VRN} / \
     PHP-MI ${_PHP_MULTI_INSTALL} / \
     FPM ${_PHP_FPM_VERSION} / \
