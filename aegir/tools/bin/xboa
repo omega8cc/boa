@@ -3,8 +3,8 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
-export _tRee=lts
-export _xSrl=570ltsT11
+export _tRee=dev
+export _xSrl=585devT00
 
 _WEBG=www-data
 _THIS_DB_PORT=3306
