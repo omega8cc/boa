@@ -4984,8 +4984,9 @@ _satellite_log_update() {
   fi
   _OCTOPUS_VERSION_INFO="${_F_TIME} / \
     ${_OS_DIST}.${_OS_CODE} $(uname -m) \
-    / Aegir ${_AEGIR_VERSION} / Octopus ${_X_VERSION} \
-    / FPM ${_PHP_FPM_VERSION} / CLI ${_PHP_CLI_VERSION}"
+    / Octopus ${_X_VERSION}-${_xSrl} \
+    / FPM ${_PHP_FPM_VERSION} \
+    / CLI ${_PHP_CLI_VERSION}"
   echo "${_OCTOPUS_VERSION_INFO}" | fmt -su -w 2500 >> \
     ${_ROOT}/log/octopus_log.txt
   if [ "${_DEBUG_MODE}" = "YES" ]; then
