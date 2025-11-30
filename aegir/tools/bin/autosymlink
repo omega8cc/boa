@@ -289,7 +289,10 @@ _check_symlink_sharing() {
 
   _log "[APPLY] Copying ${_ORIGINAL_TOP} -> ${_NEW_TARGET}"
   mkdir -p "${_NEW_TARGET}"
-  rsync -a "${_ORIGINAL_TOP}/" "${_NEW_TARGET}/"
+  if ! rsync -a "${_ORIGINAL_TOP}/" "${_NEW_TARGET}/"; then
+    _log "[ERROR] rsync failed for ${_SITE_NAME} ${_TYPE} (${_ORIGINAL_TOP} -> ${_NEW_TARGET}) – leaving symlink unchanged"
+    return
+  fi
 
   _log "[APPLY] Updating symlink: ${_PATH} -> ${_NEW_TARGET}"
   rm -f "${_PATH}"
