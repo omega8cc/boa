@@ -4,7 +4,7 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 export _tRee=lts
-export _xSrl=570ltsT11
+export _xSrl=585ltsT00
 
 _barCnf="/root/.barracuda.cnf"
 _crlGet="-L --max-redirs 3 -k -s --retry 9 --retry-delay 9 -A iCab"
@@ -20,8 +20,6 @@ _check_root() {
   fi
 }
 _check_root
-
-[ -e "/run/nginx.pid" ] && service nginx reload
 
 #
 # Protect from any autoupboa updates when _SKYNET_MODE=OFF
