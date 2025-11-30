@@ -145,7 +145,7 @@ if [ -n "${STY+x}" ]; then
   export _SPINNER=NO
 fi
 
-export _F_TIME=$(date)
+export _F_TIME="$(date)"
 
 
 ###

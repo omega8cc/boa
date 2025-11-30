@@ -4747,7 +4747,7 @@ EOF
 EOF
     else
       echo " "
-      _thiSys="${_OS_DIST}.${_OS_CODE}"
+      _thiSys="${_OS_DIST}/${_OS_CODE}"
       _msg "This Octopus System is ${_thiSys}"
       _msg "This Octopus PHP FPM/CLI version is ${_PHP_FPM_VERSION}/${_PHP_CLI_VERSION}"
       _msg "This Octopus URL address is ${_DOMAIN}"
