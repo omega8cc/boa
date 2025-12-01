@@ -76,6 +76,10 @@
   /usr/local/share/git-core/templates/* r,
   /usr/local/share/git-core/templates/** r,
   /usr/share/GeoIP/GeoIP.dat r,
+  /usr/share/GeoIP/GeoIPv6.dat r,
+  /usr/share/GeoIP/GeoLite2-ASN.mmdb r,
+  /usr/share/GeoIP/GeoLite2-City.mmdb r,
+  /usr/share/GeoIP/GeoLite2-Country.mmdb r,
   /opt/php85/** r,
 
   # Allow PHP-CLI to read required user/access files
