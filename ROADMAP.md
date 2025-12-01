@@ -14,6 +14,8 @@ Certain planned features are likely to be exclusive to **BOA PRO**, as indicated
 
 ## RELEASED IN BOA LTS/PRO
 
+- **PHP 8.5 Support**: Enhancing performance and supporting twelve PHP versions (PRO/LTS)
+- **Symlink Site Files**: Automatically symlink all site files to expedite migration tasks and conserve disk space (PRO/LTS)
 - **Drupal 11 with Aegir 3**: They Said It Couldn’t Be Done — We Did It Anyway (PRO/LTS)
 - **Solr 9 Support**: Add latest Solr Server 9 as supported via BOA automation (PRO/LTS)
 - **PHP 8.4 Support**: Enhancing performance and supporting eleven PHP versions (PRO/LTS)
@@ -28,12 +30,10 @@ Certain planned features are likely to be exclusive to **BOA PRO**, as indicated
 
 ## IN PROGRESS
 
-- **PHP 8.5 Support**: Enhancing performance and supporting twelve PHP versions (PRO/LTS)
 - **Backdrop CMS Support**: Implement Backdrop CMS as a supported platform (PRO/LTS)
 - **Grav CMS Support**: Introduce support for Grav CMS (command line only) (PRO/LTS)
 - **Import from Classic Ægir**: Extend xboa to import from remote classic Ægir servers using Nginx or Apache (PRO/LTS)
 - **Optional AppArmor Support**: Enhanced security and accounts privilege separation (PRO)
-- **Symlink Site Files**: Automatically symlink all site files to expedite migration tasks and conserve disk space (PRO)
 - **Tar Pipelines on Clone**: Use Tar Pipelines to create separate symlinked copies during site clone tasks (PRO)
 
 ## UPCOMING TASKS
