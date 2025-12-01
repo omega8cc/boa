@@ -40,16 +40,6 @@ _check_root
 [ -e "/root/.proxy.cnf" ] && exit 0
 [ -e "/root/.pause_heavy_tasks_maint.cnf" ] && exit 0
 
-
-# Function to determine if the system is hosted
-_if_hosted_sys() {
-  if [ -e "/root/.host8.cnf" ] || [[ "${_hName}" =~ \.aegir\.cc$ ]]; then
-    _HOSTED_SYS="YES"
-  else
-    _HOSTED_SYS="NO"
-  fi
-}
-
 # Function to calculate RAM usage percentage as an integer
 _calculate_ram_usage_percent() {
   _total_ram_kb=$1
@@ -76,6 +66,69 @@ _optimize_ram() {
   if [ "${_ram_usage_percent}" -gt 90 ]; then
     sync && echo 3 | sudo tee /proc/sys/vm/drop_caches
   fi
+}
+
+_find_fast_mirror_early() {
+  _ffMirr=/opt/local/bin/ffmirror
+  if [ -x "${_ffMirr}" ]; then
+    _ffList="/var/backups/boa-mirrors-2025-01.txt"
+    mkdir -p /var/backups
+    if [ ! -e "${_ffList}" ]; then
+      echo "eu.files.aegir.cc"  > ${_ffList}
+      echo "us.files.aegir.cc" >> ${_ffList}
+      echo "ao.files.aegir.cc" >> ${_ffList}
+    fi
+    if [ -e "${_ffList}" ]; then
+      _BROKEN_FFMIRR_TEST=$(grep "stuff" ${_ffMirr} 2>&1)
+      if [[ "${_BROKEN_FFMIRR_TEST}" =~ "stuff" ]]; then
+        _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
+        _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
+        _USE_MIR="${_CHECK_MIRROR}"
+        [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.aegir.cc"
+      else
+        _USE_MIR="files.aegir.cc"
+      fi
+    else
+      _USE_MIR="files.aegir.cc"
+    fi
+  else
+    _USE_MIR="files.aegir.cc"
+  fi
+  export _urlDev="http://${_USE_MIR}/dev"
+}
+
+# Function to download GeoLite2 databases
+_fetch_geoip() {
+
+  # Prepare GeoIP directories
+  echo "Setting up GeoIP directories..."
+  mkdir -p /usr/share/GeoIP
+  chmod 755 /usr/share/GeoIP
+
+  # Download and install GeoIP databases
+  echo "Downloading GeoIP databases..."
+  mkdir -p /opt/tmp
+  cd /opt/tmp
+  rm -f /opt/tmp/Geo*
+
+  # For GeoIP2 ASN database:
+  wget -q -U iCab ${_urlDev}/src/GeoLite2-ASN.mmdb.gz
+  gunzip GeoLite2-ASN.mmdb.gz &> /dev/null
+  cp -af GeoLite2-ASN.mmdb /usr/share/GeoIP/
+
+  # For GeoIP2 City database:
+  wget -q -U iCab ${_urlDev}/src/GeoLite2-City.mmdb.gz
+  gunzip GeoLite2-City.mmdb.gz &> /dev/null
+  cp -af GeoLite2-City.mmdb /usr/share/GeoIP/
+
+  # For GeoIP2 Country database:
+  wget -q -U iCab ${_urlDev}/src/GeoLite2-Country.mmdb.gz
+  gunzip GeoLite2-Country.mmdb.gz &> /dev/null
+  cp -af GeoLite2-Country.mmdb /usr/share/GeoIP/
+
+  chmod 644 /usr/share/GeoIP/*
+  rm -f /opt/tmp/Geo*
+  cd
 }
 
 # Main action function
@@ -109,10 +162,6 @@ _graceful_action() {
     service inetutils-syslogd start
   fi
 
-  # Clean up old log files
-  echo "Cleaning up old pid files..."
-  find /var/log/boa/*.pid -mtime +3  -type f -exec rm -rf {} \; &> /dev/null
-
   # Swap, RAM and disk cache management
   _IF_BCP="$(pgrep -f duplicity)"
   if [ -d "/dev/disk" ]; then
@@ -128,77 +177,13 @@ _graceful_action() {
   fi
 
   # Setup GeoIP directories
-  echo "Setting up GeoIP directories..."
-  mkdir -p /usr/share/GeoIP
-  chmod 755 /usr/share/GeoIP
+  if [ ! -e "/usr/share/GeoIP/GeoLite2-City.mmdb" ]; then
+    _find_fast_mirror_early
+    _fetch_geoip
+  fi
 
-  # Download and install GeoIP databases (commented out)
-  echo "Downloading GeoIP databases..."
-  mkdir -p /opt/tmp
-  cd /opt/tmp
-
-  # Uncomment the following lines to download GeoIP databases
-  # wget -q -U iCab -N http://geolite.maxmind.com/download/geoip/database/GeoLite2-City.mmdb.gz
-  # gunzip -f GeoLite2-City.mmdb.gz
-  # cp -af GeoLite2-City.mmdb /usr/share/GeoIP/
-
-  # wget -q -U iCab -N http://geolite.maxmind.com/download/geoip/database/GeoLite2-Country.mmdb.gz
-  # gunzip -f GeoLite2-Country.mmdb.gz
-  # cp -af GeoLite2-Country.mmdb /usr/share/GeoIP/
-
-  chmod 644 /usr/share/GeoIP/*
-  cd /
-  mkdir -p /opt/tmp
-  chmod 777 /opt/tmp
+  # Cleanup for /opt/tmp/sess*
   rm -f /opt/tmp/sess*
-
-  # Clean up /tmp directory if hosted system
-  _if_hosted_sys
-  if [ "${_HOSTED_SYS}" = "YES" ]; then
-    echo "Cleaning up /tmp directory on hosted system..."
-    rm -f /tmp/*
-  fi
-
-  # Remove unnecessary files
-  echo "Removing unnecessary files..."
-  rm -f /root/ksplice-archive.asc
-  rm -f /root/install-uptrack
-  find /tmp/ -type f \( -name ".ICE-unix" -o -name ".X11-unix" -o -name ".webmin" \) -mtime +0 -exec rm -f {} \;
-
-  # Rotate New Relic logs
-  if [ -d "/var/log/newrelic" ]; then
-    echo "Rotating New Relic logs..."
-    echo rotate > /var/log/newrelic/nrsysmond.log
-    echo rotate > /var/log/newrelic/php_agent.log
-    echo rotate > /var/log/newrelic/newrelic-daemon.log
-  fi
-
-  # Reload nginx service
-  echo "Reloading nginx service..."
-  service nginx reload
-
-  # Restart Solr and Jetty servers if not under high traffic
-  if [ ! -e "/run/boa_run.pid" ] \
-    && [ ! -e "/root/.giant_traffic.cnf" ] \
-    && [ ! -e "/root/.high_traffic.cnf" ]; then
-    echo "INFO: Solr and Jetty servers will be restarted in 10 seconds"
-    sleep 10
-    if [ -x "/etc/init.d/solr9" ] && [ -e "/etc/default/solr9.in.sh" ]; then
-      echo "Restarting Solr 9..."
-      nice -n 0 service solr9 restart
-    fi
-    if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
-      echo "Restarting Solr 7..."
-      nice -n 0 service solr7 restart
-    fi
-    echo "Stopping any running Jetty processes..."
-    pkill -9 -f jetty9
-    rm -rf /tmp/{drush*,pear,jetty*}
-    rm -f /var/log/jetty9/*
-    echo "Starting Jetty services..."
-    [ -e "/etc/init.d/jetty9" ] && service jetty9 start
-    echo "INFO: Solr and Jetty servers restarted successfully"
-  fi
 
   # Speed cleanup
   _IF_BCP="$(pgrep -f duplicity)"
