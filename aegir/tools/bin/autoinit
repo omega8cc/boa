@@ -667,8 +667,14 @@ _init_prepare() {
     fi
     _msg "[init] prep ==> Time for reboot and next upgrade cycle..." >> "${_logInt}"
     echo " " >> "${_logInt}"
-    rm -f /run/autoinit.pid
-    shutdown -r now
+    if [ -e "/root/.manual-autoinit-reboot.cnf" ]; then
+      service cron stop
+      sleep 90
+      rm -f /run/autoinit.pid
+    else
+      rm -f /run/autoinit.pid
+      shutdown -r now
+    fi
     exit 0
   else
     if [ ! -x "/usr/bin/mc" ]; then
@@ -735,8 +741,14 @@ _init_prepare() {
       touch ${_initFile}
       _msg "[init] prep ==> Time for reboot and next upgrade cycle..." >> "${_logInt}"
       echo " " >> "${_logInt}"
-      rm -f /run/autoinit.pid
-      shutdown -r now
+      if [ -e "/root/.manual-autoinit-reboot.cnf" ]; then
+        service cron stop
+        sleep 90
+        rm -f /run/autoinit.pid
+      else
+        rm -f /run/autoinit.pid
+        shutdown -r now
+      fi
       exit 0
     fi
   fi
@@ -999,8 +1011,14 @@ _init_offsystemd() {
   _msg "[init] offd ==> Time for reboot and next upgrade cycle..." >> "${_logInt}"
   echo " " >> "${_logInt}"
   touch /root/.run-offsystemd-devuan-init.cnf
-  rm -f /run/autoinit.pid
-  shutdown -r now
+  if [ -e "/root/.manual-autoinit-reboot.cnf" ]; then
+    service cron stop
+    sleep 90
+    rm -f /run/autoinit.pid
+  else
+    rm -f /run/autoinit.pid
+    shutdown -r now
+  fi
   exit 0
 }
 
@@ -1164,8 +1182,14 @@ _init_cycle() {
     _msg "[init] cycl ==> Time for reboot and next upgrade cycle..." >> "${_logInt}"
     echo " " >> "${_logInt}"
     touch /root/.run-cycle-devuan-init.cnf
-    rm -f /run/autoinit.pid
-    shutdown -r now
+    if [ -e "/root/.manual-autoinit-reboot.cnf" ]; then
+      service cron stop
+      sleep 90
+      rm -f /run/autoinit.pid
+    else
+      rm -f /run/autoinit.pid
+      shutdown -r now
+    fi
     exit 0
   else
     if [ "${_OS_CODE}" = "daedalus" ] || [ "${_OS_CODE}" = "excalibur" ]; then
@@ -1193,8 +1217,14 @@ _init_cycle() {
     echo " " >> "${_logInt}"
     touch /root/.run-cycle-devuan-init.cnf
     touch /root/.run-cycle-${_OS_CODE}-init.cnf
-    rm -f /run/autoinit.pid
-    shutdown -r now
+    if [ -e "/root/.manual-autoinit-reboot.cnf" ]; then
+      service cron stop
+      sleep 90
+      rm -f /run/autoinit.pid
+    else
+      rm -f /run/autoinit.pid
+      shutdown -r now
+    fi
     exit 0
   fi
 }
