@@ -1004,9 +1004,11 @@ _init_offsystemd() {
   /usr/bin/apt-get remove systemd-dummy -y -qq >> "${_logSlt}"
   /usr/bin/apt-get purge systemd libnss-systemd -y -qq >> "${_logSlt}"
 
-  _msg "[init] offd ==> Update networking if needed with vmnetfix..." >> "${_logInt}"
-  /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
-  wait
+  if [ -e "/root/.autoinit-yes-vmnetfix.cnf" ]; then
+    _msg "[init] offd ==> Update networking if needed with vmnetfix..." >> "${_logInt}"
+    /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
+    wait
+  fi
 
   _msg "[init] offd ==> Time for reboot and next upgrade cycle..." >> "${_logInt}"
   echo " " >> "${_logInt}"
@@ -1176,9 +1178,11 @@ _init_cycle() {
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   if [ "${_OLD_SYS}" = "Debian" ]; then
-    _msg "[init] cycl ==> Update networking if needed with vmnetfix..." >> "${_logInt}"
-    /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
-    wait
+    if [ -e "/root/.autoinit-yes-vmnetfix.cnf" ]; then
+      _msg "[init] cycl ==> Update networking if needed with vmnetfix..." >> "${_logInt}"
+      /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
+      wait
+    fi
     _msg "[init] cycl ==> Time for reboot and next upgrade cycle..." >> "${_logInt}"
     echo " " >> "${_logInt}"
     touch /root/.run-cycle-devuan-init.cnf
@@ -1197,9 +1201,11 @@ _init_cycle() {
       _init_post_ready
       _init_no_systemd
       _msg "[init] cycl ==> Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
-      _msg "[init] cycl ==> Update networking if needed with vmnetfix..." >> "${_logInt}"
-      /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
-      wait
+      if [ -e "/root/.autoinit-yes-vmnetfix.cnf" ]; then
+        _msg "[init] cycl ==> Update networking if needed with vmnetfix..." >> "${_logInt}"
+        /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
+        wait
+      fi
       _msg "[init] cycl ==> Running APT Cleanup.." >> "${_logInt}"
       /opt/local/bin/aptcleanup >> "${_logSlt}"
       wait
@@ -1209,9 +1215,11 @@ _init_cycle() {
       _if_launch_boa_install
     else
       _msg "[init] cycl ==> Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
-      _msg "[init] cycl ==> Update networking if needed with vmnetfix..." >> "${_logInt}"
-      /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
-      wait
+      if [ -e "/root/.autoinit-yes-vmnetfix.cnf" ]; then
+        _msg "[init] cycl ==> Update networking if needed with vmnetfix..." >> "${_logInt}"
+        /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
+        wait
+      fi
       _msg "[init] cycl ==> Time for reboot and next upgrade cycle..." >> "${_logInt}"
     fi
     echo " " >> "${_logInt}"
