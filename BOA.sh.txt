@@ -1232,6 +1232,28 @@ _update_agents() {
     fi
   fi
 
+  if [ ! -e "${_optBin}/ffmirror" ] \
+    || [ ! -e "${_pthLog}/ffmirror.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
+    _CNT=$(pgrep -fc xffmirror)
+    if (( _CNT > 0 )); then
+      echo "The xffmirror is running!"
+    else
+      if [ -e "${_optBin}/ffmirror" ]; then
+        mv -f ${_optBin}/ffmirror ${_optBin}/ffmirror.old
+      fi
+      curl ${_crlGet} "${_urlHmr}/tools/bin/ffmirror" -o ${_optBin}/ffmirror
+      if [ -e "${_optBin}/ffmirror" ]; then
+        chmod 700 ${_optBin}/ffmirror
+        chown root:root ${_optBin}/ffmirror
+        touch ${_pthLog}/ffmirror.sh.ctrl.f99.${_tRee}.${_xSrl}.pid
+      else
+        if [ -e "${_optBin}/ffmirror.old" ]; then
+          mv -f ${_optBin}/ffmirror.old ${_optBin}/ffmirror
+        fi
+      fi
+    fi
+  fi
+
   if [ ! -e "${_optBin}/ffdevuan" ] \
     || [ ! -e "${_pthLog}/ffdevuan.sh.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
     _CNT=$(pgrep -fc xffdevuan)

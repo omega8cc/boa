@@ -14,8 +14,20 @@ while read line; do
   a=${a%%\ *}
   a=${a/./}
 
-  # wget stuff
-  wget --spider -q -O /dev/null http://$line &&
+  # prepare checkline
+  checkline=
+  if [[ "${line}" =~ "http:" ]] || [[ "${line}" =~ "https:" ]]; then
+    checkline="${line}"
+  else
+    if [ -n "${line}" ]; then
+      checkline="http://${line}"
+    else
+      continue  # Skip this line but continue for other lines
+    fi
+  fi
+
+  # wget stuff if checkline looks fine
+  wget --spider -q -O /dev/null ${checkline} &&
      b=$(</proc/uptime) &&
        b=${b%%\ *} &&
          b=${b/./}
