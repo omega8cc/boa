@@ -417,9 +417,16 @@ _if_launch_boa_install() {
 }
 
 ###
-### Disable AppArmor
+### Return 0 if package is installed, 1 otherwise.
 ###
-_disable_apparmor_utils() {
+_pkg_installed() {
+  /usr/bin/dpkg-query -W -f='${Status}' "$1" 2>/dev/null | grep -qx 'install ok installed'
+}
+
+###
+### Turn off AppArmor
+###
+_turn_off_apparmor() {
   if [ -e "/etc/apparmor.d" ] && [ -e "/var/cache/apparmor" ]; then
     rm -rf /var/cache/apparmor/* &> /dev/null
     apparmor_parser -r /etc/apparmor.d/* &> /dev/null
@@ -434,47 +441,35 @@ _disable_apparmor_utils() {
   if [ -x "/usr/sbin/aa-teardown" ]; then
     aa-teardown &> /dev/null
   fi
+  for _PKG in auditd apparmor apparmor-utils apparmor-notify apparmor-profiles apparmor-profiles-extra; do
+    if _pkg_installed "${_PKG}"; then
+      /usr/bin/apt-get remove ${_PKG} -y -qq >> "${_logSlt}"
+    fi
+  done
+  _isAppArmorGrubFile="/etc/default/grub.d/apparmor.cfg"
+  mkdir -p /etc/default/grub.d
+  echo 'GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT apparmor=0"' | tee ${_isAppArmorGrubFile} &> /dev/null
+  update-grub >> "${_logSlt}"
   [ ! -e "/root/.disable.apparmor.cnf" ] && touch /root/.disable.apparmor.cnf
 }
 
 ###
-### Install AppArmor
+### Only disable AppArmor if it’s active (profiles currently loaded)
 ###
-_install_apparmor() {
-  _isAppArmorRevFile="/sys/kernel/security/apparmor/revision"
-  _isAppArmorGrubFile="/etc/default/grub.d/apparmor.cfg"
-  _isAppArmorComplain="$(which aa-complain)"
-  _isAppArmorStatus="$(which aa-status)"
-  _isAppArmorGrub=NO
-  if [ -e "${_isAppArmorGrubFile}" ]; then
-    _GRUB_APPARMOR_TEST=$(grep "apparmor=1 security=apparmor" ${_isAppArmorGrubFile})
-    if [[ "${_GRUB_APPARMOR_TEST}" =~ "apparmor=1 security=apparmor" ]]; then
-      _isAppArmorGrub=YES
+_if_off_apparmor() {
+  if [ -e "/lib/apparmor/apparmor.systemd" ]; then
+    if command -v aa-status >/dev/null; then
+      aa-status --verbose >/dev/null 2>&1
+      case $? in
+        0)  _turn_off_apparmor ;;  # AppArmor enabled *and* profiles loaded – disable it
+        1|2) ;;                    # 1: not enabled, 2: no profiles – no action needed
+      esac
+    else
+      # Fallback: check kernel module flag if aa-status isn’t available
+      if [ -e "/sys/module/apparmor/parameters/enabled" ] && grep -q "Y" /sys/module/apparmor/parameters/enabled; then
+        _turn_off_apparmor
+      fi
     fi
-  fi
-  if [ ! -e "${_isAppArmorRevFile}" ] \
-    || [ ! -e "${_isAppArmorGrubFile}" ] \
-    || [ -z "${_isAppArmorComplain}" ] \
-    || [ -z "${_isAppArmorStatus}" ] \
-    || [ "${_isAppArmorGrub}" = "NO" ]; then
-    _msg "_install_apparmor ==> Installing AppArmor Tools early..." >> "${_logInt}"
-    echo " " >> "${_logInt}"
-    ${_INITINS} auditd \
-      apparmor \
-      apparmor-utils \
-      apparmor-notify \
-      apparmor-profiles -qq >> "${_logSlt}"
-    mkdir -p /etc/default/grub.d
-    echo 'GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT apparmor=1 security=apparmor"' \
-      | tee ${_isAppArmorGrubFile} &> /dev/null
-    update-grub >> "${_logSlt}"
-  fi
-  _isAppArmOn=N
-  if [ -e "/sys/module/apparmor/parameters/enabled" ]; then
-    _isAppArmOn="$(cat /sys/module/apparmor/parameters/enabled 2>/dev/null | tr -d '\n')"
-  fi
-  if [ "${_isAppArmOn}" = "Y" ]; then
-    _disable_apparmor_utils
   fi
 }
 
@@ -679,6 +674,7 @@ _init_prepare() {
   else
     if [ ! -x "/usr/bin/mc" ]; then
       touch /run/autoinit.pid
+      _if_off_apparmor
       if [ -e "/root/.autoinit-early-upgrade.cnf" ]; then
         _msg "[init] prep ==> Let's update existing system first..." >> "${_logInt}"
         if pgrep -f unattended-upgrades >/dev/null 2>&1; then
@@ -737,7 +733,6 @@ _init_prepare() {
         sed -i "s/.*killer.*//gi" /etc/crontab &> /dev/null
         echo "*/1 *   * * *   root    bash /opt/local/bin/killer" >> /etc/crontab
       fi
-      [ "${_SET_MODE}" = "full" ] && _install_apparmor
       touch ${_initFile}
       _msg "[init] prep ==> Time for reboot and next upgrade cycle..." >> "${_logInt}"
       echo " " >> "${_logInt}"
@@ -783,8 +778,6 @@ _ensure_devuan_bf() {
 
 
 # --- BEGIN: Devuan Excalibur systemd → sysvinit keep-SSH helper ----
-
-_pkg_installed() { /usr/bin/dpkg -s "$1" >/dev/null 2>&1; }
 
 # Ensure anacron exists to satisfy logrotate alternatives when systemd is gone
 _ensure_cron_provider() {
