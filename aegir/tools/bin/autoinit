@@ -1004,8 +1004,8 @@ _init_offsystemd() {
   /usr/bin/apt-get remove systemd-dummy -y -qq >> "${_logSlt}"
   /usr/bin/apt-get purge systemd libnss-systemd -y -qq >> "${_logSlt}"
 
-  if [ -e "/root/.autoinit-yes-vmnetfix.cnf" ]; then
-    _msg "[init] offd ==> Update networking if needed with vmnetfix..." >> "${_logInt}"
+  if [ ! -e "/etc/network/interfaces" ]; then
+    _msg "[init] offd ==> Update networking to fix missing /etc/network/interfaces..." >> "${_logInt}"
     /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
     wait
   fi
@@ -1073,6 +1073,7 @@ _init_cycle() {
   _msg "[init] cycl ==> Your current system is ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
   _NEW_SYS=Devuan
   _OLD_SYS=Devuan
+  [ ! -e "/etc/network/interfaces" ] && touch /root/.autoinit-yes-vmnetfix.cnf
   if [ "${_OS_CODE}" = "trixie" ]; then
     _NEW_OS_CODE=excalibur
     _OLD_SYS=Debian
@@ -1112,6 +1113,11 @@ _init_cycle() {
     /usr/bin/apt-get upgrade ${_nrmUpArg} >> "${_logSlt}"
   fi
   if [ ! -z "${_NEW_OS_CODE}" ] && [ ! -z "${_NEW_SYS}" ]; then
+    if [ -e "/root/.autoinit-yes-vmnetfix.cnf" ]; then
+      _msg "[init] cycl ==> Update networking with vmnetfix early..." >> "${_logInt}"
+      /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
+      wait
+    fi
     _msg "[init] cycl ==> Running APT Cleanup..." >> "${_logInt}"
     /opt/local/bin/aptcleanup >> "${_logSlt}"
     wait
@@ -1176,7 +1182,7 @@ _init_cycle() {
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   if [ "${_OLD_SYS}" = "Debian" ]; then
     if [ -e "/root/.autoinit-yes-vmnetfix.cnf" ]; then
-      _msg "[init] cycl ==> Update networking if needed with vmnetfix..." >> "${_logInt}"
+      _msg "[init] cycl ==> Update networking with vmnetfix just in case before reboot..." >> "${_logInt}"
       /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
       wait
     fi
@@ -1198,8 +1204,8 @@ _init_cycle() {
       _init_post_ready
       _init_no_systemd
       _msg "[init] cycl ==> Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
-      if [ -e "/root/.autoinit-yes-vmnetfix.cnf" ]; then
-        _msg "[init] cycl ==> Update networking if needed with vmnetfix..." >> "${_logInt}"
+      if [ ! -e "/etc/network/interfaces" ]; then
+        _msg "[init] cycl ==> Update networking to fix missing /etc/network/interfaces..." >> "${_logInt}"
         /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
         wait
       fi
@@ -1212,8 +1218,8 @@ _init_cycle() {
       _if_launch_boa_install
     else
       _msg "[init] cycl ==> Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
-      if [ -e "/root/.autoinit-yes-vmnetfix.cnf" ]; then
-        _msg "[init] cycl ==> Update networking if needed with vmnetfix..." >> "${_logInt}"
+      if [ ! -e "/etc/network/interfaces" ]; then
+        _msg "[init] cycl ==> Update networking to fix missing /etc/network/interfaces..." >> "${_logInt}"
         /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
         wait
       fi
