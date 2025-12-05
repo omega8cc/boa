@@ -1137,9 +1137,6 @@ _init_cycle() {
     echo "## DEVUAN SECURITY UPDATES" >> ${_aptLiSys}
     echo "deb ${_TGT_MRR} ${_NEW_OS_CODE}-security main" >> ${_aptLiSys}
     echo "deb-src ${_TGT_MRR} ${_NEW_OS_CODE}-security main" >> ${_aptLiSys}
-    if [ -e "/etc/apt/apt.conf" ]; then
-      rm -f /etc/apt/apt.conf
-    fi
     _prefer_devuan_repositories
     /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
     /usr/bin/dpkg --configure -a >> "${_logSlt}"

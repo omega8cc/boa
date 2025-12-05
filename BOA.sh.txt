@@ -4242,6 +4242,7 @@ _update_boa_tools() {
             autodaedalus \
             autoexcalibur \
             autoinit \
+            automini \
             autosymlink \
             autoupboa \
             backboa \
@@ -4326,9 +4327,11 @@ _update_boa_tools() {
   done
 
   if [ ! -e "/data/u" ] && [ -e "${_optBin}/killer" ] && [ ! -e "${_usrBin}/ffdevuan" ]; then
-    rm -f ${_usrBin}/{aptcleanup*,autoinit*,backchain*,barracuda*,boa*,dhcpfix*,ffdevuan*,ffmirror*,killer*,loadguard*,octopus*,vmnetfix*,webserver*,websh*}
+    rm -f ${_usrBin}/{aptcleanup*,autoinit*,automini*,backchain*,barracuda*,boa*,dhcpfix*,ffdevuan*}
+    rm -f ${_usrBin}/{ffmirror*,killer*,loadguard*,octopus*,vmnetfix*,webserver*,websh*}
     ln -sfn ${_optBin}/aptcleanup  ${_usrBin}/aptcleanup
     ln -sfn ${_optBin}/autoinit    ${_usrBin}/autoinit
+    ln -sfn ${_optBin}/automini    ${_usrBin}/automini
     ln -sfn ${_optBin}/backchain   ${_usrBin}/backchain
     ln -sfn ${_optBin}/barracuda   ${_usrBin}/barracuda
     ln -sfn ${_optBin}/boa         ${_usrBin}/boa
@@ -4360,7 +4363,7 @@ _update_boa_tools() {
   echo "Groups are organized by function."
 
   # _AUTO (700): automatic install/upgrade helpers
-  chmod 700 ${_optBin}/{autobeowulf,autochimaera,autodaedalus,autoexcalibur,autoinit,autoupboa}
+  chmod 700 ${_optBin}/{autobeowulf,autochimaera,autodaedalus,autoexcalibur,autoinit,automini,autoupboa}
 
   # _BACKUP (700): backup helpers
   chmod 700 ${_optBin}/{backboa,copydbackup,dcysetup,duobackboa,multiback}
