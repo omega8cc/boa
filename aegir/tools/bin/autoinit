@@ -692,24 +692,8 @@ _init_prepare() {
       _msg "[init] prep ==> We need to install some tools early..." >> "${_logInt}"
       /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
       /usr/bin/dpkg --configure -a >> "${_logSlt}"
-      if [ "${_SET_MODE}" = "full" ] && [ "${_VMFAMILY}" != "AWS" ]; then
-        /usr/bin/apt-get remove chrony -y --purge --auto-remove -qq >> "${_logSlt}"
-        _INITD_TEST=$(ls -la /etc/init.d/*cloud* 2>&1)
-        _aptAkamaiLst="/etc/apt/sources.list.d/akamai-linux-team.list"
-        _aptCloudInit="/etc/apt/preferences.d/99linode-cloudinit"
-        _etcCloudCfgd="/etc/cloud/cloud.cfg.d"
-        if [[ ! "${_INITD_TEST}" =~ "No such file" ]] \
-          || [ -e "${_aptAkamaiLst}" ] \
-          || [ -e "${_aptCloudInit}" ] \
-          || [ -e "${_etcCloudCfgd}" ]; then
-          /usr/bin/apt-get remove cloud-utils cloud-init -y --purge --auto-remove -qq >> "${_logSlt}"
-          /usr/bin/apt-get remove cloud-image-utils cloud-guest-utils -y --purge --auto-remove -qq >> "${_logSlt}"
-          /usr/bin/apt-get autoremove --purge -y >> "${_logSlt}"
-          /usr/bin/apt-get autoclean -y >> "${_logSlt}"
-          [ -e "${_etcCloudCfgd}" ] && mv -f /etc/cloud /var/backups/
-          [ -e "${_aptAkamaiLst}" ] && mv -f ${_aptAkamaiLst} /var/backups/
-          [ -e "${_aptCloudInit}" ] && mv -f ${_aptCloudInit} /var/backups/
-        fi
+      if _pkg_installed "chrony"; then
+        /usr/bin/apt-get remove chrony -y -qq >> "${_logSlt}"
       fi
       ${_INITINS} aptitude  >> "${_logSlt}"
       ${_INITINS} bc        >> "${_logSlt}"
@@ -721,12 +705,6 @@ _init_prepare() {
       ${_INITINS} net-tools >> "${_logSlt}"
       ${_INITINS} netcat-traditional  >> "${_logSlt}"
       ${_INITINS} ntpsec-ntpdate      >> "${_logSlt}"
-      if [ "${_SET_MODE}" = "full" ]; then
-        ${_INITINS} build-essential   >> "${_logSlt}"
-        ${_INITINS} git               >> "${_logSlt}"
-        ${_INITINS} libgd-dev         >> "${_logSlt}"
-        ${_INITINS} libmagickwand-dev >> "${_logSlt}"
-      fi
       sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
       echo "*/1 *   * * *   root    bash /opt/local/bin/autoinit ${_SET_MODE} ${_USE_NINC}" >> /etc/crontab
       if [ -x "/opt/local/bin/killer" ]; then
