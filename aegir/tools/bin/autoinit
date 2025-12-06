@@ -1187,7 +1187,6 @@ _init_cycle() {
       _msg "[init] cycl ==> The system is now ready for boa install" >> "${_logInt}"
       rm -f /root/.init-to-devuan-ctrl.cnf
       sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
-      chattr -i /etc/resolv.conf
       _if_launch_boa_install
     else
       _msg "[init] cycl ==> Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
