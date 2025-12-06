@@ -202,8 +202,11 @@ _fix_dns_settings() {
     echo "nameserver 9.9.9.9" >> ${_vBs}/resolv.conf.tmp
   fi
   if [ -e "${_vBs}/resolv.conf.tmp" ]; then
+    chattr -i /etc/resolv.conf
     rm -f /etc/resolv.conf
     cp -a ${_vBs}/resolv.conf.tmp /etc/resolv.conf
+    chmod 0644 /etc/resolv.conf
+    chattr +i /etc/resolv.conf
     cp -a ${_vBs}/resolv.conf.tmp ${_vBs}/resolv.conf.vanilla
   fi
   if [ -x "/usr/sbin/unbound-control" ] \
@@ -607,6 +610,45 @@ EOF
   _apt_clean_update
 }
 
+###
+### Display not supported VM or bare metal info
+###
+_not_supported_virt() {
+  echo
+  echo "=== OOPS! ==="
+  echo
+  echo "You are running not supported virtualization system:"
+  echo "  $1"
+  echo
+  echo "If you wish to try BOA on this system anyway,"
+  echo "please create an empty control file:"
+  echo "  /root/.allow.any.virt.cnf"
+  echo
+  echo "Please be aware that it may not work at all,"
+  echo "or you can experience errors breaking BOA."
+  echo
+  echo "WARNING! BOA IS NOT DESIGNED TO RUN DIRECTLY ON A BARE METAL."
+  echo "WARNING! IT IS VERY DANGEROUS AND THUS EXTREMELY BAD IDEA!"
+  echo "WARNING! You are free to experiment but don't expect *ANY* support."
+  echo
+  echo "BOA is known to work well on:"
+  echo
+  echo " * Linux Containers (LXC)"
+  echo " * Linux KVM guest"
+  echo " * Microsoft Hyper-V"
+  echo " * OpenVZ Containers"
+  echo " * Parallels guest"
+  echo " * VirtualBox guest"
+  echo " * VMware ESXi guest (but excluding vCloud Air)"
+  echo " * Xen guest fully virtualized (HVM)"
+  echo " * Xen guest"
+  echo " * Xen paravirtualized guest domain"
+  echo
+  echo "Bye"
+  echo
+  exit 1
+}
+
 # --- internal: print message only in debug mode
 _msg() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -770,6 +812,76 @@ _fix_or_install_virt_what() {
     apt-get install virt-what ${_aptYesUnth}
     wait
     _fix_virt_what
+  fi
+}
+
+_check_virt() {
+  _fix_or_install_virt_what
+  _VIRT_TOOL="$(which virt-what)"
+  if [ -x "${_VIRT_TOOL}" ]; then
+    _VIRT_TEST=$(virt-what)
+    _VIRT_TEST=$(echo -n ${_VIRT_TEST} | fmt -su -w 2500 2>&1)
+    if [[ "${_VIRT_TEST}" =~ "program not found" ]]; then
+      echo "ERROR: virt-what says: ${_VIRT_TEST}"
+      echo "ERROR: virt-what detection fails for unknown reason"
+    fi
+    if [ ! -e "/root/.allow.any.virt.cnf" ]; then
+      if [ -e "/proc/self/status" ]; then
+        _VS_GUEST_TEST=$(grep -E "VxID:[[:space:]]*[0-9]{2,}$" /proc/self/status 2> /dev/null)
+        _VS_HOST_TEST=$(grep -E "VxID:[[:space:]]*0$" /proc/self/status 2> /dev/null)
+      fi
+      if [ ! -z "${_VS_HOST_TEST}" ] || [ ! -z "${_VS_GUEST_TEST}" ]; then
+        if [ -z "${_VS_HOST_TEST}" ] && [ ! -z "${_VS_GUEST_TEST}" ]; then
+          _VIRT_IS="Linux VServer guest"
+        else
+          if [ ! -z "${_VS_HOST_TEST}" ]; then
+            _not_supported_virt "Linux VServer host"
+          else
+            _not_supported_virt "unknown / not a virtual machine"
+          fi
+        fi
+      else
+        if [ -z "${_VIRT_TEST}" ] || [ "${_VIRT_TEST}" = "0" ]; then
+          _not_supported_virt "unknown / not a virtual machine"
+        elif [[ "${_VIRT_TEST}" =~ "xen-dom0" ]]; then
+          _not_supported_virt "Xen privileged domain"
+        elif [[ "${_VIRT_TEST}" =~ "linux_vserver-host" ]]; then
+          _not_supported_virt "Linux VServer host"
+        else
+          if [[ "${_VIRT_TEST}" =~ "xen xen-hvm" ]]; then
+            _VIRT_TEST="xen-hvm"
+          elif [[ "${_VIRT_TEST}" =~ "xen xen-domU" ]]; then
+            _VIRT_TEST="xen-domU"
+          elif [[ "${_VIRT_TEST}" =~ "virtualbox kvm" ]]; then
+            _VIRT_TEST="virtualbox"
+          elif [[ "${_VIRT_TEST}" =~ "hyperv qemu" ]]; then
+            _VIRT_TEST="hyperv"
+          elif [[ "${_VIRT_TEST}" =~ "kvm aws" ]]; then
+            _VIRT_TEST="kvm"
+          elif [[ "${_VIRT_TEST}" =~ "openvz lxc" ]]; then
+            _VIRT_TEST="openvz"
+          fi
+          case "${_VIRT_TEST}" in
+            hyperv)      _VIRT_IS="Microsoft Hyper-V" ;;
+            kvm)         _VIRT_IS="Linux KVM guest" ;;
+            lxc)         _VIRT_IS="Linux Containers (LXC)" ;;
+            openvz)      _VIRT_IS="OpenVZ Containers" ;;
+            parallels)   _VIRT_IS="Parallels guest" ;;
+            virtualbox)  _VIRT_IS="VirtualBox guest" ;;
+            vmware)      _VIRT_IS="VMware ESXi guest" ;;
+            xen-domU)    _VIRT_IS="Xen paravirtualized guest domain" ;;
+            xen-hvm)     _VIRT_IS="Xen guest fully virtualized (HVM)" ;;
+            xen)         _VIRT_IS="Xen guest" ;;
+            *)  _not_supported_virt "${_VIRT_TEST}"
+            ;;
+          esac
+        fi
+      fi
+    else
+      if [ -z "${_VIRT_TEST}" ] || [ "${_VIRT_TEST}" = "0" ]; then
+        _VIRT_TEST="unknown / not a virtual machine"
+      fi
+    fi
   fi
 }
 
@@ -1058,7 +1170,7 @@ _update_agents() {
   fi
 
   if [ ! -e "${_optBin}/autosymlink" ] \
-    || [ ! -e "${_pthLog}/autosymlink.sh.ctrl.f98.${_tRee}.${_xSrl}.pid" ]; then
+    || [ ! -e "${_pthLog}/autosymlink.sh.ctrl.f97.${_tRee}.${_xSrl}.pid" ]; then
     _CNT=$(pgrep -fc autosymlink)
     if (( _CNT > 0 )); then
       echo "The autosymlink is running!"
@@ -1070,7 +1182,7 @@ _update_agents() {
       if [ -e "${_optBin}/autosymlink" ]; then
         chmod 700 ${_optBin}/autosymlink
         chown root:root ${_optBin}/autosymlink
-        touch ${_pthLog}/autosymlink.sh.ctrl.f98.${_tRee}.${_xSrl}.pid
+        touch ${_pthLog}/autosymlink.sh.ctrl.f97.${_tRee}.${_xSrl}.pid
       else
         if [ -e "${_optBin}/autosymlink.old" ]; then
           mv -f ${_optBin}/autosymlink.old ${_optBin}/autosymlink
@@ -1118,6 +1230,28 @@ _update_agents() {
       else
         if [ -e "${_optBin}/loadguard.old" ]; then
           mv -f ${_optBin}/loadguard.old ${_optBin}/loadguard
+        fi
+      fi
+    fi
+  fi
+
+  if [ ! -e "${_optBin}/ffmirror" ] \
+    || [ ! -e "${_pthLog}/ffmirror.sh.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
+    _CNT=$(pgrep -fc xffmirror)
+    if (( _CNT > 0 )); then
+      echo "The xffmirror is running!"
+    else
+      if [ -e "${_optBin}/ffmirror" ]; then
+        mv -f ${_optBin}/ffmirror ${_optBin}/ffmirror.old
+      fi
+      curl ${_crlGet} "${_urlHmr}/tools/bin/ffmirror" -o ${_optBin}/ffmirror
+      if [ -e "${_optBin}/ffmirror" ]; then
+        chmod 700 ${_optBin}/ffmirror
+        chown root:root ${_optBin}/ffmirror
+        touch ${_pthLog}/ffmirror.sh.ctrl.f99.${_tRee}.${_xSrl}.pid
+      else
+        if [ -e "${_optBin}/ffmirror.old" ]; then
+          mv -f ${_optBin}/ffmirror.old ${_optBin}/ffmirror
         fi
       fi
     fi
@@ -3876,6 +4010,7 @@ _fix_hosting_le() {
       || [ -e "/root/hosting_le_vhost.drush.inc.ctrl.${_tRee}.${_xSrl}.pid" ] \
       || [ -e "/root/${_hoLeInc}" ] \
       || [ -e "${_legacyLeSh}" ] \
+      || [ ! -e "${_pthLog}/_fix_hosting_le.ctrl.${_tRee}.${_xSrl}.pid" ] \
       || [ ! -e "${_dehydSrcPath}" ] \
       || [ ! -e "${_provLeIncFull}.ctrl.${_tRee}.${_xSrl}.pid" ]; then
       mkdir -p /var/xdrago/conf
@@ -4242,6 +4377,7 @@ _update_boa_tools() {
             autodaedalus \
             autoexcalibur \
             autoinit \
+            automini \
             autosymlink \
             autoupboa \
             backboa \
@@ -4326,9 +4462,11 @@ _update_boa_tools() {
   done
 
   if [ ! -e "/data/u" ] && [ -e "${_optBin}/killer" ] && [ ! -e "${_usrBin}/ffdevuan" ]; then
-    rm -f ${_usrBin}/{aptcleanup*,autoinit*,backchain*,barracuda*,boa*,dhcpfix*,ffdevuan*,ffmirror*,killer*,loadguard*,octopus*,vmnetfix*,webserver*,websh*}
+    rm -f ${_usrBin}/{aptcleanup*,autoinit*,automini*,backchain*,barracuda*,boa*,dhcpfix*,ffdevuan*}
+    rm -f ${_usrBin}/{ffmirror*,killer*,loadguard*,octopus*,vmnetfix*,webserver*,websh*}
     ln -sfn ${_optBin}/aptcleanup  ${_usrBin}/aptcleanup
     ln -sfn ${_optBin}/autoinit    ${_usrBin}/autoinit
+    ln -sfn ${_optBin}/automini    ${_usrBin}/automini
     ln -sfn ${_optBin}/backchain   ${_usrBin}/backchain
     ln -sfn ${_optBin}/barracuda   ${_usrBin}/barracuda
     ln -sfn ${_optBin}/boa         ${_usrBin}/boa
@@ -4360,7 +4498,7 @@ _update_boa_tools() {
   echo "Groups are organized by function."
 
   # _AUTO (700): automatic install/upgrade helpers
-  chmod 700 ${_optBin}/{autobeowulf,autochimaera,autodaedalus,autoexcalibur,autoinit,autoupboa}
+  chmod 700 ${_optBin}/{autobeowulf,autochimaera,autodaedalus,autoexcalibur,autoinit,automini,autoupboa}
 
   # _BACKUP (700): backup helpers
   chmod 700 ${_optBin}/{backboa,copydbackup,dcysetup,duobackboa,multiback}
@@ -4702,7 +4840,7 @@ _boa_setup() {
   fi
 
   ### Fix or install VM system detection
-  _fix_or_install_virt_what
+  _check_virt
 
   _BOA_TOOLS_UPDATE=NO
   if [ -e "${_pthLog}" ] && [ ! -e "${_boaToolsPid}" ]; then
@@ -4882,6 +5020,11 @@ if [ "$(id -u)" -eq 0 ]; then
     ${_INITINS} bc &> /dev/null
   fi
 
+  if ! command -v curl &> /dev/null; then
+    apt-get update -qq &> /dev/null
+    ${_INITINS} curl &> /dev/null
+  fi
+
   _find_correct_ip
   _find_server_city
 
@@ -4900,7 +5043,7 @@ if [ "$(id -u)" -eq 0 ]; then
   fi
 
   ### Fix VM system detection
-  _fix_or_install_virt_what
+  _check_virt
 
   if [ -e "${_barCnf}" ]; then
     source ${_barCnf}

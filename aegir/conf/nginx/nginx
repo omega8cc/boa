@@ -279,7 +279,7 @@ reload() {
 }
 
 quietupgrade() {
-    log_daemon_msg "Peforming Quiet Upgrade $DESCRIPTION"
+    log_daemon_msg "Performing Quiet Upgrade $DESCRIPTION"
 
     isRunning
     isAlive=$?
