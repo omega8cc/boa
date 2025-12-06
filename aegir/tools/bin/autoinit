@@ -881,6 +881,12 @@ _autoinit_devuan_protect_essential() {
 ###
 _init_base_sync() {
   if [ -e "/root/.top-daedalus.cnf" ]; then
+    ${_INITINS} base-files/daedalus >> "${_logSlt}"
+  fi
+  if [ -e "/root/.top-excalibur.cnf" ]; then
+    ${_INITINS} base-files/excalibur >> "${_logSlt}"
+  fi
+  if [ -e "/root/.top-daedalus.cnf" ]; then
     # Initialize the update flag to NO
     _needsBaseFilesUpdate=NO
     # Check if /etc/os-release mentions 'daedalus'
