@@ -1045,6 +1045,9 @@ _init_cycle() {
   _NEW_SYS=Devuan
   _OLD_SYS=Devuan
   [ ! -e "/etc/network/interfaces" ] && touch /root/.autoinit-yes-vmnetfix.cnf
+  if _pkg_installed "ifupdown2"; then
+    touch /root/.autoinit-yes-vmnetfix.cnf
+  fi
   if [ "${_OS_CODE}" = "trixie" ]; then
     _NEW_OS_CODE=excalibur
     _OLD_SYS=Debian
