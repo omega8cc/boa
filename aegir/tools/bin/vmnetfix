@@ -297,6 +297,7 @@ _fix_resolv_conf() {
   : > /etc/resolv.conf
   for _NS in ${_DNS}; do printf 'nameserver %s\n' "${_NS}" >> /etc/resolv.conf; done
   chmod 0644 /etc/resolv.conf
+  chattr +i /etc/resolv.conf
   _msg "Wrote real /etc/resolv.conf"
 }
 
