@@ -202,8 +202,11 @@ _fix_dns_settings() {
     echo "nameserver 9.9.9.9" >> ${_vBs}/resolv.conf.tmp
   fi
   if [ -e "${_vBs}/resolv.conf.tmp" ]; then
+    chattr -i /etc/resolv.conf
     rm -f /etc/resolv.conf
     cp -a ${_vBs}/resolv.conf.tmp /etc/resolv.conf
+    chmod 0644 /etc/resolv.conf
+    chattr +i /etc/resolv.conf
     cp -a ${_vBs}/resolv.conf.tmp ${_vBs}/resolv.conf.vanilla
   fi
   if [ -x "/usr/sbin/unbound-control" ] \

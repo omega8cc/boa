@@ -160,12 +160,15 @@ _unbound_config_fix() {
       fi
     else
       if ! grep -q "BOA-DNS-Config" /etc/resolv.conf; then
+        chattr -i /etc/resolv.conf
         rm -f /etc/resolv.conf
         echo "### BOA-DNS-Config ###" > /etc/resolv.conf
         echo "nameserver 127.0.0.1" >> /etc/resolv.conf
         echo "nameserver 1.1.1.1" >> /etc/resolv.conf
         echo "nameserver 8.8.8.8" >> /etc/resolv.conf
         echo "nameserver 9.9.9.9" >> /etc/resolv.conf
+        chmod 0644 /etc/resolv.conf
+        chattr +i /etc/resolv.conf
         [ -e "/etc/resolvconf/update.d/unbound" ] && chmod 644 /etc/resolvconf/update.d/unbound
         if [ "${_in_unbound_cooldown}" = "true" ]; then
           echo "$(date) INFO: Unbound restart skipped (cooldown active)" >> ${_pthOml}

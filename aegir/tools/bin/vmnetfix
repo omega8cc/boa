@@ -293,6 +293,7 @@ _fix_resolv_conf() {
     printf '[DRY-RUN] Would write /etc/resolv.conf: %s\n' "${_DNS}"
     return 0
   fi
+  chattr -i /etc/resolv.conf
   rm -f /etc/resolv.conf
   : > /etc/resolv.conf
   for _NS in ${_DNS}; do printf 'nameserver %s\n' "${_NS}" >> /etc/resolv.conf; done
