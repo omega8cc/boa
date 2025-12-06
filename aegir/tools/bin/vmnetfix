@@ -305,11 +305,11 @@ _disable_cloudinit_networking() {
 _ensure_ifupdown() {
   _cmd_exists ifup && return 0
   if [ "${_DRY_RUN}" = "YES" ]; then
-    echo 'DRY-RUN: would install ifupdown2 (or ifupdown)'
+    echo 'DRY-RUN: would install ifupdown (or ifupdown2)'
     return 0
   fi
   apt-get update -y || true
-  _noninteractive_apt install -y ifupdown2 || _noninteractive_apt install -y ifupdown
+  _noninteractive_apt install -y ifupdown || _noninteractive_apt install -y ifupdown2
 }
 
 _ensure_dhcp_client() {
