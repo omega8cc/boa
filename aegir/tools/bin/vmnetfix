@@ -149,7 +149,7 @@ _live_v4_cidr()     { _live_v4_list_if "$1" | head -n1; }
 
 _live_public_if() {
   for _I in $(ls -1 /sys/class/net 2>/dev/null | awk '$0!="lo"'); do
-    ip -o -4 addr show dev "$_I" scope global | awk '{print $4}' | while read -r _C; do
+    ip -o -4 addr show dev "${_I}" scope global | awk '{print $4}' | while read -r _C; do
       _IP="${_C%/*}"
       case "${_IP}" in 10.*|192.168.*|172.1[16-9].*|172.2[0-9].*|172.3[0-1].*) : ;; *) printf '%s\n' "$_I"; return 0 ;; esac
     done
