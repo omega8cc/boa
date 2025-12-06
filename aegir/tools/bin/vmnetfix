@@ -185,20 +185,36 @@ _has_ci_dhcp_for_if() {
 }
 
 _iface_static_match_live() {
-  # 0 if /etc/network/interfaces has static stanza for IF that matches live IPv4
-  _IF="$1"; _LIVE="$2"; _IP="${_LIVE%/*}"
-  [ -f /etc/network/interfaces ] || return 1
+  # 0 if /etc/network/interfaces* has static stanza for IF that matches live IPv4
+  _IF="$1"
+  _LIVE="$2"
+  _IP="${_LIVE%/*}"
+
+  # Build a list of files to scan: /etc/network/interfaces plus any snippets.
+  _FILES=""
+  if [ -f /etc/network/interfaces ]; then
+    _FILES="/etc/network/interfaces"
+  fi
+  if ls /etc/network/interfaces.d/* >/dev/null 2>&1; then
+    _FILES="${_FILES} /etc/network/interfaces.d/*"
+  fi
+  [ -n "${_FILES}" ] || return 1
+
   awk -v IFACE="${_IF}" -v IP="${_IP}" '
     BEGIN{inif=0; ok=0}
     /^[[:space:]]*iface[[:space:]]+/{
+      # iface <name> inet static
       inif=($2==IFACE && $3=="inet" && $4=="static")
     }
     inif && /^[[:space:]]*address[[:space:]]+/{
-      val=$2; gsub(/#.*/,"",val);
-      split(val,a,"/"); if(a[1]==IP) ok=1
+      # address can be with or without /mask
+      val=$2
+      gsub(/#.*/,"",val)
+      split(val,a,"/")
+      if (a[1]==IP) ok=1
     }
     END{exit ok?0:1}
-  ' /etc/network/interfaces
+  ' ${_FILES} 2>/dev/null
 }
 
 _iface_has_onlink_default_helpers() {
