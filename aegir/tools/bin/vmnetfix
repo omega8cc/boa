@@ -218,10 +218,25 @@ _iface_static_match_live() {
 }
 
 _iface_has_onlink_default_helpers() {
-  _IF="$1"; _GW="$2"
-  [ -f /etc/network/interfaces ] || return 1
-  grep -qsE "^[[:space:]]*gateway[[:space:]]+${_GW}\b" /etc/network/interfaces && return 0
-  grep -qsE "post-up[[:space:]]+ip[[:space:]]+route[[:space:]]+replace[[:space:]]+default[[:space:]]+via[[:space:]]+${_GW}.*onlink" /etc/network/interfaces && return 0
+  _IF="$1"
+  _GW="$2"
+
+  # Look for gateway/onlink helpers in both main file and snippets.
+  _FILES=""
+  if [ -f /etc/network/interfaces ]; then
+    _FILES="/etc/network/interfaces"
+  fi
+  if ls /etc/network/interfaces.d/* >/dev/null 2>&1; then
+    _FILES="${_FILES} /etc/network/interfaces.d/*"
+  fi
+  [ -n "${_FILES}" ] || return 1
+
+  # Direct gateway line
+  grep -qsE "^[[:space:]]*gateway[[:space:]]+${_GW}\b" ${_FILES} 2>/dev/null && return 0
+
+  # post-up ip route add ... <GW> ... onlink
+  grep -qsE "post-up[[:space:]]+ip[[:space:]]+route[[:space:]]+r..a[[:space:]]+${_GW}.*onlink" ${_FILES} 2>/dev/null && return 0
+
   return 1
 }
 
