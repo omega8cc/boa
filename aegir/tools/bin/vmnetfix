@@ -28,7 +28,7 @@ _DEBUG_MODE="NO"
 _DRY_RUN="NO"
 _TEST_NOW="NO"
 _DISABLE_CLOUD_INIT="YES"
-_FORCE_DNS_LIST="1.1.1.1 9.9.9.9"
+_FORCE_DNS_LIST="1.1.1.1 8.8.8.8 9.9.9.9"
 _MODE="auto"    # auto | init-only | full
 
 # ----------------------------- Core helpers -----------------------------------
@@ -48,8 +48,30 @@ _parse_args() {
       --disable-cloud-init) _DISABLE_CLOUD_INIT="YES" ;;
       --preserve-cloud-init) _DISABLE_CLOUD_INIT="NO" ;;
       --dns) shift; _FORCE_DNS_LIST="$1" ;;
-      --mode) shift; _MODE="$1" ;;   # auto|init-only|full
-      *) _err "Unknown option: $1"; exit 2 ;;
+      --mode) shift; _MODE="$1" ;;
+      --help|-h)
+        cat <<EOF
+Usage: vmnetfix [options]
+
+  --debug               Verbose logging
+  --dry-run             Do not change anything, just log what would be done
+  --test-now            After config, attempt immediate bring-up and GW reachability test
+  --disable-cloud-init  Disable cloud-init networking (write 99-disable-network-config.cfg)
+  --preserve-cloud-init Leave cloud-init networking config alone
+  --dns "A B C"         Force /etc/resolv.conf nameservers (default: 1.1.1.1 9.9.9.9)
+  --mode auto           Only remediate when config is not sane (default)
+  --mode init-only      Only ensure init wiring + boot guard + DNS; no config rewrite
+  --mode full           Always rewrite /etc/network/interfaces from live values, disable
+                        cloud-init networking (unless --preserve-cloud-init), and enforce
+                        DNS, boot guard, etc.
+
+EOF
+        exit 0
+        ;;
+      *)
+        _err "Unknown argument: $1"
+        exit 1
+        ;;
     esac
     shift
   done
@@ -149,7 +171,7 @@ _live_v4_cidr()     { _live_v4_list_if "$1" | head -n1; }
 
 _live_public_if() {
   for _I in $(ls -1 /sys/class/net 2>/dev/null | awk '$0!="lo"'); do
-    ip -o -4 addr show dev "$_I" scope global | awk '{print $4}' | while read -r _C; do
+    ip -o -4 addr show dev "${_I}" scope global | awk '{print $4}' | while read -r _C; do
       _IP="${_C%/*}"
       case "${_IP}" in 10.*|192.168.*|172.1[16-9].*|172.2[0-9].*|172.3[0-1].*) : ;; *) printf '%s\n' "$_I"; return 0 ;; esac
     done
@@ -163,27 +185,58 @@ _has_ci_dhcp_for_if() {
 }
 
 _iface_static_match_live() {
-  # 0 if /etc/network/interfaces has static stanza for IF that matches live IPv4
-  _IF="$1"; _LIVE="$2"; _IP="${_LIVE%/*}"
-  [ -f /etc/network/interfaces ] || return 1
+  # 0 if /etc/network/interfaces* has static stanza for IF that matches live IPv4
+  _IF="$1"
+  _LIVE="$2"
+  _IP="${_LIVE%/*}"
+
+  # Build a list of files to scan: /etc/network/interfaces plus any snippets.
+  _FILES=""
+  if [ -f /etc/network/interfaces ]; then
+    _FILES="/etc/network/interfaces"
+  fi
+  if ls /etc/network/interfaces.d/* >/dev/null 2>&1; then
+    _FILES="${_FILES} /etc/network/interfaces.d/*"
+  fi
+  [ -n "${_FILES}" ] || return 1
+
   awk -v IFACE="${_IF}" -v IP="${_IP}" '
     BEGIN{inif=0; ok=0}
     /^[[:space:]]*iface[[:space:]]+/{
+      # iface <name> inet static
       inif=($2==IFACE && $3=="inet" && $4=="static")
     }
     inif && /^[[:space:]]*address[[:space:]]+/{
-      val=$2; gsub(/#.*/,"",val);
-      split(val,a,"/"); if(a[1]==IP) ok=1
+      # address can be with or without /mask
+      val=$2
+      gsub(/#.*/,"",val)
+      split(val,a,"/")
+      if (a[1]==IP) ok=1
     }
     END{exit ok?0:1}
-  ' /etc/network/interfaces
+  ' ${_FILES} 2>/dev/null
 }
 
 _iface_has_onlink_default_helpers() {
-  _IF="$1"; _GW="$2"
-  [ -f /etc/network/interfaces ] || return 1
-  grep -qsE "^[[:space:]]*gateway[[:space:]]+${_GW}\b" /etc/network/interfaces && return 0
-  grep -qsE "post-up[[:space:]]+ip[[:space:]]+route[[:space:]]+replace[[:space:]]+default[[:space:]]+via[[:space:]]+${_GW}.*onlink" /etc/network/interfaces && return 0
+  _IF="$1"
+  _GW="$2"
+
+  # Look for gateway/onlink helpers in both main file and snippets.
+  _FILES=""
+  if [ -f /etc/network/interfaces ]; then
+    _FILES="/etc/network/interfaces"
+  fi
+  if ls /etc/network/interfaces.d/* >/dev/null 2>&1; then
+    _FILES="${_FILES} /etc/network/interfaces.d/*"
+  fi
+  [ -n "${_FILES}" ] || return 1
+
+  # Direct gateway line
+  grep -qsE "^[[:space:]]*gateway[[:space:]]+${_GW}\b" ${_FILES} 2>/dev/null && return 0
+
+  # post-up ip route add ... <GW> ... onlink
+  grep -qsE "post-up[[:space:]]+ip[[:space:]]+route[[:space:]]+r..a[[:space:]]+${_GW}.*onlink" ${_FILES} 2>/dev/null && return 0
+
   return 1
 }
 
@@ -240,10 +293,12 @@ _fix_resolv_conf() {
     printf '[DRY-RUN] Would write /etc/resolv.conf: %s\n' "${_DNS}"
     return 0
   fi
+  chattr -i /etc/resolv.conf
   rm -f /etc/resolv.conf
   : > /etc/resolv.conf
   for _NS in ${_DNS}; do printf 'nameserver %s\n' "${_NS}" >> /etc/resolv.conf; done
   chmod 0644 /etc/resolv.conf
+  chattr +i /etc/resolv.conf
   _msg "Wrote real /etc/resolv.conf"
 }
 
@@ -283,11 +338,11 @@ _disable_cloudinit_networking() {
 _ensure_ifupdown() {
   _cmd_exists ifup && return 0
   if [ "${_DRY_RUN}" = "YES" ]; then
-    echo 'DRY-RUN: would install ifupdown2 (or ifupdown)'
+    echo 'DRY-RUN: would install ifupdown (or ifupdown2)'
     return 0
   fi
   apt-get update -y || true
-  _noninteractive_apt install -y ifupdown2 || _noninteractive_apt install -y ifupdown
+  _noninteractive_apt install -y ifupdown || _noninteractive_apt install -y ifupdown2
 }
 
 _ensure_dhcp_client() {
