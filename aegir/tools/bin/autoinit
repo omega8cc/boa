@@ -417,9 +417,16 @@ _if_launch_boa_install() {
 }
 
 ###
-### Disable AppArmor
+### Return 0 if package is installed, 1 otherwise.
 ###
-_disable_apparmor_utils() {
+_pkg_installed() {
+  /usr/bin/dpkg-query -W -f='${Status}' "$1" 2>/dev/null | grep -qx 'install ok installed'
+}
+
+###
+### Turn off AppArmor
+###
+_turn_off_apparmor() {
   if [ -e "/etc/apparmor.d" ] && [ -e "/var/cache/apparmor" ]; then
     rm -rf /var/cache/apparmor/* &> /dev/null
     apparmor_parser -r /etc/apparmor.d/* &> /dev/null
@@ -434,47 +441,35 @@ _disable_apparmor_utils() {
   if [ -x "/usr/sbin/aa-teardown" ]; then
     aa-teardown &> /dev/null
   fi
+  for _PKG in auditd apparmor apparmor-utils apparmor-notify apparmor-profiles apparmor-profiles-extra; do
+    if _pkg_installed "${_PKG}"; then
+      /usr/bin/apt-get remove ${_PKG} -y -qq >> "${_logSlt}"
+    fi
+  done
+  _isAppArmorGrubFile="/etc/default/grub.d/apparmor.cfg"
+  mkdir -p /etc/default/grub.d
+  echo 'GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT apparmor=0"' | tee ${_isAppArmorGrubFile} &> /dev/null
+  update-grub >> "${_logSlt}"
   [ ! -e "/root/.disable.apparmor.cnf" ] && touch /root/.disable.apparmor.cnf
 }
 
 ###
-### Install AppArmor
+### Only disable AppArmor if it’s active (profiles currently loaded)
 ###
-_install_apparmor() {
-  _isAppArmorRevFile="/sys/kernel/security/apparmor/revision"
-  _isAppArmorGrubFile="/etc/default/grub.d/apparmor.cfg"
-  _isAppArmorComplain="$(which aa-complain)"
-  _isAppArmorStatus="$(which aa-status)"
-  _isAppArmorGrub=NO
-  if [ -e "${_isAppArmorGrubFile}" ]; then
-    _GRUB_APPARMOR_TEST=$(grep "apparmor=1 security=apparmor" ${_isAppArmorGrubFile})
-    if [[ "${_GRUB_APPARMOR_TEST}" =~ "apparmor=1 security=apparmor" ]]; then
-      _isAppArmorGrub=YES
+_if_off_apparmor() {
+  if [ -e "/lib/apparmor/apparmor.systemd" ]; then
+    if command -v aa-status >/dev/null; then
+      aa-status --verbose >/dev/null 2>&1
+      case $? in
+        0)  _turn_off_apparmor ;;  # AppArmor enabled *and* profiles loaded – disable it
+        1|2) ;;                    # 1: not enabled, 2: no profiles – no action needed
+      esac
+    else
+      # Fallback: check kernel module flag if aa-status isn’t available
+      if [ -e "/sys/module/apparmor/parameters/enabled" ] && grep -q "Y" /sys/module/apparmor/parameters/enabled; then
+        _turn_off_apparmor
+      fi
     fi
-  fi
-  if [ ! -e "${_isAppArmorRevFile}" ] \
-    || [ ! -e "${_isAppArmorGrubFile}" ] \
-    || [ -z "${_isAppArmorComplain}" ] \
-    || [ -z "${_isAppArmorStatus}" ] \
-    || [ "${_isAppArmorGrub}" = "NO" ]; then
-    _msg "_install_apparmor ==> Installing AppArmor Tools early..." >> "${_logInt}"
-    echo " " >> "${_logInt}"
-    ${_INITINS} auditd \
-      apparmor \
-      apparmor-utils \
-      apparmor-notify \
-      apparmor-profiles -qq >> "${_logSlt}"
-    mkdir -p /etc/default/grub.d
-    echo 'GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT apparmor=1 security=apparmor"' \
-      | tee ${_isAppArmorGrubFile} &> /dev/null
-    update-grub >> "${_logSlt}"
-  fi
-  _isAppArmOn=N
-  if [ -e "/sys/module/apparmor/parameters/enabled" ]; then
-    _isAppArmOn="$(cat /sys/module/apparmor/parameters/enabled 2>/dev/null | tr -d '\n')"
-  fi
-  if [ "${_isAppArmOn}" = "Y" ]; then
-    _disable_apparmor_utils
   fi
 }
 
@@ -667,12 +662,19 @@ _init_prepare() {
     fi
     _msg "[init] prep ==> Time for reboot and next upgrade cycle..." >> "${_logInt}"
     echo " " >> "${_logInt}"
-    rm -f /run/autoinit.pid
-    shutdown -r now
+    if [ -e "/root/.manual-autoinit-reboot.cnf" ]; then
+      service cron stop
+      sleep 90
+      rm -f /run/autoinit.pid
+    else
+      rm -f /run/autoinit.pid
+      shutdown -r now
+    fi
     exit 0
   else
     if [ ! -x "/usr/bin/mc" ]; then
       touch /run/autoinit.pid
+      _if_off_apparmor
       if [ -e "/root/.autoinit-early-upgrade.cnf" ]; then
         _msg "[init] prep ==> Let's update existing system first..." >> "${_logInt}"
         if pgrep -f unattended-upgrades >/dev/null 2>&1; then
@@ -690,24 +692,8 @@ _init_prepare() {
       _msg "[init] prep ==> We need to install some tools early..." >> "${_logInt}"
       /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
       /usr/bin/dpkg --configure -a >> "${_logSlt}"
-      if [ "${_SET_MODE}" = "full" ] && [ "${_VMFAMILY}" != "AWS" ]; then
-        /usr/bin/apt-get remove chrony -y --purge --auto-remove -qq >> "${_logSlt}"
-        _INITD_TEST=$(ls -la /etc/init.d/*cloud* 2>&1)
-        _aptAkamaiLst="/etc/apt/sources.list.d/akamai-linux-team.list"
-        _aptCloudInit="/etc/apt/preferences.d/99linode-cloudinit"
-        _etcCloudCfgd="/etc/cloud/cloud.cfg.d"
-        if [[ ! "${_INITD_TEST}" =~ "No such file" ]] \
-          || [ -e "${_aptAkamaiLst}" ] \
-          || [ -e "${_aptCloudInit}" ] \
-          || [ -e "${_etcCloudCfgd}" ]; then
-          /usr/bin/apt-get remove cloud-utils cloud-init -y --purge --auto-remove -qq >> "${_logSlt}"
-          /usr/bin/apt-get remove cloud-image-utils cloud-guest-utils -y --purge --auto-remove -qq >> "${_logSlt}"
-          /usr/bin/apt-get autoremove --purge -y >> "${_logSlt}"
-          /usr/bin/apt-get autoclean -y >> "${_logSlt}"
-          [ -e "${_etcCloudCfgd}" ] && mv -f /etc/cloud /var/backups/
-          [ -e "${_aptAkamaiLst}" ] && mv -f ${_aptAkamaiLst} /var/backups/
-          [ -e "${_aptCloudInit}" ] && mv -f ${_aptCloudInit} /var/backups/
-        fi
+      if _pkg_installed "chrony"; then
+        /usr/bin/apt-get remove chrony -y -qq >> "${_logSlt}"
       fi
       ${_INITINS} aptitude  >> "${_logSlt}"
       ${_INITINS} bc        >> "${_logSlt}"
@@ -719,24 +705,23 @@ _init_prepare() {
       ${_INITINS} net-tools >> "${_logSlt}"
       ${_INITINS} netcat-traditional  >> "${_logSlt}"
       ${_INITINS} ntpsec-ntpdate      >> "${_logSlt}"
-      if [ "${_SET_MODE}" = "full" ]; then
-        ${_INITINS} build-essential   >> "${_logSlt}"
-        ${_INITINS} git               >> "${_logSlt}"
-        ${_INITINS} libgd-dev         >> "${_logSlt}"
-        ${_INITINS} libmagickwand-dev >> "${_logSlt}"
-      fi
       sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
       echo "*/1 *   * * *   root    bash /opt/local/bin/autoinit ${_SET_MODE} ${_USE_NINC}" >> /etc/crontab
       if [ -x "/opt/local/bin/killer" ]; then
         sed -i "s/.*killer.*//gi" /etc/crontab &> /dev/null
         echo "*/1 *   * * *   root    bash /opt/local/bin/killer" >> /etc/crontab
       fi
-      [ "${_SET_MODE}" = "full" ] && _install_apparmor
       touch ${_initFile}
       _msg "[init] prep ==> Time for reboot and next upgrade cycle..." >> "${_logInt}"
       echo " " >> "${_logInt}"
-      rm -f /run/autoinit.pid
-      shutdown -r now
+      if [ -e "/root/.manual-autoinit-reboot.cnf" ]; then
+        service cron stop
+        sleep 90
+        rm -f /run/autoinit.pid
+      else
+        rm -f /run/autoinit.pid
+        shutdown -r now
+      fi
       exit 0
     fi
   fi
@@ -771,8 +756,6 @@ _ensure_devuan_bf() {
 
 
 # --- BEGIN: Devuan Excalibur systemd → sysvinit keep-SSH helper ----
-
-_pkg_installed() { /usr/bin/dpkg -s "$1" >/dev/null 2>&1; }
 
 # Ensure anacron exists to satisfy logrotate alternatives when systemd is gone
 _ensure_cron_provider() {
@@ -898,6 +881,12 @@ _autoinit_devuan_protect_essential() {
 ###
 _init_base_sync() {
   if [ -e "/root/.top-daedalus.cnf" ]; then
+    ${_INITINS} base-files/daedalus >> "${_logSlt}"
+  fi
+  if [ -e "/root/.top-excalibur.cnf" ]; then
+    ${_INITINS} base-files/excalibur >> "${_logSlt}"
+  fi
+  if [ -e "/root/.top-daedalus.cnf" ]; then
     # Initialize the update flag to NO
     _needsBaseFilesUpdate=NO
     # Check if /etc/os-release mentions 'daedalus'
@@ -992,15 +981,23 @@ _init_offsystemd() {
   /usr/bin/apt-get remove systemd-dummy -y -qq >> "${_logSlt}"
   /usr/bin/apt-get purge systemd libnss-systemd -y -qq >> "${_logSlt}"
 
-  _msg "[init] offd ==> Update networking if needed with vmnetfix..." >> "${_logInt}"
-  /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
-  wait
+  if [ ! -e "/etc/network/interfaces" ]; then
+    _msg "[init] offd ==> Update networking to fix missing /etc/network/interfaces..." >> "${_logInt}"
+    /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
+    wait
+  fi
 
   _msg "[init] offd ==> Time for reboot and next upgrade cycle..." >> "${_logInt}"
   echo " " >> "${_logInt}"
   touch /root/.run-offsystemd-devuan-init.cnf
-  rm -f /run/autoinit.pid
-  shutdown -r now
+  if [ -e "/root/.manual-autoinit-reboot.cnf" ]; then
+    service cron stop
+    sleep 90
+    rm -f /run/autoinit.pid
+  else
+    rm -f /run/autoinit.pid
+    shutdown -r now
+  fi
   exit 0
 }
 
@@ -1092,6 +1089,9 @@ _init_cycle() {
     /usr/bin/apt-get upgrade ${_nrmUpArg} >> "${_logSlt}"
   fi
   if [ ! -z "${_NEW_OS_CODE}" ] && [ ! -z "${_NEW_SYS}" ]; then
+    _msg "[init] cycl ==> Update networking with vmnetfix early..." >> "${_logInt}"
+    /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
+    wait
     _msg "[init] cycl ==> Running APT Cleanup..." >> "${_logInt}"
     /opt/local/bin/aptcleanup >> "${_logSlt}"
     wait
@@ -1117,18 +1117,15 @@ _init_cycle() {
     echo "## DEVUAN SECURITY UPDATES" >> ${_aptLiSys}
     echo "deb ${_TGT_MRR} ${_NEW_OS_CODE}-security main" >> ${_aptLiSys}
     echo "deb-src ${_TGT_MRR} ${_NEW_OS_CODE}-security main" >> ${_aptLiSys}
-    if [ -e "/etc/apt/apt.conf" ]; then
-      rm -f /etc/apt/apt.conf
-    fi
     _prefer_devuan_repositories
     /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
     /usr/bin/dpkg --configure -a >> "${_logSlt}"
     if [ "${_OLD_SYS}" = "Debian" ]; then
       ${_INITINS} devuan-keyring >> "${_logSlt}"
     else
-      /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
       /usr/bin/dpkg --configure -a >> "${_logSlt}"
     fi
+    /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
     /usr/bin/apt-get upgrade ${_dstUpArg} >> "${_logSlt}"
     if [ "${_OLD_SYS}" = "Debian" ]; then
       /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
@@ -1158,14 +1155,20 @@ _init_cycle() {
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   if [ "${_OLD_SYS}" = "Debian" ]; then
-    _msg "[init] cycl ==> Update networking if needed with vmnetfix..." >> "${_logInt}"
+    _msg "[init] cycl ==> Update networking with vmnetfix just in case before reboot..." >> "${_logInt}"
     /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
     wait
     _msg "[init] cycl ==> Time for reboot and next upgrade cycle..." >> "${_logInt}"
     echo " " >> "${_logInt}"
     touch /root/.run-cycle-devuan-init.cnf
-    rm -f /run/autoinit.pid
-    shutdown -r now
+    if [ -e "/root/.manual-autoinit-reboot.cnf" ]; then
+      service cron stop
+      sleep 90
+      rm -f /run/autoinit.pid
+    else
+      rm -f /run/autoinit.pid
+      shutdown -r now
+    fi
     exit 0
   else
     if [ "${_OS_CODE}" = "daedalus" ] || [ "${_OS_CODE}" = "excalibur" ]; then
@@ -1173,9 +1176,11 @@ _init_cycle() {
       _init_post_ready
       _init_no_systemd
       _msg "[init] cycl ==> Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
-      _msg "[init] cycl ==> Update networking if needed with vmnetfix..." >> "${_logInt}"
-      /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
-      wait
+      if [ ! -e "/etc/network/interfaces" ]; then
+        _msg "[init] cycl ==> Update networking to fix missing /etc/network/interfaces..." >> "${_logInt}"
+        /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
+        wait
+      fi
       _msg "[init] cycl ==> Running APT Cleanup.." >> "${_logInt}"
       /opt/local/bin/aptcleanup >> "${_logSlt}"
       wait
@@ -1185,16 +1190,24 @@ _init_cycle() {
       _if_launch_boa_install
     else
       _msg "[init] cycl ==> Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
-      _msg "[init] cycl ==> Update networking if needed with vmnetfix..." >> "${_logInt}"
-      /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
-      wait
+      if [ ! -e "/etc/network/interfaces" ]; then
+        _msg "[init] cycl ==> Update networking to fix missing /etc/network/interfaces..." >> "${_logInt}"
+        /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
+        wait
+      fi
       _msg "[init] cycl ==> Time for reboot and next upgrade cycle..." >> "${_logInt}"
     fi
     echo " " >> "${_logInt}"
     touch /root/.run-cycle-devuan-init.cnf
     touch /root/.run-cycle-${_OS_CODE}-init.cnf
-    rm -f /run/autoinit.pid
-    shutdown -r now
+    if [ -e "/root/.manual-autoinit-reboot.cnf" ]; then
+      service cron stop
+      sleep 90
+      rm -f /run/autoinit.pid
+    else
+      rm -f /run/autoinit.pid
+      shutdown -r now
+    fi
     exit 0
   fi
 }
