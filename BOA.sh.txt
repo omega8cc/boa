@@ -4007,6 +4007,7 @@ _fix_hosting_le() {
       || [ -e "/root/hosting_le_vhost.drush.inc.ctrl.${_tRee}.${_xSrl}.pid" ] \
       || [ -e "/root/${_hoLeInc}" ] \
       || [ -e "${_legacyLeSh}" ] \
+      || [ ! -e "${_pthLog}/_fix_hosting_le.ctrl.${_tRee}.${_xSrl}.pid" ] \
       || [ ! -e "${_dehydSrcPath}" ] \
       || [ ! -e "${_provLeIncFull}.ctrl.${_tRee}.${_xSrl}.pid" ]; then
       mkdir -p /var/xdrago/conf
