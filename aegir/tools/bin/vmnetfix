@@ -28,7 +28,7 @@ _DEBUG_MODE="NO"
 _DRY_RUN="NO"
 _TEST_NOW="NO"
 _DISABLE_CLOUD_INIT="YES"
-_FORCE_DNS_LIST="127.0.0.1 1.1.1.1 8.8.8.8 9.9.9.9"
+_FORCE_DNS_LIST="1.1.1.1 8.8.8.8 9.9.9.9"
 _MODE="auto"    # auto | init-only | full
 
 # ----------------------------- Core helpers -----------------------------------
