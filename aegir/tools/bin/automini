@@ -443,10 +443,10 @@ _init_prepare() {
 ###
 _init_base_sync() {
   if [ -e "/root/.top-daedalus.cnf" ]; then
-    apt-get install base-files/daedalus >> "${_logSlt}"
+    ${_INITINS} base-files/daedalus >> "${_logSlt}"
   fi
   if [ -e "/root/.top-excalibur.cnf" ]; then
-    apt-get install base-files/excalibur >> "${_logSlt}"
+    ${_INITINS} base-files/excalibur >> "${_logSlt}"
   fi
 }
 
