@@ -5016,6 +5016,11 @@ if [ "$(id -u)" -eq 0 ]; then
     ${_INITINS} bc &> /dev/null
   fi
 
+  if ! command -v curl &> /dev/null; then
+    apt-get update -qq &> /dev/null
+    ${_INITINS} curl &> /dev/null
+  fi
+
   _find_correct_ip
   _find_server_city
 
