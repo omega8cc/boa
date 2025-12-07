@@ -1324,7 +1324,7 @@ _update_agents() {
   fi
 
   if [ ! -e "${_optBin}/barracuda" ] \
-    || [ ! -e "${_pthLog}/barracuda.sh.ctrl.f97.${_tRee}.${_xSrl}.pid" ]; then
+    || [ ! -e "${_pthLog}/barracuda.sh.ctrl.f96.${_tRee}.${_xSrl}.pid" ]; then
     _CNT=$(pgrep -fc /local/bin/barracuda)
     if (( _CNT > 0 )); then
       echo "The barracuda is running!"
@@ -1336,7 +1336,7 @@ _update_agents() {
       if [ -e "${_optBin}/barracuda" ]; then
         chmod 700 ${_optBin}/barracuda
         chown root:root ${_optBin}/barracuda
-        touch ${_pthLog}/barracuda.sh.ctrl.f97.${_tRee}.${_xSrl}.pid
+        touch ${_pthLog}/barracuda.sh.ctrl.f96.${_tRee}.${_xSrl}.pid
       else
         if [ -e "${_optBin}/barracuda.old" ]; then
           mv -f ${_optBin}/barracuda.old ${_optBin}/barracuda
@@ -1346,7 +1346,7 @@ _update_agents() {
   fi
 
   if [ ! -e "${_optBin}/octopus" ] \
-    || [ ! -e "${_pthLog}/octopus.sh.ctrl.f98.${_tRee}.${_xSrl}.pid" ]; then
+    || [ ! -e "${_pthLog}/octopus.sh.ctrl.f97.${_tRee}.${_xSrl}.pid" ]; then
     _CNT=$(pgrep -fc /local/bin/octopus)
     if (( _CNT > 0 )); then
       echo "The octopus is running!"
@@ -1358,7 +1358,7 @@ _update_agents() {
       if [ -e "${_optBin}/octopus" ]; then
         chmod 700 ${_optBin}/octopus
         chown root:root ${_optBin}/octopus
-        touch ${_pthLog}/octopus.sh.ctrl.f98.${_tRee}.${_xSrl}.pid
+        touch ${_pthLog}/octopus.sh.ctrl.f97.${_tRee}.${_xSrl}.pid
       else
         if [ -e "${_optBin}/octopus.old" ]; then
           mv -f ${_optBin}/octopus.old ${_optBin}/octopus
@@ -2520,6 +2520,7 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -d "/data/u" ] \
+    && [ -e "/usr/sbin/csf" ] \
     && [ ! -e "${_pthLog}/fpm-cli.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     _usrGroup=users
     [ -e "/var/backups/off-run/" ] && cp -a /var/backups/off-run/run* /var/xdrago/ &> /dev/null
@@ -2616,33 +2617,37 @@ _update_agents() {
   # Create the destination directory if it doesn't exist
   mkdir -p /var/backups/off-run/
 
-  # Loop through all files matching the pattern /var/xdrago/run-USER
-  for _file in /var/xdrago/run-*; do
-    # Skip iteration if no files match the pattern
-    [ -e "${_file}" ] || continue
+  if [ -e "/var/xdrago/monitor/check" ] \
+    && [ -d "/data/u" ] \
+    && [ -e "/usr/sbin/csf" ]; then
+    # Loop through all files matching the pattern /var/xdrago/run-USER
+    for _file in /var/xdrago/run-*; do
+      # Skip iteration if no files match the pattern
+      [ -e "${_file}" ] || continue
 
-    # Extract the _USER from the filename
-    _USER=${_file#/var/xdrago/run-}
+      # Extract the _USER from the filename
+      _USER=${_file#/var/xdrago/run-}
 
-    # Define the paths to check
-    _USER_DIR="/data/disk/${_USER}"
-    _CANCELLED_FILE="${_USER_DIR}/log/CANCELLED"
-    _PROXIED_PID_FILE="${_USER_DIR}/log/proxied.pid"
-    _CLI_INFO_FILE="${_USER_DIR}/static/control/cli.info"
+      # Define the paths to check
+      _USER_DIR="/data/disk/${_USER}"
+      _CANCELLED_FILE="${_USER_DIR}/log/CANCELLED"
+      _PROXIED_PID_FILE="${_USER_DIR}/log/proxied.pid"
+      _CLI_INFO_FILE="${_USER_DIR}/static/control/cli.info"
 
-    # Check the conditions
-    if [ ! -d "${_USER_DIR}" ] || \
-       [ -f "${_CANCELLED_FILE}" ] || \
-       [ -f "${_PROXIED_PID_FILE}" ] || \
-       [ ! -f "${_CLI_INFO_FILE}" ]; then
-      # Move the file if any condition is met
-      mv -f "${_file}" /var/backups/off-run/
-    fi
+      # Check the conditions
+      if [ ! -d "${_USER_DIR}" ] || \
+         [ -f "${_CANCELLED_FILE}" ] || \
+         [ -f "${_PROXIED_PID_FILE}" ] || \
+         [ ! -f "${_CLI_INFO_FILE}" ]; then
+        # Move the file if any condition is met
+        mv -f "${_file}" /var/backups/off-run/
+      fi
 
-    if grep -q "renice 0" "${_file}"; then
-      sed -i "s/renice 0/renice 9/g" "${_file}"
-    fi
-  done
+      if grep -q "renice 0" "${_file}"; then
+        sed -i "s/renice 0/renice 9/g" "${_file}"
+      fi
+    done
+  fi
 
   if [ -x "/opt/tools/drush/8/drush/drush.php" ] \
     && [ -e "${_provLeIncFull}" ] \
