@@ -1869,7 +1869,6 @@ _manage_site_drush_alias_mirror() {
     else
       _SiteName="${_AliasName}"
       ### echo _SiteName is "${_SiteName}"
-      ### echo Last_SiteDir is "${_SiteDir}"
       _SiteDir=
       if [[ "${_SiteName}" =~ ".restore"($) ]]; then
         _IS_SITE=NO
@@ -1883,8 +1882,8 @@ _manage_site_drush_alias_mirror() {
         if [ -e "${_SiteDir}/drushrc.php" ] \
           && [ -e "${_SiteDir}/files" ] \
           && [ -e "${_SiteDir}/private" ]; then
-          echo _SiteDir is ${_SiteDir}
-          echo
+          ### echo _SiteDir is ${_SiteDir}
+          ### echo
           _pthAliasMain="${_pthParen_tUsr}/.drush/${_SiteName}.alias.drushrc.php"
           _pthAliasCopy="/home/${_USER}.ftp/.drush/${_SiteName}.alias.drushrc.php"
           if [ ! -e "${_pthAliasCopy}" ]; then
