@@ -787,14 +787,14 @@ for _Domain in `find ${_Client}/ -maxdepth 1 -mindepth 1 -type l | sort`; do
   _PATH_DOM="$(readlink -n "${_Domain}")"
   _mntPoint=$(find /mnt -mindepth 1 -maxdepth 1 -type d | grep "\." | head -n1) &&
   _MNT_STATIC_FILES="${_mntPoint}/files/${_USER}/static/files/${_rawDom}/"
-  echo "_ALLD_DIR is == ${_ALLD_DIR} == at _manage_sec_access_paths"
-  echo "_rawDom is == ${_rawDom} == at _manage_sec_access_paths"
-  echo "_STATIC_FILES is == ${_STATIC_FILES} == at _manage_sec_access_paths"
-  echo "_STATIC_PRIVATE is == ${_STATIC_PRIVATE} == at _manage_sec_access_paths"
-  echo "_NEW_STATIC_FILES is == ${_NEW_STATIC_FILES} == at _manage_sec_access_paths"
-  echo "_PATH_DOM is == ${_PATH_DOM} == at _manage_sec_access_paths"
-  [ -n "${_mntPoint}" ] && echo "_mntPoint is == ${_mntPoint} == at _manage_sec_access_paths"
-  [ -n "${_mntPoint}" ] && echo "_MNT_STATIC_FILES is == ${_MNT_STATIC_FILES} == at _manage_sec_access_paths"
+#   echo "_ALLD_DIR is == ${_ALLD_DIR} == at _manage_sec_access_paths"
+#   echo "_rawDom is == ${_rawDom} == at _manage_sec_access_paths"
+#   echo "_STATIC_FILES is == ${_STATIC_FILES} == at _manage_sec_access_paths"
+#   echo "_STATIC_PRIVATE is == ${_STATIC_PRIVATE} == at _manage_sec_access_paths"
+#   echo "_NEW_STATIC_FILES is == ${_NEW_STATIC_FILES} == at _manage_sec_access_paths"
+#   echo "_PATH_DOM is == ${_PATH_DOM} == at _manage_sec_access_paths"
+#   [ -n "${_mntPoint}" ] && echo "_mntPoint is == ${_mntPoint} == at _manage_sec_access_paths"
+#   [ -n "${_mntPoint}" ] && echo "_MNT_STATIC_FILES is == ${_MNT_STATIC_FILES} == at _manage_sec_access_paths"
   [ -n "${_mntPoint}" ] && _ALLD_DIR="${_ALLD_DIR}, '${_PATH_DOM}', '${_STATIC_FILES}', '${_STATIC_PRIVATE}', '${_NEW_STATIC_FILES}', '${_MNT_STATIC_FILES}'"
   [ -z "${_mntPoint}" ] && _ALLD_DIR="${_ALLD_DIR}, '${_PATH_DOM}', '${_STATIC_FILES}', '${_STATIC_PRIVATE}', '${_NEW_STATIC_FILES}'"
   if [ -e "${_PATH_DOM}" ]; then
@@ -817,7 +817,7 @@ for _Client in `find ${_pthParen_tUsr}/clients/ -maxdepth 1 -mindepth 1 -type d 
     _ALLD_CTL="1"
     _ALLD_DIR="'${_Client}', '/opt/user/gems/${_usrLtd}'"
     cd ${_Client}
-    # _manage_sec_access_paths
+    _manage_sec_access_paths
     # _ALLD_DIR="${_ALLD_DIR}, '/home/${_usrLtd}'"
     if [ "${_ALLD_NUM}" -ge "${_ALLD_CTL}" ]; then
       _add_user_if_not_exists
