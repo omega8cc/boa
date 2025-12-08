@@ -817,8 +817,8 @@ for _Client in `find ${_pthParen_tUsr}/clients/ -maxdepth 1 -mindepth 1 -type d 
     _ALLD_CTL="1"
     _ALLD_DIR="'${_Client}', '/opt/user/gems/${_usrLtd}'"
     cd ${_Client}
-    _manage_sec_access_paths
-    #_ALLD_DIR="${_ALLD_DIR}, '/home/${_usrLtd}'"
+    # _manage_sec_access_paths
+    # _ALLD_DIR="${_ALLD_DIR}, '/home/${_usrLtd}'"
     if [ "${_ALLD_NUM}" -ge "${_ALLD_CTL}" ]; then
       _add_user_if_not_exists
       echo Done for ${_Client} at ${_pthParen_tUsr}
@@ -1868,7 +1868,7 @@ _manage_site_drush_alias_mirror() {
       _SiteDir=
     else
       _SiteName="${_AliasName}"
-      echo _SiteName is "${_SiteName}"
+      ### echo _SiteName is "${_SiteName}"
       ### echo Last_SiteDir is "${_SiteDir}"
       _SiteDir=
       if [[ "${_SiteName}" =~ ".restore"($) ]]; then
