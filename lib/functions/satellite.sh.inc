@@ -3982,6 +3982,7 @@ _satellite_make() {
   echo "export _MY_OCTO_EMAIL=\"${_MY_OCTO_EMAIL}\""         >> ${_writeTo}
   echo "export _MY_OWNIP=\"${_MY_OWNIP}\""                   >> ${_writeTo}
   echo "export _NOW=\"${_NOW}\""                             >> ${_writeTo}
+  echo "export _OS_DIST=\"${_OS_DIST}\""                     >> ${_writeTo}
   echo "export _OS_CODE=\"${_OS_CODE}\""                     >> ${_writeTo}
   echo "export _PHP_CLI_VERSION=\"${_PHP_CLI_VERSION}\""     >> ${_writeTo}
   echo "export _PHP_FPM_VERSION=\"${_PHP_FPM_VERSION}\""     >> ${_writeTo}
@@ -4013,6 +4014,7 @@ _satellite_make() {
   echo "export _THIS_DB_HOST=\"${_THIS_DB_HOST}\""           >> ${_writeTo}
   echo "export _THIS_DB_PORT=\"${_THIS_DB_PORT}\""           >> ${_writeTo}
   echo "export _OS_DIST=\"${_OS_DIST}\""                     >> ${_writeTo}
+  echo "export _OS_CODE=\"${_OS_CODE}\""                     >> ${_writeTo}
   echo "export _THISHTIP=\"${_THISHTIP}\""                   >> ${_writeTo}
   echo "export _TODAY=\"${_TODAY}\""                         >> ${_writeTo}
   echo "export _USE_CURRENT=\"${_USE_CURRENT}\""             >> ${_writeTo}
@@ -4714,6 +4716,10 @@ _satellite_checkpoint() {
     echo " "
     _msg "START -> checkpoint: "
   fi
+
+  export _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
+  export _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
+
   if [ "${_STATUS}" = "INIT" ]; then
     _modeDetect="installation"
     _optInf="${_CLIENT_OPTION} / ${_CLIENT_SUBSCR} / ${_CLIENT_CORES} C"
