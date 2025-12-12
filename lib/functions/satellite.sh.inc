@@ -3684,8 +3684,8 @@ _satellite_if_add_update_backend_user_dirs_files_clean() {
 
   ###---### Create .ssh dir and keys if not exist, plus some known_hosts for system user.
   #
-  if [ ! -e "${_ROOT}/.ssh/id_rsa.pub" ]; then
-    su -s /bin/bash - ${_USER} -c "ssh-keygen -b 4096 -t rsa -N \"\" -f ~/.ssh/id_rsa" &> /dev/null
+  if [ ! -e "${_ROOT}/.ssh/id_ed25519.pub" ]; then
+    su -s /bin/bash - ${_USER} -c "ssh-keygen -t ed25519 -N '' -f ~/.ssh/id_ed25519" &> /dev/null
     wait
     su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H ${_USER}.beanstalkapp.com >> ~/.ssh/known_hosts" &> /dev/null
     wait
@@ -3709,8 +3709,8 @@ _satellite_if_add_update_backend_user_dirs_files_clean() {
     wait
     su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H unfuddle.com >> ~/.ssh/known_hosts" &> /dev/null
     wait
-    cp -af ${_ROOT}/.ssh/id_rsa.pub ${_ROOT}/static/${_USER}.id_rsa.pub
-    chmod 644 ${_ROOT}/static/${_USER}.id_rsa.pub
+    cp -af ${_ROOT}/.ssh/id_ed25519.pub ${_ROOT}/static/${_USER}.id_ed25519.pub
+    chmod 644 ${_ROOT}/static/${_USER}.id_ed25519.pub
   fi
 
   ###---### Create .bazaar dir and conf file if not exist for system user.
