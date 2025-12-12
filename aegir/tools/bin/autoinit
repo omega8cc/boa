@@ -969,8 +969,18 @@ _init_offsystemd() {
   /usr/bin/apt-get dist-upgrade ${_dstUpArg} >> "${_logSlt}"
   [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
 
+  _init_base_sync
+
+  if grep -qi 'ID=debian' /etc/os-release 2>/dev/null; then
+    _ensure_devuan_bf
+  fi
+  if apt policy base-files | grep -i 'debian' &> /dev/null; then
+    _ensure_devuan_bf
+  fi
+
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
+
   _msg "[init] offd ==> Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
   _msg "[init] offd ==> Removing systemd on ${_OS_CODE}" >> "${_logInt}"
 
