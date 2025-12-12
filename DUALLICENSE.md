@@ -18,7 +18,7 @@ Please note that **as of December 31, 2025, the LTS branch will enter a full cod
 
 After the freeze, **only critical functional fixes within BOA itself will be considered**. There will be **no updates** for underlying components such as PHP, Percona, Nginx, Valkey, OpenSSL, OpenSSH, or related system libraries, although your barracuda will still be able to upgrade your system with newer Devuan packages.
 
-Several of the upcoming and most impactful features are planned **exclusively for BOA PRO**, as outlined in the [ROADMAP](https://github.com/omega8cc/boa/tree/5.x-dev/ROADMAP.md).
+Several of the upcoming and most impactful features are planned **exclusively for BOA PRO**, as outlined in the [ROADMAP](https://github.com/omega8cc/boa/tree/5.x-pro/ROADMAP.md).
 
 For continued access to new features, ongoing improvements, and a future-proof stack, [BOA PRO](https://omega8.cc/licenses) is the recommended upgrade path.
 
