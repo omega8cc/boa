@@ -15,9 +15,7 @@ if (isset($_SERVER['HTTP_HOST']) && preg_match("/(?:domain\.com|another-domain\.
       header('X-Accel-Expires: 1');
       // Note: never use header('X-Accel-Expires: 0'); to disable Speed Booster completely.
       // You always want that one second or you will be vulnerable to DoS attacks.
-      header("HTTP/1.1 301 Moved Permanently");
-      header("Location: https://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']);
-      header("Connection: close");
+      header("Location: https://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'], true, 301);
       exit;
     }
   }
@@ -27,9 +25,7 @@ if (isset($_SERVER['HTTP_HOST']) && preg_match("/(?:domain\.com|another-domain\.
       header('X-Accel-Expires: 1');
       // Note: never use header('X-Accel-Expires: 0'); to disable Speed Booster completely.
       // You always want that one second or you will be vulnerable to DoS attacks.
-      header("HTTP/1.1 301 Moved Permanently");
-      header("Location: http://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']);
-      header("Connection: close");
+      header("Location: http://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'], true, 301);
       exit;
     }
   }

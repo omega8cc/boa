@@ -33,7 +33,7 @@ For more information on Percona XtraDB Cluster integration please read:
 - Dedicated, single bare-metal machine (RAID & 32GB+ RAM recommended)
 - Five+ IPs assigned (1 public host, 1 public web + 3 private or public for DB)
 - Debian Stretch minimal OS on the host machine
-- SSH (RSA) keys for root with direct access (not via sudo etc.)
+- SSH (ed25519) keys for root with direct access (not via sudo etc.)
 
 # BOA Simple Cluster Installer Setup
 
