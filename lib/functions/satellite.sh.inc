@@ -3684,8 +3684,8 @@ _satellite_if_add_update_backend_user_dirs_files_clean() {
 
   ###---### Create .ssh dir and keys if not exist, plus some known_hosts for system user.
   #
-  if [ ! -e "${_ROOT}/.ssh/id_rsa.pub" ]; then
-    su -s /bin/bash - ${_USER} -c "ssh-keygen -b 4096 -t rsa -N \"\" -f ~/.ssh/id_rsa" &> /dev/null
+  if [ ! -e "${_ROOT}/.ssh/id_ed25519.pub" ]; then
+    su -s /bin/bash - ${_USER} -c "ssh-keygen -t ed25519 -N '' -f ~/.ssh/id_ed25519" &> /dev/null
     wait
     su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H ${_USER}.beanstalkapp.com >> ~/.ssh/known_hosts" &> /dev/null
     wait
@@ -3709,8 +3709,8 @@ _satellite_if_add_update_backend_user_dirs_files_clean() {
     wait
     su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H unfuddle.com >> ~/.ssh/known_hosts" &> /dev/null
     wait
-    cp -af ${_ROOT}/.ssh/id_rsa.pub ${_ROOT}/static/${_USER}.id_rsa.pub
-    chmod 644 ${_ROOT}/static/${_USER}.id_rsa.pub
+    cp -af ${_ROOT}/.ssh/id_ed25519.pub ${_ROOT}/static/${_USER}.id_ed25519.pub
+    chmod 644 ${_ROOT}/static/${_USER}.id_ed25519.pub
   fi
 
   ###---### Create .bazaar dir and conf file if not exist for system user.
@@ -3982,6 +3982,7 @@ _satellite_make() {
   echo "export _MY_OCTO_EMAIL=\"${_MY_OCTO_EMAIL}\""         >> ${_writeTo}
   echo "export _MY_OWNIP=\"${_MY_OWNIP}\""                   >> ${_writeTo}
   echo "export _NOW=\"${_NOW}\""                             >> ${_writeTo}
+  echo "export _OS_DIST=\"${_OS_DIST}\""                     >> ${_writeTo}
   echo "export _OS_CODE=\"${_OS_CODE}\""                     >> ${_writeTo}
   echo "export _PHP_CLI_VERSION=\"${_PHP_CLI_VERSION}\""     >> ${_writeTo}
   echo "export _PHP_FPM_VERSION=\"${_PHP_FPM_VERSION}\""     >> ${_writeTo}
@@ -4013,6 +4014,7 @@ _satellite_make() {
   echo "export _THIS_DB_HOST=\"${_THIS_DB_HOST}\""           >> ${_writeTo}
   echo "export _THIS_DB_PORT=\"${_THIS_DB_PORT}\""           >> ${_writeTo}
   echo "export _OS_DIST=\"${_OS_DIST}\""                     >> ${_writeTo}
+  echo "export _OS_CODE=\"${_OS_CODE}\""                     >> ${_writeTo}
   echo "export _THISHTIP=\"${_THISHTIP}\""                   >> ${_writeTo}
   echo "export _TODAY=\"${_TODAY}\""                         >> ${_writeTo}
   echo "export _USE_CURRENT=\"${_USE_CURRENT}\""             >> ${_writeTo}
@@ -4714,6 +4716,10 @@ _satellite_checkpoint() {
     echo " "
     _msg "START -> checkpoint: "
   fi
+
+  export _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
+  export _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
+
   if [ "${_STATUS}" = "INIT" ]; then
     _modeDetect="installation"
     _optInf="${_CLIENT_OPTION} / ${_CLIENT_SUBSCR} / ${_CLIENT_CORES} C"

@@ -6,6 +6,21 @@
  */
 if (!$is_backend && isset($_SERVER['HTTP_HOST']) &&
     isset($_SERVER['SERVER_NAME'])) {
+
+  $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
+
+  /* Block “node-chain” URL mutation spam */
+  if (preg_match('#/node/\d+/.*/node/\d+#i', $path)) {
+    header($_SERVER['SERVER_PROTOCOL'] . ' 404 Not Found');
+    exit;
+  }
+
+  /* Block excessive language-prefix chaining */
+  if (preg_match('#^/(?:[a-z]{2}(?:-[a-z0-9]+)?/){3,}#i', $path)) {
+    header($_SERVER['SERVER_PROTOCOL'] . ' 404 Not Found');
+    exit;
+  }
+
   if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) || isset($_SERVER['HTTPS'])) {
     $conf['https'] = TRUE;
     $request_type = ($_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https' || $_SERVER['HTTPS'] == 'on') ? 'SSL' : 'NONSSL';
@@ -154,17 +169,13 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) &&
     if ($is_anon == 'ANONYMOUS') {
       if (preg_match("/\/(?:node\/[0-9]+\/edit|node\/add)/", $_SERVER['REQUEST_URI'])) {
         if (empty($all_ini['allow_anon_node_add'])) {
-          header("HTTP/1.1 301 Moved Permanently");
-          header("Location: " . $base_url . "/");
-          header("Connection: close");
+          header("Location: " . $base_url . "/", true, 301);
           exit;
         }
       }
       if (preg_match("/^\/(?:[a-z]{2}\/)?(?:admin|logout|privatemsg|approve)/", $_SERVER['REQUEST_URI'])) {
         if (empty($all_ini['disable_admin_dos_protection'])) {
-          header("HTTP/1.1 301 Moved Permanently");
-          header("Location: " . $base_url . "/");
-          header("Connection: close");
+          header("Location: " . $base_url . "/", true, 301);
           exit;
         }
       }
@@ -240,9 +251,7 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) &&
  * Support files/styles with short URIs also for files not generated yet
  */
 if (preg_match("/^\/files\/styles\//", $_SERVER['REQUEST_URI'])) {
-  header("HTTP/1.1 301 Moved Permanently");
-  header("Location: " . $base_url . "/sites/" . $_SERVER['SERVER_NAME'] . $_SERVER['REQUEST_URI']);
-  header("Connection: close");
+  header("Location: " . $base_url . "/sites/" . $_SERVER['SERVER_NAME'] . $_SERVER['REQUEST_URI'], true, 301);
   exit;
 }
 
