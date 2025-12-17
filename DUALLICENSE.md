@@ -12,13 +12,23 @@
 
 You can install only **BOA LTS** and then upgrade to **PRO** with a license from [Omega8.cc](https://omega8.cc/licenses).
 
+## **LTS** branch will enter a full code-freeze on December 31, 2025
+
+Please note that **as of December 31, 2025, the LTS branch will enter a full code-freeze**. No further feature development or regular releases are planned for 2026. A possible re-evaluation may occur in 2027, but this should not be assumed.
+
+After the freeze, **only critical functional fixes within BOA itself will be considered**. There will be **no updates** for underlying components such as PHP, Percona, Nginx, Valkey, OpenSSL, OpenSSH, or related system libraries, although your barracuda will still be able to upgrade your system with newer Devuan packages.
+
+Several of the upcoming and most impactful features are planned **exclusively for BOA PRO**, as outlined in the [ROADMAP](https://github.com/omega8cc/boa/tree/5.x-pro/ROADMAP.md).
+
+For continued access to new features, ongoing improvements, and a future-proof stack, [BOA PRO](https://omega8.cc/licenses) is the recommended upgrade path.
+
 ## Practical Differences Between **LTS** and **PRO**
 
 Over time, **PRO** will be ahead of **LTS** as its name suggests.
 
-The `BOA-5.4.0` release is the last parallel release including all features developed for **PRO**, so both **PRO** and **LTS** users will enjoy the same improvements, bug fixes, and new features.
+The `BOA-5.8.5` release is the last parallel release including all features developed for **PRO**, so both **PRO** and **LTS** users will enjoy the same improvements, bug fixes, and new features.
 
-In the future, new features will be regularly added to **PRO**, while **LTS** will receive only security updates and critical fixes. There may be exceptions, and some new features may find their way to **LTS**, but only as exceptions.
+In the future, new features will be regularly added to **PRO**, while **LTS** will receive only security updates and critical fixes for BOA itself. There may be exceptions, and some new features may find their way to **LTS**, but only as exceptions.
 
 The **PRO** will be available in three main variants, and while all **BOA PRO** licenses will grant access to the same **BOA PRO** branch and features, they will differ in terms of available support levels.
 
@@ -44,6 +54,6 @@ You can obtain a **BOA PRO** license from [Omega8.cc](https://omega8.cc/licenses
 
 ## Upcoming **PRO-Only** Features
 
-Certain planned features are likely to be exclusive to **BOA PRO**. If these features are added to other **BOA** versions, it will be with a significant delay. However, some key features, such as Backdrop CMS and Grav CMS support, will also be added to **BOA LTS**.
+Certain planned features are likely to be exclusive to **BOA PRO**. If these features are added to other **BOA** versions, it will be with a significant delay.
 
 Check out the details in [ROADMAP](https://github.com/omega8cc/boa/tree/5.x-pro/ROADMAP.md)

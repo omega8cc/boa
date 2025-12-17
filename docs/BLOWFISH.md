@@ -10,9 +10,9 @@ Note that BOA switched to SHA512 instead of MD5 by default in HEAD after BOA-2.0
 
 # WARNING!
 
-1. Make sure you have working SSH (RSA) keys for direct root access without sudo.
-2. Make sure you have working SSH (RSA) keys for direct root access without sudo.
-3. Make sure you have working SSH (RSA) keys for direct root access without sudo.
+1. Make sure you have working SSH (ed25519) keys for direct root access without sudo.
+2. Make sure you have working SSH (ed25519) keys for direct root access without sudo.
+3. Make sure you have working SSH (ed25519) keys for direct root access without sudo.
 
 **REALLY. Don't even read anything below if you didn't set this up yet!**
 You could lock yourself out of your server forever (almost), if your only access is password based and something will go wrong, because you didn't read and follow this how-to *precisely*. If you are interested why it is so important, read the explanation further below.
