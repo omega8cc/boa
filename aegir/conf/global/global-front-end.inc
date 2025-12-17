@@ -6,6 +6,21 @@
  */
 if (!$is_backend && isset($_SERVER['HTTP_HOST']) &&
     isset($_SERVER['SERVER_NAME'])) {
+
+  $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
+
+  /* Block “node-chain” URL mutation spam */
+  if (preg_match('#/node/\d+/.*/node/\d+#i', $path)) {
+    header($_SERVER['SERVER_PROTOCOL'] . ' 404 Not Found');
+    exit;
+  }
+
+  /* Block excessive language-prefix chaining */
+  if (preg_match('#^/(?:[a-z]{2}(?:-[a-z0-9]+)?/){3,}#i', $path)) {
+    header($_SERVER['SERVER_PROTOCOL'] . ' 404 Not Found');
+    exit;
+  }
+
   if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) || isset($_SERVER['HTTPS'])) {
     $conf['https'] = TRUE;
     $request_type = ($_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https' || $_SERVER['HTTPS'] == 'on') ? 'SSL' : 'NONSSL';
