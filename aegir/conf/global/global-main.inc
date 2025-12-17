@@ -161,7 +161,7 @@ if (isset($_SERVER['HTTP_HOST']) && !isset($_SERVER['SERVER_NAME'])) {
 if (!$is_backend) {
   if (isset($_SERVER['SERVER_SOFTWARE']) &&
       !preg_match("/ApacheSolarisNginx/i", $_SERVER['SERVER_SOFTWARE'])) {
-    $_SERVER['SERVER_SOFTWARE'] = 'ApacheSolarisNginx/1.29.3';
+    $_SERVER['SERVER_SOFTWARE'] = 'ApacheSolarisNginx/1.29.4';
   }
 }
 
@@ -174,17 +174,13 @@ if (!$is_backend) {
     if (preg_match("/(?:^tmp\.|\.test\.|\.tmp\.)/i", $_SERVER['HTTP_HOST'])) {
       // Deny known search bots on ^(tmp|foo.(tmp|test)).domain subdomains
       header('X-Accel-Expires: 60');
-      header("HTTP/1.1 301 Moved Permanently");
-      header("Location: http://www.aegirproject.org/");
-      header("Connection: close");
+      header("Location: http://www.aegirproject.org/", true, 301);
       exit;
     }
     elseif (preg_match("/\.(?:host8|boa|aegir|o8)\.(?:biz|io|cc)$/i", $_SERVER['HTTP_HOST'])) {
       // Deny known search bots on some protected CI subdomains
       header('X-Accel-Expires: 60');
-      header("HTTP/1.1 301 Moved Permanently");
-      header("Location: https://omega8.cc/");
-      header("Connection: close");
+      header("Location: https://omega8.cc/", true, 301);
       exit;
     }
   }
@@ -237,9 +233,7 @@ if ($conf['install_profile'] == 'hostmaster') {
       if ($request_type != "SSL" &&
           !preg_match("/^\/cron\.php/", $_SERVER['REQUEST_URI'])) { // we force secure connection here
         header('X-Accel-Expires: 5');
-        header("HTTP/1.1 301 Moved Permanently");
-        header("Location: https://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']);
-        header("Connection: close");
+        header("Location: https://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'], true, 301);
         exit;
       }
     }
@@ -249,9 +243,7 @@ if ($conf['install_profile'] == 'hostmaster') {
           preg_match("/^\/node\/add\/server/", $_SERVER['REQUEST_URI']) ||
           preg_match("/^\/node\/(?:1|2|4|5|7|8|10)\/(?:edit|delete)/", $_SERVER['REQUEST_URI'])) {
         header('X-Accel-Expires: 5');
-        header("HTTP/1.1 301 Moved Permanently");
-        header("Location: https://" . $_SERVER['HTTP_HOST'] . "/hosting/sites");
-        header("Connection: close");
+        header("Location: https://" . $_SERVER['HTTP_HOST'] . "/hosting/sites", true, 301);
         exit;
       }
     }
