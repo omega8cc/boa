@@ -62,7 +62,7 @@ Follow the guidelines in [**docs/CONTRIBUTING.md**](https://github.com/omega8cc/
 - Basic sysadmin skills and experience.
 - Willingness to accept BOA PI (paranoid idiosyncrasies).
 - Minimum 4 GB RAM and 2 CPUs (8 GB RAM and 4+ CPUs with Solr).
-- SSH (RSA) keys for root are required by newer OpenSSH versions used in BOA.
+- SSH (ed25519) keys for root are required by newer OpenSSH versions used in BOA.
 - Wget must be installed.
 - Open outgoing TCP ports: 25, 53, 80, 443.
 - Locales with UTF-8 support, otherwise en_US.UTF-8 (default) is forced.

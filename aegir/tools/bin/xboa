@@ -51,7 +51,7 @@ Important Changes to Note:
    The contents of your main SSH account’s home directory have NOT been migrated. Please download any necessary files from the old server.
 
 5. Aegir Backend Key Update
-   The public SSH key (USER.id_rsa.pub) for the Aegir backend has changed. This is important if you use integration with a remote Git repository.
+   The public SSH key (USER.id_ed25519.pub) for the Aegir backend has changed. This is important if you use integration with a remote Git repository.
 
 6. SSL Certificates
    SSL/Let’s Encrypt certificates have been migrated automatically. Renewals will be handled on the new server, so updating DNS promptly is advised.
@@ -109,7 +109,7 @@ Important Changes to Note:
    The contents of your main SSH account’s home directory will NOT be migrated. Please download any necessary files from the old server.
 
 5. Aegir Backend Key Update
-   The public SSH key (USER.id_rsa.pub) for the Aegir backend will change. This is important if you use integration with a remote Git repository.
+   The public SSH key (USER.id_ed25519.pub) for the Aegir backend will change. This is important if you use integration with a remote Git repository.
 
 6. SSL Certificates
    SSL/Let’s Encrypt certificates will be migrated automatically. Renewals will be handled on the new server, so updating DNS promptly is advised.
@@ -1122,20 +1122,21 @@ _pre_mig() {
     fi
     if [ "${_hName}" = "${_hst}" ]; then
       echo Preparing source ${_hName} for outgoing migration...
-      if [ ! -e "/root/.ssh/id_rsa.pub" ]; then
-        echo Create id_rsa.pub...
-        ssh-keygen -b 4096 -t rsa -N "" -f ~/.ssh/id_rsa &> /dev/null
+      if [ ! -e "/root/.ssh/id_ed25519.pub" ]; then
+        echo "Generating SSH (ed25519) keys for root..."
+        ssh-keygen -t ed25519 -N '' -f ~/.ssh/id_ed25519
       fi
-      if [ -e "/root/.ssh/id_rsa.pub" ]; then
+      if [ -e "/root/.ssh/id_ed25519.pub" ]; then
         mkdir -p /var/www/nginx-default
-        cp -af /root/.ssh/id_rsa.pub /var/www/nginx-default/auth_undefined_keys.txt
+        cp -af /root/.ssh/id_ed25519.pub /var/www/nginx-default/auth_undefined_keys.txt
       else
-        echo Ops.. /root/.ssh/id_rsa.pub does not exist in ${_hName}
+        echo Ops.. /root/.ssh/id_ed25519.pub does not exist in ${_hName}
       fi
     else
       echo Preparing target ${_hName} for incoming migration...
-      echo Add remote id_rsa.pub to authorized_keys here...
+      echo Add remote id_ed25519.pub to authorized_keys here...
       mkdir -p /root/.ssh
+      chmod 700 /root/.ssh
       rm -f /root/.ssh/auth_undefined_keys.txt*
       rm -f /var/www/nginx-default/auth_undefined_keys.txt*
       curl -s -A iCab "http://undefined.${_hst}/auth_undefined_keys.txt" -o /root/.ssh/auth_undefined_keys.txt

@@ -30,7 +30,7 @@ sed -i "s/^max_input_time =.*/max_input_time = 7200/g" /opt/php*/lib/php.ini
 
 ```sh
 su - o1
-nano ~/.ssh/authorized_keys ### Paste ~/.ssh/id_rsa.pub from the same account on target
+nano ~/.ssh/authorized_keys ### Paste ~/.ssh/id_ed25519.pub from the same account on target
 chmod 600 ~/.ssh/*
 ```
 

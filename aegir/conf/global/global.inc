@@ -79,7 +79,7 @@ if (function_exists('drush_get_command')) {
 if (!$is_backend) {
   if (isset($_SERVER['SERVER_SOFTWARE']) &&
       !preg_match("/ApacheSolarisNginx/i", $_SERVER['SERVER_SOFTWARE'])) {
-    $_SERVER['SERVER_SOFTWARE'] = 'ApacheSolarisNginx/1.29.3';
+    $_SERVER['SERVER_SOFTWARE'] = 'ApacheSolarisNginx/1.29.4';
   }
 }
 
@@ -536,17 +536,13 @@ if (!$is_backend) {
     if (preg_match("/(?:^tmp\.|\.test\.|\.tmp\.)/i", $_SERVER['HTTP_HOST'])) {
       // Deny known search bots on ^(tmp|foo.(tmp|test)).domain subdomains
       header('X-Accel-Expires: 60');
-      header("HTTP/1.1 301 Moved Permanently");
-      header("Location: http://www.aegirproject.org/");
-      header("Connection: close");
+      header("Location: http://www.aegirproject.org/", true, 301);
       exit;
     }
     elseif (preg_match("/\.(?:host8|boa|aegir|o8)\.(?:biz|io|cc)$/i", $_SERVER['HTTP_HOST'])) {
       // Deny known search bots on some protected CI subdomains
       header('X-Accel-Expires: 60');
-      header("HTTP/1.1 301 Moved Permanently");
-      header("Location: https://omega8.cc/");
-      header("Connection: close");
+      header("Location: https://omega8.cc/", true, 301);
       exit;
     }
   }
@@ -729,9 +725,7 @@ if ($conf['install_profile'] == 'hostmaster') {
       if ($request_type != "SSL" &&
           !preg_match("/^\/cron\.php/", $_SERVER['REQUEST_URI'])) { // we force secure connection here
         header('X-Accel-Expires: 5');
-        header("HTTP/1.1 301 Moved Permanently");
-        header("Location: https://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']);
-        header("Connection: close");
+        header("Location: https://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'], true, 301);
         exit;
       }
     }
@@ -741,9 +735,7 @@ if ($conf['install_profile'] == 'hostmaster') {
           preg_match("/^\/node\/add\/server/", $_SERVER['REQUEST_URI']) ||
           preg_match("/^\/node\/(?:1|2|4|5|7|8|10)\/(?:edit|delete)/", $_SERVER['REQUEST_URI'])) {
         header('X-Accel-Expires: 5');
-        header("HTTP/1.1 301 Moved Permanently");
-        header("Location: https://" . $_SERVER['HTTP_HOST'] . "/hosting/sites");
-        header("Connection: close");
+        header("Location: https://" . $_SERVER['HTTP_HOST'] . "/hosting/sites", true, 301);
         exit;
       }
     }
@@ -1265,17 +1257,13 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) &&
     if ($is_anon == 'ANONYMOUS') {
       if (preg_match("/\/(?:node\/[0-9]+\/edit|node\/add)/", $_SERVER['REQUEST_URI'])) {
         if (empty($all_ini['allow_anon_node_add'])) {
-          header("HTTP/1.1 301 Moved Permanently");
-          header("Location: " . $base_url . "/");
-          header("Connection: close");
+          header("Location: " . $base_url . "/", true, 301);
           exit;
         }
       }
       if (preg_match("/^\/(?:[a-z]{2}\/)?(?:admin|logout|privatemsg|approve)/", $_SERVER['REQUEST_URI'])) {
         if (empty($all_ini['disable_admin_dos_protection'])) {
-          header("HTTP/1.1 301 Moved Permanently");
-          header("Location: " . $base_url . "/");
-          header("Connection: close");
+          header("Location: " . $base_url . "/", true, 301);
           exit;
         }
       }
@@ -1351,9 +1339,7 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) &&
  * Support files/styles with short URIs also for files not generated yet
  */
 if (preg_match("/^\/files\/styles\//", $_SERVER['REQUEST_URI'])) {
-  header("HTTP/1.1 301 Moved Permanently");
-  header("Location: " . $base_url . "/sites/" . $_SERVER['SERVER_NAME'] . $_SERVER['REQUEST_URI']);
-  header("Connection: close");
+  header("Location: " . $base_url . "/sites/" . $_SERVER['SERVER_NAME'] . $_SERVER['REQUEST_URI'], true, 301);
   exit;
 }
 
