@@ -855,7 +855,7 @@ _up_finish() {
   rm -f ${_vBs}/*.sh.cnf*
   rm -f ${_vBs}/OCTOPUS.sh*
   mkdir -p /var/backups/php-logs/${_NOW}/
-  mv -f /var/log/php/*.log /var/backups/php-logs/${_NOW}/
+  mv -f /var/log/php/* /var/backups/php-logs/${_NOW}/
   if [ -e "/opt/local/bin/php" ] || [ -e "/usr/local/bin/php" ]; then
     rm -f /opt/local/bin/php
     rm -f /usr/local/bin/php
@@ -1020,11 +1020,30 @@ _check_root_direct() {
     echo
     echo "ERROR: This script must be run as root directly,"
     echo "ERROR: without sudo/su switch from regular system user"
-    echo "ERROR: Please add and test your SSH (RSA) keys for root account"
+    echo "ERROR: Please add and test your SSH (ed25519) keys for root account"
     echo "ERROR: with direct access before trying again"
     echo
+    echo "HOWTO: Run one of these commands on your local PC machine:"
+    echo "  ssh-keygen -t ed25519 -N '' -f ~/.ssh/id_ed25519 (modern, recommended)"
+    echo "  ssh-keygen -t ecdsa -b 256 -N '' -f ~/.ssh/id_ecdsa (good, but dated)"
+    echo "  ssh-keygen -b 4096 -t rsa -N '' -f ~/.ssh/id_rsa (legacy and slow)"
+    echo
+    echo "HOWTO: Copy the public key to the server's ~/.ssh/authorized_keys file:"
+    echo "  ssh-copy-id -i ~/.ssh/id_ed25519 root@your_server_ip"
+    echo
+    echo "HOWTO: Or copy manually to ~/.ssh/authorized_keys file on the server"
+    echo "  cat ~/.ssh/id_ed25519.pub"
+    echo "  cat ~/.ssh/id_ecdsa.pub"
+    echo "  cat ~/.ssh/id_rsa.pub"
+    echo
+    echo "HOWTO: Ensure the each key is not split into more than 1 line"
+    echo
+    echo "HOWTO: Ensure the authorized_keys file has the correct permissions:"
+    echo "  chmod 600 ~/.ssh/authorized_keys"
+    echo "  chmod 700 ~/.ssh"
+    echo
     echo "HINT:  You can always restrict access later, or"
-    echo "       allow only SSH (RSA) keys for root with directive"
+    echo "       allow only SSH (ed25519) keys for root with directive"
     echo "         PermitRootLogin prohibit-password"
     echo "       in the /etc/ssh/sshd_config file"
     echo "Bye"
@@ -1055,22 +1074,23 @@ _check_root_keys_pwd() {
     echo "ERROR: before trying again"
     echo
     echo "HOWTO: Run one of these commands on your local PC machine:"
-    echo "  ssh-keygen -t ecdsa -b 256 -N '' -f ~/.ssh/id_ecdsa"
-    echo "  ssh-keygen -t ed25519 -N '' -f ~/.ssh/id_ed25519"
-    echo "  ssh-keygen -b 4096 -t rsa -N '' -f ~/.ssh/id_rsa"
+    echo "  ssh-keygen -t ed25519 -N '' -f ~/.ssh/id_ed25519 (modern, recommended)"
+    echo "  ssh-keygen -t ecdsa -b 256 -N '' -f ~/.ssh/id_ecdsa (good, but dated)"
+    echo "  ssh-keygen -b 4096 -t rsa -N '' -f ~/.ssh/id_rsa (legacy and slow)"
     echo
     echo "HOWTO: Copy the public key to the server's ~/.ssh/authorized_keys file:"
     echo "  ssh-copy-id -i ~/.ssh/id_ed25519 root@your_server_ip"
     echo
     echo "HOWTO: Or copy manually to ~/.ssh/authorized_keys file on the server"
-    echo "  cat ~/.ssh/id_ecdsa.pub"
     echo "  cat ~/.ssh/id_ed25519.pub"
+    echo "  cat ~/.ssh/id_ecdsa.pub"
     echo "  cat ~/.ssh/id_rsa.pub"
     echo
     echo "HOWTO: Ensure the each key is not split into more than 1 line"
     echo
     echo "HOWTO: Ensure the authorized_keys file has the correct permissions:"
     echo "  chmod 600 ~/.ssh/authorized_keys"
+    echo "  chmod 700 ~/.ssh"
     echo
     echo "HOWTO: You can prioritize your keys by adding to ~/.ssh/config lines:"
     echo " Host *"
