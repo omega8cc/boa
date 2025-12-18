@@ -1146,7 +1146,7 @@ _update_agents() {
   fi
 
   if [ ! -e "${_optBin}/vmnetfix" ] \
-    || [ ! -e "${_pthLog}/vmnetfix.sh.ctrl.f93.${_tRee}.${_xSrl}.pid" ]; then
+    || [ ! -e "${_pthLog}/vmnetfix.sh.ctrl.f92.${_tRee}.${_xSrl}.pid" ]; then
     _CNT=$(pgrep -fc vmnetfix)
     if (( _CNT > 0 )); then
       echo "The vmnetfix is running!"
@@ -1165,7 +1165,7 @@ _update_agents() {
       if [ -e "${_optBin}/vmnetfix" ]; then
         chmod 700 ${_optBin}/vmnetfix
         chown root:root ${_optBin}/vmnetfix
-        touch ${_pthLog}/vmnetfix.sh.ctrl.f93.${_tRee}.${_xSrl}.pid
+        touch ${_pthLog}/vmnetfix.sh.ctrl.f92.${_tRee}.${_xSrl}.pid
       else
         if [ -e "${_optBin}/vmnetfix.old" ]; then
           mv -f ${_optBin}/vmnetfix.old ${_optBin}/vmnetfix

@@ -374,7 +374,17 @@ _ensure_dhcp_client() {
 }
 
 _ensure_sysv_prereqs() {
-  # Some upgrades trip over insserv virtuals; keep this tiny and safe
+  # On Debian images with systemd-sysv, installing classic SysV plumbing packages
+  # can conflict and break apt resolution. We only need these on Devuan (no systemd),
+  # so skip when systemd-sysv is present.
+  if dpkg -s systemd-sysv >/dev/null 2>&1; then
+    _msg "systemd-sysv present; skipping SysV prereqs install on Debian to avoid conflicts."
+    return 0
+  fi
+  if [ "${_DRY_RUN}" = "YES" ]; then
+    echo 'DRY-RUN: would install initscripts sysv-rc startpar insserv'
+    return 0
+  fi
   _noninteractive_apt install -y initscripts sysv-rc startpar insserv || true
 }
 
@@ -656,6 +666,11 @@ _config_is_sane() {
 
   if _has_ci_dhcp_for_if "${_DEF_IF}"; then
     _msg "cloud-init DHCP on ${_DEF_IF} with default route — sane."
+    return 0
+  fi
+
+  if _iface_has_dhcp_for_if "${_DEF_IF}"; then
+    _msg "DHCP stanza for ${_DEF_IF} with default route — sane."
     return 0
   fi
 
