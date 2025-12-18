@@ -784,6 +784,34 @@ _switch_to_ifupdown_when_legacy_detected() {
   _msg "Switched to classic ifupdown and refreshed networking."
 }
 
+# ---------------------- systemd-networkd handoff ------------------------------
+
+_disable_systemd_networkd_for_next_boot() {
+  # When migrating a Debian image (systemd) to classic ifupdown, systemd-networkd
+  # must not stay enabled, otherwise it can race with ifupdown at boot and leave
+  # the VM offline.
+  #
+  # IMPORTANT: Do NOT stop services live over SSH; just disable/mask for next boot.
+
+  # Only meaningful if systemd is PID 1.
+  [ -d /run/systemd/system ] || return 0
+  _cmd_exists systemctl || return 0
+
+  if [ "${_DRY_RUN}" = "YES" ]; then
+    echo "[DRY-RUN] Would enable networking.service"
+    echo "[DRY-RUN] Would disable systemd-networkd + systemd-networkd-wait-online"
+    echo "[DRY-RUN] Would mask systemd-networkd + systemd-networkd-wait-online"
+    return 0
+  fi
+
+  # Ensure classic networking is enabled under systemd.
+  systemctl enable networking >/dev/null 2>&1 || true
+
+  # Prevent networkd from coming back on reboot (common on cloud images).
+  systemctl disable systemd-networkd systemd-networkd-wait-online >/dev/null 2>&1 || true
+  systemctl mask systemd-networkd systemd-networkd-wait-online >/dev/null 2>&1 || true
+}
+
 # ----------------------------- Main flow --------------------------------------
 
 _main() {
@@ -837,6 +865,7 @@ _main() {
       _fix_resolv_conf "${_DNS}"
       _write_networking_init_if_missing
       _ensure_networking_exec_and_runlevels
+      _disable_systemd_networkd_for_next_boot
       _install_boot_guard
       _unload_bonding_if_unused
       _ephemeral_bringup_all
@@ -892,6 +921,7 @@ _main() {
         _fix_resolv_conf "${_DNS}"
         _write_networking_init_if_missing
         _ensure_networking_exec_and_runlevels
+        _disable_systemd_networkd_for_next_boot
         _install_boot_guard
         _unload_bonding_if_unused
         _ephemeral_bringup_all
