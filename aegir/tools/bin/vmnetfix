@@ -178,10 +178,16 @@ _live_public_if() {
   done
 }
 
+_iface_has_dhcp_for_if() {
+  _IF="$1"
+  grep -RqsE "^[[:space:]]*iface[[:space:]]+${_IF}[[:space:]]+inet[[:space:]]+dhcp" \
+    /etc/network/interfaces /etc/network/interfaces.d 2>/dev/null
+}
+
 _has_ci_dhcp_for_if() {
   _IF="$1"
-  grep -RqsE "iface[[:space:]]+${_IF}[[:space:]]+inet[[:space:]]+dhcp" /etc/network/interfaces.d 2>/dev/null &&
-  grep -Rqs 'cloud-init' /etc/network/interfaces.d 2>/dev/null
+  _iface_has_dhcp_for_if "${_IF}" || return 1
+  grep -Rqs 'cloud-init' /etc/network/interfaces /etc/network/interfaces.d 2>/dev/null
 }
 
 _iface_static_match_live() {
@@ -510,6 +516,7 @@ _write_interfaces_all() {
     echo "iface lo inet loopback"
     echo
     for _IF in $(_list_ifaces); do
+      echo "auto ${_IF}"
       echo "allow-hotplug ${_IF}"
 
       _ALL="$(_live_v4_list_if "${_IF}")"
