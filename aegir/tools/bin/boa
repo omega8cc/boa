@@ -162,6 +162,7 @@ _not_supported_virt() {
   echo " * Red Hat KVM guest"
   echo " * VirtualBox guest"
   echo " * VMware ESXi guest (but excluding vCloud Air)"
+  echo " * VServer guest"
   echo " * Xen guest fully virtualized (HVM)"
   echo " * Xen guest"
   echo " * Xen paravirtualized guest domain"
