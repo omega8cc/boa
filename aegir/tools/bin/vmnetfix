@@ -31,6 +31,8 @@ _DISABLE_CLOUD_INIT="YES"
 _FORCE_DNS_LIST="1.1.1.1 8.8.8.8 9.9.9.9"
 _MODE="auto"    # auto | init-only | full
 
+_DEF_WAS_DHCP="NO"
+
 # ----------------------------- Core helpers -----------------------------------
 
 _dt() { date +%Y%m%d-%H%M%S; }
@@ -168,6 +170,16 @@ _default_route_if() { ip -4 route show default 2>/dev/null | awk '{for(i=1;i<=NF
 _default_gw_v4()    { ip -4 route show default 2>/dev/null | awk '{print $3; exit}'; }
 _live_v4_list_if()  { ip -o -4 addr show dev "$1" scope global 2>/dev/null | awk '{print $4}'; }
 _live_v4_cidr()     { _live_v4_list_if "$1" | head -n1; }
+_iface_v4_is_dynamic() {
+  # Returns 0 if the interface has a DHCP/dynamic IPv4 address (as reported by iproute2).
+  # This is common on clouds where the "public IP" is implemented via NAT outside the guest.
+  _IF="$1"
+  ip -o -4 addr show dev "${_IF}" scope global 2>/dev/null | grep -q '[[:space:]]dynamic[[:space:]]'
+}
+
+_default_route_is_dhcp() {
+  ip -4 route show default 2>/dev/null | grep -q '[[:space:]]proto[[:space:]]dhcp[[:space:]]'
+}
 
 _live_public_if() {
   for _I in $(ls -1 /sys/class/net 2>/dev/null | awk '$0!="lo"'); do
@@ -352,7 +364,8 @@ _ensure_ifupdown() {
 }
 
 _ensure_dhcp_client() {
-  (_cmd_exists dhclient || _cmd_exists udhcpc || _cmd_exists dhcpcd) && return 0
+  # For classic ifupdown on Devuan we want isc-dhcp-client (dhclient) available.
+  _cmd_exists dhclient && return 0
   if [ "${_DRY_RUN}" = "YES" ]; then
     echo 'DRY-RUN: would install isc-dhcp-client'
     return 0
@@ -525,27 +538,33 @@ _write_interfaces_all() {
         _PRIMARY="${_PRIMARY_V4}"
         _OTHERS="${_OTHERS_V4}"
 
-        echo "iface ${_IF} inet static"
-        echo "  address ${_PRIMARY}"
-
-        if [ "${_IF}" = "${_DEF}" ] && [ -n "${_GW}" ]; then
-          _PFX="$(_cidr_prefix "${_PRIMARY}")"
-          if ip route get "${_GW}" 2>/dev/null | grep -q "dev ${_IF}" && [ "${_PFX}" != "32" ]; then
-            echo "  gateway ${_GW}"
-          else
-            # /32 or off-link default GW: add explicit onlink route on up
-            echo "  post-up ip route add ${_GW} dev ${_IF} || true"
-            echo "  post-up ip route replace default via ${_GW} dev ${_IF} onlink || true"
-            echo "  pre-down ip route del default via ${_GW} dev ${_IF} || true"
-            echo "  pre-down ip route del ${_GW} dev ${_IF} || true"
-          fi
+        if [ "${_IF}" = "${_DEF}" ] && [ "${_DEF_WAS_DHCP}" = "YES" ]; then
+          echo "iface ${_IF} inet dhcp"
+          # DNS is enforced via /etc/resolv.conf by vmnetfix, but keeping this hint is harmless.
           [ -n "${_DNS}" ] && { printf '  dns-nameservers'; for _NS in ${_DNS}; do printf ' %s' "${_NS}"; done; echo; }
-        fi
+        else
+          echo "iface ${_IF} inet static"
+          echo "  address ${_PRIMARY}"
 
-        for _C in ${_OTHERS}; do
-          echo "  post-up ip addr add ${_C} dev ${_IF} || true"
-          echo "  pre-down ip addr del ${_C} dev ${_IF} || true"
-        done
+          if [ "${_IF}" = "${_DEF}" ] && [ -n "${_GW}" ]; then
+            _PFX="$(_cidr_prefix "${_PRIMARY}")"
+            if ip route get "${_GW}" 2>/dev/null | grep -q "dev ${_IF}" && [ "${_PFX}" != "32" ]; then
+              echo "  gateway ${_GW}"
+            else
+              # /32 or off-link default GW: add explicit onlink route on up
+              echo "  post-up ip route add ${_GW} dev ${_IF} || true"
+              echo "  post-up ip route replace default via ${_GW} dev ${_IF} onlink || true"
+              echo "  pre-down ip route del default via ${_GW} dev ${_IF} || true"
+              echo "  pre-down ip route del ${_GW} dev ${_IF} || true"
+            fi
+            [ -n "${_DNS}" ] && { printf '  dns-nameservers'; for _NS in ${_DNS}; do printf ' %s' "${_NS}"; done; echo; }
+          fi
+
+          for _C in ${_OTHERS}; do
+            echo "  post-up ip addr add ${_C} dev ${_IF} || true"
+            echo "  pre-down ip addr del ${_C} dev ${_IF} || true"
+          done
+        fi
 
       else
         # No live IPv4 -> do not emit a DHCP stanza; leave it unmanaged.
@@ -786,8 +805,16 @@ _main() {
       [ -z "${_PFX}" ] && _PFX="$(_find_prefix_for_if "${_DEF}")"
       [ -z "${_DEF}${_LIVE}${_GW}${_PFX}" ] && { _err "Cannot derive interface/gateway/prefix."; exit 1; }
 
-      # Apply ephemeral static now (so this session has networking)
-      _ephemeral_static_up "${_DEF}" "${_LIVE}" "${_GW}"
+      # Decide whether the default interface is DHCP-managed (do NOT pin a dynamic address as static).
+      _DEF_WAS_DHCP="NO"
+      _iface_v4_is_dynamic "${_DEF}" && _DEF_WAS_DHCP="YES"
+      _default_route_is_dhcp && _DEF_WAS_DHCP="YES"
+      if [ "${_DEF_WAS_DHCP}" = "YES" ]; then
+        _msg "Detected DHCP-managed IPv4 on ${_DEF}; generating ifupdown DHCP stanza (no static pinning)."
+      else
+        # Apply ephemeral static now (so this session has networking)
+        _ephemeral_static_up "${_DEF}" "${_LIVE}" "${_GW}"
+      fi
 
       _DNS="$(_collect_forced_dns)"
       _sanitize_interfaces_file
@@ -833,8 +860,16 @@ _main() {
           exit 1
         fi
 
-        # Bring up now (ephemeral) so we immediately regain connectivity
-        _ephemeral_static_up "${_DEF}" "${_LIVE}" "${_GW}"
+        # Decide whether the default interface is DHCP-managed (do NOT pin a dynamic address as static).
+        _DEF_WAS_DHCP="NO"
+        _iface_v4_is_dynamic "${_DEF}" && _DEF_WAS_DHCP="YES"
+        _default_route_is_dhcp && _DEF_WAS_DHCP="YES"
+        if [ "${_DEF_WAS_DHCP}" = "YES" ]; then
+          _msg "Detected DHCP-managed IPv4 on ${_DEF}; generating ifupdown DHCP stanza (no static pinning)."
+        else
+          # Bring up now (ephemeral) so we immediately regain connectivity
+          _ephemeral_static_up "${_DEF}" "${_LIVE}" "${_GW}"
+        fi
 
         _DNS="$(_collect_forced_dns)"
         _sanitize_interfaces_file
