@@ -73,15 +73,18 @@ Check out the details in [**docs/PROVIDES.md**](https://github.com/omega8cc/boa/
 
 ## Supported Virtualization Systems
 
-- LXC
-- KVM
-- VServer
-- Hyper-V
-- OpenVZ
-- Parallels
-- VirtualBox
-- VMware ESXi
-- Xen
+- Linux Containers (LXC)
+- Linux KVM guest
+- Microsoft Hyper-V
+- OpenVZ Containers
+- Parallels guest
+- Red Hat KVM guest
+- VirtualBox guest
+- VMware ESXi guest (but excluding vCloud Air)
+- VServer guest
+- Xen guest
+- Xen guest fully virtualized (HVM)
+- Xen paravirtualized guest domain
 
 ## Supported Operating Systems
 
