@@ -81,8 +81,10 @@ _not_supported_virt() {
   echo " * Microsoft Hyper-V"
   echo " * OpenVZ Containers"
   echo " * Parallels guest"
+  echo " * Red Hat KVM guest"
   echo " * VirtualBox guest"
   echo " * VMware ESXi guest (but excluding vCloud Air)"
+  echo " * VServer guest"
   echo " * Xen guest fully virtualized (HVM)"
   echo " * Xen guest"
   echo " * Xen paravirtualized guest domain"
@@ -799,6 +801,8 @@ _virt_detection() {
             _VIRT_TEST="hyperv"
           elif [[ "${_VIRT_TEST}" =~ "kvm aws" ]]; then
             _VIRT_TEST="kvm"
+          elif [[ "${_VIRT_TEST}" =~ "redhat kvm" ]]; then
+            _VIRT_TEST="redhat-kvm"
           elif [[ "${_VIRT_TEST}" =~ "openvz lxc" ]]; then
             _VIRT_TEST="openvz"
           fi
@@ -808,6 +812,7 @@ _virt_detection() {
             lxc)         _VIRT_IS="Linux Containers (LXC)" ;;
             openvz)      _VIRT_IS="OpenVZ Containers" ;;
             parallels)   _VIRT_IS="Parallels guest" ;;
+            redhat-kvm)  _VIRT_IS="Red Hat KVM guest" ;;
             virtualbox)  _VIRT_IS="VirtualBox guest" ;;
             vmware)      _VIRT_IS="VMware ESXi guest" ;;
             xen-domU)    _VIRT_IS="Xen paravirtualized guest domain" ;;
