@@ -69,6 +69,24 @@ export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 export _tRee=dev
 
+# Resolve vmnetfix path (autoinit historically used /opt/local/bin/vmnetfix).
+# Prefer locally patched versions first.
+_VMNETFIX_BIN="vmnetfix"
+_resolve_vmnetfix_bin() {
+  if [ -x "/usr/local/sbin/vmnetfix" ]; then
+    _VMNETFIX_BIN="/usr/local/sbin/vmnetfix"
+  elif [ -x "/usr/local/bin/vmnetfix" ]; then
+    _VMNETFIX_BIN="/usr/local/bin/vmnetfix"
+  elif [ -x "/opt/local/bin/vmnetfix" ]; then
+    _VMNETFIX_BIN="/opt/local/bin/vmnetfix"
+  elif command -v vmnetfix >/dev/null 2>&1; then
+    _VMNETFIX_BIN="$(command -v vmnetfix)"
+  else
+    _VMNETFIX_BIN="vmnetfix"
+  fi
+}
+_resolve_vmnetfix_bin
+
 ###
 ### Variables
 ###
@@ -984,6 +1002,18 @@ _init_offsystemd() {
   _msg "[init] offd ==> Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
   _msg "[init] offd ==> Removing systemd on ${_OS_CODE}" >> "${_logInt}"
 
+  # Prepare classic networking before systemd is purged (important on images using systemd-networkd).
+  if [ -n "${_VMNETFIX_BIN}" ] && command -v "${_VMNETFIX_BIN}" >/dev/null 2>&1; then
+    _msg "[init] offd ==> Preparing classic networking with vmnetfix before systemd purge..." >> "${_logInt}"
+    "${_VMNETFIX_BIN}" --mode full --disable-cloud-init >> "${_logSlt}" 2>&1
+    wait
+    if [ ! -e "/etc/network/interfaces" ]; then
+      _msg "[init][WARN] offd ==> vmnetfix did not create /etc/network/interfaces yet; will retry later if still missing." >> "${_logInt}"
+    fi
+  else
+    _msg "[init][WARN] offd ==> vmnetfix not found; skipping pre-purge networking prep." >> "${_logInt}"
+  fi
+
   _autoinit_devuan_protect_essential
 
   _msg "[init] offd ==> Final cleanup for systemd on ${_OS_CODE}" >> "${_logInt}"
@@ -993,7 +1023,7 @@ _init_offsystemd() {
 
   if [ ! -e "/etc/network/interfaces" ]; then
     _msg "[init] offd ==> Update networking to fix missing /etc/network/interfaces..." >> "${_logInt}"
-    /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
+    "${_VMNETFIX_BIN}" --mode full --disable-cloud-init >> "${_logSlt}"
     wait
   fi
 
@@ -1100,7 +1130,7 @@ _init_cycle() {
   fi
   if [ ! -z "${_NEW_OS_CODE}" ] && [ ! -z "${_NEW_SYS}" ]; then
     _msg "[init] cycl ==> Update networking with vmnetfix early..." >> "${_logInt}"
-    /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
+    "${_VMNETFIX_BIN}" --mode full --disable-cloud-init >> "${_logSlt}"
     wait
     _msg "[init] cycl ==> Running APT Cleanup..." >> "${_logInt}"
     /opt/local/bin/aptcleanup >> "${_logSlt}"
@@ -1166,7 +1196,7 @@ _init_cycle() {
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   if [ "${_OLD_SYS}" = "Debian" ]; then
     _msg "[init] cycl ==> Update networking with vmnetfix just in case before reboot..." >> "${_logInt}"
-    /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
+    "${_VMNETFIX_BIN}" --mode full --disable-cloud-init >> "${_logSlt}"
     wait
     _msg "[init] cycl ==> Time for reboot and next upgrade cycle..." >> "${_logInt}"
     echo " " >> "${_logInt}"
@@ -1188,7 +1218,7 @@ _init_cycle() {
       _msg "[init] cycl ==> Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
       if [ ! -e "/etc/network/interfaces" ]; then
         _msg "[init] cycl ==> Update networking to fix missing /etc/network/interfaces..." >> "${_logInt}"
-        /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
+        "${_VMNETFIX_BIN}" --mode full --disable-cloud-init >> "${_logSlt}"
         wait
       fi
       _msg "[init] cycl ==> Running APT Cleanup.." >> "${_logInt}"
@@ -1202,7 +1232,7 @@ _init_cycle() {
       _msg "[init] cycl ==> Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
       if [ ! -e "/etc/network/interfaces" ]; then
         _msg "[init] cycl ==> Update networking to fix missing /etc/network/interfaces..." >> "${_logInt}"
-        /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
+        "${_VMNETFIX_BIN}" --mode full --disable-cloud-init >> "${_logSlt}"
         wait
       fi
       _msg "[init] cycl ==> Time for reboot and next upgrade cycle..." >> "${_logInt}"
