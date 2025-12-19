@@ -120,6 +120,48 @@ _init_sysv_net_repair() {
 }
 
 ###
+### Repair SysV insserv dependency wiring after apt/dpkg churn (Debian->Devuan migrations)
+### Some vendor images may trigger insserv early, before initscripts/cloud-init init scripts
+### are in place, leaving rc links incomplete.
+###
+_init_sysv_insserv_repair() {
+  _msg "[init] neti ==> Repairing SysV insserv deps and rc links..." >> "${_logInt}"
+  /usr/bin/dpkg --configure -a >> "${_logSlt}" || true
+
+  # insserv expects 'mountkernfs' while initscripts may ship mountkernfs.sh
+  if [ -e "/etc/init.d/mountkernfs.sh" ] && [ ! -e "/etc/init.d/mountkernfs" ]; then
+    ln -sf mountkernfs.sh /etc/init.d/mountkernfs
+  fi
+  [ -e "/etc/init.d/mountkernfs" ] && chmod 0755 /etc/init.d/mountkernfs 2>/dev/null || true
+  [ -e "/etc/init.d/urandom" ] && chmod 0755 /etc/init.d/urandom 2>/dev/null || true
+
+  # If cloud-config exists but cloud-init is missing, create a minimal stub so insserv can proceed.
+  if [ -x "/etc/init.d/cloud-config" ] && [ ! -e "/etc/init.d/cloud-init" ]; then
+    cat > /etc/init.d/cloud-init <<'EOF'
+#!/bin/sh
+### BEGIN INIT INFO
+# Provides:          cloud-init
+# Required-Start:
+# Required-Stop:
+# Default-Start:
+# Default-Stop:
+# Short-Description: Stub for insserv during Debian->Devuan migration (autoinit)
+### END INIT INFO
+exit 0
+EOF
+    chmod 0755 /etc/init.d/cloud-init
+  fi
+
+  # Rebuild SysV rc links.
+  if command -v insserv >/dev/null 2>&1; then
+    insserv -v >> "${_logSlt}" 2>/dev/null || true
+  fi
+  if [ -x "/etc/init.d/networking" ] && command -v update-rc.d >/dev/null 2>&1; then
+    update-rc.d networking defaults >> "${_logSlt}" 2>/dev/null || true
+  fi
+}
+
+###
 ### Install minimal boot failsafe for console-less VPSes (no APT, no systemd)
 ###
 _init_vmnetfix_failsafe_install() {
@@ -1304,6 +1346,23 @@ _init_cycle() {
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   if [ "${_OLD_SYS}" = "Debian" ]; then
+    # Some vendor images (e.g. Civo) can end up with incomplete SysV rc wiring
+    # because insserv runs before initscripts/cloud-init init scripts are in place.
+    # Repair it here while we still have working network access.
+    _msg "[init] cycl ==> Repairing SysV init wiring (insserv) before reboot..." >> "${_logInt}"
+    _init_sysv_insserv_repair
+
+    # Remove dhcpcd to avoid DHCP race with ifupdown/dhclient on next boots.
+    if dpkg -l | awk '{print $1" "$2}' | grep -q "^ii dhcpcd-base$"; then
+      _msg "[init] cycl ==> Purging dhcpcd-base to avoid DHCP race..." >> "${_logInt}"
+      /usr/bin/apt-get purge dhcpcd-base -y -qq >> "${_logSlt}" || true
+      /usr/bin/apt-get -f install ${_aptAllow} -y -qq >> "${_logSlt}" || true
+      /usr/bin/dpkg --configure -a >> "${_logSlt}" || true
+    fi
+
+    # Install minimal boot failsafe for console-less VPSes.
+    _init_vmnetfix_failsafe_install
+
     _msg "[init] cycl ==> Update networking with vmnetfix just in case before reboot..." >> "${_logInt}"
     "${_VMNETFIX_BIN}" --mode full --disable-cloud-init >> "${_logSlt}"
     wait
