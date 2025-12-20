@@ -6258,6 +6258,7 @@ _basic_packages_install_on_init() {
       _mrun "${_INITINS} locales"
       _locales_check_fix
       _mrun "${_INITINS} lsb-release"
+      _mrun "${_INITINS} sudo"
       _mrun "${_INITINS} dnsutils"
       _mrun "${_INITINS} netcat-traditional"
       _mrun "${_INITINS} aptitude"
