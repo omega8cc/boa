@@ -69,6 +69,179 @@ export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 export _tRee=lts
 
+# Resolve vmnetfix path (autoinit historically used /opt/local/bin/vmnetfix).
+# Prefer locally patched versions first.
+_VMNETFIX_BIN="vmnetfix"
+_resolve_vmnetfix_bin() {
+  if [ -x "/usr/local/sbin/vmnetfix" ]; then
+    _VMNETFIX_BIN="/usr/local/sbin/vmnetfix"
+  elif [ -x "/usr/local/bin/vmnetfix" ]; then
+    _VMNETFIX_BIN="/usr/local/bin/vmnetfix"
+  elif [ -x "/opt/local/bin/vmnetfix" ]; then
+    _VMNETFIX_BIN="/opt/local/bin/vmnetfix"
+  elif command -v vmnetfix >/dev/null 2>&1; then
+    _VMNETFIX_BIN="$(command -v vmnetfix)"
+  else
+    _VMNETFIX_BIN="vmnetfix"
+  fi
+}
+_resolve_vmnetfix_bin
+
+###
+### Ensure SysV init networking wiring for Devuan (post-systemd purge stage)
+###
+_init_sysv_net_repair() {
+  _msg "[init] netr ==> Ensuring SysV init networking wiring..." >> "${_logInt}"
+  /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
+  /usr/bin/dpkg --configure -a >> "${_logSlt}"
+
+  # Install SysV core bits (safe after systemd-sysv is removed/purged).
+  ${_INITINS} initscripts sysv-rc insserv startpar -qq >> "${_logSlt}"
+  /usr/bin/apt-get -f install ${_aptAllow} -y -qq >> "${_logSlt}"
+  /usr/bin/dpkg --configure -a >> "${_logSlt}"
+
+  # Remove dhcpcd to avoid DHCP race with ifupdown/dhclient (seen on some vendor images).
+  if dpkg -l | awk '{print $1" "$2}' | grep -q "^ii dhcpcd-base$"; then
+    _msg "[init] netr ==> Purging dhcpcd-base to avoid DHCP race..." >> "${_logInt}"
+    /usr/bin/apt-get purge dhcpcd-base -y -qq >> "${_logSlt}" || true
+    /usr/bin/apt-get -f install ${_aptAllow} -y -qq >> "${_logSlt}" || true
+    /usr/bin/dpkg --configure -a >> "${_logSlt}" || true
+  fi
+
+  # Ensure networking init script is enabled for SysV boots.
+  if [ -x "/etc/init.d/networking" ] && command -v update-rc.d >/dev/null 2>&1; then
+    update-rc.d networking defaults >> "${_logSlt}" 2>/dev/null || true
+  fi
+
+  # Refresh rc links if insserv is present.
+  if command -v insserv >/dev/null 2>&1; then
+    insserv -v networking >> "${_logSlt}" 2>/dev/null || insserv -v >> "${_logSlt}" 2>/dev/null || true
+  fi
+}
+
+###
+### Repair SysV insserv dependency wiring after apt/dpkg churn (Debian->Devuan migrations)
+### Some vendor images may trigger insserv early, before initscripts/cloud-init init scripts
+### are in place, leaving rc links incomplete.
+###
+_init_sysv_insserv_repair() {
+  _msg "[init] neti ==> Repairing SysV insserv deps and rc links..." >> "${_logInt}"
+  /usr/bin/dpkg --configure -a >> "${_logSlt}" || true
+
+  # insserv expects 'mountkernfs' while initscripts may ship mountkernfs.sh
+  if [ -e "/etc/init.d/mountkernfs.sh" ] && [ ! -e "/etc/init.d/mountkernfs" ]; then
+    ln -sf mountkernfs.sh /etc/init.d/mountkernfs
+  fi
+  [ -e "/etc/init.d/mountkernfs" ] && chmod 0755 /etc/init.d/mountkernfs 2>/dev/null || true
+  [ -e "/etc/init.d/urandom" ] && chmod 0755 /etc/init.d/urandom 2>/dev/null || true
+
+  # If cloud-config exists but cloud-init is missing, create a minimal stub so insserv can proceed.
+  if [ -x "/etc/init.d/cloud-config" ] && [ ! -e "/etc/init.d/cloud-init" ]; then
+    cat > /etc/init.d/cloud-init <<'EOF'
+#!/bin/sh
+### BEGIN INIT INFO
+# Provides:          cloud-init
+# Required-Start:
+# Required-Stop:
+# Default-Start:
+# Default-Stop:
+# Short-Description: Stub for insserv during Debian->Devuan migration (autoinit)
+### END INIT INFO
+exit 0
+EOF
+    chmod 0755 /etc/init.d/cloud-init
+  fi
+
+  # Rebuild SysV rc links.
+  if command -v insserv >/dev/null 2>&1; then
+    insserv -v >> "${_logSlt}" 2>/dev/null || true
+  fi
+  if [ -x "/etc/init.d/networking" ] && command -v update-rc.d >/dev/null 2>&1; then
+    update-rc.d networking defaults >> "${_logSlt}" 2>/dev/null || true
+  fi
+}
+
+###
+### Install minimal boot failsafe for console-less VPSes (no APT, no systemd)
+###
+_init_vmnetfix_failsafe_install() {
+  _msg "[init] netf ==> Installing vmnetfix failsafe boot helper..." >> "${_logInt}"
+  cat > /etc/init.d/vmnetfix-failsafe <<'EOF'
+#!/bin/sh
+### BEGIN INIT INFO
+# Provides:          vmnetfix-failsafe
+# Required-Start:    $local_fs $remote_fs $syslog
+# Required-Stop:
+# Default-Start:     S
+# Default-Stop:
+# Short-Description: Minimal network bring-up failsafe for console-less VPS
+### END INIT INFO
+
+PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
+LOG=/var/log/vmnetfix-failsafe.log
+
+case "$1" in
+  start|restart|force-reload)
+    {
+      echo "[$(date)] vmnetfix-failsafe: start"
+      if ip -4 route show default 2>/dev/null | grep -q '^default '; then
+        echo "[$(date)] vmnetfix-failsafe: default route exists; nothing to do"
+        exit 0
+      fi
+
+      IFACE="$(ip -o link show up 2>/dev/null | awk -F': ' '$2!="lo" {print $2; exit}')"
+      if [ -z "$IFACE" ]; then
+        IFACE="$(ip -o link show 2>/dev/null | awk -F': ' '$2!="lo" {print $2; exit}')"
+      fi
+      if [ -z "$IFACE" ]; then
+        echo "[$(date)] vmnetfix-failsafe: no interface found"
+        exit 0
+      fi
+
+      echo "[$(date)] vmnetfix-failsafe: using $IFACE"
+
+      if [ ! -e /etc/network/interfaces ]; then
+        echo "[$(date)] vmnetfix-failsafe: /etc/network/interfaces missing; writing minimal dhcp config"
+        cat > /etc/network/interfaces <<EOT
+auto lo
+iface lo inet loopback
+
+auto $IFACE
+allow-hotplug $IFACE
+iface $IFACE inet dhcp
+EOT
+      fi
+
+      if command -v ifup >/dev/null 2>&1; then
+        ifup -v "$IFACE" 2>&1 || true
+      elif command -v dhclient >/dev/null 2>&1; then
+        dhclient -v "$IFACE" 2>&1 || true
+      fi
+
+      ip -4 addr show dev "$IFACE" 2>/dev/null || true
+      ip -4 route show default 2>/dev/null || true
+      echo "[$(date)] vmnetfix-failsafe: done"
+    } >> "$LOG" 2>&1
+    ;;
+  stop)
+    exit 0
+    ;;
+  *)
+    echo "Usage: $0 {start|stop|restart|force-reload}" >&2
+    exit 1
+    ;;
+esac
+
+exit 0
+EOF
+  chmod 0755 /etc/init.d/vmnetfix-failsafe
+  mkdir -p /var/log
+  if [ -d /etc/rcS.d ]; then
+    ln -sf ../init.d/vmnetfix-failsafe /etc/rcS.d/S08vmnetfix-failsafe
+  fi
+}
+
+
 ###
 ### Variables
 ###
@@ -984,6 +1157,11 @@ _init_offsystemd() {
   _msg "[init] offd ==> Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
   _msg "[init] offd ==> Removing systemd on ${_OS_CODE}" >> "${_logInt}"
 
+  # Prepare classic networking before systemd purge (important on console-less VPSes).
+  _msg "[init] offd ==> Preparing classic networking with vmnetfix before systemd purge..." >> "${_logInt}"
+  "${_VMNETFIX_BIN}" --mode full --disable-cloud-init >> "${_logSlt}"
+  wait
+
   _autoinit_devuan_protect_essential
 
   _msg "[init] offd ==> Final cleanup for systemd on ${_OS_CODE}" >> "${_logInt}"
@@ -991,11 +1169,14 @@ _init_offsystemd() {
   /usr/bin/apt-get remove systemd-dummy -y -qq >> "${_logSlt}"
   /usr/bin/apt-get purge systemd libnss-systemd -y -qq >> "${_logSlt}"
 
-  if [ ! -e "/etc/network/interfaces" ]; then
-    _msg "[init] offd ==> Update networking to fix missing /etc/network/interfaces..." >> "${_logInt}"
-    /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
-    wait
-  fi
+  # Ensure classic ifupdown networking and DNS after systemd purge.
+  _msg "[init] offd ==> Ensuring classic networking with vmnetfix after systemd purge..." >> "${_logInt}"
+  "${_VMNETFIX_BIN}" --mode full --disable-cloud-init >> "${_logSlt}"
+  wait
+
+  # Ensure SysV init will actually bring networking up on boot (Devuan goal).
+  _init_sysv_net_repair
+  _init_vmnetfix_failsafe_install
 
   _msg "[init] offd ==> Time for reboot and next upgrade cycle..." >> "${_logInt}"
   echo " " >> "${_logInt}"
@@ -1100,7 +1281,7 @@ _init_cycle() {
   fi
   if [ ! -z "${_NEW_OS_CODE}" ] && [ ! -z "${_NEW_SYS}" ]; then
     _msg "[init] cycl ==> Update networking with vmnetfix early..." >> "${_logInt}"
-    /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
+    "${_VMNETFIX_BIN}" --mode full --disable-cloud-init >> "${_logSlt}"
     wait
     _msg "[init] cycl ==> Running APT Cleanup..." >> "${_logInt}"
     /opt/local/bin/aptcleanup >> "${_logSlt}"
@@ -1165,8 +1346,25 @@ _init_cycle() {
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
   if [ "${_OLD_SYS}" = "Debian" ]; then
+    # Some vendor images (e.g. Civo) can end up with incomplete SysV rc wiring
+    # because insserv runs before initscripts/cloud-init init scripts are in place.
+    # Repair it here while we still have working network access.
+    _msg "[init] cycl ==> Repairing SysV init wiring (insserv) before reboot..." >> "${_logInt}"
+    _init_sysv_insserv_repair
+
+    # Remove dhcpcd to avoid DHCP race with ifupdown/dhclient on next boots.
+    if dpkg -l | awk '{print $1" "$2}' | grep -q "^ii dhcpcd-base$"; then
+      _msg "[init] cycl ==> Purging dhcpcd-base to avoid DHCP race..." >> "${_logInt}"
+      /usr/bin/apt-get purge dhcpcd-base -y -qq >> "${_logSlt}" || true
+      /usr/bin/apt-get -f install ${_aptAllow} -y -qq >> "${_logSlt}" || true
+      /usr/bin/dpkg --configure -a >> "${_logSlt}" || true
+    fi
+
+    # Install minimal boot failsafe for console-less VPSes.
+    _init_vmnetfix_failsafe_install
+
     _msg "[init] cycl ==> Update networking with vmnetfix just in case before reboot..." >> "${_logInt}"
-    /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
+    "${_VMNETFIX_BIN}" --mode full --disable-cloud-init >> "${_logSlt}"
     wait
     _msg "[init] cycl ==> Time for reboot and next upgrade cycle..." >> "${_logInt}"
     echo " " >> "${_logInt}"
@@ -1188,7 +1386,7 @@ _init_cycle() {
       _msg "[init] cycl ==> Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
       if [ ! -e "/etc/network/interfaces" ]; then
         _msg "[init] cycl ==> Update networking to fix missing /etc/network/interfaces..." >> "${_logInt}"
-        /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
+        "${_VMNETFIX_BIN}" --mode full --disable-cloud-init >> "${_logSlt}"
         wait
       fi
       _msg "[init] cycl ==> Running APT Cleanup.." >> "${_logInt}"
@@ -1202,7 +1400,7 @@ _init_cycle() {
       _msg "[init] cycl ==> Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> "${_logInt}"
       if [ ! -e "/etc/network/interfaces" ]; then
         _msg "[init] cycl ==> Update networking to fix missing /etc/network/interfaces..." >> "${_logInt}"
-        /opt/local/bin/vmnetfix --mode full >> "${_logSlt}"
+        "${_VMNETFIX_BIN}" --mode full --disable-cloud-init >> "${_logSlt}"
         wait
       fi
       _msg "[init] cycl ==> Time for reboot and next upgrade cycle..." >> "${_logInt}"
