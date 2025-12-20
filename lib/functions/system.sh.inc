@@ -2347,7 +2347,7 @@ _barracuda_cnf() {
         _fCli=5.6
       fi
     else
-      _fCli=8.3
+      _fCli=8.4
     fi
     if [ -z "${_PHP_SINGLE_INSTALL}" ]; then
       sed -i "s/^_PHP_CLI_VERSION=5.6/_PHP_CLI_VERSION=${_fCli}/g"    ${_barCnf}
@@ -2745,7 +2745,7 @@ _barracuda_cnf() {
         _fCli=5.6
       fi
     else
-      _fCli=8.3
+      _fCli=8.4
     fi
     if [ -z "${_PHP_SINGLE_INSTALL}" ]; then
       sed -i "s/^_PHP_CLI_VERSION=5.6/_PHP_CLI_VERSION=${_fCli}/g"    ${_barCnf}
