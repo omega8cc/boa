@@ -219,6 +219,7 @@ _check_dns_settings() {
   _EHU=NO
   if ! grep -q "127.0.0.1 localhost" /etc/hosts; then
     sed -i "s/^127.0.0.1.*//g" /etc/hosts
+    echo "" >> /etc/hosts
     echo "127.0.0.1 localhost" >> /etc/hosts
     _EHU=YES
   fi
