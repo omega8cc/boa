@@ -159,8 +159,10 @@ _not_supported_virt() {
   echo " * Microsoft Hyper-V"
   echo " * OpenVZ Containers"
   echo " * Parallels guest"
+  echo " * Red Hat KVM guest"
   echo " * VirtualBox guest"
   echo " * VMware ESXi guest (but excluding vCloud Air)"
+  echo " * VServer guest"
   echo " * Xen guest fully virtualized (HVM)"
   echo " * Xen guest"
   echo " * Xen paravirtualized guest domain"
@@ -380,6 +382,8 @@ _check_virt() {
             _VIRT_TEST="hyperv"
           elif [[ "${_VIRT_TEST}" =~ "kvm aws" ]]; then
             _VIRT_TEST="kvm"
+          elif [[ "${_VIRT_TEST}" =~ "redhat kvm" ]]; then
+            _VIRT_TEST="redhat-kvm"
           elif [[ "${_VIRT_TEST}" =~ "openvz lxc" ]]; then
             _VIRT_TEST="openvz"
           fi
@@ -389,6 +393,7 @@ _check_virt() {
             lxc)         _VIRT_IS="Linux Containers (LXC)" ;;
             openvz)      _VIRT_IS="OpenVZ Containers" ;;
             parallels)   _VIRT_IS="Parallels guest" ;;
+            redhat-kvm)  _VIRT_IS="Red Hat KVM guest" ;;
             virtualbox)  _VIRT_IS="VirtualBox guest" ;;
             vmware)      _VIRT_IS="VMware ESXi guest" ;;
             xen-domU)    _VIRT_IS="Xen paravirtualized guest domain" ;;
@@ -1140,7 +1145,7 @@ _barracuda_install() {
         else
           _pA="7.4 8.1 8.2 8.3 8.4 8.5"
         fi
-        _pI=8.3
+        _pI=8.4
         sed -i "s/^_PHP_M.*/_PHP_MULTI_INSTALL=\"${_pA}\"/g" ${_vBs}/${_filIncB}
         wait
         sed -i "s/^_PHP_FPM_VER.*/_PHP_FPM_VERSION=${_pI}/g" ${_vBs}/${_filIncB}
@@ -2017,6 +2022,7 @@ _check_root() {
     _EHU=NO
     if ! grep -q "127.0.0.1 localhost" /etc/hosts; then
       sed -i "s/^127.0.0.1.*//g" /etc/hosts
+      echo "" >> /etc/hosts
       echo "127.0.0.1 localhost" >> /etc/hosts
       _EHU=YES
     fi
@@ -2169,6 +2175,8 @@ _display_version() {
               _VIRT_TEST="hyperv"
             elif [[ "${_VIRT_TEST}" =~ "kvm aws" ]]; then
               _VIRT_TEST="kvm"
+            elif [[ "${_VIRT_TEST}" =~ "redhat kvm" ]]; then
+              _VIRT_TEST="redhat-kvm"
             elif [[ "${_VIRT_TEST}" =~ "openvz lxc" ]]; then
               _VIRT_TEST="openvz"
             fi
@@ -2178,6 +2186,7 @@ _display_version() {
               lxc)         _VIRT_IS="Linux Containers (LXC)" ;;
               openvz)      _VIRT_IS="OpenVZ Containers" ;;
               parallels)   _VIRT_IS="Parallels guest" ;;
+              redhat-kvm)  _VIRT_IS="Red Hat KVM guest" ;;
               virtualbox)  _VIRT_IS="VirtualBox guest" ;;
               vmware)      _VIRT_IS="VMware ESXi guest" ;;
               xen-domU)    _VIRT_IS="Xen paravirtualized guest domain" ;;
@@ -2994,7 +3003,7 @@ _if_display_help() {
     {extra}
       license <------ valid new relic license key
       php-8.3 <------ enable single-PHP mode (8.1 or 8.2 or 8.3 or 8.4 or 7.4)
-      php-min <------ install PHP 8.1-8.5, 7.4, use 8.3 by default (php-all)
+      php-min <------ install PHP 8.1-8.5, 7.4, use 8.4 by default (php-all)
       php-max <------ install PHP 8.0-8.5, 7.0-7.4, 5.6
       nodns <-------- disable DNS/SMTP checks on the fly
       percona-8.0 <-- specify Percona version to use (5.7, 8.0, 8.4)
