@@ -687,7 +687,7 @@ _satellite_cnf() {
         _PHP_FPM_VERSION=$(cat ${_ROOT}/log/fpm.txt 2>&1)
         _PHP_FPM_VERSION=$(echo -n ${_PHP_FPM_VERSION} | tr -d "\n" 2>&1)
       else
-        _PHP_FPM_VERSION=8.3
+        _PHP_FPM_VERSION=8.4
       fi
       echo ${_PHP_FPM_VERSION} > ${_ROOT}/static/control/fpm.info
       chown ${_USER}.ftp:users ${_ROOT}/static/control/fpm.info
@@ -799,7 +799,7 @@ _satellite_cnf() {
         _PHP_CLI_VERSION=$(cat ${_ROOT}/log/cli.txt 2>&1)
         _PHP_CLI_VERSION=$(echo -n ${_PHP_CLI_VERSION} | tr -d "\n" 2>&1)
       else
-        _PHP_CLI_VERSION=8.3
+        _PHP_CLI_VERSION=8.4
       fi
       echo ${_PHP_CLI_VERSION} > ${_ROOT}/static/control/cli.info
       chown ${_USER}.ftp:users ${_ROOT}/static/control/cli.info
@@ -1141,8 +1141,8 @@ _satellite_cnf() {
         fi
       fi
     else
-      _PHP_FPM_VERSION=8.3
-      _PHP_CLI_VERSION=8.3
+      _PHP_FPM_VERSION=8.4
+      _PHP_CLI_VERSION=8.4
     fi
     if [ -z "${_PHP_FPM_VERSION}" ] || [ -z "${_PHP_CLI_VERSION}" ]; then
       _msg "EXIT: You must specify already installed PHP version"
