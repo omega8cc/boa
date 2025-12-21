@@ -6248,7 +6248,7 @@ _basic_packages_install_on_init() {
 
   # Compare normalized contents and update if necessary
   if [[ "${_CURRENT_APT_CONFIG}" != "${_NORMALIZED_DESIRED_APT_CONFIG}" ]]; then
-    echo "${_CLEANED_DESIRED_APT_CONFIG}" | sudo tee "${_APT_CONFIG_FILE}" > /dev/null
+    echo "${_CLEANED_DESIRED_APT_CONFIG}" | tee "${_APT_CONFIG_FILE}" > /dev/null
   fi
 
   if [ "${_STATUS}" = "INIT" ]; then
