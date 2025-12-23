@@ -877,9 +877,13 @@ _tune_memory_limits() {
   _PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
   _PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
   _PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
+  _PrTestUltra=$(grep "ULTRA" /root/.*.octopus.cnf 2>&1)
+  _PrTestMonster=$(grep "MONSTER" /root/.*.octopus.cnf 2>&1)
   if [[ "${_PrTestPower}" =~ "POWER" ]] \
     || [[ "${_PrTestPhantom}" =~ "PHANTOM" ]] \
-    || [[ "${_PrTestCluster}" =~ "CLUSTER" ]]; then
+    || [[ "${_PrTestCluster}" =~ "CLUSTER" ]] \
+    || [[ "${_PrTestUltra}" =~ "ULTRA" ]] \
+    || [[ "${_PrTestMonster}" =~ "MONSTER" ]]; then
     if [ "${_CPU_VS}" -lt 8 ]; then
       _CPU_VS=8
     fi
@@ -888,6 +892,8 @@ _tune_memory_limits() {
     _msg "TUNE: _PrTestPower is ${_PrTestPower}"
     _msg "TUNE: _PrTestPhantom is ${_PrTestPhantom}"
     _msg "TUNE: _PrTestCluster is ${_PrTestCluster}"
+    _msg "TUNE: _PrTestUltra is ${_PrTestUltra}"
+    _msg "TUNE: _PrTestMonster is ${_PrTestMonster}"
   fi
   _RAM=$(free -mt | grep Mem: | awk '{ print $2 }' 2>&1)
   if [ "${_RESERVED_RAM}" -gt 0 ]; then
@@ -1080,8 +1086,10 @@ _tune_memory_limits() {
     _sql_conf_update
     if [[ "${_PrTestPower}" =~ "POWER" ]] \
       || [[ "${_PrTestPhantom}" =~ "PHANTOM" ]] \
-      || [ -e "/root/.my.cluster_root_pwd.txt" ] \
-      || [[ "${_PrTestCluster}" =~ "CLUSTER" ]]; then
+      || [[ "${_PrTestCluster}" =~ "CLUSTER" ]] \
+      || [[ "${_PrTestUltra}" =~ "ULTRA" ]] \
+      || [[ "${_PrTestMonster}" =~ "MONSTER" ]] \
+      || [ -e "/root/.my.cluster_root_pwd.txt" ]; then
       _UXC_SQL="${_MXC_SQL}"
     else
       _UXC_SQL=$(echo "scale=0; ${_MXC_SQL}/2" | bc 2>&1)
@@ -8771,8 +8779,12 @@ _fix_node_in_lshell_access() {
   if [ "${_STATUS}" = "UPGRADE" ] && [ -e "/etc/lshell.conf" ]; then
     _PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
     _PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
+    _PrTestUltra=$(grep "ULTRA" /root/.*.octopus.cnf 2>&1)
+    _PrTestMonster=$(grep "MONSTER" /root/.*.octopus.cnf 2>&1)
     if [[ "${_PrTestPhantom}" =~ "PHANTOM" ]] \
       || [[ "${_PrTestCluster}" =~ "CLUSTER" ]] \
+      || [[ "${_PrTestUltra}" =~ "ULTRA" ]] \
+      || [[ "${_PrTestMonster}" =~ "MONSTER" ]] \
       || [ -e "/root/.allow.node.lshell.cnf" ]; then
       _ALLOW_NODE=YES
     else
@@ -8792,8 +8804,12 @@ _fix_php_in_lshell_access() {
   if [ "${_STATUS}" = "UPGRADE" ] && [ -e "/etc/lshell.conf" ]; then
     _PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
     _PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
+    _PrTestUltra=$(grep "ULTRA" /root/.*.octopus.cnf 2>&1)
+    _PrTestMonster=$(grep "MONSTER" /root/.*.octopus.cnf 2>&1)
     if [[ "${_PrTestPhantom}" =~ "PHANTOM" ]] \
       || [[ "${_PrTestCluster}" =~ "CLUSTER" ]] \
+      || [[ "${_PrTestUltra}" =~ "ULTRA" ]] \
+      || [[ "${_PrTestMonster}" =~ "MONSTER" ]] \
       || [ -e "/root/.allow.php.lshell.cnf" ]; then
       _ALLOW_PHP=YES
     else

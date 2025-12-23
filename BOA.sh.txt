@@ -928,13 +928,17 @@ _update_agents() {
     _PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
     _PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
     _PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
-    InTest=$(ls /data/disk/*/static/control/cli.info | wc -l 2>&1)
+    _PrTestUltra=$(grep "ULTRA" /root/.*.octopus.cnf 2>&1)
+    _PrTestMonster=$(grep "MONSTER" /root/.*.octopus.cnf 2>&1)
+    _InTest=$(ls /data/disk/*/static/control/cli.info | wc -l 2>&1)
     _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
-    if [ "${InTest}" -lt 9 ] \
+    if [ "${_InTest}" -lt 9 ] \
       && [[ ! "${_PrTestPower}" =~ "POWER" ]] \
       && [[ ! "${_PrTestPhantom}" =~ "PHANTOM" ]] \
-      && [[ ! "${_PrTestCluster}" =~ "CLUSTER" ]]; then
-      [ ! -e "/root/.fast.cron.cnf" ] && echo ${InTest} > /root/.fast.cron.cnf
+      && [[ ! "${_PrTestCluster}" =~ "CLUSTER" ]] \
+      && [[ ! "${_PrTestUltra}" =~ "ULTRA" ]] \
+      && [[ ! "${_PrTestMonster}" =~ "MONSTER" ]]; then
+      [ ! -e "/root/.fast.cron.cnf" ] && echo ${_InTest} > /root/.fast.cron.cnf
       [ -e "/root/.hr.monitor.cnf" ] && rm -f /root/.hr.monitor.cnf
       [ -e "/root/.slow.cron.cnf" ] && [ ! -e "/root/.slow.cron.cnf.protected" ] && rm -f /root/.slow.cron.cnf
       [ -e "/root/.tg.cnf" ] && rm -f /root/.tg.cnf
@@ -943,8 +947,8 @@ _update_agents() {
       mysql -u root -e "SET GLOBAL max_user_connections = 111;"
       mysql -u root -e "SET GLOBAL group_concat_max_len = 10000;"
     fi
-    if [ "${InTest}" -ge 9 ] && [ "${InTest}" -le 50 ]; then
-      [ ! -e "/root/.fast.cron.cnf" ] && echo ${InTest} > /root/.fast.cron.cnf
+    if [ "${_InTest}" -ge 9 ] && [ "${_InTest}" -le 50 ]; then
+      [ ! -e "/root/.fast.cron.cnf" ] && echo ${_InTest} > /root/.fast.cron.cnf
       [ -e "/root/.hr.monitor.cnf" ] && rm -f /root/.hr.monitor.cnf
       [ -e "/root/.slow.cron.cnf" ] && [ ! -e "/root/.slow.cron.cnf.protected" ] && rm -f /root/.slow.cron.cnf
       [ -e "/root/.tg.cnf" ] && rm -f /root/.tg.cnf
@@ -953,19 +957,19 @@ _update_agents() {
       mysql -u root -e "SET GLOBAL max_user_connections = 111;"
       mysql -u root -e "SET GLOBAL group_concat_max_len = 10000;"
     fi
-    if [ "${InTest}" -gt 50 ]; then
+    if [ "${_InTest}" -gt 50 ]; then
       [ -e "/root/.fast.cron.cnf" ] && rm -f /root/.fast.cron.cnf
-      [ ! -e "/root/.tg.cnf" ] && echo ${InTest} > /root/.tg.cnf
-      [ ! -e "/root/.hr.monitor.cnf" ] && echo ${InTest} > /root/.hr.monitor.cnf
-      [ ! -e "/root/.slow.cron.cnf" ] && echo ${InTest} > /root/.slow.cron.cnf
+      [ ! -e "/root/.tg.cnf" ] && echo ${_InTest} > /root/.tg.cnf
+      [ ! -e "/root/.hr.monitor.cnf" ] && echo ${_InTest} > /root/.hr.monitor.cnf
+      [ ! -e "/root/.slow.cron.cnf" ] && echo ${_InTest} > /root/.slow.cron.cnf
       mysql -u root -e "SET GLOBAL max_connect_errors = 999;"
       mysql -u root -e "SET GLOBAL max_connections = 777;"
       mysql -u root -e "SET GLOBAL max_user_connections = 111;"
       mysql -u root -e "SET GLOBAL group_concat_max_len = 10000;"
     fi
     if [[ "${_PrTestPower}" =~ "POWER" ]]; then
-      [ ! -e "/root/.tg.cnf" ] && echo ${InTest} > /root/.tg.cnf
-      [ ! -e "/root/.fast.cron.cnf" ] && echo ${InTest} > /root/.fast.cron.cnf
+      [ ! -e "/root/.tg.cnf" ] && echo ${_InTest} > /root/.tg.cnf
+      [ ! -e "/root/.fast.cron.cnf" ] && echo ${_InTest} > /root/.fast.cron.cnf
       [ -e "/root/.hr.monitor.cnf" ] && rm -f /root/.hr.monitor.cnf
       [ -e "/root/.slow.cron.cnf" ] && [ ! -e "/root/.slow.cron.cnf.protected" ] && rm -f /root/.slow.cron.cnf
       mysql -u root -e "SET GLOBAL max_connect_errors = 555;"
@@ -974,8 +978,8 @@ _update_agents() {
       mysql -u root -e "SET GLOBAL group_concat_max_len = 10000;"
     fi
     if [[ "${_PrTestPhantom}" =~ "PHANTOM" ]]; then
-      [ ! -e "/root/.tg.cnf" ] && echo ${InTest} > /root/.tg.cnf
-      [ ! -e "/root/.fast.cron.cnf" ] && echo ${InTest} > /root/.fast.cron.cnf
+      [ ! -e "/root/.tg.cnf" ] && echo ${_InTest} > /root/.tg.cnf
+      [ ! -e "/root/.fast.cron.cnf" ] && echo ${_InTest} > /root/.fast.cron.cnf
       [ -e "/root/.hr.monitor.cnf" ] && rm -f /root/.hr.monitor.cnf
       [ -e "/root/.slow.cron.cnf" ] && [ ! -e "/root/.slow.cron.cnf.protected" ] && rm -f /root/.slow.cron.cnf
       mysql -u root -e "SET GLOBAL max_connect_errors = 777;"
@@ -984,8 +988,8 @@ _update_agents() {
       mysql -u root -e "SET GLOBAL group_concat_max_len = 10000;"
     fi
     if [[ "${_PrTestCluster}" =~ "CLUSTER" ]]; then
-      [ ! -e "/root/.tg.cnf" ] && echo ${InTest} > /root/.tg.cnf
-      [ ! -e "/root/.fast.cron.cnf" ] && echo ${InTest} > /root/.fast.cron.cnf
+      [ ! -e "/root/.tg.cnf" ] && echo ${_InTest} > /root/.tg.cnf
+      [ ! -e "/root/.fast.cron.cnf" ] && echo ${_InTest} > /root/.fast.cron.cnf
       [ -e "/root/.hr.monitor.cnf" ] && rm -f /root/.hr.monitor.cnf
       [ -e "/root/.slow.cron.cnf" ] && [ ! -e "/root/.slow.cron.cnf.protected" ] && rm -f /root/.slow.cron.cnf
       mysql -u root -e "SET GLOBAL max_connect_errors = 999;"
@@ -1002,8 +1006,8 @@ _update_agents() {
       fi
     fi
     if [ ! -e "/root/.high_traffic.cnf" ]; then
-      echo ${InTest} > /root/.high_traffic.cnf
-      echo ${InTest} > /root/.no.swap.clear.cnf
+      echo ${_InTest} > /root/.high_traffic.cnf
+      echo ${_InTest} > /root/.no.swap.clear.cnf
     fi
     [ -e "/root/.randomize_duplicity_full_backup_day.cnf" ] && rm -f /root/.randomize_duplicity_full_backup_day.cnf
     [ -e "/root/.skip_duplicity_monthly_cleanup.cnf" ] && rm -f /root/.skip_duplicity_monthly_cleanup.cnf
@@ -3525,8 +3529,12 @@ _fix_node_in_lshell_access() {
     && [ -e "/etc/lshell.conf" ]; then
     _PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
     _PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
+    _PrTestUltra=$(grep "ULTRA" /root/.*.octopus.cnf 2>&1)
+    _PrTestMonster=$(grep "MONSTER" /root/.*.octopus.cnf 2>&1)
     if [[ "${_PrTestPhantom}" =~ "PHANTOM" ]] \
       || [[ "${_PrTestCluster}" =~ "CLUSTER" ]] \
+      || [[ "${_PrTestUltra}" =~ "ULTRA" ]] \
+      || [[ "${_PrTestMonster}" =~ "MONSTER" ]] \
       || [ -e "/root/.allow.node.lshell.cnf" ]; then
       _ALLOW_NODE=YES
     else
@@ -3545,8 +3553,12 @@ _fix_php_in_lshell_access() {
     && [ -e "/etc/lshell.conf" ]; then
     _PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
     _PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
+    _PrTestUltra=$(grep "ULTRA" /root/.*.octopus.cnf 2>&1)
+    _PrTestMonster=$(grep "MONSTER" /root/.*.octopus.cnf 2>&1)
     if [[ "${_PrTestPhantom}" =~ "PHANTOM" ]] \
       || [[ "${_PrTestCluster}" =~ "CLUSTER" ]] \
+      || [[ "${_PrTestUltra}" =~ "ULTRA" ]] \
+      || [[ "${_PrTestMonster}" =~ "MONSTER" ]] \
       || [ -e "/root/.allow.php.lshell.cnf" ]; then
       _ALLOW_PHP=YES
     else

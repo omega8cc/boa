@@ -330,11 +330,12 @@ _satellite_tune_fpm_config() {
   fi
 
   if [ ! -z "${_CLIENT_OPTION}" ]; then
-    if [ "${_CLIENT_OPTION}" = "CLUSTER" ]; then
+    if [ "${_CLIENT_OPTION}" = "MONSTER" ] || [ "${_CLIENT_OPTION}" = "CLUSTER" ]; then
+      _CLIENT_OPTION=MONSTER
       if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
         _LIM_FPM=96
       fi
-    elif [ "${_CLIENT_OPTION}" = "LITE" ]; then
+    elif [ "${_CLIENT_OPTION}" = "ULTRA" ]; then
       if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
         _LIM_FPM=32
       fi
