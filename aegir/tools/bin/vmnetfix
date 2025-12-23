@@ -369,93 +369,6 @@ EOF
 
 # ----------------------------- Boot-time guard --------------------------------
 
-_install_net_rollback() {
-  # Create /root/net-rollback.sh and schedule it at next boot (cron @reboot) as a safety rope.
-  # It self-disables when networking is OK.
-  _RB="/root/net-rollback.sh"
-  _CR="/etc/cron.d/vmnetfix-net-rollback"
-
-  if [ "${_DRY_RUN}" = "YES" ]; then
-    echo "[DRY-RUN] Would install ${_RB}"
-    echo "[DRY-RUN] Would install ${_CR} (@reboot)"
-    return 0
-  fi
-
-  cat > "${_RB}" <<'EOF'
-#!/bin/bash
-set -eu
-exec >/root/net-rollback.log 2>&1
-date
-echo "=== net-rollback starting ==="
-
-# Pick default IF if possible, else first non-lo
-IF="$(ip -4 route show default 2>/dev/null | awk '{for(i=1;i<=NF;i++) if ($i=="dev"){print $(i+1); exit}}')"
-if [ -z "${IF}" ]; then
-  IF="$(ls -1 /sys/class/net 2>/dev/null | awk '$0!="lo"{print; exit}')"
-fi
-echo "IF=${IF:-<none>}"
-
-# If we already have IPv4 + can reach the internet, disable the @reboot hook and exit.
-if [ -n "${IF:-}" ] && ip -o -4 addr show dev "${IF}" scope global 2>/dev/null | grep -q 'inet '; then
-  if ping -c1 -W2 1.1.1.1 >/dev/null 2>&1; then
-    echo "Network OK; removing /etc/cron.d/vmnetfix-net-rollback"
-    rm -f /etc/cron.d/vmnetfix-net-rollback 2>/dev/null || true
-    exit 0
-  fi
-fi
-
-# Bring link up
-[ -n "${IF:-}" ] && ip link set "${IF}" up 2>/dev/null || true
-
-# Try classic ifup first (no ifdown!)
-if command -v ifup >/dev/null 2>&1 && [ -n "${IF:-}" ]; then
-  echo "Trying: ifup -v ${IF}"
-  ifup -v "${IF}" || true
-fi
-
-# If still no IPv4, try dhclient (common on NAT/RFC1918 clouds like Civo)
-if [ -n "${IF:-}" ] && ! ip -o -4 addr show dev "${IF}" scope global 2>/dev/null | grep -q 'inet '; then
-  if command -v dhclient >/dev/null 2>&1; then
-    echo "Trying: dhclient -1 -v ${IF}"
-    dhclient -1 -v "${IF}" || true
-  fi
-fi
-
-# Ensure default route exists if we can derive a gateway from interfaces file
-if ! ip -4 route show default >/dev/null 2>&1; then
-  GW="$(awk -v IF="${IF}" '
-    BEGIN{inif=0}
-    /^[[:space:]]*iface[[:space:]]+/ { inif=($2==IF && $3=="inet") }
-    inif && /^[[:space:]]*gateway[[:space:]]+/ { print $2; exit }
-  ' /etc/network/interfaces 2>/dev/null || true)"
-
-  if [ -n "${GW}" ] && [ -n "${IF:-}" ]; then
-    echo "Adding default route via ${GW} dev ${IF} (onlink)"
-    ip route replace default via "${GW}" dev "${IF}" onlink 2>/dev/null || \
-      ip route replace default via "${GW}" dev "${IF}" 2>/dev/null || true
-  fi
-fi
-
-echo "=== net-rollback result ==="
-ip -4 addr || true
-ip -4 route || true
-
-# If OK now, remove the hook
-if ping -c1 -W2 1.1.1.1 >/dev/null 2>&1; then
-  echo "Network restored; removing /etc/cron.d/vmnetfix-net-rollback"
-  rm -f /etc/cron.d/vmnetfix-net-rollback 2>/dev/null || true
-fi
-EOF
-
-  chmod 700 "${_RB}" 2>/dev/null || true
-
-  # Schedule it at boot; if cron isn't installed, this is harmless.
-  cat > "${_CR}" <<'EOF'
-@reboot root /root/net-rollback.sh >/dev/null 2>&1
-EOF
-  chmod 644 "${_CR}" 2>/dev/null || true
-}
-
 _install_boot_guard() {
   # Install a tiny if-up.d hook that ensures default route is present (common on broken images).
   _HOOK="/etc/network/if-up.d/99-vmnetfix-guard"
@@ -948,7 +861,6 @@ _main() {
       _unload_bonding_if_unused
       _ephemeral_bringup_all
       _enforce_dns_always
-      _install_net_rollback
       printf 'Full fix applied. Safe to reboot.\n'
       exit 0
       ;;
@@ -1005,7 +917,6 @@ _main() {
         _unload_bonding_if_unused
         _ephemeral_bringup_all
         _enforce_dns_always
-        _install_net_rollback
         printf 'Remediation applied. Safe to reboot.\n'
         exit 0
       fi
