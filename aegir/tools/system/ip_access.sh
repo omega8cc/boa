@@ -146,13 +146,13 @@ _generate_whitelists() {
 _generate_whitelists
 
 # Test the new Nginx configuration
-nginx_configtest=$(sudo /etc/init.d/nginx configtest 2>&1)
+nginx_configtest=$(service nginx configtest 2>&1)
 if [[ $? -ne 0 ]]; then
   echo "Nginx configuration test failed: $nginx_configtest"
   echo "Reverting to the last known good configuration."
   if [[ -f "${_last_good_backup_file}" ]]; then
     tar -xzf "${_last_good_backup_file}" -C "${_nginx_access_path}"
-    sudo /etc/init.d/nginx reload
+    service nginx reload
   else
     echo "No backup found to revert to. Manual intervention required."
   fi
@@ -160,12 +160,12 @@ if [[ $? -ne 0 ]]; then
 fi
 
 # Reload Nginx if the configuration test passed
-sudo /etc/init.d/nginx reload
+service nginx reload
 if [[ $? -ne 0 ]]; then
   echo "Nginx reload failed. Reverting to the last known good configuration."
   if [[ -f "${_last_good_backup_file}" ]]; then
     tar -xzf "${_last_good_backup_file}" -C "${_nginx_access_path}"
-    sudo /etc/init.d/nginx reload
+    service nginx reload
   else
     echo "No backup found to revert to. Manual intervention required."
   fi

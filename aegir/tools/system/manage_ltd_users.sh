@@ -1070,11 +1070,12 @@ _satellite_tune_fpm_workers() {
   _LIM_FPM="${_L_PHP_FPM_WORKERS}"
 
   if [ ! -z "${_CLIENT_OPTION}" ]; then
-    if [ "${_CLIENT_OPTION}" = "CLUSTER" ]; then
+    if [ "${_CLIENT_OPTION}" = "MONSTER" ] || [ "${_CLIENT_OPTION}" = "CLUSTER" ]; then
+      _CLIENT_OPTION=MONSTER
       if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
         _LIM_FPM=96
       fi
-    elif [ "${_CLIENT_OPTION}" = "LITE" ]; then
+    elif [ "${_CLIENT_OPTION}" = "ULTRA" ]; then
       if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
         _LIM_FPM=32
       fi
@@ -2138,7 +2139,11 @@ _fix_node_in_lshell_access() {
   if [ -e "/etc/lshell.conf" ]; then
     _PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
     _PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
+    _PrTestUltra=$(grep "ULTRA" /root/.*.octopus.cnf 2>&1)
+    _PrTestMonster=$(grep "MONSTER" /root/.*.octopus.cnf 2>&1)
     if [[ "${_PrTestPhantom}" =~ "PHANTOM" ]] \
+      || [[ "${_PrTestUltra}" =~ "ULTRA" ]] \
+      || [[ "${_PrTestMonster}" =~ "MONSTER" ]] \
       || [[ "${_PrTestCluster}" =~ "CLUSTER" ]] \
       || [ -e "/root/.allow.node.lshell.cnf" ]; then
       _ALLOW_NODE=YES
@@ -2158,7 +2163,11 @@ _fix_php_in_lshell_access() {
   if [ -e "/etc/lshell.conf" ]; then
     _PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
     _PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
+    _PrTestUltra=$(grep "ULTRA" /root/.*.octopus.cnf 2>&1)
+    _PrTestMonster=$(grep "MONSTER" /root/.*.octopus.cnf 2>&1)
     if [[ "${_PrTestPhantom}" =~ "PHANTOM" ]] \
+      || [[ "${_PrTestUltra}" =~ "ULTRA" ]] \
+      || [[ "${_PrTestMonster}" =~ "MONSTER" ]] \
       || [[ "${_PrTestCluster}" =~ "CLUSTER" ]] \
       || [ -e "/root/.allow.php.lshell.cnf" ]; then
       _ALLOW_PHP=YES
