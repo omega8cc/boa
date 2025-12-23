@@ -88,6 +88,37 @@ _resolve_vmnetfix_bin() {
 _resolve_vmnetfix_bin
 
 ###
+### Civo-like images: systemd-networkd + networking.service both enabled.
+### If we intend to use ifupdown, networkd must NOT stay enabled across reboot.
+### Do NOT break live session: switch safely while online.
+###
+_init_debian_networkd_handoff() {
+  [ -d /run/systemd/system ] || return 0
+  command -v systemctl >/dev/null 2>&1 || return 0
+
+  local IFACE
+  IFACE="$(ip -4 route show default 2>/dev/null | awk '{print $5; exit}')"
+  [ -n "$IFACE" ] || return 0
+
+  # Only do this if vmnetfix has already created an ifupdown stanza.
+  grep -RqsE "^[[:space:]]*iface[[:space:]]+${IFACE}[[:space:]]+inet[[:space:]]+dhcp" \
+    /etc/network/interfaces /etc/network/interfaces.d 2>/dev/null || return 0
+
+  _msg "[init] netd ==> Handoff from systemd-networkd to ifupdown on ${IFACE}..." >> "${_logInt}"
+
+  # Ensure ifupdown service is enabled (under systemd this is networking.service)
+  systemctl enable networking.service >/dev/null 2>&1 || true
+
+  # Stop+disable networkd so it cannot race on reboot
+  systemctl disable systemd-networkd.service systemd-networkd-wait-online.service >/dev/null 2>&1 || true
+  systemctl mask systemd-networkd.service systemd-networkd-wait-online.service >/dev/null 2>&1 || true
+
+  # IMPORTANT: apply immediately (only safe because we already have dhcp stanza)
+  systemctl stop systemd-networkd.service >/dev/null 2>&1 || true
+  systemctl restart networking.service >/dev/null 2>&1 || true
+}
+
+###
 ### Ensure SysV init networking wiring for Devuan (post-systemd purge stage)
 ###
 _init_sysv_net_repair() {
@@ -138,7 +169,7 @@ _init_sysv_insserv_repair() {
   # If cloud-config exists but cloud-init is missing, create a minimal stub so insserv can proceed.
   if [ -x "/etc/init.d/cloud-config" ] && [ ! -e "/etc/init.d/cloud-init" ]; then
     cat > /etc/init.d/cloud-init <<'EOF'
-#!/bin/sh
+#!/bin/bash
 ### BEGIN INIT INFO
 # Provides:          cloud-init
 # Required-Start:
@@ -167,7 +198,7 @@ EOF
 _init_vmnetfix_failsafe_install() {
   _msg "[init] netf ==> Installing vmnetfix failsafe boot helper..." >> "${_logInt}"
   cat > /etc/init.d/vmnetfix-failsafe <<'EOF'
-#!/bin/sh
+#!/bin/bash
 ### BEGIN INIT INFO
 # Provides:          vmnetfix-failsafe
 # Required-Start:    $local_fs $remote_fs $syslog
@@ -240,7 +271,6 @@ EOF
     ln -sf ../init.d/vmnetfix-failsafe /etc/rcS.d/S08vmnetfix-failsafe
   fi
 }
-
 
 ###
 ### Variables
@@ -1284,6 +1314,8 @@ _init_cycle() {
     _msg "[init] cycl ==> Update networking with vmnetfix early..." >> "${_logInt}"
     "${_VMNETFIX_BIN}" --mode full --disable-cloud-init >> "${_logSlt}"
     wait
+    _msg "[init] cycl ==> Update networking with networkd_handoff early..." >> "${_logInt}"
+    _init_debian_networkd_handoff
     _msg "[init] cycl ==> Running APT Cleanup..." >> "${_logInt}"
     /opt/local/bin/aptcleanup >> "${_logSlt}"
     wait
@@ -1367,6 +1399,8 @@ _init_cycle() {
     _msg "[init] cycl ==> Update networking with vmnetfix just in case before reboot..." >> "${_logInt}"
     "${_VMNETFIX_BIN}" --mode full --disable-cloud-init >> "${_logSlt}"
     wait
+    _msg "[init] cycl ==> Update networking with networkd_handoff just in case before reboot..." >> "${_logInt}"
+    _init_debian_networkd_handoff
     _msg "[init] cycl ==> Time for reboot and next upgrade cycle..." >> "${_logInt}"
     echo " " >> "${_logInt}"
     touch /root/.run-cycle-devuan-init.cnf
