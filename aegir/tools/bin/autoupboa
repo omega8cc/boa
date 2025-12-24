@@ -71,7 +71,7 @@ _check_system_ram() {
 _optimize_ram() {
   _check_system_ram
   if [ "${_ram_usage_percent}" -gt 90 ]; then
-    sync && echo 3 | sudo tee /proc/sys/vm/drop_caches
+    sync && echo 3 | tee /proc/sys/vm/drop_caches
   fi
 }
 

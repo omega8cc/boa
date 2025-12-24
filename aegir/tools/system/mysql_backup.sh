@@ -113,7 +113,7 @@ _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
 
 _free_memory() {
   echo "Freeing memory..."
-  sync && echo 3 | sudo tee /proc/sys/vm/drop_caches
+  sync && echo 3 | tee /proc/sys/vm/drop_caches
 }
 
 _create_locks() {
