@@ -243,11 +243,15 @@ _if_valkey_restart() {
   _PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
   _PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
   _PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
+  _PrTestUltra=$(grep "ULTRA" /root/.*.octopus.cnf 2>&1)
+  _PrTestMonster=$(grep "MONSTER" /root/.*.octopus.cnf 2>&1)
   _VkTest=$(ls /data/disk/*/static/control/run-valkey-restart.pid | wc -l 2>&1)
   _ReTest=$(ls /data/disk/*/static/control/run-redis-restart.pid | wc -l 2>&1)
   if [[ "${_PrTestPower}" =~ "POWER" ]] \
     || [[ "${_PrTestPhantom}" =~ "PHANTOM" ]] \
     || [[ "${_PrTestCluster}" =~ "CLUSTER" ]] \
+    || [[ "${_PrTestUltra}" =~ "ULTRA" ]] \
+    || [[ "${_PrTestMonster}" =~ "MONSTER" ]] \
     || [ -e "/root/.allow.valkey.restart.cnf" ] \
     || [ -e "/root/.allow.redis.restart.cnf" ]; then
     if [ "${_VkTest}" -ge 1 ] || [ "${_ReTest}" -ge 1 ]; then
