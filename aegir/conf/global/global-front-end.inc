@@ -7,17 +7,39 @@
 if (!$is_backend && isset($_SERVER['HTTP_HOST']) &&
     isset($_SERVER['SERVER_NAME'])) {
 
-  $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
+  // PHP 5.6-safe defaults (no ??).
+  $request_uri = isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '/';
+  $path = parse_url($request_uri, PHP_URL_PATH);
+  $path = rawurldecode($path);
 
-  /* Block “node-chain” URL mutation spam */
-  if (preg_match('#/node/\d+/.*/node/\d+#i', $path)) {
-    header($_SERVER['SERVER_PROTOCOL'] . ' 404 Not Found');
+  if ($path === NULL || $path === FALSE || $path === '') {
+    $path = '/';
+  }
+
+  // Prevent header injection / weird values in SERVER_PROTOCOL.
+  $proto = 'HTTP/1.1';
+  if (!empty($_SERVER['SERVER_PROTOCOL']) && preg_match('#^HTTP/[0-9]\.[0-9]$#', $_SERVER['SERVER_PROTOCOL'])) {
+    $proto = $_SERVER['SERVER_PROTOCOL'];
+  }
+
+  /**
+   * Block “node-chain” URL mutation spam
+   * Examples:
+   * /node/1771/pl/node/1771/es/node/1771/...
+   * /pl/node/1771/es/node/1771/...
+   */
+  if (preg_match('#/node/[0-9]+/.*/node/[0-9]+#i', $path)) {
+    header($proto . ' 404 Not Found');
     exit;
   }
 
-  /* Block excessive language-prefix chaining */
+  /**
+   * Block excessive language-prefix chaining
+   * Examples (3+ prefixes):
+   * /pl/en/fr/de/office/...
+   */
   if (preg_match('#^/(?:[a-z]{2}(?:-[a-z0-9]+)?/){3,}#i', $path)) {
-    header($_SERVER['SERVER_PROTOCOL'] . ' 404 Not Found');
+    header($proto . ' 404 Not Found');
     exit;
   }
 
@@ -254,4 +276,3 @@ if (preg_match("/^\/files\/styles\//", $_SERVER['REQUEST_URI'])) {
   header("Location: " . $base_url . "/sites/" . $_SERVER['SERVER_NAME'] . $_SERVER['REQUEST_URI'], true, 301);
   exit;
 }
-
