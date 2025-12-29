@@ -869,6 +869,7 @@ _init_prepare() {
         /usr/bin/apt-get remove chrony -y -qq >> "${_logSlt}"
       fi
       ${_INITINS} aptitude  >> "${_logSlt}"
+      ${_INITINS} sudo      >> "${_logSlt}"
       ${_INITINS} bc        >> "${_logSlt}"
       ${_INITINS} cron      >> "${_logSlt}"
       ${_INITINS} curl      >> "${_logSlt}"

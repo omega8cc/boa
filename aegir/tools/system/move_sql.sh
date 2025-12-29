@@ -31,7 +31,7 @@ _NOW=${_NOW//[^0-9-]/}
 
 _free_memory() {
   echo "Freeing memory..."
-  sync && echo 3 | sudo tee /proc/sys/vm/drop_caches
+  sync && echo 3 | tee /proc/sys/vm/drop_caches
 }
 
 _create_locks() {

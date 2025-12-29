@@ -235,10 +235,14 @@ _if_nginx_restart() {
   _PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
   _PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
   _PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
+  _PrTestUltra=$(grep "ULTRA" /root/.*.octopus.cnf 2>&1)
+  _PrTestMonster=$(grep "MONSTER" /root/.*.octopus.cnf 2>&1)
   ReTest=$(ls /data/disk/*/static/control/run-nginx-restart.pid | wc -l 2>&1)
   if [[ "${_PrTestPower}" =~ "POWER" ]] \
     || [[ "${_PrTestPhantom}" =~ "PHANTOM" ]] \
     || [[ "${_PrTestCluster}" =~ "CLUSTER" ]] \
+    || [[ "${_PrTestUltra}" =~ "ULTRA" ]] \
+    || [[ "${_PrTestMonster}" =~ "MONSTER" ]] \
     || [ -e "/root/.allow.nginx.restart.cnf" ]; then
     if [ "${ReTest}" -ge 1 ]; then
       rm -f /data/disk/*/static/control/run-nginx-restart.pid
