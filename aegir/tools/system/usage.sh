@@ -477,7 +477,7 @@ Yes, yet another GDPR email, but it's important that you read and understand
 how this new law affects your hosting with us.
 
 The General Data Protection Regulation (GDPR) is a new European privacy law
-that goes into effect on May 25, 2018.
+that went into effect on May 25, 2018.
 
 The GDPR will replace the EU Data Protection Directive, also known as
 Directive 95/46/EC, and will apply a single data protection law
@@ -520,7 +520,8 @@ _check_limits() {
   _DSK_MAX_LIMIT=0
   _DSK_CLU_LIMIT=1
   _read_account_data
-  if [ "${_CLIENT_OPTION}" = "CLUSTER" ]; then
+  if [ "${_CLIENT_OPTION}" = "MONSTER" ] || [ "${_CLIENT_OPTION}" = "CLUSTER" ]; then
+    _CLIENT_OPTION=MONSTER
     if [ -z "${_DSK_CLU_LIMIT}" ]; then
       _DSK_CLU_LIMIT=1
     fi
@@ -531,7 +532,7 @@ _check_limits() {
     _SQL_MAX_LIMIT=$(( _SQL_MIN_LIMIT + 2048 ))
     _DSK_MIN_LIMIT=$(( _DSK_MIN_LIMIT *= _DSK_CLU_LIMIT ))
     _DSK_MAX_LIMIT=$(( _DSK_MAX_LIMIT *= _DSK_CLU_LIMIT ))
-  elif [ "${_CLIENT_OPTION}" = "LITE" ]; then
+  elif [ "${_CLIENT_OPTION}" = "ULTRA" ]; then
     if [ -z "${_DSK_CLU_LIMIT}" ]; then
       _DSK_CLU_LIMIT=1
     fi

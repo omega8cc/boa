@@ -61,9 +61,9 @@ Key items:
 Fix the CA bundle if needed:
 
 ```bash
-sudo apt-get update
-sudo apt-get --reinstall install ca-certificates
-sudo update-ca-certificates
+apt-get update
+apt-get --reinstall install ca-certificates
+update-ca-certificates
 ```
 
 ## 4) Test with a known-good SMTP client
