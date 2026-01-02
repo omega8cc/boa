@@ -5,7 +5,7 @@
 ###
 ###  Barracuda-Octopus-Nginx-Drupal Tuner
 ###
-###  Copyright (C) 2010-2025 Omega8.cc
+###  Copyright (C) 2009-2026 Omega8.cc
 ###  noc@omega8.cc www.omega8.cc
 ###
 ###  This program is free software. You can
@@ -1938,7 +1938,7 @@ _msg "BYE!"
 ###----------------------------------------###
 ###
 ###  Barracuda-Octopus-Nginx-Drupal Tuner
-###  Copyright (C) 2010-2025 Omega8.cc
+###  Copyright (C) 2009-2026 Omega8.cc
 ###  noc@omega8.cc www.omega8.cc
 ###
 ###----------------------------------------###
