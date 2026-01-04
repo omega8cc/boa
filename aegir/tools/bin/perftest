@@ -4,9 +4,19 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 
-# -------------------------------
+# Tunables
+_PHP_BENCH_ITERATIONS=500000      # per process
+_PHP_BENCH_RUNS=5                 # single-thread runs for median
+_PHP_BENCH_CONCURRENCY_MAX=8      # cap on concurrent PHP workers
+_SYSBENCH_CPU_TIME=30             # seconds
+_SYSBENCH_MEM_TIME=30             # seconds
+_FIO_RAND_RUNTIME=60              # seconds
+_FIO_SEQ_RUNTIME=60               # seconds
+_METADATA_FILE_COUNT=5000         # small-file ops per mount
+
+# ----
 # Helpers
-# -------------------------------
+# ----
 
 _check_root() {
   if [ "$(id -u)" -ne 0 ]; then
@@ -63,14 +73,14 @@ _ensure_sysbench() {
 # Return average %steal while running for N seconds (requires mpstat)
 _measure_cpu_steal() {
   # $1 = seconds
-  _SECONDS="$1"
+  local _seconds="$1"
   if ! command -v mpstat >/dev/null 2>&1; then
     echo ""
     return 0
   fi
 
   # mpstat output: header + per-second lines; %steal column exists on Linux
-  mpstat 1 "${_SECONDS}" 2>/dev/null \
+  mpstat 1 "${_seconds}" 2>/dev/null \
     | awk '
       /^[0-9]/ { steal_sum += $(NF); steal_cnt++ }
       END {
@@ -85,56 +95,48 @@ _measure_cpu_steal() {
 # - include other mounted filesystems (separate partitions/volumes)
 # - exclude /boot*, pseudo fs, and tiny mounts
 _get_test_mounts() {
-  # Output: one mountpoint per line
-  # df columns: Filesystem Type 1B-blocks Used Available Use% Mounted on
   df -P -T -B1 \
     | awk 'NR>1 {print $2 "|" $7 "|" $3}' \
-    | while IFS="|" read -r _FSTYPE _MOUNT _SIZE_BYTES; do
-        # Only consider "real" filesystems commonly used for disks.
-        case "${_FSTYPE}" in
+    | while IFS="|" read -r _fstype _mount _size_bytes; do
+        case "${_fstype}" in
           ext4|xfs|btrfs|zfs|f2fs) : ;;
           *) continue ;;
         esac
 
-        # Never test boot partitions or pseudo mounts.
-        case "${_MOUNT}" in
+        case "${_mount}" in
           /boot|/boot/*|/boot/efi|/boot/efi/*) continue ;;
           /proc|/proc/*|/sys|/sys/*|/dev|/dev/*|/run|/run/*) continue ;;
           /snap|/snap/*) continue ;;
         esac
 
-        # Skip tiny mounts (< 2 GiB) to avoid noise and accidental small partitions.
-        if [ "${_SIZE_BYTES}" -lt $((2 * 1024 * 1024 * 1024)) ]; then
+        if [ "${_size_bytes}" -lt $((2 * 1024 * 1024 * 1024)) ]; then
           continue
         fi
 
-        # Must be an absolute path mountpoint.
-        case "${_MOUNT}" in
-          /*) echo "${_MOUNT}" ;;
+        case "${_mount}" in
+          /*) echo "${_mount}" ;;
           *) : ;;
         esac
       done \
-    | awk '
-        # De-dup while preserving order
-        !seen[$0]++ { print $0 }
-      '
+    | awk '!seen[$0]++ { print $0 }'
 }
 
-# Run fio in a mount and write JSON output to a file
-_run_fio_test() {
+# Run fio random 4k randrw test in a mount and write JSON output to a file
+_run_fio_rand_test() {
   # $1 = mountpoint
   # $2 = output_file
-  _MOUNT_POINT="$1"
-  _OUTPUT_FILE="$2"
+  local _mount_point="$1"
+  local _output_file="$2"
 
-  _SAFE_MOUNT_POINT="$(echo "${_MOUNT_POINT}" | sed 's#/#_#g')"
-  _TEST_DIR="${_MOUNT_POINT}/.perftest_fio_${_SAFE_MOUNT_POINT}_$$"
+  local _safe_mount_point
+  _safe_mount_point="$(echo "${_mount_point}" | sed 's#/#_#g')"
+  local _test_dir="${_mount_point}/.perftest_fio_rand_${_safe_mount_point}_$$"
 
-  mkdir -p "${_TEST_DIR}" || return 1
+  mkdir -p "${_test_dir}" || return 1
 
   fio \
     --name=randreadwrite \
-    --directory="${_TEST_DIR}" \
+    --directory="${_test_dir}" \
     --ioengine=libaio \
     --iodepth=64 \
     --rw=randrw \
@@ -143,55 +145,261 @@ _run_fio_test() {
     --direct=1 \
     --size=1G \
     --numjobs=4 \
-    --runtime=60 \
+    --runtime="${_FIO_RAND_RUNTIME}" \
     --time_based \
     --group_reporting \
     --output-format=json \
-    > "${_OUTPUT_FILE}" 2>/dev/null
+    > "${_output_file}" 2>/dev/null
 
-  rm -rf "${_TEST_DIR}" >/dev/null 2>&1
+  rm -rf "${_test_dir}" >/dev/null 2>&1
+}
+
+# Run fio sequential read test
+_run_fio_seq_read_test() {
+  # $1 = mountpoint
+  # $2 = output_file
+  local _mount_point="$1"
+  local _output_file="$2"
+
+  local _safe_mount_point
+  _safe_mount_point="$(echo "${_mount_point}" | sed 's#/#_#g')"
+  local _test_dir="${_mount_point}/.perftest_fio_seqread_${_safe_mount_point}_$$"
+
+  mkdir -p "${_test_dir}" || return 1
+
+  fio \
+    --name=seqread \
+    --directory="${_test_dir}" \
+    --ioengine=libaio \
+    --iodepth=32 \
+    --rw=read \
+    --bs=128k \
+    --direct=1 \
+    --size=2G \
+    --runtime="${_FIO_SEQ_RUNTIME}" \
+    --time_based \
+    --group_reporting \
+    --output-format=json \
+    > "${_output_file}" 2>/dev/null
+
+  rm -rf "${_test_dir}" >/dev/null 2>&1
+}
+
+# Run fio sequential write test
+_run_fio_seq_write_test() {
+  # $1 = mountpoint
+  # $2 = output_file
+  local _mount_point="$1"
+  local _output_file="$2"
+
+  local _safe_mount_point
+  _safe_mount_point="$(echo "${_mount_point}" | sed 's#/#_#g')"
+  local _test_dir="${_mount_point}/.perftest_fio_seqwrite_${_safe_mount_point}_$$"
+
+  mkdir -p "${_test_dir}" || return 1
+
+  fio \
+    --name=seqwrite \
+    --directory="${_test_dir}" \
+    --ioengine=libaio \
+    --iodepth=32 \
+    --rw=write \
+    --bs=128k \
+    --direct=1 \
+    --size=2G \
+    --runtime="${_FIO_SEQ_RUNTIME}" \
+    --time_based \
+    --group_reporting \
+    --output-format=json \
+    > "${_output_file}" 2>/dev/null
+
+  rm -rf "${_test_dir}" >/dev/null 2>&1
 }
 
 # Parse fio JSON and return values via stdout (key=value lines)
 _parse_fio_json() {
   # $1 = json file
-  _JSON_FILE="$1"
+  local _json_file="$1"
 
-  # Sum across jobs (because --numjobs=4)
-  _READ_IOPS="$(jq -r '[.jobs[].read.iops] | add' "${_JSON_FILE}" 2>/dev/null)"
-  _WRITE_IOPS="$(jq -r '[.jobs[].write.iops] | add' "${_JSON_FILE}" 2>/dev/null)"
-  _READ_BW_KIB="$(jq -r '[.jobs[].read.bw] | add' "${_JSON_FILE}" 2>/dev/null)"     # KiB/s
-  _WRITE_BW_KIB="$(jq -r '[.jobs[].write.bw] | add' "${_JSON_FILE}" 2>/dev/null)"   # KiB/s
+  local _read_iops _write_iops _read_bw_kib _write_bw_kib
+  _read_iops="$(jq -r '[.jobs[].read.iops] | add' "${_json_file}" 2>/dev/null)"
+  _write_iops="$(jq -r '[.jobs[].write.iops] | add' "${_json_file}" 2>/dev/null)"
+  _read_bw_kib="$(jq -r '[.jobs[].read.bw] | add' "${_json_file}" 2>/dev/null)"     # KiB/s
+  _write_bw_kib="$(jq -r '[.jobs[].write.bw] | add' "${_json_file}" 2>/dev/null)"   # KiB/s
 
-  # Latency: prefer clat_ns.mean if present; fallback to clat.mean (usually usec)
-  _READ_CLAT_NS_MEAN="$(jq -r '([.jobs[].read.clat_ns.mean?] | map(select(.!=null)) | (if length>0 then (add/length) else empty end))' "${_JSON_FILE}" 2>/dev/null)"
-  _WRITE_CLAT_NS_MEAN="$(jq -r '([.jobs[].write.clat_ns.mean?] | map(select(.!=null)) | (if length>0 then (add/length) else empty end))' "${_JSON_FILE}" 2>/dev/null)"
+  local _read_clat_ns_mean _write_clat_ns_mean
+  _read_clat_ns_mean="$(jq -r '([.jobs[].read.clat_ns.mean?] | map(select(.!=null)) | (if length>0 then (add/length) else empty end))' "${_json_file}" 2>/dev/null)"
+  _write_clat_ns_mean="$(jq -r '([.jobs[].write.clat_ns.mean?] | map(select(.!=null)) | (if length>0 then (add/length) else empty end))' "${_json_file}" 2>/dev/null)"
 
-  if [ -n "${_READ_CLAT_NS_MEAN}" ] && [ -n "${_WRITE_CLAT_NS_MEAN}" ]; then
-    _READ_LAT_MS="$(awk -v ns="${_READ_CLAT_NS_MEAN}" 'BEGIN{printf "%.2f", ns/1000000.0}')"
-    _WRITE_LAT_MS="$(awk -v ns="${_WRITE_CLAT_NS_MEAN}" 'BEGIN{printf "%.2f", ns/1000000.0}')"
+  local _read_lat_ms _write_lat_ms
+  if [ -n "${_read_clat_ns_mean}" ] && [ -n "${_write_clat_ns_mean}" ]; then
+    _read_lat_ms="$(awk -v ns="${_read_clat_ns_mean}" 'BEGIN{printf "%.2f", ns/1000000.0}')"
+    _write_lat_ms="$(awk -v ns="${_write_clat_ns_mean}" 'BEGIN{printf "%.2f", ns/1000000.0}')"
   else
-    _READ_CLAT_USEC_MEAN="$(jq -r '([.jobs[].read.clat.mean?] | map(select(.!=null)) | (if length>0 then (add/length) else empty end))' "${_JSON_FILE}" 2>/dev/null)"
-    _WRITE_CLAT_USEC_MEAN="$(jq -r '([.jobs[].write.clat.mean?] | map(select(.!=null)) | (if length>0 then (add/length) else empty end))' "${_JSON_FILE}" 2>/dev/null)"
+    local _read_clat_usec_mean _write_clat_usec_mean
+    _read_clat_usec_mean="$(jq -r '([.jobs[].read.clat.mean?] | map(select(.!=null)) | (if length>0 then (add/length) else empty end))' "${_json_file}" 2>/dev/null)"
+    _write_clat_usec_mean="$(jq -r '([.jobs[].write.clat.mean?] | map(select(.!=null)) | (if length>0 then (add/length) else empty end))' "${_json_file}" 2>/dev/null)"
 
-    _READ_LAT_MS="$(awk -v us="${_READ_CLAT_USEC_MEAN:-0}" 'BEGIN{printf "%.2f", us/1000.0}')"
-    _WRITE_LAT_MS="$(awk -v us="${_WRITE_CLAT_USEC_MEAN:-0}" 'BEGIN{printf "%.2f", us/1000.0}')"
+    _read_lat_ms="$(awk -v us="${_read_clat_usec_mean:-0}" 'BEGIN{printf "%.2f", us/1000.0}')"
+    _write_lat_ms="$(awk -v us="${_write_clat_usec_mean:-0}" 'BEGIN{printf "%.2f", us/1000.0}')"
   fi
 
-  _READ_BW_MB="$(awk -v kib="${_READ_BW_KIB:-0}" 'BEGIN{printf "%.2f", kib/1024.0}')"
-  _WRITE_BW_MB="$(awk -v kib="${_WRITE_BW_KIB:-0}" 'BEGIN{printf "%.2f", kib/1024.0}')"
+  local _read_bw_mb _write_bw_mb
+  _read_bw_mb="$(awk -v kib="${_read_bw_kib:-0}" 'BEGIN{printf "%.2f", kib/1024.0}')"
+  _write_bw_mb="$(awk -v kib="${_write_bw_kib:-0}" 'BEGIN{printf "%.2f", kib/1024.0}')"
 
-  echo "READ_IOPS=${_READ_IOPS}"
-  echo "WRITE_IOPS=${_WRITE_IOPS}"
-  echo "READ_BW_MB=${_READ_BW_MB}"
-  echo "WRITE_BW_MB=${_WRITE_BW_MB}"
-  echo "READ_LAT_MS=${_READ_LAT_MS}"
-  echo "WRITE_LAT_MS=${_WRITE_LAT_MS}"
+  echo "READ_IOPS=${_read_iops}"
+  echo "WRITE_IOPS=${_write_iops}"
+  echo "READ_BW_MB=${_read_bw_mb}"
+  echo "WRITE_BW_MB=${_write_bw_mb}"
+  echo "READ_LAT_MS=${_read_lat_ms}"
+  echo "WRITE_LAT_MS=${_write_lat_ms}"
 }
 
-# -------------------------------
+# Simple metadata / small file operations test
+_run_metadata_test() {
+  # $1 = mountpoint
+  # $2 = output var name (global)
+  local _mount_point="$1"
+  local _outvar="$2"
+
+  local _safe_mount_point
+  _safe_mount_point="$(echo "${_mount_point}" | sed 's#/#_#g')"
+  local _test_dir="${_mount_point}/.perftest_meta_${_safe_mount_point}_$$"
+
+  mkdir -p "${_test_dir}" || { eval "${_outvar}=\"ERROR\""; return; }
+
+  local _count="${_METADATA_FILE_COUNT}"
+  local _start _end _elapsed _ops _ops_per_sec
+
+  _start="$(date +%s.%N)"
+
+  local _i
+  for _i in $(seq 1 "${_count}"); do
+    echo "x" > "${_test_dir}/file_${_i}" || break
+  done
+
+  for _i in $(seq 1 "${_count}"); do
+    cat "${_test_dir}/file_${_i}" >/dev/null 2>&1 || break
+  done
+
+  rm -f "${_test_dir}"/file_* >/dev/null 2>&1
+  rmdir "${_test_dir}" >/dev/null 2>&1 || true
+
+  _end="$(date +%s.%N)"
+  _elapsed="$(echo "${_end} - ${_start}" | bc -l 2>/dev/null || echo 0)"
+
+  _ops=$((_count * 2))
+
+  if [ "${_elapsed}" != "0" ]; then
+    _ops_per_sec="$(echo "${_ops} / ${_elapsed}" | bc -l 2>/dev/null || echo 0)"
+    eval "${_outvar}=\"$(printf '%.2f' "${_ops_per_sec}") ops/s\""
+  else
+    eval "${_outvar}=\"ERROR\""
+  fi
+}
+
+# Run sysbench CPU and extract events/sec and avg latency
+_run_sysbench_cpu() {
+  # $1 = threads
+  # $2 = label (for variable names)
+  local _threads="$1"
+  local _label="$2"
+
+  local _test
+  _test="$(sysbench cpu --threads="${_threads}" --time="${_SYSBENCH_CPU_TIME}" run 2>/dev/null)"
+
+  local _events _lat
+  _events="$(echo "${_test}" | awk '/events per second:/ {print $4}')"
+  _lat="$(echo "${_test}" | awk '/avg:/ {print $2}')"
+
+  eval "_cpu_events_${_label}=\"${_events}\""
+  eval "_cpu_latency_${_label}=\"${_lat}\""
+}
+
+# PHP micro-benchmark: multi-run median + concurrent throughput
+_run_php_benchmarks() {
+  if ! command -v php >/dev/null 2>&1; then
+    _php_time_median="N/A (php not installed)"
+    _php_time_runs=""
+    _php_concurrency_wall="N/A"
+    _php_concurrency_throughput="N/A"
+    return
+  fi
+
+  local _script="/tmp/phpbench.php"
+  cat << 'EOF' > "${_script}"
+<?php
+$iterations = getenv('PHP_BENCH_ITERATIONS') ? intval(getenv('PHP_BENCH_ITERATIONS')) : 500000;
+$start = microtime(true);
+$acc = 0;
+for ($i = 0; $i < $iterations; $i++) {
+  $s = "the quick brown fox jumps over the lazy dog " . $i;
+  $h = hash('sha256', $s, false);
+  $acc += ord($h[0]);
+}
+$elapsed = microtime(true) - $start;
+printf("%.6f\n", $elapsed);
+EOF
+
+  local _runs="${_PHP_BENCH_RUNS}"
+  local _times=()
+  local _i
+  echo "Running PHP single-thread benchmark (${_runs} runs, iterations=${_PHP_BENCH_ITERATIONS})..."
+  for _i in $(seq 1 "${_runs}"); do
+    local _t
+    _t="$(PHP_BENCH_ITERATIONS="${_PHP_BENCH_ITERATIONS}" php "${_script}" 2>/dev/null || echo 0)"
+    echo "  Run ${_i}: ${_t} seconds"
+    _times+=("${_t}")
+  done
+
+  # Median (PHP_BENCH_RUNS is 5, so 3rd value after sort)
+  local _sorted
+  _sorted=($(printf '%s\n' "${_times[@]}" | sort -n))
+  _php_time_median="${_sorted[2]}"
+  _php_time_runs="$(printf '%s ' "${_times[@]}")"
+
+  # Concurrent benchmark
+  local _conc
+  local _nproc
+  _nproc="$(nproc)"
+  if [ "${_nproc}" -le 0 ]; then
+    _nproc=1
+  fi
+  if [ "${_nproc}" -gt "${_PHP_BENCH_CONCURRENCY_MAX}" ]; then
+    _conc="${_PHP_BENCH_CONCURRENCY_MAX}"
+  else
+    _conc="${_nproc}"
+  fi
+
+  echo "Running PHP concurrent benchmark (${_conc} processes, iterations=${_PHP_BENCH_ITERATIONS} each)..."
+  local _start _end _elapsed
+  _start="$(date +%s.%N)"
+  for _i in $(seq 1 "${_conc}"); do
+    PHP_BENCH_ITERATIONS="${_PHP_BENCH_ITERATIONS}" php "${_script}" >/dev/null 2>&1 &
+  done
+  wait
+  _end="$(date +%s.%N)"
+
+  _elapsed="$(echo "${_end} - ${_start}" | bc -l 2>/dev/null || echo 0)"
+  _php_concurrency_wall="$(printf '%.6f' "${_elapsed}")"
+
+  if [ "${_elapsed}" != "0" ]; then
+    local _total_ops
+    _total_ops="$(echo "${_conc} * ${_PHP_BENCH_ITERATIONS}" | bc -l 2>/dev/null || echo 0)"
+    local _thr
+    _thr="$(echo "${_total_ops} / ${_elapsed}" | bc -l 2>/dev/null || echo 0)"
+    _php_concurrency_throughput="$(printf '%.2f ops/sec' "${_thr}")"
+  else
+    _php_concurrency_throughput="N/A"
+  fi
+
+  rm -f "${_script}" >/dev/null 2>&1
+}
+
+# ----
 # Main
-# -------------------------------
+# ----
 
 _check_root
 
@@ -202,6 +410,7 @@ apt-get update -qq >/dev/null 2>&1
 _check_and_install_package "fio"
 _check_and_install_package "jq"
 _check_and_install_package "sysstat"  # mpstat
+_check_and_install_package "bc"
 
 _ensure_sysbench
 
@@ -209,138 +418,272 @@ echo ""
 echo "Starting performance tests..."
 echo ""
 
-# CPU Performance Test - Multi-threaded
-echo "Running CPU performance test (multi-threaded) with sysbench..."
-_CPU_STEAL_MT="$(_measure_cpu_steal 1)"  # warm-up check (may be empty)
-
-# measure steal during the actual run if mpstat exists
-if command -v mpstat >/dev/null 2>&1; then
-  # Run mpstat in background during sysbench (30s)
-  mpstat 1 30 >/tmp/perftest_mpstat_mt.txt 2>/dev/null &
-  _MPSTAT_PID="$!"
+# Basic system info
+_hostname="$(hostname)"
+_cpu_info="$(grep -m1 'model name' /proc/cpuinfo | cut -d: -f2- | sed 's/^ *//')"
+_cpu_cores="$(nproc 2>/dev/null || echo N/A)"
+if [ -f /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor ]; then
+  _cpu_governor="$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null)"
+else
+  _cpu_governor="N/A"
 fi
 
-_CPU_TEST_MT="$(sysbench cpu --threads="$(nproc)" --time=30 run 2>/dev/null)"
+echo "Host:      ${_hostname}"
+echo "CPU:       ${_cpu_info}"
+echo "vCPUs:     ${_cpu_cores}"
+echo "Governor:  ${_cpu_governor}"
+echo ""
 
-if [ -n "${_MPSTAT_PID}" ]; then
-  wait "${_MPSTAT_PID}" >/dev/null 2>&1
-  _CPU_STEAL_MT="$(awk '/^[0-9]/ { steal_sum += $(NF); steal_cnt++ } END { if (steal_cnt>0) printf "%.2f", steal_sum/steal_cnt }' /tmp/perftest_mpstat_mt.txt 2>/dev/null)"
+echo "Block devices (lsblk):"
+lsblk -o NAME,TYPE,SIZE,ROTA | sed 's/^/  /'
+echo ""
+
+if command -v php >/dev/null 2>&1; then
+  echo "PHP version:"
+  php -v | sed 's/^/  /'
+  echo ""
+fi
+
+# CPU Performance Tests
+echo "Running CPU performance tests with sysbench..."
+
+_cpu_steal_mt="$(_measure_cpu_steal 1)"  # initial check
+
+# Multi-threaded: nproc
+if command -v mpstat >/dev/null 2>&1; then
+  mpstat 1 "${_SYSBENCH_CPU_TIME}" >/tmp/perftest_mpstat_mt.txt 2>/dev/null &
+  _mpstat_pid="$!"
+fi
+
+_run_sysbench_cpu "$(nproc)" "MT_NPROC"
+
+if [ -n "${_mpstat_pid:-}" ]; then
+  wait "${_mpstat_pid}" >/dev/null 2>&1
+  _cpu_steal_mt="$(awk '/^[0-9]/ { steal_sum += $(NF); steal_cnt++ } END { if (steal_cnt>0) printf "%.2f", steal_sum/steal_cnt }' /tmp/perftest_mpstat_mt.txt 2>/dev/null)"
   rm -f /tmp/perftest_mpstat_mt.txt >/dev/null 2>&1
 fi
 
-_CPU_EVENTS_MT="$(echo "${_CPU_TEST_MT}" | awk '/events per second:/ {print $4}')"
-_CPU_LATENCY_MT="$(echo "${_CPU_TEST_MT}" | awk '/avg:/ {print $2}')"
+# Single-threaded
+_run_sysbench_cpu 1 "ST"
 
-# CPU Performance Test - Single-threaded
-echo "Running CPU performance test (single-threaded) with sysbench..."
-_CPU_TEST_ST="$(sysbench cpu --threads=1 --time=30 run 2>/dev/null)"
-_CPU_EVENTS_ST="$(echo "${_CPU_TEST_ST}" | awk '/events per second:/ {print $4}')"
-_CPU_LATENCY_ST="$(echo "${_CPU_TEST_ST}" | awk '/avg:/ {print $2}')"
+# 4-thread
+_run_sysbench_cpu 4 "MT4"
 
 # Memory Performance Test
 echo "Running Memory performance test with sysbench..."
-_MEM_TEST="$(sysbench memory --threads="$(nproc)" --time=30 run 2>/dev/null)"
-_MEM_TRANSFER_SPEED="$(echo "${_MEM_TEST}" | awk '/transferred/ {gsub("[()]","",$(NF-1)); print $(NF-1)" "$(NF)}')"
-_MEM_LATENCY="$(echo "${_MEM_TEST}" | awk '/avg:/ {print $2}')"
+_mem_test="$(sysbench memory --threads="$(nproc)" --time="${_SYSBENCH_MEM_TIME}" run 2>/dev/null)"
+_mem_transfer_speed="$(echo "${_mem_test}" | awk '/transferred/ {gsub("[()]","",$(NF-1)); print $(NF-1)" "$(NF)}')"
+_mem_latency="$(echo "${_mem_test}" | awk '/avg:/ {print $2}')"
 
-# PHP Performance Test
-if command -v php >/dev/null 2>&1; then
-  echo "Running PHP performance test..."
-  _PHP_TEST_SCRIPT="/tmp/phpbench.php"
-  cat << 'EOF' > "${_PHP_TEST_SCRIPT}"
-<?php
-$start = microtime(true);
-$iterations = 500000;
-$acc = 0;
-for ($i=0; $i<$iterations; $i++) {
-  $s = "the quick brown fox jumps over the lazy dog " . $i;
-  $h = hash('sha256', $s, false);
-  $acc += ord($h[0]);
-}
-$elapsed = microtime(true) - $start;
-printf("%.4f\n", $elapsed);
-EOF
-  _PHP_TEST_TIME="$(php "${_PHP_TEST_SCRIPT}" 2>/dev/null)"
-  rm -f "${_PHP_TEST_SCRIPT}" >/dev/null 2>&1
-else
-  _PHP_TEST_TIME="N/A (php not installed)"
-fi
+# PHP Performance Tests (single + concurrent)
+echo "Running PHP performance tests..."
+_run_php_benchmarks
 
-# Disk I/O Performance Test with fio
+# Disk I/O Performance Tests
 echo "Detecting mounted filesystems to test (root + real mounted partitions; excluding /boot*)..."
-mapfile -t _TEST_MOUNTS < <(_get_test_mounts)
+mapfile -t _test_mounts < <(_get_test_mounts)
 
-declare -A _FIO_IOPS_READ
-declare -A _FIO_IOPS_WRITE
-declare -A _FIO_BW_READ
-declare -A _FIO_BW_WRITE
-declare -A _FIO_LATENCY_READ
-declare -A _FIO_LATENCY_WRITE
+declare -A _fio_rand_iops_read
+declare -A _fio_rand_iops_write
+declare -A _fio_rand_bw_read
+declare -A _fio_rand_bw_write
+declare -A _fio_rand_latency_read
+declare -A _fio_rand_latency_write
 
-for _MOUNT_POINT in "${_TEST_MOUNTS[@]}"; do
-  echo "Running Disk I/O test on ${_MOUNT_POINT}..."
-  _SAFE_MOUNT_POINT="$(echo "${_MOUNT_POINT}" | sed 's#/#_#g')"
-  _OUTPUT_FILE="/tmp/fio_output_${_SAFE_MOUNT_POINT}_$$.json"
+declare -A _fio_seqread_bw_read
+declare -A _fio_seqread_latency_read
 
-  if _run_fio_test "${_MOUNT_POINT}" "${_OUTPUT_FILE}"; then
-    while IFS="=" read -r _K _V; do
-      case "${_K}" in
-        READ_IOPS)   _FIO_IOPS_READ["${_MOUNT_POINT}"]="${_V}" ;;
-        WRITE_IOPS)  _FIO_IOPS_WRITE["${_MOUNT_POINT}"]="${_V}" ;;
-        READ_BW_MB)  _FIO_BW_READ["${_MOUNT_POINT}"]="${_V} MB/s" ;;
-        WRITE_BW_MB) _FIO_BW_WRITE["${_MOUNT_POINT}"]="${_V} MB/s" ;;
-        READ_LAT_MS) _FIO_LATENCY_READ["${_MOUNT_POINT}"]="${_V} ms" ;;
-        WRITE_LAT_MS)_FIO_LATENCY_WRITE["${_MOUNT_POINT}"]="${_V} ms" ;;
+declare -A _fio_seqwrite_bw_write
+declare -A _fio_seqwrite_latency_write
+
+declare -A _meta_ops
+
+# For CSV summary (root mount)
+_root_rand_bw_read=""
+_root_rand_bw_write=""
+_root_rand_lat_read=""
+_root_rand_lat_write=""
+_root_seqread_bw_read=""
+_root_seqread_lat_read=""
+_root_seqwrite_bw_write=""
+_root_seqwrite_lat_write=""
+_root_meta_ops=""
+
+for _mount_point in "${_test_mounts[@]}"; do
+  echo "Running Disk I/O tests on ${_mount_point}..."
+
+  _safe_mount_point="$(echo "${_mount_point}" | sed 's#/#_#g')"
+
+  # Random 4k read/write
+  _rand_output="/tmp/fio_rand_${_safe_mount_point}_$$.json"
+  if _run_fio_rand_test "${_mount_point}" "${_rand_output}"; then
+    while IFS="=" read -r _k _v; do
+      case "${_k}" in
+        READ_IOPS)   _fio_rand_iops_read["${_mount_point}"]="${_v}" ;;
+        WRITE_IOPS)  _fio_rand_iops_write["${_mount_point}"]="${_v}" ;;
+        READ_BW_MB)  _fio_rand_bw_read["${_mount_point}"]="${_v} MB/s" ;;
+        WRITE_BW_MB) _fio_rand_bw_write["${_mount_point}"]="${_v} MB/s" ;;
+        READ_LAT_MS) _fio_rand_latency_read["${_mount_point}"]="${_v} ms" ;;
+        WRITE_LAT_MS)_fio_rand_latency_write["${_mount_point}"]="${_v} ms" ;;
       esac
-    done < <(_parse_fio_json "${_OUTPUT_FILE}")
-
-    rm -f "${_OUTPUT_FILE}" >/dev/null 2>&1
+    done < <(_parse_fio_json "${_rand_output}")
   else
-    rm -f "${_OUTPUT_FILE}" >/dev/null 2>&1
-    _FIO_IOPS_READ["${_MOUNT_POINT}"]="ERROR"
-    _FIO_IOPS_WRITE["${_MOUNT_POINT}"]="ERROR"
-    _FIO_BW_READ["${_MOUNT_POINT}"]="ERROR"
-    _FIO_BW_WRITE["${_MOUNT_POINT}"]="ERROR"
-    _FIO_LATENCY_READ["${_MOUNT_POINT}"]="ERROR"
-    _FIO_LATENCY_WRITE["${_MOUNT_POINT}"]="ERROR"
+    _fio_rand_iops_read["${_mount_point}"]="ERROR"
+    _fio_rand_iops_write["${_mount_point}"]="ERROR"
+    _fio_rand_bw_read["${_mount_point}"]="ERROR"
+    _fio_rand_bw_write["${_mount_point}"]="ERROR"
+    _fio_rand_latency_read["${_mount_point}"]="ERROR"
+    _fio_rand_latency_write["${_mount_point}"]="ERROR"
+  fi
+  rm -f "${_rand_output}" >/dev/null 2>&1
+
+  # Sequential read
+  _seqread_output="/tmp/fio_seqread_${_safe_mount_point}_$$.json"
+  if _run_fio_seq_read_test "${_mount_point}" "${_seqread_output}"; then
+    while IFS="=" read -r _k _v; do
+      case "${_k}" in
+        READ_BW_MB)  _fio_seqread_bw_read["${_mount_point}"]="${_v} MB/s" ;;
+        READ_LAT_MS) _fio_seqread_latency_read["${_mount_point}"]="${_v} ms" ;;
+      esac
+    done < <(_parse_fio_json "${_seqread_output}")
+  else
+    _fio_seqread_bw_read["${_mount_point}"]="ERROR"
+    _fio_seqread_latency_read["${_mount_point}"]="ERROR"
+  fi
+  rm -f "${_seqread_output}" >/dev/null 2>&1
+
+  # Sequential write
+  _seqwrite_output="/tmp/fio_seqwrite_${_safe_mount_point}_$$.json"
+  if _run_fio_seq_write_test "${_mount_point}" "${_seqwrite_output}"; then
+    while IFS="=" read -r _k _v; do
+      case "${_k}" in
+        WRITE_BW_MB)  _fio_seqwrite_bw_write["${_mount_point}"]="${_v} MB/s" ;;
+        WRITE_LAT_MS) _fio_seqwrite_latency_write["${_mount_point}"]="${_v} ms" ;;
+      esac
+    done < <(_parse_fio_json "${_seqwrite_output}")
+  else
+    _fio_seqwrite_bw_write["${_mount_point}"]="ERROR"
+    _fio_seqwrite_latency_write["${_mount_point}"]="ERROR"
+  fi
+  rm -f "${_seqwrite_output}" >/dev/null 2>&1
+
+  # Metadata test
+  _run_metadata_test "${_mount_point}" "_meta_ops[\"${_mount_point}\"]"
+
+  # Capture root mount metrics for CSV
+  if [ "${_mount_point}" = "/" ]; then
+    _root_rand_bw_read="${_fio_rand_bw_read["${_mount_point}"]}"
+    _root_rand_bw_write="${_fio_rand_bw_write["${_mount_point}"]}"
+    _root_rand_lat_read="${_fio_rand_latency_read["${_mount_point}"]}"
+    _root_rand_lat_write="${_fio_rand_latency_write["${_mount_point}"]}"
+    _root_seqread_bw_read="${_fio_seqread_bw_read["${_mount_point}"]}"
+    _root_seqread_lat_read="${_fio_seqread_latency_read["${_mount_point}"]}"
+    _root_seqwrite_bw_write="${_fio_seqwrite_bw_write["${_mount_point}"]}"
+    _root_seqwrite_lat_write="${_fio_seqwrite_latency_write["${_mount_point}"]}"
+    _root_meta_ops="${_meta_ops["${_mount_point}"]}"
   fi
 done
 
+# ----
 # Display Results
+# ----
+
 echo ""
-echo "======= Performance Test Summary ======="
+echo "==== Performance Test Summary ===="
 echo ""
-echo "CPU Performance (Multi-threaded):"
-echo " - Events per Second: ${_CPU_EVENTS_MT}"
-echo " - Average Latency:   ${_CPU_LATENCY_MT} ms"
-if [ -n "${_CPU_STEAL_MT}" ]; then
-  echo " - Avg CPU Steal:     ${_CPU_STEAL_MT} %"
+
+echo "System:"
+echo " - Hostname:        ${_hostname}"
+echo " - CPU:             ${_cpu_info}"
+echo " - vCPUs:           ${_cpu_cores}"
+echo " - CPU Governor:    ${_cpu_governor}"
+
+echo ""
+echo "CPU Performance (Multi-threaded, nproc=$(nproc)):"
+echo " - Events per Second: ${_cpu_events_MT_NPROC}"
+echo " - Average Latency:   ${_cpu_latency_MT_NPROC} ms"
+if [ -n "${_cpu_steal_mt}" ]; then
+  echo " - Avg CPU Steal:     ${_cpu_steal_mt} %"
 fi
 
 echo ""
+echo "CPU Performance (4 threads):"
+echo " - Events per Second: ${_cpu_events_MT4}"
+echo " - Average Latency:   ${_cpu_latency_MT4} ms"
+
+echo ""
 echo "CPU Performance (Single-threaded):"
-echo " - Events per Second: ${_CPU_EVENTS_ST}"
-echo " - Average Latency:   ${_CPU_LATENCY_ST} ms"
+echo " - Events per Second: ${_cpu_events_ST}"
+echo " - Average Latency:   ${_cpu_latency_ST} ms"
 
 echo ""
 echo "Memory Performance:"
-echo " - Transfer Speed:    ${_MEM_TRANSFER_SPEED}"
-echo " - Average Latency:   ${_MEM_LATENCY} ms"
+echo " - Transfer Speed:    ${_mem_transfer_speed}"
+echo " - Average Latency:   ${_mem_latency} ms"
 
 echo ""
-echo "PHP Performance:"
-echo " - Script Time:       ${_PHP_TEST_TIME} seconds"
+echo "PHP Performance (CLI Micro-benchmark):"
+if command -v php >/dev/null 2>&1; then
+  echo " - Runs (seconds):    ${_php_time_runs}"
+  echo " - Median Time:       ${_php_time_median} seconds"
+  echo " - Concurrent Procs:  $( [ "$(nproc)" -gt "${_PHP_BENCH_CONCURRENCY_MAX}" ] && echo "${_PHP_BENCH_CONCURRENCY_MAX}" || nproc )"
+  echo " - Wall Time (conc.): ${_php_concurrency_wall} seconds"
+  echo " - Throughput (conc.):${_php_concurrency_throughput}"
+else
+  echo " - PHP not installed"
+fi
 
-for _MOUNT_POINT in "${_TEST_MOUNTS[@]}"; do
+for _mount_point in "${_test_mounts[@]}"; do
   echo ""
-  echo "Disk I/O Performance on ${_MOUNT_POINT}:"
-  echo " - Read IOPS:         ${_FIO_IOPS_READ["${_MOUNT_POINT}"]}"
-  echo " - Write IOPS:        ${_FIO_IOPS_WRITE["${_MOUNT_POINT}"]}"
-  echo " - Read Bandwidth:    ${_FIO_BW_READ["${_MOUNT_POINT}"]}"
-  echo " - Write Bandwidth:   ${_FIO_BW_WRITE["${_MOUNT_POINT}"]}"
-  echo " - Avg Read Latency:  ${_FIO_LATENCY_READ["${_MOUNT_POINT}"]}"
-  echo " - Avg Write Latency: ${_FIO_LATENCY_WRITE["${_MOUNT_POINT}"]}"
+  echo "Disk I/O Performance on ${_mount_point}:"
+
+  echo "  Random 4k randrw:"
+  echo "   - Read IOPS:         ${_fio_rand_iops_read["${_mount_point}"]}"
+  echo "   - Write IOPS:        ${_fio_rand_iops_write["${_mount_point}"]}"
+  echo "   - Read Bandwidth:    ${_fio_rand_bw_read["${_mount_point}"]}"
+  echo "   - Write Bandwidth:   ${_fio_rand_bw_write["${_mount_point}"]}"
+  echo "   - Avg Read Latency:  ${_fio_rand_latency_read["${_mount_point}"]}"
+  echo "   - Avg Write Latency: ${_fio_rand_latency_write["${_mount_point}"]}"
+
+  echo "  Sequential Read (128k):"
+  echo "   - Read Bandwidth:    ${_fio_seqread_bw_read["${_mount_point}"]}"
+  echo "   - Avg Read Latency:  ${_fio_seqread_latency_read["${_mount_point}"]}"
+
+  echo "  Sequential Write (128k):"
+  echo "   - Write Bandwidth:   ${_fio_seqwrite_bw_write["${_mount_point}"]}"
+  echo "   - Avg Write Latency: ${_fio_seqwrite_latency_write["${_mount_point}"]}"
+
+  echo "  Metadata (small file create+read+delete):"
+  echo "   - Ops per second:    ${_meta_ops["${_mount_point}"]}"
 done
 
 echo ""
 echo "Performance tests completed."
+echo ""
+
+# ----
+# CSV summary line (focus on root mount) for easy ingest
+# ----
+# Fields (comma-separated, no header):
+# hostname,cpu_model,vcpus,cpu_mt_eps,cpu_4t_eps,cpu_st_eps,mem_bw,php_median_s,php_conc_thr_ops,
+# root_rand_bw_read,root_rand_bw_write,root_rand_lat_r,root_rand_lat_w,
+# root_seqread_bw,root_seqread_lat_r,root_seqwrite_bw,root_seqwrite_lat_w,root_meta_ops
+
+# Strip units from some disk fields for CSV
+_strip_unit() {
+  # $1 = value like "195.67 MB/s" or "1.23 ms"
+  echo "$1" | awk '{print $1}'
+}
+
+_csv_mem_bw="$(_strip_unit "${_mem_transfer_speed}")"
+_csv_root_rand_bw_read="$(_strip_unit "${_root_rand_bw_read}")"
+_csv_root_rand_bw_write="$(_strip_unit "${_root_rand_bw_write}")"
+_csv_root_rand_lat_read="$(_strip_unit "${_root_rand_lat_read}")"
+_csv_root_rand_lat_write="$(_strip_unit "${_root_rand_lat_write}")"
+_csv_root_seqread_bw_read="$(_strip_unit "${_root_seqread_bw_read}")"
+_csv_root_seqread_lat_read="$(_strip_unit "${_root_seqread_lat_read}")"
+_csv_root_seqwrite_bw_write="$(_strip_unit "${_root_seqwrite_bw_write}")"
+_csv_root_seqwrite_lat_write="$(_strip_unit "${_root_seqwrite_lat_write}")"
+_csv_root_meta_ops="$(_strip_unit "${_root_meta_ops}")"
+
+echo "CSV_SUMMARY:${_hostname},\"${_cpu_info}\",${_cpu_cores},${_cpu_events_MT_NPROC},${_cpu_events_MT4},${_cpu_events_ST},${_csv_mem_bw},${_php_time_median},\"${_php_concurrency_throughput}\",${_csv_root_rand_bw_read},${_csv_root_rand_bw_write},${_csv_root_rand_lat_read},${_csv_root_rand_lat_write},${_csv_root_seqread_bw_read},${_csv_root_seqread_lat_read},${_csv_root_seqwrite_bw_write},${_csv_root_seqwrite_lat_write},${_csv_root_meta_ops}"
