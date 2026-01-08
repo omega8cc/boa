@@ -2457,6 +2457,8 @@ _daily_process() {
               fi
               _le_ssl_check_update
               if [ "${_ENABLE_GOACCESS}" = "YES" ] && [ -e "${_usEr}/static/control/goaccess/${_Dom}.info" ]; then
+                _noPrefixDom="${_Dom#www.}"
+                _if_gen_goaccess ${_noPrefixDom}
                 _if_gen_goaccess ${_Dom}
               fi
               ;;
