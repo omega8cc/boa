@@ -8575,10 +8575,12 @@ _xdrago_install_upgrade() {
     chmod 600 /var/spool/cron/crontabs/root
     _if_hosted_sys
     if [ "${_hostedSys}" = "YES" ]; then
-      sed -i "s/rotate 52/rotate 7/g" /etc/logrotate.d/nginx &> /dev/null
-      wait
-      sed -i "s/rotate 1/rotate 7/g" /etc/logrotate.d/nginx &> /dev/null
-      wait
+      _ROTATE_TEST=$(grep "rotate 9999" /etc/logrotate.d/nginx 2>&1)
+      if [[ ! "${_ROTATE_TEST}" =~ "rotate 9999" ]]; then
+        sed -i "s/rotate 52/rotate 365/g" /etc/logrotate.d/nginx &> /dev/null
+        sed -i "s/rotate 74/rotate 365/g" /etc/logrotate.d/nginx &> /dev/null
+        sed -i "s/rotate 14/rotate 365/g" /etc/logrotate.d/nginx &> /dev/null
+      fi
     fi
     if [ -e "/root/.debug.cnf" ] && [ ! -e "/root/.default.cnf" ]; then
       _DO_NOTHING=YES
@@ -8637,10 +8639,12 @@ _xdrago_install_upgrade() {
           sed -i "s/3600/1800/g" /var/xdrago/monitor/check/mysql.sh &> /dev/null
           wait
         fi
-        sed -i "s/rotate 52/rotate 7/g" /etc/logrotate.d/nginx &> /dev/null
-        wait
-        sed -i "s/rotate 1/rotate 7/g" /etc/logrotate.d/nginx &> /dev/null
-        wait
+        _ROTATE_TEST=$(grep "rotate 9999" /etc/logrotate.d/nginx 2>&1)
+        if [[ ! "${_ROTATE_TEST}" =~ "rotate 9999" ]]; then
+          sed -i "s/rotate 52/rotate 365/g" /etc/logrotate.d/nginx &> /dev/null
+          sed -i "s/rotate 74/rotate 365/g" /etc/logrotate.d/nginx &> /dev/null
+          sed -i "s/rotate 14/rotate 365/g" /etc/logrotate.d/nginx &> /dev/null
+        fi
       fi
     fi
   fi
