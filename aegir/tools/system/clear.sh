@@ -132,7 +132,7 @@ _find_fast_mirror_early() {
 }
 
 _if_reinstall_curl_src() {
-  _CURL_VRN=8.16.0
+  _CURL_VRN=8.17.0
   if ! command -v lsb_release &> /dev/null; then
     apt-get update -qq &> /dev/null
     apt-get install lsb-release ${_aptYesUnth} -qq &> /dev/null
