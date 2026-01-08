@@ -4,11 +4,14 @@ _fix_php_ini_ioncube() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _fix_php_ini_ioncube $1"
   fi
-  if [ -e "${_THIS_FILE}" ] && [ "${_PHP_IONCUBE}" = "NO" ]; then
-    _IONCUBE_INI_TEST=$(grep "ioncube_loader" ${_THIS_FILE} 2>&1)
-    if [[ "${_IONCUBE_INI_TEST}" =~ "ioncube_loader" ]]; then
-      sed -i "s/.*ioncube_loader.*//g" ${_THIS_FILE} &> /dev/null
-      wait
+  if [ -e "${_THIS_FILE}" ]; then
+    _thisICL="/usr/local/ioncube/ioncube_loader_lin_${1}.so"
+    if [ "${_PHP_IONCUBE}" = "NO" ] || [ ! -e "${_thisICL}" ]; then
+      _IONCUBE_INI_TEST=$(grep "ioncube_loader" ${_THIS_FILE} 2>&1)
+      if [[ "${_IONCUBE_INI_TEST}" =~ "ioncube_loader" ]]; then
+        sed -i "s/.*ioncube_loader.*//g" ${_THIS_FILE} &> /dev/null
+        wait
+      fi
     fi
   fi
 }
