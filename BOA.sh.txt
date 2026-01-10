@@ -1334,7 +1334,7 @@ _update_agents() {
   fi
 
   if [ ! -e "${_optBin}/boa" ] \
-    || [ ! -e "${_pthLog}/boa.sh.ctrl.f92.${_tRee}.${_xSrl}.pid" ]; then
+    || [ ! -e "${_pthLog}/boa.sh.ctrl.f91.${_tRee}.${_xSrl}.pid" ]; then
     _CNT=$(pgrep -fc /local/bin/boa)
     if (( _CNT > 0 )); then
       echo "The boa is running!"
@@ -1346,7 +1346,7 @@ _update_agents() {
       if [ -e "${_optBin}/boa" ]; then
         chmod 700 ${_optBin}/boa
         chown root:root ${_optBin}/boa
-        touch ${_pthLog}/boa.sh.ctrl.f92.${_tRee}.${_xSrl}.pid
+        touch ${_pthLog}/boa.sh.ctrl.f91.${_tRee}.${_xSrl}.pid
       else
         if [ -e "${_optBin}/boa.old" ]; then
           mv -f ${_optBin}/boa.old ${_optBin}/boa
