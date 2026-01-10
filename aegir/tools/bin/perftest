@@ -57,7 +57,7 @@ _log() {
 _check_and_install_package() {
   # $1 = package name
   if ! dpkg -s "$1" >/dev/null 2>&1; then
-    _log "Installing package: $1"
+    echo "Installing package: $1"
     apt-get install -y "$1" >/dev/null 2>&1
   fi
 }
@@ -436,7 +436,7 @@ EOF
   local _runs="${_PHP_BENCH_RUNS}"
   local _times=()
   local _i
-  _log "Running PHP single-thread benchmark (${_runs} runs, iterations=${_PHP_BENCH_ITERATIONS})..."
+  echo "Running PHP single-thread benchmark (${_runs} runs, iterations=${_PHP_BENCH_ITERATIONS})..."
   for _i in $(seq 1 "${_runs}"); do
     local _t
     _t="$(PHP_BENCH_ITERATIONS="${_PHP_BENCH_ITERATIONS}" php "${_script}" 2>/dev/null || echo 0)"
@@ -463,7 +463,7 @@ EOF
     _conc="${_nproc}"
   fi
 
-  _log "Running PHP concurrent benchmark (${_conc} processes, iterations=${_PHP_BENCH_ITERATIONS} each)..."
+  echo "Running PHP concurrent benchmark (${_conc} processes, iterations=${_PHP_BENCH_ITERATIONS} each)..."
   local _start _end _elapsed
   _start="$(date +%s.%N)"
   for _i in $(seq 1 "${_conc}"); do
@@ -568,11 +568,12 @@ _print_compact_summary() {
   echo " ============================================================================="
   printf "   Bandwidth:  %-20s Grade: %-10s\n" "${_mem_transfer_speed}" "[${mem_grade}]"
   printf "   Latency:    %-20s\n" "${_mem_latency} ms"
-  echo ""
 
   if [ "${mem_grade}" = "poor" ]; then
+    echo ""
     echo "   ⚠️  Low memory bandwidth may limit BOA caching effectiveness under load."
   elif [ "${mem_grade}" = "excellent" ]; then
+    echo ""
     echo "   ✓  Excellent memory performance for in-memory caching workloads."
   fi
   echo ""
@@ -612,11 +613,12 @@ _print_compact_summary() {
   printf "   Sequential (root):  Read: %-12s Write: %-12s\n" \
     "${_root_seqread_bw_read}" "${_root_seqwrite_bw_write}"
   printf "   Metadata ops:       %s\n" "${_root_meta_ops}"
-  echo ""
 
   if [ "${disk_grade}" = "poor" ]; then
+    echo ""
     echo "   ⚠️  High disk latency. May slow down deployments and DB checkpoints."
   elif [ "${disk_grade}" = "excellent" ]; then
+    echo ""
     echo "   ✓  Excellent disk latency for metadata-heavy operations."
   fi
   echo ""
@@ -630,8 +632,8 @@ _print_compact_summary() {
 
   if [ -n "${net_mibps}" ] && awk -v n="${net_mibps}" 'BEGIN{exit !(n<50)}' 2>/dev/null; then
     echo "   ⚠️  Low network throughput. May affect external API calls and updates."
+    echo ""
   fi
-  echo ""
 
   echo " ============================================================================="
   echo " == BOA SUITABILITY SUMMARY                                                 =="
@@ -712,7 +714,7 @@ _check_and_install_package "bc"
 _ensure_sysbench
 
 echo ""
-_log "Starting performance tests..."
+echo "Starting performance tests..."
 echo ""
 
 # Basic system info
@@ -737,7 +739,7 @@ if command -v php >/dev/null 2>&1 && [ "${_VERBOSE}" -eq 1 ]; then
 fi
 
 # CPU Performance Tests
-_log "Running CPU performance tests with sysbench..."
+echo "Running CPU performance tests with sysbench..."
 _cpu_steal_mt="$(_measure_cpu_steal 1)" # initial check
 
 # Multi-threaded: nproc
@@ -761,17 +763,17 @@ _run_sysbench_cpu 1 "ST"
 _run_sysbench_cpu 4 "MT4"
 
 # Memory Performance Test
-_log "Running Memory performance test with sysbench..."
+echo "Running Memory performance test with sysbench..."
 _mem_test="$(sysbench memory --threads="$(nproc)" --time="${_SYSBENCH_MEM_TIME}" run 2>/dev/null)"
 _mem_transfer_speed="$(echo "${_mem_test}" | awk '/transferred/ {gsub("[()]","",$(NF-1)); print $(NF-1)" "$(NF)}')"
 _mem_latency="$(echo "${_mem_test}" | awk '/avg:/ {print $2}')"
 
 # AES throughput (nench-inspired)
-_log "Running AES throughput test (openssl enc, ${_AES_TEST_MIB} MiB)..."
+echo "Running AES throughput test (openssl enc, ${_AES_TEST_MIB} MiB)..."
 _run_aes_throughput_test
 
 # PHP Performance Tests (single + concurrent)
-_log "Running PHP performance tests..."
+echo "Running PHP performance tests..."
 _run_php_benchmarks
 
 # Disk I/O Performance Tests
@@ -779,11 +781,11 @@ _log "Detecting mounted filesystems to test (root + real mounted partitions; exc
 mapfile -t _test_mounts < <(_get_test_mounts)
 
 # ioping latency (nench-inspired)
-_log "Running ioping quick latency checks (${_IOPING_SECONDS}s)..."
+echo "Running ioping quick latency checks (${_IOPING_SECONDS}s)..."
 _run_ioping_quick
 
 # IPv4 network sanity check (nench-inspired, single endpoint)
-_log "Running IPv4 network check (Cachefly, ${_NET_TIMEOUT}s timeout)..."
+echo "Running IPv4 network check (Cachefly, ${_NET_TIMEOUT}s timeout)..."
 _run_ipv4_net_check
 
 declare -A _fio_rand_iops_read
@@ -810,7 +812,7 @@ _root_seqwrite_lat_write=""
 _root_meta_ops=""
 
 for _mount_point in "${_test_mounts[@]}"; do
-  _log "Running Disk I/O tests on ${_mount_point}..."
+  echo "Running Disk I/O tests on ${_mount_point}..."
   _safe_mount_point="$(echo "${_mount_point}" | sed 's#/#_#g')"
 
   # Random 4k read/write
@@ -889,11 +891,11 @@ done
 echo ""
 
 if [ "${_COMPACT}" -eq 1 ]; then
-  [ -x "/opt/local/bin/screenfetch" ] && bash /opt/local/bin/screenfetch
+  [ -x "/opt/local/bin/screenfetch" ] && bash /opt/local/bin/screenfetch -n
   echo ""
   _print_compact_summary
 else
-  [ -x "/opt/local/bin/screenfetch" ] && bash /opt/local/bin/screenfetch
+  [ -x "/opt/local/bin/screenfetch" ] && bash /opt/local/bin/screenfetch -n
   echo ""
   echo "==== Performance Test Summary ===="
   echo ""
