@@ -2815,7 +2815,7 @@ _php_single_initd_cleanup() {
     rm -f /opt/local/bin/php
   fi
   mkdir -p /var/backups/php-logs/${_NOW}/
-  mv -f /var/log/php/* /var/backups/php-logs/${_NOW}/
+  mv -f /var/log/php/* /var/backups/php-logs/${_NOW}/ &> /dev/null
 }
 
 #
