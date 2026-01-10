@@ -532,14 +532,18 @@ _print_compact_summary() {
   echo " ==      Priority: Memory > CPU > Disk > Network (for Drupal caching)       =="
   echo " ============================================================================="
   echo ""
-  echo "Host: ${_hostname}"
-  echo "CPU:  ${_cpu_info}"
-  echo "vCPUs: ${_cpu_cores}"
-
-  # Get total RAM
-  local _total_ram_mb
-  _total_ram_mb="$(free -m | awk '/^Mem:/ {print $2}')"
-  echo "RAM:  ${_total_ram_mb} MB"
+  echo "System:"
+  echo ""
+  if [ -x "/opt/local/bin/screenfetch" ]; then
+    bash /opt/local/bin/screenfetch -n
+  else
+    echo "Host:  ${_hostname}"
+    echo "CPU:   ${_cpu_info}"
+    echo "vCPUs: ${_cpu_cores}"
+    local _total_ram_mb
+    _total_ram_mb="$(free -m | awk '/^Mem:/ {print $2}')"
+    echo "RAM:   ${_total_ram_mb} MB"
+  fi
   echo ""
 
   # Extract numeric values
@@ -891,18 +895,23 @@ done
 echo ""
 
 if [ "${_COMPACT}" -eq 1 ]; then
-  [ -x "/opt/local/bin/screenfetch" ] && bash /opt/local/bin/screenfetch -n
-  echo ""
   _print_compact_summary
 else
-  [ -x "/opt/local/bin/screenfetch" ] && bash /opt/local/bin/screenfetch -n
   echo ""
   echo "==== Performance Test Summary ===="
   echo ""
   echo "System:"
-  echo "  - Hostname: ${_hostname}"
-  echo "  - CPU: ${_cpu_info}"
-  echo "  - vCPUs: ${_cpu_cores}"
+  echo ""
+  if [ -x "/opt/local/bin/screenfetch" ]; then
+    bash /opt/local/bin/screenfetch -n
+  else
+    echo "  - Hostname: ${_hostname}"
+    echo "  - CPU: ${_cpu_info}"
+    echo "  - vCPUs: ${_cpu_cores}"
+    local _total_ram_mb
+    _total_ram_mb="$(free -m | awk '/^Mem:/ {print $2}')"
+    echo "  - RAM: ${_total_ram_mb} MB"
+  fi
   echo ""
   echo "CPU Performance (Multi-threaded, nproc=$(nproc)):"
   echo "  - Events per Second: ${_cpu_events_MT_NPROC}"
