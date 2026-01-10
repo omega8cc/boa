@@ -5,22 +5,43 @@ export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 
 # Tunables
-_PHP_BENCH_ITERATIONS=500000   # per process
-_PHP_BENCH_RUNS=5              # single-thread runs for median
-_PHP_BENCH_CONCURRENCY_MAX=8   # cap on concurrent PHP workers
-_SYSBENCH_CPU_TIME=30          # seconds
-_SYSBENCH_MEM_TIME=30          # seconds
-_FIO_RAND_RUNTIME=60           # seconds
-_FIO_SEQ_RUNTIME=60            # seconds
-_METADATA_FILE_COUNT=5000      # small-file ops per mount
-_NET_TIMEOUT=10                # seconds for curl speedtest
-_AES_TEST_MIB=500              # MiB encrypted for AES throughput test
-_IOPING_SECONDS=5              # seconds for ioping checks
+_PHP_BENCH_ITERATIONS=500000 # per process
+_PHP_BENCH_RUNS=5 # single-thread runs for median
+_PHP_BENCH_CONCURRENCY_MAX=8 # cap on concurrent PHP workers
+_SYSBENCH_CPU_TIME=30 # seconds
+_SYSBENCH_MEM_TIME=30 # seconds
+_FIO_RAND_RUNTIME=60 # seconds
+_FIO_SEQ_RUNTIME=60 # seconds
+_METADATA_FILE_COUNT=5000 # small-file ops per mount
+_NET_TIMEOUT=10 # seconds for curl speedtest
+_AES_TEST_MIB=500 # MiB encrypted for AES throughput test
+_IOPING_SECONDS=5 # seconds for ioping checks
+
+# Output mode
+_VERBOSE=0   # default: full output
+_COMPACT=1   # compact BOA-focused mode
+
+# ----
+# Usage
+# ----
+_usage() {
+  cat <<'USAGE'
+Usage: perftest [--compact|--quiet] [--verbose] [-h|--help]
+
+  --compact, --quiet  Print BOA-focused compact summary only (default)
+                      (prioritizes memory > CPU > disk > network)
+  --verbose           Print full detailed output
+  -h, --help          Show this help
+
+BOA context: This script evaluates VM vendor/host quality for BOA stack
+(Drupal + APC/Valkey/OPcache/Nginx microcaching). Compact mode highlights
+the metrics that matter most for in-memory caching performance.
+USAGE
+}
 
 # ----
 # Helpers
 # ----
-
 _check_root() {
   if [ "$(id -u)" -ne 0 ]; then
     echo "ERROR: This script must be run as root"
@@ -28,11 +49,15 @@ _check_root() {
   fi
 }
 
+_log() {
+  [ "${_VERBOSE}" -eq 1 ] && echo "$@"
+}
+
 # Function to check if a package is installed
 _check_and_install_package() {
   # $1 = package name
   if ! dpkg -s "$1" >/dev/null 2>&1; then
-    echo "Installing package: $1"
+    _log "Installing package: $1"
     apt-get install -y "$1" >/dev/null 2>&1
   fi
 }
@@ -42,33 +67,28 @@ _ensure_sysbench() {
   if command -v sysbench >/dev/null 2>&1; then
     return 0
   fi
-
   # Try Debian package first (usually good enough and avoids build deps)
   _check_and_install_package "sysbench"
   if command -v sysbench >/dev/null 2>&1; then
     return 0
   fi
-
   # Fallback: compile from source without MySQL support
-  echo "sysbench package not available; compiling sysbench from source (without MySQL)..."
+  _log "sysbench package not available; compiling sysbench from source (without MySQL)..."
   _check_and_install_package "git"
   _check_and_install_package "make"
   _check_and_install_package "gcc"
   _check_and_install_package "automake"
   _check_and_install_package "libtool"
   _check_and_install_package "pkg-config"
-
   rm -rf /tmp/sysbench-build >/dev/null 2>&1
   mkdir -p /tmp/sysbench-build || exit 1
   cd /tmp/sysbench-build || exit 1
-
   git clone --depth 1 https://github.com/akopytov/sysbench.git >/dev/null 2>&1 || exit 1
   cd sysbench || exit 1
   ./autogen.sh >/dev/null 2>&1 || exit 1
   ./configure --without-mysql >/dev/null 2>&1 || exit 1
   make -j"$(nproc)" >/dev/null 2>&1 || exit 1
   make install >/dev/null 2>&1 || exit 1
-
   cd /root || exit 1
   rm -rf /tmp/sysbench-build >/dev/null 2>&1
 }
@@ -87,7 +107,7 @@ _redact_ip() {
   case "$1" in
     *.*) printf '%s.xxxx' "$(printf '%s\n' "$1" | cut -d . -f 1-3)" ;;
     *:*) printf '%s:xxxx' "$(printf '%s\n' "$1" | cut -d : -f 1-3)" ;;
-    *)   printf '%s' "$1" ;;
+    *) printf '%s' "$1" ;;
   esac
 }
 
@@ -119,10 +139,8 @@ _ensure_ioping() {
 _run_ioping_quick() {
   _ioping_seek="N/A"
   _ioping_seqread="N/A"
-
   _ensure_ioping || return 0
   [ -n "${_ioping_cmd}" ] || return 0
-
   # Keep it short; these lines match nench-style output snippets
   _ioping_seek="$("${_ioping_cmd}" -DR -w "${_IOPING_SECONDS}" . 2>/dev/null | tail -n 1)"
   _ioping_seqread="$("${_ioping_cmd}" -DRL -w "${_IOPING_SECONDS}" . 2>/dev/null | tail -n 2 | head -n 1)"
@@ -132,25 +150,20 @@ _run_ioping_quick() {
 _run_aes_throughput_test() {
   _aes_mibps="N/A"
   _aes_seconds="N/A"
-
   if ! command -v openssl >/dev/null 2>&1; then
     return 0
   fi
-
   local start end elapsed
   start="$(date +%s.%N)"
-
   # Use fixed key/iv to avoid KDF overhead; measures raw AES speed better
   dd if=/dev/zero bs=1M count="${_AES_TEST_MIB}" 2>/dev/null \
     | openssl enc -aes-256-cbc \
-        -K 0000000000000000000000000000000000000000000000000000000000000000 \
-        -iv 00000000000000000000000000000000 \
-        -nosalt 2>/dev/null \
+      -K 0000000000000000000000000000000000000000000000000000000000000000 \
+      -iv 00000000000000000000000000000000 \
+      -nosalt 2>/dev/null \
     > /dev/null
-
   end="$(date +%s.%N)"
   elapsed="$(echo "${end} - ${start}" | bc -l 2>/dev/null || echo 0)"
-
   if [ "${elapsed}" != "0" ]; then
     _aes_seconds="$(printf '%.3f' "${elapsed}")"
     _aes_mibps="$(echo "${_AES_TEST_MIB} / ${elapsed}" | bc -l 2>/dev/null | awk '{printf "%.2f MiB/s",$0}')"
@@ -160,14 +173,12 @@ _run_aes_throughput_test() {
 _run_ipv4_net_check() {
   _net_ipv4="N/A"
   _net_cachefly="N/A"
-
   local ip
   ip="$(_get_public_ipv4)"
   if [ -z "${ip}" ]; then
     return 0
   fi
   _net_ipv4="$(_redact_ip "${ip}")"
-
   # Single sanity check endpoint (no dual-stack, per your request)
   local bps
   bps="$(_download_benchmark_v4 "http://cachefly.cachefly.net/100mb.test")"
@@ -186,7 +197,6 @@ _measure_cpu_steal() {
     echo ""
     return 0
   fi
-
   # mpstat output: header + per-second lines; %steal column exists on Linux
   mpstat 1 "${_seconds}" 2>/dev/null \
     | awk '
@@ -210,17 +220,14 @@ _get_test_mounts() {
         ext4|xfs|btrfs|zfs|f2fs) : ;;
         *) continue ;;
       esac
-
       case "${_mount}" in
         /boot|/boot/*|/boot/efi|/boot/efi/*) continue ;;
         /proc|/proc/*|/sys|/sys/*|/dev|/dev/*|/run|/run/*) continue ;;
         /snap|/snap/*) continue ;;
       esac
-
       if [ "${_size_bytes}" -lt $((2 * 1024 * 1024 * 1024)) ]; then
         continue
       fi
-
       case "${_mount}" in
         /*) echo "${_mount}" ;;
         *) : ;;
@@ -238,9 +245,7 @@ _run_fio_rand_test() {
   local _safe_mount_point
   _safe_mount_point="$(echo "${_mount_point}" | sed 's#/#_#g')"
   local _test_dir="${_mount_point}/.perftest_fio_rand_${_safe_mount_point}_$$"
-
   mkdir -p "${_test_dir}" || return 1
-
   fio \
     --name=randreadwrite \
     --directory="${_test_dir}" \
@@ -257,7 +262,6 @@ _run_fio_rand_test() {
     --group_reporting \
     --output-format=json \
     > "${_output_file}" 2>/dev/null
-
   rm -rf "${_test_dir}" >/dev/null 2>&1
 }
 
@@ -270,9 +274,7 @@ _run_fio_seq_read_test() {
   local _safe_mount_point
   _safe_mount_point="$(echo "${_mount_point}" | sed 's#/#_#g')"
   local _test_dir="${_mount_point}/.perftest_fio_seqread_${_safe_mount_point}_$$"
-
   mkdir -p "${_test_dir}" || return 1
-
   fio \
     --name=seqread \
     --directory="${_test_dir}" \
@@ -287,7 +289,6 @@ _run_fio_seq_read_test() {
     --group_reporting \
     --output-format=json \
     > "${_output_file}" 2>/dev/null
-
   rm -rf "${_test_dir}" >/dev/null 2>&1
 }
 
@@ -300,9 +301,7 @@ _run_fio_seq_write_test() {
   local _safe_mount_point
   _safe_mount_point="$(echo "${_mount_point}" | sed 's#/#_#g')"
   local _test_dir="${_mount_point}/.perftest_fio_seqwrite_${_safe_mount_point}_$$"
-
   mkdir -p "${_test_dir}" || return 1
-
   fio \
     --name=seqwrite \
     --directory="${_test_dir}" \
@@ -317,7 +316,6 @@ _run_fio_seq_write_test() {
     --group_reporting \
     --output-format=json \
     > "${_output_file}" 2>/dev/null
-
   rm -rf "${_test_dir}" >/dev/null 2>&1
 }
 
@@ -326,11 +324,10 @@ _parse_fio_json() {
   # $1 = json file
   local _json_file="$1"
   local _read_iops _write_iops _read_bw_kib _write_bw_kib
-
   _read_iops="$(jq -r '[.jobs[].read.iops] | add' "${_json_file}" 2>/dev/null)"
   _write_iops="$(jq -r '[.jobs[].write.iops] | add' "${_json_file}" 2>/dev/null)"
-  _read_bw_kib="$(jq -r '[.jobs[].read.bw] | add' "${_json_file}" 2>/dev/null)"     # KiB/s
-  _write_bw_kib="$(jq -r '[.jobs[].write.bw] | add' "${_json_file}" 2>/dev/null)"   # KiB/s
+  _read_bw_kib="$(jq -r '[.jobs[].read.bw] | add' "${_json_file}" 2>/dev/null)" # KiB/s
+  _write_bw_kib="$(jq -r '[.jobs[].write.bw] | add' "${_json_file}" 2>/dev/null)" # KiB/s
 
   local _read_clat_ns_mean _write_clat_ns_mean
   _read_clat_ns_mean="$(jq -r '([.jobs[].read.clat_ns.mean?] | map(select(.!=null)) | (if length>0 then (add/length) else empty end))' "${_json_file}" 2>/dev/null)"
@@ -344,7 +341,6 @@ _parse_fio_json() {
     local _read_clat_usec_mean _write_clat_usec_mean
     _read_clat_usec_mean="$(jq -r '([.jobs[].read.clat.mean?] | map(select(.!=null)) | (if length>0 then (add/length) else empty end))' "${_json_file}" 2>/dev/null)"
     _write_clat_usec_mean="$(jq -r '([.jobs[].write.clat.mean?] | map(select(.!=null)) | (if length>0 then (add/length) else empty end))' "${_json_file}" 2>/dev/null)"
-
     _read_lat_ms="$(awk -v us="${_read_clat_usec_mean:-0}" 'BEGIN{printf "%.2f", us/1000.0}')"
     _write_lat_ms="$(awk -v us="${_write_clat_usec_mean:-0}" 'BEGIN{printf "%.2f", us/1000.0}')"
   fi
@@ -367,35 +363,28 @@ _run_metadata_test() {
   # $2 = output var name (global)
   local _mount_point="$1"
   local _outvar="$2"
-
   local _safe_mount_point
   _safe_mount_point="$(echo "${_mount_point}" | sed 's#/#_#g')"
   local _test_dir="${_mount_point}/.perftest_meta_${_safe_mount_point}_$$"
-
   mkdir -p "${_test_dir}" || { eval "${_outvar}=\"ERROR\""; return; }
 
   local _count="${_METADATA_FILE_COUNT}"
   local _start _end _elapsed _ops _ops_per_sec
 
   _start="$(date +%s.%N)"
-
   local _i
   for _i in $(seq 1 "${_count}"); do
     echo "x" > "${_test_dir}/file_${_i}" || break
   done
-
   for _i in $(seq 1 "${_count}"); do
     cat "${_test_dir}/file_${_i}" >/dev/null 2>&1 || break
   done
-
   rm -f "${_test_dir}"/file_* >/dev/null 2>&1
   rmdir "${_test_dir}" >/dev/null 2>&1 || true
-
   _end="$(date +%s.%N)"
+
   _elapsed="$(echo "${_end} - ${_start}" | bc -l 2>/dev/null || echo 0)"
-
   _ops=$((_count * 2))
-
   if [ "${_elapsed}" != "0" ]; then
     _ops_per_sec="$(echo "${_ops} / ${_elapsed}" | bc -l 2>/dev/null || echo 0)"
     eval "${_outvar}=\"$(printf '%.2f' "${_ops_per_sec}") ops/s\""
@@ -412,11 +401,9 @@ _run_sysbench_cpu() {
   local _label="$2"
   local _test
   _test="$(sysbench cpu --threads="${_threads}" --time="${_SYSBENCH_CPU_TIME}" run 2>/dev/null)"
-
   local _events _lat
   _events="$(echo "${_test}" | awk '/events per second:/ {print $4}')"
   _lat="$(echo "${_test}" | awk '/avg:/ {print $2}')"
-
   eval "_cpu_events_${_label}=\"${_events}\""
   eval "_cpu_latency_${_label}=\"${_lat}\""
 }
@@ -449,12 +436,11 @@ EOF
   local _runs="${_PHP_BENCH_RUNS}"
   local _times=()
   local _i
-
-  echo "Running PHP single-thread benchmark (${_runs} runs, iterations=${_PHP_BENCH_ITERATIONS})..."
+  _log "Running PHP single-thread benchmark (${_runs} runs, iterations=${_PHP_BENCH_ITERATIONS})..."
   for _i in $(seq 1 "${_runs}"); do
     local _t
     _t="$(PHP_BENCH_ITERATIONS="${_PHP_BENCH_ITERATIONS}" php "${_script}" 2>/dev/null || echo 0)"
-    echo "  Run ${_i}: ${_t} seconds"
+    _log " Run ${_i}: ${_t} seconds"
     _times+=("${_t}")
   done
 
@@ -477,15 +463,13 @@ EOF
     _conc="${_nproc}"
   fi
 
-  echo "Running PHP concurrent benchmark (${_conc} processes, iterations=${_PHP_BENCH_ITERATIONS} each)..."
+  _log "Running PHP concurrent benchmark (${_conc} processes, iterations=${_PHP_BENCH_ITERATIONS} each)..."
   local _start _end _elapsed
   _start="$(date +%s.%N)"
-
   for _i in $(seq 1 "${_conc}"); do
     PHP_BENCH_ITERATIONS="${_PHP_BENCH_ITERATIONS}" php "${_script}" >/dev/null 2>&1 &
   done
   wait
-
   _end="$(date +%s.%N)"
   _elapsed="$(echo "${_end} - ${_start}" | bc -l 2>/dev/null || echo 0)"
   _php_concurrency_wall="$(printf '%.6f' "${_elapsed}")"
@@ -504,8 +488,214 @@ EOF
 }
 
 # ----
+# BOA-specific grading helpers
+# ----
+_num_or_empty() {
+  printf '%s' "$1" | grep -Eo '^[0-9]+(\.[0-9]+)?' || true
+}
+
+_boa_grade_mem_bw() {
+  # input: numeric MiB/s
+  awk -v v="$1" 'BEGIN{
+    if (v>=15000) print "excellent";
+    else if (v>=10000) print "good";
+    else if (v>=7000) print "ok";
+    else print "poor";
+  }'
+}
+
+_boa_grade_cpu_steal() {
+  # input: percent
+  awk -v s="$1" 'BEGIN{
+    if (s=="" || s=="N/A") print "unknown";
+    else if (s<1) print "excellent";
+    else if (s<3) print "good";
+    else if (s<7) print "warning";
+    else print "bad";
+  }'
+}
+
+_boa_grade_disk_latency() {
+  # input: ms (random 4k read latency)
+  awk -v lat="$1" 'BEGIN{
+    if (lat=="" || lat=="N/A") print "unknown";
+    else if (lat<1) print "excellent";
+    else if (lat<3) print "good";
+    else if (lat<10) print "ok";
+    else print "poor";
+  }'
+}
+
+_print_compact_summary() {
+  echo " ============================================================================="
+  echo " ==                 BOA Performance Test - Compact Summary                  =="
+  echo " ==      Priority: Memory > CPU > Disk > Network (for Drupal caching)       =="
+  echo " ============================================================================="
+  echo ""
+  echo "Host: ${_hostname}"
+  echo "CPU:  ${_cpu_info}"
+  echo "vCPUs: ${_cpu_cores}"
+
+  # Get total RAM
+  local _total_ram_mb
+  _total_ram_mb="$(free -m | awk '/^Mem:/ {print $2}')"
+  echo "RAM:  ${_total_ram_mb} MB"
+  echo ""
+
+  # Extract numeric values
+  local mem_mibps mem_lat cpu_steal st_eps mt_eps aes_mibps net_mibps
+  local rand_read_lat rand_write_lat rand_read_iops rand_write_iops
+
+  mem_mibps="$(_num_or_empty "$(echo "${_mem_transfer_speed}" | awk '{print $1}')")"
+  mem_lat="$(_num_or_empty "${_mem_latency}")"
+  cpu_steal="${_cpu_steal_mt}"
+  st_eps="$(_num_or_empty "${_cpu_events_ST}")"
+  mt_eps="$(_num_or_empty "${_cpu_events_MT_NPROC}")"
+  aes_mibps="$(_num_or_empty "$(echo "${_aes_mibps}" | awk '{print $1}')")"
+  net_mibps="$(_num_or_empty "$(echo "${_net_cachefly}" | awk '{print $1}')")"
+
+  rand_read_lat="$(_num_or_empty "$(echo "${_root_rand_lat_read}" | awk '{print $1}')")"
+  rand_write_lat="$(_num_or_empty "$(echo "${_root_rand_lat_write}" | awk '{print $1}')")"
+
+  # Calculate grades
+  local mem_grade steal_grade disk_grade
+  mem_grade="$(_boa_grade_mem_bw "${mem_mibps:-0}")"
+  steal_grade="$(_boa_grade_cpu_steal "${cpu_steal}")"
+  disk_grade="$(_boa_grade_disk_latency "${rand_read_lat}")"
+
+  echo " ============================================================================="
+  echo " == 1. MEMORY (Critical for APC/Valkey/OPcache + Nginx microcaching)        =="
+  echo " ============================================================================="
+  printf "   Bandwidth:  %-20s Grade: %-10s\n" "${_mem_transfer_speed}" "[${mem_grade}]"
+  printf "   Latency:    %-20s\n" "${_mem_latency} ms"
+  echo ""
+
+  if [ "${mem_grade}" = "poor" ]; then
+    echo "   ⚠️  Low memory bandwidth may limit BOA caching effectiveness under load."
+  elif [ "${mem_grade}" = "excellent" ]; then
+    echo "   ✓  Excellent memory performance for in-memory caching workloads."
+  fi
+  echo ""
+
+  echo " ============================================================================="
+  echo " == 2. CPU (Drupal/PHP runtime; watch steal on oversold nodes)              =="
+  echo " ============================================================================="
+  printf "   Single-thread:  %-15s events/sec\n" "${_cpu_events_ST}"
+  printf "   Multi-thread:   %-15s events/sec (${_cpu_cores} vCPUs)\n" "${_cpu_events_MT_NPROC}"
+  printf "   CPU Steal:      %-15s Grade: %-10s\n" "${cpu_steal:-N/A}%" "[${steal_grade}]"
+  printf "   AES Throughput: %-15s (crypto/compression indicator)\n" "${_aes_mibps}"
+  echo ""
+
+  if [ -n "${cpu_steal}" ] && [ "${cpu_steal}" != "N/A" ]; then
+    if awk -v s="${cpu_steal}" 'BEGIN{exit !(s>=7)}' 2>/dev/null; then
+      echo "   ⚠️  HIGH CPU steal detected! Expect inconsistent PHP/queue latency."
+      echo "       This host is likely oversold. Consider a different provider."
+    elif awk -v s="${cpu_steal}" 'BEGIN{exit !(s>=3)}' 2>/dev/null; then
+      echo "   ⚠️  Elevated CPU steal. May see occasional latency spikes under load."
+    elif awk -v s="${cpu_steal}" 'BEGIN{exit !(s<1)}' 2>/dev/null; then
+      echo "   ✓  Excellent CPU steal - minimal noisy neighbor impact."
+    fi
+  fi
+  echo ""
+
+  echo " ============================================================================="
+  echo " == 3. DISK (Less critical in BOA, but matters for deploys/logs/DB)         =="
+  echo " ============================================================================="
+  printf "   ioping seek:        %s\n" "${_ioping_seek}"
+  printf "   ioping seq read:    %s\n" "${_ioping_seqread}"
+  echo ""
+  printf "   Random 4K (root):   Read: %-12s @ %-10s Grade: [%-8s]\n" \
+    "${_root_rand_bw_read}" "${_root_rand_lat_read}" "${disk_grade}"
+  printf "                       Write: %-12s @ %-10s\n" \
+    "${_root_rand_bw_write}" "${_root_rand_lat_write}"
+  echo ""
+  printf "   Sequential (root):  Read: %-12s Write: %-12s\n" \
+    "${_root_seqread_bw_read}" "${_root_seqwrite_bw_write}"
+  printf "   Metadata ops:       %s\n" "${_root_meta_ops}"
+  echo ""
+
+  if [ "${disk_grade}" = "poor" ]; then
+    echo "   ⚠️  High disk latency. May slow down deployments and DB checkpoints."
+  elif [ "${disk_grade}" = "excellent" ]; then
+    echo "   ✓  Excellent disk latency for metadata-heavy operations."
+  fi
+  echo ""
+
+  echo " ============================================================================="
+  echo " == 4. NETWORK (Sanity check; less critical for BOA)                        =="
+  echo " ============================================================================="
+  printf "   Public IPv4:    %s\n" "${_net_ipv4}"
+  printf "   Cachefly CDN:   %s\n" "${_net_cachefly}"
+  echo ""
+
+  if [ -n "${net_mibps}" ] && awk -v n="${net_mibps}" 'BEGIN{exit !(n<50)}' 2>/dev/null; then
+    echo "   ⚠️  Low network throughput. May affect external API calls and updates."
+  fi
+  echo ""
+
+  echo " ============================================================================="
+  echo " == BOA SUITABILITY SUMMARY                                                 =="
+  echo " ============================================================================="
+
+  local _issues=0
+  local _warnings=0
+
+  if [ "${mem_grade}" = "poor" ]; then
+    echo "   ❌ Memory bandwidth is below recommended threshold for BOA"
+    _issues=$((_issues + 1))
+  elif [ "${mem_grade}" = "ok" ]; then
+    echo "   ⚠️  Memory bandwidth is acceptable but not optimal"
+    _warnings=$((_warnings + 1))
+  fi
+
+  if [ "${steal_grade}" = "bad" ]; then
+    echo "   ❌ CPU steal is critically high - NOT recommended for production BOA"
+    _issues=$((_issues + 1))
+  elif [ "${steal_grade}" = "warning" ]; then
+    echo "   ⚠️  CPU steal is elevated - may cause performance inconsistency"
+    _warnings=$((_warnings + 1))
+  fi
+
+  if [ "${disk_grade}" = "poor" ]; then
+    echo "   ⚠️  Disk latency is high - may slow deployments"
+    _warnings=$((_warnings + 1))
+  fi
+
+  if [ "${_issues}" -eq 0 ] && [ "${_warnings}" -eq 0 ]; then
+    echo "   ✓  This host appears well-suited for BOA stack deployment"
+    echo "   ✓  Memory and CPU performance meet recommended thresholds"
+  elif [ "${_issues}" -eq 0 ]; then
+    echo "   ⚠️  This host is acceptable for BOA but has ${_warnings} warning(s)"
+    echo "      Consider testing under load before production deployment"
+  else
+    echo "   ❌ This host has ${_issues} critical issue(s) for BOA deployment"
+    echo "      Consider a different provider or instance type"
+  fi
+
+  echo ""
+  echo " ============================================================================="
+  echo ""
+  echo "For detailed metrics, run: perftest --verbose"
+  echo ""
+}
+
+# ----
 # Main
 # ----
+
+# Parse arguments
+for arg in "$@"; do
+  case "$arg" in
+    --compact|--quiet) _VERBOSE=0; _COMPACT=1 ;;
+    --verbose) _VERBOSE=1; _COMPACT=0 ;;
+    -h|--help) _usage; exit 0 ;;
+    *)
+      echo "Unknown option: $arg"
+      _usage
+      exit 1
+      ;;
+  esac
+done
 
 _check_root
 
@@ -517,12 +707,12 @@ _check_and_install_package "curl"
 _check_and_install_package "openssl"
 _check_and_install_package "fio"
 _check_and_install_package "jq"
-_check_and_install_package "sysstat"  # mpstat
+_check_and_install_package "sysstat" # mpstat
 _check_and_install_package "bc"
 _ensure_sysbench
 
 echo ""
-echo "Starting performance tests..."
+_log "Starting performance tests..."
 echo ""
 
 # Basic system info
@@ -530,25 +720,25 @@ _hostname="$(hostname)"
 _cpu_info="$(grep -m1 'model name' /proc/cpuinfo | cut -d: -f2- | sed 's/^ *//')"
 _cpu_cores="$(nproc 2>/dev/null || echo N/A)"
 
-echo "Host:      ${_hostname}"
-echo "CPU:       ${_cpu_info}"
-echo "vCPUs:     ${_cpu_cores}"
-echo ""
+if [ "${_VERBOSE}" -eq 1 ]; then
+  echo "Host: ${_hostname}"
+  echo "CPU: ${_cpu_info}"
+  echo "vCPUs: ${_cpu_cores}"
+  echo ""
+  echo "Block devices (lsblk):"
+  lsblk -o NAME,TYPE,SIZE,ROTA | sed 's/^/  /'
+  echo ""
+fi
 
-echo "Block devices (lsblk):"
-lsblk -o NAME,TYPE,SIZE,ROTA | sed 's/^/  /'
-echo ""
-
-if command -v php >/dev/null 2>&1; then
+if command -v php >/dev/null 2>&1 && [ "${_VERBOSE}" -eq 1 ]; then
   echo "PHP version:"
   php -v | sed 's/^/  /'
   echo ""
 fi
 
 # CPU Performance Tests
-echo "Running CPU performance tests with sysbench..."
-
-_cpu_steal_mt="$(_measure_cpu_steal 1)"  # initial check
+_log "Running CPU performance tests with sysbench..."
+_cpu_steal_mt="$(_measure_cpu_steal 1)" # initial check
 
 # Multi-threaded: nproc
 if command -v mpstat >/dev/null 2>&1; then
@@ -571,29 +761,29 @@ _run_sysbench_cpu 1 "ST"
 _run_sysbench_cpu 4 "MT4"
 
 # Memory Performance Test
-echo "Running Memory performance test with sysbench..."
+_log "Running Memory performance test with sysbench..."
 _mem_test="$(sysbench memory --threads="$(nproc)" --time="${_SYSBENCH_MEM_TIME}" run 2>/dev/null)"
 _mem_transfer_speed="$(echo "${_mem_test}" | awk '/transferred/ {gsub("[()]","",$(NF-1)); print $(NF-1)" "$(NF)}')"
 _mem_latency="$(echo "${_mem_test}" | awk '/avg:/ {print $2}')"
 
 # AES throughput (nench-inspired)
-echo "Running AES throughput test (openssl enc, ${_AES_TEST_MIB} MiB)..."
+_log "Running AES throughput test (openssl enc, ${_AES_TEST_MIB} MiB)..."
 _run_aes_throughput_test
 
 # PHP Performance Tests (single + concurrent)
-echo "Running PHP performance tests..."
+_log "Running PHP performance tests..."
 _run_php_benchmarks
 
 # Disk I/O Performance Tests
-echo "Detecting mounted filesystems to test (root + real mounted partitions; excluding /boot*)..."
+_log "Detecting mounted filesystems to test (root + real mounted partitions; excluding /boot*)..."
 mapfile -t _test_mounts < <(_get_test_mounts)
 
 # ioping latency (nench-inspired)
-echo "Running ioping quick latency checks (${_IOPING_SECONDS}s)..."
+_log "Running ioping quick latency checks (${_IOPING_SECONDS}s)..."
 _run_ioping_quick
 
 # IPv4 network sanity check (nench-inspired, single endpoint)
-echo "Running IPv4 network check (Cachefly, ${_NET_TIMEOUT}s timeout)..."
+_log "Running IPv4 network check (Cachefly, ${_NET_TIMEOUT}s timeout)..."
 _run_ipv4_net_check
 
 declare -A _fio_rand_iops_read
@@ -620,7 +810,7 @@ _root_seqwrite_lat_write=""
 _root_meta_ops=""
 
 for _mount_point in "${_test_mounts[@]}"; do
-  echo "Running Disk I/O tests on ${_mount_point}..."
+  _log "Running Disk I/O tests on ${_mount_point}..."
   _safe_mount_point="$(echo "${_mount_point}" | sed 's#/#_#g')"
 
   # Random 4k read/write
@@ -628,11 +818,11 @@ for _mount_point in "${_test_mounts[@]}"; do
   if _run_fio_rand_test "${_mount_point}" "${_rand_output}"; then
     while IFS="=" read -r _k _v; do
       case "${_k}" in
-        READ_IOPS)    _fio_rand_iops_read["${_mount_point}"]="${_v}" ;;
-        WRITE_IOPS)   _fio_rand_iops_write["${_mount_point}"]="${_v}" ;;
-        READ_BW_MB)   _fio_rand_bw_read["${_mount_point}"]="${_v} MB/s" ;;
-        WRITE_BW_MB)  _fio_rand_bw_write["${_mount_point}"]="${_v} MB/s" ;;
-        READ_LAT_MS)  _fio_rand_latency_read["${_mount_point}"]="${_v} ms" ;;
+        READ_IOPS) _fio_rand_iops_read["${_mount_point}"]="${_v}" ;;
+        WRITE_IOPS) _fio_rand_iops_write["${_mount_point}"]="${_v}" ;;
+        READ_BW_MB) _fio_rand_bw_read["${_mount_point}"]="${_v} MB/s" ;;
+        WRITE_BW_MB) _fio_rand_bw_write["${_mount_point}"]="${_v} MB/s" ;;
+        READ_LAT_MS) _fio_rand_latency_read["${_mount_point}"]="${_v} ms" ;;
         WRITE_LAT_MS) _fio_rand_latency_write["${_mount_point}"]="${_v} ms" ;;
       esac
     done < <(_parse_fio_json "${_rand_output}")
@@ -651,7 +841,7 @@ for _mount_point in "${_test_mounts[@]}"; do
   if _run_fio_seq_read_test "${_mount_point}" "${_seqread_output}"; then
     while IFS="=" read -r _k _v; do
       case "${_k}" in
-        READ_BW_MB)  _fio_seqread_bw_read["${_mount_point}"]="${_v} MB/s" ;;
+        READ_BW_MB) _fio_seqread_bw_read["${_mount_point}"]="${_v} MB/s" ;;
         READ_LAT_MS) _fio_seqread_latency_read["${_mount_point}"]="${_v} ms" ;;
       esac
     done < <(_parse_fio_json "${_seqread_output}")
@@ -666,7 +856,7 @@ for _mount_point in "${_test_mounts[@]}"; do
   if _run_fio_seq_write_test "${_mount_point}" "${_seqwrite_output}"; then
     while IFS="=" read -r _k _v; do
       case "${_k}" in
-        WRITE_BW_MB)  _fio_seqwrite_bw_write["${_mount_point}"]="${_v} MB/s" ;;
+        WRITE_BW_MB) _fio_seqwrite_bw_write["${_mount_point}"]="${_v} MB/s" ;;
         WRITE_LAT_MS) _fio_seqwrite_latency_write["${_mount_point}"]="${_v} ms" ;;
       esac
     done < <(_parse_fio_json "${_seqwrite_output}")
@@ -696,98 +886,96 @@ done
 # ----
 # Display Results
 # ----
-
-echo ""
-echo "==== Performance Test Summary ===="
 echo ""
 
-echo "System:"
-echo " - Hostname:        ${_hostname}"
-echo " - CPU:             ${_cpu_info}"
-echo " - vCPUs:           ${_cpu_cores}"
-
-echo ""
-echo "CPU Performance (Multi-threaded, nproc=$(nproc)):"
-echo " - Events per Second: ${_cpu_events_MT_NPROC}"
-echo " - Average Latency:   ${_cpu_latency_MT_NPROC} ms"
-if [ -n "${_cpu_steal_mt}" ]; then
-  echo " - Avg CPU Steal:     ${_cpu_steal_mt} %"
-fi
-
-echo ""
-echo "CPU Performance (4 threads):"
-echo " - Events per Second: ${_cpu_events_MT4}"
-echo " - Average Latency:   ${_cpu_latency_MT4} ms"
-
-echo ""
-echo "CPU Performance (Single-threaded):"
-echo " - Events per Second: ${_cpu_events_ST}"
-echo " - Average Latency:   ${_cpu_latency_ST} ms"
-
-echo ""
-echo "Memory Performance:"
-echo " - Transfer Speed:    ${_mem_transfer_speed}"
-echo " - Average Latency:   ${_mem_latency} ms"
-
-echo ""
-echo "AES Performance (openssl enc):"
-echo " - Time:              ${_aes_seconds} s"
-echo " - Throughput:        ${_aes_mibps}"
-
-echo ""
-echo "Disk Latency (ioping):"
-echo " - Seek rate:         ${_ioping_seek}"
-echo " - Sequential read:   ${_ioping_seqread}"
-
-echo ""
-echo "Network (IPv4 single-stream):"
-echo " - Public IPv4:       ${_net_ipv4}"
-echo " - Cachefly CDN:      ${_net_cachefly}"
-
-echo ""
-echo "PHP Performance (CLI Micro-benchmark):"
-if command -v php >/dev/null 2>&1; then
-  echo " - Runs (seconds):    ${_php_time_runs}"
-  echo " - Median Time:       ${_php_time_median} seconds"
-  echo " - Concurrent Procs:  $( [ "$(nproc)" -gt "${_PHP_BENCH_CONCURRENCY_MAX}" ] && echo "${_PHP_BENCH_CONCURRENCY_MAX}" || nproc )"
-  echo " - Wall Time (conc.): ${_php_concurrency_wall} seconds"
-  echo " - Throughput (conc.):${_php_concurrency_throughput}"
+if [ "${_COMPACT}" -eq 1 ]; then
+  [ -x "/opt/local/bin/screenfetch" ] && bash /opt/local/bin/screenfetch
+  echo ""
+  _print_compact_summary
 else
-  echo " - PHP not installed"
+  [ -x "/opt/local/bin/screenfetch" ] && bash /opt/local/bin/screenfetch
+  echo ""
+  echo "==== Performance Test Summary ===="
+  echo ""
+  echo "System:"
+  echo "  - Hostname: ${_hostname}"
+  echo "  - CPU: ${_cpu_info}"
+  echo "  - vCPUs: ${_cpu_cores}"
+  echo ""
+  echo "CPU Performance (Multi-threaded, nproc=$(nproc)):"
+  echo "  - Events per Second: ${_cpu_events_MT_NPROC}"
+  echo "  - Average Latency: ${_cpu_latency_MT_NPROC} ms"
+  if [ -n "${_cpu_steal_mt}" ]; then
+    echo "  - Avg CPU Steal: ${_cpu_steal_mt} %"
+  fi
+  echo ""
+  echo "CPU Performance (4 threads):"
+  echo "  - Events per Second: ${_cpu_events_MT4}"
+  echo "  - Average Latency: ${_cpu_latency_MT4} ms"
+  echo ""
+  echo "CPU Performance (Single-threaded):"
+  echo "  - Events per Second: ${_cpu_events_ST}"
+  echo "  - Average Latency: ${_cpu_latency_ST} ms"
+  echo ""
+  echo "Memory Performance:"
+  echo "  - Transfer Speed: ${_mem_transfer_speed}"
+  echo "  - Average Latency: ${_mem_latency} ms"
+  echo ""
+  echo "AES Performance (openssl enc):"
+  echo "  - Time: ${_aes_seconds} s"
+  echo "  - Throughput: ${_aes_mibps}"
+  echo ""
+  echo "Disk Latency (ioping):"
+  echo "  - Seek rate: ${_ioping_seek}"
+  echo "  - Sequential read: ${_ioping_seqread}"
+  echo ""
+  echo "Network (IPv4 single-stream):"
+  echo "  - Public IPv4: ${_net_ipv4}"
+  echo "  - Cachefly CDN: ${_net_cachefly}"
+  echo ""
+  echo "PHP Performance (CLI Micro-benchmark):"
+  if command -v php >/dev/null 2>&1; then
+    echo "  - Runs (seconds): ${_php_time_runs}"
+    echo "  - Median Time: ${_php_time_median} seconds"
+    echo "  - Concurrent Procs: $( [ "$(nproc)" -gt "${_PHP_BENCH_CONCURRENCY_MAX}" ] && echo "${_PHP_BENCH_CONCURRENCY_MAX}" || nproc )"
+    echo "  - Wall Time (conc.): ${_php_concurrency_wall} seconds"
+    echo "  - Throughput (conc.): ${_php_concurrency_throughput}"
+  else
+    echo "  - PHP not installed"
+  fi
+
+  for _mount_point in "${_test_mounts[@]}"; do
+    echo ""
+    echo "Disk I/O Performance on ${_mount_point}:"
+    echo ""
+    echo "  Random 4k randrw:"
+    echo "    - Read IOPS: ${_fio_rand_iops_read["${_mount_point}"]}"
+    echo "    - Write IOPS: ${_fio_rand_iops_write["${_mount_point}"]}"
+    echo "    - Read Bandwidth: ${_fio_rand_bw_read["${_mount_point}"]}"
+    echo "    - Write Bandwidth: ${_fio_rand_bw_write["${_mount_point}"]}"
+    echo "    - Avg Read Latency: ${_fio_rand_latency_read["${_mount_point}"]}"
+    echo "    - Avg Write Latency: ${_fio_rand_latency_write["${_mount_point}"]}"
+    echo ""
+    echo "  Sequential Read (128k):"
+    echo "    - Read Bandwidth: ${_fio_seqread_bw_read["${_mount_point}"]}"
+    echo "    - Avg Read Latency: ${_fio_seqread_latency_read["${_mount_point}"]}"
+    echo ""
+    echo "  Sequential Write (128k):"
+    echo "    - Write Bandwidth: ${_fio_seqwrite_bw_write["${_mount_point}"]}"
+    echo "    - Avg Write Latency: ${_fio_seqwrite_latency_write["${_mount_point}"]}"
+    echo ""
+    echo "  Metadata (small file create+read+delete):"
+    echo "    - Ops per second: ${_meta_ops["${_mount_point}"]}"
+  done
+
+  echo ""
+  echo "Performance tests completed."
+  echo ""
 fi
-
-for _mount_point in "${_test_mounts[@]}"; do
-  echo ""
-  echo "Disk I/O Performance on ${_mount_point}:"
-  echo ""
-  echo "  Random 4k randrw:"
-  echo "   - Read IOPS:         ${_fio_rand_iops_read["${_mount_point}"]}"
-  echo "   - Write IOPS:        ${_fio_rand_iops_write["${_mount_point}"]}"
-  echo "   - Read Bandwidth:    ${_fio_rand_bw_read["${_mount_point}"]}"
-  echo "   - Write Bandwidth:   ${_fio_rand_bw_write["${_mount_point}"]}"
-  echo "   - Avg Read Latency:  ${_fio_rand_latency_read["${_mount_point}"]}"
-  echo "   - Avg Write Latency: ${_fio_rand_latency_write["${_mount_point}"]}"
-  echo ""
-  echo "  Sequential Read (128k):"
-  echo "   - Read Bandwidth:    ${_fio_seqread_bw_read["${_mount_point}"]}"
-  echo "   - Avg Read Latency:  ${_fio_seqread_latency_read["${_mount_point}"]}"
-  echo ""
-  echo "  Sequential Write (128k):"
-  echo "   - Write Bandwidth:   ${_fio_seqwrite_bw_write["${_mount_point}"]}"
-  echo "   - Avg Write Latency: ${_fio_seqwrite_latency_write["${_mount_point}"]}"
-  echo ""
-  echo "  Metadata (small file create+read+delete):"
-  echo "   - Ops per second:    ${_meta_ops["${_mount_point}"]}"
-done
-
-echo ""
-echo "Performance tests completed."
-echo ""
 
 # ----
 # CSV summary line (focus on root mount) for easy ingest
 # ----
-
 # Fields (comma-separated, no header):
 # hostname,cpu_model,vcpus,cpu_mt_eps,cpu_4t_eps,cpu_st_eps,mem_bw,php_median_s,php_conc_thr_ops,
 # root_rand_bw_read,root_rand_bw_write,root_rand_lat_r,root_rand_lat_w,
