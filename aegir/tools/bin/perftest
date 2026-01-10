@@ -5,7 +5,7 @@ export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 
 # Tunables
-_PHP_BENCH_ITERATIONS=500000 # per process
+_PHP_BENCH_ITERATIONS=50000 # per process
 _PHP_BENCH_RUNS=5 # single-thread runs for median
 _PHP_BENCH_CONCURRENCY_MAX=8 # cap on concurrent PHP workers
 _SYSBENCH_CPU_TIME=30 # seconds
@@ -158,8 +158,8 @@ _run_aes_throughput_test() {
   # Use fixed key/iv to avoid KDF overhead; measures raw AES speed better
   dd if=/dev/zero bs=1M count="${_AES_TEST_MIB}" 2>/dev/null \
     | openssl enc -aes-256-cbc \
-      -K 0000000000000000000000000000000000000000000000000000000000000000 \
-      -iv 00000000000000000000000000000000 \
+      -K 0000 \
+      -iv 0000 \
       -nosalt 2>/dev/null \
     > /dev/null
   end="$(date +%s.%N)"
@@ -335,8 +335,8 @@ _parse_fio_json() {
 
   local _read_lat_ms _write_lat_ms
   if [ -n "${_read_clat_ns_mean}" ] && [ -n "${_write_clat_ns_mean}" ]; then
-    _read_lat_ms="$(awk -v ns="${_read_clat_ns_mean}" 'BEGIN{printf "%.2f", ns/1000000.0}')"
-    _write_lat_ms="$(awk -v ns="${_write_clat_ns_mean}" 'BEGIN{printf "%.2f", ns/1000000.0}')"
+    _read_lat_ms="$(awk -v ns="${_read_clat_ns_mean}" 'BEGIN{printf "%.2f", ns/10000.0}')"
+    _write_lat_ms="$(awk -v ns="${_write_clat_ns_mean}" 'BEGIN{printf "%.2f", ns/10000.0}')"
   else
     local _read_clat_usec_mean _write_clat_usec_mean
     _read_clat_usec_mean="$(jq -r '([.jobs[].read.clat.mean?] | map(select(.!=null)) | (if length>0 then (add/length) else empty end))' "${_json_file}" 2>/dev/null)"
@@ -421,7 +421,7 @@ _run_php_benchmarks() {
   local _script="/tmp/phpbench.php"
   cat << 'EOF' > "${_script}"
 <?php
-$iterations = getenv('PHP_BENCH_ITERATIONS') ? intval(getenv('PHP_BENCH_ITERATIONS')) : 500000;
+$iterations = getenv('PHP_BENCH_ITERATIONS') ? intval(getenv('PHP_BENCH_ITERATIONS')) : 50000;
 $start = microtime(true);
 $acc = 0;
 for ($i = 0; $i < $iterations; $i++) {
@@ -497,9 +497,9 @@ _num_or_empty() {
 _boa_grade_mem_bw() {
   # input: numeric MiB/s
   awk -v v="$1" 'BEGIN{
-    if (v>=15000) print "excellent";
-    else if (v>=10000) print "good";
-    else if (v>=7000) print "ok";
+    if (v>=9000) print "excellent";
+    else if (v>=6000) print "good";
+    else if (v>=3000) print "ok";
     else print "poor";
   }'
 }
@@ -523,6 +523,139 @@ _boa_grade_disk_latency() {
     else if (lat<3) print "good";
     else if (lat<10) print "ok";
     else print "poor";
+  }'
+}
+
+_boa_grade_cpu_st() {
+  # input: events per second (single-thread)
+  awk -v st="$1" 'BEGIN{
+    if (st>=2200) print "excellent";
+    else if (st>=1500) print "good";
+    else if (st>=900) print "ok";
+    else print "poor";
+  }'
+}
+
+_boa_grade_cpu_mt() {
+  # input: events per second (multi-thread)
+  awk -v mt="$1" 'BEGIN{
+    if (mt>=20000) print "excellent";
+    else if (mt>=12000) print "good";
+    else if (mt>=7000) print "ok";
+    else print "poor";
+  }'
+}
+
+_boa_grade_cpu_final() {
+  # Aggregate CPU grade: ST (dominant) + MT boost + steal penalty
+  local st="$1" mt="$2" steal="$3"
+
+  # Ensure python3 is available
+  if ! command -v python3 >/dev/null 2>&1; then
+    echo "ok"
+    return
+  fi
+
+  python3 - <<'PY'
+import sys
+st=float(sys.argv[1]) if sys.argv[1] else 0.0
+mt=float(sys.argv[2]) if sys.argv[2] else 0.0
+steal=float(sys.argv[3]) if sys.argv[3] else 0.0
+
+def grade_from_st(st):
+  if st>=2200: return 4
+  if st>=1500: return 3
+  if st>=900:  return 2
+  return 1
+
+def grade_from_mt(mt):
+  if mt>=20000: return 4
+  if mt>=12000: return 3
+  if mt>=7000:  return 2
+  return 1
+
+g = grade_from_st(st)
+
+# MT can move the needle by at most +1
+g_mt = grade_from_mt(mt)
+if g_mt >= g+2:
+  g += 1
+elif g_mt >= g+1:
+  g += 0.5
+
+# Steal penalties (hard truth for BOA stability)
+if steal >= 7:
+  g -= 2
+elif steal >= 3:
+  g -= 1
+elif steal >= 1:
+  g -= 0.25
+
+# Clamp
+if g < 1: g = 1
+if g > 4: g = 4
+
+label = {1:"poor",2:"ok",3:"good",4:"excellent"}
+# Round to nearest half-step then map down
+import math
+g_round = round(g*2)/2
+# Convert half-step to label by floor (conservative)
+print(label[int(math.floor(g_round))])
+PY
+}
+
+_boa_grade_disk_final() {
+  # Aggregate disk grade based on random latency + metadata ops
+  local rand_lat="$1" meta_ops="$2"
+
+  # Extract numeric values
+  local lat_num meta_num
+  lat_num="$(_num_or_empty "$rand_lat")"
+  meta_num="$(_num_or_empty "$meta_ops")"
+
+  if [ -z "$lat_num" ] || [ -z "$meta_num" ]; then
+    echo "unknown"
+    return
+  fi
+
+  # BAD: high latency OR very low metadata throughput
+  if awk "BEGIN{exit !(${lat_num}>=10 || ${meta_num}<1000)}" 2>/dev/null; then
+    echo "bad"
+    return
+  fi
+
+  # OK: acceptable but not ideal
+  if awk "BEGIN{exit !(${lat_num}>=3 || ${meta_num}<5000)}" 2>/dev/null; then
+    echo "ok"
+    return
+  fi
+
+  # EXCELLENT: very fast
+  if awk "BEGIN{exit !(${lat_num}<1 && ${meta_num}>10000)}" 2>/dev/null; then
+    echo "excellent"
+    return
+  fi
+
+  # Default: GOOD
+  echo "good"
+}
+
+_boa_grade_network() {
+  # input: MiB/s
+  local net_mibps="$1"
+  local num
+  num="$(_num_or_empty "$net_mibps")"
+
+  if [ -z "$num" ]; then
+    echo "unknown"
+    return
+  fi
+
+  awk -v n="$num" 'BEGIN{
+    if (n>=100) print "excellent";
+    else if (n>=30) print "normal";
+    else if (n>=10) print "weak";
+    else print "bad";
   }'
 }
 
@@ -562,10 +695,14 @@ _print_compact_summary() {
   rand_write_lat="$(_num_or_empty "$(echo "${_root_rand_lat_write}" | awk '{print $1}')")"
 
   # Calculate grades
-  local mem_grade steal_grade disk_grade
+  local mem_grade steal_grade disk_grade cpu_st_grade cpu_mt_grade cpu_final_grade net_grade
   mem_grade="$(_boa_grade_mem_bw "${mem_mibps:-0}")"
   steal_grade="$(_boa_grade_cpu_steal "${cpu_steal}")"
-  disk_grade="$(_boa_grade_disk_latency "${rand_read_lat}")"
+  cpu_st_grade="$(_boa_grade_cpu_st "${st_eps:-0}")"
+  cpu_mt_grade="$(_boa_grade_cpu_mt "${mt_eps:-0}")"
+  cpu_final_grade="$(_boa_grade_cpu_final "${st_eps:-0}" "${mt_eps:-0}" "${cpu_steal:-0}")"
+  disk_grade="$(_boa_grade_disk_final "${_root_rand_lat_read}" "${_root_meta_ops}")"
+  net_grade="$(_boa_grade_network "${net_mibps}")"
 
   echo " ============================================================================="
   echo " == 1. MEMORY (Critical for APC/Valkey/OPcache + Nginx microcaching)        =="
@@ -585,9 +722,10 @@ _print_compact_summary() {
   echo " ============================================================================="
   echo " == 2. CPU (Drupal/PHP runtime; watch steal on oversold nodes)              =="
   echo " ============================================================================="
-  printf "   Single-thread:  %-15s events/sec\n" "${_cpu_events_ST}"
-  printf "   Multi-thread:   %-15s events/sec (${_cpu_cores} vCPUs)\n" "${_cpu_events_MT_NPROC}"
-  printf "   CPU Steal:      %-15s Grade: %-10s\n" "${cpu_steal:-N/A}%" "[${steal_grade}]"
+  printf "   Single-thread:  %-15s events/sec  [%-10s] (most important)\n" "${_cpu_events_ST}" "${cpu_st_grade}"
+  printf "   Multi-thread:   %-15s events/sec  [%-10s] (${_cpu_cores} vCPUs)\n" "${_cpu_events_MT_NPROC}" "${cpu_mt_grade}"
+  printf "   CPU Steal:      %-15s%%  [%-10s]\n" "${cpu_steal:-N/A}" "${steal_grade}"
+  printf "   Final CPU:      [%-10s]\n" "${cpu_final_grade}"
   printf "   AES Throughput: %-15s (crypto/compression indicator)\n" "${_aes_mibps}"
   echo ""
 
@@ -606,38 +744,54 @@ _print_compact_summary() {
   echo " ============================================================================="
   echo " == 3. DISK (Less critical in BOA, but matters for deploys/logs/DB)         =="
   echo " ============================================================================="
-  printf "   ioping seek:        %s\n" "${_ioping_seek}"
-  printf "   ioping seq read:    %s\n" "${_ioping_seqread}"
+  printf "   Random 4K latency:  %-10s (read)\n" "${_root_rand_lat_read}"
+  printf "   Metadata ops:       %-10s\n" "${_root_meta_ops}"
+  printf "   Final grade:        [%-10s]\n" "${disk_grade}"
   echo ""
-  printf "   Random 4K (root):   Read: %-12s @ %-10s Grade: [%-8s]\n" \
-    "${_root_rand_bw_read}" "${_root_rand_lat_read}" "${disk_grade}"
-  printf "                       Write: %-12s @ %-10s\n" \
+  printf "   Details:\n"
+  printf "     Random 4K:   Read: %-12s @ %-10s\n" \
+    "${_root_rand_bw_read}" "${_root_rand_lat_read}"
+  printf "                  Write: %-12s @ %-10s\n" \
     "${_root_rand_bw_write}" "${_root_rand_lat_write}"
-  echo ""
-  printf "   Sequential (root):  Read: %-12s Write: %-12s\n" \
+  printf "     Sequential:  Read: %-12s Write: %-12s\n" \
     "${_root_seqread_bw_read}" "${_root_seqwrite_bw_write}"
-  printf "   Metadata ops:       %s\n" "${_root_meta_ops}"
+  printf "     ioping:      %s\n" "${_ioping_seek}"
 
-  if [ "${disk_grade}" = "poor" ]; then
+  if [ "${disk_grade}" = "bad" ]; then
     echo ""
-    echo "   ⚠️  High disk latency. May slow down deployments and DB checkpoints."
+    echo "   ⚠️  Poor disk performance. High latency or low metadata throughput."
+    echo "       May significantly slow deployments and DB checkpoints."
+  elif [ "${disk_grade}" = "ok" ]; then
+    echo ""
+    echo "   ⚠️  Acceptable disk performance but not ideal for DB-heavy workloads."
   elif [ "${disk_grade}" = "excellent" ]; then
     echo ""
-    echo "   ✓  Excellent disk latency for metadata-heavy operations."
+    echo "   ✓  Excellent disk performance for metadata-heavy operations."
   fi
   echo ""
 
   echo " ============================================================================="
   echo " == 4. NETWORK (Sanity check; less critical for BOA)                        =="
   echo " ============================================================================="
-  printf "   Public IPv4:    %s\n" "${_net_ipv4}"
-  printf "   Cachefly CDN:   %s\n" "${_net_cachefly}"
+  printf "   Public IPv4:        %s\n" "${_net_ipv4}"
+  printf "   Download speed:     %s  [%-10s]\n" "${_net_cachefly}" "${net_grade}"
+  printf "   Test: Single-stream CDN pull (Cachefly 100MB)\n"
   echo ""
 
-  if [ -n "${net_mibps}" ] && awk -v n="${net_mibps}" 'BEGIN{exit !(n<50)}' 2>/dev/null; then
-    echo "   ⚠️  Low network throughput. May affect external API calls and updates."
-    echo ""
+  if [ "${net_grade}" = "bad" ]; then
+    echo "   ⚠️  Very low network speed (<10 MiB/s). May cause issues with:"
+    echo "       - Package updates and downloads"
+    echo "       - External API calls"
+    echo "       - Remote backups"
+  elif [ "${net_grade}" = "weak" ]; then
+    echo "   ⚠️  Below-average network speed (10-30 MiB/s)."
+    echo "       Acceptable for most BOA operations but may slow updates."
+  elif [ "${net_grade}" = "excellent" ]; then
+    echo "   ✓  Excellent network speed (>100 MiB/s)."
+  else
+    echo "   ✓  Normal network speed (30-100 MiB/s). Adequate for BOA."
   fi
+  echo ""
 
   echo " ============================================================================="
   echo " == BOA SUITABILITY SUMMARY                                                 =="
