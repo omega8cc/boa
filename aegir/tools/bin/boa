@@ -1449,8 +1449,9 @@ _init_setup() {
   # Define the BOA log file for use after autoinit
   _BOA_LOGFILE="/root/.boa.install.command.cnf"
 
-  if [ "${_cmNd}" = "in-lts" ] \
-    || [ "${_cmNd}" = "in-dev" ]; then
+  if [ "${_cmNd}" = "in-dev" ] \
+    || [ "${_cmNd}" = "in-pro" ] \
+    || [ "${_cmNd}" = "in-lts" ]; then
 
     # Disable forced MySQL/Valkey/Redis password updates during installation
     # Delete any/all of these files to re-enable standard behaviour later
@@ -1488,14 +1489,16 @@ _init_setup() {
     fi
   fi
 
-  if [ "${_cmNd}" = "in-lts" ] \
-    || [ "${_cmNd}" = "in-dev" ]; then
+  if [ "${_cmNd}" = "in-dev" ] \
+    || [ "${_cmNd}" = "in-pro" ] \
+    || [ "${_cmNd}" = "in-lts" ]; then
     _check_no_systemd
     _ifnames_grub_check_sync
   fi
 
-  if [ "${_cmNd}" = "in-lts" ] \
-    || [ "${_cmNd}" = "in-dev" ]; then
+  if [ "${_cmNd}" = "in-dev" ] \
+    || [ "${_cmNd}" = "in-pro" ] \
+    || [ "${_cmNd}" = "in-lts" ]; then
     if [ -e "/root/.dev.server.cnf" ]; then
       echo
       echo RAWV _tRee is ${_tRee}
