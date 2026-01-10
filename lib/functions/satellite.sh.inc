@@ -4423,17 +4423,17 @@ _satellite_check_octopus_vs_barracuda_ver() {
   if [ ! -f "/var/log/barracuda_log.txt" ]; then
     _msg "ERROR: This octopus installer can be used only when the same version"
     _msg "of boa or barracuda installer was used before. Your system must be"
-    _msg "upgraded with barracuda installer version ${_X_VERSION} first!"
+    _msg "upgraded with barracuda installer version ${_rLsn} first!"
     _msg "Bye"
     _clean_pid_exit _satellite_check_octopus_vs_barracuda_ver_a
   else
     _VERSIONS_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
-    if [[ "${_VERSIONS_TEST}" =~ "${_X_VERSION}" ]]; then
+    if [[ "${_VERSIONS_TEST}" =~ "Barracuda ${_rLsn}-" ]]; then
       _VERSIONS_TEST_RESULT=OK
     else
       _msg "ERROR: This octopus installer can be used only when the same version"
       _msg "of boa or barracuda installer was used before. Your system must be"
-      _msg "upgraded with barracuda installer version ${_X_VERSION} first!"
+      _msg "upgraded with barracuda installer version ${_rLsn} first!"
       _msg "Bye"
       _clean_pid_exit _satellite_check_octopus_vs_barracuda_ver_b
     fi
