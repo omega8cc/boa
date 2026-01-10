@@ -1391,12 +1391,18 @@ EOF
       wait
     fi
   else
-    if [ -e "/usr/bin/screenfetch" ]; then
+    if [ -f "/usr/bin/screenfetch" ]; then
+      _mrun "apt-get remove screenfetch -y --purge --auto-remove -qq"
+    fi
+    if [ -e "/opt/local/bin/screenfetch" ]; then
+      if [ ! -L "/usr/bin/screenfetch" ]; then
+        ln -sf /opt/local/bin/screenfetch /usr/bin/screenfetch
+      fi
       _FANCY_TEST=$(grep "fancynow" /root/.bashrc 2>&1)
       if [[ ! "${_FANCY_TEST}" =~ "fancynow" ]]; then
         echo "if [ ! -z "\$PS1" ]; then" >> /root/.bashrc
         echo "  /opt/local/bin/fancynow" >> /root/.bashrc
-        echo "  /usr/bin/screenfetch" >> /root/.bashrc
+        echo "  /opt/local/bin/screenfetch" >> /root/.bashrc
         echo "fi" >> /root/.bashrc
         printf "\n" >> /root/.bashrc
       fi
@@ -6189,7 +6195,7 @@ _run_aptitude_deps_install() {
     done
     ###
   else
-    for _PKG in toilet figlet screenfetch; do
+    for _PKG in toilet figlet; do
       if ! _pkg_installed "${_PKG}"; then
         _mrun "${_INSTAPP} ${_PKG}"
       fi
