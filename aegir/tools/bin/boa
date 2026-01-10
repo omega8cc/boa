@@ -952,10 +952,12 @@ _octopus_install() {
     wait
 
     if [ "${_cmNd}" = "in-dev" ] \
+      || [ "${_cmNd}" = "in-pro" ] \
       || [ "${_cmNd}" = "in-lts" ] \
       || [ "${_cmNd}" = "in-octopus" ] \
       || [ "${_cmNd}" = "in-oct" ] \
       || [ "${_cOpt}" = "dev" ] \
+      || [ "${_cOpt}" = "pro" ] \
       || [ "${_cOpt}" = "lts" ]; then
       sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${_bRnh}/g"      ${_vBs}/${_filIncO}
       wait
@@ -977,10 +979,12 @@ _octopus_install() {
     fi
 
     if [ "${_cmNd}" = "in-dev" ] \
+      || [ "${_cmNd}" = "in-pro" ] \
       || [ "${_cmNd}" = "in-lts" ] \
       || [ "${_cmNd}" = "in-octopus" ] \
       || [ "${_cmNd}" = "in-oct" ] \
       || [ "${_cOpt}" = "dev" ] \
+      || [ "${_cOpt}" = "pro" ] \
       || [ "${_cOpt}" = "lts" ]; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${_bRnh}/g"      ${_vBs}/${_filIncO}
        wait
@@ -1191,6 +1195,7 @@ _barracuda_install() {
     fi
 
     if [ "${_cmNd}" = "in-dev" ] \
+      || [ "${_cmNd}" = "in-pro" ] \
       || [ "${_cmNd}" = "in-lts" ] \
       || [ "${_cmNd}" = "in-octopus" ] \
       || [ "${_cmNd}" = "in-oct" ]; then
@@ -1214,6 +1219,7 @@ _barracuda_install() {
     fi
 
     if [ "${_cmNd}" = "in-dev" ] \
+      || [ "${_cmNd}" = "in-pro" ] \
       || [ "${_cmNd}" = "in-lts" ] \
       || [ "${_cmNd}" = "in-octopus" ] \
       || [ "${_cmNd}" = "in-oct" ]; then
@@ -1574,6 +1580,7 @@ _init_setup() {
   export _rgUrl="http://files.aegir.cc/versions/${_tRee}/boa"
 
   if [ "${_cmNd}" = "in-dev" ] \
+    || [ "${_cmNd}" = "in-pro" ] \
     || [ "${_cmNd}" = "in-lts" ]; then
     curl ${_crlGet} "${_rgUrl}/${_barName}"  -o ${_vBs}/${_barName}
     curl ${_crlGet} "${_rgUrl}/${_octName}"  -o ${_vBs}/${_octName}
@@ -2985,6 +2992,7 @@ _if_display_help() {
     {version}
       in-lts <------- install BOA LTS release (no license)
       in-dev <------- install BOA Cutting Edge (requires license)
+      in-pro <------- install BOA PRO release (requires license)
       in-octopus <--- install extra Octopus instance (lts|dev|pro)
 
     {kind}
@@ -3078,6 +3086,24 @@ case "$1" in
               _init_setup
   ;;
   in-dev)     export _tRee=dev
+              _cmNd="$1"
+              _kiNd="$2"
+              _fQdn="$3"
+              _eMal="$4"
+              _usEr="$5"
+              _eXtr="$6"
+              _outP="$7"
+              _check_root
+              _check_root_keys_pwd
+              _check_virt
+              _check_dns_curl
+              [[ ! "${_ARGS}" =~ noscreen ]] && _if_start_screen
+              # Capture the complete command with arguments
+              _BOA_COMMAND="$0 $@"
+              [[ "${_ARGS}" =~ noscreen ]] && _BOA_COMMAND=$(echo "${_BOA_COMMAND}" | sed -E "s/noscreen//g")
+              _init_setup
+  ;;
+  in-pro)     export _tRee=pro
               _cmNd="$1"
               _kiNd="$2"
               _fQdn="$3"
