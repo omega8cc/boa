@@ -529,34 +529,38 @@ _boa_grade_cpu_speed() {
 }
 
 _boa_grade_disk_final() {
-  # Inputs: $1=ioping_avg_us, $2=seq_read_mbps, $3=rand_read_lat_ms
+  # Inputs: $1=ioping_avg_us, $2=seq_read_mbps, $3=seq_write_mbps, $4=rand_read_lat_ms
   # Priority: ioping (real latency) > sequential throughput > fio latency
   local ioping_us="$1"
-  local seq_mbps="$2"
-  local rand_lat="$3"
+  local seq_read_mbps="$2"
+  local seq_write_mbps="$3"
+  local rand_lat="$4"
 
   # Extract numeric values
   ioping_us="$(_num_or_empty "${ioping_us}")"
-  seq_mbps="$(_num_or_empty "${seq_mbps}")"
+  seq_read_mbps="$(_num_or_empty "${seq_read_mbps}")"
+  seq_write_mbps="$(_num_or_empty "${seq_write_mbps}")"
   rand_lat="$(_num_or_empty "${rand_lat}")"
 
   # Rule: if ioping shows good latency AND seq is fast = NVMe-class
-  if [ -n "${ioping_us}" ] && [ -n "${seq_mbps}" ]; then
-    if awk -v i="${ioping_us}" -v s="${seq_mbps}" 'BEGIN{exit !(i<300 && s>1500)}' 2>/dev/null; then
+  if [ -n "${ioping_us}" ] && [ -n "${seq_read_mbps}" ] && [ -n "${seq_write_mbps}" ]; then
+    # NVMe-class: ioping < 300us AND seq_read > 1500 AND seq_write > 1000
+    if awk -v i="${ioping_us}" -v sr="${seq_read_mbps}" -v sw="${seq_write_mbps}" 'BEGIN{exit !(i<300 && sr>1500 && sw>1000)}' 2>/dev/null; then
       echo "excellent"
       return
-    elif awk -v i="${ioping_us}" -v s="${seq_mbps}" 'BEGIN{exit !(i<500 && s>800)}' 2>/dev/null; then
+    # Good SSD: ioping < 500us AND seq_read > 800 AND seq_write > 400
+    elif awk -v i="${ioping_us}" -v sr="${seq_read_mbps}" -v sw="${seq_write_mbps}" 'BEGIN{exit !(i<500 && sr>800 && sw>400)}' 2>/dev/null; then
       echo "good"
       return
     fi
   fi
 
   # Fallback: use sequential throughput
-  if [ -n "${seq_mbps}" ]; then
-    if awk -v s="${seq_mbps}" 'BEGIN{exit !(s>1500)}' 2>/dev/null; then
+  if [ -n "${seq_read_mbps}" ]; then
+    if awk -v s="${seq_read_mbps}" 'BEGIN{exit !(s>1500)}' 2>/dev/null; then
       echo "good"
       return
-    elif awk -v s="${seq_mbps}" 'BEGIN{exit !(s>500)}' 2>/dev/null; then
+    elif awk -v s="${seq_read_mbps}" 'BEGIN{exit !(s>500)}' 2>/dev/null; then
       echo "ok"
       return
     fi
@@ -598,7 +602,7 @@ _print_compact_summary() {
 
   # Extract numeric values
   local mem_mibps mem_lat cpu_steal st_eps mt_eps aes_mibps net_mibps
-  local rand_read_lat seq_read_mbps ioping_avg_us meta_ops_num
+  local rand_read_lat seq_read_mbps seq_write_mbps ioping_avg_us meta_ops_num
 
   mem_mibps="$(_num_or_empty "$(echo "${_mem_transfer_speed}" | awk '{print $1}')")"
   mem_lat="$(_num_or_empty "${_mem_latency}")"
@@ -610,6 +614,7 @@ _print_compact_summary() {
 
   rand_read_lat="$(_num_or_empty "$(echo "${_root_rand_lat_read}" | awk '{print $1}')")"
   seq_read_mbps="$(_num_or_empty "$(echo "${_root_seqread_bw_read}" | awk '{print $1}')")"
+  seq_write_mbps="$(_num_or_empty "$(echo "${_root_seqwrite_bw_write}" | awk '{print $1}')")"
   meta_ops_num="$(_num_or_empty "$(echo "${_root_meta_ops}" | awk '{print $1}')")"
 
   # Extract ioping avg latency (format: "min/avg/max/mdev = 28.3 us / 126.5 us / ...")
@@ -620,7 +625,7 @@ _print_compact_summary() {
   mem_grade="$(_boa_grade_mem_bw "${mem_mibps:-0}")"
   steal_grade="$(_boa_grade_cpu_steal "${cpu_steal}")"
   cpu_grade="$(_boa_grade_cpu_speed "${st_eps}")"
-  disk_grade="$(_boa_grade_disk_final "${ioping_avg_us}" "${seq_read_mbps}" "${rand_read_lat}")"
+  disk_grade="$(_boa_grade_disk_final "${ioping_avg_us}" "${seq_read_mbps}" "${seq_write_mbps}" "${rand_read_lat}")"
   net_grade="$(_boa_grade_network "${net_mibps}")"
 
   echo " ============================================================================="
