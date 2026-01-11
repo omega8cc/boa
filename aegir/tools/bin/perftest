@@ -116,8 +116,26 @@ _get_public_ipv4() {
 }
 
 _download_benchmark_v4() {
-  # prints bytes/sec (or empty on failure)
-  curl -4 --max-time "${_NET_TIMEOUT}" -so /dev/null -w '%{speed_download}\n' "$1" 2>/dev/null
+  # Downloads test file, validates size, returns bytes/sec (or empty on failure)
+  # Args: $1 = URL, $2 = expected_min_bytes (optional, default 10MB)
+  local url="$1"
+  local min_bytes="${2:-10485760}"  # 10 MB default
+  local tmpfile="/tmp/perftest_net_$$"
+  local speed_bps=""
+  local actual_size=0
+  # Download with size tracking
+  if curl -4 --max-time "${_NET_TIMEOUT}" -sL -o "$tmpfile" -w '%{speed_download}\n' "$url" 2>/dev/null > /tmp/perftest_speed_$$; then
+    speed_bps=$(cat /tmp/perftest_speed_$$ 2>/dev/null)
+    actual_size=$(stat -c%s "$tmpfile" 2>/dev/null || stat -f%z "$tmpfile" 2>/dev/null || echo 0)
+    # Validate payload size
+    if [ "$actual_size" -lt "$min_bytes" ]; then
+      _log "Network test INVALID: got ${actual_size} bytes, expected >=${min_bytes} (CDN returned placeholder/truncated)"
+      speed_bps=""
+    fi
+  fi
+  # Cleanup
+  rm -f "$tmpfile" /tmp/perftest_speed_$$
+  echo "$speed_bps"
 }
 
 # Best-effort ioping setup (download static binary like nench if not installed)
@@ -172,20 +190,27 @@ _run_aes_throughput_test() {
 
 _run_ipv4_net_check() {
   _net_ipv4="N/A"
-  _net_cachefly="N/A"
+  _net_download="N/A"
   local ip
   ip="$(_get_public_ipv4)"
   if [ -z "${ip}" ]; then
     return 0
   fi
   _net_ipv4="$(_redact_ip "${ip}")"
-  # Single sanity check endpoint (no dual-stack, per your request)
+  # Cloudflare speed endpoint (50 MB, region-aware via anycast)
   local bps
-  bps="$(_download_benchmark_v4 "http://cachefly.cachefly.net/100mb.test")"
+  bps="$(_download_benchmark_v4 "https://speed.cloudflare.com/__down?bytes=52428800" 50000000)"
+
+  # Fallback to GitHub if Cloudflare fails
+  if [ -z "${bps}" ]; then
+    _log "Cloudflare test failed, trying GitHub fallback..."
+    bps="$(_download_benchmark_v4 "https://raw.githubusercontent.com/TestFileHub/FileHub/main/pdf/pdf100mb.pdf" 90000000)"
+  fi
+
   if printf '%s' "${bps}" | grep -Eq '^[0-9]+(\.[0-9]+)?$'; then
-    _net_cachefly="$(printf '%s\n' "${bps}" | _bps_to_mibps_pretty)"
+    _net_download="$(printf '%s\n' "${bps}" | _bps_to_mibps_pretty)"
   else
-    _net_cachefly="error"
+    _net_download="error"
   fi
 }
 
@@ -610,7 +635,7 @@ _print_compact_summary() {
   st_eps="$(_num_or_empty "${_cpu_events_ST}")"
   mt_eps="$(_num_or_empty "${_cpu_events_MT_NPROC}")"
   aes_mibps="$(_num_or_empty "$(echo "${_aes_mibps}" | awk '{print $1}')")"
-  net_mibps="$(_num_or_empty "$(echo "${_net_cachefly}" | awk '{print $1}')")"
+  net_mibps="$(_num_or_empty "$(echo "${_net_download}" | awk '{print $1}')")"
 
   rand_read_lat="$(_num_or_empty "$(echo "${_root_rand_lat_read}" | awk '{print $1}')")"
   seq_read_mbps="$(_num_or_empty "$(echo "${_root_seqread_bw_read}" | awk '{print $1}')")"
@@ -631,7 +656,7 @@ _print_compact_summary() {
   echo " ============================================================================="
   echo " == 1. MEMORY (Critical for APC/Valkey/OPcache + Nginx microcaching)        =="
   echo " ============================================================================="
-  printf "   Bandwidth:  %-20s Grade: [%-10s]\n" "${_mem_transfer_speed}" "${mem_grade}"
+  printf "   Bandwidth:  %-20s Grade: [%s]\n" "${_mem_transfer_speed}" "${mem_grade}"
   printf "   Latency:    %-20s\n" "${_mem_latency} ms"
 
   if [ "${mem_grade}" = "poor" ]; then
@@ -646,9 +671,9 @@ _print_compact_summary() {
   echo " ============================================================================="
   echo " == 2. CPU (Drupal/PHP runtime; watch steal on oversold nodes)              =="
   echo " ============================================================================="
-  printf "   Single-thread:  %-15s events/sec  [%-10s] (most important)\n" "${_cpu_events_ST}" "${cpu_grade}"
+  printf "   Single-thread:  %-15s events/sec  [%s] (most important)\n" "${_cpu_events_ST}" "${cpu_grade}"
   printf "   Multi-thread:   %-15s events/sec  (${_cpu_cores} vCPUs)\n" "${_cpu_events_MT_NPROC}"
-  printf "   CPU Steal:      %-15s%%  [%-10s]\n" "${cpu_steal:-N/A}" "${steal_grade}"
+  printf "   CPU Steal:      %-15s%%  [%s]\n" "${cpu_steal:-N/A}" "${steal_grade}"
   printf "   AES Throughput: %-15s (crypto/compression)\n" "${_aes_mibps}"
   echo ""
 
@@ -666,7 +691,7 @@ _print_compact_summary() {
   echo " ============================================================================="
   echo " == 3. DISK (Less critical in BOA, but matters for deploys/logs/DB)         =="
   echo " ============================================================================="
-  printf "   Final grade:        [%-10s]\n" "${disk_grade}"
+  printf "   Final grade:        [%s]\n" "${disk_grade}"
   echo ""
   printf "   Real latency (ioping avg):  %s\n" "$(echo "${_ioping_seek}" | grep -oP '\d+\.\d+ us' | head -2 | tail -1 || echo "N/A")"
   printf "   Sequential read:            %s\n" "${_root_seqread_bw_read}"
@@ -693,8 +718,8 @@ _print_compact_summary() {
   echo " == 4. NETWORK (Sanity check; less critical for BOA)                        =="
   echo " ============================================================================="
   printf "   Public IPv4:        %s\n" "${_net_ipv4}"
-  printf "   Download speed:     %-15s [%-10s]\n" "${_net_cachefly}" "${net_grade}"
-  printf "   Test: Single-stream CDN pull (Cachefly 100MB)\n"
+  printf "   Download speed:     %-15s [%s]\n" "${_net_download}" "${net_grade}"
+  printf "   Test: Single-stream CDN pull (100MB)\n"
   echo ""
 
   if [ "${net_grade}" = "poor" ]; then
@@ -866,8 +891,8 @@ mapfile -t _test_mounts < <(_get_test_mounts)
 echo "Running ioping quick latency checks (${_IOPING_SECONDS}s)..."
 _run_ioping_quick
 
-# IPv4 network sanity check (nench-inspired, single endpoint)
-echo "Running IPv4 network check (Cachefly, ${_NET_TIMEOUT}s timeout)..."
+# IPv4 network sanity check (Cloudflare CDN with fallback)
+echo "Running IPv4 network check (Cloudflare CDN, ${_NET_TIMEOUT}s timeout)..."
 _run_ipv4_net_check
 
 declare -A _fio_rand_iops_read
@@ -1020,7 +1045,7 @@ else
   echo ""
   echo "Network (IPv4 single-stream):"
   echo "  - Public IPv4: ${_net_ipv4}"
-  echo "  - Cachefly CDN: ${_net_cachefly}"
+  echo "  - CDN Speed Test: ${_net_download}"
   echo ""
   echo "PHP Performance (CLI Micro-benchmark):"
   if command -v php >/dev/null 2>&1; then
@@ -1069,7 +1094,7 @@ fi
 # hostname,cpu_model,vcpus,cpu_mt_eps,cpu_4t_eps,cpu_st_eps,mem_bw,php_median_s,php_conc_thr_ops,
 # root_rand_bw_read,root_rand_bw_write,root_rand_lat_r,root_rand_lat_w,
 # root_seqread_bw,root_seqread_lat_r,root_seqwrite_bw,root_seqwrite_lat_w,root_meta_ops,
-# aes_mibps,net_cachefly_mibps
+# aes_mibps,net_mibps
 
 # Strip units from some disk fields for CSV
 _strip_unit() {
@@ -1088,6 +1113,6 @@ _csv_root_seqwrite_bw_write="$(_strip_unit "${_root_seqwrite_bw_write}")"
 _csv_root_seqwrite_lat_write="$(_strip_unit "${_root_seqwrite_lat_write}")"
 _csv_root_meta_ops="$(_strip_unit "${_root_meta_ops}")"
 _csv_aes_mibps="$(_strip_unit "${_aes_mibps}")"
-_csv_net_cachefly="$(_strip_unit "${_net_cachefly}")"
+_csv_net_download="$(_strip_unit "${_net_download}")"
 
-echo "CSV_SUMMARY:${_hostname},\"${_cpu_info}\",${_cpu_cores},${_cpu_events_MT_NPROC},${_cpu_events_MT4},${_cpu_events_ST},${_csv_mem_bw},${_php_time_median},\"${_php_concurrency_throughput}\",${_csv_root_rand_bw_read},${_csv_root_rand_bw_write},${_csv_root_rand_lat_read},${_csv_root_rand_lat_write},${_csv_root_seqread_bw_read},${_csv_root_seqread_lat_read},${_csv_root_seqwrite_bw_write},${_csv_root_seqwrite_lat_write},${_csv_root_meta_ops},${_csv_aes_mibps},${_csv_net_cachefly}"
+echo "CSV_SUMMARY:${_hostname},\"${_cpu_info}\",${_cpu_cores},${_cpu_events_MT_NPROC},${_cpu_events_MT4},${_cpu_events_ST},${_csv_mem_bw},${_php_time_median},\"${_php_concurrency_throughput}\",${_csv_root_rand_bw_read},${_csv_root_rand_bw_write},${_csv_root_rand_lat_read},${_csv_root_rand_lat_write},${_csv_root_seqread_bw_read},${_csv_root_seqread_lat_read},${_csv_root_seqwrite_bw_write},${_csv_root_seqwrite_lat_write},${_csv_root_meta_ops},${_csv_aes_mibps},${_csv_net_download}"
