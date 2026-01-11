@@ -164,28 +164,6 @@ _run_ioping_quick() {
   _ioping_seqread="$("${_ioping_cmd}" -DRL -w "${_IOPING_SECONDS}" . 2>/dev/null | tail -n 2 | head -n 1)"
 }
 
-# Parse ioping "seek rate" line:
-#   "min/avg/max/mdev = 57.9 us / 110.9 us / 9.72 ms / 59.1 us"
-# Returns avg as a number in microseconds (e.g. 110.9) or empty.
-_ioping_avg_us_from_seek_line() {
-  local line="$1"
-  printf '%s\n' "${line}" \
-    | awk -F'=' 'NF<2{exit} {print $2}' \
-    | awk -F'/' '{gsub(/^[ \t]+|[ \t]+$/,"",$2); print $2}' \
-    | awk '{print $1}' \
-    | grep -Eo '^[0-9]+(\.[0-9]+)?' || true
-}
-
-_run_ioping_quick_for_mount() {
-  # Args: $1 = mountpoint
-  local mp="$1"
-  _ensure_ioping || return 0
-  [ -n "${_ioping_cmd}" ] || return 0
-  _ioping_seek_m["${mp}"]="$("${_ioping_cmd}" -DR -w "${_IOPING_SECONDS}" "${mp}/." 2>/dev/null | tail -n 1)"
-  _ioping_seqread_m["${mp}"]="$("${_ioping_cmd}" -DRL -w "${_IOPING_SECONDS}" "${mp}/." 2>/dev/null | tail -n 2 | head -n 1)"
-}
-
-
 # AES throughput test (captures AES-NI issues better than sysbench cpu)
 _run_aes_throughput_test() {
   _aes_mibps="N/A"
@@ -221,12 +199,12 @@ _run_ipv4_net_check() {
   _net_ipv4="$(_redact_ip "${ip}")"
   # Cloudflare speed endpoint (50 MB, region-aware via anycast)
   local bps
-  bps="$(_download_benchmark_v4 "https://speed.cloudflare.com/__down?bytes=52428800" 50000000)"
+  bps="$(_download_benchmark_v4 "https://speed.cloudflare.com/__down?bytes=52428800" 50000)"
 
   # Fallback to GitHub if Cloudflare fails
   if [ -z "${bps}" ]; then
     _log "Cloudflare test failed, trying GitHub fallback..."
-    bps="$(_download_benchmark_v4 "https://raw.githubusercontent.com/TestFileHub/FileHub/main/pdf/pdf100mb.pdf" 90000000)"
+    bps="$(_download_benchmark_v4 "https://raw.githubusercontent.com/TestFileHub/FileHub/main/pdf/pdf100mb.pdf" 90000)"
   fi
 
   if printf '%s' "${bps}" | grep -Eq '^[0-9]+(\.[0-9]+)?$'; then
@@ -575,104 +553,45 @@ _boa_grade_cpu_speed() {
   }'
 }
 
-_boa_grade_to_score() {
-  case "$1" in
-    excellent) echo 4 ;;
-    good) echo 3 ;;
-    ok) echo 2 ;;
-    poor) echo 1 ;;
-    unknown) echo 2 ;; # neutral fallback
-    *) echo 2 ;;
-  esac
-}
+_boa_grade_disk_final() {
+  # Inputs: $1=ioping_avg_us, $2=seq_read_mbps, $3=seq_write_mbps, $4=rand_read_lat_ms
+  # Priority: ioping (real latency) > sequential throughput > fio latency
+  local ioping_us="$1"
+  local seq_read_mbps="$2"
+  local seq_write_mbps="$3"
+  local rand_lat="$4"
 
-_boa_score_to_grade() {
-  # input: numeric score (can be float)
-  awk -v s="$1" 'BEGIN{
-    if (s>=3.6) print "excellent";
-    else if (s>=2.8) print "good";
-    else if (s>=2.0) print "ok";
-    else print "poor";
-  }'
-}
+  # Extract numeric values
+  ioping_us="$(_num_or_empty "${ioping_us}")"
+  seq_read_mbps="$(_num_or_empty "${seq_read_mbps}")"
+  seq_write_mbps="$(_num_or_empty "${seq_write_mbps}")"
+  rand_lat="$(_num_or_empty "${rand_lat}")"
 
-# Grade a single mount (root or attached).
-# Inputs:
-#   $1 = ioping_avg_us
-#   $2 = seq_read_MBps
-#   $3 = seq_write_MBps
-#   $4 = metadata_ops (ops/s)
-#   $5 = fio_rand_read_lat_ms (ms)  [secondary, downgrade-only]
-#
-# Philosophy:
-# - ioping (real) + sequential define baseline.
-# - "Slow SSD" should not be graded as good in BOA vendor-quality context.
-# - metadata is a soft signal.
-# - fio random latency is downgrade-only and never makes a fast ioping+seq disk look bad.
-_boa_grade_disk_mount() {
-  local ioping_us="$(_num_or_empty "$1")"
-  local seq_r="$(_num_or_empty "$2")"
-  local seq_w="$(_num_or_empty "$3")"
-  local meta="$(_num_or_empty "$4")"
-  local fio_lat="$(_num_or_empty "$5")"
+  # Rule: if ioping shows good latency AND seq is fast = NVMe-class
+  if [ -n "${ioping_us}" ] && [ -n "${seq_read_mbps}" ] && [ -n "${seq_write_mbps}" ]; then
+    # NVMe-class: ioping < 300us AND seq_read > 1500 AND seq_write > 1000
+    if awk -v i="${ioping_us}" -v sr="${seq_read_mbps}" -v sw="${seq_write_mbps}" 'BEGIN{exit !(i<300 && sr>1500 && sw>1000)}' 2>/dev/null; then
+      echo "excellent"
+      return
+    # Good SSD: ioping < 500us AND seq_read > 800 AND seq_write > 400
+    elif awk -v i="${ioping_us}" -v sr="${seq_read_mbps}" -v sw="${seq_write_mbps}" 'BEGIN{exit !(i<500 && sr>800 && sw>400)}' 2>/dev/null; then
+      echo "good"
+      return
+    fi
+  fi
 
-  awk -v i="${ioping_us}" -v sr="${seq_r}" -v sw="${seq_w}" -v mo="${meta}" -v fl="${fio_lat}" 'BEGIN{
-    if (i=="" || sr=="") { print "unknown"; exit }
+  # Fallback: use sequential throughput
+  if [ -n "${seq_read_mbps}" ]; then
+    if awk -v s="${seq_read_mbps}" 'BEGIN{exit !(s>1500)}' 2>/dev/null; then
+      echo "good"
+      return
+    elif awk -v s="${seq_read_mbps}" 'BEGIN{exit !(s>500)}' 2>/dev/null; then
+      echo "ok"
+      return
+    fi
+  fi
 
-    # "slow SSD" opinion: <1000 MB/s sequential read is not GOOD for BOA vendor grading
-    if (sr<1000) { print "poor"; exit }
-
-    fast_ok = (i<300 && sr>1500) ? 1 : 0
-
-    # baseline
-    if (fast_ok) grade = 3;
-    else if (i<500 && sr>=1000) grade = 2;
-    else grade = 1;
-
-    # excellent if clearly NVMe-class (include write)
-    if (i<200 && sr>2500 && sw!="" && sw>1500) grade = 4;
-
-    # write caps
-    if (sw!="") {
-      if (sw<200) grade = 1;
-      else if (sw<500 && grade>2) grade = 2;
-      else if (sw<800 && grade>3) grade = 3;
-    }
-
-    # metadata soft signal
-    if (mo!="") {
-      if (mo<1000 && grade>1) grade -= 1;
-      else if (mo>3000 && grade<4) grade += 1;
-    }
-
-    # fio random latency downgrade-only
-    if (fl!="") {
-      if (fl>20 && grade==4) grade = 3;
-      else if (fl>50 && grade>=3) grade = 2;
-    }
-
-    if (fast_ok && grade<2) grade = 2;
-    if (grade>=4) print "excellent";
-    else if (grade==3) print "good";
-    else if (grade==2) print "ok";
-    else print "poor";
-  }'
-}
-
-# Weighted final disk grade:
-# - root dominates (0.70)
-# - attached storage influences vendor grading (0.30, avg across attached mounts)
-_boa_compute_final_disk_grade() {
-  # Args: $1=root_score, $2=attached_avg_score (can be empty)
-  awk -v r="$1" -v a="$2" 'BEGIN{
-    if (r=="") { print "unknown"; exit }
-    if (a=="") s=r;
-    else s=(r*0.70) + (a*0.30);
-    if (s>=3.6) print "excellent";
-    else if (s>=2.8) print "good";
-    else if (s>=2.0) print "ok";
-    else print "poor";
-  }'
+  echo "poor"
 }
 
 _boa_grade_network() {
@@ -682,6 +601,27 @@ _boa_grade_network() {
     else if (n>=200) print "excellent";
     else if (n>=100) print "good";
     else if (n>=50) print "ok";
+    else print "poor";
+  }'
+}
+
+_boa_grade_to_score() {
+  # input: grade string
+  case "$1" in
+    excellent) echo "4" ;;
+    good) echo "3" ;;
+    ok) echo "2" ;;
+    poor) echo "1" ;;
+    *) echo "0" ;;
+  esac
+}
+
+_boa_score_to_grade() {
+  # input: numeric score (float ok)
+  awk -v s="$1" 'BEGIN{
+    if (s>=3.5) print "excellent";
+    else if (s>=2.5) print "good";
+    else if (s>=1.5) print "ok";
     else print "poor";
   }'
 }
@@ -708,6 +648,7 @@ _print_compact_summary() {
 
   # Extract numeric values
   local mem_mibps mem_lat cpu_steal st_eps mt_eps aes_mibps net_mibps
+  local rand_read_lat seq_read_mbps seq_write_mbps ioping_avg_us meta_ops_num
 
   mem_mibps="$(_num_or_empty "$(echo "${_mem_transfer_speed}" | awk '{print $1}')")"
   mem_lat="$(_num_or_empty "${_mem_latency}")"
@@ -717,60 +658,55 @@ _print_compact_summary() {
   aes_mibps="$(_num_or_empty "$(echo "${_aes_mibps}" | awk '{print $1}')")"
   net_mibps="$(_num_or_empty "$(echo "${_net_download}" | awk '{print $1}')")"
 
+  rand_read_lat="$(_num_or_empty "$(echo "${_root_rand_lat_read}" | awk '{print $1}')")"
+  seq_read_mbps="$(_num_or_empty "$(echo "${_root_seqread_bw_read}" | awk '{print $1}')")"
+  seq_write_mbps="$(_num_or_empty "$(echo "${_root_seqwrite_bw_write}" | awk '{print $1}')")"
+  meta_ops_num="$(_num_or_empty "$(echo "${_root_meta_ops}" | awk '{print $1}')")"
+
+  # Extract ioping avg latency (format: "min/avg/max/mdev = 28.3 us / 126.5 us / ...")
+  ioping_avg_us="$(echo "${_ioping_seek}" | grep -oP '\d+\.\d+(?= us)' | head -2 | tail -1)"
+
   # Calculate grades
   local mem_grade steal_grade cpu_grade net_grade
+  local disk_root_grade attached_avg_grade attached_cnt disk_grade
+  local root_score attached_sum attached_avg_score weighted_score
+
   mem_grade="$(_boa_grade_mem_bw "${mem_mibps:-0}")"
   steal_grade="$(_boa_grade_cpu_steal "${cpu_steal}")"
   cpu_grade="$(_boa_grade_cpu_speed "${st_eps}")"
   net_grade="$(_boa_grade_network "${net_mibps}")"
 
-  # Disk grades (root + attached; attached storage factor is part of vendor quality)
-  local root_ioping_seek root_ioping_us root_seq_r root_seq_w root_meta root_fio_lat
-  local disk_root_grade disk_root_score
+  # Disk: grade root and attached mounts separately, then combine.
+  disk_root_grade="$(_boa_grade_disk_final "${ioping_avg_us}" "${seq_read_mbps}" "${seq_write_mbps}" "${rand_read_lat}")"
+  root_score="$(_boa_grade_to_score "${disk_root_grade}")"
 
-  root_ioping_seek="${_ioping_seek_m["/"]}"
-  [ -z "${root_ioping_seek}" ] && root_ioping_seek="${_ioping_seek}"
-  root_ioping_us="$(_ioping_avg_us_from_seek_line "${root_ioping_seek}")"
+  attached_cnt=0
+  attached_sum="0"
+  local _m
+  for _m in "${_test_mounts[@]}"; do
+    [ "${_m}" = "/" ] && continue
+    local _a_seq_read _a_seq_write _a_rand_lat _a_grade _a_score
+    _a_seq_read="$(_num_or_empty "$(echo "${_fio_seqread_bw_read["${_m}"]}" | awk '{print $1}')")"
+    _a_seq_write="$(_num_or_empty "$(echo "${_fio_seqwrite_bw_write["${_m}"]}" | awk '{print $1}')")"
+    _a_rand_lat="$(_num_or_empty "$(echo "${_fio_rand_latency_read["${_m}"]}" | awk '{print $1}')")"
 
-  root_seq_r="$(_num_or_empty "$(echo "${_root_seqread_bw_read}" | awk '{print $1}')")"
-  root_seq_w="$(_num_or_empty "$(echo "${_root_seqwrite_bw_write}" | awk '{print $1}')")"
-  root_meta="$(_num_or_empty "$(echo "${_root_meta_ops}" | awk '{print $1}')")"
-  root_fio_lat="$(_num_or_empty "$(echo "${_root_rand_lat_read}" | awk '{print $1}')")"
-
-  disk_root_grade="$(_boa_grade_disk_mount "${root_ioping_us}" "${root_seq_r}" "${root_seq_w}" "${root_meta}" "${root_fio_lat}")"
-  disk_root_score="$(_boa_grade_to_score "${disk_root_grade}")"
-
-  local attached_sum=0
-  local attached_cnt=0
-  local attached_avg_score=""
-  local attached_avg_grade="N/A"
-
-  local mp
-  for mp in "${_test_mounts[@]}"; do
-    [ "${mp}" = "/" ] && continue
-
-    local mp_ioping_us mp_seq_r mp_seq_w mp_meta mp_fio_lat mp_grade mp_score
-
-    mp_ioping_us="$(_ioping_avg_us_from_seek_line "${_ioping_seek_m["${mp}"]}")"
-    mp_seq_r="$(_num_or_empty "$(echo "${_fio_seqread_bw_read["${mp}"]}" | awk '{print $1}')")"
-    mp_seq_w="$(_num_or_empty "$(echo "${_fio_seqwrite_bw_write["${mp}"]}" | awk '{print $1}')")"
-    mp_meta="$(_num_or_empty "$(echo "${_meta_ops["${mp}"]}" | awk '{print $1}')")"
-    mp_fio_lat="$(_num_or_empty "$(echo "${_fio_rand_latency_read["${mp}"]}" | awk '{print $1}')")"
-
-    mp_grade="$(_boa_grade_disk_mount "${mp_ioping_us}" "${mp_seq_r}" "${mp_seq_w}" "${mp_meta}" "${mp_fio_lat}")"
-    mp_score="$(_boa_grade_to_score "${mp_grade}")"
-
-    attached_sum="$(awk -v a="${attached_sum}" -v b="${mp_score}" 'BEGIN{printf "%.6f", a+b}')"
+    # We do not run ioping per mount (keeps runtime down), so attached grades are seq/fio-based.
+    _a_grade="$(_boa_grade_disk_final "" "${_a_seq_read}" "${_a_seq_write}" "${_a_rand_lat}")"
+    _a_score="$(_boa_grade_to_score "${_a_grade}")"
+    attached_sum="$(awk -v a="${attached_sum}" -v b="${_a_score}" 'BEGIN{printf "%.2f", a+b}')"
     attached_cnt=$((attached_cnt + 1))
   done
 
   if [ "${attached_cnt}" -gt 0 ]; then
-    attached_avg_score="$(awk -v s="${attached_sum}" -v c="${attached_cnt}" 'BEGIN{if(c>0) printf "%.6f", s/c}')"
+    attached_avg_score="$(awk -v s="${attached_sum}" -v c="${attached_cnt}" 'BEGIN{printf "%.2f", s/c}')"
     attached_avg_grade="$(_boa_score_to_grade "${attached_avg_score}")"
+    weighted_score="$(awk -v r="${root_score}" -v a="${attached_avg_score}" 'BEGIN{printf "%.2f", r*0.70 + a*0.30}')"
+    disk_grade="$(_boa_score_to_grade "${weighted_score}")"
+  else
+    attached_avg_score="0"
+    attached_avg_grade="N/A"
+    disk_grade="${disk_root_grade}"
   fi
-
-  local disk_grade
-  disk_grade="$(_boa_compute_final_disk_grade "${disk_root_score}" "${attached_avg_score}")"
 
   echo " ============================================================================="
   echo " == 1. MEMORY (Critical for APC/Valkey/OPcache + Nginx microcaching)        =="
@@ -818,30 +754,24 @@ _print_compact_summary() {
   fi
   printf "   Final disk grade:   [%s]  (weighted: root 0.70 + attached 0.30)\n" "${disk_grade}"
   echo ""
-
-  if [ -n "${root_ioping_us}" ]; then
-    printf "   Root ioping avg:    %s us\n" "${root_ioping_us}"
-  else
-    printf "   Root ioping avg:    N/A\n"
-  fi
-  printf "   Root seq read:      %s\n" "${_root_seqread_bw_read}"
-  printf "   Root seq write:     %s\n" "${_root_seqwrite_bw_write}"
-  printf "   Root metadata ops:  %s\n" "${_root_meta_ops}"
+  printf "   Real latency (ioping avg):  %s\n" "$(echo "${_ioping_seek}" | grep -oP '\d+\.\d+ us' | head -2 | tail -1 || echo "N/A")"
+  printf "   Sequential read:            %s\n" "${_root_seqread_bw_read}"
+  printf "   Sequential write:           %s\n" "${_root_seqwrite_bw_write}"
+  printf "   Metadata ops:               %s\n" "${_root_meta_ops}"
   echo ""
-
-  printf "   Root fio (synthetic): rand 4K read %s @ %s; write %s @ %s\n" \
-    "${_root_rand_bw_read}" "${_root_rand_lat_read}" \
-    "${_root_rand_bw_write}" "${_root_rand_lat_write}"
+  printf "   Details (fio synthetic):\n"
+  printf "     Random 4K read:   %s @ %s\n" "${_root_rand_bw_read}" "${_root_rand_lat_read}"
+  printf "     Random 4K write:  %s @ %s\n" "${_root_rand_bw_write}" "${_root_rand_lat_write}"
 
   if [ "${disk_grade}" = "poor" ]; then
     echo ""
     echo "   ⚠️  Disk profile looks weak (slow SSD/attached). May impact deploys/logs/DB."
   elif [ "${disk_grade}" = "excellent" ]; then
     echo ""
-    echo "   ✓  Excellent disk profile (fast local + healthy attached)."
+    echo "   ✓  Excellent disk performance (NVMe-class)."
   elif [ "${disk_grade}" = "good" ]; then
     echo ""
-    echo "   ✓  Good disk profile."
+    echo "   ✓  Good disk performance for BOA workloads."
   fi
 
   if [ "${attached_cnt}" -gt 0 ] && [ "${attached_avg_grade}" = "poor" ]; then
@@ -1046,9 +976,6 @@ declare -A _fio_seqwrite_bw_write
 declare -A _fio_seqwrite_latency_write
 declare -A _meta_ops
 
-declare -A _ioping_seek_m
-declare -A _ioping_seqread_m
-
 # For CSV summary (root mount)
 _root_rand_bw_read=""
 _root_rand_bw_write=""
@@ -1063,9 +990,6 @@ _root_meta_ops=""
 for _mount_point in "${_test_mounts[@]}"; do
   echo "Running Disk I/O tests on ${_mount_point}..."
   _safe_mount_point="$(echo "${_mount_point}" | sed 's#/#_#g')"
-
-  # Per-mount ioping (so attached storage participates in grading)
-  _run_ioping_quick_for_mount "${_mount_point}" || true
 
   # Random 4k read/write
   _rand_output="/tmp/fio_rand_${_safe_mount_point}_$$.json"
