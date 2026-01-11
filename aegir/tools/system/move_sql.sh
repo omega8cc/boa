@@ -113,7 +113,7 @@ _stop_sql() {
   for e in ${_PHP_V}; do
     if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
       mkdir -p /var/backups/php-logs/${_NOW}/
-      mv -f /var/log/php/php${e}-fpm-error.log /var/backups/php-logs/${_NOW}/
+      mv -f /var/log/php/php${e}-fpm-error.log /var/backups/php-logs/${_NOW}/ &> /dev/null
       service "php${e}-fpm" force-quit &> /dev/null
     fi
   done
