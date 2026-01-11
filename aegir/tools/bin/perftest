@@ -861,6 +861,8 @@ _print_compact_summary() {
 
   if [ "${net_grade}" = "poor" ]; then
     echo "   ⚠️  Slow network - may affect external API calls and package updates."
+  elif [ "${net_grade}" = "good" ]; then
+    echo "   ✓  Acceptable network speed."
   elif [ "${net_grade}" = "excellent" ]; then
     echo "   ✓  Excellent network speed."
   fi
