@@ -598,9 +598,9 @@ _boa_grade_network() {
   # input: numeric MiB/s
   awk -v n="$1" 'BEGIN{
     if (n=="" || n=="N/A") print "unknown";
-    else if (n>=100) print "excellent";
-    else if (n>=50) print "good";
-    else if (n>=20) print "ok";
+    else if (n>=200) print "excellent";
+    else if (n>=100) print "good";
+    else if (n>=50) print "ok";
     else print "poor";
   }'
 }
