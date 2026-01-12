@@ -222,22 +222,25 @@ _run_ipv4_net_check() {
   _net_ipv4="$(_redact_ip "${ip}")"
   local bps
 
-  # BOA mirrors (100 MB, region-aware via custom speed test)
-  _find_fast_mirror_early
-  if [ -n "${_urlDld}" ]; then
-    bps="$(_download_benchmark_v4 "${_urlDld}" 90000)"
-  fi
-
-  # Fallback to Cloudflare 50 MB, region-aware via anycast
+  # Use Cloudflare 100 MB, region-aware via anycast
   if [ -z "${bps}" ]; then
-    _log "BOA mirror test failed, trying Cloudflare fallback..."
-    bps="$(_download_benchmark_v4 "https://speed.cloudflare.com/__down?bytes=52428800" 50000)"
+    _log "Trying Cloudflare..."
+    bps="$(_download_benchmark_v4 "https://speed.cloudflare.com/__down?bytes=104857600" 90000)"
   fi
 
   # Fallback to GitHub 100 MB
   if [ -z "${bps}" ]; then
     _log "Cloudflare test failed, trying GitHub fallback..."
     bps="$(_download_benchmark_v4 "https://raw.githubusercontent.com/TestFileHub/FileHub/main/pdf/pdf100mb.pdf" 90000)"
+  fi
+
+  # Fallback to BOA mirrors (100 MB, region-aware via custom speed test)
+  if [ -z "${bps}" ]; then
+    _log "GitHub test failed, trying BOA fallback..."
+    _find_fast_mirror_early
+    if [ -n "${_urlDld}" ]; then
+      bps="$(_download_benchmark_v4 "${_urlDld}" 90000)"
+    fi
   fi
 
   if printf '%s' "${bps}" | grep -Eq '^[0-9]+(\.[0-9]+)?$'; then
