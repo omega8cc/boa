@@ -199,12 +199,12 @@ _run_ipv4_net_check() {
   _net_ipv4="$(_redact_ip "${ip}")"
   # Cloudflare speed endpoint (50 MB, region-aware via anycast)
   local bps
-  bps="$(_download_benchmark_v4 "https://speed.cloudflare.com/__down?bytes=52428800" 50000000)"
+  bps="$(_download_benchmark_v4 "https://speed.cloudflare.com/__down?bytes=52428800" 50000)"
 
   # Fallback to GitHub if Cloudflare fails
   if [ -z "${bps}" ]; then
     _log "Cloudflare test failed, trying GitHub fallback..."
-    bps="$(_download_benchmark_v4 "https://raw.githubusercontent.com/TestFileHub/FileHub/main/pdf/pdf100mb.pdf" 90000000)"
+    bps="$(_download_benchmark_v4 "https://raw.githubusercontent.com/TestFileHub/FileHub/main/pdf/pdf100mb.pdf" 90000)"
   fi
 
   if printf '%s' "${bps}" | grep -Eq '^[0-9]+(\.[0-9]+)?$'; then
@@ -525,8 +525,8 @@ _boa_grade_mem_bw() {
   awk -v v="$1" 'BEGIN{
     if (v>=6000) print "excellent";
     else if (v>=3000) print "good";
-    else if (v>=2000) print "ok";
-    else print "poor";
+    else if (v>=2000) print "average";
+    else print "low";
   }'
 }
 
@@ -548,59 +548,92 @@ _boa_grade_cpu_speed() {
     if (eps=="" || eps=="N/A") print "unknown";
     else if (eps>=3500) print "excellent";
     else if (eps>=2500) print "good";
-    else if (eps>=1500) print "ok";
+    else if (eps>=1500) print "average";
     else print "poor";
   }'
 }
 
 _boa_grade_disk_final() {
-  # Inputs: $1=ioping_avg_us, $2=seq_read_mbps, $3=seq_write_mbps, $4=rand_read_lat_ms
-  # Priority: ioping (real latency) > sequential throughput > fio latency
+  # Inputs: $1=ioping_avg_us, $2=seq_read_mbps, $3=seq_write_mbps, $4=read_iops, $5=write_iops, $6=meta_ops
+  # BOA-realistic: Sequential WRITE is critical (Drupal writes, cache, logs)
+  # Priority: seq_write (blocker) > seq_read > IOPS > ioping > metadata
   local ioping_us="$1"
   local seq_read_mbps="$2"
   local seq_write_mbps="$3"
-  local rand_lat="$4"
+  local read_iops="$4"
+  local write_iops="$5"
+  local meta_ops="$6"
 
   # Extract numeric values
   ioping_us="$(_num_or_empty "${ioping_us}")"
   seq_read_mbps="$(_num_or_empty "${seq_read_mbps}")"
   seq_write_mbps="$(_num_or_empty "${seq_write_mbps}")"
-  rand_lat="$(_num_or_empty "${rand_lat}")"
+  read_iops="$(_num_or_empty "${read_iops}")"
+  write_iops="$(_num_or_empty "${write_iops}")"
+  meta_ops="$(_num_or_empty "${meta_ops}")"
 
-  # Rule: if ioping shows good latency AND seq is fast = NVMe-class
-  if [ -n "${ioping_us}" ] && [ -n "${seq_read_mbps}" ] && [ -n "${seq_write_mbps}" ]; then
-    # NVMe-class: ioping < 300us AND seq_read > 1500 AND seq_write > 1000
-    if awk -v i="${ioping_us}" -v sr="${seq_read_mbps}" -v sw="${seq_write_mbps}" 'BEGIN{exit !(i<300 && sr>1500 && sw>1000)}' 2>/dev/null; then
-      echo "excellent"
-      return
-    # Good SSD: ioping < 500us AND seq_read > 800 AND seq_write > 400
-    elif awk -v i="${ioping_us}" -v sr="${seq_read_mbps}" -v sw="${seq_write_mbps}" 'BEGIN{exit !(i<500 && sr>800 && sw>400)}' 2>/dev/null; then
-      echo "good"
+  # CRITICAL CHECK: Sequential write < 100 MB/s = BAD (throttled/failing disk)
+  if [ -n "${seq_write_mbps}" ]; then
+    if awk -v sw="${seq_write_mbps}" 'BEGIN{exit !(sw<100)}' 2>/dev/null; then
+      echo "bad"
       return
     fi
   fi
 
-  # Fallback: use sequential throughput
-  if [ -n "${seq_read_mbps}" ]; then
-    if awk -v s="${seq_read_mbps}" 'BEGIN{exit !(s>1500)}' 2>/dev/null; then
-      echo "good"
-      return
-    elif awk -v s="${seq_read_mbps}" 'BEGIN{exit !(s>500)}' 2>/dev/null; then
-      echo "ok"
-      return
+  # Now grade based on combined metrics
+  local grade="poor"
+
+  # Check if we have both read and write
+  if [ -n "${seq_read_mbps}" ] && [ -n "${seq_write_mbps}" ]; then
+    # EXCELLENT: NVMe-class (write > 1000 AND read > 2000)
+    if awk -v sw="${seq_write_mbps}" -v sr="${seq_read_mbps}" 'BEGIN{exit !(sw>1000 && sr>2000)}' 2>/dev/null; then
+      grade="excellent"
+    # GOOD: Healthy SSD (write > 500 AND read > 1000)
+    elif awk -v sw="${seq_write_mbps}" -v sr="${seq_read_mbps}" 'BEGIN{exit !(sw>500 && sr>1000)}' 2>/dev/null; then
+      grade="good"
+    # OK: Moderate (write > 300 AND read > 500)
+    elif awk -v sw="${seq_write_mbps}" -v sr="${seq_read_mbps}" 'BEGIN{exit !(sw>300 && sr>500)}' 2>/dev/null; then
+      grade="average"
+    # POOR: Below thresholds but not catastrophic
+    else
+      grade="poor"
     fi
   fi
 
-  echo "poor"
+  # Boost grade if IOPS are excellent (11k+ = NVMe-class)
+  if [ -n "${read_iops}" ] && [ -n "${write_iops}" ]; then
+    if awk -v ri="${read_iops}" -v wi="${write_iops}" 'BEGIN{exit !(ri>10000 && wi>10000)}' 2>/dev/null; then
+      # Excellent IOPS - upgrade one level
+      case "${grade}" in
+        poor) grade="average" ;;
+        average) grade="good" ;;
+        good) grade="excellent" ;;
+      esac
+    fi
+  fi
+
+  # ioping reality check: if ioping shows bad latency, downgrade
+  if [ -n "${ioping_us}" ]; then
+    if awk -v i="${ioping_us}" 'BEGIN{exit !(i>2000)}' 2>/dev/null; then
+      # Very bad real latency - downgrade one level
+      case "${grade}" in
+        excellent) grade="good" ;;
+        good) grade="average" ;;
+        average) grade="poor" ;;
+      esac
+    fi
+  fi
+
+  echo "${grade}"
 }
 
 _boa_grade_network() {
   # input: numeric MiB/s
   awk -v n="$1" 'BEGIN{
     if (n=="" || n=="N/A") print "unknown";
-    else if (n>=100) print "excellent";
-    else if (n>=50) print "good";
-    else if (n>=20) print "ok";
+    else if (n>=200) print "excellent";
+    else if (n>=100) print "good";
+    else if (n>=50) print "average";
     else print "poor";
   }'
 }
@@ -628,6 +661,7 @@ _print_compact_summary() {
   # Extract numeric values
   local mem_mibps mem_lat cpu_steal st_eps mt_eps aes_mibps net_mibps
   local rand_read_lat seq_read_mbps seq_write_mbps ioping_avg_us meta_ops_num
+  local read_iops write_iops
 
   mem_mibps="$(_num_or_empty "$(echo "${_mem_transfer_speed}" | awk '{print $1}')")"
   mem_lat="$(_num_or_empty "${_mem_latency}")"
@@ -641,6 +675,8 @@ _print_compact_summary() {
   seq_read_mbps="$(_num_or_empty "$(echo "${_root_seqread_bw_read}" | awk '{print $1}')")"
   seq_write_mbps="$(_num_or_empty "$(echo "${_root_seqwrite_bw_write}" | awk '{print $1}')")"
   meta_ops_num="$(_num_or_empty "$(echo "${_root_meta_ops}" | awk '{print $1}')")"
+  read_iops="$(_num_or_empty "${_fio_rand_iops_read["/"]}")"
+  write_iops="$(_num_or_empty "${_fio_rand_iops_write["/"]}")"
 
   # Extract ioping avg latency (format: "min/avg/max/mdev = 28.3 us / 126.5 us / ...")
   ioping_avg_us="$(echo "${_ioping_seek}" | grep -oP '\d+\.\d+(?= us)' | head -2 | tail -1)"
@@ -650,7 +686,7 @@ _print_compact_summary() {
   mem_grade="$(_boa_grade_mem_bw "${mem_mibps:-0}")"
   steal_grade="$(_boa_grade_cpu_steal "${cpu_steal}")"
   cpu_grade="$(_boa_grade_cpu_speed "${st_eps}")"
-  disk_grade="$(_boa_grade_disk_final "${ioping_avg_us}" "${seq_read_mbps}" "${seq_write_mbps}" "${rand_read_lat}")"
+  disk_grade="$(_boa_grade_disk_final "${ioping_avg_us}" "${seq_read_mbps}" "${seq_write_mbps}" "${read_iops}" "${write_iops}" "${meta_ops_num}")"
   net_grade="$(_boa_grade_network "${net_mibps}")"
 
   echo " ============================================================================="
@@ -658,13 +694,16 @@ _print_compact_summary() {
   echo " ============================================================================="
   printf "   Bandwidth:  %-20s Grade: [%s]\n" "${_mem_transfer_speed}" "${mem_grade}"
   printf "   Latency:    %-20s\n" "${_mem_latency} ms"
+  echo ""
 
-  if [ "${mem_grade}" = "poor" ]; then
-    echo ""
+  if [ "${mem_grade}" = "low" ]; then
     echo "   ⚠️  Low memory bandwidth - may limit BOA caching under heavy load."
+  elif [ "${mem_grade}" = "average" ]; then
+    echo "   ✓  Average memory bandwidth for in-memory caching."
+  elif [ "${mem_grade}" = "good" ]; then
+    echo "   🌟  Good memory bandwidth for in-memory caching."
   elif [ "${mem_grade}" = "excellent" ]; then
-    echo ""
-    echo "   ✓  Excellent memory bandwidth for in-memory caching."
+    echo "   🏆  Excellent memory bandwidth for in-memory caching."
   fi
   echo ""
 
@@ -677,45 +716,60 @@ _print_compact_summary() {
   printf "   AES Throughput: %-15s (crypto/compression)\n" "${_aes_mibps}"
   echo ""
 
-  if [ -n "${cpu_steal}" ] && [ "${cpu_steal}" != "N/A" ]; then
-    if awk -v s="${cpu_steal}" 'BEGIN{exit !(s>=7)}' 2>/dev/null; then
-      echo "   ❌ HIGH CPU steal - oversold host, NOT recommended for production."
-    elif awk -v s="${cpu_steal}" 'BEGIN{exit !(s>=3)}' 2>/dev/null; then
-      echo "   ⚠️  Elevated CPU steal - may cause latency spikes under load."
-    elif awk -v s="${cpu_steal}" 'BEGIN{exit !(s<1)}' 2>/dev/null; then
-      echo "   ✓  Excellent CPU steal - minimal noisy neighbor impact."
-    fi
+  if [ "${cpu_grade}" = "poor" ]; then
+    echo "   ❌ CPU performance too slow for BOA"
+  elif [ "${cpu_grade}" = "average" ]; then
+    echo "   ✓  Average CPU performance but not optimal"
+  elif [ "${cpu_grade}" = "good" ]; then
+    echo "   🌟  Good CPU performance "
+  elif [ "${cpu_grade}" = "excellent" ]; then
+    echo "   🏆  Excellent CPU performance"
   fi
+
+  if [ "${cpu_steal}" = "bad" ]; then
+    echo "   ❌ HIGH CPU steal - oversold host, NOT recommended for production."
+  elif [ "${cpu_steal}" = "warning" ]; then
+    echo "   ⚠️  Elevated CPU steal - may cause latency spikes under load."
+  elif [ "${cpu_steal}" = "good" ]; then
+    echo "   ✓  Minimal CPU steal - may cause latency spikes under load."
+  elif [ "${cpu_steal}" = "excellent" ]; then
+    echo "   🏆  Excellent CPU steal - minimal noisy neighbor impact."
+  fi
+
   echo ""
 
   echo " ============================================================================="
-  echo " == 3. DISK (Less critical in BOA, but matters for deploys/logs/DB)         =="
+  echo " == 3. DISK (Root dominates; attached storage influences vendor grading)    =="
   echo " ============================================================================="
   printf "   Final grade:        [%s]\n" "${disk_grade}"
   echo ""
-  printf "   Real latency (ioping avg):  %s\n" "$(echo "${_ioping_seek}" | grep -oP '\d+\.\d+ us' | head -2 | tail -1 || echo "N/A")"
-  printf "   Sequential read:            %s\n" "${_root_seqread_bw_read}"
-  printf "   Sequential write:           %s\n" "${_root_seqwrite_bw_write}"
-  printf "   Metadata ops:               %s\n" "${_root_meta_ops}"
+  printf "   Sequential write (CRITICAL): %s\n" "${_root_seqwrite_bw_write}"
+  printf "   Sequential read:             %s\n" "${_root_seqread_bw_read}"
+  printf "   Random 4K IOPS:              %s read / %s write\n" "${_fio_rand_iops_read["/"]}" "${_fio_rand_iops_write["/"]}"
+  printf "   Real latency (ioping avg):   %s\n" "$(echo "${_ioping_seek}" | grep -oP '\d+\.\d+ us' | head -2 | tail -1 || echo "N/A")"
+  printf "   Metadata ops:                %s\n" "${_root_meta_ops}"
   echo ""
-  printf "   Details (fio synthetic):\n"
+  printf "   Details (fio synthetic latency):\n"
   printf "     Random 4K read:   %s @ %s\n" "${_root_rand_bw_read}" "${_root_rand_lat_read}"
   printf "     Random 4K write:  %s @ %s\n" "${_root_rand_bw_write}" "${_root_rand_lat_write}"
+  echo ""
 
-  if [ "${disk_grade}" = "poor" ]; then
-    echo ""
-    echo "   ⚠️  Slow disk - may impact deployments and DB checkpoints."
-  elif [ "${disk_grade}" = "excellent" ]; then
-    echo ""
-    echo "   ✓  Excellent disk performance (NVMe-class)."
+  if [ "${disk_grade}" = "bad" ]; then
+    echo "   ❌ CRITICAL: Sequential write < 100 MB/s - disk is throttled or failing!"
+    echo "      This will severely impact BOA performance (cache writes, logs, DB)."
+  elif [ "${disk_grade}" = "poor" ]; then
+    echo "   ⚠️  Disk profile looks weak (slow SSD/attached). May impact deploys/logs/DB."
+  elif [ "${disk_grade}" = "average" ]; then
+    echo "   ✓  Average disk performance for BOA workloads."
   elif [ "${disk_grade}" = "good" ]; then
-    echo ""
-    echo "   ✓  Good disk performance for BOA workloads."
+    echo "   🌟  Good disk performance for BOA workloads."
+  elif [ "${disk_grade}" = "excellent" ]; then
+    echo "   🏆  Excellent disk performance (NVMe-class)."
   fi
   echo ""
 
   echo " ============================================================================="
-  echo " == 4. NETWORK (Sanity check; less critical for BOA)                        =="
+  echo " == 4. NETWORK (Sanity check)                                               =="
   echo " ============================================================================="
   printf "   Public IPv4:        %s\n" "${_net_ipv4}"
   printf "   Download speed:     %-15s [%s]\n" "${_net_download}" "${net_grade}"
@@ -724,8 +778,12 @@ _print_compact_summary() {
 
   if [ "${net_grade}" = "poor" ]; then
     echo "   ⚠️  Slow network - may affect external API calls and package updates."
+  elif [ "${net_grade}" = "average" ]; then
+    echo "   ✓  Average network speed."
+  elif [ "${net_grade}" = "good" ]; then
+    echo "   🌟  Good network speed."
   elif [ "${net_grade}" = "excellent" ]; then
-    echo "   ✓  Excellent network speed."
+    echo "   🏆  Excellent network speed."
   fi
   echo ""
 
@@ -737,7 +795,7 @@ _print_compact_summary() {
   local _warnings=0
 
   # Memory
-  if [ "${mem_grade}" = "poor" ]; then
+  if [ "${mem_grade}" = "low" ]; then
     echo "   ❌ Memory bandwidth too low for BOA"
     _issues=$((_issues + 1))
   fi
@@ -746,8 +804,8 @@ _print_compact_summary() {
   if [ "${cpu_grade}" = "poor" ]; then
     echo "   ❌ CPU performance too slow for BOA"
     _issues=$((_issues + 1))
-  elif [ "${cpu_grade}" = "ok" ]; then
-    echo "   ⚠️  CPU performance acceptable but not optimal"
+  elif [ "${cpu_grade}" = "average" ]; then
+    echo "   ⚠️  CPU performance average but not optimal"
     _warnings=$((_warnings + 1))
   fi
 
