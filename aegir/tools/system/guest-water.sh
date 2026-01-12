@@ -4,7 +4,7 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 
-[ ! -d "/var/backups/csf/water" ] && mkdir -p /var/backups/csf/water
+[ -d "/var/backups/csf/water" ] || mkdir -p /var/backups/csf/water
 
 _whitelist_ip_pingdom() {
   if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
