@@ -987,8 +987,8 @@ mapfile -t _test_mounts < <(_get_test_mounts)
 echo "Running ioping quick latency checks (${_IOPING_SECONDS}s)..."
 _run_ioping_quick
 
-# IPv4 network sanity check (Cloudflare CDN with fallback)
-echo "Running IPv4 network check (Cloudflare CDN, ${_NET_TIMEOUT}s timeout)..."
+# IPv4 network sanity check (CDN with fallback)
+echo "Running IPv4 network check (CDN, ${_NET_TIMEOUT}s timeout)..."
 _run_ipv4_net_check
 
 declare -A _fio_rand_iops_read
