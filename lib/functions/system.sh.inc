@@ -9321,7 +9321,7 @@ _sshd_armour() {
         echo "HostKey /etc/ssh/ssh_host_rsa_key" >> /etc/ssh/sshd_config
       fi
       if [ ! -e "/etc/ssh/.ssh_host_ed25519_key.pid" ]; then
-        mkdir -p /var/backups/sshd
+        [ -d "/var/backups/sshd" ] || mkdir -p /var/backups/sshd
         mv -f /etc/ssh/ssh_host_*key* /var/backups/sshd/
         _msg "INFO: Generating new ssh_host_ed25519_key..."
         ssh-keygen -t ed25519 -N "" -q -f /etc/ssh/ssh_host_ed25519_key < /dev/null
