@@ -854,7 +854,7 @@ _up_finish() {
   [ -e "/tmp/aegir_backup_mode.txt" ] && rm -f /tmp/aegir_backup_mode.txt
   rm -f ${_vBs}/*.sh.cnf*
   rm -f ${_vBs}/OCTOPUS.sh*
-  mkdir -p /var/backups/php-logs/${_NOW}/
+  [ -d "/var/backups/php-logs/${_NOW}" ] || mkdir -p /var/backups/php-logs/${_NOW}/
   mv -f /var/log/php/* /var/backups/php-logs/${_NOW}/ &> /dev/null
   if [ -e "/opt/local/bin/php" ] || [ -e "/usr/local/bin/php" ]; then
     rm -f /opt/local/bin/php
@@ -881,7 +881,7 @@ _find_fast_mirror_early() {
   _ffMirr=/opt/local/bin/ffmirror
   if [ -x "${_ffMirr}" ]; then
     _ffList="/var/backups/boa-mirrors-2025-01.txt"
-    mkdir -p /var/backups
+    [ -d "/var/backups" ] || mkdir -p /var/backups
     if [ ! -e "${_ffList}" ]; then
       echo "eu.files.aegir.cc"  > ${_ffList}
       echo "us.files.aegir.cc" >> ${_ffList}
