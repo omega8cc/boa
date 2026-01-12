@@ -89,24 +89,20 @@ _check_and_install_package() {
   fi
 }
 
-# Prefer apt sysbench, fallback to build-from-source without MySQL
+# Prefer sysbench build-from-source without MySQL/MariaDB
 _ensure_sysbench() {
   if command -v sysbench >/dev/null 2>&1; then
     return 0
   fi
-  # Try Debian package first (usually good enough and avoids build deps)
-  _check_and_install_package "sysbench"
-  if command -v sysbench >/dev/null 2>&1; then
-    return 0
-  fi
-  # Fallback: compile from source without MySQL support
-  _log "sysbench package not available; compiling sysbench from source (without MySQL)..."
+  # Always compile sysbench from source without MySQL/MariaDB
+  _log "Compiling sysbench from source..."
   _check_and_install_package "git"
   _check_and_install_package "make"
   _check_and_install_package "gcc"
   _check_and_install_package "automake"
   _check_and_install_package "libtool"
   _check_and_install_package "pkg-config"
+  _check_and_install_package "libaio-dev"
   rm -rf /tmp/sysbench-build >/dev/null 2>&1
   mkdir -p /tmp/sysbench-build || exit 1
   cd /tmp/sysbench-build || exit 1
