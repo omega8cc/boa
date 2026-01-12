@@ -278,7 +278,7 @@ _find_fast_mirror_early() {
   _ffMirr=/opt/local/bin/ffmirror
   if [ -x "${_ffMirr}" ]; then
     _ffList="/var/backups/boa-mirrors-2025-01.txt"
-    mkdir -p /var/backups
+    [ -d "/var/backups" ] || mkdir -p /var/backups
     if [ ! -e "${_ffList}" ]; then
       echo "eu.files.aegir.cc"  > ${_ffList}
       echo "us.files.aegir.cc" >> ${_ffList}
@@ -2229,7 +2229,7 @@ _update_agents() {
       chown root:root /var/xdrago/manage_ltd_users.sh
       touch ${_pthLog}/manage_ltd_users.sh.ctrl.f69.${_tRee}.${_xSrl}.pid
       [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
-      [ -e "/var/backups/ltd/log" ] && rm -rf /var/backups/ltd/log
+      [ -d "/var/backups/ltd/log" ] && rm -rf /var/backups/ltd/log
     else
       mv -f /var/xdrago/manage_ltd_users.sh.old /var/xdrago/manage_ltd_users.sh
     fi
@@ -2578,7 +2578,7 @@ _update_agents() {
     && [ -e "/usr/sbin/csf" ] \
     && [ ! -e "${_pthLog}/fpm-cli.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     _usrGroup=users
-    [ -e "/var/backups/off-run/" ] && cp -a /var/backups/off-run/run* /var/xdrago/ &> /dev/null
+    [ -d "/var/backups/off-run/" ] && cp -a /var/backups/off-run/run* /var/xdrago/ &> /dev/null
     for _pthSysUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
       _tUsr=
       _tUsr=$(echo ${_pthSysUsr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
@@ -2604,9 +2604,7 @@ _update_agents() {
           || [ ! -e "${_pthSysUsr}/static/control/cli.info" ]; then
           if [ -e "/var/xdrago/run-${_tUsr}" ] \
             && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
-            if [ ! -e "/var/backups/off-run" ]; then
-              mkdir -p /var/backups/off-run/
-            fi
+            [ -d "/var/backups/off-run" ] || mkdir -p /var/backups/off-run
             mv -f /var/xdrago/run-${_tUsr} /var/backups/off-run/
           fi
         else
@@ -2670,7 +2668,7 @@ _update_agents() {
   fi
 
   # Create the destination directory if it doesn't exist
-  mkdir -p /var/backups/off-run/
+  [ -d "/var/backups/off-run" ] || mkdir -p /var/backups/off-run
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -d "/data/u" ] \
@@ -3742,7 +3740,7 @@ _fix_log4j_solr7() {
       _get_dev_src "apache-log4j-${_LOG4J_VRN}-bin.tar.gz"
       if [ -e "/var/opt/apache-log4j-${_LOG4J_VRN}-bin/log4j-core-${_LOG4J_VRN}.jar" ]; then
         cd /var/opt/apache-log4j-${_LOG4J_VRN}-bin
-        mkdir -p /var/backups/log4j/solr-7.7.3/
+        [ -d "/var/backups/log4j/solr-7.7.3" ] || mkdir -p /var/backups/log4j/solr-7.7.3
         mv -f /opt/solr-7.7.3/server/lib/ext/log4j* /var/backups/log4j/solr-7.7.3/
         rm -f /opt/solr-7.7.3/contrib/prometheus-exporter/lib/log4j*
         cp -af log4j-1.2-api-${_LOG4J_VRN}.jar    /opt/solr-7.7.3/server/lib/ext/
@@ -3764,7 +3762,7 @@ _fix_log4j_solr7() {
       _get_dev_src "apache-log4j-${_LOG4J_VRN}-bin.tar.gz"
       if [ -e "/var/opt/apache-log4j-${_LOG4J_VRN}-bin/log4j-core-${_LOG4J_VRN}.jar" ]; then
         cd /var/opt/apache-log4j-${_LOG4J_VRN}-bin
-        mkdir -p /var/backups/log4j/solr-7.6.0/
+        [ -d "/var/backups/log4j/solr-7.6.0" ] || mkdir -p /var/backups/log4j/solr-7.6.0
         mv -f /opt/solr-7.6.0/server/lib/ext/log4j* /var/backups/log4j/solr-7.6.0/
         rm -f /opt/solr-7.6.0/contrib/prometheus-exporter/lib/log4j*
         cp -af log4j-1.2-api-${_LOG4J_VRN}.jar    /opt/solr-7.6.0/server/lib/ext/
@@ -4957,7 +4955,7 @@ _count_cpu() {
 _sysctl_update() {
   if [ ! -e "/root/.no.sysctl.update.cnf" ] \
     && [ ! -e "/var/backups/.sysctl.conf.mod-disable-ipv6-${_xSrl}.log" ]; then
-    mkdir -p /var/backups
+    [ -d "/var/backups" ] || mkdir -p /var/backups
     cd /var/backups
     rm -f /var/backups/sysctl.conf
     curl ${_crlGet} "${_urlHmr}/conf/var/sysctl.conf" -o sysctl.conf

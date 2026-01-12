@@ -915,7 +915,7 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
   fi
 
   if [ ! -e "/var/log/boa/.etc_csf_allow_ctrl.${_tRee}.${_xSrl}.pid" ]; then
-    mkdir -p /var/backups/csf
+    [ -d "/var/backups/csf" ] || mkdir -p /var/backups/csf
     cp -a /etc/csf/csf.ignore /var/backups/csf/csf.ignore.${_tRee}.${_xSrl}.txt
     cp -a /etc/csf/csf.allow /var/backups/csf/csf.allow.${_tRee}.${_xSrl}.txt
     rm -f /root/.*.pid
