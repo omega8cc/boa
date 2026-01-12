@@ -734,13 +734,13 @@ _print_compact_summary() {
   echo ""
 
   if [ "${mem_grade}" = "low" ]; then
-    echo "   ⚠️  Low memory bandwidth - may limit BOA caching under heavy load."
+    echo "   ⚠️  Low memory bandwidth - may limit BOA caching under heavy load"
   elif [ "${mem_grade}" = "average" ]; then
-    echo "   ✓  Average memory bandwidth for in-memory caching."
+    echo "   ✓  Average memory bandwidth for in-memory caching"
   elif [ "${mem_grade}" = "good" ]; then
-    echo "   🌟  Good memory bandwidth for in-memory caching."
+    echo "   🌟  Good memory bandwidth for in-memory caching"
   elif [ "${mem_grade}" = "excellent" ]; then
-    echo "   🏆  Excellent memory bandwidth for in-memory caching."
+    echo "   🏆  Excellent memory bandwidth for in-memory caching"
   fi
   echo ""
 
@@ -756,13 +756,13 @@ _print_compact_summary() {
 
   if [ -n "${cpu_steal}" ] && [ "${cpu_steal}" != "N/A" ]; then
     if awk -v s="${cpu_steal}" 'BEGIN{exit !(s>=7)}' 2>/dev/null; then
-      echo "   ❌ HIGH CPU steal - oversold host, NOT recommended for production."
+      echo "   ❌ HIGH CPU steal - oversold host, NOT recommended for production"
     elif awk -v s="${cpu_steal}" 'BEGIN{exit !(s>=3)}' 2>/dev/null; then
-      echo "   ⚠️  Elevated CPU steal - will cause latency spikes under load."
+      echo "   ⚠️  Elevated CPU steal - will cause latency spikes under load"
     elif awk -v s="${cpu_steal}" 'BEGIN{exit !(s<1)}' 2>/dev/null; then
-      echo "   🏆  Excellent CPU steal - minimal noisy neighbor impact."
+      echo "   🏆  Excellent CPU steal - minimal noisy neighbor impact"
     elif awk -v s="${cpu_steal}" 'BEGIN{exit !(s<3)}' 2>/dev/null; then
-      echo "   ✓  Minimal CPU steal - but may cause latency spikes under load."
+      echo "   ✓  Minimal CPU steal - but may cause latency spikes under load"
     fi
   fi
 
@@ -795,15 +795,15 @@ _print_compact_summary() {
 
   if [ "${disk_grade}" = "bad" ]; then
     echo "   ❌ CRITICAL: Sequential write < 100 MB/s - disk is throttled or failing!"
-    echo "      This will severely impact BOA performance (cache writes, logs, DB)."
+    echo "      This will severely impact BOA performance (cache writes, logs, DB)"
   elif [ "${disk_grade}" = "poor" ]; then
-    echo "   ⚠️  Disk profile looks weak (slow SSD/attached). May impact deploys/logs/DB."
+    echo "   ⚠️  Disk profile looks weak (slow SSD/attached)"
   elif [ "${disk_grade}" = "average" ]; then
-    echo "   ✓  Average disk performance for BOA workloads."
+    echo "   ✓  Average disk performance for BOA workloads"
   elif [ "${disk_grade}" = "good" ]; then
-    echo "   🌟  Good disk performance for BOA workloads."
+    echo "   🌟  Good disk performance for BOA workloads"
   elif [ "${disk_grade}" = "excellent" ]; then
-    echo "   🏆  Excellent disk performance (NVMe-class)."
+    echo "   🏆  Excellent disk performance (NVMe-class)"
   fi
   echo ""
 
@@ -817,13 +817,13 @@ _print_compact_summary() {
   echo ""
 
   if [ "${net_grade}" = "poor" ]; then
-    echo "   ⚠️  Slow network - may affect external API calls and package updates."
+    echo "   ⚠️  Slow network - may affect external API calls and package updates"
   elif [ "${net_grade}" = "average" ]; then
-    echo "   ✓  Average network speed."
+    echo "   ✓  Average network speed"
   elif [ "${net_grade}" = "good" ]; then
-    echo "   🌟  Good network speed."
+    echo "   🌟  Good network speed"
   elif [ "${net_grade}" = "excellent" ]; then
-    echo "   🏆  Excellent network speed."
+    echo "   🏆  Excellent network speed"
   fi
   echo ""
 
