@@ -4528,9 +4528,9 @@ _update_boa_tools() {
     fi
   done
 
-  if [ ! -e "/data/u" ] && [ -e "${_optBin}/killer" ] && [ ! -e "${_usrBin}/screenfetch" ]; then
-    rm -f ${_usrBin}/{aptcleanup*,autoinit*,automini*,backchain*,barracuda*,boa*,dhcpfix*,ffdevuan*}
-    rm -f ${_usrBin}/{ffmirror*,killer*,loadguard*,octopus*,screenfetch*,vmnetfix*,webserver*,websh*}
+  if [ -e "${_optBin}/perftest" ] && [ ! -e "${_usrBin}/perftest" ]; then
+    rm -f ${_usrBin}/{aptcleanup*,autoinit*,automini*,backchain*,barracuda*,boa*,dhcpfix*,ffdevuan*,ffmirror*}
+    rm -f ${_usrBin}/{killer*,loadguard*,perftest*,octopus*,screenfetch*,vmnetfix*,webserver*,websh*}
     ln -sfn ${_optBin}/aptcleanup  ${_usrBin}/aptcleanup
     ln -sfn ${_optBin}/autoinit    ${_usrBin}/autoinit
     ln -sfn ${_optBin}/automini    ${_usrBin}/automini
@@ -4543,6 +4543,7 @@ _update_boa_tools() {
     ln -sfn ${_optBin}/killer      ${_usrBin}/killer
     ln -sfn ${_optBin}/loadguard   ${_usrBin}/loadguard
     ln -sfn ${_optBin}/octopus     ${_usrBin}/octopus
+    ln -sfn ${_optBin}/perftest    ${_usrBin}/perftest
     ln -sfn ${_optBin}/screenfetch ${_usrBin}/screenfetch
     ln -sfn ${_optBin}/vmnetfix    ${_usrBin}/vmnetfix
     ln -sfn ${_optBin}/webserver   ${_usrBin}/webserver
