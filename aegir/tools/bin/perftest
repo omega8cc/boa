@@ -729,6 +729,7 @@ _print_compact_summary() {
   echo " ============================================================================="
   echo " == 1. MEMORY (Critical for APC/Valkey/OPcache + Nginx microcaching)        =="
   echo " ============================================================================="
+  echo ""
   printf "   Bandwidth:  %-20s Grade: [%s]\n" "${_mem_transfer_speed}" "${mem_grade}"
   printf "   Latency:    %-20s\n" "${_mem_latency} ms"
   echo ""
@@ -747,11 +748,24 @@ _print_compact_summary() {
   echo " ============================================================================="
   echo " == 2. CPU (Drupal/PHP runtime; watch steal on oversold nodes)              =="
   echo " ============================================================================="
+  echo ""
   printf "   Single-thread:  %-15s events/sec  [%s] (most important)\n" "${_cpu_events_ST}" "${cpu_grade}"
   printf "   Multi-thread:   %-15s events/sec  (${_cpu_cores} vCPUs)\n" "${_cpu_events_MT_NPROC}"
   printf "   CPU Steal:      %-15s%%  [%s]\n" "${cpu_steal:-N/A}" "${steal_grade}"
   printf "   AES Throughput: %-15s (crypto/compression)\n" "${_aes_mibps}"
   echo ""
+
+  if [ -n "${cpu_steal}" ] && [ "${cpu_steal}" != "N/A" ]; then
+    if awk -v s="${cpu_steal}" 'BEGIN{exit !(s>=7)}' 2>/dev/null; then
+      echo "   ❌ HIGH CPU steal - oversold host, NOT recommended for production."
+    elif awk -v s="${cpu_steal}" 'BEGIN{exit !(s>=3)}' 2>/dev/null; then
+      echo "   ⚠️  Elevated CPU steal - will cause latency spikes under load."
+    elif awk -v s="${cpu_steal}" 'BEGIN{exit !(s<1)}' 2>/dev/null; then
+      echo "   🏆  Excellent CPU steal - minimal noisy neighbor impact."
+    elif awk -v s="${cpu_steal}" 'BEGIN{exit !(s<3)}' 2>/dev/null; then
+      echo "   ✓  Minimal CPU steal - but may cause latency spikes under load."
+    fi
+  fi
 
   if [ "${cpu_grade}" = "poor" ]; then
     echo "   ❌ CPU performance too slow for BOA"
@@ -761,24 +775,13 @@ _print_compact_summary() {
     echo "   🌟  Good CPU performance "
   elif [ "${cpu_grade}" = "excellent" ]; then
     echo "   🏆  Excellent CPU performance"
-  fi
 
-  if [ "${cpu_steal}" = "bad" ]; then
-    echo "   ❌ HIGH CPU steal - oversold host, NOT recommended for production."
-  elif [ "${cpu_steal}" = "warning" ]; then
-    echo "   ⚠️  Elevated CPU steal - may cause latency spikes under load."
-  elif [ "${cpu_steal}" = "good" ]; then
-    echo "   ✓  Minimal CPU steal - may cause latency spikes under load."
-  elif [ "${cpu_steal}" = "excellent" ]; then
-    echo "   🏆  Excellent CPU steal - minimal noisy neighbor impact."
   fi
-
   echo ""
 
   echo " ============================================================================="
   echo " == 3. DISK (Root dominates; attached storage influences vendor grading)    =="
   echo " ============================================================================="
-  printf "   Final grade:        [%s]\n" "${disk_grade}"
   echo ""
   printf "   Sequential write (CRITICAL): %s\n" "${_root_seqwrite_bw_write}"
   printf "   Sequential read:             %s\n" "${_root_seqread_bw_read}"
@@ -808,6 +811,7 @@ _print_compact_summary() {
   echo " ============================================================================="
   echo " == 4. NETWORK (Sanity check)                                               =="
   echo " ============================================================================="
+  echo ""
   printf "   Public IPv4:        %s\n" "${_net_ipv4}"
   printf "   Download speed:     %-15s [%s]\n" "${_net_download}" "${net_grade}"
   printf "   Test: Single-stream CDN pull (100MB)\n"
