@@ -525,8 +525,8 @@ _boa_grade_mem_bw() {
   awk -v v="$1" 'BEGIN{
     if (v>=6000) print "excellent";
     else if (v>=3000) print "good";
-    else if (v>=2000) print "ok";
-    else print "poor";
+    else if (v>=2000) print "average";
+    else print "low";
   }'
 }
 
@@ -548,7 +548,7 @@ _boa_grade_cpu_speed() {
     if (eps=="" || eps=="N/A") print "unknown";
     else if (eps>=3500) print "excellent";
     else if (eps>=2500) print "good";
-    else if (eps>=1500) print "ok";
+    else if (eps>=1500) print "average";
     else print "poor";
   }'
 }
@@ -593,7 +593,7 @@ _boa_grade_disk_final() {
       grade="good"
     # OK: Moderate (write > 300 AND read > 500)
     elif awk -v sw="${seq_write_mbps}" -v sr="${seq_read_mbps}" 'BEGIN{exit !(sw>300 && sr>500)}' 2>/dev/null; then
-      grade="ok"
+      grade="average"
     # POOR: Below thresholds but not catastrophic
     else
       grade="poor"
@@ -605,8 +605,8 @@ _boa_grade_disk_final() {
     if awk -v ri="${read_iops}" -v wi="${write_iops}" 'BEGIN{exit !(ri>10000 && wi>10000)}' 2>/dev/null; then
       # Excellent IOPS - upgrade one level
       case "${grade}" in
-        poor) grade="ok" ;;
-        ok) grade="good" ;;
+        poor) grade="average" ;;
+        average) grade="good" ;;
         good) grade="excellent" ;;
       esac
     fi
@@ -618,8 +618,8 @@ _boa_grade_disk_final() {
       # Very bad real latency - downgrade one level
       case "${grade}" in
         excellent) grade="good" ;;
-        good) grade="ok" ;;
-        ok) grade="poor" ;;
+        good) grade="average" ;;
+        average) grade="poor" ;;
       esac
     fi
   fi
@@ -633,7 +633,7 @@ _boa_grade_network() {
     if (n=="" || n=="N/A") print "unknown";
     else if (n>=200) print "excellent";
     else if (n>=100) print "good";
-    else if (n>=50) print "ok";
+    else if (n>=50) print "average";
     else print "poor";
   }'
 }
@@ -694,13 +694,16 @@ _print_compact_summary() {
   echo " ============================================================================="
   printf "   Bandwidth:  %-20s Grade: [%s]\n" "${_mem_transfer_speed}" "${mem_grade}"
   printf "   Latency:    %-20s\n" "${_mem_latency} ms"
+  echo ""
 
-  if [ "${mem_grade}" = "poor" ]; then
-    echo ""
+  if [ "${mem_grade}" = "low" ]; then
     echo "   ⚠️  Low memory bandwidth - may limit BOA caching under heavy load."
+  elif [ "${mem_grade}" = "average" ]; then
+    echo "   ✓  Average memory bandwidth for in-memory caching."
+  elif [ "${mem_grade}" = "good" ]; then
+    echo "   🌟  Good memory bandwidth for in-memory caching."
   elif [ "${mem_grade}" = "excellent" ]; then
-    echo ""
-    echo "   ✓  Excellent memory bandwidth for in-memory caching."
+    echo "   🏆  Excellent memory bandwidth for in-memory caching."
   fi
   echo ""
 
@@ -713,15 +716,26 @@ _print_compact_summary() {
   printf "   AES Throughput: %-15s (crypto/compression)\n" "${_aes_mibps}"
   echo ""
 
-  if [ -n "${cpu_steal}" ] && [ "${cpu_steal}" != "N/A" ]; then
-    if awk -v s="${cpu_steal}" 'BEGIN{exit !(s>=7)}' 2>/dev/null; then
-      echo "   ❌ HIGH CPU steal - oversold host, NOT recommended for production."
-    elif awk -v s="${cpu_steal}" 'BEGIN{exit !(s>=3)}' 2>/dev/null; then
-      echo "   ⚠️  Elevated CPU steal - may cause latency spikes under load."
-    elif awk -v s="${cpu_steal}" 'BEGIN{exit !(s<1)}' 2>/dev/null; then
-      echo "   ✓  Excellent CPU steal - minimal noisy neighbor impact."
-    fi
+  if [ "${cpu_grade}" = "poor" ]; then
+    echo "   ❌ CPU performance too slow for BOA"
+  elif [ "${cpu_grade}" = "average" ]; then
+    echo "   ✓  Average CPU performance but not optimal"
+  elif [ "${cpu_grade}" = "good" ]; then
+    echo "   🌟  Good CPU performance "
+  elif [ "${cpu_grade}" = "excellent" ]; then
+    echo "   🏆  Excellent CPU performance"
   fi
+
+  if [ "${cpu_steal}" = "bad" ]; then
+    echo "   ❌ HIGH CPU steal - oversold host, NOT recommended for production."
+  elif [ "${cpu_steal}" = "warning" ]; then
+    echo "   ⚠️  Elevated CPU steal - may cause latency spikes under load."
+  elif [ "${cpu_steal}" = "good" ]; then
+    echo "   ✓  Minimal CPU steal - may cause latency spikes under load."
+  elif [ "${cpu_steal}" = "excellent" ]; then
+    echo "   🏆  Excellent CPU steal - minimal noisy neighbor impact."
+  fi
+
   echo ""
 
   echo " ============================================================================="
@@ -738,20 +752,19 @@ _print_compact_summary() {
   printf "   Details (fio synthetic latency):\n"
   printf "     Random 4K read:   %s @ %s\n" "${_root_rand_bw_read}" "${_root_rand_lat_read}"
   printf "     Random 4K write:  %s @ %s\n" "${_root_rand_bw_write}" "${_root_rand_lat_write}"
+  echo ""
 
   if [ "${disk_grade}" = "bad" ]; then
-    echo ""
     echo "   ❌ CRITICAL: Sequential write < 100 MB/s - disk is throttled or failing!"
     echo "      This will severely impact BOA performance (cache writes, logs, DB)."
   elif [ "${disk_grade}" = "poor" ]; then
-    echo ""
     echo "   ⚠️  Disk profile looks weak (slow SSD/attached). May impact deploys/logs/DB."
-  elif [ "${disk_grade}" = "excellent" ]; then
-    echo ""
-    echo "   ✓  Excellent disk performance (NVMe-class)."
+  elif [ "${disk_grade}" = "average" ]; then
+    echo "   ✓  Average disk performance for BOA workloads."
   elif [ "${disk_grade}" = "good" ]; then
-    echo ""
-    echo "   ✓  Good disk performance for BOA workloads."
+    echo "   🌟  Good disk performance for BOA workloads."
+  elif [ "${disk_grade}" = "excellent" ]; then
+    echo "   🏆  Excellent disk performance (NVMe-class)."
   fi
   echo ""
 
@@ -765,10 +778,12 @@ _print_compact_summary() {
 
   if [ "${net_grade}" = "poor" ]; then
     echo "   ⚠️  Slow network - may affect external API calls and package updates."
+  elif [ "${net_grade}" = "average" ]; then
+    echo "   ✓  Average network speed."
   elif [ "${net_grade}" = "good" ]; then
-    echo "   ✓  Acceptable network speed."
+    echo "   🌟  Good network speed."
   elif [ "${net_grade}" = "excellent" ]; then
-    echo "   ✓  Excellent network speed."
+    echo "   🏆  Excellent network speed."
   fi
   echo ""
 
@@ -780,7 +795,7 @@ _print_compact_summary() {
   local _warnings=0
 
   # Memory
-  if [ "${mem_grade}" = "poor" ]; then
+  if [ "${mem_grade}" = "low" ]; then
     echo "   ❌ Memory bandwidth too low for BOA"
     _issues=$((_issues + 1))
   fi
@@ -789,8 +804,8 @@ _print_compact_summary() {
   if [ "${cpu_grade}" = "poor" ]; then
     echo "   ❌ CPU performance too slow for BOA"
     _issues=$((_issues + 1))
-  elif [ "${cpu_grade}" = "ok" ]; then
-    echo "   ⚠️  CPU performance acceptable but not optimal"
+  elif [ "${cpu_grade}" = "average" ]; then
+    echo "   ⚠️  CPU performance average but not optimal"
     _warnings=$((_warnings + 1))
   fi
 
