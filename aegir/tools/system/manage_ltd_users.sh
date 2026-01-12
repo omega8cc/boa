@@ -90,7 +90,7 @@ _find_fast_mirror_early() {
   _ffMirr=/opt/local/bin/ffmirror
   if [ -x "${_ffMirr}" ]; then
     _ffList="/var/backups/boa-mirrors-2025-01.txt"
-    mkdir -p /var/backups
+    [ -d "/var/backups" ] || mkdir -p /var/backups
     if [ ! -e "${_ffList}" ]; then
       echo "eu.files.aegir.cc"  > ${_ffList}
       echo "us.files.aegir.cc" >> ${_ffList}
@@ -503,7 +503,7 @@ _kill_zombies() {
         _SEC_DIR="$(readlink -n "${_SEC_SYM}")"
         if [ ! -L "${_SEC_SYM}" ] || [ ! -e "${_SEC_DIR}" ] \
           || [ ! -e "/home/${_usrParent}.ftp/users/${_Existing}" ]; then
-          mkdir -p /var/backups/zombie/deleted/${_NOW}
+          [ -d "/var/backups/zombie/deleted/${_NOW}" ] || mkdir -p /var/backups/zombie/deleted/${_NOW}
           pkill -9 -f gpg-agent
           _disable_chattr ${_Existing}
           rm -rf /home/${_Existing}/.gnupg
@@ -526,7 +526,7 @@ _kill_zombies() {
         && [[ ! "${_Existing}" =~ ".ftp"($) ]] \
         && [[ ! "${_Existing}" =~ ".web"($) ]]; then
         _disable_chattr ${_Existing}
-        mkdir -p /var/backups/zombie/deleted/${_NOW}
+        [ -d "/var/backups/zombie/deleted/${_NOW}" ] || mkdir -p /var/backups/zombie/deleted/${_NOW}
         mv /home/${_Existing} /var/backups/zombie/deleted/${_NOW}/.leftover-${_Existing}
         _usrParent=$(echo ${_Existing} | cut -d. -f1 | awk '{ print $1}' 2>&1)
         if [ -e "/home/${_usrParent}.ftp/users/${_Existing}" ]; then
@@ -654,7 +654,7 @@ _ok_create_user() {
     _SEC_SYM="${_usrLtdRoot}/sites"
     _TMP="/var/tmp"
     if [ ! -L "${_SEC_SYM}" ]; then
-      mkdir -p /var/backups/zombie/deleted/${_NOW}
+      [ -d "/var/backups/zombie/deleted/${_NOW}" ] || mkdir -p /var/backups/zombie/deleted/${_NOW}
       mv -f ${_usrLtdRoot} /var/backups/zombie/deleted/${_NOW}/ &> /dev/null
     fi
     if [ ! -d "${_usrLtdRoot}" ]; then
@@ -2223,8 +2223,8 @@ fi
 
 _NOW=$(date +%y%m%d-%H%M%S)
 _NOW=${_NOW//[^0-9-]/}
-mkdir -p /var/backups/ltd/{conf,log,old}
-mkdir -p /var/backups/zombie/deleted
+[ -d "/var/backups/ltd/conf" ] || mkdir -p /var/backups/ltd/{conf,log,old}
+[ -d "/var/backups/zombie/deleted" ] || mkdir -p /var/backups/zombie/deleted
 _THIS_LTD_CONF="/var/backups/ltd/conf/lshell.conf.${_NOW}"
 if [ -e "/run/manage_ruby_users.pid" ] \
   || [ -e "/run/manage_ltd_users.pid" ] \

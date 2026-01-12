@@ -53,6 +53,33 @@ _log() {
   [ "${_VERBOSE}" -eq 1 ] && echo "$@"
 }
 
+_find_fast_mirror_early() {
+  _USE_MIR=
+  _urlDld=
+  _ffMirr=/opt/local/bin/ffmirror
+  if [ -x "${_ffMirr}" ]; then
+    _ffList="/var/backups/boa-mirrors-2025-01.txt"
+    [ -d "/var/backups" ] || mkdir -p /var/backups
+    if [ ! -e "${_ffList}" ]; then
+      echo "eu.files.aegir.cc"  > ${_ffList}
+      echo "us.files.aegir.cc" >> ${_ffList}
+      echo "ao.files.aegir.cc" >> ${_ffList}
+    fi
+    if [ -e "${_ffList}" ]; then
+      _BROKEN_FFMIRR_TEST=$(grep "stuff" ${_ffMirr} 2>&1)
+      if [[ "${_BROKEN_FFMIRR_TEST}" =~ "stuff" ]]; then
+        _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
+        _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
+        _USE_MIR="${_CHECK_MIRROR}"
+        [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR=
+      fi
+    fi
+  fi
+  if [ -n "${_USE_MIR}" ]; then
+    _urlDld="http://${_USE_MIR}/dev/solr-4.2.1.tgz"
+  fi
+}
+
 # Function to check if a package is installed
 _check_and_install_package() {
   # $1 = package name
@@ -62,24 +89,20 @@ _check_and_install_package() {
   fi
 }
 
-# Prefer apt sysbench, fallback to build-from-source without MySQL
+# Prefer sysbench build-from-source without MySQL/MariaDB
 _ensure_sysbench() {
   if command -v sysbench >/dev/null 2>&1; then
     return 0
   fi
-  # Try Debian package first (usually good enough and avoids build deps)
-  _check_and_install_package "sysbench"
-  if command -v sysbench >/dev/null 2>&1; then
-    return 0
-  fi
-  # Fallback: compile from source without MySQL support
-  _log "sysbench package not available; compiling sysbench from source (without MySQL)..."
+  # Always compile sysbench from source without MySQL/MariaDB
+  _log "Compiling sysbench from source..."
   _check_and_install_package "git"
   _check_and_install_package "make"
   _check_and_install_package "gcc"
   _check_and_install_package "automake"
   _check_and_install_package "libtool"
   _check_and_install_package "pkg-config"
+  _check_and_install_package "libaio-dev"
   rm -rf /tmp/sysbench-build >/dev/null 2>&1
   mkdir -p /tmp/sysbench-build || exit 1
   cd /tmp/sysbench-build || exit 1
@@ -197,11 +220,21 @@ _run_ipv4_net_check() {
     return 0
   fi
   _net_ipv4="$(_redact_ip "${ip}")"
-  # Cloudflare speed endpoint (50 MB, region-aware via anycast)
   local bps
-  bps="$(_download_benchmark_v4 "https://speed.cloudflare.com/__down?bytes=52428800" 50000)"
 
-  # Fallback to GitHub if Cloudflare fails
+  # BOA mirrors (100 MB, region-aware via custom speed test)
+  _find_fast_mirror_early
+  if [ -n "${_urlDld}" ]; then
+    bps="$(_download_benchmark_v4 "${_urlDld}" 90000)"
+  fi
+
+  # Fallback to Cloudflare 50 MB, region-aware via anycast
+  if [ -z "${bps}" ]; then
+    _log "BOA mirror test failed, trying Cloudflare fallback..."
+    bps="$(_download_benchmark_v4 "https://speed.cloudflare.com/__down?bytes=52428800" 50000)"
+  fi
+
+  # Fallback to GitHub 100 MB
   if [ -z "${bps}" ]; then
     _log "Cloudflare test failed, trying GitHub fallback..."
     bps="$(_download_benchmark_v4 "https://raw.githubusercontent.com/TestFileHub/FileHub/main/pdf/pdf100mb.pdf" 90000)"
@@ -692,6 +725,7 @@ _print_compact_summary() {
   echo " ============================================================================="
   echo " == 1. MEMORY (Critical for APC/Valkey/OPcache + Nginx microcaching)        =="
   echo " ============================================================================="
+  echo ""
   printf "   Bandwidth:  %-20s Grade: [%s]\n" "${_mem_transfer_speed}" "${mem_grade}"
   printf "   Latency:    %-20s\n" "${_mem_latency} ms"
   echo ""
@@ -710,11 +744,24 @@ _print_compact_summary() {
   echo " ============================================================================="
   echo " == 2. CPU (Drupal/PHP runtime; watch steal on oversold nodes)              =="
   echo " ============================================================================="
+  echo ""
   printf "   Single-thread:  %-15s events/sec  [%s] (most important)\n" "${_cpu_events_ST}" "${cpu_grade}"
   printf "   Multi-thread:   %-15s events/sec  (${_cpu_cores} vCPUs)\n" "${_cpu_events_MT_NPROC}"
   printf "   CPU Steal:      %-15s%%  [%s]\n" "${cpu_steal:-N/A}" "${steal_grade}"
   printf "   AES Throughput: %-15s (crypto/compression)\n" "${_aes_mibps}"
   echo ""
+
+  if [ -n "${cpu_steal}" ] && [ "${cpu_steal}" != "N/A" ]; then
+    if awk -v s="${cpu_steal}" 'BEGIN{exit !(s>=7)}' 2>/dev/null; then
+      echo "   ❌ HIGH CPU steal - oversold host, NOT recommended for production."
+    elif awk -v s="${cpu_steal}" 'BEGIN{exit !(s>=3)}' 2>/dev/null; then
+      echo "   ⚠️  Elevated CPU steal - will cause latency spikes under load."
+    elif awk -v s="${cpu_steal}" 'BEGIN{exit !(s<1)}' 2>/dev/null; then
+      echo "   🏆  Excellent CPU steal - minimal noisy neighbor impact."
+    elif awk -v s="${cpu_steal}" 'BEGIN{exit !(s<3)}' 2>/dev/null; then
+      echo "   ✓  Minimal CPU steal - but may cause latency spikes under load."
+    fi
+  fi
 
   if [ "${cpu_grade}" = "poor" ]; then
     echo "   ❌ CPU performance too slow for BOA"
@@ -724,24 +771,13 @@ _print_compact_summary() {
     echo "   🌟  Good CPU performance "
   elif [ "${cpu_grade}" = "excellent" ]; then
     echo "   🏆  Excellent CPU performance"
-  fi
 
-  if [ "${cpu_steal}" = "bad" ]; then
-    echo "   ❌ HIGH CPU steal - oversold host, NOT recommended for production."
-  elif [ "${cpu_steal}" = "warning" ]; then
-    echo "   ⚠️  Elevated CPU steal - may cause latency spikes under load."
-  elif [ "${cpu_steal}" = "good" ]; then
-    echo "   ✓  Minimal CPU steal - may cause latency spikes under load."
-  elif [ "${cpu_steal}" = "excellent" ]; then
-    echo "   🏆  Excellent CPU steal - minimal noisy neighbor impact."
   fi
-
   echo ""
 
   echo " ============================================================================="
   echo " == 3. DISK (Root dominates; attached storage influences vendor grading)    =="
   echo " ============================================================================="
-  printf "   Final grade:        [%s]\n" "${disk_grade}"
   echo ""
   printf "   Sequential write (CRITICAL): %s\n" "${_root_seqwrite_bw_write}"
   printf "   Sequential read:             %s\n" "${_root_seqread_bw_read}"
@@ -771,6 +807,7 @@ _print_compact_summary() {
   echo " ============================================================================="
   echo " == 4. NETWORK (Sanity check)                                               =="
   echo " ============================================================================="
+  echo ""
   printf "   Public IPv4:        %s\n" "${_net_ipv4}"
   printf "   Download speed:     %-15s [%s]\n" "${_net_download}" "${net_grade}"
   printf "   Test: Single-stream CDN pull (100MB)\n"
@@ -931,6 +968,7 @@ _run_sysbench_cpu 4 "MT4"
 echo "Running Memory performance test with sysbench..."
 _mem_test="$(sysbench memory --threads="$(nproc)" --time="${_SYSBENCH_MEM_TIME}" run 2>/dev/null)"
 _mem_transfer_speed="$(echo "${_mem_test}" | awk '/transferred/ {gsub("[()]","",$(NF-1)); print $(NF-1)" "$(NF)}')"
+_mem_transfer_speed=$(echo -n "${_mem_transfer_speed}" | tr -d ")" 2>&1)
 _mem_latency="$(echo "${_mem_test}" | awk '/avg:/ {print $2}')"
 
 # AES throughput (nench-inspired)
@@ -949,8 +987,8 @@ mapfile -t _test_mounts < <(_get_test_mounts)
 echo "Running ioping quick latency checks (${_IOPING_SECONDS}s)..."
 _run_ioping_quick
 
-# IPv4 network sanity check (Cloudflare CDN with fallback)
-echo "Running IPv4 network check (Cloudflare CDN, ${_NET_TIMEOUT}s timeout)..."
+# IPv4 network sanity check (CDN with fallback)
+echo "Running IPv4 network check (CDN, ${_NET_TIMEOUT}s timeout)..."
 _run_ipv4_net_check
 
 declare -A _fio_rand_iops_read
