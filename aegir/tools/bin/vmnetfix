@@ -414,6 +414,24 @@ _ensure_sysv_prereqs() {
 _write_networking_init_if_missing() {
   # For ifupdown2 only; add minimal boot hook if missing, with safe LSB headers.
   [ "$(_ifup_variant)" = "ifupdown2" ] || { _msg "ifup variant not ifupdown2 — no networking shim needed."; return 0; }
+
+  # Ensure /etc/default/networking exists and CONFIGURE_INTERFACES is enabled
+  if [ ! -f /etc/default/networking ]; then
+    [ "${_DRY_RUN}" = "YES" ] || echo "# This file can be used to override the default networking behavior" > /etc/default/networking
+  fi
+
+  # Ensure CONFIGURE_INTERFACES is set to yes (critical for ifupdown)
+  if ! grep -q "^CONFIGURE_INTERFACES=yes" /etc/default/networking 2>/dev/null; then
+    if [ "${_DRY_RUN}" = "YES" ]; then
+      echo "[DRY-RUN] Would enable CONFIGURE_INTERFACES in /etc/default/networking"
+    else
+      # Remove any commented or incorrect lines
+      sed -i '/^[#[:space:]]*CONFIGURE_INTERFACES/d' /etc/default/networking
+      echo "CONFIGURE_INTERFACES=yes" >> /etc/default/networking
+      _msg "Enabled CONFIGURE_INTERFACES in /etc/default/networking"
+    fi
+  fi
+
   if [ -x "/etc/init.d/networking" ]; then
     _msg "/etc/init.d/networking already present."
     chmod 0755 /etc/init.d/networking || true
@@ -703,6 +721,8 @@ _config_is_sane() {
       return 0
     fi
   fi
+
+  _LIVE="$(_live_v4_cidr "${_DEF_IF}")"; [ -n "${_LIVE}" ] || { _msg "No live IPv4 -> not sane"; return 1; }
 
   if _has_ci_dhcp_for_if "${_DEF_IF}"; then
     _msg "cloud-init DHCP on ${_DEF_IF} with default route — sane."
