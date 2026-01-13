@@ -708,13 +708,10 @@ _ifnames_grub() {
 
   if [ -e "${_GRUB_FILE}" ]; then
     if echo "${_IS_IFACE}" | grep -qE "eth[0-9]+"; then
-      _USE_IFNAMES="CLASSIC"
       _msg "_ifnames_grub ==> GRUB: Classic ethX interface naming found." >> "${_logInt}"
     elif echo "${_IS_IFACE}" | grep -qE "(ens|enp|eno|wlp|wlo)[0-9]+:"; then
-      _USE_IFNAMES="PREDICTABLE"
       _msg "_ifnames_grub ==> GRUB: Predictable (ensX, enpX, enoX, wlpX, wloX) interface naming found." >> "${_logInt}"
     else
-      _USE_IFNAMES="DONTMODIFY"
       _msg "_ifnames_grub ==> GRUB: config exists, but no recognized network interface naming found." >> "${_logInt}"
     fi
 
@@ -740,11 +737,11 @@ _ifnames_grub() {
     # Always add memhp_default_state=online
     _append_grub_cmd_option "memhp_default_state=online"
 
-    if [[ "${_USE_IFNAMES}" == "CLASSIC" ]]; then
+    if [[ "${_USE_NINC}" == "classic" ]]; then
       # Always set net.ifnames=0 and biosdevname=0
       _append_grub_cmd_option "net.ifnames=0"
       _append_grub_cmd_option "biosdevname=0"
-    elif [[ "${_USE_IFNAMES}" == "PREDICTABLE" ]]; then
+    elif [[ "${_USE_NINC}" == "predictable" ]]; then
       # Always set net.ifnames=1 and biosdevname=1
       _append_grub_cmd_option "net.ifnames=1"
       _append_grub_cmd_option "biosdevname=1"
