@@ -654,6 +654,30 @@ _ifnames_grub() {
   _USE_NINC=NO
   _NEW_GRUB=DEMO
 
+  # Enforce classic interface naming (eth0) for network stability on NAT/cloud VMs
+  # This prevents ens3/eth0 confusion that can break networking after reboot
+  if [ ! -e "/root/.ninc.selected.classic.cnf" ]; then
+    # Check if we're on a NAT/cloud setup (all IPs are private)
+    _HAS_PRIVATE_ONLY="YES"
+    for _TEST_IP in $(ip -4 addr show | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | grep -v '^127\.'); do
+      case "${_TEST_IP}" in
+        10.*|172.1[6-9].*|172.2[0-9].*|172.3[0-1].*|192.168.*) ;;
+        *) _HAS_PRIVATE_ONLY="NO"; break ;;
+      esac
+    done
+
+    # On NAT/cloud setups, enforce classic naming to prevent interface name changes
+    if [ "${_HAS_PRIVATE_ONLY}" = "YES" ]; then
+      _msg "[init] prep ==> NAT/cloud setup detected; enforcing classic eth0 naming..." >> "${_logInt}"
+      touch /root/.ninc.selected.classic.cnf
+      chattr +i /root/.ninc.selected.classic.cnf 2>/dev/null || true
+      if [ -e "/root/.ignore.ifnames.cnf" ]; then
+        chattr -i /root/.ignore.ifnames.cnf 2>/dev/null || true
+        rm -f /root/.ignore.ifnames.cnf 2>/dev/null || true
+      fi
+    fi
+  fi
+
   if [ -e "/root/.ignore.ifnames.cnf" ]; then
     return 1  # Exit the function but continue the script
   else
@@ -823,29 +847,6 @@ _init_prepare() {
   ### Grub and Ifnames
   ###
   _ifnames_grub
-
-  # Enforce classic interface naming (eth0) for network stability on NAT/cloud VMs
-  # This prevents ens3/eth0 confusion that can break networking after reboot
-  if [ ! -e "/root/.ignore.ifnames.cnf" ] && [ ! -e "/root/.ninc.selected.classic.cnf" ]; then
-    # Check if we're on a NAT/cloud setup (all IPs are private)
-    _HAS_PRIVATE_ONLY="YES"
-    for _TEST_IP in $(ip -4 addr show | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | grep -v '^127\.'); do
-      case "${_TEST_IP}" in
-        10.*|172.1[6-9].*|172.2[0-9].*|172.3[0-1].*|192.168.*) ;;
-        *) _HAS_PRIVATE_ONLY="NO"; break ;;
-      esac
-    done
-
-    # On NAT/cloud setups, enforce classic naming to prevent interface name changes
-    if [ "${_HAS_PRIVATE_ONLY}" = "YES" ]; then
-      _msg "[init] prep ==> NAT/cloud setup detected; enforcing classic eth0 naming..." >> "${_logInt}"
-      touch /root/.ninc.selected.classic.cnf
-      chattr +i /root/.ninc.selected.classic.cnf 2>/dev/null || true
-      # Call _ifnames_grub again to apply the change
-      _ifnames_grub
-    fi
-  fi
-
 
   if [[ -n "${_ADD_GRUB_CMD}" ]] && [[ "${_NEW_GRUB}" == "LIVE" ]]; then
     touch /run/autoinit.pid
