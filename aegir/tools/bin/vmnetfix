@@ -831,7 +831,8 @@ _disable_systemd_networkd_for_next_boot() {
   # must not stay enabled, otherwise it can race with ifupdown at boot and leave
   # the VM offline.
   #
-  # IMPORTANT: Do NOT stop services live over SSH; just disable/mask for next boot.
+  # IMPORTANT: We disable/mask networkd for next boot, then start networking.service
+  # to take over immediately (safe even over SSH since config is already written).
 
   # Only meaningful if systemd is PID 1.
   [ -d /run/systemd/system ] || return 0
@@ -841,6 +842,7 @@ _disable_systemd_networkd_for_next_boot() {
     echo "[DRY-RUN] Would enable networking.service"
     echo "[DRY-RUN] Would disable systemd-networkd + systemd-networkd-wait-online"
     echo "[DRY-RUN] Would mask systemd-networkd + systemd-networkd-wait-online"
+    echo "[DRY-RUN] Would start networking.service to take over"
     return 0
   fi
 
@@ -850,6 +852,11 @@ _disable_systemd_networkd_for_next_boot() {
   # Prevent networkd from coming back on reboot (common on cloud images).
   systemctl disable systemd-networkd systemd-networkd-wait-online >/dev/null 2>&1 || true
   systemctl mask systemd-networkd systemd-networkd-wait-online >/dev/null 2>&1 || true
+
+  # Start networking.service now to take over from systemd-networkd immediately.
+  # This is safe because /etc/network/interfaces is already written with correct config.
+  systemctl start networking >/dev/null 2>&1 || true
+  _msg "Started networking.service to take over from systemd-networkd"
 }
 
 # ----------------------------- Main flow --------------------------------------
