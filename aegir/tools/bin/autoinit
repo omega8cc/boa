@@ -400,6 +400,12 @@ _init_ninc() {
 
   if [ -e "/root/.ninc.selected.classic.cnf" ]; then
     _SET_NINC="classic"
+  elif [ -e "/root/.ninc.selected.predictable.cnf" ]; then
+    _SET_NINC="predictable"
+  elif [ -e "/root/.ninc.selected.vanilla.cnf" ]; then
+    _SET_NINC="vanilla"
+  elif [ -e "/root/.ninc.selected.auto.cnf" ]; then
+    _SET_NINC="auto"
   fi
 
   if [ -z "${_SET_NINC}" ]; then
