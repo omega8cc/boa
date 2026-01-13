@@ -689,7 +689,7 @@ _ifnames_grub() {
   _USE_NINC=NO
   _NEW_GRUB=DEMO
 
-  if [ -e "/root/.ignore.ifnames.cnf" ]; then
+  if [ -e "/root/.ignore.ifnames.cnf" ] || [ -e "/root/.ninc.grub.updated.cnf" ]; then
     return 1  # Exit the function but continue the script
   else
     [ -e "/root/.ninc.selected.predictable.cnf" ] && _USE_NINC=predictable && _NEW_GRUB=LIVE
@@ -777,6 +777,7 @@ _ifnames_grub() {
         _msg "_ifnames_grub ==> GRUB: Update in the LIVE MODE" >> "${_logInt}"
         sed -i "s|^GRUB_CMDLINE_LINUX=.*|${_NEW_GRUB_CMDLINE_LINUX}|" "${_GRUB_FILE}"
         _msg "_ifnames_grub ==> GRUB_CMDLINE_LINUX has been updated with ${_UPDATED_CMDLINE}" >> "${_logInt}"
+        [ -e "/root/.ninc.grub.updated.cnf" ] || touch /root/.ninc.grub.updated.cnf
       elif [[ "${_NEW_GRUB}" == "DEMO" ]]; then
         # Demo info
         _msg "_ifnames_grub ==> GRUB: Networking Interface Naming Convention selected: ${_USE_NINC}" >> "${_logInt}"
