@@ -3851,6 +3851,10 @@ _sources_list_update() {
         echo "deb ${_MIRROR} ${_OS_CODE}-updates main contrib non-free" >> ${_aptLiSys}
         echo "deb-src ${_MIRROR} ${_OS_CODE}-updates main contrib non-free" >> ${_aptLiSys}
         echo "" >> ${_aptLiSys}
+        echo "## DEVUAN BACKPORTS REPOSITORY" >> ${_aptLiSys}
+        echo "deb ${_MIRROR} ${_OS_CODE}-backports main contrib non-free" >> ${_aptLiSys}
+        echo "deb-src ${_MIRROR} ${_OS_CODE}-backports main contrib non-free" >> ${_aptLiSys}
+        echo "" >> ${_aptLiSys}
       fi
       echo "## DEVUAN SECURITY UPDATES" >> ${_aptLiSys}
       echo "deb ${_MIRROR} ${_OS_CODE}-security main contrib non-free" >> ${_aptLiSys}
@@ -3933,6 +3937,10 @@ _sources_list_update() {
       echo "## DEBIAN SECURITY UPDATES" >> ${_aptLiSys}
       echo "deb http://${_SEC_MIRROR} ${_SEC_REPSRC} main contrib non-free" | fmt -su -w 2500 >> ${_aptLiSys}
       echo "deb-src http://${_SEC_MIRROR} ${_SEC_REPSRC} main contrib non-free" | fmt -su -w 2500 >> ${_aptLiSys}
+      echo "" >> ${_aptLiSys}
+      echo "## DEBIAN BACKPORTS REPOSITORY" >> ${_aptLiSys}
+      echo "deb http://${_APT_MIRROR} ${_APT_REPSRC}-backports main contrib non-free" | fmt -su -w 2500 >> ${_aptLiSys}
+      echo "deb-src http://${_APT_MIRROR} ${_APT_REPSRC}-backports main contrib non-free" | fmt -su -w 2500 >> ${_aptLiSys}
     fi
     mkdir -p ${_pthLog}
     touch ${_pthLog}/apt-deb-src-updates-${_xSrl}.txt
@@ -7026,6 +7034,10 @@ _if_major_os_upgrade() {
         echo "deb ${_TGT_MRR} ${_NEW_OS_CODE}-updates main contrib non-free" >> ${_aptLiSys}
         echo "deb-src ${_TGT_MRR} ${_NEW_OS_CODE}-updates main contrib non-free" >> ${_aptLiSys}
         echo "" >> ${_aptLiSys}
+        echo "## DEVUAN BACKPORTS REPOSITORY" >> ${_aptLiSys}
+        echo "deb ${_TGT_MRR} ${_NEW_OS_CODE}-backports main contrib non-free" >> ${_aptLiSys}
+        echo "deb-src ${_TGT_MRR} ${_NEW_OS_CODE}-backports main contrib non-free" >> ${_aptLiSys}
+        echo "" >> ${_aptLiSys}
       fi
       echo "## DEVUAN SECURITY UPDATES" >> ${_aptLiSys}
       echo "deb ${_TGT_MRR} ${_NEW_OS_CODE}-security main contrib non-free" >> ${_aptLiSys}
@@ -7071,6 +7083,10 @@ _if_major_os_upgrade() {
       echo "## DEBIAN SECURITY UPDATES" >> ${_aptLiSys}
       echo "deb http://${_NEW_SEC_MIRROR} ${_NEW_SEC_REPSRC} main contrib non-free" | fmt -su -w 2500 >> ${_aptLiSys}
       echo "deb-src http://${_NEW_SEC_MIRROR} ${_NEW_SEC_REPSRC} main contrib non-free" | fmt -su -w 2500 >> ${_aptLiSys}
+      echo "" >> ${_aptLiSys}
+      echo "## DEBIAN BACKPORTS REPOSITORY" >> ${_aptLiSys}
+      echo "deb http://${_NEW_APT_MIRROR} ${_NEW_APT_REPSRC}-backports main contrib non-free" | fmt -su -w 2500 >> ${_aptLiSys}
+      echo "deb-src http://${_NEW_APT_MIRROR} ${_NEW_APT_REPSRC}-backports main contrib non-free" | fmt -su -w 2500 >> ${_aptLiSys}
       if [ -e "/etc/apt/apt.conf" ]; then
         rm -f /etc/apt/apt.conf
       fi
@@ -7276,6 +7292,10 @@ _if_major_os_upgrade() {
         echo "## DEVUAN SECURITY UPDATES" >> /etc/apt/sources.list.d/${_useFast}.list
         echo "deb ${_MIRROR} ${_useFast}-security main contrib non-free" >> /etc/apt/sources.list.d/${_useFast}.list
         echo "deb-src ${_MIRROR} ${_useFast}-security main contrib non-free" >> /etc/apt/sources.list.d/${_useFast}.list
+        echo "" >> /etc/apt/sources.list.d/${_useFast}.list
+        echo "## DEVUAN BACKPORTS REPOSITORY" >> /etc/apt/sources.list.d/${_useFast}.list
+        echo "deb ${_MIRROR} ${_useFast}-backports main contrib non-free" >> /etc/apt/sources.list.d/${_useFast}.list
+        echo "deb-src ${_MIRROR} ${_useFast}-backports main contrib non-free" >> /etc/apt/sources.list.d/${_useFast}.list
         echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
         _apt_clean_update
         for _PKG in libldap-common libldap2-dev; do
