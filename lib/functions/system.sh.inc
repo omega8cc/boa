@@ -7691,6 +7691,52 @@ _sys_packages_update() {
   fi
 }
 
+_other_sys_java_install() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _other_sys_java_install"
+  fi
+  _systVer="$1"
+  _javaVer="$2"
+  _aptList="/etc/apt/sources.list.d/${_systVer}.list"
+  if [ ! -x "/usr/lib/jvm/java-${_javaVer}-openjdk-amd64/bin/java" ]; then
+    if [ -n "${_LOCAL_DEVUAN_MIRROR}" ]; then
+      _MIRROR="${_LOCAL_DEVUAN_MIRROR}"
+    else
+      _DVN_MRR="$(_find_fast_devuan_mirror)"
+      if [ -n "${_DVN_MRR}" ]; then
+        _MIRROR="${_DVN_MRR}"
+      else
+        _MIRROR="http://deb.devuan.org/merged"
+      fi
+    fi
+    echo "## DEVUAN MAIN REPOSITORIES" > ${_aptList}
+    echo "deb ${_MIRROR} ${_systVer} main contrib non-free" >> ${_aptList}
+    echo "deb-src ${_MIRROR} ${_systVer} main contrib non-free" >> ${_aptList}
+    echo "" >> ${_aptList}
+    echo "## DEVUAN MAJOR BUG FIX UPDATES produced after the final release" >> ${_aptList}
+    echo "deb ${_MIRROR} ${_systVer}-updates main contrib non-free" >> ${_aptList}
+    echo "deb-src ${_MIRROR} ${_systVer}-updates main contrib non-free" >> ${_aptList}
+    echo "" >> ${_aptList}
+    echo "## DEVUAN SECURITY UPDATES" >> ${_aptList}
+    echo "deb ${_MIRROR} ${_systVer}-security main contrib non-free" >> ${_aptList}
+    echo "deb-src ${_MIRROR} ${_systVer}-security main contrib non-free" >> ${_aptList}
+    echo "" >> ${_aptList}
+    echo "## DEVUAN BACKPORTS REPOSITORY" >> ${_aptList}
+    echo "deb ${_MIRROR} ${_systVer}-backports main contrib non-free" >> ${_aptList}
+    echo "deb-src ${_MIRROR} ${_systVer}-backports main contrib non-free" >> ${_aptList}
+    echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
+    _apt_clean_update
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "TRCK: Installing now openjdk-${_javaVer}-jre-headless from ${_systVer}"
+    fi
+    _mrun "apt-get install -t ${_systVer} openjdk-${_javaVer}-jre-headless ${_aptYesUnth}"
+    _mrun "apt-get install -t ${_systVer}-security openjdk-${_javaVer}-jre-headless ${_aptYesUnth}"
+    rm -f /etc/apt/sources.list.d/${_systVer}.list
+    rm -f /etc/apt/apt.conf
+    _apt_clean_update
+  fi
+}
+
 _sys_packages_install() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _sys_packages_install"
@@ -7731,48 +7777,12 @@ _sys_packages_install() {
         _APT_XTRA="openjdk-11-jre-headless openjdk-17-jre-headless ca-certificates-java nginx"
       elif [ "${_OS_CODE}" = "excalibur" ]; then
         _APT_XTRA="openjdk-21-jre-headless ca-certificates-java nginx"
+        _other_sys_java_install "chimaera" "11"
+        _other_sys_java_install "daedalus" "17"
       elif [ "${_OS_CODE}" = "daedalus" ]; then
         _APT_XTRA="openjdk-17-jre-headless ca-certificates-java nginx"
-        if [ "${_OS_CODE}" = "excalibur" ]; then
-          _useFast=daedalus
-        elif [ "${_OS_CODE}" = "daedalus" ]; then
-          _useFast=chimaera
-        fi
-        if [ "${_OS_CODE}" = "daedalus" ]; then
-          if [ ! -x "/usr/lib/jvm/java-11-openjdk-amd64/bin/java" ]; then
-            if [ -n "${_LOCAL_DEVUAN_MIRROR}" ]; then
-              _MIRROR="${_LOCAL_DEVUAN_MIRROR}"
-            else
-              _DVN_MRR="$(_find_fast_devuan_mirror)"
-              if [ -n "${_DVN_MRR}" ]; then
-                _MIRROR="${_DVN_MRR}"
-              else
-                _MIRROR="http://deb.devuan.org/merged"
-              fi
-            fi
-            echo "## DEVUAN MAIN REPOSITORIES" > /etc/apt/sources.list.d/${_useFast}.list
-            echo "deb ${_MIRROR} ${_useFast} main" >> /etc/apt/sources.list.d/${_useFast}.list
-            echo "deb-src ${_MIRROR} ${_useFast} main" >> /etc/apt/sources.list.d/${_useFast}.list
-            echo "" >> /etc/apt/sources.list.d/${_useFast}.list
-            echo "## MAJOR BUG FIX UPDATES produced after the final release" >> /etc/apt/sources.list.d/${_useFast}.list
-            echo "deb ${_MIRROR} ${_useFast}-updates main" >> /etc/apt/sources.list.d/${_useFast}.list
-            echo "deb-src ${_MIRROR} ${_useFast}-updates main" >> /etc/apt/sources.list.d/${_useFast}.list
-            echo "" >> /etc/apt/sources.list.d/${_useFast}.list
-            echo "## DEVUAN SECURITY UPDATES" >> /etc/apt/sources.list.d/${_useFast}.list
-            echo "deb ${_MIRROR} ${_useFast}-security main" >> /etc/apt/sources.list.d/${_useFast}.list
-            echo "deb-src ${_MIRROR} ${_useFast}-security main" >> /etc/apt/sources.list.d/${_useFast}.list
-            echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
-            _apt_clean_update
-            if [ "${_DEBUG_MODE}" = "YES" ]; then
-              _msg "TRCK: Installing now openjdk-11-jre-headless from ${_useFast}"
-            fi
-            _mrun "apt-get install -t ${_useFast} openjdk-11-jre-headless ${_aptYesUnth}"
-            _mrun "apt-get install -t ${_useFast}-security openjdk-11-jre-headless ${_aptYesUnth}"
-            rm -f /etc/apt/sources.list.d/${_useFast}.list
-            rm -f /etc/apt/apt.conf
-            _apt_clean_update
-          fi
-        fi
+        _other_sys_java_install "chimaera" "11"
+        _other_sys_java_install "excalibur" "21"
       fi
     else
       _APT_XTRA="nginx"
@@ -7816,52 +7826,12 @@ _sys_packages_install() {
         _APT_XTRA="openjdk-11-jre-headless openjdk-17-jre-headless ca-certificates-java"
       elif [ "${_OS_CODE}" = "excalibur" ]; then
         _APT_XTRA="openjdk-21-jre-headless ca-certificates-java"
+        _other_sys_java_install "chimaera" "11"
+        _other_sys_java_install "daedalus" "17"
       elif [ "${_OS_CODE}" = "daedalus" ]; then
         _APT_XTRA="openjdk-17-jre-headless ca-certificates-java"
-        if [ "${_OS_CODE}" = "excalibur" ]; then
-          _useFast=daedalus
-        elif [ "${_OS_CODE}" = "daedalus" ]; then
-          _useFast=chimaera
-        fi
-        if [ "${_OS_CODE}" = "daedalus" ]; then
-          if [ -x "/usr/lib/jvm/java-11-openjdk-amd64/bin/java" ]; then
-            _JAVA_TEST=$(/usr/lib/jvm/java-11-openjdk-amd64/bin/java --version 2>&1)
-          fi
-          if [ ! -x "/usr/lib/jvm/java-11-openjdk-amd64/bin/java" ] \
-            || [[ ! "${_JAVA_TEST}" =~ "openjdk 11.0.29" ]]; then
-            if [ -n "${_LOCAL_DEVUAN_MIRROR}" ]; then
-              _MIRROR="${_LOCAL_DEVUAN_MIRROR}"
-            else
-              _DVN_MRR="$(_find_fast_devuan_mirror)"
-              if [ -n "${_DVN_MRR}" ]; then
-                _MIRROR="${_DVN_MRR}"
-              else
-                _MIRROR="http://deb.devuan.org/merged"
-              fi
-            fi
-            echo "## DEVUAN MAIN REPOSITORIES" > /etc/apt/sources.list.d/${_useFast}.list
-            echo "deb ${_MIRROR} ${_useFast} main" >> /etc/apt/sources.list.d/${_useFast}.list
-            echo "deb-src ${_MIRROR} ${_useFast} main" >> /etc/apt/sources.list.d/${_useFast}.list
-            echo "" >> /etc/apt/sources.list.d/${_useFast}.list
-            echo "## MAJOR BUG FIX UPDATES produced after the final release" >> /etc/apt/sources.list.d/${_useFast}.list
-            echo "deb ${_MIRROR} ${_useFast}-updates main" >> /etc/apt/sources.list.d/${_useFast}.list
-            echo "deb-src ${_MIRROR} ${_useFast}-updates main" >> /etc/apt/sources.list.d/${_useFast}.list
-            echo "" >> /etc/apt/sources.list.d/${_useFast}.list
-            echo "## DEVUAN SECURITY UPDATES" >> /etc/apt/sources.list.d/${_useFast}.list
-            echo "deb ${_MIRROR} ${_useFast}-security main" >> /etc/apt/sources.list.d/${_useFast}.list
-            echo "deb-src ${_MIRROR} ${_useFast}-security main" >> /etc/apt/sources.list.d/${_useFast}.list
-            echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
-            _apt_clean_update
-            if [ "${_DEBUG_MODE}" = "YES" ]; then
-              _msg "TRCK: Installing now openjdk-11-jre-headless from ${_useFast}"
-            fi
-            _mrun "apt-get install -t ${_useFast} openjdk-11-jre-headless ${_aptYesUnth}"
-            _mrun "apt-get install -t ${_useFast}-security openjdk-11-jre-headless ${_aptYesUnth}"
-            rm -f /etc/apt/sources.list.d/${_useFast}.list
-            rm -f /etc/apt/apt.conf
-            _apt_clean_update
-          fi
-        fi
+        _other_sys_java_install "chimaera" "11"
+        _other_sys_java_install "excalibur" "21"
       fi
     else
       _APT_XTRA=""
