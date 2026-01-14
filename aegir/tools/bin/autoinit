@@ -373,6 +373,41 @@ _init_mode() {
 _init_ninc() {
   # Usage: autoinit [minimal|full] [vanilla|classic|predictable]
   # Default: "vanilla". Persisted across reboots via cron argument.
+
+  # Enforce classic interface naming (eth0) for network stability on NAT/cloud VMs
+  # This prevents ens3/eth0 confusion that can break networking after reboot
+  if [ ! -e "/root/.ninc.selected.classic.cnf" ]; then
+    # Check if we're on a NAT/cloud setup (all IPs are private)
+    _HAS_PRIVATE_ONLY="YES"
+    for _TEST_IP in $(ip -4 addr show | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | grep -v '^127\.'); do
+      case "${_TEST_IP}" in
+        10.*|172.1[6-9].*|172.2[0-9].*|172.3[0-1].*|192.168.*) ;;
+        *) _HAS_PRIVATE_ONLY="NO"; break ;;
+      esac
+    done
+
+    # On NAT/cloud setups, enforce classic naming to prevent interface name changes
+    if [ "${_HAS_PRIVATE_ONLY}" = "YES" ]; then
+      _msg "[init] prep ==> NAT/cloud setup detected; enforcing classic eth0 naming..." >> "${_logInt}"
+      touch /root/.ninc.selected.classic.cnf
+      chattr +i /root/.ninc.selected.classic.cnf 2>/dev/null || true
+      if [ -e "/root/.ignore.ifnames.cnf" ]; then
+        chattr -i /root/.ignore.ifnames.cnf 2>/dev/null || true
+        rm -f /root/.ignore.ifnames.cnf 2>/dev/null || true
+      fi
+    fi
+  fi
+
+  if [ -e "/root/.ninc.selected.classic.cnf" ]; then
+    _SET_NINC="classic"
+  elif [ -e "/root/.ninc.selected.predictable.cnf" ]; then
+    _SET_NINC="predictable"
+  elif [ -e "/root/.ninc.selected.vanilla.cnf" ]; then
+    _SET_NINC="vanilla"
+  elif [ -e "/root/.ninc.selected.auto.cnf" ]; then
+    _SET_NINC="auto"
+  fi
+
   if [ -z "${_SET_NINC}" ]; then
     case "${2:-vanilla}" in
       vanilla|*)   _SET_NINC="vanilla" ;;
@@ -382,8 +417,8 @@ _init_ninc() {
     esac
   fi
   if [ ! -e "/root/.ninc.selected.${_SET_NINC}.cnf" ]; then
-    touch /root/.ninc.selected.${_SET_NINC}.cnf
-    chattr +i /root/.ninc.selected.${_SET_NINC}.cnf
+    touch /root/.ninc.selected.${_SET_NINC}.cnf 2>/dev/null || true
+    chattr +i /root/.ninc.selected.${_SET_NINC}.cnf 2>/dev/null || true
   fi
   _msg "[init] ninc ==> NINC selected: ${_SET_NINC}" >> "${_logInt}"
 }
@@ -654,7 +689,7 @@ _ifnames_grub() {
   _USE_NINC=NO
   _NEW_GRUB=DEMO
 
-  if [ -e "/root/.ignore.ifnames.cnf" ]; then
+  if [ -e "/root/.ignore.ifnames.cnf" ] || [ -e "/root/.ninc.grub.updated.cnf" ]; then
     return 1  # Exit the function but continue the script
   else
     [ -e "/root/.ninc.selected.predictable.cnf" ] && _USE_NINC=predictable && _NEW_GRUB=LIVE
@@ -673,13 +708,10 @@ _ifnames_grub() {
 
   if [ -e "${_GRUB_FILE}" ]; then
     if echo "${_IS_IFACE}" | grep -qE "eth[0-9]+"; then
-      _USE_IFNAMES="CLASSIC"
       _msg "_ifnames_grub ==> GRUB: Classic ethX interface naming found." >> "${_logInt}"
     elif echo "${_IS_IFACE}" | grep -qE "(ens|enp|eno|wlp|wlo)[0-9]+:"; then
-      _USE_IFNAMES="PREDICTABLE"
       _msg "_ifnames_grub ==> GRUB: Predictable (ensX, enpX, enoX, wlpX, wloX) interface naming found." >> "${_logInt}"
     else
-      _USE_IFNAMES="DONTMODIFY"
       _msg "_ifnames_grub ==> GRUB: config exists, but no recognized network interface naming found." >> "${_logInt}"
     fi
 
@@ -705,11 +737,11 @@ _ifnames_grub() {
     # Always add memhp_default_state=online
     _append_grub_cmd_option "memhp_default_state=online"
 
-    if [[ "${_USE_IFNAMES}" == "CLASSIC" ]]; then
+    if [[ "${_USE_NINC}" == "classic" ]]; then
       # Always set net.ifnames=0 and biosdevname=0
       _append_grub_cmd_option "net.ifnames=0"
       _append_grub_cmd_option "biosdevname=0"
-    elif [[ "${_USE_IFNAMES}" == "PREDICTABLE" ]]; then
+    elif [[ "${_USE_NINC}" == "predictable" ]]; then
       # Always set net.ifnames=1 and biosdevname=1
       _append_grub_cmd_option "net.ifnames=1"
       _append_grub_cmd_option "biosdevname=1"
@@ -742,6 +774,7 @@ _ifnames_grub() {
         _msg "_ifnames_grub ==> GRUB: Update in the LIVE MODE" >> "${_logInt}"
         sed -i "s|^GRUB_CMDLINE_LINUX=.*|${_NEW_GRUB_CMDLINE_LINUX}|" "${_GRUB_FILE}"
         _msg "_ifnames_grub ==> GRUB_CMDLINE_LINUX has been updated with ${_UPDATED_CMDLINE}" >> "${_logInt}"
+        [ -e "/root/.ninc.grub.updated.cnf" ] || touch /root/.ninc.grub.updated.cnf
       elif [[ "${_NEW_GRUB}" == "DEMO" ]]; then
         # Demo info
         _msg "_ifnames_grub ==> GRUB: Networking Interface Naming Convention selected: ${_USE_NINC}" >> "${_logInt}"
