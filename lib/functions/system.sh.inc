@@ -3843,18 +3843,18 @@ _sources_list_update() {
       fi
       cd /var/opt
       echo "## DEVUAN MAIN REPOSITORIES" > ${_aptLiSys}
-      echo "deb ${_MIRROR} ${_OS_CODE} main" >> ${_aptLiSys}
-      echo "deb-src ${_MIRROR} ${_OS_CODE} main" >> ${_aptLiSys}
+      echo "deb ${_MIRROR} ${_OS_CODE} main contrib non-free" >> ${_aptLiSys}
+      echo "deb-src ${_MIRROR} ${_OS_CODE} main contrib non-free" >> ${_aptLiSys}
       echo "" >> ${_aptLiSys}
       if [ "${_OS_CODE}" != "beowulf" ]; then
-        echo "## MAJOR BUG FIX UPDATES produced after the final release" >> ${_aptLiSys}
-        echo "deb ${_MIRROR} ${_OS_CODE}-updates main" >> ${_aptLiSys}
-        echo "deb-src ${_MIRROR} ${_OS_CODE}-updates main" >> ${_aptLiSys}
+        echo "## DEVUAN MAJOR BUG FIX UPDATES produced after the final release" >> ${_aptLiSys}
+        echo "deb ${_MIRROR} ${_OS_CODE}-updates main contrib non-free" >> ${_aptLiSys}
+        echo "deb-src ${_MIRROR} ${_OS_CODE}-updates main contrib non-free" >> ${_aptLiSys}
         echo "" >> ${_aptLiSys}
       fi
       echo "## DEVUAN SECURITY UPDATES" >> ${_aptLiSys}
-      echo "deb ${_MIRROR} ${_OS_CODE}-security main" >> ${_aptLiSys}
-      echo "deb-src ${_MIRROR} ${_OS_CODE}-security main" >> ${_aptLiSys}
+      echo "deb ${_MIRROR} ${_OS_CODE}-security main contrib non-free" >> ${_aptLiSys}
+      echo "deb-src ${_MIRROR} ${_OS_CODE}-security main contrib non-free" >> ${_aptLiSys}
     elif [ "${_OS_DIST}" = "Debian" ]; then
       _MIRROR_CHECK=NO
       if [ "${_OS_CODE}" = "deprecated" ]; then
@@ -7018,18 +7018,18 @@ _if_major_os_upgrade() {
         fi
       fi
       echo "## DEVUAN MAIN REPOSITORIES" > ${_aptLiSys}
-      echo "deb ${_TGT_MRR} ${_NEW_OS_CODE} main" >> ${_aptLiSys}
-      echo "deb-src ${_TGT_MRR} ${_NEW_OS_CODE} main" >> ${_aptLiSys}
+      echo "deb ${_TGT_MRR} ${_NEW_OS_CODE} main contrib non-free" >> ${_aptLiSys}
+      echo "deb-src ${_TGT_MRR} ${_NEW_OS_CODE} main contrib non-free" >> ${_aptLiSys}
       echo "" >> ${_aptLiSys}
       if [ "${_NEW_OS_CODE}" != "beowulf" ]; then
-        echo "## MAJOR BUG FIX UPDATES produced after the final release" >> ${_aptLiSys}
-        echo "deb ${_TGT_MRR} ${_NEW_OS_CODE}-updates main" >> ${_aptLiSys}
-        echo "deb-src ${_TGT_MRR} ${_NEW_OS_CODE}-updates main" >> ${_aptLiSys}
+        echo "## DEVUAN MAJOR BUG FIX UPDATES produced after the final release" >> ${_aptLiSys}
+        echo "deb ${_TGT_MRR} ${_NEW_OS_CODE}-updates main contrib non-free" >> ${_aptLiSys}
+        echo "deb-src ${_TGT_MRR} ${_NEW_OS_CODE}-updates main contrib non-free" >> ${_aptLiSys}
         echo "" >> ${_aptLiSys}
       fi
       echo "## DEVUAN SECURITY UPDATES" >> ${_aptLiSys}
-      echo "deb ${_TGT_MRR} ${_NEW_OS_CODE}-security main" >> ${_aptLiSys}
-      echo "deb-src ${_TGT_MRR} ${_NEW_OS_CODE}-security main" >> ${_aptLiSys}
+      echo "deb ${_TGT_MRR} ${_NEW_OS_CODE}-security main contrib non-free" >> ${_aptLiSys}
+      echo "deb-src ${_TGT_MRR} ${_NEW_OS_CODE}-security main contrib non-free" >> ${_aptLiSys}
       if [ -e "/etc/apt/apt.conf" ]; then
         rm -f /etc/apt/apt.conf
       fi
@@ -7266,16 +7266,16 @@ _if_major_os_upgrade() {
           fi
         fi
         echo "## DEVUAN MAIN REPOSITORIES" > /etc/apt/sources.list.d/${_useFast}.list
-        echo "deb ${_MIRROR} ${_useFast} main" >> /etc/apt/sources.list.d/${_useFast}.list
-        echo "deb-src ${_MIRROR} ${_useFast} main" >> /etc/apt/sources.list.d/${_useFast}.list
+        echo "deb ${_MIRROR} ${_useFast} main contrib non-free" >> /etc/apt/sources.list.d/${_useFast}.list
+        echo "deb-src ${_MIRROR} ${_useFast} main contrib non-free" >> /etc/apt/sources.list.d/${_useFast}.list
         echo "" >> /etc/apt/sources.list.d/${_useFast}.list
-        echo "## MAJOR BUG FIX UPDATES produced after the final release" >> /etc/apt/sources.list.d/${_useFast}.list
-        echo "deb ${_MIRROR} ${_useFast}-updates main" >> /etc/apt/sources.list.d/${_useFast}.list
-        echo "deb-src ${_MIRROR} ${_useFast}-updates main" >> /etc/apt/sources.list.d/${_useFast}.list
+        echo "## DEVUAN MAJOR BUG FIX UPDATES produced after the final release" >> /etc/apt/sources.list.d/${_useFast}.list
+        echo "deb ${_MIRROR} ${_useFast}-updates main contrib non-free" >> /etc/apt/sources.list.d/${_useFast}.list
+        echo "deb-src ${_MIRROR} ${_useFast}-updates main contrib non-free" >> /etc/apt/sources.list.d/${_useFast}.list
         echo "" >> /etc/apt/sources.list.d/${_useFast}.list
         echo "## DEVUAN SECURITY UPDATES" >> /etc/apt/sources.list.d/${_useFast}.list
-        echo "deb ${_MIRROR} ${_useFast}-security main" >> /etc/apt/sources.list.d/${_useFast}.list
-        echo "deb-src ${_MIRROR} ${_useFast}-security main" >> /etc/apt/sources.list.d/${_useFast}.list
+        echo "deb ${_MIRROR} ${_useFast}-security main contrib non-free" >> /etc/apt/sources.list.d/${_useFast}.list
+        echo "deb-src ${_MIRROR} ${_useFast}-security main contrib non-free" >> /etc/apt/sources.list.d/${_useFast}.list
         echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
         _apt_clean_update
         for _PKG in libldap-common libldap2-dev; do
