@@ -3916,7 +3916,7 @@ _fix_java_symlinks() {
 }
 
 _fix_composer_version() {
-  _COMPOSER_VRN=2.8.2
+  _COMPOSER_VRN=2.9.3
   if [ -x "/usr/local/bin/composer" ]; then
     _COMPOSER_IS=$(composer --no-interaction --version 2>&1 \
       | tr -d "\n" \
