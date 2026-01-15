@@ -7789,8 +7789,8 @@ _sys_packages_install() {
         _APT_XTRA="openjdk-11-jre-headless openjdk-17-jre-headless ca-certificates-java nginx"
       elif [ "${_OS_CODE}" = "excalibur" ]; then
         _APT_XTRA="openjdk-21-jre-headless ca-certificates-java nginx"
-        _other_sys_java_install "chimaera" "11"
         _other_sys_java_install "daedalus" "17"
+        _other_sys_java_install "chimaera" "11"
       elif [ "${_OS_CODE}" = "daedalus" ]; then
         _APT_XTRA="openjdk-17-jre-headless ca-certificates-java nginx"
         _other_sys_java_install "chimaera" "11"
@@ -7837,8 +7837,8 @@ _sys_packages_install() {
         _APT_XTRA="openjdk-11-jre-headless openjdk-17-jre-headless ca-certificates-java"
       elif [ "${_OS_CODE}" = "excalibur" ]; then
         _APT_XTRA="openjdk-21-jre-headless ca-certificates-java"
-        _other_sys_java_install "chimaera" "11"
         _other_sys_java_install "daedalus" "17"
+        _other_sys_java_install "chimaera" "11"
       elif [ "${_OS_CODE}" = "daedalus" ]; then
         _APT_XTRA="openjdk-17-jre-headless ca-certificates-java"
         _other_sys_java_install "chimaera" "11"
