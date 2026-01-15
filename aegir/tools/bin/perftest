@@ -220,7 +220,7 @@ _run_ioping_quick() {
 
 _run_ioping_quick_mounts() {
   # Requires _test_mounts[] already populated.
-  # Fills associative arrays:
+  # Populates:
   #   _ioping_seek_line["/mount"]    (last line of ioping -DR output)
   #   _ioping_seqread_line["/mount"] (seq read snippet)
   # Keeps legacy globals _ioping_seek/_ioping_seqread as root (/) values.
@@ -816,12 +816,15 @@ _boa_grade_network() {
 }
 
 _print_disk_compact_section() {
-  # $1 = mountpoint, $2 = short description (shown in header)
+  # $1 = mountpoint, $2 = short description (header hint)
   local _mp="$1"
   local _desc="$2"
 
-  local _seqw _seqr _riops _wiops _meta _seek_line _ioping_avg _rbw _wbw _rlat _wlat
-  local _seqw_num _seqr_num _riops_num _wiops_num _meta_num _disk_grade
+  local _seqw _seqr _riops _wiops _meta
+  local _rbw _wbw _rlat _wlat
+  local _seek_line _ioping_avg _ioping_avg_us
+  local _seqw_num _seqr_num _riops_num _wiops_num _meta_num
+  local _disk_grade
 
   _seqw="${_fio_seqwrite_bw_write["${_mp}"]:-N/A}"
   _seqr="${_fio_seqread_bw_read["${_mp}"]:-N/A}"
@@ -837,6 +840,7 @@ _print_disk_compact_section() {
   _seek_line="${_ioping_seek_line["${_mp}"]:-N/A}"
   _ioping_avg="$(echo "${_seek_line}" | grep -oP '\d+\.\d+ us' | head -2 | tail -1 2>/dev/null)"
   [ -n "${_ioping_avg}" ] || _ioping_avg="N/A"
+  _ioping_avg_us="$(echo "${_seek_line}" | grep -oP '\d+\.\d+(?= us)' | head -2 | tail -1 2>/dev/null)"
 
   _seqw_num="$(_num_or_empty "$(echo "${_seqw}" | awk '{print $1}')")"
   _seqr_num="$(_num_or_empty "$(echo "${_seqr}" | awk '{print $1}')")"
@@ -844,20 +848,16 @@ _print_disk_compact_section() {
   _wiops_num="$(_num_or_empty "${_wiops}")"
   _meta_num="$(_num_or_empty "$(echo "${_meta}" | awk '{print $1}')")"
 
-  # Extract numeric ioping avg in us for grading (e.g. "133.6 us" => 133.6)
-  local _ioping_avg_us
-  _ioping_avg_us="$(echo "${_seek_line}" | grep -oP '\d+\.\d+(?= us)' | head -2 | tail -1 2>/dev/null)"
-
   _disk_grade="$(_boa_grade_disk_final "${_ioping_avg_us}" "${_seqr_num}" "${_seqw_num}" "${_riops_num}" "${_wiops_num}" "${_meta_num}")"
 
   echo " ============================================================================="
   if [ "${_mp}" = "/" ]; then
     echo " == 3. DISK (Root dominates; other mounts displayed separately)             =="
   else
-    printf " == 3. DISK (%s) (Displayed separately; not used for rating)                ==\n" "${_mp}"
+    printf " == 3. DISK (%s) (Displayed separately; not used for rating) \n" "${_mp}"
   fi
-  if [ -n "${_desc}" ] && [ "${_mp}" = "/" ]; then
-    : # keep header short in compact mode; root description already included
+  if [ -n "${_desc}" ] && [ "${_mp}" != "/" ]; then
+    printf " == %-71s ==\n" "${_desc}"
   fi
   echo " ============================================================================="
   echo ""
@@ -901,7 +901,6 @@ _print_compact_summary() {
     echo "Host:  ${_hostname}"
     echo "CPU:   ${_cpu_info}"
     echo "vCPUs: ${_cpu_cores}"
-    local _total_ram_mb
     _total_ram_mb="$(free -m | awk '/^Mem:/ {print $2}')"
     echo "RAM:   ${_total_ram_mb} MB"
   fi
@@ -991,15 +990,15 @@ _print_compact_summary() {
   fi
   echo ""
 
+  # DISK (root is used for overall rating; other mounts are informational)
+  _print_disk_compact_section "/" "Root dominates; other mounts displayed separately; rating uses / only"
+  local _mp
+  for _mp in "${_test_mounts[@]}"; do
+    if [ "${_mp}" != "/" ]; then
+      _print_disk_compact_section "${_mp}" "Mounted filesystem (displayed separately; not used for rating)"
+    fi
+  done
 
-# DISK (root is used for overall rating; other mounts are informational)
-_print_disk_compact_section "/" ""
-local _mp
-for _mp in "${_test_mounts[@]}"; do
-  if [ "${_mp}" != "/" ]; then
-    _print_disk_compact_section "${_mp}" ""
-  fi
-done
 
   echo " ============================================================================="
   echo " == 4. NETWORK (Sanity check)                                               =="
@@ -1315,7 +1314,6 @@ else
     echo "  - Hostname: ${_hostname}"
     echo "  - CPU: ${_cpu_info}"
     echo "  - vCPUs: ${_cpu_cores}"
-    local _total_ram_mb
     _total_ram_mb="$(free -m | awk '/^Mem:/ {print $2}')"
     echo "  - RAM: ${_total_ram_mb} MB"
   fi
@@ -1352,7 +1350,6 @@ else
   echo "  - Download score (avg best 2/4): ${_net_download}"
   if [ "${#_net_dl_name[@]}" -gt 0 ]; then
     echo "  - Tests:"
-    local _i
     _i=0
     while [ "${_i}" -lt "${#_net_dl_name[@]}" ]; do
       echo "    - ${_net_dl_name[${_i}]}: ${_net_dl_pretty[${_i}]}"
