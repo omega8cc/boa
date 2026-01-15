@@ -853,12 +853,9 @@ _print_disk_compact_section() {
 
   echo " ============================================================================="
   if [ "${_mp}" = "/" ]; then
-    echo " == 3. DISK (Root dominates; other mounts displayed separately)             =="
+    echo " == 3. DISK (Root partition / main filesystem)                              =="
   else
-    printf " == 3. DISK (%s) (Displayed separately; not used for rating) \n" "${_mp}"
-  fi
-  if [ -n "${_desc}" ] && [ "${_mp}" != "/" ]; then
-    printf " == %-71s ==\n" "${_desc}"
+    printf " == 3. DISK (%s) (Mounted extra filesystem) \n" "${_mp}"
   fi
   echo " ============================================================================="
   echo ""
@@ -994,11 +991,11 @@ _print_compact_summary() {
   echo ""
 
   # DISK (root is used for overall rating; other mounts are informational)
-  _print_disk_compact_section "/" "Root dominates; other mounts displayed separately; rating uses / only"
+  _print_disk_compact_section "/" "Root partition / main filesystem"
   local _mp
   for _mp in "${_test_mounts[@]}"; do
     if [ "${_mp}" != "/" ]; then
-      _print_disk_compact_section "${_mp}" "Mounted filesystem (displayed separately; not used for rating)"
+      _print_disk_compact_section "${_mp}" "Mounted extra filesystem"
     fi
   done
 
