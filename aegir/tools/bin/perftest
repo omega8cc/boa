@@ -139,26 +139,57 @@ _get_public_ipv4() {
 }
 
 _download_benchmark_v4() {
-  # Downloads test file, validates size, returns bytes/sec (or empty on failure)
-  # Args: $1 = URL, $2 = expected_min_bytes (optional, default 10MB)
+  # Single-stream IPv4 download speed probe (curl).
+  #
+  # Uses a byte-range request to keep it fast and to avoid false positives from
+  # empty/placeholder responses.
+  #
+  # Args:
+  #   $1 = URL
+  #   $2 = expected_min_bytes (optional, default 1 MiB)
+  #   $3 = range_end_byte (optional, default ~10 MiB)
+  #
+  # Output (on success):
+  #   speed_bps|size_bytes|time_total|http_code
+  #
+  # Output (on failure): empty line
   local url="$1"
-  local min_bytes="${2:-10485760}"  # 10 MB default
-  local tmpfile="/tmp/perftest_net_$$"
-  local speed_bps=""
-  local actual_size=0
-  # Download with size tracking
-  if curl -4 --max-time "${_NET_TIMEOUT}" -sL -o "$tmpfile" -w '%{speed_download}\n' "$url" 2>/dev/null > /tmp/perftest_speed_$$; then
-    speed_bps=$(cat /tmp/perftest_speed_$$ 2>/dev/null)
-    actual_size=$(stat -c%s "$tmpfile" 2>/dev/null || stat -f%z "$tmpfile" 2>/dev/null || echo 0)
-    # Validate payload size
-    if [ "$actual_size" -lt "$min_bytes" ]; then
-      _log "Network test INVALID: got ${actual_size} bytes, expected >=${min_bytes} (CDN returned placeholder/truncated)"
-      speed_bps=""
-    fi
+  local min_bytes="${2:-1048576}"   # 1 MiB
+  local range_end="${3:-10485759}"  # ~10 MiB
+
+  local out http_code size_download speed_bps time_total
+
+  out="$(curl -4 -sL --max-time "${_NET_TIMEOUT}" --range "0-${range_end}" -o /dev/null \
+    -w '%{http_code} %{size_download} %{speed_download} %{time_total}\n' "${url}" 2>/dev/null)"
+
+  [ -n "${out}" ] || return 0
+
+  http_code="$(printf '%s\n' "${out}" | awk '{print $1}')"
+  size_download="$(printf '%s\n' "${out}" | awk '{print $2}')"
+  speed_bps="$(printf '%s\n' "${out}" | awk '{print $3}')"
+  time_total="$(printf '%s\n' "${out}" | awk '{print $4}')"
+
+  # Validate HTTP status (200 OK or 206 Partial Content are expected)
+  case "${http_code}" in
+    200|206) : ;;
+    *) return 0 ;;
+  esac
+
+  # Validate payload size (protects against empty/placeholder/truncated responses)
+  if ! printf '%s' "${size_download}" | grep -Eq '^[0-9]+$'; then
+    return 0
   fi
-  # Cleanup
-  rm -f "$tmpfile" /tmp/perftest_speed_$$
-  echo "$speed_bps"
+  if [ "${size_download}" -lt "${min_bytes}" ]; then
+    _log "Network test INVALID (${url}): got ${size_download} bytes, expected >=${min_bytes}"
+    return 0
+  fi
+
+  # Validate speed numeric
+  if ! printf '%s' "${speed_bps}" | grep -Eq '^[0-9]+(\.[0-9]+)?$'; then
+    return 0
+  fi
+
+  printf '%s|%s|%s|%s\n' "${speed_bps}" "${size_download}" "${time_total}" "${http_code}"
 }
 
 # Best-effort ioping setup (download static binary like nench if not installed)
@@ -185,6 +216,37 @@ _run_ioping_quick() {
   # Keep it short; these lines match nench-style output snippets
   _ioping_seek="$("${_ioping_cmd}" -DR -w "${_IOPING_SECONDS}" . 2>/dev/null | tail -n 1)"
   _ioping_seqread="$("${_ioping_cmd}" -DRL -w "${_IOPING_SECONDS}" . 2>/dev/null | tail -n 2 | head -n 1)"
+}
+
+_run_ioping_quick_mounts() {
+  # Requires _test_mounts[] already populated.
+  # Populates:
+  #   _ioping_seek_line["/mount"]    (last line of ioping -DR output)
+  #   _ioping_seqread_line["/mount"] (seq read snippet)
+  # Keeps legacy globals _ioping_seek/_ioping_seqread as root (/) values.
+  _ioping_seek="N/A"
+  _ioping_seqread="N/A"
+  _ensure_ioping || return 0
+  [ -n "${_ioping_cmd}" ] || return 0
+
+  local _mp
+  for _mp in "${_test_mounts[@]}"; do
+    if [ -d "${_mp}" ]; then
+      _ioping_seek_line["${_mp}"]="$("${_ioping_cmd}" -DR -w "${_IOPING_SECONDS}" "${_mp}" 2>/dev/null | tail -n 1)"
+      _ioping_seqread_line["${_mp}"]="$("${_ioping_cmd}" -DRL -w "${_IOPING_SECONDS}" "${_mp}" 2>/dev/null | tail -n 2 | head -n 1)"
+    else
+      _ioping_seek_line["${_mp}"]="N/A"
+      _ioping_seqread_line["${_mp}"]="N/A"
+    fi
+  done
+
+  # Backward-compatible globals (root only)
+  if [ -n "${_ioping_seek_line["/"]:-}" ]; then
+    _ioping_seek="${_ioping_seek_line["/"]}"
+  fi
+  if [ -n "${_ioping_seqread_line["/"]:-}" ]; then
+    _ioping_seqread="${_ioping_seqread_line["/"]}"
+  fi
 }
 
 # AES throughput test (captures AES-NI issues better than sysbench cpu)
@@ -214,37 +276,116 @@ _run_aes_throughput_test() {
 _run_ipv4_net_check() {
   _net_ipv4="N/A"
   _net_download="N/A"
+
+  # Per-test results (used later by output sections)
+  _net_dl_name=()
+  _net_dl_url=()
+  _net_dl_pretty=()
+  _net_dl_bps=()
+  _net_dl_bytes=()
+  _net_dl_time=()
+  _net_dl_http=()
+  _net_dl_top2=""
+
   local ip
   ip="$(_get_public_ipv4)"
-  if [ -z "${ip}" ]; then
-    return 0
-  fi
+  [ -n "${ip}" ] || return 0
   _net_ipv4="$(_redact_ip "${ip}")"
-  local bps
 
-  # Use Cloudflare 100 MB, region-aware via anycast
-  if [ -z "${bps}" ]; then
-    _log "Trying Cloudflare..."
-    bps="$(_download_benchmark_v4 "https://speed.cloudflare.com/__down?bytes=104857600" 90000)"
+  # Fixed URLs + BOA mirror (region-aware via custom speed test)
+  local cf_url cachefly_url gh_url boa_url
+  cf_url="https://speed.cloudflare.com/__down?bytes=104857600"
+  cachefly_url="http://cachefly.cachefly.net/100mb.test"
+  gh_url="https://raw.githubusercontent.com/TestFileHub/FileHub/main/pdf/pdf100mb.pdf"
+
+  boa_url=""
+  _find_fast_mirror_early
+  if [ -n "${_urlDld}" ]; then
+    boa_url="${_urlDld}"
   fi
 
-  # Fallback to GitHub 100 MB
-  if [ -z "${bps}" ]; then
-    _log "Cloudflare test failed, trying GitHub fallback..."
-    bps="$(_download_benchmark_v4 "https://raw.githubusercontent.com/TestFileHub/FileHub/main/pdf/pdf100mb.pdf" 90000)"
-  fi
+  # Require at least 1 MiB downloaded within timeout; request up to ~10 MiB
+  local min_bytes range_end
+  min_bytes=1048576
+  range_end=10485759
 
-  # Fallback to BOA mirrors (100 MB, region-aware via custom speed test)
-  if [ -z "${bps}" ]; then
-    _log "GitHub test failed, trying BOA fallback..."
-    _find_fast_mirror_early
-    if [ -n "${_urlDld}" ]; then
-      bps="$(_download_benchmark_v4 "${_urlDld}" 90000)"
+  # Append tests in a stable order
+  _net_dl_name+=("Cloudflare")
+  _net_dl_url+=("${cf_url}")
+  _net_dl_name+=("CacheFly")
+  _net_dl_url+=("${cachefly_url}")
+  _net_dl_name+=("GitHub")
+  _net_dl_url+=("${gh_url}")
+  _net_dl_name+=("BOA")
+  _net_dl_url+=("${boa_url}")
+
+  local i name url line bps bytes ttotal code pretty
+  i=0
+  while [ "${i}" -lt "${#_net_dl_name[@]}" ]; do
+    name="${_net_dl_name[${i}]}"
+    url="${_net_dl_url[${i}]}"
+    if [ -z "${url}" ]; then
+      _net_dl_pretty+=("N/A")
+      _net_dl_bps+=("")
+      _net_dl_bytes+=("")
+      _net_dl_time+=("")
+      _net_dl_http+=("")
+      i=$((i + 1))
+      continue
     fi
+
+    _log "Network test: ${name} (${url})"
+    line="$(_download_benchmark_v4 "${url}" "${min_bytes}" "${range_end}")"
+    if [ -n "${line}" ]; then
+      bps="$(printf '%s\n' "${line}" | cut -d'|' -f1)"
+      bytes="$(printf '%s\n' "${line}" | cut -d'|' -f2)"
+      ttotal="$(printf '%s\n' "${line}" | cut -d'|' -f3)"
+      code="$(printf '%s\n' "${line}" | cut -d'|' -f4)"
+      pretty="$(printf '%s\n' "${bps}" | _bps_to_mibps_pretty)"
+      _net_dl_pretty+=("${pretty}")
+      _net_dl_bps+=("${bps}")
+      _net_dl_bytes+=("${bytes}")
+      _net_dl_time+=("${ttotal}")
+      _net_dl_http+=("${code}")
+    else
+      _net_dl_pretty+=("error")
+      _net_dl_bps+=("")
+      _net_dl_bytes+=("")
+      _net_dl_time+=("")
+      _net_dl_http+=("")
+    fi
+    i=$((i + 1))
+  done
+
+  # Score = average of the best 2 successful tests (bytes/sec)
+  local ranked rank_cnt best1_bps best2_bps best1_idx best2_idx avg_bps
+  ranked="$(for i in "${!_net_dl_bps[@]}"; do
+    if printf '%s' "${_net_dl_bps[${i}]}" | grep -Eq '^[0-9]+(\.[0-9]+)?$'; then
+      printf '%s|%s\n' "${_net_dl_bps[${i}]}" "${i}"
+    fi
+  done | sort -t'|' -k1,1nr)"
+
+  rank_cnt="$(printf '%s\n' "${ranked}" | grep -c '|' 2>/dev/null || echo 0)"
+
+  if [ "${rank_cnt}" -ge 2 ]; then
+    best1_bps="$(printf '%s\n' "${ranked}" | head -n 1 | cut -d'|' -f1)"
+    best1_idx="$(printf '%s\n' "${ranked}" | head -n 1 | cut -d'|' -f2)"
+    best2_bps="$(printf '%s\n' "${ranked}" | head -n 2 | tail -n 1 | cut -d'|' -f1)"
+    best2_idx="$(printf '%s\n' "${ranked}" | head -n 2 | tail -n 1 | cut -d'|' -f2)"
+    avg_bps="$(awk -v a="${best1_bps}" -v b="${best2_bps}" 'BEGIN{printf "%.2f",(a+b)/2}')"
+    _net_dl_top2="${_net_dl_name[${best1_idx}]} + ${_net_dl_name[${best2_idx}]}"
+  elif [ "${rank_cnt}" -eq 1 ]; then
+    best1_bps="$(printf '%s\n' "${ranked}" | head -n 1 | cut -d'|' -f1)"
+    best1_idx="$(printf '%s\n' "${ranked}" | head -n 1 | cut -d'|' -f2)"
+    avg_bps="${best1_bps}"
+    _net_dl_top2="${_net_dl_name[${best1_idx}]}"
+  else
+    avg_bps=""
+    _net_dl_top2=""
   fi
 
-  if printf '%s' "${bps}" | grep -Eq '^[0-9]+(\.[0-9]+)?$'; then
-    _net_download="$(printf '%s\n' "${bps}" | _bps_to_mibps_pretty)"
+  if printf '%s' "${avg_bps}" | grep -Eq '^[0-9]+(\.[0-9]+)?$'; then
+    _net_download="$(printf '%s\n' "${avg_bps}" | _bps_to_mibps_pretty) (avg best 2/4)"
   else
     _net_download="error"
   fi
@@ -674,6 +815,78 @@ _boa_grade_network() {
   }'
 }
 
+_print_disk_compact_section() {
+  # $1 = mountpoint, $2 = short description (header hint)
+  local _mp="$1"
+  local _desc="$2"
+
+  local _seqw _seqr _riops _wiops _meta
+  local _rbw _wbw _rlat _wlat
+  local _seek_line _ioping_avg _ioping_avg_us
+  local _seqw_num _seqr_num _riops_num _wiops_num _meta_num
+  local _disk_grade
+
+  _seqw="${_fio_seqwrite_bw_write["${_mp}"]:-N/A}"
+  _seqr="${_fio_seqread_bw_read["${_mp}"]:-N/A}"
+  _riops="${_fio_rand_iops_read["${_mp}"]:-N/A}"
+  _wiops="${_fio_rand_iops_write["${_mp}"]:-N/A}"
+  _meta="${_meta_ops["${_mp}"]:-N/A}"
+
+  _rbw="${_fio_rand_bw_read["${_mp}"]:-N/A}"
+  _wbw="${_fio_rand_bw_write["${_mp}"]:-N/A}"
+  _rlat="${_fio_rand_latency_read["${_mp}"]:-N/A}"
+  _wlat="${_fio_rand_latency_write["${_mp}"]:-N/A}"
+
+  _seek_line="${_ioping_seek_line["${_mp}"]:-N/A}"
+  _ioping_avg="$(echo "${_seek_line}" | grep -oP '\d+\.\d+ us' | head -2 | tail -1 2>/dev/null)"
+  [ -n "${_ioping_avg}" ] || _ioping_avg="N/A"
+  _ioping_avg_us="$(echo "${_seek_line}" | grep -oP '\d+\.\d+(?= us)' | head -2 | tail -1 2>/dev/null)"
+
+  _seqw_num="$(_num_or_empty "$(echo "${_seqw}" | awk '{print $1}')")"
+  _seqr_num="$(_num_or_empty "$(echo "${_seqr}" | awk '{print $1}')")"
+  _riops_num="$(_num_or_empty "${_riops}")"
+  _wiops_num="$(_num_or_empty "${_wiops}")"
+  _meta_num="$(_num_or_empty "$(echo "${_meta}" | awk '{print $1}')")"
+
+  _disk_grade="$(_boa_grade_disk_final "${_ioping_avg_us}" "${_seqr_num}" "${_seqw_num}" "${_riops_num}" "${_wiops_num}" "${_meta_num}")"
+
+  echo " ============================================================================="
+  if [ "${_mp}" = "/" ]; then
+    echo " == 3. DISK (Root dominates; other mounts displayed separately)             =="
+  else
+    printf " == 3. DISK (%s) (Displayed separately; not used for rating) \n" "${_mp}"
+  fi
+  if [ -n "${_desc}" ] && [ "${_mp}" != "/" ]; then
+    printf " == %-71s ==\n" "${_desc}"
+  fi
+  echo " ============================================================================="
+  echo ""
+  printf "   Sequential write (CRITICAL): %s\n" "${_seqw}"
+  printf "   Sequential read:             %s\n" "${_seqr}"
+  printf "   Random 4K IOPS:              %s read / %s write\n" "${_riops}" "${_wiops}"
+  printf "   Real latency (ioping avg):   %s\n" "${_ioping_avg}"
+  printf "   Metadata ops:                %s\n" "${_meta}"
+  echo ""
+  printf "   Details (fio synthetic latency):\n"
+  printf "     Random 4K read:   %s @ %s\n" "${_rbw}" "${_rlat}"
+  printf "     Random 4K write:  %s @ %s\n" "${_wbw}" "${_wlat}"
+  echo ""
+
+  if [ "${_disk_grade}" = "bad" ]; then
+    echo "   ❌ CRITICAL: Sequential write < 100 MB/s - disk is throttled or failing!"
+    echo "      This will severely impact BOA performance (cache writes, logs, DB)"
+  elif [ "${_disk_grade}" = "poor" ]; then
+    echo "   ⚠️  Disk profile looks weak (slow SSD/attached)"
+  elif [ "${_disk_grade}" = "average" ]; then
+    echo "   ✓  Average disk performance for BOA workloads"
+  elif [ "${_disk_grade}" = "good" ]; then
+    echo "   🌟  Good disk performance for BOA workloads"
+  elif [ "${_disk_grade}" = "excellent" ]; then
+    echo "   🏆  Excellent disk performance (NVMe-class)"
+  fi
+  echo ""
+}
+
 _print_compact_summary() {
   echo " ============================================================================="
   echo " ==                 BOA Performance Test - Compact Summary                  =="
@@ -688,7 +901,6 @@ _print_compact_summary() {
     echo "Host:  ${_hostname}"
     echo "CPU:   ${_cpu_info}"
     echo "vCPUs: ${_cpu_cores}"
-    local _total_ram_mb
     _total_ram_mb="$(free -m | awk '/^Mem:/ {print $2}')"
     echo "RAM:   ${_total_ram_mb} MB"
   fi
@@ -778,42 +990,32 @@ _print_compact_summary() {
   fi
   echo ""
 
-  echo " ============================================================================="
-  echo " == 3. DISK (Root dominates; attached storage influences vendor grading)    =="
-  echo " ============================================================================="
-  echo ""
-  printf "   Sequential write (CRITICAL): %s\n" "${_root_seqwrite_bw_write}"
-  printf "   Sequential read:             %s\n" "${_root_seqread_bw_read}"
-  printf "   Random 4K IOPS:              %s read / %s write\n" "${_fio_rand_iops_read["/"]}" "${_fio_rand_iops_write["/"]}"
-  printf "   Real latency (ioping avg):   %s\n" "$(echo "${_ioping_seek}" | grep -oP '\d+\.\d+ us' | head -2 | tail -1 || echo "N/A")"
-  printf "   Metadata ops:                %s\n" "${_root_meta_ops}"
-  echo ""
-  printf "   Details (fio synthetic latency):\n"
-  printf "     Random 4K read:   %s @ %s\n" "${_root_rand_bw_read}" "${_root_rand_lat_read}"
-  printf "     Random 4K write:  %s @ %s\n" "${_root_rand_bw_write}" "${_root_rand_lat_write}"
-  echo ""
+  # DISK (root is used for overall rating; other mounts are informational)
+  _print_disk_compact_section "/" "Root dominates; other mounts displayed separately; rating uses / only"
+  local _mp
+  for _mp in "${_test_mounts[@]}"; do
+    if [ "${_mp}" != "/" ]; then
+      _print_disk_compact_section "${_mp}" "Mounted filesystem (displayed separately; not used for rating)"
+    fi
+  done
 
-  if [ "${disk_grade}" = "bad" ]; then
-    echo "   ❌ CRITICAL: Sequential write < 100 MB/s - disk is throttled or failing!"
-    echo "      This will severely impact BOA performance (cache writes, logs, DB)"
-  elif [ "${disk_grade}" = "poor" ]; then
-    echo "   ⚠️  Disk profile looks weak (slow SSD/attached)"
-  elif [ "${disk_grade}" = "average" ]; then
-    echo "   ✓  Average disk performance for BOA workloads"
-  elif [ "${disk_grade}" = "good" ]; then
-    echo "   🌟  Good disk performance for BOA workloads"
-  elif [ "${disk_grade}" = "excellent" ]; then
-    echo "   🏆  Excellent disk performance (NVMe-class)"
-  fi
-  echo ""
 
   echo " ============================================================================="
   echo " == 4. NETWORK (Sanity check)                                               =="
   echo " ============================================================================="
   echo ""
   printf "   Public IPv4:        %s\n" "${_net_ipv4}"
-  printf "   Download speed:     %-15s [%s]\n" "${_net_download}" "${net_grade}"
-  printf "   Test: Single-stream CDN pull (100MB)\n"
+  printf "   Download score:     %-15s [%s]\n" "${_net_download}" "${net_grade}"
+  printf "   Score: avg of best 2/4 single-stream pulls (range ~10 MiB, timeout %ss)\n" "${_NET_TIMEOUT}"
+  if [ "${#_net_dl_name[@]}" -gt 0 ]; then
+    local _i
+    _i=0
+    while [ "${_i}" -lt "${#_net_dl_name[@]}" ]; do
+      printf "     - %-10s %s\n" "${_net_dl_name[${_i}]}:" "${_net_dl_pretty[${_i}]}"
+      _i=$((_i + 1))
+    done
+    [ -n "${_net_dl_top2}" ] && printf "   Top 2: %s\n" "${_net_dl_top2}"
+  fi
   echo ""
 
   if [ "${net_grade}" = "poor" ]; then
@@ -988,10 +1190,12 @@ mapfile -t _test_mounts < <(_get_test_mounts)
 
 # ioping latency (nench-inspired)
 echo "Running ioping quick latency checks (${_IOPING_SECONDS}s)..."
-_run_ioping_quick
+declare -A _ioping_seek_line
+declare -A _ioping_seqread_line
+_run_ioping_quick_mounts
 
 # IPv4 network sanity check (CDN with fallback)
-echo "Running IPv4 network check (CDN, ${_NET_TIMEOUT}s timeout)..."
+echo "Running IPv4 network check (4 tests, ${_NET_TIMEOUT}s timeout)..."
 _run_ipv4_net_check
 
 declare -A _fio_rand_iops_read
@@ -1110,7 +1314,6 @@ else
     echo "  - Hostname: ${_hostname}"
     echo "  - CPU: ${_cpu_info}"
     echo "  - vCPUs: ${_cpu_cores}"
-    local _total_ram_mb
     _total_ram_mb="$(free -m | awk '/^Mem:/ {print $2}')"
     echo "  - RAM: ${_total_ram_mb} MB"
   fi
@@ -1144,7 +1347,16 @@ else
   echo ""
   echo "Network (IPv4 single-stream):"
   echo "  - Public IPv4: ${_net_ipv4}"
-  echo "  - CDN Speed Test: ${_net_download}"
+  echo "  - Download score (avg best 2/4): ${_net_download}"
+  if [ "${#_net_dl_name[@]}" -gt 0 ]; then
+    echo "  - Tests:"
+    _i=0
+    while [ "${_i}" -lt "${#_net_dl_name[@]}" ]; do
+      echo "    - ${_net_dl_name[${_i}]}: ${_net_dl_pretty[${_i}]}"
+      _i=$((_i + 1))
+    done
+    [ -n "${_net_dl_top2}" ] && echo "  - Top 2: ${_net_dl_top2}"
+  fi
   echo ""
   echo "PHP Performance (CLI Micro-benchmark):"
   if command -v php >/dev/null 2>&1; then
