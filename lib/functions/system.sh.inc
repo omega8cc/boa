@@ -7701,14 +7701,154 @@ _sys_packages_update() {
   fi
 }
 
+_other_sys_java21_install() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _other_sys_java21_install"
+  fi
+
+  _debArch="$1"
+
+  # Map Debian arch -> Corretto arch tokens
+  case "${_debArch}" in
+    amd64)  _crtArch="x64" ;;
+    arm64)  _crtArch="aarch64" ;;
+    *)
+      _crtArch="x64"
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        _msg "WARN: Unsupported arch '${_debArch}', falling back to x64"
+      fi
+    ;;
+  esac
+
+  _javaHome="/usr/lib/jvm/java-21-openjdk-${_debArch}"
+  if [ -x "${_javaHome}/bin/java" ]; then
+    return 0
+  fi
+
+  _base="amazon-corretto-21-${_crtArch}-linux"
+  _tmpDir="/tmp"
+  _optDir="/opt/jdk"
+  _linkOpt="${_optDir}/corretto-21"
+  _linkJvm="${_javaHome}"
+
+  _mrun "mkdir -p ${_optDir}"
+  _mrun "mkdir -p /usr/lib/jvm"
+
+  # Prefer JRE tarball; fall back to JDK tarball if needed.
+  _kind="jre"
+  _tar="${_base}-${_kind}.tar.gz"
+  _url="https://corretto.aws/downloads/latest/${_tar}"
+  _shaUrl="https://corretto.aws/downloads/latest_sha256/${_tar}"
+
+  if command -v curl >/dev/null 2>&1; then
+    _SHA="$(curl -fsSL "${_shaUrl}" 2>/dev/null | awk '{print $1}')"
+    if [ -z "${_SHA}" ]; then
+      _kind="jdk"
+      _tar="${_base}-${_kind}.tar.gz"
+      _url="https://corretto.aws/downloads/latest/${_tar}"
+      _shaUrl="https://corretto.aws/downloads/latest_sha256/${_tar}"
+      _SHA="$(curl -fsSL "${_shaUrl}" 2>/dev/null | awk '{print $1}')"
+    fi
+    if [ -z "${_SHA}" ]; then
+      _msg "ERROR: Unable to fetch SHA256 for Corretto 21 (${_crtArch})"
+      return 1
+    fi
+    _mrun "rm -f ${_tmpDir}/${_tar}"
+    _mrun "curl -fL --retry 3 --retry-delay 2 -o ${_tmpDir}/${_tar} ${_url}"
+  elif command -v wget >/dev/null 2>&1; then
+    _SHA="$(wget -qO- "${_shaUrl}" 2>/dev/null | awk '{print $1}')"
+    if [ -z "${_SHA}" ]; then
+      _kind="jdk"
+      _tar="${_base}-${_kind}.tar.gz"
+      _url="https://corretto.aws/downloads/latest/${_tar}"
+      _shaUrl="https://corretto.aws/downloads/latest_sha256/${_tar}"
+      _SHA="$(wget -qO- "${_shaUrl}" 2>/dev/null | awk '{print $1}')"
+    fi
+    if [ -z "${_SHA}" ]; then
+      _msg "ERROR: Unable to fetch SHA256 for Corretto 21 (${_crtArch})"
+      return 1
+    fi
+    _mrun "rm -f ${_tmpDir}/${_tar}"
+    _mrun "wget -qO ${_tmpDir}/${_tar} ${_url}"
+  else
+    # If neither exists, install wget from the current OS repos only (no extra sources).
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "TRCK: curl/wget missing; installing wget + ca-certificates from current OS repos"
+    fi
+    _mrun "apt-get update ${_aptYesUnth}"
+    _mrun "apt-get install -y wget ca-certificates ${_aptYesUnth}"
+    _SHA="$(wget -qO- "${_shaUrl}" 2>/dev/null | awk '{print $1}')"
+    if [ -z "${_SHA}" ]; then
+      _kind="jdk"
+      _tar="${_base}-${_kind}.tar.gz"
+      _url="https://corretto.aws/downloads/latest/${_tar}"
+      _shaUrl="https://corretto.aws/downloads/latest_sha256/${_tar}"
+      _SHA="$(wget -qO- "${_shaUrl}" 2>/dev/null | awk '{print $1}')"
+    fi
+    if [ -z "${_SHA}" ]; then
+      _msg "ERROR: Unable to fetch SHA256 for Corretto 21 (${_crtArch})"
+      return 1
+    fi
+    _mrun "rm -f ${_tmpDir}/${_tar}"
+    _mrun "wget -qO ${_tmpDir}/${_tar} ${_url}"
+  fi
+
+  # Verify integrity
+  _mrun "cd ${_tmpDir} && echo ${_SHA}  ${_tar} | sha256sum -c -"
+
+  # Extract and point stable symlinks
+  _topDir="$(tar -tzf "${_tmpDir}/${_tar}" 2>/dev/null | head -n1 | cut -d/ -f1)"
+  if [ -z "${_topDir}" ]; then
+    _msg "ERROR: Unable to read Corretto archive structure: ${_tmpDir}/${_tar}"
+    return 1
+  fi
+
+  _mrun "tar -xzf ${_tmpDir}/${_tar} -C ${_optDir}"
+
+  _real="${_optDir}/${_topDir}"
+  if [ ! -x "${_real}/bin/java" ]; then
+    _msg "ERROR: Extracted Corretto path missing bin/java: ${_real}"
+    return 1
+  fi
+
+  _mrun "ln -sfn ${_real} ${_linkOpt}"
+  _mrun "ln -sfn ${_linkOpt} ${_linkJvm}"
+
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "DONE: Java 21 installed at ${_linkJvm}"
+  fi
+}
+
 _other_sys_java_install() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _other_sys_java_install"
   fi
+
   _systVer="$1"
   _javaVer="$2"
   _aptList="/etc/apt/sources.list.d/${_systVer}.list"
-  if [ ! -x "/usr/lib/jvm/java-${_javaVer}-openjdk-amd64/bin/java" ]; then
+
+  # Detect Debian arch token for /usr/lib/jvm paths
+  _debArch="$(dpkg --print-architecture 2>/dev/null)"
+  if [ -z "${_debArch}" ]; then
+    case "$(uname -m 2>/dev/null)" in
+      x86_64) _debArch="amd64" ;;
+      aarch64|arm64) _debArch="arm64" ;;
+      *) _debArch="amd64" ;;
+    esac
+  fi
+
+  _javaHome="/usr/lib/jvm/java-${_javaVer}-openjdk-${_debArch}"
+
+  # Special-case Java 21: do NOT use foreign apt sources (avoids Excalibur upgrade pressure)
+  if [ "${_javaVer}" = "21" ]; then
+    if [ ! -x "${_javaHome}/bin/java" ] && [ "${_OS_CODE}" != "excalibur" ]; then
+      _other_sys_java21_install "${_debArch}"
+    fi
+    return 0
+  fi
+
+  if [ ! -x "${_javaHome}/bin/java" ]; then
     if [ -n "${_LOCAL_DEVUAN_MIRROR}" ]; then
       _MIRROR="${_LOCAL_DEVUAN_MIRROR}"
     else
@@ -7719,32 +7859,47 @@ _other_sys_java_install() {
         _MIRROR="http://deb.devuan.org/merged"
       fi
     fi
-    echo "## DEVUAN MAIN REPOSITORIES" > ${_aptList}
-    echo "deb ${_MIRROR} ${_systVer} main contrib non-free" >> ${_aptList}
-    echo "deb-src ${_MIRROR} ${_systVer} main contrib non-free" >> ${_aptList}
-    echo "" >> ${_aptList}
-    echo "## DEVUAN MAJOR BUG FIX UPDATES produced after the final release" >> ${_aptList}
-    echo "deb ${_MIRROR} ${_systVer}-updates main contrib non-free" >> ${_aptList}
-    echo "deb-src ${_MIRROR} ${_systVer}-updates main contrib non-free" >> ${_aptList}
-    echo "" >> ${_aptList}
-    echo "## DEVUAN SECURITY UPDATES" >> ${_aptList}
-    echo "deb ${_MIRROR} ${_systVer}-security main contrib non-free" >> ${_aptList}
-    echo "deb-src ${_MIRROR} ${_systVer}-security main contrib non-free" >> ${_aptList}
+
+    # Safer than clobbering /etc/apt/apt.conf
+    _aptNoValidUntil="/etc/apt/apt.conf.d/99-${_systVer}-no-check-valid-until.conf"
+
+    cat > "${_aptList}" <<EOF
+## DEVUAN MAIN REPOSITORIES
+deb ${_MIRROR} ${_systVer} main contrib non-free
+deb-src ${_MIRROR} ${_systVer} main contrib non-free
+
+## DEVUAN MAJOR BUG FIX UPDATES produced after the final release
+deb ${_MIRROR} ${_systVer}-updates main contrib non-free
+deb-src ${_MIRROR} ${_systVer}-updates main contrib non-free
+
+## DEVUAN SECURITY UPDATES
+deb ${_MIRROR} ${_systVer}-security main contrib non-free
+deb-src ${_MIRROR} ${_systVer}-security main contrib non-free
+EOF
+
     if [ "${_USE_BACKPORTS}" = "YES" ]; then
-      echo "" >> ${_aptList}
-      echo "## DEVUAN BACKPORTS REPOSITORY" >> ${_aptList}
-      echo "deb ${_MIRROR} ${_systVer}-backports main contrib non-free" >> ${_aptList}
-      echo "deb-src ${_MIRROR} ${_systVer}-backports main contrib non-free" >> ${_aptList}
+      cat >> "${_aptList}" <<EOF
+
+## DEVUAN BACKPORTS REPOSITORY
+deb ${_MIRROR} ${_systVer}-backports main contrib non-free
+deb-src ${_MIRROR} ${_systVer}-backports main contrib non-free
+EOF
     fi
-    echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
+
+    echo "Acquire::Check-Valid-Until false;" > "${_aptNoValidUntil}"
+
     _apt_clean_update
+
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "TRCK: Installing now openjdk-${_javaVer}-jre-headless from ${_systVer}"
     fi
+
     _mrun "apt-get install -t ${_systVer} openjdk-${_javaVer}-jre-headless ${_aptYesUnth}"
     _mrun "apt-get install -t ${_systVer}-security openjdk-${_javaVer}-jre-headless ${_aptYesUnth}"
-    rm -f /etc/apt/sources.list.d/${_systVer}.list
-    rm -f /etc/apt/apt.conf
+
+    rm -f "${_aptList}"
+    rm -f "${_aptNoValidUntil}"
+
     _apt_clean_update
   fi
 }
@@ -7794,6 +7949,7 @@ _sys_packages_install() {
       elif [ "${_OS_CODE}" = "daedalus" ]; then
         _APT_XTRA="openjdk-17-jre-headless ca-certificates-java nginx"
         _other_sys_java_install "chimaera" "11"
+        _other_sys_java_install "excalibur" "21"
       fi
     else
       _APT_XTRA="nginx"
@@ -7842,6 +7998,7 @@ _sys_packages_install() {
       elif [ "${_OS_CODE}" = "daedalus" ]; then
         _APT_XTRA="openjdk-17-jre-headless ca-certificates-java"
         _other_sys_java_install "chimaera" "11"
+        _other_sys_java_install "excalibur" "21"
       fi
     else
       _APT_XTRA=""
