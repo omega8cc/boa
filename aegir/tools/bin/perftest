@@ -700,7 +700,8 @@ _boa_grade_mem_bw() {
   # input: numeric MiB/s
   # Only warn if truly low; NUMA/cgroup can limit single-thread sysbench
   awk -v v="$1" 'BEGIN{
-    if (v>=6000) print "excellent";
+    if (v>=9000) print "ultra";
+    else if (v>=5000) print "excellent";
     else if (v>=3000) print "good";
     else if (v>=2000) print "average";
     else print "low";
@@ -953,6 +954,8 @@ _print_compact_summary() {
     echo "   🌟  Good memory bandwidth for in-memory caching"
   elif [ "${mem_grade}" = "excellent" ]; then
     echo "   🏆  Excellent memory bandwidth for in-memory caching"
+  elif [ "${mem_grade}" = "ultra" ]; then
+    echo "   👑  Ultra memory bandwidth for in-memory caching"
   fi
   echo ""
 
